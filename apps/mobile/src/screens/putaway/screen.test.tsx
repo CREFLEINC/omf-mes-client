@@ -57,9 +57,10 @@ const task = (overrides: Record<string, unknown> = {}) => ({
   taskQty: 120,
   uomId: 9,
   fromLocationId: 1,
-  recommendedLocationId: 5,
+  allowedLocations: [
+    { locationId: 5, locationCode: 'A-01-03', locationName: 'A-01-03', locationLevelCode: 'CELL' },
+  ],
   warehouseId: 2,
-  warehouseManagementLevelCode: 'ZONE',
   priorityNo: 1,
   statusCode: 'PENDING',
   ...overrides,
@@ -72,9 +73,6 @@ const location = (overrides: Record<string, unknown> = {}) => ({
   warehouseId: 2,
   locationCode: 'A-01-03',
   locationName: '자재 A열',
-  locationTypeCode: 'RACK',
-  allowMixedItem: true,
-  allowMixedLot: true,
   isActive: true,
   ...overrides,
 });
@@ -87,10 +85,6 @@ interface Options {
   locations?: unknown[];
   workers?: unknown[];
   tasksStatus?: number;
-  /** 지금 그 위치에 들어 있는 것. 혼적·수용량 판정의 근거다. */
-  balances?: unknown[];
-  /** 품목의 보관조건. 자리의 같은 값과 견준다. */
-  itemStorage?: string | null;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -137,24 +131,12 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () =>
-      jsonResponse({
-        items: [
-          { codeValueId: 1, code: 'COLD', codeName: '냉장', isActive: true, displayOrder: 1 },
-          { codeValueId: 2, code: 'AMBIENT', codeName: '상온', isActive: true, displayOrder: 2 },
-        ],
-        page,
-      }),
-  },
   ...itemRoutes([
     {
       itemId: 31,
       itemCode: 'RM-1001',
       itemName: '수지A',
       fifoPolicyCode: 'FEFO',
-      storageConditionCode: options.itemStorage,
     },
   ]),
   {
@@ -165,10 +147,6 @@ const routes = (options: Options = {}): StubRoute[] => [
         externalIdentifiers: [],
         holds: [],
       }),
-  },
-  {
-    match: (req) => new URL(req.url).pathname === '/inventory/balances',
-    respond: () => jsonResponse({ items: options.balances ?? [], page }),
   },
 ];
 
@@ -233,7 +211,7 @@ const chooseTask = async (user: ReturnType<typeof userEvent.setup>) => {
 const readyToRecord = async (user: ReturnType<typeof userEvent.setup>) => {
   await chooseTask(user);
   scan('A-01-03');
-  await screen.findByText('권장 위치와 일치합니다');
+  await screen.findByText('이 품목의 보관 위치입니다');
   await scanLot(LOT_NO);
   await waitFor(() => {
     expect(screen.getByRole('button', { name: '이 지시 적치' })).not.toBeDisabled();
@@ -252,7 +230,7 @@ describe('적치·입고 완료 화면', () => {
    * 비우고 물으면 남의 지시까지 온다. 끝낸 지시까지 함께 오면 같은 자리를 두 번 다녀온다.
    */
   /*
-   * 단추 안에 값을 넣으면 단추 글자 규격을 따라가 지시 제목과 권장 위치 유무가 같은
+   * 단추 안에 값을 넣으면 단추 글자 규격을 따라가 지시 제목과 보관 위치가 같은
    * 무게로 보인다. 카드로 세워 제목과 부가를 갈라 둔다.
    */
   it('적치 지시를 카드로 세워 제목과 부가를 가른다', async () => {
@@ -280,7 +258,7 @@ describe('적치·입고 완료 화면', () => {
       '품목',
       '지시 번호',
       '수량',
-      '권장 위치',
+      '보관 위치',
     ]);
   });
 
@@ -447,12 +425,12 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.queryByText('적치 지시를 불러오는 중입니다')).toBeNull();
   });
 
-  it('지시를 고르면 권장 위치를 코드로 보인다', async () => {
+  it('지시를 고르면 보관 위치를 코드로 보인다', async () => {
     const user = userEvent.setup();
     mount();
     await chooseTask(user);
 
-    expect(await screen.findByText('권장 위치 A-01-03')).toBeTruthy();
+    expect(await screen.findByText('보관 위치 A-01-03')).toBeTruthy();
   });
 
   /*
@@ -467,12 +445,12 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 일치합니다');
+    await screen.findByText('이 품목의 보관 위치입니다');
 
     expect(await screen.findByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
   });
 
-  it('권장 위치와 지시 LOT 이 맞으면 적치를 연다', async () => {
+  it('보관 위치와 지시 LOT 이 맞으면 적치를 연다', async () => {
     const user = userEvent.setup();
     mount();
     await readyToRecord(user);
@@ -503,7 +481,7 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 일치합니다');
+    await screen.findByText('이 품목의 보관 위치입니다');
     await scanLot('RM-LOT-9999');
 
     /* 읽은 값이 함께 보여야 잘못 읽은 것인지 다른 LOT 인지 가릴 수 있다 — 배너 제목이 읽은 값이다. */
@@ -515,14 +493,14 @@ describe('적치·입고 완료 화면', () => {
   });
 
   /* 다른 곳에 두면 다음 사람이 찾지 못한다. 서버도 막는다. */
-  it('권장이 아닌 위치를 스캔하면 막고 어디가 권장인지 말한다', async () => {
+  it('보관 위치가 아닌 곳을 스캔하면 막고 보관 위치를 말한다', async () => {
     const user = userEvent.setup();
     mount();
     await chooseTask(user);
 
     scan('B-02-01');
 
-    expect(await screen.findByText('권장 위치 A-01-03 가 아닙니다')).toBeTruthy();
+    expect(await screen.findByText('이 품목의 보관 위치(A-01-03)가 아닙니다')).toBeTruthy();
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
   });
 
@@ -536,7 +514,7 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('B-02-01');
-    await screen.findByText('권장 위치 A-01-03 가 아닙니다');
+    await screen.findByText('이 품목의 보관 위치(A-01-03)가 아닙니다');
 
     await user.click(screen.getByRole('button', { name: '임시 위치 적재로 이동' }));
 
@@ -553,18 +531,18 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('B-02-01');
-    await screen.findByText('권장 위치 A-01-03 가 아닙니다');
+    await screen.findByText('이 품목의 보관 위치(A-01-03)가 아닙니다');
 
     expect(tone.played).toBeGreaterThan(0);
   });
 
-  it('권장 위치를 스캔하면 소리를 내지 않는다', async () => {
+  it('보관 위치를 스캔하면 소리를 내지 않는다', async () => {
     const user = userEvent.setup();
     mount();
     await chooseTask(user);
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 일치합니다');
+    await screen.findByText('이 품목의 보관 위치입니다');
 
     expect(tone.played).toBe(0);
   });
@@ -579,46 +557,53 @@ describe('적치·입고 완료 화면', () => {
     expect(await screen.findByText('Z-99-99 위치를 이 창고에서 찾지 못했습니다')).toBeTruthy();
   });
 
-  /* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 해 현장이 선다. */
-  it('권장이 없으면 확인을 받고 통과시킨다', async () => {
+  /* 보관 위치를 정하지 않은 품목은 이 창고 어디든 둔다 — 확인 단추는 없어졌다(서버 #906). */
+  it('둘 곳이 정해지지 않았으면 어디든 받고 곧바로 LOT 을 묻는다', async () => {
     const user = userEvent.setup();
-    mount([], { tasks: [task({ recommendedLocationId: null })] });
+    mount([], { tasks: [task({ allowedLocations: [] })] });
     await chooseTask(user);
 
     scan('B-02-01');
 
-    expect(await screen.findByText('관리 위치가 없는 품목입니다. 여기 적치합니까?')).toBeTruthy();
-    expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
-    /* 규칙 없음은 막힌 판정이 아니다 — 자리 내용이 확인되면 칸을 접고 재스캔을 둔다. */
+    expect(
+      await screen.findByText('보관 위치를 정하지 않은 품목입니다. 이 창고 어디든 둘 수 있습니다'),
+    ).toBeTruthy();
     await waitFor(() => {
       expect(screen.queryByLabelText(/위치 코드 스캔/)).toBeNull();
     });
     expect(screen.getByRole('button', { name: '위치 재스캔' })).toBeTruthy();
-
-    await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
-
     expect(await screen.findByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
   });
 
-  /*
-   * 한 품목만 받는 자리에 얹으면 그 재고는 다음 사람이 찾지 못한다. 안내로만 두면 사람은
-   * 통과로 읽는다.
-   */
-  it('한 품목만 받는 자리에 다른 품목이 있으면 막는다', async () => {
+  it('둘 곳이 여럿이면 그 중 아무 데나 받는다', async () => {
     const user = userEvent.setup();
     mount([], {
-      locations: [location({ allowMixedItem: false }), FROM],
-      balances: [{ itemId: 99, lotId: 8, onHandQty: 40, groupBy: 'LOT', ownershipTypeCode: 'OWN' }],
+      tasks: [
+        task({
+          allowedLocations: [
+            {
+              locationId: 5,
+              locationCode: 'A-01-03',
+              locationName: 'A-01-03',
+              locationLevelCode: 'CELL',
+            },
+            {
+              locationId: 9,
+              locationCode: 'B-02-01',
+              locationName: 'B-02-01',
+              locationLevelCode: 'CELL',
+            },
+          ],
+        }),
+      ],
     });
     await chooseTask(user);
 
-    scan('A-01-03');
+    expect(await screen.findByText('보관 위치 A-01-03 외 1곳')).toBeTruthy();
 
-    expect(await screen.findByText('이 위치는 단일 품목만 보관합니다')).toBeTruthy();
-    expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
-    /* ⛔ 혼적도 막힌 판정 — 곧바로 다른 자리를 읽어야 하므로 칸을 남기고 재스캔은 두지 않는다. */
-    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
+    scan('B-02-01');
+
+    expect(await screen.findByText('이 품목의 보관 위치입니다')).toBeTruthy();
   });
 
   /*
@@ -635,7 +620,7 @@ describe('적치·입고 완료 화면', () => {
     await chooseTask(user);
 
     scan('A-01-03');
-    await screen.findByText('권장 위치와 일치합니다');
+    await screen.findByText('이 품목의 보관 위치입니다');
 
     /* 자리 내용까지 확인돼 판정이 선 뒤에 접힌다. */
     await waitFor(() => {
@@ -647,40 +632,27 @@ describe('적치·입고 완료 화면', () => {
     await user.click(screen.getByRole('button', { name: '위치 재스캔' }));
 
     expect(await screen.findByLabelText(/위치 코드 스캔/)).toBeTruthy();
-    expect(screen.queryByText('권장 위치와 일치합니다')).toBeNull();
+    expect(screen.queryByText('이 품목의 보관 위치입니다')).toBeNull();
   });
 
   /*
-   * ⭐ 권장 위치가 아니면 **스캔 칸을 남긴다**(사용자 지정) — 곧바로 다른 자리를 읽어야 한다. 읽은
+   * ⭐ 보관 위치가 아니면 **스캔 칸을 남긴다**(사용자 지정) — 곧바로 다른 자리를 읽어야 한다. 읽은
    *   위치는 판정 배너 한 줄에 함께 서고, 임시로 두는 길은 안내 글과 버튼으로 갈린다.
    */
-  it('권장 위치가 아니면 스캔 칸을 남기고 임시 적재로 가는 버튼을 보인다', async () => {
+  it('보관 위치가 아니면 스캔 칸을 남기고 임시 적재로 가는 버튼을 보인다', async () => {
     const user = userEvent.setup();
     mount([], {
       locations: [
         location(),
-        location({
-          locationId: 9,
-          locationCode: 'B-02-01',
-          locationName: '자재 B열',
-          capacityQty: 150,
-        }),
+        location({ locationId: 9, locationCode: 'B-02-01', locationName: '자재 B열' }),
         FROM,
-      ],
-      balances: [
-        { itemId: 31, lotId: 4, onHandQty: 100, groupBy: 'LOT', ownershipTypeCode: 'OWN' },
       ],
     });
     await chooseTask(user);
 
     scan('B-02-01');
 
-    expect(await screen.findByText('권장 위치 A-01-03 가 아닙니다')).toBeTruthy();
-    /*
-     * ⛔ 자리 내용 조회가 **끝난 뒤**에 본다 — 그 전에는 판정이 서지 않아 칸이 원래 서 있다(리뷰 지적).
-     *    수용량 경고는 자리 내용이 있어야 서므로 조회가 끝났다는 표지다.
-     */
-    await screen.findByText('수용량 150 · 현재 100 + 120');
+    expect(await screen.findByText('이 품목의 보관 위치(A-01-03)가 아닙니다')).toBeTruthy();
     expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
     expect(screen.getByText('임시로 두어야 하면 임시 위치 적재로 갑니다')).toBeTruthy();
@@ -701,46 +673,11 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
   });
 
-  it('위치에 무엇이 있는지 확인하지 못하면 다음으로 넘기지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([
-      {
-        match: (req) => new URL(req.url).pathname === '/inventory/balances',
-        respond: () => jsonResponse({ message: '실패' }, { status: 500 }),
-      },
-    ]);
-    await chooseTask(user);
-
-    scan('A-01-03');
-    await screen.findByText('권장 위치와 일치합니다');
-
-    expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
-    /* ⛔ 자리 내용을 모르면 판정이 서지 않았다 — 칸을 접지 않아 곧바로 다시 읽을 수 있다. */
-    expect(screen.getByLabelText(/위치 코드 스캔/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '위치 재스캔' })).toBeNull();
-  });
-
-  /* 자리는 유한하다. 넘겨서 두는 판단은 자리를 보는 사람이 하되, 넘는다는 것은 알려야 한다. */
-  it('수용량을 넘기면 지금 있는 양과 함께 알린다', async () => {
-    const user = userEvent.setup();
-    mount([], {
-      locations: [location({ capacityQty: 200 }), OTHER, FROM],
-      balances: [
-        { itemId: 31, lotId: 4, onHandQty: 100, groupBy: 'LOT', ownershipTypeCode: 'OWN' },
-      ],
-    });
-    await chooseTask(user);
-
-    scan('A-01-03');
-
-    expect(await screen.findByText('수용량 200 · 현재 100 + 120')).toBeTruthy();
-  });
-
   /*
-   * 관리하는 창고에서 목록 선택을 함께 열면 라벨을 읽지 않고 화면만 보고 적치가 끝난다.
-   * 관리하지 않는 창고에는 스캔할 라벨이 없어 반대로 목록만 연다.
+   * 사람이 만든 위치에서 목록 선택을 함께 열면 라벨을 읽지 않고 화면만 보고 적치가 끝난다.
+   * 「창고 전체」에는 스캔할 라벨이 없어 반대로 목록만 연다.
    */
-  it('위치를 관리하는 창고는 스캔만 연다', async () => {
+  it('사람이 만든 위치로 가면 스캔만 연다', async () => {
     const user = userEvent.setup();
     mount();
     await chooseTask(user);
@@ -748,10 +685,28 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.queryByRole('combobox', { name: /적치 위치/ })).toBeNull();
   });
 
-  it('위치를 관리하지 않는 창고는 목록으로 고른다', async () => {
+  it('둘 곳이 「창고 전체」 하나면 목록으로 고른다', async () => {
     const user = userEvent.setup();
+    const whole = location({
+      locationId: 7,
+      locationCode: 'SYS-WHOLE',
+      locationName: '창고 전체',
+      systemRoleCode: 'WAREHOUSE_WHOLE',
+    });
     mount([], {
-      tasks: [task({ warehouseManagementLevelCode: 'WAREHOUSE', recommendedLocationId: null })],
+      tasks: [
+        task({
+          allowedLocations: [
+            {
+              locationId: 7,
+              locationCode: 'SYS-WHOLE',
+              locationName: '창고 전체',
+              locationLevelCode: 'ZONE',
+            },
+          ],
+        }),
+      ],
+      locations: [whole, FROM],
     });
     await user.click(await screen.findByRole('button', { name: /RM-1001/ }));
 
@@ -785,12 +740,11 @@ describe('적치·입고 완료 화면', () => {
 
     const body = (await seen[0]!.json()) as {
       actualLocationId: number;
-      confirmedNoRule: boolean;
       businessDate: string;
     };
 
     expect(body.actualLocationId).toBe(5);
-    expect(body.confirmedNoRule).toBe(false);
+    expect(body).not.toHaveProperty('confirmedNoRule');
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await screen.findByText(`${LOT_NO} → A-01-03 120 EA`)).toBeTruthy();
   });
@@ -886,43 +840,5 @@ describe('적치·입고 완료 화면', () => {
     expect(await screen.findByText('적치를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('적치됨 1건')).toBeNull();
     expect(seen).toHaveLength(0);
-  });
-
-  /*
-   * 막지 않는다 - 설계가 경고로 정했고 냉장 자리가 없어 상온에 두어야 하는 날이 있다.
-   * 다만 말하지 않으면 아무도 모른 채 지나간다.
-   */
-  it('품목과 위치의 보관조건이 어긋나면 말하되 막지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], {
-      itemStorage: 'COLD',
-      locations: [location({ storageConditionCode: 'AMBIENT' }), FROM],
-    });
-    await chooseTask(user);
-
-    scan('A-01-03');
-
-    /* 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. */
-    expect(
-      await screen.findByText('품목은 냉장 보관인데 이 위치는 상온 입니다'),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/COLD/)).toBeNull();
-    /* 경고다. 자리 판정은 그대로 통과한다. */
-    expect(screen.queryByText('이 위치는 한 품목만 받습니다')).toBeNull();
-  });
-
-  /* 모르면 말하지 않는다. 안 적은 품목마다 경고가 뜨면 진짜 경고가 묻힌다. */
-  it('보관조건이 비어 있으면 어긋났다고 말하지 않는다', async () => {
-    const user = userEvent.setup();
-    mount([], {
-      itemStorage: null,
-      locations: [location({ storageConditionCode: 'AMBIENT' }), FROM],
-    });
-    await chooseTask(user);
-
-    scan('A-01-03');
-
-    await screen.findByLabelText(/LOT 라벨 스캔/);
-    expect(screen.queryByText(/보관인데 이 위치는/)).toBeNull();
   });
 });

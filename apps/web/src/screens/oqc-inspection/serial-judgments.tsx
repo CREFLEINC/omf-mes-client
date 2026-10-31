@@ -2,6 +2,8 @@ import { Button, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { useClientPage } from '../../patterns/client-page';
+import { PageNav } from '../../patterns/page-nav';
 import { useSerialLookup } from './queries';
 import { SerialScanField } from './serial-scan-field';
 import {
@@ -43,6 +45,8 @@ export const SerialJudgments = ({
   const previousIdOf = (serialNumberId: number): string =>
     `${idPrefix}-previous-${String(serialNumberId)}`;
   const [scanError, setScanError] = useState<string | null>(null);
+  /* 목록 표 아래와 같은 쪽 이동 줄 — 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
+  const paging = useClientPage(rows);
 
   /** `false` 면 찾지 못했다 — 칸이 친 번호를 남긴다(목록 위 스캔 칸과 같은 동작 · #136). */
   const scan = async (serialNo: string): Promise<boolean> => {
@@ -57,7 +61,11 @@ export const SerialJudgments = ({
     }
     const blocked = checkScannedSerial(found.scan, { inspectionRequestId, itemId, rows });
     setScanError(blocked);
-    if (blocked === null) onChange([...rows, toSerialRow(found.scan)]);
+    if (blocked === null) {
+      onChange([...rows, toSerialRow(found.scan)]);
+      /* 스캔한 시리얼은 맨 뒤에 붙는다 — 그 줄이 보이게 마지막 쪽으로 간다(쪽 나누기 #197). */
+      paging.nav.onChangePage(Math.ceil((rows.length + 1) / paging.nav.meta.size));
+    }
     return true;
   };
 
@@ -150,7 +158,7 @@ export const SerialJudgments = ({
           caption={<span className="oqc-inspection-visually-hidden">{j.heading}</span>}
           density="compact"
           columns={columns}
-          rows={rows}
+          rows={paging.rows}
           getRowId={(row) => String(row.serialNumberId)}
           empty={
             <EmptyState
@@ -162,6 +170,7 @@ export const SerialJudgments = ({
           }
         />
       </div>
+      <PageNav {...paging.nav} />
     </section>
   );
 };

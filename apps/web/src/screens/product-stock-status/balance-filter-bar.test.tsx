@@ -1,7 +1,11 @@
+import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+
+import { ApiClientProvider } from '../../patterns/api-context';
 
 import { BalanceFilterBar, type BalanceFilterBarProps } from './balance-filter-bar';
 import { EMPTY_FILTERS } from './filters';
@@ -9,7 +13,6 @@ import { EMPTY_FILTERS } from './filters';
 const t = messages.productStockStatus;
 
 const WAREHOUSE_OPTIONS = [{ value: '9101', label: 'SAMPLE-WH-01 · 합성 자재창고 가' }];
-const ITEM_OPTIONS = [{ value: '9301', label: 'SAMPLE-ITEM-01 · 합성 품목 가' }];
 
 const renderBar = (overrides: Partial<BalanceFilterBarProps> = {}) => {
   const onSearch = vi.fn<(filters: typeof EMPTY_FILTERS) => void>();
@@ -18,22 +21,26 @@ const renderBar = (overrides: Partial<BalanceFilterBarProps> = {}) => {
   const onRetryReferences = vi.fn<() => void>();
   const onViewChange = vi.fn<(view: 'item' | 'lot' | 'location') => void>();
 
+  /* 품목 칸(`ItemSelect`)이 조회 프로바이더를 쓴다. 펼치지 않으면 부르지 않는다. */
   render(
-    <BalanceFilterBar
-      appliedFilters={EMPTY_FILTERS}
-      view="item"
-      canUseLotView={false}
-      onViewChange={onViewChange}
-      warehouseOptions={WAREHOUSE_OPTIONS}
-      itemOptions={ITEM_OPTIONS}
-      chipNames={{ warehouse: '', item: '' }}
-      referencesFailed={false}
-      onRetryReferences={onRetryReferences}
-      onSearch={onSearch}
-      onRemoveFilter={onRemoveFilter}
-      onReset={onReset}
-      {...overrides}
-    />,
+    <QueryClientProvider client={new QueryClient()}>
+      <ApiClientProvider client={createApiClient({ baseUrl: 'http://test.invalid' })}>
+        <BalanceFilterBar
+          appliedFilters={EMPTY_FILTERS}
+          view="item"
+          canUseLotView={false}
+          onViewChange={onViewChange}
+          warehouseOptions={WAREHOUSE_OPTIONS}
+          chipNames={{ warehouse: '', item: '' }}
+          referencesFailed={false}
+          onRetryReferences={onRetryReferences}
+          onSearch={onSearch}
+          onRemoveFilter={onRemoveFilter}
+          onReset={onReset}
+          {...overrides}
+        />
+      </ApiClientProvider>
+    </QueryClientProvider>,
   );
 
   return {

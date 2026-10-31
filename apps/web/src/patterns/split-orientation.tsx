@@ -1,10 +1,16 @@
 import { Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type CSSProperties } from 'react';
+import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import { HubActions, useHubActionsTarget } from './hub-actions';
 
 const t = messages.common.inspectionHub;
+
+/**
+ * 품질 기준 정보 탭 묶음(검사 기준 · 검사표 기준 · 검사 수준 관리 · 불량·원인코드 · 판정 유형 코드)이 함께 쓰는 배치 저장 키 —
+ * 한 탭에서 고른 배치가 다른 탭에도 이어진다(omf-all-around#196 · #208).
+ */
+export const QUALITY_STANDARD_ORIENTATION_KEY = 'omf-mes:quality-standard-hub:split-orientation';
 
 /** 목록 · 상세 배치 — 좌우(`row`) 또는 상하(`column`). */
 export type SplitOrientation = 'row' | 'column';
@@ -121,6 +127,28 @@ export const PaneHeightSplitter = ({
   />
 );
 
+/** 좌우로 나란히 설 수 있는 창 폭 — 이보다 좁으면 고른 배치와 상관없이 위아래로 쌓인다(app.css `.po-board-split`). */
+const SIDE_BY_SIDE_QUERY = '(min-width: 1440px)';
+
+/* 판단할 수 없으면(시험 환경 등 `matchMedia` 가 없거나 모자람) 넓다고 보고 구독도 하지 않는다. */
+const wideQuery = (): MediaQueryList | null =>
+  typeof window.matchMedia === 'function' ? (window.matchMedia(SIDE_BY_SIDE_QUERY) ?? null) : null;
+
+const subscribeWide = (onChange: () => void): (() => void) => {
+  const media = wideQuery();
+  if (media === null || typeof media.addEventListener !== 'function') return () => undefined;
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+};
+
+/** 창이 좌우 배치를 담을 만큼 넓은가. */
+export const useSideBySideFits = (): boolean =>
+  useSyncExternalStore(
+    subscribeWide,
+    () => wideQuery()?.matches ?? true,
+    () => true,
+  );
+
 /**
  * 탭 줄 오른쪽(상태 칩 옆)의 배치 단추 둘 — 아이콘 + 「좌우 배치」 · 「상하 배치」. 고른 배치는 붉은 톤으로 눌린 상태다.
  * 탭 묶음 밖(탭 막대가 없는 계정 · 화면만 그린 시험)에서는 자리가 없어 그리지 않는다 — 배치는 좌우다.
@@ -133,7 +161,10 @@ export const SplitOrientationToggle = ({
   onChange: (next: SplitOrientation) => void;
 }) => {
   const target = useHubActionsTarget();
+  /* 창이 좁으면 실제로 위아래로 쌓인다 — 눌린 표시도 상하, 좌우는 끈다(사용자 지시 2026-10-29 · #197). */
+  const fits = useSideBySideFits();
   if (target === null) return null;
+  const shown: SplitOrientation = fits ? orientation : 'column';
 
   return (
     <HubActions target={target}>
@@ -143,7 +174,9 @@ export const SplitOrientationToggle = ({
             key={option.value}
             type="button"
             className="split-orientation-option"
-            aria-pressed={orientation === option.value}
+            aria-pressed={shown === option.value}
+            disabled={!fits && option.value === 'row'}
+            title={!fits && option.value === 'row' ? t.layoutNarrow : undefined}
             onClick={() => onChange(option.value)}
           >
             <Icon name={option.icon} size={16} />

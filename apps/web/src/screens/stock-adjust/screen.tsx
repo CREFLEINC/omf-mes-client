@@ -2076,7 +2076,6 @@ export const StockAdjustScreen = () => {
           uomLookup={uoms}
           lotLookup={lots}
           locationOptions={toSelectOptions(locations)}
-          itemOptions={toSelectOptions(items)}
           uomOptions={toSelectOptions(uoms)}
           /*
            * **표도 같은 잠금을 쓴다**(C26). 보내는 중에 값이 바뀌면 화면이 보여 주는 것과 나간

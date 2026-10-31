@@ -1,5 +1,5 @@
 import { Chip, EmptyState, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
-import type { InspectionHistory, InspectionHistoryEvent } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -12,6 +12,9 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';
 import { runRequest } from '../../patterns/request';
+
+type InspectionHistory = components['schemas']['InspectionHistory'];
+type InspectionHistoryEvent = components['schemas']['InspectionHistoryEvent'];
 
 const t = messages.inspectionHistory;
 
@@ -232,7 +235,7 @@ const HistoryTable = ({
           }
         />
       </div>
-      {paged && paging.nav !== null && <PageNav {...paging.nav} />}
+      {paged && <PageNav {...paging.nav} />}
     </>
   );
 };

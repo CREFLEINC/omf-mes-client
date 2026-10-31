@@ -10,6 +10,10 @@ export type { QrCodeProps } from './ds-candidates/qr-code';
 export { encodeQr } from './ds-candidates/qr-encode';
 export type { QrMatrix } from './ds-candidates/qr-encode';
 export { MarkerOverlay } from './ds-candidates/marker-overlay';
-export type { MarkerOverlayProps, OverlayMarker } from './ds-candidates/marker-overlay';
+export type {
+  MarkerOverlayProps,
+  OverlayMarker,
+  OverlayMarkerShape,
+} from './ds-candidates/marker-overlay';
 export { NumericKeypad } from './ds-candidates/numeric-keypad';
 export type { NumericKeypadProps } from './ds-candidates/numeric-keypad';

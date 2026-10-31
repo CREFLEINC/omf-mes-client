@@ -45,6 +45,8 @@ const lineResponse = (
   supplierLotLabelAttached: true,
   inspectionRequired: true,
   statusCode: 'SAMPLE_IR_LINE_STATUS_A',
+  allocations: [],
+  unallocatedQty: 100,
   ...overrides,
 });
 
@@ -219,7 +221,6 @@ const warehouseResponse = (overrides: Partial<WarehouseResponse> = {}): Warehous
   warehouseCode: 'SAMPLE-WH-01',
   warehouseName: '합성 창고 가',
   warehouseTypeCode: 'SAMPLE_WH_TYPE_A',
-  managementLevelCode: 'SAMPLE_WH_LEVEL_A',
   isExternal: false,
   isDefect: false,
   isActive: true,
@@ -232,10 +233,12 @@ const locationResponse = (overrides: Partial<LocationResponse> = {}): LocationRe
   parentLocationId: 9801,
   locationCode: 'SAMPLE-LOC-A1',
   locationName: '합성 열 가1',
-  locationTypeCode: 'SAMPLE_LOC_TYPE_A',
-  allowMixedItem: true,
-  allowMixedLot: true,
   isActive: true,
+  aliasName: null,
+  locationLevelCode: null,
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
   ...overrides,
 });
 

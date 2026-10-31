@@ -49,6 +49,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     inProgress: 'Đang làm',
     completed: 'Xong',
     skipped: 'Bỏ qua',
+    skippedDefault: 'Bỏ qua (mặc định)',
+    skippedApproval: 'Bỏ qua (đã duyệt)',
     cancelled: 'Đã hủy',
   },
 
@@ -233,6 +235,8 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     rejected: 'Yêu cầu bỏ qua trước đó đã bị từ chối. Có thể yêu cầu lại.',
     executed: 'Đã bỏ qua OQC. Kiểm tra xuất hàng đã chuyển sang đạt.',
     skipped: 'Yêu cầu này đã đóng do bỏ qua OQC.',
+    skippedDefault:
+      'Tiêu chuẩn kiểm tra được đặt là ‘Bỏ qua mặc định’ nên đã xuất hàng mà không kiểm tra OQC.',
     loading: 'Đang tải trạng thái phê duyệt bỏ qua.',
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },
@@ -284,7 +288,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     count: (total: number, ng: number): string => `${total} serial, NG ${ng}`,
     recordHeading: 'Lịch sử kiểm tra xuất hàng theo serial',
     recordTab: 'Lịch sử kiểm tra theo serial',
-    recordHelp: 'Xem kết quả kiểm tra lần đầu và kiểm tra lại của từng serial.',
     recordEmpty: 'Chưa có lịch sử kiểm tra xuất hàng.',
     recordEmptyDescription: 'Khi có kết quả kiểm tra, lịch sử sẽ hiển thị tại đây.',
     recordCount: (count: number): string => `${String(count)} mục`,

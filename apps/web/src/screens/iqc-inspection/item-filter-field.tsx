@@ -56,8 +56,12 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
           multiple={false}
           /* 검색 · 표 · 쪽 넘김 · 취소/선택만 — 닫기(X)와 꼬리말 안내를 걷는다(#133 · 검사기준 검색 창과 같은 모양). */
           compact
+          /* IQC 는 들어오는 자재를 검사한다 — 제품 유형은 고를 일이 없다(사용자 지시 2026-10-30). */
+          excludeItemTypeCodes={['FINISHED']}
           includeInactive
           showAvailability={false}
+          /* 목록 표 아래와 같은 쪽 이동 줄(사용자 지시 2026-10-28 · #197). */
+          pageNav
           confirmLabel={t.itemPick}
           onClose={() => {
             setIsPickerOpen(false);

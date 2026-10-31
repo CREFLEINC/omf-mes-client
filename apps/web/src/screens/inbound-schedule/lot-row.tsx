@@ -89,7 +89,7 @@ export const lotEvidence = (lot: InboundLotProgress): string => {
   const parts: string[] = [t.lot.receivedOn(dateOf(lot.receiptDatetime))];
 
   if (!hasLot(lot)) parts.push(t.lot.evidence.receiptNo(lot.inboundReceiptNo));
-  if (lot.allocatedQty !== undefined && lot.allocatedQty !== lot.receivedQty) {
+  if (lot.allocatedQty !== lot.receivedQty) {
     parts.push(t.lot.evidence.wholeQty(formatQty(lot.receivedQty), lot.uomCode));
   }
 
@@ -156,25 +156,16 @@ export const lotLocation = (lot: InboundLotProgress): string => {
 
 export interface LotActionProps {
   lot: InboundLotProgress;
-  /** 보내는 중인 IQC 의뢰의 LOT. 그 단추만 돈다. */
-  requestingLotId: number | null;
   /** 없으면(권한 없음) 「입고 처리」 단추를 세우지 않는다 — 막는 것은 서버다. */
   onPostReceipt?: (lot: IssuedLotProgress) => void;
-  onRequestIqc?: (lot: IssuedLotProgress) => void;
 }
 
 /**
- * 「다음 할 일」 칸 — **서버가 정한 것만** 선다(C-17). 이 화면이 하는 둘은 단추, POP · PDA 의 일은 글자.
- * 단추 둘은 LOT 하나를 대상으로 하므로 LOT 이 없는 줄에는 서지 않는다.
- * 검사 자체는 품질팀의 일이라 검사 화면으로 가는 길을 두지 않는다 — 입고 담당이 하는 것은 **의뢰 요청**이다
- * (사용자 지시 2026-10-22).
+ * 「다음 할 일」 칸 — **서버가 정한 것만** 나타난다(C-17). 이 화면이 하는 「입고 처리」는 단추, POP · PDA 의 일은 글자.
+ * 단추는 LOT 하나를 대상으로 하므로 LOT 이 없는 줄에는 나타나지 않는다.
+ * 검사는 품질팀의 일이고 의뢰는 입하 등록 때 서버가 만든다 — 검사 단계 줄에는 할 일이 없다(사용자 결정 2026-10-29 · #909).
  */
-export const LotActionCell = ({
-  lot,
-  requestingLotId,
-  onPostReceipt,
-  onRequestIqc,
-}: LotActionProps) => {
+export const LotActionCell = ({ lot, onPostReceipt }: LotActionProps) => {
   if (lot.nextActionCode === 'ISSUE_LABEL') {
     return <span className="po-board-lot-note">{t.lot.issueLabelOnPop}</span>;
   }
@@ -184,21 +175,6 @@ export const LotActionCell = ({
   if (!hasLot(lot)) return null;
 
   switch (lot.nextActionCode) {
-    case 'REQUEST_IQC':
-      return onRequestIqc === undefined ? null : (
-        <Button
-          variant="outlined"
-          size="sm"
-          aria-label={t.actions.requestIqcRow(lot.lotNo)}
-          loading={requestingLotId === lot.lotId}
-          disabled={requestingLotId !== null && requestingLotId !== lot.lotId}
-          onClick={() => {
-            onRequestIqc(lot);
-          }}
-        >
-          {t.actions.requestIqc}
-        </Button>
-      );
     case 'POST_RECEIPT':
       return onPostReceipt === undefined ? null : (
         <Button

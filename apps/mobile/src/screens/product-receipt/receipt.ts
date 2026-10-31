@@ -1,6 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { isDividingLocation, isWarehouseWhole } from '../../patterns/locations';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 import { businessDateOf } from '../putaway/putaway';
 
@@ -12,7 +13,6 @@ export type Lot = components['schemas']['Lot'];
 export type GoodsReceiptCreate = components['schemas']['GoodsReceiptCreate'];
 export type GoodsReceiptLineCreate = components['schemas']['GoodsReceiptLineCreate'];
 export type PutawayTaskComplete = components['schemas']['PutawayTaskComplete'];
-export type PutawayRule = components['schemas']['PutawayRule'];
 
 /**
  * 담는 경로의 이름.
@@ -25,12 +25,6 @@ export const PUTAWAY_LABEL = messages.productReceipt.record.putaway;
 
 /** 제품 입고다. 값 목록은 서버에서 받고 이 화면은 그중 이 값을 고른다. */
 export const PRODUCT = 'PRODUCT';
-
-/** 창고 관리 수준이 창고까지면 위치를 받지 않는다. 값 순서가 계층 깊이를 뜻한다. */
-export const WAREHOUSE_LEVEL = 'WAREHOUSE';
-
-/** 위치를 관리하지 않는 창고의 흡수용 위치. */
-export const DEFAULT_LOCATION = 'DEFAULT';
 
 /** 검사 대기 LOT 도 입고한다. 막히는 것은 하류의 피킹·출하다. */
 export const INSPECTION_PENDING = 'INSPECTION_PENDING';
@@ -89,17 +83,21 @@ export const differsFromExpected = (line: DraftLine): boolean => {
   return trimmed !== '' && Number.isFinite(Number(trimmed)) && Number(trimmed) !== line.expectedQty;
 };
 
-/** 이 창고가 위치를 관리하는가. */
-export const managesLocations = (warehouse: Warehouse | null): boolean =>
-  warehouse !== null && warehouse.managementLevelCode !== WAREHOUSE_LEVEL;
+/**
+ * 이 창고가 위치를 나누었는가 — 사람이 만든 켜진 위치가 하나라도 있으면 그렇다.
+ *
+ * 창고 관리수준은 서버 #884 에서 없어졌다. 나누지 않은 창고는 서버가 둔 「창고 전체」 하나로 받는다(장부 P-149).
+ */
+export const managesLocations = (locations: Location[]): boolean =>
+  locations.some(isDividingLocation);
 
 /**
  * 목적지 위치를 정한다.
  *
- * 위치를 관리하는 창고면 스캔한 자리다. 관리하지 않으면 흡수용 대표 위치로 들어간다 -
- * 계약이 목적지를 필수로 요구해 비워 보낼 수 없다.
+ * 위치를 나눈 창고면 스캔한 자리다. 나누지 않았으면 「창고 전체」로 들어간다 - 계약이 목적지를
+ * 필수로 요구해 비워 보낼 수 없다.
  *
- * 대표 위치가 없으면 지어내지 않는다. 아무 위치나 골라 넣으면 재고가 남의 자리에 선다.
+ * 「창고 전체」가 없으면 지어내지 않는다. 아무 위치나 골라 넣으면 재고가 남의 자리에 들어간다.
  */
 export const destinationOf = (
   warehouse: Warehouse | null,
@@ -110,49 +108,43 @@ export const destinationOf = (
     return null;
   }
 
-  if (managesLocations(warehouse)) {
+  if (managesLocations(locations)) {
     return scanned;
   }
 
-  return locations.find((each) => each.locationTypeCode === DEFAULT_LOCATION) ?? null;
+  return locations.find(isWarehouseWhole) ?? null;
 };
 
 /**
- * 이 품목이 이 창고에서 가야 할 자리.
+ * 스캔한 위치가 이 품목을 받는가.
  *
- * 적치 규칙이 여럿이면 우선순위가 앞선 것을 쓴다. 자리를 비운 규칙은 권장이 아니다 - 창고만
- * 정하고 칸을 정하지 않은 규칙이라 대조할 대상이 없다.
- */
-export const recommendedOf = (rules: PutawayRule[]): number | null => {
-  const withLocation = rules
-    .filter((rule) => rule.locationId !== null && rule.locationId !== undefined)
-    .sort((left, right) => left.priorityNo - right.priorityNo);
-
-  return withLocation[0]?.locationId ?? null;
-};
-
-/**
- * 스캔한 위치가 규칙과 맞는가.
+ * 적치 규칙은 없어졌다(서버 #907 · 사용자 결정 2026-10-29). 위치가 보관 품목을 정해 두었으면 그 품목만
+ * 받는다 - 적치 지시는 입고 응답에서야 생겨 그 전에 알 길은 위치의 보관 품목뿐이다. 정해 두지 않은
+ * 위치는 받되, 품목이 다른 위치를 보관 위치로 갖고 있으면 적치 완료를 서버가 막는다(그 지시는 적치
+ * 화면이 되찾는다).
  *
- * 권장이 있으면 그 자리만 받는다 - 다른 칸에 두면 다음 피킹이 물건을 찾지 못한다. 권장이 없는
- * 품목까지 막으면 규칙이 등록되지 않은 품목이 적치 자체를 못 해 현장이 선다. 그때는 확인을
- * 받고 통과시키되 그 사실을 화면이 말한다.
+ * 인식표에 품목이 여럿이면 전부 보관 품목이어야 한다.
+ *
+ * `designated` 가 undefined 면 아직 묻는 중이다 - 모르는 채 통과시키면 막아야 할 자리가 잠깐 열린다.
  */
 export const MATCHED = 'matched';
-export const NOT_RECOMMENDED = 'notRecommended';
-export const NO_RULE = 'noRule';
+export const NOT_ALLOWED = 'notAllowed';
+export const ANYWHERE = 'anywhere';
+export const CHECKING = 'checking';
 
-export type LocationVerdict = typeof MATCHED | typeof NOT_RECOMMENDED | typeof NO_RULE;
+export type LocationVerdict =
+  typeof MATCHED | typeof NOT_ALLOWED | typeof ANYWHERE | typeof CHECKING;
 
-export const verdictOf = (
-  recommended: number | null,
-  scanned: Location | null,
-): LocationVerdict => {
-  if (recommended === null) {
-    return NO_RULE;
+export const verdictOf = (designated: number[] | undefined, itemIds: number[]): LocationVerdict => {
+  if (designated === undefined) {
+    return CHECKING;
   }
 
-  return scanned !== null && scanned.locationId === recommended ? MATCHED : NOT_RECOMMENDED;
+  if (designated.length === 0) {
+    return ANYWHERE;
+  }
+
+  return itemIds.every((itemId) => designated.includes(itemId)) ? MATCHED : NOT_ALLOWED;
 };
 
 /**
@@ -182,6 +174,8 @@ export const unverifiedLines = (
 
 export interface SubmitInput {
   warehouse: Warehouse | null;
+  /** 창고를 위치로 나누었는가(`managesLocations`). */
+  managed: boolean;
   destination: Location | null;
   lines: DraftLine[];
   hasWorker: boolean;
@@ -189,19 +183,18 @@ export interface SubmitInput {
   /** 이 단말이 같은 LOT 을 이미 담아 둔 건수. */
   queuedForLots: number;
   verdict: LocationVerdict;
-  confirmedNoRule: boolean;
   stocked: ReadonlyMap<number, StockedCheck>;
 }
 
 export const canSubmit = ({
   warehouse,
+  managed,
   destination,
   lines,
   hasWorker,
   plantId,
   queuedForLots,
   verdict,
-  confirmedNoRule,
   stocked,
 }: SubmitInput): boolean => {
   if (
@@ -225,14 +218,10 @@ export const canSubmit = ({
   }
 
   /*
-   * 위치를 관리하는 창고에서만 규칙을 따진다. 관리하지 않으면 스캔할 라벨 자체가 없어 대조할
+   * 위치를 관리하는 창고에서만 보관 품목을 따진다. 관리하지 않으면 스캔할 라벨 자체가 없어 대조할
    * 대상이 없다.
    */
-  if (
-    managesLocations(warehouse) &&
-    verdict !== MATCHED &&
-    !(verdict === NO_RULE && confirmedNoRule)
-  ) {
+  if (managed && verdict !== MATCHED && verdict !== ANYWHERE) {
     return false;
   }
 
@@ -311,18 +300,11 @@ export const toReceiptDraft = (
 export const toPutawayDraft = (
   putawayTaskId: number,
   destination: Location,
-  verdict: LocationVerdict,
-  confirmedNoRule: boolean,
   now: Date,
   workerNo: string,
 ): OutboxDraft => {
   const body: PutawayTaskComplete = {
     actualLocationId: destination.locationId,
-    /*
-     * 권장 위치가 없는 품목은 이 확인이 있어야 서버가 적치를 받는다. 계약이 권장 위치가 없을
-     * 때만 참을 보내라고 정한다.
-     */
-    confirmedNoRule: verdict === NO_RULE && confirmedNoRule,
     businessDate: businessDateOf(now),
     occurredAt: now.toISOString(),
   };

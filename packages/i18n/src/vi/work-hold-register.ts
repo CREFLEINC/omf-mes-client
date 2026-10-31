@@ -10,7 +10,7 @@ export const workHoldRegister: Translated<typeof ko.workHoldRegister> = {
     workerLabel: 'Mã nhân viên',
     workerUnknown: 'Chưa xác nhận mã nhân viên',
     missingWorkOrder:
-      'Chưa nhận được lệnh sản xuất. Hãy chọn lệnh ở màn hình bắt đầu công việc rồi vào lại.',
+      'Chưa nhận được lệnh sản xuất. Hãy chọn lệnh ở màn hình danh sách lệnh sản xuất rồi vào lại.',
   },
   session: {
     sectionLabel: 'Phiên hiện tại',

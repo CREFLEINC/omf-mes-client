@@ -26,19 +26,81 @@ export const judgmentCode = {
       `그룹코드가 「${groupCode}」인 코드그룹이 없습니다. 공통코드 화면에서 이 코드그룹을 먼저 등록하세요.`,
   },
   notices: {
-    /** 판정유형 목록이 확정되기 전까지 낸다. 값을 지어내지 않으므로 그 한계를 문구가 밝힌다. */
-    provisionalList:
-      '판정유형은 아직 확정되지 않은 임시 목록입니다. 지금 보이는 값이 전부가 아닐 수 있고, 확정되면 달라질 수 있습니다.',
     /* 그룹이 꺼져 있어도 값은 그대로 있다 — 편집을 막지 않고 사실과 조치할 곳을 함께 밝힌다. */
     groupInactive:
       '이 코드그룹은 미사용 상태입니다. 값은 그대로 고칠 수 있으나, 사용을 다시 열려면 공통코드 화면에서 코드그룹을 확인하세요.',
-    /*
-     * 값 추가 경고. **등록 폼이 열려 있는 동안에만** 낸다 —
-     * 늘 보이는 경고는 읽히지 않아 정작 값을 늘릴 때 효력이 없다.
-     */
-    addAffectsOtherScreens:
-      '여기서 추가한 판정유형은 판정유형을 쓰는 다른 화면에도 함께 나타납니다. 여러 업무가 같은 목록을 보므로 값을 늘리기 전에 담당자와 확인하세요.',
     /* 편집기 문구가 「코드값」으로 남는 이유를 밝힌다 — 화면 이름과 편집기 어휘가 다르다. */
     editorScope: '이 화면은 판정유형 코드 그룹의 코드값을 편집합니다.',
+  },
+  /**
+   * 판정 유형 코드 탭 전용 편집기(#209) — 불량코드 탭과 같은 짜임(조회 카드 · 목록 표 · 상세 카드 · 창).
+   * 공통코드 화면의 코드값 편집기는 그대로 두고 이 탭에서만 쓴다.
+   */
+  editor: {
+    fields: {
+      code: '판정 유형 코드',
+      name: '판정 유형명',
+      displayOrder: '정렬 순서',
+      effectiveFrom: '적용 시작일',
+      effectiveTo: '적용 종료일',
+      period: '적용 기간',
+      isActive: '사용 여부',
+      nameKo: '한국어명',
+      nameVi: '베트남어명',
+    },
+    values: {
+      empty: '—',
+      periodAlways: '기간 제한 없음',
+      period: (from: string, to: string): string => `${from} ~ ${to}`,
+      chipActive: '사용',
+      chipInactive: '미사용',
+    },
+    /** 추가 · 수정 창 문구(사용자 지시 2026-10-29 · #209) — 표 · 상세 카드 이름은 `fields` 그대로 */
+    form: {
+      code: '판정 코드',
+      codePlaceholder: '판정 코드를 입력하세요',
+      displayOrder: '표시 순서',
+      displayOrderPlaceholder: '표시 순서를 입력하세요',
+      effectiveFrom: '사용 시작일',
+      effectiveTo: '사용 종료일',
+      addWarning: '추가한 판정 유형은 다른 업무에도 적용됩니다.',
+    },
+    placeholders: {
+      code: '판정 유형 코드를 입력하세요',
+      name: '판정 유형명을 입력하세요',
+      displayOrder: '정렬 순서를 입력하세요',
+    },
+    actions: {
+      add: '판정 유형 추가',
+      edit: '수정',
+    },
+    search: {
+      typeLabel: '판정 유형 선택',
+      typeAll: '전체',
+      label: '판정 유형 검색',
+      placeholder: '판정 유형 코드 또는 판정 유형명을 입력하세요',
+    },
+    list: '판정 유형 목록',
+    detailTitle: '판정 유형 코드 상세',
+    createTitle: '판정 유형 추가',
+    editTitle: '판정 유형 수정',
+    empty: {
+      noneTitle: '등록된 판정 유형이 없습니다',
+      noneDescription: '「판정 유형 추가」로 첫 판정 유형을 등록하세요.',
+      notSelectedTitle: '판정 유형을 선택하세요',
+      notSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
+      noMatchTitle: '조건에 맞는 판정 유형이 없습니다',
+      noMatchDescription: '검색어나 사용 여부를 바꾼 뒤 다시 찾으세요.',
+    },
+    loading: {
+      list: '판정 유형 목록을 불러오는 중',
+      detail: '판정 유형 정보를 불러오는 중',
+    },
+    deactivate: {
+      title: '사용 중지할까요?',
+      description:
+        '사용 중지하면 새 작업에서 이 판정 유형을 선택할 수 없습니다. 기존 데이터는 유지됩니다.',
+      alreadyInactive: '이미 사용 중지된 판정 유형입니다.',
+    },
   },
 } as const;

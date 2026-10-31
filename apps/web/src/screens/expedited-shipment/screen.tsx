@@ -9,6 +9,7 @@ import {
   resolvedWarehouseId,
   toWarehouseOptions,
   useActiveWarehouses,
+  useDividedWarehouses,
   useItemNames,
   useUomLookup,
 } from './lookups';
@@ -89,10 +90,13 @@ export const ExpeditedShipmentScreen = ({
   const targetDetail = useShipmentRequestTarget(selectedTargetId);
 
   const warehouseQuery = useActiveWarehouses();
+  const dividedWarehouseQuery = useDividedWarehouses();
   const warehouse = resolveWarehouse(
-    warehouseQuery.data === undefined ? undefined : toWarehouseOptions(warehouseQuery.data.items),
-    warehouseQuery.isPending,
-    warehouseQuery.isError,
+    warehouseQuery.data === undefined || dividedWarehouseQuery.data === undefined
+      ? undefined
+      : toWarehouseOptions(warehouseQuery.data.items, dividedWarehouseQuery.data.items),
+    warehouseQuery.isPending || dividedWarehouseQuery.isPending,
+    warehouseQuery.isError || dividedWarehouseQuery.isError,
   );
   const warehouseId = resolvedWarehouseId(warehouse, chosenWarehouseId);
 

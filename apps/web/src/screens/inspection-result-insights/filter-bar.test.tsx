@@ -1,16 +1,38 @@
+import { createApiClient } from '@omf-mes/api-client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiClientProvider } from '../../patterns/api-context';
+import { jsonResponse } from '../../test/api-harness';
 import { EMPTY_INSPECTION_INSIGHT_FILTERS } from './filters';
 import { InspectionInsightFilterBar } from './filter-bar';
 
 const options = {
   inspectionType: [{ value: 'PQC', label: '공정검사' }],
-  item: [{ value: '101', label: '합성 품목' }],
   process: [{ value: '501', label: '합성 공정' }],
   judgment: [{ value: 'REJECTED', label: '불합격' }],
 };
+
+/* 품목 칸(`ItemSelect`)은 펼칠 때 `/mdm/items` 를 부른다 — 한 건만 돌려준다. 다시 그려도 남게 wrapper 로 감싼다. */
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient()}>
+    <ApiClientProvider
+      client={createApiClient({
+        baseUrl: 'http://test.invalid',
+        fetch: async () =>
+          jsonResponse({
+            items: [{ itemId: 101, itemCode: 'ITEM-101', itemName: '합성 품목', isActive: true }],
+            page: { page: 1, size: 50, total: 1 },
+          }),
+      })}
+    >
+      {children}
+    </ApiClientProvider>
+  </QueryClientProvider>
+);
 
 describe('검사 결과 공통 필터', () => {
   it('기간 전에는 조회를 막고 무관한 rerender에 편집 초안을 보존한다', async () => {
@@ -21,7 +43,7 @@ describe('검사 결과 공통 필터', () => {
       onSearch: vi.fn(),
       onReset: vi.fn(),
     };
-    const { rerender } = render(<InspectionInsightFilterBar {...props} />);
+    const { rerender } = render(<InspectionInsightFilterBar {...props} />, { wrapper });
 
     expect(screen.getByRole('button', { name: '조회' })).toBeDisabled();
     expect(screen.getByText('기간을 선택하세요.')).toBeInTheDocument();
@@ -55,19 +77,20 @@ describe('검사 결과 공통 필터', () => {
         onSearch={onSearch}
         onReset={() => undefined}
       />,
+      { wrapper },
     );
 
     await user.type(screen.getByLabelText('시작일'), '2026-08-01');
     await user.type(screen.getByLabelText('종료일'), '2026-08-31');
     for (const [field, option] of [
       ['검사유형', '공정검사'],
-      ['품목', '합성 품목'],
+      ['품목', 'ITEM-101 · 합성 품목'],
       ['공정', '합성 공정'],
       ['종합판정', '불합격'],
       ['교정 상태', '검교정 만료만'],
     ]) {
       await user.click(screen.getByLabelText(field!));
-      await user.click(screen.getByRole('option', { name: option! }));
+      await user.click(await screen.findByRole('option', { name: option! }));
     }
     await user.click(screen.getByRole('checkbox', { name: '최종 회차만' }));
     await user.click(screen.getByRole('button', { name: '조회' }));

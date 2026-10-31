@@ -1,4 +1,4 @@
-import type { TerminalProcessForward, WorkOrderForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
@@ -7,6 +7,9 @@ import { soleProcessIdOf } from './pop-identity';
 import type { TerminalProcessRow } from './pop-registration';
 import { runRequest, toApiError } from './request';
 import { serverReasonOf } from './server-reason';
+
+type TerminalProcess = components['schemas']['TerminalProcess'];
+type WorkOrder = components['schemas']['WorkOrder'];
 
 /**
  * POP 단말 기능 판정 — **이 단말이 «이 작업지시의 공정»에서 이 기능을 할 수 있는가.**
@@ -93,7 +96,7 @@ export const usePopProcessGate = ({
         }),
       );
 
-      return data.items as TerminalProcessForward[];
+      return data.items as TerminalProcess[];
     },
   });
 
@@ -153,7 +156,7 @@ export const usePopWorkOrder = (workOrderId: number | null) => {
   return useQuery({
     queryKey: popWorkOrderKeys.detail(workOrderId ?? 0),
     enabled: workOrderId !== null,
-    queryFn: async (): Promise<WorkOrderForward> => {
+    queryFn: async (): Promise<WorkOrder> => {
       if (workOrderId === null) throw new Error('작업지시가 없으면 상세를 조회하지 않습니다.');
 
       return runRequest(() =>

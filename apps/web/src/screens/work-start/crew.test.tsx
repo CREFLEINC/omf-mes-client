@@ -36,7 +36,7 @@ const sessionMember = (
   participatedMinutes: 30,
 });
 
-const crewPanel = () => screen.getByRole('region', { name: c.title });
+const crewPanel = () => screen.getByRole('group', { name: c.title });
 const nameOf = (worker: typeof WORKER) => c.name(worker.workerName, worker.workerNo);
 
 const addByKeypad = async (user: ReturnType<typeof renderScreen>['user'], workerNo: string) => {
@@ -50,7 +50,7 @@ const addByKeypad = async (user: ReturnType<typeof renderScreen>['user'], worker
 
 const pick = async (user: ReturnType<typeof renderScreen>['user']) => {
   await user.click(
-    await screen.findByRole('button', { name: `${t.list.select} ${WORK_ORDER.workOrderNo}` }),
+    await screen.findByRole('button', { name: t.list.select(WORK_ORDER.workOrderNo) }),
   );
 };
 
@@ -71,7 +71,7 @@ describe('P-02-01 작업자 — 시작 전', () => {
   it('사번을 확인한 사람이 정이고 뺄 수 없다', async () => {
     renderScreen({ workers: WORKERS });
 
-    const panel = await screen.findByRole('region', { name: c.title });
+    const panel = await screen.findByRole('group', { name: c.title });
     expect(within(panel).getByText(c.main)).toBeInTheDocument();
     expect(within(panel).getByText(nameOf(WORKER))).toBeInTheDocument();
     expect(within(panel).getByText(c.count(1, 4))).toBeInTheDocument();
@@ -80,7 +80,7 @@ describe('P-02-01 작업자 — 시작 전', () => {
 
   it('부를 더하고 빼며, 시작하면 부만 workerIds 로 보낸다', async () => {
     const { user, recorded } = renderScreen({ workers: WORKERS });
-    await screen.findByRole('region', { name: c.title });
+    await screen.findByRole('group', { name: c.title });
 
     await addByKeypad(user, SUB_A.workerNo);
     await addByKeypad(user, SUB_B.workerNo);
@@ -123,7 +123,7 @@ describe('P-02-01 작업자 — 시작 전', () => {
 
   it('정·중복·미등록·다른 공장 사번은 창 안에서 막는다', async () => {
     const { user } = renderScreen({ workers: WORKERS });
-    await screen.findByRole('region', { name: c.title });
+    await screen.findByRole('group', { name: c.title });
 
     await addByKeypad(user, WORKER.workerNo);
     const dialog = screen.getByRole('dialog', { name: c.dialogTitle });
@@ -140,7 +140,7 @@ describe('P-02-01 작업자 — 시작 전', () => {
 
   it('4명이면 더하기를 막는다', async () => {
     const { user } = renderScreen({ workers: WORKERS });
-    await screen.findByRole('region', { name: c.title });
+    await screen.findByRole('group', { name: c.title });
 
     for (const worker of [SUB_A, SUB_B, SUB_C]) await addByKeypad(user, worker.workerNo);
 
@@ -299,7 +299,7 @@ describe('P-02-01 작업자 — 오프라인', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     renderScreen({ workers: WORKERS });
 
-    const panel = await screen.findByRole('region', { name: c.title });
+    const panel = await screen.findByRole('group', { name: c.title });
     expect(within(panel).getByRole('button', { name: c.add })).toBeDisabled();
   });
 });

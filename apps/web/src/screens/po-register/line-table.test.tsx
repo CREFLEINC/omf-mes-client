@@ -1,7 +1,12 @@
 import { messages } from '@omf-mes/i18n';
+import { createApiClient } from '@omf-mes/api-client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { ApiClientProvider } from '../../patterns/api-context';
 
 import { itemFixtures, lineDraft, uomFixtures } from './fixtures';
 import { LineTable, type LineTableProps } from './line-table';
@@ -45,7 +50,6 @@ const baseProps = (overrides: Partial<LineTableProps> = {}): LineTableProps => (
   warnings: {},
   itemLookup,
   uomLookup,
-  itemOptions: [...itemLookup.entries],
   uomOptions: [...uomLookup.entries],
   onPatch: vi.fn(),
   onRemove: vi.fn(),
@@ -54,7 +58,15 @@ const baseProps = (overrides: Partial<LineTableProps> = {}): LineTableProps => (
 
 const renderTable = (overrides: Partial<LineTableProps> = {}) => {
   const props = baseProps(overrides);
-  const result = render(<LineTable {...props} />);
+  const queryClient = new QueryClient();
+  const apiClient = createApiClient({ baseUrl: 'http://test.invalid' });
+  /* 품목 칸(`ItemSelect`)이 조회 프로바이더를 쓴다 — 다시 그려도 남게 wrapper 로 감싼다. 펼치지 않으면 부르지 않는다. */
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+    </QueryClientProvider>
+  );
+  const result = render(<LineTable {...props} />, { wrapper });
 
   return { ...result, props, user: userEvent.setup() };
 };

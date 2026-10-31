@@ -232,7 +232,7 @@
  * 제 높이를 지키고, **나머지가 남는 높이를 나눠 갖는다.**
  *
  * ⚠ `[class*='action']` 은 액션 줄의 이름이 화면마다 다르기 때문이다(`.pop-actions`·
- * `.work-start-actions`…). 이름 규칙에 기대는 자리라, 새 이름이 그 규칙을 벗어나면 그
+ * `.action-bar`…). 이름 규칙에 기대는 자리라, 새 이름이 그 규칙을 벗어나면 그
  * 화면에서 액션 줄이 늘어난다 — 그때 이 선택자를 고친다.
  */
 .pop-ui
@@ -2129,18 +2129,6 @@
 }
 
 /*
- * 스캔 구획의 소구획 사이에 **선을 긋는다** — 「스캔」·「담은 자재」·「지정한 금형」.
- *
- * 셋은 한 상자(`.pane`) 안에 제목만으로 나열된다(설계 §3 도면이 각각을 상자로 감싸지 않았다).
- * 제목 크기만으로는 어디서 끊기는지가 흐려, 목록이 길어지면 아래 제목이 그 목록의 일부로
- * 읽힌다. 상자를 더하지 않고 **선 하나로** 가른다 — 도면과 어긋나지 않는 가장 얕은 구분이다.
- */
-.pop-ui .scan-pane > .pane-title:not(:first-child) {
-  padding-block-start: var(--space-4);
-  border-block-start: 1px solid var(--outline-variant);
-}
-
-/*
  * 스캔 결과 자리 — **없을 때도 자리를 지운다.** 뜨고 지면 아래의 목록·버튼이 위아래로
  * 움직이고, 다음 코드를 읽으려던 손이 옆 것을 누른다.
  *
@@ -2149,14 +2137,6 @@
  */
 .pop-ui .scan-outcome {
   min-block-size: 56px;
-}
-
-/*
- * 「부족·미수령이어도 투입할 수 있다」 — 구획 이름 바로 아래 한 줄(사용자 지시 2026-09-10).
- * 표와 붙어 버리면 표의 열 이름처럼 읽히므로 아래 여백만 준다.
- */
-.pop-ui .receipt-pane-note {
-  margin: 0 0 var(--space-3);
 }
 
 /* ── 조작부 ────────────────────────────────────────────────────────────── */
@@ -2188,10 +2168,8 @@
 }
 
 /*
- * ⚠ **키패드가 두 벌이다** — `.omf-numeric-keypad`(`packages/ui`, 작업자 지정)와
- * `.numeric-keypad`(`apps/web`, 자재 투입). 한쪽만 겨냥했더니 자재 투입의 숫자만 14px 붉은
- * 글자로 남았다(실측). 통합은 이 작업의 범위 밖이라 **둘 다 겨냥**해 두고, 합쳐질 때 이
- * 선택자도 함께 줄인다.
+ * 키패드는 `packages/ui` 의 `.omf-numeric-keypad` 하나다. 자재 투입이 쓰던 `apps/web` 의
+ * `.numeric-keypad` 는 그 화면을 고칠 때 공용 키패드로 바꿔 없앴다(omf-all-around#169).
  */
 /*
  * 화면 내장 키패드 — 색을 본문색으로 되돌린다. 붉은 액센트는 「주의」를 뜻하는 자리이고
@@ -2202,14 +2180,12 @@
  *    안에서 키패드만 다른 크기로 서서 [ 확인 ]·[ 교대 ]·고르는 칸과 글자가 제각각이 된다.
  *    14px 문제는 `.pop-ui button` 이 이미 17px 로 받아 두었으므로 되돌아가지 않는다.
  */
-.pop-ui .omf-numeric-keypad,
-.pop-ui .numeric-keypad {
+.pop-ui .omf-numeric-keypad {
   gap: var(--space-3);
   max-width: none;
 }
 
-.pop-ui .omf-numeric-keypad > button,
-.pop-ui .numeric-keypad > button {
+.pop-ui .omf-numeric-keypad > button {
   /* 숫자가 자리마다 같은 폭으로 서야 값이 늘 때 칸이 흔들리지 않는다. */
   font-variant-numeric: tabular-nums;
 }
@@ -2220,21 +2196,8 @@
  *    실제로 `disabled` 인데도 숫자 키와 색·투명도·테두리가 «완전히 같게» 떴다(실측). 누를 수
  *    없다는 것이 화면에 전혀 드러나지 않는다.
  */
-.pop-ui .omf-numeric-keypad > button:not(:disabled),
-.pop-ui .numeric-keypad > button:not(:disabled) {
+.pop-ui .omf-numeric-keypad > button:not(:disabled) {
   color: var(--on-surface);
-}
-
-/*
- * ⛔ **채운 버튼([ 기록 ])은 위 규칙에서 뺀다.**
- *
- * 위 규칙이 키패드의 «모든» 키를 본문색(`--on-surface`)으로 칠하는데, 그 색은 라이트/다크에
- * 따라 뒤집힌다 — 밝은 화면에서 붉은 면 위에 검은 글자가 얹혀 읽히지 않았다(사용자 지적).
- * 채운 면 위의 글자는 면의 짝색(`--on-primary`)이어야 하고, 그 값은 두 모드에서 같다.
- */
-.pop-ui .omf-numeric-keypad > .numeric-keypad-submit:not(:disabled),
-.pop-ui .numeric-keypad > .numeric-keypad-submit:not(:disabled) {
-  color: var(--on-primary);
 }
 
 /*
@@ -2473,31 +2436,6 @@
 }
 
 /*
- * 「투입 확정」 줄 — **구획 바닥에 둔다.** 담은 자재 목록이 길어질수록 확정 버튼이 아래로
- * 밀려, 다 담고 나면 스크롤해서 버튼을 찾아야 했다. 바닥에 고정하면 목록만 스크롤한다.
- */
-.pop-ui .confirm-row {
-  margin-block-start: auto;
-  padding-block-start: var(--space-4);
-  justify-items: stretch;
-}
-
-/*
- * 「투입 확정」은 **이 화면에서 되돌릴 수 없는 조작**이다 — 다른 POP 화면의 주 조작과 같은
- * 72 로 세운다(액션 줄 `[class*='action'] button` · 사번 [ 확인 ] `.worker-no-submit` ·
- * 사번 키패드 키). 폭은 위 규칙이 이미 구획 폭으로 준다.
- *
- * ⚠ 높이는 `height`(40)가 아니라 `min-height` 로 올린다 — DS 가 등급별 높이를 `height` 로
- *   못박아 두어, 낮은 쪽을 올리려면 하한을 걸어야 한다(`.worker-no-submit` 과 같은 방법).
- * ⚠ **이 줄 전용 이름이다.** `--control-height-*` 토큰을 되돌리면 POP 전체가 따라 커져
- *   현장 테스트(E-3)로 정한 세로 예산이 무너진다.
- */
-.pop-ui .confirm-row > button:first-child {
-  width: 100%;
-  min-height: 72px;
-}
-
-/*
  * 목록 카드 — **누를 자리의 경계가 보여야 한다.**
  *
  * 카드 표면(`low`)이 구획 바탕과 같은 값이라 실측 화면에서 카드 경계가 사라졌다. 줄 전체가
@@ -2709,50 +2647,6 @@
 }
 
 /*
- * 담은 자재 한 줄 — **면을 준다.** 자재가 둘 이상 담기면 LOT·품목·상태·수량칸·키패드가
- * 줄마다 반복되는데, 경계가 없으면 어디까지가 한 자재인지 읽히지 않는다.
- */
-.pop-ui .scanned-item {
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
-}
-
-/*
- * LOT 번호는 **34자리**다(실측). 한 줄에 안 들어가면 폭을 넘겨 잘리므로 접히게 두고,
- * 자릿수를 눈으로 짚을 수 있게 고정폭으로 그린다.
- */
-.pop-ui .scanned-code {
-  font-size: var(--pop-label);
-  font-weight: 600;
-  line-height: 22px;
-  overflow-wrap: anywhere;
-}
-
-/* 품목·수량은 이 줄에서 가장 먼저 읽혀야 한다 — 자재를 «가리는» 값이다. */
-.pop-ui .scanned-item-facts-line {
-  font-size: var(--pop-value);
-  font-weight: 600;
-  line-height: 28px;
-}
-
-/*
- * 수량 칸의 라벨 — 접근 이름에 LOT 번호가 통째로 들어 있어(칸이 여럿이라 이름이 유일해야
- * 한다) 글자로 그리면 34자리가 라벨 한 줄을 통째로 먹는다. 화면에서는 한 줄로 줄여 두고,
- * 무엇의 수량인지는 바로 위 LOT 번호가 말한다.
- *
- * ⚠ 접근 이름은 건드리지 않는다 — 줄이는 것은 «보이는 것»뿐이다.
- */
-.pop-ui .scanned-item label {
-  display: block;
-  overflow: hidden;
-  font-size: var(--pop-label);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/*
  * 키패드의 «모든» 키가 같은 모양이어야 한다.
  *
  * 「지움」이 DS 의 `text` 변형이라 **테두리도 배경도 없다** — 숫자 키 사이에서 혼자 글자만
@@ -2762,8 +2656,7 @@
  * 변형을 바꾸지 않고 «키의 테두리»만 한 값으로 준다 — 어느 변형이 오든 격자 안에서는
  * 같은 키로 보인다.
  */
-.pop-ui .omf-numeric-keypad > button,
-.pop-ui .numeric-keypad > button {
+.pop-ui .omf-numeric-keypad > button {
   box-shadow: inset 0 0 0 1px var(--outline-variant);
 }
 
@@ -2810,14 +2703,6 @@
   flex: 1 1 auto;
   max-width: none;
   margin: 0;
-}
-
-/*
- * 확정 결과 띠는 **버튼과 조금 떨어뜨린다**(사용자 지시 2026-09-10). 줄 간격(8)만으로는
- * 버튼에 붙어 한 덩어리로 읽혀, 「눌렀다」와 「끝났다」가 구분되지 않는다.
- */
-.pop-ui .confirm-row > .banner-slot {
-  margin-block-start: var(--space-4);
 }
 
 /*
@@ -3614,8 +3499,10 @@
 }
 
 /*
- * ⚠ **빨간색은 여기서만 준다**(사용자 지시 2026-09-08). 디자인 시스템 버튼에 위험색 변형이
- *   없어 색을 겉에서 입힌다 — 부품을 고치는 것이 아니라 이 한 자리의 표현이다.
+ * ⛔ **색을 겉에서 입히지 않는다.** 보조 동작이라 DS 테두리 버튼(`variant="outlined"`) 모양
+ *   그대로 둔다(화면 구성 규범 C-3, C-19: 채움과 빨강은 화면의 주 동작 하나에만 쓴다). 전에는
+ *   여기서 바탕을 빨강으로 칠해 부품의 `variant` 를 바꿔도 화면이 그대로였다
+ *   (`app/pop-secondary-actions.test.ts` 가 막는다).
  */
 /*
  * ⚠ **작게 유지한다**(사용자 지시 2026-09-08 · 2026-09-09 재지시 「너무 크다」). 머리줄에
@@ -3628,20 +3515,22 @@
  *   보조 조작 둘이라 서로 다르게 생길 이유가 없다 — 규칙을 «한 벌»로 두어 한쪽만 바뀌는
  *   일을 막는다. ⚠ 그 단추는 `.pop-ui` 안(머리줄 흐름)에 서므로 겨냥을 한 단계 올려 잡는다.
  */
+/*
+ * 화면이 머리줄에 두는 상시 동작(공용 `pop-header` 의 `actions`, 예: 생산 작업 [작업 중단]). 셸의 [화면 이동]
+ * 바로 앞에 서고 [사용자 전환]과 같은 생김새다. 이름에 `action` 을 넣지 않는다(바닥 띠 규칙이 걸린다).
+ */
+.pop-ui .pop-header-tools {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .pop-logout button,
+.pop-ui .pop-header-tools button,
 .pop-ui .pop-terminal-header__reregister {
   min-height: 30px;
   padding-inline: 10px;
-  /*
-   * 바탕이 이미 빨강이라 테두리는 겹친 선일 뿐이다 — 지운다(사용자 지시 2026-09-08).
-   *
-   * ⚠ **`border` 만으로는 안 지워진다.** 디자인 시스템 버튼은 테두리를 «그림자»로 그린다
-   *   (`box-shadow: inset 0 0 0 1px`) — `border: 0` 만 두었더니 붉은 선이 그대로 남았다(실측).
-   */
-  border: 0;
-  box-shadow: none;
-  background: #b3261e;
-  color: #fff;
   font-size: 13px;
 }
 
@@ -3651,13 +3540,9 @@
  *    머리줄의 작은 보조 조작이다 — 같은 자리의 [사용자 전환](`.pop-logout`, `.pop-ui` 밖이라
  *    DS 기본 `--radius-full` 을 그대로 받는다)과 생김새를 한 벌로 맞춘다.
  */
-.pop-ui .pop-terminal-header__reregister {
+.pop-ui .pop-terminal-header__reregister,
+.pop-ui .pop-header-tools button {
   border-radius: var(--radius-full);
-}
-
-.pop-logout button:hover,
-.pop-ui .pop-terminal-header__reregister:hover {
-  background: #8f1d17;
 }
 
 /* G-34 선택 필드 — 현재 값과 조작 버튼을 서로 다른 정보로 보인다. */
@@ -3707,7 +3592,7 @@
 
 /*
  * ⛔ **스크롤하지 않는다**(사용자 지시 2026-09-09). 앞서는 다섯 줄 높이로 잘라 두고 여섯을
- * 넣어, 마지막 줄이 잘린 채 목록이 굴러갔다. 넘치는 것은 [페이지 위]·[페이지 아래]가
+ * 넣어, 마지막 줄이 잘린 채 목록이 굴러갔다. 넘치는 것은 [이전]과 [다음]이
  * 넘긴다 — 그 버튼들이 하는 일이 곧 쪽 나눔이다.
  *
  * ⚠ 한 쪽에 놓는 줄 수는 `patterns/pop-select` 의 `PAGE_SIZE` 다. 여기 높이를 바꾸면
@@ -3732,7 +3617,7 @@
    * 마지막 줄과 쪽 이동 버튼이 잘려 손이 닿지 않는다**(실측 — 패널 max-height 는 화면
    * 높이를 따른다).
    *
-   * ⚠ 쪽 나눔을 대신하는 것이 아니다. 넘치는 «건수»는 여전히 [페이지 아래]가 넘긴다.
+   * ⚠ 쪽 나눔을 대신하는 것이 아니다. 넘치는 «건수»는 여전히 [다음]이 넘긴다.
    */
   max-height: min(var(--pop-select-rows), calc(100dvh - 14rem));
   overflow-y: auto;
@@ -3783,16 +3668,6 @@
   text-align: center;
   color: var(--on-surface-variant);
   font-variant-numeric: tabular-nums;
-}
-
-/*
- * 키패드의 제출 키(「기록」·「확인」) — **글자를 흰색으로 세운다**(사용자 지시 2026-09-08).
- *
- * ⚠ 디자인 시스템의 `filled` 버튼이 이 바탕색에서 어두운 글자를 얹어, 붉은 바탕 위 글자가
- *   읽히지 않았다(실기 실측). 부품을 고치는 것이 아니라 POP 화면의 이 자리만 세운다.
- */
-.pop-ui .numeric-keypad-submit {
-  color: #fff;
 }
 
 /*
@@ -3929,7 +3804,7 @@
 /*
  * ⛔ **닫힌 상태의 「현재 값」 칸을 그리지 않는다.** 선택 목록은 고른 값이 남는 입력이지만
  *    이 자리는 «가는» 조작이라 남을 값이 없다 — 칸을 두면 늘 빈 상자가 머리줄에 붙는다.
- *    팝업 규격(내부 스크롤·페이지 위·아래·건수·검색어 지우기)은 그대로 쓴다.
+ *    팝업 규격(내부 스크롤, 이전과 다음, 건수, 검색어 지우기)은 그대로 쓴다.
  */
 .pop-screen-nav .pop-select {
   display: block;
@@ -4065,28 +3940,6 @@
 
 /* ── P-02-04 생산 작업 ─────────────────────────────────────────────── */
 
-/*
- * 양품 수량 — **이름 옆에 칸이 선다**(사용자 지시 2026-09-10). 위아래로 쌓으면 이름 한
- * 줄이 값과 키패드 사이에 끼어, 눈이 값에서 키패드로 가는 길을 한 번 끊는다.
- *
- * ⛔ 디자인 시스템의 내부 클래스를 이름으로 겨냥하지 않는다 — **자리로 잡는다.** 이 구획에서
- *    값 목록(`.pop-figures`) 바로 다음이 그 칸이고, 칸 안은 「이름줄 · 입력상자」 둘이다.
- */
-.pop-ui .production-flow-quantity > * > .pop-figures + div {
-  display: grid;
-  /*
-   * ⚠ **칸이 남는 폭을 다 먹지 않는다**(사용자 지시 2026-09-10). 들어갈 것은 수량 몇 자리라
-   *   구획 끝까지 늘리면 빈 칸만 길어지고, 친 숫자가 왼쪽 끝에 외따로 선다.
-   */
-  /*
-   * ⚠ 셋째 칸은 **남는 폭을 받아 두는 빈 자리**다. 두지 않으면 남는 폭이 이름 칸으로 가서
-   *   칸이 구획 오른쪽 끝까지 밀린다 — 이름과 칸이 멀어지면 무엇을 채우는 칸인지 흐려진다.
-   */
-  grid-template-columns: max-content minmax(0, 14rem) 1fr;
-  align-items: center;
-  gap: var(--space-3);
-}
-
 /* 키패드가 지금 치는 칸 — 양품·불량 칸이 여럿이라 어느 칸에 들어가는지 테두리로 보인다. */
 .pop-ui .production-flow-qty.is-active input {
   outline: 3px solid var(--primary);
@@ -4097,10 +3950,6 @@
 .pop-ui .production-flow-defects {
   display: grid;
   gap: var(--space-2);
-  margin-block: var(--space-3);
-}
-
-.pop-ui .production-flow-defects > h3 {
   margin: 0;
 }
 
@@ -4112,21 +3961,31 @@
   list-style: none;
 }
 
-.pop-ui .production-flow-defect-row {
+.pop-ui .production-flow-defect-row,
+.pop-ui .production-flow-defect-head {
   display: grid;
-  grid-template-columns: minmax(0, 16rem) minmax(0, 14rem) max-content;
-  align-items: start;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 14rem) var(--control-height-md);
+  align-items: center;
   gap: var(--space-3);
 }
 
-.pop-ui .production-flow-defect-type {
-  display: grid;
-  gap: var(--space-1);
+/*
+ * 칸 이름 줄. 첫 줄 위에 한 번만 선다(줄마다 라벨을 되풀이하지 않는다). 줄의 문제는 목록 아래 한 줄이라
+ * 모든 줄이 같은 높이와 간격으로 선다.
+ */
+.pop-ui .production-flow-defect-head {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface);
 }
 
-.pop-ui .production-flow-defect-actions {
-  display: flex;
-  gap: var(--space-3);
+.pop-ui .production-flow-defects > .field-error {
+  margin: 0;
+}
+
+/* 문제가 있는 줄의 수량 칸은 테두리로 짚는다. 문장은 목록 아래 한 줄이 말한다. */
+.pop-ui .production-flow-qty :has(> input[aria-invalid='true']):not(:focus-within) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
 }
 
 /* 불량 유형 타일 — 장갑 낀 손가락으로 누를 수 있게 큼직하게 늘어놓는다. */
@@ -4137,66 +3996,10 @@
 }
 
 /*
- * 오류 문구는 **같은 줄 오른쪽 끝에 선다**(사용자 지시 2026-09-10). 아래로 내리면 줄이 하나
- * 늘었다 줄었다 하면서 키패드가 위아래로 움직이고, 다음 숫자를 누르려던 손이 옆 키를 누른다.
- */
-.pop-ui .production-flow-quantity > * > .pop-figures + div > :nth-child(n + 3) {
-  grid-column: 3;
-  justify-self: end;
-  margin: 0;
-}
-
-/*
- * LOT 라벨 구획의 조작은 **줄 오른쪽 끝에 선다**(사용자 지시 2026-09-10). 값 목록이 왼쪽
- * 정렬이라 버튼까지 왼쪽에 붙으면 어디까지가 읽는 것이고 어디부터가 누르는 것인지 흐려진다.
- */
-.pop-ui .production-flow-output > * > button {
-  margin-inline-start: auto;
-  display: block;
-}
-
-/*
- * 본문 격자가 **남는 높이를 가져가고 그 안에서 스크롤한다**(E-4).
+ * 생산 실적 ↔ PQC 분할(omf-all-around#107) — 본문을 **반씩** 나눈다. 왼쪽은 현재 LOT과 단계 본문을 위아래로
+ * 쌓고(`app.css` 의 P-02-04 절) 양쪽이 각자 굴린다. 1024 단말에서 한쪽이 약 500 이라 좌우 2단은 서지 않는다.
  *
- * ⚠ 표시가 이 격자에 `pop-fixed` 를 달아 두었다 — 「내용만큼만 선다」는 뜻이라 격자가 제
- *   내용(836)만큼 서고, 그 몫이 화면 예산(본문 616)을 넘어 **아래 카드가 화면 밖으로
- *   밀렸다.** 화면째 굴러 손은 닿았지만 그 사이 머리줄이 사라졌다(실측 224px).
- *
- * ⚠ **넘침 자체가 없어지는 것은 아니다.** 설계 도면(§3-2)은 이 화면을 「좌 입력 · 우 키패드」
- *   두 칸으로 그렸는데 구현에는 그 뒤에 붙은 카드 둘(LOT 라벨 · 스캔 대기)이 더 있어, 지금
- *   내용이 예산보다 약 200 크다. 여기서 하는 것은 **넘친 것을 한 구획 안에 가두어** 머리줄과
- *   배너가 제자리를 지키게 하는 것이고, 구획 몫의 재배분은 설계와 맞출 일이다.
- */
-.pop-ui > .pop-fixed.production-flow-grid {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  /*
-   * ⛔ **줄이 제 내용만큼 선다.** 격자에 높이를 주면 줄들이 그 높이를 나눠 갖느라 «줄어들고»,
-   *    카드가 안을 잘라 낸다 — 키패드가 셋째 줄에서 끊기고 버튼이 반만 남았다(실측). 스크롤
-   *    은 넘친 것을 굴려 보여 주는 것이지 눌러 담는 것이 아니다.
-   *
-   * ⚠ `align-content: start` 만으로는 부족했다 — 카드가 스스로 스크롤하는 상자(`overflow`)라
-   *   줄이 카드를 0 까지 눌러도 된다고 본다. 줄 크기를 «내용 최대»로 못박아야 눌리지 않는다.
-   */
-  /*
-   * 남는 높이를 **줄들이 나눠 갖는다**(사용자 지시 2026-09-16). 전에는 `start` 라 내용이
-   * 예산보다 작아진 순간 카드 아래가 통째로 비었다 — 단말 화면은 고정이라 그 빈 자리가
-   * 그대로 남는다.
-   *
-   * ⛔ **`1fr` 로 나누지 않는다.** 그러면 줄이 «내용보다 작아질 수» 있어, 위 주석이 적은 그
-   *    사고가 그대로 돌아온다 — 키패드가 셋째 줄에서 끊기고 버튼이 반만 남았다(실측).
-   *    `minmax(max-content, auto)` 는 **내용이 바닥이고 위로만 늘어난다.**
-   */
-  align-content: stretch;
-  grid-auto-rows: minmax(max-content, auto);
-}
-
-/*
- * 생산 실적 ↔ PQC 분할(omf-all-around#107) — 본문을 **반씩** 나눈다. 왼쪽 실적 카드는 한 줄로 쌓고
- * 양쪽이 각자 굴린다. 1024 단말에서 한쪽이 약 500 이라 카드 두 칸은 서지 않는다.
- *
- * ⚠ 나누지 않을 때는 이 틀이 아예 없다(`pqc-split.tsx`) — 위 격자 규칙이 그대로 걸린다.
+ * ⚠ 나누지 않을 때는 이 틀이 아예 없다(`pqc-split.tsx`) — 본문 2단이 `.pop-ui` 바로 아래에 선다.
  */
 .pop-ui > .pop-fixed.production-flow-split {
   flex: 1 1 auto;
@@ -4204,13 +4007,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-3);
-}
-
-.pop-ui .production-flow-split .production-flow-grid {
-  min-height: 0;
-  overflow-y: auto;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
 }
 
 .pop-ui .production-flow-split .production-flow-pqc {
@@ -4223,7 +4019,7 @@
 
 /*
  * 「생산 작업」의 두 구획(사용자 지시 2026-10-19 · 예시 배치) — 구획 머리(이름 · 하는 일) 아래에 내용이 서고,
- * 내용만 각자 굴러간다. 검사 off 면 「생산 실적」 머리 하나가 격자 위에 선다.
+ * 내용만 각자 굴러간다. 검사 off 면 이 머리는 두지 않는다.
  */
 .pop-ui .production-flow-zone {
   display: flex;
@@ -4232,7 +4028,7 @@
   gap: var(--space-2);
 }
 
-.pop-ui .production-flow-zone > .production-flow-grid {
+.pop-ui .production-flow-zone > .production-work-panes {
   flex: 1 1 auto;
 }
 
@@ -4250,37 +4046,6 @@
 
 .pop-ui .production-flow-zone-head > * {
   margin: 0;
-}
-
-.pop-ui .production-flow-zone-head__status {
-  margin-inline-start: auto;
-  align-self: center;
-}
-
-/* 검사 off — 머리가 격자 바로 위에 서므로 격자 안쪽 여백(--space-3)과 왼쪽 선을 맞춘다. */
-.pop-ui > .production-flow-zone-head {
-  padding: var(--space-3) var(--space-3) 0;
-}
-
-/*
- * 분할 화면 UI/UX(omf-all-around#107 · 담당자 요청서) — 왼쪽은 카드가 «제 높이»로 서고 열 하나가 통째로 굴러간다.
- *
- * ⚠ 위 `.pop-ui > .pop-fixed.production-flow-grid` 의 줄 규칙은 격자가 `.pop-ui` 바로 아래일 때만 걸린다. 분할 틀 안에서는
- *   줄이 높이를 나눠 가지며 카드가 눌려, 카드마다 스크롤이 생기고 키패드가 가려졌다(실측 1920 · 1280).
- */
-.pop-ui .production-flow-split .production-flow-grid {
-  grid-auto-rows: max-content;
-  align-content: start;
-  padding: 0;
-}
-
-.pop-ui .production-flow-split .production-flow-grid > .pop-section {
-  overflow: visible;
-}
-
-/* 긴 LOT 번호는 줄을 넘기지 않고 칸 안에서 끝까지 보인다 — 끊으면 번호를 잘못 읽는다. */
-.pop-ui .production-flow-split .production-flow-grid dd {
-  overflow-wrap: anywhere;
 }
 
 /*
@@ -6445,8 +6210,10 @@
  * 아래 [ 확인 ]은 `.worker-no-submit` 의 `min-height: 72px` 로 서서, 한 구획 안에 두 높이가
  * 났다. 사번을 찍는 손과 확인을 누르는 손은 같은 손이다 — 같은 크기로 세운다.
  *
- * ⚠ **이 화면 전용 이름이다.** `--control-height-*` 토큰을 되돌리면 POP 전체가 따라 커져
+ * ⚠ **사번 키패드 전용 이름이다.** `--control-height-*` 토큰을 되돌리면 POP 전체가 따라 커져
  * 2026-09-08 현장 테스트(E-3)로 정한 세로 예산이 무너진다. 겨냥을 이 키패드로 좁힌다.
+ * 작업 시작(P-02-01)의 사번 입력 창(정 작업자, 부 작업자)도 같은 이름으로 같은 높이를 쓴다
+ * (사용자 결정 2026-10-23). 두 사번 키패드가 같은 모양이어야 한다.
  *
  * ⚠ 세로가 모자라면 구획이 스크롤한다(#829 에서 확정한 처리) — 키가 잘리지는 않는다.
  */
@@ -6648,6 +6415,21 @@
 }
 
 /*
+ * 공용 머리줄(`patterns/pop-header`)은 화면 이름과 현재 W/O를 줄이지 않는다(C-11, C-19 제목 한 줄,
+ * C-10 대조에 쓰는 번호). 폭이 모자라면 설비가 줄임표로 줄어든다.
+ */
+.pop-ui > .pop-header > .pop-header-title,
+.pop-ui > .pop-header > .pop-header-work-order {
+  flex-shrink: 0;
+}
+
+.pop-ui > .pop-header > .pop-header-work-order {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
  * 툴 사용실적 액션 줄 — **버튼은 한 줄에 다 선다. 긴 사유는 제 칸 안에서 두 줄로 접힌다**
  * (사용자 지시 2026-09-14).
  *
@@ -6771,72 +6553,6 @@
 }
 
 /*
- * 작업 시작 화면의 «줄 오른쪽 단추» — [ 이어서 하기 ]와 [ 전체 보기 ]는 **같은 크기로 선다**
- * (사용자 지시 2026-09-16).
- *
- * 둘은 위아래로 나란히 서는데 글자 수가 달라 폭이 129·114 로 갈렸다(실측). 크기가 뜻을 갖는
- * 화면이라 같은 층의 단추가 서로 다른 폭으로 서면 한쪽이 덜 중요한 것처럼 읽힌다.
- *
- * ⚠ 글자에 폭을 맡기지 않고 하한을 준다 — 문구가 바뀌어도 둘은 같이 움직인다.
- * ⛔ 이름에 `action` 을 넣지 않는다 — `[class*='action']` 을 겨냥한 레이아웃 규칙이 이 파일에
- *   있어, 그 낱말이 들어가면 의도하지 않은 규칙이 함께 걸린다.
- * ⚠ **띠 안의 갈래를 따로 적는다.** 위쪽 「알림 띠 안의 단추는 액션 줄이 아니다」 규칙이
- *   띠 안 단추의 폭 하한을 0 으로 되돌린다(`[role='alert'] [class*='action'] button`).
- *   그 규칙과 **특정도가 같아(0,3,1) 순서로 이긴다** — ⛔ 이 블록을 그 규칙 «위»로 옮기지
- *   않는다. 옮기면 폭이 조용히 되돌아간다. 그 규칙 자체는 그대로 둔다 — 겨냥을 넓히면 띠 안
- *   단추 전부가 8rem 로 부푼다.
- * ⚠ `[role='status']` 갈래도 함께 적어 둔다 — 「진행 중」 띠가 안내(`info`=`status`)로 내려와
- *   (사용자 지시 2026-09-21) 실제로 그 갈래로 선다.
- */
-.pop-ui .work-start-head-button,
-.pop-ui [role='alert'] button.work-start-head-button,
-.pop-ui [role='status'] button.work-start-head-button {
-  min-width: 9rem;
-}
-
-/*
- * 그 띠의 오른쪽 여백을 **아래 구획과 맞춘다**(사용자 지시 2026-09-16).
- *
- * 두 단추가 위아래로 나란히 서는데 띠의 안쪽 여백(16)과 구획의 여백(20 + 테두리 1)이 달라
- * 오른쪽 끝이 5px 어긋나 보였다(실측 983 · 988). 크기를 맞춰도 세로선이 어긋나면 다른 크기로
- * 읽힌다.
- *
- * ⚠ 겨냥을 이 띠 하나로 좁힌다 — 다른 화면의 띠는 DS 여백 그대로 둔다.
- */
-.pop-ui .banner-slot > [role='alert']:has(button.work-start-head-button) {
-  padding-inline-end: calc(var(--pop-pad) + 1px);
-}
-
-/*
- * 마쳤다는 띠 아래의 [ 생산 작업으로 ] — **[ 투입 확정 ]과 같은 모양으로 세운다**
- * (사용자 지시 2026-09-16). 같은 자리에서 이어지는 조작이라 폭·높이가 갈리면 다른 무게로 읽힌다.
- */
-.pop-ui .confirm-next-step {
-  width: 100%;
-  min-height: 72px;
-  /*
-   * ⚠ 띠에 붙으면 한 덩어리로 읽혀 「끝났다」와 「다음으로」가 갈리지 않는다(사용자 지적).
-   * ⚠ **위아래 간격을 같게 둔다**(사용자 지시 2026-09-16). [ 투입 확정 ]과 띠 사이가 24
-   *   (줄 간격 8 + 띠의 위 여백 16)라, 여기만 16 이면 띠가 아래 단추 쪽으로 쏠려 보인다.
-   */
-  margin-block-start: var(--space-6);
-}
-
-/*
- * 수량을 넣고 누르는 [ 기록 ] — **키 높이가 아니라 주 조작의 높이로 세운다**(사용자 지시
- * 2026-09-16).
- *
- * 이 단추가 곧 저장이다(§5-8 건별 저장). 숫자 키와 같은 높이로 서 있어, 되돌릴 수 없는
- * 조작이 키패드의 한 칸처럼 읽혔다.
- *
- * ⚠ 겨냥을 이 화면의 목록 안으로 좁힌다 — 다른 화면의 키패드 제출 단추는 그대로 둔다.
- * ⚠ 높이는 `min-height` 로 올린다 — DS 가 등급별 높이를 `height` 로 못박아 두었다.
- */
-.pop-ui .scanned-item .numeric-keypad-submit {
-  min-height: 72px;
-}
-
-/*
  * 띠의 아이콘을 **첫 줄 글자 가운데에 맞춘다**(사용자 지적 2026-09-16).
  *
  * DS 는 14px 글자를 전제로 아이콘을 4px 내려 두는데, POP 은 글자를 17px 로 키워 그만큼 줄
@@ -6883,118 +6599,6 @@
  */
 .pop-ui .issue-lookup > .banner-slot {
   flex: 1 0 100%;
-}
-
-/*
- * **구획 «안»에 눕는 띠** — 화면 머리의 띠(`banner-slot`)와 규격이 다르다(사용자 지시
- * 2026-09-16). 지금 두 자리가 쓴다: 초과 달성 알림(생산 수량)과 세션 종료 실패(스캔 대기).
- *
- * ⭐ **머리의 띠보다 작고 낮다.** 머리 띠는 「지금 화면 전체가 어떤 상태인가」를 말해 크게 서지만,
- *    이것은 바로 위 칸에 딸린 곁말이다 — 같은 규격으로 두면 구획 안에서 제 칸보다 커 보이고,
- *    세로 예산이 빠듯한 1024×768 에서 아래를 밀어낸다.
- *
- * ⚠ **아이콘을 글자와 같은 행에 세운다.** DS 는 여러 줄 문구를 전제로 아이콘을 첫 줄에 맞춰
- *   두는데, 여기 문구는 한 줄이라 그 보정이 오히려 어긋나 보인다.
- * ⚠ DS 내부 클래스(`_content_…`)를 겨냥하지 않는다 — 판이 바뀌면 이름이 달라진다. 구조로
- *   잡는다: 띠의 «마지막» 칸이 내용 상자이고(앞은 아이콘), 그 안의 마지막이 딸린 자리다.
- */
-.pop-ui .production-flow-inline-note > [role='alert'],
-.pop-ui .production-flow-inline-note > [role='status'] {
-  align-items: center;
-  padding-block: var(--space-2);
-  font-size: var(--pop-label);
-}
-
-/* ⛔ 머리 띠의 아이콘 보정(2px 내림)이 여기까지 오면 한 행이 어긋난다 — 되돌린다. */
-.pop-ui .production-flow-inline-note > [role='alert'] > :first-child,
-.pop-ui .production-flow-inline-note > [role='status'] > :first-child {
-  margin-block-start: 0;
-}
-
-.pop-ui .production-flow-session-note {
-  margin-top: var(--space-2);
-}
-
-/*
- * 세션 종료 실패에만 딸린 단추 — **문구와 같은 행, 오른쪽 끝**에 세운다(사용자 지시).
- */
-.pop-ui .production-flow-session-note > [role='alert'] > :last-child,
-.pop-ui .production-flow-session-note > [role='status'] > :last-child {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.pop-ui .production-flow-session-note > [role='alert'] > :last-child > :last-child,
-.pop-ui .production-flow-session-note > [role='status'] > :last-child > :last-child {
-  margin-inline-start: auto;
-}
-
-/*
- * ⛔ **이 단추는 액션 줄의 규격을 물려받지 않는다.** 화면 바닥의 큰 단추(최소 72px)와 달리
- *    띠에 딸린 곁단추라, 그 규격을 그대로 쓰면 띠가 통째로 부풀어 스캔 칸을 민다.
- */
-.pop-ui .production-flow-session-note button {
-  min-width: 0;
-  min-height: 40px;
-  padding-inline: var(--space-3);
-  font-size: var(--pop-label);
-}
-
-/*
- * **키패드와 스캔 칸이 남는 높이를 가져간다**(사용자 지시 2026-09-16).
- *
- * 격자가 남는 높이를 줄에 나눠 준 뒤에도(위 `production-flow-grid`), 카드 «안»은 내용만큼만
- * 서서 아래가 비었다. 손으로 누르는 물건이 작게 서 있고 그 밑이 비는 것은 터치 단말에서
- * 손해다 — 남는 높이를 **누르는 자리**가 가져간다.
- *
- * ⛔ **바닥값을 함께 둔다**(`minmax`·`min-height`). 화면이 좁아지면 늘어난 만큼 도로 줄어야
- *    하는데, 바닥이 없으면 키가 눌러 담겨 손가락보다 작아진다.
- */
-.pop-ui .production-flow-quantity,
-.pop-ui .production-flow-scan {
-  display: flex;
-  flex-direction: column;
-}
-
-/*
- * ⛔ **줄어들 수는 없다** — `flex: 1 0 auto` 이지 `1 1 auto` 가 아니다(리뷰 지적 ⑤).
- *
- *    위 `.pop-ui .pop-section > * { flex: none }` 은 「블록은 제 높이를 지키고, 자리가 모자라면
- *    구획이 스크롤한다」는 규칙이고, 그 주석에 실측 사고가 적혀 있다 — 재출력 단추가 72 에서
- *    절반으로 눌려 옆 칸과 겹쳐 보였다. `flex-shrink: 1` 과 `min-height: 0` 을 함께 주면 그
- *    방어가 **이 화면에서만** 풀려 같은 사고가 돌아온다. 늘어나되 줄지는 않게 둔다.
- */
-.pop-ui .production-flow-quantity > *,
-.pop-ui .production-flow-scan > * {
-  flex: 1 0 auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.pop-ui .production-flow-quantity .omf-numeric-keypad {
-  flex: 1 0 auto;
-  grid-auto-rows: minmax(var(--pop-touch-min, 48px), 1fr);
-}
-
-/*
- * ⚠ **키가 «줄»만큼 커지지는 않는다.** 줄을 늘려도 키는 제 높이(40px)로 서서 줄 안에 떠 있었다
- *   (실측) — 키에 높이가 박혀 있어 격자의 늘림을 받지 않는다. 키째 줄을 채우게 한다.
- */
-.pop-ui .production-flow-quantity .omf-numeric-keypad > button {
-  height: 100%;
-}
-
-/*
- * 스캔 칸은 **손에 맞는 높이까지만** 키운다(사용자 지시 2026-09-16).
- *
- * ⛔ **남는 높이를 다 먹이지 않는다.** 한 회차 그렇게 했다가 칸 하나가 카드를 통째로 채웠다 —
- *    한 줄을 읽는 칸인데 상자만 커져서, 어디에 글자가 설지 짐작되지 않는다. 늘어나는 몫은
- *    위쪽 구획(키패드)이 가져간다.
- */
-.pop-ui .production-flow-scan input {
-  min-height: 4rem;
 }
 
 /*
@@ -7180,26 +6784,6 @@
   align-items: center;
   flex-wrap: wrap;
   margin-block-start: var(--space-3);
-}
-
-/*
- * 작업 시작의 [전체 보기]·띠 안의 [이어서 하기] — 자재 투입(P-02-03)의 [직접 입력]과 같은
- * 높이로 세운다(사용자 지시 2026-09-17, 실측 72). 그 단추 높이가 바뀌면 여기도 함께 바꾼다.
- * ⚠ 띠 안의 갈래를 따로 적는 까닭은 위 폭 하한(`min-width: 9rem`) 블록과 같다.
- */
-.pop-ui .work-start-head-button,
-.pop-ui [role='alert'] button.work-start-head-button,
-.pop-ui [role='status'] button.work-start-head-button {
-  min-block-size: 72px;
-}
-
-/*
- * 띠 안의 [이어서 하기]만 **낮춘다**(사용자 지시 2026-09-19 · omf-all-around#35) — 72 는 띠를
- * 불필요하게 두껍게 만들었다. 목록의 [전체 보기]는 72 그대로 둔다.
- */
-.pop-ui .banner-slot [role='alert'] button.work-start-head-button,
-.pop-ui .banner-slot [role='status'] button.work-start-head-button {
-  min-block-size: 48px;
 }
 
 /*
@@ -9022,75 +8606,6 @@
   min-block-size: 56px;
 }
 
-/*
- * 작업 시작 — 「진행 중인 작업이 있습니다」 띠(사용자 지시 2026-09-21 · 2차).
- *
- * 앞 판은 안내가 윗줄, 단추 넷이 아랫줄에 저마다 폭 하한 9rem 으로 흩어져 섰고 띠 전체가
- * 파랑으로 채워져 화면에서 제일 센 자리가 됐다(사용자 지적). 셋을 글자 폭으로 되돌려 한
- * 상자에 모으고, 안내·주 단추·보조 묶음을 **한 줄에** 세운다 — 여백을 더 주는 쪽으로 풀지
- * 않는다. 겨냥은 이 띠 하나다(`work-start-entry-actions` 를 품은 띠).
- */
-
-/*
- * ① **정보 영역의 강도를 낮춘다.** 안내 색(`semantic-info-container`)은 다크 테마에서 파랑이
- *    통째로 차올라 목록보다 먼저 눈에 든다. 이 화면의 다른 구획이 쓰는 표면·테두리 토큰으로
- *    바꿔 «구획 하나»로 읽히게 한다 — ⛔ 새 색을 만들지 않는다(기존 토큰 셋뿐).
- */
-.pop-ui .banner-slot > [role='status']:has(.work-start-entry-actions) {
-  background: var(--surface-container-low);
-  color: var(--on-surface);
-  border: 1px solid var(--outline-variant);
-  /* 아이콘·글·단추를 같은 세로선에 맞춘다 — 부품 기본은 아이콘을 글 첫 줄에 붙인다. */
-  align-items: center;
-}
-
-.pop-ui .banner-slot > [role='status']:has(.work-start-entry-actions) > :first-child {
-  margin-block-start: 0;
-}
-
-/*
- * ② **안내와 조작을 한 줄로 눕힌다.** 부품은 둘을 세로로 쌓는데, 그러면 글 한 줄 아래에
- *    단추 줄이 따로 서서 띠 높이가 두 배가 되고 시선이 끊긴다. 좁아지면 접힌다.
- */
-.pop-ui .banner-slot > [role='status']:has(.work-start-entry-actions) > :last-child {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-/*
- * ③ 주 단추와 보조 묶음 — 사이를 구분선 하나로 가른다. ⛔ 「기타 작업」 같은 말을 새로
- *    늘리지 않는다(사용자 판단 위임 · 간격과 선으로 충분하다).
- */
-.pop-ui .work-start-entry-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.pop-ui .work-start-entry-others {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding-inline-start: var(--space-3);
-  border-inline-start: 1px solid var(--outline-variant);
-}
-
-/*
- * ④ 보조 단추 — **글자만큼만 서되 높이는 지킨다.**
- *
- * ⚠ 높이 48 은 사용자가 정한 값이다(2026-09-19). 위쪽 「알림 띠 안의 단추는 액션 줄이 아니다」
- *   규칙이 띠 안 단추의 세로 하한을 0 으로 되돌리므로, 그 뒤인 여기서 다시 세운다.
- * ⛔ 폭 하한을 주지 않는다 — 그것이 넷을 흩어 놓았다. 주 단추만 9rem 을 지킨다.
- */
-.pop-ui .banner-slot [role='alert'] button.work-start-entry-secondary,
-.pop-ui .banner-slot [role='status'] button.work-start-entry-secondary {
-  min-block-size: 48px;
-}
-
 /* 배포 전 재작업 지시 줄 — 고를 수 없다는 것이 색과 표식으로 함께 읽혀야 한다. */
 .rework-result-planned-row {
   display: grid;
@@ -9938,6 +9453,33 @@
   margin: 0 0 var(--space-3);
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
+}
+
+/*
+ * P-02-01 작업 지시 목록 — 제목 줄의 표제 여백은 제목 줄이 맡는다(첫 카드와 `--space-4`). 공용 표제
+ * 여백을 이 제목 줄에서만 지워 두 목록의 간격이 같게 한다.
+ */
+.pop-ui .work-start-list-head > .pane-title {
+  margin: 0;
+}
+
+/*
+ * P-02-01 작업 지시 목록 — [기본 설비로]는 같은 줄의 설비 칸(POP 고르는 칸 하한 56px)과 높이를 맞춘다.
+ * 한 줄에서 두 조작의 높이가 다르면 줄이 삐뚤어 보인다(PG-37).
+ */
+.pop-ui .work-start-list-controls > button {
+  min-height: 56px;
+}
+
+/*
+ * P-02-01 작업 지시 목록 — 고른 W/O 카드는 현장에서 한눈에 갈려야 한다(사용자 결정 2026-10-23). 공용 카드
+ * 목록의 선택 표시(바탕 한 단, 왼쪽 막대)에 카드 전체를 두르는 주 색 굵은 테두리를 더한다. 조건 칩의
+ * 「선택은 굵은 테두리」(C-19)와 같은 방식이고 색은 토큰만 쓴다. 마우스를 올린 카드와도 갈린다.
+ */
+.pop-ui .work-start-list .pop-card-list > li > [aria-pressed='true'] {
+  box-shadow:
+    inset 0 0 0 3px var(--primary),
+    inset 8px 0 0 var(--primary);
 }
 
 /*

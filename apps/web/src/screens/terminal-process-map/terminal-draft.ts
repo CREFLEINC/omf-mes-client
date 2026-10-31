@@ -3,6 +3,9 @@ import { messages } from '@omf-mes/i18n';
 
 import type { TerminalView } from './types';
 
+type TerminalCreateForward = components['schemas']['TerminalCreate'];
+type TerminalUpdateForward = components['schemas']['TerminalUpdate'];
+
 /**
  * 단말 등록·수정 폼의 편집 상태.
  *
@@ -20,8 +23,8 @@ import type { TerminalView } from './types';
 const t = messages.terminalProcessMap;
 const NEW_TERMINAL_STATUS = 'RUNNING';
 
-type TerminalCreate = components['schemas']['TerminalCreate'];
-type TerminalUpdate = components['schemas']['TerminalUpdate'];
+type TerminalCreate = TerminalCreateForward;
+type TerminalUpdate = TerminalUpdateForward;
 
 export interface TerminalDraft {
   terminalCode: string;

@@ -167,7 +167,6 @@ const warehouseFixture = {
   warehouseCode: 'SYN-WH-3',
   warehouseName: '합성 불량창고',
   plantId: 11,
-  managementLevelCode: 'ZONE',
   isDefect: true,
   isActive: true,
 };

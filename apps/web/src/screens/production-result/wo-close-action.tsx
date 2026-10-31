@@ -44,10 +44,25 @@ export interface WorkOrderCloseActionProps {
   isOnline: boolean;
   pendingCount: number;
   uomLabel: string;
+  /** 버튼 모양. 하단 바 주 동작이면 채움, 구획 안 보조 동작이면 테두리(기본). */
+  variant?: 'filled' | 'outlined';
+  /**
+   * 잠긴 사유를 이미 말하는 문장의 id(하단 바 「남은 일」). 주면 곁에 사유 문장을 따로 두지 않고 이 문장에
+   * 잇는다(C-4, 같은 사유를 두 번 말하지 않는다).
+   */
+  reasonId?: string;
+  /** 마감한 뒤. 주지 않으면 작업 지시 목록으로 돌아간다. */
+  onClosed?: () => void;
 }
 
+/** 마감 판정에 쓰는 값만. 화면이 하단 바 「남은 일」을 정할 때도 같은 판정을 쓴다. */
+export type CloseBlockInput = Pick<
+  WorkOrderCloseActionProps,
+  'gate' | 'statusCode' | 'isOnline' | 'pendingCount' | 'workerNo'
+>;
+
 /** 왜 지금 마감할 수 없는가. 없으면 null. */
-const blockedReason = (props: WorkOrderCloseActionProps): string | null => {
+export const blockedReason = (props: CloseBlockInput): string | null => {
   if (props.gate === 'unidentified') return t.blocked.unidentified;
   if (props.gate === 'denied') {
     return t.blocked.denied(messages.workOrderClose.menuPath, messages.terminalProcessMap.menuPath);
@@ -91,6 +106,11 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
     workOrderId,
     workerNo: workerNo ?? '',
     onClosed: () => {
+      /* 화면에 남아 다음 단계를 말하는 곳에서는 알림을 따로 띄우지 않는다(하단 바 「남은 일」이 말한다). */
+      if (props.onClosed !== undefined) {
+        props.onClosed();
+        return;
+      }
       toast.show({ variant: 'success', description: t.done(workOrderNo) });
       void navigate('/pop/work-start');
     },
@@ -206,7 +226,21 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   return (
     <div className="production-flow-wo-close">
       {reason === null ? (
-        <Button variant="outlined" size="xl" onClick={() => setIsOpen(true)}>
+        <Button
+          variant={props.variant ?? 'outlined'}
+          size="xl"
+          aria-describedby={props.reasonId}
+          onClick={() => setIsOpen(true)}
+        >
+          {t.button}
+        </Button>
+      ) : props.reasonId !== undefined ? (
+        <Button
+          variant={props.variant ?? 'outlined'}
+          size="xl"
+          disabled
+          aria-describedby={props.reasonId}
+        >
           {t.button}
         </Button>
       ) : (

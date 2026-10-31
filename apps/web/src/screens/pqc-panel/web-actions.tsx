@@ -1,5 +1,6 @@
-import { Button, Icon } from '@crefle/web-ui';
+import { Button, Icon, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useEffect } from 'react';
 
 const t = messages.pqcInspectionRegister.web.actions;
 const tResult = messages.pqcInspection.result;
@@ -36,6 +37,13 @@ export const WebActions = ({
   onSave,
   onConfirm,
 }: WebActionsProps) => {
+  /* 저장 결과는 IQC 처럼 오른쪽 아래 알림으로 낸다(사용자 지시 2026-10-28 · #197). */
+  const toast = useToast();
+  useEffect(() => {
+    if (isSaved) toast.show({ variant: 'success', description: tResult.saved });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 저장이 막 끝났을 때 한 번만 알린다.
+  }, [isSaved]);
+
   const blocked =
     lockedReason !== null
       ? showLockedNote
@@ -54,7 +62,6 @@ export const WebActions = ({
           </p>
         ) : (
           <>
-            {isSaved && <p className="field-note">{tResult.saved}</p>}
             {lockedReason !== null && !showLockedNote ? null : blocked !== null ? (
               <p className="pqc-web-action-note" data-tone="info">
                 <Icon name="info" size={18} aria-hidden />

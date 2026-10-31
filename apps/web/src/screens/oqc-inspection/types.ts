@@ -1,6 +1,9 @@
 import type { components } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
+type InspectionRequestForward = components['schemas']['InspectionRequest'];
+type SkipBasisCode = NonNullable<components['schemas']['InspectionRequest']['skipBasisCode']>;
+
 /**
  * W-04-03 이 그리는 값 — **계약 응답을 그대로 그리지 않는다.**
  *
@@ -16,7 +19,8 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-export type InspectionRequestResponse = components['schemas']['InspectionRequest'];
+/** 서버 선행 P-152(omf-all-around#212) — 생략 근거(`skipBasisCode`)를 싣는다. */
+export type InspectionRequestResponse = InspectionRequestForward;
 export type InspectionResultResponse = components['schemas']['InspectionResult'];
 export type PageMetaResponse = components['schemas']['PageMeta'];
 
@@ -47,6 +51,8 @@ export interface InspectionQueueRow {
   /** 수량 단위 식별자 — 수량 옆 단위 코드(표시 전용 · #136). */
   uomId: number;
   statusCode: string;
+  /** 생략 근거 — 기본 생략(DEFAULT)·결재 승인(APPROVAL). 생략이 아니면 `null`(omf-all-around#212). */
+  skipBasisCode: SkipBasisCode | null;
   /** 의뢰가 만들어진 시각(RFC3339) — 목록의 「의뢰 일시」 열(IQC 와 같은 열 · omf-all-around#136). */
   requestedAt: string;
 }
@@ -65,6 +71,7 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   targetQty: item.targetQty,
   uomId: item.uomId,
   statusCode: item.statusCode,
+  skipBasisCode: item.skipBasisCode ?? null,
   requestedAt: item.requestedAt,
 });
 
@@ -117,6 +124,8 @@ export interface InspectionRequestDetail {
   /** ⚠ 정수만 온다 — 표시명이 없어 수량을 단위 없이 그린다 */
   uomId: number;
   statusCode: string;
+  /** 생략 근거(omf-all-around#212) — 생략 구획이 「기본 설정」인지 「결재 승인」인지 가른다. */
+  skipBasisCode: SkipBasisCode | null;
   requestedAt: string;
 }
 
@@ -135,6 +144,7 @@ export const toInspectionRequestDetail = (
   targetQty: item.targetQty,
   uomId: item.uomId,
   statusCode: item.statusCode,
+  skipBasisCode: item.skipBasisCode ?? null,
   requestedAt: item.requestedAt,
 });
 

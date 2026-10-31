@@ -1,4 +1,6 @@
-import type { components, FourMChangeForward, LotForward } from '@omf-mes/api-client';
+import type { components, FourMChangeForward } from '@omf-mes/api-client';
+
+type Lot = components['schemas']['Lot'];
 
 type LotQualityStatusResponse = components['schemas']['LotQualityStatus'];
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
@@ -73,7 +75,7 @@ export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   expiryDate: lot.expiryDate ?? null,
   sourceTypeCode: lot.sourceTypeCode,
   sourceId: lot.sourceId,
-  fourMChange: (lot as LotForward).fourMChange ?? null,
+  fourMChange: (lot as Lot).fourMChange ?? null,
 });
 
 export interface LotStatusCountView {

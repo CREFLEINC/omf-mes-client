@@ -48,6 +48,7 @@ export const URL_KEYS = {
   status: 'st',
   pendingOnly: 'pd',
   page: 'page',
+  size: 'size',
   selected: 'ir',
 } as const;
 
@@ -64,6 +65,10 @@ export const FIXED_AXES = {
 
 /** 계약이 정한 기본 쪽 크기다(`size` 설명: 기본 50). 주소에 적지 않는다. */
 export const PAGE_SIZE = 50;
+
+/** 목록 쪽 크기 — 상세 탭 표와 같은 10 · 20 · 50건(사용자 지시 2026-10-27 · #197). 기본은 종전대로 50건이다. */
+export const LIST_PAGE_SIZES = [10, 20, PAGE_SIZE] as const;
+export type ListPageSize = (typeof LIST_PAGE_SIZES)[number];
 
 const FIRST_PAGE = 1;
 
@@ -84,6 +89,10 @@ const readIdentifier = (raw: string | null): number | null => {
 /** 쪽 번호. 1 미만이거나 숫자가 아니면 첫 쪽으로 읽는다 — 주소를 손으로 고쳐도 화면이 선다. */
 export const readPage = (params: URLSearchParams): number =>
   readIdentifier(params.get(URL_KEYS.page)) ?? FIRST_PAGE;
+
+/** 쪽 크기. 고를 수 있는 값이 아니면 기본(50)으로 읽는다. */
+export const readPageSize = (params: URLSearchParams): ListPageSize =>
+  LIST_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.size)) ?? PAGE_SIZE;
 
 /** 고른 의뢰. 없거나 식별자가 아니면 아무것도 고르지 않은 상태다. */
 export const readSelectedId = (params: URLSearchParams): number | null =>
@@ -137,12 +146,16 @@ export interface QueueListQuery {
   size: number;
 }
 
-export const toListQuery = (filters: QueueFilters, page: number): QueueListQuery => {
+export const toListQuery = (
+  filters: QueueFilters,
+  page: number,
+  size: number = PAGE_SIZE,
+): QueueListQuery => {
   const query: QueueListQuery = {
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: filters.pendingOnly,
     page,
-    size: PAGE_SIZE,
+    size,
   };
 
   if (filters.itemId !== null) query.itemId = filters.itemId;
@@ -185,6 +198,17 @@ export const toPageParams = (params: URLSearchParams, page: number): URLSearchPa
 
   if (page === FIRST_PAGE) next.delete(URL_KEYS.page);
   else next.set(URL_KEYS.page, String(page));
+
+  return next;
+};
+
+/** 쪽 크기를 바꾼다 — 첫 쪽으로 간다. 기본(50)은 주소에 적지 않는다. 조건과 고른 의뢰는 그대로다. */
+export const toPageSizeParams = (params: URLSearchParams, size: ListPageSize): URLSearchParams => {
+  const next = new URLSearchParams(params);
+
+  next.delete(URL_KEYS.page);
+  if (size === PAGE_SIZE) next.delete(URL_KEYS.size);
+  else next.set(URL_KEYS.size, String(size));
 
   return next;
 };

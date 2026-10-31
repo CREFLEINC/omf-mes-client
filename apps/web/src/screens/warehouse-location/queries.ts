@@ -2,15 +2,14 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { warehouseListQuery } from '../../patterns/warehouse-filter-bar';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
-import type { LookupEntry, LookupSources, WarehouseFilters } from './types';
+import type { Location, LocationItem, LookupEntry, LookupSources, WarehouseFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Warehouse = components['schemas']['Warehouse'];
 type WarehouseDetailResponse = components['schemas']['WarehouseDetailResponse'];
-type Location = components['schemas']['Location'];
 type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
 
 export interface WarehouseListResponse {
@@ -38,22 +37,8 @@ export const warehouseDetailPath = (warehouseId: number): string =>
   `/mdm/warehouses/${String(warehouseId)}`;
 
 /**
- * 주소에서 온 공장 조건을 숫자로 읽는다. **읽을 수 없으면 조건이 없는 것으로 다룬다.**
- *
- * 조회 조건을 URL이 소유하므로 손으로 고친 주소(`?plant=abc`)가 그대로 들어온다. 거르지 않으면
- * 정수가 아닌 `plantId` 가 실려 서버가 400 으로 거절하고, 사용자는 조회 실패만 본다.
- */
-const plantIdQuery = (value: string): { plantId: number } | Record<string, never> => {
-  if (value === '') return {};
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? { plantId: parsed } : {};
-};
-
-/**
  * 창고 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  * size는 보내지 않고 서버 기본값을 따른다. 잘림은 page.total로 드러내 안내한다.
- *
- * 공장(`plantId`)은 서버 선행 P-109(omf-mes-server#809) 질의다 — 타입은 `WarehouseListQueryForward` 가 덧댄다.
  */
 export const useWarehouseList = (
   filters: WarehouseFilters,
@@ -66,14 +51,8 @@ export const useWarehouseList = (
       runRequest(() =>
         client.GET('/mdm/warehouses', {
           params: {
-            query: {
-              ...(filters.q === '' ? {} : { q: filters.q }),
-              ...plantIdQuery(filters.plantId),
-              ...(filters.warehouseTypeCode === ''
-                ? {}
-                : { warehouseTypeCode: filters.warehouseTypeCode }),
-              includeInactive: filters.includeInactive,
-            },
+            /* 조건 → 질의는 조건 상자와 한 벌(`patterns/warehouse-filter-bar`) — 창고 배치도도 같은 질의를 보낸다. */
+            query: warehouseListQuery(filters),
           },
         }),
       ),
@@ -108,6 +87,39 @@ export const locationKeys = {
   all: ['locations'] as const,
   list: (warehouseId: number, q: string) => ['locations', 'list', warehouseId, q] as const,
   detail: (locationId: number) => ['locations', 'detail', locationId] as const,
+  items: (locationId: number) => ['locations', 'items', locationId] as const,
+};
+
+/** 창고를 끄기 전 남은 재고 — 다른 화면의 재고 조회와 열쇠가 겹치지 않게 이 화면 이름을 앞에 둔다. */
+export const warehouseStockKeys = {
+  summary: (warehouseId: number) => ['warehouse-location', 'stock-summary', warehouseId] as const,
+};
+
+/**
+ * 창고의 남은 재고 합계(품목 수 · LOT 수 · 보유 …) — 사용 중지 확인 창을 열 때만 묻는다. 한 줄만 받아 `summary` 만
+ * 쓴다(0 인 잔액은 서버가 빼고 센다). 열 때마다 새로 묻고, 권한 없음(403)은 다시 묻지 않는다.
+ */
+export const useWarehouseStockSummary = (
+  warehouseId: number | null,
+  enabled: boolean,
+): UseQueryResult<components['schemas']['InventoryBalanceSummary']> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: warehouseStockKeys.summary(warehouseId ?? 0),
+    enabled: enabled && warehouseId !== null,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      if (warehouseId === null) {
+        throw new Error('창고를 고르기 전에는 재고를 조회하지 않습니다.');
+      }
+      const page = await runRequest(() =>
+        client.GET('/inventory/balances', { params: { query: { warehouseId, size: 1 } } }),
+      );
+      return page.summary;
+    },
+  });
 };
 
 /** ETag가 보관된 경로. Location 수정의 If-Match는 여기서 꺼낸다. */
@@ -196,6 +208,31 @@ export const useLocationDetail = (
   });
 };
 
+/**
+ * 위치의 지정 품목(서버 위치 ⑤). 빈 목록이면 품목 무관이다. 수정 창의 맨 아래 위치에서만 부른다 — 제한은 그 위치에만
+ * 걸리고 하위로 물려주지 않는다. 고치는 동안 다시 받아 고친 목록이 덮이지 않게 상세와 같이 창 포커스 갱신을 끈다.
+ */
+export const useLocationItems = (locationId: number | null): UseQueryResult<LocationItem[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationKeys.items(locationId ?? 0),
+    enabled: locationId !== null,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      if (locationId === null) {
+        throw new Error('위치를 고르기 전에는 지정 품목을 조회하지 않습니다.');
+      }
+
+      const result = await runRequest(() =>
+        client.GET('/mdm/locations/{locationId}/items', { params: { path: { locationId } } }),
+      );
+      return result.items;
+    },
+  });
+};
+
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. */
 export const isTruncated = (page: PageMeta, shown: number): boolean => page.total > shown;
 
@@ -239,19 +276,10 @@ export const useLookupOptions = (): LookupResult => {
       ),
   });
 
-  const partners = useQuery({
-    queryKey: lookupKeys.list('partners'),
-    /* 거래처는 936건이라 한 쪽에 들어가지 않는다 — 끝까지 받는다(omf-all-around#38). */
-    queryFn: () =>
-      fetchAllPages((page, size) =>
-        runRequest(() =>
-          client.GET('/mdm/partners', {
-            params: { query: { includeInactive: true, page, size } },
-          }),
-        ),
-      ),
-  });
-
+  /*
+   * 위치 칸에서 수용 단위가 빠져(사용자 지시 2026-10-29) 이 화면은 단위를 쓰지 않는다. 단위 공유 캐시 시험(#1240)이
+   * 이 훅으로 창고 화면을 거치므로 그 시험을 고칠 때 함께 걷는다.
+   */
   const uoms = useQuery({
     queryKey: lookupKeys.list('uoms'),
     queryFn: () =>
@@ -270,10 +298,6 @@ export const useLookupOptions = (): LookupResult => {
     });
 
   const warehouseTypes = useCodeGroup(CODE_GROUPS.warehouseType);
-  const managementLevels = useCodeGroup(CODE_GROUPS.managementLevel);
-  const locationTypes = useCodeGroup(CODE_GROUPS.locationType);
-  const qualityZones = useCodeGroup(CODE_GROUPS.qualityZone);
-  const storageConditions = useCodeGroup(CODE_GROUPS.storageCondition);
   const reissueReasons = useCodeGroup(CODE_GROUPS.reissueReason);
 
   const codeSource = (query: typeof warehouseTypes) => ({
@@ -309,16 +333,6 @@ export const useLookupOptions = (): LookupResult => {
         isError: businessUnits.isError,
         isLoading: businessUnits.isPending,
       },
-      partners: {
-        entries:
-          partners.data?.items.map((item) => ({
-            value: String(item.partnerId),
-            label: item.partnerName,
-            isActive: item.isActive,
-          })) ?? EMPTY_ENTRIES,
-        isError: partners.isError,
-        isLoading: partners.isPending,
-      },
       uoms: {
         entries:
           uoms.data?.items.map((item) => ({
@@ -330,44 +344,66 @@ export const useLookupOptions = (): LookupResult => {
         isLoading: uoms.isPending,
       },
       warehouseTypes: codeSource(warehouseTypes),
-      managementLevels: codeSource(managementLevels),
-      locationTypes: codeSource(locationTypes),
-      qualityZones: codeSource(qualityZones),
-      storageConditions: codeSource(storageConditions),
       reissueReasons: codeSource(reissueReasons),
     },
     truncated:
       isListTruncated(plants.data) ||
       isListTruncated(businessUnits.data) ||
-      isListTruncated(partners.data) ||
       isListTruncated(uoms.data) ||
       isListTruncated(warehouseTypes.data) ||
-      isListTruncated(managementLevels.data) ||
-      isListTruncated(locationTypes.data) ||
-      isListTruncated(qualityZones.data) ||
-      isListTruncated(storageConditions.data) ||
       isListTruncated(reissueReasons.data),
     isError:
       plants.isError ||
       businessUnits.isError ||
-      partners.isError ||
       uoms.isError ||
       warehouseTypes.isError ||
-      managementLevels.isError ||
-      locationTypes.isError ||
-      qualityZones.isError ||
-      storageConditions.isError ||
       reissueReasons.isError,
     isLoading:
       plants.isPending ||
       businessUnits.isPending ||
-      partners.isPending ||
       uoms.isPending ||
       warehouseTypes.isPending ||
-      managementLevels.isPending ||
-      locationTypes.isPending ||
-      qualityZones.isPending ||
-      storageConditions.isPending ||
       reissueReasons.isPending,
   };
+};
+
+type DocumentIssue = components['schemas']['DocumentIssue'];
+
+/** 위치 라벨 발행 기록의 캐시 키 — 발행 · 재발행 뒤 이것만 다시 받는다. */
+export const locationLabelKeys = {
+  all: ['location-labels'] as const,
+  of: (locationId: number) => ['location-labels', locationId] as const,
+};
+
+/**
+ * 위치 하나의 라벨 발행 기록 중 마지막 회차. 없으면 null — 아직 발행하지 않은 위치다.
+ * 한 위치의 회차는 많아야 몇 장이라 한 쪽(50건)만 받는다.
+ */
+export const useLatestLocationLabel = (
+  locationId: number,
+): UseQueryResult<DocumentIssue | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationLabelKeys.of(locationId),
+    queryFn: async () => {
+      const result = await runRequest(() =>
+        client.GET('/app/document-issues', {
+          params: {
+            query: {
+              documentTypeCode: 'LOCATION_LABEL',
+              targetTypeCode: 'LOCATION',
+              targetId: locationId,
+              page: 1,
+              size: 50,
+            },
+          },
+        }),
+      );
+      return result.items.reduce<DocumentIssue | null>(
+        (latest, issue) => (latest === null || issue.issueSeq > latest.issueSeq ? issue : latest),
+        null,
+      );
+    },
+  });
 };

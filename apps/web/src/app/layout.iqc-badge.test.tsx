@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useNavigate } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { INSPECTION_HUB_COUNTS_KEY } from '../patterns/inspection-hub-counts';
 import { SessionProvider } from '../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
 import { SYNTHETIC_SESSION } from '../test/session-harness';
@@ -25,13 +26,15 @@ const Go = ({ to }: { to: string }) => {
 
 interface Setup {
   total?: number | 'fail';
+  /** 검사 유형별 수 — 주면 `total` 대신 쓴다(PQC · OQC 탭). */
+  totalsByType?: Record<string, number>;
   permissions?: string[];
   route?: string;
 }
 
 const setup = (options: Setup = {}) => {
   const counted: URL[] = [];
-  renderWithProviders(
+  const { queryClient } = renderWithProviders(
     <SessionProvider>
       <Go to="/logistics/iqc-inspection" />
       <AppLayout>본문</AppLayout>
@@ -51,14 +54,23 @@ const setup = (options: Setup = {}) => {
               ? jsonResponse({ message: '' }, { status: 503 })
               : jsonResponse({
                   items: [],
-                  page: { page: 1, size: 1, total: options.total ?? 4 },
+                  page: {
+                    page: 1,
+                    size: 1,
+                    total:
+                      options.totalsByType?.[
+                        new URL(request.url).searchParams.get('inspectionTypeCode') ?? ''
+                      ] ??
+                      options.total ??
+                      4,
+                  },
                 });
           },
         },
       ]),
     },
   );
-  return { counted };
+  return { counted, queryClient };
 };
 
 const sidebar = () => screen.getByRole('navigation', { name: '주 메뉴' });
@@ -87,7 +99,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
 
     await user.click(groupToggle(QUALITY_GROUP));
     const row = within(sidebar()).getByRole('link', { name: new RegExp(`^${INSPECTION_ROW}`) });
-    expect(await within(row).findByLabelText(t.iqcPending(4))).toHaveTextContent('4');
+    expect(await within(row).findByLabelText(t.inspectionPending(4))).toHaveTextContent('4');
   });
 
   it('US4-1 IQC 탭에도 같은 수가 붙는다', async () => {
@@ -96,6 +108,55 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
     const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
     const iqcTab = within(tabs).getByRole('link', { name: /^IQC/ });
     expect(await within(iqcTab).findByLabelText(t.iqcPending(4))).toHaveTextContent('4');
+  });
+
+  it('PQC · OQC 탭에도 그 검사의 대기 수가 붙고, 사이드바 줄은 세 탭의 합이다(#197 · 2026-10-30)', async () => {
+    const { counted } = setup({
+      route: '/logistics/iqc-inspection',
+      permissions: ['W-01-01', 'W-03-11', 'W-04-03'],
+      totalsByType: { IQC: 4, PQC: 12, OQC: 0 },
+    });
+
+    const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
+    const pqcTab = within(tabs).getByRole('link', { name: /^PQC/ });
+    expect(await within(pqcTab).findByLabelText(t.pqcPending(12))).toHaveTextContent('9+');
+    /* 0건이면 배지가 없다. */
+    const oqcTab = within(tabs).getByRole('link', { name: /^OQC/ });
+    expect(within(oqcTab).queryByLabelText(t.oqcPending(0))).toBeNull();
+    expect(await within(sidebar()).findByLabelText(t.inspectionPending(16))).toHaveTextContent('9+');
+    /* 유형마다 목록과 같은 조건(대기만 · size 1)으로 묻는다. */
+    await waitFor(() =>
+      expect(new Set(counted.map((url) => url.searchParams.get('inspectionTypeCode')))).toEqual(
+        new Set(['IQC', 'PQC', 'OQC']),
+      ),
+    );
+    expect(counted.every((url) => url.searchParams.get('pendingOnly') === 'true')).toBe(true);
+  });
+
+  it('판정 저장·확정이 건수 칩을 다시 세면 탭 배지도 새로고침 없이 바뀐다(#216)', async () => {
+    const totalsByType = { IQC: 1, PQC: 0, OQC: 0 };
+    const { queryClient } = setup({
+      route: '/logistics/iqc-inspection',
+      permissions: ['W-01-01', 'W-03-11', 'W-04-03'],
+      totalsByType,
+    });
+
+    const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
+    const iqcTab = within(tabs).getByRole('link', { name: /^IQC/ });
+    expect(await within(iqcTab).findByLabelText(t.iqcPending(1))).toHaveTextContent('1');
+
+    /* 확정으로 대기가 0이 됐다 — 화면은 건수 칩 키만 무효화한다(iqc-inspection/queries.ts). */
+    totalsByType.IQC = 0;
+    await act(() => queryClient.invalidateQueries({ queryKey: INSPECTION_HUB_COUNTS_KEY }));
+
+    await waitFor(() => expect(within(iqcTab).queryByLabelText(t.iqcPending(1))).toBeNull());
+  });
+
+  it('PQC · OQC 화면 권한이 없으면 그 수를 묻지 않는다', async () => {
+    const { counted } = setup({ permissions: ['W-01-01', 'W-CO-09'] });
+
+    await waitFor(() => expect(counted.length).toBeGreaterThan(0));
+    expect(counted.every((url) => url.searchParams.get('inspectionTypeCode') === 'IQC')).toBe(true);
   });
 
   it('US4-2 닫힌 「품질 관리」 묶음 손잡이에 점, 열면 점 대신 줄의 수', async () => {
@@ -116,7 +177,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
 
     await user.click(groupToggle(QUALITY_GROUP));
     const row = within(sidebar()).getByRole('link', { name: new RegExp(`^${INSPECTION_ROW}`) });
-    expect(await within(row).findByLabelText(t.iqcPending(23))).toHaveTextContent('9+');
+    expect(await within(row).findByLabelText(t.inspectionPending(23))).toHaveTextContent('9+');
   });
 
   it('0건이면 수도 점도 없다', async () => {
@@ -128,7 +189,7 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
       within(groupToggle(QUALITY_GROUP)).queryByRole('img', { name: t.group.hasWork }),
     ).toBeNull();
     await user.click(groupToggle(QUALITY_GROUP));
-    expect(within(sidebar()).queryByLabelText(/^IQC 대기/)).toBeNull();
+    expect(within(sidebar()).queryByLabelText(/^검사 대기/)).toBeNull();
   });
 
   it('FR-018 조회가 실패하면 수·점을 그리지 않고 메뉴는 그대로다', async () => {

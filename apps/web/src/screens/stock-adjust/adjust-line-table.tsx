@@ -1,6 +1,7 @@
 import { Chip, type Column, IconButton, Table, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { deriveActualQty, describeActualQty, describeBookQty, type BookQtyState } from './balances';
 import {
@@ -46,7 +47,6 @@ export interface AdjustLineTableProps {
   uomLookup: ReferenceSource;
   lotLookup: LotLookupResult;
   locationOptions: SelectOption[];
-  itemOptions: SelectOption[];
   uomOptions: SelectOption[];
   /**
    * 전체가 잠겼는가. 잠긴 사유는 표 안이 아니라 조작 자리에 한 번 선다.
@@ -103,7 +103,6 @@ export const AdjustLineTable = ({
   uomLookup,
   lotLookup,
   locationOptions,
-  itemOptions,
   uomOptions,
   isLocked = false,
   onPatch,
@@ -174,9 +173,10 @@ export const AdjustLineTable = ({
           </div>
         ) : (
           <div className="field-cell">
-            <Select
+            {/* 미사용 품목에 남은 재고도 조정한다 — 미사용도 고른다. */}
+            <ItemSelect
               size="sm"
-              options={itemOptions}
+              includeInactive
               value={row.draft.itemId === '' ? null : row.draft.itemId}
               invalid={errorOf(row, 'itemId') !== undefined}
               disabled={isLocked}

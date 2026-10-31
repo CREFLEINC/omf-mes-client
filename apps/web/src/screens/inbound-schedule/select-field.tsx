@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import type { SelectOption } from './types';
@@ -17,6 +18,11 @@ export interface SelectFieldProps {
    * **판단 기준은 코드값이 아니라 선택지 문구 길이다.**
    */
   wide?: boolean;
+  /**
+   * 거래처 칸 — 거래처를 통째로 받지 않고 쪽 단위로 찾는다(`PartnerSelect`, 사용자 지시 2026-10-29). 이때 `options` 는
+   * 맨 앞 고정 선택지(「전체」)다.
+   */
+  partners?: boolean;
 }
 
 /**
@@ -41,6 +47,7 @@ export const SelectField = ({
   note,
   placeholder,
   wide = false,
+  partners = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -53,14 +60,26 @@ export const SelectField = ({
   return (
     <div className={wide ? 'field-cell wide-select' : 'field-cell'}>
       <FieldLabel htmlFor={id} label={label} />
-      <Select
-        id={id}
-        options={options}
-        value={value === '' && !hasEmptyOption ? null : value}
-        onChange={onChange}
-        placeholder={placeholder}
-        aria-describedby={note === undefined ? undefined : noteId}
-      />
+      {partners ? (
+        <PartnerSelect
+          id={id}
+          includeInactive
+          leadingOptions={options}
+          value={value === '' && !hasEmptyOption ? null : value}
+          onChange={onChange}
+          {...(placeholder === undefined ? {} : { placeholder })}
+          aria-describedby={note === undefined ? undefined : noteId}
+        />
+      ) : (
+        <Select
+          id={id}
+          options={options}
+          value={value === '' && !hasEmptyOption ? null : value}
+          onChange={onChange}
+          placeholder={placeholder}
+          aria-describedby={note === undefined ? undefined : noteId}
+        />
+      )}
       {note !== undefined && (
         <span id={noteId} className="field-note">
           {note}

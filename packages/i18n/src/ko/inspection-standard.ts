@@ -23,7 +23,6 @@ export const inspectionStandard = {
     goFirstPage: '첫 쪽으로',
     excelUpload: '엑셀 올리기',
     addPlan: '기준 추가',
-    approve: '승인',
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',
     confirm: '확정',
@@ -45,19 +44,16 @@ export const inspectionStandard = {
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
-    routingNeedsItem: '라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.',
-    approveAlreadyDone: '승인은 이미 승인된 기준에 다시 할 수 없습니다.',
-    approveNeedsPlan: '승인은 기준을 먼저 등록해야 할 수 있습니다.',
-    deactivateAlreadyDone: '사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.',
-    deactivateNeedsPlan: '사용 중지는 기준을 먼저 등록해야 할 수 있습니다.',
+    routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
     /*
      * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
      */
     newVersionBlockedByUnsaved:
       '신규 버전 발행은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
     /* 작성중 판은 기준당 하나만 둔다 — 둘이면 어느 쪽을 확정할지 엇갈린다(사용자 지시 · #196). */
-    newVersionBlockedByDraft:
-      '작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.',
+    /* 어느 버전이 작성 중인지 밝힌다(사용자 시안 · #208). 조사는 숫자 끝자리 읽기를 따른다(2 · 4 · 5 · 9 → 가). */
+    newVersionBlockedByDraft: (planVersion: number): string =>
+      `버전 ${String(planVersion)}${[2, 4, 5, 9].includes(planVersion % 10) ? '가' : '이'} 작성 중입니다. 확정하거나 작성을 취소해 주세요.`,
     confirmNeedsDraft: '확정은 작성중 버전에만 할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsItems: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
@@ -100,10 +96,6 @@ export const inspectionStandard = {
     obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
-    approveTitle: '이 검사기준을 승인할까요?',
-    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실을 먼저 밝힌다. */
-    approveDescription:
-      '승인하면 되돌릴 수 없습니다. 승인 해제는 제공되지 않습니다. 승인자와 승인 시각은 서버가 기록합니다.',
     deactivateTitle: '이 검사기준을 사용 중지할까요?',
     deactivateDescription:
       '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
@@ -111,7 +103,7 @@ export const inspectionStandard = {
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
     obsoleteTitle: '이 버전을 폐기할까요?',
-    obsoleteDescription: '삭제하지 않습니다. 폐기하면 새 검사에서 이 버전을 쓸 수 없게 됩니다.',
+    obsoleteDescription: '폐기한 버전은 새 검사에서 사용할 수 없습니다. 기존 데이터는 유지됩니다.',
     discardTitle: '이 작성중 버전을 취소할까요?',
     discardDescription:
       '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',
@@ -140,7 +132,6 @@ export const inspectionStandard = {
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
-    approved: '검사기준을 승인했습니다.',
     deactivated: '검사기준 사용을 중지했습니다.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
@@ -148,35 +139,56 @@ export const inspectionStandard = {
   },
   /** 엑셀 올리기 창(#199). 툴 엑셀 올리기와 같이 «올리기 전에» 되돌리지 않음을 말한다. */
   import: {
-    title: '검사기준 엑셀 올리기',
-    partialWarningTitle: '올리기는 통째로 되돌리지 않습니다',
-    partialWarning:
-      '기준코드별로 반영됩니다. 성공한 기준은 그대로 등록되고 실패한 기준만 돌아옵니다. 파일을 먼저 확인하세요.',
-    draftNote:
-      '올리면 기준코드마다 작성중 버전이 생깁니다. 이미 있는 기준은 최신 확정 버전에서 새 버전을 만들고 엑셀 항목으로 채웁니다. 확정은 화면에서 직접 하세요.',
-    columnsNote:
-      '첫 시트 첫 줄을 머리글로 읽습니다. 필요한 열: 기준코드·항목코드·항목명(필수), 기준명·검사유형·품목코드·공정코드, 유효시작일·샘플링방식·샘플비율·AQL·합격판정개수·불합격판정개수·검사주기, 순서·데이터유형·단위·목표값·하한·상한·측정횟수·검사방법·필수·자동판정. 고객사 검사기준서(TCKT) 파일도 그대로 올릴 수 있습니다 — 기준서 한 장이 기준 하나가 됩니다.',
-    fileLabel: '검사기준 엑셀 파일(.xlsx, 여러 개 가능)',
-    filePlaceholder: '파일 고르기',
-    fileNone: '고른 파일이 없습니다.',
-    fileRequired: '올릴 파일을 먼저 고르세요.',
-    fileCount: (count: number): string => `파일 ${String(count)}개를 골랐습니다.`,
+    title: '검사 기준 엑셀 업로드',
+    // 올린 기준은 바로 확정된다(#208) — 되돌릴 수 없다는 뜻을 한 줄로.
+    partialWarning: '업로드하면 기준별로 새 버전이 바로 확정되며, 일괄 취소할 수 없습니다.',
+    guideHeaderRow: '첫 번째 시트의 첫 행을 제목으로 사용합니다.',
+    guideRequiredColumns: '필수 열: 기준코드, 항목코드, 항목명',
+    guideTckt: '기존 검사기준서(TCKT) 파일도 업로드할 수 있습니다.',
+    fileLabel: '엑셀 파일',
+    fileHint: '.xlsx · 여러 파일 선택 가능',
+    filePlaceholder: '파일 추가',
+    fileRequired: '올릴 파일을 먼저 선택하세요.',
+    fileCount: (count: number): string => `선택한 파일 ${String(count)}개`,
     removeFile: (name: string): string => `${name} 빼기`,
     progress: (done: number, total: number): string =>
       `${String(total)}개 중 ${String(done)}개를 처리했습니다. 창을 닫지 마세요.`,
+    formatGuide: '엑셀 작성 형식 안내',
     submit: '올리기',
-    resultTitle: '올리기 결과',
-    succeeded: (count: number): string => `기준 ${String(count)}건을 반영했습니다.`,
-    noneSucceeded: '반영된 기준이 없습니다.',
-    failed: (count: number): string => `기준 ${String(count)}건이 실패했습니다.`,
-    allSucceeded: '실패한 기준이 없습니다.',
-    fields: {
-      key: '기준코드',
-      reason: '사유',
+    /** 실패한 파일만 다시 올린다(#208) */
+    retry: '실패 파일 재시도',
+    /** 파일 단위 요약 — 일부 실패한 파일은 실패로 센다 */
+    summary: (total: number, succeeded: number, failed: number): string =>
+      `전체 ${String(total)}개 · 성공 ${String(succeeded)}개 · 실패 ${String(failed)}개`,
+    status: {
+      pending: '대기',
+      running: '처리 중',
+      success: '성공',
+      failed: '실패',
+      partial: '일부 실패',
+      unknown: '확인 필요',
     },
+    /** 파일 안 기준 단위 건수 — 한 파일에 기준이 여럿일 수 있다 */
+    criteriaCounts: (succeeded: number, failed: number): string =>
+      `기준 성공 ${String(succeeded)}건 · 실패 ${String(failed)}건`,
+    failureLine: (key: string, reason: string): string => `${key} · ${reason}`,
     keyUnknown: '기준코드 없음',
+    /** 올린 뒤 바로 확정하지 못한 기준(#208) — 버전은 작성중으로 남는다 */
+    confirmFailed: (key: string, reason: string): string =>
+      `${key} · 올렸으나 확정하지 못함: ${reason}`,
+    /** 다시 올리면 성공한 기준이 한 번 더 만들어지는 파일 — 재시도에서 뺀다 */
+    partialNote: '성공한 기준이 있어 재시도에서 뺍니다. 실패한 기준만 담아 따로 올리세요.',
+    /** 서버 오류 · 연결 끊김 — 일부가 이미 들어갔을 수 있다(#208) */
+    unknownNote:
+      '처리 중 오류로 결과를 확인하지 못했습니다. 일부 기준이 이미 반영됐을 수 있어 재시도에서 뺍니다. 목록에서 확인하세요.',
+    confirmNote: '확정하지 못한 버전은 작성중으로 남았습니다. 목록에서 확인 후 확정하세요.',
   },
   filters: {
+    versionStatus: '상태 선택',
+    versionStatusAll: '전체',
+    versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '폐기' },
+    chipVersionStatus: (label: string): string => `상태: ${label}`,
+    chipRemoveVersionStatus: '상태 조건 제거',
     searchLabel: '검사 기준 검색',
     searchPlaceholder: '기준 코드 또는 기준명을 입력하세요',
     searchClear: '검사 기준 검색 지우기',
@@ -186,7 +198,13 @@ export const inspectionStandard = {
     chipInspectionType: (label: string): string => `검사 유형: ${label}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveInspectionType: '검사 유형 조건 제거',
-    chipRemoveIncludeInactive: '미사용 포함 조건 제거',
+    unapprovedOnly: '미승인',
+    chipRemoveUnapproved: '미승인 조건 제거',
+    usageLabel: '사용 여부',
+    usageAll: '전체',
+    usageActive: '사용',
+    usageInactive: '미사용',
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     /* 품목 조건 — 검사 조회·판정의 품목 검색과 같은 모양(#196). */
     item: '품목 검색',
     itemPlaceholder: '품목을 입력하세요',
@@ -208,7 +226,7 @@ export const inspectionStandard = {
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
     itemUnset: '품목 미지정',
-    pqcSkipOn: '허용',
+    pqcSkipOn: '켜짐',
     close: '닫기',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
@@ -217,7 +235,8 @@ export const inspectionStandard = {
     samplingByRatio: '비율(%)',
     samplingByQty: '수량',
     samplingBasis: '샘플 기준 선택',
-    samplingBasisLocked: '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
+    samplingBasisLocked:
+      '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
     title: '검사 기준 버전',
@@ -231,10 +250,21 @@ export const inspectionStandard = {
     editSettings: '버전 설정 수정',
     tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
     tabHistory: '이력',
+    tabHistoryCount: (count: number): string => `이력 ${String(count)}건`,
+    /* 기준서 도면 탭(omf-all-around#208). */
+    tabDrawings: '도면',
+    tabDrawingsCount: (count: number): string => `도면 ${String(count)}건`,
+    drawingsLoading: '도면을 불러오는 중',
+    drawingsNone: '등록된 도면이 없습니다',
+    drawingsNoneHint: '기준서(TCKT) 엑셀을 올리면 도면이 함께 붙습니다.',
+    drawingAlt: (index: number): string => `도면 ${String(index)}`,
+    drawingPrev: '이전 도면',
+    drawingNext: '다음 도면',
     notSet: '미설정',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
   listColumns: {
+    versionStatus: '상태',
     item: '품목',
     approval: '승인 여부',
     active: '사용 여부',
@@ -261,12 +291,12 @@ export const inspectionStandard = {
     changed: '변경',
     same: '같음',
     hideSame: '동일 항목 숨기기',
-    sameVersion: '서로 다른 버전을 고르세요.',
     noItemDiff: '바뀐 검사 항목이 없습니다.',
     noItems: '두 버전 모두 검사 항목이 없습니다.',
     yes: '예',
     no: '아니요',
-    change: (label: string, before: string, after: string): string => `${label}: ${before} → ${after}`,
+    change: (label: string, before: string, after: string): string =>
+      `${label}: ${before} → ${after}`,
     needTwo: '버전 비교는 버전이 2개 이상일 때 할 수 있습니다.',
     loading: '비교할 버전을 불러오는 중',
   },
@@ -291,7 +321,7 @@ export const inspectionStandard = {
     itemRemoved: '항목 삭제',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: '변경 이력이 없습니다',
-    noneDescription: '이 버전을 저장 · 확정 · 폐기하면 여기에 남습니다.',
+    noneDescription: '버전 저장 · 확정 · 폐기 시 기록됩니다.',
     loading: '변경 이력을 불러오는 중',
     range: '최근 1년',
   },
@@ -338,9 +368,9 @@ export const inspectionStandard = {
      */
     beyondLastTitle: '이 쪽에는 결과가 없습니다',
     beyondLastDescription: '첫 쪽으로 이동하세요.',
-    planNotSelected: '목록에서 검사 기준을 먼저 고르세요',
+    planNotSelected: '목록에서 검사 기준을 먼저 선택하세요',
     /* 상세 칸 빈 안내(사용자 시안 · #196) — 배치(좌우 · 상하)에 따라 목록 위치가 달라 「왼쪽」이라 하지 않는다. */
-    detailNotSelectedTitle: '검사 기준을 선택해 주세요',
+    detailNotSelectedTitle: '검사 기준을 선택하세요',
     detailNotSelectedDescription: '목록에서 선택하면 상세 정보가 표시됩니다.',
     versionNoneTitle: '등록된 버전이 없습니다',
     versionNoneDescription: '「버전 등록」으로 첫 버전을 만드세요.',
@@ -356,8 +386,8 @@ export const inspectionStandard = {
     item: '품목',
     process: '공정',
     routing: '라우팅',
-    /** omf-all-around#119 — PQC 기준에만 선다. */
-    pqcSkipAllowed: 'PQC 생략 허용',
+    /** omf-all-around#212 — 검사 유형 공통(옛 「PQC 생략 허용」 #119). */
+    defaultSkip: '기본 생략',
     approval: '승인',
     active: '사용',
     planVersion: '버전',
@@ -398,8 +428,22 @@ export const inspectionStandard = {
     automaticJudgment: '자동판정',
   },
   values: {
-    pqcSkipAllowedNote:
-      '켜면 이 기준으로 배포한 작업지시의 PQC 를 생략합니다. 실적을 등록하면 LOT 이 바로 정상이 됩니다.',
+    /* 공정 · 라우팅을 비운 선택지(사용자 시안 · #208). */
+    notSelected: '선택 안 함',
+    /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
+    codeInUseLocked: '사용 중인 코드는 변경할 수 없습니다.',
+    /** 검사 유형마다 무엇이 생략되는지(#212). */
+    defaultSkipNote: (inspectionTypeCode: string): string =>
+      inspectionTypeCode === 'IQC'
+        ? '켜면 이 기준이 걸리는 입하 LOT 은 수입검사 없이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
+        : inspectionTypeCode === 'OQC'
+          ? '켜면 이 기준이 걸리는 출하작업지시는 출하검사 없이 통과합니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
+          : '켜면 이 기준이 걸리는 작업지시는 PQC 없이 진행하고, 실적을 등록하면 LOT 이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.',
+    defaultSkipAllItemsNote:
+      '품목을 비운 IQC 기준이라 자기 기준이 없는 모든 품목의 수입검사가 생략됩니다.',
+    /** 품목 전용 IQC 기준 — 품목 기준정보 「IQC 대상」과 연동된다(omf-all-around#215). */
+    defaultSkipItemSyncNote:
+      '품목 기준정보의 ‘IQC 대상’과 함께 바뀝니다. 기본 생략을 켜면 그 품목의 IQC 대상이 꺼집니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',

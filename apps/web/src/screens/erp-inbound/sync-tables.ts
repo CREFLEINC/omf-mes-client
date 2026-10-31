@@ -1,4 +1,5 @@
 import type { ChipStatus } from '@crefle/web-ui';
+import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
   useMutation,
@@ -9,18 +10,11 @@ import {
 } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import { formatDateTime } from '../integration-sync/message-status';
 
 /**
- * ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81).
- *
- * ⚠ **계약 사본에 없는 경로 둘이다.** 서버가 계약보다 먼저 연 것이라 `@omf-mes/api-client` 생성 타입에
- * 없다. 응답 모양을 서버 `erp-sync-status.service.ts` 에서 **여기에 손으로 옮기고**, `openapi-fetch` 가
- * 경로를 리터럴 타입으로 요구하므로 이 두 경로만 받는 모양으로 클라이언트를 **좁혀 본다**
- * (`inbound-schedule/queries.ts` 와 같은 길). 실행은 같은 클라이언트가 한다 — 인증 쿠키·오류 정규화가 그대로 선다.
- *
- * 정본에 실려 `gen:api` 가 만들면 이 타입과 좁힘을 지우고 `client.GET`·`client.POST` 를 바로 부른다.
+ * ERP 받기 표 여덟의 상태와 「지금 읽기」(omf-mes-server#757 · 장부 P-81 · 계약 server #920).
  *
  * **「지금 읽기」는 적어 두기만 한다.** 리스를 쥔 실행기가 10초 안에 그 표를 돌고, 다 돌면 요청 시각을
  * 지운다. 그래서 화면은 요청이 걸려 있거나 도는 중인 표가 있는 동안 목록을 몇 초마다 다시 읽어
@@ -32,48 +26,23 @@ const t = messages.erpInbound;
 /** 마지막으로 끝난 회차의 결과. 서버가 이 둘만 쓴다. */
 export const SYNC_RESULT = { succeeded: 'SUCCEEDED', failed: 'FAILED' } as const;
 
-export interface SyncTableStatus {
-  /** 연계 메시지의 인터페이스 코드(`IF-ERP-*-RECV`)와 같다. 「지금 읽기」 경로의 키다. */
-  interfaceCode: string;
-  name: string;
-  /** `MASTER`(기준정보 · 12시간) · `ORDER`(전표 · 15분). */
-  laneCode: string;
-  laneName: string;
-  /** 지금 이 표를 도는 중. */
-  running: boolean;
-  /** 「지금 읽기」가 걸려 있으면 그 시각. 실행기가 그 회차를 **마치면** 지운다. */
-  requestedAt: string | null;
-  lastStartedAt: string | null;
-  /** 아래 결과 칸은 «마지막으로 끝난» 회차의 것이다 — 도는 중이면 그 앞 회차다. */
-  lastFinishedAt: string | null;
-  lastStatusCode: string | null;
-  lastReadCount: number | null;
-  lastAppliedCount: number | null;
-  lastFailedCount: number | null;
-  lastHeldCount: number | null;
-  lastErrorMessage: string | null;
-  /** 다음 주기 회차 예정. 실행기가 아직 한 번도 돌지 않았으면 null. */
-  nextRunAt: string | null;
-}
+type ErpSyncTableStatus = components['schemas']['ErpSyncTableStatus'];
 
-export interface SyncTablesResult {
-  /** 이 서버에서 ERP 연동이 켜져 있는가. 꺼져 있으면 「지금 읽기」가 400 이다. */
-  enabled: boolean;
+/**
+ * 표 하나의 상태. 결과 칸(`last*`)은 «마지막으로 끝난» 회차의 것이다 — 도는 중이면 그 앞 회차다.
+ * `lastStatusCode` 만 넓힌다 — 서버가 결과를 더해도 화면은 모르는 코드를 그대로 낸다.
+ */
+export type SyncTableStatus = Omit<ErpSyncTableStatus, 'lastStatusCode'> & {
+  lastStatusCode: NonNullable<ErpSyncTableStatus['lastStatusCode']> | (string & {}) | null;
+};
+
+/** `enabled` 가 거짓이면 이 서버에서 ERP 연동이 꺼져 있어 「지금 읽기」가 400 이다. */
+export type SyncTablesResult = Omit<components['schemas']['ErpSyncStatus'], 'items'> & {
   items: SyncTableStatus[];
-}
+};
 
-export interface SyncRunAccepted {
-  interfaceCode: string;
-  requestedAt: string;
-}
-
-interface SyncTablesClient {
-  GET: (path: '/integration/erp-sync/tables') => Promise<ApiCallResult<SyncTablesResult>>;
-  POST: (
-    path: '/integration/erp-sync/tables/{interfaceCode}:run',
-    init: { params: { path: { interfaceCode: string } } },
-  ) => Promise<ApiCallResult<SyncRunAccepted>>;
-}
+export type SyncRunAccepted =
+  paths['/integration/erp-sync/tables/{interfaceCode}:run']['post']['responses'][202]['content']['application/json'];
 
 /** 요청이 걸려 있거나 도는 동안 다시 읽는 간격. 실행기가 10초마다 요청을 보므로 그보다 잘게 본다. */
 export const SYNC_POLL_MS = 3000;
@@ -94,29 +63,27 @@ export const isSyncBusy = (data: SyncTablesResult | undefined): boolean =>
  */
 export const useSyncTables = (): UseQueryResult<SyncTablesResult> => {
   const { client } = useApiClient();
-  const syncClient = client as unknown as SyncTablesClient;
 
   return useQuery({
     queryKey: syncTableKeys.all,
-    queryFn: () => runRequest(() => syncClient.GET('/integration/erp-sync/tables')),
+    queryFn: () => runRequest(() => client.GET('/integration/erp-sync/tables')),
     refetchInterval: (query) => (isSyncBusy(query.state.data) ? SYNC_POLL_MS : false),
   });
 };
 
 /**
- * 「지금 읽기」. **멱등 키를 보내지 않는다** — 계약 밖 경로라 요구하지 않고, 이미 걸린 요청은 서버가
+ * 「지금 읽기」. **멱등 키를 보내지 않는다** — 계약이 요구하지 않고, 이미 걸린 요청은 서버가
  * 처음 시각을 지켜 여러 번 눌러도 한 번 돈다. 받으면 목록을 다시 읽어 요청 시각을 보이고, 그때부터
  * `useSyncTables` 가 바쁜 동안 다시 읽는다.
  */
 export const useRequestSyncRun = (): UseMutationResult<SyncRunAccepted, Error, string> => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
-  const syncClient = client as unknown as SyncTablesClient;
 
   return useMutation({
     mutationFn: (interfaceCode: string) =>
       runRequest(() =>
-        syncClient.POST('/integration/erp-sync/tables/{interfaceCode}:run', {
+        client.POST('/integration/erp-sync/tables/{interfaceCode}:run', {
           params: { path: { interfaceCode } },
         }),
       ),

@@ -22,6 +22,8 @@ export const common = {
   /** 선택지가 많은 선택 칸(`patterns/select.tsx`)의 목록 맨 위 검색창 — 접근명과 빈 결과. */
   selectSearch: '검색',
   selectNoMatch: '맞는 항목이 없습니다',
+  selectLoading: '불러오는 중…',
+  selectLoadFailed: '목록을 불러오지 못했습니다',
   deactivate: '사용 중지',
   saved: '저장했습니다',
   created: '등록했습니다',
@@ -90,12 +92,24 @@ export const common = {
     pickRequest: '검사 의뢰를 선택하세요',
     pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
     close: '닫기',
-    closeDetail: '상세 닫기',
     splitter: '목록과 상세 폭 나누기',
     heightSplitter: '목록과 상세 높이 나누기',
     layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
     layoutSideBySide: '좌우 배치',
     layoutStacked: '상하 배치',
+    /** 검사 입력 단계(PQC · OQC · #197) — IQC 와 같은 말. */
+    stepConfirm: '확정',
+    stepChange: '펼쳐서 수정',
+    /** 수량 줄의 입력 현황 「전체 34 EA 중 34 EA 미입력」(#197). */
+    qtyTotalOf: (total: string): string => `전체 ${total} 중`,
+    qtyShortBy: (short: string): string => `${short} 미입력`,
+    qtyOverBy: (over: string): string => `${over} 초과`,
+    qtyUncountable: '수량 확인 필요',
+    /** 접힌 수량 단계의 요약(#197). */
+    qtySummary: (accepted: string, rejected: string, held: string): string =>
+      `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 IQC 와 같은 요약 표기(#197)
+    /** 창이 좁아 좌우 배치를 쓸 수 없을 때 그 단추의 설명(#197). */
+    layoutNarrow: '창이 좁아 상하로 배치됩니다.',
   },
   reference: {
     empty: '—',

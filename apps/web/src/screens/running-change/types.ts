@@ -1,4 +1,6 @@
-import type { components, MaterialConsumptionForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type MaterialConsumption = components['schemas']['MaterialConsumption'];
 
 /**
  * P-02-11 화면 슬라이스의 계약.
@@ -9,7 +11,7 @@ import type { components, MaterialConsumptionForward } from '@omf-mes/api-client
  * 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type MaterialConsumptionResponse = MaterialConsumptionForward;
+type MaterialConsumptionResponse = MaterialConsumption;
 
 /**
  * 《현재 투입》 한 줄 — **교체 대상의 모집단이기도 하다**(스펙 §3).

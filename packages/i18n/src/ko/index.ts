@@ -56,7 +56,6 @@ import { login } from './login';
 import { session } from './session';
 import { stockAdjust } from './stock-adjust';
 import { passwordChange } from './password-change';
-import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
@@ -64,6 +63,7 @@ import { handoverAlertSettings } from './handover-alert-settings';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
+import { partsIqcInspection } from './parts-iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
@@ -215,7 +215,6 @@ export const ko = {
   session,
   stockAdjust,
   passwordChange,
-  putawayRule,
   documentProgress,
   notificationCenter,
   alarmRecipientSettings,
@@ -223,6 +222,7 @@ export const ko = {
   zaloConnection,
   dispatchHistory,
   iqcInspection,
+  partsIqcInspection,
   pqcInspection,
   productionResult,
   equipmentMaster,

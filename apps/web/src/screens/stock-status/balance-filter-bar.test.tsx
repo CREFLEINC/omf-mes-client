@@ -1,7 +1,12 @@
+import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { ApiClientProvider } from '../../patterns/api-context';
 
 import { BalanceFilterBar, type BalanceFilterBarProps } from './balance-filter-bar';
 import { EMPTY_FILTERS, type BalanceFilters } from './filters';
@@ -12,7 +17,6 @@ const WAREHOUSES = [
   { value: '9101', label: 'SAMPLE-WH-01 · 합성 자재창고 가' },
   { value: '9102', label: 'SAMPLE-WH-02 · 합성 자재창고 나' },
 ];
-const ITEMS = [{ value: '9301', label: 'SAMPLE-ITEM-01 · 합성 품목 가' }];
 const LOTS = [{ value: '9401', label: 'SAMPLE-LOT-0001' }];
 const LOCATIONS = [{ value: '9201', label: 'SAMPLE-LOC-01 · 합성 위치 가' }];
 
@@ -24,7 +28,6 @@ const filters = (overrides: Partial<BalanceFilters> = {}): BalanceFilters => ({
 const baseProps = (overrides: Partial<BalanceFilterBarProps> = {}): BalanceFilterBarProps => ({
   appliedFilters: EMPTY_FILTERS,
   warehouseOptions: WAREHOUSES,
-  itemOptions: ITEMS,
   lotOptions: LOTS,
   locationOptions: LOCATIONS,
   qualityStatusOptions: [],
@@ -46,7 +49,15 @@ const baseProps = (overrides: Partial<BalanceFilterBarProps> = {}): BalanceFilte
 
 const renderBar = (overrides: Partial<BalanceFilterBarProps> = {}) => {
   const props = baseProps(overrides);
-  const view = render(<BalanceFilterBar {...props} />);
+  const queryClient = new QueryClient();
+  const apiClient = createApiClient({ baseUrl: 'http://test.invalid' });
+  /* 품목 칸(`ItemSelect`)이 조회 프로바이더를 쓴다 — 다시 그려도 남게 wrapper 로 감싼다. */
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+    </QueryClientProvider>
+  );
+  const view = render(<BalanceFilterBar {...props} />, { wrapper });
 
   return { ...props, ...view, user: userEvent.setup() };
 };

@@ -46,7 +46,9 @@ const task = (overrides: Record<string, unknown> = {}) => ({
   taskQty: 120,
   uomId: 9,
   fromLocationId: 1,
-  recommendedLocationId: 5,
+  allowedLocations: [
+    { locationId: 5, locationCode: 'A-01-03', locationName: 'A-01-03', locationLevelCode: 'CELL' },
+  ],
   warehouseId: 2,
   priorityNo: 1,
   statusCode: 'PENDING',
@@ -58,24 +60,41 @@ const location = (overrides: Record<string, unknown> = {}) => ({
   warehouseId: 2,
   locationCode: 'A-01-03',
   locationName: '자재 A열',
-  locationTypeCode: 'RACK',
-  allowMixedItem: true,
-  allowMixedLot: true,
+  aliasName: null,
+  locationLevelCode: 'CELL',
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
   isActive: true,
   ...overrides,
 });
 
-/** 임시 유형이어야 이 화면이 고를 수 있는 자리로 가려낸다. */
-const TEMP = location({
+/** 작업자가 임시로 둘 자리로 고르는 위치. 재고를 둘 수 있는 맨 아래 위치면 어느 것이든 된다. */
+const SPARE = location({
   locationId: 9,
   locationCode: 'TMP-01',
-  locationName: '임시 자리',
-  locationTypeCode: 'TEMP',
+  locationName: '여유 자리',
+});
+
+/** 적치 대기. 막 나온 물건이 있던 곳이라 고를 자리에서 뺀다. */
+const STAGING = location({
+  locationId: 7,
+  locationCode: 'STG-01',
+  locationName: '적치 대기',
+  systemRoleCode: 'PUTAWAY_STAGING',
 });
 
 /** 목록은 대체 경로라 접혀 있다. 고르려면 먼저 편다. */
 const openList = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: '목록에서 선택' }));
+};
+
+/** 목록을 펴서 TMP-01 을 고른다. */
+const pickFromList = async (user: ReturnType<typeof userEvent.setup>) => {
+  await screen.findByLabelText('임시 위치 코드 스캔');
+  await openList(user);
+  await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
+  await user.click(await screen.findByRole('option', { name: /TMP-01/ }));
 };
 
 const codeValue = (code: string, name: string) => ({
@@ -99,7 +118,7 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/mdm/locations',
     respond: (req) => {
       const code = new URL(req.url).searchParams.get('locationCode');
-      const all = options.locations ?? [location(), TEMP];
+      const all = options.locations ?? [location(), SPARE];
 
       return jsonResponse({
         items:
@@ -159,6 +178,13 @@ const scan = (code: string) => {
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
 };
 
+/** 자리는 이 화면에서 고른다. 스캔이 정본이라 스캔으로 잡는다. */
+const pickSpare = async () => {
+  await screen.findByLabelText('임시 위치 코드 스캔');
+  scan('TMP-01');
+  await screen.findByText('TMP-01 여유 자리');
+};
+
 beforeEach(() => {
   held.failWrite = null;
   store.clear();
@@ -209,47 +235,20 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /*
-   * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있다. 다음 사람이
-   * 무엇을 옮겨야 하는지 알 수 없다.
+   * 임시로 둘 자리는 작업자가 고른다 - 재고를 둘 수 있는 위치는 모두 보인다. 적치 대기는
+   * 막 나온 물건이 있던 곳이라, 거기로 되돌리면 옮길 대상이 다시 대기에 쌓인다.
    */
-  it('목록에 임시 위치만 보인다', async () => {
+  it('목록에 둘 수 있는 위치를 보이고 적치 대기는 뺀다', async () => {
     const user = userEvent.setup();
-    mount({ task: task() });
+    mount({ task: task() }, [], { locations: [location(), SPARE, STAGING] });
 
     await screen.findByLabelText('임시 위치 코드 스캔');
     await openList(user);
     await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
 
     expect(await screen.findByRole('option', { name: /TMP-01/ })).toBeTruthy();
-    expect(screen.queryByRole('option', { name: /A-01-03/ })).toBeNull();
-  });
-
-  /* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 목록을 비우면 포화된 현장이 선다. */
-  it('임시 유형으로 등록된 위치가 없으면 전체를 보이고 그 사실을 말한다', async () => {
-    const user = userEvent.setup();
-    mount({ task: task() }, [], { locations: [location()] });
-
-    expect(
-      await screen.findByText('임시 유형으로 등록된 위치가 없어 전체 위치를 보입니다'),
-    ).toBeTruthy();
-
-    await openList(user);
-    await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
-
-    expect(await screen.findByRole('option', { name: /A-01-03/ })).toBeTruthy();
-  });
-
-  /*
-   * 앞 화면은 그 자리에 둘 수 없어서 여기로 보낸다. 넘겨받은 자리를 그대로 고른 것으로 두면
-   * 막혔던 그 자리에 임시 적치가 기록된다.
-   */
-  it('임시 유형이 아닌 자리를 넘겨받으면 고른 것으로 두지 않는다', async () => {
-    mount({ task: task(), location: location() });
-
-    await screen.findByLabelText('임시 위치 코드 스캔');
-
-    expect(screen.queryByText('A-01-03 자재 A열')).toBeNull();
-    expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
+    expect(screen.getByRole('option', { name: /A-01-03/ })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: /STG-01/ })).toBeNull();
   });
 
   /* 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
@@ -264,7 +263,8 @@ describe('임시 위치 적재 화면', () => {
 
   /* 서버가 둘 다 비면 막는다. 무엇이 있어야 하는지를 먼저 말한다. */
   it('사유와 비고가 둘 다 비면 등록을 막고 무엇이 필요한지 말한다', async () => {
-    mount({ task: task(), location: TEMP });
+    mount({ task: task() });
+    await pickSpare();
 
     expect(await screen.findByText('사유를 고르거나 비고를 적으세요')).toBeTruthy();
     expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
@@ -274,9 +274,9 @@ describe('임시 위치 적재 화면', () => {
 
   it('비고만 적어도 등록할 수 있다', async () => {
     const user = userEvent.setup();
-    mount({ task: task(), location: TEMP });
+    mount({ task: task() });
 
-    await screen.findByLabelText('비고');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
@@ -298,7 +298,8 @@ describe('임시 위치 적재 화면', () => {
    */
   it('사유는 한 번 눌러 고른다', async () => {
     const user = userEvent.setup();
-    mount({ task: task(), location: TEMP });
+    mount({ task: task() });
+    await pickSpare();
 
     const chosen = await screen.findByRole('radio', { name: '정위치 포화' });
     expect(chosen).not.toBeDisabled();
@@ -311,18 +312,14 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /*
-   * 선택칸은 임시 유형만 담고 스캔은 창고 전체를 코드로 조회한다. 손으로 넣는 길이 없으면
-   * 라벨이 상한 자리가 임시 유형이 아닐 때 그 자리를 정할 방법이 사라진다 - 정위치가 막혀
-   * 여기까지 온 뒤라 물러설 데도 없다.
+   * 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길이 없으면 라벨이 상한 자리를 정할 방법이
+   * 사라진다 - 정위치가 막혀 여기까지 온 뒤라 물러설 데도 없다.
    */
-  it('목록에 없는 자리도 손으로 쳐서 잡는다', async () => {
+  it('위치 코드를 손으로 쳐서 잡는다', async () => {
     const user = userEvent.setup();
     mount({ task: task() });
 
     await screen.findByLabelText('임시 위치 코드 스캔');
-    await openList(user);
-    /* A-01-03 은 임시 유형이 아니라 선택칸이 담지 않는다. */
-    expect(screen.queryByText('A-01-03 자재 A열')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('임시 위치 코드 스캔'), 'A-01-03');
@@ -340,36 +337,36 @@ describe('임시 위치 적재 화면', () => {
     scan('TMP-01');
 
     /* 확인 줄과 선택칸이 같은 자리를 가리킨다 - 둘이 갈리면 어느 쪽을 믿을지 알 수 없다. */
-    expect(await screen.findAllByText('TMP-01 임시 자리')).toHaveLength(2);
+    expect(await screen.findAllByText('TMP-01 여유 자리')).toHaveLength(2);
   });
 
   /*
    * 선택칸이 등록되는 자리와 다른 자리를 가리키면, 화면이 두 자리를 동시에 말하게 된다.
    * 되돌릴 수 없는 재고 위치 기록이라 작업자가 어느 쪽을 믿을지 정할 근거가 있어야 한다.
    */
-  it('앞 화면의 위치가 있어도 스캔하면 선택칸이 스캔한 자리를 가리킨다', async () => {
+  it('목록에서 고른 뒤 스캔하면 선택칸이 스캔한 자리를 가리킨다', async () => {
     const user = userEvent.setup();
-    mount({ task: task(), location: TEMP });
+    mount({ task: task() });
 
-    await screen.findByLabelText('임시 위치 코드 스캔');
-    await openList(user);
-    expect(await screen.findAllByText('TMP-01 임시 자리')).toHaveLength(2);
+    await pickFromList(user);
+    expect(await screen.findAllByText('TMP-01 여유 자리')).toHaveLength(2);
 
     scan('A-01-03');
 
     expect((await screen.findAllByText('A-01-03 자재 A열')).length).toBeGreaterThan(1);
-    expect(screen.queryByText('TMP-01 임시 자리')).toBeNull();
+    expect(screen.queryByText('TMP-01 여유 자리')).toBeNull();
   });
 
-  /* 빗나간 스캔에서는 가리킬 자리가 없다. 앞 화면의 위치를 고른 것처럼 보이면 안 된다. */
-  it('스캔이 빗나가면 선택칸도 앞 화면의 위치를 가리키지 않는다', async () => {
-    mount({ task: task(), location: TEMP });
+  /* 빗나간 스캔에서는 가리킬 자리가 없다. 목록에서 고른 자리를 그대로 보이면 안 된다. */
+  it('목록에서 고른 뒤 스캔이 빗나가면 고른 자리를 가리키지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ task: task() });
 
-    await screen.findByLabelText('임시 위치 코드 스캔');
+    await pickFromList(user);
     scan('Z-99');
 
     await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다');
-    expect(screen.queryByText('TMP-01 임시 자리')).toBeNull();
+    expect(screen.queryByText('TMP-01 여유 자리')).toBeNull();
   });
 
   it('이 창고에 없는 코드를 스캔하면 찾지 못했다고 말한다', async () => {
@@ -382,13 +379,13 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /*
-   * 스캔을 시작했으면 스캔이 정본이다. 찾지 못한 것을 앞 화면의 위치로 되돌리면, 작업자는
+   * 스캔을 시작했으면 스캔이 정본이다. 찾지 못한 것을 앞서 고른 자리로 되돌리면, 작업자는
    * 자기가 비춘 자리에 넣었다고 믿는데 장부는 다른 자리를 가리킨다 - 실물을 사람이 찾아야 한다.
    */
-  it('스캔이 빗나가면 앞 화면의 위치로 등록하지 않는다', async () => {
+  it('목록에서 고른 뒤 스캔이 빗나가면 고른 자리로 등록하지 않는다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    mount({ task: task(), location: TEMP }, [
+    mount({ task: task() }, [
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary',
@@ -399,7 +396,7 @@ describe('임시 위치 적재 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('비고');
+    await pickFromList(user);
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     scan('Z-99');
 
@@ -424,7 +421,7 @@ describe('임시 위치 적재 화면', () => {
   it('빗나간 스캔 뒤 목록에서 고르면 다시 등록할 수 있다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    mount({ task: task(), location: TEMP }, [
+    mount({ task: task() }, [
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
@@ -463,7 +460,7 @@ describe('임시 위치 적재 화면', () => {
 
   /* 확인하지 못한 것을 없는 것으로 말하면 작업자가 라벨을 의심한다. */
   it('위치 조회가 실패하면 찾지 못했다고 말하지 않는다', async () => {
-    mount({ task: task(), location: TEMP }, [
+    mount({ task: task() }, [
       {
         match: (req) =>
           new URL(req.url).pathname === '/mdm/locations' &&
@@ -482,25 +479,11 @@ describe('임시 위치 적재 화면', () => {
     );
   });
 
-  /* 임시 위치는 수용량으로 막지 않는다. 값이 있으면 알리기만 한다. */
-  it('수용량이 있어도 막지 않고 알리기만 한다', async () => {
-    const user = userEvent.setup();
-    mount({ task: task(), location: { ...TEMP, capacityQty: 100 } });
-
-    await screen.findByLabelText('비고');
-    await user.type(screen.getByLabelText('비고'), '통로에 둠');
-
-    expect(screen.getByText('수용량 100 — 임시 위치라 막지 않습니다')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
-      false,
-    );
-  });
-
   /* 사번은 인증이 아니라 귀속이다. 정상 적치와 다른 경로로 보낸다. */
   it('등록은 임시 경로로 사번과 멱등키를 실어 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    mount({ task: task(), location: TEMP }, [
+    mount({ task: task() }, [
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
@@ -512,7 +495,7 @@ describe('임시 위치 적재 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('비고');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
@@ -537,7 +520,7 @@ describe('임시 위치 적재 화면', () => {
   /* 이 화면은 닫히지 않는다. 정위치로 옮기는 것은 다른 화면이 한다. */
   it('정위치 이동을 여기서 하지 않는다고 말한다', async () => {
     const user = userEvent.setup();
-    mount({ task: task(), location: TEMP }, [
+    mount({ task: task() }, [
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary',
@@ -545,7 +528,7 @@ describe('임시 위치 적재 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('비고');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
@@ -568,9 +551,9 @@ describe('임시 위치 적재 화면', () => {
   it('같은 틱에 등록을 세 번 눌러도 한 건만 나간다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    mount({ task: task(), location: TEMP }, [tempRoute(seen)]);
+    mount({ task: task() }, [tempRoute(seen)]);
 
-    await screen.findByLabelText('비고');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     const button = screen.getByRole('button', { name: '임시 적치 등록' });
@@ -587,9 +570,9 @@ describe('임시 위치 적재 화면', () => {
   it('담아 두지 못하면 기록되지 않았다고 말한다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    mount({ task: task(), location: TEMP }, [tempRoute(seen)]);
+    mount({ task: task() }, [tempRoute(seen)]);
 
-    await screen.findByLabelText('비고');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     held.failWrite = 'outbox';
@@ -622,9 +605,11 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
    * 적치 위치가 여전히 비어 있어, 그것만 보고는 이미 끝난 지시를 또 적는다.
    */
   it('서버가 이미 적치됐다고 하면 넘겨받은 스냅숏이 비어 있어도 막는다', async () => {
-    mount({ task: task(), location: TEMP }, [], { fresh: task({ actualLocationId: 9 }) });
+    const user = userEvent.setup();
+    mount({ task: task() }, [], { fresh: task({ actualLocationId: 9 }) });
 
-    await screen.findByLabelText('임시 위치 코드 스캔');
+    await pickSpare();
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     expect(await screen.findByText('이미 임시 적치되었습니다')).toBeTruthy();
     await waitFor(() => {
@@ -643,7 +628,7 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
     /* 앱에서 화면을 오가는 것은 캐시를 버리지 않는다. 같은 캐시로 재진입을 잰다. */
     const cache = createTestQueryClient();
     const first = mount(
-      { task: task(), location: TEMP },
+      { task: task() },
       [
         {
           match: (req) =>
@@ -665,7 +650,7 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
       cache,
     );
 
-    await screen.findByLabelText('임시 위치 코드 스캔');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
@@ -675,7 +660,7 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
     first.unmount();
 
     mount(
-      { task: task(), location: TEMP },
+      { task: task() },
       [
         {
           match: (req) =>
@@ -695,7 +680,7 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
       cache,
     );
 
-    await screen.findByLabelText('임시 위치 코드 스캔');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     expect(await screen.findByText('이미 임시 적치되었습니다')).toBeTruthy();
@@ -709,9 +694,9 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
   it('담아 둔 등록이 있으면 다시 들어와도 막고 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const first = mount({ task: task(), location: TEMP }, [temporaryRoute(seen, true)]);
+    const first = mount({ task: task() }, [temporaryRoute(seen, true)]);
 
-    await screen.findByLabelText('임시 위치 코드 스캔');
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
@@ -720,14 +705,15 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
 
     first.unmount();
 
-    mount({ task: task(), location: TEMP }, [temporaryRoute(seen, true)]);
+    mount({ task: task() }, [temporaryRoute(seen, true)]);
 
     expect(await screen.findByText('이 지시의 임시 적치가 이미 전송 대기 중입니다')).toBeTruthy();
 
     /*
-     * 비고를 다시 적어 다른 이유로 잠기지 않게 한 뒤에 잰다. 비워 두면 「사유·비고가 둘 다
-     * 비었다」로 잠겨, 큐를 셈에 넣지 않아도 시험이 통과한다.
+     * 자리를 고르고 비고를 다시 적어 다른 이유로 잠기지 않게 한 뒤에 잰다. 비워 두면 「사유·비고가
+     * 둘 다 비었다」로 잠겨, 큐를 셈에 넣지 않아도 시험이 통과한다.
      */
+    await pickSpare();
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     await waitFor(() => {

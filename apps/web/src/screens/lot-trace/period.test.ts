@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defaultPeriod, validatePeriod } from './period';
 
-describe('입출고 현황 기간(계약: 시작 필수, 최대 366일)', () => {
+describe('기간별 이력 기간(계약: 시작 필수, 최대 366일)', () => {
   it('시작이 없으면 시작일을 고르라고 한다', () => {
     expect(validatePeriod({ from: '', to: '2026-10-26' })).toBe('기간 시작일을 고르세요');
   });

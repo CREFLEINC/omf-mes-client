@@ -1,6 +1,7 @@
 import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { ItemPickerDialog } from '../../patterns/item-picker';
 import { Select } from '../../patterns/select';
@@ -28,6 +29,7 @@ export interface PlanFilterBarProps {
  */
 export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanFilterBarProps) => {
   const typeSelectId = useId();
+  const statusSelectId = useId();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const openPicker = (): void => setIsPickerOpen(true);
   const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
@@ -38,11 +40,20 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
    * 편집 중인 값은 draft에만 있고 조건 칩에 미러하지 않는다 — 칩은 「적용된 조건」의 표시다.
    */
   const [draft, setDraft] = useState<PlanFilters>(appliedFilters);
+  /* 조건을 바꾸면 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(사용자 지시 · #208). */
+  const applyNow = (patch: Partial<PlanFilters>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    onApplyFilters(next);
+  };
   const {
     q: appliedQ,
     inspectionTypeCode: appliedInspectionTypeCode,
     itemId: appliedItemId,
     includeInactive: appliedIncludeInactive,
+    inactiveOnly: appliedInactiveOnly,
+    unapprovedOnly: appliedUnapprovedOnly,
+    versionStatus: appliedVersionStatus,
   } = appliedFilters;
 
   useEffect(() => {
@@ -51,8 +62,19 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
       inspectionTypeCode: appliedInspectionTypeCode,
       itemId: appliedItemId,
       includeInactive: appliedIncludeInactive,
+      inactiveOnly: appliedInactiveOnly,
+      unapprovedOnly: appliedUnapprovedOnly,
+      versionStatus: appliedVersionStatus,
     });
-  }, [appliedQ, appliedInspectionTypeCode, appliedItemId, appliedIncludeInactive]);
+  }, [
+    appliedQ,
+    appliedInspectionTypeCode,
+    appliedItemId,
+    appliedIncludeInactive,
+    appliedInactiveOnly,
+    appliedUnapprovedOnly,
+    appliedVersionStatus,
+  ]);
 
   /* 품목은 번호로 들고 이름은 품목 상세로 푼다 — 주소로 들어와 창을 거치지 않은 값도 이름이 선다. */
   const toItemId = (value: string): number | null => (value === '' ? null : Number(value));
@@ -63,10 +85,42 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
   return (
     <>
       <div className="filter-bar">
+        {/* 순서: 검사 유형 → 검사 기준 검색 → 품목 검색 → 미승인 체크(사용자 지시 · #208). */}
+        {/*
+         * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
+         * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+         */}
+        <div className="field-cell inspection-standard-type-filter">
+          <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
+          <Select
+            id={typeSelectId}
+            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
+            value={draft.inspectionTypeCode}
+            onChange={(value) => applyNow({ inspectionTypeCode: value })}
+          />
+        </div>
+
+        {/* 상태 — 가장 높은 버전의 상태로 거른다(사용자 지시 · #208). 고르면 바로 조회한다. */}
+        <div className="field-cell inspection-standard-status-filter">
+          <FieldLabel htmlFor={statusSelectId} label={t.filters.versionStatus} />
+          <Select
+            id={statusSelectId}
+            options={[
+              { value: '', label: t.filters.versionStatusAll },
+              ...(['draft', 'confirmed', 'obsolete'] as const).map((status) => ({
+                value: status,
+                label: t.filters.versionStatuses[status],
+              })),
+            ]}
+            value={draft.versionStatus}
+            onChange={(value) => applyNow({ versionStatus: value as PlanFilters['versionStatus'] })}
+          />
+        </div>
+
         {/*
          * 검사 기준은 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 조건과 같은 모양(omf-all-around#196).
          * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 기준의 코드가 검색어로 들어간다.
-         * 지우기는 값이 있을 때만 칸 안의 × 다. 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
+         * 지우기는 값이 있을 때만 칸 안의 × 다. 고르거나 지우면 바로 조회한다(#208).
          */}
         <SearchInput
           label={t.filters.searchLabel}
@@ -79,12 +133,12 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           onClick={openPicker}
           onSearch={openPicker}
           onChange={() => undefined}
-          onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
+          onClear={() => applyNow({ q: '' })}
         />
 
         {/*
          * 품목 — 검사 조회·판정의 품목 조건과 같은 모양(#196). 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다.
-         * 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거). 지난 기준도 찾게 사용 중지 품목까지 찾는다.
+         * 고르거나 지우면 바로 조회한다(#208). 지난 기준도 찾게 사용 중지 품목까지 찾는다.
          */}
         <SearchInput
           label={t.filters.item}
@@ -97,32 +151,21 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           onClick={openItemPicker}
           onSearch={openItemPicker}
           onChange={() => undefined}
-          onClear={() => setDraft((prev) => ({ ...prev, itemId: '' }))}
+          onClear={() => applyNow({ itemId: '' })}
         />
 
         {/*
-         * 규범 3-2 — 선택지 목록이 트리거 폭에 갇혀 있어(디자인 시스템 이슈 #62) 최소 폭을 주지 않으면
-         * 「IQC (수입검사)」가 「IQC (수⋯」로 잘려 무엇을 고르는지 읽을 수 없다.
+         * 「미승인」만 보기(사용자 지시 · #208) — 바로 적용한다. 사용 여부(전체 · 사용 · 미사용)는 탭 줄의 칩이 맡아
+         * 종전 「미사용 포함」 체크는 걷었다.
          */}
-        <div className="field-cell wide-select">
-          <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
-          <Select
-            id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
-            value={draft.inspectionTypeCode}
-            onChange={(value) => setDraft((prev) => ({ ...prev, inspectionTypeCode: value }))}
-          />
-        </div>
-
-        {/* 해제 축이라 변경 즉시 적용한다. */}
         <div className="field-cell field-cell-unlabeled">
           <Checkbox
-            checked={appliedFilters.includeInactive}
+            checked={appliedFilters.unapprovedOnly}
             onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+              onApplyFilters({ ...appliedFilters, unapprovedOnly: event.target.checked })
             }
           >
-            {messages.common.includeInactive}
+            {t.filters.unapprovedOnly}
           </Checkbox>
         </div>
 
@@ -162,31 +205,39 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
         </div>
       )}
 
-      {isItemPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
-          includeInactive
-          showAvailability={false}
-          confirmLabel={t.filters.itemPick}
-          onClose={() => setIsItemPickerOpen(false)}
-          onConfirm={([item]) => {
-            if (item !== undefined) setDraft((prev) => ({ ...prev, itemId: String(item.itemId) }));
-            setIsItemPickerOpen(false);
-          }}
-        />
-      )}
+      {/*
+       * 두 검색 창은 조회 카드 밖(body)에 연다 — 카드 안에 두면 카드가 열린 창도 칸 하나로 쳐
+       * 칸 사이 간격만큼 카드 높이가 늘어난다(사용자 지적 · #208).
+       */}
+      {isItemPickerOpen &&
+        createPortal(
+          <ItemPickerDialog
+            multiple={false}
+            compact
+            includeInactive
+            showAvailability={false}
+            confirmLabel={t.filters.itemPick}
+            onClose={() => setIsItemPickerOpen(false)}
+            onConfirm={([item]) => {
+              if (item !== undefined) applyNow({ itemId: String(item.itemId) });
+              setIsItemPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
 
-      {isPickerOpen && (
-        <PlanPickerDialog
-          includeInactive={appliedFilters.includeInactive}
-          onClose={() => setIsPickerOpen(false)}
-          onConfirm={(plan) => {
-            setDraft((prev) => ({ ...prev, q: plan.inspectionPlanCode }));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
+      {isPickerOpen &&
+        createPortal(
+          <PlanPickerDialog
+            includeInactive={appliedFilters.includeInactive || appliedFilters.inactiveOnly}
+            onClose={() => setIsPickerOpen(false)}
+            onConfirm={(plan) => {
+              applyNow({ q: plan.inspectionPlanCode });
+              setIsPickerOpen(false);
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 };

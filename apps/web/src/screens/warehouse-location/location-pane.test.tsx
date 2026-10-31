@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { locationFixtures } from './fixtures';
 import { LocationPane } from './location-pane';
-import { buildLocationRows } from './location-tree';
+import { buildLocationRows } from '../../patterns/location-tree';
 
 const expandedIds = new Set([2001, 2002]);
 const rows = buildLocationRows(locationFixtures, expandedIds);
@@ -17,7 +17,9 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
   const onAddRoot = vi.fn();
   const onAddChild = vi.fn();
   const onEdit = vi.fn();
-  const onGenerateLabels = vi.fn();
+  const onCollapseAll = vi.fn();
+  const onExpandAll = vi.fn();
+  const onPrintLabels = vi.fn();
 
   render(
     <LocationPane
@@ -25,6 +27,8 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       isLoading={false}
       expandedIds={expandedIds}
       onToggleExpand={onToggleExpand}
+      onCollapseAll={onCollapseAll}
+      onExpandAll={onExpandAll}
       selectedIds={[]}
       onSelectionChange={onSelectionChange}
       filterText=""
@@ -34,9 +38,10 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onAddRoot={onAddRoot}
       canAddChild={false}
       onAddChild={onAddChild}
+      canPrintLabels={false}
+      isPrintingLabels={false}
+      onPrintLabels={onPrintLabels}
       onEdit={onEdit}
-      onGenerateLabels={onGenerateLabels}
-      isGeneratingLabels={false}
       actionBanner={null}
       loadError={null}
       {...overrides}
@@ -50,7 +55,9 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
     onAddRoot,
     onAddChild,
     onEdit,
-    onGenerateLabels,
+    onCollapseAll,
+    onExpandAll,
+    onPrintLabels,
   };
 };
 
@@ -73,6 +80,46 @@ describe('LocationPane', () => {
       'data-depth',
       '0',
     );
+  });
+
+  it('단계는 서버 값을 이름으로, 비어 오면 줄표로 보인다', () => {
+    const [zone, rack] = locationFixtures;
+    if (zone === undefined || rack === undefined) throw new Error('fixture');
+    const leveled = [
+      { ...zone, locationLevelCode: 'ZONE' as const },
+      { ...rack, locationLevelCode: null },
+    ];
+    renderPane({ rows: buildLocationRows(leveled, expandedIds) });
+
+    expect(screen.getByRole('cell', { name: '구역' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '—' })).toBeInTheDocument();
+  });
+
+  /* 서버가 만든 위치는 단계가 구역으로 와도 역할 이름으로 — 수정 창 머리와 같다. */
+  it('서버가 만든 위치의 단계 칸은 역할 이름(창고 전체 · 적치 대기)이다', () => {
+    const [zone] = locationFixtures;
+    if (zone === undefined) throw new Error('fixture');
+    const system = [
+      {
+        ...zone,
+        locationId: 2901,
+        locationCode: 'SYS-WHOLE',
+        locationLevelCode: 'ZONE' as const,
+        systemRoleCode: 'WAREHOUSE_WHOLE' as const,
+      },
+      {
+        ...zone,
+        locationId: 2902,
+        locationCode: 'SYS-STAGING',
+        locationLevelCode: 'ZONE' as const,
+        systemRoleCode: 'PUTAWAY_STAGING' as const,
+      },
+    ];
+    renderPane({ rows: buildLocationRows(system, new Set()) });
+
+    expect(screen.getByRole('cell', { name: '창고 전체' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '적치 대기' })).toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: '구역' })).not.toBeInTheDocument();
   });
 
   it('접기·펴기 버튼에 상태에 맞는 접근성 이름이 있다', () => {
@@ -114,7 +161,7 @@ describe('LocationPane', () => {
   it('선택이 없으면 하위 추가가 비활성이고 사유 문구는 없다', () => {
     renderPane({ selectedIds: [] });
 
-    const button = screen.getByRole('button', { name: '하위 Location 추가' });
+    const button = screen.getByRole('button', { name: '랙 추가' });
 
     expect(button).toBeDisabled();
     expect(button).not.toHaveAttribute('aria-describedby');
@@ -123,46 +170,32 @@ describe('LocationPane', () => {
   it('선택이 2건 이상이면 하위 추가가 비활성이다', () => {
     renderPane({ selectedIds: ['2001', '2004'] });
 
-    expect(screen.getByRole('button', { name: '하위 Location 추가' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '랙 추가' })).toBeDisabled();
   });
 
   it('선택이 정확히 1건이면 하위 추가를 눌러 onAddChild를 부른다', async () => {
     const user = userEvent.setup();
     const { onAddChild } = renderPane({ selectedIds: ['2001'], canAddChild: true });
 
-    const addChild = screen.getByRole('button', { name: '하위 Location 추가' });
+    const addChild = screen.getByRole('button', { name: '랙 추가' });
     expect(addChild).not.toBeDisabled();
 
     await user.click(addChild);
     expect(onAddChild).toHaveBeenCalledTimes(1);
   });
 
-  it('선택이 없으면 라벨 이미지 생성이 비활성이고 사유가 보인다', () => {
+  it('라벨 이미지 생성 단추와 선택 안내가 없다 — 라벨은 위치를 눌러 연 창에서 본다', () => {
     renderPane();
 
-    const reason = 'Location을 하나 이상 선택해 주세요.';
-    const button = screen.getByRole('button', { name: '라벨 이미지 생성' });
-
-    expect(button).toBeDisabled();
-    expect(screen.getByText(reason)).toBeInTheDocument();
-    // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
-    expect(button).toHaveAccessibleDescription(reason);
+    expect(screen.queryByRole('button', { name: '라벨 이미지 생성' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Location을 하나 이상 선택해 주세요.')).not.toBeInTheDocument();
   });
 
-  it('선택이 있으면 라벨 이미지 생성을 요청한다', async () => {
-    const user = userEvent.setup();
-    const { onGenerateLabels } = renderPane({ selectedIds: ['2001'] });
-
-    await user.click(screen.getByRole('button', { name: '라벨 이미지 생성' }));
-
-    expect(onGenerateLabels).toHaveBeenCalledTimes(1);
-  });
-
-  it('최상위 추가를 누르면 onAddRoot를 부른다', async () => {
+  it('구역 추가를 누르면 onAddRoot를 부른다', async () => {
     const user = userEvent.setup();
     const { onAddRoot } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: '최상위 Location 추가' }));
+    await user.click(screen.getByRole('button', { name: '구역 추가' }));
 
     expect(onAddRoot).toHaveBeenCalledTimes(1);
   });
@@ -174,6 +207,37 @@ describe('LocationPane', () => {
     await user.type(screen.getByLabelText('Location 검색'), 'B-01');
 
     expect(onFilterTextChange).toHaveBeenCalled();
+  });
+
+  it('검색칸은 제목 없이 접근명만 둔다', () => {
+    renderPane();
+
+    expect(screen.getByRole('searchbox', { name: 'Location 검색' })).toBeInTheDocument();
+    expect(screen.queryByText('Location 검색')).not.toBeInTheDocument();
+  });
+
+  it('고른 행이 있으면 구역 추가를 막는다', () => {
+    renderPane({ selectedIds: ['2004'] });
+
+    expect(screen.getByRole('button', { name: '구역 추가' })).toBeDisabled();
+  });
+
+  it('라벨 일괄 출력은 랙 추가 바로 오른쪽에 있고, 낼 것이 있을 때만 누를 수 있다', async () => {
+    const user = userEvent.setup();
+    const { onPrintLabels } = renderPane({ canPrintLabels: true });
+
+    const print = screen.getByRole('button', { name: '라벨 일괄 출력' });
+    expect(screen.getByRole('button', { name: '랙 추가' }).nextElementSibling).toBe(print);
+    await user.click(print);
+    expect(onPrintLabels).toHaveBeenCalledTimes(1);
+  });
+
+  it('전체 접기 · 펼치기는 펼친 것이 있는지에 따라 바뀐다', async () => {
+    const user = userEvent.setup();
+    const { onCollapseAll } = renderPane();
+
+    await user.click(screen.getByRole('button', { name: '전체 접기' }));
+    expect(onCollapseAll).toHaveBeenCalledTimes(1);
   });
 
   it('로딩 중에는 표 대신 스켈레톤을 낸다', () => {
@@ -205,21 +269,21 @@ describe('LocationPane', () => {
   it('loadError가 있어도 추가 액션 줄은 남는다', () => {
     renderPane({ rows: [], loadError: <AlertBanner variant="error" title="실패" /> });
 
-    expect(screen.getByRole('button', { name: '최상위 Location 추가' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '구역 추가' })).toBeInTheDocument();
   });
 
   /* Location 탭 정돈(omf-all-around#17 4차) — 문구·배치만, 활성 조건은 그대로. */
-  it('등록할 수 있으면 빈 상태가 최상위 Location 추가를 안내한다', () => {
+  it('등록할 수 있으면 빈 상태가 구역 추가를 안내한다', () => {
     renderPane({ rows: [] });
 
-    expect(screen.getByText('최상위 Location을 추가해 주세요.')).toBeInTheDocument();
+    expect(screen.getByText('구역을 추가해 주세요.')).toBeInTheDocument();
   });
 
-  it('최상위 추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
+  it('구역 추가가 막혀 있으면 빈 상태가 추가를 권하지 않고 사유를 보인다', () => {
     const reason = 'Location 계층을 불러온 뒤 추가할 수 있습니다.';
     renderPane({ rows: [], canAddRoot: false, addRootDisabledReason: reason });
 
-    expect(screen.queryByText('최상위 Location을 추가해 주세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('구역을 추가해 주세요.')).not.toBeInTheDocument();
     expect(screen.getAllByText(reason).length).toBeGreaterThan(0);
   });
 });

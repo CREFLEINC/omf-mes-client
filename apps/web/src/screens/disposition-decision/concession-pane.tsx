@@ -1,5 +1,5 @@
 import { Button, Chip, Table, TextArea, TextField, type Column } from '@crefle/web-ui';
-import type { components, ConcessionCreate } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
@@ -11,6 +11,8 @@ import { Select } from '../../patterns/select';
 import { toBusinessDate } from './decision-form';
 import { dispositionKeys } from './queries';
 import type { NonconformanceLotRow } from './types';
+
+type ConcessionCreate = components['schemas']['ConcessionCreate'];
 
 type Concession = components['schemas']['Concession'];
 

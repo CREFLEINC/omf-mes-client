@@ -27,7 +27,7 @@
 | W-06-05 | 품목 확장속성 | 웹 | `/master-data/item-extended-attrs` |
 | W-06-11 | 마스터 변경관리 | 웹 | `/master-data/master-change` |
 
-⚠ **창고·Location(W-06-07)·적치 규칙(W-06-14)은 이 문서 범위가 아니다.** 사이드바 「기준정보」의 첫 두 항목이지만 창고·자재 흐름과 밀접해 `docs/test-scenarios/material-warehouse.md`가 이미 다룬다.
+⚠ **창고·Location(W-06-07)은 이 문서 범위가 아니다.** 사이드바 「기준정보」의 첫 항목이지만 창고·자재 흐름과 밀접해 `docs/test-scenarios/material-warehouse.md`가 이미 다룬다.
 
 ⚠ **결재선 정의(W-06-15)도 이 문서 범위가 아니다.** 코드 주석이 "결재선은 마스터이지만 업무 기준정보가 아니라 운영 설정"이라고 명시해 사이드바 「시스템 관리」 섹션에 있다.
 

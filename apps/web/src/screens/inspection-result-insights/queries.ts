@@ -1,4 +1,4 @@
-import type { ApiClient, components, InspectionResultForward } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -14,7 +14,7 @@ import {
 
 type Client = ApiClient['client'];
 /** 서버 선행 P-76 — 검사자 이름(`inspectorName`)을 함께 받는다(omf-all-around#85). */
-export type InspectionResult = InspectionResultForward;
+export type InspectionResult = components['schemas']['InspectionResult'];
 export type InspectionRequest = components['schemas']['InspectionRequest'];
 export type InspectionSummary = components['schemas']['InspectionSummary'];
 export type DefectRateTrend = components['schemas']['DefectRateTrend'];

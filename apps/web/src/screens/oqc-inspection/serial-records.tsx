@@ -1,9 +1,13 @@
 import { EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
-import type { OqcSerialRecord } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { useClientPage } from '../../patterns/client-page';
+import { PageNav } from '../../patterns/page-nav';
 import { useOqcSerialRecords } from './queries';
 import { formatDateTime } from './types';
+
+type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
 
 const t = messages.oqcInspection.serials;
 
@@ -36,33 +40,37 @@ const columns: Column<OqcSerialRecord>[] = [
  */
 export const SerialRecords = ({ inspectionRequestId }: { inspectionRequestId: number }) => {
   const records = useOqcSerialRecords(inspectionRequestId, true);
+  /* 목록 표 아래와 같은 쪽 이동 줄 — 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
+  const paging = useClientPage(records.data ?? []);
 
   return (
     <section className="oqc-inspection-records" aria-label={t.recordHeading}>
       {/* 제목은 접는 줄(건수 칩과 함께)이 맡는다 — 여기서는 설명만(#136). */}
-      <p className="field-note">{t.recordHelp}</p>
       {records.isError ? (
         <p className="field-note">{t.recordFailed}</p>
       ) : records.isPending ? (
         <p className="field-note">{t.recordLoading}</p>
       ) : (
-        <div className="oqc-inspection-serial-box-table">
-          <Table
-            caption={<span className="oqc-inspection-visually-hidden">{t.recordHeading}</span>}
-            density="compact"
-            columns={columns}
-            rows={records.data}
-            getRowId={(row) => String(row.serialNumberId)}
-            empty={
-              <EmptyState
-                size="sm"
-                icon={<Icon name="assignment" size={32} />}
-                title={t.recordEmpty}
-                description={t.recordEmptyDescription}
-              />
-            }
-          />
-        </div>
+        <>
+          <div className="oqc-inspection-serial-box-table">
+            <Table
+              caption={<span className="oqc-inspection-visually-hidden">{t.recordHeading}</span>}
+              density="compact"
+              columns={columns}
+              rows={paging.rows}
+              getRowId={(row) => String(row.serialNumberId)}
+              empty={
+                <EmptyState
+                  size="sm"
+                  icon={<Icon name="assignment" size={32} />}
+                  title={t.recordEmpty}
+                  description={t.recordEmptyDescription}
+                />
+              }
+            />
+          </div>
+          <PageNav {...paging.nav} />
+        </>
       )}
     </section>
   );

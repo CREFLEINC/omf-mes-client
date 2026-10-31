@@ -3,7 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import type { ReceiveBody } from './receive-entry';
 
 /**
@@ -12,25 +12,11 @@ import type { ReceiveBody } from './receive-entry';
  * 쓰기는 `POST /logistics/inbound-receipts:per-line`(서버 #825 · 장부 P-117) — 본문은 입하 등록과 같고 **줄마다
  * 입하 한 건**이 선다(입하번호는 품목마다 하나 · 사용자 결정 2026-10-24). 모든 건이 한 트랜잭션이라 한 줄이라도 막히면
  * 아무것도 서지 않는다. 한 품목만 받을 때도 이 경로로 보낸다 — 줄이 하나일 뿐 결과가 같고, 길이 하나라 응답 읽기도 하나다.
- *
- * ⚠ **계약 사본 밖이다** — 생성 타입에 없어 이 경로만 받는 모양으로 클라이언트를 좁혀 본다(`excess-queries.ts` 와 같은 길).
- * 실행은 같은 클라이언트가 한다. 계약에 실리면 이 타입과 넓힘을 지운다.
  */
 type CodeValue = components['schemas']['CodeValue'];
-/** 입하 등록 응답과 같은 한 벌 — 머리(`inboundReceipt`)와 줄(`lines`). */
-type CreatedReceipt = components['schemas']['InboundReceiptDetailResponse'];
 
-export interface ReceivePerLineResult {
-  /** 요청 줄 순서. 건마다 줄 하나. */
-  created: CreatedReceipt[];
-}
-
-interface ReceiveClient {
-  POST(
-    path: '/logistics/inbound-receipts:per-line',
-    init: { params: { header: { 'Idempotency-Key': string } }; body: ReceiveBody },
-  ): Promise<ApiCallResult<ReceivePerLineResult>>;
-}
+/** 만들어진 입하 건 — 요청 줄 순서, 건마다 입하 등록 응답과 같은 한 벌(머리 `inboundReceipt` · 줄 `lines` 하나). */
+export type ReceivePerLineResult = components['schemas']['InboundReceiptPerLineResponse'];
 
 /** 라벨 미부착 사유 코드 그룹(입하 등록 창 · PDA 와 같다). */
 export const SUBSTITUTE_LOT_REASON_GROUP = 'SUBSTITUTE_LOT_REASON';
@@ -67,11 +53,11 @@ export interface ReceiveWriteOptions {
  */
 export const useReceivePerLine = (options: ReceiveWriteOptions): MasterWriteResult<ReceiveBody> => {
   const { client } = useApiClient();
-  const receiveClient = client as unknown as ReceiveClient;
 
   return useMasterWrite<ReceiveBody, ReceivePerLineResult>({
     request: (body, headers) =>
-      receiveClient.POST('/logistics/inbound-receipts:per-line', {
+      client.POST('/logistics/inbound-receipts:per-line', {
+        /* `X-Worker-No` 는 단말 토큰 요청에만 필요하다 — 관리 웹은 로그인 세션이라 싣지 않는다(server #919). */
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
         body,
       }),

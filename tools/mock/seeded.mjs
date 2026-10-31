@@ -46,7 +46,6 @@ const newId = () => (nextId += 1);
 
 const warehouseVersions = new Map(state.warehouses.map((row) => [row.warehouseId, 1]));
 const locationVersions = new Map(state.locations.map((row) => [row.locationId, 1]));
-const putawayRuleVersions = new Map(state.putawayRules.map((row) => [row.putawayRuleId, 1]));
 /* 출고 전표의 판 번호 — 상신·전기가 If-Match 를 «필수»로 받는데 토큰을 낼 곳이 없었다. */
 const goodsIssueVersions = new Map(state.goodsIssues.map((row) => [row.goodsIssueId, 1]));
 /* LOT 의 판 번호 — 마감이 If-Match 를 싣는데 상세가 토큰을 내지 않아 화면이 스스로 멈췄다. */
@@ -211,6 +210,7 @@ const on = (method, pattern, handle) => {
  * ⚠ **폐지된 `W-06-13` 만 뺐다.** 계약이 「2026-09-01 실측 **117** — 폐지된 W-06-13 제외」라고
  * 적어 두었고, 화면 문서 118건에서 그 하나를 빼면 정확히 117건이며 묶음별 건수도 실측과 같다
  * (`01` 26 · `02` 24 · `03` 6 · `04` 18 · `05` 17 · `06` 14 · `CO` 12).
+ * ⚠ 그 뒤 적치 규칙 `W-06-14` 를 지웠다(서버 #907 · 적치 규칙 제거) — 116건, `06` 13.
  * ⛔ **통합·폐지된 POP 화면(`P-02-05` · `P-02-06` · `P-02-07` · `P-04-02`)은 빼지 않는다** —
  * 빼면 실측 건수와 어긋난다. 계약이 이름을 집어 뺀 것은 `W-06-13` 하나뿐이다.
  *
@@ -333,7 +333,6 @@ const APP_PERMISSIONS = [
   { code: 'W-06-10', name: '연계 동기화 현황·실패 재처리', groupCode: '06' },
   { code: 'W-06-11', name: '마스터 변경관리 (신규 Rev 발행)', groupCode: '06' },
   { code: 'W-06-12', name: 'MES', groupCode: '06' },
-  { code: 'W-06-14', name: '적치 규칙 마스터', groupCode: '06' },
   { code: 'W-06-15', name: '결재선 정의', groupCode: '06' },
   { code: 'M-CO-01', name: '기기 등록·사번 인증', groupCode: 'CO' },
   { code: 'P-CO-01', name: '사번 경량 인증', groupCode: 'CO' },
@@ -728,7 +727,6 @@ on('POST', '/mdm/warehouses', (_params, _query, body, headers) =>
       warehouseId: newId(),
       isExternal: body?.isExternal ?? false,
       isDefect: body?.isDefect ?? false,
-      partnerId: body?.partnerId ?? null,
       isActive: true,
     };
     state.warehouses.push(warehouse);
@@ -865,7 +863,13 @@ on('PUT', '/mdm/warehouses/{warehouseId}/layout', (params, _query, body, headers
     const layout = {
       warehouseId,
       drawingAttachmentId: drawingAttachmentId ?? undefined,
-      markers: body?.markers ?? [],
+      /* 빠진 크기 · 회전은 서버처럼 기본값(0.05 · 0.05 · 0)으로 채운다(#930). */
+      markers: (body?.markers ?? []).map((marker) => ({
+        width: 0.05,
+        height: 0.05,
+        rotation: 0,
+        ...marker,
+      })),
     };
     layoutsByWarehouse.set(warehouseId, layout);
     bumpVersion(layoutVersions, warehouseId);
@@ -878,6 +882,49 @@ on('PUT', '/mdm/warehouses/{warehouseId}/layout', (params, _query, body, headers
   });
 });
 
+/*
+ * 위치(서버 #890 · #901). `isLeaf`·`hasItemRestriction` 은 저장하지 않고 응답 때 센다 — 하위를 끄거나
+ * 보관 품목을 바꾸면 바로 달라져야 한다.
+ */
+const locationView = (location) => ({
+  ...location,
+  isLeaf: !state.locations.some(
+    (row) => row.parentLocationId === location.locationId && row.isActive,
+  ),
+  hasItemRestriction: state.locationItems.some((row) => row.locationId === location.locationId),
+});
+
+/** 단계는 상위로 정한다 — 상위 없음 → 구역 · 구역 밑 → 랙 · 랙 밑 → 층 · 층 밑 → 셀. */
+const LOCATION_LEVELS = ['ZONE', 'RACK', 'LEVEL', 'CELL'];
+const levelUnder = (parent) => {
+  if (parent === undefined) return 'ZONE';
+  const at = LOCATION_LEVELS.indexOf(parent.locationLevelCode ?? '');
+
+  return at < 0 ? null : (LOCATION_LEVELS[at + 1] ?? null);
+};
+
+/**
+ * 코드는 서버가 발행한다 — 구역 Z01 · 랙 {구역}-R001 · 층 {랙}-L01 · 셀 {층}-C01, 같은 상위 안
+ * 가장 큰 번호 + 1.
+ */
+const LOCATION_CODE_PART = { ZONE: ['Z', 2], RACK: ['R', 3], LEVEL: ['L', 2], CELL: ['C', 2] };
+const issueLocationCode = (warehouseId, parent, level) => {
+  const [letter, width] = LOCATION_CODE_PART[level] ?? ['X', 2];
+  const prefix = parent === undefined ? letter : `${parent.locationCode}-${letter}`;
+  const pattern = new RegExp(`^${prefix.replace(/[-]/g, '\\-')}(\\d+)$`);
+  const largest = state.locations
+    .filter(
+      (row) =>
+        row.warehouseId === warehouseId &&
+        (row.parentLocationId ?? null) === (parent?.locationId ?? null),
+    )
+    .map((row) => pattern.exec(row.locationCode)?.[1])
+    .filter((digits) => digits !== undefined)
+    .reduce((max, digits) => Math.max(max, Number(digits)), 0);
+
+  return `${prefix}${String(largest + 1).padStart(width, '0')}`;
+};
+
 on('GET', '/mdm/locations', (_p, query) => {
   const q = query.get('q');
   const needle = q?.trim().toUpperCase();
@@ -886,13 +933,16 @@ on('GET', '/mdm/locations', (_p, query) => {
     keep(state.locations, [
       byNum(query, 'warehouseId', 'warehouseId'),
       byText(query, 'locationCode', 'locationCode'),
+      byNum(query, 'parentLocationId', 'parentLocationId'),
+      byText(query, 'locationLevelCode', 'locationLevelCode'),
       (row) =>
         needle === undefined ||
         needle === '' ||
         row.locationCode.toUpperCase().includes(needle) ||
-        row.locationName.toUpperCase().includes(needle),
+        row.locationName.toUpperCase().includes(needle) ||
+        (row.aliasName ?? '').toUpperCase().includes(needle),
       (row) => bool(query, 'includeInactive') === true || row.isActive,
-    ]),
+    ]).map(locationView),
     query,
   );
 });
@@ -902,31 +952,53 @@ on('GET', '/mdm/locations/{locationId}', (params) => {
 
   return {
     status: 200,
-    created: editableResponse(location, 'location'),
+    created: editableResponse(locationView(location), 'location'),
     headers: { ETag: resourceEtag('location', location.locationId, locationVersions) },
   };
 });
 
 on('POST', '/mdm/locations', (_params, _query, body, headers) =>
   idempotent('mdm.locations:create', headers, () => {
+    const warehouseId = body?.warehouseId;
+    const parentLocationId = body?.parentLocationId ?? null;
+    const parent =
+      parentLocationId === null
+        ? undefined
+        : state.locations.find((row) => row.locationId === parentLocationId);
+    if (parentLocationId !== null && (parent === undefined || parent.warehouseId !== warehouseId)) {
+      return fieldError('parentLocationId', 'INVALID', '이 창고의 위치가 아닙니다.');
+    }
+
+    const level = levelUnder(parent);
+    if (level === null) {
+      return fieldError('parentLocationId', 'INVALID', '셀 밑에는 위치를 둘 수 없습니다.');
+    }
+    if (body?.locationLevelCode !== undefined && body.locationLevelCode !== level) {
+      return fieldError('locationLevelCode', 'INVALID', '상위로 정해지는 단계와 다릅니다.');
+    }
+
     const location = {
-      ...body,
       locationId: newId(),
-      parentLocationId: body?.parentLocationId ?? null,
-      qualityZoneCode: body?.qualityZoneCode ?? null,
-      storageConditionCode: body?.storageConditionCode ?? null,
-      allowMixedItem: body?.allowMixedItem ?? true,
-      allowMixedLot: body?.allowMixedLot ?? true,
-      capacityQty: body?.capacityQty ?? null,
-      capacityUomId: body?.capacityUomId ?? null,
+      warehouseId,
+      parentLocationId,
+      locationCode: issueLocationCode(warehouseId, parent, level),
+      locationName: body?.locationName,
+      aliasName: body?.aliasName ?? null,
+      locationLevelCode: level,
+      systemRoleCode: null,
       isActive: true,
     };
     state.locations.push(location);
     locationVersions.set(location.locationId, 1);
-    return { status: 201, created: location };
+    return {
+      status: 201,
+      created: locationView(location),
+      headers: { ETag: resourceEtag('location', location.locationId, locationVersions) },
+    };
   }),
 );
 
+/* 수정은 이름·별칭만. 상위를 다른 값으로 보내면 400 — 코드·창고·상위는 바꾸지 않는다. */
 on('PUT', '/mdm/locations/{locationId}', (params, _query, body, headers) => {
   return idempotent(`mdm.locations:${params.locationId}:update`, headers, () => {
     const location = state.locations.find((row) => row.locationId === Number(params.locationId));
@@ -934,12 +1006,19 @@ on('PUT', '/mdm/locations/{locationId}', (params, _query, body, headers) => {
 
     const currentEtag = resourceEtag('location', location.locationId, locationVersions);
     if (!matchesEtag(headers, currentEtag)) return conflict();
+    if (
+      body?.parentLocationId !== undefined &&
+      (body.parentLocationId ?? null) !== (location.parentLocationId ?? null)
+    ) {
+      return fieldError('parentLocationId', 'INVALID', '상위 위치는 바꿀 수 없습니다.');
+    }
 
-    Object.assign(location, body);
+    if (location.systemRoleCode === null) location.locationName = body?.locationName;
+    if (body?.aliasName !== undefined) location.aliasName = body.aliasName;
     bumpVersion(locationVersions, location.locationId);
     return {
       status: 200,
-      created: location,
+      created: locationView(location),
       headers: { ETag: resourceEtag('location', location.locationId, locationVersions) },
     };
   });
@@ -954,7 +1033,7 @@ const setLocationActive = (params, headers, isActive) => {
 
   location.isActive = isActive;
   bumpVersion(locationVersions, location.locationId);
-  return location;
+  return locationView(location);
 };
 
 on('POST', '/mdm/locations/{locationId}:activate', (params, _query, _body, headers) =>
@@ -968,257 +1047,97 @@ on('POST', '/mdm/locations/{locationId}:deactivate', (params, _query, _body, hea
   ),
 );
 
-/* ── 적치 규칙 ───────────────────────────────────────────── */
+/* ── 위치 보관 품목(서버 #901) ─────────────────────────────── */
 
-const duplicatePutawayRule = (candidate, selfId = null) =>
-  state.putawayRules.find(
-    (row) =>
-      row.isActive &&
-      row.putawayRuleId !== selfId &&
-      row.itemId === candidate.itemId &&
-      row.warehouseId === candidate.warehouseId &&
-      (row.locationId ?? null) === (candidate.locationId ?? null) &&
-      row.priorityNo === candidate.priorityNo,
-  );
+/** 지정 품목(품목 코드 순). 빈 목록이면 품목을 가리지 않는 위치다. */
+const locationItemsOf = (locationId) =>
+  state.locationItems
+    .filter((row) => row.locationId === locationId)
+    .map((row) => state.items.find((item) => item.itemId === row.itemId))
+    .filter((item) => item !== undefined)
+    .map((item) => ({ itemId: item.itemId, itemCode: item.itemCode, itemName: item.itemName }))
+    .sort((left, right) => left.itemCode.localeCompare(right.itemCode));
 
-const putawayDuplicateError = () => ({
-  status: 400,
-  created: {
-    code: 'UNIQUE_VIOLATION',
-    message: '같은 품목·창고·위치·우선순위의 활성 규칙이 이미 있습니다.',
-    errors: [],
-  },
+on('GET', '/mdm/locations/{locationId}/items', (params) => {
+  const locationId = Number(params.locationId);
+  if (!state.locations.some((row) => row.locationId === locationId)) return null;
+
+  return { items: locationItemsOf(locationId) };
 });
 
-const putawayFieldError = (field, message) => ({
-  scope: 'field',
-  field,
-  code: 'INVALID',
-  message,
-});
-
-const validatePutawayRule = (candidate, body, mode, existing = null) => {
-  const errors = [];
-  const required =
-    mode === 'create'
-      ? ['itemId', 'warehouseId', 'capacityQty', 'uomId']
-      : ['capacityQty', 'uomId'];
-
-  for (const field of required) {
-    if (body?.[field] === undefined || body[field] === null) {
-      errors.push(putawayFieldError(field, '필수 값입니다.'));
-    }
-  }
-
-  for (const field of ['itemId', 'warehouseId', 'uomId']) {
-    if (!Number.isInteger(candidate[field]) || candidate[field] <= 0) {
-      errors.push(putawayFieldError(field, '1 이상의 정수여야 합니다.'));
-    }
-  }
-  if (
-    candidate.locationId !== null &&
-    (!Number.isInteger(candidate.locationId) || candidate.locationId <= 0)
-  ) {
-    errors.push(putawayFieldError('locationId', '1 이상의 정수이거나 비어 있어야 합니다.'));
-  }
-  if (!Number.isFinite(candidate.capacityQty) || candidate.capacityQty <= 0) {
-    errors.push(putawayFieldError('capacityQty', '0보다 커야 합니다.'));
-  }
-  if (!Number.isInteger(candidate.priorityNo)) {
-    errors.push(putawayFieldError('priorityNo', '정수여야 합니다.'));
-  }
-
-  const item = state.items.find((row) => row.itemId === candidate.itemId);
-  const warehouse = state.warehouses.find((row) => row.warehouseId === candidate.warehouseId);
-  const uom = state.uoms.find((row) => row.uomId === candidate.uomId);
-  const location =
-    candidate.locationId === null
-      ? null
-      : state.locations.find((row) => row.locationId === candidate.locationId);
-
-  const itemChanged = existing === null || candidate.itemId !== existing.itemId;
-  const warehouseChanged = existing === null || candidate.warehouseId !== existing.warehouseId;
-  const uomChanged = existing === null || candidate.uomId !== existing.uomId;
-  const locationChanged = existing === null || candidate.locationId !== existing.locationId;
-
-  if (item === undefined || (itemChanged && !item.isActive)) {
-    errors.push(putawayFieldError('itemId', '사용 가능한 품목이 아닙니다.'));
-  }
-  if (warehouse === undefined || (warehouseChanged && !warehouse.isActive)) {
-    errors.push(putawayFieldError('warehouseId', '사용 가능한 창고가 아닙니다.'));
-  }
-  if (uom === undefined || (uomChanged && !uom.isActive)) {
-    errors.push(putawayFieldError('uomId', '사용 가능한 단위가 아닙니다.'));
-  }
-  if (candidate.locationId !== null) {
-    if (location === undefined || (locationChanged && !location.isActive)) {
-      errors.push(putawayFieldError('locationId', '사용 가능한 위치가 아닙니다.'));
-    } else if (location.warehouseId !== candidate.warehouseId) {
-      errors.push(putawayFieldError('locationId', '선택한 창고의 위치가 아닙니다.'));
-    }
-    if (warehouse?.managementLevelCode === 'WAREHOUSE' && locationChanged) {
-      errors.push(
-        putawayFieldError('locationId', '위치 미관리 창고에는 위치를 지정할 수 없습니다.'),
-      );
-    }
-  }
-
-  return errors;
-};
-
-const putawayValidationError = (errors) => ({
-  status: 400,
-  created: {
-    code: 'VALIDATION_ERROR',
-    message: '적치 규칙 입력값을 확인하세요.',
-    errors,
-  },
-});
-
-on('GET', '/logistics/putaway-rules', (_params, query) =>
-  page(
-    keep(state.putawayRules, [
-      byNum(query, 'warehouseId', 'warehouseId'),
-      byNum(query, 'itemId', 'itemId'),
-      byNum(query, 'locationId', 'locationId'),
-      (row) => bool(query, 'includeInactive') === true || row.isActive,
-    ]).sort((left, right) => left.priorityNo - right.priorityNo),
-    query,
-  ),
-);
-
-on('GET', '/logistics/putaway-rules/uncovered-items', (_params, query) => {
-  const warehouseId = num(query, 'warehouseId');
-  const candidates = state.putawayCandidates.flatMap((candidate) => {
-    if (candidate.warehouseId !== warehouseId) return [];
-    if (
-      state.putawayRules.some(
-        (rule) =>
-          rule.warehouseId === candidate.warehouseId &&
-          rule.itemId === candidate.itemId &&
-          rule.isActive,
-      )
-    ) {
-      return [];
+/*
+ * 통째로 바꾼다 — 빈 배열이면 제한을 푼다.
+ * ⚠ 실서버와 다름: 「지정 밖 품목의 재고가 이미 있음」(itemIds STATE_LOCKED) 갈래는 두지 않았다.
+ */
+on('PUT', '/mdm/locations/{locationId}/items', (params, _query, body, headers) =>
+  idempotent(`mdm.locations:${params.locationId}:items`, headers, () => {
+    const locationId = Number(params.locationId);
+    const location = state.locations.find((row) => row.locationId === locationId);
+    if (location === undefined) return null;
+    if (location.systemRoleCode !== null) {
+      return {
+        status: 400,
+        created: {
+          errors: [
+            {
+              scope: 'screen',
+              code: 'STATE_LOCKED',
+              message: '서버가 만든 자리에는 보관 품목을 걸 수 없습니다.',
+            },
+          ],
+        },
+      };
     }
 
-    const item = state.items.find((row) => row.itemId === candidate.itemId);
-    return item === undefined
-      ? []
-      : [
-          {
-            itemId: item.itemId,
-            itemCode: item.itemCode,
-            itemName: item.itemName,
-            lastReceivedAt: candidate.lastReceivedAt,
-          },
-        ];
-  });
-
-  return page(candidates, query);
-});
-
-on('GET', '/logistics/putaway-rules/{putawayRuleId}', (params) => {
-  const rule = state.putawayRules.find((row) => row.putawayRuleId === Number(params.putawayRuleId));
-  if (rule === undefined) return null;
-
-  return {
-    status: 200,
-    created: editableResponse(rule, 'putawayRule'),
-    headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
-  };
-});
-
-on('POST', '/logistics/putaway-rules', (_params, _query, body, headers) =>
-  idempotent('logistics.putaway-rules:create', headers, () => {
-    const candidate = {
-      ...body,
-      locationId: body?.locationId ?? null,
-      priorityNo: body?.priorityNo ?? 100,
-    };
-    const errors = validatePutawayRule(candidate, body, 'create');
-    if (errors.length > 0) return putawayValidationError(errors);
-    if (duplicatePutawayRule(candidate) !== undefined) return putawayDuplicateError();
-
-    const rule = { ...candidate, putawayRuleId: newId(), isActive: true };
-    state.putawayRules.push(rule);
-    putawayRuleVersions.set(rule.putawayRuleId, 1);
-    return {
-      status: 201,
-      created: rule,
-      headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
-    };
-  }),
-);
-
-on('PUT', '/logistics/putaway-rules/{putawayRuleId}', (params, _query, body, headers) =>
-  idempotent(`logistics.putaway-rules:${params.putawayRuleId}:update`, headers, () => {
-    const rule = state.putawayRules.find(
-      (row) => row.putawayRuleId === Number(params.putawayRuleId),
+    const itemIds = [...new Set(Array.isArray(body?.itemIds) ? body.itemIds : [])];
+    const unknown = itemIds.some(
+      (itemId) => !state.items.some((item) => item.itemId === itemId && item.isActive),
     );
-    if (rule === undefined) return null;
-    if (
-      !matchesEtag(headers, resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions))
-    ) {
-      return conflict();
+    if (!Array.isArray(body?.itemIds) || unknown) {
+      return fieldError('itemIds', 'INVALID', '없거나 쓰지 않는 품목이 있습니다.');
     }
 
-    const candidate = {
-      ...rule,
-      ...body,
-      locationId: body?.locationId ?? null,
-      priorityNo: body?.priorityNo ?? 100,
-    };
-    const errors = validatePutawayRule(candidate, body, 'update', rule);
-    if (errors.length > 0) return putawayValidationError(errors);
-    if (duplicatePutawayRule(candidate, rule.putawayRuleId) !== undefined) {
-      return putawayDuplicateError();
-    }
-
-    Object.assign(rule, candidate);
-    bumpVersion(putawayRuleVersions, rule.putawayRuleId);
-    return {
-      status: 200,
-      created: rule,
-      headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
-    };
+    state.locationItems = [
+      ...state.locationItems.filter((row) => row.locationId !== locationId),
+      ...itemIds.map((itemId) => ({ locationId, itemId })),
+    ];
+    return { status: 200, created: { items: locationItemsOf(locationId) } };
   }),
 );
 
-const setPutawayRuleActive = (params, headers, isActive) => {
-  const rule = state.putawayRules.find((row) => row.putawayRuleId === Number(params.putawayRuleId));
-  if (rule === undefined) return null;
-  if (
-    !matchesEtag(headers, resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions))
-  ) {
-    return conflict();
-  }
-  if (isActive && duplicatePutawayRule(rule, rule.putawayRuleId) !== undefined) {
-    return putawayDuplicateError();
-  }
+/**
+ * 적치 지시의 둬도 되는 위치(서버 #906) — 그 창고에서 품목을 보관 품목으로 걸어 둔 켜진 맨 아래
+ * 위치 전부(코드 순). 사람이 만든 켜진 위치가 없는 창고는 「창고 전체」 하나, 그 밖에 비면 어디든.
+ *
+ * ⚠ 씨앗 지시는 갈래를 남기려고 목록을 박아 두었다(seed.mjs). 이 계산은 목이 새로 만드는 지시
+ * (입고 응답)에만 쓴다.
+ */
+const allowedLocationsFor = (warehouseId, itemId) => {
+  const inWarehouse = state.locations
+    .filter((row) => row.warehouseId === warehouseId && row.isActive)
+    .map(locationView);
+  const allowedView = (row) => ({
+    locationId: row.locationId,
+    locationCode: row.locationCode,
+    locationName: row.locationName,
+    locationLevelCode: row.locationLevelCode ?? null,
+  });
+  const restricted = inWarehouse
+    .filter(
+      (row) =>
+        row.isLeaf &&
+        state.locationItems.some(
+          (each) => each.locationId === row.locationId && each.itemId === itemId,
+        ),
+    )
+    .sort((left, right) => left.locationCode.localeCompare(right.locationCode));
+  if (restricted.length > 0) return restricted.map(allowedView);
 
-  rule.isActive = isActive;
-  bumpVersion(putawayRuleVersions, rule.putawayRuleId);
-  return {
-    status: 200,
-    created: rule,
-    headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
-  };
+  const humanMade = inWarehouse.filter((row) => row.systemRoleCode === null);
+  const whole = inWarehouse.find((row) => row.systemRoleCode === 'WAREHOUSE_WHOLE');
+
+  return humanMade.length === 0 && whole !== undefined ? [allowedView(whole)] : [];
 };
-
-on('POST', '/logistics/putaway-rules/{putawayRuleId}:activate', (params, _query, _body, headers) =>
-  idempotent(`logistics.putaway-rules:${params.putawayRuleId}:activate`, headers, () =>
-    setPutawayRuleActive(params, headers, true),
-  ),
-);
-on(
-  'POST',
-  '/logistics/putaway-rules/{putawayRuleId}:deactivate',
-  (params, _query, _body, headers) =>
-    idempotent(`logistics.putaway-rules:${params.putawayRuleId}:deactivate`, headers, () =>
-      setPutawayRuleActive(params, headers, false),
-    ),
-);
 
 on('GET', '/mdm/partners', (_p, query) =>
   page(keep(state.partners, [byText(query, 'roleTypeCode', 'roleTypeCode')]), query),
@@ -2319,12 +2238,13 @@ on('GET', '/inventory/handling-units/{handlingUnitId}/repack-events', (params) =
 
 /* ── 물류 ─────────────────────────────────────────────────── */
 
+/* 목록 행(`PurchaseOrderListItem`)의 단계별 LOT 수는 계약 필수다 — 시드에 LOT 진행이 없어 빈 묶음으로 싣는다. */
 on('GET', '/logistics/purchase-orders', (_p, query) =>
   page(
     keep(state.purchaseOrders, [
       byText(query, 'statusCode', 'statusCode'),
       contains(query, 'q', 'purchaseOrderNo'),
-    ]),
+    ]).map((each) => ({ ...each, inboundStageCounts: {} })),
     query,
   ),
 );
@@ -2598,7 +2518,34 @@ const registerInboundReceipt = (body) => {
       poLine.receivedQty += line.receivedQty;
     }
 
-    return { inboundReceiptLineId, inboundReceiptId, lineNo, ...line, lotId, labelIssued: false };
+    /*
+     * P/O 배정 몫(장부 P-115) — 계약의 필수 칸이다. P/O 라인이 있는 줄은 초과분(`excessQty`)을 뺀 몫이 그 라인에
+     * 들어가고, 나머지가 미배정이다. P/O 없는 줄은 전부 미배정이다.
+     */
+    const allocatedQty =
+      line.purchaseOrderLineId == null ? 0 : line.receivedQty - (line.excessQty ?? 0);
+    const allocations =
+      allocatedQty > 0
+        ? [
+            {
+              inboundReceiptPoAllocationId: newId(),
+              purchaseOrderLineId: line.purchaseOrderLineId,
+              allocatedQty,
+              allocatedAt: created.receiptDatetime,
+            },
+          ]
+        : [];
+
+    return {
+      inboundReceiptLineId,
+      inboundReceiptId,
+      lineNo,
+      ...line,
+      lotId,
+      labelIssued: false,
+      allocations,
+      unallocatedQty: line.receivedQty - allocatedQty,
+    };
   });
 
   state.inboundReceiptLines.push(...lines);
@@ -2804,6 +2751,16 @@ const completePutaway = (params, _q, body, temporary) => {
 
   if (task === undefined) {
     return null;
+  }
+
+  /* 둬도 되는 위치가 있으면 그 중 하나여야 한다. 임시 적재는 목록을 보지 않는다(서버 #906). */
+  const allowed = task.allowedLocations ?? [];
+  if (
+    !temporary &&
+    allowed.length > 0 &&
+    !allowed.some((each) => each.locationId === body?.actualLocationId)
+  ) {
+    return fieldError('actualLocationId', 'INVALID', '이 지시에 둘 수 있는 위치가 아닙니다.');
   }
 
   task.actualLocationId = body?.actualLocationId ?? null;
@@ -3437,11 +3394,9 @@ on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
       taskQty: line.receiptQty,
       uomId: line.uomId,
       fromLocationId: line.destinationLocationId,
-      recommendedLocationId: line.destinationLocationId,
-      appliedPutawayRuleId: null,
+      allowedLocations: allowedLocationsFor(body?.warehouseId, line.itemId),
       actualLocationId: null,
       warehouseId: body?.warehouseId,
-      warehouseManagementLevelCode: 'ZONE',
       priorityNo: index + 1,
       statusCode: 'ASSIGNED',
       assignedWorkerId: null,

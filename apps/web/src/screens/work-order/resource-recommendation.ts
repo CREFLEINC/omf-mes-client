@@ -1,10 +1,10 @@
-import type {
-  ResourceRecommendationSource,
-  ResourceRecommendations,
-  WorkerRecommendationSource,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import { formatDateRange, formatTimeOfDay } from '../../patterns/date-display';
+
+type ResourceRecommendationSource = components['schemas']['ResourceRecommendationSource'];
+type ResourceRecommendations = components['schemas']['ResourceRecommendations'];
+type WorkerRecommendationSource = components['schemas']['WorkerRecommendationSource'];
 
 /** 칸 아래에 늘어놓는 후보 수 — 그 이상은 찾기 창에서 고른다. */
 const CHIP_LIMIT = 3;

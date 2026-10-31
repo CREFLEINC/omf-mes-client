@@ -11,9 +11,9 @@ export const TASK_FACTS = 'task-facts';
 export interface TaskRouteProps {
   /** 지금 있는 곳. 「현재 TMP-01」 */
   from?: string;
-  /** 가야 할 곳. 「권장 위치 A-01-03」 */
+  /** 가야 할 곳. 「보관 위치 A-01-03」 */
   to?: string;
-  /** 가야 할 곳이 없을 때의 말. 「권장 위치 없음」 */
+  /** 가야 할 곳이 정해지지 않았을 때의 말. 「창고 내 아무 위치」 */
   missing: string;
 }
 

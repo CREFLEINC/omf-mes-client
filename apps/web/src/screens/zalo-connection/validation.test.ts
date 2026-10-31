@@ -31,6 +31,7 @@ describe('toFormValues', () => {
         paramMaxLength: 100,
         templates: [{ eventCode: 'WORK_ORDER_CLOSED', templateId: null }],
         deliveryEnabled: true,
+        handoverTemplates: [],
       }),
     ).toEqual({
       appId: '',

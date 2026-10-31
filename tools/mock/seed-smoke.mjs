@@ -64,7 +64,8 @@ const ENTRIES = [
   ['M-02-02 불량 기록', '/quality/defect-records?lotId=8102', 2],
   ['M-02-02 불량 코드', '/quality/defect-codes', 2],
   ['M-04-03 재구성 이력', '/inventory/handling-units/13001/repack-events', 1],
-  ['M-04-04 완제품 적치 규칙', '/logistics/putaway-rules?warehouseId=1002&itemId=2003', 1],
+  /* 완제품 입고는 스캔한 위치의 보관 품목을 묻는다(서버 #901) — 적치 규칙이 가리키던 자리다. */
+  ['M-04-04 위치 보관 품목', '/mdm/locations/3004/items', 1],
   [
     'M-04-01 오늘 출하',
     `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
@@ -94,18 +95,16 @@ const ENTRIES = [
   ['W-06-07 공장', '/mdm/plants?includeInactive=true', 1],
   ['W-06-07 사업부', '/mdm/business-units?includeInactive=true', 1],
   ['W-06-07 창고 유형', '/mdm/code-values?codeGroupCode=WAREHOUSE_TYPE', 3],
-  ['W-06-07 관리 수준', '/mdm/code-values?codeGroupCode=MANAGEMENT_LEVEL', 4],
-  ['W-06-07 Location 유형', '/mdm/code-values?codeGroupCode=LOCATION_TYPE', 3],
+  ['W-06-07 위치 단계', '/mdm/code-values?codeGroupCode=LOCATION_LEVEL', 4],
   ['W-06-07 보관 조건', '/mdm/code-values?codeGroupCode=STORAGE_CONDITION', 3],
   ['W-06-07 재발행 사유', '/mdm/code-values?codeGroupCode=REISSUE_REASON', 5],
-  ['W-06-14 적치 규칙', '/logistics/putaway-rules?warehouseId=1001&includeInactive=true', 3],
-  ['W-06-14 규칙 없는 품목', '/logistics/putaway-rules/uncovered-items?warehouseId=1001', 1],
   /*
-   * ⭐ **권한 후보는 «정확히» 117건이어야 한다**(계약 `Permission.groupCode` 2026-09-01 실측).
-   *    격자의 열이 이 목록이라, 하나라도 빠지면 그 화면은 아무에게도 줄 수 없는 권한이 된다.
-   *    최소 117 로 걸어 두면 줄어드는 쪽을 잡는다 — 늘어나는 쪽은 화면이 늘었다는 뜻이다.
+   * ⭐ **권한 후보는 «정확히» 116건이어야 한다**(계약 `Permission.groupCode` 2026-09-01 실측 117 에서
+   *    적치 규칙 W-06-14 를 뺐다 — 서버 #907). 격자의 열이 이 목록이라, 하나라도 빠지면 그 화면은
+   *    아무에게도 줄 수 없는 권한이 된다. 최소로 걸어 두면 줄어드는 쪽을 잡는다 — 늘어나는 쪽은
+   *    화면이 늘었다는 뜻이다.
    */
-  ['W-CO-02 권한 후보', '/app/permissions', 117],
+  ['W-CO-02 권한 후보', '/app/permissions', 116],
   ['W-CO-02 역할 목록', '/app/roles', 4],
   ['W-CO-02 역할 부여분', '/app/roles/4/permissions', 15],
 ];
@@ -255,7 +254,6 @@ const DETAILS = [
     (body) =>
       typeof body.warehouse.businessUnitId === 'number' &&
       typeof body.warehouse.warehouseTypeCode === 'string' &&
-      typeof body.warehouse.managementLevelCode === 'string' &&
       typeof body.warehouse.isExternal === 'boolean' &&
       typeof body.warehouse.isDefect === 'boolean',
   ],
@@ -263,17 +261,45 @@ const DETAILS = [
     'W-06-07 Location 상세 필수 칸',
     '/mdm/locations/3001',
     (body) =>
-      typeof body.location.locationTypeCode === 'string' &&
-      typeof body.location.allowMixedItem === 'boolean' &&
-      typeof body.location.allowMixedLot === 'boolean',
+      body.location.locationLevelCode === 'ZONE' &&
+      body.location.isLeaf === true &&
+      body.location.systemRoleCode === null &&
+      body.location.aliasName === null &&
+      body.location.hasItemRestriction === true &&
+      !('capacityQty' in body.location) &&
+      !('locationTypeCode' in body.location),
   ],
+  /* 「창고 전체」 — 단말 적치가 스캔하지 않고 고르는 갈래가 이 자리로 판정한다. */
   [
-    'W-06-14 적치 규칙 상세·ETag 원천',
-    '/logistics/putaway-rules/5101',
+    'W-06-07 창고 전체 위치',
+    '/mdm/locations?warehouseId=1004',
     (body) =>
-      body.putawayRule.putawayRuleId === 5101 &&
-      typeof body.putawayRule.capacityQty === 'number' &&
-      typeof body.editability === 'object',
+      body.items.length === 1 &&
+      body.items[0].systemRoleCode === 'WAREHOUSE_WHOLE' &&
+      body.items[0].locationLevelCode === 'ZONE',
+  ],
+  /*
+   * 단말 적치는 `task.allowedLocations` 를 반드시 읽는다 — 없으면 화면이 깨진다(서버 #906).
+   * 하나 · 비어 있음(어디든) · 「창고 전체」 하나, 세 갈래가 다 있어야 한다.
+   */
+  [
+    'M-01-05 둬도 되는 위치',
+    '/logistics/putaway-tasks?assignedWorkerId=1001',
+    (body) =>
+      body.items.every(
+        (row) =>
+          Array.isArray(row.allowedLocations) &&
+          !('recommendedLocationId' in row) &&
+          !('appliedPutawayRuleId' in row) &&
+          !('warehouseManagementLevelCode' in row),
+      ) &&
+      body.items.some((row) => row.allowedLocations.length === 0) &&
+      body.items.some(
+        (row) => row.allowedLocations.length === 1 && row.allowedLocations[0].locationId === 3001,
+      ) &&
+      body.items.some(
+        (row) => row.allowedLocations.length === 1 && row.allowedLocations[0].locationId === 3007,
+      ),
   ],
   /* W-CO-08 — 도면·점이 있는 창고. 아래 흐름 블록이 이 창고의 배치도를 갈아 치우므로 여기서 먼저 본다. */
   [
@@ -371,7 +397,6 @@ for (const [name, path, check] of DETAILS) {
     warehouseCode: 'SMOKE-WH',
     warehouseName: '목업 검증 창고',
     warehouseTypeCode: 'GENERAL',
-    managementLevelCode: 'RACK',
     isExternal: false,
     isDefect: false,
   };
@@ -397,7 +422,6 @@ for (const [name, path, check] of DETAILS) {
       warehouseCode: 'SMOKE-WH',
       warehouseName: '검색 가능한 목업 창고',
       warehouseTypeCode: 'GENERAL',
-      managementLevelCode: 'RACK',
       isExternal: false,
       isDefect: false,
     }),
@@ -411,14 +435,11 @@ for (const [name, path, check] of DETAILS) {
     ...jsonHeaders,
     'Idempotency-Key': 'seed-smoke-w-06-07-location-create',
   };
+  /* 코드는 서버가 발행한다(서버 #890) — 상위가 없으면 구역 Z01. */
   const locationCreateBody = {
     warehouseId: warehouse.warehouseId,
     parentLocationId: null,
-    locationCode: 'SMOKE-LOC-01',
     locationName: '목업 검증 위치',
-    locationTypeCode: 'RACK',
-    allowMixedItem: false,
-    allowMixedLot: false,
   };
   const locationCreate = await fetch(`${BASE}/mdm/locations`, {
     method: 'POST',
@@ -440,16 +461,8 @@ for (const [name, path, check] of DETAILS) {
     'If-Match': locationEtag ?? '',
   };
   const locationUpdateBody = {
-    parentLocationId: null,
-    locationCode: 'SMOKE-LOC-01',
     locationName: '명칭 검색 목업 위치',
-    locationTypeCode: 'RACK',
-    qualityZoneCode: null,
-    storageConditionCode: 'ROOM_TEMPERATURE',
-    allowMixedItem: false,
-    allowMixedLot: false,
-    capacityQty: null,
-    capacityUomId: null,
+    aliasName: '목업 별칭',
   };
   const locationUpdate = await fetch(`${BASE}/mdm/locations/${String(location.locationId)}`, {
     method: 'PUT',
@@ -528,6 +541,9 @@ for (const [name, path, check] of DETAILS) {
     warehouseUpdate.ok &&
     warehouseSearchBody.items.some((row) => row.warehouseId === warehouse.warehouseId) &&
     locationCreate.status === 201 &&
+    location.locationCode === 'Z01' &&
+    location.locationLevelCode === 'ZONE' &&
+    location.systemRoleCode === null &&
     locationCreateRetry.status === 201 &&
     locationRetry.locationId === location.locationId &&
     locationEtag !== null &&
@@ -543,7 +559,7 @@ for (const [name, path, check] of DETAILS) {
     issueRetry?.documentIssueLogId === issue?.documentIssueLogId &&
     issueRetry?.issueSeq === issue?.issueSeq &&
     rendition.ok &&
-    renditionText.includes('SMOKE-LOC-01') &&
+    renditionText.includes(location.locationCode) &&
     !renditionText.includes('LOT NO.') &&
     locationDeactivate.ok &&
     !activeLocationBody.items.some((row) => row.locationId === location.locationId) &&
@@ -555,182 +571,56 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} W-06-07 상태·검색·ETag·라벨 흐름`);
 }
 
+/*
+ * 위치 보관 품목(서버 #901) — 바꾸면 그대로 읽히고, 빈 배열이면 제한이 풀린다. 「창고 전체」 같은
+ * 서버가 만든 자리에는 걸 수 없다.
+ */
 {
-  const jsonHeaders = {
-    'Content-Type': 'application/json',
-    'Idempotency-Key': 'seed-smoke-w-06-14-create',
-  };
-  const createBody = {
-    itemId: 2004,
-    warehouseId: 1001,
-    locationId: 3003,
-    capacityQty: 250,
-    uomId: 1001,
-    priorityNo: 30,
-    remarks: '목업 상태 검증',
-  };
-  const invalidMissing = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-missing' },
-    body: JSON.stringify({}),
-  });
-  const invalidNegative = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-negative' },
-    body: JSON.stringify({ ...createBody, capacityQty: -1 }),
-  });
-  const invalidForeignLocation = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-location' },
-    body: JSON.stringify({ ...createBody, locationId: 3004 }),
-  });
-  const invalidWarehouseLevel = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-level' },
-    body: JSON.stringify({ ...createBody, warehouseId: 1004, locationId: 3001 }),
-  });
-  const invalidInactiveLocation = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-inactive-location' },
-    body: JSON.stringify({ ...createBody, locationId: 3008 }),
-  });
-  const invalidInactiveUom = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-inactive-uom' },
-    body: JSON.stringify({ ...createBody, uomId: 1003 }),
-  });
-  const create = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: jsonHeaders,
-    body: JSON.stringify(createBody),
-  });
-  const created = await create.json();
-  const retry = await fetch(`${BASE}/logistics/putaway-rules`, {
-    method: 'POST',
-    headers: jsonHeaders,
-    body: JSON.stringify(createBody),
-  });
-  const retried = await retry.json();
-  const detail = await fetch(`${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`);
-  const etag = detail.headers.get('etag');
-  const invalidUpdate = await fetch(
-    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`,
-    {
+  const put = (locationId, itemIds, key) =>
+    fetch(`${BASE}/mdm/locations/${String(locationId)}/items`, {
       method: 'PUT',
-      headers: {
-        ...jsonHeaders,
-        'Idempotency-Key': 'seed-smoke-w-06-14-invalid-update',
-        'If-Match': etag ?? '',
-      },
-      body: JSON.stringify({}),
-    },
-  );
-  const invalidUpdateLocation = await fetch(
-    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`,
-    {
-      method: 'PUT',
-      headers: {
-        ...jsonHeaders,
-        'Idempotency-Key': 'seed-smoke-w-06-14-update-inactive-location',
-        'If-Match': etag ?? '',
-      },
-      body: JSON.stringify({
-        locationId: 3008,
-        capacityQty: 250,
-        uomId: 1001,
-        priorityNo: 30,
-      }),
-    },
-  );
-  const invalidUpdateUom = await fetch(
-    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`,
-    {
-      method: 'PUT',
-      headers: {
-        ...jsonHeaders,
-        'Idempotency-Key': 'seed-smoke-w-06-14-update-inactive-uom',
-        'If-Match': etag ?? '',
-      },
-      body: JSON.stringify({
-        locationId: 3003,
-        capacityQty: 250,
-        uomId: 1003,
-        priorityNo: 30,
-      }),
-    },
-  );
-  const legacyDetail = await fetch(`${BASE}/logistics/putaway-rules/5104`);
-  const legacyUpdate = await fetch(`${BASE}/logistics/putaway-rules/5104`, {
-    method: 'PUT',
-    headers: {
-      ...jsonHeaders,
-      'Idempotency-Key': 'seed-smoke-w-06-14-legacy-update',
-      'If-Match': legacyDetail.headers.get('etag') ?? '',
-    },
-    body: JSON.stringify({
-      locationId: 3007,
-      capacityQty: 125,
-      uomId: 1001,
-      priorityNo: 100,
-      remarks: '과거 참조 보존 수정',
-    }),
-  });
-  const updateHeaders = {
-    ...jsonHeaders,
-    'Idempotency-Key': 'seed-smoke-w-06-14-update',
-    'If-Match': etag ?? '',
-  };
-  const updateBody = {
-    locationId: 3003,
-    capacityQty: 275,
-    uomId: 1001,
-    priorityNo: 30,
-    remarks: '수정된 목업 상태',
-  };
-  const update = await fetch(`${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`, {
-    method: 'PUT',
-    headers: updateHeaders,
-    body: JSON.stringify(updateBody),
-  });
-  const stale = await fetch(`${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`, {
-    method: 'PUT',
-    headers: { ...updateHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-stale' },
-    body: JSON.stringify(updateBody),
-  });
-  const deactivate = await fetch(
-    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}:deactivate`,
-    {
-      method: 'POST',
-      headers: {
-        'Idempotency-Key': 'seed-smoke-w-06-14-deactivate',
-        'If-Match': update.headers.get('etag') ?? '',
-      },
-    },
-  );
-  const uncovered = await fetch(`${BASE}/logistics/putaway-rules/uncovered-items?warehouseId=1001`);
-  const uncoveredBody = await uncovered.json();
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
+      body: JSON.stringify({ itemIds }),
+    });
+  const set = await put(3009, [2003, 2003], 'seed-smoke-location-items-set');
+  const setBody = await set.json();
+  const read = await (await fetch(`${BASE}/mdm/locations/3009/items`)).json();
+  const restricted = await (await fetch(`${BASE}/mdm/locations/3009`)).json();
+  const cleared = await put(3009, [], 'seed-smoke-location-items-clear');
+  const clearedBody = await cleared.json();
+  const unknown = await put(3009, [999999], 'seed-smoke-location-items-unknown');
+  const system = await put(3007, [2002], 'seed-smoke-location-items-system');
   const ok =
-    invalidMissing.status === 400 &&
-    invalidNegative.status === 400 &&
-    invalidForeignLocation.status === 400 &&
-    invalidWarehouseLevel.status === 400 &&
-    invalidInactiveLocation.status === 400 &&
-    invalidInactiveUom.status === 400 &&
-    create.status === 201 &&
-    retry.status === 201 &&
-    retried.putawayRuleId === created.putawayRuleId &&
-    etag !== null &&
-    invalidUpdate.status === 400 &&
-    invalidUpdateLocation.status === 400 &&
-    invalidUpdateUom.status === 400 &&
-    legacyUpdate.ok &&
-    update.ok &&
-    stale.status === 409 &&
-    deactivate.ok &&
-    uncoveredBody.items.some((row) => row.itemId === 2004);
+    set.ok &&
+    setBody.items.length === 1 &&
+    setBody.items[0].itemCode === 'FG-1001' &&
+    read.items.length === 1 &&
+    restricted.location.hasItemRestriction === true &&
+    cleared.ok &&
+    clearedBody.items.length === 0 &&
+    unknown.status === 400 &&
+    system.status === 400;
 
   if (!ok) failed += 1;
-  console.log(`${ok ? '✔' : '✘'} W-06-14 상태·멱등·ETag·미설정 흐름`);
+  console.log(`${ok ? '✔' : '✘'} W-06-07 위치 보관 품목 바꾸기·풀기`);
+}
+
+/* 둬도 되는 위치가 있으면 그 밖에는 적치를 끝내지 못한다(서버 #906 · 400 INVALID actualLocationId). */
+{
+  const response = await fetch(`${BASE}/logistics/putaway-tasks/9401:complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      actualLocationId: 3002,
+      businessDate: today(),
+      occurredAt: new Date().toISOString(),
+    }),
+  });
+  const body = await response.json();
+  const ok = response.status === 400 && body.errors?.[0]?.field === 'actualLocationId';
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-05 둬도 되는 위치 밖 적치는 막힌다`);
 }
 
 {
@@ -1012,24 +902,6 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} M-05-01 점검 이력이 유형 축을 거른다`);
-}
-
-/*
- * 품목과 자리가 보관조건을 들고 오는가. 둘 중 하나라도 비면 적치의 보관조건 경고가 실기에서
- * 한 번도 서지 않는다 - 화면은 모르면 말하지 않기 때문이다.
- */
-{
-  const items = await (await fetch(`${BASE}/mdm/items?size=200`)).json();
-  const locations = await (await fetch(`${BASE}/mdm/locations?warehouseId=1001`)).json();
-  const item = items.items.find((row) => row.itemId === 2001);
-  const at = locations.items.find((row) => row.storageConditionCode !== undefined);
-  const ok =
-    typeof item?.storageConditionCode === 'string' &&
-    at !== undefined &&
-    item.storageConditionCode !== at.storageConditionCode;
-
-  if (!ok) failed += 1;
-  console.log(`${ok ? '✔' : '✘'} M-01-05 품목과 자리가 어긋나는 보관조건을 들고 온다`);
 }
 
 /*

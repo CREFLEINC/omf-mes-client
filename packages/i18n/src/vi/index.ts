@@ -58,6 +58,7 @@ import { erpEmployee } from './erp-employee';
 import { erpItem } from './erp-item';
 import { erpProductionOrder } from './erp-production-order';
 import { iqcInspection } from './iqc-inspection';
+import { partsIqcInspection } from './parts-iqc-inspection';
 import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
@@ -119,7 +120,6 @@ import { erpCommonCode } from './erp-common-code';
 import { productionPlan } from './production-plan';
 import { productionResult } from './production-result';
 import { putaway } from './putaway';
-import { putawayRule } from './putaway-rule';
 import { qualityApproval } from './quality-approval';
 import { recycleEntry } from './recycle-entry';
 import { repackLabelIssue } from './repack-label-issue';
@@ -217,6 +217,7 @@ export const vi: Translated<Messages> = {
   erpItem,
   erpProductionOrder,
   iqcInspection,
+  partsIqcInspection,
   iqcSkipApproval,
   iqcSkipRequest,
   itemExtendedAttrs,
@@ -278,7 +279,6 @@ export const vi: Translated<Messages> = {
   productReceipt,
   productStockStatus,
   putaway,
-  putawayRule,
   qualityApproval,
   recycleEntry,
   repackLabelIssue,

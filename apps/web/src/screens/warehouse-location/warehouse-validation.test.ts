@@ -11,7 +11,6 @@ const filled: WarehouseFormValues = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  managementLevelCode: 'CELL',
 };
 
 describe('validateWarehouse', () => {
@@ -40,20 +39,6 @@ describe('validateWarehouse', () => {
 
     expect(errors.warehouseName).toBe('필수 입력 항목입니다.');
     expect(errors.warehouseTypeCode).toBe('필수 입력 항목입니다.');
-  });
-
-  it('외부창고를 켜면 거래처가 필수다', () => {
-    const errors = validateWarehouse({ ...filled, isExternal: true, partnerId: '' }, 'edit');
-
-    expect(errors.partnerId).toBe('외부 창고이면 거래처를 지정해야 합니다.');
-  });
-
-  it('외부창고가 꺼져 있으면 거래처가 없어도 통과한다', () => {
-    expect(validateWarehouse({ ...filled, isExternal: false, partnerId: '' }, 'edit')).toEqual({});
-  });
-
-  it('외부창고를 켜고 거래처를 고르면 통과한다', () => {
-    expect(validateWarehouse({ ...filled, isExternal: true, partnerId: '31' }, 'edit')).toEqual({});
   });
 
   it('신규 등록에서 공장이 비면 필수 오류다', () => {

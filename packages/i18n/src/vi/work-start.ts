@@ -1,47 +1,27 @@
 import type { ko } from '../ko';
+import { named } from '../named';
 import type { Translated } from './translated';
-import { common } from './common';
 
-/** P-02-01 작업 시작(작업지시 선택). */
+/** P-02-01 작업 지시 목록. */
 export const workStart: Translated<typeof ko.workStart> = {
-  title: 'Bắt đầu sản xuất',
-
-  header: {
-    /**
-     * ⭐ **머리줄은 단말을 말한다**(사용자 지시 2026-09-13). 스펙 §4 도면은 이 자리에 설비를
-     * 그렸지만, 등록한 단말이 맞는지를 작업자가 보는 자리라 사번 확인 화면(P-CO-01)과 같이
-     * 단말 코드를 낸다. 못 받았으면 «모른다»고 적는다.
-     */
-    terminalUnknown: 'Chưa xác nhận máy trạm',
-    terminalLabel: (code: string): string => `Máy trạm ${code}`,
-    /**
-     * ⭐ **설비는 타이틀 옆에 선다**(스펙 §4 도면 · 사용자 지시 2026-09-14). 단말은 오른쪽 상태
-     * 쪽에 남는다. 설비를 모르거나 매핑이 없으면 자리를 비운다 — 사유는 막힘 띠가 말한다.
-     */
-    /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
-    equipmentLabel: (code: string, name: string): string =>
-      `Thiết bị ${name.trim() === '' ? code : name}`,
-
-    workerUnset: 'Chưa nhập mã nhân viên',
-    workerLabel: (workerNo: string): string => `Mã nhân viên ${workerNo}`,
-
-    connected: common.connection.online,
-    disconnected: common.connection.offline,
-  },
+  title: 'Danh sách lệnh sản xuất',
 
   worker: {
-    title: 'Mã nhân viên',
+    title: 'Người làm',
     fieldLabel: 'Mã nhân viên',
     keypadLabel: 'Bàn phím số nhập mã nhân viên',
     backspace: 'Xóa một ký tự',
     clear: 'Xóa hết',
     confirm: 'Xác nhận',
-    change: 'Nhập lại',
+    cancel: 'Hủy',
     checking: 'Đang kiểm tra',
+    empty: 'Chưa nhập mã nhân viên.',
+    open: 'Nhập mã nhân viên',
+    dialogTitle: 'Nhập mã nhân viên',
 
-    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này.',
-    inactive: 'Mã nhân viên này không còn làm việc.',
-    lookupFailed: 'Không xác nhận được mã nhân viên. Hãy thử lại.',
+    unknown: 'Mã nhân viên chưa được đăng ký ở nhà máy này. Vui lòng nhập lại mã nhân viên.',
+    inactive: 'Mã nhân viên này không còn làm việc. Vui lòng nhập lại mã nhân viên.',
+    lookupFailed: 'Không xác nhận được mã nhân viên. Vui lòng thử lại.',
     retry: 'Thử lại',
   },
 
@@ -50,7 +30,7 @@ export const workStart: Translated<typeof ko.workStart> = {
     count: (count: number, max: number): string => `${String(count)}/${String(max)}`,
     main: 'Chính',
     sub: 'Phụ',
-    name: (workerName: string, workerNo: string): string => `${workerName} (${workerNo})`,
+    name: (workerName: string, workerNo: string): string => named(workerName, workerNo),
     add: '+ Người phụ',
     remove: (name: string): string => `Bỏ ${name}`,
     dialogTitle: 'Thêm người phụ',
@@ -58,62 +38,66 @@ export const workStart: Translated<typeof ko.workStart> = {
     confirm: 'Thêm',
     duplicate: 'Người này đã có trong danh sách.',
     otherPlant: 'Không thể thêm người của nhà máy khác.',
-    failed: 'Không xử lý được. Hãy thử lại.',
-    loadFailed: 'Không tải được danh sách người làm.',
-    unknown: 'Không rõ',
+    failed: 'Không thay đổi được người làm. Vui lòng thử lại.',
+    loadFailed: 'Không tải được danh sách người làm. Vui lòng chọn lại lệnh sản xuất.',
+    unknown: 'Chưa đăng ký tên',
   },
 
   list: {
     title: 'Lệnh sản xuất',
-    scopeEquipment: 'Thiết bị này',
-    scopeAll: 'Tất cả',
-    showAll: 'Xem tất cả',
-    showEquipmentOnly: 'Chỉ xem thiết bị này',
+    equipmentLabel: 'Thiết bị',
+    defaultOption: (equipment: string): string => `Thiết bị mặc định: ${equipment}`,
+    allOption: 'Tất cả thiết bị',
+    resetToDefault: 'Về thiết bị mặc định',
+    scopeEquipmentUnknown: 'Thiết bị của máy trạm',
 
-    scopeNoteEquipment:
-      'Hiện lệnh sản xuất của thiết bị này và lệnh chưa gán thiết bị. Muốn xem lệnh của thiết bị khác, hãy bấm «Xem tất cả».',
-    scopeNoteAll:
-      'Đang hiện cả lệnh sản xuất đã phát hành cho thiết bị khác. Có thể quay lại bằng «Chỉ xem thiết bị này».',
-
-    select: 'Chọn',
+    select: (workOrderNo: string): string => `Chọn ${workOrderNo}`,
     caption: 'Lệnh sản xuất có thể thực hiện',
 
+    status: {
+      released: 'Chưa bắt đầu',
+      inProgress: 'Đang làm',
+      suspended: 'Tạm dừng',
+    },
     emergencyBadge: 'Khẩn',
-    heldBadge: 'Đang tạm dừng',
     unassignedEquipmentBadge: 'Chưa gán thiết bị',
 
-    columns: {
-      plannedStart: 'Kế hoạch',
-      priority: 'Ưu tiên',
-    },
+    goodLabel: 'Thực tế',
+    orderLabel: 'Lệnh',
+    progress: (good: string, order: string, uom: string | null): string =>
+      `${good} / ${order}${uom === null ? '' : ` ${uom}`}`,
+    equipment: 'Thiết bị',
 
-    empty:
-      'Không có lệnh sản xuất nào phát hành cho thiết bị này. Có thể xem lệnh của thiết bị khác bằng «Xem tất cả».',
+    empty: (equipment: string): string =>
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}. Chọn 「Tất cả thiết bị」 ở mục Thiết bị để xem lệnh của thiết bị khác.`,
+    emptyOther: (equipment: string): string =>
+      `Không có lệnh sản xuất nào phát hành cho ${equipment}.`,
     emptyAll: 'Không có lệnh sản xuất nào có thể thực hiện.',
-    loading: 'Đang nhận lệnh sản xuất.',
-    loadError: 'Không nhận được danh sách lệnh sản xuất. Hãy thử lại.',
+    loading: 'Đang tải lệnh sản xuất.',
+    loadError: 'Không tải được lệnh sản xuất. Vui lòng thử lại.',
     retry: 'Thử lại',
 
-    truncated: (shown: number, total: number): string =>
-      `Đang hiện ${String(shown)} / ${String(total)} mục.`,
+    total: (total: number): string => `Tổng ${String(total)} mục`,
 
     pageNav: 'Chuyển trang danh sách lệnh sản xuất',
 
     equipmentUnknown:
-      'Không xác nhận được máy trạm này gắn với thiết bị nào. Có thể tiếp tục bằng «Xem tất cả».',
+      'Không xác nhận được thiết bị của máy trạm này. Chọn 「Tất cả thiết bị」 ở mục Thiết bị để tiếp tục.',
+  },
+
+  side: {
+    title: 'Xác nhận công việc',
   },
 
   selection: {
-    title: 'Xác nhận lựa chọn',
-    notSelected: 'Hãy chọn lệnh sản xuất ở danh sách trên.',
+    title: 'Lệnh sản xuất đã chọn',
+    item: 'Mặt hàng',
+    process: 'Công đoạn',
+    plannedStart: 'Bắt đầu theo kế hoạch',
     equipment: 'Thiết bị',
-    mold: 'Khuôn',
-    unknown: 'Đang kiểm tra',
-    none: 'Không có',
 
-    otherEquipment: (code: string): string => `Thiết bị theo kế hoạch của lệnh này là ${code}.`,
-
-    precheckPending: 'Kết quả kiểm soát kiểm tra trước sản xuất sẽ được xác nhận khi bắt đầu.',
+    otherEquipment: (equipment: string): string =>
+      `Thiết bị theo kế hoạch của lệnh này là ${equipment}. Vẫn có thể bắt đầu trên thiết bị này.`,
   },
 
   actions: {
@@ -122,59 +106,48 @@ export const workStart: Translated<typeof ko.workStart> = {
     restart: 'Bắt đầu lại công việc',
     checking: 'Đang kiểm tra',
     starting: 'Đang bắt đầu',
+    continueToSession: 'Tiếp tục công việc',
+  },
+
+  remaining: {
+    worker: 'Vui lòng nhập mã nhân viên',
+    select: 'Vui lòng chọn lệnh sản xuất',
+    ready: 'Có thể bắt đầu công việc',
+    resume: 'Có thể tiếp tục lại công việc đã tạm dừng',
+    continue: 'Có thể làm tiếp công việc đang thực hiện',
+    restart: 'Có thể bắt đầu lại công việc đã tạm dừng bằng phiên mới',
   },
 
   blocked: {
-    unidentified: 'Không xác nhận được máy trạm này. Hãy hoàn tất đăng ký máy rồi bắt đầu lại.',
-    /**
-     * ⭐ **사유별로 가른다**(사용자 지시 2026-09-13). 등록은 끝났는데 관리웹 매핑이 비어 있는
-     * 것을 「단말을 확인하지 못했다」로 말하면 설치 담당자가 토큰부터 다시 의심한다.
-     */
+    unidentified:
+      'Không xác nhận được máy trạm nên không thể tiếp tục. Vui lòng hoàn tất đăng ký máy rồi mở lại',
     processNone:
-      'Máy trạm này chưa được ánh xạ công đoạn. Hãy gán công đoạn tại Web quản trị > Ánh xạ máy quét - công đoạn.',
+      'Máy trạm chưa được gán công đoạn nên không thể tiếp tục. Vui lòng yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm',
     processMultiple:
-      'Máy trạm này được ánh xạ nhiều công đoạn nên không xác nhận được quyền bắt đầu sản xuất.',
-    checking: 'Đang kiểm tra cấu hình chức năng của máy trạm.',
+      'Máy trạm có nhiều công đoạn nên không xác nhận được quyền bắt đầu sản xuất. Vui lòng liên hệ quản trị viên',
+    checking: 'Đang kiểm tra quyền của máy trạm',
     denied:
-      'Máy trạm này không được bắt đầu công việc của công đoạn này. Hãy cấp quyền trong thiết lập máy trạm (Thiết lập ánh xạ máy quét - công đoạn).',
+      'Máy trạm chưa có quyền bắt đầu công việc của công đoạn này nên không thể tiếp tục. Vui lòng yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm',
     deniedProcess: (processName: string): string =>
-      `Máy trạm này chưa được ánh xạ bắt đầu công việc cho công đoạn ${processName}. Hãy yêu cầu quản trị viên ánh xạ máy trạm - công đoạn.`,
-    unavailable: 'Không xác nhận được quyền của máy trạm này. Hãy thử lại.',
+      `Máy trạm chưa có quyền bắt đầu công việc ${processName} nên không thể tiếp tục. Vui lòng yêu cầu quản trị viên ánh xạ công đoạn cho máy trạm`,
+    unavailable: 'Không xác nhận được quyền của máy trạm. Vui lòng bấm Kiểm tra lại',
     retry: 'Kiểm tra lại',
 
-    offline: 'Mất kết nối nên không bắt đầu được. Khi kết nối lại, danh sách sẽ tự tải lại.',
-
-    notSelected: 'Bắt đầu sản xuất: hãy chọn lệnh sản xuất trước.',
-
-    alreadyOpen: 'Đang có công việc dở dang.',
-    continueToSession: 'Tiếp tục công việc',
-    holdWork: 'Tạm dừng công việc',
-    runningChange: 'Thay linh kiện',
-    pqcInspection: 'Kiểm tra PQC',
-    pqcInspectionOf: (inspectionRequestNo: string): string => `Kiểm tra PQC ${inspectionRequestNo}`,
-    packingWork: 'Đóng gói',
+    offline: 'Mất kết nối nên không bắt đầu được. Khi kết nối lại, danh sách sẽ được tải lại',
   },
 
-  /**
-   * 지시 수량을 채운 작업지시 — 다음에 할 일은 «마감»이다(omf-all-around#45). ⛔ 막는 말이
-   * 아니다 — 버튼은 그대로 두고 남은 일만 알린다.
-   */
   closing: {
     fulfilled:
-      'Lệnh sản xuất này đã hoàn tất đăng ký sản lượng. Hãy kết thúc lệnh trên web quản trị.',
+      'Lệnh sản xuất này đã hoàn tất đăng ký sản lượng. Vui lòng kết thúc lệnh trên web quản trị.',
     fulfilledWithOpenSession:
-      'Đã hoàn tất đăng ký sản lượng nhưng vẫn còn công việc đang làm. Hãy hoàn tất công việc đang làm rồi kết thúc lệnh sản xuất trên web quản trị.',
+      'Đã hoàn tất đăng ký sản lượng nhưng vẫn còn công việc đang làm. Vui lòng hoàn tất công việc đang làm rồi kết thúc lệnh sản xuất trên web quản trị.',
   },
 
   resume: {
-    sessionNotFound: 'Không tìm thấy phiên làm việc để tiếp tục lại. Hãy liên hệ quản trị viên.',
-    sessionLookupFailed: 'Không xác nhận được phiên làm việc. Hãy thử lại.',
-    checking: 'Đang kiểm tra phiên làm việc.',
-  },
-
-  restart: {
-    status:
-      'Lệnh sản xuất đã tạm dừng và không có phiên làm việc đang mở. Nhấn [Bắt đầu lại công việc] để bắt đầu lại bằng phiên làm việc mới.',
+    sessionNotFound:
+      'Không tìm thấy bản ghi công việc đã tạm dừng nên không thể tiếp tục lại. Vui lòng liên hệ quản trị viên',
+    sessionLookupFailed: 'Không xác nhận được công việc đang làm. Vui lòng chọn lại lệnh sản xuất',
+    checking: 'Đang kiểm tra công việc đang làm',
   },
 
   result: {
@@ -182,8 +155,9 @@ export const workStart: Translated<typeof ko.workStart> = {
     resumed: (workOrderNo: string): string => `Đã tiếp tục lại ${workOrderNo}.`,
     restarted: (workOrderNo: string): string => `Đã bắt đầu lại ${workOrderNo}.`,
     conflict: 'Trạng thái lệnh sản xuất đã thay đổi. Đang tải lại danh sách.',
-    notOpened: 'Đánh giá kiểm tra đã được ghi nhận nhưng công việc chưa bắt đầu. Hãy thử lại.',
-    startFailed: 'Không bắt đầu được công việc.',
-    resumeFailed: 'Không tiếp tục lại được công việc.',
+    notOpened:
+      'Kết quả kiểm tra đã được ghi nhận nhưng công việc chưa bắt đầu. Vui lòng bấm lại Bắt đầu sản xuất.',
+    startFailed: 'Không bắt đầu được công việc. Vui lòng kiểm tra kết nối rồi bấm lại.',
+    resumeFailed: 'Không tiếp tục lại được công việc. Vui lòng kiểm tra kết nối rồi bấm lại.',
   },
 };

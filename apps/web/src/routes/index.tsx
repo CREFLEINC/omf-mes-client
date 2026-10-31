@@ -53,7 +53,7 @@ import { TerminalProcessMapScreen } from '../screens/terminal-process-map/screen
 import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
-import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
+import { IqcInspectionRoute } from '../screens/parts-iqc-inspection/iqc-route';
 import { ItemBomScreen } from '../screens/item-extended-attrs/bom-screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
@@ -75,7 +75,6 @@ import {
   LegacyReleaseRedirect,
 } from '../screens/production-order/process/legacy-redirects';
 import { ProductionOrderProcessScreen } from '../screens/production-order/process/process-screen';
-import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
 import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
 import { PqcInspectionRegisterScreen } from '../screens/pqc-inspection-register/screen';
 import { InspectionLevelScreen } from '../screens/inspection-level/screen';
@@ -99,7 +98,7 @@ import { UsersRolesScreen } from '../screens/users-roles/screen';
 import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
-/** LOT 추적의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
+/** LOT 생산 이력 조회의 권한 안내는 사용자와 역할 메뉴를 사이드바의 이름 그대로 가리킨다. 그리는 순간의 언어로 만든다. */
 const LotTraceRoute = () => (
   <LotTraceScreen permissionMenuPath={navMenuPath('/system/users-roles')} />
 );
@@ -141,23 +140,22 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
       { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },
-      /*
-       * W-06-14 — 계약 경로는 `/logistics/putaway-rules`인데 앞머리는 같은 규칙(사이드바
-       * 섹션)을 따른다. 적치 규칙은 물건이 오가는 일이 아니라 **어디에 둘지 미리 정해 두는
-       * 것**이라 창고·품목과 같은 기준정보 마스터다. 자리도 **창고·Location 바로 뒤**다 —
-       * 창고와 위치를 참조해야 성립하는 화면이라 인접이 관계를 드러낸다.
-       *
-       * **다섯 PR이 함께 여는 자리다.** 목록·사용률·등록/수정이 다 서도 **끄고 켤 수 없는
-       * 동안에는** 이 줄을 두지 않았다 — 끄지 못하는 마스터를 노출하면 사용자가 잘못 만든
-       * 규칙을 지울 수도 끌 수도 없고, 그 규칙은 현장의 적치를 계속 막는다
-       * (정책 §5.2 — 접근 불가능한 경계).
-       */
-      { path: 'master-data/putaway-rule', element: <PutawayRuleScreen /> },
+      /* 없어진 적치 규칙(omf-mes-server #907)의 옛 주소 — 즐겨찾기 · 알림 링크가 끊기지 않게 넘긴다. */
+      {
+        path: 'master-data/putaway-rule',
+        element: <Navigate to="/master-data/warehouse-location" replace />,
+      },
       { path: 'master-data/routing', element: <RoutingScreen /> },
       { path: 'master-data/inspection-standard', element: <InspectionStandardScreen /> },
       /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
       { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
+      /* 불량·원인코드 화면의 하위 탭을 탭 막대로 뗀 주소(#208) — 같은 화면이 보일 탭만 받는다. */
+      { path: 'master-data/cause-code', element: <DefectCauseCodeScreen tab="cause" /> },
+      {
+        path: 'master-data/defect-process-mapping',
+        element: <DefectCauseCodeScreen tab="mapping" />,
+      },
       { path: 'master-data/common-code', element: <CommonCodeScreen /> },
       /* W-06-04 — 전용 자원이 아니라 공통코드의 코드값 편집기를 한 그룹으로 고정해 여는 진입점이다. */
       { path: 'master-data/judgment-code', element: <JudgmentCodeScreen /> },
@@ -250,7 +248,8 @@ export const appRouter = createBrowserRouter([
        * 입하·검사」**에 두었고 형제 화면(W-01-02 긴급 IQC 생략 한도승인)이 이미 이 섹션에
        * 서 있다. 품질 섹션은 Lot Status 계열(W-03-xx)이 들어올 때 그 화면들이 연다.
        */
-      { path: 'logistics/iqc-inspection', element: <IqcInspectionScreen /> },
+      /* 계정 공장에 따라 OA·부품 화면을 고른다(omf-all-around#211). */
+      { path: 'logistics/iqc-inspection', element: <IqcInspectionRoute /> },
       /*
        * W-01-10 「입고 처리」 — **화면이 아니라 입고 관리의 LOT 줄에서 여는 창이다**(사용자 지시 2026-10-23 탭 합치기).
        * 옛 「자재 입고 처리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다. 옛 주소는 입하 전표를 골랐지만

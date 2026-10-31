@@ -36,6 +36,8 @@ export interface ReferenceOptionsResult {
 export const lookupKeys = {
   warehouses: ['product-stock-status', 'lookups', 'warehouses'] as const,
   items: ['product-stock-status', 'lookups', 'items'] as const,
+  itemDetail: (itemId: number | null) =>
+    ['product-stock-status', 'lookups', 'item-detail', itemId] as const,
   locations: (warehouseId: number | null) =>
     ['product-stock-status', 'lookups', 'locations', warehouseId] as const,
   lots: (itemId: number | null) => ['product-stock-status', 'lookups', 'lots', itemId] as const,
@@ -98,6 +100,36 @@ export const useItemOptions = (): UseQueryResult<ReferenceOptionsResult> => {
 
 const validIdentifier = (value: number | null): value is number =>
   value !== null && Number.isSafeInteger(value) && value >= 1;
+
+/**
+ * 고른 품목 하나 — 조건 칩의 이름. 선택칸은 쪽으로 받아, 고른 품목이 `useItemOptions` 의 첫 쪽에 없을 수 있다.
+ * 품목을 고르지 않았으면 부르지 않는다.
+ */
+export const useItemDetail = (itemId: number | null): UseQueryResult<ReferenceOptionsResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: lookupKeys.itemDetail(itemId),
+    enabled: validIdentifier(itemId),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: itemId ?? 0 } } }),
+      );
+      const { item } = data;
+
+      return {
+        entries: [
+          {
+            value: String(item.itemId),
+            label: `${item.itemCode} · ${item.itemName}`,
+            isActive: item.isActive,
+          },
+        ],
+        isTruncated: false,
+      };
+    },
+  });
+};
 
 const fetchLocationOptions = async (
   client: Client,

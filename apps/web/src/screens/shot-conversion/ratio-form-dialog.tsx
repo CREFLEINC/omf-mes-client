@@ -9,8 +9,8 @@ import { SCOPE_AXES, type RatioFormValues, type ScopeAxis } from './types';
 
 const t = messages.shotConversion;
 
-/** 축마다 다른 선택지 목록. 축이 넷이라 하나로 묶을 수 없다. */
-export type ScopeOptions = Record<ScopeAxis, CodeOption[]>;
+/** 축마다 다른 선택지 목록. 축이 넷이라 하나로 묶을 수 없다. 품목은 칸이 직접 서버에 검색해 받아 여기 없다. */
+export type ScopeOptions = Record<Exclude<ScopeAxis, 'itemId'>, CodeOption[]>;
 
 interface ReadOnlyFieldProps {
   label: string;
@@ -122,7 +122,11 @@ export const RatioFormDialog = ({
                   <SelectField
                     key={axis}
                     label={t.scope[axis]}
-                    options={[{ value: '', label: t.form.scopeAll }, ...scopeOptions[axis]]}
+                    options={[
+                      { value: '', label: t.form.scopeAll },
+                      ...(axis === 'itemId' ? [] : scopeOptions[axis]),
+                    ]}
+                    searchItems={axis === 'itemId'}
                     value={values.scope[axis]}
                     onChange={(value) => onChangeScope(axis, value)}
                     note={optionsNote}

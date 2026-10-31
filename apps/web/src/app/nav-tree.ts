@@ -270,7 +270,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리 · 불량·원인코드 · 판정유형 코드를 사이드바 한 줄 ·
+       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리를 사이드바 한 줄 ·
        * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
        * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
        */
@@ -293,18 +293,39 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
           {
             to: '/quality/inspection-levels',
-            label: '검사 수준 관리',
-            labelVi: 'Quản lý mức kiểm tra',
+            label: '검사 수준 설정',
+            labelVi: 'Thiết lập mức kiểm tra',
           },
+        ],
+      },
+      /*
+       * 품질 코드 관리 — 검사 판정 때 고르는 코드 목록(불량·원인코드 · 판정 유형 코드)을 한 묶음으로(사용자 지시 2026-10-29 · omf-all-around#208).
+       * 묶음 이름은 「불량·판정 코드」에서 「품질 코드 관리」로 바꿨다(사용자 지시 2026-10-29 · #209).
+       * 「품질 기준 정보」는 검사를 어떻게 할지 정하는 기준만 남긴다.
+       */
+      {
+        to: '/master-data/defect-cause-code',
+        icon: 'report',
+        label: '품질 코드 관리',
+        labelVi: 'Quản lý mã chất lượng',
+        tabs: [
+          /*
+           * 불량·원인코드 화면 안 하위 탭(불량코드 · 원인코드 · 공정 매핑)을 탭 막대 한 줄로 폈다(사용자 지시 · #208).
+           * 원인코드 · 공정 매핑 주소는 W-06-03 의 화면 코드·권한을 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
+           */
+          { to: '/master-data/defect-cause-code', label: '불량코드', labelVi: 'Mã lỗi' },
+          { to: '/master-data/cause-code', label: '원인코드', labelVi: 'Mã nguyên nhân' },
           {
-            to: '/master-data/defect-cause-code',
-            label: '불량·원인코드',
-            labelVi: 'Mã lỗi · nguyên nhân',
+            to: '/master-data/defect-process-mapping',
+            // 탭 이름 「공정 매핑」 → 「불량코드 공정 연결」(사용자 지시 2026-10-29 · #209) — 무엇을 잇는지 드러낸다.
+            label: '불량코드 공정 연결',
+            labelVi: 'Liên kết mã lỗi - công đoạn',
           },
           {
             to: '/master-data/judgment-code',
-            label: '판정 유형 코드',
-            labelVi: 'Mã loại đánh giá',
+            // 「판정 유형 코드」 → 「판정 유형」(사용자 지시 2026-10-29 · #209)
+            label: '판정 유형',
+            labelVi: 'Loại đánh giá',
           },
         ],
       },
@@ -440,8 +461,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/production/lot-trace',
         icon: 'timeline',
-        label: 'LOT 추적',
-        labelVi: 'Truy xuất LOT',
+        label: 'LOT 생산 이력 조회',
+        labelVi: 'Tra cứu lịch sử sản xuất LOT',
       },
       /* W-02-05 — 진행을 본 뒤 닫는다. 생산 흐름의 끝이다. */
       {
@@ -668,7 +689,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 창고·위치 — 창고·Location → 적치 규칙(위치를 참조) → 창고 배치도(위치를 도면에 얹음).
+       * 창고·위치 — 창고·Location → 창고 배치도(위치를 도면에 얹음).
        * 물건이 오가는 「구매 / 자재 관리」가 아니라 어디에 둘지 **정해 두는** 일이라 기준정보다.
        */
       {
@@ -682,7 +703,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '창고·Location',
             labelVi: 'Kho · Vị trí',
           },
-          { to: '/master-data/putaway-rule', label: '적치 규칙', labelVi: 'Quy tắc cất hàng' },
           {
             to: '/master-data/warehouse-layout',
             label: '창고 배치도',

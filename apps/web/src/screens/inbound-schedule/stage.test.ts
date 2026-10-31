@@ -10,7 +10,6 @@ import {
 import {
   countedGroups,
   hasLot,
-  hasStageCounts,
   isStageGroup,
   lineTableRowId,
   linesWithLots,
@@ -37,8 +36,8 @@ describe('단계 코드 → 묶음 · 색', () => {
     expect(stageGroupOf('SOMETHING_NEW')).toBeNull();
   });
 
-  it('이 화면의 할 일(의뢰 전·입고 대기)은 파랑, 기다림은 노랑, 보류는 빨강, 끝은 초록, 모르는 코드는 중립', () => {
-    expect(stageTone('INSPECTION_REQUIRED')).toBe('info');
+  it('이 화면의 할 일(입고 대기)은 파랑, 기다림(의뢰 전·검사 중)은 노랑, 보류는 빨강, 끝은 초록, 모르는 코드는 중립', () => {
+    expect(stageTone('INSPECTION_REQUIRED')).toBe('warning');
     expect(stageTone('RECEIPT_READY')).toBe('info');
     expect(stageTone('INSPECTION_REQUESTED')).toBe('warning');
     expect(stageTone('INSPECTION_HELD')).toBe('error');
@@ -98,16 +97,6 @@ describe('발주의 진행 — 가장 뒤처진 묶음과 외 N', () => {
     expect(stageLead({ RECEIPT: 2 })).toEqual({ group: 'RECEIPT', count: 2, others: 0 });
     expect(stageLead({})).toBeNull();
     expect(stageLead({ INSPECTION: 0 })).toBeNull();
-  });
-
-  it('「진행」 열은 한 줄에라도 묶음 수가 실렸을 때만 선다 — 앞선 서버는 열이 없다', () => {
-    expect(hasStageCounts([orderSummary(), orderSummary({ purchaseOrderId: 7102 })])).toBe(false);
-    expect(
-      hasStageCounts([
-        orderSummary(),
-        orderSummary({ purchaseOrderId: 7102, inboundStageCounts: {} }),
-      ]),
-    ).toBe(true);
   });
 });
 

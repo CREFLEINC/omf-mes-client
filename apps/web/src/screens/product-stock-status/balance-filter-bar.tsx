@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { toFilterChips, type BalanceFilters, type FilterChipNames } from './filters';
-import { SelectField } from './select-field';
+import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 import { VIEW_AXES, type ViewAxis } from './view-axis';
 
@@ -17,11 +17,9 @@ export interface BalanceFilterBarProps {
   canUseLotView: boolean;
   onViewChange: (view: ViewAxis) => void;
   warehouseOptions: SelectOption[];
-  itemOptions: SelectOption[];
   /** 조건 칩에 실을 참조 이름. 번호를 문구로 만드는 자리를 두지 않기 위한 것이다. */
   chipNames: FilterChipNames;
   warehouseNote?: string;
-  itemNote?: string;
   /** 이 구획이 이름을 내는 참조(창고·품목)가 실패했는가. */
   referencesFailed: boolean;
   onRetryReferences: () => void;
@@ -48,10 +46,8 @@ export const BalanceFilterBar = ({
   canUseLotView,
   onViewChange,
   warehouseOptions,
-  itemOptions,
   chipNames,
   warehouseNote,
-  itemNote,
   referencesFailed,
   onRetryReferences,
   onSearch,
@@ -120,12 +116,11 @@ export const BalanceFilterBar = ({
             setFilters((prev) => ({ ...prev, warehouse: value }));
           }}
         />
-        <SelectField
-          optionWidth="codeName"
+        {/* 품목은 9천여 건이라 칸이 서버에서 쪽으로 받는다 — 예전 목록처럼 중지 품목은 싣지 않는다. */}
+        <ItemSelectField
           label={t.fields.item}
-          options={withAll(itemOptions)}
+          leadingOptions={withAll([])}
           value={filters.item}
-          note={itemNote}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, item: value }));
           }}

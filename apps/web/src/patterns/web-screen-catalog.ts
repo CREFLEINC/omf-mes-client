@@ -70,8 +70,6 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 대체로 겹치지만 창고 계열 둘은 아니다 — 아래 두 자리에 근거를 적었다.
    */
   { path: '/master-data/warehouse-location', code: 'W-06-07', name: '창고·Location 마스터' },
-  /* IA §3-1 「기준정보 > 마스터」. v1.6 신설 화면이고 `W-06-07` 에서 이어진다고 §3-2 가 적었다. */
-  { path: '/master-data/putaway-rule', code: 'W-06-14', name: '적치 규칙 마스터' },
   /*
    * ⚠ **06 이 아니라 공통(CO)이다.** IA §3-1 은 이 화면을 「시스템/공통 > 설정」에 두었는데
    * 사이드바는 창고 계열 옆(기준정보)에 세웠다 — 메뉴 배치와 화면 코드의 도메인이 **갈리는 자리**다.
@@ -218,8 +216,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-08',
     name: 'W/O 진행현황 조회(생산 실적 집계 포함)',
   },
-  /* 서버 권한 키 W-02-09 「LOT 추적」. */
-  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 추적' },
+  /* 서버 권한 키 W-02-09 「LOT 생산 이력 조회」. */
+  { path: '/production/lot-trace', code: 'W-02-09', name: 'LOT 생산 이력 조회' },
 
   /* ── 품질관리 ─────────────────────────────────────────────────────────── */
   {
@@ -334,4 +332,10 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
   { path: '/logistics/inbound-excess', ownerPath: '/logistics/inbound-schedule' },
   /* BOM — 「품목·BOM 정보」(W-06-05)의 BOM 구역을 탭으로 뗐다(사용자 지시 2026-10-28 · ERP 연동 현황·이력의 BOM 탭처럼). */
   { path: '/master-data/item-boms', ownerPath: '/master-data/item-extended-attrs' },
+  /*
+   * 원인코드 · 공정 매핑 — 불량·원인코드(W-06-03) 화면 안 하위 탭을 「품질 코드 관리」 탭 막대로 뗐다
+   * (사용자 지시 2026-10-29 · omf-all-around#208). 불량코드는 종전 주소 그대로다.
+   */
+  { path: '/master-data/cause-code', ownerPath: '/master-data/defect-cause-code' },
+  { path: '/master-data/defect-process-mapping', ownerPath: '/master-data/defect-cause-code' },
 ];

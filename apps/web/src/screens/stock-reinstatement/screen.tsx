@@ -20,6 +20,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { isStockableLocation } from '../../patterns/location-level';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { ConfirmDialog, type ReinstatementSummary } from './confirm-dialog';
@@ -198,9 +199,21 @@ export const StockReinstatementScreen = () => {
   const selectedWarehouse = lookups.data?.warehouses.find(
     (warehouse) => String(warehouse.warehouseId) === draft.toWarehouseId,
   );
-  const locationRequired =
-    selectedWarehouse !== undefined && selectedWarehouse.managementLevelCode !== 'WAREHOUSE';
-  const locations = useLocations(locationRequired ? selectedWarehouse.warehouseId : null);
+  /*
+   * 도착 위치는 서버 규칙(P-153)을 따른다 — 재고를 둘 수 있는 위치(활성 · 적치 대기 아님 · 켜진 하위 없음)가
+   * 하나면 서버가 그 위치로 넣고, 둘 이상이면 사람이 고르고, 없으면 그 창고로는 넣을 수 없다.
+   * 그래서 창고를 고르면 위치를 먼저 읽고, 수를 알기 전에는 확정을 막는다.
+   */
+  const locations = useLocations(selectedWarehouse?.warehouseId ?? null);
+  const stockableLocations = (locations.data ?? []).filter(isStockableLocation);
+  const stockableLocationCount =
+    selectedWarehouse === undefined || locations.data === undefined
+      ? null
+      : stockableLocations.length;
+  const locationRequired = stockableLocationCount !== null && stockableLocationCount >= 2;
+  const locationsLoading = selectedWarehouse !== undefined && locations.isPending;
+  const noStockableLocationError =
+    stockableLocationCount === 0 ? t.form.noStockableLocation : undefined;
   const maxQty =
     lotStatus.data?.onHandQty ??
     (selected === null || selected === undefined ? null : remainingDecisionQty(selected));
@@ -274,7 +287,7 @@ export const StockReinstatementScreen = () => {
     const nextErrors = validateDraft({
       draft,
       maxQty,
-      locationRequired,
+      stockableLocationCount,
       releaseReasonsReady: (lookups.data?.releaseReasons.length ?? 0) > 0,
       text: t.form,
     });
@@ -325,12 +338,10 @@ export const StockReinstatementScreen = () => {
       value: String(warehouse.warehouseId),
       label: warehouseLabel(warehouse.warehouseCode, warehouse.warehouseName),
     }));
-  const locationOptions = (locations.data ?? [])
-    .filter((location) => location.isActive)
-    .map((location) => ({
-      value: String(location.locationId),
-      label: `${location.locationCode} · ${location.locationName}`,
-    }));
+  const locationOptions = stockableLocations.map((location) => ({
+    value: String(location.locationId),
+    label: `${location.locationCode} · ${location.locationName}`,
+  }));
   const holdOptions = (holds.data ?? []).map((hold) => ({
     value: String(hold.lotHoldId),
     label: `${hold.reasonCode} · ${formatDateTime(hold.heldAt)}`,
@@ -418,9 +429,12 @@ export const StockReinstatementScreen = () => {
       selectedWarehouse === undefined
         ? t.values.empty
         : warehouseLabel(selectedWarehouse.warehouseCode, selectedWarehouse.warehouseName),
+    // 위치가 하나뿐이면 본문에 싣지 않아도 서버가 그 위치로 넣으므로, 확인 창에는 그 위치를 보여 준다.
     toLocation:
-      locations.data?.find((location) => String(location.locationId) === draft.toLocationId)
-        ?.locationName ?? null,
+      (stockableLocationCount === 1
+        ? stockableLocations[0]
+        : stockableLocations.find((location) => String(location.locationId) === draft.toLocationId)
+      )?.locationName ?? null,
   };
 
   return (
@@ -588,7 +602,11 @@ export const StockReinstatementScreen = () => {
                     label={t.fields.targetWarehouse}
                     value={draft.toWarehouseId}
                     options={targetWarehouses}
-                    error={errors.toWarehouseId ?? reinstate.fieldErrors.toWarehouseId}
+                    error={
+                      errors.toWarehouseId ??
+                      reinstate.fieldErrors.toWarehouseId ??
+                      noStockableLocationError
+                    }
                     onChange={(value) => {
                       setDraft((current) => ({
                         ...current,
@@ -603,23 +621,18 @@ export const StockReinstatementScreen = () => {
                       reinstate.reset();
                     }}
                   />
-                  <SelectField
-                    label={t.fields.targetLocation}
-                    value={draft.toLocationId}
-                    options={locationOptions}
-                    disabled={!locationRequired}
-                    note={
-                      locationRequired && !locations.isPending && locationOptions.length === 0
-                        ? t.form.noLocations
-                        : selectedWarehouse !== undefined && !locationRequired
-                          ? t.form.warehouseOnly
-                          : undefined
-                    }
-                    error={errors.toLocationId ?? reinstate.fieldErrors.toLocationId}
-                    onChange={(value) =>
-                      setDraft((current) => ({ ...current, toLocationId: value }))
-                    }
-                  />
+                  {/* 재고를 둘 위치가 둘 이상일 때만 묻는다 — 하나면 서버가 그 위치로 넣는다. */}
+                  {locationRequired && (
+                    <SelectField
+                      label={t.fields.targetLocation}
+                      value={draft.toLocationId}
+                      options={locationOptions}
+                      error={errors.toLocationId ?? reinstate.fieldErrors.toLocationId}
+                      onChange={(value) =>
+                        setDraft((current) => ({ ...current, toLocationId: value }))
+                      }
+                    />
+                  )}
                   <SelectField
                     label={t.fields.hold}
                     value={draft.lotHoldId}
@@ -695,6 +708,7 @@ export const StockReinstatementScreen = () => {
                       lotStatus.data === null ||
                       lotStatus.data === undefined ||
                       relatedReadError ||
+                      locationsLoading ||
                       reinstate.isSaving
                     }
                     onClick={requestConfirm}

@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import type { CodeOption } from './options';
@@ -18,6 +19,11 @@ export interface SelectFieldProps {
   /** 인라인 오류. **지금 고칠 수 있는 것**이라 안내·잠긴 사유보다 앞선다. */
   error?: string;
   placeholder?: string;
+  /**
+   * 품목 칸 — 품목은 9천여 건이라 `options` 로 통째로 받지 않고 펼칠 때 서버에 검색해 쪽으로 받는다.
+   * 이때 `options` 는 맨 앞의 고정 선택지(「전체」)만 담는다. 미사용 품목을 가리키는 정책도 있어 미사용도 고른다.
+   */
+  searchItems?: boolean;
 }
 
 /**
@@ -42,6 +48,7 @@ export const SelectField = ({
   note,
   error,
   placeholder,
+  searchItems = false,
 }: SelectFieldProps) => {
   const id = useId();
   const noteId = `${id}-note`;
@@ -56,21 +63,25 @@ export const SelectField = ({
    * 그때는 자리표시로 대신하지 않는다.
    */
   const hasEmptyOption = options.some((option) => option.value === '');
+  const control = {
+    id,
+    value: value === '' && !hasEmptyOption ? null : value,
+    onChange,
+    placeholder,
+    disabled,
+    invalid: error !== undefined,
+    'aria-required': required || undefined,
+    'aria-describedby': message === undefined ? undefined : noteId,
+  };
 
   return (
     <div className="field-cell">
       <FieldLabel htmlFor={id} label={label} required={required} />
-      <Select
-        id={id}
-        options={options}
-        value={value === '' && !hasEmptyOption ? null : value}
-        onChange={onChange}
-        placeholder={placeholder}
-        disabled={disabled}
-        invalid={error !== undefined}
-        aria-required={required || undefined}
-        aria-describedby={message === undefined ? undefined : noteId}
-      />
+      {searchItems ? (
+        <ItemSelect {...control} includeInactive leadingOptions={options} />
+      ) : (
+        <Select {...control} options={options} />
+      )}
       {message !== undefined && (
         <span id={noteId} className={error === undefined ? 'field-note' : 'field-error'}>
           {message}

@@ -25,8 +25,12 @@ export interface PageNavProps<S extends number = PageSize> {
   onChangeSize?: (size: S) => void;
   /** 고를 페이지 크기. 기본은 `PAGE_SIZES`(20 · 50 · 100). */
   sizes?: readonly S[];
-  /** 처음 · 이전 · 다음 · 마지막 단추 크기. 기본 `sm` — 검사 기준 목록처럼 키워 쓸 화면이 켠다(#196). */
+  /** 처음 · 이전 · 다음 · 마지막 단추 크기만 따로 — 주지 않으면 `controlSize` 를 따른다(검사 기준 목록 · #196). */
   buttonSize?: 'sm' | 'md';
+  /** 단추 · 크기 선택의 크기. 기본은 `sm` — 목록 아래처럼 옆 단추와 맞출 때 `md`(#197). */
+  controlSize?: 'sm' | 'md';
+  /** 저장 중 등 쪽을 옮기면 안 될 때 단추 · 크기 선택을 모두 끈다(#197). */
+  disabled?: boolean;
 }
 
 export const totalPagesOf = (meta: PageNavMeta): number => {
@@ -40,7 +44,9 @@ export const PageNav = <S extends number = PageSize>({
   onChangePage,
   onChangeSize,
   sizes = PAGE_SIZES as unknown as readonly S[],
-  buttonSize = 'sm',
+  buttonSize,
+  controlSize = 'sm',
+  disabled = false,
 }: PageNavProps<S>) => {
   const totalPages = totalPagesOf(meta);
   const page = Math.min(Math.max(1, meta.page), totalPages);
@@ -52,8 +58,9 @@ export const PageNav = <S extends number = PageSize>({
         {onChangeSize !== undefined && (
           <Select
             aria-label={t.pageSize}
-            size="sm"
+            size={controlSize}
             className="page-nav-size"
+            disabled={disabled}
             value={String(meta.size)}
             options={sizes.map((size) => ({
               value: String(size),
@@ -68,17 +75,17 @@ export const PageNav = <S extends number = PageSize>({
       </div>
       <div className="page-nav-right">
         <Button
-          size={buttonSize}
+          size={buttonSize ?? controlSize}
           variant="outlined"
-          disabled={page <= 1}
+          disabled={disabled || page <= 1}
           onClick={() => onChangePage(1)}
         >
           {t.first}
         </Button>
         <Button
-          size={buttonSize}
+          size={buttonSize ?? controlSize}
           variant="outlined"
-          disabled={page <= 1}
+          disabled={disabled || page <= 1}
           onClick={() => onChangePage(page - 1)}
         >
           {t.prev}
@@ -87,17 +94,17 @@ export const PageNav = <S extends number = PageSize>({
           {t.position(page, totalPages)}
         </span>
         <Button
-          size={buttonSize}
+          size={buttonSize ?? controlSize}
           variant="outlined"
-          disabled={page >= totalPages}
+          disabled={disabled || page >= totalPages}
           onClick={() => onChangePage(page + 1)}
         >
           {t.next}
         </Button>
         <Button
-          size={buttonSize}
+          size={buttonSize ?? controlSize}
           variant="outlined"
-          disabled={page >= totalPages}
+          disabled={disabled || page >= totalPages}
           onClick={() => onChangePage(totalPages)}
         >
           {t.last}

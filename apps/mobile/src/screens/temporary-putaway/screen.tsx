@@ -21,13 +21,12 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import type { PutawayTask } from '../putaway/putaway';
+import { allowedSummaryOf, type PutawayTask } from '../putaway/putaway';
 import { putawayKeys, usePutawayTask } from '../putaway/queries';
 import {
   PUTAWAY_TASK_TEMPORARY_REASON,
   canSubmit,
   isAlreadyPutAway,
-  isTemporaryLocation,
   queuedCountOf,
   temporaryLocationsOf,
   toOutboxDraft,
@@ -42,7 +41,6 @@ type Outcome = 'queued' | 'sent' | 'rejected';
 /** 앞 화면이 넘겨 준 것. 지시가 없으면 이 화면은 아무것도 하지 않는다. */
 export interface TemporaryPutawayHandoff {
   task: PutawayTask;
-  location?: Location | null;
 }
 
 const isHandoff = (value: unknown): value is TemporaryPutawayHandoff =>
@@ -63,12 +61,11 @@ export const TemporaryPutawayScreen = () => {
   const task = handoff?.task ?? null;
 
   /*
-   * 넘겨받은 자리가 임시 유형일 때만 고른 것으로 둔다. 앞 화면은 그 자리에 둘 수 없어서 여기로
-   * 보내므로, 그대로 받으면 막혔던 자리에 임시 적치가 기록된다.
+   * 자리는 이 화면에서 고른다. 앞 화면은 지시만 넘긴다 — 막혔던 자리를 넘겨받으면 그 자리에 임시 적치가
+   * 기록된다.
    */
   const [draft, setDraft] = useState<TemporaryDraft>({
-    location:
-      handoff?.location != null && isTemporaryLocation(handoff.location) ? handoff.location : null,
+    location: null,
     reasonCode: '',
     remarks: '',
   });
@@ -115,11 +112,7 @@ export const TemporaryPutawayScreen = () => {
   const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
   const itemCode = useItemCodes(task === null ? [] : [task.itemId]);
 
-  /*
-   * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
-   * 무엇을 옮겨야 하는지 알 수 없다.
-   */
-  const { pickable: temporaryOnly, filtered } = temporaryLocationsOf(locations.data ?? []);
+  const stockable = temporaryLocationsOf(locations.data ?? []);
 
   const scannedLocation = scanned === null ? null : (byCode.data ?? null);
   /*
@@ -128,13 +121,13 @@ export const TemporaryPutawayScreen = () => {
    */
   const location = scanned === null ? draft.location : scannedLocation;
   /*
-   * 스캔은 정본이라 임시 유형이 아닌 자리도 받는다. 그 자리를 선택칸이 못 담으면 확인 줄과
-   * 선택칸이 갈려 화면이 두 자리를 동시에 말한다.
+   * 스캔은 정본이라 목록 밖 자리도 받는다. 그 자리를 선택칸이 못 담으면 확인 줄과 선택칸이 갈려
+   * 화면이 두 자리를 동시에 말한다.
    */
   const pickable =
-    location !== null && !temporaryOnly.some((each) => each.locationId === location.locationId)
-      ? [...temporaryOnly, location]
-      : temporaryOnly;
+    location !== null && !stockable.some((each) => each.locationId === location.locationId)
+      ? [...stockable, location]
+      : stockable;
   /*
    * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 등록이 셈에서
    * 빠진 채로 같은 지시에 한 건이 더 나간다. 서버 상세를 확인하는 동안에도 같다.
@@ -283,12 +276,8 @@ export const TemporaryPutawayScreen = () => {
           {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}
           <TaskRoute
             from={t.task.origin(codeOf(task.fromLocationId))}
-            to={
-              task.recommendedLocationId === null || task.recommendedLocationId === undefined
-                ? undefined
-                : t.task.recommended(codeOf(task.recommendedLocationId))
-            }
-            missing={t.task.noRule}
+            to={allowedSummaryOf(task) ?? undefined}
+            missing={t.task.anywhere}
           />
         </div>
       </TaskHeader>
@@ -325,10 +314,6 @@ export const TemporaryPutawayScreen = () => {
       <section className="temporary__section">
         {/* 스캔 구역이 같은 말(위치 라벨을 스캔하세요)을 한다. 구획 이름은 낭독기에만 준다. */}
         <h2 className="temporary__hidden">{t.location.legend}</h2>
-        {/* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 그때는 전체를 보이고 그 사실을 적는다. */}
-        {locations.data !== undefined && !filtered ? (
-          <p className="temporary__note">{t.location.unfiltered}</p>
-        ) : null}
         <ScanZone
           field={scanField}
           label={t.location.scanLabel}
@@ -417,13 +402,6 @@ export const TemporaryPutawayScreen = () => {
               <Icon name="check_circle" size={20} />
               <span>{t.location.chosen(location.locationCode, location.locationName)}</span>
             </p>
-            {/* 임시 위치는 수용량으로 막지 않는다. 값이 있으면 알리기만 한다. */}
-            {location.capacityQty === null || location.capacityQty === undefined ? null : (
-              <AlertBanner
-                variant="warning"
-                title={t.location.capacity(String(location.capacityQty))}
-              />
-            )}
           </>
         )}
       </section>

@@ -7,7 +7,7 @@ import { PopSelect as Select } from './pop-select';
  * **개발 서버에서만 서는** POP 화면 이동 셀렉터 — 진입 화면(P-CO-01)의 「작업 화면으로
  * 이동」 자리에 선다.
  *
- * ⭐ **왜 있는가.** 제품 버튼은 작업 시작 화면(P-02-01 · `/pop/work-start`)으로만 이어진다.
+ * ⭐ **왜 있는가.** 제품 버튼은 작업 지시 목록 화면(P-02-01 · `/pop/work-start`)으로만 이어진다.
  * 다른 POP 화면을 손으로 확인하려면 주소를 직접 쳐야 하는데 단말 셸에는 주소창이 없어,
  * 개발 중 확인 경로가 사람마다 갈린다. 이 셀렉터가 제품 버튼 자리를 **개발 중에만** 빌려
  * 전체 화면 점검 경로를 제공한다.
@@ -64,7 +64,7 @@ export interface PopDevScreen {
  * 파일은 여러 작업이 동시에 건드리는 자리다.
  */
 export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
-  { path: '/pop/work-start', label: 'P-02-01 작업 시작' },
+  { path: '/pop/work-start', label: 'P-02-01 작업 지시 목록' },
   { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
   {
     path: '/pop/production-result',

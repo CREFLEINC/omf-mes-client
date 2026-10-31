@@ -150,7 +150,6 @@ export const ShotConversionScreen = () => {
       : null;
 
   const scopeOptions: ScopeOptions = {
-    itemId: selectableLookupOptions(items, values.scope.itemId),
     processId: selectableLookupOptions(processes, values.scope.processId),
     plantId: selectableLookupOptions(plants, values.scope.plantId),
     businessUnitId: selectableLookupOptions(businessUnits, values.scope.businessUnitId),
@@ -504,7 +503,6 @@ export const ShotConversionScreen = () => {
             quantity={preview.quantity}
             onChangeQuantity={(quantity) => setPreview((prev) => ({ ...prev, quantity }))}
             toolOptions={selectableLookupOptions(toolSource, preview.toolId)}
-            itemOptions={selectableLookupOptions(items, preview.itemId)}
             processOptions={selectableLookupOptions(processes, preview.processId)}
             tool={selectedTool}
             effective={effective.data ?? null}

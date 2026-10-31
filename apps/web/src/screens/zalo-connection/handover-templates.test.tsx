@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,7 +7,9 @@ import { describe, expect, it } from 'vitest';
 import { HANDOVER_ALERT_ORDER } from '../../patterns/handover-alert-types';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { ZaloConnectionScreen } from './screen';
-import type { Connection, HandoverTemplate } from './types';
+import type { Connection } from './types';
+
+type HandoverTemplate = components['schemas']['ZaloConnection']['handoverTemplates'][number];
 
 const t = messages.zaloConnection;
 
@@ -32,23 +35,28 @@ const HANDOVER_NAMES: Record<string, string> = {
   SHIPMENT_PACKING_REQUESTED: '출하 포장',
 };
 
-const connection = (handoverTemplates?: HandoverTemplate[]): Connection => ({
-  appId: '1234567890',
-  secretKeySet: true,
-  refreshTokenSet: true,
-  status: 'ACTIVE',
-  accessTokenExpiresAt: null,
-  lastRefreshedAt: null,
-  lastErrorCode: null,
-  lastErrorMessage: null,
-  paramMaxLength: 100,
-  templates: CODES.map((eventCode, index) => ({
-    eventCode,
-    templateId: index === 0 ? 'TPL01' : null,
-  })),
-  deliveryEnabled: true,
-  ...(handoverTemplates === undefined ? {} : { handoverTemplates }),
-});
+/*
+ * 인계 칸(`handoverTemplates`)은 서버 전달본 2026-10-29부터 필수다. 칸을 싣지 않던 병합 전 서버의 응답도
+ * 그대로 그려야 하므로, 칸을 빼고 만든 응답은 타입을 단언해 넘긴다.
+ */
+const connection = (handoverTemplates?: HandoverTemplate[]): Connection =>
+  ({
+    appId: '1234567890',
+    secretKeySet: true,
+    refreshTokenSet: true,
+    status: 'ACTIVE',
+    accessTokenExpiresAt: null,
+    lastRefreshedAt: null,
+    lastErrorCode: null,
+    lastErrorMessage: null,
+    paramMaxLength: 100,
+    templates: CODES.map((eventCode, index) => ({
+      eventCode,
+      templateId: index === 0 ? 'TPL01' : null,
+    })),
+    deliveryEnabled: true,
+    ...(handoverTemplates === undefined ? {} : { handoverTemplates }),
+  }) as Connection;
 
 const setup = (data: Connection) => {
   const writes: Request[] = [];
@@ -161,7 +169,7 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     expect(writes).toHaveLength(0);
   });
 
-  it('응답에 인계 칸이 없어도 빈 칸 10개로 보인다', async () => {
+  it('서버가 인계 칸을 아직 싣지 않아도(병합 전) 빈 칸 10개로 보인다', async () => {
     setup(connection());
 
     const card = await waitFor(() => handoverCard());

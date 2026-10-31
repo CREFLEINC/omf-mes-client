@@ -150,25 +150,51 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     expect(planRequests(requests)[0]?.url.searchParams.has('includeInactive')).toBe(false);
   });
 
-  it('미사용 포함을 켜면 includeInactive=true가 실린다', async () => {
-    const { requests, user } = renderScreen([planListRoute()]);
-    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+  /* 상태 선택(#208) — 가장 높은 버전의 상태로 거른다. 픽스처의 가장 높은 버전(2)은 작성중이다. */
+  it('상태를 확정으로 거르면 가장 높은 버전이 작성중인 기준은 빠진다', async () => {
+    renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()], '?vstatus=confirmed');
 
-    await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
+    expect(await screen.findByText('조건에 맞는 검사기준이 없습니다')).toBeInTheDocument();
+    expect(screen.getByText('상태: 확정')).toBeInTheDocument();
+  });
 
-    const last = planRequests(requests).at(-1);
-    expect(last?.url.searchParams.get('includeInactive')).toBe('true');
+  it('상태를 작성중으로 거르면 기준이 남는다', async () => {
+    renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()], '?vstatus=draft');
+
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+  });
+
+  /* 「미승인」은 서버 조건이 없어 화면이 거른다(#208) — 승인된 SYN-PLAN-03 은 빠진다. */
+  it('미승인을 켜면 승인되지 않은 기준만 남는다', async () => {
+    const { user } = renderScreen([planListRoute()], '?inactive=1');
+    await screen.findByRole('button', { name: 'SYN-PLAN-03' });
+
+    await user.click(screen.getByRole('checkbox', { name: '미승인' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'SYN-PLAN-03' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).toBeInTheDocument();
+  });
+
+  /* 사용 여부 칩 「미사용」(#208) — 미사용인 기준만 남는다. 주소 `usage=off` 로 들어온다. */
+  it('미사용만 보기는 미사용인 기준만 남기고 includeInactive=true 로 받는다', async () => {
+    const { requests } = renderScreen([planListRoute()], '?inactive=1&usage=off');
+
+    expect(await screen.findByRole('button', { name: 'SYN-PLAN-03' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'SYN-PLAN-01' })).not.toBeInTheDocument();
+    expect(planRequests(requests)[0]?.url.searchParams.get('includeInactive')).toBe('true');
   });
 
   it('조회 조건은 주소에 남는다 — 새로고침·공유가 같은 결과를 낸다', async () => {
-    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1');
+    const { requests } = renderScreen([planListRoute()], '?q=SYN&type=OQC&inactive=1&unapproved=1');
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     const first = planRequests(requests)[0];
     expect(first?.url.searchParams.get('q')).toBe('SYN');
     expect(first?.url.searchParams.get('inspectionTypeCode')).toBe('OQC');
     expect(first?.url.searchParams.get('includeInactive')).toBe('true');
-    expect(screen.getByRole('checkbox', { name: '미사용 포함' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '미승인' })).toBeChecked();
   });
 
   it('조회에 실패하면 표와 빈 상태 대신 오류 배너와 다시 시도가 뜬다', async () => {
@@ -362,7 +388,7 @@ describe('InspectionStandardScreen — 기준 선택', () => {
     renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    expect(screen.getByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(screen.getByText('검사 기준을 선택하세요')).toBeInTheDocument();
     expect(screen.getByText('목록에서 선택하면 상세 정보가 표시됩니다.')).toBeInTheDocument();
   });
 });
@@ -387,10 +413,25 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
     const dialog = await screen.findByRole('dialog', { name: t.import.title });
 
-    expect(within(dialog).getByText(t.import.partialWarningTitle)).toBeInTheDocument();
-    expect(within(dialog).getByText(t.import.draftNote)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.partialWarning)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.guideRequiredColumns)).toBeInTheDocument();
     expect(within(dialog).getByLabelText(t.import.fileLabel)).toHaveAttribute('accept', '.xlsx');
     expect(within(dialog).getByRole('button', { name: t.import.submit })).toBeDisabled();
+  });
+
+  /* 파일 고르기 창의 「취소」가 올리는 cancel 사건이 바깥 창을 닫지 않는다(#208). */
+  it('파일 고르기를 취소해도 올리기 창이 닫히지 않는다', async () => {
+    const { user } = renderScreen([planListRoute()]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    fireEvent(
+      within(dialog).getByLabelText(t.import.fileLabel),
+      new Event('cancel', { bubbles: true }),
+    );
+
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
   });
 
   it('모두 반영되면 창을 닫고 「저장했습니다」를 알린다', async () => {
@@ -406,7 +447,98 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
   });
 
-  it('올리면 파일을 멱등 키와 함께 보내고, 성공·실패 기준과 사유를 창 안에 남긴다', async () => {
+  /* 올린 기준은 바로 확정한다(#208) — 서버가 돌려준 작성중 버전마다 확정을 부른다. */
+  const confirmRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' &&
+      /\/quality\/inspection-plan-versions\/\d+:confirm$/.test(new URL(request.url).pathname),
+    respond,
+  });
+
+  it('올린 뒤 만든 버전마다 멱등 키로 확정하고, 모두 되면 창을 닫는다(#208)', async () => {
+    const { requests, user } = renderScreen([
+      importRoute(() =>
+        jsonResponse({
+          succeeded: 2,
+          failed: [],
+          created: [
+            { index: 0, key: 'P-A', inspectionPlanVersionId: 901 },
+            { index: 5, key: 'P-B', inspectionPlanVersionId: 902 },
+          ],
+        }),
+      ),
+      confirmRoute(() => jsonResponse({})),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
+    const confirms = requests.filter((request) => request.url.pathname.endsWith(':confirm'));
+    expect(confirms.map((request) => request.url.pathname)).toEqual([
+      '/quality/inspection-plan-versions/901:confirm',
+      '/quality/inspection-plan-versions/902:confirm',
+    ]);
+    expect(
+      confirms.every((request) => UUID_PATTERN.test(request.headers.get('Idempotency-Key') ?? '')),
+    ).toBe(true);
+  });
+
+  it('확정에 실패한 기준은 파일 줄에 사유를 남기고 창을 닫지 않는다(#208)', async () => {
+    const { user } = renderScreen([
+      importRoute(() =>
+        jsonResponse({
+          succeeded: 2,
+          failed: [],
+          created: [
+            { index: 0, key: 'P-A', inspectionPlanVersionId: 901 },
+            { index: 5, key: 'P-B', inspectionPlanVersionId: 902 },
+          ],
+        }),
+      ),
+      confirmRoute((request) =>
+        new URL(request.url).pathname.includes('/902:')
+          ? jsonResponse(
+              {
+                errors: [
+                  {
+                    scope: 'screen',
+                    code: 'STATE_LOCKED',
+                    message: '검사 항목이 없어 확정할 수 없습니다.',
+                  },
+                ],
+              },
+              { status: 422 },
+            )
+          : jsonResponse({}),
+      ),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    expect(
+      await within(dialog).findByText(
+        t.import.confirmFailed('P-B', '검사 항목이 없어 확정할 수 없습니다.'),
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/^P-A · /)).not.toBeInTheDocument();
+    // 확정 실패가 섞이면 일부 실패 — 다시 올리면 P-A 가 한 번 더 만들어져 재시도 대상이 아니다.
+    expect(within(dialog).getByText(t.import.confirmNote)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.import.retry })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+  });
+
+  it('일부 기준만 실패한 파일은 「일부 실패」로 기준 건수 · 사유를 남기고 재시도에서 뺀다(#208)', async () => {
     const { requests, user } = renderScreen([
       importRoute(() =>
         jsonResponse({
@@ -431,10 +563,17 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
     await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
 
-    expect(await within(dialog).findByText(t.import.succeeded(1))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.import.failed(1))).toBeInTheDocument();
-    expect(within(dialog).getByText('P-BAD')).toBeInTheDocument();
-    expect(within(dialog).getByText('엑셀 4행: 없는 코드입니다: EA2')).toBeInTheDocument();
+    const row = await within(dialog).findByRole('listitem', { name: '검사기준.xlsx' });
+    expect(within(row).getByText(t.import.status.partial)).toBeInTheDocument();
+    expect(within(row).getByText(t.import.criteriaCounts(1, 1))).toBeInTheDocument();
+    expect(
+      within(row).getByText(t.import.failureLine('P-BAD', '엑셀 4행: 없는 코드입니다: EA2')),
+    ).toBeInTheDocument();
+    expect(within(row).getByText(t.import.partialNote)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.import.summary(1, 0, 1))).toBeInTheDocument();
+    // 다시 보낼 파일이 없으니 올리기 단추가 사라진다 — 반영된 기준을 한 번 더 만들지 않게.
+    expect(within(dialog).queryByRole('button', { name: t.import.submit })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.import.retry })).not.toBeInTheDocument();
 
     const posts = requestsTo(requests, IMPORT_PATH);
     expect(posts).toHaveLength(1);
@@ -442,12 +581,12 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(posts[0]?.body).toContain('name="file"');
   });
 
-  it('여러 파일을 차례로 하나씩, 파일마다 새 멱등 키로 올리고 결과를 파일별로 남긴다', async () => {
+  it('여러 파일을 차례로 하나씩 새 멱등 키로 올리고, 실패 파일만 다시 올려 모두 성공하면 닫는다(#208)', async () => {
     let call = 0;
     const { requests, user } = renderScreen([
       importRoute(() => {
         call += 1;
-        return call === 1
+        return call !== 2
           ? jsonResponse({ succeeded: 2, failed: [] })
           : jsonResponse(
               {
@@ -487,16 +626,78 @@ describe('InspectionStandardScreen — 엑셀 올리기', () => {
     expect(within(dialog).getByText(t.import.fileCount(2))).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
 
-    const first = await within(dialog).findByRole('region', { name: 'A.xlsx' });
-    expect(within(first).getByText(t.import.succeeded(2))).toBeInTheDocument();
-    const second = await within(dialog).findByRole('region', { name: 'B.xlsx' });
+    // 결과는 파일 목록 한 곳에 — 실패 파일이 위, 사유는 그 줄 바로 아래.
+    expect(await within(dialog).findByText(t.import.summary(2, 1, 1))).toBeInTheDocument();
+    const rows = within(dialog).getAllByRole('listitem');
+    expect(rows.map((item) => item.getAttribute('aria-label'))).toEqual(['B.xlsx', 'A.xlsx']);
+    expect(within(rows[0]!).getByText(t.import.status.failed)).toBeInTheDocument();
     expect(
-      within(second).getByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
+      within(rows[0]!).getByText('엑셀 파일을 열 수 없습니다. .xlsx 파일인지 확인하세요.'),
     ).toBeInTheDocument();
+    expect(within(rows[1]!).getByText(t.import.status.success)).toBeInTheDocument();
+    // 성공 파일은 뺄 수 없다.
+    expect(
+      within(dialog).queryByRole('button', { name: t.import.removeFile('A.xlsx') }),
+    ).not.toBeInTheDocument();
 
     const keys = requestsTo(requests, IMPORT_PATH).map((r) => r.headers.get('Idempotency-Key'));
     expect(keys).toHaveLength(2);
     expect(keys[0]).not.toBe(keys[1]);
+
+    // 재시도는 실패 파일(B)만 보낸다 — 모두 성공하면 창을 닫는다.
+    await user.click(within(dialog).getByRole('button', { name: t.import.retry }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.import.title })).not.toBeInTheDocument();
+    // 성공한 A 는 다시 보내지 않는다 — 재시도로 나간 요청은 하나뿐이다.
+    expect(requestsTo(requests, IMPORT_PATH)).toHaveLength(3);
+  });
+
+  /* 서버 오류 · 연결 끊김은 앞 기준이 이미 들어갔을 수 있다 — 재시도에서 뺀다(#208 리뷰 반영). */
+  it('서버 오류로 끝난 파일은 「확인 필요」로 남기고 재시도하지 않는다', async () => {
+    const { requests, user } = renderScreen([
+      importRoute(() => jsonResponse({ errors: [] }, { status: 500 })),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+
+    const row = await within(dialog).findByRole('listitem', { name: '검사기준.xlsx' });
+    expect(await within(row).findByText(t.import.status.unknown)).toBeInTheDocument();
+    expect(within(row).getByText(t.import.unknownNote)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: t.import.retry })).not.toBeInTheDocument();
+    expect(requestsTo(requests, IMPORT_PATH)).toHaveLength(1);
+  });
+
+  /* 올리는 중에 Esc 로 창이 닫히면 결과를 볼 곳이 없다(#208 리뷰 반영). */
+  it('올리는 중에는 Esc 로 창이 닫히지 않는다', async () => {
+    let release: (() => void) | undefined;
+    const { user } = renderScreen([
+      importRoute(
+        () =>
+          new Promise<Response>((resolve) => {
+            release = () => resolve(jsonResponse({ succeeded: 0, failed: [] }));
+          }),
+      ),
+      planListRoute(),
+    ]);
+    await screen.findByRole('button', { name: 'SYN-PLAN-01' });
+
+    await user.click(screen.getByRole('button', { name: '엑셀 올리기' }));
+    const dialog = await screen.findByRole('dialog', { name: t.import.title });
+    await user.upload(within(dialog).getByLabelText(t.import.fileLabel), excelFile());
+    await user.click(within(dialog).getByRole('button', { name: t.import.submit }));
+    await within(dialog).findByRole('status');
+
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(screen.getByRole('dialog', { name: t.import.title })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
+
+    release?.();
+    expect(await within(dialog).findByText(t.import.status.failed)).toBeInTheDocument();
   });
 
   it('파일을 읽을 수 없으면 창을 닫지 않고 사유를 배너로 낸다', async () => {
@@ -696,6 +897,12 @@ const lookupRoutes = (): StubRoute[] => [
 
 const planForm = (): HTMLElement => screen.getByRole('region', { name: '기준 정보' });
 
+/** 「기준 추가」 창 안의 등록 폼(#208) — 뒤의 상세 칸에도 같은 이름의 구획이 있다. */
+const createForm = (): HTMLElement =>
+  within(screen.getByRole('dialog', { name: '검사 기준 등록' })).getByRole('region', {
+    name: '기준 정보',
+  });
+
 /** 기본 정보 폼의 품목은 품목 선택 창에서 고른다(#196) — 칸을 눌러 창을 열고 코드로 고른 뒤 「선택」. */
 const pickPlanItem = async (user: ReturnType<typeof userEvent.setup>, itemCode: string) => {
   await user.click(within(planForm()).getByLabelText('품목'));
@@ -881,8 +1088,7 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       itemId: 5001,
       processId: null,
       routingId: null,
-      // PQC 생략 허용(#119) — PQC 가 아닌 기준은 끈 채로 보낸다.
-      pqcSkipAllowed: false,
+      defaultSkip: false,
     });
     expect('approvedBy' in body).toBe(false);
     expect('approvedAt' in body).toBe(false);
@@ -973,7 +1179,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     expect(await screen.findByLabelText('기준코드')).toHaveValue('');
     expect(screen.getByLabelText('기준명')).toHaveValue('');
     // 서버가 채우는 값을 미리 지어내 보이지 않는다.
-    expect(within(planForm()).queryByText('미승인')).not.toBeInTheDocument();
+    expect(within(createForm()).queryByText('미승인')).not.toBeInTheDocument();
   });
 
   /* 아직 없는 자원이라 잠글 대상이 없다 — 계약이 If-Match를 요구하지 않는다. */
@@ -988,9 +1194,9 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
-    await user.click(within(planForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
-    await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     await screen.findByText('등록했습니다');
 
@@ -1004,8 +1210,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
       itemId: null,
       processId: null,
       routingId: null,
-      // PQC 생략 허용(#119) — PQC 가 아닌 기준은 끈 채로 보낸다.
-      pqcSkipAllowed: false,
+      defaultSkip: false,
     });
   });
 
@@ -1021,9 +1226,9 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
-    await user.click(within(planForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
-    await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     await waitFor(() => {
       expect(requestsTo(requests, `${PLANS_PATH}/3010`)).toHaveLength(1);
@@ -1040,7 +1245,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
-    await user.click(within(planForm()).getByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
@@ -1064,7 +1269,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     await awaitPlanForm();
     expect(await screen.findByRole('combobox', { name: '라우팅' })).toBeDisabled();
     expect(
-      screen.getByText('라우팅은 품목을 고른 뒤에 고를 수 있습니다. 먼저 품목을 고르세요.'),
+      screen.getByText('라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.'),
     ).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
@@ -1214,11 +1419,10 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
   });
 });
 
-const APPROVE_PATH = `${PLANS_PATH}/3001:approve`;
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
 
 const planActionRoute = (
-  action: 'approve' | 'deactivate',
+  action: 'deactivate',
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
@@ -1246,149 +1450,27 @@ const dialog = async (): Promise<HTMLElement> =>
     return first;
   });
 
-describe('InspectionStandardScreen — 기준 승인', () => {
-  it('「승인」을 누르면 확인 창이 열리고 확인 전에는 요청이 나가지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
+/* 승인은 현장 검사에 효력이 없는 기록뿐이라 단추를 걷었다(사용자 지시 · #208). */
+describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
+  /* 사용 중지는 창 밖, 상세 상자의 「기본 정보 수정」 옆으로 옮겼다(#208). */
+  it('기본 정보 수정 창에 승인 · 사용 중지 단추가 없다', async () => {
+    renderSelectedPlan();
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-
-    expect(await dialog()).toBeInTheDocument();
-    expect(screen.getByText('이 검사기준을 승인할까요?')).toBeInTheDocument();
-    expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(0);
+    const form = await awaitPlanForm();
+    expect(within(form).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 
-  /* 승인자와 승인 시각은 서버가 함께 기록한다 — 화면이 보내지 않는다. */
-  it('확인하면 본문 없이 멱등 키만 실어 보내고 If-Match를 싣지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-
-    await screen.findByText(t.result.approved);
-
-    const posts = requestsTo(requests, APPROVE_PATH);
-    expect(posts).toHaveLength(1);
-    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
-    expect(posts[0]?.headers.get('If-Match')).toBeNull();
-    expect(posts[0]?.body).toBe('');
-  });
-
-  /* 두 요청의 멱등 키가 같으면 서버가 두 번째를 첫 번째의 재시도로 본다. */
-  it('멱등 키는 요청마다 새로 만든다', async () => {
-    const { requests, user } = renderSelectedPlan([
-      planActionRoute('approve', () =>
-        jsonResponse(
-          { errors: [{ scope: 'screen', code: 'STANDARD', message: '거부' }] },
-          { status: 400 },
-        ),
-      ),
-    ]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    const confirmButton = within(await dialog()).getByRole('button', { name: '승인' });
-    await user.click(confirmButton);
-    await screen.findByText('거부');
-    await user.click(confirmButton);
-
-    await waitFor(() => {
-      expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(2);
-    });
-
-    const keys = requestsTo(requests, APPROVE_PATH).map((request) =>
-      request.headers.get('Idempotency-Key'),
-    );
-    expect(keys[0]).toMatch(UUID_PATTERN);
-    expect(keys[0]).not.toBe(keys[1]);
-  });
-
-  /* 서버가 코드만 주고 문구를 비워 보내는 일이 실제로 있다. */
-  it('확정 버전이 없다는 거부는 서버 문구가 비어도 화면 안내가 남는다', async () => {
-    const { user } = renderSelectedPlan([
-      planActionRoute('approve', () =>
-        jsonResponse(
-          { errors: [{ scope: 'screen', code: 'CONFIRMED_VERSION_REQUIRED', message: '' }] },
-          { status: 400 },
-        ),
-      ),
-    ]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-
-    expect(
-      await screen.findByText(
-        '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  /* 닫으면 사용자는 무엇이 막았는지 모른 채 같은 버튼을 다시 누른다. */
-  it('실패해도 확인 창이 닫히지 않는다', async () => {
-    const { user } = renderSelectedPlan([
-      planActionRoute('approve', () => jsonResponse({ message: '' }, { status: 403 })),
-    ]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-
-    expect(
-      await screen.findByText(
-        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
-      ),
-    ).toBeInTheDocument();
-    expect(confirmDialogs()).toHaveLength(1);
-  });
-
-  /* 응답에 ETag가 없다 — 재조회로 새 잠금 토큰을 확보해야 그다음 저장이 막히지 않는다. */
-  it('성공하면 목록과 상세를 다시 조회하고 창이 닫힌다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await findPlanField('기준코드');
-    const before = {
-      detail: requestsTo(requests, PLAN_DETAIL_PATH).length,
-      list: planRequests(requests).length,
-    };
-
-    await user.click(within(planForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-    await screen.findByText(t.result.approved);
-
-    await waitFor(() => {
-      expect(requestsTo(requests, PLAN_DETAIL_PATH).length).toBeGreaterThan(before.detail);
-    });
-    expect(planRequests(requests).length).toBeGreaterThan(before.list);
-    expect(confirmDialogs()).toHaveLength(0);
-  });
-
-  it('확인 창에서 취소하면 요청이 나가지 않는다', async () => {
-    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
-
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '취소' }));
-
-    expect(confirmDialogs()).toHaveLength(0);
-    expect(requestsTo(requests, APPROVE_PATH)).toHaveLength(0);
-  });
-
-  it('이미 승인된 기준은 승인이 비활성이고 사유가 보인다', async () => {
-    renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
-      '?plan=3003',
-    );
-
-    expect(within(await awaitPlanForm()).getByRole('button', { name: '승인' })).toBeDisabled();
-    expect(screen.getByText('승인은 이미 승인된 기준에 다시 할 수 없습니다.')).toBeInTheDocument();
-  });
-
-  it('등록 폼에서는 승인·사용 중지가 비활성이고 사유가 보인다', async () => {
+  /* 아직 없는 기준에는 걸 대상이 없다 — 등록 창에는 상태 단추를 두지 않는다(#208). */
+  it('등록 창에는 승인 · 사용 중지 단추가 없다', async () => {
     const { user } = renderScreen([planListRoute(), ...lookupRoutes()]);
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
 
-    const form = planForm();
-    expect(within(form).getByRole('button', { name: '승인' })).toBeDisabled();
-    expect(within(form).getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(screen.getByText('승인은 기준을 먼저 등록해야 할 수 있습니다.')).toBeInTheDocument();
+    const form = createForm();
+    expect(within(form).getByRole('button', { name: '기준 추가' })).toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 });
 
@@ -1397,7 +1479,7 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
   it('확인하면 If-Match를 함께 실어 보낸다', async () => {
     const { requests, user } = renderSelectedPlan([planActionRoute('deactivate')]);
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
+    await user.click(await screen.findByRole('button', { name: '사용 중지' }));
     await user.click(within(await dialog()).getByRole('button', { name: '사용 중지' }));
 
     await screen.findByText(t.result.deactivated);
@@ -1411,33 +1493,32 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
   it('확인 전에는 요청이 나가지 않는다', async () => {
     const { requests, user } = renderSelectedPlan([planActionRoute('deactivate')]);
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
+    await user.click(await screen.findByRole('button', { name: '사용 중지' }));
 
     expect(screen.getByText('이 검사기준을 사용 중지할까요?')).toBeInTheDocument();
     expect(requestsTo(requests, DEACTIVATE_PATH)).toHaveLength(0);
   });
 
-  it('이미 미사용인 기준은 사용 중지가 비활성이고 사유가 보인다', async () => {
+  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */
+  it('이미 미사용인 기준에는 사용 중지 단추가 없다', async () => {
     renderScreen(
       [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
       '?plan=3003',
     );
 
-    expect(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
-    expect(
-      screen.getByText('사용 중지는 이미 미사용인 기준에 다시 할 수 없습니다.'),
-    ).toBeInTheDocument();
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
   });
 
   /* 사용 중지에는 409가 있다(계약 실측) — 재조회하면 풀린다. */
-  it('충돌이면 원인 문구와 「최신 불러오기」가 창 안에 나온다', async () => {
+  it('충돌이면 원인 문구와 「최신 불러오기」가 확인 창 안에 나온다', async () => {
     const { user } = renderSelectedPlan([
       planActionRoute('deactivate', () =>
         jsonResponse({ conflictCause: 'workerLease', message: '' }, { status: 409 }),
       ),
     ]);
 
-    await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
+    await user.click(await screen.findByRole('button', { name: '사용 중지' }));
     await user.click(within(await dialog()).getByRole('button', { name: '사용 중지' }));
 
     expect(
@@ -1512,11 +1593,18 @@ const renderVersions = (extraRoutes: StubRoute[] = [], search = '?plan=3001') =>
   );
 
 describe('InspectionStandardScreen — 버전 목록', () => {
-  it('기준을 고르기 전에는 버전 요청이 나가지 않는다', async () => {
+  /* 표의 「상태」 칸(#208) — 목록이 오면 줄마다 그 기준의 버전 목록을 한 번씩 받는다. */
+  it('목록이 오면 줄마다 버전 상태를 한 번씩 조회해 상태 칸에 보인다', async () => {
     const { requests } = renderScreen([planListRoute(), versionListRoute(), ...lookupRoutes()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    expect(versionRequests(requests)).toHaveLength(0);
+    await waitFor(() => {
+      expect(versionRequests(requests)).toHaveLength(inspectionPlanFixtures.length);
+    });
+    const ids = versionRequests(requests).map((request) =>
+      request.url.searchParams.get('inspectionPlanId'),
+    );
+    expect(new Set(ids).size).toBe(inspectionPlanFixtures.length);
   });
 
   it('기준을 고르면 기준 번호를 실은 버전 요청이 한 번 나가고 목록이 그려진다', async () => {
@@ -1533,9 +1621,14 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       await within(await versionPane()).findByRole('button', { name: '버전 2' }),
     ).toBeInTheDocument();
 
-    const gets = versionRequests(requests).filter((request) => request.method === 'GET');
-    expect(gets).toHaveLength(1);
-    expect(gets[0]?.url.searchParams.get('inspectionPlanId')).toBe('3001');
+    /*
+     * 표의 상태 칸과 같은 캐시를 쓴다 — 상세가 붙으며 한 번 더 새로 받을 수 있다. 기준 3001 의 버전 요청이 있으면 된다.
+     */
+    const gets = versionRequests(requests).filter(
+      (request) =>
+        request.method === 'GET' && request.url.searchParams.get('inspectionPlanId') === '3001',
+    );
+    expect(gets.length).toBeGreaterThan(0);
   });
 
   /* 목록에서 기준을 고르면 버전 목록 창 없이 확정된 최신 버전으로 바로 조회한다 — 작성중인 버전 2 는 건너뛴다(사용자 지시 · #196). */
@@ -1568,7 +1661,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
 
     await user.click(code);
 
-    expect(await screen.findByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'SYN-PLAN-01' })).not.toHaveAttribute('aria-current');
   });
 
@@ -1868,7 +1961,11 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-08-01');
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
-    expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
+    /* 검사 방식은 전수검사로 시작한다(#208) — 비어 있는 필수는 검사 주기 하나다. */
+    expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(1);
+    /* 아직 없는 버전에는 전이할 대상이 없다 — 작성 취소 · 확정 · 폐기를 두지 않는다(#208). */
+    expect(within(form).queryByRole('button', { name: '확정' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '폐기' })).not.toBeInTheDocument();
     expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(
       0,
     );
@@ -1884,7 +1981,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.getAllByText('작성중인 버전이 있습니다. 확정하거나 작성을 취소하세요.').length,
+      screen.getAllByText('버전 2가 작성 중입니다. 확정하거나 작성을 취소해 주세요.').length,
     ).toBeGreaterThan(0);
     expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(0);
   });
@@ -2082,6 +2179,19 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     expect('statusCode' in body).toBe(false);
   });
 
+  /* 열어 두면 저장이 된 건지 헷갈린다 — 저장이 끝나면 「버전 설정 수정」 창을 닫는다. */
+  it('저장에 성공하면 버전 설정 수정 창이 닫힌다', async () => {
+    const { user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+
+    expect(screen.queryByRole('region', { name: '버전 정보' })).not.toBeInTheDocument();
+  });
+
   /*
    * 비율은 그대로 실린다 — 수량으로 환산하지 않는다. 비운 샘플 개수는 null 로 실려
    * 비율과 함께 남지 않는다(omf-all-around#201 · 둘 중 하나만).
@@ -2156,6 +2266,23 @@ describe('InspectionStandardScreen — 버전 저장', () => {
         (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
       ),
     ).toHaveLength(0);
+  });
+
+  /* 두 칸에 함께 걸린 오류는 한쪽만 고쳐도 둘 다 걷힌다(#208). */
+  it('종료일만 고쳐도 시작일 칸의 역전 오류가 걷힌다', async () => {
+    const { user } = renderSelectedVersion([versionSaveRoute()]);
+
+    const form = await awaitVersionForm();
+    await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-09-01');
+    await pickDate(user, within(form).getByLabelText('적용 종료일'), '2026-08-01');
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+    await screen.findAllByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.');
+
+    await pickDate(user, within(form).getByLabelText('적용 종료일'), '2026-09-30');
+
+    expect(
+      screen.queryByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('주기 값만 채우면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
@@ -2461,6 +2588,24 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(within(dialog).getByText('바뀐 검사 항목이 없습니다.')).toBeInTheDocument();
   });
 
+  /* 같은 버전끼리는 견줄 것이 없다 — 반대쪽에서 고른 버전은 선택지에 없다. */
+  it('버전 비교에서 반대쪽에 고른 버전은 고를 수 없다', async () => {
+    const { user } = renderSelectedVersion([
+      versionDetailRoute(inspectionPlanVersionFixtures[1]),
+      itemListRoute(4001),
+    ]);
+
+    await awaitVersionForm();
+    await user.click(screen.getByRole('button', { name: '버전 비교' }));
+    const dialog = await screen.findByRole('dialog', { name: '버전 비교' });
+
+    await user.click(within(dialog).getByRole('combobox', { name: '기준 버전' }));
+    const options = screen.getAllByRole('option').map((option) => option.textContent);
+
+    expect(options.some((label) => label?.includes('버전 1'))).toBe(true);
+    expect(options.some((label) => label?.includes('버전 2'))).toBe(false);
+  });
+
   /* 변경 이력은 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다(#196). 처리자 이름은 사용자 상세로 푼다. */
   it('변경 이력 창이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
     const { requests, user } = renderSelectedVersion([
@@ -2506,17 +2651,24 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('targetTypeCode')).toBe('INSPECTION_PLAN_VERSION');
     expect(history?.url.searchParams.get('targetId')).toBe('4002');
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
+    /* 이력 탭도 검사 항목 탭처럼 건수를 붙인다(#208). */
+    expect(screen.getByRole('tab', { name: '이력 1건' })).toBeInTheDocument();
   });
 
-  it('버전이 하나뿐이면 버전 비교가 비활성이고 사유가 보인다', async () => {
-    renderSelectedVersion([versionListRoute([inspectionPlanVersionFixtures[0]!])]);
+  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교, 이력이 없으면 변경 이력이 서지 않는다. */
+  it('버전이 하나뿐이고 이력이 없으면 버전 비교 · 변경 이력 단추가 없다', async () => {
+    renderSelectedVersion([
+      versionListRoute([inspectionPlanVersionFixtures[0]!]),
+      {
+        match: (request) => isGet(request, '/audit/events'),
+        respond: () => jsonResponse({ items: [], page: { page: 1, size: 100, total: 0 } }),
+      },
+    ]);
 
     await awaitVersionForm();
 
-    expect(screen.getByRole('button', { name: '버전 비교' })).toBeDisabled();
-    expect(
-      screen.getByText('버전 비교는 버전이 2개 이상일 때 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '버전 비교' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
   });
 });
 
@@ -2743,6 +2895,25 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
       2,
     );
     expect(confirmDialogs()).toHaveLength(1);
+  });
+
+  /* 뒤바뀜 오류는 두 칸에 함께 걸린다 — 하한만 고쳐도 상한 칸의 오류가 남지 않아야 한다. */
+  it('하한을 고치면 상한 칸의 뒤바뀜 오류도 걷힌다', async () => {
+    const { user } = renderItems([itemsSaveRoute()]);
+
+    await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
+    await user.click(within(itemPane()).getByRole('button', { name: '1번 항목 수정' }));
+
+    const dialogNode = await dialog();
+    fireEvent.change(within(dialogNode).getByLabelText('상한값'), { target: { value: '1' } });
+    await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
+    await screen.findAllByText('상한값은 하한값과 같거나 그보다 커야 합니다.');
+
+    fireEvent.change(within(dialogNode).getByLabelText('하한값'), { target: { value: '0' } });
+
+    expect(
+      screen.queryByText('상한값은 하한값과 같거나 그보다 커야 합니다.'),
+    ).not.toBeInTheDocument();
   });
 
   it('측정 횟수가 0이면 확인이 막힌다', async () => {
@@ -3189,7 +3360,7 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
-    expect(await screen.findByText('검사 기준을 선택해 주세요')).toBeInTheDocument();
+    expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
 

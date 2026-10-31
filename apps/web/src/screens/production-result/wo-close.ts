@@ -1,4 +1,4 @@
-import type { components, WorkOrderForward, WorkSessionForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
@@ -7,6 +7,9 @@ import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, runRequestWithResponse } from '../../patterns/request';
 import { RUNNING_STATUS_CODE } from '../work-hold-register/types';
 import { buildSessionEnd } from './session';
+
+type WorkOrder = components['schemas']['WorkOrder'];
+type WorkSession = components['schemas']['WorkSession'];
 
 type WorkOrderClose = components['schemas']['WorkOrderClose'];
 type WorkSessionEnd = components['schemas']['WorkSessionEnd'];
@@ -21,7 +24,7 @@ const closeKeys = {
 };
 
 export interface CloseTarget {
-  workOrder: WorkOrderForward;
+  workOrder: WorkOrder;
   /** 이 응답의 잠금 값. 마감은 이것을 `If-Match` 로 싣는다 */
   etag: string | null;
 }
@@ -51,7 +54,7 @@ export const useCloseTarget = (
         }),
       );
 
-      return { workOrder: data as WorkOrderForward, etag: response.headers.get('ETag') };
+      return { workOrder: data as WorkOrder, etag: response.headers.get('ETag') };
     },
   });
 };
@@ -170,7 +173,7 @@ export const useCloseSessions = (
         }),
       );
 
-      return (data.items as WorkSessionForward[])
+      return (data.items as WorkSession[])
         .filter((session) => (session.endedAt ?? '') === '')
         .map((session) => ({
           workSessionId: session.workSessionId,

@@ -1,53 +1,49 @@
-import { messages } from '@omf-mes/i18n';
+import { named } from '@omf-mes/i18n';
 
 import type { WorkOrder } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
-const t = messages.workStart.selection;
-
 const QTY_FORMAT = new Intl.NumberFormat('ko-KR');
 
 /**
- * 계약이 주는 시각 문자열에서 날짜와 시각(분까지)을 꺼낸다.
- *
- * **공장 시각으로 보인다**(`patterns/plant-time` · omf-all-around#20). 보는 사람(실행 환경)의
- * 시간대로 옮기지 않는다 — 서버가 UTC 로 보내므로 글자만 자르면 7시간 이르게 찍힌다.
+ * 계약이 주는 시각 문자열을 공장 시각으로 보인다(`patterns/plant-time` · omf-all-around#20).
+ * 값이 없으면 `null`이다. 그 줄을 숨긴다(C-10).
  */
-export const dateTimeText = (value: string | undefined): string => {
-  if (value === undefined || value === '') return t.unknown;
+export const dateTimeText = (value: string | undefined): string | null => {
+  if (value === undefined || value === '') return null;
 
   return formatPlantDateTime(value) ?? value;
 };
 
-/**
- * 수량. 안 온 값을 0으로 떨어뜨리지 않는다.
- *
- * ⭐ **단위를 함께 낸다**(사용자 지시 2026-09-10) — 「500」만으로는 개인지 킬로인지 모른다.
- * ⛔ 단위를 못 받았으면 붙이지 않는다. 지어낸 단위는 거짓이다.
- */
-export const qtyText = (value: number | undefined, uomCode?: string | null): string => {
-  if (value === undefined) return t.unknown;
+/** 수량 숫자. 안 온 값을 0으로 떨어뜨리지 않는다(`null`). */
+export const qtyNumber = (value: number | undefined): string | null =>
+  value === undefined ? null : QTY_FORMAT.format(value);
 
-  const formatted = QTY_FORMAT.format(value);
+/**
+ * 수량과 단위. 단위를 못 받았으면 붙이지 않는다. 지어낸 단위는 거짓이다.
+ */
+export const qtyText = (value: number | undefined, uomCode?: string | null): string | null => {
+  const formatted = qtyNumber(value);
+  if (formatted === null) return null;
 
   return uomCode === undefined || uomCode === null ? formatted : `${formatted} ${uomCode}`;
 };
 
-/** 품목. 계약이 이름을 주지 않는 자리라 코드를 그대로 보인다. */
-export const itemText = (workOrder: WorkOrder): string =>
-  (workOrder.itemCode ?? '').trim() || t.unknown;
+/** 품목 코드. 계약이 품목명을 주지 않는다(C-15 계약 대기). 없으면 `null`. */
+export const itemText = (workOrder: WorkOrder): string | null =>
+  (workOrder.itemCode ?? '').trim() || null;
 
-/** 식별자 하나를 사람이 읽는 글자로. 이름이 없는 자리라 번호를 그대로 보인다. */
-export const idText = (value: number | undefined): string =>
-  value === undefined ? t.none : `#${String(value)}`;
+/** 계획 설비 「이름 (코드)」. 코드가 없으면 `null`(내부 번호를 보이지 않는다, C-13). */
+export const plannedEquipmentText = (workOrder: WorkOrder): string | null => {
+  const code = (workOrder.plannedEquipmentCode ?? '').trim();
+
+  return code === '' ? null : named(workOrder.plannedEquipmentName, code);
+};
 
 /**
- * 계획 설비가 지금 설비와 다른가 — **경고의 근거다**(§6).
+ * 계획 설비가 지금 설비와 다른가. 경고의 근거다(§6).
  *
- * ⛔ **계획 설비가 비어 있으면 경고하지 않는다.** 긴급 W/O 는 무배정으로 배포되고, 채울 값이
- * 없는 자리에 「다르다」고 말하면 모든 긴급 지시에 경고가 뜬다.
- *
- * ⛔ **지금 설비를 모르면 경고하지 않는다.** 견줄 기준이 없는 채로 「다르다」고 말하지 않는다.
+ * 계획 설비가 비어 있거나 지금 설비를 모르면 경고하지 않는다. 긴급 W/O는 무배정으로 배포된다.
  */
 export const isOtherEquipment = (workOrder: WorkOrder, equipmentId: number | null): boolean =>
   equipmentId !== null &&

@@ -90,7 +90,6 @@ export const ErpSalesOrderScreen = () => {
             <div className="pane po-board-filter">
               <ErpSalesOrderFilterBar
                 appliedFilters={filters}
-                customerOptions={partners.options}
                 statusOptions={status.options}
                 onSearch={(next) => setSearchParams(toSearchParams(next, 1))}
                 onReset={() => setSearchParams(toSearchParams(DEFAULT_FILTERS, 1))}

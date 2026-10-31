@@ -2,6 +2,7 @@ import { Button, DatePicker } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import {
   codeLockReason,
@@ -13,6 +14,9 @@ import {
 import type { PendingFilters } from './filters';
 import type { DispositionLookup } from './lookups';
 
+/** 품목 칸 맨 앞의 「전체」 — 검색어가 없을 때만 붙는다. */
+const ALL_ITEMS = [{ value: '', label: messages.dispositionDecision.all }];
+
 interface SelectCellProps {
   label: string;
   options: CodeOption[];
@@ -20,7 +24,6 @@ interface SelectCellProps {
   pendingNote?: string;
   /** 선택지가 «있어도» 상시 붙는 안내. 값 목록이 비어서가 아니라 축의 범위를 알릴 때 쓴다. */
   note?: string;
-  wide?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -31,15 +34,7 @@ interface SelectCellProps {
  * ⚠ **두 안내가 한 자리를 쓴다.** 선택지가 비면 그 사유(G-2)가 먼저다 — 축의 범위를 알리는
  * 안내를 그 위에 겹쳐 놓으면 「왜 못 고르는지」가 밀려난다.
  */
-const SelectCell = ({
-  label,
-  options,
-  value,
-  pendingNote,
-  note,
-  wide,
-  onChange,
-}: SelectCellProps) => {
+const SelectCell = ({ label, options, value, pendingNote, note, onChange }: SelectCellProps) => {
   const id = useId();
   const noteId = `${id}-note`;
   const isPending = options.length === 0;
@@ -49,7 +44,7 @@ const SelectCell = ({
   const description = isPending ? pendingNote : note;
 
   return (
-    <div className={wide === true ? 'field-cell wide-select' : 'field-cell'}>
+    <div className="field-cell">
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
@@ -79,22 +74,15 @@ export interface FilterBarProps {
   /** 심각도·상태는 공통코드 조회 결과를 그대로 받는다 — 선택지·잠금 사유를 여기서 가른다. */
   severity: DispositionLookup;
   status: DispositionLookup;
-  items: DispositionLookup;
   onApply: (filters: PendingFilters) => void;
   onReset: () => void;
 }
 
-export const FilterBar = ({
-  applied,
-  severity,
-  status,
-  items,
-  onApply,
-  onReset,
-}: FilterBarProps) => {
+export const FilterBar = ({ applied, severity, status, onApply, onReset }: FilterBarProps) => {
   const t = messages.dispositionDecision;
   const periodId = useId();
   const periodNoteId = `${periodId}-note`;
+  const itemFieldId = useId();
   const [draft, setDraft] = useState<PendingFilters>(applied);
   const { from, to, itemId, severityCode, statusCode, sourceCode } = applied;
 
@@ -102,7 +90,6 @@ export const FilterBar = ({
     setDraft({ from, to, itemId, severityCode, statusCode, sourceCode });
   }, [from, to, itemId, severityCode, statusCode, sourceCode]);
 
-  const itemOptions = items.entries.map((entry) => ({ value: entry.value, label: entry.label }));
   /* 심각도·상태와 달리 밖에서 받지 않는다 — 계약이 두 값을 열거해 기다릴 대기가 없다. */
   const sourceOptions = sourceCodeOptions();
 
@@ -127,13 +114,20 @@ export const FilterBar = ({
           {t.values.periodRequired}
         </span>
       </div>
-      <SelectCell
-        label={t.fields.item}
-        options={itemOptions}
-        value={draft.itemId}
-        wide
-        onChange={(value) => setDraft((current) => ({ ...current, itemId: value }))}
-      />
+      {/* 품목은 9천여 건이라 통째로 받지 않는다 — 펼칠 때 서버에 검색해 쪽으로 받는다. 지난 부적합을 찾으니 미사용도 고른다. */}
+      <div className="field-cell wide-select">
+        <label className="field-label" htmlFor={itemFieldId}>
+          {t.fields.item}
+        </label>
+        <ItemSelect
+          id={itemFieldId}
+          includeInactive
+          leadingOptions={ALL_ITEMS}
+          value={draft.itemId}
+          placeholder={t.all}
+          onChange={(value) => setDraft((current) => ({ ...current, itemId: value }))}
+        />
+      </div>
       {/* 심각도·상태 — 공통코드가 채운다(G-32). 못 채운 사유(조회 중·실패·빈 목록)는 칸 옆에 밝힌다(G-2). */}
       <SelectCell
         label={t.fields.severityCode}

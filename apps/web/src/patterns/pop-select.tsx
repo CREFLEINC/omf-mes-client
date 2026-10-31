@@ -12,8 +12,8 @@ import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from
 /**
  * 한 쪽에 놓는 항목 수.
  *
- * ⛔ **목록은 스크롤하지 않는다**(사용자 지시 2026-09-09). 넘치는 것은 [페이지 위]·
- * [페이지 아래]가 넘긴다 — 장갑 낀 손으로 좁은 목록을 굴리는 것보다 큰 버튼 둘이 낫다.
+ * ⛔ **목록은 스크롤하지 않는다**(사용자 지시 2026-09-09). 넘치는 것은 [이전]과
+ * [다음]이 넘긴다 — 장갑 낀 손으로 좁은 목록을 굴리는 것보다 큰 버튼 둘이 낫다.
  * 그래서 이 수는 **팝업이 한 번에 다 보일 수 있는 줄 수**여야 한다. 여섯으로 두었더니
  * 다섯 줄 자리에 여섯을 넣어 마지막 줄이 잘리고 스크롤이 생겼다(실측 2026-09-09).
  *
@@ -67,6 +67,12 @@ export interface PopSelectProps extends SelectProps {
    */
   scannable?: boolean;
   /**
+   * 닫힌 상태의 값 글자를 따로 세우지 않는다. 버튼 문구(`actionLabel`)가 지금 값을 말할 때 쓴다
+   * (예: 목록 제목 줄의 설비 고르기 [사출기 1호기]). 좁은 제목 줄에서 값과 [선택]을 둘 다 세우면
+   * 넘친다(P-02-01, 2026-10-26). 기본은 꺼짐이다.
+   */
+  hideValue?: boolean;
+  /**
    * 항목 뒤에 붙일 표시(D-10, 피처 002 — 화면 이동의 남은 작업 수). 항목 단추 안 이름 뒤에 선다.
    *
    * ⚠ **주지 않으면 지금과 같다** — 이 부품은 POP 화면 열여덟 곳이 함께 쓴다.
@@ -112,6 +118,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
     leadingIcon,
     actionLabel = messages.popChrome.select,
     scannable = false,
+    hideValue = false,
     optionTrailing,
     dialogLead,
     actionBadge,
@@ -160,7 +167,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    *
    * ⛔ **쪽 이동은 함께 켜지 «않는다»**(리뷰 지적). 한때 `isShortList` 자체에 `&& !scannable` 을
    *    붙였는데, 그 값이 검색 줄과 쪽 이동 줄 **둘 다**를 통제한다 — 후보가 둘뿐인 목록에
-   *    양쪽 다 눌리지 않는 [페이지 위]·[페이지 아래]가 함께 섰다(실측). 위 규율이 지우려던
+   *    양쪽 다 눌리지 않는 [이전]과 [다음]이 함께 섰다(실측). 위 규율이 지우려던
    *    바로 그 모양이라, 두 자리를 가르고 이름도 뜻대로 붙인다.
    */
   const showSearch = !isShortList || scannable;
@@ -241,12 +248,14 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
 
   return (
     <div className="pop-select">
-      <span className="pop-select__value" aria-hidden="true">
-        {leadingIcon}
-        <span className={selected === null ? 'pop-select__placeholder' : undefined}>
-          {selected?.label ?? placeholder}
+      {!hideValue && (
+        <span className="pop-select__value" aria-hidden="true">
+          {leadingIcon}
+          <span className={selected === null ? 'pop-select__placeholder' : undefined}>
+            {selected?.label ?? placeholder}
+          </span>
         </span>
-      </span>
+      )}
       <Button
         {...buttonProps}
         ref={ref}
@@ -303,7 +312,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
            *    「누른 적 없는데 닫힌다」가 된다.
            *
            * ⚠ **설계는 이 자리를 정하지 않았다.** G-34 는 팝업의 «내용»(목록 스크롤 ·
-           *   페이지 위/아래 · 현재 쪽 · 검색어 지우기)만 정하고 닫는 방법을 적지 않았다.
+           *   이전과 다음, 현재 쪽, 검색어 지우기)만 정하고 닫는 방법을 적지 않았다.
            *   회신이 오면 그때 맞춘다.
            *
            * ⚠ Escape 는 그대로 둔다 — 자판이 붙은 단말과 개발 중 확인에서 쓰는 길이고,
@@ -390,14 +399,11 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   setPage((previous) => Math.max(0, previous - 1));
                 }}
               >
-                {messages.popPageNav.pageUp}
+                {messages.popPageNav.prev}
               </Button>
               <output aria-live="polite">
-                {messages.popChrome.selectDialog.position(
-                  currentPage + 1,
-                  totalPages,
-                  filtered.length,
-                )}
+                <span>{messages.popChrome.selectDialog.position(currentPage + 1, totalPages)}</span>{' '}
+                <span>{messages.popChrome.selectDialog.total(filtered.length)}</span>
               </output>
               <Button
                 type="button"
@@ -408,7 +414,7 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
                   setPage((previous) => Math.min(totalPages - 1, previous + 1));
                 }}
               >
-                {messages.popPageNav.pageDown}
+                {messages.popPageNav.next}
               </Button>
             </div>
           )}

@@ -1,4 +1,4 @@
-import type { ItemInspectionLevel, ItemInspectionLevelHistory } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -11,6 +11,9 @@ import {
   type StubFetch,
 } from '../../test/api-harness';
 import { InspectionLevelScreen } from './screen';
+
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
+type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
 const t = messages.inspectionLevel;
 
@@ -232,7 +235,7 @@ describe('검사 수준 관리', () => {
     expect(requests.some((r) => r.method === 'PUT')).toBe(false);
   });
 
-  it('줄의 「이력」을 누르면 그 품목의 이력만 조회한다', async () => {
+  it('줄의 「이력」을 누르면 그 품목의 이력만 창으로 조회한다', async () => {
     const { user, requests } = setup();
     await user.click(
       await screen.findByRole('button', { name: t.actions.showHistoryRow('PPAD003200') }),
@@ -245,6 +248,6 @@ describe('검사 수준 관리', () => {
         ),
       ).toBe(true),
     );
-    expect(screen.getByText(t.history.filteredBy('PPAD003200'))).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toHaveTextContent('PPAD003200');
   });
 });

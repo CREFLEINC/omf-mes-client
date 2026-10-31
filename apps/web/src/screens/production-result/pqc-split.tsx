@@ -1,4 +1,3 @@
-import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
@@ -12,22 +11,18 @@ const t = messages.productionResult.pqc;
 export interface PqcSplitProps {
   /** 오른쪽에 띄울 PQC 의뢰. `null`(검사 off)이면 나누지 않고 실적 화면만 그대로 그린다. */
   inspectionRequestId: number | null;
-  /**
-   * 검사 off 로 «확인된» 까닭 — 조회가 끝났고 PQC 의뢰가 없으면 `notInspected`, PQC 가 생략(SKIPPED · #119)이면 `skipped`.
-   * 조회 중·실패·검사 on 이면 `null` — 모르는 것을 미검사로 말하지 않는다.
-   */
-  inspectionOff: 'notInspected' | 'skipped' | null;
   workOrderId: number | null;
   workerNo: string | null;
-  /** 실적 화면 본문(카드 격자). */
+  /** 생산 작업 본문(좌우 2단). */
   children: ReactNode;
 }
 
 /**
  * 생산 실적(P-02-04) ↔ PQC 분할(omf-all-around#107).
  *
- * ⭐ **나누지 않을 때는 아무것도 감싸지 않는다** — 실적 격자가 `.pop-ui` 바로 아래에 서야 세로
- * 예산 규칙(`pop.css` 의 `.pop-ui > .pop-fixed.production-flow-grid`)이 그대로 걸린다.
+ * ⭐ **나누지 않을 때는 아무것도 감싸지 않는다** — 본문 2단이 `.pop-ui` 바로 아래에 서야 POP 세로
+ * 배분(`.pop-ui > .pop-panes`)이 그대로 걸린다. 구획 머리도 두지 않는다. 화면 이름과 같은 말이고,
+ * 검사하지 않는다는 사실(PQC 미검사, 생략)은 왼쪽 정보 영역이 말한다(C-21).
  *
  * ⭐ 검사 on(그 W/O 에 PQC 의뢰가 있음)이면 늘 나눈다 — 닫는 단추가 없다(사용자 결정 2026-10-19). PQC 를 확정해
  * 서버가 받으면 의뢰를 다시 물어 확정 결과를 읽기 전용으로 보인다. 큐는 POP 단독 PQC 화면과 같은 오프라인
@@ -35,7 +30,6 @@ export interface PqcSplitProps {
  */
 export const PqcSplit = ({
   inspectionRequestId,
-  inspectionOff,
   workOrderId,
   workerNo,
   children,
@@ -51,37 +45,15 @@ export const PqcSplit = ({
     });
   }, [sentCount, queryClient, workOrderId]);
 
-  const zoneHead = (
-    <ZoneHead
-      title={messages.productionResult.zone.title}
-      note={messages.productionResult.zone.note}
-      status={
-        /*
-         * 검사 off 면 까닭을 중립 칩으로 알린다 — 의뢰 없음 「PQC 미검사」(사용자 지시 2026-10-19) · 생략 허용 기준으로 생략된
-         * PQC 「PQC 생략」(#119 결정). on 이면 PQC 구획이 곧 표시다.
-         */
-        inspectionOff === null ? null : (
-          <Chip status="idle" size="md">
-            {inspectionOff === 'skipped' ? t.skipped : t.notInspected}
-          </Chip>
-        )
-      }
-    />
-  );
-
-  if (inspectionRequestId === null) {
-    return (
-      <>
-        {zoneHead}
-        {children}
-      </>
-    );
-  }
+  if (inspectionRequestId === null) return <>{children}</>;
 
   return (
     <div className="production-flow-split pop-fixed">
       <div className="production-flow-zone">
-        {zoneHead}
+        <ZoneHead
+          title={messages.productionResult.zone.title}
+          note={messages.productionResult.zone.note}
+        />
         {children}
       </div>
       <div className="production-flow-zone">
@@ -103,18 +75,9 @@ export const PqcSplit = ({
 };
 
 /** 구획 머리 — 이름과 그 구획에서 하는 일(사용자 지시 2026-10-19 · 예시 배치). */
-const ZoneHead = ({
-  title,
-  note,
-  status = null,
-}: {
-  title: string;
-  note: string;
-  status?: ReactNode;
-}) => (
+const ZoneHead = ({ title, note }: { title: string; note: string }) => (
   <div className="production-flow-zone-head pop-fixed">
     <h2 className="pane-title">{title}</h2>
     <p className="field-note">{note}</p>
-    {status !== null && <span className="production-flow-zone-head__status">{status}</span>}
   </div>
 );

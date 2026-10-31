@@ -1,4 +1,6 @@
-import type { components, FourMChangeForward, LotForward } from '@omf-mes/api-client';
+import type { components, FourMChangeForward } from '@omf-mes/api-client';
+
+type Lot = components['schemas']['Lot'];
 
 /**
  * 스캔 한 번이 무엇을 낳는가.
@@ -9,7 +11,7 @@ import type { components, FourMChangeForward, LotForward } from '@omf-mes/api-cl
  * 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-type LotResponse = LotForward;
+type LotResponse = Lot;
 type MoldResponse = components['schemas']['Mold'];
 
 /**

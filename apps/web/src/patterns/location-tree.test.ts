@@ -1,0 +1,160 @@
+import type { components } from '@omf-mes/api-client';
+import { describe, expect, it } from 'vitest';
+
+import {
+  buildLocationRows,
+  compareLocationCodes,
+  initialExpandedLocationIds,
+  parentLocationIds,
+} from './location-tree';
+
+type Location = components['schemas']['Location'];
+
+/** 필수 필드를 채운 팩토리 — 회피 캐스팅(as never) 없이 계약 타입을 그대로 만족시킨다. */
+const makeLocation = (
+  locationId: number,
+  locationCode: string,
+  parentLocationId: number | null = null,
+): Location => ({
+  locationId,
+  warehouseId: 1,
+  parentLocationId,
+  locationCode,
+  locationName: `${locationCode} 위치`,
+  isActive: true,
+  aliasName: null,
+  locationLevelCode: null,
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
+});
+
+const codesOf = (rows: { location: Location }[]): string[] =>
+  rows.map((row) => row.location.locationCode);
+
+describe('buildLocationRows', () => {
+  it('형제 코드의 숫자는 수로 읽는다 — R100 이 R99 뒤에 놓인다', () => {
+    const items = [
+      makeLocation(1, 'Z01'),
+      makeLocation(13, 'Z01-R100', 1),
+      makeLocation(12, 'Z01-R99', 1),
+      makeLocation(11, 'Z01-R001', 1),
+    ];
+
+    const rows = buildLocationRows(items, new Set([1]));
+
+    expect(codesOf(rows)).toEqual(['Z01', 'Z01-R001', 'Z01-R99', 'Z01-R100']);
+  });
+
+  it('계층을 깊이 우선으로 평탄화하고 형제를 코드 오름차순으로 정렬한다', () => {
+    // B가 A보다 먼저 들어와도 형제 정렬은 코드 오름차순이어야 한다.
+    const items = [
+      makeLocation(2, 'B'),
+      makeLocation(1, 'A'),
+      makeLocation(12, 'A-02', 1),
+      makeLocation(11, 'A-01', 1),
+      makeLocation(111, 'A-01-01', 11),
+    ];
+    const expanded = new Set([1, 11]);
+
+    const rows = buildLocationRows(items, expanded);
+
+    expect(codesOf(rows)).toEqual(['A', 'A-01', 'A-01-01', 'A-02', 'B']);
+    expect(rows.map((row) => row.depth)).toEqual([0, 1, 2, 1, 0]);
+  });
+
+  it('접힌 노드의 하위는 결과에 넣지 않되 hasChildren은 참으로 낸다', () => {
+    const items = [
+      makeLocation(1, 'A'),
+      makeLocation(11, 'A-01', 1),
+      makeLocation(111, 'A-01-01', 11),
+      makeLocation(2, 'B'),
+    ];
+
+    const rows = buildLocationRows(items, new Set());
+
+    expect(codesOf(rows)).toEqual(['A', 'B']);
+
+    const rootA = rows[0];
+    const rootB = rows[1];
+    expect(rootA?.hasChildren).toBe(true);
+    expect(rootB?.hasChildren).toBe(false);
+  });
+
+  /*
+   * 자기 자신을 부모로 갖는 행은 계층에서 의미가 없다.
+   * 그것을 부모-자식으로 세면 하위가 없는데도 접기 버튼이 붙어 누를 것이 없는 컨트롤이 생긴다.
+   */
+  it('자기 자신을 부모로 갖는 행은 최상위로 두고 하위가 있다고 세지 않는다', () => {
+    const items = [makeLocation(1001, 'A-01', 1001), makeLocation(1002, 'B-01')];
+
+    const rows = buildLocationRows(items, new Set([1001]));
+
+    expect(codesOf(rows)).toEqual(['A-01', 'B-01']);
+    expect(rows[0]?.depth).toBe(0);
+    expect(rows[0]?.hasChildren).toBe(false);
+  });
+
+  it('자기참조 행에도 실제 하위가 있으면 그 하위는 그대로 붙는다', () => {
+    const items = [makeLocation(1, 'A', 1), makeLocation(11, 'A-01', 1)];
+
+    const rows = buildLocationRows(items, new Set([1]));
+
+    expect(codesOf(rows)).toEqual(['A', 'A-01']);
+    expect(rows[0]?.hasChildren).toBe(true);
+    expect(rows[1]?.depth).toBe(1);
+  });
+
+  it('고아는 최상위로 올리고 순환이 있어도 모든 항목이 정확히 한 번씩 나온다', () => {
+    const orphan = makeLocation(9, 'Z', 404); // 부모 404가 목록에 없다
+    const cycleA = makeLocation(5, 'C-1', 6);
+    const cycleB = makeLocation(6, 'C-2', 5); // 5 ↔ 6 순환
+    const items = [makeLocation(1, 'A'), orphan, cycleA, cycleB];
+
+    const rows = buildLocationRows(items, new Set([1, 5, 6, 9]));
+
+    expect(rows).toHaveLength(items.length);
+    expect(new Set(codesOf(rows)).size).toBe(items.length);
+    expect(codesOf(rows)).toContain('Z');
+    expect(codesOf(rows)).toContain('C-1');
+    expect(codesOf(rows)).toContain('C-2');
+  });
+});
+
+describe('compareLocationCodes', () => {
+  it('숫자를 수로 읽어 R100 이 R99 뒤에 놓인다', () => {
+    // 자리 수가 섞인 옛 코드도 수의 차례로 놓인다.
+    const codes = ['Z01-R100', 'Z01-R99', 'Z01-R2', 'Z01-R010'];
+
+    expect([...codes].sort(compareLocationCodes)).toEqual([
+      'Z01-R2',
+      'Z01-R010',
+      'Z01-R99',
+      'Z01-R100',
+    ]);
+  });
+});
+
+describe('처음 펼칠 노드', () => {
+  // Z01 › R001 › L01, Z02(하위 없음)
+  const items = [
+    makeLocation(1, 'Z01'),
+    makeLocation(2, 'Z01-R001', 1),
+    makeLocation(3, 'Z01-R001-L01', 2),
+    makeLocation(4, 'Z02'),
+  ];
+
+  it('맨 위만 펼친다 — 하위가 있는 구역만', () => {
+    expect([...initialExpandedLocationIds(items)]).toEqual([1]);
+  });
+
+  it('검색 중에는 하위를 가진 노드를 다 펼친다', () => {
+    expect([...initialExpandedLocationIds(items, true)].sort((a, b) => a - b)).toEqual([1, 2]);
+  });
+
+  it('전체 펼치기는 하위를 가진 노드 전부다 — 자기참조는 부모로 세지 않는다', () => {
+    expect(
+      [...parentLocationIds([...items, makeLocation(5, 'X', 5)])].sort((a, b) => a - b),
+    ).toEqual([1, 2]);
+  });
+});
