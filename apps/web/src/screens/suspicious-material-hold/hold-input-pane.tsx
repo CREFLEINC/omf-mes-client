@@ -70,6 +70,8 @@ export const buildSuspiciousMaterialHoldBody = (
       selected.length !== 1 ||
       !Number.isFinite(quantity) ||
       quantity <= 0 ||
+      /* 보유 수량을 넘는 보류는 서버가 거절한다 — 화면에서 먼저 막는다(점검 2026-11-02). */
+      (selected[0]?.onHandQty !== undefined && quantity > selected[0].onHandQty) ||
       uomId === undefined ||
       !Number.isSafeInteger(uomId) ||
       uomId <= 0
@@ -180,6 +182,17 @@ export const SuspiciousMaterialHoldInputPane = ({
   if (selection.length === 0) return null;
   /* 단위 이름은 「코드 · 이름」 — 칸 안에는 코드만(예: EA). */
   const unitCode = selection[0]?.uomLabel?.split(' · ')[0] ?? null;
+  /* 일부 보류 수량이 보유 수량을 넘으면 칸 아래에 바로 알린다(등록 단추는 잠긴다). */
+  const onHandLimit = selection.length === 1 ? selection[0]?.onHandQty : undefined;
+  const typedQty = Number(draft.holdQty.trim());
+  const qtyOverLimit =
+    draft.mode === 'PARTIAL' &&
+    onHandLimit !== undefined &&
+    draft.holdQty.trim() !== '' &&
+    Number.isFinite(typedQty) &&
+    typedQty > onHandLimit
+      ? t.quantityOverLimit(String(onHandLimit))
+      : null;
   const update = <K extends keyof HoldDraft>(key: K, value: HoldDraft[K]): void =>
     setDraft((current) => ({ ...current, [key]: value }));
 
@@ -223,6 +236,7 @@ export const SuspiciousMaterialHoldInputPane = ({
             placeholder={t.quantityPlaceholder}
             inputMode="decimal"
             aria-invalid={!isLocked && draft.holdQty.trim() === ''}
+            {...(qtyOverLimit === null ? {} : { error: qtyOverLimit })}
             {...(unitCode === null
               ? {}
               : {
@@ -297,15 +311,27 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
         {selection.map((lot) => {
           /* 재고 기록이 없는 LOT 은 「미확인」이 아니라 「재고 없음」(사용자 2026-11-02). */
           const noStock = lot.warehouseId === undefined;
+          /* 수량은 단위를 붙여 한 덩어리(570 EA), 그 뒤 위치 — 단위가 따로 떨어져 보이지 않게(점검 2026-11-02). */
+          const unit = lot.uomLabel?.split(' · ')[0] ?? null;
           const facts = noStock
             ? ([] as const)
             : ([
-                [t.quantityName, lot.onHandQty === undefined ? null : String(lot.onHandQty)],
+                [
+                  t.quantityName,
+                  lot.onHandQty === undefined
+                    ? null
+                    : unit === null
+                      ? String(lot.onHandQty)
+                      : `${String(lot.onHandQty)} ${unit}`,
+                ],
                 [t.locationName, lot.locationLabel],
-                [t.uomName, lot.uomLabel],
               ] as const);
+          const unitMissing = !noStock && unit === null;
           const known = facts.flatMap(([, value]) => (value === null ? [] : [value]));
-          const unknown = facts.flatMap(([name, value]) => (value === null ? [name] : []));
+          const unknown = [
+            ...facts.flatMap(([name, value]) => (value === null ? [name] : [])),
+            ...(unitMissing ? [t.uomName] : []),
+          ];
           /* LOT 번호 아래 한 줄 — 확인한 값 · (!) 미확인 값 · 붉은 제한(사용자 시안 2026-11-02). */
           return (
             <li key={lot.lotId}>

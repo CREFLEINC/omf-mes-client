@@ -1,4 +1,5 @@
 import {
+  AlertBanner,
   Button,
   Chip,
   Dialog,
@@ -526,6 +527,13 @@ const DefectRecordDialog = ({
             ))}
           </dl>
           <SaveErrorBanner error={record.error} />
+          {/*
+           * 서버가 칸 하나를 짚어 거절한 까닭(예: 「투입 기록이 없는 LOT 입니다.」)도 확인 화면에 보인다 — 전에는 칸 오류로만
+           * 넘어가 확인 화면에서는 아무것도 보이지 않았다(점검 2026-11-02).
+           */}
+          {Object.values(record.fieldErrors).map((message) => (
+            <AlertBanner key={message} variant="error" title={message} />
+          ))}
         </>
       ) : (
         <div className="suspicious-material-hold-defect-form">
@@ -608,6 +616,12 @@ const DefectRecordDialog = ({
             onChange={(event) => setDescription(event.target.value)}
           />
           <SaveErrorBanner error={record.error} />
+          {/* 수량 칸 밖의 칸 오류(LOT · 코드 등)는 칸이 없으니 띠로 보인다. */}
+          {Object.entries(record.fieldErrors)
+            .filter(([field]) => field !== 'defectQty')
+            .map(([field, message]) => (
+              <AlertBanner key={field} variant="error" title={message} />
+            ))}
         </div>
       )}
     </Dialog>

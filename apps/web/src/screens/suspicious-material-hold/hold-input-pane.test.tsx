@@ -282,4 +282,13 @@ describe('의심자재 보류 입력 pane', () => {
     await user.click(screen.getByRole('button', { name: 'owner 변경' }));
     expect(await screen.findByLabelText(/^해제 조건/)).toHaveValue('');
   });
+
+  it('일부 보류 수량이 보유 수량을 넘으면 칸 아래에 알리고 등록 내용을 만들지 않는다', async () => {
+    const { user, onBodyChange } = renderPane([display(701)]);
+    await user.click(await screen.findByRole('radio', { name: '일부 보류' }));
+    await user.type(screen.getByLabelText(/^보류 수량/), '26');
+
+    expect(await screen.findByText('보류 수량은 보유 수량 25 이하여야 합니다.')).toBeVisible();
+    expect(onBodyChange).toHaveBeenLastCalledWith(null);
+  });
 });

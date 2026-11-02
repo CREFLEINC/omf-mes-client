@@ -177,7 +177,7 @@ describe('의심자재 등록 screen', () => {
     const view = renderScreen('HOLD');
     await chooseWarehouse(view.user);
     await view.user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
-    expect(await screen.findByText(/25 · WH · 창고 \/ LOC · 격리장 · EA · 개/)).toBeVisible();
+    expect(await screen.findByText(/25 EA · WH · 창고 \/ LOC · 격리장/)).toBeVisible();
     view.setCandidateRows([
       lot(701, { versionNo: 702, locationId: 903001, uomId: 904001 }),
       lot(702),

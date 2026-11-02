@@ -63,6 +63,8 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     full: 'Tạm giữ toàn bộ',
     partial: 'Tạm giữ một phần',
     quantity: 'Số lượng tạm giữ',
+    quantityOverLimit: (limit: string): string =>
+      `Số lượng tạm giữ phải ≤ số lượng đang giữ ${limit}.`,
     quantityPlaceholder: 'Hãy nhập số lượng',
     reason: 'Lý do tạm giữ',
     reasonPlaceholder: 'Hãy chọn lý do',

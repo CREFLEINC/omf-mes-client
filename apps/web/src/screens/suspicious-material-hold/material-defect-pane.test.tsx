@@ -20,7 +20,11 @@ const LOT: SelectedLotSnapshot = {
   lotStatusCode: 'NORMAL',
 };
 
-const renderPane = (selection: SelectedLotSnapshot[], detailUomId: number | null = 7) => {
+const renderPane = (
+  selection: SelectedLotSnapshot[],
+  detailUomId: number | null = 7,
+  rejectLot = false,
+) => {
   const writes: Request[] = [];
   const stubFetch: StubFetch = async (request) => {
     const path = new URL(request.url).pathname;
@@ -72,6 +76,22 @@ const renderPane = (selection: SelectedLotSnapshot[], detailUomId: number | null
         ],
         page: { page: 1, size: 100, total: 1 },
       });
+    }
+    if (request.method === 'POST' && path === '/quality/defect-records' && rejectLot) {
+      writes.push(request.clone());
+      return jsonResponse(
+        {
+          errors: [
+            {
+              scope: 'field',
+              field: 'lotId',
+              code: 'INVALID',
+              message: '투입 기록이 없는 LOT 입니다.',
+            },
+          ],
+        },
+        { status: 400 },
+      );
     }
     if (request.method === 'POST' && path === '/quality/defect-records') {
       writes.push(request.clone());
@@ -280,5 +300,19 @@ describe('MaterialDefectPane (W-03-03)', () => {
     /* 묶음이 끝나면 오른쪽 아래 알림 한 번(사용자 2026-11-02). */
     expect(await screen.findAllByText('등록되었습니다.')).toHaveLength(1);
     expect(screen.getByRole('button', { name: '불량 등록' })).toBeDisabled();
+  });
+
+  it('서버가 LOT 을 짚어 거절하면 확인 화면에 그 까닭을 보이고 등록 완료로 바꾸지 않는다', async () => {
+    const user = userEvent.setup();
+    renderPane([LOT], 7, true);
+    await openLot(user);
+    await fillDefect(user, '1');
+    await confirmDefect(user);
+
+    expect(
+      await within(screen.getByRole('dialog')).findByText('투입 기록이 없는 LOT 입니다.'),
+    ).toBeVisible();
+    expect(screen.queryByText('등록 완료 · 1건')).toBeNull();
+    expect(screen.queryByText('등록되었습니다.')).toBeNull();
   });
 });
