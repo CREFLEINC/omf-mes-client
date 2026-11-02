@@ -139,7 +139,7 @@ export const dispositionDecision = {
     /** 판정 구역 머리와 오른쪽 남은 수량(사용자 시안 · #223). */
     heading: '처분 판정',
     remainingLabel: '남은 수량',
-    qtyPlaceholder: '수량 입력',
+    qtyPlaceholder: '수량을 입력하세요',
     reasonPlaceholder: '사유를 입력하세요',
     dispositionLabel: '처분',
     qtyLabel: '처분 수량',
