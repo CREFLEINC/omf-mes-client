@@ -256,10 +256,42 @@ describe('QueueTable — 자재 LOT 표기', () => {
       7004: 'REJECTED',
     };
 
-    const renderSkip = (workerNo: string | null = '901463') => {
+    const renderSkip = (workerNo: string | null = '901463', myTurn = true) => {
       const writes: Request[] = [];
       const stubFetch: StubFetch = async (request) => {
         const url = new URL(request.url);
+        /* 승인 처리 창이 읽는 결재 상세 — 내 차례이고 버전은 3. */
+        if (url.pathname === '/app/approval-requests/7102') {
+          return jsonResponse(
+            {
+              request: {
+                approvalRequestId: 7102,
+                approvalRequestNo: 'AP-7002',
+                approvalTypeCode: 'IQC_SKIP',
+                requestedBy: 5,
+                requestedByName: '검사자',
+                requestedAt: '2026-11-02T01:00:00Z',
+                statusCode: 'PENDING',
+                reason: '긴급 투입',
+                target: {
+                  targetTypeCode: 'INBOUND_LOT',
+                  targetId: 7002,
+                  displayName: 'LOT',
+                  openable: false,
+                },
+                currentStepNo: 1,
+                totalStepNo: 1,
+                isMyTurn: myTurn,
+              },
+              steps: [],
+            },
+            { headers: { ETag: '"3"' } },
+          );
+        }
+        if (url.pathname.startsWith('/app/approval-requests/7102:')) {
+          writes.push(request.clone());
+          return jsonResponse({ request: {}, steps: [] });
+        }
         if (url.pathname === '/app/approval-requests') {
           const lotId = Number(url.searchParams.get('targetId'));
           const statusCode = approvalOf[lotId];
@@ -352,20 +384,71 @@ describe('QueueTable — 자재 LOT 표기', () => {
       expect(await writes[0]!.json()).toEqual({ reason: '긴급 투입' });
     });
 
-    it('승인 처리는 그 결재 건을 고른 승인 처리 화면으로 옮긴다', async () => {
+    const d = t.skipDialog;
+
+    it('승인 처리는 화면을 옮기지 않고 창에서 결재 사유와 함께 승인한다', async () => {
       const user = userEvent.setup();
-      const { router } = renderSkip();
+      const { writes, router } = renderSkip();
       await user.click(await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }));
-      expect(router?.state.location.pathname).toBe('/quality/approvals');
-      expect(router?.state.location.search).toBe('?approvalRequestId=7102');
+      const dialog = await screen.findByRole('dialog', { name: d.approveTitle });
+      expect(await within(dialog).findByText('AP-7002')).toBeInTheDocument();
+
+      /* 결재 사유 없이는 보내지 않는다. */
+      await user.click(within(dialog).getByRole('button', { name: d.approve }));
+      expect(writes).toHaveLength(0);
+
+      await user.type(within(dialog).getByLabelText(d.comment), '확인함');
+      await user.click(within(dialog).getByRole('button', { name: d.approve }));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(new URL(writes[0]!.url).pathname).toBe('/app/approval-requests/7102:approve');
+      expect(writes[0]!.headers.get('If-Match')).toBe('"3"');
+      expect(await writes[0]!.json()).toEqual({ comment: '확인함' });
+      expect(router?.state.location.pathname).not.toBe('/quality/approvals');
     });
 
-    it('생략 실행은 그 LOT 의 IQC 생략을 실행한다', async () => {
+    it('승인 처리 창에서 반려도 한다', async () => {
+      const user = userEvent.setup();
+      const { writes } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }));
+      const dialog = await screen.findByRole('dialog', { name: d.approveTitle });
+      await user.type(await within(dialog).findByLabelText(d.comment), '서류 미비');
+      await user.click(within(dialog).getByRole('button', { name: d.reject }));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(new URL(writes[0]!.url).pathname).toBe('/app/approval-requests/7102:reject');
+    });
+
+    it('내 결재 차례가 아니면 승인·반려 단추가 잠긴다', async () => {
+      const user = userEvent.setup();
+      renderSkip('901463', false);
+      await user.click(await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }));
+      const dialog = await screen.findByRole('dialog', { name: d.approveTitle });
+      expect(await within(dialog).findByText(d.notMyTurn)).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: d.approve })).toBeDisabled();
+      expect(within(dialog).getByRole('button', { name: d.reject })).toBeDisabled();
+    });
+
+    it('생략 실행은 한 번 묻고, 「생략 실행」을 눌러야 그 LOT 의 IQC 생략을 실행한다', async () => {
       const user = userEvent.setup();
       const { writes } = renderSkip();
       await user.click(await rowOf('IR-SKIP-APPR').findByRole('button', { name: t.skipExecute }));
+      const dialog = await screen.findByRole('dialog', { name: d.executeTitle });
+      expect(writes).toHaveLength(0);
+
+      await user.click(within(dialog).getByRole('button', { name: d.execute }));
       await waitFor(() => expect(writes).toHaveLength(1));
       expect(new URL(writes[0]!.url).pathname).toBe('/trace/lots/7003:skip-iqc');
+    });
+
+    it('생략 실행 창에서 취소하면 실행하지 않는다', async () => {
+      const user = userEvent.setup();
+      const { writes } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-APPR').findByRole('button', { name: t.skipExecute }));
+      const dialog = await screen.findByRole('dialog', { name: d.executeTitle });
+      await user.click(
+        within(dialog).getByRole('button', { name: messages.iqcInspection.skip.cancel }),
+      );
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(writes).toHaveLength(0);
     });
 
     it('계정에 작업자가 없으면 생략 요청 단추가 잠긴다', async () => {

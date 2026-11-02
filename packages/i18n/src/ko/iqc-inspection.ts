@@ -50,6 +50,27 @@ export const iqcInspection = {
     skipRequest: '생략 요청',
     skipApprove: '승인 처리',
     skipExecute: '생략 실행',
+    /** 줄의 단추가 여는 창(#225) — 승인 처리는 품질 승인 처리 화면으로 옮기지 않고 여기서 한다. */
+    skipDialog: {
+      approveTitle: 'IQC (수입검사) 생략 승인 처리',
+      requestNo: '요청번호',
+      requester: '상신자',
+      reason: '요청 사유',
+      comment: '결재 사유',
+      commentPlaceholder: '반려 또는 승인 사유를 입력하세요',
+      commentRequired: '결재 사유를 입력하세요.',
+      notMyTurn: '지금은 내 결재 차례가 아니라 승인·반려할 수 없습니다.',
+      approve: '승인',
+      reject: '반려',
+      approved: 'IQC 생략 요청을 승인했습니다.',
+      rejected: 'IQC 생략 요청을 반려했습니다.',
+      loading: '결재 정보를 불러오는 중입니다.',
+      loadFailed: '결재 정보를 불러오지 못했습니다.',
+      executeTitle: 'IQC 생략을 실행할까요?',
+      executeBody:
+        '수입검사 의뢰가 생략 처리되고 LOT 이 정상이 되어 입고할 수 있게 됩니다. 실행한 뒤에는 되돌릴 수 없습니다.',
+      execute: '생략 실행',
+    },
     caption: '검사 대기 목록',
     /**
      * 조회는 됐는데 결과가 없다. 조건을 바꾸는 것이 사용자가 할 수 있는 유일한 조치다.
