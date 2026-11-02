@@ -6386,6 +6386,22 @@ main:has(.iqc-skip-approval-detail) {
   flex-basis: 11rem;
 }
 
+/*
+ * 위아래 배치의 판정 대기 목록은 내용 높이까지만(사용자 지시 · #223) — 행이 적을 때 목록 상자 안 · 아래에 빈칸을 두지 않고
+ * 상세가 바로 붙는다. 행이 많으면 창 높이의 절반쯤에서 멈추고 상자 안에서 구른다.
+ */
+@media (min-width: 1440px) {
+  .po-board-split.is-stacked.disposition-split:has(
+      > .po-board-gutter > .po-board-splitter[aria-orientation='horizontal']
+    ) {
+    grid-template-rows: auto var(--space-5) minmax(0, 1fr);
+  }
+
+  .po-board-split.is-stacked.disposition-split > .disposition-list-pane {
+    max-height: 45vh;
+  }
+}
+
 /* 처분 판정 처리 제목 아래 한 줄 — 판정 대기 · 처리 이력 칩과 배치 고르기를 오른쪽에(#223). */
 .disposition-top-bar {
   display: flex;
@@ -6600,8 +6616,9 @@ main:has(.iqc-skip-approval-detail) {
 
 .disposition-subtitle {
   margin: 0;
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
   font: var(--type-title-md);
+  font-weight: 600;
   letter-spacing: var(--type-title-md-tracking);
 }
 
@@ -6647,12 +6664,35 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* LOT 표 · 이력 표는 둥근 테두리 상자 안에. */
-/* 빈 표의 행 자리 문구는 가운데. */
-.disposition-table-empty {
-  width: 100%;
-  max-width: none;
+/* 이력 없음 — 둥근 상자 가운데 정보 아이콘 + 한 줄(사용자 시안 · #223). */
+.disposition-empty-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   margin: 0;
-  text-align: center;
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+/* 처분 판정 — 테두리 상자 안에 머리 · 처분 · 입력 · 단추(사용자 시안 · #223). */
+.disposition-side-part.disposition-decision-card {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.disposition-side-part + .disposition-side-part.disposition-decision-card {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.disposition-detail-facts > .is-strong dd {
+  font-weight: 600;
 }
 
 .disposition-lot-table,

@@ -9,6 +9,7 @@ import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { Select } from '../../patterns/select';
 import { toBusinessDate } from './decision-form';
+import { EmptyNote } from './empty-note';
 import { dispositionKeys } from './queries';
 import type { NonconformanceLotRow } from './types';
 
@@ -212,19 +213,20 @@ export const ConcessionPane = ({
       <p className="field-note">{t.help}</p>
       {list.isError ? (
         <p className="field-note">{t.loadFailed}</p>
+      ) : list.isPending ? (
+        <p className="field-note">{t.loading}</p>
+      ) : (list.data ?? []).length === 0 ? (
+        <EmptyNote text={t.none} />
       ) : (
-        <Table
-          caption={t.caption}
-          density="compact"
-          columns={columns}
-          rows={list.data ?? []}
-          getRowId={(row) => String(row.concessionId)}
-          empty={
-            <p className="field-note disposition-table-empty">
-              {list.isPending ? t.loading : t.none}
-            </p>
-          }
-        />
+        <div className="disposition-table disposition-decision-table">
+          <Table
+            caption={t.caption}
+            density="compact"
+            columns={columns}
+            rows={list.data ?? []}
+            getRowId={(row) => String(row.concessionId)}
+          />
+        </div>
       )}
       <SaveErrorBanner error={applyWrite.error} />
 

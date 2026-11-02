@@ -75,7 +75,12 @@ export const NonconformanceList = ({
       header: t.fields.item,
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },
-    { key: 'qty', header: t.fields.qty, align: 'center', render: (row) => row.affectedQtyText },
+    {
+      key: 'qty',
+      header: t.detail.affectedQty,
+      align: 'center',
+      render: (row) => row.affectedQtyText,
+    },
     {
       key: 'dispositionProgress',
       align: 'center',

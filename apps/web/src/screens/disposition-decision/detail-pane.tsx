@@ -66,8 +66,14 @@ export const DetailPane = ({ view, items, uoms, severity }: DetailPaneProps) => 
             [t.fields.severityCode, codeValueLabel(severity, view.severityCode)],
             [t.fields.openedAt, view.openedAtText],
             [t.detail.affectedQty, `${view.affectedQtyText}${unitOf(view.lots[0]?.uomId)}`],
-          ].map(([label, value]) => (
-            <div className="field-cell" key={label}>
+          ].map(([label, value], index, all) => (
+            /* 부적합번호 · 대상 수량은 굵게(사용자 시안 · #223). */
+            <div
+              className={
+                index === 0 || index === all.length - 1 ? 'field-cell is-strong' : 'field-cell'
+              }
+              key={label}
+            >
               <dt className="field-label">{label}</dt>
               <dd>{value}</dd>
             </div>

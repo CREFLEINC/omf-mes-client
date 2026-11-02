@@ -464,7 +464,11 @@ export const DispositionDecisionScreen = ({
               }
             />
           </section>
-          <div ref={splitRef} className={paneLayout.className} style={split.style}>
+          <div
+            ref={splitRef}
+            className={`${paneLayout.className} disposition-split`}
+            style={split.style}
+          >
             <section
               className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
               aria-label={t.panes.list}
@@ -538,7 +542,11 @@ export const DispositionDecisionScreen = ({
               {selectedId !== null && detail.data !== undefined && (
                 <>
                   {/* 처분 판정 — 머리 오른쪽에 남은 수량(조회 시점 참고값 · 최종은 저장 때 서버가 낸다), 아래 입력과 단추. */}
-                  <div className="disposition-side-part" role="group" aria-label={t.panes.decision}>
+                  <div
+                    className="disposition-side-part disposition-decision-card"
+                    role="group"
+                    aria-label={t.panes.decision}
+                  >
                     <div className="disposition-side-head">
                       <h3 className="pane-subtitle">{t.form.heading}</h3>
                       {selectedId !== null && remaining.value !== undefined && (
