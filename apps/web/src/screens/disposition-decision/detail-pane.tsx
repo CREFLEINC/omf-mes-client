@@ -1,9 +1,10 @@
 import { Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
-import { codeValueLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
+import { SeverityBadge } from './severity-badge';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
 
 export interface DetailPaneProps {
@@ -60,13 +61,18 @@ export const DetailPane = ({ view, items, uoms, severity }: DetailPaneProps) => 
        */}
       <div className="disposition-detail-box">
         <dl className="disposition-detail-facts">
-          {[
-            [t.fields.nonconformanceNo, view.nonconformanceNo],
-            [t.fields.item, lookupDisplayLabel(items, view.itemId)],
-            [t.fields.severityCode, codeValueLabel(severity, view.severityCode)],
-            [t.fields.openedAt, view.openedAtText],
-            [t.detail.affectedQty, `${view.affectedQtyText}${unitOf(view.lots[0]?.uomId)}`],
-          ].map(([label, value], index, all) => (
+          {(
+            [
+              [t.fields.nonconformanceNo, view.nonconformanceNo],
+              [t.fields.item, lookupDisplayLabel(items, view.itemId)],
+              [
+                t.fields.severityCode,
+                <SeverityBadge severity={severity} code={view.severityCode} />,
+              ],
+              [t.fields.openedAt, view.openedAtText],
+              [t.detail.affectedQty, `${view.affectedQtyText}${unitOf(view.lots[0]?.uomId)}`],
+            ] as [string, ReactNode][]
+          ).map(([label, value], index, all) => (
             /* 부적합번호 · 대상 수량은 굵게(사용자 시안 · #223). */
             <div
               className={

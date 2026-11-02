@@ -11,6 +11,7 @@ import { codeValueLabel } from './disposition-codes';
 import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
 import type { DispositionLookup } from './lookups';
 import type { PageView } from './pagination';
+import { SeverityBadge } from './severity-badge';
 import { dispositionProgressLabel, type NonconformanceRow } from './types';
 
 export interface NonconformanceListProps {
@@ -91,7 +92,7 @@ export const NonconformanceList = ({
       key: 'severity',
       align: 'center',
       header: t.fields.severityCode,
-      render: (row) => codeValueLabel(severity, row.severityCode),
+      render: (row) => <SeverityBadge severity={severity} code={row.severityCode} />,
     },
     {
       key: 'openedAt',
