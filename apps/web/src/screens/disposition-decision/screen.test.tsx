@@ -102,6 +102,20 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(screen.queryByText(/원천으로 거르는/)).toBeNull();
   });
 
+  /* 판정 대기 → 부적합 선택 → 처분 판정 또는 특채 요청(#223) — 특채 요청은 팝업으로 연다. */
+  it('처분 판정 머리의 「특채 요청」을 누르면 요청 팝업이 열리고, 취소하면 닫힌다', async () => {
+    const { user } = renderScreen();
+    await selectRow(user);
+    await screen.findByText('LOT-TEST-0088');
+
+    await user.click(screen.getByRole('button', { name: t.concession.request }));
+    const dialog = await screen.findByRole('dialog', { name: t.concession.requestHeading });
+    expect(within(dialog).getByText(t.concession.requestNote)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
   it('⛔ 승인·반려 컨트롤이 화면에 없다', async () => {
     renderScreen();
     await screen.findByText('NC-TEST-0041');

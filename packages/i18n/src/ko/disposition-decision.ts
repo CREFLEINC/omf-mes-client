@@ -26,7 +26,7 @@ export const dispositionDecision = {
     decision: '판정',
     history: '처분 판정 이력',
     lots: '대상 LOT',
-    decisions: '판정 이력',
+    decisions: '처분 이력',
   },
   fields: {
     /** 조회 조건 선택칸 이름 — 「…선택」(사용자 지시 · #223). */
@@ -103,20 +103,18 @@ export const dispositionDecision = {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
     count: (count: number): string => `${String(count)}건`,
     loading: '판정 이력 불러오는 중',
-    empty: '판정 이력이 없습니다.',
+    empty: '처분 이력이 없습니다.',
     unavailable: '판정 이력을 표시할 수 없습니다',
   },
   /** 특채(omf-all-around#84 · 서버 선행 P-79) — 불합격 LOT 을 결재 뒤 조건부로 쓴다. */
   concession: {
     /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: '특채 요청·이력',
+    foldTitle: '특채 요청 이력',
     count: (count: number): string => `${String(count)}건`,
-    heading: '특채',
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    requestNote: '불합격 LOT의 조건부 사용 승인 요청',
+    requestNote: '불합격 LOT의 조건부 사용 승인을 요청합니다.',
     historyHeading: '특채 요청 이력',
-    total: (count: number): string => `총 ${String(count)}건`,
     qtyPlaceholder: '수량 입력',
     reasonPlaceholder: '특채 사유 입력',
     validToPlaceholder: '제한 없음',
@@ -132,7 +130,6 @@ export const dispositionDecision = {
     validFrom: '시작일',
     validTo: '종료일 (선택)',
     reason: '특채 사유',
-    closedNote: '종결된 부적합은 특채를 요청할 수 없습니다.',
     requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
     applied: '특채를 적용했습니다. LOT 이 정상으로 풀렸습니다.',
     rejected: '결재가 반려되어 특채를 닫았습니다.',
@@ -146,7 +143,7 @@ export const dispositionDecision = {
     columns: {
       concessionNo: '특채 번호',
       lotNo: 'LOT',
-      qty: '수량',
+      qty: '사용 가능 수량',
       period: '유효 기간',
       status: '상태',
     },

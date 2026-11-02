@@ -15,6 +15,10 @@ const KST = 540;
 
 type User = ReturnType<typeof userEvent.setup>;
 
+/* 상세 아래 탭도 「처분 이력」이다(#223) — 맨 위 탭 줄 안에서 찾는다. */
+const topTab = (name: RegExp): HTMLElement =>
+  within(screen.getByRole('tablist', { name: t.tabs.label })).getByRole('tab', { name });
+
 const renderScreen = (route = '/quality/dispositions'): { user: User } => {
   renderWithProviders(
     <SessionProvider>
@@ -41,10 +45,7 @@ describe('DispositionDecisionScreen 탭', () => {
       'aria-selected',
       'true',
     );
-    expect(screen.getByRole('tab', { name: /^처분 이력/ })).toHaveAttribute(
-      'aria-selected',
-      'false',
-    );
+    expect(topTab(/^처분 이력/)).toHaveAttribute('aria-selected', 'false');
   });
 
   /* 탭 줄 칩은 두 목록의 건수를 함께 보인다(사용자 지시 · #223) — 보지 않는 쪽도 첫 쪽 하나는 부른다. */
@@ -76,7 +77,7 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen();
     await screen.findByText('NC-TEST-0041');
 
-    await user.click(screen.getByRole('tab', { name: /^처분 이력/ }));
+    await user.click(topTab(/^처분 이력/));
 
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
@@ -101,7 +102,7 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');
 
-    await user.click(screen.getByRole('tab', { name: /^처분 이력/ }));
+    await user.click(topTab(/^처분 이력/));
     await user.click(screen.getByRole('tab', { name: /^처분 대기/ }));
 
     expect(await screen.findByText(t.detail.select)).toBeInTheDocument();

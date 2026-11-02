@@ -1,5 +1,5 @@
 import type { DispositionSortResult } from '@omf-mes/api-client';
-import { Badge, Chip, Tabs, useToast } from '@crefle/web-ui';
+import { Badge, Button, Chip, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -25,7 +25,7 @@ import {
   type DecisionCreateBody,
   type DecisionFormValue,
 } from './decision-form';
-import { ConcessionPane, useConcessions } from './concession-pane';
+import { ConcessionHistory, ConcessionRequestDialog, useConcessions } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -214,6 +214,8 @@ export const DispositionDecisionScreen = ({
   const concessions = useConcessions(selectedId);
   /* 상세 아래 탭 — 판정 이력 | 특채 요청 및 이력(#223). */
   const [sideTab, setSideTab] = useState<'decisions' | 'concessions'>('decisions');
+  /* 특채 요청 팝업 — 처분 대기에서 고른 부적합에 대해 연다(사용자 지시 · #223). */
+  const [isConcessionOpen, setIsConcessionOpen] = useState(false);
   const decisions = useDispositionDecisions(selectedId);
   const items = useItemLookup();
   const uoms = useUomLookup();
@@ -611,8 +613,17 @@ export const DispositionDecisionScreen = ({
                 role="group"
                 aria-label={t.panes.decision}
               >
+                {/* 머리 오른쪽에 「특채 요청」 — 처분 판정 대신 조건부 사용 승인을 요청하는 갈래(#223). 종결이면 막는다. */}
                 <div className="disposition-side-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    disabled={detail.data.statusCode === 'DECIDED'}
+                    onClick={() => setIsConcessionOpen(true)}
+                  >
+                    {t.concession.request}
+                  </Button>
                 </div>
                 <DecisionFormPane
                   value={form}
@@ -680,12 +691,7 @@ export const DispositionDecisionScreen = ({
                   label:
                     `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(concessions.data.length)}`.trim(),
                   content: (
-                    <ConcessionPane
-                      nonconformanceId={selectedId}
-                      lots={toDetailView(detail.data).lots}
-                      isClosed={detail.data.statusCode === 'DECIDED'}
-                      today={today}
-                    />
+                    <ConcessionHistory nonconformanceId={selectedId} readOnly={tab === 'history'} />
                   ),
                 },
               ]}
@@ -693,6 +699,23 @@ export const DispositionDecisionScreen = ({
           )}
         </section>
       </div>
+      {isConcessionOpen &&
+        tab === 'pending' &&
+        selectedId !== null &&
+        detail.data !== undefined && (
+          <ConcessionRequestDialog
+            nonconformanceId={selectedId}
+            lots={toDetailView(detail.data).lots}
+            today={today}
+            onClose={(requested) => {
+              setIsConcessionOpen(false);
+              if (requested) {
+                toast.show({ variant: 'success', description: t.concession.requested });
+                setSideTab('concessions');
+              }
+            }}
+          />
+        )}
     </>
   );
 };

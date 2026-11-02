@@ -33,7 +33,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     decision: 'Đánh giá',
     history: 'Lịch sử đánh giá quyết định xử lý',
     lots: 'LOT liên quan',
-    decisions: 'Lịch sử đánh giá',
+    decisions: 'Lịch sử xử lý',
   },
   fields: {
     /** 조회 조건 선택칸 이름 — 「…선택」(사용자 지시 · #223). */
@@ -99,18 +99,16 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
     count: (count: number): string => `${String(count)}`,
     loading: 'Đang tải lịch sử đánh giá',
-    empty: 'Chưa có lịch sử quyết định.',
+    empty: 'Chưa có lịch sử xử lý.',
     unavailable: 'Không hiển thị được lịch sử đánh giá',
   },
   concession: {
     /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: 'Yêu cầu · lịch sử nhân nhượng',
+    foldTitle: 'Lịch sử yêu cầu đặc cách',
     count: (count: number): string => `${String(count)}`,
-    heading: 'Đặc cách',
     requestHeading: 'Yêu cầu đặc cách',
-    requestNote: 'Yêu cầu phê duyệt sử dụng có điều kiện LOT không đạt',
+    requestNote: 'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT không đạt.',
     historyHeading: 'Lịch sử yêu cầu đặc cách',
-    total: (count: number): string => `Tổng ${String(count)}`,
     qtyPlaceholder: 'Nhập số lượng',
     reasonPlaceholder: 'Nhập lý do đặc cách',
     validToPlaceholder: 'Không giới hạn',
@@ -126,7 +124,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     validFrom: 'Ngày bắt đầu',
     validTo: 'Ngày kết thúc (tùy chọn)',
     reason: 'Lý do đặc cách',
-    closedNote: 'Không thể yêu cầu đặc cách cho mục không phù hợp đã kết thúc.',
     requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
     applied: 'Đã áp dụng đặc cách. LOT đã được giải phóng về bình thường.',
     rejected: 'Phê duyệt bị từ chối nên đã đóng đặc cách.',
@@ -140,7 +137,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     columns: {
       concessionNo: 'Số đặc cách',
       lotNo: 'LOT',
-      qty: 'Số lượng',
+      qty: 'Số lượng được dùng',
       period: 'Thời hạn',
       status: 'Trạng thái',
     },

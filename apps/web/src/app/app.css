@@ -6720,25 +6720,15 @@ main:has(.iqc-skip-approval-detail) {
   align-self: center;
 }
 
-/* 특채 탭 — 위 요청 입력(두 칸씩), 구분선 아래 요청 이력(사용자 시안 · #223). */
-.disposition-concession {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.disposition-concession-part {
+/* 특채 요청 이력 탭 · 특채 요청 팝업 — 팝업은 한 줄 설명 아래 두 칸씩 두 줄(사용자 지시 · #223). */
+.disposition-concession,
+.disposition-concession-dialog {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.disposition-concession-part + .disposition-concession-part {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.disposition-concession-part .pane-subtitle {
+.disposition-concession-dialog > .field-note {
   margin: 0;
 }
 
@@ -6756,10 +6746,6 @@ main:has(.iqc-skip-approval-detail) {
 .disposition-concession-fields > .field-cell > div,
 .disposition-concession-fields > .field-cell > div > button {
   width: 100%;
-}
-
-.disposition-concession-part > .form-actions {
-  margin: 0;
 }
 
 /* 판정 이력 · 특채 탭 — 테두리 상자 안(검사 조회·판정 상세 탭 상자와 같은 모양 · #223). */
