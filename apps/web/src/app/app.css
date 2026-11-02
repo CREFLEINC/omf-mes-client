@@ -5469,6 +5469,22 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 100%;
 }
 
+/* 상태 변경 시작일 · 종료일 — 흐린 글자 「시작일을 선택하세요」가 다 보이는 폭(사용자 2026-11-02). */
+.lot-status-date-field.suspicious-material-hold-date-field {
+  width: 14.5rem;
+}
+
+/* 보류 수량 — 흐린 글자 「수량을 입력하세요」 + 단위만큼(사용자 2026-11-02). */
+.suspicious-material-hold-input-row > .suspicious-material-hold-qty {
+  flex: 0 0 13rem;
+}
+
+.suspicious-material-hold-unit {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  white-space: nowrap;
+}
+
 /* 보류 사유 — 사유 이름 길이만큼만(사용자 2026-11-02). */
 .suspicious-material-hold-input-row > .suspicious-material-hold-reason {
   flex: 0 1 14rem;

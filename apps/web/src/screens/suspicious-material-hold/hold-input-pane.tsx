@@ -164,6 +164,8 @@ export const SuspiciousMaterialHoldInputPane = ({
     return () => onNoticesChange?.([]);
   }, [noticeKey, onNoticesChange]);
   if (selection.length === 0) return null;
+  /* 단위 이름은 「코드 · 이름」 — 칸 안에는 코드만(예: EA). */
+  const unitCode = selection[0]?.uomLabel?.split(' · ')[0] ?? null;
   const update = <K extends keyof HoldDraft>(key: K, value: HoldDraft[K]): void =>
     setDraft((current) => ({ ...current, [key]: value }));
 
@@ -196,11 +198,22 @@ export const SuspiciousMaterialHoldInputPane = ({
           </RadioGroup>
         </div>
         {draft.mode === 'PARTIAL' && selection.length === 1 && (
+          /*
+           * 보류 수량 — 숫자 몇 자리만큼만 좁게, 칸 오른쪽 안에 LOT 단위(코드)를 붙인다(사용자 2026-11-02). 단위를 못 받았으면
+           * 붙이지 않는다(위 안내가 막힌 까닭을 알린다).
+           */
           <TextField
+            containerClassName="suspicious-material-hold-qty"
             label={t.quantity}
             required
+            placeholder={t.quantityPlaceholder}
             inputMode="decimal"
             aria-invalid={!isLocked && draft.holdQty.trim() === ''}
+            {...(unitCode === null
+              ? {}
+              : {
+                  trailingIcon: <span className="suspicious-material-hold-unit">{unitCode}</span>,
+                })}
             value={draft.holdQty}
             disabled={isLocked}
             onChange={(event) => update('holdQty', event.target.value)}

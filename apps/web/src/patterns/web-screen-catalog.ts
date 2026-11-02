@@ -226,7 +226,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     name: 'Lot Status 현황·변경이력 조회',
   },
   { path: '/quality/lot-status-transition', code: 'W-03-02', name: 'Lot Status 판정·전이 처리' },
-  { path: '/quality/suspicious-material-hold', code: 'W-03-03', name: '의심자재 등록' },
+  { path: '/quality/suspicious-material-hold', code: 'W-03-03', name: '의심자재 보류' },
   /*
    * ⚠ **03 도메인은 번호에 결번이 있다** — `W-03-04`·`W-03-06`·`W-03-07`·`W-03-08` 은 통합·삭제됐고
    * (IA §1) 그중 `W-03-08`(품질 대시보드) 집계분을 이 화면이 흡수했다. 05 를 04 로 잘못 적기 쉽다.

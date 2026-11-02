@@ -459,8 +459,8 @@ export const SuspiciousMaterialCandidatePane = ({
             </label>
             <DatePicker
               id={periodFromId}
-              className="lot-status-date-field"
-              placeholder=""
+              className="lot-status-date-field suspicious-material-hold-date-field"
+              placeholder={t.fields.periodFromPlaceholder}
               disabled={isLocked}
               invalid={draft.from === '' && draft.to !== ''}
               value={draft.from === '' ? null : draft.from}
@@ -473,8 +473,8 @@ export const SuspiciousMaterialCandidatePane = ({
             </label>
             <DatePicker
               id={periodToId}
-              className="lot-status-date-field"
-              placeholder=""
+              className="lot-status-date-field suspicious-material-hold-date-field"
+              placeholder={t.fields.periodToPlaceholder}
               disabled={isLocked}
               invalid={(draft.to === '' && draft.from !== '') || periodReason !== null}
               value={draft.to === '' ? null : draft.to}
@@ -489,7 +489,7 @@ export const SuspiciousMaterialCandidatePane = ({
           </div>
           <SearchInput
             containerClassName="lot-status-filter-lot-no"
-            label={tHistory.lotFilter.lotScanLabel}
+            label={t.fields.lotScan}
             placeholder={tHistory.lotFilter.lotNoScanPlaceholder}
             value={draft.q}
             disabled={isLocked}

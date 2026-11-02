@@ -372,8 +372,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           },
           {
             to: '/quality/suspicious-material-hold',
-            label: '의심자재 등록',
-            labelVi: 'Đăng ký vật tư nghi ngờ',
+            label: '의심자재 보류',
+            labelVi: 'Tạm giữ vật tư nghi ngờ',
           },
         ],
       },

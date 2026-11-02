@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  * 짝(보류 `tạm giữ` · 해제 조건 `điều kiện gỡ`)을 그대로 쓴다.
  */
 export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold> = {
-  title: 'Đăng ký vật tư nghi ngờ',
+  title: 'Tạm giữ vật tư nghi ngờ',
   breadcrumbRoot: 'Quản lý chất lượng',
   candidate: {
     pane: 'Ứng viên vật tư nghi ngờ',
@@ -17,15 +17,18 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       item: 'Mặt hàng',
       warehouse: 'Kho',
       location: 'Vị trí',
-      quantity: 'Số lượng đang giữ · Đơn vị',
+      quantity: 'Số lượng đang giữ',
       status: 'Trạng thái',
-      latestTransition: 'Ngày thay đổi cuối',
+      latestTransition: 'Ngày đổi trạng thái gần nhất',
       /** 상세 검색의 선택 칸 이름(사용자 2026-11-02). */
-      itemSearch: 'Tìm mặt hàng',
-      warehouseSearch: 'Tìm kho',
+      itemSearch: 'Mặt hàng',
+      warehouseSearch: 'Kho',
       /** 조회 줄 기간 두 칸(사용자 2026-11-02). */
-      periodFrom: 'Ngày bắt đầu thay đổi cuối',
-      periodTo: 'Ngày kết thúc thay đổi cuối',
+      periodFrom: 'Chọn ngày bắt đầu đổi trạng thái',
+      periodTo: 'Chọn ngày kết thúc đổi trạng thái',
+      periodFromPlaceholder: 'Hãy chọn ngày bắt đầu',
+      periodToPlaceholder: 'Hãy chọn ngày kết thúc',
+      lotScan: 'Số LOT',
     },
     values: {
       all: 'Tất cả',
@@ -57,6 +60,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     full: 'Tạm giữ toàn bộ',
     partial: 'Tạm giữ một phần',
     quantity: 'Số lượng tạm giữ',
+    quantityPlaceholder: 'Hãy nhập số lượng',
     reason: 'Lý do tạm giữ',
     reasonPlaceholder: 'Hãy chọn lý do',
     releaseCondition: 'Điều kiện gỡ',
@@ -67,7 +71,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       'Danh sách lý do tạm giữ chưa đầy đủ. Chưa xác nhận được lý do thì chưa đăng ký được.',
     factsUnavailable:
       'Chưa xác nhận được vị trí · đơn vị hoặc trạng thái đến nơi thì chưa đăng ký được.',
-    impact: 'Hạn chế khi tạm giữ',
+    impact: 'Đối tượng và hạn chế tạm giữ',
     quantityName: 'Số lượng',
     uomName: 'Đơn vị',
     locationName: 'Vị trí',
@@ -106,6 +110,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     title: 'Đăng ký tạm giữ vật tư nghi ngờ',
   },
   defect: {
+    heading: 'Đăng ký chi tiết lỗi',
     major: 'Loại lỗi',
     majorPlaceholder: 'Chọn loại lỗi',
     noCodesPlaceholder: 'Chưa có loại lỗi',

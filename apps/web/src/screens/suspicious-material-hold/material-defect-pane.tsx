@@ -105,8 +105,8 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
 
   if (lot === null) {
     return (
-      <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
-        <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
+      <section className="suspicious-material-hold-section" aria-label={tHere.heading}>
+        <h3 className="suspicious-material-hold-subtitle">{tHere.heading}</h3>
         <p className="field-note">{t.pane.singleOnly}</p>
       </section>
     );
@@ -148,14 +148,14 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
    * 「의심자재 보류 등록」 카드 안 자재 불량 기록 구획 — 보류 시 제한 사항과 나란히 선다(사용자 2026-11-02).
    */
   return (
-    <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
+    <section className="suspicious-material-hold-section" aria-label={tHere.heading}>
       {/* 오른쪽 위 [불량 코드 등록] — 불량 · 원인코드 관리 화면으로 간다(사용자 2026-11-02). */}
       {/*
        * 제목 줄 — 제목 바로 오른쪽에 코드 없음 · 못 받음 안내 알약, 오른쪽 끝에 [불량 코드 등록](사용자 2026-11-02).
        */}
       <div className="suspicious-material-hold-section-head">
         <div className="suspicious-material-hold-title-group">
-          <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
+          <h3 className="suspicious-material-hold-subtitle">{tHere.heading}</h3>
           {codes.isError && (
             <p className="iqc-inspection-action-note" data-tone="info" title={t.code.loadFailed}>
               <Icon name="info" size={14} aria-hidden />

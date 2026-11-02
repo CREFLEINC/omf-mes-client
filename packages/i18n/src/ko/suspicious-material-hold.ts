@@ -1,5 +1,6 @@
 export const suspiciousMaterialHold = {
-  title: '의심자재 등록',
+  /* 용어 정리(사용자 2026-11-02) — 실제 일이 보류 등록이라 「의심자재 보류」. */
+  title: '의심자재 보류',
   breadcrumbRoot: '품질 관리',
   candidate: {
     pane: '의심자재 후보',
@@ -8,15 +9,19 @@ export const suspiciousMaterialHold = {
       item: '품목',
       warehouse: '창고',
       location: '위치',
-      quantity: '보유 수량·단위',
+      quantity: '보유 수량',
       status: '상태',
-      latestTransition: '최종 변경일',
-      /** 상세 검색의 선택 칸 이름(사용자 2026-11-02). */
-      itemSearch: '품목 검색',
-      warehouseSearch: '창고 검색',
-      /** 조회 줄 기간 두 칸(사용자 2026-11-02). */
-      periodFrom: '최종 변경 시작일',
-      periodTo: '최종 변경 종료일',
+      latestTransition: '최근 상태 변경일',
+      /** 상세 검색의 선택 칸 이름 — 용어 정리로 짧게(사용자 2026-11-02). */
+      itemSearch: '품목',
+      warehouseSearch: '창고',
+      /** 조회 줄 기간 두 칸 — 이름 · 흐린 글자(사용자 2026-11-02). */
+      periodFrom: '상태 변경 시작일 선택',
+      periodTo: '상태 변경 종료일 선택',
+      periodFromPlaceholder: '시작일을 선택하세요',
+      periodToPlaceholder: '종료일을 선택하세요',
+      /** LOT 스캔 칸 이름 — 스캔 · 직접 입력 모두 되므로 「LOT 번호」. */
+      lotScan: 'LOT 번호',
     },
     values: {
       all: '전체',
@@ -48,6 +53,7 @@ export const suspiciousMaterialHold = {
     full: '전량 보류',
     partial: '일부 보류',
     quantity: '보류 수량',
+    quantityPlaceholder: '수량을 입력하세요',
     reason: '보류 사유',
     /* 칸 안 흐린 글자 — 사용자 시안(2026-11-02) 글자 그대로. */
     reasonPlaceholder: '사유를 선택하세요',
@@ -58,7 +64,7 @@ export const suspiciousMaterialHold = {
     reasonUnavailable:
       '보류 사유 목록이 완결되지 않았습니다. 사유를 확인할 때까지 등록할 수 없습니다.',
     factsUnavailable: '위치·단위 또는 도착 상태를 확인할 때까지 등록할 수 없습니다.',
-    impact: '보류 시 제한 사항',
+    impact: '보류 대상 및 제한 사항',
     quantityName: '수량',
     uomName: '단위',
     locationName: '위치',
@@ -97,6 +103,7 @@ export const suspiciousMaterialHold = {
   },
   /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
   defect: {
+    heading: '불량 내역 등록',
     major: '불량 유형',
     majorPlaceholder: '불량 유형 선택',
     noCodesPlaceholder: '등록된 불량 유형 없음',
@@ -105,7 +112,7 @@ export const suspiciousMaterialHold = {
     qtyPlaceholder: '수량을 입력하세요',
     descriptionPlaceholder: '불량 내용을 입력하세요',
     submit: '불량 등록',
-    affectedHeading: '관련 생산 LOT',
+    affectedHeading: '연관 생산 LOT',
     affectedCount: (count: number): string => `총 ${String(count)}건`,
     columns: { lotNo: '생산 LOT 번호', workOrderNo: '작업지시 번호', statusCode: '상태' },
     estimateNote:
