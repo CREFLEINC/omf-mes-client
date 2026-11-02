@@ -20,7 +20,7 @@ const LOT: SelectedLotSnapshot = {
   lotStatusCode: 'NORMAL',
 };
 
-const renderPane = (selection: SelectedLotSnapshot[]) => {
+const renderPane = (selection: SelectedLotSnapshot[], detailUomId: number | null = 7) => {
   const writes: Request[] = [];
   const stubFetch: StubFetch = async (request) => {
     const path = new URL(request.url).pathname;
@@ -47,6 +47,22 @@ const renderPane = (selection: SelectedLotSnapshot[]) => {
             workOrderNo: 'WO-41',
           },
         ],
+      });
+    }
+    /* 목록에 단위가 없는 LOT 은 LOT 상세의 단위를 쓴다(사용자 2026-11-02). */
+    if (path === '/trace/lots/8101') {
+      return jsonResponse({
+        lot: {
+          lotId: 8101,
+          lotNo: 'MLOT-8101',
+          itemId: 3001,
+          lotTypeCode: 'PRODUCTION',
+          statusCode: 'NORMAL',
+          initialQty: 50,
+          uomId: detailUomId,
+          sourceTypeCode: 'WORK_ORDER',
+          sourceId: 41,
+        },
       });
     }
     if (path === '/mdm/code-values') {
@@ -110,6 +126,31 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await user.click(await screen.findByRole('combobox', { name: '불량 유형' }));
     await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
     await waitFor(() => expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveFocus());
+  });
+
+  it('목록에 단위가 없으면 LOT 상세의 단위로 불량을 기록한다', async () => {
+    const user = userEvent.setup();
+    const { uomId: _omit, ...withoutUom } = LOT;
+    const { writes } = renderPane([withoutUom]);
+
+    await user.click(await screen.findByRole('combobox', { name: '불량 유형' }));
+    await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
+    await user.type(screen.getByRole('textbox', { name: t.qty.label }), '2');
+    await waitFor(() => expect(screen.getByRole('button', { name: '불량 등록' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: '불량 등록' }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(await writes[0]?.json()).toMatchObject({ lotId: 8101, uomId: 7, defectQty: 2 });
+  });
+
+  it('LOT 상세에도 단위가 없으면 막힌 까닭을 제목 옆에 보이고 등록하지 않는다', async () => {
+    const { uomId: _omit, ...withoutUom } = LOT;
+    renderPane([withoutUom], null);
+
+    expect(
+      await screen.findByText('LOT 단위를 확인할 수 없어 불량을 등록할 수 없습니다.'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: '불량 등록' })).toBeDisabled();
   });
 
   it('자재 불량을 계정 세션으로 기록한다 — 사번 헤더를 싣지 않는다', async () => {

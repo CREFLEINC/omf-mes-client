@@ -10,6 +10,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { lotStatusTone } from '../lot-status-history/options';
+import { useLotDetail } from '../lot-status-history/queries';
 import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 import {
   EMPTY_DEFECT_CODE,
@@ -83,6 +84,12 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const lotId = lot?.lotId ?? null;
 
   const codes = useDefectCodes(lotId !== null);
+  /*
+   * 단위 — 목록(재고 기준)에 없으면 LOT 상세의 단위로 기록한다(재고 기록이 아직 없는 생산 LOT 등 · 사용자 2026-11-02).
+   * 상세 칸 · 팝업과 같은 조회라 한 번 받은 LOT 은 다시 부르지 않는다.
+   */
+  const detail = useLotDetail(lot !== null && lot.uomId === undefined ? lot.lotId : null);
+  const uomId = lot?.uomId ?? detail.data?.uomId ?? undefined;
   const [code, setCode] = useState<DefectCodeDraft>(EMPTY_DEFECT_CODE);
   const [qty, setQty] = useState('');
   const [description, setDescription] = useState('');
@@ -140,24 +147,26 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
       ? t.blocked.code
       : !(qty.trim() !== '' && quantity > 0)
         ? t.blocked.qty
-        : lot.uomId === undefined
+        : uomId === undefined
           ? t.blocked.uom
           : null;
 
   const submit = (): void => {
-    if (blocked !== null || defectCodeId === null || lot.uomId === undefined) return;
+    if (blocked !== null || defectCodeId === null || uomId === undefined) return;
     setIsRecorded(false);
     record.write({
       lotId: lot.lotId,
       defectCodeId,
       defectQty: quantity,
-      uomId: lot.uomId,
+      uomId,
       detectedAt: new Date().toISOString(),
       ...(description.trim() === '' ? {} : { defectDescription: description.trim() }),
     });
   };
 
   const disabled = isLocked || record.isSaving;
+  /* 상세까지 받아 보고도 단위가 없을 때만 — 받는 중에는 띄우지 않는다. */
+  const uomUnknown = uomId === undefined && !detail.isPending;
   const noCodes = codes.data !== undefined && majors.length === 0;
   /* 고를 불량 유형이 없으면(없음 · 못 받음 · 받는 중) 유형 · 수량 · 내용을 모두 잠근다(사용자 2026-11-02). */
   const locked = majors.length === 0;
@@ -184,6 +193,13 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
             <p className="iqc-inspection-action-note" data-tone="info" title={tHere.noCodesNote}>
               <Icon name="info" size={14} aria-hidden />
               <span className="iqc-inspection-action-note-text">{tHere.noCodesNote}</span>
+            </p>
+          )}
+          {/* 단위를 끝내 모르면 막힌 까닭을 제목 옆에 보인다(단추 풍선 도움말만으로는 안 보인다 · 사용자 2026-11-02). */}
+          {uomUnknown && (
+            <p className="iqc-inspection-action-note" data-tone="info" title={tHere.uomUnknownNote}>
+              <Icon name="info" size={14} aria-hidden />
+              <span className="iqc-inspection-action-note-text">{tHere.uomUnknownNote}</span>
             </p>
           )}
         </div>
