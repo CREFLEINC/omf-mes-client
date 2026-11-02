@@ -494,12 +494,14 @@ describe('Lot Status 화면 shell', () => {
     for (const path of ['/mdm/items', '/mdm/warehouses']) {
       expect(requestCount(urls, path)).toBe(0);
     }
-    // 상태 변경 줄의 상태 이름을 풀려고 LOT 상태 기준값만 읽는다. LOT 유형은 읽지 않는다.
-    expect(
-      urls
-        .filter(({ pathname }) => pathname === '/mdm/code-values')
-        .map((url) => url.searchParams.get('codeGroupCode')),
-    ).not.toContain('LOT_TYPE');
+    // 상태 이름을 풀 LOT 상태 기준값과, LOT 번호 왼쪽 유형 라벨을 풀 LOT 유형 기준값을 읽는다(사용자 2026-11-02).
+    await waitFor(() =>
+      expect(
+        urls
+          .filter(({ pathname }) => pathname === '/mdm/code-values')
+          .map((url) => url.searchParams.get('codeGroupCode')),
+      ).toEqual(expect.arrayContaining(['LOT_STATUS', 'LOT_TYPE'])),
+    );
   });
 
   it.each([

@@ -83,7 +83,6 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
       selected: 'Đã chọn',
     },
     notes: {
-      createReady: 'Đã chuẩn bị xong việc đăng ký tạm giữ.',
       lockUnknown: 'Không xác nhận được thông tin khóa LOT nên không đi tiếp được.',
       holdsLoading: 'Đang tải mục tạm giữ đang mở.',
       holdsFailed: 'Không tải được mục tạm giữ đang mở.',

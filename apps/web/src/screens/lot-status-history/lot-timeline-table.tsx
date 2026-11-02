@@ -71,6 +71,8 @@ interface LotTimelineTableProps {
    */
   historySort?: SortState;
   onHistorySortChange?: (sort: SortState) => void;
+  /** 이력 표 LOT 번호 왼쪽 유형 라벨 — LOT 마다 라벨을 돌려준다. 없으면 번호만(사용자 2026-11-02). */
+  lotTypeLabel?: (entry: LotTimelineEntry) => string | null;
 }
 
 export const LotTimelineTable = ({
@@ -86,6 +88,7 @@ export const LotTimelineTable = ({
   selectedKey = null,
   historySort,
   onHistorySortChange,
+  lotTypeLabel,
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
@@ -141,7 +144,19 @@ export const LotTimelineTable = ({
             key: 'lotNo',
             header: t.history.columns.lot,
             align: 'center' as const,
-            render: (entry: LotTimelineEntry) => entry.lotNo,
+            render: (entry: LotTimelineEntry) => {
+              const typeLabel = lotTypeLabel?.(entry) ?? null;
+              return typeLabel === null ? (
+                entry.lotNo
+              ) : (
+                <span className="lot-no-with-type">
+                  <Chip variant="status" status="info" size="sm">
+                    {typeLabel}
+                  </Chip>
+                  {entry.lotNo}
+                </span>
+              );
+            },
           },
         ]),
     {

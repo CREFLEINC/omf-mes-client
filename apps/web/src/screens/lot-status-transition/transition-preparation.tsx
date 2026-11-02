@@ -296,7 +296,8 @@ export const LotStatusTransitionPreparation = ({
 
   let preparation: string | null = null;
   if (isCreate) {
-    preparation = Number.isSafeInteger(lot.versionNo) ? t.notes.createReady : t.notes.lockUnknown;
+    /* 준비가 끝나면 문구 없이 [상태 변경 검토]만 선다(사용자 2026-11-02). */
+    preparation = Number.isSafeInteger(lot.versionNo) ? null : t.notes.lockUnknown;
   } else if (isRelease) {
     preparation = holds.isFetching
       ? t.notes.holdsLoading

@@ -1,5 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -85,6 +85,32 @@ export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailView
       return toLotDetailView(data);
     },
   });
+};
+
+/**
+ * 이력 줄의 LOT 유형 — 이력 응답에는 유형이 없어 보이는 쪽의 LOT 상세에서 읽는다. 상세 칸과 같은 키라 한 번 받은 LOT 은
+ * 다시 부르지 않는다. 못 받은 LOT 은 맵에 없고, 라벨 없이 번호만 보인다(사용자 2026-11-02).
+ */
+export const useLotTypeCodes = (lotIds: readonly number[]): ReadonlyMap<number, string> => {
+  const { client } = useApiClient();
+  const unique = [...new Set(lotIds)];
+  const results = useQueries({
+    queries: unique.map((lotId) => ({
+      queryKey: lotStatusKeys.detail(lotId),
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+        );
+        return toLotDetailView(data);
+      },
+    })),
+  });
+  const codes = new Map<number, string>();
+  results.forEach((result, index) => {
+    const lotId = unique[index];
+    if (lotId !== undefined && result.data !== undefined) codes.set(lotId, result.data.lotTypeCode);
+  });
+  return codes;
 };
 
 const fetchLotStatuses = async (

@@ -10,7 +10,7 @@ import { useLotTypeOptions } from './options';
 import { LotTimelineTable } from './lot-timeline-table';
 import { entryStatusCode } from './timeline';
 import { validateHistoryPeriod } from './period';
-import { useLotHistoryTimeline } from './queries';
+import { useLotHistoryTimeline, useLotTypeCodes } from './queries';
 
 const t = messages.lotStatusHistory;
 
@@ -70,6 +70,16 @@ export const HistoryResults = ({
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const start = (currentPage - 1) * pageSize;
   const rows = entries.slice(start, start + pageSize);
+  /* LOT 번호 왼쪽 유형 라벨 — LOT 현황 · LOT 상태 변경 목록과 같다(사용자 2026-11-02). 보이는 쪽의 LOT 만 읽는다. */
+  const lotTypeCodes = useLotTypeCodes(rows.map((entry) => entry.event.lotId));
+  const lotTypes = useLotTypeOptions();
+  const lotTypeLabel = (entry: { event: { lotId: number } }): string | null => {
+    const code = lotTypeCodes.get(entry.event.lotId);
+    if (code === undefined) return null;
+    return (
+      lotTypes.data?.items.find((item) => item.code === code)?.label ?? t.values.unlisted(code)
+    );
+  };
 
   /* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */
   return (
@@ -109,6 +119,7 @@ export const HistoryResults = ({
             onOpenEntry={(entry) => onSelectEntry({ key: entry.key, lotId: entry.event.lotId })}
             selectedKey={selectedKey}
             historySort={sort}
+            lotTypeLabel={lotTypeLabel}
             onHistorySortChange={(next) => {
               setSort(next);
               onPageChange(1);

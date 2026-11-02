@@ -85,7 +85,6 @@ export const lotStatusTransition = {
     },
     /** 실행 칸이 서기 전에 무엇이 남았는지 알리는 한 줄. 막힌 자리와 푸는 길을 같이 적는다. */
     notes: {
-      createReady: '보류 등록 준비가 완료되었습니다.',
       lockUnknown: 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.',
       holdsLoading: '열린 보류를 불러오는 중입니다.',
       holdsFailed: '열린 보류를 불러오지 못했습니다.',

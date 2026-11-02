@@ -381,7 +381,7 @@ describe('Lot Status 전이 후보', () => {
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
     await user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
-    await screen.findByText('보류 등록 준비가 완료되었습니다.');
+    expect(await screen.findByRole('button', { name: '상태 변경 검토' })).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'SYN-LOT-BETA 선택' }));
     expect(await screen.findByText('선택한 LOT은 전이할 수 없습니다.')).toBeVisible();
     await user.click(select);

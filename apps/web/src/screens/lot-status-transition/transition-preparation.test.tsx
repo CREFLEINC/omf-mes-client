@@ -359,11 +359,13 @@ describe('Lot Status 전이 준비', () => {
     expect(within(group).getByRole('radio', { name: 'SYN-UNKNOWN' })).toBeVisible();
     expect(within(group).queryByRole('radio', { name: '정상' })).toBeNull();
     await chooseTransition(user, '불량');
-    expect(await screen.findByText('보류 등록 준비가 완료되었습니다.')).toBeVisible();
+    /* 준비가 끝나면 안내 문구 없이 입력 칸이 열린다(사용자 2026-11-02). */
+    expect(await screen.findByRole('region', { name: '보류 등록 입력' })).toBeVisible();
+    expect(screen.queryByText('보류 등록 준비가 완료되었습니다.')).toBeNull();
   });
 
   it.each([
-    [7, '보류 등록 준비가 완료되었습니다.'],
+    [7, null],
     [undefined, 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.'],
   ])('CREATE_HOLD는 versionNo=%p에서 준비 경계를 지킨다', async (versionNo, expected) => {
     const { requests, urls, user } = renderPreparation(
@@ -372,10 +374,15 @@ describe('Lot Status 전이 준비', () => {
     );
     await chooseTransition(user, '불량');
 
-    expect(await screen.findByText(expected)).toBeVisible();
+    if (expected === null) {
+      expect(await screen.findByRole('region', { name: '보류 등록 입력' })).toBeVisible();
+    } else {
+      expect(await screen.findByText(expected)).toBeVisible();
+    }
     expect(urls.some((url) => url.pathname === HOLDS)).toBe(false);
     if (versionNo === undefined) {
       expect(screen.queryByLabelText('보류 수량')).toBeNull();
+      expect(screen.getByRole('button', { name: '상태 변경 검토' })).toBeDisabled();
       expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
     }
   });
