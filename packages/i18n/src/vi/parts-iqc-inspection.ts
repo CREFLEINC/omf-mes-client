@@ -64,6 +64,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     loadFailed: 'Không tải được thông tin kiểm tra.',
     noPlan:
       'Vật tư này chưa có tiêu chuẩn kiểm tra nên không thể nhập kết quả. Hãy xác nhận tiêu chuẩn kiểm tra trước.',
+    setPlan: 'Thiết lập tiêu chuẩn kiểm tra',
     confirmed: (judgment: string) => `Kiểm tra đã được xác nhận — Phán định: ${judgment}`,
     workerMissing:
       'Tài khoản này chưa liên kết với công nhân nên không xác định được người kiểm tra. Hãy yêu cầu quản trị viên liên kết.',

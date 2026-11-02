@@ -29693,6 +29693,18 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-2);
 }
 
+/* 부품 IQC — 검사기준 없음 띠: 문구와 「검사기준 설정」 단추를 한 줄에(#225). */
+.parts-iqc-no-plan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.parts-iqc-no-plan > button {
+  flex: none;
+}
+
 .parts-iqc-plan {
   display: grid;
   gap: var(--space-4);

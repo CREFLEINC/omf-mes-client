@@ -58,6 +58,7 @@ export const partsIqcInspection = {
     loadFailed: '검사 정보를 불러오지 못했습니다.',
     noPlan:
       '이 품목에 적용할 검사기준이 없어 검사를 입력할 수 없습니다. 검사기준을 먼저 확정하세요.',
+    setPlan: '검사기준 설정',
     confirmed: (judgment: string) => `이미 확정된 검사입니다 — 판정: ${judgment}`,
     workerMissing:
       '이 계정에 연결된 작업자가 없어 검사자를 정할 수 없습니다. 관리자에게 작업자 연결을 요청하세요.',

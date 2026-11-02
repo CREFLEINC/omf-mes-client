@@ -16,6 +16,7 @@ import {
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -23,6 +24,7 @@ import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import { formatPlantDateTime, plantNowLocal, PLANT_UTC_OFFSET } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
   useDefectCodes,
@@ -79,6 +81,8 @@ type DefectCode = {
 };
 
 const t = messages.partsIqcInspection;
+/** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 연다(`type` · `item` 은 그 화면의 조회 조건이다). */
+const STANDARD_PATH = '/master-data/inspection-standard';
 
 const TIME_LABELS: TimeFieldLabels = {
   field: t.lot.inspectedTime,
@@ -112,6 +116,7 @@ export const InspectionDetail = ({
   onDirtyChange,
 }: InspectionDetailProps) => {
   const { session } = useSession();
+  const navigate = useNavigate();
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const rounds = useInspectionRounds(inspectionRequestId);
   const versionId = detail.data?.inspectionPlanVersionId ?? null;
@@ -149,7 +154,27 @@ export const InspectionDetail = ({
       );
     }
     if (versionId === null || version.data === undefined || specs.data === undefined) {
-      return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+      /* 검사 기준 화면을 그 품목의 IQC 기준으로 걸러 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
+      const setPlan = toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() =>
+            navigate(`${STANDARD_PATH}?type=IQC&item=${String(detail.data.itemId)}`)
+          }
+        >
+          {t.dialog.setPlan}
+        </Button>
+      ) : undefined;
+      /* 단추는 문구와 같은 줄에 둔다 — 띠의 action 자리는 문구 아래 줄로 내려간다(#225). */
+      return (
+        <AlertBanner variant="warning">
+          <span className="parts-iqc-no-plan">
+            <span>{t.dialog.noPlan}</span>
+            {setPlan}
+          </span>
+        </AlertBanner>
+      );
     }
     return (
       <InspectionForm
