@@ -96,7 +96,7 @@ export const SkipRequestDialog = ({
         }
       >
         <div className="oqc-inspection-skip-dialog">
-          <p className="oqc-inspection-skip-result">{t.result}</p>
+          <p className="oqc-inspection-skip-result">{d.requestResult}</p>
           <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
             id={reasonId}
@@ -293,6 +293,7 @@ export const SkipExecuteDialog = ({ lotId, onClose }: Omit<SkipDialogProps, 'app
         open
         onClose={close}
         showCloseButton={false}
+        size="lg"
         title={d.executeTitle}
         footer={
           <>

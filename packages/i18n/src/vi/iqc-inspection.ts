@@ -26,6 +26,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     skipApprove: 'Xử lý phê duyệt',
     skipExecute: 'Thực hiện bỏ qua',
     skipDialog: {
+      requestResult:
+        "Khi được phê duyệt, kiểm tra đầu vào sẽ được bỏ qua và trạng thái LOT chuyển thành 'Bình thường'.",
       approveTitle: 'Xử lý phê duyệt bỏ qua IQC (kiểm tra đầu vào)',
       requestNo: 'Số yêu cầu',
       requester: 'Người đề nghị',
@@ -40,9 +42,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       rejected: 'Đã từ chối yêu cầu bỏ qua IQC.',
       loading: 'Đang tải thông tin phê duyệt.',
       loadFailed: 'Không tải được thông tin phê duyệt.',
-      executeTitle: 'Thực hiện bỏ qua IQC?',
+      executeTitle: 'Bỏ qua kiểm tra đầu vào?',
       executeBody:
-        'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và LOT trở về bình thường để có thể nhập kho. Sau khi thực hiện sẽ không thể hoàn tác.',
+        "Kiểm tra đầu vào sẽ được bỏ qua và trạng thái LOT chuyển thành 'Bình thường'. Sau khi thực hiện sẽ không thể hủy.",
       execute: 'Thực hiện bỏ qua',
     },
     caption: 'Danh sách chờ kiểm tra',

@@ -52,6 +52,8 @@ export const iqcInspection = {
     skipExecute: '생략 실행',
     /** 줄의 단추가 여는 창(#225) — 승인 처리는 품질 승인 처리 화면으로 옮기지 않고 여기서 한다. */
     skipDialog: {
+      /** 「생략 요청」 창 안내(사용자 지시 2026-11-02). */
+      requestResult: "승인 시 수입검사가 생략되고, LOT 상태가 '정상'으로 변경됩니다.",
       approveTitle: 'IQC (수입검사) 생략 승인 처리',
       requestNo: '요청번호',
       requester: '상신자',
@@ -66,9 +68,9 @@ export const iqcInspection = {
       rejected: 'IQC 생략 요청을 반려했습니다.',
       loading: '결재 정보를 불러오는 중입니다.',
       loadFailed: '결재 정보를 불러오지 못했습니다.',
-      executeTitle: 'IQC 생략을 실행할까요?',
+      executeTitle: '수입검사를 생략하시겠습니까?',
       executeBody:
-        '수입검사 의뢰가 생략 처리되고 LOT 이 정상이 되어 입고할 수 있게 됩니다. 실행한 뒤에는 되돌릴 수 없습니다.',
+        "수입검사가 생략되고 LOT 상태가 '정상'으로 변경됩니다. 실행 후에는 취소할 수 없습니다.",
       execute: '생략 실행',
     },
     caption: '검사 대기 목록',
