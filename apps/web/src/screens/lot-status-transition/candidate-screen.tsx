@@ -381,7 +381,7 @@ export const LotStatusTransitionCandidateScreen = () => {
           <SearchInput
             disabled={confirmationPinned}
             label={t.filters.lotNo}
-            placeholder={t.filters.lotNoPlaceholder}
+            placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
             onSearch={apply}

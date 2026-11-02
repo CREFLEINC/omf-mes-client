@@ -1,4 +1,4 @@
-import { Button, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
@@ -110,12 +110,17 @@ export const HistoryFilterBar = ({
           </span>
         )}
       </div>
-      <TextField
+      {/* LOT 번호 — LOT 상태 묶음 네 탭과 같은 검색 칸(사용자 2026-10-30). Enter 는 [조회]와 같다. */}
+      <SearchInput
         containerClassName="lot-status-filter-lot-no"
         label={t.historyFilter.fields.lot}
         placeholder={t.lotFilter.lotNoScanPlaceholder}
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}
+        onSearch={() => {
+          if (reason === null) onSearch(draft);
+        }}
+        clearLabel={messages.common.clear}
       />
       {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로 — 검사 조회·판정처럼 [조회](주 동작) → [초기화](사용자 2026-10-30). */}
       <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">

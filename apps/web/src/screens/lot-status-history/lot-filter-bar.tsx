@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
@@ -245,24 +245,18 @@ export const LotFilterBar = ({
           onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
         />
         {/*
-         * LOT 번호 스캔 — 검사 조회·판정의 LOT 스캔 칸처럼 입력칸 옆 [검색] 단추(사용자 2026-10-30). 스캐너의 Enter 와
-         * [검색] 모두 지금 조건으로 바로 조회한다. 번호가 비면 단추는 잠긴다.
+         * LOT 번호 — 디자인 시스템 검색 칸(돋보기 · 지우기)으로 LOT 상태 묶음의 네 탭을 맞춘다(사용자 2026-10-30).
+         * 스캐너의 Enter 가 지금 조건으로 바로 조회한다 — 따로 두었던 [검색] 단추는 뺐다.
          */}
-        <div className="lot-status-filter-lot-no-scan">
-          <TextField
-            containerClassName="lot-status-filter-lot-no"
-            label={t.lotFilter.labels.lotNo}
-            placeholder={t.lotFilter.lotNoScanPlaceholder}
-            value={filters.q}
-            onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.nativeEvent.isComposing) search();
-            }}
-          />
-          <Button variant="outlined" size="md" disabled={filters.q.trim() === ''} onClick={search}>
-            {t.lotFilter.lotNoSearch}
-          </Button>
-        </div>
+        <SearchInput
+          containerClassName="lot-status-filter-lot-no"
+          label={t.lotFilter.labels.lotNo}
+          placeholder={t.lotFilter.lotNoScanPlaceholder}
+          value={filters.q}
+          onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
+          onSearch={() => search()}
+          clearLabel={messages.common.clear}
+        />
         {/* 조회·초기화 — [조회](주 동작) → [초기화], 상세 조건 펼치기는 초기화 오른쪽(입하 예정 조회와 같다). */}
         <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
           <Button variant="filled" onClick={search}>

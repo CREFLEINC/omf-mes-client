@@ -236,6 +236,7 @@ export const SuspiciousMaterialCandidatePane = ({
       <div className="filter-bar suspicious-material-hold-filter">
         <SearchInput
           label={t.fields.lotNo}
+          placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
           value={draft.q}
           disabled={isLocked}
           onChange={(event) => setDraft((value) => ({ ...value, q: event.target.value }))}

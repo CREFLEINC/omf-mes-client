@@ -122,17 +122,15 @@ const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, o
 
 describe('LOT 현재 조회 조건', () => {
   /* LOT 번호 스캔 칸 옆 [검색] — 검사 조회·판정의 LOT 스캔처럼 번호가 비면 잠기고, 누르면 바로 조회한다(사용자 2026-10-30). */
-  it('LOT 번호를 넣으면 [검색]으로 바로 조회한다', async () => {
+  it('LOT 번호를 넣고 Enter(스캐너)를 치면 바로 조회한다', async () => {
     const { onSearch, user } = renderBar();
-    const find = screen.getByRole('button', { name: '검색' });
 
     expect(screen.getByLabelText('LOT 번호')).toHaveAttribute(
       'placeholder',
       'LOT 번호 입력 또는 스캔',
     );
-    expect(find).toBeDisabled();
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
-    await user.click(find);
+    expect(screen.queryByRole('button', { name: '검색' })).toBeNull();
+    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001{Enter}');
 
     expect(onSearch).toHaveBeenCalledWith(expect.objectContaining({ q: 'SAMPLE-LOT-001' }));
   });
