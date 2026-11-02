@@ -5403,22 +5403,18 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 보류 시 제한 사항 · [보류 등록] | 자재 불량 기록 — 나란히, 카드가 좁으면 위아래로(사용자 2026-11-02). 앞 · 뒤 구획과는
- * 가는 선으로 가른다.
+ * 보류 대상 및 제한 사항 · [보류 등록] | 불량 내역 등록 — 나란히, 카드가 좁으면 위아래로. 각 구획과 연관 생산 LOT 은 입력 칸과
+ * 같은 상자로 가르고, 구획 사이 선은 두지 않는다(사용자 2026-11-02).
  */
-.suspicious-material-hold-pair > * {
+.suspicious-material-hold-pair > *,
+.suspicious-material-hold-pair + .suspicious-material-hold-section {
   min-width: 0;
   box-sizing: border-box;
   align-self: stretch;
-}
-
-/*
- * 보류 시 제한 사항 · 자재 불량 기록 사이는 가는 선 하나로 가른다(상자 대신 · 사용자 2026-11-02). 카드가 좁아 위아래로 쌓이면
- * 가로선, 넓어 나란히 서면 세로선.
- */
-.suspicious-material-hold-pair > :last-child {
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--outline-variant);
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
 }
 
 @container suspicious-material-hold-card (min-width: 50rem) {
@@ -5426,29 +5422,28 @@ h2:has(> .inspection-standard-dialog-title) {
   .suspicious-material-hold-card .suspicious-material-hold-pair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .suspicious-material-hold-pair > :last-child {
-    padding-top: 0;
-    padding-left: var(--space-6);
-    border-top: 0;
-    border-left: 1px solid var(--outline-variant);
-  }
 }
 
 .suspicious-material-hold-pair {
   display: grid;
-  /* 기본은 위아래 한 칸 — 카드가 넓을 때만 아래 컨테이너 규칙이 두 칸으로 나눈다(좁은 칸 넘침 방지). */
+  /* 기본은 위아래 한 칸 — 카드가 넓을 때만 위 컨테이너 규칙이 두 칸으로 나눈다(좁은 칸 넘침 방지). */
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-5) var(--space-6);
+  gap: var(--space-4);
   min-width: 0;
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--outline-variant);
 }
 
-.suspicious-material-hold-pair + .suspicious-material-hold-section {
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--outline-variant);
+/* 상자 안 회색 줄(제한 사항 항목 · 불량 LOT 줄)은 상자 바탕보다 한 단 짙게 — 바탕에 묻히지 않게. */
+.suspicious-material-hold-card .suspicious-material-hold-impact-list > li,
+.suspicious-material-hold-card .suspicious-material-hold-defect-lot {
+  background: var(--surface-container-high);
+}
+
+.suspicious-material-hold-card .suspicious-material-hold-defect-lot:hover:not(:disabled),
+.suspicious-material-hold-card
+  .suspicious-material-hold-impact-list
+  > li:has(.suspicious-material-hold-impact-item:hover) {
+  background: var(--surface-container-highest);
 }
 
 /* 보류 범위 · 사유 · 해제 조건 · 비고 한 줄 — 범위는 단추 폭만큼, 나머지는 고르게. 좁으면 다음 줄로. */
@@ -5487,6 +5482,59 @@ h2:has(> .inspection-standard-dialog-title) {
   align-self: flex-end;
   min-height: var(--control-height-md, 2.5rem);
   justify-content: center;
+}
+
+/* 불량 내역 등록 — 고른 LOT 마다 한 줄, 누르면 입력 팝업(사용자 2026-11-02). 제한 사항 항목과 같은 회색 상자. */
+.suspicious-material-hold-defect-lots {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-defect-lot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.suspicious-material-hold-defect-lot:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+.suspicious-material-hold-defect-lot:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.suspicious-material-hold-defect-lot-hint {
+  flex: none;
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+/* 입력 팝업 안 — 유형 · 상세 · 수량 한 줄, 내용 전체 폭. */
+.suspicious-material-hold-defect-form {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-form > .iqc-inspection-action-note {
+  justify-self: start;
+  max-width: 100%;
 }
 
 /* 불량 등록 확인 창 — 이름 · 값 두 줄 격자. */

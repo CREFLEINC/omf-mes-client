@@ -67,7 +67,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     releaseCondition: 'Điều kiện gỡ',
     releaseConditionPlaceholder: 'Hãy nhập điều kiện gỡ',
     remarks: 'Ghi chú',
-    remarksPlaceholder: 'Hãy nhập nội dung bổ sung',
+    remarksPlaceholder: 'Hãy nhập ghi chú',
     reasonUnavailable:
       'Danh sách lý do tạm giữ chưa đầy đủ. Chưa xác nhận được lý do thì chưa đăng ký được.',
     factsUnavailable:
@@ -110,6 +110,10 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     title: 'Đăng ký tạm giữ vật tư nghi ngờ',
   },
   defect: {
+    openLot: (lotNo: string): string => `Nhập lỗi cho ${lotNo}`,
+    enter: 'Nhấn để nhập lỗi',
+    recordedCount: (count: number): string => `Đã ghi ${String(count)}`,
+    dialogTitle: (lotNo: string): string => `Đăng ký chi tiết lỗi — ${lotNo}`,
     confirm: {
       title: 'Đăng ký lỗi?',
       lot: 'LOT',
@@ -117,6 +121,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       qty: 'Số lượng lỗi',
       description: 'Nội dung lỗi',
       cancel: 'Hủy',
+      back: 'Quay lại',
     },
     uomUnknownNote: 'Không xác định được đơn vị LOT nên không thể đăng ký lỗi.',
     heading: 'Đăng ký chi tiết lỗi',

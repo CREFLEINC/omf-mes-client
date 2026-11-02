@@ -61,7 +61,7 @@ export const suspiciousMaterialHold = {
     releaseCondition: '해제 조건',
     releaseConditionPlaceholder: '해제 조건을 입력하세요',
     remarks: '비고',
-    remarksPlaceholder: '추가 내용을 입력하세요',
+    remarksPlaceholder: '비고를 입력하세요',
     reasonUnavailable:
       '보류 사유 목록이 완결되지 않았습니다. 사유를 확인할 때까지 등록할 수 없습니다.',
     factsUnavailable: '위치·단위·도착 상태가 확인되지 않아 등록할 수 없습니다.',
@@ -103,6 +103,11 @@ export const suspiciousMaterialHold = {
   },
   /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
   defect: {
+    /** 고른 LOT 줄 · 입력 팝업(사용자 2026-11-02). */
+    openLot: (lotNo: string): string => `${lotNo} 불량 내역 입력`,
+    enter: '눌러서 불량 입력',
+    recordedCount: (count: number): string => `등록 ${String(count)}건`,
+    dialogTitle: (lotNo: string): string => `불량 내역 등록 — ${lotNo}`,
     /** 불량 등록 확인 창(사용자 2026-11-02). */
     confirm: {
       title: '불량을 등록할까요?',
@@ -111,6 +116,7 @@ export const suspiciousMaterialHold = {
       qty: '불량 수량',
       description: '불량 내용',
       cancel: '취소',
+      back: '이전',
     },
     uomUnknownNote: 'LOT 단위를 확인할 수 없어 불량을 등록할 수 없습니다.',
     heading: '불량 내역 등록',
