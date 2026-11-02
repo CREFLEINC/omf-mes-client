@@ -730,7 +730,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     <ProcessPage
       backLabel={tp.back}
       onBack={() => void navigate(worklistPath(lastSearch))}
-      title={order.productionOrderNo}
+      title={tp.title}
       badges={
         <>
           <ProcessStateChip state={derived.state} />
@@ -748,6 +748,10 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       }
       summary={
         <dl className="erp-wo-summary">
+          <div className="is-order">
+            <dt>{tp.orderNumber}</dt>
+            <dd>{order.productionOrderNo}</dd>
+          </div>
           <div className="is-key">
             <dt>{tp.summary.item}</dt>
             <dd>{item === undefined ? '' : named(item.itemName, item.itemCode)}</dd>
@@ -797,9 +801,16 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             aria-label={messages.screenPatterns.processPage.steps}
             value={step}
             onChange={(key) => goTo(key as ProcessStepKey)}
-            items={steps.map((entry) => ({
+            items={steps.map((entry, index) => ({
               value: entry.key,
-              label: entry.label,
+              label: (
+                <>
+                  <span className="erp-wo-stage-index" aria-hidden="true">
+                    {index + 1}.
+                  </span>
+                  {entry.label}
+                </>
+              ),
               content: null,
               disabled: !canEnter(entry.key as ProcessStepKey, judgments),
             }))}

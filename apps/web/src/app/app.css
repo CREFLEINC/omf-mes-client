@@ -24889,6 +24889,128 @@ body:has(.page-nav-size [aria-expanded="true"])
   }
 }
 
+
+/* 작업계획 시안: 번호보다 업무 제목과 선택한 오더의 정보를 먼저 읽도록 둔다. */
+.process-page:has(.erp-wo-summary) .process-page-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+}
+
+.process-page:has(.erp-wo-summary) .process-page-back {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding-inline: 0;
+}
+
+.process-page:has(.erp-wo-summary) .process-page-title {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.process-page:has(.erp-wo-summary) .process-page-badges {
+  flex-wrap: wrap;
+}
+
+.process-page:has(.erp-wo-summary) .process-page-head-actions {
+  margin-left: 0;
+}
+
+.erp-wo-summary {
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-1);
+}
+
+.erp-wo-summary .is-order dd {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.process-page:has(.erp-wo-summary) .process-page-past {
+  padding: var(--space-1) 0;
+  border: 0;
+  border-bottom: 1px solid var(--outline-variant);
+  border-radius: 0;
+}
+
+.erp-wo-stage-tabs {
+  margin-block: var(--space-2) 0;
+}
+
+.erp-wo-stage-index {
+  margin-right: var(--space-1);
+}
+
+.erp-wo-plan-totals {
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+}
+
+.erp-wo-plan-totals > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.erp-wo-plan-totals dd {
+  font: var(--type-body-sm);
+  font-weight: 500;
+}
+
+.erp-wo-plan-board,
+.erp-wo-plan-editor,
+.erp-wo-assign-list,
+.erp-wo-assign-editor {
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-plan-editor {
+  padding: var(--space-3);
+  gap: var(--space-1);
+}
+
+.erp-wo-plan-board {
+  padding: var(--space-3);
+}
+
+.erp-wo-week-table tbody th {
+  width: 5rem;
+  padding: var(--space-2) var(--space-1);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+
+.erp-wo-week-table td {
+  height: 7rem;
+  background: var(--surface);
+}
+
+.erp-wo-week-plan {
+  padding: var(--space-2) var(--space-1);
+}
+
+.erp-wo-plan-editor-title {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+@media (max-width: 1100px) {
+  .process-page:has(.erp-wo-summary) .process-page-title-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .process-page:has(.erp-wo-summary) .process-page-head-actions {
+    grid-column: 3;
+  }
+
+  .erp-wo-plan-editor {
+    padding: var(--space-3);
+    gap: var(--space-1);
+  }
+}
+
 /*
  * 제품 검사표 조회(W-03-13 · omf-all-around#89) — 요약·머리 값은 이름·값 두 쌍씩 한 줄.
  */

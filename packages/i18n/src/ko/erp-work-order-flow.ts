@@ -241,6 +241,8 @@ export const erpWorkOrderFlow = {
   },
 
   process: {
+    title: '작업계획',
+    orderNumber: 'ERP W/O',
     back: SCREEN_NAME,
     loading: 'ERP W/O 불러오는 중',
     notFound: '이 번호의 ERP W/O를 찾을 수 없습니다',
