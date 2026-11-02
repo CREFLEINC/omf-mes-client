@@ -111,7 +111,7 @@ export const suspiciousMaterialHold = {
     noDrafts: 'LOT 을 눌러 불량을 먼저 입력하세요.',
     /** 고른 LOT 줄 · 입력 팝업(사용자 2026-11-02). */
     openLot: (lotNo: string): string => `${lotNo} 불량 내역 입력`,
-    enter: '불량 등록',
+    enter: '불량 내용 입력',
     recordedCount: (count: number): string => `등록 ${String(count)}건`,
     /** 불량 등록 확인 창(사용자 2026-11-02). */
     confirm: {

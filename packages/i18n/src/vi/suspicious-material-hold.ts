@@ -117,7 +117,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     drafted: (code: string, qty: string): string => `Đã nhập · ${code} · ${qty}`,
     noDrafts: 'Hãy nhấn LOT để nhập lỗi trước.',
     openLot: (lotNo: string): string => `Nhập lỗi cho ${lotNo}`,
-    enter: 'Đăng ký lỗi',
+    enter: 'Nhập nội dung lỗi',
     recordedCount: (count: number): string => `Đã ghi ${String(count)}`,
     confirm: {
       titleMany: (count: number): string => `Đăng ký lỗi cho ${String(count)} LOT?`,
