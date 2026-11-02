@@ -1,4 +1,4 @@
-import { Chip, Icon, Radio, RadioGroup, TextField } from '@crefle/web-ui';
+import { Icon, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -29,6 +29,8 @@ export interface SuspiciousMaterialHoldInputPaneProps {
   targetLotStatusCode: string | null;
   isLocked: boolean;
   onBodyChange: (body: LotHoldCreate | null) => void;
+  /** 등록을 막는 까닭 문장들 — 카드 제목 줄 오른쪽에 보인다(사용자 2026-11-02). */
+  onNoticesChange?: (notices: string[]) => void;
 }
 const EMPTY_DRAFT: HoldDraft = {
   mode: 'FULL',
@@ -96,6 +98,7 @@ export const SuspiciousMaterialHoldInputPane = ({
   targetLotStatusCode,
   isLocked,
   onBodyChange,
+  onNoticesChange,
 }: SuspiciousMaterialHoldInputPaneProps) => {
   const { client } = useApiClient();
   const reasonId = useId();
@@ -146,6 +149,18 @@ export const SuspiciousMaterialHoldInputPane = ({
     onBodyChange(null);
   }, [onBodyChange, owner]);
   useEffect(() => onBodyChange(body), [body, onBodyChange]);
+  /* 막힌 까닭은 이 구획 안이 아니라 카드 제목 줄에 — 부르는 쪽에 넘기고, 사라질 때 비운다. */
+  const notices = [
+    ...(reasonUnavailable ? [t.reasonUnavailable] : []),
+    ...(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === ''
+      ? [t.factsUnavailable]
+      : []),
+  ];
+  const noticeKey = notices.join('\n');
+  useEffect(() => {
+    onNoticesChange?.(noticeKey === '' ? [] : noticeKey.split('\n'));
+    return () => onNoticesChange?.([]);
+  }, [noticeKey, onNoticesChange]);
   if (selection.length === 0) return null;
   const update = <K extends keyof HoldDraft>(key: K, value: HoldDraft[K]): void =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -181,6 +196,7 @@ export const SuspiciousMaterialHoldInputPane = ({
         {draft.mode === 'PARTIAL' && selection.length === 1 && (
           <TextField
             label={t.quantity}
+            required
             inputMode="decimal"
             value={draft.holdQty}
             disabled={isLocked}
@@ -220,19 +236,6 @@ export const SuspiciousMaterialHoldInputPane = ({
           onChange={(event) => update('remarks', event.target.value)}
         />
       </div>
-      {/* 등록을 막는 까닭 — 검사 조회·판정 화면의 안내 줄 모양(정보 아이콘 + 파란 바탕, 글 폭만큼). */}
-      {reasonUnavailable && (
-        <p className="iqc-inspection-action-note" data-tone="info" title={t.reasonUnavailable}>
-          <Icon name="info" size={14} aria-hidden />
-          <span className="iqc-inspection-action-note-text">{t.reasonUnavailable}</span>
-        </p>
-      )}
-      {(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === '') && (
-        <p className="iqc-inspection-action-note" data-tone="info" title={t.factsUnavailable}>
-          <Icon name="info" size={14} aria-hidden />
-          <span className="iqc-inspection-action-note-text">{t.factsUnavailable}</span>
-        </p>
-      )}
     </div>
   );
 };
@@ -245,9 +248,13 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
   if (selection.length === 0) return null;
   return (
     <section className="suspicious-material-hold-impact" aria-label={t.impact}>
+      {/* 제목 줄 오른쪽에 해제 안내 알약(사용자 2026-11-02) — 대상 건수 표시는 두지 않는다. */}
       <div className="suspicious-material-hold-section-head">
         <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
-        <Chip size="sm">{t.impactTarget(selection.length)}</Chip>
+        <p className="iqc-inspection-action-note" data-tone="info" title={t.recovery}>
+          <Icon name="info" size={14} aria-hidden />
+          <span className="iqc-inspection-action-note-text">{t.recovery}</span>
+        </p>
       </div>
       <ul className="suspicious-material-hold-impact-list">
         {selection.map((lot) => {
@@ -258,29 +265,28 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
           ] as const;
           const known = facts.flatMap(([, value]) => (value === null ? [] : [value]));
           const unknown = facts.flatMap(([name, value]) => (value === null ? [name] : []));
+          /* LOT 번호 아래 한 줄 — 확인한 값 · (!) 미확인 값 · 붉은 제한(사용자 시안 2026-11-02). */
           return (
             <li key={lot.lotId}>
               <strong>{lot.lotNo}</strong>
-              {known.length > 0 && (
-                <span className="suspicious-material-hold-impact-facts">{known.join(' · ')}</span>
-              )}
-              {unknown.length > 0 && (
-                <span className="suspicious-material-hold-impact-facts">
-                  <Icon name="error" size={16} aria-hidden />
-                  {t.unknownFacts(unknown.join(' · '))}
+              <span className="suspicious-material-hold-impact-line">
+                {known.length > 0 && (
+                  <span className="suspicious-material-hold-impact-facts">{known.join(' · ')}</span>
+                )}
+                {unknown.length > 0 && (
+                  <span className="suspicious-material-hold-impact-unknown">
+                    <Icon name="error" size={16} aria-hidden />
+                    {t.unknownFacts(unknown.join('·'))}
+                  </span>
+                )}
+                <span className="suspicious-material-hold-impact-restriction">
+                  {t.impactRestriction}
                 </span>
-              )}
-              <span className="suspicious-material-hold-impact-restriction">
-                {t.impactRestriction}
               </span>
             </li>
           );
         })}
       </ul>
-      <p className="iqc-inspection-action-note" title={t.recovery}>
-        <Icon name="info" size={14} aria-hidden />
-        <span className="iqc-inspection-action-note-text">{t.recovery}</span>
-      </p>
     </section>
   );
 };

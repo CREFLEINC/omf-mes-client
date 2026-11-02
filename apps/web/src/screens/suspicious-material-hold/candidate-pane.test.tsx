@@ -117,7 +117,8 @@ describe('의심자재 후보 pane', () => {
     expect(screen.getAllByText('2026-08-25 07:00')).toHaveLength(3);
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-702 선택' }));
-    expect(screen.getByText('2건 선택')).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-702 선택' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'SYN-LOT-703 선택' })).toBeDisabled();
     expect(screen.getByText(/이미 전량 보류되어 선택할 수 없습니다/)).toBeVisible();
     for (const raw of ['701', '801001', '802001', '803001', '804001'])
@@ -132,8 +133,7 @@ describe('의심자재 후보 pane', () => {
     await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-SEARCH');
     expect(lotUrls(urls)).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: '조회' }));
-    await screen.findByRole('checkbox', { name: 'SYN-LOT-702 선택' });
-    expect(screen.getByText('0건 선택')).toBeVisible();
+    expect(await screen.findByRole('checkbox', { name: 'SYN-LOT-702 선택' })).not.toBeChecked();
     expect(lotUrls(urls)[1]?.searchParams.get('q')).toBe('SYN-SEARCH');
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(lotUrls(urls).at(-1)?.searchParams.get('page')).toBe('2'));
@@ -191,7 +191,6 @@ describe('의심자재 후보 pane', () => {
     await view.user.click(await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     await view.queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold'] });
     expect(await screen.findByText('의심자재 후보를 불러오지 못했습니다.')).toBeVisible();
-    expect(screen.getByText('0건 선택')).toBeVisible();
     await view.user.click(screen.getByRole('button', { name: '다시 시도' }));
     expect(await screen.findByText('조건에 맞는 LOT이 없습니다.')).toBeVisible();
     await view.queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold'] });
@@ -206,13 +205,15 @@ describe('의심자재 후보 pane', () => {
     const view = renderPane((_, call) => (call === 1 ? jsonResponse(page([lot(701)])) : pending));
     await view.user.click(await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     void view.queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold'] });
-    await waitFor(() => expect(screen.getByText('1건 선택')).toBeVisible());
-    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeDisabled(),
+    );
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeChecked();
     release(jsonResponse(page([lot(701, { versionNo: 702 })])));
     await waitFor(() =>
       expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeEnabled(),
     );
-    expect(screen.getByText('1건 선택')).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeChecked();
   });
 
   it('줄 아무 곳이나 눌러도 그 LOT 을 고르고, 다시 누르면 푼다', async () => {

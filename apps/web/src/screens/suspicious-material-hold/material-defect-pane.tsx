@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
+import { lotStatusTone } from '../lot-status-history/options';
 import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 import {
   EMPTY_DEFECT_CODE,
@@ -48,7 +49,11 @@ const columnsOf = (statusLabel: (code: string) => string): Column<AffectedRow>[]
     key: 'statusCode',
     header: messages.suspiciousMaterialHold.defect.columns.statusCode,
     align: 'center',
-    render: (row) => statusLabel(row.statusCode),
+    render: (row) => (
+      <Chip variant="status" status={lotStatusTone(row.statusCode)} size="sm">
+        {statusLabel(row.statusCode)}
+      </Chip>
+    ),
   },
 ];
 
@@ -130,6 +135,8 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
 
   const disabled = isLocked || record.isSaving;
   const noCodes = codes.data !== undefined && majors.length === 0;
+  /* 고를 불량 유형이 없으면(없음 · 못 받음 · 받는 중) 유형 · 수량 · 내용을 모두 잠근다(사용자 2026-11-02). */
+  const locked = majors.length === 0;
 
   /*
    * 「의심자재 보류 등록」 카드 안 자재 불량 기록 구획 — 보류 시 제한 사항과 나란히 선다(사용자 2026-11-02).
@@ -137,13 +144,26 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   return (
     <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
       {/* 오른쪽 위 [불량 코드 등록] — 불량 · 원인코드 관리 화면으로 간다(사용자 2026-11-02). */}
+      {/*
+       * 제목 줄 — 제목 바로 오른쪽에 코드 없음 · 못 받음 안내 알약, 오른쪽 끝에 [불량 코드 등록](사용자 2026-11-02).
+       */}
       <div className="suspicious-material-hold-section-head">
-        <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
-        <Button
-          variant="outlined"
-          size="sm"
-          onClick={() => void navigate('/master-data/defect-cause-code')}
-        >
+        <div className="suspicious-material-hold-title-group">
+          <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
+          {codes.isError && (
+            <p className="iqc-inspection-action-note" data-tone="info" title={t.code.loadFailed}>
+              <Icon name="info" size={14} aria-hidden />
+              <span className="iqc-inspection-action-note-text">{t.code.loadFailed}</span>
+            </p>
+          )}
+          {noCodes && (
+            <p className="iqc-inspection-action-note" data-tone="info" title={tHere.noCodesNote}>
+              <Icon name="info" size={14} aria-hidden />
+              <span className="iqc-inspection-action-note-text">{tHere.noCodesNote}</span>
+            </p>
+          )}
+        </div>
+        <Button variant="outlined" onClick={() => void navigate('/master-data/defect-cause-code')}>
           {tHere.registerCode}
         </Button>
       </div>
@@ -151,27 +171,33 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
       <div className="suspicious-material-hold-defect-row">
         <div className="field-cell">
           <label className="field-label" htmlFor={majorFieldId}>
-            {tHere.major}
+            {tHere.major}{' '}
+            <span className="required-mark" aria-hidden="true">
+              *
+            </span>
           </label>
           <Select
             id={majorFieldId}
             options={majors.map(optionOf)}
             value={code.majorId}
             placeholder={noCodes ? tHere.noCodesPlaceholder : tHere.majorPlaceholder}
-            disabled={disabled || majors.length === 0}
+            disabled={disabled || locked}
             onChange={(value) => setCode({ majorId: value, minorId: '' })}
           />
         </div>
         {minors.length > 0 && (
           <div className="field-cell">
             <label className="field-label" htmlFor={minorFieldId}>
-              {t.code.minor}
+              {t.code.minor}{' '}
+              <span className="required-mark" aria-hidden="true">
+                *
+              </span>
             </label>
             <Select
               id={minorFieldId}
               options={minors.map(optionOf)}
               value={code.minorId}
-              disabled={disabled}
+              disabled={disabled || locked}
               onChange={(value) => setCode({ ...code, minorId: value })}
             />
           </div>
@@ -179,31 +205,20 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
         <TextField
           containerClassName="suspicious-material-hold-defect-qty"
           label={t.qty.label}
+          required
           placeholder={tHere.qtyPlaceholder}
           inputMode="decimal"
           value={qty}
-          disabled={disabled}
+          disabled={disabled || locked}
           error={record.fieldErrors.defectQty}
           onChange={(event) => setQty(event.target.value)}
         />
       </div>
-      {codes.isError && (
-        <p className="iqc-inspection-action-note" data-tone="info" title={t.code.loadFailed}>
-          <Icon name="info" size={14} aria-hidden />
-          <span className="iqc-inspection-action-note-text">{t.code.loadFailed}</span>
-        </p>
-      )}
-      {noCodes && (
-        <p className="iqc-inspection-action-note" data-tone="info" title={tHere.noCodesNote}>
-          <Icon name="info" size={14} aria-hidden />
-          <span className="iqc-inspection-action-note-text">{tHere.noCodesNote}</span>
-        </p>
-      )}
       <TextField
         label={t.description}
         placeholder={tHere.descriptionPlaceholder}
         value={description}
-        disabled={disabled}
+        disabled={disabled || locked}
         onChange={(event) => setDescription(event.target.value)}
       />
       <SaveErrorBanner error={record.error} />
@@ -239,8 +254,15 @@ export const AffectedProductionLotsSection = ({
 
   return (
     <section className="suspicious-material-hold-section" aria-label={tHere.affectedHeading}>
+      {/* 제목 바로 오른쪽에 조회 근거 알약, 오른쪽 끝에 총 건수(사용자 2026-11-02). */}
       <div className="suspicious-material-hold-section-head">
-        <h3 className="suspicious-material-hold-subtitle">{tHere.affectedHeading}</h3>
+        <div className="suspicious-material-hold-title-group">
+          <h3 className="suspicious-material-hold-subtitle">{tHere.affectedHeading}</h3>
+          <p className="iqc-inspection-action-note" data-tone="info" title={basisNote}>
+            <Icon name="info" size={14} aria-hidden />
+            <span className="iqc-inspection-action-note-text">{basisNote}</span>
+          </p>
+        </div>
         {affected.data !== undefined && (
           <Chip size="sm">{tHere.affectedCount(affected.data.items.length)}</Chip>
         )}
@@ -248,24 +270,21 @@ export const AffectedProductionLotsSection = ({
       {affected.isError ? (
         <p className="field-note">{t.affected.loadFailed}</p>
       ) : (
-        <Table
-          caption={tHere.affectedHeading}
-          density="compact"
-          columns={columnsOf(statuses.describe)}
-          rows={affected.data?.items ?? []}
-          getRowId={(row) => String(row.lotId)}
-          empty={
-            <p className="field-note">
-              {affected.isPending ? t.affected.loading : t.affected.none}
-            </p>
-          }
-        />
+        <div className="suspicious-material-hold-table-scroll">
+          <Table
+            caption={tHere.affectedHeading}
+            density="compact"
+            columns={columnsOf(statuses.describe)}
+            rows={affected.data?.items ?? []}
+            getRowId={(row) => String(row.lotId)}
+            empty={
+              <p className="field-note">
+                {affected.isPending ? t.affected.loading : t.affected.none}
+              </p>
+            }
+          />
+        </div>
       )}
-      {/* 조회 근거는 표 아래 안내 한 줄 — 작업지시 기준이면 시안 문장, 계보 기준이면 그 근거 문장. */}
-      <p className="iqc-inspection-action-note" title={basisNote}>
-        <Icon name="info" size={14} aria-hidden />
-        <span className="iqc-inspection-action-note-text">{basisNote}</span>
-      </p>
     </section>
   );
 };

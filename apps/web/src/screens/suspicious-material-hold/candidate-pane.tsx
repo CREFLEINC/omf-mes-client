@@ -548,15 +548,10 @@ export const SuspiciousMaterialCandidatePane = ({
         style={{ ...split.style, ...layout.style }}
       >
         {/*
-         * 결과 카드 — 「의심자재 후보」 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02). 고른 건수만 위에,
-         * 총 건수는 표 아래 쪽 이동 줄에.
+         * 결과 카드 — 「의심자재 후보」 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02). 고른 건수는 오른쪽
+         * 「의심자재 보류 등록」 제목 옆에, 총 건수는 표 아래 쪽 이동 줄에.
          */}
         <section className="pane lot-status-pane suspicious-material-hold-pane" aria-label={t.pane}>
-          <div className="lot-status-pane-head">
-            <p className="suspicious-material-hold-selection" role="status">
-              {t.values.selected(selection.length)}
-            </p>
-          </div>
           {candidates.isError ? (
             <AlertBanner
               variant="error"

@@ -5292,6 +5292,64 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/* 카드 제목 줄 — 제목 · 고른 건수는 왼쪽, 막힌 까닭 알약은 오른쪽 끝(사용자 2026-11-02). */
+.suspicious-material-hold-card-head {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.suspicious-material-hold-card-notes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+/* 구획 제목 옆 알약 묶음 — 제목 바로 오른쪽에 붙는다. */
+/* 좁으면 알약은 제목 아래로 접히고, 오른쪽 끝 단추 · 건수는 제자리에 남는다. */
+.suspicious-material-hold-title-group {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.suspicious-material-hold-section-head > :not(.suspicious-material-hold-title-group) {
+  flex: none;
+}
+
+/* 관련 생산 LOT 표 — 칸이 좁으면 표 안에서 가로로 민다(카드 밖으로 넘치지 않게). */
+.suspicious-material-hold-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* 제한 사항 줄 — 확인한 값 · (!) 미확인 · 붉은 제한을 한 줄에(사용자 시안 2026-11-02). */
+.suspicious-material-hold-impact-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font: var(--type-body-md);
+}
+
+.suspicious-material-hold-impact-unknown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+.suspicious-material-hold-impact-unknown > [aria-hidden="true"] {
+  color: var(--semantic-error-text);
+}
+
 .suspicious-material-hold-card-head > .pane-title {
   margin: 0;
   color: var(--on-surface);
@@ -5336,6 +5394,12 @@ h2:has(> .inspection-standard-dialog-title) {
  */
 .suspicious-material-hold-pair > * {
   min-width: 0;
+  /* 보류 시 제한 사항 · 자재 불량 기록을 각각 상자로 가른다(사용자 2026-11-02). */
+  box-sizing: border-box;
+  align-self: stretch;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
 }
 
 .suspicious-material-hold-pair {
@@ -5474,16 +5538,6 @@ h2:has(> .inspection-standard-dialog-title) {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-}
-
-.suspicious-material-hold-selection {
-  margin: 0;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
 }
 
 .suspicious-material-hold-table {

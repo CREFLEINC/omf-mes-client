@@ -1,4 +1,4 @@
-import { Breadcrumb, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Chip, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -31,6 +31,7 @@ export const SuspiciousMaterialHoldFlow = ({
   const [body, setBody] = useState<Body | null>(null);
   const [pinned, setPinned] = useState(false);
   const [candidateReady, setCandidateReady] = useState(false);
+  const [notices, setNotices] = useState<string[]>([]);
   const inputSelection = useMemo<HoldInputLot[]>(
     () =>
       selection.map((lot) => ({
@@ -65,8 +66,32 @@ export const SuspiciousMaterialHoldFlow = ({
            * 가른 구획으로(사용자 시안 2026-11-02). 고르기 전에는 안내만.
            */
           <section className="pane suspicious-material-hold-card" aria-label={t.card.title}>
+            {/*
+             * 제목 줄 — 제목 바로 오른쪽에 고른 건수, 줄 오른쪽 끝에 등록을 막는 까닭 알약(사용자 2026-11-02).
+             * 고른 건수는 목록 위가 아니라 여기 한 곳에만 둔다.
+             */}
             <div className="suspicious-material-hold-card-head">
               <h2 className="pane-title">{t.card.title}</h2>
+              {selection.length > 0 && (
+                <Chip size="sm" role="status">
+                  {messages.suspiciousMaterialHold.candidate.values.selected(selection.length)}
+                </Chip>
+              )}
+              {selection.length > 0 && notices.length > 0 && (
+                <div className="suspicious-material-hold-card-notes">
+                  {notices.map((notice) => (
+                    <p
+                      key={notice}
+                      className="iqc-inspection-action-note"
+                      data-tone="info"
+                      title={notice}
+                    >
+                      <Icon name="info" size={14} aria-hidden />
+                      <span className="iqc-inspection-action-note-text">{notice}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
             {selection.length === 0 ? (
               <EmptyState
@@ -81,6 +106,7 @@ export const SuspiciousMaterialHoldFlow = ({
                   targetLotStatusCode={targetLotStatusCode}
                   isLocked={pinned}
                   onBodyChange={setBody}
+                  onNoticesChange={setNotices}
                 />
                 {/*
                  * 보류 시 제한 사항 · [보류 등록]과 자재 불량 기록을 나란히(사용자 2026-11-02) — 카드가 좁으면 위아래로 쌓인다.

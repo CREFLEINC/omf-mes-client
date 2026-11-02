@@ -114,6 +114,8 @@ const renderPane = (
   ]);
   const Harness = () => {
     const [current, setCurrent] = useState(lots);
+    /* 막힌 까닭은 카드 제목 줄이 보인다 — 이 시험은 받은 문장을 그대로 그린다. */
+    const [notices, setNotices] = useState<string[]>([]);
     return (
       <>
         <button onClick={() => setCurrent([display(702), display(703)])}>owner 변경</button>
@@ -122,7 +124,11 @@ const renderPane = (
           targetLotStatusCode="HOLD"
           isLocked={false}
           onBodyChange={onBodyChange}
+          onNoticesChange={setNotices}
         />
+        {notices.map((notice) => (
+          <p key={notice}>{notice}</p>
+        ))}
         {/* 보류 시 제한 사항은 카드 안에서 따로 선다(사용자 2026-11-02) — 이 시험은 함께 본다. */}
         <SuspiciousMaterialHoldImpact selection={current} />
       </>
@@ -196,8 +202,8 @@ describe('의심자재 보류 입력 pane', () => {
       reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }], 2),
     );
     expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
-    /* 못 받은 값은 「위치 · 단위 미확인」 한 줄로 묶는다(사용자 시안 2026-11-02). */
-    expect(screen.getByText('위치 · 단위 미확인')).toBeVisible();
+    /* 못 받은 값은 「위치·단위 미확인」 한 줄로 묶는다(사용자 시안 2026-11-02). */
+    expect(screen.getByText('위치·단위 미확인')).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
     for (const raw of ['802001', '803001', '804001']) expect(screen.queryByText(raw)).toBeNull();
   });

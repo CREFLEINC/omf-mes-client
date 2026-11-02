@@ -148,7 +148,8 @@ describe('의심자재 등록 screen', () => {
       releaseCondition: '재검 완료',
       targetLotStatusCode: 'INSPECTION_PENDING',
     });
-    expect(await screen.findByText('0건 선택')).toBeVisible();
+    /* 고른 건수는 카드 제목 옆 — 다 비우면 사라진다(사용자 2026-11-02). */
+    await waitFor(() => expect(screen.queryByText(/건 선택$/)).toBeNull());
     await waitFor(() => expect(candidateGets()).toBeGreaterThan(pinnedCount));
   });
 
@@ -184,7 +185,7 @@ describe('의심자재 등록 screen', () => {
     await view.queryClient.invalidateQueries({
       queryKey: ['suspicious-material-hold', 'candidates'],
     });
-    expect(await screen.findByText('위치 · 단위 미확인')).toBeVisible();
+    expect(await screen.findByText('위치·단위 미확인')).toBeVisible();
     expect(screen.queryByText(/EA · 개 · WH · 창고 \/ LOC · 격리장/)).toBeNull();
     expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled();
     for (const raw of ['903001', '904001']) expect(screen.queryByText(raw)).toBeNull();
