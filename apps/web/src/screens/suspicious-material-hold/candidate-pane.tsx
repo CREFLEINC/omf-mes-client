@@ -12,9 +12,16 @@ import {
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { runRequest } from '../../patterns/request';
 import { Select } from '../../patterns/select';
 import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
@@ -39,6 +46,7 @@ import {
   useLotStatusOptions,
   useLotTypeOptions,
 } from '../lot-status-history/options';
+import { StatusChips } from '../lot-status-history/screen';
 import { useUomCodeOf, withUom } from '../lot-status-history/uoms';
 import { useWorkOrderCloseUomLookup } from '../work-order-close/candidate-references';
 import {
@@ -53,12 +61,19 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type Lot = components['schemas']['LotQualityStatus'];
 const t = messages.suspiciousMaterialHold.candidate;
+const tHistory = messages.lotStatusHistory;
+
+/* 좌우 · 상하 배치와 가운데 막대 비율은 다른 LOT 상태 탭과 따로 기억한다. */
+const SPLIT_KEY = 'omf-mes:suspicious-material-hold:split';
+const SPLIT_ORIENTATION_KEY = 'omf-mes:suspicious-material-hold:split-orientation';
 
 interface Props {
   isLocked: boolean;
   selection: SelectedLotSnapshot[];
   onSelectionChange: (selection: SelectedLotSnapshot[]) => void;
   onAvailabilityChange?: (ready: boolean) => void;
+  /** 목록 옆(상하 배치면 아래) 칸 — 보류 입력 · 실행 · 자재 불량 기록(LOT 상태 변경 탭과 같은 두 칸 · 사용자 2026-11-02). */
+  detail: ReactNode;
 }
 
 /*
@@ -97,6 +112,7 @@ export const SuspiciousMaterialCandidatePane = ({
   selection,
   onSelectionChange,
   onAvailabilityChange,
+  detail,
 }: Props) => {
   const { client } = useApiClient();
   const [draft, setDraft] = useState(EMPTY_SUSPICIOUS_MATERIAL_FILTERS);
@@ -114,6 +130,37 @@ export const SuspiciousMaterialCandidatePane = ({
         }),
       ),
   });
+  /*
+   * 상태 칩 건수 — 목록과 같은 조건(LOT 번호 · 품목 · 창고)에서 상태만 뺀 요약 한 번이다. 칩을 눌러도 키가 같아 다시
+   * 부르지 않는다(LOT 상태 변경 탭과 같다).
+   */
+  const countQuery = toSuspiciousMaterialQuery({ ...filters, lotStatusCode: '' }, 1);
+  const statusCounts = useQuery({
+    queryKey: ['suspicious-material-hold', 'status-counts', countQuery],
+    placeholderData: keepPreviousData,
+    enabled: !isLocked,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/lot-status-summary', { params: { query: countQuery } }),
+      ),
+  });
+  const chipCounts = useMemo(() => {
+    if (statusCounts.data === undefined) return undefined;
+    const counts = new Map<string, number>();
+    for (const row of statusCounts.data.counts) {
+      counts.set(row.statusCode, (counts.get(row.statusCode) ?? 0) + row.lotCount);
+    }
+    return counts;
+  }, [statusCounts.data]);
+  const hubTarget = useHubActionsTarget();
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit(SPLIT_KEY, 0.6);
+  const layout = useSplitOrientation(SPLIT_ORIENTATION_KEY);
+  const detailId = useId();
+  /* 품목 · 창고는 상세 조건으로 접어 둔다 — 걸린 조건이 있으면 펼친 채로 들어온다(LOT 상태 이력 · 변경과 같다). */
+  const [isDetailOpen, setIsDetailOpen] = useState(
+    filters.itemId !== '' || filters.warehouseId !== '',
+  );
   const items = useItemReferenceOptions();
   const warehouses = useWarehouseReferenceOptions();
   const rows = candidates.data?.items ?? [];
@@ -170,6 +217,11 @@ export const SuspiciousMaterialCandidatePane = ({
     setFilters(nextFilters);
   };
   const apply = (): void => move({ ...draft }, 1);
+  const changeStatus = (lotStatusCode: string): void => {
+    if (isLocked) return;
+    setDraft((current) => ({ ...current, lotStatusCode }));
+    move({ ...filters, lotStatusCode }, 1);
+  };
   const reset = (): void => {
     if (isLocked) return;
     setDraft(EMPTY_SUSPICIOUS_MATERIAL_FILTERS);
@@ -323,46 +375,45 @@ export const SuspiciousMaterialCandidatePane = ({
   const filterSelects = [
     [t.fields.item, 'itemId', options(items.data)],
     [t.fields.warehouse, 'warehouseId', options(warehouses.data)],
-    [t.fields.status, 'lotStatusCode', statusOptions],
   ] as const;
+  const statusChips = (
+    <StatusChips
+      options={statusOptions}
+      counts={chipCounts}
+      value={filters.lotStatusCode}
+      disabled={isLocked}
+      onChange={changeStatus}
+    />
+  );
   const meta = candidates.data?.page;
   const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
   /* 고를 수 없는 크기(10 · 20 · 50 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
   const shownPageSize: LotPageSize = LOT_PAGE_SIZES.find((size) => size === meta?.size) ?? pageSize;
 
   return (
-    <>
-      {/* 조회 조건 카드 — LOT 현황처럼 조건만 따로 둔다. */}
+    <div className="suspicious-material-hold-flow">
+      {/* 상태 칩은 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다. 탭 막대가 없으면(묶음 밖) 조회 카드 위쪽 줄에 둔다. */}
+      {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {/* 조회 조건 카드 — LOT 상태 이력 · 변경과 같은 짜임(LOT 스캔 · 조회 · 초기화 · 상세 검색). */}
       <section
+        ref={aboveRef}
         className="pane lot-status-search"
-        aria-label={messages.lotStatusHistory.lotFilter.pane}
+        aria-label={tHistory.lotFilter.pane}
       >
-        <div className="filter-bar lot-status-filter">
+        {hubTarget === null && <div className="lot-status-search-head">{statusChips}</div>}
+        <div className="filter-bar lot-status-filter lot-status-transition-filter">
           <SearchInput
             containerClassName="lot-status-filter-lot-no"
-            label={messages.lotStatusHistory.lotFilter.lotScanLabel}
-            placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
+            label={tHistory.lotFilter.lotScanLabel}
+            placeholder={tHistory.lotFilter.lotNoScanPlaceholder}
             value={draft.q}
             disabled={isLocked}
             onChange={(event) => setDraft((value) => ({ ...value, q: event.target.value }))}
             onSearch={apply}
             clearLabel={messages.common.clear}
           />
-          {filterSelects.map(([label, key, entries]) => (
-            <div className="field-cell wide-select" key={key}>
-              <label className="field-label" htmlFor={`suspicious-material-hold-${key}`}>
-                {label}
-              </label>
-              <Select
-                id={`suspicious-material-hold-${key}`}
-                value={draft[key]}
-                options={[{ value: '', label: t.values.all }, ...entries]}
-                disabled={isLocked}
-                onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
-              />
-            </div>
-          ))}
-          {/* [조회](주 동작) → [초기화] — LOT 현황과 같은 순서, 줄의 오른쪽 끝. */}
+          {/* [조회](주 동작) → [초기화] → 상세 검색 펼치기 — 다른 LOT 상태 탭과 같은 순서, 줄의 오른쪽 끝. */}
           <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
             <Button variant="filled" disabled={isLocked} onClick={apply}>
               {t.actions.search}
@@ -370,59 +421,109 @@ export const SuspiciousMaterialCandidatePane = ({
             <Button variant="outlined" disabled={isLocked} onClick={reset}>
               {t.actions.reset}
             </Button>
-          </div>
-        </div>
-      </section>
-      {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). 고른 건수는 제목 옆. */}
-      <section className="pane lot-status-pane suspicious-material-hold-pane" aria-label={t.pane}>
-        <div className="lot-status-pane-head">
-          <h2 className="pane-title">{t.pane}</h2>
-          <p className="suspicious-material-hold-selection" role="status">
-            {t.values.selected(selection.length)}
-          </p>
-        </div>
-        {candidates.isError ? (
-          <AlertBanner
-            variant="error"
-            title={t.failed}
-            action={<Button onClick={() => void candidates.refetch()}>{t.actions.retry}</Button>}
-          />
-        ) : candidates.isPending ? (
-          <div role="status" aria-label={t.loading}>
-            <SkeletonText lines={3} />
-          </div>
-        ) : (
-          <>
-            <div
-              ref={fit.ref}
-              className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table"
-              style={resizable.style}
-              aria-busy={candidates.isFetching}
+            <Button
+              variant="text"
+              size="sm"
+              aria-expanded={isDetailOpen}
+              aria-controls={detailId}
+              onClick={() => setIsDetailOpen((open) => !open)}
             >
-              <Table
-                density="compact"
-                caption={t.pane}
-                columns={[selectColumn, ...fit.columns]}
-                rows={candidates.data.items}
-                getRowId={(row) => String(row.lotId)}
-                sort={null}
-                empty={<EmptyState size="sm" live title={t.empty} />}
-              />
-            </div>
-            {meta !== undefined && (
-              <PageNav
-                sizes={LOT_PAGE_SIZES}
-                meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
-                onChangePage={(next) => move(filters, next)}
-                onChangeSize={(size) => move(filters, 1, size)}
-                controlSize="sm"
-                buttonSize="md"
-                disabled={isLocked}
-              />
-            )}
-          </>
-        )}
+              {isDetailOpen ? tHistory.lotFilter.detailClose : tHistory.lotFilter.detailOpen}
+            </Button>
+          </div>
+        </div>
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailId} hidden={!isDetailOpen}>
+          <div className="filter-bar lot-status-filter lot-status-transition-filter">
+            {filterSelects.map(([label, key, entries]) => (
+              <div className="field-cell wide-select lot-status-transition-item-filter" key={key}>
+                <label className="field-label" htmlFor={`suspicious-material-hold-${key}`}>
+                  {label}
+                </label>
+                <Select
+                  id={`suspicious-material-hold-${key}`}
+                  value={draft[key]}
+                  options={[{ value: '', label: t.values.all }, ...entries]}
+                  disabled={isLocked}
+                  onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
-    </>
+      {/* 목록과 보류 입력을 처음부터 나란히(상하 배치면 위아래로) 둔다 — LOT 상태 변경과 같다. */}
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        {/*
+         * 결과 카드 — 「의심자재 후보」 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02). 고른 건수만 위에,
+         * 총 건수는 표 아래 쪽 이동 줄에.
+         */}
+        <section className="pane lot-status-pane suspicious-material-hold-pane" aria-label={t.pane}>
+          <div className="lot-status-pane-head">
+            <p className="suspicious-material-hold-selection" role="status">
+              {t.values.selected(selection.length)}
+            </p>
+          </div>
+          {candidates.isError ? (
+            <AlertBanner
+              variant="error"
+              title={t.failed}
+              action={<Button onClick={() => void candidates.refetch()}>{t.actions.retry}</Button>}
+            />
+          ) : candidates.isPending ? (
+            <div role="status" aria-label={t.loading}>
+              <SkeletonText lines={3} />
+            </div>
+          ) : (
+            <>
+              <div
+                ref={fit.ref}
+                className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table"
+                style={resizable.style}
+                aria-busy={candidates.isFetching}
+              >
+                <Table
+                  density="compact"
+                  caption={t.pane}
+                  columns={[selectColumn, ...fit.columns]}
+                  rows={candidates.data.items}
+                  getRowId={(row) => String(row.lotId)}
+                  sort={null}
+                  empty={<EmptyState size="sm" live title={t.empty} />}
+                />
+              </div>
+              {meta !== undefined && (
+                <PageNav
+                  sizes={LOT_PAGE_SIZES}
+                  meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
+                  onChangePage={(next) => move(filters, next)}
+                  onChangeSize={(size) => move(filters, 1, size)}
+                  controlSize="sm"
+                  buttonSize="md"
+                  disabled={isLocked}
+                />
+              )}
+            </>
+          )}
+        </section>
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+        />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+        <div className="suspicious-material-hold-detail">{detail}</div>
+      </div>
+    </div>
   );
 };

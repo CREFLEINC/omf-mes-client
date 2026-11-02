@@ -70,6 +70,7 @@ const Harness = () => {
       isLocked={false}
       selection={selection}
       onSelectionChange={setSelection}
+      detail={null}
     />
   );
 };
@@ -107,7 +108,8 @@ describe('의심자재 후보 pane', () => {
         .map((cell) => cell.textContent?.replaceAll('drag_indicator', ''))
         .join('|'),
     ).toBe('선택|LOT 번호|품목|위치|보유 수량·단위|상태|최종 변경일');
-    expect(screen.getByRole('heading', { level: 2, name: '의심자재 후보' })).toBeVisible();
+    /* 목록 카드 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02) — 구역 이름으로만 남는다. */
+    expect(screen.queryByRole('heading', { level: 2, name: '의심자재 후보' })).toBeNull();
     expect(screen.getByRole('table', { name: '의심자재 후보' })).toBeVisible();
     // 최근 전이 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20
     expect(screen.getAllByText('2026-08-25 07:00')).toHaveLength(3);
