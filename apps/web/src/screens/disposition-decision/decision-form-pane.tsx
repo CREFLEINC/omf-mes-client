@@ -64,10 +64,10 @@ export const DecisionFormPane = ({
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
       {/*
-       * 첫 줄 왼쪽 「처분 유형」 라디오 · 오른쪽 처분 수량, 아래 줄 판정 사유 여러 줄 입력(사용자 시안 · #223).
+       * 카드형(사용자 시안 · #223) — 처분 유형 | 처분 수량 | 판정 사유를 작은 상자 셋으로 나란히. 좁으면 다음 줄로 넘긴다.
        */}
-      <div className="disposition-decision-row">
-        <div className="field-cell">
+      <div className="disposition-decision-cards">
+        <div className="field-cell disposition-decision-subcard">
           <span className="field-label" id={groupLabelId}>
             {t.form.dispositionLabel}
             <span className="required-mark" aria-hidden="true">
@@ -97,38 +97,40 @@ export const DecisionFormPane = ({
             <span className="field-error">{errors.dispositionTypeCode}</span>
           )}
         </div>
-        <TextField
-          label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
-          value={value.qty}
-          placeholder={t.form.qtyPlaceholder}
-          required
-          fullWidth
-          inputMode="decimal"
-          disabled={isLocked}
-          aria-describedby={
-            [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
-              .filter((id) => id !== '')
-              .join(' ') || undefined
-          }
-          error={errors.decisionQty}
-          onChange={(event) => onChange({ ...value, qty: event.target.value })}
-        />
-      </div>
-      {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
-      {/* 여러 줄 입력 부품은 필수 표시(*)를 그리지 않아 CSS 로 붙인다(시안 「판정 사유 *」 · #223). */}
-      <div className="disposition-reason-field">
-        <TextArea
-          label={t.form.reasonLabel}
-          value={value.reason}
-          placeholder={t.form.reasonPlaceholder}
-          required
-          fullWidth
-          rows={2}
-          disabled={isLocked}
-          aria-describedby={isLocked ? lockReasonId : undefined}
-          error={errors.reason}
-          onChange={(event) => onChange({ ...value, reason: event.target.value })}
-        />
+        <div className="disposition-decision-subcard">
+          <TextField
+            label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
+            value={value.qty}
+            placeholder={t.form.qtyPlaceholder}
+            required
+            fullWidth
+            inputMode="decimal"
+            disabled={isLocked}
+            aria-describedby={
+              [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
+                .filter((id) => id !== '')
+                .join(' ') || undefined
+            }
+            error={errors.decisionQty}
+            onChange={(event) => onChange({ ...value, qty: event.target.value })}
+          />
+        </div>
+        {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
+        {/* 여러 줄 입력 부품은 필수 표시(*)를 그리지 않아 CSS 로 붙인다(시안 「판정 사유 *」 · #223). */}
+        <div className="disposition-decision-subcard disposition-reason-field">
+          <TextArea
+            label={t.form.reasonLabel}
+            value={value.reason}
+            placeholder={t.form.reasonPlaceholder}
+            required
+            fullWidth
+            rows={2}
+            disabled={isLocked}
+            aria-describedby={isLocked ? lockReasonId : undefined}
+            error={errors.reason}
+            onChange={(event) => onChange({ ...value, reason: event.target.value })}
+          />
+        </div>
       </div>
       {qtyNotice !== undefined && (
         <p id={noticeId} className="field-note">

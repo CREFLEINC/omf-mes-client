@@ -593,9 +593,10 @@ export const DispositionDecisionScreen = ({
               )}
               {/* 판정 이력 · 특채 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
               {selectedId !== null && detail.data !== undefined && (
+                /* 판정 이력 · 특채 — 테두리 상자 안의 탭(검사 조회·판정 상세 탭 상자와 같은 모양 · 사용자 지시 · #223). */
                 <Tabs
                   className="disposition-side-tabs"
-                  size="sm"
+                  size="md"
                   aria-label={t.panes.decisions}
                   value={sideTab}
                   onChange={(next) => setSideTab(next as 'decisions' | 'concessions')}

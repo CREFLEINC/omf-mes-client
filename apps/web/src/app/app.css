@@ -6630,20 +6630,41 @@ main:has(.iqc-skip-approval-detail) {
   justify-content: flex-end;
 }
 
-/* 처분 유형 라디오 · 처분 수량 한 줄(좁으면 다음 줄로), 아래 판정 사유 여러 줄(사용자 시안 · #223). */
-.disposition-decision-row {
+/* 카드형 판정 입력 — 처분 유형 | 처분 수량 | 판정 사유 작은 상자 셋(사용자 시안 · #223). 좁으면 다음 줄로. */
+.disposition-decision-cards {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-3) var(--space-6);
+  gap: var(--space-3);
 }
 
-.disposition-decision-row > .field-cell:first-child {
+.disposition-decision-subcard {
+  display: grid;
+  align-content: start;
   gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
 }
 
-.disposition-decision-row > :last-child {
-  flex: 0 1 16rem;
+.disposition-decision-cards > .disposition-decision-subcard:nth-child(1) {
+  flex: 1 1 18rem;
+}
+
+.disposition-decision-cards > .disposition-decision-subcard:nth-child(2) {
+  flex: 1 1 12rem;
+}
+
+.disposition-decision-cards > .disposition-decision-subcard:nth-child(3) {
+  flex: 2 1 18rem;
+}
+
+/* 판정 이력 · 특채 탭 — 테두리 상자 안(검사 조회·판정 상세 탭 상자와 같은 모양 · #223). */
+.disposition-side-tabs {
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
 }
 
 /* 머리 줄 — 제목 왼쪽, 상태 · 남은 수량 오른쪽. */
