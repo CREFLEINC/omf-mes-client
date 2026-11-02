@@ -642,36 +642,52 @@ export const LotStatusTransitionCandidateScreen = () => {
                 <h2 className="pane-title">{tSelected.title}</h2>
                 <Chip size="sm">{tSelected.badge}</Chip>
               </div>
-              <div
-                className="lot-status-transition-identity"
-                role="group"
-                aria-label={tSelected.identity}
-              >
-                <span className="field-label">{tSelected.lotNo}</span>
-                <strong className="lot-status-transition-lot-no">{selected.lotNo}</strong>
-                <span className="lot-status-transition-item">{itemLabel(selected.itemId)}</span>
-              </div>
-              <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
+              {/*
+               * 고른 LOT 정보 — LOT 현황 상세와 같은 띠(테두리 상자 한 줄 · 칸 사이 세로선 · 번호 왼쪽 유형 라벨 ·
+               * 사용자 2026-11-02). 현재 상태는 아래 「현재 상태 · 변경할 상태」 칸에 둔다.
+               */}
+              <dl className="lot-detail-fields" aria-label={tSelected.identity}>
                 {(
                   [
-                    ['onHand', tSelected.onHand, quantity(selected.onHandQty)],
-                    ['held', tSelected.held, quantity(selected.heldQty)],
-                    ['available', tSelected.available, quantity(selected.availableQty)],
                     [
-                      'latestTransition',
+                      'wide',
+                      tSelected.lotNo,
+                      <span className="lot-no-with-type">
+                        {selected.lotTypeCode !== undefined && (
+                          <Chip variant="status" status="info" size="sm">
+                            {lotTypeLabel(selected.lotTypeCode)}
+                          </Chip>
+                        )}
+                        {selected.lotNo}
+                      </span>,
+                    ],
+                    ['wide', tSelected.item, itemLabel(selected.itemId)],
+                    [
+                      'short',
+                      tSelected.onHand,
+                      quantityWithUnit(selected.onHandQty, selected.uomId),
+                    ],
+                    ['short', tSelected.held, quantityWithUnit(selected.heldQty, selected.uomId)],
+                    [
+                      'short',
+                      tSelected.available,
+                      quantityWithUnit(selected.availableQty, selected.uomId),
+                    ],
+                    [
+                      'short',
                       tSelected.latestTransition,
                       formatDateTime(selected.latestTransitionAt),
                     ],
                     [
-                      'latestReason',
+                      'short',
                       tSelected.latestReason,
                       selected.latestReasonCode === null || selected.latestReasonCode === undefined
                         ? emptyValue
                         : reasonLabel(selected.latestReasonCode),
                     ],
                   ] as const
-                ).map(([key, label, value]) => (
-                  <div className={`field-cell lot-status-transition-current-${key}`} key={key}>
+                ).map(([size, label, value]) => (
+                  <div className="lot-detail-field" data-size={size} key={label}>
                     <dt className="field-label">{label}</dt>
                     <dd>{value}</dd>
                   </div>

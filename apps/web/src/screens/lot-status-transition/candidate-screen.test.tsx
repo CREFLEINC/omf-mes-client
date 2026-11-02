@@ -358,18 +358,27 @@ describe('Lot Status 전이 후보', () => {
     /* 시안 카드 — 제목 · 「선택된 LOT」, LOT 번호 이름 · 번호 · 품목 줄, 아래 현재 상태 · 변경할 상태(사용자 2026-11-02). */
     expect(within(card).getByRole('heading', { level: 2, name: 'LOT 상태 변경' })).toBeVisible();
     expect(within(card).getByText('선택된 LOT')).toBeVisible();
-    const identity = within(card).getByRole('group', { name: '선택 LOT 식별' });
-    expect(identity).toHaveTextContent(/^LOT 번호SYN-LOT-ALPHASYN-ITEM-A · 합성 자재$/);
     const preparation = await within(card).findByRole('group', { name: '상태 전이 준비' });
     expect(within(preparation).getByText('현재 상태')).toBeVisible();
     expect(within(preparation).getByText('정상')).toBeVisible();
     expect(within(preparation).getByText('변경할 상태')).toBeVisible();
-    const current = within(card).getByLabelText('선택 LOT 현재 상태');
+    /* LOT 정보는 LOT 현황 상세와 같은 띠 한 줄이다(사용자 2026-11-02). */
+    const current = within(card).getByLabelText('선택 LOT 식별');
     expect(
       within(current)
         .getAllByRole('term')
         .map((node) => node.textContent),
-    ).toEqual(['보유 수량', '보류 수량', '가용 수량', '최근 상태 변경', '최근 사유']);
+    ).toEqual([
+      'LOT 번호',
+      '품목',
+      '보유 수량',
+      '보류 수량',
+      '가용 수량',
+      '최근 상태 변경',
+      '최근 사유',
+    ]);
+    expect(valueOf(current, 'LOT 번호')).toContain('SYN-LOT-ALPHA');
+    expect(valueOf(current, '품목')).toBe('SYN-ITEM-A · 합성 자재');
     /* 최근 전이는 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
     expect([
       valueOf(current, '보유 수량'),
@@ -389,7 +398,7 @@ describe('Lot Status 전이 후보', () => {
     /* 고른 줄을 다시 누르면 선택을 풀고 안내로 돌아간다. */
     await user.click(select);
     expect(select).not.toHaveAttribute('aria-current');
-    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
+    expect(screen.queryByLabelText('선택 LOT 식별')).toBeNull();
     expect(screen.getByText('목록에서 LOT을 선택해 주세요.')).toBeVisible();
   });
 
@@ -433,7 +442,7 @@ describe('Lot Status 전이 후보', () => {
       listRoute(page([{ ...lot, latestTransitionAt: undefined, latestReasonCode: undefined }])),
     ]);
     await user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
-    const current = screen.getByLabelText('선택 LOT 현재 상태');
+    const current = screen.getByLabelText('선택 LOT 식별');
 
     expect(valueOf(current, '최근 상태 변경')).toBe('—');
     expect(valueOf(current, '최근 사유')).toBe('—');
@@ -476,7 +485,7 @@ describe('Lot Status 전이 후보', () => {
     expect(view.requests.filter((request) => request.method === 'POST')).toHaveLength(0);
 
     releaseRefetch(jsonResponse(page([updated])));
-    const current = await screen.findByLabelText('선택 LOT 현재 상태');
+    const current = await screen.findByLabelText('선택 LOT 식별');
     await waitFor(() => expect(valueOf(current, '보유 수량')).toBe('30'));
     expect(
       within(await screen.findByRole('group', { name: '상태 전이 준비' })).getByText(
@@ -571,7 +580,7 @@ describe('Lot Status 전이 후보', () => {
 
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     expect(await screen.findByText('LOT 후보를 불러오지 못했습니다.')).toBeVisible();
-    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
+    expect(screen.queryByLabelText('선택 LOT 식별')).toBeNull();
     expect(screen.queryByRole('group', { name: '상태 전이 준비' })).toBeNull();
   });
 
@@ -586,13 +595,13 @@ describe('Lot Status 전이 후보', () => {
     await screen.findByRole('region', { name: 'LOT 상태 변경' });
 
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
-    await waitFor(() => expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText('선택 LOT 식별')).toBeNull());
     expect(screen.queryByRole('group', { name: '상태 전이 준비' })).toBeNull();
 
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     const reappeared = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     expect(reappeared).not.toHaveAttribute('aria-current');
-    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
+    expect(screen.queryByLabelText('선택 LOT 식별')).toBeNull();
   });
 
   it('다음 쪽으로 이동하면 page를 보내고 앞 선택을 지운다', async () => {
@@ -612,7 +621,7 @@ describe('Lot Status 전이 후보', () => {
 
     await screen.findByRole('button', { name: 'SYN-LOT-P2 선택' });
     expect(lotRequests(urls).at(-1)?.searchParams.get('page')).toBe('2');
-    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
+    expect(screen.queryByLabelText('선택 LOT 식별')).toBeNull();
   });
 
   it.each([

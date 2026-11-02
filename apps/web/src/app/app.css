@@ -5084,40 +5084,6 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
-/* LOT 번호 이름 · 굵은 번호 · 흐린 품목 줄을 위아래로. */
-.lot-status-transition-identity {
-  display: grid;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.lot-status-transition-lot-no {
-  color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
-  overflow-wrap: anywhere;
-}
-
-.lot-status-transition-item {
-  color: var(--on-surface-variant);
-  overflow-wrap: anywhere;
-}
-
-/* 수량 · 최근 변경 — 품목 아래 작은 글자 줄. */
-.lot-status-transition-status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: var(--space-3);
-  min-width: 0;
-  margin: 0;
-}
-
-.lot-status-transition-status-grid dd {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
 /* 구분선 아래 현재 상태 · 변경할 상태 두 칸, 그 아래 해제할 보류 · 입력 칸. */
 .lot-status-transition-preparation {
   display: grid;
@@ -21508,19 +21474,6 @@ body:has(.goods-receipt-post-form) > [role="listbox"] {
   .po-board-split.board-frame-single {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* 현재 상태 — 세 칸 격자(좁은 좌측에서도 여섯 항목이 두 줄로 선다). */
-.lot-status-transition-status-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-/* 최근 사유 — 이름이 낱말 단위로 접힌다(글자 중간에서 끊지 않는다). */
-.lot-status-transition-status-grid
-  .lot-status-transition-current-latestReason
-  dd {
-  overflow-wrap: normal;
-  word-break: keep-all;
 }
 
 /* ① 변경할 상태 — 상자를 없애고 제목 + 라디오 묶음만. */
