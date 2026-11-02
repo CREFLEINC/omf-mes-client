@@ -4863,6 +4863,32 @@ h2:has(> .inspection-standard-dialog-title) {
   border-radius: var(--radius-sm);
 }
 
+/*
+ * LOT 상태 변경 목록의 LOT 번호 단추 — 줄 아무 곳이나 눌러 고르므로 LOT 현황처럼 보통 글자로 둔다. 칸이 좁으면
+ * 번호만 말줄임하고 유형 라벨은 남긴다(왼쪽이 잘려 보이던 것 · 사용자 2026-11-02).
+ */
+.lot-no-with-type > button.lot-status-one-line {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 고른 줄은 줄 전체의 파란 바탕으로만 알린다 — 번호 단추에 따로 바탕을 두지 않는다. */
+.lot-no-with-type > button.lot-status-one-line:nth-child(n)[aria-current] {
+  background: none;
+  color: inherit;
+}
+
 /* LOT 번호 + 유형 라벨 — 번호가 길면 번호만 말줄임하고 라벨은 남긴다. */
 .lot-no-with-type {
   display: inline-flex;
