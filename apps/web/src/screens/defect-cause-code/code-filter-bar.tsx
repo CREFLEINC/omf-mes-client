@@ -1,17 +1,20 @@
-import { Button, Chip, SearchInput } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
-import { createPortal } from 'react-dom';
 
-import { Select } from '../../patterns/select';
+import { useApiClient } from '../../patterns/api-context';
+import { runRequest } from '../../patterns/request';
+import { PagedSelect, Select } from '../../patterns/select';
 
 import type { CodeAdapter } from './adapters';
 import { DEFAULT_CODE_FILTERS } from './code-options';
-import { CodePickerDialog } from './code-picker-dialog';
-import { ProcessPickerDialog } from './process-picker-dialog';
+import { CodeSelect } from './code-select';
 import type { CodeFilters } from './types';
 
 const t = messages.defectCauseCode;
+
+/** 공정 칸의 한 쪽 건수 — 종전 공정 검색 창의 첫 쪽과 같다. */
+const PROCESS_SELECT_PAGE_SIZE = 20;
 
 export interface CodeFilterBarProps {
   adapter: CodeAdapter;
@@ -37,7 +40,9 @@ export const CodeFilterBar = ({
   processLabelOf,
 }: CodeFilterBarProps) => {
   const dispositionId = useId();
-  const [isProcessPickerOpen, setIsProcessPickerOpen] = useState(false);
+  const codeSelectId = useId();
+  const processSelectId = useId();
+  const { client } = useApiClient();
   /* 처분 유형은 불량코드 탭에만(원인코드에는 그 값이 없다), 공정 검색은 두 탭 모두(사용자 지시 · #209). */
   const showDisposition = adapter.hasDisposition;
   const dispositionLabel = (code: CodeFilters['dispositionTypeCode']): string =>
@@ -47,7 +52,6 @@ export const CodeFilterBar = ({
   // 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
   // 편집 중인 값은 draft에만 있고 조건 칩에는 미러하지 않는다.
   const [draft, setDraft] = useState<CodeFilters>(appliedFilters);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const {
     q: appliedQ,
     includeInactive: appliedIncludeInactive,
@@ -105,43 +109,59 @@ export const CodeFilterBar = ({
           </div>
         )}
         {/*
-         * 코드는 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 검색과 같은 모양(사용자 지시 2026-10-29 · #209).
-         * 코드가 많아도 찾게 한다. 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 코드가 검색어로 들어간다.
-         * 지우기는 값이 있을 때만 칸 안의 × 다. 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
+         * 코드는 **칸에서 바로 검색해서 고른다**(omf-all-around#226) — 고른 코드가 검색어로 들어간다. 「전체」는 종전 × 자리다.
+         * 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
          */}
-        <SearchInput
-          containerClassName="defect-cause-code-field"
-          label={adapter.labels.searchLabel}
-          placeholder={adapter.labels.searchPlaceholder}
-          value={draft.q}
-          readOnly
-          title={draft.q === '' ? undefined : draft.q}
-          aria-haspopup="dialog"
-          clearLabel={t.picker.clear(adapter.labels.tab)}
-          onClick={() => setIsPickerOpen(true)}
-          onSearch={() => setIsPickerOpen(true)}
-          onChange={() => undefined}
-          onClear={() => setDraft((prev) => ({ ...prev, q: '' }))}
-        />
-        {/* 공정 — 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209). */}
+        <div className="field-cell defect-cause-code-field">
+          <span className="field-label">
+            <label htmlFor={codeSelectId}>{adapter.labels.searchLabel}</label>
+          </span>
+          <CodeSelect
+            id={codeSelectId}
+            adapter={adapter}
+            includeInactive={appliedFilters.includeInactive}
+            value={draft.q}
+            onPick={(code) => setDraft((prev) => ({ ...prev, q: code === null ? '' : code.code }))}
+          />
+        </div>
         {/*
-         * 공정은 많을 수 있어 **창에서 검색해서 고른다** — 불량코드 검색과 같은 조작(사용자 지시 · #209).
-         * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열린다. 지우기는 칸 안의 × 다.
+         * 공정 — 칸에서 바로 검색해서 고른다(#226 · 종전 공정 검색 창과 같은 조회). 「전체」는 종전 × 자리다.
+         * 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209).
          */}
-        <SearchInput
-          containerClassName="defect-cause-process-field"
-          label={t.filters.process}
-          placeholder={t.processPicker.fieldPlaceholder}
-          value={processLabel(draft.processId)}
-          readOnly
-          title={draft.processId === '' ? undefined : processLabel(draft.processId)}
-          aria-haspopup="dialog"
-          clearLabel={t.processPicker.clear}
-          onClick={() => setIsProcessPickerOpen(true)}
-          onSearch={() => setIsProcessPickerOpen(true)}
-          onChange={() => undefined}
-          onClear={() => setDraft((prev) => ({ ...prev, processId: '' }))}
-        />
+        <div className="field-cell defect-cause-process-field">
+          <span className="field-label">
+            <label htmlFor={processSelectId}>{t.filters.process}</label>
+          </span>
+          <PagedSelect
+            id={processSelectId}
+            queryKey={['defect-cause-code', 'process-select']}
+            fetchPage={async (q, page) => {
+              const data = await runRequest(() =>
+                client.GET('/mdm/processes', {
+                  params: {
+                    query: { ...(q === '' ? {} : { q }), page, size: PROCESS_SELECT_PAGE_SIZE },
+                  },
+                }),
+              );
+              return {
+                options: data.items.map((process) => ({
+                  value: String(process.processId),
+                  label: `${process.processCode} · ${process.processName}`,
+                })),
+                total: data.page.total,
+              };
+            }}
+            selectedOption={
+              draft.processId === ''
+                ? null
+                : { value: draft.processId, label: processLabel(draft.processId) }
+            }
+            leadingOptions={[{ value: '', label: t.filters.all }]}
+            value={draft.processId}
+            placeholder={t.filters.all}
+            onChange={(value) => setDraft((prev) => ({ ...prev, processId: value }))}
+          />
+        </div>
         {/* 「미사용 포함」 확인칸은 두지 않는다 — 탭 줄의 사용 여부 칩(전체 · 사용 · 미사용)이 맡는다(사용자 지시 · #209). */}
         {/*
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
@@ -195,34 +215,6 @@ export const CodeFilterBar = ({
           )}
         </div>
       )}
-      {/*
-       * 검색 창은 문서 맨 바깥에 붙인다 — 조회 카드 안에 붙으면 카드의 마지막 줄이 바뀌어
-       * 「마지막 줄 아래 여백 없음」 규칙이 풀리고 카드가 그만큼 높아진다(#209 버그 수정).
-       */}
-      {isProcessPickerOpen &&
-        createPortal(
-          <ProcessPickerDialog
-            onClose={() => setIsProcessPickerOpen(false)}
-            onConfirm={(process) => {
-              setDraft((prev) => ({ ...prev, processId: String(process.processId) }));
-              setIsProcessPickerOpen(false);
-            }}
-          />,
-          document.body,
-        )}
-      {isPickerOpen &&
-        createPortal(
-          <CodePickerDialog
-            adapter={adapter}
-            includeInactive={appliedFilters.includeInactive}
-            onClose={() => setIsPickerOpen(false)}
-            onConfirm={(code) => {
-              setDraft((prev) => ({ ...prev, q: code.code }));
-              setIsPickerOpen(false);
-            }}
-          />,
-          document.body,
-        )}
     </>
   );
 };
