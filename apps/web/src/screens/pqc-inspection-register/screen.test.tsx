@@ -230,6 +230,10 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
+    /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접혀 있다(#225). */
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
+    );
 
     await user.type(screen.getByRole('textbox', { name: t.filters.keyword }), 'IR-PQC');
     await user.click(screen.getByRole('button', { name: t.filters.apply }));
@@ -266,6 +270,10 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
+    /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접혀 있다(#225). */
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
+    );
     const field = screen.getByRole('textbox', { name: t.filters.workOrder });
     const asked = (): number => queueQueries.length;
 
@@ -292,6 +300,10 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
+    /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접혀 있다(#225). */
+    await user.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
+    );
 
     await user.click(screen.getByLabelText(t.filters.item));
     const dialog = await screen.findByRole('dialog');

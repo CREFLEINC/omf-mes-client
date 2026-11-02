@@ -73,7 +73,7 @@ export const oqcInspection = {
    * ⛔ **기간 조건을 만들지 않는다** — 계약에 자리가 없고, 화면이 다른 날짜로 거르게 된다.
    */
   filters: {
-    item: '품목',
+    item: '품목 검색',
     itemPlaceholder: '품목을 입력하세요',
     itemPick: '선택',
     itemClear: '품목 조건 지우기',

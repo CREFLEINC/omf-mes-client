@@ -16,6 +16,7 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
+import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import type { ScopedPlant } from '../../patterns/oa-access';
 import { PageNav } from '../../patterns/page-nav';
 import { useSession } from '../../patterns/session';
@@ -263,23 +264,15 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
             </Checkbox>
           </div>
           {/* 품목 · 공급사 · 의뢰번호는 상세 조건으로 접는다(사용자 지시 2026-11-02 · #225). */}
-          <div className="parts-iqc-detail-toggle">
-            {!detailOpen && hasDetailCondition && (
-              <span className="field-note">{t.detailFilters.hiddenApplied}</span>
-            )}
-            <Button
-              variant="text"
-              size="sm"
-              aria-expanded={detailOpen}
-              aria-controls={detailFiltersId}
-              onClick={() => setDetailOpen((open) => !open)}
-            >
-              {detailOpen ? t.detailFilters.close : t.detailFilters.open}
-            </Button>
-          </div>
+          <DetailFiltersToggle
+            open={detailOpen}
+            onToggle={() => setDetailOpen((open) => !open)}
+            controlsId={detailFiltersId}
+            hasCondition={hasDetailCondition}
+          />
         </div>
         {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
-        <div id={detailFiltersId} className="parts-iqc-detail-filters" hidden={!detailOpen}>
+        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
           <QueueFilterBar
             appliedFilters={filters}
             showPendingOnly={false}

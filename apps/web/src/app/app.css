@@ -29810,18 +29810,6 @@ button.iqc-inspection-step-toggle:focus-visible {
   flex-wrap: wrap;
 }
 
-.parts-iqc-detail-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-left: auto;
-  align-self: center;
-}
-
-.parts-iqc-detail-filters {
-  flex: 1 1 100%;
-  min-width: 0;
-}
 
 /* 작업자 미연결 경고 — 문구 왼쪽 · 「작업자 연결」 오른쪽 끝, 한 줄(사용자 지시 2026-10-30). */
 .parts-iqc-worker-alert {
@@ -30140,4 +30128,51 @@ button.iqc-inspection-step-toggle:focus-visible {
 .parts-iqc-overall > div {
   flex: 1 1 auto;
   min-width: 10rem;
+}
+
+/* 「상세 조건 펼치기」(#225) — 검사 조회·판정 IQC · PQC · OQC 공통. 단추는 스캔 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체. */
+.inspection-detail-toggle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  align-self: center;
+}
+
+.inspection-detail-filters {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* 펼친 상세 조건 줄 — 종전 한 줄 배치의 칸 폭을 그대로 쓴다(#225). */
+.oqc-inspection-search .inspection-detail-filters > .filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.oqc-inspection-search .inspection-detail-filters > .filter-bar > * {
+  flex: 0 1 14rem;
+  min-width: 0;
+}
+
+.oqc-inspection-search .inspection-detail-filters > .filter-bar > .field-cell-unlabeled {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.inspection-pending-only {
+  flex: 0 0 auto;
+  justify-content: center;
+  min-height: var(--control-height-md);
+  white-space: nowrap;
+}
+
+/* 펼친 조건 상자가 다음 줄로 내려가도록 검색 묶음을 줄바꿈시킨다(#225). */
+.pqc-web-search,
+.oqc-inspection-search {
+  flex-wrap: wrap;
 }

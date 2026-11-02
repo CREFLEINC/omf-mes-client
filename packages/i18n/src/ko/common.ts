@@ -89,6 +89,12 @@ export const common = {
     filterOn: (label: string): string => `${label} 의뢰만 보기`,
     filterOff: (label: string): string => `${label} 거르기 해제`,
     pendingOnly: '대기·진행만 보기', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
+    /** 조회 조건(품목 · 작업지시 · 의뢰번호 등) 접기 — IQC · PQC · OQC 탭 공통(사용자 지시 2026-11-02 · #225). */
+    detailFilters: {
+      open: '상세 조건 펼치기',
+      close: '상세 조건 접기',
+      hiddenApplied: '상세 조건이 걸려 있습니다',
+    },
     pickRequest: '검사 의뢰를 선택하세요',
     pickRequestHint: '검사 의뢰를 선택하면 상세 내용을 확인할 수 있습니다.',
     close: '닫기',

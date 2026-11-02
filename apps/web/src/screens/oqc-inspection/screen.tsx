@@ -1,6 +1,15 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, Tabs } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Checkbox,
+  Dialog,
+  EmptyState,
+  Icon,
+  PageHeader,
+  Tabs,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { useOaAccess } from '../../patterns/oa-access';
@@ -51,6 +60,7 @@ import {
   usePickedLotNumbers,
   useSaveInspectionResult,
 } from './queries';
+import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -102,6 +112,10 @@ export const OqcInspectionScreen = () => {
   const hub = usePageHub();
 
   const filters = readFilters(searchParams);
+  /* 품목 · 의뢰번호는 상세 조건으로 접어 둔다 — 주소에 그 조건이 걸려 있으면 펼친 채로 연다(사용자 지시 2026-11-02 · #225). */
+  const hasDetailCondition = filters.itemId !== null || filters.keyword !== '';
+  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
+  const detailFiltersId = useId();
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
@@ -810,15 +824,36 @@ export const OqcInspectionScreen = () => {
           }
         />
 
-        <QueueFilterBar
-          appliedFilters={filters}
-          /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-          onSearch={(next) => applyFilters(withDraft(filters, next))}
-          onTogglePendingOnly={(next) =>
-            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-          }
-          onReset={() => applyFilters(EMPTY_FILTERS)}
+        {/* 「대기·진행만 보기」는 스캔 줄에 늘 보인다 — 상세 조건을 접어도 켜고 끌 수 있게(#225). */}
+        <div className="field-cell field-cell-unlabeled inspection-pending-only">
+          <Checkbox
+            checked={filters.pendingOnly}
+            onChange={(event) =>
+              applyFilters(withDraft(filters, { ...filters, pendingOnly: event.target.checked }))
+            }
+          >
+            {t.filters.pendingOnly}
+          </Checkbox>
+        </div>
+        <DetailFiltersToggle
+          open={detailOpen}
+          onToggle={() => setDetailOpen((open) => !open)}
+          controlsId={detailFiltersId}
+          hasCondition={hasDetailCondition}
         />
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
+          <QueueFilterBar
+            appliedFilters={filters}
+            showPendingOnly={false}
+            /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+            onSearch={(next) => applyFilters(withDraft(filters, next))}
+            onTogglePendingOnly={(next) =>
+              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+            }
+            onReset={() => applyFilters(EMPTY_FILTERS)}
+          />
+        </div>
       </section>
 
       <div

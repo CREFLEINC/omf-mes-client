@@ -22,12 +22,6 @@ export const partsIqcInspection = {
     noMeasurements: '기록된 측정값이 없습니다.',
     defects: '불량 유형',
   },
-  /** 상세 조건 펼치기 — 품목 · 공급사 · 의뢰번호(사용자 지시 2026-11-02 · #225). */
-  detailFilters: {
-    open: '상세 조건 펼치기',
-    close: '상세 조건 접기',
-    hiddenApplied: '상세 조건이 걸려 있습니다',
-  },
   today: '오늘 입고',
   todayOn: '오늘 입고만 보기 켜짐 — 누르면 끕니다',
   todayOff: '오늘 들어온 검사 건만 봅니다',
