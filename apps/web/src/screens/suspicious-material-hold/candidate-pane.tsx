@@ -159,7 +159,8 @@ export const SuspiciousMaterialCandidatePane = ({
   const split = usePaneSplit(SPLIT_KEY, 0.6);
   const layout = useSplitOrientation(SPLIT_ORIENTATION_KEY);
   const detailId = useId();
-  const periodLabelId = useId();
+  const periodFromId = useId();
+  const periodToId = useId();
   const periodReasonId = useId();
   /* 기간 — 둘 다 비우면 기간 없이 조회한다. 한쪽만 채웠으면 [조회]만 잠그고, 틀린 날짜 · 뒤바뀐 순서는 알린다. */
   const periodError = validateSuspiciousMaterialPeriod(draft);
@@ -448,32 +449,38 @@ export const SuspiciousMaterialCandidatePane = ({
       >
         {hubTarget === null && <div className="lot-status-search-head">{statusChips}</div>}
         <div className="filter-bar lot-status-filter lot-status-transition-filter">
-          {/* 기간 — 「기간」 한 이름 아래 최종 변경 시작일 · 종료일 두 달력 칸(다른 LOT 상태 탭과 같은 짜임). */}
-          <div className="field-cell" role="group" aria-labelledby={periodLabelId}>
-            <span className="field-label" id={periodLabelId}>
-              {tHistory.historyFilter.fields.period}
-            </span>
-            <div className="lot-status-date-range-row">
-              <DatePicker
-                className="lot-status-date-field"
-                aria-label={t.fields.periodFrom}
-                placeholder={t.fields.periodFrom}
-                disabled={isLocked}
-                invalid={draft.from === '' && draft.to !== ''}
-                value={draft.from === '' ? null : draft.from}
-                onChange={(from) => setDraft((current) => ({ ...current, from }))}
-              />
-              <DatePicker
-                className="lot-status-date-field"
-                aria-label={t.fields.periodTo}
-                placeholder={t.fields.periodTo}
-                disabled={isLocked}
-                invalid={(draft.to === '' && draft.from !== '') || periodReason !== null}
-                value={draft.to === '' ? null : draft.to}
-                onChange={(to) => setDraft((current) => ({ ...current, to }))}
-                aria-describedby={periodReason === null ? undefined : periodReasonId}
-              />
-            </div>
+          {/*
+           * 최종 변경 시작일 · 종료일 — 칸마다 제 이름을 위에 두고, 칸 안 흐린 글자는 두지 않는다(사용자 2026-11-02).
+           * 막힌 까닭은 종료일 칸 아래 한 줄.
+           */}
+          <div className="field-cell">
+            <label className="field-label" htmlFor={periodFromId}>
+              {t.fields.periodFrom}
+            </label>
+            <DatePicker
+              id={periodFromId}
+              className="lot-status-date-field"
+              placeholder=""
+              disabled={isLocked}
+              invalid={draft.from === '' && draft.to !== ''}
+              value={draft.from === '' ? null : draft.from}
+              onChange={(from) => setDraft((current) => ({ ...current, from }))}
+            />
+          </div>
+          <div className="field-cell">
+            <label className="field-label" htmlFor={periodToId}>
+              {t.fields.periodTo}
+            </label>
+            <DatePicker
+              id={periodToId}
+              className="lot-status-date-field"
+              placeholder=""
+              disabled={isLocked}
+              invalid={(draft.to === '' && draft.from !== '') || periodReason !== null}
+              value={draft.to === '' ? null : draft.to}
+              onChange={(to) => setDraft((current) => ({ ...current, to }))}
+              aria-describedby={periodReason === null ? undefined : periodReasonId}
+            />
             {periodReason !== null && (
               <span id={periodReasonId} className="field-error" role="alert">
                 {periodReason}
@@ -549,6 +556,15 @@ export const SuspiciousMaterialCandidatePane = ({
             <p className="suspicious-material-hold-selection" role="status">
               {t.values.selected(selection.length)}
             </p>
+            {/* 머리 칸과 같은 일을 하는 따로 된 단추 — 이 쪽 LOT 을 모두 고르거나 푼다(사용자 2026-11-02). */}
+            <Button
+              variant="outlined"
+              size="sm"
+              disabled={isLocked || !ready || selectableRows.length === 0}
+              onClick={toggleAll}
+            >
+              {allPicked ? t.actions.clearAll : t.actions.pickAll}
+            </Button>
           </div>
           {candidates.isError ? (
             <AlertBanner
@@ -567,6 +583,20 @@ export const SuspiciousMaterialCandidatePane = ({
                 className="wide-table lot-status-table suspicious-material-hold-table inspection-queue-table"
                 style={resizable.style}
                 aria-busy={candidates.isFetching}
+                /*
+                 * 줄 아무 곳이나 눌러도 그 LOT 을 고르고 푼다(사용자 2026-11-02) — 선택 칸은 키보드로 고르는 자리로 남는다.
+                 * 고를 수 없는 LOT · 잠금 · 다시 받는 중에는 선택 칸처럼 아무 일도 하지 않는다.
+                 */
+                onClick={(event) => {
+                  const target = event.target as Element;
+                  if (target.closest('button, input, label, a') !== null) return;
+                  const row = target.closest('tbody tr');
+                  if (row === null || row.parentElement === null) return;
+                  const picked =
+                    candidates.data.items[Array.from(row.parentElement.children).indexOf(row)];
+                  if (picked !== undefined && ready && toSelectedLotSnapshot(picked) !== null)
+                    toggle(picked);
+                }}
               >
                 <Table
                   density="compact"

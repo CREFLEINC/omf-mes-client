@@ -5415,6 +5415,11 @@ h2:has(> .inspection-standard-dialog-title) {
   overflow-x: auto;
 }
 
+/* 줄 아무 곳이나 눌러 고른다 — 고를 수 있는 줄만 손 모양(LOT 상태 변경과 같다). */
+.suspicious-material-hold-table tbody tr:has(input[type="checkbox"]:not(:disabled)) {
+  cursor: pointer;
+}
+
 .suspicious-material-hold-table table {
   min-width: 64rem;
 }
