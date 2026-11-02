@@ -250,4 +250,13 @@ describe('의심자재 보류 입력 pane', () => {
     await user.click(within(dialog).getByRole('button', { name: '닫기' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
+
+  it('보류 사유를 고르면 바로 해제 조건 칸으로 옮겨 간다', async () => {
+    const { user } = renderPane([display(701)]);
+    const reason = await screen.findByLabelText(/^보류 사유/);
+    await waitFor(() => expect(reason).toBeEnabled());
+    await user.click(reason);
+    await user.click(await screen.findByRole('option', { name: '파손' }));
+    await waitFor(() => expect(screen.getByLabelText(/^해제 조건/)).toHaveFocus());
+  });
 });

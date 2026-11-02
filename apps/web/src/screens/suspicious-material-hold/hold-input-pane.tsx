@@ -2,7 +2,7 @@ import { Icon, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
@@ -105,6 +105,7 @@ export const SuspiciousMaterialHoldInputPane = ({
   const { client } = useApiClient();
   const reasonId = useId();
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const releaseRef = useRef<HTMLInputElement>(null);
   const owner = selection
     .map(({ lotId, versionNo }) => `${String(lotId)}:${String(versionNo)}`)
     .join('|');
@@ -235,10 +236,15 @@ export const SuspiciousMaterialHoldInputPane = ({
             /* 필수 칸이 비면 빨간 테두리(사용자 2026-11-02). */
             invalid={!isLocked && !reasonUnavailable && draft.reasonCode === ''}
             disabled={isLocked || reasonUnavailable}
-            onChange={(value) => update('reasonCode', value)}
+            onChange={(value) => {
+              update('reasonCode', value);
+              /* 사유를 고르면 바로 해제 조건 칸으로(사용자 2026-11-02) — 목록이 닫힌 뒤 옮긴다. */
+              window.setTimeout(() => releaseRef.current?.focus(), 0);
+            }}
           />
         </div>
         <TextField
+          ref={releaseRef}
           label={t.releaseCondition}
           required
           placeholder={t.releaseConditionPlaceholder}
@@ -270,13 +276,9 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
   if (selection.length === 0) return null;
   return (
     <section className="suspicious-material-hold-impact" aria-label={t.impact}>
-      {/* 제목 줄 오른쪽에 해제 안내 알약(사용자 2026-11-02) — 대상 건수 표시는 두지 않는다. */}
+      {/* 대상 건수 · 해제 안내는 두지 않는다 — 지금 하는 등록과 직접 관련이 적다(사용자 2026-11-02). */}
       <div className="suspicious-material-hold-section-head">
         <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
-        <p className="iqc-inspection-action-note" data-tone="info" title={t.recovery}>
-          <Icon name="info" size={14} aria-hidden />
-          <span className="iqc-inspection-action-note-text">{t.recovery}</span>
-        </p>
       </div>
       <ul className="suspicious-material-hold-impact-list">
         {selection.map((lot) => {

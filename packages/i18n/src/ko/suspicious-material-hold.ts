@@ -74,7 +74,6 @@ export const suspiciousMaterialHold = {
     /** 제한 사항 항목 단추의 이름 — 누르면 LOT 상세 팝업(사용자 2026-11-02). */
     openDetail: (lotNo: string): string => `${lotNo} 상세 보기`,
     impactRestriction: '출고·출하·피킹 제한',
-    recovery: '보류를 해제하려면 별도의 해제 처리가 필요합니다.',
   },
   execution: {
     pane: '의심자재 보류 실행',

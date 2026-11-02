@@ -81,7 +81,6 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     /** 제한 사항 항목 단추의 이름 — 누르면 LOT 상세 팝업(사용자 2026-11-02). */
     openDetail: (lotNo: string): string => `Xem chi tiết ${lotNo}`,
     impactRestriction: 'Hạn chế xuất kho·xuất hàng·lấy hàng',
-    recovery: 'Khi gỡ tạm giữ cần xử lý Release riêng.',
   },
   execution: {
     pane: 'Thực hiện tạm giữ vật tư nghi ngờ',
