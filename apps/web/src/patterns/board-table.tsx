@@ -11,8 +11,11 @@ import { useColumnWidths } from './column-resize';
  * 링크를 누른 것은 그쪽이 받는다.
  */
 export interface BoardTablePick<T> {
-  /** 고르는 단추를 세울 열. 그 칸 내용을 단추가 감싼다. */
-  columnKey: string;
+  /**
+   * 고르는 단추를 세울 열. 그 칸 내용을 단추가 감싼다. 없으면 화면이 칸 안에 `BoardTablePickButton` 을 직접 둔다 —
+   * 칸 안에 다른 단추(계층의 펼치기)가 있어 칸을 통째로 감쌀 수 없을 때(단추 안의 단추).
+   */
+  columnKey?: string;
   /** 단추의 접근 이름 — 줄마다 어느 것인지 담는다(「PO-001 선택」). */
   label: (row: T) => string;
   /** 지금 고른 줄(`getRowId` 값). 없으면 `null`. */
@@ -56,6 +59,33 @@ export interface BoardTableProps<T> {
 const INTERACTIVE = 'button, input, a, label, select, textarea';
 const PICK_CLASS = 'board-table-pick';
 
+export interface BoardTablePickButtonProps {
+  /** 줄의 `getRowId` 값. */
+  id: string;
+  /** 단추의 접근 이름. */
+  label: string;
+  current: boolean;
+  children: ReactNode;
+}
+
+/** 줄 고르기 단추 — `pick.columnKey` 를 주지 않은 표에서 화면이 칸 안 원하는 자리에 둔다. */
+export const BoardTablePickButton = ({
+  id,
+  label,
+  current,
+  children,
+}: BoardTablePickButtonProps) => (
+  <button
+    type="button"
+    className={`link-cell ${PICK_CLASS}`}
+    aria-current={current ? true : undefined}
+    aria-label={label}
+    data-board-row={id}
+  >
+    {children}
+  </button>
+);
+
 const cellText = <T,>(row: T, key: string): ReactNode => {
   const value = (row as Record<string, unknown>)[key];
 
@@ -90,7 +120,7 @@ export const BoardTable = <T,>({
   onBoxClick,
 }: BoardTableProps<T>) => {
   const pickedColumns =
-    pick === undefined
+    pick?.columnKey === undefined
       ? columns
       : columns.map((column): Column<T> =>
           column.key !== pick.columnKey
@@ -103,15 +133,13 @@ export const BoardTable = <T,>({
                   const id = getRowId(row);
 
                   return (
-                    <button
-                      type="button"
-                      className={`link-cell ${PICK_CLASS}`}
-                      aria-current={pick.currentId === id ? true : undefined}
-                      aria-label={pick.label(row)}
-                      data-board-row={id}
+                    <BoardTablePickButton
+                      id={id}
+                      label={pick.label(row)}
+                      current={pick.currentId === id}
                     >
                       {content}
-                    </button>
+                    </BoardTablePickButton>
                   );
                 },
               },

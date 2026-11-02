@@ -597,7 +597,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
     await screen.findByText(ITEM_LABEL);
 
     await user.click(screen.getByLabelText(t.fields.item));
-    await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+    await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
@@ -621,7 +621,7 @@ describe('StockStatusScreen — 창고를 고른 뒤', () => {
     await screen.findAllByText(ITEM_LABEL);
 
     await user.click(screen.getByLabelText(t.fields.item));
-    await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+    await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
@@ -1514,7 +1514,7 @@ describe('StockStatusScreen — 참조 선택지의 한계', () => {
     await user.click(screen.getByLabelText(t.fields.item));
 
     expect(
-      screen.getByRole('option', {
+      await screen.findByRole('option', {
         name: `SAMPLE-ITEM-09 · 합성 품목 자${t.values.inactiveSuffix}`,
       }),
     ).toBeInTheDocument();

@@ -14,6 +14,11 @@ import { codeName, useLotHoldReasonOptions } from './options';
 import { useUomCodeOf, withUom } from './uoms';
 import { useLotActorOptions, useLotHolds } from './queries';
 import type { LotHoldView } from './types';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav } from '../../patterns/page-nav';
+import { LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -26,7 +31,8 @@ const formatDateTime = (value: string | null): string => {
 
 export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   const [page, setPage] = useState(1);
-  const holds = useLotHolds(lotId, page);
+  const [pageSize, setPageSize] = useState<LotPageSize>(20);
+  const holds = useLotHolds(lotId, page, pageSize);
   const actors = useLotActorOptions(true);
   const reasons = useLotHoldReasonOptions();
   const uomCodeOf = useUomCodeOf();
@@ -117,22 +123,19 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
     }
   }, [holds.isPlaceholderData, page, serverPage]);
   const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
-  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : 1;
-  const totalPages = Math.max(1, Math.ceil((meta?.total ?? 0) / pageSize));
-  const start = (currentPage - 1) * pageSize + 1;
-  const range =
-    meta === undefined
-      ? ''
-      : rows.length === 0
-        ? t.range.total(String(meta.total))
-        : t.range.span(String(start), String(start + rows.length - 1), String(meta.total));
+  /* 열 너비 끌기 · 열 순서 바꾸기 — LOT 목록 표와 같다(사용자 2026-10-30). */
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:holds:order', columns);
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:holds', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
   const actorsLimited =
     actors.isError ||
     (actors.data !== undefined && actors.data.page.total > actors.data.items.length);
 
+  /* LOT 상세의 탭 하나 — 제목은 탭이 단다(사용자 2026-10-30). */
   return (
-    <section aria-labelledby="lot-hold-documents-title">
-      <h3 id="lot-hold-documents-title">{t.holdDocuments.pane}</h3>
+    <section aria-label={t.holdDocuments.pane}>
       {holds.isPending && (
         <div role="status" aria-label={t.holdDocuments.loading}>
           <SkeletonText lines={3} />
@@ -140,56 +143,58 @@ export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
       )}
       {holds.isError && (
         <AlertBanner
+          className="lot-detail-failure-banner"
           variant="error"
           title={t.holdDocuments.failed}
           action={
             <Button
               variant="outlined"
               size="sm"
-              aria-label={t.actions.retryLabel(t.holdDocuments.pane)}
+              aria-label={t.detail.retryLabel(t.holdDocuments.pane)}
               onClick={() => void holds.refetch()}
             >
-              {t.actions.retry}
+              {t.detail.retry}
             </Button>
           }
         />
       )}
-      {holds.data !== undefined && (
+      {holds.data !== undefined && meta !== undefined && (
         <>
           {holds.isFetching && (
             <p className="field-note" role="status">
               {t.holdDocuments.refreshingText}
             </p>
           )}
-          <div className="wide-table" aria-busy={holds.isFetching}>
+          <div
+            ref={fit.ref}
+            className="wide-table lot-status-table lot-detail-table"
+            style={resizable.style}
+            aria-busy={holds.isFetching}
+          >
             <Table
               density="comfortable"
               caption={t.holdDocuments.pane}
-              columns={columns}
+              columns={fit.columns}
               rows={rows}
               getRowId={(row) => String(row.lotHoldId)}
               empty={<EmptyState size="sm" title={t.holdDocuments.empty} />}
             />
           </div>
-          {meta !== undefined && (
-            <nav className="form-actions" aria-label={t.holdDocuments.pagination}>
-              <p className="field-note form-actions-secondary">{range}</p>
-              <Button
-                variant="outlined"
-                disabled={currentPage <= 1}
-                onClick={() => setPage(currentPage - 1)}
-              >
-                {t.actions.previousPage}
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage(currentPage + 1)}
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
-          )}
+          <PageNav
+            sizes={LOT_PAGE_SIZES}
+            controlSize="sm"
+            buttonSize="md"
+            meta={{
+              page: currentPage,
+              size: meta.size > 0 ? meta.size : pageSize,
+              total: meta.total,
+            }}
+            onChangePage={setPage}
+            onChangeSize={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
         </>
       )}
       {actorsLimited && <p className="field-note">{t.holdDocuments.actorsLimited}</p>}

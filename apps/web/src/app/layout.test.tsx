@@ -142,29 +142,17 @@ describe('AppLayout', () => {
     expect(within(sidebar).queryByRole('link', { name: '창고·Location' })).toBeNull();
   });
 
-  /*
-   * **W-06-14 · C5-2** — 같은 「창고·위치」 묶음의 **창고·Location 바로 뒤**다. 적치 규칙은
-   * 창고와 위치를 참조해야 성립하고 그 마스터에서 이어지는 화면이라, **인접이 관계를 드러낸다.**
-   * 묶음 안의 차례는 탭 막대의 차례다.
-   *
-   * **앞뒤를 둘 다 잰다** — 창고·Location 다음 칸이면서 창고 배치도보다 앞이다(창고 계열은
-   * 창고·Location → 적치 규칙 → 창고 배치도 차례다). 한쪽만 재면 반대편으로 밀려나도 통과한다.
-   */
-  it('창고·위치 탭 막대에서 적치 규칙이 창고·Location 바로 뒤에 있다', () => {
-    renderLayout('본문 내용', { route: '/master-data/putaway-rule' });
+  /* 「창고·위치」 묶음은 창고·Location → 창고 배치도 두 탭이다(적치 규칙은 omf-mes-server #907 로 없어졌다). */
+  it('창고·위치 탭 막대에 적치 규칙이 없고 창고 배치도가 창고·Location 바로 뒤에 있다', () => {
+    renderLayout('본문 내용', { route: '/master-data/warehouse-location' });
 
     const tabs = screen.getByRole('navigation', { name: '창고·위치' });
     const links = hubTabHrefs('창고·위치');
 
-    expect(within(tabs).getByRole('link', { name: '적치 규칙' })).toHaveAttribute(
-      'href',
-      '/master-data/putaway-rule',
-    );
-    expect(links.indexOf('/master-data/putaway-rule')).toBe(
-      links.indexOf('/master-data/warehouse-location') + 1,
-    );
+    expect(within(tabs).queryByRole('link', { name: '적치 규칙' })).toBeNull();
+    expect(links).not.toContain('/master-data/putaway-rule');
     expect(links.indexOf('/master-data/warehouse-layout')).toBe(
-      links.indexOf('/master-data/putaway-rule') + 1,
+      links.indexOf('/master-data/warehouse-location') + 1,
     );
   });
 
@@ -512,9 +500,10 @@ describe('AppLayout', () => {
   /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
-   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, LOT 조회와 판정은 「LOT 상태」 묶음 한 줄이다.
+   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, 검사실적과 제품 검사표는 「검사 이력 조회」,
+   * LOT 조회 · 판정 · 의심자재 등록은 「LOT 상태」 묶음 한 줄이다(omf-all-around#210).
    */
-  it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사실적 → LOT 상태·보류·승인·처분 순서다', () => {
+  it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사 이력 → LOT 상태·보류·승인·처분 순서다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -530,14 +519,14 @@ describe('AppLayout', () => {
       'href',
       '/quality/lot-status',
     );
-    expect(within(sidebar).getByRole('link', { name: '의심자재 등록' })).toHaveAttribute(
-      'href',
-      '/quality/suspicious-material-hold',
-    );
-    expect(within(sidebar).getByRole('link', { name: '검사실적·검사결과 조회' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '검사 이력 조회' })).toHaveAttribute(
       'href',
       '/quality/inspection-results',
     );
+    /* 의심자재 등록 · 검사실적 · 제품 검사표는 탭이 됐다 — 사이드바에 따로 서지 않는다(#210). */
+    expect(within(sidebar).queryByRole('link', { name: '의심자재 등록' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '검사실적·검사결과 조회' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '제품 검사표 조회' })).toBeNull();
     expect(within(sidebar).getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
       'href',
       '/quality/approvals',
@@ -553,12 +542,10 @@ describe('AppLayout', () => {
       '/master-data/inspection-standard',
       /* 「품질 코드 관리」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
       '/master-data/defect-cause-code',
+      /* 「검사 이력 조회」 묶음 — 검사실적 → 제품 검사표(W-03-13 · OA 전용)(#210). */
       '/quality/inspection-results',
-      /* W-03-13 — OA 제품 검사표 조회·서명(설계보다 앞선 화면). */
-      '/quality/inspection-sheets',
-      /* 「LOT 상태」 묶음 — 조회 → 판정(W-03-02 는 조회에서 찾은 LOT 을 판정·전이한다). */
+      /* 「LOT 상태」 묶음 — 조회 → 판정 → 의심자재 등록(#210). */
       '/quality/lot-status',
-      '/quality/suspicious-material-hold',
       '/quality/approvals',
       /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
       '/quality/dispositions',
@@ -571,23 +558,32 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-orders')).toBe(start + qualityOrder.length);
   });
 
-  /* W-03-02 — LOT 판정은 조회에서 찾은 LOT 을 판정·전이하므로 「LOT 상태」 묶음의 조회 바로 뒤 탭이다. */
-  it('LOT 상태 탭 막대가 LOT 상태 조회 → LOT 상태 판정 차례다', () => {
+  /*
+   * W-03-02 — LOT 판정은 조회에서 찾은 LOT 을 판정·전이하므로 「LOT 상태」 묶음의 조회 바로 뒤 탭이다.
+   * 의심자재 등록(W-03-03)은 의심 자재 LOT 을 보류하는 일이라 판정 뒤에 잇는다(omf-all-around#210).
+   */
+  it('LOT 상태 탭 막대가 LOT 현황 → LOT 상태 이력 → LOT 상태 변경 → 의심자재 등록 차례다', () => {
     renderLayout('본문 내용', { route: '/quality/lot-status' });
 
     const tabs = screen.getByRole('navigation', { name: 'LOT 상태' });
 
-    expect(within(tabs).getByRole('link', { name: 'LOT 상태 조회' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: 'LOT 현황' })).toHaveAttribute(
       'href',
       '/quality/lot-status',
     );
-    expect(within(tabs).getByRole('link', { name: 'LOT 상태 판정' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: 'LOT 상태 변경' })).toHaveAttribute(
       'href',
       '/quality/lot-status-transition',
+    );
+    expect(within(tabs).getByRole('link', { name: '의심자재 등록' })).toHaveAttribute(
+      'href',
+      '/quality/suspicious-material-hold',
     );
     expect(hubTabHrefs('LOT 상태')).toEqual([
       '/quality/lot-status',
+      '/quality/lot-status-history',
       '/quality/lot-status-transition',
+      '/quality/suspicious-material-hold',
     ]);
   });
 
@@ -983,10 +979,8 @@ describe('AppLayout', () => {
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
       '/master-data/inspection-standard' /* ← 품질 기준 정보 */,
       '/master-data/defect-cause-code',
-      '/quality/inspection-results',
-      '/quality/inspection-sheets',
+      '/quality/inspection-results' /* ← 검사 이력 조회 */,
       '/quality/lot-status' /* ← LOT 상태 */,
-      '/quality/suspicious-material-hold',
       '/quality/approvals',
       '/quality/dispositions',
       /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
@@ -1042,11 +1036,7 @@ describe('AppLayout', () => {
       설비: ['/equipment/master', '/equipment/work-calendar', '/equipment/collection-channels'],
       '툴·금형': ['/equipment/tool-master', '/equipment/shot-conversion'],
       계측기: ['/equipment/gauge-master', '/equipment/gauge-calibration'],
-      '창고·위치': [
-        '/master-data/warehouse-location',
-        '/master-data/putaway-rule',
-        '/master-data/warehouse-layout',
-      ],
+      '창고·위치': ['/master-data/warehouse-location', '/master-data/warehouse-layout'],
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',
@@ -1064,7 +1054,13 @@ describe('AppLayout', () => {
         '/master-data/defect-process-mapping',
         '/master-data/judgment-code',
       ],
-      'LOT 상태': ['/quality/lot-status', '/quality/lot-status-transition'],
+      '검사 이력 조회': ['/quality/inspection-results', '/quality/inspection-sheets'],
+      'LOT 상태': [
+        '/quality/lot-status',
+        '/quality/lot-status-history',
+        '/quality/lot-status-transition',
+        '/quality/suspicious-material-hold',
+      ],
       '작업지시 목록': ['/production/production-orders', '/production/po-change-review'],
       '설비 보전': [
         '/equipment/failures',
@@ -1653,7 +1649,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
   });
 
   /*
@@ -1703,7 +1699,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
@@ -1756,7 +1752,7 @@ describe('AppLayout — 검색 중 손잡이', () => {
     await user.click(groupToggle('기준정보 관리'));
     expect(groupToggle('기준정보 관리')).toHaveAttribute('aria-expanded', 'true');
 
-    await typeQuery(user, '규칙');
+    await typeQuery(user, '배치도');
     await user.click(groupToggle('기준정보 관리')).catch(() => undefined);
     await user.clear(
       within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label }),
@@ -1948,21 +1944,24 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
    * 못 보는 사람에게 묶음 주소를 그대로 걸면 누르는 순간 막힌 화면이 선다.
    */
   it('탭 묶음의 첫 탭을 볼 수 없으면 묶음 줄이 볼 수 있는 첫 탭을 건다', async () => {
-    await renderWithPermissions(['W-06-14', 'W-CO-08']);
+    await renderWithPermissions(['W-CO-08']);
 
     expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
       'href',
-      '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
     );
   });
 
-  /** 탭 막대에도 볼 수 없는 탭은 서지 않는다 — 누르는 순간 막힌 화면이 서는 탭을 두지 않는다. */
+  /**
+   * 탭 막대에도 볼 수 없는 탭은 서지 않는다 — 누르는 순간 막힌 화면이 서는 탭을 두지 않는다. 「창고·위치」가 두
+   * 탭이라 세 탭 묶음인 「재고 관리」로 잰다.
+   */
   it('탭 막대에는 볼 수 있는 탭만 선다', async () => {
-    await renderWithPermissions(['W-06-14', 'W-CO-08'], { route: '/master-data/putaway-rule' });
+    await renderWithPermissions(['W-01-04', 'W-01-12'], { route: '/logistics/stocktaking' });
 
-    expect(hubTabHrefsOf('창고·위치')).toEqual([
-      '/master-data/putaway-rule',
-      '/master-data/warehouse-layout',
+    expect(hubTabHrefsOf('재고 관리')).toEqual([
+      '/logistics/stocktaking',
+      '/logistics/stock-adjust',
     ]);
   });
 
@@ -1971,12 +1970,12 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
    * 한 줄을 먹는다. 묶음 줄은 그 한 탭을 건 채 남는다.
    */
   it('볼 수 있는 탭이 하나뿐이면 탭 막대가 서지 않는다', async () => {
-    await renderWithPermissions(['W-06-14'], { route: '/master-data/putaway-rule' });
+    await renderWithPermissions(['W-CO-08'], { route: '/master-data/warehouse-layout' });
 
     /* 짝 양성 — 묶음 줄은 남아 그 한 탭을 건다. */
     expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
       'href',
-      '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
     );
     expect(screen.queryByRole('navigation', { name: '창고·위치' })).toBeNull();
   });

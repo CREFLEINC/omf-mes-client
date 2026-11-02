@@ -2,6 +2,7 @@ import { Button, Checkbox, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { PartnerSelect } from '../../patterns/partner-select';
 import { Select } from '../../patterns/select';
 import type { SalesOrderFilters } from './filters';
 import { ProgressFilterField } from './progress';
@@ -11,7 +12,6 @@ const t = messages.erpSalesOrder;
 
 export interface ErpSalesOrderFilterBarProps {
   appliedFilters: SalesOrderFilters;
-  customerOptions: SelectOption[];
   /** 수주 상태 선택지 — 공통코드 `SALES_ORDER_STATUS`(서버 장부 P-68) */
   statusOptions: SelectOption[];
   onSearch: (filters: SalesOrderFilters) => void;
@@ -27,7 +27,6 @@ export interface ErpSalesOrderFilterBarProps {
  */
 export const ErpSalesOrderFilterBar = ({
   appliedFilters,
-  customerOptions,
   statusOptions,
   onSearch,
   onReset,
@@ -68,9 +67,11 @@ export const ErpSalesOrderFilterBar = ({
         <label className="field-label" htmlFor={customerId}>
           {t.fields.customer}
         </label>
-        <Select
+        {/* 거래처는 천여 건이라 칸이 쪽 단위로 받는다(사용자 지시 2026-10-29). */}
+        <PartnerSelect
           id={customerId}
-          options={[{ value: '', label: t.filters.all }, ...customerOptions]}
+          includeInactive
+          leadingOptions={[{ value: '', label: t.filters.all }]}
           value={draft.customer}
           onChange={(value) => update('customer', value)}
         />

@@ -122,7 +122,6 @@ const TRANSLATED = [
   'itemExtendedAttrs',
   'judgmentCode',
   'masterChange',
-  'putawayRule',
   'routing',
   'warehouseLayout',
   'warehouseLocation',

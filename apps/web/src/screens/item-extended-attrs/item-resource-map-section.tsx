@@ -1,5 +1,5 @@
 import { AlertBanner, useToast } from '@crefle/web-ui';
-import type { ItemResourceMap, ItemResourceMapUpdate } from '@omf-mes/api-client';
+import type { components, ItemResourceMap } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useState } from 'react';
 
@@ -23,6 +23,8 @@ import { LoadErrorBanner } from './load-error-banner';
 import { usePlantOptions, useProcessOptions, type LookupResult } from './lookups';
 import { lookupLabel, selectableOptions } from './options';
 import { subsidiaryKeys, useItemResourceMaps } from './subsidiary-queries';
+
+type ItemResourceMapUpdate = components['schemas']['ItemResourceMapUpdate'];
 
 const t = messages.itemExtendedAttrs;
 

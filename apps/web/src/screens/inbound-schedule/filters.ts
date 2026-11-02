@@ -2,7 +2,12 @@ import { messages } from '@omf-mes/i18n';
 
 import type { PeriodInput } from './period';
 import { isStageGroup } from './stage';
-import type { InboundScheduleQuery, InboundStageGroup, OrderSort, OrderSortKey } from './types';
+import type {
+  InboundStageGroup,
+  OrderSort,
+  OrderSortKey,
+  PurchaseOrderSummaryQuery,
+} from './types';
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -32,7 +37,7 @@ export interface ScheduleFilters {
   openOnly: boolean;
   /** 납기가 공장 현지 오늘보다 앞선 미완료 라인만 본다. 켜면 서버가 미완료 조건을 함께 건다. */
   overdueOnly: boolean;
-  /** 입고 단계 묶음(탭 줄의 단계 칩). 비면 거르지 않는다. 계약 대기 — 앞선 서버는 이 조건을 무시한다. */
+  /** 입고 단계 묶음(탭 줄의 단계 칩). 비면 거르지 않는다. 앞선 서버는 이 조건을 무시한다. */
   stage: InboundStageGroup | '';
   /**
    * 왼쪽 표의 열 정렬. 없으면 서버 기본 순서다. 조건은 아니지만 **쪽을 넘는 순서**라 조건과 함께 주소가 들고 서버가
@@ -181,7 +186,7 @@ export const toSearchParams = (
 
 /** 계약이 쓰는 질의 중 조건 줄이 정하는 부분(기간·쪽 제외). */
 export type ScheduleFilterQuery = Omit<
-  InboundScheduleQuery,
+  PurchaseOrderSummaryQuery,
   'expectedReceiptDateFrom' | 'expectedReceiptDateTo' | 'page'
 >;
 

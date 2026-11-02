@@ -2,6 +2,7 @@ import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { periodProblem, type InspectionInsightFilters } from './filters';
 
@@ -14,7 +15,6 @@ export interface InspectionFilterOption {
 
 export interface InspectionFilterOptions {
   inspectionType: readonly InspectionFilterOption[];
-  item: readonly InspectionFilterOption[];
   process: readonly InspectionFilterOption[];
   judgment: readonly InspectionFilterOption[];
 }
@@ -30,6 +30,8 @@ const optional = (options: readonly InspectionFilterOption[]): InspectionFilterO
   { value: '', label: t.all },
   ...options,
 ];
+
+const ALL_ITEMS: InspectionFilterOption[] = [{ value: '', label: t.all }];
 
 export const InspectionInsightFilterBar = ({
   appliedFilters,
@@ -88,7 +90,8 @@ export const InspectionInsightFilterBar = ({
   const hasLot = draft.lotNo.trim() !== '';
   const selects = [
     [t.inspectionType, 'inspectionTypeCode', optional(options.inspectionType), false],
-    [t.item, 'itemId', optional(options.item), false],
+    /* 품목은 9천여 건이라 칸이 서버에서 쪽으로 받는다(`ItemSelect`) — 선택지를 넘기지 않는다. */
+    [t.item, 'itemId', null, false],
     [t.process, 'processId', optional(options.process), false],
     [t.judgment, 'overallJudgmentCode', optional(options.judgment), false],
   ] as const;
@@ -118,13 +121,22 @@ export const InspectionInsightFilterBar = ({
           <label className="field-label" htmlFor={`${id}-${key}`}>
             {label}
           </label>
-          <Select
-            id={`${id}-${key}`}
-            value={draft[key] === '' && required ? null : draft[key]}
-            placeholder={required ? t.select : undefined}
-            options={[...values]}
-            onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
-          />
+          {values === null ? (
+            <ItemSelect
+              id={`${id}-${key}`}
+              leadingOptions={ALL_ITEMS}
+              value={draft[key]}
+              onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
+            />
+          ) : (
+            <Select
+              id={`${id}-${key}`}
+              value={draft[key] === '' && required ? null : draft[key]}
+              placeholder={required ? t.select : undefined}
+              options={[...values]}
+              onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
+            />
+          )}
         </div>
       ))}
       <div className="field-cell wide-select">

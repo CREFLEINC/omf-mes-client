@@ -774,7 +774,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
     await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
     await user.click(screen.getByRole('option', { name: LOCATION_LABEL }));
     await user.click(screen.getByLabelText(t.lineTable.itemLabel(1)));
-    await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+    await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
     await user.click(screen.getByLabelText(t.lineTable.lotLabel(1)));
     await user.click(screen.getByRole('option', { name: 'SAMPLE-LOT-0001' }));
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
@@ -805,7 +805,7 @@ describe('StockAdjustScreen — 직접 등록 갈래', () => {
      * 잔액이 이 줄의 장부로 서므로, 못 찾는 것이 맞는 갈래다.
      */
     await user.click(screen.getByLabelText(t.lineTable.itemLabel(1)));
-    await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+    await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
     await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
     await user.click(screen.getByRole('option', { name: UOM_LABEL }));
     await user.type(diffBox(1), '-20');
@@ -1623,7 +1623,7 @@ const fillDirectLine = async (user: ReturnType<typeof userEvent.setup>): Promise
   await user.click(screen.getByLabelText(t.lineTable.locationLabel(1)));
   await user.click(screen.getByRole('option', { name: LOCATION_LABEL }));
   await user.click(screen.getByLabelText(t.lineTable.itemLabel(1)));
-  await user.click(screen.getByRole('option', { name: ITEM_LABEL }));
+  await user.click(await screen.findByRole('option', { name: ITEM_LABEL }));
   await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
   await user.click(screen.getByRole('option', { name: UOM_LABEL }));
   await user.type(diffBox(1), '-20');

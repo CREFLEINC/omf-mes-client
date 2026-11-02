@@ -61,7 +61,7 @@ export const stockReinstatement = {
   },
   form: {
     warehouseRequired: '대상 창고를 선택하세요.',
-    locationRequired: '이 창고는 위치를 관리합니다. 대상 위치를 선택하세요.',
+    locationRequired: '이 창고는 재고를 둘 위치가 여럿입니다. 대상 위치를 선택하세요.',
     holdRequired: '해제되지 않은 보류를 선택하세요.',
     qtyRequired: '수량을 1 이상 입력하세요.',
     qtyExceeded: (qty: number): string => `현재 보유 ${String(qty)}를 넘을 수 없습니다.`,
@@ -69,8 +69,7 @@ export const stockReinstatement = {
     releaseReasonUnavailable: '해제 사유 기준값을 불러온 뒤 확정할 수 있습니다.',
     optionalReasonEmpty: '등록된 재등록 사유가 없습니다. 선택 항목이므로 확정을 막지 않습니다.',
     selectPlaceholder: '선택하세요',
-    noLocations: '사용 가능한 위치가 없습니다.',
-    warehouseOnly: '선택한 창고는 위치를 별도로 관리하지 않습니다.',
+    noStockableLocation: '이 창고에는 재고를 둘 수 있는 위치가 없습니다. 다른 창고를 선택하세요.',
   },
   warning: {
     title: '재등록하면 이 LOT이 출하 가능해집니다',

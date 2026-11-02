@@ -52,11 +52,9 @@ export const inboundSchedule = {
     collapseAll: 'LOT 모두 접기',
     expandLine: (lineNo: number): string => `${String(lineNo)}번 줄 LOT 펼치기`,
     collapseLine: (lineNo: number): string => `${String(lineNo)}번 줄 LOT 접기`,
-    /** LOT 줄의 다음 할 일 — 서버가 정한 것만 선다(C-17). */
+    /** LOT 줄의 다음 할 일 — 서버가 정한 것만 나타난다(C-17). */
     postReceipt: '입고 처리',
     postReceiptRow: (lotNo: string): string => `${lotNo} 입고 처리`,
-    requestIqc: 'IQC 의뢰 요청',
-    requestIqcRow: (lotNo: string): string => `${lotNo} IQC 의뢰 요청`,
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -388,9 +386,6 @@ export const inboundSchedule = {
       putawayDone: (date: string): string => `적치 ${date}`,
       separator: ' · ',
     },
-    /** 「IQC 의뢰 요청」을 보낸 뒤 LOT 줄 위의 한 줄. */
-    requested: (lotNo: string, requestNo: string): string =>
-      `IQC 의뢰를 보냈습니다: ${lotNo} → ${requestNo}`,
     loading: '입고 진행을 불러오는 중',
     loadFailed: '입고 진행을 불러오지 못했습니다. 라인은 그대로 보입니다.',
   },

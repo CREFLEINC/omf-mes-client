@@ -1,14 +1,14 @@
-import type {
-  InspectionSheet,
-  InspectionSheetListQuery,
-  InspectionSheetStepCode,
-} from '@omf-mes/api-client';
+import type { InspectionSheet, InspectionSheetStepCode, paths } from '@omf-mes/api-client';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { sheetDetailPath, sheetKeys } from '../pop-inspection-sheet/queries';
+
+type InspectionSheetListQuery = NonNullable<
+  paths['/quality/inspection-sheets']['get']['parameters']['query']
+>;
 
 /** 한 쪽 크기. */
 export const PAGE_SIZE = 50;

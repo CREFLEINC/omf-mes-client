@@ -65,7 +65,7 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
   },
   form: {
     warehouseRequired: 'Hãy chọn kho đích.',
-    locationRequired: 'Kho này có quản lý vị trí. Hãy chọn vị trí đích.',
+    locationRequired: 'Kho này có nhiều vị trí để tồn kho. Hãy chọn vị trí đích.',
     holdRequired: 'Hãy chọn mục tạm giữ chưa được gỡ.',
     qtyRequired: 'Hãy nhập số lượng từ 1 trở lên.',
     qtyExceeded: (qty: number): string => `Không được vượt quá ${String(qty)} đang giữ.`,
@@ -74,8 +74,7 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
     optionalReasonEmpty:
       'Chưa có lý do đăng ký lại nào được đăng ký. Đây là mục tùy chọn nên không chặn việc chốt.',
     selectPlaceholder: 'Hãy chọn',
-    noLocations: 'Không có vị trí nào dùng được.',
-    warehouseOnly: 'Kho đã chọn không quản lý vị trí riêng.',
+    noStockableLocation: 'Kho này không có vị trí nào để tồn kho. Hãy chọn kho khác.',
   },
   warning: {
     title: 'Đăng ký lại xong thì LOT này sẽ xuất hàng được',

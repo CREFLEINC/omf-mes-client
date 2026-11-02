@@ -33,8 +33,7 @@ const NOTIFICATIONS: Notification[] = [
     notificationId: 9102,
     eventCode: 'IQC_INSPECTION_REQUESTED',
     message: '입하 합성-01: LOT 3건 IQC 의뢰',
-    /* 계약 enum 에 T10 대상 유형이 더해진다(R-8) — 병합 전 생성 타입에는 아직 없다. */
-    targetTypeCode: 'INBOUND_RECEIPT' as Notification['targetTypeCode'],
+    targetTypeCode: 'INBOUND_RECEIPT',
     targetId: 9201,
   }),
   notificationFixture({

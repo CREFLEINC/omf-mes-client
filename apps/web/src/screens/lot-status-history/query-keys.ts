@@ -29,11 +29,12 @@ const copyHistoryFilters = (filters: HistoryFilters): HistoryFilters => ({
 
 export const lotStatusKeys = {
   summary: (filters: LotFilters): QueryKey => [ROOT_KEY, 'summary', copyLotScope(filters)],
-  list: (filters: LotFilters, page: number): QueryKey => [
+  list: (filters: LotFilters, page: number, size: number): QueryKey => [
     ROOT_KEY,
     'list',
     copyLotListFilters(filters),
     page,
+    size,
   ],
   detail: (lotId: number | null): QueryKey => [ROOT_KEY, 'detail', lotId],
   holds: (lotId: number | null, page = 1): QueryKey => [ROOT_KEY, 'holds', lotId, page],

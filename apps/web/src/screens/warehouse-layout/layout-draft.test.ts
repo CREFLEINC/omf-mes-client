@@ -2,15 +2,29 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkDrawingFile,
+  DEFAULT_MARKER_SHAPE,
   DRAWING_MAX_BYTES,
   hasMarker,
   isDirty,
+  MARKER_MIN_SIZE,
   placeMarker,
   removeMarker,
+  shapeMarker,
   toRatio,
   toReplaceBody,
+  toRotation,
+  toShape,
   type LayoutDraft,
+  type MarkerDraft,
 } from './layout-draft';
+
+/** 기본 모양의 표식 — 시험마다 크기 · 회전을 적지 않게. */
+const m = (locationId: number, x: number, y: number): MarkerDraft => ({
+  locationId,
+  x,
+  y,
+  ...DEFAULT_MARKER_SHAPE,
+});
 
 /**
  * 「틀려도 조용한 것」만 시험한다 — 화면은 정상으로 보이면서 값만 틀리는 계산.
@@ -49,32 +63,29 @@ describe('toRatio — 밖에서 온 값을 믿지 않는다', () => {
 
 describe('placeMarker', () => {
   it('없던 위치는 더한다', () => {
-    expect(placeMarker([], 7, 0.5, 0.5)).toEqual([{ locationId: 7, x: 0.5, y: 0.5 }]);
+    expect(placeMarker([], 7, 0.5, 0.5)).toEqual([m(7, 0.5, 0.5)]);
   });
 
   it('⭐ 이미 찍힌 위치는 두 번 찍지 않고 자리를 옮긴다', () => {
-    const draft = placeMarker([{ locationId: 7, x: 0.1, y: 0.1 }], 7, 0.8, 0.9);
+    const draft = placeMarker([m(7, 0.1, 0.1)], 7, 0.8, 0.9);
 
     expect(draft).toHaveLength(1);
-    expect(draft[0]).toEqual({ locationId: 7, x: 0.8, y: 0.9 });
+    expect(draft[0]).toEqual(m(7, 0.8, 0.9));
   });
 
   it('찍는 자리도 비율로 묶는다', () => {
-    expect(placeMarker([], 7, 2, -1)[0]).toEqual({ locationId: 7, x: 1, y: 0 });
+    expect(placeMarker([], 7, 2, -1)[0]).toEqual(m(7, 1, 0));
   });
 
   it('옆 위치는 건드리지 않는다', () => {
-    const draft = placeMarker([{ locationId: 7, x: 0.1, y: 0.1 }], 8, 0.4, 0.4);
+    const draft = placeMarker([m(7, 0.1, 0.1)], 8, 0.4, 0.4);
 
-    expect(draft[0]).toEqual({ locationId: 7, x: 0.1, y: 0.1 });
+    expect(draft[0]).toEqual(m(7, 0.1, 0.1));
   });
 });
 
 describe('hasMarker · removeMarker', () => {
-  const draft: LayoutDraft = [
-    { locationId: 7, x: 0.1, y: 0.1 },
-    { locationId: 8, x: 0.2, y: 0.2 },
-  ];
+  const draft: LayoutDraft = [m(7, 0.1, 0.1), m(8, 0.2, 0.2)];
 
   it('찍힌 것과 아닌 것을 가린다', () => {
     expect(hasMarker(draft, 7)).toBe(true);
@@ -87,10 +98,7 @@ describe('hasMarker · removeMarker', () => {
 });
 
 describe('isDirty', () => {
-  const original: LayoutDraft = [
-    { locationId: 7, x: 0.1, y: 0.1 },
-    { locationId: 8, x: 0.2, y: 0.2 },
-  ];
+  const original: LayoutDraft = [m(7, 0.1, 0.1), m(8, 0.2, 0.2)];
 
   it('그대로면 저장할 것이 없다', () => {
     expect(isDirty([...original], original)).toBe(false);
@@ -101,9 +109,7 @@ describe('isDirty', () => {
   });
 
   it('자리를 옮기면 바뀐 것이다', () => {
-    expect(isDirty([{ locationId: 7, x: 0.9, y: 0.1 }, original[1]] as LayoutDraft, original)).toBe(
-      true,
-    );
+    expect(isDirty([m(7, 0.9, 0.1), original[1]] as LayoutDraft, original)).toBe(true);
   });
 
   it('점을 빼면 바뀐 것이다 — 뺀 점은 저장할 때 지워진다', () => {
@@ -111,21 +117,13 @@ describe('isDirty', () => {
   });
 
   it('같은 수의 다른 위치로 바꿔치면 바뀐 것이다', () => {
-    expect(isDirty([original[0], { locationId: 9, x: 0.2, y: 0.2 }] as LayoutDraft, original)).toBe(
-      true,
-    );
+    expect(isDirty([original[0], m(9, 0.2, 0.2)] as LayoutDraft, original)).toBe(true);
   });
 });
 
 describe('toReplaceBody', () => {
   it('⭐ 지도에 있는 점만 담는다 — 담기지 않은 위치는 지워진다', () => {
-    const body = toReplaceBody(
-      [
-        { locationId: 7, x: 0.1, y: 0.2 },
-        { locationId: 8, x: 0.3, y: 0.4 },
-      ],
-      null,
-    );
+    const body = toReplaceBody([m(7, 0.1, 0.2), m(8, 0.3, 0.4)], null);
 
     expect(body.markers.map((marker) => marker.locationId)).toEqual([7, 8]);
   });
@@ -143,22 +141,77 @@ describe('toReplaceBody', () => {
   });
 
   it('⛔ 위치 이름을 싣지 않는다 — 마스터가 가진 값이다', () => {
-    const marker = toReplaceBody([{ locationId: 7, x: 0.1, y: 0.2 }], null).markers[0];
+    const marker = toReplaceBody([m(7, 0.1, 0.2)], null).markers[0];
 
-    expect(Object.keys(marker ?? {}).sort()).toEqual(['locationId', 'x', 'y']);
+    expect(Object.keys(marker ?? {}).sort()).toEqual([
+      'height',
+      'locationId',
+      'rotation',
+      'width',
+      'x',
+      'y',
+    ]);
   });
 
   it('⛔ 점만 있는 초안에서도 도면 id(숫자)를 그대로 싣는다 — 빼면 서버가 도면을 지운다(#1064)', () => {
-    const body = toReplaceBody([{ locationId: 7, x: 0.1, y: 0.2 }], 42);
+    const body = toReplaceBody([m(7, 0.1, 0.2)], 42);
 
     expect(body.drawingAttachmentId).toBe(42);
     expect(body.markers.map((marker) => marker.locationId)).toEqual([7]);
   });
 
   it('점만 있는 초안이어도 도면 없음(null)은 도면 칸을 그대로 뺀다', () => {
-    const body = toReplaceBody([{ locationId: 7, x: 0.1, y: 0.2 }], null);
+    const body = toReplaceBody([m(7, 0.1, 0.2)], null);
 
     expect('drawingAttachmentId' in body).toBe(false);
+  });
+});
+
+describe('표식의 크기 · 회전', () => {
+  it('범위 안의 값은 그대로 둔다', () => {
+    expect(toShape(DEFAULT_MARKER_SHAPE)).toEqual(DEFAULT_MARKER_SHAPE);
+    expect(toShape({ ...DEFAULT_MARKER_SHAPE, width: 0.3 })).toEqual({
+      ...DEFAULT_MARKER_SHAPE,
+      width: 0.3,
+    });
+  });
+
+  it('크기는 최소값 이상 1 이하로 묶는다', () => {
+    expect(toShape({ width: 0, height: 4, rotation: 0 })).toMatchObject({
+      width: MARKER_MIN_SIZE,
+      height: 1,
+    });
+  });
+
+  it('회전은 0 이상 360 미만으로 접는다', () => {
+    expect(toRotation(360)).toBe(0);
+    expect(toRotation(-90)).toBe(270);
+    expect(toRotation(725)).toBe(5);
+  });
+
+  it('⭐ 옮겨도 크기 · 회전은 그대로다', () => {
+    const shaped = shapeMarker([m(7, 0.1, 0.1)], 7, { width: 0.3, rotation: 45 });
+
+    expect(placeMarker(shaped, 7, 0.5, 0.5)[0]).toEqual({
+      ...m(7, 0.5, 0.5),
+      width: 0.3,
+      rotation: 45,
+    });
+  });
+
+  it('크기 · 회전을 바꾸면 바뀐 것이고, 저장 본문에 실린다', () => {
+    const original = [m(7, 0.1, 0.1)];
+    const shaped = shapeMarker(original, 7, { height: 0.2, rotation: 30 });
+
+    expect(isDirty(shaped, original)).toBe(true);
+    expect(toReplaceBody(shaped, null).markers[0]).toEqual({
+      locationId: 7,
+      x: 0.1,
+      y: 0.1,
+      width: DEFAULT_MARKER_SHAPE.width,
+      height: 0.2,
+      rotation: 30,
+    });
   });
 });
 

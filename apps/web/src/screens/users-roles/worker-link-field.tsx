@@ -1,5 +1,5 @@
 import { AlertBanner, Button, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
-import type { AppUserWorker } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
@@ -10,6 +10,8 @@ import { runRequest, toApiError } from '../../patterns/request';
 import { sessionKeys } from '../../patterns/session';
 import { FieldLabel } from './field-label';
 import { describeLoadError, LoadErrorBanner } from './load-error-banner';
+
+type AppUserWorker = components['schemas']['AppUserWorker'];
 
 const t = messages.usersRoles.workerLink;
 

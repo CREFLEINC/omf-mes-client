@@ -1,9 +1,4 @@
-import type {
-  components,
-  TerminalCreateForward,
-  TerminalProcessReplaceForward,
-  TerminalUpdateForward,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -19,6 +14,10 @@ import {
   type TerminalView,
   type TokenView,
 } from './types';
+
+type TerminalCreateForward = components['schemas']['TerminalCreate'];
+type TerminalProcessReplaceForward = components['schemas']['TerminalProcessReplace'];
+type TerminalUpdateForward = components['schemas']['TerminalUpdate'];
 
 /**
  * 이 화면의 오퍼레이션.

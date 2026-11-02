@@ -1,8 +1,10 @@
-import type { ResourceRecommendations, components } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+
+type ResourceRecommendations = components['schemas']['ResourceRecommendations'];
 
 type WorkOrder = components['schemas']['WorkOrder'];
 type ValidationFinding = components['schemas']['ValidationFinding'];

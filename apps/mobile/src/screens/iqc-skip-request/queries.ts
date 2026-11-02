@@ -87,13 +87,10 @@ export const useMyRequests = (workerNo: string | null): UseQueryResult<ApprovalR
 
       const data = await runRequest(() =>
         client.GET('/app/approval-requests', {
-          params: { query: { requestedByMe: true, size: 20 } },
-          /*
-           * params.header 로 싣지 못한다 - 이 헤더는 계약에 갓 선언됐고 생성 타입이 아직
-           * 그 회차를 타지 않았다. 편입은 다른 팀 소관이라 우리가 재생성하지 않는다.
-           * 편입되면 params.header 로 옮긴다.
-           */
-          headers: { 'X-Worker-No': workerNo },
+          params: {
+            query: { requestedByMe: true, size: 20 },
+            header: { 'X-Worker-No': workerNo },
+          },
         }),
       );
 

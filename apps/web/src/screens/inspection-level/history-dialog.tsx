@@ -1,11 +1,14 @@
 import { AlertBanner, Button, type Column, Dialog, EmptyState, Table } from '@crefle/web-ui';
-import type { ItemInspectionLevel, ItemInspectionLevelHistory } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { PageNav } from '../../patterns/page-nav';
 import { PAGE_SIZE, useInspectionLevelHistories } from './queries';
+
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
+type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
 const t = messages.inspectionLevel;
 

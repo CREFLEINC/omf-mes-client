@@ -202,7 +202,12 @@ export const useParentItems = (query: ParentItemQuery) => {
        * `hasBom` 은 서버에 들어왔지만(#848 · 장부 P-130) 계약 사본에는 아직 없다 — 리터럴로 넘기면 타입이 막아 변수로
        * 넘긴다. 계약에 실리면 이 우회를 걷는다.
        */
-      const params = { ...query, includeInactive: true, size: PARENT_PAGE_SIZE };
+      const params = {
+        ...query,
+        itemTypeCode: [query.itemTypeCode],
+        includeInactive: true,
+        size: PARENT_PAGE_SIZE,
+      };
       return runRequest(() => client.GET('/mdm/items', { params: { query: params } }));
     },
   });

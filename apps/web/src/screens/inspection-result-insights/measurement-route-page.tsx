@@ -9,6 +9,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { Link, useParams, useSearchParams } from 'react-router';
 
+import { usePageHub } from '../../patterns/page-hub';
 import { readInspectionResultPage, type CalibrationFilter } from './filters';
 import { useOverallJudgmentLookup } from './lookups';
 import { MeasurementPage } from './measurement-page';
@@ -27,22 +28,32 @@ const readCalibration = (params: URLSearchParams): CalibrationFilter => {
   return raw === 'only' || raw === 'exclude' ? raw : '';
 };
 
-const Header = () => (
-  <>
-    <PageHeader
-      title={TITLE}
-      breadcrumb={
-        <Breadcrumb
-          items={[{ label: t.breadcrumbRoot }, { label: t.title }, { label: TITLE }]}
-          aria-label={messages.common.shell.breadcrumb}
-        />
-      }
-    />
-    <div className="form-actions">
-      <Link to="/quality/inspection-results">{t.measurementRoute.backToList}</Link>
-    </div>
-  </>
-);
+/*
+ * 「검사 이력 조회」 묶음 안이면 탭 막대가 경로를 말한다 — 탐색 경로는 세우지 않고, 하위 화면 이름(제목)만 남긴다
+ * (omf-all-around#210 · 묶음 화면과 같게).
+ */
+const Header = () => {
+  const hub = usePageHub();
+
+  return (
+    <>
+      <PageHeader
+        title={TITLE}
+        breadcrumb={
+          hub === null ? (
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }, { label: TITLE }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          ) : undefined
+        }
+      />
+      <div className="form-actions">
+        <Link to="/quality/inspection-results">{t.measurementRoute.backToList}</Link>
+      </div>
+    </>
+  );
+};
 
 const MeasurementRouteContent = ({ inspectionResultId }: { inspectionResultId: number }) => {
   const [params, setParams] = useSearchParams();

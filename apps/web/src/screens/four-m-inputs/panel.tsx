@@ -1,10 +1,13 @@
 import { Table } from '@crefle/web-ui';
-import type { LotForward, MaterialConsumptionForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+
+type Lot = components['schemas']['Lot'];
+type MaterialConsumption = components['schemas']['MaterialConsumption'];
 
 const t = messages.fourMInputs;
 
@@ -54,7 +57,7 @@ export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
           params: { query: { workOrderId, size: PAGE_SIZE } },
         }),
       ).then((page) =>
-        (page.items as MaterialConsumptionForward[]).filter((row) => row.fourMChange !== undefined),
+        (page.items as MaterialConsumption[]).filter((row) => row.fourMChange !== undefined),
       ),
   });
   const changeTypeLabel = useFourMChangeTypeLabel();
@@ -65,7 +68,7 @@ export const FourMInputsPanel = ({ workOrderId }: FourMInputsPanelProps) => {
       queryKey: fourMInputsKeys.lot(lotId),
       queryFn: () =>
         runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } })).then(
-          (detail) => (detail.lot as LotForward).lotNo,
+          (detail) => (detail.lot as Lot).lotNo,
         ),
     })),
   });

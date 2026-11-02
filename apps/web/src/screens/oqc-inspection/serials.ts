@@ -1,7 +1,11 @@
-import type { OqcSerialJudgmentInput, OqcSerialScan, OqcSerialStep } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toSendableNumber } from './quantity-draft';
+
+type InspectionSerialJudgmentInput = components['schemas']['InspectionSerialJudgmentInput'];
+type OqcSerialScan = components['schemas']['OqcSerialScan'];
+type OqcSerialStep = components['schemas']['OqcSerialStep'];
 
 /**
  * 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 「검사한 시리얼」 표의 줄과 그 규칙.
@@ -11,7 +15,7 @@ import { toSendableNumber } from './quantity-draft';
 
 const t = messages.oqcInspection.serials;
 
-export type SerialJudgment = OqcSerialJudgmentInput['judgmentCode'];
+export type SerialJudgment = InspectionSerialJudgmentInput['judgmentCode'];
 
 export interface SerialRow {
   serialNumberId: number;
@@ -76,5 +80,5 @@ export const serialBlockedReason = (
   return null;
 };
 
-export const toSerialInputs = (rows: readonly SerialRow[]): OqcSerialJudgmentInput[] =>
+export const toSerialInputs = (rows: readonly SerialRow[]): InspectionSerialJudgmentInput[] =>
   rows.map((row) => ({ serialNumberId: row.serialNumberId, judgmentCode: row.judgment }));

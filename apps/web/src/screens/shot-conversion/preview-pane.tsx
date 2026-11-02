@@ -47,7 +47,6 @@ export interface PreviewPaneProps {
   quantity: string;
   onChangeQuantity: (quantity: string) => void;
   toolOptions: CodeOption[];
-  itemOptions: CodeOption[];
   processOptions: CodeOption[];
   /** 고른 툴. 캐비티 수가 여기서 온다 */
   tool: Mold | null;
@@ -76,7 +75,6 @@ export const PreviewPane = ({
   quantity,
   onChangeQuantity,
   toolOptions,
-  itemOptions,
   processOptions,
   tool,
   effective,
@@ -189,7 +187,8 @@ export const PreviewPane = ({
         />
         <SelectField
           label={t.itemLabel}
-          options={[{ value: '', label: t.anyScope }, ...itemOptions]}
+          options={[{ value: '', label: t.anyScope }]}
+          searchItems
           value={itemId}
           onChange={onChangeItem}
         />

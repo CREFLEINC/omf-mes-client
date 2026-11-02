@@ -20,6 +20,21 @@ export interface OverlayMarker {
   y: number;
   label: string;
   selected?: boolean;
+  /**
+   * 크기를 가진 사각형 표식 — 판 폭 · 높이에 대한 비율(0~1). 둘 다 있으면 `x` · `y` 는 사각형의 중심이고, 없으면 글자 크기의
+   * 알약 표식이다.
+   */
+  width?: number;
+  height?: number;
+  /** 도, 시계 방향. 사각형 표식에만 쓴다. */
+  rotation?: number;
+}
+
+/** 사각형 표식의 크기 · 회전 — 비율과 도. */
+export interface OverlayMarkerShape {
+  width: number;
+  height: number;
+  rotation: number;
 }
 
 export interface MarkerOverlayProps {
@@ -39,6 +54,13 @@ export interface MarkerOverlayProps {
   onSelect?: (id: string) => void;
   /** 표식을 옮겼다 — 옮긴 뒤의 비율 좌표를 준다. */
   onMove?: (id: string, x: number, y: number) => void;
+  /**
+   * 고른 사각형 표식의 크기 · 회전을 손잡이로 바꿨다. 주면 고른 사각형 표식에 모서리 크기 손잡이 넷과 회전 손잡이가
+   * 보인다. 크기는 중심을 지킨 채 양쪽으로 는다. 회전은 Shift 를 누르면 15도씩.
+   *
+   * ⚠ 손잡이는 포인터 전용이다 — 자판으로 크기 · 회전을 바꾸는 칸은 쓰는 화면이 둔다.
+   */
+  onShape?: (id: string, shape: OverlayMarkerShape) => void;
   /**
    * 표식 좌표 설명 — 「가로 N%, 세로 N%」. 낭독기 전용. 없으면 숫자만 낸다(`"10% / 20%"`).
    *
@@ -62,6 +84,26 @@ export interface MarkerOverlayProps {
 }
 
 const clamp = (value: number): number => Math.min(1, Math.max(0, value));
+
+/** 손잡이로 줄일 수 있는 가장 작은 크기(비율). */
+const MIN_SHAPE_SIZE = 0.01;
+
+/** 회전 손잡이를 Shift 와 함께 끌 때의 눈금(도). */
+const ROTATION_SNAP_DEG = 15;
+
+const CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
+
+/** 손잡이로 크기 · 회전을 바꾸는 중. 표식 옮기기(`DragState`)와 따로 논다. */
+interface ShapeDragState {
+  id: string;
+  pointerId: number;
+  kind: 'resize' | 'rotate';
+}
+
+const isBox = (
+  marker: OverlayMarker,
+): marker is OverlayMarker & { width: number; height: number } =>
+  marker.width !== undefined && marker.height !== undefined;
 
 /** 소수점 넷째 자리까지 — 그보다 잘게 저장해 봐야 화면에서 구분되지 않는다. */
 const round = (value: number): number => Math.round(value * 10000) / 10000;
@@ -144,12 +186,14 @@ export const MarkerOverlay = ({
   onPlace,
   onSelect,
   onMove,
+  onShape,
   describePosition,
   describeMove,
   describeReadOnly,
 }: MarkerOverlayProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  const shapeDragRef = useRef<ShapeDragState | null>(null);
   /**
    * 방금 끝난 드래그가 뒤따라 오는 click 을 하나 남긴다 — 그 한 번만, 그것도 곧바로 오는
    * 것만 삼킨다. 세워 둔 시각을 함께 들고 `CLICK_SWALLOW_WINDOW_MS` 를 넘기면 버린다.
@@ -431,6 +475,141 @@ export const MarkerOverlay = ({
     endDrag(event);
   };
 
+  /** 손잡이를 잡았다 — 표식 옮기기로 번지지 않게 막고 포인터를 손잡이에 붙든다. */
+  const handleShapePointerDown = (
+    event: PointerEvent<HTMLSpanElement>,
+    marker: OverlayMarker,
+    kind: ShapeDragState['kind'],
+  ): void => {
+    event.stopPropagation();
+    swallowClickRef.current = null;
+
+    if (readOnly || onShape === undefined) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    event.preventDefault();
+    shapeDragRef.current = { id: marker.id, pointerId: event.pointerId, kind };
+
+    const target = event.currentTarget;
+
+    try {
+      if (typeof target.setPointerCapture === 'function') target.setPointerCapture(event.pointerId);
+    } catch {
+      /* 붙들지 못했을 뿐이다. */
+    }
+  };
+
+  /**
+   * 손잡이를 끈다. 크기는 표식의 축(회전을 되돌린 좌표)으로 중심에서 포인터까지 거리의 두 배, 회전은 중심에서 포인터로
+   * 향하는 방향(위가 0도, 시계 방향).
+   */
+  const handleShapePointerMove = (
+    event: PointerEvent<HTMLSpanElement>,
+    marker: OverlayMarker,
+  ): void => {
+    const shapeDrag = shapeDragRef.current;
+
+    if (shapeDrag === null || shapeDrag.id !== marker.id || shapeDrag.pointerId !== event.pointerId)
+      return;
+
+    event.stopPropagation();
+
+    if (readOnly || !isBox(marker)) {
+      shapeDragRef.current = null;
+      return;
+    }
+
+    const board = boardRef.current;
+    if (board === null) return;
+
+    const rect = board.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const dx = event.clientX - (rect.left + marker.x * rect.width);
+    const dy = event.clientY - (rect.top + marker.y * rect.height);
+    const rotation = marker.rotation ?? 0;
+
+    if (shapeDrag.kind === 'resize') {
+      const radians = (rotation * Math.PI) / 180;
+      const localX = dx * Math.cos(radians) + dy * Math.sin(radians);
+      const localY = -dx * Math.sin(radians) + dy * Math.cos(radians);
+      const size = (value: number): number => round(Math.min(1, Math.max(MIN_SHAPE_SIZE, value)));
+
+      onShape?.(marker.id, {
+        width: size((2 * Math.abs(localX)) / rect.width),
+        height: size((2 * Math.abs(localY)) / rect.height),
+        rotation,
+      });
+      return;
+    }
+
+    const degrees = (Math.atan2(dx, -dy) * 180) / Math.PI;
+    const snapped = event.shiftKey
+      ? Math.round(degrees / ROTATION_SNAP_DEG) * ROTATION_SNAP_DEG
+      : Math.round(degrees);
+
+    onShape?.(marker.id, {
+      width: marker.width,
+      height: marker.height,
+      rotation: ((snapped % 360) + 360) % 360,
+    });
+  };
+
+  const handleShapePointerEnd = (event: PointerEvent<HTMLSpanElement>): void => {
+    const shapeDrag = shapeDragRef.current;
+
+    if (shapeDrag === null || shapeDrag.pointerId !== event.pointerId) return;
+
+    event.stopPropagation();
+    shapeDragRef.current = null;
+    /* 손잡이를 놓은 뒤 표식으로 오는 click 하나는 고르기가 아니다. */
+    swallowClickRef.current = performance.now();
+
+    const target = event.currentTarget;
+
+    try {
+      if (typeof target.releasePointerCapture === 'function')
+        target.releasePointerCapture(event.pointerId);
+    } catch {
+      /* 이미 풀려 있다. */
+    }
+  };
+
+  /** 고른 사각형 표식의 손잡이 — 포인터 전용이라 낭독기에서 숨긴다. */
+  const shapeHandles = (marker: OverlayMarker): ReactNode => {
+    if (marker.selected !== true || readOnly || onShape === undefined || !isBox(marker))
+      return null;
+
+    const handlers = (kind: ShapeDragState['kind']) => ({
+      'aria-hidden': true,
+      'data-shape-handle': kind,
+      onPointerDown: (event: PointerEvent<HTMLSpanElement>) => {
+        handleShapePointerDown(event, marker, kind);
+      },
+      onPointerMove: (event: PointerEvent<HTMLSpanElement>) => {
+        handleShapePointerMove(event, marker);
+      },
+      onPointerUp: handleShapePointerEnd,
+      onPointerCancel: handleShapePointerEnd,
+      onClick: (event: MouseEvent<HTMLSpanElement>) => {
+        event.stopPropagation();
+      },
+    });
+
+    return (
+      <>
+        {CORNERS.map((corner) => (
+          <span
+            key={corner}
+            className={`marker-overlay-handle marker-overlay-handle-${corner}`}
+            {...handlers('resize')}
+          />
+        ))}
+        <span className="marker-overlay-rotate" {...handlers('rotate')} />
+      </>
+    );
+  };
+
   return (
     <div className="marker-overlay">
       <div
@@ -477,12 +656,25 @@ export const MarkerOverlay = ({
             <button
               key={marker.id}
               type="button"
-              className={
-                marker.selected === true
-                  ? 'marker-overlay-pin marker-overlay-pin-selected'
-                  : 'marker-overlay-pin'
-              }
-              style={{ left: `${String(marker.x * 100)}%`, top: `${String(marker.y * 100)}%` }}
+              className={[
+                'marker-overlay-pin',
+                isBox(marker) ? 'marker-overlay-box' : '',
+                marker.selected === true ? 'marker-overlay-pin-selected' : '',
+              ]
+                .filter((name) => name !== '')
+                .join(' ')}
+              style={{
+                left: `${String(marker.x * 100)}%`,
+                top: `${String(marker.y * 100)}%`,
+                /* 사각형 표식은 판에 대한 비율 크기 · 회전 — 중심이 좌표라 절반만큼 되민 뒤 돌린다. */
+                ...(isBox(marker)
+                  ? {
+                      width: `${String(marker.width * 100)}%`,
+                      height: `${String(marker.height * 100)}%`,
+                      transform: `translate(-50%, -50%) rotate(${String(marker.rotation ?? 0)}deg)`,
+                    }
+                  : {}),
+              }}
               /*
                * ⭐ 이름을 못 박는다 — 자리를 설명하는 글이 버튼 «안»에 있어, 두지 않으면
                * 표식의 이름이 「A-01 가로 10%, 세로 20%」로 불어난다. 이름은 보이는 말과
@@ -512,6 +704,7 @@ export const MarkerOverlay = ({
               }}
             >
               <span className="marker-overlay-pin-label">{marker.label}</span>
+              {shapeHandles(marker)}
               {/* 눈으로는 자리를 보지만, 듣는 사람에게는 이 글이 자리 그 자체다. */}
               <span className="marker-overlay-sr-only" id={positionId}>
                 {positionText(marker.x, marker.y)}

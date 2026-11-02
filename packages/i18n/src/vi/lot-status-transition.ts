@@ -34,7 +34,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
       lotNo: 'Số LOT',
       lotNoPlaceholder: 'Hãy nhập số LOT',
       item: 'Vật tư',
-      status: 'Trạng thái chất lượng',
+      status: 'Trạng thái',
       all: 'Tất cả',
       note: 'Tra cứu LOT theo ngày chuyển đổi gần nhất.',
       periodMissing: 'Hãy chọn cả ngày bắt đầu và ngày kết thúc tra cứu.',
@@ -46,7 +46,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     fields: {
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
-      status: 'Trạng thái chất lượng',
+      status: 'Trạng thái',
       onHand: 'Số lượng đang giữ',
       held: 'Số lượng tạm giữ',
     },
@@ -56,13 +56,6 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     failed: 'Không tải được LOT ứng viên.',
     retry: 'Thử lại',
     empty: 'Không có LOT nào khớp điều kiện.',
-    resultTitle: 'Kết quả tra cứu',
-    resultCount: (total: string): string => `Tổng ${total} mục`,
-    pageStatus: (page: number, totalPages: number): string =>
-      `Trang ${String(page)} / ${String(totalPages)}`,
-    pagination: 'Chuyển trang LOT ứng viên',
-    previous: 'Trang trước',
-    next: 'Trang sau',
   },
   selected: {
     pane: 'LOT đã chọn',

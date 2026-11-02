@@ -540,8 +540,8 @@ export const sourceOf = (draft: ReceiptDraft): ReceiptSource | null => {
     : { itemId: line.itemId, uomId: line.uomId, supplierId: draft.purchaseOrder.supplierId };
 };
 
-/** 등록 본문의 줄 - 계약의 줄에 초과분(장부 P-100, 계약 밖)을 더한 것. */
-type ReceiptLineBody = InboundReceiptLineUpsert & { excessQty?: number };
+/** 등록 본문의 줄 - 초과분(`excessQty`, 장부 P-100)도 계약의 줄에 있다(server #919). */
+type ReceiptLineBody = InboundReceiptLineUpsert;
 
 const optional = (value: string): string | null => (value.trim() === '' ? null : value.trim());
 

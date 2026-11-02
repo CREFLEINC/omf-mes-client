@@ -1,10 +1,12 @@
-import type { ProductionOrderAutoPlanResult } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { productionPlanKeys } from '../production-plan/queries';
 import { workOrderKeys } from '../work-order/queries';
 import { productionOrderKeys } from './queries';
+
+type ProductionOrderAutoPlanResult = components['schemas']['ProductionOrderAutoPlanResult'];
 
 export interface AutoPlanOptions {
   onSuccess: (result: ProductionOrderAutoPlanResult) => void;

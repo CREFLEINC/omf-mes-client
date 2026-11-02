@@ -1,28 +1,20 @@
 /**
- * 이벤트별 Zalo 템플릿 파라미터 이름 — **고정이다**(data-model §6, research R-4). 고객사는 이
- * 이름 그대로 템플릿을 등록하고 관리자는 템플릿 ID 만 넣는다. 서버가 같은 이름으로 보낸다.
+ * 이벤트별 Zalo 템플릿 파라미터 이름 — 고객사가 등록한 템플릿 6종의 키다(server #878). 관리자는
+ * 템플릿 ID 만 넣는다. 서버가 같은 이름으로 보낸다(`ZALO_PARAMS`). 순서는 템플릿 본문 순서다.
  */
-const COMMON = ['event_time', 'actor'];
-const WORK = ['wo_no', 'item', 'process', 'line'];
+const FALLBACK = ['event_time'];
 
 export const TEMPLATE_PARAMS: Record<string, readonly string[]> = {
-  WORK_SESSION_STARTED: [...WORK, ...COMMON],
-  WORK_SESSION_STOPPED: [...WORK, 'reason', ...COMMON],
-  WORK_SESSION_ENDED: [...WORK, 'plan_qty', 'good_qty', ...COMMON],
-  WORK_ORDER_CLOSED: [...WORK, 'plan_qty', 'good_qty', ...COMMON],
-  EQUIPMENT_BREAKDOWN_OCCURRED: ['equipment', 'location', 'line', 'symptom', ...COMMON],
-  APPROVAL_ACTION_REQUIRED: [
-    'approval_type',
-    'request_no',
-    'requester',
-    'reason',
-    'step',
-    ...COMMON,
-  ],
+  WORK_SESSION_STARTED: ['line', 'product', 'work_order', 'event_time'],
+  WORK_SESSION_STOPPED: ['line', 'work_order', 'event_time', 'reason'],
+  WORK_SESSION_ENDED: ['line', 'work_order', 'event_time', 'result'],
+  WORK_ORDER_CLOSED: ['line', 'work_order', 'quantity', 'event_time'],
+  EQUIPMENT_BREAKDOWN_OCCURRED: ['line', 'equipment', 'event_time', 'description'],
+  APPROVAL_ACTION_REQUIRED: ['requester', 'request_type', 'request_no', 'event_time'],
 };
 
 export const paramsOf = (eventCode: string): string =>
-  (TEMPLATE_PARAMS[eventCode] ?? COMMON).join(', ');
+  (TEMPLATE_PARAMS[eventCode] ?? FALLBACK).join(', ');
 
 /**
  * 인계 작업 10종의 템플릿 파라미터 이름(피처 002) — `specs/002-terminal-task-alerts/zalo-templates.md` 표와

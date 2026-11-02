@@ -236,6 +236,8 @@ describe('toItemUpdate — 없는 값을 지어내지 않는다', () => {
       itemCode: 'SYN-ITEM-09',
       itemName: '합성 품목 I',
       itemTypeCode: 'SYN-TYPE-C',
+      erpSpec: null,
+      erpItemGroupCode: null,
       baseUomId: 7001,
       lotControlled: true,
       serialControlTypeCode: 'NONE',

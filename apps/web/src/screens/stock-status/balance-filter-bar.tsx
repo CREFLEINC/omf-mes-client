@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { toFilterChips, type BalanceFilters, type FilterChipNames } from './filters';
-import { SelectField } from './select-field';
+import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 
 const t = messages.stockStatus;
@@ -11,9 +11,8 @@ const t = messages.stockStatus;
 export interface BalanceFilterBarProps {
   /** 주소에 반영된(= 조회에 쓰인) 조건. 고르는 중인 값은 이 부품 안에만 있다. */
   appliedFilters: BalanceFilters;
-  /** 참조 선택지 4종. 화면이 이름으로 풀어 넘긴다 — 번호를 사용자가 고를 일이 없다. */
+  /** 참조 선택지 3종. 화면이 이름으로 풀어 넘긴다 — 번호를 사용자가 고를 일이 없다. 품목은 칸이 서버에서 쪽으로 받는다. */
   warehouseOptions: SelectOption[];
-  itemOptions: SelectOption[];
   lotOptions: SelectOption[];
   locationOptions: SelectOption[];
   /** 코드 선택지 3종. 값 목록이 확정되지 않아 조회 결과에서 만든다. */
@@ -24,7 +23,6 @@ export interface BalanceFilterBarProps {
   chipNames: FilterChipNames;
   /** 참조 선택지의 한계(잘림·실패·매달린 조건 미충족) 안내. 밝히지 않으면 값이 사라진 것으로 읽힌다. */
   warehouseNote?: string;
-  itemNote?: string;
   lotNote?: string;
   locationNote?: string;
   /** 이 구획이 이름을 내는 참조 넷(창고·위치·품목·LOT) 중 하나라도 실패했는가. */
@@ -54,7 +52,6 @@ export interface BalanceFilterBarProps {
 export const BalanceFilterBar = ({
   appliedFilters,
   warehouseOptions,
-  itemOptions,
   lotOptions,
   locationOptions,
   qualityStatusOptions,
@@ -62,7 +59,6 @@ export const BalanceFilterBar = ({
   ownershipOptions,
   chipNames,
   warehouseNote,
-  itemNote,
   lotNote,
   locationNote,
   referencesFailed,
@@ -176,12 +172,10 @@ export const BalanceFilterBar = ({
             setFilters((prev) => ({ ...prev, location: value }));
           }}
         />
-        <SelectField
-          optionWidth="codeName"
+        <ItemSelectField
           label={t.fields.item}
-          options={withAll(itemOptions)}
+          leadingOptions={withAll([])}
           value={filters.item}
-          note={itemNote}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, item: value }));
           }}

@@ -4,7 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { reinstatementStub, requestsSent } from './fixtures';
+import {
+  reinstatementStub,
+  requestsSent,
+  stockableLocations,
+  unstockableLocations,
+} from './fixtures';
 import { StockReinstatementScreen } from './screen';
 
 const t = messages.stockReinstatement;
@@ -24,7 +29,7 @@ const chooseTarget = async (user: ReturnType<typeof userEvent.setup>): Promise<v
 const completeRequiredFields = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.click(screen.getByLabelText(t.fields.targetWarehouse));
   await user.click(await screen.findByRole('option', { name: /WH-FG/ }));
-  await user.click(screen.getByLabelText(t.fields.targetLocation));
+  await user.click(await screen.findByLabelText(t.fields.targetLocation));
   await user.click(await screen.findByRole('option', { name: /FG-A-01/ }));
   await user.click(screen.getByLabelText(t.fields.releaseReason));
   await user.click(screen.getByRole('option', { name: '재검사 합격' }));
@@ -167,6 +172,74 @@ describe('StockReinstatementScreen', () => {
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
 
     expect(screen.getByText(t.form.qtyExceeded(200))).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: t.confirm.title })).not.toBeInTheDocument();
+    expect(requestsSent().filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  /*
+   * 도착 위치(P-153) — 재고를 둘 수 있는 위치(활성 · 적치 대기 아님 · 켜진 하위 없음)의 수로 가른다.
+   * 둘 이상이면 그것만 고르게 하고, 하나면 묻지 않고 서버에 맡기고, 없으면 창고 칸에서 막는다.
+   */
+  it('재고를 둘 위치가 둘 이상이면 그 위치만 고르게 한다', async () => {
+    const user = renderScreen();
+    await chooseTarget(user);
+    await user.click(screen.getByLabelText(t.fields.targetWarehouse));
+    await user.click(await screen.findByRole('option', { name: /WH-FG/ }));
+    await user.click(await screen.findByLabelText(t.fields.targetLocation));
+
+    expect(await screen.findByRole('option', { name: /FG-A-01/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /FG-A-02/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /FG-STAGING/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /^FG-A ·/ })).not.toBeInTheDocument();
+  });
+
+  it('재고를 둘 위치가 하나면 위치를 묻지 않고 본문에도 싣지 않는다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<StockReinstatementScreen />, {
+      fetch: reinstatementStub({
+        locations: [...unstockableLocations, ...stockableLocations.slice(0, 1)],
+      }),
+      route: '/shipment/stock-reinstatements',
+    });
+    await chooseTarget(user);
+    await user.click(screen.getByLabelText(t.fields.targetWarehouse));
+    await user.click(await screen.findByRole('option', { name: /WH-FG/ }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.confirm })).toBeEnabled();
+    });
+    expect(screen.queryByLabelText(t.fields.targetLocation)).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText(t.fields.releaseReason));
+    await user.click(screen.getByRole('option', { name: '재검사 합격' }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+    expect(within(dialog).getByText('합성 완제품 셀')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.actions.submit }));
+    await waitFor(() => {
+      expect(screen.getByText(t.success(200))).toBeInTheDocument();
+    });
+    const post = requestsSent().find((request) => request.method === 'POST');
+    const body = (await post?.json()) as Record<string, unknown>;
+    expect(body).toMatchObject({ toWarehouseId: 202 });
+    expect(body).not.toHaveProperty('toLocationId');
+  });
+
+  it('재고를 둘 위치가 없으면 창고 칸에 알리고 확인 창을 열지 않는다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<StockReinstatementScreen />, {
+      fetch: reinstatementStub({ locations: unstockableLocations }),
+      route: '/shipment/stock-reinstatements',
+    });
+    await chooseTarget(user);
+    await user.click(screen.getByLabelText(t.fields.targetWarehouse));
+    await user.click(await screen.findByRole('option', { name: /WH-FG/ }));
+
+    expect(await screen.findByText(t.form.noStockableLocation)).toBeInTheDocument();
+    expect(screen.queryByLabelText(t.fields.targetLocation)).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText(t.fields.releaseReason));
+    await user.click(screen.getByRole('option', { name: '재검사 합격' }));
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+
     expect(screen.queryByRole('dialog', { name: t.confirm.title })).not.toBeInTheDocument();
     expect(requestsSent().filter((request) => request.method === 'POST')).toHaveLength(0);
   });

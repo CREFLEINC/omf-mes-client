@@ -726,3 +726,83 @@ describe('MarkerOverlay — 그림이 없을 때', () => {
     expect(onPlace).toHaveBeenCalledWith(0.5, 0.5);
   });
 });
+
+describe('사각형 표식 — 크기 · 회전 손잡이', () => {
+  /* 중심이 판 가운데(화면 140, 80)인 20% × 20% 상자. */
+  const BOX: OverlayMarker = {
+    id: '7',
+    x: 0.5,
+    y: 0.5,
+    label: 'A-01',
+    selected: true,
+    width: 0.2,
+    height: 0.2,
+    rotation: 0,
+  };
+
+  const handle = (kind: 'resize' | 'rotate'): HTMLElement => {
+    const found = document.querySelector<HTMLElement>(`[data-shape-handle="${kind}"]`);
+    if (found === null) throw new Error(`${kind} 손잡이가 없습니다.`);
+    return found;
+  };
+
+  it('비율 크기 · 회전으로 그린다', () => {
+    const { pin } = setup({ markers: [{ ...BOX, rotation: 30 }] });
+
+    expect(pin().style.width).toBe('20%');
+    expect(pin().style.height).toBe('20%');
+    expect(pin().style.transform).toBe('translate(-50%, -50%) rotate(30deg)');
+  });
+
+  it('⭐ 모서리 손잡이는 중심을 지킨 채 크기를 바꾼다 — 옮기기로 번지지 않는다', () => {
+    const onShape = vi.fn();
+    const { onMove } = setup({ markers: [BOX], onShape });
+
+    press(handle('resize'), 160, 100);
+    moveTo(handle('resize'), 170, 95);
+    release(handle('resize'), 170, 95);
+
+    expect(onShape).toHaveBeenLastCalledWith('7', { width: 0.3, height: 0.3, rotation: 0 });
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it('⭐ 돌아간 표식은 그 축으로 잰다', () => {
+    const onShape = vi.fn();
+    setup({ markers: [{ ...BOX, rotation: 90 }], onShape });
+
+    press(handle('resize'), 140, 100);
+    moveTo(handle('resize'), 140, 110);
+
+    expect(onShape).toHaveBeenLastCalledWith('7', { width: 0.3, height: 0.01, rotation: 90 });
+  });
+
+  it('회전 손잡이는 중심에서 포인터로 향하는 방향(위가 0도, 시계 방향) — Shift 는 15도씩', () => {
+    const onShape = vi.fn();
+    setup({ markers: [BOX], onShape });
+
+    press(handle('rotate'), 140, 50);
+    moveTo(handle('rotate'), 190, 80);
+    expect(onShape).toHaveBeenLastCalledWith('7', { width: 0.2, height: 0.2, rotation: 90 });
+
+    fireEvent.pointerMove(handle('rotate'), {
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 1,
+      shiftKey: true,
+      clientX: 100,
+      clientY: 60,
+    });
+    /* atan2(-40, 20) ≈ -63.4° → 15도 눈금 -60 → 300. */
+    expect(onShape).toHaveBeenLastCalledWith('7', { width: 0.2, height: 0.2, rotation: 300 });
+  });
+
+  it('고르지 않았거나 잠긴 판에는 손잡이가 없다', () => {
+    const onShape = vi.fn();
+    const { update } = setup({ markers: [{ ...BOX, selected: false }], onShape });
+
+    expect(document.querySelector('[data-shape-handle]')).toBeNull();
+
+    update({ markers: [BOX], readOnly: true });
+    expect(document.querySelector('[data-shape-handle]')).toBeNull();
+  });
+});

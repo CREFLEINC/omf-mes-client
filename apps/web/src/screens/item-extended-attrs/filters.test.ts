@@ -234,7 +234,7 @@ describe('toItemListQuery', () => {
   /* 서버 조건 이름은 inspectionRequired(요청함 · hasBom 과 같은 모양). 전체면 싣지 않는다. */
   it('IQC 대상은 inspectionRequired 로 싣는다', () => {
     expect(toItemListQuery({ ...EMPTY_ITEM_FILTERS, iqc: 'Y' }, 1)).toEqual({
-      itemTypeCode: 'RAW_MATERIAL',
+      itemTypeCode: ['RAW_MATERIAL'],
       inspectionRequired: true,
     });
     expect(toItemListQuery({ ...EMPTY_ITEM_FILTERS, iqc: 'N' }, 1)).toMatchObject({
@@ -243,7 +243,7 @@ describe('toItemListQuery', () => {
   });
 
   it('처음 조건은 원자재만 싣는다', () => {
-    expect(toItemListQuery(EMPTY_ITEM_FILTERS, 1)).toEqual({ itemTypeCode: 'RAW_MATERIAL' });
+    expect(toItemListQuery(EMPTY_ITEM_FILTERS, 1)).toEqual({ itemTypeCode: ['RAW_MATERIAL'] });
   });
 
   it('걸린 조건만 싣는다', () => {
@@ -258,7 +258,7 @@ describe('toItemListQuery', () => {
     expect(
       toItemListQuery({ q: '', itemType: 'FINISHED', includeInactive: false, iqc: '' }, 1),
     ).toEqual({
-      itemTypeCode: 'FINISHED',
+      itemTypeCode: ['FINISHED'],
     });
     expect(
       toItemListQuery({ q: '', itemType: '', includeInactive: false, iqc: '' }, 1),

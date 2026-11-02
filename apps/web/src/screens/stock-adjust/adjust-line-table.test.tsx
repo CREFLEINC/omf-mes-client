@@ -1,7 +1,12 @@
+import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { ApiClientProvider } from '../../patterns/api-context';
 
 import {
   ABSORBING_COLUMN_BUDGET_PX,
@@ -68,7 +73,6 @@ const baseProps = (overrides: Partial<AdjustLineTableProps> = {}): AdjustLineTab
   uomLookup,
   lotLookup,
   locationOptions: [{ value: '9401', label: 'SAMPLE-LOC-01 · 합성 위치 가' }],
-  itemOptions: [{ value: '9501', label: 'SAMPLE-ITEM-A · 합성 품목 가' }],
   uomOptions: [{ value: '9601', label: 'SAMPLE-EA · 합성 단위 개' }],
   onPatch: vi.fn(),
   onRemove: vi.fn(),
@@ -77,7 +81,29 @@ const baseProps = (overrides: Partial<AdjustLineTableProps> = {}): AdjustLineTab
 
 const renderTable = (overrides: Partial<AdjustLineTableProps> = {}) => {
   const props = baseProps(overrides);
-  const result = render(<AdjustLineTable {...props} />);
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  /* 품목 칸(`ItemSelect`)은 펼칠 때 품목 목록을 서버에 묻는다 — 합성 품목 하나를 내려준다. */
+  const apiClient = createApiClient({
+    baseUrl: 'http://test.invalid',
+    fetch: () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            items: [
+              { itemId: 9501, itemCode: 'SAMPLE-ITEM-A', itemName: '합성 품목 가', isActive: true },
+            ],
+            page: { page: 1, size: 50, total: 1 },
+          }),
+          { headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+    </QueryClientProvider>
+  );
+  const result = render(<AdjustLineTable {...props} />, { wrapper });
 
   return { ...result, props, user: userEvent.setup() };
 };
@@ -322,7 +348,7 @@ describe('AdjustLineTable — 승계 줄과 더한 줄', () => {
     });
 
     await user.click(screen.getByLabelText(t.lineTable.itemLabel(1)));
-    await user.click(screen.getByRole('option', { name: 'SAMPLE-ITEM-A · 합성 품목 가' }));
+    await user.click(await screen.findByRole('option', { name: 'SAMPLE-ITEM-A · 합성 품목 가' }));
 
     expect(props.onPatch).toHaveBeenCalledWith('s1:new:2', { itemId: '9501', lotId: '' });
   });

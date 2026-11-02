@@ -12,11 +12,7 @@ import {
   Table,
   useToast,
 } from '@crefle/web-ui';
-import type {
-  InspectionLevelCode,
-  ItemInspectionLevel,
-  ItemInspectionLevelHistory,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -48,6 +44,10 @@ import {
   useInspectionLevelHistories,
   useInspectionLevels,
 } from './queries';
+
+type InspectionLevelCode = components['schemas']['ItemInspectionLevel']['inspectionLevelCode'];
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
+type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHistory'];
 
 const t = messages.inspectionLevel;
 const hubText = messages.common.inspectionHub;

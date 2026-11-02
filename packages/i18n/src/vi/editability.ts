@@ -18,5 +18,6 @@ export const editability: Translated<typeof ko.editability> = {
     'Nhãn phát hành bằng mã này đã ra hiện trường nên không đổi được mã. Cần thay đổi thì hãy hỏi người phụ trách.',
   systemOwned: (_count: number | null): string =>
     'Nhóm mã này do hệ thống quản lý nên không sửa được. Cần thay đổi thì hãy hỏi người phụ trách.',
+  autoIssued: (_count: number | null): string => 'Mã do máy chủ cấp nên không đổi được.',
   locked: 'Hiện không đổi được mã. Cần thay đổi thì hãy hỏi người phụ trách.',
 };

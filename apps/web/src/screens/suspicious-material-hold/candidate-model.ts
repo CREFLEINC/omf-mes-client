@@ -47,6 +47,8 @@ const positiveInteger = (value: string): number | undefined => {
 export const toSuspiciousMaterialQuery = (
   filters: SuspiciousMaterialFilters,
   page: number,
+  /** 한 쪽 LOT 수 — 주지 않으면 서버 기본 크기다. */
+  size?: number,
 ): LotStatusQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(positiveInteger(filters.itemId) === undefined
@@ -57,6 +59,7 @@ export const toSuspiciousMaterialQuery = (
     : { warehouseId: positiveInteger(filters.warehouseId) }),
   ...(filters.lotStatusCode === '' ? {} : { lotStatusCode: filters.lotStatusCode }),
   ...(Number.isSafeInteger(page) && page > 1 ? { page } : {}),
+  ...(size === undefined ? {} : { size }),
 });
 
 export const toSelectedLotSnapshot = (row: LotQualityStatus): SelectedLotSnapshot | null => {

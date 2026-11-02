@@ -1,10 +1,15 @@
-import { Chip, type ChipStatus, type Column, Table } from '@crefle/web-ui';
+import { Chip, type ChipStatus, type Column, type SortState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, useLotHoldReasonOptions, type LotCodeOption } from './options';
 import type { LotTimelineEntry } from './timeline';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav } from '../../patterns/page-nav';
+import { LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -52,6 +57,12 @@ interface LotTimelineTableProps {
    */
   variant: 'history' | 'detail';
   empty: ReactNode;
+  /** 다시 받는 중 — 표 상자에 `aria-busy` 로 싣는다. */
+  busy?: boolean;
+  /** 줄을 누르면 부른다(사용자 2026-11-02). 없으면 줄을 누를 수 없다. */
+  onOpenEntry?: (entry: LotTimelineEntry) => void;
+  /** 누를 수 있는 줄만 고른다 — 주지 않으면 모든 줄. */
+  isEntryClickable?: (entry: LotTimelineEntry) => boolean;
 }
 
 export const LotTimelineTable = ({
@@ -61,9 +72,22 @@ export const LotTimelineTable = ({
   appUserName,
   variant,
   empty,
+  busy = false,
+  onOpenEntry,
+  isEntryClickable = () => true,
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
+  /*
+   * LOT 상세에서는 처리 일시로 오름·내림차순을 고른다(사용자 2026-10-30). 받은 줄은 이미 최신순이라 오름차순은
+   * 뒤집기만 한다 — 같은 시각의 줄 순서도 그대로 거꾸로 선다. 머리를 누를 때마다 두 순서를 오간다
+   * (표 부품은 내림차순 다음에 정렬 해제를 주므로 그것을 오름차순으로 받는다).
+   */
+  const [sort, setSort] = useState<SortState>({ key: 'occurredAt', direction: 'descending' });
+  const rows = isDetail && sort.direction === 'ascending' ? [...entries].reverse() : [...entries];
+  /* LOT 상세 탭에서는 화면이 쪽을 나눈다 — 받은 이력을 한 번에 다 갖고 있다(사용자 2026-10-30). */
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<LotPageSize>(20);
   const actorName = (entry: LotTimelineEntry): string => {
     if (entry.kind === 'hold') return entry.event.actorName?.trim() || t.history.actorUnknown;
     const id = entry.event.changedBy;
@@ -83,10 +107,20 @@ export const LotTimelineTable = ({
   const columns: Column<LotTimelineEntry>[] = [
     {
       key: 'occurredAt',
-      header: t.history.columns.occurredAt,
+      header: isDetail ? t.timeline.columns.occurredAt : t.history.columns.occurredAt,
       align: 'center',
       width: isDetail ? '172px' : '220px',
-      render: (entry) => formatDateTime(entry.occurredAt),
+      sortable: isDetail,
+      /* 누를 수 있는 줄만 표시를 단다 — 손가락 모양은 그 줄에만(사용자 2026-11-02). */
+      render: (entry) => (
+        <span
+          data-row-clickable={
+            onOpenEntry !== undefined && isEntryClickable(entry) ? 'true' : undefined
+          }
+        >
+          {formatDateTime(entry.occurredAt)}
+        </span>
+      ),
     },
     ...(isDetail
       ? []
@@ -100,7 +134,7 @@ export const LotTimelineTable = ({
         ]),
     {
       key: 'event',
-      header: t.history.columns.event,
+      header: isDetail ? t.timeline.columns.event : t.history.columns.event,
       align: 'center',
       width: isDetail ? '104px' : '120px',
       render: (entry) =>
@@ -114,31 +148,106 @@ export const LotTimelineTable = ({
           </Chip>
         ),
     },
-    { key: 'change', header: t.history.columns.change, align: 'center', render: changeText },
+    {
+      key: 'change',
+      header: isDetail ? t.timeline.columns.change : t.history.columns.change,
+      align: 'center',
+      render: changeText,
+    },
     {
       key: 'actor',
-      header: t.history.columns.actor,
+      header: isDetail ? t.timeline.columns.actor : t.history.columns.actor,
       align: 'center',
       width: isDetail ? '140px' : undefined,
       render: actorName,
     },
     {
       key: 'reason',
-      header: t.history.columns.reason,
+      header: isDetail ? t.timeline.columns.reason : t.history.columns.reason,
       align: 'center',
       width: isDetail ? '160px' : '224px',
       render: (entry) => reasonText(entry, reasons.data?.items),
     },
   ];
 
+  /* 열 너비 끌기 · 열 순서 바꾸기 — LOT 목록 표와 같다(사용자 2026-10-30). 두 표는 너비·순서를 따로 기억한다. */
+  const storageKey = isDetail
+    ? 'omf-mes:lot-status:columns:timeline'
+    : 'omf-mes:lot-status:columns:history';
+  const ordered = useColumnOrder(`${storageKey}:order`, columns);
+  const resizable = useColumnWidths(storageKey, ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+
+  /* 줄 아무 곳이나 눌러 연다 — LOT 목록과 같은 방식(보이는 줄 차례로 찾는다). */
+  const openFrom =
+    (shown: readonly LotTimelineEntry[]) =>
+    (event: MouseEvent<HTMLDivElement>): void => {
+      if (onOpenEntry === undefined) return;
+      const row = (event.target as Element).closest('tbody tr');
+      if (row === null || row.parentElement === null) return;
+      const picked = shown[Array.from(row.parentElement.children).indexOf(row)];
+      if (picked !== undefined && isEntryClickable(picked)) onOpenEntry(picked);
+    };
+  const clickable = onOpenEntry === undefined ? '' : ' lot-timeline-clickable';
+
+  if (!isDetail) {
+    return (
+      <div
+        ref={fit.ref}
+        className={`wide-table lot-status-table${clickable}`}
+        style={resizable.style}
+        aria-busy={busy}
+        onClick={openFrom(rows)}
+      >
+        <Table
+          density="compact"
+          caption={caption}
+          columns={fit.columns}
+          rows={rows}
+          getRowId={(entry) => entry.key}
+          empty={empty}
+        />
+      </div>
+    );
+  }
+
+  const lastPage = Math.max(1, Math.ceil(rows.length / pageSize));
+  const shownPage = Math.min(page, lastPage);
   return (
-    <Table
-      density={isDetail ? 'comfortable' : 'compact'}
-      caption={caption}
-      columns={columns}
-      rows={[...entries]}
-      getRowId={(entry) => entry.key}
-      empty={empty}
-    />
+    <>
+      <div
+        ref={fit.ref}
+        className={`wide-table lot-status-table lot-detail-table${clickable}`}
+        style={resizable.style}
+        onClick={openFrom(rows.slice((shownPage - 1) * pageSize, shownPage * pageSize))}
+      >
+        <Table
+          density="comfortable"
+          caption={caption}
+          columns={fit.columns}
+          rows={rows.slice((shownPage - 1) * pageSize, shownPage * pageSize)}
+          getRowId={(entry) => entry.key}
+          empty={empty}
+          sort={sort}
+          onSortChange={(next: SortState | null) => {
+            setSort(next ?? { key: 'occurredAt', direction: 'ascending' });
+            setPage(1);
+          }}
+        />
+      </div>
+      <PageNav
+        sizes={LOT_PAGE_SIZES}
+        controlSize="sm"
+        buttonSize="md"
+        meta={{ page: shownPage, size: pageSize, total: rows.length }}
+        onChangePage={setPage}
+        onChangeSize={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+      />
+    </>
   );
 };

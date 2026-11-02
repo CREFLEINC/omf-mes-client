@@ -99,12 +99,13 @@ const fetchLotStatuses = async (
 export const useLotStatusList = (
   filters: LotFilters,
   page: number,
+  size: number,
 ): UseQueryResult<LotStatusListResult> => {
   const { client } = useApiClient();
-  const query = toLotStatusListQuery(filters, page);
+  const query = toLotStatusListQuery(filters, page, size);
 
   return useQuery({
-    queryKey: lotStatusKeys.list(filters, page),
+    queryKey: lotStatusKeys.list(filters, page, size),
     enabled: query !== null,
     placeholderData: keepPreviousData,
     queryFn: () => {
@@ -148,12 +149,16 @@ const fetchLotHolds = async (
   return { rows: data.items.map(toLotHoldView), page: data.page };
 };
 
-export const useLotHolds = (lotId: number | null, page = 1): UseQueryResult<LotHoldListResult> => {
+export const useLotHolds = (
+  lotId: number | null,
+  page = 1,
+  size?: number,
+): UseQueryResult<LotHoldListResult> => {
   const { client } = useApiClient();
-  const query = toLotHoldListQuery(lotId, page);
+  const query = toLotHoldListQuery(lotId, page, size);
 
   return useQuery({
-    queryKey: lotStatusKeys.holds(lotId, page),
+    queryKey: [...lotStatusKeys.holds(lotId, page), size ?? null],
     enabled: query !== null,
     placeholderData: keepPreviousData,
     queryFn: () => {

@@ -18,6 +18,9 @@ const order = (overrides: Partial<PurchaseOrder> = {}): PurchaseOrder => ({
   orderDate: '2026-08-20',
   expectedReceiptDate: '2026-10-21',
   statusCode: 'OPEN',
+  erpOrderTypeCode: null,
+  erpPurchaseGroupCode: null,
+  erpIoTypeCode: null,
   ...overrides,
 });
 
@@ -97,6 +100,11 @@ describe('라벨 미부착 일괄 입하 본문', () => {
     receivedQty: 0,
     toleranceOverQty: 0,
     toleranceUnderQty: 0,
+    erpStorageLocationCode: null,
+    cancelledAt: null,
+    erpCustomsClearanceNo: null,
+    erpCustomsClearanceSeq: null,
+    erpCustomsClearanceFetchedAt: null,
   });
 
   it('체크한 라인을 품목마다 입하 한 건(:per-line)으로 담고 라인마다 LOT 번호 없음과 사유를 싣는다', () => {

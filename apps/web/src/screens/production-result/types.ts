@@ -1,13 +1,9 @@
-import type {
-  ProductionResultCreateForward,
-  WorkOrderForward,
-  components,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
-export type WorkOrder = WorkOrderForward;
+export type WorkOrder = components['schemas']['WorkOrder'];
 export type Lot = components['schemas']['Lot'];
 export type InspectionRequest = components['schemas']['InspectionRequest'];
-export type ProductionResultCreate = ProductionResultCreateForward;
+export type ProductionResultCreate = components['schemas']['ProductionResultCreate'];
 
 /**
  * 화면이 들고 있는 양품 입력값. 불량은 유형별 줄(`defect-draft`)로 따로 든다.

@@ -8,11 +8,7 @@ import {
   Table,
   type Column,
 } from '@crefle/web-ui';
-import {
-  createIdempotencyKey,
-  type AttachmentTargetType,
-  type components,
-} from '@omf-mes/api-client';
+import { createIdempotencyKey, type components, type paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
@@ -30,6 +26,9 @@ import { runRequest } from '../../patterns/request';
 import { uniqueNames, zipStore } from './zip-store';
 
 type Attachment = components['schemas']['Attachment'];
+type AttachmentTargetType = NonNullable<
+  NonNullable<paths['/app/attachments']['get']['parameters']['query']>['targetTypeCode']
+>;
 type AttachmentUpload = NonNullable<
   Parameters<ReturnType<typeof useApiClient>['client']['POST']>[1]
 >['body'];

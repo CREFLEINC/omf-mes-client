@@ -42,8 +42,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     collapseLine: (lineNo: number): string => `Thu gọn LOT của dòng ${String(lineNo)}`,
     postReceipt: 'Xử lý nhập kho',
     postReceiptRow: (lotNo: string): string => `Xử lý nhập kho ${lotNo}`,
-    requestIqc: 'Yêu cầu kiểm tra IQC',
-    requestIqcRow: (lotNo: string): string => `Yêu cầu kiểm tra IQC cho ${lotNo}`,
   },
   reasons: {
     periodInvalid: 'Hạn giao phải là ngày có thật. Hãy chọn lại ngày bắt đầu và ngày kết thúc.',
@@ -293,8 +291,6 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
       putawayDone: (date: string): string => `Xếp kho ${date}`,
       separator: ' · ',
     },
-    requested: (lotNo: string, requestNo: string): string =>
-      `Đã gửi yêu cầu IQC: ${lotNo} → ${requestNo}`,
     loading: 'Đang tải tiến độ nhập kho',
     loadFailed: 'Không tải được tiến độ nhập kho. Các dòng vẫn hiển thị như cũ.',
   },

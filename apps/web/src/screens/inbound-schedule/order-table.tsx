@@ -7,7 +7,7 @@ import { StageGroupChip } from './lot-row';
 import { isOrderOverdue } from './overdue';
 import { formatDate } from './period';
 import { OneLine, orEmpty, OrderStateCell } from './receipt-status';
-import { hasStageCounts, stageLead } from './stage';
+import { stageLead } from './stage';
 import type { OrderSort, OrderSortKey, PurchaseOrderSummary } from './types';
 
 const t = messages.inboundSchedule;
@@ -45,14 +45,10 @@ export interface OrderTableProps {
 /**
  * 「진행」 칸 — 그 발주 LOT 들의 **가장 뒤처진** 단계 묶음 이름만(사용자 지시 2026-10-24 「카운트 하지 말고 상태만」).
  * 수와 「외 N」은 두지 않는다 — 좁은 칸에서 잘렸고, 묶음별 수는 오른쪽 발주 머리의 「진행」이 낸다.
- * LOT 이 하나도 없으면 미착수는 「입하 전」, 그 밖(모두 끝남)은 「—」. 묶음 수를 싣지 않은 줄도 「—」.
+ * LOT 이 하나도 없으면 미착수는 「입하 전」, 그 밖(모두 끝남)은 「—」.
  */
 const ProgressCell = ({ row }: { row: PurchaseOrderSummary }) => {
-  const counts = row.inboundStageCounts;
-
-  if (counts === undefined) return t.values.empty;
-
-  const lead = stageLead(counts);
+  const lead = stageLead(row.inboundStageCounts);
 
   if (lead === null) {
     return row.receiptStatusCode === 'NOT_STARTED' ? (
@@ -126,18 +122,14 @@ export const OrderTable = ({
       /* 고르는 단추 자리(`BoardTable` 의 `pick`). 고른 줄은 `aria-current` 로 알리고 줄 배경이 따라간다(app.css). */
       render: (row) => row.purchaseOrderNo,
     },
-    /* 「진행」은 발주번호 바로 뒤 — 가로로 넘기지 않아도 보인다. 서버가 묶음 수를 실을 때만 선다(앞선 서버는 열이 없다). */
-    ...(hasStageCounts(rows)
-      ? [
-          {
-            key: 'inboundStage',
-            sortable: true,
-            header: t.table.progress,
-            width: '132px',
-            render: (row: PurchaseOrderSummary) => <ProgressCell row={row} />,
-          } satisfies Column<PurchaseOrderSummary>,
-        ]
-      : []),
+    /* 「진행」은 발주번호 바로 뒤 — 가로로 넘기지 않아도 보인다. */
+    {
+      key: 'inboundStage',
+      sortable: true,
+      header: t.table.progress,
+      width: '132px',
+      render: (row) => <ProgressCell row={row} />,
+    },
     {
       key: 'supplierName',
       sortable: true,

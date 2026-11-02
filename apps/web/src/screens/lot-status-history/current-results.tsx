@@ -4,20 +4,31 @@ import {
   Chip,
   type Column,
   EmptyState,
+  Icon,
   SkeletonText,
-  StatCard,
   Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toLotStatusSort, toTableSort } from './current-sort';
-import type { LotFilters, LotStatusSort } from './filters';
+import {
+  ALL_LOT_TYPES,
+  type LotFilters,
+  type LotStatusSort,
+  LOT_PAGE_SIZES,
+  type LotPageSize,
+} from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, lotStatusTone, useLotHoldReasonOptions } from './options';
+import { RefreshStatus } from './refresh-status';
 import { useUomCodeOf, withUom } from './uoms';
 import { useLotStatusList, useLotStatusSummary } from './queries';
 import { useItemNameSources } from './reference-options';
 import { lotStatusRowKey, type LotStatusRow } from './types';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { PageNav } from '../../patterns/page-nav';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 const t = messages.lotStatusHistory;
@@ -48,42 +59,40 @@ interface CurrentResultsProps {
   filters: LotFilters;
   page: number;
   statusOptions: readonly FilterOption[];
+  lotTypeOptions: readonly FilterOption[];
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
+  /** 한 쪽에 보일 LOT 수(20 · 50 · 100) — 바꾸면 첫 쪽으로 간다. */
+  pageSize: LotPageSize;
+  onPageSizeChange: (size: LotPageSize) => void;
   onSelectLot: (lotId: number) => void;
+  /** 지금 상세에 연 LOT — 그 줄을 파란 바탕으로 표시한다. */
+  selectedLotId: number | null;
 }
 
 export const CurrentResults = ({
   filters,
   page,
   statusOptions,
+  lotTypeOptions,
   onSortChange,
   onPageChange,
+  pageSize: requestedPageSize,
+  onPageSizeChange,
   onSelectLot,
+  selectedLotId,
 }: CurrentResultsProps) => {
-  const list = useLotStatusList(filters, page);
-  const summary = useLotStatusSummary(filters);
+  /*
+   * 들어오자마자 목록을 띄운다(사용자 2026-10-30) — 아직 조회 단추를 누르지 않았으면(유형이 빈 값) 「전체」 유형으로
+   * 부른다. 조회 단추를 눌렀을 때와 같은 조건이다.
+   */
+  const query: LotFilters =
+    filters.lotType === '' ? { ...filters, lotType: ALL_LOT_TYPES } : filters;
+  const list = useLotStatusList(query, page, requestedPageSize);
+  const summary = useLotStatusSummary(query);
   const reasons = useLotHoldReasonOptions();
   const uomCodeOf = useUomCodeOf();
   const itemNames = useItemNameSources(list.data?.rows.map((row) => row.itemId) ?? []);
-
-  if (filters.lotType === '') {
-    return (
-      <section
-        className="pane lot-status-pane lot-status-empty-pane"
-        aria-labelledby="lot-current-results-title"
-      >
-        <h2 className="pane-title" id="lot-current-results-title">
-          {t.current.pane}
-        </h2>
-        <EmptyState
-          size="sm"
-          title={t.current.beforeSearch.title}
-          description={t.current.beforeSearch.description}
-        />
-      </section>
-    );
-  }
 
   const itemLabel = (itemId: number): string => {
     const source = itemNames.get(itemId);
@@ -94,38 +103,42 @@ export const CurrentResults = ({
     return source.isError ? t.current.itemLabel.failed : t.current.itemLabel.unknown;
   };
   /*
-   * ⭐ 열 폭은 값의 성격대로 나눈다(사용자 지시 2026-09-19). 표는 고정 배치(app.css
-   * .lot-status-list-table)라 비율이 그대로 지켜지고, 넓은 모니터에서도 한 열이 남는 폭을
-   * 독차지하지 않는다. 긴 값은 칸 안에서 말줄임하고 전체 값은 title 로 보인다.
-   *   LOT 22% · 품목 27%(긴 이름) — 넓게 / 상태 9% · 수량 9% — 좁게 / 최근 상태 변경 15% · 사유 18% — 중간
-   * 정렬: ⭐ 모든 열 가운데(사용자 지시 2026-09-19).
+   * 열 짜임은 검사 조회·판정 대기 목록을 따른다(사용자 2026-10-30) — 찾는 값(LOT · 품목)이 앞에 넓게, 상태 · 수량 ·
+   * 사유는 좁게, 일시는 맨 끝이다. 모든 열은 가운데 정렬이다(사용자 2026-10-30). 폭은 px 로 두고 사용자가 끌어 바꾼 폭 · 순서는 브라우저에
+   * 남는다(useColumnWidths · useColumnOrder). 긴 값은 칸 안에서 말줄임하고 전체 값은 title 로 보인다.
+   *   LOT 260 · 품목 320 · 현재 상태 88 · 보유 수량 120 · 사유 160 · 최근 상태 변경 160
    */
   const columns: Column<LotStatusRow>[] = [
     {
       key: 'lotNo',
       header: t.current.columns.lot,
       align: 'center',
-      width: '22%',
+      width: '260px',
       sortable: true,
       render: (row) => (
-        <Button
-          className="lot-status-lot-no"
-          variant="text"
-          size="sm"
-          title={row.lotNo}
-          aria-label={t.current.openDetail(row.lotNo)}
-          onClick={() => onSelectLot(row.lotId)}
-        >
-          {/* 말줄임은 안쪽 글자에 건다 — 단추가 가운데 정렬 flex 라 단추에 걸면 앞부분부터 잘린다. */}
-          <span className="lot-status-lot-no-text">{row.lotNo}</span>
-        </Button>
+        <span className="lot-no-with-type">
+          {/* LOT 유형 라벨 — 번호 왼쪽(사용자 2026-10-30). */}
+          {row.lotTypeCode !== null && (
+            <Chip variant="status" status="info" size="sm">
+              {lotTypeOptions.find((option) => option.value === row.lotTypeCode)?.label ??
+                t.values.unlisted(row.lotTypeCode)}
+            </Chip>
+          )}
+          <span
+            className="lot-status-one-line"
+            title={row.lotNo}
+            aria-current={row.lotId === selectedLotId ? 'true' : undefined}
+          >
+            {row.lotNo}
+          </span>
+        </span>
       ),
     },
     {
       key: 'item',
       header: t.current.columns.item,
       align: 'center',
-      width: '27%',
+      width: '320px',
       sortable: true,
       render: (row) => <OneLine text={itemLabel(row.itemId)} />,
     },
@@ -133,7 +146,7 @@ export const CurrentResults = ({
       key: 'lotStatusCode',
       header: t.current.columns.status,
       align: 'center',
-      width: '9%',
+      width: '88px',
       render: (row) => (
         <Chip variant="status" status={lotStatusTone(row.lotStatusCode)} size="sm">
           {statusLabel(statusOptions, row.lotStatusCode)}
@@ -144,7 +157,7 @@ export const CurrentResults = ({
       key: 'onHandQty',
       header: t.current.columns.onHand,
       align: 'center',
-      width: '9%',
+      width: '120px',
       render: (row) => (
         <OneLine
           text={
@@ -154,18 +167,10 @@ export const CurrentResults = ({
       ),
     },
     {
-      key: 'latestTransitionAt',
-      header: t.current.columns.latestTransition,
-      align: 'center',
-      width: '15%',
-      sortable: true,
-      render: (row) => <OneLine text={formatDateTime(row.latestTransitionAt)} />,
-    },
-    {
       key: 'latestReasonCode',
       header: t.current.columns.reason,
       align: 'center',
-      width: '18%',
+      width: '160px',
       render: (row) => (
         <OneLine
           text={
@@ -176,7 +181,21 @@ export const CurrentResults = ({
         />
       ),
     },
+    {
+      key: 'latestTransitionAt',
+      header: t.current.columns.latestTransition,
+      align: 'center',
+      width: '160px',
+      sortable: true,
+      render: (row) => <OneLine text={formatDateTime(row.latestTransitionAt)} />,
+    },
   ];
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:current:order', columns);
+  /* 좌우 배치에서는 열을 줄이지 않고 표 안에서 가로로 구른다 — 검사 조회·판정 대기 목록과 같다. */
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:current', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   const retry = (query: typeof list | typeof summary, label: string) => (
     <Button
@@ -218,29 +237,38 @@ export const CurrentResults = ({
   ];
   const meta = list.data?.page;
   const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
-  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : 1;
+  const pageSize = meta !== undefined && meta.size > 0 ? meta.size : requestedPageSize;
   const totalPages = Math.ceil((meta?.total ?? 0) / pageSize);
+  /* 고를 수 없는 크기(20 · 50 · 100 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
+  const shownPageSize: LotPageSize =
+    LOT_PAGE_SIZES.find((size) => size === pageSize) ?? requestedPageSize;
   const isBeyondLast = meta !== undefined && meta.total > 0 && currentPage > totalPages;
-  const start = (currentPage - 1) * pageSize + 1;
-  const rangeLabel =
-    meta === undefined
-      ? ''
-      : rows.length === 0
-        ? t.range.total(quantity(meta.total))
-        : t.range.span(quantity(start), quantity(start + rows.length - 1), quantity(meta.total));
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
-      {/* ⭐ 기준 시각은 제목 옆 — 숫자보다 낮은 위계로(사용자 지시 2026-09-19). */}
       <div className="lot-status-pane-head">
         <h2 className="pane-title" id="lot-current-results-title">
           {t.current.pane}
         </h2>
-        {summary.data !== undefined && (
-          <span className="field-note">
-            {t.current.summary.asOf(formatDateTime(summary.data.asOf))}
-          </span>
+        {/* 권한 밖 제외 안내는 제목 바로 옆, 글 길이만큼만(사용자 2026-10-30). */}
+        {summary.data?.outOfScopeCount != null && summary.data.outOfScopeCount > 0 && (
+          <p className="iqc-inspection-action-note lot-status-scope-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
+          </p>
         )}
+        {/*
+         * 오른쪽 끝 — 마지막 갱신 + [갱신](사용자 2026-10-30). 요약과 목록을 함께 다시 부른다. 「조회 기준」 자리를
+         * 이어받는다(두 시각을 나란히 두면 헷갈린다).
+         */}
+        <RefreshStatus
+          updatedAt={Math.max(list.dataUpdatedAt, summary.dataUpdatedAt)}
+          isRefreshing={list.isFetching || summary.isFetching}
+          onRefresh={() => {
+            void list.refetch();
+            void summary.refetch();
+          }}
+        />
       </div>
       {summary.isPending && (
         <div role="status" aria-label={t.current.summary.loading}>
@@ -256,25 +284,41 @@ export const CurrentResults = ({
       )}
       {summary.data !== undefined && (
         <>
+          {/*
+           * 상태별 건수는 상자 없이 한 줄로 편다 — 이름 아래 큰 숫자 · 단위(2026-10-30 시안). 집계를 못 낸 상태는
+           * 「미확정」 글만 보인다.
+           */}
           <div className="lot-status-summary-grid" role="group" aria-label={t.current.summary.pane}>
             {summaryCells.map((cell) => (
-              <StatCard
+              <div
                 key={cell.key}
-                label={cell.label}
-                value={cell.value === null ? t.current.summary.unknownCount : String(cell.value)}
-                unit={t.current.summary.unit}
-              />
+                className="lot-status-stat"
+                role="group"
+                aria-label={cell.label}
+                /* 숫자 색 — 정상 초록 · 검사 대기 노랑 · 불량 빨강(사용자 2026-10-30). */
+                data-tone={lotStatusTone(cell.key)}
+              >
+                <span className="lot-status-stat-label">{cell.label}</span>
+                <span className="lot-status-stat-value">
+                  {cell.value === null ? (
+                    <span className="lot-status-stat-unit">{t.current.summary.unknownCount}</span>
+                  ) : (
+                    <>
+                      {quantity(cell.value)}
+                      <span className="lot-status-stat-unit">{t.current.summary.unit}</span>
+                    </>
+                  )}
+                </span>
+              </div>
             ))}
           </div>
-          {summary.data.outOfScopeCount !== null && summary.data.outOfScopeCount > 0 && (
-            <AlertBanner variant="info">
-              {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
-            </AlertBanner>
-          )}
         </>
       )}
 
-      <h3 className="lot-status-list-title">{t.current.list.title}</h3>
+      <div className="lot-status-pane-head">
+        {/* 총 건수는 표 아래 쪽 이동 줄에만 둔다(사용자 2026-10-30). */}
+        <h3 className="lot-status-list-title">{t.current.list.title}</h3>
+      </div>
       {list.isPending && (
         <div role="status" aria-label={t.current.list.loading}>
           <SkeletonText lines={3} />
@@ -294,14 +338,26 @@ export const CurrentResults = ({
       )}
       {list.data !== undefined && (
         <>
+          {/*
+           * 줄 아무 곳이나 눌러 그 LOT 상세를 연다 — LOT 번호를 따로 누르는 길은 두지 않는다(사용자 2026-10-30, PQC
+           * 검사 대기 목록과 같다). 고른 줄은 파란 바탕이다(`.inspection-queue-table`).
+           */}
           <div
-            className="wide-table lot-status-table lot-status-list-table"
+            ref={fit.ref}
+            className="wide-table lot-status-table lot-status-list-table inspection-queue-table"
+            style={resizable.style}
             aria-busy={list.isFetching}
+            onClick={(event) => {
+              const row = (event.target as Element).closest('tbody tr');
+              if (row === null || row.parentElement === null) return;
+              const picked = rows[Array.from(row.parentElement.children).indexOf(row)];
+              if (picked !== undefined) onSelectLot(picked.lotId);
+            }}
           >
             <Table
               density="compact"
               caption={t.current.pane}
-              columns={columns}
+              columns={fit.columns}
               rows={rows}
               getRowId={lotStatusRowKey}
               sort={toTableSort(filters.sort)}
@@ -327,23 +383,15 @@ export const CurrentResults = ({
             />
           </div>
           {meta !== undefined && (
-            <nav className="form-actions" aria-label={t.current.list.pagination}>
-              <p className="field-note form-actions-secondary">{rangeLabel}</p>
-              <Button
-                variant="outlined"
-                disabled={currentPage <= 1}
-                onClick={() => onPageChange(currentPage - 1)}
-              >
-                {t.actions.previousPage}
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={currentPage >= totalPages}
-                onClick={() => onPageChange(currentPage + 1)}
-              >
-                {t.actions.nextPage}
-              </Button>
-            </nav>
+            <PageNav
+              sizes={LOT_PAGE_SIZES}
+              meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
+              onChangePage={onPageChange}
+              onChangeSize={onPageSizeChange}
+              /* 쪽 크기 선택은 작게, 처음~마지막 단추는 크게 — 화면 안 쪽 이동을 같은 크기로(사용자 2026-10-30). */
+              controlSize="sm"
+              buttonSize="md"
+            />
           )}
         </>
       )}

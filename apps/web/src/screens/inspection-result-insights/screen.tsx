@@ -85,7 +85,6 @@ export const InspectionResultInsightsScreen = ({
   const insightsReady = queriesEnabled && filters.from !== '' && filters.to !== '';
   const options = {
     inspectionType: selectableLookupOptions(lookups.inspectionType, filters.inspectionTypeCode),
-    item: selectableLookupOptions(lookups.item, filters.itemId),
     process: selectableLookupOptions(lookups.process, filters.processId),
     judgment: selectableLookupOptions(lookups.judgment, filters.overallJudgmentCode),
   };

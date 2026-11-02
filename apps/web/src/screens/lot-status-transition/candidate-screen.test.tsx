@@ -35,7 +35,7 @@ const lot: components['schemas']['LotQualityStatus'] = {
 };
 const page = (items: components['schemas']['LotQualityStatus'][] = [lot], current = 1) => ({
   items,
-  page: { page: current, size: 1, total: 2 },
+  page: { page: current, size: 10, total: 20 },
 });
 const listRoute = (body: unknown = page(), status = 200): StubRoute => ({
   match: (request) => new URL(request.url).pathname === LOT_PATH,
@@ -208,14 +208,20 @@ describe('Lot Status 전이 후보', () => {
       -new Date().getTimezoneOffset(),
     );
 
-    expect(Object.fromEntries(lotRequests(urls)[0]!.searchParams)).toEqual(expected);
+    /* 한 쪽 크기는 LOT 현황과 같은 기본 20건을 보낸다. */
+    expect(Object.fromEntries(lotRequests(urls)[0]!.searchParams)).toEqual({
+      ...expected,
+      size: '20',
+    });
     expect(screen.getByRole('region', { name: '전이 대상 LOT' })).toBeVisible();
     expect(screen.getByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeVisible();
     expect(screen.getByRole('table', { name: '전이 대상 LOT' })).toBeVisible();
-    /* 건수는 「조회 결과」 머리 옆, 쪽 위치는 쪽 이동 옆에 선다(UI 정돈 2026-09-18). */
-    expect(screen.getByRole('heading', { level: 3, name: '조회 결과' })).toBeVisible();
-    expect(screen.getByText('총 2건')).toBeVisible();
-    expect(screen.getByText('1 / 2쪽')).toBeVisible();
+    /* 총 건수는 표 아래 쪽 이동 줄에만 선다 — 제목 옆 건수 · 「조회 결과」 머리는 없다(LOT 현황과 같다). */
+    expect(screen.queryByRole('heading', { level: 3, name: '조회 결과' })).toBeNull();
+    const nav = screen.getByRole('navigation', { name: '쪽 이동' });
+    expect(within(nav).getByText('총 20건')).toBeVisible();
+    expect(within(nav).getByText('1 / 2')).toBeVisible();
+    expect(screen.getAllByText('총 20건')).toHaveLength(1);
   });
 
   it('같은 필터라도 지역 시간대 오프셋이 다르면 후보 캐시 키를 분리한다', () => {
@@ -230,9 +236,9 @@ describe('Lot Status 전이 후보', () => {
   it('필터 초안을 조회·초기화하고 요청에 heldOnly를 보내지 않는다', async () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
-    await user.type(screen.getByLabelText('LOT 번호'), 'SYN-LOT');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-LOT');
     await choose(user, '자재', 'SYN-ITEM-A · 합성 자재');
-    await choose(user, '품질 상태', '정상');
+    await choose(user, '상태', '정상');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     await waitFor(() => expect(lotRequests(urls)).toHaveLength(2));
@@ -245,16 +251,18 @@ describe('Lot Status 전이 후보', () => {
       lotStatusCode: 'NORMAL',
       itemId: '801',
       q: 'SYN-LOT',
+      size: '20',
     });
     expect(lotRequests(urls)[1]!.searchParams.has('heldOnly')).toBe(false);
     await user.click(screen.getByRole('button', { name: '초기화' }));
     await waitFor(() => expect(lotRequests(urls)).toHaveLength(3));
-    expect(Object.fromEntries(lotRequests(urls)[2]!.searchParams)).toEqual(
-      toTransitionPeriodBounds(
+    expect(Object.fromEntries(lotRequests(urls)[2]!.searchParams)).toEqual({
+      ...toTransitionPeriodBounds(
         defaultLotStatusCandidateFilters(new Date()),
         -new Date().getTimezoneOffset(),
       ),
-    );
+      size: '20',
+    });
   });
 
   it('한 행만 선택해 업무 식별·현재 상태를 보이고 LOT 변경 시 전이 준비를 지운다', async () => {
@@ -492,7 +500,7 @@ describe('Lot Status 전이 후보', () => {
       },
     ]);
     await user.click(await screen.findByRole('button', { name: 'SYN-LOT-P1 선택' }));
-    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
 
     await screen.findByRole('button', { name: 'SYN-LOT-P2 선택' });
     expect(lotRequests(urls).at(-1)?.searchParams.get('page')).toBe('2');

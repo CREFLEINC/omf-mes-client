@@ -1,4 +1,4 @@
-import type { OqcSerialScan } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,6 +15,8 @@ import {
   toSerialRow,
   type SerialRow,
 } from './serials';
+
+type OqcSerialScan = components['schemas']['OqcSerialScan'];
 
 /** 시리얼 OQC(omf-all-around#68 · 서버 선행 P-101) — 「검사한 시리얼」 구획. */
 
