@@ -29,14 +29,7 @@ const formatDateTime = (value: string | null): string => {
   return formatPlantDateTime(value) ?? value;
 };
 
-export const LotHoldDocuments = ({
-  lotId,
-  focusedHoldId = null,
-}: {
-  lotId: number;
-  /** 변경 이력의 보류 줄에서 넘어온 보류 건 — 그 줄을 파란 바탕으로 강조한다(사용자 2026-11-02). */
-  focusedHoldId?: number | null;
-}) => {
+export const LotHoldDocuments = ({ lotId }: { lotId: number }) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<LotPageSize>(20);
   const holds = useLotHolds(lotId, page, pageSize);
@@ -62,10 +55,7 @@ export const LotHoldDocuments = ({
        * 읽히지 않았다(사용자 지시 2026-09-19). 처리한 사람은 등록자·해제자가 따로 있어 각 줄에 붙인다.
        */
       render: (row) => (
-        <dl
-          className="lot-hold-times"
-          aria-current={row.lotHoldId === focusedHoldId ? 'true' : undefined}
-        >
+        <dl className="lot-hold-times">
           <div>
             <dt>{t.holdDocuments.times.held}</dt>
             <dd>{withActor(formatDateTime(row.heldAt), row.heldBy)}</dd>

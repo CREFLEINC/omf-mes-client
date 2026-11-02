@@ -75,8 +75,6 @@ export const LotDetailPane = ({
   /* 팝업에서는 자재 LOT 만 투입 이력 탭을 둔다 — 생산 LOT 은 다시 투입되는 일이 드물다(사용자 2026-11-02). */
   const showUsage = !inDialog || detail.data?.lotTypeCode === 'MATERIAL';
   const historyTab: HistoryTab = !showUsage && chosenTab === 'usage' ? 'timeline' : chosenTab;
-  /* 변경 이력의 보류 줄에서 넘어온 보류 건 — 보류 이력 탭에서 그 줄을 강조한다(사용자 2026-11-02). */
-  const [focusedHoldId, setFocusedHoldId] = useState<number | null>(null);
   /* 투입 이력에서 고른 생산 LOT — 그 LOT 의 상세 이력을 팝업으로 연다(사용자 2026-11-02). */
   const [openedLot, setOpenedLot] = useState<{
     lotId: number;
@@ -236,10 +234,7 @@ export const LotDetailPane = ({
       <Tabs
         aria-label={t.detail.historyTabs}
         value={historyTab}
-        onChange={(value) => {
-          setFocusedHoldId(null);
-          setHistoryTab(value as HistoryTab);
-        }}
+        onChange={(value) => setHistoryTab(value as HistoryTab)}
         items={[
           ...(showUsage
             ? [
@@ -261,24 +256,13 @@ export const LotDetailPane = ({
             label: t.timeline.pane,
             content:
               historyTab === 'timeline' ? (
-                <LotTimeline
-                  lotId={lotId}
-                  statusOptions={statusOptions}
-                  embedded
-                  onOpenHold={(lotHoldId) => {
-                    setFocusedHoldId(lotHoldId);
-                    setHistoryTab('holds');
-                  }}
-                />
+                <LotTimeline lotId={lotId} statusOptions={statusOptions} embedded />
               ) : null,
           },
           {
             value: 'holds',
             label: t.holdDocuments.pane,
-            content:
-              historyTab === 'holds' ? (
-                <LotHoldDocuments key={lotId} lotId={lotId} focusedHoldId={focusedHoldId} />
-              ) : null,
+            content: historyTab === 'holds' ? <LotHoldDocuments key={lotId} lotId={lotId} /> : null,
           },
         ]}
       />
