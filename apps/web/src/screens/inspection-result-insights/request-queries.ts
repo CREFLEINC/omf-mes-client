@@ -57,12 +57,9 @@ const toIdentifier = (raw: string): number | undefined => {
 const hasValidPeriod = (filters: InspectionInsightFilters): boolean =>
   isCalendarDate(filters.from) && isCalendarDate(filters.to) && filters.from <= filters.to;
 
-const toCommonQuery = (
-  filters: InspectionInsightFilters,
-  requireInspectionType: boolean,
-): InspectionSummaryQuery | null => {
-  if (!hasValidPeriod(filters) || (requireInspectionType && filters.inspectionTypeCode === ''))
-    return null;
+/* 유형을 비우면 수입 · 공정 · 출하 합계다 — 요약 「전체」 탭이 쓴다(사용자 2026-11-02). */
+const toCommonQuery = (filters: InspectionInsightFilters): InspectionSummaryQuery | null => {
+  if (!hasValidPeriod(filters)) return null;
   const query: InspectionSummaryQuery = {
     inspectedFrom: startOfDay(filters.from),
     inspectedTo: endOfDay(filters.to),
@@ -80,15 +77,16 @@ const toCommonQuery = (
 
 export const toInspectionSummaryQuery = (
   filters: InspectionInsightFilters,
-): InspectionSummaryQuery | null => toCommonQuery(filters, true);
+): InspectionSummaryQuery | null => toCommonQuery(filters);
 
 export const toDefectRateTrendQuery = (
   filters: InspectionInsightFilters,
-): DefectRateTrendQuery | null => toCommonQuery(filters, true);
+): DefectRateTrendQuery | null => toCommonQuery(filters);
 
 /**
- * 목록 질의. ⭐ LOT 번호가 있으면(omf-all-around#85) 그 LOT 의 id(`lotId`)가 풀린 뒤에야 서고, 기간이 비면
- * 기간 없이 그 LOT 의 전 이력을 묻는다(서버 P-76). LOT 번호가 없으면 종전대로 기간이 필수다.
+ * 목록 질의. ⭐ LOT 번호가 있으면(omf-all-around#85) 그 LOT 의 id(`lotId`)가 풀린 뒤에야 서고, 기간과 상관없이
+ * 그 LOT 의 전 이력을 묻는다(서버 P-76 · 사용자 2026-11-02 — 화면이 기간을 오늘로 채워 두어, LOT 을 스캔해도 기간 밖
+ * 검사가 빠졌다). LOT 번호가 없으면 종전대로 기간이 필수다.
  * `lotId` — LOT 번호를 풀어 얻은 id. 아직 못 풀었으면 `undefined`(조회를 세우지 않는다).
  */
 export const toInspectionListQuery = (
@@ -96,17 +94,20 @@ export const toInspectionListQuery = (
   sort: InspectionResultSort,
   page: number,
   lotId?: number,
+  size?: number,
 ): InspectionListQuery | null => {
   const hasLot = filters.lotNo.trim() !== '';
   if (hasLot && lotId === undefined) return null;
-  if (periodProblem(filters) !== null) return null;
-  // 기간이 있으면 종전 공통 질의(형식까지 본다), 비었으면(LOT 조회) 기간만 뺀 질의다.
-  const common: InspectionListQuery | null =
-    filters.from === '' ? withoutPeriod(filters) : toCommonQuery(filters, false);
+  // LOT 조회는 기간을 싣지 않는다(기간 칸의 값과 상관없이). LOT 이 없으면 종전대로 기간을 본다.
+  if (!hasLot && periodProblem(filters) !== null) return null;
+  const common: InspectionListQuery | null = hasLot
+    ? withoutPeriod(filters)
+    : toCommonQuery(filters);
   if (common === null) return null;
   const query: InspectionListQuery = { ...common, sort };
   if (hasLot) query.lotId = lotId;
   if (Number.isSafeInteger(page) && page > 1) query.page = page;
+  if (size !== undefined) query.size = size;
   return query;
 };
 

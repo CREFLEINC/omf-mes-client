@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { useLocation, useNavigate } from 'react-router';
@@ -10,6 +10,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import type { InspectionLookup } from './lookups';
+import { plantToday } from '../../patterns/plant-time';
 import { InspectionResultInsightsScreen } from './screen';
 
 const source = (value: string, label: string): InspectionLookup => ({
@@ -71,33 +72,106 @@ describe('검사실적·검사결과 조회 조립', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <>
-        <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />
+        <InspectionResultInsightsScreen lookups={lookups} />
         <LocationProbe />
       </>,
       { fetch: () => new Promise(() => undefined) },
     );
 
-    await user.type(screen.getByLabelText('시작일'), '2026-08-01');
-    await user.type(screen.getByLabelText('종료일'), '2026-08-31');
-    await user.click(screen.getByLabelText('검사유형'));
-    await user.click(screen.getByRole('option', { name: '공정검사' }));
-    await user.click(screen.getByRole('checkbox', { name: '최종 회차만' }));
+    await user.clear(screen.getByLabelText('시작일 선택'));
+    await user.type(screen.getByLabelText('시작일 선택'), '2026-08-01');
+    await user.clear(screen.getByLabelText('종료일 선택'));
+    await user.type(screen.getByLabelText('종료일 선택'), '2026-08-31');
+    await user.click(screen.getByRole('button', { name: '상세 보기 펼치기' }));
+    await user.click(screen.getByLabelText('검사 유형 선택'));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+    await user.click(screen.getByRole('checkbox', { name: '최종 회차' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     await waitFor(() => expect(screen.getByLabelText('현재 주소')).toHaveTextContent('rounds=all'));
   });
 
-  it('기간이 없으면 모든 집계 요청을 fail-closed한다', () => {
-    const calls: Request[] = [];
+  /* 종합 판정은 조회 조건 칸이 아니라 칩이다 — 누르면 바로 걸리고 「전체」로 풀린다(사용자 2026-10-30 · #217). */
+  it('종합 판정 칩(전체 · 판정별)으로 바로 거르고 「전체」로 푼다', async () => {
+    const user = userEvent.setup();
     renderWithProviders(
-      <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />,
-      { fetch: async (request) => (calls.push(request), jsonResponse({})) },
+      <>
+        <InspectionResultInsightsScreen lookups={lookups} />
+        <LocationProbe />
+      </>,
+      { fetch: () => new Promise(() => undefined) },
     );
 
-    expect(screen.getByText('기간을 선택하세요')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: '조회 조건' })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 2, name: '검사실적 요약' })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 2, name: '결과 분석' })).toBeVisible();
+    expect(screen.queryByLabelText('종합 판정 선택', { selector: 'button, input' })).toBeNull();
+    const chips = screen.getByRole('group', { name: '종합 판정 선택' });
+    await user.click(within(chips).getByRole('button', { name: '불합격', pressed: false }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent('judgment=REJECTED'),
+    );
+    // 「전체」를 누르면 거르기가 풀린다 — 칩은 하나만 눌려 있다.
+    expect(within(chips).getByRole('button', { name: '전체', pressed: false })).toBeVisible();
+    await user.click(within(chips).getByRole('button', { name: '전체' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('현재 주소')).not.toHaveTextContent('judgment='),
+    );
+  });
+
+  it('종합 판정 칩마다 지금 조건의 건수를 붙인다', async () => {
+    const totals: Record<string, number> = { '': 12, REJECTED: 3 };
+    renderWithProviders(<InspectionResultInsightsScreen lookups={lookups} />, {
+      route: '/?from=2026-08-01&to=2026-08-31',
+      fetch: (request) => {
+        const url = new URL(request.url);
+        if (
+          url.pathname === '/quality/inspection-results' &&
+          url.searchParams.get('size') === '1'
+        ) {
+          const total = totals[url.searchParams.get('overallJudgmentCode') ?? ''] ?? 0;
+          return Promise.resolve(
+            new Response(JSON.stringify({ items: [], page: { page: 1, size: 1, total } }), {
+              headers: { 'content-type': 'application/json' },
+            }),
+          );
+        }
+        return new Promise(() => undefined);
+      },
+    });
+
+    const chips = screen.getByRole('group', { name: '종합 판정 선택' });
+    expect(await within(chips).findByRole('button', { name: '전체 12' })).toBeVisible();
+    expect(await within(chips).findByRole('button', { name: '불합격 3' })).toBeVisible();
+  });
+
+  /* 조건 없이 들어오면 시작일 · 종료일을 오늘로 채운다(사용자 지시 · omf-all-around#217). */
+  it('조건 없이 들어오면 기간이 오늘로 채워진다', async () => {
+    renderWithProviders(
+      <>
+        <InspectionResultInsightsScreen lookups={lookups} />
+        <LocationProbe />
+      </>,
+      { fetch: () => new Promise(() => undefined) },
+    );
+
+    const today = plantToday();
+    await waitFor(() =>
+      expect(screen.getByLabelText('현재 주소')).toHaveTextContent(`from=${today}&to=${today}`),
+    );
+    expect(screen.getByLabelText('시작일 선택')).toHaveValue(today);
+    expect(screen.getByLabelText('종료일 선택')).toHaveValue(today);
+  });
+
+  it('기간을 비우면 모든 집계 요청을 fail-closed한다', () => {
+    const calls: Request[] = [];
+    renderWithProviders(<InspectionResultInsightsScreen lookups={lookups} />, {
+      fetch: async (request) => (calls.push(request), jsonResponse({})),
+      route: '/quality/inspection-results?from=&to=',
+    });
+
+    expect(screen.getByText('조회 기간 또는 LOT 번호를 입력해 주세요.')).toBeInTheDocument();
+    /* 조회 칸의 「조회 조건」 제목은 두지 않는다(사용자 지시 · #217). */
+    expect(screen.queryByRole('heading', { level: 2, name: '조회 조건' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: '검사 실적 요약' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: '불량 분석' })).toBeVisible();
     expect(screen.getByRole('region', { name: '검사 결과 분석' })).toHaveClass(
       'inspection-results-insights-pane-empty',
     );
@@ -110,13 +184,10 @@ describe('검사실적·검사결과 조회 조립', () => {
   ])('%s 주소는 모든 집계 요청을 fail-closed한다', async (_name, search) => {
     const user = userEvent.setup();
     const calls: Request[] = [];
-    renderWithProviders(
-      <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />,
-      {
-        route: `/quality/inspection-results${search}`,
-        fetch: async (request) => (calls.push(request), jsonResponse({})),
-      },
-    );
+    renderWithProviders(<InspectionResultInsightsScreen lookups={lookups} />, {
+      route: `/quality/inspection-results${search}`,
+      fetch: async (request) => (calls.push(request), jsonResponse({})),
+    });
 
     expect(screen.getByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
@@ -126,14 +197,10 @@ describe('검사실적·검사결과 조회 조립', () => {
   it('option에 없는 판정 주소값은 모든 집계 요청을 fail-closed한다', async () => {
     const user = userEvent.setup();
     const calls: Request[] = [];
-    renderWithProviders(
-      <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />,
-      {
-        route:
-          '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC&judgment=UNKNOWN',
-        fetch: async (request) => (calls.push(request), jsonResponse({})),
-      },
-    );
+    renderWithProviders(<InspectionResultInsightsScreen lookups={lookups} />, {
+      route: '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC&judgment=UNKNOWN',
+      fetch: async (request) => (calls.push(request), jsonResponse({})),
+    });
 
     expect(
       await screen.findByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
@@ -154,7 +221,6 @@ describe('검사실적·검사결과 조회 조립', () => {
             isLoading: true,
           },
         }}
-        onViewMeasurements={() => undefined}
       />,
       {
         route: '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=PQC',
@@ -163,7 +229,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     );
 
     expect(screen.getByText('조회 조건 이름을 확인하는 중입니다')).toBeInTheDocument();
-    expect(screen.getByLabelText('검사유형')).toHaveTextContent('이름 불러오는 중');
+    expect(screen.getByLabelText('검사 유형 선택')).toHaveTextContent('이름 불러오는 중');
     expect(
       screen.queryByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
     ).not.toBeInTheDocument();
@@ -183,7 +249,6 @@ describe('검사실적·검사결과 조회 조립', () => {
             truncated: true,
           },
         }}
-        onViewMeasurements={() => undefined}
       />,
       {
         route: '/quality/inspection-results?from=2026-08-01&to=2026-08-31&type=OQC',
@@ -192,7 +257,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     );
 
     expect(screen.getByText('조회 조건 이름을 확인하는 중입니다')).toBeInTheDocument();
-    expect(screen.getByLabelText('검사유형')).toHaveTextContent('알 수 없음');
+    expect(screen.getByLabelText('검사 유형 선택')).toHaveTextContent('알 수 없음');
     expect(
       screen.queryByText('주소의 날짜 또는 코드 조건이 유효하지 않습니다'),
     ).not.toBeInTheDocument();
@@ -206,7 +271,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     const capture = (request: Request): void => void calls.push(new URL(request.url));
     renderWithProviders(
       <>
-        <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={() => undefined} />
+        <InspectionResultInsightsScreen lookups={lookups} />
         <InvalidRouteButton />
       </>,
       {
@@ -286,7 +351,7 @@ describe('검사실적·검사결과 조회 조립', () => {
     };
     renderWithProviders(
       <>
-        <InspectionResultInsightsScreen lookups={lookups} onViewMeasurements={vi.fn()} />
+        <InspectionResultInsightsScreen lookups={lookups} />
         <LocationProbe />
       </>,
       {
@@ -337,9 +402,9 @@ describe('검사실적·검사결과 조회 조립', () => {
       expect(request?.searchParams.get('finalRoundOnly')).toBe('true');
     }
 
-    await user.click(screen.getByRole('button', { name: 'SAMPLE-REQUEST-801 상세 보기' }));
+    await user.click(screen.getByText('SAMPLE-REQUEST-801'));
     expect(await screen.findByRole('dialog', { name: '검사 결과 상세' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.getByLabelText('현재 주소')).toHaveTextContent('page=2');
     expect(screen.getByLabelText('현재 주소')).not.toHaveTextContent('selected=');

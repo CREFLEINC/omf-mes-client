@@ -109,7 +109,10 @@ describe('검사실적·검사결과 공개 페이지 셸', () => {
               asOf: '2026-08-31T09:32:00+09:00',
             });
           if (url.pathname === '/quality/inspection-results/701/measurement-summary')
-            return jsonResponse({ items: [], asOf: '2026-08-31T09:33:00+09:00' });
+            return jsonResponse({
+              items: [{ inspectionItemSpecId: 1, itemName: '합성 치수', measuredCount: 1 }],
+              asOf: '2026-08-31T09:33:00+09:00',
+            });
           if (url.pathname === '/quality/inspection-results/701') return jsonResponse(result);
           if (url.pathname === '/quality/inspection-results')
             return jsonResponse({ items: [result], page: { page: 1, size: 50, total: 1 } });
@@ -128,10 +131,14 @@ describe('검사실적·검사결과 공개 페이지 셸', () => {
     expect(screen.queryByText('101')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '실패한 조건 다시 시도' }));
     expect(await screen.findByText('ITEM-101 · 합성 품목 (미사용)')).toBeVisible();
-    expect(screen.getByText('조회 조건 목록 일부만 표시됩니다.')).toBeVisible();
+    /* 잘린 조회 조건 목록 안내 배너는 두지 않는다(사용자 지시 · omf-all-around#217). */
+    expect(screen.queryByText('조회 조건 목록 일부만 표시됩니다.')).not.toBeInTheDocument();
     expect(itemRequests).toBe(2);
 
-    const lookupCalls = calls.filter((url) => url.pathname.startsWith('/mdm/'));
+    // 조회 조건 목록만 본다 — 목록 줄의 품목 단건(/mdm/items/{id})은 번호로 받는다.
+    const lookupCalls = calls.filter(
+      (url) => url.pathname.startsWith('/mdm/') && !/^\/mdm\/items\/\d+$/.test(url.pathname),
+    );
     expect(lookupCalls.every((url) => url.searchParams.get('includeInactive') === 'true')).toBe(
       true,
     );
@@ -150,12 +157,13 @@ describe('검사실적·검사결과 공개 페이지 셸', () => {
           ?.searchParams.get('sourceCode'),
       ).toBe('PQC'),
     );
-    await user.click(screen.getByRole('button', { name: 'REQUEST-801 상세 보기' }));
+    await user.click(screen.getByText('REQUEST-801'));
     const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
-    expect(within(dialog).getByText('불합격')).toBeVisible();
-    await user.click(within(dialog).getByRole('button', { name: '측정치 전체 보기' }));
-    expect(screen.getByLabelText('현재 경로')).toHaveTextContent(
-      '/quality/inspection-results/701/measurements',
-    );
+    expect(within(dialog).getAllByText('불합격').length).toBeGreaterThan(0);
+    // 측정 결과는 쪽을 옮기지 않고 상세 안의 탭으로 본다(사용자 2026-11-02).
+    expect(
+      await within(dialog).findByRole('tab', { name: '항목별 측정 결과' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('현재 경로')).not.toHaveTextContent('/measurements');
   });
 });

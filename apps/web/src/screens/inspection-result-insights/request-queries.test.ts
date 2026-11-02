@@ -43,7 +43,7 @@ describe('검사 목록·요약·추이 모집단', () => {
     }
   });
 
-  it('검사유형 전체는 목록·분포만 허용하고 요약·추이 합산 요청은 막는다', () => {
+  it('검사유형 전체면 요약·추이도 유형 없이 합계로 부른다(요약 「전체」 탭 · 사용자 2026-11-02)', () => {
     const overall = { ...FILTERS, inspectionTypeCode: '' };
 
     expect(toInspectionListQuery(overall, 'inspectedAt,desc', 1)).toEqual({
@@ -56,8 +56,9 @@ describe('검사 목록·요약·추이 모집단', () => {
       calibrationExpired: 'exclude',
       sort: 'inspectedAt,desc',
     });
-    expect(toInspectionSummaryQuery(overall)).toBeNull();
-    expect(toDefectRateTrendQuery(overall)).toBeNull();
+    expect(toInspectionSummaryQuery(overall)).not.toBeNull();
+    expect(toInspectionSummaryQuery(overall)).not.toHaveProperty('inspectionTypeCode');
+    expect(toDefectRateTrendQuery(overall)).not.toHaveProperty('inspectionTypeCode');
     expect(toDefectDistributionQuery(overall, 'defectCode', '')).not.toBeNull();
   });
 
@@ -140,16 +141,18 @@ describe('LOT 번호 목록 질의 (omf-all-around#85 · 서버 P-76)', () => {
     });
   });
 
-  it('기간이 있으면 기간과 lotId 를 함께 싣는다', () => {
-    expect(
-      toInspectionListQuery({ ...FILTERS, lotNo: 'LOT-1' }, 'inspectedAt,desc', 1, 7),
-    ).toMatchObject({ inspectedFrom: FROM_AT, inspectedTo: TO_AT, lotId: 7 });
+  /* LOT 조회는 기간 칸의 값과 상관없이 그 LOT 의 전 이력이다(사용자 2026-11-02 — 화면이 기간을 오늘로 채워 둔다). */
+  it('기간이 있어도 LOT 이 있으면 기간을 싣지 않고 lotId 만 싣는다', () => {
+    const query = toInspectionListQuery({ ...FILTERS, lotNo: 'LOT-1' }, 'inspectedAt,desc', 1, 7);
+    expect(query).toMatchObject({ lotId: 7 });
+    expect(query).not.toHaveProperty('inspectedFrom');
+    expect(query).not.toHaveProperty('inspectedTo');
   });
 
-  it('⛔ 기간을 한쪽만 고르면 LOT 이 있어도 세우지 않는다', () => {
+  it('기간을 한쪽만 골라도 LOT 이 있으면 기간 없이 세운다', () => {
     expect(
       toInspectionListQuery({ ...lotFilters, from: '2026-08-01' }, 'inspectedAt,desc', 1, 7),
-    ).toBeNull();
+    ).toMatchObject({ lotId: 7 });
   });
 
   it('LOT 번호가 없으면 종전대로 기간이 필수다', () => {

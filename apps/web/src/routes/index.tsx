@@ -39,7 +39,6 @@ import { ErpPartnerScreen } from '../screens/erp-partner/screen';
 import { ErpProductionOrderScreen } from '../screens/erp-production-order/screen';
 import { ErpPurchaseOrderScreen } from '../screens/erp-purchase-order/screen';
 import { ErpSalesOrderScreen } from '../screens/erp-sales-order/screen';
-import { InspectionMeasurementRoutePage } from '../screens/inspection-result-insights/measurement-route-page';
 import { InspectionResultInsightsPage } from '../screens/inspection-result-insights/page';
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
 import { DashboardScreen } from '../screens/dashboard/screen';
@@ -414,12 +413,8 @@ export const appRouter = createBrowserRouter([
       { path: 'quality/lot-status-transition', element: <LotStatusTransitionScreen /> },
       /* W-03-03 — W-03-02에서 판정할 의심 LOT을 먼저 보류하므로 바로 뒤에 둔다. */
       { path: 'quality/suspicious-material-hold', element: <SuspiciousMaterialHoldScreen /> },
-      /* W-03-05 — 조회 화면과 측정치 전체 보기는 같은 품질 업무의 공개 진입점이다. */
+      /* W-03-05 — 측정치는 검사 결과 상세 안의 표로 본다(따로 여는 쪽 없음 · omf-all-around#217). */
       { path: 'quality/inspection-results', element: <InspectionResultInsightsPage /> },
-      {
-        path: 'quality/inspection-results/:inspectionResultId/measurements',
-        element: <InspectionMeasurementRoutePage />,
-      },
       /* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */
       { path: 'quality/approvals', element: <QualityApprovalScreen /> },
       /*

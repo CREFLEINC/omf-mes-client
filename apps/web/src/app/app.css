@@ -5869,6 +5869,18 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/* 탭 묶음 밖(탭이 하나)이면 종합 판정 칩 · 좌우 · 상하 배치 단추가 탭 막대 대신 조회 조건 위 오른쪽 끝에 선다(#217). */
+.inspection-results-workspace > .inspection-hub-counts {
+  justify-self: end;
+}
+
+.inspection-results-workspace > .split-orientation-toggle {
+  justify-self: end;
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
+}
+
 .inspection-results-pane {
   display: grid;
   align-content: start;
@@ -5907,6 +5919,122 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-results-filter .field-cell {
   align-items: stretch;
+}
+
+/*
+ * 검사 실적 요약 | 불량 분석(omf-all-around#217) — 검사 조회·판정과 같은 좌우 · 상하 배치(`.po-board-split.inspection-split`).
+ * 나란히 설 때는 두 카드가 창 바닥에서 멈추고 각 카드 안에서 구른다. 위아래로 쌓이면 위 카드는 정한 높이(막대) 또는 내용 높이다.
+ */
+.inspection-results-split > .pane {
+  min-width: 0;
+  margin: 0;
+}
+
+@media (min-width: 1440px) {
+  .inspection-results-split > .pane {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  /*
+   * 막대로 정한 높이는 «최대»다 — 내용보다 크게 끌어도 카드가 그 이상 늘지 않는다(빈 칸이 생기지 않는다 · 사용자 2026-10-30).
+   * 작게 끌면 그 높이에서 카드 안으로 구른다.
+   */
+  .po-board-split.inspection-split.is-stacked.inspection-results-split > .pane:first-child {
+    box-sizing: border-box;
+    max-height: var(--stacked-list-height, none);
+  }
+
+  .po-board-split.inspection-split.is-stacked.inspection-results-split > .pane:last-child {
+    overflow: visible;
+  }
+}
+
+/* LOT 스캔 칸 + 「검색」 — 검사 조회·판정의 LOT 스캔 칸과 같은 모양, 두 칸 폭(omf-all-around#217). */
+.inspection-results-lot-scan {
+  display: flex;
+  grid-column: span 2;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.inspection-results-lot-scan > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.inspection-results-lot-scan > button {
+  flex: none;
+}
+
+/*
+ * 윗줄 — 시작일 · 종료일 · LOT 스캔, 오른쪽 끝에 [조회] [초기화] [상세 보기 펼치기](사용자 2026-10-30, LOT 현황 조회 줄과 같다).
+ * 좁으면 단추 묶음이 다음 줄로 내려간다.
+ */
+.inspection-results-filter-row {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.inspection-results-filter-row
+  > :not(.inspection-results-lot-scan, .inspection-results-filter-actions, .inspection-results-final-round) {
+  flex: 0 1 11.5rem;
+}
+
+.inspection-results-filter-row > .inspection-results-lot-scan {
+  flex: 0 1 auto;
+}
+
+/* LOT 칸은 흐린 글자(「LOT 바코드 스캔 또는 번호를 입력하세요」)가 다 보이는 폭까지만(사용자 2026-10-30). */
+.inspection-results-filter-row > .inspection-results-lot-scan > :first-child {
+  flex: 0 1 21rem;
+  width: 21rem;
+}
+
+.inspection-results-filter-row > .inspection-results-filter-actions {
+  align-items: center;
+  margin: 0 0 0 auto;
+}
+
+/* 아랫줄 — 기간 · LOT 밖 조건. 윗줄과 같은 칸 나눔으로 한 줄을 다 쓴다. */
+.inspection-results-filter-detail {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+/* 선택칸은 가장 긴 값(「검교정 만료 제외」)이 들어가는 폭, 품목은 흐린 글자가 보이는 폭 — 줄을 채우려 늘이지 않는다(사용자 2026-10-30). */
+.inspection-results-filter-detail > .field-cell.wide-select {
+  flex: 0 0 11rem;
+  min-width: 11rem;
+}
+
+.inspection-results-filter-detail > .inspection-results-filter-item {
+  flex: 0 1 15rem;
+}
+
+.inspection-results-filter-detail[hidden] {
+  display: none;
+}
+
+.inspection-results-filter-detail > * {
+  min-width: 0;
+}
+
+.inspection-results-filter-item > * {
+  width: 100%;
+}
+
+.inspection-results-final-round {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: var(--space-2);
 }
 
 .inspection-results-filter-footer,
@@ -5966,12 +6094,95 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-results-subtitle {
   margin: 0;
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
   font: var(--type-title-md);
   letter-spacing: var(--type-title-md-tracking);
 }
 
+/* 검사 실적 요약 머리 — 제목 · 「ⓘ 집계 기준」 왼쪽, 마지막 갱신 + [갱신] 오른쪽 끝(사용자 2026-10-30). */
+.inspection-results-pane-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.inspection-results-pane-head > .pane-title {
+  margin: 0;
+}
+
+.inspection-results-basis {
+  position: relative;
+}
+
+.inspection-results-basis-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  cursor: pointer;
+}
+
+.inspection-results-basis-button:hover {
+  background: var(--state-hover-neutral);
+}
+
+.inspection-results-basis-tip {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 10;
+  width: max-content;
+  max-width: 22rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--on-surface);
+  color: var(--surface);
+  font: var(--type-body-sm);
+  box-shadow: var(--elevation-2);
+}
+
+.inspection-results-refresh {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.inspection-results-refresh-status {
+  margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.inspection-results-refresh .inspection-results-refresh-button {
+  height: var(--control-height-md);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
+}
+
+/* 합격 수량 초록 · 불합격 수량 빨강(2026-10-30 시안). */
+.inspection-results-stat-value[data-tone='success'] {
+  color: var(--semantic-success);
+}
+
+.inspection-results-stat-value[data-tone='error'] {
+  color: var(--semantic-error);
+}
+
 .inspection-results-table {
+  /*
+   * 표 이름(caption)은 화면에서 감춘 1px 절대 위치 칸이다. 이 상자가 기준이 아니면 앱 틀 바닥까지 내려가 창 전체에 스크롤이
+   * 생기고, 굴리면 틀이 통째로 올라가 아래가 빈다(사용자 지적 2026-10-30 · 헤드리스 실측 문서 높이 1428 / 창 900).
+   */
+  position: relative;
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
@@ -5979,6 +6190,16 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-results-table table {
   min-width: 64rem;
+}
+
+/* 검사 결과 목록 줄 — 아무 곳이나 눌러 상세를 연다. 올리면 손 모양 + 옅은 바탕(사용자 2026-11-02). */
+.inspection-results-list tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+  cursor: pointer;
+}
+
+.inspection-results-list tbody tr:hover {
+  background: var(--state-hover-neutral);
 }
 
 .inspection-results-table caption {
@@ -6003,8 +6224,11 @@ h2:has(> .inspection-standard-dialog-title) {
   box-sizing: border-box;
 }
 
-.inspection-results-distribution-field {
-  max-width: 20rem;
+/* 분포 묶음 기준 — 가장 긴 값(「발생 공정」)이 들어가는 폭까지만(사용자 2026-11-02). 공용 최소 폭(13rem)보다 좁힌다. */
+.field-cell.wide-select.inspection-results-distribution-field {
+  width: 10rem;
+  min-width: 10rem;
+  max-width: 10rem;
 }
 
 /* 비활성 쿼리도 DS Skeleton을 pending으로 그리므로, 조건 적용 전에는 탭 본문만 감춘다. */
@@ -24202,27 +24426,179 @@ body:has(.page-nav-size [aria-expanded="true"])
 /*
  * 제품 검사표 조회(W-03-13 · omf-all-around#89) — 요약·머리 값은 이름·값 두 쌍씩 한 줄.
  */
-.inspection-sheet-summary {
+/*
+ * 제품 검사표 상세 기본 정보 탭(사용자 시안 2026-11-02 · #217) — 기본 정보 | 진행 현황 두 카드, 제품 정보 칸 격자.
+ */
+.inspection-sheet-overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* 두 카드 윗선을 맞춘다 — 탭 안 첫 카드 위 여백(`.inspection-sheet-card:first-child`)보다 앞선다. */
+.inspection-sheet-overview > .inspection-sheet-card.inspection-sheet-card {
+  margin-top: 0;
+}
+
+.inspection-sheet-overview > .inspection-sheet-basic {
+  flex: 2 1 30rem;
+}
+
+.inspection-sheet-overview > .inspection-sheet-progress-card {
+  flex: 1 1 16rem;
+  align-content: start;
+}
+
+/* 카드 머리 — 제목(아래 줄은 두지 않는다 · 사용자 지시 2026-11-02). */
+.inspection-sheet-card-head {
+  gap: var(--space-2);
+}
+
+.inspection-sheet-rows {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
-  gap: var(--space-1) var(--space-3);
-  margin: 0 0 var(--space-3);
-}
-
-.inspection-sheet-summary dt {
-  color: var(--on-surface-variant);
-}
-
-.inspection-sheet-summary dd {
+  gap: var(--space-2);
   margin: 0;
 }
 
-/* 목록 — 1024 폭 창(표 약 690px)에서 가로로 넘치지 않게 칸 폭을 고정하고 긴 값은 말줄임(#133·#134 와 같은 방식). */
-.inspection-sheet-list table {
-  min-width: 690px;
-  table-layout: fixed;
+.inspection-sheet-rows > div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
+.inspection-sheet-rows dt {
+  color: var(--on-surface-variant);
+}
+
+.inspection-sheet-rows dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 진행 현황 — 검사 진행 막대. */
+.inspection-sheet-progress-bar {
+  height: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--outline-variant);
+}
+
+.inspection-sheet-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.inspection-sheet-progress-card > .iqc-inspection-action-note {
+  display: flex;
+}
+
+/*
+ * 이름 위 · 값 아래 칸 상자(기본 정보 · 제품 정보 · 공정 상세 팝업) — 검사 조회·판정 기본 정보 상자와 같은 모양.
+ * 반응형(사용자 지시 2026-11-02 · #217): 칸은 값 길이만큼 서고 한 줄을 남김없이 나눠 채운다. 값은 꺾지 않는다 —
+ * 들어가지 않으면 칸째 다음 줄로 넘어간다(번호가 「SN-20261102-」 / 「0003」처럼 갈라지지 않게).
+ */
+.inspection-sheet-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) 0;
+  margin: 0;
+  padding: var(--space-3) 0;
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+/* 칸 사이 세로선은 그림자로 — 줄 첫 칸의 선은 상자 밖이라 잘린다(칸 수가 폭에 따라 바뀌어도 맞다). */
+.inspection-sheet-grid > div {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0 var(--space-4);
+  box-shadow: -1px 0 0 var(--outline-variant);
+}
+
+/*
+ * 제품 정보 — 짧은 값이 많아 열을 맞춘다(사용자 지시 2026-11-02 · 반응형): 화면 폭에 따라 한 줄 칸 수가 바뀌고(넓으면 7~8칸,
+ * 좌우 배치면 3칸), 칸은 같은 폭으로 위아래가 맞는다. 남는 자리는 칸들이 나눠 쓴다.
+ */
+.inspection-sheet-grid.is-even {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+.inspection-sheet-grid dd {
+  overflow: hidden;
+  margin: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 목록 · 상세 한 화면(omf-all-around#217) — 검사 조회·판정과 같은 좌우 · 상하 배치(`.po-board-split.inspection-split`).
+ * 검색 카드 아래 목록 | 상세가 서고, 목록은 표만 안에서 구른다(쪽 넘김은 제자리). 상세는 구획 안에서 구른다.
+ */
+.pane.inspection-sheet-search {
+  margin-bottom: 0;
+}
+
+.inspection-sheet-list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-sheet-list-pane > .inspection-sheet-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.inspection-sheet-detail-pane {
+  min-width: 0;
+}
+
+.inspection-split > .inspection-sheet-list-pane {
+  height: auto;
+  max-height: calc(100dvh - 20rem);
+}
+
+@media (min-width: 1440px) {
+  .inspection-split > .inspection-sheet-list-pane {
+    max-height: none;
+    min-height: 0;
+  }
+
+  .inspection-split > .inspection-sheet-detail-pane {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .po-board-split.inspection-split.is-stacked > .inspection-sheet-list-pane {
+    box-sizing: border-box;
+    height: var(--stacked-list-height, auto);
+    max-height: var(--stacked-list-height, min(28rem, 50dvh));
+  }
+
+  .po-board-split.inspection-split.is-stacked > .inspection-sheet-detail-pane {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 1439px) {
+  .po-board-split.inspection-split > .inspection-sheet-list-pane {
+    max-height: min(28rem, 50dvh);
+  }
+}
+
+/* 목록 — 열 폭 · 순서는 사용자가 바꾼다(ManagedTable · #217). 긴 값은 말줄임. */
 .inspection-sheet-list th,
 .inspection-sheet-list td {
   padding-inline: var(--space-2);
@@ -24232,11 +24608,237 @@ body:has(.page-nav-size [aria-expanded="true"])
   white-space: nowrap;
 }
 
-/* 숫자 두 칸(입력 단계 · NG 단계)은 칸이 좁아 머리글만 두 줄로 꺾는다. */
-.inspection-sheet-list th:nth-child(3),
-.inspection-sheet-list th:nth-child(4) {
-  white-space: normal;
-  line-height: 1.2;
+/* 표 이름은 카드 제목이 말한다 — 화면 읽기용으로만 남긴다(검사 실적 목록과 같다 · #217). */
+.inspection-sheet-list caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 상세 조건 — 모델 · 작업지시 칸은 흐린 글자(「모델을 입력하세요」 · 「작업지시 번호를 입력하세요」)가 다 보이는 폭(담당자 지시 2026-11-02). */
+.inspection-results-filter-detail > .inspection-sheet-model {
+  flex: 0 0 12rem;
+  width: 12rem;
+}
+
+.inspection-results-filter-row > .inspection-sheet-layout {
+  flex: 0 0 10rem;
+  width: 10rem;
+}
+
+.inspection-results-filter-detail > .inspection-sheet-work-order {
+  flex: 0 0 14rem;
+  width: 14rem;
+}
+
+/* LOT · 시리얼 스캔 칸 — 검사 실적의 LOT 스캔 칸과 같은 모양(사용자 지시 #217). */
+.inspection-results-filter-row > .inspection-sheet-scan {
+  /* 「LOT·시리얼 바코드 스캔 또는 번호를 입력하세요」가 다 보이는 폭(사용자 지시 2026-11-02). */
+  flex: 0 1 23rem;
+  width: 23rem;
+  min-width: 0;
+}
+
+/* 목록 줄 — 아무 곳이나 눌러 상세를 연다. 고른 줄은 바탕으로 알린다(검사 결과 목록과 같다 · #217). */
+.inspection-sheet-list tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+  cursor: pointer;
+}
+
+.inspection-sheet-list tbody tr:hover {
+  background: var(--state-hover-neutral);
+}
+
+.inspection-sheet-list tbody tr:has([aria-current='true']) {
+  background: var(--surface-container-high);
+}
+
+/* 시리얼 — 키보드로도 여는 글자 단추. 겉모양은 보통 글자. */
+.inspection-sheet-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.inspection-sheet-open[aria-current='true'] {
+  font-weight: 600;
+}
+
+/* 상세 머리 — 왼쪽 제목 · 상태 · 시리얼, 오른쪽 진행(사용자 시안 2026-11-02 · #217). */
+.inspection-sheet-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.inspection-sheet-detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: var(--type-title-lg);
+}
+
+.inspection-sheet-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-progress > ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection-sheet-progress li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-sheet-progress-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  white-space: nowrap;
+}
+
+/* 단계 사이 「—」. */
+.inspection-sheet-progress li + li::before {
+  color: var(--outline);
+  content: '—';
+}
+
+/* 지금 단계는 테두리 알약, 끝난 단계는 동그라미를 채운다. */
+.inspection-sheet-progress-step[data-state='current'] {
+  border-color: var(--primary);
+  color: var(--on-surface);
+}
+
+.inspection-sheet-progress-no {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--outline);
+  border-radius: 50%;
+}
+
+/* 지금 단계 번호도 빨간 바탕 · 흰 숫자(사용자 지시 2026-11-02). */
+.inspection-sheet-progress-step[data-state='current'] > .inspection-sheet-progress-no {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.inspection-sheet-progress-step[data-state='complete'] > .inspection-sheet-progress-no {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.inspection-sheet-card:first-child {
+  margin-top: var(--space-3);
+}
+
+/* 카드 안 표는 카드 폭 안에서 가로로 구른다. 표 이름은 카드 제목이 말한다. */
+.inspection-sheet-card {
+  min-width: 0;
+}
+
+.inspection-sheet-card > .wide-table {
+  min-width: 0;
+  overflow-x: auto;
+  container-type: inline-size;
+}
+
+/* 공정 상세 팝업 — 항목 표는 팝업 폭에 맞춘다(넓은 표 기본 하한 58rem 을 풀어 네 칸이 다 보이게). */
+.inspection-sheet-step-items {
+  margin-top: var(--space-3);
+}
+
+.inspection-sheet-step-items .wide-table table {
+  min-width: 0;
+}
+
+/* 승인 · 확인 확정 창 — 묻는 말 한 줄(사용자 시안 2026-11-02). */
+.inspection-sheet-confirm-body {
+  margin: 0 0 var(--space-2);
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+}
+
+/* 공정별 검사 「관리」 칸 — 「상세」 · 「서명하기」 사이를 띄운다(사용자 시안 2026-11-02). */
+.inspection-sheet-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 빈 표 줄 문구(「투입된 변경 자재가 없습니다.」)는 줄 가운데에. */
+.inspection-sheet-card td[colspan] {
+  text-align: center;
+}
+
+.inspection-sheet-card td[colspan] > .field-note {
+  /* 표가 카드보다 넓어 옆으로 구를 때도 문구는 보이는 폭 가운데에 머문다. */
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: 100cqi;
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-sheet-card caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 꼬리 — 왼쪽 PDF 출력 · 출력 언어, 오른쪽 닫기 · 승인 · 확인. */
+.inspection-sheet-detail-actions {
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+.inspection-sheet-detail-actions-start,
+.inspection-sheet-detail-actions-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .inspection-sheet-ellipsis {
@@ -24249,19 +24851,6 @@ body:has(.page-nav-size [aria-expanded="true"])
 .inspection-sheet-muted {
   color: var(--on-surface-muted);
   font: var(--type-body-sm);
-}
-
-/* 출력 언어 — 한국어 / 베트남어를 골라 A4 출력(또는 PDF 저장)한다. */
-.inspection-sheet-print-lang {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.inspection-sheet-events {
-  margin: 0;
-  padding-left: var(--space-4);
 }
 
 /*
@@ -30639,4 +31228,385 @@ button.iqc-inspection-step-toggle:focus-visible {
 .pqc-web-search,
 .oqc-inspection-search {
   flex-wrap: wrap;
+}
+
+/*
+ * 검사 결과 상세 창(사용자 시안 2026-11-02 · omf-all-around#217) — 머리(의뢰번호 · 품목 · 종합 판정), 수량 카드,
+ * 부적합 한 건 줄, 접어 둔 「추가 정보 및 이력」.
+ */
+.result-detail-qty dd[data-tone='error'] {
+  color: var(--semantic-error);
+}
+
+.result-detail-card {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.result-detail-qty,
+.result-detail-meta {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.result-detail-qty {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.result-detail-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 검사일시 · 검사 방식 — 이름과 값을 한 줄에(카드 높이 축소 · 사용자 2026-11-02). */
+.result-detail-meta > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.result-detail-meta dd {
+  margin: 0;
+}
+
+.result-detail-qty dt,
+.result-detail-meta dt {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+.result-detail-qty dd,
+.result-detail-meta dd {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+}
+
+.result-detail-qty dd {
+  font: var(--type-headline-sm);
+  font-weight: 700;
+}
+
+.result-detail-unit {
+  margin-left: var(--space-1);
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  font-weight: 400;
+}
+
+.result-detail-qty dd[data-tone='success'] {
+  color: var(--semantic-success);
+}
+
+/* 보조 글자 — 불량 코드 · 부적합 발생 시각. */
+.result-detail-sub {
+  margin-left: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+
+
+@media (max-width: 720px) {
+  .result-detail-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/*
+ * 상세 정보 안의 LOT 이력 — LOT 상세의 이력 표를 그대로 쓴다. 표 이름(제목과 같은 말)은 감추고, 넓은 표 최소 폭을 풀어
+ * 일시 · 구분 열이 창 밖으로 밀리지 않게 하며, 줄 높이를 줄인다(사용자 2026-11-02).
+ */
+.result-detail-extra .wide-table table {
+  min-width: 0;
+}
+
+.result-detail-extra caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.result-detail-extra .wide-table {
+  position: relative;
+}
+
+.result-detail-extra section > h3,
+.result-detail-extra > h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font: var(--type-title-sm);
+}
+
+.result-detail-extra td {
+  padding-block: var(--space-1);
+}
+
+/* LOT 이력 칸은 한 줄 — 열 폭은 내용대로 나눈다(상태 변경이 두 줄로 꺾여 줄이 높아졌다 · 사용자 2026-11-02). */
+.result-detail-extra table {
+  table-layout: auto;
+}
+
+.result-detail-extra th,
+.result-detail-extra td {
+  white-space: nowrap;
+}
+
+/* 상세 창 안 표는 창 폭에 맞춘다 — 넓은 표 최소 폭(58rem)이면 수량 열이 창 밖으로 밀렸다(실측 표 928 / 창 680). 표 이름은 감춘다. */
+.result-detail-table table {
+  min-width: 0;
+}
+
+.result-detail-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.result-detail-table {
+  position: relative;
+}
+
+.result-detail-table td {
+  padding-block: var(--space-2);
+}
+
+.result-detail-nc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.result-detail-nc-head h4 {
+  margin: 0;
+  font: var(--type-title-md);
+}
+
+.result-detail-nc-head .field-note {
+  margin: var(--space-1) 0 0;
+}
+
+.result-detail-nc-status {
+  flex: none;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+}
+
+.result-detail-nc-status[data-tone='warning'] {
+  color: var(--semantic-warning);
+}
+
+.result-detail-extra {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.result-detail-extra > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  cursor: pointer;
+  list-style: none;
+}
+
+.result-detail-extra > summary::-webkit-details-marker {
+  display: none;
+}
+
+.result-detail-extra > summary::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.result-detail-extra[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+/*
+ * 검사 결과 상세 — 시안(사용자 2026-11-02 · 아이콘 없이): 검사 결과 · 불량 유형별 내역 · 부적합 처리 · 검사 상세 및 이력을
+ * 같은 테두리 카드로 묶고, 제목 줄 오른쪽에 표식 · 합계를 둔다.
+ */
+.result-detail-section {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.result-detail-card {
+  border: 1px solid var(--outline-variant);
+}
+
+.result-detail-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* 제목과 아래 표 · 칸 사이 빈 공간(사용자 2026-11-02). */
+  margin-bottom: var(--space-3);
+}
+
+/* LOT 번호는 식별자라 첫 줄 전체 폭에 한 줄로. */
+.result-detail-extra-facts > [data-wide='true'] {
+  flex-basis: 100%;
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* LOT 번호 다음 줄의 첫 칸은 줄 첫머리라 구분선을 뺀다. */
+.result-detail-extra-facts > [data-wide='true'] + div {
+  padding-left: 0;
+  border-left: 0;
+}
+
+/* 카드 안 이름표 칸 — 부적합 처리 · 검사 상세. 긴 LOT 번호는 그 칸이 넓어진다. */
+.result-detail-section .inspection-standard-facts-line,
+.result-detail-extra .inspection-standard-facts-line {
+  margin-top: var(--space-2);
+}
+
+.result-detail-section-head > h3,
+.result-detail-extra > summary {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  font-weight: 600;
+}
+
+.result-detail-section-head > :last-child:not(h3) {
+  margin-left: auto;
+}
+
+.result-detail-section-head > h3 + .result-detail-sub {
+  margin-left: 0;
+}
+
+/* 네 수량 사이 세로 선. */
+.result-detail-qty > div + div {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 합격 · 불합격(· 보류) 비율 막대 — 몫만큼 늘어나는 칸, 칸 안에 %. */
+.result-detail-ratio {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.result-detail-ratio-bar {
+  display: flex;
+  overflow: hidden;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--surface-container-high);
+}
+
+.result-detail-ratio-bar > span {
+  display: flex;
+  flex-basis: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  color: var(--on-primary, #fff);
+  font: var(--type-label-sm);
+}
+
+.result-detail-ratio-bar > [data-tone='success'] {
+  background: var(--semantic-success);
+}
+
+.result-detail-ratio-bar > [data-tone='error'] {
+  background: var(--semantic-error);
+}
+
+.result-detail-ratio-bar > [data-tone='warning'] {
+  background: var(--semantic-warning);
+}
+
+/* 검사일시 | 검사 방식 사이 세로 선. */
+.result-detail-meta > div + div {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 부적합 — 한 줄 설명 · 표식, 아래에 부적합번호 | 발생일시. */
+.result-detail-nc + .result-detail-nc {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+
+/* 검사 상세 및 이력 카드 — 소제목, LOT 이력 표의 자체 제목은 감춘다(「LOT 처리 이력」을 쓴다). */
+.result-detail-extra.result-detail-card {
+  display: block;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.result-detail-extra > h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+}
+
+.result-detail-extra section > h3 {
+  display: none;
+}
+
+/*
+ * 화면에서 감춘 1px 절대 위치 칸(그래프의 낭독기용 표 · 표 이름 · 열 손잡이)이 앱 틀 바닥 기준으로 서면 창 전체가 길어져,
+ * 굴리면 틀이 통째로 올라가 아래가 빈다(실측 문서 1517 / 창 1300 · omf-all-around#217). 그 상자를 기준으로 삼아 가둔다.
+ */
+.managed-table,
+.inspection-results-trend-chart {
+  position: relative;
+}
+
+/* 날짜가 많으면 그래프가 칸보다 넓어진다 — 칸 안에서 가로로 밀어 넘겨 본다. 오른쪽 끝 날짜 글자가 잘리지 않게 여유를 둔다. */
+.inspection-results-trend-chart {
+  overflow-x: auto;
+  padding-right: 48px;
+  overscroll-behavior-x: contain;
+}
+
+/* 맨 끝 날짜 글자는 그래프 그림 칸 밖으로 조금 나간다 — 잘리지 않게 그려 두고 위 오른쪽 여유가 받는다. */
+.inspection-results-trend-chart svg {
+  overflow: visible;
+}
+
+
+/* 항목별 측정 결과(검사 결과 상세의 탭 안) — 표 위 오른쪽에 「교정 상태 [전체]」(사용자 시안 2026-11-02). */
+.measurement-section-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.measurement-section-tools > :last-child {
+  width: 10rem;
 }

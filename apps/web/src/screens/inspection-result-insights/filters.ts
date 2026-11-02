@@ -1,3 +1,5 @@
+import { PAGE_SIZES, type PageSize } from '../../patterns/page-nav';
+
 export type InspectionResultSort =
   | 'inspectionRequestNo,asc'
   | 'inspectionRequestNo,desc'
@@ -127,6 +129,12 @@ export const readInspectionInsightFilters = (
 
 export const readInspectionResultSort = (params: URLSearchParams): InspectionResultSort =>
   SORTS.find((sort) => sort === params.get('sort')) ?? DEFAULT_INSPECTION_RESULT_SORT;
+
+/** 한 쪽 결과 수 — 고를 수 있는 값(20 · 50 · 100)만 받고, 없으면 50(사용자 2026-10-30 · #217). */
+export const DEFAULT_INSPECTION_RESULT_PAGE_SIZE: PageSize = 50;
+export const readInspectionResultPageSize = (params: URLSearchParams): PageSize =>
+  PAGE_SIZES.find((size) => String(size) === params.get('size')) ??
+  DEFAULT_INSPECTION_RESULT_PAGE_SIZE;
 
 export const readInspectionResultPage = (params: URLSearchParams): number => {
   const raw = params.get('page');

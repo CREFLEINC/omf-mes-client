@@ -55,6 +55,56 @@ export const filterOptions = (items: SelectItems, query: string): SelectItems =>
   });
 };
 
+/**
+ * 화면이 굴러 선택 칸이 움직이면 펼친 목록을 닫는다(사용자 2026-11-02). 디자인 시스템 목록은 펼친 순간의 자리에 고정되어,
+ * 화면을 굴리면 선택 칸에서 떨어져 엉뚱한 곳에 떠 있었다. 닫기는 디자인 시스템의 Esc 와 같은 길이다.
+ *
+ * ⚠ 「구르기가 일어났는가」가 아니라 「선택 칸이 움직였는가」로 본다 — 목록을 펼치는 순간에도 구르기 사건이 한 번 나서
+ * (실측), 사건만 보면 펼치자마자 닫혔다. 목록 안을 굴리는 것은 선택 칸을 움직이지 않으므로 그대로다.
+ */
+const useCloseOnTriggerMove = (triggerId: string): void => {
+  useEffect(() => {
+    let openedAt: { top: number; left: number } | null = null;
+    const onScroll = (): void => {
+      const trigger = document.getElementById(triggerId);
+      if (trigger === null || trigger.getAttribute('aria-expanded') !== 'true') {
+        openedAt = null;
+        return;
+      }
+      const { top, left } = trigger.getBoundingClientRect();
+      if (openedAt === null) {
+        openedAt = { top, left };
+        return;
+      }
+      if (Math.abs(top - openedAt.top) < 1 && Math.abs(left - openedAt.left) < 1) return;
+      openedAt = null;
+      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    };
+    /* 펼칠 때의 자리를 잡아 둔다 — 첫 구르기 사건이 오기 전에 이미 움직였을 수도 있어서다. */
+    const trigger = document.getElementById(triggerId);
+    const observer =
+      trigger === null
+        ? null
+        : new MutationObserver(() => {
+            if (trigger.getAttribute('aria-expanded') === 'true') {
+              const { top, left } = trigger.getBoundingClientRect();
+              openedAt = { top, left };
+            } else {
+              openedAt = null;
+            }
+          });
+    observer?.observe(trigger as HTMLElement, {
+      attributes: true,
+      attributeFilter: ['aria-expanded'],
+    });
+    document.addEventListener('scroll', onScroll, true);
+    return () => {
+      observer?.disconnect();
+      document.removeEventListener('scroll', onScroll, true);
+    };
+  }, [triggerId]);
+};
+
 export const Select = forwardRef<
   HTMLButtonElement,
   SelectProps & {
@@ -62,10 +112,13 @@ export const Select = forwardRef<
     searchable?: boolean;
   }
 >(function Select({ searchable = false, ...props }, ref) {
+  const fallbackId = useId();
+  const triggerId = props.id ?? fallbackId;
+  useCloseOnTriggerMove(triggerId);
   return searchable || countOptions(props.options) > SEARCH_THRESHOLD ? (
-    <SearchableSelect {...props} ref={ref} />
+    <SearchableSelect {...props} id={triggerId} ref={ref} />
   ) : (
-    <DsSelect {...props} ref={ref} />
+    <DsSelect {...props} id={triggerId} ref={ref} />
   );
 });
 

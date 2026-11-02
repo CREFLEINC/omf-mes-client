@@ -2,30 +2,39 @@
 export const inspectionSheet = {
   title: 'Tra cứu phiếu kiểm tra sản phẩm',
   breadcrumbRoot: 'Quản lý chất lượng',
-  rule: 'Tìm và xem phiếu kiểm tra sản phẩm theo số sê-ri đã nhập trên POP. Quản lý có quyền ký sẽ ký công đoạn, phê duyệt, xác nhận, hủy phê duyệt. Khi đã phê duyệt và xác nhận, phiếu hoàn tất và không sửa được.',
 
   statuses: { IN_PROGRESS: 'Đang soạn', COMPLETED: 'Hoàn tất' } as Record<string, string>,
 
   list: {
     heading: 'Danh sách phiếu kiểm tra',
     caption: 'Danh sách phiếu kiểm tra sản phẩm',
-    serialNo: 'Số sê-ri',
-    lotNo: 'Số LOT',
-    status: 'Trạng thái',
+    scan: 'Quét LOT',
+    scanPlaceholder: 'Quét mã vạch LOT · sê-ri hoặc nhập đầy đủ số',
+    statuses: 'Trạng thái phiếu kiểm tra',
     statusAll: 'Tất cả',
-    period: 'Thời gian lập',
-    search: 'Tìm',
+    from: 'Chọn ngày bắt đầu',
+    to: 'Chọn ngày kết thúc',
+    search: 'Tra cứu',
+    reset: 'Đặt lại',
+    detailOpen: 'Mở điều kiện chi tiết',
+    detailClose: 'Đóng điều kiện chi tiết',
+    model: 'Model',
+    modelPlaceholder: 'Nhập model',
+    workOrder: 'Lệnh sản xuất',
+    workOrderPlaceholder: 'Nhập số lệnh sản xuất',
+    layout: 'Chọn mẫu',
+    periodReversed: 'Ngày kết thúc không thể sớm hơn ngày bắt đầu.',
     empty: 'Không có phiếu kiểm tra phù hợp.',
     loading: 'Đang tải phiếu kiểm tra.',
     loadFailed: 'Không tải được danh sách phiếu kiểm tra.',
     retry: 'Thử lại',
-    open: 'Xem',
     openRow: (serialNo: string) => `Xem phiếu ${serialNo}`,
+    /* 목록 · 상세 한 화면(#217) — 고르기 전 상세 자리 안내. */
+    pickTitle: 'Hãy chọn phiếu kiểm tra',
+    pickHint: 'Chọn phiếu kiểm tra trong danh sách để xem nội dung.',
   },
 
   columns: {
-    serialModel: 'Sê-ri · Model',
-    lotWorkOrder: 'LOT sản xuất · Lệnh sản xuất',
     serialNo: 'Sê-ri',
     model: 'Model',
     lotNo: 'LOT sản xuất',
@@ -35,15 +44,38 @@ export const inspectionSheet = {
     status: 'Trạng thái',
     approval: 'Phê duyệt · Xác nhận',
     createdAt: 'Thời điểm lập',
-    actions: 'Thao tác',
   },
 
   detail: {
     heading: (serialNo: string) => `Phiếu kiểm tra · ${serialNo}`,
+    title: 'Chi tiết phiếu kiểm tra sản phẩm',
+    progress: {
+      label: 'Tiến độ phiếu kiểm tra',
+      inspection: (done: number, total: number): string =>
+        `Kiểm tra công đoạn (${String(done)}/${String(total)})`,
+      approval: 'Phê duyệt hoặc xác nhận',
+      done: 'Hoàn tất',
+    },
+    tabsLabel: 'Phân mục chi tiết phiếu',
+    tabs: {
+      basic: 'Thông tin cơ bản',
+      items: (count: number): string => `Hạng mục kiểm tra ${String(count)} mục`,
+      ngs: (count: number): string => `Ghi chép NG · sửa chữa · kiểm lại ${String(count)} mục`,
+      events: (count: number): string => `Lịch sử ký · phê duyệt ${String(count)} mục`,
+    },
+    itemsEmpty: 'Không có hạng mục kiểm tra.',
+    finalizeNote: 'Khi đã ký và phê duyệt đầy đủ, phiếu kiểm tra được xác lập.',
     loading: 'Đang tải phiếu kiểm tra.',
     loadFailed: 'Không tải được phiếu kiểm tra.',
     close: 'Đóng',
-    summary: 'Tóm tắt',
+    overview: {
+      basic: 'Thông tin cơ bản',
+      progress: 'Tình trạng tiến độ',
+      inspection: 'Tiến độ kiểm tra',
+      ngSteps: 'Công đoạn không đạt',
+      waitInspection: 'Có thể phê duyệt khi đã hoàn tất mọi kiểm tra công đoạn.',
+    },
+    serialNo: 'Số sê-ri',
     model: 'Model',
     lot: 'LOT sản xuất',
     workOrder: 'Lệnh sản xuất',
@@ -76,24 +108,35 @@ export const inspectionSheet = {
     fourMNote:
       'Vật tư thay đổi 4M đang dùng khi làm ra số sê-ri này (ước tính theo thời điểm đưa vào). Lệnh trước khi có ghi chép phả hệ thì tính theo lệnh sản xuất.',
     fourMNone: 'Không có hàng thay đổi đã đưa vào.',
-    steps: 'Phán định theo công đoạn',
+    fourMColumns: {
+      changeType: 'Loại thay đổi',
+      item: 'Vật tư',
+      lot: 'LOT vật tư',
+      remarks: 'Ghi chú',
+    },
+    steps: 'Kiểm tra theo công đoạn',
     stepsCaption: 'Phán định và chữ ký theo công đoạn',
     stepColumns: {
       step: 'Công đoạn',
       judgment: 'Phán định',
       inspector: 'Người kiểm tra',
       inspectedAt: 'Thời điểm kiểm tra',
+      signRequired: 'Cần ký',
       sign: 'Chữ ký',
       actions: 'Thao tác',
     },
     notRecorded: 'Chưa nhập',
-    signRequired: 'Cần ký',
+    signRequiredYes: 'Cần',
+    signRequiredNo: 'Không cần',
     oqc: '(màn hình kiểm tra xuất hàng)',
     items: (name: string) => `Phán định hạng mục ${name}`,
-    itemsShort: (ng: number): string => (ng > 0 ? `Hạng mục · NG ${ng}` : 'Hạng mục'),
-    itemsToggle: (name: string, ng: number) =>
-      ng > 0 ? `Xem hạng mục ${name} · NG ${ng}` : `Xem hạng mục ${name}`,
+    stepDetail: {
+      button: 'Xem chi tiết',
+      open: (name: string): string => `Xem chi tiết ${name}`,
+      title: (name: string): string => `Chi tiết ${name}`,
+    },
     itemColumns: {
+      sequenceNo: 'Thứ tự',
       code: 'Số hạng mục',
       name: 'Hạng mục kiểm tra',
       method: 'Toàn bộ/Rút mẫu',
@@ -111,11 +154,18 @@ export const inspectionSheet = {
     },
     events: 'Lịch sử ký · phê duyệt',
     eventsEmpty: 'Chưa có lịch sử.',
+    eventColumns: {
+      actedAt: 'Thời điểm',
+      event: 'Loại',
+      step: 'Công đoạn',
+      actor: 'Người xử lý',
+      reason: 'Lý do',
+    },
     eventLabels: {
       SIGN_STEP: 'Ký công đoạn',
       APPROVE: 'Phê duyệt',
       CHECK: 'Xác nhận',
-      REOPEN: 'Hủy phê duyệt',
+      REOPEN: 'Hủy phê duyệt · xác nhận',
       APPROVAL_CLEARED: 'Bỏ phê duyệt · xác nhận do sửa',
     } as Record<string, string>,
   },
@@ -125,28 +175,64 @@ export const inspectionSheet = {
     signRow: (step: string) => `Ký ${step}`,
     approve: 'Phê duyệt',
     check: 'Xác nhận',
-    reopen: 'Hủy phê duyệt',
+    reopen: { all: 'Hủy tất cả', approve: 'Hủy phê duyệt', check: 'Hủy xác nhận' } as Record<
+      'all' | 'approve' | 'check',
+      string
+    >,
+    blockedUnsigned: (steps: string): string =>
+      `Còn công đoạn cần ký nên chưa thể phê duyệt · xác nhận: ${steps}`,
+    blockedNg: (steps: string): string =>
+      `Có công đoạn phán định cuối NG nên chưa thể phê duyệt · xác nhận: ${steps}`,
     signed: (step: string) => `Đã ký ${step}.`,
     approved: 'Đã phê duyệt.',
     checked: 'Đã xác nhận.',
     completed: 'Đã phê duyệt và xác nhận, phiếu kiểm tra đã hoàn tất.',
-    reopened: 'Đã hủy phê duyệt. Phiếu kiểm tra quay lại trạng thái đang soạn.',
-    noPermission: 'Không có quyền ký · phê duyệt nên chỉ được xem.',
+    reopened: (label: string): string =>
+      `${label} xong. Phiếu kiểm tra quay lại trạng thái đang soạn.`,
+    noPermission: 'Không có quyền nên không thể ký · phê duyệt · xác nhận.',
+    permissionSettings: 'Cài đặt quyền',
   },
 
-  print: {
-    button: 'In A4',
-    lang: 'Ngôn ngữ in',
-    languages: { ko: '한국어', vi: 'Tiếng Việt' } as Record<string, string>,
-    pdfHint: 'Muốn lưu thành tệp, hãy chọn «Lưu dưới dạng PDF» trong cửa sổ in.',
-    fileName: (serialNo: string, lang: string) => `PhieuKiemTra_${serialNo}_${lang}`,
+  excel: {
+    button: 'Tải Excel',
+    fileName: (serialNo: string): string => `PhieuKiemTra_${serialNo}.xlsx`,
+    fileType: 'Tệp Excel',
+    failed: 'Không lưu được tệp.',
+  },
+
+  signDialog: {
+    title: 'Ký',
+    body: (step: string): string =>
+      `Ký cho ${step}? Tên tài khoản đăng nhập và thời điểm sẽ được ghi lại.`,
+    ok: 'Ký',
+  },
+
+  confirmDialog: {
+    title: { approve: 'Phê duyệt phiếu', check: 'Xác nhận phiếu' } as Record<
+      'approve' | 'check',
+      string
+    >,
+    ok: { approve: 'Phê duyệt', check: 'Xác nhận' } as Record<'approve' | 'check', string>,
+    body: {
+      approve: 'Phê duyệt phiếu kiểm tra này?',
+      check: 'Xác nhận phiếu kiểm tra này?',
+    } as Record<'approve' | 'check', string>,
+    note: {
+      approve: 'Người phê duyệt và thời điểm phê duyệt sẽ được ghi lại.',
+      check: 'Người xác nhận và thời điểm xác nhận sẽ được ghi lại.',
+    } as Record<'approve' | 'check', string>,
+    completes: 'Phê duyệt và xác nhận đều xong, phiếu hoàn tất và sau đó không sửa được.',
   },
 
   reopenDialog: {
-    title: 'Hủy phê duyệt',
-    body: 'Xóa phê duyệt · xác nhận và đưa về trạng thái đang soạn. Lý do được lưu vào lịch sử.',
-    reason: 'Lý do',
-    required: 'Hãy nhập lý do.',
-    ok: 'Hủy phê duyệt',
+    body: {
+      all: 'Phê duyệt và xác nhận sẽ bị hủy, phiếu quay lại trạng thái đang soạn.',
+      approve: 'Phê duyệt sẽ bị hủy, phiếu quay lại trạng thái đang soạn.',
+      check: 'Xác nhận sẽ bị hủy, phiếu quay lại trạng thái đang soạn.',
+    } as Record<'all' | 'approve' | 'check', string>,
+    reason: 'Lý do hủy',
+    placeholder: 'Nhập lý do hủy.',
+    required: 'Nhập lý do hủy.',
+    close: 'Đóng',
   },
 };

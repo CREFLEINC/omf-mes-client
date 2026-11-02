@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
-import { LotTimelineTable } from './lot-timeline-table';
+import { type LotTimelineColumnKey, LotTimelineTable } from './lot-timeline-table';
 import { useLotActorOptions, useLotTimeline } from './queries';
 
 const t = messages.lotStatusHistory;
@@ -13,10 +13,17 @@ interface LotTimelineProps {
   statusOptions: readonly FilterOption[];
   /** LOT 상세 탭 안 — 제목·접기는 탭이 대신한다(사용자 2026-10-30). */
   embedded?: boolean;
+  /** 표 열 이름을 바꿔 부를 때 — 검사 결과 상세의 「처리 이력」(omf-all-around#217). */
+  columnLabels?: Partial<Record<LotTimelineColumnKey, string>>;
 }
 
 /** LOT 상세의 이력 — 그 LOT 의 보류 등록·해제와 상태 변경을 시간순으로(omf-all-around#24). */
-export const LotTimeline = ({ lotId, statusOptions, embedded = false }: LotTimelineProps) => {
+export const LotTimeline = ({
+  lotId,
+  statusOptions,
+  embedded = false,
+  columnLabels,
+}: LotTimelineProps) => {
   const timeline = useLotTimeline(lotId);
   const [open, setOpen] = useState(true);
   const actors = useLotActorOptions(true);
@@ -86,6 +93,7 @@ export const LotTimeline = ({ lotId, statusOptions, embedded = false }: LotTimel
             statusOptions={statusOptions}
             appUserName={appUserName}
             variant="detail"
+            columnLabels={columnLabels}
             empty={<EmptyState size="sm" title={t.timeline.empty} />}
           />
         )}
