@@ -1,8 +1,8 @@
 import type { DispositionSortResult } from '@omf-mes/api-client';
-import { Chip, Tabs, useToast } from '@crefle/web-ui';
+import { Badge, Chip, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -398,6 +398,13 @@ export const DispositionDecisionScreen = ({
    * 다시 누르면 풀림)과 배치 고르기. 품질 승인 처리의 유형 탭 줄과 같은 모양이다. 제목 · 경로 줄은 두지 않는다.
    * 상태 칩과 배치 고르기는 판정 대기에서만(이력은 상태 축이 없고 표 하나다).
    */
+  const countBadge = (
+    count: number | undefined,
+    label: (count: number | undefined) => string,
+  ): ReactNode =>
+    count !== undefined && count > 0 ? (
+      <Badge count={count} max={99} aria-label={label(count)} />
+    ) : undefined;
   const topBar = (
     <div className="quality-approval-type-bar">
       <Tabs
@@ -406,8 +413,19 @@ export const DispositionDecisionScreen = ({
         value={tab}
         onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
         items={[
-          { value: 'pending', label: t.tabs.pendingCount(pendingCount), content: null },
-          { value: 'history', label: t.tabs.historyCount(historyCount), content: null },
+          /* 건수는 검사 조회·판정 탭처럼 이름 옆 빨간 숫자 배지(0이면 두지 않는다 · 사용자 지시 · #223). */
+          {
+            value: 'pending',
+            label: t.tabs.pending,
+            badge: countBadge(pendingCount, t.tabs.pendingCount),
+            content: null,
+          },
+          {
+            value: 'history',
+            label: t.tabs.history,
+            badge: countBadge(historyCount, t.tabs.historyCount),
+            content: null,
+          },
         ]}
       />
       {tab === 'pending' && (

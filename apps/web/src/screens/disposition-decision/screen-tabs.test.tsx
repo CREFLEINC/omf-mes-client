@@ -48,10 +48,11 @@ describe('DispositionDecisionScreen 탭', () => {
   });
 
   /* 탭 줄 칩은 두 목록의 건수를 함께 보인다(사용자 지시 · #223) — 보지 않는 쪽도 첫 쪽 하나는 부른다. */
-  it('탭 이름에 판정 대기 건수가 붙고, 처리 이력 건수를 위해 그 목록도 부른다', async () => {
+  it('탭 옆 배지에 판정 대기 건수가 붙고, 처리 이력 건수를 위해 그 목록도 부른다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('tab', { name: t.tabs.pendingCount(1) })).toBeInTheDocument();
+    /* 건수는 탭 이름 옆 숫자 배지(#223) — 배지의 접근 이름으로 본다. */
+    expect((await screen.findAllByLabelText(t.tabs.pendingCount(1))).length).toBeGreaterThan(0);
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });
