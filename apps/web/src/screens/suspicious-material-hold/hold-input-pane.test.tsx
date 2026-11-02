@@ -259,4 +259,14 @@ describe('의심자재 보류 입력 pane', () => {
     await user.click(await screen.findByRole('option', { name: '파손' }));
     await waitFor(() => expect(screen.getByLabelText(/^해제 조건/)).toHaveFocus());
   });
+
+  it('재고 기록이 없는 LOT(창고 없음)은 「재고 없음」으로 보이고 전량 보류는 막지 않는다', async () => {
+    const { warehouseId: _w, locationId: _l, onHandQty: _q, ...noStock } = selected(701);
+    const { onBodyChange } = renderPane([{ ...noStock, locationLabel: null, uomLabel: null }]);
+
+    expect(await screen.findByText('재고 없음')).toBeVisible();
+    expect(screen.queryByText(/미확인/)).toBeNull();
+    expect(screen.queryByText(/도착 상태가 확인되지 않아/)).toBeNull();
+    expect(onBodyChange).not.toHaveBeenCalledWith(expect.objectContaining({ lots: [] }));
+  });
 });

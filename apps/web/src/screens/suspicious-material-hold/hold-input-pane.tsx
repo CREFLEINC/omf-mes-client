@@ -135,8 +135,14 @@ export const SuspiciousMaterialHoldInputPane = ({
     reasons.data === undefined ||
     reasons.data.page.total > reasons.data.items.length ||
     activeReasons.length === 0;
-  const labelsUnavailable = selection.some(
-    ({ locationLabel, uomLabel }) => locationLabel === null || uomLabel === null,
+  /*
+   * 위치 · 단위를 못 푼 LOT 은 막는다 — 다만 재고 기록이 아예 없는 LOT(창고 없음)은 막을 위치가 없을 뿐이라 전량 보류는
+   * 받는다(서버도 전량 보류에 위치 · 단위를 받지 않는다 · 사용자 2026-11-02). 일부 보류는 수량 · 단위가 있어야 한다.
+   */
+  const labelsUnavailable = selection.some(({ warehouseId, locationLabel, uomLabel }) =>
+    warehouseId === undefined
+      ? draft.mode === 'PARTIAL' && uomLabel === null
+      : locationLabel === null || uomLabel === null,
   );
   const allowedReason = activeReasons.some(({ code }) => code === draft.reasonCode);
   const body = useMemo(
@@ -282,11 +288,15 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
       </div>
       <ul className="suspicious-material-hold-impact-list">
         {selection.map((lot) => {
-          const facts = [
-            [t.quantityName, lot.onHandQty === undefined ? null : String(lot.onHandQty)],
-            [t.locationName, lot.locationLabel],
-            [t.uomName, lot.uomLabel],
-          ] as const;
+          /* 재고 기록이 없는 LOT 은 「미확인」이 아니라 「재고 없음」(사용자 2026-11-02). */
+          const noStock = lot.warehouseId === undefined;
+          const facts = noStock
+            ? ([] as const)
+            : ([
+                [t.quantityName, lot.onHandQty === undefined ? null : String(lot.onHandQty)],
+                [t.locationName, lot.locationLabel],
+                [t.uomName, lot.uomLabel],
+              ] as const);
           const known = facts.flatMap(([, value]) => (value === null ? [] : [value]));
           const unknown = facts.flatMap(([name, value]) => (value === null ? [name] : []));
           /* LOT 번호 아래 한 줄 — 확인한 값 · (!) 미확인 값 · 붉은 제한(사용자 시안 2026-11-02). */
@@ -300,6 +310,9 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
               >
                 <strong>{lot.lotNo}</strong>
                 <span className="suspicious-material-hold-impact-line">
+                  {noStock && (
+                    <span className="suspicious-material-hold-impact-facts">{t.noStock}</span>
+                  )}
                   {known.length > 0 && (
                     <span className="suspicious-material-hold-impact-facts">
                       {known.join(' · ')}

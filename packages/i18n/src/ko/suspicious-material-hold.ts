@@ -70,6 +70,8 @@ export const suspiciousMaterialHold = {
     uomName: '단위',
     locationName: '위치',
     /** 못 받은 값 이름을 「수량 · 위치 · 단위 미확인」처럼 묶는다(사용자 시안 2026-11-02). */
+    /** 재고 기록이 없는 LOT — 전량 보류는 된다(사용자 2026-11-02). */
+    noStock: '재고 없음',
     unknownFacts: (names: string): string => `${names} 미확인`,
     /** 제한 사항 항목 단추의 이름 — 누르면 LOT 상세 팝업(사용자 2026-11-02). */
     openDetail: (lotNo: string): string => `${lotNo} 상세 보기`,
