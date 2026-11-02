@@ -1243,12 +1243,12 @@ describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () =
     renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...lotStatusTransitionRoutes()]);
 
     /* 메뉴 이름은 「LOT 상태 판정」으로 줄었다. 「LOT 상태」 묶음의 탭이다. */
-    const link = hubTab('LOT 상태', 'LOT 상태 판정');
+    const link = hubTab('LOT 상태', 'LOT 상태 변경');
     link.focus();
     await user.keyboard('{Enter}');
 
     await waitFor(() => expect(currentLocation()).toBe('/quality/lot-status-transition'));
-    expect(hubTab('LOT 상태', 'LOT 상태 판정')).toHaveAttribute('aria-current', 'page');
+    expect(hubTab('LOT 상태', 'LOT 상태 변경')).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('button', { name: 'SYN-LOT-ENTRY 선택' })).toBeVisible();
     expect(screen.getByText('전이 이력은 별도의 이력으로 저장되지 않습니다')).toBeVisible();
     /*

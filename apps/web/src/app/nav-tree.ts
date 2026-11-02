@@ -362,13 +362,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           /* LOT 현황의 「변경 이력」 검색 방식을 따로 탭으로 나눴다(사용자 2026-10-30) — 같은 화면 · 같은 권한. */
           {
             to: '/quality/lot-status-history',
-            label: 'LOT 변경 이력',
-            labelVi: 'Lịch sử thay đổi LOT',
+            label: 'LOT 상태 이력',
+            labelVi: 'Lịch sử trạng thái LOT',
           },
           {
             to: '/quality/lot-status-transition',
-            label: 'LOT 상태 판정',
-            labelVi: 'Đánh giá trạng thái LOT',
+            label: 'LOT 상태 변경',
+            labelVi: 'Thay đổi trạng thái LOT',
           },
           {
             to: '/quality/suspicious-material-hold',

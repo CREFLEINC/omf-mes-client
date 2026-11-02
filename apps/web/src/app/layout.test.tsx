@@ -562,7 +562,7 @@ describe('AppLayout', () => {
    * W-03-02 — LOT 판정은 조회에서 찾은 LOT 을 판정·전이하므로 「LOT 상태」 묶음의 조회 바로 뒤 탭이다.
    * 의심자재 등록(W-03-03)은 의심 자재 LOT 을 보류하는 일이라 판정 뒤에 잇는다(omf-all-around#210).
    */
-  it('LOT 상태 탭 막대가 LOT 현황 → LOT 변경 이력 → LOT 상태 판정 → 의심자재 등록 차례다', () => {
+  it('LOT 상태 탭 막대가 LOT 현황 → LOT 상태 이력 → LOT 상태 변경 → 의심자재 등록 차례다', () => {
     renderLayout('본문 내용', { route: '/quality/lot-status' });
 
     const tabs = screen.getByRole('navigation', { name: 'LOT 상태' });
@@ -571,7 +571,7 @@ describe('AppLayout', () => {
       'href',
       '/quality/lot-status',
     );
-    expect(within(tabs).getByRole('link', { name: 'LOT 상태 판정' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: 'LOT 상태 변경' })).toHaveAttribute(
       'href',
       '/quality/lot-status-transition',
     );
