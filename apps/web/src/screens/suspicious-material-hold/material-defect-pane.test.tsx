@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import type { SelectedLotSnapshot } from './candidate-model';
-import { MaterialDefectPane } from './material-defect-pane';
+import { AffectedProductionLotsSection, MaterialDefectPane } from './material-defect-pane';
 
 /** W-03-03 자재 불량 기록 + 영향 생산 LOT(omf-all-around#108). */
 
@@ -65,9 +65,15 @@ const renderPane = (selection: SelectedLotSnapshot[]) => {
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 
-  renderWithProviders(<MaterialDefectPane selection={selection} isLocked={false} />, {
-    fetch: stubFetch,
-  });
+  renderWithProviders(
+    <>
+      <MaterialDefectPane selection={selection} isLocked={false} />
+      <AffectedProductionLotsSection selection={selection} />
+    </>,
+    {
+      fetch: stubFetch,
+    },
+  );
 
   return { writes };
 };

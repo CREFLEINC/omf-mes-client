@@ -8,6 +8,7 @@ import type { SelectedLotSnapshot } from './candidate-model';
 import {
   buildSuspiciousMaterialHoldBody,
   type HoldInputLot,
+  SuspiciousMaterialHoldImpact,
   SuspiciousMaterialHoldInputPane,
 } from './hold-input-pane';
 
@@ -122,6 +123,8 @@ const renderPane = (
           isLocked={false}
           onBodyChange={onBodyChange}
         />
+        {/* 보류 시 제한 사항은 카드 안에서 따로 선다(사용자 2026-11-02) — 이 시험은 함께 본다. */}
+        <SuspiciousMaterialHoldImpact selection={current} />
       </>
     );
   };

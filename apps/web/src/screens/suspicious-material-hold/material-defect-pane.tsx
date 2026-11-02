@@ -1,4 +1,4 @@
-import { Button, Icon, Table, TextField, type Column } from '@crefle/web-ui';
+import { Button, Chip, Icon, Table, TextField, type Column } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
@@ -72,8 +72,6 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const lotId = lot?.lotId ?? null;
 
   const codes = useDefectCodes(lotId !== null);
-  const affected = useAffectedProductionLots(lotId);
-  const statuses = useLotStatusLabels();
   const [code, setCode] = useState<DefectCodeDraft>(EMPTY_DEFECT_CODE);
   const [qty, setQty] = useState('');
   const [description, setDescription] = useState('');
@@ -134,128 +132,140 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const noCodes = codes.data !== undefined && majors.length === 0;
 
   /*
-   * 「의심자재 보류 등록」 카드 안 두 구획 — 자재 불량 기록, 영향 생산 LOT(사용자 시안 2026-11-02). 구획 사이는 가는
-   * 선으로 가른다.
+   * 「의심자재 보류 등록」 카드 안 자재 불량 기록 구획 — 보류 시 제한 사항과 나란히 선다(사용자 2026-11-02).
    */
   return (
-    <>
-      <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
-        {/* 오른쪽 위 [불량 코드 등록] — 불량 · 원인코드 관리 화면으로 간다(사용자 2026-11-02). */}
-        <div className="suspicious-material-hold-section-head">
-          <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
-          <Button
-            variant="outlined"
-            size="sm"
-            onClick={() => void navigate('/master-data/defect-cause-code')}
-          >
-            {tHere.registerCode}
-          </Button>
+    <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
+      {/* 오른쪽 위 [불량 코드 등록] — 불량 · 원인코드 관리 화면으로 간다(사용자 2026-11-02). */}
+      <div className="suspicious-material-hold-section-head">
+        <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() => void navigate('/master-data/defect-cause-code')}
+        >
+          {tHere.registerCode}
+        </Button>
+      </div>
+      {/* 유형 · 수량 한 줄(수량은 좁게), 없음 안내는 유형 바로 아래, 내용은 전체 폭(사용자 시안 2026-11-02). */}
+      <div className="suspicious-material-hold-defect-row">
+        <div className="field-cell">
+          <label className="field-label" htmlFor={majorFieldId}>
+            {tHere.major}
+          </label>
+          <Select
+            id={majorFieldId}
+            options={majors.map(optionOf)}
+            value={code.majorId}
+            placeholder={noCodes ? tHere.noCodesPlaceholder : tHere.majorPlaceholder}
+            disabled={disabled || majors.length === 0}
+            onChange={(value) => setCode({ majorId: value, minorId: '' })}
+          />
         </div>
-        {/* 유형 · 수량 한 줄(수량은 좁게), 없음 안내는 유형 바로 아래, 내용은 전체 폭(사용자 시안 2026-11-02). */}
-        <div className="suspicious-material-hold-defect-row">
+        {minors.length > 0 && (
           <div className="field-cell">
-            <label className="field-label" htmlFor={majorFieldId}>
-              {tHere.major}
+            <label className="field-label" htmlFor={minorFieldId}>
+              {t.code.minor}
             </label>
             <Select
-              id={majorFieldId}
-              options={majors.map(optionOf)}
-              value={code.majorId}
-              placeholder={noCodes ? tHere.noCodesPlaceholder : tHere.majorPlaceholder}
-              disabled={disabled || majors.length === 0}
-              onChange={(value) => setCode({ majorId: value, minorId: '' })}
+              id={minorFieldId}
+              options={minors.map(optionOf)}
+              value={code.minorId}
+              disabled={disabled}
+              onChange={(value) => setCode({ ...code, minorId: value })}
             />
           </div>
-          {minors.length > 0 && (
-            <div className="field-cell">
-              <label className="field-label" htmlFor={minorFieldId}>
-                {t.code.minor}
-              </label>
-              <Select
-                id={minorFieldId}
-                options={minors.map(optionOf)}
-                value={code.minorId}
-                disabled={disabled}
-                onChange={(value) => setCode({ ...code, minorId: value })}
-              />
-            </div>
-          )}
-          <TextField
-            containerClassName="suspicious-material-hold-defect-qty"
-            label={t.qty.label}
-            placeholder={tHere.qtyPlaceholder}
-            inputMode="decimal"
-            value={qty}
-            disabled={disabled}
-            error={record.fieldErrors.defectQty}
-            onChange={(event) => setQty(event.target.value)}
-          />
-        </div>
-        {codes.isError && (
-          <p className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {t.code.loadFailed}
-          </p>
-        )}
-        {noCodes && (
-          <p className="iqc-inspection-action-note" data-tone="info">
-            <Icon name="info" size={14} aria-hidden />
-            {tHere.noCodesNote}
-          </p>
         )}
         <TextField
-          label={t.description}
-          placeholder={tHere.descriptionPlaceholder}
-          value={description}
+          containerClassName="suspicious-material-hold-defect-qty"
+          label={t.qty.label}
+          placeholder={tHere.qtyPlaceholder}
+          inputMode="decimal"
+          value={qty}
           disabled={disabled}
-          onChange={(event) => setDescription(event.target.value)}
+          error={record.fieldErrors.defectQty}
+          onChange={(event) => setQty(event.target.value)}
         />
-        <SaveErrorBanner error={record.error} />
-        {isRecorded && <p className="field-note">{t.recorded}</p>}
-        <div className="suspicious-material-hold-action-row">
-          <Button
-            disabled={blocked !== null || disabled}
-            title={blocked ?? undefined}
-            onClick={submit}
-          >
-            {record.isSaving ? t.saving : tHere.submit}
-          </Button>
-        </div>
-      </section>
-
-      <section className="suspicious-material-hold-section" aria-label={tHere.affectedHeading}>
-        <div className="suspicious-material-hold-section-head">
-          <h3 className="suspicious-material-hold-subtitle">{tHere.affectedHeading}</h3>
-          {affected.data !== undefined && (
-            <span className="suspicious-material-hold-count">
-              {tHere.affectedCount(affected.data.items.length)}
-            </span>
-          )}
-        </div>
-        {affected.isError ? (
-          <p className="field-note">{t.affected.loadFailed}</p>
-        ) : (
-          <Table
-            caption={tHere.affectedHeading}
-            density="compact"
-            columns={columnsOf(statuses.describe)}
-            rows={affected.data?.items ?? []}
-            getRowId={(row) => String(row.lotId)}
-            empty={
-              <p className="field-note">
-                {affected.isPending ? t.affected.loading : t.affected.none}
-              </p>
-            }
-          />
-        )}
-        {/* 조회 근거는 표 아래 안내 한 줄 — 작업지시 기준이면 시안 문장, 계보 기준이면 그 근거 문장. */}
-        <p className="iqc-inspection-action-note">
+      </div>
+      {codes.isError && (
+        <p className="iqc-inspection-action-note" data-tone="info" title={t.code.loadFailed}>
           <Icon name="info" size={14} aria-hidden />
-          {affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE'
-            ? t.affected.genealogy
-            : tHere.estimateNote}
+          <span className="iqc-inspection-action-note-text">{t.code.loadFailed}</span>
         </p>
-      </section>
-    </>
+      )}
+      {noCodes && (
+        <p className="iqc-inspection-action-note" data-tone="info" title={tHere.noCodesNote}>
+          <Icon name="info" size={14} aria-hidden />
+          <span className="iqc-inspection-action-note-text">{tHere.noCodesNote}</span>
+        </p>
+      )}
+      <TextField
+        label={t.description}
+        placeholder={tHere.descriptionPlaceholder}
+        value={description}
+        disabled={disabled}
+        onChange={(event) => setDescription(event.target.value)}
+      />
+      <SaveErrorBanner error={record.error} />
+      {isRecorded && <p className="field-note">{t.recorded}</p>}
+      <div className="suspicious-material-hold-action-row">
+        <Button
+          disabled={blocked !== null || disabled}
+          title={blocked ?? undefined}
+          onClick={submit}
+        >
+          {record.isSaving ? t.saving : tHere.submit}
+        </Button>
+      </div>
+    </section>
+  );
+};
+
+/**
+ * 관련 생산 LOT — 고른 LOT 하나가 들어간 생산 LOT(작업지시 · 계보 기준 추정 · #166). 자재 불량 기록과 따로 세워 카드 맨 아래
+ * 전체 폭에 둔다(사용자 2026-11-02).
+ */
+export const AffectedProductionLotsSection = ({
+  selection,
+}: {
+  selection: SelectedLotSnapshot[];
+}) => {
+  const lot = selection.length === 1 ? (selection[0] ?? null) : null;
+  const affected = useAffectedProductionLots(lot?.lotId ?? null);
+  const statuses = useLotStatusLabels();
+  if (lot === null) return null;
+  const basisNote =
+    affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE' ? t.affected.genealogy : tHere.estimateNote;
+
+  return (
+    <section className="suspicious-material-hold-section" aria-label={tHere.affectedHeading}>
+      <div className="suspicious-material-hold-section-head">
+        <h3 className="suspicious-material-hold-subtitle">{tHere.affectedHeading}</h3>
+        {affected.data !== undefined && (
+          <Chip size="sm">{tHere.affectedCount(affected.data.items.length)}</Chip>
+        )}
+      </div>
+      {affected.isError ? (
+        <p className="field-note">{t.affected.loadFailed}</p>
+      ) : (
+        <Table
+          caption={tHere.affectedHeading}
+          density="compact"
+          columns={columnsOf(statuses.describe)}
+          rows={affected.data?.items ?? []}
+          getRowId={(row) => String(row.lotId)}
+          empty={
+            <p className="field-note">
+              {affected.isPending ? t.affected.loading : t.affected.none}
+            </p>
+          }
+        />
+      )}
+      {/* 조회 근거는 표 아래 안내 한 줄 — 작업지시 기준이면 시안 문장, 계보 기준이면 그 근거 문장. */}
+      <p className="iqc-inspection-action-note" title={basisNote}>
+        <Icon name="info" size={14} aria-hidden />
+        <span className="iqc-inspection-action-note-text">{basisNote}</span>
+      </p>
+    </section>
   );
 };

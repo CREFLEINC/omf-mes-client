@@ -1,4 +1,4 @@
-import { Breadcrumb, Chip, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,8 +8,12 @@ import { usePageHub } from '../../patterns/page-hub';
 import type { SelectedLotSnapshot } from './candidate-model';
 import { SuspiciousMaterialCandidatePane } from './candidate-pane';
 import { SuspiciousMaterialHoldExecution } from './hold-execution';
-import { type HoldInputLot, SuspiciousMaterialHoldInputPane } from './hold-input-pane';
-import { MaterialDefectPane } from './material-defect-pane';
+import {
+  type HoldInputLot,
+  SuspiciousMaterialHoldImpact,
+  SuspiciousMaterialHoldInputPane,
+} from './hold-input-pane';
+import { AffectedProductionLotsSection, MaterialDefectPane } from './material-defect-pane';
 
 type Body = components['schemas']['LotHoldCreate'];
 const t = messages.suspiciousMaterialHold;
@@ -63,7 +67,6 @@ export const SuspiciousMaterialHoldFlow = ({
           <section className="pane suspicious-material-hold-card" aria-label={t.card.title}>
             <div className="suspicious-material-hold-card-head">
               <h2 className="pane-title">{t.card.title}</h2>
-              {selection.length > 0 && <Chip size="sm">{t.card.selected(selection.length)}</Chip>}
             </div>
             {selection.length === 0 ? (
               <EmptyState
@@ -79,15 +82,30 @@ export const SuspiciousMaterialHoldFlow = ({
                   isLocked={pinned}
                   onBodyChange={setBody}
                 />
-                <SuspiciousMaterialHoldExecution
-                  body={body}
-                  selected={selection}
-                  onConfirmationChange={changePinned}
-                  onApplied={clear}
-                  onReload={clear}
-                />
-                {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록과 영향 생산 LOT(계보 기준 추정 · #166). */}
-                <MaterialDefectPane selection={candidateReady ? selection : []} isLocked={pinned} />
+                {/*
+                 * 보류 시 제한 사항 · [보류 등록]과 자재 불량 기록을 나란히(사용자 2026-11-02) — 카드가 좁으면 위아래로 쌓인다.
+                 * 관련 생산 LOT 은 그 아래 전체 폭.
+                 */}
+                <div className="suspicious-material-hold-pair">
+                  <div className="suspicious-material-hold-section">
+                    <SuspiciousMaterialHoldImpact
+                      selection={candidateReady ? inputSelection : []}
+                    />
+                    <SuspiciousMaterialHoldExecution
+                      body={body}
+                      selected={selection}
+                      onConfirmationChange={changePinned}
+                      onApplied={clear}
+                      onReload={clear}
+                    />
+                  </div>
+                  {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록(계보 기준 추정 · #166). */}
+                  <MaterialDefectPane
+                    selection={candidateReady ? selection : []}
+                    isLocked={pinned}
+                  />
+                </div>
+                <AffectedProductionLotsSection selection={candidateReady ? selection : []} />
               </>
             )}
           </section>

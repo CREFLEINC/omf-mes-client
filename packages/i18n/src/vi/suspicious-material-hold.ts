@@ -103,7 +103,6 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
   },
   card: {
     title: 'Đăng ký tạm giữ vật tư nghi ngờ',
-    selected: (count: number): string => `LOT đã chọn ${String(count)}`,
   },
   defect: {
     major: 'Loại lỗi',

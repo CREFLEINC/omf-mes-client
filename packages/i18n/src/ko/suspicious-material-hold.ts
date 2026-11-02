@@ -93,9 +93,7 @@ export const suspiciousMaterialHold = {
   /** 오른쪽 한 카드 — 보류 입력 · 등록 · 자재 불량 기록 · 영향 생산 LOT(사용자 시안 2026-11-02). */
   card: {
     title: '의심자재 보류 등록',
-    selected: (count: number): string => `선택 LOT ${String(count)}건`,
   },
-  /** 자재 불량 기록 구획의 이 화면 문구 — POP 자재 불량 화면과 같은 기본 문구 위에 시안 글자를 얹는다. */
   /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
   defect: {
     major: '불량 유형',

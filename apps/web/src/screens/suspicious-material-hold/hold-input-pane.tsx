@@ -1,4 +1,4 @@
-import { Icon, Radio, RadioGroup, TextField } from '@crefle/web-ui';
+import { Chip, Icon, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -222,56 +222,65 @@ export const SuspiciousMaterialHoldInputPane = ({
       </div>
       {/* 등록을 막는 까닭 — 검사 조회·판정 화면의 안내 줄 모양(정보 아이콘 + 파란 바탕, 글 폭만큼). */}
       {reasonUnavailable && (
-        <p className="iqc-inspection-action-note" data-tone="info">
+        <p className="iqc-inspection-action-note" data-tone="info" title={t.reasonUnavailable}>
           <Icon name="info" size={14} aria-hidden />
-          {t.reasonUnavailable}
+          <span className="iqc-inspection-action-note-text">{t.reasonUnavailable}</span>
         </p>
       )}
       {(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === '') && (
-        <p className="iqc-inspection-action-note" data-tone="info">
+        <p className="iqc-inspection-action-note" data-tone="info" title={t.factsUnavailable}>
           <Icon name="info" size={14} aria-hidden />
-          {t.factsUnavailable}
+          <span className="iqc-inspection-action-note-text">{t.factsUnavailable}</span>
         </p>
       )}
-      {/* 보류 시 제한 사항 — LOT 마다 번호, 못 받은 값은 「수량 · 위치 · 단위 미확인」 한 줄로, 붉은 제한 안내(사용자 시안 2026-11-02). */}
-      <section className="suspicious-material-hold-impact" aria-label={t.impact}>
-        <div className="suspicious-material-hold-section-head">
-          <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
-          <span className="suspicious-material-hold-count">{t.impactTarget(selection.length)}</span>
-        </div>
-        <ul className="suspicious-material-hold-impact-list">
-          {selection.map((lot) => {
-            const facts = [
-              [t.quantityName, lot.onHandQty === undefined ? null : String(lot.onHandQty)],
-              [t.locationName, lot.locationLabel],
-              [t.uomName, lot.uomLabel],
-            ] as const;
-            const known = facts.flatMap(([, value]) => (value === null ? [] : [value]));
-            const unknown = facts.flatMap(([name, value]) => (value === null ? [name] : []));
-            return (
-              <li key={lot.lotId}>
-                <strong>{lot.lotNo}</strong>
-                {known.length > 0 && (
-                  <span className="suspicious-material-hold-impact-facts">{known.join(' · ')}</span>
-                )}
-                {unknown.length > 0 && (
-                  <span className="suspicious-material-hold-impact-facts">
-                    <Icon name="error" size={16} aria-hidden />
-                    {t.unknownFacts(unknown.join(' · '))}
-                  </span>
-                )}
-                <span className="suspicious-material-hold-impact-restriction">
-                  {t.impactRestriction}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="iqc-inspection-action-note">
-          <Icon name="info" size={14} aria-hidden />
-          {t.recovery}
-        </p>
-      </section>
     </div>
+  );
+};
+
+/**
+ * 보류 시 제한 사항 — LOT 마다 번호, 못 받은 값은 「수량 · 위치 · 단위 미확인」 한 줄로, 붉은 제한 안내(사용자 시안 2026-11-02).
+ * 카드 안에서 자재 불량 기록과 나란히 서도록 입력 구획과 따로 둔다.
+ */
+export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInputLot[] }) => {
+  if (selection.length === 0) return null;
+  return (
+    <section className="suspicious-material-hold-impact" aria-label={t.impact}>
+      <div className="suspicious-material-hold-section-head">
+        <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
+        <Chip size="sm">{t.impactTarget(selection.length)}</Chip>
+      </div>
+      <ul className="suspicious-material-hold-impact-list">
+        {selection.map((lot) => {
+          const facts = [
+            [t.quantityName, lot.onHandQty === undefined ? null : String(lot.onHandQty)],
+            [t.locationName, lot.locationLabel],
+            [t.uomName, lot.uomLabel],
+          ] as const;
+          const known = facts.flatMap(([, value]) => (value === null ? [] : [value]));
+          const unknown = facts.flatMap(([name, value]) => (value === null ? [name] : []));
+          return (
+            <li key={lot.lotId}>
+              <strong>{lot.lotNo}</strong>
+              {known.length > 0 && (
+                <span className="suspicious-material-hold-impact-facts">{known.join(' · ')}</span>
+              )}
+              {unknown.length > 0 && (
+                <span className="suspicious-material-hold-impact-facts">
+                  <Icon name="error" size={16} aria-hidden />
+                  {t.unknownFacts(unknown.join(' · '))}
+                </span>
+              )}
+              <span className="suspicious-material-hold-impact-restriction">
+                {t.impactRestriction}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="iqc-inspection-action-note" title={t.recovery}>
+        <Icon name="info" size={14} aria-hidden />
+        <span className="iqc-inspection-action-note-text">{t.recovery}</span>
+      </p>
+    </section>
   );
 };

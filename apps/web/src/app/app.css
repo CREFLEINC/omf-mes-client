@@ -5330,15 +5330,28 @@ h2:has(> .inspection-standard-dialog-title) {
   border: 0;
 }
 
-/* 앞 구획과 가는 선으로 가른다 — 보류 입력 다음의 자재 불량 기록 · 영향 생산 LOT. */
-.suspicious-material-hold-action + .suspicious-material-hold-section,
-.suspicious-material-hold-section + .suspicious-material-hold-section {
+/*
+ * 보류 시 제한 사항 · [보류 등록] | 자재 불량 기록 — 나란히, 카드가 좁으면 위아래로(사용자 2026-11-02). 앞 · 뒤 구획과는
+ * 가는 선으로 가른다.
+ */
+.suspicious-material-hold-pair > * {
+  min-width: 0;
+}
+
+.suspicious-material-hold-pair {
+  display: grid;
+  /* min(100%, …) — 카드가 24rem 보다 좁아도 칸이 카드 밖으로 넘치지 않는다(좌우 배치 버그 · 사용자 2026-11-02). */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  align-items: start;
+  gap: var(--space-5) var(--space-6);
+  min-width: 0;
   padding-top: var(--space-5);
   border-top: 1px solid var(--outline-variant);
 }
 
-.suspicious-material-hold-count {
-  color: var(--on-surface-variant);
+.suspicious-material-hold-pair + .suspicious-material-hold-section {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
 }
 
 /* 보류 범위 · 사유 · 해제 조건 · 비고 한 줄 — 범위는 단추 폭만큼, 나머지는 고르게. 좁으면 다음 줄로. */
@@ -5353,6 +5366,13 @@ h2:has(> .inspection-standard-dialog-title) {
 .suspicious-material-hold-input-row > * {
   flex: 1 1 11rem;
   min-width: 0;
+  /* 칸마다 상자 — 어느 이름이 어느 칸인지 한눈에 보이게(사용자 2026-11-02). */
+  box-sizing: border-box;
+  align-self: stretch;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
 }
 
 .suspicious-material-hold-input-row > .suspicious-material-hold-range {
@@ -5384,10 +5404,15 @@ h2:has(> .inspection-standard-dialog-title) {
   flex: 0 0 12rem;
 }
 
-/* 안내 줄은 글 폭만큼만 바탕을 깐다 — 구획(grid) 안에서 늘어나지 않게. */
-.suspicious-material-hold-section > .iqc-inspection-action-note,
-.suspicious-material-hold-impact > .iqc-inspection-action-note {
+/*
+ * 안내 줄 — 검사 조회·판정과 같은 알약 한 줄(사용자 2026-11-02). 글 폭만큼만 바탕을 깔고, 칸보다 길면 말줄임 ·
+ * 전체 글은 마우스를 올리면 보인다.
+ */
+.suspicious-material-hold-card .iqc-inspection-action-note {
   justify-self: start;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* 보류 영향 — LOT 마다 번호 · 수량 · 위치 · 단위, 붉은 제한 안내를 회색 상자 안에. */
