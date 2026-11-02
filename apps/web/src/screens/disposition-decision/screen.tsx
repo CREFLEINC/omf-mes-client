@@ -428,9 +428,9 @@ export const DispositionDecisionScreen = ({
   const historyRows = useMemo(() => (history.data?.items ?? []).map(toHistoryRow), [history.data]);
 
   /*
-   * 맨 위 한 줄(사용자 지시 · #223) — 왼쪽 「판정 대기 · 처리 이력」 탭(건수), 오른쪽 상태 칩(건수 · 누르면 그 상태만,
-   * 다시 누르면 풀림)과 배치 고르기. 품질 승인 처리의 유형 탭 줄과 같은 모양이다. 제목 · 경로 줄은 두지 않는다.
-   * 상태 칩과 배치 고르기는 판정 대기에서만(이력은 상태 축이 없고 표 하나다).
+   * 맨 위 한 줄(사용자 지시 · #223) — 왼쪽 「처분 대기 · 처분 이력」 탭(건수), 오른쪽 칩(처분 대기는 상태, 처분 이력은
+   * 처분 유형 · 건수 · 누르면 그 값만, 다시 누르면 풀림)과 배치 고르기. 품질 승인 처리의 유형 탭 줄과 같은 모양이다.
+   * 제목 · 경로 줄은 두지 않는다.
    */
   const countBadge = (
     count: number | undefined,
@@ -624,8 +624,7 @@ export const DispositionDecisionScreen = ({
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
         />
         {/*
-         * 오른쪽은 한 구획 — 부적합 상세 · 특채 · 판정을 위에서 아래로(사용자 시안 · omf-all-around#223).
-         * 목록 · 조회 조건은 종전 그대로다.
+         * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).
          */}
         <section
           className="pane po-board-pane po-board-scroll disposition-pane disposition-side"
@@ -663,7 +662,7 @@ export const DispositionDecisionScreen = ({
           {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}
           {tab === 'pending' && selectedId !== null && detail.data !== undefined && (
             <>
-              {/* 처분 판정 — 머리 오른쪽에 남은 수량(조회 시점 참고값 · 최종은 저장 때 서버가 낸다), 아래 입력과 단추. */}
+              {/* 처분 판정 — 입력 카드와 단추. 남은 수량은 조회 시점 참고값이고 최종은 저장 때 서버가 낸다. */}
               <div
                 className="disposition-side-part disposition-decision-card"
                 role="group"
@@ -719,7 +718,7 @@ export const DispositionDecisionScreen = ({
               </div>
             </>
           )}
-          {/* 판정 이력 · 특채 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
+          {/* 처분 이력 · 특채 요청 이력 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
           {selectedId !== null && detail.data !== undefined && (
             /* 판정 이력 · 특채 — 테두리 상자 안의 탭(검사 조회·판정 상세 탭 상자와 같은 모양 · 사용자 지시 · #223). */
             <Tabs
