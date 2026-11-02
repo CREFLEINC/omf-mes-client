@@ -175,4 +175,40 @@ describe('제품 검사표 엑셀 — 고객 양식 채우기', () => {
     expect(cell('J4')).toBe('공정검사1');
     expect(cell('K4')).toBe('S 403');
   });
+
+  /* 양식 칸 수를 넘친 기록은 말없이 빠지지 않고 「외 N…」로 남는다(리뷰 2026-11-02). */
+  it('OP 양식 칸 수(NG 3 · 공정 7 · 항목 49+52줄)를 넘치면 마지막 칸에 남은 수를 적는다', async () => {
+    const base = sheet();
+    const step = base.steps[0]!;
+    const item = step.items[0]!;
+    const ng = base.ngs[0]!;
+    const steps = Array.from({ length: 8 }, (_, index) => ({
+      ...step,
+      stepCode: `PROCESS_${String(index + 1)}` as InspectionSheet['steps'][number]['stepCode'],
+      sequenceNo: index + 1,
+      nameKo: `공정검사${String(index + 1)}`,
+      // 항목 104줄 = 가운데 49줄 + 오른쪽 55줄(칸 52줄 → 51줄 + 「외 4개 항목」).
+      items: Array.from({ length: 13 }, (__, n) => ({
+        ...item,
+        inspectionSheetTemplateItemId: index * 100 + n,
+        checkItemCode: `S ${String(index * 100 + n)}`,
+      })),
+    }));
+    const ngs = Array.from({ length: 5 }, (_, index) => ({ ...ng, sequenceNo: index + 1 }));
+    const cell = await readBack(
+      await fillSheetWorkbook(
+        new ExcelJS.Workbook(),
+        await template('op-ko.xlsx'),
+        sheet({ steps, ngs }),
+      ),
+    );
+
+    expect(cell('F17')).toBe('NG 3 · 외 2건');
+    expect(cell('H39')).toBe('공정검사6');
+    expect(cell('H42')).toBe('외 2개 공정');
+    expect(cell('I42')).toBe('제품 검사표 조회 화면 참고');
+    expect(cell('W54')).not.toBe('');
+    expect(cell('X55')).toBe('외 4개 항목 — 제품 검사표 조회 화면 참고');
+    expect(cell('W55')).toBe('');
+  });
 });

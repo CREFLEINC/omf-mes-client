@@ -31,7 +31,11 @@ interface SaveFilePicker {
 export const buildSheetXlsx = async (sheet: InspectionSheet): Promise<Blob> => {
   const [{ default: ExcelJS }, template] = await Promise.all([
     import('exceljs'),
-    fetch(TEMPLATES[sheet.formLayoutCode]).then((response) => response.arrayBuffer()),
+    fetch(TEMPLATES[sheet.formLayoutCode]).then((response) => {
+      // 양식을 못 받으면(404 등) 깨진 파일을 만들지 않고 실패로 알린다.
+      if (!response.ok) throw new Error(`template ${String(response.status)}`);
+      return response.arrayBuffer();
+    }),
   ]);
   const content = await fillSheetWorkbook(new ExcelJS.Workbook(), template, sheet);
   return new Blob([content], { type: XLSX_TYPE });
@@ -49,8 +53,11 @@ export const downloadSheetXlsx = async (sheet: InspectionSheet): Promise<void> =
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = fileName;
+    // 문서에 붙여 눌러야 받는 브라우저가 있고, 주소는 내려받기가 시작된 뒤에 푼다.
+    document.body.append(anchor);
     anchor.click();
-    URL.revokeObjectURL(url);
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
     return;
   }
   try {

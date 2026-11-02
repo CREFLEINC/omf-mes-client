@@ -47,6 +47,11 @@ export const inspectionSheetPrint = {
     recheckWorker: 'Phụ trách kiểm tra lại',
     recheckedAt: 'Ngày kiểm tra lại',
   },
+  overflowNg: (n: number): string => `và ${String(n)} mục khác`,
+  overflowSteps: (n: number): string => `và ${String(n)} công đoạn khác`,
+  overflowItems: (n: number): string =>
+    `và ${String(n)} hạng mục khác — xem màn hình tra cứu phiếu`,
+  overflowSee: 'Xem màn hình tra cứu phiếu kiểm tra',
   ngMore: (n: number) => `Còn ${n} NG — xem màn hình tra cứu phiếu kiểm tra`,
   departments: { PRODUCTION: 'Sản xuất', QUALITY: 'Chất lượng', TECH: 'Kỹ thuật' } as Record<
     string,

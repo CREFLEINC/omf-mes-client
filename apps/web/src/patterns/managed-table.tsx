@@ -24,6 +24,24 @@ export interface ManagedTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
+/** 첫 열 칸에 줄 열쇠를 숨겨 둔다 — 줄 누름에서 그 줄을 찾는 데 쓴다(표 부품은 줄에 열쇠를 달지 않는다). */
+const withRowId = <T,>(columns: Column<T>[], getRowId: (row: T) => string): Column<T>[] =>
+  columns.map((column, index) =>
+    index !== 0
+      ? column
+      : {
+          ...column,
+          render: (row: T, rowIndex: number) => (
+            <>
+              <span hidden data-managed-row-id={getRowId(row)} />
+              {column.render
+                ? column.render(row, rowIndex)
+                : String((row as Record<string, unknown>)[column.key])}
+            </>
+          ),
+        },
+  );
+
 /**
  * 검사 조회·판정 · 검사 결과 목록과 같은 표(사용자 2026-10-30 · omf-all-around#217) — 머리 경계를 끌어 열 폭을 바꾸고,
  * 손잡이로 열 순서를 옮기며(둘 다 브라우저에 남는다), 상자 폭에 맞춰 열을 비율대로 맞춘다. 줄 고르기가 없는 조회용 표가 쓴다.
@@ -60,9 +78,11 @@ export const ManagedTable = <T,>({
             onClick: (event: MouseEvent<HTMLDivElement>) => {
               const target = event.target as Element;
               if (target.closest('button, a, input, select, textarea') !== null) return;
-              const row = target.closest('tbody tr');
-              if (row === null || row.parentElement === null) return;
-              const picked = rows[Array.from(row.parentElement.children).indexOf(row)];
+              // 줄 차례가 아니라 줄 열쇠(getRowId)로 찾는다 — 표가 정렬해 그린 차례와 `rows` 차례가 달라도 맞는 줄을 고른다.
+              const id = target
+                .closest('tbody tr')
+                ?.querySelector<HTMLElement>('[data-managed-row-id]')?.dataset.managedRowId;
+              const picked = rows.find((row) => getRowId(row) === id);
               if (picked !== undefined) onRowClick(picked);
             },
           })}
@@ -70,7 +90,7 @@ export const ManagedTable = <T,>({
       <Table
         density="compact"
         caption={caption}
-        columns={fit.columns}
+        columns={onRowClick === undefined ? fit.columns : withRowId(fit.columns, getRowId)}
         rows={rows}
         getRowId={getRowId}
         empty={empty}

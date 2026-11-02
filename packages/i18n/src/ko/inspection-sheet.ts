@@ -10,7 +10,7 @@ export const inspectionSheet = {
     caption: '제품 검사표 목록',
     /* LOT · 시리얼 스캔 칸 하나 — 검사 실적의 LOT 스캔 칸과 같은 이름 · 모양(사용자 지시 2026-11-02 · #217). */
     scan: 'LOT 스캔',
-    scanPlaceholder: 'LOT·시리얼 바코드 스캔 또는 번호를 입력하세요',
+    scanPlaceholder: 'LOT·시리얼 바코드 스캔 또는 전체 번호 입력',
     /* 상태 칩(탭 줄 오른쪽) — 검사 실적의 판정 칩과 같은 자리 · 모양(#217). */
     statuses: '검사표 상태',
     statusAll: '전체',

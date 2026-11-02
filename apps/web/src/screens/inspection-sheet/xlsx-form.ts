@@ -27,6 +27,8 @@ interface FormCells {
   };
   /** NG 블록 — 열(왼쪽부터 NG 1 · 2 …)과 줄. */
   ngColumns: readonly string[];
+  /** NG 블록 머리(「NG 1」 …) 줄 — 넘친 건수를 마지막 블록 머리에 적는다. */
+  ngHeaderRow: number;
   ngRows: Partial<Record<NgRowKey, number>>;
   /** 단계 판정 칸 — 줄마다 [단계 이름 칸, 판정 칸, 서명 칸]. */
   stepSlots: readonly (readonly [string, string, string])[];
@@ -70,6 +72,7 @@ const FORMS: Record<InspectionSheet['formLayoutCode'], FormCells> = {
       writer: 'L3',
     },
     ngColumns: ['B', 'D', 'F'],
+    ngHeaderRow: 17,
     ngRows: {
       foundDepartment: 19,
       foundStep: 20,
@@ -104,6 +107,7 @@ const FORMS: Record<InspectionSheet['formLayoutCode'], FormCells> = {
       writer: 'I3',
     },
     ngColumns: ['B', 'C', 'D', 'E', 'F'],
+    ngHeaderRow: 14,
     ngRows: {
       foundStep: 15,
       standardNo: 16,
@@ -217,7 +221,19 @@ const fillNgs = (ws: Worksheet, sheet: InspectionSheet, form: FormCells): void =
     recheckWorker: (ng) => ng.recheckWorkerName ?? ng.recheckWorkerNo ?? '',
     recheckedAt: (ng) => day(ng.recheckedAt),
   };
-  ngSlots(sheet).slots.forEach((ng, index) => {
+  const { slots, more } = ngSlots(sheet);
+  /*
+   * 양식 칸 수(OP 3 · PP 5)를 넘친 NG 는 말없이 빠지지 않게 마지막 블록 머리에 「외 N건」을 적는다 — 인쇄의 안내와 같다
+   * (고객 품질 기록 누락 방지 · 리뷰 2026-11-02).
+   */
+  const lastColumn = form.ngColumns[slots.length - 1];
+  if (more > 0 && lastColumn !== undefined)
+    set(
+      ws,
+      `${lastColumn}${String(form.ngHeaderRow)}`,
+      `${l.ngTitle(slots.length)} · ${l.overflowNg(more)}`,
+    );
+  slots.forEach((ng, index) => {
     const column = form.ngColumns[index];
     if (ng === null || column === undefined) return;
     for (const [key, row] of Object.entries(form.ngRows) as [NgRowKey, number][]) {
@@ -227,8 +243,15 @@ const fillNgs = (ws: Worksheet, sheet: InspectionSheet, form: FormCells): void =
 };
 
 const fillSteps = (ws: Worksheet, sheet: InspectionSheet, form: FormCells): void => {
-  /* 단계 수보다 남는 칸은 양식 그대로(단계 이름 · 빈 □ 상자) 둔다. */
+  /* 단계 수보다 남는 칸은 양식 그대로(단계 이름 · 빈 □ 상자) 둔다. 넘치면 마지막 칸에 「외 N개 공정」을 적는다. */
+  const overflow = sheet.steps.length > form.stepSlots.length;
   form.stepSlots.forEach(([name, judgment, sign], index) => {
+    if (overflow && index === form.stepSlots.length - 1) {
+      set(ws, name, l.overflowSteps(sheet.steps.length - index));
+      set(ws, judgment, l.overflowSee);
+      set(ws, sign, '');
+      return;
+    }
     const step = sheet.steps[index];
     if (step === undefined) return;
     set(ws, name, step.nameKo);
@@ -237,11 +260,18 @@ const fillSteps = (ws: Worksheet, sheet: InspectionSheet, form: FormCells): void
   });
 };
 
-/** 항목 칸 — 단계가 이어지는 줄은 단계 칸을 합친다(양식의 「공정검사1」 묶음). 칸 수를 넘친 줄은 싣지 않는다. */
+/** 항목 칸 — 단계가 이어지는 줄은 단계 칸을 합친다(양식의 「공정검사1」 묶음). 칸 수를 넘치면 마지막 줄에 남은 수를 적는다. */
 const fillItems = (ws: Worksheet, sheet: InspectionSheet, form: FormCells): void => {
   const { left, right } = itemColumns(sheet, 'ko');
   const write = (rows: PrintItemRow[], area: FormCells['items'][number]) => {
-    const [first, last] = area.rows;
+    const [first, lastRow] = area.rows;
+    const capacity = lastRow - first + 1;
+    /* 칸 수를 넘치면 마지막 줄을 「외 N개 항목」으로 쓴다 — 말없이 빠지지 않게(리뷰 2026-11-02). */
+    const overflow = rows.length > capacity;
+    const last = overflow ? lastRow - 1 : lastRow;
+    if (overflow) {
+      set(ws, `${area.name}${String(lastRow)}`, l.overflowItems(rows.length - (capacity - 1)));
+    }
     rows.slice(0, last - first + 1).forEach((row, index) => {
       const r = first + index;
       if (row.step !== null) {

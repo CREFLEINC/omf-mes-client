@@ -403,7 +403,7 @@ describe('제품 검사표 조회', () => {
   });
 
   /* 사용자 시안 2026-11-02(#217) — 「보기」 단추 없이 줄을 눌러 열고, 상세는 머리 · 진행 · 탭 넷 · 확정 안내 · 꼬리 단추. */
-  it('줄 아무 곳이나 누르면 상세가 열리고, 상세는 진행 · 탭 · 확정 안내 · PDF 출력을 보인다', async () => {
+  it('줄 아무 곳이나 누르면 상세가 열리고, 상세는 진행 · 탭 · 확정 안내 · 엑셀 다운로드를 보인다', async () => {
     const { user } = setup(['W-03-13']);
     const table = await screen.findByRole('table', { name: t.list.caption });
     const row = await within(table).findByRole('row', { name: /SN-0001/ });
@@ -600,6 +600,65 @@ describe('제품 검사표 조회', () => {
   });
 
   /* 승인 자리에 승인 취소, 확인 자리에 확인 — 자리 · 모양이 고정이다(사용자 지시 2026-11-02). */
+  /* 승인된 검사표를 확인하면 완료된다 — 확정 창에 완료 안내, 끝나면 「완료」 안내(리뷰 2026-11-02). */
+  it('승인된 검사표를 확인하면 확정 창에 완료 안내가 붙고, 완료되면 완료 알림을 띄운다', async () => {
+    const step = sheet().steps[0]!;
+    const current = sheet({
+      steps: [
+        {
+          ...step,
+          result: {
+            ...step.result!,
+            signedBy: 1,
+            signedByName: '관리자',
+            signedAt: '2026-10-21T03:00:00Z',
+          },
+        },
+      ],
+      approvedBy: 1,
+      approvedByName: '관리자',
+      approvedAt: '2026-10-21T03:00:00Z',
+    });
+    const { user, requests } = setup(['W-03-13', 'W-03-14'], current);
+    await open(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.check }));
+    const confirm = await screen.findByRole('dialog', { name: t.confirmDialog.title.check });
+    expect(within(confirm).getByText(t.confirmDialog.completes)).toBeInTheDocument();
+    // 서버는 확인으로 완료된 검사표를 돌려준다.
+    Object.assign(current, {
+      checkedBy: 2,
+      checkedByName: '확인자',
+      checkedAt: '2026-10-21T03:10:00Z',
+      statusCode: 'COMPLETED',
+    });
+    await user.click(within(confirm).getByRole('button', { name: t.confirmDialog.ok.check }));
+
+    expect(await screen.findByText(t.actions.completed)).toBeInTheDocument();
+    expect(requests.some((r) => r.path.endsWith('/inspection-sheets/9:check'))).toBe(true);
+  });
+
+  it('종료일이 시작일보다 빠르면 조회를 막고 까닭을 보인다', async () => {
+    const { user, requests } = setup(['W-03-13']);
+    await screen.findByRole('table', { name: t.list.caption });
+    const before = requests.length;
+
+    await user.type(screen.getByLabelText(t.list.from), '2026-10-31');
+    await user.type(screen.getByLabelText(t.list.to), '2026-10-01');
+
+    expect(screen.getByRole('button', { name: t.list.search })).toBeDisabled();
+    expect(screen.getByText(t.list.periodReversed)).toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    expect(
+      requests
+        .slice(before)
+        .some(
+          (r) =>
+            r.path.endsWith('/quality/inspection-sheets') && r.query.get('from') === '2026-10-31',
+        ),
+    ).toBe(false);
+  });
+
   it('승인만 된 검사표는 승인 자리에 승인 취소, 그 옆에 확인이 선다', async () => {
     const { user } = setup(
       ['W-03-13', 'W-03-14'],

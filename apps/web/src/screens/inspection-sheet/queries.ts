@@ -11,7 +11,7 @@ export type InspectionSheetListQuery = NonNullable<
   paths['/quality/inspection-sheets']['get']['parameters']['query']
 > & {
   /**
-   * 양식(OP향 · PP향)으로 거르기 — 서버 선행(omf-server 브랜치 feat/aa-217-sheet-list-form-layout · omf-all-around#217).
+   * 양식(OP향 · PP향)으로 거르기 — 서버는 omf-server#939(70e4e152)로 병합됐다(omf-all-around#217).
    * 다음 서버 전달본으로 타입을 다시 만들면 생성 타입이 갖게 되니 이 덧붙임을 걷는다.
    */
   formLayoutCode?: 'OP' | 'PP';
@@ -66,7 +66,7 @@ export const useScanFilter = (
 
 /**
  * 작업지시 조건 — 목록은 작업지시 번호(id)로만 거르므로, 적은 W/O 번호를 작업지시 목록에서 찾아 번호와 꼭 같은 것의 id 로 바꾼다
- * (사용자 지시 2026-11-02 · #217). 없는 번호면 id 0 으로 걸어 빈 목록이 나온다. 비면 거르지 않는다. 찾는 중은 `null`.
+ * (사용자 지시 2026-11-02 · #217). 서버 한 쪽 최대(200건)로 받는다. 없는 번호면 id 0 으로 걸어 빈 목록이 나온다. 비면 거르지 않는다. 찾는 중은 `null`.
  */
 export const useWorkOrderFilter = (
   workOrderNo: string,
@@ -78,7 +78,7 @@ export const useWorkOrderFilter = (
     enabled: value !== '',
     queryFn: () =>
       runRequest(() =>
-        client.GET('/production/work-orders', { params: { query: { q: value, size: 50 } } }),
+        client.GET('/production/work-orders', { params: { query: { q: value, size: 200 } } }),
       ),
   });
   if (value === '') return {};

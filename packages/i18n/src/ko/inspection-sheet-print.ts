@@ -50,6 +50,11 @@ export const inspectionSheetPrint = {
     recheckWorker: '재검 담당',
     recheckedAt: '재검일',
   },
+  /* 엑셀 — 양식 칸 수를 넘친 기록(리뷰 2026-11-02 · #217). */
+  overflowNg: (n: number): string => `외 ${String(n)}건`,
+  overflowSteps: (n: number): string => `외 ${String(n)}개 공정`,
+  overflowItems: (n: number): string => `외 ${String(n)}개 항목 — 제품 검사표 조회 화면 참고`,
+  overflowSee: '제품 검사표 조회 화면 참고',
   ngMore: (n: number) => `NG ${n}건 더 있음 — 제품 검사표 조회 화면 참고`,
   departments: { PRODUCTION: '생산', QUALITY: '품질', TECH: '기술' } as Record<string, string>,
   types: { WORK: '작업', PART: '부품' } as Record<string, string>,

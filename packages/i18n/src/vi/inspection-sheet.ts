@@ -9,7 +9,7 @@ export const inspectionSheet = {
     heading: 'Danh sách phiếu kiểm tra',
     caption: 'Danh sách phiếu kiểm tra sản phẩm',
     scan: 'Quét LOT',
-    scanPlaceholder: 'Quét mã vạch LOT · sê-ri hoặc nhập số',
+    scanPlaceholder: 'Quét mã vạch LOT · sê-ri hoặc nhập đầy đủ số',
     statuses: 'Trạng thái phiếu kiểm tra',
     statusAll: 'Tất cả',
     from: 'Chọn ngày bắt đầu',
