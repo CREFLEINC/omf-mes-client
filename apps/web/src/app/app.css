@@ -5542,10 +5542,15 @@ h2:has(> .inspection-standard-dialog-title) {
 /* 여러 LOT 등록 확인 창 — LOT 마다 번호 · 코드 · 수량 한 줄. */
 .suspicious-material-hold-confirm-list {
   display: grid;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-3);
+  gap: var(--space-3);
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* 건너뛰는 LOT 안내가 있으면 목록과 띄운다. */
+.suspicious-material-hold-confirm-list + .field-note {
+  margin-top: var(--space-3);
 }
 
 .suspicious-material-hold-confirm-list > li {
@@ -5554,6 +5559,12 @@ h2:has(> .inspection-standard-dialog-title) {
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
   overflow-wrap: anywhere;
+}
+
+/* 마지막 항목 아래 선 · 여백은 두지 않는다 — 바로 아래가 창 바닥 줄이다(사용자 2026-11-02). */
+.suspicious-material-hold-confirm-list > li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .suspicious-material-hold-confirm-list > li > strong {
