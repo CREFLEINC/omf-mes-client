@@ -158,9 +158,9 @@ export const dispositionDecision = {
      * 최종 판정은 서버가 하므로, 무엇이 일어날지를 알린다.
      */
     qtyOverRemaining: (remaining: string): string =>
-      `화면이 계산한 남은 수량(${remaining})보다 많습니다. 남은 수량은 저장할 때 서버가 확정합니다`,
+      `남은 수량(${remaining})을 초과했습니다. 저장 시 실제 수량이 확인됩니다.`,
     /** 남은 수량이 0일 때도 같은 자리다 — 참고값으로 막지 않고 예고한다. */
-    qtySettledNotice: '화면이 계산한 남은 수량이 없습니다. 저장 여부는 서버가 확정합니다',
+    qtySettledNotice: '남은 수량이 없습니다. 저장 시 실제 수량이 확인됩니다.',
     /**
      * ⭐ 저장 409의 구조화 문구 — 위 `qtyOverRemaining`/`qtySettledNotice`와는 **다른 자리다.**
      * 그것들은 **저장 전** 화면이 낸 참고값에 대한 예고이고, 이 둘은 **저장을 서버가 거절한

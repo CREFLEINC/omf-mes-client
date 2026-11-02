@@ -571,7 +571,11 @@ export const DispositionDecisionScreen = ({
                     <DecisionFormPane
                       value={form}
                       errors={showErrors ? errors : write.fieldErrors}
-                      qtyNotice={remainingNotice(form, remaining)}
+                      qtyNotice={remainingNotice(form, {
+                        ...remaining,
+                        /* 예고 문구에 단위까지 — 「남은 수량(50 EA)」(사용자 지시 · #223). */
+                        text: `${remaining.text}${uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`}`,
+                      })}
                       remainingQty={remaining.value}
                       lockReason={lock.reason}
                       isUncertain={lock.isUncertain}

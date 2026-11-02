@@ -6638,7 +6638,7 @@ main:has(.iqc-skip-approval-detail) {
   display: grid;
   /* 처분 유형은 좁게(라디오 두 줄), 처분 수량 · 판정 사유는 넓게(사용자 지시 · #223). 아주 좁으면 한 칸씩 쌓인다. */
   /* 처분 수량은 입력칸 + 「입력 / 미입력」 글 폭만, 남는 폭은 판정 사유가 쓴다(사용자 지시 · #223). */
-  grid-template-columns: minmax(14rem, 0.6fr) max-content minmax(18rem, 1.6fr);
+  grid-template-columns: minmax(14rem, 0.6fr) 25rem minmax(18rem, 1.6fr);
   grid-auto-rows: 1fr;
   gap: var(--space-3);
 }
@@ -6657,13 +6657,16 @@ main:has(.iqc-skip-approval-detail) {
 /* 처분 수량 — 좁은 입력칸 오른쪽에 「입력 / 미입력」(사용자 지시 · #223). */
 .disposition-qty-card {
   /* 입력칸은 안내 글이 다 보이는 폭까지만, 남는 폭은 「입력 / 미입력」 글이 쓴다. */
-  grid-template-columns: 10.5rem max-content;
+  /* 폭은 고정 — 적는 숫자 길이에 따라 상자가 늘거나 줄지 않는다(사용자 지시 · #223). */
+  grid-template-columns: 10.5rem minmax(0, 1fr);
   align-items: end;
   column-gap: var(--space-3);
 }
 
 .disposition-qty-progress {
   display: inline-flex;
+  min-width: 0;
+  overflow: hidden;
   align-items: baseline;
   gap: var(--space-2);
   padding-bottom: var(--space-2);
@@ -6685,6 +6688,14 @@ main:has(.iqc-skip-approval-detail) {
 
 .disposition-qty-progress [data-tone='success'] strong {
   color: var(--semantic-success-text);
+}
+
+/* 남은 수량 초과 예고 — 단추 줄의 취소 바로 왼쪽, 주황(사용자 지시 · #223). */
+.disposition-decision-actions > .field-note.disposition-qty-notice {
+  max-width: none;
+  margin: 0 0 0 auto;
+  color: var(--semantic-warning);
+  text-align: end;
 }
 
 .disposition-qty-progress-sep {
@@ -6835,7 +6846,7 @@ main:has(.iqc-skip-approval-detail) {
 
 @container (max-width: 820px) {
   .disposition-decision-cards {
-    grid-template-columns: minmax(14rem, 1fr) max-content;
+    grid-template-columns: minmax(14rem, 1fr) 25rem;
   }
 
   .disposition-decision-cards > .disposition-decision-subcard:nth-child(3) {

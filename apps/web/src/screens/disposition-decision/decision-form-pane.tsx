@@ -160,11 +160,6 @@ export const DecisionFormPane = ({
           />
         </div>
       </div>
-      {qtyNotice !== undefined && (
-        <p id={noticeId} className="field-note">
-          {qtyNotice}
-        </p>
-      )}
       {/* 선별(omf-all-around#108) — 처분 수량을 양품·불량으로 나눈다. 합은 처분 수량이다. */}
       {value.dispositionTypeCode === SORT && (
         <>
@@ -205,8 +200,16 @@ export const DecisionFormPane = ({
         </div>
       )}
 
-      {/* 버튼은 입력 바로 아래 오른쪽(사용자 시안 · #223). */}
+      {/*
+       * 버튼은 입력 바로 아래 오른쪽(사용자 시안 · #223). 남은 수량을 넘겼다는 예고는 같은 줄 취소 왼쪽 —
+       * 막지 않는다(저장 때 서버가 확정한다).
+       */}
       <div className="form-actions disposition-decision-actions">
+        {qtyNotice !== undefined && (
+          <p id={noticeId} className="field-note disposition-qty-notice">
+            {qtyNotice}
+          </p>
+        )}
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>
           {t.actions.cancel}
         </Button>

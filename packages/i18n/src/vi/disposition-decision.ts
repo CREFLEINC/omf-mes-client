@@ -150,9 +150,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     qtyTooLong: 'Số lượng quá dài. Hãy nhập tối đa 12 chữ số phần nguyên · 6 chữ số phần thập phân',
     qtyTooSmall: 'Số lượng phải lớn hơn 0',
     qtyOverRemaining: (remaining: string): string =>
-      `Nhiều hơn số lượng còn lại mà màn hình tính được (${remaining}). Số lượng còn lại do máy chủ xác định khi lưu`,
-    qtySettledNotice:
-      'Màn hình tính ra không còn số lượng nào. Việc lưu được hay không do máy chủ xác định',
+      `Vượt quá số lượng còn lại (${remaining}). Số lượng thực tế sẽ được kiểm tra khi lưu.`,
+    qtySettledNotice: 'Không còn số lượng. Số lượng thực tế sẽ được kiểm tra khi lưu.',
     qtyExceededByServer: (remaining: string): string =>
       `Tổng số lượng quyết định xử lý vượt số lượng còn lại (${remaining}) nên chưa được lưu. Hãy nhập lại không quá số lượng còn lại`,
     alreadyClosed: 'Mục không phù hợp này đã kết thúc. Không lưu được đánh giá',
