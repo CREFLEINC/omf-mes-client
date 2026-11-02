@@ -9,7 +9,7 @@ export const lotGenealogy = {
   usage: {
     heading: 'Lịch sử đưa vào sản xuất',
     /** 투입 이력 줄을 눌러 여는 생산 LOT 상세 팝업 제목(사용자 2026-11-02). */
-    dialogTitle: (lotNo: string): string => `Lịch sử chi tiết ${lotNo}`,
+    dialogTitle: 'Lịch sử chi tiết LOT',
     /** 팝업 안 — 그 생산 LOT 의 작업지시 진행현황으로 간다(사용자 2026-11-02). */
     workOrderHistory: 'Tra cứu lịch sử lệnh sản xuất',
     loading: 'Đang tải lịch sử đưa vào sản xuất.',

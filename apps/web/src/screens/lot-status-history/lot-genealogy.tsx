@@ -39,7 +39,14 @@ const BasisNote = ({ basis }: { basis: TraceBasis }) => (
  * 생산 LOT 의 투입 자재(omf-all-around#166 · 서버 선행 P-107) — 전 자재를 보이고 4M 변경품은 변경 종류를 단다.
  * ⛔ 읽기 전용이다.
  */
-export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
+export const ProductionLotInputs = ({
+  lotId,
+  compact = false,
+}: {
+  lotId: number;
+  /** 생산 LOT 상세 팝업 — 제목 줄에 건수를 달고 추정 기준 안내는 두지 않는다(사용자 시안 2026-11-02). */
+  compact?: boolean;
+}) => {
   const { client } = useApiClient();
   const changeTypeLabel = useFourMChangeTypeLabel();
   const inputs = useQuery({
@@ -52,14 +59,25 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
 
   return (
     <section aria-label={t.inputs.heading} className="four-m-inputs">
-      <h3>{t.inputs.heading}</h3>
+      {compact ? (
+        <div className="lot-status-pane-head">
+          <h3>{t.inputs.heading}</h3>
+          {inputs.data !== undefined && (
+            <span className="field-note">
+              {messages.lotStatusHistory.current.list.total(String(inputs.data.items.length))}
+            </span>
+          )}
+        </div>
+      ) : (
+        <h3>{t.inputs.heading}</h3>
+      )}
       {inputs.isPending ? (
         <p className="field-note">{t.inputs.loading}</p>
       ) : inputs.isError ? (
         <p className="field-error">{t.inputs.loadFailed}</p>
       ) : (
         <>
-          <BasisNote basis={inputs.data.basis} />
+          {!compact && <BasisNote basis={inputs.data.basis} />}
           {inputs.data.items.length === 0 ? (
             <p className="field-note">{t.inputs.none}</p>
           ) : (

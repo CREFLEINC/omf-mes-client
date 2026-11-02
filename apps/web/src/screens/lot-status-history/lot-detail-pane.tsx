@@ -103,26 +103,32 @@ export const LotDetailPane = ({
     </Button>
   );
 
+  const actions = (
+    <>
+      {/* LOT 생산 이력 조회로 간다. 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
+      {traceHref !== null && (
+        <Button variant="outlined" size="md" onClick={() => void navigate(traceHref)}>
+          {t.detail.trace}
+        </Button>
+      )}
+      {workOrderHref !== null && (
+        <Button variant="outlined" size="md" onClick={() => void navigate(workOrderHref)}>
+          {genealogyText.usage.workOrderHistory}
+        </Button>
+      )}
+    </>
+  );
+
   return (
     <>
-      <div className="lot-status-pane-head lot-status-detail-head">
-        {!inDialog && (
+      {!inDialog && (
+        <div className="lot-status-pane-head lot-status-detail-head">
           <h2 className="pane-title" id="lot-status-detail-title">
             {t.detail.title}
           </h2>
-        )}
-        {/* LOT 생산 이력 조회로 간다(제목 줄 오른쪽 끝). 자재 LOT은 자재 LOT 탭, 생산 LOT은 제품 LOT 탭에서 연다. */}
-        {traceHref !== null && (
-          <Button variant="outlined" size="md" onClick={() => void navigate(traceHref)}>
-            {t.detail.trace}
-          </Button>
-        )}
-        {workOrderHref !== null && (
-          <Button variant="outlined" size="md" onClick={() => void navigate(workOrderHref)}>
-            {genealogyText.usage.workOrderHistory}
-          </Button>
-        )}
-      </div>
+          {actions}
+        </div>
+      )}
       {detail.isPending && (
         <div role="status" aria-label={t.detail.loading}>
           <SkeletonText lines={3} />
@@ -140,7 +146,56 @@ export const LotDetailPane = ({
        * 기본 정보 — 긴 값(LOT 번호·품목)은 첫 줄에 넓게, 짧은 값은 둘째 줄에 좁게 둔다
        * (사용자 지시 2026-09-19). 칸 배치는 app.css .lot-detail-fields.
        */}
-      {detail.data !== undefined && (
+      {/* 팝업 — LOT 번호 · 상태 한 줄, 그 아래 정보 칸(사용자 시안 2026-11-02). 보이는 값은 상세 칸과 같다. */}
+      {inDialog && detail.data !== undefined && (
+        <div className="lot-dialog-summary" aria-label={t.detail.attributes} role="group">
+          <div className="lot-dialog-summary-head">
+            <span className="lot-no-with-type lot-dialog-summary-no">
+              <Chip variant="status" status="info" size="sm">
+                {labelOf(lotTypeOptions, detail.data.lotTypeCode)}
+              </Chip>
+              {detail.data.lotNo}
+            </span>
+            <Chip variant="status" status={lotStatusTone(detail.data.statusCode)} size="sm">
+              {labelOf(statusOptions, detail.data.statusCode)}
+            </Chip>
+          </div>
+          <dl className="lot-dialog-summary-fields">
+            <div>
+              <dt className="field-label">{t.detail.fields.item}</dt>
+              <dd>
+                {(() => {
+                  const [code, ...name] = lookupDisplayLabelWithInactive(
+                    itemSource,
+                    detail.data.itemId,
+                  ).split(' · ');
+                  return (
+                    <>
+                      {code}
+                      {name.length > 0 && (
+                        <span className="lot-dialog-summary-sub">{name.join(' · ')}</span>
+                      )}
+                    </>
+                  );
+                })()}
+              </dd>
+            </div>
+            <div>
+              <dt className="field-label">{t.detail.fields.initialQty}</dt>
+              <dd>{withUom(String(detail.data.initialQty), uomCodeOf(detail.data.uomId))}</dd>
+            </div>
+            <div>
+              <dt className="field-label">{t.detail.fields.expiryDate}</dt>
+              <dd>{detail.data.expiryDate ?? EMPTY}</dd>
+            </div>
+            <div>
+              <dt className="field-label">{t.detail.fields.manufacturedAt}</dt>
+              <dd>{formatDateTime(detail.data.manufacturedAt)}</dd>
+            </div>
+          </dl>
+        </div>
+      )}
+      {!inDialog && detail.data !== undefined && (
         <dl className="lot-detail-fields" aria-label={t.detail.attributes}>
           {(
             [
@@ -205,7 +260,9 @@ export const LotDetailPane = ({
       )}
 
       {/* 투입 자재 계보(omf-all-around#166) — 생산 LOT 은 들어간 자재, 모든 LOT 은 그 LOT 이 들어간 제품. */}
-      {detail.data?.sourceTypeCode === 'WORK_ORDER' && <ProductionLotInputs lotId={lotId} />}
+      {detail.data?.sourceTypeCode === 'WORK_ORDER' && (
+        <ProductionLotInputs lotId={lotId} compact={inDialog} />
+      )}
       {/* 투입 이력 · LOT 변경 이력 · 보류 이력은 탭으로 묶는다(사용자 2026-10-30). */}
       {/* LOT 상세를 못 받아도 이력 탭은 선다 — 각 탭이 따로 부르고 따로 실패한다. */}
       <Tabs
@@ -239,11 +296,12 @@ export const LotDetailPane = ({
           },
         ]}
       />
+      {inDialog && <div className="lot-dialog-actions">{actions}</div>}
       {openedLot !== null && (
         <Dialog
           open
           size="lg"
-          title={genealogyText.usage.dialogTitle(openedLot.lotNo)}
+          title={genealogyText.usage.dialogTitle}
           onClose={() => setOpenedLot(null)}
         >
           <div className="lot-status-detail-dialog lot-usage-detail-dialog">
