@@ -355,38 +355,29 @@ describe('Lot Status 전이 후보', () => {
     expect(screen.queryByText('목록에서 LOT을 선택해 주세요.')).toBeNull();
 
     const card = screen.getByRole('region', { name: 'LOT 상태 변경' });
-    /* 시안 카드 — 제목 · 「선택된 LOT」, LOT 번호 이름 · 번호 · 품목 줄, 아래 현재 상태 · 변경할 상태(사용자 2026-11-02). */
+    /*
+     * 시안 카드(사용자 2026-11-02) — 제목 · LOT 유형, LOT 상자(번호 · 상태 칩 / 품목 · 최근 변경 · 변경 사유),
+     * 아래 「현재 상태」 줄과 변경할 상태.
+     */
     expect(within(card).getByRole('heading', { level: 2, name: 'LOT 상태 변경' })).toBeVisible();
-    expect(within(card).getByText('선택된 LOT')).toBeVisible();
+    const box = within(card).getByRole('group', { name: '선택 LOT 식별' });
+    expect(within(box).getByText('SYN-LOT-ALPHA')).toBeVisible();
+    expect(within(box).getByText('정상')).toBeVisible();
+    expect(
+      within(box)
+        .getAllByRole('term')
+        .map((node) => node.textContent),
+    ).toEqual(['품목', '최근 변경', '변경 사유']);
+    /* 품목은 코드 아래 이름 두 줄 · 최근 전이는 공장 시각(UTC+7) — omf-all-around#20 */
+    expect([valueOf(box, '품목'), valueOf(box, '최근 변경'), valueOf(box, '변경 사유')]).toEqual([
+      'SYN-ITEM-A합성 자재',
+      '2026-08-21 10:34',
+      'SYN-REASON-A',
+    ]);
     const preparation = await within(card).findByRole('group', { name: '상태 전이 준비' });
     expect(within(preparation).getByText('현재 상태')).toBeVisible();
     expect(within(preparation).getByText('정상')).toBeVisible();
     expect(within(preparation).getByText('변경할 상태')).toBeVisible();
-    /* LOT 정보는 LOT 현황 상세와 같은 띠 한 줄이다(사용자 2026-11-02). */
-    const current = within(card).getByLabelText('선택 LOT 식별');
-    expect(
-      within(current)
-        .getAllByRole('term')
-        .map((node) => node.textContent),
-    ).toEqual([
-      'LOT 번호',
-      '품목',
-      '보유 수량',
-      '보류 수량',
-      '가용 수량',
-      '최근 상태 변경',
-      '최근 사유',
-    ]);
-    expect(valueOf(current, 'LOT 번호')).toContain('SYN-LOT-ALPHA');
-    expect(valueOf(current, '품목')).toBe('SYN-ITEM-A · 합성 자재');
-    /* 최근 전이는 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
-    expect([
-      valueOf(current, '보유 수량'),
-      valueOf(current, '보류 수량'),
-      valueOf(current, '가용 수량'),
-      valueOf(current, '최근 상태 변경'),
-      valueOf(current, '최근 사유'),
-    ]).toEqual(['25', '5', '20', '2026-08-21 10:34', 'SYN-REASON-A']);
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
     await user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
@@ -444,8 +435,8 @@ describe('Lot Status 전이 후보', () => {
     await user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
     const current = screen.getByLabelText('선택 LOT 식별');
 
-    expect(valueOf(current, '최근 상태 변경')).toBe('—');
-    expect(valueOf(current, '최근 사유')).toBe('—');
+    expect(valueOf(current, '최근 변경')).toBe('—');
+    expect(valueOf(current, '변경 사유')).toBe('—');
     expect(screen.queryByText('987654')).toBeNull();
   });
 
@@ -486,14 +477,7 @@ describe('Lot Status 전이 후보', () => {
 
     releaseRefetch(jsonResponse(page([updated])));
     const current = await screen.findByLabelText('선택 LOT 식별');
-    await waitFor(() => expect(valueOf(current, '보유 수량')).toBe('30'));
-    expect(
-      within(await screen.findByRole('group', { name: '상태 전이 준비' })).getByText(
-        'DEFECTIVE (이름 미확인)',
-      ),
-    ).toBeVisible();
-    expect(valueOf(current, '보류 수량')).toBe('4');
-    expect(valueOf(current, '가용 수량')).toBe('26');
+    await waitFor(() => expect(within(current).getByText('DEFECTIVE (이름 미확인)')).toBeVisible());
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
     await view.user.click(screen.getByRole('button', { name: '상태 변경 검토' }));
     await chooseHoldReason(view.user);

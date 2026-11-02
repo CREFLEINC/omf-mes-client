@@ -55,7 +55,6 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   selected: {
     pane: 'Thay đổi trạng thái LOT',
     title: 'Thay đổi trạng thái LOT',
-    badge: 'LOT đã chọn',
     identity: 'Định danh LOT đã chọn',
     lotNo: 'Số LOT',
     item: 'Mặt hàng',
@@ -77,6 +76,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     choiceTitle: 'Trạng thái cần đổi',
     choiceLabel: 'Chuyển đổi',
     review: 'Xem xét thay đổi trạng thái',
+    blocked: 'Không thể thay đổi trạng thái',
     holds: {
       pane: 'Danh sách mục tạm giữ đang mở',
       title: 'Tạm giữ cần gỡ',

@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   type Column,
+  Icon,
   Radio,
   RadioGroup,
   SkeletonText,
@@ -40,25 +41,25 @@ const formatDateTime = (value: string): string => {
 };
 
 /*
- * 「LOT 상태 변경」 카드 아래쪽 — 왼쪽 현재 상태 · 오른쪽 변경할 상태를 나란히 두고, 그 아래에 해제할 보류 · 입력 칸이 이어진다
- * (사용자 시안 2026-11-02). 카드 자체는 고른 LOT 을 보이는 쪽(candidate-screen)이 세운다.
+ * 「LOT 상태 변경」 카드 아래쪽 — 「현재 상태 [칩]」 줄(바꿀 수 없으면 오른쪽에 「상태 변경 불가」), 그 아래 변경할 상태 ·
+ * 해제할 보류 · 입력 칸이 이어진다(사용자 시안 2026-11-02). 카드 자체는 고른 LOT 을 보이는 쪽(candidate-screen)이 세운다.
  */
 const PreparationPane = ({
   current,
-  choice,
+  blocked = false,
   children,
 }: {
   current: ReactNode;
-  choice: ReactNode;
+  blocked?: boolean;
   children?: ReactNode;
 }) => (
   <div className="lot-status-transition-preparation" role="group" aria-label={t.pane}>
-    <div className="lot-status-transition-compare">
-      <div className="field-cell">
-        <span className="field-label">{messages.lotStatusTransition.selected.status}</span>
-        {current}
-      </div>
-      <div className="field-cell lot-status-transition-choice">{choice}</div>
+    <div className="lot-status-transition-state-row">
+      <span className="lot-status-transition-state-label">
+        {messages.lotStatusTransition.selected.status}
+      </span>
+      {current}
+      {blocked && <span className="lot-status-transition-blocked">{t.blocked}</span>}
     </div>
     {children}
   </div>
@@ -131,7 +132,7 @@ const useHoldDetail = (lotHoldId: number | null, enabled: boolean) => {
 
 export interface LotStatusTransitionPreparationProps {
   lot: LotStatusCandidate;
-  /** 왼쪽 「현재 상태」 칸에 둘 상태 칩. */
+  /** 「현재 상태」 옆에 둘 상태 칩. */
   current: ReactNode;
   onConfirmationChange?: (pinned: boolean) => void;
 }
@@ -277,45 +278,34 @@ export const LotStatusTransitionPreparation = ({
   const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
   if (transitions.isFetching && !confirmationPinned)
     return (
-      <PreparationPane
-        current={current}
-        choice={
-          <>
-            {choiceTitle}
-            <div role="status" aria-label={t.loading}>
-              <SkeletonText lines={1} />
-            </div>
-          </>
-        }
-      />
+      <PreparationPane current={current}>
+        <div className="field-cell lot-status-transition-choice">
+          {choiceTitle}
+          <div role="status" aria-label={t.loading}>
+            <SkeletonText lines={1} />
+          </div>
+        </div>
+      </PreparationPane>
     );
   if (transitions.isError && !confirmationPinned)
     return (
-      <PreparationPane
-        current={current}
-        choice={
-          <>
-            {choiceTitle}
-            <AlertBanner
-              variant="error"
-              title={t.failed}
-              action={<Button onClick={() => void transitions.refetch()}>{t.retry}</Button>}
-            />
-          </>
-        }
-      />
+      <PreparationPane current={current}>
+        <AlertBanner
+          variant="error"
+          title={t.failed}
+          action={<Button onClick={() => void transitions.refetch()}>{t.retry}</Button>}
+        />
+      </PreparationPane>
     );
+  /* 바꿀 수 있는 상태가 없으면 「상태 변경 불가」와 까닭 한 줄(정보 아이콘 + 글자 · 사용자 시안 2026-11-02). */
   if (allowed.length === 0)
     return (
-      <PreparationPane
-        current={current}
-        choice={
-          <>
-            {choiceTitle}
-            <AlertBanner variant="info">{transitions.data?.note ?? t.noTransition}</AlertBanner>
-          </>
-        }
-      />
+      <PreparationPane current={current} blocked>
+        <p className="lot-status-transition-blocked-note">
+          <Icon name="info" size={18} aria-hidden />
+          <span>{transitions.data?.note ?? t.noTransition}</span>
+        </p>
+      </PreparationPane>
     );
 
   let preparation: string | null = null;
@@ -346,28 +336,24 @@ export const LotStatusTransitionPreparation = ({
   const reviewOpen = reviewing && canReview;
 
   return (
-    <PreparationPane
-      current={current}
-      choice={
-        <>
-          {choiceTitle}
-          <RadioGroup
-            name={`lot-status-transition-${String(lot.lotId)}`}
-            orientation="vertical"
-            value={selectedTransitionKey ?? ''}
-            disabled={confirmationPinned}
-            aria-label={t.choiceLabel}
-            onChange={chooseTransition}
-          >
-            {allowed.map((item) => (
-              <Radio key={transitionKey(item)} value={transitionKey(item)}>
-                {targetLabel(item.targetLotStatusCode)}
-              </Radio>
-            ))}
-          </RadioGroup>
-        </>
-      }
-    >
+    <PreparationPane current={current}>
+      <div className="field-cell lot-status-transition-choice">
+        {choiceTitle}
+        <RadioGroup
+          name={`lot-status-transition-${String(lot.lotId)}`}
+          orientation="vertical"
+          value={selectedTransitionKey ?? ''}
+          disabled={confirmationPinned}
+          aria-label={t.choiceLabel}
+          onChange={chooseTransition}
+        >
+          {allowed.map((item) => (
+            <Radio key={transitionKey(item)} value={transitionKey(item)}>
+              {targetLabel(item.targetLotStatusCode)}
+            </Radio>
+          ))}
+        </RadioGroup>
+      </div>
       {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
         <section className="lot-status-transition-holds" aria-label={t.holds.pane}>
           <h3 className="lot-status-transition-subtitle">{t.holds.title}</h3>

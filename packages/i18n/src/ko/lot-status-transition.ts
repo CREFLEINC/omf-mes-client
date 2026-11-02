@@ -49,10 +49,9 @@ export const lotStatusTransition = {
   },
   /** 고른 LOT의 식별과 현재 수량·상태를 되짚어 주는 패널. */
   selected: {
-    /* 카드 이름 · 오른쪽 위 표시는 사용자 시안(2026-11-02) 글자 그대로다. */
+    /* 카드 이름은 사용자 시안(2026-11-02) 글자 그대로다. */
     pane: 'LOT 상태 변경',
     title: 'LOT 상태 변경',
-    badge: '선택된 LOT',
     identity: '선택 LOT 식별',
     lotNo: 'LOT 번호',
     item: '품목',
@@ -62,8 +61,9 @@ export const lotStatusTransition = {
     onHand: '보유 수량',
     held: '보류 수량',
     available: '가용 수량',
-    latestTransition: '최근 상태 변경',
-    latestReason: '최근 사유',
+    /* 시안 글자 그대로(사용자 2026-11-02). */
+    latestTransition: '최근 변경',
+    latestReason: '변경 사유',
   },
   /** 전이 선택지·열린 보류를 세워 실행 칸을 열지 말지 정하는 패널. */
   preparation: {
@@ -76,6 +76,8 @@ export const lotStatusTransition = {
     choiceLabel: '전이',
     /** 고른 상태로 바꾸기 전 입력 칸을 여는 단추(사용자 시안 2026-11-02). */
     review: '상태 변경 검토',
+    /** 바꿀 수 있는 상태가 없을 때 「현재 상태」 줄 오른쪽 표시(사용자 시안 2026-11-02). */
+    blocked: '상태 변경 불가',
     holds: {
       pane: '열린 보류 목록',
       title: '해제할 보류',
