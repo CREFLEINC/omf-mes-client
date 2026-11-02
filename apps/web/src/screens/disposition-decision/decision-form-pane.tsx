@@ -14,6 +14,8 @@ export interface DecisionFormPaneProps {
   errors: DecisionFormErrors;
   /** 남은 수량에 대한 예고. 저장을 막지 않는다 — 잔량 판정은 서버 몫이다. */
   qtyNotice: string | undefined;
+  /** 남은 수량(조회 시점 참고값) — 처분 수량 오른쪽 「입력 / 미입력」에 쓴다(사용자 지시 · #223). 모르면 그 표시를 두지 않는다. */
+  remainingQty?: number | undefined;
   /** 판정 컨트롤 전체를 잠그는 사유. 없으면 잠그지 않는다. */
   lockReason: string | undefined;
   /**
@@ -38,6 +40,7 @@ export const DecisionFormPane = ({
   value,
   errors,
   qtyNotice,
+  remainingQty,
   lockReason,
   isUncertain,
   onCheckOutcome,
@@ -58,6 +61,9 @@ export const DecisionFormPane = ({
   const noticeId = useId();
   const isLocked = lockReason !== undefined;
   const uomLabel = uomId === undefined ? '' : lookupDisplayLabel(uoms, uomId);
+  /* 숫자로 읽히지 않으면 0 으로 센다 — 형식 오류는 칸 아래 오류가 말한다. */
+  const parsedQty = Number(value.qty.trim());
+  const enteredQty = value.qty.trim() === '' || !Number.isFinite(parsedQty) ? 0 : parsedQty;
 
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
@@ -97,7 +103,7 @@ export const DecisionFormPane = ({
             <span className="field-error">{errors.dispositionTypeCode}</span>
           )}
         </div>
-        <div className="disposition-decision-subcard">
+        <div className="disposition-decision-subcard disposition-qty-card">
           <TextField
             label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
             value={value.qty}
@@ -114,6 +120,16 @@ export const DecisionFormPane = ({
             error={errors.decisionQty}
             onChange={(event) => onChange({ ...value, qty: event.target.value })}
           />
+          {/* 입력 / 미입력 — 적은 수량과 남은 수량에서 그것을 뺀 수(사용자 지시 · #223). 참고값이다 — 확정은 저장 때 서버. */}
+          {remainingQty !== undefined && (
+            <span className="disposition-qty-progress" aria-live="polite">
+              {t.form.qtyProgress(
+                enteredQty,
+                Math.max(Number((remainingQty - enteredQty).toFixed(6)), 0),
+                uomLabel,
+              )}
+            </span>
+          )}
         </div>
         {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
         {/* 여러 줄 입력 부품은 필수 표시(*)를 그리지 않아 CSS 로 붙인다(시안 「판정 사유 *」 · #223). */}

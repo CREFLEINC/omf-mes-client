@@ -549,19 +549,12 @@ export const DispositionDecisionScreen = ({
                   >
                     <div className="disposition-side-head">
                       <h3 className="pane-subtitle">{t.form.heading}</h3>
-                      {selectedId !== null && remaining.value !== undefined && (
-                        <span className="disposition-side-remaining">
-                          {t.form.remainingLabel}{' '}
-                          <strong>
-                            {`${remaining.text}${uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`}`}
-                          </strong>
-                        </span>
-                      )}
                     </div>
                     <DecisionFormPane
                       value={form}
                       errors={showErrors ? errors : write.fieldErrors}
                       qtyNotice={remainingNotice(form, remaining)}
+                      remainingQty={remaining.value}
                       lockReason={lock.reason}
                       isUncertain={lock.isUncertain}
                       onCheckOutcome={checkOutcome}

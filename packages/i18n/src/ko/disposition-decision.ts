@@ -138,7 +138,9 @@ export const dispositionDecision = {
   form: {
     /** 판정 구역 머리와 오른쪽 남은 수량(사용자 시안 · #223). */
     heading: '처분 판정',
-    remainingLabel: '남은 수량',
+    /** 처분 수량 오른쪽 — 「입력 10 / 미입력 40 EA」(#223). */
+    qtyProgress: (entered: number, rest: number, unit: string): string =>
+      `입력 ${String(entered)} / 미입력 ${String(rest)}${unit === '' ? '' : ` ${unit}`}`,
     qtyPlaceholder: '수량을 입력하세요',
     reasonPlaceholder: '판정 사유를 입력하세요',
     dispositionLabel: '처분 유형',

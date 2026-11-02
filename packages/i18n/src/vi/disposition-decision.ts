@@ -135,7 +135,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   },
   form: {
     heading: 'Quyết định xử lý',
-    remainingLabel: 'Số lượng còn lại',
+    /** 처분 수량 오른쪽 — 「입력 10 / 미입력 40 EA」(#223). */
+    qtyProgress: (entered: number, rest: number, unit: string): string =>
+      `Đã nhập ${String(entered)} / Chưa nhập ${String(rest)}${unit === '' ? '' : ` ${unit}`}`,
     qtyPlaceholder: 'Nhập số lượng',
     reasonPlaceholder: 'Nhập lý do quyết định',
     dispositionLabel: 'Loại xử lý',

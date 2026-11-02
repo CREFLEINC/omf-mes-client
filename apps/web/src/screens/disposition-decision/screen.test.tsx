@@ -68,12 +68,12 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
   });
 
-  it('남은 수량을 처분 판정 머리 오른쪽에 보인다(#223)', async () => {
+  it('처분 수량 오른쪽에 입력 / 미입력 수량을 보인다(#223)', async () => {
     const { user } = renderScreen({ decidedQty: 200 });
     await selectRow(user);
 
-    expect(await screen.findByText('120 EA')).toBeInTheDocument();
-    expect(screen.getByText(t.form.remainingLabel)).toBeInTheDocument();
+    /* 머리의 남은 수량은 걷고, 처분 수량 오른쪽에 「입력 / 미입력」(#223). */
+    expect(await screen.findByText(t.form.qtyProgress(0, 120, 'EA'))).toBeInTheDocument();
   });
 
   /*
