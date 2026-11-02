@@ -81,7 +81,7 @@ type DefectCode = {
 };
 
 const t = messages.partsIqcInspection;
-/** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 연다(`type` · `item` 은 그 화면의 조회 조건이다). */
+/** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
 const STANDARD_PATH = '/master-data/inspection-standard';
 
 const TIME_LABELS: TimeFieldLabels = {
@@ -154,12 +154,12 @@ export const InspectionDetail = ({
       );
     }
     if (versionId === null || version.data === undefined || specs.data === undefined) {
-      /* 검사 기준 화면을 그 품목의 IQC 기준으로 걸러 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
+      /* 검사 기준 화면에서 이 품목의 IQC 기준 등록 창을 바로 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
       const setPlan = toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
         <Button
           variant="outlined"
           size="sm"
-          onClick={() => navigate(`${STANDARD_PATH}?type=IQC&item=${String(detail.data.itemId)}`)}
+          onClick={() => navigate(`${STANDARD_PATH}?new=IQC&newItem=${String(detail.data.itemId)}`)}
         >
           {t.dialog.setPlan}
         </Button>
