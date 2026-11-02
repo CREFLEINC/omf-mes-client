@@ -9,6 +9,8 @@ import type { Translated } from './translated';
  */
 export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold> = {
   title: 'Tạm giữ vật tư nghi ngờ',
+  /** 보류 · 불량 등록이 끝나면 오른쪽 아래 알림(사용자 2026-11-02). */
+  registered: 'Đã đăng ký.',
   breadcrumbRoot: 'Quản lý chất lượng',
   candidate: {
     pane: 'Ứng viên vật tư nghi ngờ',
@@ -115,11 +117,11 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
   defect: {
     targetLot: 'LOT đối tượng',
     saveDraft: 'Đăng ký',
-    drafted: (code: string, qty: string): string => `${code} · ${qty}`,
+    draftedCount: (count: number): string => `Đã nhập · ${String(count)}`,
     noDrafts: 'Hãy nhấn LOT để nhập lỗi trước.',
     openLot: (lotNo: string): string => `Nhập lỗi cho ${lotNo}`,
     enter: 'Nhập nội dung lỗi',
-    recordedCount: (count: number): string => `Đã ghi ${String(count)}`,
+    recordedCount: (count: number): string => `Đã đăng ký · ${String(count)}`,
     confirm: {
       titleMany: (count: number): string => `Đăng ký lỗi cho ${String(count)} LOT?`,
       skipped: (count: number): string => `${String(count)} LOT chưa nhập sẽ không được đăng ký.`,

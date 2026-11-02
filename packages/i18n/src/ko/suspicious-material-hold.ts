@@ -1,6 +1,8 @@
 export const suspiciousMaterialHold = {
   /* 용어 정리(사용자 2026-11-02) — 실제 일이 보류 등록이라 「의심자재 보류」. */
   title: '의심자재 보류',
+  /** 보류 · 불량 등록이 끝나면 오른쪽 아래 알림(사용자 2026-11-02). */
+  registered: '등록되었습니다.',
   breadcrumbRoot: '품질 관리',
   candidate: {
     pane: '의심자재 후보',
@@ -108,12 +110,12 @@ export const suspiciousMaterialHold = {
   defect: {
     targetLot: '대상 LOT',
     saveDraft: '등록',
-    drafted: (code: string, qty: string): string => `${code} · ${qty}`,
+    draftedCount: (count: number): string => `입력 완료 · ${String(count)}건`,
     noDrafts: 'LOT 을 눌러 불량을 먼저 입력하세요.',
     /** 고른 LOT 줄 · 입력 팝업(사용자 2026-11-02). */
     openLot: (lotNo: string): string => `${lotNo} 불량 내역 입력`,
     enter: '불량 내용 입력',
-    recordedCount: (count: number): string => `등록 ${String(count)}건`,
+    recordedCount: (count: number): string => `등록 완료 · ${String(count)}건`,
     /** 불량 등록 확인 창(사용자 2026-11-02). */
     confirm: {
       titleMany: (count: number): string => `불량 내역 ${String(count)}건을 등록하시겠습니까?`,

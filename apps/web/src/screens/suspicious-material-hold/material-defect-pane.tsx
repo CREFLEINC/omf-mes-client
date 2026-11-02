@@ -1,4 +1,13 @@
-import { Button, Chip, Dialog, Icon, Table, TextField, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  Dialog,
+  Icon,
+  Table,
+  TextField,
+  useToast,
+  type Column,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -81,6 +90,13 @@ export interface MaterialDefectPaneProps {
  */
 export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPaneProps) => {
   const navigate = useNavigate();
+  const toast = useToast();
+  /* 등록되면 오른쪽 아래에 「등록되었습니다.」(사용자 2026-11-02) — 여러 LOT 은 한 번에 보낸 묶음이 끝날 때 한 번. */
+  const notifyRegistered = (): void => {
+    toast.show({ variant: 'success', description: messages.suspiciousMaterialHold.registered });
+  };
+  const batchOk = useRef(0);
+  const batchLeft = useRef<Set<number>>(new Set());
   const codes = useDefectCodes(selection.length > 0);
   const [openLotId, setOpenLotId] = useState<number | null>(null);
   /* 이 화면에서 등록한 건수 — LOT 줄 오른쪽에 「등록 N건」으로 보인다. */
@@ -108,6 +124,14 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const markRecorded = (lotId: number): void =>
     setRecorded((current) => new Map(current).set(lotId, (current.get(lotId) ?? 0) + 1));
   const finish = (lotId: number, ok: boolean): void => {
+    /* 묶음의 마지막 LOT 이 끝나면 — 하나라도 등록됐으면 한 번 알린다(상태 갱신 함수 밖에서 · 두 번 돌지 않게). */
+    if (batchLeft.current.delete(lotId)) {
+      if (ok) batchOk.current += 1;
+      if (batchLeft.current.size === 0) {
+        if (batchOk.current > 0) notifyRegistered();
+        batchOk.current = 0;
+      }
+    }
     setSaving((current) => {
       const next = new Set(current);
       next.delete(lotId);
@@ -167,10 +191,13 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
                       {tHere.recordedCount(count)}
                     </Chip>
                   )}
-                  {/* 넣은 값은 라벨이 아니라 흐린 보조 글자로 — LOT 번호가 먼저 읽히게(사용자 2026-11-02). */}
+                  {/*
+                   * 상태 — 서버에 저장된 것은 「등록 완료 · N건」, 팝업에서 넣고 아직 보내지 않은 것은 「입력 완료 · 1건」
+                   * (LOT 마다 보낼 입력은 하나 · 사용자 2026-11-02). 입력은 흐린 보조 글자 자리 그대로.
+                   */}
                   {draft !== undefined ? (
                     <span className="suspicious-material-hold-defect-lot-hint">
-                      {tHere.drafted(draft.codeLabel, draft.qtyLabel)}
+                      {tHere.draftedCount(1)}
                     </span>
                   ) : (
                     count === 0 && (
@@ -221,6 +248,8 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
                 onClick={() => {
                   setConfirmingAll(false);
                   setSaving(new Set(pending.map(({ lot }) => lot.lotId)));
+                  batchLeft.current = new Set(pending.map(({ lot }) => lot.lotId));
+                  batchOk.current = 0;
                   setRunToken((current) => current + 1);
                 }}
               >
@@ -260,6 +289,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
           onClose={() => setOpenLotId(null)}
           onRecorded={(lotId) => {
             markRecorded(lotId);
+            notifyRegistered();
             setOpenLotId(null);
           }}
           {...(multi

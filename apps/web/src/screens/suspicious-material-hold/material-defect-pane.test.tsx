@@ -235,7 +235,8 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await confirmDefect(user);
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByText('등록 1건')).toBeVisible();
+    expect(screen.getByText('등록 완료 · 1건')).toBeVisible();
+    expect(await screen.findByText('등록되었습니다.')).toBeInTheDocument();
     expect(writes).toHaveLength(1);
   });
 
@@ -255,6 +256,9 @@ describe('MaterialDefectPane (W-03-03)', () => {
       await user.click(within(dialog).getByRole('button', { name: /^등록$/ }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     }
+    /* 아직 보내지 않은 입력은 「입력 완료 · 1건」, 바깥 [불량 등록]만 켜진다. */
+    expect(screen.getAllByText('입력 완료 · 1건')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: '불량 등록' })).toBeEnabled();
     expect(writes).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: '불량 등록' }));
@@ -271,7 +275,10 @@ describe('MaterialDefectPane (W-03-03)', () => {
         expect.objectContaining({ lotId: 8102, defectQty: 3 }),
       ]),
     );
-    await waitFor(() => expect(screen.getAllByText('등록 1건')).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText('등록 완료 · 1건')).toHaveLength(2));
+    expect(screen.queryByText('입력 완료 · 1건')).toBeNull();
+    /* 묶음이 끝나면 오른쪽 아래 알림 한 번(사용자 2026-11-02). */
+    expect(await screen.findAllByText('등록되었습니다.')).toHaveLength(1);
     expect(screen.getByRole('button', { name: '불량 등록' })).toBeDisabled();
   });
 });

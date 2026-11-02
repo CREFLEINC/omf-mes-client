@@ -93,7 +93,8 @@ export const SuspiciousMaterialHoldExecution = ({
       setConfirmation(null);
       setApplied(true);
       onConfirmationChange(false);
-      toast.show({ variant: 'success', description: t.success });
+      /* 오른쪽 아래 알림은 짧게 「등록되었습니다.」(사용자 2026-11-02) — 다음 할 일은 아래 띠가 알린다. */
+      toast.show({ variant: 'success', description: messages.suspiciousMaterialHold.registered });
       onApplied();
     },
   });
