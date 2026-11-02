@@ -5026,6 +5026,11 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 48rem;
 }
 
+/* 해제할 보류 표는 카드 폭에 맞춘다 — 공용 최소 폭(48rem)을 풀어 네 열이 다 보이게(점검 2026-11-02). */
+.lot-status-transition-holds .lot-status-transition-table table {
+  min-width: 0;
+}
+
 .lot-status-transition-table caption {
   position: absolute;
   width: 1px;

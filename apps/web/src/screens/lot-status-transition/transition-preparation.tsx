@@ -270,7 +270,8 @@ export const LotStatusTransitionPreparation = ({
       fitContent: true,
     },
   );
-  const fitHolds = useFitColumns(resizableHolds.columns, { scrollX: true });
+  /* 카드 폭에 맞춰 줄인다 — 가로로 밀면 보류 수량 · 해제 대상(선택 단추)이 칸 밖으로 숨는다(점검 2026-11-02). */
+  const fitHolds = useFitColumns(resizableHolds.columns);
 
   const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
   if (transitions.isFetching && !confirmationPinned)
