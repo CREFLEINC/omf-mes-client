@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Icon, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -206,7 +206,13 @@ export const DecisionFormPane = ({
        */}
       <div className="form-actions disposition-decision-actions">
         {qtyNotice !== undefined && (
-          <p id={noticeId} className="field-note disposition-qty-notice">
+          /* 검사 조회·판정의 안내 라벨과 같은 모양 — 경고 아이콘 + 주황 바탕 한 줄(사용자 지시 · #223). */
+          <p
+            id={noticeId}
+            className="iqc-inspection-action-note disposition-qty-notice"
+            data-tone="warning"
+          >
+            <Icon name="warning" size={14} aria-hidden />
             {qtyNotice}
           </p>
         )}
