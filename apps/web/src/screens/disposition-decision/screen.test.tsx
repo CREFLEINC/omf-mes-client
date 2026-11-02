@@ -133,7 +133,7 @@ describe('DispositionDecisionScreen 조회', () => {
     await waitFor(() => {
       expect(save).toBeEnabled();
     });
-    const group = screen.getByRole('radiogroup', { name: t.fields.dispositionTypeCode });
+    const group = screen.getByRole('radiogroup', { name: t.form.dispositionLabel });
     // 고정 셋 + 서버 선행 선별(SORT · P-53).
     expect(within(group).getAllByRole('radio')).toHaveLength(4);
     expect(within(group).getByRole('radio', { name: '선별' })).toBeEnabled();

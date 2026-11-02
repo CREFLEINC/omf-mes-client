@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, TextField } from '@crefle/web-ui';
+import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -63,36 +63,40 @@ export const DecisionFormPane = ({
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
-      <div className="field-cell">
-        <span className="disposition-visually-hidden" id={groupLabelId}>
-          {t.form.dispositionLabel}
-        </span>
-        {/*
-         * G-2 — 값 목록이 확정되기 전에는 선택지를 지어내지 않는다. 필드를 감추지 않고
-         * 비활성 + 사유로 두며, 저장 버튼도 같은 사유로 함께 잠근다(스펙 §6).
-         */}
-        <RadioGroup
-          name="disposition-type"
-          orientation="horizontal"
-          value={value.dispositionTypeCode}
-          disabled={isLocked || dispositionOptions.length === 0}
-          aria-labelledby={groupLabelId}
-          aria-describedby={isLocked ? lockReasonId : undefined}
-          onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
-        >
-          {dispositionOptions.map((option) => (
-            <Radio key={option.value} value={option.value}>
-              {option.label}
-            </Radio>
-          ))}
-        </RadioGroup>
-        {errors.dispositionTypeCode !== undefined && (
-          <span className="field-error">{errors.dispositionTypeCode}</span>
-        )}
-      </div>
-
-      {/* 처분 수량 · 판정 사유를 한 줄 두 칸에(사용자 시안 · #223) — 긴 도움말은 걷고 빈 칸 안내 글로 대신한다. */}
-      <div className="disposition-decision-fields">
+      {/*
+       * 첫 줄 왼쪽 「처분 유형」 라디오 · 오른쪽 처분 수량, 아래 줄 판정 사유 여러 줄 입력(사용자 시안 · #223).
+       */}
+      <div className="disposition-decision-row">
+        <div className="field-cell">
+          <span className="field-label" id={groupLabelId}>
+            {t.form.dispositionLabel}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
+          {/*
+           * G-2 — 값 목록이 확정되기 전에는 선택지를 지어내지 않는다. 필드를 감추지 않고
+           * 비활성 + 사유로 두며, 저장 버튼도 같은 사유로 함께 잠근다(스펙 §6).
+           */}
+          <RadioGroup
+            name="disposition-type"
+            orientation="horizontal"
+            value={value.dispositionTypeCode}
+            disabled={isLocked || dispositionOptions.length === 0}
+            aria-labelledby={groupLabelId}
+            aria-describedby={isLocked ? lockReasonId : undefined}
+            onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
+          >
+            {dispositionOptions.map((option) => (
+              <Radio key={option.value} value={option.value}>
+                {option.label}
+              </Radio>
+            ))}
+          </RadioGroup>
+          {errors.dispositionTypeCode !== undefined && (
+            <span className="field-error">{errors.dispositionTypeCode}</span>
+          )}
+        </div>
         <TextField
           label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
           value={value.qty}
@@ -109,12 +113,17 @@ export const DecisionFormPane = ({
           error={errors.decisionQty}
           onChange={(event) => onChange({ ...value, qty: event.target.value })}
         />
-        <TextField
+      </div>
+      {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
+      {/* 여러 줄 입력 부품은 필수 표시(*)를 그리지 않아 CSS 로 붙인다(시안 「판정 사유 *」 · #223). */}
+      <div className="disposition-reason-field">
+        <TextArea
           label={t.form.reasonLabel}
           value={value.reason}
           placeholder={t.form.reasonPlaceholder}
           required
           fullWidth
+          rows={2}
           disabled={isLocked}
           aria-describedby={isLocked ? lockReasonId : undefined}
           error={errors.reason}

@@ -2,7 +2,6 @@ import { type Column, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
-import { EmptyNote } from './empty-note';
 import { dispositionTypeLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 import type { DecisionRow } from './types';
@@ -45,7 +44,7 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
   ];
 
   /*
-   * 상세 아래 「판정 이력」 탭의 내용(사용자 시안 · #223) — 이력이 없으면 정보 아이콘 + 한 줄 상자.
+   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없어도 표 안 행 자리에 문구.
    * 남은 수량은 판정 구역 머리로 옮겼다(조회 시점 참고값인 것은 그대로 — 최종 판정은 저장 때 서버가 낸다).
    */
   return (
@@ -56,8 +55,6 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
         </div>
       ) : isError ? (
         <p className="field-note">{t.decisions.unavailable}</p>
-      ) : rows.length === 0 ? (
-        <EmptyNote text={t.decisions.empty} />
       ) : (
         <div className="disposition-table disposition-decision-table">
           <Table
@@ -66,6 +63,8 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.dispositionDecisionId)}
+            /* 이력이 없어도 표 머리는 두고 행 자리 가운데 한 줄(사용자 지시 · #223). */
+            empty={<p className="field-note disposition-table-empty">{t.decisions.empty}</p>}
           />
         </div>
       )}
