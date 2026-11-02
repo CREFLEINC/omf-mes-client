@@ -24451,6 +24451,178 @@ body:has(.page-nav-size [aria-expanded="true"])
   padding-inline: var(--space-2);
 }
 
+/* W-02-01: 기존 DS의 표면과 조작을 유지하고 업무 구역의 너비·위계만 맞춘다. */
+/* 표 스크롤은 한 겹으로 두어 마지막 이동 열의 고정 기준이 본문 너비와 같게 한다. */
+.erp-wo-table > div {
+  overflow: visible;
+}
+
+.erp-wo-table th,
+.erp-wo-table td {
+  padding-inline: var(--space-1);
+}
+
+.erp-wo-counts {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+
+.erp-wo-filter-pane,
+.erp-wo-list-pane {
+  min-width: 0;
+}
+
+.erp-wo-list-pane {
+  padding: 0;
+  overflow: hidden;
+}
+
+.erp-wo-list-pane > .page-nav,
+.erp-wo-list-pane > [role='status'],
+.erp-wo-list-pane > [role='alert'] {
+  margin: var(--space-3) var(--space-4);
+}
+
+.erp-wo-table {
+  position: relative;
+  min-width: 0;
+}
+
+.erp-wo-table .ellipsis-cell {
+  max-width: 8rem;
+}
+
+.erp-wo-table th,
+.erp-wo-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 머리 정보는 잘라 숨기지 않고 라벨·값 한 쌍을 유지하며 다음 줄로 보낸다. */
+.erp-wo-summary {
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  padding-block: var(--space-2);
+}
+
+.erp-wo-summary > div {
+  min-width: 0;
+}
+
+.erp-wo-summary dd {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.process-page:has(.erp-wo-summary) .process-page-summary {
+  overflow: visible;
+  white-space: normal;
+}
+
+.process-page:has(.erp-wo-summary) .process-stepper {
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--outline-variant);
+}
+
+.erp-wo-master-grid,
+.erp-wo-assign-layout,
+.erp-wo-release-layout {
+  min-width: 0;
+}
+
+.erp-wo-assign-layout {
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+
+.erp-wo-assign-list,
+.erp-wo-assign-editor {
+  min-width: 0;
+}
+
+.erp-wo-assign-list .ellipsis-cell {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-wo-assign-editor {
+  padding: var(--space-3) var(--space-4);
+  container-type: inline-size;
+}
+
+.erp-wo-assign-editor .assign-editor-head {
+  top: calc(-1 * var(--space-3));
+  padding-block: var(--space-2);
+}
+
+.erp-wo-assign-editor .assign-editor-head > .section-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-assign-editor .assign-editor-actions {
+  flex: none;
+}
+
+/* 입력 감싸개의 고유 최소 폭이 두 번째 열을 패널 밖으로 밀지 않게 한다. */
+.erp-wo-assign-editor .assign-form > *,
+.erp-wo-assign-editor .assign-plan-row > * {
+  min-width: 0;
+}
+
+.erp-wo-assign-editor .assign-form .field-cell > *,
+.erp-wo-assign-editor .assign-form input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.erp-wo-assign-editor .assign-form input {
+  width: 100%;
+}
+
+.erp-wo-assign-editor .assign-fold {
+  flex-wrap: wrap;
+}
+
+.erp-wo-release-layout {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+
+.erp-wo-release-layout > * {
+  min-width: 0;
+}
+
+@container (max-width: 28rem) {
+  .erp-wo-assign-editor .assign-plan-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .erp-wo-assign-editor .assign-editor-head {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1100px) {
+  .erp-wo-assign-layout {
+    grid-template-columns: minmax(11rem, 1fr) minmax(0, 2fr);
+  }
+
+  .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .erp-wo-assign-layout,
+  .erp-wo-master-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /*
  * 제품 검사표 조회(W-03-13 · omf-all-around#89) — 요약·머리 값은 이름·값 두 쌍씩 한 줄.
  */

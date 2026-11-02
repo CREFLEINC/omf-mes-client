@@ -245,6 +245,7 @@ export const ProductionOrderScreen = ({
     },
     {
       key: 'open',
+      width: '2rem',
       header: <span className="visually-hidden">{t.list.columns.open}</span>,
       align: 'end',
       render: () => (
@@ -369,6 +370,7 @@ export const ProductionOrderScreen = ({
           <>
             <SelectableTable
               className="erp-wo-table"
+              stickyLastColumn
               caption={<span className="visually-hidden">{t.list.caption}</span>}
               columns={columns}
               rows={rows}
