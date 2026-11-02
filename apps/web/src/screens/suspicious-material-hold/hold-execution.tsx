@@ -186,8 +186,12 @@ export const SuspiciousMaterialHoldExecution = ({
               )}
             </>
           )}
-          <AlertBanner variant="warning" title={t.impact}>
-            {t.impactDescription(Object.keys(confirmation.lotNames).length)}
+          <AlertBanner
+            variant="warning"
+            title={t.impact(Object.keys(confirmation.lotNames).length)}
+          >
+            <p className="suspicious-material-hold-confirm-line">{t.impactRelease}</p>
+            <p className="suspicious-material-hold-confirm-line">{t.impactShipped}</p>
           </AlertBanner>
         </Dialog>
       )}

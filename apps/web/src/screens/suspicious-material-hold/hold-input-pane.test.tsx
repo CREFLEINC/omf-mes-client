@@ -121,6 +121,8 @@ const renderPane = (
     return (
       <>
         <button onClick={() => setCurrent([display(702), display(703)])}>owner 변경</button>
+        <button onClick={() => setCurrent([])}>잠깐 비우기</button>
+        <button onClick={() => setCurrent(lots)}>되돌리기</button>
         <SuspiciousMaterialHoldInputPane
           selection={current}
           targetLotStatusCode="HOLD"
@@ -268,5 +270,16 @@ describe('의심자재 보류 입력 pane', () => {
     expect(screen.queryByText(/미확인/)).toBeNull();
     expect(screen.queryByText(/도착 상태가 확인되지 않아/)).toBeNull();
     expect(onBodyChange).not.toHaveBeenCalledWith(expect.objectContaining({ lots: [] }));
+  });
+
+  it('목록을 다시 받는 동안 선택이 잠깐 비어도 넣던 입력은 지우지 않고, 다른 LOT 을 고르면 비운다', async () => {
+    const { user } = renderPane([display(701)]);
+    const condition = await screen.findByLabelText(/^해제 조건/);
+    await user.type(condition, '재검 완료');
+    await user.click(screen.getByRole('button', { name: '잠깐 비우기' }));
+    await user.click(screen.getByRole('button', { name: '되돌리기' }));
+    expect(await screen.findByLabelText(/^해제 조건/)).toHaveValue('재검 완료');
+    await user.click(screen.getByRole('button', { name: 'owner 변경' }));
+    expect(await screen.findByLabelText(/^해제 조건/)).toHaveValue('');
   });
 });

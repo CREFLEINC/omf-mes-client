@@ -5410,7 +5410,8 @@ h2:has(> .inspection-standard-dialog-title) {
 .suspicious-material-hold-pair + .suspicious-material-hold-section {
   min-width: 0;
   box-sizing: border-box;
-  align-self: stretch;
+  /* 상자 높이는 제 내용만큼 — 옆 상자에 맞춰 아래가 비지 않게(사용자 2026-11-02). */
+  align-self: start;
   padding: var(--space-4);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
@@ -5550,11 +5551,25 @@ h2:has(> .inspection-standard-dialog-title) {
 .suspicious-material-hold-confirm-list > li {
   display: grid;
   gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
   overflow-wrap: anywhere;
 }
 
-.suspicious-material-hold-confirm-list > li > span {
+.suspicious-material-hold-confirm-list > li > strong {
+  font-weight: 500;
+}
+
+.suspicious-material-hold-confirm-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.suspicious-material-hold-confirm-code {
   color: var(--on-surface-variant);
+  font: var(--type-body-sm);
 }
 
 /* 입력 팝업의 「대상 LOT」 — 이름 아래 굵은 번호. */
@@ -5593,6 +5608,15 @@ h2:has(> .inspection-standard-dialog-title) {
 .suspicious-material-hold-confirm dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+/* 첫 칸(LOT 번호)은 한 줄 전체 — 긴 번호가 두 줄로 접히지 않게. */
+.suspicious-material-hold-confirm > :first-child {
+  grid-column: 1 / -1;
+}
+
+.suspicious-material-hold-confirm-line {
+  margin: var(--space-1) 0 0;
 }
 
 /* 상태 변경 시작일 · 종료일 — 흐린 글자 「시작일을 선택하세요」가 다 보이는 폭(사용자 2026-11-02). */

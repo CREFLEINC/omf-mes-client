@@ -85,14 +85,15 @@ export const suspiciousMaterialHold = {
     confirm: '보류 등록',
     success: '의심자재 보류를 등록했습니다.',
     successNext: 'Lot Status 판정·전이 처리에서 후속 처리하세요.',
-    dialogTitle: '의심자재 보류 등록 확인',
+    dialogTitle: '의심자재 보류 등록',
     cancel: '취소',
     register: '보류 등록',
     reload: '최신 불러오기',
     fieldError: '입력값을 확인하세요.',
-    impact: '보류 등록 영향',
-    impactDescription: (count: number): string =>
-      `${String(count)}개 LOT의 출고·출하·피킹을 막습니다. 해제는 W-03-02에서 별도로 처리하며 이미 출고된 수량은 회수되지 않습니다.`,
+    /* 확인 창 경고 — 굵은 한 줄 + 아래 두 줄(사용자 시안 2026-11-02). */
+    impact: (count: number): string => `${String(count)}개 LOT의 출고·출하·피킹이 제한됩니다.`,
+    impactRelease: '보류 해제는 W-03-02에서 별도로 처리해야 합니다.',
+    impactShipped: '이미 출고된 수량은 회수되지 않습니다.',
     conflictOwner: '선택한 LOT 중 하나',
     conflictFallback: '선택한 LOT 중 하나의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.',
     conflictChanged: (owner: string): string =>
@@ -107,7 +108,7 @@ export const suspiciousMaterialHold = {
   defect: {
     targetLot: '대상 LOT',
     saveDraft: '등록',
-    drafted: (code: string, qty: string): string => `입력됨 · ${code} · ${qty}`,
+    drafted: (code: string, qty: string): string => `${code} · ${qty}`,
     noDrafts: 'LOT 을 눌러 불량을 먼저 입력하세요.',
     /** 고른 LOT 줄 · 입력 팝업(사용자 2026-11-02). */
     openLot: (lotNo: string): string => `${lotNo} 불량 내역 입력`,
@@ -115,16 +116,16 @@ export const suspiciousMaterialHold = {
     recordedCount: (count: number): string => `등록 ${String(count)}건`,
     /** 불량 등록 확인 창(사용자 2026-11-02). */
     confirm: {
-      titleMany: (count: number): string => `${String(count)}개 LOT 의 불량을 등록할까요?`,
+      titleMany: (count: number): string => `불량 내역 ${String(count)}건을 등록하시겠습니까?`,
       skipped: (count: number): string =>
         `입력하지 않은 LOT ${String(count)}건은 등록하지 않습니다.`,
-      title: '불량을 등록할까요?',
-      lot: 'LOT',
+      title: '불량 내역을 등록하시겠습니까?',
+      lot: 'LOT 번호',
       code: '불량 코드',
       qty: '불량 수량',
       description: '불량 내용',
       cancel: '취소',
-      back: '이전',
+      back: '수정',
     },
     uomUnknownNote: 'LOT 단위를 확인할 수 없어 불량을 등록할 수 없습니다.',
     heading: '불량 내역 등록',

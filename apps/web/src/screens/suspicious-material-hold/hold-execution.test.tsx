@@ -62,8 +62,8 @@ describe('의심자재 보류 실행', () => {
     blocked.unmount?.();
     const { requests, user } = renderExecution(() => jsonResponse([], { status: 201 }));
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
-    expect(screen.getByRole('dialog', { name: '의심자재 보류 등록 확인' })).toBeVisible();
-    expect(screen.getByText(/2개 LOT의 출고·출하·피킹을 막습니다/)).toBeVisible();
+    expect(screen.getByRole('dialog', { name: '의심자재 보류 등록' })).toBeVisible();
+    expect(screen.getByText(/2개 LOT의 출고·출하·피킹이 제한됩니다/)).toBeVisible();
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(await requests[0]?.json()).toEqual(body);

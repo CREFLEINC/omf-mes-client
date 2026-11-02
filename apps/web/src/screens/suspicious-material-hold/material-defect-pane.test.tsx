@@ -118,7 +118,7 @@ const fillDefect = async (user: User, qty: string, description?: string): Promis
 /** 팝업의 [불량 등록] → 확인 화면의 [불량 등록]. */
 const confirmDefect = async (user: User): Promise<void> => {
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '불량 등록' }));
-  const confirm = await screen.findByRole('dialog', { name: '불량을 등록할까요?' });
+  const confirm = await screen.findByRole('dialog', { name: '불량 내역을 등록하시겠습니까?' });
   await user.click(within(confirm).getByRole('button', { name: '불량 등록' }));
 };
 
@@ -168,10 +168,10 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await fillDefect(user, '2');
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '불량 등록' }));
 
-    const confirm = await screen.findByRole('dialog', { name: '불량을 등록할까요?' });
+    const confirm = await screen.findByRole('dialog', { name: '불량 내역을 등록하시겠습니까?' });
     expect(within(confirm).getByText('MLOT-8101')).toBeVisible();
     expect(within(confirm).getByText('D-SCR · 긁힘')).toBeVisible();
-    await user.click(within(confirm).getByRole('button', { name: '이전' }));
+    await user.click(within(confirm).getByRole('button', { name: '수정' }));
     const form = await screen.findByRole('dialog', { name: '불량 내역 등록' });
     await user.click(within(form).getByRole('button', { name: '취소' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -258,7 +258,9 @@ describe('MaterialDefectPane (W-03-03)', () => {
     expect(writes).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: '불량 등록' }));
-    const confirm = await screen.findByRole('dialog', { name: '2개 LOT 의 불량을 등록할까요?' });
+    const confirm = await screen.findByRole('dialog', {
+      name: '불량 내역 2건을 등록하시겠습니까?',
+    });
     await user.click(within(confirm).getByRole('button', { name: '불량 등록' }));
 
     await waitFor(() => expect(writes).toHaveLength(2));

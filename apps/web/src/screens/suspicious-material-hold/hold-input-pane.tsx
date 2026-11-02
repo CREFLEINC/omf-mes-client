@@ -153,9 +153,16 @@ export const SuspiciousMaterialHoldInputPane = ({
     [allowedReason, draft, labelsUnavailable, reasonUnavailable, selection, targetLotStatusCode],
   );
 
+  /*
+   * 다른 LOT 을 고르면 입력을 비운다 — 다만 목록을 다시 받는 동안 선택이 잠깐 빈 것으로 오는 때(확인 창 [취소] 뒤 등)는
+   * 비우지 않는다. 같은 LOT 으로 돌아오면 넣던 사유 · 해제 조건 · 비고가 그대로 남는다(사용자 2026-11-02).
+   */
+  const lastOwner = useRef(owner);
   useEffect(() => {
-    setDraft(EMPTY_DRAFT);
     onBodyChange(null);
+    if (owner === '' || owner === lastOwner.current) return;
+    lastOwner.current = owner;
+    setDraft(EMPTY_DRAFT);
   }, [onBodyChange, owner]);
   useEffect(() => onBodyChange(body), [body, onBodyChange]);
   /* 막힌 까닭은 이 구획 안이 아니라 카드 제목 줄에 — 부르는 쪽에 넘기고, 사라질 때 비운다. */

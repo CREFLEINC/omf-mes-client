@@ -93,14 +93,15 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     confirm: 'Đăng ký tạm giữ',
     success: 'Đã đăng ký tạm giữ vật tư nghi ngờ.',
     successNext: 'Hãy xử lý tiếp ở màn hình Xử lý đánh giá · chuyển đổi Lot Status.',
-    dialogTitle: 'Xác nhận đăng ký tạm giữ vật tư nghi ngờ',
+    dialogTitle: 'Đăng ký tạm giữ vật tư nghi ngờ',
     cancel: 'Hủy bỏ',
     register: 'Đăng ký tạm giữ',
     reload: 'Tải nội dung mới nhất',
     fieldError: 'Hãy kiểm tra lại giá trị đã nhập.',
-    impact: 'Ảnh hưởng của đăng ký tạm giữ',
-    impactDescription: (count: number): string =>
-      `Chặn xuất kho · xuất hàng · lấy hàng của ${String(count)} LOT. Việc gỡ được xử lý riêng ở W-03-02 và số lượng đã xuất kho sẽ không thu hồi lại được.`,
+    impact: (count: number): string =>
+      `Xuất kho·xuất hàng·lấy hàng của ${String(count)} LOT bị hạn chế.`,
+    impactRelease: 'Gỡ tạm giữ phải xử lý riêng ở W-03-02.',
+    impactShipped: 'Số lượng đã xuất kho sẽ không được thu hồi.',
     conflictOwner: 'Một trong các LOT đã chọn',
     conflictFallback:
       'Trạng thái của một trong các LOT đã chọn đã thay đổi. Hãy tải lại nội dung mới nhất.',
@@ -114,7 +115,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
   defect: {
     targetLot: 'LOT đối tượng',
     saveDraft: 'Đăng ký',
-    drafted: (code: string, qty: string): string => `Đã nhập · ${code} · ${qty}`,
+    drafted: (code: string, qty: string): string => `${code} · ${qty}`,
     noDrafts: 'Hãy nhấn LOT để nhập lỗi trước.',
     openLot: (lotNo: string): string => `Nhập lỗi cho ${lotNo}`,
     enter: 'Nhập nội dung lỗi',
@@ -128,7 +129,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       qty: 'Số lượng lỗi',
       description: 'Nội dung lỗi',
       cancel: 'Hủy',
-      back: 'Quay lại',
+      back: 'Sửa',
     },
     uomUnknownNote: 'Không xác định được đơn vị LOT nên không thể đăng ký lỗi.',
     heading: 'Đăng ký chi tiết lỗi',

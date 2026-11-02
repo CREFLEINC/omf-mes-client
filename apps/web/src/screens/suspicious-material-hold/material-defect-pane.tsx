@@ -167,10 +167,11 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
                       {tHere.recordedCount(count)}
                     </Chip>
                   )}
+                  {/* 넣은 값은 라벨이 아니라 흐린 보조 글자로 — LOT 번호가 먼저 읽히게(사용자 2026-11-02). */}
                   {draft !== undefined ? (
-                    <Chip variant="status" status="info" size="sm">
+                    <span className="suspicious-material-hold-defect-lot-hint">
                       {tHere.drafted(draft.codeLabel, draft.qtyLabel)}
-                    </Chip>
+                    </span>
                   ) : (
                     count === 0 && (
                       <span className="suspicious-material-hold-defect-lot-hint">
@@ -214,7 +215,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
           footer={
             <>
               <Button variant="outlined" onClick={() => setConfirmingAll(false)}>
-                {tHere.confirm.cancel}
+                {tHere.confirm.back}
               </Button>
               <Button
                 onClick={() => {
@@ -228,13 +229,19 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
             </>
           }
         >
+          {/* LOT 마다 번호, 아래 줄에 흐린 코드 · 진한 수량(· 내용), 사이는 가는 선(사용자 시안 2026-11-02). */}
           <ul className="suspicious-material-hold-confirm-list">
             {pending.map(({ lot, draft }) => (
               <li key={lot.lotId}>
                 <strong>{lot.lotNo}</strong>
-                <span>
-                  {draft.codeLabel} · {draft.qtyLabel}
-                  {draft.description.trim() === '' ? '' : ` · ${draft.description.trim()}`}
+                <span className="suspicious-material-hold-confirm-detail">
+                  <span className="suspicious-material-hold-confirm-code">{draft.codeLabel}</span>
+                  <span>{draft.qtyLabel}</span>
+                  {draft.description.trim() !== '' && (
+                    <span className="suspicious-material-hold-confirm-code">
+                      {draft.description.trim()}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
@@ -467,6 +474,7 @@ const DefectRecordDialog = ({
     >
       {confirming && defectCodeId !== null ? (
         <>
+          {/* LOT 번호는 한 줄 전체, 그 아래 불량 코드 · 수량(· 내용) — 사용자 시안 2026-11-02. */}
           <dl className="suspicious-material-hold-confirm">
             {(
               [
