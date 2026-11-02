@@ -1,4 +1,4 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -8,6 +8,7 @@ import type { FilterOption } from './lot-filter-bar';
 import { LotDetailPane } from './lot-detail-pane';
 import { useLotTypeOptions } from './options';
 import { LotTimelineTable } from './lot-timeline-table';
+import { entryStatusCode } from './timeline';
 import { validateHistoryPeriod } from './period';
 import { useLotHistoryTimeline } from './queries';
 
@@ -28,6 +29,8 @@ interface HistoryResultsProps {
   /** 고른 줄 — 같은 화면의 상세 칸이 그 LOT 을 보인다(사용자 2026-11-02). */
   selectedKey: string | null;
   onSelectEntry: (entry: { key: string; lotId: number }) => void;
+  /** 위쪽 상태 칩으로 고른 LOT 상태 — 빈 값이면 전부(사용자 2026-11-02). */
+  statusFilter: string;
 }
 
 export const HistoryResults = ({
@@ -39,9 +42,11 @@ export const HistoryResults = ({
   onPageChange,
   selectedKey,
   onSelectEntry,
+  statusFilter,
 }: HistoryResultsProps) => {
   const history = useLotHistoryTimeline(filters, offsetMinutes);
   /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
+  const [sort, setSort] = useState<SortState>({ key: 'occurredAt', direction: 'descending' });
   const [pageSize, setPageSize] = useState<LotPageSize>(HISTORY_PAGE_SIZE);
   const hasValidPeriod = validateHistoryPeriod({ from: filters.from, to: filters.to }) === null;
 
@@ -55,7 +60,11 @@ export const HistoryResults = ({
       {t.actions.retry}
     </Button>
   );
-  const entries = history.data?.entries ?? [];
+  const filtered = (history.data?.entries ?? []).filter(
+    (entry) => statusFilter === '' || entryStatusCode(entry) === statusFilter,
+  );
+  /* 받은 이력은 최신순이다 — 오름차순은 뒤집기만 한다(LOT 상세 이력 표와 같다). 쪽을 나누기 전에 정렬한다. */
+  const entries = sort.direction === 'ascending' ? [...filtered].reverse() : filtered;
   const total = entries.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
@@ -99,6 +108,11 @@ export const HistoryResults = ({
             busy={history.isFetching}
             onOpenEntry={(entry) => onSelectEntry({ key: entry.key, lotId: entry.event.lotId })}
             selectedKey={selectedKey}
+            historySort={sort}
+            onHistorySortChange={(next) => {
+              setSort(next);
+              onPageChange(1);
+            }}
             empty={
               <EmptyState
                 size="sm"

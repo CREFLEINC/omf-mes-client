@@ -40,7 +40,8 @@ import { LotDetailPane } from './lot-detail-pane';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
 import { useWarehouseReferenceOptions, type ReferenceOption } from './reference-options';
-import { useLotActorOptions, useLotStatusSummary } from './queries';
+import { useLotActorOptions, useLotHistoryTimeline, useLotStatusSummary } from './queries';
+import { entryStatusCode } from './timeline';
 
 const t = messages.lotStatusHistory;
 const hubText = messages.common.inspectionHub;
@@ -55,6 +56,8 @@ interface StatusChipsProps {
   options: readonly FilterOption[];
   /** 상태별 LOT 건수(상태 조건을 뺀 같은 조회). 아직 모르면 `undefined` — 건수 없이 이름만. */
   counts: ReadonlyMap<string, number> | undefined;
+  /** 「전체」 건수 — 주지 않으면 상태별 합. */
+  total?: number;
   value: string;
   note?: string;
   onChange: (status: string) => void;
@@ -64,7 +67,7 @@ interface StatusChipsProps {
  * 현재 상태 단추 — 조회 카드 위쪽 줄에서 누르면 바로 그 상태로 거른다(사용자 2026-10-30). 조건 줄의 현재 상태 칸을
  * 대신한다. 「전체」는 상태 조건을 푼다.
  */
-const StatusChips = ({ options, counts, value, note, onChange }: StatusChipsProps) => (
+const StatusChips = ({ options, counts, total, value, note, onChange }: StatusChipsProps) => (
   /* 눈에 보이는 「현재 상태」 글자는 두지 않는다(사용자 2026-10-30) — 이름은 화면 읽기용으로만 남긴다. */
   <div className="lot-status-status-chips" role="group" aria-label={t.lotFilter.fields.status}>
     {[{ value: '', label: t.values.all }, ...options].map((option) => (
@@ -82,7 +85,7 @@ const StatusChips = ({ options, counts, value, note, onChange }: StatusChipsProp
         {counts !== undefined && (
           <span className="lot-status-chip-count">
             {option.value === ''
-              ? [...counts.values()].reduce((sum, count) => sum + count, 0)
+              ? (total ?? [...counts.values()].reduce((sum, count) => sum + count, 0))
               : (counts.get(option.value) ?? 0)}
           </span>
         )}
@@ -366,12 +369,48 @@ const HistoryMode = ({
   const split = usePaneSplit('omf-mes:lot-status-history:split', 0.5);
   const layout = useSplitOrientation(LOT_STATUS_HISTORY_ORIENTATION_KEY);
   const [selected, setSelected] = useState<{ key: string; lotId: number } | null>(null);
+  /*
+   * 상태 칩 — LOT 현황처럼 탭 막대 오른쪽에서 상태로 거른다(사용자 2026-11-02). 받은 이력 안에서 거르므로 다시 부르지
+   * 않는다. 건수는 줄이 말하는 상태(상태 변경은 바뀐 뒤, 보류는 그 뒤 LOT 상태)별이다.
+   */
+  const [statusFilter, setStatusFilter] = useState('');
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  const history = useLotHistoryTimeline(filters, offsetMinutes);
+  const statusCounts = useMemo(() => {
+    if (history.data === undefined) return undefined;
+    const counts = new Map<string, number>();
+    for (const entry of history.data.entries) {
+      const code = entryStatusCode(entry);
+      if (code !== null) counts.set(code, (counts.get(code) ?? 0) + 1);
+    }
+    return counts;
+  }, [history.data]);
+  const hubTarget = useHubActionsTarget();
+  const statusChips = (
+    <StatusChips
+      options={toCodeOptions(lotStatuses.data?.items)}
+      counts={statusCounts}
+      total={history.data?.entries.length}
+      value={statusFilter}
+      onChange={(status) => {
+        setStatusFilter(status);
+        setSelected(null);
+        onPageChange(1);
+      }}
+    />
+  );
 
   return (
     <div className="lot-status-workspace">
+      {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       <section ref={aboveRef} className="pane lot-status-search" aria-label={t.historyFilter.pane}>
-        {modeSwitch !== null && <div className="lot-status-search-head">{modeSwitch}</div>}
+        {(modeSwitch !== null || hubTarget === null) && (
+          <div className="lot-status-search-head">
+            {modeSwitch}
+            {hubTarget === null && statusChips}
+          </div>
+        )}
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}
@@ -388,12 +427,13 @@ const HistoryMode = ({
         <HistoryResults
           filters={filters}
           page={page}
-          offsetMinutes={-new Date().getTimezoneOffset()}
+          offsetMinutes={offsetMinutes}
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
           appUserName={appUserName}
           onPageChange={onPageChange}
           selectedKey={selected?.key ?? null}
           onSelectEntry={setSelected}
+          statusFilter={statusFilter}
         />
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
         {layout.orientation === 'column' && (

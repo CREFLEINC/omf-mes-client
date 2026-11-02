@@ -76,3 +76,7 @@ export const scopeStatusEvents = (
       (scope.lotNo === '' || event.lotNo === scope.lotNo) &&
       (scope.actorId === undefined || event.changedBy === scope.actorId),
   );
+
+/** 줄이 말하는 LOT 상태 — 상태 변경은 바뀐 뒤 상태, 보류 등록 · 해제는 그 뒤 LOT 상태(없으면 null). */
+export const entryStatusCode = (entry: LotTimelineEntry): string | null =>
+  entry.kind === 'status' ? entry.event.toStatusCode : entry.event.targetLotStatusCode;

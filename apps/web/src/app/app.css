@@ -4454,10 +4454,8 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* LOT 상태 이력 조회 줄 — LOT 스캔 칸은 남는 폭을 쓰되 너무 길어지지 않게, 처리자 선택은 폭에 맞게. */
 .lot-status-history-filter .lot-status-filter-lot-no {
-  flex: 1 1 18rem;
-  width: auto;
-  min-width: 16rem;
-  max-width: 28rem;
+  /* 흐린 문구가 다 보이는 만큼만 — 남는 폭을 차지하지 않는다(사용자 2026-11-02). */
+  width: clamp(16rem, 22vw, 21rem);
 }
 
 .lot-status-history-filter .lot-status-history-actor {
