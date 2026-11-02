@@ -159,7 +159,7 @@ export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => 
               />
             </div>
           )}
-          <div className="field-cell filter-field-md">
+          <div className="field-cell reference-picker-keyword">
             <label className="field-label" htmlFor={keywordId}>
               {t.keyword}
             </label>

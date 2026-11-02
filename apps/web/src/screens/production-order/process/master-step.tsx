@@ -87,7 +87,7 @@ export interface MasterStepProps {
   onRoutingChange: (value: string) => void;
 }
 
-/** 마스터 점검 단계: 계획에 쓸 BOM과 Routing 개정. 없으면 「남은 일」이 담당과 할 일을 말한다(하단 바). */
+/** BOM·Routing 단계: 계획에 쓸 BOM과 Routing 개정. 없으면 「남은 일」이 담당과 할 일을 말한다(하단 바). */
 export const MasterStep = ({
   boms,
   routings,

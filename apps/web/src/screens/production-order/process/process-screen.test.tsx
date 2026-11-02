@@ -52,6 +52,10 @@ interface World {
   /** 서버 칩 판정. 시험 도중 바꿔 머리가 다시 읽는지 본다. */
   worklistState?: string;
   worklistReasons?: { code: string; workOrderCount: number }[];
+  /** 품목의 ERP 품목그룹. 주지 않으면 서버가 이 칸을 모르는 것처럼 키를 뺀다. */
+  itemGroupCode?: string | null;
+  /** 주문의 ERP 원번호. 주지 않으면 제목 번호와 다른 `ERP-701`이다. */
+  erpOrderNo?: string | null;
   /** Routing 21이 작성중(쓸 수 없는) 개정이라 usableOnly 목록에 없다 */
   routingDraft?: boolean;
   /** 이 경로를 403으로 거절한다 */
@@ -95,7 +99,7 @@ const LINE = {
 const orderBody = (state: World) => ({
   productionOrderId: 701,
   productionOrderNo: ORDER_NO,
-  erpOrderNo: 'ERP-701',
+  erpOrderNo: state.erpOrderNo === undefined ? 'ERP-701' : state.erpOrderNo,
   plantId: 1,
   itemId: 7101,
   orderQty: 300,
@@ -255,6 +259,7 @@ const serve = (state: World) => {
           itemName: '합성 품목',
           baseUomId: 8101,
           defaultProductionLotSize: 100,
+          ...(state.itemGroupCode === undefined ? {} : { erpItemGroupCode: state.itemGroupCode }),
         },
       });
     }
@@ -336,6 +341,36 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);
     expect(document.body).toHaveTextContent(tp.remaining.bomMissing);
+  });
+
+  it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo: 'ERP-701' }));
+    await currentStep(tp.steps.master);
+    expect(screen.getByText(tp.summary.erpNo)).toBeVisible();
+    expect(screen.getByText('ERP-701')).toBeVisible();
+  });
+
+  it('품목그룹이 있으면 머리에 보이고, 없으면 보이지 않는다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], itemGroupCode: 'G100' }));
+    await currentStep(tp.steps.master);
+    expect(await screen.findByText(tp.summary.itemGroup)).toBeVisible();
+    expect(screen.getByText('G100')).toBeVisible();
+  });
+
+  it.each([undefined, null, ''])(
+    '품목그룹이 %j 이면 머리에 보이지 않는다',
+    async (itemGroupCode) => {
+      renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], itemGroupCode }));
+      await currentStep(tp.steps.master);
+      await screen.findByText('합성 품목', { exact: false });
+      expect(screen.queryByText(tp.summary.itemGroup)).toBeNull();
+    },
+  );
+
+  it.each([ORDER_NO, '', null])('ERP 원번호가 %j 이면 머리에 보이지 않는다', async (erpOrderNo) => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo }));
+    await currentStep(tp.steps.master);
+    expect(screen.queryByText(tp.summary.erpNo)).toBeNull();
   });
 
   it('작성 중 계획이 있으면 생산계획 단계로 열고, 라인 칸은 「계획 번호 라인」 이름을 가진다', async () => {
@@ -439,7 +474,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.queryByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeNull();
   });
 
-  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 마스터 점검은 그 개정으로 통과한다', async () => {
+  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 BOM·Routing 단계는 그 개정으로 통과한다', async () => {
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
       world({
