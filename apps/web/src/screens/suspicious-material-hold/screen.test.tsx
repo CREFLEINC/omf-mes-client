@@ -116,7 +116,7 @@ describe('의심자재 등록 screen', () => {
     const { requests, user } = renderScreen(null);
     await chooseWarehouse(user);
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
-    expect(await screen.findByText(/도착 상태를 확인할 때까지 등록할 수 없습니다/)).toBeVisible();
+    expect(await screen.findByText(/도착 상태가 확인되지 않아 등록할 수 없습니다/)).toBeVisible();
     expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled();
     expect(requests).toHaveLength(0);
   });

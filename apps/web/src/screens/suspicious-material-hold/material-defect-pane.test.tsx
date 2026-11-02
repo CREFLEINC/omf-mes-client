@@ -91,9 +91,7 @@ describe('MaterialDefectPane (W-03-03)', () => {
     expect(await screen.findByText('PLOT-90')).toBeInTheDocument();
     expect(screen.getByText('WO-41')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        '작업지시를 기준으로 조회한 LOT입니다. 실제 자재가 투입된 LOT과 다를 수 있습니다.',
-      ),
+      screen.getByText('작업지시 기준으로 조회한 LOT이며, 실제 자재 투입 내역과 다를 수 있습니다.'),
     ).toBeInTheDocument();
   });
 
