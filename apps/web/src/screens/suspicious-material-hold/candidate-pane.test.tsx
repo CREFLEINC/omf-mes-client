@@ -226,18 +226,4 @@ describe('의심자재 후보 pane', () => {
     await user.click(row.querySelectorAll('td')[2]!);
     expect(box).not.toBeChecked();
   });
-
-  it('[전체 선택] 단추로 이 쪽 LOT 을 모두 고르고 [전체 해제]로 푼다', async () => {
-    const { user } = renderPane(() =>
-      jsonResponse(page([lot(701), lot(702), lot(703, { fullyHeld: true })])),
-    );
-    const pickAll = await screen.findByRole('button', { name: '전체 선택' });
-    await waitFor(() => expect(pickAll).toBeEnabled());
-    await user.click(pickAll);
-    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'SYN-LOT-702 선택' })).toBeChecked();
-    expect(screen.getByText('2건 선택')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: '전체 해제' }));
-    expect(screen.getByText('0건 선택')).toBeVisible();
-  });
 });

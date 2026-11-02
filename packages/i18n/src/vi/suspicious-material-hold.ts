@@ -40,9 +40,6 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       selected: (count: number): string => `Đã chọn ${String(count)} mục`,
     },
     actions: {
-      /** 목록 위 따로 된 단추(사용자 2026-11-02). */
-      pickAll: 'Chọn tất cả',
-      clearAll: 'Bỏ chọn tất cả',
       /** 목록 머리의 전체 선택 칸 이름(사용자 2026-11-02). */
       selectAll: 'Chọn tất cả LOT trên trang này',
       select: (lotNo: string): string => `Chọn ${lotNo}`,

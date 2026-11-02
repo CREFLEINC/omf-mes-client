@@ -31,9 +31,6 @@ export const suspiciousMaterialHold = {
       selected: (count: number): string => `${String(count)}건 선택`,
     },
     actions: {
-      /** 목록 위 따로 된 단추(사용자 2026-11-02). */
-      pickAll: '전체 선택',
-      clearAll: '전체 해제',
       /** 목록 머리의 전체 선택 칸 이름(사용자 2026-11-02). */
       selectAll: '이 쪽 LOT 전체 선택',
       select: (lotNo: string): string => `${lotNo} 선택`,

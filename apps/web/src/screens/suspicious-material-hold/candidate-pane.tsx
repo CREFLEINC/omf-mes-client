@@ -556,15 +556,6 @@ export const SuspiciousMaterialCandidatePane = ({
             <p className="suspicious-material-hold-selection" role="status">
               {t.values.selected(selection.length)}
             </p>
-            {/* 머리 칸과 같은 일을 하는 따로 된 단추 — 이 쪽 LOT 을 모두 고르거나 푼다(사용자 2026-11-02). */}
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={isLocked || !ready || selectableRows.length === 0}
-              onClick={toggleAll}
-            >
-              {allPicked ? t.actions.clearAll : t.actions.pickAll}
-            </Button>
           </div>
           {candidates.isError ? (
             <AlertBanner
