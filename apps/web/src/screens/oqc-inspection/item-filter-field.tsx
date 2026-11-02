@@ -1,11 +1,12 @@
-import { SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId } from 'react';
 
-import { ItemPickerDialog } from '../../patterns/item-picker';
-import { useItemNames } from './reference-lookup';
+import { ItemSelect } from '../../patterns/item-select';
 
 const t = messages.oqcInspection.filters;
+
+/** 조건 줄의 「전체」 — 빈 값이라 좁히지 않는다. */
+const ALL_ITEMS = [{ value: '', label: messages.iqcInspection.filters.all }];
 
 interface ItemFilterFieldProps {
   /** 고른 품목 번호. 비면 「전체」. */
@@ -14,62 +15,30 @@ interface ItemFilterFieldProps {
 }
 
 /**
- * 품목 조건 — **검색해서 고른다.**
+ * 품목 조건 — **칸에서 바로 검색해서 고른다**(omf-all-around#226 · IQC 와 같은 칸). 펼친 목록 맨 위 검색창에 코드 · 이름
+ * 일부를 치면 서버에 묻고(`ItemSelect`), 「전체」를 고르면 조건을 푼다. 창(팝업)을 거치지 않는다.
  *
- * ⛔ **번호를 치라고 하지 않는다.** 종전에는 「품목 번호로 검색」 칸에 `inputMode="numeric"` 으로
- *    내부 번호를 받았다 — 품목 `12588` 을 외우는 검사자는 없다(omf-all-around#40).
- * ⛔ **선택칸으로도 못 담는다.** 품목 마스터가 9,269건이라 한 쪽에 들어가지 않는다 — 공용
- *    「품목 선택」 창이 바로 그 문제를 위해 선 자리다.
+ * ⛔ **번호를 치라고 하지 않는다**(omf-all-around#40) — 품목 `12588` 을 외우는 검사자는 없다.
  *
- * ⭐ 칸 하나가 검색 묶음이다 — 읽기 전용 검색 입력을 누르거나 엔터를 치면 창이 열리고,
- *    지우기는 값이 있을 때만 칸 안의 × 로 낮춰 둔다(`W-03-02` 의 같은 자리와 같은 모양).
- *
- * 고른 품목의 이름은 **품목 상세로 푼다** — 주소로 들어와 창을 거치지 않은 값도 이름이 선다.
- * 지난 의뢰를 찾는 조건이라 사용 중지 품목까지 찾고(`includeInactive`), 가용 재고 열은 뺀다.
+ * 찾는 범위는 종전 품목 선택 창과 같다 — 사용 중지 품목까지(`includeInactive`), 유형은 좁히지 않는다.
+ * 고른 품목의 이름은 품목 상세로 푼다 — 주소로 들어온 값도 이름이 선다.
  */
 export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const itemId = value === '' ? null : Number(value);
-  const names = useItemNames([itemId]);
-  const label = itemId === null ? '' : names.labelOf(itemId);
-  const open = (): void => setIsPickerOpen(true);
+  const fieldId = useId();
 
   return (
-    <>
-      <SearchInput
-        label={t.item}
-        value={label}
-        readOnly
-        title={label === '' ? undefined : label}
-        placeholder={t.itemPlaceholder}
-        aria-haspopup="dialog"
-        clearLabel={t.itemClear}
-        onClick={open}
-        onSearch={open}
-        onChange={() => undefined}
-        onClear={() => {
-          onChange('');
-        }}
+    <div className="field-cell">
+      <label className="field-label" htmlFor={fieldId}>
+        {t.item}
+      </label>
+      <ItemSelect
+        id={fieldId}
+        includeInactive
+        leadingOptions={ALL_ITEMS}
+        value={value}
+        placeholder={messages.iqcInspection.filters.all}
+        onChange={onChange}
       />
-      {isPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          /* 검색 · 표 · 쪽 넘김 · 취소/선택만 — 닫기(X)와 꼬리말 안내를 걷는다(#133 · 검사기준 검색 창과 같은 모양). */
-          compact
-          includeInactive
-          showAvailability={false}
-          /* 목록 표 아래와 같은 쪽 이동 줄(사용자 지시 2026-10-28 · #197). */
-          pageNav
-          confirmLabel={t.itemPick}
-          onClose={() => {
-            setIsPickerOpen(false);
-          }}
-          onConfirm={([item]) => {
-            if (item !== undefined) onChange(String(item.itemId));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
-    </>
+    </div>
   );
 };

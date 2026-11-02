@@ -45,10 +45,10 @@ describe('QueueFilterBar', () => {
     expect(onSearch).not.toHaveBeenCalled();
   });
 
-  it('품목은 번호를 치지 않고 검색 창에서 고른다 — 칸에 글자를 넣을 수 없다(#136)', async () => {
+  it('품목은 번호를 치지 않고 고른다 — 고르지 않으면 「전체」로 조회한다(#136 · #226)', async () => {
     const { onSearch } = renderBar();
 
-    expect(screen.getByLabelText(t.item)).toHaveAttribute('readonly');
+    expect(screen.getByLabelText(t.item)).toHaveTextContent(t.all);
 
     await userEvent.click(screen.getByRole('button', { name: t.apply }));
 

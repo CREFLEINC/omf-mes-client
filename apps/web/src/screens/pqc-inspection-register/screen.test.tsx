@@ -296,7 +296,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await waitFor(() => expect(queueQueries.at(-1)?.get('workOrderId')).toBe('701'));
   });
 
-  it('품목 검색의 × 를 누르면 품목 조건을 풀고 바로 다시 조회한다(#135)', async () => {
+  it('품목은 칸에서 바로 검색해 고르고, 「전체」를 고르면 품목 조건을 풀고 바로 다시 조회한다(#135 · #226)', async () => {
     const user = userEvent.setup();
     const { queueQueries } = renderScreen();
     await screen.findByText(REQUEST.inspectionRequestNo);
@@ -306,14 +306,14 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     );
 
     await user.click(screen.getByLabelText(t.filters.item));
-    const dialog = await screen.findByRole('dialog');
-    await user.click(await within(dialog).findByRole('checkbox', { name: 'F534F50200' }));
-    await user.click(within(dialog).getByRole('button', { name: t.filters.itemPick }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('option', { name: 'F534F50200 · 합성 품목' }));
     await user.click(screen.getByRole('button', { name: t.filters.apply }));
     await waitFor(() => expect(queueQueries.at(-1)?.get('itemId')).toBe('101'));
 
     const before = queueQueries.length;
-    await user.click(screen.getByRole('button', { name: t.filters.itemClear }));
+    await user.click(screen.getByLabelText(t.filters.item));
+    await user.click(await screen.findByRole('option', { name: t.filters.all }));
     await waitFor(() => expect(queueQueries.length).toBeGreaterThan(before));
     expect(queueQueries.at(-1)?.get('itemId')).toBeNull();
   });

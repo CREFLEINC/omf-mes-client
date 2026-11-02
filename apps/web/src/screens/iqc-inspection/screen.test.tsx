@@ -926,9 +926,13 @@ describe('IqcInspectionScreen', () => {
 
     await judgmentField();
 
-    const call = sent.find((url) => url.pathname === '/mdm/code-values');
-    expect(call?.searchParams.get('codeGroupCode')).toBe(CODE_GROUPS.overallJudgment);
-    expect(call?.searchParams.has('codeGroupId')).toBe(false);
+    /* 조건 줄의 품목 칸도 품목 유형을 같은 길로 묻는다(#226) — 판정 그룹의 물음을 골라 본다. */
+    const calls = sent.filter((url) => url.pathname === '/mdm/code-values');
+    const call = calls.find(
+      (url) => url.searchParams.get('codeGroupCode') === CODE_GROUPS.overallJudgment,
+    );
+    expect(call).toBeDefined();
+    expect(calls.some((url) => url.searchParams.has('codeGroupId'))).toBe(false);
   });
 
   it('항목 판정 그룹을 종합 판정에 쓰지 않는다 — 그쪽에는 보류가 없다', async () => {

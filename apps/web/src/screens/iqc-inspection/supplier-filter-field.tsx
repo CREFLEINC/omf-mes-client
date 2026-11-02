@@ -1,11 +1,12 @@
-import { SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId } from 'react';
 
-import { useSupplierOptions } from './reference-lookup';
-import { SupplierPickerDialog } from './supplier-picker-dialog';
+import { PartnerSelect } from '../../patterns/partner-select';
 
 const t = messages.iqcInspection.filters;
+
+/** 조건 줄의 「전체」 — 빈 값이라 좁히지 않는다. */
+const ALL_SUPPLIERS = [{ value: '', label: t.all }];
 
 interface SupplierFilterFieldProps {
   /** 고른 거래처 번호. 비면 「전체」. */
@@ -14,48 +15,28 @@ interface SupplierFilterFieldProps {
 }
 
 /**
- * 공급사 조건 — 품목 조건(`item-filter-field.tsx`)처럼 **검색 창으로 찾아 고른다**(#133).
- * 읽기 전용 검색 입력을 누르거나 엔터를 치면 창이 열리고, 지우기는 값이 있을 때만 칸 안의 × 다.
+ * 공급사 조건 — 품목 조건(`item-filter-field.tsx`)처럼 **칸에서 바로 검색해서 고른다**(omf-all-around#226).
+ * 검색어는 서버로 간다(`PartnerSelect`). 「전체」를 고르면 조건을 푼다.
  *
- * 고른 값의 이름은 종전 선택지 목록(`useSupplierOptions`)으로 푼다 — 주소로 들어온 값도 이름이 선다.
+ * 찾는 범위는 종전 검색 창과 같다 — 거래처 전체를 사용 중지까지(`includeInactive`). 지난 의뢰를 찾는 조건이다.
+ * 고른 값의 이름은 거래처 상세로 푼다 — 주소로 들어온 값도 이름이 선다.
  */
 export const SupplierFilterField = ({ value, onChange }: SupplierFilterFieldProps) => {
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const suppliers = useSupplierOptions();
-  const label =
-    value === ''
-      ? ''
-      : (suppliers.options.find((option) => option.value === value)?.label ?? value);
-  const open = (): void => setIsPickerOpen(true);
+  const fieldId = useId();
 
   return (
-    <>
-      <SearchInput
-        label={t.supplier}
-        value={label}
-        readOnly
-        title={label === '' ? undefined : label}
-        placeholder={t.supplierPlaceholder}
-        aria-haspopup="dialog"
-        clearLabel={t.supplierClear}
-        onClick={open}
-        onSearch={open}
-        onChange={() => undefined}
-        onClear={() => {
-          onChange('');
-        }}
+    <div className="field-cell">
+      <label className="field-label" htmlFor={fieldId}>
+        {t.supplier}
+      </label>
+      <PartnerSelect
+        id={fieldId}
+        includeInactive
+        leadingOptions={ALL_SUPPLIERS}
+        value={value}
+        placeholder={t.all}
+        onChange={onChange}
       />
-      {isPickerOpen && (
-        <SupplierPickerDialog
-          onClose={() => {
-            setIsPickerOpen(false);
-          }}
-          onConfirm={(partner) => {
-            onChange(String(partner.partnerId));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
-    </>
+    </div>
   );
 };
