@@ -4,7 +4,6 @@ export const suspiciousMaterialHold = {
   candidate: {
     pane: '의심자재 후보',
     fields: {
-      select: '선택',
       lotNo: 'LOT 번호',
       item: '품목',
       warehouse: '창고',
@@ -12,6 +11,12 @@ export const suspiciousMaterialHold = {
       quantity: '보유 수량·단위',
       status: '상태',
       latestTransition: '최종 변경일',
+      /** 상세 검색의 선택 칸 이름(사용자 2026-11-02). */
+      itemSearch: '품목 검색',
+      warehouseSearch: '창고 검색',
+      /** 조회 줄 기간 두 칸(사용자 2026-11-02). */
+      periodFrom: '최종 변경 시작일',
+      periodTo: '최종 변경 종료일',
     },
     values: {
       all: '전체',
@@ -26,6 +31,8 @@ export const suspiciousMaterialHold = {
       selected: (count: number): string => `${String(count)}건 선택`,
     },
     actions: {
+      /** 목록 머리의 전체 선택 칸 이름(사용자 2026-11-02). */
+      selectAll: '이 쪽 LOT 전체 선택',
       select: (lotNo: string): string => `${lotNo} 선택`,
       search: '조회',
       reset: '초기화',

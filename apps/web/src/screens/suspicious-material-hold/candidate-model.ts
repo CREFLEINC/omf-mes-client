@@ -1,5 +1,10 @@
 import type { components, paths } from '@omf-mes/api-client';
 
+import {
+  toTransitionPeriodBounds,
+  validateTransitionPeriod,
+} from '../lot-status-transition/period';
+
 type LotQualityStatus = components['schemas']['LotQualityStatus'];
 type LotStatusQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
@@ -10,6 +15,9 @@ export interface SuspiciousMaterialFilters {
   itemId: string;
   warehouseId: string;
   lotStatusCode: string;
+  /** 최종 변경일 기간(YYYY-MM-DD) — 둘 다 비우면 기간 없이 조회한다(사용자 2026-11-02). */
+  from: string;
+  to: string;
 }
 
 export const EMPTY_SUSPICIOUS_MATERIAL_FILTERS: SuspiciousMaterialFilters = {
@@ -17,7 +25,15 @@ export const EMPTY_SUSPICIOUS_MATERIAL_FILTERS: SuspiciousMaterialFilters = {
   itemId: '',
   warehouseId: '',
   lotStatusCode: '',
+  from: '',
+  to: '',
 };
+
+/** 기간 검사 — 둘 다 비우면 기간 없이 조회해도 된다. 한쪽만 채웠거나 날짜가 틀렸으면 조회를 막는다. */
+export const validateSuspiciousMaterialPeriod = (
+  filters: Pick<SuspiciousMaterialFilters, 'from' | 'to'>,
+): ReturnType<typeof validateTransitionPeriod> =>
+  filters.from === '' && filters.to === '' ? null : validateTransitionPeriod(filters);
 
 export interface SelectedLotSnapshot {
   lotId: number;
@@ -49,6 +65,8 @@ export const toSuspiciousMaterialQuery = (
   page: number,
   /** 한 쪽 LOT 수 — 주지 않으면 서버 기본 크기다. */
   size?: number,
+  /** 기간 경계의 시간대 — 브라우저 시간대(분). */
+  offsetMinutes: number = -new Date().getTimezoneOffset(),
 ): LotStatusQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(positiveInteger(filters.itemId) === undefined
@@ -58,6 +76,10 @@ export const toSuspiciousMaterialQuery = (
     ? {}
     : { warehouseId: positiveInteger(filters.warehouseId) }),
   ...(filters.lotStatusCode === '' ? {} : { lotStatusCode: filters.lotStatusCode }),
+  /* 최종 변경일 기간 — LOT 상태 변경 탭과 같은 경계(종료일은 다음 날 0시 · 반열림). */
+  ...(filters.from !== '' && validateTransitionPeriod(filters) === null
+    ? toTransitionPeriodBounds(filters, offsetMinutes)
+    : {}),
   ...(Number.isSafeInteger(page) && page > 1 ? { page } : {}),
   ...(size === undefined ? {} : { size }),
 });

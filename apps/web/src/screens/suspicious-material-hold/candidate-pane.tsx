@@ -4,6 +4,7 @@ import {
   Checkbox,
   Chip,
   type Column,
+  DatePicker,
   EmptyState,
   SearchInput,
   SkeletonText,
@@ -54,6 +55,7 @@ import {
   reconcileSuspiciousMaterialSelection,
   toSelectedLotSnapshot,
   toSuspiciousMaterialQuery,
+  validateSuspiciousMaterialPeriod,
   type SelectedLotSnapshot,
   type SuspiciousMaterialFilters,
 } from './candidate-model';
@@ -157,6 +159,16 @@ export const SuspiciousMaterialCandidatePane = ({
   const split = usePaneSplit(SPLIT_KEY, 0.6);
   const layout = useSplitOrientation(SPLIT_ORIENTATION_KEY);
   const detailId = useId();
+  const periodLabelId = useId();
+  const periodReasonId = useId();
+  /* 기간 — 둘 다 비우면 기간 없이 조회한다. 한쪽만 채웠으면 [조회]만 잠그고, 틀린 날짜 · 뒤바뀐 순서는 알린다. */
+  const periodError = validateSuspiciousMaterialPeriod(draft);
+  const periodReason =
+    periodError === 'invalid'
+      ? messages.lotStatusTransition.candidate.filters.periodInvalid
+      : periodError === 'reversed'
+        ? messages.lotStatusTransition.candidate.filters.periodReversed
+        : null;
   /* 품목 · 창고는 상세 조건으로 접어 둔다 — 걸린 조건이 있으면 펼친 채로 들어온다(LOT 상태 이력 · 변경과 같다). */
   const [isDetailOpen, setIsDetailOpen] = useState(
     filters.itemId !== '' || filters.warehouseId !== '',
@@ -216,7 +228,10 @@ export const SuspiciousMaterialCandidatePane = ({
     setPageSize(nextSize);
     setFilters(nextFilters);
   };
-  const apply = (): void => move({ ...draft }, 1);
+  const apply = (): void => {
+    if (periodError !== null) return;
+    move({ ...draft }, 1);
+  };
   const changeStatus = (lotStatusCode: string): void => {
     if (isLocked) return;
     setDraft((current) => ({ ...current, lotStatusCode }));
@@ -227,29 +242,51 @@ export const SuspiciousMaterialCandidatePane = ({
     setDraft(EMPTY_SUSPICIOUS_MATERIAL_FILTERS);
     move(EMPTY_SUSPICIOUS_MATERIAL_FILTERS, 1);
   };
+  /* 고른 LOT 한 건의 스냅숏 — 위치 · 단위 이름은 고를 때의 표시 값을 함께 남긴다. 고를 수 없는 LOT 이면 null. */
+  const toSnapshot = (row: Lot): SelectedLotSnapshot | null => {
+    const snapshot = toSelectedLotSnapshot(row);
+    if (snapshot === null) return null;
+    const warehouse = referenceLabel(warehouses, row.warehouseId, '');
+    const location = referenceLabel(locationsOf(row.warehouseId), row.locationId, '');
+    const unit =
+      row.uomId === undefined || uoms.isLoading || uoms.isError || uoms.truncated
+        ? ''
+        : (uoms.entries.find(({ uomId }) => uomId === row.uomId)?.label ?? '');
+    return {
+      ...snapshot,
+      locationLabel: warehouse === '' || location === '' ? null : `${warehouse} / ${location}`,
+      uomLabel: unit === '' ? null : unit,
+    };
+  };
   const toggle = (row: Lot): void => {
     if (isLocked) return;
     if (selection.some((value) => value.lotId === row.lotId))
       onSelectionChange(selection.filter((value) => value.lotId !== row.lotId));
     else {
-      const snapshot = toSelectedLotSnapshot(row);
-      const warehouse = referenceLabel(warehouses, row.warehouseId, '');
-      const location = referenceLabel(locationsOf(row.warehouseId), row.locationId, '');
-      const unit =
-        row.uomId === undefined || uoms.isLoading || uoms.isError || uoms.truncated
-          ? ''
-          : (uoms.entries.find(({ uomId }) => uomId === row.uomId)?.label ?? '');
-      if (snapshot !== null)
-        onSelectionChange([
-          ...selection,
-          {
-            ...snapshot,
-            locationLabel:
-              warehouse === '' || location === '' ? null : `${warehouse} / ${location}`,
-            uomLabel: unit === '' ? null : unit,
-          },
-        ]);
+      const snapshot = toSnapshot(row);
+      if (snapshot !== null) onSelectionChange([...selection, snapshot]);
     }
+  };
+  /* 전체 선택 — 이 쪽에서 고를 수 있는 LOT 만 고르고 푼다(사용자 2026-11-02). */
+  const selectableRows = rows.filter((row) => toSelectedLotSnapshot(row) !== null);
+  const pickedOnPage = selectableRows.filter((row) =>
+    selection.some((value) => value.lotId === row.lotId),
+  ).length;
+  const allPicked = selectableRows.length > 0 && pickedOnPage === selectableRows.length;
+  const toggleAll = (): void => {
+    if (isLocked) return;
+    if (allPicked) {
+      const pageIds = new Set(selectableRows.map((row) => row.lotId));
+      onSelectionChange(selection.filter((value) => !pageIds.has(value.lotId)));
+      return;
+    }
+    const added = selectableRows
+      .filter((row) => !selection.some((value) => value.lotId === row.lotId))
+      .flatMap((row) => {
+        const snapshot = toSnapshot(row);
+        return snapshot === null ? [] : [snapshot];
+      });
+    onSelectionChange([...selection, ...added]);
   };
   const statusLabel = (code: string): string =>
     statuses.data?.isTruncated === false
@@ -272,7 +309,15 @@ export const SuspiciousMaterialCandidatePane = ({
   };
   const selectColumn: Column<Lot> = {
     key: 'select',
-    header: t.fields.select,
+    header: (
+      <Checkbox
+        aria-label={t.actions.selectAll}
+        checked={allPicked}
+        indeterminate={pickedOnPage > 0 && !allPicked}
+        disabled={isLocked || !ready || selectableRows.length === 0}
+        onChange={toggleAll}
+      />
+    ),
     align: 'center',
     width: `${String(SELECT_COLUMN_WIDTH)}px`,
     render: (row) => (
@@ -373,8 +418,8 @@ export const SuspiciousMaterialCandidatePane = ({
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
   const filterSelects = [
-    [t.fields.item, 'itemId', options(items.data)],
-    [t.fields.warehouse, 'warehouseId', options(warehouses.data)],
+    [t.fields.itemSearch, 'itemId', options(items.data)],
+    [t.fields.warehouseSearch, 'warehouseId', options(warehouses.data)],
   ] as const;
   const statusChips = (
     <StatusChips
@@ -403,6 +448,38 @@ export const SuspiciousMaterialCandidatePane = ({
       >
         {hubTarget === null && <div className="lot-status-search-head">{statusChips}</div>}
         <div className="filter-bar lot-status-filter lot-status-transition-filter">
+          {/* 기간 — 「기간」 한 이름 아래 최종 변경 시작일 · 종료일 두 달력 칸(다른 LOT 상태 탭과 같은 짜임). */}
+          <div className="field-cell" role="group" aria-labelledby={periodLabelId}>
+            <span className="field-label" id={periodLabelId}>
+              {tHistory.historyFilter.fields.period}
+            </span>
+            <div className="lot-status-date-range-row">
+              <DatePicker
+                className="lot-status-date-field"
+                aria-label={t.fields.periodFrom}
+                placeholder={t.fields.periodFrom}
+                disabled={isLocked}
+                invalid={draft.from === '' && draft.to !== ''}
+                value={draft.from === '' ? null : draft.from}
+                onChange={(from) => setDraft((current) => ({ ...current, from }))}
+              />
+              <DatePicker
+                className="lot-status-date-field"
+                aria-label={t.fields.periodTo}
+                placeholder={t.fields.periodTo}
+                disabled={isLocked}
+                invalid={(draft.to === '' && draft.from !== '') || periodReason !== null}
+                value={draft.to === '' ? null : draft.to}
+                onChange={(to) => setDraft((current) => ({ ...current, to }))}
+                aria-describedby={periodReason === null ? undefined : periodReasonId}
+              />
+            </div>
+            {periodReason !== null && (
+              <span id={periodReasonId} className="field-error" role="alert">
+                {periodReason}
+              </span>
+            )}
+          </div>
           <SearchInput
             containerClassName="lot-status-filter-lot-no"
             label={tHistory.lotFilter.lotScanLabel}
@@ -415,7 +492,12 @@ export const SuspiciousMaterialCandidatePane = ({
           />
           {/* [조회](주 동작) → [초기화] → 상세 검색 펼치기 — 다른 LOT 상태 탭과 같은 순서, 줄의 오른쪽 끝. */}
           <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
-            <Button variant="filled" disabled={isLocked} onClick={apply}>
+            <Button
+              variant="filled"
+              disabled={isLocked || periodError !== null}
+              aria-describedby={periodReason === null ? undefined : periodReasonId}
+              onClick={apply}
+            >
               {t.actions.search}
             </Button>
             <Button variant="outlined" disabled={isLocked} onClick={reset}>

@@ -6,6 +6,7 @@ import {
   reconcileSuspiciousMaterialSelection,
   toSelectedLotSnapshot,
   toSuspiciousMaterialQuery,
+  validateSuspiciousMaterialPeriod,
   type SuspiciousMaterialCandidateResponse,
 } from './candidate-model';
 
@@ -37,7 +38,14 @@ describe('의심자재 후보 상태 모델', () => {
   it('입력된 필터와 2쪽만 계약 query로 만들고 fullyHeld 제외를 추론하지 않는다', () => {
     expect(
       toSuspiciousMaterialQuery(
-        { q: 'SYN-LOT', itemId: '801', warehouseId: '31', lotStatusCode: 'NORMAL' },
+        {
+          q: 'SYN-LOT',
+          itemId: '801',
+          warehouseId: '31',
+          lotStatusCode: 'NORMAL',
+          from: '',
+          to: '',
+        },
         2,
       ),
     ).toEqual({
@@ -48,6 +56,20 @@ describe('의심자재 후보 상태 모델', () => {
       page: 2,
     });
     expect(toSuspiciousMaterialQuery(EMPTY_SUSPICIOUS_MATERIAL_FILTERS, 1)).toEqual({});
+  });
+
+  it('최종 변경 기간은 둘 다 채웠을 때만 시작일 0시 ~ 종료 다음 날 0시로 보낸다', () => {
+    const period = { ...EMPTY_SUSPICIOUS_MATERIAL_FILTERS, from: '2026-10-01', to: '2026-10-31' };
+    expect(toSuspiciousMaterialQuery(period, 1, undefined, 420)).toEqual({
+      transitionFrom: '2026-10-01T00:00:00+07:00',
+      transitionTo: '2026-11-01T00:00:00+07:00',
+    });
+    expect(toSuspiciousMaterialQuery({ ...period, to: '' }, 1, undefined, 420)).toEqual({});
+    expect(validateSuspiciousMaterialPeriod(EMPTY_SUSPICIOUS_MATERIAL_FILTERS)).toBeNull();
+    expect(validateSuspiciousMaterialPeriod({ from: '2026-10-01', to: '' })).toBe('missing');
+    expect(validateSuspiciousMaterialPeriod({ from: '2026-10-31', to: '2026-10-01' })).toBe(
+      'reversed',
+    );
   });
 
   it.each([

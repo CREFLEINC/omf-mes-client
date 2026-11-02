@@ -107,7 +107,9 @@ describe('의심자재 후보 pane', () => {
         /* 열 머리마다 끌기 손잡이 아이콘 글자(drag_indicator)가 붙는다 — 이름만 본다. */
         .map((cell) => cell.textContent?.replaceAll('drag_indicator', ''))
         .join('|'),
-    ).toBe('선택|LOT 번호|품목|위치|보유 수량·단위|상태|최종 변경일');
+    ).toBe('|LOT 번호|품목|위치|보유 수량·단위|상태|최종 변경일');
+    /* 선택 칸 머리는 이 쪽 전체 선택 칸이다(사용자 2026-11-02). */
+    expect(screen.getByRole('checkbox', { name: '이 쪽 LOT 전체 선택' })).toBeVisible();
     /* 목록 카드 제목은 두지 않는다(다른 LOT 상태 탭과 같다 · 사용자 2026-11-02) — 구역 이름으로만 남는다. */
     expect(screen.queryByRole('heading', { level: 2, name: '의심자재 후보' })).toBeNull();
     expect(screen.getByRole('table', { name: '의심자재 후보' })).toBeVisible();

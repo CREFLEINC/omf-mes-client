@@ -13,7 +13,6 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
   candidate: {
     pane: 'Ứng viên vật tư nghi ngờ',
     fields: {
-      select: 'Chọn',
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
       warehouse: 'Kho',
@@ -21,6 +20,12 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       quantity: 'Số lượng đang giữ · Đơn vị',
       status: 'Trạng thái',
       latestTransition: 'Ngày thay đổi cuối',
+      /** 상세 검색의 선택 칸 이름(사용자 2026-11-02). */
+      itemSearch: 'Tìm mặt hàng',
+      warehouseSearch: 'Tìm kho',
+      /** 조회 줄 기간 두 칸(사용자 2026-11-02). */
+      periodFrom: 'Ngày bắt đầu thay đổi cuối',
+      periodTo: 'Ngày kết thúc thay đổi cuối',
     },
     values: {
       all: 'Tất cả',
@@ -35,6 +40,8 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       selected: (count: number): string => `Đã chọn ${String(count)} mục`,
     },
     actions: {
+      /** 목록 머리의 전체 선택 칸 이름(사용자 2026-11-02). */
+      selectAll: 'Chọn tất cả LOT trên trang này',
       select: (lotNo: string): string => `Chọn ${lotNo}`,
       search: 'Tra cứu',
       reset: 'Đặt lại',
