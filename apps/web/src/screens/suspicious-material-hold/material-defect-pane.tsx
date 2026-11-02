@@ -85,12 +85,42 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const [openLotId, setOpenLotId] = useState<number | null>(null);
   /* 이 화면에서 등록한 건수 — LOT 줄 오른쪽에 「등록 N건」으로 보인다. */
   const [recorded, setRecorded] = useState<ReadonlyMap<number, number>>(new Map());
+  /*
+   * 여러 LOT — 팝업에서 넣은 값을 모아 두었다가 바깥 [불량 등록] 한 번으로 모두 보낸다(사용자 2026-11-02). 보내는 동안
+   * 단추를 잠그고, 등록된 LOT 의 입력은 비운다 — 같은 입력으로 다시 누를 수 없다. 실패한 LOT 만 입력이 남는다.
+   */
+  const multi = selection.length > 1;
+  const [drafts, setDrafts] = useState<ReadonlyMap<number, DefectDraft>>(new Map());
+  const [saving, setSaving] = useState<ReadonlySet<number>>(new Set());
+  const [runToken, setRunToken] = useState(0);
+  const [confirmingAll, setConfirmingAll] = useState(false);
   const all = codes.data ?? [];
   const majors = majorsOf(all);
   const noCodes = codes.data !== undefined && majors.length === 0;
   /* 고를 불량 유형이 없으면(없음 · 못 받음 · 받는 중) 입력 팝업을 열지 않는다(사용자 2026-11-02). */
   const locked = majors.length === 0;
   const openLot = selection.find((lot) => lot.lotId === openLotId) ?? null;
+  /* 고른 LOT 의 입력만 보낸다 — 선택에서 빠진 LOT 의 입력은 남겨도 보내지 않는다. */
+  const pending = selection.flatMap((lot) => {
+    const draft = drafts.get(lot.lotId);
+    return draft === undefined ? [] : [{ lot, draft }];
+  });
+  const markRecorded = (lotId: number): void =>
+    setRecorded((current) => new Map(current).set(lotId, (current.get(lotId) ?? 0) + 1));
+  const finish = (lotId: number, ok: boolean): void => {
+    setSaving((current) => {
+      const next = new Set(current);
+      next.delete(lotId);
+      return next;
+    });
+    if (!ok) return;
+    markRecorded(lotId);
+    setDrafts((current) => {
+      const next = new Map(current);
+      next.delete(lotId);
+      return next;
+    });
+  };
 
   return (
     <section className="suspicious-material-hold-section" aria-label={tHere.heading}>
@@ -120,28 +150,100 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
       <ul className="suspicious-material-hold-defect-lots">
         {selection.map((lot) => {
           const count = recorded.get(lot.lotId) ?? 0;
+          const draft = drafts.get(lot.lotId);
           return (
             <li key={lot.lotId}>
               <button
                 type="button"
                 className="suspicious-material-hold-defect-lot"
                 aria-label={tHere.openLot(lot.lotNo)}
-                disabled={isLocked || locked}
+                disabled={isLocked || locked || saving.size > 0}
                 onClick={() => setOpenLotId(lot.lotId)}
               >
                 <strong>{lot.lotNo}</strong>
-                {count > 0 ? (
-                  <Chip variant="status" status="success" size="sm">
-                    {tHere.recordedCount(count)}
-                  </Chip>
-                ) : (
-                  <span className="suspicious-material-hold-defect-lot-hint">{tHere.enter}</span>
-                )}
+                <span className="suspicious-material-hold-defect-lot-state">
+                  {count > 0 && (
+                    <Chip variant="status" status="success" size="sm">
+                      {tHere.recordedCount(count)}
+                    </Chip>
+                  )}
+                  {draft !== undefined ? (
+                    <Chip variant="status" status="info" size="sm">
+                      {tHere.drafted(draft.codeLabel, draft.qtyLabel)}
+                    </Chip>
+                  ) : (
+                    count === 0 && (
+                      <span className="suspicious-material-hold-defect-lot-hint">
+                        {tHere.enter}
+                      </span>
+                    )
+                  )}
+                </span>
               </button>
+              {draft !== undefined && (
+                <DraftWriter
+                  draft={draft}
+                  runToken={runToken}
+                  onDone={(ok) => finish(lot.lotId, ok)}
+                />
+              )}
             </li>
           );
         })}
       </ul>
+      {/* 여러 LOT — 바깥 [불량 등록] 하나로 입력한 LOT 을 모두 등록한다(사용자 2026-11-02). */}
+      {multi && (
+        <div className="suspicious-material-hold-action-row">
+          <Button
+            disabled={isLocked || pending.length === 0 || saving.size > 0}
+            loading={saving.size > 0}
+            title={pending.length === 0 ? tHere.noDrafts : undefined}
+            onClick={() => setConfirmingAll(true)}
+          >
+            {tHere.submit}
+          </Button>
+        </div>
+      )}
+      {confirmingAll && pending.length > 0 && (
+        <Dialog
+          open
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          title={tHere.confirm.titleMany(pending.length)}
+          onClose={() => setConfirmingAll(false)}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setConfirmingAll(false)}>
+                {tHere.confirm.cancel}
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmingAll(false);
+                  setSaving(new Set(pending.map(({ lot }) => lot.lotId)));
+                  setRunToken((current) => current + 1);
+                }}
+              >
+                {tHere.submit}
+              </Button>
+            </>
+          }
+        >
+          <ul className="suspicious-material-hold-confirm-list">
+            {pending.map(({ lot, draft }) => (
+              <li key={lot.lotId}>
+                <strong>{lot.lotNo}</strong>
+                <span>
+                  {draft.codeLabel} · {draft.qtyLabel}
+                  {draft.description.trim() === '' ? '' : ` · ${draft.description.trim()}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {pending.length < selection.length && (
+            <p className="field-note">{tHere.confirm.skipped(selection.length - pending.length)}</p>
+          )}
+        </Dialog>
+      )}
       {openLot !== null && (
         <DefectRecordDialog
           key={openLot.lotId}
@@ -150,12 +252,74 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
           isLocked={isLocked}
           onClose={() => setOpenLotId(null)}
           onRecorded={(lotId) => {
-            setRecorded((current) => new Map(current).set(lotId, (current.get(lotId) ?? 0) + 1));
+            markRecorded(lotId);
             setOpenLotId(null);
           }}
+          {...(multi
+            ? {
+                ...(drafts.get(openLot.lotId) === undefined
+                  ? {}
+                  : { draft: drafts.get(openLot.lotId) }),
+                onDraft: (draft: DefectDraft) => {
+                  setDrafts((current) => new Map(current).set(openLot.lotId, draft));
+                  setOpenLotId(null);
+                },
+              }
+            : {})}
         />
       )}
     </section>
+  );
+};
+
+/** 여러 LOT 에서 팝업이 모아 두는 한 LOT 의 입력 — 다시 열 때의 칸 값과 보낼 내용 · 확인 창 글자. */
+interface DefectDraft {
+  code: DefectCodeDraft;
+  qty: string;
+  description: string;
+  body: Omit<Parameters<ReturnType<typeof useRecordMaterialDefect>['write']>[0], 'detectedAt'>;
+  codeLabel: string;
+  qtyLabel: string;
+}
+
+/**
+ * 한 LOT 의 등록을 맡는 보이지 않는 칸 — 바깥 [불량 등록]이 `runToken` 을 올리면 한 번 보낸다. LOT 마다 따로 두어
+ * 다시 보낼 때 같은 멱등 키를 쓴다(같은 불량이 두 번 기록되지 않게). 실패하면 그 줄 아래에 까닭을 보인다.
+ */
+const DraftWriter = ({
+  draft,
+  runToken,
+  onDone,
+}: {
+  draft: DefectDraft;
+  runToken: number;
+  onDone: (ok: boolean) => void;
+}) => {
+  /* 알림 함수는 그릴 때마다 새로 오므로 ref 로 붙들어 효과가 거듭 돌지 않게 한다. */
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  const record = useRecordMaterialDefect(() => onDoneRef.current(true));
+  const sent = useRef(runToken);
+  const { write } = record;
+  useEffect(() => {
+    if (runToken === sent.current) return;
+    sent.current = runToken;
+    write({ ...draft.body, detectedAt: new Date().toISOString() });
+  }, [draft.body, write, runToken]);
+  const fieldMessages = Object.values(record.fieldErrors);
+  const failed = record.error !== null || fieldMessages.length > 0;
+  useEffect(() => {
+    if (failed) onDoneRef.current(false);
+  }, [failed]);
+  return (
+    <>
+      <SaveErrorBanner error={record.error} />
+      {fieldMessages.map((message) => (
+        <p key={message} className="field-error">
+          {message}
+        </p>
+      ))}
+    </>
   );
 };
 
@@ -169,12 +333,17 @@ const DefectRecordDialog = ({
   isLocked,
   onClose,
   onRecorded,
+  draft,
+  onDraft,
 }: {
   lot: SelectedLotSnapshot;
   codes: readonly DefectCode[];
   isLocked: boolean;
   onClose: () => void;
   onRecorded: (lotId: number) => void;
+  /** 여러 LOT 일 때 — 팝업은 입력만 받아 넘기고(바깥 [불량 등록]이 한 번에 등록), 앞서 넣은 값을 다시 연다. */
+  draft?: DefectDraft;
+  onDraft?: (draft: DefectDraft) => void;
 }) => {
   const majorFieldId = useId();
   const minorFieldId = useId();
@@ -186,9 +355,9 @@ const DefectRecordDialog = ({
   const uomId = lot.uomId ?? detail.data?.uomId ?? undefined;
   const uomCodeOf = useUomCodeOf();
   const [confirming, setConfirming] = useState(false);
-  const [code, setCode] = useState<DefectCodeDraft>(EMPTY_DEFECT_CODE);
-  const [qty, setQty] = useState('');
-  const [description, setDescription] = useState('');
+  const [code, setCode] = useState<DefectCodeDraft>(draft?.code ?? EMPTY_DEFECT_CODE);
+  const [qty, setQty] = useState(draft?.qty ?? '');
+  const [description, setDescription] = useState(draft?.description ?? '');
   /*
    * 고른 뒤 다음 칸으로 — 불량 유형을 고르면 상세가 있으면 상세를 펼치고, 없으면 수량으로. 상세를 고르면 수량으로
    * (사용자 2026-11-02). 상세 칸은 유형을 고른 뒤에 서므로 그린 다음에 옮긴다.
@@ -226,6 +395,24 @@ const DefectRecordDialog = ({
   const disabled = isLocked || record.isSaving;
   /* 상세까지 받아 보고도 단위가 없을 때만 — 받는 중에는 띄우지 않는다. */
   const uomUnknown = uomId === undefined && !detail.isPending;
+
+  const saveDraft = (): void => {
+    if (blocked !== null || defectCodeId === null || uomId === undefined) return;
+    onDraft?.({
+      code,
+      qty,
+      description,
+      body: {
+        lotId: lot.lotId,
+        defectCodeId,
+        defectQty: quantity,
+        uomId,
+        ...(description.trim() === '' ? {} : { defectDescription: description.trim() }),
+      },
+      codeLabel: chosenCode === undefined ? String(defectCodeId) : optionOf(chosenCode).label,
+      qtyLabel: withUom(String(quantity), uomCodeOf(uomId)),
+    });
+  };
 
   const submit = (): void => {
     if (blocked !== null || defectCodeId === null || uomId === undefined) return;
@@ -270,9 +457,9 @@ const DefectRecordDialog = ({
             <Button
               disabled={blocked !== null || disabled}
               title={blocked ?? undefined}
-              onClick={() => setConfirming(true)}
+              onClick={() => (onDraft === undefined ? setConfirming(true) : saveDraft())}
             >
-              {tHere.submit}
+              {onDraft === undefined ? tHere.submit : tHere.saveDraft}
             </Button>
           </>
         )

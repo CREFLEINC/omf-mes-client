@@ -110,11 +110,16 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     title: 'Đăng ký tạm giữ vật tư nghi ngờ',
   },
   defect: {
+    saveDraft: 'Xong nhập',
+    drafted: (code: string, qty: string): string => `Đã nhập · ${code} · ${qty}`,
+    noDrafts: 'Hãy nhấn LOT để nhập lỗi trước.',
     openLot: (lotNo: string): string => `Nhập lỗi cho ${lotNo}`,
     enter: 'Nhấn để nhập lỗi',
     recordedCount: (count: number): string => `Đã ghi ${String(count)}`,
     dialogTitle: (lotNo: string): string => `Đăng ký chi tiết lỗi — ${lotNo}`,
     confirm: {
+      titleMany: (count: number): string => `Đăng ký lỗi cho ${String(count)} LOT?`,
+      skipped: (count: number): string => `${String(count)} LOT chưa nhập sẽ không được đăng ký.`,
       title: 'Đăng ký lỗi?',
       lot: 'LOT',
       code: 'Mã lỗi',

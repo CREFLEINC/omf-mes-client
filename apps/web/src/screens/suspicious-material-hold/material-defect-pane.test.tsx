@@ -236,4 +236,38 @@ describe('MaterialDefectPane (W-03-03)', () => {
     expect(screen.getByText('등록 1건')).toBeVisible();
     expect(writes).toHaveLength(1);
   });
+
+  it('여러 LOT — 팝업은 입력만 받고, 바깥 [불량 등록] 한 번으로 모두 등록한 뒤 다시 누를 수 없다', async () => {
+    const user = userEvent.setup();
+    const second = { ...LOT, lotId: 8102, lotNo: 'MLOT-8102' };
+    const { writes } = renderPane([LOT, second]);
+    const outer = await screen.findByRole('button', { name: '불량 등록' });
+    expect(outer).toBeDisabled();
+
+    for (const [lotNo, qty] of [
+      ['MLOT-8101', '2'],
+      ['MLOT-8102', '3'],
+    ] as const) {
+      const dialog = await openLot(user, lotNo);
+      await fillDefect(user, qty);
+      await user.click(within(dialog).getByRole('button', { name: '입력 완료' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    }
+    expect(writes).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: '불량 등록' }));
+    const confirm = await screen.findByRole('dialog', { name: '2개 LOT 의 불량을 등록할까요?' });
+    await user.click(within(confirm).getByRole('button', { name: '불량 등록' }));
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+    const bodies = await Promise.all(writes.map((request) => request.json()));
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lotId: 8101, defectQty: 2 }),
+        expect.objectContaining({ lotId: 8102, defectQty: 3 }),
+      ]),
+    );
+    await waitFor(() => expect(screen.getAllByText('등록 1건')).toHaveLength(2));
+    expect(screen.getByRole('button', { name: '불량 등록' })).toBeDisabled();
+  });
 });

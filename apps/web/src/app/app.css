@@ -5525,6 +5525,38 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-label-md);
 }
 
+.suspicious-material-hold-defect-lot-state {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-lots > li {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* 여러 LOT 등록 확인 창 — LOT 마다 번호 · 코드 · 수량 한 줄. */
+.suspicious-material-hold-confirm-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-confirm-list > li {
+  display: grid;
+  gap: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.suspicious-material-hold-confirm-list > li > span {
+  color: var(--on-surface-variant);
+}
+
 /* 입력 팝업 안 — 유형 · 상세 · 수량 한 줄, 내용 전체 폭. */
 .suspicious-material-hold-defect-form {
   display: grid;
