@@ -71,6 +71,11 @@ export const common: Translated<typeof ko.common> = {
     filterOn: (label: string): string => `Chỉ xem yêu cầu ${label}`,
     filterOff: (label: string): string => `Bỏ lọc ${label}`,
     pendingOnly: 'Chỉ xem chờ · đang làm',
+    detailFilters: {
+      open: 'Mở điều kiện chi tiết',
+      close: 'Thu gọn điều kiện chi tiết',
+      hiddenApplied: 'Đang áp dụng điều kiện chi tiết',
+    },
     pickRequest: 'Chọn yêu cầu kiểm tra',
     pickRequestHint: 'Chọn một yêu cầu kiểm tra để xem nội dung chi tiết.',
     close: 'Đóng',

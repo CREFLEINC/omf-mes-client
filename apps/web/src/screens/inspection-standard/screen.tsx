@@ -37,6 +37,7 @@ import {
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
   INSPECTION_FREQUENCY_CODE_GROUP,
   INSPECTION_METHOD_CODE_GROUP,
+  INSPECTION_TYPE_OPTIONS,
   SAMPLING_METHOD_OPTIONS,
   ensureOption,
   selectableOptions,
@@ -225,6 +226,10 @@ const PAIRED_FIELDS: readonly (readonly [string, string])[] = [
 const withPairedFields = (changed: string[]): string[] => [
   ...new Set(changed.flatMap((key) => PAIRED_FIELDS.find((pair) => pair.includes(key)) ?? [key])),
 ];
+
+/** 「기준 추가」 창을 미리 채워 여는 주소 키 — 부품 IQC 화면의 「검사기준 설정」이 쓴다(#225). */
+const NEW_PLAN_TYPE_KEY = 'new';
+const NEW_PLAN_ITEM_KEY = 'newItem';
 
 /**
  * W-06-02 컨테이너 — 기준 목록 → 버전 목록 → 기준·버전·항목을 3단으로 놓는다.
@@ -821,6 +826,27 @@ export const InspectionStandardScreen = () => {
     setCreateValues(null);
     resetVersionEditing();
   };
+
+  /*
+   * 다른 화면이 「이 품목의 기준을 추가」로 보낸 주소(`?new=IQC&newItem=…` · omf-all-around#225) — 조회 조건으로 거르지 않고
+   * 「기준 추가」 창을 검사 유형 · 품목이 정해진 채로 연다. 한 번 열면 그 키를 주소에서 지운다 — 새로고침에 다시 뜨지 않게.
+   */
+  useEffect(() => {
+    const newType = searchParams.get(NEW_PLAN_TYPE_KEY);
+    if (newType === null) return;
+    const newItem = searchParams.get(NEW_PLAN_ITEM_KEY) ?? '';
+    const next = new URLSearchParams(searchParams);
+    next.delete(NEW_PLAN_TYPE_KEY);
+    next.delete(NEW_PLAN_ITEM_KEY);
+    setSearchParams(next, { replace: true });
+    if (!INSPECTION_TYPE_OPTIONS.some((option) => option.value === newType)) return;
+    resetPlanEditing();
+    setCreateValues({
+      ...emptyPlanFormValues(),
+      inspectionTypeCode: newType,
+      itemId: /^\d+$/.test(newItem) ? newItem : '',
+    });
+  }, [searchParams]);
 
   /**
    * 조건·쪽이 바뀌면 **주소를 통째로 새로 만든다.**

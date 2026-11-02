@@ -16,6 +16,7 @@ import {
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -23,6 +24,7 @@ import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import { formatPlantDateTime, plantNowLocal, PLANT_UTC_OFFSET } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
   useDefectCodes,
@@ -35,7 +37,6 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
-import { IqcSkipPane } from '../iqc-inspection/skip-pane';
 import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -80,6 +81,8 @@ type DefectCode = {
 };
 
 const t = messages.partsIqcInspection;
+/** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
+const STANDARD_PATH = '/master-data/inspection-standard';
 
 const TIME_LABELS: TimeFieldLabels = {
   field: t.lot.inspectedTime,
@@ -113,6 +116,7 @@ export const InspectionDetail = ({
   onDirtyChange,
 }: InspectionDetailProps) => {
   const { session } = useSession();
+  const navigate = useNavigate();
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const rounds = useInspectionRounds(inspectionRequestId);
   const versionId = detail.data?.inspectionPlanVersionId ?? null;
@@ -140,8 +144,20 @@ export const InspectionDetail = ({
     if (loading) return <p className="field-note">{t.dialog.loading}</p>;
     if (failed || detail.data === undefined)
       return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
-    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 위 「IQC 생략」 구획이 그 사실을 말한다. */
-    if (detail.data.statusCode === 'SKIPPED') return null;
+    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 받은 정보만 읽기 전용으로 보인다(사용자 지시 2026-11-02 · #225). */
+    if (detail.data.statusCode === 'SKIPPED') {
+      return (
+        <SkippedSummary
+          skipBasisCode={detail.data.skipBasisCode ?? null}
+          itemParts={items.partsOf(detail.data.itemId)}
+          planLabel={plan.data?.inspectionPlanCode ?? '-'}
+          planName={plan.data?.inspectionPlanName ?? '-'}
+          lotNo={lots.labelOf(detail.data.lotId)}
+          qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
+          inbound={inbound.data}
+        />
+      );
+    }
     if (round !== null && round.statusCode === 'CONFIRMED') {
       return (
         <AlertBanner variant="info">
@@ -150,7 +166,25 @@ export const InspectionDetail = ({
       );
     }
     if (versionId === null || version.data === undefined || specs.data === undefined) {
-      return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+      /* 검사 기준 화면에서 이 품목의 IQC 기준 등록 창을 바로 연다(#225) — 그 화면 권한이 없으면 단추를 두지 않는다. */
+      const setPlan = toWebAccess(session?.permissions).allows(STANDARD_PATH) ? (
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() => navigate(`${STANDARD_PATH}?new=IQC&newItem=${String(detail.data.itemId)}`)}
+        >
+          {t.dialog.setPlan}
+        </Button>
+      ) : undefined;
+      /* 단추는 문구와 같은 줄에 둔다 — 띠의 action 자리는 문구 아래 줄로 내려간다(#225). */
+      return (
+        <AlertBanner variant="warning">
+          <span className="parts-iqc-no-plan">
+            <span>{t.dialog.noPlan}</span>
+            {setPlan}
+          </span>
+        </AlertBanner>
+      );
     }
     return (
       <InspectionForm
@@ -202,19 +236,7 @@ export const InspectionDetail = ({
           </Chip>
         )}
       </div>
-      {/* IQC 생략(OA 화면 #212 와 같은 구획 · 사용자 지시 2026-10-30) — 확정 회차가 있으면 생략으로 덮지 않는다. */}
-      {detail.data !== undefined &&
-        detail.data.lotId !== null &&
-        rounds.data !== undefined &&
-        rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
-          <IqcSkipPane
-            lotId={detail.data.lotId}
-            requestStatusCode={detail.data.statusCode}
-            skipBasisCode={detail.data.skipBasisCode}
-            workerNo={session?.worker?.workerNo ?? null}
-            alsoInvalidate={[partsIqcKeys.all]}
-          />
-        )}
+      {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
@@ -245,6 +267,67 @@ export const InspectionDetail = ({
     </div>
   );
 };
+
+/** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
+const SkippedSummary = (props: {
+  skipBasisCode: string | null;
+  itemParts: { code: string; name: string } | null;
+  planLabel: string;
+  planName: string;
+  lotNo: string;
+  qtyLabel: string;
+  inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
+}) => (
+  <>
+    <AlertBanner variant="info">
+      {t.skipped.notice(
+        props.skipBasisCode === null ? null : (t.skipped.basis[props.skipBasisCode] ?? null),
+      )}
+    </AlertBanner>
+    <section className="parts-iqc-block" aria-label={t.target.heading}>
+      <dl className="parts-iqc-facts">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.target.itemName}</dt>
+          <dd className="parts-iqc-fact-key">
+            {props.itemParts?.name ?? '-'}
+            {props.itemParts !== null && (
+              <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
+            )}
+          </dd>
+        </div>
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.target.plan}</dt>
+          <dd>{props.planLabel}</dd>
+        </div>
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.target.planName}</dt>
+          <dd>{props.planName}</dd>
+        </div>
+      </dl>
+      <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
+        <h4>{t.lot.heading}</h4>
+        <dl className="parts-iqc-kv">
+          <div>
+            <dt>{t.lot.lotNo}</dt>
+            <dd className="parts-iqc-lot-no">{props.lotNo}</dd>
+          </div>
+          <div>
+            <dt>{t.lot.supplier}</dt>
+            <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
+          </div>
+          <div>
+            <dt>{t.lot.qty}</dt>
+            <dd>{props.qtyLabel}</dd>
+          </div>
+          <div>
+            <dt>{t.lot.receivedAt}</dt>
+            <dd>{formatPlantDateTime(props.inbound?.receivedAt ?? null) ?? '-'}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </>
+);
 
 interface FormProps {
   request: {
@@ -659,9 +742,7 @@ const InspectionForm = (props: FormProps) => {
           <div
             className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
           >
-            <span className="parts-iqc-auto-label">
-              {t.verdict.suggested}
-            </span>
+            <span className="parts-iqc-auto-label">{t.verdict.suggested}</span>
             {suggested === null ? (
               <span className="parts-iqc-muted">{t.verdict.pending}</span>
             ) : (

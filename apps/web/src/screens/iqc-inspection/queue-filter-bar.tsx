@@ -41,6 +41,8 @@ export interface QueueFilterBarProps {
   /** 「대기·진행만 보기」를 켜고 끄면 **바로 조회한다**(#185 · OQC · PQC 와 같다). */
   onTogglePendingOnly: (pendingOnly: boolean) => void;
   onReset: () => void;
+  /** 「대기·진행만 보기」를 이 줄에 둔다(기본). 부품 IQC 화면은 「오늘 입고」 옆에 따로 둔다(#225). */
+  showPendingOnly?: boolean;
 }
 
 export const QueueFilterBar = ({
@@ -48,6 +50,7 @@ export const QueueFilterBar = ({
   onSearch,
   onTogglePendingOnly,
   onReset,
+  showPendingOnly = true,
 }: QueueFilterBarProps) => {
   const [draft, setDraft] = useState<QueueDraft>(() => toDraft(appliedFilters));
   const [showErrors, setShowErrors] = useState(false);
@@ -117,14 +120,16 @@ export const QueueFilterBar = ({
         value={draft.keyword}
         onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
       />
-      <div className="field-cell field-cell-unlabeled iqc-inspection-pending-only">
-        <Checkbox
-          checked={appliedFilters.pendingOnly}
-          onChange={(event) => onTogglePendingOnly(event.target.checked)}
-        >
-          {messages.common.inspectionHub.pendingOnly}
-        </Checkbox>
-      </div>
+      {showPendingOnly && (
+        <div className="field-cell field-cell-unlabeled iqc-inspection-pending-only">
+          <Checkbox
+            checked={appliedFilters.pendingOnly}
+            onChange={(event) => onTogglePendingOnly(event.target.checked)}
+          >
+            {messages.common.inspectionHub.pendingOnly}
+          </Checkbox>
+        </div>
+      )}
       {/* 조회·초기화는 한 덩어리로 그 줄의 오른쪽 끝에 선다(줄이 바뀌어도 그 줄의 끝). */}
       <div className="filter-actions field-cell-unlabeled iqc-inspection-filter-actions">
         {/* 조회는 이 줄의 주 동작 — 주 색(filled · 빨강)으로(#133 · 담당자 지시). */}

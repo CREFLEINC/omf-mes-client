@@ -58,6 +58,7 @@ export const partsIqcInspection = {
     loadFailed: '검사 정보를 불러오지 못했습니다.',
     noPlan:
       '이 품목에 적용할 검사기준이 없어 검사를 입력할 수 없습니다. 검사기준을 먼저 확정하세요.',
+    setPlan: '검사기준 설정',
     confirmed: (judgment: string) => `이미 확정된 검사입니다 — 판정: ${judgment}`,
     workerMissing:
       '이 계정에 연결된 작업자가 없어 검사자를 정할 수 없습니다. 관리자에게 작업자 연결을 요청하세요.',
@@ -161,6 +162,14 @@ export const partsIqcInspection = {
   },
 
   judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<string, string>,
+  /** 생략된 의뢰의 읽기 전용 요약(#225). */
+  skipped: {
+    notice: (basis: string | null): string =>
+      basis === null
+        ? '검사를 생략한 의뢰입니다. 입력할 검사 결과가 없습니다.'
+        : `검사를 생략한 의뢰입니다(${basis}). 입력할 검사 결과가 없습니다.`,
+    basis: { DEFAULT: '기본 설정', APPROVAL: '결재 승인' } as Record<string, string>,
+  },
   requestStatus: {
     REQUESTED: '검사 대기',
     IN_PROGRESS: '검사 진행 중',

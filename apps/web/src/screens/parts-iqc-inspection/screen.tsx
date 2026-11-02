@@ -1,14 +1,25 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, useToast } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Checkbox,
+  Dialog,
+  EmptyState,
+  Icon,
+  PageHeader,
+  useToast,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
+import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import type { ScopedPlant } from '../../patterns/oa-access';
 import { PageNav } from '../../patterns/page-nav';
+import { useSession } from '../../patterns/session';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
@@ -42,7 +53,7 @@ import { QueueTable } from '../iqc-inspection/queue-table';
 import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/reference-lookup';
 import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { InspectionDetail } from './inspection-detail';
-import { usePartsQueue } from './queries';
+import { partsIqcKeys, usePartsQueue } from './queries';
 import { plantTodayRange } from './today';
 
 const t = messages.partsIqcInspection;
@@ -67,9 +78,15 @@ export interface PartsIqcInspectionScreenProps {
 export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenProps) => {
   const hub = usePageHub();
   const toast = useToast();
+  const { session } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters = readFilters(searchParams);
+  /* 상세 조건(품목 · 공급사 · 의뢰번호)은 접어 둔다 — 주소에 그 조건이 걸려 있으면 펼친 채로 연다(#225). */
+  const hasDetailCondition =
+    filters.itemId !== null || filters.supplierId !== null || filters.keyword !== '';
+  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
+  const detailFiltersId = useId();
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
@@ -235,17 +252,39 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           >
             {t.today}
           </Button>
+          {/* 「대기·진행만 보기」는 「오늘 입고」 오른쪽(사용자 지시 2026-11-02 · #225) — 켜고 끄면 바로 조회한다. */}
+          <div className="field-cell field-cell-unlabeled iqc-inspection-pending-only">
+            <Checkbox
+              checked={filters.pendingOnly}
+              onChange={(event) =>
+                applyFilters(withDraft(filters, { ...filters, pendingOnly: event.target.checked }))
+              }
+            >
+              {messages.common.inspectionHub.pendingOnly}
+            </Checkbox>
+          </div>
+          {/* 품목 · 공급사 · 의뢰번호는 상세 조건으로 접는다(사용자 지시 2026-11-02 · #225). */}
+          <DetailFiltersToggle
+            open={detailOpen}
+            onToggle={() => setDetailOpen((open) => !open)}
+            controlsId={detailFiltersId}
+            hasCondition={hasDetailCondition}
+          />
         </div>
-        <QueueFilterBar
-          appliedFilters={filters}
-          onSearch={(next) =>
-            applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
-          }
-          onTogglePendingOnly={(next) =>
-            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-          }
-          onReset={() => applyFilters(EMPTY_FILTERS)}
-        />
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
+          <QueueFilterBar
+            appliedFilters={filters}
+            showPendingOnly={false}
+            onSearch={(next) =>
+              applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
+            }
+            onTogglePendingOnly={(next) =>
+              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+            }
+            onReset={() => applyFilters(EMPTY_FILTERS)}
+          />
+        </div>
       </section>
 
       <div
@@ -271,6 +310,8 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
+            skipWorkerNo={session?.worker?.workerNo ?? null}
+            skipAlsoInvalidate={[partsIqcKeys.all]}
             empty={emptyContent}
           />
           {queue.data !== undefined && (

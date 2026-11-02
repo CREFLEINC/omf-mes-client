@@ -31,6 +31,8 @@ export interface PqcFilterBarProps {
   onTogglePendingOnly: (pendingOnly: boolean) => void;
   onSearch: (filters: PqcFilters) => void;
   onReset: () => void;
+  /** 「대기·진행만 보기」를 이 줄에 둔다(기본). 검사 조회·판정 탭은 스캔 줄에 따로 둔다(#225). */
+  showPendingOnly?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export const PqcFilterBar = ({
   onTogglePendingOnly,
   onSearch,
   onReset,
+  showPendingOnly = true,
 }: PqcFilterBarProps) => {
   const [itemId, setItemId] = useState<number | null>(applied.itemId);
   const [keyword, setKeyword] = useState(applied.keyword);
@@ -149,16 +152,18 @@ export const PqcFilterBar = ({
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
       />
-      <div className="field-cell-unlabeled pqc-web-filter-check">
-        <div className="check-group">
-          <Checkbox
-            checked={pendingOnly}
-            onChange={(event) => onTogglePendingOnly(event.target.checked)}
-          >
-            {messages.pqcInspectionRegister.queue.pendingOnly}
-          </Checkbox>
+      {showPendingOnly && (
+        <div className="field-cell-unlabeled pqc-web-filter-check">
+          <div className="check-group">
+            <Checkbox
+              checked={pendingOnly}
+              onChange={(event) => onTogglePendingOnly(event.target.checked)}
+            >
+              {messages.pqcInspectionRegister.queue.pendingOnly}
+            </Checkbox>
+          </div>
         </div>
-      </div>
+      )}
       <div className="filter-actions field-cell-unlabeled pqc-web-filter-actions">
         <Button type="submit" variant="filled" disabled={isFinding}>
           {t.apply}

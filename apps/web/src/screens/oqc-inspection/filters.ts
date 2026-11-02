@@ -175,6 +175,9 @@ export interface QueueListQuery {
   q?: string;
   /** 탭 줄 상태 칩(#185). */
   statusCode?: string;
+  /** 「오늘 입고」 — 공장 하루의 의뢰 시각 구간(#225 · 부품 IQC 와 같다). */
+  requestedAtFrom?: string;
+  requestedAtTo?: string;
   page: number;
   size: number;
 }

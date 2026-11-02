@@ -1,6 +1,6 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, Checkbox, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { LeaveGuardProvider } from '../../patterns/leave-guard';
@@ -17,7 +17,9 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
+import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import { LotScan } from '../inspection-documents/lot-scan';
+import { plantTodayRange } from '../parts-iqc-inspection/today';
 import {
   LIST_PAGE_SIZES,
   PAGE_SIZE,
@@ -37,6 +39,7 @@ import { PqcQueueTable } from './queue-table';
 import { PqcSkipPane } from './skip-pane';
 
 const t = messages.pqcInspectionRegister;
+const todayText = messages.partsIqcInspection;
 const hubText = messages.common.inspectionHub;
 
 /** 이 화면이 무엇인지의 정의 — 조건이 아니다. */
@@ -63,12 +66,22 @@ export const PqcInspectionRegisterScreen = () => {
   const hub = usePageHub();
   const selectedId = toSelectedId(searchParams.get(SELECTED_KEY));
   const [pendingOnly, setPendingOnly] = useState(true);
+  /* 「오늘 입고」 — 오늘 들어온 의뢰만(사용자 지시 2026-11-02 · #225). */
+  const [todayOnly, setTodayOnly] = useState(false);
   /* 탭 줄 상태 칩(#185) — 비면 거르지 않는다. */
   const [statusCode, setStatusCode] = useState<InspectionHubStatus | null>(null);
   const [page, setPage] = useState(1);
   /* 목록 쪽 크기 — IQC 목록과 같은 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). */
   const [pageSize, setPageSize] = useState<ListPageSize>(PAGE_SIZE);
   const [filters, setFilters] = useState<PqcFilters>(EMPTY_PQC_FILTERS);
+  /* 품목 · 작업지시 · 의뢰번호는 상세 조건으로 접어 둔다(사용자 지시 2026-11-02 · #225). */
+  const [detailOpen, setDetailOpen] = useState(false);
+  const detailFiltersId = useId();
+  const hasDetailCondition =
+    filters.itemId !== null ||
+    filters.workOrderId !== null ||
+    filters.workOrderNo !== '' ||
+    filters.keyword !== '';
   const [dirty, setDirty] = useState(false);
   /* 저장하지 않은 입력을 두고 옮기려 할 때 묻는 자리(#133 · #185). `to` 가 `null` 이면 상세 닫기다. */
   const [leaveTo, setLeaveTo] = useState<{ to: number | null; href?: string } | null>(null);
@@ -90,6 +103,7 @@ export const PqcInspectionRegisterScreen = () => {
     ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
     ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
+    ...(todayOnly ? plantTodayRange() : {}),
     page,
     size: pageSize,
   });
@@ -146,6 +160,18 @@ export const PqcInspectionRegisterScreen = () => {
     />
   );
 
+  /* 「대기·진행만 보기」 — 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
+  const toggleToday = (next: boolean): void => {
+    setTodayOnly(next);
+    setPage(1);
+  };
+
+  const togglePendingOnly = (next: boolean): void => {
+    setPendingOnly(next);
+    if (next && statusCode === 'COMPLETED') setStatusCode(null);
+    setPage(1);
+  };
+
   return (
     <>
       {/* 탭 줄 오른쪽 건수 칩(#185) — 탭 묶음 안에서만 선다. */}
@@ -188,28 +214,50 @@ export const PqcInspectionRegisterScreen = () => {
           noRequestMessage={t.filters.lotNoRequest}
           onFound={select}
         />
-        <PqcFilterBar
-          applied={filters}
-          pendingOnly={pendingOnly}
-          onTogglePendingOnly={(next) => {
-            /* 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. */
-            setPendingOnly(next);
-            /* 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
-            if (next && statusCode === 'COMPLETED') setStatusCode(null);
-            setPage(1);
-          }}
-          onSearch={(next) => {
-            setFilters(next);
-            setPage(1);
-          }}
-          onReset={() => {
-            /* 처음 연 상태로 — 「대기·진행만 보기」도 켠다(OQC 화면과 같다). */
-            setFilters(EMPTY_PQC_FILTERS);
-            setPendingOnly(true);
-            setStatusCode(null);
-            setPage(1);
-          }}
+        {/* 「오늘 입고」 — 오늘 들어온 의뢰만(부품 IQC 와 같은 단추 · 사용자 지시 2026-11-02 · #225). 켜지면 채운 단추. */}
+        <Button
+          variant={todayOnly ? 'filled' : 'outlined'}
+          aria-pressed={todayOnly}
+          aria-label={todayOnly ? todayText.todayOn : todayText.todayOff}
+          onClick={() => toggleToday(!todayOnly)}
+        >
+          {todayText.today}
+        </Button>
+        {/* 「대기·진행만 보기」는 스캔 줄에 늘 보인다 — 상세 조건을 접어도 켜고 끌 수 있게(#225). */}
+        <div className="field-cell field-cell-unlabeled inspection-pending-only">
+          <Checkbox
+            checked={pendingOnly}
+            onChange={(event) => togglePendingOnly(event.target.checked)}
+          >
+            {messages.pqcInspectionRegister.queue.pendingOnly}
+          </Checkbox>
+        </div>
+        <DetailFiltersToggle
+          open={detailOpen}
+          onToggle={() => setDetailOpen((open) => !open)}
+          controlsId={detailFiltersId}
+          hasCondition={hasDetailCondition}
         />
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
+          <PqcFilterBar
+            applied={filters}
+            showPendingOnly={false}
+            pendingOnly={pendingOnly}
+            onTogglePendingOnly={togglePendingOnly}
+            onSearch={(next) => {
+              setFilters(next);
+              setPage(1);
+            }}
+            onReset={() => {
+              /* 처음 연 상태로 — 「대기·진행만 보기」도 켠다(OQC 화면과 같다). */
+              setFilters(EMPTY_PQC_FILTERS);
+              setPendingOnly(true);
+              setStatusCode(null);
+              setPage(1);
+            }}
+          />
+        </div>
       </section>
 
       <div

@@ -1,9 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { renderWithProviders } from '../../test/api-harness';
+import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import { queueItems } from './fixtures';
 import { QueueTable } from './queue-table';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
@@ -231,5 +231,236 @@ describe('QueueTable — 자재 LOT 표기', () => {
 
     expect(screen.getByRole('columnheader', { name: t.columns.supplier })).toBeInTheDocument();
     expect(screen.getAllByText('(주)합성공급').length).toBeGreaterThan(0);
+  });
+
+  describe('「생략」 칸(omf-all-around#225)', () => {
+    /* 줄마다 LOT 이 다르다 — 결재 상태를 LOT 으로 갈라 돌려준다. */
+    const lotRow = (no: string, lotId: number, statusCode = 'REQUESTED') => ({
+      ...rows[0]!,
+      inspectionRequestId: lotId,
+      inspectionRequestNo: no,
+      lotId,
+      statusCode,
+    });
+    const skipRows = [
+      lotRow('IR-SKIP-REQ', 7001),
+      lotRow('IR-SKIP-PEND', 7002, 'IN_PROGRESS'),
+      lotRow('IR-SKIP-APPR', 7003),
+      lotRow('IR-SKIP-REJ', 7004),
+      lotRow('IR-SKIP-DONE', 7005, 'COMPLETED'),
+      { ...lotRow('IR-SKIP-NOLOT', 7006), lotId: null },
+    ];
+    const approvalOf: Record<number, string> = {
+      7002: 'PENDING',
+      7003: 'APPROVED',
+      7004: 'REJECTED',
+    };
+
+    const renderSkip = (workerNo: string | null = '901463', myTurn = true) => {
+      const writes: Request[] = [];
+      const stubFetch: StubFetch = async (request) => {
+        const url = new URL(request.url);
+        /* 승인 처리 창이 읽는 결재 상세 — 내 차례이고 버전은 3. */
+        if (url.pathname === '/app/approval-requests/7102') {
+          return jsonResponse(
+            {
+              request: {
+                approvalRequestId: 7102,
+                approvalRequestNo: 'AP-7002',
+                approvalTypeCode: 'IQC_SKIP',
+                requestedBy: 5,
+                requestedByName: '검사자',
+                requestedAt: '2026-11-02T01:00:00Z',
+                statusCode: 'PENDING',
+                reason: '긴급 투입',
+                target: {
+                  targetTypeCode: 'INBOUND_LOT',
+                  targetId: 7002,
+                  displayName: 'LOT',
+                  openable: false,
+                },
+                currentStepNo: 1,
+                totalStepNo: 1,
+                isMyTurn: myTurn,
+              },
+              steps: [],
+            },
+            { headers: { ETag: '"3"' } },
+          );
+        }
+        if (url.pathname.startsWith('/app/approval-requests/7102:')) {
+          writes.push(request.clone());
+          return jsonResponse({ request: {}, steps: [] });
+        }
+        if (url.pathname === '/app/approval-requests') {
+          const lotId = Number(url.searchParams.get('targetId'));
+          const statusCode = approvalOf[lotId];
+          const items =
+            statusCode === undefined
+              ? []
+              : [
+                  {
+                    approvalRequestId: lotId + 100,
+                    approvalRequestNo: `AP-${String(lotId)}`,
+                    approvalTypeCode: 'IQC_SKIP',
+                    requestedBy: 5,
+                    requestedByName: '검사자',
+                    requestedAt: '2026-11-02T01:00:00Z',
+                    statusCode,
+                    reason: '긴급 투입',
+                    target: {
+                      targetTypeCode: 'INBOUND_LOT',
+                      targetId: lotId,
+                      displayName: 'LOT',
+                      openable: false,
+                    },
+                    currentStepNo: null,
+                    totalStepNo: 1,
+                  },
+                ];
+          return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
+        }
+        if (url.pathname.startsWith('/trace/lots/')) {
+          writes.push(request.clone());
+          return jsonResponse(
+            { lotId: 1 },
+            { status: url.pathname.endsWith(':skip-iqc') ? 200 : 202 },
+          );
+        }
+        throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
+      };
+      const result = renderWithProviders(
+        <QueueTable
+          rows={skipRows}
+          itemNames={itemNames}
+          lotNumbers={lotNumbers}
+          suppliers={suppliers}
+          selectedId={null}
+          onSelect={vi.fn()}
+          skipWorkerNo={workerNo}
+          empty={<p>{t.empty}</p>}
+        />,
+        { fetch: stubFetch, dataRouter: true },
+      );
+      return { writes, router: result.router };
+    };
+    const rowOf = (no: string) => within(screen.getByText(no).closest('tr')!);
+    const skip = messages.iqcInspection.skip;
+
+    it('결재 단계마다 단추가 하나 선다 — 없음·반려 생략 요청, 결재 중 승인 처리, 승인 생략 실행', async () => {
+      renderSkip();
+      expect(screen.getByRole('columnheader', { name: t.columns.skip })).toBeInTheDocument();
+      expect(
+        await rowOf('IR-SKIP-REQ').findByRole('button', { name: t.skipRequest }),
+      ).toBeEnabled();
+      expect(
+        await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }),
+      ).toBeInTheDocument();
+      expect(
+        await rowOf('IR-SKIP-APPR').findByRole('button', { name: t.skipExecute }),
+      ).toBeInTheDocument();
+      expect(
+        await rowOf('IR-SKIP-REJ').findByRole('button', { name: t.skipRequest }),
+      ).toBeInTheDocument();
+      /* 끝난 의뢰·LOT 없는 의뢰에는 단추가 없다. */
+      expect(
+        rowOf('IR-SKIP-DONE').queryByRole('button', { name: /생략|승인/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        rowOf('IR-SKIP-NOLOT').queryByRole('button', { name: /생략|승인/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('생략 요청은 사유를 받아 그 LOT 으로 사번과 함께 보낸다', async () => {
+      const user = userEvent.setup();
+      const { writes } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-REQ').findByRole('button', { name: t.skipRequest }));
+      await user.type(screen.getByLabelText(skip.reason), '긴급 투입');
+      await user.click(screen.getByRole('button', { name: skip.request }));
+
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(new URL(writes[0]!.url).pathname).toBe('/trace/lots/7001:request-iqc-skip');
+      expect(writes[0]!.headers.get('X-Worker-No')).toBe('901463');
+      expect(await writes[0]!.json()).toEqual({ reason: '긴급 투입' });
+    });
+
+    const d = t.skipDialog;
+
+    it('승인 처리는 화면을 옮기지 않고 창에서 결재 사유와 함께 승인한다', async () => {
+      const user = userEvent.setup();
+      const { writes, router } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }));
+      const dialog = await screen.findByRole('dialog', { name: d.approveTitle });
+      expect(await within(dialog).findByText('AP-7002')).toBeInTheDocument();
+
+      /* 결재 사유 없이는 보내지 않는다. */
+      await user.click(within(dialog).getByRole('button', { name: d.approve }));
+      expect(writes).toHaveLength(0);
+
+      await user.type(within(dialog).getByLabelText(d.comment), '확인함');
+      await user.click(within(dialog).getByRole('button', { name: d.approve }));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(new URL(writes[0]!.url).pathname).toBe('/app/approval-requests/7102:approve');
+      expect(writes[0]!.headers.get('If-Match')).toBe('"3"');
+      expect(await writes[0]!.json()).toEqual({ comment: '확인함' });
+      expect(router?.state.location.pathname).not.toBe('/quality/approvals');
+    });
+
+    it('승인 처리 창에서 반려도 한다', async () => {
+      const user = userEvent.setup();
+      const { writes } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }));
+      const dialog = await screen.findByRole('dialog', { name: d.approveTitle });
+      await user.type(await within(dialog).findByLabelText(d.comment), '서류 미비');
+      await user.click(within(dialog).getByRole('button', { name: d.reject }));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(new URL(writes[0]!.url).pathname).toBe('/app/approval-requests/7102:reject');
+    });
+
+    it('내 결재 차례가 아니면 승인·반려 단추가 잠긴다', async () => {
+      const user = userEvent.setup();
+      renderSkip('901463', false);
+      await user.click(await rowOf('IR-SKIP-PEND').findByRole('button', { name: t.skipApprove }));
+      const dialog = await screen.findByRole('dialog', { name: d.approveTitle });
+      expect(await within(dialog).findByText(d.notMyTurn)).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: d.approve })).toBeDisabled();
+      expect(within(dialog).getByRole('button', { name: d.reject })).toBeDisabled();
+    });
+
+    it('생략 실행은 한 번 묻고, 「생략 실행」을 눌러야 그 LOT 의 IQC 생략을 실행한다', async () => {
+      const user = userEvent.setup();
+      const { writes } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-APPR').findByRole('button', { name: t.skipExecute }));
+      const dialog = await screen.findByRole('dialog', { name: d.executeTitle });
+      expect(writes).toHaveLength(0);
+
+      await user.click(within(dialog).getByRole('button', { name: d.execute }));
+      await waitFor(() => expect(writes).toHaveLength(1));
+      expect(new URL(writes[0]!.url).pathname).toBe('/trace/lots/7003:skip-iqc');
+    });
+
+    it('생략 실행 창에서 취소하면 실행하지 않는다', async () => {
+      const user = userEvent.setup();
+      const { writes } = renderSkip();
+      await user.click(await rowOf('IR-SKIP-APPR').findByRole('button', { name: t.skipExecute }));
+      const dialog = await screen.findByRole('dialog', { name: d.executeTitle });
+      await user.click(
+        within(dialog).getByRole('button', { name: messages.iqcInspection.skip.cancel }),
+      );
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(writes).toHaveLength(0);
+    });
+
+    it('계정에 작업자가 없으면 생략 요청 단추가 잠긴다', async () => {
+      renderSkip(null);
+      expect(
+        await rowOf('IR-SKIP-REQ').findByRole('button', { name: t.skipRequest }),
+      ).toBeDisabled();
+    });
+
+    it('사번을 넘기지 않으면 열을 세우지 않는다', () => {
+      renderTable();
+      expect(screen.queryByRole('columnheader', { name: t.columns.skip })).not.toBeInTheDocument();
+    });
   });
 });

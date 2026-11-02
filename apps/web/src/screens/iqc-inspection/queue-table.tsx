@@ -7,6 +7,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 /* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
 import { toStatusBadge } from '../oqc-inspection/status-badge';
+import { QueueSkipCell, QueueStatusCell } from './queue-skip-cell';
 import { formatDateTime, type InspectionQueueRow } from './types';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
@@ -26,6 +27,8 @@ import type { ItemNameLookup, NameLookup } from './reference-lookup';
  */
 
 const t = messages.iqcInspection.queue;
+
+const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
 
 /**
  * 목록에서는 품목 이름의 「【 … 】」 덧붙임(고객 품번 등)을 뺀 이름만 보인다(사용자 지시 2026-10-27 · #185).
@@ -47,6 +50,13 @@ export interface QueueTableProps {
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
+  /**
+   * 「생략」 칸(omf-all-around#225) — 주면 대기·진행 중이고 LOT 이 있는 줄에 생략 결재 단계의 단추가 선다.
+   * 값은 계정에 연결된 작업자 사번이다(없으면 `null` · 요청 단추가 잠긴다). 주지 않으면 열을 세우지 않는다.
+   */
+  skipWorkerNo?: string | null;
+  /** 생략 실행 뒤 함께 새로 읽을 목록 — 부품 IQC 화면이 이 표를 쓴다(#225). */
+  skipAlsoInvalidate?: readonly (readonly unknown[])[];
   /** 결과가 없을 때 표 자리에 그릴 것. 조회 실패와 빈 결과는 부르는 쪽이 가른다 */
   empty: ReactNode;
 }
@@ -57,6 +67,8 @@ const columnsOf = (
   itemNames: ItemNameLookup,
   lotNumbers: NameLookup,
   suppliers: NameLookup,
+  skipWorkerNo: string | null | undefined,
+  skipAlsoInvalidate: readonly (readonly unknown[])[] | undefined,
 ): Column<InspectionQueueRow>[] => [
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
@@ -164,7 +176,16 @@ const columnsOf = (
     header: t.columns.statusCode,
     width: '88px',
     render: (row) => {
-      const badge = toStatusBadge(row.statusCode, row.skipBasisCode);
+      const basic = toStatusBadge(row.statusCode, row.skipBasisCode);
+      /* 결재로 생략된 의뢰는 「생략」 하나로(사용자 지시 2026-11-02 · #225) — 기본 설정 생략은 그대로 가른다. */
+      const badge =
+        row.statusCode === 'SKIPPED' && row.skipBasisCode === 'APPROVAL'
+          ? { ...basic, label: t.skipStatus.SKIPPED ?? basic.label }
+          : basic;
+      /* 생략 칸이 서는 줄은 생략 결재 단계를 상태로 보인다(#225). */
+      if (skipWorkerNo !== undefined && row.lotId !== null && SKIPPABLE.includes(row.statusCode)) {
+        return <QueueStatusCell lotId={row.lotId} fallback={badge} />;
+      }
 
       return (
         <Chip variant="status" size="sm" status={badge.tone}>
@@ -194,6 +215,25 @@ const columnsOf = (
       <span className="iqc-inspection-requested-at">{formatDateTime(row.requestedAt)}</span>
     ),
   },
+  ...(skipWorkerNo === undefined
+    ? []
+    : [
+        {
+          key: 'skip',
+          align: 'center',
+          header: t.columns.skip,
+          width: '120px',
+          /* 대기·진행 중이고 LOT 이 있는 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(생략됨은 상태 칸이 말한다). */
+          render: (row) =>
+            row.lotId !== null && SKIPPABLE.includes(row.statusCode) ? (
+              <QueueSkipCell
+                lotId={row.lotId}
+                workerNo={skipWorkerNo}
+                alsoInvalidate={skipAlsoInvalidate}
+              />
+            ) : null,
+        } satisfies Column<InspectionQueueRow>,
+      ]),
 ];
 
 export const QueueTable = ({
@@ -203,13 +243,23 @@ export const QueueTable = ({
   suppliers,
   selectedId,
   onSelect,
+  skipWorkerNo,
+  skipAlsoInvalidate,
   empty,
   scrollX = false,
 }: QueueTableProps) => {
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
     'omf-mes:iqc-inspection:columns:queue:order',
-    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers),
+    columnsOf(
+      selectedId,
+      onSelect,
+      itemNames,
+      lotNumbers,
+      suppliers,
+      skipWorkerNo,
+      skipAlsoInvalidate,
+    ),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
     /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */

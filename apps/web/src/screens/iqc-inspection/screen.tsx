@@ -104,7 +104,6 @@ import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
 import { ItemLevel } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
-import { IqcSkipPane } from './skip-pane';
 import { ResultFormPane } from './result-form-pane';
 import { WorkerConnectDialog } from './worker-connect-dialog';
 import { RoundHistory } from './round-history';
@@ -842,17 +841,7 @@ const IqcInspectionScreenBody = () => {
           }
         />
       </div>
-      {/* IQC 생략(#212) — 요청 정보 아래(OQC·PQC 와 같은 차례). 확정 회차가 있으면 생략으로 덮지 않는다. */}
-      {detail.data.lotId !== null &&
-        rounds.data !== undefined &&
-        rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
-          <IqcSkipPane
-            lotId={detail.data.lotId}
-            requestStatusCode={detail.data.statusCode}
-            skipBasisCode={detail.data.skipBasisCode}
-            workerNo={session?.worker?.workerNo ?? null}
-          />
-        )}
+      {/* IQC 생략(#212)은 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {isWorkerConnectOpen && session !== null && (
         <WorkerConnectDialog
           appUserId={session.userId}
@@ -1272,6 +1261,7 @@ const IqcInspectionScreenBody = () => {
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
+            skipWorkerNo={session?.worker?.workerNo ?? null}
             empty={emptyContent}
           />
 

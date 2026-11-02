@@ -64,6 +64,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     loadFailed: 'Không tải được thông tin kiểm tra.',
     noPlan:
       'Vật tư này chưa có tiêu chuẩn kiểm tra nên không thể nhập kết quả. Hãy xác nhận tiêu chuẩn kiểm tra trước.',
+    setPlan: 'Thiết lập tiêu chuẩn kiểm tra',
     confirmed: (judgment: string) => `Kiểm tra đã được xác nhận — Phán định: ${judgment}`,
     workerMissing:
       'Tài khoản này chưa liên kết với công nhân nên không xác định được người kiểm tra. Hãy yêu cầu quản trị viên liên kết.',
@@ -167,6 +168,13 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   },
 
   judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' },
+  skipped: {
+    notice: (basis: string | null): string =>
+      basis === null
+        ? 'Yêu cầu này đã bỏ qua kiểm tra. Không có kết quả kiểm tra để nhập.'
+        : `Yêu cầu này đã bỏ qua kiểm tra (${basis}). Không có kết quả kiểm tra để nhập.`,
+    basis: { DEFAULT: 'mặc định', APPROVAL: 'đã duyệt' } as Record<string, string>,
+  },
   requestStatus: {
     REQUESTED: 'Chờ kiểm tra',
     IN_PROGRESS: 'Đang kiểm tra',
