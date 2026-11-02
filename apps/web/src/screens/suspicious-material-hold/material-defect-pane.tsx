@@ -136,7 +136,11 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
         dropped = true;
       }
     }
-    if (dropped && batchLeft.current.size === 0) batchOk.current = 0;
+    /* 선택을 풀어 묶음이 끝났어도, 이미 등록된 LOT 이 있으면 알린다(리뷰 2026-11-02). */
+    if (dropped && batchLeft.current.size === 0) {
+      if (batchOk.current > 0) notifyRegistered();
+      batchOk.current = 0;
+    }
     setSaving((current) => {
       const next = new Set([...current].filter((lotId) => ids.has(lotId)));
       return next.size === current.size ? current : next;
@@ -473,8 +477,17 @@ const DefectRecordDialog = ({
         defectCodeId,
         defectQty: quantity,
         uomId,
-        /* 발견 시각은 입력을 마친 때 한 번 — 다시 보내도 같은 내용 · 같은 멱등 키가 되게(리뷰 2026-11-02). */
-        detectedAt: new Date().toISOString(),
+        /*
+         * 발견 시각은 입력을 마친 때 한 번 — 다시 보내도 같은 내용 · 같은 멱등 키가 되게. 실패한 입력을 바꾸지 않고 다시
+         * [등록]하면 앞 시각을 그대로 쓴다(리뷰 2026-11-02).
+         */
+        detectedAt:
+          draft !== undefined &&
+          draft.body.defectCodeId === defectCodeId &&
+          draft.body.defectQty === quantity &&
+          draft.description.trim() === description.trim()
+            ? draft.body.detectedAt
+            : new Date().toISOString(),
         ...(description.trim() === '' ? {} : { defectDescription: description.trim() }),
       },
       codeLabel: chosenCode === undefined ? String(defectCodeId) : optionOf(chosenCode).label,
