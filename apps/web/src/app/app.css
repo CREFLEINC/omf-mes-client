@@ -4535,7 +4535,6 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
-
 /* LOT 상세의 변경 이력·보류 이력 접기 — 제목 단추 앞 화살표가 열림·닫힘을 보인다. */
 .lot-section-toggle {
   display: inline-flex;
@@ -4744,66 +4743,8 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 100%;
 }
 
-/*
- * 조회·초기화 묶음은 줄의 오른쪽 끝에 선다 — 한 줄에 다 들어가지 않아 다음 줄로 넘어갈 때
- * 왼쪽 끝에 혼자 떨어지지 않게 한다(사용자 지시 2026-09-18).
- */
-.filter-bar.lot-status-transition-filter > .lot-status-transition-filter-actions {
-  margin-left: auto;
-}
-
 .lot-status-transition-period-label > .field-label {
   margin-bottom: 0;
-}
-
-/* 조건과 결과의 경계 — 카드를 쪼개지 않고 선 하나와 작은 머리로 가른다. */
-.lot-status-transition-result-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-3);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.lot-status-transition-result-title {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.lot-status-transition-result-head > .field-note {
-  max-width: none;
-  margin: 0;
-}
-
-.lot-status-transition-list-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.lot-status-transition-list-footer > .field-note {
-  max-width: none;
-  margin: 0;
-}
-
-.lot-status-transition-list-footer > .form-actions {
-  justify-content: flex-end;
-  margin: 0 0 0 auto;
-}
-
-/* 긴 품목명이 수량 열을 밀지 않는다 — 한 줄로 자르고 전체 이름은 title 로 남긴다. */
-.lot-status-transition-item {
-  display: block;
-  max-width: 28rem;
-  margin-inline: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /*
@@ -4936,16 +4877,6 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 @media (max-width: 720px) {
-  .lot-status-transition-list-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .lot-status-transition-list-footer > .form-actions {
-    align-self: flex-end;
-    margin-left: 0;
-  }
-
   .lot-status-transition-identity {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4974,24 +4905,6 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
-.filter-bar.suspicious-material-hold-filter {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
-  gap: var(--space-4);
-  margin-bottom: 0;
-}
-
-.suspicious-material-hold-filter > *,
-.suspicious-material-hold-filter .field-cell {
-  min-width: 0;
-}
-
-.suspicious-material-hold-filter .field-cell {
-  align-items: stretch;
-}
-
-.suspicious-material-hold-filter-footer,
-.suspicious-material-hold-list-footer,
 .suspicious-material-hold-action-row {
   display: flex;
   grid-column: 1 / -1;
@@ -5009,12 +4922,6 @@ h2:has(> .inspection-standard-dialog-title) {
   color: var(--on-primary-container);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
-}
-
-.suspicious-material-hold-filter-actions,
-.suspicious-material-hold-list-footer > .form-actions {
-  justify-content: flex-end;
-  margin: 0 0 0 auto;
 }
 
 .suspicious-material-hold-table {
@@ -5037,17 +4944,6 @@ h2:has(> .inspection-standard-dialog-title) {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-.suspicious-material-hold-status-cell > time {
-  color: var(--on-surface-muted);
-  white-space: nowrap;
-}
-
-.suspicious-material-hold-list-footer > .field-note {
-  flex: 1 1 20rem;
-  max-width: none;
-  margin: 0;
 }
 
 .suspicious-material-hold-range,
@@ -5129,21 +5025,16 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 @media (max-width: 720px) {
-  .suspicious-material-hold-filter-footer,
-  .suspicious-material-hold-list-footer,
   .suspicious-material-hold-action-row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .suspicious-material-hold-filter-actions,
-  .suspicious-material-hold-list-footer > .form-actions,
   .suspicious-material-hold-action-row > button {
     align-self: flex-end;
     margin-left: 0;
   }
 
-  .suspicious-material-hold-list-footer > .field-note,
   .suspicious-material-hold-action-row > .field-note {
     flex: initial;
   }
@@ -27725,7 +27616,6 @@ button.iqc-inspection-step-toggle:focus-visible {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
 
 /* 상세 구획 — 카드 대신 가는 선으로 나눈다(사용자 시안 2026-10-29). 로트 정보만 테두리 상자다. */
 .parts-iqc-detail-head {

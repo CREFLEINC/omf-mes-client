@@ -173,3 +173,37 @@ export const useLocationReferenceOptions = (
     },
   });
 };
+
+/**
+ * 보이는 행의 창고마다 위치 목록 — 행의 위치 이름을 풀 때 쓴다. 조회 조건에서 고른 창고 하나가 아니라 행에 나온
+ * 서로 다른 창고 수만큼만 부른다(창고 조건 없이 조회하면 위치 이름이 하나도 풀리지 않던 문제). 키는
+ * `useLocationReferenceOptions` 와 같아 같은 창고를 두 번 부르지 않는다.
+ */
+export const useLocationNameSources = (
+  warehouseIds: readonly number[],
+): ReadonlyMap<number, { data?: ReferenceOptionsResult; isPending: boolean; isError: boolean }> => {
+  const { client } = useApiClient();
+  const uniqueIds = [...new Set(warehouseIds)].filter(validIdentifier);
+
+  const results = useQueries({
+    queries: uniqueIds.map((warehouseId) => ({
+      queryKey: referenceOptionKeys.locations(warehouseId),
+      queryFn: () => fetchLocationOptions(client, warehouseId),
+    })),
+  });
+
+  return new Map(
+    uniqueIds.map((warehouseId, index) => {
+      const result = results[index];
+
+      return [
+        warehouseId,
+        {
+          data: result?.data,
+          isPending: result === undefined || result.isPending,
+          isError: result?.isError === true,
+        },
+      ];
+    }),
+  );
+};

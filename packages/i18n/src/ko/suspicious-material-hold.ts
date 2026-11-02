@@ -10,12 +10,12 @@ export const suspiciousMaterialHold = {
       warehouse: '창고',
       location: '위치',
       quantity: '보유 수량·단위',
-      status: 'Lot Status',
-      statusAndTransition: 'Lot Status·최근 전이',
+      status: '상태',
+      latestTransition: '최종 변경일',
     },
     values: {
       all: '전체',
-      statusUnknown: 'Lot Status 이름 미확인',
+      statusUnknown: '상태 이름 미확인',
       itemUnknown: '품목 이름 미확인',
       warehouseUnknown: '창고 이름 미확인',
       locationUnknown: '위치 이름 미확인',
@@ -30,16 +30,10 @@ export const suspiciousMaterialHold = {
       search: '조회',
       reset: '초기화',
       retry: '다시 시도',
-      previous: '이전 쪽',
-      next: '다음 쪽',
     },
-    /** 쪽 이동 줄의 건수·쪽수 표기. 숫자 서식은 부르는 쪽이 맞춘다. */
-    summary: (total: string, page: number, pages: number): string =>
-      `총 ${total}건 · ${String(page)} / ${String(pages)}쪽`,
     loading: '의심자재 후보를 불러오는 중',
     failed: '의심자재 후보를 불러오지 못했습니다.',
     empty: '조건에 맞는 LOT이 없습니다.',
-    pagination: '의심자재 후보 쪽 이동',
   },
   input: {
     pane: '보류 등록 입력',
