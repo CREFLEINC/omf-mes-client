@@ -25,6 +25,11 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     noMeasurements: 'Không có giá trị đo.',
     defects: 'Loại lỗi',
   },
+  detailFilters: {
+    open: 'Mở điều kiện chi tiết',
+    close: 'Thu gọn điều kiện chi tiết',
+    hiddenApplied: 'Đang áp dụng điều kiện chi tiết',
+  },
   today: 'Nhập hôm nay',
   todayOn: 'Đang chỉ xem hàng nhập hôm nay — bấm để tắt',
   todayOff: 'Chỉ xem các lô nhập hôm nay',

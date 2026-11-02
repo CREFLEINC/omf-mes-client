@@ -29781,7 +29781,8 @@ button.iqc-inspection-step-toggle:focus-visible {
   display: grid;
   flex: 0 1 auto;
   /* LOT 스캔 칸은 흐린 안내 글이 다 보이는 폭까지만(사용자 지시 2026-10-30). */
-  grid-template-columns: minmax(0, 24rem) auto;
+  /* LOT 스캔 칸 폭을 줄였다(사용자 지시 2026-11-02 · #225) — 종전 24rem. */
+  grid-template-columns: minmax(0, 17.5rem) auto;
   align-items: end;
   gap: var(--space-1) var(--space-3);
   min-width: 0;
@@ -29800,6 +29801,25 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .parts-iqc-search.iqc-inspection-search > .filter-bar {
   flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 스캔 줄이 폭을 다 쓰고 「상세 조건 펼치기」는 그 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체(#225). */
+.parts-iqc-scan-row {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+}
+
+.parts-iqc-detail-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  align-self: center;
+}
+
+.parts-iqc-detail-filters {
+  flex: 1 1 100%;
   min-width: 0;
 }
 

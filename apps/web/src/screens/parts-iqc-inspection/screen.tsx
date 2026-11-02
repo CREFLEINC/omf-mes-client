@@ -1,6 +1,15 @@
-import { Breadcrumb, Button, Dialog, EmptyState, Icon, PageHeader, useToast } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Checkbox,
+  Dialog,
+  EmptyState,
+  Icon,
+  PageHeader,
+  useToast,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -72,6 +81,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
   const [searchParams, setSearchParams] = useSearchParams();
 
   const filters = readFilters(searchParams);
+  /* 상세 조건(품목 · 공급사 · 의뢰번호)은 접어 둔다 — 주소에 그 조건이 걸려 있으면 펼친 채로 연다(#225). */
+  const hasDetailCondition =
+    filters.itemId !== null || filters.supplierId !== null || filters.keyword !== '';
+  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
+  const detailFiltersId = useId();
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
@@ -237,17 +251,47 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           >
             {t.today}
           </Button>
+          {/* 「대기·진행만 보기」는 「오늘 입고」 오른쪽(사용자 지시 2026-11-02 · #225) — 켜고 끄면 바로 조회한다. */}
+          <div className="field-cell field-cell-unlabeled iqc-inspection-pending-only">
+            <Checkbox
+              checked={filters.pendingOnly}
+              onChange={(event) =>
+                applyFilters(withDraft(filters, { ...filters, pendingOnly: event.target.checked }))
+              }
+            >
+              {messages.common.inspectionHub.pendingOnly}
+            </Checkbox>
+          </div>
+          {/* 품목 · 공급사 · 의뢰번호는 상세 조건으로 접는다(사용자 지시 2026-11-02 · #225). */}
+          <div className="parts-iqc-detail-toggle">
+            {!detailOpen && hasDetailCondition && (
+              <span className="field-note">{t.detailFilters.hiddenApplied}</span>
+            )}
+            <Button
+              variant="text"
+              size="sm"
+              aria-expanded={detailOpen}
+              aria-controls={detailFiltersId}
+              onClick={() => setDetailOpen((open) => !open)}
+            >
+              {detailOpen ? t.detailFilters.close : t.detailFilters.open}
+            </Button>
+          </div>
         </div>
-        <QueueFilterBar
-          appliedFilters={filters}
-          onSearch={(next) =>
-            applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
-          }
-          onTogglePendingOnly={(next) =>
-            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-          }
-          onReset={() => applyFilters(EMPTY_FILTERS)}
-        />
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailFiltersId} className="parts-iqc-detail-filters" hidden={!detailOpen}>
+          <QueueFilterBar
+            appliedFilters={filters}
+            showPendingOnly={false}
+            onSearch={(next) =>
+              applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
+            }
+            onTogglePendingOnly={(next) =>
+              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+            }
+            onReset={() => applyFilters(EMPTY_FILTERS)}
+          />
+        </div>
       </section>
 
       <div
