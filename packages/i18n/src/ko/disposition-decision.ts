@@ -7,6 +7,7 @@ export const dispositionDecision = {
     history: '처리 이력',
   },
   panes: {
+    filter: '조회 조건',
     list: '판정 대기 목록',
     detail: '선택한 부적합',
     detailDecision: '부적합 상세 및 판정',

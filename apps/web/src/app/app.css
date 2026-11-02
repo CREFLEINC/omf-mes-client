@@ -6432,6 +6432,28 @@ main:has(.iqc-skip-approval-detail) {
   margin-bottom: 0;
 }
 
+/* 품질 승인 처리 묶음에서는 조회 조건이 위 한 구획의 한 줄이다 — 다른 탭과 같은 짜임(#223). 좁으면 다음 줄로. */
+.po-board-filter > .filter-bar.disposition-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.po-board-filter > .filter-bar.disposition-filter > .field-cell {
+  flex: 0 1 13rem;
+}
+
+.po-board-filter > .filter-bar.disposition-filter > .field-cell:first-child {
+  flex-basis: 17rem;
+}
+
+.po-board-filter > .filter-bar.disposition-filter > .disposition-filter-actions {
+  align-self: flex-start;
+  margin-top: calc(var(--space-5) + var(--space-1));
+  margin-left: auto;
+}
+
 .disposition-filter > *,
 .disposition-history-filter > *,
 .disposition-filter .field-cell,

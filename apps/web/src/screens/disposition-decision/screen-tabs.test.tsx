@@ -36,12 +36,13 @@ describe('DispositionDecisionScreen 탭', () => {
   it('두 탭을 보이고 기본은 판정 대기다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('tab', { name: t.tabs.pending })).toHaveAttribute(
-      'aria-selected',
+    /* 탭 줄 오른쪽 끝의 칩 둘(#223) — 켜진 칩이 지금 보는 쪽이다. */
+    expect(await screen.findByRole('button', { name: t.tabs.pending })).toHaveAttribute(
+      'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('tab', { name: t.tabs.history })).toHaveAttribute(
-      'aria-selected',
+    expect(screen.getByRole('button', { name: t.tabs.history })).toHaveAttribute(
+      'aria-pressed',
       'false',
     );
   });
@@ -81,7 +82,7 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen();
     await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
 
-    await user.click(screen.getByRole('tab', { name: t.tabs.history }));
+    await user.click(screen.getByRole('button', { name: t.tabs.history }));
 
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
@@ -92,8 +93,8 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');
 
-    await user.click(screen.getByRole('tab', { name: t.tabs.history }));
-    await user.click(screen.getByRole('tab', { name: t.tabs.pending }));
+    await user.click(screen.getByRole('button', { name: t.tabs.history }));
+    await user.click(screen.getByRole('button', { name: t.tabs.pending }));
 
     expect(await screen.findByText(t.detail.select)).toBeInTheDocument();
   });

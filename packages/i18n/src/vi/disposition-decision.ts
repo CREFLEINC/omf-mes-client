@@ -16,6 +16,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     history: 'Lịch sử xử lý',
   },
   panes: {
+    filter: 'Điều kiện tra cứu',
     list: 'Danh sách chờ đánh giá',
     detail: 'Mục không phù hợp đã chọn',
     detailDecision: 'Chi tiết và quyết định',

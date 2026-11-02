@@ -1,5 +1,5 @@
 import type { DispositionSortResult } from '@omf-mes/api-client';
-import { Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
+import { Breadcrumb, Chip, PageHeader, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -7,6 +7,13 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
+import {
+  PaneLayoutToggle,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneLayout,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -125,6 +132,15 @@ export const DispositionDecisionScreen = ({
   const access = toWebAccess(session?.permissions);
   const canOpenQualityApprovals = access.allows(QUALITY_APPROVALS_PATH);
   const canOpenIqcSkip = access.allows(IQC_SKIP_APPROVAL_PATH);
+  /*
+   * 품질 승인 처리 탭들과 같은 짜임(#223) — 조회 조건은 위 한 구획, 그 아래 목록 | 상세 및 판정이 나란히(좌우 · 상하 고름),
+   * 가운데 막대로 폭을 나누고 고른 비율은 다음에 들어와도 남는다.
+   */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const paneLayout = usePaneLayout('omf-mes:dispositions:layout');
+  const sideSplit = usePaneSplit('omf-mes:dispositions:split', 0.5);
+  const stackSplit = usePaneSplit('omf-mes:dispositions:stack-split', 0.5);
+  const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const t = messages.dispositionDecision;
   const [searchParams, setSearchParams] = useSearchParams();
   const baseDate = useMemo(() => today ?? new Date(), [today]);
@@ -357,19 +373,25 @@ export const DispositionDecisionScreen = ({
 
   const historyRows = useMemo(() => (history.data?.items ?? []).map(toDecisionRow), [history.data]);
 
-  /* 판정 대기 · 처리 이력 — 묶음 안에서는 탭 줄 오른쪽 끝에 선다(사용자 시안 · #223). 내용은 아래에 따로 그린다. */
+  /*
+   * 판정 대기 · 처리 이력 — 탭 줄 오른쪽 끝의 칩 둘(품질 승인 처리의 상태 칩과 같은 모양 · 사용자 지시 · #223).
+   * 내용은 아래에 따로 그린다.
+   */
   const subTabs = (
-    <Tabs
-      className="disposition-sub-tabs"
-      size="sm"
-      aria-label={t.tabs.label}
-      value={tab}
-      items={[
-        { value: 'pending', label: t.tabs.pending, content: null },
-        { value: 'history', label: t.tabs.history, content: null },
-      ]}
-      onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
-    />
+    <div className="quality-approval-status-chips" role="group" aria-label={t.tabs.label}>
+      {(['pending', 'history'] as const).map((value) => (
+        <Chip
+          key={value}
+          variant="filter"
+          size="sm"
+          selected={tab === value}
+          aria-pressed={tab === value}
+          onClick={() => setSearchParams((current) => withTab(current, value))}
+        >
+          {value === 'pending' ? t.tabs.pending : t.tabs.history}
+        </Chip>
+      ))}
+    </div>
   );
 
   return (
@@ -381,7 +403,19 @@ export const DispositionDecisionScreen = ({
        */}
       {canOpenQualityApprovals ? (
         <TypeTabs
-          trailing={subTabs}
+          trailing={
+            <>
+              {subTabs}
+              {/* 배치 고르기 — 품질 승인 처리 탭과 같은 자리 · 판정 대기에서만(이력은 표 하나다). */}
+              {tab === 'pending' && (
+                <PaneLayoutToggle
+                  layout={paneLayout.layout}
+                  onChange={paneLayout.change}
+                  labels={messages.qualityApproval.layout}
+                />
+              )}
+            </>
+          }
           options={toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES, canOpenIqcSkip, true)}
           value={DISPOSITION_TAB}
           onChange={(code) => {
@@ -407,12 +441,8 @@ export const DispositionDecisionScreen = ({
       )}
       {!canOpenQualityApprovals && subTabs}
       {tab === 'pending' ? (
-        <div className="disposition-workspace">
-          <section
-            className="pane disposition-pane disposition-list-pane"
-            aria-label={t.panes.list}
-          >
-            <h2 className="pane-title">{t.panes.list}</h2>
+        <>
+          <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
             <FilterBar
               applied={filters}
               severity={severity}
@@ -429,106 +459,124 @@ export const DispositionDecisionScreen = ({
                 })
               }
             />
-            <NonconformanceList
-              rows={rows}
-              items={items}
-              severity={severity}
-              status={status}
-              isLoading={list.isPending}
-              error={
-                list.isError ? (
-                  <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-                ) : null
-              }
-              page={pageView}
-              selectedId={selectedId}
-              onSelect={(id) =>
-                setSearchParams((current) =>
-                  withSelectedNonconformance(current, selectedId === id ? null : id),
-                )
-              }
-              onChangePage={(nextPage) => apply(filters, nextPage)}
-            />
           </section>
-          {/*
-           * 오른쪽은 한 구획 — 부적합 상세 · 특채 · 판정을 위에서 아래로(사용자 시안 · omf-all-around#223).
-           * 목록 · 조회 조건은 종전 그대로다.
-           */}
-          <section
-            className="pane disposition-pane disposition-side"
-            aria-label={t.panes.detailDecision}
-          >
-            <h2 className="pane-title">{t.panes.detailDecision}</h2>
-            <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
-              <DetailSlot
-                selectedId={selectedId}
-                detail={{
-                  isPending: detail.isPending,
-                  isError: detail.isError,
-                  isNotFound: isDetailNotFound,
-                  error: detail.error,
-                  view: detail.data === undefined ? null : toDetailView(detail.data),
-                }}
-                decisions={{
-                  rows: decisionRows,
-                  isLoading: decisions.isPending,
-                  isError: decisions.isError,
-                }}
-                remaining={remaining}
+          <div ref={splitRef} className={paneLayout.className} style={split.style}>
+            <section
+              className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
+              aria-label={t.panes.list}
+            >
+              <h2 className="pane-title">{t.panes.list}</h2>
+              <NonconformanceList
+                rows={rows}
                 items={items}
                 severity={severity}
                 status={status}
-                uoms={uoms}
-                onRetry={() => void detail.refetch()}
+                isLoading={list.isPending}
+                error={
+                  list.isError ? (
+                    <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+                  ) : null
+                }
+                page={pageView}
+                selectedId={selectedId}
+                onSelect={(id) =>
+                  setSearchParams((current) =>
+                    withSelectedNonconformance(current, selectedId === id ? null : id),
+                  )
+                }
+                onChangePage={(nextPage) => apply(filters, nextPage)}
               />
-            </div>
-            {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
-            {selectedId !== null && detail.data !== undefined && (
-              <div className="disposition-side-part" role="group" aria-label={t.concession.heading}>
-                <h3 className="pane-subtitle">{t.concession.heading}</h3>
-                <ConcessionPane
-                  nonconformanceId={selectedId}
-                  lots={toDetailView(detail.data).lots}
-                  isClosed={detail.data.statusCode === 'DECIDED'}
-                  today={today}
+            </section>
+            <PaneSplitter
+              label={messages.qualityApproval.splitter}
+              ratio={split.ratio}
+              onChange={split.commit}
+              orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+            />
+            {/*
+             * 오른쪽은 한 구획 — 부적합 상세 · 특채 · 판정을 위에서 아래로(사용자 시안 · omf-all-around#223).
+             * 목록 · 조회 조건은 종전 그대로다.
+             */}
+            <section
+              className="pane po-board-pane po-board-scroll disposition-pane disposition-side"
+              aria-label={t.panes.detailDecision}
+            >
+              <h2 className="pane-title">{t.panes.detailDecision}</h2>
+              <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
+                <DetailSlot
+                  selectedId={selectedId}
+                  detail={{
+                    isPending: detail.isPending,
+                    isError: detail.isError,
+                    isNotFound: isDetailNotFound,
+                    error: detail.error,
+                    view: detail.data === undefined ? null : toDetailView(detail.data),
+                  }}
+                  decisions={{
+                    rows: decisionRows,
+                    isLoading: decisions.isPending,
+                    isError: decisions.isError,
+                  }}
+                  remaining={remaining}
+                  items={items}
+                  severity={severity}
+                  status={status}
+                  uoms={uoms}
+                  onRetry={() => void detail.refetch()}
                 />
               </div>
-            )}
-            <div className="disposition-side-part" role="group" aria-label={t.panes.decision}>
-              <h3 className="pane-subtitle">{t.panes.decision}</h3>
-              <DecisionFormPane
-                value={form}
-                errors={showErrors ? errors : write.fieldErrors}
-                qtyNotice={remainingNotice(form, remaining)}
-                lockReason={lock.reason}
-                isUncertain={lock.isUncertain}
-                onCheckOutcome={checkOutcome}
-                dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
-                uomId={uomId}
-                uoms={uoms}
-                writeError={write.error}
-                isSaving={write.isSaving}
-                canCancel={hasDecisionInput(form)}
-                onChange={(next) => {
-                  /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                  if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                    write.clearFieldError('dispositionTypeCode');
-                  if (next.qty !== form.qty) write.clearFieldError('decisionQty');
-                  if (next.reason !== form.reason) write.clearFieldError('reason');
-                  setForm(next);
-                }}
-                onSave={save}
-                onCancel={() => {
-                  setForm(EMPTY_DECISION_FORM);
-                  setShowErrors(false);
-                  /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                  write.reset();
-                }}
-                onReload={checkOutcome}
-              />
-            </div>
-          </section>
-        </div>
+              {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
+              {selectedId !== null && detail.data !== undefined && (
+                <div
+                  className="disposition-side-part"
+                  role="group"
+                  aria-label={t.concession.heading}
+                >
+                  <h3 className="pane-subtitle">{t.concession.heading}</h3>
+                  <ConcessionPane
+                    nonconformanceId={selectedId}
+                    lots={toDetailView(detail.data).lots}
+                    isClosed={detail.data.statusCode === 'DECIDED'}
+                    today={today}
+                  />
+                </div>
+              )}
+              <div className="disposition-side-part" role="group" aria-label={t.panes.decision}>
+                <h3 className="pane-subtitle">{t.panes.decision}</h3>
+                <DecisionFormPane
+                  value={form}
+                  errors={showErrors ? errors : write.fieldErrors}
+                  qtyNotice={remainingNotice(form, remaining)}
+                  lockReason={lock.reason}
+                  isUncertain={lock.isUncertain}
+                  onCheckOutcome={checkOutcome}
+                  dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
+                  uomId={uomId}
+                  uoms={uoms}
+                  writeError={write.error}
+                  isSaving={write.isSaving}
+                  canCancel={hasDecisionInput(form)}
+                  onChange={(next) => {
+                    /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                    if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                      write.clearFieldError('dispositionTypeCode');
+                    if (next.qty !== form.qty) write.clearFieldError('decisionQty');
+                    if (next.reason !== form.reason) write.clearFieldError('reason');
+                    setForm(next);
+                  }}
+                  onSave={save}
+                  onCancel={() => {
+                    setForm(EMPTY_DECISION_FORM);
+                    setShowErrors(false);
+                    /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                    write.reset();
+                  }}
+                  onReload={checkOutcome}
+                />
+              </div>
+            </section>
+          </div>
+        </>
       ) : (
         <HistoryTab
           applied={historyFilters}
