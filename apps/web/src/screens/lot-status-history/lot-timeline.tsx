@@ -9,6 +9,15 @@ import { useLotActorOptions, useLotTimeline } from './queries';
 
 const t = messages.lotStatusHistory;
 
+/**
+ * 줄이 가리키는 보류 건 — 보류 등록 · 해제 줄, 그리고 보류가 일으킨 상태 변경 줄(원천 문서 `LOT_HOLD`).
+ * 검사 판정 등 다른 문서가 일으킨 변경은 갈 곳이 없어 누를 수 없다.
+ */
+const holdIdOf = (entry: LotTimelineEntry): number | null => {
+  if (entry.kind === 'hold') return entry.event.lotHoldId;
+  return entry.event.sourceDocumentTypeCode === 'LOT_HOLD' ? entry.event.sourceDocumentId : null;
+};
+
 interface LotTimelineProps {
   lotId: number;
   statusOptions: readonly FilterOption[];
@@ -99,9 +108,10 @@ export const LotTimeline = ({
               ? {}
               : {
                   onOpenEntry: (entry: LotTimelineEntry) => {
-                    if (entry.kind === 'hold') onOpenHold(entry.event.lotHoldId);
+                    const holdId = holdIdOf(entry);
+                    if (holdId !== null) onOpenHold(holdId);
                   },
-                  isEntryClickable: (entry: LotTimelineEntry) => entry.kind === 'hold',
+                  isEntryClickable: (entry: LotTimelineEntry) => holdIdOf(entry) !== null,
                 })}
           />
         )}

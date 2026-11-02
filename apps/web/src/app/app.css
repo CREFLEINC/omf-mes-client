@@ -4509,7 +4509,7 @@ h2:has(> .inspection-standard-dialog-title) {
 /* 시리얼이 없는 줄의 「미등록」은 칸 가운데(사용자 지시 2026-10-26) — 번호가 있으면 왼쪽 그대로다. */
 
 /* 누를 수 있는 이력 줄(사용자 2026-11-02) — 변경 이력 탭 화면은 LOT 상세 이력 팝업, LOT 상세의 보류 줄은 보류 이력 탭. */
-.lot-timeline-clickable tbody tr {
+.lot-timeline-clickable tbody tr:has([data-row-clickable='true']) {
   cursor: pointer;
 }
 

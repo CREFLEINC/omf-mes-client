@@ -111,7 +111,16 @@ export const LotTimelineTable = ({
       align: 'center',
       width: isDetail ? '172px' : '220px',
       sortable: isDetail,
-      render: (entry) => formatDateTime(entry.occurredAt),
+      /* 누를 수 있는 줄만 표시를 단다 — 손가락 모양은 그 줄에만(사용자 2026-11-02). */
+      render: (entry) => (
+        <span
+          data-row-clickable={
+            onOpenEntry !== undefined && isEntryClickable(entry) ? 'true' : undefined
+          }
+        >
+          {formatDateTime(entry.occurredAt)}
+        </span>
+      ),
     },
     ...(isDetail
       ? []

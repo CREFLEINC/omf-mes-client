@@ -181,6 +181,9 @@ export interface LotStatusEventView {
   changedBy: number | null;
   changedWorkerId: number | null;
   changedAt: string;
+  /** 이 변경을 일으킨 문서 — 보류(`LOT_HOLD`)면 그 보류 건 번호다. */
+  sourceDocumentTypeCode: string | null;
+  sourceDocumentId: number | null;
 }
 
 export const toLotStatusEventView = (value: LotStatusEventResponse): LotStatusEventView => ({
@@ -194,4 +197,6 @@ export const toLotStatusEventView = (value: LotStatusEventResponse): LotStatusEv
   changedBy: value.changedBy ?? null,
   changedWorkerId: value.changedWorkerId ?? null,
   changedAt: value.changedAt,
+  sourceDocumentTypeCode: value.sourceDocumentTypeCode ?? null,
+  sourceDocumentId: value.sourceDocumentId ?? null,
 });
