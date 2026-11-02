@@ -50,6 +50,11 @@ export const iqcInspection = {
     skipRequest: '생략 요청',
     skipApprove: '승인 처리',
     skipExecute: '생략 실행',
+    /** 상태 칸 — 생략 결재가 걸린 대기·진행 의뢰는 결재 단계를 보인다(사용자 지시 2026-11-02 · #225). */
+    skipStatus: { PENDING: '결재 대기', APPROVED: '결재 승인', REJECTED: '결재 반려' } as Record<
+      string,
+      string
+    >,
     /** 줄의 단추가 여는 창(#225) — 승인 처리는 품질 승인 처리 화면으로 옮기지 않고 여기서 한다. */
     skipDialog: {
       /** 「생략 요청」 창 안내(사용자 지시 2026-11-02). */

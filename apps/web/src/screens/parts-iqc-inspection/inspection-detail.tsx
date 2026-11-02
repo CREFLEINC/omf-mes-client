@@ -159,9 +159,7 @@ export const InspectionDetail = ({
         <Button
           variant="outlined"
           size="sm"
-          onClick={() =>
-            navigate(`${STANDARD_PATH}?type=IQC&item=${String(detail.data.itemId)}`)
-          }
+          onClick={() => navigate(`${STANDARD_PATH}?type=IQC&item=${String(detail.data.itemId)}`)}
         >
           {t.dialog.setPlan}
         </Button>

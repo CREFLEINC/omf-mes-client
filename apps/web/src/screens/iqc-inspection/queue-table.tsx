@@ -7,7 +7,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 /* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
 import { toStatusBadge } from '../oqc-inspection/status-badge';
-import { QueueSkipCell } from './queue-skip-cell';
+import { QueueSkipCell, QueueStatusCell } from './queue-skip-cell';
 import { formatDateTime, type InspectionQueueRow } from './types';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
@@ -177,6 +177,10 @@ const columnsOf = (
     width: '88px',
     render: (row) => {
       const badge = toStatusBadge(row.statusCode, row.skipBasisCode);
+      /* 생략 칸이 서는 줄은 생략 결재 단계를 상태로 보인다(#225). */
+      if (skipWorkerNo !== undefined && row.lotId !== null && SKIPPABLE.includes(row.statusCode)) {
+        return <QueueStatusCell lotId={row.lotId} fallback={badge} />;
+      }
 
       return (
         <Chip variant="status" size="sm" status={badge.tone}>

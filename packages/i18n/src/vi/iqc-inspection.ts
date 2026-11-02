@@ -25,6 +25,11 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     skipRequest: 'Yêu cầu bỏ qua',
     skipApprove: 'Xử lý phê duyệt',
     skipExecute: 'Thực hiện bỏ qua',
+    skipStatus: {
+      PENDING: 'Chờ phê duyệt',
+      APPROVED: 'Đã phê duyệt',
+      REJECTED: 'Bị từ chối',
+    } as Record<string, string>,
     skipDialog: {
       requestResult:
         "Khi được phê duyệt, kiểm tra đầu vào sẽ được bỏ qua và trạng thái LOT chuyển thành 'Bình thường'.",
