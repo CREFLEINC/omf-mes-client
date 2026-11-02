@@ -1,4 +1,4 @@
-import { Chip, Table, type Column } from '@crefle/web-ui';
+import { Button, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -27,6 +27,8 @@ import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 const t = messages.iqcInspection.queue;
 
+const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
+
 /**
  * 목록에서는 품목 이름의 「【 … 】」 덧붙임(고객 품번 등)을 뺀 이름만 보인다(사용자 지시 2026-10-27 · #185).
  * 전체 이름은 마우스를 올리면 보이고, 상세는 그대로다.
@@ -47,6 +49,11 @@ export interface QueueTableProps {
   /** 고른 의뢰. 없으면 `null` — 아무 줄도 현재가 아니다 */
   selectedId: number | null;
   onSelect: (inspectionRequestId: number) => void;
+  /**
+   * 줄의 「생략 요청」(omf-all-around#225). 주면 대기·진행 중이고 LOT 이 있는 줄에 단추가 선다 — 상세 「생략 요청」과
+   * 같은 창을 연다(요청 가능 여부는 상세 구획이 결재 상태로 다시 가린다). 없으면 열을 세우지 않는다.
+   */
+  onRequestSkip?: (inspectionRequestId: number) => void;
   /** 결과가 없을 때 표 자리에 그릴 것. 조회 실패와 빈 결과는 부르는 쪽이 가른다 */
   empty: ReactNode;
 }
@@ -57,6 +64,7 @@ const columnsOf = (
   itemNames: ItemNameLookup,
   lotNumbers: NameLookup,
   suppliers: NameLookup,
+  onRequestSkip: ((inspectionRequestId: number) => void) | undefined,
 ): Column<InspectionQueueRow>[] => [
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
@@ -194,6 +202,28 @@ const columnsOf = (
       <span className="iqc-inspection-requested-at">{formatDateTime(row.requestedAt)}</span>
     ),
   },
+  ...(onRequestSkip === undefined
+    ? []
+    : [
+        {
+          key: 'skip',
+          align: 'center',
+          header: t.columns.skip,
+          width: '120px',
+          /* 상세 생략 구획이 서는 의뢰(대기·진행 · LOT 있음)에만 단추를 둔다 — 끝난 의뢰는 생략할 것이 없다. */
+          render: (row) =>
+            row.lotId !== null && SKIPPABLE.includes(row.statusCode) ? (
+              <Button
+                type="button"
+                variant="outlined"
+                size="sm"
+                onClick={() => onRequestSkip(row.inspectionRequestId)}
+              >
+                {t.skipRequest}
+              </Button>
+            ) : null,
+        } satisfies Column<InspectionQueueRow>,
+      ]),
 ];
 
 export const QueueTable = ({
@@ -203,13 +233,14 @@ export const QueueTable = ({
   suppliers,
   selectedId,
   onSelect,
+  onRequestSkip,
   empty,
   scrollX = false,
 }: QueueTableProps) => {
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
     'omf-mes:iqc-inspection:columns:queue:order',
-    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers),
+    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers, onRequestSkip),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
     /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */

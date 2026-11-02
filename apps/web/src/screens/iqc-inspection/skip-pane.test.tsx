@@ -26,7 +26,12 @@ const approval = (statusCode: string) => ({
 
 const renderPane = (
   latest: string | null,
-  options: { workerNo?: string | null; status?: string; basis?: string | null } = {},
+  options: {
+    workerNo?: string | null;
+    status?: string;
+    basis?: string | null;
+    signal?: number;
+  } = {},
 ) => {
   const writes: Request[] = [];
   const reads: URL[] = [];
@@ -53,6 +58,7 @@ const renderPane = (
       requestStatusCode={options.status ?? 'REQUESTED'}
       skipBasisCode={options.basis ?? null}
       workerNo={options.workerNo === undefined ? '901463' : options.workerNo}
+      openRequestSignal={options.signal}
     />,
     { fetch: stubFetch },
   );
@@ -100,5 +106,22 @@ describe('IQC 생략 구획', () => {
   it('기본 생략으로 만들어진 의뢰는 「기본 설정」 생략이라고 말한다', async () => {
     renderPane(null, { status: 'SKIPPED', basis: 'DEFAULT' });
     expect(await screen.findByText(t.skippedDefault)).toBeInTheDocument();
+  });
+
+  it('목록 줄의 신호를 받으면 결재 상태를 읽은 뒤 요청 창을 연다(#225)', async () => {
+    renderPane(null, { signal: 1 });
+    expect(await screen.findByRole('dialog', { name: t.heading })).toBeInTheDocument();
+  });
+
+  it('이미 요청해 승인 대기면 신호를 받아도 창을 열지 않는다(#225)', async () => {
+    renderPane('PENDING', { signal: 1 });
+    expect(await screen.findByText(t.pending)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('신호가 없으면 창을 열지 않는다(#225)', async () => {
+    renderPane(null);
+    await screen.findByRole('button', { name: t.openRequest });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

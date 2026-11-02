@@ -547,6 +547,24 @@ const IqcInspectionScreenBody = () => {
   /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세가 닫힌다(저장 안 한 입력이 있으면 먼저 묻는다 · 사용자 지시 2026-10-28 · #197). */
   const select = (inspectionRequestId: number): void =>
     moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
+  /*
+   * 줄의 「생략 요청」(omf-all-around#225) — 그 줄을 고르고(이미 골랐으면 그대로) 상세 생략 구획의 요청 창을 연다.
+   * 신호는 고른 의뢰가 그 줄일 때만 구획에 넘긴다 — 이동을 묻는 팝업에서 머물면 다른 의뢰에서 창이 뜨지 않는다.
+   */
+  const [skipRequestFor, setSkipRequestFor] = useState<{ id: number; signal: number } | null>(null);
+  const requestSkipFromRow = (inspectionRequestId: number): void => {
+    setSkipRequestFor((prev) => ({ id: inspectionRequestId, signal: (prev?.signal ?? 0) + 1 }));
+    if (inspectionRequestId !== selectedId) moveTo(inspectionRequestId);
+  };
+  /* 다른 의뢰로 옮기면 남은 신호를 버린다 — 나중에 그 줄을 그냥 골랐을 때 창이 뜨지 않게. */
+  useEffect(() => {
+    setSkipRequestFor((prev) => (prev !== null && prev.id !== selectedId ? null : prev));
+  }, [selectedId]);
+  /* 이동을 묻는 팝업에서 머물면(계속 작성) 줄의 생략 요청도 거둔다. */
+  const keepEditing = (): void => {
+    setLeaveTo(null);
+    setSkipRequestFor(null);
+  };
 
   /* 다른 화면으로 이동(기본 정보 [기준 보기] · #185) — 같은 탭에서 옮긴다. 저장하지 않은 입력이 있으면 먼저 묻는다. */
   const navigate = useNavigate();
@@ -847,6 +865,11 @@ const IqcInspectionScreenBody = () => {
         rounds.data !== undefined &&
         rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
           <IqcSkipPane
+            openRequestSignal={
+              skipRequestFor !== null && skipRequestFor.id === selectedId
+                ? skipRequestFor.signal
+                : undefined
+            }
             lotId={detail.data.lotId}
             requestStatusCode={detail.data.statusCode}
             skipBasisCode={detail.data.skipBasisCode}
@@ -1272,6 +1295,7 @@ const IqcInspectionScreenBody = () => {
             suppliers={lotSuppliers}
             selectedId={selectedId}
             onSelect={select}
+            onRequestSkip={requestSkipFromRow}
             empty={emptyContent}
           />
 
@@ -1328,16 +1352,12 @@ const IqcInspectionScreenBody = () => {
       {leaveTo !== null && (
         <Dialog
           open
-          onClose={() => setLeaveTo(null)}
+          onClose={keepEditing}
           showCloseButton={false}
           title={t.detail.leaveUnsaved}
           footer={
             <>
-              <Button
-                variant="outlined"
-                className="app-button-neutral"
-                onClick={() => setLeaveTo(null)}
-              >
+              <Button variant="outlined" className="app-button-neutral" onClick={keepEditing}>
                 {t.detail.keepEditing}
               </Button>
               <Button

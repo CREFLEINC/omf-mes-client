@@ -29,6 +29,8 @@ export const iqcInspection = {
       statusCode: '상태',
       requestedAt: '의뢰 일시',
       inspectionRequestNo: '의뢰번호',
+      /** 줄에서 바로 여는 「생략 요청」(omf-all-around#225). */
+      skip: '생략',
     },
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',
@@ -44,6 +46,8 @@ export const iqcInspection = {
      */
     openRow: (item: string, inspectionRequestNo: string): string =>
       `${item} · 검사 의뢰 ${inspectionRequestNo} 열기`,
+    /** 줄의 「생략 요청」 단추 — 그 줄을 고르고 상세의 생략 요청 창을 연다(#225). */
+    skipRequest: '생략 요청',
     caption: '검사 대기 목록',
     /**
      * 조회는 됐는데 결과가 없다. 조건을 바꾸는 것이 사용자가 할 수 있는 유일한 조치다.

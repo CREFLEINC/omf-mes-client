@@ -232,4 +232,43 @@ describe('QueueTable — 자재 LOT 표기', () => {
     expect(screen.getByRole('columnheader', { name: t.columns.supplier })).toBeInTheDocument();
     expect(screen.getAllByText('(주)합성공급').length).toBeGreaterThan(0);
   });
+
+  describe('줄의 「생략 요청」(omf-all-around#225)', () => {
+    /* 줄의 생략 단추 — 이름은 모든 줄이 같아 의뢰번호가 적힌 줄 안에서 찾는다. */
+    const skipButton = (inspectionRequestNo: string) =>
+      within(screen.getByText(inspectionRequestNo).closest('tr')!).queryByRole('button', {
+        name: t.skipRequest,
+      });
+
+    it('대기·진행 중이고 LOT 이 있는 줄에만 단추가 서고, 누르면 그 의뢰를 넘긴다', async () => {
+      const user = userEvent.setup();
+      const onRequestSkip = vi.fn();
+      /* 끝난 의뢰(완료)는 LOT 이 있어도 단추가 없다. */
+      const done = {
+        ...rows[0]!,
+        inspectionRequestId: 9901,
+        inspectionRequestNo: 'IR-2026-9901',
+        statusCode: 'COMPLETED',
+      };
+      const onSelect = renderTable({ onRequestSkip, rows: [...rows, done] });
+
+      expect(screen.getByRole('columnheader', { name: t.columns.skip })).toBeInTheDocument();
+      expect(skipButton('IR-2026-0001')).toBeInTheDocument();
+      expect(skipButton('IR-2026-0002')).toBeInTheDocument();
+      expect(skipButton('IR-2026-0003')).not.toBeInTheDocument();
+      expect(skipButton('IR-2026-9901')).not.toBeInTheDocument();
+
+      await user.click(skipButton('IR-2026-0001')!);
+      expect(onRequestSkip).toHaveBeenCalledWith(
+        rows.find((row) => row.inspectionRequestNo === 'IR-2026-0001')!.inspectionRequestId,
+      );
+      /* 줄 클릭으로 번지지 않는다 — 고르기는 부르는 쪽이 한다. */
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('넘기지 않으면 열을 세우지 않는다', () => {
+      renderTable();
+      expect(screen.queryByRole('columnheader', { name: t.columns.skip })).not.toBeInTheDocument();
+    });
+  });
 });
