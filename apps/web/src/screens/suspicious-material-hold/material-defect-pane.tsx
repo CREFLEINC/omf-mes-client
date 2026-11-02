@@ -4,6 +4,9 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { lotStatusTone } from '../lot-status-history/options';
@@ -37,18 +40,21 @@ const columnsOf = (statusLabel: (code: string) => string): Column<AffectedRow>[]
     key: 'lotNo',
     header: messages.suspiciousMaterialHold.defect.columns.lotNo,
     align: 'center',
+    width: '300px',
     render: (row) => row.lotNo,
   },
   {
     key: 'workOrderNo',
     header: messages.suspiciousMaterialHold.defect.columns.workOrderNo,
     align: 'center',
+    width: '180px',
     render: (row) => row.workOrderNo,
   },
   {
     key: 'statusCode',
     header: messages.suspiciousMaterialHold.defect.columns.statusCode,
     align: 'center',
+    width: '120px',
     render: (row) => (
       <Chip variant="status" status={lotStatusTone(row.statusCode)} size="sm">
         {statusLabel(row.statusCode)}
@@ -248,6 +254,15 @@ export const AffectedProductionLotsSection = ({
   const lot = selection.length === 1 ? (selection[0] ?? null) : null;
   const affected = useAffectedProductionLots(lot?.lotId ?? null);
   const statuses = useLotStatusLabels();
+  /* 표는 다른 목록과 같이 열 폭을 끌어 바꾸고 순서를 옮길 수 있다 — 바꾼 값은 브라우저에 남는다(사용자 2026-11-02). */
+  const ordered = useColumnOrder(
+    'omf-mes:suspicious-material-hold:affected:order',
+    columnsOf(statuses.describe),
+  );
+  const resizable = useColumnWidths('omf-mes:suspicious-material-hold:affected', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
   if (lot === null) return null;
   const basisNote =
     affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE' ? t.affected.genealogy : tHere.estimateNote;
@@ -270,11 +285,15 @@ export const AffectedProductionLotsSection = ({
       {affected.isError ? (
         <p className="field-note">{t.affected.loadFailed}</p>
       ) : (
-        <div className="suspicious-material-hold-table-scroll">
+        <div
+          ref={fit.ref}
+          className="wide-table suspicious-material-hold-table-scroll"
+          style={resizable.style}
+        >
           <Table
             caption={tHere.affectedHeading}
             density="compact"
-            columns={columnsOf(statuses.describe)}
+            columns={fit.columns}
             rows={affected.data?.items ?? []}
             getRowId={(row) => String(row.lotId)}
             empty={

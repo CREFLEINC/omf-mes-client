@@ -15,6 +15,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { runRequest } from '../../patterns/request';
 import {
   codeName,
@@ -211,19 +214,19 @@ export const LotStatusTransitionPreparation = ({
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdColumns: Column<LotHold>[] = [
     /*
-     * 네 열을 모두 비율로 고르게 나눈다(사용자 지시 — 가운데 정렬 표에서 한 열로 폭이 몰리지 않게).
-     * 사유 34 · 시각 28 · 수량 16 · 해제 대상 22. 가운데 정렬은 `app.css` 의 `.lot-status-transition-holds`.
+     * 처음 폭은 종전 비율(사유 34 · 시각 28 · 수량 16 · 해제 대상 22)에 맞춘 px — 끌어 바꾼 폭 · 순서는 브라우저에 남는다
+     * (표는 늘 폭 · 순서를 바꿀 수 있다 · 사용자 2026-11-02). 가운데 정렬은 `app.css` 의 `.lot-status-transition-holds`.
      */
     {
       key: 'reason',
       header: t.holds.reason,
-      width: '34%',
+      width: '200px',
       render: (item) => codeName(holdReasons.data?.items, item.reasonCode),
     },
     {
       key: 'heldAt',
       header: t.holds.heldAt,
-      width: '28%',
+      width: '170px',
       render: (item) => (
         <time className="lot-status-transition-nowrap" dateTime={item.heldAt}>
           {formatDateTime(item.heldAt)}
@@ -233,13 +236,13 @@ export const LotStatusTransitionPreparation = ({
     {
       key: 'quantity',
       header: t.holds.quantity,
-      width: '16%',
+      width: '100px',
       render: (item) => item.holdQty ?? t.holds.full,
     },
     {
       key: 'select',
       header: t.holds.target,
-      width: '22%',
+      width: '130px',
       render: (item) => (
         <Button
           variant="outlined"
@@ -256,6 +259,18 @@ export const LotStatusTransitionPreparation = ({
       ),
     },
   ];
+  const orderedHoldColumns = useColumnOrder(
+    'omf-mes:lot-status-transition:holds:order',
+    holdColumns,
+  );
+  const resizableHolds = useColumnWidths(
+    'omf-mes:lot-status-transition:holds',
+    orderedHoldColumns,
+    {
+      fitContent: true,
+    },
+  );
+  const fitHolds = useFitColumns(resizableHolds.columns, { scrollX: true });
 
   const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
   if (transitions.isFetching && !confirmationPinned)
@@ -344,11 +359,15 @@ export const LotStatusTransitionPreparation = ({
       {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
         <section className="lot-status-transition-holds" aria-label={t.holds.pane}>
           <h3 className="lot-status-transition-subtitle">{t.holds.title}</h3>
-          <div className="wide-table lot-status-transition-table">
+          <div
+            ref={fitHolds.ref}
+            className="wide-table lot-status-transition-table"
+            style={resizableHolds.style}
+          >
             <Table
               density="compact"
               caption={t.holds.title}
-              columns={holdColumns}
+              columns={fitHolds.columns}
               rows={holdsData.items}
               getRowId={(item) => String(item.lotHoldId)}
               sort={null}
