@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import type { paths } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -60,11 +60,6 @@ export interface InspectionSkipPaneProps {
   invalidateKeys: readonly (readonly unknown[])[];
   /** 요청을 못 하는 사유(예: 계정에 연결된 작업자 없음). 있으면 「생략 요청」 단추 대신 이 안내가 선다. */
   requestBlockedReason?: string | null;
-  /**
-   * 바뀔 때마다 「생략 요청」 창을 연다 — 목록 줄의 「생략 요청」(omf-all-around#225). 결재 상태를 읽은 뒤 이 구획의
-   * 「생략 요청」 단추가 설 때만 연다(이미 요청했거나 요청을 못 하면 구획이 그 상태를 보인다).
-   */
-  openRequestSignal?: number;
 }
 
 /**
@@ -84,7 +79,6 @@ export const InspectionSkipPane = ({
   queryKeyRoot,
   invalidateKeys,
   requestBlockedReason = null,
-  openRequestSignal,
 }: InspectionSkipPaneProps) => {
   const { client } = useApiClient();
   const [reason, setReason] = useState('');
@@ -120,31 +114,6 @@ export const InspectionSkipPane = ({
         }),
       ).then((response) => response.items[0] ?? null),
   });
-
-  const handledSignal = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (openRequestSignal === undefined || handledSignal.current === openRequestSignal) return;
-    if (approval.isPending) return;
-    handledSignal.current = openRequestSignal;
-    const latestStatus = approval.data?.statusCode ?? null;
-    if (
-      !approval.isError &&
-      (latestStatus === null || latestStatus === 'REJECTED') &&
-      requestBlockedReason === null &&
-      OPEN_OR_SKIPPED.includes(requestStatusCode) &&
-      requestStatusCode !== 'SKIPPED'
-    ) {
-      setNotice(null);
-      setIsDialogOpen(true);
-    }
-  }, [
-    openRequestSignal,
-    approval.isPending,
-    approval.isError,
-    approval.data,
-    requestBlockedReason,
-    requestStatusCode,
-  ]);
 
   const requestWrite = useMasterWrite<{ reason: string }, unknown>({
     request: requestSkip,

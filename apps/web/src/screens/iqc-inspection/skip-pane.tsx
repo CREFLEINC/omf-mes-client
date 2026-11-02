@@ -15,8 +15,6 @@ export interface IqcSkipPaneProps {
   workerNo: string | null;
   /** 생략 뒤 함께 새로 읽을 다른 화면의 조회 — 부품 IQC 화면의 목록(omf-all-around#205). */
   alsoInvalidate?: readonly (readonly unknown[])[];
-  /** 바뀔 때마다 생략 요청 창을 연다 — 목록 줄의 「생략 요청」(omf-all-around#225). */
-  openRequestSignal?: number;
 }
 
 /**
@@ -29,7 +27,6 @@ export const IqcSkipPane = ({
   skipBasisCode,
   workerNo,
   alsoInvalidate = [],
-  openRequestSignal,
 }: IqcSkipPaneProps) => {
   const { client } = useApiClient();
   const t = messages.iqcInspection.skip;
@@ -62,7 +59,6 @@ export const IqcSkipPane = ({
       queryKeyRoot={iqcInspectionKeys.all}
       invalidateKeys={[iqcInspectionKeys.all, INSPECTION_HUB_COUNTS_KEY, ...alsoInvalidate]}
       requestBlockedReason={workerNo === null ? t.workerNotLinked : null}
-      openRequestSignal={openRequestSignal}
     />
   );
 };

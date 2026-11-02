@@ -46,8 +46,10 @@ export const iqcInspection = {
      */
     openRow: (item: string, inspectionRequestNo: string): string =>
       `${item} · 검사 의뢰 ${inspectionRequestNo} 열기`,
-    /** 줄의 「생략 요청」 단추 — 그 줄을 고르고 상세의 생략 요청 창을 연다(#225). */
+    /** 줄의 생략 단추 — 그 LOT 의 생략 결재 단계마다 하나(#225). */
     skipRequest: '생략 요청',
+    skipApprove: '승인 처리',
+    skipExecute: '생략 실행',
     caption: '검사 대기 목록',
     /**
      * 조회는 됐는데 결과가 없다. 조건을 바꾸는 것이 사용자가 할 수 있는 유일한 조치다.

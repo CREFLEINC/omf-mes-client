@@ -23,6 +23,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     openRow: (item: string, inspectionRequestNo: string): string =>
       `${item} · Mở yêu cầu kiểm tra ${inspectionRequestNo}`,
     skipRequest: 'Yêu cầu bỏ qua',
+    skipApprove: 'Xử lý phê duyệt',
+    skipExecute: 'Thực hiện bỏ qua',
     caption: 'Danh sách chờ kiểm tra',
     empty: 'Không tìm thấy yêu cầu kiểm tra nào.',
     emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
