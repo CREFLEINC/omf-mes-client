@@ -49,6 +49,8 @@ const BASE_RECEIPT_LINE: InboundReceiptLineResponse = {
   supplierLotLabelAttached: true,
   inspectionRequired: false,
   statusCode: 'SAMPLE_IR_STATUS_A',
+  allocations: [],
+  unallocatedQty: 12,
 };
 
 export const inboundReceiptLineResponse = (
@@ -192,6 +194,9 @@ const BASE_PURCHASE_ORDER: PurchaseOrderResponse = {
   plantId: 9401,
   orderDate: '2026-08-17',
   statusCode: 'SAMPLE_PO_STATUS_A',
+  erpOrderTypeCode: null,
+  erpPurchaseGroupCode: null,
+  erpIoTypeCode: null,
 };
 
 /** 소비처가 아래 `purchaseOrderDetailBody` 하나뿐이라 **export하지 않는다**(사본 체크리스트 7번). */
@@ -209,6 +214,11 @@ const BASE_PURCHASE_ORDER_LINE: PurchaseOrderLineResponse = {
   receivedQty: 0,
   toleranceOverQty: 0,
   toleranceUnderQty: 0,
+  erpStorageLocationCode: null,
+  cancelledAt: null,
+  erpCustomsClearanceNo: null,
+  erpCustomsClearanceSeq: null,
+  erpCustomsClearanceFetchedAt: null,
 };
 
 export const purchaseOrderLineResponse = (

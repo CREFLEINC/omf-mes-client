@@ -552,7 +552,6 @@ export const MaterialIssueRequestScreen = () => {
               itemLookup={items}
               itemNameSources={itemNameSources}
               uomLookup={uoms}
-              itemOptions={toSelectOptions(items)}
               uomOptions={toSelectOptions(uoms)}
               isLocked={isLocked}
               isLoadingShortage={isLoadPending && shortage.isFetching}

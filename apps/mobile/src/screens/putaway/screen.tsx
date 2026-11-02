@@ -9,7 +9,6 @@ import { useBackStep } from '../../patterns/back-step';
 import { BottomActionBar } from '../../patterns/bottom-action-bar';
 import { Button } from '../../patterns/button';
 import { playErrorTone } from '../../patterns/error-tone';
-import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { uomLabelOf, useItemCodes, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOutbox } from '../../patterns/outbox';
@@ -23,24 +22,14 @@ import { useWorkerId } from '../../patterns/workers';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
+import { putawayKeys, usePutawayTasks, useTaskLotNo } from './queries';
 import {
-  putawayKeys,
-  useLocationContents,
-  usePutawayRule,
-  usePutawayTasks,
-  useTaskLotNo,
-} from './queries';
-import {
+  ANYWHERE,
   MATCHED,
-  MIXED_ITEM,
-  NOT_RECOMMENDED,
-  NO_RULE,
+  NOT_ALLOWED,
+  allowedSummaryOf,
   canComplete,
   lotMatches,
-  STORAGE_CONDITION,
-  mixProblemOf,
-  overCapacityOf,
-  storageMismatch,
   scansLocation,
   toOutboxDraft,
   verdictOf,
@@ -79,7 +68,6 @@ export const PutawayScreen = () => {
   const [scannedLot, setScannedLot] = useState<string | null>(null);
   /* 같은 코드를 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
   const [scanSeq, setScanSeq] = useState(0);
-  const [confirmedNoRule, setConfirmedNoRule] = useState(false);
   const [registered, setRegistered] = useState<Registered[]>([]);
   const [saveFailed, setSaveFailed] = useState(false);
   /*
@@ -102,7 +90,6 @@ export const PutawayScreen = () => {
     (item) => messages.common.reference.named(item.itemName, item.itemCode),
   );
   const lotNo = useTaskLotNo(task?.lotId ?? null);
-  const rule = usePutawayRule(task?.appliedPutawayRuleId ?? null);
 
   const codeOf = (locationId: number | null | undefined): string =>
     locations.data?.find((each) => each.locationId === locationId)?.locationCode ?? '';
@@ -112,62 +99,25 @@ export const PutawayScreen = () => {
       ? (byCode.data ?? null)
       : (locations.data?.find((each) => each.locationId === pickedId) ?? null);
 
-  const contents = useLocationContents(task?.warehouseId ?? null, location?.locationId ?? null);
-  const held = contents.data ?? [];
-  /*
-   * 잔액을 받기 전과 받지 못한 것은 부딪치는 것이 없다는 뜻이 아니다 - 빈 목록으로 판정하면
-   * 혼적이 막힌 자리가 조회 실패 한 번에 열린다.
-   */
-  const contentsKnown = contents.isSuccess;
-
   const verdict = task === null || location === null ? null : verdictOf(task, location);
-  const mixProblem =
-    task === null || location === null || !contentsKnown
-      ? null
-      : mixProblemOf(task, location, held);
-  const overCapacity =
-    task === null || location === null || !contentsKnown
-      ? null
-      : overCapacityOf(task, location, held);
-  /*
-   * 품목과 자리의 보관조건은 같은 코드계다. 어긋나도 막지 않는다 - 설계가 경고로 정했고,
-   * 냉장 자리가 없어 상온에 두어야 하는 날이 있다.
-   */
-  const itemCondition =
-    task === null ? null : (itemLabels.get(task.itemId)?.storageConditionCode ?? null);
-  const storageOff =
-    location === null ? false : storageMismatch(itemCondition, location.storageConditionCode);
-  /* 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. */
-  const storageNames = useCodeValues(STORAGE_CONDITION);
 
   /* 위치가 통과해야 LOT 을 묻는다 - 순서를 바꾸면 오적치를 막을 자리가 사라진다. */
-  const locationSettled =
-    location !== null &&
-    contentsKnown &&
-    mixProblem === null &&
-    (verdict === MATCHED || (verdict === NO_RULE && confirmedNoRule));
+  const locationSettled = location !== null && (verdict === MATCHED || verdict === ANYWHERE);
 
-  const ready =
-    contentsKnown &&
-    canComplete({
-      task,
-      location,
-      lotNo: lotNo.data ?? null,
-      scannedLot,
-      contents: held,
-      confirmedNoRule,
-      hasWorker: worker !== null,
-    });
+  const ready = canComplete({
+    task,
+    location,
+    lotNo: lotNo.data ?? null,
+    scannedLot,
+    hasWorker: worker !== null,
+  });
 
   /*
    * 위치가 막혔다는 것을 소리로도 알린다(공유계약 D-2 · §6). 스캔은 단말을 허리에 매단 채
    * 하므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
    */
   const locationBlocked =
-    scanned !== null &&
-    ((byCode.isSuccess && byCode.data === null) ||
-      verdict === NOT_RECOMMENDED ||
-      mixProblem !== null);
+    scanned !== null && ((byCode.isSuccess && byCode.data === null) || verdict === NOT_ALLOWED);
 
   useEffect(() => {
     if (locationBlocked) {
@@ -182,18 +132,15 @@ export const PutawayScreen = () => {
    * 목록에서 고르는 창고(위치 라벨이 없다)는 고른 칸이 곧 표시라 접지 않는다.
    */
   /*
-   * ⭐ **막힌 판정이면 접지 않는다**(사용자 지정 2026-09-22) — 권장 위치가 아니거나 자리에 다른
-   *   품목·LOT 이 있으면 곧바로 다른 자리를 읽어야 하므로 칸을 그대로 둔다. 자리 내용을 아직
-   *   모르면(조회 중·실패) 판정이 서지 않았으니 역시 접지 않는다 — 접었다 다시 펼치는 깜빡임도 막는다.
+   * ⭐ **막힌 판정이면 접지 않는다**(사용자 지정 2026-09-22) — 둬도 되는 위치가 아니면 곧바로 다른
+   *   자리를 읽어야 하므로 칸을 그대로 둔다.
    */
-  const locationRejected = verdict === NOT_RECOMMENDED || mixProblem !== null;
   const scanResolved =
     task !== null &&
-    scansLocation(task) &&
+    scansLocation(task, locations.data) &&
     scanned !== null &&
     location !== null &&
-    contentsKnown &&
-    !locationRejected;
+    verdict !== NOT_ALLOWED;
 
   /*
    * [위치 재스캔] — 배너 안 오른쪽 버튼. [임시 위치 적재로 이동]과 같은 모양이다(사용자 지정
@@ -220,14 +167,12 @@ export const PutawayScreen = () => {
   const rescanLocation = () => {
     setScanned(null);
     setPickedId(null);
-    setConfirmedNoRule(false);
   };
 
   const clearScans = () => {
     setPickedId(null);
     setScanned(null);
     setScannedLot(null);
-    setConfirmedNoRule(false);
   };
 
   const locationField = useScanField({
@@ -235,7 +180,6 @@ export const PutawayScreen = () => {
       setScanned(value.trim());
       setScanSeq((seq) => seq + 1);
       setPickedId(null);
-      setConfirmedNoRule(false);
     },
   });
 
@@ -273,7 +217,7 @@ export const PutawayScreen = () => {
     inFlight.current = true;
     setSaveFailed(false);
 
-    const entry = toOutboxDraft(task, location, confirmedNoRule, new Date(), worker.workerNo);
+    const entry = toOutboxDraft(task, location, new Date(), worker.workerNo);
     const row = {
       key: entry.idempotencyKey,
       lotNo: lotNo.data ?? '',
@@ -344,18 +288,11 @@ export const PutawayScreen = () => {
     </dl>
   );
 
-  /*
-   * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이 읽을 수 없는
-   * 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
-   */
-  const ruleField = (each: PutawayTask) => (
+  /* 어디에 두는가 — 지시가 둬도 되는 위치를 코드로 싣는다. 비면 이 창고 어디든이다. */
+  const allowedField = (each: PutawayTask) => (
     <div>
-      <dt>{t.tasks.ruleLabel}</dt>
-      <dd>
-        {each.recommendedLocationId === null || each.recommendedLocationId === undefined
-          ? t.tasks.ruleNo
-          : t.tasks.ruleYes}
-      </dd>
+      <dt>{t.tasks.allowedLabel}</dt>
+      <dd>{allowedSummaryOf(each) ?? t.tasks.anywhere}</dd>
     </div>
   );
 
@@ -367,9 +304,7 @@ export const PutawayScreen = () => {
     task === null || ready
       ? undefined
       : !locationSettled
-        ? verdict === NO_RULE && mixProblem === null && !confirmedNoRule
-          ? t.locked.noRule
-          : t.locked.location
+        ? t.locked.location
         : !lotMatched
           ? t.locked.lot
           : undefined;
@@ -441,7 +376,7 @@ export const PutawayScreen = () => {
                     clearScans();
                   }}
                 >
-                  {taskFields(each, ruleField(each))}
+                  {taskFields(each, allowedField(each))}
                   <Icon name="chevron_right" size={24} className="putaway__chevron" />
                 </button>
               </li>
@@ -493,9 +428,13 @@ export const PutawayScreen = () => {
             details={
               <>
                 <p className="putaway__note">{`${t.tasks.taskNoLabel} ${task.putawayTaskNo}`}</p>
-                {/* 왜 이 자리인지를 함께 보이면 사람에게 판단할 근거가 생긴다. */}
-                {rule.data === undefined ? null : (
-                  <p className="putaway__note">{t.tasks.rule(String(rule.data.priorityNo))}</p>
+                {/* 둘 곳이 여럿이면 카드에는 첫 코드만 보인다 — 전부는 여기서 본다. */}
+                {task.allowedLocations.length < 2 ? null : (
+                  <p className="putaway__note">
+                    {t.tasks.allowedAll(
+                      task.allowedLocations.map((each) => each.locationCode).join(', '),
+                    )}
+                  </p>
                 )}
               </>
             }
@@ -508,11 +447,11 @@ export const PutawayScreen = () => {
                   : t.tasks.from(codeOf(task.fromLocationId))
               }
               to={
-                task.recommendedLocationId === null || task.recommendedLocationId === undefined
+                allowedSummaryOf(task) === null
                   ? undefined
-                  : t.tasks.recommended(codeOf(task.recommendedLocationId))
+                  : t.tasks.allowed(allowedSummaryOf(task) ?? '')
               }
-              missing={t.tasks.noRule}
+              missing={t.tasks.anywhere}
             />
           </TaskHeader>
 
@@ -542,7 +481,7 @@ export const PutawayScreen = () => {
              * 위치를 관리하는 창고는 라벨을 읽어야 오적치를 막는다. 목록 선택을 함께 열어 두면
              * 라벨을 읽지 않고 화면만 보고 적치가 끝난다.
              */}
-            {scansLocation(task) ? (
+            {scansLocation(task, locations.data) ? (
               scanResolved ? null : (
                 <>
                   <ScanZone
@@ -575,12 +514,18 @@ export const PutawayScreen = () => {
                   onChange={(value) => {
                     setScanned(null);
                     setPickedId(Number(value));
-                    setConfirmedNoRule(false);
                   }}
-                  options={locations.data.map((each) => ({
-                    value: String(each.locationId),
-                    label: `${each.locationCode} ${each.locationName}`,
-                  }))}
+                  /* 둘 곳이 정해져 있으면 그 중에서만 고른다 — 밖의 자리는 서버도 막는다. */
+                  options={locations.data
+                    .filter(
+                      (each) =>
+                        task.allowedLocations.length === 0 ||
+                        task.allowedLocations.some((one) => one.locationId === each.locationId),
+                    )
+                    .map((each) => ({
+                      value: String(each.locationId),
+                      label: `${each.locationCode} ${each.locationName}`,
+                    }))}
                 />
               </div>
             )}
@@ -593,7 +538,7 @@ export const PutawayScreen = () => {
                  *   다르다. 따로 떠 있던 위치 줄은 걷었다. 배너 안 버튼([위치 재스캔]·[임시 위치 적재로
                  *   이동])은 모두 글자와 같은 행 오른쪽에 같은 모양으로 선다.
                  */}
-                {verdict === MATCHED && mixProblem === null ? (
+                {verdict === MATCHED ? (
                   <AlertBanner
                     className={verdictClass(scanResolved)}
                     variant="success"
@@ -608,7 +553,7 @@ export const PutawayScreen = () => {
                  * 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두는 길은 다른 화면이 받는다 — 안내는
                  * 글로, 가는 길은 버튼으로 가른다(사용자 지정). 스캔 칸은 남아 있어 곧바로 다시 읽는다.
                  */}
-                {verdict === NOT_RECOMMENDED ? (
+                {verdict === NOT_ALLOWED ? (
                   <AlertBanner
                     className="putaway__verdict putaway__verdict--action"
                     variant="error"
@@ -620,77 +565,23 @@ export const PutawayScreen = () => {
                     }
                   >
                     <span className="putaway__verdict-line">
-                      {t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
+                      {t.verdict.notAllowed(allowedSummaryOf(task) ?? '')}
                     </span>
                     <span className="putaway__verdict-line">{t.verdict.temporary}</span>
                   </AlertBanner>
                 ) : null}
 
-                {/* 지금 그 자리에 있는 것과 부딪친다. 얹으면 다음 사람이 찾지 못한다. */}
-                {mixProblem === null ? null : (
+                {/* 둘 곳을 정하지 않은 품목 — 이 창고 어디든 둔다. 어디에 두었는지는 기록에 남는다. */}
+                {verdict === ANYWHERE ? (
                   <AlertBanner
-                    className="putaway__verdict putaway__verdict--action"
-                    variant="error"
+                    className={verdictClass(scanResolved)}
+                    variant="info"
                     title={t.location.scanned(location.locationCode, location.locationName)}
-                    action={
-                      <Button variant="outlined" size="lg" onClick={toTemporaryPutaway}>
-                        {t.verdict.temporaryMove}
-                      </Button>
-                    }
+                    action={scanResolved ? rescanButton : undefined}
                   >
-                    <span className="putaway__verdict-line">
-                      {mixProblem === MIXED_ITEM ? t.mix.item : t.mix.lot}
-                    </span>
-                    <span className="putaway__verdict-line">{t.mix.temporary}</span>
+                    {t.verdict.anywhere}
                   </AlertBanner>
-                )}
-
-                {/* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 한다. 확인을 받고 통과시킨다. */}
-                {verdict === NO_RULE && mixProblem === null ? (
-                  <>
-                    <AlertBanner
-                      className={verdictClass(scanResolved)}
-                      variant="warning"
-                      title={t.location.scanned(location.locationCode, location.locationName)}
-                      action={scanResolved ? rescanButton : undefined}
-                    >
-                      {t.verdict.noRule}
-                    </AlertBanner>
-                    <Button
-                      className="putaway__wide"
-                      variant={confirmedNoRule ? 'filled' : 'outlined'}
-                      size="xl"
-                      onClick={() => {
-                        setConfirmedNoRule(true);
-                      }}
-                    >
-                      {t.verdict.noRuleConfirm}
-                    </Button>
-                  </>
                 ) : null}
-
-                {/* 막지 않는다. 모르면 말하지 않는다 - 둘 중 하나가 비면 어긋났다 할 근거가 없다. */}
-                {!storageOff || location === null ? null : (
-                  <AlertBanner
-                    variant="warning"
-                    title={t.storageMismatch(
-                      displayNameOf(storageNames.data ?? [], itemCondition ?? ''),
-                      displayNameOf(storageNames.data ?? [], location.storageConditionCode ?? ''),
-                    )}
-                  />
-                )}
-
-                {/* 막지 않는다. 넘겨서 두는 판단은 자리를 보는 사람이 한다. */}
-                {overCapacity === null ? null : (
-                  <AlertBanner
-                    variant="warning"
-                    title={t.overCapacity(
-                      String(overCapacity.capacity),
-                      String(overCapacity.held),
-                      String(task.taskQty),
-                    )}
-                  />
-                )}
               </>
             )}
           </section>

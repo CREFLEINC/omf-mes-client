@@ -60,10 +60,12 @@ describe('versionToFormValues', () => {
 });
 
 describe('emptyVersionFormValues', () => {
-  it('모든 칸이 빈 폼을 만든다', () => {
-    const empty = emptyVersionFormValues();
+  /* 검사 방식만 전수검사로 시작한다(사용자 지시 · #208). */
+  it('검사 방식은 전수검사, 나머지 칸은 빈 폼을 만든다', () => {
+    const { samplingMethodCode, ...rest } = emptyVersionFormValues();
 
-    expect(Object.values(empty).every((value) => value === '')).toBe(true);
+    expect(samplingMethodCode).toBe('FULL_INSPECTION');
+    expect(Object.values(rest).every((value) => value === '')).toBe(true);
   });
 });
 

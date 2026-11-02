@@ -2,6 +2,7 @@ import { Chip, type Column, IconButton, Table, TextField } from '@crefle/web-ui'
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import type { LineDraft, SelectOption } from './types';
@@ -16,7 +17,6 @@ export interface LineTableProps {
   warnings: Record<string, string>;
   itemLookup: ReferenceSource;
   uomLookup: ReferenceSource;
-  itemOptions: SelectOption[];
   uomOptions: SelectOption[];
   /**
    * 표 전체가 잠겼는가. **나가는 중과 이미 등록한 뒤가 같은 잠금을 쓴다**(완료 조건 C19·C24).
@@ -58,7 +58,6 @@ export const LineTable = ({
   warnings,
   itemLookup,
   uomLookup,
-  itemOptions,
   uomOptions,
   isLocked = false,
   onPatch,
@@ -118,9 +117,9 @@ export const LineTable = ({
       header: t.lineTable.item,
       render: (row, rowIndex) =>
         row.sourceLineId === null ? (
-          <Select
+          <ItemSelect
             size="sm"
-            options={itemOptions}
+            includeInactive
             value={row.itemId === '' ? null : row.itemId}
             invalid={errorOf(row, 'itemId') !== undefined}
             disabled={isLocked}

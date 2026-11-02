@@ -1,4 +1,6 @@
-import type { components, ProductionOrderAutoPlan } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+type ProductionOrderAutoPlan = NonNullable<components['schemas']['ProductionOrderAutoPlan']>;
 
 type ProductionOrder = components['schemas']['ProductionOrder'];
 

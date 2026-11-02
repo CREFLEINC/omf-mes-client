@@ -414,7 +414,7 @@ export const useObservations = (
 };
 
 /**
- * 조건 축의 선택지 — **품목과 공정.**
+ * 조건 축의 선택지 — **공정.** 품목은 9천여 건이라 칸(`ItemSelect`)이 서버에서 쪽으로 받는다.
  *
  * ⭐ **이 화면이 소유한다.** 형제 화면(W-05-01)에도 같은 이름의 조회가 있지만 참조하지
  * 않는다 — 화면마다 무엇을 좁혀 부를지가 다르고, 한쪽을 고치면 다른 쪽이 조용히 따라간다.
@@ -423,7 +423,7 @@ export const useObservations = (
  */
 const useScopeLookup = (
   key: string,
-  path: '/mdm/items' | '/mdm/processes',
+  path: '/mdm/processes',
   toEntry: (row: never) => CodeOption,
 ): { entries: CodeOption[]; truncated: boolean; isError: boolean } => {
   const { client } = useApiClient();
@@ -444,16 +444,6 @@ const useScopeLookup = (
 };
 
 const NO_SCOPE_ENTRIES: CodeOption[] = [];
-
-export const useScopeItemLookup = () =>
-  useScopeLookup(
-    'items',
-    '/mdm/items',
-    (row: { itemId: number; itemCode: string; itemName: string }) => ({
-      value: String(row.itemId),
-      label: `${row.itemCode} · ${row.itemName}`,
-    }),
-  );
 
 export const useScopeProcessLookup = () =>
   useScopeLookup(

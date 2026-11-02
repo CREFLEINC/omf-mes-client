@@ -22,7 +22,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     goFirstPage: 'Về trang đầu',
     excelUpload: 'Tải lên Excel',
     addPlan: 'Thêm tiêu chuẩn',
-    approve: 'Phê duyệt',
     createVersion: 'Đăng ký phiên bản',
     newRevision: 'Phát hành phiên bản mới',
     confirm: 'Xác nhận',
@@ -38,16 +37,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actionReasons: {
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
     routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
-    approveAlreadyDone: 'Việc phê duyệt không thực hiện lại được với tiêu chuẩn đã phê duyệt.',
-    approveNeedsPlan: 'Việc phê duyệt chỉ thực hiện được sau khi đã đăng ký tiêu chuẩn.',
-    deactivateAlreadyDone:
-      'Việc ngừng sử dụng không thực hiện lại được với tiêu chuẩn đã ngừng dùng.',
-    deactivateNeedsPlan: 'Việc ngừng sử dụng chỉ thực hiện được sau khi đã đăng ký tiêu chuẩn.',
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     /* 작성중 판은 기준당 하나만 둔다(#196). */
-    newVersionBlockedByDraft: 'Đang có phiên bản đang soạn. Hãy xác nhận hoặc hủy soạn.',
+    newVersionBlockedByDraft: (planVersion: number): string =>
+      `Phiên bản ${String(planVersion)} đang được soạn. Hãy xác nhận hoặc hủy soạn.`,
     confirmNeedsDraft:
       'Việc xác nhận chỉ thực hiện được với phiên bản đang soạn. Muốn thay đổi thì hãy phát hành phiên bản mới.',
     /* 계약이 항목 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
@@ -92,10 +87,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Phiên bản đã hủy bỏ thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
-    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra này?',
-    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실을 먼저 밝힌다. */
-    approveDescription:
-      'Đã phê duyệt thì không hoàn tác được. Không có chức năng bỏ phê duyệt. Người phê duyệt và thời điểm phê duyệt do máy chủ ghi lại.',
     deactivateTitle: 'Ngừng sử dụng tiêu chuẩn kiểm tra này?',
     deactivateDescription:
       'Không xóa. Sau khi ngừng sử dụng thì không dùng tiêu chuẩn này cho lần kiểm tra mới được nữa.',
@@ -104,7 +95,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
     obsoleteTitle: 'Hủy bỏ phiên bản này?',
     obsoleteDescription:
-      'Không xóa. Sau khi hủy bỏ thì không dùng phiên bản này cho lần kiểm tra mới được nữa.',
+      'Phiên bản đã hủy bỏ không dùng được cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ.',
     discardTitle: 'Hủy phiên bản đang soạn này?',
     discardDescription:
       'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
@@ -131,7 +122,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
-    approved: 'Đã phê duyệt tiêu chuẩn kiểm tra.',
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
@@ -139,34 +129,51 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   import: {
     title: 'Tải lên Excel tiêu chuẩn kiểm tra',
-    partialWarningTitle: 'Việc tải lên không hoàn tác toàn bộ',
     partialWarning:
-      'Được áp dụng theo từng mã tiêu chuẩn. Tiêu chuẩn thành công được đăng ký, chỉ tiêu chuẩn thất bại được trả lại. Hãy kiểm tra tệp trước.',
-    draftNote:
-      'Sau khi tải lên, mỗi mã tiêu chuẩn có một phiên bản đang soạn. Tiêu chuẩn đã có sẽ tạo phiên bản mới từ phiên bản xác nhận mới nhất và điền hạng mục từ Excel. Việc xác nhận hãy làm trực tiếp trên màn hình.',
-    columnsNote:
-      'Đọc dòng đầu của trang tính đầu tiên làm tiêu đề. Cột bắt buộc: mã tiêu chuẩn · mã hạng mục · tên hạng mục. Cũng có thể tải lên nguyên tệp Bảng tiêu chuẩn kiểm tra (TCKT) — mỗi bảng thành một tiêu chuẩn.',
-    fileLabel: 'Tệp Excel tiêu chuẩn kiểm tra (.xlsx, có thể chọn nhiều)',
-    filePlaceholder: 'Chọn tệp',
-    fileNone: 'Chưa chọn tệp.',
+      'Khi tải lên, mỗi tiêu chuẩn tạo phiên bản mới và xác nhận ngay, không thể hủy hàng loạt.',
+    guideHeaderRow: 'Dòng đầu của trang tính thứ nhất được dùng làm tiêu đề.',
+    guideRequiredColumns: 'Cột bắt buộc: mã tiêu chuẩn, mã hạng mục, tên hạng mục',
+    guideTckt: 'Cũng có thể tải lên tệp Bảng tiêu chuẩn kiểm tra (TCKT) hiện có.',
+    fileLabel: 'Tệp Excel',
+    fileHint: '.xlsx · có thể chọn nhiều tệp',
+    filePlaceholder: 'Thêm tệp',
     fileRequired: 'Hãy chọn tệp cần tải lên trước.',
-    fileCount: (count: number): string => `Đã chọn ${String(count)} tệp.`,
+    fileCount: (count: number): string => `Đã chọn ${String(count)} tệp`,
     removeFile: (name: string): string => `Bỏ ${name}`,
     progress: (done: number, total: number): string =>
       `Đã xử lý ${String(done)}/${String(total)} tệp. Đừng đóng cửa sổ.`,
+    formatGuide: 'Hướng dẫn định dạng Excel',
     submit: 'Tải lên',
-    resultTitle: 'Kết quả tải lên',
-    succeeded: (count: number): string => `Đã áp dụng ${String(count)} tiêu chuẩn.`,
-    noneSucceeded: 'Không có tiêu chuẩn nào được áp dụng.',
-    failed: (count: number): string => `${String(count)} tiêu chuẩn thất bại.`,
-    allSucceeded: 'Không có tiêu chuẩn nào thất bại.',
-    fields: {
-      key: 'Mã tiêu chuẩn',
-      reason: 'Lý do',
+    retry: 'Thử lại tệp thất bại',
+    summary: (total: number, succeeded: number, failed: number): string =>
+      `Tổng ${String(total)} · Thành công ${String(succeeded)} · Thất bại ${String(failed)}`,
+    status: {
+      pending: 'Chờ',
+      running: 'Đang xử lý',
+      success: 'Thành công',
+      failed: 'Thất bại',
+      partial: 'Thất bại một phần',
+      unknown: 'Cần kiểm tra',
     },
+    criteriaCounts: (succeeded: number, failed: number): string =>
+      `Tiêu chuẩn thành công ${String(succeeded)} · thất bại ${String(failed)}`,
+    failureLine: (key: string, reason: string): string => `${key} · ${reason}`,
     keyUnknown: 'Không có mã tiêu chuẩn',
+    confirmFailed: (key: string, reason: string): string =>
+      `${key} · Đã tải lên nhưng chưa xác nhận được: ${reason}`,
+    partialNote:
+      'Có tiêu chuẩn đã thành công nên bỏ khỏi thử lại. Hãy tải riêng các tiêu chuẩn thất bại.',
+    unknownNote:
+      'Lỗi khi xử lý nên chưa xác nhận được kết quả. Một số tiêu chuẩn có thể đã được áp dụng nên bỏ khỏi thử lại. Hãy kiểm tra trong danh sách.',
+    confirmNote:
+      'Phiên bản chưa xác nhận vẫn ở trạng thái đang soạn. Hãy kiểm tra và xác nhận trong danh sách.',
   },
   filters: {
+    versionStatus: 'Chọn trạng thái',
+    versionStatusAll: 'Tất cả',
+    versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Đã hủy bỏ' },
+    chipVersionStatus: (label: string): string => `Trạng thái: ${label}`,
+    chipRemoveVersionStatus: 'Bỏ điều kiện trạng thái',
     searchLabel: 'Tìm tiêu chuẩn kiểm tra',
     searchPlaceholder: 'Nhập mã tiêu chuẩn hoặc tên tiêu chuẩn',
     searchClear: 'Xóa tìm kiếm tiêu chuẩn kiểm tra',
@@ -176,7 +183,13 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInspectionType: (label: string): string => `Loại kiểm tra: ${label}`,
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveInspectionType: 'Bỏ điều kiện loại kiểm tra',
-    chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
+    unapprovedOnly: 'Chưa phê duyệt',
+    chipRemoveUnapproved: 'Bỏ điều kiện chưa phê duyệt',
+    usageLabel: 'Sử dụng',
+    usageAll: 'Tất cả',
+    usageActive: 'Đang dùng',
+    usageInactive: 'Ngừng dùng',
+    usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     item: 'Mặt hàng',
     itemPlaceholder: 'Chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',
@@ -213,9 +226,19 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     editSettings: 'Sửa cài đặt phiên bản',
     tabItemsCount: (count: number): string => `Hạng mục kiểm tra ${String(count)}`,
     tabHistory: 'Lịch sử',
+    tabHistoryCount: (count: number): string => `Lịch sử ${String(count)}`,
+    tabDrawings: 'Bản vẽ',
+    tabDrawingsCount: (count: number): string => `Bản vẽ ${String(count)}`,
+    drawingsLoading: 'Đang tải bản vẽ',
+    drawingsNone: 'Chưa có bản vẽ',
+    drawingsNoneHint: 'Tải lên tệp Excel tiêu chuẩn (TCKT) thì bản vẽ được đính kèm cùng.',
+    drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
+    drawingPrev: 'Bản vẽ trước',
+    drawingNext: 'Bản vẽ sau',
     notSet: 'Chưa thiết lập',
   },
   listColumns: {
+    versionStatus: 'Trạng thái',
     item: 'Mặt hàng',
     approval: 'Trạng thái phê duyệt',
     active: 'Trạng thái sử dụng',
@@ -241,7 +264,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     changed: 'Thay đổi',
     same: 'Giống',
     hideSame: 'Ẩn hạng mục giống nhau',
-    sameVersion: 'Hãy chọn hai phiên bản khác nhau.',
     noItemDiff: 'Không có hạng mục kiểm tra nào thay đổi.',
     noItems: 'Cả hai phiên bản đều không có hạng mục kiểm tra.',
     yes: 'Có',
@@ -271,7 +293,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemRemoved: 'Xóa hạng mục',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: 'Chưa có lịch sử thay đổi',
-    noneDescription: 'Khi lưu · xác nhận · hủy bỏ phiên bản này, lịch sử sẽ hiện ở đây.',
+    noneDescription: 'Được ghi lại khi lưu · xác nhận · hủy bỏ phiên bản.',
     loading: 'Đang tải lịch sử thay đổi',
     range: '1 năm gần nhất',
   },
@@ -372,6 +394,10 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     automaticJudgment: 'Đánh giá tự động',
   },
   values: {
+    /* 공정 · 라우팅을 비운 선택지(사용자 시안 · #208). */
+    notSelected: 'Không chọn',
+    /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
+    codeInUseLocked: 'Không thể thay đổi mã đang được sử dụng.',
     defaultSkipNote: (inspectionTypeCode: string): string =>
       inspectionTypeCode === 'IQC'
         ? 'Khi bật, LOT nhập theo tiêu chuẩn này trở thành bình thường ngay mà không kiểm tra đầu vào. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'

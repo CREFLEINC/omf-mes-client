@@ -64,6 +64,8 @@ export const VersionCompareDialog = ({
     value: String(version.inspectionPlanVersionId),
     label: `${t.values.version(version.planVersion)} · ${resolveVersionStatus(version.statusCode).label}`,
   }));
+  /* 같은 버전끼리는 견줄 것이 없다 — 반대쪽에서 고른 버전은 선택지에서 뺀다. */
+  const optionsExcept = (id: number) => options.filter((option) => option.value !== String(id));
   const versionLabel = (id: number): string => {
     const version = versions.find((each) => each.inspectionPlanVersionId === id);
     return version === undefined ? '' : t.values.version(version.planVersion);
@@ -73,7 +75,6 @@ export const VersionCompareDialog = ({
   const failed = queries.find((query) => query.isError);
 
   const body = (): ReactNode => {
-    if (baseId === targetId) return <p className="field-note">{t.compare.sameVersion}</p>;
     if (failed !== undefined) {
       return (
         <LoadErrorBanner
@@ -236,7 +237,7 @@ export const VersionCompareDialog = ({
             <FieldLabel htmlFor={baseSelectId} label={t.compare.base} />
             <Select
               id={baseSelectId}
-              options={options}
+              options={optionsExcept(targetId)}
               value={String(baseId)}
               onChange={(value) => setBaseId(Number(value))}
             />
@@ -245,7 +246,7 @@ export const VersionCompareDialog = ({
             <FieldLabel htmlFor={targetSelectId} label={t.compare.target} />
             <Select
               id={targetSelectId}
-              options={options}
+              options={optionsExcept(baseId)}
               value={String(targetId)}
               onChange={(value) => setTargetId(Number(value))}
             />

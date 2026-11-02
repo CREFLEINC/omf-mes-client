@@ -1,9 +1,5 @@
-import { Button, Checkbox, Chip, Dialog, TextField, useToast } from '@crefle/web-ui';
-import type {
-  InspectionSheetLayoutCode,
-  InspectionSheetLotSlot,
-  InspectionSheetTemplate,
-} from '@omf-mes/api-client';
+import { Button, Checkbox, Chip, Dialog, Icon, TextField, useToast } from '@crefle/web-ui';
+import type { InspectionSheetLotSlot, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -21,14 +17,24 @@ import {
   toDraft,
   validateDraft,
 } from './draft';
-import { templateDetailPath, templateKeys } from './queries';
+import { TemplateBasicDialog, type TemplateBasics } from './basic-dialog';
+import { TemplateHistoryDialog } from './history-dialog';
+import { templateDetailPath, templateKeys, useTemplateHistory } from './queries';
+import { TemplateVersionCompareDialog } from './version-compare-dialog';
+import { TemplateVersionListDialog } from './version-list-dialog';
 import { StepEditor, StepList } from './step-editor';
+import { StructureFields } from './structure-fields';
 
 const t = messages.inspectionSheetTemplate;
 
 export interface TemplateEditorProps {
   /** 연 기준. null 이면 새 기준이다. */
   template: InspectionSheetTemplate | null;
+  /** 새 기준의 기본 정보 — 화면의 등록 팝업에서 고른 값(#208). 연 기준에는 쓰지 않는다. */
+  initialBasics?: TemplateBasics;
+  /** 연 기준과 같은 품목의 모든 버전 — 머리의 버전 고르기(검사 기준 탭과 같다 · #208). */
+  versions?: readonly InspectionSheetTemplate[];
+  onSelectVersion?: (inspectionSheetTemplateId: number) => void;
   /** 로그인 계정의 데이터 범위 사업부 — 새 기준의 사업부는 이 안에서 고른다. */
   businessUnitIds: readonly number[];
   businessUnitNames: ReadonlyMap<number, string>;
@@ -46,9 +52,9 @@ const STATUS_TONE: Record<string, 'info' | 'success' | 'idle'> = {
   OBSOLETE: 'idle',
 };
 
-/** 작성중·확정·폐기를 색과 글로 함께 가른다 — 목록과 상세 머리가 같은 표식을 쓴다. */
-export const TemplateStatusChip = ({ statusCode }: { statusCode: string }) => (
-  <Chip size="sm" status={STATUS_TONE[statusCode] ?? 'idle'}>
+/** 작성중·확정·폐기를 색과 글로 함께 가른다 — 목록과 상세 머리가 같은 표식을 쓴다(상태 칩 · 검사 기준 탭과 같다 · #208). */
+export const TemplateStatusChip = ({ statusCode, size }: { statusCode: string; size?: 'sm' }) => (
+  <Chip variant="status" size={size} status={STATUS_TONE[statusCode] ?? 'idle'}>
     {t.statuses[statusCode] ?? statusCode}
   </Chip>
 );
@@ -61,16 +67,13 @@ const splitLabel = (label: string): [string, string] => {
     : [label.slice(at + 2, -1), label.slice(0, at)];
 };
 
-const Required = () => (
-  <span className="inspection-sheet-template-required">{t.editor.required}</span>
-);
-
+/** 필수 표시 — 다른 화면과 같은 빨간 `*`(#208). 접근성 이름에 섞이지 않게 숨긴다. */
 /** 그 단계(이름·항목) 안에 칸 오류가 있나 — 단계 목록 표시와 저장 실패 때 단계를 여는 데 쓴다. */
 const stepInvalid = (step: StepDraft, errors: Record<string, string>): boolean =>
   Boolean(errors[`${step.stepCode}.name`]) ||
   step.items.some((item) => Boolean(errors[`${item.key}.code`] || errors[`${item.key}.name`]));
 
-type Picking = { kind: 'model' } | { kind: 'lot'; slot: InspectionSheetLotSlot } | null;
+type Picking = { kind: 'lot'; slot: InspectionSheetLotSlot } | null;
 
 /**
  * 검사표 기준 편집 — 작성중 판만 고친다. 확정·폐기 판은 읽기 전용이고 「새 판 만들기」로 복사한다(서버도 400 으로 막는다).
@@ -78,6 +81,9 @@ type Picking = { kind: 'model' } | { kind: 'lot'; slot: InspectionSheetLotSlot }
  */
 export const TemplateEditor = ({
   template,
+  initialBasics,
+  versions = [],
+  onSelectVersion,
   businessUnitIds,
   businessUnitNames,
   stepCode,
@@ -88,23 +94,38 @@ export const TemplateEditor = ({
   const { client } = useApiClient();
   const toast = useToast();
   const ids = {
-    status: useId(),
-    model: useId(),
-    bu: useId(),
-    layout: useId(),
+    version: useId(),
     material: useId(),
-    structure: useId(),
     remarks: useId(),
   };
   const pp = { name: useId(), power: useId(), motor: useId() };
 
-  const [draft, setDraft] = useState<TemplateDraft>(() =>
-    template === null ? emptyDraft(businessUnitIds[0] ?? null) : toDraft(template),
-  );
+  const [draft, setDraft] = useState<TemplateDraft>(() => {
+    if (template !== null) return toDraft(template);
+    const empty = emptyDraft(businessUnitIds[0] ?? null);
+    return initialBasics === undefined
+      ? empty
+      : { ...empty, ...initialBasics, steps: layoutSteps(initialBasics.formLayoutCode) };
+  });
   const [dirty, setDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [picking, setPicking] = useState<Picking>(null);
   const [confirming, setConfirming] = useState(false);
+  /* 새 기준의 「기본 정보 수정」 팝업 — 처음 고르는 팝업은 화면이 띄운다(뒤 상세를 바꾸지 않게 · #208). */
+  const [isBasicOpen, setIsBasicOpen] = useState(false);
+  const [isVersionListOpen, setIsVersionListOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  /* 작성 취소 · 폐기 확인 창, 「변경 이력」 창 — 검사 기준 탭과 같다(omf-all-around#214). */
+  const [transition, setTransition] = useState<'discard' | 'obsolete' | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const history = useTemplateHistory(template?.inspectionSheetTemplateId ?? null);
+  /* 같은 품목의 버전 — 높은 버전이 위. 받기 전에는 연 버전 하나로 둔다. */
+  const sortedVersions = [
+    ...(versions.length > 0 ? versions : template === null ? [] : [template]),
+  ].sort((left, right) => right.templateVersion - left.templateVersion);
+  /* 작성중 버전은 품목당 하나 — 있으면 새 버전을 만들지 않는다(검사 기준 탭과 같다 · #208). */
+  const draftVersion =
+    sortedVersions.find((version) => version.statusCode === 'DRAFT')?.templateVersion ?? null;
 
   const readOnly = template !== null && template.statusCode !== 'DRAFT';
   const patch = (next: Partial<TemplateDraft>) => {
@@ -176,8 +197,60 @@ export const TemplateEditor = ({
     },
   });
 
-  const saving = create.isSaving || update.isSaving || confirm.isSaving;
+  const obsolete = useMasterWrite<{ id: number }, InspectionSheetTemplate>({
+    request: ({ id }, headers) =>
+      client.POST('/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:obsolete', {
+        params: {
+          path: { inspectionSheetTemplateId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+      }),
+    etagPath: template === null ? null : templateDetailPath(template.inspectionSheetTemplateId),
+    invalidateKeys: [templateKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setTransition(null);
+      toast.show({ variant: 'success', description: t.editor.obsoleted });
+    },
+  });
+
+  /* 작성 취소는 버전을 지운다 — 지운 버전에 머물면 상세가 404 다. 남은 가장 높은 버전으로, 없으면 상세를 닫는다. */
+  const discard = useMasterWrite<{ id: number }, unknown>({
+    request: ({ id }, headers) =>
+      client.DELETE('/quality/inspection-sheet-templates/{inspectionSheetTemplateId}', {
+        params: {
+          path: { inspectionSheetTemplateId: id },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    // 계약이 이 경로에 If-Match 를 요구하지 않는다.
+    etagPath: null,
+    invalidateKeys: [templateKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setTransition(null);
+      const remaining = sortedVersions.find(
+        (version) => version.inspectionSheetTemplateId !== template?.inspectionSheetTemplateId,
+      );
+      if (remaining === undefined || onSelectVersion === undefined) onClose();
+      else onSelectVersion(remaining.inspectionSheetTemplateId);
+      toast.show({ variant: 'success', description: t.editor.discarded });
+    },
+  });
+
+  const saving =
+    create.isSaving || update.isSaving || confirm.isSaving || obsolete.isSaving || discard.isSaving;
+  /* 작성 취소 · 폐기의 실패는 그 확인 창 안에서 알린다 — 창이 열린 채라 뒤 배너는 보이지 않는다(#214). */
   const writeError = create.error ?? update.error ?? confirm.error;
+  const transitionWrite = transition === 'discard' ? discard : obsolete;
+  const closeTransition = () => {
+    setTransition(null);
+    obsolete.reset();
+    discard.reset();
+  };
 
   const save = () => {
     const found = validateDraft(draft);
@@ -192,40 +265,153 @@ export const TemplateEditor = ({
     else update.write({ id: template.inspectionSheetTemplateId, source: draft });
   };
 
-  const setLayout = (layout: InspectionSheetLayoutCode) =>
-    patch({ formLayoutCode: layout, steps: layoutSteps(layout, draft.steps) });
   const setStep = (next: StepDraft) =>
     patch({ steps: draft.steps.map((step) => (step.stepCode === next.stepCode ? next : step)) });
-
-  const scopeOptions = businessUnitIds.map((id) => ({
-    value: String(id),
-    label: businessUnitNames.get(id) ?? String(id),
-  }));
 
   const currentStep =
     draft.steps.find((step) => step.stepCode === stepCode) ??
     draft.steps.find((step) => step.enabled) ??
     draft.steps[0]!;
-  const readOnlyValue = (id: string, value: string) => (
-    <p id={id} className="inspection-sheet-template-readonly">
-      {value}
-    </p>
-  );
 
   return (
     <section className="pane inspection-sheet-template-editor" aria-label={t.editor.newHeading}>
-      <header className="inspection-sheet-template-head">
-        <h2 className="pane-title">
-          {template === null
-            ? t.editor.newHeading
-            : t.editor.heading(template.itemCode, template.templateVersion)}
-        </h2>
-        {template !== null && <TemplateStatusChip statusCode={template.statusCode} />}
-        {template !== null && (
-          <span className="inspection-sheet-template-muted">{template.itemName}</span>
-        )}
-      </header>
-      {readOnly && <p className="field-note">{t.editor.readOnly}</p>}
+      {/*
+       * 머리 상자 — 제목 · 판 · 상태 칩, 오른쪽 끝 상태 단추, 아래 이름표 값 줄(검사 기준 탭 상세와 같은 모양 · 사용자 지시 · #208).
+       * 모델 · 사업부 · 양식은 등록한 뒤에는 바꿀 수 없다 — 새 기준만 「기본 정보 수정」 팝업으로 고친다.
+       */}
+      <div className="inspection-standard-plan-head-card">
+        <div className="inspection-standard-plan-head">
+          <div className="inspection-standard-plan-chips">
+            <h2 className="pane-title">
+              {template === null ? t.editor.newHeading : t.editor.detailTitle}
+            </h2>
+          </div>
+          <div className="inspection-standard-plan-head-actions">
+            {template === null && (
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="edit" size={18} />}
+                onClick={() => setIsBasicOpen(true)}
+              >
+                {t.editor.editBasic}
+              </Button>
+            )}
+          </div>
+        </div>
+        <dl className="inspection-standard-facts-line inspection-sheet-template-facts">
+          {[
+            { label: t.editor.model, value: draft.itemLabel || '—' },
+            {
+              label: t.editor.businessUnit,
+              value:
+                draft.businessUnitId === null
+                  ? '—'
+                  : (businessUnitNames.get(draft.businessUnitId) ?? String(draft.businessUnitId)),
+            },
+            {
+              label: t.editor.layout,
+              value: t.layouts[draft.formLayoutCode] ?? draft.formLayoutCode,
+            },
+          ].map((fact) => (
+            <div key={fact.label}>
+              <dt className="field-label">{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      {/*
+       * 버전 줄 — 검사 기준 탭 상세와 같은 모양(사용자 지시 · #208): 버전 고르기 · 상태 · 버전 목록 · 버전 비교,
+       * 오른쪽 끝에 고른 버전의 일(확정) 또는 「새 버전 만들기」. 작성중 버전이 따로 있으면 새 버전은 만들지 않는다.
+       */}
+      {template !== null && (
+        <div className="inspection-standard-version-bar">
+          <div className="inspection-standard-version-bar-row">
+            <div className="field-cell wide-select">
+              <label className="field-label" htmlFor={ids.version}>
+                {t.versionBar.label}
+              </label>
+              <Select
+                id={ids.version}
+                options={sortedVersions.map((version) => ({
+                  value: String(version.inspectionSheetTemplateId),
+                  label: t.editor.versionChip(version.templateVersion),
+                }))}
+                value={String(template.inspectionSheetTemplateId)}
+                disabled={sortedVersions.length < 2 || onSelectVersion === undefined}
+                onChange={(value) => onSelectVersion?.(Number(value))}
+              />
+            </div>
+            <TemplateStatusChip statusCode={template.statusCode} />
+            <Button variant="outlined" onClick={() => setIsVersionListOpen(true)}>
+              {t.versionBar.openList}
+            </Button>
+            {/* 견줄 버전이 둘 이상일 때만 선다 — 쓸 수 없는 단추는 두지 않는다(검사 기준 탭과 같다). */}
+            {sortedVersions.length > 1 && (
+              <Button variant="outlined" onClick={() => setIsCompareOpen(true)}>
+                {t.versionBar.compare}
+              </Button>
+            )}
+            {/* 고른 버전에 변경 이력이 있을 때만 선다(검사 기준 탭과 같다 · #214). */}
+            {(history.data?.items.length ?? 0) > 0 && (
+              <Button variant="outlined" onClick={() => setIsHistoryOpen(true)}>
+                {t.editor.history}
+              </Button>
+            )}
+            <div className="inspection-standard-version-actions">
+              {/* 작성중 버전은 「작성 취소」, 확정 버전은 「폐기」 — 검사 기준 탭과 같은 자리(#214). */}
+              {!readOnly && (
+                <Button
+                  variant="outlined"
+                  disabled={saving}
+                  onClick={() => setTransition('discard')}
+                >
+                  {t.editor.discard}
+                </Button>
+              )}
+              {template.statusCode === 'CONFIRMED' && (
+                <Button
+                  variant="outlined"
+                  disabled={saving}
+                  onClick={() => setTransition('obsolete')}
+                >
+                  {t.editor.obsolete}
+                </Button>
+              )}
+              {!readOnly && (
+                <Button disabled={saving || dirty} onClick={() => setConfirming(true)}>
+                  {t.editor.confirm}
+                </Button>
+              )}
+              {readOnly && draftVersion === null && (
+                <Button
+                  leadingIcon={<Icon name="add" size={18} />}
+                  disabled={saving}
+                  loading={create.isSaving}
+                  onClick={() =>
+                    create.write({
+                      source: {
+                        ...draft,
+                        itemId: template.itemId,
+                        businessUnitId: template.businessUnitId,
+                      },
+                    })
+                  }
+                >
+                  {t.editor.copyAsNew}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 고칠 수 없는 버전 — 정보 아이콘 + 파란 바탕 한 줄 라벨(사용자 지시 2026-10-30). */}
+      {readOnly && (
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.editor.readOnly}
+        </p>
+      )}
       <SaveErrorBanner
         error={writeError}
         onReload={() => {
@@ -235,252 +421,176 @@ export const TemplateEditor = ({
         }}
       />
 
-      <h3 className="pane-subtitle">{t.editor.basicSection}</h3>
-      <div className="inspection-sheet-template-grid">
-        <div className="field-cell">
-          <span className="field-label">
-            {t.editor.model} {template === null && <Required />}
-          </span>
-          {template === null ? (
-            <div className="inspection-sheet-template-pick">
-              <span className="inspection-sheet-ellipsis" title={draft.itemLabel || undefined}>
-                {draft.itemLabel || '—'}
-              </span>
-              <Button variant="outlined" onClick={() => setPicking({ kind: 'model' })}>
-                {t.editor.pickModel}
-              </Button>
-            </div>
-          ) : (
-            readOnlyValue(ids.model, draft.itemLabel)
-          )}
-          {errors.item && <span className="field-error">{errors.item}</span>}
-        </div>
-        <div className="field-cell">
-          <label className="field-label" htmlFor={ids.bu}>
-            {t.editor.businessUnit} {template === null && <Required />}
-          </label>
-          {template === null ? (
-            scopeOptions.length === 0 ? (
-              <p className="field-error">{t.editor.noBusinessUnit}</p>
-            ) : (
-              <Select
-                id={ids.bu}
-                options={scopeOptions}
-                value={String(draft.businessUnitId ?? '')}
-                onChange={(value) => patch({ businessUnitId: Number(value) })}
+      {/* 상단 표시 정보 · LOT 표시 항목 · 검사 단계 및 항목을 한 상자에, 사이는 구분선(사용자 시안 2026-10-30). */}
+      <div className="inspection-sheet-template-body">
+        <section className="inspection-sheet-template-section">
+          <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
+          <div className="inspection-sheet-template-grid">
+            <div className="inspection-sheet-template-wide">
+              <TextField
+                fullWidth
+                label={t.editor.materialText}
+                id={ids.material}
+                value={draft.materialText}
+                placeholder={t.editor.materialPlaceholder}
+                maxLength={500}
+                disabled={readOnly}
+                onChange={(e) => patch({ materialText: e.target.value })}
               />
-            )
-          ) : (
-            readOnlyValue(
-              ids.bu,
-              businessUnitNames.get(template.businessUnitId) ?? String(template.businessUnitId),
-            )
-          )}
-        </div>
-        <div className="field-cell">
-          <label className="field-label" htmlFor={ids.layout}>
-            {t.editor.layout} {template === null && <Required />}
-          </label>
-          {template === null ? (
-            <Select
-              id={ids.layout}
-              options={(['OP', 'PP'] as const).map((code) => ({
-                value: code,
-                label: t.layouts[code] ?? code,
-              }))}
-              value={draft.formLayoutCode}
-              onChange={(value) => setLayout(value as InspectionSheetLayoutCode)}
-            />
-          ) : (
-            readOnlyValue(ids.layout, t.layouts[draft.formLayoutCode] ?? draft.formLayoutCode)
-          )}
-          {template === null && <span className="field-note">{t.editor.layoutNote}</span>}
-        </div>
-      </div>
-
-      <h3 className="pane-subtitle">{t.editor.headerSection}</h3>
-      <p className="field-note">{t.editor.headerNote}</p>
-      <div className="inspection-sheet-template-grid">
-        <TextField
-          label={t.editor.materialText}
-          id={ids.material}
-          value={draft.materialText}
-          maxLength={500}
-          disabled={readOnly}
-          onChange={(e) => patch({ materialText: e.target.value })}
-        />
-        <TextField
-          label={t.editor.structureText}
-          id={ids.structure}
-          value={draft.structureText}
-          maxLength={500}
-          disabled={readOnly}
-          onChange={(e) => patch({ structureText: e.target.value })}
-        />
-        <div className="field-cell inspection-sheet-template-check">
-          <Checkbox
-            checked={draft.rohsFlag}
-            disabled={readOnly}
-            onChange={(e) => patch({ rohsFlag: e.target.checked })}
-          >
-            {t.editor.rohsFlag}
-          </Checkbox>
-        </div>
-        {draft.formLayoutCode === 'PP' && (
-          <>
-            <TextField
-              label={t.editor.productNameText}
-              id={pp.name}
-              value={draft.productNameText}
-              maxLength={200}
-              disabled={readOnly}
-              onChange={(e) => patch({ productNameText: e.target.value })}
-            />
-            <TextField
-              label={t.editor.powerText}
-              id={pp.power}
-              value={draft.powerText}
-              maxLength={200}
-              disabled={readOnly}
-              onChange={(e) => patch({ powerText: e.target.value })}
-            />
-            <TextField
-              label={t.editor.motorText}
-              id={pp.motor}
-              value={draft.motorText}
-              maxLength={200}
-              disabled={readOnly}
-              onChange={(e) => patch({ motorText: e.target.value })}
-            />
-          </>
-        )}
-        <TextField
-          label={t.editor.remarks}
-          id={ids.remarks}
-          value={draft.remarks}
-          maxLength={500}
-          disabled={readOnly}
-          onChange={(e) => patch({ remarks: e.target.value })}
-        />
-      </div>
-
-      <h3 className="pane-subtitle">{t.editor.lotSection}</h3>
-      <p className="field-note">{t.editor.lotNote}</p>
-      <div className="inspection-sheet-template-lots">
-        {LOT_SLOTS.map((slot) => {
-          const sources = draft.lotSources.filter((source) => source.slotCode === slot);
-          return (
-            <div className="inspection-sheet-template-lot-row" key={slot}>
-              <span className="field-label">{t.slots[slot]}</span>
-              <ul className="inspection-sheet-template-chips">
-                {sources.length === 0 && (
-                  <li className="inspection-sheet-template-muted">{t.editor.noLotItem}</li>
-                )}
-                {sources.map((source) => {
-                  const [code, name] = splitLabel(source.label);
-                  const content = (
-                    <span className="inspection-sheet-template-chip" title={source.label}>
-                      <strong>{code}</strong>
-                      {name && <span className="inspection-sheet-template-muted">{name}</span>}
-                    </span>
-                  );
-                  return (
-                    <li key={source.itemId}>
-                      {readOnly ? (
-                        <Chip size="sm">{content}</Chip>
-                      ) : (
-                        <Chip
-                          size="sm"
-                          removeLabel={t.editor.removeLotItem(source.label)}
-                          onRemove={() =>
-                            patch({
-                              lotSources: draft.lotSources.filter(
-                                (row) => !(row.slotCode === slot && row.itemId === source.itemId),
-                              ),
-                            })
-                          }
-                        >
-                          {content}
-                        </Chip>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-              {!readOnly && (
-                <Button
-                  variant="outlined"
-                  aria-label={t.editor.addLotItem(t.slots[slot] ?? slot)}
-                  onClick={() => setPicking({ kind: 'lot', slot })}
-                >
-                  {t.editor.addLot}
-                </Button>
-              )}
             </div>
-          );
-        })}
-      </div>
+            <StructureFields
+              text={draft.structureText}
+              disabled={readOnly}
+              onChange={(structureText) => patch({ structureText })}
+            />
+            {/* OP향 양식은 RoHS 체크를 두지 않는다(사용자 지시 2026-10-30) — 값은 그대로 둔다. */}
+            {draft.formLayoutCode === 'PP' && (
+              <div className="field-cell inspection-sheet-template-check">
+                <Checkbox
+                  checked={draft.rohsFlag}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ rohsFlag: e.target.checked })}
+                >
+                  {t.editor.rohsFlag}
+                </Checkbox>
+              </div>
+            )}
+            {draft.formLayoutCode === 'PP' && (
+              <>
+                <TextField
+                  label={t.editor.productNameText}
+                  id={pp.name}
+                  value={draft.productNameText}
+                  maxLength={200}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ productNameText: e.target.value })}
+                />
+                <TextField
+                  label={t.editor.powerText}
+                  id={pp.power}
+                  value={draft.powerText}
+                  maxLength={200}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ powerText: e.target.value })}
+                />
+                <TextField
+                  label={t.editor.motorText}
+                  id={pp.motor}
+                  value={draft.motorText}
+                  maxLength={200}
+                  disabled={readOnly}
+                  onChange={(e) => patch({ motorText: e.target.value })}
+                />
+              </>
+            )}
+            {/* 비고는 글이 길다(500자) — 한 줄을 다 쓴다(#208). */}
+            <div className="inspection-sheet-template-wide">
+              <TextField
+                label={t.editor.remarks}
+                id={ids.remarks}
+                value={draft.remarks}
+                placeholder={t.editor.remarksPlaceholder}
+                maxLength={500}
+                disabled={readOnly}
+                fullWidth
+                onChange={(e) => patch({ remarks: e.target.value })}
+              />
+            </div>
+          </div>
+        </section>
 
-      <h3 className="pane-subtitle">{t.editor.stepSection}</h3>
-      {errors.steps && <p className="field-error">{errors.steps}</p>}
-      <div className="inspection-sheet-template-steps">
-        <StepList
-          steps={draft.steps}
-          selected={currentStep.stepCode}
-          isInvalid={(step) => stepInvalid(step, errors)}
-          onSelect={onStepChange}
-        />
-        <StepEditor
-          key={currentStep.stepCode}
-          step={currentStep}
-          readOnly={readOnly}
-          errors={errors}
-          onChange={setStep}
-        />
+        <section className="inspection-sheet-template-section">
+          <h3 className="pane-subtitle">{t.editor.lotSection}</h3>
+          <div className="inspection-sheet-template-lots">
+            {LOT_SLOTS.map((slot) => {
+              const sources = draft.lotSources.filter((source) => source.slotCode === slot);
+              return (
+                <div className="inspection-sheet-template-lot-row" key={slot}>
+                  <span className="inspection-sheet-template-lot-title">{t.slots[slot]}</span>
+                  <ul className="inspection-sheet-template-chips">
+                    {sources.length === 0 && (
+                      <li className="inspection-sheet-template-muted">{t.editor.noLotItem}</li>
+                    )}
+                    {sources.map((source) => {
+                      const [code, name] = splitLabel(source.label);
+                      const content = (
+                        <span className="inspection-sheet-template-chip" title={source.label}>
+                          <strong>{code}</strong>
+                          {name && <span className="inspection-sheet-template-muted">{name}</span>}
+                        </span>
+                      );
+                      return (
+                        <li key={source.itemId}>
+                          {readOnly ? (
+                            <Chip size="sm">{content}</Chip>
+                          ) : (
+                            <Chip
+                              size="sm"
+                              removeLabel={t.editor.removeLotItem(source.label)}
+                              onRemove={() =>
+                                patch({
+                                  lotSources: draft.lotSources.filter(
+                                    (row) =>
+                                      !(row.slotCode === slot && row.itemId === source.itemId),
+                                  ),
+                                })
+                              }
+                            >
+                              {content}
+                            </Chip>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {!readOnly && (
+                    <Button
+                      variant="outlined"
+                      leadingIcon={<Icon name="add" size={18} />}
+                      aria-label={t.editor.addLotItem(t.slots[slot] ?? slot)}
+                      onClick={() => setPicking({ kind: 'lot', slot })}
+                    >
+                      {t.editor.addLot}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="inspection-sheet-template-section">
+          <h3 className="pane-subtitle">{t.editor.stepSection}</h3>
+          {errors.steps && <p className="field-error">{errors.steps}</p>}
+          <div className="inspection-sheet-template-steps">
+            <StepList
+              /* 고칠 수 없는 버전은 쓰는 단계만 보인다(사용자 지시 2026-10-30). */
+              steps={readOnly ? draft.steps.filter((step) => step.enabled) : draft.steps}
+              selected={currentStep.stepCode}
+              isInvalid={(step) => stepInvalid(step, errors)}
+              onSelect={onStepChange}
+            />
+            <StepEditor
+              key={currentStep.stepCode}
+              step={currentStep}
+              readOnly={readOnly}
+              errors={errors}
+              onChange={setStep}
+            />
+          </div>
+        </section>
       </div>
 
       <div className="inspection-sheet-template-actions">
-        <p className="inspection-sheet-template-status" id={ids.status} role="status">
-          {!readOnly && dirty && t.editor.dirty}
-          {template !== null && !readOnly && dirty && ` ${t.editor.confirmBlocked}`}
-        </p>
-        <Button variant="text" onClick={onClose}>
+        {/* 「저장하지 않은 변경…」 안내는 두지 않는다 — 떠날 때 확인 창이 묻는다(사용자 지시 · #208). */}
+        {/* 닫기는 테두리 단추 — 검사 기준 탭의 「취소」와 같은 단계(#208). */}
+        <Button variant="outlined" onClick={onClose}>
           {t.editor.close}
         </Button>
-        {readOnly && template !== null && (
-          <Button
-            disabled={saving}
-            loading={create.isSaving}
-            onClick={() =>
-              create.write({
-                source: {
-                  ...draft,
-                  itemId: template.itemId,
-                  businessUnitId: template.businessUnitId,
-                },
-              })
-            }
-          >
-            {t.editor.copyAsNew}
-          </Button>
-        )}
         {!readOnly && (
-          <Button
-            variant={template === null ? undefined : 'outlined'}
-            disabled={saving}
-            loading={create.isSaving || update.isSaving}
-            onClick={save}
-          >
+          /* 저장은 채운 빨강 — 검사 기준 탭의 저장과 같다(사용자 지시 · #208). */
+          <Button disabled={saving} loading={create.isSaving || update.isSaving} onClick={save}>
             {t.editor.save}
-          </Button>
-        )}
-        {template !== null && !readOnly && (
-          <Button
-            aria-describedby={ids.status}
-            disabled={saving || dirty}
-            onClick={() => setConfirming(true)}
-          >
-            {t.editor.confirm}
           </Button>
         )}
       </div>
@@ -490,6 +600,7 @@ export const TemplateEditor = ({
           open
           onClose={() => setConfirming(false)}
           title={t.confirmDialog.title}
+          showCloseButton={false}
           footer={
             <>
               <Button variant="outlined" onClick={() => setConfirming(false)}>
@@ -509,20 +620,112 @@ export const TemplateEditor = ({
         </Dialog>
       )}
 
+      {transition !== null && template !== null && (
+        <Dialog
+          open
+          onClose={closeTransition}
+          title={transition === 'discard' ? t.discardDialog.title : t.obsoleteDialog.title}
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          footer={
+            <>
+              <Button variant="outlined" disabled={saving} onClick={closeTransition}>
+                {messages.common.cancel}
+              </Button>
+              <Button
+                disabled={saving}
+                loading={saving}
+                onClick={() => transitionWrite.write({ id: template.inspectionSheetTemplateId })}
+              >
+                {transition === 'discard' ? t.discardDialog.ok : t.obsoleteDialog.ok}
+              </Button>
+            </>
+          }
+        >
+          {/* 400 STATE_LOCKED · 409 잠금 충돌을 창 안에서 알린다. 「최신 불러오기」는 창을 닫고 상세를 다시 받게 한다. */}
+          <SaveErrorBanner error={transitionWrite.error} onReload={closeTransition} />
+          <p>
+            {(transition === 'discard' ? t.discardDialog : t.obsoleteDialog).body(
+              template.itemCode,
+              template.templateVersion,
+            )}
+          </p>
+        </Dialog>
+      )}
+
+      {isHistoryOpen && template !== null && (
+        <TemplateHistoryDialog
+          events={history.data?.items}
+          onClose={() => setIsHistoryOpen(false)}
+        />
+      )}
+
+      {isBasicOpen && (
+        <TemplateBasicDialog
+          initial={{
+            itemId: draft.itemId,
+            itemLabel: draft.itemLabel,
+            businessUnitId: draft.businessUnitId,
+            formLayoutCode: draft.formLayoutCode,
+          }}
+          businessUnitIds={businessUnitIds}
+          businessUnitNames={businessUnitNames}
+          onCancel={() => setIsBasicOpen(false)}
+          onConfirm={(basics) => {
+            setIsBasicOpen(false);
+            patch({
+              ...basics,
+              steps:
+                basics.formLayoutCode === draft.formLayoutCode
+                  ? draft.steps
+                  : layoutSteps(basics.formLayoutCode, draft.steps),
+            });
+            setErrors((prev) => ({ ...prev, item: '' }));
+          }}
+        />
+      )}
+
+      {isVersionListOpen && template !== null && (
+        <TemplateVersionListDialog
+          versions={sortedVersions}
+          selectedId={template.inspectionSheetTemplateId}
+          draftVersion={draftVersion}
+          onSelect={(id) => {
+            setIsVersionListOpen(false);
+            if (id !== template.inspectionSheetTemplateId) onSelectVersion?.(id);
+          }}
+          onClose={() => setIsVersionListOpen(false)}
+        />
+      )}
+
+      {isCompareOpen && template !== null && sortedVersions.length > 1 && (
+        <TemplateVersionCompareDialog
+          versions={sortedVersions}
+          /* 처음에는 연 버전을 비교 버전, 그 바로 아래 버전을 기준 버전으로 둔다(검사 기준 탭과 같다). */
+          initialTargetId={template.inspectionSheetTemplateId}
+          initialBaseId={
+            (sortedVersions.find((version) => version.templateVersion < template.templateVersion) ??
+              sortedVersions.find(
+                (version) =>
+                  version.inspectionSheetTemplateId !== template.inspectionSheetTemplateId,
+              ))!.inspectionSheetTemplateId
+          }
+          onClose={() => setIsCompareOpen(false)}
+        />
+      )}
+
       {picking !== null && (
         <ItemPickerDialog
           multiple={false}
+          compact
           showAvailability={false}
-          confirmLabel={picking.kind === 'model' ? t.editor.pickConfirm : t.editor.pickLotConfirm}
+          confirmLabel={t.editor.pickLotConfirm}
           onClose={() => setPicking(null)}
           onConfirm={([picked]) => {
             setPicking(null);
             if (picked === undefined) return;
             const label = `${picked.itemName} (${picked.itemCode})`;
-            if (picking.kind === 'model') {
-              patch({ itemId: picked.itemId, itemLabel: label });
-              setErrors((prev) => ({ ...prev, item: '' }));
-            } else if (
+            if (
               !draft.lotSources.some(
                 (row) => row.slotCode === picking.slot && row.itemId === picked.itemId,
               )

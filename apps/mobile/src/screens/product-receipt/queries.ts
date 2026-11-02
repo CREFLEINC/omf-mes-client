@@ -2,14 +2,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type {
-  HandlingUnit,
-  HandlingUnitContent,
-  Lot,
-  PutawayRule,
-  StockedCheck,
-  Warehouse,
-} from './receipt';
+import type { HandlingUnit, HandlingUnitContent, Lot, StockedCheck, Warehouse } from './receipt';
 
 const PAGE_SIZE = 200;
 
@@ -120,32 +113,27 @@ export const useLots = (lotIds: number[]): UseQueryResult<Map<number, Lot>> => {
 };
 
 /**
- * 이 품목이 이 창고에서 가야 할 자리를 정하는 규칙.
+ * 스캔한 위치의 보관 품목(서버 #901). 빈 목록이면 품목을 가리지 않는 위치다.
  *
- * 적치 지시는 입고 응답에서야 생긴다 - 스캔한 위치가 맞는지는 그 전에 알아야 하므로 규칙을
+ * 적치 지시는 입고 응답에서야 생긴다 - 스캔한 위치가 받는 품목인지는 그 전에 알아야 하므로 위치에
  * 직접 묻는다.
  */
-export const usePutawayRules = (
-  warehouseId: number | null,
-  itemId: number | null,
-): UseQueryResult<PutawayRule[]> => {
+export const useLocationItemIds = (locationId: number | null): UseQueryResult<number[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: ['product-receipt-putaway-rules', warehouseId, itemId] as const,
-    enabled: warehouseId !== null && itemId !== null,
+    queryKey: ['product-receipt-location-items', locationId] as const,
+    enabled: locationId !== null,
     queryFn: async () => {
-      if (warehouseId === null || itemId === null) {
-        throw new Error('창고와 품목을 정하기 전에는 적치 규칙을 조회하지 않습니다.');
+      if (locationId === null) {
+        throw new Error('위치를 스캔하기 전에는 보관 품목을 조회하지 않습니다.');
       }
 
       const data = await runRequest(() =>
-        client.GET('/logistics/putaway-rules', {
-          params: { query: { warehouseId, itemId, size: PAGE_SIZE } },
-        }),
+        client.GET('/mdm/locations/{locationId}/items', { params: { path: { locationId } } }),
       );
 
-      return data.items;
+      return data.items.map((each) => each.itemId);
     },
   });
 };

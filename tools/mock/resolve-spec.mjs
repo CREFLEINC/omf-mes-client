@@ -57,7 +57,9 @@ const serverBaselineSpecRoot = (baseline) => {
     const filePath = path.join(source, entry.file);
     if (!existsSync(filePath)) return true;
 
-    return createHash('sha256').update(readFileSync(filePath)).digest('hex') !== entry.generatedSha256;
+    return (
+      createHash('sha256').update(readFileSync(filePath)).digest('hex') !== entry.generatedSha256
+    );
   });
 
   if (mismatched.length > 0) {

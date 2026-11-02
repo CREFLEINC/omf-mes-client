@@ -1,10 +1,12 @@
 import { Button, TextField } from '@crefle/web-ui';
-import type { OqcSerialScan } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState, type FormEvent } from 'react';
 
 import { useSerialLookup } from './queries';
 import { requestsToOpen } from './serials';
+
+type OqcSerialScan = components['schemas']['OqcSerialScan'];
 
 const t = messages.oqcInspection.serials;
 /** 칸 모양 · 이름은 IQC · PQC 의 LOT 스캔과 같다(사용자 지시 2026-10-26 · #185) — 찾는 값은 지금처럼 시리얼 번호다. */

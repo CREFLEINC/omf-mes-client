@@ -1,4 +1,4 @@
-import type { TerminalWorkCounts } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -16,6 +16,8 @@ import { createTestQueryClient, jsonResponse, type StubFetch } from '../test/api
 import { FrequentScreensProvider, useRecordScreenVisit } from './frequent-screens';
 import { HomeAreaScreen, ShellHome } from './shell-home';
 import { WORK_COUNT_INTERVAL_MS } from './work-counts';
+
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
 
 const t = messages.shellHome;
 

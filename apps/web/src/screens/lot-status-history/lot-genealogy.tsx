@@ -1,5 +1,5 @@
 import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
-import type { AffectedProductionLots, InputMaterials, UsedSerials } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -13,6 +13,10 @@ import { LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { runRequest } from '../../patterns/request';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
+
+type AffectedProductionLots = components['schemas']['AffectedProductionLots'];
+type InputMaterials = components['schemas']['InputMaterials'];
+type UsedSerials = components['schemas']['UsedSerials'];
 
 const t = messages.lotGenealogy;
 const shared = messages.lotStatusHistory;

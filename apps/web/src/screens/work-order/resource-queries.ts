@@ -1,4 +1,4 @@
-import type { components, LineDefaultLocations } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -100,17 +100,17 @@ export const toWorkOrderProductionLineFact = (
   ...lineDefaultLocationsOf(productionLine),
 });
 
-/** 서버 선행 칸이라 생성 타입에 없다 — 없으면 비어 있는 것으로 본다. */
+type LineDefaultLocationKey =
+  'defaultWipLocationId' | 'defaultFgLocationId' | 'defaultScrapLocationId';
+
+/** 라인 기본 위치 셋 — 선택 칸이라 없으면 비어 있는 것으로 본다. */
 export const lineDefaultLocationsOf = (
-  source: object,
-): Required<{ [K in keyof LineDefaultLocations]: number | null }> => {
-  const value = source as LineDefaultLocations;
-  return {
-    defaultWipLocationId: value.defaultWipLocationId ?? null,
-    defaultFgLocationId: value.defaultFgLocationId ?? null,
-    defaultScrapLocationId: value.defaultScrapLocationId ?? null,
-  };
-};
+  source: Pick<ProductionLine, LineDefaultLocationKey>,
+): Record<LineDefaultLocationKey, number | null> => ({
+  defaultWipLocationId: source.defaultWipLocationId ?? null,
+  defaultFgLocationId: source.defaultFgLocationId ?? null,
+  defaultScrapLocationId: source.defaultScrapLocationId ?? null,
+});
 
 /**
  * 기본 위치 칸마다 보여 줄 창고 유형. 자재창고(MATERIAL)는 어느 칸에도 두지 않는다 — WIP 위치로

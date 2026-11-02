@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { emptyDraft, layoutSteps, toBody, validateDraft } from './draft';
+import {
+  composeStructure,
+  emptyDraft,
+  layoutSteps,
+  parseStructure,
+  toBody,
+  validateDraft,
+} from './draft';
 
 describe('검사표 기준 입력 모양', () => {
   it('양식의 단계를 모두 줄로 두고 꺼 둔다 — 서명은 기본으로 켜고, 이름은 두 언어로 채운다', () => {
@@ -47,7 +54,7 @@ describe('검사표 기준 입력 모양', () => {
               },
             ],
           }
-        : step,
+        : { ...step, enabled: false },
     );
 
     const body = toBody(draft);
@@ -64,9 +71,21 @@ describe('검사표 기준 입력 모양', () => {
     ]);
   });
 
+  it('새 기준은 공정검사1을 켜고 재료 기본 글을 채운 채로 시작한다(사용자 지시 2026-10-30)', () => {
+    const draft = emptyDraft(2);
+    expect(draft.materialText).toBe(
+      '프레임 및 기타 금속 부품은 통상 상태에서 위험하지 않은 재료를 사용하고 방청 처리함',
+    );
+    expect(draft.steps.filter((step) => step.enabled).map((step) => step.stepCode)).toEqual([
+      'PROCESS_1',
+    ]);
+  });
+
   it('모델·단계·항목 번호·항목 이름이 비면 칸 오류를 낸다', () => {
     const draft = emptyDraft(2);
-    expect(validateDraft(draft)).toMatchObject({
+    expect(
+      validateDraft({ ...draft, steps: draft.steps.map((step) => ({ ...step, enabled: false })) }),
+    ).toMatchObject({
       item: expect.any(String),
       steps: expect.any(String),
     });
@@ -88,5 +107,30 @@ describe('검사표 기준 입력 모양', () => {
       'k1.code',
       'k1.name',
     ]);
+  });
+});
+
+describe('구조 및 중량 칸 (사용자 지시 2026-10-30)', () => {
+  it('W · D · H · 중량을 한 글로 합치고 다시 칸으로 푼다', () => {
+    const text = composeStructure({ w: '300', d: '200', h: '150', weight: '2.3' });
+    expect(text).toBe('W 300 × D 200 × H 150 mm / 2.3 kg');
+    expect(parseStructure(text)).toEqual({ w: '300', d: '200', h: '150', weight: '2.3' });
+    expect(composeStructure({ w: '', d: '', h: '', weight: '1.5' })).toBe('1.5 kg');
+    expect(parseStructure('1.5 kg')).toEqual({ w: '', d: '', h: '', weight: '1.5' });
+    expect(parseStructure('')).toEqual({ w: '', d: '', h: '', weight: '' });
+  });
+
+  it('「2.3kg」처럼 띄어쓰기 없이 쓴 글도 칸으로 푼다', () => {
+    expect(parseStructure('2.3kg')).toEqual({ w: '', d: '', h: '', weight: '2.3' });
+    expect(parseStructure('w300 x d200 x h150mm/2.3kg')).toEqual({
+      w: '300',
+      d: '200',
+      h: '150',
+      weight: '2.3',
+    });
+  });
+
+  it('예전에 손으로 쓴 글은 칸으로 풀지 않는다', () => {
+    expect(parseStructure('강판 1.2t, 약 3kg')).toBeNull();
   });
 });

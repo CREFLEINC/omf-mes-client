@@ -1,8 +1,12 @@
+import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiClientProvider } from '../../patterns/api-context';
 import { pickRange } from '../../test/date-picker';
 import { FilterBar, type FilterBarProps } from './filter-bar';
 import type { PendingFilters } from './filters';
@@ -19,12 +23,28 @@ const applied: PendingFilters = {
   sourceCode: '',
 };
 
-const items = (): DispositionLookup => ({
-  entries: [{ value: '5001', label: 'SYNTH-ITEM-1 · 합성 품목', isActive: true }],
-  truncated: false,
-  isError: false,
-  isLoading: false,
-});
+const synthItem = { itemId: 5001, itemCode: 'SYNTH-ITEM-1', itemName: '합성 품목', isActive: true };
+
+/* 품목 칸(`ItemSelect`)은 펼칠 때 목록을, 고른 값의 이름은 상세를 서버에 묻는다. */
+const stubFetch = (request: Request): Promise<Response> => {
+  const isDetail = new URL(request.url).pathname === '/mdm/items/5001';
+  const body = isDetail
+    ? { item: synthItem }
+    : { items: [synthItem], page: { page: 1, size: 50, total: 1 } };
+  return Promise.resolve(
+    new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }),
+  );
+};
+
+const wrapperFor = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const apiClient = createApiClient({ baseUrl: 'http://test.invalid', fetch: stubFetch });
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
+    </QueryClientProvider>
+  );
+};
 
 const emptyLookup = (): DispositionLookup => ({
   entries: [],
@@ -41,14 +61,17 @@ const baseProps = (): FilterBarProps => ({
   applied,
   severity: emptyLookup(),
   status: emptyLookup(),
-  items: items(),
   onApply: vi.fn(),
   onReset: vi.fn(),
 });
 
 const renderBar = (overrides: Partial<FilterBarProps> = {}) => {
   const props = { ...baseProps(), ...overrides };
-  return { ...render(<FilterBar {...props} />), props, user: userEvent.setup() };
+  return {
+    ...render(<FilterBar {...props} />, { wrapper: wrapperFor() }),
+    props,
+    user: userEvent.setup(),
+  };
 };
 
 describe('FilterBar', () => {
@@ -73,7 +96,7 @@ describe('FilterBar', () => {
 
     await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-05');
     await user.click(screen.getByLabelText(t.fields.item));
-    await user.click(screen.getByRole('option', { name: 'SYNTH-ITEM-1 · 합성 품목' }));
+    await user.click(await screen.findByRole('option', { name: 'SYNTH-ITEM-1 · 합성 품목' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(props.onApply).toHaveBeenCalledWith({
@@ -94,12 +117,14 @@ describe('FilterBar', () => {
     expect(props.onReset).toHaveBeenCalledOnce();
   });
 
-  it('적용된 조건이 바뀌면 편집 중 값을 그것으로 맞춘다', () => {
+  it('적용된 조건이 바뀌면 편집 중 값을 그것으로 맞춘다', async () => {
     const props = baseProps();
-    const { rerender } = render(<FilterBar {...props} />);
+    const { rerender } = render(<FilterBar {...props} />, { wrapper: wrapperFor() });
 
     rerender(<FilterBar {...props} applied={{ ...applied, itemId: '5001' }} />);
 
+    /* 접힌 칸의 이름은 상세로 받아 온다 — 기다린다. */
+    expect(await screen.findByText('SYNTH-ITEM-1 · 합성 품목')).toBeInTheDocument();
     expect(screen.getByLabelText(t.fields.item)).toHaveTextContent('SYNTH-ITEM-1 · 합성 품목');
   });
 

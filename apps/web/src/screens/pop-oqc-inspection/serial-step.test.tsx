@@ -1,4 +1,4 @@
-import type { OqcSerialScan } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +8,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
 import type { SerialRow } from '../oqc-inspection/serials';
 import { PopSerialStep } from './serial-step';
+
+type OqcSerialScan = components['schemas']['OqcSerialScan'];
 
 /** P-04-06 검사한 시리얼(omf-all-around#68) — 스캐너로 찍고 OK/NG 를 누른다. */
 

@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
-import { toRatio, type MarkerDraft } from './layout-draft';
+import { toRatio, toShape, type MarkerDraft } from './layout-draft';
 
 /**
  * W-CO-08 이 다루는 모양들.
@@ -29,12 +29,8 @@ export interface LayoutView {
   markers: MarkerDraft[];
 }
 
-export interface LocationView {
-  locationId: number;
-  locationCode: string;
-  locationName: string;
-  isActive: boolean;
-}
+/** 위치 — 계약 모양 그대로. 계층(상위 · 단계 · 서버 역할)과 별칭을 Location 목록과 같은 부품이 읽는다. */
+export type LocationView = Location;
 
 const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
 
@@ -49,12 +45,6 @@ export const toLayoutView = (source: WarehouseLayout): LayoutView => ({
     locationId: marker.locationId,
     x: toRatio(marker.x),
     y: toRatio(marker.y),
+    ...toShape(marker),
   })),
-});
-
-export const toLocationView = (source: Location): LocationView => ({
-  locationId: source.locationId,
-  locationCode: source.locationCode,
-  locationName: source.locationName,
-  isActive: source.isActive,
 });

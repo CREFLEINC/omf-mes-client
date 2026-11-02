@@ -24,7 +24,6 @@ const WAREHOUSE = {
   warehouseCode: 'S230',
   warehouseName: '자재창고',
   warehouseTypeCode: 'MATERIAL',
-  managementLevelCode: 'LOCATION',
   isExternal: false,
   isDefect: false,
   isActive: true,
@@ -40,13 +39,6 @@ const location = (locationId: number, locationCode: string, isActive = true) => 
   parentLocationId: null,
   locationCode,
   locationName: `${locationCode} NAME`,
-  locationTypeCode: 'RACK',
-  qualityZoneCode: null,
-  storageConditionCode: null,
-  allowMixedItem: true,
-  allowMixedLot: true,
-  capacityQty: null,
-  capacityUomId: null,
   isActive,
 });
 

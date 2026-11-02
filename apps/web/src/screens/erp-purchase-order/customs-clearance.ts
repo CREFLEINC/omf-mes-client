@@ -1,19 +1,15 @@
-import type { ApiError } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import { purchaseOrderKeys } from './queries';
 
 const t = messages.erpPurchaseOrder;
 
 /**
- * 외자 발주 통관번호 받아오기(omf-all-around#206 · 서버 장부 P-143 · omf-mes-server#872).
- *
- * ⚠ **계약 사본에 없는 경로다.** 응답 모양을 이슈에서 여기에 손으로 옮기고, `openapi-fetch` 가 경로를 리터럴 타입으로
- * 요구하므로 이 경로만 받는 모양으로 클라이언트를 좁혀 본다(`erp-inbound/sync-tables.ts` 와 같은 길). 정본에 실리면 이
- * 타입과 좁힘을 지운다.
+ * 외자 발주 통관번호 받아오기(omf-all-around#206 · 서버 장부 P-143 · omf-mes-server#872 · 계약 server #913).
  *
  * 서버가 ERP 에서 통관번호를 받아 발주 라인에 저장한다. 끝나면 발주 상세를 다시 읽어 라인 칸에 보인다.
  */
@@ -25,31 +21,7 @@ export const CUSTOMS_RESULT = {
   multiple: 'MULTIPLE',
 } as const;
 
-export interface CustomsClearanceCandidate {
-  customsClearanceNo: string;
-  customsClearanceSeq: number;
-}
-
-export interface CustomsClearanceLineResult {
-  purchaseOrderLineId: number;
-  lineNo: number;
-  result: string;
-  customsClearanceNo: string | null;
-  customsClearanceSeq: number | null;
-  candidates: CustomsClearanceCandidate[];
-}
-
-export interface CustomsClearanceFetchResult {
-  purchaseOrderId: number;
-  lines: CustomsClearanceLineResult[];
-}
-
-interface CustomsClearanceClient {
-  POST: (
-    path: '/integration/erp-sync/purchase-orders/{purchaseOrderId}/customs-clearances:fetch',
-    init: { params: { path: { purchaseOrderId: number } } },
-  ) => Promise<ApiCallResult<CustomsClearanceFetchResult>>;
-}
+export type CustomsClearanceFetchResult = components['schemas']['CustomsClearanceFetchResult'];
 
 export const useFetchCustomsClearances = (): UseMutationResult<
   CustomsClearanceFetchResult,
@@ -58,12 +30,11 @@ export const useFetchCustomsClearances = (): UseMutationResult<
 > => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
-  const customsClient = client as unknown as CustomsClearanceClient;
 
   return useMutation({
     mutationFn: (purchaseOrderId: number) =>
       runRequest(() =>
-        customsClient.POST(
+        client.POST(
           '/integration/erp-sync/purchase-orders/{purchaseOrderId}/customs-clearances:fetch',
           { params: { path: { purchaseOrderId } } },
         ),

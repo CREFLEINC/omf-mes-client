@@ -1,5 +1,5 @@
 import { Button, useToast } from '@crefle/web-ui';
-import type { ItemInspectionLevel } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -12,6 +12,8 @@ import { toWebAccess } from '../../patterns/web-access';
 import { LevelDialog } from '../inspection-level/level-dialog';
 import { useLevelWrite } from '../inspection-level/level-write';
 import { inspectionLevelKeys, type Paged } from '../inspection-level/queries';
+
+type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 
 const t = messages.iqcInspection.detail.level;
 const levelNames = messages.inspectionLevel.levels;

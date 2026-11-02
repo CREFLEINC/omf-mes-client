@@ -28,7 +28,7 @@ const header = {
   orderDate: '2026-10-01',
   expectedReceiptDate: '2026-10-15',
   statusCode: 'REGISTERED',
-  /* 서버 #737 · 장부 P-67 — 계약에 없는 ERP 원본 칸. */
+  /* 서버 #737 · 장부 P-67 — ERP 원본 칸. */
   erpOrderTypeCode: 'SYN-OT1',
   erpPurchaseGroupCode: 'SYN-PG1',
   erpIoTypeCode: 'SYN-IO1',

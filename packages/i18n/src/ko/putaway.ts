@@ -1,10 +1,8 @@
 /**
  * M-01-05 적치·입고 완료 — 받아 둔 자재를 제자리에 두고 그 사실을 남긴다.
  *
- * 권장 위치가 있으면 그곳만 받는다. 다른 곳에 두면 다음 사람이 찾지 못한다.
- *
- * 권장이 없는 품목까지 막으면 미등록 품목이 적치 자체를 못 해 현장이 선다. 확인을 받고
- * 통과시키되 어디에 두었는지는 반드시 남긴다.
+ * 지시가 둬도 되는 위치(품목을 보관 품목으로 걸어 둔 위치)를 싣는다. 있으면 그 중 아무 데나 받고,
+ * 다른 곳에 두면 다음 사람이 찾지 못한다. 비면 이 창고 어디든 두되 어디에 두었는지는 반드시 남긴다.
  */
 export const putaway = {
   title: '적치·입고 완료',
@@ -23,7 +21,6 @@ export const putaway = {
     none: '받은 적치 지시가 없습니다',
     count: (count: string) => `적치 대기 ${count}건`,
     from: (code: string) => `현재 ${code}`,
-    recommended: (code: string) => `권장 위치 ${code}`,
     /*
      * 라벨과 눈으로 대조할 값이다. 지시 번호만으로는 무엇을 집는지 알 수 없다. 계약이 목록
      * 줄에 LOT 번호를 싣지 않아 지시 번호를 함께 둔다.
@@ -36,25 +33,23 @@ export const putaway = {
     itemNameLabel: '품목명',
     taskNoLabel: '지시 번호',
     qtyLabel: '수량',
-    /*
-     * 목록에서는 위치 코드를 아직 받지 못해 있고 없고만 말한다. 값 이름을 앞에 두면 다른
-     * 세 값과 같은 자리에서 읽혀, 무엇에 대한 있고 없음인지 다시 묻지 않아도 된다.
-     */
-    ruleLabel: '권장 위치',
-    ruleYes: '있음',
-    ruleNo: '없음',
-    hasRule: '권장 위치 있음',
-    /** 권장이 없는 것과 확인하지 못한 것은 다르다. 앞엣것만 이렇게 적는다. */
-    noRule: '권장 위치 없음',
-    /** 규칙이 왜 이 자리를 냈는지. 사람이 판단하려면 근거가 보여야 한다. */
-    rule: (priority: string) => `적치 규칙 우선순위 ${priority}`,
+    /** 둬도 되는 위치. 서버는 품목의 보관 위치(위치 「보관 품목」)로 계산한다. */
+    allowedLabel: '보관 위치',
+    /** 작업 카드의 가야 할 곳. */
+    allowed: (codes: string) => `보관 위치 ${codes}`,
+    /** 둘 곳이 여럿이면 카드에는 첫 코드와 나머지 수만. */
+    allowedMore: (first: string, rest: string) => `${first} 외 ${rest}곳`,
+    /** 「자세히」 — 둘 곳 전부. 이 중 아무 데나 둔다. */
+    allowedAll: (codes: string) => `보관 위치(아무 데나) ${codes}`,
+    /** 보관 위치를 정하지 않은 품목. */
+    anywhere: '창고 내 아무 위치',
     change: '다른 지시 고르기',
   },
   location: {
     legend: '적치 위치',
     scanLabel: '위치 코드 스캔',
     scanPlaceholder: '위치 라벨을 스캔하세요',
-    /** 위치를 관리하지 않는 창고에는 스캔할 라벨이 없어 목록에서 고른다. */
+    /** 「창고 전체」에는 스캔할 라벨이 없어 목록에서 고른다. */
     pickLabel: '적치 위치',
     pickPlaceholder: '위치를 고르세요',
     loading: '위치를 불러오는 중입니다',
@@ -86,27 +81,15 @@ export const putaway = {
   },
   verdict: {
     /** 판정(보조 정보) — 제목의 위치 아래에 선다. */
-    matched: '권장 위치와 일치합니다',
+    matched: '이 품목의 보관 위치입니다',
     temporary: '임시로 두어야 하면 임시 위치 적재로 갑니다',
     /** 임시로 두는 화면으로 가는 버튼 — 안내 문구와 갈라 둔다. */
     temporaryMove: '임시 위치 적재로 이동',
-    notRecommended: (recommended: string) => `권장 위치 ${recommended} 가 아닙니다`,
-    noRule: '관리 위치가 없는 품목입니다. 여기 적치합니까?',
-    noRuleConfirm: '여기 적치합니다',
+    /** 둘 곳 밖. 보관 위치는 위치 관리의 「보관 품목」에서 정한다. */
+    notAllowed: (allowed: string) => `이 품목의 보관 위치(${allowed})가 아닙니다`,
+    /** 보관 위치를 정하지 않은 품목 — 막지 않는다. */
+    anywhere: '보관 위치를 정하지 않은 품목입니다. 이 창고 어디든 둘 수 있습니다',
   },
-  mix: {
-    /** 한 품목만 받는 자리에 얹으면 그 재고는 다음 사람이 찾지 못한다. */
-    item: '이 위치는 단일 품목만 보관합니다',
-    lot: '이 위치는 단일 LOT 만 보관합니다',
-    /** 포화·혼적으로 막히면 임시로 두는 길이 설계에 따로 있다. */
-    temporary: '임시로 두어야 하면 임시 위치 적재로 갑니다',
-  },
-  /** 막지 않는다. 넘겨서 두는 판단은 자리를 보는 사람이 한다. */
-  overCapacity: (capacity: string, held: string, adding: string) =>
-    `수용량 ${capacity} · 현재 ${held} + ${adding}`,
-  /** 막지 않는다. 냉장 자리가 없어 상온에 두어야 하는 날이 있다. */
-  storageMismatch: (itemCondition: string, locationCondition: string) =>
-    `품목은 ${itemCondition} 보관인데 이 위치는 ${locationCondition} 입니다`,
   /** 건별로 저장하고 마지막에 한 번 마친다. 연속 작업이라 매 건 화면을 끝내면 손이 더 간다. */
   record1: '이 지시 적치',
   /**
@@ -115,7 +98,6 @@ export const putaway = {
    */
   locked: {
     location: '위치 라벨을 스캔하면 진행합니다',
-    noRule: '관리 위치가 없는 품목이면 「여기 적치」를 누르세요',
     lot: '자재 LOT 라벨을 스캔하면 진행합니다',
   },
   done: {

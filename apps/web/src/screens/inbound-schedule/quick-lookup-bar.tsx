@@ -8,7 +8,6 @@ import type { ScheduleFilters } from './filters';
 import { resolveScannedItem } from './lookups';
 import type { PeriodInput } from './period';
 import { SelectField } from './select-field';
-import type { SelectOption } from './types';
 
 const t = messages.inboundSchedule;
 
@@ -19,9 +18,6 @@ export interface QuickLookupBarProps {
   today: string;
   /** 기본 기간(오늘 앞뒤 2주). 「오늘 도착」을 풀면 여기로 돌아간다. */
   fallbackPeriod: PeriodInput;
-  supplierOptions: SelectOption[];
-  /** 공급업체 선택지의 한계(잘림·실패) 안내. */
-  supplierNote?: string;
   onApply: (period: PeriodInput, filters: ScheduleFilters) => void;
 }
 
@@ -48,18 +44,7 @@ export interface QuickLookupHandle {
 }
 
 export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>(
-  (
-    {
-      appliedPeriod,
-      appliedFilters,
-      today,
-      fallbackPeriod,
-      supplierOptions,
-      supplierNote,
-      onApply,
-    },
-    ref,
-  ) => {
+  ({ appliedPeriod, appliedFilters, today, fallbackPeriod, onApply }, ref) => {
     const { client } = useApiClient();
     const scanNoteId = useId();
     const scanRef = useRef<HTMLInputElement>(null);
@@ -130,12 +115,12 @@ export const QuickLookupBar = forwardRef<QuickLookupHandle, QuickLookupBarProps>
         <SelectField
           wide
           label={t.quick.supplier}
-          options={[{ value: '', label: t.filters.all }, ...supplierOptions]}
+          partners
+          options={[{ value: '', label: t.filters.all }]}
           value={appliedFilters.supplier}
           onChange={(value) => {
             if (value !== appliedFilters.supplier) apply({ supplier: value });
           }}
-          {...(supplierNote === undefined ? {} : { note: supplierNote })}
         />
 
         <div className="field-cell wide-select">

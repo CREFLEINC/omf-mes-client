@@ -29,6 +29,8 @@ export const codeLockMessage = (editability: Editability): string | null => {
     case 'SYSTEM_OWNED':
       // 그룹 전체가 잠기는 사유라 참조 건수와 무관하다(omf-mes-server#45).
       return t.systemOwned(null);
+    case 'AUTO_ISSUED':
+      return t.autoIssued(null);
     case 'EDITABLE':
       // 잠긴 것은 확실하나 사유가 특정되지 않았다. 사유를 지어내지 않는다.
       return t.locked;

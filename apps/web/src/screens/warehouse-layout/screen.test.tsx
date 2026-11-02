@@ -1,3 +1,4 @@
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -9,7 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { DRAWING_MAX_BYTES } from './layout-draft';
+import { DEFAULT_MARKER_SHAPE, DRAWING_MAX_BYTES } from './layout-draft';
 import { WarehouseLayoutScreen } from './screen';
 
 /**
@@ -21,6 +22,7 @@ import { WarehouseLayoutScreen } from './screen';
  */
 
 const t = messages.warehouseLayout;
+const wl = messages.warehouseLocation;
 
 const WAREHOUSE_ID = 12;
 const LAYOUT_PATH = `/mdm/warehouses/${String(WAREHOUSE_ID)}/layout`;
@@ -44,6 +46,9 @@ interface MarkerSeed {
   locationId: number;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
 }
 
 interface LayoutSeed {
@@ -62,15 +67,39 @@ interface PutRecord {
   body: ReplaceBody;
 }
 
-const LOCATION_ROWS = [
-  { locationId: 7, locationCode: 'SYN-LOC-07', locationName: '합성 위치 가', isActive: true },
-  { locationId: 8, locationCode: 'SYN-LOC-08', locationName: '합성 위치 나', isActive: true },
+type LocationSeed = components['schemas']['Location'];
+
+const locationSeed = (
+  locationId: number,
+  locationCode: string,
+  extra: Partial<LocationSeed> = {},
+): LocationSeed => ({
+  locationId,
+  warehouseId: WAREHOUSE_ID,
+  parentLocationId: null,
+  locationCode,
+  locationName: `${locationCode} 위치`,
+  aliasName: null,
+  locationLevelCode: 'ZONE',
+  systemRoleCode: null,
+  isActive: true,
+  isLeaf: true,
+  hasItemRestriction: false,
+  ...extra,
+});
+
+const LOCATION_ROWS: LocationSeed[] = [
+  locationSeed(7, 'SYN-LOC-07', { locationName: '합성 위치 가' }),
+  locationSeed(8, 'SYN-LOC-08', { locationName: '합성 위치 나' }),
 ];
 
 const listBody = (items: unknown[]) => ({
   items,
   page: { page: 1, size: 20, total: items.length },
 });
+
+/** 크기 · 회전을 빼고 저장한 표식에 서버가 채우는 값(#930). 화면이 새로 찍는 기본값보다 작다. */
+const SERVER_MARKER_SHAPE = { width: 0.05, height: 0.05, rotation: 0 };
 
 const layoutResponse = (seed: LayoutSeed): Response =>
   jsonResponse(
@@ -79,7 +108,8 @@ const layoutResponse = (seed: LayoutSeed): Response =>
       ...(seed.drawingAttachmentId === null
         ? {}
         : { drawingAttachmentId: seed.drawingAttachmentId }),
-      markers: seed.markers,
+      /* 서버는 크기 · 회전을 늘 싣는다 — 시드가 생략하면 서버 기본값으로 채운다(#930). */
+      markers: seed.markers.map((marker) => ({ ...SERVER_MARKER_SHAPE, ...marker })),
     },
     { headers: { ETag: seed.etag } },
   );
@@ -125,7 +155,7 @@ interface Script {
   /** 배치도 조회가 차례로 돌려줄 값. 모자라면 마지막 것을 되풀이한다. */
   layouts: LayoutSeed[];
   /** 이 창고의 위치들. 주지 않으면 둘을 준다 — **0건도 실재하는 창고 상태다.** */
-  locations?: typeof LOCATION_ROWS;
+  locations?: LocationSeed[];
   /** 도면 내용 응답. 주지 않으면 PNG 바이트를 돌려준다. */
   content?: () => Response | Promise<Response>;
   upload?: () => Response | Promise<Response>;
@@ -138,6 +168,7 @@ const renderScreen = (script: Script) => {
   const uploads: string[] = [];
   const puts: PutRecord[] = [];
   const contentGets: Request[] = [];
+  const warehouseGets: Request[] = [];
   const putResponders = script.puts ?? [];
 
   const at = <T,>(list: T[], index: number): T => list[Math.min(index, list.length - 1)] as T;
@@ -145,8 +176,9 @@ const renderScreen = (script: Script) => {
   const routes: StubRoute[] = [
     {
       match: (request) => request.method === 'GET' && pathOf(request) === WAREHOUSES_PATH,
-      respond: () =>
-        jsonResponse(
+      respond: (request) => {
+        warehouseGets.push(request);
+        return jsonResponse(
           listBody([
             {
               warehouseId: WAREHOUSE_ID,
@@ -155,7 +187,8 @@ const renderScreen = (script: Script) => {
               isActive: true,
             },
           ]),
-        ),
+        );
+      },
     },
     {
       match: (request) => request.method === 'GET' && pathOf(request) === LOCATIONS_PATH,
@@ -219,7 +252,7 @@ const renderScreen = (script: Script) => {
     route: ROUTE,
   });
 
-  return { ...view, user, layoutGets, uploads, puts, contentGets };
+  return { ...view, user, layoutGets, uploads, puts, contentGets, warehouseGets };
 };
 
 /** 배치도가 도착할 때까지 — 도착해야 판과 액션 줄이 선다. */
@@ -307,6 +340,184 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
 });
 
+/*
+ * 위치 목록은 창고·Location 의 Location 목록과 같은 계층이다(사용자 지시 2026-10-30) — 처음엔 구역만 펼쳐 랙까지,
+ * 펼치기 · 접기, 「구분」 열(서버가 만든 위치는 역할 이름), 고른 위치를 도면에 찍기.
+ */
+const TREE_ROWS: LocationSeed[] = [
+  locationSeed(1, 'Z01', { aliasName: 'A구역', isLeaf: false }),
+  locationSeed(7, 'Z01-R001', { parentLocationId: 1, locationLevelCode: 'RACK', isLeaf: false }),
+  locationSeed(9, 'Z01-R001-L01', { parentLocationId: 7, locationLevelCode: 'LEVEL' }),
+  locationSeed(3, 'SYS-STAGING', { locationName: 'STAGING', systemRoleCode: 'PUTAWAY_STAGING' }),
+];
+
+const locationTable = (): HTMLElement =>
+  within(screen.getByRole('region', { name: t.panes.locations })).getByRole('table');
+
+const rowOf = (code: string): HTMLElement => {
+  const row = locationButton(code).closest('tr');
+  if (row === null) throw new Error(`${code} 줄이 없습니다.`);
+  return row;
+};
+
+describe('W-CO-08 창고 배치도 — 조건 상자', () => {
+  it('⭐ 창고·Location 과 같은 조건으로 창고를 걸러 고른다 — 창고 등록 단추는 없다', async () => {
+    const { user, warehouseGets } = renderScreen({ layouts: [withDrawing([])] });
+
+    await loaded();
+    expect(screen.queryByRole('button', { name: wl.actions.addWarehouse })).toBeNull();
+
+    await user.type(screen.getByRole('searchbox', { name: wl.filters.searchLabel }), 'SYN');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(
+        warehouseGets.some((request) => new URL(request.url).searchParams.get('q') === 'SYN'),
+      ).toBe(true);
+    });
+    /* 고른 창고와 그 위치 계층은 그대로다. */
+    expect(locationButton('SYN-LOC-07')).toBeInTheDocument();
+  });
+});
+
+describe('W-CO-08 창고 배치도 — 위치 계층', () => {
+  it('⭐ 처음엔 구역만 펼쳐 랙까지 보이고, 펼치면 층이 나온다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing([])], locations: TREE_ROWS });
+
+    await loaded();
+    await screen.findByText('Z01-R001');
+
+    expect(within(locationTable()).queryByText('Z01-R001-L01')).toBeNull();
+
+    await user.click(
+      within(rowOf('Z01-R001')).getByRole('button', { name: wl.locationTable.expand }),
+    );
+    expect(within(locationTable()).getByText('Z01-R001-L01')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: wl.locationTable.collapseAll }));
+    expect(within(locationTable()).queryByText('Z01-R001')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: wl.locationTable.expandAll }));
+    expect(within(locationTable()).getByText('Z01-R001-L01')).toBeInTheDocument();
+  });
+
+  it('⭐ 「구분」 열이 단계 이름을 — 서버가 만든 위치는 역할 이름을 — 보인다', async () => {
+    renderScreen({ layouts: [withDrawing([])], locations: TREE_ROWS });
+
+    await loaded();
+    await screen.findByText('Z01-R001');
+
+    expect(within(rowOf('Z01')).getByText(wl.values.locationLevels.ZONE)).toBeInTheDocument();
+    expect(within(rowOf('Z01-R001')).getByText(wl.values.locationLevels.RACK)).toBeInTheDocument();
+    expect(
+      within(rowOf('SYS-STAGING')).getByText(wl.values.systemRoles.PUTAWAY_STAGING),
+    ).toBeInTheDocument();
+    /* 이름은 별칭이 먼저다 — Location 목록과 같다. */
+    expect(within(rowOf('Z01')).getByText('A구역')).toBeInTheDocument();
+  });
+
+  it('⭐ 펼친 하위를 고르면 도면에 찍을 대상이 된다 — 펼치기 단추는 고르지 않는다', async () => {
+    const { user, puts } = renderScreen({ layouts: [withDrawing([])], locations: TREE_ROWS });
+
+    await loaded();
+    await screen.findByText('Z01-R001');
+
+    await user.click(
+      within(rowOf('Z01-R001')).getByRole('button', { name: wl.locationTable.expand }),
+    );
+    expect(locationButton('Z01-R001')).not.toHaveAttribute('aria-current');
+
+    await user.click(locationButton('Z01-R001-L01'));
+    expect(locationButton('Z01-R001-L01')).toHaveAttribute('aria-current', 'true');
+
+    stubBoardRect(board());
+    fireEvent.click(board(), { clientX: 140, clientY: 80 });
+
+    expect(within(rowOf('Z01-R001-L01')).getByText(t.locations.onMap)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.map.save }));
+    await waitFor(() => {
+      expect(puts).toHaveLength(1);
+    });
+    /* 새로 찍은 표식은 기본 모양으로 실린다. */
+    expect(puts[0]?.body.markers).toEqual([
+      { locationId: 9, x: 0.5, y: 0.5, ...DEFAULT_MARKER_SHAPE },
+    ]);
+  });
+});
+
+describe('W-CO-08 창고 배치도 — 표식 크기 · 회전', () => {
+  const shapeGroup = (): HTMLElement => screen.getByRole('group', { name: t.map.shape });
+
+  it('⭐ 서버 기본 크기 · 회전을 그대로 보인다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+
+    expect(within(shapeGroup()).getByLabelText(t.map.width)).toHaveValue(5);
+    expect(within(shapeGroup()).getByLabelText(t.map.height)).toHaveValue(5);
+    expect(within(shapeGroup()).getByLabelText(t.map.rotation)).toHaveValue(0);
+  });
+
+  it('응답의 크기 · 회전을 그대로 보인다 — 판의 표식도 그 크기로 돈다', async () => {
+    const { user } = renderScreen({
+      layouts: [
+        withDrawing([{ locationId: 7, x: 0.4, y: 0.5, width: 0.2, height: 0.1, rotation: 30 }]),
+      ],
+    });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+
+    expect(within(shapeGroup()).getByLabelText(t.map.width)).toHaveValue(20);
+    expect(within(shapeGroup()).getByLabelText(t.map.rotation)).toHaveValue(30);
+
+    const marker = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+    expect(marker.style.width).toBe('20%');
+    expect(marker.style.transform).toContain('rotate(30deg)');
+  });
+
+  it('⭐ 크기 · 회전을 바꾸면 저장 본문에 실린다', async () => {
+    const { user, puts } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+
+    const width = within(shapeGroup()).getByLabelText(t.map.width);
+    const rotation = within(shapeGroup()).getByLabelText(t.map.rotation);
+    await user.clear(width);
+    await user.type(width, '24');
+    await user.clear(rotation);
+    await user.type(rotation, '370');
+
+    await user.click(screen.getByRole('button', { name: t.map.save }));
+    await waitFor(() => {
+      expect(puts).toHaveLength(1);
+    });
+    /* 회전은 0 이상 360 미만으로 접어 보낸다 — 서버 범위 밖이면 400 이다. */
+    expect(puts[0]?.body.markers).toEqual([
+      {
+        locationId: 7,
+        x: 0.1,
+        y: 0.2,
+        width: 0.24,
+        height: SERVER_MARKER_SHAPE.height,
+        rotation: 10,
+      },
+    ]);
+  });
+
+  it('표식이 없는 위치를 고르면 크기 · 회전 칸이 없다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-08'));
+
+    expect(screen.queryByRole('group', { name: t.map.shape })).toBeNull();
+  });
+});
+
 describe('W-CO-08 창고 배치도 — 도면 보이기', () => {
   it('⭐ 도면 내용을 받아 blob 주소로 그린다 — 화면을 떠나면 그 주소를 되돌려준다', async () => {
     const { contentGets, unmount } = renderScreen({ layouts: [withDrawing()] });
@@ -387,8 +598,9 @@ describe('W-CO-08 창고 배치도 — 도면 올리기', () => {
     await loaded();
     await user.upload(fileInput(), pngFile());
 
-    /* 점 개수를 창이 말한다 — 「무엇이 어긋날 수 있는가」가 수로 보여야 판단할 수 있다. */
-    expect(await screen.findByText(t.map.replaceDrawingLead(2))).toBeInTheDocument();
+    /* 창은 제목과 대상(고른 파일)만 — 설명 본문은 없다. */
+    const dialog = await screen.findByRole('dialog', { name: t.map.replaceDrawingTitle });
+    expect(within(dialog).getByText('layout.png')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.map.cancel }));
 
@@ -579,7 +791,7 @@ describe('W-CO-08 창고 배치도 — 올리는 동안', () => {
     });
 
     await loaded();
-    expect(screen.getByText(t.locations.empty)).toBeInTheDocument();
+    expect(screen.getByText(t.locations.emptyTitle)).toBeInTheDocument();
 
     await user.upload(fileInput(), pngFile());
 
@@ -807,8 +1019,6 @@ describe('W-CO-08 창고 배치도 — 실패가 서는 자리', () => {
     expect(overwrite).toBeInTheDocument();
     /* ⛔ 「방금 실패한 저장을 다시」로 읽히는 말이 이 갈래에 남아 있으면 안 된다. */
     expect(screen.queryByRole('button', { name: t.map.retrySaveDrawing })).toBeNull();
-    /* 무엇을 덮는지 버튼 바로 옆에 적혀 있다. */
-    expect(screen.getByText(t.map.overwriteDrawingNote)).toBeInTheDocument();
     expect(puts).toHaveLength(1);
 
     await user.click(overwrite);
@@ -845,7 +1055,6 @@ describe('W-CO-08 창고 배치도 — 실패가 서는 자리', () => {
     const retry = await screen.findByRole('button', { name: t.map.retrySaveDrawing });
 
     expect(screen.queryByRole('button', { name: t.map.overwriteDrawing })).toBeNull();
-    expect(screen.queryByText(t.map.overwriteDrawingNote)).toBeNull();
 
     await user.click(retry);
 

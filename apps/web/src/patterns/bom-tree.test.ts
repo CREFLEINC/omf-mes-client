@@ -38,6 +38,7 @@ const part = (
   lotTraceRequired: false,
   backflushAllowed: false,
   sequenceNo,
+  erpChildItemSeq: null,
 });
 
 /**

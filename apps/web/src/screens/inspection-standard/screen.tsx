@@ -18,16 +18,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useInspectionDrawings } from '../../patterns/inspection-drawings';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { usePageHub } from '../../patterns/page-hub';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
   PaneHeightSplitter,
+  QUALITY_STANDARD_ORIENTATION_KEY,
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
 import { runRequest, toApiError } from '../../patterns/request';
+import { serverReasonOf } from '../../patterns/server-reason';
 import { itemKeys } from '../item-extended-attrs/item-queries';
 import {
   DATA_TYPE_CODE_GROUP,
@@ -56,13 +59,18 @@ import { LoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';
-import { ImportDialog, type ImportOutcome } from './import-dialog';
+import {
+  type ConfirmFailure,
+  ImportDialog,
+  type ImportOutcome,
+  type InspectionPlanImportResult,
+  importStatusOf,
+} from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
-  formatApprovedAt,
   isSamePlanValues,
   planToFormValues,
   toPlanCreate,
@@ -77,6 +85,8 @@ import {
   useInspectionItemSpecs,
   useInspectionPlanDetail,
   useInspectionPlanList,
+  useLatestVersionStatuses,
+  usePlanUsageCounts,
   useInspectionPlanVersionDetail,
   useInspectionPlanVersionList,
   useCodeValueOptions,
@@ -87,6 +97,7 @@ import {
   useProcessOptions,
   useRoutingOptions,
   useUomOptions,
+  useVersionHistory,
   versionDetailPath,
   versionKeys,
   type InspectionItemSpecListResponse,
@@ -110,6 +121,8 @@ import {
 } from './version-mappers';
 import type { CompareLabels } from './version-compare';
 import { VersionCompareDialog } from './version-compare-dialog';
+import { UsageChips, usageOf, withUsage } from './usage-chips';
+import { VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
@@ -122,11 +135,6 @@ type InspectionPlanVersionDetailResponse =
 
 const t = messages.inspectionStandard;
 const hubText = messages.common.inspectionHub;
-
-/**
- * 좌우 · 상하 배치 — 품질 기준 정보 탭 묶음이 같은 고름을 쓴다(검사 조회·판정과 같은 방식 · omf-all-around#196).
- */
-const QUALITY_STANDARD_ORIENTATION_KEY = 'omf-mes:quality-standard-hub:split-orientation';
 
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
 interface PlanFormState {
@@ -205,6 +213,20 @@ const useVersionTransition = ({
   });
 
 /**
+ * 두 칸에 함께 걸리는 오류(뒤바뀜 · 짝 채우기)는 한쪽만 고쳐도 둘 다 걷는다 —
+ * 고친 칸만 걷으면 짝 칸에 지난 오류가 남는다(#208).
+ */
+const PAIRED_FIELDS: readonly (readonly [string, string])[] = [
+  ['effectiveFrom', 'effectiveTo'],
+  ['frequencyIntervalValue', 'frequencyIntervalUomCode'],
+  ['lowerLimit', 'upperLimit'],
+];
+
+const withPairedFields = (changed: string[]): string[] => [
+  ...new Set(changed.flatMap((key) => PAIRED_FIELDS.find((pair) => pair.includes(key)) ?? [key])),
+];
+
+/**
  * W-06-02 컨테이너 — 기준 목록 → 버전 목록 → 기준·버전·항목을 3단으로 놓는다.
  *
  * **배치는 W-06-01(Routing)과 같은 3단이다.** 착수 이슈 #12가 「버전 마스터 형 골격을 그대로
@@ -246,13 +268,19 @@ export const InspectionStandardScreen = () => {
   const selectedPlanId = Number(searchParams.get('plan') ?? '') || null;
 
   const planList = useInspectionPlanList(filters, page, pageSize);
+  const usageCounts = usePlanUsageCounts(filters, hub !== null);
 
   /** 엑셀 올리기 창. `null` 이면 닫혀 있다 — 파일과 결과는 창이 닫히면 함께 버린다. */
   const [importState, setImportState] = useState<{
     files: File[];
     outcomes: ImportOutcome[];
   } | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  /** 올리는 중인 파일과 진행. 올리는 중이 아니면 null */
+  const [importProgress, setImportProgress] = useState<{
+    running: File;
+    done: number;
+    total: number;
+  } | null>(null);
   const queryClient = useQueryClient();
 
   /**
@@ -262,47 +290,81 @@ export const InspectionStandardScreen = () => {
    *    있는 기준이면 신규 버전이 둘 선다. 서버가 묶음을 차례로 넣는 것과 같은 이유다.
    * ⛔ 파일마다 새 멱등 키를 쓴다 — `File` 은 값 지문에서 `{}` 가 되어, 키를 이어 쓰면 다른 파일에
    *    앞 파일의 결과가 되돌아온다.
+   * ⛔ 대상은 아직 안 올린 파일과 서버에 남은 것이 없는 실패 파일뿐이다(#208) — 반영된 파일은 다시 보내지 않는다.
    * ⚠ 생성된 타입이 `file: string` 이다(openapi-typescript 가 `format: binary` 를 문자열로 옮긴다).
    *    실제로 보낼 것은 `FormData` 라 단언을 여기 한 곳에 가둔다 — 경계 문자열은 브라우저가 정한다.
    */
-  const runImport = async (files: File[]): Promise<void> => {
-    setIsImporting(true);
-    const outcomes: ImportOutcome[] = [];
-    for (const file of files) {
+  const runImport = async (files: File[], previous: ImportOutcome[]): Promise<void> => {
+    const targets = files.filter((file) => {
+      const outcome = previous.find((item) => item.file === file);
+      return outcome === undefined || importStatusOf(outcome) === 'failed';
+    });
+    let outcomes = previous.filter((item) => files.includes(item.file));
+    for (const [done, file] of targets.entries()) {
+      setImportProgress({ running: file, done, total: targets.length });
+      let outcome: ImportOutcome;
       const form = new FormData();
       form.append('file', file);
       try {
-        const result = await runRequest(() =>
+        const result = (await runRequest(() =>
           client.POST('/quality/inspection-plans:import', {
             params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
             body: form as unknown as { file: string },
           }),
-        );
-        outcomes.push({ fileName: file.name, result, error: null });
+        )) as InspectionPlanImportResult;
+        /*
+         * 올린 기준은 바로 확정한다(사용자 승인 · #208) — 서버가 만든 작성중 버전마다 확정을 차례로 부른다.
+         * 확정에 실패하면 그 버전은 작성중으로 남기고 사유를 파일 줄에 적는다.
+         */
+        const confirmFailures: ConfirmFailure[] = [];
+        for (const created of result.created ?? []) {
+          try {
+            await runRequest(() =>
+              client.POST('/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm', {
+                params: {
+                  path: { inspectionPlanVersionId: created.inspectionPlanVersionId },
+                  header: { 'Idempotency-Key': createIdempotencyKey() },
+                },
+              }),
+            );
+          } catch (cause) {
+            confirmFailures.push({
+              key: created.key,
+              reason: serverReasonOf(toApiError(cause)) ?? messages.httpError.description,
+            });
+          }
+        }
+        outcome = { file, result, error: null, confirmFailures };
       } catch (cause) {
         // 한 파일이 거절돼도 나머지는 올린다 — 이유는 그 파일 자리에 남긴다.
-        outcomes.push({ fileName: file.name, result: null, error: toApiError(cause) });
+        outcome = { file, result: null, error: toApiError(cause), confirmFailures: [] };
       }
-      const done = [...outcomes];
-      setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: done }));
+      // 다시 올린 파일은 앞 결과를 새 결과로 바꾼다.
+      outcomes = [...outcomes.filter((item) => item.file !== file), outcome];
+      const next = outcomes;
+      setImportState((prev) => (prev === null ? prev : { ...prev, outcomes: next }));
     }
     // 새 기준·새 버전이 생긴다 — 목록과 버전 목록을 함께 다시 받는다.
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: planKeys.all }),
       queryClient.invalidateQueries({ queryKey: versionKeys.all }),
     ]);
-    setIsImporting(false);
+    setImportProgress(null);
 
-    // 오류가 없으면 창을 닫고 알린다. 하나라도 실패·거절이면 사유를 봐야 하므로 창을 남긴다.
-    const hasError = outcomes.some(
-      (outcome) => outcome.result === null || outcome.result.failed.length > 0,
-    );
-    if (!hasError) {
+    // 모든 파일이 성공하면 창을 닫고 알린다. 하나라도 실패·일부 실패면 사유를 봐야 하므로 창을 남긴다.
+    const allSucceeded = files.every((file) => {
+      const outcome = outcomes.find((item) => item.file === file);
+      return outcome !== undefined && importStatusOf(outcome) === 'success';
+    });
+    if (allSucceeded) {
       setImportState(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     }
   };
   const plans = planList.data?.items ?? [];
+  const latestVersionStatusOf = useLatestVersionStatuses(
+    plans.map((plan) => plan.inspectionPlanId),
+  );
 
   const planDetail = useInspectionPlanDetail(selectedPlanId);
 
@@ -392,32 +454,6 @@ export const InspectionStandardScreen = () => {
   });
 
   /**
-   * 승인 — **`If-Match`를 싣지 않는다.** 계약이 이 경로에 낙관적 잠금을 두지 않았다.
-   * 상세 경로를 주면 토큰을 찾지 못했을 때 요청을 보내지 않고 멈춰
-   * 「눌러도 아무 일이 없다」가 된다.
-   *
-   * **본문이 없다.** 승인자와 승인 시각은 서버가 함께 기록한다 — 화면이 보내지 않는다.
-   * 응답에 `ETag`가 없으므로 성공하면 상세를 무효화해 재조회가 새 토큰을 확보하게 한다.
-   */
-  const approveWrite = useMasterWrite<void, InspectionPlan>({
-    request: (_variables, headers) =>
-      client.POST('/quality/inspection-plans/{inspectionPlanId}:approve', {
-        params: {
-          path: { inspectionPlanId: selectedPlanId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
-        },
-      }),
-    etagPath: null,
-    invalidateKeys: [planKeys.all],
-    // 액션에는 입력칸이 없다 — 인라인으로 낼 자리가 없어 서버 오류는 전부 배너로 간다.
-    knownFields: [],
-    onSuccess: () => {
-      setPlanAction(null);
-      toast.show({ variant: 'success', description: t.result.approved });
-    },
-  });
-
-  /**
    * 사용 중지 — 같은 기준에 걸리는 액션인데도 **`If-Match`를 요구한다.**
    * 승인과 규약이 다르다(계약 실측). 여기에 `null`을 주면 서버가 거부한다.
    */
@@ -442,11 +478,15 @@ export const InspectionStandardScreen = () => {
   });
 
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = planAction === 'deactivate' ? deactivateWrite : approveWrite;
+  const planActionWrite = deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
   const selectedVersionId = Number(searchParams.get('ver') ?? '') || null;
+  /* 고른 버전의 변경 이력 — 「변경 이력」 단추를 이력이 있을 때만 세운다(#208). 창 · 탭과 같은 조회라 한 번만 나간다. */
+  const versionHistory = useVersionHistory(selectedVersionId);
+  /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
+  const versionDrawings = useInspectionDrawings(selectedVersionId);
 
   /**
    * 버전 등록 폼의 값. null이면 폼이 닫혀 있다.
@@ -564,6 +604,8 @@ export const InspectionStandardScreen = () => {
       setVersionFormState((prev) =>
         prev === null ? prev : { ...prev, baseline: next, values: next },
       );
+      /* 「버전 설정 수정」 창은 저장으로 할 일이 끝난다 — 열어 두면 저장이 된 건지 헷갈린다. */
+      setIsVersionEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -771,7 +813,6 @@ export const InspectionStandardScreen = () => {
   const resetPlanEditing = () => {
     planWrite.reset();
     createWrite.reset();
-    approveWrite.reset();
     deactivateWrite.reset();
     setPlanAction(null);
     setFormState(null);
@@ -885,7 +926,7 @@ export const InspectionStandardScreen = () => {
   const handleChangeVersionCreateValues = (patch: Partial<VersionFormValues>) => {
     setVersionCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
 
-    for (const field of Object.keys(patch)) {
+    for (const field of withPairedFields(Object.keys(patch))) {
       versionCreateWrite.clearFieldError(field);
       setVersionCreateFieldErrors((prev) => {
         if (!(field in prev)) return prev;
@@ -913,7 +954,7 @@ export const InspectionStandardScreen = () => {
       prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
     );
 
-    for (const field of Object.keys(patch)) {
+    for (const field of withPairedFields(Object.keys(patch))) {
       versionWrite.clearFieldError(field);
       setVersionFieldErrors((prev) => {
         if (!(field in prev)) return prev;
@@ -1064,30 +1105,6 @@ export const InspectionStandardScreen = () => {
   const optionsFor = (lookup: LookupResult, selected: string) =>
     selectableOptions(lookup, selected);
 
-  /**
-   * 승인·사용 중지를 막는 사유. 서버가 최종 판정을 하지만(400·403·409)
-   * 이미 끝난 액션은 화면이 먼저 막고 **왜 못 하는지** 알린다.
-   *
-   * 아직 등록하지 않은 기준에는 액션을 걸 대상 자체가 없다 — 감추지 않고 사유와 함께 비활성으로 둔다.
-   */
-  const savedPlan = planDetail.data?.inspectionPlan ?? null;
-
-  const approveDisabledReason = ((): string | null => {
-    if (createValues !== null || savedPlan === null) return t.actionReasons.approveNeedsPlan;
-    if (formatApprovedAt(savedPlan.approvedAt) !== null) return t.actionReasons.approveAlreadyDone;
-
-    return null;
-  })();
-
-  const deactivateDisabledReason = ((): string | null => {
-    if (createValues !== null || savedPlan === null) return t.actionReasons.deactivateNeedsPlan;
-    if (!savedPlan.isActive) return t.actionReasons.deactivateAlreadyDone;
-
-    return null;
-  })();
-
-  const isPlanActionRunning = approveWrite.isSaving || deactivateWrite.isSaving;
-
   /*
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
@@ -1095,7 +1112,7 @@ export const InspectionStandardScreen = () => {
   const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty;
 
   /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
-  const hasDraftVersion = versions.some((version) => {
+  const draftVersion = versions.find((version) => {
     const view = resolveVersionStatus(version.statusCode);
     return view.isRecognized && view.status === 'draft';
   });
@@ -1104,7 +1121,10 @@ export const InspectionStandardScreen = () => {
     ? t.actionReasons.newVersionBlockedByUnsaved
     : null;
   /* 작성중 버전이 있으면 발행 단추 대신 안내 문구만 둔다(사용자 지시 · #196). */
-  const newRevisionNotice = hasDraftVersion ? t.actionReasons.newVersionBlockedByDraft : null;
+  const newRevisionNotice =
+    draftVersion === undefined
+      ? null
+      : t.actionReasons.newVersionBlockedByDraft(draftVersion.planVersion);
 
   /**
    * 확정을 막는 사유. 서버가 최종 판정을 하지만(400 `STATE_LOCKED`·`LINE_REQUIRED`),
@@ -1218,7 +1238,11 @@ export const InspectionStandardScreen = () => {
   const renderVersionBar = (): ReactNode => (
     <VersionBar
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
-      onHistory={selectedVersionId === null ? undefined : () => setIsHistoryOpen(true)}
+      onHistory={
+        selectedVersionId === null || (versionHistory.data?.items.length ?? 0) === 0
+          ? undefined
+          : () => setIsHistoryOpen(true)
+      }
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
       versionActions={
@@ -1268,56 +1292,31 @@ export const InspectionStandardScreen = () => {
     />
   );
 
-  const renderPlanActions = (): ReactNode => (
-    <>
-      {approveDisabledReason === null ? (
-        <div className="field-cell">
-          <Button
-            variant="outlined"
-            disabled={isPlanActionRunning}
-            onClick={() => {
-              approveWrite.reset();
-              setPlanAction('approve');
-            }}
-          >
-            {t.actions.approve}
-          </Button>
-        </div>
-      ) : (
-        <DisabledAction label={t.actions.approve} reason={approveDisabledReason} />
-      )}
-
-      {deactivateDisabledReason === null ? (
-        <div className="field-cell form-actions-secondary">
-          <Button
-            variant="outlined"
-            disabled={isPlanActionRunning}
-            onClick={() => {
-              deactivateWrite.reset();
-              setPlanAction('deactivate');
-            }}
-          >
-            {messages.common.deactivate}
-          </Button>
-        </div>
-      ) : (
-        <DisabledAction
-          label={messages.common.deactivate}
-          reason={deactivateDisabledReason}
-          className="form-actions-secondary"
-        />
-      )}
-    </>
-  );
-
   /**
    * 우 상단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
-  const renderPlanPane = () => {
-    if (createValues !== null) {
-      return (
+  /** 「기준 추가」 창 — 등록 폼을 팝업으로 연다(사용자 지시 · #208). 취소 · 닫기는 입력을 버린다. */
+  const renderPlanCreateDialog = (): ReactNode => {
+    if (createValues === null) return null;
+
+    const closeCreate = () => {
+      createWrite.reset();
+      setCreateValues(null);
+      setCreateFieldErrors({});
+    };
+
+    return (
+      <Dialog
+        open
+        size="lg"
+        closeOnBackdropClick={false}
+        showCloseButton={false}
+        title={t.detail.createTitle}
+        onClose={closeCreate}
+      >
         <PlanPane
+          embedded
           mode="create"
           plan={null}
           values={createValues}
@@ -1335,17 +1334,13 @@ export const InspectionStandardScreen = () => {
           isDirty={!isSamePlanValues(createValues, emptyPlanFormValues())}
           isSaving={createWrite.isSaving}
           onSave={handleSaveCreate}
-          onCancel={() => {
-            createWrite.reset();
-            setCreateValues(null);
-            setCreateFieldErrors({});
-          }}
-          // 아직 없는 기준에는 승인·중지할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
-          transitionActions={renderPlanActions()}
+          onCancel={closeCreate}
         />
-      );
-    }
+      </Dialog>
+    );
+  };
 
+  const renderPlanPane = () => {
     if (selectedPlanId === null) {
       return (
         <section className="pane" aria-label={t.panes.planForm}>
@@ -1406,6 +1401,16 @@ export const InspectionStandardScreen = () => {
               : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
           }
           onEdit={() => setIsPlanEditOpen(true)}
+          /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
+          onDeactivate={
+            planDetail.data.inspectionPlan.isActive
+              ? () => {
+                  deactivateWrite.reset();
+                  setPlanAction('deactivate');
+                }
+              : undefined
+          }
+          isDeactivating={deactivateWrite.isSaving}
         />
 
         {renderVersionBar()}
@@ -1439,7 +1444,13 @@ export const InspectionStandardScreen = () => {
               routingOptions={optionsFor(routingOptions, formState.values.routingId)}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
-              codeLockReason={codeLockMessage(planDetail.data.editability)}
+              // 다른 자료가 쓰는 기준은 건수 대신 짧은 한 줄로 알린다(사용자 시안 · #208).
+              codeLockReason={
+                !planDetail.data.editability.codeEditable &&
+                planDetail.data.editability.reason === 'REFERENCED'
+                  ? t.values.codeInUseLocked
+                  : codeLockMessage(planDetail.data.editability)
+              }
               isDirty={isPlanDirty}
               isSaving={planWrite.isSaving}
               onSave={handleSavePlan}
@@ -1448,7 +1459,6 @@ export const InspectionStandardScreen = () => {
                 cancelPlanEdit();
                 setIsPlanEditOpen(false);
               }}
-              transitionActions={renderPlanActions()}
             />
           </Dialog>
         )}
@@ -1509,7 +1519,11 @@ export const InspectionStandardScreen = () => {
             },
             {
               value: 'history',
-              label: t.versionSection.tabHistory,
+              /* 건수는 검사 항목 탭과 같이 붙인다(#208). 받기 전에는 이름만 낸다 — 0건을 지어내지 않는다. */
+              label:
+                versionHistory.data === undefined
+                  ? t.versionSection.tabHistory
+                  : t.versionSection.tabHistoryCount(versionHistory.data.items.length),
               /* 고른 버전의 변경 이력(#196) — 「변경 이력」 창과 같은 표. */
               content:
                 selectedVersionId === null ? null : (
@@ -1519,6 +1533,16 @@ export const InspectionStandardScreen = () => {
                     showRange
                   />
                 ),
+            },
+            {
+              value: 'drawings',
+              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). */
+              label:
+                versionDrawings.data === undefined
+                  ? t.versionSection.tabDrawings
+                  : t.versionSection.tabDrawingsCount(versionDrawings.data.length),
+              content:
+                selectedVersionId === null ? null : <VersionDrawings drawings={versionDrawings} />,
             },
           ]}
         />
@@ -1632,8 +1656,7 @@ export const InspectionStandardScreen = () => {
           isSaving={versionCreateWrite.isSaving}
           onSave={handleSaveVersionCreate}
           onCancel={resetVersionEditing}
-          // 아직 없는 버전에는 전이할 대상이 없다. 감추지 않고 사유와 함께 비활성으로 둔다.
-          transitionActions={renderVersionTransitionActions()}
+          /* 아직 없는 버전에는 전이할 대상이 없다 — 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */
         />
       );
     }
@@ -1851,6 +1874,12 @@ export const InspectionStandardScreen = () => {
 
   return (
     <>
+      {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우 · 상하 배치(사용자 지시 · #208). 그린 순서대로 선다. */}
+      <UsageChips
+        counts={usageCounts.data ?? null}
+        value={usageOf(filters)}
+        onChange={(usage) => applyFilters(withUsage(filters, usage))}
+      />
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       {/* 탭 묶음(품질 기준 정보) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다. */}
       {hub === null && (
@@ -1877,6 +1906,7 @@ export const InspectionStandardScreen = () => {
               <Button
                 variant="outlined"
                 leadingIcon={<Icon name="table_chart" size={18} />}
+                disabled={importProgress !== null}
                 onClick={() => setImportState({ files: [], outcomes: [] })}
               >
                 {t.actions.excelUpload}
@@ -1903,6 +1933,7 @@ export const InspectionStandardScreen = () => {
       >
         <PlanListPane
           itemPartsOf={itemPartsOf}
+          versionStatusOf={latestVersionStatusOf}
           plans={plans}
           isLoading={planList.isPending}
           appliedFilters={filters}
@@ -1932,9 +1963,10 @@ export const InspectionStandardScreen = () => {
         <div className="inspection-standard-detail">
           {/* 버전 고르기 — 선택칸 + 「버전 목록」 창(신규 버전 발행 · 닫기). 기준을 고른 뒤에만 선다(#196). */}
           {renderPlanPane()}
-          {/* 기준 등록 중에는 카드가 없다 — 버전 · 항목은 등록 뒤에 선다. */}
         </div>
       </div>
+
+      {renderPlanCreateDialog()}
 
       {/*
        * 창은 열 때만 붙인다 — 닫힌 창을 남겨 두면 지난 값이 그대로 살아 있다.
@@ -1947,7 +1979,6 @@ export const InspectionStandardScreen = () => {
           kind={planAction}
           onClose={() => {
             setPlanAction(null);
-            approveWrite.reset();
             deactivateWrite.reset();
           }}
           onConfirm={() => {
@@ -1955,11 +1986,7 @@ export const InspectionStandardScreen = () => {
           }}
           isSaving={planActionWrite.isSaving}
           banner={
-            <PlanActionBanner
-              error={planActionWrite.error}
-              /* 409는 사용 중지에만 있다(계약 실측) — 승인에 내면 헛수고를 시킨다. */
-              onReload={planAction === 'deactivate' ? handleReloadPlanDetail : undefined}
-            />
+            <PlanActionBanner error={planActionWrite.error} onReload={handleReloadPlanDetail} />
           }
         />
       )}
@@ -1975,7 +2002,7 @@ export const InspectionStandardScreen = () => {
               prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
             );
 
-            for (const field of Object.keys(patch)) {
+            for (const field of withPairedFields(Object.keys(patch))) {
               setItemDialogErrors((prev) => {
                 if (!(field in prev)) return prev;
                 const next = { ...prev };
@@ -2009,14 +2036,20 @@ export const InspectionStandardScreen = () => {
       {importState !== null && (
         <ImportDialog
           files={importState.files}
-          onSelectFiles={(files) => setImportState({ files, outcomes: [] })}
+          // 뺀 파일의 결과는 함께 버린다 — 남은 파일의 결과는 그대로 둔다.
+          onSelectFiles={(files) =>
+            setImportState({
+              files,
+              outcomes: importState.outcomes.filter((item) => files.includes(item.file)),
+            })
+          }
           outcomes={importState.outcomes}
-          isSaving={isImporting}
-          onClose={() => setImportState(null)}
-          onSubmit={() => {
-            setImportState({ files: importState.files, outcomes: [] });
-            void runImport(importState.files);
+          progress={importProgress}
+          // 올리는 중에는 닫지 않는다 — Esc 도 닫기로 오므로 여기서 막는다(#208 리뷰 반영).
+          onClose={() => {
+            if (importProgress === null) setImportState(null);
           }}
+          onSubmit={() => void runImport(importState.files, importState.outcomes)}
         />
       )}
 

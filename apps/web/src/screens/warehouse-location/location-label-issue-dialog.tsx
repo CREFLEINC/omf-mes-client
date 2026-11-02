@@ -1,11 +1,12 @@
-import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
+import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { SelectField } from './warehouse-form-pane';
 
 export interface LocationLabelIssueDialogProps {
-  count: number;
+  /** 여럿을 한꺼번에 낼 때 이미 발행한 건수 — 한 줄로 알린다. 하나만 다시 낼 때는 없다. */
+  alreadyIssuedCount?: number;
   reasonCode: string;
   reasonOptions: { value: string; label: string }[];
   reasonError?: string;
@@ -16,9 +17,9 @@ export interface LocationLabelIssueDialogProps {
   banner: ReactNode;
 }
 
-/** 이미 발행한 Location을 다시 생성할 때 회차를 올릴 사유를 받는다. */
+/** 이미 발행한 라벨을 다시 발행할 때 회차를 올릴 사유를 받는다. */
 export const LocationLabelIssueDialog = ({
-  count,
+  alreadyIssuedCount,
   reasonCode,
   reasonOptions,
   reasonError,
@@ -29,6 +30,7 @@ export const LocationLabelIssueDialog = ({
   banner,
 }: LocationLabelIssueDialogProps) => (
   <Dialog
+    className="location-dialog"
     open
     onClose={onClose}
     size="sm"
@@ -45,9 +47,11 @@ export const LocationLabelIssueDialog = ({
     }
   >
     {banner}
-    <AlertBanner variant="warning">
-      {messages.warehouseLocation.labelIssue.notice(count)}
-    </AlertBanner>
+    {alreadyIssuedCount !== undefined && (
+      <p className="dialog-lead">
+        {messages.warehouseLocation.labelIssue.alreadyIssued(alreadyIssuedCount)}
+      </p>
+    )}
     <div className="form-grid warehouse-location-label-reissue-form">
       <SelectField
         label={messages.warehouseLocation.labelIssue.reason}

@@ -2,11 +2,10 @@ import { Button, SearchInput, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import type { ErpProductionOrderFilters } from './filters';
 import { ProgressFilterField } from './progress';
-import { useItemNames } from './lookups';
 import type { SelectOption } from './types';
 
 const t = messages.erpProductionOrder;
@@ -41,47 +40,25 @@ interface ItemFieldProps {
 }
 
 /**
- * 품목 조건 — 품목 마스터가 수천 건이라 선택칸이 아니라 공용 「품목 선택」 창으로 고른다.
- * 지난 ERP W/O 를 찾는 조건이라 사용 중지 품목까지 찾고, 재고와 상관없어 가용 재고 열은 뺀다.
- * 고른 품목의 이름은 품목 상세로 푼다 — 주소로 들어와 창을 거치지 않은 값도 이름이 선다.
+ * 품목 조건 — 품목 마스터가 9천여 건이라 칸이 쪽 단위로 받는다(펼칠 때 첫 쪽 · 검색은 서버 · 끝에 닿으면 다음 쪽,
+ * 사용자 지시 2026-10-29). 지난 ERP W/O 를 찾는 조건이라 사용 중지 품목까지 찾는다. 고른 품목의 이름은 칸이 번호로
+ * 푼다 — 주소로 들어온 값도 이름이 보인다.
  */
 const ItemField = ({ value, onChange }: ItemFieldProps) => {
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const itemId = Number(value);
-  const hasItem = value !== '' && Number.isSafeInteger(itemId) && itemId > 0;
-  const itemNameOf = useItemNames(hasItem ? [itemId] : []);
-  const label = hasItem ? itemNameOf(itemId) : '';
-  const open = (): void => setIsPickerOpen(true);
-
+  const id = useId();
   return (
-    <>
-      <SearchInput
-        label={t.fields.item}
-        value={label}
-        readOnly
-        title={label === '' ? undefined : label}
-        placeholder={t.filters.itemPlaceholder}
-        aria-haspopup="dialog"
-        clearLabel={t.filters.itemClear}
-        onClick={open}
-        onSearch={open}
-        onChange={() => undefined}
-        onClear={() => onChange('')}
+    <div className="field-cell">
+      <label className="field-label" htmlFor={id}>
+        {t.fields.item}
+      </label>
+      <ItemSelect
+        id={id}
+        includeInactive
+        leadingOptions={[{ value: '', label: t.filters.all }]}
+        value={value}
+        onChange={onChange}
       />
-      {isPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          includeInactive
-          showAvailability={false}
-          confirmLabel={t.filters.itemPick}
-          onClose={() => setIsPickerOpen(false)}
-          onConfirm={([item]) => {
-            if (item !== undefined) onChange(String(item.itemId));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
-    </>
+    </div>
   );
 };
 

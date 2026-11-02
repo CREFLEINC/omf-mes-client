@@ -25,7 +25,6 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-01',
     warehouseName: '1공장 자재창고',
     warehouseTypeCode: 'MATERIAL',
-    managementLevelCode: 'CELL',
     isExternal: false,
     isDefect: false,
     isActive: true,
@@ -37,7 +36,6 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-02',
     warehouseName: '1공장 제품창고',
     warehouseTypeCode: 'PRODUCT',
-    managementLevelCode: 'WAREHOUSE',
     isExternal: false,
     isDefect: false,
     isActive: true,
@@ -49,8 +47,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-03',
     warehouseName: '외부 보관창고',
     warehouseTypeCode: 'GENERAL',
-    managementLevelCode: 'RACK',
-    isExternal: true,
+    isExternal: false,
     isDefect: false,
     isActive: false,
   },
@@ -64,14 +61,12 @@ export const locationFixtures: Location[] = [
     parentLocationId: null,
     locationCode: 'A-01',
     locationName: 'A구역',
-    locationTypeCode: 'RACK',
-    qualityZoneCode: null,
-    storageConditionCode: null,
-    allowMixedItem: true,
-    allowMixedLot: true,
-    capacityQty: null,
-    capacityUomId: null,
     isActive: true,
+    aliasName: null,
+    locationLevelCode: null,
+    isLeaf: false,
+    systemRoleCode: null,
+    hasItemRestriction: false,
   },
   {
     locationId: 2002,
@@ -79,14 +74,12 @@ export const locationFixtures: Location[] = [
     parentLocationId: 2001,
     locationCode: 'A-01-01',
     locationName: 'A구역 01열',
-    locationTypeCode: 'RACK',
-    qualityZoneCode: null,
-    storageConditionCode: null,
-    allowMixedItem: true,
-    allowMixedLot: false,
-    capacityQty: null,
-    capacityUomId: null,
     isActive: true,
+    aliasName: null,
+    locationLevelCode: null,
+    isLeaf: false,
+    systemRoleCode: null,
+    hasItemRestriction: false,
   },
   {
     locationId: 2003,
@@ -94,14 +87,12 @@ export const locationFixtures: Location[] = [
     parentLocationId: 2002,
     locationCode: 'A-01-01-01',
     locationName: 'A구역 01열 01단',
-    locationTypeCode: 'RACK',
-    qualityZoneCode: null,
-    storageConditionCode: null,
-    allowMixedItem: false,
-    allowMixedLot: false,
-    capacityQty: 500,
-    capacityUomId: 41,
     isActive: true,
+    aliasName: null,
+    locationLevelCode: null,
+    isLeaf: true,
+    systemRoleCode: null,
+    hasItemRestriction: false,
   },
   {
     locationId: 2004,
@@ -109,14 +100,12 @@ export const locationFixtures: Location[] = [
     parentLocationId: null,
     locationCode: 'B-01',
     locationName: 'B구역',
-    locationTypeCode: 'FLOOR',
-    qualityZoneCode: null,
-    storageConditionCode: null,
-    allowMixedItem: true,
-    allowMixedLot: true,
-    capacityQty: null,
-    capacityUomId: null,
     isActive: true,
+    aliasName: null,
+    locationLevelCode: null,
+    isLeaf: true,
+    systemRoleCode: null,
+    hasItemRestriction: false,
   },
 ];
 
@@ -157,12 +146,6 @@ export const businessUnitFixtures: components['schemas']['BusinessUnit'][] = [
   },
 ];
 
-/** 32번은 미사용이다 — 미사용 값이 선택지에서 어떻게 다뤄지는지 확인하는 데 쓴다. */
-export const partnerFixtures: components['schemas']['Partner'][] = [
-  { partnerId: 31, partnerCode: 'SUP-001', partnerName: '(주)대한부품', isActive: true },
-  { partnerId: 32, partnerCode: 'SUP-002', partnerName: '(주)한빛소재', isActive: false },
-];
-
 export const uomFixtures: components['schemas']['Uom'][] = [
   { uomId: 41, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true },
   { uomId: 42, uomCode: 'BOX', uomName: '박스', decimalScale: 0, isActive: true },
@@ -177,32 +160,11 @@ export const lookupFixtures: LookupOptions = {
     { value: '21', label: '생산본부' },
     { value: '22', label: '물류본부' },
   ],
-  partners: [
-    { value: '31', label: '(주)대한부품' },
-    { value: '32', label: '(주)한빛소재' },
-  ],
-  uoms: [
-    { value: '41', label: 'EA' },
-    { value: '42', label: 'BOX' },
-    { value: '43', label: 'PLT' },
-  ],
   warehouseTypes: [
     { value: 'MATERIAL', label: '자재' },
     { value: 'PRODUCT', label: '제품' },
     { value: 'GENERAL', label: '일반' },
   ],
-  managementLevels: [
-    { value: 'WAREHOUSE', label: '창고' },
-    { value: 'ZONE', label: '구역' },
-    { value: 'RACK', label: '랙' },
-    { value: 'CELL', label: '셀' },
-  ],
-  locationTypes: [
-    { value: 'RACK', label: '랙' },
-    { value: 'FLOOR', label: '바닥' },
-  ],
-  qualityZones: [{ value: 'NORMAL', label: '일반구역' }],
-  storageConditions: [{ value: 'AMBIENT', label: '상온' }],
   reissueReasons: [{ value: 'DAMAGED', label: '라벨 훼손' }],
 };
 
@@ -212,32 +174,21 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  managementLevelCode: 'CELL',
   isExternal: false,
   isDefect: false,
-  partnerId: '',
 };
 
 export const locationFormInitialValues: LocationFormValues = {
   parentLocationId: '',
-  locationCode: '',
-  locationName: '',
-  locationTypeCode: 'RACK',
-  qualityZoneCode: '',
-  storageConditionCode: '',
-  allowMixedItem: true,
-  allowMixedLot: true,
-  capacityQty: '',
-  capacityUomId: '',
+  locationCode: 'Z01',
+  aliasName: '',
 };
 
 /** 입력 오류 표시 확인용 — Phase 1은 검증 함수를 만들지 않고 오류 값을 주입한다. */
 export const warehouseFieldErrorFixtures: Record<string, string> = {
   warehouseCode: messages.warehouseLocation.validation.codeDuplicated,
-  partnerId: messages.warehouseLocation.validation.partnerRequiredForExternal,
 };
 
 export const locationFieldErrorFixtures: Record<string, string> = {
   locationCode: messages.warehouseLocation.validation.required,
-  capacityQty: messages.warehouseLocation.validation.capacityNeedsUom,
 };

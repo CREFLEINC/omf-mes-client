@@ -1,10 +1,9 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import type {
   InboundScheduleListResult,
-  PurchaseOrderLinesQuery,
   PurchaseOrderSummaryListResult,
   PurchaseOrderSummaryQuery,
 } from './types';
@@ -17,24 +16,6 @@ import type {
  *
  * **쓰기 오퍼레이션이 없다.** 입하 등록은 `receive-queries.ts`(라인 표에서 바로 받는 입하)가 한다.
  */
-
-/**
- * ⚠ **두 경로의 새 모양이 생성 타입에 아직 없다**(server #762 — 계약 사본이 `gen:api` 로 실리기 전).
- * `openapi-fetch` 는 경로를 리터럴 타입으로 요구하므로, 이 두 경로만 받는 모양으로 클라이언트를
- * **좁혀 본다.** 실행은 같은 클라이언트가 한다 — 인증 쿠키·질의 직렬화·오류 정규화가 그대로 선다.
- *
- * 계약 사본이 실리면 이 타입과 넓힘을 지우고 `client.GET` 을 바로 부른다.
- */
-interface InboundScheduleClient {
-  GET(
-    path: '/logistics/purchase-orders',
-    init: { params: { query: PurchaseOrderSummaryQuery } },
-  ): Promise<ApiCallResult<PurchaseOrderSummaryListResult>>;
-  GET(
-    path: '/logistics/purchase-order-lines',
-    init: { params: { query: PurchaseOrderLinesQuery } },
-  ): Promise<ApiCallResult<InboundScheduleListResult>>;
-}
 
 /** 한 P/O 의 라인을 한 번에 받는다 — 서버 상한. 이보다 많은 라인의 발주는 아직 보지 못했다. */
 export const LINES_PAGE_SIZE = 200;
@@ -66,10 +47,8 @@ export const usePurchaseOrderSummaries = (
         throw new Error('보낼 수 없는 기간에서는 목록을 조회하지 않습니다.');
       }
 
-      const scheduleClient = client as unknown as InboundScheduleClient;
-
-      return runRequest(() =>
-        scheduleClient.GET('/logistics/purchase-orders', { params: { query } }),
+      return runRequest<PurchaseOrderSummaryListResult>(() =>
+        client.GET('/logistics/purchase-orders', { params: { query } }),
       );
     },
   });
@@ -89,10 +68,9 @@ export const usePurchaseOrderLines = (
         throw new Error('발주를 고르기 전에는 라인을 조회하지 않습니다.');
       }
 
-      const scheduleClient = client as unknown as InboundScheduleClient;
-
+      /* 서버 기본이 미완료만이라 `openOnly=false` 를 늘 싣는다 — 고른 발주의 라인은 다 들어온 것까지 다 보여야 한다. */
       return runRequest(() =>
-        scheduleClient.GET('/logistics/purchase-order-lines', {
+        client.GET('/logistics/purchase-order-lines', {
           params: { query: { purchaseOrderId, openOnly: false, size: LINES_PAGE_SIZE } },
         }),
       );

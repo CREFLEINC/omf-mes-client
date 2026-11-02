@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { ApiRequestError, runRequest, type ApiCallResult } from '../../patterns/request';
+import { ApiRequestError, runRequest } from '../../patterns/request';
 import {
   NO_ORDER_EXCEPTION_TYPES,
   type ExcessCandidateListResult,
@@ -22,32 +22,10 @@ import { scheduleKeys } from './queries';
  * 초과분 발주 연결의 읽기 둘 · 쓰기 하나(서버 장부 P-115 입하 ↔ P/O 배정). 화면 낱말과 서버 낱말의 짝은 문구 파일
  * (`inboundSchedule.excess`) 주석에 있다 — 초과분 = 미배정, 연결 = 배정.
  *
- * ⚠ **세 경로 모두 계약 사본 밖이다** — 생성 타입에 없어 이 세 경로만 받는 모양으로 클라이언트를 **좁혀 본다**
- * (`queries.ts` 의 `InboundScheduleClient` 와 같은 길). 실행은 같은 클라이언트가 한다 — 인증 쿠키·질의
- * 직렬화·오류 정규화가 그대로 선다. 계약에 실리면 이 타입과 넓힘을 지운다.
- *
- * **멱등 키를 보내지 않는다** — 계약 밖 경로라 요구하지 않고, 두 번 보내면 두 번째는 남은 초과분을 넘어 서버가
- * 400 `RANGE` 로 막는다.
+ * **멱등 키를 보내지 않는다** — 계약이 요구하지 않고, 두 번 보내면 두 번째는 남은 초과분을 넘어 서버가 400 `RANGE` 로 막는다.
  *
  * 권한은 W-01-03(입하 등록)이다 — 서버가 `:split` 오퍼레이션의 권한을 빌린다. 없으면 403 이고, 그때 화면은 연결 자리를 감춘다.
  */
-interface InboundAllocationClient {
-  GET(
-    path: '/logistics/inbound-unallocated',
-    init: { params: { query: UnallocatedQuery } },
-  ): Promise<ApiCallResult<UnallocatedListResult>>;
-  GET(
-    path: '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/allocation-candidates',
-    init: { params: { path: { inboundReceiptLineId: number } } },
-  ): Promise<ApiCallResult<ExcessCandidateListResult>>;
-  POST(
-    path: '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/allocations',
-    init: {
-      params: { path: { inboundReceiptLineId: number } };
-      body: { purchaseOrderLineId: number; qty: number };
-    },
-  ): Promise<ApiCallResult<InboundAllocation>>;
-}
 
 /** 한 번에 받는 초과분 수 — 서버 상한. 이보다 많으면 「앞쪽만 보인다」고 밝힌다. */
 export const EXCESS_PAGE_SIZE = 200;
@@ -72,10 +50,10 @@ export const useUnallocatedLines = (
   enabled = true,
 ): UseQueryResult<UnallocatedListResult> => {
   const { client } = useApiClient();
-  const allocationClient = client as unknown as InboundAllocationClient;
   const fullQuery: UnallocatedQuery = {
     ...query,
-    excludeExceptionTypeCode: NO_ORDER_EXCEPTION_TYPES.join(','),
+    /* 배열로 넘기면 클라이언트 질의 직렬화(`serializeQuery`)가 쉼표로 이은 한 값으로 싣는다 — 서버는 키 반복과 섞으면 400 이다. */
+    excludeExceptionTypeCode: [...NO_ORDER_EXCEPTION_TYPES],
   };
 
   return useQuery({
@@ -85,7 +63,7 @@ export const useUnallocatedLines = (
     retry: (count, error) => !isExcessUnavailable(error) && count < 2,
     queryFn: () =>
       runRequest(() =>
-        allocationClient.GET('/logistics/inbound-unallocated', { params: { query: fullQuery } }),
+        client.GET('/logistics/inbound-unallocated', { params: { query: fullQuery } }),
       ),
   });
 };
@@ -95,7 +73,6 @@ export const useExcessCandidates = (
   inboundReceiptLineId: number | null,
 ): UseQueryResult<ExcessCandidateListResult> => {
   const { client } = useApiClient();
-  const allocationClient = client as unknown as InboundAllocationClient;
 
   return useQuery({
     queryKey: excessKeys.candidates(inboundReceiptLineId),
@@ -106,7 +83,7 @@ export const useExcessCandidates = (
       }
 
       return runRequest(() =>
-        allocationClient.GET(
+        client.GET(
           '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/allocation-candidates',
           { params: { path: { inboundReceiptLineId } } },
         ),
@@ -141,19 +118,15 @@ const useInvalidateAfterLink = (): (() => Promise<void>) => {
 
 export const useLinkExcess = (): UseMutationResult<InboundAllocation, Error, LinkVariables> => {
   const { client } = useApiClient();
-  const allocationClient = client as unknown as InboundAllocationClient;
   const invalidate = useInvalidateAfterLink();
 
   return useMutation({
     mutationFn: ({ inboundReceiptLineId, purchaseOrderLineId, qty }: LinkVariables) =>
       runRequest(() =>
-        allocationClient.POST(
-          '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/allocations',
-          {
-            params: { path: { inboundReceiptLineId } },
-            body: { purchaseOrderLineId, qty },
-          },
-        ),
+        client.POST('/logistics/inbound-receipt-lines/{inboundReceiptLineId}/allocations', {
+          params: { path: { inboundReceiptLineId } },
+          body: { purchaseOrderLineId, qty },
+        }),
       ),
     onSuccess: invalidate,
   });

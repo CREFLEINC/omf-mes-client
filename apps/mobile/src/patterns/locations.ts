@@ -6,6 +6,26 @@ import { runRequest } from './request';
 
 export type Location = components['schemas']['Location'];
 
+/*
+ * `systemRoleCode`: 서버가 창고마다 두는 자리(적치 대기 PUTAWAY_STAGING · 창고 전체 WAREHOUSE_WHOLE). 사람이 만든 위치는 null.
+ * `isLeaf`: 켜진 하위가 없는 맨 아래 위치 — 재고는 여기에만 들어간다(서버 #894).
+ */
+
+export const PUTAWAY_STAGING = 'PUTAWAY_STAGING';
+export const WAREHOUSE_WHOLE = 'WAREHOUSE_WHOLE';
+
+/** 사람이 만든 켜진 위치. 이것이 하나라도 있으면 창고를 위치로 나눈 것이다(서버 장부 P-149). */
+export const isDividingLocation = (location: Location): boolean =>
+  location.isActive && location.systemRoleCode === null;
+
+/** 「창고 전체」 — 사람이 위치를 나누지 않은 창고에 서버가 두는 자리. 붙일 라벨이 없다. */
+export const isWarehouseWhole = (location: Location): boolean =>
+  location.systemRoleCode === WAREHOUSE_WHOLE;
+
+/** 재고를 둘 수 있는 자리 — 맨 아래 위치이고 적치 대기가 아니다. */
+export const isStockableLocation = (location: Location): boolean =>
+  location.isLeaf && location.systemRoleCode !== PUTAWAY_STAGING;
+
 export const locationKeys = {
   inWarehouse: (warehouseId: number | null) => ['locations', warehouseId] as const,
   byId: (locationId: number | null) => ['location', locationId] as const,

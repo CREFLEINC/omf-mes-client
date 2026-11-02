@@ -1,4 +1,4 @@
-import type { DispositionSortResult } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -70,6 +70,10 @@ import {
   toNonconformanceRow,
   type Nonconformance,
 } from './types';
+
+type DispositionSortResult = NonNullable<
+  components['schemas']['DispositionDecision']['sortResult']
+>;
 
 const EMPTY_NONCONFORMANCES: Nonconformance[] = [];
 
@@ -369,7 +373,6 @@ export const DispositionDecisionScreen = ({
                     applied={filters}
                     severity={severity}
                     status={status}
-                    items={items}
                     onApply={(next) => apply(next)}
                     onReset={() =>
                       apply({

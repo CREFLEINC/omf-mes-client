@@ -1,3 +1,5 @@
+import type { paths } from '@omf-mes/api-client';
+
 /**
  * 조회 조건은 전부 주소가 소유한다 — 새로고침·뒤로가기·공유가 같은 결과를 낸다.
  * 고른 P/O(`sel`)도 주소에 두어 링크 하나로 같은 상세를 연다.
@@ -98,28 +100,27 @@ const toId = (value: string): number | undefined => {
   return value !== '' && Number.isSafeInteger(id) && id > 0 ? id : undefined;
 };
 
-export interface PurchaseOrderListQuery {
-  q?: string;
-  supplierId?: number;
-  plantId?: number;
-  statusCode?: string;
-  /**
-   * 발주 유형 — **계약 사본에 없다**(사용자 지시 2026-10-28 「발주 유형별로 구분」, 서버 #873 · 장부 P-144). 공통코드
-   * `ORDER_TYPE` 에 없는 코드는 400 이다. 이 조건을 모르는 옛 서버는 무시하고 전체를 준다. 계약에 실리면 이 주석을 걷고
-   * 계약 타입을 따른다.
-   */
-  erpOrderTypeCode?: string;
-  orderDateFrom?: string;
-  orderDateTo?: string;
-  openOnly?: boolean;
-  /**
-   * 진행 조건 — **계약 사본에 아직 없다**(서버 #850 · 장부 P-131). 대소문자를 가리고 두 값 말고는 400 이라 이 둘만
-   * 싣는다. 계약에 실리면 이 칸을 걷고 계약 타입을 따른다.
-   */
-  progress?: 'OPEN' | 'COMPLETED';
-  page?: number;
-  size?: number;
-}
+/**
+ * 목록 질의 — 계약 질의 중 이 화면이 쓰는 칸만 고른다.
+ *
+ * - `erpOrderTypeCode` — 발주 유형(사용자 지시 2026-10-28 「발주 유형별로 구분」 · 서버 #873 · 장부 P-144). 공통코드
+ *   `ORDER_TYPE` 에 없는 코드는 400 이다. 이 조건을 모르는 옛 서버는 무시하고 전체를 준다
+ * - `progress` — 진행 조건(서버 #850 · 장부 P-131). 대소문자를 가리고 두 값 말고는 400 이다
+ */
+export type PurchaseOrderListQuery = Pick<
+  NonNullable<paths['/logistics/purchase-orders']['get']['parameters']['query']>,
+  | 'q'
+  | 'supplierId'
+  | 'plantId'
+  | 'statusCode'
+  | 'erpOrderTypeCode'
+  | 'orderDateFrom'
+  | 'orderDateTo'
+  | 'openOnly'
+  | 'progress'
+  | 'page'
+  | 'size'
+>;
 
 export const LIST_PAGE_SIZE = 25;
 

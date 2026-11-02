@@ -24,9 +24,11 @@ const location = (locationId: number, locationCode: string) => ({
   warehouseId: 2,
   locationCode,
   locationName: '자리',
-  locationTypeCode: 'RACK',
-  allowMixedItem: true,
-  allowMixedLot: true,
+  aliasName: null,
+  locationLevelCode: 'CELL',
+  isLeaf: true,
+  systemRoleCode: null,
+  hasItemRestriction: false,
   isActive: true,
 });
 

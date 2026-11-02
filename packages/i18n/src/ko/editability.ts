@@ -23,6 +23,8 @@ export const editability = {
    */
   systemOwned: (_count: number | null): string =>
     '이 코드 그룹은 시스템이 관리해 편집할 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
+  /** 서버가 발행한 코드(위치). 처음부터 바꿀 수 없다. */
+  autoIssued: (_count: number | null): string => '서버가 발행한 코드라 바꿀 수 없습니다.',
   /** 잠긴 것은 확실하나 사유가 특정되지 않을 때. 사유를 지어내지 않고 잠금 사실만 밝힌다. */
   locked: '지금은 코드를 바꿀 수 없습니다. 변경이 필요하면 담당자에게 문의하세요.',
 } as const;

@@ -5,7 +5,8 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
-import { DEFAULT_PAGE_SIZE, toListQuery } from './filters';
+import { DEFAULT_PAGE_SIZE, type PlanListQuery, toListQuery } from './filters';
+import { resolveVersionStatus, type VersionScreenStatus } from './plan-version-status';
 import type { VersionAuditEvent } from './version-history';
 import type {
   InspectionItemSpec,
@@ -41,6 +42,7 @@ export const planKeys = {
   list: (filters: PlanFilters, page: number, size: number = DEFAULT_PAGE_SIZE) =>
     ['inspection-plans', 'list', filters, page, size] as const,
   detail: (inspectionPlanId: number) => ['inspection-plans', 'detail', inspectionPlanId] as const,
+  usageCounts: (filters: PlanFilters) => ['inspection-plans', 'usage-counts', filters] as const,
 };
 
 /**
@@ -56,13 +58,157 @@ export const useInspectionPlanList = (
 
   return useQuery({
     queryKey: planKeys.list(filters, page, size),
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/quality/inspection-plans', {
-          params: { query: toListQuery(filters, page, size) },
-        }),
-      ),
+    queryFn: async () => {
+      if (!needsClientFilter(filters)) {
+        return runRequest(() =>
+          client.GET('/quality/inspection-plans', {
+            params: { query: toListQuery(filters, page, size) },
+          }),
+        );
+      }
+
+      /*
+       * 「미사용만」 · 「미승인만」 · 상태는 서버 조건이 없다(#208) — 나머지 조건으로 전부 받아 화면이 거르고 쪽을 나눈다.
+       * 검사 기준은 품목 · 유형별이라 수가 많지 않다.
+       */
+      const kept = await fetchFilteredPlans(client, filters);
+
+      return {
+        items: kept.slice((page - 1) * size, page * size),
+        page: { page, size, total: kept.length },
+      };
+    },
   });
+};
+
+/** 서버 조건으로는 거를 수 없는 조건이 걸렸는가 — 그러면 전부 받아 화면이 거른다. */
+const needsClientFilter = (filters: PlanFilters): boolean =>
+  filters.inactiveOnly || filters.unapprovedOnly || filters.versionStatus !== '';
+
+type ApiClient = ReturnType<typeof useApiClient>['client'];
+
+/** 기준의 가장 높은 버전의 화면 상태. 버전이 없으면 null. */
+const latestVersionStatus = async (
+  client: ApiClient,
+  inspectionPlanId: number,
+): Promise<VersionScreenStatus | null> => {
+  const data = await runRequest(() =>
+    client.GET('/quality/inspection-plan-versions', { params: { query: { inspectionPlanId } } }),
+  );
+  const latest = [...data.items].sort((left, right) => right.planVersion - left.planVersion)[0];
+  return latest === undefined ? null : resolveVersionStatus(latest.statusCode).status;
+};
+
+/** 서버 조건으로 전부 받아 미사용만 · 미승인만 · 상태를 화면이 거른다. */
+const fetchFilteredPlans = async (
+  client: ApiClient,
+  filters: PlanFilters,
+): Promise<InspectionPlanListResponse['items']> => {
+  const all = await fetchAllPlans(
+    (query) => runRequest(() => client.GET('/quality/inspection-plans', { params: { query } })),
+    toListQuery(filters, 1, ALL_PAGE_SIZE),
+  );
+  const kept = all.filter(
+    (plan) =>
+      (!filters.inactiveOnly || !plan.isActive) &&
+      (!filters.unapprovedOnly || plan.approvedAt === null || plan.approvedAt === undefined),
+  );
+  if (filters.versionStatus === '') return kept;
+
+  const statuses = await Promise.all(
+    kept.map((plan) => latestVersionStatus(client, plan.inspectionPlanId)),
+  );
+  return kept.filter((_, index) => statuses[index] === filters.versionStatus);
+};
+
+/** 사용 여부 칩의 건수(#208). */
+export interface PlanUsageCounts {
+  all: number;
+  active: number;
+  inactive: number;
+}
+
+/**
+ * 사용 여부 칩마다 붙일 건수 — 지금 걸린 다른 조건(검색어 · 유형 · 품목 · 미승인)을 그대로 따른다(사용자 지시 · #208).
+ * 미승인이 꺼져 있으면 서버 건수 두 번(전체 · 사용)으로 센다. 켜져 있으면 서버 조건이 없어 전부 받아 센다.
+ */
+export const usePlanUsageCounts = (
+  filters: PlanFilters,
+  /** 칩이 서는 자리(탭 묶음)에서만 센다 — 칩이 없으면 요청도 없다. */
+  enabled: boolean,
+): UseQueryResult<PlanUsageCounts> => {
+  const { client } = useApiClient();
+  const base: PlanFilters = { ...filters, includeInactive: false, inactiveOnly: false };
+
+  return useQuery({
+    queryKey: planKeys.usageCounts(base),
+    enabled,
+    queryFn: async () => {
+      const list = (query: PlanListQuery & { size?: number }) =>
+        runRequest(() => client.GET('/quality/inspection-plans', { params: { query } }));
+
+      if (!needsClientFilter(base)) {
+        const [all, active] = await Promise.all([
+          list({ ...toListQuery({ ...base, includeInactive: true }, 1), size: 1 }),
+          list({ ...toListQuery(base, 1), size: 1 }),
+        ]);
+        return {
+          all: all.page.total,
+          active: active.page.total,
+          inactive: all.page.total - active.page.total,
+        };
+      }
+
+      const plans = await fetchFilteredPlans(client, { ...base, includeInactive: true });
+      const active = plans.filter((plan) => plan.isActive).length;
+      return { all: plans.length, active, inactive: plans.length - active };
+    },
+  });
+};
+
+/** 화면이 거를 때 한 번에 받는 쪽 크기. */
+const ALL_PAGE_SIZE = 100;
+
+/** 같은 조건의 쪽을 끝까지 모은다. */
+const fetchAllPlans = async (
+  request: (query: PlanListQuery & { size?: number }) => Promise<InspectionPlanListResponse>,
+  base: PlanListQuery & { size?: number },
+): Promise<InspectionPlanListResponse['items']> => {
+  const items: InspectionPlanListResponse['items'] = [];
+
+  for (let page = 1; ; page += 1) {
+    const response = await request({ ...base, page, size: ALL_PAGE_SIZE });
+    items.push(...response.items);
+    if (items.length >= response.page.total || response.items.length === 0) return items;
+  }
+};
+
+/**
+ * 목록 줄마다 그 기준의 **가장 높은 버전의 상태 코드**(#208) — 표의 「상태」 칸. 버전이 없으면 `null`,
+ * 아직 받는 중이면 `undefined`. 버전 목록은 기준 하나씩만 받는다(계약) — 상세의 버전 목록과 같은 캐시를 쓴다.
+ */
+export const useLatestVersionStatuses = (
+  inspectionPlanIds: readonly number[],
+): ((inspectionPlanId: number) => string | null | undefined) => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: inspectionPlanIds.map((inspectionPlanId) => ({
+      queryKey: versionKeys.list(inspectionPlanId),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/quality/inspection-plan-versions', {
+            params: { query: { inspectionPlanId } },
+          }),
+        ),
+    })),
+  });
+
+  return (inspectionPlanId) => {
+    const data = results[inspectionPlanIds.indexOf(inspectionPlanId)]?.data;
+    if (data === undefined) return undefined;
+    const latest = [...data.items].sort((left, right) => right.planVersion - left.planVersion)[0];
+    return latest === undefined ? null : latest.statusCode;
+  };
 };
 
 /** 받은 건수가 전체보다 적으면 목록이 잘린 것이다. 선택 목록의 잘림 판정에 쓴다. */

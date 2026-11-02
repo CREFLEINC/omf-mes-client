@@ -1,7 +1,9 @@
-import type { DispositionDecisionCreateForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { RemainingQty } from './remaining-qty';
+
+type DispositionDecisionCreate = components['schemas']['DispositionDecisionCreate'];
 
 export interface DecisionFormValue {
   dispositionTypeCode: string;
@@ -28,7 +30,7 @@ export interface DecisionFormErrors {
  * 보낼 본문은 **계약에서 파생한다.** 손으로 옮겨 적으면 계약에 필수 필드가 늘어도 컴파일이
  * 잡지 못한다 — 되돌릴 수 없는 쓰기의 본문이라 특히 그렇다.
  */
-export type DecisionCreateBody = DispositionDecisionCreateForward;
+export type DecisionCreateBody = DispositionDecisionCreate;
 
 export const EMPTY_DECISION_FORM: DecisionFormValue = {
   dispositionTypeCode: '',

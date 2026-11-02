@@ -293,8 +293,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
           {
             to: '/quality/inspection-levels',
-            label: '검사 수준 관리',
-            labelVi: 'Quản lý mức kiểm tra',
+            label: '검사 수준 설정',
+            labelVi: 'Thiết lập mức kiểm tra',
           },
         ],
       },
@@ -703,7 +703,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 창고·위치 — 창고·Location → 적치 규칙(위치를 참조) → 창고 배치도(위치를 도면에 얹음).
+       * 창고·위치 — 창고·Location → 창고 배치도(위치를 도면에 얹음).
        * 물건이 오가는 「구매 / 자재 관리」가 아니라 어디에 둘지 **정해 두는** 일이라 기준정보다.
        */
       {
@@ -717,7 +717,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '창고·Location',
             labelVi: 'Kho · Vị trí',
           },
-          { to: '/master-data/putaway-rule', label: '적치 규칙', labelVi: 'Quy tắc cất hàng' },
           {
             to: '/master-data/warehouse-layout',
             label: '창고 배치도',

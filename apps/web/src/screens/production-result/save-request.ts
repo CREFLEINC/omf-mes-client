@@ -1,6 +1,8 @@
-import type { ProductionResultDefectInput } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import type { ProductionResultCreate, ResultDraft } from './types';
+
+type ProductionResultDefectInput = components['schemas']['ProductionResultDefectInput'];
 
 /**
  * 저장 요청 본문을 만드는 **유일한 자리.**

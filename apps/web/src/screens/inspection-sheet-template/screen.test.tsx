@@ -72,7 +72,14 @@ interface Recorded {
   body: string;
 }
 
-const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
+const setup = (
+  detail: InspectionSheetTemplate,
+  plantCode = 'PL13',
+  auditEvents: Record<string, unknown>[] = [],
+  discardError: Record<string, unknown> | null = null,
+  /** 목록 응답 — 없으면 상세 하나 */
+  listRows: InspectionSheetTemplate[] = [detail],
+) => {
   const requests: Recorded[] = [];
   const stub = createStubFetch([
     /* OA 공장 판단(omf-all-around#89) — 계정 범위(사업부 8301 전체)가 덮는 공장의 코드. */
@@ -104,7 +111,8 @@ const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
     },
     {
       match: (r) => r.method === 'GET' && new URL(r.url).pathname.endsWith(LIST),
-      respond: () => jsonResponse({ items: [detail], page: { page: 1, size: 50, total: 1 } }),
+      respond: () =>
+        jsonResponse({ items: listRows, page: { page: 1, size: 50, total: listRows.length } }),
     },
     {
       match: (r) => r.method === 'GET' && new URL(r.url).pathname.endsWith(`${LIST}/11`),
@@ -132,6 +140,26 @@ const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
     {
       match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(':confirm'),
       respond: () => jsonResponse(detail),
+    },
+    /* 작성 취소 · 폐기 · 변경 이력(omf-all-around#214) */
+    {
+      match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(':obsolete'),
+      respond: () => jsonResponse({ ...detail, statusCode: 'OBSOLETE' }),
+    },
+    {
+      match: (r) => r.method === 'DELETE',
+      respond: () =>
+        discardError === null
+          ? new Response(null, { status: 204 })
+          : jsonResponse(discardError, { status: 400 }),
+    },
+    {
+      match: (r) => new URL(r.url).pathname.endsWith('/audit/events'),
+      respond: () =>
+        jsonResponse({
+          items: auditEvents,
+          page: { page: 1, size: 100, total: auditEvents.length },
+        }),
     },
     {
       match: (r) => r.method === 'POST',
@@ -162,21 +190,125 @@ const setup = (detail: InspectionSheetTemplate, plantCode = 'PL13') => {
 };
 
 const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('button', { name: t.list.openRow('AAR4', 2) }));
+  await user.click(await screen.findByRole('button', { name: t.list.openRow('AAR4') }));
   await screen.findByText(t.editor.stepSection);
 };
 
 describe('검사표 기준', () => {
-  it('목록에 모델·판·양식·상태를 보인다', async () => {
+  it('목록에 품목·양식·상태를 보이고 버전 열은 없다', async () => {
     setup(template());
 
     const row = await within(await screen.findByRole('table', { name: t.list.caption })).findByRole(
       'row',
       { name: /AAR4/ },
     );
-    expect(row).toHaveTextContent('2');
     expect(row).toHaveTextContent(t.layouts.OP!);
     expect(row).toHaveTextContent(t.statuses.DRAFT!);
+    /* 재료 · 확정자 열(#208) */
+    expect(row).toHaveTextContent('방청 처리');
+    expect(screen.getByRole('columnheader', { name: t.columns.material })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: t.columns.confirmedBy })).toBeInTheDocument();
+    /* 표는 품목마다 한 줄 — 버전은 상세에서 고른다(#208). */
+    expect(screen.queryByRole('columnheader', { name: t.columns.version })).not.toBeInTheDocument();
+  });
+
+  /* 사용 여부 — 작성중 · 확정은 사용, 폐기는 미사용. 처음에는 사용만 보인다(#208). */
+  it('사용 여부 열이 보이고, 폐기된 버전은 처음 목록에서 빠진다', async () => {
+    setup(template());
+    const row = await screen.findByRole('row', { name: /AAR4/ });
+    expect(row).toHaveTextContent(t.list.usageActive);
+    expect(screen.getByRole('columnheader', { name: t.columns.usage })).toBeInTheDocument();
+  });
+
+  it('폐기된 버전만 있으면 처음 목록은 비어 있다', async () => {
+    setup(template({ statusCode: 'OBSOLETE' }));
+    /* 받은 판은 있으니 「등록한 기준이 없다」가 아니라 「조건에 맞는 기준이 없다」다. */
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
+  });
+
+  /* 조건을 바꾸면 「조회」를 누르지 않아도 바로 걸린다(사용자 지시 · #208). 재료는 입력을 멈추면 걸린다. */
+  it('재료를 입력하면 조회 단추 없이 바로 걸린다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '없는재료');
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
+  it('상태를 고르면 조회 단추 없이 바로 걸린다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.click(screen.getByRole('combobox', { name: t.list.status }));
+    await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
+  /* 상태는 줄(품목의 가장 높은 버전) 기준으로 거른다(#208). */
+  it('상태를 확정으로 거르면 작성중인 품목 줄은 빠진다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.click(screen.getByRole('combobox', { name: t.list.status }));
+    await user.click(screen.getByRole('option', { name: t.statuses.CONFIRMED }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+  });
+
+  /* 양식 · 재료는 받은 쪽 안에서 거른다(#208). */
+  it('재료 조건에 맞지 않으면 조건 결과 없음 안내가 나온다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '없는재료');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
+  });
+
+  /* 양식 · 재료 조건은 품목의 가장 높은 버전에 건다(#208 리뷰 반영) — 옛 버전이 그 품목의 줄로 나오지 않게. */
+  it('옛 버전만 재료 조건에 맞으면 그 품목은 걸리지 않는다', async () => {
+    const latest = template();
+    const old = template({
+      inspectionSheetTemplateId: 10,
+      templateVersion: 1,
+      statusCode: 'CONFIRMED',
+      materialText: '옛재료',
+    });
+    const { user } = setup(latest, 'PL13', [], null, [old, latest]);
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '옛재료');
+
+    expect(await screen.findByText(t.list.emptyFiltered)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /AAR4/ })).not.toBeInTheDocument();
+  });
+
+  it('재료는 일부만 맞아도 걸린다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('row', { name: /AAR4/ });
+
+    await user.type(screen.getByLabelText(t.list.material), '방청');
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(await screen.findByRole('row', { name: /AAR4/ })).toBeInTheDocument();
+  });
+
+  /* 확정 일시는 머리를 눌러 오름 · 내림차순으로 줄을 세운다(#208). */
+  it('확정 일시 머리를 누르면 정렬된다', async () => {
+    const { user } = setup(template());
+    await screen.findByRole('table', { name: t.list.caption });
+
+    const header = screen.getByRole('columnheader', { name: t.columns.confirmedAt });
+    await user.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    await user.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'descending');
   });
 
   it('작성중 기준의 단계 이름을 고쳐 저장하면 상세의 ETag 로 잠가 통째로 보낸다', async () => {
@@ -224,6 +356,18 @@ describe('검사표 기준', () => {
     ).toHaveAttribute('aria-current', 'true');
   });
 
+  /* 버전 줄 — 검사 기준 탭 상세와 같다(#208). 버전이 하나면 비교할 것이 없어 「버전 비교」가 없다. */
+  it('상세에 버전 줄(버전 · 버전 목록)이 서고, 버전이 하나면 버전 비교는 없다', async () => {
+    const { user } = setup(template());
+    await openRow(user);
+
+    expect(screen.getByRole('button', { name: t.versionBar.openList })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.versionBar.compare })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.versionBar.openList }));
+    expect(await screen.findByRole('dialog', { name: t.versionBar.openList })).toBeInTheDocument();
+  });
+
   it('작성중 기준을 확정하면 확인 뒤 :confirm 을 보낸다', async () => {
     const { user, requests } = setup(template());
     await openRow(user);
@@ -236,7 +380,7 @@ describe('검사표 기준', () => {
     expect(requests.find((r) => r.path.endsWith(':confirm'))!.headers.get('If-Match')).toBe('"4"');
   });
 
-  it('확정된 기준은 고칠 수 없고, 새 판 만들기가 같은 모델·사업부로 복사해 등록한다', async () => {
+  it('확정된 기준은 고칠 수 없고, 새 버전 만들기가 같은 품목·사업부로 복사해 등록한다', async () => {
     const { user, requests } = setup(
       template({ statusCode: 'CONFIRMED', confirmedBy: 1, confirmedAt: '2026-10-21T01:00:00Z' }),
     );
@@ -261,13 +405,41 @@ describe('검사표 기준', () => {
     expect(body.steps).toHaveLength(1);
   });
 
-  it('새 기준은 모델을 고르지 않으면 보내지 않는다', async () => {
+  /* 새 기준의 모델 · 사업부 · 양식은 팝업에서 고른다 — 검사 기준 탭의 「기준 추가」 창과 같다(#208). */
+  it('새 기준 등록은 기본 정보 팝업으로 열리고, 모델을 고르지 않으면 넘어가지 않는다', async () => {
     const { user, requests } = setup(template());
     await user.click(await screen.findByRole('button', { name: t.list.add }));
-    await user.click(screen.getByRole('button', { name: t.editor.save }));
 
-    expect(screen.getByText(t.editor.noModel)).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: t.editor.newHeading });
+    await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
+
+    expect(within(dialog).getByText(t.editor.noModel)).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.editor.newHeading })).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
+  });
+
+  /* 버그 수정(#208) — 팝업을 여는 것만으로 뒤 상세 칸이 새 기준으로 바뀌면 안 된다. */
+  it('새 기준 등록 팝업을 열어도 뒤에 열린 기준 상세는 그대로다', async () => {
+    const { user } = setup(template());
+    await openRow(user);
+
+    await user.click(screen.getByRole('button', { name: t.list.add }));
+    await screen.findByRole('dialog', { name: t.editor.newHeading });
+
+    expect(screen.getByText(t.editor.detailTitle)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+    expect(screen.getByText(t.editor.detailTitle)).toBeInTheDocument();
+  });
+
+  it('새 기준 팝업에서 취소하면 등록을 그만둔다', async () => {
+    const { user } = setup(template());
+    await user.click(await screen.findByRole('button', { name: t.list.add }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.editor.newHeading });
+    await user.click(within(dialog).getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.queryByRole('dialog', { name: t.editor.newHeading })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: t.editor.newHeading })).not.toBeInTheDocument();
   });
 
   it('부품 공장 범위만 있는 계정은 「OA 사업부 전용」 안내만 보이고 기준을 조회하지 않는다', async () => {
@@ -275,5 +447,90 @@ describe('검사표 기준', () => {
 
     expect(await screen.findByText(messages.common.oaOnly.notice)).toBeInTheDocument();
     expect(requests.some((r) => r.path.endsWith(LIST))).toBe(false);
+  });
+
+  describe('작성 취소 · 폐기 · 변경 이력 (omf-all-around#214)', () => {
+    it('작성중 버전은 「작성 취소」만 서고, 확인 뒤 DELETE 를 보낸다', async () => {
+      const { user, requests } = setup(template());
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.obsolete })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: t.editor.discard }));
+      const dialog = await screen.findByRole('dialog', { name: t.discardDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.discardDialog.ok }));
+
+      await waitFor(() => expect(requests.some((r) => r.method === 'DELETE')).toBe(true));
+      expect(requests.find((r) => r.method === 'DELETE')!.path).toMatch(/\/11$/);
+    });
+
+    it('작성 취소가 거부되면 확인 창이 닫히지 않고 창 안에 이유를 보인다', async () => {
+      const { user } = setup(template(), 'PL13', [], {
+        errors: [
+          {
+            scope: 'screen',
+            code: 'STATE_LOCKED',
+            message: '이 기준으로 만든 검사표가 있어 작성을 취소할 수 없습니다.',
+          },
+        ],
+      });
+      await openRow(user);
+
+      await user.click(screen.getByRole('button', { name: t.editor.discard }));
+      const dialog = await screen.findByRole('dialog', { name: t.discardDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.discardDialog.ok }));
+
+      expect(
+        await within(dialog).findByText(/이 기준으로 만든 검사표가 있어 작성을 취소할 수 없습니다/),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: t.discardDialog.title })).toBeInTheDocument();
+    });
+
+    it('확정 버전은 「폐기」만 서고, 확인 뒤 :obsolete 를 잠금 버전과 함께 보낸다', async () => {
+      const { user, requests } = setup(
+        template({ statusCode: 'CONFIRMED', confirmedBy: 1, confirmedAt: '2026-10-21T01:00:00Z' }),
+      );
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.discard })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: t.editor.obsolete }));
+      const dialog = await screen.findByRole('dialog', { name: t.obsoleteDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.obsoleteDialog.ok }));
+
+      await waitFor(() => expect(requests.some((r) => r.path.endsWith(':obsolete'))).toBe(true));
+      expect(requests.find((r) => r.path.endsWith(':obsolete'))!.headers.get('If-Match')).toBe(
+        '"4"',
+      );
+    });
+
+    it('변경 이력이 없으면 「변경 이력」 단추가 서지 않는다', async () => {
+      const { user } = setup(template());
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.history })).not.toBeInTheDocument();
+    });
+
+    it('「변경 이력」 창은 구분과 바뀐 칸의 전후 값을 보인다', async () => {
+      const { user, requests } = setup(template(), 'PL13', [
+        {
+          auditEventId: 1,
+          occurredAt: '2026-10-30T01:00:00Z',
+          targetTypeCode: 'INSPECTION_SHEET_TEMPLATE',
+          targetId: 11,
+          eventTypeCode: 'UPDATE',
+          beforeValue: { remarks: null, steps: [] },
+          afterValue: { remarks: '새 비고', steps: [{ stepCode: 'PROCESS_1' }] },
+          performedBy: null,
+        },
+      ]);
+      await openRow(user);
+
+      await user.click(await screen.findByRole('button', { name: t.editor.history }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText(t.editor.remarks)).toBeInTheDocument();
+      expect(within(dialog).getByText('새 비고')).toBeInTheDocument();
+      expect(within(dialog).getByText(t.editor.stepSection)).toBeInTheDocument();
+      const audit = requests.find((r) => r.path.endsWith('/audit/events'))!;
+      expect(audit).toBeDefined();
+    });
   });
 });

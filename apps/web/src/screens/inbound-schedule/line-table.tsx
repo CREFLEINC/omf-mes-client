@@ -75,20 +75,16 @@ export interface LineTableProps {
     onSubmitEdit: () => void;
   };
   /**
-   * 라인별 LOT 진행(`stage.ts` `progressByLine` · 계약 대기). **`undefined` 면 앞선 서버거나 조회 전**이라
+   * 라인별 LOT 진행(`stage.ts` `progressByLine`). **`undefined` 면 앞선 서버거나 조회 전**이라
    * 라인만 선다 — 접기 손잡이·「다음 할 일」 열도 없다. 빈 Map 은 「LOT 이 없다」다.
    */
   lots?: ReadonlyMap<number, InboundLotProgress[]>;
   /** 진행 조회가 실패했다(404·403 은 아님) — 라인은 그대로 두고 한 줄로 알린다. */
   progressFailed?: boolean;
-  /** 표 위에 서는 한 줄(IQC 의뢰 결과 · 실패 배너). */
+  /** 표 위에 나타나는 한 줄(입고 결과 · 실패 알림). */
   notice?: ReactNode;
-  /** 보내는 중인 IQC 의뢰의 LOT. 그 단추만 돈다. */
-  requestingLotId?: number | null;
   /** LOT 줄의 「입고 처리」 — 없으면(권한 없음) 세우지 않는다. */
   onPostReceipt?: (lot: IssuedLotProgress) => void;
-  /** LOT 줄의 「IQC 의뢰 요청」. */
-  onRequestIqc?: (lot: IssuedLotProgress) => void;
   /**
    * 「입고 대기」 LOT 을 체크해 한 번에 입고(사용자 지시 2026-10-28). 없으면(입고 권한 없음) LOT 줄에 체크가 서지 않는다.
    */
@@ -209,11 +205,7 @@ const ExcessCell = ({
 
 /** 발주 머리의 「진행」 — 수가 있는 묶음을 흐름 순서로. LOT 이 없으면 미착수는 「입하 전」, 아니면 「—」. */
 const OrderProgress = ({ order }: { order: PurchaseOrderSummary }) => {
-  const counts = order.inboundStageCounts;
-
-  if (counts === undefined) return null;
-
-  const groups = presentGroups(counts);
+  const groups = presentGroups(order.inboundStageCounts);
 
   if (groups.length === 0) {
     return (
@@ -232,7 +224,7 @@ const OrderProgress = ({ order }: { order: PurchaseOrderSummary }) => {
       <dd>
         <span className="po-board-progress">
           {groups.map((group) => (
-            <StageGroupChip key={group} group={group} count={counts[group]} />
+            <StageGroupChip key={group} group={group} count={order.inboundStageCounts[group]} />
           ))}
         </span>
       </dd>
@@ -262,7 +254,7 @@ const OrderProgress = ({ order }: { order: PurchaseOrderSummary }) => {
  * | **품목명** | **미지정** | 남는 폭을 흡수한다. 넘치면 말줄임 |
  * | 발주·입하·남은 수량 | 88px × 3 | 천 단위 7자 + 여백. LOT 줄은 입하 수량만 |
  * | 단위 | 56px | 코드 3자 + 여백 |
- * | 창고 | 184px | 「VICT 자재창고_…」 같은 긴 이름 + 여백. 넘치면 말줄임(전체는 마우스를 올리면). **LOT 줄은 적치된 위치, 아직 없으면 다음 할 일**(「입고 처리」·「IQC 의뢰 요청」 단추 · 「PDA에서 적치」) — 열을 하나 더 세우면 1920 폭에서 품목명 칸이 사라진다 |
+ * | 창고 | 184px | 「VICT 자재창고_…」 같은 긴 이름 + 여백. 넘치면 말줄임(전체는 마우스를 올리면). **LOT 줄은 적치된 위치, 아직 없으면 다음 할 일**(「입고 처리」 단추 · 「PDA에서 적치」) — 열을 하나 더 세우면 1920 폭에서 품목명 칸이 사라진다 |
  * | 합 | 756px + 흡수 (진행 자료가 있으면 804px) | `.po-board-lines` 최소 폭은 `max(48rem + 늘린 폭, 고정 폭 합)` |
  */
 export const LineTable = ({
@@ -277,9 +269,7 @@ export const LineTable = ({
   lots,
   progressFailed = false,
   notice,
-  requestingLotId = null,
   onPostReceipt,
-  onRequestIqc,
   lotPick,
 }: LineTableProps) => {
   const isTree = lots !== undefined;
@@ -533,7 +523,7 @@ export const LineTable = ({
        */
       render: (row) => {
         /* LOT 줄은 이 발주로 온 몫이다 — 라인의 입하 수량과 맞는다. 줄 전체는 근거 칸에 따로 적는다. */
-        if (row.kind === 'lot') return formatQty(row.lot.allocatedQty ?? row.lot.receivedQty);
+        if (row.kind === 'lot') return formatQty(row.lot.allocatedQty);
         if (draft?.editing != null && editingId === row.line.purchaseOrderLineId) {
           const qty = checkQty(draft.editing.qtyText);
 
@@ -667,9 +657,7 @@ export const LineTable = ({
         ) : (
           <LotActionCell
             lot={row.lot}
-            requestingLotId={requestingLotId}
             {...(onPostReceipt === undefined ? {} : { onPostReceipt })}
-            {...(onRequestIqc === undefined ? {} : { onRequestIqc })}
           />
         );
       },

@@ -57,10 +57,10 @@ const LOT_NO = 'FG-2026-000311';
 const LOC_CODE = 'FG-A-02-01';
 
 interface Options {
-  /** 창고가 위치를 관리하지 않는다 - 대표 위치로 들어간다. */
+  /** 창고를 위치로 나누지 않았다 - 사람이 만든 위치가 없어 「창고 전체」로 들어간다. */
   unmanaged?: boolean;
-  /** 대표 위치가 없다 - 목적지를 지어낼 수 없다. */
-  noDefaultLocation?: boolean;
+  /** 「창고 전체」가 없다 - 목적지를 지어낼 수 없다. */
+  noWholeLocation?: boolean;
   /** LOT 이 아직 검사 대기다. */
   pending?: boolean;
   /** LOT 번호를 받지 못한다 - 연결이 끊긴 자리를 흉내 낸다. */
@@ -75,10 +75,8 @@ interface Options {
   seen?: Request[];
   /** 물어본 주소를 모은다. */
   asked?: string[];
-  /** 이 품목에 정해진 자리가 없다 - 규칙이 비어 있는 갈래다. */
-  noRule?: boolean;
-  /** 규칙이 다른 자리를 가리킨다 - 스캔한 곳이 권장이 아닌 갈래다. */
-  recommendsOther?: boolean;
+  /** 스캔한 위치의 보관 품목. 기본은 이 인식표의 품목(2101) 하나, 빈 목록은 품목을 가리지 않는 위치다. */
+  designated?: number[];
   /** 이 LOT 이 이미 재고로 서 있다 - 다른 기기가 먼저 입고한 갈래다. */
   alreadyStocked?: boolean;
   /** 재고 조회가 닿지 않는다 - 오프라인에서 이 판정을 할 수 없는 자리다. */
@@ -100,7 +98,6 @@ const routes = (options: Options = {}): StubRoute[] => [
             warehouseCode: 'FG',
             warehouseName: '완제품창고',
             warehouseTypeCode: 'PRODUCT',
-            managementLevelCode: options.unmanaged === true ? 'WAREHOUSE' : 'CELL',
             isExternal: false,
             isDefect: false,
             isActive: true,
@@ -196,27 +193,31 @@ const routes = (options: Options = {}): StubRoute[] => [
     respond: () =>
       jsonResponse({
         items: [
-          {
-            locationId: 3101,
-            warehouseId: 1002,
-            locationCode: LOC_CODE,
-            locationName: 'A구역 02열 01단',
-            locationTypeCode: 'RACK',
-            allowMixedItem: true,
-            allowMixedLot: true,
-            isActive: true,
-          },
-          ...(options.noDefaultLocation === true
+          ...(options.unmanaged === true
+            ? []
+            : [
+                {
+                  locationId: 3101,
+                  warehouseId: 1002,
+                  locationCode: LOC_CODE,
+                  locationName: 'A구역 02열 01단',
+                  locationLevelCode: 'CELL',
+                  systemRoleCode: null,
+                  isLeaf: true,
+                  isActive: true,
+                },
+              ]),
+          ...(options.noWholeLocation === true
             ? []
             : [
                 {
                   locationId: 3199,
                   warehouseId: 1002,
-                  locationCode: 'FG-DEFAULT',
-                  locationName: '대표',
-                  locationTypeCode: 'DEFAULT',
-                  allowMixedItem: true,
-                  allowMixedLot: true,
+                  locationCode: 'SYS-WHOLE',
+                  locationName: '창고 전체',
+                  locationLevelCode: 'ZONE',
+                  systemRoleCode: 'WAREHOUSE_WHOLE',
+                  isLeaf: true,
                   isActive: true,
                 },
               ]),
@@ -256,46 +257,18 @@ const routes = (options: Options = {}): StubRoute[] => [
         );
       }
 
-      /*
-       * 계약대로 답한다 - 정해진 위치가 없는 품목은 확인 표시가 있어야 받는다. 본문과 상관없이
-       * 받아 주면 확인값을 빠뜨려도 시험이 통과한다.
-       */
-      const body = (await req.clone().json()) as { confirmedNoRule?: boolean };
-
-      if (options.noRule === true && body.confirmedNoRule !== true) {
-        return jsonResponse(
-          {
-            code: 'INVALID',
-            message: '권장 위치가 없는 품목은 확인이 필요합니다.',
-            errors: [{ field: 'confirmedNoRule', reason: 'REQUIRED' }],
-          },
-          { status: 400 },
-        );
-      }
-
       return jsonResponse({ putawayTaskId: 7701, statusCode: 'COMPLETED' });
     },
   },
   {
-    match: (req) => new URL(req.url).pathname === '/logistics/putaway-rules',
+    match: (req) => new URL(req.url).pathname === '/mdm/locations/3101/items',
     respond: () =>
       jsonResponse({
-        items:
-          options.noRule === true
-            ? []
-            : [
-                {
-                  putawayRuleId: 4401,
-                  itemId: 2101,
-                  warehouseId: 1002,
-                  locationId: options.recommendsOther === true ? 3199 : 3101,
-                  capacityQty: 1000,
-                  uomId: 1001,
-                  priorityNo: 1,
-                  isActive: true,
-                },
-              ],
-        page,
+        items: (options.designated ?? [2101]).map((itemId) => ({
+          itemId,
+          itemCode: `FG-${String(itemId)}`,
+          itemName: '제품',
+        })),
       }),
   },
   {
@@ -317,12 +290,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  ...itemRoutes(
-    [
-      { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
-      { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
-    ],
-  ),
+  ...itemRoutes([
+    { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
+    { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
+  ]),
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -474,14 +445,14 @@ describe('제품 입고·적치 화면', () => {
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
   });
 
-  /* 계약이 목적지를 필수로 요구한다. 위치를 안 받는 창고도 어딘가로 들어가야 한다. */
-  it('위치를 관리하지 않는 창고는 대표 위치로 들어간다', async () => {
+  /* 계약이 목적지를 필수로 요구한다. 위치를 나누지 않은 창고도 어딘가로 들어가야 한다. */
+  it('위치를 나누지 않은 창고는 「창고 전체」로 들어간다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ unmanaged: true, seen });
     await openUnit(user);
 
-    expect(await screen.findByText(/대표 위치로 들어갑니다/)).toBeTruthy();
+    expect(await screen.findByText(/창고 전체로 들어갑니다/)).toBeTruthy();
     await readyToSubmit();
     await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
 
@@ -494,13 +465,13 @@ describe('제품 입고·적치 화면', () => {
     expect(body.lines[0]?.destinationLocationId).toBe(3199);
   });
 
-  /* 아무 위치나 골라 넣으면 재고가 남의 자리에 선다. */
-  it('대표 위치가 없으면 완료할 수 없다', async () => {
+  /* 아무 위치나 골라 넣으면 재고가 남의 자리에 들어간다. */
+  it('「창고 전체」가 없으면 완료할 수 없다', async () => {
     const user = userEvent.setup();
-    mount({ unmanaged: true, noDefaultLocation: true });
+    mount({ unmanaged: true, noWholeLocation: true });
     await openUnit(user);
 
-    expect(await screen.findByText(/대표 위치가 없습니다/)).toBeTruthy();
+    expect(await screen.findByText(/창고 전체 위치가 없습니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
   });
 
@@ -614,72 +585,49 @@ describe('제품 입고·적치 화면', () => {
     expect(await screen.findByText(/담긴 물건이 없습니다/)).toBeTruthy();
   });
 
-  /* 다른 칸에 두면 다음 피킹이 물건을 찾지 못한다. 서버도 막는다. */
-  it('권장과 다른 위치를 스캔하면 막고 권장 위치를 말한다', async () => {
+  /* 다른 품목 전용 위치에 두면 다음 피킹이 물건을 찾지 못한다. 서버도 막는다. */
+  it('다른 품목 전용 위치를 스캔하면 막는다', async () => {
     const user = userEvent.setup();
-    mount({ recommendsOther: true });
+    mount({ designated: [9999] });
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText('권장 위치 FG-DEFAULT 이(가) 아닙니다')).toBeTruthy();
+    expect(await screen.findByText(`${LOC_CODE} 은(는) 다른 품목 전용 위치입니다`)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
     expect(tone.played).toBeGreaterThan(0);
   });
 
-  /* 권장 자리를 먼저 보인다. 다 스캔한 뒤에 막히면 물건을 들고 되돌아온다. */
-  it('권장 위치를 스캔 전에 보이고 맞으면 맞다고 말한다', async () => {
+  it('이 품목의 보관 위치면 맞다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
     await openUnit(user);
-
-    expect(await screen.findByText(`권장 위치 ${LOC_CODE}`)).toBeTruthy();
-
     await pickLocation(user);
 
-    expect(await screen.findByText('권장 위치와 같습니다')).toBeTruthy();
+    expect(await screen.findByText('이 품목의 보관 위치입니다')).toBeTruthy();
     await readyToSubmit();
   });
 
-  /* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 해 현장이 선다. */
-  it('정해진 위치가 없으면 그 사실을 말하고 확인을 받아 통과시킨다', async () => {
-    const user = userEvent.setup();
-    mount({ noRule: true });
-    await openUnit(user);
-    await pickLocation(user);
-
-    expect(await screen.findByText('이 품목에 정해진 위치가 없습니다')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
-
-    await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
-
-    await readyToSubmit();
-  });
-
-  /*
-   * 확인은 단추를 푸는 데서 끝나지 않는다. 서버가 그 확인을 받아야 적치가 선다 - 빠뜨리면 입고는
-   * 서고 적치만 되돌아와, 물건이 어디 있는지가 남지 않는다.
-   */
-  it('정해진 위치가 없어 확인하고 입고하면 적치까지 선다', async () => {
+  /* 보관 품목을 정하지 않은 위치는 막지 않는다. 확인 단추는 없어졌다(서버 #906). */
+  it('품목을 가리지 않는 위치면 확인 없이 입고하고 적치까지 선다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    mount({ noRule: true, seen });
+    mount({ designated: [], seen });
     await openUnit(user);
     await pickLocation(user);
-    await user.click(await screen.findByRole('button', { name: '여기 적치합니다' }));
+
+    expect(await screen.findByText('품목을 가리지 않는 위치입니다')).toBeTruthy();
     await readyToSubmit();
 
     await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
 
-    /* 본문을 먼저 잰다. 결과 문구부터 기다리면 결함이 있을 때 시간 초과로만 떨어져 까닭이 안 보인다. */
     const putaway = await waitFor(() => {
       const found = seen.find((each) => new URL(each.url).pathname.endsWith(':complete'));
 
       expect(found).toBeTruthy();
       return found;
     });
-    const body = (await putaway?.clone().json()) as { confirmedNoRule?: boolean };
 
-    expect(body.confirmedNoRule).toBe(true);
+    expect(await putaway?.clone().json()).not.toHaveProperty('confirmedNoRule');
     expect(await screen.findByText('입고하고 적치했습니다')).toBeTruthy();
   });
 
@@ -748,18 +696,14 @@ describe('제품 입고·적치 화면', () => {
     expect(tone.played).toBeGreaterThan(0);
   });
 
-  /* 첫 줄의 규칙으로 재면 다른 품목의 옳은 자리를 막아 현장이 선다. */
-  it('한 인식표에 품목이 여럿이면 규칙으로 재지 않고 확인을 받는다', async () => {
+  /* 인식표에 품목이 여럿이면 전부 보관 품목이어야 한다. */
+  it('한 인식표의 품목 중 하나라도 보관 품목이 아니면 막는다', async () => {
     const user = userEvent.setup();
-    mount({ twoItems: true, recommendsOther: true });
+    mount({ twoItems: true });
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText('이 품목에 정해진 위치가 없습니다')).toBeTruthy();
-    expect(screen.queryByText('권장 위치 FG-DEFAULT 이(가) 아닙니다')).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
-
-    await readyToSubmit();
+    expect(await screen.findByText(`${LOC_CODE} 은(는) 다른 품목 전용 위치입니다`)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
   });
 });

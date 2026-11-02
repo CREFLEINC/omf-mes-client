@@ -70,8 +70,6 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 대체로 겹치지만 창고 계열 둘은 아니다 — 아래 두 자리에 근거를 적었다.
    */
   { path: '/master-data/warehouse-location', code: 'W-06-07', name: '창고·Location 마스터' },
-  /* IA §3-1 「기준정보 > 마스터」. v1.6 신설 화면이고 `W-06-07` 에서 이어진다고 §3-2 가 적었다. */
-  { path: '/master-data/putaway-rule', code: 'W-06-14', name: '적치 규칙 마스터' },
   /*
    * ⚠ **06 이 아니라 공통(CO)이다.** IA §3-1 은 이 화면을 「시스템/공통 > 설정」에 두었는데
    * 사이드바는 창고 계열 옆(기준정보)에 세웠다 — 메뉴 배치와 화면 코드의 도메인이 **갈리는 자리**다.

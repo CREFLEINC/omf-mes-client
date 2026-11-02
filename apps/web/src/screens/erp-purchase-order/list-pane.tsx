@@ -6,7 +6,7 @@ import { OneLine } from '../../patterns/po-board';
 import { PageNav } from './page-nav';
 import { ProgressChip } from './progress';
 import type { PageView } from './pagination';
-import type { PurchaseOrder } from './types';
+import type { PurchaseOrderListItem } from './types';
 
 const t = messages.erpPurchaseOrder;
 
@@ -14,7 +14,7 @@ const displayOr = (value: string | null | undefined): string =>
   value === null || value === undefined || value.trim() === '' ? t.values.missing : value;
 
 export interface ErpPurchaseOrderListPaneProps {
-  rows: PurchaseOrder[];
+  rows: PurchaseOrderListItem[];
   isLoading: boolean;
   page: PageView;
   selectedId: number | null;
@@ -46,7 +46,7 @@ export const ErpPurchaseOrderListPane = ({
   onSelect,
   onChangePage,
 }: ErpPurchaseOrderListPaneProps) => {
-  const columns: Column<PurchaseOrder>[] = [
+  const columns: Column<PurchaseOrderListItem>[] = [
     /* 고르는 단추 자리(`BoardTable` 의 `pick`). */
     { key: 'purchaseOrderNo', header: t.fields.purchaseOrderNo, width: '128px' },
     {

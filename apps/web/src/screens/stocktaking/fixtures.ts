@@ -264,8 +264,6 @@ export const locationFixtures = [
     warehouseId: 9101,
     locationCode: 'SAMPLE-LOC-01',
     locationName: '합성 위치 가',
-    locationTypeCode: 'SAMPLE_LOC_TYPE_A',
-    allowMixedItem: true,
     isActive: true,
   },
   {
@@ -273,8 +271,6 @@ export const locationFixtures = [
     warehouseId: 9101,
     locationCode: 'SAMPLE-LOC-02',
     locationName: '합성 위치 나',
-    locationTypeCode: 'SAMPLE_LOC_TYPE_A',
-    allowMixedItem: true,
     isActive: false,
   },
   {
@@ -282,8 +278,6 @@ export const locationFixtures = [
     warehouseId: 9101,
     locationCode: 'SAMPLE-LOC-03',
     locationName: '합성 위치 다',
-    locationTypeCode: 'SAMPLE_LOC_TYPE_A',
-    allowMixedItem: true,
     isActive: true,
   },
 ];

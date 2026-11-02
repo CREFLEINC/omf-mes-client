@@ -13,6 +13,8 @@ export interface IqcSkipPaneProps {
   skipBasisCode: string | null;
   /** 계정에 연결된 작업자의 사번 — 요청이 함께 보낸다(서버가 사번을 요구한다). 없으면 요청하지 못한다. */
   workerNo: string | null;
+  /** 생략 뒤 함께 새로 읽을 다른 화면의 조회 — 부품 IQC 화면의 목록(omf-all-around#205). */
+  alsoInvalidate?: readonly (readonly unknown[])[];
 }
 
 /**
@@ -24,6 +26,7 @@ export const IqcSkipPane = ({
   requestStatusCode,
   skipBasisCode,
   workerNo,
+  alsoInvalidate = [],
 }: IqcSkipPaneProps) => {
   const { client } = useApiClient();
   const t = messages.iqcInspection.skip;
@@ -54,7 +57,7 @@ export const IqcSkipPane = ({
         })
       }
       queryKeyRoot={iqcInspectionKeys.all}
-      invalidateKeys={[iqcInspectionKeys.all, INSPECTION_HUB_COUNTS_KEY]}
+      invalidateKeys={[iqcInspectionKeys.all, INSPECTION_HUB_COUNTS_KEY, ...alsoInvalidate]}
       requestBlockedReason={workerNo === null ? t.workerNotLinked : null}
     />
   );

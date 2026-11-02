@@ -79,7 +79,7 @@ export const PlanDialog = ({
       }
     >
       <div className="parts-iqc-plan">
-        {/* 정보 — 세 칸 격자, 자재명은 한 줄 전체(사용자 시안 2026-10-30) */}
+        {/* 정보 — 세 칸 두 줄(사용자 시안 2026-10-30) */}
         <dl className="parts-iqc-kv parts-iqc-plan-facts">
           <div>
             <dt>{t.target.plan}</dt>
@@ -93,7 +93,7 @@ export const PlanDialog = ({
             <dt>{t.plan.version}</dt>
             <dd>{t.plan.versionValue(version.planVersion, version.effectiveFrom)}</dd>
           </div>
-          <div className="parts-iqc-kv-wide">
+          <div>
             <dt>{t.target.itemName}</dt>
             <dd>{itemLabel}</dd>
           </div>
@@ -104,10 +104,12 @@ export const PlanDialog = ({
           <div>
             <dt>{t.plan.aqlAcceptance}</dt>
             <dd>
-              {t.plan.aqlAcceptanceValue(
-                version.aqlValue == null ? '-' : String(version.aqlValue),
-                version.acceptanceNumber ?? null,
-              )}
+              {version.aqlValue == null && version.acceptanceNumber == null
+                ? t.plan.aqlAcceptanceNone
+                : t.plan.aqlAcceptanceValue(
+                    version.aqlValue == null ? '-' : String(version.aqlValue),
+                    version.acceptanceNumber ?? null,
+                  )}
             </dd>
           </div>
         </dl>
@@ -120,7 +122,7 @@ export const PlanDialog = ({
             <table className="parts-iqc-plan-table">
               <thead>
                 <tr>
-                  <th scope="col">{t.visual.checkNo}</th>
+                  <th scope="col">{t.plan.no}</th>
                   <th scope="col">{t.visual.checkItem}</th>
                   <th scope="col">{t.plan.method}</th>
                   <th scope="col">{t.dimension.spec}</th>
@@ -142,13 +144,13 @@ export const PlanDialog = ({
                       <td>
                         {t.plan.methodOf[spec.inspectionMethodCode ?? ''] ??
                           spec.inspectionMethodCode ??
-                          '-'}
+                          t.plan.methodNone}
                       </td>
                       <td>
                         {spec.dataTypeCode === 'NUMERIC'
                           ? nominal === '' || range === nominal
                             ? nominal || range
-                            : `${nominal} (${range})`
+                            : `${nominal} (${range.replace(' ~ ', '~')})`
                           : t.plan.okNg}
                       </td>
                       <td className="is-num">{spec.measurementCount}</td>

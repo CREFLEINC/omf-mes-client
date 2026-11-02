@@ -32,19 +32,22 @@ export const partsIqcInspection = {
     title: '검사 기준 상세',
     edit: '수정',
     version: '버전',
-    versionValue: (no: number, from: string) => `${String(no)}판 · ${from} 적용`,
-    sampling: '샘플링',
-    full: '전수',
+    versionValue: (no: number, from: string) => `${String(no)}판 · ${from}부터 적용`,
+    sampling: '검사 방식',
+    full: '전수검사',
     ratio: (r: number) => `LOT 의 ${String(r)}%`,
     qty: (n: number) => `${String(n)}개`,
     aqlAcceptance: '합격 판정 기준',
+    no: '번호',
     method: '방법',
+    methodNone: '미등록',
     methodOf: { MEASUREMENT: '측정', VISUAL: '육안', FUNCTIONAL: '기능' } as Record<string, string>,
     count: '시료 수',
-    acceptance: '허용 불량',
+    acceptance: '허용 불량 수',
     okNg: 'OK / NG',
     aqlAcceptanceValue: (aql: string, c: number | null) =>
       `AQL ${aql} · 허용 불량 ${c === null ? '-' : `${String(c)}개`}`,
+    aqlAcceptanceNone: '해당 없음',
     items: '검사 항목',
     itemCount: (n: number) => `(${String(n)}개)`,
   },
@@ -112,6 +115,8 @@ export const partsIqcInspection = {
     heading: '기준서 도면',
     alt: (n: number) => `검사기준서 도면 ${String(n)}`,
     none: '등록된 도면 없음',
+    prev: '이전 도면',
+    next: '다음 도면',
   },
 
   visual: {
@@ -156,7 +161,11 @@ export const partsIqcInspection = {
   },
 
   judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<string, string>,
-  requestStatus: { REQUESTED: '검사 대기', IN_PROGRESS: '검사 진행 중' } as Record<string, string>,
+  requestStatus: {
+    REQUESTED: '검사 대기',
+    IN_PROGRESS: '검사 진행 중',
+    SKIPPED: '검사 생략',
+  } as Record<string, string>,
   ok: 'OK',
   ng: 'NG',
 

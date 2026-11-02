@@ -56,7 +56,6 @@ import { login } from './login';
 import { session } from './session';
 import { stockAdjust } from './stock-adjust';
 import { passwordChange } from './password-change';
-import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
@@ -216,7 +215,6 @@ export const ko = {
   session,
   stockAdjust,
   passwordChange,
-  putawayRule,
   documentProgress,
   notificationCenter,
   alarmRecipientSettings,
