@@ -5,6 +5,7 @@ import {
   type Column,
   DatePicker,
   EmptyState,
+  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -12,9 +13,16 @@ import {
 import type { components, paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import {
   lookupDisplayLabelWithInactive,
   type LookupSource,
@@ -34,6 +42,7 @@ import {
   LOT_PAGE_SIZES,
   type LotPageSize,
 } from '../lot-status-history/filters';
+import { StatusChips } from '../lot-status-history/screen';
 import { useUomCodeOf, withUom } from '../lot-status-history/uoms';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
@@ -55,10 +64,18 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 type LotStatusCandidateQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
 >;
+type LotStatusSummaryQuery = NonNullable<
+  NonNullable<paths['/quality/lot-status-summary']['get']>['parameters']['query']
+>;
 export type LotStatusCandidate = components['schemas']['LotQualityStatus'];
 
 const t = messages.lotStatusTransition.candidate;
 const tSelected = messages.lotStatusTransition.selected;
+const tHistory = messages.lotStatusHistory;
+
+/* 좌우 · 상하 배치와 가운데 막대 비율은 LOT 상태 이력 탭과 따로 기억한다. */
+const SPLIT_KEY = 'omf-mes:lot-status-transition:split';
+const SPLIT_ORIENTATION_KEY = 'omf-mes:lot-status-transition:split-orientation';
 
 export interface LotStatusCandidateFilters {
   q: string;
@@ -113,6 +130,36 @@ export const lotStatusTransitionKeys = {
     offsetMinutes: number,
     size?: number,
   ) => ['lot-status-transition', 'candidates', { ...filters }, page, size, offsetMinutes] as const,
+  statusCounts: (filters: LotStatusCandidateFilters, offsetMinutes: number) =>
+    ['lot-status-transition', 'status-counts', { ...filters }, offsetMinutes] as const,
+};
+
+/**
+ * 상태 칩 건수 — 목록과 같은 조건(LOT 번호 · 자재 · 기간)에서 상태만 뺀 요약 한 번이다. 요약은 목록과 같은 WHERE 로
+ * LOT 하나를 한 건으로 센다(서버 lot-status.service.ts) — 칩을 눌러도 키가 같아 다시 부르지 않는다.
+ */
+export const toLotStatusCountsQuery = (
+  filters: LotStatusCandidateFilters,
+  offsetMinutes: number,
+): LotStatusSummaryQuery =>
+  /* 1쪽 · 크기 없음이라 page · size 가 붙지 않는다 — 남는 것은 요약도 받는 조건뿐이다. */
+  toLotStatusCandidateQuery({ ...filters, lotStatusCode: '' }, 1, offsetMinutes);
+
+const useStatusCounts = (
+  filters: LotStatusCandidateFilters,
+  offsetMinutes: number,
+  enabled: boolean,
+) => {
+  const { client } = useApiClient();
+  const withoutStatus = { ...filters, lotStatusCode: '' };
+  const query = toLotStatusCountsQuery(withoutStatus, offsetMinutes);
+  return useQuery({
+    queryKey: lotStatusTransitionKeys.statusCounts(withoutStatus, offsetMinutes),
+    enabled,
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      runRequest(() => client.GET('/quality/lot-status-summary', { params: { query } })),
+  });
 };
 
 const ROOT_KEY = ['lot-status-transition'] as const;
@@ -233,16 +280,19 @@ export const LotStatusTransitionCandidateScreen = () => {
     if (hold !== code) return hold;
     return releaseReasonNames.options.find((option) => option.value === code)?.label ?? code;
   };
-  const periodId = useId();
+  const periodLabelId = useId();
+  const periodReasonId = useId();
+  const detailId = useId();
+  /* 자재는 상세 조건으로 접어 둔다 — 걸린 자재가 있으면 펼친 채로 들어온다(LOT 상태 이력의 처리자와 같다). */
+  const [isDetailOpen, setIsDetailOpen] = useState(filters.itemId !== '');
   const periodError = validateTransitionPeriod(draft);
-  const periodErrorMessage =
-    periodError === 'missing'
-      ? t.filters.periodMissing
-      : periodError === 'invalid'
-        ? t.filters.periodInvalid
-        : periodError === 'reversed'
-          ? t.filters.periodReversed
-          : null;
+  /* 날짜를 비운 경우는 [조회]만 잠그고 문구는 두지 않는다(LOT 상태 이력과 같다). 검사 규칙은 종전 그대로다. */
+  const periodReason =
+    periodError === 'invalid'
+      ? t.filters.periodInvalid
+      : periodError === 'reversed'
+        ? t.filters.periodReversed
+        : null;
   const itemSource: LookupSource = {
     entries: items.data?.entries ?? [],
     isLoading: items.isPending,
@@ -259,6 +309,20 @@ export const LotStatusTransitionCandidateScreen = () => {
     );
   const statusLabel = (code: string): string =>
     statusOptions.find((option) => option.value === code)?.label ?? t.statusUnknown(code);
+  /* 상태 칩 — 탭 막대 오른쪽(LOT 상태 이력 · LOT 현황과 같다). 누르면 그 상태로 서버에서 다시 거른다. */
+  const statusCounts = useStatusCounts(filters, offsetMinutes, !confirmationPinned);
+  const chipCounts = useMemo(() => {
+    if (statusCounts.data === undefined) return undefined;
+    const counts = new Map<string, number>();
+    for (const row of statusCounts.data.counts) {
+      counts.set(row.statusCode, (counts.get(row.statusCode) ?? 0) + row.lotCount);
+    }
+    return counts;
+  }, [statusCounts.data]);
+  const hubTarget = useHubActionsTarget();
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit(SPLIT_KEY, 0.5);
+  const layout = useSplitOrientation(SPLIT_ORIENTATION_KEY);
   const changePage = (next: number): void => {
     if (confirmationPinned) return;
     setPage(next);
@@ -274,6 +338,21 @@ export const LotStatusTransitionCandidateScreen = () => {
     setFilters({ ...draft });
     changePage(1);
   };
+  const changeStatus = (lotStatusCode: string): void => {
+    if (confirmationPinned) return;
+    setDraft((current) => ({ ...current, lotStatusCode }));
+    setFilters((current) => ({ ...current, lotStatusCode }));
+    changePage(1);
+  };
+  const statusChips = (
+    <StatusChips
+      options={statusOptions}
+      counts={chipCounts}
+      value={filters.lotStatusCode}
+      disabled={confirmationPinned}
+      onChange={changeStatus}
+    />
+  );
   const reset = (): void => {
     if (confirmationPinned) return;
     const next = defaultLotStatusCandidateFilters(new Date());
@@ -281,6 +360,12 @@ export const LotStatusTransitionCandidateScreen = () => {
     setFilters(next);
     changePage(1);
   };
+  const toggleRow = (row: LotStatusCandidate): void => {
+    /* 고른 줄을 다시 누르면 선택을 푼다(LOT 상태 이력과 같다). */
+    if (!confirmationPinned)
+      setSelectedKey((current) => (current === rowKey(row) ? null : rowKey(row)));
+  };
+
   const columns: Column<LotStatusCandidate>[] = [
     /*
      * 표는 LOT 현황 목록과 같은 짜임이다 — 모든 열 가운데 정렬, 폭은 px 로 두고 끌어 바꾼 폭 · 순서는 브라우저에 남는다.
@@ -306,9 +391,7 @@ export const LotStatusTransitionCandidateScreen = () => {
             aria-label={t.select(row.lotNo)}
             aria-current={selectedKey === rowKey(row) ? true : undefined}
             disabled={confirmationPinned}
-            onClick={() => {
-              if (!confirmationPinned) setSelectedKey(rowKey(row));
-            }}
+            onClick={() => toggleRow(row)}
           >
             {row.lotNo}
           </button>
@@ -370,69 +453,65 @@ export const LotStatusTransitionCandidateScreen = () => {
 
   return (
     <div className="lot-status-transition-flow">
-      {/* 조회 조건 카드 — LOT 현황처럼 조건만 따로 둔다. */}
+      {/* 상태 칩은 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다. 탭 막대가 없으면(묶음 밖) 조회 카드 위쪽 줄에 둔다. */}
+      {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      {/* 조회 조건 카드 — LOT 상태 이력과 같은 짜임(기간 · LOT 스캔 · 조회 · 초기화 · 상세 검색). */}
       <section
+        ref={aboveRef}
         className="pane lot-status-search"
-        aria-label={messages.lotStatusHistory.lotFilter.pane}
+        aria-label={tHistory.lotFilter.pane}
       >
+        {hubTarget === null && <div className="lot-status-search-head">{statusChips}</div>}
         <div className="filter-bar lot-status-filter lot-status-transition-filter">
-          <div className="field-cell lot-status-transition-period">
-            {/*
-             * 기간의 기준(최근 전이일)은 라벨 옆 같은 줄의 흐린 보조 글자로 둔다(사용자 지시 2026-09-19 —
-             * 칩 형식을 없앤다). 표시 전용이다.
-             */}
-            <div className="lot-status-transition-period-label">
-              <label className="field-label" htmlFor={periodId}>
-                {t.filters.period}
-              </label>
-              <span className="lot-status-transition-period-hint">{t.filters.note}</span>
+          {/* 기간 — 「기간」 한 이름 아래 [시작일] [종료일] 두 달력 칸. 기준(최근 전이일)과 처음 값(최근 30일)은 종전 그대로다. */}
+          <div className="field-cell" role="group" aria-labelledby={periodLabelId}>
+            <span className="field-label" id={periodLabelId}>
+              {tHistory.historyFilter.fields.period}
+            </span>
+            <div className="lot-status-date-range-row">
+              <DatePicker
+                className="lot-status-date-field"
+                aria-label={tHistory.historyFilter.fields.from}
+                placeholder={tHistory.historyFilter.fields.from}
+                disabled={confirmationPinned}
+                invalid={draft.from === ''}
+                value={draft.from === '' ? null : draft.from}
+                onChange={(from) => setDraft((current) => ({ ...current, from }))}
+              />
+              <DatePicker
+                className="lot-status-date-field"
+                aria-label={tHistory.historyFilter.fields.to}
+                placeholder={tHistory.historyFilter.fields.to}
+                disabled={confirmationPinned}
+                invalid={draft.to === '' || periodReason !== null}
+                value={draft.to === '' ? null : draft.to}
+                onChange={(to) => setDraft((current) => ({ ...current, to }))}
+                aria-describedby={periodReason === null ? undefined : periodReasonId}
+              />
             </div>
-            <DatePicker
-              className="lot-status-transition-period-input"
-              id={periodId}
-              mode="range"
-              disabled={confirmationPinned}
-              value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-              onChange={([from, to]) => setDraft((current) => ({ ...current, from, to }))}
-            />
-            {/* 기간 오류는 칸 바로 아래 — 도움말이 라벨 옆으로 옮겨도 오류 자리는 그대로다. */}
-            {periodErrorMessage !== null && (
-              <span className="field-error" role="alert">
-                {periodErrorMessage}
+            {periodReason !== null && (
+              <span id={periodReasonId} className="field-error" role="alert">
+                {periodReason}
               </span>
             )}
           </div>
           <SearchInput
             disabled={confirmationPinned}
             containerClassName="lot-status-filter-lot-no"
-            label={messages.lotStatusHistory.lotFilter.lotScanLabel}
-            placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
+            label={tHistory.lotFilter.lotScanLabel}
+            placeholder={tHistory.lotFilter.lotNoScanPlaceholder}
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
             onSearch={apply}
             clearLabel={messages.common.clear}
           />
-          <FilterSelect
-            cellClassName="wide-select lot-status-transition-item-filter"
-            disabled={confirmationPinned}
-            label={t.filters.item}
-            options={[{ value: '', label: t.filters.all }, ...itemOptions]}
-            value={draft.itemId}
-            onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
-          />
-          <FilterSelect
-            cellClassName="lot-status-transition-status-filter"
-            disabled={confirmationPinned}
-            label={t.filters.status}
-            options={[{ value: '', label: t.filters.all }, ...statusOptions]}
-            value={draft.lotStatusCode}
-            onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
-          />
-          {/* [조회](주 동작) → [초기화] — LOT 현황과 같은 순서, 줄의 오른쪽 끝. */}
+          {/* [조회](주 동작) → [초기화] → 상세 검색 펼치기 — LOT 상태 이력과 같은 순서, 줄의 오른쪽 끝. */}
           <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
             <Button
               variant="filled"
               disabled={confirmationPinned || periodError !== null}
+              aria-describedby={periodReason === null ? undefined : periodReasonId}
               onClick={apply}
             >
               {t.filters.search}
@@ -440,122 +519,190 @@ export const LotStatusTransitionCandidateScreen = () => {
             <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
               {t.filters.reset}
             </Button>
+            <Button
+              variant="text"
+              size="sm"
+              aria-expanded={isDetailOpen}
+              aria-controls={detailId}
+              onClick={() => setIsDetailOpen((open) => !open)}
+            >
+              {isDetailOpen ? tHistory.lotFilter.detailClose : tHistory.lotFilter.detailOpen}
+            </Button>
+          </div>
+        </div>
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailId} hidden={!isDetailOpen}>
+          <div className="filter-bar lot-status-filter lot-status-transition-filter">
+            <FilterSelect
+              cellClassName="wide-select lot-status-transition-item-filter"
+              disabled={confirmationPinned}
+              label={t.filters.item}
+              options={[{ value: '', label: t.filters.all }, ...itemOptions]}
+              value={draft.itemId}
+              onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
+            />
           </div>
         </div>
       </section>
-      {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). */}
-      <section
-        className="pane lot-status-pane lot-status-transition-pane"
-        aria-labelledby="lot-status-transition-candidates-title"
+      {/* 목록과 고른 LOT(전이 준비)을 처음부터 나란히(상하 배치면 위아래로) 둔다 — LOT 상태 이력과 같다. */}
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
       >
-        <h2 className="pane-title" id="lot-status-transition-candidates-title">
-          {t.pane}
-        </h2>
-        {candidates.isError ? (
-          <AlertBanner
-            variant="error"
-            title={t.failed}
-            action={<Button onClick={() => void candidates.refetch()}>{t.retry}</Button>}
-          />
-        ) : candidates.isPending ? (
-          <div role="status" aria-label={t.loading}>
-            <SkeletonText lines={3} />
-          </div>
-        ) : (
-          <>
-            <div
-              ref={fit.ref}
-              className="wide-table lot-status-table lot-status-transition-table inspection-queue-table"
-              style={resizable.style}
-              aria-busy={candidates.isFetching}
-            >
-              <Table
-                density="compact"
-                caption={t.pane}
-                columns={fit.columns}
-                rows={candidates.data.items}
-                getRowId={rowKey}
-                sort={null}
-                empty={<EmptyState size="sm" live title={t.empty} />}
-              />
-            </div>
-            {meta !== undefined && (
-              <PageNav
-                sizes={LOT_PAGE_SIZES}
-                meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
-                onChangePage={changePage}
-                onChangeSize={changePageSize}
-                controlSize="sm"
-                buttonSize="md"
-                disabled={confirmationPinned}
-              />
-            )}
-          </>
-        )}
-      </section>
-      {selected !== null && (
-        <div className="lot-status-transition-detail-grid">
-          <section className="pane lot-status-transition-pane" aria-label={tSelected.pane}>
-            <h2 className="pane-title">{tSelected.title}</h2>
-            <dl className="lot-status-transition-identity" aria-label={tSelected.identity}>
-              {[
-                [tSelected.lotNo, selected.lotNo],
-                [tSelected.item, itemLabel(selected.itemId)],
-              ].map(([label, value]) => (
-                <div className="field-cell" key={label}>
-                  <dt className="field-label">{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <h3 className="lot-status-transition-subtitle">{tSelected.currentTitle}</h3>
-            {/*
-             * 현재 상태만 색 칩으로 강조하고(LOT 이력 화면과 같은 색) 수량·최근 변경은 정돈된 글자로 둔다
-             * (사용자 지시). 최근 사유는 공통코드 이름이다 — 코드가 글자 중간에서 접히지 않는다.
-             */}
-            <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
-              {(
-                [
-                  [
-                    'status',
-                    tSelected.status,
-                    <Chip variant="status" status={lotStatusTone(selected.lotStatusCode)}>
-                      {statusLabel(selected.lotStatusCode)}
-                    </Chip>,
-                  ],
-                  ['onHand', tSelected.onHand, quantity(selected.onHandQty)],
-                  ['held', tSelected.held, quantity(selected.heldQty)],
-                  ['available', tSelected.available, quantity(selected.availableQty)],
-                  [
-                    'latestTransition',
-                    tSelected.latestTransition,
-                    formatDateTime(selected.latestTransitionAt),
-                  ],
-                  [
-                    'latestReason',
-                    tSelected.latestReason,
-                    selected.latestReasonCode === null || selected.latestReasonCode === undefined
-                      ? emptyValue
-                      : reasonLabel(selected.latestReasonCode),
-                  ],
-                ] as const
-              ).map(([key, label, value]) => (
-                <div className={`field-cell lot-status-transition-current-${key}`} key={key}>
-                  <dt className="field-label">{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-          {(confirmationPinned || !candidates.isFetching) && (
-            <LotStatusTransitionPreparation
-              key={rowKey(selected)}
-              lot={selected}
-              onConfirmationChange={onConfirmationChange}
+        {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). */}
+        <section
+          className="pane lot-status-pane lot-status-transition-pane"
+          aria-labelledby="lot-status-transition-candidates-title"
+        >
+          <h2 className="pane-title" id="lot-status-transition-candidates-title">
+            {t.pane}
+          </h2>
+          {candidates.isError ? (
+            <AlertBanner
+              variant="error"
+              title={t.failed}
+              action={<Button onClick={() => void candidates.refetch()}>{t.retry}</Button>}
             />
+          ) : candidates.isPending ? (
+            <div role="status" aria-label={t.loading}>
+              <SkeletonText lines={3} />
+            </div>
+          ) : (
+            <>
+              {/* 줄 아무 곳이나 눌러도 고른다 — LOT 번호 단추는 키보드로 고르는 자리로 남는다. */}
+              <div
+                ref={fit.ref}
+                className="wide-table lot-status-table lot-status-transition-table inspection-queue-table"
+                style={resizable.style}
+                aria-busy={candidates.isFetching}
+                onClick={(event) => {
+                  const target = event.target as Element;
+                  if (target.closest('button') !== null) return;
+                  const row = target.closest('tbody tr');
+                  if (row === null || row.parentElement === null) return;
+                  const picked =
+                    candidates.data.items[Array.from(row.parentElement.children).indexOf(row)];
+                  if (picked !== undefined) toggleRow(picked);
+                }}
+              >
+                <Table
+                  density="compact"
+                  caption={t.pane}
+                  columns={fit.columns}
+                  rows={candidates.data.items}
+                  getRowId={rowKey}
+                  sort={null}
+                  empty={<EmptyState size="sm" live title={t.empty} />}
+                />
+              </div>
+              {meta !== undefined && (
+                <PageNav
+                  sizes={LOT_PAGE_SIZES}
+                  meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
+                  onChangePage={changePage}
+                  onChangeSize={changePageSize}
+                  controlSize="sm"
+                  buttonSize="md"
+                  disabled={confirmationPinned}
+                />
+              )}
+            </>
+          )}
+        </section>
+        <PaneSplitter
+          label={messages.common.inspectionHub.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+        />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={messages.common.inspectionHub.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+        <div className="lot-status-transition-detail">
+          {selected === null ? (
+            <section
+              className="pane lot-status-pane lot-status-transition-pane"
+              aria-labelledby="lot-status-transition-pick-title"
+            >
+              <h2 className="pane-title" id="lot-status-transition-pick-title">
+                {tSelected.title}
+              </h2>
+              <EmptyState
+                size="sm"
+                icon={<Icon name="arrow_selector_tool" size={24} />}
+                title={tHistory.detail.pick}
+              />
+            </section>
+          ) : (
+            <>
+              <section className="pane lot-status-transition-pane" aria-label={tSelected.pane}>
+                <h2 className="pane-title">{tSelected.title}</h2>
+                <dl className="lot-status-transition-identity" aria-label={tSelected.identity}>
+                  {[
+                    [tSelected.lotNo, selected.lotNo],
+                    [tSelected.item, itemLabel(selected.itemId)],
+                  ].map(([label, value]) => (
+                    <div className="field-cell" key={label}>
+                      <dt className="field-label">{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <h3 className="lot-status-transition-subtitle">{tSelected.currentTitle}</h3>
+                {/*
+                 * 현재 상태만 색 칩으로 강조하고(LOT 이력 화면과 같은 색) 수량·최근 변경은 정돈된 글자로 둔다
+                 * (사용자 지시). 최근 사유는 공통코드 이름이다 — 코드가 글자 중간에서 접히지 않는다.
+                 */}
+                <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
+                  {(
+                    [
+                      [
+                        'status',
+                        tSelected.status,
+                        <Chip variant="status" status={lotStatusTone(selected.lotStatusCode)}>
+                          {statusLabel(selected.lotStatusCode)}
+                        </Chip>,
+                      ],
+                      ['onHand', tSelected.onHand, quantity(selected.onHandQty)],
+                      ['held', tSelected.held, quantity(selected.heldQty)],
+                      ['available', tSelected.available, quantity(selected.availableQty)],
+                      [
+                        'latestTransition',
+                        tSelected.latestTransition,
+                        formatDateTime(selected.latestTransitionAt),
+                      ],
+                      [
+                        'latestReason',
+                        tSelected.latestReason,
+                        selected.latestReasonCode === null ||
+                        selected.latestReasonCode === undefined
+                          ? emptyValue
+                          : reasonLabel(selected.latestReasonCode),
+                      ],
+                    ] as const
+                  ).map(([key, label, value]) => (
+                    <div className={`field-cell lot-status-transition-current-${key}`} key={key}>
+                      <dt className="field-label">{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+              {(confirmationPinned || !candidates.isFetching) && (
+                <LotStatusTransitionPreparation
+                  key={rowKey(selected)}
+                  lot={selected}
+                  onConfirmationChange={onConfirmationChange}
+                />
+              )}
+            </>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

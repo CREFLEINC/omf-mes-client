@@ -60,6 +60,8 @@ interface StatusChipsProps {
   total?: number;
   value: string;
   note?: string;
+  /** 잠근다 — LOT 상태 변경 탭이 확인 창을 띄운 동안. */
+  disabled?: boolean;
   onChange: (status: string) => void;
 }
 
@@ -67,7 +69,15 @@ interface StatusChipsProps {
  * 현재 상태 단추 — 조회 카드 위쪽 줄에서 누르면 바로 그 상태로 거른다(사용자 2026-10-30). 조건 줄의 현재 상태 칸을
  * 대신한다. 「전체」는 상태 조건을 푼다.
  */
-const StatusChips = ({ options, counts, total, value, note, onChange }: StatusChipsProps) => (
+export const StatusChips = ({
+  options,
+  counts,
+  total,
+  value,
+  note,
+  disabled,
+  onChange,
+}: StatusChipsProps) => (
   /* 눈에 보이는 「현재 상태」 글자는 두지 않는다(사용자 2026-10-30) — 이름은 화면 읽기용으로만 남긴다. */
   <div className="lot-status-status-chips" role="group" aria-label={t.lotFilter.fields.status}>
     {[{ value: '', label: t.values.all }, ...options].map((option) => (
@@ -76,6 +86,7 @@ const StatusChips = ({ options, counts, total, value, note, onChange }: StatusCh
         variant="filter"
         size="sm"
         selected={value === option.value}
+        disabled={disabled}
         onSelectedChange={() => {
           if (value !== option.value) onChange(option.value);
         }}

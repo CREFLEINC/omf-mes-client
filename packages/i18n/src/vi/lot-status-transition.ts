@@ -30,14 +30,10 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   candidate: {
     pane: 'LOT cần chuyển đổi',
     filters: {
-      period: 'Khoảng thời gian chuyển đổi gần nhất',
       lotNo: 'Số LOT',
       lotNoPlaceholder: 'Hãy nhập số LOT',
       item: 'Vật tư',
-      status: 'Trạng thái',
       all: 'Tất cả',
-      note: 'Tra cứu LOT theo ngày chuyển đổi gần nhất.',
-      periodMissing: 'Hãy chọn cả ngày bắt đầu và ngày kết thúc tra cứu.',
       periodInvalid: 'Hãy nhập ngày hợp lệ cho khoảng thời gian tra cứu.',
       periodReversed: 'Ngày bắt đầu tra cứu không được muộn hơn ngày kết thúc.',
       reset: 'Đặt lại',

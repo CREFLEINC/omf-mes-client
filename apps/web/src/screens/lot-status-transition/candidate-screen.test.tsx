@@ -41,7 +41,23 @@ const listRoute = (body: unknown = page(), status = 200): StubRoute => ({
   match: (request) => new URL(request.url).pathname === LOT_PATH,
   respond: () => jsonResponse(body, { status }),
 });
+const SUMMARY_PATH = '/quality/lot-status-summary';
 const lookupRoutes: StubRoute[] = [
+  /* 상태 칩 건수 — 정상 3 · 불량 2(전체 5). */
+  {
+    match: (request) => new URL(request.url).pathname === SUMMARY_PATH,
+    respond: () =>
+      jsonResponse({
+        counts: [
+          { statusCode: 'NORMAL', lotTypeCode: 'MATERIAL', lotCount: 2 },
+          { statusCode: 'NORMAL', lotTypeCode: 'PRODUCT', lotCount: 1 },
+          { statusCode: 'DEFECTIVE', lotTypeCode: 'MATERIAL', lotCount: 2 },
+          { statusCode: 'INSPECTION_PENDING', lotCount: 0 },
+          { statusCode: 'SCRAPPED', lotCount: 0 },
+        ],
+        asOf: '2026-08-21T12:34:00+09:00',
+      }),
+  },
   {
     match: (request) => new URL(request.url).pathname === '/quality/lot-status-transitions',
     respond: (request) => {
@@ -162,6 +178,7 @@ const renderScreen = (routes: StubRoute[], intercept?: FetchInterceptor) => {
   return { ...view, requests, urls, user: userEvent.setup() };
 };
 const lotRequests = (urls: URL[]): URL[] => urls.filter((url) => url.pathname === LOT_PATH);
+const summaryRequests = (urls: URL[]): URL[] => urls.filter((url) => url.pathname === SUMMARY_PATH);
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(screen.getByLabelText(label));
   await user.click(await screen.findByRole('option', { name: option }));
@@ -233,12 +250,60 @@ describe('Lot Status 전이 후보', () => {
     expect(lotStatusTransitionKeys.candidates(filters, 1, 540).at(-1)).toBe(540);
   });
 
+  it('기간은 「기간」 아래 시작일 · 종료일 두 칸이고, 자재는 상세 검색에 접혀 있다', async () => {
+    const { user } = renderScreen([listRoute()]);
+    await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    const period = screen.getByRole('group', { name: '기간' });
+    const today = defaultTransitionPeriod(new Date());
+    expect(within(period).getByLabelText('시작일')).toHaveTextContent(today.from);
+    expect(within(period).getByLabelText('종료일')).toHaveTextContent(today.to);
+    expect(screen.queryByText('최근 전이일을 기준으로 LOT을 조회합니다.')).toBeNull();
+    expect(screen.queryByText('최근 전이 기간')).toBeNull();
+    /* 상태는 조건 줄이 아니라 위쪽 칩으로 고른다. */
+    expect(screen.queryByLabelText('상태')).toBeNull();
+    expect(screen.getByLabelText('자재')).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
+    expect(screen.getByLabelText('자재')).toBeVisible();
+    expect(screen.getByRole('button', { name: '상세 검색 접기' })).toBeVisible();
+  });
+
+  it('상태 칩은 상태를 뺀 같은 조건의 요약 한 번으로 건수를 보이고, 누르면 그 상태로 서버에서 거른다', async () => {
+    const { urls, user } = renderScreen([listRoute()]);
+    await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    const chips = screen.getByRole('group', { name: '현재 상태' });
+    expect(await within(chips).findByRole('button', { name: /^전체\s*5$/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(chips).getByRole('button', { name: /^정상\s*3$/ })).toBeVisible();
+    const defaultBounds = toTransitionPeriodBounds(
+      defaultTransitionPeriod(new Date()),
+      -new Date().getTimezoneOffset(),
+    );
+    expect(summaryRequests(urls)).toHaveLength(1);
+    expect(Object.fromEntries(summaryRequests(urls)[0]!.searchParams)).toEqual(defaultBounds);
+
+    await user.click(within(chips).getByRole('button', { name: /^정상\s*3$/ }));
+    await waitFor(() => expect(lotRequests(urls)).toHaveLength(2));
+    expect(Object.fromEntries(lotRequests(urls)[1]!.searchParams)).toEqual({
+      ...defaultBounds,
+      lotStatusCode: 'NORMAL',
+      size: '20',
+    });
+    expect(within(chips).getByRole('button', { name: /^정상\s*3$/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    /* 칩만 바꾸면 건수 요약은 다시 부르지 않는다. */
+    expect(summaryRequests(urls)).toHaveLength(1);
+  });
+
   it('필터 초안을 조회·초기화하고 요청에 heldOnly를 보내지 않는다', async () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-LOT');
+    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
     await choose(user, '자재', 'SYN-ITEM-A · 합성 자재');
-    await choose(user, '상태', '정상');
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     await waitFor(() => expect(lotRequests(urls)).toHaveLength(2));
@@ -246,17 +311,30 @@ describe('Lot Status 전이 후보', () => {
       defaultTransitionPeriod(new Date()),
       -new Date().getTimezoneOffset(),
     );
-    expect(Object.fromEntries(lotRequests(urls)[1]!.searchParams)).toEqual({
+    /* 건수 요약도 같은 조건(상태 · 쪽 크기 없이)으로 다시 부른다. */
+    await waitFor(() => expect(summaryRequests(urls)).toHaveLength(2));
+    expect(Object.fromEntries(summaryRequests(urls)[1]!.searchParams)).toEqual({
+      ...defaultBounds,
+      itemId: '801',
+      q: 'SYN-LOT',
+    });
+    await user.click(
+      within(screen.getByRole('group', { name: '현재 상태' })).getByRole('button', {
+        name: /^정상/,
+      }),
+    );
+    await waitFor(() => expect(lotRequests(urls)).toHaveLength(3));
+    expect(Object.fromEntries(lotRequests(urls)[2]!.searchParams)).toEqual({
       ...defaultBounds,
       lotStatusCode: 'NORMAL',
       itemId: '801',
       q: 'SYN-LOT',
       size: '20',
     });
-    expect(lotRequests(urls)[1]!.searchParams.has('heldOnly')).toBe(false);
+    expect(lotRequests(urls)[2]!.searchParams.has('heldOnly')).toBe(false);
     await user.click(screen.getByRole('button', { name: '초기화' }));
-    await waitFor(() => expect(lotRequests(urls)).toHaveLength(3));
-    expect(Object.fromEntries(lotRequests(urls)[2]!.searchParams)).toEqual({
+    await waitFor(() => expect(lotRequests(urls)).toHaveLength(4));
+    expect(Object.fromEntries(lotRequests(urls)[3]!.searchParams)).toEqual({
       ...toTransitionPeriodBounds(
         defaultLotStatusCandidateFilters(new Date()),
         -new Date().getTimezoneOffset(),
@@ -270,7 +348,10 @@ describe('Lot Status 전이 후보', () => {
     const { user } = renderScreen([listRoute(page([lot, beta]))]);
     const select = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     expect(screen.queryByText('선택한 LOT은 전이할 수 없습니다.')).toBeNull();
+    /* 고르기 전에는 옆 칸이 안내만 보인다. */
+    expect(screen.getByText('목록에서 LOT을 선택해 주세요.')).toBeVisible();
     await user.click(select);
+    expect(screen.queryByText('목록에서 LOT을 선택해 주세요.')).toBeNull();
 
     const card = screen.getByRole('region', { name: '선택한 LOT' });
     const identity = within(card).getByLabelText('선택 LOT 식별');
@@ -300,6 +381,21 @@ describe('Lot Status 전이 후보', () => {
     expect(await screen.findByText('선택한 LOT은 전이할 수 없습니다.')).toBeVisible();
     await user.click(select);
     expect(await screen.findByRole('radio', { name: 'DEFECTIVE' })).not.toBeChecked();
+    /* 고른 줄을 다시 누르면 선택을 풀고 안내로 돌아간다. */
+    await user.click(select);
+    expect(select).not.toHaveAttribute('aria-current');
+    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
+    expect(screen.getByText('목록에서 LOT을 선택해 주세요.')).toBeVisible();
+  });
+
+  it('LOT 번호 밖 칸을 눌러도 그 줄을 고른다', async () => {
+    const { user } = renderScreen([listRoute()]);
+    const select = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
+    const row = select.closest('tr');
+    if (row === null) throw new Error('후보 행이 없습니다.');
+    await user.click(within(row).getByText('정상'));
+    expect(select).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('region', { name: '선택한 LOT' })).toBeVisible();
   });
 
   it('품목 목록 첫 쪽에 없는 품목도 이름을 보인다 (#1336)', async () => {
