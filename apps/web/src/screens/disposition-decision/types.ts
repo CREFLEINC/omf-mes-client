@@ -143,6 +143,18 @@ export const toDecisionRow = (decision: DispositionDecision): DecisionRow => ({
   decidedBy: decision.decidedBy,
 });
 
+/** 처분 이력 목록 한 줄 — 어느 부적합의 판정인지 함께 든다(#223). 번호가 안 오면 식별자로 보인다. */
+export interface HistoryRow extends DecisionRow {
+  nonconformanceId: number;
+  nonconformanceNo: string;
+}
+
+export const toHistoryRow = (decision: DispositionDecision): HistoryRow => ({
+  ...toDecisionRow(decision),
+  nonconformanceId: decision.nonconformanceId,
+  nonconformanceNo: decision.nonconformanceNo ?? String(decision.nonconformanceId),
+});
+
 export interface NonconformanceDetailView {
   nonconformanceNo: string;
   itemId: number;

@@ -52,6 +52,8 @@ const KEYS = {
   size: 'size',
   tab: 'tab',
   selected: 'nonconformanceId',
+  /** 처분 이력 탭에서 고른 판정 한 건(#223) — 고른 줄 표시용. 부적합은 `nonconformanceId` 가 든다. */
+  decision: 'decision',
 } as const;
 
 /**
@@ -206,6 +208,23 @@ export const withTab = (current: URLSearchParams, tab: ScreenTab): URLSearchPara
   // 탭마다 목록이 다르다 — 쪽과 고른 부적합을 그대로 물려주면 없는 자리를 가리킨다.
   next.delete(KEYS.page);
   next.delete(KEYS.selected);
+  next.delete(KEYS.decision);
+  return next;
+};
+
+export const readSelectedDecisionId = (params: URLSearchParams): number | null => {
+  const raw = identifierOf(params.get(KEYS.decision));
+  return raw === '' ? null : Number(raw);
+};
+
+/** 처분 이력 줄 고르기 — 그 판정과 부적합을 함께 싣는다. `null` 이면 둘 다 지운다(#223). */
+export const withSelectedDecision = (
+  current: URLSearchParams,
+  target: { dispositionDecisionId: number; nonconformanceId: number } | null,
+): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  replace(next, KEYS.decision, target === null ? '' : String(target.dispositionDecisionId));
+  replace(next, KEYS.selected, target === null ? '' : String(target.nonconformanceId));
   return next;
 };
 

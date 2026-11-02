@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -81,6 +81,20 @@ describe('DispositionDecisionScreen 탭', () => {
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });
+  });
+
+  /* 처분 이력도 처분 대기와 같은 짜임 — 줄을 고르면 오른쪽에 상세가 서고, 판정 입력은 없다(#223). */
+  it('처분 이력에서 줄을 누르면 그 부적합 상세를 보이고 판정 입력은 두지 않는다', async () => {
+    const { user } = renderScreen('/quality/dispositions?tab=history');
+
+    expect(await screen.findByText(t.detail.selectHistory)).toBeInTheDocument();
+    await user.click(await screen.findByText('NC-TEST-0041'));
+
+    expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.historyDetail })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.form.heading })).toBeNull();
+    const list = screen.getByRole('region', { name: t.panes.history });
+    expect(within(list).getByText('NC-TEST-0041')).toHaveAttribute('data-selected', 'true');
   });
 
   it('탭을 옮기면 고른 부적합을 지운다 — 탭마다 목록이 다르다', async () => {

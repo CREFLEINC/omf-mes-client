@@ -22,6 +22,8 @@ export interface DetailSlotProps {
   severity: DispositionLookup;
   uoms: DispositionLookup;
   onRetry: () => void;
+  /** 고르기 전 안내 — 탭마다 다르다(#223). 비면 처분 대기 문구. */
+  emptyTitle?: string;
 }
 
 /**
@@ -44,13 +46,18 @@ export const DetailSlot = ({
   severity,
   uoms,
   onRetry,
+  emptyTitle,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
 
   /* 고르기 전 — 아이콘 + 한 줄 안내만(사용자 시안 · #223). 판정 입력은 고른 뒤에만 선다. */
   if (selectedId === null)
     return (
-      <EmptyState size="sm" icon={<Icon name="ads_click" size={32} />} title={t.detail.select} />
+      <EmptyState
+        size="sm"
+        icon={<Icon name="ads_click" size={32} />}
+        title={emptyTitle ?? t.detail.select}
+      />
     );
 
   if (detail.isPending) {

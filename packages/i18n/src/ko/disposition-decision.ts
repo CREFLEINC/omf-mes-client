@@ -21,6 +21,8 @@ export const dispositionDecision = {
     list: '처분 대기 목록',
     detail: '선택한 부적합',
     detailDecision: '부적합 상세 및 판정',
+    /** 처분 이력 탭의 오른쪽 구획 — 판정 입력 없이 보기만(#223). */
+    historyDetail: '부적합 상세',
     decision: '판정',
     history: '처분 판정 이력',
     lots: '대상 LOT',
@@ -34,6 +36,12 @@ export const dispositionDecision = {
     openedFrom: '접수 시작일',
     openedTo: '접수 종료일',
     decidedPeriod: '판정일',
+    decidedFrom: '판정 시작일',
+    decidedTo: '판정 종료일',
+    /** 처분 이력 목록 열 이름(#223). */
+    historyType: '처분 유형',
+    historyQty: '처분 수량',
+    historyReason: '판정 사유',
     item: '품목',
     severityCode: '심각도',
     statusCode: '처리 상태',
@@ -81,6 +89,8 @@ export const dispositionDecision = {
   },
   detail: {
     select: '목록에서 판정할 부적합을 선택하세요.',
+    /** 처분 이력 탭 — 고르기 전 안내(#223). */
+    selectHistory: '목록에서 볼 처분 이력을 선택하세요.',
     loading: '부적합 상세 불러오는 중',
     notFound: '부적합을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 부적합을 선택하세요.',
