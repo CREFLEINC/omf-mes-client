@@ -26,7 +26,7 @@ const lot = (id: number, overrides: Partial<Lot> = {}): Lot => ({
 });
 const page = (items: Lot[], current = 1, total = items.length) => ({
   items,
-  page: { page: current, size: 2, total },
+  page: { page: current, size: 10, total },
 });
 const references = (path: string): unknown => {
   const entries: Record<string, unknown> = {
@@ -41,7 +41,24 @@ const references = (path: string): unknown => {
       codeName: '검사 대기',
     },
     '/mdm/uoms': { uomId: 804001, uomCode: 'SYN-EA', uomName: '합성 단위' },
+    '/mdm/locations': {
+      locationId: 803001,
+      locationCode: 'LOC',
+      locationName: '위치',
+      isActive: true,
+    },
   };
+  /* 품목 이름은 보이는 행의 품목 상세로 푼다 — 품목 목록 첫 쪽에 없는 품목(801002)도 상세는 답한다. */
+  const detail = /^\/mdm\/items\/(\d+)$/.exec(path);
+  if (detail !== null)
+    return {
+      item: {
+        itemId: Number(detail[1]),
+        itemCode: `SYN-${detail[1]!}`,
+        itemName: '상세 품목',
+        isActive: true,
+      },
+    };
   return entries[path] === undefined
     ? undefined
     : { items: [entries[path]], page: { page: 1, size: 50, total: 1 } };
@@ -85,8 +102,11 @@ describe('의심자재 후보 pane', () => {
     );
 
     expect(
-      (await screen.findAllByRole('columnheader')).map((cell) => cell.textContent).join('|'),
-    ).toBe('선택|LOT 번호|품목|위치|보유 수량·단위|Lot Status·최근 전이');
+      (await screen.findAllByRole('columnheader'))
+        /* 열 머리마다 끌기 손잡이 아이콘 글자(drag_indicator)가 붙는다 — 이름만 본다. */
+        .map((cell) => cell.textContent?.replaceAll('drag_indicator', ''))
+        .join('|'),
+    ).toBe('선택|LOT 번호|품목|위치|보유 수량·단위|상태|최종 변경일');
     expect(screen.getByRole('heading', { level: 2, name: '의심자재 후보' })).toBeVisible();
     expect(screen.getByRole('table', { name: '의심자재 후보' })).toBeVisible();
     // 최근 전이 시각은 공장 시각(UTC+7)으로 보인다 — omf-all-around#20
@@ -102,17 +122,45 @@ describe('의심자재 후보 pane', () => {
 
   it('draft는 조회 전 요청을 바꾸지 않고 조회·page 이동 때 선택을 비운다', async () => {
     const { urls, user } = renderPane((_, call) =>
-      jsonResponse(page(call === 1 ? [lot(701)] : [lot(702)], call === 3 ? 2 : 1, 4)),
+      jsonResponse(page(call === 1 ? [lot(701)] : [lot(702)], call === 3 ? 2 : 1, 40)),
     );
     await user.click(await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
-    await user.type(screen.getByLabelText('LOT 번호'), 'SYN-SEARCH');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-SEARCH');
     expect(lotUrls(urls)).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: '조회' }));
     await screen.findByRole('checkbox', { name: 'SYN-LOT-702 선택' });
     expect(screen.getByText('0건 선택')).toBeVisible();
     expect(lotUrls(urls)[1]?.searchParams.get('q')).toBe('SYN-SEARCH');
-    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() => expect(lotUrls(urls).at(-1)?.searchParams.get('page')).toBe('2'));
+  });
+
+  it('창고 조건 없이도 품목·위치·단위 이름을 풀고, 재고 없는 LOT은 빈 값(—)으로 보인다', async () => {
+    renderPane(() =>
+      jsonResponse(
+        page([
+          lot(701, { itemId: 801002 }),
+          lot(702, {
+            warehouseId: undefined,
+            locationId: undefined,
+            onHandQty: undefined,
+            uomId: undefined,
+          }),
+        ]),
+      ),
+    );
+
+    expect(await screen.findByText('WH · 창고 / LOC · 위치')).toBeVisible();
+    expect(screen.getByText('SYN-801002 · 상세 품목')).toBeVisible();
+    expect(screen.getByText('25 SYN-EA')).toBeVisible();
+    expect(screen.getAllByText('—')).toHaveLength(2);
+    for (const unknown of [
+      '품목 이름 미확인',
+      '창고 이름 미확인',
+      '위치 이름 미확인',
+      '단위 이름 미확인',
+    ])
+      expect(screen.queryByText(new RegExp(unknown))).toBeNull();
   });
 
   it('loading·error·retry·empty를 정상 빈 결과와 구분한다', async () => {

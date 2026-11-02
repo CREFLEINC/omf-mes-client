@@ -20,7 +20,7 @@ const LOT_FILTERS: LotFilters = {
 
 describe('LOT 상태 목록·요약 요청', () => {
   it('하나의 적용 필터를 같은 계약 query 이름으로 옮긴다', () => {
-    expect(toLotStatusListQuery(LOT_FILTERS, 3)).toEqual({
+    expect(toLotStatusListQuery(LOT_FILTERS, 3, 50)).toEqual({
       lotTypeCode: 'SAMPLE_TYPE',
       q: 'SAMPLE-LOT-001',
       itemId: 101,
@@ -28,6 +28,7 @@ describe('LOT 상태 목록·요약 요청', () => {
       warehouseId: 202,
       locationId: 303,
       sort: 'lotNoAsc',
+      size: 50,
       page: 3,
     });
     expect(toLotStatusSummaryQuery(LOT_FILTERS)).toEqual({
@@ -41,7 +42,7 @@ describe('LOT 상태 목록·요약 요청', () => {
   });
 
   it('요약은 목록의 공통 필터만 쓰고 page·size·sort를 갖지 않는다', () => {
-    const list = toLotStatusListQuery(LOT_FILTERS, 3);
+    const list = toLotStatusListQuery(LOT_FILTERS, 3, 50);
     const summary = toLotStatusSummaryQuery(LOT_FILTERS);
     if (list === null || summary === null) throw new Error('LOT 유형이 있는 요청입니다.');
     const commonList = Object.fromEntries(
@@ -55,16 +56,17 @@ describe('LOT 상태 목록·요약 요청', () => {
   });
 
   it('LOT 유형이 없으면 서로 다른 유형을 합쳐 조회하지 않는다', () => {
-    expect(toLotStatusListQuery(EMPTY_LOT_FILTERS, 1)).toBeNull();
+    expect(toLotStatusListQuery(EMPTY_LOT_FILTERS, 1, 50)).toBeNull();
     expect(toLotStatusSummaryQuery(EMPTY_LOT_FILTERS)).toBeNull();
   });
 
   it('유형만 고른 첫 페이지는 기본 서버 정렬만 더한다', () => {
     const filters: LotFilters = { ...EMPTY_LOT_FILTERS, lotType: 'SAMPLE_TYPE' };
 
-    expect(toLotStatusListQuery(filters, 1)).toEqual({
+    expect(toLotStatusListQuery(filters, 1, 50)).toEqual({
       lotTypeCode: 'SAMPLE_TYPE',
       sort: 'latestTransitionDesc',
+      size: 50,
     });
     expect(toLotStatusSummaryQuery(filters)).toEqual({ lotTypeCode: 'SAMPLE_TYPE' });
   });

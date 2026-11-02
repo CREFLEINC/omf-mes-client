@@ -37,7 +37,15 @@ const fetchLotCodeOptions = async (
   codeGroupCode: LotCodeGroupCode,
 ): Promise<LotCodeOptionsResult> => {
   const data = await runRequest(() =>
-    client.GET('/mdm/code-values', { params: { query: { codeGroupCode } } }),
+    client.GET('/mdm/code-values', {
+      /* 보류 사유는 표시 전용이다 — 사용을 끈 사유로 남은 옛 기록도 코드 대신 이름으로 보이게 함께 받는다. */
+      params: {
+        query: {
+          codeGroupCode,
+          ...(codeGroupCode === LOT_HOLD_REASON_GROUP_CODE ? { includeInactive: true } : {}),
+        },
+      },
+    }),
   );
 
   return {

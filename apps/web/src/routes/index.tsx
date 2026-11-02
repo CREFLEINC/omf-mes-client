@@ -404,7 +404,12 @@ export const appRouter = createBrowserRouter([
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.
        * 현재 LOT 상태와 보류 등록·해제 이력을 함께 보는 조회 화면이다.
        */
-      { path: 'quality/lot-status', element: <LotStatusHistoryScreen /> },
+      { path: 'quality/lot-status', element: <LotStatusHistoryScreen fixedMode="lot" /> },
+      /* LOT 변경 이력 — LOT 현황과 같은 화면의 이력 방식만 따로 탭으로(사용자 2026-10-30). */
+      {
+        path: 'quality/lot-status-history',
+        element: <LotStatusHistoryScreen fixedMode="history" />,
+      },
       /* W-03-02 — W-03-01에서 찾은 LOT을 판정·전이하는 품질관리의 둘째 화면이다. */
       { path: 'quality/lot-status-transition', element: <LotStatusTransitionScreen /> },
       /* W-03-03 — W-03-02에서 판정할 의심 LOT을 먼저 보류하므로 바로 뒤에 둔다. */

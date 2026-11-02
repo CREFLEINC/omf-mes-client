@@ -4311,9 +4311,11 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .lot-status-pane {
   display: grid;
+  /* 한 열을 칸 폭에 맞춘다 — 안의 긴 줄(LOT 상세 기본 정보 등)이 칸을 밀어 넓히지 않게. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  /* 검사 조회·판정 카드와 같은 안쪽 여백·간격(사용자 2026-10-30) — 기본 카드(.pane) 여백을 그대로 쓴다. */
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -4326,6 +4328,56 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .lot-status-pane > .banner-slot {
   margin-bottom: 0;
+}
+
+/*
+ * 조회 조건 카드 — 맨 위 조회 방식(LOT 번호 · 이력), 가는 선, 그 아래 조건 줄(사용자 시안 2026-10-30).
+ * 조건 칸 폭은 종전대로 값 길이별이고(아래 규칙), 조회 · 초기화는 줄을 넘겨도 늘 그 줄 오른쪽 끝이다(사용자 2026-10-30).
+ */
+.lot-status-search {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* 위쪽 줄 — 조회 방식, 그 옆에 현재 상태 단추(LOT 번호 방식만 · 사용자 2026-10-30). */
+.lot-status-search-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.lot-status-mode,
+.lot-status-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lot-status-mode > .field-label {
+  margin: 0 var(--space-1) 0 0;
+}
+
+.lot-status-status-chips > .field-note {
+  margin: 0;
+}
+
+/* 칸 폭에 맞춘 선택 목록(lot-filter-bar.tsx) — 긴 값은 잘리지 않게 목록 안에서 줄을 바꾼다. */
+.lot-status-fit-listbox [role='option'] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 탭 막대 오른쪽 자리 — 현재 상태 단추가 좌우 · 상하 배치 단추 앞(왼쪽)에 선다(사용자 2026-10-30). 사이 간격은
+ * 배치 단추의 구분선 여백만 쓴다(검사 조회·판정과 같은 간격).
+ */
+.hub-actions > .lot-status-status-chips {
+  order: -1;
 }
 
 .filter-bar.lot-status-filter {
@@ -4349,25 +4401,25 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 7rem;
 }
 
-/* LOT 번호 — 번호가 길다(「품번|차수|날짜|…」 30자 안팎). 입력 중인 앞부분이 보이는 폭. */
+/*
+ * LOT 번호 스캔 — 흐린 글자 「LOT 바코드 스캔 또는 번호를 입력하세요」가 다 보이는 폭(사용자 2026-10-30).
+ * 16 + 한글 15자×16 + 「LOT」·띄어쓰기 약 55 + 16 ≈ 327px.
+ */
 .lot-status-filter-lot-no {
-  width: 16rem;
+  width: 21rem;
 }
 
-/* 품목 — 「코드 · 이름」이라 가장 길다. 검색 입력 하나가 묶음이다(넘치면 칸 안에서 말줄임). */
+/*
+ * 품목 — 흐린 글자 「품목을 입력하세요」에 맞춘 폭(사용자 2026-10-30): 돋보기 약 44 + 한글 8자×16 + 띄어쓰기 + 16 ≈ 193px.
+ * 고른 「코드 · 이름」이 더 길면 칸 안에서 말줄임이고 전체 값은 칸에 마우스를 올리면 보인다.
+ */
 .lot-status-filter-item {
-  width: 20rem;
+  width: 13rem;
 }
 
 .lot-status-filter-item input {
   cursor: pointer;
   text-overflow: ellipsis;
-}
-
-/* 현재 상태 — 가장 긴 값 「검사 대기」를 담는 폭(W-03-02 품질 상태와 같은 9rem). */
-.field-cell.lot-status-filter-status {
-  align-items: stretch;
-  width: 9rem;
 }
 
 /* 창고·위치 — 이름이 중간 길이다. */
@@ -4377,16 +4429,11 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 위치가 잠긴 동안 — 라벨 옆에 옅은 안내 글자를 붙인다(칩 모양 없이 · 사용자 지시 2026-09-19).
- * 라벨 줄 높이는 다른 칸 라벨과 같게 두어 선택 상자들의 윗선이 어긋나지 않게 한다.
- * 칸은 칩 폭만큼 넓어지고, 선택 상자는 창고와 같은 12rem 을 지킨다.
+ * 위치 — 잠긴 동안 칸 안 흐린 글자 「창고를 먼저 선택하세요」가 다 보이는 폭(사용자 2026-10-30).
+ * 규범 3-2 식: 16 + 16px×11자(띄어쓰기 포함 어림) + 12 + 20 + 16 = 240px.
  */
-.field-cell.lot-status-filter-location {
-  width: auto;
-}
-
-.field-cell.lot-status-filter-location > div:last-of-type {
-  width: 12rem;
+.field-cell.lot-status-filter-place.lot-status-filter-location {
+  width: 15rem;
 }
 
 /* 기간 — 안내 글자가 라벨 옆으로 가면 칸이 그만큼 넓어진다. 날짜 상자는 17rem 을 지킨다. */
@@ -4433,12 +4480,7 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-left: auto;
 }
 
-.lot-status-empty-pane {
-  min-height: 14rem;
-}
-
 /* 빈 화면 안내는 한 줄로 — DS 설명 폭(42자)에서 꺾이지 않게 한다(사용자 지시 2026-09-19). */
-.lot-status-empty-pane p,
 .lot-status-history-pane p {
   max-width: none;
 }
@@ -4459,16 +4501,106 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-2) var(--space-4);
 }
 
-.lot-status-pane-head > .pane-title {
+.lot-status-pane-head > .pane-title,
+.lot-status-pane > .pane-title {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
 }
 
 .lot-status-pane-head > .field-note {
   max-width: none;
+  margin: 0 0 0 auto;
+}
+
+/* LOT 상세 제목 줄의 「생산 이력 조회」 — 오른쪽 끝(사용자 2026-10-30). */
+.lot-status-detail-head > button:first-of-type {
+  margin-left: auto;
+}
+
+/* 상태 칩 건수 — 이름 뒤 숫자. */
+.lot-status-chip-count {
+  margin-left: var(--space-1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* 상태별 건수 — 상자 없이 이름 아래 큰 숫자와 작은 단위(2026-10-30 시안). */
+.lot-status-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.lot-status-stat-label {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+.lot-status-stat-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--on-surface);
+  font: var(--type-headline-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 상태별 숫자 색 — 정상 초록 · 검사 대기 노랑 · 불량 빨강(사용자 2026-10-30). 폐기는 그대로. */
+.lot-status-stat[data-tone='success'] .lot-status-stat-value {
+  color: var(--semantic-success-text);
+}
+
+.lot-status-stat[data-tone='warning'] .lot-status-stat-value {
+  color: var(--semantic-warning);
+}
+
+.lot-status-stat[data-tone='error'] .lot-status-stat-value {
+  color: var(--semantic-error-text);
+}
+
+/* LOT 상세 탭 — 탭과 표 사이에 탭 묶음 간격만 남긴다(구역 기본 위 여백을 뺀다 · 사용자 2026-10-30). */
+.lot-status-detail-dialog [role='tabpanel'] > section {
+  margin-top: 0;
+}
+
+.lot-status-stat-unit {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+/* 권한 밖 제외 안내 — 「LOT 현황」 제목 바로 옆에 글 길이만큼만(사용자 2026-10-30). */
+.lot-status-pane-head > .lot-status-scope-note {
+  flex: 0 1 auto;
+  align-self: center;
+  min-width: 0;
+}
+
+/* 마지막 갱신 + [갱신] — 제목 줄 오른쪽 끝. 대시보드 조건 줄 오른쪽 묶음과 같은 모양(사용자 2026-10-30). */
+.lot-status-refresh {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  align-self: center;
+  margin-left: auto;
+}
+
+.lot-status-refresh-status {
   margin: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.lot-status-refresh .lot-status-refresh-button {
+  height: var(--control-height-md);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  box-shadow: inset 0 0 0 1px var(--outline);
 }
 
 /*
@@ -4501,7 +4633,9 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-5);
 }
 
-.lot-status-detail-dialog section > h3 {
+/* 구획 제목 줄 — 오른쪽 끝에 총 건수(2026-10-30 시안). */
+.lot-status-detail-dialog section > h3,
+.lot-status-detail-dialog section > .lot-status-pane-head > h3 {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-title-md);
@@ -4512,24 +4646,33 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
-/* 기본 정보 — 10칸 격자. 긴 값(LOT 번호·품목)은 5칸씩 첫 줄, 짧은 값 다섯은 2칸씩 둘째 줄. */
+/* 기본 정보 — 부품 IQC `.parts-iqc-facts` 와 같은 모양: 테두리 상자 안 한 줄, 칸 사이 세로선(사용자 시안 2026-10-30). */
 .lot-detail-fields {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-3) 0;
   margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
 }
 
 .lot-detail-field {
   display: grid;
-  align-content: start;
+  flex: 1 1 auto;
+  align-content: center;
   gap: var(--space-1);
   min-width: 0;
-  grid-column: span 2;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  overflow-wrap: anywhere;
 }
 
-.lot-detail-field[data-size="wide"] {
-  grid-column: span 5;
+.lot-detail-field:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 
 .lot-detail-field > dt {
@@ -4540,13 +4683,13 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
   color: var(--on-surface);
   font: var(--type-body-lg);
-  font-weight: 500;
   letter-spacing: var(--type-body-lg-tracking);
-  overflow-wrap: anywhere;
 }
 
-.lot-detail-field[data-size="short"] > dd {
-  font-weight: 400;
+/* LOT 번호 — 이 상자에서 가장 먼저 읽을 값. */
+.lot-detail-field:first-child > dd {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 /* 이력의 상태 변경 — 이 표에서 가장 먼저 읽을 값. 색은 그대로 두고 굵기로만 세운다. */
@@ -4577,25 +4720,23 @@ h2:has(> .inspection-standard-dialog-title) {
   margin: 0;
 }
 
-/* 가능한 작업 — 막힌 단추와 그 까닭을 한 줄로 붙이고, 참고 안내는 그 아래 작은 글씨로 따로 둔다. */
-.lot-detail-actions {
+/* 불러오기 실패 상자 — [재시도]는 줄 오른쪽 끝에 선다(2026-10-30 시안, 생산계획 실패 상자와 같은 풀이). */
+.lot-detail-failure-banner > [class*='content'] {
   display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.lot-detail-action {
-  display: flex;
-  flex-wrap: wrap;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
 }
 
-.lot-detail-actions .field-note {
-  max-width: none;
-  margin: 0;
+.lot-detail-failure-banner > [class*='content'] > * {
+  grid-column: 1;
+}
+
+.lot-detail-failure-banner > [class*='content'] > [class*='action'] {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 0;
 }
 
 /* 일시는 한 줄 — 넓은 행 간격(comfortable)에서 날짜와 시각이 갈라지지 않게 한다. */
@@ -4612,6 +4753,131 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 칸 안 한 줄 — 넘치면 말줄임(전체 값은 title). 날짜·수량·사유·품목이 쓴다. */
+/* LOT 상세 탭의 표 — 열이 적어 LOT 목록 표 최소 폭(60rem)을 쓰지 않고 칸 폭에 맞춘다(넘치면 표 안에서 구른다). */
+.lot-status-table.lot-detail-table table {
+  min-width: 0;
+}
+
+/* 투입 이력 줄을 누르면 그 생산 LOT 상세 이력 팝업이 열린다(사용자 2026-11-02). */
+.lot-usage-clickable tbody tr {
+  cursor: pointer;
+}
+
+.lot-usage-detail-dialog {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/*
+ * LOT 상태 묶음의 표(상세 탭 · 변경 이력) — 가운데 열 머리 이름이 칸 가운데에 서게 손잡이 · 정렬 표식을 띄운다
+ * (LOT 목록 · 검사 대기 목록과 같은 규칙 · 사용자 2026-11-02).
+ */
+.lot-status-table thead th button {
+  position: static;
+}
+
+/*
+ * 이름만 흐름에 두고 끌기 손잡이 · 정렬 표식(오른쪽)은 띄운다 — 칸이 좁아도 단추가 넘치지 않아 이름이 늘 칸 가운데에 온다
+ * (좁은 칸에서 어긋나던 문제 · 사용자 지시 2026-10-27 · #185). 끌기 손잡이는 늘 이름 바로 오른쪽이다(사용자 지시
+ * 2026-10-27 · #197) — 이름 묶음을 기준으로 그 오른쪽 끝 바깥에 선다.
+ */
+.lot-status-table thead th[data-align='center'] .col-head {
+  position: relative;
+}
+
+.lot-status-table thead th[data-align='center'] .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
+}
+
+.lot-status-table thead th[data-align='center'] > button {
+  padding-inline: 6px;
+}
+
+.lot-status-table thead th[data-align='center'] > button > svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+}
+
+/* 시리얼이 없는 줄의 「미등록」은 칸 가운데(사용자 지시 2026-10-26) — 번호가 있으면 왼쪽 그대로다. */
+
+/* 누를 수 있는 이력 줄 — 「LOT 변경 이력」 탭 화면의 줄은 LOT 상세 이력 팝업을 연다(사용자 2026-11-02). */
+.lot-timeline-clickable tbody tr:has([data-row-clickable='true']) {
+  cursor: pointer;
+}
+
+/* 생산 LOT 상세 이력 팝업 — 기본 정보는 상세 칸과 같은 상자, 투입 자재 · 이력 탭, 맨 아래 이동 단추(사용자 2026-11-02). */
+/* 팝업 첫 줄(제목 · 이동 단추) — 위에 여백을 두고 가운데 높이를 맞춘다(사용자 2026-11-02). */
+.lot-usage-detail-dialog > .lot-status-detail-head {
+  align-items: center;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-2);
+}
+
+.lot-status-detail-head > .lot-dialog-title {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* 투입 자재 제목 — 시안처럼 구역 제목 크기. */
+.lot-usage-detail-dialog .lot-status-detail-dialog section > .lot-status-pane-head > h3,
+.lot-usage-detail-dialog .four-m-inputs .lot-status-pane-head > h3 {
+  margin: 0;
+  font: var(--type-title-lg);
+  font-weight: 700;
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* LOT 상세의 변경 이력·보류 이력 접기 — 제목 단추 앞 화살표가 열림·닫힘을 보인다. */
+.lot-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lot-section-toggle::before {
+  content: '▾';
+  color: var(--on-surface-variant);
+  transition: transform 0.15s;
+}
+
+.lot-section-toggle[aria-expanded='false']::before {
+  transform: rotate(-90deg);
+}
+
+.lot-section-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* LOT 번호 + 유형 라벨 — 번호가 길면 번호만 말줄임하고 라벨은 남긴다. */
+.lot-no-with-type {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.lot-no-with-type > .lot-status-one-line {
+  min-width: 0;
+}
+
+.lot-no-with-type > :first-child:not(.lot-status-one-line) {
+  flex: none;
+}
+
 .lot-status-one-line {
   display: block;
   overflow: hidden;
@@ -4630,28 +4896,14 @@ h2:has(> .inspection-standard-dialog-title) {
   padding-right: var(--space-6);
 }
 
-/*
- * LOT 번호는 한 줄 — 칸보다 길면 «앞에서부터» 보이고 끝에 말줄임, 전체 번호는 title 로 보인다.
- * ⚠ DS 단추는 가운데 정렬 inline-flex 라 단추 자체에 말줄임을 걸면 넘친 글자가 양쪽으로 밀려
- *   앞부분이 잘렸다(2단계 검증 2026-10-16). 안쪽 글자 칸이 줄어들며 말줄임한다.
- */
-.lot-status-lot-no {
-  max-width: 100%;
-  min-width: 0;
+/* LOT 목록 줄 — 아무 곳이나 눌러 상세를 연다. 올리면 손 모양 + 옅은 바탕(사용자 2026-10-30, PQC 검사 대기 목록과 같다). */
+.lot-status-list-table tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+  cursor: pointer;
 }
 
-/* DS 단추가 글자를 블록 칸으로 한 번 더 감싼다 — 그 칸도 줄어들어야 안쪽 말줄임이 걸린다(실측). */
-.lot-status-lot-no > span {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.lot-status-lot-no-text {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.lot-status-list-table tbody tr:hover {
+  background: var(--state-hover-neutral);
 }
 
 .lot-status-list-title {
@@ -4788,67 +5040,8 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 100%;
 }
 
-/*
- * 조회·초기화 묶음은 줄의 오른쪽 끝에 선다 — 한 줄에 다 들어가지 않아 다음 줄로 넘어갈 때
- * 왼쪽 끝에 혼자 떨어지지 않게 한다(사용자 지시 2026-09-18).
- */
-.filter-bar.lot-status-transition-filter
-  > .lot-status-transition-filter-actions {
-  margin-left: auto;
-}
-
 .lot-status-transition-period-label > .field-label {
   margin-bottom: 0;
-}
-
-/* 조건과 결과의 경계 — 카드를 쪼개지 않고 선 하나와 작은 머리로 가른다. */
-.lot-status-transition-result-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-3);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.lot-status-transition-result-title {
-  margin: 0;
-  color: var(--on-surface);
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.lot-status-transition-result-head > .field-note {
-  max-width: none;
-  margin: 0;
-}
-
-.lot-status-transition-list-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.lot-status-transition-list-footer > .field-note {
-  max-width: none;
-  margin: 0;
-}
-
-.lot-status-transition-list-footer > .form-actions {
-  justify-content: flex-end;
-  margin: 0 0 0 auto;
-}
-
-/* 긴 품목명이 수량 열을 밀지 않는다 — 한 줄로 자르고 전체 이름은 title 로 남긴다. */
-.lot-status-transition-item {
-  display: block;
-  max-width: 28rem;
-  margin-inline: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /*
@@ -5010,16 +5203,6 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 @media (max-width: 720px) {
-  .lot-status-transition-list-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .lot-status-transition-list-footer > .form-actions {
-    align-self: flex-end;
-    margin-left: 0;
-  }
-
   .lot-status-transition-identity {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -5048,24 +5231,6 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
-.filter-bar.suspicious-material-hold-filter {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
-  gap: var(--space-4);
-  margin-bottom: 0;
-}
-
-.suspicious-material-hold-filter > *,
-.suspicious-material-hold-filter .field-cell {
-  min-width: 0;
-}
-
-.suspicious-material-hold-filter .field-cell {
-  align-items: stretch;
-}
-
-.suspicious-material-hold-filter-footer,
-.suspicious-material-hold-list-footer,
 .suspicious-material-hold-action-row {
   display: flex;
   grid-column: 1 / -1;
@@ -5083,12 +5248,6 @@ h2:has(> .inspection-standard-dialog-title) {
   color: var(--on-primary-container);
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
-}
-
-.suspicious-material-hold-filter-actions,
-.suspicious-material-hold-list-footer > .form-actions {
-  justify-content: flex-end;
-  margin: 0 0 0 auto;
 }
 
 .suspicious-material-hold-table {
@@ -5111,17 +5270,6 @@ h2:has(> .inspection-standard-dialog-title) {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
-}
-
-.suspicious-material-hold-status-cell > time {
-  color: var(--on-surface-muted);
-  white-space: nowrap;
-}
-
-.suspicious-material-hold-list-footer > .field-note {
-  flex: 1 1 20rem;
-  max-width: none;
-  margin: 0;
 }
 
 .suspicious-material-hold-range,
@@ -5203,21 +5351,16 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 @media (max-width: 720px) {
-  .suspicious-material-hold-filter-footer,
-  .suspicious-material-hold-list-footer,
   .suspicious-material-hold-action-row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .suspicious-material-hold-filter-actions,
-  .suspicious-material-hold-list-footer > .form-actions,
   .suspicious-material-hold-action-row > button {
     align-self: flex-end;
     margin-left: 0;
   }
 
-  .suspicious-material-hold-list-footer > .field-note,
   .suspicious-material-hold-action-row > .field-note {
     flex: initial;
   }
@@ -24960,6 +25103,40 @@ body.col-reordering * {
 .inspection-split > .lot-trace-list-pane {
   height: auto;
   max-height: calc(100dvh - 20rem);
+}
+
+/*
+ * LOT 상태 조회 목록 · LOT 상세 — 검사 조회·판정과 같이 창 크기에 맞춘다(사용자 2026-10-30). 넓은 창(1440px 이상)은
+ * 나란히 서서 창 바닥에서 멈추고 칸 안에서 구르며, 좁은 창은 위아래로 쌓이고 목록은 창 높이 안에서 구른다.
+ */
+.lot-status-split > .lot-status-pane {
+  height: auto;
+  max-height: calc(100dvh - 20rem);
+  overflow: auto;
+}
+
+@media (min-width: 1440px) {
+  .lot-status-split > .lot-status-pane {
+    max-height: none;
+    min-height: 0;
+  }
+}
+
+/*
+ * 상하 배치 — 가운데 막대로 목록 높이를 정한다(다른 검사 화면과 같다). 목록 칸이 이 높이를 읽지 않아 막대를 끌어도
+ * 바뀌지 않았다(사용자 2026-10-30).
+ */
+.po-board-split.lot-status-split.is-stacked > .lot-status-pane:not(.lot-status-detail-dialog) {
+  box-sizing: border-box;
+  height: var(--stacked-list-height, auto);
+  min-height: 0;
+  max-height: var(--stacked-list-height, min(28rem, 50dvh));
+  overflow: auto;
+}
+
+.po-board-split.lot-status-split.is-stacked > .lot-status-detail-dialog {
+  max-height: none;
+  overflow: visible;
 }
 
 @media (min-width: 1440px) {

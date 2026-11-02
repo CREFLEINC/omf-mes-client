@@ -27,7 +27,7 @@ export const lotStatusTransition = {
       lotNo: 'LOT 번호',
       lotNoPlaceholder: 'LOT 번호를 입력하세요',
       item: '자재',
-      status: '품질 상태',
+      status: '상태',
       all: '전체',
       note: '최근 전이일을 기준으로 LOT을 조회합니다.',
       periodMissing: '조회 시작일과 종료일을 모두 선택하세요.',
@@ -39,7 +39,7 @@ export const lotStatusTransition = {
     fields: {
       lotNo: 'LOT 번호',
       item: '품목',
-      status: '품질 상태',
+      status: '상태',
       onHand: '보유 수량',
       held: '보류 수량',
     },
@@ -51,14 +51,6 @@ export const lotStatusTransition = {
     failed: 'LOT 후보를 불러오지 못했습니다.',
     retry: '다시 시도',
     empty: '조건에 맞는 LOT이 없습니다.',
-    /** 조건과 결과를 가르는 작은 머리 — 건수는 이 옆에, 쪽 위치는 아래 쪽 이동 옆에 선다. */
-    resultTitle: '조회 결과',
-    resultCount: (total: string): string => `총 ${total}건`,
-    pageStatus: (page: number, totalPages: number): string =>
-      `${String(page)} / ${String(totalPages)}쪽`,
-    pagination: 'LOT 후보 쪽 이동',
-    previous: '이전 쪽',
-    next: '다음 쪽',
   },
   /** 고른 LOT의 식별과 현재 수량·상태를 되짚어 주는 패널. */
   selected: {

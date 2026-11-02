@@ -56,6 +56,7 @@ export interface LotDetailView {
   lotTypeCode: string;
   statusCode: string;
   initialQty: number;
+  uomId: number | null;
   manufacturedAt: string | null;
   expiryDate: string | null;
   /** 생산 LOT 이면 `WORK_ORDER` 와 그 W/O id — 4M 변경 자재 투입(W/O 단위 추정)을 부른다(omf-all-around#63). */
@@ -71,6 +72,7 @@ export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   lotTypeCode: lot.lotTypeCode,
   statusCode: lot.statusCode,
   initialQty: lot.initialQty,
+  uomId: lot.uomId ?? null,
   manufacturedAt: lot.manufacturedAt ?? null,
   expiryDate: lot.expiryDate ?? null,
   sourceTypeCode: lot.sourceTypeCode,

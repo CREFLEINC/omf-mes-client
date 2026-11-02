@@ -27,7 +27,18 @@ import {
   lotStatusTone,
   useLotHoldReasonOptions as useHoldReasonNames,
   useLotStatusOptions,
+  useLotTypeOptions,
 } from '../lot-status-history/options';
+import {
+  DEFAULT_LOT_PAGE_SIZE,
+  LOT_PAGE_SIZES,
+  type LotPageSize,
+} from '../lot-status-history/filters';
+import { useUomCodeOf, withUom } from '../lot-status-history/uoms';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav } from '../../patterns/page-nav';
 import { LOT_HOLD_RELEASE_REASON_GROUP, useLotHoldReasonOptions } from './code-options';
 import {
   useItemNameSources,
@@ -80,6 +91,8 @@ export const toLotStatusCandidateQuery = (
   filters: LotStatusCandidateFilters,
   page: number,
   offsetMinutes: number,
+  /** 한 쪽 LOT 수 — 주지 않으면 서버 기본 크기다. */
+  size?: number,
 ): LotStatusCandidateQuery => {
   const query: LotStatusCandidateQuery = {};
   const itemId = positiveId(filters.itemId);
@@ -89,12 +102,17 @@ export const toLotStatusCandidateQuery = (
   if (validateTransitionPeriod(filters) === null)
     Object.assign(query, toTransitionPeriodBounds(filters, offsetMinutes));
   if (Number.isSafeInteger(page) && page > 1) query.page = page;
+  if (size !== undefined) query.size = size;
   return query;
 };
 
 export const lotStatusTransitionKeys = {
-  candidates: (filters: LotStatusCandidateFilters, page: number, offsetMinutes: number) =>
-    ['lot-status-transition', 'candidates', { ...filters }, page, offsetMinutes] as const,
+  candidates: (
+    filters: LotStatusCandidateFilters,
+    page: number,
+    offsetMinutes: number,
+    size?: number,
+  ) => ['lot-status-transition', 'candidates', { ...filters }, page, size, offsetMinutes] as const,
 };
 
 const ROOT_KEY = ['lot-status-transition'] as const;
@@ -103,38 +121,17 @@ const useCandidates = (
   filters: LotStatusCandidateFilters,
   page: number,
   offsetMinutes: number,
+  size: number,
   enabled: boolean,
 ) => {
   const { client } = useApiClient();
-  const query = toLotStatusCandidateQuery(filters, page, offsetMinutes);
+  const query = toLotStatusCandidateQuery(filters, page, offsetMinutes, size);
   return useQuery({
-    queryKey: lotStatusTransitionKeys.candidates(filters, page, offsetMinutes),
+    queryKey: lotStatusTransitionKeys.candidates(filters, page, offsetMinutes, size),
     enabled,
     placeholderData: keepPreviousData,
     queryFn: () => runRequest(() => client.GET('/quality/lot-statuses', { params: { query } })),
   });
-};
-
-/*
- * 표의 수량 옆 단위 코드 — 표시용 조회다(`500 EA`). 단위는 수가 적지만 기본 쪽 크기에 잘리지
- * 않게 쪽 크기를 준다. 조회·선택·전이와 캐시 키를 섞지 않는다 — 전이 뒤 무효화가 이것까지
- * 다시 부르지 않게 한다.
- */
-const UOM_PAGE_SIZE = 200;
-
-const useUomCodes = (): ReadonlyMap<number, string> => {
-  const { client } = useApiClient();
-  const query = useQuery({
-    queryKey: ['lot-status-transition:uoms'],
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/uoms', {
-          params: { query: { includeInactive: true, size: UOM_PAGE_SIZE } },
-        }),
-      ),
-  });
-
-  return new Map((query.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode]));
 };
 
 const rowKey = (row: LotStatusCandidate): string =>
@@ -181,10 +178,11 @@ export const LotStatusTransitionCandidateScreen = () => {
   const [draft, setDraft] = useState(() => defaultLotStatusCandidateFilters(new Date()));
   const [filters, setFilters] = useState(() => defaultLotStatusCandidateFilters(new Date()));
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<LotPageSize>(DEFAULT_LOT_PAGE_SIZE);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [confirmationPinned, setConfirmationPinned] = useState(false);
   const offsetMinutes = -new Date().getTimezoneOffset();
-  const candidates = useCandidates(filters, page, offsetMinutes, !confirmationPinned);
+  const candidates = useCandidates(filters, page, offsetMinutes, pageSize, !confirmationPinned);
   const selected =
     candidates.isError && !confirmationPinned
       ? null
@@ -215,15 +213,14 @@ export const LotStatusTransitionCandidateScreen = () => {
     [queryClient],
   );
   const items = useItemReferenceOptions();
-  const uomCodes = useUomCodes();
-  /* 단위를 못 풀면 수량만 낸다 — 「알 수 없음」 같은 말을 새로 만들지 않는다. */
-  const quantityWithUnit = (value: number | undefined, uomId: number | undefined): string => {
-    const code = uomId === undefined ? undefined : uomCodes.get(uomId);
-
-    return value === undefined || code === undefined
-      ? quantity(value)
-      : `${quantity(value)} ${code}`;
-  };
+  const uomCodeOf = useUomCodeOf();
+  const lotTypes = useLotTypeOptions();
+  /* 단위를 못 풀면 수량만 낸다 — 「알 수 없음」 같은 말을 새로 만들지 않는다(LOT 현황과 같은 단위 풀이). */
+  const quantityWithUnit = (value: number | undefined, uomId: number | undefined): string =>
+    value === undefined ? quantity(value) : withUom(quantity(value), uomCodeOf(uomId ?? null));
+  const lotTypeLabel = (code: string): string =>
+    lotTypes.data?.items.find((item) => item.code === code)?.label ??
+    messages.lotStatusHistory.values.unlisted(code);
   const itemNames = useItemNameSources(
     candidates.data?.items.map((candidate) => candidate.itemId) ?? [],
   );
@@ -267,6 +264,11 @@ export const LotStatusTransitionCandidateScreen = () => {
     setPage(next);
     setSelectedKey(null);
   };
+  const changePageSize = (size: LotPageSize): void => {
+    if (confirmationPinned) return;
+    setPageSize(size);
+    changePage(1);
+  };
   const apply = (): void => {
     if (confirmationPinned || periodError !== null) return;
     setFilters({ ...draft });
@@ -280,36 +282,50 @@ export const LotStatusTransitionCandidateScreen = () => {
     changePage(1);
   };
   const columns: Column<LotStatusCandidate>[] = [
-    /* 표는 머리와 모든 열을 가운데로 맞춘다(사용자 지시 2026-09-18). */
+    /*
+     * 표는 LOT 현황 목록과 같은 짜임이다 — 모든 열 가운데 정렬, 폭은 px 로 두고 끌어 바꾼 폭 · 순서는 브라우저에 남는다.
+     *   LOT 260 · 품목 320 · 상태 88 · 보유 수량 120 · 보류 수량 120
+     */
     {
       key: 'lotNo',
       header: t.fields.lotNo,
       align: 'center',
+      width: '260px',
       render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.select(row.lotNo)}
-          aria-current={selectedKey === rowKey(row) ? true : undefined}
-          disabled={confirmationPinned}
-          onClick={() => {
-            if (!confirmationPinned) setSelectedKey(rowKey(row));
-          }}
-        >
-          {row.lotNo}
-        </button>
+        <span className="lot-no-with-type">
+          {/* LOT 유형 라벨 — 번호 왼쪽(LOT 현황과 같다). */}
+          {row.lotTypeCode !== undefined && (
+            <Chip variant="status" status="info" size="sm">
+              {lotTypeLabel(row.lotTypeCode)}
+            </Chip>
+          )}
+          <button
+            type="button"
+            className="link-cell lot-status-one-line"
+            title={row.lotNo}
+            aria-label={t.select(row.lotNo)}
+            aria-current={selectedKey === rowKey(row) ? true : undefined}
+            disabled={confirmationPinned}
+            onClick={() => {
+              if (!confirmationPinned) setSelectedKey(rowKey(row));
+            }}
+          >
+            {row.lotNo}
+          </button>
+        </span>
       ),
     },
     {
       key: 'item',
       header: t.fields.item,
       align: 'center',
-      /* 긴 품목명이 수량 열을 밀지 않게 한 줄로 자르고, 전체 이름은 title 로 남긴다. */
+      width: '320px',
+      /* 긴 품목명은 칸 안에서 말줄임하고, 전체 이름은 title 로 남긴다. */
       render: (row) => {
         const label = itemLabel(row.itemId);
 
         return (
-          <span className="lot-status-transition-item" title={label}>
+          <span className="lot-status-one-line" title={label}>
             {label}
           </span>
         );
@@ -319,9 +335,10 @@ export const LotStatusTransitionCandidateScreen = () => {
       key: 'status',
       header: t.fields.status,
       align: 'center',
-      /* 상태 색은 LOT 이력 화면과 같다(사용자 지시) — 정상 초록 · 검사 대기 노랑 · 불량 빨강 · 그 밖 회색. */
+      width: '88px',
+      /* 상태 색은 LOT 현황과 같다 — 정상 초록 · 검사 대기 노랑 · 불량 빨강 · 그 밖 회색. */
       render: (row) => (
-        <Chip variant="status" status={lotStatusTone(row.lotStatusCode)}>
+        <Chip variant="status" status={lotStatusTone(row.lotStatusCode)} size="sm">
           {statusLabel(row.lotStatusCode)}
         </Chip>
       ),
@@ -330,28 +347,35 @@ export const LotStatusTransitionCandidateScreen = () => {
       key: 'onHand',
       header: t.fields.onHand,
       align: 'center',
+      width: '120px',
       render: (row) => quantityWithUnit(row.onHandQty, row.uomId),
     },
     {
       key: 'held',
       header: t.fields.held,
       align: 'center',
+      width: '120px',
       render: (row) => quantityWithUnit(row.heldQty, row.uomId),
     },
   ];
+  const ordered = useColumnOrder('omf-mes:lot-status:columns:transition:order', columns);
+  const resizable = useColumnWidths('omf-mes:lot-status:columns:transition', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
   const meta = candidates.data?.page;
-  const totalPages = meta === undefined || meta.size < 1 ? 1 : Math.ceil(meta.total / meta.size);
+  const currentPage = meta !== undefined && meta.page > 0 ? meta.page : page;
+  /* 고를 수 없는 크기(10 · 20 · 50 밖)를 서버가 돌려주면 크기 칸이 비므로 고른 크기를 보인다. */
+  const shownPageSize: LotPageSize = LOT_PAGE_SIZES.find((size) => size === meta?.size) ?? pageSize;
 
   return (
     <div className="lot-status-transition-flow">
+      {/* 조회 조건 카드 — LOT 현황처럼 조건만 따로 둔다. */}
       <section
-        className="pane lot-status-transition-pane"
-        aria-labelledby="lot-status-transition-candidates-title"
+        className="pane lot-status-search"
+        aria-label={messages.lotStatusHistory.lotFilter.pane}
       >
-        <h2 className="pane-title" id="lot-status-transition-candidates-title">
-          {t.pane}
-        </h2>
-        <div className="filter-bar lot-status-transition-filter">
+        <div className="filter-bar lot-status-filter lot-status-transition-filter">
           <div className="field-cell lot-status-transition-period">
             {/*
              * 기간의 기준(최근 전이일)은 라벨 옆 같은 줄의 흐린 보조 글자로 둔다(사용자 지시 2026-09-19 —
@@ -380,8 +404,9 @@ export const LotStatusTransitionCandidateScreen = () => {
           </div>
           <SearchInput
             disabled={confirmationPinned}
-            label={t.filters.lotNo}
-            placeholder={t.filters.lotNoPlaceholder}
+            containerClassName="lot-status-filter-lot-no"
+            label={messages.lotStatusHistory.lotFilter.lotScanLabel}
+            placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
             onSearch={apply}
@@ -403,25 +428,29 @@ export const LotStatusTransitionCandidateScreen = () => {
             value={draft.lotStatusCode}
             onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
           />
-          {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로 붙인다(규범 2-1) — 좁아지면 함께 넘어간다. */}
-          <div className="filter-actions field-cell-unlabeled lot-status-transition-filter-actions">
+          {/* [조회](주 동작) → [초기화] — LOT 현황과 같은 순서, 줄의 오른쪽 끝. */}
+          <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
+            <Button
+              variant="filled"
+              disabled={confirmationPinned || periodError !== null}
+              onClick={apply}
+            >
+              {t.filters.search}
+            </Button>
             <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
               {t.filters.reset}
             </Button>
-            <Button disabled={confirmationPinned || periodError !== null} onClick={apply}>
-              {t.filters.search}
-            </Button>
           </div>
         </div>
-        {/* 조건과 결과를 한 카드 안에서 가른다 — 선 하나와 작은 머리, 건수는 그 옆. */}
-        <div className="lot-status-transition-result-head">
-          <h3 className="lot-status-transition-result-title">{t.resultTitle}</h3>
-          {candidates.data !== undefined && !candidates.isError && (
-            <span className="field-note">
-              {t.resultCount(new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0))}
-            </span>
-          )}
-        </div>
+      </section>
+      {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). */}
+      <section
+        className="pane lot-status-pane lot-status-transition-pane"
+        aria-labelledby="lot-status-transition-candidates-title"
+      >
+        <h2 className="pane-title" id="lot-status-transition-candidates-title">
+          {t.pane}
+        </h2>
         {candidates.isError ? (
           <AlertBanner
             variant="error"
@@ -435,38 +464,32 @@ export const LotStatusTransitionCandidateScreen = () => {
         ) : (
           <>
             <div
-              className="wide-table lot-status-transition-table"
+              ref={fit.ref}
+              className="wide-table lot-status-table lot-status-transition-table inspection-queue-table"
+              style={resizable.style}
               aria-busy={candidates.isFetching}
             >
               <Table
                 density="compact"
                 caption={t.pane}
-                columns={columns}
+                columns={fit.columns}
                 rows={candidates.data.items}
                 getRowId={rowKey}
                 sort={null}
                 empty={<EmptyState size="sm" live title={t.empty} />}
               />
             </div>
-            <div className="lot-status-transition-list-footer">
-              <p className="field-note">{t.pageStatus(page, totalPages)}</p>
-              <nav className="form-actions" aria-label={t.pagination}>
-                <Button
-                  variant="outlined"
-                  disabled={confirmationPinned || page <= 1}
-                  onClick={() => changePage(page - 1)}
-                >
-                  {t.previous}
-                </Button>
-                <Button
-                  variant="outlined"
-                  disabled={confirmationPinned || page >= totalPages}
-                  onClick={() => changePage(page + 1)}
-                >
-                  {t.next}
-                </Button>
-              </nav>
-            </div>
+            {meta !== undefined && (
+              <PageNav
+                sizes={LOT_PAGE_SIZES}
+                meta={{ page: currentPage, size: shownPageSize, total: meta.total }}
+                onChangePage={changePage}
+                onChangeSize={changePageSize}
+                controlSize="sm"
+                buttonSize="md"
+                disabled={confirmationPinned}
+              />
+            )}
           </>
         )}
       </section>

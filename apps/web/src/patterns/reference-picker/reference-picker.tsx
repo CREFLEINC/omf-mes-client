@@ -209,6 +209,8 @@ export interface ReferenceFieldProps {
   size?: 'sm' | 'md';
   /** 고른 값의 「이름 (코드)」. 비었으면 ''. */
   valueLabel: string;
+  /** 비었을 때 흐린 문구. 기본은 「눌러서 찾기」. */
+  placeholder?: string;
   source: ReferenceSource | null;
   required?: boolean;
   disabled?: boolean;
@@ -223,6 +225,7 @@ export interface ReferenceFieldProps {
 }
 
 export const ReferenceField = ({
+  placeholder,
   label,
   hideLabel = false,
   size = 'md',
@@ -259,7 +262,7 @@ export const ReferenceField = ({
         value={valueLabel}
         readOnly
         title={valueLabel === '' ? undefined : valueLabel}
-        placeholder={t.open}
+        placeholder={placeholder ?? t.open}
         aria-haspopup="dialog"
         aria-required={required || undefined}
         aria-invalid={invalid || undefined}

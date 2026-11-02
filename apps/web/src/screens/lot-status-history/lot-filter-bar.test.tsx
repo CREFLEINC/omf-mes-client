@@ -11,7 +11,6 @@ const TYPES = [
   { value: 'SAMPLE_MATERIAL', label: '합성 자재' },
   { value: 'SAMPLE_PRODUCT', label: '합성 제품' },
 ];
-const STATUSES = [{ value: 'SAMPLE_NORMAL', label: '합성 정상' }];
 const WAREHOUSES = [
   { value: '101', label: 'SAMPLE-WH-01 · 합성 창고 가' },
   { value: '109', label: 'SAMPLE-WH-09 · 합성 창고 나' },
@@ -78,7 +77,6 @@ const filters = (overrides: Partial<LotFilters> = {}): LotFilters => ({
 const props = (overrides: Partial<LotFilterBarProps> = {}): LotFilterBarProps => ({
   appliedFilters: EMPTY_LOT_FILTERS,
   lotTypeOptions: TYPES,
-  lotStatusOptions: STATUSES,
   warehouseOptions: WAREHOUSES,
   onSearch: vi.fn(),
   onReset: vi.fn(),
@@ -109,12 +107,34 @@ const AppliedProbe = ({ initial }: { initial: LotFilters }) => {
   );
 };
 
+/** 창고는 검색 팝업에서 코드를 눌러 고른다(사용자 2026-10-30). */
+const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
+  await user.click(screen.getByLabelText('창고 선택'));
+  const dialog = await screen.findByRole('dialog', { name: '창고 선택' });
+  await user.click(await within(dialog).findByText(code));
+  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+};
+
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
   await user.click(screen.getByLabelText(label));
   await user.click(await screen.findByRole('option', { name: option }));
 };
 
 describe('LOT 현재 조회 조건', () => {
+  /* LOT 번호 스캔 칸 옆 [검색] — 검사 조회·판정의 LOT 스캔처럼 번호가 비면 잠기고, 누르면 바로 조회한다(사용자 2026-10-30). */
+  it('LOT 번호를 넣고 Enter(스캐너)를 치면 바로 조회한다', async () => {
+    const { onSearch, user } = renderBar();
+
+    expect(screen.getByLabelText('LOT 스캔')).toHaveAttribute(
+      'placeholder',
+      'LOT 바코드 스캔 또는 번호를 입력하세요',
+    );
+    expect(screen.queryByRole('button', { name: '검색' })).toBeNull();
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001{Enter}');
+
+    expect(onSearch).toHaveBeenCalledWith(expect.objectContaining({ q: 'SAMPLE-LOT-001' }));
+  });
+
   it('LOT 유형을 고르지 않아도 「전체」로 조회한다', async () => {
     const { onSearch, user } = renderBar();
 
@@ -130,16 +150,21 @@ describe('LOT 현재 조회 조건', () => {
     expect(screen.getByRole('button', { name: '조회' })).toBeEnabled();
   });
 
-  it('초안을 모아 조회할 때 적용값과 기존 정렬을 함께 넘긴다', async () => {
+  /* 현재 상태는 카드 위쪽 상태 단추가 정한다(사용자 2026-10-30) — 조회는 적용된 상태를 그대로 넘긴다. */
+  it('초안을 모아 조회할 때 적용값과 기존 정렬·현재 상태를 함께 넘긴다', async () => {
     const { onSearch, user } = renderBar({
-      appliedFilters: filters({ sort: 'lotNoAsc' }),
+      appliedFilters: filters({ sort: 'lotNoAsc', status: 'SAMPLE_NORMAL' }),
     });
 
     await choose(user, 'LOT 유형', '합성 자재');
+    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
     // 품목은 검색 창에서 고른다 — 중지 품목까지 찾고 가용 재고는 부르지 않는다.
     itemSearchQueries.length = 0;
-    await user.click(screen.getByLabelText('품목'));
+    await user.click(screen.getByLabelText('품목 검색'));
     const picker = await screen.findByRole('dialog', { name: '품목 검색' });
+    /* 오른쪽 위 × 와 「품목을 고르면 누를 수 있습니다.」 안내가 없는 창이다(사용자 2026-10-30). */
+    expect(within(picker).queryByText('품목을 고르면 누를 수 있습니다.')).not.toBeInTheDocument();
+    expect(within(picker).queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
     await user.click(await within(picker).findByRole('checkbox', { name: 'SAMPLE-ITEM-01' }));
     expect(within(picker).getByText(/합성 품목 · 미사용/)).toBeInTheDocument();
     expect(within(picker).queryByRole('columnheader', { name: '가용' })).not.toBeInTheDocument();
@@ -148,10 +173,10 @@ describe('LOT 현재 조회 조건', () => {
     expect(await screen.findByDisplayValue('SAMPLE-ITEM-01 · 합성 품목')).toBeInTheDocument();
     // 지우기는 값이 있을 때만 칸 안에 선다.
     expect(screen.getByRole('button', { name: '품목 지우기' })).toBeInTheDocument();
-    await choose(user, '현재 상태', '합성 정상');
-    await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
-    await choose(user, '위치', 'SAMPLE-LOC-01 · 합성 위치');
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
+    await pickWarehouse(user, 'SAMPLE-WH-01');
+    await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(onSearch).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -169,15 +194,48 @@ describe('LOT 현재 조회 조건', () => {
     );
   });
 
-  it('창고를 고르기 전에는 위치를 잠그고 칸 아래에 까닭을 둔다', async () => {
+  /* 잠긴 까닭은 칸 안 글자로 둔다(사용자 2026-10-30). */
+  /* 상세 조건은 접혀 들어오지만, 걸린 상세 조건이 있으면 펼친 채로 들어온다(입하 예정 조회와 같다 · 사용자 2026-10-30). */
+  it('품목 · 창고 · 위치는 접힌 상세 조건이고, 걸린 값이 있으면 펼쳐 들어온다', () => {
+    const { unmount } = renderBar();
+    expect(screen.getByRole('button', { name: '상세 검색 펼치기' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.getByLabelText('창고 선택')).not.toBeVisible();
+    unmount();
+
+    renderBar({ appliedFilters: filters({ warehouse: '101' }) });
+    expect(screen.getByRole('button', { name: '상세 검색 접기' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByLabelText('창고 선택')).toBeVisible();
+  });
+
+  /* 펼친 목록은 칸과 같은 폭이다(사용자 2026-10-30) — 긴 「코드 · 이름」이 칸 밖으로 넓어지지 않는다. */
+  it('선택 목록을 칸 폭에 맞춘다', async () => {
     const { user } = renderBar();
+    const trigger = screen.getByLabelText('LOT 유형');
+    await user.click(trigger);
+    const listbox = await screen.findByRole('listbox');
+
+    await waitFor(() => expect(listbox).toHaveClass('lot-status-fit-listbox'));
+    const width = `${String(trigger.getBoundingClientRect().width)}px`;
+    expect(listbox.style.width).toBe(width);
+    expect(listbox.style.maxWidth).toBe(width);
+  });
+
+  it('창고를 고르기 전에는 위치를 잠그고 칸 안에 까닭을 둔다', async () => {
+    const { user } = renderBar();
+    await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
     const location = screen.getByLabelText(/^위치/);
 
     expect(location).toBeDisabled();
-    expect(screen.getByText('창고 선택 후 위치를 선택할 수 있습니다.')).toBeInTheDocument();
-    await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 가');
+    expect(location).toHaveTextContent('창고를 먼저 선택하세요');
+    await pickWarehouse(user, 'SAMPLE-WH-01');
     expect(screen.getByLabelText(/^위치/)).toBeEnabled();
-    expect(screen.queryByText('창고 선택 후 위치를 선택할 수 있습니다.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^위치/)).not.toHaveTextContent('창고를 먼저 선택하세요');
   });
 
   it('창고를 바꾸면 앞 창고의 위치 초안을 제거한다', async () => {
@@ -186,7 +244,7 @@ describe('LOT 현재 조회 조건', () => {
       appliedFilters: filters({ lotType: 'SAMPLE_MATERIAL', warehouse: '101', location: '102' }),
     });
 
-    await choose(user, '창고', 'SAMPLE-WH-09 · 합성 창고 나');
+    await pickWarehouse(user, 'SAMPLE-WH-09');
     await waitFor(() => expect(locationWarehouseIds).toContain('109'));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -200,10 +258,10 @@ describe('LOT 현재 조회 조건', () => {
     renderWithProviders(<AppliedProbe initial={applied} />, { fetch: locationFetch });
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), '작성 중');
+    await user.type(screen.getByLabelText('LOT 스캔'), '작성 중');
     await user.click(screen.getByRole('button', { name: '같은 적용' }));
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('작성 중');
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('작성 중');
   });
 
   it('적용값이 실제로 바뀌면 초안도 그 값으로 되돌린다', async () => {
@@ -212,10 +270,10 @@ describe('LOT 현재 조회 조건', () => {
     });
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), '작성 중');
+    await user.type(screen.getByLabelText('LOT 스캔'), '작성 중');
     await user.click(screen.getByRole('button', { name: '다른 적용' }));
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('적용값');
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('적용값');
   });
 
   it('초기화는 상위에 한 번 알린다', async () => {

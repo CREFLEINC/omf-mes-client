@@ -1,4 +1,4 @@
-import { Button, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
@@ -110,24 +110,31 @@ export const HistoryFilterBar = ({
           </span>
         )}
       </div>
-      <TextField
+      {/* LOT 번호 — LOT 상태 묶음 네 탭과 같은 검색 칸(사용자 2026-10-30). Enter 는 [조회]와 같다. */}
+      <SearchInput
         containerClassName="lot-status-filter-lot-no"
-        label={t.historyFilter.fields.lot}
+        label={t.lotFilter.lotScanLabel}
+        placeholder={t.lotFilter.lotNoScanPlaceholder}
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}
+        onSearch={() => {
+          if (reason === null) onSearch(draft);
+        }}
+        clearLabel={messages.common.clear}
       />
-      {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로(규범 2-1). 조회가 주 동작이라 오른쪽 끝. */}
+      {/* 조회·초기화는 조건과 같은 줄 끝에 한 덩어리로 — 검사 조회·판정처럼 [조회](주 동작) → [초기화](사용자 2026-10-30). */}
       <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
-        <Button variant="outlined" onClick={onReset}>
-          {t.actions.reset}
-        </Button>
         <Button
+          variant="filled"
           disabled={reason !== null}
           /* 달력이 열려 있는 동안 그 칸은 단계 안내라 조회를 막는 까닭이 아니다 — 닫혀 있을 때만 잇는다. */
           aria-describedby={reason === null || step !== 'closed' ? undefined : reasonId}
           onClick={() => onSearch(draft)}
         >
           {t.actions.search}
+        </Button>
+        <Button variant="outlined" onClick={onReset}>
+          {t.actions.reset}
         </Button>
       </div>
     </div>

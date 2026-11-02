@@ -1239,14 +1239,14 @@ on('GET', '/mdm/code-values', (_p, query) => {
   const values = state.codeValues[group] ?? [];
 
   return page(
-    values.map(([code, name], index) => ({
+    values.map(([code, name, nameVi], index) => ({
       codeValueId: 20000 + index,
       codeGroupId: 2000,
       codeGroupCode: group,
       code,
       codeName: name,
       nameKo: name,
-      nameVi: null,
+      nameVi: nameVi ?? null,
       displayOrder: index + 1,
       isActive: true,
     })),
@@ -1524,6 +1524,103 @@ on('GET', '/trace/lots/{lotId}/holds', (params, query) =>
     query,
   ),
 );
+
+/*
+ * LOT 현황(W-03-01) 목록 · 상태별 건수 — 씨앗 LOT 에서 만든다(2026-10-30).
+ *
+ * ⚠ 이 두 경로가 없어 계약 예시 서버가 답했고, 목록의 LOT(1001)이 씨앗에 없어 상세(`/trace/lots/{lotId}`)가
+ *   늘 404 였다. 보류 사유도 예시 코드(`INCOMING_INSPECTION_WAIT`)라 기준값 이름으로 풀리지 않았다.
+ *   보유 수량 · 창고 · 위치는 재고 잔액에서, 보류 수량 · 사유는 열린 보류에서 가져온다.
+ */
+const lotQualityStatus = (lot) => {
+  const balances = state.balances.filter((balance) => balance.lotId === lot.lotId);
+  const openHolds = state.holds.filter(
+    (hold) => hold.lotId === lot.lotId && hold.releasedAt === null,
+  );
+  const onHandQty = balances.reduce((sum, balance) => sum + balance.onHandQty, 0);
+  const fullyHeld = openHolds.some((hold) => hold.holdQty === null);
+  const heldQty = fullyHeld
+    ? onHandQty
+    : Math.min(
+        onHandQty,
+        openHolds.reduce((sum, hold) => sum + (hold.holdQty ?? 0), 0),
+      );
+  const latestHold = [...openHolds].sort((a, b) => b.heldAt.localeCompare(a.heldAt))[0];
+
+  return {
+    lotId: lot.lotId,
+    lotNo: lot.lotNo,
+    itemId: lot.itemId,
+    lotTypeCode: lot.lotTypeCode,
+    lotStatusCode: lot.statusCode,
+    versionNo: 1,
+    warehouseId: balances[0]?.warehouseId ?? null,
+    locationId: balances[0]?.locationId ?? null,
+    onHandQty,
+    heldQty,
+    availableQty: onHandQty - heldQty,
+    uomId: lot.uomId,
+    openHoldCount: openHolds.length,
+    fullyHeld: openHolds.length > 0 && heldQty >= onHandQty,
+    latestTransitionAt: latestHold?.heldAt ?? lot.manufacturedAt ?? null,
+    latestReasonCode: latestHold?.reasonCode ?? null,
+  };
+};
+
+/* 요약도 목록과 같은 조건 전체로 센다(계약 · 공유계약 L-1). */
+const lotQualityRows = (query) =>
+  keep(state.lots.map(lotQualityStatus), [
+    byText(query, 'lotTypeCode', 'lotTypeCode'),
+    byText(query, 'lotStatusCode', 'lotStatusCode'),
+    byNum(query, 'itemId', 'itemId'),
+    byNum(query, 'warehouseId', 'warehouseId'),
+    byNum(query, 'locationId', 'locationId'),
+    contains(query, 'q', 'lotNo'),
+  ]);
+
+const LOT_QUALITY_SORTS = {
+  lotNoAsc: (a, b) => a.lotNo.localeCompare(b.lotNo),
+  lotNoDesc: (a, b) => b.lotNo.localeCompare(a.lotNo),
+  itemAsc: (a, b) => a.itemId - b.itemId,
+  itemDesc: (a, b) => b.itemId - a.itemId,
+  latestTransitionAsc: (a, b) =>
+    (a.latestTransitionAt ?? '').localeCompare(b.latestTransitionAt ?? ''),
+  latestTransitionDesc: (a, b) =>
+    (b.latestTransitionAt ?? '').localeCompare(a.latestTransitionAt ?? ''),
+};
+
+on('GET', '/quality/lot-statuses', (_p, query) => {
+  const sort = LOT_QUALITY_SORTS[query.get('sort') ?? ''] ?? LOT_QUALITY_SORTS.latestTransitionDesc;
+  const sizeAsked = query.get('size');
+  const sized = new URLSearchParams(query);
+  /* 계약 기본 50 — 목의 공용 쪽 나누기 기본(20)과 다르다. */
+  if (sizeAsked === null) sized.set('size', '50');
+
+  return page(lotQualityRows(query).sort(sort), sized);
+});
+
+on('GET', '/quality/lot-status-summary', (_p, query) => {
+  const counts = new Map();
+  for (const row of lotQualityRows(query)) {
+    const key = `${row.lotStatusCode}|${row.lotTypeCode}`;
+    const count = counts.get(key) ?? {
+      statusCode: row.lotStatusCode,
+      lotTypeCode: row.lotTypeCode,
+      lotCount: 0,
+    };
+    count.lotCount += 1;
+    counts.set(key, count);
+  }
+
+  /* LOT 이 없는 상태도 0건으로 센다 — 빠지면 화면이 「집계 불가」로 읽는다(계약 L-8 은 «판정 불가»만 비운다). */
+  for (const [statusCode] of state.codeValues.LOT_STATUS ?? []) {
+    if (![...counts.values()].some((count) => count.statusCode === statusCode)) {
+      counts.set(statusCode, { statusCode, lotCount: 0 });
+    }
+  }
+
+  return { counts: [...counts.values()], asOf: new Date().toISOString(), outOfScopeCount: 0 };
+});
 
 /* ── 개체(일련번호) ───────────────────────────────────────── */
 

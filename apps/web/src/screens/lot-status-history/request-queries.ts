@@ -53,6 +53,7 @@ export const toLotStatusSummaryQuery = (filters: LotFilters): LotStatusSummaryQu
 export const toLotStatusListQuery = (
   filters: LotFilters,
   page: number,
+  size: number,
 ): LotStatusListQuery | null => {
   const commonQuery = toLotStatusSummaryQuery(filters);
   if (commonQuery === null) return null;
@@ -60,6 +61,7 @@ export const toLotStatusListQuery = (
   const query: LotStatusListQuery = {
     ...commonQuery,
     sort: filters.sort,
+    size,
   };
   const validPage = toPage(page);
 
@@ -119,10 +121,15 @@ export const toLotHistoryBounds = (now: Date): { occurredFrom: string; occurredT
   occurredTo: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
 });
 
-export const toLotHoldListQuery = (lotId: number | null, page = 1): LotHoldListQuery | null => {
+export const toLotHoldListQuery = (
+  lotId: number | null,
+  page = 1,
+  size?: number,
+): LotHoldListQuery | null => {
   if (lotId === null || !Number.isSafeInteger(lotId) || lotId < 1) return null;
   const query: LotHoldListQuery = { lotId, open: false };
   const validPage = toPage(page);
   if (validPage !== undefined) query.page = validPage;
+  if (size !== undefined) query.size = size;
   return query;
 };

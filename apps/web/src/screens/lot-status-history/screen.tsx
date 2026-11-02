@@ -1,20 +1,32 @@
-import { Breadcrumb, PageHeader, Tabs, type TabItem } from '@crefle/web-ui';
+import { Breadcrumb, Chip, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
+import { usePageHub } from '../../patterns/page-hub';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
+import {
+  ALL_LOT_TYPES,
   EMPTY_HISTORY_FILTERS,
   EMPTY_LOT_FILTERS,
   readHistoryFilters,
   readHistoryPage,
   readLotFilters,
   readLotPage,
+  readLotPageSize,
+  type LotPageSize,
   readMode,
   readSelectedLotId,
   toAppliedHistorySearchParams,
   toAppliedLotSearchParams,
   toModeSearchParams,
+  withLotPageSize,
   withSelectedLot,
   type HistoryFilters,
   type LotFilters,
@@ -24,13 +36,99 @@ import {
 import { CurrentResults } from './current-results';
 import { HistoryFilterBar } from './history-filter-bar';
 import { HistoryResults } from './history-results';
-import { LotDetailDialog } from './lot-detail-dialog';
+import { LotDetailPane } from './lot-detail-pane';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
 import { useWarehouseReferenceOptions, type ReferenceOption } from './reference-options';
-import { useLotActorOptions } from './queries';
+import { useLotActorOptions, useLotStatusSummary } from './queries';
 
 const t = messages.lotStatusHistory;
+const hubText = messages.common.inspectionHub;
+
+const MODES: readonly ScreenMode[] = ['lot', 'history'];
+
+/* 좌우 · 상하 배치는 검사 조회·판정 묶음과 따로 기억한다. */
+const LOT_STATUS_ORIENTATION_KEY = 'omf-mes:lot-status:split-orientation';
+
+interface StatusChipsProps {
+  options: readonly FilterOption[];
+  /** 상태별 LOT 건수(상태 조건을 뺀 같은 조회). 아직 모르면 `undefined` — 건수 없이 이름만. */
+  counts: ReadonlyMap<string, number> | undefined;
+  value: string;
+  note?: string;
+  onChange: (status: string) => void;
+}
+
+/**
+ * 현재 상태 단추 — 조회 카드 위쪽 줄에서 누르면 바로 그 상태로 거른다(사용자 2026-10-30). 조건 줄의 현재 상태 칸을
+ * 대신한다. 「전체」는 상태 조건을 푼다.
+ */
+const StatusChips = ({ options, counts, value, note, onChange }: StatusChipsProps) => (
+  /* 눈에 보이는 「현재 상태」 글자는 두지 않는다(사용자 2026-10-30) — 이름은 화면 읽기용으로만 남긴다. */
+  <div className="lot-status-status-chips" role="group" aria-label={t.lotFilter.fields.status}>
+    {[{ value: '', label: t.values.all }, ...options].map((option) => (
+      <Chip
+        key={option.value}
+        variant="filter"
+        size="sm"
+        selected={value === option.value}
+        onSelectedChange={() => {
+          if (value !== option.value) onChange(option.value);
+        }}
+      >
+        {option.label}
+        {/* 건수도 함께(사용자 2026-10-30). 「전체」는 상태별 합이다. */}
+        {counts !== undefined && (
+          <span className="lot-status-chip-count">
+            {option.value === ''
+              ? [...counts.values()].reduce((sum, count) => sum + count, 0)
+              : (counts.get(option.value) ?? 0)}
+          </span>
+        )}
+      </Chip>
+    ))}
+    {note !== undefined && <span className="field-note">{note}</span>}
+  </div>
+);
+
+interface ModeSwitchProps {
+  mode: ScreenMode;
+  onChange: (mode: ScreenMode) => void;
+  /** 방식을 바꾼 직후다 — 단추가 새 카드에 다시 서므로 눌렀던 자리(고른 단추)로 초점을 돌린다. */
+  focusOnMount: ScreenMode | null;
+  onFocused: () => void;
+}
+
+/** 조회 방식(LOT 번호 · 이력) — 조회 조건 카드 맨 위, 아래 조건 줄과 선으로 가른다(사용자 시안 2026-10-30). */
+const ModeSwitch = ({ mode, onChange, focusOnMount, onFocused }: ModeSwitchProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focusOnMount !== mode) return;
+    ref.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
+    onFocused();
+  }, [focusOnMount, mode, onFocused]);
+
+  return (
+    <div ref={ref} className="lot-status-mode" role="group" aria-labelledby="lot-status-mode-label">
+      <span className="field-label" id="lot-status-mode-label">
+        {t.modes.label}
+      </span>
+      {MODES.map((value) => (
+        <Chip
+          key={value}
+          variant="filter"
+          size="sm"
+          selected={mode === value}
+          onSelectedChange={() => {
+            if (value !== mode) onChange(value);
+          }}
+        >
+          {t.modes[value]}
+        </Chip>
+      ))}
+    </div>
+  );
+};
 
 const inactiveLabel = (label: string, isActive: boolean): string =>
   isActive ? label : t.values.inactive(label);
@@ -61,6 +159,7 @@ const optionNote = (state: OptionState, name: string): string | undefined => {
 };
 
 interface LotModeProps {
+  modeSwitch: ReactNode;
   filters: LotFilters;
   page: number;
   selectedLotId: number | null;
@@ -68,10 +167,13 @@ interface LotModeProps {
   onReset: () => void;
   onSortChange: (sort: LotStatusSort) => void;
   onPageChange: (page: number) => void;
+  pageSize: LotPageSize;
+  onPageSizeChange: (size: LotPageSize) => void;
   onSelectLot: (lotId: number | null) => void;
 }
 
 const LotMode = ({
+  modeSwitch,
   filters,
   page,
   selectedLotId,
@@ -79,25 +181,74 @@ const LotMode = ({
   onReset,
   onSortChange,
   onPageChange,
+  pageSize,
+  onPageSizeChange,
   onSelectLot,
 }: LotModeProps) => {
   const lotTypes = useLotTypeOptions();
   const lotStatuses = useLotStatusOptions();
   const warehouses = useWarehouseReferenceOptions();
 
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:lot-status:split', 0.5);
+  const layout = useSplitOrientation(LOT_STATUS_ORIENTATION_KEY);
+
   const lotStatusNote =
     lotStatuses.data?.isSeeded === false
       ? t.lotFilter.notes.lotStatusUnseeded
       : optionNote(lotStatuses, t.lotFilter.fields.status);
 
+  /* 칩 건수는 상태 조건만 뺀 같은 조회의 요약이다 — 한 상태를 골라도 다른 상태 건수가 0 이 되지 않게. */
+  const chipSummary = useLotStatusSummary({
+    ...filters,
+    status: '',
+    lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+  });
+  const chipCounts = useMemo(() => {
+    if (chipSummary.data === undefined) return undefined;
+    const counts = new Map<string, number>();
+    for (const row of chipSummary.data.counts) {
+      counts.set(row.statusCode, (counts.get(row.statusCode) ?? 0) + row.lotCount);
+    }
+    return counts;
+  }, [chipSummary.data]);
+  const hubTarget = useHubActionsTarget();
+  const statusChips = (
+    <StatusChips
+      options={toCodeOptions(lotStatuses.data?.items)}
+      counts={chipCounts}
+      value={filters.status}
+      note={lotStatusNote}
+      onChange={(status) =>
+        onSearch({
+          ...filters,
+          status,
+          /* 아직 조회 전이면 유형은 「전체」로 조회한다 — 조회 단추와 같다. */
+          lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+        })
+      }
+    />
+  );
+
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-pane" aria-label={t.lotFilter.pane}>
-        <h2 className="pane-title">{t.lotFilter.pane}</h2>
+      {/*
+       * 현재 상태 단추는 탭 막대 오른쪽, 좌우 · 상하 배치 단추 왼쪽이다(사용자 2026-10-30). 탭 막대가 없으면(묶음 밖)
+       * 조회 카드 위쪽 줄에 둔다.
+       */}
+      {hubTarget !== null && <HubActions target={hubTarget}>{statusChips}</HubActions>}
+      {/* 좌우 · 상하 배치 단추 — 탭 막대 오른쪽 끝(검사 조회·판정과 같다 · 사용자 2026-10-30). */}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      <section ref={aboveRef} className="pane lot-status-search" aria-label={t.lotFilter.pane}>
+        {(modeSwitch !== null || hubTarget === null) && (
+          <div className="lot-status-search-head">
+            {modeSwitch}
+            {hubTarget === null && statusChips}
+          </div>
+        )}
         <LotFilterBar
           appliedFilters={filters}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
-          lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
           warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
           lotTypeNote={
             lotTypes.data?.isSeeded === false
@@ -106,33 +257,69 @@ const LotMode = ({
                 ? t.lotFilter.notes.lotTypeTruncated
                 : optionNote(lotTypes, t.lotFilter.fields.lotType)
           }
-          lotStatusNote={lotStatusNote}
           warehouseNote={optionNote(warehouses, t.lotFilter.fields.warehouse)}
           onSearch={onSearch}
           onReset={onReset}
         />
       </section>
-      <CurrentResults
-        filters={filters}
-        page={page}
-        statusOptions={toCodeOptions(lotStatuses.data?.items)}
-        onSortChange={onSortChange}
-        onPageChange={onPageChange}
-        onSelectLot={onSelectLot}
-      />
-      {selectedLotId !== null && (
-        <LotDetailDialog
-          lotId={selectedLotId}
-          lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
+      {/* 목록과 LOT 상세를 나란히(상하 배치면 위아래로) 둔다 — 종전에는 상세가 창으로 떴다(사용자 2026-10-30). */}
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <CurrentResults
+          filters={filters}
+          page={page}
           statusOptions={toCodeOptions(lotStatuses.data?.items)}
-          onClose={() => onSelectLot(null)}
+          lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
+          onSortChange={onSortChange}
+          onPageChange={onPageChange}
+          pageSize={pageSize}
+          onPageSizeChange={onPageSizeChange}
+          onSelectLot={onSelectLot}
+          selectedLotId={selectedLotId}
         />
-      )}
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+        <section
+          className="pane lot-status-pane lot-status-detail-dialog"
+          aria-labelledby="lot-status-detail-title"
+        >
+          {selectedLotId === null ? (
+            /* 고른 LOT 이 없어도 칸 제목은 선다 — 안내는 아이콘과 한 줄(사용자 시안 2026-10-30). */
+            <>
+              <h2 className="pane-title" id="lot-status-detail-title">
+                {t.detail.title}
+              </h2>
+              <EmptyState
+                size="sm"
+                icon={<Icon name="arrow_selector_tool" size={24} />}
+                title={t.detail.pick}
+              />
+            </>
+          ) : (
+            <LotDetailPane
+              key={selectedLotId}
+              lotId={selectedLotId}
+              lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
+              statusOptions={toCodeOptions(lotStatuses.data?.items)}
+            />
+          )}
+        </section>
+      </div>
     </div>
   );
 };
 
 interface HistoryModeProps {
+  modeSwitch: ReactNode;
   filters: HistoryFilters;
   page: number;
   onSearch: (filters: HistoryFilters) => void;
@@ -140,7 +327,14 @@ interface HistoryModeProps {
   onPageChange: (page: number) => void;
 }
 
-const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: HistoryModeProps) => {
+const HistoryMode = ({
+  modeSwitch,
+  filters,
+  page,
+  onSearch,
+  onReset,
+  onPageChange,
+}: HistoryModeProps) => {
   const actors = useLotActorOptions(true);
   const lotStatuses = useLotStatusOptions();
   const appUserName = (appUserId: number): string | null => {
@@ -165,8 +359,8 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
 
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-pane" aria-label={t.historyFilter.pane}>
-        <h2 className="pane-title">{t.historyFilter.pane}</h2>
+      <section className="pane lot-status-search" aria-label={t.historyFilter.pane}>
+        {modeSwitch !== null && <div className="lot-status-search-head">{modeSwitch}</div>}
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}
@@ -187,12 +381,18 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
   );
 };
 
-export const LotStatusHistoryScreen = () => {
+/**
+ * `fixedMode` 를 주면 그 방식만 보이고 방식 단추를 두지 않는다 — 「LOT 현황」·「LOT 변경 이력」을 탭 묶음의 두 탭으로
+ * 나눴다(사용자 2026-10-30). 주지 않으면(묶음 밖 등) 종전처럼 주소의 방식을 따르고 단추로 바꾼다.
+ */
+export const LotStatusHistoryScreen = ({ fixedMode }: { fixedMode?: ScreenMode } = {}) => {
+  const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
-  const mode = readMode(searchParams);
+  const mode = fixedMode ?? readMode(searchParams);
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
   const historyFilters = useMemo(() => readHistoryFilters(searchParams), [searchParams]);
   const page = readLotPage(searchParams);
+  const pageSize = readLotPageSize(searchParams);
   const historyPage = readHistoryPage(searchParams);
   const selectedLotId = readSelectedLotId(searchParams);
 
@@ -205,9 +405,21 @@ export const LotStatusHistoryScreen = () => {
   const changeSort = (sort: LotStatusSort): void => {
     setSearchParams((current) => toAppliedLotSearchParams(current, { ...filters, sort }, 1));
   };
-  const changeMode = (next: string): void => {
-    setSearchParams((current) => toModeSearchParams(current, next as ScreenMode));
+  /* 방식을 바꾸면 단추가 다른 카드에 다시 서서 초점을 잃는다 — 바꾼 직후 한 번만 고른 단추로 돌린다(헤더 점검 #210). */
+  const [focusModeSwitch, setFocusModeSwitch] = useState<ScreenMode | null>(null);
+  const changeMode = (next: ScreenMode): void => {
+    setFocusModeSwitch(next);
+    setSearchParams((current) => toModeSearchParams(current, next));
   };
+  const modeSwitch =
+    fixedMode !== undefined ? null : (
+      <ModeSwitch
+        mode={mode}
+        onChange={changeMode}
+        focusOnMount={focusModeSwitch}
+        onFocused={() => setFocusModeSwitch(null)}
+      />
+    );
   const applyHistory = (next: HistoryFilters): void => {
     setSearchParams((current) => toAppliedHistorySearchParams(current, next, 1));
   };
@@ -215,9 +427,10 @@ export const LotStatusHistoryScreen = () => {
     setSearchParams((current) => toAppliedHistorySearchParams(current, historyFilters, nextPage));
   };
 
-  const lotContent =
+  const content =
     mode === 'lot' ? (
       <LotMode
+        modeSwitch={modeSwitch}
         filters={filters}
         page={page}
         selectedLotId={selectedLotId}
@@ -225,36 +438,36 @@ export const LotStatusHistoryScreen = () => {
         onReset={() => apply(EMPTY_LOT_FILTERS)}
         onSortChange={changeSort}
         onPageChange={changePage}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => setSearchParams((current) => withLotPageSize(current, size))}
         onSelectLot={(lotId) => setSearchParams((current) => withSelectedLot(current, lotId))}
       />
-    ) : null;
-  const historyContent =
-    mode === 'history' ? (
+    ) : (
       <HistoryMode
+        modeSwitch={modeSwitch}
         filters={historyFilters}
         page={historyPage}
         onSearch={applyHistory}
         onReset={() => applyHistory(EMPTY_HISTORY_FILTERS)}
         onPageChange={changeHistoryPage}
       />
-    ) : null;
-  const tabs: TabItem[] = [
-    { value: 'lot', label: t.modes.lot, content: lotContent },
-    { value: 'history', label: t.modes.history, content: historyContent },
-  ];
+    );
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-      <Tabs aria-label={t.modes.label} items={tabs} value={mode} onChange={changeMode} />
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(omf-all-around#210). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
+      {content}
     </>
   );
 };

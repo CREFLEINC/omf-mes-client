@@ -63,6 +63,7 @@ const URL_KEYS = {
   location: 'location',
   sort: 'sort',
   lotPage: 'page',
+  lotPageSize: 'size',
   selectedLot: 'lot',
   historyFrom: 'from',
   historyTo: 'to',
@@ -110,6 +111,24 @@ export const readHistoryFilters = (params: URLSearchParams): HistoryFilters => (
 
 export const readLotPage = (params: URLSearchParams): number =>
   readPositiveInteger(params.get(URL_KEYS.lotPage)) ?? FIRST_PAGE;
+
+/** 한 쪽 LOT 수 — 고를 수 있는 값(20 · 50 · 100)만 받고, 없으면 서버 기본과 같은 50이다. */
+/** 이 화면의 쪽 크기는 10 · 20 · 50건만 고른다(사용자 2026-10-30) — LOT 목록 · 변경 이력 · 상세 탭 표 모두. */
+export const LOT_PAGE_SIZES = [10, 20, 50] as const;
+export type LotPageSize = (typeof LOT_PAGE_SIZES)[number];
+export const DEFAULT_LOT_PAGE_SIZE: LotPageSize = 20;
+export const readLotPageSize = (params: URLSearchParams): LotPageSize =>
+  LOT_PAGE_SIZES.find((size) => String(size) === params.get(URL_KEYS.lotPageSize)) ??
+  DEFAULT_LOT_PAGE_SIZE;
+
+/** 한 쪽 LOT 수를 바꾸면 첫 쪽으로 간다. */
+export const withLotPageSize = (current: URLSearchParams, size: LotPageSize): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  if (size === DEFAULT_LOT_PAGE_SIZE) next.delete(URL_KEYS.lotPageSize);
+  else next.set(URL_KEYS.lotPageSize, String(size));
+  next.delete(URL_KEYS.lotPage);
+  return next;
+};
 
 export const readHistoryPage = (params: URLSearchParams): number =>
   readPositiveInteger(params.get(URL_KEYS.historyPage)) ?? FIRST_PAGE;

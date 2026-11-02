@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 
+import { usePageHub } from '../../patterns/page-hub';
 import type { SelectedLotSnapshot } from './candidate-model';
 import { SuspiciousMaterialCandidatePane } from './candidate-pane';
 import { SuspiciousMaterialHoldExecution } from './hold-execution';
@@ -74,17 +75,26 @@ export const SuspiciousMaterialHoldFlow = ({
   );
 };
 
-export const SuspiciousMaterialHoldScreen = () => (
-  <div className="screen suspicious-material-hold-screen">
-    <PageHeader
-      title={t.title}
-      breadcrumb={
-        <Breadcrumb
-          items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-          aria-label={messages.common.shell.breadcrumb}
+export const SuspiciousMaterialHoldScreen = () => {
+  const hub = usePageHub();
+
+  return (
+    <div className="screen suspicious-material-hold-screen">
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(omf-all-around#210). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
         />
-      }
-    />
-    <SuspiciousMaterialHoldFlow targetLotStatusCode={SUSPICIOUS_MATERIAL_TARGET_LOT_STATUS_CODE} />
-  </div>
-);
+      )}
+      <SuspiciousMaterialHoldFlow
+        targetLotStatusCode={SUSPICIOUS_MATERIAL_TARGET_LOT_STATUS_CODE}
+      />
+    </div>
+  );
+};
