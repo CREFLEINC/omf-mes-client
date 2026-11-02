@@ -1,5 +1,6 @@
 import type { paths } from '@omf-mes/api-client';
 
+import { DEFAULT_PAGE_SIZE } from './filters';
 import { defaultPeriod, isPeriodDate, periodLockReason, resolvePeriod } from './period';
 import type { PeriodInput } from './period';
 
@@ -8,6 +9,8 @@ type HistoryQueryParams = NonNullable<
 >;
 
 export interface HistoryFilters extends PeriodInput {
+  /** 품목 — 처분 대기와 같은 검색 창으로 고른다(사용자 지시 · #223). 비면 전체. */
+  itemId: string;
   dispositionTypeCode: string;
 }
 
@@ -16,7 +19,10 @@ export interface HistoryListQuery {
   decidedTo: string;
   /** 처분 유형은 계약이 세 값으로 닫았다(`REWORK`·`SCRAP`·`NORMAL` · omf-mes#336) */
   dispositionTypeCode?: HistoryQueryParams['dispositionTypeCode'];
+  itemId?: number;
   page?: number;
+  /** 한 쪽 건수 10 · 20 · 50(#223). */
+  size?: number;
 }
 
 /**
@@ -26,12 +32,20 @@ export interface HistoryListQuery {
 const KEYS = {
   from: 'from',
   to: 'to',
+  /* 품목도 처분 대기와 같은 주소 이름 — 탭을 옮겨도 고른 품목이 남는다. */
+  itemId: 'item',
   dispositionTypeCode: 'disp',
 } as const;
 
 const dateOf = (value: string | null): string => {
   const date = value?.trim() ?? '';
   return isPeriodDate(date) ? date : '';
+};
+
+/** 품목 번호는 양의 정수만 — 그 밖의 값은 조건에서 뺀다. */
+const itemIdOf = (value: string | null): string => {
+  const id = value?.trim() ?? '';
+  return /^[1-9]\d*$/.test(id) ? id : '';
 };
 
 const allowedCode = (value: string | null, allowed: readonly string[]): string => {
@@ -50,6 +64,7 @@ export const readHistoryFilters = (
 
   return {
     ...period,
+    itemId: itemIdOf(params.get(KEYS.itemId)),
     dispositionTypeCode: allowedCode(params.get(KEYS.dispositionTypeCode), dispositionTypeCodes),
   };
 };
@@ -67,8 +82,12 @@ export const toHistoryAppliedSearchParams = (
 
   replace(KEYS.from, dateOf(filters.from));
   replace(KEYS.to, dateOf(filters.to));
+  replace(KEYS.itemId, itemIdOf(filters.itemId));
   replace(KEYS.dispositionTypeCode, filters.dispositionTypeCode.trim());
   replace('page', page > 1 ? String(page) : '');
+  // 조건이 바뀌면 고른 줄이 목록에 없을 수 있다 — 처분 대기와 같이 고른 것을 지운다(#223).
+  next.delete('nonconformanceId');
+  next.delete('decision');
 
   return next;
 };
@@ -81,6 +100,7 @@ export const toHistoryListQuery = (
   filters: HistoryFilters,
   page: number,
   offsetMinutes: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): HistoryListQuery | null => {
   const period = resolvePeriod({ from: filters.from, to: filters.to }, offsetMinutes);
   if (period.kind === 'blocked') return null;
@@ -94,6 +114,8 @@ export const toHistoryListQuery = (
           dispositionTypeCode:
             filters.dispositionTypeCode as HistoryQueryParams['dispositionTypeCode'],
         }),
+    ...(filters.itemId === '' ? {} : { itemId: Number(filters.itemId) }),
     ...(page > 1 ? { page } : {}),
+    size,
   };
 };

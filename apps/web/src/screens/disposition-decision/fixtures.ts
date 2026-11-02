@@ -9,6 +9,8 @@ import { createStubFetch, jsonResponse, type StubFetch } from '../../test/api-ha
 export interface DispositionStubOptions {
   /** 이미 판정된 수량. 남은 수량 계산을 감지기가 짚을 때 쓴다. */
   decidedQty?: number;
+  /** 대상 LOT 의 지금 상태(`GET /trace/lots/{lotId}`). 없으면 그 조회를 실패시킨다(#223). */
+  lotStatusCode?: string;
   /** 목록 조회를 실패시킨다. */
   listStatus?: number;
   /** 상세 조회를 실패시킨다. */
@@ -119,6 +121,26 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
   };
 
   const inner = createStubFetch([
+    {
+      match: (request) => /^\/trace\/lots\/\d+$/.test(pathOf(request)),
+      respond: (request) =>
+        options.lotStatusCode === undefined
+          ? jsonResponse({ message: '' }, { status: 404 })
+          : jsonResponse({
+              lot: {
+                lotId: Number(pathOf(request).split('/').pop()),
+                statusCode: options.lotStatusCode,
+              },
+            }),
+    },
+    {
+      /* 처분 이력 탭 목록 — 판정 한 건이 부적합 번호를 함께 든다(#223). */
+      match: (request) => pathOf(request) === '/quality/disposition-decisions',
+      respond: () =>
+        jsonResponse(
+          listBody(decisions.map((row) => ({ ...row, nonconformanceNo: 'NC-TEST-0041' }))),
+        ),
+    },
     {
       match: (request) => pathOf(request) === '/quality/nonconformances',
       respond: () =>

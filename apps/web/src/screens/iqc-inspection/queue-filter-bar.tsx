@@ -98,6 +98,8 @@ export const QueueFilterBar = ({
   return (
     <form className="filter-bar" onSubmit={submit}>
       <ItemFilterField
+        /* IQC 는 들어오는 자재를 검사한다 — 제품 유형은 고를 일이 없다(사용자 지시 2026-10-30). */
+        excludeItemTypeCodes={['FINISHED']}
         value={draft.item}
         onChange={(value) => {
           setDraft({ ...draft, item: value });

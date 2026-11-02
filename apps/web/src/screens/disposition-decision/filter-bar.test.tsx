@@ -1,16 +1,26 @@
-import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiClientProvider } from '../../patterns/api-context';
-import { pickRange } from '../../test/date-picker';
+import { pickDate } from '../../test/date-picker';
 import { FilterBar, type FilterBarProps } from './filter-bar';
 import type { PendingFilters } from './filters';
 import type { DispositionLookup } from './lookups';
+
+/* 품목은 검사 조회·판정과 같은 검색 창(#223) — 창 자체는 그 화면 시험이 맡고, 여기서는 고른 값이 조건에 실리는지만 본다. */
+vi.mock('../iqc-inspection/item-filter-field', () => ({
+  ItemFilterField: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+    <button
+      type="button"
+      aria-label="품목 검색"
+      data-value={value}
+      onClick={() => onChange('5001')}
+    >
+      {value}
+    </button>
+  ),
+}));
 
 const t = messages.dispositionDecision;
 
@@ -21,29 +31,6 @@ const applied: PendingFilters = {
   severityCode: '',
   statusCode: '',
   sourceCode: '',
-};
-
-const synthItem = { itemId: 5001, itemCode: 'SYNTH-ITEM-1', itemName: '합성 품목', isActive: true };
-
-/* 품목 칸(`ItemSelect`)은 펼칠 때 목록을, 고른 값의 이름은 상세를 서버에 묻는다. */
-const stubFetch = (request: Request): Promise<Response> => {
-  const isDetail = new URL(request.url).pathname === '/mdm/items/5001';
-  const body = isDetail
-    ? { item: synthItem }
-    : { items: [synthItem], page: { page: 1, size: 50, total: 1 } };
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }),
-  );
-};
-
-const wrapperFor = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const apiClient = createApiClient({ baseUrl: 'http://test.invalid', fetch: stubFetch });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <ApiClientProvider client={apiClient}>{children}</ApiClientProvider>
-    </QueryClientProvider>
-  );
 };
 
 const emptyLookup = (): DispositionLookup => ({
@@ -60,33 +47,28 @@ const codes = (pairs: [string, string][]): DispositionLookup => ({
 const baseProps = (): FilterBarProps => ({
   applied,
   severity: emptyLookup(),
-  status: emptyLookup(),
   onApply: vi.fn(),
   onReset: vi.fn(),
 });
 
 const renderBar = (overrides: Partial<FilterBarProps> = {}) => {
   const props = { ...baseProps(), ...overrides };
-  return {
-    ...render(<FilterBar {...props} />, { wrapper: wrapperFor() }),
-    props,
-    user: userEvent.setup(),
-  };
+  return { ...render(<FilterBar {...props} />), props, user: userEvent.setup() };
 };
 
 describe('FilterBar', () => {
-  it('기간이 필수라는 사실을 칸에 상시 붙인다(L-3)', () => {
+  it('접수 시작일 · 종료일 칸이 따로 선다 — 기간 필수 안내 문구는 두지 않는다(#223)', () => {
     renderBar();
 
-    expect(screen.getByLabelText(t.fields.period)).toHaveAccessibleDescription(
-      t.values.periodRequired,
-    );
+    expect(screen.getByLabelText(t.fields.openedFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.openedTo)).toBeInTheDocument();
+    expect(screen.queryByText(t.values.periodRequired)).toBeNull();
   });
 
   it('값 목록이 없는 코드 칸은 감추지 않고 사유를 붙인다(G-2)', () => {
     renderBar();
 
-    const severity = screen.getByLabelText(t.fields.severityCode);
+    const severity = screen.getByLabelText(t.fields.severityPick);
     expect(severity).toHaveTextContent(t.codePlaceholder);
     expect(severity).toHaveAccessibleDescription(t.codeLock.empty);
   });
@@ -94,9 +76,9 @@ describe('FilterBar', () => {
   it('기간과 품목을 함께 적용한다', async () => {
     const { props, user } = renderBar();
 
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-05');
-    await user.click(screen.getByLabelText(t.fields.item));
-    await user.click(await screen.findByRole('option', { name: 'SYNTH-ITEM-1 · 합성 품목' }));
+    await pickDate(user, screen.getByLabelText(t.fields.openedFrom), '2026-08-01');
+    await pickDate(user, screen.getByLabelText(t.fields.openedTo), '2026-08-05');
+    await user.click(screen.getByRole('button', { name: '품목 검색' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(props.onApply).toHaveBeenCalledWith({
@@ -117,15 +99,13 @@ describe('FilterBar', () => {
     expect(props.onReset).toHaveBeenCalledOnce();
   });
 
-  it('적용된 조건이 바뀌면 편집 중 값을 그것으로 맞춘다', async () => {
+  it('적용된 조건이 바뀌면 편집 중 값을 그것으로 맞춘다', () => {
     const props = baseProps();
-    const { rerender } = render(<FilterBar {...props} />, { wrapper: wrapperFor() });
+    const { rerender } = render(<FilterBar {...props} />);
 
     rerender(<FilterBar {...props} applied={{ ...applied, itemId: '5001' }} />);
 
-    /* 접힌 칸의 이름은 상세로 받아 온다 — 기다린다. */
-    expect(await screen.findByText('SYNTH-ITEM-1 · 합성 품목')).toBeInTheDocument();
-    expect(screen.getByLabelText(t.fields.item)).toHaveTextContent('SYNTH-ITEM-1 · 합성 품목');
+    expect(screen.getByRole('button', { name: '품목 검색' })).toHaveAttribute('data-value', '5001');
   });
 
   /*
@@ -136,19 +116,19 @@ describe('FilterBar', () => {
   it('⭐ 원천으로 거른다 — 고른 값이 적용 조건에 실린다', async () => {
     const { props, user } = renderBar();
 
-    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByLabelText(t.fields.sourcePick));
     await user.click(screen.getByRole('option', { name: t.values.sourceCode.RETURN }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(props.onApply).toHaveBeenCalledWith(expect.objectContaining({ sourceCode: 'RETURN' }));
   });
 
-  it('원천 칸에 두 갈래뿐이라는 사실을 상시 붙인다 — 값 목록이 비어서가 아니다', () => {
+  it('원천 칸은 선택지가 채워져 있다 — 「두 갈래만」 상시 안내는 걷었다(#223)', () => {
     renderBar();
 
-    const source = screen.getByLabelText(t.fields.sourceCode);
+    const source = screen.getByLabelText(t.fields.sourcePick);
 
-    expect(source).toHaveAccessibleDescription(t.sourceNote);
+    expect(source).not.toHaveAccessibleDescription();
     /* 선택지가 채워져 있으므로 G-2의 「준비 중」 자리는 비어 있어야 한다. */
     expect(source).not.toHaveTextContent(t.codePlaceholder);
   });
@@ -156,7 +136,7 @@ describe('FilterBar', () => {
   it('⛔ 원천에 계약이 열거하지 않은 선택지를 짓지 않는다', async () => {
     const { user } = renderBar();
 
-    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByLabelText(t.fields.sourcePick));
 
     /* 개수까지 본다 — 이름만 확인하면 지어낸 값이 하나 더 끼어도 통과한다. */
     expect(screen.getAllByRole('option')).toHaveLength(3);
@@ -171,7 +151,7 @@ describe('FilterBar', () => {
   ])('심각도 기준값이 %s이면 칸을 잠그고 그 사유를 밝힌다(G-2)', (_state, overrides, message) => {
     renderBar({ severity: { ...emptyLookup(), ...overrides } });
 
-    const severity = screen.getByLabelText(t.fields.severityCode);
+    const severity = screen.getByLabelText(t.fields.severityPick);
     expect(severity).toHaveTextContent(t.codePlaceholder);
     expect(severity).toHaveAccessibleDescription(message);
   });
@@ -179,7 +159,7 @@ describe('FilterBar', () => {
   it('기준값이 오면 이름으로 고르고 코드를 적용값에 싣는다', async () => {
     const { props, user } = renderBar({ severity: codes([['CODE-B', '합성 심각도 B']]) });
 
-    await user.click(screen.getByLabelText(t.fields.severityCode));
+    await user.click(screen.getByLabelText(t.fields.severityPick));
     await user.click(screen.getByRole('option', { name: '합성 심각도 B' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -187,8 +167,10 @@ describe('FilterBar', () => {
   });
 
   it('잘려 온 기준값은 고를 수 있되 안내를 단다', () => {
-    renderBar({ status: { ...codes([['CODE-C', '합성 상태 C']]), truncated: true } });
+    renderBar({ severity: { ...codes([['CODE-B', '합성 심각도 B']]), truncated: true } });
 
-    expect(screen.getByLabelText(t.fields.statusCode)).toHaveAccessibleDescription(t.codeTruncated);
+    expect(screen.getByLabelText(t.fields.severityPick)).toHaveAccessibleDescription(
+      t.codeTruncated,
+    );
   });
 });

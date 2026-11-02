@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -50,6 +50,60 @@ export const usePendingNonconformances = (
       return runRequest(() => client.GET('/quality/nonconformances', { params: { query } }));
     },
   });
+};
+
+/**
+ * 상태 칩의 건수(사용자 지시 · #223) — 상태마다 판정 대기 목록 첫 쪽의 총수. 목록과 같은 열쇠 · 같은 조회라
+ * 지금 보는 상태의 조회는 다시 나가지 않는다. 돌려주는 차례는 넘긴 조회의 차례다.
+ */
+export const usePendingTotals = (queries: readonly PendingListQuery[]): (number | undefined)[] => {
+  const { client } = useApiClient();
+
+  return useQueries({
+    queries: queries.map((query) => ({
+      queryKey: dispositionKeys.pending(query),
+      queryFn: () =>
+        runRequest(() => client.GET('/quality/nonconformances', { params: { query } })),
+    })),
+  }).map((result) => result.data?.page.total);
+};
+
+/**
+ * 처분 유형 칩의 건수(사용자 지시 · #223) — 유형마다 처분 이력 첫 쪽의 총수. 목록과 같은 열쇠 · 같은 조회라
+ * 지금 보는 유형의 조회는 다시 나가지 않는다. 돌려주는 차례는 넘긴 조회의 차례다.
+ */
+export const useHistoryTotals = (queries: readonly HistoryListQuery[]): (number | undefined)[] => {
+  const { client } = useApiClient();
+
+  return useQueries({
+    queries: queries.map((query) => ({
+      queryKey: dispositionKeys.history(query),
+      queryFn: () =>
+        runRequest(() => client.GET('/quality/disposition-decisions', { params: { query } })),
+    })),
+  }).map((result) => result.data?.page.total);
+};
+
+/**
+ * 대상 LOT 들의 «지금» 상태(#223) — 부적합에 남은 품질 상태는 등록 때 값이라, 판정 · 특채로 바뀐 LOT 상태를
+ * 보이려면 LOT 을 따로 읽는다. 뿌리 키 아래라 판정 · 특채 적용 뒤 함께 다시 부른다. 못 읽은 LOT 은 빠진다.
+ */
+export const useLotStatuses = (lotIds: readonly number[]): Record<number, string> => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: lotIds.map((lotId) => ({
+      queryKey: [...dispositionKeys.all, 'lot', lotId] as const,
+      queryFn: () =>
+        runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } })),
+    })),
+  });
+
+  return Object.fromEntries(
+    lotIds.flatMap((lotId, index) => {
+      const statusCode = results[index]?.data?.lot.statusCode;
+      return statusCode === undefined ? [] : [[lotId, statusCode]];
+    }),
+  );
 };
 
 export const useNonconformanceDetail = (

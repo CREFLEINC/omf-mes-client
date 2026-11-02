@@ -22,6 +22,7 @@ const view = (overrides: Partial<NonconformanceDetailView> = {}): Nonconformance
   statusCode: 'CODE-C',
   openedAtText: '2026-08-12 09:30',
   description: '도장 표면 박리',
+  affectedQtyText: '320',
   lots: [
     {
       nonconformanceLotId: 9001,
@@ -30,6 +31,7 @@ const view = (overrides: Partial<NonconformanceDetailView> = {}): Nonconformance
       affectedQtyText: '320',
       uomId: 7001,
       qualityStatusText: 'CODE-D → CODE-E',
+      qualityStatusCode: 'DEFECTIVE',
     },
   ],
   ...overrides,
@@ -40,7 +42,6 @@ const baseProps = (): DetailPaneProps => ({
   items: lookup([{ value: '5001', label: 'SYNTH-ITEM-1 · 합성 품목' }]),
   uoms: lookup([{ value: '7001', label: 'EA' }]),
   severity: lookup([{ value: 'CODE-B', label: '합성 심각도 B' }]),
-  status: lookup([{ value: 'CODE-C', label: '합성 상태 C' }]),
 });
 
 const renderPane = (overrides: Partial<DetailPaneProps> = {}) =>
@@ -59,14 +60,14 @@ describe('DetailPane', () => {
     renderPane();
 
     expect(screen.getByText('LOT-TEST-0088')).toBeInTheDocument();
-    expect(screen.getByText('EA')).toBeInTheDocument();
-    expect(screen.getByText('CODE-D → CODE-E')).toBeInTheDocument();
+    /* 수량에 단위를 붙여 「320 EA」 — 기본 정보의 대상 수량 · LOT 표 두 곳(#223). */
+    expect(screen.getAllByText('320 EA')).toHaveLength(2);
   });
 
-  it('⚠ LOT 상태 전이가 이력에 남지 않는다는 사실을 표 머리에 적는다(A-11)', () => {
+  it('대상 LOT 의 품질 상태는 지금 값을 표시명으로 보인다 — 상시 안내는 걷었다(#223)', () => {
     renderPane();
 
-    expect(screen.getByText(t.detail.transitionHistoryUnavailable)).toBeInTheDocument();
+    expect(screen.getByText(t.values.qualityStatus.DEFECTIVE ?? 'DEFECTIVE')).toBeInTheDocument();
   });
 
   it('대상 LOT이 없으면 빈 상태를 보인다', () => {
@@ -82,15 +83,14 @@ describe('DetailPane', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('심각도·상태는 공통코드 이름으로 보이고, 이름이 없으면 코드를 그대로 보인다(G-32 · G-9)', () => {
-    const coded = { ...view(), severityCode: 'CODE-B', statusCode: 'CODE-C' };
+  /* 상태는 구획 머리의 배지가 말한다 — 기본 정보 상자에는 심각도만(사용자 시안 · #223). */
+  it('심각도는 공통코드 이름으로 보이고, 이름이 없으면 코드를 그대로 보인다(G-32 · G-9)', () => {
+    const coded = { ...view(), severityCode: 'CODE-B' };
     const { unmount } = renderPane({ view: coded });
     expect(screen.getByText('합성 심각도 B')).toBeInTheDocument();
-    expect(screen.getByText('합성 상태 C')).toBeInTheDocument();
     unmount();
 
-    renderPane({ view: coded, severity: lookup([]), status: lookup([]) });
+    renderPane({ view: coded, severity: lookup([]) });
     expect(screen.getByText('CODE-B')).toBeInTheDocument();
-    expect(screen.getByText('CODE-C')).toBeInTheDocument();
   });
 });

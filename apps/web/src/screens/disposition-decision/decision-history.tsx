@@ -1,89 +1,74 @@
-import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { type Column, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { dispositionTypeLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
-import type { RemainingQty } from './remaining-qty';
 import type { DecisionRow } from './types';
 
 export interface DecisionHistoryProps {
   rows: DecisionRow[];
-  remaining: RemainingQty;
   uoms: DispositionLookup;
   isLoading: boolean;
   isError: boolean;
 }
 
-export const DecisionHistory = ({
-  rows,
-  remaining,
-  uoms,
-  isLoading,
-  isError,
-}: DecisionHistoryProps) => {
+export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHistoryProps) => {
   const t = messages.dispositionDecision;
   const columns: Column<DecisionRow>[] = [
+    /* 판정 일시 · 처분 · 수량 · 단위 · 사유 차례(사용자 지시 · #223). */
+    {
+      key: 'decidedAt',
+      align: 'center',
+      header: t.fields.decidedAt,
+      render: (row) => row.decidedAtText,
+    },
     {
       key: 'dispositionTypeCode',
+      align: 'center',
       header: t.fields.dispositionTypeCode,
       render: (row) => dispositionTypeLabel(row.dispositionTypeCode),
     },
     {
       key: 'qty',
+      align: 'center',
       header: t.fields.decisionQty,
-      align: 'end',
       render: (row) => row.decisionQtyText,
     },
-    { key: 'uom', header: t.fields.uom, render: (row) => lookupDisplayLabel(uoms, row.uomId) },
-    { key: 'decidedAt', header: t.fields.decidedAt, render: (row) => row.decidedAtText },
-    { key: 'reason', header: t.fields.reason, render: (row) => row.reason },
+    {
+      key: 'uom',
+      align: 'center',
+      header: t.fields.uom,
+      render: (row) => lookupDisplayLabel(uoms, row.uomId),
+    },
+    { key: 'reason', align: 'center', header: t.fields.reason, render: (row) => row.reason },
   ];
 
-  if (isLoading) {
-    return (
-      <div role="status" aria-label={t.decisions.loading}>
-        <SkeletonText lines={2} />
-      </div>
-    );
-  }
-
-  if (isError) return <EmptyState size="sm" title={t.decisions.unavailable} />;
-
+  /*
+   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없어도 표 안 행 자리에 문구.
+   * 남은 수량은 판정 구역 머리로 옮겼다(조회 시점 참고값인 것은 그대로 — 최종 판정은 저장 때 서버가 낸다).
+   */
   return (
-    <section className="disposition-subsection" aria-label={t.panes.decisions}>
-      <h3 className="disposition-subtitle">{t.panes.decisions}</h3>
-      <div className="disposition-table disposition-decision-table">
-        <Table
-          density="compact"
-          caption={<span className="disposition-table-caption">{t.panes.decisions}</span>}
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.dispositionDecisionId)}
-          empty={<EmptyState size="sm" title={t.decisions.empty} />}
-        />
-      </div>
-      {/*
-       * ⭐ 남은 수량은 판정 이력 조회의 `summary.remainingQty`다 — 서버가 대상 수량 합에서
-       * 결정 수량 합을 뺀 값이다(공유계약 L-2). ⚠ 그래도 **조회 시점의 스냅샷**이라 참고값으로
-       * 적는다 — 이 값을 받은 뒤 다른 판정이 저장되면 실제 남은 수량은 달라져 있을 수 있고,
-       * 최종 판정은 저장 시 서버가 409로 낸다. 근거: W-03-10 §3 · §9-1 · omf-mes#253.
-       */}
-      <div
-        className="field-cell disposition-remaining-card"
-        role="group"
-        aria-label={t.remaining.label}
-      >
-        <span className="field-label">{t.remaining.label}</span>
-        <Chip status={remaining.isSettled ? 'idle' : 'warning'}>{remaining.text}</Chip>
-        <span className="field-note">
-          {remaining.value === undefined
-            ? t.remaining.unknown
-            : remaining.isSettled
-              ? t.remaining.settled
-              : t.remaining.note}
-        </span>
-      </div>
-    </section>
+    <div className="disposition-decision-history" role="group" aria-label={t.panes.decisions}>
+      {isLoading ? (
+        <div role="status" aria-label={t.decisions.loading}>
+          <SkeletonText lines={2} />
+        </div>
+      ) : isError ? (
+        <p className="field-note">{t.decisions.unavailable}</p>
+      ) : (
+        <div className="disposition-table disposition-decision-table">
+          <Table
+            density="compact"
+            caption={<span className="disposition-table-caption">{t.panes.decisions}</span>}
+            columns={columns}
+            rows={rows}
+            getRowId={(row) => String(row.dispositionDecisionId)}
+            /* 이력이 없어도 표 머리는 두고 행 자리 가운데 한 줄(사용자 지시 · #223). */
+            empty={<p className="field-note disposition-table-empty">{t.decisions.empty}</p>}
+          />
+        </div>
+      )}
+    </div>
   );
 };

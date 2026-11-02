@@ -1,9 +1,11 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { dispositionStub, requestedPaths } from './fixtures';
 import { DispositionDecisionScreen } from './screen';
 
@@ -13,11 +15,17 @@ const KST = 540;
 
 type User = ReturnType<typeof userEvent.setup>;
 
+/* 상세 아래 탭도 「처분 이력」이다(#223) — 맨 위 탭 줄 안에서 찾는다. */
+const topTab = (name: RegExp): HTMLElement =>
+  within(screen.getByRole('tablist', { name: t.tabs.label })).getByRole('tab', { name });
+
 const renderScreen = (route = '/quality/dispositions'): { user: User } => {
-  renderWithProviders(<DispositionDecisionScreen today={TODAY} offsetMinutes={KST} />, {
-    fetch: dispositionStub({ decidedQty: 200 }),
-    route,
-  });
+  renderWithProviders(
+    <SessionProvider>
+      <DispositionDecisionScreen today={TODAY} offsetMinutes={KST} />
+    </SessionProvider>,
+    { session: SYNTHETIC_SESSION, fetch: dispositionStub({ decidedQty: 200 }), route },
+  );
 
   return { user: userEvent.setup() };
 };
@@ -32,31 +40,23 @@ describe('DispositionDecisionScreen 탭', () => {
   it('두 탭을 보이고 기본은 판정 대기다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('tab', { name: t.tabs.pending })).toHaveAttribute(
+    /* 탭 줄 오른쪽 끝의 칩 둘(#223) — 켜진 칩이 지금 보는 쪽이다. */
+    expect(await screen.findByRole('tab', { name: /^처분 대기/ })).toHaveAttribute(
       'aria-selected',
       'true',
     );
-    expect(screen.getByRole('tab', { name: t.tabs.history })).toHaveAttribute(
-      'aria-selected',
-      'false',
-    );
+    expect(topTab(/^처분 이력/)).toHaveAttribute('aria-selected', 'false');
   });
 
-  it('⛔ 판정 대기 탭에서는 처리 이력을 부르지 않는다 — 보지 않는 목록이다', async () => {
+  /* 탭 줄 칩은 두 목록의 건수를 함께 보인다(사용자 지시 · #223) — 보지 않는 쪽도 첫 쪽 하나는 부른다. */
+  it('탭 옆 배지에 판정 대기 건수가 붙고, 처리 이력 건수를 위해 그 목록도 부른다', async () => {
     renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
 
-    expect(historyCalls()).toBe(0);
-  });
-
-  it('⛔ 처리 이력 탭에서는 판정 대기 목록을 부르지 않는다', async () => {
-    renderScreen('/quality/dispositions?tab=history');
-
-    expect(await screen.findByRole('heading', { name: t.panes.history })).toBeInTheDocument();
+    /* 건수는 탭 이름 옆 숫자 배지(#223) — 배지의 접근 이름으로 본다. */
+    expect((await screen.findAllByLabelText(t.tabs.pendingCount(1))).length).toBeGreaterThan(0);
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });
-    expect(pendingCalls()).toBe(0);
   });
 
   it('처리 이력 탭은 판정일 기간을 반열림으로 싣는다', async () => {
@@ -75,21 +75,58 @@ describe('DispositionDecisionScreen 탭', () => {
 
   it('탭을 옮기면 그 탭의 목록을 부른다', async () => {
     const { user } = renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
+    await screen.findByText('NC-TEST-0041');
 
-    await user.click(screen.getByRole('tab', { name: t.tabs.history }));
+    await user.click(topTab(/^처분 이력/));
 
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });
   });
 
+  /* 처분 이력도 처분 대기와 같은 짜임 — 줄을 고르면 오른쪽에 상세가 서고, 판정 입력은 없다(#223). */
+  it('처분 이력에서 줄을 누르면 그 부적합 상세를 보이고 판정 입력은 두지 않는다', async () => {
+    const { user } = renderScreen('/quality/dispositions?tab=history');
+
+    expect(await screen.findByText(t.detail.selectHistory)).toBeInTheDocument();
+    await user.click(await screen.findByText('NC-TEST-0041'));
+
+    expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.historyDetail })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.form.heading })).toBeNull();
+    const list = screen.getByRole('region', { name: t.panes.history });
+    expect(within(list).getByText('NC-TEST-0041')).toHaveAttribute('data-selected', 'true');
+  });
+
+  /* 처분 이력 탭 줄 오른쪽 처분 유형 칩 — 누르면 그 유형만 조회(사용자 지시 · #223). */
+  it('처분 이력에서 처분 유형 칩을 누르면 그 유형으로 조회한다', async () => {
+    const { user } = renderScreen('/quality/dispositions?tab=history');
+    const chips = await screen.findByRole('group', { name: t.fields.historyType });
+
+    await user.click(within(chips).getByRole('button', { name: /^재작업/ }));
+
+    await waitFor(() => {
+      expect(
+        requestedPaths().some(
+          (path) =>
+            path.startsWith('/quality/disposition-decisions') &&
+            path.includes('dispositionTypeCode=REWORK') &&
+            !path.includes('page='),
+        ),
+      ).toBe(true);
+    });
+    expect(within(chips).getByRole('button', { name: /^재작업/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
   it('탭을 옮기면 고른 부적합을 지운다 — 탭마다 목록이 다르다', async () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');
 
-    await user.click(screen.getByRole('tab', { name: t.tabs.history }));
-    await user.click(screen.getByRole('tab', { name: t.tabs.pending }));
+    await user.click(topTab(/^처분 이력/));
+    await user.click(screen.getByRole('tab', { name: /^처분 대기/ }));
 
     expect(await screen.findByText(t.detail.select)).toBeInTheDocument();
   });

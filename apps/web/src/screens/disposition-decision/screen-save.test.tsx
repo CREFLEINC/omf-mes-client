@@ -3,7 +3,9 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   conflictResponseFixture,
   dispositionStub,
@@ -23,8 +25,14 @@ type User = ReturnType<typeof userEvent.setup>;
 
 const renderScreen = (options: Parameters<typeof dispositionStub>[0] = {}): { user: User } => {
   renderWithProviders(
-    <DispositionDecisionScreen today={TODAY} offsetMinutes={KST} dispositionTypeCodes={[CODE]} />,
-    { fetch: dispositionStub(options), route: '/quality/dispositions?nonconformanceId=41' },
+    <SessionProvider>
+      <DispositionDecisionScreen today={TODAY} offsetMinutes={KST} dispositionTypeCodes={[CODE]} />
+    </SessionProvider>,
+    {
+      session: SYNTHETIC_SESSION,
+      fetch: dispositionStub(options),
+      route: '/quality/dispositions?nonconformanceId=41',
+    },
   );
 
   return { user: userEvent.setup() };
@@ -246,7 +254,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     await save(user);
     await screen.findByRole('button', { name: t.form.checkOutcome });
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await user.click(screen.getByText('NC-TEST-0042'));
 
     expect(
       await screen.findByText(t.form.uncertainOtherTarget('NC-TEST-0041')),
@@ -258,7 +266,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     await fillDecision(user, '120');
     await save(user);
     await screen.findByRole('button', { name: t.form.checkOutcome });
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText(t.form.uncertainOtherTarget('NC-TEST-0041'));
 
     const before = requestedPaths().filter((path) => path.includes('/41/')).length;
@@ -280,7 +288,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     await save(user);
     await screen.findByText(t.form.alreadyClosed);
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText('LOT-TEST-0088');
     await user.click(screen.getByRole('radio', { name: '재작업' }));
     await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');
@@ -318,13 +326,12 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     });
   });
 
-  it('권한이 없으면 판정 컨트롤을 잠그고 사유를 보인다(403)', async () => {
+  /* 상세를 못 읽으면(403) 판정 입력을 세우지 않는다 — 판정 구역은 상세를 고른 뒤에만 선다(#223). */
+  it('권한이 없으면 판정 입력을 세우지 않는다(403)', async () => {
     renderScreen({ detailStatus: 403 });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.actions.save })).toHaveAccessibleDescription(
-        new RegExp(t.form.forbiddenReason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      );
+      expect(screen.queryByRole('button', { name: t.actions.save })).toBeNull();
     });
   });
 });
@@ -333,12 +340,18 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 describe('DispositionDecisionScreen 선별', () => {
   const renderSort = (options: Parameters<typeof dispositionStub>[0] = {}): { user: User } => {
     renderWithProviders(
-      <DispositionDecisionScreen
-        today={TODAY}
-        offsetMinutes={KST}
-        dispositionTypeCodes={['REWORK', 'SORT']}
-      />,
-      { fetch: dispositionStub(options), route: '/quality/dispositions?nonconformanceId=41' },
+      <SessionProvider>
+        <DispositionDecisionScreen
+          today={TODAY}
+          offsetMinutes={KST}
+          dispositionTypeCodes={['REWORK', 'SORT']}
+        />
+      </SessionProvider>,
+      {
+        session: SYNTHETIC_SESSION,
+        fetch: dispositionStub(options),
+        route: '/quality/dispositions?nonconformanceId=41',
+      },
     );
     return { user: userEvent.setup() };
   };

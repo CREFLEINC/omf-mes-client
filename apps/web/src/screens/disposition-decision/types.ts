@@ -109,6 +109,8 @@ export interface NonconformanceLotRow {
   affectedQtyText: string;
   uomId: number;
   qualityStatusText: string;
+  /** 지금 품질 상태(판정 뒤 값) — 상세 LOT 표가 표시명으로 보인다(#223). */
+  qualityStatusCode: string;
 }
 
 export const toLotRow = (lot: NonconformanceLot): NonconformanceLotRow => ({
@@ -118,6 +120,7 @@ export const toLotRow = (lot: NonconformanceLot): NonconformanceLotRow => ({
   affectedQtyText: formatQty(lot.affectedQty),
   uomId: lot.uomId,
   qualityStatusText: `${lot.qualityStatusBeforeCode} → ${lot.qualityStatusAfterCode}`,
+  qualityStatusCode: lot.qualityStatusAfterCode,
 });
 
 export interface DecisionRow {
@@ -140,6 +143,18 @@ export const toDecisionRow = (decision: DispositionDecision): DecisionRow => ({
   decidedBy: decision.decidedBy,
 });
 
+/** 처분 이력 목록 한 줄 — 어느 부적합의 판정인지 함께 든다(#223). 번호가 안 오면 식별자로 보인다. */
+export interface HistoryRow extends DecisionRow {
+  nonconformanceId: number;
+  nonconformanceNo: string;
+}
+
+export const toHistoryRow = (decision: DispositionDecision): HistoryRow => ({
+  ...toDecisionRow(decision),
+  nonconformanceId: decision.nonconformanceId,
+  nonconformanceNo: decision.nonconformanceNo ?? String(decision.nonconformanceId),
+});
+
 export interface NonconformanceDetailView {
   nonconformanceNo: string;
   itemId: number;
@@ -147,6 +162,8 @@ export interface NonconformanceDetailView {
   statusCode: string;
   openedAtText: string;
   description: string;
+  /** 대상 수량 합 — 「50」. 단위는 LOT 의 단위로 붙인다(#223). */
+  affectedQtyText: string;
   lots: NonconformanceLotRow[];
 }
 
@@ -160,6 +177,7 @@ export const toDetailView = (nonconformance: Nonconformance): NonconformanceDeta
     nonconformance.description.trim() === ''
       ? messages.dispositionDecision.detail.emptyDescription
       : nonconformance.description,
+  affectedQtyText: formatQty(nonconformance.affectedQtyTotal),
   lots: (nonconformance.lots ?? []).map(toLotRow),
 });
 

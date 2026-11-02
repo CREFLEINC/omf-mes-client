@@ -1,31 +1,56 @@
 export const dispositionDecision = {
-  title: '처분 판정 처리',
+  title: '부적합 처분 관리',
   breadcrumbRoot: '품질 관리',
+  /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
+  statusChip: (label: string, count: number | undefined): string =>
+    count === undefined ? label : `${label} ${String(count)}`,
+  /** 조회 조건의 상세 펼치기 — 심각도 · 원천(사용자 지시 · #223). */
+  filterDetail: { open: '상세 펼치기', close: '상세 접기' },
   tabs: {
     label: '처분 판정 보기',
-    pending: '판정 대기',
-    history: '처리 이력',
+    pending: '처분 대기',
+    history: '처분 이력',
+    /** 탭 줄 칩 — 「처분 대기 3」(#223). 건수를 아직 모르면 이름만. */
+    pendingCount: (count: number | undefined): string =>
+      count === undefined ? '처분 대기' : `처분 대기 ${String(count)}`,
+    historyCount: (count: number | undefined): string =>
+      count === undefined ? '처분 이력' : `처분 이력 ${String(count)}`,
   },
   panes: {
-    list: '판정 대기 목록',
+    filter: '조회 조건',
+    list: '처분 대기 목록',
     detail: '선택한 부적합',
+    detailDecision: '부적합 상세 및 판정',
+    /** 처분 이력 탭의 오른쪽 구획 — 판정 입력 없이 보기만(#223). */
+    historyDetail: '부적합 상세',
     decision: '판정',
     history: '처분 판정 이력',
     lots: '대상 LOT',
-    decisions: '판정 이력',
+    decisions: '처분 이력',
   },
   fields: {
+    /** 조회 조건 선택칸 이름 — 「…선택」(사용자 지시 · #223). */
+    severityPick: '심각도 선택',
+    sourcePick: '원천 선택',
     period: '접수일',
+    openedFrom: '접수 시작일',
+    openedTo: '접수 종료일',
     decidedPeriod: '판정일',
+    decidedFrom: '판정 시작일',
+    decidedTo: '판정 종료일',
+    /** 처분 이력 목록 열 이름(#223). */
+    historyType: '처분 유형',
+    historyQty: '처분 수량',
+    historyReason: '판정 사유',
     item: '품목',
     severityCode: '심각도',
-    statusCode: '상태',
+    statusCode: '처리 상태',
     sourceCode: '원천',
     nonconformanceNo: '부적합번호',
     openedAt: '접수일',
     qty: '수량',
     description: '설명',
-    lotNo: 'LOT',
+    lotNo: 'LOT 번호',
     uom: '단위',
     qualityStatus: '품질 상태',
     dispositionTypeCode: '처분',
@@ -34,7 +59,7 @@ export const dispositionDecision = {
     decidedAt: '판정 일시',
     decidedBy: '판정자',
     remainingQty: '남은 수량',
-    dispositionProgressCode: '판정 진행',
+    dispositionProgressCode: '판정 현황',
   },
   all: '전체',
   codePending: '선택할 기준값이 아직 준비되지 않았습니다',
@@ -55,9 +80,7 @@ export const dispositionDecision = {
    * ⚠ 설계 원문은 업무 구분 번호를 앞에 달았으나(「04 제품·04 반품」) 화면 문구에는 내부
    * 구성을 드러내지 않는다(이 파일 머리의 작성 규칙) — 뜻을 그대로 두고 번호만 걷었다.
    */
-  sourceNote: '제품·반품 두 갈래만 옵니다. 수리·자재 부적합은 이 목록으로 들어오지 않습니다.',
   actions: {
-    selectRow: (nonconformanceNo: string): string => `${nonconformanceNo} 선택`,
     save: '판정 저장',
     cancel: '취소',
     prevPage: '이전',
@@ -65,45 +88,48 @@ export const dispositionDecision = {
     goFirstPage: '첫 쪽으로',
   },
   detail: {
-    select: '부적합을 선택하세요',
+    select: '목록에서 판정할 부적합을 선택하세요.',
+    /** 처분 이력 탭 — 고르기 전 안내(#223). */
+    selectHistory: '목록에서 볼 처분 이력을 선택하세요.',
     loading: '부적합 상세 불러오는 중',
     notFound: '부적합을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 부적합을 선택하세요.',
     emptyDescription: '등록된 설명이 없습니다',
     noLots: '대상 LOT이 없습니다',
-    /** A-11 — LOT 상태 전이 이력 표가 없어 화면이 물러난 수준을 결과 표 머리에 적는다. */
-    transitionHistoryUnavailable:
-      '판정으로 바뀐 LOT 상태는 이 표에 남지 않습니다. 현재 상태만 표시합니다.',
+    /** 기본 정보의 대상 수량 칸(사용자 시안 · #223). */
+    affectedQty: '대상 수량',
   },
   decisions: {
+    /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
+    count: (count: number): string => `${String(count)}건`,
     loading: '판정 이력 불러오는 중',
-    empty: '아직 판정된 내역이 없습니다',
+    empty: '처분 이력이 없습니다.',
     unavailable: '판정 이력을 표시할 수 없습니다',
-  },
-  remaining: {
-    label: '남은 수량',
-    /** 서버가 잔량 필드를 내리지 않아 화면이 합계 차로 낸 값임을 밝힌다(L-2 잠정 처리). */
-    note: '표시된 남은 수량은 참고값입니다. 저장할 수 있는 수량은 저장할 때 서버가 판정합니다.',
-    unknown: '남은 수량을 계산할 수 없습니다',
-    settled: '남은 수량이 없습니다. 이 부적합은 판정이 끝났습니다',
   },
   /** 특채(omf-all-around#84 · 서버 선행 P-79) — 불합격 LOT 을 결재 뒤 조건부로 쓴다. */
   concession: {
-    heading: '특채',
-    help: '불합격 LOT 을 관리자 승인을 받아 조건부로 사용합니다. 요청 → 「특채·한도승인 승인 처리」에서 결재 → 여기서 적용 순서입니다.',
-    none: '이 부적합의 특채가 없습니다.',
+    /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
+    foldTitle: '특채 요청 이력',
+    count: (count: number): string => `${String(count)}건`,
+    /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
+    requestHeading: '특채 요청',
+    requestNote: '불합격 LOT의 조건부 사용 승인을 요청합니다.',
+    historyHeading: '특채 요청 이력',
+    qtyPlaceholder: '수량 입력',
+    reasonPlaceholder: '특채 사유 입력',
+    validToPlaceholder: '제한 없음',
+    none: '특채 요청 이력이 없습니다.',
     loading: '특채를 불러오는 중입니다.',
     loadFailed: '특채를 불러오지 못했습니다.',
     request: '특채 요청',
     requesting: '요청하는 중…',
     apply: '특채 적용',
     applying: '적용하는 중…',
-    lot: 'LOT',
+    lot: 'LOT 번호',
     qty: '사용 가능 수량',
-    validFrom: '유효 시작일',
-    validTo: '유효 종료일(비우면 끝없음)',
+    validFrom: '시작일',
+    validTo: '종료일 (선택)',
     reason: '특채 사유',
-    closedNote: '종결된 부적합은 특채를 요청할 수 없습니다.',
     requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
     applied: '특채를 적용했습니다. LOT 이 정상으로 풀렸습니다.',
     rejected: '결재가 반려되어 특채를 닫았습니다.',
@@ -116,20 +142,26 @@ export const dispositionDecision = {
     status: { PENDING: '결재 대기', APPROVED: '적용됨', REJECTED: '반려' },
     columns: {
       concessionNo: '특채 번호',
-      lotNo: 'LOT',
-      qty: '수량',
+      lotNo: 'LOT 번호',
+      qty: '사용 가능 수량',
       period: '유효 기간',
       status: '상태',
     },
     caption: '특채 목록',
   },
   form: {
-    dispositionLabel: '처분',
-    qtyLabel: '수량',
-    /** ⚠ 남은 수량이 참고값이라는 사실을 규칙과 «함께» 적는다 — 규칙만 단정하면 거짓이 된다. */
-    qtyHelp: '0보다 큰 수를 입력하세요. 저장할 수 있는 수량은 저장할 때 서버가 확정합니다.',
-    reasonLabel: '사유',
-    reasonHelp: '이 처분을 정한 근거를 남기세요.',
+    /** 판정 구역 머리와 오른쪽 남은 수량(사용자 시안 · #223). */
+    heading: '처분 판정',
+    /** 처분 수량 오른쪽 — 「입력 10 / 미입력 40 EA」(#223). */
+    qtyEntered: '입력',
+    qtyRest: '미입력',
+    qtyProgress: (entered: number, rest: number, unit: string): string =>
+      `입력 ${String(entered)} / 미입력 ${String(rest)}${unit === '' ? '' : ` ${unit}`}`,
+    qtyPlaceholder: '수량을 입력하세요',
+    reasonPlaceholder: '판정 사유를 입력하세요',
+    dispositionLabel: '처분 유형',
+    qtyLabel: '처분 수량',
+    reasonLabel: '판정 사유',
     qtyRequired: '수량을 입력하세요',
     qtyNotNumber: '수량은 숫자로 입력하세요',
     qtyTooLong: '수량이 너무 깁니다. 정수 12자리·소수 6자리까지 입력하세요',
@@ -140,9 +172,9 @@ export const dispositionDecision = {
      * 최종 판정은 서버가 하므로, 무엇이 일어날지를 알린다.
      */
     qtyOverRemaining: (remaining: string): string =>
-      `화면이 계산한 남은 수량(${remaining})보다 많습니다. 남은 수량은 저장할 때 서버가 확정합니다`,
+      `남은 수량(${remaining})을 초과했습니다. 저장 시 실제 수량이 확인됩니다.`,
     /** 남은 수량이 0일 때도 같은 자리다 — 참고값으로 막지 않고 예고한다. */
-    qtySettledNotice: '화면이 계산한 남은 수량이 없습니다. 저장 여부는 서버가 확정합니다',
+    qtySettledNotice: '남은 수량이 없습니다. 저장 시 실제 수량이 확인됩니다.',
     /**
      * ⭐ 저장 409의 구조화 문구 — 위 `qtyOverRemaining`/`qtySettledNotice`와는 **다른 자리다.**
      * 그것들은 **저장 전** 화면이 낸 참고값에 대한 예고이고, 이 둘은 **저장을 서버가 거절한
@@ -172,7 +204,6 @@ export const dispositionDecision = {
     checkOutcome: '처리 결과 확인',
     selectFirstReason: '먼저 판정할 부적합을 선택하세요',
     reloadDetail: '부적합 상태 다시 확인',
-    irreversible: '판정은 되돌릴 수 없습니다',
     success: '판정을 저장했습니다',
     /** 선별(omf-all-around#108) — 양품은 정상, 불량분은 새 LOT·새 부적합으로 넘어간다. */
     acceptedQtyLabel: '양품 수량',
@@ -185,8 +216,8 @@ export const dispositionDecision = {
     sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
       `선별을 저장했습니다. 불량분은 LOT ${lotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다`,
   },
-  loading: '판정 대기 목록 불러오는 중',
-  historyLoading: '처리 이력 불러오는 중',
+  loading: '처분 대기 목록 불러오는 중',
+  historyLoading: '처분 이력 불러오는 중',
   empty: {
     title: '조건에 맞는 부적합이 없습니다',
     description: '기간을 넓히거나 다른 조건으로 조회하세요.',
@@ -202,6 +233,14 @@ export const dispositionDecision = {
     total: (total: number): string => `전체 ${String(total)}건`,
   },
   values: {
+    /** 대상 LOT 의 품질 상태 표시명(#223) — 모르는 값은 코드 그대로. */
+    qualityStatus: {
+      NORMAL: '정상',
+      DEFECTIVE: '불량',
+      INSPECTION_PENDING: '검사 대기',
+      HOLD: '보류',
+      SCRAPPED: '폐기',
+    } as Record<string, string | undefined>,
     unknownQty: '—',
     /** 셋의 해법이 서로 다르므로 문구를 가른다(G-3 — 사유는 「어떻게 풀 것인가」를 담는다). */
     periodRequired: '기간을 선택해야 조회할 수 있습니다',

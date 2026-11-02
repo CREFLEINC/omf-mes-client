@@ -2,11 +2,16 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { codeValueLabel } from './disposition-codes';
+import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
 import type { DispositionLookup } from './lookups';
-import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
+import { SeverityBadge } from './severity-badge';
 import { dispositionProgressLabel, type NonconformanceRow } from './types';
 
 export interface NonconformanceListProps {
@@ -18,9 +23,13 @@ export interface NonconformanceListProps {
   isLoading: boolean;
   error: ReactNode;
   page: PageView;
+  /** 표 아래 쪽 이동 줄 — 다른 목록과 같은 「총 N건 · 처음 · 이전 · n/N · 다음 · 마지막」(#223). */
+  meta: PageNavMeta;
   selectedId: number | null;
   onSelect: (nonconformanceId: number) => void;
   onChangePage: (page: number) => void;
+  /** 한 쪽 건수 10 · 20 · 50(사용자 지시 · #223). */
+  onChangeSize: (size: PageSizeOption) => void;
 }
 
 /**
@@ -36,50 +45,75 @@ export const NonconformanceList = ({
   isLoading,
   error,
   page,
+  meta,
   selectedId,
   onSelect,
   onChangePage,
+  onChangeSize,
 }: NonconformanceListProps) => {
   const t = messages.dispositionDecision;
   const columns: Column<NonconformanceRow>[] = [
     {
       key: 'nonconformanceNo',
+      align: 'center',
+      /* 번호가 잘리지 않는 폭 — 끌어 바꿀 수 있다. */
+      width: '170px',
       header: t.fields.nonconformanceNo,
+      /* 번호는 글자다 — 고르기는 줄 누르기가 맡는다(사용자 지시 · #223). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.actions.selectRow(row.nonconformanceNo)}
-          aria-current={row.nonconformanceId === selectedId ? 'true' : undefined}
-          onClick={() => onSelect(row.nonconformanceId)}
+        <span
+          className="disposition-nc-no"
+          data-nc-id={row.nonconformanceId}
+          data-selected={row.nonconformanceId === selectedId ? 'true' : undefined}
         >
           {row.nonconformanceNo}
-        </button>
+        </span>
       ),
     },
     {
       key: 'item',
+      align: 'center',
       header: t.fields.item,
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },
-    { key: 'qty', header: t.fields.qty, align: 'end', render: (row) => row.affectedQtyText },
+    {
+      key: 'qty',
+      header: t.detail.affectedQty,
+      align: 'center',
+      render: (row) => row.affectedQtyText,
+    },
     {
       key: 'dispositionProgress',
+      align: 'center',
       header: t.fields.dispositionProgressCode,
       render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
     },
     {
       key: 'severity',
+      align: 'center',
       header: t.fields.severityCode,
-      render: (row) => codeValueLabel(severity, row.severityCode),
+      render: (row) => <SeverityBadge severity={severity} code={row.severityCode} />,
     },
-    { key: 'openedAt', header: t.fields.openedAt, render: (row) => row.openedAtText },
+    {
+      key: 'openedAt',
+      align: 'center',
+      header: t.fields.openedAt,
+      render: (row) => row.openedAtText,
+    },
     {
       key: 'status',
+      align: 'center',
       header: t.fields.statusCode,
       render: (row) => codeValueLabel(status, row.statusCode),
     },
   ];
+
+  /*
+   * 열 순서 · 폭은 검사 조회·판정 목록과 같이 사용자가 바꾸고 브라우저에 남는다(사용자 지시 · #223). 모든 칸 가운데 정렬.
+   */
+  const ordered = useColumnOrder('omf-mes:dispositions:columns:pending:order', columns);
+  const resizable = useColumnWidths('omf-mes:dispositions:columns:pending', ordered);
+  const fit = useFitColumns(resizable.columns, {});
 
   if (error !== null && error !== undefined) return error;
 
@@ -114,17 +148,38 @@ export const NonconformanceList = ({
        * 되살아났다.** 축이 `sourceCode`로 정의돼 필터 바에 섰으므로(W-03-10 §5-4 · #648)
        * 그 자리에 남겨 두면 화면이 «있는 기능»을 없다고 말하게 된다.
        */}
-      <div className="disposition-table disposition-pending-table">
+      {/*
+       * 줄을 누르면 고른다(#223) — DS 표에 줄 클릭이 없어 눌린 줄의 번호 칸에서 부적합을 읽는다.
+       * 고른 줄을 다시 누르면 풀린다(`onSelect` 가 같은 번호면 선택을 지운다).
+       */}
+      <div
+        ref={fit.ref}
+        className="disposition-table disposition-pending-table inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const id = (event.target as Element)
+            .closest('tbody tr')
+            ?.querySelector<HTMLElement>('[data-nc-id]')?.dataset.ncId;
+          if (id !== undefined) onSelect(Number(id));
+        }}
+      >
         <Table
           density="compact"
           caption={<span className="disposition-table-caption">{t.panes.list}</span>}
-          columns={columns}
+          columns={fit.columns}
           rows={rows}
           getRowId={(row) => String(row.nonconformanceId)}
           empty={empty}
         />
       </div>
-      <PageNav view={page} label={t.page.label} onChange={onChangePage} />
+      <ListPageNav
+        meta={meta}
+        sizes={PAGE_SIZE_OPTIONS}
+        controlSize="sm"
+        buttonSize="md"
+        onChangePage={onChangePage}
+        onChangeSize={onChangeSize}
+      />
     </div>
   );
 };

@@ -1,13 +1,11 @@
-import { EmptyState, SkeletonText } from '@crefle/web-ui';
+import { EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { DecisionHistory } from './decision-history';
 import { DetailPane } from './detail-pane';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
-import type { RemainingQty } from './remaining-qty';
-import type { DecisionRow, NonconformanceDetailView } from './types';
+import type { NonconformanceDetailView } from './types';
 
 export interface DetailSlotProps {
   /** 고른 부적합이 없으면 `null`. */
@@ -20,17 +18,14 @@ export interface DetailSlotProps {
     error: unknown;
     view: NonconformanceDetailView | null;
   };
-  decisions: {
-    rows: DecisionRow[];
-    isLoading: boolean;
-    isError: boolean;
-  };
-  remaining: RemainingQty;
   items: DispositionLookup;
   severity: DispositionLookup;
-  status: DispositionLookup;
   uoms: DispositionLookup;
   onRetry: () => void;
+  /** 고르기 전 안내 — 탭마다 다르다(#223). 비면 처분 대기 문구. */
+  emptyTitle?: string;
+  /** 대상 LOT 의 지금 상태(#223). */
+  lotStatuses?: Record<number, string>;
 }
 
 /**
@@ -42,24 +37,31 @@ export interface DetailSlotProps {
  * | 불러오는 중 | 뼈대 | 빈 칸과 구분된다 |
  * | 없음(404) | 「찾을 수 없습니다」 + 다시 조회 안내 | **다시 시도로 풀리지 않는다** |
  * | 그 밖의 실패 | 오류 배너 + 다시 시도 | 눌러서 풀린다 |
- * | 정상 | 상세 + 판정 이력 | |
+ * | 정상 | 상세 | |
  *
  * 없음과 그 밖의 실패를 뭉개면 **없는 부적합을 계속 다시 부르게** 된다.
  */
 export const DetailSlot = ({
   selectedId,
   detail,
-  decisions,
-  remaining,
   items,
   severity,
-  status,
   uoms,
   onRetry,
+  emptyTitle,
+  lotStatuses,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
 
-  if (selectedId === null) return <EmptyState size="sm" title={t.detail.select} />;
+  /* 고르기 전 — 아이콘 + 한 줄 안내만(사용자 시안 · #223). 판정 입력은 고른 뒤에만 선다. */
+  if (selectedId === null)
+    return (
+      <EmptyState
+        size="sm"
+        icon={<Icon name="ads_click" size={32} />}
+        title={emptyTitle ?? t.detail.select}
+      />
+    );
 
   if (detail.isPending) {
     return (
@@ -86,22 +88,14 @@ export const DetailSlot = ({
 
   if (detail.view === null) return null;
 
+  /* 판정 이력은 판정 입력 아래 접는 구역으로 옮겼다(사용자 시안 · #223). */
   return (
-    <>
-      <DetailPane
-        view={detail.view}
-        items={items}
-        uoms={uoms}
-        severity={severity}
-        status={status}
-      />
-      <DecisionHistory
-        rows={decisions.rows}
-        remaining={remaining}
-        uoms={uoms}
-        isLoading={decisions.isLoading}
-        isError={decisions.isError}
-      />
-    </>
+    <DetailPane
+      view={detail.view}
+      items={items}
+      uoms={uoms}
+      severity={severity}
+      lotStatuses={lotStatuses}
+    />
   );
 };

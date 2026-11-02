@@ -1,12 +1,20 @@
 import type { components } from '@omf-mes/api-client';
-import { Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
+import { Badge, Button, Chip, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { requireIfMatch, useMasterWrite } from '../../patterns/master';
+import {
+  PaneLayoutToggle,
+  PaneSplitter,
+  useFitToViewport,
+  usePaneLayout,
+  usePaneSplit,
+} from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
 import {
   EMPTY_DECISION_FORM,
@@ -17,21 +25,31 @@ import {
   type DecisionCreateBody,
   type DecisionFormValue,
 } from './decision-form';
-import { ConcessionPane } from './concession-pane';
+import { ConcessionHistory, ConcessionRequestDialog, useConcessions } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
-import { codeOptionsOf, DISPOSITION_TYPE_CODES, dispositionTypeOptions } from './disposition-codes';
+import {
+  codeOptionsOf,
+  codeValueLabel,
+  DISPOSITION_TYPE_CODES,
+  dispositionTypeOptions,
+} from './disposition-codes';
+import { DecisionHistory } from './decision-history';
 import { FilterBar } from './filter-bar';
 import {
   readPage,
+  readPageSize,
   readPendingFilters,
+  readSelectedDecisionId,
   readSelectedNonconformanceId,
   readTab,
   toAppliedSearchParams,
   toPendingListQuery,
+  withSelectedDecision,
   withSelectedNonconformance,
   withTab,
+  withPageSize,
   type PendingFilters,
   type ScreenTab,
 } from './filters';
@@ -41,7 +59,7 @@ import {
   toHistoryListQuery,
   type HistoryFilters,
 } from './history-filters';
-import { HistoryTab } from './history-tab';
+import { HistoryFilterBar, HistoryList } from './history-tab';
 import { LoadErrorBanner } from './load-error';
 import {
   type DispositionLookup,
@@ -60,6 +78,9 @@ import {
   useDispositionDecisions,
   useNonconformanceDetail,
   usePendingNonconformances,
+  useHistoryTotals,
+  useLotStatuses,
+  usePendingTotals,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
 import {
@@ -67,6 +88,7 @@ import {
   formatQty,
   toDecisionRow,
   toDetailView,
+  toHistoryRow,
   toNonconformanceRow,
   type Nonconformance,
 } from './types';
@@ -112,6 +134,15 @@ export const DispositionDecisionScreen = ({
   today,
   offsetMinutes,
 }: DispositionDecisionScreenProps = {}) => {
+  /*
+   * 품질 승인 처리 화면과 같은 짜임(#223) — 조회 조건은 위 한 구획, 그 아래 목록 | 상세 및 판정이 나란히(좌우 · 상하 고름),
+   * 가운데 막대로 폭을 나누고 고른 비율은 다음에 들어와도 남는다.
+   */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const paneLayout = usePaneLayout('omf-mes:dispositions:layout');
+  const sideSplit = usePaneSplit('omf-mes:dispositions:split', 0.5);
+  const stackSplit = usePaneSplit('omf-mes:dispositions:stack-split', 0.5);
+  const split = paneLayout.layout === 'stack' ? stackSplit : sideSplit;
   const t = messages.dispositionDecision;
   const [searchParams, setSearchParams] = useSearchParams();
   const baseDate = useMemo(() => today ?? new Date(), [today]);
@@ -133,8 +164,11 @@ export const DispositionDecisionScreen = ({
     [baseDate, searchParams, severityCodes, statusCodes],
   );
   const page = readPage(searchParams);
+  const size = readPageSize(searchParams);
   const tab = readTab(searchParams);
   const selectedId = readSelectedNonconformanceId(searchParams);
+  /* 처분 이력 탭에서 고른 판정 한 건 — 고른 줄 표시용(#223). */
+  const selectedDecisionId = readSelectedDecisionId(searchParams);
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
    *
@@ -145,21 +179,67 @@ export const DispositionDecisionScreen = ({
    */
   /* ⚠ 보지 않는 목록은 부르지 않는다 — 탭마다 조회를 «닫는다». 원장 조회가 두 배가 된다. */
   const query = useMemo(
-    () => (tab === 'pending' ? toPendingListQuery(filters, page, zone) : null),
-    [filters, page, tab, zone],
+    () => (tab === 'pending' ? toPendingListQuery(filters, page, zone, size) : null),
+    [filters, page, size, tab, zone],
   );
   const historyFilters = useMemo(
     () => readHistoryFilters(searchParams, baseDate, dispositionTypeCodes),
     [baseDate, dispositionTypeCodes, searchParams],
   );
   const historyQuery = useMemo(
-    () => (tab === 'history' ? toHistoryListQuery(historyFilters, page, zone) : null),
-    [historyFilters, page, tab, zone],
+    () => (tab === 'history' ? toHistoryListQuery(historyFilters, page, zone, size) : null),
+    [historyFilters, page, size, tab, zone],
   );
 
   const list = usePendingNonconformances(query);
   const history = useDecisionHistory(historyQuery);
+  /*
+   * 탭 줄 칩의 건수(사용자 지시 · #223) — 지금 조건의 첫 쪽 조회 총수. 보고 있는 쪽이 첫 쪽이면 위 목록과 같은
+   * 조회라 다시 나가지 않는다. 보지 않는 쪽은 첫 쪽 하나만 부른다.
+   */
+  const pendingCount = usePendingNonconformances(
+    useMemo(() => toPendingListQuery(filters, 1, zone, size), [filters, size, zone]),
+  ).data?.page.total;
+  /* 상태 칩 — 공통코드 상태마다 지금 조건(상태는 빼고)의 건수. */
+  const statusOptions = codeOptionsOf(status);
+  const statusTotals = usePendingTotals(
+    useMemo(
+      () =>
+        statusOptions.flatMap((option) => {
+          const query = toPendingListQuery({ ...filters, statusCode: option.value }, 1, zone, size);
+          return query === null ? [] : [query];
+        }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택지는 상태 조회가 바뀔 때만 바뀐다.
+      [filters, size, zone, status.entries],
+    ),
+  );
+  /* 처분 유형 칩 — 유형마다 지금 조건(유형은 빼고)의 건수. */
+  const historyTypeOptions = dispositionTypeOptions(dispositionTypeCodes);
+  const historyTypeTotals = useHistoryTotals(
+    useMemo(
+      () =>
+        historyTypeOptions.flatMap((option) => {
+          const query = toHistoryListQuery(
+            { ...historyFilters, dispositionTypeCode: option.value },
+            1,
+            zone,
+            size,
+          );
+          return query === null ? [] : [query];
+        }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택지는 주입된 코드 목록이 바뀔 때만 바뀐다.
+      [historyFilters, size, zone, dispositionTypeCodes],
+    ),
+  );
+  const historyCount = useDecisionHistory(
+    useMemo(() => toHistoryListQuery(historyFilters, 1, zone, size), [historyFilters, size, zone]),
+  ).data?.page.total;
   const detail = useNonconformanceDetail(selectedId);
+  const concessions = useConcessions(selectedId);
+  /* 상세 아래 탭 — 판정 이력 | 특채 요청 및 이력(#223). */
+  const [sideTab, setSideTab] = useState<'decisions' | 'concessions'>('decisions');
+  /* 특채 요청 팝업 — 처분 대기에서 고른 부적합에 대해 연다(사용자 지시 · #223). */
+  const [isConcessionOpen, setIsConcessionOpen] = useState(false);
   const decisions = useDispositionDecisions(selectedId);
   const items = useItemLookup();
   const uoms = useUomLookup();
@@ -173,6 +253,9 @@ export const DispositionDecisionScreen = ({
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const remaining = toRemainingQty(decisions.data?.summary);
   const uomId = decisionUomIdOf(detail.data?.lots);
+  const lotStatuses = useLotStatuses(
+    useMemo(() => (detail.data?.lots ?? []).map((lot) => lot.lotId), [detail.data]),
+  );
   const decisionRows = useMemo(
     () => (decisions.data?.items ?? []).map(toDecisionRow),
     [decisions.data],
@@ -342,167 +425,352 @@ export const DispositionDecisionScreen = ({
     setSearchParams((current) => toHistoryAppliedSearchParams(current, next, nextPage));
   };
 
-  const historyRows = useMemo(() => (history.data?.items ?? []).map(toDecisionRow), [history.data]);
+  const historyRows = useMemo(() => (history.data?.items ?? []).map(toHistoryRow), [history.data]);
 
-  return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+  /*
+   * 맨 위 한 줄(사용자 지시 · #223) — 왼쪽 「처분 대기 · 처분 이력」 탭(건수), 오른쪽 칩(처분 대기는 상태, 처분 이력은
+   * 처분 유형 · 건수 · 누르면 그 값만, 다시 누르면 풀림)과 배치 고르기. 품질 승인 처리의 유형 탭 줄과 같은 모양이다.
+   * 제목 · 경로 줄은 두지 않는다.
+   */
+  const countBadge = (
+    count: number | undefined,
+    label: (count: number | undefined) => string,
+  ): ReactNode =>
+    count !== undefined && count > 0 ? (
+      <Badge count={count} max={99} aria-label={label(count)} />
+    ) : undefined;
+  const topBar = (
+    <div className="quality-approval-type-bar">
       <Tabs
+        className="quality-approval-type-tabs"
         aria-label={t.tabs.label}
         value={tab}
+        onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
         items={[
+          /* 건수는 검사 조회·판정 탭처럼 이름 옆 빨간 숫자 배지(0이면 두지 않는다 · 사용자 지시 · #223). */
           {
             value: 'pending',
             label: t.tabs.pending,
-            content: (
-              <div className="disposition-workspace">
-                <section
-                  className="pane disposition-pane disposition-list-pane"
-                  aria-label={t.panes.list}
-                >
-                  <h2 className="pane-title">{t.panes.list}</h2>
-                  <FilterBar
-                    applied={filters}
-                    severity={severity}
-                    status={status}
-                    onApply={(next) => apply(next)}
-                    onReset={() =>
-                      apply({
-                        ...defaultPeriod(baseDate),
-                        itemId: '',
-                        severityCode: '',
-                        statusCode: '',
-                        sourceCode: '',
-                      })
-                    }
-                  />
-                  <NonconformanceList
-                    rows={rows}
-                    items={items}
-                    severity={severity}
-                    status={status}
-                    isLoading={list.isPending}
-                    error={
-                      list.isError ? (
-                        <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-                      ) : null
-                    }
-                    page={pageView}
-                    selectedId={selectedId}
-                    onSelect={(id) =>
-                      setSearchParams((current) =>
-                        withSelectedNonconformance(current, selectedId === id ? null : id),
-                      )
-                    }
-                    onChangePage={(nextPage) => apply(filters, nextPage)}
-                  />
-                </section>
-                <div className="pane-stack disposition-side">
-                  <section className="pane disposition-pane" aria-label={t.panes.detail}>
-                    <h2 className="pane-title">{t.panes.detail}</h2>
-                    <DetailSlot
-                      selectedId={selectedId}
-                      detail={{
-                        isPending: detail.isPending,
-                        isError: detail.isError,
-                        isNotFound: isDetailNotFound,
-                        error: detail.error,
-                        view: detail.data === undefined ? null : toDetailView(detail.data),
-                      }}
-                      decisions={{
-                        rows: decisionRows,
-                        isLoading: decisions.isPending,
-                        isError: decisions.isError,
-                      }}
-                      remaining={remaining}
-                      items={items}
-                      severity={severity}
-                      status={status}
-                      uoms={uoms}
-                      onRetry={() => void detail.refetch()}
-                    />
-                  </section>
-                  {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
-                  {selectedId !== null && detail.data !== undefined && (
-                    <section className="pane disposition-pane" aria-label={t.concession.heading}>
-                      <h2 className="pane-title">{t.concession.heading}</h2>
-                      <ConcessionPane
-                        nonconformanceId={selectedId}
-                        lots={toDetailView(detail.data).lots}
-                        isClosed={detail.data.statusCode === 'DECIDED'}
-                        today={today}
-                      />
-                    </section>
-                  )}
-                  <section className="pane disposition-pane" aria-label={t.panes.decision}>
-                    <h2 className="pane-title">{t.panes.decision}</h2>
-                    <DecisionFormPane
-                      value={form}
-                      errors={showErrors ? errors : write.fieldErrors}
-                      qtyNotice={remainingNotice(form, remaining)}
-                      lockReason={lock.reason}
-                      isUncertain={lock.isUncertain}
-                      onCheckOutcome={checkOutcome}
-                      dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
-                      uomId={uomId}
-                      uoms={uoms}
-                      writeError={write.error}
-                      isSaving={write.isSaving}
-                      canCancel={hasDecisionInput(form)}
-                      onChange={(next) => {
-                        /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                        if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                          write.clearFieldError('dispositionTypeCode');
-                        if (next.qty !== form.qty) write.clearFieldError('decisionQty');
-                        if (next.reason !== form.reason) write.clearFieldError('reason');
-                        setForm(next);
-                      }}
-                      onSave={save}
-                      onCancel={() => {
-                        setForm(EMPTY_DECISION_FORM);
-                        setShowErrors(false);
-                        /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                        write.reset();
-                      }}
-                      onReload={checkOutcome}
-                    />
-                  </section>
-                </div>
-              </div>
-            ),
+            badge: countBadge(pendingCount, t.tabs.pendingCount),
+            content: null,
           },
           {
             value: 'history',
             label: t.tabs.history,
-            content: (
-              <HistoryTab
-                applied={historyFilters}
-                dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
-                rows={historyRows}
-                uoms={uoms}
-                page={toPageView(
-                  history.data?.page ?? { page, size: 0, total: 0 },
-                  historyRows.length,
-                )}
-                isLoading={history.isPending && historyQuery !== null}
-                error={history.isError ? history.error : null}
-                onApply={(next) => applyHistory(next)}
-                onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
-                onRetry={() => void history.refetch()}
-              />
-            ),
+            badge: countBadge(historyCount, t.tabs.historyCount),
+            content: null,
           },
         ]}
-        onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
       />
+      <div className="quality-approval-type-bar-tools">
+        {/* 상태 칩은 처분 대기에서만 — 이력은 상태 축이 없다. 배치 고르기는 두 탭 같이(#223). */}
+        {tab === 'pending' && (
+          <div
+            className="quality-approval-status-chips"
+            role="group"
+            aria-label={t.fields.statusCode}
+          >
+            {statusOptions.map((option, index) => {
+              const isActive = filters.statusCode === option.value;
+              return (
+                <Chip
+                  key={option.value}
+                  variant="filter"
+                  size="sm"
+                  selected={isActive}
+                  aria-pressed={isActive}
+                  onClick={() => apply({ ...filters, statusCode: isActive ? '' : option.value })}
+                >
+                  {t.statusChip(option.label, statusTotals[index])}
+                </Chip>
+              );
+            })}
+          </div>
+        )}
+        {/* 처분 이력은 처분 유형 칩 — 건수 · 누르면 그 유형만, 다시 누르면 풀림(사용자 지시 · #223). */}
+        {tab === 'history' && (
+          <div
+            className="quality-approval-status-chips"
+            role="group"
+            aria-label={t.fields.historyType}
+          >
+            {historyTypeOptions.map((option, index) => {
+              const isActive = historyFilters.dispositionTypeCode === option.value;
+              return (
+                <Chip
+                  key={option.value}
+                  variant="filter"
+                  size="sm"
+                  selected={isActive}
+                  aria-pressed={isActive}
+                  onClick={() =>
+                    applyHistory({
+                      ...historyFilters,
+                      dispositionTypeCode: isActive ? '' : option.value,
+                    })
+                  }
+                >
+                  {t.statusChip(option.label, historyTypeTotals[index])}
+                </Chip>
+              );
+            })}
+          </div>
+        )}
+        <PaneLayoutToggle
+          layout={paneLayout.layout}
+          onChange={paneLayout.change}
+          labels={messages.qualityApproval.layout}
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {topBar}
+      {/* 두 탭이 같은 짜임(사용자 지시 · #223) — 위 조회 조건, 아래 목록 | 오른쪽 상세. 처분 이력은 판정 입력 없이 보기만. */}
+      <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
+        {tab === 'pending' ? (
+          <FilterBar
+            applied={filters}
+            severity={severity}
+            onApply={(next) => apply(next)}
+            onReset={() =>
+              apply({
+                ...defaultPeriod(baseDate),
+                itemId: '',
+                severityCode: '',
+                statusCode: '',
+                sourceCode: '',
+              })
+            }
+          />
+        ) : (
+          <HistoryFilterBar
+            applied={historyFilters}
+            onApply={(next) => applyHistory(next)}
+            onReset={() =>
+              applyHistory({ ...defaultPeriod(baseDate), itemId: '', dispositionTypeCode: '' })
+            }
+          />
+        )}
+      </section>
+      <div
+        ref={splitRef}
+        className={`${paneLayout.className} disposition-split`}
+        style={split.style}
+      >
+        <section
+          className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
+          aria-label={tab === 'pending' ? t.panes.list : t.panes.history}
+        >
+          {/* 제목은 두지 않는다 — 구획 이름(`aria-label`)으로만 남긴다(사용자 지시 · #223). */}
+          {tab === 'pending' ? (
+            <NonconformanceList
+              rows={rows}
+              items={items}
+              severity={severity}
+              status={status}
+              isLoading={list.isPending}
+              error={
+                list.isError ? (
+                  <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+                ) : null
+              }
+              page={pageView}
+              meta={list.data?.page ?? { page, size: 0, total: 0 }}
+              selectedId={selectedId}
+              onSelect={(id) =>
+                setSearchParams((current) =>
+                  withSelectedNonconformance(current, selectedId === id ? null : id),
+                )
+              }
+              onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
+              onChangePage={(nextPage) => apply(filters, nextPage)}
+            />
+          ) : (
+            <HistoryList
+              rows={historyRows}
+              uoms={uoms}
+              page={toPageView(
+                history.data?.page ?? { page, size: 0, total: 0 },
+                historyRows.length,
+              )}
+              meta={history.data?.page ?? { page, size: 0, total: 0 }}
+              isLoading={history.isPending && historyQuery !== null}
+              error={
+                history.isError ? (
+                  <LoadErrorBanner error={history.error} onRetry={() => void history.refetch()} />
+                ) : null
+              }
+              selectedId={selectedDecisionId}
+              onSelect={(row) =>
+                setSearchParams((current) =>
+                  withSelectedDecision(
+                    current,
+                    row.dispositionDecisionId === selectedDecisionId ? null : row,
+                  ),
+                )
+              }
+              onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
+              onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
+            />
+          )}
+        </section>
+        <PaneSplitter
+          label={messages.qualityApproval.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+        />
+        {/*
+         * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).
+         */}
+        <section
+          className="pane po-board-pane po-board-scroll disposition-pane disposition-side"
+          aria-label={tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
+        >
+          {/* 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). */}
+          <div className="disposition-side-head">
+            <h2 className="pane-title">
+              {tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
+            </h2>
+            {selectedId !== null && detail.data !== undefined && (
+              <Chip size="sm" status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}>
+                {codeValueLabel(status, detail.data.statusCode)}
+              </Chip>
+            )}
+          </div>
+          <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
+            <DetailSlot
+              selectedId={selectedId}
+              detail={{
+                isPending: detail.isPending,
+                isError: detail.isError,
+                isNotFound: isDetailNotFound,
+                error: detail.error,
+                view: detail.data === undefined ? null : toDetailView(detail.data),
+              }}
+              items={items}
+              severity={severity}
+              uoms={uoms}
+              onRetry={() => void detail.refetch()}
+              emptyTitle={tab === 'pending' ? t.detail.select : t.detail.selectHistory}
+              lotStatuses={lotStatuses}
+            />
+          </div>
+          {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}
+          {tab === 'pending' && selectedId !== null && detail.data !== undefined && (
+            <>
+              {/* 처분 판정 — 입력 카드와 단추. 남은 수량은 조회 시점 참고값이고 최종은 저장 때 서버가 낸다. */}
+              <div
+                className="disposition-side-part disposition-decision-card"
+                role="group"
+                aria-label={t.panes.decision}
+              >
+                {/* 머리 오른쪽에 「특채 요청」 — 처분 판정 대신 조건부 사용 승인을 요청하는 갈래(#223). 종결이면 막는다. */}
+                <div className="disposition-side-head">
+                  <h3 className="pane-subtitle">{t.form.heading}</h3>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    disabled={detail.data.statusCode === 'DECIDED'}
+                    onClick={() => setIsConcessionOpen(true)}
+                  >
+                    {t.concession.request}
+                  </Button>
+                </div>
+                <DecisionFormPane
+                  value={form}
+                  errors={showErrors ? errors : write.fieldErrors}
+                  qtyNotice={remainingNotice(form, {
+                    ...remaining,
+                    /* 예고 문구에 단위까지 — 「남은 수량(50 EA)」(사용자 지시 · #223). */
+                    text: `${remaining.text}${uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`}`,
+                  })}
+                  remainingQty={remaining.value}
+                  lockReason={lock.reason}
+                  isUncertain={lock.isUncertain}
+                  onCheckOutcome={checkOutcome}
+                  dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
+                  uomId={uomId}
+                  uoms={uoms}
+                  writeError={write.error}
+                  isSaving={write.isSaving}
+                  canCancel={hasDecisionInput(form)}
+                  onChange={(next) => {
+                    /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                    if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                      write.clearFieldError('dispositionTypeCode');
+                    if (next.qty !== form.qty) write.clearFieldError('decisionQty');
+                    if (next.reason !== form.reason) write.clearFieldError('reason');
+                    setForm(next);
+                  }}
+                  onSave={save}
+                  onCancel={() => {
+                    setForm(EMPTY_DECISION_FORM);
+                    setShowErrors(false);
+                    /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                    write.reset();
+                  }}
+                  onReload={checkOutcome}
+                />
+              </div>
+            </>
+          )}
+          {/* 처분 이력 · 특채 요청 이력 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
+          {selectedId !== null && detail.data !== undefined && (
+            /* 판정 이력 · 특채 — 테두리 상자 안의 탭(검사 조회·판정 상세 탭 상자와 같은 모양 · 사용자 지시 · #223). */
+            <Tabs
+              className="disposition-side-tabs"
+              size="md"
+              aria-label={t.panes.decisions}
+              value={sideTab}
+              onChange={(next) => setSideTab(next as 'decisions' | 'concessions')}
+              items={[
+                {
+                  value: 'decisions',
+                  label:
+                    `${t.panes.decisions} ${decisions.isPending ? '' : t.decisions.count(decisionRows.length)}`.trim(),
+                  content: (
+                    <DecisionHistory
+                      rows={decisionRows}
+                      uoms={uoms}
+                      isLoading={decisions.isPending}
+                      isError={decisions.isError}
+                    />
+                  ),
+                },
+                {
+                  value: 'concessions',
+                  label:
+                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(concessions.data.length)}`.trim(),
+                  content: (
+                    <ConcessionHistory nonconformanceId={selectedId} readOnly={tab === 'history'} />
+                  ),
+                },
+              ]}
+            />
+          )}
+        </section>
+      </div>
+      {isConcessionOpen &&
+        tab === 'pending' &&
+        selectedId !== null &&
+        detail.data !== undefined && (
+          <ConcessionRequestDialog
+            nonconformanceId={selectedId}
+            lots={toDetailView(detail.data).lots}
+            today={today}
+            onClose={(requested) => {
+              setIsConcessionOpen(false);
+              if (requested) {
+                toast.show({ variant: 'success', description: t.concession.requested });
+                setSideTab('concessions');
+              }
+            }}
+          />
+        )}
     </>
   );
 };

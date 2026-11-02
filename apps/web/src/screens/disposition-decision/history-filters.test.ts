@@ -17,6 +17,7 @@ const params = (search: string): URLSearchParams => new URLSearchParams(search);
 const filters = (overrides: Partial<HistoryFilters> = {}): HistoryFilters => ({
   from: '2026-07-14',
   to: '2026-08-12',
+  itemId: '',
   dispositionTypeCode: '',
   ...overrides,
 });
@@ -87,6 +88,7 @@ describe('toHistoryListQuery', () => {
     expect(toHistoryListQuery(filters(), 1, KST)).toEqual({
       decidedFrom: '2026-07-14T00:00:00+09:00',
       decidedTo: '2026-08-13T00:00:00+09:00',
+      size: 20,
     });
   });
 

@@ -53,6 +53,7 @@ const baseProps = (): NonconformanceListProps => ({
   status: codes([['CODE-C', '합성 상태 C']]),
   isLoading: false,
   error: null,
+  meta: { page: 1, size: 20, total: rows.length },
   page: {
     page: 1,
     canPrev: false,
@@ -63,6 +64,7 @@ const baseProps = (): NonconformanceListProps => ({
   selectedId: null,
   onSelect: vi.fn(),
   onChangePage: vi.fn(),
+  onChangeSize: vi.fn(),
 });
 
 const renderList = (overrides: Partial<NonconformanceListProps> = {}) => {
@@ -116,7 +118,7 @@ describe('NonconformanceList', () => {
   it('행을 고르면 식별자로 알린다', async () => {
     const { props, user } = renderList();
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0041') }));
+    await user.click(screen.getByText('NC-TEST-0041'));
 
     expect(props.onSelect).toHaveBeenCalledWith(41);
   });
@@ -124,9 +126,7 @@ describe('NonconformanceList', () => {
   it('고른 행을 표시한다', () => {
     renderList({ selectedId: 42 });
 
-    expect(
-      screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }),
-    ).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByText('NC-TEST-0042')).toHaveAttribute('data-selected', 'true');
   });
 
   it('결과가 없으면 조건을 좁히라고 안내한다', () => {

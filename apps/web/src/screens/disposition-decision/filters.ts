@@ -29,6 +29,8 @@ export interface PendingListQuery {
   /** 원천 축은 계약이 두 값으로 닫았다 — 허용 값은 `SOURCE_CODES`가 주소에서 거른다 */
   sourceCode?: PendingQueryParams['sourceCode'];
   page?: number;
+  /** 한 쪽 건수 10 · 20 · 50(#223). */
+  size?: number;
 }
 
 export type ScreenTab = 'pending' | 'history';
@@ -47,8 +49,11 @@ const KEYS = {
   statusCode: 'st',
   sourceCode: 'src',
   page: 'page',
+  size: 'size',
   tab: 'tab',
   selected: 'nonconformanceId',
+  /** 처분 이력 탭에서 고른 판정 한 건(#223) — 고른 줄 표시용. 부적합은 `nonconformanceId` 가 든다. */
+  decision: 'decision',
 } as const;
 
 /**
@@ -136,6 +141,24 @@ export const readPage = (params: URLSearchParams): number => {
   return isIdentifier(raw) ? Number(raw) : 1;
 };
 
+/** 한 쪽 건수 — 10 · 20 · 50 만 받고 나머지는 20(사용자 지시 · #223). 두 목록이 같은 값을 쓴다. */
+export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+export type PageSizeOption = (typeof PAGE_SIZE_OPTIONS)[number];
+export const DEFAULT_PAGE_SIZE: PageSizeOption = 20;
+
+export const readPageSize = (params: URLSearchParams): PageSizeOption => {
+  const raw = Number(params.get(KEYS.size));
+  return PAGE_SIZE_OPTIONS.find((size) => size === raw) ?? DEFAULT_PAGE_SIZE;
+};
+
+/** 건수를 바꾸면 첫 쪽부터 — 고른 부적합은 그대로 둔다. 기본값(20)은 주소에 적지 않는다. */
+export const withPageSize = (current: URLSearchParams, size: PageSizeOption): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  replace(next, KEYS.size, size === DEFAULT_PAGE_SIZE ? '' : String(size));
+  next.delete(KEYS.page);
+  return next;
+};
+
 export const readTab = (params: URLSearchParams): ScreenTab =>
   params.get(KEYS.tab) === 'history' ? 'history' : 'pending';
 
@@ -185,6 +208,23 @@ export const withTab = (current: URLSearchParams, tab: ScreenTab): URLSearchPara
   // 탭마다 목록이 다르다 — 쪽과 고른 부적합을 그대로 물려주면 없는 자리를 가리킨다.
   next.delete(KEYS.page);
   next.delete(KEYS.selected);
+  next.delete(KEYS.decision);
+  return next;
+};
+
+export const readSelectedDecisionId = (params: URLSearchParams): number | null => {
+  const raw = identifierOf(params.get(KEYS.decision));
+  return raw === '' ? null : Number(raw);
+};
+
+/** 처분 이력 줄 고르기 — 그 판정과 부적합을 함께 싣는다. `null` 이면 둘 다 지운다(#223). */
+export const withSelectedDecision = (
+  current: URLSearchParams,
+  target: { dispositionDecisionId: number; nonconformanceId: number } | null,
+): URLSearchParams => {
+  const next = new URLSearchParams(current);
+  replace(next, KEYS.decision, target === null ? '' : String(target.dispositionDecisionId));
+  replace(next, KEYS.selected, target === null ? '' : String(target.nonconformanceId));
   return next;
 };
 
@@ -200,6 +240,7 @@ export const toPendingListQuery = (
   filters: PendingFilters,
   page: number,
   offsetMinutes: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): PendingListQuery | null => {
   const period = resolvePeriod({ from: filters.from, to: filters.to }, offsetMinutes);
   if (period.kind === 'blocked') return null;
@@ -214,5 +255,6 @@ export const toPendingListQuery = (
       ? {}
       : { sourceCode: filters.sourceCode as PendingQueryParams['sourceCode'] }),
     ...(page > 1 ? { page } : {}),
+    size,
   };
 };

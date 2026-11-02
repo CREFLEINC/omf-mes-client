@@ -531,7 +531,7 @@ describe('AppLayout', () => {
       'href',
       '/quality/approvals',
     );
-    expect(within(sidebar).getByRole('link', { name: '처분 판정 처리' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '부적합 처분 관리' })).toHaveAttribute(
       'href',
       '/quality/dispositions',
     );

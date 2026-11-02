@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Icon, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -14,6 +14,8 @@ export interface DecisionFormPaneProps {
   errors: DecisionFormErrors;
   /** 남은 수량에 대한 예고. 저장을 막지 않는다 — 잔량 판정은 서버 몫이다. */
   qtyNotice: string | undefined;
+  /** 남은 수량(조회 시점 참고값) — 처분 수량 오른쪽 「입력 / 미입력」에 쓴다(사용자 지시 · #223). 모르면 그 표시를 두지 않는다. */
+  remainingQty?: number | undefined;
   /** 판정 컨트롤 전체를 잠그는 사유. 없으면 잠그지 않는다. */
   lockReason: string | undefined;
   /**
@@ -38,6 +40,7 @@ export const DecisionFormPane = ({
   value,
   errors,
   qtyNotice,
+  remainingQty,
   lockReason,
   isUncertain,
   onCheckOutcome,
@@ -58,60 +61,105 @@ export const DecisionFormPane = ({
   const noticeId = useId();
   const isLocked = lockReason !== undefined;
   const uomLabel = uomId === undefined ? '' : lookupDisplayLabel(uoms, uomId);
+  /* 숫자로 읽히지 않으면 0 으로 센다 — 형식 오류는 칸 아래 오류가 말한다. */
+  const parsedQty = Number(value.qty.trim());
+  const enteredQty = value.qty.trim() === '' || !Number.isFinite(parsedQty) ? 0 : parsedQty;
+  const restQty =
+    remainingQty === undefined ? 0 : Math.max(Number((remainingQty - enteredQty).toFixed(6)), 0);
 
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
-      <div className="field-cell">
-        <span className="field-label" id={groupLabelId}>
-          {t.form.dispositionLabel}
-        </span>
-        {/*
-         * G-2 — 값 목록이 확정되기 전에는 선택지를 지어내지 않는다. 필드를 감추지 않고
-         * 비활성 + 사유로 두며, 저장 버튼도 같은 사유로 함께 잠근다(스펙 §6).
-         */}
-        <RadioGroup
-          name="disposition-type"
-          orientation="horizontal"
-          value={value.dispositionTypeCode}
-          disabled={isLocked || dispositionOptions.length === 0}
-          aria-labelledby={groupLabelId}
-          aria-describedby={isLocked ? lockReasonId : undefined}
-          onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
-        >
-          {dispositionOptions.map((option) => (
-            <Radio key={option.value} value={option.value}>
-              {option.label}
-            </Radio>
-          ))}
-        </RadioGroup>
-        {errors.dispositionTypeCode !== undefined && (
-          <span className="field-error">{errors.dispositionTypeCode}</span>
-        )}
+      {/*
+       * 카드형(사용자 시안 · #223) — 처분 유형 | 처분 수량 | 판정 사유를 작은 상자 셋으로 나란히. 좁으면 다음 줄로 넘긴다.
+       */}
+      <div className="disposition-decision-cards">
+        <div className="field-cell disposition-decision-subcard">
+          <span className="field-label" id={groupLabelId}>
+            {t.form.dispositionLabel}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
+            </span>
+          </span>
+          {/*
+           * G-2 — 값 목록이 확정되기 전에는 선택지를 지어내지 않는다. 필드를 감추지 않고
+           * 비활성 + 사유로 두며, 저장 버튼도 같은 사유로 함께 잠근다(스펙 §6).
+           */}
+          <RadioGroup
+            name="disposition-type"
+            orientation="horizontal"
+            value={value.dispositionTypeCode}
+            disabled={isLocked || dispositionOptions.length === 0}
+            aria-labelledby={groupLabelId}
+            aria-describedby={isLocked ? lockReasonId : undefined}
+            onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
+          >
+            {dispositionOptions.map((option) => (
+              <Radio key={option.value} value={option.value}>
+                {option.label}
+              </Radio>
+            ))}
+          </RadioGroup>
+          {errors.dispositionTypeCode !== undefined && (
+            <span className="field-error">{errors.dispositionTypeCode}</span>
+          )}
+        </div>
+        <div className="disposition-decision-subcard disposition-qty-card">
+          <TextField
+            label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
+            value={value.qty}
+            placeholder={t.form.qtyPlaceholder}
+            required
+            fullWidth
+            inputMode="decimal"
+            disabled={isLocked}
+            aria-describedby={
+              [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
+                .filter((id) => id !== '')
+                .join(' ') || undefined
+            }
+            error={errors.decisionQty}
+            onChange={(event) => onChange({ ...value, qty: event.target.value })}
+          />
+          {/* 입력 / 미입력 — 적은 수량과 남은 수량에서 그것을 뺀 수(사용자 지시 · #223). 참고값이다 — 확정은 저장 때 서버. */}
+          {remainingQty !== undefined && (
+            /* 숫자를 크게 · 굵게 — 미입력이 남으면 주황, 다 채우면 초록(사용자 지시 · #223). 읽는 이름은 한 문장. */
+            <span
+              className="disposition-qty-progress"
+              role="status"
+              aria-label={t.form.qtyProgress(enteredQty, restQty, uomLabel)}
+            >
+              <span>
+                {t.form.qtyEntered} <strong>{enteredQty}</strong>
+              </span>
+              <span className="disposition-qty-progress-sep" aria-hidden="true">
+                /
+              </span>
+              <span data-tone={restQty > 0 ? 'warning' : 'success'}>
+                {t.form.qtyRest} <strong>{restQty}</strong>
+              </span>
+              {uomLabel !== '' && <span>{uomLabel}</span>}
+            </span>
+          )}
+        </div>
+        {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
+        {/* 여러 줄 입력 부품은 필수 표시(*)를 그리지 않아 CSS 로 붙인다(시안 「판정 사유 *」 · #223). */}
+        <div className="disposition-decision-subcard disposition-reason-field">
+          <TextArea
+            label={t.form.reasonLabel}
+            value={value.reason}
+            placeholder={t.form.reasonPlaceholder}
+            required
+            fullWidth
+            rows={2}
+            disabled={isLocked}
+            aria-describedby={isLocked ? lockReasonId : undefined}
+            error={errors.reason}
+            onChange={(event) => onChange({ ...value, reason: event.target.value })}
+          />
+        </div>
       </div>
-
-      <TextField
-        label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
-        value={value.qty}
-        required
-        fullWidth
-        inputMode="decimal"
-        disabled={isLocked}
-        aria-describedby={
-          [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
-            .filter((id) => id !== '')
-            .join(' ') || undefined
-        }
-        error={errors.decisionQty}
-        helperText={t.form.qtyHelp}
-        onChange={(event) => onChange({ ...value, qty: event.target.value })}
-      />
-      {qtyNotice !== undefined && (
-        <p id={noticeId} className="field-note">
-          {qtyNotice}
-        </p>
-      )}
       {/* 선별(omf-all-around#108) — 처분 수량을 양품·불량으로 나눈다. 합은 처분 수량이다. */}
       {value.dispositionTypeCode === SORT && (
         <>
@@ -139,20 +187,6 @@ export const DecisionFormPane = ({
         </>
       )}
 
-      {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
-      <TextArea
-        label={t.form.reasonLabel}
-        value={value.reason}
-        required
-        fullWidth
-        rows={3}
-        disabled={isLocked}
-        aria-describedby={isLocked ? lockReasonId : undefined}
-        error={errors.reason}
-        helperText={t.form.reasonHelp}
-        onChange={(event) => onChange({ ...value, reason: event.target.value })}
-      />
-
       {isLocked && (
         <div className="form-actions">
           <p id={lockReasonId} className="field-note form-actions-secondary">
@@ -166,8 +200,22 @@ export const DecisionFormPane = ({
         </div>
       )}
 
-      <div className="form-actions">
-        <p className="field-note form-actions-secondary">{t.form.irreversible}</p>
+      {/*
+       * 버튼은 입력 바로 아래 오른쪽(사용자 시안 · #223). 남은 수량을 넘겼다는 예고는 같은 줄 취소 왼쪽 —
+       * 막지 않는다(저장 때 서버가 확정한다).
+       */}
+      <div className="form-actions disposition-decision-actions">
+        {qtyNotice !== undefined && (
+          /* 검사 조회·판정의 안내 라벨과 같은 모양 — 경고 아이콘 + 주황 바탕 한 줄(사용자 지시 · #223). */
+          <p
+            id={noticeId}
+            className="iqc-inspection-action-note disposition-qty-notice"
+            data-tone="warning"
+          >
+            <Icon name="warning" size={14} aria-hidden />
+            {qtyNotice}
+          </p>
+        )}
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>
           {t.actions.cancel}
         </Button>

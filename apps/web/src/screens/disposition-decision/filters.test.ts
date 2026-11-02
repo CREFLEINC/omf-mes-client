@@ -228,6 +228,7 @@ describe('toPendingListQuery', () => {
     expect(toPendingListQuery(filters(), 1, KST)).toEqual({
       openedFrom: '2026-07-14T00:00:00+09:00',
       openedTo: '2026-08-13T00:00:00+09:00',
+      size: 20,
     });
   });
 
