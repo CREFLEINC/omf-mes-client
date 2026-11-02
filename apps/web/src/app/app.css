@@ -5528,8 +5528,8 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 .suspicious-material-hold-defect-row > .field-cell {
-  flex: 1 1 14rem;
-  max-width: 28rem;
+  /* 흐린 글자 「불량 유형을 선택하세요」가 다 보이는 만큼만(사용자 2026-11-02). */
+  flex: 0 1 16rem;
   min-width: 0;
 }
 
