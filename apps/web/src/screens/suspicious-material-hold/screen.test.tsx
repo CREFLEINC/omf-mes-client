@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -117,7 +117,7 @@ describe('의심자재 등록 screen', () => {
     await chooseWarehouse(user);
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     expect(await screen.findByText(/도착 상태를 확인할 때까지 등록할 수 없습니다/)).toBeVisible();
-    expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled();
     expect(requests).toHaveLength(0);
   });
 
@@ -127,17 +127,17 @@ describe('의심자재 등록 screen', () => {
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
     await user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-702 선택' }));
     expect(screen.queryByRole('radio', { name: '일부 보류' })).toBeNull();
-    const reason = screen.getByLabelText('보류 사유');
+    const reason = screen.getByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await user.click(reason);
     await user.click(screen.getByRole('option', { name: '파손' }));
     await user.type(screen.getByLabelText('해제 조건'), '재검 완료');
-    await waitFor(() => expect(screen.getByRole('button', { name: '등록 확인' })).toBeEnabled());
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '보류 등록' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: '보류 등록' }));
     const pinnedCount = candidateGets();
     await queryClient.invalidateQueries({ queryKey: ['suspicious-material-hold'] });
     expect(candidateGets()).toBe(pinnedCount);
-    await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(await requests[0]?.json()).toEqual({
       lots: [
@@ -156,17 +156,17 @@ describe('의심자재 등록 screen', () => {
     const view = renderScreen('HOLD');
     await chooseWarehouse(view.user);
     await view.user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
-    const reason = screen.getByLabelText('보류 사유');
+    const reason = screen.getByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await view.user.click(reason);
     await view.user.click(screen.getByRole('option', { name: '파손' }));
     await view.user.type(screen.getByLabelText('해제 조건'), '재검 완료');
-    await waitFor(() => expect(screen.getByRole('button', { name: '등록 확인' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: '보류 등록' })).toBeEnabled());
     view.deferCandidate();
     void view.queryClient.invalidateQueries({
       queryKey: ['suspicious-material-hold', 'candidates'],
     });
-    await waitFor(() => expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled());
     expect(screen.getByText('1건 선택')).toBeVisible();
     expect(view.requests).toHaveLength(0);
     view.releaseCandidate();
@@ -176,7 +176,7 @@ describe('의심자재 등록 screen', () => {
     const view = renderScreen('HOLD');
     await chooseWarehouse(view.user);
     await view.user.click(screen.getByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
-    expect(await screen.findByText(/25 EA · 개 · WH · 창고 \/ LOC · 격리장/)).toBeVisible();
+    expect(await screen.findByText(/25 · WH · 창고 \/ LOC · 격리장 · EA · 개/)).toBeVisible();
     view.setCandidateRows([
       lot(701, { versionNo: 702, locationId: 903001, uomId: 904001 }),
       lot(702),
@@ -184,9 +184,9 @@ describe('의심자재 등록 screen', () => {
     await view.queryClient.invalidateQueries({
       queryKey: ['suspicious-material-hold', 'candidates'],
     });
-    expect(await screen.findByText(/단위 이름 미확인 · 위치 이름 미확인/)).toBeVisible();
+    expect(await screen.findByText(/위치 미확인 · 단위 미확인/)).toBeVisible();
     expect(screen.queryByText(/EA · 개 · WH · 창고 \/ LOC · 격리장/)).toBeNull();
-    expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled();
     for (const raw of ['903001', '904001']) expect(screen.queryByText(raw)).toBeNull();
   });
 });

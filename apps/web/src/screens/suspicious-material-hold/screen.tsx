@@ -1,4 +1,4 @@
-import { Breadcrumb, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Chip, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -56,23 +56,41 @@ export const SuspiciousMaterialHoldFlow = ({
         onSelectionChange={setSelection}
         onAvailabilityChange={setCandidateReady}
         detail={
-          <>
-            <SuspiciousMaterialHoldInputPane
-              selection={candidateReady ? inputSelection : []}
-              targetLotStatusCode={targetLotStatusCode}
-              isLocked={pinned}
-              onBodyChange={setBody}
-            />
-            <SuspiciousMaterialHoldExecution
-              body={body}
-              selected={selection}
-              onConfirmationChange={changePinned}
-              onApplied={clear}
-              onReload={clear}
-            />
-            {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록과 영향 생산 LOT(계보 기준 추정 · #166). */}
-            <MaterialDefectPane selection={candidateReady ? selection : []} isLocked={pinned} />
-          </>
+          /*
+           * 오른쪽 한 카드 「의심자재 보류 등록」 — 보류 입력 · [보류 등록] · 자재 불량 기록 · 영향 생산 LOT 을 가는 선으로
+           * 가른 구획으로(사용자 시안 2026-11-02). 고르기 전에는 안내만.
+           */
+          <section className="pane suspicious-material-hold-card" aria-label={t.card.title}>
+            <div className="suspicious-material-hold-card-head">
+              <h2 className="pane-title">{t.card.title}</h2>
+              {selection.length > 0 && <Chip size="sm">{t.card.selected(selection.length)}</Chip>}
+            </div>
+            {selection.length === 0 ? (
+              <EmptyState
+                size="sm"
+                icon={<Icon name="arrow_selector_tool" size={24} />}
+                title={messages.lotStatusHistory.detail.pick}
+              />
+            ) : (
+              <>
+                <SuspiciousMaterialHoldInputPane
+                  selection={candidateReady ? inputSelection : []}
+                  targetLotStatusCode={targetLotStatusCode}
+                  isLocked={pinned}
+                  onBodyChange={setBody}
+                />
+                <SuspiciousMaterialHoldExecution
+                  body={body}
+                  selected={selection}
+                  onConfirmationChange={changePinned}
+                  onApplied={clear}
+                  onReload={clear}
+                />
+                {/* omf-all-around#108 — 고른 LOT 하나의 자재 불량 기록과 영향 생산 LOT(계보 기준 추정 · #166). */}
+                <MaterialDefectPane selection={candidateReady ? selection : []} isLocked={pinned} />
+              </>
+            )}
+          </section>
         }
       />
     </div>

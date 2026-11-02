@@ -56,25 +56,24 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     range: 'Phạm vi tạm giữ',
     full: 'Tạm giữ toàn bộ',
     partial: 'Tạm giữ một phần',
-    fullDescription:
-      'Tạm giữ toàn bộ không sao chép số lượng hiện tại thành con số, máy chủ xử lý toàn bộ số lượng tại thời điểm áp dụng.',
     quantity: 'Số lượng tạm giữ',
     reason: 'Lý do tạm giữ',
-    reasonPlaceholder: 'Hãy chọn lý do',
+    reasonPlaceholder: 'Chọn lý do',
     releaseCondition: 'Điều kiện gỡ',
+    releaseConditionPlaceholder: 'Nhập điều kiện gỡ',
     remarks: 'Ghi chú',
+    remarksPlaceholder: 'Nhập nội dung bổ sung (tùy chọn)',
     reasonUnavailable:
       'Danh sách lý do tạm giữ chưa đầy đủ. Chưa xác nhận được lý do thì chưa đăng ký được.',
     factsUnavailable:
       'Chưa xác nhận được vị trí · đơn vị hoặc trạng thái đến nơi thì chưa đăng ký được.',
     impact: 'Ảnh hưởng của việc tạm giữ',
-    impactCount: (count: number): string =>
-      `Sẽ chặn xuất kho · xuất hàng · lấy hàng của ${String(count)} LOT.`,
+    impactTarget: (count: number): string => `LOT đối tượng ${String(count)}`,
     quantityUnknown: 'Chưa xác định số lượng',
-    uomUnknown: 'Chưa xác định tên đơn vị',
-    locationUnknown: 'Chưa xác định tên vị trí',
-    recovery:
-      'Muốn gỡ thì cần một lần chuyển Release riêng ở W-03-02, và số lượng đã xuất kho sẽ không thu hồi lại được.',
+    uomUnknown: 'Chưa xác định đơn vị',
+    locationUnknown: 'Chưa xác định vị trí',
+    impactRestriction: 'Khi tạm giữ, xuất kho · xuất hàng · lấy hàng sẽ bị hạn chế.',
+    recovery: 'Khi gỡ tạm giữ cần xử lý Release riêng.',
   },
   execution: {
     pane: 'Thực hiện tạm giữ vật tư nghi ngờ',
@@ -82,7 +81,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     completeInput: 'Nhập lý do tạm giữ và điều kiện gỡ thì mới đăng ký được.',
     ready: (count: number): string =>
       `Hãy kiểm tra nội dung đăng ký tạm giữ của ${String(count)} mục.`,
-    confirm: 'Xác nhận đăng ký',
+    confirm: 'Đăng ký tạm giữ',
     success: 'Đã đăng ký tạm giữ vật tư nghi ngờ.',
     successNext: 'Hãy xử lý tiếp ở màn hình Xử lý đánh giá · chuyển đổi Lot Status.',
     dialogTitle: 'Xác nhận đăng ký tạm giữ vật tư nghi ngờ',
@@ -99,5 +98,19 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     conflictChanged: (owner: string): string =>
       `Trạng thái của ${owner} đã thay đổi. Hãy tải lại nội dung mới nhất.`,
     conflictServer: (owner: string, message: string): string => `${owner}: ${message}`,
+  },
+  card: {
+    title: 'Đăng ký tạm giữ vật tư nghi ngờ',
+    selected: (count: number): string => `LOT đã chọn ${String(count)}`,
+  },
+  defect: {
+    major: 'Loại lỗi',
+    majorPlaceholder: 'Chọn loại lỗi',
+    qtyPlaceholder: 'Nhập số lượng',
+    descriptionPlaceholder: 'Nhập nội dung lỗi',
+    submit: 'Ghi nhận lỗi',
+    affectedCount: (count: number): string => String(count),
+    estimateNote:
+      'Đây là LOT được ước tính theo lệnh sản xuất, có thể khác với LOT thực tế đã dùng.',
   },
 };

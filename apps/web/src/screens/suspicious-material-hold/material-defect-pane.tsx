@@ -1,4 +1,4 @@
-import { Button, Chip, Table, TextField, type Column } from '@crefle/web-ui';
+import { Button, Table, TextField, type Column } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
@@ -24,6 +24,8 @@ import type { SelectedLotSnapshot } from './candidate-model';
 type AffectedProductionLots = components['schemas']['AffectedProductionLots'];
 
 const t = messages.materialDefect;
+/* 이 화면 시안 글자(사용자 2026-11-02) — POP 자재 불량 화면과 같이 쓰는 기본 문구는 그대로 둔다. */
+const tHere = messages.suspiciousMaterialHold.defect;
 
 type AffectedRow = AffectedProductionLots['items'][number];
 
@@ -81,8 +83,8 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
 
   if (lot === null) {
     return (
-      <section className="pane" aria-label={t.pane.heading}>
-        <h2>{t.pane.heading}</h2>
+      <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
+        <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
         <p className="field-note">{t.pane.singleOnly}</p>
       </section>
     );
@@ -117,94 +119,108 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
 
   const disabled = isLocked || record.isSaving;
 
+  /*
+   * 「의심자재 보류 등록」 카드 안 두 구획 — 자재 불량 기록, 영향 생산 LOT(사용자 시안 2026-11-02). 구획 사이는 가는
+   * 선으로 가른다.
+   */
   return (
-    <section className="pane" aria-label={t.pane.heading}>
-      <h2>{t.pane.heading}</h2>
-      <p className="field-note">
-        {t.lot.label} {lot.lotNo}
-      </p>
-
-      {codes.isError && <p className="field-note">{t.code.loadFailed}</p>}
-      {codes.data !== undefined && majors.length === 0 && (
-        <p className="field-note">{t.code.none}</p>
-      )}
-      <div className="form-grid">
-        <div className="field-cell">
-          <label className="field-label" htmlFor={majorFieldId}>
-            {t.code.major}
-          </label>
-          <Select
-            id={majorFieldId}
-            options={majors.map(optionOf)}
-            value={code.majorId}
-            disabled={disabled || majors.length === 0}
-            onChange={(value) => setCode({ majorId: value, minorId: '' })}
-          />
-        </div>
-        {minors.length > 0 && (
+    <>
+      <section className="suspicious-material-hold-section" aria-label={t.pane.heading}>
+        <h3 className="suspicious-material-hold-subtitle">{t.pane.heading}</h3>
+        {codes.isError && <p className="field-note">{t.code.loadFailed}</p>}
+        {codes.data !== undefined && majors.length === 0 && (
+          <p className="field-note">{t.code.none}</p>
+        )}
+        <div className="form-grid">
           <div className="field-cell">
-            <label className="field-label" htmlFor={minorFieldId}>
-              {t.code.minor}
+            <label className="field-label" htmlFor={majorFieldId}>
+              {tHere.major}
             </label>
             <Select
-              id={minorFieldId}
-              options={minors.map(optionOf)}
-              value={code.minorId}
-              disabled={disabled}
-              onChange={(value) => setCode({ ...code, minorId: value })}
+              id={majorFieldId}
+              options={majors.map(optionOf)}
+              value={code.majorId}
+              placeholder={tHere.majorPlaceholder}
+              disabled={disabled || majors.length === 0}
+              onChange={(value) => setCode({ majorId: value, minorId: '' })}
             />
           </div>
+          {minors.length > 0 && (
+            <div className="field-cell">
+              <label className="field-label" htmlFor={minorFieldId}>
+                {t.code.minor}
+              </label>
+              <Select
+                id={minorFieldId}
+                options={minors.map(optionOf)}
+                value={code.minorId}
+                disabled={disabled}
+                onChange={(value) => setCode({ ...code, minorId: value })}
+              />
+            </div>
+          )}
+          <TextField
+            label={t.qty.label}
+            placeholder={tHere.qtyPlaceholder}
+            inputMode="decimal"
+            value={qty}
+            disabled={disabled}
+            error={record.fieldErrors.defectQty}
+            onChange={(event) => setQty(event.target.value)}
+          />
+          <TextField
+            label={t.description}
+            placeholder={tHere.descriptionPlaceholder}
+            value={description}
+            disabled={disabled}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </div>
+        <SaveErrorBanner error={record.error} />
+        {isRecorded && <p className="field-note">{t.recorded}</p>}
+        <div className="suspicious-material-hold-action-row">
+          <Button
+            disabled={blocked !== null || disabled}
+            title={blocked ?? undefined}
+            onClick={submit}
+          >
+            {record.isSaving ? t.saving : tHere.submit}
+          </Button>
+        </div>
+      </section>
+
+      <section className="suspicious-material-hold-section" aria-label={t.affected.heading}>
+        <div className="suspicious-material-hold-section-head">
+          <h3 className="suspicious-material-hold-subtitle">{t.affected.heading}</h3>
+          {affected.data !== undefined && (
+            <span className="suspicious-material-hold-count">
+              {tHere.affectedCount(affected.data.items.length)}
+            </span>
+          )}
+        </div>
+        {affected.isError ? (
+          <p className="field-note">{t.affected.loadFailed}</p>
+        ) : (
+          <Table
+            caption={t.affected.caption}
+            density="compact"
+            columns={columnsOf(statuses.describe)}
+            rows={affected.data?.items ?? []}
+            getRowId={(row) => String(row.lotId)}
+            empty={
+              <p className="field-note">
+                {affected.isPending ? t.affected.loading : t.affected.none}
+              </p>
+            }
+          />
         )}
-        <TextField
-          label={t.qty.label}
-          inputMode="decimal"
-          value={qty}
-          disabled={disabled}
-          error={record.fieldErrors.defectQty}
-          onChange={(event) => setQty(event.target.value)}
-        />
-        <TextField
-          label={t.description}
-          value={description}
-          disabled={disabled}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </div>
-
-      <SaveErrorBanner error={record.error} />
-      {isRecorded && <p className="field-note">{t.recorded}</p>}
-      <p className="field-note">{t.hold.webNote}</p>
-      <div className="form-actions">
-        {blocked !== null && <p className="field-note form-actions-secondary">{blocked}</p>}
-        <Button variant="filled" size="sm" disabled={blocked !== null || disabled} onClick={submit}>
-          {record.isSaving ? t.saving : t.submit}
-        </Button>
-      </div>
-
-      <h3>{t.affected.heading}</h3>
-      <p className="field-note">
-        <Chip variant="status" size="sm" status="warning">
+        {/* 추정 근거는 표 아래 한 줄 — 작업지시 기준이면 시안 문장, 계보 기준이면 그 근거 문장. */}
+        <p className="field-note">
           {affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE'
             ? t.affected.genealogy
-            : t.affected.estimate}
-        </Chip>
-      </p>
-      {affected.isError ? (
-        <p className="field-note">{t.affected.loadFailed}</p>
-      ) : (
-        <Table
-          caption={t.affected.caption}
-          density="compact"
-          columns={columnsOf(statuses.describe)}
-          rows={affected.data?.items ?? []}
-          getRowId={(row) => String(row.lotId)}
-          empty={
-            <p className="field-note">
-              {affected.isPending ? t.affected.loading : t.affected.none}
-            </p>
-          }
-        />
-      )}
-    </section>
+            : tHere.estimateNote}
+        </p>
+      </section>
+    </>
   );
 };

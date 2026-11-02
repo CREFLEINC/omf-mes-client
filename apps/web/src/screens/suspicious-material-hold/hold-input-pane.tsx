@@ -150,10 +150,14 @@ export const SuspiciousMaterialHoldInputPane = ({
   const update = <K extends keyof HoldDraft>(key: K, value: HoldDraft[K]): void =>
     setDraft((current) => ({ ...current, [key]: value }));
 
+  /*
+   * 「의심자재 보류 등록」 카드의 첫 구획 — 보류 범위 · 사유 · 해제 조건 · 비고, 그 아래 보류 영향(사용자 시안 2026-11-02).
+   * 카드 자체는 screen.tsx 가 세운다.
+   */
   return (
-    <section className="pane suspicious-material-hold-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.pane}</h2>
-      <div className="suspicious-material-hold-range">
+    <div className="suspicious-material-hold-section" role="group" aria-label={t.pane}>
+      <div className="field-cell suspicious-material-hold-range">
+        <span className="field-label">{t.range}</span>
         <RadioGroup
           name="suspicious-material-hold-mode"
           orientation="horizontal"
@@ -171,7 +175,6 @@ export const SuspiciousMaterialHoldInputPane = ({
           <Radio value="FULL">{t.full}</Radio>
           {selection.length === 1 && <Radio value="PARTIAL">{t.partial}</Radio>}
         </RadioGroup>
-        <p className="field-note">{t.fullDescription}</p>
       </div>
       <div className="form-grid suspicious-material-hold-input-grid">
         {draft.mode === 'PARTIAL' && selection.length === 1 && (
@@ -185,7 +188,11 @@ export const SuspiciousMaterialHoldInputPane = ({
         )}
         <div className="field-cell wide-select">
           <label className="field-label" htmlFor={reasonId}>
-            {t.reason}
+            {t.reason}{' '}
+            {/* 보류 사유 · 해제 조건은 등록을 막는 필수 칸이다 — 이름 옆 빨간 *(화면 규칙). */}
+            <span className="required-mark" aria-hidden="true">
+              *
+            </span>
           </label>
           <Select
             id={reasonId}
@@ -198,12 +205,15 @@ export const SuspiciousMaterialHoldInputPane = ({
         </div>
         <TextField
           label={t.releaseCondition}
+          required
+          placeholder={t.releaseConditionPlaceholder}
           value={draft.releaseCondition}
           disabled={isLocked}
           onChange={(event) => update('releaseCondition', event.target.value)}
         />
         <TextArea
           label={t.remarks}
+          placeholder={t.remarksPlaceholder}
           rows={3}
           value={draft.remarks}
           disabled={isLocked}
@@ -221,21 +231,29 @@ export const SuspiciousMaterialHoldInputPane = ({
         </div>
       )}
       <section className="suspicious-material-hold-impact" aria-label={t.impact}>
-        <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
-        <p className="suspicious-material-hold-impact-lead">{t.impactCount(selection.length)}</p>
-        <ul>
+        <div className="suspicious-material-hold-section-head">
+          <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
+          <span className="suspicious-material-hold-count">{t.impactTarget(selection.length)}</span>
+        </div>
+        <ul className="suspicious-material-hold-impact-list">
           {selection.map((lot) => (
             <li key={lot.lotId}>
               <strong>{lot.lotNo}</strong>
-              <span>
-                {lot.onHandQty === undefined ? t.quantityUnknown : String(lot.onHandQty)}{' '}
-                {lot.uomLabel ?? t.uomUnknown} · {lot.locationLabel ?? t.locationUnknown}
+              <span className="suspicious-material-hold-impact-facts">
+                {[
+                  lot.onHandQty === undefined ? t.quantityUnknown : String(lot.onHandQty),
+                  lot.locationLabel ?? t.locationUnknown,
+                  lot.uomLabel ?? t.uomUnknown,
+                ].join(' · ')}
+              </span>
+              <span className="suspicious-material-hold-impact-restriction">
+                {t.impactRestriction}
               </span>
             </li>
           ))}
         </ul>
         <p className="field-note">{t.recovery}</p>
       </section>
-    </section>
+    </div>
   );
 };

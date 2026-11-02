@@ -5271,6 +5271,102 @@ h2:has(> .inspection-standard-dialog-title) {
   overflow: visible;
 }
 
+/*
+ * 의심자재 보류 등록 카드 — 보류 입력 · [보류 등록] · 자재 불량 기록 · 영향 생산 LOT 을 한 카드 안 구획으로 두고, 구획 사이는
+ * 가는 선으로 가른다(사용자 시안 2026-11-02).
+ */
+.suspicious-material-hold-card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.suspicious-material-hold-card-head,
+.suspicious-material-hold-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.suspicious-material-hold-card-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.suspicious-material-hold-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-section > .banner-slot {
+  margin-bottom: 0;
+}
+
+/* 구획 안 안내 한 줄은 카드 폭을 다 쓴다 — 좁은 폭에서 두 줄로 접히지 않게. */
+.suspicious-material-hold-section .field-note,
+.suspicious-material-hold-impact > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+/* 영향 생산 LOT 표 이름은 구획 제목이 대신한다 — 화면 읽기용으로만 남긴다. */
+.suspicious-material-hold-section caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 앞 구획과 가는 선으로 가른다 — 보류 입력 다음의 자재 불량 기록 · 영향 생산 LOT. */
+.suspicious-material-hold-action + .suspicious-material-hold-section,
+.suspicious-material-hold-section + .suspicious-material-hold-section {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.suspicious-material-hold-count {
+  color: var(--on-surface-variant);
+}
+
+/* 보류 영향 — LOT 마다 번호 · 수량 · 위치 · 단위, 붉은 제한 안내를 회색 상자 안에. */
+.suspicious-material-hold-impact-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-impact-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  overflow-wrap: anywhere;
+}
+
+.suspicious-material-hold-impact-facts {
+  color: var(--on-surface-variant);
+}
+
+.suspicious-material-hold-impact-restriction {
+  color: var(--semantic-error-text);
+}
+
 /* 의심자재 등록 — 후보 선택, 보류 입력, 실행 확인의 세 단계를 독립된 카드로 읽게 한다. */
 .suspicious-material-hold-workspace {
   display: grid;
@@ -5335,16 +5431,13 @@ h2:has(> .inspection-standard-dialog-title) {
   border: 0;
 }
 
+/* 보류 범위 · 보류 영향 — 상자 없이 이름 아래로 쌓는다(사용자 시안 2026-11-02). */
 .suspicious-material-hold-range,
 .suspicious-material-hold-impact {
   display: grid;
   align-content: start;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
 }
 
 .suspicious-material-hold-range > .field-note,
@@ -5361,46 +5454,11 @@ h2:has(> .inspection-standard-dialog-title) {
   grid-column: 1 / -1;
 }
 
-.suspicious-material-hold-pane > .banner-slot {
-  margin-bottom: 0;
-}
-
 .suspicious-material-hold-subtitle {
   margin: 0;
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
   font: var(--type-title-md);
   letter-spacing: var(--type-title-md-tracking);
-}
-
-.suspicious-material-hold-impact-lead {
-  margin: 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-.suspicious-material-hold-impact > ul {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.suspicious-material-hold-impact li {
-  display: grid;
-  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
-  gap: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.suspicious-material-hold-impact li > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.suspicious-material-hold-action-pane {
-  padding-block: var(--space-4);
 }
 
 .suspicious-material-hold-action-row > .field-note {

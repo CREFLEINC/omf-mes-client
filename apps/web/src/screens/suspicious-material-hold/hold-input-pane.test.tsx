@@ -132,10 +132,10 @@ const renderPane = (
 describe('의심자재 보류 입력 pane', () => {
   it('선택이 없으면 입력이 없고 단건은 일부·다건은 전량만 제공한다', async () => {
     const empty = renderPane([]);
-    expect(screen.queryByRole('region', { name: '보류 등록 입력' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '보류 등록 입력' })).toBeNull();
     empty.unmount();
     const one = renderPane([display(701)]);
-    expect(screen.getByRole('heading', { level: 2, name: '보류 등록 입력' })).toBeVisible();
+    expect(screen.getByRole('group', { name: '보류 등록 입력' })).toBeVisible();
     expect(await screen.findByRole('radio', { name: '일부 보류' })).toBeEnabled();
     one.unmount();
     renderPane([display(701), display(702)]);
@@ -149,7 +149,7 @@ describe('의심자재 보류 입력 pane', () => {
       [display(701)],
       reasons([{ code: 'DAMAGE', codeName: '파손', nameKo: '파손(현지)', isActive: true }]),
     );
-    const reason = await screen.findByLabelText('보류 사유');
+    const reason = await screen.findByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await user.click(reason);
     await user.click(screen.getByRole('option', { name: '파손(현지)' }));
@@ -163,7 +163,7 @@ describe('의심자재 보류 입력 pane', () => {
 
   it('사유·해제 조건과 일부 수량이 유효할 때만 exact body를 알린다', async () => {
     const { onBodyChange, user } = renderPane([display(701)]);
-    const reason = await screen.findByLabelText('보류 사유');
+    const reason = await screen.findByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await user.click(reason);
     await user.click(screen.getByRole('option', { name: '파손' }));
@@ -193,8 +193,8 @@ describe('의심자재 보류 입력 pane', () => {
       reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }], 2),
     );
     expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
-    expect(screen.getByText(/위치 이름 미확인/)).toBeVisible();
-    expect(screen.getByText(/단위 이름 미확인/)).toBeVisible();
+    expect(screen.getByText(/위치 미확인/)).toBeVisible();
+    expect(screen.getByText(/단위 미확인/)).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
     for (const raw of ['802001', '803001', '804001']) expect(screen.queryByText(raw)).toBeNull();
   });
@@ -207,7 +207,7 @@ describe('의심자재 보류 입력 pane', () => {
     const view = renderPane([display(701)], (call) =>
       call === 1 ? reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }]) : pending,
     );
-    const reason = await screen.findByLabelText('보류 사유');
+    const reason = await screen.findByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await view.user.click(reason);
     await view.user.click(screen.getByRole('option', { name: '파손' }));

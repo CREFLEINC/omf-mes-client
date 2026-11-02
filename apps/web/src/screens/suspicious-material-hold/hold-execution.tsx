@@ -116,16 +116,13 @@ export const SuspiciousMaterialHoldExecution = ({
         ? t.completeInput
         : t.ready(selected.length);
 
+  /* 「의심자재 보류 등록」 카드 안 [보류 등록] 한 줄 — 제목 · 안내 문구 없이 단추만(사용자 시안 2026-11-02). */
   return (
-    <section
-      className="pane suspicious-material-hold-pane suspicious-material-hold-action-pane"
-      aria-label={t.pane}
-    >
-      <h2 className="pane-title">{t.pane}</h2>
+    <div className="suspicious-material-hold-action" role="group" aria-label={t.pane}>
       <div className="suspicious-material-hold-action-row">
-        <p className="field-note">{guidance}</p>
         <Button
           disabled={body === null || confirmation !== null}
+          title={guidance}
           onClick={() => {
             if (body !== null) {
               setApplied(false);
@@ -194,6 +191,6 @@ export const SuspiciousMaterialHoldExecution = ({
           </AlertBanner>
         </Dialog>
       )}
-    </section>
+    </div>
   );
 };

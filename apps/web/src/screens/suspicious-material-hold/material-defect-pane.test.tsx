@@ -84,7 +84,9 @@ describe('MaterialDefectPane (W-03-03)', () => {
 
     expect(await screen.findByText('PLOT-90')).toBeInTheDocument();
     expect(screen.getByText('WO-41')).toBeInTheDocument();
-    expect(screen.getByText(t.affected.estimate)).toBeInTheDocument();
+    expect(
+      screen.getByText('작업지시 기준으로 추정된 LOT이며, 실제 사용 LOT와 다를 수 있습니다.'),
+    ).toBeInTheDocument();
   });
 
   /* 담당자 검증 #108 ② — 상태는 코드값이 아니라 이름이다. */
@@ -99,10 +101,10 @@ describe('MaterialDefectPane (W-03-03)', () => {
     const user = userEvent.setup();
     const { writes } = renderPane([LOT]);
 
-    await user.click(await screen.findByRole('combobox', { name: t.code.major }));
+    await user.click(await screen.findByRole('combobox', { name: '불량 유형' }));
     await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
     await user.type(screen.getByRole('textbox', { name: t.qty.label }), '2');
-    await user.click(screen.getByRole('button', { name: t.submit }));
+    await user.click(screen.getByRole('button', { name: '불량 기록' }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
     const [record] = writes;
@@ -122,17 +124,17 @@ describe('MaterialDefectPane (W-03-03)', () => {
     const user = userEvent.setup();
     const { writes } = renderPane([LOT]);
 
-    await user.click(await screen.findByRole('combobox', { name: t.code.major }));
+    await user.click(await screen.findByRole('combobox', { name: '불량 유형' }));
     await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
     await user.type(screen.getByRole('textbox', { name: t.qty.label }), '5');
     await user.type(screen.getByRole('textbox', { name: t.description }), '찍힘');
-    await user.click(screen.getByRole('button', { name: t.submit }));
+    await user.click(screen.getByRole('button', { name: '불량 기록' }));
 
     expect(await screen.findByText(t.recorded)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveValue('');
     expect(screen.getByRole('textbox', { name: t.description })).toHaveValue('');
-    expect(screen.getByRole('combobox', { name: t.code.major })).not.toHaveTextContent('D-SCR');
-    expect(screen.getByRole('button', { name: t.submit })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: '불량 유형' })).not.toHaveTextContent('D-SCR');
+    expect(screen.getByRole('button', { name: '불량 기록' })).toBeDisabled();
     expect(writes).toHaveLength(1);
   });
 });

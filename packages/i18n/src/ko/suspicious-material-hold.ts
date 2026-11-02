@@ -47,31 +47,31 @@ export const suspiciousMaterialHold = {
     range: '보류 범위',
     full: '전량 보류',
     partial: '일부 보류',
-    fullDescription:
-      '전량 보류는 현재 수량을 숫자로 복사하지 않고 서버가 적용 시점의 전량을 처리합니다.',
     quantity: '보류 수량',
     reason: '보류 사유',
-    reasonPlaceholder: '사유를 선택하세요',
+    /* 칸 안 흐린 글자 — 사용자 시안(2026-11-02) 글자 그대로. */
+    reasonPlaceholder: '사유 선택',
     releaseCondition: '해제 조건',
+    releaseConditionPlaceholder: '해제 조건 입력',
     remarks: '비고',
+    remarksPlaceholder: '추가 내용 입력 (선택)',
     reasonUnavailable:
       '보류 사유 목록이 완결되지 않았습니다. 사유를 확인할 때까지 등록할 수 없습니다.',
     factsUnavailable: '위치·단위 또는 도착 상태를 확인할 때까지 등록할 수 없습니다.',
     impact: '보류 영향',
-    impactCount: (count: number): string =>
-      `${String(count)}개 LOT을 출고·출하·피킹할 수 없게 합니다.`,
+    impactTarget: (count: number): string => `대상 LOT ${String(count)}건`,
     quantityUnknown: '수량 미확인',
-    uomUnknown: '단위 이름 미확인',
-    locationUnknown: '위치 이름 미확인',
-    recovery:
-      '해제하려면 W-03-02에서 별도 Release 전이가 필요하며 이미 출고된 수량은 회수되지 않습니다.',
+    uomUnknown: '단위 미확인',
+    locationUnknown: '위치 미확인',
+    impactRestriction: '보류 시 출고·출하·피킹이 제한됩니다.',
+    recovery: '보류 해제 시 별도의 Release 처리가 필요합니다.',
   },
   execution: {
     pane: '의심자재 보류 실행',
     selectFirst: '후보 LOT을 선택하면 보류 정보를 입력할 수 있습니다.',
     completeInput: '보류 사유와 해제 조건을 입력하면 등록할 수 있습니다.',
     ready: (count: number): string => `${String(count)}건의 보류 등록 내용을 확인하세요.`,
-    confirm: '등록 확인',
+    confirm: '보류 등록',
     success: '의심자재 보류를 등록했습니다.',
     successNext: 'Lot Status 판정·전이 처리에서 후속 처리하세요.',
     dialogTitle: '의심자재 보류 등록 확인',
@@ -87,5 +87,20 @@ export const suspiciousMaterialHold = {
     conflictChanged: (owner: string): string =>
       `${owner}의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.`,
     conflictServer: (owner: string, message: string): string => `${owner}: ${message}`,
+  },
+  /** 오른쪽 한 카드 — 보류 입력 · 등록 · 자재 불량 기록 · 영향 생산 LOT(사용자 시안 2026-11-02). */
+  card: {
+    title: '의심자재 보류 등록',
+    selected: (count: number): string => `선택 LOT ${String(count)}건`,
+  },
+  /** 자재 불량 기록 구획의 이 화면 문구 — POP 자재 불량 화면과 같은 기본 문구 위에 시안 글자를 얹는다. */
+  defect: {
+    major: '불량 유형',
+    majorPlaceholder: '불량 유형 선택',
+    qtyPlaceholder: '수량 입력',
+    descriptionPlaceholder: '불량 내용 입력',
+    submit: '불량 기록',
+    affectedCount: (count: number): string => `${String(count)}건`,
+    estimateNote: '작업지시 기준으로 추정된 LOT이며, 실제 사용 LOT와 다를 수 있습니다.',
   },
 } as const;
