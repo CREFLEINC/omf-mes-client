@@ -22,8 +22,8 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       status: 'Trạng thái',
       latestTransition: 'Ngày đổi trạng thái gần nhất',
       /** 상세 검색의 선택 칸 이름(사용자 2026-11-02). */
-      itemSearch: 'Mặt hàng',
-      warehouseSearch: 'Kho',
+      itemSearch: 'Tìm mặt hàng',
+      warehouseSearch: 'Tìm vị trí',
       /** 조회 줄 기간 두 칸(사용자 2026-11-02). */
       periodFrom: 'Chọn ngày bắt đầu đổi trạng thái',
       periodTo: 'Chọn ngày kết thúc đổi trạng thái',

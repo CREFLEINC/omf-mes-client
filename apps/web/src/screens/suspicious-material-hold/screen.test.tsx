@@ -103,7 +103,7 @@ const renderScreen = (target: string | null, publicScreen = false) => {
   };
 };
 const chooseWarehouse = async (user: ReturnType<typeof userEvent.setup>) => {
-  const warehouse = await screen.findByLabelText('창고');
+  const warehouse = await screen.findByLabelText('위치 검색');
   await waitFor(() => expect(warehouse).toBeEnabled());
   await user.click(warehouse);
   await user.click(screen.getByRole('option', { name: 'WH · 창고' }));

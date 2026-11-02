@@ -13,9 +13,9 @@ export const suspiciousMaterialHold = {
       quantity: '보유 수량',
       status: '상태',
       latestTransition: '최근 상태 변경일',
-      /** 상세 검색의 선택 칸 이름 — 용어 정리로 짧게(사용자 2026-11-02). */
-      itemSearch: '품목',
-      warehouseSearch: '창고',
+      /** 상세 검색의 선택 칸 이름(사용자 2026-11-02 — 창고 칸도 「위치 검색」). */
+      itemSearch: '품목 검색',
+      warehouseSearch: '위치 검색',
       /** 조회 줄 기간 두 칸 — 이름 · 흐린 글자(사용자 2026-11-02). */
       periodFrom: '상태 변경 시작일 선택',
       periodTo: '상태 변경 종료일 선택',
