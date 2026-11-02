@@ -1,9 +1,11 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import type { SelectedLotSnapshot } from './candidate-model';
 import {
   buildSuspiciousMaterialHoldBody,
@@ -134,7 +136,13 @@ const renderPane = (
       </>
     );
   };
-  const view = renderWithProviders(<Harness />, { fetch });
+  /* 제한 사항 항목의 상세 팝업(LOT 상태 이력과 같은 팝업)이 세션 권한을 읽는다. */
+  const view = renderWithProviders(
+    <SessionProvider>
+      <Harness />
+    </SessionProvider>,
+    { fetch, session: SYNTHETIC_SESSION },
+  );
   return { ...view, onBodyChange, user: userEvent.setup() };
 };
 
@@ -232,5 +240,14 @@ describe('의심자재 보류 입력 pane', () => {
     release(reasons([{ code: 'DAMAGE', codeName: '   ', isActive: true }]));
     expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
     expect(screen.queryByRole('option', { name: 'DAMAGE' })).toBeNull();
+  });
+
+  it('보류 시 제한 사항 항목을 누르면 그 LOT 의 상세 팝업이 열리고 [닫기]로 닫힌다', async () => {
+    const { user } = renderPane([display(701)]);
+    await user.click(await screen.findByRole('button', { name: 'SYN-LOT-701 상세 보기' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

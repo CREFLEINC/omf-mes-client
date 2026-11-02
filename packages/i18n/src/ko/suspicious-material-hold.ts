@@ -50,11 +50,11 @@ export const suspiciousMaterialHold = {
     quantity: '보류 수량',
     reason: '보류 사유',
     /* 칸 안 흐린 글자 — 사용자 시안(2026-11-02) 글자 그대로. */
-    reasonPlaceholder: '사유 선택',
+    reasonPlaceholder: '사유를 선택하세요',
     releaseCondition: '해제 조건',
-    releaseConditionPlaceholder: '해제 조건 입력',
+    releaseConditionPlaceholder: '해제 조건을 입력하세요',
     remarks: '비고',
-    remarksPlaceholder: '추가 내용 입력 (선택)',
+    remarksPlaceholder: '추가 내용을 입력하세요',
     reasonUnavailable:
       '보류 사유 목록이 완결되지 않았습니다. 사유를 확인할 때까지 등록할 수 없습니다.',
     factsUnavailable: '위치·단위 또는 도착 상태를 확인할 때까지 등록할 수 없습니다.',
@@ -64,6 +64,8 @@ export const suspiciousMaterialHold = {
     locationName: '위치',
     /** 못 받은 값 이름을 「수량 · 위치 · 단위 미확인」처럼 묶는다(사용자 시안 2026-11-02). */
     unknownFacts: (names: string): string => `${names} 미확인`,
+    /** 제한 사항 항목 단추의 이름 — 누르면 LOT 상세 팝업(사용자 2026-11-02). */
+    openDetail: (lotNo: string): string => `${lotNo} 상세 보기`,
     impactRestriction: '출고·출하·피킹 제한',
     recovery: '보류 해제 시 별도의 Release 처리가 필요합니다.',
   },

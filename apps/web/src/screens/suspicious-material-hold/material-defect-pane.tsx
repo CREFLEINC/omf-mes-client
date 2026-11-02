@@ -187,6 +187,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
             options={majors.map(optionOf)}
             value={code.majorId}
             placeholder={noCodes ? tHere.noCodesPlaceholder : tHere.majorPlaceholder}
+            invalid={!disabled && !locked && code.majorId === ''}
             disabled={disabled || locked}
             onChange={(value) => setCode({ majorId: value, minorId: '' })}
           />
@@ -213,6 +214,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
           label={t.qty.label}
           required
           placeholder={tHere.qtyPlaceholder}
+          aria-invalid={!disabled && !locked && qty.trim() === ''}
           inputMode="decimal"
           value={qty}
           disabled={disabled || locked}
@@ -273,10 +275,13 @@ export const AffectedProductionLotsSection = ({
       <div className="suspicious-material-hold-section-head">
         <div className="suspicious-material-hold-title-group">
           <h3 className="suspicious-material-hold-subtitle">{tHere.affectedHeading}</h3>
-          <p className="iqc-inspection-action-note" data-tone="info" title={basisNote}>
-            <Icon name="info" size={14} aria-hidden />
-            <span className="iqc-inspection-action-note-text">{basisNote}</span>
-          </p>
+          {/* 근거 안내는 보일 LOT 이 있을 때만 — 0건이면 빈 표 안내만으로 충분하다(사용자 2026-11-02). */}
+          {(affected.data?.items.length ?? 0) > 0 && (
+            <p className="iqc-inspection-action-note" data-tone="info" title={basisNote}>
+              <Icon name="info" size={14} aria-hidden />
+              <span className="iqc-inspection-action-note-text">{basisNote}</span>
+            </p>
+          )}
         </div>
         {affected.data !== undefined && (
           <Chip size="sm">{tHere.affectedCount(affected.data.items.length)}</Chip>

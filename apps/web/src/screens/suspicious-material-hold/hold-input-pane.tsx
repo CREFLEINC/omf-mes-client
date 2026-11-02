@@ -8,6 +8,8 @@ import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import { Select } from '../../patterns/select';
+import { LotHistoryDialog } from '../lot-status-history/lot-detail-pane';
+import { useLotStatusOptions } from '../lot-status-history/options';
 import type { SelectedLotSnapshot } from './candidate-model';
 
 type LotHoldCreate = components['schemas']['LotHoldCreate'];
@@ -198,12 +200,13 @@ export const SuspiciousMaterialHoldInputPane = ({
             label={t.quantity}
             required
             inputMode="decimal"
+            aria-invalid={!isLocked && draft.holdQty.trim() === ''}
             value={draft.holdQty}
             disabled={isLocked}
             onChange={(event) => update('holdQty', event.target.value)}
           />
         )}
-        <div className="field-cell">
+        <div className="field-cell suspicious-material-hold-reason">
           <label className="field-label" htmlFor={reasonId}>
             {t.reason}{' '}
             {/* 보류 사유 · 해제 조건은 등록을 막는 필수 칸이다 — 이름 옆 빨간 *(화면 규칙). */}
@@ -216,6 +219,8 @@ export const SuspiciousMaterialHoldInputPane = ({
             value={draft.reasonCode || null}
             options={activeReasons.map(({ code, label }) => ({ value: code, label }))}
             placeholder={t.reasonPlaceholder}
+            /* 필수 칸이 비면 빨간 테두리(사용자 2026-11-02). */
+            invalid={!isLocked && !reasonUnavailable && draft.reasonCode === ''}
             disabled={isLocked || reasonUnavailable}
             onChange={(value) => update('reasonCode', value)}
           />
@@ -224,6 +229,7 @@ export const SuspiciousMaterialHoldInputPane = ({
           label={t.releaseCondition}
           required
           placeholder={t.releaseConditionPlaceholder}
+          aria-invalid={!isLocked && draft.releaseCondition.trim() === ''}
           value={draft.releaseCondition}
           disabled={isLocked}
           onChange={(event) => update('releaseCondition', event.target.value)}
@@ -245,6 +251,9 @@ export const SuspiciousMaterialHoldInputPane = ({
  * 카드 안에서 자재 불량 기록과 나란히 서도록 입력 구획과 따로 둔다.
  */
 export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInputLot[] }) => {
+  /* 항목을 누르면 그 LOT 의 상세 · 상태 이력 팝업(LOT 상태 이력의 팝업을 그대로 · 사용자 2026-11-02). */
+  const [openedLot, setOpenedLot] = useState<HoldInputLot | null>(null);
+  const statuses = useLotStatusOptions();
   if (selection.length === 0) return null;
   return (
     <section className="suspicious-material-hold-impact" aria-label={t.impact}>
@@ -268,25 +277,44 @@ export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInp
           /* LOT 번호 아래 한 줄 — 확인한 값 · (!) 미확인 값 · 붉은 제한(사용자 시안 2026-11-02). */
           return (
             <li key={lot.lotId}>
-              <strong>{lot.lotNo}</strong>
-              <span className="suspicious-material-hold-impact-line">
-                {known.length > 0 && (
-                  <span className="suspicious-material-hold-impact-facts">{known.join(' · ')}</span>
-                )}
-                {unknown.length > 0 && (
-                  <span className="suspicious-material-hold-impact-unknown">
-                    <Icon name="error" size={16} aria-hidden />
-                    {t.unknownFacts(unknown.join('·'))}
+              <button
+                type="button"
+                className="suspicious-material-hold-impact-item"
+                aria-label={t.openDetail(lot.lotNo)}
+                onClick={() => setOpenedLot(lot)}
+              >
+                <strong>{lot.lotNo}</strong>
+                <span className="suspicious-material-hold-impact-line">
+                  {known.length > 0 && (
+                    <span className="suspicious-material-hold-impact-facts">
+                      {known.join(' · ')}
+                    </span>
+                  )}
+                  {unknown.length > 0 && (
+                    <span className="suspicious-material-hold-impact-unknown">
+                      <Icon name="error" size={16} aria-hidden />
+                      {t.unknownFacts(unknown.join('·'))}
+                    </span>
+                  )}
+                  <span className="suspicious-material-hold-impact-restriction">
+                    {t.impactRestriction}
                   </span>
-                )}
-                <span className="suspicious-material-hold-impact-restriction">
-                  {t.impactRestriction}
                 </span>
-              </span>
+              </button>
             </li>
           );
         })}
       </ul>
+      {openedLot !== null && (
+        <LotHistoryDialog
+          lot={{ lotId: openedLot.lotId, lotNo: openedLot.lotNo }}
+          statusOptions={(statuses.data?.items ?? []).map((item) => ({
+            value: item.code,
+            label: item.label,
+          }))}
+          onClose={() => setOpenedLot(null)}
+        />
+      )}
     </section>
   );
 };

@@ -5469,6 +5469,19 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 100%;
 }
 
+/* 보류 사유 — 사유 이름 길이만큼만(사용자 2026-11-02). */
+.suspicious-material-hold-input-row > .suspicious-material-hold-reason {
+  flex: 0 1 14rem;
+}
+
+/*
+ * 필수 칸이 비면 빨간 테두리(사용자 2026-11-02) — 입력 칸은 aria-invalid 만 달고 테두리는 여기서 그린다(DS 는 오류 문구가
+ * 있을 때만 붉게 그려, 문구 없이 테두리만 쓰려고).
+ */
+.suspicious-material-hold-card [class*="_inputWrap_"]:has(input[aria-invalid="true"]) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
 /* 자재 불량 — 유형은 넓게, 수량은 좁게(약 12rem · 사용자 시안 2026-11-02). */
 .suspicious-material-hold-defect-row {
   display: flex;
@@ -5515,6 +5528,24 @@ h2:has(> .inspection-standard-dialog-title) {
   border-radius: var(--radius-lg);
   background: var(--surface-container);
   overflow-wrap: anywhere;
+}
+
+/* 항목 전체가 단추 — 누르면 LOT 상세 팝업(사용자 2026-11-02). 상자 모양은 그대로, 올리면 바탕만 살짝 짙어진다. */
+.suspicious-material-hold-impact-item {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suspicious-material-hold-impact-list > li:has(.suspicious-material-hold-impact-item:hover) {
+  background: var(--surface-container-high);
 }
 
 .suspicious-material-hold-impact-facts {

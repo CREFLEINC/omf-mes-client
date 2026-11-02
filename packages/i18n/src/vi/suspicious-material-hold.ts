@@ -58,11 +58,11 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     partial: 'Tạm giữ một phần',
     quantity: 'Số lượng tạm giữ',
     reason: 'Lý do tạm giữ',
-    reasonPlaceholder: 'Chọn lý do',
+    reasonPlaceholder: 'Hãy chọn lý do',
     releaseCondition: 'Điều kiện gỡ',
-    releaseConditionPlaceholder: 'Nhập điều kiện gỡ',
+    releaseConditionPlaceholder: 'Hãy nhập điều kiện gỡ',
     remarks: 'Ghi chú',
-    remarksPlaceholder: 'Nhập nội dung bổ sung (tùy chọn)',
+    remarksPlaceholder: 'Hãy nhập nội dung bổ sung',
     reasonUnavailable:
       'Danh sách lý do tạm giữ chưa đầy đủ. Chưa xác nhận được lý do thì chưa đăng ký được.',
     factsUnavailable:
@@ -73,6 +73,8 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     locationName: 'Vị trí',
     /** 못 받은 값 이름을 「수량 · 위치 · 단위 미확인」처럼 묶는다(사용자 시안 2026-11-02). */
     unknownFacts: (names: string): string => `Chưa xác định ${names}`,
+    /** 제한 사항 항목 단추의 이름 — 누르면 LOT 상세 팝업(사용자 2026-11-02). */
+    openDetail: (lotNo: string): string => `Xem chi tiết ${lotNo}`,
     impactRestriction: 'Hạn chế xuất kho·xuất hàng·lấy hàng',
     recovery: 'Khi gỡ tạm giữ cần xử lý Release riêng.',
   },
