@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { PageNav } from '../../patterns/page-nav';
 import { type HistoryFilters, LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import type { FilterOption } from './lot-filter-bar';
+import { LotHistoryDialog } from './lot-detail-pane';
 import { LotTimelineTable } from './lot-timeline-table';
 import { validateHistoryPeriod } from './period';
 import { useLotHistoryTimeline } from './queries';
@@ -33,6 +34,8 @@ export const HistoryResults = ({
   appUserName,
   onPageChange,
 }: HistoryResultsProps) => {
+  /* 줄을 누르면 그 LOT 의 상세 이력 팝업(사용자 2026-11-02). */
+  const [openedLot, setOpenedLot] = useState<{ lotId: number; lotNo: string } | null>(null);
   const history = useLotHistoryTimeline(filters, offsetMinutes);
   /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
   const [pageSize, setPageSize] = useState<LotPageSize>(HISTORY_PAGE_SIZE);
@@ -95,6 +98,7 @@ export const HistoryResults = ({
             appUserName={appUserName}
             variant="history"
             busy={history.isFetching}
+            onOpenEntry={(entry) => setOpenedLot({ lotId: entry.event.lotId, lotNo: entry.lotNo })}
             empty={
               <EmptyState
                 size="sm"
@@ -117,6 +121,13 @@ export const HistoryResults = ({
             buttonSize="md"
           />
         </>
+      )}
+      {openedLot !== null && (
+        <LotHistoryDialog
+          lot={openedLot}
+          statusOptions={statusOptions}
+          onClose={() => setOpenedLot(null)}
+        />
       )}
     </section>
   );

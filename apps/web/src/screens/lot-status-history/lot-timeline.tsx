@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
 import { LotTimelineTable } from './lot-timeline-table';
+import type { LotTimelineEntry } from './timeline';
 import { useLotActorOptions, useLotTimeline } from './queries';
 
 const t = messages.lotStatusHistory;
@@ -13,10 +14,17 @@ interface LotTimelineProps {
   statusOptions: readonly FilterOption[];
   /** LOT 상세 탭 안 — 제목·접기는 탭이 대신한다(사용자 2026-10-30). */
   embedded?: boolean;
+  /** 보류 등록 · 해제 줄을 누르면 그 보류 건을 연다(LOT 상세 탭 · 사용자 2026-11-02). */
+  onOpenHold?: (lotHoldId: number) => void;
 }
 
 /** LOT 상세의 이력 — 그 LOT 의 보류 등록·해제와 상태 변경을 시간순으로(omf-all-around#24). */
-export const LotTimeline = ({ lotId, statusOptions, embedded = false }: LotTimelineProps) => {
+export const LotTimeline = ({
+  lotId,
+  statusOptions,
+  embedded = false,
+  onOpenHold,
+}: LotTimelineProps) => {
   const timeline = useLotTimeline(lotId);
   const [open, setOpen] = useState(true);
   const actors = useLotActorOptions(true);
@@ -87,6 +95,14 @@ export const LotTimeline = ({ lotId, statusOptions, embedded = false }: LotTimel
             appUserName={appUserName}
             variant="detail"
             empty={<EmptyState size="sm" title={t.timeline.empty} />}
+            {...(onOpenHold === undefined
+              ? {}
+              : {
+                  onOpenEntry: (entry: LotTimelineEntry) => {
+                    if (entry.kind === 'hold') onOpenHold(entry.event.lotHoldId);
+                  },
+                  isEntryClickable: (entry: LotTimelineEntry) => entry.kind === 'hold',
+                })}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 import { Chip, type ChipStatus, type Column, type SortState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
 import { codeName, useLotHoldReasonOptions, type LotCodeOption } from './options';
@@ -59,6 +59,10 @@ interface LotTimelineTableProps {
   empty: ReactNode;
   /** 다시 받는 중 — 표 상자에 `aria-busy` 로 싣는다. */
   busy?: boolean;
+  /** 줄을 누르면 부른다(사용자 2026-11-02). 없으면 줄을 누를 수 없다. */
+  onOpenEntry?: (entry: LotTimelineEntry) => void;
+  /** 누를 수 있는 줄만 고른다 — 주지 않으면 모든 줄. */
+  isEntryClickable?: (entry: LotTimelineEntry) => boolean;
 }
 
 export const LotTimelineTable = ({
@@ -69,6 +73,8 @@ export const LotTimelineTable = ({
   variant,
   empty,
   busy = false,
+  onOpenEntry,
+  isEntryClickable = () => true,
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
@@ -165,13 +171,26 @@ export const LotTimelineTable = ({
   });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
 
+  /* 줄 아무 곳이나 눌러 연다 — LOT 목록과 같은 방식(보이는 줄 차례로 찾는다). */
+  const openFrom =
+    (shown: readonly LotTimelineEntry[]) =>
+    (event: MouseEvent<HTMLDivElement>): void => {
+      if (onOpenEntry === undefined) return;
+      const row = (event.target as Element).closest('tbody tr');
+      if (row === null || row.parentElement === null) return;
+      const picked = shown[Array.from(row.parentElement.children).indexOf(row)];
+      if (picked !== undefined && isEntryClickable(picked)) onOpenEntry(picked);
+    };
+  const clickable = onOpenEntry === undefined ? '' : ' lot-timeline-clickable';
+
   if (!isDetail) {
     return (
       <div
         ref={fit.ref}
-        className="wide-table lot-status-table"
+        className={`wide-table lot-status-table${clickable}`}
         style={resizable.style}
         aria-busy={busy}
+        onClick={openFrom(rows)}
       >
         <Table
           density="compact"
@@ -191,8 +210,9 @@ export const LotTimelineTable = ({
     <>
       <div
         ref={fit.ref}
-        className="wide-table lot-status-table lot-detail-table"
+        className={`wide-table lot-status-table lot-detail-table${clickable}`}
         style={resizable.style}
+        onClick={openFrom(rows.slice((shownPage - 1) * pageSize, shownPage * pageSize))}
       >
         <Table
           density="comfortable"

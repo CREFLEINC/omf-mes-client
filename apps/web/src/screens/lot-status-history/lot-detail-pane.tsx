@@ -9,7 +9,7 @@ import { LotHoldDocuments } from './lot-hold-documents';
 import { LotTimeline } from './lot-timeline';
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
-import { lotStatusTone } from './options';
+import { lotStatusTone, useLotTypeOptions } from './options';
 import { useLotDetail } from './queries';
 import { useItemNameSources } from './reference-options';
 import { useUomCodeOf, withUom } from './uoms';
@@ -71,7 +71,12 @@ export const LotDetailPane = ({
   const fourMTypeLabel = useFourMChangeTypeLabel();
   const uomCodeOf = useUomCodeOf();
   /* 팝업(생산 LOT)에는 투입 이력 탭을 두지 않는다 — 생산 LOT 은 다시 투입되는 일이 드물다(사용자 2026-11-02). */
-  const [historyTab, setHistoryTab] = useState<HistoryTab>(inDialog ? 'timeline' : 'usage');
+  const [chosenTab, setHistoryTab] = useState<HistoryTab>('usage');
+  /* 팝업에서는 자재 LOT 만 투입 이력 탭을 둔다 — 생산 LOT 은 다시 투입되는 일이 드물다(사용자 2026-11-02). */
+  const showUsage = !inDialog || detail.data?.lotTypeCode === 'MATERIAL';
+  const historyTab: HistoryTab = !showUsage && chosenTab === 'usage' ? 'timeline' : chosenTab;
+  /* 변경 이력의 보류 줄에서 넘어온 보류 건 — 보류 이력 탭에서 그 줄을 강조한다(사용자 2026-11-02). */
+  const [focusedHoldId, setFocusedHoldId] = useState<number | null>(null);
   /* 투입 이력에서 고른 생산 LOT — 그 LOT 의 상세 이력을 팝업으로 연다(사용자 2026-11-02). */
   const [openedLot, setOpenedLot] = useState<{
     lotId: number;
@@ -79,11 +84,18 @@ export const LotDetailPane = ({
     workOrderId: number;
     workOrderNo: string;
   } | null>(null);
+  /* 팝업의 작업지시 — 투입 이력이 넘긴 W/O, 없으면 생산 LOT 의 원천 W/O(번호는 몰라 고르기만 한다). */
+  const dialogWorkOrder =
+    workOrder ??
+    (inDialog && detail.data?.sourceTypeCode === 'WORK_ORDER'
+      ? { workOrderId: detail.data.sourceId, workOrderNo: '' }
+      : undefined);
   const workOrderHref =
-    workOrder !== undefined && toWebAccess(session?.permissions).allows(WORK_ORDER_PROGRESS_PATH)
+    dialogWorkOrder !== undefined &&
+    toWebAccess(session?.permissions).allows(WORK_ORDER_PROGRESS_PATH)
       ? `${WORK_ORDER_PROGRESS_PATH}?${new URLSearchParams({
-          q: workOrder.workOrderNo,
-          workOrderId: String(workOrder.workOrderId),
+          ...(dialogWorkOrder.workOrderNo === '' ? {} : { q: dialogWorkOrder.workOrderNo }),
+          workOrderId: String(dialogWorkOrder.workOrderId),
         }).toString()}`
       : null;
   const itemId = detail.data?.itemId;
@@ -224,64 +236,111 @@ export const LotDetailPane = ({
       <Tabs
         aria-label={t.detail.historyTabs}
         value={historyTab}
-        onChange={(value) => setHistoryTab(value as HistoryTab)}
+        onChange={(value) => {
+          setFocusedHoldId(null);
+          setHistoryTab(value as HistoryTab);
+        }}
         items={[
-          ...(inDialog
-            ? []
-            : [
+          ...(showUsage
+            ? [
                 {
                   value: 'usage',
                   label: genealogyText.usage.heading,
                   content:
                     historyTab === 'usage' ? (
-                      <MaterialLotUsage lotId={lotId} onOpenLot={setOpenedLot} />
+                      <MaterialLotUsage
+                        lotId={lotId}
+                        {...(inDialog ? {} : { onOpenLot: setOpenedLot })}
+                      />
                     ) : null,
                 },
-              ]),
+              ]
+            : []),
           {
             value: 'timeline',
             label: t.timeline.pane,
             content:
               historyTab === 'timeline' ? (
-                <LotTimeline lotId={lotId} statusOptions={statusOptions} embedded />
+                <LotTimeline
+                  lotId={lotId}
+                  statusOptions={statusOptions}
+                  embedded
+                  onOpenHold={(lotHoldId) => {
+                    setFocusedHoldId(lotHoldId);
+                    setHistoryTab('holds');
+                  }}
+                />
               ) : null,
           },
           {
             value: 'holds',
             label: t.holdDocuments.pane,
-            content: historyTab === 'holds' ? <LotHoldDocuments key={lotId} lotId={lotId} /> : null,
+            content:
+              historyTab === 'holds' ? (
+                <LotHoldDocuments key={lotId} lotId={lotId} focusedHoldId={focusedHoldId} />
+              ) : null,
           },
         ]}
       />
       {openedLot !== null && (
-        <Dialog
-          open
-          size="lg"
-          /* 제목은 팝업 안 첫 줄이 단추와 함께 단다 — 팝업 이름은 화면 읽기용으로만. */
-          aria-label={genealogyText.usage.dialogTitle}
+        <LotHistoryDialog
+          lot={openedLot}
+          lotTypeOptions={lotTypeOptions}
+          statusOptions={statusOptions}
           onClose={() => setOpenedLot(null)}
-          /* 닫기는 아래 [닫기] 단추 하나로(사용자 2026-11-02). Esc 는 그대로 닫는다. */
-          showCloseButton={false}
-          footer={
-            <Button variant="outlined" onClick={() => setOpenedLot(null)}>
-              {messages.common.close}
-            </Button>
-          }
-        >
-          <div className="lot-status-detail-dialog lot-usage-detail-dialog">
-            <LotDetailPane
-              lotId={openedLot.lotId}
-              lotTypeOptions={lotTypeOptions}
-              statusOptions={statusOptions}
-              inDialog
-              workOrder={{
-                workOrderId: openedLot.workOrderId,
-                workOrderNo: openedLot.workOrderNo,
-              }}
-            />
-          </div>
-        </Dialog>
+        />
       )}
     </>
+  );
+};
+
+interface LotHistoryDialogProps {
+  lot: { lotId: number; lotNo: string; workOrderId?: number; workOrderNo?: string };
+  /** 주지 않으면 팝업이 LOT 유형 기준값을 직접 읽는다 — 변경 이력 탭은 팝업을 열 때만 읽게(첫 진입 요청을 늘리지 않는다). */
+  lotTypeOptions?: readonly FilterOption[];
+  statusOptions: readonly FilterOption[];
+  onClose: () => void;
+}
+
+/**
+ * LOT 상세 이력 팝업 — 투입 이력의 생산 LOT, 「LOT 변경 이력」 탭의 줄에서 연다(사용자 2026-11-02).
+ * 제목은 팝업 안 첫 줄이 이동 단추와 함께 단다 — 팝업 이름은 화면 읽기용으로만. 닫기는 아래 [닫기] 하나(Esc 도 닫는다).
+ */
+export const LotHistoryDialog = ({
+  lot,
+  lotTypeOptions,
+  statusOptions,
+  onClose,
+}: LotHistoryDialogProps) => {
+  const lotTypes = useLotTypeOptions();
+  const typeOptions =
+    lotTypeOptions ??
+    (lotTypes.data?.items ?? []).map((item) => ({ value: item.code, label: item.label }));
+  return (
+    <Dialog
+      open
+      size="lg"
+      aria-label={genealogyText.usage.dialogTitle}
+      onClose={onClose}
+      showCloseButton={false}
+      footer={
+        <Button variant="outlined" onClick={onClose}>
+          {messages.common.close}
+        </Button>
+      }
+    >
+      <div className="lot-status-detail-dialog lot-usage-detail-dialog">
+        <LotDetailPane
+          key={lot.lotId}
+          lotId={lot.lotId}
+          lotTypeOptions={typeOptions}
+          statusOptions={statusOptions}
+          inDialog
+          {...(lot.workOrderId === undefined
+            ? {}
+            : { workOrder: { workOrderId: lot.workOrderId, workOrderNo: lot.workOrderNo ?? '' } })}
+        />
+      </div>
+    </Dialog>
   );
 };
