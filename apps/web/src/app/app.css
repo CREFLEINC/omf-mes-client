@@ -5158,7 +5158,7 @@ h2:has(> .inspection-standard-dialog-title) {
   color: var(--on-surface-variant);
 }
 
-/* 현재 상태 줄 — 이름 · 칩, 바꿀 수 없으면 오른쪽 끝에 「상태 변경 불가」. */
+/* 변경할 상태 · 해제할 보류 · 입력 칸을 위아래로. */
 .lot-status-transition-preparation {
   display: grid;
   align-content: start;
@@ -5166,20 +5166,8 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
-.lot-status-transition-state-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.lot-status-transition-state-label {
-  color: var(--on-surface);
-}
-
 .lot-status-transition-blocked {
-  margin-left: auto;
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
 }
 
 .lot-status-transition-blocked-note {

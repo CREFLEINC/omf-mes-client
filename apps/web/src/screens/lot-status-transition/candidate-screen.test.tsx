@@ -375,8 +375,8 @@ describe('Lot Status 전이 후보', () => {
       'SYN-REASON-A',
     ]);
     const preparation = await within(card).findByRole('group', { name: '상태 전이 준비' });
-    expect(within(preparation).getByText('현재 상태')).toBeVisible();
-    expect(within(preparation).getByText('정상')).toBeVisible();
+    /* 현재 상태는 LOT 상자 칩으로만 — 아래에 따로 두지 않는다(사용자 2026-11-02). */
+    expect(within(preparation).queryByText('현재 상태')).toBeNull();
     expect(within(preparation).getByText('변경할 상태')).toBeVisible();
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();

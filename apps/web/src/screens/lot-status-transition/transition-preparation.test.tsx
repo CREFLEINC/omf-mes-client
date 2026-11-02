@@ -166,7 +166,7 @@ const VersionHarness = ({ selected }: { selected: LotStatusCandidate }) => {
       <button type="button" onClick={() => setCurrent({ ...current, versionNo: 8 })}>
         LOT 버전 갱신
       </button>
-      <LotStatusTransitionPreparation lot={current} current={null} />
+      <LotStatusTransitionPreparation lot={current} />
     </>
   );
 };
@@ -183,7 +183,7 @@ const renderPreparation = (
     tracksVersion ? (
       <VersionHarness selected={selected} />
     ) : (
-      <LotStatusTransitionPreparation lot={selected} current={null} />
+      <LotStatusTransitionPreparation lot={selected} />
     ),
     {
       fetch: async (request) => {

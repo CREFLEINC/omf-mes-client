@@ -640,16 +640,12 @@ export const LotStatusTransitionCandidateScreen = () => {
             </section>
           ) : (
             /*
-             * 고른 LOT 과 상태 변경을 한 카드에 — 제목 · 「선택된 LOT」 표시, LOT 번호와 품목, 구분선 아래 현재 상태 ·
-             * 변경할 상태를 나란히(사용자 시안 2026-11-02). 수량 · 최근 변경은 품목 아래 작은 글자로 남긴다.
+             * 고른 LOT 과 상태 변경을 한 카드에 — LOT 상자, 그 아래(상하 배치면 옆) 현재 상태 · 변경할 상태
+             * (사용자 시안 2026-11-02).
              */
             <section className="pane lot-status-transition-pane" aria-label={tSelected.pane}>
-              {/* 제목 오른쪽은 LOT 유형 라벨이다(사용자 시안 2026-11-02). */}
               <div className="lot-status-transition-card-head">
                 <h2 className="pane-title">{tSelected.title}</h2>
-                {selected.lotTypeCode !== undefined && (
-                  <Chip size="sm">{lotTypeLabel(selected.lotTypeCode)}</Chip>
-                )}
               </div>
               {/*
                * 고른 LOT 상자 — 위에 LOT 번호와 상태 칩, 구분선 아래 품목(코드 · 이름 두 줄) · 최근 변경 · 변경 사유
@@ -667,7 +663,15 @@ export const LotStatusTransitionCandidateScreen = () => {
                   <div className="lot-status-transition-lot-head">
                     <div className="lot-status-transition-lot-id">
                       <span className="field-label">{tSelected.lotNo}</span>
-                      <strong className="lot-status-transition-lot-no">{selected.lotNo}</strong>
+                      {/* LOT 유형 라벨 — 번호 왼쪽(목록 · LOT 현황과 같다 · 사용자 2026-11-02). */}
+                      <span className="lot-no-with-type">
+                        {selected.lotTypeCode !== undefined && (
+                          <Chip variant="status" status="info" size="sm">
+                            {lotTypeLabel(selected.lotTypeCode)}
+                          </Chip>
+                        )}
+                        <strong className="lot-status-transition-lot-no">{selected.lotNo}</strong>
+                      </span>
                     </div>
                     {currentStatusChip}
                   </div>
@@ -710,7 +714,6 @@ export const LotStatusTransitionCandidateScreen = () => {
                   <LotStatusTransitionPreparation
                     key={rowKey(selected)}
                     lot={selected}
-                    current={currentStatusChip}
                     onConfirmationChange={onConfirmationChange}
                   />
                 )}

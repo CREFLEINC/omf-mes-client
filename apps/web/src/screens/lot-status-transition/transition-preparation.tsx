@@ -41,26 +41,11 @@ const formatDateTime = (value: string): string => {
 };
 
 /*
- * 「LOT 상태 변경」 카드 아래쪽 — 「현재 상태 [칩]」 줄(바꿀 수 없으면 오른쪽에 「상태 변경 불가」), 그 아래 변경할 상태 ·
- * 해제할 보류 · 입력 칸이 이어진다(사용자 시안 2026-11-02). 카드 자체는 고른 LOT 을 보이는 쪽(candidate-screen)이 세운다.
+ * 「LOT 상태 변경」 카드 아래쪽(상하 배치면 옆) — 변경할 상태, 그 아래 해제할 보류 · 입력 칸이 이어진다. 현재 상태는 위
+ * LOT 상자의 칩으로 충분해 따로 두지 않는다(사용자 2026-11-02). 카드 자체는 candidate-screen 이 세운다.
  */
-const PreparationPane = ({
-  current,
-  blocked = false,
-  children,
-}: {
-  current: ReactNode;
-  blocked?: boolean;
-  children?: ReactNode;
-}) => (
+const PreparationPane = ({ children }: { children?: ReactNode }) => (
   <div className="lot-status-transition-preparation" role="group" aria-label={t.pane}>
-    <div className="lot-status-transition-state-row">
-      <span className="lot-status-transition-state-label">
-        {messages.lotStatusTransition.selected.status}
-      </span>
-      {current}
-      {blocked && <span className="lot-status-transition-blocked">{t.blocked}</span>}
-    </div>
     {children}
   </div>
 );
@@ -132,14 +117,11 @@ const useHoldDetail = (lotHoldId: number | null, enabled: boolean) => {
 
 export interface LotStatusTransitionPreparationProps {
   lot: LotStatusCandidate;
-  /** 「현재 상태」 옆에 둘 상태 칩. */
-  current: ReactNode;
   onConfirmationChange?: (pinned: boolean) => void;
 }
 
 export const LotStatusTransitionPreparation = ({
   lot,
-  current,
   onConfirmationChange,
 }: LotStatusTransitionPreparationProps) => {
   const { etags } = useApiClient();
@@ -278,7 +260,7 @@ export const LotStatusTransitionPreparation = ({
   const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
   if (transitions.isFetching && !confirmationPinned)
     return (
-      <PreparationPane current={current}>
+      <PreparationPane>
         <div className="field-cell lot-status-transition-choice">
           {choiceTitle}
           <div role="status" aria-label={t.loading}>
@@ -289,7 +271,7 @@ export const LotStatusTransitionPreparation = ({
     );
   if (transitions.isError && !confirmationPinned)
     return (
-      <PreparationPane current={current}>
+      <PreparationPane>
         <AlertBanner
           variant="error"
           title={t.failed}
@@ -300,7 +282,11 @@ export const LotStatusTransitionPreparation = ({
   /* 바꿀 수 있는 상태가 없으면 「상태 변경 불가」와 까닭 한 줄(정보 아이콘 + 글자 · 사용자 시안 2026-11-02). */
   if (allowed.length === 0)
     return (
-      <PreparationPane current={current} blocked>
+      <PreparationPane>
+        <div className="field-cell lot-status-transition-choice">
+          {choiceTitle}
+          <span className="lot-status-transition-blocked">{t.blocked}</span>
+        </div>
         <p className="lot-status-transition-blocked-note">
           <Icon name="info" size={18} aria-hidden />
           <span>{transitions.data?.note ?? t.noTransition}</span>
@@ -336,7 +322,7 @@ export const LotStatusTransitionPreparation = ({
   const reviewOpen = reviewing && canReview;
 
   return (
-    <PreparationPane current={current}>
+    <PreparationPane>
       <div className="field-cell lot-status-transition-choice">
         {choiceTitle}
         <RadioGroup

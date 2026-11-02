@@ -55,12 +55,6 @@ export const lotStatusTransition = {
     identity: '선택 LOT 식별',
     lotNo: 'LOT 번호',
     item: '품목',
-    currentTitle: '현재 상태',
-    current: '선택 LOT 현재 상태',
-    status: '현재 상태',
-    onHand: '보유 수량',
-    held: '보류 수량',
-    available: '가용 수량',
     /* 시안 글자 그대로(사용자 2026-11-02). */
     latestTransition: '최근 변경',
     latestReason: '변경 사유',
