@@ -57,18 +57,29 @@ export const HistoryTab = ({
   const columns: Column<DecisionRow>[] = [
     {
       key: 'dispositionTypeCode',
+      align: 'center',
       header: t.fields.dispositionTypeCode,
       render: (row) => dispositionTypeLabel(row.dispositionTypeCode),
     },
     {
       key: 'qty',
+      align: 'center',
       header: t.fields.decisionQty,
-      align: 'end',
       render: (row) => row.decisionQtyText,
     },
-    { key: 'uom', header: t.fields.uom, render: (row) => lookupDisplayLabel(uoms, row.uomId) },
-    { key: 'decidedAt', header: t.fields.decidedAt, render: (row) => row.decidedAtText },
-    { key: 'reason', header: t.fields.reason, render: (row) => row.reason },
+    {
+      key: 'uom',
+      align: 'center',
+      header: t.fields.uom,
+      render: (row) => lookupDisplayLabel(uoms, row.uomId),
+    },
+    {
+      key: 'decidedAt',
+      align: 'center',
+      header: t.fields.decidedAt,
+      render: (row) => row.decidedAtText,
+    },
+    { key: 'reason', align: 'center', header: t.fields.reason, render: (row) => row.reason },
   ];
 
   const isPendingCodes = dispositionOptions.length === 0;

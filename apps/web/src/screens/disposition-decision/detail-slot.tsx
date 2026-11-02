@@ -1,4 +1,4 @@
-import { EmptyState, SkeletonText } from '@crefle/web-ui';
+import { EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -20,7 +20,6 @@ export interface DetailSlotProps {
   };
   items: DispositionLookup;
   severity: DispositionLookup;
-  status: DispositionLookup;
   uoms: DispositionLookup;
   onRetry: () => void;
 }
@@ -43,13 +42,16 @@ export const DetailSlot = ({
   detail,
   items,
   severity,
-  status,
   uoms,
   onRetry,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
 
-  if (selectedId === null) return <EmptyState size="sm" title={t.detail.select} />;
+  /* 고르기 전 — 아이콘 + 한 줄 안내만(사용자 시안 · #223). 판정 입력은 고른 뒤에만 선다. */
+  if (selectedId === null)
+    return (
+      <EmptyState size="sm" icon={<Icon name="ads_click" size={32} />} title={t.detail.select} />
+    );
 
   if (detail.isPending) {
     return (
@@ -77,7 +79,5 @@ export const DetailSlot = ({
   if (detail.view === null) return null;
 
   /* 판정 이력은 판정 입력 아래 접는 구역으로 옮겼다(사용자 시안 · #223). */
-  return (
-    <DetailPane view={detail.view} items={items} uoms={uoms} severity={severity} status={status} />
-  );
+  return <DetailPane view={detail.view} items={items} uoms={uoms} severity={severity} />;
 };

@@ -18,22 +18,33 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
   const columns: Column<DecisionRow>[] = [
     {
       key: 'dispositionTypeCode',
+      align: 'center',
       header: t.fields.dispositionTypeCode,
       render: (row) => dispositionTypeLabel(row.dispositionTypeCode),
     },
     {
       key: 'qty',
+      align: 'center',
       header: t.fields.decisionQty,
-      align: 'end',
       render: (row) => row.decisionQtyText,
     },
-    { key: 'uom', header: t.fields.uom, render: (row) => lookupDisplayLabel(uoms, row.uomId) },
-    { key: 'decidedAt', header: t.fields.decidedAt, render: (row) => row.decidedAtText },
-    { key: 'reason', header: t.fields.reason, render: (row) => row.reason },
+    {
+      key: 'uom',
+      align: 'center',
+      header: t.fields.uom,
+      render: (row) => lookupDisplayLabel(uoms, row.uomId),
+    },
+    {
+      key: 'decidedAt',
+      align: 'center',
+      header: t.fields.decidedAt,
+      render: (row) => row.decidedAtText,
+    },
+    { key: 'reason', align: 'center', header: t.fields.reason, render: (row) => row.reason },
   ];
 
   /*
-   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없으면 빈 표 대신 한 줄 문구만.
+   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없어도 표 안 행 자리에 문구.
    * 남은 수량은 판정 구역 머리로 옮겼다(조회 시점 참고값인 것은 그대로 — 최종 판정은 저장 때 서버가 낸다).
    */
   return (
@@ -44,8 +55,6 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
         </div>
       ) : isError ? (
         <p className="field-note">{t.decisions.unavailable}</p>
-      ) : rows.length === 0 ? (
-        <p className="field-note">{t.decisions.empty}</p>
       ) : (
         <div className="disposition-table disposition-decision-table">
           <Table
@@ -54,6 +63,8 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.dispositionDecisionId)}
+            /* 이력이 없어도 표 머리는 두고 행 자리에 한 줄(사용자 지시 · #223). */
+            empty={<p className="field-note disposition-table-empty">{t.decisions.empty}</p>}
           />
         </div>
       )}

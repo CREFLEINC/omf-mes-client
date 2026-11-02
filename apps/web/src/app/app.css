@@ -6376,6 +6376,16 @@ main:has(.iqc-skip-approval-detail) {
   }
 }
 
+/* 조회 조건 두 줄 — 기본 줄과 「상세 펼치기」로 여는 심각도 · 원천 줄(#223). */
+.disposition-filter-wrap {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.po-board-filter .filter-bar.disposition-filter.disposition-filter-detail > .field-cell {
+  flex-basis: 11rem;
+}
+
 /* 처분 판정 처리 제목 아래 한 줄 — 판정 대기 · 처리 이력 칩과 배치 고르기를 오른쪽에(#223). */
 .disposition-top-bar {
   display: flex;
@@ -6442,7 +6452,7 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* 품질 승인 처리 묶음에서는 조회 조건이 위 한 구획의 한 줄이다 — 다른 탭과 같은 짜임(#223). 좁으면 다음 줄로. */
-.po-board-filter > .filter-bar.disposition-filter {
+.po-board-filter .filter-bar.disposition-filter {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -6453,22 +6463,22 @@ main:has(.iqc-skip-approval-detail) {
  * 칸 너비는 흐린 안내 글 · 값이 다 보이는 만큼만(사용자 지시 · #223) — 날짜 둘 · 품목 검색 · 선택 셋 차례.
  * 창이 좁으면 줄어들고(최소 폭까지) 그래도 모자라면 다음 줄로 넘긴다.
  */
-.po-board-filter > .filter-bar.disposition-filter > .field-cell {
+.po-board-filter .filter-bar.disposition-filter > .field-cell {
   flex: 0 1 9rem;
   min-width: 7rem;
 }
 
-.po-board-filter > .filter-bar.disposition-filter > .field-cell:nth-child(-n + 2) {
+.po-board-filter .filter-bar.disposition-filter:not(.disposition-filter-detail) > .field-cell:nth-child(-n + 2) {
   flex-basis: 11rem;
   min-width: 9.5rem;
 }
 
-.po-board-filter > .filter-bar.disposition-filter > .field-cell:nth-child(3) {
+.po-board-filter .filter-bar.disposition-filter:not(.disposition-filter-detail) > .field-cell:nth-child(3) {
   flex-basis: 14rem;
   min-width: 11rem;
 }
 
-.po-board-filter > .filter-bar.disposition-filter > .disposition-filter-actions {
+.po-board-filter .filter-bar.disposition-filter > .disposition-filter-actions {
   align-self: flex-start;
   margin-top: calc(var(--space-5) + var(--space-1));
   margin-left: auto;
@@ -6544,42 +6554,46 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /*
- * 부적합 기본 정보 — 세 칸 두 줄을 테두리 상자에, 칸 사이 세로선(검사 기준 상세의 기준 정보 상자와 같은 모양 · #223).
+ * 부적합 기본 정보 — 한 상자 안에 다섯 칸 한 줄(칸 사이 세로선), 구분선 아래 설명(사용자 시안 · #223).
  */
-.disposition-detail-facts {
+.disposition-detail-box {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3) 0;
-  margin: 0;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
   background: var(--surface-container);
 }
 
+.disposition-detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) 0;
+  margin: 0;
+}
+
+/* 칸은 값 길이만큼, 사이 세로선. 좁으면 다음 줄로 넘기고 줄 첫 칸의 선은 상자 테두리에 묻힌다. */
 .disposition-detail-facts > .field-cell {
-  padding: 0 var(--space-4);
+  flex: 0 0 auto;
+  padding: 0 var(--space-5);
   border-left: 1px solid var(--outline-variant);
 }
 
-.disposition-detail-facts > .field-cell:nth-child(3n + 1) {
+.disposition-detail-facts > .field-cell:first-child {
   padding-left: 0;
   border-left: 0;
 }
 
-.disposition-detail-facts > .field-cell {
-  min-width: 0;
-}
-
 .disposition-detail-facts dd {
   margin: 0;
-  overflow-wrap: anywhere;
-  color: var(--on-surface);
+  white-space: nowrap;
 }
 
-/* 설명 — 기본 정보 상자 아래 한 줄(사용자 시안 · #223). */
+/* 설명 — 기본 정보 상자 안, 구분선 아래 한 줄(사용자 시안 · #223). */
 .disposition-detail-description {
   margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
   color: var(--on-surface);
   overflow-wrap: anywhere;
 }
@@ -6599,7 +6613,7 @@ main:has(.iqc-skip-approval-detail) {
 /* 처분 수량 · 판정 사유 — 한 줄 두 칸, 너비는 상자 안에서 넘치지 않게(사용자 시안 · #223). */
 .disposition-decision-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
   gap: var(--space-3);
   align-items: start;
 }
@@ -6622,13 +6636,38 @@ main:has(.iqc-skip-approval-detail) {
   margin-top: 0;
 }
 
-.disposition-side-status {
-  color: var(--semantic-warning);
-  font-weight: 600;
+/* 「대상 LOT 1건」 — 이름 옆 건수 배지(사용자 시안 · #223). */
+.disposition-count-badge {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+/* LOT 표 · 이력 표는 둥근 테두리 상자 안에. */
+/* 빈 표의 행 자리 문구는 가운데. */
+.disposition-table-empty {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  text-align: center;
+}
+
+.disposition-lot-table,
+.disposition-decision-table {
+  overflow: hidden;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
 }
 
 .disposition-side-remaining {
   color: var(--on-surface-variant);
+}
+
+.disposition-side-remaining > strong {
+  color: var(--on-surface);
   font-variant-numeric: tabular-nums;
 }
 

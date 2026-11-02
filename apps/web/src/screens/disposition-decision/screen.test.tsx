@@ -41,7 +41,8 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
     /* 오른쪽은 한 구획 — 「부적합 상세 및 판정」 안에 판정이 선다(#223). */
     expect(screen.getByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.form.heading })).toBeInTheDocument();
+    /* 고르기 전에는 판정 구역을 세우지 않는다(#223). */
+    expect(screen.queryByRole('heading', { name: t.form.heading })).toBeNull();
 
     await waitFor(() => {
       const url = requestedPaths().find((path) => path.startsWith('/quality/nonconformances?'));
@@ -70,7 +71,8 @@ describe('DispositionDecisionScreen 조회', () => {
     const { user } = renderScreen({ decidedQty: 200 });
     await selectRow(user);
 
-    expect(await screen.findByText(t.form.remainingInline('120 EA'))).toBeInTheDocument();
+    expect(await screen.findByText('120 EA')).toBeInTheDocument();
+    expect(screen.getByText(t.form.remainingLabel)).toBeInTheDocument();
   });
 
   /*

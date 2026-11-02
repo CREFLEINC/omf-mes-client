@@ -153,16 +153,33 @@ export const ConcessionPane = ({
   };
 
   const columns: Column<Concession>[] = [
-    { key: 'concessionNo', header: t.columns.concessionNo, render: (row) => row.concessionNo },
-    { key: 'lotNo', header: t.columns.lotNo, render: (row) => row.lotNo ?? String(row.lotId) },
-    { key: 'qty', header: t.columns.qty, align: 'end', render: (row) => String(row.approvedQty) },
+    {
+      key: 'concessionNo',
+      align: 'center',
+      header: t.columns.concessionNo,
+      render: (row) => row.concessionNo,
+    },
+    {
+      key: 'lotNo',
+      align: 'center',
+      header: t.columns.lotNo,
+      render: (row) => row.lotNo ?? String(row.lotId),
+    },
+    {
+      key: 'qty',
+      align: 'center',
+      header: t.columns.qty,
+      render: (row) => String(row.approvedQty),
+    },
     {
       key: 'period',
+      align: 'center',
       header: t.columns.period,
       render: (row) => `${row.validFrom} ~ ${row.validTo ?? ''}`,
     },
     {
       key: 'status',
+      align: 'center',
       header: t.columns.status,
       render: (row) =>
         row.statusCode === PENDING ? (
@@ -202,7 +219,11 @@ export const ConcessionPane = ({
           columns={columns}
           rows={list.data ?? []}
           getRowId={(row) => String(row.concessionId)}
-          empty={<p className="field-note">{list.isPending ? t.loading : t.none}</p>}
+          empty={
+            <p className="field-note disposition-table-empty">
+              {list.isPending ? t.loading : t.none}
+            </p>
+          }
         />
       )}
       <SaveErrorBanner error={applyWrite.error} />

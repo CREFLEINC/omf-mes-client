@@ -2,6 +2,9 @@ import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { codeValueLabel } from './disposition-codes';
@@ -51,6 +54,9 @@ export const NonconformanceList = ({
   const columns: Column<NonconformanceRow>[] = [
     {
       key: 'nonconformanceNo',
+      align: 'center',
+      /* 번호가 잘리지 않는 폭 — 끌어 바꿀 수 있다. */
+      width: '170px',
       header: t.fields.nonconformanceNo,
       /* 번호는 글자다 — 고르기는 줄 누르기가 맡는다(사용자 지시 · #223). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
@@ -65,27 +71,43 @@ export const NonconformanceList = ({
     },
     {
       key: 'item',
+      align: 'center',
       header: t.fields.item,
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },
-    { key: 'qty', header: t.fields.qty, align: 'end', render: (row) => row.affectedQtyText },
+    { key: 'qty', header: t.fields.qty, align: 'center', render: (row) => row.affectedQtyText },
     {
       key: 'dispositionProgress',
+      align: 'center',
       header: t.fields.dispositionProgressCode,
       render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
     },
     {
       key: 'severity',
+      align: 'center',
       header: t.fields.severityCode,
       render: (row) => codeValueLabel(severity, row.severityCode),
     },
-    { key: 'openedAt', header: t.fields.openedAt, render: (row) => row.openedAtText },
+    {
+      key: 'openedAt',
+      align: 'center',
+      header: t.fields.openedAt,
+      render: (row) => row.openedAtText,
+    },
     {
       key: 'status',
+      align: 'center',
       header: t.fields.statusCode,
       render: (row) => codeValueLabel(status, row.statusCode),
     },
   ];
+
+  /*
+   * 열 순서 · 폭은 검사 조회·판정 목록과 같이 사용자가 바꾸고 브라우저에 남는다(사용자 지시 · #223). 모든 칸 가운데 정렬.
+   */
+  const ordered = useColumnOrder('omf-mes:dispositions:columns:pending:order', columns);
+  const resizable = useColumnWidths('omf-mes:dispositions:columns:pending', ordered);
+  const fit = useFitColumns(resizable.columns, {});
 
   if (error !== null && error !== undefined) return error;
 
@@ -125,7 +147,9 @@ export const NonconformanceList = ({
        * 고른 줄을 다시 누르면 풀린다(`onSelect` 가 같은 번호면 선택을 지운다).
        */}
       <div
-        className="disposition-table disposition-pending-table"
+        ref={fit.ref}
+        className="disposition-table disposition-pending-table inspection-queue-table"
+        style={resizable.style}
         onClick={(event) => {
           const id = (event.target as Element)
             .closest('tbody tr')
@@ -136,7 +160,7 @@ export const NonconformanceList = ({
         <Table
           density="compact"
           caption={<span className="disposition-table-caption">{t.panes.list}</span>}
-          columns={columns}
+          columns={fit.columns}
           rows={rows}
           getRowId={(row) => String(row.nonconformanceId)}
           empty={empty}

@@ -510,10 +510,13 @@ export const DispositionDecisionScreen = ({
               {/* 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). */}
               <div className="disposition-side-head">
                 <h2 className="pane-title">{t.panes.detailDecision}</h2>
-                {detail.data !== undefined && (
-                  <span className="disposition-side-status">
+                {selectedId !== null && detail.data !== undefined && (
+                  <Chip
+                    size="sm"
+                    status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}
+                  >
                     {codeValueLabel(status, detail.data.statusCode)}
-                  </span>
+                  </Chip>
                 )}
               </div>
               <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
@@ -528,54 +531,58 @@ export const DispositionDecisionScreen = ({
                   }}
                   items={items}
                   severity={severity}
-                  status={status}
                   uoms={uoms}
                   onRetry={() => void detail.refetch()}
                 />
               </div>
-              {/* 처분 판정 — 머리 오른쪽에 남은 수량(조회 시점 참고값 · 최종은 저장 때 서버가 낸다), 아래 입력과 단추. */}
-              <div className="disposition-side-part" role="group" aria-label={t.panes.decision}>
-                <div className="disposition-side-head">
-                  <h3 className="pane-subtitle">{t.form.heading}</h3>
-                  {selectedId !== null && remaining.value !== undefined && (
-                    <span className="disposition-side-remaining">
-                      {t.form.remainingInline(
-                        `${remaining.text}${uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`}`,
+              {selectedId !== null && detail.data !== undefined && (
+                <>
+                  {/* 처분 판정 — 머리 오른쪽에 남은 수량(조회 시점 참고값 · 최종은 저장 때 서버가 낸다), 아래 입력과 단추. */}
+                  <div className="disposition-side-part" role="group" aria-label={t.panes.decision}>
+                    <div className="disposition-side-head">
+                      <h3 className="pane-subtitle">{t.form.heading}</h3>
+                      {selectedId !== null && remaining.value !== undefined && (
+                        <span className="disposition-side-remaining">
+                          {t.form.remainingLabel}{' '}
+                          <strong>
+                            {`${remaining.text}${uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`}`}
+                          </strong>
+                        </span>
                       )}
-                    </span>
-                  )}
-                </div>
-                <DecisionFormPane
-                  value={form}
-                  errors={showErrors ? errors : write.fieldErrors}
-                  qtyNotice={remainingNotice(form, remaining)}
-                  lockReason={lock.reason}
-                  isUncertain={lock.isUncertain}
-                  onCheckOutcome={checkOutcome}
-                  dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
-                  uomId={uomId}
-                  uoms={uoms}
-                  writeError={write.error}
-                  isSaving={write.isSaving}
-                  canCancel={hasDecisionInput(form)}
-                  onChange={(next) => {
-                    /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                    if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                      write.clearFieldError('dispositionTypeCode');
-                    if (next.qty !== form.qty) write.clearFieldError('decisionQty');
-                    if (next.reason !== form.reason) write.clearFieldError('reason');
-                    setForm(next);
-                  }}
-                  onSave={save}
-                  onCancel={() => {
-                    setForm(EMPTY_DECISION_FORM);
-                    setShowErrors(false);
-                    /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                    write.reset();
-                  }}
-                  onReload={checkOutcome}
-                />
-              </div>
+                    </div>
+                    <DecisionFormPane
+                      value={form}
+                      errors={showErrors ? errors : write.fieldErrors}
+                      qtyNotice={remainingNotice(form, remaining)}
+                      lockReason={lock.reason}
+                      isUncertain={lock.isUncertain}
+                      onCheckOutcome={checkOutcome}
+                      dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
+                      uomId={uomId}
+                      uoms={uoms}
+                      writeError={write.error}
+                      isSaving={write.isSaving}
+                      canCancel={hasDecisionInput(form)}
+                      onChange={(next) => {
+                        /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                        if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                          write.clearFieldError('dispositionTypeCode');
+                        if (next.qty !== form.qty) write.clearFieldError('decisionQty');
+                        if (next.reason !== form.reason) write.clearFieldError('reason');
+                        setForm(next);
+                      }}
+                      onSave={save}
+                      onCancel={() => {
+                        setForm(EMPTY_DECISION_FORM);
+                        setShowErrors(false);
+                        /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                        write.reset();
+                      }}
+                      onReload={checkOutcome}
+                    />
+                  </div>
+                </>
+              )}
               {/* 판정 이력 · 특채 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
               {selectedId !== null && detail.data !== undefined && (
                 <Tabs

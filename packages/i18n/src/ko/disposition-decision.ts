@@ -4,6 +4,8 @@ export const dispositionDecision = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
+  /** 조회 조건의 상세 펼치기 — 심각도 · 원천(사용자 지시 · #223). */
+  filterDetail: { open: '상세 펼치기', close: '상세 접기' },
   tabs: {
     label: '처분 판정 보기',
     pending: '판정 대기',
@@ -78,7 +80,7 @@ export const dispositionDecision = {
     goFirstPage: '첫 쪽으로',
   },
   detail: {
-    select: '부적합을 선택하세요',
+    select: '목록에서 판정할 부적합을 선택하세요.',
     loading: '부적합 상세 불러오는 중',
     notFound: '부적합을 찾을 수 없습니다',
     notFoundDescription: '목록을 새로 조회한 뒤 다른 부적합을 선택하세요.',
@@ -91,17 +93,17 @@ export const dispositionDecision = {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
     count: (count: number): string => `${String(count)}건`,
     loading: '판정 이력 불러오는 중',
-    empty: '아직 판정된 내역이 없습니다',
+    empty: '판정 내역이 없습니다.',
     unavailable: '판정 이력을 표시할 수 없습니다',
   },
   /** 특채(omf-all-around#84 · 서버 선행 P-79) — 불합격 LOT 을 결재 뒤 조건부로 쓴다. */
   concession: {
     /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: '특채 요청 및 이력',
+    foldTitle: '특채 요청·이력',
     count: (count: number): string => `${String(count)}건`,
     heading: '특채',
     help: '불합격 LOT 을 관리자 승인을 받아 조건부로 사용합니다. 요청 → 「특채·한도승인 승인 처리」에서 결재 → 여기서 적용 순서입니다.',
-    none: '이 부적합의 특채가 없습니다.',
+    none: '특채 요청 내역이 없습니다.',
     loading: '특채를 불러오는 중입니다.',
     loadFailed: '특채를 불러오지 못했습니다.',
     request: '특채 요청',
@@ -136,7 +138,7 @@ export const dispositionDecision = {
   form: {
     /** 판정 구역 머리와 오른쪽 남은 수량(사용자 시안 · #223). */
     heading: '처분 판정',
-    remainingInline: (text: string): string => `남은 수량 ${text}`,
+    remainingLabel: '남은 수량',
     qtyPlaceholder: '수량 입력',
     reasonPlaceholder: '판정 사유 입력',
     dispositionLabel: '처분',

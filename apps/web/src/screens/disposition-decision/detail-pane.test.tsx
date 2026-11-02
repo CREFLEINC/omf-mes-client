@@ -42,7 +42,6 @@ const baseProps = (): DetailPaneProps => ({
   items: lookup([{ value: '5001', label: 'SYNTH-ITEM-1 · 합성 품목' }]),
   uoms: lookup([{ value: '7001', label: 'EA' }]),
   severity: lookup([{ value: 'CODE-B', label: '합성 심각도 B' }]),
-  status: lookup([{ value: 'CODE-C', label: '합성 상태 C' }]),
 });
 
 const renderPane = (overrides: Partial<DetailPaneProps> = {}) =>
@@ -84,15 +83,14 @@ describe('DetailPane', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('심각도·상태는 공통코드 이름으로 보이고, 이름이 없으면 코드를 그대로 보인다(G-32 · G-9)', () => {
-    const coded = { ...view(), severityCode: 'CODE-B', statusCode: 'CODE-C' };
+  /* 상태는 구획 머리의 배지가 말한다 — 기본 정보 상자에는 심각도만(사용자 시안 · #223). */
+  it('심각도는 공통코드 이름으로 보이고, 이름이 없으면 코드를 그대로 보인다(G-32 · G-9)', () => {
+    const coded = { ...view(), severityCode: 'CODE-B' };
     const { unmount } = renderPane({ view: coded });
     expect(screen.getByText('합성 심각도 B')).toBeInTheDocument();
-    expect(screen.getByText('합성 상태 C')).toBeInTheDocument();
     unmount();
 
-    renderPane({ view: coded, severity: lookup([]), status: lookup([]) });
+    renderPane({ view: coded, severity: lookup([]) });
     expect(screen.getByText('CODE-B')).toBeInTheDocument();
-    expect(screen.getByText('CODE-C')).toBeInTheDocument();
   });
 });

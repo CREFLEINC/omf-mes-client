@@ -13,6 +13,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
+  /** 조회 조건의 상세 펼치기 — 심각도 · 원천(사용자 지시 · #223). */
+  filterDetail: { open: 'Mở rộng điều kiện', close: 'Thu gọn điều kiện' },
   tabs: {
     label: 'Xem đánh giá quyết định xử lý',
     pending: 'Chờ đánh giá',
@@ -78,7 +80,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     goFirstPage: 'Về trang đầu',
   },
   detail: {
-    select: 'Hãy chọn một mục không phù hợp',
+    select: 'Hãy chọn mục không phù hợp cần đánh giá trong danh sách.',
     loading: 'Đang tải chi tiết không phù hợp',
     notFound: 'Không tìm thấy mục không phù hợp',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn mục không phù hợp khác.',
@@ -90,16 +92,16 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
     count: (count: number): string => `${String(count)}`,
     loading: 'Đang tải lịch sử đánh giá',
-    empty: 'Chưa có nội dung nào được đánh giá',
+    empty: 'Chưa có nội dung quyết định.',
     unavailable: 'Không hiển thị được lịch sử đánh giá',
   },
   concession: {
     /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
-    foldTitle: 'Yêu cầu và lịch sử nhân nhượng',
+    foldTitle: 'Yêu cầu · lịch sử nhân nhượng',
     count: (count: number): string => `${String(count)}`,
     heading: 'Đặc cách',
     help: 'Sử dụng có điều kiện LOT không đạt sau khi quản lý phê duyệt. Thứ tự: yêu cầu → phê duyệt tại «Xử lý phê duyệt đặc cách · hạn mức» → áp dụng tại đây.',
-    none: 'Mục không phù hợp này chưa có đặc cách.',
+    none: 'Chưa có yêu cầu nhân nhượng.',
     loading: 'Đang tải đặc cách.',
     loadFailed: 'Không tải được đặc cách.',
     request: 'Yêu cầu đặc cách',
@@ -133,7 +135,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   },
   form: {
     heading: 'Quyết định xử lý',
-    remainingInline: (text: string): string => `Số lượng còn lại ${text}`,
+    remainingLabel: 'Số lượng còn lại',
     qtyPlaceholder: 'Nhập số lượng',
     reasonPlaceholder: 'Nhập lý do',
     dispositionLabel: 'Quyết định xử lý',

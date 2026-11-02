@@ -326,13 +326,12 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     });
   });
 
-  it('권한이 없으면 판정 컨트롤을 잠그고 사유를 보인다(403)', async () => {
+  /* 상세를 못 읽으면(403) 판정 입력을 세우지 않는다 — 판정 구역은 상세를 고른 뒤에만 선다(#223). */
+  it('권한이 없으면 판정 입력을 세우지 않는다(403)', async () => {
     renderScreen({ detailStatus: 403 });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.actions.save })).toHaveAccessibleDescription(
-        new RegExp(t.form.forbiddenReason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      );
+      expect(screen.queryByRole('button', { name: t.actions.save })).toBeNull();
     });
   });
 });
