@@ -73,7 +73,7 @@ describe('DispositionDecisionScreen 조회', () => {
     await selectRow(user);
 
     /* 머리의 남은 수량은 걷고, 처분 수량 오른쪽에 「입력 / 미입력」(#223). */
-    expect(await screen.findByText(t.form.qtyProgress(0, 120, 'EA'))).toBeInTheDocument();
+    expect(await screen.findByLabelText(t.form.qtyProgress(0, 120, 'EA'))).toBeInTheDocument();
   });
 
   /*

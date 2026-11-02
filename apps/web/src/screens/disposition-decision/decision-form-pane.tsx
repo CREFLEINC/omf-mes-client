@@ -64,6 +64,8 @@ export const DecisionFormPane = ({
   /* 숫자로 읽히지 않으면 0 으로 센다 — 형식 오류는 칸 아래 오류가 말한다. */
   const parsedQty = Number(value.qty.trim());
   const enteredQty = value.qty.trim() === '' || !Number.isFinite(parsedQty) ? 0 : parsedQty;
+  const restQty =
+    remainingQty === undefined ? 0 : Math.max(Number((remainingQty - enteredQty).toFixed(6)), 0);
 
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
@@ -122,12 +124,22 @@ export const DecisionFormPane = ({
           />
           {/* 입력 / 미입력 — 적은 수량과 남은 수량에서 그것을 뺀 수(사용자 지시 · #223). 참고값이다 — 확정은 저장 때 서버. */}
           {remainingQty !== undefined && (
-            <span className="disposition-qty-progress" aria-live="polite">
-              {t.form.qtyProgress(
-                enteredQty,
-                Math.max(Number((remainingQty - enteredQty).toFixed(6)), 0),
-                uomLabel,
-              )}
+            /* 숫자를 크게 · 굵게 — 미입력이 남으면 주황, 다 채우면 초록(사용자 지시 · #223). 읽는 이름은 한 문장. */
+            <span
+              className="disposition-qty-progress"
+              role="status"
+              aria-label={t.form.qtyProgress(enteredQty, restQty, uomLabel)}
+            >
+              <span>
+                {t.form.qtyEntered} <strong>{enteredQty}</strong>
+              </span>
+              <span className="disposition-qty-progress-sep" aria-hidden="true">
+                /
+              </span>
+              <span data-tone={restQty > 0 ? 'warning' : 'success'}>
+                {t.form.qtyRest} <strong>{restQty}</strong>
+              </span>
+              {uomLabel !== '' && <span>{uomLabel}</span>}
             </span>
           )}
         </div>
