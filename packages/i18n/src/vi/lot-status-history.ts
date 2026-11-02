@@ -137,6 +137,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       occurredAt: 'Thời điểm xử lý',
       lot: 'Số LOT',
       event: 'Loại xử lý',
+      status: 'Trạng thái',
       change: 'Thay đổi trạng thái',
       actor: 'Người thực hiện',
       reason: 'Lý do',

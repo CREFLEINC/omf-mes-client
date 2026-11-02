@@ -3,8 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useState, type MouseEvent, type ReactNode } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
-import { codeName, useLotHoldReasonOptions, type LotCodeOption } from './options';
-import type { LotTimelineEntry } from './timeline';
+import { codeName, lotStatusTone, useLotHoldReasonOptions, type LotCodeOption } from './options';
+import { entryStatusCode, type LotTimelineEntry } from './timeline';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
@@ -160,6 +160,27 @@ export const LotTimelineTable = ({
           </Chip>
         ),
     },
+    /* 상태 — 처리한 뒤의 LOT 상태(위쪽 상태 칩과 같은 기준) · LOT 현황과 같은 색 칩(사용자 2026-11-02). */
+    ...(isDetail
+      ? []
+      : [
+          {
+            key: 'status',
+            header: t.history.columns.status,
+            align: 'center' as const,
+            width: '104px',
+            render: (entry: LotTimelineEntry) => {
+              const code = entryStatusCode(entry);
+              return code === null ? (
+                EMPTY
+              ) : (
+                <Chip variant="status" status={lotStatusTone(code)} size="sm">
+                  {statusLabel(statusOptions, code)}
+                </Chip>
+              );
+            },
+          },
+        ]),
     {
       key: 'change',
       header: isDetail ? t.timeline.columns.change : t.history.columns.change,

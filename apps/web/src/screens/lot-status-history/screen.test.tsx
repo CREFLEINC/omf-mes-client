@@ -565,13 +565,13 @@ describe('Lot Status 화면 shell', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['처리 일시', 'LOT 번호', '처리 유형', '상태 변경', '처리자', '처리 사유']);
+    ).toEqual(['처리 일시', 'LOT 번호', '처리 유형', '상태', '상태 변경', '처리자', '처리 사유']);
     const rows = within(table).getAllByRole('row');
     // 일시는 공장 시각(UTC+7)이다(omf-all-around#20). 최신이 위.
     // 행위자 필터(601)가 상태 변경 줄에도 걸린다 — 응답의 상태 변경은 601 이 한 것이라 남는다.
     expect(rows).toHaveLength(5);
     expect(rows[1]).toHaveTextContent(
-      '2026-08-21 09:00SAMPLE-LOT-001상태 변경합성 대기 → 합성 불량합성 등록자불합격',
+      '2026-08-21 09:00SAMPLE-LOT-001상태 변경합성 불량합성 대기 → 합성 불량합성 등록자불합격',
     );
     expect(rows[2]).toHaveTextContent('2026-08-21 08:00SAMPLE-LOT-001보류 해제');
     expect(rows[3]).toHaveTextContent('2026-08-20 07:00SAMPLE-LOT-001보류 등록');
@@ -673,7 +673,7 @@ describe('Lot Status 화면 shell', () => {
     expect(screen.getByText('1 / 2')).toBeVisible();
     // 최신(20시)이 맨 위, 최초 등록 전이는 이전 상태가 「최초」다.
     expect(screen.getAllByRole('row')[1]).toHaveTextContent(
-      'SAMPLE-LOT-120상태 변경최초 → 합성 정상',
+      'SAMPLE-LOT-120상태 변경합성 정상 (미사용)최초 → 합성 정상',
     );
     await user.click(screen.getByRole('button', { name: '다음' }));
     expect(await screen.findByText('2 / 2')).toBeVisible();

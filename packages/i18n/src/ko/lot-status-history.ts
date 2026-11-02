@@ -145,6 +145,7 @@ export const lotStatusHistory = {
       occurredAt: '처리 일시',
       lot: 'LOT 번호',
       event: '처리 유형',
+      status: '상태',
       change: '상태 변경',
       actor: '처리자',
       reason: '처리 사유',

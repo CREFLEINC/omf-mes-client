@@ -432,7 +432,10 @@ const HistoryMode = ({
           appUserName={appUserName}
           onPageChange={onPageChange}
           selectedKey={selected?.key ?? null}
-          onSelectEntry={setSelected}
+          /* 고른 줄을 다시 누르면 선택을 푼다(사용자 2026-11-02). */
+          onSelectEntry={(entry) =>
+            setSelected((current) => (current?.key === entry.key ? null : entry))
+          }
           statusFilter={statusFilter}
         />
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
