@@ -288,7 +288,7 @@ describe('의심자재 보류 입력 pane', () => {
     await user.click(await screen.findByRole('radio', { name: '일부 보류' }));
     await user.type(screen.getByLabelText(/^보류 수량/), '26');
 
-    expect(await screen.findByText('보류 수량은 보유 수량 25 이하여야 합니다.')).toBeVisible();
+    expect(await screen.findByText('보류 수량은 보류 가능 수량 25 이하여야 합니다.')).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
   });
 });

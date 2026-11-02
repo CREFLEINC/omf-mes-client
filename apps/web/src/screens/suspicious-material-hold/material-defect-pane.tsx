@@ -122,6 +122,26 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
     const draft = drafts.get(lot.lotId);
     return draft === undefined ? [] : [{ lot, draft }];
   });
+  /*
+   * 보내는 도중 목록에서 선택을 풀면 그 줄의 쓰기 칸이 사라져 결과를 받지 못한다 — 남은 묶음에서 빼서 단추가 잠긴 채로
+   * 남지 않게 한다(리뷰 2026-11-02). 이미 보낸 요청은 서버가 처리하고, 다시 고르면 「입력 완료」로 남아 있다.
+   */
+  const selectedKey = selection.map((lot) => lot.lotId).join(',');
+  useEffect(() => {
+    const ids = new Set(selectedKey === '' ? [] : selectedKey.split(',').map(Number));
+    let dropped = false;
+    for (const lotId of [...batchLeft.current]) {
+      if (!ids.has(lotId)) {
+        batchLeft.current.delete(lotId);
+        dropped = true;
+      }
+    }
+    if (dropped && batchLeft.current.size === 0) batchOk.current = 0;
+    setSaving((current) => {
+      const next = new Set([...current].filter((lotId) => ids.has(lotId)));
+      return next.size === current.size ? current : next;
+    });
+  }, [selectedKey]);
   const markRecorded = (lotId: number): void =>
     setRecorded((current) => new Map(current).set(lotId, (current.get(lotId) ?? 0) + 1));
   const finish = (lotId: number, ok: boolean): void => {
@@ -291,6 +311,12 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
           onRecorded={(lotId) => {
             markRecorded(lotId);
             notifyRegistered();
+            /* 1건 경로로 등록했으면 앞서 모아 둔 그 LOT 의 입력도 지운다 — 다시 여러 건이 되면 되살아나 한 번 더 가지 않게. */
+            setDrafts((current) => {
+              const next = new Map(current);
+              next.delete(lotId);
+              return next;
+            });
             setOpenLotId(null);
           }}
           {...(multi
@@ -315,7 +341,7 @@ interface DefectDraft {
   code: DefectCodeDraft;
   qty: string;
   description: string;
-  body: Omit<Parameters<ReturnType<typeof useRecordMaterialDefect>['write']>[0], 'detectedAt'>;
+  body: Parameters<ReturnType<typeof useRecordMaterialDefect>['write']>[0];
   codeLabel: string;
   qtyLabel: string;
 }
@@ -342,7 +368,7 @@ const DraftWriter = ({
   useEffect(() => {
     if (runToken === sent.current) return;
     sent.current = runToken;
-    write({ ...draft.body, detectedAt: new Date().toISOString() });
+    write(draft.body);
   }, [draft.body, write, runToken]);
   const fieldMessages = Object.values(record.fieldErrors);
   const failed = record.error !== null || fieldMessages.length > 0;
@@ -393,6 +419,8 @@ const DefectRecordDialog = ({
   const uomId = lot.uomId ?? detail.data?.uomId ?? undefined;
   const uomCodeOf = useUomCodeOf();
   const [confirming, setConfirming] = useState(false);
+  /* 확인 화면에 들어갈 때 발견 시각을 한 번 정한다 — 실패 뒤 다시 눌러도 같은 멱등 키로 보낸다(리뷰 2026-11-02). */
+  const [detectedAt, setDetectedAt] = useState<string | null>(null);
   const [code, setCode] = useState<DefectCodeDraft>(draft?.code ?? EMPTY_DEFECT_CODE);
   const [qty, setQty] = useState(draft?.qty ?? '');
   const [description, setDescription] = useState(draft?.description ?? '');
@@ -445,6 +473,8 @@ const DefectRecordDialog = ({
         defectCodeId,
         defectQty: quantity,
         uomId,
+        /* 발견 시각은 입력을 마친 때 한 번 — 다시 보내도 같은 내용 · 같은 멱등 키가 되게(리뷰 2026-11-02). */
+        detectedAt: new Date().toISOString(),
         ...(description.trim() === '' ? {} : { defectDescription: description.trim() }),
       },
       codeLabel: chosenCode === undefined ? String(defectCodeId) : optionOf(chosenCode).label,
@@ -459,7 +489,7 @@ const DefectRecordDialog = ({
       defectCodeId,
       defectQty: quantity,
       uomId,
-      detectedAt: new Date().toISOString(),
+      detectedAt: detectedAt ?? new Date().toISOString(),
       ...(description.trim() === '' ? {} : { defectDescription: description.trim() }),
     });
   };
@@ -495,7 +525,14 @@ const DefectRecordDialog = ({
             <Button
               disabled={blocked !== null || disabled}
               title={blocked ?? undefined}
-              onClick={() => (onDraft === undefined ? setConfirming(true) : saveDraft())}
+              onClick={() => {
+                if (onDraft !== undefined) {
+                  saveDraft();
+                  return;
+                }
+                setDetectedAt(new Date().toISOString());
+                setConfirming(true);
+              }}
             >
               {onDraft === undefined ? tHere.submit : tHere.saveDraft}
             </Button>

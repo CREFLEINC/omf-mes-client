@@ -42,6 +42,10 @@ const EMPTY_DRAFT: HoldDraft = {
   remarks: '',
 };
 
+/** 일부 보류 상한 — 보류 가능 수량(보유 − 이미 보류), 없으면 보유 수량(리뷰 2026-11-02). */
+const holdLimit = (lot: SelectedLotSnapshot | undefined): number | undefined =>
+  lot?.availableQty ?? lot?.onHandQty;
+
 export const buildSuspiciousMaterialHoldBody = (
   draft: HoldDraft,
   selected: SelectedLotSnapshot[],
@@ -71,7 +75,7 @@ export const buildSuspiciousMaterialHoldBody = (
       !Number.isFinite(quantity) ||
       quantity <= 0 ||
       /* 보유 수량을 넘는 보류는 서버가 거절한다 — 화면에서 먼저 막는다(점검 2026-11-02). */
-      (selected[0]?.onHandQty !== undefined && quantity > selected[0].onHandQty) ||
+      (holdLimit(selected[0]) !== undefined && quantity > (holdLimit(selected[0]) ?? 0)) ||
       uomId === undefined ||
       !Number.isSafeInteger(uomId) ||
       uomId <= 0
@@ -183,7 +187,7 @@ export const SuspiciousMaterialHoldInputPane = ({
   /* 단위 이름은 「코드 · 이름」 — 칸 안에는 코드만(예: EA). */
   const unitCode = selection[0]?.uomLabel?.split(' · ')[0] ?? null;
   /* 일부 보류 수량이 보유 수량을 넘으면 칸 아래에 바로 알린다(등록 단추는 잠긴다). */
-  const onHandLimit = selection.length === 1 ? selection[0]?.onHandQty : undefined;
+  const onHandLimit = selection.length === 1 ? holdLimit(selection[0]) : undefined;
   const typedQty = Number(draft.holdQty.trim());
   const qtyOverLimit =
     draft.mode === 'PARTIAL' &&

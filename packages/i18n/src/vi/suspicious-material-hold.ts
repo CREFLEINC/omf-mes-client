@@ -64,7 +64,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     partial: 'Tạm giữ một phần',
     quantity: 'Số lượng tạm giữ',
     quantityOverLimit: (limit: string): string =>
-      `Số lượng tạm giữ phải ≤ số lượng đang giữ ${limit}.`,
+      `Số lượng tạm giữ phải ≤ số lượng có thể tạm giữ ${limit}.`,
     quantityPlaceholder: 'Hãy nhập số lượng',
     reason: 'Lý do tạm giữ',
     reasonPlaceholder: 'Hãy chọn lý do',
@@ -139,7 +139,6 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     heading: 'Đăng ký chi tiết lỗi',
     major: 'Loại lỗi',
     majorPlaceholder: 'Chọn loại lỗi',
-    noCodesPlaceholder: 'Chưa có loại lỗi',
     noCodesNote: 'Chưa có mã lỗi. Hãy đăng ký trước ở quản lý mã lỗi.',
     registerCode: 'Đăng ký mã lỗi',
     qtyPlaceholder: 'Hãy nhập số lượng',

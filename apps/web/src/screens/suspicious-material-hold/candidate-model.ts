@@ -47,6 +47,8 @@ export interface SelectedLotSnapshot {
   warehouseId?: number;
   locationId?: number;
   onHandQty?: number;
+  /** 보류 가능 수량(보유 − 이미 보류) — 일부 보류 상한(리뷰 2026-11-02). */
+  availableQty?: number;
   uomId?: number;
   lotStatusCode: string;
   latestTransitionAt?: string;
@@ -108,6 +110,7 @@ export const toSelectedLotSnapshot = (row: LotQualityStatus): SelectedLotSnapsho
     warehouseId: row.warehouseId,
     locationId: row.locationId,
     onHandQty: row.onHandQty,
+    availableQty: row.availableQty,
     uomId: row.uomId,
     lotStatusCode: row.lotStatusCode,
     latestTransitionAt: row.latestTransitionAt,

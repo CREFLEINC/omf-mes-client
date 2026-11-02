@@ -1670,12 +1670,15 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
           url.searchParams.get('codeGroupCode') === 'INSPECTION_SHEET_PLANT')
       );
     };
-    /* 셸의 IQC 대기 배지(피처 002, omf-all-around#190)도 화면의 조회가 아니다 — 사이드바가 한 번 센다. */
+    /*
+     * 셸의 검사 대기 배지(IQC 피처 002 · omf-all-around#190, 뒤에 PQC · OQC 도 붙었다)도 화면의 조회가 아니다 — 사이드바가
+     * 유형마다 한 번 센다.
+     */
     const isIqcBadge = (request: Request) => {
       const url = new URL(request.url);
       return (
         url.pathname.endsWith('/quality/inspection-requests') &&
-        url.searchParams.get('inspectionTypeCode') === 'IQC' &&
+        ['IQC', 'PQC', 'OQC'].includes(url.searchParams.get('inspectionTypeCode') ?? '') &&
         url.searchParams.get('size') === '1'
       );
     };

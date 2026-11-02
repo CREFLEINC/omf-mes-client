@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
@@ -20,12 +21,30 @@ const LOT: SelectedLotSnapshot = {
   lotStatusCode: 'NORMAL',
 };
 
+/** 쓰기 응답 — 보통 · LOT 거절 · 처음 한 번 5xx(8102 만) · 8102 는 끝내 응답 없음. */
+type PostMode = 'ok' | 'reject' | 'fail-8102-once' | 'hang-8102';
+
+const SelectionHarness = ({ initial }: { initial: SelectedLotSnapshot[] }) => {
+  const [selection, setSelection] = useState(initial);
+  return (
+    <>
+      <button type="button" onClick={() => setSelection((current) => current.slice(0, -1))}>
+        마지막 선택 풀기
+      </button>
+      <MaterialDefectPane selection={selection} isLocked={false} />
+      <AffectedProductionLotsSection selection={selection} />
+    </>
+  );
+};
+
 const renderPane = (
   selection: SelectedLotSnapshot[],
   detailUomId: number | null = 7,
   rejectLot = false,
+  postMode: PostMode = rejectLot ? 'reject' : 'ok',
 ) => {
   const writes: Request[] = [];
+  let failed8102 = false;
   const stubFetch: StubFetch = async (request) => {
     const path = new URL(request.url).pathname;
 
@@ -77,7 +96,19 @@ const renderPane = (
         page: { page: 1, size: 100, total: 1 },
       });
     }
-    if (request.method === 'POST' && path === '/quality/defect-records' && rejectLot) {
+    if (request.method === 'POST' && path === '/quality/defect-records' && postMode !== 'ok') {
+      const body = (await request.clone().json()) as { lotId: number };
+      if (postMode === 'hang-8102' && body.lotId === 8102) {
+        writes.push(request.clone());
+        return new Promise<Response>(() => undefined);
+      }
+      if (postMode === 'fail-8102-once' && body.lotId === 8102 && !failed8102) {
+        failed8102 = true;
+        writes.push(request.clone());
+        return jsonResponse({ message: 'synthetic' }, { status: 503 });
+      }
+    }
+    if (request.method === 'POST' && path === '/quality/defect-records' && postMode === 'reject') {
       writes.push(request.clone());
       return jsonResponse(
         {
@@ -101,15 +132,7 @@ const renderPane = (
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 
-  renderWithProviders(
-    <>
-      <MaterialDefectPane selection={selection} isLocked={false} />
-      <AffectedProductionLotsSection selection={selection} />
-    </>,
-    {
-      fetch: stubFetch,
-    },
-  );
+  renderWithProviders(<SelectionHarness initial={selection} />, { fetch: stubFetch });
 
   return { writes };
 };
@@ -314,5 +337,66 @@ describe('MaterialDefectPane (W-03-03)', () => {
     ).toBeVisible();
     expect(screen.queryByText('등록 완료 · 1건')).toBeNull();
     expect(screen.queryByText('등록되었습니다.')).toBeNull();
+  });
+
+  const draftBoth = async (user: User): Promise<void> => {
+    for (const [lotNo, qty] of [
+      ['MLOT-8101', '2'],
+      ['MLOT-8102', '3'],
+    ] as const) {
+      const dialog = await openLot(user, lotNo);
+      await fillDefect(user, qty);
+      await user.click(within(dialog).getByRole('button', { name: /^등록$/ }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    }
+    await user.click(screen.getByRole('button', { name: '불량 등록' }));
+    const confirm = await screen.findByRole('dialog', {
+      name: '불량 내역 2건을 등록하시겠습니까?',
+    });
+    await user.click(within(confirm).getByRole('button', { name: '불량 등록' }));
+  };
+
+  it('여러 LOT 중 실패한 LOT 만 남고, 다시 누르면 그 LOT 만 같은 내용 · 같은 멱등 키로 보낸다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderPane(
+      [LOT, { ...LOT, lotId: 8102, lotNo: 'MLOT-8102' }],
+      7,
+      false,
+      'fail-8102-once',
+    );
+    await draftBoth(user);
+
+    await waitFor(() => expect(screen.getByText('등록 완료 · 1건')).toBeVisible());
+    expect(screen.getByText('입력 완료 · 1건')).toBeVisible();
+    const retry = screen.getByRole('button', { name: '불량 등록' });
+    await waitFor(() => expect(retry).toBeEnabled());
+    await user.click(retry);
+    const confirm = await screen.findByRole('dialog', {
+      name: '불량 내역 1건을 등록하시겠습니까?',
+    });
+    await user.click(within(confirm).getByRole('button', { name: '불량 등록' }));
+
+    await waitFor(() => expect(screen.getAllByText('등록 완료 · 1건')).toHaveLength(2));
+    const tries = writes.filter((request) => request.url.includes('defect-records'));
+    const bodies = await Promise.all(tries.map((request) => request.clone().json()));
+    const for8102 = tries.filter((_, index) => (bodies[index] as { lotId: number }).lotId === 8102);
+    expect(for8102).toHaveLength(2);
+    expect(for8102[0]?.headers.get('Idempotency-Key')).toBe(
+      for8102[1]?.headers.get('Idempotency-Key'),
+    );
+    const sent8102 = bodies.filter((body) => (body as { lotId: number }).lotId === 8102);
+    expect(sent8102[0]).toEqual(sent8102[1]);
+  });
+
+  it('보내는 도중 그 LOT 선택을 풀어도 불량 구획이 잠긴 채로 남지 않는다', async () => {
+    const user = userEvent.setup();
+    renderPane([LOT, { ...LOT, lotId: 8102, lotNo: 'MLOT-8102' }], 7, false, 'hang-8102');
+    await draftBoth(user);
+    await waitFor(() => expect(screen.getByText('등록 완료 · 1건')).toBeVisible());
+
+    await user.click(screen.getByRole('button', { name: '마지막 선택 풀기' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'MLOT-8101 불량 내역 입력' })).toBeEnabled(),
+    );
   });
 });

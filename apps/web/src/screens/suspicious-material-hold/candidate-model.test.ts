@@ -106,6 +106,7 @@ describe('의심자재 후보 상태 모델', () => {
       warehouseId: 31,
       locationId: 41,
       onHandQty: 25,
+      availableQty: 25,
       uomId: 51,
       lotStatusCode: 'INSPECTION_PENDING',
       latestTransitionAt: '2026-08-25T09:00:00+09:00',

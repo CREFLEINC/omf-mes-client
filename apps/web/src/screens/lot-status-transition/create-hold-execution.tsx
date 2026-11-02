@@ -23,6 +23,7 @@ import {
   type ReasonOptions,
 } from './code-options';
 import { isTransitionStale, transitionStaleMessage } from './transition-error';
+import { usePlaceNames } from './place-names';
 
 type LotHold = components['schemas']['LotHold'];
 type LotHoldCreate = components['schemas']['LotHoldCreate'];
@@ -149,9 +150,10 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
     props.onStale();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
+  const place = usePlaceNames(props.warehouseId, props.locationId);
   const location = t.impact.location(
-    props.warehouseId === undefined ? t.impact.unknown : String(props.warehouseId),
-    props.locationId === undefined ? t.impact.unknown : String(props.locationId),
+    place.warehouse ?? t.impact.unknown,
+    place.location ?? t.impact.unknown,
   );
 
   return (
