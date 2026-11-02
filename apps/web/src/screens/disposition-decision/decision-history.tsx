@@ -16,6 +16,13 @@ export interface DecisionHistoryProps {
 export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHistoryProps) => {
   const t = messages.dispositionDecision;
   const columns: Column<DecisionRow>[] = [
+    /* 판정 일시 · 처분 · 수량 · 단위 · 사유 차례(사용자 지시 · #223). */
+    {
+      key: 'decidedAt',
+      align: 'center',
+      header: t.fields.decidedAt,
+      render: (row) => row.decidedAtText,
+    },
     {
       key: 'dispositionTypeCode',
       align: 'center',
@@ -33,12 +40,6 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
       align: 'center',
       header: t.fields.uom,
       render: (row) => lookupDisplayLabel(uoms, row.uomId),
-    },
-    {
-      key: 'decidedAt',
-      align: 'center',
-      header: t.fields.decidedAt,
-      render: (row) => row.decidedAtText,
     },
     { key: 'reason', align: 'center', header: t.fields.reason, render: (row) => row.reason },
   ];

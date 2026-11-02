@@ -1,4 +1,4 @@
-import { Button, Chip, Table, TextArea, TextField, type Column } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, Table, TextField, type Column } from '@crefle/web-ui';
 import type { components, ConcessionCreate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -89,6 +89,8 @@ export const ConcessionPane = ({
   today,
 }: ConcessionPaneProps) => {
   const lotFieldId = useId();
+  const fromFieldId = useId();
+  const toFieldId = useId();
   const { client } = useApiClient();
   const todayText = toBusinessDate(today ?? new Date());
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(lots, todayText));
@@ -206,84 +208,121 @@ export const ConcessionPane = ({
     },
   ];
 
-  /* 상세 아래 「특채 요청 및 이력」 탭의 내용(사용자 지시 · #223) — 목록 · 요청 입력 · 안내. */
+  /*
+   * 상세 아래 「특채 요청 및 이력」 탭의 내용(사용자 시안 · #223) — 위 요청 입력(두 칸씩 두 줄), 구분선 아래 요청 이력.
+   * 긴 절차 안내 · 칸별 입력 안내 문구는 걷었다 — 필수 칸은 빨간 * 로 알린다.
+   */
+  const rows = list.data ?? [];
   return (
     <div className="disposition-concession" role="group" aria-label={t.heading}>
-      <p className="field-note">{t.help}</p>
-      {list.isError ? (
-        <p className="field-note">{t.loadFailed}</p>
-      ) : (
-        <div className="disposition-table disposition-decision-table">
-          <Table
-            caption={t.caption}
-            density="compact"
-            columns={columns}
-            rows={list.data ?? []}
-            getRowId={(row) => String(row.concessionId)}
-            /* 판정 이력과 같이 — 없으면 표 안 행 자리 가운데 한 줄(사용자 지시 · #223). */
-            empty={
-              <p className="field-note disposition-table-empty">
-                {list.isPending ? t.loading : t.none}
-              </p>
-            }
-          />
+      <section className="disposition-concession-part" aria-label={t.requestHeading}>
+        <div className="disposition-side-head">
+          <h4 className="pane-subtitle">{t.requestHeading}</h4>
+          <span className="field-note">{t.requestNote}</span>
         </div>
-      )}
-      <SaveErrorBanner error={applyWrite.error} />
-
-      {lots.length > 1 && (
-        <div className="field-cell">
-          <label className="field-label" htmlFor={lotFieldId}>
-            {t.lot}
-          </label>
-          <Select
-            id={lotFieldId}
-            options={lots.map((row) => ({ value: String(row.lotId), label: row.lotNoText }))}
-            value={draft.lotId}
+        {lots.length > 1 && (
+          <div className="field-cell">
+            <label className="field-label" htmlFor={lotFieldId}>
+              {t.lot}
+            </label>
+            <Select
+              id={lotFieldId}
+              options={lots.map((row) => ({ value: String(row.lotId), label: row.lotNoText }))}
+              value={draft.lotId}
+              disabled={isClosed || isSaving}
+              onChange={(value) => setDraft({ ...draft, lotId: value })}
+            />
+          </div>
+        )}
+        <div className="disposition-concession-fields">
+          <TextField
+            label={t.qty}
+            placeholder={t.qtyPlaceholder}
+            required
+            fullWidth
+            inputMode="decimal"
+            value={draft.qty}
             disabled={isClosed || isSaving}
-            onChange={(value) => setDraft({ ...draft, lotId: value })}
+            error={requestWrite.fieldErrors.approvedQty}
+            onChange={(event) => setDraft({ ...draft, qty: event.target.value })}
           />
+          <TextField
+            label={t.reason}
+            placeholder={t.reasonPlaceholder}
+            required
+            fullWidth
+            value={draft.reason}
+            disabled={isClosed || isSaving}
+            error={requestWrite.fieldErrors.reason}
+            onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
+          />
+          <div className="field-cell">
+            <label className="field-label" htmlFor={fromFieldId}>
+              {t.validFrom}
+            </label>
+            <DatePicker
+              id={fromFieldId}
+              value={draft.validFrom === '' ? null : draft.validFrom}
+              max={draft.validTo === '' ? undefined : draft.validTo}
+              disabled={isClosed || isSaving}
+              onChange={(value) => setDraft({ ...draft, validFrom: value ?? '' })}
+            />
+          </div>
+          <div className="field-cell">
+            <label className="field-label" htmlFor={toFieldId}>
+              {t.validTo}
+            </label>
+            <DatePicker
+              id={toFieldId}
+              clearable
+              placeholder={t.validToPlaceholder}
+              value={draft.validTo === '' ? null : draft.validTo}
+              min={draft.validFrom === '' ? undefined : draft.validFrom}
+              disabled={isClosed || isSaving}
+              onChange={(value) => setDraft({ ...draft, validTo: value ?? '' })}
+            />
+            {requestWrite.fieldErrors.validTo !== undefined && (
+              <span className="field-error">{requestWrite.fieldErrors.validTo}</span>
+            )}
+          </div>
         </div>
-      )}
-      <TextField
-        label={t.qty}
-        inputMode="decimal"
-        value={draft.qty}
-        disabled={isClosed || isSaving}
-        error={requestWrite.fieldErrors.approvedQty}
-        onChange={(event) => setDraft({ ...draft, qty: event.target.value })}
-      />
-      <TextField
-        label={t.validFrom}
-        type="date"
-        value={draft.validFrom}
-        disabled={isClosed || isSaving}
-        onChange={(event) => setDraft({ ...draft, validFrom: event.target.value })}
-      />
-      <TextField
-        label={t.validTo}
-        type="date"
-        value={draft.validTo}
-        disabled={isClosed || isSaving}
-        error={requestWrite.fieldErrors.validTo}
-        onChange={(event) => setDraft({ ...draft, validTo: event.target.value })}
-      />
-      <TextArea
-        label={t.reason}
-        rows={2}
-        value={draft.reason}
-        disabled={isClosed || isSaving}
-        error={requestWrite.fieldErrors.reason}
-        onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
-      />
-      <SaveErrorBanner error={requestWrite.error} />
-      {notice !== null && <p className="field-note">{notice}</p>}
-      <div className="form-actions">
-        {blocked !== null && <p className="field-note form-actions-secondary">{blocked}</p>}
-        <Button disabled={blocked !== null || isSaving} onClick={submit}>
-          {requestWrite.isSaving ? t.requesting : t.request}
-        </Button>
-      </div>
+        <SaveErrorBanner error={requestWrite.error} />
+        {notice !== null && <p className="field-note">{notice}</p>}
+        <div className="form-actions">
+          {isClosed && <p className="field-note form-actions-secondary">{t.closedNote}</p>}
+          <Button disabled={blocked !== null || isSaving} onClick={submit}>
+            {requestWrite.isSaving ? t.requesting : t.request}
+          </Button>
+        </div>
+      </section>
+      <section className="disposition-concession-part" aria-label={t.historyHeading}>
+        <div className="disposition-side-head">
+          <h4 className="pane-subtitle">{t.historyHeading}</h4>
+          {!list.isPending && !list.isError && (
+            <span className="field-note">{t.total(rows.length)}</span>
+          )}
+        </div>
+        {list.isError ? (
+          <p className="field-note">{t.loadFailed}</p>
+        ) : (
+          <div className="disposition-table disposition-decision-table">
+            <Table
+              caption={<span className="disposition-table-caption">{t.caption}</span>}
+              density="compact"
+              columns={columns}
+              rows={rows}
+              getRowId={(row) => String(row.concessionId)}
+              /* 판정 이력과 같이 — 없으면 표 안 행 자리 가운데 한 줄(사용자 지시 · #223). */
+              empty={
+                <p className="field-note disposition-table-empty">
+                  {list.isPending ? t.loading : t.none}
+                </p>
+              }
+            />
+          </div>
+        )}
+        <SaveErrorBanner error={applyWrite.error} />
+      </section>
     </div>
   );
 };

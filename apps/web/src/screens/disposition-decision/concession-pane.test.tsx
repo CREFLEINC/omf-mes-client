@@ -116,7 +116,8 @@ describe('ConcessionPane', () => {
     const { user } = renderPane([]);
     await user.type(await screen.findByLabelText(t.qty), '30');
     expect(screen.getByRole('button', { name: t.request })).toBeDisabled();
-    expect(screen.getByText(t.blocked.reason)).toBeInTheDocument();
+    /* 칸별 입력 안내 문구는 걷었다 — 필수 표시(*)로 알린다(사용자 시안 · #223). */
+    expect(screen.queryByText(t.blocked.reason)).toBeNull();
   });
 
   it('종결된 부적합은 안내와 함께 잠긴다', async () => {
