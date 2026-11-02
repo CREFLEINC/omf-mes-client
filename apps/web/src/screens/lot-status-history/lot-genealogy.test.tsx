@@ -54,7 +54,6 @@ describe('ProductionLotInputs', () => {
     });
 
     expect(await screen.findByText('ML-77')).toBeInTheDocument();
-    expect(screen.getByText(t.basis.LOT_GENEALOGY_ESTIMATE)).toBeInTheDocument();
     expect(screen.getByText('PCB ASSY (F537)')).toBeInTheDocument();
     expect(await screen.findByText('자재, 공급처 변경')).toBeInTheDocument();
   });
@@ -100,8 +99,7 @@ describe('ProductionLotInputs', () => {
       session: null,
     });
 
-    expect(await screen.findByText(t.basis.WORK_ORDER_ESTIMATE)).toBeInTheDocument();
-    expect(screen.getByText(t.inputs.none)).toBeInTheDocument();
+    expect(await screen.findByText(t.inputs.none)).toBeInTheDocument();
   });
 });
 

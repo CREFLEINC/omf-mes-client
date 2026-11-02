@@ -1,10 +1,5 @@
 import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
-import type {
-  AffectedProductionLots,
-  InputMaterials,
-  TraceBasis,
-  UsedSerials,
-} from '@omf-mes/api-client';
+import type { AffectedProductionLots, InputMaterials, UsedSerials } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -30,10 +25,6 @@ export const lotGenealogyKeys = {
   lots: (lotId: number) => ['lot-genealogy', 'lots', lotId] as const,
   serials: (lotId: number, page: number) => ['lot-genealogy', 'serials', lotId, page] as const,
 };
-
-const BasisNote = ({ basis }: { basis: TraceBasis }) => (
-  <p className="field-note">{t.basis[basis]}</p>
-);
 
 /**
  * 생산 LOT 의 투입 자재(omf-all-around#166 · 서버 선행 P-107) — 전 자재를 보이고 4M 변경품은 변경 종류를 단다.
@@ -77,7 +68,6 @@ export const ProductionLotInputs = ({
         <p className="field-error">{t.inputs.loadFailed}</p>
       ) : (
         <>
-          {!compact && <BasisNote basis={inputs.data.basis} />}
           {inputs.data.items.length === 0 ? (
             <p className="field-note">{t.inputs.none}</p>
           ) : (
