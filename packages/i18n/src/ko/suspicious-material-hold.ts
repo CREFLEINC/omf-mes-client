@@ -5,6 +5,7 @@ export const suspiciousMaterialHold = {
   candidate: {
     pane: '의심자재 후보',
     fields: {
+      excludeFullyHeld: '전량 보류 제외',
       lotNo: 'LOT 번호',
       item: '품목',
       warehouse: '창고',

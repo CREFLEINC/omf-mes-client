@@ -45,6 +45,7 @@ describe('의심자재 후보 상태 모델', () => {
           lotStatusCode: 'NORMAL',
           from: '',
           to: '',
+          excludeFullyHeld: true,
         },
         2,
       ),
@@ -53,18 +54,31 @@ describe('의심자재 후보 상태 모델', () => {
       itemId: 801,
       warehouseId: 31,
       lotStatusCode: 'NORMAL',
+      excludeFullyHeld: true,
       page: 2,
     });
-    expect(toSuspiciousMaterialQuery(EMPTY_SUSPICIOUS_MATERIAL_FILTERS, 1)).toEqual({});
+    /* 전량 보류 제외는 처음부터 켜져 있다(사용자 2026-11-02). */
+    expect(toSuspiciousMaterialQuery(EMPTY_SUSPICIOUS_MATERIAL_FILTERS, 1)).toEqual({
+      excludeFullyHeld: true,
+    });
+    expect(
+      toSuspiciousMaterialQuery(
+        { ...EMPTY_SUSPICIOUS_MATERIAL_FILTERS, excludeFullyHeld: false },
+        1,
+      ),
+    ).toEqual({});
   });
 
   it('최종 변경 기간은 둘 다 채웠을 때만 시작일 0시 ~ 종료 다음 날 0시로 보낸다', () => {
     const period = { ...EMPTY_SUSPICIOUS_MATERIAL_FILTERS, from: '2026-10-01', to: '2026-10-31' };
     expect(toSuspiciousMaterialQuery(period, 1, undefined, 420)).toEqual({
+      excludeFullyHeld: true,
       transitionFrom: '2026-10-01T00:00:00+07:00',
       transitionTo: '2026-11-01T00:00:00+07:00',
     });
-    expect(toSuspiciousMaterialQuery({ ...period, to: '' }, 1, undefined, 420)).toEqual({});
+    expect(toSuspiciousMaterialQuery({ ...period, to: '' }, 1, undefined, 420)).toEqual({
+      excludeFullyHeld: true,
+    });
     expect(validateSuspiciousMaterialPeriod(EMPTY_SUSPICIOUS_MATERIAL_FILTERS)).toBeNull();
     expect(validateSuspiciousMaterialPeriod({ from: '2026-10-01', to: '' })).toBe('missing');
     expect(validateSuspiciousMaterialPeriod({ from: '2026-10-31', to: '2026-10-01' })).toBe(

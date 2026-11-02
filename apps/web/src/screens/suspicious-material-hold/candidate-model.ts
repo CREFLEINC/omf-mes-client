@@ -18,6 +18,8 @@ export interface SuspiciousMaterialFilters {
   /** 최종 변경일 기간(YYYY-MM-DD) — 둘 다 비우면 기간 없이 조회한다(사용자 2026-11-02). */
   from: string;
   to: string;
+  /** 이미 전량 보류된 LOT 을 목록에서 뺀다(서버 excludeFullyHeld · 사용자 2026-11-02). */
+  excludeFullyHeld: boolean;
 }
 
 export const EMPTY_SUSPICIOUS_MATERIAL_FILTERS: SuspiciousMaterialFilters = {
@@ -27,6 +29,8 @@ export const EMPTY_SUSPICIOUS_MATERIAL_FILTERS: SuspiciousMaterialFilters = {
   lotStatusCode: '',
   from: '',
   to: '',
+  /* 처음부터(초기화해도) 전량 보류 LOT 은 빼고 본다 — 고를 수 없는 줄이라(사용자 2026-11-02). */
+  excludeFullyHeld: true,
 };
 
 /** 기간 검사 — 둘 다 비우면 기간 없이 조회해도 된다. 한쪽만 채웠거나 날짜가 틀렸으면 조회를 막는다. */
@@ -76,6 +80,7 @@ export const toSuspiciousMaterialQuery = (
     ? {}
     : { warehouseId: positiveInteger(filters.warehouseId) }),
   ...(filters.lotStatusCode === '' ? {} : { lotStatusCode: filters.lotStatusCode }),
+  ...(filters.excludeFullyHeld ? { excludeFullyHeld: true } : {}),
   /* 최종 변경일 기간 — LOT 상태 변경 탭과 같은 경계(종료일은 다음 날 0시 · 반열림). */
   ...(filters.from !== '' && validateTransitionPeriod(filters) === null
     ? toTransitionPeriodBounds(filters, offsetMinutes)

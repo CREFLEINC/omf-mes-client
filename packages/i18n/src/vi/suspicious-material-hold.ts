@@ -13,6 +13,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
   candidate: {
     pane: 'Ứng viên vật tư nghi ngờ',
     fields: {
+      excludeFullyHeld: 'Bỏ LOT đã tạm giữ toàn bộ',
       lotNo: 'Số LOT',
       item: 'Mặt hàng',
       warehouse: 'Kho',

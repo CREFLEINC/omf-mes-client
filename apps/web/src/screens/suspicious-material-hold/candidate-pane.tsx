@@ -37,7 +37,6 @@ import {
 } from '../lot-status-history/filters';
 import {
   useItemNameSources,
-  useItemReferenceOptions,
   useLocationNameSources,
   useWarehouseReferenceOptions,
   type ReferenceOptionsResult,
@@ -47,6 +46,7 @@ import {
   useLotStatusOptions,
   useLotTypeOptions,
 } from '../lot-status-history/options';
+import { ItemFilterField } from '../lot-status-history/item-filter-field';
 import { StatusChips } from '../lot-status-history/screen';
 import { useUomCodeOf, withUom } from '../lot-status-history/uoms';
 import { useWorkOrderCloseUomLookup } from '../work-order-close/candidate-references';
@@ -159,6 +159,7 @@ export const SuspiciousMaterialCandidatePane = ({
   const split = usePaneSplit(SPLIT_KEY, 0.6);
   const layout = useSplitOrientation(SPLIT_ORIENTATION_KEY);
   const detailId = useId();
+  const warehouseFieldId = useId();
   const periodFromId = useId();
   const periodToId = useId();
   const periodReasonId = useId();
@@ -174,7 +175,6 @@ export const SuspiciousMaterialCandidatePane = ({
   const [isDetailOpen, setIsDetailOpen] = useState(
     filters.itemId !== '' || filters.warehouseId !== '',
   );
-  const items = useItemReferenceOptions();
   const warehouses = useWarehouseReferenceOptions();
   const rows = candidates.data?.items ?? [];
   /* 이름은 보이는 행으로 푼다 — 품목은 상세로, 위치는 행의 창고마다(품목 목록은 첫 쪽만 받아 거의 다 「미확인」이었다). */
@@ -418,10 +418,6 @@ export const SuspiciousMaterialCandidatePane = ({
     data?.entries.map(({ value, label }) => ({ value, label })) ?? [];
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
-  const filterSelects = [
-    [t.fields.itemSearch, 'itemId', options(items.data)],
-    [t.fields.warehouseSearch, 'warehouseId', options(warehouses.data)],
-  ] as const;
   const statusChips = (
     <StatusChips
       options={statusOptions}
@@ -497,6 +493,23 @@ export const SuspiciousMaterialCandidatePane = ({
             onSearch={apply}
             clearLabel={messages.common.clear}
           />
+          {/*
+           * 전량 보류 제외 — LOT 번호 바로 오른쪽(사용자 2026-11-02). 이미 전부 보류돼 고를 수 없는 LOT 을 서버에서 빼고
+           * 받는다(건수 칩도 같이). 누르면 바로 다시 조회한다.
+           */}
+          <div className="field-cell field-cell-unlabeled suspicious-material-hold-exclude-held">
+            <Checkbox
+              checked={draft.excludeFullyHeld}
+              disabled={isLocked}
+              onChange={(event) => {
+                const excludeFullyHeld = event.target.checked;
+                setDraft((current) => ({ ...current, excludeFullyHeld }));
+                move({ ...filters, excludeFullyHeld }, 1);
+              }}
+            >
+              {t.fields.excludeFullyHeld}
+            </Checkbox>
+          </div>
           {/* [조회](주 동작) → [초기화] → 상세 검색 펼치기 — 다른 LOT 상태 탭과 같은 순서, 줄의 오른쪽 끝. */}
           <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
             <Button
@@ -524,20 +537,28 @@ export const SuspiciousMaterialCandidatePane = ({
         {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
         <div id={detailId} hidden={!isDetailOpen}>
           <div className="filter-bar lot-status-filter lot-status-transition-filter">
-            {filterSelects.map(([label, key, entries]) => (
-              <div className="field-cell wide-select lot-status-transition-item-filter" key={key}>
-                <label className="field-label" htmlFor={`suspicious-material-hold-${key}`}>
-                  {label}
-                </label>
-                <Select
-                  id={`suspicious-material-hold-${key}`}
-                  value={draft[key]}
-                  options={[{ value: '', label: t.values.all }, ...entries]}
-                  disabled={isLocked}
-                  onChange={(value) => setDraft((current) => ({ ...current, [key]: value }))}
-                />
-              </div>
-            ))}
+            {/*
+             * 품목은 LOT 현황과 같은 칸에서 바로 검색하는 칸(서버에 묻는다 · omf-all-around#226), 창고는 이름 검색 선택 —
+             * 칸 폭도 LOT 현황과 같다(사용자 2026-11-02).
+             */}
+            <ItemFilterField
+              label={t.fields.itemSearch}
+              value={draft.itemId}
+              disabled={isLocked}
+              onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
+            />
+            <div className="field-cell lot-status-filter-place">
+              <label className="field-label" htmlFor={warehouseFieldId}>
+                {t.fields.warehouseSearch}
+              </label>
+              <Select
+                id={warehouseFieldId}
+                value={draft.warehouseId}
+                options={[{ value: '', label: t.values.all }, ...options(warehouses.data)]}
+                disabled={isLocked}
+                onChange={(warehouseId) => setDraft((current) => ({ ...current, warehouseId }))}
+              />
+            </div>
           </div>
         </div>
       </section>

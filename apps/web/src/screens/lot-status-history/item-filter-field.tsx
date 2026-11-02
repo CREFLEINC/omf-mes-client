@@ -11,6 +11,9 @@ interface ItemFilterFieldProps {
   /** 고른 품목 번호. 비면 「전체」. */
   value: string;
   onChange: (value: string) => void;
+  /** 칸 이름 — 주지 않으면 LOT 현황의 「품목 검색」. */
+  label?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -18,7 +21,12 @@ interface ItemFilterFieldProps {
  * 지난 LOT 을 찾는 필터라 종전 품목 선택 창처럼 사용 중지 품목까지 찾는다. 「전체」는 종전 × 자리다.
  * 고른 품목의 이름은 품목 상세로 푼다 — 주소로 들어온 값도 이름이 선다(칸 글자는 종전 표기 그대로).
  */
-export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
+export const ItemFilterField = ({
+  value,
+  onChange,
+  label: fieldLabel,
+  disabled,
+}: ItemFilterFieldProps) => {
   const fieldId = useId();
   const itemId = value === '' ? null : Number(value);
   const names = useItemNameSources(itemId === null ? [] : [itemId]);
@@ -32,7 +40,7 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
   return (
     <div className="field-cell lot-status-filter-item search-select-cell">
       <label className="field-label" htmlFor={fieldId}>
-        {t.lotFilter.labels.item}
+        {fieldLabel ?? t.lotFilter.labels.item}
       </label>
       <ItemSelect
         id={fieldId}
@@ -41,6 +49,7 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
         leadingOptions={[{ value: '', label: t.values.all }]}
         value={value}
         placeholder={t.values.all}
+        {...(disabled === undefined ? {} : { disabled })}
         onChange={onChange}
       />
     </div>

@@ -5469,6 +5469,13 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 100%;
 }
 
+/* 전량 보류 제외 — 입력 칸과 같은 줄 높이 가운데에 선다. */
+.suspicious-material-hold-exclude-held {
+  align-self: flex-end;
+  min-height: var(--control-height-md, 2.5rem);
+  justify-content: center;
+}
+
 /* 상태 변경 시작일 · 종료일 — 흐린 글자 「시작일을 선택하세요」가 다 보이는 폭(사용자 2026-11-02). */
 .lot-status-date-field.suspicious-material-hold-date-field {
   width: 14.5rem;
