@@ -98,6 +98,29 @@ describe('DispositionDecisionScreen 탭', () => {
     expect(within(list).getByText('NC-TEST-0041')).toHaveAttribute('data-selected', 'true');
   });
 
+  /* 처분 이력 탭 줄 오른쪽 처분 유형 칩 — 누르면 그 유형만 조회(사용자 지시 · #223). */
+  it('처분 이력에서 처분 유형 칩을 누르면 그 유형으로 조회한다', async () => {
+    const { user } = renderScreen('/quality/dispositions?tab=history');
+    const chips = await screen.findByRole('group', { name: t.fields.historyType });
+
+    await user.click(within(chips).getByRole('button', { name: /^재작업/ }));
+
+    await waitFor(() => {
+      expect(
+        requestedPaths().some(
+          (path) =>
+            path.startsWith('/quality/disposition-decisions') &&
+            path.includes('dispositionTypeCode=REWORK') &&
+            !path.includes('page='),
+        ),
+      ).toBe(true);
+    });
+    expect(within(chips).getByRole('button', { name: /^재작업/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
   it('탭을 옮기면 고른 부적합을 지운다 — 탭마다 목록이 다르다', async () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');

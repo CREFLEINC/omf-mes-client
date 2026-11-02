@@ -68,6 +68,22 @@ export const usePendingTotals = (queries: readonly PendingListQuery[]): (number 
   }).map((result) => result.data?.page.total);
 };
 
+/**
+ * 처분 유형 칩의 건수(사용자 지시 · #223) — 유형마다 처분 이력 첫 쪽의 총수. 목록과 같은 열쇠 · 같은 조회라
+ * 지금 보는 유형의 조회는 다시 나가지 않는다. 돌려주는 차례는 넘긴 조회의 차례다.
+ */
+export const useHistoryTotals = (queries: readonly HistoryListQuery[]): (number | undefined)[] => {
+  const { client } = useApiClient();
+
+  return useQueries({
+    queries: queries.map((query) => ({
+      queryKey: dispositionKeys.history(query),
+      queryFn: () =>
+        runRequest(() => client.GET('/quality/disposition-decisions', { params: { query } })),
+    })),
+  }).map((result) => result.data?.page.total);
+};
+
 export const useNonconformanceDetail = (
   nonconformanceId: number | null,
 ): UseQueryResult<Nonconformance> => {

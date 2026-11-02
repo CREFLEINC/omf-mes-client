@@ -77,7 +77,6 @@ const renderList = (overrides: Partial<HistoryListProps> = {}) => {
 
 const barProps = (): HistoryFilterBarProps => ({
   applied: { from: '2026-07-14', to: '2026-08-12', itemId: '', dispositionTypeCode: '' },
-  dispositionOptions: [],
   onApply: vi.fn(),
   onReset: vi.fn(),
 });
@@ -124,14 +123,6 @@ describe('HistoryList', () => {
 });
 
 describe('HistoryFilterBar', () => {
-  it('처분 유형 값 목록이 없으면 감추지 않고 사유를 붙인다(G-2)', () => {
-    renderBar();
-
-    const select = screen.getByLabelText(t.fields.historyType);
-    expect(select).toHaveTextContent(t.codePlaceholder);
-    expect(select).toHaveAccessibleDescription(t.codePending);
-  });
-
   it('판정 시작일 · 종료일 · 품목을 바꿔 조회하면 그 값을 알린다(#223)', async () => {
     const { props, user } = renderBar();
 
@@ -154,20 +145,5 @@ describe('HistoryFilterBar', () => {
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
 
     expect(props.onReset).toHaveBeenCalled();
-  });
-
-  it('적용된 조건이 바뀌면 편집 중 값을 그것으로 맞춘다', () => {
-    const props = barProps();
-    const { rerender } = render(<HistoryFilterBar {...props} />);
-
-    rerender(
-      <HistoryFilterBar
-        {...props}
-        applied={{ ...props.applied, dispositionTypeCode: CODE }}
-        dispositionOptions={[{ value: CODE, label: CODE }]}
-      />,
-    );
-
-    expect(screen.getByLabelText(t.fields.historyType)).toHaveTextContent(CODE);
   });
 });

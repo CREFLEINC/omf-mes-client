@@ -7,9 +7,8 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
-import { Select } from '../../patterns/select';
 import { ItemFilterField } from '../iqc-inspection/item-filter-field';
-import { dispositionTypeLabel, type CodeOption } from './disposition-codes';
+import { dispositionTypeLabel } from './disposition-codes';
 import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
 import type { HistoryFilters } from './history-filters';
 import type { DispositionLookup } from './lookups';
@@ -18,35 +17,25 @@ import type { HistoryRow } from './types';
 
 export interface HistoryFilterBarProps {
   applied: HistoryFilters;
-  dispositionOptions: CodeOption[];
   onApply: (filters: HistoryFilters) => void;
   onReset: () => void;
 }
 
 /**
  * 처분 이력 조회 조건 — 처분 대기 조회 조건과 같은 한 줄(사용자 지시 · #223).
- * 판정 시작일 · 종료일 · 품목 · 처분 유형, 오른쪽 끝에 조회 · 초기화. 기간은 비울 수 없다(L-3).
+ * 판정 시작일 · 종료일 · 품목, 오른쪽 끝에 조회 · 초기화. 기간은 비울 수 없다(L-3).
+ * 처분 유형은 탭 줄 칩이 거른다(#223) — 처분 대기의 상태 칩과 같다.
  */
-export const HistoryFilterBar = ({
-  applied,
-  dispositionOptions,
-  onApply,
-  onReset,
-}: HistoryFilterBarProps) => {
+export const HistoryFilterBar = ({ applied, onApply, onReset }: HistoryFilterBarProps) => {
   const t = messages.dispositionDecision;
   const fromId = useId();
   const toId = useId();
-  const dispositionId = useId();
-  const dispositionNoteId = `${dispositionId}-note`;
   const [draft, setDraft] = useState<HistoryFilters>(applied);
   const { from, to, itemId, dispositionTypeCode } = applied;
 
   useEffect(() => {
     setDraft({ from, to, itemId, dispositionTypeCode });
   }, [from, to, itemId, dispositionTypeCode]);
-
-  const isPendingCodes = dispositionOptions.length === 0;
-  const choices = isPendingCodes ? [] : [{ value: '', label: t.all }, ...dispositionOptions];
 
   return (
     <div className="filter-bar disposition-filter disposition-history-filter">
@@ -79,26 +68,6 @@ export const HistoryFilterBar = ({
           value={draft.itemId}
           onChange={(value) => setDraft((current) => ({ ...current, itemId: value }))}
         />
-      </div>
-      <div className="field-cell">
-        <label className="field-label" htmlFor={dispositionId}>
-          {t.fields.historyType}
-        </label>
-        <Select
-          id={dispositionId}
-          options={choices}
-          value={
-            draft.dispositionTypeCode === '' && isPendingCodes ? null : draft.dispositionTypeCode
-          }
-          placeholder={isPendingCodes ? t.codePlaceholder : t.all}
-          aria-describedby={isPendingCodes ? dispositionNoteId : undefined}
-          onChange={(value) => setDraft((current) => ({ ...current, dispositionTypeCode: value }))}
-        />
-        {isPendingCodes && (
-          <span id={dispositionNoteId} className="field-note">
-            {t.codePending}
-          </span>
-        )}
       </div>
       <div className="disposition-filter-actions">
         <div className="filter-actions">

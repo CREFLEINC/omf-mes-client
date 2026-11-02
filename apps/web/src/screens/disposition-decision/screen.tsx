@@ -78,6 +78,7 @@ import {
   useDispositionDecisions,
   useNonconformanceDetail,
   usePendingNonconformances,
+  useHistoryTotals,
   usePendingTotals,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
@@ -205,6 +206,24 @@ export const DispositionDecisionScreen = ({
         }),
       // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택지는 상태 조회가 바뀔 때만 바뀐다.
       [filters, size, zone, status.entries],
+    ),
+  );
+  /* 처분 유형 칩 — 유형마다 지금 조건(유형은 빼고)의 건수. */
+  const historyTypeOptions = dispositionTypeOptions(dispositionTypeCodes);
+  const historyTypeTotals = useHistoryTotals(
+    useMemo(
+      () =>
+        historyTypeOptions.flatMap((option) => {
+          const query = toHistoryListQuery(
+            { ...historyFilters, dispositionTypeCode: option.value },
+            1,
+            zone,
+            size,
+          );
+          return query === null ? [] : [query];
+        }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택지는 주입된 코드 목록이 바뀔 때만 바뀐다.
+      [historyFilters, size, zone, dispositionTypeCodes],
     ),
   );
   const historyCount = useDecisionHistory(
@@ -460,6 +479,35 @@ export const DispositionDecisionScreen = ({
             })}
           </div>
         )}
+        {/* 처분 이력은 처분 유형 칩 — 건수 · 누르면 그 유형만, 다시 누르면 풀림(사용자 지시 · #223). */}
+        {tab === 'history' && (
+          <div
+            className="quality-approval-status-chips"
+            role="group"
+            aria-label={t.fields.historyType}
+          >
+            {historyTypeOptions.map((option, index) => {
+              const isActive = historyFilters.dispositionTypeCode === option.value;
+              return (
+                <Chip
+                  key={option.value}
+                  variant="filter"
+                  size="sm"
+                  selected={isActive}
+                  aria-pressed={isActive}
+                  onClick={() =>
+                    applyHistory({
+                      ...historyFilters,
+                      dispositionTypeCode: isActive ? '' : option.value,
+                    })
+                  }
+                >
+                  {t.statusChip(option.label, historyTypeTotals[index])}
+                </Chip>
+              );
+            })}
+          </div>
+        )}
         <PaneLayoutToggle
           layout={paneLayout.layout}
           onChange={paneLayout.change}
@@ -492,7 +540,6 @@ export const DispositionDecisionScreen = ({
         ) : (
           <HistoryFilterBar
             applied={historyFilters}
-            dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
             onApply={(next) => applyHistory(next)}
             onReset={() =>
               applyHistory({ ...defaultPeriod(baseDate), itemId: '', dispositionTypeCode: '' })
