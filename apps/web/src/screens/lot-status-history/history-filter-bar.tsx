@@ -113,7 +113,7 @@ export const HistoryFilterBar = ({
       {/* LOT 번호 — LOT 상태 묶음 네 탭과 같은 검색 칸(사용자 2026-10-30). Enter 는 [조회]와 같다. */}
       <SearchInput
         containerClassName="lot-status-filter-lot-no"
-        label={t.historyFilter.fields.lot}
+        label={t.lotFilter.lotScanLabel}
         placeholder={t.lotFilter.lotNoScanPlaceholder}
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}

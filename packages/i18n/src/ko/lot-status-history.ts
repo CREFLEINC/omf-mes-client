@@ -49,7 +49,11 @@ export const lotStatusHistory = {
       warehouse: '창고 선택',
       location: '위치 선택',
     },
-    lotNoScanPlaceholder: 'LOT 번호 입력 또는 스캔',
+    /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
+    lotScanLabel: 'LOT 스캔',
+    lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
+    /** 창고 검색 칸의 흐린 문구(사용자 2026-11-02). */
+    warehousePlaceholder: '창고를 입력하세요',
     detailOpen: '상세 검색 펼치기',
     detailClose: '상세 검색 접기',
     /** 품목은 검색해서 고른다 — 품목 선택 창을 여는 단추와 고른 값을 지우는 단추. */

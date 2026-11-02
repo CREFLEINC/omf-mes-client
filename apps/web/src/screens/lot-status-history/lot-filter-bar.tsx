@@ -250,7 +250,7 @@ export const LotFilterBar = ({
          */}
         <SearchInput
           containerClassName="lot-status-filter-lot-no"
-          label={t.lotFilter.labels.lotNo}
+          label={t.lotFilter.lotScanLabel}
           placeholder={t.lotFilter.lotNoScanPlaceholder}
           value={filters.q}
           onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
@@ -284,6 +284,7 @@ export const LotFilterBar = ({
           <div className="field-cell lot-status-filter-place">
             <ReferenceField
               label={t.lotFilter.labels.warehouse}
+              placeholder={t.lotFilter.warehousePlaceholder}
               valueLabel={
                 warehouseOptions.find((option) => option.value === filters.warehouse)?.label ?? ''
               }

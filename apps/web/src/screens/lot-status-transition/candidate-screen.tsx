@@ -380,7 +380,8 @@ export const LotStatusTransitionCandidateScreen = () => {
           </div>
           <SearchInput
             disabled={confirmationPinned}
-            label={t.filters.lotNo}
+            containerClassName="lot-status-filter-lot-no"
+            label={messages.lotStatusHistory.lotFilter.lotScanLabel}
             placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}

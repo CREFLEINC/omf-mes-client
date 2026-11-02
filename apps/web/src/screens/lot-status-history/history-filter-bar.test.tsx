@@ -25,7 +25,7 @@ describe('HistoryFilterBar', () => {
     await pickRange(user, screen.getByLabelText('기간'), '2026-07-20', '2026-07-25');
     await user.click(screen.getByLabelText('행위자'));
     await user.click(screen.getByRole('option', { name: '합성 퇴직자 (미사용)' }));
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(props.onSearch).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -84,7 +84,7 @@ describe('HistoryFilterBar', () => {
     const { rerender } = render(<HistoryFilterBar {...props} />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), 'DRAFT');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'DRAFT');
     rerender(
       <HistoryFilterBar
         {...props}
@@ -93,7 +93,7 @@ describe('HistoryFilterBar', () => {
       />,
     );
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('DRAFT');
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('DRAFT');
   });
 
   it('바깥의 적용 의미값이 바뀌면 뒤로가기 값으로 동기화한다', () => {
@@ -109,7 +109,7 @@ describe('HistoryFilterBar', () => {
 
     expect(screen.getByLabelText('기간')).toHaveTextContent('2026-07-01 ~ 2026-07-31');
     expect(screen.getByLabelText('행위자')).toHaveTextContent('합성 담당자');
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('BACK');
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('BACK');
   });
 
   it('URL 행위자가 목록에 없어도 내부 번호 대신 이름 확인 실패를 표시한다', async () => {

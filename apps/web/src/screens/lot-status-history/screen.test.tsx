@@ -414,7 +414,7 @@ describe('Lot Status 화면 shell', () => {
       'true',
     );
     await pickWarehouse(user, 'SAMPLE-WH-01');
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(await screen.findByText('일부 LOT 유형만 표시됩니다.')).toBeVisible();
     expect(await screen.findByText('일부 창고만 표시됩니다.')).toBeVisible();
     expect(locationSearch().get('lotType')).toBeNull();
@@ -518,8 +518,8 @@ describe('Lot Status 화면 shell', () => {
 
     await pickRange(user, screen.getByLabelText('기간'), '2026-07-20', '2026-07-25');
     await choose(user, '행위자', '합성 해제자 (미사용)');
-    await user.clear(screen.getByLabelText('LOT 번호'));
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    await user.clear(screen.getByLabelText('LOT 스캔'));
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(locationSearch().get('historyLot')).toBe('OLD');
 
     await user.click(screen.getByRole('button', { name: '조회' }));

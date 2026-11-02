@@ -105,7 +105,7 @@ describe('의심자재 후보 pane', () => {
       jsonResponse(page(call === 1 ? [lot(701)] : [lot(702)], call === 3 ? 2 : 1, 4)),
     );
     await user.click(await screen.findByRole('checkbox', { name: 'SYN-LOT-701 선택' }));
-    await user.type(screen.getByLabelText('LOT 번호'), 'SYN-SEARCH');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-SEARCH');
     expect(lotUrls(urls)).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: '조회' }));
     await screen.findByRole('checkbox', { name: 'SYN-LOT-702 선택' });

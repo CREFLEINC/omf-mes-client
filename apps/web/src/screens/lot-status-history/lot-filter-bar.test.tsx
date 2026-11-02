@@ -125,12 +125,12 @@ describe('LOT 현재 조회 조건', () => {
   it('LOT 번호를 넣고 Enter(스캐너)를 치면 바로 조회한다', async () => {
     const { onSearch, user } = renderBar();
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveAttribute(
+    expect(screen.getByLabelText('LOT 스캔')).toHaveAttribute(
       'placeholder',
-      'LOT 번호 입력 또는 스캔',
+      'LOT 바코드 스캔 또는 번호를 입력하세요',
     );
     expect(screen.queryByRole('button', { name: '검색' })).toBeNull();
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001{Enter}');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001{Enter}');
 
     expect(onSearch).toHaveBeenCalledWith(expect.objectContaining({ q: 'SAMPLE-LOT-001' }));
   });
@@ -176,7 +176,7 @@ describe('LOT 현재 조회 조건', () => {
     expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
     await pickWarehouse(user, 'SAMPLE-WH-01');
     await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');
-    await user.type(screen.getByLabelText('LOT 번호'), 'SAMPLE-LOT-001');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(onSearch).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: '조회' }));
 
@@ -258,10 +258,10 @@ describe('LOT 현재 조회 조건', () => {
     renderWithProviders(<AppliedProbe initial={applied} />, { fetch: locationFetch });
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), '작성 중');
+    await user.type(screen.getByLabelText('LOT 스캔'), '작성 중');
     await user.click(screen.getByRole('button', { name: '같은 적용' }));
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('작성 중');
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('작성 중');
   });
 
   it('적용값이 실제로 바뀌면 초안도 그 값으로 되돌린다', async () => {
@@ -270,10 +270,10 @@ describe('LOT 현재 조회 조건', () => {
     });
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText('LOT 번호'), '작성 중');
+    await user.type(screen.getByLabelText('LOT 스캔'), '작성 중');
     await user.click(screen.getByRole('button', { name: '다른 적용' }));
 
-    expect(screen.getByLabelText('LOT 번호')).toHaveValue('적용값');
+    expect(screen.getByLabelText('LOT 스캔')).toHaveValue('적용값');
   });
 
   it('초기화는 상위에 한 번 알린다', async () => {

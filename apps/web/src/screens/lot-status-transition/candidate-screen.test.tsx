@@ -230,7 +230,7 @@ describe('Lot Status 전이 후보', () => {
   it('필터 초안을 조회·초기화하고 요청에 heldOnly를 보내지 않는다', async () => {
     const { urls, user } = renderScreen([listRoute()]);
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
-    await user.type(screen.getByLabelText('LOT 번호'), 'SYN-LOT');
+    await user.type(screen.getByLabelText('LOT 스캔'), 'SYN-LOT');
     await choose(user, '자재', 'SYN-ITEM-A · 합성 자재');
     await choose(user, '품질 상태', '정상');
     await user.click(screen.getByRole('button', { name: '조회' }));

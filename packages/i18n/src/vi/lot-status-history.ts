@@ -48,7 +48,11 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       warehouse: 'Chọn kho',
       location: 'Chọn vị trí',
     },
-    lotNoScanPlaceholder: 'Nhập hoặc quét số LOT',
+    /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
+    lotScanLabel: 'Quét LOT',
+    lotNoScanPlaceholder: 'Quét mã vạch LOT hoặc nhập số',
+    /** 창고 검색 칸의 흐린 문구(사용자 2026-11-02). */
+    warehousePlaceholder: 'Nhập kho',
     detailOpen: 'Mở tìm kiếm chi tiết',
     detailClose: 'Thu gọn tìm kiếm chi tiết',
     itemPlaceholder: 'Nhập mặt hàng',

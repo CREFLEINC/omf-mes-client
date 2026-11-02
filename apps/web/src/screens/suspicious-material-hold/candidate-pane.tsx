@@ -235,7 +235,8 @@ export const SuspiciousMaterialCandidatePane = ({
       <h2 className="pane-title">{t.pane}</h2>
       <div className="filter-bar suspicious-material-hold-filter">
         <SearchInput
-          label={t.fields.lotNo}
+          containerClassName="lot-status-filter-lot-no"
+          label={messages.lotStatusHistory.lotFilter.lotScanLabel}
           placeholder={messages.lotStatusHistory.lotFilter.lotNoScanPlaceholder}
           value={draft.q}
           disabled={isLocked}
