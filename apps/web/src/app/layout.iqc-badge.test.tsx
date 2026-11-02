@@ -123,7 +123,9 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
     /* 0건이면 배지가 없다. */
     const oqcTab = within(tabs).getByRole('link', { name: /^OQC/ });
     expect(within(oqcTab).queryByLabelText(t.oqcPending(0))).toBeNull();
-    expect(await within(sidebar()).findByLabelText(t.inspectionPending(16))).toHaveTextContent('9+');
+    expect(await within(sidebar()).findByLabelText(t.inspectionPending(16))).toHaveTextContent(
+      '9+',
+    );
     /* 유형마다 목록과 같은 조건(대기만 · size 1)으로 묻는다. */
     await waitFor(() =>
       expect(new Set(counted.map((url) => url.searchParams.get('inspectionTypeCode')))).toEqual(
@@ -242,5 +244,56 @@ describe('관리웹 IQC 대기 배지(피처 002)', () => {
     const afterTick = counted.length;
     await user.click(screen.getByRole('button', { name: '옮기기' }));
     await waitFor(() => expect(counted.length).toBeGreaterThan(afterTick));
+  });
+
+  it('부품 공장만 범위인 계정은 IQC 탭이 여는 부품 화면처럼 그 공장 의뢰만 센다(#225)', async () => {
+    const counted: URL[] = [];
+    renderWithProviders(
+      <SessionProvider>
+        <AppLayout>본문</AppLayout>
+      </SessionProvider>,
+      {
+        session: {
+          ...SYNTHETIC_SESSION,
+          permissions: ['W-01-01', 'W-03-11', 'W-04-03'],
+          scopes: [{ businessUnitId: 1, plantId: 11 }],
+        },
+        route: '/logistics/iqc-inspection',
+        fetch: createStubFetch([
+          {
+            match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+            respond: () =>
+              jsonResponse({ items: [{ code: 'PL13' }], page: { page: 1, size: 100, total: 1 } }),
+          },
+          {
+            match: (request) => new URL(request.url).pathname === '/mdm/plants',
+            respond: () =>
+              jsonResponse({
+                items: [
+                  { plantId: 11, plantCode: 'PL11', plantName: 'Parts Plant', businessUnitId: 1 },
+                  { plantId: 13, plantCode: 'PL13', plantName: 'OA Plant', businessUnitId: 1 },
+                ],
+                page: { page: 1, size: 100, total: 2 },
+              }),
+          },
+          {
+            match: (request) => new URL(request.url).pathname === '/quality/inspection-requests',
+            respond: (request) => {
+              const url = new URL(request.url);
+              if (url.searchParams.get('inspectionTypeCode') === 'IQC') counted.push(url);
+              /* 부품 공장 의뢰는 0건, 전체(OA 포함)는 7건. */
+              const total = url.searchParams.get('plantId') === '11' ? 0 : 7;
+              return jsonResponse({ items: [], page: { page: 1, size: 1, total } });
+            },
+          },
+        ]),
+      },
+    );
+
+    await waitFor(() => expect(counted.length).toBeGreaterThan(0));
+    expect(counted.every((url) => url.searchParams.get('plantId') === '11')).toBe(true);
+    const tabs = await screen.findByRole('navigation', { name: INSPECTION_ROW });
+    const iqcTab = within(tabs).getByRole('link', { name: /^IQC/ });
+    expect(within(iqcTab).queryByLabelText(/IQC/)).not.toBeInTheDocument();
   });
 });
