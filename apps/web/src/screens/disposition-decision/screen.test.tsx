@@ -62,6 +62,17 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
   });
 
+  /* 부적합에 남은 품질 상태는 등록 때 값 — 판정으로 바뀐 LOT 상태를 LOT 조회로 보인다(#223). */
+  it('대상 LOT 의 품질 상태는 LOT 의 지금 상태다', async () => {
+    const { user } = renderScreen({ lotStatusCode: 'SCRAPPED' });
+    await selectRow(user);
+
+    const lots = await screen.findByRole('region', { name: t.panes.lots });
+    expect(
+      await within(lots).findByText(t.values.qualityStatus.SCRAPPED ?? ''),
+    ).toBeInTheDocument();
+  });
+
   it('⭐ 진입 키로 들어오면 그 부적합이 자동으로 골라진다', async () => {
     renderScreen({ route: '/quality/dispositions?nonconformanceId=41' });
 

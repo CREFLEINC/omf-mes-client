@@ -84,6 +84,28 @@ export const useHistoryTotals = (queries: readonly HistoryListQuery[]): (number 
   }).map((result) => result.data?.page.total);
 };
 
+/**
+ * 대상 LOT 들의 «지금» 상태(#223) — 부적합에 남은 품질 상태는 등록 때 값이라, 판정 · 특채로 바뀐 LOT 상태를
+ * 보이려면 LOT 을 따로 읽는다. 뿌리 키 아래라 판정 · 특채 적용 뒤 함께 다시 부른다. 못 읽은 LOT 은 빠진다.
+ */
+export const useLotStatuses = (lotIds: readonly number[]): Record<number, string> => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: lotIds.map((lotId) => ({
+      queryKey: [...dispositionKeys.all, 'lot', lotId] as const,
+      queryFn: () =>
+        runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } })),
+    })),
+  });
+
+  return Object.fromEntries(
+    lotIds.flatMap((lotId, index) => {
+      const statusCode = results[index]?.data?.lot.statusCode;
+      return statusCode === undefined ? [] : [[lotId, statusCode]];
+    }),
+  );
+};
+
 export const useNonconformanceDetail = (
   nonconformanceId: number | null,
 ): UseQueryResult<Nonconformance> => {

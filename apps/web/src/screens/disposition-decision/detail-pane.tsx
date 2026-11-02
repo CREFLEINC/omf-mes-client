@@ -13,14 +13,16 @@ export interface DetailPaneProps {
   uoms: DispositionLookup;
   /** 심각도의 표시명(G-32) — 목록 열과 같은 조회를 받는다. 모르는 코드는 코드 그대로(G-9). 상태는 구획 머리 배지가 말한다. */
   severity: DispositionLookup;
+  /** LOT 의 지금 상태(LOT 번호 → 상태 코드). 못 읽은 LOT 은 부적합 등록 때 상태로 보인다(#223). */
+  lotStatuses?: Record<number, string>;
 }
 
 /**
  * 부적합 기본 정보 · 설명 · 대상 LOT(사용자 시안 · omf-all-around#223) — 세 칸 두 줄로 줄이고, 설명은 그 아래 한 줄,
- * LOT 표는 LOT · 수량 · 품질 상태만. 판정으로 바뀐 상태가 표에 남지 않는다는 상시 안내(A-11)는 걷었다 — 표의 품질
- * 상태는 지금 값이다.
+ * LOT 표는 LOT · 수량 · 품질 상태만. 품질 상태는 LOT 을 따로 읽은 «지금» 값이다 — 부적합에 남은 값은 등록 때 값이라
+ * 판정 · 특채로 바뀐 상태를 보이지 못한다(#223).
  */
-export const DetailPane = ({ view, items, uoms, severity }: DetailPaneProps) => {
+export const DetailPane = ({ view, items, uoms, severity, lotStatuses = {} }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
   const unitOf = (uomId: number | undefined): string =>
     uomId === undefined ? '' : ` ${lookupDisplayLabel(uoms, uomId)}`;
@@ -37,20 +39,23 @@ export const DetailPane = ({ view, items, uoms, severity }: DetailPaneProps) => 
       align: 'center',
       header: t.fields.qualityStatus,
       /* 품질 상태는 배지로 — 불량 · 폐기는 붉게, 정상은 초록, 그 밖은 회색(사용자 시안 · #223). */
-      render: (row) => (
-        <Chip
-          size="sm"
-          status={
-            row.qualityStatusCode === 'DEFECTIVE' || row.qualityStatusCode === 'SCRAPPED'
-              ? 'error'
-              : row.qualityStatusCode === 'NORMAL'
-                ? 'success'
-                : 'idle'
-          }
-        >
-          {t.values.qualityStatus[row.qualityStatusCode] ?? row.qualityStatusCode}
-        </Chip>
-      ),
+      render: (row) => {
+        const code = lotStatuses[row.lotId] ?? row.qualityStatusCode;
+        return (
+          <Chip
+            size="sm"
+            status={
+              code === 'DEFECTIVE' || code === 'SCRAPPED'
+                ? 'error'
+                : code === 'NORMAL'
+                  ? 'success'
+                  : 'idle'
+            }
+          >
+            {t.values.qualityStatus[code] ?? code}
+          </Chip>
+        );
+      },
     },
   ];
 

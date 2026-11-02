@@ -24,6 +24,8 @@ export interface DetailSlotProps {
   onRetry: () => void;
   /** 고르기 전 안내 — 탭마다 다르다(#223). 비면 처분 대기 문구. */
   emptyTitle?: string;
+  /** 대상 LOT 의 지금 상태(#223). */
+  lotStatuses?: Record<number, string>;
 }
 
 /**
@@ -47,6 +49,7 @@ export const DetailSlot = ({
   uoms,
   onRetry,
   emptyTitle,
+  lotStatuses,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
 
@@ -86,5 +89,13 @@ export const DetailSlot = ({
   if (detail.view === null) return null;
 
   /* 판정 이력은 판정 입력 아래 접는 구역으로 옮겼다(사용자 시안 · #223). */
-  return <DetailPane view={detail.view} items={items} uoms={uoms} severity={severity} />;
+  return (
+    <DetailPane
+      view={detail.view}
+      items={items}
+      uoms={uoms}
+      severity={severity}
+      lotStatuses={lotStatuses}
+    />
+  );
 };

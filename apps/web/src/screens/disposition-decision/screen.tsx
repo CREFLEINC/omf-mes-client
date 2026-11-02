@@ -79,6 +79,7 @@ import {
   useNonconformanceDetail,
   usePendingNonconformances,
   useHistoryTotals,
+  useLotStatuses,
   usePendingTotals,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
@@ -248,6 +249,9 @@ export const DispositionDecisionScreen = ({
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const remaining = toRemainingQty(decisions.data?.summary);
   const uomId = decisionUomIdOf(detail.data?.lots);
+  const lotStatuses = useLotStatuses(
+    useMemo(() => (detail.data?.lots ?? []).map((lot) => lot.lotId), [detail.data]),
+  );
   const decisionRows = useMemo(
     () => (decisions.data?.items ?? []).map(toDecisionRow),
     [decisions.data],
@@ -649,6 +653,7 @@ export const DispositionDecisionScreen = ({
               uoms={uoms}
               onRetry={() => void detail.refetch()}
               emptyTitle={tab === 'pending' ? t.detail.select : t.detail.selectHistory}
+              lotStatuses={lotStatuses}
             />
           </div>
           {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}
