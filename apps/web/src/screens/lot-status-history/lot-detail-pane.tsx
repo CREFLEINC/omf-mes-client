@@ -122,14 +122,15 @@ export const LotDetailPane = ({
 
   return (
     <>
-      {!inDialog && (
-        <div className="lot-status-pane-head lot-status-detail-head">
+      {/* 팝업에서는 제목을 팝업이 달고, 이동 단추만 오른쪽 위에 둔다(사용자 2026-11-02). */}
+      <div className="lot-status-pane-head lot-status-detail-head">
+        {!inDialog && (
           <h2 className="pane-title" id="lot-status-detail-title">
             {t.detail.title}
           </h2>
-          {actions}
-        </div>
-      )}
+        )}
+        {actions}
+      </div>
       {detail.isPending && (
         <div role="status" aria-label={t.detail.loading}>
           <SkeletonText lines={3} />
@@ -250,13 +251,19 @@ export const LotDetailPane = ({
           },
         ]}
       />
-      {inDialog && <div className="lot-dialog-actions">{actions}</div>}
       {openedLot !== null && (
         <Dialog
           open
           size="lg"
           title={genealogyText.usage.dialogTitle}
           onClose={() => setOpenedLot(null)}
+          /* 닫기는 아래 [닫기] 단추 하나로(사용자 2026-11-02). Esc 는 그대로 닫는다. */
+          showCloseButton={false}
+          footer={
+            <Button variant="outlined" onClick={() => setOpenedLot(null)}>
+              {messages.common.close}
+            </Button>
+          }
         >
           <div className="lot-status-detail-dialog lot-usage-detail-dialog">
             <LotDetailPane

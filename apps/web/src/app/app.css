@@ -4481,11 +4481,6 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
-.lot-dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
 
 /* LOT 상세의 변경 이력·보류 이력 접기 — 제목 단추 앞 화살표가 열림·닫힘을 보인다. */
 .lot-section-toggle {
