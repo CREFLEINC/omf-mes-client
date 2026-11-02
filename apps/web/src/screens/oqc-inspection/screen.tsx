@@ -61,6 +61,7 @@ import {
   useSaveInspectionResult,
 } from './queries';
 import { DetailFiltersToggle } from '../../patterns/detail-filters';
+import { plantTodayRange } from '../parts-iqc-inspection/today';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueListTable } from './queue-list-table';
 import { RequestDetailPane } from './request-detail-pane';
@@ -102,6 +103,9 @@ import { targetSignatureOf, type WriteTargetSignature } from './write-target';
 
 const t = messages.oqcInspection;
 const hubText = messages.common.inspectionHub;
+const todayText = messages.partsIqcInspection;
+/** 「오늘 입고」 주소 키 — 부품 IQC 화면과 같다(#225). */
+const TODAY_KEY = 'td';
 /** 불합격 판정 코드 — 불합격 사유(선택) 칸을 세우고 비고로 싣는 기준(#136 · `judgment-direction.ts` 와 같은 값). */
 const REJECTED = 'REJECTED';
 const referenceT = messages.common.reference;
@@ -120,7 +124,12 @@ export const OqcInspectionScreen = () => {
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
 
-  const queue = useInspectionQueue(toListQuery(filters, page, pageSize));
+  const todayOnly = searchParams.get(TODAY_KEY) === '1';
+
+  const queue = useInspectionQueue({
+    ...toListQuery(filters, page, pageSize),
+    ...(todayOnly ? plantTodayRange() : {}),
+  });
   const detail = useInspectionRequestDetail(selectedId);
   const rounds = useInspectionRounds(selectedId);
 
@@ -301,7 +310,17 @@ export const OqcInspectionScreen = () => {
     if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
     /* 고른 쪽 크기는 조회해도 그대로다(#197). */
     if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
+    if (todayOnly) params.set(TODAY_KEY, '1');
     setSearchParams(params);
+  };
+
+  /* 「오늘 입고」 — 다른 조건 · 고른 의뢰는 그대로 두고 첫 쪽으로 간다(#225). */
+  const toggleToday = (on: boolean): void => {
+    const next = new URLSearchParams(searchParams);
+    next.delete(URL_KEYS.page);
+    if (on) next.set(TODAY_KEY, '1');
+    else next.delete(TODAY_KEY);
+    setSearchParams(next);
   };
 
   /**
@@ -312,6 +331,7 @@ export const OqcInspectionScreen = () => {
     const next = toSearchParams(withStatus(filters, statusCode));
     if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
     if (pageSize !== PAGE_SIZE) next.set(URL_KEYS.size, String(pageSize));
+    if (todayOnly) next.set(TODAY_KEY, '1');
     setSearchParams(next);
   };
 
@@ -824,6 +844,15 @@ export const OqcInspectionScreen = () => {
           }
         />
 
+        {/* 「오늘 입고」 — 오늘 들어온 의뢰만(부품 IQC 와 같은 단추 · 사용자 지시 2026-11-02 · #225). 켜지면 채운 단추. */}
+        <Button
+          variant={todayOnly ? 'filled' : 'outlined'}
+          aria-pressed={todayOnly}
+          aria-label={todayOnly ? todayText.todayOn : todayText.todayOff}
+          onClick={() => toggleToday(!todayOnly)}
+        >
+          {todayText.today}
+        </Button>
         {/* 「대기·진행만 보기」는 스캔 줄에 늘 보인다 — 상세 조건을 접어도 켜고 끌 수 있게(#225). */}
         <div className="field-cell field-cell-unlabeled inspection-pending-only">
           <Checkbox

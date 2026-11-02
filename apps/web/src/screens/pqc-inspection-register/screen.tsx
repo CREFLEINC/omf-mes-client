@@ -19,6 +19,7 @@ import {
 } from '../../patterns/split-orientation';
 import { DetailFiltersToggle } from '../../patterns/detail-filters';
 import { LotScan } from '../inspection-documents/lot-scan';
+import { plantTodayRange } from '../parts-iqc-inspection/today';
 import {
   LIST_PAGE_SIZES,
   PAGE_SIZE,
@@ -38,6 +39,7 @@ import { PqcQueueTable } from './queue-table';
 import { PqcSkipPane } from './skip-pane';
 
 const t = messages.pqcInspectionRegister;
+const todayText = messages.partsIqcInspection;
 const hubText = messages.common.inspectionHub;
 
 /** 이 화면이 무엇인지의 정의 — 조건이 아니다. */
@@ -64,6 +66,8 @@ export const PqcInspectionRegisterScreen = () => {
   const hub = usePageHub();
   const selectedId = toSelectedId(searchParams.get(SELECTED_KEY));
   const [pendingOnly, setPendingOnly] = useState(true);
+  /* 「오늘 입고」 — 오늘 들어온 의뢰만(사용자 지시 2026-11-02 · #225). */
+  const [todayOnly, setTodayOnly] = useState(false);
   /* 탭 줄 상태 칩(#185) — 비면 거르지 않는다. */
   const [statusCode, setStatusCode] = useState<InspectionHubStatus | null>(null);
   const [page, setPage] = useState(1);
@@ -99,6 +103,7 @@ export const PqcInspectionRegisterScreen = () => {
     ...(filters.itemId === null ? {} : { itemId: filters.itemId }),
     ...(filters.workOrderId === null ? {} : { workOrderId: filters.workOrderId }),
     ...(filters.keyword === '' ? {} : { q: filters.keyword }),
+    ...(todayOnly ? plantTodayRange() : {}),
     page,
     size: pageSize,
   });
@@ -156,6 +161,11 @@ export const PqcInspectionRegisterScreen = () => {
   );
 
   /* 「대기·진행만 보기」 — 조건이 바뀌면 결과가 통째로 달라진다 — 첫 쪽으로 간다. 다시 켜면 「완료」 칩은 푼다(같은 AND 이유). */
+  const toggleToday = (next: boolean): void => {
+    setTodayOnly(next);
+    setPage(1);
+  };
+
   const togglePendingOnly = (next: boolean): void => {
     setPendingOnly(next);
     if (next && statusCode === 'COMPLETED') setStatusCode(null);
@@ -204,6 +214,15 @@ export const PqcInspectionRegisterScreen = () => {
           noRequestMessage={t.filters.lotNoRequest}
           onFound={select}
         />
+        {/* 「오늘 입고」 — 오늘 들어온 의뢰만(부품 IQC 와 같은 단추 · 사용자 지시 2026-11-02 · #225). 켜지면 채운 단추. */}
+        <Button
+          variant={todayOnly ? 'filled' : 'outlined'}
+          aria-pressed={todayOnly}
+          aria-label={todayOnly ? todayText.todayOn : todayText.todayOff}
+          onClick={() => toggleToday(!todayOnly)}
+        >
+          {todayText.today}
+        </Button>
         {/* 「대기·진행만 보기」는 스캔 줄에 늘 보인다 — 상세 조건을 접어도 켜고 끌 수 있게(#225). */}
         <div className="field-cell field-cell-unlabeled inspection-pending-only">
           <Checkbox
