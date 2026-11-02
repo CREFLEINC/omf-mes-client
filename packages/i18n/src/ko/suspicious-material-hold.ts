@@ -58,12 +58,14 @@ export const suspiciousMaterialHold = {
     reasonUnavailable:
       '보류 사유 목록이 완결되지 않았습니다. 사유를 확인할 때까지 등록할 수 없습니다.',
     factsUnavailable: '위치·단위 또는 도착 상태를 확인할 때까지 등록할 수 없습니다.',
-    impact: '보류 영향',
+    impact: '보류 시 제한 사항',
     impactTarget: (count: number): string => `대상 LOT ${String(count)}건`,
-    quantityUnknown: '수량 미확인',
-    uomUnknown: '단위 미확인',
-    locationUnknown: '위치 미확인',
-    impactRestriction: '보류 시 출고·출하·피킹이 제한됩니다.',
+    quantityName: '수량',
+    uomName: '단위',
+    locationName: '위치',
+    /** 못 받은 값 이름을 「수량 · 위치 · 단위 미확인」처럼 묶는다(사용자 시안 2026-11-02). */
+    unknownFacts: (names: string): string => `${names} 미확인`,
+    impactRestriction: '보류 중 출고·출하·피킹이 제한됩니다.',
     recovery: '보류 해제 시 별도의 Release 처리가 필요합니다.',
   },
   execution: {
@@ -94,13 +96,20 @@ export const suspiciousMaterialHold = {
     selected: (count: number): string => `선택 LOT ${String(count)}건`,
   },
   /** 자재 불량 기록 구획의 이 화면 문구 — POP 자재 불량 화면과 같은 기본 문구 위에 시안 글자를 얹는다. */
+  /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
   defect: {
     major: '불량 유형',
     majorPlaceholder: '불량 유형 선택',
+    noCodesPlaceholder: '등록된 불량 유형 없음',
+    noCodesNote: '등록된 불량 코드가 없습니다. 불량 코드 관리에서 먼저 등록해 주세요.',
+    registerCode: '불량 코드 등록',
     qtyPlaceholder: '수량 입력',
-    descriptionPlaceholder: '불량 내용 입력',
-    submit: '불량 기록',
-    affectedCount: (count: number): string => `${String(count)}건`,
-    estimateNote: '작업지시 기준으로 추정된 LOT이며, 실제 사용 LOT와 다를 수 있습니다.',
+    descriptionPlaceholder: '불량 내용을 입력하세요',
+    submit: '불량 등록',
+    affectedHeading: '관련 생산 LOT',
+    affectedCount: (count: number): string => `총 ${String(count)}건`,
+    columns: { lotNo: '생산 LOT 번호', workOrderNo: '작업지시 번호', statusCode: '현재 상태' },
+    estimateNote:
+      '작업지시를 기준으로 조회한 LOT입니다. 실제 자재가 투입된 LOT과 다를 수 있습니다.',
   },
 } as const;

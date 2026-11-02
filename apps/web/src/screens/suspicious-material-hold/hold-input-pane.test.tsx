@@ -193,8 +193,8 @@ describe('의심자재 보류 입력 pane', () => {
       reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }], 2),
     );
     expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
-    expect(screen.getByText(/위치 미확인/)).toBeVisible();
-    expect(screen.getByText(/단위 미확인/)).toBeVisible();
+    /* 못 받은 값은 「위치 · 단위 미확인」 한 줄로 묶는다(사용자 시안 2026-11-02). */
+    expect(screen.getByText('위치 · 단위 미확인')).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
     for (const raw of ['802001', '803001', '804001']) expect(screen.queryByText(raw)).toBeNull();
   });

@@ -67,12 +67,14 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       'Danh sách lý do tạm giữ chưa đầy đủ. Chưa xác nhận được lý do thì chưa đăng ký được.',
     factsUnavailable:
       'Chưa xác nhận được vị trí · đơn vị hoặc trạng thái đến nơi thì chưa đăng ký được.',
-    impact: 'Ảnh hưởng của việc tạm giữ',
+    impact: 'Hạn chế khi tạm giữ',
     impactTarget: (count: number): string => `LOT đối tượng ${String(count)}`,
-    quantityUnknown: 'Chưa xác định số lượng',
-    uomUnknown: 'Chưa xác định đơn vị',
-    locationUnknown: 'Chưa xác định vị trí',
-    impactRestriction: 'Khi tạm giữ, xuất kho · xuất hàng · lấy hàng sẽ bị hạn chế.',
+    quantityName: 'Số lượng',
+    uomName: 'Đơn vị',
+    locationName: 'Vị trí',
+    /** 못 받은 값 이름을 「수량 · 위치 · 단위 미확인」처럼 묶는다(사용자 시안 2026-11-02). */
+    unknownFacts: (names: string): string => `Chưa xác định ${names}`,
+    impactRestriction: 'Trong khi tạm giữ, xuất kho · xuất hàng · lấy hàng bị hạn chế.',
     recovery: 'Khi gỡ tạm giữ cần xử lý Release riêng.',
   },
   execution: {
@@ -106,11 +108,20 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
   defect: {
     major: 'Loại lỗi',
     majorPlaceholder: 'Chọn loại lỗi',
+    noCodesPlaceholder: 'Chưa có loại lỗi',
+    noCodesNote: 'Chưa có mã lỗi. Hãy đăng ký trước ở quản lý mã lỗi.',
+    registerCode: 'Đăng ký mã lỗi',
     qtyPlaceholder: 'Nhập số lượng',
     descriptionPlaceholder: 'Nhập nội dung lỗi',
-    submit: 'Ghi nhận lỗi',
-    affectedCount: (count: number): string => String(count),
+    submit: 'Đăng ký lỗi',
+    affectedHeading: 'LOT sản xuất liên quan',
+    affectedCount: (count: number): string => `Tổng ${String(count)}`,
+    columns: {
+      lotNo: 'Số LOT sản xuất',
+      workOrderNo: 'Số lệnh sản xuất',
+      statusCode: 'Trạng thái hiện tại',
+    },
     estimateNote:
-      'Đây là LOT được ước tính theo lệnh sản xuất, có thể khác với LOT thực tế đã dùng.',
+      'LOT được tra cứu theo lệnh sản xuất. Có thể khác với LOT thực tế đã dùng vật tư.',
   },
 };

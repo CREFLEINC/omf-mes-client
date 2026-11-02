@@ -184,7 +184,7 @@ describe('의심자재 등록 screen', () => {
     await view.queryClient.invalidateQueries({
       queryKey: ['suspicious-material-hold', 'candidates'],
     });
-    expect(await screen.findByText(/위치 미확인 · 단위 미확인/)).toBeVisible();
+    expect(await screen.findByText('위치 · 단위 미확인')).toBeVisible();
     expect(screen.queryByText(/EA · 개 · WH · 창고 \/ LOC · 격리장/)).toBeNull();
     expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled();
     for (const raw of ['903001', '904001']) expect(screen.queryByText(raw)).toBeNull();

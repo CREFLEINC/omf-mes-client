@@ -5341,6 +5341,55 @@ h2:has(> .inspection-standard-dialog-title) {
   color: var(--on-surface-variant);
 }
 
+/* 보류 범위 · 사유 · 해제 조건 · 비고 한 줄 — 범위는 단추 폭만큼, 나머지는 고르게. 좁으면 다음 줄로. */
+.suspicious-material-hold-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-input-row > * {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.suspicious-material-hold-input-row > .suspicious-material-hold-range {
+  flex: 0 0 auto;
+}
+
+/* 선택 칸(사유 · 불량 유형)은 칸 폭을 다 채운다 — 기본은 값 길이만큼이라 좁게 선다. */
+.suspicious-material-hold-input-row > .field-cell:not(.suspicious-material-hold-range) > :not(.field-label),
+.suspicious-material-hold-defect-row > .field-cell > :not(.field-label) {
+  width: 100%;
+}
+
+/* 자재 불량 — 유형은 넓게, 수량은 좁게(약 12rem · 사용자 시안 2026-11-02). */
+.suspicious-material-hold-defect-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-row > .field-cell {
+  flex: 1 1 14rem;
+  max-width: 28rem;
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-row > .suspicious-material-hold-defect-qty {
+  flex: 0 0 12rem;
+}
+
+/* 안내 줄은 글 폭만큼만 바탕을 깐다 — 구획(grid) 안에서 늘어나지 않게. */
+.suspicious-material-hold-section > .iqc-inspection-action-note,
+.suspicious-material-hold-impact > .iqc-inspection-action-note {
+  justify-self: start;
+}
+
 /* 보류 영향 — LOT 마다 번호 · 수량 · 위치 · 단위, 붉은 제한 안내를 회색 상자 안에. */
 .suspicious-material-hold-impact-list {
   display: grid;
@@ -5360,6 +5409,9 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 .suspicious-material-hold-impact-facts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--on-surface-variant);
 }
 
