@@ -5,7 +5,8 @@ import { useState } from 'react';
 import { PageNav } from '../../patterns/page-nav';
 import { type HistoryFilters, LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import type { FilterOption } from './lot-filter-bar';
-import { LotHistoryDialog } from './lot-detail-pane';
+import { LotDetailPane } from './lot-detail-pane';
+import { useLotTypeOptions } from './options';
 import { LotTimelineTable } from './lot-timeline-table';
 import { validateHistoryPeriod } from './period';
 import { useLotHistoryTimeline } from './queries';
@@ -59,76 +60,102 @@ export const HistoryResults = ({
   const rows = entries.slice(start, start + pageSize);
 
   return (
-    <section
-      className="pane lot-status-pane lot-status-history-pane"
-      aria-labelledby="lot-history-title"
-    >
-      <h2 className="pane-title" id="lot-history-title">
-        {t.history.pane}
-      </h2>
-      {!hasValidPeriod && (
-        <EmptyState
-          size="sm"
-          title={t.history.beforeSearch.title}
-          description={t.history.beforeSearch.description}
-        />
-      )}
-      {hasValidPeriod && history.isPending && (
-        <div role="status" aria-label={t.history.loading}>
-          <SkeletonText lines={3} />
-        </div>
-      )}
-      {hasValidPeriod && history.isError && (
-        <AlertBanner variant="error" title={t.history.failed} action={retry} />
-      )}
-      {hasValidPeriod && history.isFetching && history.data !== undefined && (
-        <p className="field-note" role="status" aria-label={t.history.refreshing}>
-          {t.history.refreshingText}
-        </p>
-      )}
-      {hasValidPeriod && history.data?.isTruncated === true && (
-        <AlertBanner variant="warning">{t.history.truncated}</AlertBanner>
-      )}
-      {hasValidPeriod && history.data !== undefined && (
-        <>
-          <LotTimelineTable
-            caption={t.history.pane}
-            entries={rows}
-            statusOptions={statusOptions}
-            appUserName={appUserName}
-            variant="history"
-            busy={history.isFetching}
-            onOpenEntry={(entry) => setOpenedLot({ lotId: entry.event.lotId, lotNo: entry.lotNo })}
-            empty={
-              <EmptyState
-                size="sm"
-                live
-                title={t.history.empty.title}
-                description={t.history.empty.description}
-              />
-            }
+    <>
+      {/* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */}
+      <section className="pane lot-status-pane lot-status-history-pane" aria-label={t.history.pane}>
+        {!hasValidPeriod && (
+          <EmptyState
+            size="sm"
+            title={t.history.beforeSearch.title}
+            description={t.history.beforeSearch.description}
           />
-          {/* 총 건수는 표 아래 쪽 이동 줄에만 — LOT 목록과 같다(사용자 2026-10-30). */}
-          <PageNav
-            sizes={LOT_PAGE_SIZES}
-            meta={{ page: currentPage, size: pageSize, total }}
-            onChangePage={onPageChange}
-            onChangeSize={(size) => {
-              setPageSize(size);
-              onPageChange(1);
-            }}
-            controlSize="sm"
-            buttonSize="md"
-          />
-        </>
-      )}
+        )}
+        {hasValidPeriod && history.isPending && (
+          <div role="status" aria-label={t.history.loading}>
+            <SkeletonText lines={3} />
+          </div>
+        )}
+        {hasValidPeriod && history.isError && (
+          <AlertBanner variant="error" title={t.history.failed} action={retry} />
+        )}
+        {hasValidPeriod && history.isFetching && history.data !== undefined && (
+          <p className="field-note" role="status" aria-label={t.history.refreshing}>
+            {t.history.refreshingText}
+          </p>
+        )}
+        {hasValidPeriod && history.data?.isTruncated === true && (
+          <AlertBanner variant="warning">{t.history.truncated}</AlertBanner>
+        )}
+        {hasValidPeriod && history.data !== undefined && (
+          <>
+            <LotTimelineTable
+              caption={t.history.pane}
+              entries={rows}
+              statusOptions={statusOptions}
+              appUserName={appUserName}
+              variant="history"
+              busy={history.isFetching}
+              onOpenEntry={(entry) =>
+                setOpenedLot({ lotId: entry.event.lotId, lotNo: entry.lotNo })
+              }
+              empty={
+                <EmptyState
+                  size="sm"
+                  live
+                  title={t.history.empty.title}
+                  description={t.history.empty.description}
+                />
+              }
+            />
+            {/* 총 건수는 표 아래 쪽 이동 줄에만 — LOT 목록과 같다(사용자 2026-10-30). */}
+            <PageNav
+              sizes={LOT_PAGE_SIZES}
+              meta={{ page: currentPage, size: pageSize, total }}
+              onChangePage={onPageChange}
+              onChangeSize={(size) => {
+                setPageSize(size);
+                onPageChange(1);
+              }}
+              controlSize="sm"
+              buttonSize="md"
+            />
+          </>
+        )}
+      </section>
+      {/* 줄을 누르면 그 LOT 상세를 목록 아래 상자에 연다 — 팝업이 아니다(사용자 2026-11-02). */}
       {openedLot !== null && (
-        <LotHistoryDialog
-          lot={openedLot}
-          statusOptions={statusOptions}
-          onClose={() => setOpenedLot(null)}
-        />
+        <section
+          className="pane lot-status-pane lot-status-detail-dialog"
+          aria-labelledby="lot-status-detail-title"
+        >
+          <HistoryLotDetail
+            key={openedLot.lotId}
+            lotId={openedLot.lotId}
+            statusOptions={statusOptions}
+          />
+        </section>
       )}
-    </section>
+    </>
+  );
+};
+
+/** LOT 유형 기준값은 상세를 열 때만 읽는다 — 탭에 처음 들어올 때 요청을 늘리지 않는다. */
+const HistoryLotDetail = ({
+  lotId,
+  statusOptions,
+}: {
+  lotId: number;
+  statusOptions: readonly FilterOption[];
+}) => {
+  const lotTypes = useLotTypeOptions();
+  return (
+    <LotDetailPane
+      lotId={lotId}
+      lotTypeOptions={(lotTypes.data?.items ?? []).map((item) => ({
+        value: item.code,
+        label: item.label,
+      }))}
+      statusOptions={statusOptions}
+    />
   );
 };

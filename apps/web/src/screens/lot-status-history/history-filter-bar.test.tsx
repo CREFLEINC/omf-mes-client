@@ -24,7 +24,7 @@ describe('HistoryFilterBar', () => {
 
     await pickDate(user, screen.getByLabelText('시작일'), '2026-07-20');
     await pickDate(user, screen.getByLabelText('종료일'), '2026-07-25');
-    await user.click(screen.getByLabelText('행위자'));
+    await user.click(screen.getByLabelText('처리자'));
     await user.click(screen.getByRole('option', { name: '합성 퇴직자 (미사용)' }));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(props.onSearch).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe('HistoryFilterBar', () => {
 
     expect(screen.getByLabelText('시작일')).toHaveTextContent('2026-07-01');
     expect(screen.getByLabelText('종료일')).toHaveTextContent('2026-07-31');
-    expect(screen.getByLabelText('행위자')).toHaveTextContent('합성 담당자');
+    expect(screen.getByLabelText('처리자')).toHaveTextContent('합성 담당자');
     expect(screen.getByLabelText('LOT 스캔')).toHaveValue('BACK');
   });
 
@@ -119,8 +119,8 @@ describe('HistoryFilterBar', () => {
 
     expect(screen.getByText('일부 행위자만 표시됩니다.')).toBeVisible();
     expect(screen.queryByText('999')).not.toBeInTheDocument();
-    await user.click(screen.getByLabelText('행위자'));
-    expect(screen.getByRole('option', { name: '선택한 행위자 (이름 확인 불가)' })).toBeVisible();
+    await user.click(screen.getByLabelText('처리자'));
+    expect(screen.getByRole('option', { name: '선택한 처리자 (이름 확인 불가)' })).toBeVisible();
   });
 
   it('초기화는 화면 소유 handler에 위임한다', async () => {

@@ -475,7 +475,8 @@ describe('Lot Status 화면 shell', () => {
     expect(historyMode).toBeVisible();
     /* 단추가 새 카드에 다시 서도 초점은 고른 단추에 남는다(헤더 점검 #210). */
     await waitFor(() => expect(historyMode).toHaveFocus());
-    expect(screen.getByRole('heading', { level: 2, name: 'LOT 이력' })).toBeVisible();
+    /* 「LOT 이력」 제목은 두지 않는다(2026-11-02) — 구역 이름만 남는다. */
+    expect(screen.getByRole('region', { name: 'LOT 이력' })).toBeVisible();
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(locationSearch().get('lot')).toBeNull();
@@ -502,13 +503,15 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it.each([
-    [200, 3, '일부 행위자만 표시됩니다.'],
-    [500, 2, '행위자 목록을 불러오지 못했습니다.'],
+    [200, 3, '일부 처리자만 표시됩니다.'],
+    [500, 2, '처리자 목록을 불러오지 못했습니다.'],
   ])('행위자 목록 상태 %i를 필터를 감추지 않고 밝힌다', async (status, total, note) => {
     renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes(200, status, total));
+    /* 행위자는 상세 조건으로 접혀 있다(2026-11-02) — 펼치면 보인다. */
+    await userEvent.setup().click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
 
     expect(await screen.findByText(note)).toBeVisible();
-    expect(screen.getByLabelText('행위자')).toBeVisible();
+    expect(screen.getByLabelText('처리자')).toBeVisible();
   });
 
   it('이력 초안을 조회할 때만 URL에 적용하고 이력 초기화가 LOT 조건을 보존한다', async () => {
@@ -521,7 +524,7 @@ describe('Lot Status 화면 shell', () => {
 
     await pickDate(user, screen.getByLabelText('시작일'), '2026-07-20');
     await pickDate(user, screen.getByLabelText('종료일'), '2026-07-25');
-    await choose(user, '행위자', '합성 해제자 (미사용)');
+    await choose(user, '처리자', '합성 해제자 (미사용)');
     await user.clear(screen.getByLabelText('LOT 스캔'));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(locationSearch().get('historyLot')).toBe('OLD');
@@ -562,7 +565,7 @@ describe('Lot Status 화면 shell', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['일시', 'LOT 번호', '구분', '상태 변경', '행위자', '사유']);
+    ).toEqual(['처리 일시', 'LOT 번호', '처리 유형', '상태 변경', '처리자', '처리 사유']);
     const rows = within(table).getAllByRole('row');
     // 일시는 공장 시각(UTC+7)이다(omf-all-around#20). 최신이 위.
     // 행위자 필터(601)가 상태 변경 줄에도 걸린다 — 응답의 상태 변경은 601 이 한 것이라 남는다.
@@ -1133,7 +1136,7 @@ describe('Lot Status 화면 shell', () => {
       within(timeline)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['처리 일시', '처리 유형', '변경 내용', '처리자', '사유']);
+    ).toEqual(['처리 일시', '처리 유형', '변경 내용', '처리자', '처리 사유']);
     const rows = within(timeline).getAllByRole('row');
     expect(rows[1]).toHaveTextContent('2026-08-21 09:00상태 변경합성 대기 → 합성 불량');
     expect(rows[2]).toHaveTextContent('2026-08-21 08:00보류 해제');
@@ -1281,7 +1284,7 @@ describe('Lot Status 화면 shell', () => {
     const detail = await screen.findByRole('region', { name: 'LOT 상세' });
     await openHistoryTab(detail, '보류 이력');
 
-    expect(await within(detail).findByText(/일부 행위자 이름을 확인하지 못해/)).toBeVisible();
+    expect(await within(detail).findByText(/일부 처리자 이름을 확인하지 못해/)).toBeVisible();
     expect(within(detail).getByRole('table', { name: '보류 이력' })).toBeVisible();
   });
 });

@@ -134,9 +134,9 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
   history: {
     pane: 'Lịch sử LOT',
     columns: {
-      occurredAt: 'Thời điểm',
+      occurredAt: 'Thời điểm xử lý',
       lot: 'Số LOT',
-      event: 'Phân loại',
+      event: 'Loại xử lý',
       change: 'Thay đổi trạng thái',
       actor: 'Người thực hiện',
       reason: 'Lý do',
