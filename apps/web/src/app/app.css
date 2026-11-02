@@ -5276,6 +5276,7 @@ h2:has(> .inspection-standard-dialog-title) {
  * 가는 선으로 가른다(사용자 시안 2026-11-02).
  */
 .suspicious-material-hold-card {
+  container: suspicious-material-hold-card / inline-size;
   display: grid;
   align-content: start;
   gap: var(--space-5);
@@ -5394,18 +5395,37 @@ h2:has(> .inspection-standard-dialog-title) {
  */
 .suspicious-material-hold-pair > * {
   min-width: 0;
-  /* 보류 시 제한 사항 · 자재 불량 기록을 각각 상자로 가른다(사용자 2026-11-02). */
   box-sizing: border-box;
   align-self: stretch;
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
+}
+
+/*
+ * 보류 시 제한 사항 · 자재 불량 기록 사이는 가는 선 하나로 가른다(상자 대신 · 사용자 2026-11-02). 카드가 좁아 위아래로 쌓이면
+ * 가로선, 넓어 나란히 서면 세로선.
+ */
+.suspicious-material-hold-pair > :last-child {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--outline-variant);
+}
+
+@container suspicious-material-hold-card (min-width: 50rem) {
+  /* 뒤쪽 기본 규칙(한 칸)보다 무거워야 선다. */
+  .suspicious-material-hold-card .suspicious-material-hold-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .suspicious-material-hold-pair > :last-child {
+    padding-top: 0;
+    padding-left: var(--space-6);
+    border-top: 0;
+    border-left: 1px solid var(--outline-variant);
+  }
 }
 
 .suspicious-material-hold-pair {
   display: grid;
-  /* min(100%, …) — 카드가 24rem 보다 좁아도 칸이 카드 밖으로 넘치지 않는다(좌우 배치 버그 · 사용자 2026-11-02). */
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  /* 기본은 위아래 한 칸 — 카드가 넓을 때만 아래 컨테이너 규칙이 두 칸으로 나눈다(좁은 칸 넘침 방지). */
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5) var(--space-6);
   min-width: 0;
