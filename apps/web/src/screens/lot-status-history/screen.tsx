@@ -240,10 +240,12 @@ const LotMode = ({
       {/* 좌우 · 상하 배치 단추 — 탭 막대 오른쪽 끝(검사 조회·판정과 같다 · 사용자 2026-10-30). */}
       <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
       <section ref={aboveRef} className="pane lot-status-search" aria-label={t.lotFilter.pane}>
-        <div className="lot-status-search-head">
-          {modeSwitch}
-          {hubTarget === null && statusChips}
-        </div>
+        {(modeSwitch !== null || hubTarget === null) && (
+          <div className="lot-status-search-head">
+            {modeSwitch}
+            {hubTarget === null && statusChips}
+          </div>
+        )}
         <LotFilterBar
           appliedFilters={filters}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
@@ -358,7 +360,7 @@ const HistoryMode = ({
   return (
     <div className="lot-status-workspace">
       <section className="pane lot-status-search" aria-label={t.historyFilter.pane}>
-        <div className="lot-status-search-head">{modeSwitch}</div>
+        {modeSwitch !== null && <div className="lot-status-search-head">{modeSwitch}</div>}
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}
@@ -379,10 +381,14 @@ const HistoryMode = ({
   );
 };
 
-export const LotStatusHistoryScreen = () => {
+/**
+ * `fixedMode` 를 주면 그 방식만 보이고 방식 단추를 두지 않는다 — 「LOT 현황」·「LOT 변경 이력」을 탭 묶음의 두 탭으로
+ * 나눴다(사용자 2026-10-30). 주지 않으면(묶음 밖 등) 종전처럼 주소의 방식을 따르고 단추로 바꾼다.
+ */
+export const LotStatusHistoryScreen = ({ fixedMode }: { fixedMode?: ScreenMode } = {}) => {
   const hub = usePageHub();
   const [searchParams, setSearchParams] = useSearchParams();
-  const mode = readMode(searchParams);
+  const mode = fixedMode ?? readMode(searchParams);
   const filters = useMemo(() => readLotFilters(searchParams), [searchParams]);
   const historyFilters = useMemo(() => readHistoryFilters(searchParams), [searchParams]);
   const page = readLotPage(searchParams);
@@ -405,14 +411,15 @@ export const LotStatusHistoryScreen = () => {
     setFocusModeSwitch(next);
     setSearchParams((current) => toModeSearchParams(current, next));
   };
-  const modeSwitch = (
-    <ModeSwitch
-      mode={mode}
-      onChange={changeMode}
-      focusOnMount={focusModeSwitch}
-      onFocused={() => setFocusModeSwitch(null)}
-    />
-  );
+  const modeSwitch =
+    fixedMode !== undefined ? null : (
+      <ModeSwitch
+        mode={mode}
+        onChange={changeMode}
+        focusOnMount={focusModeSwitch}
+        onFocused={() => setFocusModeSwitch(null)}
+      />
+    );
   const applyHistory = (next: HistoryFilters): void => {
     setSearchParams((current) => toAppliedHistorySearchParams(current, next, 1));
   };

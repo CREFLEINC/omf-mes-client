@@ -359,6 +359,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelVi: 'Trạng thái LOT',
         tabs: [
           { to: '/quality/lot-status', label: 'LOT 현황', labelVi: 'Tình hình LOT' },
+          /* LOT 현황의 「변경 이력」 검색 방식을 따로 탭으로 나눴다(사용자 2026-10-30) — 같은 화면 · 같은 권한. */
+          {
+            to: '/quality/lot-status-history',
+            label: 'LOT 변경 이력',
+            labelVi: 'Lịch sử thay đổi LOT',
+          },
           {
             to: '/quality/lot-status-transition',
             label: 'LOT 상태 판정',
