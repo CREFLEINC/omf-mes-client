@@ -83,22 +83,16 @@ export const lotStatusHistory = {
     pane: '이력 조회 조건',
     fields: {
       period: '기간',
+      from: '시작일',
+      to: '종료일',
       actor: '행위자',
       lot: 'LOT 번호',
     },
     /** 고른 행위자가 목록에 없을 때 자리를 비우지 않고 고른 사실만 남긴다. */
     actorUnknownOption: '선택한 행위자 (이름 확인 불가)',
     actorUnknownNote: '선택한 행위자 이름을 확인하지 못했습니다.',
-    /** 기간 입력창이 비었을 때 — 두 날짜가 필요하다는 것을 먼저 보인다. */
-    periodPlaceholder: '시작일 ~ 종료일',
-    /** 달력이 열려 있는 동안 지금 고를 날짜. */
-    steps: {
-      start: '시작일을 선택해 주세요.',
-      end: '종료일을 선택해 주세요.',
-    },
     /** 조회 단추를 막는 기간 사유. */
     reasons: {
-      missing: '시작일을 선택한 후 종료일을 선택해 주세요.',
       invalid: '유효한 기간을 선택해 주세요.',
       reversed: '기간 종료는 시작보다 앞설 수 없습니다.',
     },

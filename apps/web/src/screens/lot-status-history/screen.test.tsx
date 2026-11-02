@@ -12,7 +12,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { SessionProvider, type Session } from '../../patterns/session';
-import { pickRange } from '../../test/date-picker';
+import { pickDate } from '../../test/date-picker';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { LotStatusHistoryScreen } from './screen';
 
@@ -479,13 +479,15 @@ describe('Lot Status 화면 shell', () => {
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(locationSearch().get('lot')).toBeNull();
-    expect(screen.getByText('기간을 선택하고 조회하세요')).toBeVisible();
+    /* 종료일이 주소에 없으면 오늘이라 바로 조회한다(2026-11-02). */
+    expect(screen.queryByText('기간을 선택하고 조회하세요')).not.toBeInTheDocument();
   });
 
   it('이력 모드 최초 진입에서는 현재 조회 선택지를 요청하지 않는다', async () => {
     const { urls } = renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes());
 
-    expect(screen.getByText('기간을 선택하고 조회하세요')).toBeVisible();
+    /* 기간이 없으면 시작일 · 종료일 모두 오늘로 바로 조회한다(2026-11-02). */
+    expect(screen.queryByText('기간을 선택하고 조회하세요')).not.toBeInTheDocument();
     await waitFor(() => expect(requestCount(urls, '/app/users')).toBe(1));
     expect(lastRequest(urls, '/app/users')?.searchParams.get('includeInactive')).toBe('true');
     for (const path of ['/mdm/items', '/mdm/warehouses']) {
@@ -517,7 +519,8 @@ describe('Lot Status 화면 shell', () => {
     );
     const user = userEvent.setup();
 
-    await pickRange(user, screen.getByLabelText('기간'), '2026-07-20', '2026-07-25');
+    await pickDate(user, screen.getByLabelText('시작일'), '2026-07-20');
+    await pickDate(user, screen.getByLabelText('종료일'), '2026-07-25');
     await choose(user, '행위자', '합성 해제자 (미사용)');
     await user.clear(screen.getByLabelText('LOT 스캔'));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
@@ -598,7 +601,12 @@ describe('Lot Status 화면 shell', () => {
   });
 
   it('기간 미적용·오류·빈 결과를 밝힌다', async () => {
-    const { unmount } = renderScreen('/quality/lot-status?mode=history', 'ready', holdRoutes());
+    /* 기간을 비워 두면(시작일만 지운 주소) 조회 전 안내를 보인다. */
+    const { unmount } = renderScreen(
+      '/quality/lot-status?mode=history&from=&to=',
+      'ready',
+      holdRoutes(),
+    );
     expect(screen.getByText('기간을 선택하고 조회하세요')).toBeVisible();
     unmount();
 

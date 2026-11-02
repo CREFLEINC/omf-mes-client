@@ -81,18 +81,14 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     pane: 'Điều kiện tra cứu lịch sử',
     fields: {
       period: 'Khoảng thời gian',
+      from: 'Ngày bắt đầu',
+      to: 'Ngày kết thúc',
       actor: 'Người thực hiện',
       lot: 'Số LOT',
     },
     actorUnknownOption: 'Người thực hiện đã chọn (không xác nhận được tên)',
     actorUnknownNote: 'Không xác nhận được tên người thực hiện đã chọn.',
-    periodPlaceholder: 'Ngày bắt đầu ~ Ngày kết thúc',
-    steps: {
-      start: 'Hãy chọn ngày bắt đầu.',
-      end: 'Hãy chọn ngày kết thúc.',
-    },
     reasons: {
-      missing: 'Hãy chọn ngày bắt đầu rồi chọn ngày kết thúc.',
       invalid: 'Hãy chọn khoảng thời gian hợp lệ.',
       reversed: 'Ngày kết thúc không được trước ngày bắt đầu.',
     },

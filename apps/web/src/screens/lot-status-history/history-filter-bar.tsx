@@ -1,19 +1,19 @@
 import { Button, DatePicker, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { Select } from '../../patterns/select';
 import type { HistoryFilters } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { validateHistoryPeriod, type HistoryPeriodError } from './period';
-import { useRangeStep } from './range-step';
 
 const t = messages.lotStatusHistory;
 
 const periodReason = (error: HistoryPeriodError | null): string | null => {
   switch (error) {
+    /* 날짜를 비운 경우는 [조회]만 잠그고 문구는 두지 않는다(사용자 2026-11-02). */
     case 'missing':
-      return t.historyFilter.reasons.missing;
+      return null;
     case 'invalid':
       return t.historyFilter.reasons.invalid;
     case 'reversed':
@@ -38,7 +38,8 @@ export const HistoryFilterBar = ({
   onSearch,
   onReset,
 }: HistoryFilterBarProps) => {
-  const periodId = useId();
+  const fromId = useId();
+  const toId = useId();
   const actorId = useId();
   const actorNoteId = useId();
   const reasonId = useId();
@@ -49,19 +50,9 @@ export const HistoryFilterBar = ({
     setDraft({ from: appliedFrom, to: appliedTo, actor: appliedActor, lot: appliedLot });
   }, [appliedActor, appliedFrom, appliedLot, appliedTo]);
 
-  const reason = periodReason(validateHistoryPeriod({ from: draft.from, to: draft.to }));
-  /*
-   * ⭐ 달력이 열려 있는 동안은 지금 고를 날짜를 말한다 — 시작일 → 종료일(사용자 지시 2026-09-19).
-   * 닫혀 있으면 조회를 막는 까닭(있을 때만)을 말한다. 조회 가능 여부는 여전히 reason 만 정한다.
-   */
-  const periodTriggerRef = useRef<HTMLButtonElement>(null);
-  const step = useRangeStep(periodTriggerRef);
-  const periodHint =
-    step === 'start'
-      ? t.historyFilter.steps.start
-      : step === 'end'
-        ? t.historyFilter.steps.end
-        : reason;
+  const periodError = validateHistoryPeriod({ from: draft.from, to: draft.to });
+  /* 조회를 막는 까닭 — 날짜를 비웠으면 문구 없이 잠그기만 한다. */
+  const reason = periodReason(periodError);
   const hasAppliedActor = actorOptions.some((option) => option.value === appliedActor);
   const visibleActorOptions =
     appliedActor !== '' && !hasAppliedActor
@@ -70,27 +61,35 @@ export const HistoryFilterBar = ({
 
   return (
     <div className="filter-bar lot-status-filter">
-      <div className="field-cell lot-status-filter-period">
-        {/* ⭐ 조회를 막는 까닭은 「기간」 옆에 옅은 안내 글자로(사용자 지시 2026-09-19 — 위치 칸과 같은 모양). */}
-        <div className="lot-status-filter-label-row">
-          <label className="field-label" htmlFor={periodId}>
-            {t.historyFilter.fields.period}
-          </label>
-          {periodHint !== null && (
-            <span id={reasonId} className="field-note" aria-live="polite">
-              {periodHint}
-            </span>
-          )}
-        </div>
+      {/*
+       * 기간은 시작일 · 종료일 두 칸으로 나눈다 — 처음에는 둘 다 오늘(사용자 2026-11-02). 종료가 시작보다 앞서면
+       * 종료일 칸 아래에 알린다.
+       */}
+      <div className="field-cell lot-status-filter-date">
+        <label className="field-label" htmlFor={fromId}>
+          {t.historyFilter.fields.from}
+        </label>
         <DatePicker
-          ref={periodTriggerRef}
-          id={periodId}
-          mode="range"
-          placeholder={t.historyFilter.periodPlaceholder}
-          value={[draft.from === '' ? null : draft.from, draft.to === '' ? null : draft.to]}
-          onChange={([from, to]) => setDraft((current) => ({ ...current, from, to }))}
-          aria-describedby={periodHint === null ? undefined : reasonId}
+          id={fromId}
+          value={draft.from === '' ? null : draft.from}
+          onChange={(from) => setDraft((current) => ({ ...current, from }))}
         />
+      </div>
+      <div className="field-cell lot-status-filter-date">
+        <label className="field-label" htmlFor={toId}>
+          {t.historyFilter.fields.to}
+        </label>
+        <DatePicker
+          id={toId}
+          value={draft.to === '' ? null : draft.to}
+          onChange={(to) => setDraft((current) => ({ ...current, to }))}
+          aria-describedby={reason === null ? undefined : reasonId}
+        />
+        {reason !== null && (
+          <span id={reasonId} className="field-error" role="alert">
+            {reason}
+          </span>
+        )}
       </div>
       <div className="field-cell wide-select">
         <label className="field-label" htmlFor={actorId}>
@@ -118,7 +117,7 @@ export const HistoryFilterBar = ({
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}
         onSearch={() => {
-          if (reason === null) onSearch(draft);
+          if (periodError === null) onSearch(draft);
         }}
         clearLabel={messages.common.clear}
       />
@@ -126,9 +125,8 @@ export const HistoryFilterBar = ({
       <div className="filter-actions field-cell-unlabeled lot-status-filter-actions">
         <Button
           variant="filled"
-          disabled={reason !== null}
-          /* 달력이 열려 있는 동안 그 칸은 단계 안내라 조회를 막는 까닭이 아니다 — 닫혀 있을 때만 잇는다. */
-          aria-describedby={reason === null || step !== 'closed' ? undefined : reasonId}
+          disabled={periodError !== null}
+          aria-describedby={reason === null ? undefined : reasonId}
           onClick={() => onSearch(draft)}
         >
           {t.actions.search}
