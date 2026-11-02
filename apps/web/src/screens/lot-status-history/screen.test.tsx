@@ -1074,7 +1074,7 @@ describe('Lot Status 화면 shell', () => {
     expect(within(detail).queryByText('999')).not.toBeInTheDocument();
     expect(within(detail).getByText('SAMPLE_UNKNOWN_TYPE (목록 미확정)')).toBeVisible();
     expect(within(detail).getByText('SAMPLE_UNKNOWN_STATUS (목록 미확정)')).toBeVisible();
-    expect(within(detail).getAllByText('—')).toHaveLength(2);
+    expect(within(detail).getAllByText('—')).toHaveLength(3); // 유효기한 · 제조 시각 · 4M 변경품(변경품이 아니면 「—」)
   });
 
   it('상세가 품목 이름보다 먼저 오면 알 수 없음 대신 로딩 상태를 보인다', async () => {

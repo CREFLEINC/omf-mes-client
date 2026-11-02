@@ -195,26 +195,22 @@ export const LotDetailPane = ({
               ],
               ['short', t.detail.fields.expiryDate, detail.data.expiryDate ?? EMPTY],
               ['short', t.detail.fields.manufacturedAt, formatDateTime(detail.data.manufacturedAt)],
-              /* IQC 에서 적은 4M 변경품 — 변경품일 때만 줄을 둔다(omf-all-around#63). */
-              ...(detail.data.fourMChange === null
-                ? []
-                : ([
-                    [
-                      'wide',
-                      t.detail.fields.fourMChange,
-                      <>
-                        <Chip variant="status" status="warning" size="sm">
-                          {t.detail.fields.fourMChange}
-                        </Chip>{' '}
-                        {[
-                          fourMTypeLabel(detail.data.fourMChange.changeTypeCode ?? ''),
-                          detail.data.fourMChange.remarks,
-                        ]
-                          .filter((part) => part !== undefined && part !== '')
-                          .join(' · ')}
-                      </>,
-                    ],
-                  ] as const)),
+              /*
+               * IQC 에서 적은 4M 변경품(omf-all-around#63) — 변경 종류 · 사유만 적고, 변경품이 아니면 「—」
+               * (사용자 2026-11-02).
+               */
+              [
+                'short',
+                t.detail.fields.fourMChange,
+                detail.data.fourMChange === null
+                  ? EMPTY
+                  : [
+                      fourMTypeLabel(detail.data.fourMChange.changeTypeCode ?? ''),
+                      detail.data.fourMChange.remarks,
+                    ]
+                      .filter((part) => part !== undefined && part !== null && part !== '')
+                      .join(' · ') || EMPTY,
+              ],
             ] as const
           ).map(([size, label, value]) => (
             <div className="lot-detail-field" data-size={size} key={label}>
