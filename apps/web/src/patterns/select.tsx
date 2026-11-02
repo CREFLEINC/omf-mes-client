@@ -55,8 +55,14 @@ export const filterOptions = (items: SelectItems, query: string): SelectItems =>
   });
 };
 
-export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select(props, ref) {
-  return countOptions(props.options) > SEARCH_THRESHOLD ? (
+export const Select = forwardRef<
+  HTMLButtonElement,
+  SelectProps & {
+    /** 선택지 수와 상관없이 늘 검색창을 둔다(불량 유형처럼 코드로 찾는 칸 · 사용자 2026-11-02). */
+    searchable?: boolean;
+  }
+>(function Select({ searchable = false, ...props }, ref) {
+  return searchable || countOptions(props.options) > SEARCH_THRESHOLD ? (
     <SearchableSelect {...props} ref={ref} />
   ) : (
     <DsSelect {...props} ref={ref} />

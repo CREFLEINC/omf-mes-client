@@ -1,7 +1,7 @@
 import { Button, Chip, Icon, Table, TextField, type Column } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
@@ -41,14 +41,14 @@ const columnsOf = (statusLabel: (code: string) => string): Column<AffectedRow>[]
     header: messages.suspiciousMaterialHold.defect.columns.lotNo,
     align: 'center',
     width: '300px',
-    render: (row) => row.lotNo,
+    render: (row) => <span title={row.lotNo}>{row.lotNo}</span>,
   },
   {
     key: 'workOrderNo',
     header: messages.suspiciousMaterialHold.defect.columns.workOrderNo,
     align: 'center',
     width: '180px',
-    render: (row) => row.workOrderNo,
+    render: (row) => <span title={row.workOrderNo}>{row.workOrderNo}</span>,
   },
   {
     key: 'statusCode',
@@ -87,6 +87,24 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const [qty, setQty] = useState('');
   const [description, setDescription] = useState('');
   const [isRecorded, setIsRecorded] = useState(false);
+  /*
+   * 고른 뒤 다음 칸으로 — 불량 유형을 고르면 상세가 있으면 상세를 펼치고, 없으면 수량으로. 상세를 고르면 수량으로
+   * (사용자 2026-11-02). 상세 칸은 유형을 고른 뒤에 서므로 그린 다음에 옮긴다.
+   */
+  const minorRef = useRef<HTMLButtonElement>(null);
+  const qtyRef = useRef<HTMLInputElement>(null);
+  const [nextFocus, setNextFocus] = useState<'afterMajor' | 'qty' | null>(null);
+  useEffect(() => {
+    if (nextFocus === null) return;
+    setNextFocus(null);
+    const minor = minorRef.current;
+    if (nextFocus === 'afterMajor' && minor !== null) {
+      minor.focus();
+      minor.click();
+    } else {
+      qtyRef.current?.focus();
+    }
+  }, [nextFocus]);
   /* 같은 불량이 거듭 기록되지 않게 성공하면 입력을 비운다(담당자 결정 · #108). 「기록했습니다」는 남긴다. */
   const record = useRecordMaterialDefect(() => {
     setIsRecorded(true);
@@ -184,12 +202,16 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
           </label>
           <Select
             id={majorFieldId}
+            searchable
             options={majors.map(optionOf)}
             value={code.majorId}
             placeholder={noCodes ? tHere.noCodesPlaceholder : tHere.majorPlaceholder}
             invalid={!disabled && !locked && code.majorId === ''}
             disabled={disabled || locked}
-            onChange={(value) => setCode({ majorId: value, minorId: '' })}
+            onChange={(value) => {
+              setCode({ majorId: value, minorId: '' });
+              setNextFocus('afterMajor');
+            }}
           />
         </div>
         {minors.length > 0 && (
@@ -202,14 +224,20 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
             </label>
             <Select
               id={minorFieldId}
+              ref={minorRef}
+              searchable
               options={minors.map(optionOf)}
               value={code.minorId}
               disabled={disabled || locked}
-              onChange={(value) => setCode({ ...code, minorId: value })}
+              onChange={(value) => {
+                setCode({ ...code, minorId: value });
+                setNextFocus('qty');
+              }}
             />
           </div>
         )}
         <TextField
+          ref={qtyRef}
           containerClassName="suspicious-material-hold-defect-qty"
           label={t.qty.label}
           required
@@ -264,7 +292,11 @@ export const AffectedProductionLotsSection = ({
   const resizable = useColumnWidths('omf-mes:suspicious-material-hold:affected', ordered, {
     fitContent: true,
   });
-  const fit = useFitColumns(resizable.columns, { scrollX: true });
+  /*
+   * 좁아지면 표를 칸 폭에 맞춰 줄인다(가로로 밀지 않는다) — 표가 늘 칸 안 가운데에 다 보이게(사용자 2026-11-02). 앞선
+   * 넓은 배치에서 늘어난 폭이 좁은 배치에 남아 표가 넘치던 것도 막는다.
+   */
+  const fit = useFitColumns(resizable.columns);
   if (lot === null) return null;
   const basisNote =
     affected.data?.basis === 'LOT_GENEALOGY_ESTIMATE' ? t.affected.genealogy : tHere.estimateNote;

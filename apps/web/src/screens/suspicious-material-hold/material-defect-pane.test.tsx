@@ -103,6 +103,15 @@ describe('MaterialDefectPane (W-03-03)', () => {
     expect(screen.queryByText('INSPECTION_PENDING')).not.toBeInTheDocument();
   });
 
+  it('불량 유형을 고르면(상세가 없으면) 바로 불량 수량 칸으로 옮겨 간다', async () => {
+    const user = userEvent.setup();
+    renderPane([LOT]);
+
+    await user.click(await screen.findByRole('combobox', { name: '불량 유형' }));
+    await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveFocus());
+  });
+
   it('자재 불량을 계정 세션으로 기록한다 — 사번 헤더를 싣지 않는다', async () => {
     const user = userEvent.setup();
     const { writes } = renderPane([LOT]);
