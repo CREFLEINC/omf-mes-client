@@ -9,6 +9,7 @@ export const dispositionDecision = {
   panes: {
     list: '판정 대기 목록',
     detail: '선택한 부적합',
+    detailDecision: '부적합 상세 및 판정',
     decision: '판정',
     history: '처분 판정 이력',
     lots: '대상 LOT',

@@ -357,6 +357,21 @@ export const DispositionDecisionScreen = ({
 
   const historyRows = useMemo(() => (history.data?.items ?? []).map(toDecisionRow), [history.data]);
 
+  /* 판정 대기 · 처리 이력 — 묶음 안에서는 탭 줄 오른쪽 끝에 선다(사용자 시안 · #223). 내용은 아래에 따로 그린다. */
+  const subTabs = (
+    <Tabs
+      className="disposition-sub-tabs"
+      size="sm"
+      aria-label={t.tabs.label}
+      value={tab}
+      items={[
+        { value: 'pending', label: t.tabs.pending, content: null },
+        { value: 'history', label: t.tabs.history, content: null },
+      ]}
+      onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
+    />
+  );
+
   return (
     <>
       {/*
@@ -366,6 +381,7 @@ export const DispositionDecisionScreen = ({
        */}
       {canOpenQualityApprovals ? (
         <TypeTabs
+          trailing={subTabs}
           options={toTypeTabOptions(QUALITY_APPROVAL_TYPE_CODES, canOpenIqcSkip, true)}
           value={DISPOSITION_TAB}
           onChange={(code) => {
@@ -389,155 +405,144 @@ export const DispositionDecisionScreen = ({
           }
         />
       )}
-      <Tabs
-        aria-label={t.tabs.label}
-        value={tab}
-        items={[
-          {
-            value: 'pending',
-            label: t.tabs.pending,
-            content: (
-              <div className="disposition-workspace">
-                <section
-                  className="pane disposition-pane disposition-list-pane"
-                  aria-label={t.panes.list}
-                >
-                  <h2 className="pane-title">{t.panes.list}</h2>
-                  <FilterBar
-                    applied={filters}
-                    severity={severity}
-                    status={status}
-                    items={items}
-                    onApply={(next) => apply(next)}
-                    onReset={() =>
-                      apply({
-                        ...defaultPeriod(baseDate),
-                        itemId: '',
-                        severityCode: '',
-                        statusCode: '',
-                        sourceCode: '',
-                      })
-                    }
-                  />
-                  <NonconformanceList
-                    rows={rows}
-                    items={items}
-                    severity={severity}
-                    status={status}
-                    isLoading={list.isPending}
-                    error={
-                      list.isError ? (
-                        <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
-                      ) : null
-                    }
-                    page={pageView}
-                    selectedId={selectedId}
-                    onSelect={(id) =>
-                      setSearchParams((current) =>
-                        withSelectedNonconformance(current, selectedId === id ? null : id),
-                      )
-                    }
-                    onChangePage={(nextPage) => apply(filters, nextPage)}
-                  />
-                </section>
-                <div className="pane-stack disposition-side">
-                  <section className="pane disposition-pane" aria-label={t.panes.detail}>
-                    <h2 className="pane-title">{t.panes.detail}</h2>
-                    <DetailSlot
-                      selectedId={selectedId}
-                      detail={{
-                        isPending: detail.isPending,
-                        isError: detail.isError,
-                        isNotFound: isDetailNotFound,
-                        error: detail.error,
-                        view: detail.data === undefined ? null : toDetailView(detail.data),
-                      }}
-                      decisions={{
-                        rows: decisionRows,
-                        isLoading: decisions.isPending,
-                        isError: decisions.isError,
-                      }}
-                      remaining={remaining}
-                      items={items}
-                      severity={severity}
-                      status={status}
-                      uoms={uoms}
-                      onRetry={() => void detail.refetch()}
-                    />
-                  </section>
-                  {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
-                  {selectedId !== null && detail.data !== undefined && (
-                    <section className="pane disposition-pane" aria-label={t.concession.heading}>
-                      <h2 className="pane-title">{t.concession.heading}</h2>
-                      <ConcessionPane
-                        nonconformanceId={selectedId}
-                        lots={toDetailView(detail.data).lots}
-                        isClosed={detail.data.statusCode === 'DECIDED'}
-                        today={today}
-                      />
-                    </section>
-                  )}
-                  <section className="pane disposition-pane" aria-label={t.panes.decision}>
-                    <h2 className="pane-title">{t.panes.decision}</h2>
-                    <DecisionFormPane
-                      value={form}
-                      errors={showErrors ? errors : write.fieldErrors}
-                      qtyNotice={remainingNotice(form, remaining)}
-                      lockReason={lock.reason}
-                      isUncertain={lock.isUncertain}
-                      onCheckOutcome={checkOutcome}
-                      dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
-                      uomId={uomId}
-                      uoms={uoms}
-                      writeError={write.error}
-                      isSaving={write.isSaving}
-                      canCancel={hasDecisionInput(form)}
-                      onChange={(next) => {
-                        /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                        if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                          write.clearFieldError('dispositionTypeCode');
-                        if (next.qty !== form.qty) write.clearFieldError('decisionQty');
-                        if (next.reason !== form.reason) write.clearFieldError('reason');
-                        setForm(next);
-                      }}
-                      onSave={save}
-                      onCancel={() => {
-                        setForm(EMPTY_DECISION_FORM);
-                        setShowErrors(false);
-                        /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                        write.reset();
-                      }}
-                      onReload={checkOutcome}
-                    />
-                  </section>
-                </div>
-              </div>
-            ),
-          },
-          {
-            value: 'history',
-            label: t.tabs.history,
-            content: (
-              <HistoryTab
-                applied={historyFilters}
-                dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
-                rows={historyRows}
+      {!canOpenQualityApprovals && subTabs}
+      {tab === 'pending' ? (
+        <div className="disposition-workspace">
+          <section
+            className="pane disposition-pane disposition-list-pane"
+            aria-label={t.panes.list}
+          >
+            <h2 className="pane-title">{t.panes.list}</h2>
+            <FilterBar
+              applied={filters}
+              severity={severity}
+              status={status}
+              items={items}
+              onApply={(next) => apply(next)}
+              onReset={() =>
+                apply({
+                  ...defaultPeriod(baseDate),
+                  itemId: '',
+                  severityCode: '',
+                  statusCode: '',
+                  sourceCode: '',
+                })
+              }
+            />
+            <NonconformanceList
+              rows={rows}
+              items={items}
+              severity={severity}
+              status={status}
+              isLoading={list.isPending}
+              error={
+                list.isError ? (
+                  <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
+                ) : null
+              }
+              page={pageView}
+              selectedId={selectedId}
+              onSelect={(id) =>
+                setSearchParams((current) =>
+                  withSelectedNonconformance(current, selectedId === id ? null : id),
+                )
+              }
+              onChangePage={(nextPage) => apply(filters, nextPage)}
+            />
+          </section>
+          {/*
+           * 오른쪽은 한 구획 — 부적합 상세 · 특채 · 판정을 위에서 아래로(사용자 시안 · omf-all-around#223).
+           * 목록 · 조회 조건은 종전 그대로다.
+           */}
+          <section
+            className="pane disposition-pane disposition-side"
+            aria-label={t.panes.detailDecision}
+          >
+            <h2 className="pane-title">{t.panes.detailDecision}</h2>
+            <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
+              <DetailSlot
+                selectedId={selectedId}
+                detail={{
+                  isPending: detail.isPending,
+                  isError: detail.isError,
+                  isNotFound: isDetailNotFound,
+                  error: detail.error,
+                  view: detail.data === undefined ? null : toDetailView(detail.data),
+                }}
+                decisions={{
+                  rows: decisionRows,
+                  isLoading: decisions.isPending,
+                  isError: decisions.isError,
+                }}
+                remaining={remaining}
+                items={items}
+                severity={severity}
+                status={status}
                 uoms={uoms}
-                page={toPageView(
-                  history.data?.page ?? { page, size: 0, total: 0 },
-                  historyRows.length,
-                )}
-                isLoading={history.isPending && historyQuery !== null}
-                error={history.isError ? history.error : null}
-                onApply={(next) => applyHistory(next)}
-                onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
-                onRetry={() => void history.refetch()}
+                onRetry={() => void detail.refetch()}
               />
-            ),
-          },
-        ]}
-        onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
-      />
+            </div>
+            {/* 특채(omf-all-around#84) — 요청·적용. 승인은 W-03-09 의 결재가 한다. */}
+            {selectedId !== null && detail.data !== undefined && (
+              <div className="disposition-side-part" role="group" aria-label={t.concession.heading}>
+                <h3 className="pane-subtitle">{t.concession.heading}</h3>
+                <ConcessionPane
+                  nonconformanceId={selectedId}
+                  lots={toDetailView(detail.data).lots}
+                  isClosed={detail.data.statusCode === 'DECIDED'}
+                  today={today}
+                />
+              </div>
+            )}
+            <div className="disposition-side-part" role="group" aria-label={t.panes.decision}>
+              <h3 className="pane-subtitle">{t.panes.decision}</h3>
+              <DecisionFormPane
+                value={form}
+                errors={showErrors ? errors : write.fieldErrors}
+                qtyNotice={remainingNotice(form, remaining)}
+                lockReason={lock.reason}
+                isUncertain={lock.isUncertain}
+                onCheckOutcome={checkOutcome}
+                dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
+                uomId={uomId}
+                uoms={uoms}
+                writeError={write.error}
+                isSaving={write.isSaving}
+                canCancel={hasDecisionInput(form)}
+                onChange={(next) => {
+                  /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                  if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                    write.clearFieldError('dispositionTypeCode');
+                  if (next.qty !== form.qty) write.clearFieldError('decisionQty');
+                  if (next.reason !== form.reason) write.clearFieldError('reason');
+                  setForm(next);
+                }}
+                onSave={save}
+                onCancel={() => {
+                  setForm(EMPTY_DECISION_FORM);
+                  setShowErrors(false);
+                  /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                  write.reset();
+                }}
+                onReload={checkOutcome}
+              />
+            </div>
+          </section>
+        </div>
+      ) : (
+        <HistoryTab
+          applied={historyFilters}
+          dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
+          rows={historyRows}
+          uoms={uoms}
+          page={toPageView(history.data?.page ?? { page, size: 0, total: 0 }, historyRows.length)}
+          isLoading={history.isPending && historyQuery !== null}
+          error={history.isError ? history.error : null}
+          onApply={(next) => applyHistory(next)}
+          onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
+          onRetry={() => void history.refetch()}
+        />
+      )}
     </>
   );
 };

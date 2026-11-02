@@ -41,7 +41,8 @@ describe('DispositionDecisionScreen 조회', () => {
     renderScreen();
 
     expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.detail })).toBeInTheDocument();
+    /* 오른쪽은 한 구획 — 「부적합 상세 및 판정」 안에 판정이 선다(#223). */
+    expect(screen.getByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: t.panes.decision })).toBeInTheDocument();
 
     await waitFor(() => {

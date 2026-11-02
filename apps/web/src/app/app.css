@@ -6377,6 +6377,22 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* 처분 판정 처리 — 목록·상세·판정을 하나의 판단 흐름으로 정돈한다. */
+/* 오른쪽 한 구획 안의 부적합 상세 · 특채 · 판정 — 사이는 구분선(사용자 시안 · omf-all-around#223). */
+.disposition-side-part {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.disposition-side-part + .disposition-side-part {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.disposition-side-part > .pane-subtitle {
+  margin: 0;
+}
+
 .disposition-workspace {
   display: grid;
   grid-template-columns: minmax(32rem, 5fr) minmax(25rem, 4fr);
@@ -6556,16 +6572,6 @@ main:has(.iqc-skip-approval-detail) {
   grid-template-columns: repeat(2, minmax(12rem, 1fr));
   gap: var(--space-4);
   margin-bottom: 0;
-}
-
-@media (min-width: 1500px) {
-  .disposition-workspace {
-    grid-template-columns: minmax(32rem, 5fr) repeat(2, minmax(22rem, 4fr));
-  }
-
-  .disposition-side {
-    display: contents;
-  }
 }
 
 @media (max-width: 1100px) {
