@@ -1,4 +1,4 @@
-import { Button, Chip, Icon, Table, TextField, type Column } from '@crefle/web-ui';
+import { Button, Chip, Dialog, Icon, Table, TextField, type Column } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { lotStatusTone } from '../lot-status-history/options';
 import { useLotDetail } from '../lot-status-history/queries';
+import { useUomCodeOf, withUom } from '../lot-status-history/uoms';
 import { useLotStatusLabels } from '../material-input-scan/lot-status-labels';
 import {
   EMPTY_DEFECT_CODE,
@@ -90,6 +91,9 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
    */
   const detail = useLotDetail(lot !== null && lot.uomId === undefined ? lot.lotId : null);
   const uomId = lot?.uomId ?? detail.data?.uomId ?? undefined;
+  const uomCodeOf = useUomCodeOf();
+  /* [불량 등록]은 확인 창을 거친다 — 고른 LOT · 코드 · 수량을 한 번 더 보고 등록한다(사용자 2026-11-02). */
+  const [confirming, setConfirming] = useState(false);
   const [code, setCode] = useState<DefectCodeDraft>(EMPTY_DEFECT_CODE);
   const [qty, setQty] = useState('');
   const [description, setDescription] = useState('');
@@ -141,6 +145,7 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
   const majors = majorsOf(all);
   const minors = minorsOf(all, code.majorId);
   const defectCodeId = resolveDefectCodeId(all, code);
+  const chosenCode = all.find((item) => item.defectCodeId === defectCodeId);
   const quantity = Number(qty.trim());
   const blocked =
     defectCodeId === null
@@ -279,11 +284,56 @@ export const MaterialDefectPane = ({ selection, isLocked }: MaterialDefectPanePr
         <Button
           disabled={blocked !== null || disabled}
           title={blocked ?? undefined}
-          onClick={submit}
+          onClick={() => setConfirming(true)}
         >
           {record.isSaving ? t.saving : tHere.submit}
         </Button>
       </div>
+      {confirming && blocked === null && defectCodeId !== null && (
+        <Dialog
+          open
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          title={tHere.confirm.title}
+          onClose={() => setConfirming(false)}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setConfirming(false)}>
+                {tHere.confirm.cancel}
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirming(false);
+                  submit();
+                }}
+              >
+                {tHere.submit}
+              </Button>
+            </>
+          }
+        >
+          <dl className="suspicious-material-hold-confirm">
+            {(
+              [
+                [tHere.confirm.lot, lot.lotNo],
+                [
+                  tHere.confirm.code,
+                  chosenCode === undefined ? String(defectCodeId) : optionOf(chosenCode).label,
+                ],
+                [tHere.confirm.qty, withUom(String(quantity), uomCodeOf(uomId ?? null))],
+                ...(description.trim() === ''
+                  ? []
+                  : [[tHere.confirm.description, description.trim()] as const]),
+              ] as const
+            ).map(([label, value]) => (
+              <div className="field-cell" key={label}>
+                <dt className="field-label">{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </Dialog>
+      )}
     </section>
   );
 };

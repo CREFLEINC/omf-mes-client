@@ -103,6 +103,15 @@ export const suspiciousMaterialHold = {
   },
   /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
   defect: {
+    /** 불량 등록 확인 창(사용자 2026-11-02). */
+    confirm: {
+      title: '불량을 등록할까요?',
+      lot: 'LOT',
+      code: '불량 코드',
+      qty: '불량 수량',
+      description: '불량 내용',
+      cancel: '취소',
+    },
     uomUnknownNote: 'LOT 단위를 확인할 수 없어 불량을 등록할 수 없습니다.',
     heading: '불량 내역 등록',
     major: '불량 유형',

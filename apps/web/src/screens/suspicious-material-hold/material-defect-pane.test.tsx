@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -128,6 +128,23 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveFocus());
   });
 
+  it('[불량 등록]은 확인 창을 띄우고 [취소]하면 등록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const { writes } = renderPane([LOT]);
+
+    await user.click(await screen.findByRole('combobox', { name: '불량 유형' }));
+    await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
+    await user.type(screen.getByRole('textbox', { name: t.qty.label }), '2');
+    await user.click(screen.getByRole('button', { name: '불량 등록' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '불량을 등록할까요?' });
+    expect(within(dialog).getByText('MLOT-8101')).toBeVisible();
+    expect(within(dialog).getByText('D-SCR · 긁힘')).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(writes).toHaveLength(0);
+  });
+
   it('목록에 단위가 없으면 LOT 상세의 단위로 불량을 기록한다', async () => {
     const user = userEvent.setup();
     const { uomId: _omit, ...withoutUom } = LOT;
@@ -138,6 +155,9 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await user.type(screen.getByRole('textbox', { name: t.qty.label }), '2');
     await waitFor(() => expect(screen.getByRole('button', { name: '불량 등록' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: '불량 등록' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '불량 등록' }),
+    );
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(await writes[0]?.json()).toMatchObject({ lotId: 8101, uomId: 7, defectQty: 2 });
@@ -161,6 +181,9 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await user.click(await screen.findByRole('option', { name: 'D-SCR · 긁힘' }));
     await user.type(screen.getByRole('textbox', { name: t.qty.label }), '2');
     await user.click(screen.getByRole('button', { name: '불량 등록' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '불량 등록' }),
+    );
 
     await waitFor(() => expect(writes).toHaveLength(1));
     const [record] = writes;
@@ -185,6 +208,9 @@ describe('MaterialDefectPane (W-03-03)', () => {
     await user.type(screen.getByRole('textbox', { name: t.qty.label }), '5');
     await user.type(screen.getByRole('textbox', { name: t.description }), '찍힘');
     await user.click(screen.getByRole('button', { name: '불량 등록' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '불량 등록' }),
+    );
 
     expect(await screen.findByText(t.recorded)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: t.qty.label })).toHaveValue('');

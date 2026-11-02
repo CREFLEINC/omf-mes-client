@@ -110,6 +110,14 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     title: 'Đăng ký tạm giữ vật tư nghi ngờ',
   },
   defect: {
+    confirm: {
+      title: 'Đăng ký lỗi?',
+      lot: 'LOT',
+      code: 'Mã lỗi',
+      qty: 'Số lượng lỗi',
+      description: 'Nội dung lỗi',
+      cancel: 'Hủy',
+    },
     uomUnknownNote: 'Không xác định được đơn vị LOT nên không thể đăng ký lỗi.',
     heading: 'Đăng ký chi tiết lỗi',
     major: 'Loại lỗi',
