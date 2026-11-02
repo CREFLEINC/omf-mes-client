@@ -231,7 +231,8 @@ describe('Lot Status 전이 후보', () => {
       size: '20',
     });
     expect(screen.getByRole('region', { name: '전이 대상 LOT' })).toBeVisible();
-    expect(screen.getByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeVisible();
+    /* 목록 카드 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름으로만 남는다. */
+    expect(screen.queryByRole('heading', { level: 2, name: '전이 대상 LOT' })).toBeNull();
     expect(screen.getByRole('table', { name: '전이 대상 LOT' })).toBeVisible();
     /* 총 건수는 표 아래 쪽 이동 줄에만 선다 — 제목 옆 건수 · 「조회 결과」 머리는 없다(LOT 현황과 같다). */
     expect(screen.queryByRole('heading', { level: 3, name: '조회 결과' })).toBeNull();
@@ -353,26 +354,30 @@ describe('Lot Status 전이 후보', () => {
     await user.click(select);
     expect(screen.queryByText('목록에서 LOT을 선택해 주세요.')).toBeNull();
 
-    const card = screen.getByRole('region', { name: '선택한 LOT' });
-    const identity = within(card).getByLabelText('선택 LOT 식별');
+    const card = screen.getByRole('region', { name: 'LOT 상태 변경' });
+    /* 시안 카드 — 제목 · 「선택된 LOT」, LOT 번호 이름 · 번호 · 품목 줄, 아래 현재 상태 · 변경할 상태(사용자 2026-11-02). */
+    expect(within(card).getByRole('heading', { level: 2, name: 'LOT 상태 변경' })).toBeVisible();
+    expect(within(card).getByText('선택된 LOT')).toBeVisible();
+    const identity = within(card).getByRole('group', { name: '선택 LOT 식별' });
+    expect(identity).toHaveTextContent(/^LOT 번호SYN-LOT-ALPHASYN-ITEM-A · 합성 자재$/);
+    const preparation = await within(card).findByRole('group', { name: '상태 전이 준비' });
+    expect(within(preparation).getByText('현재 상태')).toBeVisible();
+    expect(within(preparation).getByText('정상')).toBeVisible();
+    expect(within(preparation).getByText('변경할 상태')).toBeVisible();
     const current = within(card).getByLabelText('선택 LOT 현재 상태');
-    expect(valueOf(identity, 'LOT 번호')).toBe('SYN-LOT-ALPHA');
-    expect(valueOf(identity, '품목')).toBe('SYN-ITEM-A · 합성 자재');
-    expect(within(card).getByRole('heading', { level: 3, name: '현재 상태' })).toBeVisible();
     expect(
       within(current)
         .getAllByRole('term')
         .map((node) => node.textContent),
-    ).toEqual(['현재 상태', '보유 수량', '보류 수량', '가용 수량', '최근 상태 변경', '최근 사유']);
+    ).toEqual(['보유 수량', '보류 수량', '가용 수량', '최근 상태 변경', '최근 사유']);
     /* 최근 전이는 공장 시각(UTC+7)으로 보인다 — omf-all-around#20 */
     expect([
-      valueOf(current, '현재 상태'),
       valueOf(current, '보유 수량'),
       valueOf(current, '보류 수량'),
       valueOf(current, '가용 수량'),
       valueOf(current, '최근 상태 변경'),
       valueOf(current, '최근 사유'),
-    ]).toEqual(['정상', '25', '5', '20', '2026-08-21 10:34', 'SYN-REASON-A']);
+    ]).toEqual(['25', '5', '20', '2026-08-21 10:34', 'SYN-REASON-A']);
     expect(select).toHaveAttribute('aria-current', 'true');
     expect(screen.queryByText('987654')).toBeNull();
     await user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
@@ -384,7 +389,7 @@ describe('Lot Status 전이 후보', () => {
     /* 고른 줄을 다시 누르면 선택을 풀고 안내로 돌아간다. */
     await user.click(select);
     expect(select).not.toHaveAttribute('aria-current');
-    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
     expect(screen.getByText('목록에서 LOT을 선택해 주세요.')).toBeVisible();
   });
 
@@ -395,7 +400,7 @@ describe('Lot Status 전이 후보', () => {
     if (row === null) throw new Error('후보 행이 없습니다.');
     await user.click(within(row).getByText('정상'));
     expect(select).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByRole('region', { name: '선택한 LOT' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'LOT 상태 변경' })).toBeVisible();
   });
 
   it('품목 목록 첫 쪽에 없는 품목도 이름을 보인다 (#1336)', async () => {
@@ -461,6 +466,7 @@ describe('Lot Status 전이 후보', () => {
     });
     await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+    await view.user.click(screen.getByRole('button', { name: '상태 변경 검토' }));
     await chooseHoldReason(view.user);
 
     void view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
@@ -472,10 +478,15 @@ describe('Lot Status 전이 후보', () => {
     releaseRefetch(jsonResponse(page([updated])));
     const current = await screen.findByLabelText('선택 LOT 현재 상태');
     await waitFor(() => expect(valueOf(current, '보유 수량')).toBe('30'));
-    expect(valueOf(current, '현재 상태')).toBe('DEFECTIVE (이름 미확인)');
+    expect(
+      within(await screen.findByRole('group', { name: '상태 전이 준비' })).getByText(
+        'DEFECTIVE (이름 미확인)',
+      ),
+    ).toBeVisible();
     expect(valueOf(current, '보류 수량')).toBe('4');
     expect(valueOf(current, '가용 수량')).toBe('26');
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+    await view.user.click(screen.getByRole('button', { name: '상태 변경 검토' }));
     await chooseHoldReason(view.user);
     await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
     await view.user.click(
@@ -509,6 +520,7 @@ describe('Lot Status 전이 후보', () => {
     ];
     const openConfirmation = async (): Promise<HTMLElement> => {
       await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
+      await view.user.click(screen.getByRole('button', { name: '상태 변경 검토' }));
       await chooseHoldReason(view.user);
       await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
       return screen.findByRole('dialog');
@@ -555,12 +567,12 @@ describe('Lot Status 전이 후보', () => {
         : jsonResponse({ message: 'synthetic failure' }, { status: 500 });
     });
     await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
-    await screen.findByRole('region', { name: '상태 전이 준비' });
+    await screen.findByRole('group', { name: '상태 전이 준비' });
 
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     expect(await screen.findByText('LOT 후보를 불러오지 못했습니다.')).toBeVisible();
-    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
-    expect(screen.queryByRole('region', { name: '상태 전이 준비' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '상태 전이 준비' })).toBeNull();
   });
 
   it('재조회에서 사라진 선택 row는 나중 응답에 재등장해도 자동 부활하지 않는다', async () => {
@@ -571,16 +583,16 @@ describe('Lot Status 전이 후보', () => {
       return jsonResponse(listCalls === 2 ? page([]) : page());
     });
     await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
-    await screen.findByRole('region', { name: '선택한 LOT' });
+    await screen.findByRole('region', { name: 'LOT 상태 변경' });
 
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
-    await waitFor(() => expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull());
-    expect(screen.queryByRole('region', { name: '상태 전이 준비' })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull());
+    expect(screen.queryByRole('group', { name: '상태 전이 준비' })).toBeNull();
 
     await view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     const reappeared = await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     expect(reappeared).not.toHaveAttribute('aria-current');
-    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
   });
 
   it('다음 쪽으로 이동하면 page를 보내고 앞 선택을 지운다', async () => {
@@ -600,7 +612,7 @@ describe('Lot Status 전이 후보', () => {
 
     await screen.findByRole('button', { name: 'SYN-LOT-P2 선택' });
     expect(lotRequests(urls).at(-1)?.searchParams.get('page')).toBe('2');
-    expect(screen.queryByRole('region', { name: '선택한 LOT' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '선택 LOT 식별' })).toBeNull();
   });
 
   it.each([

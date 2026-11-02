@@ -11,7 +11,7 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
-import type { PropsWithChildren } from 'react';
+import type { ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -39,11 +39,29 @@ const formatDateTime = (value: string): string => {
   return formatPlantDateTime(value) ?? value;
 };
 
-const PreparationPane = ({ children }: PropsWithChildren) => (
-  <section className="pane lot-status-transition-pane" aria-label={t.pane}>
-    <h2 className="pane-title">{t.pane}</h2>
+/*
+ * 「LOT 상태 변경」 카드 아래쪽 — 왼쪽 현재 상태 · 오른쪽 변경할 상태를 나란히 두고, 그 아래에 해제할 보류 · 입력 칸이 이어진다
+ * (사용자 시안 2026-11-02). 카드 자체는 고른 LOT 을 보이는 쪽(candidate-screen)이 세운다.
+ */
+const PreparationPane = ({
+  current,
+  choice,
+  children,
+}: {
+  current: ReactNode;
+  choice: ReactNode;
+  children?: ReactNode;
+}) => (
+  <div className="lot-status-transition-preparation" role="group" aria-label={t.pane}>
+    <div className="lot-status-transition-compare">
+      <div className="field-cell">
+        <span className="field-label">{messages.lotStatusTransition.selected.status}</span>
+        {current}
+      </div>
+      <div className="field-cell lot-status-transition-choice">{choice}</div>
+    </div>
     {children}
-  </section>
+  </div>
 );
 
 const useTransitions = (lotId: number, enabled: boolean) => {
@@ -113,11 +131,14 @@ const useHoldDetail = (lotHoldId: number | null, enabled: boolean) => {
 
 export interface LotStatusTransitionPreparationProps {
   lot: LotStatusCandidate;
+  /** 왼쪽 「현재 상태」 칸에 둘 상태 칩. */
+  current: ReactNode;
   onConfirmationChange?: (pinned: boolean) => void;
 }
 
 export const LotStatusTransitionPreparation = ({
   lot,
+  current,
   onConfirmationChange,
 }: LotStatusTransitionPreparationProps) => {
   const { etags } = useApiClient();
@@ -136,6 +157,8 @@ export const LotStatusTransitionPreparation = ({
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
+  /* 입력 칸은 [상태 변경 검토]를 눌러야 열린다(사용자 시안 2026-11-02) — 고른 상태 · 보류가 바뀌면 다시 닫힌다. */
+  const [reviewing, setReviewing] = useState(false);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
   const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
@@ -182,11 +205,13 @@ export const LotStatusTransitionPreparation = ({
     setSelectedTransitionKey(value);
     setAutoSelectOwner(next?.actionCode === 'RELEASE_HOLD' ? value : null);
     setSelectedHoldId(null);
+    setReviewing(false);
   };
   const clearExecutionOwner = (): void => {
     setSelectedTransitionKey(null);
     setAutoSelectOwner(null);
     setSelectedHoldId(null);
+    setReviewing(false);
   };
   const refreshPreparation = (): void => {
     void transitions.refetch();
@@ -239,6 +264,7 @@ export const LotStatusTransitionPreparation = ({
           aria-pressed={selectedHoldId === item.lotHoldId}
           onClick={() => {
             setAutoSelectOwner(null);
+            if (selectedHoldId !== item.lotHoldId) setReviewing(false);
             setSelectedHoldId(item.lotHoldId);
           }}
         >
@@ -248,29 +274,48 @@ export const LotStatusTransitionPreparation = ({
     },
   ];
 
+  const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
   if (transitions.isFetching && !confirmationPinned)
     return (
-      <PreparationPane>
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={1} />
-        </div>
-      </PreparationPane>
+      <PreparationPane
+        current={current}
+        choice={
+          <>
+            {choiceTitle}
+            <div role="status" aria-label={t.loading}>
+              <SkeletonText lines={1} />
+            </div>
+          </>
+        }
+      />
     );
   if (transitions.isError && !confirmationPinned)
     return (
-      <PreparationPane>
-        <AlertBanner
-          variant="error"
-          title={t.failed}
-          action={<Button onClick={() => void transitions.refetch()}>{t.retry}</Button>}
-        />
-      </PreparationPane>
+      <PreparationPane
+        current={current}
+        choice={
+          <>
+            {choiceTitle}
+            <AlertBanner
+              variant="error"
+              title={t.failed}
+              action={<Button onClick={() => void transitions.refetch()}>{t.retry}</Button>}
+            />
+          </>
+        }
+      />
     );
   if (allowed.length === 0)
     return (
-      <PreparationPane>
-        <AlertBanner variant="info">{transitions.data?.note ?? t.noTransition}</AlertBanner>
-      </PreparationPane>
+      <PreparationPane
+        current={current}
+        choice={
+          <>
+            {choiceTitle}
+            <AlertBanner variant="info">{transitions.data?.note ?? t.noTransition}</AlertBanner>
+          </>
+        }
+      />
     );
 
   let preparation: string | null = null;
@@ -293,25 +338,36 @@ export const LotStatusTransitionPreparation = ({
                 : t.notes.lockUnknown;
   }
 
+  /* 검토로 넘어갈 수 있는가 — 등록은 LOT 잠금 정보, 해제는 고른 보류의 상세 · 잠금 정보가 서야 한다. */
+  const canReview = isCreate
+    ? lot.versionNo !== undefined && Number.isSafeInteger(lot.versionNo)
+    : isRelease && selectedHold !== undefined && detailData !== undefined && token !== undefined;
+  /* 검토 중에 고른 보류가 사라지면 입력 칸 대신 다시 [상태 변경 검토]가 선다. */
+  const reviewOpen = reviewing && canReview;
+
   return (
-    <PreparationPane>
-      <div className="lot-status-transition-choice">
-        <h3 className="lot-status-transition-subtitle">{t.choiceTitle}</h3>
-        <RadioGroup
-          name={`lot-status-transition-${String(lot.lotId)}`}
-          orientation="horizontal"
-          value={selectedTransitionKey ?? ''}
-          disabled={confirmationPinned}
-          aria-label={t.choiceLabel}
-          onChange={chooseTransition}
-        >
-          {allowed.map((item) => (
-            <Radio key={transitionKey(item)} value={transitionKey(item)}>
-              {targetLabel(item.targetLotStatusCode)}
-            </Radio>
-          ))}
-        </RadioGroup>
-      </div>
+    <PreparationPane
+      current={current}
+      choice={
+        <>
+          {choiceTitle}
+          <RadioGroup
+            name={`lot-status-transition-${String(lot.lotId)}`}
+            orientation="vertical"
+            value={selectedTransitionKey ?? ''}
+            disabled={confirmationPinned}
+            aria-label={t.choiceLabel}
+            onChange={chooseTransition}
+          >
+            {allowed.map((item) => (
+              <Radio key={transitionKey(item)} value={transitionKey(item)}>
+                {targetLabel(item.targetLotStatusCode)}
+              </Radio>
+            ))}
+          </RadioGroup>
+        </>
+      }
+    >
       {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
         <section className="lot-status-transition-holds" aria-label={t.holds.pane}>
           <h3 className="lot-status-transition-subtitle">{t.holds.title}</h3>
@@ -332,7 +388,15 @@ export const LotStatusTransitionPreparation = ({
           {preparation}
         </p>
       )}
-      {isCreate &&
+      {!reviewOpen && (
+        <div className="lot-status-transition-review">
+          <Button variant="filled" disabled={!canReview} onClick={() => setReviewing(true)}>
+            {t.review}
+          </Button>
+        </div>
+      )}
+      {reviewOpen &&
+        isCreate &&
         selectedTransition !== undefined &&
         lot.versionNo !== undefined &&
         Number.isSafeInteger(lot.versionNo) && (
@@ -350,12 +414,14 @@ export const LotStatusTransitionPreparation = ({
             onCreated={() => {
               refreshPreparation();
               setSelectedTransitionKey(null);
+              setReviewing(false);
             }}
             onConfirmationChange={changeConfirmation}
             onStale={reloadExecutionOwner}
           />
         )}
-      {isRelease &&
+      {reviewOpen &&
+        isRelease &&
         selectedTransition !== undefined &&
         selectedHold !== undefined &&
         detailData !== undefined &&
@@ -373,6 +439,7 @@ export const LotStatusTransitionPreparation = ({
             onReleased={() => {
               refreshPreparation();
               setSelectedHoldId(null);
+              setReviewing(false);
             }}
             onConfirmationChange={changeConfirmation}
             onStale={reloadExecutionOwner}

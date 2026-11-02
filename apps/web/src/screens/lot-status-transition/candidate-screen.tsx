@@ -551,13 +551,8 @@ export const LotStatusTransitionCandidateScreen = () => {
         style={{ ...split.style, ...layout.style }}
       >
         {/* 결과 카드 — 총 건수는 표 아래 쪽 이동 줄에만 둔다(LOT 현황과 같다). */}
-        <section
-          className="pane lot-status-pane lot-status-transition-pane"
-          aria-labelledby="lot-status-transition-candidates-title"
-        >
-          <h2 className="pane-title" id="lot-status-transition-candidates-title">
-            {t.pane}
-          </h2>
+        {/* 「전이 대상 LOT」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */}
+        <section className="pane lot-status-pane lot-status-transition-pane" aria-label={t.pane}>
           {candidates.isError ? (
             <AlertBanner
               variant="error"
@@ -638,68 +633,63 @@ export const LotStatusTransitionCandidateScreen = () => {
               />
             </section>
           ) : (
-            <>
-              <section className="pane lot-status-transition-pane" aria-label={tSelected.pane}>
+            /*
+             * 고른 LOT 과 상태 변경을 한 카드에 — 제목 · 「선택된 LOT」 표시, LOT 번호와 품목, 구분선 아래 현재 상태 ·
+             * 변경할 상태를 나란히(사용자 시안 2026-11-02). 수량 · 최근 변경은 품목 아래 작은 글자로 남긴다.
+             */
+            <section className="pane lot-status-transition-pane" aria-label={tSelected.pane}>
+              <div className="lot-status-transition-card-head">
                 <h2 className="pane-title">{tSelected.title}</h2>
-                <dl className="lot-status-transition-identity" aria-label={tSelected.identity}>
-                  {[
-                    [tSelected.lotNo, selected.lotNo],
-                    [tSelected.item, itemLabel(selected.itemId)],
-                  ].map(([label, value]) => (
-                    <div className="field-cell" key={label}>
-                      <dt className="field-label">{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <h3 className="lot-status-transition-subtitle">{tSelected.currentTitle}</h3>
-                {/*
-                 * 현재 상태만 색 칩으로 강조하고(LOT 이력 화면과 같은 색) 수량·최근 변경은 정돈된 글자로 둔다
-                 * (사용자 지시). 최근 사유는 공통코드 이름이다 — 코드가 글자 중간에서 접히지 않는다.
-                 */}
-                <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
-                  {(
+                <Chip size="sm">{tSelected.badge}</Chip>
+              </div>
+              <div
+                className="lot-status-transition-identity"
+                role="group"
+                aria-label={tSelected.identity}
+              >
+                <span className="field-label">{tSelected.lotNo}</span>
+                <strong className="lot-status-transition-lot-no">{selected.lotNo}</strong>
+                <span className="lot-status-transition-item">{itemLabel(selected.itemId)}</span>
+              </div>
+              <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
+                {(
+                  [
+                    ['onHand', tSelected.onHand, quantity(selected.onHandQty)],
+                    ['held', tSelected.held, quantity(selected.heldQty)],
+                    ['available', tSelected.available, quantity(selected.availableQty)],
                     [
-                      [
-                        'status',
-                        tSelected.status,
-                        <Chip variant="status" status={lotStatusTone(selected.lotStatusCode)}>
-                          {statusLabel(selected.lotStatusCode)}
-                        </Chip>,
-                      ],
-                      ['onHand', tSelected.onHand, quantity(selected.onHandQty)],
-                      ['held', tSelected.held, quantity(selected.heldQty)],
-                      ['available', tSelected.available, quantity(selected.availableQty)],
-                      [
-                        'latestTransition',
-                        tSelected.latestTransition,
-                        formatDateTime(selected.latestTransitionAt),
-                      ],
-                      [
-                        'latestReason',
-                        tSelected.latestReason,
-                        selected.latestReasonCode === null ||
-                        selected.latestReasonCode === undefined
-                          ? emptyValue
-                          : reasonLabel(selected.latestReasonCode),
-                      ],
-                    ] as const
-                  ).map(([key, label, value]) => (
-                    <div className={`field-cell lot-status-transition-current-${key}`} key={key}>
-                      <dt className="field-label">{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
+                      'latestTransition',
+                      tSelected.latestTransition,
+                      formatDateTime(selected.latestTransitionAt),
+                    ],
+                    [
+                      'latestReason',
+                      tSelected.latestReason,
+                      selected.latestReasonCode === null || selected.latestReasonCode === undefined
+                        ? emptyValue
+                        : reasonLabel(selected.latestReasonCode),
+                    ],
+                  ] as const
+                ).map(([key, label, value]) => (
+                  <div className={`field-cell lot-status-transition-current-${key}`} key={key}>
+                    <dt className="field-label">{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
               {(confirmationPinned || !candidates.isFetching) && (
                 <LotStatusTransitionPreparation
                   key={rowKey(selected)}
                   lot={selected}
+                  current={
+                    <Chip variant="status" status={lotStatusTone(selected.lotStatusCode)} size="sm">
+                      {statusLabel(selected.lotStatusCode)}
+                    </Chip>
+                  }
                   onConfirmationChange={onConfirmationChange}
                 />
               )}
-            </>
+            </section>
           )}
         </div>
       </div>

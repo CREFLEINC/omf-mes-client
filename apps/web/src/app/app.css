@@ -4972,23 +4972,6 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
-.lot-status-transition-notice {
-  min-width: 0;
-  margin: var(--space-2) 0 0;
-}
-
-/*
- * 한 줄 안내라 아이콘을 글자 줄 가운데에 맞춘다. 공용 배너는 제목 줄 기준으로 아이콘을 내려
- * 두어, 제목 없이 본문 한 줄만 쓰면 아이콘이 글자보다 아래로 처진다. 이 화면 안에서만 바로잡는다.
- */
-.lot-status-transition-notice > [role="alert"] {
-  align-items: center;
-}
-
-.lot-status-transition-notice > [role="alert"] > [aria-hidden="true"] {
-  margin-top: 0;
-}
-
 .lot-status-transition-pane {
   display: grid;
   align-content: start;
@@ -5014,12 +4997,12 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 자재 — 선택값이 「코드 · 품목명」이라 길다. 최소 폭은 규범 3-2(.wide-select 13rem)를 따르고,
- * 긴 품목명이 줄 전체를 차지하지 않게 상한을 둔다(20rem — 10자리 코드와 품목명 앞부분이 보이는 폭).
+ * 자재 — 선택값이 「코드 · 품목명」이라 길다. 위 줄 LOT 스캔 칸과 같은 폭으로 맞춘다(사용자 2026-11-02).
  * 넘치는 이름은 트리거가 말줄임으로 자른다.
  */
 .field-cell.lot-status-transition-item-filter {
-  max-width: 20rem;
+  width: clamp(16rem, 22vw, 21rem);
+  max-width: none;
 }
 
 /*
@@ -5085,36 +5068,81 @@ h2:has(> .inspection-standard-dialog-title) {
   cursor: pointer;
 }
 
-.lot-status-transition-identity,
+/* 「LOT 상태 변경」 카드 — 제목 줄 오른쪽에 「선택된 LOT」 표시(사용자 시안 2026-11-02). */
+.lot-status-transition-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-status-transition-card-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* LOT 번호 이름 · 굵은 번호 · 흐린 품목 줄을 위아래로. */
+.lot-status-transition-identity {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.lot-status-transition-lot-no {
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  overflow-wrap: anywhere;
+}
+
+.lot-status-transition-item {
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+/* 수량 · 최근 변경 — 품목 아래 작은 글자 줄. */
 .lot-status-transition-status-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   gap: var(--space-3);
   min-width: 0;
   margin: 0;
 }
 
-.lot-status-transition-identity {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
-}
-
-.lot-status-transition-status-grid {
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-}
-
-.lot-status-transition-identity dd,
 .lot-status-transition-status-grid dd {
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.lot-status-transition-identity dd {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+/* 구분선 아래 현재 상태 · 변경할 상태 두 칸, 그 아래 해제할 보류 · 입력 칸. */
+.lot-status-transition-preparation {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.lot-status-transition-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.lot-status-transition-compare > .field-cell {
+  align-content: start;
+  justify-items: start;
+}
+
+.lot-status-transition-review {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .lot-status-transition-subtitle {
@@ -5124,20 +5152,12 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-md-tracking);
 }
 
-.lot-status-transition-choice,
 .lot-status-transition-holds,
 .lot-status-transition-execution {
   display: grid;
   align-content: start;
   gap: var(--space-3);
   min-width: 0;
-}
-
-.lot-status-transition-choice {
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
 }
 
 .lot-status-transition-preparation-note {
@@ -5204,7 +5224,7 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 @media (max-width: 720px) {
-  .lot-status-transition-identity {
+  .lot-status-transition-compare {
     grid-template-columns: minmax(0, 1fr);
   }
 }

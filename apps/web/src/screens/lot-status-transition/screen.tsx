@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
@@ -36,9 +36,6 @@ export const LotStatusTransitionScreen = () => {
         />
       )}
       <div className="lot-status-transition-workspace">
-        <div className="banner-slot lot-status-transition-notice">
-          <AlertBanner variant="warning">{t.historyNotice}</AlertBanner>
-        </div>
         <LotStatusTransitionCandidateScreen />
       </div>
     </div>

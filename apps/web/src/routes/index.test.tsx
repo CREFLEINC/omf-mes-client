@@ -1250,7 +1250,8 @@ describe('appRouter — Lot Status 판정·전이 처리의 진입 경로', () =
     await waitFor(() => expect(currentLocation()).toBe('/quality/lot-status-transition'));
     expect(hubTab('LOT 상태', 'LOT 상태 변경')).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('button', { name: 'SYN-LOT-ENTRY 선택' })).toBeVisible();
-    expect(screen.getByText('전이 이력은 별도의 이력으로 저장되지 않습니다')).toBeVisible();
+    /* 「전이 이력은 별도의 이력으로 저장되지 않습니다」 경고는 사실이 아니어서 지웠다(사용자 2026-11-02). */
+    expect(screen.queryByText('전이 이력은 별도의 이력으로 저장되지 않습니다')).toBeNull();
     /*
      * 탭 묶음 안이라 머리(제목·탐색 경로·변경 이력 단추)를 세우지 않는다 — 변경 이력은 「LOT 상태 조회」 탭이
      * 대신한다(omf-all-around#210).

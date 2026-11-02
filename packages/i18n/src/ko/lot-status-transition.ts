@@ -4,7 +4,6 @@ export const lotStatusTransition = {
   description:
     'LOT을 찾아 선택하면 현재 품질 상태를 확인하고, 보류 등록·해제로 상태를 바꿀 수 있습니다.',
   breadcrumbRoot: '품질 관리',
-  historyNotice: '전이 이력은 별도의 이력으로 저장되지 않습니다',
   historyLink: 'Lot Status 변경 이력 보기',
   /** 등록·해제 사유는 공통코드 선택지다(§5-4 · G-31). 없으면 지어내지 않고 잠근다(G-2). */
   reason: {
@@ -50,8 +49,10 @@ export const lotStatusTransition = {
   },
   /** 고른 LOT의 식별과 현재 수량·상태를 되짚어 주는 패널. */
   selected: {
-    pane: '선택한 LOT',
-    title: '선택 LOT',
+    /* 카드 이름 · 오른쪽 위 표시는 사용자 시안(2026-11-02) 글자 그대로다. */
+    pane: 'LOT 상태 변경',
+    title: 'LOT 상태 변경',
+    badge: '선택된 LOT',
     identity: '선택 LOT 식별',
     lotNo: 'LOT 번호',
     item: '품목',
@@ -73,6 +74,8 @@ export const lotStatusTransition = {
     noTransition: '현재 LOT은 전이할 수 없습니다.',
     choiceTitle: '변경할 상태',
     choiceLabel: '전이',
+    /** 고른 상태로 바꾸기 전 입력 칸을 여는 단추(사용자 시안 2026-11-02). */
+    review: '상태 변경 검토',
     holds: {
       pane: '열린 보류 목록',
       title: '해제할 보류',

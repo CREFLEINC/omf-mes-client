@@ -166,7 +166,7 @@ const VersionHarness = ({ selected }: { selected: LotStatusCandidate }) => {
       <button type="button" onClick={() => setCurrent({ ...current, versionNo: 8 })}>
         LOT 버전 갱신
       </button>
-      <LotStatusTransitionPreparation lot={current} />
+      <LotStatusTransitionPreparation lot={current} current={null} />
     </>
   );
 };
@@ -183,7 +183,7 @@ const renderPreparation = (
     tracksVersion ? (
       <VersionHarness selected={selected} />
     ) : (
-      <LotStatusTransitionPreparation lot={selected} />
+      <LotStatusTransitionPreparation lot={selected} current={null} />
     ),
     {
       fetch: async (request) => {
@@ -194,6 +194,18 @@ const renderPreparation = (
     },
   );
   return { ...view, requests, urls, user: userEvent.setup() };
+};
+/** 입력 칸은 [상태 변경 검토]를 눌러야 열린다 — 누를 수 있게 되면 누른다(보류 · 상세를 아직 못 받았으면 그대로 둔다). */
+const reviewIfReady = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const ready = await waitFor(
+    () => {
+      const button = screen.getByRole('button', { name: '상태 변경 검토' });
+      expect(button).toBeEnabled();
+      return button;
+    },
+    { timeout: 500 },
+  ).catch(() => null);
+  if (ready !== null) await user.click(ready);
 };
 const chooseHold = async (
   user: ReturnType<typeof userEvent.setup>,
@@ -208,12 +220,14 @@ const chooseHold = async (
   });
   if (row === undefined) throw new Error(`보류 ${reasonCode} / ${visibleHeldAt}의 행이 없습니다.`);
   await user.click(within(row).getByRole('button', { name: /^선택(?:됨)?$/ }));
+  await reviewIfReady(user);
 };
 const chooseTransition = async (
   user: ReturnType<typeof userEvent.setup>,
   label: string,
 ): Promise<void> => {
   await user.click(await screen.findByRole('radio', { name: label }));
+  await reviewIfReady(user);
 };
 const releaseRoute = (
   status = 200,

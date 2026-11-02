@@ -13,7 +13,6 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   description:
     'Tìm và chọn LOT để xem trạng thái chất lượng hiện tại, rồi đổi trạng thái bằng cách đăng ký hoặc gỡ tạm giữ.',
   breadcrumbRoot: 'Quản lý chất lượng',
-  historyNotice: 'Lịch sử chuyển đổi không được lưu thành một lịch sử riêng',
   historyLink: 'Xem lịch sử thay đổi Lot Status',
   reason: {
     holdLabel: 'Lý do tạm giữ',
@@ -54,8 +53,9 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     empty: 'Không có LOT nào khớp điều kiện.',
   },
   selected: {
-    pane: 'LOT đã chọn',
-    title: 'LOT đã chọn',
+    pane: 'Thay đổi trạng thái LOT',
+    title: 'Thay đổi trạng thái LOT',
+    badge: 'LOT đã chọn',
     identity: 'Định danh LOT đã chọn',
     lotNo: 'Số LOT',
     item: 'Mặt hàng',
@@ -76,6 +76,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     noTransition: 'LOT hiện tại không chuyển đổi được.',
     choiceTitle: 'Trạng thái cần đổi',
     choiceLabel: 'Chuyển đổi',
+    review: 'Xem xét thay đổi trạng thái',
     holds: {
       pane: 'Danh sách mục tạm giữ đang mở',
       title: 'Tạm giữ cần gỡ',
