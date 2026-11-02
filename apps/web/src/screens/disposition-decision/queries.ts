@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -50,6 +50,22 @@ export const usePendingNonconformances = (
       return runRequest(() => client.GET('/quality/nonconformances', { params: { query } }));
     },
   });
+};
+
+/**
+ * 상태 칩의 건수(사용자 지시 · #223) — 상태마다 판정 대기 목록 첫 쪽의 총수. 목록과 같은 열쇠 · 같은 조회라
+ * 지금 보는 상태의 조회는 다시 나가지 않는다. 돌려주는 차례는 넘긴 조회의 차례다.
+ */
+export const usePendingTotals = (queries: readonly PendingListQuery[]): (number | undefined)[] => {
+  const { client } = useApiClient();
+
+  return useQueries({
+    queries: queries.map((query) => ({
+      queryKey: dispositionKeys.pending(query),
+      queryFn: () =>
+        runRequest(() => client.GET('/quality/nonconformances', { params: { query } })),
+    })),
+  }).map((result) => result.data?.page.total);
 };
 
 export const useNonconformanceDetail = (

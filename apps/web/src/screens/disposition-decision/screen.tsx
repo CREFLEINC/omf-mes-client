@@ -1,5 +1,5 @@
 import type { DispositionSortResult } from '@omf-mes/api-client';
-import { Breadcrumb, Chip, PageHeader, useToast } from '@crefle/web-ui';
+import { Chip, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,7 +25,7 @@ import {
   type DecisionCreateBody,
   type DecisionFormValue,
 } from './decision-form';
-import { ConcessionPane } from './concession-pane';
+import { ConcessionPane, useConcessions } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -76,6 +76,7 @@ import {
   useDispositionDecisions,
   useNonconformanceDetail,
   usePendingNonconformances,
+  usePendingTotals,
 } from './queries';
 import { toRemainingQty } from './remaining-qty';
 import {
@@ -188,10 +189,26 @@ export const DispositionDecisionScreen = ({
   const pendingCount = usePendingNonconformances(
     useMemo(() => toPendingListQuery(filters, 1, zone, size), [filters, size, zone]),
   ).data?.page.total;
+  /* 상태 칩 — 공통코드 상태마다 지금 조건(상태는 빼고)의 건수. */
+  const statusOptions = codeOptionsOf(status);
+  const statusTotals = usePendingTotals(
+    useMemo(
+      () =>
+        statusOptions.flatMap((option) => {
+          const query = toPendingListQuery({ ...filters, statusCode: option.value }, 1, zone, size);
+          return query === null ? [] : [query];
+        }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- 선택지는 상태 조회가 바뀔 때만 바뀐다.
+      [filters, size, zone, status.entries],
+    ),
+  );
   const historyCount = useDecisionHistory(
     useMemo(() => toHistoryListQuery(historyFilters, 1, zone, size), [historyFilters, size, zone]),
   ).data?.page.total;
   const detail = useNonconformanceDetail(selectedId);
+  const concessions = useConcessions(selectedId);
+  /* 상세 아래 탭 — 판정 이력 | 특채 요청 및 이력(#223). */
+  const [sideTab, setSideTab] = useState<'decisions' | 'concessions'>('decisions');
   const decisions = useDispositionDecisions(selectedId);
   const items = useItemLookup();
   const uoms = useUomLookup();
@@ -377,60 +394,64 @@ export const DispositionDecisionScreen = ({
   const historyRows = useMemo(() => (history.data?.items ?? []).map(toDecisionRow), [history.data]);
 
   /*
-   * 판정 대기 · 처리 이력 — 탭 줄 오른쪽 끝의 칩 둘(품질 승인 처리의 상태 칩과 같은 모양 · 사용자 지시 · #223).
-   * 내용은 아래에 따로 그린다.
+   * 맨 위 한 줄(사용자 지시 · #223) — 왼쪽 「판정 대기 · 처리 이력」 탭(건수), 오른쪽 상태 칩(건수 · 누르면 그 상태만,
+   * 다시 누르면 풀림)과 배치 고르기. 품질 승인 처리의 유형 탭 줄과 같은 모양이다. 제목 · 경로 줄은 두지 않는다.
+   * 상태 칩과 배치 고르기는 판정 대기에서만(이력은 상태 축이 없고 표 하나다).
    */
-  const subTabs = (
-    <div className="quality-approval-status-chips" role="group" aria-label={t.tabs.label}>
-      {(['pending', 'history'] as const).map((value) => (
-        <Chip
-          key={value}
-          variant="filter"
-          size="sm"
-          selected={tab === value}
-          aria-pressed={tab === value}
-          onClick={() => setSearchParams((current) => withTab(current, value))}
-        >
-          {value === 'pending'
-            ? t.tabs.pendingCount(pendingCount)
-            : t.tabs.historyCount(historyCount)}
-        </Chip>
-      ))}
-    </div>
-  );
-
-  return (
-    <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
+  const topBar = (
+    <div className="quality-approval-type-bar">
+      <Tabs
+        className="quality-approval-type-tabs"
+        aria-label={t.tabs.label}
+        value={tab}
+        onChange={(next) => setSearchParams((current) => withTab(current, next as ScreenTab))}
+        items={[
+          { value: 'pending', label: t.tabs.pendingCount(pendingCount), content: null },
+          { value: 'history', label: t.tabs.historyCount(historyCount), content: null },
+        ]}
       />
-      {/*
-       * 제목 아래 한 줄 — 판정 대기 · 처리 이력 칩과 배치 고르기를 오른쪽에(품질 승인 처리 탭 줄 오른쪽과 같은 모양 · #223).
-       * 배치 고르기는 판정 대기에서만(이력은 표 하나다).
-       */}
-      <div className="disposition-top-bar">
-        {subTabs}
-        {tab === 'pending' && (
+      {tab === 'pending' && (
+        <div className="quality-approval-type-bar-tools">
+          <div
+            className="quality-approval-status-chips"
+            role="group"
+            aria-label={t.fields.statusCode}
+          >
+            {statusOptions.map((option, index) => {
+              const isActive = filters.statusCode === option.value;
+              return (
+                <Chip
+                  key={option.value}
+                  variant="filter"
+                  size="sm"
+                  selected={isActive}
+                  aria-pressed={isActive}
+                  onClick={() => apply({ ...filters, statusCode: isActive ? '' : option.value })}
+                >
+                  {t.statusChip(option.label, statusTotals[index])}
+                </Chip>
+              );
+            })}
+          </div>
           <PaneLayoutToggle
             layout={paneLayout.layout}
             onChange={paneLayout.change}
             labels={messages.qualityApproval.layout}
           />
-        )}
-      </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {topBar}
       {tab === 'pending' ? (
         <>
           <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
             <FilterBar
               applied={filters}
               severity={severity}
-              status={status}
               onApply={(next) => apply(next)}
               onReset={() =>
                 apply({
@@ -555,22 +576,43 @@ export const DispositionDecisionScreen = ({
                   onReload={checkOutcome}
                 />
               </div>
-              {/* 판정 이력 · 특채 — 접는 구역 둘(사용자 시안 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
+              {/* 판정 이력 · 특채 — 탭 둘(사용자 지시 · #223). 특채 승인은 W-03-09 의 결재가 한다. */}
               {selectedId !== null && detail.data !== undefined && (
-                <div className="disposition-side-folds">
-                  <DecisionHistory
-                    rows={decisionRows}
-                    uoms={uoms}
-                    isLoading={decisions.isPending}
-                    isError={decisions.isError}
-                  />
-                  <ConcessionPane
-                    nonconformanceId={selectedId}
-                    lots={toDetailView(detail.data).lots}
-                    isClosed={detail.data.statusCode === 'DECIDED'}
-                    today={today}
-                  />
-                </div>
+                <Tabs
+                  className="disposition-side-tabs"
+                  size="sm"
+                  aria-label={t.panes.decisions}
+                  value={sideTab}
+                  onChange={(next) => setSideTab(next as 'decisions' | 'concessions')}
+                  items={[
+                    {
+                      value: 'decisions',
+                      label:
+                        `${t.panes.decisions} ${decisions.isPending ? '' : t.decisions.count(decisionRows.length)}`.trim(),
+                      content: (
+                        <DecisionHistory
+                          rows={decisionRows}
+                          uoms={uoms}
+                          isLoading={decisions.isPending}
+                          isError={decisions.isError}
+                        />
+                      ),
+                    },
+                    {
+                      value: 'concessions',
+                      label:
+                        `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(concessions.data.length)}`.trim(),
+                      content: (
+                        <ConcessionPane
+                          nonconformanceId={selectedId}
+                          lots={toDetailView(detail.data).lots}
+                          isClosed={detail.data.statusCode === 'DECIDED'}
+                          today={today}
+                        />
+                      ),
+                    },
+                  ]}
+                />
               )}
             </section>
           </div>

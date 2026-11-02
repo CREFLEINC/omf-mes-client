@@ -82,7 +82,7 @@ describe('DispositionDecisionScreen 조회', () => {
     const { user } = renderScreen();
     await screen.findByText('NC-TEST-0041');
 
-    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByLabelText(t.fields.sourcePick));
     await user.click(screen.getByRole('option', { name: t.values.sourceCode.RETURN }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 

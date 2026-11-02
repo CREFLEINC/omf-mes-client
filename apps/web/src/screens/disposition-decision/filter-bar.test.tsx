@@ -47,7 +47,6 @@ const codes = (pairs: [string, string][]): DispositionLookup => ({
 const baseProps = (): FilterBarProps => ({
   applied,
   severity: emptyLookup(),
-  status: emptyLookup(),
   onApply: vi.fn(),
   onReset: vi.fn(),
 });
@@ -69,7 +68,7 @@ describe('FilterBar', () => {
   it('값 목록이 없는 코드 칸은 감추지 않고 사유를 붙인다(G-2)', () => {
     renderBar();
 
-    const severity = screen.getByLabelText(t.fields.severityCode);
+    const severity = screen.getByLabelText(t.fields.severityPick);
     expect(severity).toHaveTextContent(t.codePlaceholder);
     expect(severity).toHaveAccessibleDescription(t.codeLock.empty);
   });
@@ -117,7 +116,7 @@ describe('FilterBar', () => {
   it('⭐ 원천으로 거른다 — 고른 값이 적용 조건에 실린다', async () => {
     const { props, user } = renderBar();
 
-    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByLabelText(t.fields.sourcePick));
     await user.click(screen.getByRole('option', { name: t.values.sourceCode.RETURN }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -127,7 +126,7 @@ describe('FilterBar', () => {
   it('원천 칸은 선택지가 채워져 있다 — 「두 갈래만」 상시 안내는 걷었다(#223)', () => {
     renderBar();
 
-    const source = screen.getByLabelText(t.fields.sourceCode);
+    const source = screen.getByLabelText(t.fields.sourcePick);
 
     expect(source).not.toHaveAccessibleDescription();
     /* 선택지가 채워져 있으므로 G-2의 「준비 중」 자리는 비어 있어야 한다. */
@@ -137,7 +136,7 @@ describe('FilterBar', () => {
   it('⛔ 원천에 계약이 열거하지 않은 선택지를 짓지 않는다', async () => {
     const { user } = renderBar();
 
-    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByLabelText(t.fields.sourcePick));
 
     /* 개수까지 본다 — 이름만 확인하면 지어낸 값이 하나 더 끼어도 통과한다. */
     expect(screen.getAllByRole('option')).toHaveLength(3);
@@ -152,7 +151,7 @@ describe('FilterBar', () => {
   ])('심각도 기준값이 %s이면 칸을 잠그고 그 사유를 밝힌다(G-2)', (_state, overrides, message) => {
     renderBar({ severity: { ...emptyLookup(), ...overrides } });
 
-    const severity = screen.getByLabelText(t.fields.severityCode);
+    const severity = screen.getByLabelText(t.fields.severityPick);
     expect(severity).toHaveTextContent(t.codePlaceholder);
     expect(severity).toHaveAccessibleDescription(message);
   });
@@ -160,7 +159,7 @@ describe('FilterBar', () => {
   it('기준값이 오면 이름으로 고르고 코드를 적용값에 싣는다', async () => {
     const { props, user } = renderBar({ severity: codes([['CODE-B', '합성 심각도 B']]) });
 
-    await user.click(screen.getByLabelText(t.fields.severityCode));
+    await user.click(screen.getByLabelText(t.fields.severityPick));
     await user.click(screen.getByRole('option', { name: '합성 심각도 B' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
@@ -168,8 +167,10 @@ describe('FilterBar', () => {
   });
 
   it('잘려 온 기준값은 고를 수 있되 안내를 단다', () => {
-    renderBar({ status: { ...codes([['CODE-C', '합성 상태 C']]), truncated: true } });
+    renderBar({ severity: { ...codes([['CODE-B', '합성 심각도 B']]), truncated: true } });
 
-    expect(screen.getByLabelText(t.fields.statusCode)).toHaveAccessibleDescription(t.codeTruncated);
+    expect(screen.getByLabelText(t.fields.severityPick)).toHaveAccessibleDescription(
+      t.codeTruncated,
+    );
   });
 });

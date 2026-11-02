@@ -37,21 +37,21 @@ describe('DispositionDecisionScreen 탭', () => {
     renderScreen();
 
     /* 탭 줄 오른쪽 끝의 칩 둘(#223) — 켜진 칩이 지금 보는 쪽이다. */
-    expect(await screen.findByRole('button', { name: /^판정 대기/ })).toHaveAttribute(
-      'aria-pressed',
+    expect(await screen.findByRole('tab', { name: /^판정 대기/ })).toHaveAttribute(
+      'aria-selected',
       'true',
     );
-    expect(screen.getByRole('button', { name: /^처리 이력/ })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('tab', { name: /^처리 이력/ })).toHaveAttribute(
+      'aria-selected',
       'false',
     );
   });
 
   /* 탭 줄 칩은 두 목록의 건수를 함께 보인다(사용자 지시 · #223) — 보지 않는 쪽도 첫 쪽 하나는 부른다. */
-  it('탭 줄 칩에 판정 대기 건수가 붙고, 처리 이력 건수를 위해 그 목록도 부른다', async () => {
+  it('탭 이름에 판정 대기 건수가 붙고, 처리 이력 건수를 위해 그 목록도 부른다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('button', { name: t.tabs.pendingCount(1) })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: t.tabs.pendingCount(1) })).toBeInTheDocument();
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });
@@ -75,7 +75,7 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen();
     await screen.findByText('NC-TEST-0041');
 
-    await user.click(screen.getByRole('button', { name: /^처리 이력/ }));
+    await user.click(screen.getByRole('tab', { name: /^처리 이력/ }));
 
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
@@ -86,8 +86,8 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');
 
-    await user.click(screen.getByRole('button', { name: /^처리 이력/ }));
-    await user.click(screen.getByRole('button', { name: /^판정 대기/ }));
+    await user.click(screen.getByRole('tab', { name: /^처리 이력/ }));
+    await user.click(screen.getByRole('tab', { name: /^판정 대기/ }));
 
     expect(await screen.findByText(t.detail.select)).toBeInTheDocument();
   });

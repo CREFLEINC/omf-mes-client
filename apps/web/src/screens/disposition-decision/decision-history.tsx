@@ -33,17 +33,11 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
   ];
 
   /*
-   * 접는 구역(사용자 시안 · #223) — 머리에 건수, 펼치면 표. 이력이 없으면 빈 표 대신 한 줄 문구만.
+   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없으면 빈 표 대신 한 줄 문구만.
    * 남은 수량은 판정 구역 머리로 옮겼다(조회 시점 참고값인 것은 그대로 — 최종 판정은 저장 때 서버가 낸다).
    */
   return (
-    <details className="disposition-fold">
-      <summary>
-        <span className="disposition-fold-title">{t.panes.decisions}</span>
-        <span className="disposition-fold-count">
-          {isLoading || isError ? '' : t.decisions.count(rows.length)}
-        </span>
-      </summary>
+    <div className="disposition-decision-history" role="group" aria-label={t.panes.decisions}>
       {isLoading ? (
         <div role="status" aria-label={t.decisions.loading}>
           <SkeletonText lines={2} />
@@ -63,6 +57,6 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
           />
         </div>
       )}
-    </details>
+    </div>
   );
 };

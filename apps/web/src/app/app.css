@@ -6543,12 +6543,28 @@ main:has(.iqc-skip-approval-detail) {
   border: 0;
 }
 
-/* 부적합 기본 정보 — 세 칸 두 줄(사용자 시안 · #223). */
+/*
+ * 부적합 기본 정보 — 세 칸 두 줄을 테두리 상자에, 칸 사이 세로선(검사 기준 상세의 기준 정보 상자와 같은 모양 · #223).
+ */
 .disposition-detail-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
+  gap: var(--space-3) 0;
   margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.disposition-detail-facts > .field-cell {
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.disposition-detail-facts > .field-cell:nth-child(3n + 1) {
+  padding-left: 0;
+  border-left: 0;
 }
 
 .disposition-detail-facts > .field-cell {
@@ -6561,11 +6577,9 @@ main:has(.iqc-skip-approval-detail) {
   color: var(--on-surface);
 }
 
-/* 설명 — 기본 정보 아래 구분선 다음 한 줄(사용자 시안 · #223). */
+/* 설명 — 기본 정보 상자 아래 한 줄(사용자 시안 · #223). */
 .disposition-detail-description {
   margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
   color: var(--on-surface);
   overflow-wrap: anywhere;
 }
@@ -6616,54 +6630,6 @@ main:has(.iqc-skip-approval-detail) {
 .disposition-side-remaining {
   color: var(--on-surface-variant);
   font-variant-numeric: tabular-nums;
-}
-
-/* 판정 이력 · 특채 — 접는 상자 둘. 머리에 이름과 건수, 오른쪽 끝에 펼침 표시. */
-.disposition-side-folds {
-  display: grid;
-  gap: var(--space-3);
-}
-
-.disposition-fold {
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
-.disposition-fold > summary {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  cursor: pointer;
-  list-style: none;
-}
-
-.disposition-fold > summary::-webkit-details-marker {
-  display: none;
-}
-
-.disposition-fold > summary::after {
-  content: 'expand_more';
-  margin-left: auto;
-  font-family: 'Material Symbols Rounded';
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.disposition-fold[open] > summary::after {
-  content: 'expand_less';
-}
-
-.disposition-fold-title {
-  font: var(--type-title-sm);
-}
-
-.disposition-fold-count {
-  color: var(--on-surface-variant);
-}
-
-.disposition-fold > :not(summary) {
-  margin: 0 var(--space-4) var(--space-3);
 }
 
 /* 처분 라디오 묶음의 이름 — 머리 「처분 판정」이 말하므로 눈에는 감춘다(낭독기는 읽는다). */

@@ -10,6 +10,9 @@ import type { Translated } from './translated';
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
   breadcrumbRoot: 'Quản lý chất lượng',
+  /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
+  statusChip: (label: string, count: number | undefined): string =>
+    count === undefined ? label : `${label} ${String(count)}`,
   tabs: {
     label: 'Xem đánh giá quyết định xử lý',
     pending: 'Chờ đánh giá',
@@ -30,6 +33,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     decisions: 'Lịch sử đánh giá',
   },
   fields: {
+    /** 조회 조건 선택칸 이름 — 「…선택」(사용자 지시 · #223). */
+    severityPick: 'Chọn mức độ',
+    sourcePick: 'Chọn nguồn',
     period: 'Ngày tiếp nhận',
     openedFrom: 'Ngày tiếp nhận từ',
     openedTo: 'Ngày tiếp nhận đến',

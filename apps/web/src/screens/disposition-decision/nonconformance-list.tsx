@@ -145,7 +145,8 @@ export const NonconformanceList = ({
       <ListPageNav
         meta={meta}
         sizes={PAGE_SIZE_OPTIONS}
-        controlSize="md"
+        controlSize="sm"
+        buttonSize="md"
         onChangePage={onChangePage}
         onChangeSize={onChangeSize}
       />

@@ -45,12 +45,6 @@ describe('DecisionHistory', () => {
     expect(screen.getByText('EA')).toBeInTheDocument();
   });
 
-  it('접는 머리에 판정 이력 건수를 보인다 — 남은 수량은 판정 구역 머리로 옮겼다(#223)', () => {
-    renderHistory();
-
-    expect(screen.getByText(t.decisions.count(rows.length))).toBeInTheDocument();
-  });
-
   it('아직 판정이 없으면 빈 상태를 보인다', () => {
     renderHistory({ rows: [] });
 

@@ -77,14 +77,13 @@ const SelectCell = ({
 
 export interface FilterBarProps {
   applied: PendingFilters;
-  /** 심각도·상태는 공통코드 조회 결과를 그대로 받는다 — 선택지·잠금 사유를 여기서 가른다. */
+  /** 심각도는 공통코드 조회 결과를 그대로 받는다 — 선택지·잠금 사유를 여기서 가른다. */
   severity: DispositionLookup;
-  status: DispositionLookup;
   onApply: (filters: PendingFilters) => void;
   onReset: () => void;
 }
 
-export const FilterBar = ({ applied, severity, status, onApply, onReset }: FilterBarProps) => {
+export const FilterBar = ({ applied, severity, onApply, onReset }: FilterBarProps) => {
   const t = messages.dispositionDecision;
   const fromId = useId();
   const toId = useId();
@@ -135,29 +134,21 @@ export const FilterBar = ({ applied, severity, status, onApply, onReset }: Filte
           onChange={(value) => setDraft((current) => ({ ...current, itemId: value }))}
         />
       </div>
-      {/* 심각도·상태 — 공통코드가 채운다(G-32). 못 채운 사유(조회 중·실패·빈 목록)는 칸 옆에 밝힌다(G-2). */}
+      {/* 심각도 — 공통코드가 채운다(G-32). 못 채운 사유(조회 중·실패·빈 목록)는 칸 옆에 밝힌다(G-2). 상태는 탭 줄 칩이 거른다(#223). */}
       <SelectCell
-        label={t.fields.severityCode}
+        label={t.fields.severityPick}
         options={codeOptionsOf(severity)}
         value={draft.severityCode}
         pendingNote={codeLockReason(severity)}
         note={codeTruncatedNote(severity)}
         onChange={(value) => setDraft((current) => ({ ...current, severityCode: value }))}
       />
-      <SelectCell
-        label={t.fields.statusCode}
-        options={codeOptionsOf(status)}
-        value={draft.statusCode}
-        pendingNote={codeLockReason(status)}
-        note={codeTruncatedNote(status)}
-        onChange={(value) => setDraft((current) => ({ ...current, statusCode: value }))}
-      />
       {/*
        * 원천 — ⭐ 서버가 대상 LOT의 입고 유형으로 파생해 내리는 축이고 **화면은 보내지 않는다.**
        * 여기서는 «거르는 축»으로만 쓴다. 「두 갈래만 온다」 상시 안내는 걷었다(사용자 지시 · #223).
        */}
       <SelectCell
-        label={t.fields.sourceCode}
+        label={t.fields.sourcePick}
         options={sourceOptions}
         value={draft.sourceCode}
         onChange={(value) => setDraft((current) => ({ ...current, sourceCode: value }))}

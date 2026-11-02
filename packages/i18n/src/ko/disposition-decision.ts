@@ -1,6 +1,9 @@
 export const dispositionDecision = {
   title: '처분 판정 처리',
   breadcrumbRoot: '품질 관리',
+  /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
+  statusChip: (label: string, count: number | undefined): string =>
+    count === undefined ? label : `${label} ${String(count)}`,
   tabs: {
     label: '처분 판정 보기',
     pending: '판정 대기',
@@ -22,6 +25,9 @@ export const dispositionDecision = {
     decisions: '판정 이력',
   },
   fields: {
+    /** 조회 조건 선택칸 이름 — 「…선택」(사용자 지시 · #223). */
+    severityPick: '심각도 선택',
+    sourcePick: '원천 선택',
     period: '접수일',
     openedFrom: '접수 시작일',
     openedTo: '접수 종료일',

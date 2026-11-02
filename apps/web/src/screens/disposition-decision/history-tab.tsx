@@ -123,7 +123,9 @@ export const HistoryTab = ({
         <ListPageNav
           meta={meta}
           sizes={PAGE_SIZE_OPTIONS}
-          controlSize="md"
+          /* 건수 고르기는 작게, 쪽 단추는 다른 목록과 같은 크기(사용자 지시 · #223). */
+          controlSize="sm"
+          buttonSize="md"
           onChangePage={onChangePage}
           onChangeSize={onChangeSize}
         />

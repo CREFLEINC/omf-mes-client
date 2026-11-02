@@ -67,6 +67,21 @@ export interface ConcessionPaneProps {
  *    성공하면 이 화면의 상세·판정을 함께 다시 부른다.
  * ⛔ 사용 가능 수량은 기록일 뿐 출고·투입에서 막지 않는다(#84 범위).
  */
+/** 이 부적합의 특채 목록 — 구획과 탭 이름의 건수가 같은 조회를 쓴다(#223). */
+export const useConcessions = (nonconformanceId: number | null) => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: concessionKey(nonconformanceId ?? 0),
+    enabled: nonconformanceId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/concessions', {
+          params: { query: { nonconformanceId: nonconformanceId as number } },
+        }),
+      ).then((response) => response.items),
+  });
+};
+
 export const ConcessionPane = ({
   nonconformanceId,
   lots,
@@ -85,13 +100,7 @@ export const ConcessionPane = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nonconformanceId]);
 
-  const list = useQuery({
-    queryKey: concessionKey(nonconformanceId),
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/quality/concessions', { params: { query: { nonconformanceId } } }),
-      ).then((response) => response.items),
-  });
+  const list = useConcessions(nonconformanceId);
 
   const requestWrite = useMasterWrite<ConcessionCreate, Concession>({
     request: (body, headers) =>
@@ -180,15 +189,9 @@ export const ConcessionPane = ({
     },
   ];
 
-  /* 접는 구역(사용자 시안 · #223) — 머리에 특채 건수, 펼치면 목록 · 요청 입력 · 안내. 늘 보이던 것을 접어 둔다. */
+  /* 상세 아래 「특채 요청 및 이력」 탭의 내용(사용자 지시 · #223) — 목록 · 요청 입력 · 안내. */
   return (
-    <details className="disposition-fold disposition-concession" aria-label={t.heading}>
-      <summary>
-        <span className="disposition-fold-title">{t.foldTitle}</span>
-        <span className="disposition-fold-count">
-          {list.data === undefined ? '' : t.count(list.data.length)}
-        </span>
-      </summary>
+    <div className="disposition-concession" role="group" aria-label={t.heading}>
       <p className="field-note">{t.help}</p>
       {list.isError ? (
         <p className="field-note">{t.loadFailed}</p>
@@ -257,6 +260,6 @@ export const ConcessionPane = ({
           {requestWrite.isSaving ? t.requesting : t.request}
         </Button>
       </div>
-    </details>
+    </div>
   );
 };
