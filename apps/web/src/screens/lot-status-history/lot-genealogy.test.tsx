@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { MaterialLotUsage, ProductionLotInputs } from './lot-genealogy';
@@ -146,6 +146,36 @@ describe('MaterialLotUsage', () => {
 
     expect(await screen.findByText('SN-2')).toBeInTheDocument();
     await waitFor(() => expect(pages).toEqual(['1', '2']));
+  });
+
+  it('생산 LOT 줄을 누르면 그 LOT 과 작업지시를 넘긴다(상세 이력 팝업 · 2026-11-02)', async () => {
+    const onOpenLot = vi.fn();
+    renderWithProviders(<MaterialLotUsage lotId={77} onOpenLot={onOpenLot} />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => request.url.includes('/affected-production-lots'),
+          respond: () =>
+            jsonResponse({
+              basis: 'LOT_GENEALOGY_ESTIMATE',
+              workOrders: [{ workOrderId: 70, workOrderNo: 'WO-70' }],
+              items: [
+                { lotId: 501, lotNo: 'P-501', itemId: 9, statusCode: 'NORMAL', workOrderId: 70, workOrderNo: 'WO-70' },
+              ],
+            }),
+        },
+        {
+          match: (request) => request.url.includes('/used-serials'),
+          respond: () =>
+            jsonResponse({ basis: 'LOT_GENEALOGY_ESTIMATE', items: [], page: { page: 1, size: 50, total: 0 } }),
+        },
+      ]),
+      session: null,
+    });
+
+    await userEvent.click(await screen.findByText('P-501'));
+    expect(onOpenLot).toHaveBeenCalledWith(
+      expect.objectContaining({ lotId: 501, lotNo: 'P-501', workOrderId: 70, workOrderNo: 'WO-70' }),
+    );
   });
 
   it('투입 기록이 없으면 없다고 적는다', async () => {

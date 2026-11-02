@@ -102,7 +102,14 @@ export const ProductionLotInputs = ({ lotId }: { lotId: number }) => {
 };
 
 /** 자재 LOT 이 들어간 생산 LOT·시리얼(omf-all-around#166 · 서버 선행 P-107). ⛔ 읽기 전용이다. */
-export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
+export const MaterialLotUsage = ({
+  lotId,
+  onOpenLot,
+}: {
+  lotId: number;
+  /** 줄을 누르면 그 생산 LOT 의 상세 이력을 연다(사용자 2026-11-02). 없으면 줄을 누를 수 없다. */
+  onOpenLot?: (lot: AffectedLot) => void;
+}) => {
   const { client } = useApiClient();
   const [page, setPage] = useState(1);
   /* 투입 이력 표는 화면에서 쪽을 나눈다 — 서버가 한 번에 다 준다(LOT 목록과 같은 쪽 이동 · 사용자 2026-10-30). */
@@ -146,6 +153,10 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
     fitContent: true,
   });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
+  const shownLots = (lots.data?.items ?? []).slice(
+    (lotPage - 1) * lotPageSize,
+    lotPage * lotPageSize,
+  );
 
   /*
    * LOT 변경 이력 · 보류 이력과 같은 짜임 — 제목 줄에 총 건수, 기록이 없어도 표를 세우고 표 안에 없다고 적는다
@@ -181,13 +192,20 @@ export const MaterialLotUsage = ({ lotId }: { lotId: number }) => {
           <>
             <div
               ref={fit.ref}
-              className="wide-table lot-status-table lot-detail-table"
+              className={`wide-table lot-status-table lot-detail-table${onOpenLot === undefined ? '' : ' lot-usage-clickable'}`}
               style={resizable.style}
+              onClick={(event) => {
+                if (onOpenLot === undefined) return;
+                const row = (event.target as Element).closest('tbody tr');
+                if (row === null || row.parentElement === null) return;
+                const picked = shownLots[Array.from(row.parentElement.children).indexOf(row)];
+                if (picked !== undefined) onOpenLot(picked);
+              }}
             >
               <Table
                 density="comfortable"
                 caption={t.usage.lotsCaption}
-                rows={lots.data.items.slice((lotPage - 1) * lotPageSize, lotPage * lotPageSize)}
+                rows={shownLots}
                 getRowId={(row) => String(row.lotId)}
                 columns={fit.columns}
                 empty={<EmptyState size="sm" title={t.usage.none} />}
