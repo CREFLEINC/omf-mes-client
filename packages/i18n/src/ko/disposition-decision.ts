@@ -1,5 +1,5 @@
 export const dispositionDecision = {
-  title: '처분 판정 처리',
+  title: '부적합 처분 관리',
   breadcrumbRoot: '품질 관리',
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
@@ -8,17 +8,17 @@ export const dispositionDecision = {
   filterDetail: { open: '상세 펼치기', close: '상세 접기' },
   tabs: {
     label: '처분 판정 보기',
-    pending: '판정 대기',
-    history: '처리 이력',
-    /** 탭 줄 칩 — 「판정 대기 3」(#223). 건수를 아직 모르면 이름만. */
+    pending: '처분 대기',
+    history: '처분 이력',
+    /** 탭 줄 칩 — 「처분 대기 3」(#223). 건수를 아직 모르면 이름만. */
     pendingCount: (count: number | undefined): string =>
-      count === undefined ? '판정 대기' : `판정 대기 ${String(count)}`,
+      count === undefined ? '처분 대기' : `처분 대기 ${String(count)}`,
     historyCount: (count: number | undefined): string =>
-      count === undefined ? '처리 이력' : `처리 이력 ${String(count)}`,
+      count === undefined ? '처분 이력' : `처분 이력 ${String(count)}`,
   },
   panes: {
     filter: '조회 조건',
-    list: '판정 대기 목록',
+    list: '처분 대기 목록',
     detail: '선택한 부적합',
     detailDecision: '부적합 상세 및 판정',
     decision: '판정',
@@ -202,8 +202,8 @@ export const dispositionDecision = {
     sortSuccess: (lotNo: string, nonconformanceNo: string): string =>
       `선별을 저장했습니다. 불량분은 LOT ${lotNo} · 부적합 ${nonconformanceNo} 로 넘어갔습니다`,
   },
-  loading: '판정 대기 목록 불러오는 중',
-  historyLoading: '처리 이력 불러오는 중',
+  loading: '처분 대기 목록 불러오는 중',
+  historyLoading: '처분 이력 불러오는 중',
   empty: {
     title: '조건에 맞는 부적합이 없습니다',
     description: '기간을 넓히거나 다른 조건으로 조회하세요.',

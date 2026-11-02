@@ -390,7 +390,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/quality/dispositions',
         icon: 'gavel',
-        label: '처분 판정 처리',
+        label: '부적합 처분 관리',
         labelVi: 'Ra quyết định xử lý',
       },
     ],

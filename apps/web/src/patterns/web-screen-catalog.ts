@@ -239,7 +239,7 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     name: '검사실적·검사결과 조회(불량률·불량코드 분포 집계 포함)',
   },
   { path: '/quality/approvals', code: 'W-03-09', name: '특채·한도승인 승인 처리' },
-  { path: '/quality/dispositions', code: 'W-03-10', name: '처분 판정 처리(재작업/폐기/정상)' },
+  { path: '/quality/dispositions', code: 'W-03-10', name: '부적합 처분 관리(재작업/폐기/정상)' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#107) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/quality/pqc-inspections', code: 'W-03-11', name: 'PQC 검사 등록·조회' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#64 · 서버 장부 P-87) — 다음 빈 번호로 받았다. */
