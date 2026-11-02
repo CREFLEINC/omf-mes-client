@@ -2,12 +2,10 @@ import { EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { DecisionHistory } from './decision-history';
 import { DetailPane } from './detail-pane';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
-import type { RemainingQty } from './remaining-qty';
-import type { DecisionRow, NonconformanceDetailView } from './types';
+import type { NonconformanceDetailView } from './types';
 
 export interface DetailSlotProps {
   /** 고른 부적합이 없으면 `null`. */
@@ -20,12 +18,6 @@ export interface DetailSlotProps {
     error: unknown;
     view: NonconformanceDetailView | null;
   };
-  decisions: {
-    rows: DecisionRow[];
-    isLoading: boolean;
-    isError: boolean;
-  };
-  remaining: RemainingQty;
   items: DispositionLookup;
   severity: DispositionLookup;
   status: DispositionLookup;
@@ -42,15 +34,13 @@ export interface DetailSlotProps {
  * | 불러오는 중 | 뼈대 | 빈 칸과 구분된다 |
  * | 없음(404) | 「찾을 수 없습니다」 + 다시 조회 안내 | **다시 시도로 풀리지 않는다** |
  * | 그 밖의 실패 | 오류 배너 + 다시 시도 | 눌러서 풀린다 |
- * | 정상 | 상세 + 판정 이력 | |
+ * | 정상 | 상세 | |
  *
  * 없음과 그 밖의 실패를 뭉개면 **없는 부적합을 계속 다시 부르게** 된다.
  */
 export const DetailSlot = ({
   selectedId,
   detail,
-  decisions,
-  remaining,
   items,
   severity,
   status,
@@ -86,22 +76,8 @@ export const DetailSlot = ({
 
   if (detail.view === null) return null;
 
+  /* 판정 이력은 판정 입력 아래 접는 구역으로 옮겼다(사용자 시안 · #223). */
   return (
-    <>
-      <DetailPane
-        view={detail.view}
-        items={items}
-        uoms={uoms}
-        severity={severity}
-        status={status}
-      />
-      <DecisionHistory
-        rows={decisions.rows}
-        remaining={remaining}
-        uoms={uoms}
-        isLoading={decisions.isLoading}
-        isError={decisions.isError}
-      />
-    </>
+    <DetailPane view={detail.view} items={items} uoms={uoms} severity={severity} status={status} />
   );
 };

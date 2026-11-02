@@ -73,7 +73,7 @@ describe('DispositionDecisionScreen 탭', () => {
 
   it('탭을 옮기면 그 탭의 목록을 부른다', async () => {
     const { user } = renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
+    await screen.findByText('NC-TEST-0041');
 
     await user.click(screen.getByRole('button', { name: /^처리 이력/ }));
 

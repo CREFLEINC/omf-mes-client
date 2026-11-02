@@ -254,7 +254,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     await save(user);
     await screen.findByRole('button', { name: t.form.checkOutcome });
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await user.click(screen.getByText('NC-TEST-0042'));
 
     expect(
       await screen.findByText(t.form.uncertainOtherTarget('NC-TEST-0041')),
@@ -266,7 +266,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     await fillDecision(user, '120');
     await save(user);
     await screen.findByRole('button', { name: t.form.checkOutcome });
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText(t.form.uncertainOtherTarget('NC-TEST-0041'));
 
     const before = requestedPaths().filter((path) => path.includes('/41/')).length;
@@ -288,7 +288,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     await save(user);
     await screen.findByText(t.form.alreadyClosed);
 
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
+    await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText('LOT-TEST-0088');
     await user.click(screen.getByRole('radio', { name: '재작업' }));
     await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');

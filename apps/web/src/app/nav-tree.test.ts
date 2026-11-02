@@ -240,7 +240,7 @@ describe('주 메뉴 트리', () => {
       '/quality/suspicious-material-hold → report_problem',
       '/quality/approvals → approval',
       '/logistics/iqc-skip-approval → approval',
-      '/quality/dispositions → approval',
+      '/quality/dispositions → gavel',
       '/production/production-orders → account_tree',
       '/production/po-change-review → account_tree',
       '/production/emergency-work-orders → bolt',

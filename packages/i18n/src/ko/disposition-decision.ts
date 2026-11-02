@@ -65,7 +65,6 @@ export const dispositionDecision = {
    * 구성을 드러내지 않는다(이 파일 머리의 작성 규칙) — 뜻을 그대로 두고 번호만 걷었다.
    */
   actions: {
-    selectRow: (nonconformanceNo: string): string => `${nonconformanceNo} 선택`,
     save: '판정 저장',
     cancel: '취소',
     prevPage: '이전',
@@ -79,24 +78,21 @@ export const dispositionDecision = {
     notFoundDescription: '목록을 새로 조회한 뒤 다른 부적합을 선택하세요.',
     emptyDescription: '등록된 설명이 없습니다',
     noLots: '대상 LOT이 없습니다',
-    /** A-11 — LOT 상태 전이 이력 표가 없어 화면이 물러난 수준을 결과 표 머리에 적는다. */
-    transitionHistoryUnavailable:
-      '판정으로 바뀐 LOT 상태는 이 표에 남지 않습니다. 현재 상태만 표시합니다.',
+    /** 기본 정보의 대상 수량 칸(사용자 시안 · #223). */
+    affectedQty: '대상 수량',
   },
   decisions: {
+    /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
+    count: (count: number): string => `${String(count)}건`,
     loading: '판정 이력 불러오는 중',
     empty: '아직 판정된 내역이 없습니다',
     unavailable: '판정 이력을 표시할 수 없습니다',
   },
-  remaining: {
-    label: '남은 수량',
-    /** 서버가 잔량 필드를 내리지 않아 화면이 합계 차로 낸 값임을 밝힌다(L-2 잠정 처리). */
-    note: '표시된 남은 수량은 참고값입니다. 저장할 수 있는 수량은 저장할 때 서버가 판정합니다.',
-    unknown: '남은 수량을 계산할 수 없습니다',
-    settled: '남은 수량이 없습니다. 이 부적합은 판정이 끝났습니다',
-  },
   /** 특채(omf-all-around#84 · 서버 선행 P-79) — 불합격 LOT 을 결재 뒤 조건부로 쓴다. */
   concession: {
+    /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
+    foldTitle: '특채 요청 및 이력',
+    count: (count: number): string => `${String(count)}건`,
     heading: '특채',
     help: '불합격 LOT 을 관리자 승인을 받아 조건부로 사용합니다. 요청 → 「특채·한도승인 승인 처리」에서 결재 → 여기서 적용 순서입니다.',
     none: '이 부적합의 특채가 없습니다.',
@@ -132,12 +128,14 @@ export const dispositionDecision = {
     caption: '특채 목록',
   },
   form: {
+    /** 판정 구역 머리와 오른쪽 남은 수량(사용자 시안 · #223). */
+    heading: '처분 판정',
+    remainingInline: (text: string): string => `남은 수량 ${text}`,
+    qtyPlaceholder: '수량 입력',
+    reasonPlaceholder: '판정 사유 입력',
     dispositionLabel: '처분',
-    qtyLabel: '수량',
-    /** ⚠ 남은 수량이 참고값이라는 사실을 규칙과 «함께» 적는다 — 규칙만 단정하면 거짓이 된다. */
-    qtyHelp: '0보다 큰 수를 입력하세요. 저장할 수 있는 수량은 저장할 때 서버가 확정합니다.',
-    reasonLabel: '사유',
-    reasonHelp: '이 처분을 정한 근거를 남기세요.',
+    qtyLabel: '처분 수량',
+    reasonLabel: '판정 사유',
     qtyRequired: '수량을 입력하세요',
     qtyNotNumber: '수량은 숫자로 입력하세요',
     qtyTooLong: '수량이 너무 깁니다. 정수 12자리·소수 6자리까지 입력하세요',
@@ -180,7 +178,6 @@ export const dispositionDecision = {
     checkOutcome: '처리 결과 확인',
     selectFirstReason: '먼저 판정할 부적합을 선택하세요',
     reloadDetail: '부적합 상태 다시 확인',
-    irreversible: '판정은 되돌릴 수 없습니다',
     success: '판정을 저장했습니다',
     /** 선별(omf-all-around#108) — 양품은 정상, 불량분은 새 LOT·새 부적합으로 넘어간다. */
     acceptedQtyLabel: '양품 수량',
@@ -210,6 +207,14 @@ export const dispositionDecision = {
     total: (total: number): string => `전체 ${String(total)}건`,
   },
   values: {
+    /** 대상 LOT 의 품질 상태 표시명(#223) — 모르는 값은 코드 그대로. */
+    qualityStatus: {
+      NORMAL: '정상',
+      DEFECTIVE: '불량',
+      INSPECTION_PENDING: '검사 대기',
+      HOLD: '보류',
+      SCRAPPED: '폐기',
+    } as Record<string, string | undefined>,
     unknownQty: '—',
     /** 셋의 해법이 서로 다르므로 문구를 가른다(G-3 — 사유는 「어떻게 풀 것인가」를 담는다). */
     periodRequired: '기간을 선택해야 조회할 수 있습니다',

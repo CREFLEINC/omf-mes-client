@@ -6376,6 +6376,15 @@ main:has(.iqc-skip-approval-detail) {
   }
 }
 
+/* 처분 판정 처리 제목 아래 한 줄 — 판정 대기 · 처리 이력 칩과 배치 고르기를 오른쪽에(#223). */
+.disposition-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
 /* 처분 판정 처리 — 목록·상세·판정을 하나의 판단 흐름으로 정돈한다. */
 /* 오른쪽 한 구획 안의 부적합 상세 · 특채 · 판정 — 사이는 구분선(사용자 시안 · omf-all-around#223). */
 .disposition-side-part {
@@ -6440,12 +6449,23 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-3);
 }
 
+/*
+ * 칸 너비는 흐린 안내 글 · 값이 다 보이는 만큼만(사용자 지시 · #223) — 날짜 둘 · 품목 검색 · 선택 셋 차례.
+ * 창이 좁으면 줄어들고(최소 폭까지) 그래도 모자라면 다음 줄로 넘긴다.
+ */
 .po-board-filter > .filter-bar.disposition-filter > .field-cell {
-  flex: 0 1 13rem;
+  flex: 0 1 9rem;
+  min-width: 7rem;
 }
 
-.po-board-filter > .filter-bar.disposition-filter > .field-cell:first-child {
-  flex-basis: 17rem;
+.po-board-filter > .filter-bar.disposition-filter > .field-cell:nth-child(-n + 2) {
+  flex-basis: 11rem;
+  min-width: 9.5rem;
+}
+
+.po-board-filter > .filter-bar.disposition-filter > .field-cell:nth-child(3) {
+  flex-basis: 14rem;
+  min-width: 11rem;
 }
 
 .po-board-filter > .filter-bar.disposition-filter > .disposition-filter-actions {
@@ -6523,20 +6543,11 @@ main:has(.iqc-skip-approval-detail) {
   border: 0;
 }
 
-.disposition-page-nav {
-  align-items: center;
-  margin: 0;
-}
-
-.disposition-page-nav > .field-note {
-  max-width: none;
-  margin-block: 0;
-}
-
+/* 부적합 기본 정보 — 세 칸 두 줄(사용자 시안 · #223). */
 .disposition-detail-facts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
   margin: 0;
 }
 
@@ -6550,18 +6561,13 @@ main:has(.iqc-skip-approval-detail) {
   color: var(--on-surface);
 }
 
-.disposition-content-card,
-.disposition-remaining-card {
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
-}
-
-.disposition-content-card > p,
-.disposition-remaining-card > .field-note {
-  max-width: none;
+/* 설명 — 기본 정보 아래 구분선 다음 한 줄(사용자 시안 · #223). */
+.disposition-detail-description {
   margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
 }
 
 .disposition-subtitle {
@@ -6571,22 +6577,113 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-title-md-tracking);
 }
 
-.disposition-remaining-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  justify-content: initial;
-  gap: var(--space-2);
-}
-
-.disposition-remaining-card > .field-label,
-.disposition-remaining-card > .field-note {
-  grid-column: 1 / -1;
-}
-
 .disposition-decision-form > .form-actions {
   align-items: center;
   justify-content: flex-end;
+}
+
+/* 처분 수량 · 판정 사유 — 한 줄 두 칸, 너비는 상자 안에서 넘치지 않게(사용자 시안 · #223). */
+.disposition-decision-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* 머리 줄 — 제목 왼쪽, 상태 · 남은 수량 오른쪽. */
+.disposition-side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.disposition-side-head > h2,
+.disposition-side-head > h3 {
+  margin: 0;
+}
+
+/* 판정 단추는 입력 바로 아래(사용자 시안 · #223). */
+.disposition-decision-form > .disposition-decision-actions {
+  margin-top: 0;
+}
+
+.disposition-side-status {
+  color: var(--semantic-warning);
+  font-weight: 600;
+}
+
+.disposition-side-remaining {
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 판정 이력 · 특채 — 접는 상자 둘. 머리에 이름과 건수, 오른쪽 끝에 펼침 표시. */
+.disposition-side-folds {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.disposition-fold {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.disposition-fold > summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.disposition-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.disposition-fold > summary::after {
+  content: 'expand_more';
+  margin-left: auto;
+  font-family: 'Material Symbols Rounded';
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.disposition-fold[open] > summary::after {
+  content: 'expand_less';
+}
+
+.disposition-fold-title {
+  font: var(--type-title-sm);
+}
+
+.disposition-fold-count {
+  color: var(--on-surface-variant);
+}
+
+.disposition-fold > :not(summary) {
+  margin: 0 var(--space-4) var(--space-3);
+}
+
+/* 처분 라디오 묶음의 이름 — 머리 「처분 판정」이 말하므로 눈에는 감춘다(낭독기는 읽는다). */
+.disposition-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 판정 대기 목록 — 고른 줄은 품질 승인 처리 목록과 같은 파란 바탕 · 왼쪽 선(#223). */
+.disposition-pending-table tbody tr:has([data-selected='true']) > td,
+.disposition-pending-table tbody tr:has([data-selected='true']):hover > td {
+  background: var(--semantic-info-container);
+}
+
+.disposition-pending-table tbody tr:has([data-selected='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
 .filter-bar.disposition-history-filter {
@@ -9219,17 +9316,14 @@ body.po-board-resizing.is-row-resize {
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
-.disposition-pending-table tbody tr:has(.link-cell[aria-current='true']) > td,
-.disposition-pending-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
   background: var(--semantic-info-container);
 }
 
 /* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
 .board-table tbody tr:has(.board-table-pick[aria-current='true']) > td:first-child,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
-.disposition-pending-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 

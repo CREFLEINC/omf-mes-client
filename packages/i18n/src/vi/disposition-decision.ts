@@ -65,7 +65,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     'Chỉ nhận được một phần giá trị gốc. Giá trị không có trong danh sách thì không chọn được',
   dispositionPending: 'Lựa chọn quyết định xử lý chưa sẵn sàng nên chưa lưu được đánh giá',
   actions: {
-    selectRow: (nonconformanceNo: string): string => `Chọn ${nonconformanceNo}`,
     save: 'Lưu đánh giá',
     cancel: 'Hủy bỏ',
     prevPage: 'Trước',
@@ -79,21 +78,19 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn mục không phù hợp khác.',
     emptyDescription: 'Chưa có mô tả nào được đăng ký',
     noLots: 'Không có LOT liên quan',
-    transitionHistoryUnavailable:
-      'Trạng thái LOT thay đổi do đánh giá không lưu lại trong bảng này. Chỉ hiển thị trạng thái hiện tại.',
+    affectedQty: 'Số lượng đối tượng',
   },
   decisions: {
+    /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
+    count: (count: number): string => `${String(count)}`,
     loading: 'Đang tải lịch sử đánh giá',
     empty: 'Chưa có nội dung nào được đánh giá',
     unavailable: 'Không hiển thị được lịch sử đánh giá',
   },
-  remaining: {
-    label: 'Số lượng còn lại',
-    note: 'Số lượng còn lại hiển thị ở đây là giá trị tham khảo. Số lượng lưu được do máy chủ đánh giá khi lưu.',
-    unknown: 'Không tính được số lượng còn lại',
-    settled: 'Không còn số lượng nào. Mục không phù hợp này đã đánh giá xong',
-  },
   concession: {
+    /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
+    foldTitle: 'Yêu cầu và lịch sử nhân nhượng',
+    count: (count: number): string => `${String(count)}`,
     heading: 'Đặc cách',
     help: 'Sử dụng có điều kiện LOT không đạt sau khi quản lý phê duyệt. Thứ tự: yêu cầu → phê duyệt tại «Xử lý phê duyệt đặc cách · hạn mức» → áp dụng tại đây.',
     none: 'Mục không phù hợp này chưa có đặc cách.',
@@ -129,11 +126,13 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     caption: 'Danh sách đặc cách',
   },
   form: {
+    heading: 'Quyết định xử lý',
+    remainingInline: (text: string): string => `Số lượng còn lại ${text}`,
+    qtyPlaceholder: 'Nhập số lượng',
+    reasonPlaceholder: 'Nhập lý do',
     dispositionLabel: 'Quyết định xử lý',
     qtyLabel: 'Số lượng',
-    qtyHelp: 'Hãy nhập số lớn hơn 0. Số lượng lưu được do máy chủ xác định khi lưu.',
     reasonLabel: 'Lý do',
-    reasonHelp: 'Hãy ghi lại căn cứ đã chọn quyết định xử lý này.',
     qtyRequired: 'Hãy nhập số lượng',
     qtyNotNumber: 'Hãy nhập số lượng bằng chữ số',
     qtyTooLong: 'Số lượng quá dài. Hãy nhập tối đa 12 chữ số phần nguyên · 6 chữ số phần thập phân',
@@ -157,7 +156,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     checkOutcome: 'Kiểm tra kết quả xử lý',
     selectFirstReason: 'Hãy chọn mục không phù hợp cần đánh giá trước',
     reloadDetail: 'Kiểm tra lại trạng thái không phù hợp',
-    irreversible: 'Đánh giá không thể hoàn tác',
     success: 'Đã lưu đánh giá',
     acceptedQtyLabel: 'Số lượng đạt',
     rejectedQtyLabel: 'Số lượng lỗi',
@@ -186,6 +184,14 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     total: (total: number): string => `Tổng ${String(total)} mục`,
   },
   values: {
+    /** 대상 LOT 의 품질 상태 표시명(#223) — 모르는 값은 코드 그대로. */
+    qualityStatus: {
+      NORMAL: 'Bình thường',
+      DEFECTIVE: 'Lỗi',
+      INSPECTION_PENDING: 'Chờ kiểm tra',
+      HOLD: 'Giữ lại',
+      SCRAPPED: 'Hủy bỏ',
+    } as Record<string, string | undefined>,
     unknownQty: '—',
     periodRequired: 'Phải chọn khoảng thời gian thì mới tra cứu được',
     periodInvalid: 'Ngày này không có trên lịch. Hãy sửa thành ngày có thật',

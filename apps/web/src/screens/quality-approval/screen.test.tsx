@@ -723,8 +723,6 @@ describe('QualityApprovalScreen detail', () => {
       t.typeLabels.IQC_SKIP,
       t.typeLabels.PQC_SKIP,
       t.typeLabels.OQC_SKIP,
-      /* 처분 판정 처리 탭은 줄 끝(omf-all-around#223). */
-      t.dispositionTab,
     ]);
     await user.click(within(tabs).getByRole('tab', { name: t.typeLabels.IQC_SKIP }));
 

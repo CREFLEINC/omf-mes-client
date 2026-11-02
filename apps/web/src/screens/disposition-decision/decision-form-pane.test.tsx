@@ -111,12 +111,6 @@ describe('DecisionFormPane', () => {
     expect(screen.getByRole('button', { name: t.actions.cancel })).toBeDisabled();
   });
 
-  it('되돌릴 수 없다는 사실을 저장 줄에 상시 적는다', () => {
-    renderPane();
-
-    expect(screen.getByText(t.form.irreversible)).toBeInTheDocument();
-  });
-
   it('처분을 고르면 값만 바꿔 알린다', async () => {
     const { props, user } = renderPane();
 

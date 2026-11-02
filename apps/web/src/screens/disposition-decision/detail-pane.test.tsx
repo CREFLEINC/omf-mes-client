@@ -22,6 +22,7 @@ const view = (overrides: Partial<NonconformanceDetailView> = {}): Nonconformance
   statusCode: 'CODE-C',
   openedAtText: '2026-08-12 09:30',
   description: '도장 표면 박리',
+  affectedQtyText: '320',
   lots: [
     {
       nonconformanceLotId: 9001,
@@ -30,6 +31,7 @@ const view = (overrides: Partial<NonconformanceDetailView> = {}): Nonconformance
       affectedQtyText: '320',
       uomId: 7001,
       qualityStatusText: 'CODE-D → CODE-E',
+      qualityStatusCode: 'DEFECTIVE',
     },
   ],
   ...overrides,
@@ -59,14 +61,14 @@ describe('DetailPane', () => {
     renderPane();
 
     expect(screen.getByText('LOT-TEST-0088')).toBeInTheDocument();
-    expect(screen.getByText('EA')).toBeInTheDocument();
-    expect(screen.getByText('CODE-D → CODE-E')).toBeInTheDocument();
+    /* 수량에 단위를 붙여 「320 EA」 — 기본 정보의 대상 수량 · LOT 표 두 곳(#223). */
+    expect(screen.getAllByText('320 EA')).toHaveLength(2);
   });
 
-  it('⚠ LOT 상태 전이가 이력에 남지 않는다는 사실을 표 머리에 적는다(A-11)', () => {
+  it('대상 LOT 의 품질 상태는 지금 값을 표시명으로 보인다 — 상시 안내는 걷었다(#223)', () => {
     renderPane();
 
-    expect(screen.getByText(t.detail.transitionHistoryUnavailable)).toBeInTheDocument();
+    expect(screen.getByText(t.values.qualityStatus.DEFECTIVE ?? 'DEFECTIVE')).toBeInTheDocument();
   });
 
   it('대상 LOT이 없으면 빈 상태를 보인다', () => {

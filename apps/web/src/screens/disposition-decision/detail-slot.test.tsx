@@ -35,6 +35,7 @@ const baseProps = (): DetailSlotProps => ({
       statusCode: 'CODE-C',
       openedAtText: '2026-08-12 09:30',
       description: '도장 표면 박리',
+      affectedQtyText: '320',
       lots: [
         {
           nonconformanceLotId: 9001,
@@ -43,12 +44,11 @@ const baseProps = (): DetailSlotProps => ({
           affectedQtyText: '320',
           uomId: 7001,
           qualityStatusText: 'CODE-D → CODE-E',
+          qualityStatusCode: 'DEFECTIVE',
         },
       ],
     },
   },
-  decisions: { rows: [], isLoading: false, isError: false },
-  remaining: { value: 320, text: '320', isSettled: false },
   items: lookup(),
   uoms: lookup(),
   onRetry: vi.fn(),
@@ -123,19 +123,11 @@ describe('DetailSlot 상태 갈래', () => {
     renderSlot();
 
     expect(screen.getByText('도장 표면 박리')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.decisions })).toBeInTheDocument();
   });
 
   it('상세가 아직 없으면 아무것도 그리지 않는다', () => {
     const { container } = renderSlot({ detail: { ...baseProps().detail, view: null } });
 
     expect(container).toBeEmptyDOMElement();
-  });
-
-  it('판정 이력 조회가 실패해도 상세는 그대로 보인다 — 둘은 다른 조회다', () => {
-    renderSlot({ decisions: { rows: [], isLoading: false, isError: true } });
-
-    expect(screen.getByText('도장 표면 박리')).toBeInTheDocument();
-    expect(screen.getByText(t.decisions.unavailable)).toBeInTheDocument();
   });
 });

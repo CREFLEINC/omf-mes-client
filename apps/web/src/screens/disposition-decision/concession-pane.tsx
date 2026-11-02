@@ -180,8 +180,15 @@ export const ConcessionPane = ({
     },
   ];
 
+  /* 접는 구역(사용자 시안 · #223) — 머리에 특채 건수, 펼치면 목록 · 요청 입력 · 안내. 늘 보이던 것을 접어 둔다. */
   return (
-    <div className="disposition-concession" role="group" aria-label={t.heading}>
+    <details className="disposition-fold disposition-concession" aria-label={t.heading}>
+      <summary>
+        <span className="disposition-fold-title">{t.foldTitle}</span>
+        <span className="disposition-fold-count">
+          {list.data === undefined ? '' : t.count(list.data.length)}
+        </span>
+      </summary>
       <p className="field-note">{t.help}</p>
       {list.isError ? (
         <p className="field-note">{t.loadFailed}</p>
@@ -250,6 +257,6 @@ export const ConcessionPane = ({
           {requestWrite.isSaving ? t.requesting : t.request}
         </Button>
       </div>
-    </div>
+    </details>
   );
 };

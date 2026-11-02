@@ -34,8 +34,6 @@ export const qualityApproval = {
     filterOff: (label: string): string => `${label} 조건 해제`,
   },
   all: '전체',
-  /** 품질 승인 처리 묶음의 처분 판정 처리 탭(omf-all-around#223). */
-  dispositionTab: '처분 판정 처리',
   datePlaceholder: '날짜를 선택하세요',
   qPlaceholder: '요청번호를 입력하세요',
   /** 승인 유형 코드 → 사용자 용어. 목록 밖 코드는 원문 그대로 보인다(`approvalTypeLabelOf`). */

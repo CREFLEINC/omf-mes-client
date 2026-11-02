@@ -31,9 +31,7 @@ const renderScreen = (
 };
 
 const selectRow = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.click(
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') }),
-  );
+  await user.click(await screen.findByText('NC-TEST-0041'));
 };
 
 describe('DispositionDecisionScreen 조회', () => {
@@ -43,7 +41,7 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
     /* 오른쪽은 한 구획 — 「부적합 상세 및 판정」 안에 판정이 선다(#223). */
     expect(screen.getByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.decision })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.form.heading })).toBeInTheDocument();
 
     await waitFor(() => {
       const url = requestedPaths().find((path) => path.startsWith('/quality/nonconformances?'));
@@ -68,12 +66,11 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
   });
 
-  it('남은 수량을 참고값으로 보이고 그 사실을 함께 적는다', async () => {
+  it('남은 수량을 처분 판정 머리 오른쪽에 보인다(#223)', async () => {
     const { user } = renderScreen({ decidedQty: 200 });
     await selectRow(user);
 
-    expect(await screen.findByText('120')).toBeInTheDocument();
-    expect(screen.getByText(t.remaining.note)).toBeInTheDocument();
+    expect(await screen.findByText(t.form.remainingInline('120 EA'))).toBeInTheDocument();
   });
 
   /*
@@ -83,7 +80,7 @@ describe('DispositionDecisionScreen 조회', () => {
    */
   it('⭐ 원천을 고르면 목록 조회에 그 축이 실린다', async () => {
     const { user } = renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
+    await screen.findByText('NC-TEST-0041');
 
     await user.click(screen.getByLabelText(t.fields.sourceCode));
     await user.click(screen.getByRole('option', { name: t.values.sourceCode.RETURN }));
@@ -97,14 +94,14 @@ describe('DispositionDecisionScreen 조회', () => {
   /* 축이 되살아났으므로 「거를 수 없다」는 안내는 이제 거짓이다 — 남아 있으면 안 된다. */
   it('⭐ 원천을 못 거른다는 안내가 목록 머리에 남아 있지 않다', async () => {
     renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
+    await screen.findByText('NC-TEST-0041');
 
     expect(screen.queryByText(/원천으로 거르는/)).toBeNull();
   });
 
   it('⛔ 승인·반려 컨트롤이 화면에 없다', async () => {
     renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
+    await screen.findByText('NC-TEST-0041');
 
     expect(screen.queryByRole('button', { name: '승인' })).toBeNull();
     expect(screen.queryByRole('button', { name: '반려' })).toBeNull();

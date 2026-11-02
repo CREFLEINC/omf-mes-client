@@ -9,6 +9,7 @@ import type { HistoryFilters } from './history-filters';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
 import type { PageView } from './pagination';
 import type { DecisionRow } from './types';
 
@@ -24,6 +25,7 @@ export interface HistoryTabProps {
   error: unknown;
   onApply: (filters: HistoryFilters) => void;
   onChangePage: (page: number) => void;
+  onChangeSize: (size: PageSizeOption) => void;
   onRetry: () => void;
 }
 
@@ -38,6 +40,7 @@ export const HistoryTab = ({
   error,
   onApply,
   onChangePage,
+  onChangeSize,
   onRetry,
 }: HistoryTabProps) => {
   const t = messages.dispositionDecision;
@@ -117,7 +120,13 @@ export const HistoryTab = ({
             }
           />
         </div>
-        <ListPageNav meta={meta} controlSize="md" onChangePage={onChangePage} />
+        <ListPageNav
+          meta={meta}
+          sizes={PAGE_SIZE_OPTIONS}
+          controlSize="md"
+          onChangePage={onChangePage}
+          onChangeSize={onChangeSize}
+        />
       </div>
     );
   };

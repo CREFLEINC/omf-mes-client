@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -64,7 +64,7 @@ export const DecisionFormPane = ({
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
       <div className="field-cell">
-        <span className="field-label" id={groupLabelId}>
+        <span className="disposition-visually-hidden" id={groupLabelId}>
           {t.form.dispositionLabel}
         </span>
         {/*
@@ -91,22 +91,36 @@ export const DecisionFormPane = ({
         )}
       </div>
 
-      <TextField
-        label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
-        value={value.qty}
-        required
-        fullWidth
-        inputMode="decimal"
-        disabled={isLocked}
-        aria-describedby={
-          [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
-            .filter((id) => id !== '')
-            .join(' ') || undefined
-        }
-        error={errors.decisionQty}
-        helperText={t.form.qtyHelp}
-        onChange={(event) => onChange({ ...value, qty: event.target.value })}
-      />
+      {/* 처분 수량 · 판정 사유를 한 줄 두 칸에(사용자 시안 · #223) — 긴 도움말은 걷고 빈 칸 안내 글로 대신한다. */}
+      <div className="disposition-decision-fields">
+        <TextField
+          label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
+          value={value.qty}
+          placeholder={t.form.qtyPlaceholder}
+          required
+          fullWidth
+          inputMode="decimal"
+          disabled={isLocked}
+          aria-describedby={
+            [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
+              .filter((id) => id !== '')
+              .join(' ') || undefined
+          }
+          error={errors.decisionQty}
+          onChange={(event) => onChange({ ...value, qty: event.target.value })}
+        />
+        <TextField
+          label={t.form.reasonLabel}
+          value={value.reason}
+          placeholder={t.form.reasonPlaceholder}
+          required
+          fullWidth
+          disabled={isLocked}
+          aria-describedby={isLocked ? lockReasonId : undefined}
+          error={errors.reason}
+          onChange={(event) => onChange({ ...value, reason: event.target.value })}
+        />
+      </div>
       {qtyNotice !== undefined && (
         <p id={noticeId} className="field-note">
           {qtyNotice}
@@ -139,20 +153,6 @@ export const DecisionFormPane = ({
         </>
       )}
 
-      {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
-      <TextArea
-        label={t.form.reasonLabel}
-        value={value.reason}
-        required
-        fullWidth
-        rows={3}
-        disabled={isLocked}
-        aria-describedby={isLocked ? lockReasonId : undefined}
-        error={errors.reason}
-        helperText={t.form.reasonHelp}
-        onChange={(event) => onChange({ ...value, reason: event.target.value })}
-      />
-
       {isLocked && (
         <div className="form-actions">
           <p id={lockReasonId} className="field-note form-actions-secondary">
@@ -166,8 +166,8 @@ export const DecisionFormPane = ({
         </div>
       )}
 
-      <div className="form-actions">
-        <p className="field-note form-actions-secondary">{t.form.irreversible}</p>
+      {/* 버튼은 입력 바로 아래 오른쪽(사용자 시안 · #223). */}
+      <div className="form-actions disposition-decision-actions">
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>
           {t.actions.cancel}
         </Button>

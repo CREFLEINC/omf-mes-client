@@ -542,8 +542,10 @@ describe('AppLayout', () => {
       'href',
       '/quality/approvals',
     );
-    /* 처분 판정 처리는 「품질 승인 처리」 묶음의 탭이다 — 사이드바에 따로 서지 않는다(omf-all-around#223). */
-    expect(within(sidebar).queryByRole('link', { name: '처분 판정 처리' })).toBeNull();
+    expect(within(sidebar).getByRole('link', { name: '처분 판정 처리' })).toHaveAttribute(
+      'href',
+      '/quality/dispositions',
+    );
 
     const qualityOrder = [
       '/logistics/iqc-inspection',
@@ -557,8 +559,9 @@ describe('AppLayout', () => {
       /* 「LOT 상태」 묶음 — 조회 → 판정(W-03-02 는 조회에서 찾은 LOT 을 판정·전이한다). */
       '/quality/lot-status',
       '/quality/suspicious-material-hold',
-      /* 「품질 승인 처리」 묶음 — 승인 · IQC 생략 · 처분 판정 처리(W-03-10 · #223). */
       '/quality/approvals',
+      /* W-03-10 — 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */
+      '/quality/dispositions',
     ];
     const start = links.indexOf(qualityOrder[0] ?? '');
 
@@ -738,9 +741,9 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-progress',
     );
-    /* 품질 관리의 끝(품질 승인 처리 묶음) 바로 뒤가 섹션의 시작이다. */
+    /* 품질 관리의 끝(처분 판정 처리) 바로 뒤가 섹션의 시작이다. */
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/quality/approvals') + 1,
+      links.indexOf('/quality/dispositions') + 1,
     );
     /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(작업지시 목록) 뒤다. */
     expect(links.indexOf('/production/emergency-work-orders')).toBe(
@@ -984,7 +987,8 @@ describe('AppLayout', () => {
       '/quality/inspection-sheets',
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/suspicious-material-hold',
-      '/quality/approvals' /* ← 품질 승인 처리(승인 · IQC 생략 · 처분 판정) */,
+      '/quality/approvals',
+      '/quality/dispositions',
       /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
       '/production/production-orders' /* ← 작업지시 목록 */,
       '/production/emergency-work-orders',
@@ -1649,7 +1653,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /*
@@ -1699,7 +1703,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

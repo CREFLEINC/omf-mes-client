@@ -49,6 +49,7 @@ const baseProps = (): HistoryTabProps => ({
   error: null,
   onApply: vi.fn(),
   onChangePage: vi.fn(),
+  onChangeSize: vi.fn(),
   onRetry: vi.fn(),
 });
 

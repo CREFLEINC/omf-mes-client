@@ -18,6 +18,7 @@ const LOT: NonconformanceLotRow = {
   affectedQtyText: '100',
   uomId: 7001,
   qualityStatusText: '불량',
+  qualityStatusCode: 'DEFECTIVE',
 };
 
 const concession = (statusCode: string) => ({

@@ -1,5 +1,6 @@
 import type { paths } from '@omf-mes/api-client';
 
+import { DEFAULT_PAGE_SIZE } from './filters';
 import { defaultPeriod, isPeriodDate, periodLockReason, resolvePeriod } from './period';
 import type { PeriodInput } from './period';
 
@@ -17,6 +18,8 @@ export interface HistoryListQuery {
   /** 처분 유형은 계약이 세 값으로 닫았다(`REWORK`·`SCRAP`·`NORMAL` · omf-mes#336) */
   dispositionTypeCode?: HistoryQueryParams['dispositionTypeCode'];
   page?: number;
+  /** 한 쪽 건수 10 · 20 · 50(#223). */
+  size?: number;
 }
 
 /**
@@ -81,6 +84,7 @@ export const toHistoryListQuery = (
   filters: HistoryFilters,
   page: number,
   offsetMinutes: number,
+  size: number = DEFAULT_PAGE_SIZE,
 ): HistoryListQuery | null => {
   const period = resolvePeriod({ from: filters.from, to: filters.to }, offsetMinutes);
   if (period.kind === 'blocked') return null;
@@ -95,5 +99,6 @@ export const toHistoryListQuery = (
             filters.dispositionTypeCode as HistoryQueryParams['dispositionTypeCode'],
         }),
     ...(page > 1 ? { page } : {}),
+    size,
   };
 };

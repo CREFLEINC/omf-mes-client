@@ -1467,21 +1467,21 @@ describe('appRouter — 품질 승인 처리의 진입 경로', () => {
 });
 
 describe('appRouter — 처분 판정 처리의 진입 경로', () => {
-  it('「품질 승인 처리」 묶음의 탭이다 — 사이드바 그 줄이 켜지고, 유형 탭 줄 끝의 처분 판정 처리 탭이 켜진다(#223)', async () => {
-    renderRoutedApp('/quality/dispositions', [...lotStatusRoutes(), ...dispositionRoutes()]);
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...dispositionRoutes()]);
 
-    expect(screen.queryByRole('link', { name: '처분 판정 처리' })).toBeNull();
-    expect(screen.getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    const tabs = await screen.findByRole('tablist', {
-      name: messages.qualityApproval.fields.approvalTypeCode,
-    });
-    expect(
-      within(tabs).getByRole('tab', { name: messages.qualityApproval.dispositionTab }),
-    ).toHaveAttribute('aria-selected', 'true');
-    expect(currentLocation()).toBe('/quality/dispositions');
+    const link = screen.getByRole('link', { name: '처분 판정 처리' });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/dispositions'));
+    expect(screen.getAllByRole('heading', { level: 1, name: '처분 판정 처리' })).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(within(items[0]!).getByText(messages.dispositionDecision.breadcrumbRoot)).toBeVisible();
+    expect(within(items[1]!).getByText('처분 판정 처리')).toBeVisible();
   });
 
   it('⭐ 다른 화면이 부르는 진입 주소와 등록된 라우트가 «같다»', () => {
@@ -1769,9 +1769,9 @@ describe('appRouter — 물류 전표 조회·취소의 진입 경로', () => {
         url.searchParams.get('size') === '1'
       );
     };
-    expect(requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request))).toHaveLength(
-      0,
-    );
+    expect(
+      requests.filter((request) => !isOaLookup(request) && !isIqcBadge(request)),
+    ).toHaveLength(0);
   });
 
   /*

@@ -87,6 +87,7 @@ describe('toHistoryListQuery', () => {
     expect(toHistoryListQuery(filters(), 1, KST)).toEqual({
       decidedFrom: '2026-07-14T00:00:00+09:00',
       decidedTo: '2026-08-13T00:00:00+09:00',
+      size: 20,
     });
   });
 

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { codeValueLabel } from './disposition-codes';
+import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
 import type { DispositionLookup } from './lookups';
 import type { PageView } from './pagination';
 import { dispositionProgressLabel, type NonconformanceRow } from './types';
@@ -23,6 +24,8 @@ export interface NonconformanceListProps {
   selectedId: number | null;
   onSelect: (nonconformanceId: number) => void;
   onChangePage: (page: number) => void;
+  /** 한 쪽 건수 10 · 20 · 50(사용자 지시 · #223). */
+  onChangeSize: (size: PageSizeOption) => void;
 }
 
 /**
@@ -42,22 +45,22 @@ export const NonconformanceList = ({
   selectedId,
   onSelect,
   onChangePage,
+  onChangeSize,
 }: NonconformanceListProps) => {
   const t = messages.dispositionDecision;
   const columns: Column<NonconformanceRow>[] = [
     {
       key: 'nonconformanceNo',
       header: t.fields.nonconformanceNo,
+      /* 번호는 글자다 — 고르기는 줄 누르기가 맡는다(사용자 지시 · #223). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
-        <button
-          type="button"
-          className="link-cell"
-          aria-label={t.actions.selectRow(row.nonconformanceNo)}
-          aria-current={row.nonconformanceId === selectedId ? 'true' : undefined}
-          onClick={() => onSelect(row.nonconformanceId)}
+        <span
+          className="disposition-nc-no"
+          data-nc-id={row.nonconformanceId}
+          data-selected={row.nonconformanceId === selectedId ? 'true' : undefined}
         >
           {row.nonconformanceNo}
-        </button>
+        </span>
       ),
     },
     {
@@ -118,15 +121,16 @@ export const NonconformanceList = ({
        * 그 자리에 남겨 두면 화면이 «있는 기능»을 없다고 말하게 된다.
        */}
       {/*
-       * 줄 아무 곳이나 눌러도 고른다 — 품질 승인 처리 목록과 같은 방식(#223). DS 표에 줄 클릭이 없어 눌린 줄의
-       * 부적합번호 단추로 넘긴다. 고른 줄을 다시 누르면 풀린다(`onSelect` 가 같은 번호면 선택을 지운다).
+       * 줄을 누르면 고른다(#223) — DS 표에 줄 클릭이 없어 눌린 줄의 번호 칸에서 부적합을 읽는다.
+       * 고른 줄을 다시 누르면 풀린다(`onSelect` 가 같은 번호면 선택을 지운다).
        */}
       <div
         className="disposition-table disposition-pending-table"
         onClick={(event) => {
-          const target = event.target as Element;
-          if (target.closest('button, a, input, select, textarea') !== null) return;
-          target.closest('tbody tr')?.querySelector<HTMLButtonElement>('.link-cell')?.click();
+          const id = (event.target as Element)
+            .closest('tbody tr')
+            ?.querySelector<HTMLElement>('[data-nc-id]')?.dataset.ncId;
+          if (id !== undefined) onSelect(Number(id));
         }}
       >
         <Table
@@ -138,7 +142,13 @@ export const NonconformanceList = ({
           empty={empty}
         />
       </div>
-      <ListPageNav meta={meta} controlSize="md" onChangePage={onChangePage} />
+      <ListPageNav
+        meta={meta}
+        sizes={PAGE_SIZE_OPTIONS}
+        controlSize="md"
+        onChangePage={onChangePage}
+        onChangeSize={onChangeSize}
+      />
     </div>
   );
 };

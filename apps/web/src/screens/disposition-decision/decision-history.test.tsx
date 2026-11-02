@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import { DecisionHistory, type DecisionHistoryProps } from './decision-history';
 import type { DispositionLookup } from './lookups';
-import type { RemainingQty } from './remaining-qty';
 import type { DecisionRow } from './types';
 
 const t = messages.dispositionDecision;
@@ -28,15 +27,8 @@ const rows: DecisionRow[] = [
   },
 ];
 
-const remaining = (value: number | undefined): RemainingQty => ({
-  value,
-  text: value === undefined ? t.values.unknownQty : String(value),
-  isSettled: value !== undefined && value <= 0,
-});
-
 const baseProps = (): DecisionHistoryProps => ({
   rows,
-  remaining: remaining(120),
   uoms: uoms(),
   isLoading: false,
   isError: false,
@@ -53,25 +45,10 @@ describe('DecisionHistory', () => {
     expect(screen.getByText('EA')).toBeInTheDocument();
   });
 
-  it('⭐ 남은 수량이 참고값임을 값 옆에 상시 적는다', () => {
+  it('접는 머리에 판정 이력 건수를 보인다 — 남은 수량은 판정 구역 머리로 옮겼다(#223)', () => {
     renderHistory();
 
-    expect(screen.getByText('120')).toBeInTheDocument();
-    expect(screen.getByText(t.remaining.note)).toBeInTheDocument();
-  });
-
-  it('남은 수량이 없으면 판정이 끝났음을 알린다 — 참고값 안내를 대신한다', () => {
-    renderHistory({ remaining: remaining(0) });
-
-    expect(screen.getByText(t.remaining.settled)).toBeInTheDocument();
-    expect(screen.queryByText(t.remaining.note)).toBeNull();
-  });
-
-  it('남은 수량을 낼 수 없으면 그 사실을 말한다 — 0으로 보이지 않는다', () => {
-    renderHistory({ remaining: remaining(undefined) });
-
-    expect(screen.getByText(t.remaining.unknown)).toBeInTheDocument();
-    expect(screen.getByText(t.values.unknownQty)).toBeInTheDocument();
+    expect(screen.getByText(t.decisions.count(rows.length))).toBeInTheDocument();
   });
 
   it('아직 판정이 없으면 빈 상태를 보인다', () => {
