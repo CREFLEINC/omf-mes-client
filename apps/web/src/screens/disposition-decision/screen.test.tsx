@@ -38,7 +38,8 @@ describe('DispositionDecisionScreen 조회', () => {
   it('기간을 반열림으로 실어 조회한다 — 조건 없는 조회를 만들지 않는다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.panes.list })).toBeNull();
     /* 오른쪽은 한 구획 — 「부적합 상세 및 판정」 안에 판정이 선다(#223). */
     expect(screen.getByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
     /* 고르기 전에는 판정 구역을 세우지 않는다(#223). */

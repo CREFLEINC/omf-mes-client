@@ -473,7 +473,7 @@ export const DispositionDecisionScreen = ({
               className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
               aria-label={t.panes.list}
             >
-              <h2 className="pane-title">{t.panes.list}</h2>
+              {/* 제목은 두지 않는다 — 구획 이름(`aria-label`)으로만 남긴다(사용자 지시 · #223). */}
               <NonconformanceList
                 rows={rows}
                 items={items}
