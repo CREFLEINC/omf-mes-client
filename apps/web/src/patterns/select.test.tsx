@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import type { SelectOption } from '@crefle/web-ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -232,5 +232,32 @@ describe('PagedSelect — 서버에서 쪽 단위로', () => {
     await user.keyboard('없는말');
 
     expect(await screen.findByText(messages.common.selectNoMatch)).toBeInTheDocument();
+  });
+});
+
+/* 펼친 목록은 펼친 자리에 고정된다 — 화면을 굴리면 선택 칸에서 떨어져 떠 있었다(사용자 2026-11-02). */
+describe('Select — 화면이 굴러 선택 칸이 움직이면 닫힌다', () => {
+  it.each([
+    ['5개 이하(디자인 시스템 그대로)', many.slice(0, 3)],
+    ['5개 초과(검색창)', many],
+  ])('%s', async (_name, options) => {
+    const user = userEvent.setup();
+    render(<Harness options={options} />);
+
+    const trigger = screen.getByLabelText('합성 칸');
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    // 펼칠 때 나는 구르기 · 목록 안 구르기처럼 선택 칸이 그대로면 닫지 않는다.
+    act(() => {
+      screen.getByRole('listbox').dispatchEvent(new Event('scroll'));
+      document.body.dispatchEvent(new Event('scroll'));
+    });
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    // 화면이 굴러 선택 칸이 위로 40px 움직였다.
+    trigger.getBoundingClientRect = () => new DOMRect(0, -40, 100, 40);
+    act(() => {
+      document.body.dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'));
   });
 });

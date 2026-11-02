@@ -1,9 +1,13 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
-import { keepPreviousData, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { InspectionInsightFilters, InspectionResultSort } from './filters';
+import {
+  DEFAULT_INSPECTION_RESULT_SORT,
+  type InspectionInsightFilters,
+  type InspectionResultSort,
+} from './filters';
 import {
   toDefectDistributionQuery,
   toDefectRateTrendQuery,
@@ -50,11 +54,12 @@ export const useInspectionResults = (
   page: number,
   isEnabled = true,
   lotId?: number,
+  size?: number,
 ): UseQueryResult<InspectionResultList> => {
   const { client } = useApiClient();
-  const query = toInspectionListQuery(filters, sort, page, lotId);
+  const query = toInspectionListQuery(filters, sort, page, lotId, size);
   return useQuery({
-    queryKey: ['inspection-result-insights', 'list', filters, sort, page, lotId],
+    queryKey: ['inspection-result-insights', 'list', filters, sort, page, lotId, size],
     enabled: isEnabled && query !== null,
     placeholderData: keepPreviousData,
     queryFn: () => {
@@ -62,6 +67,36 @@ export const useInspectionResults = (
       return fetchInspectionResults(client, query);
     },
   });
+};
+
+/**
+ * 종합 판정 칩의 건수(사용자 2026-10-30 · #217) — 지금 조건(판정 칩만 빼고)으로 판정마다 한 줄만 받아 쪽 정보의 전체 건수를
+ * 쓴다. `''` 는 「전체」다. 조회할 수 없는 조건(기간 없음 · LOT 미확인)이면 세지 않는다(undefined).
+ */
+export const useJudgmentCounts = (
+  filters: InspectionInsightFilters,
+  codes: readonly string[],
+  isEnabled: boolean,
+  lotId?: number,
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: codes.map((code) => {
+      const scoped = { ...filters, overallJudgmentCode: code };
+      const query = toInspectionListQuery(scoped, DEFAULT_INSPECTION_RESULT_SORT, 1, lotId);
+      return {
+        queryKey: ['inspection-result-insights', 'judgment-count', scoped, lotId],
+        enabled: isEnabled && query !== null,
+        queryFn: () => {
+          if (query === null) throw new Error('조회할 수 없는 조건입니다.');
+          return fetchInspectionResults(client, { ...query, size: 1 }).then(
+            (list) => list.page.total,
+          );
+        },
+      };
+    }),
+  });
+  return results.map((result) => result.data);
 };
 
 export const useInspectionSummary = (

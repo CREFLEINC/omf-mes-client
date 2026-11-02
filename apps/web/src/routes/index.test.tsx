@@ -1295,56 +1295,39 @@ describe('appRouter — 의심자재 등록의 진입 경로', () => {
 });
 
 describe('appRouter — 검사실적·검사결과 조회의 진입 경로', () => {
-  /* 「검사 이력 조회」 묶음 줄이 첫 탭(검사실적)을 연다(omf-all-around#210). */
-  it('품질관리 메뉴의 검사 이력 조회 줄을 키보드로 열면 첫 탭(검사실적)이 선다', async () => {
+  /* 「검사 실적·결과」 묶음 줄이 첫 탭(검사실적)을 연다(omf-all-around#210). */
+  it('품질관리 메뉴의 검사 실적·결과 줄을 키보드로 열면 첫 탭(검사실적)이 선다', async () => {
     const user = userEvent.setup();
     renderRoutedApp('/quality/suspicious-material-hold', [
       ...suspiciousMaterialHoldRoutes(),
       ...inspectionResultRoutes(),
     ]);
 
-    const nav = screen.getByRole('navigation', { name: '주 메뉴' });
-    const link = within(nav).getByRole('link', { name: '검사 이력 조회' });
+    /* 사이드바 줄 이름은 묶음 이름이다 — 「검사 결과 조회」(omf-all-around#217). */
+    const link = screen.getByRole('link', { name: '검사 실적·결과' });
     link.focus();
     await user.keyboard('{Enter}');
 
-    await waitFor(() => expect(currentLocation()).toBe('/quality/inspection-results'));
+    /* 조건 없이 들어오면 기간을 오늘로 채운다(#217) — 경로만 본다. */
+    await waitFor(() => expect(currentLocation()).toMatch(/^\/quality\/inspection-results(\?|$)/));
     /*
-     * 셸의 OA 판단은 이 시험에서 판단 근거를 받지 못해(`unknown`) 제품 검사표 탭을 감추지 않는다 — 탭이 둘이라
-     * 탭 막대가 서고, 화면은 제목·탐색 경로를 세우지 않는다.
+     * 「검사 결과 조회」 묶음 안이다 — 탭 막대가 화면 이름을 말하고, 화면은 경로·제목을 세우지 않는다(#217).
      */
-    expect(hubTab('검사 이력 조회', '검사실적·검사결과 조회')).toHaveAttribute(
+    const tabs = screen.getByRole('navigation', { name: '검사 실적·결과' });
+    expect(within(tabs).getByRole('link', { name: '검사 실적·결과' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(hubTab('검사 이력 조회', '제품 검사표 조회')).toHaveAttribute(
-      'href',
-      '/quality/inspection-sheets',
-    );
-    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
-    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
-  });
-
-  /* 측정치 상세는 「검사 이력 조회」 묶음의 검사실적 탭 아래다 — 탭 막대가 경로를 말해 탐색 경로는 세우지 않는다(#210). */
-  it('측정치 상세는 묶음 안에서 검사실적 탭을 켜고 제목만 세운다', async () => {
-    renderRoutedApp('/quality/inspection-results/1/measurements', inspectionResultRoutes());
-
     expect(
-      await screen.findByRole('heading', {
-        level: 1,
-        name: messages.inspectionResultInsights.measurementRoute.title,
-      }),
-    ).toBeInTheDocument();
-    expect(hubTab('검사 이력 조회', '검사실적·검사결과 조회')).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.queryByRole('navigation', { name: '탐색 경로' })).toBeNull();
+      screen.queryByRole('heading', { level: 1, name: '검사실적·검사결과 조회' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('목록과 측정치 상세가 같은 공개 route 계층에 선다', () => {
+  it('목록은 공개 route 에 서고, 측정치 전체 보기 쪽은 없다(상세 안의 표 · omf-all-around#217)', () => {
     expect(routedPaths()).toContain('/quality/inspection-results');
-    expect(routedPaths()).toContain('/quality/inspection-results/:inspectionResultId/measurements');
+    expect(routedPaths()).not.toContain(
+      '/quality/inspection-results/:inspectionResultId/measurements',
+    );
   });
 });
 

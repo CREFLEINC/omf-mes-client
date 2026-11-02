@@ -330,24 +330,27 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 검사 이력 조회 — 끝난 검사의 결과를 찾아보는 두 화면을 사이드바 한 줄 · 본문 위 탭으로 묶는다(omf-all-around#210).
-       * 제품 검사표 탭(W-03-13 · OA 전용 · omf-all-around#89)은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
+       * 검사 실적·결과 — 검사실적·검사결과 조회와 제품 검사표 조회(W-03-13 · OA 전용 · omf-all-around#89)를 사이드바 한 줄 ·
+       * 본문 위 탭으로 묶는다(omf-all-around#210 · #217). 둘 다 검사가 끝난 결과를 보는 「조회」 갈래다.
+       * 제품 검사표 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
        */
       {
         to: '/quality/inspection-results',
         icon: 'analytics',
-        label: '검사 이력 조회',
-        labelVi: 'Tra cứu lịch sử kiểm tra',
+        // 「검사 결과 조회」 → 「검사 실적·결과」(사용자 지시 2026-11-02 · #217)
+        label: '검사 실적·결과',
+        labelVi: 'Tra cứu kết quả kiểm tra',
         tabs: [
           {
             to: '/quality/inspection-results',
-            label: '검사실적·검사결과 조회',
-            labelVi: 'Tra cứu thực hiện · kết quả kiểm tra',
+            // 「검사 실적·검사 결과」 → 「검사 실적·결과」(사용자 지시 2026-11-02 · #217)
+            label: '검사 실적·결과',
+            labelVi: 'Thực hiện · kết quả kiểm tra',
           },
           {
             to: '/quality/inspection-sheets',
-            label: '제품 검사표 조회',
-            labelVi: 'Tra cứu phiếu kiểm tra sản phẩm',
+            label: '제품 검사표',
+            labelVi: 'Phiếu kiểm tra sản phẩm',
           },
         ],
       },

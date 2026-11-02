@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -65,7 +65,6 @@ const renderDialog = (routes: StubRoute[]) =>
         judgment: source('REJECTED', '불합격'),
       }}
       onClose={vi.fn()}
-      onViewMeasurements={vi.fn()}
     />,
     { fetch: createStubFetch(routes) },
   );
@@ -75,9 +74,8 @@ const emptySummary = route('/quality/inspection-results/701/measurement-summary'
 );
 
 describe('검사 결과 상세 Dialog', () => {
-  it('상세와 항목별 측정 요약을 서버 값으로 표시하고 남은 예시 수를 전체 건수로 계산한다', async () => {
+  it('상세와 「항목별 측정 결과」 표를 서버 값으로 표시한다', async () => {
     const onClose = vi.fn();
-    const onViewMeasurements = vi.fn();
     let summaryRequests = 0;
     const { queryClient } = renderWithProviders(
       <ResultDetailDialog
@@ -87,7 +85,6 @@ describe('검사 결과 상세 Dialog', () => {
           judgment: source('REJECTED', '불합격'),
         }}
         onClose={onClose}
-        onViewMeasurements={onViewMeasurements}
       />,
       {
         fetch: createStubFetch([
@@ -133,6 +130,50 @@ describe('검사 결과 상세 Dialog', () => {
               ],
             });
           }),
+          route('/quality/inspection-results/701/measurements', () =>
+            jsonResponse({
+              items: [
+                {
+                  inspectionMeasurementId: 1001,
+                  inspectionItemSpecId: 901,
+                  sampleNo: 1,
+                  numericValue: 12.07,
+                  judgmentCode: 'REJECTED',
+                  measuredAt: '2026-08-12T10:22:00+09:00',
+                  calibrationExpiredAtMeasurement: true,
+                },
+              ],
+              page: { page: 1, size: 50, total: 1 },
+            }),
+          ),
+          route('/quality/lot-hold-events', () =>
+            jsonResponse({
+              items: [
+                {
+                  lotHoldId: 801,
+                  eventTypeCode: 'HELD',
+                  occurredAt: '2026-08-12T10:30:00+09:00',
+                  lotId: 201,
+                  lotNo: 'SAMPLE-LOT-201',
+                  actorId: 601,
+                  actorName: '합성 처리자',
+                  reasonCode: null,
+                },
+                {
+                  lotHoldId: 802,
+                  eventTypeCode: 'RELEASED',
+                  occurredAt: '2026-08-12T11:30:00+09:00',
+                  lotId: 201,
+                  lotNo: 'SAMPLE-LOT-201',
+                  actorId: 602,
+                  actorName: '합성 해제자',
+                  reasonCode: null,
+                },
+              ],
+              page: { page: 1, size: 100, total: 2 },
+            }),
+          ),
+          route('/trace/lot-status-events', () => jsonResponse({ items: [] })),
         ]),
       },
     );
@@ -141,17 +182,41 @@ describe('검사 결과 상세 Dialog', () => {
     expect(await within(dialog).findByText('SAMPLE-REQUEST-801')).toBeInTheDocument();
     expect(await within(dialog).findByText('4101')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 품목 (미사용)')).toBeInTheDocument();
-    expect(within(dialog).getByText('합성 치수')).toBeInTheDocument();
-    const [summary, countOnlySummary] = within(dialog).getAllByRole('listitem');
-    expect(summary).toBeDefined();
-    expect(countOnlySummary).toBeDefined();
-    expect(summary).toHaveTextContent('미측정 1건');
-    expect(summary).toHaveTextContent('일부 예시: 12.07, 12.09 · 외 13건');
-    expect(summary).not.toHaveTextContent('외 0건');
-    expect(summary).toHaveTextContent('검교정 만료 · 예정일 2026-07-28');
-    expect(countOnlySummary).toHaveTextContent('일부 예시: 외 15건');
-    // 기준 시각은 공장 시각(UTC+7) — +09:00 11:30 은 공장 09:30 이다(omf-all-around#20).
-    expect(within(dialog).getByText('기준 2026-08-31 09:30')).toBeInTheDocument();
+    // 측정 결과는 「검사 상세 및 이력」 안의 탭 — 따로 여는 단추 · 창은 없다(사용자 2026-11-02).
+    expect(within(dialog).getByRole('tab', { name: '항목별 측정 결과' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(within(dialog).getByRole('tab', { name: '처리 이력' })).toBeInTheDocument();
+    expect(within(dialog).getByText('검사 공정')).toBeInTheDocument();
+    const table = await within(dialog).findByRole('table', { name: '검사 측정치' });
+    expect(within(table).getByText('합성 치수')).toBeInTheDocument();
+    expect(within(table).getByText('12.07')).toBeInTheDocument();
+    expect(within(table).getByText('검교정 만료')).toBeInTheDocument();
+    expect(within(table).getByRole('columnheader', { name: '측정 일시' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('combobox', { name: '교정 상태 필터' })).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('button', { name: '측정 결과 보기' }),
+    ).not.toBeInTheDocument();
+    // 처리 이력 탭 — LOT 상태 화면과 같은 표를 쓰되 열 이름은 이 창에서만 바꿔 부른다(사용자 2026-11-02).
+    await userEvent.click(within(dialog).getByRole('tab', { name: '처리 이력' }));
+    const history = await within(dialog).findByRole('table', { name: 'LOT 변경 이력' });
+    for (const name of ['처리 일시', '처리 유형', '상태 변경', '처리자', '처리 사유'])
+      expect(within(history).getByRole('columnheader', { name })).toBeInTheDocument();
+    // 처리 일시 머리로 오름 · 내림차순을 바꾼다 — 처음은 최신이 위(사용자 2026-11-02).
+    const actors = () =>
+      within(history)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => (row.textContent.includes('합성 해제자') ? '해제' : '등록'));
+    expect(actors()).toEqual(['해제', '등록']);
+    await userEvent.click(within(history).getByRole('button', { name: /처리 일시/ }));
+    expect(actors()).toEqual(['등록', '해제']);
+    await userEvent.click(within(history).getByRole('button', { name: /처리 일시/ }));
+    expect(actors()).toEqual(['해제', '등록']);
+    await userEvent.click(within(dialog).getByRole('tab', { name: '항목별 측정 결과' }));
+    // 「기준 …」 시각은 뺐다(사용자 2026-10-30).
+    expect(within(dialog).queryByText(/^기준 \d/)).not.toBeInTheDocument();
     expect(within(dialog).queryByText('901')).not.toBeInTheDocument();
 
     await queryClient.refetchQueries({
@@ -159,11 +224,9 @@ describe('검사 결과 상세 Dialog', () => {
     });
     expect(await within(dialog).findByText('측정 요약을 불러오지 못했습니다.')).toBeInTheDocument();
     expect(within(dialog).queryByText('합성 치수')).not.toBeInTheDocument();
-    expect(within(dialog).queryByText('기준 2026-08-31 09:30')).not.toBeInTheDocument();
 
-    await userEvent.click(within(dialog).getByRole('button', { name: '측정치 전체 보기' }));
-    expect(onViewMeasurements).toHaveBeenCalledWith(701);
-    await userEvent.click(within(dialog).getAllByRole('button', { name: '닫기' })[1]!);
+    // 오른쪽 위 닫기(X)는 없다 — 꼬리말 [닫기] 하나(사용자 시안 2026-11-02).
+    await userEvent.click(within(dialog).getByRole('button', { name: '닫기' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -178,7 +241,11 @@ describe('검사 결과 상세 Dialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
     // 기준 버전·샘플링 방식(omf-all-around#85) 두 칸 모두 「기준 없음」이다.
-    expect(await within(dialog).findAllByText('기준 없음')).toHaveLength(2);
+    expect(await within(dialog).findAllByText(/기준 없음/)).toHaveLength(2);
+    // 기준이 없어 측정 대상이 아니면 「항목별 측정 결과」 탭을 두지 않는다(사용자 2026-11-02).
+    await waitFor(() =>
+      expect(within(dialog).queryByText('항목별 측정 결과')).not.toBeInTheDocument(),
+    );
   });
 
   it('의뢰를 못 읽으면 「기준 없음」이 아니라 모르는 값으로 그린다', async () => {

@@ -60,9 +60,32 @@ export const useInspectionPlanVersion = (
   });
 };
 
+/**
+ * 그 기준 버전의 검사 항목 수 — 측정 요약이 비었을 때 「측정 대상이 없음」(영역을 숨김)과 「측정값 누락」(안내)을 가른다
+ * (사용자 2026-11-02). 기준이 없으면 0.
+ */
+export const usePlanItemCount = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<number> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: [...KEY, 'plan-items', inspectionPlanVersionId],
+    enabled: inspectionPlanVersionId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', {
+          params: { path: { inspectionPlanVersionId: inspectionPlanVersionId as number } },
+        }),
+      ).then((response) => response.items.length),
+  });
+};
+
 export interface DefectReasonRow {
   defectRecordId: number;
   defectCodeLabel: string;
+  /** 불량 유형 이름 · 코드 — 상세 창이 이름을 앞에, 코드를 보조로 보인다. 코드 목록에 없으면 null. */
+  defectName: string | null;
+  defectCode: string | null;
   qty: number;
   causeLabel: string | null;
   description: string | null;
@@ -104,6 +127,7 @@ export const useResultDefectReasons = (
           codeLabel(code.defectCode, code.defectName),
         ]),
       );
+      const defectParts = new Map(defectCodes.items.map((code) => [code.defectCodeId, code]));
       const causeName = new Map(
         causeCodes.items.map((code) => [
           code.causeCodeId,
@@ -115,6 +139,8 @@ export const useResultDefectReasons = (
         return {
           defectRecordId: record.defectRecordId,
           defectCodeLabel: defectName.get(record.defectCodeId) ?? String(record.defectCodeId),
+          defectName: defectParts.get(record.defectCodeId)?.defectName ?? null,
+          defectCode: defectParts.get(record.defectCodeId)?.defectCode ?? null,
           qty: record.defectQty,
           causeLabel: causeId === undefined ? null : (causeName.get(causeId) ?? String(causeId)),
           description: record.defectDescription ?? null,

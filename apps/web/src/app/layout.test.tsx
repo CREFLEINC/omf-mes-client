@@ -500,7 +500,7 @@ describe('AppLayout', () => {
   /*
    * 품질 관리 — **독립 영역이다.** 검사를 IQC(입하) → PQC(공정) → OQC(출하) 흐름 차례로 세우고,
    * 검사기준·코드, 검사 이력, 그리고 LOT 상태 → 보류 → 승인 → 처분의 판정 갈래가 뒤따른다.
-   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, 검사실적과 제품 검사표는 「검사 이력 조회」,
+   * 검사기준 · 검사표 기준 · 불량·원인코드 · 판정유형 코드는 「품질 기준 정보」, 검사실적과 제품 검사표는 「검사 실적·결과」,
    * LOT 조회 · 판정 · 의심자재 등록은 「LOT 상태」 묶음 한 줄이다(omf-all-around#210).
    */
   it('품질 관리 섹션이 IQC → PQC → OQC → 검사기준·코드 → 검사 이력 → LOT 상태·보류·승인·처분 순서다', () => {
@@ -519,7 +519,7 @@ describe('AppLayout', () => {
       'href',
       '/quality/lot-status',
     );
-    expect(within(sidebar).getByRole('link', { name: '검사 이력 조회' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '검사 실적·결과' })).toHaveAttribute(
       'href',
       '/quality/inspection-results',
     );
@@ -542,7 +542,7 @@ describe('AppLayout', () => {
       '/master-data/inspection-standard',
       /* 「품질 코드 관리」 묶음 — 불량·원인코드 → 판정유형 코드(#208). */
       '/master-data/defect-cause-code',
-      /* 「검사 이력 조회」 묶음 — 검사실적 → 제품 검사표(W-03-13 · OA 전용)(#210). */
+      /* 「검사 실적·결과」 묶음 — 검사실적 → 제품 검사표(W-03-13 · OA 전용)(#210). */
       '/quality/inspection-results',
       /* 「LOT 상태」 묶음 — 조회 → 판정 → 의심자재 등록(#210). */
       '/quality/lot-status',
@@ -556,6 +556,21 @@ describe('AppLayout', () => {
     /* 구매 / 자재 관리 뒤 · 생산 관리 앞이다. */
     expect(start).toBe(links.indexOf('/logistics/document-progress') + 1);
     expect(links.indexOf('/production/production-orders')).toBe(start + qualityOrder.length);
+  });
+
+  /* omf-all-around#217 — 검사가 끝난 결과를 보는 두 화면을 한 묶음으로. 제품 검사표는 OA 전용이다. */
+  it('검사 실적·결과 탭 막대가 검사실적·검사결과 → 제품 검사표 차례다', () => {
+    renderLayout('본문 내용', { route: '/quality/inspection-results' });
+
+    expect(hubTabHrefs('검사 실적·결과')).toEqual([
+      '/quality/inspection-results',
+      '/quality/inspection-sheets',
+    ]);
+    expect(
+      within(screen.getByRole('navigation', { name: '검사 실적·결과' })).getByRole('link', {
+        name: '검사 실적·결과',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   /*
@@ -979,7 +994,7 @@ describe('AppLayout', () => {
       '/logistics/iqc-inspection' /* ← 검사 조회·판정 */,
       '/master-data/inspection-standard' /* ← 품질 기준 정보 */,
       '/master-data/defect-cause-code',
-      '/quality/inspection-results' /* ← 검사 이력 조회 */,
+      '/quality/inspection-results' /* ← 검사 실적·결과 */,
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/approvals',
       '/quality/dispositions',
@@ -1054,7 +1069,7 @@ describe('AppLayout', () => {
         '/master-data/defect-process-mapping',
         '/master-data/judgment-code',
       ],
-      '검사 이력 조회': ['/quality/inspection-results', '/quality/inspection-sheets'],
+      '검사 실적·결과': ['/quality/inspection-results', '/quality/inspection-sheets'],
       'LOT 상태': [
         '/quality/lot-status',
         '/quality/lot-status-history',

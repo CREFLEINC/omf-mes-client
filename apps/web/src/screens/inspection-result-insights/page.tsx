@@ -1,6 +1,5 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useNavigate } from 'react-router';
 
 import { usePageHub } from '../../patterns/page-hub';
 import {
@@ -14,8 +13,6 @@ import { InspectionResultInsightsScreen } from './screen';
 const t = messages.inspectionResultInsights;
 
 export const InspectionResultInsightsPage = () => {
-  const navigate = useNavigate();
-  const hub = usePageHub();
   const inspectionType = useInspectionTypeLookup();
   const judgment = useOverallJudgmentLookup();
   const item = useInspectionItemLookup();
@@ -23,6 +20,7 @@ export const InspectionResultInsightsPage = () => {
   const lookups = { inspectionType, item, process, judgment };
   const all = [inspectionType, judgment, item, process];
   const failed = all.filter((lookup) => lookup.isError);
+  const hub = usePageHub();
 
   return (
     <div className="screen inspection-results-screen">
@@ -62,17 +60,7 @@ export const InspectionResultInsightsPage = () => {
           </AlertBanner>
         </div>
       )}
-      {all.some((lookup) => lookup.truncated) && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.page.lookupTruncated}</AlertBanner>
-        </div>
-      )}
-      <InspectionResultInsightsScreen
-        lookups={lookups}
-        onViewMeasurements={(inspectionResultId) =>
-          navigate(`/quality/inspection-results/${String(inspectionResultId)}/measurements`)
-        }
-      />
+      <InspectionResultInsightsScreen lookups={lookups} />
     </div>
   );
 };

@@ -94,7 +94,9 @@ describe('W-03-05 LOT 번호로 찾기 (omf-all-around#85)', () => {
     expect(listQueries[0]?.has('inspectedFrom')).toBe(false);
     // 집계는 기간이 필수라 비워 두고 그렇다고 말한다 · LOT 조건은 목록에만 건다.
     expect(screen.getByText('기간을 정하면 검사실적 요약이 보입니다.')).toBeInTheDocument();
-    expect(screen.getByText(/LOT 조건은 아래 검사 결과 목록에만 적용됩니다/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/LOT 조건은 아래 검사 결과 목록에만 적용됩니다/),
+    ).not.toBeInTheDocument();
   });
 
   it('없는 LOT 번호면 목록을 묻지 않고 찾을 수 없다고 말한다', async () => {
@@ -135,12 +137,7 @@ const codes = (group: string) =>
 describe('W-03-05 상세 창 이력 구획 (omf-all-around#85)', () => {
   it('검사자·샘플링 방식 · 그 회차 불량 사유 · 그 LOT 의 부적합별 처분 판정을 보인다', async () => {
     renderWithProviders(
-      <ResultDetailDialog
-        inspectionResultId={701}
-        labels={labels}
-        onClose={vi.fn()}
-        onViewMeasurements={vi.fn()}
-      />,
+      <ResultDetailDialog inspectionResultId={701} labels={labels} onClose={vi.fn()} />,
       {
         fetch: createStubFetch([
           route('/quality/inspection-results/701', () => jsonResponse(result)),
@@ -244,14 +241,19 @@ describe('W-03-05 상세 창 이력 구획 (omf-all-around#85)', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
     expect(await within(dialog).findByText('합성 검사원')).toBeInTheDocument();
-    expect(await within(dialog).findByText('LOT 샘플링')).toBeInTheDocument();
+    expect(await within(dialog).findByText(/LOT 샘플링/)).toBeInTheDocument();
 
     const defects = await within(dialog).findByRole('table', { name: '이 회차의 불량 사유' });
-    expect(within(defects).getByText('D-SCR · 스크래치')).toBeInTheDocument();
+    // 불량 유형 이름이 앞, 코드는 보조 글자(사용자 2026-11-02).
+    expect(within(defects).getByText('스크래치')).toBeInTheDocument();
+    expect(within(defects).getByText('(D-SCR)')).toBeInTheDocument();
     expect(within(defects).getByText('C-SUP · 공급사 공정')).toBeInTheDocument();
     expect(within(defects).getByText('표면 긁힘')).toBeInTheDocument();
 
-    expect(await within(dialog).findByText(/SAMPLE-NC-31 · 판정 대기/)).toBeInTheDocument();
+    expect(await within(dialog).findByText('SAMPLE-NC-31')).toBeInTheDocument();
+    expect(within(dialog).getByText('처분 판정 대기')).toBeInTheDocument();
+    // 표식과 같은 뜻의 설명 줄은 뺐다(사용자 2026-11-02).
+    expect(within(dialog).queryByText(/처리 방법이 아직 결정되지/)).not.toBeInTheDocument();
     const decisions = within(dialog).getByRole('table', { name: 'SAMPLE-NC-31 처분 판정 이력' });
     expect(within(decisions).getByText('폐기')).toBeInTheDocument();
     expect(within(decisions).getByText('수리 불가')).toBeInTheDocument();
@@ -259,12 +261,7 @@ describe('W-03-05 상세 창 이력 구획 (omf-all-around#85)', () => {
 
   it('LOT 이 없는 검사(PQC 등)는 불합격 처리·LOT 상태 이력이 없다고 말한다', async () => {
     renderWithProviders(
-      <ResultDetailDialog
-        inspectionResultId={701}
-        labels={labels}
-        onClose={vi.fn()}
-        onViewMeasurements={vi.fn()}
-      />,
+      <ResultDetailDialog inspectionResultId={701} labels={labels} onClose={vi.fn()} />,
       {
         fetch: createStubFetch([
           route('/quality/inspection-results/701', () =>

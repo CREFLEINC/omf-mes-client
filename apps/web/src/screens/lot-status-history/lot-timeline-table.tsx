@@ -73,7 +73,11 @@ interface LotTimelineTableProps {
   onHistorySortChange?: (sort: SortState) => void;
   /** 이력 표 LOT 번호 왼쪽 유형 라벨 — LOT 마다 라벨을 돌려준다. 없으면 번호만(사용자 2026-11-02). */
   lotTypeLabel?: (entry: LotTimelineEntry) => string | null;
+  /** LOT 상세(detail) 열 이름을 바꿔 부를 때 — 검사 결과 상세의 「처리 이력」(omf-all-around#217). 없으면 종전 이름. */
+  columnLabels?: Partial<Record<LotTimelineColumnKey, string>>;
 }
+
+export type LotTimelineColumnKey = 'occurredAt' | 'event' | 'change' | 'actor' | 'reason';
 
 export const LotTimelineTable = ({
   caption,
@@ -89,7 +93,9 @@ export const LotTimelineTable = ({
   historySort,
   onHistorySortChange,
   lotTypeLabel,
+  columnLabels = {},
 }: LotTimelineTableProps) => {
+  const detailHeader = { ...t.timeline.columns, ...columnLabels };
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
   /*
@@ -121,7 +127,7 @@ export const LotTimelineTable = ({
   const columns: Column<LotTimelineEntry>[] = [
     {
       key: 'occurredAt',
-      header: isDetail ? t.timeline.columns.occurredAt : t.history.columns.occurredAt,
+      header: isDetail ? detailHeader.occurredAt : t.history.columns.occurredAt,
       align: 'center',
       width: isDetail ? '172px' : '220px',
       sortable: isDetail || onHistorySortChange !== undefined,
@@ -161,7 +167,7 @@ export const LotTimelineTable = ({
         ]),
     {
       key: 'event',
-      header: isDetail ? t.timeline.columns.event : t.history.columns.event,
+      header: isDetail ? detailHeader.event : t.history.columns.event,
       align: 'center',
       width: isDetail ? '104px' : '120px',
       render: (entry) =>
@@ -198,20 +204,20 @@ export const LotTimelineTable = ({
         ]),
     {
       key: 'change',
-      header: isDetail ? t.timeline.columns.change : t.history.columns.change,
+      header: isDetail ? detailHeader.change : t.history.columns.change,
       align: 'center',
       render: changeText,
     },
     {
       key: 'actor',
-      header: isDetail ? t.timeline.columns.actor : t.history.columns.actor,
+      header: isDetail ? detailHeader.actor : t.history.columns.actor,
       align: 'center',
       width: isDetail ? '140px' : undefined,
       render: actorName,
     },
     {
       key: 'reason',
-      header: isDetail ? t.timeline.columns.reason : t.history.columns.reason,
+      header: isDetail ? detailHeader.reason : t.history.columns.reason,
       align: 'center',
       width: isDetail ? '160px' : '224px',
       render: (entry) => reasonText(entry, reasons.data?.items),

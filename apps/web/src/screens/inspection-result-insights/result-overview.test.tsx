@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it, vi } from 'vitest';
@@ -107,21 +107,30 @@ describe('검사 결과 요약·목록', () => {
     expect(within(table).getAllByRole('columnheader')).toHaveLength(8);
     expect(within(table).getAllByRole('row')[1]).toHaveTextContent('SAMPLE-REQ-B');
     expect(within(table).getAllByRole('row')[2]).toHaveTextContent('SAMPLE-REQ-A');
-    expect(within(table).getByRole('columnheader', { name: /검사시각\/회차/ })).toHaveAttribute(
+    expect(within(table).getByRole('columnheader', { name: /검사 일시 \/ 회차/ })).toHaveAttribute(
       'aria-sort',
       'descending',
     );
     await user.click(within(table).getByRole('button', { name: /의뢰번호/ }));
     expect(onSortChange).toHaveBeenCalledWith('inspectionRequestNo,asc');
-    await user.click(screen.getByRole('button', { name: '다음 쪽' }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
     expect(onPageChange).toHaveBeenCalledWith(2);
     const cards = screen.getByRole('group', { name: '검사실적 요약 카드' });
-    for (const label of ['검사건수', '검사수량', '합격수량', '불합격수량', '불량률']) {
+    for (const label of ['검사 횟수', '검사 제품 수량', '합격 수량', '불합격 수량', '불량률']) {
       expect(within(cards).getByText(label)).toBeInTheDocument();
     }
-    // 기준 시각은 공장 시각(UTC+7) — +09:00 09:30 은 공장 07:30 이다(omf-all-around#20).
-    expect(screen.getByText('기준 2026-08-31 07:30')).toBeInTheDocument();
-    expect(screen.getByText('최종 회차만 집계합니다.')).toBeInTheDocument();
+    // 「기준 …」은 빼고 머리 오른쪽에 마지막 갱신 + [갱신](사용자 2026-10-30).
+    expect(screen.queryByText(/^기준 /)).not.toBeInTheDocument();
+    expect(screen.getByText(/^마지막 갱신 /)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '갱신' })).toBeInTheDocument();
+    // 불량률 분모 안내는 「집계 기준」 말풍선 — 누르면 뜨고 3초 뒤 닫힌다.
+    expect(screen.queryByText(/불량률의 분모는 검사수량/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '집계 기준' }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/불량률의 분모는 검사수량/);
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument(), {
+      timeout: 4000,
+    });
+    expect(screen.queryByText('최종 회차만 집계합니다.')).not.toBeInTheDocument();
     expect(
       screen.getByText(/검교정 만료 장비 측정 건수 2건이 기본 집계에 포함/),
     ).toBeInTheDocument();
@@ -131,14 +140,18 @@ describe('검사 결과 요약·목록', () => {
     expect(screen.queryByText('101')).not.toBeInTheDocument();
     expect(screen.getAllByText('합성 품목 (미사용)')).not.toHaveLength(0);
     expect(screen.getAllByText('불합격')).not.toHaveLength(0);
-    expect(requests).toHaveLength(2);
-    for (const request of requests) {
+    // 요약 · 목록 두 요청(단위 확인용 결과 표본 size=100 · 단위 목록은 따로 센다).
+    const viewRequests = requests.filter(
+      (url) => url.pathname.startsWith('/quality/') && url.searchParams.get('size') !== '100',
+    );
+    expect(viewRequests).toHaveLength(2);
+    for (const request of requests.filter((url) => url.pathname.startsWith('/quality/'))) {
       expect(request.searchParams.get('inspectionTypeCode')).toBe('IQC');
       expect(request.searchParams.get('finalRoundOnly')).toBe('true');
     }
   });
 
-  it('전체 선택은 목록을 한 번 조회하고 IQC·PQC·OQC 요약을 분리한다', async () => {
+  it('전체 선택은 목록을 한 번 조회하고 요약은 [전체 · IQC · PQC · OQC] 탭으로 나눈다', async () => {
     const requests: URL[] = [];
     renderWithProviders(
       <ResultOverview
@@ -171,22 +184,38 @@ describe('검사 결과 요약·목록', () => {
       },
     );
 
-    for (const label of ['수입검사', '공정검사', '출하검사']) {
+    // 「전체」면 유형별 요약이 탭이다 — 고른 탭의 요약만 보이고, 탭을 옮기면 그 유형을 부른다(사용자 2026-10-30).
+    // 맨 앞 「전체」 탭은 유형 없이 합계를 부르고 처음 선다(사용자 2026-11-02).
+    const user = userEvent.setup();
+    const typeTabs = screen.getByRole('tablist', { name: '검사 유형별 요약' });
+    expect(within(typeTabs).getByRole('tab', { name: '전체' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(
+      await screen.findByRole('group', { name: '전체 검사실적 요약 카드' }),
+    ).toBeInTheDocument();
+    for (const label of ['IQC (수입검사)', 'PQC (공정검사)', 'OQC (출하검사)']) {
+      await user.click(within(typeTabs).getByRole('tab', { name: label }));
       expect(
         await screen.findByRole('group', { name: `${label} 검사실적 요약 카드` }),
       ).toBeInTheDocument();
     }
+    expect(screen.getAllByRole('group', { name: /검사실적 요약 카드$/ })).toHaveLength(1);
     expect(
-      screen.getByText(/검사유형별 요약을 분리하며 서로 합산하지 않습니다/),
-    ).toBeInTheDocument();
-    expect(await screen.findByText('조건에 맞는 검사 결과가 없습니다')).toBeInTheDocument();
+      screen.queryByText(/검사유형별 요약을 분리하며 서로 합산하지 않습니다/),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText('조회된 검사 결과가 없습니다')).toBeInTheDocument();
 
     const summaryTypes = requests
       .filter((url) => url.pathname.endsWith('/summary'))
       .map((url) => url.searchParams.get('inspectionTypeCode'))
       .sort();
-    expect(summaryTypes).toEqual(['IQC', 'OQC', 'PQC']);
-    const listRequest = requests.find((url) => url.pathname === '/quality/inspection-results');
+    expect(summaryTypes).toEqual(['IQC', 'OQC', 'PQC', null]);
+    const listRequest = requests.find(
+      (url) =>
+        url.pathname === '/quality/inspection-results' && url.searchParams.get('size') !== '100',
+    );
     expect(listRequest?.searchParams.has('inspectionTypeCode')).toBe(false);
   });
 
@@ -206,7 +235,7 @@ describe('검사 결과 요약·목록', () => {
       { fetch: async (request) => (calls.push(request), jsonResponse({})) },
     );
 
-    expect(screen.getByText('기간을 선택하세요')).toBeInTheDocument();
+    expect(screen.getByText('조회 기간 또는 LOT 번호를 입력해 주세요.')).toBeInTheDocument();
     expect(calls).toHaveLength(0);
   });
 
@@ -249,14 +278,11 @@ describe('검사 결과 요약·목록', () => {
       },
     });
 
-    await user.click(await screen.findByRole('button', { name: '다음 쪽' }));
+    await user.click(await screen.findByRole('button', { name: '다음' }));
     expect(
       await screen.findByRole('status', { name: '검사 결과 페이지를 불러오는 중' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('SAMPLE-PAGE-ONE')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'SAMPLE-PAGE-ONE 상세 보기' }),
-    ).not.toBeInTheDocument();
   });
 
   it('재검 전체 보기에서 같은 페이지의 사슬을 회차 깊이로 표시한다', async () => {
@@ -304,13 +330,15 @@ describe('검사 결과 요약·목록', () => {
       },
     );
 
-    const rootLink = await screen.findByRole('button', { name: 'SAMPLE-ROOT 상세 보기' });
-    const childLink = screen.getByRole('button', { name: 'SAMPLE-REINSPECTION 상세 보기' });
+    // 의뢰번호는 글자다 — 줄을 눌러 상세를 연다(사용자 2026-11-02).
+    const rootLink = await screen.findByText('SAMPLE-ROOT');
+    const childLink = screen.getByText('SAMPLE-REINSPECTION');
     expect(rootLink).toHaveAttribute('data-depth', '0');
     expect(childLink).toHaveAttribute('data-depth', '1');
     expect(childLink).toHaveStyle({ paddingInlineStart: '1rem' });
-    expect(screen.getByText(/뿌리 결과 기준 페이지에서 재검 사슬 전체/)).toBeInTheDocument();
-    for (const request of requests)
+    expect(screen.queryByText(/뿌리 결과 기준 페이지에서 재검 사슬 전체/)).not.toBeInTheDocument();
+    // 검사 결과 조회만 본다 — 단위 목록(/mdm/uoms)은 회차 조건과 상관없다.
+    for (const request of requests.filter((url) => url.pathname.startsWith('/quality/')))
       expect(request.searchParams.get('finalRoundOnly')).toBe('false');
   });
 

@@ -63,8 +63,8 @@ describe('검사 추이·불량 분포', () => {
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
     ).toEqual(['2026-08-01', '10', '1', '10%']);
-    // 기준 시각은 공장 시각(UTC+7) — +09:00 10:30 은 공장 08:30 이다(omf-all-around#20).
-    expect(screen.getByText('기준 2026-08-31 08:30')).toBeInTheDocument();
+    // 「기준 …」 시각은 뺐다 — 화면 위 「마지막 갱신」이 대신한다(사용자 2026-10-30).
+    expect(screen.queryByText(/^기준 /)).not.toBeInTheDocument();
     expect(calls).toHaveLength(1);
     expect(calls[0]?.searchParams.get('finalRoundOnly')).toBe('true');
 
@@ -76,25 +76,16 @@ describe('검사 추이·불량 분포', () => {
     expect(screen.queryByText('기준 2026-08-31 08:30')).not.toBeInTheDocument();
   });
 
-  it('전체 선택은 IQC·PQC·OQC 추이를 독립 요청과 패널로 분리한다', async () => {
+  it('유형이 비면(요약 「전체」 탭) 합계 추이 하나를 유형 없이 부른다', async () => {
     const calls: URL[] = [];
     renderWithProviders(
-      <InsightTabs filters={{ ...filters, inspectionTypeCode: '' }} sourceAxisCode="PQC" />,
+      <InsightTabs filters={{ ...filters, inspectionTypeCode: '' }} sourceAxisCode="" />,
       {
         fetch: createStubFetch([
           route('/quality/inspection-results/defect-rate-trend', (request) => {
-            const url = new URL(request.url);
-            calls.push(url);
-            const code = url.searchParams.get('inspectionTypeCode');
+            calls.push(new URL(request.url));
             return jsonResponse({
-              points: [
-                {
-                  bucket: '2026-08-01',
-                  inspectedQty: 10,
-                  rejectedQty: 1,
-                  defectRate: code === 'PQC' ? 10 : 5,
-                },
-              ],
+              points: [{ bucket: '2026-08-01', inspectedQty: 10, rejectedQty: 1, defectRate: 10 }],
               asOf: '2026-08-31T10:30:00+09:00',
             });
           }),
@@ -102,48 +93,24 @@ describe('검사 추이·불량 분포', () => {
       },
     );
 
-    for (const label of ['수입검사', '공정검사', '출하검사']) {
-      expect(
-        await screen.findByRole('table', { name: `${label} 불량률 추이 데이터` }),
-      ).toBeInTheDocument();
-    }
-    expect(
-      screen.getByText(/검사유형별 추이를 분리하며 서로 합산하지 않습니다/),
-    ).toBeInTheDocument();
-    expect(calls.map((url) => url.searchParams.get('inspectionTypeCode')).sort()).toEqual([
-      'IQC',
-      'OQC',
-      'PQC',
-    ]);
-    for (const call of calls) expect(call.searchParams.get('finalRoundOnly')).toBe('true');
+    expect(await screen.findByRole('table', { name: '불량률 추이 데이터' })).toBeInTheDocument();
+    // 유형별로 셋을 쌓지 않는다(사용자 2026-11-02).
+    expect(screen.getAllByRole('table', { name: /불량률 추이 데이터$/ })).toHaveLength(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.searchParams.has('inspectionTypeCode')).toBe(false);
+    expect(calls[0]?.searchParams.get('finalRoundOnly')).toBe('true');
   });
 
-  it('전체 추이의 유형별 오류·재시도와 분포 탭 요청 경계를 격리한다', async () => {
+  it('수입검사(IQC)는 분포 표 대신 안내를 두고 분포를 부르지 않는다', async () => {
     const user = userEvent.setup();
-    const trendCalls = new Map<string, number>();
     let distributionCalls = 0;
     renderWithProviders(
-      <InsightTabs filters={{ ...filters, inspectionTypeCode: '' }} sourceAxisCode="PQC" />,
+      <InsightTabs filters={{ ...filters, inspectionTypeCode: 'IQC' }} sourceAxisCode="IQC" />,
       {
         fetch: createStubFetch([
-          route('/quality/inspection-results/defect-rate-trend', (request) => {
-            const code = new URL(request.url).searchParams.get('inspectionTypeCode') ?? '';
-            const callCount = (trendCalls.get(code) ?? 0) + 1;
-            trendCalls.set(code, callCount);
-            if (code === 'IQC' && callCount === 1)
-              return jsonResponse({ message: 'synthetic error' }, { status: 500 });
-            return jsonResponse({
-              points: [
-                {
-                  bucket: '2026-08-01',
-                  inspectedQty: 10,
-                  rejectedQty: 1,
-                  defectRate: 10,
-                },
-              ],
-              asOf: '2026-08-31T10:30:00+09:00',
-            });
-          }),
+          route('/quality/inspection-results/defect-rate-trend', () =>
+            jsonResponse({ points: [], asOf: '2026-08-31T10:30:00+09:00' }),
+          ),
           route('/quality/defect-records/distribution', () => {
             distributionCalls += 1;
             return jsonResponse({
@@ -156,29 +123,15 @@ describe('검사 추이·불량 분포', () => {
       },
     );
 
-    expect(
-      await screen.findByText('수입검사 불량률 추이를 불러오지 못했습니다.'),
-    ).toBeInTheDocument();
-    for (const label of ['공정검사', '출하검사']) {
-      expect(
-        screen.getByRole('table', { name: `${label} 불량률 추이 데이터` }),
-      ).toBeInTheDocument();
-    }
-    expect(Object.fromEntries(trendCalls)).toEqual({ IQC: 1, PQC: 1, OQC: 1 });
-
-    await user.click(screen.getByRole('button', { name: '다시 시도' }));
-    expect(
-      await screen.findByRole('table', { name: '수입검사 불량률 추이 데이터' }),
-    ).toBeInTheDocument();
-    expect(Object.fromEntries(trendCalls)).toEqual({ IQC: 2, PQC: 1, OQC: 1 });
-
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
-    expect(await screen.findByRole('table', { name: '불량코드 분포' })).toBeInTheDocument();
-    expect(distributionCalls).toBe(1);
-    expect(Object.fromEntries(trendCalls)).toEqual({ IQC: 2, PQC: 1, OQC: 1 });
+    expect(
+      await screen.findByText('수입검사만 따로 나눈 불량 분포는 아직 볼 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: '불량코드 분포' })).not.toBeInTheDocument();
+    expect(distributionCalls).toBe(0);
   });
 
-  it('분포 탭은 다른 모집단을 알리고 빈 응답에도 5열 골격을 유지한다', async () => {
+  it('분포 탭은 모집단 안내 없이 빈 응답에도 5열 골격을 유지한다', async () => {
     const user = userEvent.setup();
     const calls: URL[] = [];
     renderWithProviders(<InsightTabs filters={filters} sourceAxisCode="PQC" />, {
@@ -200,11 +153,11 @@ describe('검사 추이·불량 분포', () => {
     await user.click(screen.getByRole('tab', { name: '불량 분포' }));
     const table = await screen.findByRole('table', { name: '불량코드 분포' });
     expect(within(table).getAllByRole('columnheader')).toHaveLength(5);
-    expect(within(table).getByText('분포 데이터가 없습니다')).toBeInTheDocument();
-    expect(screen.getByText(/목록·요약·추이와 다른 모집단/)).toBeInTheDocument();
-    expect(screen.getByText(/현재 담기지 않는 불량 원천/)).toBeInTheDocument();
-    // 공장 시각(UTC+7) — +09:00 10:31 은 08:31 이다(omf-all-around#20).
-    expect(screen.getByText('기준 2026-08-31 08:31')).toBeInTheDocument();
+    expect(within(table).getByText('조회된 불량 내역이 없습니다.')).toBeInTheDocument();
+    // 모집단 · 불량 원천 안내는 뺐다(사용자 2026-10-30).
+    expect(screen.queryByText(/목록·요약·추이와 다른 모집단/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/현재 담기지 않는 불량 원천/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^기준 /)).not.toBeInTheDocument();
     expect(calls).toHaveLength(1);
     expect(Object.fromEntries(calls[0]?.searchParams ?? [])).toEqual({
       groupBy: 'defectCode',
@@ -252,7 +205,7 @@ describe('검사 추이·불량 분포', () => {
     expect(await screen.findByText('공정별 분포는 중복 계상될 수 있습니다.')).toBeInTheDocument();
     await user.click(screen.getByRole('combobox', { name: '분포 묶음 기준' }));
     await user.click(screen.getByRole('option', { name: '검출 공정' }));
-    expect(await screen.findByText('분포 데이터가 없습니다')).toBeInTheDocument();
+    expect(await screen.findByText('조회된 불량 내역이 없습니다.')).toBeInTheDocument();
     expect(screen.getByText('공정별 분포는 중복 계상될 수 있습니다.')).toBeInTheDocument();
   });
 });

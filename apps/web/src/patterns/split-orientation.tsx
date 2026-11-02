@@ -156,34 +156,39 @@ export const useSideBySideFits = (): boolean =>
 export const SplitOrientationToggle = ({
   orientation,
   onChange,
+  inline = false,
 }: {
   orientation: SplitOrientation;
   onChange: (next: SplitOrientation) => void;
+  /**
+   * 탭 묶음 밖에서도 그 자리에 세운다(omf-all-around#217) — 주지 않으면 종전처럼 탭 막대에만 서고 묶음 밖에선 그리지 않는다.
+   * 묶음 안이면 이 값과 상관없이 탭 막대로 간다.
+   */
+  inline?: boolean;
 }) => {
   const target = useHubActionsTarget();
   /* 창이 좁으면 실제로 위아래로 쌓인다 — 눌린 표시도 상하, 좌우는 끈다(사용자 지시 2026-10-29 · #197). */
   const fits = useSideBySideFits();
-  if (target === null) return null;
+  if (target === null && !inline) return null;
   const shown: SplitOrientation = fits ? orientation : 'column';
-
-  return (
-    <HubActions target={target}>
-      <div className="split-orientation-toggle" role="group" aria-label={t.layoutLabel}>
-        {OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className="split-orientation-option"
-            aria-pressed={shown === option.value}
-            disabled={!fits && option.value === 'row'}
-            title={!fits && option.value === 'row' ? t.layoutNarrow : undefined}
-            onClick={() => onChange(option.value)}
-          >
-            <Icon name={option.icon} size={16} />
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </HubActions>
+  const group = (
+    <div className="split-orientation-toggle" role="group" aria-label={t.layoutLabel}>
+      {OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className="split-orientation-option"
+          aria-pressed={shown === option.value}
+          disabled={!fits && option.value === 'row'}
+          title={!fits && option.value === 'row' ? t.layoutNarrow : undefined}
+          onClick={() => onChange(option.value)}
+        >
+          <Icon name={option.icon} size={16} />
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
+
+  return target === null ? group : <HubActions target={target}>{group}</HubActions>;
 };

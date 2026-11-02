@@ -1,34 +1,31 @@
 import {
   AlertBanner,
   Button,
-  type Column,
   EmptyState,
+  Icon,
   SkeletonText,
   type SortState,
-  Table,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 
-import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
-import type { InspectionInsightFilters, InspectionResultSort } from './filters';
+import type { LookupSource } from '../../patterns/lookup-display';
+import {
+  DEFAULT_INSPECTION_RESULT_PAGE_SIZE,
+  type InspectionInsightFilters,
+  type InspectionResultSort,
+} from './filters';
 import { useLotIdByNo } from './history-queries';
+import { AggregationBasis } from './aggregation-basis';
 import { useInspectionResults } from './queries';
-import { toInspectionResultTreeRows, type InspectionResultTreeRow } from './reinspection-chain';
+import { RefreshStatus } from './refresh-status';
+import { toInspectionResultTreeRows } from './reinspection-chain';
 import { toInspectionListQuery } from './request-queries';
-import { SummaryPanels } from './summary-panels';
-import { formatPlantDateTime } from '../../patterns/plant-time';
+import { ResultTable } from './result-table';
+import { SUMMARY_ALL, SummaryPanels } from './summary-panels';
+import { PAGE_SIZES, PageNav, type PageSize } from '../../patterns/page-nav';
 
 const t = messages.inspectionResultInsights.overview;
-const EMPTY = t.unknown;
-/* 목록의 유형 열은 요약·추이의 모집단 이름과 같은 말을 쓴다. */
-const TYPE_LABELS = new Map<string, string>(
-  Object.entries(messages.inspectionResultInsights.inspectionTypes),
-);
-
-const dateTime = (value: string): string => {
-  return formatPlantDateTime(value) ?? value;
-};
-const number = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
 export interface ResultLabels {
   item: LookupSource;
@@ -44,8 +41,18 @@ interface ResultOverviewProps {
   labels: ResultLabels;
   onSortChange: (sort: InspectionResultSort) => void;
   onPageChange: (page: number) => void;
+  /** 한 쪽 결과 수(20 · 50 · 100) — 바꾸면 첫 쪽으로 간다. */
+  pageSize?: PageSize;
+  onPageSizeChange?: (size: PageSize) => void;
+  /** 지금 상세에 연 검사 결과. */
+  selectedId?: number | null;
+  /** 좌우 배치 — 목록 열을 줄이지 않고 표 안에서 가로로 구른다. */
+  scrollX?: boolean;
   onSelectResult: (inspectionResultId: number) => void;
   onViewExpiredCalibration: () => void;
+  /** 요약 유형 탭(SUMMARY_ALL · IQC · PQC · OQC) — 불량 분석과 함께 쓴다. */
+  summaryType?: string;
+  onSummaryTypeChange?: (type: string) => void;
 }
 
 const TABLE_SORTS: Record<InspectionResultSort, SortState> = {
@@ -74,15 +81,23 @@ export const ResultOverview = ({
   labels,
   onSortChange,
   onPageChange,
+  pageSize = DEFAULT_INSPECTION_RESULT_PAGE_SIZE,
+  onPageSizeChange,
+  selectedId = null,
+  scrollX = false,
   onSelectResult,
   onViewExpiredCalibration,
+  summaryType,
+  onSummaryTypeChange,
 }: ResultOverviewProps) => {
+  /* 화면이 탭을 쥐지 않으면(단독으로 그릴 때) 여기서 쥔다. */
+  const [ownSummaryType, setOwnSummaryType] = useState(SUMMARY_ALL);
   /* LOT 번호 → id(omf-all-around#85). 못 풀면 목록을 세우지 않고 그 사유를 말한다. */
   const lotNo = filters.lotNo.trim();
   const hasLot = lotNo !== '';
   const lot = useLotIdByNo(queriesEnabled ? lotNo : '');
   const lotId = hasLot ? (lot.data ?? undefined) : undefined;
-  const list = useInspectionResults(filters, sort, page, queriesEnabled, lotId);
+  const list = useInspectionResults(filters, sort, page, queriesEnabled, lotId, pageSize);
   const hasPeriod = filters.from !== '' && filters.to !== '';
   const isBlocked =
     !queriesEnabled ||
@@ -142,9 +157,11 @@ export const ResultOverview = ({
                 ? t.blockedPending
                 : t.blockedInvalid
           }
+          /* 기간 · LOT 이 비었을 때는 아이콘 + 한 줄(사용자 시안 · omf-all-around#217). */
+          icon={queriesEnabled ? <Icon name="search" size={32} /> : undefined}
           description={
             queriesEnabled
-              ? t.blockedPeriodDescription
+              ? undefined
               : validationPending
                 ? t.blockedPendingDescription
                 : t.blockedInvalidDescription
@@ -154,76 +171,25 @@ export const ResultOverview = ({
     );
   }
 
-  const columns: Column<InspectionResultTreeRow>[] = [
-    {
-      key: 'inspectionRequestNo',
-      header: t.columns.inspectionRequestNo,
-      sortable: true,
-      render: (row) => (
-        <Button
-          size="sm"
-          variant="text"
-          className="tree-toggle"
-          data-depth={row.depth}
-          style={{ paddingInlineStart: `${String(row.depth)}rem` }}
-          aria-label={t.detailOf(row.result.inspectionRequestNo ?? EMPTY)}
-          onClick={() => onSelectResult(row.result.inspectionResultId)}
-        >
-          {row.result.inspectionRequestNo ?? EMPTY}
-        </Button>
-      ),
-    },
-    {
-      key: 'inspectionTypeCode',
-      header: t.columns.inspectionType,
-      render: (row) => TYPE_LABELS.get(row.result.inspectionTypeCode ?? '') ?? EMPTY,
-    },
-    {
-      key: 'item',
-      header: t.columns.item,
-      render: (row) => lookupDisplayLabelWithInactive(labels.item, row.result.itemId),
-    },
-    { key: 'lotNo', header: t.columns.lotNo, render: (row) => row.result.lotNo ?? EMPTY },
-    {
-      key: 'rejectedQty',
-      header: t.columns.quantities,
-      sortable: true,
-      align: 'end',
-      render: (row) =>
-        `${number(row.result.inspectedQty)} / ${number(row.result.acceptedQty)} / ${number(row.result.rejectedQty)}`,
-    },
-    {
-      key: 'overallJudgmentCode',
-      header: t.columns.judgment,
-      render: (row) =>
-        lookupDisplayLabelWithInactive(labels.judgment, row.result.overallJudgmentCode),
-    },
-    {
-      key: 'inspector',
-      header: t.columns.inspector,
-      render: (row) => row.result.inspectorName ?? EMPTY,
-    },
-    {
-      key: 'inspectedAt',
-      header: t.columns.inspectedAt,
-      sortable: true,
-      render: (row) =>
-        t.inspectedAtWithRound(dateTime(row.result.inspectedAt), row.result.inspectionRound),
-    },
-  ];
   return (
     <section className="pane inspection-results-pane" aria-labelledby="inspection-results-title">
-      <h2 className="pane-title" id="inspection-results-title">
-        {t.pane}
-      </h2>
-      <p className="field-note">{filters.finalRoundOnly ? t.finalRoundNote : t.allRoundsNote}</p>
-      {hasLot && <p className="field-note">{t.lotOnlyListNote}</p>}
+      {/* 머리 — 제목 · 「ⓘ 집계 기준」 왼쪽, 「마지막 갱신 …」 + [갱신] 오른쪽 끝(사용자 2026-10-30). */}
+      <div className="inspection-results-pane-head">
+        <h2 className="pane-title" id="inspection-results-title">
+          {t.pane}
+        </h2>
+        {hasPeriod && <AggregationBasis />}
+        <RefreshStatus updatedAt={list.dataUpdatedAt} />
+      </div>
+      {/* 회차 · LOT 조건 안내 줄은 뺐다(사용자 2026-10-30 · 2026-11-02). */}
       {/* 집계는 기간이 필수다 — LOT 만으로 조회하면 요약을 비워 두고 그렇다고 말한다. */}
       {hasPeriod ? (
         <SummaryPanels
           filters={filters}
           queriesEnabled={queriesEnabled}
           onViewExpiredCalibration={onViewExpiredCalibration}
+          activeType={summaryType ?? ownSummaryType}
+          onActiveTypeChange={onSummaryTypeChange ?? setOwnSummaryType}
         />
       ) : (
         <p className="field-note">{t.summaryNeedsPeriod}</p>
@@ -247,45 +213,29 @@ export const ResultOverview = ({
       )}
       {!list.isError && !list.isPlaceholderData && list.data !== undefined && (
         <>
-          <div className="wide-table inspection-results-table" aria-busy={list.isFetching}>
-            <Table
-              density="compact"
-              caption={t.caption}
-              columns={columns}
-              rows={toInspectionResultTreeRows(list.data.items)}
-              getRowId={(row) => String(row.result.inspectionResultId)}
-              sort={toTableSort(sort)}
-              onSortChange={(next) => onSortChange(toServerSort(next))}
-              empty={<EmptyState size="sm" title={t.empty} />}
-            />
-          </div>
-          <div className="inspection-results-list-footer">
-            <p className="field-note">
-              {t.pageSummary(
-                number(list.data.page.total),
-                list.data.page.page,
-                Math.max(1, Math.ceil(list.data.page.total / Math.max(1, list.data.page.size))),
-              )}
-            </p>
-            <nav className="form-actions" aria-label={t.pagination}>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={list.data.page.page <= 1}
-                onClick={() => onPageChange(list.data.page.page - 1)}
-              >
-                {t.previous}
-              </Button>
-              <Button
-                variant="outlined"
-                size="sm"
-                disabled={list.data.page.page * list.data.page.size >= list.data.page.total}
-                onClick={() => onPageChange(list.data.page.page + 1)}
-              >
-                {t.next}
-              </Button>
-            </nav>
-          </div>
+          <ResultTable
+            rows={toInspectionResultTreeRows(list.data.items)}
+            labels={labels}
+            sort={toTableSort(sort)}
+            onSortChange={(next) => onSortChange(toServerSort(next))}
+            selectedId={selectedId}
+            onSelect={onSelectResult}
+            scrollX={scrollX}
+            isBusy={list.isFetching}
+          />
+          {/* 표 아래 쪽 이동 줄 — 총 건수 · 쪽 크기 · 처음/이전/n·N/다음/마지막(공용 부품 · 사용자 2026-10-30). */}
+          <PageNav
+            meta={{
+              page: list.data.page.page,
+              size: PAGE_SIZES.find((size) => size === list.data.page.size) ?? pageSize,
+              total: list.data.page.total,
+            }}
+            onChangePage={onPageChange}
+            onChangeSize={onPageSizeChange}
+            /* 건수 선택칸은 작게, 처음 · 이전 … 단추는 종전 크기(사용자 2026-11-02). */
+            controlSize="sm"
+            buttonSize="md"
+          />
         </>
       )}
     </section>
