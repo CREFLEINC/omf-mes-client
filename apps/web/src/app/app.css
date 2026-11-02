@@ -6658,12 +6658,17 @@ main:has(.iqc-skip-approval-detail) {
 
 /* 「대상 LOT 1건」 — 이름 옆 건수 배지(사용자 시안 · #223). */
 .disposition-count-badge {
+  display: inline-block;
   margin-left: var(--space-2);
   padding: 0 var(--space-2);
   border-radius: 999px;
   background: var(--surface-container-high);
   color: var(--on-surface-variant);
-  font: var(--type-label-md);
+  /* 제목보다 한참 작게(사용자 지시 · #223). */
+  font: var(--type-label-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  vertical-align: middle;
 }
 
 /* LOT 표 · 이력 표는 둥근 테두리 상자 안에. */
