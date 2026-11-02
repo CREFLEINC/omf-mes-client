@@ -70,7 +70,8 @@ export const LotDetailPane = ({
       : null;
   const fourMTypeLabel = useFourMChangeTypeLabel();
   const uomCodeOf = useUomCodeOf();
-  const [historyTab, setHistoryTab] = useState<HistoryTab>('usage');
+  /* 팝업(생산 LOT)에는 투입 이력 탭을 두지 않는다 — 생산 LOT 은 다시 투입되는 일이 드물다(사용자 2026-11-02). */
+  const [historyTab, setHistoryTab] = useState<HistoryTab>(inDialog ? 'timeline' : 'usage');
   /* 투입 이력에서 고른 생산 LOT — 그 LOT 의 상세 이력을 팝업으로 연다(사용자 2026-11-02). */
   const [openedLot, setOpenedLot] = useState<{
     lotId: number;
@@ -270,17 +271,18 @@ export const LotDetailPane = ({
         value={historyTab}
         onChange={(value) => setHistoryTab(value as HistoryTab)}
         items={[
-          {
-            value: 'usage',
-            label: genealogyText.usage.heading,
-            content:
-              historyTab === 'usage' ? (
-                <MaterialLotUsage
-                  lotId={lotId}
-                  {...(inDialog ? {} : { onOpenLot: setOpenedLot })}
-                />
-              ) : null,
-          },
+          ...(inDialog
+            ? []
+            : [
+                {
+                  value: 'usage',
+                  label: genealogyText.usage.heading,
+                  content:
+                    historyTab === 'usage' ? (
+                      <MaterialLotUsage lotId={lotId} onOpenLot={setOpenedLot} />
+                    ) : null,
+                },
+              ]),
           {
             value: 'timeline',
             label: t.timeline.pane,
