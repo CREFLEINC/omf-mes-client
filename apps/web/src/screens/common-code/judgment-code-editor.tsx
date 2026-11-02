@@ -722,7 +722,7 @@ export const JudgmentCodeEditor = ({
            * 판정 유형 검색 — 칸에서 바로 검색해서 고른다(omf-all-around#226 · 불량코드 탭과 같은 모양). 고른 코드가 검색어로
            * 들어가고, 「조회」를 눌러야 걸린다. 「전체」는 검색어를 푼다. 판정 유형은 몇 건뿐이라 받은 목록을 화면이 거른다.
            */}
-          <div className="field-cell judgment-code-search-field">
+          <div className="field-cell judgment-code-search-field search-select-cell">
             <span className="field-label">
               <label htmlFor={keywordFieldId}>{t.search.label}</label>
             </span>

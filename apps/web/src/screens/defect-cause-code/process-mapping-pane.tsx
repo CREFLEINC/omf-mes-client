@@ -504,7 +504,7 @@ export const ProcessMappingPane = () => {
            * 불량코드는 **칸에서 바로 검색해서 고른다**(omf-all-around#226) — 고른 코드가 검색어로 들어간다. 조회를 눌러야 걸린다.
            * 「전체」는 종전 × 자리다 — 검색어만 푼다.
            */}
-          <div className="field-cell defect-mapping-search-field">
+          <div className="field-cell defect-mapping-search-field search-select-cell">
             <span className="field-label">
               <label htmlFor={codeFieldId}>{t.mappingView.searchLabel}</label>
             </span>

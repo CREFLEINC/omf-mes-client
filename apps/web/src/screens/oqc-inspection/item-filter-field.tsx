@@ -27,7 +27,7 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
   const fieldId = useId();
 
   return (
-    <div className="field-cell">
+    <div className="field-cell search-select-cell">
       <label className="field-label" htmlFor={fieldId}>
         {t.item}
       </label>

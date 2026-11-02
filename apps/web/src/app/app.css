@@ -10527,6 +10527,18 @@ a.erp-send-chips:focus-visible {
 }
 
 /*
+ * 검색되는 선택 칸으로 바꾼 조건 칸(omf-all-around#226) — 선택 단추가 종전 검색 입력처럼 칸 폭을 채운다. 칸 폭 자체는
+ * 각 화면의 종전 규칙 그대로다. 다른 칸 안에 놓인 자리(부적합 처분 관리)는 종전 검색 입력의 기본 폭(14rem)을 지킨다.
+ */
+.field-cell.search-select-cell {
+  align-items: stretch;
+}
+
+.field-cell > .field-cell.search-select-cell {
+  width: 14rem;
+}
+
+/*
  * 창 안에서 **폭 전체를 쓰는** 안내 문장 — 창 머리의 설명과 필드 «묶음»의 설명 둘 다.
  *
  * `.field-note`(규범 4)는 **필드 하나에 딸린 사유**라 20rem에 갇혀 있다. 창 전체나 묶음

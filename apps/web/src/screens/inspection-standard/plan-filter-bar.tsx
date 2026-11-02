@@ -128,7 +128,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
          * 검사 기준은 **칸에서 바로 검색해서 고른다**(omf-all-around#226) — 검사 조회·판정의 품목 조건과 같은 모양.
          * 고른 기준의 코드가 검색어로 들어가 칸에 그 코드가 선다. 「전체」는 종전 × 자리다. 고르면 바로 조회한다(#208).
          */}
-        <div className="field-cell">
+        <div className="field-cell search-select-cell">
           <FieldLabel htmlFor={planSelectId} label={t.filters.searchLabel} />
           <PagedSelect
             id={planSelectId}
@@ -169,7 +169,7 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
          * 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다.
          * 지난 기준도 찾게 사용 중지 품목까지 찾는다. 칸 글자는 종전처럼 「이름 (코드)」다.
          */}
-        <div className="field-cell">
+        <div className="field-cell search-select-cell">
           <FieldLabel htmlFor={itemSelectId} label={t.filters.item} />
           <ItemSelect
             id={itemSelectId}

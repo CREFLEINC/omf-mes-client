@@ -30,7 +30,7 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
   const label = itemId === null ? '' : lookupDisplayLabelWithInactive(source, itemId);
 
   return (
-    <div className="field-cell lot-status-filter-item">
+    <div className="field-cell lot-status-filter-item search-select-cell">
       <label className="field-label" htmlFor={fieldId}>
         {t.lotFilter.labels.item}
       </label>

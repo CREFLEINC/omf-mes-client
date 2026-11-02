@@ -112,7 +112,7 @@ export const CodeFilterBar = ({
          * 코드는 **칸에서 바로 검색해서 고른다**(omf-all-around#226) — 고른 코드가 검색어로 들어간다. 「전체」는 종전 × 자리다.
          * 조회를 눌러야 목록에 걸린다(다른 조건과 같은 트리거).
          */}
-        <div className="field-cell defect-cause-code-field">
+        <div className="field-cell defect-cause-code-field search-select-cell">
           <span className="field-label">
             <label htmlFor={codeSelectId}>{adapter.labels.searchLabel}</label>
           </span>
@@ -128,7 +128,7 @@ export const CodeFilterBar = ({
          * 공정 — 칸에서 바로 검색해서 고른다(#226 · 종전 공정 검색 창과 같은 조회). 「전체」는 종전 × 자리다.
          * 다른 조건처럼 「조회」를 눌러야 목록에 걸린다(#209).
          */}
-        <div className="field-cell defect-cause-process-field">
+        <div className="field-cell defect-cause-process-field search-select-cell">
           <span className="field-label">
             <label htmlFor={processSelectId}>{t.filters.process}</label>
           </span>

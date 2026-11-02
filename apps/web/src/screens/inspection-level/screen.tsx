@@ -405,7 +405,7 @@ export const InspectionLevelScreen = () => {
           }}
         >
           {/* 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다. */}
-          <div className="field-cell">
+          <div className="field-cell search-select-cell">
             <label className="field-label" htmlFor={itemSelectId}>
               {t.list.keyword}
             </label>

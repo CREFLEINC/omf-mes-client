@@ -97,7 +97,7 @@ export const PqcFilterBar = ({
   return (
     <form className="filter-bar pqc-web-filter-bar" onSubmit={(event) => void submit(event)}>
       {/* 품목은 칸에서 바로 검색해 고른다 — 지난 의뢰를 찾으니 사용 중지 품목까지(종전 품목 선택 창과 같은 범위). */}
-      <div className="field-cell">
+      <div className="field-cell search-select-cell">
         <label className="field-label" htmlFor={itemFieldId}>
           {t.item}
         </label>

@@ -259,7 +259,7 @@ export const LotFilterBar = ({
            * 창고는 칸에서 바로 검색해서 고른다(omf-all-around#226 · 종전 검색 팝업과 같은 범위 · 코드 · 이름 일부로 거른다).
            * 다른 창고를 고르면 위치 조건은 비운다. 「전체」는 종전 × 자리다 — 창고 · 위치를 함께 푼다.
            */}
-          <div className="field-cell lot-status-filter-place">
+          <div className="field-cell lot-status-filter-place search-select-cell">
             <label className="field-label" htmlFor={warehouseFieldId}>
               {t.lotFilter.labels.warehouse}
             </label>

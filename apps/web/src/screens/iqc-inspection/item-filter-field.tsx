@@ -46,7 +46,7 @@ export const ItemFilterField = ({
   const typeCodes = joined === '' ? undefined : [joined];
 
   return (
-    <div className="field-cell">
+    <div className="field-cell search-select-cell">
       <label className="field-label" htmlFor={fieldId}>
         {t.item}
       </label>
