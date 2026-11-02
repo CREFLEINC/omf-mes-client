@@ -53,6 +53,7 @@ const baseProps = (): NonconformanceListProps => ({
   status: codes([['CODE-C', '합성 상태 C']]),
   isLoading: false,
   error: null,
+  meta: { page: 1, size: 20, total: rows.length },
   page: {
     page: 1,
     canPrev: false,

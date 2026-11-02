@@ -3,10 +3,24 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickRange } from '../../test/date-picker';
+import { pickDate } from '../../test/date-picker';
 import { FilterBar, type FilterBarProps } from './filter-bar';
 import type { PendingFilters } from './filters';
 import type { DispositionLookup } from './lookups';
+
+/* 품목은 검사 조회·판정과 같은 검색 창(#223) — 창 자체는 그 화면 시험이 맡고, 여기서는 고른 값이 조건에 실리는지만 본다. */
+vi.mock('../iqc-inspection/item-filter-field', () => ({
+  ItemFilterField: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+    <button
+      type="button"
+      aria-label="품목 검색"
+      data-value={value}
+      onClick={() => onChange('5001')}
+    >
+      {value}
+    </button>
+  ),
+}));
 
 const t = messages.dispositionDecision;
 
@@ -18,13 +32,6 @@ const applied: PendingFilters = {
   statusCode: '',
   sourceCode: '',
 };
-
-const items = (): DispositionLookup => ({
-  entries: [{ value: '5001', label: 'SYNTH-ITEM-1 · 합성 품목', isActive: true }],
-  truncated: false,
-  isError: false,
-  isLoading: false,
-});
 
 const emptyLookup = (): DispositionLookup => ({
   entries: [],
@@ -41,7 +48,6 @@ const baseProps = (): FilterBarProps => ({
   applied,
   severity: emptyLookup(),
   status: emptyLookup(),
-  items: items(),
   onApply: vi.fn(),
   onReset: vi.fn(),
 });
@@ -52,12 +58,12 @@ const renderBar = (overrides: Partial<FilterBarProps> = {}) => {
 };
 
 describe('FilterBar', () => {
-  it('기간이 필수라는 사실을 칸에 상시 붙인다(L-3)', () => {
+  it('접수 시작일 · 종료일 칸이 따로 선다 — 기간 필수 안내 문구는 두지 않는다(#223)', () => {
     renderBar();
 
-    expect(screen.getByLabelText(t.fields.period)).toHaveAccessibleDescription(
-      t.values.periodRequired,
-    );
+    expect(screen.getByLabelText(t.fields.openedFrom)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.fields.openedTo)).toBeInTheDocument();
+    expect(screen.queryByText(t.values.periodRequired)).toBeNull();
   });
 
   it('값 목록이 없는 코드 칸은 감추지 않고 사유를 붙인다(G-2)', () => {
@@ -71,9 +77,9 @@ describe('FilterBar', () => {
   it('기간과 품목을 함께 적용한다', async () => {
     const { props, user } = renderBar();
 
-    await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-05');
-    await user.click(screen.getByLabelText(t.fields.item));
-    await user.click(screen.getByRole('option', { name: 'SYNTH-ITEM-1 · 합성 품목' }));
+    await pickDate(user, screen.getByLabelText(t.fields.openedFrom), '2026-08-01');
+    await pickDate(user, screen.getByLabelText(t.fields.openedTo), '2026-08-05');
+    await user.click(screen.getByRole('button', { name: '품목 검색' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     expect(props.onApply).toHaveBeenCalledWith({
@@ -100,7 +106,7 @@ describe('FilterBar', () => {
 
     rerender(<FilterBar {...props} applied={{ ...applied, itemId: '5001' }} />);
 
-    expect(screen.getByLabelText(t.fields.item)).toHaveTextContent('SYNTH-ITEM-1 · 합성 품목');
+    expect(screen.getByRole('button', { name: '품목 검색' })).toHaveAttribute('data-value', '5001');
   });
 
   /*
@@ -118,12 +124,12 @@ describe('FilterBar', () => {
     expect(props.onApply).toHaveBeenCalledWith(expect.objectContaining({ sourceCode: 'RETURN' }));
   });
 
-  it('원천 칸에 두 갈래뿐이라는 사실을 상시 붙인다 — 값 목록이 비어서가 아니다', () => {
+  it('원천 칸은 선택지가 채워져 있다 — 「두 갈래만」 상시 안내는 걷었다(#223)', () => {
     renderBar();
 
     const source = screen.getByLabelText(t.fields.sourceCode);
 
-    expect(source).toHaveAccessibleDescription(t.sourceNote);
+    expect(source).not.toHaveAccessibleDescription();
     /* 선택지가 채워져 있으므로 G-2의 「준비 중」 자리는 비어 있어야 한다. */
     expect(source).not.toHaveTextContent(t.codePlaceholder);
   });

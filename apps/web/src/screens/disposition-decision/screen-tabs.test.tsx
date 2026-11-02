@@ -37,31 +37,24 @@ describe('DispositionDecisionScreen 탭', () => {
     renderScreen();
 
     /* 탭 줄 오른쪽 끝의 칩 둘(#223) — 켜진 칩이 지금 보는 쪽이다. */
-    expect(await screen.findByRole('button', { name: t.tabs.pending })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: /^판정 대기/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('button', { name: t.tabs.history })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /^처리 이력/ })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
   });
 
-  it('⛔ 판정 대기 탭에서는 처리 이력을 부르지 않는다 — 보지 않는 목록이다', async () => {
+  /* 탭 줄 칩은 두 목록의 건수를 함께 보인다(사용자 지시 · #223) — 보지 않는 쪽도 첫 쪽 하나는 부른다. */
+  it('탭 줄 칩에 판정 대기 건수가 붙고, 처리 이력 건수를 위해 그 목록도 부른다', async () => {
     renderScreen();
-    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
 
-    expect(historyCalls()).toBe(0);
-  });
-
-  it('⛔ 처리 이력 탭에서는 판정 대기 목록을 부르지 않는다', async () => {
-    renderScreen('/quality/dispositions?tab=history');
-
-    expect(await screen.findByRole('heading', { name: t.panes.history })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.tabs.pendingCount(1) })).toBeInTheDocument();
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });
-    expect(pendingCalls()).toBe(0);
   });
 
   it('처리 이력 탭은 판정일 기간을 반열림으로 싣는다', async () => {
@@ -82,7 +75,7 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen();
     await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
 
-    await user.click(screen.getByRole('button', { name: t.tabs.history }));
+    await user.click(screen.getByRole('button', { name: /^처리 이력/ }));
 
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
@@ -93,8 +86,8 @@ describe('DispositionDecisionScreen 탭', () => {
     const { user } = renderScreen('/quality/dispositions?nonconformanceId=41');
     await screen.findByText('도장 표면 박리');
 
-    await user.click(screen.getByRole('button', { name: t.tabs.history }));
-    await user.click(screen.getByRole('button', { name: t.tabs.pending }));
+    await user.click(screen.getByRole('button', { name: /^처리 이력/ }));
+    await user.click(screen.getByRole('button', { name: /^판정 대기/ }));
 
     expect(await screen.findByText(t.detail.select)).toBeInTheDocument();
   });

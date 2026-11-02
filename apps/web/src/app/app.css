@@ -9219,15 +9219,23 @@ body.po-board-resizing.is-row-resize {
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
 .iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']):hover > td,
+.disposition-pending-table tbody tr:has(.link-cell[aria-current='true']) > td,
+.disposition-pending-table tbody tr:has(.link-cell[aria-current='true']):hover > td {
   background: var(--semantic-info-container);
 }
 
 /* 품질 승인 처리 목록(#186)도 같은 표시다 — 고른 요청이 입하 예정 조회의 고른 발주처럼 보인다. */
 .board-table tbody tr:has(.board-table-pick[aria-current='true']) > td:first-child,
 .quality-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
-.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
+.iqc-skip-approval-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child,
+.disposition-pending-table tbody tr:has(.link-cell[aria-current='true']) > td:first-child {
   box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
+/* 처분 판정 대기 목록도 줄 아무 곳이나 눌러 고른다(#223) — 누르는 자리임을 손가락 모양으로 알린다. */
+.disposition-pending-table tbody tr {
+  cursor: pointer;
 }
 
 .po-board-lines tbody tr:has([data-matched]) > td {

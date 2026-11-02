@@ -8,7 +8,7 @@ import { dispositionTypeLabel, type CodeOption } from './disposition-codes';
 import type { HistoryFilters } from './history-filters';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
-import { PageNav } from './page-nav';
+import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import type { PageView } from './pagination';
 import type { DecisionRow } from './types';
 
@@ -18,6 +18,8 @@ export interface HistoryTabProps {
   rows: DecisionRow[];
   uoms: DispositionLookup;
   page: PageView;
+  /** 표 아래 쪽 이동 줄 — 판정 대기 목록과 같은 모양(#223). */
+  meta: PageNavMeta;
   isLoading: boolean;
   error: unknown;
   onApply: (filters: HistoryFilters) => void;
@@ -31,6 +33,7 @@ export const HistoryTab = ({
   rows,
   uoms,
   page,
+  meta,
   isLoading,
   error,
   onApply,
@@ -114,7 +117,7 @@ export const HistoryTab = ({
             }
           />
         </div>
-        <PageNav view={page} label={t.page.label} onChange={onChangePage} />
+        <ListPageNav meta={meta} controlSize="md" onChangePage={onChangePage} />
       </div>
     );
   };

@@ -14,6 +14,10 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     label: 'Xem đánh giá quyết định xử lý',
     pending: 'Chờ đánh giá',
     history: 'Lịch sử xử lý',
+    pendingCount: (count: number | undefined): string =>
+      count === undefined ? 'Chờ đánh giá' : `Chờ đánh giá ${String(count)}`,
+    historyCount: (count: number | undefined): string =>
+      count === undefined ? 'Lịch sử xử lý' : `Lịch sử xử lý ${String(count)}`,
   },
   panes: {
     filter: 'Điều kiện tra cứu',
@@ -27,6 +31,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   },
   fields: {
     period: 'Ngày tiếp nhận',
+    openedFrom: 'Ngày tiếp nhận từ',
+    openedTo: 'Ngày tiếp nhận đến',
     decidedPeriod: 'Ngày đánh giá',
     item: 'Mặt hàng',
     severityCode: 'Mức nghiêm trọng',
@@ -58,8 +64,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   codeTruncated:
     'Chỉ nhận được một phần giá trị gốc. Giá trị không có trong danh sách thì không chọn được',
   dispositionPending: 'Lựa chọn quyết định xử lý chưa sẵn sàng nên chưa lưu được đánh giá',
-  sourceNote:
-    'Chỉ có hai nhánh thành phẩm · trả hàng. Không phù hợp của sửa chữa · vật tư không vào danh sách này.',
   actions: {
     selectRow: (nonconformanceNo: string): string => `Chọn ${nonconformanceNo}`,
     save: 'Lưu đánh giá',

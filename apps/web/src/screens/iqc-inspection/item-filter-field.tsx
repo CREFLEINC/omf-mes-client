@@ -11,6 +11,8 @@ interface ItemFilterFieldProps {
   /** 고른 품목 번호. 비면 「전체」. */
   value: string;
   onChange: (value: string) => void;
+  /** 품목 검색 창에서 뺄 유형 — IQC 는 제품(FINISHED)을 뺀다(사용자 지시 2026-10-30). 비우면 다 낸다. */
+  excludeItemTypeCodes?: readonly string[];
 }
 
 /**
@@ -27,7 +29,11 @@ interface ItemFilterFieldProps {
  * 고른 품목의 이름은 **품목 상세로 푼다** — 주소로 들어와 창을 거치지 않은 값도 이름이 선다.
  * 지난 의뢰를 찾는 조건이라 사용 중지 품목까지 찾고(`includeInactive`), 가용 재고 열은 뺀다.
  */
-export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
+export const ItemFilterField = ({
+  value,
+  onChange,
+  excludeItemTypeCodes = [],
+}: ItemFilterFieldProps) => {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const itemId = value === '' ? null : Number(value);
   const names = useItemNames([itemId]);
@@ -56,8 +62,7 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
           multiple={false}
           /* 검색 · 표 · 쪽 넘김 · 취소/선택만 — 닫기(X)와 꼬리말 안내를 걷는다(#133 · 검사기준 검색 창과 같은 모양). */
           compact
-          /* IQC 는 들어오는 자재를 검사한다 — 제품 유형은 고를 일이 없다(사용자 지시 2026-10-30). */
-          excludeItemTypeCodes={['FINISHED']}
+          excludeItemTypeCodes={excludeItemTypeCodes}
           includeInactive
           showAvailability={false}
           /* 목록 표 아래와 같은 쪽 이동 줄(사용자 지시 2026-10-28 · #197). */

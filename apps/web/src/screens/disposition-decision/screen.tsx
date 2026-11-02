@@ -188,6 +188,16 @@ export const DispositionDecisionScreen = ({
 
   const list = usePendingNonconformances(query);
   const history = useDecisionHistory(historyQuery);
+  /*
+   * 탭 줄 칩의 건수(사용자 지시 · #223) — 지금 조건의 첫 쪽 조회 총수. 보고 있는 쪽이 첫 쪽이면 위 목록과 같은
+   * 조회라 다시 나가지 않는다. 보지 않는 쪽은 첫 쪽 하나만 부른다.
+   */
+  const pendingCount = usePendingNonconformances(
+    useMemo(() => toPendingListQuery(filters, 1, zone), [filters, zone]),
+  ).data?.page.total;
+  const historyCount = useDecisionHistory(
+    useMemo(() => toHistoryListQuery(historyFilters, 1, zone), [historyFilters, zone]),
+  ).data?.page.total;
   const detail = useNonconformanceDetail(selectedId);
   const decisions = useDispositionDecisions(selectedId);
   const items = useItemLookup();
@@ -388,7 +398,9 @@ export const DispositionDecisionScreen = ({
           aria-pressed={tab === value}
           onClick={() => setSearchParams((current) => withTab(current, value))}
         >
-          {value === 'pending' ? t.tabs.pending : t.tabs.history}
+          {value === 'pending'
+            ? t.tabs.pendingCount(pendingCount)
+            : t.tabs.historyCount(historyCount)}
         </Chip>
       ))}
     </div>
@@ -447,7 +459,6 @@ export const DispositionDecisionScreen = ({
               applied={filters}
               severity={severity}
               status={status}
-              items={items}
               onApply={(next) => apply(next)}
               onReset={() =>
                 apply({
@@ -478,6 +489,7 @@ export const DispositionDecisionScreen = ({
                   ) : null
                 }
                 page={pageView}
+                meta={list.data?.page ?? { page, size: 0, total: 0 }}
                 selectedId={selectedId}
                 onSelect={(id) =>
                   setSearchParams((current) =>
@@ -584,6 +596,7 @@ export const DispositionDecisionScreen = ({
           rows={historyRows}
           uoms={uoms}
           page={toPageView(history.data?.page ?? { page, size: 0, total: 0 }, historyRows.length)}
+          meta={history.data?.page ?? { page, size: 0, total: 0 }}
           isLoading={history.isPending && historyQuery !== null}
           error={history.isError ? history.error : null}
           onApply={(next) => applyHistory(next)}

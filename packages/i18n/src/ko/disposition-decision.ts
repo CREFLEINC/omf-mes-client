@@ -5,6 +5,11 @@ export const dispositionDecision = {
     label: '처분 판정 보기',
     pending: '판정 대기',
     history: '처리 이력',
+    /** 탭 줄 칩 — 「판정 대기 3」(#223). 건수를 아직 모르면 이름만. */
+    pendingCount: (count: number | undefined): string =>
+      count === undefined ? '판정 대기' : `판정 대기 ${String(count)}`,
+    historyCount: (count: number | undefined): string =>
+      count === undefined ? '처리 이력' : `처리 이력 ${String(count)}`,
   },
   panes: {
     filter: '조회 조건',
@@ -18,6 +23,8 @@ export const dispositionDecision = {
   },
   fields: {
     period: '접수일',
+    openedFrom: '접수 시작일',
+    openedTo: '접수 종료일',
     decidedPeriod: '판정일',
     item: '품목',
     severityCode: '심각도',
@@ -57,7 +64,6 @@ export const dispositionDecision = {
    * ⚠ 설계 원문은 업무 구분 번호를 앞에 달았으나(「04 제품·04 반품」) 화면 문구에는 내부
    * 구성을 드러내지 않는다(이 파일 머리의 작성 규칙) — 뜻을 그대로 두고 번호만 걷었다.
    */
-  sourceNote: '제품·반품 두 갈래만 옵니다. 수리·자재 부적합은 이 목록으로 들어오지 않습니다.',
   actions: {
     selectRow: (nonconformanceNo: string): string => `${nonconformanceNo} 선택`,
     save: '판정 저장',

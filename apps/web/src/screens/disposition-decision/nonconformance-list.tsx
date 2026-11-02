@@ -3,9 +3,9 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { codeValueLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
-import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import { dispositionProgressLabel, type NonconformanceRow } from './types';
 
@@ -18,6 +18,8 @@ export interface NonconformanceListProps {
   isLoading: boolean;
   error: ReactNode;
   page: PageView;
+  /** 표 아래 쪽 이동 줄 — 다른 목록과 같은 「총 N건 · 처음 · 이전 · n/N · 다음 · 마지막」(#223). */
+  meta: PageNavMeta;
   selectedId: number | null;
   onSelect: (nonconformanceId: number) => void;
   onChangePage: (page: number) => void;
@@ -36,6 +38,7 @@ export const NonconformanceList = ({
   isLoading,
   error,
   page,
+  meta,
   selectedId,
   onSelect,
   onChangePage,
@@ -114,7 +117,18 @@ export const NonconformanceList = ({
        * 되살아났다.** 축이 `sourceCode`로 정의돼 필터 바에 섰으므로(W-03-10 §5-4 · #648)
        * 그 자리에 남겨 두면 화면이 «있는 기능»을 없다고 말하게 된다.
        */}
-      <div className="disposition-table disposition-pending-table">
+      {/*
+       * 줄 아무 곳이나 눌러도 고른다 — 품질 승인 처리 목록과 같은 방식(#223). DS 표에 줄 클릭이 없어 눌린 줄의
+       * 부적합번호 단추로 넘긴다. 고른 줄을 다시 누르면 풀린다(`onSelect` 가 같은 번호면 선택을 지운다).
+       */}
+      <div
+        className="disposition-table disposition-pending-table"
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target.closest('tbody tr')?.querySelector<HTMLButtonElement>('.link-cell')?.click();
+        }}
+      >
         <Table
           density="compact"
           caption={<span className="disposition-table-caption">{t.panes.list}</span>}
@@ -124,7 +138,7 @@ export const NonconformanceList = ({
           empty={empty}
         />
       </div>
-      <PageNav view={page} label={t.page.label} onChange={onChangePage} />
+      <ListPageNav meta={meta} controlSize="md" onChangePage={onChangePage} />
     </div>
   );
 };

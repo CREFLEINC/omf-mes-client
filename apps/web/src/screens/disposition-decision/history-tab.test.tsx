@@ -37,6 +37,7 @@ const baseProps = (): HistoryTabProps => ({
   dispositionOptions: [],
   rows,
   uoms: uoms(),
+  meta: { page: 1, size: 20, total: rows.length },
   page: {
     page: 1,
     canPrev: false,
