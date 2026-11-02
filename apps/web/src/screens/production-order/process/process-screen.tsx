@@ -321,7 +321,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const lastSearch = useMemo(() => rememberedWorklistSearch(), []);
   const lastFilters = useMemo(() => readWorklistFilters(lastSearch), [lastSearch]);
   const nextList = useWorklist(lastFilters);
-  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', lastFilters.plant);
   const nextOrder = (() => {
     const items = nextList.data?.items ?? [];
     const index = items.findIndex((entry) => entry.productionOrderNo === order.productionOrderNo);

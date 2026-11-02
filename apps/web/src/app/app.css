@@ -24153,8 +24153,9 @@ body:has(.page-nav-size [aria-expanded="true"])
   color: var(--on-surface-variant);
 }
 
+/* 공장, 번호, 납기, 품목 네 칸과 버튼은 1280px 한 줄에 들어가지 않는다. 칸 폭을 줄이지 않고 버튼을 다음 줄 오른쪽 끝으로 내린다. */
 .filter-bar.erp-wo-filter-bar {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: 0;
 }
@@ -24184,12 +24185,26 @@ body:has(.page-nav-size [aria-expanded="true"])
   cursor: help;
 }
 
-/* 사유 도움말은 사유마다 한 줄이다. */
-.reason-help {
+/* 사유 도움말 말풍선: 사유마다 한 줄. 모양은 DS 툴팁과 같고, 위치는 `ReasonHelpBubble`이 정한다. */
+.reason-help-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  white-space: normal;
+  width: max-content;
+  max-width: 22rem;
+  padding: var(--space-1) var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
 }
 
 .erp-wo-summary {

@@ -37,17 +37,17 @@ export const screenPatterns = {
   /** C-18 일괄 동작 결과 */
   bulkResult: {
     summary: (processed: number, partial: number, skipped: number, failed: number): string =>
-      `처리 ${String(processed)}건, 일부 처리 ${String(partial)}건, 건너뜀 ${String(skipped)}건, 실패 ${String(failed)}건`,
+      `처리 ${String(processed)}건, 일부 처리 ${String(partial)}건, 미처리 ${String(skipped)}건, 실패 ${String(failed)}건`,
     items: (name: string, done: number, left: number): string =>
       `${name} ${String(done)}건 처리, ${String(left)}건 남음`,
     outcome: {
       processed: '처리',
       partial: '일부 처리',
-      skipped: '건너뜀',
+      skipped: '미처리',
       failed: '실패',
     },
     onlyPartial: '일부 처리만 보기',
-    onlySkipped: '건너뜀만 보기',
+    onlySkipped: '미처리만 보기',
     onlyFailed: '실패만 보기',
     showAll: '전체 보기',
     close: '결과 닫기',
