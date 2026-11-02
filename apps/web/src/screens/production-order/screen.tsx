@@ -158,6 +158,13 @@ export const ProductionOrderScreen = ({
       ? t.bulk.reasons.noneChecked
       : null;
 
+  const hasPlanQuantities = facts.some(
+    (fact) =>
+      fact.confirmedPlanQty !== undefined ||
+      fact.draftPlanQty !== undefined ||
+      fact.remainingQty !== undefined,
+  );
+
   const columns: Column<WorklistRow>[] = [
     {
       key: 'orderNo',
@@ -192,7 +199,7 @@ export const ProductionOrderScreen = ({
       key: 'itemName',
       header: t.list.columns.itemName,
       render: (row) => (
-        <span className="ellipsis-cell" title={row.itemName}>
+        <span className="ellipsis-cell" title={`${row.itemName} (${row.itemCode})`}>
           {row.itemName}
         </span>
       ),
@@ -203,6 +210,18 @@ export const ProductionOrderScreen = ({
       align: 'end',
       render: (row) => <span className="nowrap-cell">{row.qtyLabel}</span>,
     },
+    ...(['confirmedPlanQty', 'draftPlanQty', 'remainingQty'] as const).map(
+      (key): Column<WorklistRow> => ({
+        key,
+        header: t.list.columns[key],
+        align: 'end',
+        render: (row) => (
+          <span className="nowrap-cell">
+            {typeof row.fact[key] === 'number' ? quantity(row.fact[key] as number) : '—'}
+          </span>
+        ),
+      }),
+    ),
     {
       key: 'dueDate',
       header: t.list.columns.dueDate,
@@ -372,7 +391,11 @@ export const ProductionOrderScreen = ({
               className="erp-wo-table"
               stickyLastColumn
               caption={<span className="visually-hidden">{t.list.caption}</span>}
-              columns={columns}
+              columns={columns.filter((column) =>
+                hasPlanQuantities
+                  ? !['itemCode', 'dueDate', 'pending'].includes(column.key)
+                  : !['confirmedPlanQty', 'draftPlanQty', 'remainingQty'].includes(column.key),
+              )}
               rows={rows}
               getRowId={(row) => String(row.fact.productionOrderId)}
               rowLabel={(row) => t.list.openRow(row.fact.productionOrderNo)}

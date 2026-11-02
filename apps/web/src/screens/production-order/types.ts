@@ -27,6 +27,9 @@ export interface ProductionOrderFact {
   plantId: number | null;
   itemId: number;
   orderQty: number;
+  confirmedPlanQty?: number | null;
+  draftPlanQty?: number | null;
+  remainingQty?: number | null;
   uomId: number;
   dueDate: string | null;
   statusCode: string;

@@ -147,6 +147,7 @@ export interface ProcessPageProps {
   summary: ReactNode;
   /** 처리 머리 오른쪽의 보조 동작(재실행 등). 채움 버튼을 두지 않는다. */
   headerActions?: ReactNode;
+  stepNavigation?: ReactNode;
   steps: ProcessStep[];
   onSelectStep: (key: string) => void;
   /** 지난 단계에서 정한 값만. 단계별 묶음과 「라벨 값」 쌍. */
@@ -162,6 +163,7 @@ export const ProcessPage = ({
   badges,
   summary,
   headerActions,
+  stepNavigation,
   steps,
   onSelectStep,
   pastSummary,
@@ -188,7 +190,7 @@ export const ProcessPage = ({
       </div>
       <div className="process-page-summary">{summary}</div>
     </header>
-    <ProcessStepper steps={steps} onSelect={onSelectStep} />
+    {stepNavigation ?? <ProcessStepper steps={steps} onSelect={onSelectStep} />}
     {pastSummary !== undefined && pastSummary.length > 0 && <PastSummary groups={pastSummary} />}
     <div className="process-page-body">{children}</div>
     {actionBar}

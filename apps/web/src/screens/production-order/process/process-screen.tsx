@@ -6,7 +6,7 @@
  *       T-W-C 4M 편집 영역은 위치 묶음을 펼치면(라인에 기본 위치가 없을 때) 1280×800에 들어가지 않아
  *       편집 영역 안에서만 스크롤하고 머리를 고정한다(높이가 모자랄 때 ②, 구성안 8장).
  */
-import { AlertBanner, Button, SkeletonText, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -550,6 +550,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             <PlanStep
               rows={editor.rows}
               orderQty={order.orderQty}
+              confirmedQty={order.confirmedPlanQty}
               uomLabel={uomLabelOf(order.uomId)}
               plantId={order.plantId}
               lines={planLines}
@@ -602,6 +603,13 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             planDateOf={(planId) =>
               planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
             }
+            lineNameOf={(lineId) => {
+              const line = planLines.find((entry) => entry.id === lineId);
+              return line === undefined
+                ? tp.plan.workspace.unassigned
+                : named(line.name, line.code);
+            }}
+            uomLabelOf={uomLabelOf}
             selectedId={assignSelected}
             onSelect={setAssignSelected}
             onDirtyChange={setAssignDirty}
@@ -781,6 +789,22 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             {tp.rerunAutoPlan}
           </Button>
         ) : undefined
+      }
+      stepNavigation={
+        step === 'done' ? undefined : (
+          <Tabs
+            className="erp-wo-stage-tabs"
+            aria-label={messages.screenPatterns.processPage.steps}
+            value={step}
+            onChange={(key) => goTo(key as ProcessStepKey)}
+            items={steps.map((entry) => ({
+              value: entry.key,
+              label: entry.label,
+              content: null,
+              disabled: !canEnter(entry.key as ProcessStepKey, judgments),
+            }))}
+          />
+        )
       }
       steps={steps}
       onSelectStep={goTo}

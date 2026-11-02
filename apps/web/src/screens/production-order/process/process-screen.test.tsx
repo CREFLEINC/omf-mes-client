@@ -316,13 +316,7 @@ const renderAt = (route: string, state: World) => {
 };
 
 const currentStep = async (name: string) =>
-  waitFor(() =>
-    expect(
-      within(screen.getByRole('list', { name: messages.screenPatterns.processPage.steps }))
-        .getAllByText(name)
-        .some((element) => element.getAttribute('aria-current') === 'step'),
-    ).toBe(true),
-  );
+  waitFor(() => expect(screen.getByRole('tab', { name, selected: true })).toBeInTheDocument());
 
 const actionBar = () =>
   screen.getByRole('button', { name: messages.screenPatterns.actionBar.prev });

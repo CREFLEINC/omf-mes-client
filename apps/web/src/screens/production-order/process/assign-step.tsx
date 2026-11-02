@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 
 import { SelectableTable } from '../../../patterns/selectable-table';
 import { AssignEditor } from './assign-editor';
-import { nextIncompleteId } from './process-model';
+import { formatQty, nextIncompleteId } from './process-model';
 import type { OrderWorkOrder } from './queries';
 
 const t = messages.erpWorkOrderFlow.process.assign;
@@ -14,6 +14,8 @@ export interface AssignStepProps {
   blockedIds: ReadonlySet<number> | undefined;
   plantId: number | null;
   planDateOf: (productionPlanId: number) => string | null;
+  lineNameOf?: (lineId: number | null) => string;
+  uomLabelOf?: (uomId: number) => string;
   selectedId: number | null;
   onSelect: (workOrderId: number) => void;
   onDirtyChange: (dirty: boolean) => void;
@@ -33,6 +35,8 @@ export const AssignStep = ({
   blockedIds,
   plantId,
   planDateOf,
+  lineNameOf,
+  uomLabelOf,
   selectedId,
   onSelect,
   onDirtyChange,
@@ -74,8 +78,16 @@ export const AssignStep = ({
       key: 'operation',
       header: t.columns.operation,
       render: (row) => (
-        <span className="ellipsis-cell" title={row.operationName}>
-          {row.operationName}
+        <span className="erp-wo-assign-target">
+          <span className="ellipsis-cell" title={row.workOrderNo}>
+            {row.workOrderNo}
+          </span>
+          <small>{row.operationName}</small>
+          <small>
+            {planDateOf(row.productionPlanId) ?? '—'} / {formatQty(row.orderQty)}{' '}
+            {uomLabelOf?.(row.uomId) ?? ''}
+          </small>
+          {lineNameOf !== undefined && <small>{lineNameOf(row.productionLineId ?? null)}</small>}
         </span>
       ),
     },
@@ -102,7 +114,9 @@ export const AssignStep = ({
   return (
     <div className="erp-wo-assign-layout">
       <section className="pane erp-wo-assign-list" aria-label={t.listHeading}>
-        <h2 className="section-title">{t.listHeading}</h2>
+        <h2 className="section-title">
+          {t.listHeading} <span className="erp-wo-assign-count">{workOrders.length}</span>
+        </h2>
         <SelectableTable
           columns={columns}
           rows={workOrders}

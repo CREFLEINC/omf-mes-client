@@ -17,6 +17,7 @@ export interface OrderWorkOrder {
   workOrderId: number;
   workOrderNo: string;
   productionPlanId: number;
+  productionLineId?: number | null;
   operationName: string;
   orderQty: number;
   uomId: number;
@@ -37,6 +38,7 @@ const toOrderWorkOrder = (item: WorkOrder): OrderWorkOrder => ({
   workOrderId: item.workOrderId,
   workOrderNo: item.workOrderNo,
   productionPlanId: item.productionPlanId,
+  productionLineId: item.productionLineId ?? null,
   operationName: item.routingOperationName ?? '',
   orderQty: item.orderQty,
   uomId: item.uomId,

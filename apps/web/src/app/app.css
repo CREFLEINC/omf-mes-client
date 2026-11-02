@@ -24623,6 +24623,272 @@ body:has(.page-nav-size [aria-expanded="true"])
   }
 }
 
+
+/* 내용 없는 탭 패널 여백은 빼고 현재 단계 본문 한 곳에만 내용을 둔다. */
+.erp-wo-stage-tabs [role="tabpanel"],
+.erp-wo-plan-toolbar [role="tabpanel"] {
+  display: none;
+}
+
+.erp-wo-plan-editor {
+  padding: var(--space-3);
+}
+
+.erp-wo-plan-editor .section-title {
+  font: var(--type-title-sm);
+}
+
+.erp-wo-plan-remarks > summary {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.erp-wo-assign-list table {
+  table-layout: fixed;
+}
+
+/* W-02-01: 시안의 정보 구조를 기존 DS 탭·폼·표로 구성한다. */
+.erp-wo-stage-tabs {
+  flex: none;
+  margin-block: var(--space-2);
+}
+
+.erp-wo-plan-workspace {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  align-content: start;
+}
+
+.erp-wo-plan-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.erp-wo-plan-toolbar > :first-child {
+  min-width: 0;
+}
+
+.erp-wo-plan-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-plan-totals > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.erp-wo-plan-totals dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-plan-totals dd {
+  margin: 0;
+  font: var(--type-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-wo-plan-note {
+  margin: 0;
+}
+
+.erp-wo-plan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem);
+  gap: var(--space-4);
+  min-width: 0;
+  align-items: start;
+}
+
+.erp-wo-plan-board,
+.erp-wo-plan-editor {
+  min-width: 0;
+}
+
+.erp-wo-plan-editor {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.erp-wo-plan-editor .section-title {
+  margin: 0;
+}
+
+.erp-wo-plan-editor-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.erp-wo-plan-editor-title > .mono-cell {
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-plan-editor > *,
+.erp-wo-plan-editor .field-cell > *,
+.erp-wo-plan-editor input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.erp-wo-plan-editor input {
+  width: 100%;
+}
+
+.erp-wo-plan-grid table {
+  table-layout: fixed;
+}
+
+.erp-wo-plan-grid .ellipsis-cell {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.erp-wo-plan-total {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+  text-align: right;
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-wo-week-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font: var(--type-body-sm);
+}
+
+.erp-wo-week-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.erp-wo-week-scroll {
+  overflow-x: auto;
+}
+
+.erp-wo-week-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-label-sm);
+}
+
+.erp-wo-week-table th,
+.erp-wo-week-table td {
+  padding: var(--space-1);
+  border: 1px solid var(--outline-variant);
+  vertical-align: top;
+}
+
+.erp-wo-week-table thead th {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  text-align: center;
+  font-weight: 500;
+}
+
+.erp-wo-week-table thead th > span {
+  display: block;
+}
+
+.erp-wo-week-table tbody th > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-wo-week-table td {
+  height: 7rem;
+}
+
+.erp-wo-week-plan {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  min-width: 0;
+  margin-bottom: var(--space-1);
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.erp-wo-week-plan > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+}
+
+.erp-wo-week-plan[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.erp-wo-plan-outside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-assign-target {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.erp-wo-assign-target > small {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+@media (max-width: 1100px) {
+  .erp-wo-plan-layout {
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: var(--space-3);
+  }
+
+  .erp-wo-plan-board {
+    padding: var(--space-2);
+  }
+}
+
+@media (max-width: 760px) {
+  .erp-wo-plan-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /*
  * 제품 검사표 조회(W-03-13 · omf-all-around#89) — 요약·머리 값은 이름·값 두 쌍씩 한 줄.
  */

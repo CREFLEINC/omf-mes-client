@@ -5,7 +5,12 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { ProductionOrderFact } from './types';
 
-type ProductionOrder = components['schemas']['ProductionOrder'];
+// 서버 집계 칸은 생성 타입 전달 전까지 읽기 전용으로 보존한다.
+type ProductionOrder = components['schemas']['ProductionOrder'] & {
+  confirmedPlanQty?: number;
+  draftPlanQty?: number;
+  remainingQty?: number;
+};
 
 export const productionOrderKeys = {
   all: ['production-orders'] as const,
@@ -23,6 +28,15 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   plantId: order.plantId ?? null,
   itemId: order.itemId,
   orderQty: order.orderQty,
+  ...(typeof order.confirmedPlanQty === 'number' && Number.isFinite(order.confirmedPlanQty)
+    ? { confirmedPlanQty: order.confirmedPlanQty }
+    : {}),
+  ...(typeof order.draftPlanQty === 'number' && Number.isFinite(order.draftPlanQty)
+    ? { draftPlanQty: order.draftPlanQty }
+    : {}),
+  ...(typeof order.remainingQty === 'number' && Number.isFinite(order.remainingQty)
+    ? { remainingQty: order.remainingQty }
+    : {}),
   uomId: order.uomId,
   dueDate: order.dueDate ?? null,
   statusCode: order.statusCode,

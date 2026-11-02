@@ -56,6 +56,26 @@ describe('toProductionOrderFact', () => {
   });
 });
 
+describe('서버 생산계획 집계 보존', () => {
+  it('미확정 집계를 중복 차감하지 않고 음수 미계획 수량도 보존한다', () => {
+    const input = {
+      ...productionOrder(101),
+      confirmedPlanQty: 8,
+      draftPlanQty: 5,
+      remainingQty: -0.5,
+    };
+    expect(toProductionOrderFact(input)).toMatchObject({
+      confirmedPlanQty: 8,
+      draftPlanQty: 5,
+      remainingQty: -0.5,
+    });
+  });
+  it('집계 필드가 없는 응답을 임의의 0으로 표시하지 않는다', () => {
+    expect(toProductionOrderFact(productionOrder(101)).confirmedPlanQty).toBeUndefined();
+    expect(toProductionOrderFact(productionOrder(101)).remainingQty).toBeUndefined();
+  });
+});
+
 describe('useProductionOrderDetail', () => {
   it('선택 전에는 상세 요청을 보내지 않는다', async () => {
     const fetch: StubFetch = async () => {

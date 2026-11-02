@@ -1,6 +1,16 @@
-import { AlertBanner, Button, Chip, DatePicker, TextField, type Column } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  DatePicker,
+  Tabs,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
+import { useEffect, useId, useState } from 'react';
 
+import { plantToday } from '../../../patterns/plant-time';
 import { ReferenceField } from '../../../patterns/reference-picker';
 import { SelectableTable } from '../../../patterns/selectable-table';
 import type {
@@ -9,49 +19,46 @@ import type {
 } from '../../production-plan/editor-model';
 import type { ProductionPlanEditorStateRow } from '../../production-plan/editor-state';
 import { formatQty } from './process-model';
+import { planWeek, shiftPlanDate } from './plan-view-model';
 import { useLineSource } from './reference-sources';
 
-/**
- * 생산계획 단계 본문. 한 행 입력 칸은 계획일, 계획 수량, 라인, 비고 넷(C-16). BOM과 Routing은 BOM·Routing 단계에서 정한다.
- * 행에는 저장과 확정 버튼이 없다. 하단 바 [전개 확정]이 바뀐 줄을 함께 저장하고 확정한다(T-W-C 중간 단계의 확정).
- * 행 동작은 작성 중 계획의 [삭제] 하나(오른쪽 고정 열, C-1).
- */
 const t = messages.erpWorkOrderFlow.process.plan;
+const ui = t.workspace;
 
 export interface PlanLine {
   id: number;
   code: string;
   name: string;
 }
-
 export interface PlanStepProps {
   rows: ProductionPlanEditorStateRow[];
   orderQty: number;
+  confirmedQty?: number | null;
   uomLabel: string;
   plantId: number | null;
   lines: readonly PlanLine[];
   statusNameOf: (code: string) => string;
   disabled: boolean;
-  /** 저장이나 확정에 실패한 줄의 서버 문구 */
   failures: string[];
   onAdd: () => void;
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
   onRemove: (row: ProductionPlanEditorStateRow) => void;
 }
 
-const errorText = (
-  errors: ProductionPlanDraftErrors,
-  field: ProductionPlanDraftField,
-): string | undefined => {
+const errorText = (errors: ProductionPlanDraftErrors, field: ProductionPlanDraftField) => {
   const error = errors[field];
-  if (error === undefined) return undefined;
-  if (typeof error === 'object') return error.message;
-  return t.errors[error];
+  return error === undefined
+    ? undefined
+    : typeof error === 'object'
+      ? error.message
+      : t.errors[error];
 };
 
+/** T-W-C: 조회·편집 보기만 바꾸며 저장·확정은 기존 편집 세션과 하단 바를 그대로 쓴다. */
 export const PlanStep = ({
   rows,
   orderQty,
+  confirmedQty,
   uomLabel,
   plantId,
   lines,
@@ -62,162 +69,326 @@ export const PlanStep = ({
   onChange,
   onRemove,
 }: PlanStepProps) => {
+  const [view, setView] = useState('grid');
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectAdded, setSelectAdded] = useState(false);
+  const [anchor, setAnchor] = useState<string | null>(null);
+  const editorId = useId();
   const lineSource = useLineSource(plantId);
-  const rowName = (row: ProductionPlanEditorStateRow) => row.planNo ?? t.newRow(row.displayNo);
-  const lineLabel = (value: string) => {
-    const line = lines.find((item) => String(item.id) === value);
-    return line === undefined ? '' : named(line.name, line.code);
+  const selected =
+    rows.find((row) => row.key === selectedKey) ?? rows.find((row) => !row.confirmed) ?? rows[0];
+  useEffect(() => {
+    if (selectAdded && rows.at(-1) !== undefined) {
+      setSelectedKey(rows.at(-1)?.key ?? null);
+      setSelectAdded(false);
+    }
+  }, [rows.length, selectAdded]);
+  const nameOf = (row: ProductionPlanEditorStateRow) => row.planNo ?? t.newRow(row.displayNo);
+  const lineName = (value: string) => {
+    const line = lines.find((line) => String(line.id) === value);
+    return line === undefined ? ui.unassigned : named(line.name, line.code);
   };
-  const total = rows.reduce((sum, row) => {
-    const qty = Number(row.draft.plannedQty);
-    return Number.isFinite(qty) ? sum + qty : sum;
-  }, 0);
+  const week = planWeek(anchor ?? (selected?.draft.planDate || plantToday()));
+  const total = rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
+  const draftQty = rows
+    .filter((row) => !row.confirmed)
+    .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
+  const remaining = confirmedQty == null ? null : orderQty - confirmedQty - draftQty;
+  const displayQty = (qty: number | null | undefined) =>
+    qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
+  const choose = (row: ProductionPlanEditorStateRow) => setSelectedKey(row.key);
   const columns: Column<ProductionPlanEditorStateRow>[] = [
     {
       key: 'planNo',
       header: t.columns.planNo,
-      render: (row) => <span className="nowrap-cell mono-cell">{rowName(row)}</span>,
+      render: (row) => (
+        <span className="ellipsis-cell" title={nameOf(row)}>
+          {nameOf(row)}
+        </span>
+      ),
     },
     {
       key: 'planDate',
       header: t.columns.planDate,
-      render: (row) =>
-        row.confirmed ? (
-          <span className="nowrap-cell">{row.draft.planDate}</span>
-        ) : (
-          <DatePicker
-            size="sm"
-            aria-label={t.fieldLabel(rowName(row), t.columns.planDate)}
-            value={row.draft.planDate === '' ? null : row.draft.planDate}
-            invalid={errorText(row.errors, 'planDate') !== undefined}
-            disabled={disabled}
-            onChange={(value) => onChange(row.key, 'planDate', value)}
-          />
-        ),
+      width: '7rem',
+      render: (row) => row.draft.planDate,
     },
     {
       key: 'plannedQty',
       header: t.columns.plannedQty,
+      width: '6rem',
       align: 'end',
-      render: (row) =>
-        row.confirmed ? (
-          <span className="nowrap-cell">{formatQty(Number(row.draft.plannedQty))}</span>
-        ) : (
-          <TextField
-            size="sm"
-            containerClassName="plan-qty-field"
-            inputMode="decimal"
-            aria-label={t.fieldLabel(rowName(row), t.columns.plannedQty)}
-            value={row.draft.plannedQty}
-            error={errorText(row.errors, 'plannedQty')}
-            disabled={disabled}
-            onChange={(event) => onChange(row.key, 'plannedQty', event.target.value)}
-          />
-        ),
+      render: (row) => formatQty(Number(row.draft.plannedQty) || 0),
     },
     {
       key: 'line',
       header: t.columns.line,
-      render: (row) =>
-        row.confirmed ? (
-          <span className="ellipsis-cell" title={lineLabel(row.draft.plannedLineId)}>
-            {lineLabel(row.draft.plannedLineId)}
-          </span>
-        ) : (
-          <ReferenceField
-            hideLabel
-            size="sm"
-            label={t.fieldLabel(rowName(row), t.columns.line)}
-            valueLabel={lineLabel(row.draft.plannedLineId)}
-            source={lineSource}
-            disabled={disabled}
-            invalid={errorText(row.errors, 'plannedLineId') !== undefined}
-            onPick={(line) => onChange(row.key, 'plannedLineId', String(line.id))}
-            onClear={() => onChange(row.key, 'plannedLineId', '')}
-          />
-        ),
+      render: (row) => (
+        <span className="ellipsis-cell" title={lineName(row.draft.plannedLineId)}>
+          {lineName(row.draft.plannedLineId)}
+        </span>
+      ),
     },
     {
       key: 'status',
       header: t.columns.status,
+      width: '6rem',
       render: (row) => (
         <Chip variant="status" size="sm" status={row.confirmed ? 'success' : 'idle'}>
-          {row.productionPlanId === null ? t.newStatus : statusNameOf(row.statusCode)}
+          {row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed}
         </Chip>
       ),
     },
-    {
-      key: 'remarks',
-      header: t.columns.remarks,
-      render: (row) =>
-        row.confirmed ? (
-          <span className="ellipsis-cell" title={row.draft.remarks}>
-            {row.draft.remarks}
-          </span>
-        ) : (
-          <TextField
-            size="sm"
-            aria-label={t.fieldLabel(rowName(row), t.columns.remarks)}
-            value={row.draft.remarks}
-            disabled={disabled}
-            onChange={(event) => onChange(row.key, 'remarks', event.target.value)}
-          />
-        ),
-    },
-    {
-      key: 'actions',
-      header: <span className="visually-hidden">{t.columns.actions}</span>,
-      align: 'end',
-      render: (row) =>
-        row.confirmed ? null : (
-          <Button
-            size="sm"
-            variant="outlined"
-            aria-label={t.remove(rowName(row))}
-            disabled={disabled}
-            onClick={() => onRemove(row)}
-          >
-            {t.removeShort}
-          </Button>
-        ),
-    },
   ];
+  const groups = [...new Set(rows.map((row) => row.draft.plannedLineId))];
+  const outsideWeek = rows.filter((row) => !week.includes(row.draft.planDate));
+  const editDisabled = disabled || selected?.confirmed === true;
 
   return (
-    <section className="pane erp-wo-step-pane" aria-label={t.heading}>
-      <div className="section-heading-row">
-        <h2 className="section-title">{t.heading}</h2>
-        <Button variant="outlined" disabled={disabled} onClick={onAdd}>
+    <section className="erp-wo-plan-workspace" aria-label={t.heading}>
+      <div className="erp-wo-plan-toolbar">
+        <Tabs
+          size="sm"
+          aria-label={ui.views}
+          value={view}
+          onChange={setView}
+          items={[
+            { value: 'grid', label: ui.grid, content: null },
+            { value: 'week', label: ui.week, content: null },
+          ]}
+        />
+        <Button
+          variant="outlined"
+          disabled={disabled}
+          onClick={() => {
+            onAdd();
+            setSelectAdded(true);
+          }}
+        >
           {t.add}
         </Button>
       </div>
+      <dl className="erp-wo-plan-totals">
+        {[
+          [ui.orderQty, orderQty],
+          [ui.confirmedQty, confirmedQty],
+          [ui.draftQty, draftQty],
+          [ui.remainingQty, remaining],
+        ].map(([label, qty]) => (
+          <div key={String(label)}>
+            <dt>{label}</dt>
+            <dd>{displayQty(qty as number | null | undefined)}</dd>
+          </div>
+        ))}
+      </dl>
+      {rows.some((row) => row.isDirty) && (
+        <p className="field-note erp-wo-plan-note">{ui.unsavedSummary}</p>
+      )}
       {failures.length > 0 && (
         <AlertBanner variant="error" title={t.failedTitle}>
           <ul className="erp-wo-plain-list">
-            {failures.map((line) => (
-              <li key={line}>{line}</li>
+            {failures.map((failure) => (
+              <li key={failure}>{failure}</li>
             ))}
           </ul>
         </AlertBanner>
       )}
-      <SelectableTable
-        className="plan-table"
-        stickyLastColumn
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => row.key}
-        empty={<p className="empty-line">{t.empty}</p>}
-        summaryRows={[
-          [
-            {
-              key: 'total',
-              colSpan: columns.length,
-              emphasis: true,
-              content: t.total(formatQty(total), formatQty(orderQty), uomLabel),
-            },
-          ],
-        ]}
-      />
+      <div className="erp-wo-plan-layout">
+        <section
+          className="pane erp-wo-plan-board"
+          aria-label={view === 'week' ? ui.week : ui.grid}
+        >
+          {view === 'grid' ? (
+            <SelectableTable
+              className="erp-wo-plan-grid"
+              columns={columns}
+              rows={rows}
+              getRowId={(row) => row.key}
+              activeId={selected?.key}
+              rowLabel={(row) => nameOf(row)}
+              onActivate={choose}
+              empty={<p className="empty-line">{t.empty}</p>}
+            />
+          ) : (
+            <>
+              <div className="erp-wo-week-heading">
+                <span>
+                  {week[0]} — {week.at(-1)}
+                </span>
+                <div className="erp-wo-week-actions">
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    aria-label={ui.previousWeek}
+                    onClick={() => setAnchor(shiftPlanDate(week[0] ?? plantToday(), -7))}
+                  >
+                    ‹
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outlined"
+                    aria-label={ui.nextWeek}
+                    onClick={() => setAnchor(shiftPlanDate(week[0] ?? plantToday(), 7))}
+                  >
+                    ›
+                  </Button>
+                </div>
+              </div>
+              <div className="erp-wo-week-scroll">
+                <table className="erp-wo-week-table">
+                  <caption className="visually-hidden">{ui.week}</caption>
+                  <thead>
+                    <tr>
+                      <th>{t.columns.line}</th>
+                      {week.map((date, index) => (
+                        <th key={date}>
+                          {date.slice(5)}
+                          <span>{ui.weekdays[index]}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((group) => (
+                      <tr key={group}>
+                        <th>
+                          <span title={lineName(group)}>{lineName(group)}</span>
+                        </th>
+                        {week.map((date) => (
+                          <td key={date}>
+                            {rows
+                              .filter(
+                                (row) =>
+                                  row.draft.plannedLineId === group && row.draft.planDate === date,
+                              )
+                              .map((row) => (
+                                <button
+                                  key={row.key}
+                                  className="erp-wo-week-plan"
+                                  title={`${nameOf(row)} / ${row.draft.plannedQty} ${uomLabel}`}
+                                  aria-label={ui.selectPlan(nameOf(row))}
+                                  aria-pressed={selected?.key === row.key}
+                                  aria-controls={editorId}
+                                  onClick={() => choose(row)}
+                                >
+                                  <span>{nameOf(row)}</span>
+                                  <strong>
+                                    {formatQty(Number(row.draft.plannedQty) || 0)} {uomLabel}
+                                  </strong>
+                                  <small>
+                                    {row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed}
+                                  </small>
+                                </button>
+                              ))}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {rows.length === 0 && <p className="empty-line">{t.empty}</p>}
+              {outsideWeek.length > 0 && (
+                <div className="erp-wo-plan-outside">
+                  <span>{ui.outsideWeek}</span>
+                  {outsideWeek.map((row) => (
+                    <Button
+                      key={row.key}
+                      size="sm"
+                      variant="text"
+                      onClick={() => {
+                        choose(row);
+                        setAnchor(row.draft.planDate);
+                      }}
+                    >
+                      {nameOf(row)}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          <p className="erp-wo-plan-total">
+            {t.total(formatQty(total), formatQty(orderQty), uomLabel)}
+          </p>
+        </section>
+        <section className="pane erp-wo-plan-editor" id={editorId} aria-label={ui.editor}>
+          <h2 className="section-title">{ui.editor}</h2>
+          {selected === undefined ? (
+            <p className="empty-line">{ui.selectPrompt}</p>
+          ) : (
+            <>
+              <div className="erp-wo-plan-editor-title">
+                <span className="mono-cell">{nameOf(selected)}</span>
+                <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>
+                  {selected.confirmed ? statusNameOf(selected.statusCode) : ui.unconfirmed}
+                </Chip>
+              </div>
+              {selected.confirmed && <p className="field-note">{ui.readonly}</p>}
+              <div className="field-cell">
+                <label className="field-label">{t.columns.planDate}</label>
+                <DatePicker
+                  size="sm"
+                  aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
+                  value={selected.draft.planDate || null}
+                  invalid={errorText(selected.errors, 'planDate') !== undefined}
+                  disabled={editDisabled}
+                  onChange={(value) => onChange(selected.key, 'planDate', value)}
+                />
+              </div>
+              <div className="field-cell">
+                <span className="field-label">{t.columns.line}</span>
+                <ReferenceField
+                  hideLabel
+                  size="sm"
+                  label={t.fieldLabel(nameOf(selected), t.columns.line)}
+                  valueLabel={
+                    selected.draft.plannedLineId === ''
+                      ? ''
+                      : lineName(selected.draft.plannedLineId)
+                  }
+                  source={lineSource}
+                  disabled={editDisabled}
+                  invalid={errorText(selected.errors, 'plannedLineId') !== undefined}
+                  onPick={(line) => onChange(selected.key, 'plannedLineId', String(line.id))}
+                  onClear={() => onChange(selected.key, 'plannedLineId', '')}
+                />
+              </div>
+              <TextField
+                size="sm"
+                label={t.columns.plannedQty}
+                aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
+                inputMode="decimal"
+                value={selected.draft.plannedQty}
+                error={errorText(selected.errors, 'plannedQty')}
+                disabled={editDisabled}
+                onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
+              />
+              <details className="erp-wo-plan-remarks">
+                <summary>{t.columns.remarks}</summary>
+                <TextField
+                  size="sm"
+                  aria-label={t.fieldLabel(nameOf(selected), t.columns.remarks)}
+                  value={selected.draft.remarks}
+                  disabled={editDisabled}
+                  onChange={(event) => onChange(selected.key, 'remarks', event.target.value)}
+                />
+              </details>
+              {!selected.confirmed && (
+                <Button
+                  variant="outlined"
+                  size="sm"
+                  aria-label={t.remove(nameOf(selected))}
+                  disabled={disabled}
+                  onClick={() => onRemove(selected)}
+                >
+                  {t.removeShort}
+                </Button>
+              )}
+            </>
+          )}
+        </section>
+      </div>
     </section>
   );
 };
