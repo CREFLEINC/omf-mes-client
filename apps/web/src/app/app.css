@@ -4512,30 +4512,6 @@ h2:has(> .inspection-standard-dialog-title) {
   font: var(--type-body-md);
 }
 
-.lot-usage-detail-dialog [role='tablist'] {
-  gap: var(--space-2);
-  border-bottom: 0;
-  box-shadow: none;
-}
-
-/* 둥근 탭에는 밑줄 표시를 두지 않는다. */
-.lot-usage-detail-dialog [role='tablist']::before,
-.lot-usage-detail-dialog [role='tablist']::after,
-.lot-usage-detail-dialog [role='tab']::before,
-.lot-usage-detail-dialog [role='tab']::after {
-  display: none;
-}
-
-.lot-usage-detail-dialog [role='tab'] {
-  border-radius: 999px;
-  padding-inline: var(--space-4);
-}
-
-.lot-usage-detail-dialog [role='tab'][aria-selected='true'] {
-  background: color-mix(in srgb, var(--on-surface) 12%, transparent);
-  color: var(--on-surface);
-}
-
 /* 투입 자재 제목 — 시안처럼 구역 제목 크기. */
 .lot-usage-detail-dialog .lot-status-detail-dialog section > .lot-status-pane-head > h3,
 .lot-usage-detail-dialog .four-m-inputs .lot-status-pane-head > h3 {
