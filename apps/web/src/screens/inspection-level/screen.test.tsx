@@ -250,4 +250,21 @@ describe('검사 수준 관리', () => {
     );
     expect(screen.getByRole('dialog')).toHaveTextContent('PPAD003200');
   });
+  /* 품목은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */
+  it('품목은 칸에서 검색해 고르면 바로 조회하고, 「전체」를 고르면 조건을 푼다(#226)', async () => {
+    const { user, requests } = setup();
+    await within(levelTable()).findByRole('row', { name: /PPAD003200/ });
+    const lastList = () =>
+      requests.filter((r) => r.method === 'GET' && r.url.pathname.endsWith(LEVELS)).at(-1);
+
+    await user.click(screen.getByLabelText(t.list.keyword));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+    await user.click(await screen.findByRole('option', { name: /^OA-002 · / }));
+    await waitFor(() => expect(lastList()?.url.searchParams.get('itemId')).toBe('4001'));
+
+    await user.click(screen.getByLabelText(t.list.keyword));
+    await user.click(await screen.findByRole('option', { name: t.list.all }));
+    await waitFor(() => expect(lastList()?.url.searchParams.has('itemId')).toBe(false));
+  });
 });

@@ -68,6 +68,8 @@ const template = (overrides: Partial<InspectionSheetTemplate> = {}): InspectionS
 interface Recorded {
   method: string;
   path: string;
+  /** 조회 조건(쿼리) — 모델 칸이 목록 요청에 싣는 품목 번호를 본다(#226). */
+  search: URLSearchParams;
   headers: Headers;
   body: string;
 }
@@ -117,6 +119,15 @@ const setup = (
     {
       match: (r) => r.method === 'GET' && new URL(r.url).pathname.endsWith(`${LIST}/11`),
       respond: () => jsonResponse(detail, { headers: { ETag: '"4"' } }),
+    },
+    /* 모델 칸(`ItemSelect`)이 펼칠 때 묻는 품목 목록(#226). */
+    {
+      match: (r) => new URL(r.url).pathname.endsWith('/mdm/items'),
+      respond: () =>
+        jsonResponse({
+          items: [{ itemId: 5001, itemCode: 'SYN-MODEL-1', itemName: '합성 모델', isActive: true }],
+          page: { page: 1, size: 50, total: 1 },
+        }),
     },
     {
       match: (r) => new URL(r.url).pathname.endsWith('/mdm/business-units'),
@@ -174,6 +185,7 @@ const setup = (
     requests.push({
       method: request.method,
       path: new URL(request.url).pathname,
+      search: new URL(request.url).searchParams,
       headers: new Headers(request.headers),
       body: request.method === 'GET' ? '' : await request.clone().text(),
     });
@@ -195,6 +207,24 @@ const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('검사표 기준', () => {
+  /* 모델(품목)은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */
+  it('모델은 칸에서 검색해 고르면 바로 조회하고, 「전체」를 고르면 조건을 푼다(#226)', async () => {
+    const { user, requests } = setup(template());
+    await screen.findByRole('button', { name: t.list.openRow('AAR4') });
+    const lastList = () =>
+      requests.filter((r) => r.method === 'GET' && r.path.endsWith(LIST)).at(-1);
+
+    await user.click(screen.getByLabelText(t.list.model));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+    await user.click(await screen.findByRole('option', { name: /^SYN-MODEL-1 · / }));
+    await waitFor(() => expect(lastList()?.search.get('itemId')).toBe('5001'));
+
+    await user.click(screen.getByLabelText(t.list.model));
+    await user.click(await screen.findByRole('option', { name: t.list.all }));
+    await waitFor(() => expect(lastList()?.search.has('itemId')).toBe(false));
+  });
+
   it('목록에 품목·양식·상태를 보이고 버전 열은 없다', async () => {
     setup(template());
 
