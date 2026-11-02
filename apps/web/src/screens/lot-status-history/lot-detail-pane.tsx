@@ -122,9 +122,11 @@ export const LotDetailPane = ({
 
   return (
     <>
-      {/* 팝업에서는 제목을 팝업이 달고, 이동 단추만 오른쪽 위에 둔다(사용자 2026-11-02). */}
+      {/* 팝업에서는 제목 「LOT 상세 이력」과 이동 단추를 한 줄에 둔다(사용자 2026-11-02). */}
       <div className="lot-status-pane-head lot-status-detail-head">
-        {!inDialog && (
+        {inDialog ? (
+          <h2 className="pane-title lot-dialog-title">{genealogyText.usage.dialogTitle}</h2>
+        ) : (
           <h2 className="pane-title" id="lot-status-detail-title">
             {t.detail.title}
           </h2>
@@ -255,7 +257,8 @@ export const LotDetailPane = ({
         <Dialog
           open
           size="lg"
-          title={genealogyText.usage.dialogTitle}
+          /* 제목은 팝업 안 첫 줄이 단추와 함께 단다 — 팝업 이름은 화면 읽기용으로만. */
+          aria-label={genealogyText.usage.dialogTitle}
           onClose={() => setOpenedLot(null)}
           /* 닫기는 아래 [닫기] 단추 하나로(사용자 2026-11-02). Esc 는 그대로 닫는다. */
           showCloseButton={false}

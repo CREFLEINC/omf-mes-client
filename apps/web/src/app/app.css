@@ -4472,6 +4472,18 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /* 생산 LOT 상세 이력 팝업 — 기본 정보는 상세 칸과 같은 상자, 투입 자재 · 이력 탭, 맨 아래 이동 단추(사용자 2026-11-02). */
+/* 팝업 첫 줄(제목 · 이동 단추) — 위에 여백을 두고 가운데 높이를 맞춘다(사용자 2026-11-02). */
+.lot-usage-detail-dialog > .lot-status-detail-head {
+  align-items: center;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-2);
+}
+
+.lot-status-detail-head > .lot-dialog-title {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
 /* 투입 자재 제목 — 시안처럼 구역 제목 크기. */
 .lot-usage-detail-dialog .lot-status-detail-dialog section > .lot-status-pane-head > h3,
 .lot-usage-detail-dialog .four-m-inputs .lot-status-pane-head > h3 {
