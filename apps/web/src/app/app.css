@@ -5557,6 +5557,19 @@ h2:has(> .inspection-standard-dialog-title) {
   color: var(--on-surface-variant);
 }
 
+/* 입력 팝업의 「대상 LOT」 — 이름 아래 굵은 번호. */
+.suspicious-material-hold-defect-target {
+  display: grid;
+  gap: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+/* 팝업 안 수량 — 좁게(흐린 글자가 다 보이는 만큼). */
+.suspicious-material-hold-defect-form > .suspicious-material-hold-defect-qty {
+  width: 13rem;
+  max-width: 100%;
+}
+
 /* 입력 팝업 안 — 유형 · 상세 · 수량 한 줄, 내용 전체 폭. */
 .suspicious-material-hold-defect-form {
   display: grid;

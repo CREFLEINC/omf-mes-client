@@ -103,14 +103,14 @@ export const suspiciousMaterialHold = {
   },
   /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
   defect: {
-    saveDraft: '입력 완료',
+    targetLot: '대상 LOT',
+    saveDraft: '등록',
     drafted: (code: string, qty: string): string => `입력됨 · ${code} · ${qty}`,
     noDrafts: 'LOT 을 눌러 불량을 먼저 입력하세요.',
     /** 고른 LOT 줄 · 입력 팝업(사용자 2026-11-02). */
     openLot: (lotNo: string): string => `${lotNo} 불량 내역 입력`,
-    enter: '눌러서 불량 입력',
+    enter: '불량 등록',
     recordedCount: (count: number): string => `등록 ${String(count)}건`,
-    dialogTitle: (lotNo: string): string => `불량 내역 등록 — ${lotNo}`,
     /** 불량 등록 확인 창(사용자 2026-11-02). */
     confirm: {
       titleMany: (count: number): string => `${String(count)}개 LOT 의 불량을 등록할까요?`,

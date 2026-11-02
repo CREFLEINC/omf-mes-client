@@ -101,7 +101,9 @@ const openLot = async (user: User, lotNo = 'MLOT-8101'): Promise<HTMLElement> =>
   const row = await screen.findByRole('button', { name: `${lotNo} 불량 내역 입력` });
   await waitFor(() => expect(row).toBeEnabled());
   await user.click(row);
-  return screen.findByRole('dialog', { name: `불량 내역 등록 — ${lotNo}` });
+  const dialog = await screen.findByRole('dialog', { name: '불량 내역 등록' });
+  expect(within(dialog).getByText(lotNo)).toBeVisible();
+  return dialog;
 };
 
 /** 팝업에서 유형 · 수량(· 내용)을 넣는다. */
@@ -170,7 +172,7 @@ describe('MaterialDefectPane (W-03-03)', () => {
     expect(within(confirm).getByText('MLOT-8101')).toBeVisible();
     expect(within(confirm).getByText('D-SCR · 긁힘')).toBeVisible();
     await user.click(within(confirm).getByRole('button', { name: '이전' }));
-    const form = await screen.findByRole('dialog', { name: '불량 내역 등록 — MLOT-8101' });
+    const form = await screen.findByRole('dialog', { name: '불량 내역 등록' });
     await user.click(within(form).getByRole('button', { name: '취소' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(writes).toHaveLength(0);
@@ -250,7 +252,7 @@ describe('MaterialDefectPane (W-03-03)', () => {
     ] as const) {
       const dialog = await openLot(user, lotNo);
       await fillDefect(user, qty);
-      await user.click(within(dialog).getByRole('button', { name: '입력 완료' }));
+      await user.click(within(dialog).getByRole('button', { name: /^등록$/ }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     }
     expect(writes).toHaveLength(0);

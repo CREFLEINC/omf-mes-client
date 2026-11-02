@@ -431,7 +431,7 @@ const DefectRecordDialog = ({
       open
       closeOnBackdropClick={false}
       showCloseButton={false}
-      title={confirming ? tHere.confirm.title : tHere.dialogTitle(lot.lotNo)}
+      title={confirming ? tHere.confirm.title : tHere.heading}
       onClose={() => {
         if (!record.isSaving) onClose();
       }}
@@ -498,6 +498,11 @@ const DefectRecordDialog = ({
               <span className="iqc-inspection-action-note-text">{tHere.uomUnknownNote}</span>
             </p>
           )}
+          {/* 제목 아래 「대상 LOT」 — 어느 LOT 의 불량인지 먼저 읽는다(사용자 2026-11-02). */}
+          <div className="suspicious-material-hold-defect-target">
+            <span className="field-label">{tHere.targetLot}</span>
+            <strong>{lot.lotNo}</strong>
+          </div>
           <div className="suspicious-material-hold-defect-row">
             <div className="field-cell">
               <label className="field-label" htmlFor={majorFieldId}>
@@ -542,20 +547,21 @@ const DefectRecordDialog = ({
                 />
               </div>
             )}
-            <TextField
-              ref={qtyRef}
-              containerClassName="suspicious-material-hold-defect-qty"
-              label={t.qty.label}
-              required
-              placeholder={tHere.qtyPlaceholder}
-              aria-invalid={!disabled && qty.trim() === ''}
-              inputMode="decimal"
-              value={qty}
-              disabled={disabled}
-              error={record.fieldErrors.defectQty}
-              onChange={(event) => setQty(event.target.value)}
-            />
           </div>
+          {/* 수량은 유형 · 상세 아래 줄(사용자 2026-11-02). */}
+          <TextField
+            ref={qtyRef}
+            containerClassName="suspicious-material-hold-defect-qty"
+            label={t.qty.label}
+            required
+            placeholder={tHere.qtyPlaceholder}
+            aria-invalid={!disabled && qty.trim() === ''}
+            inputMode="decimal"
+            value={qty}
+            disabled={disabled}
+            error={record.fieldErrors.defectQty}
+            onChange={(event) => setQty(event.target.value)}
+          />
           <TextField
             label={t.description}
             placeholder={tHere.descriptionPlaceholder}
