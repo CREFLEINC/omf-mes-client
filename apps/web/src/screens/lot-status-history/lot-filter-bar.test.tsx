@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -107,12 +108,12 @@ const AppliedProbe = ({ initial }: { initial: LotFilters }) => {
   );
 };
 
-/** 창고는 검색 팝업에서 코드를 눌러 고른다(사용자 2026-10-30). */
+/** 창고는 칸에서 바로 검색해 고른다(#226) — 창(팝업)을 거치지 않는다. */
 const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
   await user.click(screen.getByLabelText('창고 선택'));
-  const dialog = await screen.findByRole('dialog', { name: '창고 선택' });
-  await user.click(await within(dialog).findByText(code));
-  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+  await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+  await user.keyboard(code);
+  await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `) }));
 };
 
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {
@@ -158,21 +159,16 @@ describe('LOT 현재 조회 조건', () => {
 
     await choose(user, 'LOT 유형', '합성 자재');
     await user.click(screen.getByRole('button', { name: '상세 검색 펼치기' }));
-    // 품목은 검색 창에서 고른다 — 중지 품목까지 찾고 가용 재고는 부르지 않는다.
+    // 품목은 칸에서 바로 검색해 고른다(#226) — 창(팝업)을 거치지 않고, 종전 창처럼 중지 품목까지 찾는다.
     itemSearchQueries.length = 0;
     await user.click(screen.getByLabelText('품목 검색'));
-    const picker = await screen.findByRole('dialog', { name: '품목 검색' });
-    /* 오른쪽 위 × 와 「품목을 고르면 누를 수 있습니다.」 안내가 없는 창이다(사용자 2026-10-30). */
-    expect(within(picker).queryByText('품목을 고르면 누를 수 있습니다.')).not.toBeInTheDocument();
-    expect(within(picker).queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
-    await user.click(await within(picker).findByRole('checkbox', { name: 'SAMPLE-ITEM-01' }));
-    expect(within(picker).getByText(/합성 품목 · 미사용/)).toBeInTheDocument();
-    expect(within(picker).queryByRole('columnheader', { name: '가용' })).not.toBeInTheDocument();
-    await user.click(within(picker).getByRole('button', { name: '선택' }));
+    await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('option', { name: /^SAMPLE-ITEM-01 · / }));
     expect(itemSearchQueries[0]?.get('includeInactive')).toBe('true');
-    expect(await screen.findByDisplayValue('SAMPLE-ITEM-01 · 합성 품목')).toBeInTheDocument();
-    // 지우기는 값이 있을 때만 칸 안에 선다.
-    expect(screen.getByRole('button', { name: '품목 지우기' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByLabelText('품목 검색')).toHaveTextContent('SAMPLE-ITEM-01 · 합성 품목'),
+    );
     expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
     await pickWarehouse(user, 'SAMPLE-WH-01');
     await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');

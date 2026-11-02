@@ -1,8 +1,7 @@
-import { SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId } from 'react';
 
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import { useItemNameSources } from './reference-options';
 
@@ -15,17 +14,12 @@ interface ItemFilterFieldProps {
 }
 
 /**
- * 품목 필터 — 검색해서 고른다(사용자 지시 2026-09-19).
- *
- * 선택칸은 품목 목록의 첫 쪽만 실어 그 너머 품목을 고를 수 없었다(「일부 품목만 표시됩니다」).
- * 공용 「품목 선택」 창을 쓰되, 지난 LOT 을 찾는 필터라 사용 중지 품목까지 찾고 가용 재고 열은 뺀다.
- *
- * ⭐ 칸 하나가 검색 묶음이다 — LOT 번호 칸과 같은 DS 검색 입력을 읽기 전용으로 두고, 누르거나
- * 엔터를 치면 창이 열린다. 지우기는 값이 있을 때만 칸 안의 × 로 낮춰 둔다(사용자 지시 2026-09-19).
- * 고른 품목의 이름은 품목 상세로 푼다 — 주소로 들어와 창을 거치지 않은 값도 이름이 선다.
+ * 품목 필터 — **칸에서 바로 검색해서 고른다**(omf-all-around#226). 품목 마스터를 통째로 받지 않고 서버에 묻는다(`ItemSelect`).
+ * 지난 LOT 을 찾는 필터라 종전 품목 선택 창처럼 사용 중지 품목까지 찾는다. 「전체」는 종전 × 자리다.
+ * 고른 품목의 이름은 품목 상세로 푼다 — 주소로 들어온 값도 이름이 선다(칸 글자는 종전 표기 그대로).
  */
 export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const fieldId = useId();
   const itemId = value === '' ? null : Number(value);
   const names = useItemNameSources(itemId === null ? [] : [itemId]);
   const source: LookupSource = (itemId === null ? undefined : names.get(itemId)) ?? {
@@ -34,39 +28,21 @@ export const ItemFilterField = ({ value, onChange }: ItemFilterFieldProps) => {
     isLoading: true,
   };
   const label = itemId === null ? '' : lookupDisplayLabelWithInactive(source, itemId);
-  const open = (): void => setIsPickerOpen(true);
 
   return (
-    <>
-      <SearchInput
-        label={t.lotFilter.labels.item}
-        containerClassName="lot-status-filter-item"
-        value={label}
-        readOnly
-        title={label === '' ? undefined : label}
-        placeholder={t.lotFilter.itemPlaceholder}
-        aria-haspopup="dialog"
-        clearLabel={t.lotFilter.itemClear}
-        onClick={open}
-        onSearch={open}
-        onChange={() => undefined}
-        onClear={() => onChange('')}
+    <div className="field-cell lot-status-filter-item">
+      <label className="field-label" htmlFor={fieldId}>
+        {t.lotFilter.labels.item}
+      </label>
+      <ItemSelect
+        id={fieldId}
+        includeInactive
+        selectedOption={label === '' ? null : { value, label }}
+        leadingOptions={[{ value: '', label: t.values.all }]}
+        value={value}
+        placeholder={t.values.all}
+        onChange={onChange}
       />
-      {isPickerOpen && (
-        <ItemPickerDialog
-          /* 오른쪽 위 × 와 「품목을 고르면 누를 수 있습니다.」 안내를 뺀 정돈된 창(사용자 2026-10-30) — 이 화면만 켠다. */
-          compact
-          multiple={false}
-          includeInactive
-          showAvailability={false}
-          confirmLabel={t.lotFilter.itemPick}
-          onClose={() => setIsPickerOpen(false)}
-          onConfirm={([item]) => {
-            if (item !== undefined) onChange(String(item.itemId));
-            setIsPickerOpen(false);
-          }}
-        />
-      )}
-    </>
+    </div>
   );
 };
