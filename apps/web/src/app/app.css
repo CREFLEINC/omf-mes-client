@@ -6682,6 +6682,16 @@ main:has(.iqc-skip-approval-detail) {
   gap: var(--space-2) var(--space-4);
 }
 
+/* 처분 유형 상자 — 이름은 위, 라디오 묶음은 남는 자리의 가운데(사용자 지시 · #223). */
+.disposition-decision-cards > .disposition-decision-subcard:first-child {
+  grid-template-rows: auto 1fr;
+}
+
+.disposition-decision-cards > .disposition-decision-subcard:first-child [role='radiogroup'] {
+  align-self: center;
+  justify-self: center;
+}
+
 /* 판정 이력 · 특채 탭 — 테두리 상자 안(검사 조회·판정 상세 탭 상자와 같은 모양 · #223). */
 .disposition-side-tabs {
   padding: var(--space-2) var(--space-4) var(--space-4);
