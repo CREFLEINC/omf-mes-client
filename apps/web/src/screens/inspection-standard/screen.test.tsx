@@ -92,18 +92,16 @@ const planRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 
 const planPane = (): HTMLElement => screen.getByRole('region', { name: '검사기준' });
 
-/** 검사 기준 검색 칸을 눌러 창을 열고, 검색어로 찾아 한 기준을 골라 넣는다. */
-const pickPlanInDialog = async (
+/** 검사 기준 검색 칸을 펼쳐 검색어로 찾고, 한 기준을 골라 넣는다 — 창(팝업)을 거치지 않는다(#226). */
+const pickPlanInField = async (
   user: ReturnType<typeof userEvent.setup>,
   keyword: string,
   planCode: string,
 ): Promise<void> => {
   await user.click(screen.getByLabelText('검사 기준 검색'));
-  const dialog = await screen.findByRole('dialog', { name: '검사 기준 검색' });
-  await user.type(within(dialog).getByLabelText('검색어'), keyword);
-  await user.click(within(dialog).getByRole('button', { name: '찾기' }));
-  await user.click(await within(dialog).findByRole('checkbox', { name: planCode }));
-  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+  await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+  await user.keyboard(keyword);
+  await user.click(await screen.findByRole('option', { name: new RegExp(`^${planCode} · `) }));
 };
 
 describe('InspectionStandardScreen — 기준 목록 조회', () => {
@@ -130,7 +128,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     const { requests, user } = renderScreen([planListRoute()]);
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    await pickPlanInDialog(user, 'SYN', 'SYN-PLAN-02');
+    await pickPlanInField(user, 'SYN', 'SYN-PLAN-02');
     await user.click(
       within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형 선택' }),
     );
@@ -335,7 +333,7 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
     );
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
-    await pickPlanInDialog(user, 'SYN', 'SYN-PLAN-02');
+    await pickPlanInField(user, 'SYN', 'SYN-PLAN-02');
     await user.click(within(screen.getByRole('search')).getByRole('button', { name: '조회' }));
 
     const last = planRequests(requests).at(-1);

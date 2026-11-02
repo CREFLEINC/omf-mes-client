@@ -37,6 +37,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     itemPlaceholder: 'Chọn mặt hàng',
     itemPick: 'Chọn',
     itemClear: 'Xóa điều kiện mặt hàng',
+    all: 'Tất cả',
     keyword: 'Tìm số yêu cầu',
     keywordPlaceholder: 'Nhập số yêu cầu',
     pendingOnly: 'Chỉ xem mục chờ và đang làm',

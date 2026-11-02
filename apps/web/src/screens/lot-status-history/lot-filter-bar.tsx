@@ -2,12 +2,7 @@ import { Button, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import {
-  ReferenceField,
-  REFERENCE_PAGE_SIZE,
-  type ReferenceSource,
-} from '../../patterns/reference-picker';
-import { Select } from '../../patterns/select';
+import { PagedSelect, Select } from '../../patterns/select';
 import { ALL_LOT_TYPES, type LotFilters } from './filters';
 import { ItemFilterField } from './item-filter-field';
 import { useLocationReferenceOptions } from './reference-options';
@@ -193,27 +188,7 @@ export const LotFilterBar = ({
    * (사용자 2026-10-30 · 조회 줄을 한 줄로 펴면서 라벨 옆 글자가 칸을 넘친다).
    */
   /* 창고 목록은 이미 받아 두었다 — 팝업은 그 안에서 코드·이름으로 찾는다. 「코드 · 이름」 표시명을 나눠 열에 싣는다. */
-  const warehouseSource: ReferenceSource = {
-    title: t.lotFilter.warehousePicker.title,
-    key: ['lot-status-history', 'warehouse-picker', warehouseOptions.length],
-    columns: { code: t.lotFilter.warehousePicker.code, name: t.lotFilter.warehousePicker.name },
-    search: (term, page) => {
-      const keyword = term.trim().toLowerCase();
-      const rows = warehouseOptions
-        .map((option) => {
-          const [code = option.label, ...rest] = option.label.split(' · ');
-          return { id: Number(option.value), code, name: rest.join(' · ') };
-        })
-        .filter(
-          (row) => keyword === '' || `${row.code} ${row.name}`.toLowerCase().includes(keyword),
-        );
-      const start = (page - 1) * REFERENCE_PAGE_SIZE;
-      return Promise.resolve({
-        items: rows.slice(start, start + REFERENCE_PAGE_SIZE),
-        total: rows.length,
-      });
-    },
-  };
+  const warehouseFieldId = useId();
   const isLocationLocked = filters.warehouse === '';
   const locationNote = isLocationLocked
     ? undefined
@@ -280,23 +255,41 @@ export const LotFilterBar = ({
       <div id={detailId} hidden={!isDetailOpen}>
         {/* 창고 → 위치 → 품목 순(사용자 2026-10-30). */}
         <div className="filter-bar lot-status-filter">
-          {/* 창고는 검색 팝업에서 고른다(사용자 2026-10-30). 고르면 위치 조건은 비운다. */}
-          <div className="field-cell lot-status-filter-place">
-            <ReferenceField
-              label={t.lotFilter.labels.warehouse}
-              placeholder={t.lotFilter.warehousePlaceholder}
-              valueLabel={
-                warehouseOptions.find((option) => option.value === filters.warehouse)?.label ?? ''
+          {/*
+           * 창고는 칸에서 바로 검색해서 고른다(omf-all-around#226 · 종전 검색 팝업과 같은 범위 · 코드 · 이름 일부로 거른다).
+           * 다른 창고를 고르면 위치 조건은 비운다. 「전체」는 종전 × 자리다 — 창고 · 위치를 함께 푼다.
+           */}
+          <div className="field-cell lot-status-filter-place search-select-cell">
+            <label className="field-label" htmlFor={warehouseFieldId}>
+              {t.lotFilter.labels.warehouse}
+            </label>
+            <PagedSelect
+              id={warehouseFieldId}
+              queryKey={['lot-status-history', 'warehouse-select', warehouseOptions]}
+              fetchPage={(q) => {
+                const keyword = q.toLowerCase();
+                const options = warehouseOptions
+                  .filter((option) => option.label.toLowerCase().includes(keyword))
+                  .map((option) => ({ value: option.value, label: option.label }));
+                return Promise.resolve({ options, total: options.length });
+              }}
+              selectedOption={
+                warehouseOptions.find((option) => option.value === filters.warehouse) ?? null
               }
-              source={warehouseSource}
-              onPick={(row) =>
-                setFilters((current) => ({
-                  ...current,
-                  warehouse: String(row.id),
-                  location: String(row.id) === current.warehouse ? current.location : '',
-                }))
+              leadingOptions={[{ value: '', label: t.values.all }]}
+              value={filters.warehouse}
+              placeholder={t.values.all}
+              onChange={(warehouse) =>
+                setFilters((current) =>
+                  warehouse === ''
+                    ? { ...current, warehouse: '', location: '' }
+                    : {
+                        ...current,
+                        warehouse,
+                        location: warehouse === current.warehouse ? current.location : '',
+                      },
+                )
               }
-              onClear={() => setFilters((current) => ({ ...current, warehouse: '', location: '' }))}
             />
             {warehouseNote !== undefined && <span className="field-note">{warehouseNote}</span>}
           </div>

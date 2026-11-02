@@ -15,6 +15,8 @@ export const inspectionLevel = {
     keyword: '품목 검색',
     keywordPlaceholder: '품목 코드 또는 품목명을 입력하세요',
     keywordClear: '품목 조건 지우기',
+    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
+    all: '전체',
     level: '검사 수준',
     levelAll: '전체',
     levelCount: (label: string, count: number): string => `${label} ${String(count)}`,

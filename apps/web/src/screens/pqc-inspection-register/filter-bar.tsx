@@ -1,13 +1,15 @@
-import { Button, Checkbox, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 import { runRequest } from '../../patterns/request';
-import { useItem } from '../production-result/flow-queries';
 
 const t = messages.pqcInspectionRegister.filters;
+
+/** 조건 줄의 「전체」 — 빈 값이라 좁히지 않는다. */
+const ALL_ITEMS = [{ value: '', label: t.all }];
 
 /** 걸어 둔 조건 — 품목(번호) · 작업지시(번호와 입력한 W/O 번호) · 의뢰번호 검색어. 비면 좁히지 않는다. */
 export interface PqcFilters {
@@ -37,7 +39,7 @@ export interface PqcFilterBarProps {
 
 /**
  * W-03-11 목록 조건 줄(omf-all-around#135) — IQC 판정 화면(#133)의 조건 줄과 같은 모양이다.
- * 품목 검색(품목 검색 창으로 고른다) · 작업지시 검색(W/O 번호) · 의뢰번호 검색 · [조회][초기화]. 서버 목록 질의 `itemId`·`q` 를 그대로 쓴다.
+ * 품목 검색(칸에서 바로 검색해 고른다 · omf-all-around#226) · 작업지시 검색(W/O 번호) · 의뢰번호 검색 · [조회][초기화]. 서버 목록 질의 `itemId`·`q` 를 그대로 쓴다.
  * PQC 는 대상이 작업지시라 공급사·LOT 스캔 조건이 없다.
  */
 export const PqcFilterBar = ({
@@ -54,15 +56,7 @@ export const PqcFilterBar = ({
   const [workOrderError, setWorkOrderError] = useState<string | null>(null);
   const [isFinding, setIsFinding] = useState(false);
   const { client } = useApiClient();
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const item = useItem(itemId);
-  const itemLabel =
-    itemId === null
-      ? ''
-      : item.data === undefined
-        ? String(itemId)
-        : `${item.data.itemCode} · ${item.data.itemName}`;
-  const open = (): void => setIsPickerOpen(true);
+  const itemFieldId = useId();
 
   /*
    * 작업지시 번호 → 작업지시 하나. 목록 질의는 번호(`workOrderId`)로 거르므로 조회 때 W/O 번호 검색으로 하나를 찾는다.
@@ -102,40 +96,31 @@ export const PqcFilterBar = ({
 
   return (
     <form className="filter-bar pqc-web-filter-bar" onSubmit={(event) => void submit(event)}>
-      <SearchInput
-        label={t.item}
-        value={itemLabel}
-        readOnly
-        title={itemLabel === '' ? undefined : itemLabel}
-        placeholder={t.itemPlaceholder}
-        aria-haspopup="dialog"
-        clearLabel={t.itemClear}
-        onClick={open}
-        onSearch={open}
-        onChange={() => undefined}
-        /* × 는 품목 조건을 풀고 바로 다시 조회한다 — 전 품목이 나온다(#135 · 담당자 지시). */
-        onClear={() => {
-          setItemId(null);
-          /* 다른 조건은 걸어 둔 그대로 — × 는 품목 하나만 푼다. */
-          onSearch({ ...applied, itemId: null });
-        }}
-      />
-      {isPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
+      {/* 품목은 칸에서 바로 검색해 고른다 — 지난 의뢰를 찾으니 사용 중지 품목까지(종전 품목 선택 창과 같은 범위). */}
+      <div className="field-cell search-select-cell">
+        <label className="field-label" htmlFor={itemFieldId}>
+          {t.item}
+        </label>
+        <ItemSelect
+          id={itemFieldId}
           includeInactive
-          showAvailability={false}
-          /* 목록 표 아래와 같은 쪽 이동 줄(사용자 지시 2026-10-28 · #197). */
-          pageNav
-          confirmLabel={t.itemPick}
-          onClose={() => setIsPickerOpen(false)}
-          onConfirm={([picked]) => {
-            if (picked !== undefined) setItemId(picked.itemId);
-            setIsPickerOpen(false);
+          leadingOptions={ALL_ITEMS}
+          value={itemId === null ? '' : String(itemId)}
+          placeholder={t.all}
+          onChange={(value) => {
+            if (value !== '') {
+              setItemId(Number(value));
+              return;
+            }
+            setItemId(null);
+            /*
+             * 「전체」는 종전 × 자리다 — 품목 조건을 풀고 바로 다시 조회한다(#135 · 담당자 지시).
+             * 다른 조건은 걸어 둔 그대로 — 품목 하나만 푼다.
+             */
+            onSearch({ ...applied, itemId: null });
           }}
         />
-      )}
+      </div>
       <TextField
         label={t.workOrder}
         placeholder={t.workOrderPlaceholder}

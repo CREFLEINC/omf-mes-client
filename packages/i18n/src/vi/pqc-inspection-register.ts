@@ -29,6 +29,7 @@ export const pqcInspectionRegister = {
     itemPlaceholder: 'Nhập mặt hàng',
     itemPick: 'Chọn',
     itemClear: 'Xóa điều kiện mặt hàng',
+    all: 'Tất cả',
     workOrder: 'Tìm lệnh sản xuất',
     workOrderPlaceholder: 'Nhập số lệnh sản xuất',
     workOrderNotFound: 'Không có lệnh sản xuất phù hợp.',

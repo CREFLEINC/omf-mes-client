@@ -25,6 +25,7 @@ export const inspectionSheetTemplate = {
     model: 'Tìm mặt hàng',
     modelPlaceholder: 'Nhập mặt hàng',
     modelClear: 'Xóa điều kiện mặt hàng',
+    all: 'Tất cả',
     layout: 'Chọn mẫu',
     layoutAll: 'Tất cả',
     material: 'Tìm vật liệu',

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, useLocation } from 'react-router';
@@ -139,18 +140,16 @@ const pageListRequests = (requests: RecordedRequest[], pathname: string): Record
       request.url.searchParams.get('includeInactive') !== 'true',
   );
 
-/** 검색 칸을 눌러 코드 검색 창에서 찾아 고른다(#209) — 고른 코드가 검색어로 들어간다. */
+/** 검색 칸을 펼쳐 검색어로 찾아 고른다(#209 · #226) — 창(팝업)을 거치지 않고, 고른 코드가 검색어로 들어간다. */
 const pickCode = async (
   user: ReturnType<typeof userEvent.setup>,
   fieldLabel: string,
   code: string,
 ): Promise<void> => {
   await user.click(screen.getByLabelText(fieldLabel));
-  const dialog = await screen.findByRole('dialog');
-  await user.type(within(dialog).getByLabelText('검색어'), code);
-  await user.click(within(dialog).getByRole('button', { name: '검색' }));
-  await user.click(await within(dialog).findByRole('checkbox', { name: code }));
-  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+  await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+  await user.keyboard(code);
+  await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `) }));
 };
 
 /** 대분류 줄이 묶음 머리다(#209) — 그 코드 단추가 머리 칸(접기 단추 옆)에 있는가. */

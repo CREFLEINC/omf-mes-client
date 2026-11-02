@@ -6,7 +6,6 @@ import {
   Dialog,
   EmptyState,
   Icon,
-  SearchInput,
   SkeletonText,
   Table,
   TextField,
@@ -26,7 +25,7 @@ import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns
 import { PageNav, type PageSize } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { runRequest } from '../../patterns/request';
-import { Select } from '../../patterns/select';
+import { PagedSelect, Select } from '../../patterns/select';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -194,6 +193,7 @@ export const JudgmentCodeEditor = ({
     setDraftTypeCode(typeCode);
   }, [typeCode]);
   const typeFieldId = useId();
+  const keywordFieldId = useId();
 
   /* 수정 창 — 고른 값을 고친다. 등록 창은 바깥(주소)이 연다. */
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -718,18 +718,33 @@ export const JudgmentCodeEditor = ({
               onChange={setDraftTypeCode}
             />
           </div>
-          <SearchInput
-            containerClassName="judgment-code-search-field"
-            label={t.search.label}
-            placeholder={t.search.placeholder}
-            value={draftKeyword}
-            onChange={(event) => setDraftKeyword(event.target.value)}
-            onSearch={(value) => {
-              resetEditing();
-              onFiltersChange({ keyword: value.trim(), typeCode: draftTypeCode });
-            }}
-            clearLabel={messages.common.clear}
-          />
+          {/*
+           * 판정 유형 검색 — 칸에서 바로 검색해서 고른다(omf-all-around#226 · 불량코드 탭과 같은 모양). 고른 코드가 검색어로
+           * 들어가고, 「조회」를 눌러야 걸린다. 「전체」는 검색어를 푼다. 판정 유형은 몇 건뿐이라 받은 목록을 화면이 거른다.
+           */}
+          <div className="field-cell judgment-code-search-field search-select-cell">
+            <span className="field-label">
+              <label htmlFor={keywordFieldId}>{t.search.label}</label>
+            </span>
+            <PagedSelect
+              id={keywordFieldId}
+              queryKey={[...codeValueKeys.all, 'judgment-keyword-select', codeGroupId, allValues]}
+              fetchPage={(q) => {
+                const needle = q.toLowerCase();
+                const options = allValues
+                  .filter((row) => `${row.code} ${row.codeName}`.toLowerCase().includes(needle))
+                  .map((row) => ({ value: row.code, label: `${row.code} · ${row.codeName}` }));
+                return Promise.resolve({ options, total: options.length });
+              }}
+              selectedOption={
+                draftKeyword === '' ? null : { value: draftKeyword, label: draftKeyword }
+              }
+              leadingOptions={[{ value: '', label: t.search.typeAll }]}
+              value={draftKeyword}
+              placeholder={t.search.typeAll}
+              onChange={setDraftKeyword}
+            />
+          </div>
           <div className="filter-actions field-cell-unlabeled">
             <Button
               variant="filled"

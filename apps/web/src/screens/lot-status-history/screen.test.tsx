@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { components } from '@omf-mes/api-client';
@@ -367,12 +368,12 @@ const requestCount = (urls: URL[], path: string): number =>
 const lastRequest = (urls: URL[], path: string): URL | undefined =>
   urls.filter(({ pathname }) => pathname === path).at(-1);
 
-/** 창고는 검색 팝업에서 코드를 눌러 고른다(사용자 2026-10-30). */
+/** 창고는 칸에서 바로 검색해 고른다(#226) — 창(팝업)을 거치지 않는다. */
 const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
   await user.click(screen.getByLabelText('창고 선택'));
-  const dialog = await screen.findByRole('dialog', { name: '창고 선택' });
-  await user.click(await within(dialog).findByText(code));
-  await user.click(within(dialog).getByRole('button', { name: '선택' }));
+  await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+  await user.keyboard(code);
+  await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `) }));
 };
 
 const choose = async (user: ReturnType<typeof userEvent.setup>, label: string, option: string) => {

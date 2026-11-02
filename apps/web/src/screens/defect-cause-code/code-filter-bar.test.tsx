@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { messages } from '@omf-mes/i18n';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { causeCodeAdapter, defectCodeAdapter } from './adapters';
 import { CodeFilterBar, type CodeFilterBarProps } from './code-filter-bar';
 import type { CodeFilters } from './types';
@@ -26,18 +28,35 @@ const renderBar = (overrides: Partial<CodeFilterBarProps> = {}) => {
     ...overrides,
   };
 
-  render(<CodeFilterBar {...props} />);
+  /* 코드 · 공정 칸은 펼칠 때 서버에 묻는다(#226) — 공정 하나만 돌려준다. */
+  renderWithProviders(<CodeFilterBar {...props} />, {
+    fetch: createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/processes',
+        respond: () =>
+          jsonResponse({
+            items: [{ processId: 7001, processCode: 'P-10', processName: '조립' }],
+            page: { page: 1, size: 20, total: 1 },
+          }),
+      },
+    ]),
+  });
 
   return { props, user: userEvent.setup() };
 };
 
 describe('CodeFilterBar — 조회 조건', () => {
-  it('검색 칸은 직접 입력하지 않고 검색 창을 연다(#209)', () => {
-    renderBar();
+  it('검색 칸은 칸에서 바로 검색해 고른다 — 창(팝업)이 열리지 않는다(#226)', async () => {
+    const { user } = renderBar();
 
     const field = screen.getByLabelText('불량코드 검색');
-    expect(field).toHaveAttribute('readonly');
-    expect(field).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(field).toHaveTextContent('전체');
+    await user.click(field);
+
+    expect(
+      await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('조회를 누르면 지금 조건이 적용된다', async () => {
@@ -115,9 +134,9 @@ describe('CodeFilterBar — 조회 조건', () => {
     });
   });
 
-  it('탭마다 검색 라벨이 다르고, 불량코드 검색 칸에는 입력 안내가 있다', () => {
+  it('탭마다 검색 라벨이 다르다 — 불량코드 탭은 불량코드 검색', () => {
     renderBar();
-    expect(screen.getByPlaceholderText('불량코드 또는 불량명을 입력하세요')).toBeInTheDocument();
+    expect(screen.getByLabelText('불량코드 검색')).toBeInTheDocument();
   });
 
   it('불량코드 탭에는 처분 유형 · 공정 조건이 있고, 조회를 눌러야 적용된다(#209)', async () => {
@@ -133,8 +152,8 @@ describe('CodeFilterBar — 조회 조건', () => {
     );
   });
 
-  it('공정 칸은 직접 입력하지 않고 공정 검색 창을 열며, 고른 공정 이름을 보인다(#209)', () => {
-    renderBar({
+  it('공정 칸은 고른 공정 이름을 보이고, 칸에서 바로 검색해 고른다(#209 · #226)', async () => {
+    const { props, user } = renderBar({
       appliedFilters: {
         q: '',
         includeInactive: false,
@@ -147,16 +166,21 @@ describe('CodeFilterBar — 조회 조건', () => {
     });
 
     const field = screen.getByLabelText('공정 검색');
-    expect(field).toHaveAttribute('readonly');
-    expect(field).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(field).toHaveValue('P-10 · 조립');
+    expect(field).toHaveTextContent('P-10 · 조립');
+
+    /* 「전체」는 종전 × 자리다 — 조회를 눌러야 적용된다. */
+    await user.click(field);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('option', { name: '전체' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
+    expect(props.onApplyFilters).toHaveBeenCalledWith(expect.objectContaining({ processId: '' }));
   });
 
   it('원인코드 탭에는 처분 유형이 없고 공정 검색은 있다(불량코드 탭 기준 · #209)', () => {
     renderBar({ adapter: causeCodeAdapter });
 
     expect(screen.queryByRole('combobox', { name: '처분 유형 선택' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('공정 검색')).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(screen.getByLabelText('공정 검색')).toBeInTheDocument();
   });
 
   it('원인코드 탭은 원인코드 검색 라벨을 쓴다', () => {

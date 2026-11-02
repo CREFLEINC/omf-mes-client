@@ -836,15 +836,19 @@ describe('JudgmentCodeScreen — 사용 여부 · 검색어(#209)', () => {
     expect(screen.queryByRole('button', { name: 'SYN-JDG-01' })).not.toBeInTheDocument();
   });
 
-  it('검색어로 코드 · 이름을 거르고 주소에 싣는다', async () => {
+  /* 판정 유형 검색은 칸에서 바로 검색해 고른다(#226) — 고른 코드가 검색어로 들어간다. */
+  it('검색 칸에서 찾아 고른 코드로 거르고 주소에 싣는다', async () => {
     const { history, user } = renderScreen([groupListRoute(), codeValueListRoute()]);
     await screen.findByRole('button', { name: 'SYN-JDG-01' });
 
-    await user.type(screen.getByRole('searchbox', { name: te.search.label }), '판정유형 B');
+    await user.click(screen.getByRole('combobox', { name: te.search.label }));
+    await screen.findByRole('searchbox', { name: messages.common.selectSearch });
+    await user.keyboard('판정유형 B');
+    await user.click(await screen.findByRole('option', { name: /^SYN-JDG-02 · / }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => {
-      expect(history.search()).toBe(`?q=${encodeURIComponent('판정유형 B').replace(/%20/g, '+')}`);
+      expect(history.search()).toBe('?q=SYN-JDG-02');
     });
     expect(screen.getByRole('button', { name: 'SYN-JDG-02' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'SYN-JDG-01' })).not.toBeInTheDocument();

@@ -7,7 +7,6 @@ import {
   type Column,
   EmptyState,
   Icon,
-  SearchInput,
   PageHeader,
   Table,
   useToast,
@@ -20,7 +19,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { SaveErrorBanner } from '../../patterns/master';
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PageNav } from '../../patterns/page-nav';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
@@ -140,9 +139,9 @@ export const InspectionLevelScreen = () => {
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const toast = useToast();
 
-  /* 품목 — 조회 줄의 「품목 검색」 칸을 누르면 품목 선택 창이 열린다(검사표 기준 탭과 같다 · 사용자 지시 · #208). */
+  /* 품목 — 조회 줄의 「품목 검색」 칸에서 바로 검색해서 고른다(#226). */
   const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(null);
-  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
+  const itemSelectId = useId();
   const [filter, setFilter] = useState<LevelListFilter>({
     itemId: null,
     level: '',
@@ -405,22 +404,36 @@ export const InspectionLevelScreen = () => {
             }));
           }}
         >
-          <SearchInput
-            label={t.list.keyword}
-            placeholder={t.list.keywordPlaceholder}
-            value={itemInput?.label ?? ''}
-            readOnly
-            title={itemInput?.label}
-            aria-haspopup="dialog"
-            clearLabel={t.list.keywordClear}
-            onClick={() => setIsItemPickerOpen(true)}
-            onSearch={() => setIsItemPickerOpen(true)}
-            onChange={() => undefined}
-            onClear={() => {
-              setItemInput(null);
-              setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
-            }}
-          />
+          {/* 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다. */}
+          <div className="field-cell search-select-cell">
+            <label className="field-label" htmlFor={itemSelectId}>
+              {t.list.keyword}
+            </label>
+            <ItemSelect
+              id={itemSelectId}
+              /* 칸 글자는 종전처럼 「코드 이름」이다. */
+              selectedOption={
+                itemInput === null
+                  ? null
+                  : { value: String(itemInput.itemId), label: itemInput.label }
+              }
+              leadingOptions={[{ value: '', label: t.list.all }]}
+              value={itemInput === null ? '' : String(itemInput.itemId)}
+              placeholder={t.list.all}
+              onItemChange={(picked) => {
+                setItemInput({
+                  itemId: picked.itemId,
+                  label: `${picked.itemCode} ${picked.itemName}`,
+                });
+                setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
+              }}
+              onChange={(value) => {
+                if (value !== '') return;
+                setItemInput(null);
+                setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
+              }}
+            />
+          </div>
           <div className="filter-actions field-cell-unlabeled">
             <Button type="submit" variant="filled">
               {messages.common.search}
@@ -593,23 +606,6 @@ export const InspectionLevelScreen = () => {
           item={historyItem}
           columns={itemHistoryColumns}
           onClose={() => setHistoryItem(null)}
-        />
-      )}
-
-      {isItemPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
-          showAvailability={false}
-          confirmLabel={t.dialog.pickConfirm}
-          onClose={() => setIsItemPickerOpen(false)}
-          onConfirm={([picked]) => {
-            setIsItemPickerOpen(false);
-            if (picked === undefined) return;
-            setItemInput({ itemId: picked.itemId, label: `${picked.itemCode} ${picked.itemName}` });
-            /* 「선택」하면 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(검사표 기준 탭과 같다 · #208). */
-            setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
-          }}
         />
       )}
     </>

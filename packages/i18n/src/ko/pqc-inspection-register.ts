@@ -37,6 +37,8 @@ export const pqcInspectionRegister = {
     itemPlaceholder: '품목을 입력하세요',
     itemPick: '선택',
     itemClear: '품목 조건 지우기',
+    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
+    all: '전체',
     workOrder: '작업지시 검색',
     workOrderPlaceholder: '작업지시를 입력하세요',
     workOrderNotFound: '일치하는 작업지시가 없습니다.',

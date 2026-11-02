@@ -77,6 +77,8 @@ export const oqcInspection = {
     itemPlaceholder: '품목을 입력하세요',
     itemPick: '선택',
     itemClear: '품목 조건 지우기',
+    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
+    all: '전체',
     keyword: '의뢰번호 검색',
     keywordPlaceholder: '의뢰번호를 입력하세요',
     /** 기본으로 켜져 있다 — 이 화면에 들어오는 이유가 「아직 판정하지 않은 것」이기 때문이다. */
