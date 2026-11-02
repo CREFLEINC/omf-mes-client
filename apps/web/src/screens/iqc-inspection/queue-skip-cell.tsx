@@ -15,6 +15,8 @@ export interface QueueSkipCellProps {
   lotId: number;
   /** 계정에 연결된 작업자의 사번 — 요청이 함께 보낸다(서버가 사번을 요구한다). 없으면 요청 단추가 잠긴다. */
   workerNo: string | null;
+  /** 생략 실행 뒤 함께 새로 읽을 다른 화면의 목록 — 부품 IQC 화면(#225). */
+  alsoInvalidate?: readonly (readonly unknown[])[];
 }
 
 /**
@@ -22,7 +24,7 @@ export interface QueueSkipCellProps {
  * 그 LOT 의 마지막 IQC_SKIP 결재 상태로 단추 하나를 세우고, 누르면 그 자리에서 창으로 처리한다:
  * 없음·반려 → 「생략 요청」, 결재 중 → 「승인 처리」(승인·반려), 승인 → 「생략 실행」(한 번 묻고 실행).
  */
-export const QueueSkipCell = ({ lotId, workerNo }: QueueSkipCellProps) => {
+export const QueueSkipCell = ({ lotId, workerNo, alsoInvalidate }: QueueSkipCellProps) => {
   const { client } = useApiClient();
   const [open, setOpen] = useState<'request' | 'approve' | 'execute' | null>(null);
 
@@ -100,7 +102,9 @@ export const QueueSkipCell = ({ lotId, workerNo }: QueueSkipCellProps) => {
         >
           {q.skipExecute}
         </Button>
-        {open === 'execute' && <SkipExecuteDialog lotId={lotId} onClose={close} />}
+        {open === 'execute' && (
+          <SkipExecuteDialog lotId={lotId} onClose={close} alsoInvalidate={alsoInvalidate} />
+        )}
       </>
     );
   }

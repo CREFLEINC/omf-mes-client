@@ -35,7 +35,6 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
-import { IqcSkipPane } from '../iqc-inspection/skip-pane';
 import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -202,19 +201,7 @@ export const InspectionDetail = ({
           </Chip>
         )}
       </div>
-      {/* IQC 생략(OA 화면 #212 와 같은 구획 · 사용자 지시 2026-10-30) — 확정 회차가 있으면 생략으로 덮지 않는다. */}
-      {detail.data !== undefined &&
-        detail.data.lotId !== null &&
-        rounds.data !== undefined &&
-        rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
-          <IqcSkipPane
-            lotId={detail.data.lotId}
-            requestStatusCode={detail.data.statusCode}
-            skipBasisCode={detail.data.skipBasisCode}
-            workerNo={session?.worker?.workerNo ?? null}
-            alsoInvalidate={[partsIqcKeys.all]}
-          />
-        )}
+      {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
@@ -659,9 +646,7 @@ const InspectionForm = (props: FormProps) => {
           <div
             className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
           >
-            <span className="parts-iqc-auto-label">
-              {t.verdict.suggested}
-            </span>
+            <span className="parts-iqc-auto-label">{t.verdict.suggested}</span>
             {suggested === null ? (
               <span className="parts-iqc-muted">{t.verdict.pending}</span>
             ) : (

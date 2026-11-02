@@ -55,6 +55,8 @@ export interface QueueTableProps {
    * 값은 계정에 연결된 작업자 사번이다(없으면 `null` · 요청 단추가 잠긴다). 주지 않으면 열을 세우지 않는다.
    */
   skipWorkerNo?: string | null;
+  /** 생략 실행 뒤 함께 새로 읽을 목록 — 부품 IQC 화면이 이 표를 쓴다(#225). */
+  skipAlsoInvalidate?: readonly (readonly unknown[])[];
   /** 결과가 없을 때 표 자리에 그릴 것. 조회 실패와 빈 결과는 부르는 쪽이 가른다 */
   empty: ReactNode;
 }
@@ -66,6 +68,7 @@ const columnsOf = (
   lotNumbers: NameLookup,
   suppliers: NameLookup,
   skipWorkerNo: string | null | undefined,
+  skipAlsoInvalidate: readonly (readonly unknown[])[] | undefined,
 ): Column<InspectionQueueRow>[] => [
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
@@ -214,7 +217,11 @@ const columnsOf = (
           /* 대기·진행 중이고 LOT 이 있는 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(생략됨은 상태 칸이 말한다). */
           render: (row) =>
             row.lotId !== null && SKIPPABLE.includes(row.statusCode) ? (
-              <QueueSkipCell lotId={row.lotId} workerNo={skipWorkerNo} />
+              <QueueSkipCell
+                lotId={row.lotId}
+                workerNo={skipWorkerNo}
+                alsoInvalidate={skipAlsoInvalidate}
+              />
             ) : null,
         } satisfies Column<InspectionQueueRow>,
       ]),
@@ -228,13 +235,22 @@ export const QueueTable = ({
   selectedId,
   onSelect,
   skipWorkerNo,
+  skipAlsoInvalidate,
   empty,
   scrollX = false,
 }: QueueTableProps) => {
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
     'omf-mes:iqc-inspection:columns:queue:order',
-    columnsOf(selectedId, onSelect, itemNames, lotNumbers, suppliers, skipWorkerNo),
+    columnsOf(
+      selectedId,
+      onSelect,
+      itemNames,
+      lotNumbers,
+      suppliers,
+      skipWorkerNo,
+      skipAlsoInvalidate,
+    ),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
     /* 좌우 배치(가로 스크롤)에서는 열이 그 데이터의 가장 긴 폭까지만 넓어진다(사용자 지시 2026-10-26). */

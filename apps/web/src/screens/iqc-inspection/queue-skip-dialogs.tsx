@@ -259,7 +259,14 @@ export const SkipApproveDialog = ({
 };
 
 /** 「생략 실행」 창 — 바로 실행하지 않고 한 번 묻는다(되돌릴 수 없다 · #225). 실행 API 는 상세 구획(#212)과 같다. */
-export const SkipExecuteDialog = ({ lotId, onClose }: Omit<SkipDialogProps, 'approvalKey'>) => {
+export const SkipExecuteDialog = ({
+  lotId,
+  onClose,
+  alsoInvalidate = [],
+}: Omit<SkipDialogProps, 'approvalKey'> & {
+  /** 실행 뒤 함께 새로 읽을 다른 화면의 목록 — 부품 IQC 화면(omf-all-around#205 · #225). */
+  alsoInvalidate?: readonly (readonly unknown[])[];
+}) => {
   const { client } = useApiClient();
   const toast = useToast();
 
@@ -274,6 +281,7 @@ export const SkipExecuteDialog = ({ lotId, onClose }: Omit<SkipDialogProps, 'app
       INSPECTION_HUB_COUNTS_KEY,
       qualityApprovalKeys.all,
       iqcSkipApprovalKeys.all,
+      ...alsoInvalidate,
     ],
     knownFields: [],
     keyLifetime: 'until-applied',
