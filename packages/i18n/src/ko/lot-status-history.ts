@@ -83,22 +83,16 @@ export const lotStatusHistory = {
     pane: '이력 조회 조건',
     fields: {
       period: '기간',
-      actor: '행위자',
+      from: '시작일',
+      to: '종료일',
+      actor: '처리자',
       lot: 'LOT 번호',
     },
     /** 고른 행위자가 목록에 없을 때 자리를 비우지 않고 고른 사실만 남긴다. */
-    actorUnknownOption: '선택한 행위자 (이름 확인 불가)',
-    actorUnknownNote: '선택한 행위자 이름을 확인하지 못했습니다.',
-    /** 기간 입력창이 비었을 때 — 두 날짜가 필요하다는 것을 먼저 보인다. */
-    periodPlaceholder: '시작일 ~ 종료일',
-    /** 달력이 열려 있는 동안 지금 고를 날짜. */
-    steps: {
-      start: '시작일을 선택해 주세요.',
-      end: '종료일을 선택해 주세요.',
-    },
+    actorUnknownOption: '선택한 처리자 (이름 확인 불가)',
+    actorUnknownNote: '선택한 처리자 이름을 확인하지 못했습니다.',
     /** 조회 단추를 막는 기간 사유. */
     reasons: {
-      missing: '시작일을 선택한 후 종료일을 선택해 주세요.',
       invalid: '유효한 기간을 선택해 주세요.',
       reversed: '기간 종료는 시작보다 앞설 수 없습니다.',
     },
@@ -148,12 +142,13 @@ export const lotStatusHistory = {
   history: {
     pane: 'LOT 이력',
     columns: {
-      occurredAt: '일시',
+      occurredAt: '처리 일시',
       lot: 'LOT 번호',
-      event: '구분',
+      event: '처리 유형',
+      status: '상태',
       change: '상태 변경',
-      actor: '행위자',
-      reason: '사유',
+      actor: '처리자',
+      reason: '처리 사유',
     },
     events: {
       held: '보류 등록',
@@ -210,7 +205,7 @@ export const lotStatusHistory = {
       event: '처리 유형',
       change: '변경 내용',
       actor: '처리자',
-      reason: '사유',
+      reason: '처리 사유',
     },
   },
   detail: {
@@ -263,6 +258,6 @@ export const lotStatusHistory = {
     refreshingText: '보류 문서를 갱신하는 중입니다.',
     empty: '보류 문서가 없습니다',
     pagination: '보류 문서 쪽 이동',
-    actorsLimited: '일부 행위자 이름을 확인하지 못해 사용자 번호를 표시합니다.',
+    actorsLimited: '일부 처리자 이름을 확인하지 못해 사용자 번호를 표시합니다.',
   },
 } as const;

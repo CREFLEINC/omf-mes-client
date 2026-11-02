@@ -1,14 +1,16 @@
-import { AlertBanner, Button, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, EmptyState, SkeletonText, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { PageNav } from '../../patterns/page-nav';
 import { type HistoryFilters, LOT_PAGE_SIZES, type LotPageSize } from './filters';
 import type { FilterOption } from './lot-filter-bar';
-import { LotHistoryDialog } from './lot-detail-pane';
+import { LotDetailPane } from './lot-detail-pane';
+import { useLotTypeOptions } from './options';
 import { LotTimelineTable } from './lot-timeline-table';
+import { entryStatusCode } from './timeline';
 import { validateHistoryPeriod } from './period';
-import { useLotHistoryTimeline } from './queries';
+import { useLotHistoryTimeline, useLotTypeCodes } from './queries';
 
 const t = messages.lotStatusHistory;
 
@@ -24,6 +26,11 @@ interface HistoryResultsProps {
   statusOptions: readonly FilterOption[];
   appUserName: (appUserId: number) => string | null;
   onPageChange: (page: number) => void;
+  /** 고른 줄 — 같은 화면의 상세 칸이 그 LOT 을 보인다(사용자 2026-11-02). */
+  selectedKey: string | null;
+  onSelectEntry: (entry: { key: string; lotId: number }) => void;
+  /** 위쪽 상태 칩으로 고른 LOT 상태 — 빈 값이면 전부(사용자 2026-11-02). */
+  statusFilter: string;
 }
 
 export const HistoryResults = ({
@@ -33,11 +40,13 @@ export const HistoryResults = ({
   statusOptions,
   appUserName,
   onPageChange,
+  selectedKey,
+  onSelectEntry,
+  statusFilter,
 }: HistoryResultsProps) => {
-  /* 줄을 누르면 그 LOT 의 상세 이력 팝업(사용자 2026-11-02). */
-  const [openedLot, setOpenedLot] = useState<{ lotId: number; lotNo: string } | null>(null);
   const history = useLotHistoryTimeline(filters, offsetMinutes);
   /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
+  const [sort, setSort] = useState<SortState>({ key: 'occurredAt', direction: 'descending' });
   const [pageSize, setPageSize] = useState<LotPageSize>(HISTORY_PAGE_SIZE);
   const hasValidPeriod = validateHistoryPeriod({ from: filters.from, to: filters.to }) === null;
 
@@ -51,21 +60,30 @@ export const HistoryResults = ({
       {t.actions.retry}
     </Button>
   );
-  const entries = history.data?.entries ?? [];
+  const filtered = (history.data?.entries ?? []).filter(
+    (entry) => statusFilter === '' || entryStatusCode(entry) === statusFilter,
+  );
+  /* 받은 이력은 최신순이다 — 오름차순은 뒤집기만 한다(LOT 상세 이력 표와 같다). 쪽을 나누기 전에 정렬한다. */
+  const entries = sort.direction === 'ascending' ? [...filtered].reverse() : filtered;
   const total = entries.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const start = (currentPage - 1) * pageSize;
   const rows = entries.slice(start, start + pageSize);
+  /* LOT 번호 왼쪽 유형 라벨 — LOT 현황 · LOT 상태 변경 목록과 같다(사용자 2026-11-02). 보이는 쪽의 LOT 만 읽는다. */
+  const lotTypeCodes = useLotTypeCodes(rows.map((entry) => entry.event.lotId));
+  const lotTypes = useLotTypeOptions();
+  const lotTypeLabel = (entry: { event: { lotId: number } }): string | null => {
+    const code = lotTypeCodes.get(entry.event.lotId);
+    if (code === undefined) return null;
+    return (
+      lotTypes.data?.items.find((item) => item.code === code)?.label ?? t.values.unlisted(code)
+    );
+  };
 
+  /* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */
   return (
-    <section
-      className="pane lot-status-pane lot-status-history-pane"
-      aria-labelledby="lot-history-title"
-    >
-      <h2 className="pane-title" id="lot-history-title">
-        {t.history.pane}
-      </h2>
+    <section className="pane lot-status-pane lot-status-history-pane" aria-label={t.history.pane}>
       {!hasValidPeriod && (
         <EmptyState
           size="sm"
@@ -98,7 +116,14 @@ export const HistoryResults = ({
             appUserName={appUserName}
             variant="history"
             busy={history.isFetching}
-            onOpenEntry={(entry) => setOpenedLot({ lotId: entry.event.lotId, lotNo: entry.lotNo })}
+            onOpenEntry={(entry) => onSelectEntry({ key: entry.key, lotId: entry.event.lotId })}
+            selectedKey={selectedKey}
+            historySort={sort}
+            lotTypeLabel={lotTypeLabel}
+            onHistorySortChange={(next) => {
+              setSort(next);
+              onPageChange(1);
+            }}
             empty={
               <EmptyState
                 size="sm"
@@ -122,13 +147,27 @@ export const HistoryResults = ({
           />
         </>
       )}
-      {openedLot !== null && (
-        <LotHistoryDialog
-          lot={openedLot}
-          statusOptions={statusOptions}
-          onClose={() => setOpenedLot(null)}
-        />
-      )}
     </section>
+  );
+};
+
+/** LOT 유형 기준값은 상세를 열 때만 읽는다 — 탭에 처음 들어올 때 요청을 늘리지 않는다. */
+export const HistoryLotDetail = ({
+  lotId,
+  statusOptions,
+}: {
+  lotId: number;
+  statusOptions: readonly FilterOption[];
+}) => {
+  const lotTypes = useLotTypeOptions();
+  return (
+    <LotDetailPane
+      lotId={lotId}
+      lotTypeOptions={(lotTypes.data?.items ?? []).map((item) => ({
+        value: item.code,
+        label: item.label,
+      }))}
+      statusOptions={statusOptions}
+    />
   );
 };

@@ -13,7 +13,6 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   description:
     'Tìm và chọn LOT để xem trạng thái chất lượng hiện tại, rồi đổi trạng thái bằng cách đăng ký hoặc gỡ tạm giữ.',
   breadcrumbRoot: 'Quản lý chất lượng',
-  historyNotice: 'Lịch sử chuyển đổi không được lưu thành một lịch sử riêng',
   historyLink: 'Xem lịch sử thay đổi Lot Status',
   reason: {
     holdLabel: 'Lý do tạm giữ',
@@ -30,14 +29,10 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
   candidate: {
     pane: 'LOT cần chuyển đổi',
     filters: {
-      period: 'Khoảng thời gian chuyển đổi gần nhất',
       lotNo: 'Số LOT',
       lotNoPlaceholder: 'Hãy nhập số LOT',
       item: 'Vật tư',
-      status: 'Trạng thái',
       all: 'Tất cả',
-      note: 'Tra cứu LOT theo ngày chuyển đổi gần nhất.',
-      periodMissing: 'Hãy chọn cả ngày bắt đầu và ngày kết thúc tra cứu.',
       periodInvalid: 'Hãy nhập ngày hợp lệ cho khoảng thời gian tra cứu.',
       periodReversed: 'Ngày bắt đầu tra cứu không được muộn hơn ngày kết thúc.',
       reset: 'Đặt lại',
@@ -58,17 +53,11 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     empty: 'Không có LOT nào khớp điều kiện.',
   },
   selected: {
-    pane: 'LOT đã chọn',
-    title: 'LOT đã chọn',
+    pane: 'Thay đổi trạng thái LOT',
+    title: 'Thay đổi trạng thái LOT',
     identity: 'Định danh LOT đã chọn',
     lotNo: 'Số LOT',
     item: 'Mặt hàng',
-    currentTitle: 'Trạng thái hiện tại',
-    current: 'Trạng thái hiện tại của LOT đã chọn',
-    status: 'Trạng thái hiện tại',
-    onHand: 'Số lượng đang giữ',
-    held: 'Số lượng tạm giữ',
-    available: 'Số lượng khả dụng',
     latestTransition: 'Thay đổi trạng thái gần nhất',
     latestReason: 'Lý do gần nhất',
   },
@@ -80,6 +69,8 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     noTransition: 'LOT hiện tại không chuyển đổi được.',
     choiceTitle: 'Trạng thái cần đổi',
     choiceLabel: 'Chuyển đổi',
+    review: 'Xem xét thay đổi trạng thái',
+    blocked: 'Không thể thay đổi trạng thái',
     holds: {
       pane: 'Danh sách mục tạm giữ đang mở',
       title: 'Tạm giữ cần gỡ',
@@ -92,7 +83,6 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
       selected: 'Đã chọn',
     },
     notes: {
-      createReady: 'Đã chuẩn bị xong việc đăng ký tạm giữ.',
       lockUnknown: 'Không xác nhận được thông tin khóa LOT nên không đi tiếp được.',
       holdsLoading: 'Đang tải mục tạm giữ đang mở.',
       holdsFailed: 'Không tải được mục tạm giữ đang mở.',

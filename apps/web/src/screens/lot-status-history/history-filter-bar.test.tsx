@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { pickRange } from '../../test/date-picker';
+import { pickDate } from '../../test/date-picker';
 import { EMPTY_HISTORY_FILTERS } from './filters';
 import { HistoryFilterBar, type HistoryFilterBarProps } from './history-filter-bar';
 
@@ -22,8 +22,9 @@ describe('HistoryFilterBar', () => {
     render(<HistoryFilterBar {...props} />);
     const user = userEvent.setup();
 
-    await pickRange(user, screen.getByLabelText('기간'), '2026-07-20', '2026-07-25');
-    await user.click(screen.getByLabelText('행위자'));
+    await pickDate(user, screen.getByLabelText('시작일'), '2026-07-20');
+    await pickDate(user, screen.getByLabelText('종료일'), '2026-07-25');
+    await user.click(screen.getByLabelText('처리자'));
     await user.click(screen.getByRole('option', { name: '합성 퇴직자 (미사용)' }));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(props.onSearch).not.toHaveBeenCalled();
@@ -38,30 +39,23 @@ describe('HistoryFilterBar', () => {
     expect(screen.queryByText('602')).not.toBeInTheDocument();
   });
 
-  it('달력이 열리면 시작일 → 종료일 순서로 지금 고를 날짜를 기간 옆에 말한다', async () => {
+  it('기간은 시작일 · 종료일 두 칸이고 단계 안내 문구를 두지 않는다(2026-11-02)', () => {
+    render(<HistoryFilterBar {...baseProps()} />);
+
+    expect(screen.getByLabelText('시작일')).toHaveTextContent('2026-08-01');
+    expect(screen.getByLabelText('종료일')).toHaveTextContent('2026-08-07');
+    expect(screen.queryByText('시작일을 선택한 후 종료일을 선택해 주세요.')).not.toBeInTheDocument();
+  });
+
+  it('날짜를 비우면 문구 없이 조회만 막는다', () => {
     render(<HistoryFilterBar {...baseProps()} appliedFilters={EMPTY_HISTORY_FILTERS} />);
-    const user = userEvent.setup();
-    const trigger = screen.getByLabelText('기간');
 
-    expect(trigger).toHaveTextContent('시작일 ~ 종료일');
-    await user.click(trigger);
-    expect(await screen.findByText('시작일을 선택해 주세요.')).toBeInTheDocument();
-
-    const popup = document.getElementById(trigger.getAttribute('aria-controls') ?? '');
-    const cells = [...(popup?.querySelectorAll<HTMLElement>('td[data-date]') ?? [])];
-    const [first, second] = cells;
-    if (first === undefined || second === undefined) throw new Error('달력 칸이 없습니다.');
-    await user.click(first);
-    expect(await screen.findByText('종료일을 선택해 주세요.')).toBeInTheDocument();
-    expect(trigger).toHaveTextContent(`${first.dataset.date ?? ''} ~`);
-
-    await user.click(second);
-    expect(trigger).toHaveTextContent(`${first.dataset.date ?? ''} ~ ${second.dataset.date ?? ''}`);
-    expect(screen.queryByText('종료일을 선택해 주세요.')).not.toBeInTheDocument();
+    const search = screen.getByRole('button', { name: '조회' });
+    expect(search).toBeDisabled();
+    expect(search).not.toHaveAttribute('aria-describedby');
   });
 
   it.each([
-    [{ from: '', to: '' }, '시작일을 선택한 후 종료일을 선택해 주세요.'],
     [{ from: '2026-08-07', to: '2026-08-01' }, '기간 종료는 시작보다 앞설 수 없습니다.'],
     [{ from: '2026-02-30', to: '2026-03-01' }, '유효한 기간을 선택해 주세요.'],
   ])('유효하지 않은 기간 %o이면 조회를 막고 사유를 잇는다', (period, reason) => {
@@ -107,8 +101,9 @@ describe('HistoryFilterBar', () => {
       />,
     );
 
-    expect(screen.getByLabelText('기간')).toHaveTextContent('2026-07-01 ~ 2026-07-31');
-    expect(screen.getByLabelText('행위자')).toHaveTextContent('합성 담당자');
+    expect(screen.getByLabelText('시작일')).toHaveTextContent('2026-07-01');
+    expect(screen.getByLabelText('종료일')).toHaveTextContent('2026-07-31');
+    expect(screen.getByLabelText('처리자')).toHaveTextContent('합성 담당자');
     expect(screen.getByLabelText('LOT 스캔')).toHaveValue('BACK');
   });
 
@@ -124,8 +119,8 @@ describe('HistoryFilterBar', () => {
 
     expect(screen.getByText('일부 행위자만 표시됩니다.')).toBeVisible();
     expect(screen.queryByText('999')).not.toBeInTheDocument();
-    await user.click(screen.getByLabelText('행위자'));
-    expect(screen.getByRole('option', { name: '선택한 행위자 (이름 확인 불가)' })).toBeVisible();
+    await user.click(screen.getByLabelText('처리자'));
+    expect(screen.getByRole('option', { name: '선택한 처리자 (이름 확인 불가)' })).toBeVisible();
   });
 
   it('초기화는 화면 소유 handler에 위임한다', async () => {

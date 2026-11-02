@@ -93,7 +93,8 @@ export const SuspiciousMaterialHoldExecution = ({
       setConfirmation(null);
       setApplied(true);
       onConfirmationChange(false);
-      toast.show({ variant: 'success', description: t.success });
+      /* 오른쪽 아래 알림은 짧게 「등록되었습니다.」(사용자 2026-11-02) — 다음 할 일은 아래 띠가 알린다. */
+      toast.show({ variant: 'success', description: messages.suspiciousMaterialHold.registered });
       onApplied();
     },
   });
@@ -116,16 +117,13 @@ export const SuspiciousMaterialHoldExecution = ({
         ? t.completeInput
         : t.ready(selected.length);
 
+  /* 「의심자재 보류 등록」 카드 안 [보류 등록] 한 줄 — 제목 · 안내 문구 없이 단추만(사용자 시안 2026-11-02). */
   return (
-    <section
-      className="pane suspicious-material-hold-pane suspicious-material-hold-action-pane"
-      aria-label={t.pane}
-    >
-      <h2 className="pane-title">{t.pane}</h2>
+    <div className="suspicious-material-hold-action" role="group" aria-label={t.pane}>
       <div className="suspicious-material-hold-action-row">
-        <p className="field-note">{guidance}</p>
         <Button
           disabled={body === null || confirmation !== null}
+          title={guidance}
           onClick={() => {
             if (body !== null) {
               setApplied(false);
@@ -189,11 +187,15 @@ export const SuspiciousMaterialHoldExecution = ({
               )}
             </>
           )}
-          <AlertBanner variant="warning" title={t.impact}>
-            {t.impactDescription(Object.keys(confirmation.lotNames).length)}
+          <AlertBanner
+            variant="warning"
+            title={t.impact(Object.keys(confirmation.lotNames).length)}
+          >
+            <p className="suspicious-material-hold-confirm-line">{t.impactRelease}</p>
+            <p className="suspicious-material-hold-confirm-line">{t.impactShipped}</p>
           </AlertBanner>
         </Dialog>
       )}
-    </section>
+    </div>
   );
 };

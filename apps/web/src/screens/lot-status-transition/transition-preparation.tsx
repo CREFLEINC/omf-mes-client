@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   type Column,
+  Icon,
   Radio,
   RadioGroup,
   SkeletonText,
@@ -11,9 +12,12 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
-import type { PropsWithChildren } from 'react';
+import type { ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { runRequest } from '../../patterns/request';
 import {
   codeName,
@@ -39,11 +43,14 @@ const formatDateTime = (value: string): string => {
   return formatPlantDateTime(value) ?? value;
 };
 
-const PreparationPane = ({ children }: PropsWithChildren) => (
-  <section className="pane lot-status-transition-pane" aria-label={t.pane}>
-    <h2 className="pane-title">{t.pane}</h2>
+/*
+ * 「LOT 상태 변경」 카드 아래쪽(상하 배치면 옆) — 변경할 상태, 그 아래 해제할 보류 · 입력 칸이 이어진다. 현재 상태는 위
+ * LOT 상자의 칩으로 충분해 따로 두지 않는다(사용자 2026-11-02). 카드 자체는 candidate-screen 이 세운다.
+ */
+const PreparationPane = ({ children }: { children?: ReactNode }) => (
+  <div className="lot-status-transition-preparation" role="group" aria-label={t.pane}>
     {children}
-  </section>
+  </div>
 );
 
 const useTransitions = (lotId: number, enabled: boolean) => {
@@ -136,6 +143,8 @@ export const LotStatusTransitionPreparation = ({
   const [selectedTransitionKey, setSelectedTransitionKey] = useState<string | null>(null);
   const [autoSelectOwner, setAutoSelectOwner] = useState<string | null>(null);
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null);
+  /* 입력 칸은 [상태 변경 검토]를 눌러야 열린다(사용자 시안 2026-11-02) — 고른 상태 · 보류가 바뀌면 다시 닫힌다. */
+  const [reviewing, setReviewing] = useState(false);
   const allowed = transitions.data?.transitions.filter((item) => item.allowed) ?? [];
   const selectedTransition = allowed.find((item) => transitionKey(item) === selectedTransitionKey);
   const isCreate = selectedTransition?.actionCode === 'CREATE_HOLD';
@@ -182,11 +191,13 @@ export const LotStatusTransitionPreparation = ({
     setSelectedTransitionKey(value);
     setAutoSelectOwner(next?.actionCode === 'RELEASE_HOLD' ? value : null);
     setSelectedHoldId(null);
+    setReviewing(false);
   };
   const clearExecutionOwner = (): void => {
     setSelectedTransitionKey(null);
     setAutoSelectOwner(null);
     setSelectedHoldId(null);
+    setReviewing(false);
   };
   const refreshPreparation = (): void => {
     void transitions.refetch();
@@ -203,19 +214,19 @@ export const LotStatusTransitionPreparation = ({
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdColumns: Column<LotHold>[] = [
     /*
-     * 네 열을 모두 비율로 고르게 나눈다(사용자 지시 — 가운데 정렬 표에서 한 열로 폭이 몰리지 않게).
-     * 사유 34 · 시각 28 · 수량 16 · 해제 대상 22. 가운데 정렬은 `app.css` 의 `.lot-status-transition-holds`.
+     * 처음 폭은 종전 비율(사유 34 · 시각 28 · 수량 16 · 해제 대상 22)에 맞춘 px — 끌어 바꾼 폭 · 순서는 브라우저에 남는다
+     * (표는 늘 폭 · 순서를 바꿀 수 있다 · 사용자 2026-11-02). 가운데 정렬은 `app.css` 의 `.lot-status-transition-holds`.
      */
     {
       key: 'reason',
       header: t.holds.reason,
-      width: '34%',
+      width: '200px',
       render: (item) => codeName(holdReasons.data?.items, item.reasonCode),
     },
     {
       key: 'heldAt',
       header: t.holds.heldAt,
-      width: '28%',
+      width: '170px',
       render: (item) => (
         <time className="lot-status-transition-nowrap" dateTime={item.heldAt}>
           {formatDateTime(item.heldAt)}
@@ -225,13 +236,13 @@ export const LotStatusTransitionPreparation = ({
     {
       key: 'quantity',
       header: t.holds.quantity,
-      width: '16%',
+      width: '100px',
       render: (item) => item.holdQty ?? t.holds.full,
     },
     {
       key: 'select',
       header: t.holds.target,
-      width: '22%',
+      width: '130px',
       render: (item) => (
         <Button
           variant="outlined"
@@ -239,6 +250,7 @@ export const LotStatusTransitionPreparation = ({
           aria-pressed={selectedHoldId === item.lotHoldId}
           onClick={() => {
             setAutoSelectOwner(null);
+            if (selectedHoldId !== item.lotHoldId) setReviewing(false);
             setSelectedHoldId(item.lotHoldId);
           }}
         >
@@ -247,12 +259,29 @@ export const LotStatusTransitionPreparation = ({
       ),
     },
   ];
+  const orderedHoldColumns = useColumnOrder(
+    'omf-mes:lot-status-transition:holds:order',
+    holdColumns,
+  );
+  const resizableHolds = useColumnWidths(
+    'omf-mes:lot-status-transition:holds',
+    orderedHoldColumns,
+    {
+      fitContent: true,
+    },
+  );
+  /* 카드 폭에 맞춰 줄인다 — 가로로 밀면 보류 수량 · 해제 대상(선택 단추)이 칸 밖으로 숨는다(점검 2026-11-02). */
+  const fitHolds = useFitColumns(resizableHolds.columns);
 
+  const choiceTitle = <span className="field-label">{t.choiceTitle}</span>;
   if (transitions.isFetching && !confirmationPinned)
     return (
       <PreparationPane>
-        <div role="status" aria-label={t.loading}>
-          <SkeletonText lines={1} />
+        <div className="field-cell lot-status-transition-choice">
+          {choiceTitle}
+          <div role="status" aria-label={t.loading}>
+            <SkeletonText lines={1} />
+          </div>
         </div>
       </PreparationPane>
     );
@@ -266,16 +295,25 @@ export const LotStatusTransitionPreparation = ({
         />
       </PreparationPane>
     );
+  /* 바꿀 수 있는 상태가 없으면 「상태 변경 불가」와 까닭 한 줄(정보 아이콘 + 글자 · 사용자 시안 2026-11-02). */
   if (allowed.length === 0)
     return (
       <PreparationPane>
-        <AlertBanner variant="info">{transitions.data?.note ?? t.noTransition}</AlertBanner>
+        <div className="field-cell lot-status-transition-choice">
+          {choiceTitle}
+          <span className="lot-status-transition-blocked">{t.blocked}</span>
+        </div>
+        <p className="lot-status-transition-blocked-note">
+          <Icon name="info" size={18} aria-hidden />
+          <span>{transitions.data?.note ?? t.noTransition}</span>
+        </p>
       </PreparationPane>
     );
 
   let preparation: string | null = null;
   if (isCreate) {
-    preparation = Number.isSafeInteger(lot.versionNo) ? t.notes.createReady : t.notes.lockUnknown;
+    /* 준비가 끝나면 문구 없이 [상태 변경 검토]만 선다(사용자 2026-11-02). */
+    preparation = Number.isSafeInteger(lot.versionNo) ? null : t.notes.lockUnknown;
   } else if (isRelease) {
     preparation = holds.isFetching
       ? t.notes.holdsLoading
@@ -293,13 +331,20 @@ export const LotStatusTransitionPreparation = ({
                 : t.notes.lockUnknown;
   }
 
+  /* 검토로 넘어갈 수 있는가 — 등록은 LOT 잠금 정보, 해제는 고른 보류의 상세 · 잠금 정보가 서야 한다. */
+  const canReview = isCreate
+    ? lot.versionNo !== undefined && Number.isSafeInteger(lot.versionNo)
+    : isRelease && selectedHold !== undefined && detailData !== undefined && token !== undefined;
+  /* 검토 중에 고른 보류가 사라지면 입력 칸 대신 다시 [상태 변경 검토]가 선다. */
+  const reviewOpen = reviewing && canReview;
+
   return (
     <PreparationPane>
-      <div className="lot-status-transition-choice">
-        <h3 className="lot-status-transition-subtitle">{t.choiceTitle}</h3>
+      <div className="field-cell lot-status-transition-choice">
+        {choiceTitle}
         <RadioGroup
           name={`lot-status-transition-${String(lot.lotId)}`}
-          orientation="horizontal"
+          orientation="vertical"
           value={selectedTransitionKey ?? ''}
           disabled={confirmationPinned}
           aria-label={t.choiceLabel}
@@ -315,11 +360,15 @@ export const LotStatusTransitionPreparation = ({
       {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
         <section className="lot-status-transition-holds" aria-label={t.holds.pane}>
           <h3 className="lot-status-transition-subtitle">{t.holds.title}</h3>
-          <div className="wide-table lot-status-transition-table">
+          <div
+            ref={fitHolds.ref}
+            className="wide-table lot-status-transition-table"
+            style={resizableHolds.style}
+          >
             <Table
               density="compact"
               caption={t.holds.title}
-              columns={holdColumns}
+              columns={fitHolds.columns}
               rows={holdsData.items}
               getRowId={(item) => String(item.lotHoldId)}
               sort={null}
@@ -332,7 +381,15 @@ export const LotStatusTransitionPreparation = ({
           {preparation}
         </p>
       )}
-      {isCreate &&
+      {!reviewOpen && (
+        <div className="lot-status-transition-review">
+          <Button variant="filled" disabled={!canReview} onClick={() => setReviewing(true)}>
+            {t.review}
+          </Button>
+        </div>
+      )}
+      {reviewOpen &&
+        isCreate &&
         selectedTransition !== undefined &&
         lot.versionNo !== undefined &&
         Number.isSafeInteger(lot.versionNo) && (
@@ -350,12 +407,14 @@ export const LotStatusTransitionPreparation = ({
             onCreated={() => {
               refreshPreparation();
               setSelectedTransitionKey(null);
+              setReviewing(false);
             }}
             onConfirmationChange={changeConfirmation}
             onStale={reloadExecutionOwner}
           />
         )}
-      {isRelease &&
+      {reviewOpen &&
+        isRelease &&
         selectedTransition !== undefined &&
         selectedHold !== undefined &&
         detailData !== undefined &&
@@ -373,6 +432,7 @@ export const LotStatusTransitionPreparation = ({
             onReleased={() => {
               refreshPreparation();
               setSelectedHoldId(null);
+              setReviewing(false);
             }}
             onConfirmationChange={changeConfirmation}
             onStale={reloadExecutionOwner}

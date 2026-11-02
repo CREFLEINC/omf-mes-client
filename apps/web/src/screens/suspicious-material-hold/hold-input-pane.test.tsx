@@ -1,13 +1,16 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import type { SelectedLotSnapshot } from './candidate-model';
 import {
   buildSuspiciousMaterialHoldBody,
   type HoldInputLot,
+  SuspiciousMaterialHoldImpact,
   SuspiciousMaterialHoldInputPane,
 } from './hold-input-pane';
 
@@ -113,29 +116,45 @@ const renderPane = (
   ]);
   const Harness = () => {
     const [current, setCurrent] = useState(lots);
+    /* 막힌 까닭은 카드 제목 줄이 보인다 — 이 시험은 받은 문장을 그대로 그린다. */
+    const [notices, setNotices] = useState<string[]>([]);
     return (
       <>
         <button onClick={() => setCurrent([display(702), display(703)])}>owner 변경</button>
+        <button onClick={() => setCurrent([])}>잠깐 비우기</button>
+        <button onClick={() => setCurrent(lots)}>되돌리기</button>
         <SuspiciousMaterialHoldInputPane
           selection={current}
           targetLotStatusCode="HOLD"
           isLocked={false}
           onBodyChange={onBodyChange}
+          onNoticesChange={setNotices}
         />
+        {notices.map((notice) => (
+          <p key={notice}>{notice}</p>
+        ))}
+        {/* 보류 시 제한 사항은 카드 안에서 따로 선다(사용자 2026-11-02) — 이 시험은 함께 본다. */}
+        <SuspiciousMaterialHoldImpact selection={current} />
       </>
     );
   };
-  const view = renderWithProviders(<Harness />, { fetch });
+  /* 제한 사항 항목의 상세 팝업(LOT 상태 이력과 같은 팝업)이 세션 권한을 읽는다. */
+  const view = renderWithProviders(
+    <SessionProvider>
+      <Harness />
+    </SessionProvider>,
+    { fetch, session: SYNTHETIC_SESSION },
+  );
   return { ...view, onBodyChange, user: userEvent.setup() };
 };
 
 describe('의심자재 보류 입력 pane', () => {
   it('선택이 없으면 입력이 없고 단건은 일부·다건은 전량만 제공한다', async () => {
     const empty = renderPane([]);
-    expect(screen.queryByRole('region', { name: '보류 등록 입력' })).toBeNull();
+    expect(screen.queryByRole('group', { name: '보류 등록 입력' })).toBeNull();
     empty.unmount();
     const one = renderPane([display(701)]);
-    expect(screen.getByRole('heading', { level: 2, name: '보류 등록 입력' })).toBeVisible();
+    expect(screen.getByRole('group', { name: '보류 등록 입력' })).toBeVisible();
     expect(await screen.findByRole('radio', { name: '일부 보류' })).toBeEnabled();
     one.unmount();
     renderPane([display(701), display(702)]);
@@ -149,7 +168,7 @@ describe('의심자재 보류 입력 pane', () => {
       [display(701)],
       reasons([{ code: 'DAMAGE', codeName: '파손', nameKo: '파손(현지)', isActive: true }]),
     );
-    const reason = await screen.findByLabelText('보류 사유');
+    const reason = await screen.findByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await user.click(reason);
     await user.click(screen.getByRole('option', { name: '파손(현지)' }));
@@ -163,7 +182,7 @@ describe('의심자재 보류 입력 pane', () => {
 
   it('사유·해제 조건과 일부 수량이 유효할 때만 exact body를 알린다', async () => {
     const { onBodyChange, user } = renderPane([display(701)]);
-    const reason = await screen.findByLabelText('보류 사유');
+    const reason = await screen.findByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await user.click(reason);
     await user.click(screen.getByRole('option', { name: '파손' }));
@@ -193,8 +212,8 @@ describe('의심자재 보류 입력 pane', () => {
       reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }], 2),
     );
     expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
-    expect(screen.getByText(/위치 이름 미확인/)).toBeVisible();
-    expect(screen.getByText(/단위 이름 미확인/)).toBeVisible();
+    /* 못 받은 값은 「위치·단위 미확인」 한 줄로 묶는다(사용자 시안 2026-11-02). */
+    expect(screen.getByText('위치·단위 미확인')).toBeVisible();
     expect(onBodyChange).toHaveBeenLastCalledWith(null);
     for (const raw of ['802001', '803001', '804001']) expect(screen.queryByText(raw)).toBeNull();
   });
@@ -207,7 +226,7 @@ describe('의심자재 보류 입력 pane', () => {
     const view = renderPane([display(701)], (call) =>
       call === 1 ? reasons([{ code: 'DAMAGE', codeName: '파손', isActive: true }]) : pending,
     );
-    const reason = await screen.findByLabelText('보류 사유');
+    const reason = await screen.findByLabelText(/^보류 사유/);
     await waitFor(() => expect(reason).toBeEnabled());
     await view.user.click(reason);
     await view.user.click(screen.getByRole('option', { name: '파손' }));
@@ -223,5 +242,53 @@ describe('의심자재 보류 입력 pane', () => {
     release(reasons([{ code: 'DAMAGE', codeName: '   ', isActive: true }]));
     expect(await screen.findByText(/보류 사유 목록이 완결되지 않았습니다/)).toBeVisible();
     expect(screen.queryByRole('option', { name: 'DAMAGE' })).toBeNull();
+  });
+
+  it('보류 시 제한 사항 항목을 누르면 그 LOT 의 상세 팝업이 열리고 [닫기]로 닫힌다', async () => {
+    const { user } = renderPane([display(701)]);
+    await user.click(await screen.findByRole('button', { name: 'SYN-LOT-701 상세 보기' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('보류 사유를 고르면 바로 해제 조건 칸으로 옮겨 간다', async () => {
+    const { user } = renderPane([display(701)]);
+    const reason = await screen.findByLabelText(/^보류 사유/);
+    await waitFor(() => expect(reason).toBeEnabled());
+    await user.click(reason);
+    await user.click(await screen.findByRole('option', { name: '파손' }));
+    await waitFor(() => expect(screen.getByLabelText(/^해제 조건/)).toHaveFocus());
+  });
+
+  it('재고 기록이 없는 LOT(창고 없음)은 「재고 없음」으로 보이고 전량 보류는 막지 않는다', async () => {
+    const { warehouseId: _w, locationId: _l, onHandQty: _q, ...noStock } = selected(701);
+    const { onBodyChange } = renderPane([{ ...noStock, locationLabel: null, uomLabel: null }]);
+
+    expect(await screen.findByText('재고 없음')).toBeVisible();
+    expect(screen.queryByText(/미확인/)).toBeNull();
+    expect(screen.queryByText(/도착 상태가 확인되지 않아/)).toBeNull();
+    expect(onBodyChange).not.toHaveBeenCalledWith(expect.objectContaining({ lots: [] }));
+  });
+
+  it('목록을 다시 받는 동안 선택이 잠깐 비어도 넣던 입력은 지우지 않고, 다른 LOT 을 고르면 비운다', async () => {
+    const { user } = renderPane([display(701)]);
+    const condition = await screen.findByLabelText(/^해제 조건/);
+    await user.type(condition, '재검 완료');
+    await user.click(screen.getByRole('button', { name: '잠깐 비우기' }));
+    await user.click(screen.getByRole('button', { name: '되돌리기' }));
+    expect(await screen.findByLabelText(/^해제 조건/)).toHaveValue('재검 완료');
+    await user.click(screen.getByRole('button', { name: 'owner 변경' }));
+    expect(await screen.findByLabelText(/^해제 조건/)).toHaveValue('');
+  });
+
+  it('일부 보류 수량이 보유 수량을 넘으면 칸 아래에 알리고 등록 내용을 만들지 않는다', async () => {
+    const { user, onBodyChange } = renderPane([display(701)]);
+    await user.click(await screen.findByRole('radio', { name: '일부 보류' }));
+    await user.type(screen.getByLabelText(/^보류 수량/), '26');
+
+    expect(await screen.findByText('보류 수량은 보류 가능 수량 25 이하여야 합니다.')).toBeVisible();
+    expect(onBodyChange).toHaveBeenLastCalledWith(null);
   });
 });

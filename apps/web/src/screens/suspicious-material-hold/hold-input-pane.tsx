@@ -1,13 +1,15 @@
-import { AlertBanner, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
+import { Icon, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import { Select } from '../../patterns/select';
+import { LotHistoryDialog } from '../lot-status-history/lot-detail-pane';
+import { useLotStatusOptions } from '../lot-status-history/options';
 import type { SelectedLotSnapshot } from './candidate-model';
 
 type LotHoldCreate = components['schemas']['LotHoldCreate'];
@@ -29,6 +31,8 @@ export interface SuspiciousMaterialHoldInputPaneProps {
   targetLotStatusCode: string | null;
   isLocked: boolean;
   onBodyChange: (body: LotHoldCreate | null) => void;
+  /** 등록을 막는 까닭 문장들 — 카드 제목 줄 오른쪽에 보인다(사용자 2026-11-02). */
+  onNoticesChange?: (notices: string[]) => void;
 }
 const EMPTY_DRAFT: HoldDraft = {
   mode: 'FULL',
@@ -37,6 +41,10 @@ const EMPTY_DRAFT: HoldDraft = {
   releaseCondition: '',
   remarks: '',
 };
+
+/** 일부 보류 상한 — 보류 가능 수량(보유 − 이미 보류), 없으면 보유 수량(리뷰 2026-11-02). */
+const holdLimit = (lot: SelectedLotSnapshot | undefined): number | undefined =>
+  lot?.availableQty ?? lot?.onHandQty;
 
 export const buildSuspiciousMaterialHoldBody = (
   draft: HoldDraft,
@@ -66,6 +74,8 @@ export const buildSuspiciousMaterialHoldBody = (
       selected.length !== 1 ||
       !Number.isFinite(quantity) ||
       quantity <= 0 ||
+      /* 보유 수량을 넘는 보류는 서버가 거절한다 — 화면에서 먼저 막는다(점검 2026-11-02). */
+      (holdLimit(selected[0]) !== undefined && quantity > (holdLimit(selected[0]) ?? 0)) ||
       uomId === undefined ||
       !Number.isSafeInteger(uomId) ||
       uomId <= 0
@@ -96,10 +106,12 @@ export const SuspiciousMaterialHoldInputPane = ({
   targetLotStatusCode,
   isLocked,
   onBodyChange,
+  onNoticesChange,
 }: SuspiciousMaterialHoldInputPaneProps) => {
   const { client } = useApiClient();
   const reasonId = useId();
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const releaseRef = useRef<HTMLInputElement>(null);
   const owner = selection
     .map(({ lotId, versionNo }) => `${String(lotId)}:${String(versionNo)}`)
     .join('|');
@@ -129,8 +141,14 @@ export const SuspiciousMaterialHoldInputPane = ({
     reasons.data === undefined ||
     reasons.data.page.total > reasons.data.items.length ||
     activeReasons.length === 0;
-  const labelsUnavailable = selection.some(
-    ({ locationLabel, uomLabel }) => locationLabel === null || uomLabel === null,
+  /*
+   * 위치 · 단위를 못 푼 LOT 은 막는다 — 다만 재고 기록이 아예 없는 LOT(창고 없음)은 막을 위치가 없을 뿐이라 전량 보류는
+   * 받는다(서버도 전량 보류에 위치 · 단위를 받지 않는다 · 사용자 2026-11-02). 일부 보류는 수량 · 단위가 있어야 한다.
+   */
+  const labelsUnavailable = selection.some(({ warehouseId, locationLabel, uomLabel }) =>
+    warehouseId === undefined
+      ? draft.mode === 'PARTIAL' && uomLabel === null
+      : locationLabel === null || uomLabel === null,
   );
   const allowedReason = activeReasons.some(({ code }) => code === draft.reasonCode);
   const body = useMemo(
@@ -141,101 +159,227 @@ export const SuspiciousMaterialHoldInputPane = ({
     [allowedReason, draft, labelsUnavailable, reasonUnavailable, selection, targetLotStatusCode],
   );
 
+  /*
+   * 다른 LOT 을 고르면 입력을 비운다 — 다만 목록을 다시 받는 동안 선택이 잠깐 빈 것으로 오는 때(확인 창 [취소] 뒤 등)는
+   * 비우지 않는다. 같은 LOT 으로 돌아오면 넣던 사유 · 해제 조건 · 비고가 그대로 남는다(사용자 2026-11-02).
+   */
+  const lastOwner = useRef(owner);
   useEffect(() => {
-    setDraft(EMPTY_DRAFT);
     onBodyChange(null);
+    if (owner === '' || owner === lastOwner.current) return;
+    lastOwner.current = owner;
+    setDraft(EMPTY_DRAFT);
   }, [onBodyChange, owner]);
   useEffect(() => onBodyChange(body), [body, onBodyChange]);
+  /* 막힌 까닭은 이 구획 안이 아니라 카드 제목 줄에 — 부르는 쪽에 넘기고, 사라질 때 비운다. */
+  const notices = [
+    ...(reasonUnavailable ? [t.reasonUnavailable] : []),
+    ...(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === ''
+      ? [t.factsUnavailable]
+      : []),
+  ];
+  const noticeKey = notices.join('\n');
+  useEffect(() => {
+    onNoticesChange?.(noticeKey === '' ? [] : noticeKey.split('\n'));
+    return () => onNoticesChange?.([]);
+  }, [noticeKey, onNoticesChange]);
   if (selection.length === 0) return null;
+  /* 단위 이름은 「코드 · 이름」 — 칸 안에는 코드만(예: EA). */
+  const unitCode = selection[0]?.uomLabel?.split(' · ')[0] ?? null;
+  /* 일부 보류 수량이 보유 수량을 넘으면 칸 아래에 바로 알린다(등록 단추는 잠긴다). */
+  const onHandLimit = selection.length === 1 ? holdLimit(selection[0]) : undefined;
+  const typedQty = Number(draft.holdQty.trim());
+  const qtyOverLimit =
+    draft.mode === 'PARTIAL' &&
+    onHandLimit !== undefined &&
+    draft.holdQty.trim() !== '' &&
+    Number.isFinite(typedQty) &&
+    typedQty > onHandLimit
+      ? t.quantityOverLimit(String(onHandLimit))
+      : null;
   const update = <K extends keyof HoldDraft>(key: K, value: HoldDraft[K]): void =>
     setDraft((current) => ({ ...current, [key]: value }));
 
+  /*
+   * 「의심자재 보류 등록」 카드의 첫 구획 — 보류 범위 · 사유 · 해제 조건 · 비고, 그 아래 보류 영향(사용자 시안 2026-11-02).
+   * 카드 자체는 screen.tsx 가 세운다.
+   */
   return (
-    <section className="pane suspicious-material-hold-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.pane}</h2>
-      <div className="suspicious-material-hold-range">
-        <RadioGroup
-          name="suspicious-material-hold-mode"
-          orientation="horizontal"
-          value={selection.length > 1 ? 'FULL' : draft.mode}
-          disabled={isLocked}
-          aria-label={t.range}
-          onChange={(value) =>
-            setDraft((current) => ({
-              ...current,
-              mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
-              holdQty: '',
-            }))
-          }
-        >
-          <Radio value="FULL">{t.full}</Radio>
-          {selection.length === 1 && <Radio value="PARTIAL">{t.partial}</Radio>}
-        </RadioGroup>
-        <p className="field-note">{t.fullDescription}</p>
-      </div>
-      <div className="form-grid suspicious-material-hold-input-grid">
+    <div className="suspicious-material-hold-section" role="group" aria-label={t.pane}>
+      {/* 보류 범위 · 사유 · 해제 조건 · 비고를 한 줄에(사용자 2026-11-02) — 좁으면 다음 줄로 넘긴다. */}
+      <div className="suspicious-material-hold-input-row">
+        <div className="field-cell suspicious-material-hold-range">
+          <span className="field-label">{t.range}</span>
+          <RadioGroup
+            name="suspicious-material-hold-mode"
+            orientation="horizontal"
+            value={selection.length > 1 ? 'FULL' : draft.mode}
+            disabled={isLocked}
+            aria-label={t.range}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
+                holdQty: '',
+              }))
+            }
+          >
+            <Radio value="FULL">{t.full}</Radio>
+            {selection.length === 1 && <Radio value="PARTIAL">{t.partial}</Radio>}
+          </RadioGroup>
+        </div>
         {draft.mode === 'PARTIAL' && selection.length === 1 && (
+          /*
+           * 보류 수량 — 숫자 몇 자리만큼만 좁게, 칸 오른쪽 안에 LOT 단위(코드)를 붙인다(사용자 2026-11-02). 단위를 못 받았으면
+           * 붙이지 않는다(위 안내가 막힌 까닭을 알린다).
+           */
           <TextField
+            containerClassName="suspicious-material-hold-qty"
             label={t.quantity}
+            required
+            placeholder={t.quantityPlaceholder}
             inputMode="decimal"
+            aria-invalid={!isLocked && draft.holdQty.trim() === ''}
+            {...(qtyOverLimit === null ? {} : { error: qtyOverLimit })}
+            {...(unitCode === null
+              ? {}
+              : {
+                  trailingIcon: <span className="suspicious-material-hold-unit">{unitCode}</span>,
+                })}
             value={draft.holdQty}
             disabled={isLocked}
             onChange={(event) => update('holdQty', event.target.value)}
           />
         )}
-        <div className="field-cell wide-select">
+        <div className="field-cell suspicious-material-hold-reason">
           <label className="field-label" htmlFor={reasonId}>
-            {t.reason}
+            {t.reason}{' '}
+            {/* 보류 사유 · 해제 조건은 등록을 막는 필수 칸이다 — 이름 옆 빨간 *(화면 규칙). */}
+            <span className="required-mark" aria-hidden="true">
+              *
+            </span>
           </label>
           <Select
             id={reasonId}
             value={draft.reasonCode || null}
             options={activeReasons.map(({ code, label }) => ({ value: code, label }))}
             placeholder={t.reasonPlaceholder}
+            /* 필수 칸이 비면 빨간 테두리(사용자 2026-11-02). */
+            invalid={!isLocked && !reasonUnavailable && draft.reasonCode === ''}
             disabled={isLocked || reasonUnavailable}
-            onChange={(value) => update('reasonCode', value)}
+            onChange={(value) => {
+              update('reasonCode', value);
+              /* 사유를 고르면 바로 해제 조건 칸으로(사용자 2026-11-02) — 목록이 닫힌 뒤 옮긴다. */
+              window.setTimeout(() => releaseRef.current?.focus(), 0);
+            }}
           />
         </div>
         <TextField
+          ref={releaseRef}
           label={t.releaseCondition}
+          required
+          placeholder={t.releaseConditionPlaceholder}
+          aria-invalid={!isLocked && draft.releaseCondition.trim() === ''}
           value={draft.releaseCondition}
           disabled={isLocked}
           onChange={(event) => update('releaseCondition', event.target.value)}
         />
-        <TextArea
+        <TextField
           label={t.remarks}
-          rows={3}
+          placeholder={t.remarksPlaceholder}
           value={draft.remarks}
           disabled={isLocked}
           onChange={(event) => update('remarks', event.target.value)}
         />
       </div>
-      {reasonUnavailable && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.reasonUnavailable} />
-        </div>
-      )}
-      {(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === '') && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.factsUnavailable} />
-        </div>
-      )}
-      <section className="suspicious-material-hold-impact" aria-label={t.impact}>
+    </div>
+  );
+};
+
+/**
+ * 보류 시 제한 사항 — LOT 마다 번호, 못 받은 값은 「수량 · 위치 · 단위 미확인」 한 줄로, 붉은 제한 안내(사용자 시안 2026-11-02).
+ * 카드 안에서 자재 불량 기록과 나란히 서도록 입력 구획과 따로 둔다.
+ */
+export const SuspiciousMaterialHoldImpact = ({ selection }: { selection: HoldInputLot[] }) => {
+  /* 항목을 누르면 그 LOT 의 상세 · 상태 이력 팝업(LOT 상태 이력의 팝업을 그대로 · 사용자 2026-11-02). */
+  const [openedLot, setOpenedLot] = useState<HoldInputLot | null>(null);
+  const statuses = useLotStatusOptions();
+  if (selection.length === 0) return null;
+  return (
+    <section className="suspicious-material-hold-impact" aria-label={t.impact}>
+      {/* 대상 건수 · 해제 안내는 두지 않는다 — 지금 하는 등록과 직접 관련이 적다(사용자 2026-11-02). */}
+      <div className="suspicious-material-hold-section-head">
         <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
-        <p className="suspicious-material-hold-impact-lead">{t.impactCount(selection.length)}</p>
-        <ul>
-          {selection.map((lot) => (
+      </div>
+      <ul className="suspicious-material-hold-impact-list">
+        {selection.map((lot) => {
+          /* 재고 기록이 없는 LOT 은 「미확인」이 아니라 「재고 없음」(사용자 2026-11-02). */
+          const noStock = lot.warehouseId === undefined;
+          /* 수량은 단위를 붙여 한 덩어리(570 EA), 그 뒤 위치 — 단위가 따로 떨어져 보이지 않게(점검 2026-11-02). */
+          const unit = lot.uomLabel?.split(' · ')[0] ?? null;
+          const facts = noStock
+            ? ([] as const)
+            : ([
+                [
+                  t.quantityName,
+                  lot.onHandQty === undefined
+                    ? null
+                    : unit === null
+                      ? String(lot.onHandQty)
+                      : `${String(lot.onHandQty)} ${unit}`,
+                ],
+                [t.locationName, lot.locationLabel],
+              ] as const);
+          const unitMissing = !noStock && unit === null;
+          const known = facts.flatMap(([, value]) => (value === null ? [] : [value]));
+          const unknown = [
+            ...facts.flatMap(([name, value]) => (value === null ? [name] : [])),
+            ...(unitMissing ? [t.uomName] : []),
+          ];
+          /* LOT 번호 아래 한 줄 — 확인한 값 · (!) 미확인 값 · 붉은 제한(사용자 시안 2026-11-02). */
+          return (
             <li key={lot.lotId}>
-              <strong>{lot.lotNo}</strong>
-              <span>
-                {lot.onHandQty === undefined ? t.quantityUnknown : String(lot.onHandQty)}{' '}
-                {lot.uomLabel ?? t.uomUnknown} · {lot.locationLabel ?? t.locationUnknown}
-              </span>
+              <button
+                type="button"
+                className="suspicious-material-hold-impact-item"
+                aria-label={t.openDetail(lot.lotNo)}
+                onClick={() => setOpenedLot(lot)}
+              >
+                <strong>{lot.lotNo}</strong>
+                <span className="suspicious-material-hold-impact-line">
+                  {noStock && (
+                    <span className="suspicious-material-hold-impact-facts">{t.noStock}</span>
+                  )}
+                  {known.length > 0 && (
+                    <span className="suspicious-material-hold-impact-facts">
+                      {known.join(' · ')}
+                    </span>
+                  )}
+                  {unknown.length > 0 && (
+                    <span className="suspicious-material-hold-impact-unknown">
+                      <Icon name="error" size={16} aria-hidden />
+                      {t.unknownFacts(unknown.join('·'))}
+                    </span>
+                  )}
+                  <span className="suspicious-material-hold-impact-restriction">
+                    {t.impactRestriction}
+                  </span>
+                </span>
+              </button>
             </li>
-          ))}
-        </ul>
-        <p className="field-note">{t.recovery}</p>
-      </section>
+          );
+        })}
+      </ul>
+      {openedLot !== null && (
+        <LotHistoryDialog
+          lot={{ lotId: openedLot.lotId, lotNo: openedLot.lotNo }}
+          statusOptions={(statuses.data?.items ?? []).map((item) => ({
+            value: item.code,
+            label: item.label,
+          }))}
+          onClose={() => setOpenedLot(null)}
+        />
+      )}
     </section>
   );
 };

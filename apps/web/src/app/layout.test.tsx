@@ -524,7 +524,7 @@ describe('AppLayout', () => {
       '/quality/inspection-results',
     );
     /* 의심자재 등록 · 검사실적 · 제품 검사표는 탭이 됐다 — 사이드바에 따로 서지 않는다(#210). */
-    expect(within(sidebar).queryByRole('link', { name: '의심자재 등록' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '의심자재 보류' })).toBeNull();
     expect(within(sidebar).queryByRole('link', { name: '검사실적·검사결과 조회' })).toBeNull();
     expect(within(sidebar).queryByRole('link', { name: '제품 검사표 조회' })).toBeNull();
     expect(within(sidebar).getByRole('link', { name: '품질 승인 처리' })).toHaveAttribute(
@@ -575,7 +575,7 @@ describe('AppLayout', () => {
       'href',
       '/quality/lot-status-transition',
     );
-    expect(within(tabs).getByRole('link', { name: '의심자재 등록' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '의심자재 보류' })).toHaveAttribute(
       'href',
       '/quality/suspicious-material-hold',
     );

@@ -13,7 +13,7 @@ const many = ['합성 가', '합성 나', '합성 다', 'SYN-A', 'SYN-B', 'SYN-C
   label,
 }));
 
-const Harness = ({ options = many, initial = null as string | null }) => {
+const Harness = ({ options = many, initial = null as string | null, searchable = false }) => {
   const [value, setValue] = useState<string | null>(initial);
   return (
     <>
@@ -24,6 +24,7 @@ const Harness = ({ options = many, initial = null as string | null }) => {
         value={value}
         onChange={setValue}
         placeholder="고르세요"
+        searchable={searchable}
       />
       <output data-testid="value">{value ?? ''}</output>
     </>
@@ -41,6 +42,16 @@ describe('Select — 선택지가 많으면 검색창', () => {
     expect(
       screen.queryByRole('searchbox', { name: messages.common.selectSearch }),
     ).not.toBeInTheDocument();
+  });
+
+  it('searchable 이면 5개 이하여도 검색창을 둔다(불량 유형 칸 · 2026-11-02)', async () => {
+    const user = userEvent.setup();
+    render(<Harness options={many.slice(0, 2)} searchable />);
+
+    await user.click(screen.getByRole('combobox', { name: '합성 칸' }));
+    expect(
+      await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+    ).toBeInTheDocument();
   });
 
   it('5개를 넘으면 목록 맨 위 검색창에 초점이 가고, 쳐서 거른 줄을 클릭해 고른다', async () => {

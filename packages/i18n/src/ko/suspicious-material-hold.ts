@@ -1,17 +1,30 @@
 export const suspiciousMaterialHold = {
-  title: '의심자재 등록',
+  /* 용어 정리(사용자 2026-11-02) — 실제 일이 보류 등록이라 「의심자재 보류」. */
+  title: '의심자재 보류',
+  /** 보류 · 불량 등록이 끝나면 오른쪽 아래 알림(사용자 2026-11-02). */
+  registered: '등록되었습니다.',
   breadcrumbRoot: '품질 관리',
   candidate: {
     pane: '의심자재 후보',
     fields: {
-      select: '선택',
+      excludeFullyHeld: '전량 보류 제외',
       lotNo: 'LOT 번호',
       item: '품목',
       warehouse: '창고',
       location: '위치',
-      quantity: '보유 수량·단위',
+      quantity: '보유 수량',
       status: '상태',
-      latestTransition: '최종 변경일',
+      latestTransition: '최근 상태 변경일',
+      /** 상세 검색의 선택 칸 이름(사용자 2026-11-02 — 창고 칸도 「위치 검색」). */
+      itemSearch: '품목 검색',
+      warehouseSearch: '위치 검색',
+      /** 조회 줄 기간 두 칸 — 이름 · 흐린 글자(사용자 2026-11-02). */
+      periodFrom: '상태 변경 시작일 선택',
+      periodTo: '상태 변경 종료일 선택',
+      periodFromPlaceholder: '시작일을 선택하세요',
+      periodToPlaceholder: '종료일을 선택하세요',
+      /** LOT 스캔 칸 이름 — 스캔 · 직접 입력 모두 되므로 「LOT 번호」. */
+      lotScan: 'LOT 번호',
     },
     values: {
       all: '전체',
@@ -26,6 +39,8 @@ export const suspiciousMaterialHold = {
       selected: (count: number): string => `${String(count)}건 선택`,
     },
     actions: {
+      /** 목록 머리의 전체 선택 칸 이름(사용자 2026-11-02). */
+      selectAll: '이 쪽 LOT 전체 선택',
       select: (lotNo: string): string => `${lotNo} 선택`,
       search: '조회',
       reset: '초기화',
@@ -40,45 +55,94 @@ export const suspiciousMaterialHold = {
     range: '보류 범위',
     full: '전량 보류',
     partial: '일부 보류',
-    fullDescription:
-      '전량 보류는 현재 수량을 숫자로 복사하지 않고 서버가 적용 시점의 전량을 처리합니다.',
     quantity: '보류 수량',
+    quantityOverLimit: (limit: string): string =>
+      `보류 수량은 보류 가능 수량 ${limit} 이하여야 합니다.`,
+    quantityPlaceholder: '수량을 입력하세요',
     reason: '보류 사유',
+    /* 칸 안 흐린 글자 — 사용자 시안(2026-11-02) 글자 그대로. */
     reasonPlaceholder: '사유를 선택하세요',
     releaseCondition: '해제 조건',
+    releaseConditionPlaceholder: '해제 조건을 입력하세요',
     remarks: '비고',
+    remarksPlaceholder: '비고를 입력하세요',
     reasonUnavailable:
       '보류 사유 목록이 완결되지 않았습니다. 사유를 확인할 때까지 등록할 수 없습니다.',
-    factsUnavailable: '위치·단위 또는 도착 상태를 확인할 때까지 등록할 수 없습니다.',
-    impact: '보류 영향',
-    impactCount: (count: number): string =>
-      `${String(count)}개 LOT을 출고·출하·피킹할 수 없게 합니다.`,
-    quantityUnknown: '수량 미확인',
-    uomUnknown: '단위 이름 미확인',
-    locationUnknown: '위치 이름 미확인',
-    recovery:
-      '해제하려면 W-03-02에서 별도 Release 전이가 필요하며 이미 출고된 수량은 회수되지 않습니다.',
+    factsUnavailable: '위치·단위·도착 상태가 확인되지 않아 등록할 수 없습니다.',
+    impact: '보류 대상 및 제한 사항',
+    quantityName: '수량',
+    uomName: '단위',
+    locationName: '위치',
+    /** 못 받은 값 이름을 「수량 · 위치 · 단위 미확인」처럼 묶는다(사용자 시안 2026-11-02). */
+    /** 재고 기록이 없는 LOT — 전량 보류는 된다(사용자 2026-11-02). */
+    noStock: '재고 없음',
+    unknownFacts: (names: string): string => `${names} 미확인`,
+    /** 제한 사항 항목 단추의 이름 — 누르면 LOT 상세 팝업(사용자 2026-11-02). */
+    openDetail: (lotNo: string): string => `${lotNo} 상세 보기`,
+    impactRestriction: '출고·출하·피킹 제한',
   },
   execution: {
     pane: '의심자재 보류 실행',
     selectFirst: '후보 LOT을 선택하면 보류 정보를 입력할 수 있습니다.',
     completeInput: '보류 사유와 해제 조건을 입력하면 등록할 수 있습니다.',
     ready: (count: number): string => `${String(count)}건의 보류 등록 내용을 확인하세요.`,
-    confirm: '등록 확인',
+    confirm: '보류 등록',
     success: '의심자재 보류를 등록했습니다.',
     successNext: 'Lot Status 판정·전이 처리에서 후속 처리하세요.',
-    dialogTitle: '의심자재 보류 등록 확인',
+    dialogTitle: '의심자재 보류 등록',
     cancel: '취소',
     register: '보류 등록',
     reload: '최신 불러오기',
     fieldError: '입력값을 확인하세요.',
-    impact: '보류 등록 영향',
-    impactDescription: (count: number): string =>
-      `${String(count)}개 LOT의 출고·출하·피킹을 막습니다. 해제는 W-03-02에서 별도로 처리하며 이미 출고된 수량은 회수되지 않습니다.`,
+    /* 확인 창 경고 — 굵은 한 줄 + 아래 두 줄(사용자 시안 2026-11-02). */
+    impact: (count: number): string => `${String(count)}개 LOT의 출고·출하·피킹이 제한됩니다.`,
+    impactRelease: '보류 해제는 W-03-02에서 별도로 처리해야 합니다.',
+    impactShipped: '이미 출고된 수량은 회수되지 않습니다.',
     conflictOwner: '선택한 LOT 중 하나',
     conflictFallback: '선택한 LOT 중 하나의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.',
     conflictChanged: (owner: string): string =>
       `${owner}의 상태가 변경되었습니다. 최신 정보를 다시 불러오세요.`,
     conflictServer: (owner: string, message: string): string => `${owner}: ${message}`,
+  },
+  /** 오른쪽 한 카드 — 보류 입력 · 등록 · 자재 불량 기록 · 영향 생산 LOT(사용자 시안 2026-11-02). */
+  card: {
+    title: '의심자재 보류 등록',
+  },
+  /** 자재 불량 기록 · 관련 생산 LOT 구획의 이 화면 문구 — POP 자재 불량 화면의 기본 문구는 그대로 둔다(사용자 시안 2026-11-02). */
+  defect: {
+    targetLot: '대상 LOT',
+    saveDraft: '등록',
+    draftedCount: (count: number): string => `입력 완료 · ${String(count)}건`,
+    noDrafts: 'LOT 을 눌러 불량을 먼저 입력하세요.',
+    /** 고른 LOT 줄 · 입력 팝업(사용자 2026-11-02). */
+    openLot: (lotNo: string): string => `${lotNo} 불량 내역 입력`,
+    enter: '불량 내용 입력',
+    recordedCount: (count: number): string => `등록 완료 · ${String(count)}건`,
+    /** 불량 등록 확인 창(사용자 2026-11-02). */
+    confirm: {
+      titleMany: (count: number): string => `불량 내역 ${String(count)}건을 등록하시겠습니까?`,
+      skipped: (count: number): string =>
+        `입력하지 않은 LOT ${String(count)}건은 등록하지 않습니다.`,
+      title: '불량 내역을 등록하시겠습니까?',
+      lot: 'LOT 번호',
+      code: '불량 코드',
+      qty: '불량 수량',
+      description: '불량 내용',
+      cancel: '취소',
+      back: '수정',
+    },
+    uomUnknownNote: 'LOT 단위를 확인할 수 없어 불량을 등록할 수 없습니다.',
+    heading: '불량 내역 등록',
+    major: '불량 유형',
+    majorPlaceholder: '불량 유형을 선택하세요',
+    noCodesNote: '등록된 불량 코드가 없습니다. 불량 코드를 먼저 등록해 주세요.',
+    registerCode: '불량 코드 등록',
+    qtyPlaceholder: '수량을 입력하세요',
+    descriptionPlaceholder: '불량 내용을 입력하세요',
+    submit: '불량 등록',
+    affectedHeading: '연관 생산 LOT',
+    affectedCount: (count: number): string => `총 ${String(count)}건`,
+    columns: { lotNo: '생산 LOT 번호', workOrderNo: '작업지시 번호', statusCode: '상태' },
+    estimateNote: '작업지시 기준으로 조회한 LOT이며, 실제 자재 투입 내역과 다를 수 있습니다.',
   },
 } as const;

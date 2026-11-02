@@ -3,8 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useState, type MouseEvent, type ReactNode } from 'react';
 
 import type { FilterOption } from './lot-filter-bar';
-import { codeName, useLotHoldReasonOptions, type LotCodeOption } from './options';
-import type { LotTimelineEntry } from './timeline';
+import { codeName, lotStatusTone, useLotHoldReasonOptions, type LotCodeOption } from './options';
+import { entryStatusCode, type LotTimelineEntry } from './timeline';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
@@ -63,6 +63,16 @@ interface LotTimelineTableProps {
   onOpenEntry?: (entry: LotTimelineEntry) => void;
   /** 누를 수 있는 줄만 고른다 — 주지 않으면 모든 줄. */
   isEntryClickable?: (entry: LotTimelineEntry) => boolean;
+  /** 고른 줄(`entry.key`) — LOT 목록의 고른 줄처럼 파란 바탕으로 둔다. */
+  selectedKey?: string | null;
+  /**
+   * 이력으로 찾기 표의 처리 일시 정렬 — 쪽을 나누는 쪽(부르는 화면)이 정렬한 줄을 넘긴다. 주면 머리를 눌러
+   * 오름 · 내림차순을 오간다(사용자 2026-11-02).
+   */
+  historySort?: SortState;
+  onHistorySortChange?: (sort: SortState) => void;
+  /** 이력 표 LOT 번호 왼쪽 유형 라벨 — LOT 마다 라벨을 돌려준다. 없으면 번호만(사용자 2026-11-02). */
+  lotTypeLabel?: (entry: LotTimelineEntry) => string | null;
 }
 
 export const LotTimelineTable = ({
@@ -75,6 +85,10 @@ export const LotTimelineTable = ({
   busy = false,
   onOpenEntry,
   isEntryClickable = () => true,
+  selectedKey = null,
+  historySort,
+  onHistorySortChange,
+  lotTypeLabel,
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
@@ -110,13 +124,14 @@ export const LotTimelineTable = ({
       header: isDetail ? t.timeline.columns.occurredAt : t.history.columns.occurredAt,
       align: 'center',
       width: isDetail ? '172px' : '220px',
-      sortable: isDetail,
+      sortable: isDetail || onHistorySortChange !== undefined,
       /* 누를 수 있는 줄만 표시를 단다 — 손가락 모양은 그 줄에만(사용자 2026-11-02). */
       render: (entry) => (
         <span
           data-row-clickable={
             onOpenEntry !== undefined && isEntryClickable(entry) ? 'true' : undefined
           }
+          aria-current={selectedKey !== null && entry.key === selectedKey ? 'true' : undefined}
         >
           {formatDateTime(entry.occurredAt)}
         </span>
@@ -129,7 +144,19 @@ export const LotTimelineTable = ({
             key: 'lotNo',
             header: t.history.columns.lot,
             align: 'center' as const,
-            render: (entry: LotTimelineEntry) => entry.lotNo,
+            render: (entry: LotTimelineEntry) => {
+              const typeLabel = lotTypeLabel?.(entry) ?? null;
+              return typeLabel === null ? (
+                entry.lotNo
+              ) : (
+                <span className="lot-no-with-type">
+                  <Chip variant="status" status="info" size="sm">
+                    {typeLabel}
+                  </Chip>
+                  {entry.lotNo}
+                </span>
+              );
+            },
           },
         ]),
     {
@@ -148,6 +175,27 @@ export const LotTimelineTable = ({
           </Chip>
         ),
     },
+    /* 상태 — 처리한 뒤의 LOT 상태(위쪽 상태 칩과 같은 기준) · LOT 현황과 같은 색 칩(사용자 2026-11-02). */
+    ...(isDetail
+      ? []
+      : [
+          {
+            key: 'status',
+            header: t.history.columns.status,
+            align: 'center' as const,
+            width: '104px',
+            render: (entry: LotTimelineEntry) => {
+              const code = entryStatusCode(entry);
+              return code === null ? (
+                EMPTY
+              ) : (
+                <Chip variant="status" status={lotStatusTone(code)} size="sm">
+                  {statusLabel(statusOptions, code)}
+                </Chip>
+              );
+            },
+          },
+        ]),
     {
       key: 'change',
       header: isDetail ? t.timeline.columns.change : t.history.columns.change,
@@ -208,6 +256,14 @@ export const LotTimelineTable = ({
           rows={rows}
           getRowId={(entry) => entry.key}
           empty={empty}
+          {...(historySort !== undefined && onHistorySortChange !== undefined
+            ? {
+                sort: historySort,
+                /* 표 부품은 내림차순 다음에 정렬 해제를 준다 — 그것을 오름차순으로 받아 두 순서만 오간다. */
+                onSortChange: (next: SortState | null) =>
+                  onHistorySortChange(next ?? { key: 'occurredAt', direction: 'ascending' }),
+              }
+            : {})}
         />
       </div>
     );

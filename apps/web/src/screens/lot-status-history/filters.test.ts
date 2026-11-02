@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   EMPTY_HISTORY_FILTERS,
@@ -108,9 +108,21 @@ describe('readHistoryFilters', () => {
       'from=2026-08-01&to=2026-08-07&actor=505&historyLot=606',
       { from: '2026-08-01', to: '2026-08-07', actor: '505', lot: '606' },
     ],
-    ['', EMPTY_HISTORY_FILTERS],
   ])('기간·행위자·LOT 조건을 주소에서 읽는다', (search, expected) => {
     expect(readHistoryFilters(paramsOf(search))).toEqual(expected);
+  });
+  it('기간이 주소에 없으면 시작일 · 종료일 모두 오늘이다(2026-11-02)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 2, 9, 30));
+    try {
+      expect(readHistoryFilters(paramsOf(''))).toEqual({
+        ...EMPTY_HISTORY_FILTERS,
+        from: '2026-11-02',
+        to: '2026-11-02',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it.each(['0', '-1', '1.5', 'abc'])('식별자가 아닌 값(%s)은 행위자로 받지 않는다', (raw) => {
     expect(readHistoryFilters(paramsOf(`actor=${raw}`))).toMatchObject({ actor: '' });

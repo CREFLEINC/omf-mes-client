@@ -102,9 +102,17 @@ export const readLotFilters = (params: URLSearchParams): LotFilters => ({
   sort: readLotStatusSort(params.get(URL_KEYS.sort)),
 });
 
+/** 오늘(브라우저 시각 기준) — 「YYYY-MM-DD」. */
+const localToday = (): string => {
+  const now = new Date();
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+/** 기간을 주소에 적지 않았으면 시작일 · 종료일 모두 오늘이다(사용자 2026-11-02) — 들어오자마자 오늘 이력을 보인다. */
 export const readHistoryFilters = (params: URLSearchParams): HistoryFilters => ({
-  from: params.get(URL_KEYS.historyFrom) ?? '',
-  to: params.get(URL_KEYS.historyTo) ?? '',
+  from: params.get(URL_KEYS.historyFrom) ?? localToday(),
+  to: params.get(URL_KEYS.historyTo) ?? localToday(),
   actor: readPositiveIntegerString(params.get(URL_KEYS.historyActor)),
   lot: params.get(URL_KEYS.historyLot) ?? '',
 });

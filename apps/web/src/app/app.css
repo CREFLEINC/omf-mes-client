@@ -4436,40 +4436,33 @@ h2:has(> .inspection-standard-dialog-title) {
   width: 15rem;
 }
 
-/* 기간 — 안내 글자가 라벨 옆으로 가면 칸이 그만큼 넓어진다. 날짜 상자는 17rem 을 지킨다. */
-.field-cell.lot-status-filter-period {
-  width: auto;
-  /* 긴 안내가 다음 칸 라벨과 한 문장처럼 붙어 읽히지 않게 한 칸 더 띄운다. */
-  margin-right: var(--space-3);
-}
-
-.field-cell.lot-status-filter-period > :last-child {
-  width: 17rem;
-}
-
-.lot-status-filter-label-row {
+/* 기간 — [시작일] [종료일] 두 칸을 붙여 둔다(출하 일정 조회와 같은 폭 · 「~」 없음 · 사용자 2026-11-02). */
+.lot-status-date-range-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  height: 16px;
-  margin-bottom: var(--space-1);
-  white-space: nowrap;
 }
 
-.lot-status-filter-label-row > .field-label {
-  margin-bottom: 0;
+.lot-status-date-range-row > * {
+  flex: 0 0 auto;
 }
 
-.lot-status-filter-label-row > .field-note {
-  max-width: none;
-  margin: 0;
+.lot-status-date-field {
+  /* 화면 폭에 따라 줄고 늘되, 날짜(YYYY-MM-DD)와 달력 아이콘은 늘 보인다(사용자 2026-11-02). */
+  width: clamp(9.5rem, 11vw, 12rem);
 }
 
-/* 기간 — 날짜 범위(YYYY-MM-DD ~ YYYY-MM-DD)의 내용 폭. */
-.field-cell.lot-status-filter-period {
-  align-items: stretch;
-  width: 17rem;
+/* LOT 상태 이력 조회 줄 — LOT 스캔 칸은 남는 폭을 쓰되 너무 길어지지 않게, 처리자 선택은 폭에 맞게. */
+.lot-status-history-filter .lot-status-filter-lot-no,
+.lot-status-transition-filter .lot-status-filter-lot-no {
+  /* 흐린 문구가 다 보이는 만큼만 — 남는 폭을 차지하지 않는다(사용자 2026-11-02). */
+  width: clamp(16rem, 22vw, 21rem);
 }
+
+.lot-status-history-filter .lot-status-history-actor {
+  width: clamp(10rem, 14vw, 15rem);
+}
+
 
 .lot-status-filter .field-cell > .field-note {
   max-width: 100%;
@@ -4810,6 +4803,15 @@ h2:has(> .inspection-standard-dialog-title) {
   cursor: pointer;
 }
 
+/* LOT 상태 이력에서 고른 줄 — LOT 목록의 고른 줄과 같은 파란 바탕 · 왼쪽 막대(사용자 2026-11-02). */
+.lot-timeline-clickable tbody tr:has([aria-current='true']) > td {
+  background: var(--semantic-info-container);
+}
+
+.lot-timeline-clickable tbody tr:has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
 /* 생산 LOT 상세 이력 팝업 — 기본 정보는 상세 칸과 같은 상자, 투입 자재 · 이력 탭, 맨 아래 이동 단추(사용자 2026-11-02). */
 /* 팝업 첫 줄(제목 · 이동 단추) — 위에 여백을 두고 가운데 높이를 맞춘다(사용자 2026-11-02). */
 .lot-usage-detail-dialog > .lot-status-detail-head {
@@ -4859,6 +4861,32 @@ h2:has(> .inspection-standard-dialog-title) {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/*
+ * LOT 상태 변경 목록의 LOT 번호 단추 — 줄 아무 곳이나 눌러 고르므로 LOT 현황처럼 보통 글자로 둔다. 칸이 좁으면
+ * 번호만 말줄임하고 유형 라벨은 남긴다(왼쪽이 잘려 보이던 것 · 사용자 2026-11-02).
+ */
+.lot-no-with-type > button.lot-status-one-line {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 고른 줄은 줄 전체의 파란 바탕으로만 알린다 — 번호 단추에 따로 바탕을 두지 않는다. */
+.lot-no-with-type > button.lot-status-one-line:nth-child(n)[aria-current] {
+  background: none;
+  color: inherit;
 }
 
 /* LOT 번호 + 유형 라벨 — 번호가 길면 번호만 말줄임하고 라벨은 남긴다. */
@@ -4937,28 +4965,12 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* Lot Status 판정·전이 — 조회, 선택 확인, 실행 준비를 순서가 보이는 별도 구획으로 나눈다. */
 .lot-status-transition-workspace,
-.lot-status-transition-flow {
+.lot-status-transition-flow,
+.suspicious-material-hold-flow {
   display: grid;
   align-content: start;
   gap: var(--space-5);
   min-width: 0;
-}
-
-.lot-status-transition-notice {
-  min-width: 0;
-  margin: var(--space-2) 0 0;
-}
-
-/*
- * 한 줄 안내라 아이콘을 글자 줄 가운데에 맞춘다. 공용 배너는 제목 줄 기준으로 아이콘을 내려
- * 두어, 제목 없이 본문 한 줄만 쓰면 아이콘이 글자보다 아래로 처진다. 이 화면 안에서만 바로잡는다.
- */
-.lot-status-transition-notice > [role="alert"] {
-  align-items: center;
-}
-
-.lot-status-transition-notice > [role="alert"] > [aria-hidden="true"] {
-  margin-top: 0;
 }
 
 .lot-status-transition-pane {
@@ -4985,63 +4997,13 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-bottom: 0;
 }
 
-/* 기간 — 날짜 범위(YYYY-MM-DD ~ YYYY-MM-DD)의 내용 폭. 라벨 줄이 더 길면 그 폭에 맞춰 입력이 늘어난다. */
-.lot-status-transition-period {
-  align-items: stretch;
-}
-
 /*
- * 자재 — 선택값이 「코드 · 품목명」이라 길다. 최소 폭은 규범 3-2(.wide-select 13rem)를 따르고,
- * 긴 품목명이 줄 전체를 차지하지 않게 상한을 둔다(20rem — 10자리 코드와 품목명 앞부분이 보이는 폭).
+ * 자재 — 선택값이 「코드 · 품목명」이라 길다. 위 줄 LOT 스캔 칸과 같은 폭으로 맞춘다(사용자 2026-11-02).
  * 넘치는 이름은 트리거가 말줄임으로 자른다.
  */
 .field-cell.lot-status-transition-item-filter {
-  max-width: 20rem;
-}
-
-/*
- * 품질 상태 — 값이 짧다(정상·불량·검사 대기·폐기). 규범 3-2와 같은 식으로 가장 긴 값 「검사 대기」
- * 5자를 담는 트리거 폭을 도출한다: 16 + 80(16px × 5) + 12 + 20 + 16 = 144px = 9rem.
- * 이보다 좁으면 「전체」가 골라진 상태에서 목록을 열 때 「검사 대기」가 잘린다.
- */
-.field-cell.lot-status-transition-status-filter {
-  align-items: stretch;
-  min-width: 9rem;
-}
-
-.lot-status-transition-period > .field-error {
+  width: clamp(16rem, 22vw, 21rem);
   max-width: none;
-  margin: 0;
-}
-
-/*
- * 라벨 옆 기준 칩 — 라벨과 한 줄에 세운다. 줄 높이를 라벨 줄(16px)로 고정해 칩(24px)이 줄을
- * 키우지 않게 한다 — 키우면 기간 칸만 옆 칸들보다 아래로 밀린다. 칩은 그 줄 가운데에 걸친다.
- */
-.lot-status-transition-period-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: 16px;
-  min-width: 0;
-  margin-bottom: var(--space-1);
-}
-
-/*
- * 칩 문구는 자르지 않는다(사용자 지시 2026-09-18). 칩 줄이 날짜 입력보다 길면 칸이 칩 줄 폭을
- * 갖고, 날짜 입력(트리거)이 그 칸을 채운다 — 입력 오른쪽에 빈 틈이 생겨 칸 간격이 벌어지지 않게.
- */
-.lot-status-transition-period-label > .field-label,
-.lot-status-transition-period-label > span {
-  flex: none;
-}
-
-.lot-status-transition-period-input {
-  width: 100%;
-}
-
-.lot-status-transition-period-label > .field-label {
-  margin-bottom: 0;
 }
 
 /*
@@ -5064,6 +5026,11 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 48rem;
 }
 
+/* 해제할 보류 표는 카드 폭에 맞춘다 — 공용 최소 폭(48rem)을 풀어 네 열이 다 보이게(점검 2026-11-02). */
+.lot-status-transition-holds .lot-status-transition-table table {
+  min-width: 0;
+}
+
 .lot-status-transition-table caption {
   position: absolute;
   width: 1px;
@@ -5076,44 +5043,159 @@ h2:has(> .inspection-standard-dialog-title) {
   border: 0;
 }
 
-.lot-status-transition-detail-grid {
+/*
+ * 고른 LOT · 전이 준비 칸 — 목록 옆(상하 배치면 아래) 한 칸에 두 카드를 위아래로 쌓는다(LOT 상태 이력과 같은 두 칸).
+ * 나란히 설 때는 창 바닥에서 멈추고 칸 안에서 구른다.
+ */
+.lot-status-split > .lot-status-transition-detail,
+.lot-status-split > .suspicious-material-hold-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   gap: var(--space-5);
-  align-items: start;
   min-width: 0;
+  max-height: calc(100dvh - 20rem);
+  overflow: auto;
 }
 
-.lot-status-transition-identity,
-.lot-status-transition-status-grid {
-  display: grid;
+@media (min-width: 1440px) {
+  .lot-status-split > .lot-status-transition-detail,
+  .lot-status-split > .suspicious-material-hold-detail {
+    max-height: none;
+    min-height: 0;
+  }
+}
+
+.po-board-split.lot-status-split.is-stacked > .lot-status-transition-detail,
+.po-board-split.lot-status-split.is-stacked > .suspicious-material-hold-detail {
+  max-height: none;
+  overflow: visible;
+}
+
+/* 줄 아무 곳이나 눌러 고른다 — 올리면 손 모양(LOT 상태 이력과 같다). */
+.lot-status-transition-table tbody tr {
+  cursor: pointer;
+}
+
+/* 「LOT 상태 변경」 카드 — 제목 줄 오른쪽에 LOT 유형 라벨(사용자 시안 2026-11-02). */
+.lot-status-transition-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
   min-width: 0;
-  margin: 0;
 }
 
-.lot-status-transition-identity {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+.lot-status-transition-card-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+/* LOT 상자와 변경할 상태 — 좌우 배치(좁은 카드)는 위아래, 상하 배치(넓은 카드)는 나란히(사용자 2026-11-02). */
+.lot-status-transition-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.lot-status-transition-body.is-wide {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-5);
+}
+
+@media (max-width: 960px) {
+  .lot-status-transition-body.is-wide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 고른 LOT 상자 — 위에 LOT 번호 · 상태 칩, 구분선 아래 품목 · 최근 변경 · 변경 사유 세 칸. */
+.lot-status-transition-lot-box {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
   background: var(--surface-container);
 }
 
-.lot-status-transition-status-grid {
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+.lot-status-transition-lot-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
-.lot-status-transition-identity dd,
-.lot-status-transition-status-grid dd {
+.lot-status-transition-lot-id {
+  display: grid;
+  gap: var(--space-2);
   min-width: 0;
-  margin: 0;
+}
+
+.lot-status-transition-lot-no {
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
   overflow-wrap: anywhere;
 }
 
-.lot-status-transition-identity dd {
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+.lot-status-transition-lot-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+}
+
+.lot-status-transition-lot-facts dd {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+.lot-status-transition-item-name {
+  color: var(--on-surface-variant);
+}
+
+/* 변경할 상태 · 해제할 보류 · 입력 칸을 위아래로. */
+.lot-status-transition-preparation {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.lot-status-transition-blocked {
+  color: var(--on-surface);
+}
+
+.lot-status-transition-blocked-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+/* 변경할 상태 — 이름 아래 선택지를 왼쪽 정렬로 세운다. */
+.lot-status-transition-preparation > .lot-status-transition-choice {
+  align-content: start;
+  justify-items: start;
+}
+
+.lot-status-transition-review {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .lot-status-transition-subtitle {
@@ -5123,20 +5205,12 @@ h2:has(> .inspection-standard-dialog-title) {
   letter-spacing: var(--type-title-md-tracking);
 }
 
-.lot-status-transition-choice,
 .lot-status-transition-holds,
 .lot-status-transition-execution {
   display: grid;
   align-content: start;
   gap: var(--space-3);
   min-width: 0;
-}
-
-.lot-status-transition-choice {
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
 }
 
 .lot-status-transition-preparation-note {
@@ -5202,10 +5276,469 @@ h2:has(> .inspection-standard-dialog-title) {
   overflow: visible;
 }
 
-@media (max-width: 720px) {
-  .lot-status-transition-identity {
-    grid-template-columns: minmax(0, 1fr);
+/*
+ * 의심자재 보류 등록 카드 — 보류 입력 · [보류 등록] · 자재 불량 기록 · 영향 생산 LOT 을 한 카드 안 구획으로 두고, 구획 사이는
+ * 가는 선으로 가른다(사용자 시안 2026-11-02).
+ */
+.suspicious-material-hold-card {
+  container: suspicious-material-hold-card / inline-size;
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.suspicious-material-hold-card-head,
+.suspicious-material-hold-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* 카드 제목 줄 — 제목 · 고른 건수는 왼쪽, 막힌 까닭 알약은 오른쪽 끝(사용자 2026-11-02). */
+.suspicious-material-hold-card-head {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.suspicious-material-hold-card-notes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+/* 구획 제목 옆 알약 묶음 — 제목 바로 오른쪽에 붙는다. */
+/* 좁으면 알약은 제목 아래로 접히고, 오른쪽 끝 단추 · 건수는 제자리에 남는다. */
+.suspicious-material-hold-title-group {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.suspicious-material-hold-section-head > :not(.suspicious-material-hold-title-group) {
+  flex: none;
+}
+
+/* 관련 생산 LOT 표 — 칸이 좁으면 표 안에서 가로로 민다(카드 밖으로 넘치지 않게). */
+.suspicious-material-hold-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* 공용 넓은 표 최소 폭(58rem)을 풀어 칸 폭에 맞춰 줄인다 — 좁은 칸에서도 세 열이 가운데 정렬로 다 보인다(사용자 2026-11-02). */
+.wide-table.suspicious-material-hold-table-scroll table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+/* 좁으면 칸 안 한 줄 말줄임 — 전체 값은 마우스를 올리면 보인다(LOT 번호 · 작업지시 번호). */
+.suspicious-material-hold-table-scroll td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 제한 사항 줄 — 확인한 값 · (!) 미확인 · 붉은 제한을 한 줄에(사용자 시안 2026-11-02). */
+.suspicious-material-hold-impact-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font: var(--type-body-md);
+}
+
+.suspicious-material-hold-impact-unknown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+.suspicious-material-hold-impact-unknown > [aria-hidden="true"] {
+  color: var(--semantic-error-text);
+}
+
+.suspicious-material-hold-card-head > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.suspicious-material-hold-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-section > .banner-slot {
+  margin-bottom: 0;
+}
+
+/* 구획 안 안내 한 줄은 카드 폭을 다 쓴다 — 좁은 폭에서 두 줄로 접히지 않게. */
+.suspicious-material-hold-section .field-note,
+.suspicious-material-hold-impact > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+/* 영향 생산 LOT 표 이름은 구획 제목이 대신한다 — 화면 읽기용으로만 남긴다. */
+.suspicious-material-hold-section caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * 보류 대상 및 제한 사항 · [보류 등록] | 불량 내역 등록 — 나란히, 카드가 좁으면 위아래로. 각 구획과 연관 생산 LOT 은 입력 칸과
+ * 같은 상자로 가르고, 구획 사이 선은 두지 않는다(사용자 2026-11-02).
+ */
+.suspicious-material-hold-pair > *,
+.suspicious-material-hold-pair + .suspicious-material-hold-section {
+  min-width: 0;
+  box-sizing: border-box;
+  /* 상자 높이는 제 내용만큼 — 옆 상자에 맞춰 아래가 비지 않게(사용자 2026-11-02). */
+  align-self: start;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+@container suspicious-material-hold-card (min-width: 50rem) {
+  /* 뒤쪽 기본 규칙(한 칸)보다 무거워야 선다. */
+  .suspicious-material-hold-card .suspicious-material-hold-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.suspicious-material-hold-pair {
+  display: grid;
+  /* 기본은 위아래 한 칸 — 카드가 넓을 때만 위 컨테이너 규칙이 두 칸으로 나눈다(좁은 칸 넘침 방지). */
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* 상자 안 회색 줄(제한 사항 항목 · 불량 LOT 줄)은 상자 바탕보다 한 단 짙게 — 바탕에 묻히지 않게. */
+.suspicious-material-hold-card .suspicious-material-hold-impact-list > li,
+.suspicious-material-hold-card .suspicious-material-hold-defect-lot {
+  background: var(--surface-container-high);
+}
+
+.suspicious-material-hold-card .suspicious-material-hold-defect-lot:hover:not(:disabled),
+.suspicious-material-hold-card
+  .suspicious-material-hold-impact-list
+  > li:has(.suspicious-material-hold-impact-item:hover) {
+  background: var(--surface-container-highest);
+}
+
+/* 보류 범위 · 사유 · 해제 조건 · 비고 한 줄 — 범위는 단추 폭만큼, 나머지는 고르게. 좁으면 다음 줄로. */
+.suspicious-material-hold-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-input-row > * {
+  flex: 1 1 11rem;
+  min-width: 0;
+  /* 칸마다 상자 — 어느 이름이 어느 칸인지 한눈에 보이게(사용자 2026-11-02). */
+  box-sizing: border-box;
+  align-self: stretch;
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.suspicious-material-hold-input-row > .suspicious-material-hold-range {
+  flex: 0 0 auto;
+}
+
+/* 선택 칸(사유 · 불량 유형)은 칸 폭을 다 채운다 — 기본은 값 길이만큼이라 좁게 선다. */
+.suspicious-material-hold-input-row > .field-cell:not(.suspicious-material-hold-range) > :not(.field-label),
+.suspicious-material-hold-defect-row > .field-cell > :not(.field-label) {
+  width: 100%;
+}
+
+/* 전량 보류 제외 — 입력 칸과 같은 줄 높이 가운데에 선다. */
+.suspicious-material-hold-exclude-held {
+  align-self: flex-end;
+  min-height: var(--control-height-md, 2.5rem);
+  justify-content: center;
+}
+
+/* 불량 내역 등록 — 고른 LOT 마다 한 줄, 누르면 입력 팝업(사용자 2026-11-02). 제한 사항 항목과 같은 회색 상자. */
+.suspicious-material-hold-defect-lots {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-defect-lot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.suspicious-material-hold-defect-lot:hover:not(:disabled) {
+  background: var(--surface-container-high);
+}
+
+.suspicious-material-hold-defect-lot:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.suspicious-material-hold-defect-lot-hint {
+  flex: none;
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.suspicious-material-hold-defect-lot-state {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-lots > li {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* 여러 LOT 등록 확인 창 — LOT 마다 번호 · 코드 · 수량 한 줄. */
+.suspicious-material-hold-confirm-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 건너뛰는 LOT 안내가 있으면 목록과 띄운다. */
+.suspicious-material-hold-confirm-list + .field-note {
+  margin-top: var(--space-3);
+}
+
+.suspicious-material-hold-confirm-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  overflow-wrap: anywhere;
+}
+
+/* 마지막 항목 아래 선 · 여백은 두지 않는다 — 바로 아래가 창 바닥 줄이다(사용자 2026-11-02). */
+.suspicious-material-hold-confirm-list > li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.suspicious-material-hold-confirm-list > li > strong {
+  font-weight: 500;
+}
+
+.suspicious-material-hold-confirm-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.suspicious-material-hold-confirm-code {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+/* 입력 팝업의 「대상 LOT」 — 이름 아래 굵은 번호. */
+.suspicious-material-hold-defect-target {
+  display: grid;
+  gap: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+/* 팝업 안 수량 — 좁게(흐린 글자가 다 보이는 만큼). */
+.suspicious-material-hold-defect-form > .suspicious-material-hold-defect-qty {
+  width: 13rem;
+  max-width: 100%;
+}
+
+/* 입력 팝업 안 — 유형 · 상세 · 수량 한 줄, 내용 전체 폭. */
+.suspicious-material-hold-defect-form {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-form > .iqc-inspection-action-note {
+  justify-self: start;
+  max-width: 100%;
+}
+
+/* 불량 등록 확인 창 — 이름 · 값 두 줄 격자. */
+.suspicious-material-hold-confirm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.suspicious-material-hold-confirm dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 첫 칸(LOT 번호)은 한 줄 전체 — 긴 번호가 두 줄로 접히지 않게. */
+.suspicious-material-hold-confirm > :first-child {
+  grid-column: 1 / -1;
+}
+
+.suspicious-material-hold-confirm-line {
+  margin: var(--space-1) 0 0;
+}
+
+/* 상태 변경 시작일 · 종료일 — 흐린 글자 「시작일을 선택하세요」가 다 보이는 폭(사용자 2026-11-02). */
+.lot-status-date-field.suspicious-material-hold-date-field {
+  width: 14.5rem;
+}
+
+/* 보류 수량 — 흐린 글자 「수량을 입력하세요」 + 단위만큼(사용자 2026-11-02). */
+.suspicious-material-hold-input-row > .suspicious-material-hold-qty {
+  flex: 0 0 13rem;
+}
+
+.suspicious-material-hold-unit {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  white-space: nowrap;
+}
+
+/* 보류 사유 — 사유 이름 길이만큼만(사용자 2026-11-02). */
+.suspicious-material-hold-input-row > .suspicious-material-hold-reason {
+  flex: 0 1 14rem;
+}
+
+/*
+ * 필수 칸이 비면 빨간 테두리(사용자 2026-11-02) — 입력 칸은 aria-invalid 만 달고 테두리는 여기서 그린다(DS 는 오류 문구가
+ * 있을 때만 붉게 그려, 문구 없이 테두리만 쓰려고).
+ */
+.suspicious-material-hold-card [class*="_inputWrap_"]:has(input[aria-invalid="true"]) {
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/* 자재 불량 — 유형은 넓게, 수량은 좁게(약 12rem · 사용자 시안 2026-11-02). */
+.suspicious-material-hold-defect-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-row > .field-cell {
+  /* 흐린 글자 「불량 유형을 선택하세요」가 다 보이는 만큼만(사용자 2026-11-02). */
+  flex: 0 1 16rem;
+  min-width: 0;
+}
+
+.suspicious-material-hold-defect-row > .suspicious-material-hold-defect-qty {
+  flex: 0 0 12rem;
+}
+
+/*
+ * 안내 줄 — 검사 조회·판정과 같은 알약 한 줄(사용자 2026-11-02). 글 폭만큼만 바탕을 깔고, 칸보다 길면 말줄임 ·
+ * 전체 글은 마우스를 올리면 보인다.
+ */
+.suspicious-material-hold-card .iqc-inspection-action-note {
+  justify-self: start;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* 보류 영향 — LOT 마다 번호 · 수량 · 위치 · 단위, 붉은 제한 안내를 회색 상자 안에. */
+.suspicious-material-hold-impact-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-impact-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  overflow-wrap: anywhere;
+}
+
+/* 항목 전체가 단추 — 누르면 LOT 상세 팝업(사용자 2026-11-02). 상자 모양은 그대로, 올리면 바탕만 살짝 짙어진다. */
+.suspicious-material-hold-impact-item {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.suspicious-material-hold-impact-list > li:has(.suspicious-material-hold-impact-item:hover) {
+  background: var(--surface-container-high);
+}
+
+.suspicious-material-hold-impact-facts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+}
+
+.suspicious-material-hold-impact-restriction {
+  color: var(--semantic-error-text);
 }
 
 /* 의심자재 등록 — 후보 선택, 보류 입력, 실행 확인의 세 단계를 독립된 카드로 읽게 한다. */
@@ -5240,20 +5773,15 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-3);
 }
 
-.suspicious-material-hold-selection {
-  margin: 0;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  background: var(--primary-container);
-  color: var(--on-primary-container);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-}
-
 .suspicious-material-hold-table {
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+}
+
+/* 줄 아무 곳이나 눌러 고른다 — 고를 수 있는 줄만 손 모양(LOT 상태 변경과 같다). */
+.suspicious-material-hold-table tbody tr:has(input[type="checkbox"]:not(:disabled)) {
+  cursor: pointer;
 }
 
 .suspicious-material-hold-table table {
@@ -5272,16 +5800,13 @@ h2:has(> .inspection-standard-dialog-title) {
   border: 0;
 }
 
+/* 보류 범위 · 보류 영향 — 상자 없이 이름 아래로 쌓는다(사용자 시안 2026-11-02). */
 .suspicious-material-hold-range,
 .suspicious-material-hold-impact {
   display: grid;
   align-content: start;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface-container);
 }
 
 .suspicious-material-hold-range > .field-note,
@@ -5298,46 +5823,11 @@ h2:has(> .inspection-standard-dialog-title) {
   grid-column: 1 / -1;
 }
 
-.suspicious-material-hold-pane > .banner-slot {
-  margin-bottom: 0;
-}
-
 .suspicious-material-hold-subtitle {
   margin: 0;
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
   font: var(--type-title-md);
   letter-spacing: var(--type-title-md-tracking);
-}
-
-.suspicious-material-hold-impact-lead {
-  margin: 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-.suspicious-material-hold-impact > ul {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.suspicious-material-hold-impact li {
-  display: grid;
-  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
-  gap: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.suspicious-material-hold-impact li > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.suspicious-material-hold-action-pane {
-  padding-block: var(--space-4);
 }
 
 .suspicious-material-hold-action-row > .field-note {
@@ -9267,12 +9757,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
-}
-
-@media (min-width: 1440px) {
-  .lot-status-transition-detail-grid {
-    grid-template-columns: minmax(24rem, 4fr) minmax(32rem, 5fr);
-  }
 }
 
 /*
@@ -21488,32 +21972,11 @@ body:has(.goods-receipt-post-form) > [role="listbox"] {
   color: var(--on-surface-muted);
 }
 
-/* W-03-02 LOT Status 판정·전이 — 기간 라벨 옆 기준 안내(최근 전이일). 칩이 아닌 흐린 보조 글자. */
-.lot-status-transition-period-hint {
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
-  white-space: nowrap;
-}
-
 /* 목록 한 구획(상세 없음) — 나란히 설 때도 전체 폭을 쓴다. */
 @media (min-width: 1440px) {
   .po-board-split.board-frame-single {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* 현재 상태 — 세 칸 격자(좁은 좌측에서도 여섯 항목이 두 줄로 선다). */
-.lot-status-transition-status-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-/* 최근 사유 — 이름이 낱말 단위로 접힌다(글자 중간에서 끊지 않는다). */
-.lot-status-transition-status-grid
-  .lot-status-transition-current-latestReason
-  dd {
-  overflow-wrap: normal;
-  word-break: keep-all;
 }
 
 /* ① 변경할 상태 — 상자를 없애고 제목 + 라디오 묶음만. */
@@ -25501,17 +25964,6 @@ body.col-reordering * {
   .inspection-split > .lot-trace-detail-pane {
     min-height: 0;
     overflow: auto;
-  }
-}
-
-/*
- * W-03-02 LOT Status 판정·전이 — 선택 LOT·상태 전이 준비 정돈(사용자 지시 2026-09-19).
- * 좌측(확인 정보)을 줄이고 우측(작업)을 넓힌다. 우측은 한 카드 안에서 구획 제목·구분선으로
- * ① 변경할 상태 ② 해제할 보류 ③ 해제 정보를 가른다(카드를 겹치지 않는다).
- */
-@media (min-width: 1440px) {
-  .lot-status-transition-detail-grid {
-    grid-template-columns: minmax(22rem, 2fr) minmax(32rem, 3fr);
   }
 }
 

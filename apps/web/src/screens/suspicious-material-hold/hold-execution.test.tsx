@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -52,15 +52,19 @@ const renderExecution = (reply: Reply, value: Body | null = body) => {
 describe('의심자재 보류 실행', () => {
   it('유효 body만 확인하고 exact POST와 Idempotency-Key만 보낸다', async () => {
     const blocked = renderExecution(() => jsonResponse([]), null);
-    expect(screen.getByRole('heading', { level: 2, name: '의심자재 보류 실행' })).toBeVisible();
-    expect(screen.getByText('보류 사유와 해제 조건을 입력하면 등록할 수 있습니다.')).toBeVisible();
-    expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
+    /* 카드 안 [보류 등록] 한 줄 — 제목 · 안내 문구 없이 단추만, 막힌 까닭은 단추 풍선 도움말(사용자 시안 2026-11-02). */
+    expect(screen.getByRole('group', { name: '의심자재 보류 실행' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '보류 등록' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '보류 등록' })).toHaveAttribute(
+      'title',
+      '보류 사유와 해제 조건을 입력하면 등록할 수 있습니다.',
+    );
     blocked.unmount?.();
     const { requests, user } = renderExecution(() => jsonResponse([], { status: 201 }));
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
-    expect(screen.getByRole('dialog', { name: '의심자재 보류 등록 확인' })).toBeVisible();
-    expect(screen.getByText(/2개 LOT의 출고·출하·피킹을 막습니다/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    expect(screen.getByRole('dialog', { name: '의심자재 보류 등록' })).toBeVisible();
+    expect(screen.getByText(/2개 LOT의 출고·출하·피킹이 제한됩니다/)).toBeVisible();
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(await requests[0]?.json()).toEqual(body);
     expect(requests[0]?.headers.get('Idempotency-Key')).toBeTruthy();
@@ -72,10 +76,10 @@ describe('의심자재 보류 실행', () => {
       if (call === 1) throw new TypeError('offline');
       return jsonResponse([], { status: 201 });
     });
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     expect(await screen.findByText(/네트워크 연결/)).toBeVisible();
-    await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     await waitFor(() => expect(callbacks.onApplied).toHaveBeenCalledOnce());
     expect(requests).toHaveLength(2);
     expect(requests[0]?.headers.get('Idempotency-Key')).toBe(
@@ -98,8 +102,8 @@ describe('의심자재 보류 실행', () => {
         { status: 409 },
       ),
     );
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     expect(await screen.findByText(/최신 LOT 상태가 필요합니다/)).toBeVisible();
     expect(screen.getByText(/SYN-LOT-701/)).toBeVisible();
     expect(screen.queryByText('701')).toBeNull();
@@ -117,8 +121,8 @@ describe('의심자재 보류 실행', () => {
         { status: 409 },
       ),
     );
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     expect(await screen.findByText(/선택한 LOT 중 하나.*열린 보류가 있습니다/)).toBeVisible();
     expect(screen.queryByText('999')).toBeNull();
   });
@@ -139,8 +143,8 @@ describe('의심자재 보류 실행', () => {
         { status: 400 },
       ),
     );
-    await user.click(screen.getByRole('button', { name: '등록 확인' }));
     await user.click(screen.getByRole('button', { name: '보류 등록' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '보류 등록' }));
     expect(await screen.findByText('서버 해제 조건 오류')).toBeVisible();
     expect(screen.getByRole('dialog')).toBeVisible();
   });
