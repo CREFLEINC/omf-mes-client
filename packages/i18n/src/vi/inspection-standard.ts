@@ -193,6 +193,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     item: 'Mặt hàng',
     itemPlaceholder: 'Chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',
+    all: 'Tất cả',
     itemPick: 'Chọn',
     chipItem: (label: string): string => `Mặt hàng: ${label}`,
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',

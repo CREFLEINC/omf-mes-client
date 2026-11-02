@@ -28,6 +28,8 @@ export const inspectionSheetTemplate = {
     model: '품목 검색',
     modelPlaceholder: '품목을 입력하세요',
     modelClear: '품목 조건 지우기',
+    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
+    all: '전체',
     layout: '양식 선택',
     layoutAll: '전체',
     material: '재료 검색',

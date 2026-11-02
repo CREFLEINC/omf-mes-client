@@ -1,18 +1,24 @@
-import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
+import { Button, Checkbox, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 
-import { ItemPickerDialog } from '../../patterns/item-picker';
-import { Select } from '../../patterns/select';
+import { useApiClient } from '../../patterns/api-context';
+import { ItemSelect } from '../../patterns/item-select';
+import { runRequest } from '../../patterns/request';
+import { PagedSelect, Select } from '../../patterns/select';
 import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
-import { clearFilter, toFilterChips } from './filters';
-import { PlanPickerDialog } from './plan-picker-dialog';
+import { clearFilter, toFilterChips, toListQuery } from './filters';
 import { useItemNameLabels } from './queries';
 import type { PlanFilters } from './types';
 
 const t = messages.inspectionStandard;
+
+/** 조건 줄의 「전체」 — 빈 값이라 좁히지 않는다. */
+const ALL = [{ value: '', label: t.filters.all }];
+
+/** 검사 기준 칸의 한 쪽 건수 — 종전 검색 창의 첫 쪽과 같다. */
+const PLAN_SELECT_PAGE_SIZE = 20;
 
 export interface PlanFilterBarProps {
   /** 적용된(주소에 반영된) 조건 — 조건 칩의 렌더 기준 */
@@ -30,10 +36,9 @@ export interface PlanFilterBarProps {
 export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanFilterBarProps) => {
   const typeSelectId = useId();
   const statusSelectId = useId();
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const openPicker = (): void => setIsPickerOpen(true);
-  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
-  const openItemPicker = (): void => setIsItemPickerOpen(true);
+  const planSelectId = useId();
+  const itemSelectId = useId();
+  const { client } = useApiClient();
 
   /*
    * 트리거 모델: 편집은 모아서 적용, 해제는 즉시.
@@ -80,6 +85,8 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
   const toItemId = (value: string): number | null => (value === '' ? null : Number(value));
   const itemLabelOf = useItemNameLabels([toItemId(draft.itemId), toItemId(appliedItemId)]);
   const draftItemLabel = itemLabelOf(toItemId(draft.itemId)) ?? '';
+  /* 종전 창과 같은 범위에서 찾는다 — 목록 조건의 미사용 포함을 따른다(목록에 없는 기준을 고르지 않게). */
+  const planIncludeInactive = appliedFilters.includeInactive || appliedFilters.inactiveOnly;
   const chips = toFilterChips(appliedFilters, itemLabelOf(toItemId(appliedItemId)) ?? '');
 
   return (
@@ -118,41 +125,66 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
         </div>
 
         {/*
-         * 검사 기준은 **창에서 검색해서 고른다** — 검사 조회·판정의 품목 조건과 같은 모양(omf-all-around#196).
-         * 읽기 전용 칸을 누르거나 엔터를 치면 창이 열리고, 고른 기준의 코드가 검색어로 들어간다.
-         * 지우기는 값이 있을 때만 칸 안의 × 다. 고르거나 지우면 바로 조회한다(#208).
+         * 검사 기준은 **칸에서 바로 검색해서 고른다**(omf-all-around#226) — 검사 조회·판정의 품목 조건과 같은 모양.
+         * 고른 기준의 코드가 검색어로 들어가 칸에 그 코드가 선다. 「전체」는 종전 × 자리다. 고르면 바로 조회한다(#208).
          */}
-        <SearchInput
-          label={t.filters.searchLabel}
-          placeholder={t.filters.searchPlaceholder}
-          value={draft.q}
-          readOnly
-          title={draft.q === '' ? undefined : draft.q}
-          aria-haspopup="dialog"
-          clearLabel={t.filters.searchClear}
-          onClick={openPicker}
-          onSearch={openPicker}
-          onChange={() => undefined}
-          onClear={() => applyNow({ q: '' })}
-        />
+        <div className="field-cell">
+          <FieldLabel htmlFor={planSelectId} label={t.filters.searchLabel} />
+          <PagedSelect
+            id={planSelectId}
+            queryKey={['inspection-standard', 'plan-select', planIncludeInactive]}
+            fetchPage={async (q, page) => {
+              const data = await runRequest(() =>
+                client.GET('/quality/inspection-plans', {
+                  params: {
+                    query: {
+                      ...toListQuery(
+                        { ...DEFAULT_PLAN_FILTERS, q, includeInactive: planIncludeInactive },
+                        page,
+                      ),
+                      page,
+                      size: PLAN_SELECT_PAGE_SIZE,
+                    },
+                  },
+                }),
+              );
+              return {
+                options: data.items.map((plan) => ({
+                  value: plan.inspectionPlanCode,
+                  label: `${plan.inspectionPlanCode} · ${plan.inspectionPlanName}`,
+                })),
+                total: data.page.total,
+              };
+            }}
+            /* 칸에는 종전처럼 검색어(기준 코드)를 그대로 보인다 — 주소로 들어온 검색어도 같다. */
+            selectedOption={draft.q === '' ? null : { value: draft.q, label: draft.q }}
+            leadingOptions={ALL}
+            value={draft.q}
+            placeholder={t.filters.all}
+            onChange={(value) => applyNow({ q: value })}
+          />
+        </div>
 
         {/*
-         * 품목 — 검사 조회·판정의 품목 조건과 같은 모양(#196). 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다.
-         * 고르거나 지우면 바로 조회한다(#208). 지난 기준도 찾게 사용 중지 품목까지 찾는다.
+         * 품목 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다.
+         * 지난 기준도 찾게 사용 중지 품목까지 찾는다. 칸 글자는 종전처럼 「이름 (코드)」다.
          */}
-        <SearchInput
-          label={t.filters.item}
-          placeholder={t.filters.itemPlaceholder}
-          value={draftItemLabel}
-          readOnly
-          title={draftItemLabel === '' ? undefined : draftItemLabel}
-          aria-haspopup="dialog"
-          clearLabel={t.filters.itemClear}
-          onClick={openItemPicker}
-          onSearch={openItemPicker}
-          onChange={() => undefined}
-          onClear={() => applyNow({ itemId: '' })}
-        />
+        <div className="field-cell">
+          <FieldLabel htmlFor={itemSelectId} label={t.filters.item} />
+          <ItemSelect
+            id={itemSelectId}
+            includeInactive
+            selectedOption={
+              draft.itemId === '' || draftItemLabel === ''
+                ? null
+                : { value: draft.itemId, label: draftItemLabel }
+            }
+            leadingOptions={ALL}
+            value={draft.itemId}
+            placeholder={t.filters.all}
+            onChange={(value) => applyNow({ itemId: value })}
+          />
+        </div>
 
         {/*
          * 「미승인」만 보기(사용자 지시 · #208) — 바로 적용한다. 사용 여부(전체 · 사용 · 미사용)는 탭 줄의 칩이 맡아
@@ -204,40 +236,6 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           ))}
         </div>
       )}
-
-      {/*
-       * 두 검색 창은 조회 카드 밖(body)에 연다 — 카드 안에 두면 카드가 열린 창도 칸 하나로 쳐
-       * 칸 사이 간격만큼 카드 높이가 늘어난다(사용자 지적 · #208).
-       */}
-      {isItemPickerOpen &&
-        createPortal(
-          <ItemPickerDialog
-            multiple={false}
-            compact
-            includeInactive
-            showAvailability={false}
-            confirmLabel={t.filters.itemPick}
-            onClose={() => setIsItemPickerOpen(false)}
-            onConfirm={([item]) => {
-              if (item !== undefined) applyNow({ itemId: String(item.itemId) });
-              setIsItemPickerOpen(false);
-            }}
-          />,
-          document.body,
-        )}
-
-      {isPickerOpen &&
-        createPortal(
-          <PlanPickerDialog
-            includeInactive={appliedFilters.includeInactive || appliedFilters.inactiveOnly}
-            onClose={() => setIsPickerOpen(false)}
-            onConfirm={(plan) => {
-              applyNow({ q: plan.inspectionPlanCode });
-              setIsPickerOpen(false);
-            }}
-          />,
-          document.body,
-        )}
     </>
   );
 };

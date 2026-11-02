@@ -15,6 +15,7 @@ export const inspectionLevel = {
     keyword: 'Tìm vật tư',
     keywordPlaceholder: 'Nhập mã hoặc tên vật tư',
     keywordClear: 'Xóa điều kiện vật tư',
+    all: 'Tất cả',
     level: 'Mức kiểm tra',
     levelAll: 'Tất cả',
     levelCount: (label: string, count: number): string => `${label} ${String(count)}`,

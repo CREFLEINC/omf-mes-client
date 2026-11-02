@@ -16,7 +16,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -94,11 +94,11 @@ const InspectionSheetTemplateScreenBody = () => {
   const statusId = useId();
   const { session } = useSession();
   const [statusInput, setStatusInput] = useState<TemplateStatusFilter>('');
-  /* 모델 · 양식 · 재료 조건(사용자 지시 · #208). 모델은 품목 선택 창에서 고른다 — 검사 기준 탭의 품목 검색과 같다. */
+  /* 모델 · 양식 · 재료 조건(사용자 지시 · #208). 모델은 칸에서 바로 검색해서 고른다(#226) — 검사 기준 탭의 품목 검색과 같다. */
   const [modelInput, setModelInput] = useState<{ itemId: number; label: string } | null>(null);
   const [layoutInput, setLayoutInput] = useState<InspectionSheetLayoutCode | ''>('');
   const [materialInput, setMaterialInput] = useState('');
-  const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
+  const modelSelectId = useId();
   const layoutFilterId = useId();
   const [filter, setFilter] = useState<{
     status: TemplateStatusFilter;
@@ -373,23 +373,36 @@ const InspectionSheetTemplateScreenBody = () => {
               }}
             />
           </div>
-          {/* 모델 — 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다(검사 기준 탭의 품목 검색과 같다 · #208). */}
-          <SearchInput
-            label={t.list.model}
-            placeholder={t.list.modelPlaceholder}
-            value={modelInput?.label ?? ''}
-            readOnly
-            title={modelInput?.label}
-            aria-haspopup="dialog"
-            clearLabel={t.list.modelClear}
-            onClick={() => setIsModelPickerOpen(true)}
-            onSearch={() => setIsModelPickerOpen(true)}
-            onChange={() => undefined}
-            onClear={() => {
-              setModelInput(null);
-              setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
-            }}
-          />
+          {/* 모델 — 칸에서 바로 검색해서 고른다(#226). 고르면 바로 조회하고(#208) 「전체」는 종전 × 자리다. */}
+          <div className="field-cell">
+            <label className="field-label" htmlFor={modelSelectId}>
+              {t.list.model}
+            </label>
+            <ItemSelect
+              id={modelSelectId}
+              /* 칸 글자는 종전처럼 「코드 이름」이다. */
+              selectedOption={
+                modelInput === null
+                  ? null
+                  : { value: String(modelInput.itemId), label: modelInput.label }
+              }
+              leadingOptions={[{ value: '', label: t.list.all }]}
+              value={modelInput === null ? '' : String(modelInput.itemId)}
+              placeholder={t.list.all}
+              onItemChange={(picked) => {
+                setModelInput({
+                  itemId: picked.itemId,
+                  label: `${picked.itemCode} ${picked.itemName}`,
+                });
+                setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
+              }}
+              onChange={(value) => {
+                if (value !== '') return;
+                setModelInput(null);
+                setFilter((prev) => ({ ...prev, itemId: null, page: 1 }));
+              }}
+            />
+          </div>
           {/* 재료 — 품목 칸과 같은 검색 칸(돋보기 · 지우기 · 사용자 지시 · #208). 치는 대로 0.3초 뒤 조회된다. */}
           <SearchInput
             label={t.list.material}
@@ -576,26 +589,6 @@ const InspectionSheetTemplateScreenBody = () => {
           onConfirm={(basics) => {
             setIsCreating(false);
             open({ kind: 'new', basics, seq: Date.now() });
-          }}
-        />
-      )}
-      {isModelPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
-          showAvailability={false}
-          confirmLabel={t.editor.pickConfirm}
-          onClose={() => setIsModelPickerOpen(false)}
-          onConfirm={([picked]) => {
-            setIsModelPickerOpen(false);
-            if (picked !== undefined) {
-              setModelInput({
-                itemId: picked.itemId,
-                label: `${picked.itemCode} ${picked.itemName}`,
-              });
-              /* 「선택」하면 바로 조회한다 — 「조회」를 한 번 더 누르지 않게(사용자 지시 · #208). */
-              setFilter((prev) => ({ ...prev, itemId: picked.itemId, page: 1 }));
-            }
           }}
         />
       )}

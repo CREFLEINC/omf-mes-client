@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -45,14 +46,18 @@ describe('PlanFilterBar — 조건', () => {
     });
   });
 
-  /* 검사 기준은 창에서 골라 넣는다 — 칸에 직접 치지 않는다(검사 조회·판정의 품목 조건과 같다). */
-  it('검사 기준 검색 칸은 읽기 전용이고 안내 문구가 선다', () => {
-    renderBar();
+  /* 검사 기준은 칸에서 바로 검색해 고른다 — 창(팝업)이 열리지 않는다(#226). 고르기 전에는 「전체」다. */
+  it('검사 기준 검색 칸은 펼치면 검색창이 서고 창이 열리지 않는다', async () => {
+    const { user } = renderBar();
 
     const field = screen.getByLabelText('검사 기준 검색');
-    expect(field).toHaveAttribute('readonly');
-    expect(field).toHaveAttribute('placeholder', '기준 코드 또는 기준명을 입력하세요');
-    expect(field).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(field).toHaveTextContent('전체');
+    await user.click(field);
+
+    expect(
+      await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /* 「미승인」은 누르는 즉시 적용한다(#208). 종전 「미사용 포함」 체크는 탭 줄 사용 여부 칩으로 옮겼다. */

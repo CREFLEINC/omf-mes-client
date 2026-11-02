@@ -209,6 +209,8 @@ export const inspectionStandard = {
     item: '품목 검색',
     itemPlaceholder: '품목을 입력하세요',
     itemClear: '품목 조건 지우기',
+    /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
+    all: '전체',
     itemPick: '선택',
     chipItem: (label: string): string => `품목: ${label}`,
     chipRemoveItem: '품목 조건 제거',
