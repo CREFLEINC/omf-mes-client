@@ -147,56 +147,8 @@ export const LotDetailPane = ({
        * 기본 정보 — 긴 값(LOT 번호·품목)은 첫 줄에 넓게, 짧은 값은 둘째 줄에 좁게 둔다
        * (사용자 지시 2026-09-19). 칸 배치는 app.css .lot-detail-fields.
        */}
-      {/* 팝업 — LOT 번호 · 상태 한 줄, 그 아래 정보 칸(사용자 시안 2026-11-02). 보이는 값은 상세 칸과 같다. */}
-      {inDialog && detail.data !== undefined && (
-        <div className="lot-dialog-summary" aria-label={t.detail.attributes} role="group">
-          <div className="lot-dialog-summary-head">
-            <span className="lot-no-with-type lot-dialog-summary-no">
-              <Chip variant="status" status="info" size="sm">
-                {labelOf(lotTypeOptions, detail.data.lotTypeCode)}
-              </Chip>
-              {detail.data.lotNo}
-            </span>
-            <Chip variant="status" status={lotStatusTone(detail.data.statusCode)} size="sm">
-              {labelOf(statusOptions, detail.data.statusCode)}
-            </Chip>
-          </div>
-          <dl className="lot-dialog-summary-fields">
-            <div>
-              <dt className="field-label">{t.detail.fields.item}</dt>
-              <dd>
-                {(() => {
-                  const [code, ...name] = lookupDisplayLabelWithInactive(
-                    itemSource,
-                    detail.data.itemId,
-                  ).split(' · ');
-                  return (
-                    <>
-                      {code}
-                      {name.length > 0 && (
-                        <span className="lot-dialog-summary-sub">{name.join(' · ')}</span>
-                      )}
-                    </>
-                  );
-                })()}
-              </dd>
-            </div>
-            <div>
-              <dt className="field-label">{t.detail.fields.initialQty}</dt>
-              <dd>{withUom(String(detail.data.initialQty), uomCodeOf(detail.data.uomId))}</dd>
-            </div>
-            <div>
-              <dt className="field-label">{t.detail.fields.expiryDate}</dt>
-              <dd>{detail.data.expiryDate ?? EMPTY}</dd>
-            </div>
-            <div>
-              <dt className="field-label">{t.detail.fields.manufacturedAt}</dt>
-              <dd>{formatDateTime(detail.data.manufacturedAt)}</dd>
-            </div>
-          </dl>
-        </div>
-      )}
-      {!inDialog && detail.data !== undefined && (
+      {/* 팝업도 상세 칸과 같은 테두리 상자 · 칸 사이 세로선(사용자 2026-11-02). */}
+      {detail.data !== undefined && (
         <dl className="lot-detail-fields" aria-label={t.detail.attributes}>
           {(
             [

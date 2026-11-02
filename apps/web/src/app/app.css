@@ -4471,47 +4471,7 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-3);
 }
 
-/* 생산 LOT 상세 이력 팝업 — 사용자 시안 2026-11-02. LOT 번호 · 상태 한 줄, 아래 정보 칸, 둥근 탭, 맨 아래 이동 단추. */
-.lot-dialog-summary {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-}
-
-.lot-dialog-summary-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.lot-dialog-summary-no {
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
-  overflow-wrap: anywhere;
-}
-
-.lot-dialog-summary-fields {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
-  margin: 0;
-}
-
-.lot-dialog-summary-fields dd {
-  display: grid;
-  gap: var(--space-1);
-  margin: var(--space-1) 0 0;
-  color: var(--on-surface);
-  font: var(--type-body-lg);
-  overflow-wrap: anywhere;
-}
-
-.lot-dialog-summary-sub {
-  color: var(--on-surface-variant);
-  font: var(--type-body-md);
-}
-
+/* 생산 LOT 상세 이력 팝업 — 기본 정보는 상세 칸과 같은 상자, 투입 자재 · 이력 탭, 맨 아래 이동 단추(사용자 2026-11-02). */
 /* 투입 자재 제목 — 시안처럼 구역 제목 크기. */
 .lot-usage-detail-dialog .lot-status-detail-dialog section > .lot-status-pane-head > h3,
 .lot-usage-detail-dialog .four-m-inputs .lot-status-pane-head > h3 {
