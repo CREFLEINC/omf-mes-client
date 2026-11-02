@@ -162,6 +162,14 @@ export const partsIqcInspection = {
   },
 
   judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<string, string>,
+  /** 생략된 의뢰의 읽기 전용 요약(#225). */
+  skipped: {
+    notice: (basis: string | null): string =>
+      basis === null
+        ? '검사를 생략한 의뢰입니다. 입력할 검사 결과가 없습니다.'
+        : `검사를 생략한 의뢰입니다(${basis}). 입력할 검사 결과가 없습니다.`,
+    basis: { DEFAULT: '기본 설정', APPROVAL: '결재 승인' } as Record<string, string>,
+  },
   requestStatus: {
     REQUESTED: '검사 대기',
     IN_PROGRESS: '검사 진행 중',

@@ -144,8 +144,20 @@ export const InspectionDetail = ({
     if (loading) return <p className="field-note">{t.dialog.loading}</p>;
     if (failed || detail.data === undefined)
       return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
-    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 위 「IQC 생략」 구획이 그 사실을 말한다. */
-    if (detail.data.statusCode === 'SKIPPED') return null;
+    /* 생략으로 닫힌 의뢰는 입력할 것이 없다 — 받은 정보만 읽기 전용으로 보인다(사용자 지시 2026-11-02 · #225). */
+    if (detail.data.statusCode === 'SKIPPED') {
+      return (
+        <SkippedSummary
+          skipBasisCode={detail.data.skipBasisCode ?? null}
+          itemParts={items.partsOf(detail.data.itemId)}
+          planLabel={plan.data?.inspectionPlanCode ?? '-'}
+          planName={plan.data?.inspectionPlanName ?? '-'}
+          lotNo={lots.labelOf(detail.data.lotId)}
+          qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
+          inbound={inbound.data}
+        />
+      );
+    }
     if (round !== null && round.statusCode === 'CONFIRMED') {
       return (
         <AlertBanner variant="info">
@@ -255,6 +267,67 @@ export const InspectionDetail = ({
     </div>
   );
 };
+
+/** 생략된 의뢰의 읽기 전용 요약 — 검사 대상 · LOT 정보를 입력 화면과 같은 짜임으로 보인다(#225). */
+const SkippedSummary = (props: {
+  skipBasisCode: string | null;
+  itemParts: { code: string; name: string } | null;
+  planLabel: string;
+  planName: string;
+  lotNo: string;
+  qtyLabel: string;
+  inbound: { supplierLabel: string | null; receivedAt: string | null } | undefined;
+}) => (
+  <>
+    <AlertBanner variant="info">
+      {t.skipped.notice(
+        props.skipBasisCode === null ? null : (t.skipped.basis[props.skipBasisCode] ?? null),
+      )}
+    </AlertBanner>
+    <section className="parts-iqc-block" aria-label={t.target.heading}>
+      <dl className="parts-iqc-facts">
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.target.itemName}</dt>
+          <dd className="parts-iqc-fact-key">
+            {props.itemParts?.name ?? '-'}
+            {props.itemParts !== null && (
+              <span className="parts-iqc-fact-sub">{props.itemParts.code}</span>
+            )}
+          </dd>
+        </div>
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.target.plan}</dt>
+          <dd>{props.planLabel}</dd>
+        </div>
+        <div className="parts-iqc-fact">
+          <dt className="field-label">{t.target.planName}</dt>
+          <dd>{props.planName}</dd>
+        </div>
+      </dl>
+      <div className="parts-iqc-lot-box" role="group" aria-label={t.lot.heading}>
+        <h4>{t.lot.heading}</h4>
+        <dl className="parts-iqc-kv">
+          <div>
+            <dt>{t.lot.lotNo}</dt>
+            <dd className="parts-iqc-lot-no">{props.lotNo}</dd>
+          </div>
+          <div>
+            <dt>{t.lot.supplier}</dt>
+            <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
+          </div>
+          <div>
+            <dt>{t.lot.qty}</dt>
+            <dd>{props.qtyLabel}</dd>
+          </div>
+          <div>
+            <dt>{t.lot.receivedAt}</dt>
+            <dd>{formatPlantDateTime(props.inbound?.receivedAt ?? null) ?? '-'}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </>
+);
 
 interface FormProps {
   request: {

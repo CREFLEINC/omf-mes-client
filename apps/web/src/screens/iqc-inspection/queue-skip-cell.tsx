@@ -55,7 +55,7 @@ const SKIP_STATUS_TONE: Record<string, StatusTone> = {
 
 /**
  * 「상태」 칸(사용자 지시 2026-11-02 · #225) — 생략 결재가 걸린 대기·진행 의뢰는 의뢰 상태 대신
- * 결재 단계(결재 대기·승인·반려)를 보인다. 결재가 없거나 아직 못 읽었으면 의뢰 상태 그대로다. 표시만 바꾼다.
+ * 결재 단계(생략 대기·승인·반려)를 보인다. 결재가 없거나 아직 못 읽었으면 의뢰 상태 그대로다. 표시만 바꾼다.
  */
 export const QueueStatusCell = ({ lotId, fallback }: { lotId: number; fallback: StatusBadge }) => {
   const { approval } = useSkipApproval(lotId);

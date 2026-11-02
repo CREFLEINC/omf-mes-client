@@ -176,7 +176,12 @@ const columnsOf = (
     header: t.columns.statusCode,
     width: '88px',
     render: (row) => {
-      const badge = toStatusBadge(row.statusCode, row.skipBasisCode);
+      const basic = toStatusBadge(row.statusCode, row.skipBasisCode);
+      /* 결재로 생략된 의뢰는 「생략」 하나로(사용자 지시 2026-11-02 · #225) — 기본 설정 생략은 그대로 가른다. */
+      const badge =
+        row.statusCode === 'SKIPPED' && row.skipBasisCode === 'APPROVAL'
+          ? { ...basic, label: t.skipStatus.SKIPPED ?? basic.label }
+          : basic;
       /* 생략 칸이 서는 줄은 생략 결재 단계를 상태로 보인다(#225). */
       if (skipWorkerNo !== undefined && row.lotId !== null && SKIPPABLE.includes(row.statusCode)) {
         return <QueueStatusCell lotId={row.lotId} fallback={badge} />;
