@@ -4804,6 +4804,15 @@ h2:has(> .inspection-standard-dialog-title) {
   cursor: pointer;
 }
 
+/* LOT 상태 이력에서 고른 줄 — LOT 목록의 고른 줄과 같은 파란 바탕 · 왼쪽 막대(사용자 2026-11-02). */
+.lot-timeline-clickable tbody tr:has([aria-current='true']) > td {
+  background: var(--semantic-info-container);
+}
+
+.lot-timeline-clickable tbody tr:has([aria-current='true']) > td:first-child {
+  box-shadow: inset 3px 0 0 var(--semantic-info);
+}
+
 /* 생산 LOT 상세 이력 팝업 — 기본 정보는 상세 칸과 같은 상자, 투입 자재 · 이력 탭, 맨 아래 이동 단추(사용자 2026-11-02). */
 /* 팝업 첫 줄(제목 · 이동 단추) — 위에 여백을 두고 가운데 높이를 맞춘다(사용자 2026-11-02). */
 .lot-usage-detail-dialog > .lot-status-detail-head {

@@ -35,7 +35,7 @@ import {
 } from './filters';
 import { CurrentResults } from './current-results';
 import { HistoryFilterBar } from './history-filter-bar';
-import { HistoryResults } from './history-results';
+import { HistoryLotDetail, HistoryResults } from './history-results';
 import { LotDetailPane } from './lot-detail-pane';
 import { LotFilterBar, type FilterOption } from './lot-filter-bar';
 import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './options';
@@ -49,6 +49,7 @@ const MODES: readonly ScreenMode[] = ['lot', 'history'];
 
 /* 좌우 · 상하 배치는 검사 조회·판정 묶음과 따로 기억한다. */
 const LOT_STATUS_ORIENTATION_KEY = 'omf-mes:lot-status:split-orientation';
+const LOT_STATUS_HISTORY_ORIENTATION_KEY = 'omf-mes:lot-status-history:split-orientation';
 
 interface StatusChipsProps {
   options: readonly FilterOption[];
@@ -357,9 +358,19 @@ const HistoryMode = ({
           ? t.historyFilter.actorUnknownNote
           : undefined;
 
+  /*
+   * 목록 · 상세 두 칸을 처음부터 둔다 — 좌우 · 상하 배치와 가운데 막대는 LOT 현황 · 검사 조회·판정과 같다
+   * (사용자 2026-11-02). 배치 · 비율은 LOT 현황과 따로 기억한다.
+   */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:lot-status-history:split', 0.5);
+  const layout = useSplitOrientation(LOT_STATUS_HISTORY_ORIENTATION_KEY);
+  const [selected, setSelected] = useState<{ key: string; lotId: number } | null>(null);
+
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-search" aria-label={t.historyFilter.pane}>
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
+      <section ref={aboveRef} className="pane lot-status-search" aria-label={t.historyFilter.pane}>
         {modeSwitch !== null && <div className="lot-status-search-head">{modeSwitch}</div>}
         <HistoryFilterBar
           appliedFilters={filters}
@@ -369,14 +380,53 @@ const HistoryMode = ({
           onReset={onReset}
         />
       </section>
-      <HistoryResults
-        filters={filters}
-        page={page}
-        offsetMinutes={-new Date().getTimezoneOffset()}
-        statusOptions={toCodeOptions(lotStatuses.data?.items)}
-        appUserName={appUserName}
-        onPageChange={onPageChange}
-      />
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split lot-status-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <HistoryResults
+          filters={filters}
+          page={page}
+          offsetMinutes={-new Date().getTimezoneOffset()}
+          statusOptions={toCodeOptions(lotStatuses.data?.items)}
+          appUserName={appUserName}
+          onPageChange={onPageChange}
+          selectedKey={selected?.key ?? null}
+          onSelectEntry={setSelected}
+        />
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+        <section
+          className="pane lot-status-pane lot-status-detail-dialog"
+          aria-labelledby="lot-status-detail-title"
+        >
+          {selected === null ? (
+            <>
+              <h2 className="pane-title" id="lot-status-detail-title">
+                {t.detail.title}
+              </h2>
+              <EmptyState
+                size="sm"
+                icon={<Icon name="arrow_selector_tool" size={24} />}
+                title={t.detail.pick}
+              />
+            </>
+          ) : (
+            <HistoryLotDetail
+              key={selected.lotId}
+              lotId={selected.lotId}
+              statusOptions={toCodeOptions(lotStatuses.data?.items)}
+            />
+          )}
+        </section>
+      </div>
     </div>
   );
 };

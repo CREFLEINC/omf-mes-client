@@ -25,6 +25,9 @@ interface HistoryResultsProps {
   statusOptions: readonly FilterOption[];
   appUserName: (appUserId: number) => string | null;
   onPageChange: (page: number) => void;
+  /** 고른 줄 — 같은 화면의 상세 칸이 그 LOT 을 보인다(사용자 2026-11-02). */
+  selectedKey: string | null;
+  onSelectEntry: (entry: { key: string; lotId: number }) => void;
 }
 
 export const HistoryResults = ({
@@ -34,9 +37,9 @@ export const HistoryResults = ({
   statusOptions,
   appUserName,
   onPageChange,
+  selectedKey,
+  onSelectEntry,
 }: HistoryResultsProps) => {
-  /* 줄을 누르면 그 LOT 의 상세 이력 팝업(사용자 2026-11-02). */
-  const [openedLot, setOpenedLot] = useState<{ lotId: number; lotNo: string } | null>(null);
   const history = useLotHistoryTimeline(filters, offsetMinutes);
   /* 쪽 크기는 LOT 목록처럼 20 · 50 · 100 에서 고른다(사용자 2026-10-30 · 디자인 통일). */
   const [pageSize, setPageSize] = useState<LotPageSize>(HISTORY_PAGE_SIZE);
@@ -59,88 +62,72 @@ export const HistoryResults = ({
   const start = (currentPage - 1) * pageSize;
   const rows = entries.slice(start, start + pageSize);
 
+  /* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */
   return (
-    <>
-      {/* 「LOT 이력」 제목은 두지 않는다(사용자 2026-11-02) — 구역 이름은 화면 읽기용으로만. */}
-      <section className="pane lot-status-pane lot-status-history-pane" aria-label={t.history.pane}>
-        {!hasValidPeriod && (
-          <EmptyState
-            size="sm"
-            title={t.history.beforeSearch.title}
-            description={t.history.beforeSearch.description}
-          />
-        )}
-        {hasValidPeriod && history.isPending && (
-          <div role="status" aria-label={t.history.loading}>
-            <SkeletonText lines={3} />
-          </div>
-        )}
-        {hasValidPeriod && history.isError && (
-          <AlertBanner variant="error" title={t.history.failed} action={retry} />
-        )}
-        {hasValidPeriod && history.isFetching && history.data !== undefined && (
-          <p className="field-note" role="status" aria-label={t.history.refreshing}>
-            {t.history.refreshingText}
-          </p>
-        )}
-        {hasValidPeriod && history.data?.isTruncated === true && (
-          <AlertBanner variant="warning">{t.history.truncated}</AlertBanner>
-        )}
-        {hasValidPeriod && history.data !== undefined && (
-          <>
-            <LotTimelineTable
-              caption={t.history.pane}
-              entries={rows}
-              statusOptions={statusOptions}
-              appUserName={appUserName}
-              variant="history"
-              busy={history.isFetching}
-              onOpenEntry={(entry) =>
-                setOpenedLot({ lotId: entry.event.lotId, lotNo: entry.lotNo })
-              }
-              empty={
-                <EmptyState
-                  size="sm"
-                  live
-                  title={t.history.empty.title}
-                  description={t.history.empty.description}
-                />
-              }
-            />
-            {/* 총 건수는 표 아래 쪽 이동 줄에만 — LOT 목록과 같다(사용자 2026-10-30). */}
-            <PageNav
-              sizes={LOT_PAGE_SIZES}
-              meta={{ page: currentPage, size: pageSize, total }}
-              onChangePage={onPageChange}
-              onChangeSize={(size) => {
-                setPageSize(size);
-                onPageChange(1);
-              }}
-              controlSize="sm"
-              buttonSize="md"
-            />
-          </>
-        )}
-      </section>
-      {/* 줄을 누르면 그 LOT 상세를 목록 아래 상자에 연다 — 팝업이 아니다(사용자 2026-11-02). */}
-      {openedLot !== null && (
-        <section
-          className="pane lot-status-pane lot-status-detail-dialog"
-          aria-labelledby="lot-status-detail-title"
-        >
-          <HistoryLotDetail
-            key={openedLot.lotId}
-            lotId={openedLot.lotId}
-            statusOptions={statusOptions}
-          />
-        </section>
+    <section className="pane lot-status-pane lot-status-history-pane" aria-label={t.history.pane}>
+      {!hasValidPeriod && (
+        <EmptyState
+          size="sm"
+          title={t.history.beforeSearch.title}
+          description={t.history.beforeSearch.description}
+        />
       )}
-    </>
+      {hasValidPeriod && history.isPending && (
+        <div role="status" aria-label={t.history.loading}>
+          <SkeletonText lines={3} />
+        </div>
+      )}
+      {hasValidPeriod && history.isError && (
+        <AlertBanner variant="error" title={t.history.failed} action={retry} />
+      )}
+      {hasValidPeriod && history.isFetching && history.data !== undefined && (
+        <p className="field-note" role="status" aria-label={t.history.refreshing}>
+          {t.history.refreshingText}
+        </p>
+      )}
+      {hasValidPeriod && history.data?.isTruncated === true && (
+        <AlertBanner variant="warning">{t.history.truncated}</AlertBanner>
+      )}
+      {hasValidPeriod && history.data !== undefined && (
+        <>
+          <LotTimelineTable
+            caption={t.history.pane}
+            entries={rows}
+            statusOptions={statusOptions}
+            appUserName={appUserName}
+            variant="history"
+            busy={history.isFetching}
+            onOpenEntry={(entry) => onSelectEntry({ key: entry.key, lotId: entry.event.lotId })}
+            selectedKey={selectedKey}
+            empty={
+              <EmptyState
+                size="sm"
+                live
+                title={t.history.empty.title}
+                description={t.history.empty.description}
+              />
+            }
+          />
+          {/* 총 건수는 표 아래 쪽 이동 줄에만 — LOT 목록과 같다(사용자 2026-10-30). */}
+          <PageNav
+            sizes={LOT_PAGE_SIZES}
+            meta={{ page: currentPage, size: pageSize, total }}
+            onChangePage={onPageChange}
+            onChangeSize={(size) => {
+              setPageSize(size);
+              onPageChange(1);
+            }}
+            controlSize="sm"
+            buttonSize="md"
+          />
+        </>
+      )}
+    </section>
   );
 };
 
 /** LOT 유형 기준값은 상세를 열 때만 읽는다 — 탭에 처음 들어올 때 요청을 늘리지 않는다. */
-const HistoryLotDetail = ({
+export const HistoryLotDetail = ({
   lotId,
   statusOptions,
 }: {

@@ -63,6 +63,8 @@ interface LotTimelineTableProps {
   onOpenEntry?: (entry: LotTimelineEntry) => void;
   /** 누를 수 있는 줄만 고른다 — 주지 않으면 모든 줄. */
   isEntryClickable?: (entry: LotTimelineEntry) => boolean;
+  /** 고른 줄(`entry.key`) — LOT 목록의 고른 줄처럼 파란 바탕으로 둔다. */
+  selectedKey?: string | null;
 }
 
 export const LotTimelineTable = ({
@@ -75,6 +77,7 @@ export const LotTimelineTable = ({
   busy = false,
   onOpenEntry,
   isEntryClickable = () => true,
+  selectedKey = null,
 }: LotTimelineTableProps) => {
   const reasons = useLotHoldReasonOptions();
   const isDetail = variant === 'detail';
@@ -117,6 +120,7 @@ export const LotTimelineTable = ({
           data-row-clickable={
             onOpenEntry !== undefined && isEntryClickable(entry) ? 'true' : undefined
           }
+          aria-current={selectedKey !== null && entry.key === selectedKey ? 'true' : undefined}
         >
           {formatDateTime(entry.occurredAt)}
         </span>
