@@ -373,6 +373,9 @@ export const CurrentResults = ({
                       ? t.current.list.emptyPage
                       : t.current.list.empty
                   }
+                  description={
+                    meta !== undefined && meta.total > 0 ? undefined : t.current.list.emptyHint
+                  }
                   action={
                     isBeyondLast ? (
                       <Button variant="outlined" onClick={() => onPageChange(1)}>

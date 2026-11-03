@@ -134,6 +134,8 @@ export const lotStatusHistory = {
       refreshingText: 'LOT 목록을 갱신하는 중입니다.',
       emptyPage: '이 쪽에는 결과가 없습니다',
       empty: '조건에 맞는 LOT이 없습니다',
+      /** 빈 목록 소제목 — 검사 조회·판정과 같은 문구(omf-all-around#228). */
+      emptyHint: '검색 조건을 변경하거나 필터를 초기화하세요.',
       firstPage: '첫 쪽으로',
       pagination: 'LOT 목록 쪽 이동',
     },
@@ -217,6 +219,8 @@ export const lotStatusHistory = {
     retryLabel: (name: string): string => `${name} 재시도`,
     /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
     pick: '목록에서 LOT을 선택해 주세요.',
+    /** 고르기 전 소제목(omf-all-around#228). */
+    pickHint: '선택한 LOT의 상세 정보가 표시됩니다.',
     trace: '생산 이력 조회',
     /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
     historyTabs: 'LOT 이력',

@@ -51,6 +51,7 @@ export const lotStatusTransition: Translated<typeof ko.lotStatusTransition> = {
     failed: 'Không tải được LOT ứng viên.',
     retry: 'Thử lại',
     empty: 'Không có LOT nào khớp điều kiện.',
+    emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
   },
   selected: {
     pane: 'Thay đổi trạng thái LOT',

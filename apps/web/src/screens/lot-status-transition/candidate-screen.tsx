@@ -600,6 +600,7 @@ export const LotStatusTransitionCandidateScreen = () => {
                       live
                       icon={<PaneEmptyIcon name="assignment" />}
                       title={t.empty}
+                      description={t.emptyHint}
                     />
                   }
                 />
@@ -640,6 +641,7 @@ export const LotStatusTransitionCandidateScreen = () => {
                 size="sm"
                 icon={<PaneEmptyIcon name="layers" />}
                 title={tHistory.detail.pick}
+                description={tHistory.detail.pickHint}
               />
             </section>
           ) : (

@@ -61,6 +61,7 @@ export const DetailSlot = ({
         size="sm"
         icon={<PaneEmptyIcon name="layers" />}
         title={emptyTitle ?? t.detail.select}
+        description={t.detail.selectHint}
       />
     );
 

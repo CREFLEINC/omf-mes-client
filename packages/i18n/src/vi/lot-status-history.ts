@@ -127,6 +127,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       refreshingText: 'Đang làm mới danh sách LOT.',
       emptyPage: 'Trang này không có kết quả',
       empty: 'Không có LOT nào khớp điều kiện',
+      emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
       firstPage: 'Về trang đầu',
       pagination: 'Chuyển trang danh sách LOT',
     },
@@ -204,6 +205,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     retry: 'Thử lại',
     retryLabel: (name: string): string => `Thử lại ${name}`,
     pick: 'Hãy chọn LOT trong danh sách.',
+    pickHint: 'Thông tin chi tiết của LOT đã chọn sẽ hiển thị.',
     trace: 'Tra cứu lịch sử sản xuất',
     /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
     historyTabs: 'Lịch sử LOT',

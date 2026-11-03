@@ -311,7 +311,12 @@ const LotMode = ({
           {selectedLotId === null ? (
             /* 고른 LOT 이 없으면 아이콘과 한 줄 안내만 — 칸 제목 「LOT 상세」는 두지 않는다(omf-all-around#228). */
             <>
-              <EmptyState size="sm" icon={<PaneEmptyIcon name="layers" />} title={t.detail.pick} />
+              <EmptyState
+                size="sm"
+                icon={<PaneEmptyIcon name="layers" />}
+                title={t.detail.pick}
+                description={t.detail.pickHint}
+              />
             </>
           ) : (
             <LotDetailPane
@@ -457,7 +462,12 @@ const HistoryMode = ({
         >
           {selected === null ? (
             <>
-              <EmptyState size="sm" icon={<PaneEmptyIcon name="layers" />} title={t.detail.pick} />
+              <EmptyState
+                size="sm"
+                icon={<PaneEmptyIcon name="layers" />}
+                title={t.detail.pick}
+                description={t.detail.pickHint}
+              />
             </>
           ) : (
             <HistoryLotDetail
