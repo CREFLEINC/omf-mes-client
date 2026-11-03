@@ -171,7 +171,7 @@ describe('LOT 현재 조회 조건', () => {
     );
     expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
     await pickWarehouse(user, 'SAMPLE-WH-01');
-    await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');
+    await choose(user, '위치 검색', 'SAMPLE-LOC-01 · 합성 위치');
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(onSearch).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: '조회' }));

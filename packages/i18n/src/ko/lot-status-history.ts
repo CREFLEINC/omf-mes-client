@@ -48,7 +48,7 @@ export const lotStatusHistory = {
       item: '품목 검색',
       /* 검색해서 고르는 칸은 「검색」(omf-all-around#228). */
       warehouse: '창고 검색',
-      location: '위치 선택',
+      location: '위치 검색',
     },
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
     lotScanLabel: 'LOT 스캔',

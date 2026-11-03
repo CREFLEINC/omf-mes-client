@@ -35,6 +35,8 @@ interface SelectFieldProps {
   disabled?: boolean;
   /** 고를 값이 없을 때 칸 안에 보이는 글자 — 잠긴 까닭을 여기에 둔다(사용자 2026-10-30). */
   placeholder?: string;
+  /** 칸 안에서 글자로 찾는다(위치 · omf-all-around#228). */
+  searchable?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -91,6 +93,7 @@ const SelectField = ({
   className,
   disabled = false,
   placeholder,
+  searchable = false,
   onChange,
 }: SelectFieldProps) => {
   const id = useId();
@@ -108,6 +111,7 @@ const SelectField = ({
         value={value}
         placeholder={placeholder}
         disabled={disabled}
+        searchable={searchable}
         onChange={onChange}
         aria-describedby={note === undefined ? undefined : noteId}
       />
@@ -301,6 +305,7 @@ export const LotFilterBar = ({
             value={filters.location}
             note={locationNote}
             disabled={isLocationLocked}
+            searchable
             onChange={(location) => setFilters((current) => ({ ...current, location }))}
           />
           <ItemFilterField

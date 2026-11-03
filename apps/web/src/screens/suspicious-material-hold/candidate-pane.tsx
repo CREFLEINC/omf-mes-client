@@ -557,6 +557,8 @@ export const SuspiciousMaterialCandidatePane = ({
                 value={draft.warehouseId}
                 options={[{ value: '', label: t.values.all }, ...options(warehouses.data)]}
                 disabled={isLocked}
+                /* 칸 안에서 글자로 찾는다(omf-all-around#228). */
+                searchable
                 onChange={(warehouseId) => setDraft((current) => ({ ...current, warehouseId }))}
               />
             </div>

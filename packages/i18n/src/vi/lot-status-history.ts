@@ -46,7 +46,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lotNo: 'Số LOT',
       item: 'Tìm mặt hàng',
       warehouse: 'Tìm kho',
-      location: 'Chọn vị trí',
+      location: 'Tìm vị trí',
     },
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
     lotScanLabel: 'Quét LOT',
