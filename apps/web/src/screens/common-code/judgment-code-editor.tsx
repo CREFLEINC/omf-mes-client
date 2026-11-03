@@ -423,6 +423,26 @@ export const JudgmentCodeEditor = ({
         </div>
       );
     }
+    const emptySlot = (
+      <EmptyState
+        size="sm"
+        live
+        icon={
+          <span className="inspection-standard-empty-icon">
+            <Icon name="list_alt" size={20} />
+          </span>
+        }
+        /* 등록된 값이 있는데 조건에 걸러져 빈 경우는 따로 알린다 — 「등록된 것이 없다」로 읽히지 않게. */
+        title={allValues.length === 0 ? t.empty.noneTitle : t.empty.noMatchTitle}
+        description={allValues.length === 0 ? t.empty.noneDescription : t.empty.noMatchDescription}
+      />
+    );
+    /*
+     * 빈 목록 안내는 표 밖에 낸다 — 불량·원인코드 탭과 같다(omf-all-around#228). 표 안에 두면 가로로 넓은 표
+     * 전체 폭의 가운데에 서서 문장이 잘렸다.
+     */
+    if (codeValues.length === 0) return <div className="defect-cause-list-empty">{emptySlot}</div>;
+
     return (
       <div
         ref={fit.ref}
@@ -442,22 +462,7 @@ export const JudgmentCodeEditor = ({
           columns={fit.columns}
           rows={codeValues}
           getRowId={(row) => String(row.codeValueId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              icon={
-                <span className="inspection-standard-empty-icon">
-                  <Icon name="list_alt" size={20} />
-                </span>
-              }
-              /* 등록된 값이 있는데 조건에 걸러져 빈 경우는 따로 알린다 — 「등록된 것이 없다」로 읽히지 않게. */
-              title={allValues.length === 0 ? t.empty.noneTitle : t.empty.noMatchTitle}
-              description={
-                allValues.length === 0 ? t.empty.noneDescription : t.empty.noMatchDescription
-              }
-            />
-          }
+          empty={emptySlot}
         />
       </div>
     );

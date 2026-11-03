@@ -15,7 +15,7 @@ vi.mock('../patterns/oa-access', async (importOriginal) => ({
 
 const { AppLayout } = await import('./layout');
 
-const HISTORY_HUB = '검사 이력 조회';
+const HISTORY_HUB = '검사 실적·결과';
 
 /*
  * 권한 목록이 있는 세션이어야 한다 — 권한을 모르면(`unknown`) 셸은 메뉴를 거르지 않는다(`filterNavGroupsByAccess`).
@@ -47,12 +47,12 @@ describe('AppLayout — 검사 이력 조회 묶음의 OA 전용 탭', () => {
     expect(hubTabHrefs()).toEqual(['/quality/inspection-results', '/quality/inspection-sheets']);
   });
 
-  it('OA 공장이 없으면 제품 검사표 탭이 없고, 탭이 하나라 탭 막대도 서지 않는다', () => {
+  it('OA 공장이 없으면 제품 검사표 탭이 없고, 탭 막대에는 검사실적 한 탭만 선다', () => {
     oa.access = 'not-oa';
     renderAt('/quality/inspection-results');
 
-    expect(screen.queryByRole('navigation', { name: HISTORY_HUB })).toBeNull();
-    expect(document.querySelector('.hub-tabs')).toBeNull();
+    /* 탭이 하나여도 막대는 선다(omf-all-around#228). */
+    expect(hubTabHrefs()).toEqual(['/quality/inspection-results']);
     /* 사이드바 줄은 그대로 남아 검사실적으로 건다. */
     expect(
       within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', {

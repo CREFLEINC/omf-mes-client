@@ -84,6 +84,23 @@ const findActiveHub = (
   return null;
 };
 
+/**
+ * 볼 수 있는 탭이 하나도 없는 묶음의 화면을 주소로 열었을 때 — **지금 화면의 탭 하나만** 막대에 세운다
+ * (omf-all-around#228). 권한에 따라 같은 화면이 탭 막대로도, 경로·제목으로도 보이면 모양이 갈린다.
+ * 볼 수 없는 다른 탭은 세우지 않는다 — 누르는 순간 막힌 화면이 선다. 사이드바는 그대로 거른다.
+ */
+const currentTabOnly = (
+  pathname: string,
+): { hub: NavEntry & { tabs: readonly NavTab[] }; activePath: string } | null => {
+  const found = findActiveHub(NAV_GROUPS, pathname);
+  if (found === null) return null;
+
+  return {
+    hub: { ...found.hub, tabs: found.hub.tabs.filter((tab) => tab.to === found.activePath) },
+    activePath: found.activePath,
+  };
+};
+
 interface NavItemProps {
   to: string;
   /** 이 항목을 켜는 주소들. 생략하면 `to` 하나다 — 탭 묶음은 탭 주소 전부를 넘긴다. */
@@ -382,12 +399,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const visibleGroups = filterNavGroups(allowedGroups, activeQuery);
 
   /*
-   * 탭 막대는 **볼 수 있는 탭이 둘 이상일 때만** 선다 — 하나뿐이면 오갈 곳이 없는 막대가 화면
-   * 제목 위에 한 줄을 먹는다.
+   * 탭 막대는 **볼 수 있는 탭이 하나뿐이어도** 선다 — 권한에 따라 같은 화면이 탭 막대로도, 경로·제목으로도
+   * 보이면 모양이 갈린다(omf-all-around#228). 볼 수 없는 탭은 종전처럼 막대에 세우지 않는다.
    */
-  const activeHub = findActiveHub(allowedGroups, pathname);
+  const activeHub = findActiveHub(allowedGroups, pathname) ?? currentTabOnly(pathname);
   const hubTabs =
-    activeHub !== null && activeHub.hub.tabs.length > 1 && activeHub.hub.inlineTabs !== true ? (
+    activeHub !== null && activeHub.hub.tabs.length > 0 && activeHub.hub.inlineTabs !== true ? (
       <HubTabs hub={activeHub.hub} activePath={activeHub.activePath} badgeOf={tabBadgeOf} />
     ) : null;
   /* 탭 막대가 섰으면 화면에 알린다 — 그 화면은 경로·제목을 따로 세우지 않는다(`patterns/page-hub.tsx`). */

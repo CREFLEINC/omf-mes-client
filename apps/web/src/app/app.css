@@ -1668,6 +1668,25 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/*
+ * 불량·원인코드 · 판정 유형 탭(omf-all-around#228) — 빈 목록이어도 쪽 이동 줄은 목록 칸 바닥에 둔다(표가 있을 때와 같은 자리).
+ * 오른쪽 상세 칸도 목록 칸과 같은 높이로 채운다. 상하 배치·좁은 화면은 상세 칸이 내용 높이라 그대로다.
+ */
+.defect-cause-list-pane > .defect-cause-list-empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.defect-cause-split > .inspection-standard-detail {
+  align-content: stretch;
+}
+
+/* 칸이 늘어나도 상세 내용은 위에서부터 쌓는다 — 줄 사이가 벌어지지 않게. */
+.defect-cause-split > .inspection-standard-detail > .inspection-standard-detail-card {
+  align-content: start;
+}
+
 .pane-stack {
   display: grid;
   gap: var(--space-5);

@@ -1981,18 +1981,29 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
   });
 
   /**
-   * 볼 수 있는 탭이 **하나뿐이면 탭 막대를 세우지 않는다** — 오갈 곳이 없는 막대가 화면 제목 위에
-   * 한 줄을 먹는다. 묶음 줄은 그 한 탭을 건 채 남는다.
+   * 볼 수 있는 탭이 **하나뿐이어도 탭 막대를 세운다** — 권한에 따라 같은 화면이 탭 막대로도, 경로·제목으로도
+   * 보이면 모양이 갈린다(omf-all-around#228). 막대에는 볼 수 있는 그 한 탭만 선다.
    */
-  it('볼 수 있는 탭이 하나뿐이면 탭 막대가 서지 않는다', async () => {
+  it('볼 수 있는 탭이 하나뿐이어도 그 한 탭으로 탭 막대가 선다', async () => {
     await renderWithPermissions(['W-CO-08'], { route: '/master-data/warehouse-layout' });
 
-    /* 짝 양성 — 묶음 줄은 남아 그 한 탭을 건다. */
+    /* 묶음 줄은 남아 그 한 탭을 건다. */
     expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
       'href',
       '/master-data/warehouse-layout',
     );
-    expect(screen.queryByRole('navigation', { name: '창고·위치' })).toBeNull();
+    expect(hubTabHrefsOf('창고·위치')).toEqual(['/master-data/warehouse-layout']);
+  });
+
+  /**
+   * 볼 수 있는 탭이 없는 묶음의 화면을 주소로 열어도 **지금 화면의 탭 하나로** 막대가 선다(omf-all-around#228).
+   * 볼 수 없는 다른 탭은 세우지 않고, 사이드바에서는 종전처럼 빠진다.
+   */
+  it('볼 수 있는 탭이 없는 묶음의 화면을 주소로 열면 지금 화면 탭 하나만 선다', async () => {
+    await renderWithPermissions(['W-06-01'], { route: '/master-data/warehouse-layout' });
+
+    expect(hubTabHrefsOf('창고·위치')).toEqual(['/master-data/warehouse-layout']);
+    expect(hasMenu('창고·위치')).toBe(false);
   });
 
   /** 탭이 하나도 남지 않은 묶음은 줄째 빠진다 — 누를 곳이 없는 줄을 세우지 않는다. */
