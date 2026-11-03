@@ -178,8 +178,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     refreshing: 'Đang làm mới lịch sử LOT',
     refreshingText: 'Đang làm mới lịch sử LOT.',
     empty: {
-      title: 'Khoảng thời gian này không có lịch sử nào',
-      description: 'Không khớp với trạng thái LOT hiện tại cũng không phải là lỗi.',
+      title: 'Không có LOT nào khớp điều kiện.',
+      description: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
     },
     truncated: 'Có nhiều sự kiện tạm giữ nên chỉ hiển thị một phần. Hãy thu hẹp khoảng thời gian.',
     pagination: 'Chuyển trang lịch sử LOT',

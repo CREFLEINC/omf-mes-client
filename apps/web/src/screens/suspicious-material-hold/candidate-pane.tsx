@@ -619,6 +619,7 @@ export const SuspiciousMaterialCandidatePane = ({
                       live
                       icon={<PaneEmptyIcon name="assignment" />}
                       title={t.empty}
+                      description={t.emptyHint}
                     />
                   }
                 />

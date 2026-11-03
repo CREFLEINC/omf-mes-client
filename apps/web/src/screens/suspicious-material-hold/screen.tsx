@@ -100,6 +100,7 @@ export const SuspiciousMaterialHoldFlow = ({
                 size="sm"
                 icon={<PaneEmptyIcon name="layers" />}
                 title={messages.lotStatusHistory.detail.pick}
+                description={messages.lotStatusHistory.detail.pickHint}
               />
             ) : (
               <>

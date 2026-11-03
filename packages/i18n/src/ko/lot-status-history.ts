@@ -188,8 +188,9 @@ export const lotStatusHistory = {
     refreshing: 'LOT 이력 갱신 중',
     refreshingText: 'LOT 이력을 갱신하는 중입니다.',
     empty: {
-      title: '이 기간의 이력이 없습니다',
-      description: '현재 LOT 상태와 일치하지 않아도 오류가 아닙니다.',
+      /* 다른 LOT 화면과 같은 문구(omf-all-around#228). */
+      title: '조건에 맞는 LOT이 없습니다.',
+      description: '검색 조건을 변경하거나 필터를 초기화하세요.',
     },
     truncated: '보류 사건이 많아 일부만 표시합니다. 기간을 좁혀 조회하세요.',
     pagination: 'LOT 이력 쪽 이동',

@@ -49,6 +49,8 @@ export const suspiciousMaterialHold = {
     loading: '의심자재 후보를 불러오는 중',
     failed: '의심자재 후보를 불러오지 못했습니다.',
     empty: '조건에 맞는 LOT이 없습니다.',
+    /** 빈 목록 소제목(omf-all-around#228). */
+    emptyHint: '검색 조건을 변경하거나 필터를 초기화하세요.',
   },
   input: {
     pane: '보류 등록 입력',

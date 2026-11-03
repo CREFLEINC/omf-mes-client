@@ -630,8 +630,8 @@ describe('Lot Status 화면 shell', () => {
       ...holdRoutes(),
       ...eventRoutes(200, true),
     ]);
-    expect(await screen.findByText('이 기간의 이력이 없습니다')).toBeVisible();
-    expect(screen.getByText('현재 LOT 상태와 일치하지 않아도 오류가 아닙니다.')).toBeVisible();
+    expect(await screen.findByText(messages.lotStatusHistory.history.empty.title)).toBeVisible();
+    expect(screen.getByText(messages.lotStatusHistory.history.empty.description)).toBeVisible();
   });
 
   it('첫 응답을 기다리는 동안 로딩 상태를 표시한다', () => {

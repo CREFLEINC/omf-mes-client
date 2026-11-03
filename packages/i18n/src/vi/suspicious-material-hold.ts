@@ -56,6 +56,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     loading: 'Đang tải ứng viên vật tư nghi ngờ',
     failed: 'Không tải được ứng viên vật tư nghi ngờ.',
     empty: 'Không có LOT nào khớp điều kiện.',
+    emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
   },
   input: {
     pane: 'Nhập đăng ký tạm giữ',
