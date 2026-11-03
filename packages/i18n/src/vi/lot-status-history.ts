@@ -45,7 +45,7 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       lotType: 'Loại LOT',
       lotNo: 'Số LOT',
       item: 'Tìm mặt hàng',
-      warehouse: 'Chọn kho',
+      warehouse: 'Tìm kho',
       location: 'Chọn vị trí',
     },
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
@@ -83,6 +83,8 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       period: 'Khoảng thời gian',
       from: 'Ngày bắt đầu',
       to: 'Ngày kết thúc',
+      fromLabel: 'Ngày bắt đầu tra cứu',
+      toLabel: 'Ngày kết thúc tra cứu',
       actor: 'Người thực hiện',
       lot: 'Số LOT',
     },

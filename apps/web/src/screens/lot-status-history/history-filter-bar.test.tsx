@@ -22,8 +22,8 @@ describe('HistoryFilterBar', () => {
     render(<HistoryFilterBar {...props} />);
     const user = userEvent.setup();
 
-    await pickDate(user, screen.getByLabelText('시작일'), '2026-07-20');
-    await pickDate(user, screen.getByLabelText('종료일'), '2026-07-25');
+    await pickDate(user, screen.getByLabelText('조회 시작일'), '2026-07-20');
+    await pickDate(user, screen.getByLabelText('조회 종료일'), '2026-07-25');
     await user.click(screen.getByLabelText('처리자'));
     await user.click(screen.getByRole('option', { name: '합성 퇴직자 (미사용)' }));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
@@ -42,8 +42,8 @@ describe('HistoryFilterBar', () => {
   it('기간은 시작일 · 종료일 두 칸이고 단계 안내 문구를 두지 않는다(2026-11-02)', () => {
     render(<HistoryFilterBar {...baseProps()} />);
 
-    expect(screen.getByLabelText('시작일')).toHaveTextContent('2026-08-01');
-    expect(screen.getByLabelText('종료일')).toHaveTextContent('2026-08-07');
+    expect(screen.getByLabelText('조회 시작일')).toHaveTextContent('2026-08-01');
+    expect(screen.getByLabelText('조회 종료일')).toHaveTextContent('2026-08-07');
     expect(screen.queryByText('시작일을 선택한 후 종료일을 선택해 주세요.')).not.toBeInTheDocument();
   });
 
@@ -101,8 +101,8 @@ describe('HistoryFilterBar', () => {
       />,
     );
 
-    expect(screen.getByLabelText('시작일')).toHaveTextContent('2026-07-01');
-    expect(screen.getByLabelText('종료일')).toHaveTextContent('2026-07-31');
+    expect(screen.getByLabelText('조회 시작일')).toHaveTextContent('2026-07-01');
+    expect(screen.getByLabelText('조회 종료일')).toHaveTextContent('2026-07-31');
     expect(screen.getByLabelText('처리자')).toHaveTextContent('합성 담당자');
     expect(screen.getByLabelText('LOT 스캔')).toHaveValue('BACK');
   });

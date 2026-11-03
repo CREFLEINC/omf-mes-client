@@ -46,7 +46,8 @@ export const lotStatusHistory = {
       lotType: 'LOT 유형',
       lotNo: 'LOT 번호',
       item: '품목 검색',
-      warehouse: '창고 선택',
+      /* 검색해서 고르는 칸은 「검색」(omf-all-around#228). */
+      warehouse: '창고 검색',
       location: '위치 선택',
     },
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
@@ -85,6 +86,9 @@ export const lotStatusHistory = {
       period: '기간',
       from: '시작일',
       to: '종료일',
+      /** 달력 칸 이름 — 「기간」 한 이름 대신 칸마다(omf-all-around#228). */
+      fromLabel: '조회 시작일',
+      toLabel: '조회 종료일',
       actor: '처리자',
       lot: 'LOT 번호',
     },
