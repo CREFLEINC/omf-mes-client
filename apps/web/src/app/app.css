@@ -31799,3 +31799,68 @@ button.iqc-inspection-step-toggle:focus-visible {
 .measurement-section-tools > :last-child {
   width: 10rem;
 }
+
+/*
+ * 검사 조회·판정 조회 조건(omf-all-around#228) — 수입(IQC) · 공정(PQC) · 출하(OQC).
+ * ① 칸 폭은 공정 · 출하도 수입검사와 같게 — 셀렉터는 글자 폭, 입력란은 기본 폭(아래 맨 끝 규칙).
+ * ② [조회] [초기화] 는 첫 줄 「상세 조건 펼치기」 바로 왼쪽에 순서대로 — 접혀 있어도 보인다.
+ *    단추는 상세 조건 폼 안의 그 단추 그대로라 누르면 하는 일은 같다. 자리만 옮긴다.
+ */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .parts-iqc-scan-row,
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .inspection-detail-filters,
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .inspection-detail-filters > .filter-bar {
+  display: contents;
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .inspection-detail-filters > .filter-bar > .filter-actions {
+  display: flex;
+  flex: 0 0 auto;
+  order: 1;
+  gap: var(--space-2);
+  margin: 0 0 0 auto;
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle {
+  order: 2;
+  margin-left: 0;
+}
+
+/* 펼치기 단추는 세 화면 같은 작은 크기 — IQC 의 「단추 높이 한 값」 규칙에 끌려 커지지 않게. */
+.iqc-inspection-search .inspection-detail-toggle button {
+  height: auto;
+  min-height: 0;
+}
+
+/* 펼친 조건 칸은 다음 줄 — 줄바꿈 자리. 빈 줄이 줄 간격을 두 번 먹지 않게 한 번 당긴다. */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)::after {
+  content: '';
+  flex: 1 0 100%;
+  order: 3;
+  height: 0;
+  margin-top: calc(-1 * var(--space-3));
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  > .inspection-detail-filters
+  > .filter-bar
+  > :not(.filter-actions) {
+  order: 4;
+  min-width: 0;
+}
+
+/* 접혀 있으면 조건 칸과 줄바꿈 자리를 감춘다 — 단추는 남는다. */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  > .inspection-detail-filters[hidden]
+  > .filter-bar
+  > :not(.filter-actions),
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search):has(> .inspection-detail-filters[hidden])::after {
+  display: none;
+}
+
+/* 칸 폭 — 공정 · 출하는 수입검사처럼 제 글자 폭(고정 14rem 을 푼다). 수입검사는 종전 그대로. */
+:is(.pqc-web-search, .oqc-inspection-search)
+  > .inspection-detail-filters
+  > .filter-bar
+  > :not(.filter-actions) {
+  flex: 0 1 auto;
+}
