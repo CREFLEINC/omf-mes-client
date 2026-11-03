@@ -1629,8 +1629,8 @@ describe('InspectionStandardScreen — 버전 목록', () => {
     expect(gets.length).toBeGreaterThan(0);
   });
 
-  /* 목록에서 기준을 고르면 버전 목록 창 없이 확정된 최신 버전으로 바로 조회한다 — 작성중인 버전 2 는 건너뛴다(사용자 지시 · #196). */
-  it('목록에서 기준을 고르면 창을 띄우지 않고 확정된 최신 버전을 바로 고른다', async () => {
+  /* 목록에서 기준을 고르면 버전 목록 창 없이 최신 버전으로 바로 조회한다(사용자 지시 · #196) — 작성중인 버전 2 를 고른다(omf-all-around#227). */
+  it('목록에서 기준을 고르면 창을 띄우지 않고 작성중인 최신 버전을 바로 고른다', async () => {
     const { user } = renderScreen([
       planListRoute(),
       planDetailRoute(),
@@ -1644,6 +1644,34 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
     });
     expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
+    expect(within(await versionPane()).getByRole('button', { name: '버전 2' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /* 폐기 버전은 고르지 않는다 — 확정된 버전 1 로 간다. */
+  it('최신 버전이 폐기면 확정된 버전을 고른다', async () => {
+    const { user } = renderScreen([
+      planListRoute(),
+      planDetailRoute(),
+      {
+        match: (request) => isGet(request, VERSIONS_PATH),
+        respond: () =>
+          jsonResponse({
+            items: inspectionPlanVersionFixtures.map((version) =>
+              version.planVersion === 2 ? { ...version, statusCode: 'OBSOLETE' } : version,
+            ),
+          }),
+      },
+      ...lookupRoutes(),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
+    });
     expect(within(await versionPane()).getByRole('button', { name: '버전 1' })).toHaveAttribute(
       'aria-current',
       'true',
@@ -1689,7 +1717,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
         planListRoute(),
         planDetailRoute(),
         planDetailRoute(inspectionPlanFixtures[1]),
-        /* 옮겨 간 기준에는 확정된 버전이 없다 — 확정된 최신 버전 자동 고르기(#196)가 끼어들지 않는다. */
+        /* 옮겨 간 기준에는 폐기 버전뿐이다 — 최신 버전 자동 고르기(#196)가 끼어들지 않는다. */
         {
           match: (request) =>
             isGet(request, VERSIONS_PATH) &&
@@ -1699,7 +1727,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
               items: inspectionPlanVersionFixtures.map((version) => ({
                 ...version,
                 inspectionPlanId: 3002,
-                statusCode: 'DRAFT',
+                statusCode: 'OBSOLETE',
               })),
             }),
         },

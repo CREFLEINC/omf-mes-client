@@ -878,8 +878,9 @@ export const InspectionStandardScreen = () => {
   }
 
   /**
-   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 **확정된 버전 중** 최신(판 번호가 가장 큰 것)을 바로 고른다
-   * (사용자 지시 · #196). 작성중 · 폐기 버전은 고르지 않는다 — 확정된 버전이 없으면 고르지 않고 「버전을 선택하세요」로 둔다.
+   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 **확정 · 작성중 버전 중** 최신(판 번호가 가장 큰 것)을 바로 고른다
+   * (사용자 지시 · #196, 작성중 포함은 omf-all-around#227 사용자 지시 — 작성 중인 기준은 작성 중 내용이 바로 보여야 한다).
+   * 폐기 버전은 고르지 않는다 — 고를 버전이 없으면 「버전을 선택하세요」로 둔다.
    * 버전 목록이 와야 고를 수 있어, 고른 기준 번호를 쥐고 있다가 그 기준의 목록이 오면 한 번 고른다.
    * 주소로 들어온 경우(새로고침 · 공유)는 주소의 선택을 그대로 둔다 — 목록을 누른 때만 고른다.
    */
@@ -916,7 +917,10 @@ export const InspectionStandardScreen = () => {
     setLatestPendingPlanId(null);
     if (selectedVersionId !== null) return;
     const latest = versionList.data.items
-      .filter((version) => resolveVersionStatus(version.statusCode).status === 'confirmed')
+      .filter((version) => {
+        const { status } = resolveVersionStatus(version.statusCode);
+        return status === 'confirmed' || status === 'draft';
+      })
       .reduce<InspectionPlanVersion | null>(
         (best, version) =>
           best === null || version.planVersion > best.planVersion ? version : best,
