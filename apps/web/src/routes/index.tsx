@@ -7,6 +7,7 @@ import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
 import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/screen';
+import { PlantWorkingDaysScreen } from '../screens/plant-working-days/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -189,6 +190,8 @@ export const appRouter = createBrowserRouter([
        * (정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'system/approval-route', element: <ApprovalRouteScreen /> },
+      /* W-CO-15 — 공장별 주간 근무일(피처 003). 출고 작업일 계산에 쓴다. */
+      { path: 'system/plant-working-days', element: <PlantWorkingDaysScreen /> },
       /*
        * W-CO-10 — 앞머리는 옛 사이드바 섹션(시스템 관리)을 따른다. **누구나 자기 것을 바꾸는
        * 자리**라 사이드바가 아니라 **상단 바의 사용자 자리**에서 연다(`app/layout.tsx`

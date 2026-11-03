@@ -12911,6 +12911,44 @@ button.app-button-neutral {
   margin: 0;
 }
 
+/* W-06-06 부서 정보의 「생산 창고」 구획(003) — 부서 입력칸과 저장 줄 사이에 선다. */
+.production-warehouse-section {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.production-warehouse-section .section-heading-row {
+  margin-bottom: 0;
+}
+
+.production-warehouse-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.production-warehouse-candidates {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* W-CO-15 공장 근무일 설정(003) — 바뀐 줄은 노랑 바탕 + 「바뀜」(screens/W-CO-15.md). */
+.plant-working-days-plant {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.plant-working-days-table tr:has(.plant-working-days-plant.is-changed) > td {
+  background: var(--semantic-warning-container);
+}
+
 /* W-CO-12 알림 연결 설정(001) — 상태 · 연결 정보 · 이벤트별 템플릿. */
 .zalo-layout {
   display: grid;

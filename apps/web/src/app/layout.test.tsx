@@ -911,8 +911,12 @@ describe('AppLayout', () => {
     expect(links.indexOf('/master-data/common-code')).toBe(
       links.indexOf('/notification/dispatch-history') + 1,
     );
-    expect(links.indexOf('/system/terminal-process-map')).toBe(
+    /* W-CO-15 — 공장 근무일 설정(003). 공통코드·조직·작업자 다음 줄이다. */
+    expect(links.indexOf('/system/plant-working-days')).toBe(
       links.indexOf('/master-data/common-code') + 1,
+    );
+    expect(links.indexOf('/system/terminal-process-map')).toBe(
+      links.indexOf('/system/plant-working-days') + 1,
     );
   });
 
@@ -1035,6 +1039,7 @@ describe('AppLayout', () => {
       '/notification/zalo-connection',
       '/notification/dispatch-history',
       '/master-data/common-code',
+      '/system/plant-working-days',
       '/system/terminal-process-map',
     ]);
   });
@@ -1664,7 +1669,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /*
@@ -1714,7 +1719,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
