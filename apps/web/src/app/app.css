@@ -31918,3 +31918,87 @@ button.iqc-inspection-step-toggle:focus-visible {
   --type-body-lg: var(--type-body-sm);
   --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
 }
+
+/*
+ * 검사 실적·결과(검사 실적·결과 · 제품 검사표) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 상자 여백 16 · 칸 사이 12 · 칸 글자 14px, 칸은 제 글자 폭, [조회] [초기화] [상세 보기 펼치기] 는 첫 줄 오른쪽 끝.
+ */
+.pane.inspection-results-pane:has(> .inspection-results-filter) {
+  padding: var(--space-4);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search) > .inspection-results-filter {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  > .inspection-results-filter
+  > .inspection-results-filter-row {
+  gap: var(--space-3);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  > .inspection-results-filter
+  > .inspection-results-filter-row
+  > :not(.inspection-results-filter-actions):nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* 검사 실적·결과 LOT 스캔 칸 — 검사 조회·판정과 같은 17.5rem. */
+.inspection-results-pane .inspection-results-lot-scan > :first-child {
+  flex: 0 1 17.5rem;
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  > .inspection-results-filter
+  > .inspection-results-filter-row
+  > .inspection-results-filter-actions {
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 제품 검사표 「양식 선택」도 제 글자 폭(종전 10rem 고정). LOT 스캔 칸 폭(23rem · 안내 글이 다 보이는 폭)은 그대로. */
+.inspection-sheet-search .inspection-results-filter-row > .inspection-sheet-layout {
+  width: auto;
+}
+
+/* 펼친 상세 조건 줄도 칸은 제 글자 폭 · 칸 사이 12(검사 조회·판정과 같다). */
+:is(.inspection-results-pane, .inspection-sheet-search) .inspection-results-filter-detail {
+  gap: var(--space-3);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search) .inspection-results-filter-detail > *:nth-child(n) {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/*
+ * 「상세 보기 펼치기」 · 「상세 조건 펼치기」는 바탕 없이 글자만 — 펼친 뒤(「접기」)에도 눌린 바탕을 깔지 않는다.
+ * 검사 실적·결과 · 제품 검사표 · 검사 조회·판정(IQC · PQC · OQC) 같게.
+ */
+:is(.inspection-results-pane, .inspection-sheet-search)
+  .inspection-results-filter-actions
+  > button[aria-expanded],
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  .inspection-detail-toggle
+  button {
+  background: none;
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  .inspection-results-filter-actions
+  > button[aria-expanded='true']::before,
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  .inspection-detail-toggle
+  button[aria-expanded='true']::before {
+  opacity: 0;
+}
+
+/* 작업지시 입력칸은 안내 글이 다 보이는 종전 폭(14rem) 그대로. */
+.inspection-sheet-search .inspection-results-filter-detail > .inspection-sheet-work-order:nth-child(n) {
+  flex: 0 0 14rem;
+  width: 14rem;
+}
