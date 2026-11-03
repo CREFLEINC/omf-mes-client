@@ -118,6 +118,7 @@ export const ProcessWorkspace = ({
   const boms = useBomReferenceQuery(order.itemId);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const editor = useProductionPlanEditorSession(order.productionOrderId);
+  const [distributionDirty, setDistributionDirty] = useState(false);
   const planFacts = editor.plans.data?.items ?? [];
   const confirmedPlans = planFacts.filter((plan) => plan.confirmedAt !== null);
   /*
@@ -282,8 +283,8 @@ export const ProcessWorkspace = ({
     ([workOrderId, text]) => text !== String(defaultLots.get(Number(workOrderId)) ?? ''),
   );
   useEffect(() => {
-    onDirtyChange?.(planDirty || assignDirty || lotDirty);
-  }, [planDirty, assignDirty, lotDirty, onDirtyChange]);
+    onDirtyChange?.(planDirty || distributionDirty || assignDirty || lotDirty);
+  }, [planDirty, distributionDirty, assignDirty, lotDirty, onDirtyChange]);
 
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(initialStep ?? null);
@@ -520,7 +521,11 @@ export const ProcessWorkspace = ({
    * 단계 표시와 [이전]은 지금 단계의 변경을, 화면을 떠나는 이동은 모든 변경을 확인한다.
    */
   const unsavedIn = (key: ScreenStep): boolean =>
-    key === 'plan' ? planDirty : key === 'assign' ? assignDirty : key === 'release' && lotDirty;
+    key === 'plan'
+      ? planDirty || distributionDirty
+      : key === 'assign'
+        ? assignDirty
+        : key === 'release' && lotDirty;
   const goTo = (key: string) => {
     if (key !== step && unsavedIn(step)) {
       setPendingStep(key as ProcessStepKey);
@@ -603,6 +608,9 @@ export const ProcessWorkspace = ({
                   plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
                 })
               }
+              distributionDecimalScale={uoms.decimalScaleOf?.(order.uomId)}
+              distributionOrderLabel={`${order.productionOrderNo} / ${item === undefined ? '' : named(item.itemName, item.itemCode)}`}
+              onDistributionDirtyChange={setDistributionDirty}
               onAppend={(drafts) =>
                 editor.addMany(drafts.map((draft) => ({ ...draft, bomId, routingId })))
               }
@@ -741,8 +749,8 @@ export const ProcessWorkspace = ({
           {prev}
           <Button
             loading={planBusy}
-            disabled={!plan.canConfirm || planBusy}
-            aria-describedby={plan.canConfirm ? undefined : remainingId}
+            disabled={!plan.canConfirm || planBusy || distributionDirty}
+            aria-describedby={plan.canConfirm && !distributionDirty ? undefined : remainingId}
             onClick={() => setConfirmOpen(true)}
           >
             {tp.plan.confirm}
@@ -756,8 +764,10 @@ export const ProcessWorkspace = ({
         {prev}
         <Button
           variant={step === 'assign' ? 'outlined' : undefined}
-          disabled={!complete}
-          aria-describedby={complete ? undefined : remainingId}
+          disabled={!complete || (step === 'plan' && distributionDirty)}
+          aria-describedby={
+            complete && !(step === 'plan' && distributionDirty) ? undefined : remainingId
+          }
           onClick={() => nextKey !== undefined && goTo(nextKey)}
         >
           {messages.screenPatterns.actionBar.next(nextKey === undefined ? '' : stepName(nextKey))}
@@ -868,7 +878,11 @@ export const ProcessWorkspace = ({
       pastSummary={pastGroups}
       actionBar={
         <ActionBar
-          remaining={guidance?.text ?? null}
+          remaining={
+            step === 'plan' && distributionDirty
+              ? '분배 미리보기를 적용하거나 조건 변경을 취소하세요.'
+              : (guidance?.text ?? null)
+          }
           remainingLink={remainingLink}
           remainingId={remainingId}
           leading={
@@ -893,7 +907,7 @@ export const ProcessWorkspace = ({
         </AlertBanner>
       )}
       {body}
-      <LeaveGuard when={planDirty || assignDirty || lotDirty} />
+      <LeaveGuard when={planDirty || distributionDirty || assignDirty || lotDirty} />
       {pendingStep !== null && (
         <DiscardDialog
           onCancel={() => setPendingStep(null)}

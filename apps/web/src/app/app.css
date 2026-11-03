@@ -32612,3 +32612,31 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .process-page:has(.erp-wo-summary) > .action-bar { flex-shrink: 0; }
 body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] { padding-block: var(--space-2); }
+
+.erp-wo-distribution-heading, .erp-wo-distribution-row-head, .erp-wo-distribution-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.erp-wo-distribution-heading .section-title { margin: 0; }
+.erp-wo-distribution-row-head .field-cell { flex: 1; min-width: 12rem; }
+.erp-wo-distribution-segments { display: grid; gap: var(--space-3); }
+.erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
+.erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
+.erp-wo-segment-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.erp-wo-segment-fields > * { min-width: 0; }
+.erp-wo-daily-quantities { display: grid; grid-template-columns: repeat(auto-fit,minmax(8rem,1fr)); gap: var(--space-2); max-height: 18rem; overflow: auto; margin-top: var(--space-3); }
+.erp-wo-checkbox { display: flex; align-items: center; gap: var(--space-2); font: var(--type-body-sm); }
+.erp-wo-checkbox input { flex: none; }
+.erp-wo-common-conditions { padding: var(--space-3); background: var(--surface-container); border-radius: var(--radius-md); }
+.erp-wo-common-conditions > * + * { margin-top: var(--space-3); }
+.erp-wo-distribution-preview { display: grid; gap: var(--space-3); min-width: 0; }
+.erp-wo-preview-scroll { max-width: 100%; overflow: auto; max-height: 22rem; }
+.erp-wo-preview-scroll table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); min-width: 34rem; }
+.erp-wo-preview-scroll th, .erp-wo-preview-scroll td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; }
+.erp-wo-preview-scroll th { background: var(--surface-container); }
+.erp-wo-preview-scroll caption { text-align: left; font: var(--type-title-sm); padding-block: var(--space-2); }
+.erp-wo-distribution-settings [role='combobox'] { height: auto; min-height: var(--control-height-sm); padding-block: var(--space-2); text-align: left; }
+.erp-wo-distribution-settings [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+@container erp-wo-page (max-width: 52rem) { .erp-wo-segment-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@container erp-wo-page (max-width: 36rem) { .erp-wo-segment-fields { grid-template-columns: minmax(0,1fr); } }
+
+.erp-wo-distribution-preview > button { justify-self: end; }
+body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span:last-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; min-width: 0; }
+body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] { padding-block: var(--space-2); }

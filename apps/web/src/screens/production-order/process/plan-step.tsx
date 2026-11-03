@@ -22,7 +22,7 @@ import { formatQty } from './process-model';
 import { planWeek, shiftPlanDate } from './plan-view-model';
 import { useLineSource } from './reference-sources';
 import { DistributionControls } from './distribution-controls';
-import { distributePlans, type ScheduledDraft } from './distribution-model';
+import type { ScheduledDraft } from './segmented-distribution-model';
 
 const t = messages.erpWorkOrderFlow.process.plan;
 const ui = t.workspace;
@@ -48,6 +48,9 @@ export interface PlanStepProps {
   hideTotals?: boolean;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
   onAppend?: (drafts: ScheduledDraft[]) => void;
+  distributionOrderLabel?: string;
+  distributionDecimalScale?: number;
+  onDistributionDirtyChange?: (dirty: boolean) => void;
   onSplit?: (row: ProductionPlanEditorStateRow, quantity: number) => void;
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
   onRemove: (row: ProductionPlanEditorStateRow) => void;
@@ -76,6 +79,9 @@ export const PlanStep = ({
   onAdd,
   addDisabled = false,
   onAppend,
+  distributionOrderLabel,
+  distributionDecimalScale,
+  onDistributionDirtyChange,
   onSplit,
   hideTotals = false,
   viewMode,
@@ -221,17 +227,20 @@ export const PlanStep = ({
       </div>
       {onAppend && (
         <DistributionControls
-          lines={lines}
+          orders={[
+            {
+              id: 'single',
+              label: distributionOrderLabel ?? '현재 생산오더',
+              unit: uomLabel,
+              decimalScale: distributionDecimalScale,
+              pending: Math.max(0, remaining ?? orderQty - total),
+              lines,
+            },
+          ]}
+          existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
           disabled={disabled}
-          onDistribute={(options) => {
-            const result = distributePlans(
-              [{ id: 'single', remaining: remaining ?? Math.max(0, orderQty - total) }],
-              options,
-              rows.map((row) => row.draft),
-            );
-            onAppend(result.drafts);
-            return `${result.drafts.length}개 계획 추가 / 편성 대기 ${result.pending} ${uomLabel}. 저장 전 날짜, 라인, 수량을 수정할 수 있습니다.`;
-          }}
+          onDirtyChange={onDistributionDirtyChange}
+          onApply={(drafts) => onAppend(drafts)}
         />
       )}
       {!hideTotals && (

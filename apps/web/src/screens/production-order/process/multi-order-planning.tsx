@@ -28,7 +28,7 @@ import { automaticBomId, automaticRoutingId } from './master-step';
 import { PlanStep, type PlanLine } from './plan-step';
 import { deletePlan, runPlanStep } from './plan-runner';
 import { DistributionControls } from './distribution-controls';
-import { distributePlans } from './distribution-model';
+
 import { LeaveGuard, DiscardDialog } from './leave-guard';
 import { ProcessWorkspace } from './process-screen';
 
@@ -37,6 +37,7 @@ interface Controller {
   order: ProductionOrderFact;
   item: string;
   unit: string;
+  decimalScale?: number;
   editor: Editor;
   defaults: NewProductionPlanDefaults;
   lines: PlanLine[];
@@ -87,6 +88,7 @@ const ReadyOrderSession = ({
   const item = useItemCodeNames([order.itemId]).get(order.itemId);
   const units = useUomReferenceLookup();
   const unit = units.entries.find((entry) => entry.value === String(order.uomId))?.label ?? '';
+  const decimalScale = units.decimalScaleOf?.(order.uomId);
   const [bom, setBom] = useState<string | null>(null);
   const [routing, setRouting] = useState<string | null>(null);
   const first = editor.rows[0];
@@ -120,6 +122,7 @@ const ReadyOrderSession = ({
       order,
       item: itemLabel,
       unit,
+      decimalScale,
       editor,
       defaults,
       lines: (lines.data?.items ?? [])
@@ -154,6 +157,7 @@ const ReadyOrderSession = ({
     order,
     itemLabel,
     unit,
+    decimalScale,
     rows,
     editor.isHydrated,
     bomId,
@@ -183,6 +187,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   );
   const [stage, setStage] = useState('master');
   const [planView, setPlanView] = useState('grid');
+  const [distributionDirty, setDistributionDirty] = useState(false);
   const [focus, setFocus] = useState(orderNumbers[0] ?? '');
   const [requested, setRequested] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -198,7 +203,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   const allReady = entries.length === orderNumbers.length && entries.every((entry) => entry.ready);
   const plants = new Set(entries.map((entry) => entry.order.plantId));
   const units = new Set(entries.map((entry) => entry.order.uomId));
-  const compatible = plants.size === 1 && units.size === 1;
   const target = controllers[focus];
   const combined = entries.flatMap((entry) =>
     entry.editor.rows.map((row) => ({
@@ -218,26 +222,41 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     entry.editor.rows
       .filter((row) => row.confirmed)
       .reduce((sum, row) => sum + Number(row.draft.plannedQty), 0);
+  const roundQty = (value: number) => Number(value.toFixed(6));
   const draftOf = (entry: Controller) =>
-    entry.editor.rows
-      .filter((row) => !row.confirmed)
-      .reduce((sum, row) => sum + Number(row.draft.plannedQty), 0);
+    roundQty(
+      entry.editor.rows
+        .filter((row) => !row.confirmed)
+        .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
+    );
   const getRemaining = (entry: Controller) =>
-    Math.max(0, entry.order.orderQty - confirmedOf(entry) - draftOf(entry));
+    roundQty(Math.max(0, entry.order.orderQty - confirmedOf(entry) - draftOf(entry)));
   const targetOf = (entry: Controller) =>
-    Number(requested[entry.order.productionOrderNo] ?? entry.order.orderQty - confirmedOf(entry));
+    Number(
+      requested[entry.order.productionOrderNo] ??
+        roundQty(entry.order.orderQty - confirmedOf(entry)),
+    );
   const toSchedule = (entry: Controller) =>
-    Math.max(0, Math.min(getRemaining(entry), targetOf(entry) - draftOf(entry)));
+    roundQty(Math.max(0, Math.min(getRemaining(entry), targetOf(entry) - draftOf(entry))));
   const validTargets = entries.every(
     (entry) =>
-      Number.isSafeInteger(targetOf(entry)) &&
+      Number.isFinite(targetOf(entry)) &&
+      Math.abs(
+        targetOf(entry) * 10 ** (entry.decimalScale ?? 6) -
+          Math.round(targetOf(entry) * 10 ** (entry.decimalScale ?? 6)),
+      ) < 0.00001 &&
       targetOf(entry) >= 0 &&
       targetOf(entry) <= entry.order.orderQty - confirmedOf(entry),
   );
   const fullyAllocated =
-    validTargets && entries.every((entry) => draftOf(entry) === targetOf(entry));
+    validTargets &&
+    entries.every((entry) => Math.abs(draftOf(entry) - targetOf(entry)) < 0.0000001);
   const save = async (doConfirm: boolean) => {
     if (running.current || !allReady) return;
+    if (doConfirm && distributionDirty) {
+      setResults(['분배 미리보기를 적용하거나 조건 변경을 취소하세요.']);
+      return;
+    }
     if (doConfirm && !fullyAllocated) {
       setResults(['이번 계획 수량과 미확정 편성 수량을 오더별로 맞춘 뒤 확정하세요.']);
       return;
@@ -319,6 +338,16 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     }
     owner.editor.remove(originalKey(row.key));
   };
+  const moveStage = (value: string) => {
+    if (busy || value === stage) return;
+    if (executionDirty || (stage === 'plan' && distributionDirty))
+      setPendingAction(() => () => {
+        setExecutionDirty(false);
+        setDistributionDirty(false);
+        setStage(value);
+      });
+    else setStage(value);
+  };
   return (
     <div className="erp-wo-multi-page">
       <div className="erp-wo-multi-header">
@@ -331,15 +360,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       <Tabs
         className="erp-wo-stage-tabs"
         value={stage}
-        onChange={(value) => {
-          if (busy) return;
-          if (executionDirty)
-            setPendingAction(() => () => {
-              setExecutionDirty(false);
-              setStage(value);
-            });
-          else setStage(value);
-        }}
+        onChange={moveStage}
+
         items={[
           {
             value: 'master',
@@ -352,8 +374,18 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             disabled: !allReady || plants.size !== 1,
             content: null,
           },
-          { value: 'assign', label: '3. 4M 배정', disabled: !enough || dirty, content: null },
-          { value: 'release', label: '4. 배포 확인', disabled: !enough || dirty, content: null },
+          {
+            value: 'assign',
+            label: '3. 4M 배정',
+            disabled: !enough || dirty || distributionDirty,
+            content: null,
+          },
+          {
+            value: 'release',
+            label: '4. 배포 확인',
+            disabled: !enough || dirty || distributionDirty,
+            content: null,
+          },
         ]}
       />
       <div className="erp-wo-multi-body">
@@ -500,13 +532,12 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         )}
         {stage === 'plan' && !validTargets && (
           <AlertBanner variant="warning">
-            이번 계획 수량은 계획 가능한 수량 이내의 0 이상 정수로 입력하세요.
+            이번 계획 수량은 계획 가능한 수량과 단위의 소수 자릿수에 맞게 0 이상으로 입력하세요.
           </AlertBanner>
         )}
-        {!compatible && allReady && (
+        {plants.size !== 1 && allReady && (
           <AlertBanner variant="warning">
-            공장 또는 수량 단위가 서로 다릅니다. 오더별 수동 편성은 가능하며, 공통 자동 분배는 같은
-            공장과 단위의 오더를 선택해야 합니다.
+            같은 공장의 오더를 선택하세요. 각 오더의 수량은 해당 단위로 편성합니다.
           </AlertBanner>
         )}
         {orderNumbers.map((number) => (
@@ -519,31 +550,36 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 <p className="field-note">
                   대상 오더 {entries.length}건
                   {units.size === 1
-                    ? ` / 이번 계획 ${entries.reduce((sum, entry) => sum + targetOf(entry), 0)} / 편성 ${entries.reduce((sum, entry) => sum + draftOf(entry), 0)} / 편성 대기 ${entries.reduce((sum, entry) => sum + toSchedule(entry), 0)} ${target.unit}`
+                    ? ` / 이번 계획 ${roundQty(entries.reduce((sum, entry) => sum + targetOf(entry), 0))} / 편성 ${roundQty(entries.reduce((sum, entry) => sum + draftOf(entry), 0))} / 편성 대기 ${roundQty(entries.reduce((sum, entry) => sum + toSchedule(entry), 0))} ${target.unit}`
                     : ' / 오더별 수량은 오더 그리드에서 확인하세요.'}
                 </p>
               </div>
               <DistributionControls
-                lines={target.lines}
-                disabled={busy || !allReady || !compatible || !validTargets}
-                onDistribute={(options) => {
-                  const result = distributePlans(
-                    entries.map((entry) => ({
-                      id: entry.order.productionOrderNo,
-                      remaining: toSchedule(entry),
-                    })),
-                    options,
-                    entries.flatMap((entry) => entry.editor.rows.map((row) => row.draft)),
-                  );
+                orders={entries.map((entry) => ({
+                  id: entry.order.productionOrderNo,
+                  label: `${entry.order.productionOrderNo} / ${entry.item}`,
+                  unit: entry.unit,
+                  decimalScale: entry.decimalScale,
+                  pending: toSchedule(entry),
+                  lines: entry.lines,
+                }))}
+                existing={entries.flatMap((entry) =>
+                  entry.editor.rows.map((row) => ({
+                    ...row.draft,
+                    owner: entry.order.productionOrderNo,
+                  })),
+                )}
+                disabled={busy || !allReady || !validTargets}
+                onDirtyChange={setDistributionDirty}
+                onApply={(drafts) =>
                   entries.forEach((entry) =>
                     entry.editor.addMany(
-                      result.drafts
+                      drafts
                         .filter((row) => row.owner === entry.order.productionOrderNo)
                         .map((row) => ({ ...entry.defaults, ...row })),
                     ),
-                  );
-                  return `${result.drafts.length}개 계획 추가 / 편성 대기 ${result.pending} ${target.unit}. 저장 전 편성을 확인하세요.`;
-                }}
+                  )
+                }
               />
             </div>
             <PlanStep
@@ -655,19 +691,21 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   ? '같은 공장의 오더를 선택하세요.'
                   : stage === 'master'
                     ? '개정을 확인한 후 생산계획으로 이동하세요.'
-                    : !validTargets
-                      ? '이번 계획 수량은 계획 가능한 수량 이내의 정수로 입력하세요.'
-                      : !fullyAllocated && editable
-                        ? '이번 계획 수량과 오더별 편성 수량을 맞추세요.'
-                        : dirty
-                          ? '미저장 계획이 있습니다.'
-                          : !editable && !enough
-                            ? planView === 'grid'
-                              ? '주간 편성 탭에서 계획을 추가하거나 자동 분배하세요.'
-                              : '계획 추가 또는 자동 분배로 편성하세요.'
-                            : enough && !editable
-                              ? '확정된 계획의 4M 배정을 진행하세요.'
-                              : '편성 내용을 확인하세요.'
+                    : distributionDirty
+                      ? '분배 미리보기를 적용하거나 조건 변경을 취소하세요.'
+                      : !validTargets
+                        ? '이번 계획 수량은 계획 가능한 수량과 단위의 소수 자릿수에 맞게 입력하세요.'
+                        : !fullyAllocated && editable
+                          ? '이번 계획 수량과 오더별 편성 수량을 맞추세요.'
+                          : dirty
+                            ? '미저장 계획이 있습니다.'
+                            : !editable && !enough
+                              ? planView === 'grid'
+                                ? '주간 편성 탭에서 계획을 추가하거나 자동 분배하세요.'
+                                : '계획 추가 또는 자동 분배로 편성하세요.'
+                              : enough && !editable
+                                ? '확정된 계획의 4M 배정을 진행하세요.'
+                                : '편성 내용을 확인하세요.'
           }
           leading={
             stage === 'plan' && dirty ? (
@@ -691,13 +729,13 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             </Button>
           ) : (
             <>
-              <Button variant="outlined" disabled={busy} onClick={() => setStage('master')}>
+              <Button variant="outlined" disabled={busy} onClick={() => moveStage('master')}>
                 이전
               </Button>
               {editable ? (
                 <Button
                   aria-describedby={remainingId}
-                  disabled={busy || !allReady || !fullyAllocated}
+                  disabled={busy || !allReady || !fullyAllocated || distributionDirty}
                   onClick={() => setConfirm(true)}
                 >
                   전개 확정 후 4M 배정
@@ -705,7 +743,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               ) : enough ? (
                 <Button
                   aria-describedby={remainingId}
-                  disabled={busy || dirty}
+                  disabled={busy || dirty || distributionDirty}
                   onClick={() => setStage('assign')}
                 >
                   4M 배정으로
@@ -715,7 +753,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           )}
         </ActionBar>
       )}
-      {(stage === 'master' || stage === 'plan') && <LeaveGuard when={dirty} />}
+      {(stage === 'master' || stage === 'plan') && <LeaveGuard when={dirty || distributionDirty} />}
       {pendingAction && (
         <DiscardDialog
           onCancel={() => setPendingAction(null)}
@@ -740,7 +778,11 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 aria-describedby={`${remainingId}-add`}
                 disabled={
                   busy ||
-                  !Number.isSafeInteger(Number(addQuantity)) ||
+                  !Number.isFinite(Number(addQuantity)) ||
+                  Math.abs(
+                    Number(addQuantity) * 10 ** (target.decimalScale ?? 6) -
+                      Math.round(Number(addQuantity) * 10 ** (target.decimalScale ?? 6)),
+                  ) > 0.00001 ||
                   Number(addQuantity) <= 0 ||
                   Number(addQuantity) > getRemaining(target)
                 }
@@ -783,7 +825,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             onChange={(event) => setAddQuantity(event.target.value)}
           />
           <p className="field-note" id={`${remainingId}-add`}>
-            추가 수량은 추가 편성 가능한 수량 이내의 양의 정수로 입력하세요.
+            추가 수량은 편성 가능한 수량 이내에서 단위 소수 자릿수에 맞게 입력하세요.
           </p>
           <p className="field-note">
             추가한 계획이 오른쪽 편집 영역에서 선택됩니다. 날짜와 라인을 지정하세요.

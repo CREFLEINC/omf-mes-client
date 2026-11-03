@@ -163,17 +163,36 @@ const distribute = async (targets: Record<string, string> = {}) => {
   }
   await user.click(screen.getByRole('tab', { name: '주간 편성' }));
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  await user.type(screen.getByRole('textbox', { name: '일일 편성 수량' }), '100');
-  await user.click(screen.getByRole('combobox', { name: '분배 생산 라인' }));
-  await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
-  await user.click(screen.getByRole('button', { name: '분배안 만들기' }));
+  const groups = screen.getAllByRole('group', { name: /^분배 구간 \d+$/ });
+  for (const [index, group] of groups.entries()) {
+    const total = Number(
+      (within(group).getByRole('textbox', { name: `구간 ${index + 1} 수량` }) as HTMLInputElement)
+        .value,
+    );
+    await user.click(within(group).getByRole('combobox', { name: `구간 ${index + 1} 생산 라인` }));
+    await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
+    await user.click(within(group).getByRole('combobox', { name: `구간 ${index + 1} 배분 방식` }));
+    await user.click(screen.getByRole('option', { name: '날짜별 직접 입력' }));
+    const inputs = within(group).getAllByRole('textbox', {
+      name: new RegExp(`구간 ${index + 1} [0-9]{4}-`),
+    });
+    for (const [day, input] of inputs.entries()) {
+      const qty = index === 0 ? (day === 0 ? total : 0) : day < 2 ? total / 2 : 0;
+      await user.clear(input);
+      await user.type(input, String(qty));
+    }
+  }
+  await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
+  expect(screen.queryByRole('button', { name: '계획 저장' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: '분배안 적용' }));
+
   return user;
 };
 describe('복수 오더 편성 저장 연결', () => {
   it('분배한 계획을 오더별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
     const user = await distribute();
-    await user.click(screen.getByRole('button', { name: '분배안 만들기' }));
+    expect(screen.getByRole('button', { name: '분배 미리보기' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: '계획 저장' }));
     await waitFor(() => expect(server.plans).toHaveLength(3));
     expect(
@@ -211,11 +230,11 @@ describe('복수 오더 편성 저장 연결', () => {
     await waitFor(() =>
       expect(screen.getByRole('region', { name: '계획 처리 결과' })).toHaveTextContent('B /'),
     );
-    expect(server.plans).toHaveLength(2);
+    expect(server.plans).toHaveLength(1);
     server.state.rejectB = false;
     await user.click(screen.getByRole('button', { name: '계획 저장' }));
     await waitFor(() => expect(server.plans).toHaveLength(3));
-    expect(server.plans.filter((p) => p.productionOrderId === 101)).toHaveLength(2);
+    expect(server.plans.filter((p) => p.productionOrderId === 101)).toHaveLength(1);
   });
   it('오더 전량 대신 이번 계획 수량만 분배하고 0인 오더는 추가하지 않는다', async () => {
     const server = mount();
@@ -246,5 +265,19 @@ describe('복수 오더 편성 저장 연결', () => {
     );
     expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
+  });
+  it('적용하지 않은 분배 조건이 있으면 단계 이동 전에 버릴지 확인한다', async () => {
+    mount();
+    const user = userEvent.setup();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
+    await user.click(screen.getByRole('tab', { name: '주간 편성' }));
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    await user.click(screen.getByRole('combobox', { name: '구간 1 생산 라인' }));
+    await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
+    await user.click(screen.getByRole('tab', { name: '1. BOM·Routing' }));
+    expect(screen.getByRole('dialog')).toBeVisible();
   });
 });
