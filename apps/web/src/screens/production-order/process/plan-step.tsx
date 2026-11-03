@@ -43,6 +43,7 @@ export interface PlanStepProps {
   disabled: boolean;
   failures: string[];
   onAdd: () => void;
+  addDisabled?: boolean;
   viewMode?: 'grid' | 'week';
   hideTotals?: boolean;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
@@ -73,6 +74,7 @@ export const PlanStep = ({
   disabled,
   failures,
   onAdd,
+  addDisabled = false,
   onAppend,
   onSplit,
   hideTotals = false,
@@ -193,7 +195,7 @@ export const PlanStep = ({
         )}
         <Button
           variant="outlined"
-          disabled={disabled}
+          disabled={disabled || addDisabled}
           onClick={() => {
             beforeAdded.current = new Set(rows.map((row) => row.key));
             onAdd();

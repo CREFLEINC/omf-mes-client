@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AlertBanner, Button, Dialog, SkeletonText, Tabs } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, SkeletonText, Tabs, TextField } from '@crefle/web-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { ActionBar } from '../../../patterns/action-bar';
@@ -188,6 +188,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [hasConflict, setHasConflict] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addQuantity, setAddQuantity] = useState('');
   const [results, setResults] = useState<string[]>([]);
   const running = useRef(false);
   const entries = orderNumbers.flatMap((number) =>
@@ -296,6 +298,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       setConfirm(false);
     }
     if (doConfirm && !failed) {
+      setRequested({});
       setFocus(
         entries.find((entry) => entry.editor.rows.length > 0)?.order.productionOrderNo ?? focus,
       );
@@ -426,15 +429,11 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   <th>미확정 계획량</th>
                   <th>미계획 수량</th>
                   <th>이번 계획 수량</th>
-                  <th>계획 추가 대상</th>
                 </tr>
               </thead>
               <tbody>
                 {entries.map((entry) => (
-                  <tr
-                    key={entry.order.productionOrderNo}
-                    className={focus === entry.order.productionOrderNo ? 'is-active' : undefined}
-                  >
+                  <tr key={entry.order.productionOrderNo}>
                     <td>{entry.order.productionOrderNo}</td>
                     <td>{entry.item}</td>
                     <td>
@@ -469,16 +468,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                         }
                       />
                     </td>
-                    <td>
-                      <input
-                        type="radio"
-                        name="plan-target"
-                        aria-label={`${entry.order.productionOrderNo} 계획 추가 대상`}
-                        checked={focus === entry.order.productionOrderNo}
-                        disabled={busy}
-                        onChange={() => setFocus(entry.order.productionOrderNo)}
-                      />
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -499,26 +488,15 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {orderNumbers.map((number) => (
           <OrderSession key={number} number={number} publish={publish} />
         ))}
-        {stage === 'plan' && planView === 'week' && target && (
-          <>
+        {stage === 'plan' && target && (
+          <div className="erp-wo-multi-plan-week" hidden={planView !== 'week'}>
             <div className="erp-wo-multi-week-tools">
               <div className="erp-wo-multi-week-heading">
-                <div className="field-cell">
-                  <span className="field-label visually-hidden">계획 추가 대상</span>
-                  <Select
-                    aria-label="계획 추가 대상"
-                    value={focus}
-                    options={entries.map((entry) => ({
-                      value: entry.order.productionOrderNo,
-                      label: `${entry.order.productionOrderNo} / ${entry.item}`,
-                    }))}
-                    onChange={setFocus}
-                    disabled={busy}
-                  />
-                </div>
                 <p className="field-note">
-                  이번 계획 {targetOf(target)}, 편성 {draftOf(target)}, 편성 대기{' '}
-                  {toSchedule(target)} {target.unit}
+                  대상 오더 {entries.length}건
+                  {units.size === 1
+                    ? ` / 이번 계획 ${entries.reduce((sum, entry) => sum + targetOf(entry), 0)} / 편성 ${entries.reduce((sum, entry) => sum + draftOf(entry), 0)} / 편성 대기 ${entries.reduce((sum, entry) => sum + toSchedule(entry), 0)} ${target.unit}`
+                    : ' / 오더별 수량은 오더 그리드에서 확인하세요.'}
                 </p>
               </div>
               <DistributionControls
@@ -559,19 +537,23 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               statusNameOf={(code) => (code === 'CONFIRMED' ? '확정' : '미확정')}
               disabled={busy}
               failures={[]}
-              onAdd={() =>
-                target.editor.add({
-                  ...target.defaults,
-                  plannedQty: String(Math.max(1, toSchedule(target))),
-                })
-              }
+              addDisabled={entries.every((entry) => getRemaining(entry) <= 0)}
+              onAdd={() => {
+                const next =
+                  entries.find((entry) => toSchedule(entry) > 0) ??
+                  entries.find((entry) => getRemaining(entry) > 0);
+                if (!next) return;
+                setFocus(next.order.productionOrderNo);
+                setAddQuantity(String(Math.max(1, toSchedule(next))));
+                setAddOpen(true);
+              }}
               onChange={(key, field, value) =>
                 ownerOf(key)?.editor.change(originalKey(key), field, value)
               }
               onSplit={(row, qty) => ownerOf(row.key)?.editor.split(originalKey(row.key), qty)}
               onRemove={(row) => void remove(row)}
             />
-          </>
+          </div>
         )}
         {(stage === 'assign' || stage === 'release') && (
           <section className="erp-wo-multi-execution">
@@ -654,11 +636,15 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                       : dirty
                         ? '미저장 계획이 있습니다.'
                         : !editable && !enough
-                          ? '계획을 추가하세요.'
-                          : '편성 내용을 확인하세요.'
+                          ? planView === 'grid'
+                            ? '주간 편성 탭에서 계획을 추가하거나 자동 분배하세요.'
+                            : '계획 추가 또는 자동 분배로 편성하세요.'
+                          : enough && !editable
+                            ? '확정된 계획의 4M 배정을 진행하세요.'
+                            : '편성 내용을 확인하세요.'
           }
           leading={
-            stage === 'plan' ? (
+            stage === 'plan' && dirty ? (
               <Button
                 variant="outlined"
                 disabled={busy || !dirty || !allReady}
@@ -682,32 +668,23 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               <Button variant="outlined" disabled={busy} onClick={() => setStage('master')}>
                 이전
               </Button>
-              {planView === 'grid' ? (
+              {editable ? (
                 <Button
                   aria-describedby={remainingId}
-                  disabled={busy || !allReady}
-                  onClick={() => setPlanView('week')}
-                >
-                  주간 편성에서 확인 →
-                </Button>
-              ) : (
-                <Button
-                  aria-describedby={remainingId}
-                  disabled={busy || !editable || !allReady || !fullyAllocated}
+                  disabled={busy || !allReady || !fullyAllocated}
                   onClick={() => setConfirm(true)}
                 >
-                  전개 확정
+                  전개 확정 후 4M 배정
                 </Button>
-              )}
-              {enough && (
+              ) : enough ? (
                 <Button
                   aria-describedby={remainingId}
                   disabled={busy || dirty}
                   onClick={() => setStage('assign')}
                 >
-                  다음: 4M 배정
+                  4M 배정으로
                 </Button>
-              )}
+              ) : null}
             </>
           )}
         </ActionBar>
@@ -721,6 +698,71 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             setPendingAction(null);
           }}
         />
+      )}
+      {addOpen && target && (
+        <Dialog
+          open
+          title="계획 추가"
+          closeOnBackdropClick={false}
+          onClose={() => setAddOpen(false)}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setAddOpen(false)}>
+                취소
+              </Button>
+              <Button
+                aria-describedby={`${remainingId}-add`}
+                disabled={
+                  busy ||
+                  !Number.isSafeInteger(Number(addQuantity)) ||
+                  Number(addQuantity) <= 0 ||
+                  Number(addQuantity) > getRemaining(target)
+                }
+                onClick={() => {
+                  target.editor.add({ ...target.defaults, plannedQty: addQuantity });
+                  setAddOpen(false);
+                }}
+              >
+                추가
+              </Button>
+            </>
+          }
+        >
+          <div className="field-cell">
+            <span className="field-label">계획을 추가할 생산오더</span>
+            <Select
+              aria-label="계획을 추가할 생산오더"
+              value={focus}
+              options={entries
+                .filter((entry) => getRemaining(entry) > 0)
+                .map((entry) => ({
+                  value: entry.order.productionOrderNo,
+                  label: `${entry.order.productionOrderNo} / ${entry.item}`,
+                }))}
+              onChange={(value) => {
+                setFocus(value);
+                const entry = controllers[value];
+                if (entry) setAddQuantity(String(Math.max(1, toSchedule(entry))));
+              }}
+            />
+          </div>
+          <p className="field-note">
+            이번 계획 {targetOf(target)}, 편성 {draftOf(target)}, 추가 편성 가능{' '}
+            {getRemaining(target)} {target.unit}
+          </p>
+          <TextField
+            label="추가할 계획 수량"
+            inputMode="numeric"
+            value={addQuantity}
+            onChange={(event) => setAddQuantity(event.target.value)}
+          />
+          <p className="field-note" id={`${remainingId}-add`}>
+            추가 수량은 추가 편성 가능한 수량 이내의 양의 정수로 입력하세요.
+          </p>
+          <p className="field-note">
+            추가한 계획이 오른쪽 편집 영역에서 선택됩니다. 날짜와 라인을 지정하세요.
+          </p>
+        </Dialog>
       )}
       {confirm && (
         <Dialog

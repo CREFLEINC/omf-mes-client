@@ -83,6 +83,7 @@ export const erpWorkOrderFlow = {
   /** 페이지 머리 조건 칩. `label`은 보이지 않는 칩 묶음의 접근명이다. */
   counts: {
     label: '처리 상태',
+    unit: '건',
     allName: '전체',
     all: (count: number): string => `전체 ${String(count)}건`,
     actionRequired: (count: number): string => `${status.ACTION_REQUIRED} ${String(count)}건`,
@@ -175,15 +176,25 @@ export const erpWorkOrderFlow = {
   },
 
   bulk: {
-    release: '일괄 배포',
-    autoPlan: '자동 계획 재실행',
+    plan: '생산계획 편성',
+    planHelp: '날짜, 라인, 수량 직접 지정',
+    autoPlanShortHelp: '기본값 생성, 가능하면 확정',
+    releaseShortHelp: '배정 완료된 작업지시 전달',
+    release: '작업지시 일괄 배포',
+    autoPlan: '자동 계획 실행',
+    selectionActions: '선택한 생산오더 처리',
+    selected: (count: number): string => `선택한 오더 ${count}건`,
+    selectionHelp: '선택한 생산오더를 대상으로 처리합니다.',
+    autoPlanHelp:
+      '기본 기준으로 계획을 생성하거나 기존 계획을 확정합니다. 실행 전 처리 내용을 확인하세요.',
+    releaseHelp: '4M 배정을 마친 작업지시를 현장에 배포합니다.',
     itemName: 'W/O',
     reasons: {
-      noneChecked: `${SCREEN_NAME}에서 일괄 처리할 ERP W/O를 고르세요`,
+      noneChecked: '아래 목록에서 처리할 생산오더를 선택하세요.',
       running: '일괄 동작을 실행하는 중입니다',
     },
     releaseDialog: {
-      title: '일괄 배포',
+      title: '작업지시 일괄 배포',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
       task: '배포',
       /* 피킹 지시는 출고 요청과 함께(BOM 투입 자재가 있을 때), PQC 의뢰는 검사 공정일 때 서버 배포가 만든다(work-order-release.service). */
@@ -209,7 +220,7 @@ export const erpWorkOrderFlow = {
       confirm: '배포',
     },
     autoPlanDialog: {
-      title: '자동 계획 재실행',
+      title: '자동 계획 실행',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
       task: '자동 계획',
       /*
@@ -225,11 +236,11 @@ export const erpWorkOrderFlow = {
       ],
       /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 자동 계획 결과 DRAFT). */
       draftNote: '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
-      confirm: '재실행',
+      confirm: '실행',
     },
     resultTitle: {
-      release: '일괄 배포 결과',
-      autoPlan: '자동 계획 재실행 결과',
+      release: '작업지시 일괄 배포 결과',
+      autoPlan: '자동 계획 실행 결과',
     },
     outcomeReasons: {
       noWorkOrders: '배포할 W/O 없음',

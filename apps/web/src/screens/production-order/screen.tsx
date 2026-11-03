@@ -38,7 +38,7 @@ import {
 import { WorklistFilterBar } from './worklist-filter-bar';
 import { deriveWorklistState, type WorklistDerived } from './worklist-model';
 import { useWorklist, useWorklistCount, type WorklistFilters } from './worklist-queries';
-import { CountChip, ProcessStateChip, ReasonChips } from './worklist-chips';
+import { ProcessStateChip, ReasonChips } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
 
@@ -285,79 +285,57 @@ export const ProductionOrderScreen = ({
             aria-label={messages.common.shell.breadcrumb}
           />
         }
-        description={
-          /*
-           * 조건 칩은 「전체」를 맨 앞에 두고 나머지는 처리 순서대로 놓는다. 사용자가 처리할 조건만 칩으로 둔다(계획 전,
-           * 배포 완료, 취소는 행 칩으로만 보인다). 보이는 묶음 이름은 두지 않고 접근명만 붙인다.
-           */
-          <span className="erp-wo-counts" role="group" aria-label={t.counts.label}>
-            <CountChip
-              state="BEFORE_PLAN"
-              label={countLabel(allCount.data, t.counts.all, t.counts.allName)}
-              selected={filters.state === 'ALL'}
-              onSelect={() => apply({ ...filters, state: 'ALL', page: 1 })}
-            />
-            <CountChip
-              state="ACTION_REQUIRED"
-              label={countLabel(
-                actionRequiredCount.data,
-                t.counts.actionRequired,
-                t.status.ACTION_REQUIRED,
-              )}
-              selected={filters.state === 'ACTION_REQUIRED'}
-              onSelect={() => apply({ ...filters, state: 'ACTION_REQUIRED', page: 1 })}
-            />
-            <CountChip
-              state="RELEASE_PENDING"
-              label={countLabel(
-                releasePendingCount.data,
-                t.counts.releasePending,
-                t.status.RELEASE_PENDING,
-              )}
-              selected={filters.state === 'RELEASE_PENDING'}
-              onSelect={() => apply({ ...filters, state: 'RELEASE_PENDING', page: 1 })}
-            />
-          </span>
-        }
-        actions={
-          <div className="erp-wo-bulk-actions">
-            <Button
-              aria-describedby={bulkReasonId}
-              disabled={bulkReason !== null}
-              onClick={() => {
-                const first = checkedRows[0];
-                if (!first) return;
-                rememberWorklistSearch(searchParams);
-                const params = new URLSearchParams({
-                  orders: checkedRows.map((row) => row.fact.productionOrderNo).join(','),
-                });
-                void navigate(`${processPath(first.fact.productionOrderNo)}?${params}`);
-              }}
-            >
-              선택 오더 계획 편성 ({checkedRows.length})
-            </Button>
-            <Button
-              variant="outlined"
-              disabled={bulkReason !== null}
-              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-              onClick={() => setDialog({ kind: 'autoPlan', targets })}
-            >
-              {t.bulk.autoPlan}
-            </Button>
-            <Button
-              disabled={bulkReason !== null}
-              loading={bulk.isRunning}
-              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-              onClick={() => setDialog({ kind: 'release', targets })}
-            >
-              {t.bulk.release}
-            </Button>
-            <span id={bulkReasonId} className="erp-wo-bulk-reason">
-              {bulkReason}
-            </span>
-          </div>
-        }
       />
+      <section className="erp-wo-status-filters" role="group" aria-label={t.counts.label}>
+        {[
+          {
+            state: 'ALL' as const,
+            name: t.counts.allName,
+            count: allCount.data,
+            label: countLabel(allCount.data, t.counts.all, t.counts.allName),
+          },
+          {
+            state: 'ACTION_REQUIRED' as const,
+            name: t.status.ACTION_REQUIRED,
+            count: actionRequiredCount.data,
+            label: countLabel(
+              actionRequiredCount.data,
+              t.counts.actionRequired,
+              t.status.ACTION_REQUIRED,
+            ),
+          },
+          {
+            state: 'RELEASE_PENDING' as const,
+            name: t.status.RELEASE_PENDING,
+            count: releasePendingCount.data,
+            label: countLabel(
+              releasePendingCount.data,
+              t.counts.releasePending,
+              t.status.RELEASE_PENDING,
+            ),
+          },
+        ].map((entry) => (
+          <button
+            type="button"
+            key={entry.state}
+            className="erp-wo-status-filter"
+            aria-label={entry.label}
+            aria-pressed={filters.state === entry.state}
+            onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
+          >
+            <span className="erp-wo-status-name">{entry.name}</span>
+            {entry.count !== undefined && (
+              <>
+                {' '}
+                <span className="erp-wo-status-number">
+                  {quantity(entry.count)}
+                  <small>{t.counts.unit}</small>
+                </span>
+              </>
+            )}
+          </button>
+        ))}
+      </section>
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
         <WorklistFilterBar
           applied={{ ...filters, plant }}
@@ -381,6 +359,57 @@ export const ProductionOrderScreen = ({
           }}
         />
       )}
+      <section className="erp-wo-selection-toolbar" aria-label={t.bulk.selectionActions}>
+        <div className="erp-wo-selection-info">
+          <strong>{t.bulk.selected(checkedRows.length)}</strong>
+          <p id={bulkReasonId}>{bulkReason ?? t.bulk.selectionHelp}</p>
+        </div>
+        <div className="erp-wo-bulk-actions">
+          <div className="erp-wo-action-choice">
+            <Button
+              aria-describedby={bulkReasonId}
+              disabled={bulkReason !== null}
+              onClick={() => {
+                const first = checkedRows[0];
+                if (!first) return;
+                rememberWorklistSearch(searchParams);
+                const params = new URLSearchParams({
+                  orders: checkedRows.map((row) => row.fact.productionOrderNo).join(','),
+                });
+                void navigate(`${processPath(first.fact.productionOrderNo)}?${params}`);
+              }}
+            >
+              {t.bulk.plan}
+            </Button>
+            <small>{t.bulk.planHelp}</small>
+          </div>
+          <div className="erp-wo-action-choice">
+            <Button
+              variant="outlined"
+              title={t.bulk.autoPlanHelp}
+              disabled={bulkReason !== null}
+              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+              onClick={() => setDialog({ kind: 'autoPlan', targets })}
+            >
+              {t.bulk.autoPlan}
+            </Button>
+            <small>{t.bulk.autoPlanShortHelp}</small>
+          </div>
+          <div className="erp-wo-action-choice">
+            <Button
+              variant="outlined"
+              title={t.bulk.releaseHelp}
+              disabled={bulkReason !== null}
+              loading={bulk.isRunning}
+              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+              onClick={() => setDialog({ kind: 'release', targets })}
+            >
+              {t.bulk.release}
+            </Button>
+            <small>{t.bulk.releaseShortHelp}</small>
+          </div>
+        </div>
+      </section>
       <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
         {list.isError && isForbidden(list.error) ? (
           <ForbiddenNotice menuPath={permissionMenuPath} />

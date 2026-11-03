@@ -1,7 +1,7 @@
 import { ToastProvider } from '@crefle/web-ui';
 import { createApiClient } from '@omf-mes/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -186,8 +186,10 @@ describe('복수 오더 편성 저장 연결', () => {
         .filter((p) => p.productionOrderId === 102)
         .reduce((sum, p) => sum + Number(p.plannedQty), 0),
     ).toBe(80);
-    await waitFor(() => expect(screen.getByRole('button', { name: '전개 확정' })).toBeEnabled());
-    await user.click(screen.getByRole('button', { name: '전개 확정' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: '전개 확정 후 4M 배정' }));
     const buttons = screen.getAllByRole('button', { name: '전개 확정' });
     await user.click(buttons.at(-1)!);
     expect(await screen.findByText('실행 단계 assign')).toBeVisible();
@@ -196,6 +198,10 @@ describe('복수 오더 편성 저장 연결', () => {
       '1',
       '1',
     ]);
+    await user.click(screen.getByRole('tab', { name: '2. 생산계획' }));
+    expect(await screen.findByRole('button', { name: '4M 배정으로' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '전개 확정 후 4M 배정' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /주간 편성에서 확인/ })).toBeNull();
   });
   it('일부 오더 저장 실패를 표시하고 재시도 시 완료한 계획을 중복 생성하지 않는다', async () => {
     const server = mount();
@@ -218,5 +224,27 @@ describe('복수 오더 편성 저장 연결', () => {
     await waitFor(() => expect(server.plans).toHaveLength(1));
     expect(server.plans[0]?.productionOrderId).toBe(101);
     expect(server.plans[0]?.plannedQty).toBe(60);
+  });
+  it('생산오더 선택은 계획 추가 때만 표시하고 새 계획의 편집 대상과 연결한다', async () => {
+    mount();
+    const user = userEvent.setup();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
+    expect(screen.queryByRole('columnheader', { name: '계획 추가 대상' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /주간 편성에서 확인/ })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: '주간 편성' }));
+    expect(screen.queryByRole('combobox', { name: '계획 추가 대상' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '계획 추가' }));
+    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    await user.click(within(dialog).getByRole('combobox', { name: '계획을 추가할 생산오더' }));
+    await user.click(screen.getByRole('option', { name: 'B / 시험 품목 (ITEM1)' }));
+    await user.click(within(dialog).getByRole('button', { name: '추가' }));
+    expect(await screen.findByRole('region', { name: '선택 계획 편집' })).toHaveTextContent(
+      'B / 시험 품목',
+    );
+    expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
   });
 });
