@@ -5475,6 +5475,11 @@ h2:has(> .inspection-standard-dialog-title) {
   flex-wrap: wrap;
 }
 
+/* 고르기 전에는 제목 줄이 비어 자리를 차지하지 않는다(omf-all-around#228). */
+.suspicious-material-hold-card-head:empty {
+  display: none;
+}
+
 .suspicious-material-hold-card-notes {
   display: flex;
   flex-wrap: wrap;

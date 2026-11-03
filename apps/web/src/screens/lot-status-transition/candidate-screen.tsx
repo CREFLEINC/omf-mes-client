@@ -634,11 +634,8 @@ export const LotStatusTransitionCandidateScreen = () => {
           {selected === null ? (
             <section
               className="pane lot-status-pane lot-status-transition-pane"
-              aria-labelledby="lot-status-transition-pick-title"
+              aria-label={tSelected.title}
             >
-              <h2 className="pane-title" id="lot-status-transition-pick-title">
-                {tSelected.title}
-              </h2>
               <EmptyState
                 size="sm"
                 icon={<PaneEmptyIcon name="layers" />}

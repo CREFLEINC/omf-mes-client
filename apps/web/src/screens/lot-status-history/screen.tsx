@@ -306,14 +306,11 @@ const LotMode = ({
         )}
         <section
           className="pane lot-status-pane lot-status-detail-dialog"
-          aria-labelledby="lot-status-detail-title"
+          aria-label={t.detail.title}
         >
           {selectedLotId === null ? (
-            /* 고른 LOT 이 없어도 칸 제목은 선다 — 안내는 아이콘과 한 줄(사용자 시안 2026-10-30). */
+            /* 고른 LOT 이 없으면 아이콘과 한 줄 안내만 — 칸 제목 「LOT 상세」는 두지 않는다(omf-all-around#228). */
             <>
-              <h2 className="pane-title" id="lot-status-detail-title">
-                {t.detail.title}
-              </h2>
               <EmptyState size="sm" icon={<PaneEmptyIcon name="layers" />} title={t.detail.pick} />
             </>
           ) : (
@@ -456,13 +453,10 @@ const HistoryMode = ({
         )}
         <section
           className="pane lot-status-pane lot-status-detail-dialog"
-          aria-labelledby="lot-status-detail-title"
+          aria-label={t.detail.title}
         >
           {selected === null ? (
             <>
-              <h2 className="pane-title" id="lot-status-detail-title">
-                {t.detail.title}
-              </h2>
               <EmptyState size="sm" icon={<PaneEmptyIcon name="layers" />} title={t.detail.pick} />
             </>
           ) : (
