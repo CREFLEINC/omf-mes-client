@@ -5,7 +5,6 @@ import {
   type Column,
   DatePicker,
   EmptyState,
-  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -60,6 +59,7 @@ import {
 } from './period';
 import { LotStatusTransitionPreparation } from './transition-preparation';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type LotStatusCandidateQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
@@ -594,7 +594,14 @@ export const LotStatusTransitionCandidateScreen = () => {
                   rows={candidates.data.items}
                   getRowId={rowKey}
                   sort={null}
-                  empty={<EmptyState size="sm" live title={t.empty} />}
+                  empty={
+                    <EmptyState
+                      size="sm"
+                      live
+                      icon={<PaneEmptyIcon name="assignment" />}
+                      title={t.empty}
+                    />
+                  }
                 />
               </div>
               {meta !== undefined && (
@@ -634,7 +641,7 @@ export const LotStatusTransitionCandidateScreen = () => {
               </h2>
               <EmptyState
                 size="sm"
-                icon={<Icon name="arrow_selector_tool" size={24} />}
+                icon={<PaneEmptyIcon name="layers" />}
                 title={tHistory.detail.pick}
               />
             </section>

@@ -14,6 +14,7 @@ import {
   SuspiciousMaterialHoldInputPane,
 } from './hold-input-pane';
 import { AffectedProductionLotsSection, MaterialDefectPane } from './material-defect-pane';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type Body = components['schemas']['LotHoldCreate'];
 const t = messages.suspiciousMaterialHold;
@@ -96,7 +97,7 @@ export const SuspiciousMaterialHoldFlow = ({
             {selection.length === 0 ? (
               <EmptyState
                 size="sm"
-                icon={<Icon name="arrow_selector_tool" size={24} />}
+                icon={<PaneEmptyIcon name="layers" />}
                 title={messages.lotStatusHistory.detail.pick}
               />
             ) : (

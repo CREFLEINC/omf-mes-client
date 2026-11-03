@@ -8,6 +8,7 @@ import { approvalTypeLabelOf, statusBadgeOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface RequestListProps {
   rows: RequestRow[];
@@ -135,7 +136,13 @@ export const RequestList = ({
       }
     />
   ) : (
-    <EmptyState size="sm" live title={t.empty.title} description={t.empty.description} />
+    <EmptyState
+      size="sm"
+      live
+      icon={<PaneEmptyIcon name="assignment" />}
+      title={t.empty.title}
+      description={t.empty.description}
+    />
   );
 
   return (

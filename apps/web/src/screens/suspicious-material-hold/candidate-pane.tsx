@@ -60,6 +60,7 @@ import {
   type SuspiciousMaterialFilters,
 } from './candidate-model';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type Lot = components['schemas']['LotQualityStatus'];
 const t = messages.suspiciousMaterialHold.candidate;
@@ -612,7 +613,14 @@ export const SuspiciousMaterialCandidatePane = ({
                   rows={candidates.data.items}
                   getRowId={(row) => String(row.lotId)}
                   sort={null}
-                  empty={<EmptyState size="sm" live title={t.empty} />}
+                  empty={
+                    <EmptyState
+                      size="sm"
+                      live
+                      icon={<PaneEmptyIcon name="assignment" />}
+                      title={t.empty}
+                    />
+                  }
                 />
               </div>
               {meta !== undefined && (

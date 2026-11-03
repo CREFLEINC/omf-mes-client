@@ -1,4 +1,4 @@
-import { Breadcrumb, Chip, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import { Breadcrumb, Chip, EmptyState, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -42,6 +42,7 @@ import { useLotStatusOptions, useLotTypeOptions, type LotCodeOption } from './op
 import { useWarehouseReferenceOptions, type ReferenceOption } from './reference-options';
 import { useLotActorOptions, useLotHistoryTimeline, useLotStatusSummary } from './queries';
 import { entryStatusCode } from './timeline';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 const t = messages.lotStatusHistory;
 const hubText = messages.common.inspectionHub;
@@ -313,11 +314,7 @@ const LotMode = ({
               <h2 className="pane-title" id="lot-status-detail-title">
                 {t.detail.title}
               </h2>
-              <EmptyState
-                size="sm"
-                icon={<Icon name="arrow_selector_tool" size={24} />}
-                title={t.detail.pick}
-              />
+              <EmptyState size="sm" icon={<PaneEmptyIcon name="layers" />} title={t.detail.pick} />
             </>
           ) : (
             <LotDetailPane
@@ -466,11 +463,7 @@ const HistoryMode = ({
               <h2 className="pane-title" id="lot-status-detail-title">
                 {t.detail.title}
               </h2>
-              <EmptyState
-                size="sm"
-                icon={<Icon name="arrow_selector_tool" size={24} />}
-                title={t.detail.pick}
-              />
+              <EmptyState size="sm" icon={<PaneEmptyIcon name="layers" />} title={t.detail.pick} />
             </>
           ) : (
             <HistoryLotDetail

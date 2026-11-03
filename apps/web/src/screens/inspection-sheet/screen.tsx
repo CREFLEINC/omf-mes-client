@@ -46,6 +46,7 @@ import {
 import { useFourMChangeTypeLabel } from '../four-m-inputs/panel';
 import { downloadSheetXlsx } from './export';
 import { type DetailTab, SheetDetail } from './sheet-detail';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type InspectionSheetSummary = components['schemas']['InspectionSheetSummary'];
 
@@ -593,7 +594,12 @@ const InspectionSheetScreenBody = () => {
             isBusy={list.isFetching}
             onRowClick={(row) => toggleOpen(row.inspectionSheetId)}
             empty={
-              <EmptyState size="sm" live title={list.isPending ? t.list.loading : t.list.empty} />
+              <EmptyState
+                size="sm"
+                live
+                icon={list.isPending ? undefined : <PaneEmptyIcon name="assignment" />}
+                title={list.isPending ? t.list.loading : t.list.empty}
+              />
             }
           />
           {/* 표 아래 쪽 이동 줄 — 총 건수 · 쪽 크기 · 처음/이전/n·N/다음/마지막(검사 실적과 같은 공용 부품 · #217). */}
@@ -633,7 +639,12 @@ const InspectionSheetScreenBody = () => {
         >
           {/* 고른 검사표가 없어도 상세 자리에 안내가 선다(검사 조회·판정과 같다). */}
           {openId === null && (
-            <EmptyState size="sm" title={t.list.pickTitle} description={t.list.pickHint} />
+            <EmptyState
+              size="sm"
+              icon={<PaneEmptyIcon name="layers" />}
+              title={t.list.pickTitle}
+              description={t.list.pickHint}
+            />
           )}
           {sheet.isError && <AlertBanner variant="error">{t.detail.loadFailed}</AlertBanner>}
           {openId !== null && sheet.isPending && <p className="field-note">{t.detail.loading}</p>}

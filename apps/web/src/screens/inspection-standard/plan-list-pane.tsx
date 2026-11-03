@@ -13,6 +13,7 @@ import { PageNav, type PageNavMeta, type PageSize } from '../../patterns/page-na
 import type { PageView } from './pagination';
 import type { ItemNameParts } from './queries';
 import type { InspectionPlan, PlanFilters } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 const t = messages.inspectionStandard;
 
@@ -216,6 +217,7 @@ export const PlanListPane = ({
         <EmptyState
           size="sm"
           live
+          icon={<PaneEmptyIcon name="assignment" />}
           title={t.empty.planNoMatchTitle}
           description={t.empty.planNoMatchDescription}
           action={
@@ -231,6 +233,7 @@ export const PlanListPane = ({
       <EmptyState
         size="sm"
         live
+        icon={<PaneEmptyIcon name="assignment" />}
         title={t.empty.planNoneTitle}
         description={t.empty.planNoneDescription}
       />
