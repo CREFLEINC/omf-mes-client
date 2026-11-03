@@ -5144,11 +5144,11 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/* 안쪽 여백·간격은 LOT 상태 이력 상자(.lot-status-pane · 기본 카드)와 같게 둔다(omf-all-around#228). */
 .lot-status-transition-pane {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -5257,11 +5257,10 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/* 제목 글씨는 LOT 상태 이력의 「LOT 상세」와 같은 크기(omf-all-around#228). */
 .lot-status-transition-card-head > .pane-title {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
 }
 
 /* LOT 상자와 변경할 상태 — 좌우 배치(좁은 카드)는 위아래, 상하 배치(넓은 카드)는 나란히(사용자 2026-11-02). */
