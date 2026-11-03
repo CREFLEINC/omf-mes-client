@@ -413,16 +413,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     notSelected: 'Không chọn',
     /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
     codeInUseLocked: 'Không thể thay đổi mã đang được sử dụng.',
-    defaultSkipNote: (inspectionTypeCode: string): string =>
-      inspectionTypeCode === 'IQC'
-        ? 'Khi bật, LOT nhập theo tiêu chuẩn này trở thành bình thường ngay mà không kiểm tra đầu vào. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
-        : inspectionTypeCode === 'OQC'
-          ? 'Khi bật, lệnh xuất hàng theo tiêu chuẩn này được thông qua mà không kiểm tra xuất hàng. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
-          : 'Khi bật, lệnh sản xuất theo tiêu chuẩn này chạy không cần PQC; khi đăng ký kết quả, LOT trở thành bình thường ngay. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».',
-    defaultSkipAllItemsNote:
-      'Tiêu chuẩn IQC không chọn mặt hàng nên mọi mặt hàng không có tiêu chuẩn riêng đều được bỏ qua kiểm tra đầu vào.',
-    defaultSkipItemSyncNote:
-      'Thay đổi cùng với ‘Đối tượng IQC’ trong thông tin mặt hàng. Khi bật bỏ qua mặc định, mặt hàng đó sẽ không còn là đối tượng IQC.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',
