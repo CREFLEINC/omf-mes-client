@@ -1669,22 +1669,107 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 불량·원인코드 · 판정 유형 탭(omf-all-around#228) — 빈 목록이어도 쪽 이동 줄은 목록 칸 바닥에 둔다(표가 있을 때와 같은 자리).
- * 오른쪽 상세 칸도 목록 칸과 같은 높이로 채운다. 상하 배치·좁은 화면은 상세 칸이 내용 높이라 그대로다.
+ * 품질 화면 빈 상태 배치 통일(omf-all-around#228) — 불량·원인코드 탭을 기준으로 맞춘다.
+ * ① 쪽 이동 줄은 목록이 비어도 목록 칸 바닥에 둔다(표가 있을 때와 같은 자리) — 쪽 이동 바로 앞 칸(표·빈 안내)이 남는 높이를 채운다.
+ *    줄지 않게(`flex-shrink: 0`) 두어, 줄이 많을 때는 종전처럼 칸이 구른다.
+ * ② 오른쪽 상세 칸이 카드 하나뿐이면(선택 전 안내 등) 목록 칸과 같은 높이로 채운다. 카드가 여럿이면 종전처럼 위에서부터 쌓는다.
+ * 상하 배치·좁은 화면에서 내용 높이인 칸은 그대로다.
  */
+
+/* ① 불량·원인코드 · 판정 유형 — 빈 안내를 표 밖에 낸다. */
 .defect-cause-list-pane > .defect-cause-list-empty {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
 }
 
-.defect-cause-split > .inspection-standard-detail {
+/* ① LOT 상태 이력 · LOT 상태 변경 · 의심자재 보류 목록 — 격자 칸을 세로 흐름으로 바꿔 쪽 이동을 바닥에 둔다. */
+.lot-status-split > .lot-status-pane:has(> .page-nav) {
+  display: flex;
+  flex-direction: column;
+}
+
+.lot-status-split > .lot-status-pane:has(> .page-nav) > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.lot-status-split > .lot-status-pane:has(> .page-nav) > :has(+ .page-nav) {
+  flex: 1 0 auto;
+}
+
+/* ① 품질 승인 처리 · IQC 생략 · 부적합 처분 — 목록 묶음이 칸을 채우고, 그 안에서 쪽 이동을 바닥에 둔다. */
+.quality-approval-list-pane > .quality-approval-list,
+.disposition-list-pane > .disposition-list {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+.quality-approval-list-pane > .quality-approval-list > *,
+.disposition-list-pane > .disposition-list > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.quality-approval-list > :has(+ .quality-approval-page-nav),
+.disposition-list > :has(+ .page-nav) {
+  flex: 1 0 auto;
+}
+
+/* ① 검사 수준 설정 — 오른쪽 변경 이력 표도 칸을 채워 쪽 이동을 바닥에 둔다. */
+.inspection-split > .quality-standard-detail > .inspection-standard-table-box {
+  flex: 1 0 auto;
+}
+
+/* ② 검사 기준 · 불량·원인코드 · 판정 유형 */
+.inspection-standard-split > .inspection-standard-detail:has(> :only-child) {
   align-content: stretch;
 }
 
-/* 칸이 늘어나도 상세 내용은 위에서부터 쌓는다 — 줄 사이가 벌어지지 않게. */
-.defect-cause-split > .inspection-standard-detail > .inspection-standard-detail-card {
+/* ② LOT 상태 변경 · 의심자재 보류 */
+.lot-status-split > .lot-status-transition-detail:has(> :only-child),
+.lot-status-split > .suspicious-material-hold-detail:has(> :only-child) {
+  align-content: stretch;
+}
+
+/* 칸이 늘어나도 카드 안 내용은 위에서부터 쌓는다 — 줄 사이가 벌어지지 않게. */
+.inspection-standard-split > .inspection-standard-detail > .inspection-standard-detail-card,
+.lot-status-split > .lot-status-transition-detail > .lot-status-pane,
+.lot-status-split > .suspicious-material-hold-detail > .suspicious-material-hold-card {
   align-content: start;
+}
+
+/*
+ * ③ 빈 표 안내가 잘리지 않게 — 표가 칸보다 넓으면 안내가 표 전체 폭 가운데에 서서 칸 밖으로 밀렸다(판정 유형 · 검사 기준 등).
+ * 비어 있을 때만 표 감싸개를 폭 기준으로 삼아, 안내를 보이는 폭 가운데에 고정한다. 줄이 생기면 종전과 같다.
+ */
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div:has(> table td[colspan] > [role='status']) {
+  container-type: inline-size;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table
+  td[colspan]
+  > [role='status'] {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: calc(100cqi - var(--space-4) * 2);
 }
 
 .pane-stack {
