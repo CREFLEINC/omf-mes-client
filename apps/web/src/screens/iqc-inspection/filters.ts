@@ -142,6 +142,9 @@ export interface QueueListQuery {
   supplierId?: number;
   q?: string;
   statusCode?: string;
+  /** 「오늘 입고」 — 공장 하루 `[from, to)`(부품 IQC 와 같다 · omf-all-around#228). */
+  requestedAtFrom?: string;
+  requestedAtTo?: string;
   page: number;
   size: number;
 }

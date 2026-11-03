@@ -518,6 +518,10 @@ describe('IqcInspectionScreen', () => {
      * 의뢰번호로 좁힌다 — 품목·공급사는 이제 **골라서** 넣으므로(omf-all-around#40) 이 판정에
      * 필요 없는 선택 창·선택지 조회까지 끌고 들어온다. 재는 것은 「조건이 바뀌면 첫 쪽」이다.
      */
+    /* 의뢰번호는 상세 조건 안에 접혀 있다 — 펼친 뒤 넣는다(omf-all-around#228). */
+    await userEvent.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
+    );
     await userEvent.type(screen.getByLabelText(t.filters.keyword), 'IR-1');
     await userEvent.click(screen.getByRole('button', { name: t.filters.apply }));
 
@@ -536,6 +540,9 @@ describe('IqcInspectionScreen', () => {
     });
 
     expect(await screen.findByText(t.queue.empty)).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: messages.common.inspectionHub.detailFilters.open }),
+    );
     await userEvent.click(screen.getByRole('button', { name: t.filters.apply }));
 
     await waitFor(() => expect(queueCalls(sent)).toHaveLength(2));
