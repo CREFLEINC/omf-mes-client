@@ -269,6 +269,8 @@ export const inspectionStandard = {
     drawingRemove: '도면 제거',
     drawingFileInvalid: 'PNG·JPEG 그림만 올릴 수 있습니다.',
     drawingFileTooLarge: '10MB 이하 그림만 올릴 수 있습니다.',
+    /* 이미 붙은 도면과 내용이 같은 그림(#227). */
+    drawingDuplicate: '이미 첨부된 도면과 같은 그림입니다.',
     drawingRemoveTitle: '도면 제거',
     drawingRemoveBody: '현재 보고 있는 도면을 제거하시겠습니까?',
     drawingRemoveNote: '현재 작성 중인 버전에서만 제거되며, 다른 버전에는 영향을 주지 않습니다.',
@@ -368,9 +370,12 @@ export const inspectionStandard = {
     versionDetail: '버전 정보를 불러오는 중',
     items: '검사 항목을 불러오는 중',
   },
-  /* 임시 저장하지 않고 떠날 때 확인 창 본문(#227) — 제목 · 단추는 라우팅 화면과 같다. */
-  discardBody:
-    '지금 옮기면 임시 저장하지 않은 검사 항목 · 도면 · 버전 설정 변경이 사라집니다. 남기려면 「계속 편집」을 누른 뒤 임시 저장하세요.',
+  /* 임시 저장하지 않고 떠날 때 확인 창(사용자 시안 · #227) — 단추는 라우팅 화면과 같다. */
+  discard: {
+    title: '저장하지 않은 변경 사항',
+    bodyLead: '저장하지 않은 변경 사항이 있습니다.',
+    bodyLoss: '이동하면 변경 사항이 사라집니다.',
+  },
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {

@@ -3360,9 +3360,10 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
     /* 임시 저장하지 않은 편집이 있으면 먼저 묻는다(#227) — 버리고 옮긴다. */
     await user.click(
-      within(
-        await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있습니다' }),
-      ).getByRole('button', { name: '저장하지 않고 이동' }),
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 이동' },
+      ),
     );
 
     /*
@@ -3396,9 +3397,10 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
     /* 임시 저장하지 않은 편집이 있으면 먼저 묻는다(#227) — 버리고 옮긴다. */
     await user.click(
-      within(
-        await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있습니다' }),
-      ).getByRole('button', { name: '저장하지 않고 이동' }),
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 이동' },
+      ),
     );
     expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
 
@@ -3417,11 +3419,12 @@ describe('InspectionStandardScreen — 임시 저장하지 않고 옮기면 묻�
     await user.type(name, '-편집중');
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
-    const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있습니다' });
-    expect(within(dialog).getByText(messages.inspectionStandard.discardBody)).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' });
+    expect(within(dialog).getByText(/이동하면 변경 사항이 사라집니다/)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /닫기|close/i })).toBeNull();
     await user.click(within(dialog).getByRole('button', { name: '계속 편집' }));
 
-    expect(screen.queryByRole('dialog', { name: '저장하지 않은 변경이 있습니다' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: '저장하지 않은 변경 사항' })).toBeNull();
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
   });
 });

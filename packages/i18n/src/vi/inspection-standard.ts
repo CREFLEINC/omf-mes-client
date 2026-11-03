@@ -242,6 +242,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     drawingRemove: 'Xóa bản vẽ',
     drawingFileInvalid: 'Chỉ tải lên được hình PNG·JPEG.',
     drawingFileTooLarge: 'Chỉ tải lên được hình tối đa 10MB.',
+    /* 이미 붙은 도면과 내용이 같은 그림(#227). */
+    drawingDuplicate: 'Hình này trùng với bản vẽ đã đính kèm.',
     drawingRemoveTitle: 'Xóa bản vẽ',
     drawingRemoveBody: 'Bạn có muốn xóa bản vẽ đang xem không?',
     drawingRemoveNote: 'Chỉ xóa khỏi phiên bản đang soạn, không ảnh hưởng đến các phiên bản khác.',
@@ -337,9 +339,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionDetail: 'Đang tải thông tin phiên bản',
     items: 'Đang tải hạng mục kiểm tra',
   },
-  /* 임시 저장하지 않고 떠날 때 확인 창 본문(#227) — 제목 · 단추는 라우팅 화면과 같다. */
-  discardBody:
-    'Nếu chuyển đi bây giờ, các thay đổi hạng mục kiểm tra · bản vẽ · thiết lập phiên bản chưa lưu tạm sẽ mất. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi lưu tạm.',
+  /* 임시 저장하지 않고 떠날 때 확인 창(사용자 시안 · #227) — 단추는 라우팅 화면과 같다. */
+  discard: {
+    title: 'Thay đổi chưa lưu',
+    bodyLead: 'Có thay đổi chưa lưu.',
+    bodyLoss: 'Nếu chuyển đi, các thay đổi sẽ bị mất.',
+  },
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',

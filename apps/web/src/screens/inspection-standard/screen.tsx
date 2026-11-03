@@ -860,6 +860,14 @@ export const InspectionStandardScreen = () => {
    * 라우팅 화면과 같은 확인 창이다. 화면이 물어 확인받은 이동은 이동 감시(`LeaveGuard`)가 다시 묻지 않는다.
    */
   const [pendingMove, setPendingMove] = useState<(() => void) | null>(null);
+  /* 두 줄 문장(사용자 시안 · #227). */
+  const discardBody = (
+    <p className="dialog-text">
+      {t.discard.bodyLead}
+      <br />
+      {t.discard.bodyLoss}
+    </p>
+  );
   const confirmedMoveRef = useRef(false);
   const guardMove = (move: () => void) => {
     if (isAnythingDirty) setPendingMove(() => move);
@@ -1940,11 +1948,15 @@ export const InspectionStandardScreen = () => {
         when={isAnythingDirty}
         watchedParams={EDIT_TARGET_PARAMS}
         bypassRef={confirmedMoveRef}
-        discardBody={t.discardBody}
+        discardTitle={t.discard.title}
+        discardBody={discardBody}
+        showCloseButton={false}
       />
       {pendingMove !== null && (
         <DiscardDialog
-          body={t.discardBody}
+          title={t.discard.title}
+          body={discardBody}
+          showCloseButton={false}
           onStay={() => setPendingMove(null)}
           onLeave={() => {
             const move = pendingMove;

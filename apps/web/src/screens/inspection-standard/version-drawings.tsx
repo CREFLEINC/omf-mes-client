@@ -26,6 +26,29 @@ export const drawingFileProblem = (file: File): string | null => {
   return null;
 };
 
+/** 두 그림의 내용이 같은가 — 크기가 다르면 읽지 않는다. 상한이 10MB 라 통째로 견준다. */
+const sameBytes = async (a: Blob, b: Blob): Promise<boolean> => {
+  if (a.size !== b.size) return false;
+  const [left, right] = await Promise.all([a.arrayBuffer(), b.arrayBuffer()]);
+  const x = new Uint8Array(left);
+  const y = new Uint8Array(right);
+  return x.every((byte, at) => byte === y[at]);
+};
+
+/**
+ * 이미 붙은 도면과 내용이 같은 그림인가(사용자 지시 · #227) — 서버를 고치지 않고 화면이 막는다.
+ * 저장된 도면 · 저장 전 추가한 도면 모두와 견준다. 파일 이름이 달라도 내용이 같으면 같은 도면이다.
+ */
+export const isDuplicateDrawing = async (
+  file: Blob,
+  drawings: readonly { blob: Blob }[],
+): Promise<boolean> => {
+  for (const drawing of drawings) {
+    if (await sameBytes(file, drawing.blob)) return true;
+  }
+  return false;
+};
+
 /** 초안 도면 한 장 — `attachmentId` 가 없으면 새로 붙일 그림, `file` 이 있으면 저장할 때 보낼 그림이다. */
 interface DraftDrawing {
   key: number;
@@ -226,13 +249,17 @@ export const VersionDrawings = ({
     fileInput.current?.click();
   };
 
-  const onFile = (event: ChangeEvent<HTMLInputElement>): void => {
+  const onFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (file === undefined) return;
     const found = drawingFileProblem(file);
     setProblem(found);
     if (found !== null) return;
+    if (await isDuplicateDrawing(file, list)) {
+      setProblem(t.drawingDuplicate);
+      return;
+    }
     if (pick.kind === 'add') {
       draft.add(file);
       setCurrent(list.length);
@@ -262,7 +289,7 @@ export const VersionDrawings = ({
             accept={DRAWING_TYPES.join(',')}
             hidden
             data-testid="drawing-file-input"
-            onChange={onFile}
+            onChange={(event) => void onFile(event)}
           />
           <Button
             variant="outlined"

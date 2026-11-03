@@ -44,7 +44,8 @@ const drawingServer = (initial: number[]) => {
       return jsonResponse({ items: ids.map(attachment) });
     }
     if (request.method === 'GET' && url.pathname.endsWith('/content')) {
-      return new Response(new Blob(['x'], { type: 'image/png' }), {
+      /* 본문은 글자로 준다 — 화면 쪽 Blob 을 응답에 넣으면 내용이 「[object Blob]」으로 바뀐다. 그림 내용은 'x'. */
+      return new Response('x', {
         headers: { 'Content-Type': 'image/png' },
       });
     }
@@ -160,7 +161,10 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     await user.click(screen.getByRole('button', { name: t.drawingNext }));
 
     await user.click(screen.getByRole('button', { name: t.drawingReplace }));
-    await user.upload(screen.getByTestId('drawing-file-input'), png('b.png'));
+    await user.upload(
+      screen.getByTestId('drawing-file-input'),
+      new File(['b'], 'b.png', { type: 'image/png' }),
+    );
     expect(writes).toEqual([]);
     expect(screen.getByRole('img', { name: t.drawingAlt(2) })).toBeVisible();
 
@@ -200,6 +204,32 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     await waitFor(() =>
       expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`DELETE ${BASE}/1`]),
     );
+  });
+
+  it('이미 붙은 도면과 같은 그림은 추가 · 수정 모두 막고 이유를 보인다', async () => {
+    const user = userEvent.setup();
+    const { fetch, writes } = drawingServer([1]);
+    renderWithProviders(<Harness isEditable />, { fetch, session: null });
+    await screen.findByRole('img', { name: t.drawingAlt(1) });
+
+    /* 저장된 도면(내용 'x')과 같은 그림 — 이름이 달라도 막는다. */
+    await user.upload(screen.getByTestId('drawing-file-input'), png('other-name.png'));
+    expect(await screen.findByText(t.drawingDuplicate)).toBeVisible();
+    expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
+
+    /* 저장 전 추가한 그림과 같은 그림도 막는다. */
+    await user.upload(
+      screen.getByTestId('drawing-file-input'),
+      new File(['y'], 'y.png', { type: 'image/png' }),
+    );
+    await waitFor(() => expect(screen.getByTestId('draft-count')).toHaveTextContent('2'));
+    await user.click(screen.getByRole('button', { name: t.drawingReplace }));
+    await user.upload(
+      screen.getByTestId('drawing-file-input'),
+      new File(['x'], 'again.png', { type: 'image/png' }),
+    );
+    expect(await screen.findByText(t.drawingDuplicate)).toBeVisible();
+    expect(writes).toEqual([]);
   });
 
   it('바닥에는 [임시 저장]만 둔다 — [취소] 단추가 없다', async () => {
