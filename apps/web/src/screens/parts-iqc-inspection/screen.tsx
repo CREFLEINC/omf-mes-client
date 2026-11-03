@@ -192,7 +192,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
     <EmptyState
       size="sm"
       live
-      icon={<Icon name="search_off" size={40} />}
+      icon={
+        <span className="inspection-standard-empty-icon">
+          <Icon name="assignment" size={20} />
+        </span>
+      }
       title={oa.queue.empty}
       description={oa.queue.emptyHint}
     />
@@ -342,6 +346,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           {selectedId === null ? (
             <EmptyState
               size="sm"
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="layers" size={20} />
+                </span>
+              }
               title={hubText.pickRequest}
               description={hubText.pickRequestHint}
             />

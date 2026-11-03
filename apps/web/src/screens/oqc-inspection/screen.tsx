@@ -435,7 +435,11 @@ export const OqcInspectionScreen = () => {
     <EmptyState
       size="sm"
       live
-      icon={<Icon name="search_off" size={40} />}
+      icon={
+        <span className="inspection-standard-empty-icon">
+          <Icon name="assignment" size={20} />
+        </span>
+      }
       title={t.queue.empty}
       description={t.queue.emptyHint}
     />
@@ -953,6 +957,11 @@ export const OqcInspectionScreen = () => {
           {selectedId === null ? (
             <EmptyState
               size="sm"
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="layers" size={20} />
+                </span>
+              }
               title={hubText.pickRequest}
               description={hubText.pickRequestHint}
             />
