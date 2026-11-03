@@ -1,3 +1,4 @@
+import { RevisionDetailButton } from './revision-detail';
 import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -126,6 +127,7 @@ export const MasterStep = ({
   const period = (from: string | null, to: string | null) =>
     t.effective(from ?? '', to ?? t.periodOpen);
 
+  const selectedRouting = routings.items.find((item) => String(item.routingId) === routingId);
   const checked =
     boms.items.some((item) => String(item.bomId) === bomId) &&
     routings.items.some((item) => String(item.routingId) === routingId);
@@ -169,6 +171,7 @@ export const MasterStep = ({
                   locked={locked}
                   onChange={onBomChange}
                 />
+                <RevisionDetailButton kind="BOM" value={bomId} />
               </td>
               <td data-label={t.routing} className="erp-wo-master-revision">
                 <RevisionField
@@ -183,6 +186,19 @@ export const MasterStep = ({
                   isDefault={(item) => item.isDefault}
                   locked={locked}
                   onChange={onRoutingChange}
+                />
+                <RevisionDetailButton
+                  kind="Routing"
+                  value={routingId}
+                  label={
+                    selectedRouting
+                      ? t.revision(
+                          selectedRouting.routingCode,
+                          selectedRouting.routingVersion,
+                          statusNameOf(selectedRouting.statusCode),
+                        )
+                      : undefined
+                  }
                 />
               </td>
             </tr>

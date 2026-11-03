@@ -32715,3 +32715,11 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 .erp-wo-plan-create > .erp-wo-distribution { display: contents; }
 .erp-wo-plan-create > .erp-wo-distribution > button { justify-self: start; }
 .erp-wo-plan-create .erp-wo-distribution-settings { grid-column: 1 / -1; }
+
+.erp-wo-revision-detail { min-width: 0; display: grid; gap: var(--space-3); }
+.erp-wo-revision-detail p { margin: 0; }
+.erp-wo-revision-table { max-width: 100%; overflow-x: auto; }
+.erp-wo-revision-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-revision-table th, .erp-wo-revision-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; vertical-align: top; min-width: 6rem; }
+.erp-wo-revision-table th { background: var(--surface-container); }
+.erp-wo-revision-table caption { text-align: left; font: var(--type-title-sm); padding-bottom: var(--space-2); }

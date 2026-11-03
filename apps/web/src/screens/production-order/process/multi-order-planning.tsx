@@ -1,3 +1,4 @@
+import { RevisionDetailButton } from './revision-detail';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, Dialog, SkeletonText, Tabs, TextField } from '@crefle/web-ui';
@@ -426,6 +427,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                             onChange={entry.onBomChange}
                           />
                         )}
+                        <RevisionDetailButton kind="BOM" value={entry.bomId} />
                       </td>
                       <td data-label="Routing 개정" className="erp-wo-master-revision">
                         {entry.locked ? (
@@ -447,6 +449,14 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                             onChange={entry.onRoutingChange}
                           />
                         )}
+                        <RevisionDetailButton
+                          kind="Routing"
+                          value={entry.routingId}
+                          label={
+                            entry.routingOptions.find((option) => option.value === entry.routingId)
+                              ?.label
+                          }
+                        />
                       </td>
                       <td data-label="점검" className="erp-wo-master-check">
                         {entry.ready ? '개정 선택 완료' : '개정 선택 필요'}
