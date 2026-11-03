@@ -1727,6 +1727,13 @@ h2:has(> .inspection-standard-dialog-title) {
   align-content: stretch;
 }
 
+/* ② 검사표 기준(OA) — 오른쪽 칸이 격자가 아니라 하나뿐인 카드를 칸 높이까지 늘린다. */
+.inspection-standard-split > .quality-standard-detail > :only-child {
+  box-sizing: border-box;
+  min-height: 100%;
+  align-content: start;
+}
+
 /* ② LOT 상태 변경 · 의심자재 보류 */
 .lot-status-split > .lot-status-transition-detail:has(> :only-child),
 .lot-status-split > .suspicious-material-hold-detail:has(> :only-child) {
@@ -1748,6 +1755,7 @@ h2:has(> .inspection-standard-dialog-title) {
     .inspection-standard-list-pane,
     .inspection-level-list-pane,
     .inspection-sheet-template-list-pane,
+    .inspection-sheet-list-pane,
     .lot-status-pane,
     .disposition-list,
     .inspection-results-pane
