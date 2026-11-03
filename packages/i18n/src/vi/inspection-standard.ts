@@ -16,6 +16,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
+    /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
+    tempSave: 'Lưu tạm',
     itemClear: 'Xóa mặt hàng',
     prevPage: 'Trước',
     nextPage: 'Sau',
@@ -232,10 +234,24 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     tabDrawingsCount: (count: number): string => `Bản vẽ ${String(count)}`,
     drawingsLoading: 'Đang tải bản vẽ',
     drawingsNone: 'Chưa có bản vẽ',
-    drawingsNoneHint: 'Tải lên tệp Excel tiêu chuẩn (TCKT) thì bản vẽ được đính kèm cùng.',
     drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
     drawingPrev: 'Bản vẽ trước',
     drawingNext: 'Bản vẽ sau',
+    drawingAdd: 'Thêm bản vẽ',
+    drawingReplace: 'Sửa bản vẽ',
+    drawingRemove: 'Xóa bản vẽ',
+    drawingFileInvalid: 'Chỉ tải lên được hình PNG·JPEG.',
+    drawingFileTooLarge: 'Chỉ tải lên được hình tối đa 10MB.',
+    /* 이미 붙은 도면과 내용이 같은 그림(#227). */
+    drawingDuplicate: 'Bản vẽ đã được đăng ký.',
+    drawingDuplicateFile: (name: string): string =>
+      `Không thể thêm tệp ${name} vì đã được đăng ký.`,
+    /* 그림이 아니거나 큰 파일 — 제목이 까닭을 말한다. */
+    drawingRejectedFile: (name: string): string => `Không thể thêm tệp ${name}.`,
+    drawingRemoveTitle: 'Xóa bản vẽ',
+    drawingRemoveBody: 'Bạn có muốn xóa bản vẽ đang xem không?',
+    drawingRemoveNote: 'Chỉ xóa khỏi phiên bản đang soạn, không ảnh hưởng đến các phiên bản khác.',
+    drawingRemoveConfirm: 'Xóa',
     notSet: 'Chưa thiết lập',
   },
   listColumns: {
@@ -327,6 +343,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionDetail: 'Đang tải thông tin phiên bản',
     items: 'Đang tải hạng mục kiểm tra',
   },
+  /* 임시 저장하지 않고 떠날 때 확인 창(사용자 시안 · #227) — 단추는 라우팅 화면과 같다. */
+  discard: {
+    title: 'Thay đổi chưa lưu',
+    bodyLead: 'Có thay đổi chưa lưu.',
+    bodyLoss: 'Nếu chuyển đi, các thay đổi sẽ bị mất.',
+  },
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',
@@ -399,16 +421,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     notSelected: 'Không chọn',
     /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
     codeInUseLocked: 'Không thể thay đổi mã đang được sử dụng.',
-    defaultSkipNote: (inspectionTypeCode: string): string =>
-      inspectionTypeCode === 'IQC'
-        ? 'Khi bật, LOT nhập theo tiêu chuẩn này trở thành bình thường ngay mà không kiểm tra đầu vào. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
-        : inspectionTypeCode === 'OQC'
-          ? 'Khi bật, lệnh xuất hàng theo tiêu chuẩn này được thông qua mà không kiểm tra xuất hàng. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
-          : 'Khi bật, lệnh sản xuất theo tiêu chuẩn này chạy không cần PQC; khi đăng ký kết quả, LOT trở thành bình thường ngay. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».',
-    defaultSkipAllItemsNote:
-      'Tiêu chuẩn IQC không chọn mặt hàng nên mọi mặt hàng không có tiêu chuẩn riêng đều được bỏ qua kiểm tra đầu vào.',
-    defaultSkipItemSyncNote:
-      'Thay đổi cùng với ‘Đối tượng IQC’ trong thông tin mặt hàng. Khi bật bỏ qua mặc định, mặt hàng đó sẽ không còn là đối tượng IQC.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',

@@ -79,6 +79,7 @@ const renderScreen = (
   const { queryClient } = renderWithProviders(<InspectionStandardScreen />, {
     fetch,
     route: `${ROUTE}${search}`,
+    dataRouter: true,
   });
 
   return { requests, user: userEvent.setup(), queryClient };
@@ -232,6 +233,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     renderWithProviders(<InspectionStandardScreen />, {
       fetch: () => Promise.reject(new Error('네트워크 실패')),
       route: ROUTE,
+      dataRouter: true,
     });
 
     expect(
@@ -1629,8 +1631,8 @@ describe('InspectionStandardScreen — 버전 목록', () => {
     expect(gets.length).toBeGreaterThan(0);
   });
 
-  /* 목록에서 기준을 고르면 버전 목록 창 없이 확정된 최신 버전으로 바로 조회한다 — 작성중인 버전 2 는 건너뛴다(사용자 지시 · #196). */
-  it('목록에서 기준을 고르면 창을 띄우지 않고 확정된 최신 버전을 바로 고른다', async () => {
+  /* 목록에서 기준을 고르면 버전 목록 창 없이 최신 버전으로 바로 조회한다(사용자 지시 · #196) — 작성중인 버전 2 를 고른다(omf-all-around#227). */
+  it('목록에서 기준을 고르면 창을 띄우지 않고 작성중인 최신 버전을 바로 고른다', async () => {
     const { user } = renderScreen([
       planListRoute(),
       planDetailRoute(),
@@ -1644,6 +1646,34 @@ describe('InspectionStandardScreen — 버전 목록', () => {
       expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
     });
     expect(screen.queryByRole('region', { name: '버전 목록' })).not.toBeInTheDocument();
+    expect(within(await versionPane()).getByRole('button', { name: '버전 2' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  /* 폐기 버전은 고르지 않는다 — 확정된 버전 1 로 간다. */
+  it('최신 버전이 폐기면 확정된 버전을 고른다', async () => {
+    const { user } = renderScreen([
+      planListRoute(),
+      planDetailRoute(),
+      {
+        match: (request) => isGet(request, VERSIONS_PATH),
+        respond: () =>
+          jsonResponse({
+            items: inspectionPlanVersionFixtures.map((version) =>
+              version.planVersion === 2 ? { ...version, statusCode: 'OBSOLETE' } : version,
+            ),
+          }),
+      },
+      ...lookupRoutes(),
+    ]);
+
+    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('버전을 선택하세요')).toHaveLength(0);
+    });
     expect(within(await versionPane()).getByRole('button', { name: '버전 1' })).toHaveAttribute(
       'aria-current',
       'true',
@@ -1689,7 +1719,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
         planListRoute(),
         planDetailRoute(),
         planDetailRoute(inspectionPlanFixtures[1]),
-        /* 옮겨 간 기준에는 확정된 버전이 없다 — 확정된 최신 버전 자동 고르기(#196)가 끼어들지 않는다. */
+        /* 옮겨 간 기준에는 폐기 버전뿐이다 — 최신 버전 자동 고르기(#196)가 끼어들지 않는다. */
         {
           match: (request) =>
             isGet(request, VERSIONS_PATH) &&
@@ -1699,7 +1729,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
               items: inspectionPlanVersionFixtures.map((version) => ({
                 ...version,
                 inspectionPlanId: 3002,
-                statusCode: 'DRAFT',
+                statusCode: 'OBSOLETE',
               })),
             }),
         },
@@ -2980,7 +3010,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.click(screen.getByRole('option', { name: '수치' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
     await screen.findByText('저장했습니다');
 
     const put = requests.find(
@@ -3023,7 +3053,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.click(screen.getByRole('option', { name: '측정' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
     await screen.findByText('저장했습니다');
 
     const put = requests.find(
@@ -3058,7 +3088,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
     await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
-    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
 
     await waitFor(() => {
       expect(
@@ -3096,7 +3126,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
     await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
-    await user.click(within(itemPane()).getByRole('button', { name: '저장' }));
+    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-01 · 서버가 고친 이름')).toBeInTheDocument();
     // 서버 채번 값(100)이 아니라 목록 안의 위치를 낸다.
@@ -3117,7 +3147,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findAllByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
-    expect(within(itemPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(itemPane()).getByRole('button', { name: '임시 저장' })).toBeDisabled();
     expect(
       screen.getByText(
         '항목 저장은 저장할 수 없는 항목이 섞여 있으면 할 수 없습니다. 표에서 그 항목을 수정하세요.',
@@ -3136,7 +3166,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
       target: { value: '40' },
     });
 
-    expect(within(itemPane()).getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(within(itemPane()).getByRole('button', { name: '임시 저장' })).toBeDisabled();
     expect(
       screen.getByText(
         '항목 저장은 버전 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
@@ -3328,6 +3358,13 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '40' } });
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-02' }));
+    /* 임시 저장하지 않은 편집이 있으면 먼저 묻는다(#227) — 버리고 옮긴다. */
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 이동' },
+      ),
+    );
 
     /*
      * 기준을 바꾸면 `ver`가 사라져 버전 상세 조회가 꺼진다 — 폼 상태를 비우지 않으면
@@ -3358,11 +3395,37 @@ describe('InspectionStandardScreen — 선택을 옮기면 폼 편집도 비운�
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+    /* 임시 저장하지 않은 편집이 있으면 먼저 묻는다(#227) — 버리고 옮긴다. */
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' })).getByRole(
+        'button',
+        { name: '저장하지 않고 이동' },
+      ),
+    );
     expect(await screen.findByText('검사 기준을 선택하세요')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
 
     expect(await findPlanField('기준명')).toHaveValue('합성 검사기준 A');
+  });
+});
+
+/* 임시 저장하지 않은 편집을 두고 옮기면 묻는다(사용자 지시 · #227). 「계속 편집」이면 그대로 남는다. */
+describe('InspectionStandardScreen — 임시 저장하지 않고 옮기면 묻는다', () => {
+  it('「계속 편집」을 누르면 옮기지 않고 고친 값이 남는다', async () => {
+    const { user } = renderSelectedPlan();
+
+    const name = await findPlanField('기준명');
+    await user.type(name, '-편집중');
+
+    await user.click(screen.getByRole('button', { name: 'SYN-PLAN-01' }));
+    const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경 사항' });
+    expect(within(dialog).getByText(/이동하면 변경 사항이 사라집니다/)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /닫기|close/i })).toBeNull();
+    await user.click(within(dialog).getByRole('button', { name: '계속 편집' }));
+
+    expect(screen.queryByRole('dialog', { name: '저장하지 않은 변경 사항' })).toBeNull();
+    expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A-편집중');
   });
 });
 

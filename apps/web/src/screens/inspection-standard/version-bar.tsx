@@ -83,7 +83,7 @@ export const VersionBar = ({
       {!isListOpen && hasLoadError && loadError}
 
       <div className="inspection-standard-version-bar-row">
-        <div className="field-cell wide-select">
+        <div className="field-cell">
           <FieldLabel htmlFor={selectId} label={t.versionBar.label} />
           <Select
             id={selectId}
