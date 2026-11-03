@@ -685,8 +685,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               ))}
             </ul>
             <p className="field-note">
-              ERP W/O와 계획별 순차 처리입니다. 일부 실패 시 완료된 계획은 유지되며, 실패 사유를 확인한
-              뒤 다시 처리하세요.
+              ERP W/O와 계획별 순차 처리입니다. 일부 실패 시 완료된 계획은 유지되며, 실패 사유를
+              확인한 뒤 다시 처리하세요.
             </p>
           </section>
         )}
@@ -815,40 +815,42 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             </>
           }
         >
-          <div className="field-cell">
-            <span className="field-label">계획을 추가할 ERP W/O</span>
-            <Select
-              aria-label="계획을 추가할 ERP W/O"
-              value={focus}
-              options={entries
-                .filter((entry) => getRemaining(entry) > 0)
-                .map((entry) => ({
-                  value: entry.order.productionOrderNo,
-                  label: `${entry.order.productionOrderNo} / ${entry.item}`,
-                }))}
-              onChange={(value) => {
-                setFocus(value);
-                const entry = controllers[value];
-                if (entry) setAddQuantity(String(Math.max(1, toSchedule(entry))));
-              }}
+          <div className="erp-wo-plan-add-form">
+            <div className="field-cell">
+              <span className="field-label">계획을 추가할 ERP W/O</span>
+              <Select
+                aria-label="계획을 추가할 ERP W/O"
+                value={focus}
+                options={entries
+                  .filter((entry) => getRemaining(entry) > 0)
+                  .map((entry) => ({
+                    value: entry.order.productionOrderNo,
+                    label: `${entry.order.productionOrderNo} / ${entry.item}`,
+                  }))}
+                onChange={(value) => {
+                  setFocus(value);
+                  const entry = controllers[value];
+                  if (entry) setAddQuantity(String(Math.max(1, toSchedule(entry))));
+                }}
+              />
+            </div>
+            <p className="field-note">
+              이번 계획 {targetOf(target)}, 편성 {draftOf(target)}, 추가 편성 가능{' '}
+              {getRemaining(target)} {target.unit}
+            </p>
+            <TextField
+              label="추가할 계획 수량"
+              inputMode="numeric"
+              value={addQuantity}
+              onChange={(event) => setAddQuantity(event.target.value)}
             />
+            <p className="field-note" id={`${remainingId}-add`}>
+              추가 수량은 편성 가능한 수량 이내에서 단위 소수 자릿수에 맞게 입력하세요.
+            </p>
+            <p className="field-note">
+              추가한 계획이 오른쪽 편집 영역에서 선택됩니다. 날짜와 라인을 지정하세요.
+            </p>
           </div>
-          <p className="field-note">
-            이번 계획 {targetOf(target)}, 편성 {draftOf(target)}, 추가 편성 가능{' '}
-            {getRemaining(target)} {target.unit}
-          </p>
-          <TextField
-            label="추가할 계획 수량"
-            inputMode="numeric"
-            value={addQuantity}
-            onChange={(event) => setAddQuantity(event.target.value)}
-          />
-          <p className="field-note" id={`${remainingId}-add`}>
-            추가 수량은 편성 가능한 수량 이내에서 단위 소수 자릿수에 맞게 입력하세요.
-          </p>
-          <p className="field-note">
-            추가한 계획이 오른쪽 편집 영역에서 선택됩니다. 날짜와 라인을 지정하세요.
-          </p>
         </Dialog>
       )}
       {confirm && (
@@ -874,7 +876,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             작업지시를 생성합니다.
           </p>
           <p>
-            확정 후 계획은 수정할 수 없습니다. ERP W/O와 계획별로 처리하므로 일부만 완료될 수 있습니다.
+            확정 후 계획은 수정할 수 없습니다. ERP W/O와 계획별로 처리하므로 일부만 완료될 수
+            있습니다.
           </p>
         </Dialog>
       )}

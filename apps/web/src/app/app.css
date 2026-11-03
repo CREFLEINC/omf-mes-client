@@ -32728,3 +32728,11 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 .erp-wo-revision-base { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; font: var(--type-body-sm); }
 .erp-wo-revision-base dt { color: var(--on-surface-variant); }
 .erp-wo-revision-base dd { margin: 0; }
+
+.erp-wo-plan-add-form { display: grid; gap: var(--space-3); min-width: 0; width: 100%; max-width: 100%; }
+.erp-wo-plan-add-form > *, .erp-wo-plan-add-form .field-cell { min-width: 0; max-width: 100%; }
+.erp-wo-plan-add-form [role='combobox'] { width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: var(--control-height-md); padding-block: var(--space-2); text-align: left; }
+.erp-wo-plan-add-form [role='combobox'] > span:not([aria-hidden='true']) { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='listbox'] { max-width: calc(100vw - var(--space-6)); }
+body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] { height: auto; padding-block: var(--space-2); }
+body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
