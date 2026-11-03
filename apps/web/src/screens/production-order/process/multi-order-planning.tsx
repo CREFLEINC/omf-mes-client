@@ -554,35 +554,37 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                     : ' / 오더별 수량은 오더 그리드에서 확인하세요.'}
                 </p>
               </div>
-              <DistributionControls
-                orders={entries.map((entry) => ({
-                  id: entry.order.productionOrderNo,
-                  label: `${entry.order.productionOrderNo} / ${entry.item}`,
-                  unit: entry.unit,
-                  decimalScale: entry.decimalScale,
-                  pending: toSchedule(entry),
-                  lines: entry.lines,
-                }))}
-                existing={entries.flatMap((entry) =>
-                  entry.editor.rows.map((row) => ({
-                    ...row.draft,
-                    owner: entry.order.productionOrderNo,
-                  })),
-                )}
-                disabled={busy || !allReady || !validTargets}
-                onDirtyChange={setDistributionDirty}
-                onApply={(drafts) =>
-                  entries.forEach((entry) =>
-                    entry.editor.addMany(
-                      drafts
-                        .filter((row) => row.owner === entry.order.productionOrderNo)
-                        .map((row) => ({ ...entry.defaults, ...row })),
-                    ),
-                  )
-                }
-              />
             </div>
             <PlanStep
+              planningTools={
+                <DistributionControls
+                  orders={entries.map((entry) => ({
+                    id: entry.order.productionOrderNo,
+                    label: `${entry.order.productionOrderNo} / ${entry.item}`,
+                    unit: entry.unit,
+                    decimalScale: entry.decimalScale,
+                    pending: toSchedule(entry),
+                    lines: entry.lines,
+                  }))}
+                  existing={entries.flatMap((entry) =>
+                    entry.editor.rows.map((row) => ({
+                      ...row.draft,
+                      owner: entry.order.productionOrderNo,
+                    })),
+                  )}
+                  disabled={busy || !allReady || !validTargets}
+                  onDirtyChange={setDistributionDirty}
+                  onApply={(drafts) =>
+                    entries.forEach((entry) =>
+                      entry.editor.addMany(
+                        drafts
+                          .filter((row) => row.owner === entry.order.productionOrderNo)
+                          .map((row) => ({ ...entry.defaults, ...row })),
+                      ),
+                    )
+                  }
+                />
+              }
               rows={combined}
               viewMode="week"
               orderQty={0}

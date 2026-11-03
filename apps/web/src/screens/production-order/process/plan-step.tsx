@@ -8,7 +8,7 @@ import {
   type Column,
 } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { plantToday } from '../../../patterns/plant-time';
 import { ReferenceField } from '../../../patterns/reference-picker';
@@ -33,6 +33,7 @@ export interface PlanLine {
   name: string;
 }
 export interface PlanStepProps {
+  planningTools?: ReactNode;
   rows: ProductionPlanEditorStateRow[];
   orderQty: number;
   confirmedQty?: number | null;
@@ -79,6 +80,7 @@ export const PlanStep = ({
   onAdd,
   addDisabled = false,
   onAppend,
+  planningTools,
   distributionOrderLabel,
   distributionDecimalScale,
   onDistributionDirtyChange,
@@ -213,6 +215,12 @@ export const PlanStep = ({
             ]}
           />
         )}
+      </div>
+      <section className="erp-wo-plan-create" aria-label="계획 편성 도구">
+        <div className="erp-wo-plan-create-label">
+          <strong>계획 편성</strong>
+          <span className="field-note">직접 추가하거나 조건에 따라 자동 분배하세요.</span>
+        </div>
         <Button
           variant="outlined"
           disabled={disabled || addDisabled}
@@ -224,25 +232,26 @@ export const PlanStep = ({
         >
           {t.add}
         </Button>
-      </div>
-      {onAppend && (
-        <DistributionControls
-          orders={[
-            {
-              id: 'single',
-              label: distributionOrderLabel ?? '현재 생산오더',
-              unit: uomLabel,
-              decimalScale: distributionDecimalScale,
-              pending: Math.max(0, remaining ?? orderQty - total),
-              lines,
-            },
-          ]}
-          existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
-          disabled={disabled}
-          onDirtyChange={onDistributionDirtyChange}
-          onApply={(drafts) => onAppend(drafts)}
-        />
-      )}
+        {planningTools ??
+          (onAppend && (
+            <DistributionControls
+              orders={[
+                {
+                  id: 'single',
+                  label: distributionOrderLabel ?? '현재 생산오더',
+                  unit: uomLabel,
+                  decimalScale: distributionDecimalScale,
+                  pending: Math.max(0, remaining ?? orderQty - total),
+                  lines,
+                },
+              ]}
+              existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
+              disabled={disabled}
+              onDirtyChange={onDistributionDirtyChange}
+              onApply={(drafts) => onAppend(drafts)}
+            />
+          ))}
+      </section>
       {!hideTotals && (
         <dl className="erp-wo-plan-totals">
           {[

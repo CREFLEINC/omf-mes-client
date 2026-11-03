@@ -32709,3 +32709,9 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 .process-page:has(.erp-wo-summary) .process-past-pairs { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,10rem),1fr)); gap: var(--space-2) var(--space-4); }
 .process-page:has(.erp-wo-summary) .process-past-pair { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
 .process-page:has(.erp-wo-summary) .process-past-pair > dd { overflow-wrap: anywhere; font-weight: 500; }
+
+.erp-wo-plan-create { display: grid; grid-template-columns: auto auto minmax(0,1fr); align-items: center; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container-low); }
+.erp-wo-plan-create-label { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.erp-wo-plan-create > .erp-wo-distribution { display: contents; }
+.erp-wo-plan-create > .erp-wo-distribution > button { justify-self: start; }
+.erp-wo-plan-create .erp-wo-distribution-settings { grid-column: 1 / -1; }
