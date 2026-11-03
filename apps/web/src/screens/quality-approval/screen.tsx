@@ -79,6 +79,7 @@ import {
   type ApprovalRequest,
   type ApprovalRequestDetail,
 } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 const EMPTY_ITEMS: ApprovalRequest[] = [];
 type DecisionAction = 'approve' | 'reject';
@@ -874,6 +875,7 @@ export const QualityApprovalScreen = ({
           {selectedId === null ? (
             <EmptyState
               size="sm"
+              icon={<PaneEmptyIcon name="layers" />}
               title={t.detail.noSelectionTitle}
               description={t.detail.noSelectionDescription}
             />

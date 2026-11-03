@@ -14,6 +14,7 @@ import {
   SuspiciousMaterialHoldInputPane,
 } from './hold-input-pane';
 import { AffectedProductionLotsSection, MaterialDefectPane } from './material-defect-pane';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type Body = components['schemas']['LotHoldCreate'];
 const t = messages.suspiciousMaterialHold;
@@ -71,7 +72,8 @@ export const SuspiciousMaterialHoldFlow = ({
              * 고른 건수는 목록 위가 아니라 여기 한 곳에만 둔다.
              */}
             <div className="suspicious-material-hold-card-head">
-              <h2 className="pane-title">{t.card.title}</h2>
+              {/* 고르기 전에는 제목 없이 안내만 — 고르면 제목과 입력이 선다(omf-all-around#228). */}
+              {selection.length > 0 && <h2 className="pane-title">{t.card.title}</h2>}
               {selection.length > 0 && (
                 <Chip size="sm" role="status">
                   {messages.suspiciousMaterialHold.candidate.values.selected(selection.length)}
@@ -96,8 +98,9 @@ export const SuspiciousMaterialHoldFlow = ({
             {selection.length === 0 ? (
               <EmptyState
                 size="sm"
-                icon={<Icon name="arrow_selector_tool" size={24} />}
+                icon={<PaneEmptyIcon name="layers" />}
                 title={messages.lotStatusHistory.detail.pick}
+                description={messages.lotStatusHistory.detail.pickHint}
               />
             ) : (
               <>

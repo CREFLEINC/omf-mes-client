@@ -14,6 +14,7 @@ import type { HistoryFilters } from './history-filters';
 import type { DispositionLookup } from './lookups';
 import type { PageView } from './pagination';
 import type { HistoryRow } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface HistoryFilterBarProps {
   applied: HistoryFilters;
@@ -186,6 +187,7 @@ export const HistoryList = ({
     <EmptyState
       size="sm"
       live
+      icon={<PaneEmptyIcon name="assignment" />}
       title={t.empty.historyTitle}
       description={t.empty.historyDescription}
     />

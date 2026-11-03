@@ -88,6 +88,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   detail: {
     select: 'Hãy chọn mục không phù hợp cần đánh giá trong danh sách.',
     selectHistory: 'Hãy chọn lịch sử xử lý cần xem trong danh sách.',
+    selectHint: 'Thông tin chi tiết của mục không phù hợp đã chọn sẽ hiển thị.',
     loading: 'Đang tải chi tiết không phù hợp',
     notFound: 'Không tìm thấy mục không phù hợp',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn mục không phù hợp khác.',

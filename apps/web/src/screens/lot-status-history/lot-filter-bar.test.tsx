@@ -110,7 +110,7 @@ const AppliedProbe = ({ initial }: { initial: LotFilters }) => {
 
 /** 창고는 칸에서 바로 검색해 고른다(#226) — 창(팝업)을 거치지 않는다. */
 const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
-  await user.click(screen.getByLabelText('창고 선택'));
+  await user.click(screen.getByLabelText('창고 검색'));
   await screen.findByRole('searchbox', { name: messages.common.selectSearch });
   await user.keyboard(code);
   await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `) }));
@@ -171,7 +171,7 @@ describe('LOT 현재 조회 조건', () => {
     );
     expect(screen.queryByLabelText('현재 상태')).not.toBeInTheDocument();
     await pickWarehouse(user, 'SAMPLE-WH-01');
-    await choose(user, '위치 선택', 'SAMPLE-LOC-01 · 합성 위치');
+    await choose(user, '위치 검색', 'SAMPLE-LOC-01 · 합성 위치');
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
     expect(onSearch).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: '조회' }));
@@ -198,7 +198,7 @@ describe('LOT 현재 조회 조건', () => {
       'aria-expanded',
       'false',
     );
-    expect(screen.getByLabelText('창고 선택')).not.toBeVisible();
+    expect(screen.getByLabelText('창고 검색')).not.toBeVisible();
     unmount();
 
     renderBar({ appliedFilters: filters({ warehouse: '101' }) });
@@ -206,7 +206,7 @@ describe('LOT 현재 조회 조건', () => {
       'aria-expanded',
       'true',
     );
-    expect(screen.getByLabelText('창고 선택')).toBeVisible();
+    expect(screen.getByLabelText('창고 검색')).toBeVisible();
   });
 
   /* 펼친 목록은 칸과 같은 폭이다(사용자 2026-10-30) — 긴 「코드 · 이름」이 칸 밖으로 넓어지지 않는다. */

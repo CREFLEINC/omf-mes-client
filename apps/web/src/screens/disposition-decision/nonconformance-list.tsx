@@ -13,6 +13,7 @@ import type { DispositionLookup } from './lookups';
 import type { PageView } from './pagination';
 import { SeverityBadge } from './severity-badge';
 import { dispositionProgressLabel, type NonconformanceRow } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
@@ -138,7 +139,13 @@ export const NonconformanceList = ({
       }
     />
   ) : (
-    <EmptyState size="sm" live title={t.empty.title} description={t.empty.description} />
+    <EmptyState
+      size="sm"
+      live
+      icon={<PaneEmptyIcon name="assignment" />}
+      title={t.empty.title}
+      description={t.empty.description}
+    />
   );
 
   return (

@@ -192,7 +192,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
     <EmptyState
       size="sm"
       live
-      icon={<Icon name="search_off" size={40} />}
+      icon={
+        <span className="inspection-standard-empty-icon">
+          <Icon name="assignment" size={20} />
+        </span>
+      }
       title={oa.queue.empty}
       description={oa.queue.emptyHint}
     />
@@ -318,7 +322,8 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
             <PageNav
               meta={queue.data.page}
               sizes={LIST_PAGE_SIZES}
-              controlSize="md"
+              /* 쪽 이동 단추는 크게, 건수 선택은 작게 — 다른 품질 화면과 같다(omf-all-around#228). */
+              buttonSize="md"
               onChangePage={goToPage}
               onChangeSize={(next) => setSearchParams(toPageSizeParams(searchParams, next))}
             />
@@ -341,6 +346,11 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           {selectedId === null ? (
             <EmptyState
               size="sm"
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="layers" size={20} />
+                </span>
+              }
               title={hubText.pickRequest}
               description={hubText.pickRequestHint}
             />

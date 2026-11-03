@@ -38,7 +38,6 @@ export const HistoryFilterBar = ({
   onSearch,
   onReset,
 }: HistoryFilterBarProps) => {
-  const periodLabelId = useId();
   const detailId = useId();
   const [isDetailOpen, setIsDetailOpen] = useState(appliedFilters.actor !== '');
   const actorId = useId();
@@ -67,28 +66,36 @@ export const HistoryFilterBar = ({
          * 기간 — 「기간」 한 이름 아래 [시작일] ~ [종료일] 두 달력 칸(출하 일정 조회와 같은 디자인 시스템 짜임 ·
          * 사용자 2026-11-02). 처음에는 둘 다 오늘. 종료가 시작보다 앞서면 종료일 칸에 붉은 테두리와 아래 알림.
          */}
-        <div className="field-cell" role="group" aria-labelledby={periodLabelId}>
-          <span className="field-label" id={periodLabelId}>
-            {t.historyFilter.fields.period}
-          </span>
+        <div className="field-cell" role="group" aria-label={t.historyFilter.fields.period}>
+          {/* 「기간」 한 이름 대신 칸마다 「조회 시작일」 · 「조회 종료일」(omf-all-around#228). */}
           <div className="lot-status-date-range-row">
-            <DatePicker
-              className="lot-status-date-field"
-              aria-label={t.historyFilter.fields.from}
-              placeholder={t.historyFilter.fields.from}
-              invalid={draft.from === ''}
-              value={draft.from === '' ? null : draft.from}
-              onChange={(from) => setDraft((current) => ({ ...current, from }))}
-            />
-            <DatePicker
-              className="lot-status-date-field"
-              aria-label={t.historyFilter.fields.to}
-              placeholder={t.historyFilter.fields.to}
-              invalid={draft.to === '' || reason !== null}
-              value={draft.to === '' ? null : draft.to}
-              onChange={(to) => setDraft((current) => ({ ...current, to }))}
-              aria-describedby={reason === null ? undefined : reasonId}
-            />
+            <div className="field-cell lot-status-date-cell">
+              <span className="field-label" aria-hidden="true">
+                {t.historyFilter.fields.fromLabel}
+              </span>
+              <DatePicker
+                className="lot-status-date-field"
+                aria-label={t.historyFilter.fields.fromLabel}
+                placeholder={t.historyFilter.fields.from}
+                invalid={draft.from === ''}
+                value={draft.from === '' ? null : draft.from}
+                onChange={(from) => setDraft((current) => ({ ...current, from }))}
+              />
+            </div>
+            <div className="field-cell lot-status-date-cell">
+              <span className="field-label" aria-hidden="true">
+                {t.historyFilter.fields.toLabel}
+              </span>
+              <DatePicker
+                className="lot-status-date-field"
+                aria-label={t.historyFilter.fields.toLabel}
+                placeholder={t.historyFilter.fields.to}
+                invalid={draft.to === '' || reason !== null}
+                value={draft.to === '' ? null : draft.to}
+                onChange={(to) => setDraft((current) => ({ ...current, to }))}
+                aria-describedby={reason === null ? undefined : reasonId}
+              />
+            </div>
           </div>
           {reason !== null && (
             <span id={reasonId} className="field-error" role="alert">

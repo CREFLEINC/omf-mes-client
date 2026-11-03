@@ -30,6 +30,7 @@ import { PageNav } from '../../patterns/page-nav';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
@@ -366,10 +367,14 @@ export const CurrentResults = ({
                 <EmptyState
                   size="sm"
                   live
+                  icon={<PaneEmptyIcon name="assignment" />}
                   title={
                     meta !== undefined && meta.total > 0
                       ? t.current.list.emptyPage
                       : t.current.list.empty
+                  }
+                  description={
+                    meta !== undefined && meta.total > 0 ? undefined : t.current.list.emptyHint
                   }
                   action={
                     isBeyondLast ? (

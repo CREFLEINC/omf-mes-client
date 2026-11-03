@@ -1,4 +1,4 @@
-import { EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
+import { EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -6,6 +6,7 @@ import { DetailPane } from './detail-pane';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
 import type { NonconformanceDetailView } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface DetailSlotProps {
   /** 고른 부적합이 없으면 `null`. */
@@ -58,8 +59,9 @@ export const DetailSlot = ({
     return (
       <EmptyState
         size="sm"
-        icon={<Icon name="ads_click" size={32} />}
+        icon={<PaneEmptyIcon name="layers" />}
         title={emptyTitle ?? t.detail.select}
+        description={t.detail.selectHint}
       />
     );
 

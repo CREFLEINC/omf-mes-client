@@ -21,7 +21,8 @@ export const inspectionResultInsights = {
     from: '시작일 선택',
     to: '종료일 선택',
     inspectionType: '검사 유형 선택',
-    item: '품목 선택',
+    /* 검색해서 고르는 칸은 「검색」(omf-all-around#228). */
+    item: '품목 검색',
     itemPlaceholder: '품목을 검색하세요',
     itemClear: '품목 지우기',
     itemPick: '선택',

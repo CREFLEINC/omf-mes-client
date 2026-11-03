@@ -33,8 +33,6 @@ export interface CodeListPaneProps {
   onSelect: (id: number) => void;
   /** 공정 번호 → 「공정코드 · 공정명」. 공정이 없으면 null */
   processLabelOf: (processId: number | null | undefined) => string | null;
-  /** 등록된 코드가 없을 때 빈 안내의 단추 */
-  onAddCategory: () => void;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 코드가 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -134,7 +132,6 @@ export const CodeListPane = ({
   selectedId,
   onSelect,
   processLabelOf,
-  onAddCategory,
   loadError,
 }: CodeListPaneProps) => {
   const orEmpty = (value: string | null | undefined): string =>
@@ -328,7 +325,6 @@ export const CodeListPane = ({
       icon={<EmptyIcon name="list_alt" />}
       title={t.empty.codeNoneTitle}
       description={t.empty.codeNoneDescription}
-      action={<Button onClick={onAddCategory}>{t.actions.addCategory}</Button>}
     />
   );
 

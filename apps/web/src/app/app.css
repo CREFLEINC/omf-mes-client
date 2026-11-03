@@ -1668,6 +1668,190 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/*
+ * 품질 화면 빈 상태 배치 통일(omf-all-around#228) — 불량·원인코드 탭을 기준으로 맞춘다.
+ * ① 쪽 이동 줄은 목록이 비어도 목록 칸 바닥에 둔다(표가 있을 때와 같은 자리) — 쪽 이동 바로 앞 칸(표·빈 안내)이 남는 높이를 채운다.
+ *    줄지 않게(`flex-shrink: 0`) 두어, 줄이 많을 때는 종전처럼 칸이 구른다.
+ * ② 오른쪽 상세 칸이 카드 하나뿐이면(선택 전 안내 등) 목록 칸과 같은 높이로 채운다. 카드가 여럿이면 종전처럼 위에서부터 쌓는다.
+ * 상하 배치·좁은 화면에서 내용 높이인 칸은 그대로다.
+ */
+
+/* ① 불량·원인코드 · 판정 유형 — 빈 안내를 표 밖에 낸다. */
+.defect-cause-list-pane > .defect-cause-list-empty {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ① LOT 상태 이력 · LOT 상태 변경 · 의심자재 보류 목록 — 격자 칸을 세로 흐름으로 바꿔 쪽 이동을 바닥에 둔다. */
+.lot-status-split > .lot-status-pane:has(> .page-nav) {
+  display: flex;
+  flex-direction: column;
+}
+
+.lot-status-split > .lot-status-pane:has(> .page-nav) > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.lot-status-split > .lot-status-pane:has(> .page-nav) > :has(+ .page-nav) {
+  flex: 1 0 auto;
+}
+
+/* ① 품질 승인 처리 · IQC 생략 · 부적합 처분 — 목록 묶음이 칸을 채우고, 그 안에서 쪽 이동을 바닥에 둔다. */
+.quality-approval-list-pane > .quality-approval-list,
+.disposition-list-pane > .disposition-list {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+.quality-approval-list-pane > .quality-approval-list > *,
+.disposition-list-pane > .disposition-list > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.quality-approval-list > :has(+ .quality-approval-page-nav),
+.disposition-list > :has(+ .page-nav) {
+  flex: 1 0 auto;
+}
+
+/* ① 검사 수준 설정 — 오른쪽 변경 이력 표도 칸을 채워 쪽 이동을 바닥에 둔다. */
+.inspection-split > .quality-standard-detail > .inspection-standard-table-box {
+  flex: 1 0 auto;
+}
+
+/* ② 검사 기준 · 불량·원인코드 · 판정 유형 */
+.inspection-standard-split > .inspection-standard-detail:has(> :only-child) {
+  align-content: stretch;
+}
+
+/* ② 검사표 기준(OA) — 오른쪽 칸이 격자가 아니라 하나뿐인 카드를 칸 높이까지 늘린다. */
+.inspection-standard-split > .quality-standard-detail > :only-child {
+  box-sizing: border-box;
+  min-height: 100%;
+  align-content: start;
+}
+
+/* ② LOT 상태 변경 · 의심자재 보류 */
+.lot-status-split > .lot-status-transition-detail:has(> :only-child),
+.lot-status-split > .suspicious-material-hold-detail:has(> :only-child) {
+  align-content: stretch;
+}
+
+/* 칸이 늘어나도 카드 안 내용은 위에서부터 쌓는다 — 줄 사이가 벌어지지 않게. */
+.inspection-standard-split > .inspection-standard-detail > .inspection-standard-detail-card,
+.lot-status-split > .lot-status-transition-detail > .lot-status-pane,
+.lot-status-split > .suspicious-material-hold-detail > .suspicious-material-hold-card {
+  align-content: start;
+}
+
+/* ④ 0건이면 쪽 이동 줄(총 0건 · 건수 · 처음/이전/다음/마지막)을 감춘다 — 데이터가 있을 때만 보인다(사용자 지시 · omf-all-around#228). */
+:is(
+    .iqc-inspection-queue-pane,
+    .pqc-web-list,
+    .oqc-inspection-queue-pane,
+    .inspection-standard-list-pane,
+    .inspection-level-list-pane,
+    .inspection-sheet-template-list-pane,
+    .inspection-sheet-list-pane,
+    .lot-status-pane,
+    .disposition-list,
+    .inspection-results-pane
+  )
+  > .page-nav[data-empty] {
+  display: none;
+}
+
+/*
+ * ③ 빈 목록은 표 없이 안내만 — 불량·원인코드 탭과 같다(사용자 지시 · omf-all-around#228). 표 안에 안내를 두면 머리줄·칸 테두리가
+ * 남고, 표가 칸보다 넓으면 안내가 칸 밖으로 밀려 잘렸다. 비어 있을 때만 표 모양(머리줄·테두리·열 폭)을 걷고, 줄이 생기면 종전과 같다.
+ */
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  ):has(> div > table td[colspan] > [role='status']) {
+  overflow: visible;
+  border-color: transparent;
+  background: none;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div:has(> table td[colspan] > [role='status']) {
+  overflow: visible;
+  border-color: transparent;
+  background: none;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table:has(td[colspan] > [role='status']) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: none;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table:has(td[colspan] > [role='status'])
+  :is(thead, colgroup) {
+  display: none;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table:has(td[colspan] > [role='status'])
+  :is(tbody, tr, td) {
+  display: block;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* 첫 칸 안쪽 여백 규칙(검사 목록 표 등)이 빈 안내를 옆으로 밀지 않게 — 화면마다 같은 자리에 선다. */
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table:has(td[colspan] > [role='status'])
+  td[colspan]:nth-child(n):nth-child(n) {
+  padding: 0;
+}
+
 .pane-stack {
   display: grid;
   gap: var(--space-5);
@@ -4974,11 +5158,11 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/* 안쪽 여백·간격은 LOT 상태 이력 상자(.lot-status-pane · 기본 카드)와 같게 둔다(omf-all-around#228). */
 .lot-status-transition-pane {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -4996,15 +5180,6 @@ h2:has(> .inspection-standard-dialog-title) {
  */
 .filter-bar.lot-status-transition-filter {
   margin-bottom: 0;
-}
-
-/*
- * 자재 — 선택값이 「코드 · 품목명」이라 길다. 위 줄 LOT 스캔 칸과 같은 폭으로 맞춘다(사용자 2026-11-02).
- * 넘치는 이름은 트리거가 말줄임으로 자른다.
- */
-.field-cell.lot-status-transition-item-filter {
-  width: clamp(16rem, 22vw, 21rem);
-  max-width: none;
 }
 
 /*
@@ -5087,11 +5262,10 @@ h2:has(> .inspection-standard-dialog-title) {
   min-width: 0;
 }
 
+/* 제목 글씨는 LOT 상태 이력의 「LOT 상세」와 같은 크기(omf-all-around#228). */
 .lot-status-transition-card-head > .pane-title {
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-title-lg);
-  letter-spacing: var(--type-title-lg-tracking);
 }
 
 /* LOT 상자와 변경할 상태 — 좌우 배치(좁은 카드)는 위아래, 상하 배치(넓은 카드)는 나란히(사용자 2026-11-02). */
@@ -5303,6 +5477,11 @@ h2:has(> .inspection-standard-dialog-title) {
 .suspicious-material-hold-card-head {
   justify-content: flex-start;
   flex-wrap: wrap;
+}
+
+/* 고르기 전에는 제목 줄이 비어 자리를 차지하지 않는다(omf-all-around#228). */
+.suspicious-material-hold-card-head:empty {
+  display: none;
 }
 
 .suspicious-material-hold-card-notes {
@@ -31610,4 +31789,274 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .measurement-section-tools > :last-child {
   width: 10rem;
+}
+
+/*
+ * 검사 조회·판정 조회 조건(omf-all-around#228) — 수입(IQC) · 공정(PQC) · 출하(OQC).
+ * ① 칸 폭은 공정 · 출하도 수입검사와 같게 — 셀렉터는 글자 폭, 입력란은 기본 폭(아래 맨 끝 규칙).
+ * ② [조회] [초기화] 는 첫 줄 「상세 조건 펼치기」 바로 왼쪽에 순서대로 — 접혀 있어도 보인다.
+ *    단추는 상세 조건 폼 안의 그 단추 그대로라 누르면 하는 일은 같다. 자리만 옮긴다.
+ */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .parts-iqc-scan-row,
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .inspection-detail-filters,
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .inspection-detail-filters > .filter-bar {
+  display: contents;
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) > .inspection-detail-filters > .filter-bar > .filter-actions {
+  display: flex;
+  flex: 0 0 auto;
+  order: 1;
+  gap: var(--space-2);
+  margin: 0 0 0 auto;
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle {
+  order: 2;
+  margin-left: 0;
+  /* 조회 · 초기화와 같은 줄 높이에 세로 가운데로(사용자 시안 #228). */
+  align-self: flex-end;
+  min-height: var(--control-height-md);
+}
+
+/* 펼치기 단추는 바탕 없이 글자만(사용자 시안 #228). */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle button {
+  background: none;
+}
+
+/* 펼치기 단추는 세 화면 같은 작은 크기 · 여백 — IQC 의 「단추 높이 한 값」 · 스캔 줄 단추 여백 규칙에 끌리지 않게. */
+.iqc-inspection-search .inspection-detail-toggle button {
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding-inline: var(--space-3);
+}
+
+/* LOT 스캔 칸 폭 — 세 화면 같은 17.5rem(부품 IQC 스캔 줄과 같은 값). */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) form.form-actions {
+  grid-template-columns: minmax(0, 17.5rem) auto;
+}
+
+/* LOT 스캔 [검색] 단추 폭 — 세 화면 같게. */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) form.form-actions > button {
+  min-width: 3.75rem;
+}
+
+/* 펼친 조건 칸은 다음 줄 — 줄바꿈 자리. 빈 줄이 줄 간격을 두 번 먹지 않게 한 번 당긴다. */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)::after {
+  content: '';
+  flex: 1 0 100%;
+  order: 3;
+  height: 0;
+  margin-top: calc(-1 * var(--space-3));
+}
+
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  > .inspection-detail-filters
+  > .filter-bar
+  > :not(.filter-actions) {
+  order: 4;
+  min-width: 0;
+}
+
+/* 접혀 있으면 조건 칸과 줄바꿈 자리를 감춘다 — 단추는 남는다. */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  > .inspection-detail-filters[hidden]
+  > .filter-bar
+  > :not(.filter-actions),
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search):has(> .inspection-detail-filters[hidden])::after {
+  display: none;
+}
+
+/* 칸 폭 — 공정 · 출하는 수입검사처럼 제 글자 폭(고정 14rem 을 푼다). 수입검사는 종전 그대로. */
+:is(.pqc-web-search, .oqc-inspection-search)
+  > .inspection-detail-filters
+  > .filter-bar
+  > :not(.filter-actions) {
+  flex: 0 1 auto;
+}
+
+/*
+ * 품질 기준 정보(검사 기준 · 검사표 기준 · 검사 수준 설정) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 셀렉터 · 입력란은 제 글자 폭, [조회] [초기화] 는 첫 줄 오른쪽 끝(단추 사이 간격도 같게). 추가 · 올리기 단추는 그 뒤 그대로.
+ * 품질 코드 관리(불량코드 · 원인코드 · 불량코드 공정 연결 · 판정 유형 — .defect-cause-search)도 같다.
+ */
+:is(
+    .inspection-standard-search,
+    .inspection-sheet-template-search,
+    .inspection-level-search
+  )
+  > .filter-bar:first-child
+  > :not(.filter-actions):nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+:is(
+    .inspection-standard-search,
+    .inspection-sheet-template-search,
+    .inspection-level-search
+  )
+  > .filter-bar
+  > .filter-actions {
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 칸 글자도 검사 조회·판정 조건 줄과 같은 한 단계 작은 본문 글자(#228). */
+.inspection-standard-search:not(.defect-cause-search),
+.inspection-sheet-template-search,
+.inspection-level-search {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+}
+
+/*
+ * 검사 실적·결과(검사 실적·결과 · 제품 검사표) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 상자 여백 16 · 칸 사이 12 · 칸 글자 14px, 칸은 제 글자 폭, [조회] [초기화] [상세 보기 펼치기] 는 첫 줄 오른쪽 끝.
+ */
+.pane.inspection-results-pane:has(> .inspection-results-filter) {
+  padding: var(--space-4);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search) > .inspection-results-filter {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  > .inspection-results-filter
+  > .inspection-results-filter-row {
+  gap: var(--space-3);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  > .inspection-results-filter
+  > .inspection-results-filter-row
+  > :not(.inspection-results-filter-actions):nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* 검사 실적·결과 LOT 스캔 칸 — 검사 조회·판정과 같은 17.5rem. */
+.inspection-results-pane .inspection-results-lot-scan > :first-child {
+  flex: 0 1 17.5rem;
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  > .inspection-results-filter
+  > .inspection-results-filter-row
+  > .inspection-results-filter-actions {
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 제품 검사표 「양식 선택」도 제 글자 폭(종전 10rem 고정). LOT 스캔 칸 폭(23rem · 안내 글이 다 보이는 폭)은 그대로. */
+.inspection-sheet-search .inspection-results-filter-row > .inspection-sheet-layout {
+  width: auto;
+}
+
+/* 펼친 상세 조건 줄도 칸은 제 글자 폭 · 칸 사이 12(검사 조회·판정과 같다). */
+:is(.inspection-results-pane, .inspection-sheet-search) .inspection-results-filter-detail {
+  gap: var(--space-3);
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search) .inspection-results-filter-detail > *:nth-child(n) {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/*
+ * 「상세 보기 펼치기」 · 「상세 조건 펼치기」는 바탕 없이 글자만 — 펼친 뒤(「접기」)에도 눌린 바탕을 깔지 않는다.
+ * 검사 실적·결과 · 제품 검사표 · 검사 조회·판정(IQC · PQC · OQC) 같게.
+ */
+:is(.inspection-results-pane, .inspection-sheet-search)
+  .inspection-results-filter-actions
+  > button[aria-expanded],
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  .inspection-detail-toggle
+  button {
+  background: none;
+}
+
+:is(.inspection-results-pane, .inspection-sheet-search)
+  .inspection-results-filter-actions
+  > button[aria-expanded='true']::before,
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search)
+  .inspection-detail-toggle
+  button[aria-expanded='true']::before {
+  opacity: 0;
+}
+
+/* 작업지시 입력칸은 안내 글이 다 보이는 종전 폭(14rem) 그대로. */
+.inspection-sheet-search .inspection-results-filter-detail > .inspection-sheet-work-order:nth-child(n) {
+  flex: 0 0 14rem;
+  width: 14rem;
+}
+
+/*
+ * LOT 상태(LOT 현황 · LOT 상태 이력 · LOT 상태 변경 · 의심자재 보류) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 칸 글자 14px · 칸은 제 글자 폭(LOT 스캔은 안내 글이 보이는 폭) · [조회] [초기화] [상세 검색 펼치기] 첫 줄 오른쪽 끝 · 펼치기는 글자 단추.
+ */
+.lot-status-search {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+}
+
+.lot-status-search .filter-bar > :not(.filter-actions):nth-child(n),
+.lot-status-search .filter-bar > :not(.filter-actions):nth-child(n) > .lot-status-date-field {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* LOT 스캔 칸 — 앞에 돋보기가 붙어 검사 조회·판정(17.5rem)보다 그만큼 넓혀야 안내 글이 다 보인다. */
+.lot-status-search .filter-bar > .lot-status-filter-lot-no:nth-child(n) {
+  flex: 0 1 19rem;
+  width: 19rem;
+}
+
+.lot-status-search .filter-bar > .lot-status-filter-actions {
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.lot-status-search .lot-status-filter-actions > button[aria-expanded] {
+  background: none;
+}
+
+.lot-status-search .lot-status-filter-actions > button[aria-expanded='true']::before {
+  opacity: 0;
+}
+
+/*
+ * 부적합 처분 관리(처분 대기 · 처분 이력) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 칸은 제 글자 폭, [조회] [초기화] [상세 펼치기] 는 첫 줄 오른쪽 끝에 칸 아래 선과 맞춰, 단추 사이 8, 펼치기는 글자 단추.
+ */
+.pane.po-board-filter .filter-bar.disposition-filter > .field-cell:nth-child(n):nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.pane.po-board-filter .filter-bar.disposition-filter > .disposition-filter-actions {
+  align-self: flex-end;
+  margin-top: 0;
+}
+
+.pane.po-board-filter .disposition-filter-actions > .filter-actions {
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pane.po-board-filter .disposition-filter-actions button[aria-expanded] {
+  background: none;
+}
+
+.pane.po-board-filter .disposition-filter-actions button[aria-expanded='true']::before {
+  opacity: 0;
+}
+
+.pane.po-board-filter .filter-bar.disposition-filter > .field-cell > .field-cell.search-select-cell {
+  width: auto;
 }

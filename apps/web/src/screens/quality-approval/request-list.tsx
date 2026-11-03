@@ -8,6 +8,7 @@ import { approvalTypeLabelOf, statusBadgeOf } from './code-options';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
 import type { RequestRow } from './types';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface RequestListProps {
   rows: RequestRow[];
@@ -135,7 +136,13 @@ export const RequestList = ({
       }
     />
   ) : (
-    <EmptyState size="sm" live title={t.empty.title} description={t.empty.description} />
+    <EmptyState
+      size="sm"
+      live
+      icon={<PaneEmptyIcon name="assignment" />}
+      title={t.empty.title}
+      description={t.empty.description}
+    />
   );
 
   return (
@@ -162,7 +169,8 @@ export const RequestList = ({
           empty={empty}
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      {/* 첫 쪽부터 비었으면(0건) 쪽 이동을 감춘다 — 빈 목록은 안내만(omf-all-around#228). 넘친 쪽이면 돌아갈 수 있게 남긴다. */}
+      {(rows.length > 0 || page.canPrev) && <PageNav view={page} onChange={onChangePage} />}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useOaAccess } from './oa-access';
+import { usePageHub } from './page-hub';
 
 export interface OaOnlyGateProps {
   title: string;
@@ -17,18 +18,22 @@ export interface OaOnlyGateProps {
  */
 export const OaOnlyGate = ({ title, breadcrumbRoot, children }: OaOnlyGateProps) => {
   const access = useOaAccess();
+  const hub = usePageHub();
   if (access === 'oa' || access === 'unknown') return <>{children}</>;
   return (
     <>
-      <PageHeader
-        title={title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: breadcrumbRoot }, { label: title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
+      {/* 탭 막대가 섰으면 탭이 화면 이름을 말한다 — 다른 화면처럼 경로·제목을 세우지 않는다(omf-all-around#228). */}
+      {hub === null && (
+        <PageHeader
+          title={title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: breadcrumbRoot }, { label: title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
       {access === 'checking' ? (
         <p className="field-note">{messages.common.oaOnly.checking}</p>
       ) : (

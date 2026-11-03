@@ -1,6 +1,7 @@
 import {
   Breadcrumb,
   Button,
+  Checkbox,
   Dialog,
   EmptyState,
   Icon,
@@ -10,7 +11,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
@@ -45,6 +46,8 @@ import {
   type QueueFilters,
 } from './filters';
 import { PageNav } from '../../patterns/page-nav';
+import { DetailFiltersToggle } from '../../patterns/detail-filters';
+import { plantTodayRange } from '../parts-iqc-inspection/today';
 import { withDraft, withStatus } from '../oqc-inspection/filters';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import {
@@ -148,6 +151,9 @@ const hubText = messages.common.inspectionHub;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
 
+/** 「오늘 입고」 켜짐 — 부품 IQC 화면과 같은 주소 키(omf-all-around#228). */
+const TODAY_KEY = 'td';
+
 const IqcInspectionScreenBody = () => {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,8 +164,21 @@ const IqcInspectionScreenBody = () => {
   const page = readPage(searchParams);
   const pageSize = readPageSize(searchParams);
   const selectedId = readSelectedId(searchParams);
+  /*
+   * 조회 조건 줄은 부품 IQC 화면과 같게(omf-all-around#228) — 첫 줄 LOT 스캔 · [오늘 입고] · 대기·진행만 보기 ·
+   * 「상세 조건 펼치기」, 품목 · 공급사 · 의뢰번호는 접어 둔다. 주소에 그 조건이 걸려 있으면 펼친 채로 연다.
+   */
+  const hasDetailCondition =
+    filters.itemId !== null || filters.supplierId !== null || filters.keyword !== '';
+  const [detailOpen, setDetailOpen] = useState(hasDetailCondition);
+  const detailFiltersId = useId();
+  /* 오늘 입고 — 공장 하루로 요청 시각을 자른다(부품 IQC 와 같은 셈 · 서버 P-156). */
+  const todayOnly = searchParams.get(TODAY_KEY) === '1';
 
-  const queue = useInspectionQueue(toListQuery(filters, page, pageSize));
+  const queue = useInspectionQueue({
+    ...toListQuery(filters, page, pageSize),
+    ...(todayOnly ? plantTodayRange() : {}),
+  });
   const detail = useInspectionRequestDetail(selectedId);
   /* 검사자는 계정에 연결된 작업자다(omf-all-around#104) — 연결이 없으면 저장 전에 막는다. */
   const { session } = useSession();
@@ -499,6 +518,16 @@ const IqcInspectionScreenBody = () => {
     if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
     /* 고른 쪽 크기는 조회해도 그대로다(#197). */
     if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
+    if (todayOnly) params.set(TODAY_KEY, '1');
+    setSearchParams(params);
+  };
+
+  /* 「오늘 입고」를 켜고 끈다 — 다른 조건 · 고른 의뢰 · 쪽 크기는 그대로 두고 첫 쪽으로 간다. */
+  const toggleToday = (on: boolean): void => {
+    const params = toSearchParams(filters);
+    if (selectedId !== null) params.set(URL_KEYS.selected, String(selectedId));
+    if (pageSize !== PAGE_SIZE) params.set(URL_KEYS.size, String(pageSize));
+    if (on) params.set(TODAY_KEY, '1');
     setSearchParams(params);
   };
 
@@ -510,6 +539,7 @@ const IqcInspectionScreenBody = () => {
     const next = toSearchParams(withStatus(filters, statusCode));
     if (selectedId !== null) next.set(URL_KEYS.selected, String(selectedId));
     if (pageSize !== PAGE_SIZE) next.set(URL_KEYS.size, String(pageSize));
+    if (todayOnly) next.set(TODAY_KEY, '1');
     setSearchParams(next);
   };
 
@@ -614,7 +644,11 @@ const IqcInspectionScreenBody = () => {
     <EmptyState
       size="sm"
       live
-      icon={<Icon name="search_off" size={40} />}
+      icon={
+        <span className="inspection-standard-empty-icon">
+          <Icon name="assignment" size={20} />
+        </span>
+      }
       title={t.queue.empty}
       description={t.queue.emptyHint}
     />
@@ -1220,20 +1254,58 @@ const IqcInspectionScreenBody = () => {
        * 갈아 끼우지 않는다. 의뢰를 고르면(`?ir=`) 오른쪽에 상세가 서고, 검색 조건 · 쪽은 주소에 남는다.
        */}
       {/* 검색 묶음 — 입하 예정 조회처럼 표와 다른 카드에 둔다(#185). LOT 스캔과 조회 조건이 한 줄에 선다. */}
-      <section ref={aboveRef} className="pane iqc-inspection-panes iqc-inspection-search">
-        {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
-        <LotScan inspectionTypeCode="IQC" onFound={select} />
-        <QueueFilterBar
-          appliedFilters={filters}
-          /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
-          onSearch={(next) =>
-            applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
-          }
-          onTogglePendingOnly={(next) =>
-            applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
-          }
-          onReset={() => applyFilters(EMPTY_FILTERS)}
-        />
+      {/* 배치는 부품 IQC 검색 묶음과 같은 모양을 쓴다(omf-all-around#228). */}
+      <section
+        ref={aboveRef}
+        className="pane iqc-inspection-panes iqc-inspection-search parts-iqc-search"
+      >
+        <div className="parts-iqc-scan-row">
+          {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
+          <LotScan inspectionTypeCode="IQC" onFound={select} />
+          {/* 켜지면 채운 단추 — 걸려 있는지 한눈에 */}
+          <Button
+            variant={todayOnly ? 'filled' : 'outlined'}
+            aria-pressed={todayOnly}
+            aria-label={
+              todayOnly ? messages.partsIqcInspection.todayOn : messages.partsIqcInspection.todayOff
+            }
+            onClick={() => toggleToday(!todayOnly)}
+          >
+            {messages.partsIqcInspection.today}
+          </Button>
+          {/* 켜고 끄면 바로 조회한다(종전과 같다). */}
+          <div className="field-cell field-cell-unlabeled iqc-inspection-pending-only">
+            <Checkbox
+              checked={filters.pendingOnly}
+              onChange={(event) =>
+                applyFilters(withDraft(filters, { ...filters, pendingOnly: event.target.checked }))
+              }
+            >
+              {messages.common.inspectionHub.pendingOnly}
+            </Checkbox>
+          </div>
+          <DetailFiltersToggle
+            open={detailOpen}
+            onToggle={() => setDetailOpen((open) => !open)}
+            controlsId={detailFiltersId}
+            hasCondition={hasDetailCondition}
+          />
+        </div>
+        {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
+        <div id={detailFiltersId} className="inspection-detail-filters" hidden={!detailOpen}>
+          <QueueFilterBar
+            appliedFilters={filters}
+            showPendingOnly={false}
+            /* 상태는 탭 줄 칩이 맡는다 — 조회는 걸린 칩을 그대로 두고, 초기화는 함께 푼다. */
+            onSearch={(next) =>
+              applyFilters(withDraft(filters, { ...next, pendingOnly: filters.pendingOnly }))
+            }
+            onTogglePendingOnly={(next) =>
+              applyFilters(withDraft(filters, { ...filters, pendingOnly: next }))
+            }
+            onReset={() => applyFilters(EMPTY_FILTERS)}
+          />
+        </div>
       </section>
 
       <div
@@ -1299,6 +1371,11 @@ const IqcInspectionScreenBody = () => {
           {selectedId === null ? (
             <EmptyState
               size="sm"
+              icon={
+                <span className="inspection-standard-empty-icon">
+                  <Icon name="layers" size={20} />
+                </span>
+              }
               title={hubText.pickRequest}
               description={hubText.pickRequestHint}
             />

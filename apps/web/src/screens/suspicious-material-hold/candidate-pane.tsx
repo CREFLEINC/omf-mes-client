@@ -60,6 +60,7 @@ import {
   type SuspiciousMaterialFilters,
 } from './candidate-model';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type Lot = components['schemas']['LotQualityStatus'];
 const t = messages.suspiciousMaterialHold.candidate;
@@ -556,6 +557,8 @@ export const SuspiciousMaterialCandidatePane = ({
                 value={draft.warehouseId}
                 options={[{ value: '', label: t.values.all }, ...options(warehouses.data)]}
                 disabled={isLocked}
+                /* 칸 안에서 글자로 찾는다(omf-all-around#228). */
+                searchable
                 onChange={(warehouseId) => setDraft((current) => ({ ...current, warehouseId }))}
               />
             </div>
@@ -612,7 +615,15 @@ export const SuspiciousMaterialCandidatePane = ({
                   rows={candidates.data.items}
                   getRowId={(row) => String(row.lotId)}
                   sort={null}
-                  empty={<EmptyState size="sm" live title={t.empty} />}
+                  empty={
+                    <EmptyState
+                      size="sm"
+                      live
+                      icon={<PaneEmptyIcon name="assignment" />}
+                      title={t.empty}
+                      description={t.emptyHint}
+                    />
+                  }
                 />
               </div>
               {meta !== undefined && (

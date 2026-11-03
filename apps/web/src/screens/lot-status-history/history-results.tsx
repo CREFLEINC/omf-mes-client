@@ -11,6 +11,7 @@ import { LotTimelineTable } from './lot-timeline-table';
 import { entryStatusCode } from './timeline';
 import { validateHistoryPeriod } from './period';
 import { useLotHistoryTimeline, useLotTypeCodes } from './queries';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 const t = messages.lotStatusHistory;
 
@@ -87,6 +88,7 @@ export const HistoryResults = ({
       {!hasValidPeriod && (
         <EmptyState
           size="sm"
+          icon={<PaneEmptyIcon name="assignment" />}
           title={t.history.beforeSearch.title}
           description={t.history.beforeSearch.description}
         />
@@ -128,6 +130,7 @@ export const HistoryResults = ({
               <EmptyState
                 size="sm"
                 live
+                icon={<PaneEmptyIcon name="assignment" />}
                 title={t.history.empty.title}
                 description={t.history.empty.description}
               />
