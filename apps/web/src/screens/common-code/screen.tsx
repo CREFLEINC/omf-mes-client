@@ -1097,6 +1097,8 @@ export const CommonCodeScreen = () => {
         commitWarehousesAfterDepartmentRef.current = productionWarehouses.isDirty;
         writeDepartment(values);
       } else {
+        /* 앞서 실패한 부서 저장의 표식이 남아 다음 부서 저장 뒤 연결을 다시 내지 않게 한다. */
+        commitWarehousesAfterDepartmentRef.current = false;
         productionWarehouses.commit({ quiet: false });
       }
     });
