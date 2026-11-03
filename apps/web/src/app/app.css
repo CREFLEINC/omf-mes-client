@@ -32619,9 +32619,9 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .erp-wo-distribution-segments { display: grid; gap: var(--space-3); }
 .erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
 .erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
-.erp-wo-segment-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.erp-wo-segment-fields { display: grid; grid-template-columns: minmax(0,14rem) minmax(0,12rem); gap: var(--space-3); margin-top: var(--space-3); }
 .erp-wo-segment-fields > * { min-width: 0; }
-.erp-wo-daily-quantities { display: grid; grid-template-columns: repeat(auto-fit,minmax(8rem,1fr)); gap: var(--space-2); max-height: 18rem; overflow: auto; margin-top: var(--space-3); }
+.erp-wo-daily-quantities { display: grid; grid-template-columns: repeat(auto-fill,minmax(8rem,10rem)); gap: var(--space-2); max-height: 18rem; overflow: auto; margin-top: var(--space-3); }
 .erp-wo-checkbox { display: flex; align-items: center; gap: var(--space-2); font: var(--type-body-sm); }
 .erp-wo-checkbox input { flex: none; }
 .erp-wo-common-conditions { padding: var(--space-3); background: var(--surface-container); border-radius: var(--radius-md); }
@@ -32644,3 +32644,9 @@ body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) 
 .erp-wo-distribution-line-value { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); font: var(--type-body-sm); overflow-wrap: anywhere; background: var(--surface); }
 .erp-wo-distribution-line-buttons { display: flex; gap: var(--space-1); flex-shrink: 0; }
 @container erp-wo-page (max-width: 36rem) { .erp-wo-segment-fields { grid-template-columns: minmax(0,1fr); } .erp-wo-distribution-line-field { flex-wrap: wrap; } .erp-wo-distribution-line-value { flex-basis: 100%; } }
+
+.erp-wo-segment-date { width: 100%; max-width: 12rem; }
+.erp-wo-segment-mode { width: 100%; max-width: 14rem; }
+.erp-wo-segment-quantity { width: 100%; max-width: 10rem; justify-self: start; }
+
+.erp-wo-segment-fields > .field-note { grid-column: 1 / -1; }

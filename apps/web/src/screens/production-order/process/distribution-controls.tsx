@@ -308,7 +308,7 @@ export const DistributionControls = ({
                       </Button>
                     </div>
                     <div className="erp-wo-segment-fields">
-                      <div className="field-cell">
+                      <div className="field-cell erp-wo-segment-date">
                         <span className="field-label">시작일</span>
                         <DatePicker
                           size="sm"
@@ -318,7 +318,7 @@ export const DistributionControls = ({
                           onChange={(start) => change(row.id, { start })}
                         />
                       </div>
-                      <div className="field-cell">
+                      <div className="field-cell erp-wo-segment-date">
                         <span className="field-label">종료일</span>
                         <DatePicker
                           size="sm"
@@ -338,7 +338,7 @@ export const DistributionControls = ({
                           onChange={(lineId) => change(row.id, { lineId })}
                         />
                       </div>
-                      <div className="field-cell">
+                      <div className="field-cell erp-wo-segment-mode">
                         <span className="field-label">배분 방식</span>
                         <Select
                           size="sm"
@@ -376,6 +376,7 @@ export const DistributionControls = ({
                       {row.mode === 'equal' ? (
                         <TextField
                           size="sm"
+                          className="erp-wo-segment-quantity"
                           label={`구간 수량 (${target?.unit ?? ''})`}
                           aria-label={`구간 ${index + 1} 수량`}
                           value={row.quantity}
