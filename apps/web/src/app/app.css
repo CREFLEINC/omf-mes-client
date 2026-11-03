@@ -32002,3 +32002,39 @@ button.iqc-inspection-step-toggle:focus-visible {
   flex: 0 0 14rem;
   width: 14rem;
 }
+
+/*
+ * LOT 상태(LOT 현황 · LOT 상태 이력 · LOT 상태 변경 · 의심자재 보류) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 칸 글자 14px · 칸은 제 글자 폭(LOT 스캔은 안내 글이 보이는 폭) · [조회] [초기화] [상세 검색 펼치기] 첫 줄 오른쪽 끝 · 펼치기는 글자 단추.
+ */
+.lot-status-search {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+}
+
+.lot-status-search .filter-bar > :not(.filter-actions):nth-child(n),
+.lot-status-search .filter-bar > :not(.filter-actions):nth-child(n) > .lot-status-date-field {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* LOT 스캔 칸 — 앞에 돋보기가 붙어 검사 조회·판정(17.5rem)보다 그만큼 넓혀야 안내 글이 다 보인다. */
+.lot-status-search .filter-bar > .lot-status-filter-lot-no:nth-child(n) {
+  flex: 0 1 19rem;
+  width: 19rem;
+}
+
+.lot-status-search .filter-bar > .lot-status-filter-actions {
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.lot-status-search .lot-status-filter-actions > button[aria-expanded] {
+  background: none;
+}
+
+.lot-status-search .lot-status-filter-actions > button[aria-expanded='true']::before {
+  opacity: 0;
+}
