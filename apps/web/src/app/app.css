@@ -32736,3 +32736,16 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='listbox'] { max-width: calc(100vw - var(--space-6)); }
 body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] { height: auto; padding-block: var(--space-2); }
 body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+
+/* 작업계획의 선택값은 긴 품목명·개정명 때문에 열 너비를 밀어내지 않는다. */
+:is(.erp-wo-filter-bar, .erp-wo-multi-page, .process-page:has(.erp-wo-summary)) [role='combobox'] {
+  min-width: 0; max-width: 100%; height: auto; min-height: var(--control-height-sm); padding-block: var(--space-2); text-align: left;
+}
+:is(.erp-wo-filter-bar, .erp-wo-multi-page, .process-page:has(.erp-wo-summary)) [role='combobox'] > span:not([aria-hidden='true']) {
+  min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip;
+}
+.erp-wo-multi-execution > .field-cell { width: 100%; min-width: 0; }
+.erp-wo-multi-execution > .field-cell [role='combobox'] { width: 100%; }
+body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='listbox'] { max-width: calc(100vw - var(--space-6)); }
+body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='option'] { height: auto; padding-block: var(--space-2); }
+body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
