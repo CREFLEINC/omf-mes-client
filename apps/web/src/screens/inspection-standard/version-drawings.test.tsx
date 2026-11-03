@@ -5,19 +5,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
-import { VersionDrawings, drawingFileProblem } from './version-drawings';
+import { VersionDrawings, drawingFileProblem, useVersionDrawingDraft } from './version-drawings';
 
 const t = messages.inspectionStandard.versionSection;
 const VERSION = 11;
 const BASE = `/quality/inspection-plan-versions/${String(VERSION)}/drawings`;
 
-const Harness = ({ isEditable }: { isEditable: boolean }) => (
-  <VersionDrawings
-    versionId={VERSION}
-    drawings={useInspectionDrawings(VERSION)}
-    isEditable={isEditable}
-  />
-);
+const Harness = ({ isEditable }: { isEditable: boolean }) => {
+  const drawings = useInspectionDrawings(VERSION);
+  const draft = useVersionDrawingDraft(VERSION, drawings);
+  return (
+    <>
+      <span data-testid="draft-count">{draft.list.length}</span>
+      <VersionDrawings drawings={drawings} draft={draft} isEditable={isEditable} />
+    </>
+  );
+};
 
 const attachment = (attachmentId: number) => ({
   attachmentId,
@@ -68,7 +71,7 @@ const drawingServer = (initial: number[]) => {
 
 const png = (name = 'a.png') => new File(['x'], name, { type: 'image/png' });
 
-describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)', () => {
+describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-around#227)', () => {
   beforeEach(() => {
     let seq = 0;
     vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:d/${String(++seq)}`);
@@ -94,24 +97,36 @@ describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)',
     expect(await screen.findByRole('img', { name: t.drawingAlt(1) })).toBeVisible();
     expect(screen.queryByRole('button', { name: t.drawingAdd })).toBeNull();
     expect(screen.queryByRole('button', { name: t.drawingRemove })).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.save })).toBeNull();
   });
 
-  it('도면이 없는 작성 중 버전은 「등록된 도면이 없습니다」만 보이고, 고른 그림을 붙인 뒤 그 도면을 보인다', async () => {
+  it('추가는 [저장]을 눌러야 보낸다 — 그 전에는 화면에만 붙고, 저장 단추는 변경이 있어야 눌린다', async () => {
     const user = userEvent.setup();
     const { fetch, writes } = drawingServer([]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
     expect(await screen.findByText(t.drawingsNone)).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
     expect(screen.queryByRole('button', { name: t.drawingReplace })).toBeNull();
 
     await user.upload(screen.getByTestId('drawing-file-input'), png());
 
     expect(await screen.findByRole('img', { name: t.drawingAlt(1) })).toBeVisible();
-    expect(writes).toEqual([
-      { method: 'POST', path: `${BASE}`, idempotency: expect.any(String) as string },
-    ]);
+    expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
+    expect(writes).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() =>
+      expect(writes).toEqual([
+        { method: 'POST', path: BASE, idempotency: expect.any(String) as string },
+      ]),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled(),
+    );
   });
 
-  it('그림이 아닌 파일은 서버에 보내지 않고 이유를 보인다', async () => {
+  it('그림이 아닌 파일은 담지 않고 이유를 보인다', async () => {
     const user = userEvent.setup({ applyAccept: false });
     const { fetch, writes } = drawingServer([1]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
@@ -123,10 +138,11 @@ describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)',
     );
 
     expect(screen.getByText(t.drawingFileInvalid)).toBeVisible();
+    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
     expect(writes).toEqual([]);
   });
 
-  it('[도면 수정]은 보고 있는 도면 자리를 바꾼다', async () => {
+  it('[도면 수정]은 보고 있는 도면 자리를 바꾸고, 저장하면 그 도면만 보낸다', async () => {
     const user = userEvent.setup();
     const { fetch, writes } = drawingServer([1, 2]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
@@ -135,14 +151,17 @@ describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)',
 
     await user.click(screen.getByRole('button', { name: t.drawingReplace }));
     await user.upload(screen.getByTestId('drawing-file-input'), png('b.png'));
+    expect(writes).toEqual([]);
+    expect(screen.getByRole('img', { name: t.drawingAlt(2) })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
 
     await waitFor(() =>
       expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`PUT ${BASE}/2`]),
     );
-    expect(await screen.findByRole('img', { name: t.drawingAlt(2) })).toBeVisible();
   });
 
-  it('[도면 제거]는 확인 창을 거쳐 보고 있는 도면을 제거하고, 취소하면 보내지 않는다', async () => {
+  it('[도면 제거]는 확인 창을 거쳐 화면에서 빼고, 저장하면 지운다', async () => {
     const user = userEvent.setup();
     const { fetch, writes } = drawingServer([1, 2]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
@@ -152,14 +171,36 @@ describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)',
     await user.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: messages.common.cancel }),
     );
-    expect(writes).toEqual([]);
+    expect(screen.getByTestId('draft-count')).toHaveTextContent('2');
 
     await user.click(screen.getByRole('button', { name: t.drawingRemove }));
     const dialog = screen.getByRole('dialog', { name: t.drawingRemoveTitle });
     await user.click(within(dialog).getByRole('button', { name: t.drawingRemoveConfirm }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`DELETE ${BASE}/1`]);
-    await waitFor(() => expect(screen.queryByRole('button', { name: t.drawingNext })).toBeNull());
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
+    expect(writes).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: messages.common.save }));
+
+    await waitFor(() =>
+      expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`DELETE ${BASE}/1`]),
+    );
+  });
+
+  it('[취소]는 저장 전 변경을 버리고 서버 도면으로 돌린다', async () => {
+    const user = userEvent.setup();
+    const { fetch, writes } = drawingServer([1]);
+    renderWithProviders(<Harness isEditable />, { fetch, session: null });
+    await screen.findByRole('img', { name: t.drawingAlt(1) });
+
+    await user.upload(screen.getByTestId('drawing-file-input'), png());
+    expect(screen.getByTestId('draft-count')).toHaveTextContent('2');
+
+    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
+
+    expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
+    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(writes).toEqual([]);
   });
 });

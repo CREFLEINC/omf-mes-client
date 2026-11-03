@@ -123,7 +123,7 @@ import {
 import type { CompareLabels } from './version-compare';
 import { VersionCompareDialog } from './version-compare-dialog';
 import { UsageChips, usageOf, withUsage } from './usage-chips';
-import { VersionDrawings } from './version-drawings';
+import { useVersionDrawingDraft, VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
@@ -492,6 +492,8 @@ export const InspectionStandardScreen = () => {
   const versionHistory = useVersionHistory(selectedVersionId);
   /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
   const versionDrawings = useInspectionDrawings(selectedVersionId);
+  /* 도면 탭의 저장 전 변경(#227) — 확정 · 신규 버전 발행을 막는 「저장하지 않은 변경」에 들어간다. */
+  const drawingDraft = useVersionDrawingDraft(selectedVersionId, versionDrawings);
 
   /**
    * 버전 등록 폼의 값. null이면 폼이 닫혀 있다.
@@ -1139,7 +1141,7 @@ export const InspectionStandardScreen = () => {
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
-  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty;
+  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
 
   /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
   const draftVersion = versions.find((version) => {
@@ -1548,6 +1550,24 @@ export const InspectionStandardScreen = () => {
               content: renderItemPane(),
             },
             {
+              value: 'drawings',
+              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). 건수는 검사 항목처럼 저장 전 초안으로 센다(#227). 탭 순서는 검사 항목 · 도면 · 이력(사용자 지시 · #227). */
+              label:
+                versionDrawings.data === undefined
+                  ? t.versionSection.tabDrawings
+                  : t.versionSection.tabDrawingsCount(drawingDraft.list.length),
+              content:
+                selectedVersionId === null ? null : (
+                  /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
+                  <VersionDrawings
+                    key={selectedVersionId}
+                    drawings={versionDrawings}
+                    draft={drawingDraft}
+                    isEditable={versionStatus?.isEditable === true}
+                  />
+                ),
+            },
+            {
               value: 'history',
               /* 건수는 검사 항목 탭과 같이 붙인다(#208). 받기 전에는 이름만 낸다 — 0건을 지어내지 않는다. */
               label:
@@ -1561,22 +1581,6 @@ export const InspectionStandardScreen = () => {
                     inspectionPlanVersionId={selectedVersionId}
                     labels={compareLabels}
                     showRange
-                  />
-                ),
-            },
-            {
-              value: 'drawings',
-              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). */
-              label:
-                versionDrawings.data === undefined
-                  ? t.versionSection.tabDrawings
-                  : t.versionSection.tabDrawingsCount(versionDrawings.data.length),
-              content:
-                selectedVersionId === null ? null : (
-                  <VersionDrawings
-                    versionId={selectedVersionId}
-                    drawings={versionDrawings}
-                    isEditable={versionStatus?.isEditable === true}
                   />
                 ),
             },
