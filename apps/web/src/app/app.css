@@ -32414,3 +32414,45 @@ button.iqc-inspection-step-toggle:focus-visible {
 .measurement-section-tools > :last-child {
   width: 10rem;
 }
+
+/* 작업계획 시안의 패널 비율: 계획 편집 고정 폭, 4M 목록:입력 0.85:1.4, 배포 상세:반영 3:2. */
+.erp-wo-plan-layout {
+  grid-template-columns: minmax(0, 1fr) 15.5rem;
+  gap: var(--space-3);
+}
+
+.erp-wo-assign-layout {
+  grid-template-columns: minmax(15.625rem, 0.85fr) minmax(0, 1.4fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.erp-wo-release-workspace .erp-wo-release-layout {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.erp-wo-release-summary > div {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+.erp-wo-release-summary dd {
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .erp-wo-plan-layout,
+  .erp-wo-assign-layout,
+  .erp-wo-release-workspace .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 목록 폭이 좁아져도 선택할 작업지시 번호는 끝까지 읽을 수 있어야 한다. */
+.erp-wo-assign-list .ellipsis-cell {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
