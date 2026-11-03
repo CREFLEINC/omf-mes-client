@@ -278,7 +278,6 @@ export const commonCode = {
         submit: '연결 빼기',
       },
       loading: '생산 창고를 불러오는 중',
-      loadFailed: '생산 창고를 불러오지 못했습니다.',
       /** 공장 목록에서 이름을 찾지 못한 공장 — 번호를 이름처럼 보이지 않는다. */
       unknownPlant: '알 수 없는 공장',
     },

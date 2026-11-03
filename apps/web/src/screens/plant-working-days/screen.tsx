@@ -65,7 +65,7 @@ export const PlantWorkingDaysScreen = () => {
   /** 공장별로 고친 값. 저장한 값과 같으면 지운다. */
   const [edits, setEdits] = useState<ReadonlyMap<number, WeeklyWorkingDays>>(new Map());
 
-  const save = useSaveWorkingDays(policies.data ?? [], () => {
+  const save = useSaveWorkingDays(policies.data, () => {
     setEdits(new Map());
     toast.show({ variant: 'success', description: t.state.saved });
   });
@@ -73,7 +73,7 @@ export const PlantWorkingDaysScreen = () => {
   const rows: Row[] =
     plants.data?.map((plant) => {
       const today = todayIn(plant.timezoneCode);
-      const policy = currentPolicy(policies.data ?? [], plant.plantId, today);
+      const policy = currentPolicy(policies.data?.items ?? [], plant.plantId, today);
       return {
         plant,
         today,
@@ -84,7 +84,15 @@ export const PlantWorkingDaysScreen = () => {
     }) ?? [];
 
   const valueOf = (row: Row): WeeklyWorkingDays => edits.get(row.plant.plantId) ?? row.saved;
-  const isDirty = edits.size > 0;
+  /*
+   * 고친 값이 지금 저장된 값과 다를 때만 「바뀜」이다 — 여러 공장 저장이 중간에 멈추면 앞 공장은 저장돼
+   * 다시 받은 값과 같아지므로 바뀐 줄에서 빠진다.
+   */
+  const isChanged = (row: Row): boolean => {
+    const edit = edits.get(row.plant.plantId);
+    return edit !== undefined && edit !== row.saved;
+  };
+  const isDirty = rows.some(isChanged);
 
   const choose = (row: Row, days: WeeklyWorkingDays): void => {
     save.reset();
@@ -114,7 +122,7 @@ export const PlantWorkingDaysScreen = () => {
       key: 'plant',
       header: t.columns.plant,
       render: (row) => {
-        const dirty = edits.has(row.plant.plantId);
+        const dirty = isChanged(row);
         return (
           <span
             className={dirty ? 'plant-working-days-plant is-changed' : 'plant-working-days-plant'}
@@ -232,13 +240,11 @@ export const PlantWorkingDaysScreen = () => {
             loading={save.isSaving}
             onClick={() =>
               save.write(
-                rows
-                  .filter((row) => edits.has(row.plant.plantId))
-                  .map((row) => ({
-                    plantId: row.plant.plantId,
-                    days: valueOf(row),
-                    today: row.today,
-                  })),
+                rows.filter(isChanged).map((row) => ({
+                  plantId: row.plant.plantId,
+                  days: valueOf(row),
+                  today: row.today,
+                })),
               )
             }
           >

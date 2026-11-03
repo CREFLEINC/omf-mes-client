@@ -45,7 +45,11 @@ interface SetupOptions {
 const setup = (options: SetupOptions = {}) => {
   const writes: { method: string; path: string; body: unknown; headers: Headers }[] = [];
   let policies = options.policies ?? [];
+  /* 서버처럼 행마다 판 번호를 둔다 — 수정은 If-Match 가 맞아야 하고, 맞으면 판이 오른다. */
+  const versions = new Map<number, number>(policies.map((row) => [row.operationPolicyId, 7]));
+  const etagOf = (id: number) => `"${String(versions.get(id) ?? 7)}"`;
   const pathOf = (request: Request) => new URL(request.url).pathname;
+  const idOf = (request: Request) => Number(pathOf(request).split('/').at(-1));
 
   const routes: StubRoute[] = [
     {
@@ -62,10 +66,8 @@ const setup = (options: SetupOptions = {}) => {
         request.method === 'GET' && pathOf(request).startsWith('/app/operation-policies/'),
       respond: (request) =>
         jsonResponse(
-          policies.find(
-            (row) => `/app/operation-policies/${String(row.operationPolicyId)}` === pathOf(request),
-          ),
-          { headers: { ETag: '"7"' } },
+          policies.find((row) => row.operationPolicyId === idOf(request)),
+          { headers: { ETag: etagOf(idOf(request)) } },
         ),
     },
     {
@@ -80,9 +82,35 @@ const setup = (options: SetupOptions = {}) => {
           headers: request.headers,
         });
         if (options.respondWrite !== undefined) return options.respondWrite();
+        if (request.method === 'PUT') {
+          const id = idOf(request);
+          if (request.headers.get('If-Match') !== etagOf(id)) {
+            return jsonResponse(
+              { conflictCause: 'user', code: 'VERSION_CONFLICT', message: '버전이 맞지 않습니다' },
+              { status: 409 },
+            );
+          }
+          versions.set(id, (versions.get(id) ?? 7) + 1);
+          policies = policies.map((row) =>
+            row.operationPolicyId === id ? { ...row, ...body } : row,
+          );
+          return jsonResponse(policies.find((row) => row.operationPolicyId === id));
+        }
+        /* 같은 공장 · 같은 시작일은 유일 인덱스 — 둘째 등록은 400(서버 S3 #947). */
+        if (
+          policies.some(
+            (row) => row.plantId === body.plantId && row.effectiveFrom === body.effectiveFrom,
+          )
+        ) {
+          return jsonResponse(
+            { errors: [{ scope: 'screen', code: 'DUPLICATE', message: '이미 있습니다' }] },
+            { status: 400 },
+          );
+        }
         const saved = { ...body, operationPolicyId: 9000 + writes.length } as OperationPolicy;
         policies = [...policies, saved];
-        return jsonResponse(saved, { status: request.method === 'POST' ? 201 : 200 });
+        versions.set(saved.operationPolicyId, 7);
+        return jsonResponse(saved, { status: 201 });
       },
     },
   ];
@@ -102,7 +130,15 @@ const setup = (options: SetupOptions = {}) => {
       },
     },
   );
-  return { user: userEvent.setup(), writes, router: view.router };
+  /** 화면을 연 뒤 다른 사람이 한 일. */
+  const other = {
+    edit: (id: number) => versions.set(id, (versions.get(id) ?? 7) + 1),
+    add: (row: OperationPolicy) => {
+      policies = [...policies, row];
+      versions.set(row.operationPolicyId, 7);
+    },
+  };
+  return { user: userEvent.setup(), writes, router: view.router, other };
 };
 
 const table = async () => within(await screen.findByRole('table', { name: t.tableLabel }));
@@ -267,6 +303,58 @@ describe('W-CO-15 공장 근무일 설정', () => {
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
     await waitFor(() => expect(screen.queryByText(t.state.conflict)).not.toBeInTheDocument());
     expect(row.getByRole('radio', { name: t.options.five })).toBeChecked();
+  });
+
+  it('US7-3 화면을 연 뒤 남이 같은 행을 고쳤으면 불러올 때의 판 번호로 보내 409 충돌을 보인다', async () => {
+    const { user, writes, other } = setup({
+      policies: [
+        {
+          operationPolicyId: 61,
+          policyCode: WEEKLY,
+          plantId: 8401,
+          valueNumeric: 5,
+          effectiveFrom: TODAY,
+        },
+      ],
+    });
+    const row = await rowOf('합성 1공장');
+    other.edit(61);
+
+    await user.click(row.getByRole('radio', { name: t.options.six }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.state.conflict)).toBeInTheDocument();
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.headers.get('If-Match')).toBe('"7"');
+
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    await waitFor(() => expect(screen.queryByText(t.state.conflict)).not.toBeInTheDocument());
+    const again = await rowOf('합성 1공장');
+    await user.click(again.getByRole('radio', { name: t.options.six }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    expect(await screen.findByText(t.state.saved)).toBeInTheDocument();
+    expect(writes[1]?.headers.get('If-Match')).toBe('"8"');
+  });
+
+  it('US7-3 화면을 연 뒤 남이 오늘 행을 먼저 만들었으면 등록 400 을 충돌로 보이고 다시 불러오게 한다', async () => {
+    const { user, writes, other } = setup();
+    const row = await rowOf('합성 1공장');
+    other.add({
+      operationPolicyId: 71,
+      policyCode: WEEKLY,
+      plantId: 8401,
+      valueNumeric: 6,
+      effectiveFrom: TODAY,
+    });
+
+    await user.click(row.getByRole('radio', { name: t.options.six }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.state.conflict)).toBeInTheDocument();
+    expect(writes.map((write) => write.method)).toEqual(['POST']);
+    await user.click(screen.getByRole('button', { name: t.actions.reload }));
+    const after = await rowOf('합성 1공장');
+    await waitFor(() => expect(after.getByRole('radio', { name: t.options.six })).toBeChecked());
   });
 
   it('저장하지 않은 변경을 두고 화면을 떠나면 먼저 묻는다', async () => {

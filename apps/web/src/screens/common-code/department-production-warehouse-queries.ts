@@ -92,9 +92,11 @@ export const usePlantNames = (enabled: boolean): UseQueryResult<Map<number, stri
     enabled,
     queryFn: async () =>
       new Map(
-        (await runRequest(() => client.GET('/mdm/plants', { params: { query: {} } }))).items.map(
-          (plant) => [plant.plantId, plant.plantName],
-        ),
+        (
+          await fetchAllPages((page, size) =>
+            runRequest(() => client.GET('/mdm/plants', { params: { query: { page, size } } })),
+          )
+        ).items.map((plant) => [plant.plantId, plant.plantName]),
       ),
   });
 };

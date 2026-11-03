@@ -138,14 +138,14 @@ export const DepartmentListPane = ({
       render: (row) =>
         row.isActive ? row.departmentName : `${row.departmentName}${t.values.inactiveSuffix}`,
     },
-    /* 003 · US8 — 연결한 생산 창고 수. 0 이거나 모르면 「—」. */
+    /* 003 · US8 — 연결한 생산 창고 수. 서버가 칸을 싣지 않았을 때만 「—」. */
     {
       key: 'productionWarehouseCount',
       header: t.department.productionWarehouses.countColumn,
       align: 'end',
       width: '96px',
       render: (row) =>
-        row.productionWarehouseCount === undefined || row.productionWarehouseCount === 0
+        row.productionWarehouseCount === undefined
           ? t.values.empty
           : String(row.productionWarehouseCount),
     },

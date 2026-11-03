@@ -25,7 +25,13 @@ const PLANTS = [
   { plantId: 8402, businessUnitId: 4001, plantCode: 'G2', plantName: '합성 2공장' },
 ].map((plant) => ({ ...plant, legalEntityId: 5001, timezoneCode: 'UTC', isActive: true }));
 
-const warehouse = (warehouseId: number, code: string, name: string, plantId = 8401) => ({
+const warehouse = (
+  warehouseId: number,
+  code: string,
+  name: string,
+  plantId = 8401,
+  overrides: { isExternal?: boolean; isDefect?: boolean; isActive?: boolean } = {},
+) => ({
   warehouseId,
   plantId,
   businessUnitId: 4001,
@@ -35,6 +41,7 @@ const warehouse = (warehouseId: number, code: string, name: string, plantId = 84
   isExternal: false,
   isDefect: false,
   isActive: true,
+  ...overrides,
 });
 
 const WAREHOUSES = [
@@ -42,6 +49,10 @@ const WAREHOUSES = [
   warehouse(7002, 'SYN-PW-B', '합성 생산창고 B'),
   warehouse(7003, 'SYN-PW-C', '합성 생산창고 C'),
   warehouse(7004, 'SYN-PW-G', '합성 생산창고 G', 8402),
+  /* 유형으로 거르지 않는다(검토 9) — 불량 · 외부 창고도 후보다. 쓰지 않는 창고만 빠진다. */
+  warehouse(7005, 'SYN-DF', '합성 불량창고', 8401, { isDefect: true }),
+  warehouse(7006, 'SYN-EX', '합성 외주 보관창고', 8401, { isExternal: true }),
+  warehouse(7007, 'SYN-OLD', '합성 구 자재창고', 8401, { isActive: false }),
 ];
 
 const linkedOf = (ids: number[]): DepartmentProductionWarehouse[] =>
@@ -286,18 +297,37 @@ describe('W-06-06 생산 창고 구획', () => {
     expect(section().getByText(t.none)).toBeInTheDocument();
   });
 
-  it('US8-1 부서 목록 「생산 창고」 열에 연결 수를 보이고 없으면 「—」', async () => {
+  it('US8-1 부서 목록 「생산 창고」 열에 연결 수(0 포함)를 보이고, 칸이 없을 때만 「—」', async () => {
     setup({
-      departments: departmentFixtures.map((department, index) => ({
-        ...department,
-        productionWarehouseCount: index === 0 ? 2 : 0,
-      })),
+      departments: departmentFixtures.map((department, index) =>
+        index === 0
+          ? { ...department, productionWarehouseCount: 2 }
+          : index === 1
+            ? { ...department, productionWarehouseCount: 0 }
+            : department,
+      ),
     });
 
     const list = within(screen.getByRole('region', { name: '부서' }));
-    const row = (await list.findByRole('button', { name: 'SYN-DEPT-01' })).closest('tr');
-    expect(within(row as HTMLElement).getByText('2')).toBeInTheDocument();
-    const other = list.getByRole('button', { name: 'SYN-DEPT-03' }).closest('tr');
-    expect(within(other as HTMLElement).getByText('—')).toBeInTheDocument();
+    const cellOf = async (code: string) =>
+      within((await list.findByRole('button', { name: code })).closest('tr') as HTMLElement);
+    expect((await cellOf('SYN-DEPT-01')).getByText('2')).toBeInTheDocument();
+    expect((await cellOf('SYN-DEPT-02')).getByText('0')).toBeInTheDocument();
+    expect((await cellOf('SYN-DEPT-03')).getByText('—')).toBeInTheDocument();
+  });
+
+  it('US8-1 후보 창고는 유형으로 거르지 않아 불량 · 외부 창고가 남고, 쓰지 않는 창고만 빠진다', async () => {
+    const { user } = setup({ linked: [7001] });
+    await linkedTable();
+
+    await user.click(section().getByRole('button', { name: `+ ${t.add}` }));
+    const picker = within(await screen.findByRole('dialog', { name: t.picker.title }));
+
+    expect(picker.getByRole('checkbox', { name: '합성 1공장 SYN-DF 합성 불량창고' })).toBeEnabled();
+    expect(
+      picker.getByRole('checkbox', { name: '합성 1공장 SYN-EX 합성 외주 보관창고' }),
+    ).toBeEnabled();
+    expect(picker.queryByText(/SYN-OLD/)).not.toBeInTheDocument();
+    expect(picker.getAllByRole('checkbox')).toHaveLength(6);
   });
 });

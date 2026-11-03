@@ -208,7 +208,6 @@ export const commonCode: Translated<typeof ko.commonCode> = {
         submit: 'Gỡ liên kết',
       },
       loading: 'Đang tải kho sản xuất',
-      loadFailed: 'Không tải được kho sản xuất.',
       unknownPlant: 'Nhà máy không xác định',
     },
     validation: {

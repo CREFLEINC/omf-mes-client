@@ -129,8 +129,25 @@ const RouterProbe = () => {
   return null;
 };
 
+/**
+ * 부서 폼 「생산 창고」 구획(003)이 함께 부르는 조회. 이 파일의 단언 대상이 아니라 빈 응답만 둔다 —
+ * 시험이 준 규칙이 앞서므로 같은 경로를 시험이 적으면 그쪽이 이긴다.
+ */
+const productionWarehouseStubs: StubRoute[] = [
+  {
+    match: (request) =>
+      request.method === 'GET' &&
+      /^\/mdm\/departments\/\d+\/production-warehouses$/.test(new URL(request.url).pathname),
+    respond: () => jsonResponse({ items: [] }),
+  },
+  {
+    match: (request) => isGet(request, '/mdm/warehouses') || isGet(request, '/mdm/plants'),
+    respond: () => jsonResponse({ items: [], page: { page: 1, size: 200, total: 0 } }),
+  },
+];
+
 const renderScreen = (routes: StubRoute[], search = '') => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests } = createRecordingFetch([...routes, ...productionWarehouseStubs]);
 
   probeNavigate = null;
   probeSearch = '';
