@@ -32695,3 +32695,17 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 .erp-wo-master-revision [role='combobox'] { width: 100%; }
 .erp-wo-master-value { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-container); }
 .erp-wo-master-note { margin-top: var(--space-2); }
+
+/* 지난 단계 정보는 단계 카드 안에서 항목명과 값을 위아래로 구분한다. */
+.process-page:has(.erp-wo-summary) .process-page-past {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,22rem),1fr));
+  gap: var(--space-3); padding: 0; border: 0; white-space: normal; overflow: visible; align-items: stretch;
+}
+.process-page:has(.erp-wo-summary) .process-page-past > .process-past-group {
+  display: grid; align-content: start; gap: var(--space-2); min-width: 0;
+  margin: 0; padding: var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container-low);
+}
+.process-page:has(.erp-wo-summary) .process-past-step { font: var(--type-title-sm); color: var(--on-surface); }
+.process-page:has(.erp-wo-summary) .process-past-pairs { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,10rem),1fr)); gap: var(--space-2) var(--space-4); }
+.process-page:has(.erp-wo-summary) .process-past-pair { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
+.process-page:has(.erp-wo-summary) .process-past-pair > dd { overflow-wrap: anywhere; font-weight: 500; }
