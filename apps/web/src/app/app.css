@@ -31833,10 +31833,21 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: none;
 }
 
-/* 펼치기 단추는 세 화면 같은 작은 크기 — IQC 의 「단추 높이 한 값」 규칙에 끌려 커지지 않게. */
+/* 펼치기 단추는 세 화면 같은 작은 크기 · 여백 — IQC 의 「단추 높이 한 값」 · 스캔 줄 단추 여백 규칙에 끌리지 않게. */
 .iqc-inspection-search .inspection-detail-toggle button {
-  height: auto;
-  min-height: 0;
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding-inline: var(--space-3);
+}
+
+/* LOT 스캔 칸 폭 — 세 화면 같은 17.5rem(부품 IQC 스캔 줄과 같은 값). */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) form.form-actions {
+  grid-template-columns: minmax(0, 17.5rem) auto;
+}
+
+/* LOT 스캔 [검색] 단추 폭 — 세 화면 같게. */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) form.form-actions > button {
+  min-width: 3.75rem;
 }
 
 /* 펼친 조건 칸은 다음 줄 — 줄바꿈 자리. 빈 줄이 줄 간격을 두 번 먹지 않게 한 번 당긴다. */
