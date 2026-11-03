@@ -359,6 +359,7 @@ export const VersionDrawings = ({
             <AlertBanner
               variant="error"
               title={problemTitle[problem]}
+              dismissLabel={messages.common.close}
               onDismiss={() =>
                 setProblems((prev) => prev.filter((each) => each.problem !== problem))
               }
