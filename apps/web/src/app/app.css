@@ -31823,6 +31823,14 @@ button.iqc-inspection-step-toggle:focus-visible {
 :is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle {
   order: 2;
   margin-left: 0;
+  /* 조회 · 초기화와 같은 줄 높이에 세로 가운데로(사용자 시안 #228). */
+  align-self: flex-end;
+  min-height: var(--control-height-md);
+}
+
+/* 펼치기 단추는 바탕 없이 글자만(사용자 시안 #228). */
+:is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) .inspection-detail-toggle button {
+  background: none;
 }
 
 /* 펼치기 단추는 세 화면 같은 작은 크기 — IQC 의 「단추 높이 한 값」 규칙에 끌려 커지지 않게. */
