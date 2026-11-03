@@ -119,7 +119,8 @@ export const useVersionDrawingDraft = (
     });
   };
 
-  const cancel = (): void => {
+  /** 저장 전 변경을 버린다 — 화면이 편집을 비울 때(다른 기준 · 버전으로 옮김 확인 뒤) 부른다. */
+  const reset = (): void => {
     setError(null);
     setState(fromServer(versionId, drawings.data ?? []));
   };
@@ -185,7 +186,7 @@ export const useVersionDrawingDraft = (
     }
   };
 
-  return { list, isDirty, isSaving, error, add, replace, remove, cancel, save };
+  return { list, isDirty, isSaving, error, add, replace, remove, reset, save };
 };
 
 export type VersionDrawingDraft = ReturnType<typeof useVersionDrawingDraft>;
@@ -318,18 +319,11 @@ export const VersionDrawings = ({
       {isEditable && (
         <div className="form-actions">
           <Button
-            variant="outlined"
-            disabled={!draft.isDirty || draft.isSaving}
-            onClick={draft.cancel}
-          >
-            {messages.common.cancel}
-          </Button>
-          <Button
             disabled={!draft.isDirty || draft.isSaving}
             loading={draft.isSaving}
             onClick={() => void draft.save()}
           >
-            {messages.common.save}
+            {messages.inspectionStandard.actions.tempSave}
           </Button>
         </div>
       )}

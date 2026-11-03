@@ -16,6 +16,8 @@ export const inspectionStandard = {
     items: '검사 항목',
   },
   actions: {
+    /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
+    tempSave: '임시 저장',
     /* 기본 정보 폼의 품목 칸 지우기 — 비우면 전 품목 공통 기준이다(#196). */
     itemClear: '품목 지우기',
     prevPage: '이전',
@@ -366,6 +368,9 @@ export const inspectionStandard = {
     versionDetail: '버전 정보를 불러오는 중',
     items: '검사 항목을 불러오는 중',
   },
+  /* 임시 저장하지 않고 떠날 때 확인 창 본문(#227) — 제목 · 단추는 라우팅 화면과 같다. */
+  discardBody:
+    '지금 옮기면 임시 저장하지 않은 검사 항목 · 도면 · 버전 설정 변경이 사라집니다. 남기려면 「계속 편집」을 누른 뒤 임시 저장하세요.',
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {

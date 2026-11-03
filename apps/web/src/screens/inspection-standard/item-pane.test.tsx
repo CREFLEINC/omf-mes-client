@@ -12,7 +12,6 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
   const onRemove = vi.fn<(draftId: string) => void>();
   const onReorder = vi.fn<(from: number, to: number) => void>();
   const onSave = vi.fn<() => void>();
-  const onCancel = vi.fn<() => void>();
 
   render(
     <ItemPane
@@ -34,12 +33,11 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
       onRemove={onRemove}
       onReorder={onReorder}
       onSave={onSave}
-      onCancel={onCancel}
       {...overrides}
     />,
   );
 
-  return { onAdd, onEdit, onRemove, onReorder, onSave, onCancel, user: userEvent.setup() };
+  return { onAdd, onEdit, onRemove, onReorder, onSave, user: userEvent.setup() };
 };
 
 const itemRows = (): HTMLElement[] =>
@@ -184,7 +182,7 @@ describe('ItemPane — 편집', () => {
     expect(screen.queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '1번 항목 수정' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '1번 항목 삭제' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '임시 저장' })).not.toBeInTheDocument();
     expect(
       screen.queryByText('검사 항목을 추가하려면 신규 버전을 발행하세요.'),
     ).not.toBeInTheDocument();
@@ -193,14 +191,14 @@ describe('ItemPane — 편집', () => {
   it('저장을 막는 사유가 있으면 비활성이고 사유가 보인다', () => {
     renderPane({ isDirty: true, saveBlockedReason: '먼저 버전을 저장하세요.' });
 
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '임시 저장' })).toBeDisabled();
     expect(screen.getByText('먼저 버전을 저장하세요.')).toBeInTheDocument();
   });
 
   it('고친 것이 있으면 저장을 누를 수 있다', async () => {
     const { onSave, user } = renderPane({ isDirty: true });
 
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.click(screen.getByRole('button', { name: '임시 저장' }));
 
     expect(onSave).toHaveBeenCalled();
   });

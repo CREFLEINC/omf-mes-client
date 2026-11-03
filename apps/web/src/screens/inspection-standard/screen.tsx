@@ -13,9 +13,9 @@ import {
 } from '@crefle/web-ui';
 import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
@@ -32,6 +32,7 @@ import {
 import { runRequest, toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { itemKeys } from '../item-extended-attrs/item-queries';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import {
   DATA_TYPE_CODE_GROUP,
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
@@ -135,6 +136,9 @@ type InspectionPlanVersionDetailResponse =
   components['schemas']['InspectionPlanVersionDetailResponse'];
 
 const t = messages.inspectionStandard;
+
+/** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
+const EDIT_TARGET_PARAMS = ['plan', 'ver'] as const;
 const hubText = messages.common.inspectionHub;
 
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
@@ -765,6 +769,7 @@ export const InspectionStandardScreen = () => {
     setVersionFormState(null);
     setVersionFieldErrors({});
     setItemDraftState(null);
+    drawingDraft.reset();
     setItemDialog(null);
     setItemDialogErrors({});
   };
@@ -851,25 +856,44 @@ export const InspectionStandardScreen = () => {
   }, [searchParams]);
 
   /**
+   * 임시 저장하지 않은 편집(검사 항목 · 도면 · 버전 설정)을 두고 다른 기준 · 버전 · 조건으로 옮기거나 다른 화면으로 가면 먼저 묻는다(사용자 지시 · #227).
+   * 라우팅 화면과 같은 확인 창이다. 화면이 물어 확인받은 이동은 이동 감시(`LeaveGuard`)가 다시 묻지 않는다.
+   */
+  const [pendingMove, setPendingMove] = useState<(() => void) | null>(null);
+  const confirmedMoveRef = useRef(false);
+  const guardMove = (move: () => void) => {
+    if (isAnythingDirty) setPendingMove(() => move);
+    else move();
+  };
+  /* 이동이 끝나면 되돌린다 — 질의가 그대로인 이동이어도 기록 항목(key)은 바뀐다. */
+  const location = useLocation();
+  useEffect(() => {
+    confirmedMoveRef.current = false;
+  }, [location.key]);
+
+  /**
    * 조건·쪽이 바뀌면 **주소를 통째로 새로 만든다.**
    * 그래야 `plan`·`ver`가 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
    * 우 칸의 폼이 어디서 온 것인지 알 수 없다.
    */
-  const applyFilters = (next: PlanFilters) => {
-    resetPlanEditing();
-    setSearchParams(toSearchParams(next, 1, pageSize));
-  };
+  const applyFilters = (next: PlanFilters) =>
+    guardMove(() => {
+      resetPlanEditing();
+      setSearchParams(toSearchParams(next, 1, pageSize));
+    });
 
-  const changePage = (nextPage: number) => {
-    resetPlanEditing();
-    setSearchParams(toSearchParams(filters, nextPage, pageSize));
-  };
+  const changePage = (nextPage: number) =>
+    guardMove(() => {
+      resetPlanEditing();
+      setSearchParams(toSearchParams(filters, nextPage, pageSize));
+    });
 
   /* 쪽 크기를 바꾸면 첫 쪽부터 — 같은 쪽 번호가 다른 행을 가리킨다(#196). */
-  const changePageSize = (nextSize: number) => {
-    resetPlanEditing();
-    setSearchParams(toSearchParams(filters, 1, nextSize));
-  };
+  const changePageSize = (nextSize: number) =>
+    guardMove(() => {
+      resetPlanEditing();
+      setSearchParams(toSearchParams(filters, 1, nextSize));
+    });
 
   /** 기준을 바꾸면 버전 선택을 지운다 — 다른 기준의 버전을 가리키면 안 된다. */
   function selectPlan(inspectionPlanId: number): void {
@@ -1297,7 +1321,9 @@ export const InspectionStandardScreen = () => {
       isLoading={versionList.isPending}
       isPlanSelected={selectedPlanId !== null}
       selectedVersionId={selectedVersionId}
-      onSelect={handleSelectVersion}
+      onSelect={(inspectionPlanVersionId) =>
+        guardMove(() => handleSelectVersion(inspectionPlanVersionId))
+      }
       loadError={
         versionList.isError ? (
           <LoadErrorBanner error={versionList.error} onRetry={() => void versionList.refetch()} />
@@ -1904,16 +1930,30 @@ export const InspectionStandardScreen = () => {
           changeItemDrafts((drafts) => moveItemDraft(drafts, from, to));
         }}
         onSave={handleSaveItems}
-        onCancel={() => {
-          itemsWrite.reset();
-          setItemDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
-        }}
       />
     );
   };
 
   return (
     <>
+      <LeaveGuard
+        when={isAnythingDirty}
+        watchedParams={EDIT_TARGET_PARAMS}
+        bypassRef={confirmedMoveRef}
+        discardBody={t.discardBody}
+      />
+      {pendingMove !== null && (
+        <DiscardDialog
+          body={t.discardBody}
+          onStay={() => setPendingMove(null)}
+          onLeave={() => {
+            const move = pendingMove;
+            setPendingMove(null);
+            confirmedMoveRef.current = true;
+            move();
+          }}
+        />
+      )}
       {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우 · 상하 배치(사용자 지시 · #208). 그린 순서대로 선다. */}
       <UsageChips
         counts={usageCounts.data ?? null}
@@ -1954,10 +1994,12 @@ export const InspectionStandardScreen = () => {
               <Button
                 leadingIcon={<Icon name="add" size={18} />}
                 disabled={createValues !== null}
-                onClick={() => {
-                  resetPlanEditing();
-                  setCreateValues(emptyPlanFormValues());
-                }}
+                onClick={() =>
+                  guardMove(() => {
+                    resetPlanEditing();
+                    setCreateValues(emptyPlanFormValues());
+                  })
+                }
               >
                 {t.actions.addPlan}
               </Button>
@@ -1983,7 +2025,7 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          onSelect={handleSelectPlan}
+          onSelect={(inspectionPlanId) => guardMove(() => handleSelectPlan(inspectionPlanId))}
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />

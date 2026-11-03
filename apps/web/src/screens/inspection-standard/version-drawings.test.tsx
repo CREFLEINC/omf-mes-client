@@ -97,7 +97,9 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     expect(await screen.findByRole('img', { name: t.drawingAlt(1) })).toBeVisible();
     expect(screen.queryByRole('button', { name: t.drawingAdd })).toBeNull();
     expect(screen.queryByRole('button', { name: t.drawingRemove })).toBeNull();
-    expect(screen.queryByRole('button', { name: messages.common.save })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    ).toBeNull();
   });
 
   it('추가는 [저장]을 눌러야 보낸다 — 그 전에는 화면에만 붙고, 저장 단추는 변경이 있어야 눌린다', async () => {
@@ -105,7 +107,9 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     const { fetch, writes } = drawingServer([]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
     expect(await screen.findByText(t.drawingsNone)).toBeVisible();
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    ).toBeDisabled();
     expect(screen.queryByRole('button', { name: t.drawingReplace })).toBeNull();
 
     await user.upload(screen.getByTestId('drawing-file-input'), png());
@@ -114,7 +118,9 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
     expect(writes).toEqual([]);
 
-    await user.click(screen.getByRole('button', { name: messages.common.save }));
+    await user.click(
+      screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    );
 
     await waitFor(() =>
       expect(writes).toEqual([
@@ -122,7 +128,9 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
       ]),
     );
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled(),
+      expect(
+        screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+      ).toBeDisabled(),
     );
   });
 
@@ -138,7 +146,9 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     );
 
     expect(screen.getByText(t.drawingFileInvalid)).toBeVisible();
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    ).toBeDisabled();
     expect(writes).toEqual([]);
   });
 
@@ -154,7 +164,9 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     expect(writes).toEqual([]);
     expect(screen.getByRole('img', { name: t.drawingAlt(2) })).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: messages.common.save }));
+    await user.click(
+      screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    );
 
     await waitFor(() =>
       expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`PUT ${BASE}/2`]),
@@ -181,26 +193,19 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
     expect(writes).toEqual([]);
 
-    await user.click(screen.getByRole('button', { name: messages.common.save }));
+    await user.click(
+      screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    );
 
     await waitFor(() =>
       expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`DELETE ${BASE}/1`]),
     );
   });
 
-  it('[취소]는 저장 전 변경을 버리고 서버 도면으로 돌린다', async () => {
-    const user = userEvent.setup();
-    const { fetch, writes } = drawingServer([1]);
+  it('바닥에는 [임시 저장]만 둔다 — [취소] 단추가 없다', async () => {
+    const { fetch } = drawingServer([1]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
     await screen.findByRole('img', { name: t.drawingAlt(1) });
-
-    await user.upload(screen.getByTestId('drawing-file-input'), png());
-    expect(screen.getByTestId('draft-count')).toHaveTextContent('2');
-
-    await user.click(screen.getByRole('button', { name: messages.common.cancel }));
-
-    expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
-    expect(writes).toEqual([]);
+    expect(screen.queryByRole('button', { name: messages.common.cancel })).toBeNull();
   });
 });

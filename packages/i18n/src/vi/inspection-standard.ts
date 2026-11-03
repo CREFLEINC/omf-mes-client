@@ -16,6 +16,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
+    /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
+    tempSave: 'Lưu tạm',
     itemClear: 'Xóa mặt hàng',
     prevPage: 'Trước',
     nextPage: 'Sau',
@@ -335,6 +337,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionDetail: 'Đang tải thông tin phiên bản',
     items: 'Đang tải hạng mục kiểm tra',
   },
+  /* 임시 저장하지 않고 떠날 때 확인 창 본문(#227) — 제목 · 단추는 라우팅 화면과 같다. */
+  discardBody:
+    'Nếu chuyển đi bây giờ, các thay đổi hạng mục kiểm tra · bản vẽ · thiết lập phiên bản chưa lưu tạm sẽ mất. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi lưu tạm.',
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',

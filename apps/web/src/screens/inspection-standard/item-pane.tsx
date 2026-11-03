@@ -50,7 +50,6 @@ export interface ItemPaneProps {
   /** 초안 배열의 위치 기준 이동. **여기서 서버를 부르지 않는다** */
   onReorder: (from: number, to: number) => void;
   onSave: () => void;
-  onCancel: () => void;
 }
 
 /** 값이 없다는 것과 0이라는 것은 다르다 — 빈 값을 빈 칸으로 두면 둘이 같아 보인다. */
@@ -109,7 +108,6 @@ export const ItemPane = ({
   onRemove,
   onReorder,
   onSave,
-  onCancel,
 }: ItemPaneProps) => {
   /*
    * 지정 폭의 합은 656px이고 디자인 시스템이 렌더하는 순서 이동 열(96px)을 더해도
@@ -307,16 +305,12 @@ export const ItemPane = ({
 
       {isVersionSelected && isEditable && (
         <div className="form-actions">
-          <Button variant="outlined" disabled={!isEditable || !isDirty} onClick={onCancel}>
-            {messages.common.cancel}
-          </Button>
-
           {saveReason === null ? (
             <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-              {messages.common.save}
+              {t.actions.tempSave}
             </Button>
           ) : (
-            <DisabledAction label={messages.common.save} reason={saveReason} />
+            <DisabledAction label={t.actions.tempSave} reason={saveReason} />
           )}
         </div>
       )}
