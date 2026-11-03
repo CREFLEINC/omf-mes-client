@@ -158,6 +158,31 @@ describe('W-CO-15 공장 근무일 설정', () => {
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
   });
 
+  it('US7-3 같은 날 두 번 저장하면 둘째는 새 행이 아니라 오늘 시작한 그 행을 If-Match 로 고친다', async () => {
+    const { user, writes } = setup();
+    const row = await rowOf('합성 2공장');
+
+    await user.click(row.getByRole('radio', { name: t.options.six }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled(),
+    );
+
+    const again = await rowOf('합성 2공장');
+    await waitFor(() => expect(again.getByRole('radio', { name: t.options.six })).toBeChecked());
+    await user.click(again.getByRole('radio', { name: t.options.five }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes.map((write) => write.method)).toEqual(['POST', 'PUT']);
+    expect(writes[1]).toMatchObject({
+      path: '/app/operation-policies/9001',
+      body: { valueNumeric: 5, effectiveFrom: TODAY },
+    });
+    expect(writes[1]?.headers.get('If-Match')).toBe('"7"');
+  });
+
   it('US7-3 저장한 6 은 다시 열어도 6 이고 「기본값」이 아니다', async () => {
     setup({
       policies: [
