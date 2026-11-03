@@ -8,9 +8,9 @@ import type { Translated } from './translated';
  * 고치는지를 `values.erpReadOnlyNotice` 가 대신 말한다.
  */
 export const productionOrder: Translated<typeof ko.productionOrder> = {
-  title: 'Danh sách lệnh sản xuất',
+  title: 'Kế hoạch sản xuất',
   breadcrumbRoot: 'Quản lý sản xuất',
-  menuPath: 'Quản lý sản xuất › Danh sách lệnh sản xuất',
+  menuPath: 'Quản lý sản xuất › Kế hoạch sản xuất',
   fields: {
     productionOrderNo: 'Số ERP W/O',
     erpProductionOrderNo: 'Số gốc ERP',

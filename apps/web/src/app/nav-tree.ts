@@ -438,13 +438,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         to: '/production/production-orders',
         icon: 'account_tree',
-        label: '작업지시 목록',
-        labelVi: 'Danh sách lệnh sản xuất',
+        label: '작업계획',
+        labelVi: 'Kế hoạch sản xuất',
         tabs: [
           {
             to: '/production/production-orders',
-            label: '작업지시 목록',
-            labelVi: 'Danh sách lệnh sản xuất',
+            label: '작업계획',
+            labelVi: 'Kế hoạch sản xuất',
           },
           {
             to: '/production/po-change-review',

@@ -320,9 +320,9 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     <div className="erp-wo-multi-page">
       <div className="erp-wo-multi-header">
         <Button variant="text" onClick={() => void navigate(worklistPath())}>
-          작업지시 목록
+          {messages.erpWorkOrderFlow.process.back}
         </Button>
-        <h1 className="page-title">작업계획</h1>
+        <h1 className="page-title">{messages.erpWorkOrderFlow.process.title}</h1>
         <p>선택 오더 {orderNumbers.length}건</p>
       </div>
       <Tabs

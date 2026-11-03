@@ -10,7 +10,7 @@
  * 화면 이름. 제목, 돌아가기 링크, 완료 화면 버튼, 안내용 메뉴 경로(`production-order.ts`)가 이 값을 쓴다.
  * 사이드바 이름은 `nav-tree.ts`에 따로 적고, `nav-menu-path.test.ts`가 둘이 같은지 잰다.
  */
-const SCREEN_NAME = '작업지시 목록';
+const SCREEN_NAME = '작업계획';
 
 /**
  * 처리 상태 이름. 키는 서버 칩 판정(`worklistState`)이다. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17).
@@ -143,7 +143,7 @@ export const erpWorkOrderFlow = {
   },
 
   list: {
-    pane: 'ERP W/O 목록',
+    pane: '생산오더 목록',
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
@@ -241,9 +241,9 @@ export const erpWorkOrderFlow = {
   },
 
   process: {
-    title: '작업계획',
+    title: '작업계획 편성',
     orderNumber: 'ERP W/O',
-    back: SCREEN_NAME,
+    back: '작업계획 목록으로',
     loading: 'ERP W/O 불러오는 중',
     notFound: '이 번호의 ERP W/O를 찾을 수 없습니다',
     notFoundDescription: '작업함에서 다시 고르세요.',
@@ -526,7 +526,7 @@ export const erpWorkOrderFlow = {
       statusLine: (workOrderNo: string, operation: string, status: string): string =>
         `${workOrderNo} ${operation}: ${status}`,
       /** 작업함으로 돌아가는 버튼. 부르는 쪽이 「으로/로」를 붙인다(C-5). */
-      toWorklist: SCREEN_NAME,
+      toWorklist: '작업계획 목록',
       nextOrder: '다음 ERP W/O',
       alreadyReleased: '이 ERP W/O의 W/O는 모두 배포되었습니다',
     },
