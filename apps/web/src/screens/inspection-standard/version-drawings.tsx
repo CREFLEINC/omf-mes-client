@@ -1,12 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Dialog,
-  EmptyState,
-  Icon,
-  SkeletonText,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, EmptyState, Icon, SkeletonText } from '@crefle/web-ui';
 import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
@@ -51,7 +43,6 @@ export const VersionDrawings = ({
 }) => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
-  const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [pick, setPick] = useState<Pick>({ kind: 'add' });
   const [current, setCurrent] = useState(0);
@@ -64,10 +55,12 @@ export const VersionDrawings = ({
   const shown = Math.min(current, Math.max(list.length - 1, 0));
   const shownDrawing = list[shown];
 
-  /** 바뀐 목록을 다시 받은 뒤 그 자리로 옮긴다 — 추가는 맨 끝, 제거는 앞 자리. */
+  /**
+   * 바뀐 목록을 다시 받은 뒤 그 자리로 옮긴다 — 추가는 맨 끝, 제거는 앞 자리.
+   * 완료 알림은 띄우지 않는다 — 작성 중 버전에 담아 둘 뿐이고 확정해야 반영된다(사용자 지시).
+   */
   const write = async (
     send: () => Promise<ApiCallResult<unknown>>,
-    done: string,
     nextIndex: (count: number) => number,
   ): Promise<void> => {
     setIsSaving(true);
@@ -80,7 +73,6 @@ export const VersionDrawings = ({
         0;
       setCurrent(Math.max(nextIndex(count), 0));
       setRemoving(null);
-      toast.show({ variant: 'success', description: done });
     } catch (cause) {
       setError(toApiError(cause));
     } finally {
@@ -111,7 +103,6 @@ export const VersionDrawings = ({
             params: { header, path: { inspectionPlanVersionId: versionId } },
             body: form,
           }),
-        t.drawingAdded,
         (count) => count - 1,
       );
       return;
@@ -126,7 +117,6 @@ export const VersionDrawings = ({
             body: form,
           },
         ),
-      t.drawingReplaced,
       () => shown,
     );
   };
@@ -143,7 +133,6 @@ export const VersionDrawings = ({
             },
           },
         ),
-      t.drawingRemoved,
       (count) => Math.min(shown, count - 1),
     );
   };
@@ -216,12 +205,7 @@ export const VersionDrawings = ({
       {removing === null && <PlanActionBanner error={error} />}
 
       {drawings.data.length === 0 ? (
-        <EmptyState
-          size="sm"
-          icon={<Icon name="image" size={32} />}
-          title={t.drawingsNone}
-          description={isEditable ? t.drawingsNoneHintEditable : t.drawingsNoneHint}
-        />
+        <EmptyState size="sm" icon={<Icon name="image" size={32} />} title={t.drawingsNone} />
       ) : (
         <InspectionDrawingImages
           drawings={drawings.data}
@@ -235,8 +219,8 @@ export const VersionDrawings = ({
       {removing !== null && (
         <Dialog
           open
-          size="sm"
-          title={t.drawingRemoveTitle(shown + 1)}
+          size="md"
+          title={t.drawingRemoveTitle}
           closeOnBackdropClick={false}
           showCloseButton={false}
           onClose={() => setRemoving(null)}
@@ -253,6 +237,7 @@ export const VersionDrawings = ({
         >
           <PlanActionBanner error={error} />
           <p>{t.drawingRemoveBody}</p>
+          <p className="field-note">{t.drawingRemoveNote}</p>
         </Dialog>
       )}
     </>

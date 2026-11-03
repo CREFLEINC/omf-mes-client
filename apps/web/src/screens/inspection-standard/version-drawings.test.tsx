@@ -96,11 +96,11 @@ describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)',
     expect(screen.queryByRole('button', { name: t.drawingRemove })).toBeNull();
   });
 
-  it('도면이 없는 작성 중 버전은 [도면 추가] 안내를 보이고, 고른 그림을 붙인 뒤 그 도면을 보인다', async () => {
+  it('도면이 없는 작성 중 버전은 「등록된 도면이 없습니다」만 보이고, 고른 그림을 붙인 뒤 그 도면을 보인다', async () => {
     const user = userEvent.setup();
     const { fetch, writes } = drawingServer([]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
-    expect(await screen.findByText(t.drawingsNoneHintEditable)).toBeVisible();
+    expect(await screen.findByText(t.drawingsNone)).toBeVisible();
     expect(screen.queryByRole('button', { name: t.drawingReplace })).toBeNull();
 
     await user.upload(screen.getByTestId('drawing-file-input'), png());
@@ -155,7 +155,7 @@ describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)',
     expect(writes).toEqual([]);
 
     await user.click(screen.getByRole('button', { name: t.drawingRemove }));
-    const dialog = screen.getByRole('dialog', { name: t.drawingRemoveTitle(1) });
+    const dialog = screen.getByRole('dialog', { name: t.drawingRemoveTitle });
     await user.click(within(dialog).getByRole('button', { name: t.drawingRemoveConfirm }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
