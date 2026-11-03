@@ -68,7 +68,7 @@ const drawingServer = (initial: number[]) => {
 
 const png = (name = 'a.png') => new File(['x'], name, { type: 'image/png' });
 
-describe('검사 기준 도면 탭 추가·바꾸기·빼기 (omf-all-around#227)', () => {
+describe('검사 기준 도면 탭 추가·수정·제거 (omf-all-around#227)', () => {
   beforeEach(() => {
     let seq = 0;
     vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:d/${String(++seq)}`);
@@ -126,7 +126,7 @@ describe('검사 기준 도면 탭 추가·바꾸기·빼기 (omf-all-around#227
     expect(writes).toEqual([]);
   });
 
-  it('[도면 바꾸기]는 보고 있는 도면 자리를 바꾼다', async () => {
+  it('[도면 수정]은 보고 있는 도면 자리를 바꾼다', async () => {
     const user = userEvent.setup();
     const { fetch, writes } = drawingServer([1, 2]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
@@ -142,7 +142,7 @@ describe('검사 기준 도면 탭 추가·바꾸기·빼기 (omf-all-around#227
     expect(await screen.findByRole('img', { name: t.drawingAlt(2) })).toBeVisible();
   });
 
-  it('[도면 빼기]는 확인 창을 거쳐 보고 있는 도면을 빼고, 취소하면 보내지 않는다', async () => {
+  it('[도면 제거]는 확인 창을 거쳐 보고 있는 도면을 제거하고, 취소하면 보내지 않는다', async () => {
     const user = userEvent.setup();
     const { fetch, writes } = drawingServer([1, 2]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });

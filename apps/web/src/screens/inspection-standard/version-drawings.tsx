@@ -64,7 +64,7 @@ export const VersionDrawings = ({
   const shown = Math.min(current, Math.max(list.length - 1, 0));
   const shownDrawing = list[shown];
 
-  /** 바뀐 목록을 다시 받은 뒤 그 자리로 옮긴다 — 추가는 맨 끝, 빼기는 앞 자리. */
+  /** 바뀐 목록을 다시 받은 뒤 그 자리로 옮긴다 — 추가는 맨 끝, 제거는 앞 자리. */
   const write = async (
     send: () => Promise<ApiCallResult<unknown>>,
     done: string,

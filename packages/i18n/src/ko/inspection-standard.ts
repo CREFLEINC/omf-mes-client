@@ -262,21 +262,21 @@ export const inspectionStandard = {
     drawingAlt: (index: number): string => `도면 ${String(index)}`,
     drawingPrev: '이전 도면',
     drawingNext: '다음 도면',
-    /* 도면 추가·바꾸기·빼기 — 작성 중 버전만(omf-all-around#227). */
+    /* 도면 추가·수정·제거 — 작성 중 버전만(omf-all-around#227). */
     drawingsNoneHintEditable:
       '[도면 추가]로 그림을 붙이거나, 기준서(TCKT) 엑셀을 올리면 도면이 함께 붙습니다.',
     drawingAdd: '도면 추가',
-    drawingReplace: '도면 바꾸기',
-    drawingRemove: '도면 빼기',
+    drawingReplace: '도면 수정',
+    drawingRemove: '도면 제거',
     drawingFileInvalid: 'PNG·JPEG 그림만 올릴 수 있습니다.',
     drawingFileTooLarge: '10MB 이하 그림만 올릴 수 있습니다.',
-    drawingRemoveTitle: (index: number): string => `도면 ${String(index)} 빼기`,
+    drawingRemoveTitle: (index: number): string => `도면 ${String(index)} 제거`,
     drawingRemoveBody:
-      '보고 있는 도면을 뺄까요? 이 작성 중 버전에서만 빠지고, 다른 버전의 도면은 그대로입니다.',
-    drawingRemoveConfirm: '빼기',
+      '보고 있는 도면을 제거할까요? 이 작성 중 버전에서만 제거되고, 다른 버전의 도면은 그대로입니다.',
+    drawingRemoveConfirm: '제거',
     drawingAdded: '도면을 추가했습니다.',
-    drawingReplaced: '도면을 바꿨습니다.',
-    drawingRemoved: '도면을 뺐습니다.',
+    drawingReplaced: '도면을 수정했습니다.',
+    drawingRemoved: '도면을 제거했습니다.',
     notSet: '미설정',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
