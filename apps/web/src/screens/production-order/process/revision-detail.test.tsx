@@ -73,10 +73,10 @@ describe('선택 개정 읽기 전용 상세', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'BOM 상세 보기' }));
     const dialog = screen.getByRole('dialog', { name: 'BOM 상세' });
     await within(dialog).findByText(/원료/);
-    expect(dialog).toHaveTextContent('기준 수량 100');
+    expect(dialog).toHaveTextContent(/기준 수량\s*100/);
     expect(dialog).toHaveTextContent('2.5');
     expect(dialog).toHaveTextContent('2%');
-    expect(dialog).toHaveTextContent('현재 생산계획 수량으로 환산한 값이 아닙니다');
+    expect(dialog).not.toHaveTextContent('환산한 값이 아닙니다');
   });
   it('개정이 없으면 상세 버튼을 사용할 수 없다', () => {
     renderWithProviders(<RevisionDetailButton kind="BOM" value="" />);

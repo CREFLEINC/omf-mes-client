@@ -32723,3 +32723,8 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 .erp-wo-revision-table th, .erp-wo-revision-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; vertical-align: top; min-width: 6rem; }
 .erp-wo-revision-table th { background: var(--surface-container); }
 .erp-wo-revision-table caption { text-align: left; font: var(--type-title-sm); padding-bottom: var(--space-2); }
+
+.erp-wo-master-revision > .erp-wo-revision-detail-trigger { display: flex; width: fit-content; margin-top: var(--space-2); }
+.erp-wo-revision-base { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; font: var(--type-body-sm); }
+.erp-wo-revision-base dt { color: var(--on-surface-variant); }
+.erp-wo-revision-base dd { margin: 0; }

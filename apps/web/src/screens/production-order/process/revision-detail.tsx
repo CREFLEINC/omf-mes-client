@@ -58,10 +58,12 @@ const BomContents = ({ id }: { id: number }) => {
           {bom.bomCode} (Rev {bom.bomVersion})
         </strong>
       </p>
-      <p className="field-note">
-        기준 수량 {bom.baseQty} {unit(bom.baseUomId)}에 대한 구성 자재 소요량입니다. 현재 생산계획
-        수량으로 환산한 값이 아닙니다.
-      </p>
+      <dl className="erp-wo-revision-base">
+        <dt>기준 수량</dt>
+        <dd>
+          {bom.baseQty} {unit(bom.baseUomId)}
+        </dd>
+      </dl>
       {!rows.data.items.length ? (
         <p>등록된 구성 자재가 없습니다.</p>
       ) : (
@@ -130,9 +132,7 @@ const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
       <p>
         <strong>{label ?? '선택한 Routing'}</strong>
       </p>
-      <p className="field-note">
-        등록된 공정 순서와 공정별 관리·자원 조건입니다. 시간 단위는 초, 수율은 백분율입니다.
-      </p>
+
       {!rows.data.items.length ? (
         <p>등록된 공정이 없습니다.</p>
       ) : (
@@ -207,6 +207,7 @@ export const RevisionDetailButton = ({
         size="sm"
         variant="text"
         disabled={!Number.isSafeInteger(id) || id <= 0}
+        className="erp-wo-revision-detail-trigger"
         aria-label={`${kind} 상세 보기`}
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
