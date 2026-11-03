@@ -232,6 +232,35 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     expect(writes).toEqual([]);
   });
 
+  it('[도면 추가]는 여러 장을 한 번에 붙이고, 막힌 파일만 이름과 이유를 보인다', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const { fetch, writes } = drawingServer([1]);
+    renderWithProviders(<Harness isEditable />, { fetch, session: null });
+    await screen.findByRole('img', { name: t.drawingAlt(1) });
+
+    /* [도면 추가]를 눌러야 파일 칸이 여러 장 고르기로 열린다. */
+    await user.click(screen.getByRole('button', { name: t.drawingAdd }));
+    expect(screen.getByTestId('drawing-file-input')).toHaveProperty('multiple', true);
+    await user.upload(screen.getByTestId('drawing-file-input'), [
+      new File(['a'], 'a.png', { type: 'image/png' }),
+      new File(['b'], 'b.jpg', { type: 'image/jpeg' }),
+      new File(['a'], 'a-copy.png', { type: 'image/png' }),
+      new File(['%PDF'], 'c.pdf', { type: 'application/pdf' }),
+    ]);
+
+    await waitFor(() => expect(screen.getByTestId('draft-count')).toHaveTextContent('3'));
+    expect(screen.getByText(`a-copy.png — ${t.drawingDuplicate}`)).toBeVisible();
+    expect(screen.getByText(`c.pdf — ${t.drawingFileInvalid}`)).toBeVisible();
+    expect(writes).toEqual([]);
+
+    await user.click(
+      screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
+    );
+    await waitFor(() =>
+      expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual([`POST ${BASE}`, `POST ${BASE}`]),
+    );
+  });
+
   it('바닥에는 [임시 저장]만 둔다 — [취소] 단추가 없다', async () => {
     const { fetch } = drawingServer([1]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });

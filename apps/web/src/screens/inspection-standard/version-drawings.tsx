@@ -233,7 +233,8 @@ export const VersionDrawings = ({
   const [pick, setPick] = useState<Pick>({ kind: 'add' });
   const [current, setCurrent] = useState(0);
   const [isRemoving, setIsRemoving] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  /* 받지 않은 파일과 이유 — 여러 장을 한 번에 고르면 몇 장만 막힐 수 있어 줄마다 낸다. */
+  const [problems, setProblems] = useState<string[]>([]);
 
   const { list } = draft;
   const shown = Math.min(current, Math.max(list.length - 1, 0));
@@ -245,27 +246,41 @@ export const VersionDrawings = ({
 
   const openPicker = (next: Pick): void => {
     setPick(next);
-    setProblem(null);
-    fileInput.current?.click();
+    setProblems([]);
+    const input = fileInput.current;
+    if (input === null) return;
+    /* 추가는 여러 장을 한 번에 고른다(사용자 지시 · #227). 수정은 보고 있는 한 장만 바꾼다. 단추를 누른 그 자리에서 정해야 해 상태를 기다리지 않는다. */
+    input.multiple = next.kind === 'add';
+    input.click();
   };
 
+  /**
+   * 고른 파일을 하나씩 검사한다 — 그림이 아니거나 크거나 이미 붙은 도면(이번에 함께 고른 것 포함)과 같으면 그 파일만 뺀다.
+   * 여러 장 중 몇 장만 막혀도 나머지는 붙인다.
+   */
   const onFile = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     event.target.value = '';
-    if (file === undefined) return;
-    const found = drawingFileProblem(file);
-    setProblem(found);
-    if (found !== null) return;
-    if (await isDuplicateDrawing(file, list)) {
-      setProblem(t.drawingDuplicate);
+    if (files.length === 0) return;
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+    for (const file of files) {
+      const reason =
+        drawingFileProblem(file) ??
+        ((await isDuplicateDrawing(file, [...list, ...accepted.map((blob) => ({ blob }))]))
+          ? t.drawingDuplicate
+          : null);
+      if (reason === null) accepted.push(file);
+      else rejected.push(files.length > 1 ? `${file.name} — ${reason}` : reason);
+    }
+    setProblems(rejected);
+    if (pick.kind === 'replace') {
+      if (accepted[0] !== undefined) draft.replace(pick.index, accepted[0]);
       return;
     }
-    if (pick.kind === 'add') {
-      draft.add(file);
-      setCurrent(list.length);
-      return;
-    }
-    draft.replace(pick.index, file);
+    if (accepted.length === 0) return;
+    accepted.forEach((file) => draft.add(file));
+    setCurrent(list.length + accepted.length - 1);
   };
 
   if (drawings.isError) {
@@ -321,10 +336,12 @@ export const VersionDrawings = ({
           )}
         </div>
       )}
-      {problem !== null && (
+      {problems.length > 0 && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={messages.httpError.title}>
-            {problem}
+            {problems.map((line) => (
+              <div key={line}>{line}</div>
+            ))}
           </AlertBanner>
         </div>
       )}
