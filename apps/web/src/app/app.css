@@ -32029,3 +32029,34 @@ button.iqc-inspection-step-toggle:focus-visible {
 .lot-status-search .lot-status-filter-actions > button[aria-expanded='true']::before {
   opacity: 0;
 }
+
+/*
+ * 부적합 처분 관리(처분 대기 · 처분 이력) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 칸은 제 글자 폭, [조회] [초기화] [상세 펼치기] 는 첫 줄 오른쪽 끝에 칸 아래 선과 맞춰, 단추 사이 8, 펼치기는 글자 단추.
+ */
+.pane.po-board-filter .filter-bar.disposition-filter > .field-cell:nth-child(n):nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.pane.po-board-filter .filter-bar.disposition-filter > .disposition-filter-actions {
+  align-self: flex-end;
+  margin-top: 0;
+}
+
+.pane.po-board-filter .disposition-filter-actions > .filter-actions {
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pane.po-board-filter .disposition-filter-actions button[aria-expanded] {
+  background: none;
+}
+
+.pane.po-board-filter .disposition-filter-actions button[aria-expanded='true']::before {
+  opacity: 0;
+}
+
+.pane.po-board-filter .filter-bar.disposition-filter > .field-cell > .field-cell.search-select-cell {
+  width: auto;
+}
