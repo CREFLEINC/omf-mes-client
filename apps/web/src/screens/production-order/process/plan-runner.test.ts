@@ -185,4 +185,28 @@ describe('생산계획 단계 저장과 전개 확정(T-W-C 중간 단계의 확
     expect(result.confirmed).toBe(0);
     expect(result.failures[0]?.errors.planDate).toBeDefined();
   });
+  it('분할 원본 저장이 충돌하면 여유 수량이 있어도 새 분할 행을 생성하지 않는다', async () => {
+    const { client, calls } = stubServer(5);
+    const original = baseRow({ isDirty: true });
+    original.draft.plannedQty = '200';
+    const child = baseRow({
+      key: 'new-split',
+      productionPlanId: null,
+      baseline: null,
+      isDirty: true,
+      splitSourceKey: original.key,
+    });
+    child.draft = { ...original.draft, plannedQty: '100' };
+    const result = await runPlanStep(
+      client,
+      [original, child],
+      { productionOrderId: 701, uomId: 1 },
+      false,
+    );
+    expect(result.failures).toHaveLength(2);
+    expect(result.failures[1]?.message).toContain('분할 원본');
+    expect(calls).toEqual([
+      { method: 'PUT', path: '/planning/production-plans/501', ifMatch: '3' },
+    ]);
+  });
 });

@@ -91,4 +91,56 @@ describe('생산계획 보기와 선택 편집', () => {
       within(editor).queryByRole('button', { name: t.remove(t.newRow(1)) }),
     ).not.toBeInTheDocument();
   });
+  it('복수 오더 중간에 삽입한 분할 행을 선택하고 마지막 다른 오더를 선택하지 않는다', async () => {
+    const user = userEvent.setup();
+    const Harness = () => {
+      const [rows, setRows] = useState(() =>
+        appendProductionPlanRow(initialRows(), 'other-order', {
+          planDate: '2026-11-03',
+          plannedQty: '100',
+          bomId: '11',
+          routingId: '21',
+          plannedLineId: '31',
+        }),
+      );
+      return (
+        <PlanStep
+          rows={rows}
+          orderQty={300}
+          confirmedQty={0}
+          uomLabel="EA"
+          plantId={null}
+          lines={[]}
+          statusNameOf={(code) => code}
+          disabled={false}
+          failures={[]}
+          onAdd={() => {}}
+          onChange={() => {}}
+          onRemove={() => {}}
+          onSplit={(source, qty) =>
+            setRows((current) => {
+              const reduced = changeProductionPlanRow(
+                current,
+                source.key,
+                'plannedQty',
+                String(Number(source.draft.plannedQty) - qty),
+              );
+              const next = appendProductionPlanRow(reduced, 'split-middle', {
+                ...source.draft,
+                plannedQty: String(qty),
+              });
+              return [next[0]!, next[2]!, next[1]!];
+            })
+          }
+        />
+      );
+    };
+    renderWithProviders(<Harness />);
+    await user.click(screen.getByText('계획 분할', { exact: true }));
+    await user.type(screen.getByRole('textbox', { name: '분할 수량' }), '50');
+    await user.click(screen.getByRole('button', { name: '분할 적용' }));
+    expect(
+      screen.getByRole('textbox', { name: t.fieldLabel(t.newRow(3), t.columns.plannedQty) }),
+    ).toHaveValue('50');
+  });
 });

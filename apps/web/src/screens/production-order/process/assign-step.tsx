@@ -11,6 +11,7 @@ const t = messages.erpWorkOrderFlow.process.assign;
 
 export interface AssignStepProps {
   actionTargetId?: string;
+  itemLabel?: string;
   workOrders: OrderWorkOrder[] | undefined;
   blockedIds: ReadonlySet<number> | undefined;
   plantId: number | null;
@@ -33,6 +34,7 @@ export interface AssignStepProps {
  */
 export const AssignStep = ({
   actionTargetId,
+  itemLabel,
   workOrders,
   blockedIds,
   plantId,
@@ -143,6 +145,7 @@ export const AssignStep = ({
         ) : (
           <AssignEditor
             actionTargetId={actionTargetId}
+            summary={`${itemLabel ? `${itemLabel} / ` : ''}${lineNameOf?.(selected.productionLineId ?? null) ?? ''} / ${planDateOf(selected.productionPlanId) ?? '—'} / ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
             key={selected.workOrderId}
             title={t.editorTitle(selected.workOrderNo, selected.operationName)}
             workOrderId={selected.workOrderId}

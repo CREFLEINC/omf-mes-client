@@ -165,6 +165,7 @@ const RecommendationLinks = ({
 
 interface EditorSessionProps {
   actionTargetId?: string;
+  summary?: string;
   /** 편집 중인 W/O(번호와 공정). 편집 영역 제목이다. */
   title: string;
   workOrder: WorkOrderFact;
@@ -177,6 +178,7 @@ interface EditorSessionProps {
 
 const EditorSession = ({
   actionTargetId,
+  summary,
   title,
   workOrder,
   plantId,
@@ -554,7 +556,10 @@ const EditorSession = ({
       <span id={`${headingId}-save-note`} className="visually-hidden">
         {t.actions.noChanges}
       </span>
-      <p className="erp-wo-assign-selected-target">{title}</p>
+      <div className="erp-wo-assign-selected-target">
+        <p>{title}</p>
+        {summary && <p className="erp-wo-assign-summary">{summary}</p>}
+      </div>
       <p className="assign-check">
         <Chip variant="status" size="sm" status={checkTone}>
           {checkLabel}
@@ -564,15 +569,17 @@ const EditorSession = ({
       <SaveErrorBanner error={update.error} />
       <div className="assign-form">
         <h3 className="assign-group-title">{t.groups.equipmentAndMold}</h3>
-        {reference('productionLineId', t.fields.productionLineId, lineSource, {
-          addon: (
-            <Tooltip content={t.lineHint}>
-              <button type="button" className="info-mark" aria-label={t.lineHintLabel}>
-                ⓘ
-              </button>
-            </Tooltip>
-          ),
-        })}
+        <div className="erp-wo-assign-line-control">
+          {reference('productionLineId', t.fields.productionLineId, lineSource, {
+            addon: (
+              <Tooltip content={t.lineHint}>
+                <button type="button" className="info-mark" aria-label={t.lineHintLabel}>
+                  ⓘ
+                </button>
+              </Tooltip>
+            ),
+          })}
+        </div>
         {reference('plannedEquipmentId', t.fields.plannedEquipmentId, equipmentSource, {
           chips: chips.plannedEquipmentId,
           onPick: (row) =>
@@ -682,6 +689,7 @@ const EditorSession = ({
 
 export interface AssignEditorProps {
   actionTargetId?: string;
+  summary?: string;
   /** 편집 중인 W/O(번호와 공정) */
   title: string;
   workOrderId: number;
@@ -693,6 +701,7 @@ export interface AssignEditorProps {
 
 export const AssignEditor = ({
   actionTargetId,
+  summary,
   title,
   workOrderId,
   plantId,
@@ -718,6 +727,7 @@ export const AssignEditor = ({
   return (
     <EditorSession
       actionTargetId={actionTargetId}
+      summary={summary}
       title={title}
       key={`${String(workOrderId)}:${String(detail.dataUpdatedAt)}`}
       workOrder={detail.data}

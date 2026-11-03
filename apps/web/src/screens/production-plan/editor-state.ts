@@ -30,6 +30,8 @@ export interface ProductionPlanEditorRow {
 
 export interface ProductionPlanEditorStateRow extends ProductionPlanEditorRow {
   productionPlanId: number | null;
+  /** 분할 원본 저장이 실패하면 새 분할 행 생성도 멈춘다. 서버 저장 필드는 아니다. */
+  splitSourceKey?: string;
   baseline: ProductionPlanUpdateBaseline | null;
   /**
    * 이 줄을 편집 세션에 불러온 시점의 판(`versionNo`). 고친 줄은 다시 조회해도 이 값을 그대로 두므로,

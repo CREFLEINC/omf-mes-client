@@ -10,7 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { ApiClientProvider } from '../../../patterns/api-context';
 import { jsonResponse } from '../../../test/api-harness';
 import { LegacyAssignmentRedirect, LegacyPlanRedirect } from './legacy-redirects';
-import { ProductionOrderProcessScreen } from './process-screen';
+import { ProductionOrderProcessScreen, ProcessWorkspace } from './process-screen';
+import { toProductionOrderFact } from '../queries';
 
 /*
  * 처리 화면(T-W-C) 컴포넌트 시험. 이탈 확인(`useBlocker`)이 데이터 라우터에서만 동작하므로 공용 하네스의
@@ -277,7 +278,7 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const renderAt = (route: string, state: World) => {
+const renderAt = (route: string, state: World, executionScope = false) => {
   const server = serve(state);
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -293,7 +294,17 @@ const renderAt = (route: string, state: World) => {
         path: `${WORKLIST}/:productionOrderNo`,
         element: (
           <>
-            <ProductionOrderProcessScreen />
+            {executionScope ? (
+              <ProcessWorkspace
+                order={toProductionOrderFact(
+                  orderBody(state) as Parameters<typeof toProductionOrderFact>[0],
+                )}
+                initialStep="assign"
+                executionScope
+              />
+            ) : (
+              <ProductionOrderProcessScreen />
+            )}
             <LocationProbe />
           </>
         ),
@@ -331,6 +342,19 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
+  it('복수 편성의 부분 확정 계획은 오더 잔량과 별개로 4M에서 배포 확인으로 진행할 수 있다', async () => {
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        plans: [{ ...CONFIRMED_PLAN, plannedQty: 150 }],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+      }),
+      true,
+    );
+    await currentStep(tp.steps.assign);
+    expect(screen.getByRole('tab', { name: tp.steps.release })).toBeEnabled();
+  });
+
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);

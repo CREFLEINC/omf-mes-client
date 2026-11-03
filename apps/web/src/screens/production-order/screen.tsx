@@ -322,6 +322,21 @@ export const ProductionOrderScreen = ({
         actions={
           <div className="erp-wo-bulk-actions">
             <Button
+              aria-describedby={bulkReasonId}
+              disabled={bulkReason !== null}
+              onClick={() => {
+                const first = checkedRows[0];
+                if (!first) return;
+                rememberWorklistSearch(searchParams);
+                const params = new URLSearchParams({
+                  orders: checkedRows.map((row) => row.fact.productionOrderNo).join(','),
+                });
+                void navigate(`${processPath(first.fact.productionOrderNo)}?${params}`);
+              }}
+            >
+              선택 오더 계획 편성 ({checkedRows.length})
+            </Button>
+            <Button
               variant="outlined"
               disabled={bulkReason !== null}
               aria-describedby={bulkReason === null ? undefined : bulkReasonId}

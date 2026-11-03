@@ -11,7 +11,8 @@ import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { MultiOrderPlanning } from './multi-order-planning';
 
 import { ActionBar } from '../../../patterns/action-bar';
 import { useApiClient } from '../../../patterns/api-context';
@@ -87,7 +88,19 @@ const PLAN_FIELD_NAMES: Partial<Record<ProductionPlanDraftField, string>> = {
   plannedLineId: tp.plan.columns.line,
 };
 
-const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
+export const ProcessWorkspace = ({
+  order,
+  initialStep,
+  executionScope = false,
+  onDirtyChange,
+  onStepChange,
+}: {
+  order: ProductionOrderFact;
+  initialStep?: ProcessStepKey;
+  executionScope?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+  onStepChange?: (step: ProcessStepKey) => void;
+}) => {
   const assignActionTargetId = useId();
   const navigate = useNavigate();
   const toast = useToast();
@@ -176,7 +189,10 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       })(),
       totalQty: editor.rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
       confirmedQty: confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
-      orderQty: order.orderQty,
+      // 복수 편성은 확정한 부분 계획을 실행하며, 단일 오더의 기존 전량 판정은 유지한다.
+      orderQty: executionScope
+        ? confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0)
+        : order.orderQty,
     },
     stepName('assign'),
   );
@@ -262,8 +278,20 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     releaseLines === undefined || releaseLines.length === 0 ? null : missingLot,
   );
 
+  const lotDirty = Object.entries(lotSizeTexts).some(
+    ([workOrderId, text]) => text !== String(defaultLots.get(Number(workOrderId)) ?? ''),
+  );
+  useEffect(() => {
+    onDirtyChange?.(planDirty || assignDirty || lotDirty);
+  }, [planDirty, assignDirty, lotDirty, onDirtyChange]);
+
   /* 단계 */
-  const [step, setStep] = useState<ScreenStep | null>(null);
+  const [step, setStep] = useState<ScreenStep | null>(initialStep ?? null);
+  const stepChangeRef = useRef(onStepChange);
+  stepChangeRef.current = onStepChange;
+  useEffect(() => {
+    if (step !== null && step !== 'done') stepChangeRef.current?.(step);
+  }, [step]);
   const [releasedCount, setReleasedCount] = useState<number | null>(null);
   const loading =
     boms.isPending ||
@@ -491,9 +519,6 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
    * 저장하지 않은 변경(T-W-C 저장하지 않은 변경): 생산계획의 고친 줄, 4M 편집, 배포 확인의 LOT 크기.
    * 단계 표시와 [이전]은 지금 단계의 변경을, 화면을 떠나는 이동은 모든 변경을 확인한다.
    */
-  const lotDirty = Object.entries(lotSizeTexts).some(
-    ([workOrderId, text]) => text !== String(defaultLots.get(Number(workOrderId)) ?? ''),
-  );
   const unsavedIn = (key: ScreenStep): boolean =>
     key === 'plan' ? planDirty : key === 'assign' ? assignDirty : key === 'release' && lotDirty;
   const goTo = (key: string) => {
@@ -578,6 +603,10 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
                   plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
                 })
               }
+              onAppend={(drafts) =>
+                editor.addMany(drafts.map((draft) => ({ ...draft, bomId, routingId })))
+              }
+              onSplit={(row, qty) => editor.split(row.key, qty)}
               onChange={editor.change}
               onRemove={(row) => {
                 if (row.productionPlanId === null) {
@@ -600,6 +629,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       case 'assign':
         return (
           <AssignStep
+            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             actionTargetId={assignActionTargetId}
             workOrders={unreleased.data}
             blockedIds={blockedIds}
@@ -897,6 +927,8 @@ export const ProductionOrderProcessScreen = ({
   permissionMenuPath = null,
 }: ProductionOrderProcessScreenProps) => {
   const { productionOrderNo = '' } = useParams();
+  const [params] = useSearchParams();
+  const selectedOrders = [...new Set((params.get('orders') ?? '').split(',').filter(Boolean))];
   const navigate = useNavigate();
   const order = useProductionOrderByNumber(productionOrderNo);
 
@@ -931,5 +963,6 @@ export const ProductionOrderProcessScreen = ({
       </AlertBanner>
     );
   }
+  if (selectedOrders.length > 1) return <MultiOrderPlanning orderNumbers={selectedOrders} />;
   return <ProcessWorkspace key={order.data.productionOrderId} order={order.data} />;
 };

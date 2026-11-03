@@ -32456,3 +32456,54 @@ button.iqc-inspection-step-toggle:focus-visible {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* 복수 오더는 한 편집 세션에서 계획을 모으고, 실행 단계는 오더별 기존 검증을 사용한다. */
+.erp-wo-multi-page { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--space-3); }
+.erp-wo-multi-header { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.erp-wo-multi-header h1 { margin: 0; font: var(--type-title-lg); }
+.erp-wo-multi-header p { margin: 0; font: var(--type-body-sm); color: var(--on-surface-variant); }
+.erp-wo-multi-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-3); }
+.erp-wo-multi-orders { flex: none; max-height: 13rem; overflow: auto; padding: 0; }
+.erp-wo-multi-orders td { padding: var(--space-2) var(--space-3); }
+.erp-wo-multi-orders .is-active { background: var(--secondary-container); }
+.erp-wo-multi-body > * { flex-shrink: 0; min-width: 0; }
+.erp-wo-multi-execution { display: flex; flex: 1; flex-direction: column; min-height: 30rem; gap: var(--space-3); }
+.erp-wo-multi-execution > .field-cell { max-width: 32rem; }
+.erp-wo-multi-execution .process-page > .process-page-head,
+.erp-wo-multi-execution .process-page > .erp-wo-stage-tabs { display: none; }
+.erp-wo-multi-execution .process-page { flex: 1; min-height: 30rem; }
+.erp-wo-multi-execution .action-bar { position: sticky; bottom: 0; z-index: 2; background: var(--surface); }
+.erp-wo-distribution { display: grid; gap: var(--space-2); justify-items: start; }
+.erp-wo-distribution-settings { width: 100%; display: grid; gap: var(--space-3); }
+.erp-wo-distribution-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.erp-wo-distribution-fields > * { min-width: 0; }
+.erp-wo-plan-split { display: grid; gap: var(--space-2); padding-block: var(--space-2); border-block: 1px solid var(--outline-variant); }
+.erp-wo-plan-order { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-assign-line-control { grid-column: 1 / -1; }
+.erp-wo-assign-selected-target > p { margin: 0; }
+.erp-wo-assign-selected-target .erp-wo-assign-summary { margin-top: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-container); border-radius: var(--radius-sm); }
+@media (max-width: 1100px) { .erp-wo-distribution-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .erp-wo-distribution-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.erp-wo-batch-qty { width: 5rem; min-width: 0; padding: var(--space-1); border: 1px solid var(--outline); border-radius: var(--radius-sm); background: var(--surface); color: var(--on-surface); font: var(--type-body-sm); text-align: right; }
+.erp-wo-multi-orders table { min-width: 48rem; }
+.erp-wo-multi-orders td { overflow-wrap: anywhere; }
+
+.erp-wo-multi-page .erp-wo-multi-orders { max-height: none; }
+.erp-wo-multi-page .erp-wo-multi-orders table { min-width: 57rem; }
+.erp-wo-multi-page .erp-wo-multi-orders th:first-child { width: 10rem; }
+.erp-wo-multi-page .erp-wo-multi-orders th:nth-child(2) { width: 12rem; }
+.erp-wo-multi-week-heading { display: grid; gap: var(--space-2); }
+.erp-wo-multi-week-heading .field-cell { max-width: 30rem; }
+.erp-wo-week-plan small { display: block; font-size: 0.65rem; overflow-wrap: anywhere; }
+
+.erp-wo-multi-view-tabs [role='tabpanel'] { display: none; }
+.erp-wo-multi-week-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-3); }
+.erp-wo-multi-week-tools > .erp-wo-distribution { display: contents; }
+.erp-wo-multi-week-tools > .erp-wo-distribution > button { grid-column: 2; grid-row: 1; align-self: start; margin-top: var(--space-5); }
+.erp-wo-multi-week-tools .erp-wo-distribution-settings { grid-column: 1 / -1; }
+.erp-wo-multi-page .erp-wo-plan-board-title { display: none; }
+.erp-wo-multi-page .erp-wo-plan-toolbar .section-title { margin: 0; }
+
+.erp-wo-multi-week-heading .field-note { margin: 0; max-width: none; }
+.erp-wo-multi-week-tools > .erp-wo-distribution > button { margin-top: 0; }
