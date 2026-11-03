@@ -52,7 +52,8 @@ export const PageNav = <S extends number = PageSize>({
   const page = Math.min(Math.max(1, meta.page), totalPages);
 
   return (
-    <nav className="page-nav" aria-label={t.label}>
+    /* 0건이면 표시만 단다 — 감출지는 화면 쪽 CSS 가 정한다(품질 화면 · omf-all-around#228). */
+    <nav className="page-nav" aria-label={t.label} data-empty={meta.total <= 0 ? '' : undefined}>
       <div className="page-nav-left">
         <span className="page-nav-total">{t.total(Math.max(0, meta.total))}</span>
         {onChangeSize !== undefined && (

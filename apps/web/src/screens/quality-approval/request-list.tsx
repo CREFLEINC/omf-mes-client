@@ -162,7 +162,8 @@ export const RequestList = ({
           empty={empty}
         />
       </div>
-      <PageNav view={page} onChange={onChangePage} />
+      {/* 첫 쪽부터 비었으면(0건) 쪽 이동을 감춘다 — 빈 목록은 안내만(omf-all-around#228). 넘친 쪽이면 돌아갈 수 있게 남긴다. */}
+      {(rows.length > 0 || page.canPrev) && <PageNav view={page} onChange={onChangePage} />}
     </div>
   );
 };
