@@ -126,7 +126,9 @@ export const DistributionControls = ({
       {open && (
         <div id={`${id}-conditions`} className="pane erp-wo-distribution-settings">
           <div className="erp-wo-distribution-heading">
-            <h2 className="section-title">오더별 분배 조건</h2>
+            <h2 className="section-title">
+              오더별 분배 조건 <span className="field-note">{rows.length}개 구간</span>
+            </h2>
             <Button
               variant="outlined"
               disabled={disabled || orders.length === 0}
@@ -144,8 +146,8 @@ export const DistributionControls = ({
             </Button>
           </div>
           <p className="field-note">
-            품목은 생산오더에 따라 표시됩니다. 오더마다 기간과 라인을 다르게 지정하고 여러 구간을
-            추가할 수 있습니다. 기존 계획은 보존하며, 같은 오더의 날짜와 라인이 겹치는 구간은
+            오더 선택 → 기간·라인 지정 → 수량 입력 후 분배 미리보기에서 확인하세요. 오더별로 구간을
+            추가할 수 있으며 기존 계획은 유지합니다. 같은 오더의 날짜·라인이 겹치면 수량을
             합산합니다.
           </p>
           <details className="erp-wo-common-conditions">

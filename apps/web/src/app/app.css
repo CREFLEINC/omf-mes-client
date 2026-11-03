@@ -32616,7 +32616,7 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .erp-wo-distribution-heading, .erp-wo-distribution-row-head, .erp-wo-distribution-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .erp-wo-distribution-heading .section-title { margin: 0; }
 .erp-wo-distribution-row-head .field-cell { flex: 1; min-width: 12rem; }
-.erp-wo-distribution-segments { display: grid; gap: var(--space-3); }
+.erp-wo-distribution-segments { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,26rem),1fr)); align-items: start; gap: var(--space-3); }
 .erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
 .erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
 .erp-wo-segment-fields { display: grid; grid-template-columns: minmax(0,14rem) minmax(0,12rem); gap: var(--space-3); margin-top: var(--space-3); }
@@ -32650,3 +32650,20 @@ body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) 
 .erp-wo-segment-quantity { width: 100%; max-width: 10rem; justify-self: start; }
 
 .erp-wo-segment-fields > .field-note { grid-column: 1 / -1; }
+
+.erp-wo-distribution-segment .erp-wo-distribution-row-head { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; }
+.erp-wo-distribution-segment .erp-wo-distribution-row-head .field-cell { flex-basis: 100%; min-width: 0; }
+.erp-wo-distribution-segment .erp-wo-distribution-row-head [role="combobox"] { width: 100%; }
+.erp-wo-distribution-segment .erp-wo-distribution-row-head > button { margin-left: auto; }
+.erp-wo-distribution-segment > .erp-wo-checkbox { padding-bottom: var(--space-2); border-bottom: 1px solid var(--outline-variant); font: var(--type-title-sm); }
+.erp-wo-distribution-segment summary { color: var(--on-surface-variant); }
+.erp-wo-distribution-actions { justify-content: flex-end; padding-top: var(--space-3); border-top: 1px solid var(--outline-variant); }
+.erp-wo-common-conditions > summary { cursor: pointer; font: var(--type-body-sm); }
+
+/* 편성 화면의 세로 스크롤은 본문 한 곳이 소유한다. */
+main:has(> .erp-wo-multi-page),
+main:has(> .process-page .erp-wo-summary) { display: flex; flex-direction: column; overflow: hidden; }
+main > .erp-wo-multi-page,
+main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0; }
+.erp-wo-distribution-settings .erp-wo-daily-quantities { max-height: none; overflow: visible; }
+.erp-wo-distribution-settings .erp-wo-preview-scroll { max-height: none; overflow-y: hidden; }
