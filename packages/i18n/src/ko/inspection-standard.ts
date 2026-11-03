@@ -270,7 +270,11 @@ export const inspectionStandard = {
     drawingFileInvalid: 'PNG·JPEG 그림만 올릴 수 있습니다.',
     drawingFileTooLarge: '10MB 이하 그림만 올릴 수 있습니다.',
     /* 이미 붙은 도면과 내용이 같은 그림(#227). */
-    drawingDuplicate: '이미 첨부된 도면과 같은 그림입니다.',
+    drawingDuplicate: '이미 등록된 도면입니다.',
+    drawingDuplicateFile: (name: string): string =>
+      `${name} 파일은 이미 등록되어 있어 추가할 수 없습니다.`,
+    /* 그림이 아니거나 큰 파일 — 제목이 까닭을 말한다. */
+    drawingRejectedFile: (name: string): string => `${name} 파일은 추가할 수 없습니다.`,
     drawingRemoveTitle: '도면 제거',
     drawingRemoveBody: '현재 보고 있는 도면을 제거하시겠습니까?',
     drawingRemoveNote: '현재 작성 중인 버전에서만 제거되며, 다른 버전에는 영향을 주지 않습니다.',

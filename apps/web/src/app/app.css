@@ -1234,9 +1234,10 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 .inspection-standard-version-bar-row > .field-cell {
-  /* 「버전 12」 정도가 들어가는 폭 — 넓으면 오른쪽 단추가 다음 줄로 밀린다(사용자 지시 · #196). 더 좁힘(사용자 지시 · #227). */
-  flex: 0 0 8rem;
-  min-width: 8rem;
+  /* 「버전 12」 정도가 들어가는 폭 — 넓으면 오른쪽 단추가 다음 줄로 밀린다(사용자 지시 · #196).
+   * 칸을 선택칸 폭에 맞춘다 — 칸이 더 넓으면 상태 표시와 사이가 빈다(사용자 지시 · #227). */
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 /*

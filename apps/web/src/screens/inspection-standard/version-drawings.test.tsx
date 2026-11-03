@@ -86,10 +86,10 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     expect(drawingFileProblem(png())).toBeNull();
     expect(drawingFileProblem(new File(['x'], 'a.jpg', { type: 'image/jpeg' }))).toBeNull();
     expect(drawingFileProblem(new File(['x'], 'a.pdf', { type: 'application/pdf' }))).toBe(
-      t.drawingFileInvalid,
+      'invalid',
     );
     const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
-    expect(drawingFileProblem(big)).toBe(t.drawingFileTooLarge);
+    expect(drawingFileProblem(big)).toBe('tooLarge');
   });
 
   it('확정 버전이면 단추 없이 보기만 한다', async () => {
@@ -147,6 +147,7 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     );
 
     expect(screen.getByText(t.drawingFileInvalid)).toBeVisible();
+    expect(screen.getByText(t.drawingRejectedFile('a.pdf'))).toBeVisible();
     expect(
       screen.getByRole('button', { name: messages.inspectionStandard.actions.tempSave }),
     ).toBeDisabled();
@@ -215,6 +216,7 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     /* 저장된 도면(내용 'x')과 같은 그림 — 이름이 달라도 막는다. */
     await user.upload(screen.getByTestId('drawing-file-input'), png('other-name.png'));
     expect(await screen.findByText(t.drawingDuplicate)).toBeVisible();
+    expect(screen.getByText(t.drawingDuplicateFile('other-name.png'))).toBeVisible();
     expect(screen.getByTestId('draft-count')).toHaveTextContent('1');
 
     /* 저장 전 추가한 그림과 같은 그림도 막는다. */
@@ -249,8 +251,17 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     ]);
 
     await waitFor(() => expect(screen.getByTestId('draft-count')).toHaveTextContent('3'));
-    expect(screen.getByText(`a-copy.png — ${t.drawingDuplicate}`)).toBeVisible();
-    expect(screen.getByText(`c.pdf — ${t.drawingFileInvalid}`)).toBeVisible();
+    expect(screen.getByText(t.drawingDuplicate)).toBeVisible();
+    expect(screen.getByText(t.drawingDuplicateFile('a-copy.png'))).toBeVisible();
+    expect(screen.getByText(t.drawingRejectedFile('c.pdf'))).toBeVisible();
+
+    /* 띠마다 닫기가 있다 — 닫으면 그 까닭의 띠만 사라진다. */
+    const duplicateBanner = screen
+      .getByText(t.drawingDuplicate)
+      .closest('[role="alert"]') as HTMLElement;
+    await user.click(within(duplicateBanner).getByRole('button', { name: '닫기' }));
+    expect(screen.queryByText(t.drawingDuplicate)).toBeNull();
+    expect(screen.getByText(t.drawingRejectedFile('c.pdf'))).toBeVisible();
     expect(writes).toEqual([]);
 
     await user.click(

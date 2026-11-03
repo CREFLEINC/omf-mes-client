@@ -243,7 +243,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     drawingFileInvalid: 'Chỉ tải lên được hình PNG·JPEG.',
     drawingFileTooLarge: 'Chỉ tải lên được hình tối đa 10MB.',
     /* 이미 붙은 도면과 내용이 같은 그림(#227). */
-    drawingDuplicate: 'Hình này trùng với bản vẽ đã đính kèm.',
+    drawingDuplicate: 'Bản vẽ đã được đăng ký.',
+    drawingDuplicateFile: (name: string): string =>
+      `Không thể thêm tệp ${name} vì đã được đăng ký.`,
+    /* 그림이 아니거나 큰 파일 — 제목이 까닭을 말한다. */
+    drawingRejectedFile: (name: string): string => `Không thể thêm tệp ${name}.`,
     drawingRemoveTitle: 'Xóa bản vẽ',
     drawingRemoveBody: 'Bạn có muốn xóa bản vẽ đang xem không?',
     drawingRemoveNote: 'Chỉ xóa khỏi phiên bản đang soạn, không ảnh hưởng đến các phiên bản khác.',

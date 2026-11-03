@@ -19,11 +19,26 @@ const t = messages.inspectionStandard.versionSection;
 const MAX_DRAWING_BYTES = 10 * 1024 * 1024;
 const DRAWING_TYPES = ['image/png', 'image/jpeg'];
 
+/** 받지 않는 까닭 — 까닭마다 알림 띠 하나로 묶는다(사용자 시안 · #227). */
+export type DrawingProblem = 'invalid' | 'tooLarge' | 'duplicate';
+
 /** 그림 파일 사전 검사 — 서버도 앞 바이트로 다시 본다. 통과하면 null. */
-export const drawingFileProblem = (file: File): string | null => {
-  if (!DRAWING_TYPES.includes(file.type)) return t.drawingFileInvalid;
-  if (file.size > MAX_DRAWING_BYTES) return t.drawingFileTooLarge;
+export const drawingFileProblem = (file: File): DrawingProblem | null => {
+  if (!DRAWING_TYPES.includes(file.type)) return 'invalid';
+  if (file.size > MAX_DRAWING_BYTES) return 'tooLarge';
   return null;
+};
+
+const PROBLEM_ORDER: readonly DrawingProblem[] = ['duplicate', 'invalid', 'tooLarge'];
+const problemTitle: Record<DrawingProblem, string> = {
+  duplicate: t.drawingDuplicate,
+  invalid: t.drawingFileInvalid,
+  tooLarge: t.drawingFileTooLarge,
+};
+const problemLine: Record<DrawingProblem, (name: string) => string> = {
+  duplicate: t.drawingDuplicateFile,
+  invalid: t.drawingRejectedFile,
+  tooLarge: t.drawingRejectedFile,
 };
 
 /** 두 그림의 내용이 같은가 — 크기가 다르면 읽지 않는다. 상한이 10MB 라 통째로 견준다. */
@@ -233,8 +248,8 @@ export const VersionDrawings = ({
   const [pick, setPick] = useState<Pick>({ kind: 'add' });
   const [current, setCurrent] = useState(0);
   const [isRemoving, setIsRemoving] = useState(false);
-  /* 받지 않은 파일과 이유 — 여러 장을 한 번에 고르면 몇 장만 막힐 수 있어 줄마다 낸다. */
-  const [problems, setProblems] = useState<string[]>([]);
+  /* 받지 않은 파일과 까닭 — 여러 장을 한 번에 고르면 몇 장만 막힐 수 있어 파일마다 낸다. 닫기로 지운다. */
+  const [problems, setProblems] = useState<{ name: string; problem: DrawingProblem }[]>([]);
 
   const { list } = draft;
   const shown = Math.min(current, Math.max(list.length - 1, 0));
@@ -263,15 +278,15 @@ export const VersionDrawings = ({
     event.target.value = '';
     if (files.length === 0) return;
     const accepted: File[] = [];
-    const rejected: string[] = [];
+    const rejected: { name: string; problem: DrawingProblem }[] = [];
     for (const file of files) {
-      const reason =
+      const problem =
         drawingFileProblem(file) ??
         ((await isDuplicateDrawing(file, [...list, ...accepted.map((blob) => ({ blob }))]))
-          ? t.drawingDuplicate
+          ? 'duplicate'
           : null);
-      if (reason === null) accepted.push(file);
-      else rejected.push(files.length > 1 ? `${file.name} — ${reason}` : reason);
+      if (problem === null) accepted.push(file);
+      else rejected.push({ name: file.name, problem });
     }
     setProblems(rejected);
     if (pick.kind === 'replace') {
@@ -336,15 +351,25 @@ export const VersionDrawings = ({
           )}
         </div>
       )}
-      {problems.length > 0 && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" title={messages.httpError.title}>
-            {problems.map((line) => (
-              <div key={line}>{line}</div>
-            ))}
-          </AlertBanner>
-        </div>
-      )}
+      {PROBLEM_ORDER.map((problem) => {
+        const names = problems.filter((each) => each.problem === problem).map((each) => each.name);
+        if (names.length === 0) return null;
+        return (
+          <div key={problem} className="banner-slot">
+            <AlertBanner
+              variant="error"
+              title={problemTitle[problem]}
+              onDismiss={() =>
+                setProblems((prev) => prev.filter((each) => each.problem !== problem))
+              }
+            >
+              {names.map((name) => (
+                <div key={name}>{problemLine[problem](name)}</div>
+              ))}
+            </AlertBanner>
+          </div>
+        );
+      })}
       <PlanActionBanner error={draft.error} />
 
       {list.length === 0 ? (
