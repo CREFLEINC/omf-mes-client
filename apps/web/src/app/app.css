@@ -25011,6 +25011,222 @@ body:has(.page-nav-size [aria-expanded="true"])
   }
 }
 
+
+/* 4M은 시안처럼 위치·계획 시간도 처음부터 보여 주며, 추가 내용은 편집 패널 안에서 스크롤한다. */
+.erp-wo-assign-editor .assign-form > .assign-group-title,
+.erp-wo-assign-editor .assign-form > .assign-empty {
+  display: none;
+}
+
+.erp-wo-assign-editor .assign-form {
+  align-items: start;
+  gap: var(--space-2) var(--space-3);
+}
+
+.erp-wo-assign-editor .assign-plan-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.erp-wo-assign-editor .date-time-field-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+  gap: var(--space-1);
+}
+
+.erp-wo-assign-editor .date-time-field-controls > *,
+.erp-wo-assign-editor .date-time-field-time {
+  min-width: 0;
+  width: auto;
+}
+
+.erp-wo-plan-board-title {
+  margin: 0 0 var(--space-2);
+  font: var(--type-title-sm);
+}
+
+/* W-02-01 각 단계: 공통 제목 아래에 대상·선택·반영 사항을 같은 위계로 둔다. */
+.erp-wo-master-workspace,
+.erp-wo-release-workspace {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  align-content: start;
+}
+
+.erp-wo-master-workspace .section-heading-row,
+.erp-wo-release-workspace .section-heading-row {
+  margin: 0;
+}
+
+.erp-wo-master-workspace .section-title,
+.erp-wo-release-workspace .section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.erp-wo-master-board {
+  min-width: 0;
+  padding: 0;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-master-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+
+.erp-wo-master-table th {
+  padding: var(--space-3);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  text-align: left;
+  font: var(--type-label-sm);
+}
+
+.erp-wo-master-table td {
+  padding: var(--space-4) var(--space-3);
+  vertical-align: top;
+}
+
+.erp-wo-master-table th:nth-child(1) {
+  width: 10rem;
+}
+
+.erp-wo-master-table th:nth-child(2) {
+  width: 22%;
+}
+
+.erp-wo-master-table td > *,
+.erp-wo-master-field,
+.erp-wo-master-field > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.erp-wo-master-item {
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-master-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--space-1);
+}
+
+.erp-wo-master-value {
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-assign-selected-target {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-assign-count {
+  margin-left: var(--space-2);
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) .action-bar-left {
+  display: contents;
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) .action-bar-remaining {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) .action-bar-actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.erp-wo-assign-footer-actions {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.erp-wo-release-scope {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-release-detail {
+  min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-release-detail > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.erp-wo-release-summary {
+  margin: var(--space-3) 0 0;
+}
+
+.erp-wo-release-summary > div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-1);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.erp-wo-release-summary > div:last-child {
+  border-bottom: 0;
+}
+
+.erp-wo-release-summary dt {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.erp-wo-release-summary dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-wo-release-effects {
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 1100px) {
+  .erp-wo-release-workspace .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  .erp-wo-master-table td {
+    padding: var(--space-3) var(--space-2);
+  }
+}
+
+@media (max-width: 760px) {
+  .erp-wo-release-workspace .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /*
  * 제품 검사표 조회(W-03-13 · omf-all-around#89) — 요약·머리 값은 이름·값 두 쌍씩 한 줄.
  */

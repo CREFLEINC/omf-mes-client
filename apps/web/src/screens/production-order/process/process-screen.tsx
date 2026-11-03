@@ -88,6 +88,7 @@ const PLAN_FIELD_NAMES: Partial<Record<ProductionPlanDraftField, string>> = {
 };
 
 const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
+  const assignActionTargetId = useId();
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -516,6 +517,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       case 'master':
         return (
           <MasterStep
+            orderNo={order.productionOrderNo}
+            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             boms={{
               items: bomItems,
               isLoading: boms.isPending,
@@ -597,6 +600,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       case 'assign':
         return (
           <AssignStep
+            actionTargetId={assignActionTargetId}
             workOrders={unreleased.data}
             blockedIds={blockedIds}
             plantId={order.plantId}
@@ -619,6 +623,17 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         return (
           <ReleaseStep
             lines={releaseLines}
+            orderNo={order.productionOrderNo}
+            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+            planDateOf={(planId) =>
+              planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
+            }
+            lineNameOf={(lineId) => {
+              const line = planLines.find((entry) => entry.id === lineId);
+              return line === undefined
+                ? tp.plan.workspace.unassigned
+                : named(line.name, line.code);
+            }}
             uomLabelOf={uomLabelOf}
             failures={failures}
             revealErrors={false}
@@ -710,6 +725,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       <>
         {prev}
         <Button
+          variant={step === 'assign' ? 'outlined' : undefined}
           disabled={!complete}
           aria-describedby={complete ? undefined : remainingId}
           onClick={() => nextKey !== undefined && goTo(nextKey)}
@@ -830,6 +846,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
               <Button variant="outlined" disabled={planBusy} onClick={() => void savePlans(false)}>
                 {tp.plan.saveDraft}
               </Button>
+            ) : step === 'assign' ? (
+              <div id={assignActionTargetId} className="erp-wo-assign-footer-actions" />
             ) : undefined
           }
         >

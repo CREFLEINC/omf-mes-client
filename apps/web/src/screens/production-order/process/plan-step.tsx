@@ -198,6 +198,9 @@ export const PlanStep = ({
           className="pane erp-wo-plan-board"
           aria-label={view === 'week' ? ui.week : ui.grid}
         >
+          <h2 className="section-title erp-wo-plan-board-title">
+            {view === 'week' ? ui.weekHeading : ui.gridHeading}
+          </h2>
           {view === 'grid' ? (
             <SelectableTable
               className="erp-wo-plan-grid"

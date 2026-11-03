@@ -34,7 +34,7 @@ const RevisionField = <T,>({
   const selected = items.find((item) => String(idOf(item)) === value);
   return (
     <div className="field-cell erp-wo-master-field">
-      <label className="field-label" htmlFor={id}>
+      <label className="field-label visually-hidden" htmlFor={id}>
         {label}
       </label>
       {locked && selected !== undefined ? (
@@ -58,7 +58,6 @@ const RevisionField = <T,>({
               {t.autoSelected}
             </Chip>
           )}
-          {locked && <span>{t.fixedByPlan}</span>}
         </span>
       )}
     </div>
@@ -78,6 +77,8 @@ export interface MasterStepProps {
     isError: boolean;
     refetch: () => void;
   };
+  orderNo?: string;
+  itemLabel?: string;
   bomId: string;
   routingId: string;
   /** 확정된 계획이 있으면 그 계획의 개정을 읽기 전용으로 보인다. */
@@ -91,6 +92,8 @@ export interface MasterStepProps {
 export const MasterStep = ({
   boms,
   routings,
+  orderNo,
+  itemLabel,
   bomId,
   routingId,
   locked,
@@ -122,37 +125,70 @@ export const MasterStep = ({
   const period = (from: string | null, to: string | null) =>
     t.effective(from ?? '', to ?? t.periodOpen);
 
+  const checked =
+    boms.items.some((item) => String(item.bomId) === bomId) &&
+    routings.items.some((item) => String(item.routingId) === routingId);
   return (
-    <section className="pane erp-wo-step-pane" aria-label={t.heading}>
-      <h2 className="section-title">{t.heading}</h2>
-      <div className="erp-wo-master-grid">
-        <RevisionField
-          label={t.bom}
-          items={boms.items}
-          value={bomId}
-          idOf={(item) => item.bomId}
-          labelOf={(item) =>
-            t.revision(item.bomCode, item.bomVersion, statusNameOf(item.statusCode))
-          }
-          periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
-          isDefault={(item) => item.isDefault}
-          locked={locked}
-          onChange={onBomChange}
-        />
-        <RevisionField
-          label={t.routing}
-          items={routings.items}
-          value={routingId}
-          idOf={(item) => item.routingId}
-          labelOf={(item) =>
-            t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode))
-          }
-          periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
-          isDefault={(item) => item.isDefault}
-          locked={locked}
-          onChange={onRoutingChange}
-        />
+    <section className="erp-wo-master-workspace" aria-label={t.heading}>
+      <div className="section-heading-row">
+        <h2 className="section-title">{t.heading}</h2>
+        <Chip size="sm" variant="status" status={checked ? 'success' : 'warning'}>
+          {checked ? t.checked : t.needsCheck}
+        </Chip>
       </div>
+      <div className="pane erp-wo-master-board">
+        <table className="erp-wo-master-table">
+          <thead>
+            <tr>
+              <th>{t.orderNo}</th>
+              <th>{t.item}</th>
+              <th>{t.bom}</th>
+              <th>{t.routing}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span className="mono-cell">{orderNo ?? '—'}</span>
+              </td>
+              <td>
+                <span className="erp-wo-master-item">{itemLabel ?? '—'}</span>
+              </td>
+              <td>
+                <RevisionField
+                  label={t.bom}
+                  items={boms.items}
+                  value={bomId}
+                  idOf={(item) => item.bomId}
+                  labelOf={(item) =>
+                    t.revision(item.bomCode, item.bomVersion, statusNameOf(item.statusCode))
+                  }
+                  periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
+                  isDefault={(item) => item.isDefault}
+                  locked={locked}
+                  onChange={onBomChange}
+                />
+              </td>
+              <td>
+                <RevisionField
+                  label={t.routing}
+                  items={routings.items}
+                  value={routingId}
+                  idOf={(item) => item.routingId}
+                  labelOf={(item) =>
+                    t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode))
+                  }
+                  periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
+                  isDefault={(item) => item.isDefault}
+                  locked={locked}
+                  onChange={onRoutingChange}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {locked && <p className="field-note">{t.fixedByPlan}</p>}
     </section>
   );
 };

@@ -1,11 +1,12 @@
-import { AlertBanner, SkeletonText, TextField, type Column } from '@crefle/web-ui';
+import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 
 import { useApiClient } from '../../../patterns/api-context';
 import { EffectList } from '../../../patterns/process-page';
 import { runRequest } from '../../../patterns/request';
-import { SelectableTable } from '../../../patterns/selectable-table';
+import { Select } from '../../../patterns/select';
 import { evaluateWorkOrderReleaseDraft } from '../../work-order-release/release-draft';
 import { productionOrderItemKeys } from '../item-lookups';
 import { formatQty } from './process-model';
@@ -69,6 +70,10 @@ export const toReleaseLines = (
 
 export interface ReleaseStepProps {
   lines: ReleaseLine[] | undefined;
+  orderNo?: string;
+  itemLabel?: string;
+  planDateOf?: (planId: number) => string | null;
+  lineNameOf?: (lineId: number | null) => string;
   uomLabelOf: (uomId: number) => string;
   failures: string[];
   /** 배포를 눌렀으면 손대지 않은 줄의 오류도 보인다. */
@@ -81,94 +86,117 @@ export interface ReleaseStepProps {
  */
 export const ReleaseStep = ({
   lines,
+  orderNo,
+  itemLabel,
+  planDateOf,
+  lineNameOf,
   uomLabelOf,
   failures,
   revealErrors,
   onLotSizeChange,
 }: ReleaseStepProps) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   if (lines === undefined) return <SkeletonText lines={4} />;
   const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
-  const columns: Column<ReleaseLine>[] = [
-    {
-      key: 'workOrderNo',
-      header: t.columns.workOrderNo,
-      render: (row) => <span className="nowrap-cell mono-cell">{row.workOrder.workOrderNo}</span>,
-    },
-    {
-      key: 'operation',
-      header: t.columns.operation,
-      render: (row) => (
-        <span className="ellipsis-cell" title={row.workOrder.operationName}>
-          {row.workOrder.operationName}
-        </span>
-      ),
-    },
-    {
-      key: 'orderQty',
-      header: t.columns.orderQty,
-      align: 'end',
-      render: (row) => (
-        <span className="nowrap-cell">{`${formatQty(row.workOrder.orderQty)} ${uomLabelOf(row.workOrder.uomId)}`}</span>
-      ),
-    },
-    {
-      key: 'lotSize',
-      header: t.columns.lotSize,
-      width: '9rem',
-      render: (row) => (
-        <TextField
-          size="sm"
-          fullWidth
-          inputMode="decimal"
-          aria-label={t.lotSizeLabel(row.workOrder.workOrderNo)}
-          value={row.lotSizeText}
-          error={row.touched || revealErrors ? (row.error ?? undefined) : undefined}
-          onChange={(event) => onLotSizeChange(row.workOrder.workOrderId, event.target.value)}
-        />
-      ),
-    },
-    {
-      key: 'lotCount',
-      header: t.columns.lotCount,
-      align: 'end',
-      render: (row) => (
-        <span className="nowrap-cell">{row.lotCount === null ? '' : String(row.lotCount)}</span>
-      ),
-    },
-  ];
-
+  const selected =
+    lines.find((line) => String(line.workOrder.workOrderId) === selectedId) ?? lines[0];
+  if (selected === undefined) return <p className="empty-line">{t.empty}</p>;
+  const wo = selected.workOrder;
   return (
-    <div className="erp-wo-release-layout">
-      <section className="pane erp-wo-step-pane" aria-label={t.heading}>
+    <div className="erp-wo-release-workspace">
+      <div className="section-heading-row">
         <h2 className="section-title">{t.heading}</h2>
-        <SelectableTable
-          columns={columns}
-          rows={lines}
-          getRowId={(row) => String(row.workOrder.workOrderId)}
-        />
-      </section>
-      <section className="pane erp-wo-release-effects">
-        <EffectList
-          task={t.task}
-          items={[
-            { key: 'status', label: t.effects.status(lines.length) },
-            { key: 'lots', label: t.effects.lots(totalLots) },
-            { key: 'materials', label: t.effects.materials },
-            { key: 'picking', label: t.effects.picking },
-            { key: 'pqc', label: t.effects.pqc },
-          ]}
-        />
-        <AlertBanner variant="info">{t.irreversible}</AlertBanner>
-        {failures.length > 0 && (
-          <AlertBanner variant="error">
-            <ul className="erp-wo-release-failures">
-              {failures.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </AlertBanner>
-        )}
-      </section>
+        <span className="field-note">{t.scope(lines.length)}</span>
+      </div>
+      <p className="erp-wo-release-scope">{t.scopeHelp}</p>
+      <div className="erp-wo-release-layout">
+        <section className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+          <Select
+            aria-label={t.selectedTarget}
+            value={String(wo.workOrderId)}
+            options={lines.map((line) => ({
+              value: String(line.workOrder.workOrderId),
+              label: `${line.workOrder.workOrderNo} / ${line.workOrder.operationName}`,
+            }))}
+            onChange={(value) => setSelectedId(value)}
+          />
+          <dl className="erp-wo-release-summary">
+            <div>
+              <dt>{t.orderNo}</dt>
+              <dd>{orderNo ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>{t.item}</dt>
+              <dd>{itemLabel ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>{t.columns.operation}</dt>
+              <dd>{wo.operationName}</dd>
+            </div>
+            <div>
+              <dt>{t.columns.orderQty}</dt>
+              <dd>
+                {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
+              </dd>
+            </div>
+            <div>
+              <dt>{t.planDate}</dt>
+              <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>{t.line}</dt>
+              <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>{t.columns.lotSize}</dt>
+              <dd>
+                <TextField
+                  size="sm"
+                  fullWidth
+                  inputMode="decimal"
+                  aria-label={t.lotSizeLabel(wo.workOrderNo)}
+                  value={selected.lotSizeText}
+                  error={
+                    selected.touched || revealErrors ? (selected.error ?? undefined) : undefined
+                  }
+                  onChange={(event) => onLotSizeChange(wo.workOrderId, event.target.value)}
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>{t.columns.lotCount}</dt>
+              <dd>{selected.lotCount === null ? '—' : String(selected.lotCount)}</dd>
+            </div>
+          </dl>
+        </section>
+        <section className="pane erp-wo-release-effects">
+          <EffectList
+            task={t.task}
+            items={[
+              { key: 'status', label: t.effects.status(lines.length) },
+              {
+                key: 'lots',
+                label: lines.some((line) => line.lotCount === null)
+                  ? t.lotsPending
+                  : t.effects.lots(totalLots),
+              },
+              { key: 'materials', label: t.effects.materials },
+              { key: 'picking', label: t.effects.picking },
+              { key: 'pqc', label: t.effects.pqc },
+            ]}
+          />
+          <AlertBanner variant="info">{t.irreversible}</AlertBanner>
+          {failures.length > 0 && (
+            <AlertBanner variant="error">
+              <ul className="erp-wo-release-failures">
+                {failures.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </AlertBanner>
+          )}
+        </section>
+      </div>
     </div>
   );
 };

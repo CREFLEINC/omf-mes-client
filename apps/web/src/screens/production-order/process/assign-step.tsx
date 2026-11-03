@@ -10,6 +10,7 @@ import type { OrderWorkOrder } from './queries';
 const t = messages.erpWorkOrderFlow.process.assign;
 
 export interface AssignStepProps {
+  actionTargetId?: string;
   workOrders: OrderWorkOrder[] | undefined;
   blockedIds: ReadonlySet<number> | undefined;
   plantId: number | null;
@@ -31,6 +32,7 @@ export interface AssignStepProps {
  * (T-W-C 높이가 모자랄 때 ②, 이탈. 구성안 8장).
  */
 export const AssignStep = ({
+  actionTargetId,
   workOrders,
   blockedIds,
   plantId,
@@ -140,6 +142,7 @@ export const AssignStep = ({
           <EmptyState size="sm" title={t.selectPrompt} />
         ) : (
           <AssignEditor
+            actionTargetId={actionTargetId}
             key={selected.workOrderId}
             title={t.editorTitle(selected.workOrderNo, selected.operationName)}
             workOrderId={selected.workOrderId}

@@ -10,6 +10,7 @@ import {
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { DateTimeField } from '../../../patterns/date-time-field';
 import { ReferenceField, type ReferenceRow } from '../../../patterns/reference-picker';
@@ -163,6 +164,7 @@ const RecommendationLinks = ({
 };
 
 interface EditorSessionProps {
+  actionTargetId?: string;
   /** 편집 중인 W/O(번호와 공정). 편집 영역 제목이다. */
   title: string;
   workOrder: WorkOrderFact;
@@ -174,6 +176,7 @@ interface EditorSessionProps {
 }
 
 const EditorSession = ({
+  actionTargetId,
   title,
   workOrder,
   plantId,
@@ -181,6 +184,10 @@ const EditorSession = ({
   onDirtyChange,
   onSaved,
 }: EditorSessionProps) => {
+  const [actionTarget, setActionTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setActionTarget(actionTargetId === undefined ? null : document.getElementById(actionTargetId));
+  }, [actionTargetId]);
   const toast = useToast();
   const seeded = workOrderAssignmentDraftFrom(workOrder);
   const [baseline, setBaseline] = useState(seeded);
@@ -188,10 +195,10 @@ const EditorSession = ({
   /* 팝업과 추천에서 방금 고른 값의 이름. 「칸:번호」로 둔다(값이 바뀌면 자연히 쓰이지 않는다). */
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [revealErrors, setRevealErrors] = useState(false);
-  const [locationOpen, setLocationOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(true);
   /* 라인 기본 위치를 채울지 판단을 마쳤는가. 마치기 전에는 비어 보여도 펼치지 않는다. */
   const [prefillSettled, setPrefillSettled] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(true);
   const errorIdPrefix = useId();
   const headingId = useId();
   const lines = useWorkOrderProductionLines(plantId, 1);
@@ -497,11 +504,28 @@ const EditorSession = ({
     { label: t.fold.priority, value: draft.priorityNo },
   ];
 
+  const saveAction = (
+    <Button
+      size="sm"
+      variant={actionTargetId === undefined ? 'outlined' : undefined}
+      loading={saving}
+      disabled={!dirty}
+      aria-describedby={!dirty ? `${headingId}-save-note` : undefined}
+      onClick={() => {
+        setRevealErrors(true);
+        const body = toWorkOrderAssignmentUpdate(draft);
+        if (body !== null) update.write(body);
+      }}
+    >
+      {t.actions.save}
+    </Button>
+  );
+
   return (
     <section className="assign-editor" aria-labelledby={headingId}>
       <div className="assign-editor-head">
         <h2 id={headingId} className="section-title">
-          {title}
+          {t.editorHeading}
         </h2>
         <div className="assign-editor-actions">
           <Button
@@ -524,21 +548,13 @@ const EditorSession = ({
           >
             {t.actions.reset}
           </Button>
-          <Button
-            size="sm"
-            variant="outlined"
-            loading={saving}
-            disabled={!dirty}
-            onClick={() => {
-              setRevealErrors(true);
-              const body = toWorkOrderAssignmentUpdate(draft);
-              if (body !== null) update.write(body);
-            }}
-          >
-            {t.actions.save}
-          </Button>
+          {actionTarget === null ? saveAction : createPortal(saveAction, actionTarget)}
         </div>
       </div>
+      <span id={`${headingId}-save-note`} className="visually-hidden">
+        {t.actions.noChanges}
+      </span>
+      <p className="erp-wo-assign-selected-target">{title}</p>
       <p className="assign-check">
         <Chip variant="status" size="sm" status={checkTone}>
           {checkLabel}
@@ -665,6 +681,7 @@ const EditorSession = ({
 };
 
 export interface AssignEditorProps {
+  actionTargetId?: string;
   /** 편집 중인 W/O(번호와 공정) */
   title: string;
   workOrderId: number;
@@ -675,6 +692,7 @@ export interface AssignEditorProps {
 }
 
 export const AssignEditor = ({
+  actionTargetId,
   title,
   workOrderId,
   plantId,
@@ -699,6 +717,7 @@ export const AssignEditor = ({
   }
   return (
     <EditorSession
+      actionTargetId={actionTargetId}
       title={title}
       key={`${String(workOrderId)}:${String(detail.dataUpdatedAt)}`}
       workOrder={detail.data}
