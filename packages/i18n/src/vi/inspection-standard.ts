@@ -236,6 +236,20 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
     drawingPrev: 'Bản vẽ trước',
     drawingNext: 'Bản vẽ sau',
+    drawingsNoneHintEditable:
+      'Dùng [Thêm bản vẽ] để đính kèm hình, hoặc tải lên tệp Excel tiêu chuẩn (TCKT) thì bản vẽ được đính kèm cùng.',
+    drawingAdd: 'Thêm bản vẽ',
+    drawingReplace: 'Thay bản vẽ',
+    drawingRemove: 'Bỏ bản vẽ',
+    drawingFileInvalid: 'Chỉ tải lên được hình PNG·JPEG.',
+    drawingFileTooLarge: 'Chỉ tải lên được hình tối đa 10MB.',
+    drawingRemoveTitle: (index: number): string => `Bỏ bản vẽ ${String(index)}`,
+    drawingRemoveBody:
+      'Bỏ bản vẽ đang xem? Chỉ bỏ khỏi phiên bản đang soạn này, bản vẽ của phiên bản khác giữ nguyên.',
+    drawingRemoveConfirm: 'Bỏ',
+    drawingAdded: 'Đã thêm bản vẽ.',
+    drawingReplaced: 'Đã thay bản vẽ.',
+    drawingRemoved: 'Đã bỏ bản vẽ.',
     notSet: 'Chưa thiết lập',
   },
   listColumns: {

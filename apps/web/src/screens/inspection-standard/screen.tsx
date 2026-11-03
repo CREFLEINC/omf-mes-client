@@ -1568,7 +1568,13 @@ export const InspectionStandardScreen = () => {
                   ? t.versionSection.tabDrawings
                   : t.versionSection.tabDrawingsCount(versionDrawings.data.length),
               content:
-                selectedVersionId === null ? null : <VersionDrawings drawings={versionDrawings} />,
+                selectedVersionId === null ? null : (
+                  <VersionDrawings
+                    versionId={selectedVersionId}
+                    drawings={versionDrawings}
+                    isEditable={versionStatus?.isEditable === true}
+                  />
+                ),
             },
           ]}
         />

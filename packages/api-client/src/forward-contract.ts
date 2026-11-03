@@ -656,6 +656,8 @@ type IdemHeader = { 'Idempotency-Key': string; 'X-Worker-No'?: string };
 type LockHeader = IdemHeader & { 'If-Match': string };
 type SheetId = { inspectionSheetId: number };
 type TemplateId = { inspectionSheetTemplateId: number };
+type PlanVersionId = { inspectionPlanVersionId: number };
+type Attachment = components['schemas']['Attachment'];
 type SheetAction<Path, B = never> = Unused & {
   parameters: NoParameters;
   get?: never;
@@ -998,6 +1000,35 @@ export interface ForwardPaths {
   '/quality/inspection-sheets/{inspectionSheetId}:approve': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:check': SheetAction<SheetId>;
   '/quality/inspection-sheets/{inspectionSheetId}:reopen': SheetAction<SheetId, { reason: string }>;
+  /** 서버 선행(omf-all-around#227) — 검사기준 작성중 버전 도면 추가 · 바꾸기 · 빼기(W-06-02). 본문은 `file` 하나의 multipart 다. */
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}/drawings': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemHeader, PlanVersionId>,
+      { content: { 'multipart/form-data': FormData } },
+      { 201: Json<Attachment> }
+    >;
+  };
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}/drawings/{attachmentId}': Omit<
+    Unused,
+    'delete'
+  > & {
+    parameters: NoParameters;
+    get?: never;
+    post?: never;
+    put: Op<
+      Params<never, IdemHeader, PlanVersionId & { attachmentId: number }>,
+      { content: { 'multipart/form-data': FormData } },
+      { 200: Json<Attachment> }
+    >;
+    delete: Op<
+      Params<never, IdemHeader, PlanVersionId & { attachmentId: number }>,
+      never,
+      { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
+  };
 }
 
 /** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다. */
