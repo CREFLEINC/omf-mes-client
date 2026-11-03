@@ -25012,7 +25012,7 @@ body:has(.page-nav-size [aria-expanded="true"])
 }
 
 
-/* 4M은 시안처럼 위치·계획 시간도 처음부터 보여 주며, 추가 내용은 편집 패널 안에서 스크롤한다. */
+/* 4M은 위치·계획 시간도 처음부터 표시한다. */
 .erp-wo-assign-editor .assign-form > .assign-group-title,
 .erp-wo-assign-editor .assign-form > .assign-empty {
   display: none;
@@ -32667,3 +32667,31 @@ main > .erp-wo-multi-page,
 main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0; }
 .erp-wo-distribution-settings .erp-wo-daily-quantities { max-height: none; overflow: visible; }
 .erp-wo-distribution-settings .erp-wo-preview-scroll { max-height: none; overflow-y: hidden; }
+
+/* 4M도 페이지 본문에서 이동한다. 입력 패널을 별도 세로 스크롤로 가두지 않는다. */
+.erp-wo-assign-editor { overflow: visible; max-height: none; container-name: erp-wo-assign; }
+.erp-wo-assign-editor .assign-editor-head { position: static; flex-wrap: wrap; }
+.erp-wo-assign-editor .assign-editor-actions { margin-left: auto; }
+.erp-wo-assign-editor .assign-form > .assign-group-title { display: block; grid-column: 1 / -1; margin: var(--space-3) 0 0; padding-top: var(--space-2); border-top: 1px solid var(--outline-variant); }
+.erp-wo-assign-editor .assign-plan-row > :nth-child(3) { width: 100%; max-width: 10rem; }
+.erp-wo-assign-list { max-height: none; overflow-y: hidden; }
+.erp-wo-assign-editor [role='combobox'],
+.erp-wo-release-detail > [role='combobox'] { height: auto; min-height: var(--control-height-sm); text-align: left; padding-block: var(--space-2); }
+.erp-wo-assign-editor [role='combobox'] > span:not([aria-hidden='true']),
+.erp-wo-release-detail > [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+.erp-wo-release-summary dd:has(input) { width: 100%; max-width: 10rem; justify-self: end; }
+.erp-wo-release-summary dd { min-width: 0; }
+.erp-wo-release-effects { min-width: 0; }
+@container erp-wo-assign (max-width: 32rem) {
+  .erp-wo-assign-editor .assign-form,
+  .erp-wo-assign-editor .assign-plan-row { grid-template-columns: minmax(0,1fr); }
+}
+@container erp-wo-page (max-width: 36rem) {
+  .erp-wo-release-summary > div { grid-template-columns: minmax(0,1fr); gap: var(--space-1); }
+  .erp-wo-release-summary dd { text-align: left; }
+  .erp-wo-release-summary dd:has(input) { justify-self: start; }
+}
+
+.erp-wo-master-revision [role='combobox'] { width: 100%; }
+.erp-wo-master-value { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-container); }
+.erp-wo-master-note { margin-top: var(--space-2); }

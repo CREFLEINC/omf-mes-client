@@ -1,6 +1,6 @@
 import { Button, Chip, Dialog, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { SelectableTable } from '../../../patterns/selectable-table';
 import { AssignEditor } from './assign-editor';
@@ -47,48 +47,6 @@ export const AssignStep = ({
 }: AssignStepProps) => {
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
-  const editorRef = useRef<HTMLElement>(null);
-  /* 편집 영역 높이를 하단 바 윗변까지로 둔다. 넘치는 부분은 편집 영역 안에서 스크롤한다. 위쪽 요약 줄 수가 바뀔 수 있어 그릴 때마다 다시 잰다. */
-  useLayoutEffect(() => {
-    const element = editorRef.current;
-    if (element === null) return undefined;
-    const fit = () => {
-      const list = element.parentElement?.querySelector('.erp-wo-assign-list');
-      if (
-        list &&
-        Math.abs(list.getBoundingClientRect().left - element.getBoundingClientRect().left) < 2
-      ) {
-        element.style.maxHeight = 'none';
-        return;
-      }
-      /* 하단 바가 아래에 붙었을 때의 윗변. 본문 길이에 따라 바 위치가 바뀌지 않게 스크롤 영역 아래 끝에서 계산한다. */
-      const bar = document.querySelector<HTMLElement>('.action-bar');
-      let scroller = element.parentElement;
-      while (scroller !== null && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
-        scroller = scroller.parentElement;
-      }
-      /* 붙는 위치는 스크롤 영역의 안쪽 여백을 뺀 아래 끝이 기준이다. */
-      const bottom =
-        scroller === null
-          ? window.innerHeight
-          : scroller.getBoundingClientRect().bottom -
-            (parseFloat(getComputedStyle(scroller).paddingBottom) || 0);
-      const limit =
-        bar === null || scroller?.classList.contains('process-page-body')
-          ? bottom
-          : bottom - (parseFloat(getComputedStyle(bar).bottom) || 0) - bar.offsetHeight;
-      const height = `${Math.max(160, Math.floor(limit - element.getBoundingClientRect().top))}px`;
-      if (element.style.maxHeight !== height) element.style.maxHeight = height;
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
-    if (element.parentElement) observer?.observe(element.parentElement);
-    return () => {
-      window.removeEventListener('resize', fit);
-      observer?.disconnect();
-    };
-  });
   if (workOrders === undefined || blockedIds === undefined) return <SkeletonText lines={4} />;
   const selected = workOrders.find((item) => item.workOrderId === selectedId);
   const columns: Column<OrderWorkOrder>[] = [
@@ -150,7 +108,6 @@ export const AssignStep = ({
         />
       </section>
       <section
-        ref={editorRef}
         className="pane erp-wo-assign-editor"
         aria-label={selected === undefined ? t.editorHeading : t.editorLabel(selected.workOrderNo)}
       >
