@@ -1741,9 +1741,21 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * ③ 빈 표 안내가 잘리지 않게 — 표가 칸보다 넓으면 안내가 표 전체 폭 가운데에 서서 칸 밖으로 밀렸다(판정 유형 · 검사 기준 등).
- * 비어 있을 때만 표 감싸개를 폭 기준으로 삼아, 안내를 보이는 폭 가운데에 고정한다. 줄이 생기면 종전과 같다.
+ * ③ 빈 목록은 표 없이 안내만 — 불량·원인코드 탭과 같다(사용자 지시 · omf-all-around#228). 표 안에 안내를 두면 머리줄·칸 테두리가
+ * 남고, 표가 칸보다 넓으면 안내가 칸 밖으로 밀려 잘렸다. 비어 있을 때만 표 모양(머리줄·테두리·열 폭)을 걷고, 줄이 생기면 종전과 같다.
  */
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  ):has(> div > table td[colspan] > [role='status']) {
+  overflow: visible;
+  border-color: transparent;
+  background: none;
+}
+
 :is(
     .inspection-queue-table,
     .inspection-standard-table-box,
@@ -1752,7 +1764,9 @@ h2:has(> .inspection-standard-dialog-title) {
     .disposition-table
   )
   > div:has(> table td[colspan] > [role='status']) {
-  container-type: inline-size;
+  overflow: visible;
+  border-color: transparent;
+  background: none;
 }
 
 :is(
@@ -1763,13 +1777,41 @@ h2:has(> .inspection-standard-dialog-title) {
     .disposition-table
   )
   > div
-  > table
-  td[colspan]
-  > [role='status'] {
-  position: sticky;
-  left: 0;
-  box-sizing: border-box;
-  width: calc(100cqi - var(--space-4) * 2);
+  > table:has(td[colspan] > [role='status']) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: none;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table:has(td[colspan] > [role='status'])
+  :is(thead, colgroup) {
+  display: none;
+}
+
+:is(
+    .inspection-queue-table,
+    .inspection-standard-table-box,
+    .lot-status-table,
+    .quality-approval-table,
+    .disposition-table
+  )
+  > div
+  > table:has(td[colspan] > [role='status'])
+  :is(tbody, tr, td) {
+  display: block;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
 .pane-stack {
