@@ -342,7 +342,7 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
-  it('복수 편성의 부분 확정 계획은 오더 잔량과 별개로 4M에서 배포 확인으로 진행할 수 있다', async () => {
+  it('복수 편성의 부분 확정 계획은 ERP W/O 잔량과 별개로 4M에서 배포 확인으로 진행할 수 있다', async () => {
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
       world({

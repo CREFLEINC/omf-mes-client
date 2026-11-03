@@ -156,6 +156,9 @@ const distribute = async (targets: Record<string, string> = {}) => {
   const user = userEvent.setup();
   await waitFor(() => expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled());
   await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
+  expect(screen.getByRole('tab', { name: '주간 편성' })).toHaveAttribute('aria-selected', 'true');
+  if (Object.keys(targets).length)
+    await user.click(screen.getByRole('tab', { name: 'ERP W/O별 계획 수량' }));
   for (const [order, qty] of Object.entries(targets)) {
     const input = screen.getByRole('spinbutton', { name: `${order} 이번 계획 수량` });
     await user.clear(input);
@@ -191,8 +194,8 @@ const distribute = async (targets: Record<string, string> = {}) => {
 
   return user;
 };
-describe('복수 오더 편성 저장 연결', () => {
-  it('분배한 계획을 오더별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
+describe('복수 ERP W/O 편성 저장 연결', () => {
+  it('분배한 계획을 ERP W/O별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
     const user = await distribute();
     expect(screen.getByRole('button', { name: '분배 미리보기' })).toBeDisabled();
@@ -225,7 +228,7 @@ describe('복수 오더 편성 저장 연결', () => {
     expect(screen.queryByRole('button', { name: '전개 확정 후 4M 배정' })).toBeNull();
     expect(screen.queryByRole('button', { name: /주간 편성에서 확인/ })).toBeNull();
   });
-  it('일부 오더 저장 실패를 표시하고 재시도 시 완료한 계획을 중복 생성하지 않는다', async () => {
+  it('일부 ERP W/O 저장 실패를 표시하고 재시도 시 완료한 계획을 중복 생성하지 않는다', async () => {
     const server = mount();
     server.state.rejectB = true;
     const user = await distribute();
@@ -239,7 +242,7 @@ describe('복수 오더 편성 저장 연결', () => {
     await waitFor(() => expect(server.plans).toHaveLength(3));
     expect(server.plans.filter((p) => p.productionOrderId === 101)).toHaveLength(1);
   });
-  it('오더 전량 대신 이번 계획 수량만 분배하고 0인 오더는 추가하지 않는다', async () => {
+  it('ERP W/O 전량 대신 이번 계획 수량만 분배하고 0인 ERP W/O는 추가하지 않는다', async () => {
     const server = mount();
     const user = await distribute({ A: '60', B: '0' });
     await user.click(screen.getByRole('button', { name: '계획 저장' }));
@@ -247,7 +250,7 @@ describe('복수 오더 편성 저장 연결', () => {
     expect(server.plans[0]?.productionOrderId).toBe(101);
     expect(server.plans[0]?.plannedQty).toBe(60);
   });
-  it('생산오더 선택은 계획 추가 때만 표시하고 새 계획의 편집 대상과 연결한다', async () => {
+  it('ERP W/O 선택은 계획 추가 때만 표시하고 새 계획의 편집 대상과 연결한다', async () => {
     mount();
     const user = userEvent.setup();
     await waitFor(() =>
@@ -260,7 +263,7 @@ describe('복수 오더 편성 저장 연결', () => {
     expect(screen.queryByRole('combobox', { name: '계획 추가 대상' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '계획 추가' }));
     const dialog = screen.getByRole('dialog', { name: '계획 추가' });
-    await user.click(within(dialog).getByRole('combobox', { name: '계획을 추가할 생산오더' }));
+    await user.click(within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }));
     await user.click(screen.getByRole('option', { name: 'B / 시험 품목 (ITEM1)' }));
     await user.click(within(dialog).getByRole('button', { name: '추가' }));
     expect(await screen.findByRole('region', { name: '선택 계획 편집' })).toHaveTextContent(

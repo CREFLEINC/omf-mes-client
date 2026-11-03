@@ -91,7 +91,7 @@ describe('생산계획 보기와 선택 편집', () => {
       within(editor).queryByRole('button', { name: t.remove(t.newRow(1)) }),
     ).not.toBeInTheDocument();
   });
-  it('복수 오더 중간에 삽입한 분할 행을 선택하고 마지막 다른 오더를 선택하지 않는다', async () => {
+  it('복수 ERP W/O 중간에 삽입한 분할 행을 선택하고 마지막 다른 ERP W/O를 선택하지 않는다', async () => {
     const user = userEvent.setup();
     const Harness = () => {
       const [rows, setRows] = useState(() =>

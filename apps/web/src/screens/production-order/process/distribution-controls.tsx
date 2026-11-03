@@ -127,7 +127,7 @@ export const DistributionControls = ({
         <div id={`${id}-conditions`} className="pane erp-wo-distribution-settings">
           <div className="erp-wo-distribution-heading">
             <h2 className="section-title">
-              오더별 분배 조건 <span className="field-note">{rows.length}개 구간</span>
+              ERP W/O별 분배 조건 <span className="field-note">{rows.length}개 구간</span>
             </h2>
             <Button
               variant="outlined"
@@ -146,8 +146,8 @@ export const DistributionControls = ({
             </Button>
           </div>
           <p className="field-note">
-            오더 선택 → 기간·라인 지정 → 수량 입력 후 분배 미리보기에서 확인하세요. 오더별로 구간을
-            추가할 수 있으며 기존 계획은 유지합니다. 같은 오더의 날짜·라인이 겹치면 수량을
+            ERP W/O 선택 → 기간·라인 지정 → 수량 입력 후 분배 미리보기에서 확인하세요. ERP W/O별로 구간을
+            추가할 수 있으며 기존 계획은 유지합니다. 같은 ERP W/O의 날짜·라인이 겹치면 수량을
             합산합니다.
           </p>
           <details className="erp-wo-common-conditions">
@@ -266,7 +266,7 @@ export const DistributionControls = ({
                   </label>
                   <details open>
                     <summary>
-                      {target?.label ?? '생산오더 선택'} / {row.start} ~ {row.end} /{' '}
+                      {target?.label ?? 'ERP W/O 선택'} / {row.start} ~ {row.end} /{' '}
                       {line?.name ?? '라인 선택 필요'} / {total} {target?.unit}
                     </summary>
                     <div className="erp-wo-distribution-row-head">
@@ -274,7 +274,7 @@ export const DistributionControls = ({
                         <span className="field-label">ERP W/O / 품목</span>
                         <Select
                           size="sm"
-                          aria-label={`구간 ${index + 1} 생산오더`}
+                          aria-label={`구간 ${index + 1} ERP W/O`}
                           value={row.owner}
                           disabled={disabled}
                           options={orders.map((order) => ({ value: order.id, label: order.label }))}
@@ -417,7 +417,7 @@ export const DistributionControls = ({
                       </div>
                     )}
                     <p className="field-note">
-                      오더 편성 대기 {target?.pending ?? 0} {target?.unit}.{' '}
+                      ERP W/O 편성 대기 {target?.pending ?? 0} {target?.unit}.{' '}
                       {row.mode === 'equal'
                         ? '균등 배분의 나머지는 앞 날짜부터 배정합니다.'
                         : '현재 기간의 날짜별 수량만 합산합니다.'}
@@ -429,7 +429,7 @@ export const DistributionControls = ({
           </div>
           {!rows.length && (
             <p className="field-note">
-              편성할 구간이 없습니다. 구간을 추가하거나 오더 그리드의 이번 계획 수량을 확인하세요.
+              편성할 구간이 없습니다. 구간을 추가하거나 ERP W/O별 계획 수량의 이번 계획 수량을 확인하세요.
             </p>
           )}
           <div className="erp-wo-distribution-actions">
@@ -475,10 +475,10 @@ export const DistributionControls = ({
               )}
               <div className="erp-wo-preview-scroll">
                 <table>
-                  <caption>오더별 편성 수량</caption>
+                  <caption>ERP W/O별 편성 수량</caption>
                   <thead>
                     <tr>
-                      <th>생산오더 / 품목</th>
+                      <th>ERP W/O / 품목</th>
                       <th>이번 추가</th>
                       <th>적용 후 편성 대기</th>
                     </tr>
@@ -503,7 +503,7 @@ export const DistributionControls = ({
                   <caption>날짜와 라인별 결과</caption>
                   <thead>
                     <tr>
-                      <th>생산오더</th>
+                      <th>ERP W/O</th>
                       <th>날짜</th>
                       <th>생산 라인</th>
                       <th>추가 수량</th>
@@ -530,7 +530,7 @@ export const DistributionControls = ({
                 </table>
               </div>
               <details>
-                <summary>선택 오더의 날짜별 라인 합계</summary>
+                <summary>선택 ERP W/O의 날짜별 라인 합계</summary>
                 <div className="erp-wo-preview-scroll">
                   <table>
                     <thead>
@@ -562,7 +562,7 @@ export const DistributionControls = ({
                   </table>
                 </div>
                 <p className="field-note">
-                  선택한 오더의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.
+                  선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.
                 </p>
               </details>
               {!!preview.result.warnings.length && (

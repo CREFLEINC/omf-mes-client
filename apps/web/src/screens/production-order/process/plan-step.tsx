@@ -91,7 +91,7 @@ export const PlanStep = ({
   onChange,
   onRemove,
 }: PlanStepProps) => {
-  const [localView, setView] = useState('grid');
+  const [localView, setView] = useState('week');
   const view = viewMode ?? localView;
   const [splitQty, setSplitQty] = useState('');
   const [splitError, setSplitError] = useState('');
@@ -210,8 +210,8 @@ export const PlanStep = ({
             value={view}
             onChange={setView}
             items={[
-              { value: 'grid', label: ui.grid, content: null },
               { value: 'week', label: ui.week, content: null },
+              { value: 'grid', label: ui.grid, content: null },
             ]}
           />
         )}
@@ -238,7 +238,7 @@ export const PlanStep = ({
               orders={[
                 {
                   id: 'single',
-                  label: distributionOrderLabel ?? '현재 생산오더',
+                  label: distributionOrderLabel ?? '현재 ERP W/O',
                   unit: uomLabel,
                   decimalScale: distributionDecimalScale,
                   pending: Math.max(0, remaining ?? orderQty - total),

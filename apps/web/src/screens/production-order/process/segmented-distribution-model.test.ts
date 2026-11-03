@@ -8,7 +8,7 @@ import {
 const targets: DistributionTarget[] = [
   {
     id: 'A',
-    label: '오더 A / 품목 A',
+    label: 'ERP W/O A / 품목 A',
     unit: 'EA',
     pending: 120,
     lines: [
@@ -18,7 +18,7 @@ const targets: DistributionTarget[] = [
   },
   {
     id: 'B',
-    label: '오더 B / 품목 B',
+    label: 'ERP W/O B / 품목 B',
     unit: 'KG',
     pending: 20.5,
     lines: [{ id: 2, code: 'L2', name: '라인 2' }],
@@ -35,7 +35,7 @@ const segment = (patch: Partial<DistributionSegment> = {}): DistributionSegment 
   daily: {},
   ...patch,
 });
-describe('오더별 다중 구간 분배', () => {
+describe('ERP W/O별 다중 구간 분배', () => {
   it('정수 균등 배분은 나머지를 앞 날짜에 배정하며 총수량을 보존한다', () =>
     expect(expandSegment(segment()).map((row) => row.quantity)).toEqual(['4', '3', '3']));
   it('소수 수량은 입력 자릿수로 배분한다', () =>
@@ -44,7 +44,7 @@ describe('오더별 다중 구간 분배', () => {
       '0',
       '0',
     ]));
-  it('서로 다른 오더의 기간·라인·날짜별 수량과 단위를 독립적으로 처리한다', () => {
+  it('서로 다른 ERP W/O의 기간·라인·날짜별 수량과 단위를 독립적으로 처리한다', () => {
     const result = previewSegments(
       targets,
       [
@@ -80,7 +80,7 @@ describe('오더별 다중 구간 분배', () => {
     });
     expect(result.totals.map((row) => row.unit)).toContain('KG');
   });
-  it('오더별 구간 합계가 편성 대기를 넘으면 전체 미리보기를 거부한다', () =>
+  it('ERP W/O별 구간 합계가 편성 대기를 넘으면 전체 미리보기를 거부한다', () =>
     expect(() =>
       previewSegments(
         targets,
@@ -88,7 +88,7 @@ describe('오더별 다중 구간 분배', () => {
         [],
       ),
     ).toThrow('초과'));
-  it('동일 오더·날짜·라인은 한 행으로 합산하고 기존 편성과 중복되는 셀을 알린다', () => {
+  it('동일 ERP W/O·날짜·라인은 한 행으로 합산하고 기존 편성과 중복되는 셀을 알린다', () => {
     const result = previewSegments(
       targets,
       [

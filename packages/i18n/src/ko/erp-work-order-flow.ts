@@ -144,14 +144,14 @@ export const erpWorkOrderFlow = {
   },
 
   list: {
-    pane: '생산오더 목록',
+    pane: 'ERP W/O 목록',
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
       plant: '공장',
       itemCode: '품목 코드',
       itemName: '품목명',
-      orderQty: '오더 수량',
+      orderQty: 'ERP W/O 수량',
       dueDate: '납기일',
       confirmedPlanQty: '확정 계획량',
       draftPlanQty: '미확정 계획량',
@@ -182,15 +182,15 @@ export const erpWorkOrderFlow = {
     releaseShortHelp: '배정 완료된 작업지시 전달',
     release: '작업지시 일괄 배포',
     autoPlan: '자동 계획 실행',
-    selectionActions: '선택한 생산오더 처리',
-    selected: (count: number): string => `선택한 오더 ${count}건`,
-    selectionHelp: '선택한 생산오더를 대상으로 처리합니다.',
+    selectionActions: '선택한 ERP W/O 처리',
+    selected: (count: number): string => `선택한 ERP W/O ${count}건`,
+    selectionHelp: '선택한 ERP W/O를 대상으로 처리합니다.',
     autoPlanHelp:
       '기본 기준으로 계획을 생성하거나 기존 계획을 확정합니다. 실행 전 처리 내용을 확인하세요.',
     releaseHelp: '4M 배정을 마친 작업지시를 현장에 배포합니다.',
     itemName: 'W/O',
     reasons: {
-      noneChecked: '아래 목록에서 처리할 생산오더를 선택하세요.',
+      noneChecked: '아래 목록에서 처리할 ERP W/O를 선택하세요.',
       running: '일괄 동작을 실행하는 중입니다',
     },
     releaseDialog: {
@@ -263,7 +263,7 @@ export const erpWorkOrderFlow = {
     summary: {
       item: '품목',
       itemGroup: '품목그룹',
-      orderQty: '오더 수량',
+      orderQty: 'ERP W/O 수량',
       dueDate: '납기일',
       erpNo: 'ERP 원번호',
     },
@@ -340,12 +340,12 @@ export const erpWorkOrderFlow = {
       saveDraft: '임시 저장',
       workspace: {
         views: '생산계획 보기',
-        grid: '오더 그리드',
+        grid: 'ERP W/O별 계획 수량',
         week: '주간 편성',
         weekHeading: '라인별 주간 편성',
         gridHeading: '계획 목록',
         editor: '선택 계획 편집',
-        orderQty: '오더 수량',
+        orderQty: 'ERP W/O 수량',
         confirmedQty: '확정 계획량',
         draftQty: '미확정 계획량',
         remainingQty: '미계획 수량',
@@ -508,7 +508,7 @@ export const erpWorkOrderFlow = {
       empty: '배포할 작업지시가 없습니다.',
       scope: (count: number): string => `전체 배포 대상 ${String(count)}건`,
       scopeHelp:
-        '선택 상자는 상세 조회용입니다. 하단 배포 버튼은 이 오더의 배포 대상 전체를 처리합니다.',
+        '선택 상자는 상세 조회용입니다. 하단 배포 버튼은 이 ERP W/O의 배포 대상 전체를 처리합니다.',
       heading: '배포 전 최종 확인',
       columns: {
         workOrderNo: 'W/O 번호',

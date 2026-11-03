@@ -9,7 +9,7 @@ import type { DistributionTarget } from './segmented-distribution-model';
 const orders: DistributionTarget[] = [
   {
     id: 'A',
-    label: '오더 A / 품목 A',
+    label: 'ERP W/O A / 품목 A',
     unit: 'EA',
     pending: 3,
     decimalScale: 0,
@@ -34,7 +34,7 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = await configure();
     expect(apply).not.toHaveBeenCalled();
     expect(screen.getByRole('region', { name: '분배 미리보기 결과' })).toHaveTextContent(
-      '오더 A / 품목 A',
+      'ERP W/O A / 품목 A',
     );
     await user.click(screen.getByRole('button', { name: '분배안 적용' }));
     expect(apply).toHaveBeenCalledTimes(1);
@@ -105,7 +105,7 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <DistributionControls
-        orders={[...orders, { ...orders[0]!, id: 'B', label: '오더 B / 품목 B' }]}
+        orders={[...orders, { ...orders[0]!, id: 'B', label: 'ERP W/O B / 품목 B' }]}
         existing={[]}
         disabled={false}
         onApply={() => {}}

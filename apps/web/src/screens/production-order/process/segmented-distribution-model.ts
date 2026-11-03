@@ -125,7 +125,7 @@ export const previewSegments = (
   const allocated = new Map<string, number>();
   for (const [index, segment] of active.entries()) {
     const target = lookup.get(segment.owner);
-    if (!target) throw new Error(`구간 ${index + 1}: 생산오더를 선택하세요.`);
+    if (!target) throw new Error(`구간 ${index + 1}: ERP W/O를 선택하세요.`);
     if (!target.lines.some((line) => String(line.id) === segment.lineId))
       throw new Error(`${target.label}: 생산 라인을 선택하세요.`);
     if (

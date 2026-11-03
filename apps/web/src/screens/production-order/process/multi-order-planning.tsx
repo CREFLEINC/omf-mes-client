@@ -187,7 +187,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     [],
   );
   const [stage, setStage] = useState('master');
-  const [planView, setPlanView] = useState('grid');
+  const [planView, setPlanView] = useState('week');
   const [distributionDirty, setDistributionDirty] = useState(false);
   const [focus, setFocus] = useState(orderNumbers[0] ?? '');
   const [requested, setRequested] = useState<Record<string, string>>({});
@@ -259,7 +259,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       return;
     }
     if (doConfirm && !fullyAllocated) {
-      setResults(['이번 계획 수량과 미확정 편성 수량을 오더별로 맞춘 뒤 확정하세요.']);
+      setResults(['이번 계획 수량과 미확정 편성 수량을 ERP W/O별로 맞춘 뒤 확정하세요.']);
       return;
     }
     const invalid = entries.flatMap((entry) =>
@@ -356,7 +356,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           {messages.erpWorkOrderFlow.process.back}
         </Button>
         <h1 className="page-title">{messages.erpWorkOrderFlow.process.title}</h1>
-        <p>선택 오더 {orderNumbers.length}건</p>
+        <p>선택 ERP W/O {orderNumbers.length}건</p>
       </div>
       <Tabs
         className="erp-wo-stage-tabs"
@@ -478,19 +478,19 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             value={planView}
             onChange={setPlanView}
             items={[
-              { value: 'grid', label: '오더 그리드', content: null },
               { value: 'week', label: '주간 편성', content: null },
+              { value: 'grid', label: 'ERP W/O별 계획 수량', content: null },
             ]}
           />
         )}
         {stage === 'plan' && planView === 'grid' && (
-          <section aria-label="선택 오더" className="pane erp-wo-multi-orders">
+          <section aria-label="선택 ERP W/O" className="pane erp-wo-multi-orders">
             <table className="erp-wo-master-table">
               <thead>
                 <tr>
                   <th>ERP W/O</th>
                   <th>품목</th>
-                  <th>오더 수량</th>
+                  <th>ERP W/O 수량</th>
                   <th>확정 계획량</th>
                   <th>미확정 계획량</th>
                   <th>미계획 수량</th>
@@ -547,7 +547,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         )}
         {plants.size !== 1 && allReady && (
           <AlertBanner variant="warning">
-            같은 공장의 오더를 선택하세요. 각 오더의 수량은 해당 단위로 편성합니다.
+            같은 공장의 ERP W/O를 선택하세요. 각 ERP W/O의 수량은 해당 단위로 편성합니다.
           </AlertBanner>
         )}
         {orderNumbers.map((number) => (
@@ -558,10 +558,10 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             <div className="erp-wo-multi-week-tools">
               <div className="erp-wo-multi-week-heading">
                 <p className="field-note">
-                  대상 오더 {entries.length}건
+                  대상 ERP W/O {entries.length}건
                   {units.size === 1
                     ? ` / 이번 계획 ${roundQty(entries.reduce((sum, entry) => sum + targetOf(entry), 0))} / 편성 ${roundQty(entries.reduce((sum, entry) => sum + draftOf(entry), 0))} / 편성 대기 ${roundQty(entries.reduce((sum, entry) => sum + toSchedule(entry), 0))} ${target.unit}`
-                    : ' / 오더별 수량은 오더 그리드에서 확인하세요.'}
+                    : ' / ERP W/O별 수량은 ERP W/O별 계획 수량에서 확인하세요.'}
                 </p>
               </div>
             </div>
@@ -630,7 +630,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {(stage === 'assign' || stage === 'release') && (
           <section className="erp-wo-multi-execution">
             <div className="field-cell">
-              <span className="field-label">작업 오더</span>
+              <span className="field-label">ERP W/O</span>
               <Select
                 value={focus}
                 options={entries.map((entry) => ({
@@ -685,7 +685,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               ))}
             </ul>
             <p className="field-note">
-              오더와 계획별 순차 처리입니다. 일부 실패 시 완료된 계획은 유지되며, 실패 사유를 확인한
+              ERP W/O와 계획별 순차 처리입니다. 일부 실패 시 완료된 계획은 유지되며, 실패 사유를 확인한
               뒤 다시 처리하세요.
             </p>
           </section>
@@ -698,9 +698,9 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             busy
               ? '계획 처리 중'
               : !allReady
-                ? '모든 오더의 BOM과 Routing 선택 및 조회를 완료하세요.'
+                ? '모든 ERP W/O의 BOM과 Routing 선택 및 조회를 완료하세요.'
                 : plants.size !== 1
-                  ? '같은 공장의 오더를 선택하세요.'
+                  ? '같은 공장의 ERP W/O를 선택하세요.'
                   : stage === 'master'
                     ? '개정을 확인한 후 생산계획으로 이동하세요.'
                     : distributionDirty
@@ -708,27 +708,34 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                       : !validTargets
                         ? '이번 계획 수량은 계획 가능한 수량과 단위의 소수 자릿수에 맞게 입력하세요.'
                         : !fullyAllocated && editable
-                          ? '이번 계획 수량과 오더별 편성 수량을 맞추세요.'
+                          ? '이번 계획 수량과 ERP W/O별 편성 수량을 맞추세요.'
                           : dirty
                             ? '미저장 계획이 있습니다.'
                             : !editable && !enough
                               ? planView === 'grid'
-                                ? '주간 편성 탭에서 계획을 추가하거나 자동 분배하세요.'
+                                ? ''
                                 : '계획 추가 또는 자동 분배로 편성하세요.'
                               : enough && !editable
                                 ? '확정된 계획의 4M 배정을 진행하세요.'
                                 : '편성 내용을 확인하세요.'
           }
           leading={
-            stage === 'plan' && dirty ? (
-              <Button
-                variant="outlined"
-                disabled={busy || !dirty || !allReady}
-                onClick={() => void save(false)}
-              >
-                계획 저장
-              </Button>
-            ) : undefined
+            <>
+              {stage === 'plan' && planView === 'grid' && (
+                <Button variant="outlined" onClick={() => setPlanView('week')}>
+                  주간 편성으로 이동
+                </Button>
+              )}
+              {stage === 'plan' && dirty ? (
+                <Button
+                  variant="outlined"
+                  disabled={busy || !dirty || !allReady}
+                  onClick={() => void save(false)}
+                >
+                  계획 저장
+                </Button>
+              ) : undefined}
+            </>
           }
         >
           {stage === 'master' ? (
@@ -809,9 +816,9 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           }
         >
           <div className="field-cell">
-            <span className="field-label">계획을 추가할 생산오더</span>
+            <span className="field-label">계획을 추가할 ERP W/O</span>
             <Select
-              aria-label="계획을 추가할 생산오더"
+              aria-label="계획을 추가할 ERP W/O"
               value={focus}
               options={entries
                 .filter((entry) => getRemaining(entry) > 0)
@@ -847,7 +854,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       {confirm && (
         <Dialog
           open
-          title="선택 오더 계획 전개 확정"
+          title="선택 ERP W/O 계획 전개 확정"
           onClose={() => !busy && setConfirm(false)}
           closeOnBackdropClick={false}
           footer={
@@ -862,12 +869,12 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           }
         >
           <p>
-            선택 오더 {entries.length}건의 미확정 계획{' '}
+            선택 ERP W/O {entries.length}건의 미확정 계획{' '}
             {combined.filter((row) => !row.confirmed).length}건을 저장하고 확정한 뒤 Routing에 따라
             작업지시를 생성합니다.
           </p>
           <p>
-            확정 후 계획은 수정할 수 없습니다. 오더와 계획별로 처리하므로 일부만 완료될 수 있습니다.
+            확정 후 계획은 수정할 수 없습니다. ERP W/O와 계획별로 처리하므로 일부만 완료될 수 있습니다.
           </p>
         </Dialog>
       )}
