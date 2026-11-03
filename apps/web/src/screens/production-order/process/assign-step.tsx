@@ -53,6 +53,14 @@ export const AssignStep = ({
     const element = editorRef.current;
     if (element === null) return undefined;
     const fit = () => {
+      const list = element.parentElement?.querySelector('.erp-wo-assign-list');
+      if (
+        list &&
+        Math.abs(list.getBoundingClientRect().left - element.getBoundingClientRect().left) < 2
+      ) {
+        element.style.maxHeight = 'none';
+        return;
+      }
       /* 하단 바가 아래에 붙었을 때의 윗변. 본문 길이에 따라 바 위치가 바뀌지 않게 스크롤 영역 아래 끝에서 계산한다. */
       const bar = document.querySelector<HTMLElement>('.action-bar');
       let scroller = element.parentElement;
@@ -66,14 +74,20 @@ export const AssignStep = ({
           : scroller.getBoundingClientRect().bottom -
             (parseFloat(getComputedStyle(scroller).paddingBottom) || 0);
       const limit =
-        bar === null
+        bar === null || scroller?.classList.contains('process-page-body')
           ? bottom
           : bottom - (parseFloat(getComputedStyle(bar).bottom) || 0) - bar.offsetHeight;
-      element.style.maxHeight = `${String(Math.floor(limit - element.getBoundingClientRect().top))}px`;
+      const height = `${Math.max(160, Math.floor(limit - element.getBoundingClientRect().top))}px`;
+      if (element.style.maxHeight !== height) element.style.maxHeight = height;
     };
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
+    if (element.parentElement) observer?.observe(element.parentElement);
+    return () => {
+      window.removeEventListener('resize', fit);
+      observer?.disconnect();
+    };
   });
   if (workOrders === undefined || blockedIds === undefined) return <SkeletonText lines={4} />;
   const selected = workOrders.find((item) => item.workOrderId === selectedId);

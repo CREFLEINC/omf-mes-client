@@ -32535,3 +32535,80 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .erp-wo-multi-plan-week { display: grid; gap: var(--space-3); min-width: 0; }
 .erp-wo-multi-plan-week[hidden] { display: none; }
+
+/* 사이드바를 제외한 실제 작업 영역 너비를 기준으로 배치를 바꾼다. */
+.erp-wo-multi-page,
+.process-page:has(.erp-wo-summary) { container: erp-wo-page / inline-size; }
+.erp-wo-master-workspace { container: erp-wo-master / inline-size; }
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(1) { width: 16%; }
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(2) { width: 24%; }
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(3),
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(4) { width: 30%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(1) { width: 14%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(2) { width: 18%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(3),
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(4) { width: 29%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(5) { width: 10%; }
+.erp-wo-master-workspace .erp-wo-master-table td { min-width: 0; overflow-wrap: anywhere; }
+.erp-wo-master-revision [role='combobox'] { height: auto; min-height: var(--control-height-md); padding-block: var(--space-2); align-items: center; text-align: left; }
+.erp-wo-master-revision [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.5; }
+body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+@container erp-wo-master (max-width: 64rem) {
+  .erp-wo-master-board { overflow-x: visible; }
+  .erp-wo-master-table { display: block; position: relative; }
+  .erp-wo-master-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .erp-wo-master-table tbody { display: grid; }
+  .erp-wo-master-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); padding: var(--space-4); border-bottom: 1px solid var(--outline-variant); }
+  .erp-wo-master-table tbody tr:last-child { border-bottom: 0; }
+  .erp-wo-master-table td { display: block; padding: 0; }
+  .erp-wo-master-table td::before { display: block; content: attr(data-label); margin-bottom: var(--space-1); color: var(--on-surface-variant); font: var(--type-label-sm); }
+  .erp-wo-master-check { grid-column: 1 / -1; }
+}
+@container erp-wo-master (max-width: 36rem) {
+  .erp-wo-master-table tbody tr { grid-template-columns: minmax(0, 1fr); }
+}
+@container erp-wo-page (max-width: 52rem) {
+  .erp-wo-plan-layout,
+  .erp-wo-release-workspace .erp-wo-release-layout { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-distribution-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container erp-wo-page (max-width: 46rem) {
+  .erp-wo-assign-layout { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-assign-list { max-height: 14rem; overflow: auto; }
+  .erp-wo-multi-orders table { min-width: 50rem; }
+}
+@container erp-wo-page (max-width: 36rem) {
+  .erp-wo-distribution-fields { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-multi-week-tools { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-multi-week-tools > .erp-wo-distribution > button { grid-column: 1; grid-row: auto; justify-self: start; }
+  .erp-wo-stage-tabs [role='tablist'], .erp-wo-multi-view-tabs [role='tablist'] { max-width: 100%; overflow-x: auto; }
+  .action-bar { flex-wrap: wrap; gap: var(--space-2); }
+  .action-bar-left { flex: 1 1 100%; flex-wrap: wrap; }
+  .action-bar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .action-bar:has(.erp-wo-assign-footer-actions) { grid-template-columns: minmax(0, 1fr) auto; }
+  .action-bar:has(.erp-wo-assign-footer-actions) .action-bar-remaining { grid-column: 1 / -1; grid-row: 1; }
+  .action-bar:has(.erp-wo-assign-footer-actions) .action-bar-actions { grid-column: 1; grid-row: 2; }
+  .action-bar:has(.erp-wo-assign-footer-actions) .erp-wo-assign-footer-actions { grid-column: 2; grid-row: 2; }
+  .process-page-title-row { grid-template-columns: minmax(0, 1fr) !important; }
+  .process-page-head-actions { grid-column: 1 !important; }
+  .erp-wo-assign-editor .assign-form { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-assign-editor .assign-plan-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container erp-wo-page (max-width: 52rem) {
+  .erp-wo-week-table { min-width: 40rem; }
+  .erp-wo-plan-editor { scroll-margin-top: var(--space-3); }
+}
+@container erp-wo-page (max-width: 36rem) {
+  .action-bar-actions { margin-left: auto; }
+}
+
+/* 하단 동작 바 아래로 입력이 가려지지 않도록 본문만 남은 높이 안에서 스크롤한다. */
+.process-page:has(.erp-wo-summary) { height: 100%; min-height: 0; }
+.process-page:has(.erp-wo-summary) > .process-page-body { min-height: 0; overflow: auto; }
+.process-page:has(.erp-wo-summary) > .process-page-head,
+.process-page:has(.erp-wo-summary) > .erp-wo-stage-tabs,
+.process-page:has(.erp-wo-summary) > .process-page-past,
+.process-page:has(.erp-wo-summary) > .action-bar { flex-shrink: 0; }
+body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] { padding-block: var(--space-2); }

@@ -93,6 +93,16 @@ export const PlanStep = ({
   const [anchor, setAnchor] = useState<string | null>(null);
   const editorId = useId();
   const lineSource = useLineSource(plantId);
+  function revealEditor() {
+    const editor = document.getElementById(editorId);
+    const board = editor?.closest('.erp-wo-plan-layout')?.querySelector('.erp-wo-plan-board');
+    if (!editor || !board) return;
+    const a = editor.getBoundingClientRect(),
+      b = board.getBoundingClientRect();
+    if (b.height > 0 && a.top >= b.bottom - 1 && Math.abs(a.left - b.left) < 2)
+      editor.scrollIntoView({ block: 'start' });
+  }
+
   const selected =
     rows.find((row) => row.key === selectedKey) ?? rows.find((row) => !row.confirmed) ?? rows[0];
   useEffect(() => {
@@ -100,6 +110,7 @@ export const PlanStep = ({
     const added = rows.find((row) => !beforeAdded.current?.has(row.key));
     if (!added) return;
     setSelectedKey(added.key);
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
     setSelectAdded(false);
     beforeAdded.current = null;
   }, [rows, selectAdded]);
@@ -117,7 +128,10 @@ export const PlanStep = ({
   const remaining = confirmedQty == null ? null : orderQty - confirmedQty - draftQty;
   const displayQty = (qty: number | null | undefined) =>
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
-  const choose = (row: ProductionPlanEditorStateRow) => setSelectedKey(row.key);
+  const choose = (row: ProductionPlanEditorStateRow) => {
+    setSelectedKey(row.key);
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
+  };
   const columns: Column<ProductionPlanEditorStateRow>[] = [
     ...(orderNameOf
       ? [

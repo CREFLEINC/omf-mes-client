@@ -43,6 +43,7 @@ const RevisionField = <T,>({
         </p>
       ) : (
         <Select
+          title={selected === undefined ? undefined : labelOf(selected)}
           id={id}
           value={value === '' ? null : value}
           placeholder={t.placeholder}
@@ -137,7 +138,7 @@ export const MasterStep = ({
         </Chip>
       </div>
       <div className="pane erp-wo-master-board">
-        <table className="erp-wo-master-table">
+        <table className="erp-wo-master-table" role="table">
           <thead>
             <tr>
               <th>{t.orderNo}</th>
@@ -148,13 +149,13 @@ export const MasterStep = ({
           </thead>
           <tbody>
             <tr>
-              <td>
+              <td data-label={t.orderNo}>
                 <span className="mono-cell">{orderNo ?? '—'}</span>
               </td>
-              <td>
+              <td data-label={t.item}>
                 <span className="erp-wo-master-item">{itemLabel ?? '—'}</span>
               </td>
-              <td>
+              <td data-label={t.bom} className="erp-wo-master-revision">
                 <RevisionField
                   label={t.bom}
                   items={boms.items}
@@ -169,7 +170,7 @@ export const MasterStep = ({
                   onChange={onBomChange}
                 />
               </td>
-              <td>
+              <td data-label={t.routing} className="erp-wo-master-revision">
                 <RevisionField
                   label={t.routing}
                   items={routings.items}

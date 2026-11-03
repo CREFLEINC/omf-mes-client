@@ -361,7 +361,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           <section className="erp-wo-master-workspace">
             <h2 className="section-title">{messages.erpWorkOrderFlow.process.master.heading}</h2>
             <div className="pane erp-wo-master-board">
-              <table className="erp-wo-master-table">
+              <table className="erp-wo-master-table" role="table">
                 <thead>
                   <tr>
                     <th>ERP W/O</th>
@@ -374,27 +374,51 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 <tbody>
                   {entries.map((entry) => (
                     <tr key={entry.order.productionOrderNo}>
-                      <td>{entry.order.productionOrderNo}</td>
-                      <td>{entry.item}</td>
-                      <td>
-                        <Select
-                          aria-label={`${entry.order.productionOrderNo} BOM`}
-                          value={entry.bomId}
-                          options={entry.bomOptions}
-                          disabled={busy || entry.locked}
-                          onChange={entry.onBomChange}
-                        />
+                      <td data-label="ERP W/O">{entry.order.productionOrderNo}</td>
+                      <td data-label="품목">{entry.item}</td>
+                      <td data-label="BOM 개정" className="erp-wo-master-revision">
+                        {entry.locked ? (
+                          <p className="erp-wo-master-value">
+                            {entry.bomOptions.find((option) => option.value === entry.bomId)
+                              ?.label ?? '개정 정보 확인 필요'}
+                          </p>
+                        ) : (
+                          <Select
+                            title={
+                              entry.bomOptions.find((option) => option.value === entry.bomId)?.label
+                            }
+                            aria-label={`${entry.order.productionOrderNo} BOM`}
+                            value={entry.bomId}
+                            options={entry.bomOptions}
+                            disabled={busy}
+                            onChange={entry.onBomChange}
+                          />
+                        )}
                       </td>
-                      <td>
-                        <Select
-                          aria-label={`${entry.order.productionOrderNo} Routing`}
-                          value={entry.routingId}
-                          options={entry.routingOptions}
-                          disabled={busy || entry.locked}
-                          onChange={entry.onRoutingChange}
-                        />
+                      <td data-label="Routing 개정" className="erp-wo-master-revision">
+                        {entry.locked ? (
+                          <p className="erp-wo-master-value">
+                            {entry.routingOptions.find((option) => option.value === entry.routingId)
+                              ?.label ?? '개정 정보 확인 필요'}
+                          </p>
+                        ) : (
+                          <Select
+                            title={
+                              entry.routingOptions.find(
+                                (option) => option.value === entry.routingId,
+                              )?.label
+                            }
+                            aria-label={`${entry.order.productionOrderNo} Routing`}
+                            value={entry.routingId}
+                            options={entry.routingOptions}
+                            disabled={busy}
+                            onChange={entry.onRoutingChange}
+                          />
+                        )}
                       </td>
-                      <td>{entry.ready ? '개정 선택 완료' : '개정 선택 필요'}</td>
+                      <td data-label="점검" className="erp-wo-master-check">
+                        {entry.ready ? '개정 선택 완료' : '개정 선택 필요'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -629,19 +653,21 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 ? '모든 오더의 BOM과 Routing 선택 및 조회를 완료하세요.'
                 : plants.size !== 1
                   ? '같은 공장의 오더를 선택하세요.'
-                  : !validTargets
-                    ? '이번 계획 수량은 계획 가능한 수량 이내의 정수로 입력하세요.'
-                    : !fullyAllocated && editable
-                      ? '이번 계획 수량과 오더별 편성 수량을 맞추세요.'
-                      : dirty
-                        ? '미저장 계획이 있습니다.'
-                        : !editable && !enough
-                          ? planView === 'grid'
-                            ? '주간 편성 탭에서 계획을 추가하거나 자동 분배하세요.'
-                            : '계획 추가 또는 자동 분배로 편성하세요.'
-                          : enough && !editable
-                            ? '확정된 계획의 4M 배정을 진행하세요.'
-                            : '편성 내용을 확인하세요.'
+                  : stage === 'master'
+                    ? '개정을 확인한 후 생산계획으로 이동하세요.'
+                    : !validTargets
+                      ? '이번 계획 수량은 계획 가능한 수량 이내의 정수로 입력하세요.'
+                      : !fullyAllocated && editable
+                        ? '이번 계획 수량과 오더별 편성 수량을 맞추세요.'
+                        : dirty
+                          ? '미저장 계획이 있습니다.'
+                          : !editable && !enough
+                            ? planView === 'grid'
+                              ? '주간 편성 탭에서 계획을 추가하거나 자동 분배하세요.'
+                              : '계획 추가 또는 자동 분배로 편성하세요.'
+                            : enough && !editable
+                              ? '확정된 계획의 4M 배정을 진행하세요.'
+                              : '편성 내용을 확인하세요.'
           }
           leading={
             stage === 'plan' && dirty ? (
