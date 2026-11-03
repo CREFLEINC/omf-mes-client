@@ -695,11 +695,17 @@ export interface DepartmentProductionWarehouseReplace {
   warehouseIds: number[];
 }
 
+/** 연결 목록 응답 — 서버 S2(omf-mes-server#946) `DepartmentProductionWarehouseListResponse`. */
+export interface DepartmentProductionWarehouseList {
+  items: DepartmentProductionWarehouse[];
+}
+
 /**
- * 전체 교체 응답. `removed` 는 연결을 뺀 창고마다 그 창고에서 나갈 대기·배포 출고 요청 수다.
- * `dryRun=true` 면 저장하지 않고 같은 응답을 낸다(연결 해제 확인 창).
+ * 전체 교체 응답 — 바뀐(dryRun 이면 바뀔) 연결 `items` 와, 연결을 뺀 창고마다 그 창고에서 나갈 대기·배포
+ * 출고 요청 수 `removed`. `dryRun=true` 면 저장하지 않고 같은 응답을 낸다(연결 해제 확인 창).
  */
 export interface DepartmentProductionWarehouseReplaceResult {
+  items: DepartmentProductionWarehouse[];
   removed: { warehouseId: number; activeRequestCount: number }[];
 }
 
@@ -1092,7 +1098,7 @@ export interface ForwardPaths {
     get: Op<
       { query?: never; header?: never; path: DepartmentId; cookie?: never },
       never,
-      { 200: Json<DepartmentProductionWarehouse[]> }
+      { 200: Json<DepartmentProductionWarehouseList> }
     >;
     put: Op<
       Params<{ dryRun?: boolean }, { 'Idempotency-Key': string }, DepartmentId>,

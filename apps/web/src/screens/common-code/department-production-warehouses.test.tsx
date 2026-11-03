@@ -111,7 +111,7 @@ const setup = (options: SetupOptions = {}) => {
     },
     {
       match: (request) => isGet(request, LINKS),
-      respond: () => jsonResponse(linkedOf(linked)),
+      respond: () => jsonResponse({ items: linkedOf(linked) }),
     },
     {
       match: (request) => request.method === 'PUT' && pathOf(request) === LINKS,
@@ -123,8 +123,12 @@ const setup = (options: SetupOptions = {}) => {
             warehouseId: id,
             activeRequestCount: options.activeRequests?.[id] ?? 0,
           }));
-        if (new URL(request.url).searchParams.get('dryRun') !== 'true') linked = body.warehouseIds;
-        return jsonResponse({ removed });
+        const dryRun = new URL(request.url).searchParams.get('dryRun') === 'true';
+        if (!dryRun) linked = body.warehouseIds;
+        return jsonResponse({
+          items: linkedOf(dryRun ? body.warehouseIds : linked),
+          removed,
+        });
       },
     },
     {

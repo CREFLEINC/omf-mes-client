@@ -40,12 +40,14 @@ export const useLinkedProductionWarehouses = (
   return useQuery({
     queryKey: productionWarehouseKeys.linked(departmentId ?? 0),
     enabled: departmentId !== null,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/departments/{departmentId}/production-warehouses', {
-          params: { path: { departmentId: departmentId ?? 0 } },
-        }),
-      ),
+    queryFn: async () =>
+      (
+        await runRequest(() =>
+          client.GET('/mdm/departments/{departmentId}/production-warehouses', {
+            params: { path: { departmentId: departmentId ?? 0 } },
+          }),
+        )
+      ).items,
   });
 };
 

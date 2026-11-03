@@ -46,6 +46,7 @@ export type {
   DashboardRepeatedItem,
   DashboardTrendPointForward,
   DepartmentProductionWarehouse,
+  DepartmentProductionWarehouseList,
   DepartmentProductionWarehouseReplace,
   DepartmentProductionWarehouseReplaceResult,
   DepartmentWithProductionWarehouseCount,
