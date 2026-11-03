@@ -31883,3 +31883,38 @@ button.iqc-inspection-step-toggle:focus-visible {
   > :not(.filter-actions) {
   flex: 0 1 auto;
 }
+
+/*
+ * 품질 기준 정보(검사 기준 · 검사표 기준 · 검사 수준 설정) 조회 조건 — 검사 조회·판정과 같은 모양(omf-all-around#228).
+ * 셀렉터 · 입력란은 제 글자 폭, [조회] [초기화] 는 첫 줄 오른쪽 끝(단추 사이 간격도 같게). 추가 · 올리기 단추는 그 뒤 그대로.
+ * 불량코드 · 원인코드 · 판정 유형(.defect-cause-search)은 같은 이름을 함께 쓰지만 대상이 아니다.
+ */
+:is(
+    .inspection-standard-search:not(.defect-cause-search),
+    .inspection-sheet-template-search,
+    .inspection-level-search
+  )
+  > .filter-bar:first-child
+  > :not(.filter-actions):nth-child(n) {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+:is(
+    .inspection-standard-search:not(.defect-cause-search),
+    .inspection-sheet-template-search,
+    .inspection-level-search
+  )
+  > .filter-bar
+  > .filter-actions {
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* 칸 글자도 검사 조회·판정 조건 줄과 같은 한 단계 작은 본문 글자(#228). */
+.inspection-standard-search:not(.defect-cause-search),
+.inspection-sheet-template-search,
+.inspection-level-search {
+  --type-body-lg: var(--type-body-sm);
+  --type-body-lg-tracking: var(--type-body-sm-tracking, 0);
+}
