@@ -132,6 +132,9 @@ export const dispositionDecision = {
     reason: '특채 사유',
     requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
     applied: '특채를 적용했습니다. LOT 이 정상으로 풀렸습니다.',
+    /** omf-all-around#207 — 일부 특채는 승인 안 된 수량을 «불량으로 남은 LOT»(새 번호)으로 나눈다. */
+    appliedSplit: (lotNo: string, nonconformanceNo: string): string =>
+      `특채를 적용했습니다. 승인 수량만 정상으로 풀었습니다. 불량으로 남은 수량은 새 LOT ${lotNo} 로 나누었고, 부적합 ${nonconformanceNo} 에서 처분합니다. 불량으로 남은 LOT 에 새 라벨을 붙이세요.`,
     rejected: '결재가 반려되어 특채를 닫았습니다.',
     blocked: {
       lot: 'LOT 을 고르세요.',

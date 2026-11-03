@@ -126,6 +126,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reason: 'Lý do đặc cách',
     requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
     applied: 'Đã áp dụng đặc cách. LOT đã được giải phóng về bình thường.',
+    appliedSplit: (lotNo: string, nonconformanceNo: string): string =>
+      `Đã áp dụng đặc cách. Chỉ số lượng được duyệt trở về bình thường. Số lượng còn lỗi được tách sang LOT mới ${lotNo} và xử lý ở phiếu không phù hợp ${nonconformanceNo}. Hãy dán nhãn mới cho LOT còn lỗi.`,
     rejected: 'Phê duyệt bị từ chối nên đã đóng đặc cách.',
     blocked: {
       lot: 'Hãy chọn LOT.',

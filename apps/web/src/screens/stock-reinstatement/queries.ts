@@ -26,7 +26,6 @@ type Client = ApiClient['client'];
 export interface CandidateQuery {
   warehouseId?: number;
   reinstatable: true;
-  followUpPending: true;
   page?: number;
   size: number;
 }
@@ -114,7 +113,11 @@ export const useLotStatus = (
     }
     const data = await runRequest(() =>
       client.GET('/quality/lot-statuses', {
-        params: { query: { itemId, lotTypeCode: 'PRODUCT', q: lotNo, size: 50 } },
+        /*
+         * LOT 종류로 거르지 않는다 — 반품 제품도, 특채·처분 정상을 받은 자재도 이 화면에 온다(#207).
+         * 처분 유형으로 종류를 짐작하면 「제품 + 특채」·「자재 + 처분 정상」에서 LOT 을 못 찾는다. id 로 고른다.
+         */
+        params: { query: { itemId, q: lotNo, size: 50 } },
       }),
     );
     return data.items.find((item) => item.lotId === lotId) ?? null;

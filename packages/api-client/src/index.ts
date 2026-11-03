@@ -67,4 +67,9 @@ export type {
   ItemResourceMapListQuery,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
+  ConcessionApplyForward,
+  ConcessionAppliedForward,
+  ConcessionSplitResult,
+  StockReinstatementCreateForward,
+  StockReinstatementResponseForward,
 } from './forward-contract';
