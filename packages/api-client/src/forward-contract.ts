@@ -679,6 +679,62 @@ type SheetPut<Path, B> = Unused & {
   >;
 };
 
+/**
+ * 서버 선행(003 계획 기반 출고 요청, omf-all-around#66 · 계약 §3) — 부서에 연결한 생산 창고(W-06-06).
+ * 이 부서 라인의 W/O 자재는 여기 연결한 창고에서 출고한다.
+ */
+export interface DepartmentProductionWarehouse {
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+  plantId: number;
+}
+
+/** 생산 창고 전체 교체 본문 — 빈 배열이면 연결을 모두 뺀다. */
+export interface DepartmentProductionWarehouseReplace {
+  warehouseIds: number[];
+}
+
+/**
+ * 전체 교체 응답. `removed` 는 연결을 뺀 창고마다 그 창고에서 나갈 대기·배포 출고 요청 수다.
+ * `dryRun=true` 면 저장하지 않고 같은 응답을 낸다(연결 해제 확인 창).
+ */
+export interface DepartmentProductionWarehouseReplaceResult {
+  removed: { warehouseId: number; activeRequestCount: number }[];
+}
+
+/**
+ * 부서 목록 행의 생산 창고 수(W-06-06 목록 「생산 창고」 열). ⚠ 계약 §3 에 없는 선택 칸이다 —
+ * 서버가 실으면 수를, 싣지 않으면 열이 「—」를 보인다.
+ */
+export type DepartmentWithProductionWarehouseCount = components['schemas']['Department'] & {
+  productionWarehouseCount?: number;
+};
+
+/**
+ * 서버 선행(003, 계약 §4) — 운영 정책 코드 `WEEKLY_WORKING_DAYS`(공장 범위, `valueNumeric` 5 | 6).
+ * 행이 없으면 서버가 5 로 계산한다(이 코드만의 예외). W-CO-15 가 읽고 쓴다. 요청(조건 · 등록 본문)만 넓힌다 —
+ * 응답은 생성 타입 그대로 두어 이 코드를 모르는 기존 화면(W-05-01 타발수 환산)의 타입이 흔들리지 않는다.
+ */
+export type OperationPolicyCodeForward =
+  components['schemas']['OperationPolicy']['policyCode'] | 'WEEKLY_WORKING_DAYS';
+
+export type OperationPolicyCreateForward = Omit<
+  components['schemas']['OperationPolicyCreate'],
+  'policyCode'
+> & {
+  policyCode: OperationPolicyCodeForward;
+};
+
+type OperationPoliciesPath = paths['/app/operation-policies'];
+type OperationPolicyListQuery = NonNullable<OperationPoliciesPath['get']['parameters']['query']>;
+
+export type OperationPolicyListQueryForward = Omit<OperationPolicyListQuery, 'policyCode'> & {
+  policyCode?: OperationPolicyCodeForward;
+};
+
+type DepartmentId = { departmentId: number };
+
 export interface ForwardPaths {
   /** 시리얼 투입 자재 — 서버 선행 P-107. */
   '/trace/serial-numbers/{serialNo}/input-materials': {
@@ -1027,6 +1083,36 @@ export interface ForwardPaths {
       Params<never, IdemHeader, PlanVersionId & { attachmentId: number }>,
       never,
       { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
+  };
+  /** 서버 선행(003, 계약 §3) — 부서 생산 창고 연결 목록 · 전체 교체(`dryRun` 이면 저장 없이 요청 수만). */
+  '/mdm/departments/{departmentId}/production-warehouses': Unused & {
+    parameters: NoParameters;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: DepartmentId; cookie?: never },
+      never,
+      { 200: Json<DepartmentProductionWarehouse[]> }
+    >;
+    put: Op<
+      Params<{ dryRun?: boolean }, { 'Idempotency-Key': string }, DepartmentId>,
+      { content: { 'application/json': DepartmentProductionWarehouseReplace } },
+      { 200: Json<DepartmentProductionWarehouseReplaceResult> }
+    >;
+  };
+  /** 서버 선행(003, 계약 §4) — 운영 정책 목록 · 등록에 `WEEKLY_WORKING_DAYS` 를 더한다. 나머지는 생성 타입과 같다. */
+  '/app/operation-policies': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    get: Op<
+      { query?: OperationPolicyListQueryForward; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<{ items: components['schemas']['OperationPolicy'][]; page: PageMeta }> }
+    >;
+    post: Op<
+      { query?: never; header: { 'Idempotency-Key': string }; path?: never; cookie?: never },
+      { content: { 'application/json': OperationPolicyCreateForward } },
+      { 201: Json<components['schemas']['OperationPolicy']> }
     >;
   };
 }

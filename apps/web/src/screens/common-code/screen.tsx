@@ -43,6 +43,10 @@ import { DepartmentFormPane } from './department-form-pane';
 import { indexById, orderForGrouping, parentOptionsFor } from './department-hierarchy';
 import { DepartmentListPane } from './department-list-pane';
 import {
+  ProductionWarehouseSection,
+  useProductionWarehouseEditor,
+} from './department-production-warehouses';
+import {
   departmentToFormValues,
   emptyDepartmentFormValues,
   isSameDepartmentValues,
@@ -820,6 +824,16 @@ export const CommonCodeScreen = () => {
   const [departmentFieldErrors, setDepartmentFieldErrors] = useState<Record<string, string>>({});
   const [isDepartmentDeactivateOpen, setIsDepartmentDeactivateOpen] = useState(false);
 
+  /**
+   * 「생산 창고」 구획(003 · US8). 수정 폼에만 있다. 저장은 부서 폼의 「저장」 하나가 함께 낸다 —
+   * 부서가 바뀌었으면 부서 먼저, 그 성공 뒤에 연결을 저장한다(screens/W-06-06.md).
+   */
+  const productionWarehouses = useProductionWarehouseEditor(
+    isCreatingDepartment ? null : selectedDepartmentId,
+  );
+  /** 이번 부서 저장이 성공하면 생산 창고도 이어서 저장한다. */
+  const commitWarehousesAfterDepartmentRef = useRef(false);
+
   const departmentWrite = useMasterWrite<DepartmentFormValues, Department>({
     request: (values, headers) =>
       client.PUT('/mdm/departments/{departmentId}', {
@@ -854,6 +868,12 @@ export const CommonCodeScreen = () => {
       setDepartmentFormState((prev) =>
         prev === null ? prev : { ...prev, baseline: next, values: next },
       );
+
+      /* 부서 저장이 이미 알렸다 — 이어지는 연결 저장은 실패만 구획에 보인다. */
+      if (commitWarehousesAfterDepartmentRef.current) {
+        commitWarehousesAfterDepartmentRef.current = false;
+        productionWarehouses.commit({ quiet: true });
+      }
     },
   });
 
@@ -964,7 +984,8 @@ export const CommonCodeScreen = () => {
    * 다른 쪽이 열려 있으면 사용자는 같은 자리에서 두 저장을 겹쳐 낼 수 있다.
    * 사용 중지는 넣지 않는다 — 확인 창 안에 갇힌 별개 훅이라 이 자리와 옵저버가 겹치지 않는다.
    */
-  const isDepartmentLocked = departmentWrite.isSaving || departmentCreateWrite.isSaving;
+  const isDepartmentLocked =
+    departmentWrite.isSaving || departmentCreateWrite.isSaving || productionWarehouses.isBusy;
 
   /**
    * 저장을 내는 자리는 하나뿐이고(등록·수정이 같은 자리다) **그 자리가 여기를 지난다.**
@@ -996,6 +1017,8 @@ export const CommonCodeScreen = () => {
     setIsDepartmentDeactivateOpen(false);
     setDepartmentFormState(null);
     setDepartmentFieldErrors({});
+    productionWarehouses.reset();
+    commitWarehousesAfterDepartmentRef.current = false;
   };
 
   const applyDepartmentFilters = (next: ScopedFilters) => {
@@ -1061,7 +1084,22 @@ export const CommonCodeScreen = () => {
     // 화면에서 잡히는 오류는 서버로 보내지 않는다.
     if (Object.keys(errors).length > 0) return;
 
-    writeDepartment(departmentFormState.values);
+    const values = departmentFormState.values;
+    if (isCreatingDepartment) {
+      writeDepartment(values);
+      return;
+    }
+
+    /* 연결을 뺀 창고에 남은 요청이 있으면 먼저 묻는다(확인 창). 0장이면 바로 저장한다. */
+    const departmentChanged = isDepartmentDirty;
+    productionWarehouses.requestSave(() => {
+      if (departmentChanged) {
+        commitWarehousesAfterDepartmentRef.current = productionWarehouses.isDirty;
+        writeDepartment(values);
+      } else {
+        productionWarehouses.commit({ quiet: false });
+      }
+    });
   };
 
   const reloadDepartmentDetail = () => {
@@ -1906,14 +1944,18 @@ export const CommonCodeScreen = () => {
           businessUnitOptions,
           departmentFormState.values.businessUnitId,
         )}
-        isDirty={isDepartmentDirty}
+        productionWarehouses={<ProductionWarehouseSection editor={productionWarehouses} />}
+        isDirty={isDepartmentDirty || productionWarehouses.isDirty}
         /* **막는 것은 전역** — 남의 저장 중에도 새 저장이 시작되지 않는다(사유는 페인이 낸다). */
         isLocked={isDepartmentLocked}
-        /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. */
-        isSaving={isDepartmentWriteMine && departmentWrite.isSaving}
+        /* **가리는 것은 대상 축** — 진행 표시는 자기 저장에만 돈다. 생산 창고는 이 부서의 것뿐이다. */
+        isSaving={
+          (isDepartmentWriteMine && departmentWrite.isSaving) || productionWarehouses.isBusy
+        }
         onSave={handleSaveDepartment}
         onCancel={() => {
           setDepartmentFieldErrors({});
+          productionWarehouses.reset();
           resetIfIdle(departmentWrite);
           setDepartmentFormState((prev) =>
             prev === null ? prev : { ...prev, values: prev.baseline },
