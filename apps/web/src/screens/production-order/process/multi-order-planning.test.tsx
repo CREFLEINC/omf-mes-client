@@ -169,8 +169,11 @@ const distribute = async (targets: Record<string, string> = {}) => {
       (within(group).getByRole('textbox', { name: `구간 ${index + 1} 수량` }) as HTMLInputElement)
         .value,
     );
-    await user.click(within(group).getByRole('combobox', { name: `구간 ${index + 1} 생산 라인` }));
-    await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
+    await user.click(
+      within(group).getByRole('button', { name: `구간 ${index + 1} 생산 라인 선택` }),
+    );
+    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(screen.getByRole('button', { name: '선택' }));
     await user.click(within(group).getByRole('combobox', { name: `구간 ${index + 1} 배분 방식` }));
     await user.click(screen.getByRole('option', { name: '날짜별 직접 입력' }));
     const inputs = within(group).getAllByRole('textbox', {
@@ -275,8 +278,9 @@ describe('복수 오더 편성 저장 연결', () => {
     await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
     await user.click(screen.getByRole('tab', { name: '주간 편성' }));
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    await user.click(screen.getByRole('combobox', { name: '구간 1 생산 라인' }));
-    await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
+    await user.click(screen.getByRole('button', { name: '구간 1 생산 라인 선택' }));
+    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(screen.getByRole('button', { name: '선택' }));
     await user.click(screen.getByRole('tab', { name: '1. BOM·Routing' }));
     expect(screen.getByRole('dialog')).toBeVisible();
   });

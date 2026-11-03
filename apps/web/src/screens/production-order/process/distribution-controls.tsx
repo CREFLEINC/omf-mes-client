@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, DatePicker, TextField } from '@crefle/web-ui';
 import { Select } from '../../../patterns/select';
+import { DistributionLinePicker } from './distribution-line-picker';
 import { plantToday } from '../../../patterns/plant-time';
 import { shiftPlanDate } from './plan-view-model';
 import {
@@ -184,18 +185,12 @@ export const DistributionControls = ({
               </div>
               <div className="field-cell">
                 <span className="field-label">공통 생산 라인 (선택)</span>
-                <Select
-                  size="sm"
-                  aria-label="공통 생산 라인"
+                <DistributionLinePicker
+                  label="공통 생산 라인"
+                  lines={commonLines}
                   value={commonLine}
                   disabled={disabled}
-                  options={[
-                    { value: '', label: '각 구간의 라인 유지' },
-                    ...commonLines.map((line) => ({
-                      value: String(line.id),
-                      label: `${line.name} (${line.code})`,
-                    })),
-                  ]}
+                  optional
                   onChange={setCommonLine}
                 />
               </div>
@@ -333,16 +328,12 @@ export const DistributionControls = ({
                           onChange={(end) => change(row.id, { end })}
                         />
                       </div>
-                      <div className="field-cell">
+                      <div className="field-cell erp-wo-segment-line">
                         <span className="field-label">생산 라인</span>
-                        <Select
-                          size="sm"
-                          aria-label={`구간 ${index + 1} 생산 라인`}
+                        <DistributionLinePicker
+                          label={`구간 ${index + 1} 생산 라인`}
+                          lines={target?.lines ?? []}
                           value={row.lineId}
-                          options={(target?.lines ?? []).map((line) => ({
-                            value: String(line.id),
-                            label: `${line.name} (${line.code})`,
-                          }))}
                           disabled={disabled}
                           onChange={(lineId) => change(row.id, { lineId })}
                         />

@@ -19,8 +19,9 @@ const orders: DistributionTarget[] = [
 const configure = async () => {
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  await user.click(screen.getByRole('combobox', { name: '구간 1 생산 라인' }));
-  await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
+  await user.click(screen.getByRole('button', { name: '구간 1 생산 라인 선택' }));
+  await user.click(await screen.findByText('라인 1', { exact: true }));
+  await user.click(screen.getByRole('button', { name: '선택' }));
   await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
   return user;
 };
@@ -113,12 +114,19 @@ describe('분배 조건과 미리보기 적용', () => {
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     await user.click(screen.getByText('선택 구간에 공통 기간과 라인 입력', { exact: true }));
     await user.click(screen.getByRole('checkbox', { name: '분배 구간 1 선택' }));
-    await user.click(screen.getByRole('combobox', { name: '공통 생산 라인' }));
-    await user.click(screen.getByRole('option', { name: '라인 1 (L1)' }));
+    await user.click(screen.getByRole('button', { name: '공통 생산 라인 선택' }));
+    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(screen.getByRole('button', { name: '선택' }));
     await user.click(screen.getByRole('button', { name: '선택 구간에 입력' }));
-    expect(screen.getByRole('combobox', { name: '구간 1 생산 라인' })).toHaveTextContent('라인 1');
-    expect(screen.getByRole('combobox', { name: '구간 2 생산 라인' })).not.toHaveTextContent(
-      '라인 1',
-    );
+    expect(
+      screen
+        .getByRole('button', { name: '구간 1 생산 라인 선택' })
+        .closest('.erp-wo-distribution-line-field'),
+    ).toHaveTextContent('라인 1');
+    expect(
+      screen
+        .getByRole('button', { name: '구간 2 생산 라인 선택' })
+        .closest('.erp-wo-distribution-line-field'),
+    ).not.toHaveTextContent('라인 1');
   });
 });

@@ -32619,7 +32619,7 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .erp-wo-distribution-segments { display: grid; gap: var(--space-3); }
 .erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
 .erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
-.erp-wo-segment-fields { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.erp-wo-segment-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-3); margin-top: var(--space-3); }
 .erp-wo-segment-fields > * { min-width: 0; }
 .erp-wo-daily-quantities { display: grid; grid-template-columns: repeat(auto-fit,minmax(8rem,1fr)); gap: var(--space-2); max-height: 18rem; overflow: auto; margin-top: var(--space-3); }
 .erp-wo-checkbox { display: flex; align-items: center; gap: var(--space-2); font: var(--type-body-sm); }
@@ -32634,9 +32634,13 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .erp-wo-preview-scroll caption { text-align: left; font: var(--type-title-sm); padding-block: var(--space-2); }
 .erp-wo-distribution-settings [role='combobox'] { height: auto; min-height: var(--control-height-sm); padding-block: var(--space-2); text-align: left; }
 .erp-wo-distribution-settings [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-@container erp-wo-page (max-width: 52rem) { .erp-wo-segment-fields { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@container erp-wo-page (max-width: 36rem) { .erp-wo-segment-fields { grid-template-columns: minmax(0,1fr); } }
 
 .erp-wo-distribution-preview > button { justify-self: end; }
 body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span:last-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; min-width: 0; }
 body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] { padding-block: var(--space-2); }
+
+.erp-wo-segment-line { grid-column: 1 / -1; }
+.erp-wo-distribution-line-field { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.erp-wo-distribution-line-value { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); font: var(--type-body-sm); overflow-wrap: anywhere; background: var(--surface); }
+.erp-wo-distribution-line-buttons { display: flex; gap: var(--space-1); flex-shrink: 0; }
+@container erp-wo-page (max-width: 36rem) { .erp-wo-segment-fields { grid-template-columns: minmax(0,1fr); } .erp-wo-distribution-line-field { flex-wrap: wrap; } .erp-wo-distribution-line-value { flex-basis: 100%; } }
