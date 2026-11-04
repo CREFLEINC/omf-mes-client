@@ -12938,6 +12938,121 @@ button.app-button-neutral {
   list-style: none;
 }
 
+/* W-02-11 출고 요청 현황(003) — 보기 전환 · 조건 · 표 · 오른쪽 상세(screens/W-02-11.md). */
+.material-issue-status-views {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.material-issue-status-views > [role='group'] {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.material-issue-status-filters {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.material-issue-status-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.material-issue-status-table,
+.material-issue-status-lines {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+
+.material-issue-status-table th,
+.material-issue-status-table td,
+.material-issue-status-lines th,
+.material-issue-status-lines td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.material-issue-status-table tr[aria-selected='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.material-issue-status-group > th {
+  background: var(--surface-container);
+  font-weight: 500;
+}
+
+.material-issue-status-chips,
+.material-issue-status-allocation,
+.material-issue-status-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.material-issue-status-allocation {
+  display: flex;
+}
+
+.material-issue-status-code {
+  font-family: var(--font-mono);
+}
+
+.material-issue-status-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.material-issue-status-detail {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.material-issue-status-head {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  margin: 0;
+}
+
+.material-issue-status-head > dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.material-issue-status-history {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.material-issue-status-history > li {
+  display: flex;
+  gap: var(--space-2);
+}
+
 /* W-CO-15 공장 근무일 설정(003) — 바뀐 줄은 노랑 바탕 + 「바뀜」(screens/W-CO-15.md). */
 .plant-working-days-plant {
   display: inline-flex;

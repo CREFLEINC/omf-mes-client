@@ -402,8 +402,10 @@ describe('AppLayout', () => {
       'href',
       '/logistics/disposal-issue',
     );
+    /* W-02-11 출고 요청 현황(003) — W-02-10 다음 탭이다(확정 항목 3). */
     expect(hubTabHrefs('출고 관리')).toEqual([
       '/production/material-issue-requests',
+      '/production/material-issue-status',
       '/logistics/supplier-return',
       '/logistics/disposal-issue',
     ]);
@@ -1060,6 +1062,7 @@ describe('AppLayout', () => {
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',
+        '/production/material-issue-status',
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
