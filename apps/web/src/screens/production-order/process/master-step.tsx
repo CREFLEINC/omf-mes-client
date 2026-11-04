@@ -1,71 +1,12 @@
 import { RevisionDetailButton } from './revision-detail';
 import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
 import { plantToday } from '../../../patterns/plant-time';
-import { Select } from '../../../patterns/select';
+import { RoutingPicker } from './routing-picker';
 import type { BomRevisionFact, RoutingRevisionFact } from '../../production-plan/reference-queries';
 
 const t = messages.erpWorkOrderFlow.process.master;
-
-interface RevisionFieldProps<T> {
-  label: string;
-  items: readonly T[];
-  value: string;
-  idOf: (item: T) => number;
-  labelOf: (item: T) => string;
-  periodOf: (item: T) => string;
-  isDefault: (item: T) => boolean;
-  locked: boolean;
-  onChange: (value: string) => void;
-}
-
-const RevisionField = <T,>({
-  label,
-  items,
-  value,
-  idOf,
-  labelOf,
-  periodOf,
-  isDefault,
-  locked,
-  onChange,
-}: RevisionFieldProps<T>) => {
-  const id = useId();
-  const selected = items.find((item) => String(idOf(item)) === value);
-  return (
-    <div className="field-cell erp-wo-master-field">
-      <label className="field-label visually-hidden" htmlFor={id}>
-        {label}
-      </label>
-      {locked && selected !== undefined ? (
-        <p id={id} className="erp-wo-master-value">
-          {labelOf(selected)}
-        </p>
-      ) : (
-        <Select
-          title={selected === undefined ? undefined : labelOf(selected)}
-          id={id}
-          value={value === '' ? null : value}
-          placeholder={t.placeholder}
-          options={items.map((item) => ({ value: String(idOf(item)), label: labelOf(item) }))}
-          onChange={onChange}
-        />
-      )}
-      {selected !== undefined && (
-        <span className="erp-wo-master-note">
-          {periodOf(selected)}
-          {isDefault(selected) && (
-            <Chip variant="status" size="sm" status="info">
-              {t.autoSelected}
-            </Chip>
-          )}
-        </span>
-      )}
-    </div>
-  );
-};
 
 export interface MasterStepProps {
   boms: {
@@ -173,19 +114,31 @@ export const MasterStep = ({
                 <RevisionDetailButton kind="BOM" value={bomId} />
               </td>
               <td data-label={t.routing} className="erp-wo-master-revision">
-                <RevisionField
-                  label={t.routing}
-                  items={routings.items}
-                  value={routingId}
-                  idOf={(item) => item.routingId}
-                  labelOf={(item) =>
-                    t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode))
-                  }
-                  periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
-                  isDefault={(item) => item.isDefault}
-                  locked={locked}
-                  onChange={onRoutingChange}
-                />
+                <p className="erp-wo-master-value">
+                  {selectedRouting
+                    ? t.revision(
+                        selectedRouting.routingCode,
+                        selectedRouting.routingVersion,
+                        statusNameOf(selectedRouting.statusCode),
+                      )
+                    : 'Routing 미지정'}
+                </p>
+                {!locked && (
+                  <RoutingPicker
+                    value={routingId}
+                    options={routings.items.map((item) => ({
+                      value: String(item.routingId),
+                      label: t.revision(
+                        item.routingCode,
+                        item.routingVersion,
+                        statusNameOf(item.statusCode),
+                      ),
+                      period: period(item.effectiveFrom, item.effectiveTo),
+                      isDefault: item.isDefault,
+                    }))}
+                    onChange={onRoutingChange}
+                  />
+                )}
                 <RevisionDetailButton
                   kind="Routing"
                   itemId={selectedRouting?.itemId}

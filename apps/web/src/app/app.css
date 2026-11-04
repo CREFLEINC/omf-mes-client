@@ -32718,12 +32718,35 @@ main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0
 
 .erp-wo-revision-detail { min-width: 0; display: grid; gap: var(--space-3); }
 .erp-wo-revision-detail p { margin: 0; }
-.erp-wo-revision-table { max-width: 100%; overflow-x: auto; }
-.erp-wo-revision-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
-.erp-wo-revision-table th, .erp-wo-revision-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; vertical-align: top; min-width: 6rem; }
+ .erp-wo-revision-table { max-width: 100%; }
+.erp-wo-revision-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-revision-table th, .erp-wo-revision-table td { padding: var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .erp-wo-revision-table th { background: var(--surface-container); }
-.erp-wo-revision-table caption { text-align: left; font: var(--type-title-sm); padding-bottom: var(--space-2); }
-
+.erp-wo-revision-table th:first-child { width: 3.5rem; }
+.erp-wo-revision-table th:nth-child(2) { width: 24%; }
+.erp-wo-revision-table caption { text-align: left; font: var(--type-title-sm); padding-bottom: var(--space-3); }
+.erp-wo-revision-properties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin: 0; }
+.erp-wo-revision-properties > div { min-width: 0; }
+.erp-wo-revision-properties dt { color: var(--on-surface-variant); font: var(--type-label-sm); }
+.erp-wo-revision-properties dd { margin: var(--space-1) 0 0; font-weight: 600; }
+.erp-wo-revision-properties dd[data-enabled="true"] { color: var(--primary); }
+.erp-wo-revision-quantity { font-variant-numeric: tabular-nums; }
+.erp-wo-routing-candidates { display: grid; gap: var(--space-4); min-width: 0; }
+.erp-wo-routing-candidate { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md, 12px); padding: var(--space-3); }
+.erp-wo-routing-candidate[data-selected="true"] { border-color: var(--primary); }
+.erp-wo-routing-candidate-heading { display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); cursor: pointer; }
+.erp-wo-routing-candidate-heading input { flex: 0 0 auto; margin-top: .25rem; }
+.erp-wo-routing-candidate-heading span { min-width: 0; overflow-wrap: anywhere; }
+.erp-wo-routing-candidate-heading small { display: block; color: var(--on-surface-variant); }
+.erp-wo-routing-default { margin-inline-start: var(--space-2); color: var(--primary); font: var(--type-label-sm); }
+@media (max-width: 800px) {
+  .erp-wo-revision-table table, .erp-wo-revision-table tbody, .erp-wo-revision-table tr, .erp-wo-revision-table td { display: block; width: 100%; min-width: 0; box-sizing: border-box; }
+  .erp-wo-revision-table caption { display: block; width: 100%; box-sizing: border-box; }
+  .erp-wo-revision-table thead { display: none; }
+  .erp-wo-revision-table tr { border: 1px solid var(--outline-variant); border-radius: 8px; margin-bottom: var(--space-3); }
+  .erp-wo-revision-table td { border: 0; }
+  .erp-wo-revision-table td::before { content: attr(data-label); display: block; color: var(--on-surface-variant); font: var(--type-label-sm); margin-bottom: var(--space-1); }
+}
 .erp-wo-master-revision > .erp-wo-revision-detail-trigger { display: flex; width: fit-content; margin-top: var(--space-2); }
 .erp-wo-revision-base { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; font: var(--type-body-sm); }
 .erp-wo-revision-base dt { color: var(--on-surface-variant); }

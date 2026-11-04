@@ -11,6 +11,17 @@ import { useRoutingOperations } from '../../routing/queries';
 
 const flag = (value: boolean | undefined) => (value ? '예' : '아니요');
 
+const Properties = ({ values }: { values: [string, string][] }) => (
+  <dl className="erp-wo-revision-properties">
+    {values.map(([label, value]) => (
+      <div key={label}>
+        <dt>{label}</dt>
+        <dd data-enabled={value === '예'}>{value}</dd>
+      </div>
+    ))}
+  </dl>
+);
+
 const BomContents = ({ id }: { id: number }) => {
   const { client } = useApiClient();
   const header = useQuery({
@@ -73,16 +84,7 @@ const BomContents = ({ id }: { id: number }) => {
             <caption>구성 자재 및 기준 소요량</caption>
             <thead>
               <tr>
-                {[
-                  '순서',
-                  '구성 자재',
-                  '소요량',
-                  '단위',
-                  '로스율',
-                  '필수 자재',
-                  'LOT 추적',
-                  '자동 차감 허용',
-                ].map((label) => (
+                {['순서', '구성 자재', '소요량', '관리 속성'].map((label) => (
                   <th key={label}>{label}</th>
                 ))}
               </tr>
@@ -94,17 +96,24 @@ const BomContents = ({ id }: { id: number }) => {
                   const name = names.items.find((item) => item.itemId === row.componentItemId);
                   return (
                     <tr key={row.bomComponentId}>
-                      <td>{row.sequenceNo}</td>
-                      <td>
+                      <td data-label="순서">{row.sequenceNo}</td>
+                      <td data-label="구성 자재" className="erp-wo-revision-material">
                         {name?.label ??
                           (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요')}
                       </td>
-                      <td>{row.requiredQty}</td>
-                      <td>{unit(row.uomId)}</td>
-                      <td>{Number((row.scrapRate * 100).toFixed(6))}%</td>
-                      <td>{flag(row.isMandatory)}</td>
-                      <td>{flag(row.lotTraceRequired)}</td>
-                      <td>{flag(row.backflushAllowed)}</td>
+                      <td data-label="소요량" className="erp-wo-revision-quantity">
+                        <strong>{row.requiredQty}</strong> {unit(row.uomId)}
+                      </td>
+                      <td data-label="관리 속성">
+                        <Properties
+                          values={[
+                            ['로스율', `${Number((row.scrapRate * 100).toFixed(6))}%`],
+                            ['필수 자재', flag(row.isMandatory)],
+                            ['LOT 추적', flag(row.lotTraceRequired)],
+                            ['자동 차감 허용', flag(row.backflushAllowed)],
+                          ]}
+                        />
+                      </td>
                     </tr>
                   );
                 })}
@@ -116,7 +125,7 @@ const BomContents = ({ id }: { id: number }) => {
   );
 };
 
-const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
+export const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
   const rows = useRoutingOperations(id);
   if (rows.isError)
     return (
@@ -130,9 +139,11 @@ const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
   if (!rows.data) return <SkeletonText lines={4} />;
   return (
     <>
-      <p>
-        <strong>{label ?? '선택한 Routing'}</strong>
-      </p>
+      {label !== '' && (
+        <p>
+          <strong>{label ?? '선택한 Routing'}</strong>
+        </p>
+      )}
 
       {!rows.data.items.length ? (
         <p>등록된 공정이 없습니다.</p>
@@ -142,20 +153,7 @@ const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
             <caption>공정 순서 및 공정별 정보</caption>
             <thead>
               <tr>
-                {[
-                  '순서',
-                  '공정',
-                  'MES 관리',
-                  '자재 투입',
-                  '실적 관리',
-                  '검사 관리',
-                  '외주',
-                  '산출 LOT 필수',
-                  '설비 필수',
-                  '금형 필수',
-                  '표준 사이클(초)',
-                  '표준 수율',
-                ].map((label) => (
+                {['순서', '공정', '관리 및 필수 조건', '표준 정보'].map((label) => (
                   <th key={label}>{label}</th>
                 ))}
               </tr>
@@ -165,21 +163,41 @@ const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
                 .sort((a, b) => a.operationSeq - b.operationSeq)
                 .map((row) => (
                   <tr key={row.routingOperationId}>
-                    <td>{row.operationSeq}</td>
-                    <td>{row.operationName}</td>
-                    <td>{flag(row.mesManaged)}</td>
-                    <td>{flag(row.materialInputManaged)}</td>
-                    <td>{flag(row.productionResultManaged)}</td>
-                    <td>{flag(row.inspectionManaged)}</td>
-                    <td>{flag(row.isOutsourced)}</td>
-                    <td>{flag(row.outputLotRequired)}</td>
-                    <td>{flag(row.equipmentRequired)}</td>
-                    <td>{flag(row.moldRequired)}</td>
-                    <td>{row.standardCycleTimeSec ?? '—'}</td>
-                    <td>
-                      {row.standardYieldRate == null
-                        ? '—'
-                        : `${Number((row.standardYieldRate * 100).toFixed(6))}%`}
+                    <td data-label="순서">{row.operationSeq}</td>
+                    <td data-label="공정">
+                      <strong>{row.operationName}</strong>
+                    </td>
+                    <td data-label="관리 및 필수 조건">
+                      <Properties
+                        values={[
+                          ['MES 관리', flag(row.mesManaged)],
+                          ['자재 투입', flag(row.materialInputManaged)],
+                          ['실적 관리', flag(row.productionResultManaged)],
+                          ['검사 관리', flag(row.inspectionManaged)],
+                          ['외주', flag(row.isOutsourced)],
+                          ['산출 LOT 필수', flag(row.outputLotRequired)],
+                          ['설비 필수', flag(row.equipmentRequired)],
+                          ['금형 필수', flag(row.moldRequired)],
+                        ]}
+                      />
+                    </td>
+                    <td data-label="표준 정보">
+                      <Properties
+                        values={[
+                          [
+                            '사이클',
+                            row.standardCycleTimeSec == null
+                              ? '미설정'
+                              : `${row.standardCycleTimeSec}초`,
+                          ],
+                          [
+                            '수율',
+                            row.standardYieldRate == null
+                              ? '미설정'
+                              : `${Number((row.standardYieldRate * 100).toFixed(6))}%`,
+                          ],
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

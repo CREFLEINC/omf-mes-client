@@ -1,3 +1,4 @@
+import { RoutingPicker } from './routing-picker';
 import { RevisionDetailButton } from './revision-detail';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -47,7 +48,7 @@ interface Controller {
   routingId: string;
   locked: boolean;
   bomOptions: { value: string; label: string }[];
-  routingOptions: { value: string; label: string }[];
+  routingOptions: { value: string; label: string; isDefault?: boolean; period?: string }[];
   onRoutingChange: (value: string) => void;
 }
 
@@ -146,6 +147,8 @@ const ReadyOrderSession = ({
       routingOptions: (routings.data?.items ?? []).map((item) => ({
         value: String(item.routingId),
         label: `${item.routingCode} (Rev ${item.routingVersion})`,
+        isDefault: item.isDefault,
+        period: `${item.effectiveFrom ?? '시작일 미설정'} ~ ${item.effectiveTo ?? '종료일 없음'}`,
       })),
       onRoutingChange: (value) => {
         setRouting(value);
@@ -432,23 +435,17 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                         <RevisionDetailButton kind="BOM" value={entry.bomId} />
                       </td>
                       <td data-label="Routing 개정" className="erp-wo-master-revision">
-                        {entry.locked ? (
-                          <p className="erp-wo-master-value">
-                            {entry.routingOptions.find((option) => option.value === entry.routingId)
-                              ?.label ?? '개정 정보 확인 필요'}
-                          </p>
-                        ) : (
-                          <Select
-                            title={
-                              entry.routingOptions.find(
-                                (option) => option.value === entry.routingId,
-                              )?.label
-                            }
-                            aria-label={`${entry.order.productionOrderNo} Routing`}
-                            value={entry.routingId}
+                        <p className="erp-wo-master-value">
+                          {entry.routingOptions.find((option) => option.value === entry.routingId)
+                            ?.label ?? 'Routing 미지정'}
+                        </p>
+                        {!entry.locked && (
+                          <RoutingPicker
                             options={entry.routingOptions}
+                            value={entry.routingId}
                             disabled={busy}
                             onChange={entry.onRoutingChange}
+                            label={`${entry.order.productionOrderNo} Routing 선택`}
                           />
                         )}
                         <RevisionDetailButton
