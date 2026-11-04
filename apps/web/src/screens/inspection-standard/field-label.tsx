@@ -1,8 +1,14 @@
+import { Icon } from '@crefle/web-ui';
+
 export interface FieldLabelProps {
   /** 이 라벨이 가리키는 컨트롤의 id */
   htmlFor: string;
   label: string;
   required?: boolean;
+  /** 라벨 오른쪽 같은 줄의 짧은 안내(잠긴 칸의 사유 등). 없으면 두지 않는다. */
+  hint?: string;
+  /** `hint` 의 id — 컨트롤의 `aria-describedby` 가 가리킨다. */
+  hintId?: string;
 }
 
 /**
@@ -19,7 +25,7 @@ export interface FieldLabelProps {
  * 값을 보여 주기만 하는 자리(버전 번호·상태·승인 여부)는 이 부품을 쓰지 않는다 —
  * 거기에는 가리킬 컨트롤이 없고 `aria-labelledby`로 값과 잇는다.
  */
-export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps) => (
+export const FieldLabel = ({ htmlFor, label, required = false, hint, hintId }: FieldLabelProps) => (
   <span className="field-label">
     <label htmlFor={htmlFor}>{label}</label>
     {/* `required-mark` — 다른 화면과 같은 빨간 필수 표시(#196). */}
@@ -27,6 +33,17 @@ export const FieldLabel = ({ htmlFor, label, required = false }: FieldLabelProps
       <span className="required-mark" aria-hidden="true">
         {' '}
         *
+      </span>
+    )}
+    {/* 칸 아래 안내 대신 라벨 오른쪽에 둔다 — 검사 조회·판정의 정보 안내 줄과 같은 모양(사용자 지시 2026-11-04). */}
+    {hint !== undefined && (
+      <span
+        id={hintId}
+        className="iqc-inspection-action-note inspection-standard-label-hint"
+        data-tone="info"
+      >
+        <Icon name="info" size={14} aria-hidden />
+        {hint}
       </span>
     )}
   </span>

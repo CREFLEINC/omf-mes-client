@@ -1,8 +1,8 @@
-import { Button, Checkbox, Chip, Icon, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
@@ -11,6 +11,9 @@ import { SelectField } from './select-field';
 import type { InspectionPlan, PlanFormValues, SelectOption } from './types';
 
 const t = messages.inspectionStandard;
+
+/** 품목 칸 맨 앞 — 비우면 「전 품목 공통」 기준이다. */
+const ALL_ITEMS = [{ value: '', label: t.values.allItems }];
 
 export type PlanPaneMode = 'edit' | 'create';
 
@@ -82,15 +85,18 @@ export const PlanPane = ({
   const codeId = useId();
   const codeLockNoteId = useId();
   const nameId = useId();
-  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
-  /* 창에서 고른 품목의 이름 — 선택지 목록(첫 쪽)에 없는 품목도 이름이 보이게 둔다(#196). */
-  const [pickedItemLabels, setPickedItemLabels] = useState<Record<string, string>>({});
-  const itemLabel =
-    values.itemId === ''
-      ? ''
-      : (pickedItemLabels[values.itemId] ??
-        itemOptions.find((option) => option.value === values.itemId)?.label ??
-        '');
+  const itemId = useId();
+  const itemErrorId = useId();
+  const itemOption = itemOptions.find((option) => option.value === values.itemId) ?? null;
+  const routingId = useId();
+  /* 품목을 고르면 라우팅 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04). 칸이 그려진 뒤에 옮긴다. */
+  const [focusRouting, setFocusRouting] = useState(false);
+  const isRoutingShown = routingDisabledReason === null;
+  useEffect(() => {
+    if (!focusRouting || !isRoutingShown) return;
+    document.getElementById(routingId)?.focus();
+    setFocusRouting(false);
+  }, [focusRouting, isRoutingShown, routingId]);
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
@@ -136,23 +142,19 @@ export const PlanPane = ({
             htmlFor={codeId}
             label={t.fields.inspectionPlanCode}
             required={!isCodeLocked}
+            {...(codeLockReason !== null ? { hint: codeLockReason, hintId: codeLockNoteId } : {})}
           />
           <TextField
             id={codeId}
             value={values.inspectionPlanCode}
             onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
             disabled={isCodeLocked}
-            /* 잠긴 칸은 자물쇠 표시 + 칸 바로 아래 작은 안내 한 줄(사용자 시안 · #208). */
+            /* 잠긴 칸은 자물쇠 표시 + 라벨 오른쪽 짧은 안내(사용자 시안 · #208 · 2026-11-04 라벨 옆으로). */
             trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
             aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
             error={fieldErrors.inspectionPlanCode}
             aria-required={!isCodeLocked}
           />
-          {isCodeLocked && (
-            <p id={codeLockNoteId} className="field-note">
-              {codeLockReason}
-            </p>
-          )}
         </div>
 
         <div className="field-cell">
@@ -177,23 +179,30 @@ export const PlanPane = ({
 
         {/*
          * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
-         * 품목은 **창에서 검색해서 고른다**(#196) — 선택칸은 품목 목록의 첫 쪽만 담아 뒤쪽 품목을 고를 수 없었다.
-         * 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다. 조회 줄의 품목 조건과 같은 모양이다.
+         * 품목은 **칸에서 바로 검색해서 고른다**(사용자 지시 2026-11-04 — 품목 선택 창을 띄우지 않는다).
+         * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
-        <SearchInput
-          label={t.fields.item}
-          placeholder={t.values.allItems}
-          value={itemLabel}
-          readOnly
-          title={itemLabel === '' ? undefined : itemLabel}
-          aria-haspopup="dialog"
-          clearLabel={t.actions.itemClear}
-          error={fieldErrors.itemId}
-          onClick={() => setIsItemPickerOpen(true)}
-          onSearch={() => setIsItemPickerOpen(true)}
-          onChange={() => undefined}
-          onClear={() => onChange({ itemId: '' })}
-        />
+        <div className="field-cell search-select-cell">
+          <FieldLabel htmlFor={itemId} label={t.fields.item} />
+          <ItemSelect
+            id={itemId}
+            selectedOption={itemOption}
+            leadingOptions={ALL_ITEMS}
+            value={values.itemId}
+            placeholder={t.values.allItems}
+            onChange={(value) => {
+              onChange({ itemId: value });
+              if (value !== '') setFocusRouting(true);
+            }}
+            invalid={fieldErrors.itemId !== undefined}
+            aria-describedby={fieldErrors.itemId === undefined ? undefined : itemErrorId}
+          />
+          {fieldErrors.itemId !== undefined && (
+            <span id={itemErrorId} className="field-error">
+              {fieldErrors.itemId}
+            </span>
+          )}
+        </div>
 
         {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
         <SelectField
@@ -205,16 +214,18 @@ export const PlanPane = ({
           error={fieldErrors.processId}
         />
 
-        <SelectField
-          label={t.fields.routing}
-          options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
-          value={values.routingId}
-          placeholder={t.values.notSelected}
-          onChange={(routingId) => onChange({ routingId })}
-          disabled={routingDisabledReason !== null}
-          disabledReason={routingDisabledReason ?? undefined}
-          error={fieldErrors.routingId}
-        />
+        {/* 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸을 두지 않는다(사용자 지시 2026-11-04 · 비활성 칸과 사유 대신). */}
+        {isRoutingShown && (
+          <SelectField
+            id={routingId}
+            label={t.fields.routing}
+            options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
+            value={values.routingId}
+            placeholder={t.values.notSelected}
+            onChange={(routingId) => onChange({ routingId })}
+            error={fieldErrors.routingId}
+          />
+        )}
 
         {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. 위아래 구분선을 둔 한 줄 구획(사용자 시안 · #208). */}
         {values.inspectionTypeCode !== '' && (
@@ -244,26 +255,6 @@ export const PlanPane = ({
           {mode === 'create' ? t.actions.addPlan : messages.common.save}
         </Button>
       </div>
-      {isItemPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
-          showAvailability={false}
-          confirmLabel={t.filters.itemPick}
-          onClose={() => setIsItemPickerOpen(false)}
-          onConfirm={([item]) => {
-            if (item !== undefined) {
-              const itemId = String(item.itemId);
-              setPickedItemLabels((prev) => ({
-                ...prev,
-                [itemId]: `${item.itemCode} · ${item.itemName}`,
-              }));
-              onChange({ itemId });
-            }
-            setIsItemPickerOpen(false);
-          }}
-        />
-      )}
     </section>
   );
 };

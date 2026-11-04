@@ -1,7 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+
+import { renderWithProviders } from '../../test/api-harness';
 
 import { inspectionPlanFixtures } from './fixtures';
 import { planToFormValues } from './plan-mappers';
@@ -20,7 +22,8 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanPane>[0]> = {}) => 
   const onSave = vi.fn<() => void>();
   const onCancel = vi.fn<() => void>();
 
-  render(
+  /* 품목 칸은 서버에서 검색하는 선택칸이라 API 맥락이 있어야 선다(사용자 지시 2026-11-04). */
+  renderWithProviders(
     <PlanPane
       mode="edit"
       plan={inspectionPlanFixtures[0]!}
@@ -111,32 +114,29 @@ describe('PlanPane — 표시', () => {
 });
 
 describe('PlanPane — 잠금과 사유', () => {
-  it('코드 잠금 사유는 그 칸 아래에 붙고 다른 칸은 열려 있다', () => {
+  /* 잠금 사유는 칸 이름 오른쪽에 짧게 둔다(사용자 지시 2026-11-04). */
+  it('코드 잠금 사유는 그 칸 이름 오른쪽에 붙고 다른 칸은 열려 있다', () => {
     renderPane({ codeLockReason: '지금은 코드를 바꿀 수 없습니다.' });
 
-    expect(screen.getByLabelText('기준코드')).toBeDisabled();
+    const code = screen.getByLabelText('기준코드');
+    expect(code).toBeDisabled();
     expect(screen.getByLabelText('기준명')).toBeEnabled();
-    expect(screen.getByText('지금은 코드를 바꿀 수 없습니다.')).toBeInTheDocument();
+    const hint = screen.getByText('지금은 코드를 바꿀 수 없습니다.');
+    expect(hint).toHaveClass('inspection-standard-label-hint');
+    expect(code).toHaveAttribute('aria-describedby', hint.id);
   });
 
-  /*
-   * 계약의 라우팅 조회가 품목을 필수로 둔다 — 고를 수 없는 칸을 활성으로 두면
-   * 사용자가 무엇이 막혔는지 모른다.
-   */
-  it('품목을 고르지 않으면 라우팅 선택칸이 비활성이고 사유가 붙는다', () => {
+  /* 계약의 라우팅 조회가 품목을 필수로 둔다 — 품목을 고르기 전에는 라우팅 칸을 두지 않는다(사용자 지시 2026-11-04). */
+  it('품목을 고르지 않으면 라우팅 칸이 없다', () => {
     renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '' },
-      routingDisabledReason:
-        '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
+      routingDisabledReason: '품목을 선택하면 라우팅을 선택할 수 있습니다.',
     });
 
-    expect(screen.getByRole('combobox', { name: '라우팅' })).toBeDisabled();
-    expect(
-      screen.getByText('라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
   });
 
-  it('품목을 고르면 라우팅 선택칸이 열린다', () => {
+  it('품목이 있으면 라우팅 칸이 열려 있다', () => {
     renderPane();
 
     expect(screen.getByRole('combobox', { name: '라우팅' })).toBeEnabled();
@@ -152,15 +152,21 @@ describe('PlanPane — 편집', () => {
     expect(onChange).toHaveBeenCalledWith({ inspectionPlanName: '합성 검사기준 AX' });
   });
 
-  /* 품목은 품목 선택 창에서 고른다(#196) — 고르는 흐름은 화면 시험이 본다. 여기서는 표시와 지우기만. */
-  it('지정된 품목의 이름을 칸에 보이고, 지우면 전 품목 공통으로 알린다', async () => {
+  /* 품목은 칸에서 바로 검색해 고른다 — 창이 열리지 않는다(사용자 지시 2026-11-04). 맨 앞 「전 품목 공통」이 비우는 자리다. */
+  it('지정된 품목의 이름을 칸에 보이고, 「전 품목 공통」을 고르면 비운다', async () => {
     const { onChange, user } = renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '5002' },
     });
 
-    expect(screen.getByLabelText('품목')).toHaveValue('SYN-ITEM-02 · 합성 품목 B');
+    const field = screen.getByRole('combobox', { name: '품목' });
+    expect(field).toHaveTextContent('SYN-ITEM-02 · 합성 품목 B');
 
-    await user.click(screen.getByRole('button', { name: '품목 지우기' }));
+    await user.click(field);
+    expect(
+      await screen.findByRole('searchbox', { name: messages.common.selectSearch }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: '전 품목 공통' }));
 
     expect(onChange).toHaveBeenCalledWith({ itemId: '' });
   });

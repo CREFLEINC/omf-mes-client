@@ -5,6 +5,8 @@ import { FieldLabel } from './field-label';
 import type { SelectOption } from './types';
 
 export interface SelectFieldProps {
+  /** 화면이 이 칸으로 커서를 옮길 때 쓴다. 없으면 이 부품이 짓는다. */
+  id?: string;
   label: string;
   options: SelectOption[];
   value: string;
@@ -33,6 +35,7 @@ export interface SelectFieldProps {
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const SelectField = ({
+  id: givenId,
   label,
   options,
   value,
@@ -45,7 +48,8 @@ export const SelectField = ({
   invalid = false,
   placeholder,
 }: SelectFieldProps) => {
-  const id = useId();
+  const fallbackId = useId();
+  const id = givenId ?? fallbackId;
   const noteId = `${id}-note`;
   // 지금 고칠 수 있는 것을 먼저 보인다 — 오류가 있으면 안내를 밀어낸다.
   const message = error ?? (disabled ? disabledReason : note) ?? undefined;

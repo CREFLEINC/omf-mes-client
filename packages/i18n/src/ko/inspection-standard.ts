@@ -18,8 +18,6 @@ export const inspectionStandard = {
   actions: {
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: '임시 저장',
-    /* 기본 정보 폼의 품목 칸 지우기 — 비우면 전 품목 공통 기준이다(#196). */
-    itemClear: '품목 지우기',
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
@@ -46,7 +44,7 @@ export const inspectionStandard = {
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
-    routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
+    routingNeedsItem: '품목을 선택하면 라우팅을 선택할 수 있습니다.',
     /*
      * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
      */
@@ -213,7 +211,6 @@ export const inspectionStandard = {
     itemClear: '품목 조건 지우기',
     /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
     all: '전체',
-    itemPick: '선택',
     chipItem: (label: string): string => `품목: ${label}`,
     chipRemoveItem: '품목 조건 제거',
   },

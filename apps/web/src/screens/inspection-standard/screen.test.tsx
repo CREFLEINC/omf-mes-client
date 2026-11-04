@@ -904,12 +904,10 @@ const createForm = (): HTMLElement =>
   });
 
 /** 기본 정보 폼의 품목은 품목 선택 창에서 고른다(#196) — 칸을 눌러 창을 열고 코드로 고른 뒤 「선택」. */
+/** 품목은 칸에서 바로 검색해 고른다 — 창이 열리지 않는다(사용자 지시 2026-11-04). */
 const pickPlanItem = async (user: ReturnType<typeof userEvent.setup>, itemCode: string) => {
-  await user.click(within(planForm()).getByLabelText('품목'));
-  const pickers = await screen.findAllByRole('dialog');
-  const picker = within(pickers[pickers.length - 1]!);
-  await user.click(await picker.findByRole('checkbox', { name: itemCode }));
-  await user.click(picker.getByRole('button', { name: '선택' }));
+  await user.click(within(planForm()).getByRole('combobox', { name: '품목' }));
+  await user.click(await screen.findByRole('option', { name: new RegExp(itemCode) }));
 };
 
 const renderSelectedPlan = (extraRoutes: StubRoute[] = [], search = '?plan=3001') =>
@@ -1264,7 +1262,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
 
 describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () => {
   /* 계약이 itemId를 필수 쿼리로 둔다 — 품목이 없으면 보낼 수 없는 요청이다. */
-  it('품목이 널인 기준에서는 라우팅 요청이 나가지 않고 선택칸이 비활성이다', async () => {
+  it('품목이 널인 기준에서는 라우팅 요청이 나가지 않고 라우팅 칸이 없다', async () => {
     const { requests } = renderScreen(
       [
         planListRoute(),
@@ -1277,10 +1275,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
 
     await awaitPlanForm();
-    expect(await screen.findByRole('combobox', { name: '라우팅' })).toBeDisabled();
-    expect(
-      screen.getByText('라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
 
@@ -1295,6 +1290,10 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await waitFor(() => {
       expect(requestsTo(requests, '/planning/routings')).toHaveLength(1);
+    });
+    /* 라우팅 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04). */
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '라우팅' })).toHaveFocus();
     });
     expect(requestsTo(requests, '/planning/routings')[0]?.url.searchParams.get('itemId')).toBe(
       '5001',
@@ -1361,7 +1360,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     /* 기본 정보 폼은 「기본 정보 수정」 창 안에 있다(#196). */
     await awaitPlanForm();
     await waitFor(() => {
-      expect(within(planForm()).getByLabelText('품목')).toHaveValue('SYN-ITEM-99 · 합성 품목 Z');
+      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent('SYN-ITEM-99 · 합성 품목 Z');
     });
     expect(requestsTo(requests, '/mdm/items/5099')).toHaveLength(1);
   });
@@ -1371,7 +1370,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(within(planForm()).getByLabelText('품목')).toHaveValue('SYN-ITEM-01 · 합성 품목 A');
+      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent('SYN-ITEM-01 · 합성 품목 A');
     });
     /* 목록 · 상세 머리의 품목 이름이 한 번 부른다 — 폼은 같은 키를 써서 더 부르지 않는다(#196). */
     expect(requests.filter((request) => request.url.pathname === '/mdm/items/5001')).toHaveLength(
@@ -1395,7 +1394,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(within(planForm()).getByLabelText('품목')).toHaveValue(
+      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent(
         messages.common.reference.unknown,
       );
     });

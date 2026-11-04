@@ -316,6 +316,39 @@ main > * + * {
   gap: var(--space-4);
 }
 
+/*
+ * 칸 이름 오른쪽 같은 줄의 짧은 안내 — 잠긴 기준코드(사용자 지시 2026-11-04). 모양은 검사 조회·판정의 정보 안내 줄
+ * (`.iqc-inspection-action-note[data-tone="info"]`)이고, 라벨 줄이 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게 여백 · 글자만 줄인다.
+ */
+.field-label > .inspection-standard-label-hint {
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  font: var(--type-label-sm);
+}
+
+/*
+ * 이 폼의 선택칸(검사 유형 · 품목 · 공정 · 라우팅)은 칸 폭을 다 채우지 않고 고른 값 글자만큼만 선다(사용자 지시 2026-11-04).
+ * 너무 좁아지지 않게 최소 폭을 두고, 긴 품목명은 칸 폭에서 멈춰 말줄임이 된다.
+ */
+.inspection-standard-plan-pane .form-grid > .field-cell:has(> div > [role="combobox"]) {
+  align-items: flex-start;
+}
+
+.inspection-standard-plan-pane .form-grid > .field-cell > div:has(> [role="combobox"]) {
+  width: fit-content;
+  min-width: 12rem;
+  max-width: 100%;
+}
+
+/* 이 폼의 라벨 줄은 안내 라벨 높이에 맞춘다 — 한 칸만 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게. */
+.inspection-standard-plan-pane .form-grid .field-label {
+  display: flex;
+  align-items: center;
+  /* 필수 표시 앞 띄움 — 묶음 안 공백 글자는 flex 에서 사라진다. */
+  column-gap: 0.2em;
+  min-height: 1.5rem;
+}
+
 .inspection-standard-plan-head {
   display: flex;
   flex-wrap: wrap;

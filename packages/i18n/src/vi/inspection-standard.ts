@@ -18,7 +18,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actions: {
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
-    itemClear: 'Xóa mặt hàng',
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
@@ -38,7 +37,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   actionReasons: {
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
-    routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
+    routingNeedsItem: 'Chọn mặt hàng thì có thể chọn routing.',
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
@@ -196,7 +195,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemPlaceholder: 'Chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',
     all: 'Tất cả',
-    itemPick: 'Chọn',
     chipItem: (label: string): string => `Mặt hàng: ${label}`,
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',
   },
