@@ -205,7 +205,8 @@ export const partsIqcInspection = {
     lot: 'LOT',
     supplier: '공급업체',
     dimension: '치수 검사',
-    dimensionValue: (out: number, missing: number) => `규격 밖 ${String(out)} · 미입력 ${String(missing)}`,
+    dimensionValue: (out: number, missing: number) =>
+      `규격 밖 ${String(out)} · 미입력 ${String(missing)}`,
     visual: '외관 검사',
     visualValue: (defects: number) => `불량 ${String(defects)}`,
     ok: '이상 없음',

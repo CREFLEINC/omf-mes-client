@@ -205,7 +205,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     lot: 'LOT',
     supplier: 'Nhà cung cấp',
     dimension: 'Kiểm tra kích thước',
-    dimensionValue: (out: number, missing: number) => `Ngoài quy cách ${String(out)} · Chưa nhập ${String(missing)}`,
+    dimensionValue: (out: number, missing: number) =>
+      `Ngoài quy cách ${String(out)} · Chưa nhập ${String(missing)}`,
     visual: 'Kiểm tra ngoại quan',
     visualValue: (defects: number) => `Lỗi ${String(defects)}`,
     ok: 'Không có vấn đề',

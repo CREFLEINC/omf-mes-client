@@ -186,38 +186,38 @@ export const PlanPane = ({
             </div>
           )}
 
-        <div className="field-cell">
-          <FieldLabel
-            htmlFor={codeId}
-            label={t.fields.inspectionPlanCode}
-            required={!isCodeLocked}
-            {...(codeLockReason !== null ? { hint: codeLockReason, hintId: codeLockNoteId } : {})}
-          />
-          <TextField
-            id={codeId}
-            value={values.inspectionPlanCode}
-            onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
-            disabled={isCodeLocked}
-            /* 잠긴 칸은 자물쇠 표시 + 라벨 오른쪽 짧은 안내(사용자 시안 · #208 · 2026-11-04 라벨 옆으로). */
-            trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
-            aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
-            {...(isCodeLocked
-              ? { error: fieldErrors.inspectionPlanCode }
-              : requiredText('inspectionPlanCode', values.inspectionPlanCode))}
-            aria-required={!isCodeLocked}
-          />
-        </div>
+          <div className="field-cell">
+            <FieldLabel
+              htmlFor={codeId}
+              label={t.fields.inspectionPlanCode}
+              required={!isCodeLocked}
+              {...(codeLockReason !== null ? { hint: codeLockReason, hintId: codeLockNoteId } : {})}
+            />
+            <TextField
+              id={codeId}
+              value={values.inspectionPlanCode}
+              onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
+              disabled={isCodeLocked}
+              /* 잠긴 칸은 자물쇠 표시 + 라벨 오른쪽 짧은 안내(사용자 시안 · #208 · 2026-11-04 라벨 옆으로). */
+              trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
+              aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
+              {...(isCodeLocked
+                ? { error: fieldErrors.inspectionPlanCode }
+                : requiredText('inspectionPlanCode', values.inspectionPlanCode))}
+              aria-required={!isCodeLocked}
+            />
+          </div>
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={nameId} label={t.fields.inspectionPlanName} required />
-          <TextField
-            id={nameId}
-            value={values.inspectionPlanName}
-            onChange={(event) => onChange({ inspectionPlanName: event.target.value })}
-            {...requiredText('inspectionPlanName', values.inspectionPlanName)}
-            aria-required
-          />
-        </div>
+          <div className="field-cell">
+            <FieldLabel htmlFor={nameId} label={t.fields.inspectionPlanName} required />
+            <TextField
+              id={nameId}
+              value={values.inspectionPlanName}
+              onChange={(event) => onChange({ inspectionPlanName: event.target.value })}
+              {...requiredText('inspectionPlanName', values.inspectionPlanName)}
+              aria-required
+            />
+          </div>
         </div>
 
         {/* 둘째 줄 — 검사 유형 · 공정(사용자 시안 2026-11-04). */}
@@ -288,9 +288,15 @@ export const PlanPane = ({
             </span>
             {/* 입력칸 모양도 두지 않는다 — 값 글자만(사용자 지시 2026-11-04). */}
             <p className="inspection-standard-plan-routing" aria-labelledby={routingId}>
-              <RoutingSummary revision={routingRevisions.find((revision) => revision.routingId === values.routingId)} />
+              <RoutingSummary
+                revision={routingRevisions.find(
+                  (revision) => revision.routingId === values.routingId,
+                )}
+              />
             </p>
-            {fieldErrors.routingId !== undefined && <span className="field-error">{fieldErrors.routingId}</span>}
+            {fieldErrors.routingId !== undefined && (
+              <span className="field-error">{fieldErrors.routingId}</span>
+            )}
           </div>
         )}
       </div>

@@ -93,7 +93,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
     activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
-    deactivateDescription: 'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
+    deactivateDescription:
+      'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
@@ -449,7 +450,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       sampleByLot: 'Lấy mẫu (theo LOT)',
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
-    routingSummary: (code: string, version: number): string => `Mã ${code} · Phiên bản Rev ${String(version)}`,
+    routingSummary: (code: string, version: number): string =>
+      `Mã ${code} · Phiên bản Rev ${String(version)}`,
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
     confirmed: 'Đã xác nhận',

@@ -1152,7 +1152,10 @@ export const InspectionStandardScreen = () => {
         : {
             ...prev,
             values: { ...prev.values, routingId },
-            baseline: prev.values.itemId === prev.baseline.itemId ? { ...prev.baseline, routingId } : prev.baseline,
+            baseline:
+              prev.values.itemId === prev.baseline.itemId
+                ? { ...prev.baseline, routingId }
+                : prev.baseline,
           },
     );
   };
@@ -1506,7 +1509,8 @@ export const InspectionStandardScreen = () => {
               : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
           }
           routingRevision={routingOptions.revisions.find(
-            (revision) => revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
+            (revision) =>
+              revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
           )}
           /*
            * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,

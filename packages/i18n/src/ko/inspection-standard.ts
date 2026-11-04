@@ -491,7 +491,8 @@ export const inspectionStandard = {
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     /** 기준 수정 창의 라우팅 — 코드 · 버전임을 밝힌다(사용자 지시 2026-11-04). 상태는 옆 칩이 맡는다. */
-    routingSummary: (code: string, version: number): string => `코드 ${code} · 버전 Rev ${String(version)}`,
+    routingSummary: (code: string, version: number): string =>
+      `코드 ${code} · 버전 Rev ${String(version)}`,
     version: (planVersion: number): string => `버전 ${String(planVersion)}`,
     draft: '작성중',
     confirmed: '확정',

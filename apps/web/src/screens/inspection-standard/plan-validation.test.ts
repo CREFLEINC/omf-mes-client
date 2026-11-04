@@ -31,7 +31,9 @@ describe('validatePlanForm', () => {
 
   /* PQC 기준은 공정이 필수다(사용자 결정 2026-11-04). IQC · OQC 는 비워도 된다. */
   it('PQC 기준에 공정이 비면 필수 오류, IQC · OQC 는 통과한다', () => {
-    expect(validatePlanForm(values({ inspectionTypeCode: 'PQC' })).processId).toBe('필수 입력 항목입니다.');
+    expect(validatePlanForm(values({ inspectionTypeCode: 'PQC' })).processId).toBe(
+      '필수 입력 항목입니다.',
+    );
     expect(validatePlanForm(values({ inspectionTypeCode: 'PQC', processId: '9001' }))).toEqual({});
     expect(validatePlanForm(values({ inspectionTypeCode: 'OQC' }))).toEqual({});
   });

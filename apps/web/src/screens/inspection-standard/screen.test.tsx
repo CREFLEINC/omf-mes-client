@@ -1263,7 +1263,10 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await waitFor(() => {
       expect(within(createForm()).getByLabelText('기준명')).toHaveAttribute('aria-invalid', 'true');
     });
-    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveAttribute('aria-invalid', 'true');
+    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 });
@@ -1302,7 +1305,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     });
     /* 라우팅 칸이 나타나고 작성 중 최신 Rev 가 채워진다(사용자 지시 2026-11-04 · 칸으로 커서를 옮기지 않는다). */
     await waitFor(() => {
-      expect(screen.getByLabelText('라우팅')).toHaveTextContent('코드 SYN-ROUTE-01 · 버전 Rev 3작성중');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent(
+        '코드 SYN-ROUTE-01 · 버전 Rev 3작성중',
+      );
     });
     expect(requestsTo(requests, '/planning/routings')[0]?.url.searchParams.get('itemId')).toBe(
       '5001',
@@ -1312,12 +1317,30 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
   /* 다른 품목의 라우팅을 가리키면 안 된다 — 바꾼 품목의 Rev 로 다시 채운다(사용자 지시 2026-11-04 · 작성 중 Rev 우선). */
   it('품목을 바꾸면 그 품목의 작성 중 최신 라우팅으로 바뀐다', async () => {
     const perItem: StubRoute = {
-      match: (request) => isGet(request, '/planning/routings') && new URL(request.url).searchParams.get('itemId') === '5002',
+      match: (request) =>
+        isGet(request, '/planning/routings') &&
+        new URL(request.url).searchParams.get('itemId') === '5002',
       respond: () =>
         jsonResponse({
           items: [
-            { routingId: 7011, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 2, statusCode: 'DRAFT', effectiveFrom: '2026-03-01', effectiveTo: null },
-            { routingId: 7010, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 1, statusCode: 'CONFIRMED', effectiveFrom: '2026-03-01', effectiveTo: null },
+            {
+              routingId: 7011,
+              itemId: 5002,
+              routingCode: 'SYN-ROUTE-02',
+              routingVersion: 2,
+              statusCode: 'DRAFT',
+              effectiveFrom: '2026-03-01',
+              effectiveTo: null,
+            },
+            {
+              routingId: 7010,
+              itemId: 5002,
+              routingCode: 'SYN-ROUTE-02',
+              routingVersion: 1,
+              statusCode: 'CONFIRMED',
+              effectiveFrom: '2026-03-01',
+              effectiveTo: null,
+            },
           ],
         }),
     };
@@ -1328,24 +1351,46 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(screen.getByLabelText('라우팅')).toHaveTextContent('코드 SYN-ROUTE-01 · 버전 Rev 3작성중');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent(
+        '코드 SYN-ROUTE-01 · 버전 Rev 3작성중',
+      );
     });
 
     await pickPlanItem(user, 'SYN-ITEM-02');
 
     await waitFor(() => {
-      expect(screen.getByLabelText('라우팅')).toHaveTextContent('코드 SYN-ROUTE-02 · 버전 Rev 2작성중');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent(
+        '코드 SYN-ROUTE-02 · 버전 Rev 2작성중',
+      );
     });
   });
 
   it('작성 중 Rev 가 없으면 확정 최신 Rev 를 채운다', async () => {
     const perItem: StubRoute = {
-      match: (request) => isGet(request, '/planning/routings') && new URL(request.url).searchParams.get('itemId') === '5002',
+      match: (request) =>
+        isGet(request, '/planning/routings') &&
+        new URL(request.url).searchParams.get('itemId') === '5002',
       respond: () =>
         jsonResponse({
           items: [
-            { routingId: 7012, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 3, statusCode: 'OBSOLETE', effectiveFrom: '2026-03-01', effectiveTo: null },
-            { routingId: 7010, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 1, statusCode: 'CONFIRMED', effectiveFrom: '2026-03-01', effectiveTo: null },
+            {
+              routingId: 7012,
+              itemId: 5002,
+              routingCode: 'SYN-ROUTE-02',
+              routingVersion: 3,
+              statusCode: 'OBSOLETE',
+              effectiveFrom: '2026-03-01',
+              effectiveTo: null,
+            },
+            {
+              routingId: 7010,
+              itemId: 5002,
+              routingCode: 'SYN-ROUTE-02',
+              routingVersion: 1,
+              statusCode: 'CONFIRMED',
+              effectiveFrom: '2026-03-01',
+              effectiveTo: null,
+            },
           ],
         }),
     };
@@ -1358,7 +1403,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     await pickPlanItem(user, 'SYN-ITEM-02');
 
     await waitFor(() => {
-      expect(screen.getByLabelText('라우팅')).toHaveTextContent('코드 SYN-ROUTE-02 · 버전 Rev 1확정');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent(
+        '코드 SYN-ROUTE-02 · 버전 Rev 1확정',
+      );
     });
   });
 
@@ -1401,7 +1448,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     /* 기본 정보 폼은 「기본 정보 수정」 창 안에 있다(#196). */
     await awaitPlanForm();
     await waitFor(() => {
-      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent('SYN-ITEM-99 · 합성 품목 Z');
+      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        'SYN-ITEM-99 · 합성 품목 Z',
+      );
     });
     expect(requestsTo(requests, '/mdm/items/5099')).toHaveLength(1);
   });
@@ -1411,7 +1460,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent('SYN-ITEM-01 · 합성 품목 A');
+      expect(within(planForm()).getByRole('combobox', { name: '품목' })).toHaveTextContent(
+        'SYN-ITEM-01 · 합성 품목 A',
+      );
     });
     /* 목록 · 상세 머리의 품목 이름이 한 번 부른다 — 폼은 같은 키를 써서 더 부르지 않는다(#196). */
     expect(requests.filter((request) => request.url.pathname === '/mdm/items/5001')).toHaveLength(

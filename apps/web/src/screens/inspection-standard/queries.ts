@@ -576,10 +576,16 @@ export const useProcessOptions = (): LookupResult => {
  * 품목을 고르면 라우팅 칸에 채울 Rev(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
  * 저장하면 서버가 작성 중 Rev 는 그 자리에서 고치고, 확정 Rev 는 새 Rev 로 확정한다(PQC 연동).
  */
-const autoRoutingId = (routings: readonly { routingId: number; routingVersion: number; statusCode: string }[]): string | null => {
+const autoRoutingId = (
+  routings: readonly { routingId: number; routingVersion: number; statusCode: string }[],
+): string | null => {
   const newest = (statusCode: string) =>
-    routings.filter((row) => row.statusCode === statusCode)
-      .reduce<(typeof routings)[number] | null>((best, row) => (best === null || row.routingVersion > best.routingVersion ? row : best), null);
+    routings
+      .filter((row) => row.statusCode === statusCode)
+      .reduce<(typeof routings)[number] | null>(
+        (best, row) => (best === null || row.routingVersion > best.routingVersion ? row : best),
+        null,
+      );
   const picked = newest('DRAFT') ?? newest('CONFIRMED');
   return picked === null ? null : String(picked.routingId);
 };
@@ -616,7 +622,10 @@ export const useRoutingOptions = (
     entries:
       routings.data?.items.map((routing) => ({
         value: String(routing.routingId),
-        label: messages.inspectionStandard.values.routingOption(routing.routingCode, routing.routingVersion),
+        label: messages.inspectionStandard.values.routingOption(
+          routing.routingCode,
+          routing.routingVersion,
+        ),
         // 라우팅에는 사용 여부가 없다(상태는 작성중·확정·폐기다) — 전부 고를 수 있는 값으로 둔다.
         isActive: true,
       })) ?? EMPTY_ENTRIES,
