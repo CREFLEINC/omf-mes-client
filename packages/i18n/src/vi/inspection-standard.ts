@@ -448,6 +448,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       sampleByLot: 'Lấy mẫu (theo LOT)',
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    routingSummary: (code: string, version: number): string => `Mã ${code} · Phiên bản Rev ${String(version)}`,
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
     confirmed: 'Đã xác nhận',

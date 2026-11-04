@@ -1431,7 +1431,7 @@ export const InspectionStandardScreen = () => {
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
           processOptions={optionsFor(processOptions, createValues.processId)}
-          routingOptions={optionsFor(routingOptions, createValues.routingId)}
+          routingRevisions={routingOptions.revisions}
           autoRoutingId={routingOptions.autoRoutingId}
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
@@ -1567,7 +1567,7 @@ export const InspectionStandardScreen = () => {
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
               processOptions={optionsFor(processOptions, formState.values.processId)}
-              routingOptions={optionsFor(routingOptions, formState.values.routingId)}
+              routingRevisions={routingOptions.revisions}
               autoRoutingId={routingOptions.autoRoutingId}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.

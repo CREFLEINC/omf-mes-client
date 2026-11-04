@@ -7,6 +7,8 @@ import { ItemSelect } from '../../patterns/item-select';
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
 import { formatApprovedAt } from './plan-mappers';
+import { resolveVersionStatus } from './plan-version-status';
+import type { RoutingRevision } from './queries';
 import { SelectField } from './select-field';
 import type { InspectionPlan, PlanFormValues, SelectOption } from './types';
 
@@ -34,7 +36,8 @@ export interface PlanPaneProps {
   optionsNotice: ReactNode;
   itemOptions: SelectOption[];
   processOptions: SelectOption[];
-  routingOptions: SelectOption[];
+  /** 그 품목의 라우팅 Rev 들 — 채운 Rev 를 코드 · 버전 · 상태로 보인다. */
+  routingRevisions: RoutingRevision[];
   /** 라우팅 칸에 채울 값 — 그 품목의 작성 중 최신 Rev, 없으면 확정 최신 Rev(사용자 지시 2026-11-04). 받는 중이면 undefined, 없으면 null. */
   autoRoutingId?: string | null | undefined;
   /**
@@ -76,7 +79,7 @@ export const PlanPane = ({
   optionsNotice,
   itemOptions,
   processOptions,
-  routingOptions,
+  routingRevisions,
   autoRoutingId,
   routingDisabledReason,
   codeLockReason,
@@ -285,7 +288,7 @@ export const PlanPane = ({
             </span>
             {/* 입력칸 모양도 두지 않는다 — 값 글자만(사용자 지시 2026-11-04). */}
             <p className="inspection-standard-plan-routing" aria-labelledby={routingId}>
-              {routingOptions.find((option) => option.value === values.routingId)?.label ?? t.values.none}
+              <RoutingSummary revision={routingRevisions.find((revision) => revision.routingId === values.routingId)} />
             </p>
             {fieldErrors.routingId !== undefined && <span className="field-error">{fieldErrors.routingId}</span>}
           </div>
@@ -308,5 +311,19 @@ export const PlanPane = ({
         </Button>
       </div>
     </section>
+  );
+};
+
+/** 라우팅 코드 · 버전 글자와 상태 칩(사용자 지시 2026-11-04 — 상태는 라벨 형식). */
+const RoutingSummary = ({ revision }: { revision: RoutingRevision | undefined }) => {
+  if (revision === undefined) return <>{t.values.none}</>;
+  const status = resolveVersionStatus(revision.statusCode);
+  return (
+    <>
+      <span>{t.values.routingSummary(revision.routingCode, revision.routingVersion)}</span>
+      <Chip variant="status" size="sm" status={status.tone}>
+        {status.label}
+      </Chip>
+    </>
   );
 };

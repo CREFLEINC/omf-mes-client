@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -15,7 +15,7 @@ const ITEM_OPTIONS = [
   { value: '5002', label: 'SYN-ITEM-02 · 합성 품목 B' },
 ];
 const PROCESS_OPTIONS = [{ value: '9001', label: '합성 공정 A' }];
-const ROUTING_OPTIONS = [{ value: '7003', label: 'SYN-ROUTE-01 · Rev 3' }];
+const ROUTING_REVISIONS = [{ routingId: '7003', routingCode: 'SYN-ROUTE-01', routingVersion: 3, statusCode: 'DRAFT' }];
 
 const renderPane = (overrides: Partial<Parameters<typeof PlanPane>[0]> = {}) => {
   const onChange = vi.fn<(patch: Partial<PlanFormValues>) => void>();
@@ -34,7 +34,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanPane>[0]> = {}) => 
       optionsNotice={null}
       itemOptions={ITEM_OPTIONS}
       processOptions={PROCESS_OPTIONS}
-      routingOptions={ROUTING_OPTIONS}
+      routingRevisions={ROUTING_REVISIONS}
       routingDisabledReason={null}
       codeLockReason={null}
       isDirty={false}
@@ -181,7 +181,9 @@ describe('PlanPane — 잠금과 사유', () => {
 
     expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '라우팅' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('라우팅')).toHaveTextContent('SYN-ROUTE-01 · Rev 3');
+    expect(screen.getByLabelText('라우팅')).toHaveTextContent('코드 SYN-ROUTE-01 · 버전 Rev 3');
+    /* 상태는 라벨(칩) 형식이다(사용자 지시 2026-11-04). */
+    expect(within(screen.getByLabelText('라우팅')).getByText('작성중')).toBeInTheDocument();
   });
 });
 

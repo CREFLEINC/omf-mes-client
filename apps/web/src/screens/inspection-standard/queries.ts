@@ -584,15 +584,20 @@ const autoRoutingId = (routings: readonly { routingId: number; routingVersion: n
   return picked === null ? null : String(picked.routingId);
 };
 
-const routingStatusLabel = (statusCode: string): string => {
-  const values = messages.inspectionStandard.values;
-  if (statusCode === 'DRAFT') return values.draft;
-  if (statusCode === 'CONFIRMED') return values.confirmed;
-  return values.obsolete;
-};
+/** 기준 수정 창이 라우팅을 코드 · 버전 · 상태로 나눠 보인다(사용자 지시 2026-11-04). */
+export interface RoutingRevision {
+  routingId: string;
+  routingCode: string;
+  routingVersion: number;
+  statusCode: string;
+}
+
+const EMPTY_REVISIONS: RoutingRevision[] = [];
 
 /** `autoRoutingId` 가 undefined 면 아직 받는 중이다 — null(채울 Rev 없음)과 가른다. */
-export const useRoutingOptions = (itemId: number | null): LookupResult & { autoRoutingId: string | null | undefined } => {
+export const useRoutingOptions = (
+  itemId: number | null,
+): LookupResult & { autoRoutingId: string | null | undefined; revisions: RoutingRevision[] } => {
   const { client } = useApiClient();
 
   const routings = useQuery({
@@ -611,7 +616,7 @@ export const useRoutingOptions = (itemId: number | null): LookupResult & { autoR
     entries:
       routings.data?.items.map((routing) => ({
         value: String(routing.routingId),
-        label: `${messages.inspectionStandard.values.routingOption(routing.routingCode, routing.routingVersion)} (${routingStatusLabel(routing.statusCode)})`,
+        label: messages.inspectionStandard.values.routingOption(routing.routingCode, routing.routingVersion),
         // 라우팅에는 사용 여부가 없다(상태는 작성중·확정·폐기다) — 전부 고를 수 있는 값으로 둔다.
         isActive: true,
       })) ?? EMPTY_ENTRIES,
@@ -619,6 +624,13 @@ export const useRoutingOptions = (itemId: number | null): LookupResult & { autoR
     isError: routings.isError,
     isLoading: itemId !== null && routings.isPending,
     autoRoutingId: routings.data === undefined ? undefined : autoRoutingId(routings.data.items),
+    revisions:
+      routings.data?.items.map((routing) => ({
+        routingId: String(routing.routingId),
+        routingCode: routing.routingCode,
+        routingVersion: routing.routingVersion,
+        statusCode: routing.statusCode,
+      })) ?? EMPTY_REVISIONS,
   };
 };
 
