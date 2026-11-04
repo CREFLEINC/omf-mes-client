@@ -382,6 +382,15 @@ main > * + * {
   border-right: 1px solid var(--outline-variant);
 }
 
+/* 라우팅 — 입력칸이 아닌 값 글자(사용자 지시 2026-11-04). 옆 칸 입력 줄과 같은 높이에서 가운데 맞춘다. */
+.inspection-standard-plan-routing {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin: 0;
+  color: var(--on-surface);
+}
+
 .inspection-standard-plan-head > .pane-title {
   margin: 0;
 }

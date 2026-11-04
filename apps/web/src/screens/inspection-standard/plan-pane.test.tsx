@@ -176,12 +176,12 @@ describe('PlanPane — 잠금과 사유', () => {
   });
 
   /* 라우팅은 고르지 않는다 — 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04). */
-  it('품목이 있으면 라우팅을 고르는 칸 없이 글자로 보인다', () => {
+  it('품목이 있으면 라우팅을 고르는 칸 없이 글자로만 보인다(입력칸 아님)', () => {
     renderPane({ values: { ...planToFormValues(inspectionPlanFixtures[0]!), routingId: '7003' }, autoRoutingId: '7003' });
 
     expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-01 · Rev 3');
-    expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveAttribute('readonly');
+    expect(screen.queryByRole('textbox', { name: '라우팅' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('라우팅')).toHaveTextContent('SYN-ROUTE-01 · Rev 3');
   });
 });
 

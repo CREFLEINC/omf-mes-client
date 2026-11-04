@@ -1280,7 +1280,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
 
     await awaitPlanForm();
-    expect(screen.queryByRole('textbox', { name: '라우팅' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('라우팅')).not.toBeInTheDocument();
     expect(screen.getByText('품목을 선택하면 라우팅이 표시됩니다.')).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
@@ -1299,7 +1299,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     });
     /* 라우팅 칸이 나타나고 작성 중 최신 Rev 가 채워진다(사용자 지시 2026-11-04 · 칸으로 커서를 옮기지 않는다). */
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-01 · Rev 3 (작성중)');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent('SYN-ROUTE-01 · Rev 3 (작성중)');
     });
     expect(requestsTo(requests, '/planning/routings')[0]?.url.searchParams.get('itemId')).toBe(
       '5001',
@@ -1325,13 +1325,13 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-01 · Rev 3 (작성중)');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent('SYN-ROUTE-01 · Rev 3 (작성중)');
     });
 
     await pickPlanItem(user, 'SYN-ITEM-02');
 
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-02 · Rev 2 (작성중)');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent('SYN-ROUTE-02 · Rev 2 (작성중)');
     });
   });
 
@@ -1355,7 +1355,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     await pickPlanItem(user, 'SYN-ITEM-02');
 
     await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-02 · Rev 1 (확정)');
+      expect(screen.getByLabelText('라우팅')).toHaveTextContent('SYN-ROUTE-02 · Rev 1 (확정)');
     });
   });
 

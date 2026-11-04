@@ -280,14 +280,14 @@ export const PlanPane = ({
          */}
         {isRoutingShown && (
           <div className="field-cell">
-            <FieldLabel htmlFor={routingId} label={t.fields.routing} />
-            <TextField
-              id={routingId}
-              value={routingOptions.find((option) => option.value === values.routingId)?.label ?? t.values.none}
-              readOnly
-              onChange={() => undefined}
-              error={fieldErrors.routingId}
-            />
+            <span className="field-label" id={routingId}>
+              {t.fields.routing}
+            </span>
+            {/* 입력칸 모양도 두지 않는다 — 값 글자만(사용자 지시 2026-11-04). */}
+            <p className="inspection-standard-plan-routing" aria-labelledby={routingId}>
+              {routingOptions.find((option) => option.value === values.routingId)?.label ?? t.values.none}
+            </p>
+            {fieldErrors.routingId !== undefined && <span className="field-error">{fieldErrors.routingId}</span>}
           </div>
         )}
       </div>
