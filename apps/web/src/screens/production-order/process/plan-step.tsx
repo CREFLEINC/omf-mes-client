@@ -202,7 +202,7 @@ export const PlanStep = ({
   return (
     <section className="erp-wo-plan-workspace" aria-label={t.heading}>
       <div className="erp-wo-plan-toolbar">
-        {viewMode && <h2 className="section-title">{ui.weekHeading}</h2>}
+        <h2 className="section-title">{t.heading}</h2>
         {!viewMode && (
           <Tabs
             size="sm"
@@ -216,9 +216,24 @@ export const PlanStep = ({
           />
         )}
       </div>
+      {!hideTotals && (
+        <dl className="erp-wo-plan-totals">
+          {[
+            [ui.orderQty, orderQty],
+            [ui.confirmedQty, confirmedQty],
+            [ui.draftQty, draftQty],
+            [ui.remainingQty, remaining],
+          ].map(([label, qty]) => (
+            <div key={String(label)}>
+              <dt>{label}</dt>
+              <dd>{displayQty(qty as number | null | undefined)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <section className="erp-wo-plan-create" aria-label="계획 편성 도구">
         <div className="erp-wo-plan-create-label">
-          <strong>계획 편성</strong>
+          <strong>계획 추가·자동 분배</strong>
           <span className="field-note">직접 추가하거나 조건에 따라 자동 분배하세요.</span>
         </div>
         <Button
@@ -252,21 +267,6 @@ export const PlanStep = ({
             />
           ))}
       </section>
-      {!hideTotals && (
-        <dl className="erp-wo-plan-totals">
-          {[
-            [ui.orderQty, orderQty],
-            [ui.confirmedQty, confirmedQty],
-            [ui.draftQty, draftQty],
-            [ui.remainingQty, remaining],
-          ].map(([label, qty]) => (
-            <div key={String(label)}>
-              <dt>{label}</dt>
-              <dd>{displayQty(qty as number | null | undefined)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
       {!viewMode && rows.some((row) => row.isDirty) && (
         <p className="field-note erp-wo-plan-note">{ui.unsavedSummary}</p>
       )}

@@ -35,7 +35,7 @@ const steps = {
 /** 생산계획 단계의 버튼 이름. 사유 칩 도움말이 같은 이름으로 가리킨다. */
 const planButtons = {
   add: '계획 추가',
-  confirm: '전개 확정',
+  confirm: '계획 확정 후 4M 배정',
 } as const;
 
 /** 사유 칩 이름. 무엇을 해야 하는지로 짓는다. */
@@ -281,7 +281,7 @@ export const erpWorkOrderFlow = {
       routing: 'Routing',
       revision: (code: string, version: number): string => `${code} (Rev ${String(version)})`,
       confirmedQty: '확정 수량',
-      line: '라인',
+      line: '생산 라인',
       assigned: '배정 완료',
       workOrders: (count: number): string => `W/O ${String(count)}건`,
       unset: '미지정',
@@ -309,7 +309,7 @@ export const erpWorkOrderFlow = {
         `${operation} 공정의 ${fieldWithJosa} 고르세요`,
       resolve: (findingWithJosa: string): string => `${findingWithJosa} 해결하세요`,
       releaseFinal: '배포 후 수정 불가',
-      enterLot: (workOrderNo: string): string => `${workOrderNo}의 LOT 크기를 입력하세요`,
+      enterLot: (workOrderNo: string): string => `${workOrderNo}의 LOT당 수량을 입력하세요`,
       remainingOrders: (count: number): string => `남은 ERP W/O ${String(count)}건`,
     },
     links: {
@@ -334,15 +334,15 @@ export const erpWorkOrderFlow = {
       fixedByPlan: '확정된 계획이 쓰는 개정',
     },
     plan: {
-      heading: '생산계획',
+      heading: '생산계획 편성',
       add: planButtons.add,
       confirm: planButtons.confirm,
-      saveDraft: '임시 저장',
+      saveDraft: '계획 저장',
       workspace: {
         views: '생산계획 보기',
         grid: 'ERP W/O별 계획 수량',
         week: '주간 편성',
-        weekHeading: '라인별 주간 편성',
+        weekHeading: '생산 라인별 주간 편성',
         gridHeading: '계획 목록',
         editor: '선택 계획 편집',
         orderQty: 'ERP W/O 수량',
@@ -350,10 +350,10 @@ export const erpWorkOrderFlow = {
         draftQty: '미확정 계획량',
         remainingQty: '미계획 수량',
         unconfirmed: '미확정',
-        unassigned: '라인 미지정',
+        unassigned: '생산 라인 미지정',
         selectPrompt: '왼쪽에서 계획을 선택하세요.',
         readonly: '확정된 계획은 수정할 수 없습니다.',
-        unsavedSummary: '편집 중인 수량을 포함합니다. 하단에서 저장 또는 전개 확정하세요.',
+        unsavedSummary: '편집 중인 수량을 포함합니다. 하단에서 계획을 저장하거나 확정하세요.',
         previousWeek: '이전 주',
         nextWeek: '다음 주',
         weekdays: ['월', '화', '수', '목', '금', '토', '일'],
@@ -365,8 +365,8 @@ export const erpWorkOrderFlow = {
       columns: {
         planNo: '계획 번호',
         planDate: '계획일',
-        plannedQty: '계획 수량',
-        line: '라인',
+        plannedQty: '생산량',
+        line: '생산 라인',
         status: '상태',
         remarks: '비고',
         actions: '행 동작',
@@ -386,16 +386,16 @@ export const erpWorkOrderFlow = {
         `계획 수량 합계 ${planned} / ${ordered} ${uom}`,
     },
     planConfirm: {
-      title: '전개 확정',
+      title: '계획 확정 및 작업지시 생성',
       target: (plans: string): string => `대상 계획: ${plans}`,
-      task: '전개 확정',
+      task: '계획 확정',
       effects: {
         plans: (count: number): string => `생산계획 상태 변경: 확정 (${String(count)}건)`,
         workOrders: (count: number, operations: string): string =>
           `W/O ${String(count)}건 생성: ${operations}`,
       },
       irreversible: '확정 후에는 수정할 수 없습니다.',
-      confirm: '전개 확정',
+      confirm: '계획 확정',
     },
     pickers: {
       line: '생산 라인 선택',
@@ -440,8 +440,8 @@ export const erpWorkOrderFlow = {
       groups: {
         equipmentAndMold: '설비와 금형',
         workerAndShift: '작업자와 교대',
-        plan: '계획',
-        location: '위치',
+        plan: '계획 시간',
+        location: '위치 설정',
       },
       shiftOption: (name: string, start: string, end: string): string =>
         `${name} ${start} ~ ${end}`,
@@ -499,25 +499,24 @@ export const erpWorkOrderFlow = {
       loadFailed: 'W/O를 불러오지 못했습니다',
     },
     release: {
-      lotsPending: '생산 LOT 수: 크기 입력 후 확인',
-      selectedTarget: '배포 대상 상세',
+      lotsPending: '생성 예정 LOT 수: LOT당 수량 입력 후 확인',
+      selectedTarget: '선택 작업지시 정보',
       orderNo: 'ERP W/O',
       item: '품목',
       planDate: '계획일',
-      line: '라인',
+      line: '생산 라인',
       empty: '배포할 작업지시가 없습니다.',
       scope: (count: number): string => `전체 배포 대상 ${String(count)}건`,
-      scopeHelp:
-        '선택 상자는 상세 조회용입니다. 하단 배포 버튼은 이 ERP W/O의 배포 대상 전체를 처리합니다.',
-      heading: '배포 전 최종 확인',
+      scopeHelp: 'LOT당 수량은 작업지시별로 설정합니다. 하단 배포 버튼은 대상 전체를 처리합니다.',
+      heading: '배포 확인',
       columns: {
         workOrderNo: 'W/O 번호',
         operation: '공정',
-        orderQty: '지시 수량',
-        lotSize: 'LOT 크기',
-        lotCount: '생산 LOT 수',
+        orderQty: '작업지시 수량',
+        lotSize: 'LOT당 수량',
+        lotCount: '생성 예정 LOT 수',
       },
-      lotSizeLabel: (workOrderNo: string): string => `${workOrderNo} LOT 크기`,
+      lotSizeLabel: (workOrderNo: string): string => `${workOrderNo} LOT당 수량`,
       task: '배포',
       effects: {
         status: (count: number): string => `W/O 상태 변경: 배포 (${String(count)}건)`,

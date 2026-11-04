@@ -32858,3 +32858,38 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 @media (max-width: 700px) { .erp-wo-operation-card > .erp-wo-revision-properties { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .erp-wo-plain-materials caption.visually-hidden { width: 1px; }
 .erp-wo-inline-revision h2 > .field-note { display: inline; margin-inline-start: var(--space-2); }
+
+.erp-wo-plan-toolbar { gap: var(--space-3); flex-wrap: wrap; }
+.erp-wo-plan-create { margin-block: var(--space-3); }
+.erp-wo-assignment-progress { margin-block: var(--space-2) var(--space-3); }
+.erp-wo-assign-editor .assign-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.erp-wo-assign-editor .erp-wo-assign-line-control { grid-column: 1 / -1; }
+.erp-wo-release-targets { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); }
+.erp-wo-release-target-table { min-width: 0; }
+.erp-wo-release-target-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-release-target-table th, .erp-wo-release-target-table td { text-align: left; vertical-align: top; padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--outline-variant); overflow-wrap: anywhere; }
+.erp-wo-release-target-table th { background: var(--surface-container); }
+.erp-wo-release-target-table th:first-child { width: 25%; }
+.erp-wo-release-target-table th:nth-child(2) { width: 25%; }
+.erp-wo-release-target-table td input { width: 100%; max-width: 9rem; }
+.erp-wo-release-target-table td p { margin: var(--space-1) 0 0; }
+.erp-wo-release-target-table td button { white-space: normal; text-align: left; height: auto; padding-inline: 0; }
+.erp-wo-release-terminals { padding: var(--space-3); min-width: 0; }
+.erp-wo-release-terminals > summary { cursor: pointer; }
+.erp-wo-release-detail .erp-wo-release-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.erp-wo-release-detail .erp-wo-release-summary > div { display: block; border: 0; }
+.erp-wo-release-detail .erp-wo-release-summary dd { text-align: left; margin-top: var(--space-1); }
+@container erp-wo-assign (max-width: 28rem) { .erp-wo-assign-editor .assign-form { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1000px) {
+  .erp-wo-release-target-table table, .erp-wo-release-target-table tbody, .erp-wo-release-target-table tr, .erp-wo-release-target-table td { display: block; width: 100%; box-sizing: border-box; }
+  .erp-wo-release-target-table thead { display: none; }
+  .erp-wo-release-target-table tr { border: 1px solid var(--outline-variant); border-radius: 8px; margin-bottom: var(--space-3); }
+  .erp-wo-release-target-table td { border: 0; }
+  .erp-wo-release-target-table td::before { content: attr(data-label); display: block; font: var(--type-label-sm); color: var(--on-surface-variant); margin-bottom: var(--space-1); }
+  .erp-wo-release-detail .erp-wo-release-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* 복수 ERP W/O 실행 단계도 안쪽 본문만 스크롤하고 하단 동작은 고정한다. */
+.erp-wo-multi-body:has(> .erp-wo-multi-execution) { overflow: hidden; padding-bottom: 0; }
+.erp-wo-multi-body > .erp-wo-multi-execution { min-height: 0; flex-shrink: 1; }
+.erp-wo-multi-execution .process-page { min-height: 0; height: 0; flex: 1; }
+.erp-wo-multi-execution .action-bar { position: static; }

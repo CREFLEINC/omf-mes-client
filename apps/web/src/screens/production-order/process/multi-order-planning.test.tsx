@@ -262,10 +262,10 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
         .reduce((sum, p) => sum + Number(p.plannedQty), 0),
     ).toBe(80);
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeEnabled(),
     );
-    await user.click(screen.getByRole('button', { name: '전개 확정 후 4M 배정' }));
-    const buttons = screen.getAllByRole('button', { name: '전개 확정' });
+    await user.click(screen.getByRole('button', { name: '계획 확정 후 4M 배정' }));
+    const buttons = screen.getAllByRole('button', { name: '계획 확정' });
     await user.click(buttons.at(-1)!);
     expect(await screen.findByText('실행 단계 assign')).toBeVisible();
     expect(server.writes.filter((w) => w.match !== null).map((w) => w.match)).toEqual([
@@ -275,7 +275,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     ]);
     await user.click(screen.getByRole('tab', { name: '2. 생산계획' }));
     expect(await screen.findByRole('button', { name: '4M 배정으로' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: '전개 확정 후 4M 배정' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '계획 확정 후 4M 배정' })).toBeNull();
     expect(screen.queryByRole('button', { name: /주간 편성에서 확인/ })).toBeNull();
   });
   it('일부 ERP W/O 저장 실패를 표시하고 재시도 시 완료한 계획을 중복 생성하지 않는다', async () => {
@@ -299,7 +299,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await waitFor(() => expect(server.plans).toHaveLength(1));
     expect(server.plans[0]?.productionOrderId).toBe(101);
     expect(server.plans[0]?.plannedQty).toBe(60);
-    expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.getByRole('tab', { name: '3. 4M 배정' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -328,7 +328,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(await screen.findByRole('region', { name: '선택 계획 편집' })).toHaveTextContent(
       'B / 시험 품목',
     );
-    expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
   });
   it.each([

@@ -45,13 +45,14 @@ describe('배포 대상 상세', () => {
     renderWithProviders(<Harness />);
     expect(screen.getByText(t.scope(2))).toBeVisible();
     expect(screen.getByText(t.scopeHelp)).toBeVisible();
+    expect(screen.getByRole('region', { name: '배포 대상 및 LOT 설정' })).toBeVisible();
+    expect(screen.getAllByRole('textbox')).toHaveLength(2);
+    expect(screen.queryByRole('combobox')).toBeNull();
     await user.clear(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-1') }));
     await user.type(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-1') }), '10');
-    await user.click(screen.getByRole('combobox', { name: t.selectedTarget }));
-    await user.click(screen.getByRole('option', { name: 'WO-2 / 사출' }));
+    await user.click(screen.getByRole('button', { name: 'WO-2 상세 확인' }));
     expect(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-2') })).toHaveValue('50');
-    await user.click(screen.getByRole('combobox', { name: t.selectedTarget }));
-    await user.click(screen.getByRole('option', { name: 'WO-1 / 사출' }));
+    await user.click(screen.getByRole('button', { name: 'WO-1 상세 확인' }));
     expect(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-1') })).toHaveValue('10');
   });
 

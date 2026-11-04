@@ -117,7 +117,7 @@ describe('처리 화면 단계 판정(C-5)', () => {
   });
 
   it('배포 확인은 LOT 크기가 비면 처음부터 할 일로, 아니면 머리말 없이 「확정 후 수정 불가」다', () => {
-    expect(judgeRelease('WO-1')).toEqual({ text: 'WO-1의 LOT 크기를 입력하세요' });
+    expect(judgeRelease('WO-1')).toEqual({ text: 'WO-1의 LOT당 수량을 입력하세요' });
     expect(judgeRelease(null)).toEqual({ text: r.releaseFinal });
   });
 

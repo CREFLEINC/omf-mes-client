@@ -746,7 +746,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   disabled={busy || !allReady || !fullyAllocated || distributionDirty}
                   onClick={() => setConfirm(true)}
                 >
-                  전개 확정 후 4M 배정
+                  계획 확정 후 4M 배정
                 </Button>
               ) : enough ? (
                 <Button
@@ -845,7 +845,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       {confirm && (
         <Dialog
           open
-          title="선택 ERP W/O 계획 전개 확정"
+          title="선택 ERP W/O 계획 확정"
           onClose={() => !busy && setConfirm(false)}
           closeOnBackdropClick={false}
           footer={
@@ -854,7 +854,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 취소
               </Button>
               <Button loading={busy} onClick={() => void save(true)}>
-                전개 확정
+                계획 확정
               </Button>
             </>
           }

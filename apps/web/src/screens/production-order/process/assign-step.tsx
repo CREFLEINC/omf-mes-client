@@ -93,6 +93,9 @@ export const AssignStep = ({
         <h2 className="section-title">
           {t.listHeading} <span className="erp-wo-assign-count">{workOrders.length}</span>
         </h2>
+        <p className="field-note erp-wo-assignment-progress">
+          배정 완료 후 다음 미완료 작업지시를 자동 선택합니다.
+        </p>
         <SelectableTable
           columns={columns}
           rows={workOrders}

@@ -1,12 +1,11 @@
 import { TerminalConnections } from './terminal-connections';
-import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
-import { Select } from '../../../patterns/select';
 import { evaluateWorkOrderReleaseDraft } from '../../work-order-release/release-draft';
 import { productionOrderItemKeys } from '../item-lookups';
 import { formatQty } from './process-model';
@@ -111,17 +110,78 @@ export const ReleaseStep = ({
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
       <p className="erp-wo-release-scope">{t.scopeHelp}</p>
+      <section className="pane erp-wo-release-targets" aria-label="배포 대상 및 LOT 설정">
+        <h3 className="section-title">배포 대상 및 LOT 설정</h3>
+        <div className="erp-wo-release-target-table">
+          <table>
+            <thead>
+              <tr>
+                {[
+                  '작업지시 · 공정',
+                  '계획일 · 생산 라인',
+                  t.columns.orderQty,
+                  t.columns.lotSize,
+                  t.columns.lotCount,
+                ].map((label) => (
+                  <th key={label}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line) => {
+                const target = line.workOrder;
+                return (
+                  <tr
+                    key={target.workOrderId}
+                    data-selected={target.workOrderId === wo.workOrderId}
+                  >
+                    <td data-label="작업지시 · 공정">
+                      <Button
+                        variant="text"
+                        size="sm"
+                        aria-label={`${target.workOrderNo} 상세 확인`}
+                        aria-pressed={target.workOrderId === wo.workOrderId}
+                        onClick={() => setSelectedId(String(target.workOrderId))}
+                      >
+                        {target.workOrderNo}
+                      </Button>
+                      <p>{target.operationName}</p>
+                    </td>
+                    <td data-label="계획일 · 생산 라인">
+                      {planDateOf?.(target.productionPlanId) ?? '—'}
+                      <p>{lineNameOf?.(target.productionLineId ?? null) ?? '—'}</p>
+                    </td>
+                    <td data-label={t.columns.orderQty}>
+                      {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
+                    </td>
+                    <td data-label={t.columns.lotSize}>
+                      <TextField
+                        size="sm"
+                        inputMode="decimal"
+                        aria-label={t.lotSizeLabel(target.workOrderNo)}
+                        value={line.lotSizeText}
+                        error={line.touched || revealErrors ? (line.error ?? undefined) : undefined}
+                        onChange={(event) =>
+                          onLotSizeChange(target.workOrderId, event.target.value)
+                        }
+                      />
+                      <span className="field-note">{uomLabelOf(target.uomId)}</span>
+                    </td>
+                    <td data-label={t.columns.lotCount}>
+                      {line.lotCount == null ? '—' : `${line.lotCount}개`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
       <div className="erp-wo-release-layout">
-        <section className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
-          <Select
-            aria-label={t.selectedTarget}
-            value={String(wo.workOrderId)}
-            options={lines.map((line) => ({
-              value: String(line.workOrder.workOrderId),
-              label: `${line.workOrder.workOrderNo} / ${line.workOrder.operationName}`,
-            }))}
-            onChange={(value) => setSelectedId(value)}
-          />
+        <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+          <summary>
+            선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
+          </summary>
           <dl className="erp-wo-release-summary">
             <div>
               <dt>{t.orderNo}</dt>
@@ -150,30 +210,15 @@ export const ReleaseStep = ({
               <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
             </div>
           </dl>
-          <div className="erp-wo-release-lot-input" role="group" aria-label="LOT 설정">
-            <h3 className="section-title">LOT 설정</h3>
-            <TextField
-              size="sm"
-              label={t.columns.lotSize}
-              inputMode="decimal"
-              aria-label={t.lotSizeLabel(wo.workOrderNo)}
-              value={selected.lotSizeText}
-              error={selected.touched || revealErrors ? (selected.error ?? undefined) : undefined}
-              onChange={(event) => onLotSizeChange(wo.workOrderId, event.target.value)}
-            />
-            <dl className="erp-wo-release-lot-result">
-              <div>
-                <dt>{t.columns.lotCount}</dt>
-                <dd>{selected.lotCount === null ? '—' : String(selected.lotCount)}</dd>
-              </div>
-            </dl>
-          </div>
-        </section>
+        </details>
         {plantId != null && (
-          <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
+          <details className="pane erp-wo-release-terminals">
+            <summary>연결 단말기 확인</summary>
+            <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
+          </details>
         )}
         <section className="erp-wo-release-effects">
-          <AlertBanner variant="info">
+          <div className="pane">
             <div className="erp-wo-release-notice">
               <h3 className="section-title">배포 시 반영 사항</h3>
               <ul>
@@ -189,7 +234,7 @@ export const ReleaseStep = ({
               </ul>
               <p>{t.irreversible}</p>
             </div>
-          </AlertBanner>
+          </div>
           {failures.length > 0 && (
             <AlertBanner variant="error">
               <ul className="erp-wo-release-failures">
