@@ -669,7 +669,8 @@ describe('생산창고 입고 화면', () => {
     expect(await screen.findByText('출고 수량 12 보다 많이 받을 수 없습니다')).toBeTruthy();
     expect(await screen.findByText('출고 수량보다 많이 받을 수 없습니다')).toBeTruthy();
     expect(await screen.findByText(/물류 전표 조회·취소/)).toBeTruthy();
-    expect(await screen.findByText(/자재 불출 요청/)).toBeTruthy();
+    /* #76 표기 통일(피처 003) — W-02-10 화면 이름이 「추가 출고 요청」이다. */
+    expect(await screen.findByText(/추가 출고 요청/)).toBeTruthy();
   });
 
   /*

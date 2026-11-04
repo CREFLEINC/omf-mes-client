@@ -1,12 +1,12 @@
 /**
- * W-02-10 추가 자재 출고 요청(수동).
+ * W-02-10 추가 출고 요청(수동). 표기는 #76 「출고 요청」으로 통일(피처 003, 검토 1).
  *
  * 현장이 자재를 무절차로 가져가는 대신, 부족분을 정식 출고 요청으로 경유시킨다. 대상 W/O 를
  * 고르고 BOM 소요량을 불러와 요청 수량을 정한 뒤 사유·비고를 적어 한 번에 발행한다.
  * 발행은 되돌릴 수 없다 — 이 화면에 취소 경로가 없다.
  */
 export const materialIssueRequest = {
-  title: '자재 불출 요청',
+  title: '추가 출고 요청',
   breadcrumbRoot: '구매 / 자재 관리',
   /**
    * ⭐ **규칙을 알리는 문장이다.** 앞 문장이 「금지」를 그대로 말하고, 뒤 문장이 그 대신 무엇을
@@ -86,7 +86,7 @@ export const materialIssueRequest = {
       `이 W/O 앞으로 발행된 요청이 ${String(count)}건 있습니다. 중복 요청을 막지는 않습니다 — 아래 목록을 확인한 뒤 진행하세요.`,
     existingRequestRow: (issueRequestNo: string, statusCode: string, requiredAt: string): string =>
       `${issueRequestNo} · ${statusCode} · ${requiredAt}`,
-    existingRequestsTruncated: '앞쪽 일부만 보입니다. 전체는 자재 출고 요청 목록에서 확인하세요.',
+    existingRequestsTruncated: '앞쪽 일부만 보입니다. 전체는 출고 요청 현황에서 확인하세요.',
   },
   values: {
     empty: '—',
@@ -120,7 +120,7 @@ export const materialIssueRequest = {
     warehouseAutoFilled: 'W/O 의 기본 재공 위치로 채웠습니다. 필요하면 바꿀 수 있습니다.',
   },
   result: {
-    title: '자재 불출 요청을 발행했습니다',
+    title: '출고 요청을 발행했습니다',
     issueRequestNo: (no: string): string => `요청번호: ${no}`,
     statusCode: (code: string): string => `상태: ${code}`,
     lineCount: (count: number): string => `품목 ${String(count)}건`,

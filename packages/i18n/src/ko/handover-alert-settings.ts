@@ -90,7 +90,7 @@ export const handoverAlertSettings = {
       where: '모바일 PDA › 창고 › 적치',
     },
     MATERIAL_PICKING_REQUESTED: {
-      when: '출고 요청(W/O 배포, 추가 출고 요청)으로 피킹 지시가 생길 때 — 피킹 지시마다',
+      when: '출고 요청이 배포돼 피킹 지시가 생길 때(출고 작업일 00:00 또는 바로) — 피킹 지시마다',
       // ui-check-ignore: C-13 메뉴 이름 「자재 출고·피킹」 그대로
       where: '모바일 PDA › 창고 › 자재 출고·피킹',
     },

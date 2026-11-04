@@ -184,7 +184,7 @@ export const erpWorkOrderFlow = {
       effects: [
         'W/O 상태 변경: 배포',
         '생산 LOT 선발행',
-        '자재 출고 요청 발행',
+        '출고 요청 발행',
         '피킹 지시(투입 자재가 있을 때)',
         '공정검사(PQC) 의뢰(검사 공정일 때)',
       ],
@@ -464,7 +464,7 @@ export const erpWorkOrderFlow = {
       effects: {
         status: (count: number): string => `W/O 상태 변경: 배포 (${String(count)}건)`,
         lots: (count: number): string => `생산 LOT 선발행 (${String(count)}개)`,
-        materials: '자재 출고 요청 발행',
+        materials: '출고 요청 발행',
         picking: '피킹 지시(투입 자재가 있을 때)',
         pqc: '공정검사(PQC) 의뢰(검사 공정일 때)',
       },

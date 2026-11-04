@@ -201,8 +201,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         tabs: [
           {
             to: '/production/material-issue-requests',
-            label: '자재 불출 요청',
-            labelVi: 'Yêu cầu cấp phát vật tư',
+            /* #76 표기 통일(피처 003, 검토 1) — 옆 탭 「출고 요청 현황」과 겹쳐 읽히지 않게 「추가」를 붙인다. */
+            label: '추가 출고 요청',
+            labelVi: 'Yêu cầu xuất kho bổ sung',
           },
           /* W-02-11 — 출고 요청을 보고 고치고 취소하고 부족을 본다(피처 003, 확정 항목 3). */
           {
