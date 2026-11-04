@@ -864,126 +864,9 @@ const InspectionForm = (props: FormProps) => {
           )}
         </div>
 
-        {xrfItems.length > 0 && (
-          <div className="parts-iqc-file">
-            <div className="parts-iqc-file-text">
-              <span className="parts-iqc-file-title">{t.visual.xrfReport}</span>
-              {xrfReports.length === 0 ? (
-                <span className="parts-iqc-muted">{t.visual.noFile}</span>
-              ) : (
-                /* 여러 건(사용자 지시 2026-10-30) — 파일마다 이름과 빼기 */
-                <ul className="parts-iqc-file-list">
-                  {xrfReports.map((file, index) => (
-                    <li key={`${file.name}-${String(file.size)}-${String(file.lastModified)}`}>
-                      <span>{file.name}</span>
-                      <IconButton
-                        icon="close"
-                        size="sm"
-                        aria-label={t.visual.removeFile(file.name)}
-                        disabled={submit.isSaving}
-                        onClick={() => setXrfReports(xrfReports.filter((_, i) => i !== index))}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              hidden
-              multiple
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.doc,.docx,.csv,.txt"
-              onChange={(event) => {
-                const picked = Array.from(event.target.files ?? []);
-                /* 같은 파일을 다시 고르면 한 번만 둔다. 칸을 비워 같은 파일을 빼고 다시 고를 수 있게 한다. */
-                const same = (a: File, b: File) =>
-                  a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
-                setXrfReports([
-                  ...xrfReports,
-                  ...picked.filter((file) => !xrfReports.some((kept) => same(kept, file))),
-                ]);
-                event.target.value = '';
-              }}
-            />
-            <Button
-              variant="outlined"
-              leadingIcon={<Icon name="upload" />}
-              disabled={submit.isSaving}
-              onClick={() => fileRef.current?.click()}
-            >
-              {t.visual.pickFile}
-            </Button>
-          </div>
-        )}
-      </section>
-
-      {/* 기타 검사 항목 — 표(No. · 검사 항목 · 판정), 같은 상자에 외관 불량 유형 · 비고(사용자 시안 2026-10-29) */}
-      <section className="parts-iqc-card" aria-labelledby="parts-iqc-checks">
-        {checkItems.length > 0 && (
-          <>
-            <div className="parts-iqc-block-head">
-              <h3 id="parts-iqc-checks">
-                {t.visual.checks}
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
-                </span>
-              </h3>
-              <span className="parts-iqc-muted">{t.visual.checkCount(checkItems.length)}</span>
-            </div>
-            <div className="parts-iqc-grid-scroll">
-              <table className="parts-iqc-check-table">
-                <thead>
-                  <tr>
-                    <th scope="col">{t.visual.checkNo}</th>
-                    <th scope="col">{t.visual.checkItem}</th>
-                    <th scope="col">{t.dimension.judgment}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {checkItems.map((item, index) => (
-                    <tr key={item.inspectionItemSpecId}>
-                      <td>{index + 1}</td>
-                      <td>{item.inspectionItemName}</td>
-                      <td>
-                        <div
-                          className="parts-iqc-check-row"
-                          role="group"
-                          aria-label={item.inspectionItemName}
-                        >
-                          {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
-                            <Chip
-                              key={value}
-                              variant="filter"
-                              data-judgment={value}
-                              aria-pressed={form.checks[item.inspectionItemSpecId] === value}
-                              selected={form.checks[item.inspectionItemSpecId] === value}
-                              onSelectedChange={(on) =>
-                                change({
-                                  ...form,
-                                  checks: {
-                                    ...form.checks,
-                                    [item.inspectionItemSpecId]: on ? value : null,
-                                  },
-                                })
-                              }
-                            >
-                              {value === 'ACCEPTED' ? t.ok : t.ng}
-                            </Chip>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
-        {/* 불량이 있을 때만 불량 유형을 고른다(사용자 지시 2026-11-04) — 불합격 판정이거나 불합격 수량이 있을 때. */}
+        {/* 불량이 있을 때만 불량 유형을 고른다 — 불합격 판정이거나 불합격 수량이 있을 때. 외관 불량 수 아래에 둔다(사용자 지시 2026-11-04). */}
         {defectsRequired && (
-          <div className={checkItems.length > 0 ? 'parts-iqc-card-split' : undefined}>
+          <div className="parts-iqc-card-split">
             <div className="parts-iqc-defect-head">
               <h3 id="parts-iqc-defect-type">
                 {t.visual.defectType}
@@ -1085,6 +968,123 @@ const InspectionForm = (props: FormProps) => {
               </div>
             )}
           </div>
+        )}
+
+        {xrfItems.length > 0 && (
+          <div className="parts-iqc-file">
+            <div className="parts-iqc-file-text">
+              <span className="parts-iqc-file-title">{t.visual.xrfReport}</span>
+              {xrfReports.length === 0 ? (
+                <span className="parts-iqc-muted">{t.visual.noFile}</span>
+              ) : (
+                /* 여러 건(사용자 지시 2026-10-30) — 파일마다 이름과 빼기 */
+                <ul className="parts-iqc-file-list">
+                  {xrfReports.map((file, index) => (
+                    <li key={`${file.name}-${String(file.size)}-${String(file.lastModified)}`}>
+                      <span>{file.name}</span>
+                      <IconButton
+                        icon="close"
+                        size="sm"
+                        aria-label={t.visual.removeFile(file.name)}
+                        disabled={submit.isSaving}
+                        onClick={() => setXrfReports(xrfReports.filter((_, i) => i !== index))}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              multiple
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.doc,.docx,.csv,.txt"
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                /* 같은 파일을 다시 고르면 한 번만 둔다. 칸을 비워 같은 파일을 빼고 다시 고를 수 있게 한다. */
+                const same = (a: File, b: File) =>
+                  a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+                setXrfReports([
+                  ...xrfReports,
+                  ...picked.filter((file) => !xrfReports.some((kept) => same(kept, file))),
+                ]);
+                event.target.value = '';
+              }}
+            />
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="upload" />}
+              disabled={submit.isSaving}
+              onClick={() => fileRef.current?.click()}
+            >
+              {t.visual.pickFile}
+            </Button>
+          </div>
+        )}
+      </section>
+
+      {/* 기타 검사 항목 — 표(No. · 검사 항목 · 판정), 같은 상자에 비고(사용자 시안 2026-10-29). 외관 불량 유형은 외관 상자로 옮겼다(2026-11-04). */}
+      <section className="parts-iqc-card" aria-labelledby="parts-iqc-checks">
+        {checkItems.length > 0 && (
+          <>
+            <div className="parts-iqc-block-head">
+              <h3 id="parts-iqc-checks">
+                {t.visual.checks}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </h3>
+              <span className="parts-iqc-muted">{t.visual.checkCount(checkItems.length)}</span>
+            </div>
+            <div className="parts-iqc-grid-scroll">
+              <table className="parts-iqc-check-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{t.visual.checkNo}</th>
+                    <th scope="col">{t.visual.checkItem}</th>
+                    <th scope="col">{t.dimension.judgment}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {checkItems.map((item, index) => (
+                    <tr key={item.inspectionItemSpecId}>
+                      <td>{index + 1}</td>
+                      <td>{item.inspectionItemName}</td>
+                      <td>
+                        <div
+                          className="parts-iqc-check-row"
+                          role="group"
+                          aria-label={item.inspectionItemName}
+                        >
+                          {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
+                            <Chip
+                              key={value}
+                              variant="filter"
+                              data-judgment={value}
+                              aria-pressed={form.checks[item.inspectionItemSpecId] === value}
+                              selected={form.checks[item.inspectionItemSpecId] === value}
+                              onSelectedChange={(on) =>
+                                change({
+                                  ...form,
+                                  checks: {
+                                    ...form.checks,
+                                    [item.inspectionItemSpecId]: on ? value : null,
+                                  },
+                                })
+                              }
+                            >
+                              {value === 'ACCEPTED' ? t.ok : t.ng}
+                            </Chip>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         <div className="field-cell parts-iqc-stretch">
