@@ -368,4 +368,19 @@ describe('W-CO-15 공장 근무일 설정', () => {
 
     expect(await screen.findByRole('dialog', { name: t.discard.title })).toBeInTheDocument();
   });
+
+  it('US7-3 바꾼 설정은 「이후 만드는 출고 요청부터」 적용한다고 안내하고, 저장 알림도 같은 말이다', async () => {
+    const { user } = setup();
+
+    expect(await screen.findByText(t.intro)).toHaveTextContent('이후 만드는 출고 요청부터');
+    expect(screen.getByText(t.intro)).toHaveTextContent('이미 만든 요청의 출고 작업일은 그대로');
+
+    const row = await rowOf('합성 1공장');
+    await user.click(row.getByRole('radio', { name: t.options.six }));
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.state.saved)).toHaveTextContent(
+      '이후 만드는 출고 요청부터 적용합니다',
+    );
+  });
 });
