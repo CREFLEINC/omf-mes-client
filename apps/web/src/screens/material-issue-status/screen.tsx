@@ -11,7 +11,6 @@ import {
   Switch,
   TextField,
 } from '@crefle/web-ui';
-import type { MaterialIssueRequestForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -45,6 +44,7 @@ import {
   STATUS_TONE,
   statusLabel,
 } from './status';
+import type { MaterialIssueRequestView } from './api-types';
 
 const t = messages.materialIssueStatus;
 
@@ -56,11 +56,11 @@ const readPage = (params: URLSearchParams): number => {
 interface PlanGroup {
   key: string;
   title: string;
-  rows: MaterialIssueRequestForward[];
+  rows: MaterialIssueRequestView[];
 }
 
 /** 계획별 묶음 — 생산계획이 없는 요청(수동 · 지금 방식)은 맨 끝 묶음. */
-const groupByPlan = (rows: readonly MaterialIssueRequestForward[]): PlanGroup[] => {
+const groupByPlan = (rows: readonly MaterialIssueRequestView[]): PlanGroup[] => {
   const groups = new Map<string, PlanGroup>();
   for (const row of rows) {
     const key =
@@ -227,7 +227,7 @@ export const MaterialIssueStatusScreen = () => {
     </section>
   );
 
-  const row = (request: MaterialIssueRequestForward): ReactNode => (
+  const row = (request: MaterialIssueRequestView): ReactNode => (
     <tr
       key={request.materialIssueRequestId}
       aria-selected={request.materialIssueRequestId === selectedId}

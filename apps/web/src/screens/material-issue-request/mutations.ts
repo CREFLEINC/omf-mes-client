@@ -1,14 +1,15 @@
-import type {
-  MaterialIssueRequestCreateResultForward,
-  PlannedStockConflictDetail,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { materialIssueRequestKeys } from './queries';
 import { toCreatedRequestView, type CreatedRequestView } from './types';
-import type { MaterialIssueRequestCreate } from './types';
+import type { MaterialIssueRequestCreate, MaterialIssueRequestCreated } from './types';
+
+/** 409 `PLANNED_STOCK_CONFLICT` 의 품목별 항목(계약 §1). */
+export type PlannedStockConflictDetail =
+  components['schemas']['PlannedStockConflictResponse']['plannedStockConflicts'][number];
 import { HEADER_FORM_FIELDS } from './validation';
 
 export const PLANNED_STOCK_CONFLICT = 'PLANNED_STOCK_CONFLICT';
@@ -50,7 +51,7 @@ export const useMaterialIssueRequestMutation = (options: {
   /** 성공 결과를 그릴 때 보낸 본문(가져가기 · 미배정 행)을 함께 본다. */
   const lastBodyRef = useRef<MaterialIssueRequestCreate | null>(null);
 
-  return useMasterWrite<MaterialIssueRequestCreate, MaterialIssueRequestCreateResultForward>({
+  return useMasterWrite<MaterialIssueRequestCreate, MaterialIssueRequestCreated>({
     request: async (body, headers) => {
       lastBodyRef.current = body;
       const result = await client.POST('/logistics/material-issue-requests', {

@@ -9,7 +9,7 @@ import {
   useToast,
   type Column,
 } from '@crefle/web-ui';
-import type { ApiError, DepartmentProductionWarehouse } from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -26,6 +26,7 @@ import {
 } from './department-production-warehouse-queries';
 import { LoadErrorBanner } from './load-error-banner';
 
+type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
 const t = messages.commonCode.department.productionWarehouses;
 
 /** W-01-07 재고 현황 — `wh` 가 그 화면의 창고 조건이다. */

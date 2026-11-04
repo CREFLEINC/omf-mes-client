@@ -1,14 +1,4 @@
-import type {
-  ApiError,
-  components,
-  MaterialIssueRequestCancelForward,
-  MaterialIssueRequestDetailForward,
-  MaterialIssueRequestForward,
-  MaterialIssueRequestHistoryEntry,
-  MaterialIssueRequestUpdateForward,
-  PlannedStockResponse,
-  WorkOrderDetailForward,
-} from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -16,6 +6,15 @@ import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { toListQuery, type StatusFilters } from './filters';
+import type {
+  MaterialIssueRequestCancel,
+  MaterialIssueRequestDetailView,
+  MaterialIssueRequestHistoryItem,
+  MaterialIssueRequestUpdate,
+  MaterialIssueRequestView,
+  PlannedStockResponse,
+} from './api-types';
+import { toDetailView, toRequestView } from './api-types';
 
 type Plant = components['schemas']['Plant'];
 type PageMeta = components['schemas']['PageMeta'];
@@ -56,39 +55,43 @@ export const useRequestList = (
   filters: StatusFilters,
   page: number,
   enabled: boolean,
-): UseQueryResult<{ items: MaterialIssueRequestForward[]; page: PageMeta }> => {
+): UseQueryResult<{ items: MaterialIssueRequestView[]; page: PageMeta }> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: statusKeys.list(filters, page),
     enabled,
-    queryFn: () =>
-      runRequest(() =>
+    queryFn: async () => {
+      const data = await runRequest(() =>
         client.GET('/logistics/material-issue-requests', {
           params: { query: toListQuery(filters, page, PAGE_SIZE) },
         }),
-      ),
+      );
+      return { items: data.items.map(toRequestView), page: data.page };
+    },
   });
 };
 
 export const useRequestDetail = (
   id: number | null,
-): UseQueryResult<MaterialIssueRequestDetailForward> => {
+): UseQueryResult<MaterialIssueRequestDetailView> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: statusKeys.detail(id ?? 0),
     enabled: id !== null,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/logistics/material-issue-requests/{materialIssueRequestId}', {
-          params: { path: { materialIssueRequestId: id ?? 0 } },
-        }),
+    queryFn: async () =>
+      toDetailView(
+        await runRequest(() =>
+          client.GET('/logistics/material-issue-requests/{materialIssueRequestId}', {
+            params: { path: { materialIssueRequestId: id ?? 0 } },
+          }),
+        ),
       ),
   });
 };
 
 export const useRequestHistory = (
   id: number | null,
-): UseQueryResult<MaterialIssueRequestHistoryEntry[]> => {
+): UseQueryResult<MaterialIssueRequestHistoryItem[]> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: statusKeys.history(id ?? 0),
@@ -160,12 +163,14 @@ export const useWorkOrderWarehouseOptions = (
     enabled: workOrderId !== null,
     queryFn: async () =>
       (
-        (await runRequest(() =>
-          client.GET('/production/work-orders/{workOrderId}', {
-            params: { path: { workOrderId: workOrderId ?? 0 } },
-          }),
-        )) as WorkOrderDetailForward
-      ).productionWarehouses.map((warehouse) => ({
+        (
+          await runRequest(() =>
+            client.GET('/production/work-orders/{workOrderId}', {
+              params: { path: { workOrderId: workOrderId ?? 0 } },
+            }),
+          )
+        ).productionWarehouses ?? []
+      ).map((warehouse) => ({
         value: String(warehouse.warehouseId),
         label: `${warehouse.warehouseCode} ${warehouse.warehouseName}`,
       })),
@@ -200,8 +205,8 @@ export const useDestinationOptions = (locationId: number | null): UseQueryResult
 /** 수정(PUT, 본문 `versionNo`). 진행 있음이면 `lines` 만 싣는다 — 화면이 고르는 칸을 정한다. */
 export const useUpdateRequest = (
   id: number | null,
-  onSuccess: (saved: MaterialIssueRequestDetailForward) => void,
-): MasterWriteResult<MaterialIssueRequestUpdateForward> => {
+  onSuccess: (saved: MaterialIssueRequestDetailView) => void,
+): MasterWriteResult<MaterialIssueRequestUpdate> => {
   const { client } = useApiClient();
   return useMasterWrite({
     request: (body, headers) =>
@@ -215,14 +220,14 @@ export const useUpdateRequest = (
     etagPath: null,
     invalidateKeys: [statusKeys.all],
     knownFields: [],
-    onSuccess,
+    onSuccess: (raw) => onSuccess(toDetailView(raw)),
   });
 };
 
 export const useCancelRequest = (
   id: number | null,
-  onSuccess: (saved: MaterialIssueRequestDetailForward) => void,
-): MasterWriteResult<MaterialIssueRequestCancelForward> => {
+  onSuccess: (saved: MaterialIssueRequestDetailView) => void,
+): MasterWriteResult<MaterialIssueRequestCancel> => {
   const { client } = useApiClient();
   return useMasterWrite({
     request: (body, headers) =>
@@ -236,7 +241,7 @@ export const useCancelRequest = (
     etagPath: null,
     invalidateKeys: [statusKeys.all],
     knownFields: [],
-    onSuccess,
+    onSuccess: (raw) => onSuccess(toDetailView(raw)),
   });
 };
 
@@ -246,7 +251,7 @@ export const useCancelRequest = (
  */
 export const useOverrideNotes = (
   requestIds: readonly number[],
-): Map<number, MaterialIssueRequestHistoryEntry> => {
+): Map<number, MaterialIssueRequestHistoryItem> => {
   const { client } = useApiClient();
   const results = useQueries({
     queries: requestIds.map((id) => ({
@@ -262,7 +267,7 @@ export const useOverrideNotes = (
         ).items,
     })),
   });
-  const notes = new Map<number, MaterialIssueRequestHistoryEntry>();
+  const notes = new Map<number, MaterialIssueRequestHistoryItem>();
   requestIds.forEach((id, index) => {
     const entry = results[index]?.data?.find((item) => item.eventCode === 'PLANNED_OVERRIDE');
     if (entry !== undefined) notes.set(id, entry);

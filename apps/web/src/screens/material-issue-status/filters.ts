@@ -1,9 +1,5 @@
-import type {
-  MaterialIssueDisplayStatus,
-  MaterialIssueRequestListQueryForward,
-} from '@omf-mes/api-client';
-
 import { DISPLAY_STATUSES } from './status';
+import type { MaterialIssueDisplayStatus, MaterialIssueRequestListQuery } from './api-types';
 
 /** 조회 조건 — 모두 주소가 갖는다(새로고침 · 뒤로가기 · 공유가 같은 결과). */
 export interface StatusFilters {
@@ -116,7 +112,7 @@ export const toListQuery = (
   filters: StatusFilters,
   page: number,
   size: number,
-): MaterialIssueRequestListQueryForward => ({
+): MaterialIssueRequestListQuery => ({
   ...(filters.plant === '' ? {} : { plantId: Number(filters.plant) }),
   ...(filters.workFrom === '' ? {} : { issueWorkDateFrom: filters.workFrom }),
   ...(filters.workTo === '' ? {} : { issueWorkDateTo: filters.workTo }),

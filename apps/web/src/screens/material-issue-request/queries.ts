@@ -1,4 +1,6 @@
-import type { ApiClient, WorkOrderDetailForward } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
+
+type WorkOrder = components['schemas']['WorkOrder'];
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -38,13 +40,11 @@ export const materialIssueRequestKeys = {
 };
 
 /**
- * W/O 상세 — 피처 003 의 생산 창고(`productionWarehouses`, 계약 밖 선택 칸)와, W-02-11 「보충 요청」으로
- * 열 때 고를 W/O 자체. 칸이 없거나 비면 지금 방식 공장(FR-009a)이라 화면이 지금 그대로다.
+ * W/O 상세 — 피처 003 의 공장 모드(`productionWarehouseMode`)와 라인 부서 생산 창고(`productionWarehouses`,
+ * 계약 §2)와, W-02-11 「보충 요청」으로 열 때 고를 W/O 자체. 모드가 아니면 화면이 지금 그대로다(FR-009a).
  * 조회가 실패해도 지금 방식으로 둔다 — 이 칸 때문에 요청 발행을 막지 않는다.
  */
-export const useWorkOrderDetail = (
-  workOrderId: number | null,
-): UseQueryResult<WorkOrderDetailForward> => {
+export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<WorkOrder> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -52,11 +52,11 @@ export const useWorkOrderDetail = (
     enabled: workOrderId !== null,
     retry: false,
     queryFn: async () =>
-      (await runRequest(() =>
+      await runRequest(() =>
         client.GET('/production/work-orders/{workOrderId}', {
           params: { path: { workOrderId: workOrderId ?? 0 } },
         }),
-      )) as WorkOrderDetailForward,
+      ),
   });
 };
 

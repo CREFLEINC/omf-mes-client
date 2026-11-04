@@ -1,10 +1,8 @@
 import {
   createIdempotencyKey,
-  RELEASE_BLOCK_CODES,
   type ApiClient,
   type ApiError,
-  type ReleaseUnsourcedShortage,
-  type WorkOrderReleaseResultForward,
+  type components,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
@@ -17,6 +15,19 @@ import { productionOrderItemKeys } from './item-lookups';
 const t = messages.erpWorkOrderFlow.bulk.outcomeReasons;
 
 type Client = ApiClient['client'];
+
+/** 배포 응답(계약 §2) — 생산 창고 공장은 출고 요청 요약과 미배정 자재를 싣는다. */
+type WorkOrderReleaseResult = components['schemas']['WorkOrderReleaseResult'];
+export type ReleaseUnsourcedShortage = NonNullable<
+  WorkOrderReleaseResult['unsourcedShortages']
+>[number];
+
+/** 배포 400 의 출고 요청 기준정보 사유(계약 §2) — 화면이 문구와 바로가기를 고르는 차례. */
+export const RELEASE_BLOCK_CODES = [
+  'LINE_DEPARTMENT_MISSING',
+  'PRODUCTION_WAREHOUSE_MISSING',
+  'PRODUCTION_FLOOR_LOCATION_MISSING',
+] as const;
 
 export type ReleaseAttemptStatus = 'released' | 'skipped' | 'failed';
 
@@ -135,7 +146,7 @@ export const releaseWorkOrder = async (
     const { etag, verdict } = await inspect(client, queryClient, target.workOrderId, lotSize);
     if (!verdict.ready) return outcome('skipped', verdict.reason);
     if (etag === null) return outcome('failed', messages.save.staleToken);
-    const released = (await runRequest(() =>
+    const released = await runRequest(() =>
       client.POST('/production/work-orders/{workOrderId}:release', {
         params: {
           path: { workOrderId: target.workOrderId },
@@ -143,7 +154,7 @@ export const releaseWorkOrder = async (
         },
         body: { lotSize: verdict.lotSize },
       }),
-    )) as WorkOrderReleaseResultForward;
+    );
     const unsourced = released.unsourcedShortages ?? [];
     return unsourced.length === 0
       ? outcome('released', null)

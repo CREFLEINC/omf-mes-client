@@ -18,8 +18,8 @@ import { todayIn } from './working-days';
 type OperationPolicy = components['schemas']['OperationPolicy'];
 
 const t = messages.plantWorkingDays;
-/** 생성 타입의 응답 정책 코드에는 아직 이 값이 없다 — 계약 §4(forward-contract 는 요청 쪽만 넓힌다). */
-const WEEKLY = 'WEEKLY_WORKING_DAYS' as OperationPolicy['policyCode'];
+/** 운영 정책 코드 — 계약 §4 의 `WEEKLY_WORKING_DAYS`. */
+const WEEKLY: OperationPolicy['policyCode'] = 'WEEKLY_WORKING_DAYS';
 
 /** 공장 · 정책 값은 모두 합성 값이다. 시간대는 IANA 이름이 아니라 브라우저 날짜를 쓴다. */
 const PLANTS = [

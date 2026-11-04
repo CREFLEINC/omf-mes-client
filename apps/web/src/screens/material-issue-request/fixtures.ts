@@ -1,4 +1,6 @@
-import type { components, MaterialIssueRequestCreateResultForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
+
+import type { MaterialIssueRequestCreated } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 — 참조하면 예시 값이
@@ -208,9 +210,9 @@ const createdRequest = {
   destinationLocationId: 7301,
   statusCode: 'SAMPLE_MIR_S_A',
   lineCount: 1,
-} as MaterialIssueRequestCreateResultForward['materialIssueRequest'];
+} as MaterialIssueRequestCreated['materialIssueRequest'];
 
-export const createdRequestFixture: MaterialIssueRequestCreateResultForward = {
+export const createdRequestFixture: MaterialIssueRequestCreated = {
   materialIssueRequest: createdRequest,
   lines: [
     {
