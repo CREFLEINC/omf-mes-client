@@ -99,7 +99,7 @@ export interface IssueDates {
  * 생산 창고 공장이면 W/O 마다 생산일 · 출고 작업일을 낸다. 아니면(지금 방식, 또는 판정 칸을 못 받음)
  * `undefined` — 배포 단계가 지금 그대로다.
  *
- * ⚠ 생산 창고 공장 판정은 W/O 상세의 계약 밖 선택 칸 `productionWarehouses` 로 한다(총괄에 보고 2026-11-04).
+ * 생산 창고 공장 판정은 W/O 상세의 `productionWarehouseMode`(공장 기준, 계약 §2)로 한다.
  * 생산일은 W/O 계획 시작의 공장 날짜, 근무일은 공장의 `WEEKLY_WORKING_DAYS`(없으면 주 5일).
  */
 export const useReleaseIssueDates = (
@@ -120,7 +120,7 @@ export const useReleaseIssueDates = (
     })),
   });
   const usesProductionWarehouses = details.some(
-    (result) => (result.data?.productionWarehouses?.length ?? 0) > 0,
+    (result) => result.data?.productionWarehouseMode === true,
   );
   const policies = useQuery({
     queryKey: ['work-orders', 'release-working-days', plantId ?? 0] as const,

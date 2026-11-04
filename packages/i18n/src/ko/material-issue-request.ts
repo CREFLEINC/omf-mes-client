@@ -134,6 +134,7 @@ export const materialIssueRequest = {
   },
   /** 피처 003 — 출발 생산 창고(검토 4) · 예정 재고 경고(US4-7 · US4-8). */
   sourceWarehouse: {
+    none: '이 W/O 라인 담당 부서에 연결된 생산 창고가 없어 요청할 수 없습니다. 조직(부서)에서 생산 창고를 연결하세요.',
     label: '출발 생산 창고',
     auto: '자동 — 자재마다 재고가 있고 쓸 수 있는 양이 많은 생산 창고',
     autoHelp: (count: number): string =>

@@ -98,6 +98,7 @@ const conflict = (overridable: boolean) =>
 const setup = (
   respondToPost: (body: Record<string, unknown>) => Response,
   route = '/production/material-issue-requests',
+  warehouses: readonly (typeof PRODUCTION_WAREHOUSES)[number][] = PRODUCTION_WAREHOUSES,
 ) => {
   const posts: Record<string, unknown>[] = [];
   const get = (pathname: string, body: unknown): StubRoute => ({
@@ -109,7 +110,8 @@ const setup = (
     get('/production/work-orders', { items: [WORK_ORDER], page: pageOf([WORK_ORDER]) }),
     get(`/production/work-orders/${String(WORK_ORDER.workOrderId)}`, {
       ...WORK_ORDER,
-      productionWarehouses: PRODUCTION_WAREHOUSES,
+      productionWarehouseMode: true,
+      productionWarehouses: warehouses,
     }),
     get('/mdm/warehouses', { items: warehouseFixtures, page: pageOf(warehouseFixtures) }),
     get('/mdm/locations', { items: locationFixtures, page: pageOf(locationFixtures) }),
@@ -264,5 +266,17 @@ describe('W-02-10 생산 창고 공장', () => {
       lines: [{ itemId: 7401, requestedQty: 20, uomId: 7501 }],
     });
     expect(await screen.findByText(t.result.unsourcedNote)).toBeInTheDocument();
+  });
+
+  it('새 규칙 공장인데 라인 부서에 생산 창고가 없으면(빈 배열) 알리고 발행을 막는다', async () => {
+    const { user, posts } = setup(() => created(1), undefined, []);
+
+    await user.click(await screen.findByLabelText(t.formFields.workOrder));
+    await user.click(await screen.findByRole('option', { name: WORK_ORDER_LABEL }));
+
+    expect((await screen.findAllByText(t.sourceWarehouse.none)).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText(t.formFields.warehouse)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.publish })).toBeDisabled();
+    expect(posts).toHaveLength(0);
   });
 });

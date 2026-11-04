@@ -210,10 +210,13 @@ export const MaterialIssueRequestScreen = () => {
     selectedWorkOrder?.workOrderId ?? (isPrefillApplied ? null : (prefill?.workOrderId ?? null)),
   );
   const productionWarehouses = workOrderDetail.data?.productionWarehouses ?? [];
+  /* 공장 모드(FR-009a)는 «공장» 기준이다 — 빈 배열을 지금 방식으로 읽지 않는다(계약 §2). */
   const usesProductionWarehouses =
     selectedWorkOrder !== null &&
     workOrderDetail.data?.workOrderId === selectedWorkOrder.workOrderId &&
-    productionWarehouses.length > 0;
+    workOrderDetail.data.productionWarehouseMode === true;
+  /** 새 규칙 공장인데 이 W/O 라인 부서에 생산 창고가 없다 — 알리고 만들기를 막는다(서버도 400). */
+  const lacksProductionWarehouse = usesProductionWarehouses && productionWarehouses.length === 0;
   const prefillUom = useItemBaseUom(isPrefillApplied ? null : (prefill?.itemId ?? null));
 
   /* 보충 요청으로 열었으면 그 W/O 를 고른다. */
@@ -660,8 +663,9 @@ export const MaterialIssueRequestScreen = () => {
                     })),
                   ],
                   value: form.sourceWarehouseId === '' ? AUTO_SOURCE : form.sourceWarehouseId,
-                  note:
-                    form.sourceWarehouseId === ''
+                  note: lacksProductionWarehouse
+                    ? t.sourceWarehouse.none
+                    : form.sourceWarehouseId === ''
                       ? t.sourceWarehouse.autoHelp(productionWarehouses.length)
                       : t.sourceWarehouse.fixedHelp(
                           productionWarehouses.find(
@@ -738,13 +742,17 @@ export const MaterialIssueRequestScreen = () => {
               />
 
               <ResultPane
-                publishBlockReason={publishBlockReason({
-                  header,
-                  lines: resolvedLines,
-                  isSaving: create.isSaving,
-                  hasPublished: boundCreated !== null,
-                  destinationOptional: usesProductionWarehouses,
-                })}
+                publishBlockReason={
+                  lacksProductionWarehouse
+                    ? t.sourceWarehouse.none
+                    : publishBlockReason({
+                        header,
+                        lines: resolvedLines,
+                        isSaving: create.isSaving,
+                        hasPublished: boundCreated !== null,
+                        destinationOptional: usesProductionWarehouses,
+                      })
+                }
                 banner={conflict === null ? <SaveErrorBanner error={create.error} /> : null}
                 created={boundCreated}
                 onPublish={() => publish()}

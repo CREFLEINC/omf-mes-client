@@ -961,18 +961,21 @@ export interface PlannedStockConflictDetail {
   affectedRequests: { issueRequestNo: string; workOrderNo: string; issueWorkDate: string }[];
 }
 
-/**
- * W/O 상세의 생산 창고 — ⚠ 계약 밖 선택 칸(총괄에 보고 2026-11-04). 라인 담당 부서의 이 공장 활성 생산 창고.
- * 칸이 있고 비어 있지 않으면 생산 창고 공장(새 규칙), 없거나 비면 지금 방식(FR-009a).
- */
+/** 라인 담당 부서의 이 공장 활성 생산 창고 한 줄(계약 §2, 코드순). */
 export interface WorkOrderProductionWarehouse {
   warehouseId: number;
   warehouseCode: string;
   warehouseName: string;
 }
 
+/**
+ * W/O 상세 응답 칸 추가(계약 §2, 2026-11-04 보탬) — W-02-10 출발 창고 칸이 쓴다.
+ * `productionWarehouseMode` 는 «공장» 기준 새 규칙 여부(FR-009a)다. 공장이 새 규칙인데 이 W/O 라인 부서에 생산
+ * 창고가 없으면 배열이 비어 있다 — 빈 배열을 지금 방식으로 읽지 않는다.
+ */
 export type WorkOrderDetailForward = components['schemas']['WorkOrder'] & {
-  productionWarehouses?: WorkOrderProductionWarehouse[];
+  productionWarehouseMode: boolean;
+  productionWarehouses: WorkOrderProductionWarehouse[];
 };
 
 /** 배포 결과의 「재고 있는 생산 창고 없음」 자재(계약 §2, FR-007a) — 배포는 성공이다. */

@@ -128,7 +128,10 @@ export const statusLabelOf = (
 
 /** 지금 방식 응답(표시 상태 없음)도 받는다 — 생산 창고가 없는 공장은 칸이 없다. */
 export const toExistingRequestView = (
-  data: Omit<MaterialIssueRequestForward, 'displayStatus'> & {
+  data: Pick<
+    MaterialIssueRequestForward,
+    'materialIssueRequestId' | 'issueRequestNo' | 'statusCode' | 'requiredAt'
+  > & {
     displayStatus?: MaterialIssueRequestForward['displayStatus'];
   },
 ): ExistingRequestView => ({
