@@ -759,6 +759,8 @@ export interface MaterialIssueRequestForward {
   workOrderNo: string;
   destinationLocationId: number;
   destinationLocationName: string;
+  requiredAt?: string | null;
+  remarks?: string | null;
   statusCode: string;
   displayStatus: MaterialIssueDisplayStatus;
   reasonCode?: string | null;
@@ -926,6 +928,52 @@ export interface PlannedStockQuery {
 }
 
 type MaterialIssueRequestId = { materialIssueRequestId: number };
+
+/**
+ * W-02-10 등록 본문(계약 §1 「칸 추가」). `destinationLocationId` 는 선택으로 바뀐다(없으면 라인 생산 현장).
+ * `sourceWarehouseId` 가 없으면 서버가 자재마다 채우고 여럿이면 요청을 나눈다.
+ */
+export type MaterialIssueRequestCreateForward = Omit<
+  components['schemas']['MaterialIssueRequestCreate'],
+  'destinationLocationId'
+> & {
+  destinationLocationId?: number;
+  sourceWarehouseId?: number;
+  acceptPlannedOverride?: boolean;
+  unsourcedShortageId?: number;
+};
+
+/** 등록 응답 — 하나여도 배열(계약 §1, 차이 D-6). 줄 수는 계약 밖 선택 칸. */
+export interface MaterialIssueRequestCreateResultForward {
+  requests: MaterialIssueRequestForward[];
+}
+
+/** 409 `PLANNED_STOCK_CONFLICT` 의 품목별 `details`(계약 §1). */
+export interface PlannedStockConflictDetail {
+  itemId: number;
+  sourceWarehouseId?: number;
+  sourceWarehouseName?: string;
+  requestedQty: number;
+  freeQty: number;
+  takeFromPlannedQty: number;
+  overridable?: boolean;
+  noStockedWarehouse?: boolean;
+  affectedRequests: { issueRequestNo: string; workOrderNo: string; issueWorkDate: string }[];
+}
+
+/**
+ * W/O 상세의 생산 창고 — ⚠ 계약 밖 선택 칸(총괄에 보고 2026-11-04). 라인 담당 부서의 이 공장 활성 생산 창고.
+ * 칸이 있고 비어 있지 않으면 생산 창고 공장(새 규칙), 없거나 비면 지금 방식(FR-009a).
+ */
+export interface WorkOrderProductionWarehouse {
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+}
+
+export type WorkOrderDetailForward = components['schemas']['WorkOrder'] & {
+  productionWarehouses?: WorkOrderProductionWarehouse[];
+};
 
 export interface ForwardPaths {
   /** 시리얼 투입 자재 — 서버 선행 P-107. */
@@ -1308,7 +1356,21 @@ export interface ForwardPaths {
     >;
   };
   /** 서버 선행(003 · 계약 §1, S8) — 출고 요청 목록 조건 추가 · 표시 상태. 등록은 생성 타입 그대로(C3 에서 바꾼다). */
-  '/logistics/material-issue-requests': Omit<paths['/logistics/material-issue-requests'], 'get'> & {
+  '/logistics/material-issue-requests': Omit<
+    paths['/logistics/material-issue-requests'],
+    'get' | 'post'
+  > & {
+    /** 등록(계약 §1) — 출발 창고 · 예정분 가져가기 · 미배정 부족 행, 응답은 배열. */
+    post: Op<
+      {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match'?: string };
+        path?: never;
+        cookie?: never;
+      },
+      { content: { 'application/json': MaterialIssueRequestCreateForward } },
+      { 201: Json<MaterialIssueRequestCreateResultForward> }
+    >;
     get: Op<
       {
         query?: MaterialIssueRequestListQueryForward;

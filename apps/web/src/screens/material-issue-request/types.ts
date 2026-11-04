@@ -1,4 +1,10 @@
-import type { components } from '@omf-mes/api-client';
+import type {
+  components,
+  MaterialIssueRequestCreateForward,
+  MaterialIssueRequestCreateResultForward,
+  MaterialIssueRequestForward,
+} from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 /**
  * W-02-10 화면 슬라이스의 계약.
@@ -13,11 +19,9 @@ import type { components } from '@omf-mes/api-client';
 
 type WorkOrderResponse = components['schemas']['WorkOrder'];
 type ShortageLineResponse = components['schemas']['MaterialIssueShortageLine'];
-type MaterialIssueRequestResponse = components['schemas']['MaterialIssueRequest'];
-type MaterialIssueRequestDetailResponse =
-  components['schemas']['MaterialIssueRequestDetailResponse'];
 
-export type MaterialIssueRequestCreate = components['schemas']['MaterialIssueRequestCreate'];
+/** 등록 본문 — 피처 003 칸(출발 창고 · 예정분 가져가기 · 미배정 부족 행)을 더한 계약 §1 모양. */
+export type MaterialIssueRequestCreate = MaterialIssueRequestCreateForward;
 export type MaterialIssueRequestCreateLine =
   components['schemas']['MaterialIssueRequestCreateLine'];
 
@@ -96,6 +100,8 @@ export interface ExistingRequestView {
   issueRequestNo: string;
   /** 서버가 준 글자 그대로(공유계약 G-2) */
   statusCode: string;
+  /** 표시 상태 5종 라벨(W-02-11 과 같은 글자, screens/W-02-10.md 「상태 표시」). 없으면 원문. */
+  statusLabel: string;
   requiredAt: string | null;
 }
 
@@ -110,28 +116,58 @@ export interface ExistingRequestListResult {
   total: number;
 }
 
-export const toExistingRequestView = (data: MaterialIssueRequestResponse): ExistingRequestView => ({
+/** 표시 상태가 있으면 5종 라벨, 없으면(지금 방식 응답) 서버 원문 그대로. */
+export const statusLabelOf = (
+  data: Pick<MaterialIssueRequestForward, 'statusCode'> & {
+    displayStatus?: MaterialIssueRequestForward['displayStatus'];
+  },
+): string =>
+  (data.displayStatus === undefined
+    ? undefined
+    : messages.materialIssueRequest.status[data.displayStatus]) ?? data.statusCode;
+
+/** 지금 방식 응답(표시 상태 없음)도 받는다 — 생산 창고가 없는 공장은 칸이 없다. */
+export const toExistingRequestView = (
+  data: Omit<MaterialIssueRequestForward, 'displayStatus'> & {
+    displayStatus?: MaterialIssueRequestForward['displayStatus'];
+  },
+): ExistingRequestView => ({
   materialIssueRequestId: data.materialIssueRequestId,
   issueRequestNo: data.issueRequestNo,
   statusCode: data.statusCode,
+  statusLabel: statusLabelOf(data),
   requiredAt: data.requiredAt ?? null,
 });
 
-/** 방금 발행한 요청 — 결과 카드가 그리는 것 전부다. */
-export interface CreatedRequestView {
+/** 방금 만든 요청 한 장 — 출발 생산 창고별로 나뉘면 여러 장이다(계약 §1 배열 응답). */
+export interface CreatedRequestItem {
   issueRequestNo: string;
-  /** 서버가 준 글자 그대로(공유계약 G-2) — 「완료」로 옮겨 적지 않는다 */
-  statusCode: string;
-  lineCount: number;
+  statusLabel: string;
+  sourceWarehouseName: string | null;
+  lineCount: number | null;
 }
 
-/** 발행 응답은 헤더와 라인을 함께 준다(`MaterialIssueRequestDetailResponse` 실측). */
+/** 방금 발행한 결과 — 결과 카드가 그리는 것 전부다. */
+export interface CreatedRequestView {
+  requests: CreatedRequestItem[];
+  /** 예정분을 가져가고 발행했다(US4-7) — 결과에 「부족이 표시되고 이력이 남았습니다」. */
+  overridden: boolean;
+  /** 「재고 있는 생산 창고 없음」 행에서 열어 만들었다(US2-12). */
+  fromUnsourced: boolean;
+}
+
 export const toCreatedRequestView = (
-  data: MaterialIssueRequestDetailResponse,
+  data: MaterialIssueRequestCreateResultForward,
+  body: Pick<MaterialIssueRequestCreate, 'acceptPlannedOverride' | 'unsourcedShortageId'>,
 ): CreatedRequestView => ({
-  issueRequestNo: data.materialIssueRequest.issueRequestNo,
-  statusCode: data.materialIssueRequest.statusCode,
-  lineCount: data.lines.length,
+  requests: data.requests.map((request) => ({
+    issueRequestNo: request.issueRequestNo,
+    statusLabel: statusLabelOf(request),
+    sourceWarehouseName: request.sourceWarehouseName ?? null,
+    lineCount: request.lineCount ?? null,
+  })),
+  overridden: body.acceptPlannedOverride === true,
+  fromUnsourced: body.unsourcedShortageId !== undefined,
 });
 
 /**

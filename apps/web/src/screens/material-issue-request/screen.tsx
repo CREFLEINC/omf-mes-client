@@ -1,6 +1,7 @@
 import { AlertBanner, Breadcrumb, EmptyState, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { resolveLineOrigins } from './bom-origin';
@@ -20,20 +21,28 @@ import {
   type LookupResult,
 } from './lookups';
 import type { MaterialIssueRequestInput } from './material-issue-request-body';
-import { useMaterialIssueRequestMutation } from './mutations';
+import { useMaterialIssueRequestMutation, type PlannedStockConflict } from './mutations';
+import { PlannedStockDialog } from './planned-stock-dialog';
 import { usePublishSubmission } from './publish-submission';
-import { useExistingRequests, useShortage, useWorkOrderSearch } from './queries';
+import {
+  useExistingRequests,
+  useItemBaseUom,
+  useShortage,
+  useWorkOrderDetail,
+  useWorkOrderSearch,
+} from './queries';
 import { ReasonPane } from './reason-pane';
 import { useReasonOptions } from './reason-options';
 import { ResultPane } from './result-pane';
 import { TargetPane } from './target-pane';
-import type {
-  CreatedRequestView,
-  ExistingRequestView,
-  MaterialIssueLineDraft,
-  SelectOption,
-  ShortageLineView,
-  WorkOrderView,
+import {
+  toWorkOrderView,
+  type CreatedRequestView,
+  type ExistingRequestView,
+  type MaterialIssueLineDraft,
+  type SelectOption,
+  type ShortageLineView,
+  type WorkOrderView,
 } from './types';
 import {
   publishBlockReason,
@@ -55,6 +64,8 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
 
 /** 머리 초안 중 W/O 를 뺀 나머지 — W/O 는 고른 객체 자체로 들고 있다. */
 interface FormDraft {
+  /** 피처 003 출발 생산 창고. 비면 「자동」(검토 4). 생산 창고 공장에서만 쓴다. */
+  sourceWarehouseId: string;
   warehouseId: string;
   destinationLocationId: string;
   requiredDate: string;
@@ -64,6 +75,7 @@ interface FormDraft {
 }
 
 const EMPTY_FORM: FormDraft = {
+  sourceWarehouseId: '',
   warehouseId: '',
   destinationLocationId: '',
   requiredDate: '',
@@ -84,6 +96,40 @@ interface CreatedBinding {
 }
 
 /**
+ * W-02-11 「보충 요청 →」이 실어 온 값(검토 3) — W/O · 품목 · 수량 · 사유 · 출발 생산 창고 · 미배정 부족 행.
+ * 들어올 때 한 번만 읽는다(이 화면은 주소가 상태를 소유하지 않는다).
+ */
+interface Prefill {
+  workOrderId: number;
+  itemId: number | null;
+  qty: string;
+  reasonCode: string;
+  sourceWarehouseId: string;
+  unsourcedShortageId: string;
+}
+
+const ID = /^[1-9]\d*$/;
+
+/** 「자동」 선택지의 값 — 빈 값은 선택칸이 「고르지 않음」으로 그린다. 본문에는 싣지 않는다. */
+const AUTO_SOURCE = 'auto';
+
+const readPrefill = (params: URLSearchParams): Prefill | null => {
+  const wo = params.get('wo') ?? '';
+  if (!ID.test(wo)) return null;
+  const item = params.get('item') ?? '';
+  const src = params.get('src') ?? '';
+  const unsourced = params.get('unsourced') ?? '';
+  return {
+    workOrderId: Number(wo),
+    itemId: ID.test(item) ? Number(item) : null,
+    qty: params.get('qty') ?? '',
+    reasonCode: params.get('reason') ?? '',
+    sourceWarehouseId: ID.test(src) ? src : '',
+    unsourcedShortageId: ID.test(unsourced) ? unsourced : '',
+  };
+};
+
+/**
  * W-02-10 컨테이너 — **긴급 W/O 등으로 부족한 자재를 무절차 반출 없이 정식 출고로 경유시킨다.**
  *
  * 구획 셋과 액션 하나다 — ① 대상 W/O · ② 요청 품목 · ③ 사유 / [요청 발행].
@@ -101,6 +147,11 @@ interface CreatedBinding {
  * 않는다(재고를 움직이지 않는 요청 발행이다).
  */
 export const MaterialIssueRequestScreen = () => {
+  const [searchParams] = useSearchParams();
+  const [prefill] = useState<Prefill | null>(() => readPrefill(searchParams));
+  /** 채운 값을 한 번만 세운다 — 사용자가 고친 뒤 다시 덮지 않는다. */
+  const [isPrefillApplied, setIsPrefillApplied] = useState(prefill === null);
+  const [conflict, setConflict] = useState<PlannedStockConflict | null>(null);
   const [searchDraft, setSearchDraft] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrderView | null>(null);
@@ -151,7 +202,32 @@ export const MaterialIssueRequestScreen = () => {
   /** 제출 순간의 고정은 이 훅이 진다 — 화면은 본문을 직접 조립하지 않는다. */
   const submission = usePublishSubmission();
 
+  /*
+   * 피처 003 — W/O 담당 부서의 생산 창고. 있으면 생산 창고 공장(새 규칙): 출발 생산 창고 칸, 「창고」 칸 숨김,
+   * 입고지 선택(비우면 서버가 채움). 없거나 못 받으면 지금 화면 그대로(FR-009a).
+   */
+  const workOrderDetail = useWorkOrderDetail(
+    selectedWorkOrder?.workOrderId ?? (isPrefillApplied ? null : (prefill?.workOrderId ?? null)),
+  );
+  const productionWarehouses = workOrderDetail.data?.productionWarehouses ?? [];
+  const usesProductionWarehouses =
+    selectedWorkOrder !== null &&
+    workOrderDetail.data?.workOrderId === selectedWorkOrder.workOrderId &&
+    productionWarehouses.length > 0;
+  const prefillUom = useItemBaseUom(isPrefillApplied ? null : (prefill?.itemId ?? null));
+
+  /* 보충 요청으로 열었으면 그 W/O 를 고른다. */
+  useEffect(() => {
+    if (isPrefillApplied || prefill === null || selectedWorkOrder !== null) return;
+    if (workOrderDetail.data?.workOrderId === prefill.workOrderId) {
+      setSelectedWorkOrder(toWorkOrderView(workOrderDetail.data));
+    } else if (workOrderDetail.isError) {
+      setIsPrefillApplied(true);
+    }
+  }, [isPrefillApplied, prefill, selectedWorkOrder, workOrderDetail.data, workOrderDetail.isError]);
+
   const create = useMaterialIssueRequestMutation({
+    onPlannedStockConflict: setConflict,
     onSuccess: (result) => {
       const boundSignature = submittingTargetRef.current;
 
@@ -178,7 +254,13 @@ export const MaterialIssueRequestScreen = () => {
    * 어차피 새 도장이 찍힌다. 손으로 버리면 「값을 고쳤다 되돌린」 경우까지 새 키가 나간다.
    */
   useEffect(() => {
-    setForm((prev) => ({ ...prev, warehouseId: '', destinationLocationId: '' }));
+    setForm((prev) => ({
+      ...prev,
+      sourceWarehouseId: '',
+      warehouseId: '',
+      destinationLocationId: '',
+    }));
+    setConflict(null);
     setLines([]);
     setIsShortageRequested(false);
     setIsLoadPending(false);
@@ -224,6 +306,31 @@ export const MaterialIssueRequestScreen = () => {
     );
   }, [workOrderId, defaultWipLocationId, resolvedWarehouseId]);
 
+  /*
+   * 보충 요청 값 채우기 — 대상 비움(위)이 돈 다음에 세운다. 품목 기본 단위를 받은 뒤에 한 번만.
+   */
+  useEffect(() => {
+    if (isPrefillApplied || prefill === null) return;
+    if (selectedWorkOrder?.workOrderId !== prefill.workOrderId) return;
+    if (prefill.itemId !== null && prefillUom.isPending) return;
+    setForm((prev) => ({
+      ...prev,
+      reasonCode: prefill.reasonCode,
+      sourceWarehouseId: prefill.sourceWarehouseId,
+    }));
+    if (prefill.itemId !== null) {
+      const line = {
+        ...addLineDraft([])[0],
+        itemId: String(prefill.itemId),
+        uomId:
+          prefillUom.data === null || prefillUom.data === undefined ? '' : String(prefillUom.data),
+        requestedQty: prefill.qty,
+      } as MaterialIssueLineDraft;
+      setLines([line]);
+    }
+    setIsPrefillApplied(true);
+  }, [isPrefillApplied, prefill, selectedWorkOrder, prefillUom.isPending, prefillUom.data]);
+
   /** BOM 유래 판정을 한 자리에서 채운다 — 표의 경고와 본문의 FK 가 같은 값을 본다. */
   const resolvedLines = useMemo(
     () => resolveLineOrigins(lines, shortageLines),
@@ -243,7 +350,9 @@ export const MaterialIssueRequestScreen = () => {
   const isLocked = create.isSaving || boundCreated !== null;
 
   const header: HeaderDraft = { workOrderId, ...form };
-  const headerLocalErrors = validateHeader(header);
+  const headerLocalErrors = validateHeader(header, {
+    destinationOptional: usesProductionWarehouses,
+  });
 
   /*
    * **아직 만지지 않은 칸에는 붉은 글씨를 세우지 않는다**(검증 발견 6). 판정은 그대로 두고
@@ -379,8 +488,9 @@ export const MaterialIssueRequestScreen = () => {
    * `usePublishSubmission` 이 진다 — 그 이음매가 이 화면에서 가장 조용히 틀릴 자리이고,
    * 화면 안에 두면 감지기가 닿지 않는다(검증 발견 1).
    */
-  const publish = (): void => {
+  const publish = (acceptPlannedOverride = false): void => {
     setHasAttemptedPublish(true);
+    setConflict(null);
 
     const input: MaterialIssueRequestInput = {
       workOrderId,
@@ -391,6 +501,14 @@ export const MaterialIssueRequestScreen = () => {
       remarks: form.remarks,
       lines: resolvedLines,
       shortage: shortageLines,
+      ...(usesProductionWarehouses
+        ? {
+            sourceWarehouseId: form.sourceWarehouseId,
+            destinationOptional: true,
+            acceptPlannedOverride,
+            unsourcedShortageId: prefill?.unsourcedShortageId ?? '',
+          }
+        : {}),
     };
 
     const body = submission.build(input);
@@ -477,6 +595,12 @@ export const MaterialIssueRequestScreen = () => {
           </AlertBanner>
         </div>
 
+        {prefill !== null && (
+          <div className="banner-slot">
+            <AlertBanner variant="info">{t.prefilled}</AlertBanner>
+          </div>
+        )}
+
         {workOrders.isError && (
           <LoadErrorBanner
             error={workOrders.error}
@@ -525,6 +649,31 @@ export const MaterialIssueRequestScreen = () => {
           }}
           headerErrors={headerErrors}
           isLocked={isLocked}
+          sourceWarehouse={
+            usesProductionWarehouses
+              ? {
+                  options: [
+                    { value: AUTO_SOURCE, label: t.sourceWarehouse.auto },
+                    ...productionWarehouses.map((warehouse) => ({
+                      value: String(warehouse.warehouseId),
+                      label: `${warehouse.warehouseCode} ${warehouse.warehouseName}`,
+                    })),
+                  ],
+                  value: form.sourceWarehouseId === '' ? AUTO_SOURCE : form.sourceWarehouseId,
+                  note:
+                    form.sourceWarehouseId === ''
+                      ? t.sourceWarehouse.autoHelp(productionWarehouses.length)
+                      : t.sourceWarehouse.fixedHelp(
+                          productionWarehouses.find(
+                            (warehouse) => String(warehouse.warehouseId) === form.sourceWarehouseId,
+                          )?.warehouseName ?? form.sourceWarehouseId,
+                        ),
+                  onChange: (value) => {
+                    changeForm({ sourceWarehouseId: value === AUTO_SOURCE ? '' : value });
+                  },
+                }
+              : undefined
+          }
         />
 
         {/* 실패해도 배너를 세우지 않는다 — 중복 확인은 알림이지 관문이 아니다(스펙 §6). */}
@@ -572,6 +721,7 @@ export const MaterialIssueRequestScreen = () => {
             />
 
             <div className="material-issue-request-footer">
+              {usesProductionWarehouses && <p className="field-note">{t.reasonHelp}</p>}
               <ReasonPane
                 reasons={reasons}
                 reasonCode={form.reasonCode}
@@ -593,11 +743,24 @@ export const MaterialIssueRequestScreen = () => {
                   lines: resolvedLines,
                   isSaving: create.isSaving,
                   hasPublished: boundCreated !== null,
+                  destinationOptional: usesProductionWarehouses,
                 })}
-                banner={<SaveErrorBanner error={create.error} />}
+                banner={conflict === null ? <SaveErrorBanner error={create.error} /> : null}
                 created={boundCreated}
-                onPublish={publish}
+                onPublish={() => publish()}
               />
+              {conflict !== null && (
+                <PlannedStockDialog
+                  conflict={conflict}
+                  itemLabel={(itemId) =>
+                    items.entries.find((entry) => entry.value === String(itemId))?.label ??
+                    String(itemId)
+                  }
+                  isSaving={create.isSaving}
+                  onFix={() => setConflict(null)}
+                  onOverride={() => publish(true)}
+                />
+              )}
             </div>
           </>
         )}

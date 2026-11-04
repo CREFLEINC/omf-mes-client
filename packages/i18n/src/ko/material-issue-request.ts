@@ -124,5 +124,53 @@ export const materialIssueRequest = {
     issueRequestNo: (no: string): string => `요청번호: ${no}`,
     statusCode: (code: string): string => `상태: ${code}`,
     lineCount: (count: number): string => `품목 ${String(count)}건`,
+    /** 생산 창고 공장 — 창고별로 나눈 결과(screens/W-02-10.md 「발행 흐름」). */
+    splitTitle: (count: number): string =>
+      count > 1
+        ? `출고 요청 ${String(count)}장을 발행했습니다. 출발 생산 창고별로 나눴습니다`
+        : '출고 요청을 발행했습니다',
+    overrideNote: '예정분을 가져간 요청에 부족이 표시되고 이력이 남았습니다.',
+    unsourcedNote: '부족 목록의 그 행이 「보충 요청됨」으로 바뀝니다.',
   },
+  /** 피처 003 — 출발 생산 창고(검토 4) · 예정 재고 경고(US4-7 · US4-8). */
+  sourceWarehouse: {
+    label: '출발 생산 창고',
+    auto: '자동 — 자재마다 재고가 있고 쓸 수 있는 양이 많은 생산 창고',
+    autoHelp: (count: number): string =>
+      `연결한 생산 창고 ${String(count)}곳 중 자재마다 재고가 있고 쓸 수 있는 양이 가장 많은 곳에서 냅니다. 같으면 오래된 재고가 있는 곳입니다. 창고가 다르면 요청이 창고별로 나뉩니다.`,
+    fixedHelp: (warehouse: string): string => `모든 품목을 ${warehouse}에서 냅니다.`,
+    destination: '입고지(생산 현장)',
+    destinationHelp: '비우면 라인의 생산 현장으로 채웁니다.',
+  },
+  reasonHelp:
+    '긴급 대응과 부족 보충은 남은 수량이 모자라면 경고를 확인한 뒤 다른 요청의 예정분을 가져갈 수 있습니다. 그 밖의 사유는 남은 수량까지만 요청할 수 있습니다.',
+  prefilled: '출고 요청 현황의 부족에서 연 요청입니다. W/O, 품목, 수량, 사유를 채웠습니다.',
+  override: {
+    title: '다른 W/O 의 출고 예정분을 가져갑니다',
+    body: '남은 수량보다 많이 요청했습니다. 그래도 요청하면 아래 요청의 예정분을 가져가고, 그 요청에 부족이 표시됩니다.',
+    blockedTitle: '남은 수량이 없어 요청할 수 없습니다',
+    blockedBody: '이 사유로는 남은 수량까지만 요청할 수 있습니다. 긴급 대응이나 부족 보충만 다른 요청의 예정분을 가져갈 수 있습니다.',
+    noStockedBody: '재고 있는 생산 창고가 없는 자재가 있어 요청할 수 없습니다. 생산 창고를 채운 뒤 요청하세요.',
+    tableLabel: '넘는 품목',
+    columns: {
+      item: '품목',
+      warehouse: '생산 창고',
+      requested: '요청',
+      free: '남은 수량',
+      take: '가져갈 수량',
+      affected: '영향받는 요청',
+    },
+    noStockedWarehouse: '재고 있는 생산 창고 없음',
+    affected: (requestNo: string, workOrderNo: string, date: string): string =>
+      `${requestNo} (${workOrderNo}, ${date})`,
+    fix: '수량 다시 고치기',
+    submit: '그래도 요청',
+  },
+  status: {
+    WAITING: '대기',
+    RELEASED: '배포',
+    IN_PROGRESS: '진행 중',
+    DONE: '완료',
+    CANCELLED: '취소',
+  } as Record<string, string>,
 } as const;
