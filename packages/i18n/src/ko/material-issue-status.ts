@@ -111,6 +111,29 @@ export const materialIssueStatus = {
     },
     history: '이력',
     noHistory: '이력이 없습니다.',
+    /** 러너 배포처럼 사람이 없는 사건(`actorName` null). */
+    systemActor: '자동 배포',
+    /**
+     * 이력 문장 — 서버는 `eventCode` 와 `detail` 만 준다(계약 §1 history). 값이 없으면 그 부분을 뺀다.
+     */
+    events: {
+      CREATED: (): string => '생성, 대기',
+      RELEASED: (): string => '배포',
+      RELEASE_FAILED: (error: string): string =>
+        error === '' ? '배포 실패' : `배포 실패: ${error}`,
+      REVERTED_TO_WAITING: (): string => '대기로 되돌림(피킹 지시 닫음)',
+      ISSUE_DATE_CHANGED: (before: string, after: string): string =>
+        `출고 작업일 변경 ${before} → ${after}`,
+      SOURCE_CHANGED: (before: string, after: string): string =>
+        `출발 생산 창고 변경 ${before} → ${after}`,
+      DESTINATION_CHANGED: (before: string, after: string): string =>
+        `입고지 변경 ${before} → ${after}`,
+      QTY_CHANGED: (item: string, before: string, after: string): string =>
+        `${item} 요청 수량 변경 ${before} → ${after}`,
+      CANCELLED: (reason: string): string => (reason === '' ? '취소' : `취소: ${reason}`),
+      CLOSED: (reason: string): string =>
+        reason === '' ? '미출고분 닫음' : `미출고분 닫음: ${reason}`,
+    },
     cancel: '요청 취소',
     cancelLocked: '일부 진행돼 취소할 수 없습니다',
     revert: '되돌리기',

@@ -240,12 +240,12 @@ export const MaterialIssueStatusScreen = () => {
           {request.issueRequestNo}
         </button>
       </td>
-      <td>{request.workOrderNo ?? String(request.workOrderId)}</td>
+      <td>{request.workOrderNo}</td>
       <td>{formatDay(request.productionDate)}</td>
       <td>{formatDay(request.issueWorkDate)}</td>
       <td>{request.sourceWarehouseName ?? '—'}</td>
-      <td>{request.destinationLocationName ?? String(request.destinationLocationId)}</td>
-      <td>{request.lineCount === undefined ? '—' : String(request.lineCount)}</td>
+      <td>{request.destinationLocationName}</td>
+      <td>{String(request.lineCount)}</td>
       <td>
         <span className="material-issue-status-chips">
           <Chip size="sm" status={STATUS_TONE[request.displayStatus]}>
@@ -259,9 +259,9 @@ export const MaterialIssueStatusScreen = () => {
         </span>
       </td>
       <td>
-        {(request.shortageQty ?? 0) > 0 && (
+        {request.shortageQtyTotal > 0 && (
           <Chip size="sm" status="warning">
-            {t.shortageChip(formatQty(request.shortageQty ?? 0))}
+            {t.shortageChip(formatQty(request.shortageQtyTotal))}
           </Chip>
         )}
       </td>
@@ -321,7 +321,7 @@ export const MaterialIssueStatusScreen = () => {
                     <span className="field-note">
                       {t.planGroup.meta(
                         group.rows.length,
-                        group.rows.filter((request) => (request.shortageQty ?? 0) > 0).length,
+                        group.rows.filter((request) => request.shortageQtyTotal > 0).length,
                       )}
                     </span>
                   </th>

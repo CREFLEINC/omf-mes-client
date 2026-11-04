@@ -749,17 +749,16 @@ export type MaterialIssueDisplayStatus =
   'WAITING' | 'RELEASED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 
 /**
- * 출고 요청(계약 §1 바뀌는 응답 칸). ⚠ `workOrderNo` · `destinationLocationName` · `productionPlanNo` ·
- * `lineCount` · `shortageQty` 는 계약 §1 에 없는 선택 칸이다(W-02-11 목록 표시용, 총괄에 보고 2026-11-04) —
- * 없으면 화면이 번호나 「—」로 보인다.
+ * 출고 요청(계약 §1 바뀌는 응답 칸 + 「화면 이름 칸」, 2026-11-04 보탬). 목록 · 상세 · PUT · cancel 응답이
+ * 같은 모양이다.
  */
 export interface MaterialIssueRequestForward {
   materialIssueRequestId: number;
   issueRequestNo: string;
   workOrderId: number;
-  workOrderNo?: string;
+  workOrderNo: string;
   destinationLocationId: number;
-  destinationLocationName?: string;
+  destinationLocationName: string;
   statusCode: string;
   displayStatus: MaterialIssueDisplayStatus;
   reasonCode?: string | null;
@@ -768,27 +767,28 @@ export interface MaterialIssueRequestForward {
   issueWorkDate?: string | null;
   productionDate?: string | null;
   productionPlanId?: number | null;
-  productionPlanNo?: string | null;
+  productionPlanNo: string | null;
   releasedAt?: string | null;
   releaseErrorText?: string | null;
   closedAt?: string | null;
   closeReasonCode?: string | null;
-  lineCount?: number;
-  shortageQty?: number;
-  /** PUT · 취소 본문의 낙관적 잠금 값(계약 §1 `versionNo`). */
-  versionNo?: number;
+  lineCount: number;
+  /** 줄 `shortageQty` 합 — 목록이 줄을 싣지 않으므로 요청에 둔다. */
+  shortageQtyTotal: number;
+  /** PUT · cancel 본문에 그대로 돌려보낸다. ETag 는 쓰지 않는다. */
+  versionNo: number;
 }
 
-/** 출고 요청 줄 — 계약 §1 줄 추가(`shortageQty` · `pickedQty` · `outstandingQty`). 이름 칸은 계약 밖 선택 칸. */
+/** 출고 요청 줄 — 계약 §1 줄 추가(`shortageQty` · `pickedQty` · `outstandingQty`)와 이름 칸. */
 export interface MaterialIssueRequestLineForward {
   materialIssueRequestLineId: number;
   materialIssueRequestId: number;
   lineNo: number;
   itemId: number;
-  itemCode?: string;
-  itemName?: string;
+  itemCode: string;
+  itemName: string;
   uomId: number;
-  uomCode?: string;
+  uomCode: string;
   requestedQty: number;
   issuedQty: number;
   pickedQty?: number;
@@ -835,14 +835,34 @@ export interface MaterialIssueRequestCancelForward {
   reason?: string;
 }
 
+/** 이력 사건(계약 §1 history). */
+export type MaterialIssueHistoryEventCode =
+  | 'CREATED'
+  | 'RELEASED'
+  | 'RELEASE_FAILED'
+  | 'REVERTED_TO_WAITING'
+  | 'ISSUE_DATE_CHANGED'
+  | 'SOURCE_CHANGED'
+  | 'DESTINATION_CHANGED'
+  | 'QTY_CHANGED'
+  | 'CANCELLED'
+  | 'CLOSED';
+
 /**
- * 새 `GET …/{id}/history` 항목. ⚠ 계약 §1 은 항목 모양을 적지 않았다 — 화면 가정(총괄에 보고 2026-11-04).
+ * 새 `GET …/{id}/history` 항목 — 최근 것이 먼저. 서버는 문장을 만들지 않는다(화면이 `eventCode` 로 ko · vi
+ * 문장을 만든다). `actorName` 은 러너 배포면 null.
  */
 export interface MaterialIssueRequestHistoryEntry {
   occurredAt: string;
-  actorName?: string | null;
-  eventCode: string;
-  text?: string | null;
+  actorName: string | null;
+  eventCode: MaterialIssueHistoryEventCode;
+  detail: {
+    before?: string;
+    after?: string;
+    itemCode?: string;
+    reason?: string;
+    errorText?: string;
+  };
 }
 
 /** 새 `GET …/planned-stock` — 생산 창고 출고 예정 재고(FR-015)와 부족 목록(FR-016). */

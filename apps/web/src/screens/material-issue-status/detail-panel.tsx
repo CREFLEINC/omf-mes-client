@@ -33,6 +33,7 @@ import {
   editScope,
   formatDay,
   formatQty,
+  historyText,
   isReleaseFailed,
   quantityError,
   STATUS_TONE,
@@ -43,8 +44,7 @@ const t = messages.materialIssueStatus;
 
 const HOLIDAY_ACK_REQUIRED = 'HOLIDAY_ACK_REQUIRED';
 
-const itemText = (line: MaterialIssueRequestLineForward): string =>
-  line.itemCode ?? String(line.itemId);
+const itemText = (line: MaterialIssueRequestLineForward): string => line.itemCode;
 
 type DialogState = 'date' | 'holiday' | 'cancel' | null;
 
@@ -179,7 +179,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
 
     const save = (): void => {
       const patch: MaterialIssueRequestUpdateForward = {
-        versionNo: request.versionNo ?? 0,
+        versionNo: request.versionNo,
         ...(lineChanges.length > 0 ? { lines: lineChanges } : {}),
         ...(sourceChanged ? { sourceWarehouseId: Number(source) } : {}),
         ...(destinationChanged ? { destinationLocationId: Number(destination) } : {}),
@@ -191,7 +191,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
     const sendDate = (acknowledgeHoliday: boolean): void => {
       pendingDateRef.current = dateDraft;
       update.write({
-        versionNo: request.versionNo ?? 0,
+        versionNo: request.versionNo,
         issueWorkDate: dateDraft,
         ...(acknowledgeHoliday ? { acknowledgeHoliday: true } : {}),
       });
@@ -256,7 +256,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
       <div className="material-issue-status-detail">
         <p className="field-note">
           {[
-            request.workOrderNo ?? String(request.workOrderId),
+            request.workOrderNo,
             t.detail.productionDate(formatDay(request.productionDate)),
             ...(request.productionPlanNo ? [t.detail.plan(request.productionPlanNo)] : []),
           ].join(', ')}
@@ -312,7 +312,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
                 onChange={setDestination}
               />
             ) : (
-              (request.destinationLocationName ?? String(request.destinationLocationId))
+              request.destinationLocationName
             )}
           </dd>
         </dl>
@@ -333,7 +333,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
               <tr key={line.materialIssueRequestLineId}>
                 <td>
                   <span className="material-issue-status-code">{itemText(line)}</span>
-                  {line.itemName !== undefined && <span>{line.itemName}</span>}
+                  <span>{line.itemName}</span>
                 </td>
                 <td>
                   {scope === 'none' ? (
@@ -388,11 +388,11 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
               {history.data?.map((entry, index) => (
                 <li key={`${entry.occurredAt}-${String(index)}`}>
                   <span className="field-note">
-                    {[entry.occurredAt.slice(5, 16).replace('T', ' '), entry.actorName ?? '']
-                      .filter((part) => part !== '')
-                      .join(' ')}
+                    {`${entry.occurredAt.slice(5, 16).replace('T', ' ')} ${
+                      entry.actorName ?? t.detail.systemActor
+                    }`}
                   </span>
-                  <span>{entry.text ?? entry.eventCode}</span>
+                  <span>{historyText(entry)}</span>
                 </li>
               ))}
             </ul>
@@ -515,7 +515,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
                 loading={cancel.isSaving}
                 onClick={() =>
                   cancel.write({
-                    versionNo: request.versionNo ?? 0,
+                    versionNo: request.versionNo,
                     ...(cancelReason.trim() === '' ? {} : { reason: cancelReason.trim() }),
                   })
                 }

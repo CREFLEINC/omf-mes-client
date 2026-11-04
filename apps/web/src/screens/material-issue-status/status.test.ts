@@ -6,7 +6,14 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { EMPTY_FILTERS, readFilters, toListQuery, toSearchParams } from './filters';
-import { dateEffect, editScope, isReleaseFailed, quantityError, statusLabel } from './status';
+import {
+  dateEffect,
+  editScope,
+  historyText,
+  isReleaseFailed,
+  quantityError,
+  statusLabel,
+} from './status';
 
 const t = messages.materialIssueStatus;
 
@@ -16,10 +23,16 @@ const request = (
   materialIssueRequestId: 1,
   issueRequestNo: 'SYN-MIR-01',
   workOrderId: 11,
+  workOrderNo: 'SYN-WO-1',
   destinationLocationId: 21,
+  destinationLocationName: '합성 현장',
   statusCode: 'WAITING',
   displayStatus: 'WAITING',
   sourceWarehouseId: 31,
+  productionPlanNo: null,
+  lineCount: 1,
+  shortageQtyTotal: 0,
+  versionNo: 1,
   ...overrides,
 });
 
@@ -29,7 +42,9 @@ const line = (issuedQty: number): MaterialIssueRequestLineForward => ({
   lineNo: 1,
   itemId: 41,
   itemCode: 'SYN-IT-1',
+  itemName: '합성 품목',
   uomId: 1,
+  uomCode: 'EA',
   requestedQty: 100,
   issuedQty,
 });
@@ -115,5 +130,29 @@ describe('W-02-11 조회 조건', () => {
       size: 50,
     });
     expect(filters.groupByPlan).toBe(true);
+  });
+});
+
+describe('W-02-11 이력 문장', () => {
+  it('US2-6 사건 코드와 값으로 ko 문장을 만든다(서버는 문장을 주지 않는다)', () => {
+    const entry = (eventCode: Parameters<typeof historyText>[0]['eventCode'], detail = {}) => ({
+      occurredAt: '2026-11-03T10:00:00+07:00',
+      actorName: null,
+      eventCode,
+      detail,
+    });
+    expect(historyText(entry('DESTINATION_CHANGED', { before: '현장 A', after: '현장 B' }))).toBe(
+      t.detail.events.DESTINATION_CHANGED('현장 A', '현장 B'),
+    );
+    expect(
+      historyText(entry('QTY_CHANGED', { itemCode: 'SYN-IT-1', before: '80', after: '60' })),
+    ).toBe(t.detail.events.QTY_CHANGED('SYN-IT-1', '80', '60'));
+    expect(historyText(entry('RELEASE_FAILED', { errorText: '창고 비활성' }))).toBe(
+      '배포 실패: 창고 비활성',
+    );
+    expect(historyText(entry('CLOSED', { reason: 'WORK_ORDER_CANCELLED' }))).toBe(
+      '미출고분 닫음: W/O 취소',
+    );
+    expect(historyText(entry('RELEASED'))).toBe('배포');
   });
 });

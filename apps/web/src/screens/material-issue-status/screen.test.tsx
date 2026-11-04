@@ -49,7 +49,7 @@ const request = (
   productionPlanId: 9001,
   productionPlanNo: 'SYN-PP-01',
   lineCount: 1,
-  shortageQty: 0,
+  shortageQtyTotal: 0,
   versionNo: 3,
   ...overrides,
 });
@@ -62,7 +62,7 @@ const REQUESTS = [
     productionPlanId: 9002,
     productionPlanNo: 'SYN-PP-02',
   }),
-  request(3, { shortageQty: 20 }),
+  request(3, { shortageQtyTotal: 20 }),
   request(4, { displayStatus: 'DONE', closeReasonCode: 'WORK_ORDER_CANCELLED' }),
   request(5, { releaseErrorText: '출발 생산 창고가 비활성입니다.' }),
 ];
@@ -78,6 +78,7 @@ const detailOf = (id: number): MaterialIssueRequestDetailForward => ({
       itemCode: 'SYN-IT-1',
       itemName: '합성 커넥터',
       uomId: 1,
+      uomCode: 'EA',
       requestedQty: 100,
       issuedQty: id === 2 ? 40 : 0,
       pickedQty: id === 2 ? 60 : 0,
@@ -231,10 +232,16 @@ const setup = (options: SetupOptions = {}) => {
         jsonResponse({
           items: [
             {
+              occurredAt: '2026-11-03T00:00:00+07:00',
+              actorName: null,
+              eventCode: 'ISSUE_DATE_CHANGED',
+              detail: { before: '2026-11-19', after: '2026-11-20' },
+            },
+            {
               occurredAt: '2026-11-02T14:10:00+07:00',
               actorName: '합성 관리자',
               eventCode: 'CREATED',
-              text: 'W/O 배포로 생성',
+              detail: {},
             },
           ],
         }),
@@ -430,6 +437,17 @@ describe('W-02-11 출고 요청 현황 — 상세', () => {
 
     expect(await detail.findByText(t.errors.versionConflict)).toBeInTheDocument();
     expect(detail.getByRole('button', { name: t.errors.reload })).toBeInTheDocument();
+  });
+
+  it('이력은 사건 코드로 문장을 만들고, 사람이 없는 사건은 「자동 배포」로 보인다', async () => {
+    setup({ route: '/production/material-issue-status?id=1' });
+    const detail = await panel();
+
+    expect(
+      await detail.findByText(t.detail.events.ISSUE_DATE_CHANGED('11-19(목)', '11-20(금)')),
+    ).toBeInTheDocument();
+    expect(detail.getByText(/자동 배포/)).toBeInTheDocument();
+    expect(detail.getByText(t.detail.events.CREATED())).toBeInTheDocument();
   });
 
   it('배포 실패 요청은 상세 위에 원인을 보인다', async () => {

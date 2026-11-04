@@ -71,6 +71,7 @@ export type {
   ItemResourceMap,
   ItemResourceMapListQuery,
   MaterialIssueDisplayStatus,
+  MaterialIssueHistoryEventCode,
   MaterialIssueRequestCancelForward,
   MaterialIssueRequestDetailForward,
   MaterialIssueRequestForward,

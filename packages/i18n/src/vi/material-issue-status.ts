@@ -109,6 +109,25 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     },
     history: 'Lịch sử',
     noHistory: 'Không có lịch sử.',
+    systemActor: 'Phát hành tự động',
+    events: {
+      CREATED: (): string => 'Tạo, chờ',
+      RELEASED: (): string => 'Phát hành',
+      RELEASE_FAILED: (error: string): string =>
+        error === '' ? 'Phát hành lỗi' : `Phát hành lỗi: ${error}`,
+      REVERTED_TO_WAITING: (): string => 'Trở về chờ (đóng chỉ thị lấy hàng)',
+      ISSUE_DATE_CHANGED: (before: string, after: string): string =>
+        `Đổi ngày xuất kho ${before} → ${after}`,
+      SOURCE_CHANGED: (before: string, after: string): string =>
+        `Đổi kho sản xuất xuất đi ${before} → ${after}`,
+      DESTINATION_CHANGED: (before: string, after: string): string =>
+        `Đổi nơi nhận ${before} → ${after}`,
+      QTY_CHANGED: (item: string, before: string, after: string): string =>
+        `Đổi số lượng yêu cầu ${item} ${before} → ${after}`,
+      CANCELLED: (reason: string): string => (reason === '' ? 'Hủy' : `Hủy: ${reason}`),
+      CLOSED: (reason: string): string =>
+        reason === '' ? 'Đóng phần chưa xuất' : `Đóng phần chưa xuất: ${reason}`,
+    },
     cancel: 'Hủy yêu cầu',
     cancelLocked: 'Đã thực hiện một phần nên không thể hủy',
     revert: 'Hoàn tác',
