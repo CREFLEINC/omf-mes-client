@@ -35,7 +35,6 @@ export interface PlanPaneProps {
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   itemOptions: SelectOption[];
-  processOptions: SelectOption[];
   /** 그 품목의 라우팅 Rev 들 — 채운 Rev 를 코드 · 버전 · 상태로 보인다. */
   routingRevisions: RoutingRevision[];
   /** 라우팅 칸에 채울 값 — 그 품목의 작성 중 최신 Rev, 없으면 확정 최신 Rev(사용자 지시 2026-11-04). 받는 중이면 undefined, 없으면 null. */
@@ -78,7 +77,6 @@ export const PlanPane = ({
   banner,
   optionsNotice,
   itemOptions,
-  processOptions,
   routingRevisions,
   autoRoutingId,
   routingDisabledReason,
@@ -116,8 +114,6 @@ export const PlanPane = ({
       ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
       : {};
   };
-  const isPqc = values.inspectionTypeCode === 'PQC';
-
   /*
    * 라우팅은 고르지 않고 자동으로 채운다(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
    * 이미 저장된 기준도 창을 열면 지금 Rev 로 다시 채운다. 품목을 비우면 라우팅도 비운다.
@@ -220,7 +216,7 @@ export const PlanPane = ({
           </div>
         </div>
 
-        {/* 둘째 줄 — 검사 유형 · 공정(사용자 시안 2026-11-04). */}
+        {/* 둘째 줄 — 검사 유형(사용자 시안 2026-11-04). 공정 칸은 없다 — PQC 기준은 제품에 붙고, 검사할 공정은 라우팅 「검사 관리」가 정한다(사용자 결정 2026-11-04). */}
         <SelectField
           label={t.fields.inspectionType}
           required
@@ -229,20 +225,6 @@ export const PlanPane = ({
           onChange={(inspectionTypeCode) => onChange({ inspectionTypeCode })}
           error={shownError('inspectionTypeCode')}
           invalid={isBlank(values.inspectionTypeCode)}
-        />
-
-        {/* IQC · OQC 는 공정을 비워도 된다 — PQC 만 필수다. */}
-        <SelectField
-          label={t.fields.process}
-          /* PQC 기준은 공정이 필수다 — 필수 표시 · 이름 오른쪽 안내 · 빈 칸 빨간 테두리(사용자 지시 2026-11-04). */
-          required={isPqc}
-          {...(isPqc ? { hint: t.actionReasons.pqcNeedsProcess } : {})}
-          options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
-          value={values.processId}
-          placeholder={t.values.notSelected}
-          onChange={(processId) => onChange({ processId })}
-          error={shownError('processId')}
-          invalid={isPqc && isBlank(values.processId)}
         />
 
         {/* 셋째 줄 — 품목 · 라우팅(사용자 지시 2026-11-04). */}

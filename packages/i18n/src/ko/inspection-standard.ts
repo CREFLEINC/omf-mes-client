@@ -48,7 +48,6 @@ export const inspectionStandard = {
      */
     routingNeedsItem: '품목을 선택하면 라우팅이 표시됩니다.',
     /* PQC 기준은 공정이 필수다 — 검사 유형이 PQC 일 때 공정 이름 오른쪽에 둔다(사용자 지시 2026-11-04). */
-    pqcNeedsProcess: 'PQC는 공정을 선택해야 합니다.',
     /*
      * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
      */

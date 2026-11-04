@@ -97,7 +97,6 @@ import {
   useItemNameParts,
   useEquipmentOptions,
   useItemOptions,
-  useProcessOptions,
   useRoutingOptions,
   useUomOptions,
   useVersionHistory,
@@ -1080,7 +1079,6 @@ export const InspectionStandardScreen = () => {
   const activeItemId = Number(activeValues?.itemId ?? '') || null;
 
   const itemOptions = useItemOptions(activeItemId);
-  const processOptions = useProcessOptions();
   const routingOptions = useRoutingOptions(activeItemId);
 
   /**
@@ -1088,21 +1086,12 @@ export const InspectionStandardScreen = () => {
    * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
    */
   const optionsNotice = (() => {
-    const lookups: LookupResult[] = [itemOptions, processOptions, routingOptions];
+    const lookups: LookupResult[] = [itemOptions, routingOptions];
 
     if (lookups.some((lookup) => lookup.isError)) {
       return (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
-        </div>
-      );
-    }
-
-    /* 품목은 품목 선택 창에서 검색해 고른다 — 목록이 잘려도 고를 수 있어 잘림 안내 대상이 아니다(#196). */
-    if ([processOptions, routingOptions].some((lookup) => lookup.truncated)) {
-      return (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
         </div>
       );
     }
@@ -1433,7 +1422,6 @@ export const InspectionStandardScreen = () => {
           banner={<SaveErrorBanner error={createWrite.error} />}
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
-          processOptions={optionsFor(processOptions, createValues.processId)}
           routingRevisions={routingOptions.revisions}
           autoRoutingId={routingOptions.autoRoutingId}
           routingDisabledReason={routingDisabledReason}
@@ -1502,12 +1490,6 @@ export const InspectionStandardScreen = () => {
         <PlanDetailHead
           plan={planDetail.data.inspectionPlan}
           itemLabel={itemLabel}
-          processLabel={
-            planDetail.data.inspectionPlan.processId === null ||
-            planDetail.data.inspectionPlan.processId === undefined
-              ? null
-              : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
-          }
           routingRevision={routingOptions.revisions.find(
             (revision) =>
               revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
@@ -1573,7 +1555,6 @@ export const InspectionStandardScreen = () => {
               banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
-              processOptions={optionsFor(processOptions, formState.values.processId)}
               routingRevisions={routingOptions.revisions}
               autoRoutingId={routingOptions.autoRoutingId}
               routingDisabledReason={routingDisabledReason}

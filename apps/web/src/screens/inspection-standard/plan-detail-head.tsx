@@ -13,8 +13,6 @@ export interface PlanDetailHeadProps {
   plan: InspectionPlan;
   /** 품목 표시 이름. 비었으면(전 품목 공통 기준) 「품목 미지정」 */
   itemLabel: string | null;
-  /** 공정 표시 이름. 없으면 적지 않는다 */
-  processLabel: string | null;
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
@@ -28,12 +26,11 @@ export interface PlanDetailHeadProps {
 
 /**
  * 검사 기준 상세 카드의 머리(omf-all-around#196) — 기준명 · 기준 코드 · 승인/사용 칩 · 「유형 · 품목」 한 줄.
- * 기본 정보(코드 · 이름 · 유형 · 품목 · 공정 · 라우팅)는 「기본 정보 수정」 창에서 고친다.
+ * 기본 정보(코드 · 이름 · 유형 · 품목 · 라우팅)는 「기본 정보 수정」 창에서 고친다.
  */
 export const PlanDetailHead = ({
   plan,
   itemLabel,
-  processLabel,
   routingRevision,
   onEdit,
   onDeactivate,
@@ -86,8 +83,6 @@ export const PlanDetailHead = ({
           { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
           { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
           { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
-          /* 공정 · 생략 여부 · 라우팅은 비었거나 꺼져도 늘 보인다(사용자 지시 2026-11-04). */
-          { label: t.fields.process, value: processLabel ?? '-' },
         ].map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>
