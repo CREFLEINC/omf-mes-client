@@ -37,6 +37,11 @@ export interface DepartmentRow {
   parentDepartmentId: number | null;
   businessUnitId: number | null;
   isActive: boolean;
+  /**
+   * 연결한 생산 창고 수(003 · W-06-06 목록 열). 서버가 싣지 않으면 키가 없고 열은 「—」를 보인다 —
+   * 계약 §3 에 없는 선택 칸이다.
+   */
+  productionWarehouseCount?: number;
 }
 
 /**

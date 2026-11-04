@@ -32,6 +32,11 @@ export interface DepartmentFormPaneProps {
   /** null이면 상위 부서를 고를 수 있다. 값이 있으면 그것이 비활성 사유다 */
   parentDisabledReason: string | null;
   businessUnitOptions: SelectOption[];
+  /**
+   * 「생산 창고」 구획(003 · US8). 수정 폼에만 온다 — 연결은 이미 있는 부서에 건다.
+   * 저장은 이 폼의 「저장」 하나가 함께 낸다(부서 먼저).
+   */
+  productionWarehouses?: ReactNode;
   isDirty: boolean;
   /**
    * **막을 것 — 전역이다.** 이 화면의 부서 저장은 한 번에 하나뿐이라(훅 하나에 요청 하나),
@@ -81,6 +86,7 @@ export const DepartmentFormPane = ({
   parentOptions,
   parentDisabledReason,
   businessUnitOptions,
+  productionWarehouses,
   isDirty,
   isLocked,
   isSaving,
@@ -198,6 +204,8 @@ export const DepartmentFormPane = ({
           error={fieldErrors.businessUnitId}
         />
       </div>
+
+      {productionWarehouses}
 
       <div className="form-actions">
         {/*

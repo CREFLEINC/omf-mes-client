@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, DepartmentWithProductionWarehouseCount } from '@omf-mes/api-client';
 
 import type { Department, DepartmentFormValues, DepartmentRow } from './types';
 
@@ -30,13 +30,16 @@ const foldSelfReference = (
     : parentDepartmentId;
 
 export const toDepartmentRows = (departments: readonly Department[]): DepartmentRow[] =>
-  departments.map((department) => ({
+  departments.map((department: DepartmentWithProductionWarehouseCount) => ({
     departmentId: department.departmentId,
     departmentCode: department.departmentCode,
     departmentName: department.departmentName,
     parentDepartmentId: foldSelfReference(department.departmentId, department.parentDepartmentId),
     businessUnitId: department.businessUnitId ?? null,
     isActive: department.isActive,
+    ...(department.productionWarehouseCount === undefined
+      ? {}
+      : { productionWarehouseCount: department.productionWarehouseCount }),
   }));
 
 /** 널·없음을 빈 문자열로 모은다 — 선택칸의 「지정하지 않음」이 하나의 값이어야 한다. */

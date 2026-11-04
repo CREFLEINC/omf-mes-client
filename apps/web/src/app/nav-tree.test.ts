@@ -297,6 +297,7 @@ describe('주 메뉴 트리', () => {
       '/notification/zalo-connection → link',
       '/notification/dispatch-history → history',
       '/master-data/common-code → list_alt',
+      '/system/plant-working-days → event_available',
       '/system/terminal-process-map → tablet_android',
     ]);
   });

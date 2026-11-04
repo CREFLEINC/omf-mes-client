@@ -177,6 +177,39 @@ export const commonCode: Translated<typeof ko.commonCode> = {
       addLockedByOtherDepartment:
         'Thêm phòng ban chỉ thực hiện được sau khi việc lưu của phòng ban khác kết thúc.',
     },
+    productionWarehouses: {
+      title: 'Kho sản xuất',
+      countColumn: 'Kho sản xuất',
+      help: 'Vật tư của W/O thuộc chuyền của phòng ban này được xuất từ các kho sản xuất liên kết tại đây. Mỗi vật tư được xuất từ kho còn tồn và có lượng dùng được nhiều nhất. Vật tư không còn tồn ở kho nào sẽ không đưa vào yêu cầu xuất mà hiển thị là thiếu.',
+      none: 'Chưa liên kết kho sản xuất nào. W/O của chuyền thuộc phòng ban này sẽ bị chặn khi phát hành (khi nhà máy có ít nhất một kho sản xuất).',
+      tableLabel: 'Kho sản xuất đã liên kết',
+      columns: {
+        plant: 'Nhà máy',
+        warehouse: 'Kho',
+        stock: 'Tồn kho',
+        remove: 'Gỡ',
+      },
+      newlyLinked: 'Mới liên kết',
+      add: 'Thêm kho',
+      viewStock: 'Xem tồn kho',
+      viewStockLabel: (warehouse: string): string => `Xem tồn kho ${warehouse}`,
+      removeLabel: (warehouse: string): string => `Gỡ liên kết ${warehouse}`,
+      picker: {
+        title: 'Thêm kho sản xuất',
+        description: 'Chọn kho cần liên kết. Chỉ hiển thị kho đang sử dụng.',
+        empty: 'Không có kho nào để chọn.',
+        close: 'Đóng',
+      },
+      confirm: {
+        title: 'Gỡ liên kết kho sản xuất',
+        body: (warehouse: string, count: number): string =>
+          `Gỡ liên kết ${warehouse}. ${String(count)} phiếu yêu cầu xuất đang chờ hoặc đã phát hành từ kho này vẫn tiếp tục. W/O mới sẽ không dùng kho này.`,
+        cancel: 'Hủy',
+        submit: 'Gỡ liên kết',
+      },
+      loading: 'Đang tải kho sản xuất',
+      unknownPlant: 'Nhà máy không xác định',
+    },
     validation: {
       required: 'Đây là mục bắt buộc.',
       departmentCodeBlank: 'Mã phòng ban không được chỉ gồm khoảng trắng.',

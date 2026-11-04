@@ -897,6 +897,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: '공통코드·조직·작업자',
         labelVi: 'Mã chung · tổ chức · nhân viên',
       },
+      /* W-CO-15 — 출고 작업일을 셀 공장별 주간 근무일(피처 003). 공통코드·조직·작업자 다음 줄이다(검토 7 확정 2026-11-03). */
+      {
+        to: '/system/plant-working-days',
+        icon: 'event_available',
+        label: '공장 근무일 설정',
+        labelVi: 'Thiết lập ngày làm việc nhà máy',
+      },
       /* W-CO-06 — 단말은 시스템 관리의 자원이다. */
       {
         to: '/system/terminal-process-map',
