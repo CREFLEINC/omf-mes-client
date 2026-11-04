@@ -143,6 +143,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     noFile: 'Chưa có tệp đính kèm',
     defectTypeHint: 'Chọn ít nhất một loại lỗi.',
     defectCodesEmpty: 'Chưa có loại lỗi nào. Hãy đăng ký trong Mã lỗi · nguyên nhân trước.',
+    defectCodeRegister: 'Đăng ký mã lỗi',
     defectCodesFailed: 'Không tải được loại lỗi.',
     checks: 'Hạng mục kiểm tra khác',
     checkCount: (n: number) => `${String(n)} hạng mục`,

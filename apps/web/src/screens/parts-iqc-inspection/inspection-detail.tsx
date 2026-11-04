@@ -83,6 +83,7 @@ type DefectCode = {
 const t = messages.partsIqcInspection;
 /** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
 const STANDARD_PATH = '/master-data/inspection-standard';
+const DEFECT_CODE_PATH = '/master-data/defect-cause-code';
 
 const TIME_LABELS: TimeFieldLabels = {
   field: t.lot.inspectedTime,
@@ -201,6 +202,19 @@ export const InspectionDetail = ({
         drawings={drawings.data ?? []}
         defectCodes={(defectCodes.data ?? []) as DefectCode[]}
         defectCodesFailed={defectCodes.isError}
+        /* 불량 코드가 없으면 그 화면을 새 탭으로 열어 바로 등록한다 — 이 탭의 입력은 그대로 둔다(사용자 지시 2026-11-04). */
+        onRegisterDefectCode={
+          toWebAccess(session?.permissions).allows(DEFECT_CODE_PATH)
+            ? () => {
+                window.open(
+                  `${DEFECT_CODE_PATH}?mode=create${(defectCodes.data ?? []).length === 0 ? '&as=category' : ''}`,
+                  '_blank',
+                );
+                /* 등록하고 돌아오면 목록을 다시 받는다. */
+                window.addEventListener('focus', () => void defectCodes.refetch(), { once: true });
+              }
+            : undefined
+        }
         inspector={session?.worker ?? null}
         appUserId={session?.userId ?? null}
         draft={
@@ -347,6 +361,8 @@ interface FormProps {
   drawings: { attachmentId: number; blob: Blob }[];
   defectCodes: DefectCode[];
   defectCodesFailed: boolean;
+  /** 불량 코드가 하나도 없을 때 「불량 코드 등록」 단추 — 그 화면 권한이 없으면 undefined */
+  onRegisterDefectCode?: () => void;
   inspector: { workerName: string } | null;
   /** 작업자 연결 창이 이을 계정 — 세션이 없으면 버튼을 두지 않는다. */
   appUserId: number | null;
@@ -983,7 +999,14 @@ const InspectionForm = (props: FormProps) => {
             {props.defectCodesFailed ? (
               <p className="field-note">{t.visual.defectCodesFailed}</p>
             ) : leafCodes.length === 0 ? (
-              <p className="field-note">{t.visual.defectCodesEmpty}</p>
+              <span className="parts-iqc-no-plan">
+                <span className="field-note">{t.visual.defectCodesEmpty}</span>
+                {props.onRegisterDefectCode !== undefined && (
+                  <Button variant="outlined" size="sm" onClick={props.onRegisterDefectCode}>
+                    {t.visual.defectCodeRegister}
+                  </Button>
+                )}
+              </span>
             ) : (
               <div className="parts-iqc-defect-options">
                 {leafCodes.map((code) => (

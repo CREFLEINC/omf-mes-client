@@ -137,6 +137,7 @@ export const partsIqcInspection = {
     noFile: '첨부된 파일 없음',
     defectTypeHint: '불량 유형을 하나 이상 선택하세요.',
     defectCodesEmpty: '등록된 불량 유형이 없습니다. 불량·원인코드에서 먼저 등록하세요.',
+    defectCodeRegister: '불량 코드 등록',
     defectCodesFailed: '불량 유형을 불러오지 못했습니다.',
     checks: '기타 검사 항목',
     checkCount: (n: number) => `${String(n)}개 항목`,
