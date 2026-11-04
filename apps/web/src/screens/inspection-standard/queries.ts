@@ -374,7 +374,6 @@ export const lookupKeys = {
   itemDetail: (itemId: number) => ['inspection-standard-item-detail', itemId] as const,
   processes: ['inspection-standard-processes'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
-  routingProcesses: (routingId: number) => ['inspection-standard-routing-processes', routingId] as const,
   uoms: ['inspection-standard-uoms'] as const,
   equipments: ['inspection-standard-equipments'] as const,
   codeValues: (codeGroupCode: string) =>
@@ -613,24 +612,6 @@ export const useRoutingOptions = (itemId: number | null): LookupResult & { lates
     isLoading: itemId !== null && routings.isPending,
     latestRoutingId: routings.data === undefined ? null : latestRoutingId(routings.data.items),
   };
-};
-
-/**
- * 고른 라우팅의 공정 번호들 — 라우팅을 고른 기준은 그 라우팅에 있는 공정만 고르게 한다(사용자 결정 2026-11-04 · 서버도 400).
- * 라우팅이 없거나 받는 중이면 null(좁히지 않는다).
- */
-export const useRoutingProcessIds = (routingId: number | null): string[] | null => {
-  const { client } = useApiClient();
-  const operations = useQuery({
-    queryKey: lookupKeys.routingProcesses(routingId ?? 0),
-    enabled: routingId !== null,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/planning/routings/{routingId}/operations', { params: { path: { routingId: routingId ?? 0 } } }),
-      ),
-  });
-  if (routingId === null || operations.data === undefined) return null;
-  return [...new Set(operations.data.items.map((operation) => String(operation.processId)))];
 };
 
 /** 품목 표시 — 이름과 코드. 부르는 중 · 못 찾음 · 실패면 `code` 가 null 이고 `name` 이 공용 표기다. */

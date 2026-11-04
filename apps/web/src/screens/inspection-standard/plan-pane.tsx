@@ -33,8 +33,6 @@ export interface PlanPaneProps {
   itemOptions: SelectOption[];
   processOptions: SelectOption[];
   routingOptions: SelectOption[];
-  /** 고른 라우팅의 공정 번호들 — 공정이 거기 없으면 비우고, 하나뿐이면 자동으로 넣는다. null 이면 좁히지 않는다. */
-  routingProcessIds?: string[] | null;
   /** 품목을 고르면 라우팅에 자동으로 넣을 값 — 그 품목의 최신 확정 Rev(사용자 지시 2026-11-04). 받기 전이면 null. */
   latestRoutingId?: string | null;
   /**
@@ -77,7 +75,6 @@ export const PlanPane = ({
   processOptions,
   routingOptions,
   latestRoutingId = null,
-  routingProcessIds = null,
   routingDisabledReason,
   codeLockReason,
   isDirty,
@@ -130,15 +127,6 @@ export const PlanPane = ({
     if (values.routingId === '') onChange({ routingId: latestRoutingId });
   }, [autoRoutingFor, values.itemId, values.routingId, latestRoutingId, onChange]);
 
-  /*
-   * 라우팅에 없는 공정은 둘 수 없다(사용자 결정 2026-11-04) — 고른 라우팅이 바뀌어 지금 공정이 거기 없으면,
-   * 공정이 하나뿐인 라우팅은 그 공정을 넣고 아니면 비운다(빈 칸은 PQC 면 빨간 테두리로 보인다).
-   */
-  useEffect(() => {
-    if (routingProcessIds === null || values.processId === '' && routingProcessIds.length !== 1) return;
-    if (routingProcessIds.includes(values.processId)) return;
-    onChange({ processId: routingProcessIds.length === 1 ? routingProcessIds[0]! : '' });
-  }, [routingProcessIds, values.processId, onChange]);
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */

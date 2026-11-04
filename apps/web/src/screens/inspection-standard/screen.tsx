@@ -98,7 +98,6 @@ import {
   useItemOptions,
   useProcessOptions,
   useRoutingOptions,
-  useRoutingProcessIds,
   useUomOptions,
   useVersionHistory,
   versionDetailPath,
@@ -1082,12 +1081,6 @@ export const InspectionStandardScreen = () => {
   const itemOptions = useItemOptions(activeItemId);
   const processOptions = useProcessOptions();
   const routingOptions = useRoutingOptions(activeItemId);
-  const routingProcessIds = useRoutingProcessIds(Number(activeValues?.routingId ?? '') || null);
-  /* 라우팅을 고르면 공정 선택지를 그 라우팅의 공정만으로 좁힌다(사용자 결정 2026-11-04). */
-  const processOptionsFor = (selected: string) => {
-    const options = optionsFor(processOptions, selected);
-    return routingProcessIds === null ? options : options.filter((option) => routingProcessIds.includes(option.value));
-  };
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 폼 위에 낸다.
@@ -1423,8 +1416,7 @@ export const InspectionStandardScreen = () => {
           banner={<SaveErrorBanner error={createWrite.error} />}
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
-          processOptions={processOptionsFor(createValues.processId)}
-          routingProcessIds={routingProcessIds}
+          processOptions={optionsFor(processOptions, createValues.processId)}
           routingOptions={optionsFor(routingOptions, createValues.routingId)}
           latestRoutingId={routingOptions.latestRoutingId}
           routingDisabledReason={routingDisabledReason}
@@ -1551,8 +1543,7 @@ export const InspectionStandardScreen = () => {
               banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
-              processOptions={processOptionsFor(formState.values.processId)}
-              routingProcessIds={routingProcessIds}
+              processOptions={optionsFor(processOptions, formState.values.processId)}
               routingOptions={optionsFor(routingOptions, formState.values.routingId)}
               latestRoutingId={routingOptions.latestRoutingId}
               routingDisabledReason={routingDisabledReason}
