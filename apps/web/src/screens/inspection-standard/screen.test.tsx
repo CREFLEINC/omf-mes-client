@@ -1262,7 +1262,7 @@ describe('InspectionStandardScreen — 기준 등록', () => {
 
 describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () => {
   /* 계약이 itemId를 필수 쿼리로 둔다 — 품목이 없으면 보낼 수 없는 요청이다. */
-  it('품목이 널인 기준에서는 라우팅 요청이 나가지 않고 라우팅 칸이 없다', async () => {
+  it('품목이 널인 기준에서는 라우팅 요청이 나가지 않고 라우팅 선택칸 대신 안내가 선다', async () => {
     const { requests } = renderScreen(
       [
         planListRoute(),
@@ -1276,6 +1276,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
+    expect(screen.getByText('품목을 선택하면 라우팅을 선택할 수 있습니다.')).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
 

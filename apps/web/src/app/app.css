@@ -364,15 +364,27 @@ main > * + * {
   gap: var(--space-2);
 }
 
-/* 기본 정보 수정 창의 PQC 생략 허용 — 위아래 구분선 사이 한 줄 구획(사용자 시안 · #208). */
-.inspection-standard-pqc-skip {
-  padding: var(--space-3) 0 0;
-  border-top: 1px solid var(--outline-variant);
+/*
+ * 기본 정보 폼 배치(사용자 지시 2026-11-04) — 첫 줄 기준코드 · 기준명, 둘째 줄 기본 생략 · 검사 유형 · 공정,
+ * 셋째 줄 품목 · 라우팅. 여섯 칸 격자에 두 칸 줄은 셋씩, 세 칸 줄은 둘씩 차지한다.
+ */
+.form-grid.inspection-standard-plan-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
-.inspection-standard-pqc-skip > .field-note {
-  max-width: none;
-  margin: 0;
+.inspection-standard-plan-grid > .field-cell {
+  grid-column: span 3;
+}
+
+.inspection-standard-plan-grid > .field-cell.inspection-standard-plan-third {
+  grid-column: span 2;
+}
+
+/* 체크는 라벨이 없어 옆 선택칸의 입력 줄 높이에 맞춰 세운다. */
+.inspection-standard-plan-grid > .inspection-standard-plan-skip {
+  align-self: end;
+  justify-content: center;
+  min-height: 2.5rem;
 }
 
 .inspection-standard-plan-head > .pane-title {

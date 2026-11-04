@@ -7,6 +7,8 @@ import type { SelectOption } from './types';
 export interface SelectFieldProps {
   /** 화면이 이 칸으로 커서를 옮길 때 쓴다. 없으면 이 부품이 짓는다. */
   id?: string;
+  /** 칸 묶음에 덧붙이는 배치 클래스(줄 · 칸 폭). */
+  className?: string;
   label: string;
   options: SelectOption[];
   value: string;
@@ -36,6 +38,7 @@ export interface SelectFieldProps {
  */
 export const SelectField = ({
   id: givenId,
+  className,
   label,
   options,
   value,
@@ -55,7 +58,7 @@ export const SelectField = ({
   const message = error ?? (disabled ? disabledReason : note) ?? undefined;
 
   return (
-    <div className="field-cell">
+    <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
       <FieldLabel htmlFor={id} label={label} required={required} />
       <Select
         id={id}

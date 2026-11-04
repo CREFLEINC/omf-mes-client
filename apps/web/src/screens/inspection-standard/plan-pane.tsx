@@ -89,6 +89,7 @@ export const PlanPane = ({
   const itemErrorId = useId();
   const itemOption = itemOptions.find((option) => option.value === values.itemId) ?? null;
   const routingId = useId();
+  const routingHintId = useId();
   /* 품목을 고르면 라우팅 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04). 칸이 그려진 뒤에 옮긴다. */
   const [focusRouting, setFocusRouting] = useState(false);
   const isRoutingShown = routingDisabledReason === null;
@@ -132,7 +133,7 @@ export const PlanPane = ({
       {optionsNotice}
       {banner}
 
-      <div className="form-grid">
+      <div className="form-grid inspection-standard-plan-grid">
         {/*
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
@@ -168,7 +169,21 @@ export const PlanPane = ({
           />
         </div>
 
+        {/* 둘째 줄 — 기본 생략 · 검사 유형 · 공정(사용자 지시 2026-11-04). */}
+        {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. */}
+        {values.inspectionTypeCode !== '' && (
+          <div className="field-cell inspection-standard-plan-third inspection-standard-plan-skip">
+            <Checkbox
+              checked={values.defaultSkip}
+              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
+            >
+              {t.fields.defaultSkip}
+            </Checkbox>
+          </div>
+        )}
+
         <SelectField
+          className="inspection-standard-plan-third"
           label={t.fields.inspectionType}
           required
           options={ensureOption(INSPECTION_TYPE_OPTIONS, values.inspectionTypeCode)}
@@ -177,6 +192,18 @@ export const PlanPane = ({
           error={fieldErrors.inspectionTypeCode}
         />
 
+        {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
+        <SelectField
+          className="inspection-standard-plan-third"
+          label={t.fields.process}
+          options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
+          value={values.processId}
+          placeholder={t.values.notSelected}
+          onChange={(processId) => onChange({ processId })}
+          error={fieldErrors.processId}
+        />
+
+        {/* 셋째 줄 — 품목 · 라우팅(사용자 지시 2026-11-04). */}
         {/*
          * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
          * 품목은 **칸에서 바로 검색해서 고른다**(사용자 지시 2026-11-04 — 품목 선택 창을 띄우지 않는다).
@@ -204,18 +231,11 @@ export const PlanPane = ({
           )}
         </div>
 
-        {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
-        <SelectField
-          label={t.fields.process}
-          options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
-          value={values.processId}
-          placeholder={t.values.notSelected}
-          onChange={(processId) => onChange({ processId })}
-          error={fieldErrors.processId}
-        />
-
-        {/* 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸을 두지 않는다(사용자 지시 2026-11-04 · 비활성 칸과 사유 대신). */}
-        {isRoutingShown && (
+        {/*
+         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 선택칸을 두지 않고 라벨 오른쪽에 안내만 둔다.
+         * 품목을 고르면 선택칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04).
+         */}
+        {isRoutingShown ? (
           <SelectField
             id={routingId}
             label={t.fields.routing}
@@ -225,17 +245,14 @@ export const PlanPane = ({
             onChange={(routingId) => onChange({ routingId })}
             error={fieldErrors.routingId}
           />
-        )}
-
-        {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. 위아래 구분선을 둔 한 줄 구획(사용자 시안 · #208). */}
-        {values.inspectionTypeCode !== '' && (
-          <div className="field-cell form-grid-full inspection-standard-pqc-skip">
-            <Checkbox
-              checked={values.defaultSkip}
-              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
-            >
-              {t.fields.defaultSkip}
-            </Checkbox>
+        ) : (
+          <div className="field-cell">
+            <FieldLabel
+              htmlFor={routingId}
+              label={t.fields.routing}
+              hint={routingDisabledReason ?? undefined}
+              hintId={routingHintId}
+            />
           </div>
         )}
       </div>
