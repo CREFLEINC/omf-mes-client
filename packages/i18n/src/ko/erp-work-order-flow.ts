@@ -184,7 +184,7 @@ export const erpWorkOrderFlow = {
       effects: [
         'W/O 상태 변경: 배포',
         '생산 LOT 선발행',
-        '자재 출고 요청 발행',
+        '출고 요청 발행',
         '피킹 지시(투입 자재가 있을 때)',
         '공정검사(PQC) 의뢰(검사 공정일 때)',
       ],
@@ -464,13 +464,45 @@ export const erpWorkOrderFlow = {
       effects: {
         status: (count: number): string => `W/O 상태 변경: 배포 (${String(count)}건)`,
         lots: (count: number): string => `생산 LOT 선발행 (${String(count)}개)`,
-        materials: '자재 출고 요청 발행',
+        materials: '출고 요청 발행',
         picking: '피킹 지시(투입 자재가 있을 때)',
         pqc: '공정검사(PQC) 의뢰(검사 공정일 때)',
       },
       irreversible: '배포 후에는 수정할 수 없습니다. W/O 취소로 처리합니다.',
       release: '배포',
       failed: (workOrderNo: string, reason: string): string => `${workOrderNo}: ${reason}`,
+      /**
+       * 피처 003 생산 창고 공장(screens/W-02-01-release.md). 장 수는 배포 전에 세지 않는다(검토 14) —
+       * 날짜만 보이고 장 수와 창고별 분할은 배포 결과에서 보인다.
+       */
+      productionWarehouse: {
+        productionDate: '생산일',
+        issueWorkDate: '출고 작업일',
+        dates: (first: string, more: number): string =>
+          more > 0 ? `${first} 외 ${String(more)}일` : first,
+        materials: (dates: string): string => `출고 요청 대기, 출고 작업일 ${dates}`,
+        materialsNote: '생산 창고별로 나눕니다. 장 수는 배포 결과에서 보입니다.',
+        picking: '피킹 지시와 인계 작업 알림은 출고 작업일 00:00 에',
+        pickingNote: '재고가 모자라면 배포는 되고 부족분이 출고 요청 현황에 보입니다.',
+        materialsNow: (date: string): string => `출고 요청 바로 출고 (출고 작업일 ${date} 지남)`,
+        pickingNow: '피킹 지시와 인계 작업 알림(바로)',
+        blockedTitle: '배포하지 못했습니다. 출고 요청에 필요한 기준정보가 빠졌습니다',
+        blocks: {
+          LINE_DEPARTMENT_MISSING: '생산 라인에 담당 부서가 없습니다.',
+          PRODUCTION_WAREHOUSE_MISSING: '라인 담당 부서에 연결된 생산 창고가 없습니다.',
+          PRODUCTION_FLOOR_LOCATION_MISSING: '생산 라인에 생산 현장 위치가 없습니다.',
+        } as Record<string, string>,
+        blockLinks: {
+          LINE_DEPARTMENT_MISSING: '설비 그룹에서 담당 부서 지정',
+          PRODUCTION_WAREHOUSE_MISSING: '조직(부서)에서 생산 창고 연결',
+          PRODUCTION_FLOOR_LOCATION_MISSING: '4M 자원배정에서 설정',
+        } as Record<string, string>,
+        unsourced: (workOrderNo: string, count: number, items: string): string =>
+          `${workOrderNo}: 재고 있는 생산 창고가 없어 출고 요청에 넣지 못한 자재 ${String(count)}종, ${items}. 생산 창고를 채운 뒤 「출고 요청 현황 › 부족」에서 보충 요청하세요.`,
+        unsourcedItem: (code: string, name: string, qty: string, uom: string): string =>
+          `${code} ${name} ${qty} ${uom}`,
+        openShortage: '출고 요청 현황 › 부족 열기',
+      },
     },
     done: {
       heading: '처리 결과',

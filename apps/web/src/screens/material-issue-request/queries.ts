@@ -1,4 +1,4 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, WorkOrderDetailForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -32,6 +32,49 @@ export const materialIssueRequestKeys = {
   shortage: (workOrderId: number) => ['material-issue-request', 'shortage', workOrderId] as const,
   existingAll: ['material-issue-request', 'existing'] as const,
   existing: (workOrderId: number) => ['material-issue-request', 'existing', workOrderId] as const,
+  workOrder: (workOrderId: number) =>
+    ['material-issue-request', 'work-order', workOrderId] as const,
+  item: (itemId: number) => ['material-issue-request', 'item', itemId] as const,
+};
+
+/**
+ * W/O 상세 — 피처 003 의 생산 창고(`productionWarehouses`, 계약 밖 선택 칸)와, W-02-11 「보충 요청」으로
+ * 열 때 고를 W/O 자체. 칸이 없거나 비면 지금 방식 공장(FR-009a)이라 화면이 지금 그대로다.
+ * 조회가 실패해도 지금 방식으로 둔다 — 이 칸 때문에 요청 발행을 막지 않는다.
+ */
+export const useWorkOrderDetail = (
+  workOrderId: number | null,
+): UseQueryResult<WorkOrderDetailForward> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: materialIssueRequestKeys.workOrder(workOrderId ?? 0),
+    enabled: workOrderId !== null,
+    retry: false,
+    queryFn: async () =>
+      (await runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId: workOrderId ?? 0 } },
+        }),
+      )) as WorkOrderDetailForward,
+  });
+};
+
+/** 채워 열 품목의 기본 단위 — W-02-11 「보충 요청」은 품목 번호만 준다. */
+export const useItemBaseUom = (itemId: number | null): UseQueryResult<number | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: materialIssueRequestKeys.item(itemId ?? 0),
+    enabled: itemId !== null,
+    retry: false,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: itemId ?? 0 } } }),
+      );
+      return data.item.baseUomId ?? null;
+    },
+  });
 };
 
 const fetchWorkOrders = async (client: Client, q: string): Promise<WorkOrderListResult> => {

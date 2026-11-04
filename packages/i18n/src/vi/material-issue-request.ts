@@ -8,7 +8,7 @@ import type { Translated } from './translated';
  * 말한다. 결과 설명으로 무르게 옮기면 이 화면의 존재 이유가 사라진다.
  */
 export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = {
-  title: 'Yêu cầu cấp phát vật tư',
+  title: 'Yêu cầu xuất kho bổ sung',
   breadcrumbRoot: 'Quản lý mua hàng / vật tư',
   policyNotice: {
     title: 'Cấm mang vật tư ra khỏi kho mà không theo quy trình',
@@ -86,7 +86,7 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     existingRequestRow: (issueRequestNo: string, statusCode: string, requiredAt: string) =>
       `${issueRequestNo} · ${statusCode} · ${requiredAt}`,
     existingRequestsTruncated:
-      'Chỉ thấy một phần đầu. Toàn bộ xem ở danh sách yêu cầu xuất kho vật tư.',
+      'Chỉ thấy một phần đầu. Toàn bộ xem ở Tình trạng yêu cầu xuất kho.',
   },
   values: {
     empty: '—',
@@ -121,9 +121,56 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     warehouseAutoFilled: 'Đã điền theo vị trí bán thành phẩm mặc định của W/O. Cần thì đổi được.',
   },
   result: {
-    title: 'Đã phát hành yêu cầu cấp phát vật tư',
+    title: 'Đã phát hành yêu cầu xuất kho',
     issueRequestNo: (no: string) => `Số yêu cầu: ${no}`,
     statusCode: (code: string) => `Trạng thái: ${code}`,
     lineCount: (count: number) => `${String(count)} mặt hàng`,
+    splitTitle: (count: number): string =>
+      count > 1
+        ? `Đã phát hành ${String(count)} phiếu yêu cầu xuất kho. Đã tách theo kho sản xuất xuất đi`
+        : 'Đã phát hành yêu cầu xuất kho',
+    overrideNote: 'Yêu cầu bị lấy phần dự kiến đã hiển thị thiếu và ghi lịch sử.',
+    unsourcedNote: 'Dòng đó trong danh sách thiếu sẽ đổi thành «Đã yêu cầu bổ sung».',
+  },
+  sourceWarehouse: {
+    none: 'Phòng ban phụ trách chuyền của W/O này chưa liên kết kho sản xuất nên không yêu cầu được. Hãy liên kết kho sản xuất ở Tổ chức (phòng ban).',
+    label: 'Kho sản xuất xuất đi',
+    auto: 'Tự động — kho sản xuất còn tồn và có lượng dùng được nhiều nhất cho từng vật tư',
+    autoHelp: (count: number): string =>
+      `Trong ${String(count)} kho sản xuất đã liên kết, mỗi vật tư xuất từ kho còn tồn và có lượng dùng được nhiều nhất. Bằng nhau thì kho có tồn cũ hơn. Kho khác nhau thì yêu cầu được tách theo kho.`,
+    fixedHelp: (warehouse: string): string => `Mọi mặt hàng xuất từ ${warehouse}.`,
+    destination: 'Nơi nhận (hiện trường sản xuất)',
+    destinationHelp: 'Để trống thì điền hiện trường sản xuất của chuyền.',
+  },
+  reasonHelp:
+    'Ứng phó khẩn cấp và bổ sung thiếu: nếu số còn lại không đủ, có thể lấy phần dự kiến của yêu cầu khác sau khi xác nhận cảnh báo. Lý do khác chỉ yêu cầu được đến số còn lại.',
+  prefilled: 'Yêu cầu mở từ mục Thiếu của Tình trạng yêu cầu xuất kho. Đã điền W/O, mặt hàng, số lượng, lý do.',
+  override: {
+    title: 'Lấy phần dự kiến xuất của W/O khác',
+    body: 'Đã yêu cầu nhiều hơn số còn lại. Nếu vẫn yêu cầu, sẽ lấy phần dự kiến của các yêu cầu bên dưới và các yêu cầu đó hiển thị thiếu.',
+    blockedTitle: 'Không còn số lượng nên không yêu cầu được',
+    blockedBody: 'Với lý do này chỉ yêu cầu được đến số còn lại. Chỉ ứng phó khẩn cấp hoặc bổ sung thiếu mới lấy được phần dự kiến của yêu cầu khác.',
+    noStockedBody: 'Có vật tư không có kho sản xuất còn tồn nên không yêu cầu được. Hãy bổ sung kho sản xuất rồi yêu cầu.',
+    tableLabel: 'Mặt hàng vượt',
+    columns: {
+      item: 'Mặt hàng',
+      warehouse: 'Kho sản xuất',
+      requested: 'Yêu cầu',
+      free: 'Số còn lại',
+      take: 'Số sẽ lấy',
+      affected: 'Yêu cầu bị ảnh hưởng',
+    },
+    noStockedWarehouse: 'Không có kho sản xuất còn tồn',
+    affected: (requestNo: string, workOrderNo: string, date: string): string =>
+      `${requestNo} (${workOrderNo}, ${date})`,
+    fix: 'Sửa lại số lượng',
+    submit: 'Vẫn yêu cầu',
+  },
+  status: {
+    WAITING: 'Chờ',
+    RELEASED: 'Đã phát hành',
+    IN_PROGRESS: 'Đang thực hiện',
+    DONE: 'Hoàn thành',
+    CANCELLED: 'Đã hủy',
   },
 };

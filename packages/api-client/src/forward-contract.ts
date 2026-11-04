@@ -759,6 +759,8 @@ export interface MaterialIssueRequestForward {
   workOrderNo: string;
   destinationLocationId: number;
   destinationLocationName: string;
+  requiredAt?: string | null;
+  remarks?: string | null;
   statusCode: string;
   displayStatus: MaterialIssueDisplayStatus;
   reasonCode?: string | null;
@@ -926,6 +928,100 @@ export interface PlannedStockQuery {
 }
 
 type MaterialIssueRequestId = { materialIssueRequestId: number };
+
+/**
+ * W-02-10 등록 본문(계약 §1 「칸 추가」). `destinationLocationId` 는 선택으로 바뀐다(없으면 라인 생산 현장).
+ * `sourceWarehouseId` 가 없으면 서버가 자재마다 채우고 여럿이면 요청을 나눈다.
+ */
+export type MaterialIssueRequestCreateForward = Omit<
+  components['schemas']['MaterialIssueRequestCreate'],
+  'destinationLocationId'
+> & {
+  destinationLocationId?: number;
+  sourceWarehouseId?: number;
+  acceptPlannedOverride?: boolean;
+  unsourcedShortageId?: number;
+};
+
+/**
+ * 등록 응답(서버 S8e `MaterialIssueRequestCreated`) — 옛 칸(`materialIssueRequest` · `lines`, 첫 요청)은 기존
+ * 호환용으로 남고, 만든 요청 전부(출발 창고별)는 `requests`. 화면은 `requests` 를 읽는다(지금 방식 공장도 한 장).
+ */
+export interface MaterialIssueRequestCreateResultForward extends MaterialIssueRequestDetailForward {
+  requests?: MaterialIssueRequestForward[];
+}
+
+/** 409 `PLANNED_STOCK_CONFLICT` 의 품목별 항목 — 응답 최상위 `plannedStockConflicts`(서버 S8e). */
+export interface PlannedStockConflictDetail {
+  itemId: number;
+  sourceWarehouseId?: number | null;
+  requestedQty: number;
+  /** 쓸 수 있는 양(가용 − 예정, 0 미만은 0). */
+  freeQty: number;
+  /** 확인하면 다른 요청의 예정에서 가져갈 양. */
+  takeFromPlannedQty: number;
+  overridable: boolean;
+  noStockedWarehouse?: boolean;
+  affectedRequests?: {
+    issueRequestNo: string;
+    workOrderNo: string;
+    issueWorkDate: string | null;
+  }[];
+}
+
+/** 409 본문(서버 S8e `PlannedStockConflictResponse`). */
+export interface PlannedStockConflictResponse {
+  errors: { scope: string; code: string; message: string }[];
+  plannedStockConflicts: PlannedStockConflictDetail[];
+}
+
+/** 라인 담당 부서의 이 공장 활성 생산 창고 한 줄(계약 §2, 코드순). */
+export interface WorkOrderProductionWarehouse {
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+}
+
+/**
+ * W/O 상세 응답 칸 추가(계약 §2, 2026-11-04 보탬) — W-02-10 출발 창고 칸이 쓴다.
+ * `productionWarehouseMode` 는 «공장» 기준 새 규칙 여부(FR-009a)다. 공장이 새 규칙인데 이 W/O 라인 부서에 생산
+ * 창고가 없으면 배열이 비어 있다 — 빈 배열을 지금 방식으로 읽지 않는다.
+ */
+export type WorkOrderDetailForward = components['schemas']['WorkOrder'] & {
+  productionWarehouseMode: boolean;
+  productionWarehouses: WorkOrderProductionWarehouse[];
+};
+
+/** 배포 결과의 「재고 있는 생산 창고 없음」 자재(계약 §2, FR-007a) — 배포는 성공이다. */
+export interface ReleaseUnsourcedShortage {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  shortageQty: number;
+  uomCode: string;
+}
+
+/**
+ * 배포 응답(서버 S5 `WorkOrderReleaseResult`) — 생산 창고 공장에서만 출고 요청 요약(창고별)과
+ * 미배정 자재를 싣는다.
+ */
+export type WorkOrderReleaseResultForward = components['schemas']['WorkOrder'] & {
+  materialIssueRequests?: {
+    materialIssueRequestId: number;
+    issueRequestNo: string;
+    sourceWarehouseId: number;
+    statusCode: string;
+    issueWorkDate: string;
+  }[];
+  unsourcedShortages?: ReleaseUnsourcedShortage[];
+};
+
+/** 배포 400 의 출고 요청 기준정보 사유(계약 §2). */
+export const RELEASE_BLOCK_CODES = [
+  'LINE_DEPARTMENT_MISSING',
+  'PRODUCTION_WAREHOUSE_MISSING',
+  'PRODUCTION_FLOOR_LOCATION_MISSING',
+] as const;
 
 /**
  * omf-all-around#207 — 일부 특채는 적용 때 LOT 을 나눈다. 재고가 있는 LOT 을 나누면 원장 영업일이 필요해 적용에
@@ -1369,7 +1465,21 @@ export interface ForwardPaths {
     >;
   };
   /** 서버 선행(003 · 계약 §1, S8) — 출고 요청 목록 조건 추가 · 표시 상태. 등록은 생성 타입 그대로(C3 에서 바꾼다). */
-  '/logistics/material-issue-requests': Omit<paths['/logistics/material-issue-requests'], 'get'> & {
+  '/logistics/material-issue-requests': Omit<
+    paths['/logistics/material-issue-requests'],
+    'get' | 'post'
+  > & {
+    /** 등록(계약 §1) — 출발 창고 · 예정분 가져가기 · 미배정 부족 행, 응답은 배열. */
+    post: Op<
+      {
+        query?: never;
+        header: { 'Idempotency-Key': string; 'If-Match'?: string };
+        path?: never;
+        cookie?: never;
+      },
+      { content: { 'application/json': MaterialIssueRequestCreateForward } },
+      { 201: Json<MaterialIssueRequestCreateResultForward> }
+    >;
     get: Op<
       {
         query?: MaterialIssueRequestListQueryForward;

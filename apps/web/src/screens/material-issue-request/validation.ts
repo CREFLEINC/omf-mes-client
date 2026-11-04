@@ -102,10 +102,17 @@ export interface HeaderDraft {
  * **필요 시각은 선택이지만 반쪽은 허용하지 않는다** — 날짜만 있고 시각이 없으면 화면이 시각을
  * 지어내야 하고, 시각만 있고 날짜가 없으면 값을 만들 수 없다. 둘 다 비우거나 둘 다 채운다.
  */
-export const validateHeader = (draft: HeaderDraft): Record<string, string> => {
+/**
+ * `destinationOptional` — 생산 창고 공장(피처 003)은 입고지를 비워도 된다. 서버가 라인 생산 현장으로 채운다
+ * (계약 §1 「`destinationLocationId` 는 선택으로 바꾼다」).
+ */
+export const validateHeader = (
+  draft: HeaderDraft,
+  options: { destinationOptional?: boolean } = {},
+): Record<string, string> => {
   const errors: Record<string, string> = {};
 
-  if (draft.destinationLocationId === '') {
+  if (draft.destinationLocationId === '' && options.destinationOptional !== true) {
     errors.destinationLocationId = t.errors.destinationRequired;
   }
 
@@ -189,6 +196,8 @@ export interface PublishBlockInput {
   isSaving: boolean;
   /** 이번 대상으로 이미 발행했는가. 되돌릴 수 없는 쓰기의 둘째 잠금이다 */
   hasPublished: boolean;
+  /** 생산 창고 공장이면 입고지를 비워도 발행한다(위 `validateHeader` 와 같은 갈래). */
+  destinationOptional?: boolean;
 }
 
 /**
@@ -210,7 +219,9 @@ export const publishBlockReason = (input: PublishBlockInput): string | null => {
   if (input.hasPublished) return t.actionReasons.alreadyPublished;
   if (input.isSaving) return t.actionReasons.saving;
   if (header.workOrderId === '') return t.actionReasons.noWorkOrder;
-  if (header.destinationLocationId === '') return t.actionReasons.noDestination;
+  if (header.destinationLocationId === '' && input.destinationOptional !== true) {
+    return t.actionReasons.noDestination;
+  }
   if (!hasRequestableLine(input.lines)) return t.actionReasons.noRequestableLine;
   if (Object.keys(validateLines(input.lines).errors).length > 0) return t.actionReasons.lineInvalid;
 
@@ -218,7 +229,12 @@ export const publishBlockReason = (input: PublishBlockInput): string | null => {
    * 도착 위치는 위에서 이미 걸렀으므로 여기 남는 것은 **필요 시각의 반쪽**뿐이다. 막지 않으면
    * 본문 조립이 `requiredAt` 키를 통째로 빼고 나가 사용자가 적은 날짜가 조용히 사라진다.
    */
-  if (Object.keys(validateHeader(header)).length > 0) return t.actionReasons.requiredAtIncomplete;
+  if (
+    Object.keys(validateHeader(header, { destinationOptional: input.destinationOptional })).length >
+    0
+  ) {
+    return t.actionReasons.requiredAtIncomplete;
+  }
 
   if (!hasReasonOrRemarks(header.reasonCode, header.remarks)) {
     return t.actionReasons.noReasonOrRemarks;

@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, MaterialIssueRequestCreateResultForward } from '@omf-mes/api-client';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 — 참조하면 예시 값이
@@ -24,8 +24,6 @@ import type { components } from '@omf-mes/api-client';
 type WorkOrderResponse = components['schemas']['WorkOrder'];
 type ShortageLineResponse = components['schemas']['MaterialIssueShortageLine'];
 type MaterialIssueRequestResponse = components['schemas']['MaterialIssueRequest'];
-type MaterialIssueRequestDetailResponse =
-  components['schemas']['MaterialIssueRequestDetailResponse'];
 
 /**
  * W/O 셋.
@@ -199,24 +197,34 @@ export const existingRequestFixtures: MaterialIssueRequestResponse[] = [
   },
 ];
 
-export const createdRequestFixture: MaterialIssueRequestDetailResponse = {
-  materialIssueRequest: {
-    materialIssueRequestId: 7703,
-    issueRequestNo: 'SAMPLE-MIR-0003',
-    workOrderId: 7101,
-    destinationLocationId: 7301,
-    statusCode: 'SAMPLE_MIR_S_A',
-  },
+/**
+ * 등록 응답 — 서버 S8e 부터 옛 칸(첫 요청)과 만든 요청 전부(`requests`)를 함께 싣는다. 지금 방식 공장 응답이라
+ * 표시 상태 칸이 없다.
+ */
+const createdRequest = {
+  materialIssueRequestId: 7703,
+  issueRequestNo: 'SAMPLE-MIR-0003',
+  workOrderId: 7101,
+  destinationLocationId: 7301,
+  statusCode: 'SAMPLE_MIR_S_A',
+  lineCount: 1,
+} as MaterialIssueRequestCreateResultForward['materialIssueRequest'];
+
+export const createdRequestFixture: MaterialIssueRequestCreateResultForward = {
+  materialIssueRequest: createdRequest,
   lines: [
     {
       materialIssueRequestLineId: 7901,
       materialIssueRequestId: 7703,
       lineNo: 1,
-      bomComponentId: 7601,
       itemId: 7401,
+      itemCode: 'SAMPLE-ITEM-01',
+      itemName: '합성 품목 가',
       requestedQty: 80,
       issuedQty: 0,
       uomId: 7501,
+      uomCode: 'SAMPLE-UOM-EA',
     },
   ],
+  requests: [createdRequest],
 };

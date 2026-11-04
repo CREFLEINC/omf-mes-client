@@ -117,7 +117,7 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     action: (count: number): string => `Phát hành hàng loạt ${String(count)} lệnh đã chọn`,
     dialogTitle: (count: number): string => `Phát hành hàng loạt ${String(count)} lệnh?`,
     dialogBody:
-      'Mỗi lệnh sẽ phát trước LOT sản xuất theo cỡ LOT mặc định của mặt hàng và tạo yêu cầu xuất vật tư. Không thể hoàn tác. Lệnh chưa thiết lập 4M hoặc mặt hàng chưa có cỡ LOT mặc định sẽ bị bỏ qua.',
+      'Mỗi lệnh sẽ phát trước LOT sản xuất theo cỡ LOT mặc định của mặt hàng và tạo yêu cầu xuất kho. Không thể hoàn tác. Lệnh chưa thiết lập 4M hoặc mặt hàng chưa có cỡ LOT mặc định sẽ bị bỏ qua.',
     confirm: 'Phát hành hàng loạt',
     cancel: 'Hủy',
     running: 'Đang phát hành hàng loạt…',

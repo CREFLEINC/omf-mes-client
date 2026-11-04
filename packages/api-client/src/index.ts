@@ -72,6 +72,14 @@ export type {
   ItemResourceMapListQuery,
   MaterialIssueDisplayStatus,
   MaterialIssueHistoryEventCode,
+  ReleaseUnsourcedShortage,
+  WorkOrderReleaseResultForward,
+  MaterialIssueRequestCreateForward,
+  MaterialIssueRequestCreateResultForward,
+  PlannedStockConflictDetail,
+  PlannedStockConflictResponse,
+  WorkOrderDetailForward,
+  WorkOrderProductionWarehouse,
   MaterialIssueRequestCancelForward,
   MaterialIssueRequestDetailForward,
   MaterialIssueRequestForward,
@@ -94,3 +102,4 @@ export type {
   StockReinstatementCreateForward,
   StockReinstatementResponseForward,
 } from './forward-contract';
+export { RELEASE_BLOCK_CODES } from './forward-contract';

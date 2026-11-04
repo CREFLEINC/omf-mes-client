@@ -434,7 +434,7 @@ describe('AppLayout', () => {
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).not.toContain('/production/material-issue-requests');
-    expect(within(sidebar).queryByRole('link', { name: '자재 불출 요청' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '추가 출고 요청' })).toBeNull();
     expect(screen.queryByRole('link', { name: '추가 자재 출고 요청' })).toBeNull();
 
     expect(within(purchase).getByRole('link', { name: '출고 관리' })).toHaveAttribute(
@@ -443,7 +443,8 @@ describe('AppLayout', () => {
     );
     const first = within(tabs).getAllByRole('link')[0];
 
-    expect(first).toHaveTextContent('자재 불출 요청');
+    /* #76 표기 통일(피처 003, 검토 1) — 「자재 불출 요청」 → 「추가 출고 요청」. */
+    expect(first).toHaveTextContent('추가 출고 요청');
     expect(first).toHaveAttribute('href', '/production/material-issue-requests');
     expect(first).toHaveAttribute('aria-current', 'page');
   });

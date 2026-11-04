@@ -34,7 +34,7 @@ export const shellHome = {
     putaway: '입하한 자재를 적치 위치에 넣고 입고 완료',
     temporaryPutaway: '적치 위치에 못 넣을 때 임시 위치에 먼저 둠',
     stockTransfer: '위치 사이 재고 옮기기 · 반출 뒤 도착 스캔',
-    materialPicking: '출고 지시대로 자재를 꺼냄',
+    materialPicking: '출고 요청대로 자재를 꺼냄',
     physicalCount: '위치의 실물을 세어 기록',
     materialLocation: 'LOT · 품목이 어느 위치에 있는지 조회',
     shopfloorReceipt: '생산창고로 들어온 자재 받기',

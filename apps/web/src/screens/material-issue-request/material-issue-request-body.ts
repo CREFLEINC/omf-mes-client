@@ -128,6 +128,14 @@ export interface MaterialIssueRequestInput {
   lines: readonly MaterialIssueLineDraft[];
   /** BOM 유래 판정의 근거. 아직 부르지 않았으면 빈 배열이다 */
   shortage: readonly ShortageLineView[];
+  /** 피처 003 — 비면 「자동」(서버가 자재마다 채운다). 생산 창고 공장에서만 채운다. */
+  sourceWarehouseId?: string;
+  /** 생산 창고 공장이면 입고지를 비워 보낼 수 있다(서버가 라인 생산 현장으로). */
+  destinationOptional?: boolean;
+  /** 경고 창에서 「그래도 요청」을 눌렀다(US4-7). */
+  acceptPlannedOverride?: boolean;
+  /** W-02-11 「재고 있는 생산 창고 없음」 행에서 열었다(US2-12). */
+  unsourcedShortageId?: string;
 }
 
 /**
@@ -146,7 +154,11 @@ export const toMaterialIssueRequestBody = (
   const workOrderId = readId(input.workOrderId);
   const destinationLocationId = readId(input.destinationLocationId);
 
-  if (workOrderId === null || destinationLocationId === null) return null;
+  if (workOrderId === null) return null;
+  if (destinationLocationId === null && input.destinationOptional !== true) return null;
+
+  const sourceWarehouseId = readId(input.sourceWarehouseId ?? '');
+  const unsourcedShortageId = readId(input.unsourcedShortageId ?? '');
 
   const lines: MaterialIssueRequestCreateLine[] = [];
 
@@ -164,7 +176,10 @@ export const toMaterialIssueRequestBody = (
 
   return {
     workOrderId,
-    destinationLocationId,
+    ...(destinationLocationId === null ? {} : { destinationLocationId }),
+    ...(sourceWarehouseId === null ? {} : { sourceWarehouseId }),
+    ...(input.acceptPlannedOverride === true ? { acceptPlannedOverride: true } : {}),
+    ...(unsourcedShortageId === null ? {} : { unsourcedShortageId }),
     ...(requiredAt === null ? {} : { requiredAt }),
     ...(reasonCode === '' ? {} : { reasonCode }),
     ...(remarks === '' ? {} : { remarks }),
@@ -202,6 +217,9 @@ const fingerprintOf = (input: MaterialIssueRequestInput): string =>
     requiredTime: input.requiredTime,
     reasonCode: input.reasonCode,
     remarks: input.remarks,
+    sourceWarehouseId: input.sourceWarehouseId ?? '',
+    acceptPlannedOverride: input.acceptPlannedOverride === true,
+    unsourcedShortageId: input.unsourcedShortageId ?? '',
     lines: input.lines.map((line) => ({
       bomComponentId:
         line.bomComponentId ?? resolveBomComponentId(Number(line.itemId), input.shortage),
