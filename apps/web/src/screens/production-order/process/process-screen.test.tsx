@@ -378,7 +378,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
         await user.click(screen.getByRole('tab', { name: tp.steps.master }));
         await screen.findByText(/확정 계획 적용 개정/);
         expect(screen.queryByRole('combobox', { name: 'BOM 개정' })).toBeNull();
-        expect(screen.getByText(/SYN-BOM.*Rev 1/)).toBeVisible();
+        expect(screen.getByText(/SYN-BOM.*개정 1/)).toBeVisible();
       }
       if (!confirmed) {
         await currentStep(tp.steps.plan);

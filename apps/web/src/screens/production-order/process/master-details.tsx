@@ -4,6 +4,8 @@ import { Link } from 'react-router';
 import { useRoutingOperations } from '../../routing/queries';
 import { BomContents, RoutingContents } from './revision-detail';
 
+const readableRevision = (label: string) => label.replace(/\bRev\.?\s*/g, '개정 ');
+
 interface Option {
   value: string;
   label: string;
@@ -36,22 +38,26 @@ export const MasterDetails = ({
     <div className="erp-wo-master-details">
       <section className="pane erp-wo-inline-revision" aria-label="BOM 상세 정보">
         <div className="section-heading-row">
-          <h2 className="section-title">BOM</h2>
+          <h2 className="section-title">
+            자재 구성과 필요 수량 <small className="field-note">BOM</small>
+          </h2>
           <span className="field-note">
             {locked ? '확정 계획 적용 개정' : 'ERP 기본 개정 자동 적용'}
           </span>
         </div>
         {Number(bomId) > 0 ? (
-          <BomContents id={Number(bomId)} />
+          <BomContents id={Number(bomId)} plain />
         ) : (
           <p>사용 가능한 ERP 기본 BOM이 없습니다.</p>
         )}
       </section>
       <section className="pane erp-wo-inline-revision" aria-label="Routing 상세 정보">
         <div className="section-heading-row">
-          <h2 className="section-title">Routing</h2>
+          <h2 className="section-title">
+            생산 작업 순서 <small className="field-note">Routing</small>
+          </h2>
           <span className="field-note">
-            {applied ? `적용 개정: ${applied.label}` : 'Routing 미지정'}
+            {applied ? `현재 적용: ${readableRevision(applied.label)}` : 'Routing 미지정'}
           </span>
         </div>
         {!locked && (
@@ -69,7 +75,7 @@ export const MasterDetails = ({
                 aria-pressed={preview === option.value}
                 onClick={() => setPreview(option.value)}
               >
-                {option.label}
+                {readableRevision(option.label)}
                 {option.isDefault ? ' · 기본' : ''}
               </Button>
             ))}
@@ -77,8 +83,19 @@ export const MasterDetails = ({
         )}
         {candidate ? (
           <>
-            {candidate.period && <p className="field-note">{candidate.period}</p>}
-            <RoutingContents id={Number(preview)} label={candidate.label} showHeader />
+            <RoutingContents
+              id={Number(preview)}
+              label={readableRevision(candidate.label)}
+              showHeader
+              plain
+            />
+            {!locked && (
+              <p className="field-note" aria-live="polite">
+                {preview === routingId
+                  ? '현재 적용한 작업 순서입니다.'
+                  : '확인 중인 작업 순서입니다. 적용하면 계획에 반영됩니다.'}
+              </p>
+            )}
             <div className="section-heading-row erp-wo-inline-routing-actions">
               {itemId != null && (
                 <Link
@@ -100,7 +117,7 @@ export const MasterDetails = ({
                   }
                   onClick={() => onRoutingChange(preview)}
                 >
-                  이 Routing 적용
+                  이 작업 순서 적용
                 </Button>
               )}
             </div>

@@ -36,7 +36,7 @@ const linkedName = (source: LookupResult, id: number | null | undefined) => {
 const statusLabel = (status: string) =>
   ({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' })[status] ?? status;
 
-export const BomContents = ({ id }: { id: number }) => {
+export const BomContents = ({ id, plain = false }: { id: number; plain?: boolean }) => {
   const { client } = useApiClient();
   const header = useQuery({
     queryKey: ['plan-revision-detail', 'bom', id],
@@ -85,6 +85,124 @@ export const BomContents = ({ id }: { id: number }) => {
     );
   if (!header.data || !rows.data) return <SkeletonText lines={4} />;
   const bom = header.data.bom;
+  if (plain)
+    return (
+      <>
+        <div className="erp-wo-plain-revision">
+          <strong>
+            {bom.bomCode} · 개정 {bom.bomVersion}
+          </strong>
+          <span>
+            사용 기간 {bom.effectiveFrom} ~ {bom.effectiveTo ?? '종료일 없음'}
+          </span>
+        </div>
+        <div className="section-heading-row">
+          <h3 className="section-title">자재별 필요 수량</h3>
+          <strong>
+            제품{' '}
+            {unit(bom.baseUomId) === 'EA'
+              ? `${bom.baseQty}개 (${bom.baseQty} EA)`
+              : `${bom.baseQty} ${unit(bom.baseUomId)}`}{' '}
+            기준
+          </strong>
+        </div>
+        {rows.data.items.length ? (
+          <div className="erp-wo-revision-table erp-wo-plain-materials">
+            <table>
+              <caption className="visually-hidden">자재별 필요 수량</caption>
+              <thead>
+                <tr>
+                  <th>자재</th>
+                  <th>필요 수량</th>
+                  <th>필수 여부</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...rows.data.items]
+                  .sort((a, b) => a.sequenceNo - b.sequenceNo)
+                  .map((row) => (
+                    <tr key={row.bomComponentId}>
+                      <td data-label="자재">
+                        {names.items.find((item) => item.itemId === row.componentItemId)?.label ??
+                          '자재 정보 확인 중'}
+                      </td>
+                      <td data-label="필요 수량">
+                        <strong>
+                          {row.requiredQty} {unit(row.uomId)}
+                        </strong>
+                      </td>
+                      <td data-label="필수 여부">{row.isMandatory ? '필수' : '선택'}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>등록된 구성 자재가 없습니다.</p>
+        )}
+        <details className="erp-wo-plain-details">
+          <summary>자재 투입 설정 확인</summary>
+          <div className="erp-wo-plain-settings">
+            {rows.data.items.map((row) => (
+              <section key={row.bomComponentId}>
+                <strong>
+                  {names.items.find((item) => item.itemId === row.componentItemId)?.label ??
+                    '자재 정보 확인 필요'}
+                </strong>
+                <Properties
+                  values={[
+                    ['자재를 관리하는 공정', linkedName(operations, row.routingOperationId)],
+                    ['실제로 사용하는 공정', linkedName(processes, row.actualUseProcessId)],
+                    ['투입할 때 LOT 확인', row.lotTraceRequired ? '필요' : '필요 없음'],
+                    ['실적 등록 시 자동 차감', row.backflushAllowed ? '사용' : '사용 안 함'],
+                    ['자재 손실률 (로스율)', `${Number((row.scrapRate * 100).toFixed(6))}%`],
+                  ]}
+                />
+              </section>
+            ))}
+          </div>
+        </details>
+        <details className="erp-wo-plain-details">
+          <summary>ERP에서 받은 정보와 적용 기준 확인</summary>
+          <div className="erp-wo-plain-settings">
+            <h3 className="section-title">ERP에서 받은 정보</h3>
+            {rows.data.items.map((row) => (
+              <div key={row.bomComponentId}>
+                <strong>
+                  {names.items.find((item) => item.itemId === row.componentItemId)?.label ??
+                    '자재 정보 확인 필요'}
+                </strong>
+                <Properties
+                  values={[
+                    [
+                      'ERP 자재 순번',
+                      row.erpChildItemSeq == null ? '보관값 없음' : String(row.erpChildItemSeq),
+                    ],
+                    ['화면 표시 순서', String(row.sequenceNo)],
+                  ]}
+                />
+              </div>
+            ))}
+            <div className="erp-wo-source-unavailable">
+              <strong>ERP 원문 조회 미지원</strong>
+              <p>원래 수량·기준 수량·단위 코드·공장·수신 이력은 현재 조회할 수 없습니다.</p>
+            </div>
+            <h3 className="section-title">MES에서 적용한 기준</h3>
+            <Properties
+              values={[
+                [
+                  '자재 수량의 표시 기준',
+                  `제품 ${bom.baseQty} ${unit(bom.baseUomId)} 생산 기준으로 정리`,
+                ],
+                ['품목명과 단위', 'MES에 연결된 품목·단위로 표시'],
+                ['BOM 상태', statusLabel(bom.statusCode)],
+                ['기본 BOM', flag(bom.isDefault)],
+              ]}
+            />
+          </div>
+        </details>
+      </>
+    );
   return (
     <>
       <p>
@@ -178,10 +296,12 @@ export const RoutingContents = ({
   id,
   label,
   showHeader = false,
+  plain = false,
 }: {
   id: number;
   label?: string;
   showHeader?: boolean;
+  plain?: boolean;
 }) => {
   const header = useRoutingDetail(showHeader ? id : null);
   const rows = useRoutingOperations(id);
@@ -198,6 +318,92 @@ export const RoutingContents = ({
       </AlertBanner>
     );
   if (!rows.data) return <SkeletonText lines={4} />;
+  if (plain)
+    return (
+      <>
+        <div className="erp-wo-plain-revision">
+          <strong>{label ?? '확인 중인 작업 순서'}</strong>
+          {header.data?.routing && (
+            <span>
+              사용 기간 {header.data.routing.effectiveFrom ?? '미설정'} ~{' '}
+              {header.data.routing.effectiveTo ?? '종료일 없음'}
+            </span>
+          )}
+        </div>
+        {header.isError && (
+          <AlertBanner
+            variant="error"
+            action={<Button onClick={() => void header.refetch()}>다시 조회</Button>}
+          >
+            개정 정보를 불러오지 못했습니다.
+          </AlertBanner>
+        )}
+        {[...rows.data.items]
+          .sort((a, b) => a.operationSeq - b.operationSeq)
+          .map((row, index) => (
+            <section className="erp-wo-operation-card" key={row.routingOperationId}>
+              <div className="erp-wo-operation-heading">
+                <span>{index + 1}</span>
+                <h3 className="section-title">{row.operationName}</h3>
+              </div>
+              <Properties
+                values={[
+                  ['설비 배정', row.equipmentRequired ? '필수' : '선택'],
+                  ['금형 배정', row.moldRequired ? '필수' : '선택'],
+                  [
+                    '표준 작업시간 (1사이클)',
+                    row.standardCycleTimeSec == null ? '미설정' : `${row.standardCycleTimeSec}초`,
+                  ],
+                  ['자재 투입 관리', row.materialInputManaged ? '사용' : '사용 안 함'],
+                  ['공정 중 검사 관리', row.inspectionManaged ? '사용' : '사용 안 함'],
+                ]}
+              />
+            </section>
+          ))}
+        {!rows.data.items.length && <p>등록된 공정이 없습니다.</p>}
+        <details className="erp-wo-plain-details">
+          <summary>공정 관리 설정과 정보 출처 확인</summary>
+          <div className="erp-wo-plain-settings">
+            {rows.data.items.map((row) => (
+              <section key={row.routingOperationId}>
+                <strong>{row.operationName}</strong>
+                <Properties
+                  values={[
+                    ['공정 기준정보', linkedName(processNames, row.processId)],
+                    ['등록된 공정 순번', String(row.operationSeq)],
+                    ['MES 공정 관리', flag(row.mesManaged)],
+                    ['실적 관리', flag(row.productionResultManaged)],
+                    ['외주 공정', flag(row.isOutsourced)],
+                    ['산출 LOT 기록 필수', flag(row.outputLotRequired)],
+                    [
+                      '표준 수율',
+                      row.standardYieldRate == null
+                        ? '미설정'
+                        : `${Number((row.standardYieldRate * 100).toFixed(6))}%`,
+                    ],
+                    ['한국어 표시명', row.nameKo ?? '미설정'],
+                    ['베트남어 표시명', row.nameVi ?? '미설정'],
+                  ]}
+                />
+              </section>
+            ))}
+            <Properties
+              values={[
+                ['정보 출처', 'MES Routing 기준정보 · ERP 실시간 수신 자료 아님'],
+                ...(header.data?.routing
+                  ? ([
+                      ['Routing 코드', header.data.routing.routingCode],
+                      ['개정', String(header.data.routing.routingVersion)],
+                      ['상태', statusLabel(header.data.routing.statusCode)],
+                      ['기본 개정', flag(header.data.routing.isDefault)],
+                    ] as [string, string][])
+                  : []),
+              ]}
+            />
+          </div>
+        </details>
+      </>
+    );
   return (
     <>
       {label !== '' && (
