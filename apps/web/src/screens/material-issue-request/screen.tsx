@@ -8,6 +8,7 @@ import { resolveLineOrigins } from './bom-origin';
 import { ExistingRequestBanner } from './existing-request-banner';
 import { addLineDraft, patchLineDraft, removeLineDraft, replaceShortageDrafts } from './line-draft';
 import { LinePane } from './line-pane';
+import type { LineSource } from './line-table';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   isTruncated,
@@ -27,6 +28,7 @@ import { usePublishSubmission } from './publish-submission';
 import {
   useExistingRequests,
   useItemBaseUom,
+  usePlannedStockFree,
   useShortage,
   useWorkOrderDetail,
   useWorkOrderSearch,
@@ -217,6 +219,34 @@ export const MaterialIssueRequestScreen = () => {
     workOrderDetail.data.productionWarehouseMode === true;
   /** 새 규칙 공장인데 이 W/O 라인 부서에 생산 창고가 없다 — 알리고 만들기를 막는다(서버도 400). */
   const lacksProductionWarehouse = usesProductionWarehouses && productionWarehouses.length === 0;
+  const plannedFree = usePlannedStockFree(
+    usesProductionWarehouses ? productionWarehouses.map((warehouse) => warehouse.warehouseId) : [],
+  );
+  /**
+   * 줄마다 출발 생산 창고와 남은 수량(검토 4). 「자동」이면 남은 수량이 가장 많은 생산 창고(서버 규칙의 미리
+   * 보기 — 정본은 서버), 특정 창고면 그 창고. 남은 수량 정보가 없는 자재는 「재고 있는 생산 창고 없음」.
+   */
+  const sourceOf = (row: MaterialIssueLineDraft): LineSource | null => {
+    const itemId = Number(row.itemId);
+    if (!Number.isInteger(itemId) || itemId <= 0 || plannedFree.data === undefined) return null;
+    const candidates =
+      form.sourceWarehouseId === ''
+        ? productionWarehouses
+        : productionWarehouses.filter(
+            (warehouse) => String(warehouse.warehouseId) === form.sourceWarehouseId,
+          );
+    let best: { name: string; free: number } | null = null;
+    for (const warehouse of candidates) {
+      const free = plannedFree.data.get(`${String(warehouse.warehouseId)}:${String(itemId)}`);
+      if (free !== undefined && (best === null || free > best.free)) {
+        best = { name: warehouse.warehouseName, free };
+      }
+    }
+    if (best !== null) return { warehouse: best.name, remaining: best.free };
+    return form.sourceWarehouseId === ''
+      ? { warehouse: null, remaining: null }
+      : { warehouse: candidates[0]?.warehouseName ?? null, remaining: 0 };
+  };
   const prefillUom = useItemBaseUom(isPrefillApplied ? null : (prefill?.itemId ?? null));
 
   /* 보충 요청으로 열었으면 그 W/O 를 고른다. */
@@ -303,11 +333,25 @@ export const MaterialIssueRequestScreen = () => {
         ? {
             ...prev,
             warehouseId: String(resolvedWarehouseId),
-            destinationLocationId: String(defaultWipLocationId),
+            /*
+             * 생산 창고 공장은 입고지를 채우지 않는다 — 서버가 라인 생산 현장으로 채우고
+             * `PRODUCTION_FLOOR_LOCATION_MISSING` 을 검사한다(FR-006, G2 12). 창고만 채워 위치 선택지를 연다.
+             */
+            destinationLocationId: usesProductionWarehouses ? '' : String(defaultWipLocationId),
           }
         : prev,
     );
-  }, [workOrderId, defaultWipLocationId, resolvedWarehouseId]);
+  }, [workOrderId, defaultWipLocationId, resolvedWarehouseId, usesProductionWarehouses]);
+
+  /* 모드를 늦게 알았으면(상세가 자동 채움보다 늦게 옴) 화면이 채운 입고지를 거둔다 — 사용자가 고른 값은 둔다. */
+  useEffect(() => {
+    if (!usesProductionWarehouses || touched.destinationLocationId === true) return;
+    setForm((prev) =>
+      defaultWipLocationId !== null && prev.destinationLocationId === String(defaultWipLocationId)
+        ? { ...prev, destinationLocationId: '' }
+        : prev,
+    );
+  }, [usesProductionWarehouses, defaultWipLocationId, touched.destinationLocationId]);
 
   /*
    * 보충 요청 값 채우기 — 대상 비움(위)이 돈 다음에 세운다. 품목 기본 단위를 받은 뒤에 한 번만.
@@ -331,6 +375,8 @@ export const MaterialIssueRequestScreen = () => {
       } as MaterialIssueLineDraft;
       setLines([line]);
     }
+    /* BOM 을 불러 둔다 — 채운 자재가 BOM 안이면 「BOM 밖」으로 판정하지 않게(G2 8). 줄은 바꾸지 않는다. */
+    setIsShortageRequested(true);
     setIsPrefillApplied(true);
   }, [isPrefillApplied, prefill, selectedWorkOrder, prefillUom.isPending, prefillUom.data]);
 
@@ -506,6 +552,9 @@ export const MaterialIssueRequestScreen = () => {
       shortage: shortageLines,
       ...(usesProductionWarehouses
         ? {
+            /* 사용자가 고르지 않은 입고지는 보내지 않는다 — 서버 기본값(라인 생산 현장)을 탄다(G2 12). */
+            destinationLocationId:
+              touched.destinationLocationId === true ? form.destinationLocationId : '',
             sourceWarehouseId: form.sourceWarehouseId,
             destinationOptional: true,
             acceptPlannedOverride,
@@ -722,6 +771,7 @@ export const MaterialIssueRequestScreen = () => {
               onAddLine={addLine}
               onPatchLine={patchLine}
               onRemoveLine={removeLine}
+              {...(usesProductionWarehouses ? { sourceOf } : {})}
             />
 
             <div className="material-issue-request-footer">
@@ -761,8 +811,7 @@ export const MaterialIssueRequestScreen = () => {
                 <PlannedStockDialog
                   conflict={conflict}
                   itemLabel={(itemId) =>
-                    items.entries.find((entry) => entry.value === String(itemId))?.label ??
-                    String(itemId)
+                    items.entries.find((entry) => entry.value === String(itemId))?.label
                   }
                   warehouseLabel={(warehouseId) =>
                     productionWarehouses.find((warehouse) => warehouse.warehouseId === warehouseId)

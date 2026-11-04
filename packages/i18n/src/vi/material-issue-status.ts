@@ -108,6 +108,9 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
         `Số lượng yêu cầu ${item} không được nhỏ hơn số đã xuất (${issued}).`,
     },
     history: 'Lịch sử',
+    historyFailed: 'Không tải được lịch sử.',
+    loadFailed: 'Không tải được yêu cầu xuất kho.',
+    notFound: 'Không tìm thấy yêu cầu xuất kho này. Hãy chọn lại từ danh sách.',
     noHistory: 'Không có lịch sử.',
     systemActor: 'Phát hành tự động',
     events: {
@@ -207,6 +210,8 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     replenish: 'Yêu cầu bổ sung →',
     replenishLabel: (target: string): string => `Yêu cầu bổ sung ${target}`,
     replenished: (requestNo: string): string => `Đã yêu cầu bổ sung (${requestNo})`,
+    overrideNote: (at: string, actor: string, requestNo: string, text: string): string =>
+      `${at} ${actor}, ${requestNo}: ${text}`,
     empty: 'Không có mặt hàng thiếu.',
   },
 };

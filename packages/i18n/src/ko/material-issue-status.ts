@@ -110,6 +110,9 @@ export const materialIssueStatus = {
         `${item} 요청 수량은 기출고량(${issued})보다 적을 수 없습니다.`,
     },
     history: '이력',
+    historyFailed: '이력을 불러오지 못했습니다.',
+    loadFailed: '출고 요청을 불러오지 못했습니다.',
+    notFound: '이 출고 요청을 찾을 수 없습니다. 목록에서 다시 고르세요.',
     noHistory: '이력이 없습니다.',
     /** 러너 배포처럼 사람이 없는 사건(`actorName` null). */
     systemActor: '자동 배포',
@@ -214,6 +217,9 @@ export const materialIssueStatus = {
     replenish: '보충 요청 →',
     replenishLabel: (target: string): string => `${target} 보충 요청`,
     replenished: (requestNo: string): string => `보충 요청됨 (${requestNo})`,
+    /** 예정분을 가져간 이력 한 줄(screens/W-02-11.md 「부족」 보기). */
+    overrideNote: (at: string, actor: string, requestNo: string, text: string): string =>
+      `${at} ${actor}, ${requestNo}: ${text}`,
     empty: '부족한 품목이 없습니다.',
   },
 };

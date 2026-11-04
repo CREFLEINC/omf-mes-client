@@ -1,5 +1,9 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueries } from '@tanstack/react-query';
+
+import { useApiClient } from '../../patterns/api-context';
+import { runRequest } from '../../patterns/request';
 
 import type { PlannedStockConflict } from './mutations';
 
@@ -7,8 +11,8 @@ const t = messages.materialIssueRequest;
 
 export interface PlannedStockDialogProps {
   conflict: PlannedStockConflict;
-  /** 품목 번호 → 「코드 이름」. 응답은 번호만 준다. */
-  itemLabel: (itemId: number) => string;
+  /** 품목 번호 → 「코드 이름」을 이미 아는 자리(줄 품목). 모르면 창이 품목 상세로 푼다. */
+  itemLabel: (itemId: number) => string | undefined;
   /** 생산 창고 번호 → 이름. 응답은 번호만 준다(W/O 의 라인 부서 생산 창고에서 푼다). */
   warehouseLabel: (warehouseId: number) => string;
   isSaving: boolean;
@@ -30,12 +34,54 @@ export const PlannedStockDialog = ({
   onFix,
   onOverride,
 }: PlannedStockDialogProps) => {
+  const { client } = useApiClient();
+  /* 품목은 번호만 온다 — 모르는 품목은 상세로 코드 · 이름을 푼다(G2 6). */
+  const unknownItems = [
+    ...new Set(
+      conflict.details
+        .map((detail) => detail.itemId)
+        .filter((itemId) => itemLabel(itemId) === undefined),
+    ),
+  ];
+  const itemDetails = useQueries({
+    queries: unknownItems.map((itemId) => ({
+      queryKey: ['material-issue-request', 'conflict-item', itemId] as const,
+      retry: false,
+      queryFn: async () =>
+        (
+          await runRequest(() =>
+            client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
+          )
+        ).item,
+    })),
+  });
+  const labelOf = (itemId: number): string => {
+    const known = itemLabel(itemId);
+    if (known !== undefined) return known;
+    const item = itemDetails[unknownItems.indexOf(itemId)]?.data;
+    return item === undefined ? String(itemId) : `${item.itemCode} ${item.itemName}`;
+  };
+
+  /*
+   * 「재고 있는 생산 창고 없음」 품목은 그 줄에만 알린다(G2 14) — 창 전체를 막지 않는다.
+   * 가져갈 예정분이 없으면(가져갈 수량 0, 영향받는 요청 없음) 「남은 수량보다 많습니다」(G2 7).
+   */
+  const stocked = conflict.details.filter((detail) => detail.noStockedWarehouse !== true);
   const canOverride =
-    conflict.overridable && !conflict.noStockedWarehouse && onOverride !== undefined;
-  const title = canOverride ? t.override.title : t.override.blockedTitle;
+    stocked.length > 0 && stocked.every((detail) => detail.overridable) && onOverride !== undefined;
+  const takesPlanned = stocked.some(
+    (detail) => detail.takeFromPlannedQty > 0 || (detail.affectedRequests?.length ?? 0) > 0,
+  );
+  const title = canOverride
+    ? takesPlanned
+      ? t.override.title
+      : t.override.shortTitle
+    : t.override.blockedTitle;
   const body = canOverride
-    ? t.override.body
-    : conflict.noStockedWarehouse
+    ? takesPlanned
+      ? t.override.body
+      : t.override.shortBody
+    : stocked.length === 0
       ? t.override.noStockedBody
       : t.override.blockedBody;
 
@@ -73,7 +119,7 @@ export const PlannedStockDialog = ({
         <tbody>
           {conflict.details.map((detail) => (
             <tr key={`${String(detail.itemId)}-${String(detail.sourceWarehouseId ?? 0)}`}>
-              <td>{itemLabel(detail.itemId)}</td>
+              <td>{labelOf(detail.itemId)}</td>
               <td>
                 {detail.noStockedWarehouse === true
                   ? t.override.noStockedWarehouse

@@ -49,6 +49,12 @@ export const materialIssueRequest = {
     uom: '단위',
     uomLabel: (rowIndex: number): string => `${String(rowIndex)}행 단위`,
     rowActions: '행 조작',
+    /** 피처 003 — 생산 창고 공장의 두 열(screens/W-02-10.md 「바뀌는 칸」, 검토 4). */
+    sourceWarehouse: '출발 생산 창고',
+    remainingQty: '남은 수량',
+    overRemaining: (qty: string): string => `+${qty}`,
+    overRemainingLabel: (qty: string): string => `남은 수량보다 ${qty} 많음`,
+    noStockedWarehouse: '재고 있는 생산 창고 없음',
   },
   actions: {
     loadShortage: 'BOM 소요량 불러오기',
@@ -149,6 +155,9 @@ export const materialIssueRequest = {
   override: {
     title: '다른 W/O 의 출고 예정분을 가져갑니다',
     body: '남은 수량보다 많이 요청했습니다. 그래도 요청하면 아래 요청의 예정분을 가져가고, 그 요청에 부족이 표시됩니다.',
+    /** 가져갈 예정분이 없다(가져갈 수량 0, 영향받는 요청 없음) — G2 7. */
+    shortTitle: '남은 수량보다 많습니다',
+    shortBody: '요청하면 남은 수량까지만 출고되고 나머지는 부족으로 남습니다.',
     blockedTitle: '남은 수량이 없어 요청할 수 없습니다',
     blockedBody: '이 사유로는 남은 수량까지만 요청할 수 있습니다. 긴급 대응이나 부족 보충만 다른 요청의 예정분을 가져갈 수 있습니다.',
     noStockedBody: '재고 있는 생산 창고가 없는 자재가 있어 요청할 수 없습니다. 생산 창고를 채운 뒤 요청하세요.',

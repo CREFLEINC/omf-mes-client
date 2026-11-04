@@ -7,7 +7,7 @@ import { Select } from '../../patterns/select';
 import { isOutsideBom } from './bom-origin';
 import type { ItemLookupResult, LookupResult } from './lookups';
 import type { MaterialIssueLineDraft, SelectOption } from './types';
-import { lineFieldId, type LineFieldName } from './validation';
+import { lineFieldId, readQty, type LineFieldName } from './validation';
 
 const t = messages.materialIssueRequest;
 
@@ -51,6 +51,17 @@ export interface LineTableProps {
   isLocked?: boolean;
   onPatch: (key: string, patch: Partial<Omit<MaterialIssueLineDraft, 'key'>>) => void;
   onRemove: (key: string) => void;
+  /**
+   * 생산 창고 공장(피처 003)이면 줄마다 출발 생산 창고와 남은 수량. 주면 「출발 생산 창고」 · 「남은 수량」 열이
+   * 서고, 요청이 남은 수량을 넘으면 노랑 「+N」(screens/W-02-10.md, 검토 4). 지금 방식 공장은 주지 않는다.
+   */
+  sourceOf?: (row: MaterialIssueLineDraft) => LineSource | null;
+}
+
+/** 한 줄의 출발 생산 창고와 그 창고의 남은 수량. `warehouse` 가 null 이면 재고 있는 생산 창고가 없다. */
+export interface LineSource {
+  warehouse: string | null;
+  remaining: number | null;
 }
 
 /** 서버가 낸 수를 그대로 보인다. 손으로 더한 줄은 셋 다 값이 없다. */
@@ -84,6 +95,7 @@ export const LineTable = ({
   isLocked = false,
   onPatch,
   onRemove,
+  sourceOf,
 }: LineTableProps) => {
   const errorOf = (row: MaterialIssueLineDraft, field: LineFieldName): string | undefined =>
     errors[lineFieldId(row.key, field)];
@@ -166,6 +178,44 @@ export const LineTable = ({
         />
       ),
     },
+    ...(sourceOf === undefined
+      ? []
+      : ([
+          {
+            key: 'sourceWarehouse',
+            header: t.lineTable.sourceWarehouse,
+            render: (row) => {
+              const source = sourceOf(row);
+              if (source === null) return t.values.empty;
+              return source.warehouse ?? t.lineTable.noStockedWarehouse;
+            },
+          },
+          {
+            key: 'remainingQty',
+            header: t.lineTable.remainingQty,
+            align: 'end',
+            render: (row) => {
+              const source = sourceOf(row);
+              if (source === null || source.remaining === null) return t.values.empty;
+              const read = readQty(row.requestedQty);
+              const over = read.kind === 'qty' ? read.value - source.remaining : 0;
+              return (
+                <span className="material-issue-request-remaining">
+                  {String(source.remaining)}
+                  {over > 0 && (
+                    <Chip
+                      size="sm"
+                      status="warning"
+                      aria-label={t.lineTable.overRemainingLabel(String(over))}
+                    >
+                      {t.lineTable.overRemaining(String(over))}
+                    </Chip>
+                  )}
+                </span>
+              );
+            },
+          },
+        ] satisfies Column<MaterialIssueLineDraft>[])),
     {
       key: 'uom',
       header: t.lineTable.uom,

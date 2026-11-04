@@ -148,6 +148,8 @@ interface SetupOptions {
   route?: string;
   /** PUT 응답을 바꾼다 — 받은 본문을 보고 정한다. */
   respondPut?: (body: Record<string, unknown>) => Response | undefined;
+  /** 이력 조회 응답 상태(기본 200). */
+  historyStatus?: number;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -241,32 +243,52 @@ const setup = (options: SetupOptions = {}) => {
     {
       match: (request) => isGet(request, /^\/logistics\/material-issue-requests\/\d+\/history$/),
       respond: () =>
-        jsonResponse({
-          items: [
-            {
-              occurredAt: '2026-11-03T09:15:00+07:00',
-              actorName: '합성 관리자',
-              eventCode: 'PLANNED_OVERRIDE',
-              detail: { reason: 'SYN_URGENT', after: [{ itemId: 601, requestedQty: 30 }] },
-            },
-            {
-              occurredAt: '2026-11-03T00:00:00+07:00',
-              actorName: null,
-              eventCode: 'ISSUE_DATE_CHANGED',
-              detail: { before: '2026-11-19', after: '2026-11-20' },
-            },
-            {
-              occurredAt: '2026-11-02T14:10:00+07:00',
-              actorName: '합성 관리자',
-              eventCode: 'CREATED',
-              detail: {},
-            },
-          ],
-        }),
+        options.historyStatus !== undefined
+          ? jsonResponse({ message: '' }, { status: options.historyStatus })
+          : jsonResponse({
+              items: [
+                {
+                  occurredAt: '2026-11-03T09:15:00+07:00',
+                  actorName: '합성 관리자',
+                  eventCode: 'PLANNED_OVERRIDE',
+                  detail: { reason: 'SYN_URGENT', after: [{ itemId: 601, requestedQty: 30 }] },
+                },
+                {
+                  /* UTC 로 와도 공장 현지 시각(UTC+7)으로 보인다 — 11-03 00:00(G2 3). */
+                  occurredAt: '2026-11-02T17:00:00Z',
+                  actorName: null,
+                  eventCode: 'ISSUE_DATE_CHANGED',
+                  detail: { before: '2026-11-19', after: '2026-11-20' },
+                },
+                {
+                  occurredAt: '2026-11-02T14:10:00+07:00',
+                  actorName: '합성 관리자',
+                  eventCode: 'CREATED',
+                  detail: {},
+                },
+              ],
+            }),
     },
     {
       match: (request) => isGet(request, /^\/logistics\/material-issue-requests\/\d+$/),
-      respond: (request) => jsonResponse(detailOf(Number(pathOf(request).split('/').at(-1)))),
+      respond: (request) => {
+        const id = Number(pathOf(request).split('/').at(-1));
+        return id === 404
+          ? jsonResponse({ message: '없음' }, { status: 404 })
+          : jsonResponse(detailOf(id));
+      },
+    },
+    /* 새 규칙 요청의 출발 창고 후보 — W/O 라인 부서의 생산 창고(창고 A 만, G2 13). */
+    {
+      match: (request) => isGet(request, /^\/production\/work-orders\/\d+$/),
+      respond: () =>
+        jsonResponse({
+          workOrderId: 101,
+          productionWarehouseMode: true,
+          productionWarehouses: [
+            { warehouseId: 7001, warehouseCode: 'SYN-PW-A', warehouseName: '합성 생산창고 A' },
+          ],
+        }),
     },
     {
       match: (request) => request.method !== 'GET',
@@ -522,5 +544,65 @@ describe('W-02-11 출고 요청 현황 — 부족', () => {
       src: '7001',
     });
     expect(screen.getByRole('button', { name: t.views.shortageCount(3) })).toBeInTheDocument();
+  });
+});
+
+describe('W-02-11 출고 요청 현황 — G2 확인', () => {
+  it('US6-1 처음 열 때도 조회 중인 공장을 공장 칸에 보인다', async () => {
+    setup();
+    await listTable();
+
+    expect(screen.getByLabelText(t.filters.plant)).toHaveTextContent('합성 1공장');
+  });
+
+  it('US2-6 이력 시각은 공장 현지 시각이다(UTC 로 와도)', async () => {
+    setup({ route: '/production/material-issue-status?id=1' });
+    const detail = await panel();
+
+    expect(await detail.findByText(`11-03 00:00 ${t.detail.systemActor}`)).toBeInTheDocument();
+  });
+
+  it('이력 조회가 403 이면 「이력이 없습니다」가 아니라 권한 안내를 보인다', async () => {
+    setup({ route: '/production/material-issue-status?id=1', historyStatus: 403 });
+    const detail = await panel();
+
+    expect(await detail.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(detail.queryByText(t.detail.noHistory)).not.toBeInTheDocument();
+  });
+
+  it('없는 요청(404)을 열면 상세에 맞는 안내를 보인다', async () => {
+    setup({ route: '/production/material-issue-status?id=404' });
+    const detail = await panel();
+
+    expect(await detail.findByText(t.detail.notFound)).toBeInTheDocument();
+  });
+
+  it('US2-6 새 규칙 요청의 출발 생산 창고 후보는 W/O 라인 부서의 생산 창고뿐이다', async () => {
+    const { user } = setup({ route: '/production/material-issue-status?id=1' });
+    const detail = await panel();
+
+    await user.click(await detail.findByLabelText(t.detail.sourceWarehouse));
+    expect(
+      await screen.findByRole('option', { name: 'SYN-PW-A 합성 생산창고 A' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'SYN-PW-B 합성 생산창고 B' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('US4-7 부족 보기에 예정분을 가져간 이력 한 줄을 보인다', async () => {
+    setup({ route: '/production/material-issue-status?view=shortage' });
+
+    const table = within(await screen.findByRole('table', { name: t.shortage.tableLabel }));
+    expect(
+      await table.findByText(
+        t.shortage.overrideNote(
+          '11-03 09:15',
+          '합성 관리자',
+          'SYN-MIR-03',
+          t.detail.events.PLANNED_OVERRIDE('합성 긴급 대응'),
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -7,8 +7,9 @@ import type {
   MaterialIssueRequestHistoryEntry,
   MaterialIssueRequestUpdateForward,
   PlannedStockResponse,
+  WorkOrderDetailForward,
 } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
@@ -149,6 +150,28 @@ export const useWarehouseOptions = (plantId: number | null): UseQueryResult<Opti
   });
 };
 
+/** 새 규칙 요청의 출발 생산 창고 후보 — W/O 라인 부서의 이 공장 생산 창고(계약 §2, FR-010). */
+export const useWorkOrderWarehouseOptions = (
+  workOrderId: number | null,
+): UseQueryResult<Option[]> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: ['material-issue-status', 'work-order-warehouses', workOrderId ?? 0] as const,
+    enabled: workOrderId !== null,
+    queryFn: async () =>
+      (
+        (await runRequest(() =>
+          client.GET('/production/work-orders/{workOrderId}', {
+            params: { path: { workOrderId: workOrderId ?? 0 } },
+          }),
+        )) as WorkOrderDetailForward
+      ).productionWarehouses.map((warehouse) => ({
+        value: String(warehouse.warehouseId),
+        label: `${warehouse.warehouseCode} ${warehouse.warehouseName}`,
+      })),
+  });
+};
+
 /** 입고지로 고를 수 있는 위치 — 지금 입고지와 같은 창고의 위치. */
 export const useDestinationOptions = (locationId: number | null): UseQueryResult<Option[]> => {
   const { client } = useApiClient();
@@ -215,6 +238,36 @@ export const useCancelRequest = (
     knownFields: [],
     onSuccess,
   });
+};
+
+/**
+ * 부족 보기의 「예정분을 가져간 이력 한 줄」 — 배분된 요청마다 이력을 받아 가장 최근 `PLANNED_OVERRIDE` 를 낸다.
+ * 이력을 못 받은 요청은 빠진다(안내 한 줄일 뿐 부족 표시를 막지 않는다).
+ */
+export const useOverrideNotes = (
+  requestIds: readonly number[],
+): Map<number, MaterialIssueRequestHistoryEntry> => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: requestIds.map((id) => ({
+      queryKey: statusKeys.history(id),
+      retry: false,
+      queryFn: async () =>
+        (
+          await runRequest(() =>
+            client.GET('/logistics/material-issue-requests/{materialIssueRequestId}/history', {
+              params: { path: { materialIssueRequestId: id } },
+            }),
+          )
+        ).items,
+    })),
+  });
+  const notes = new Map<number, MaterialIssueRequestHistoryEntry>();
+  requestIds.forEach((id, index) => {
+    const entry = results[index]?.data?.find((item) => item.eventCode === 'PLANNED_OVERRIDE');
+    if (entry !== undefined) notes.set(id, entry);
+  });
+  return notes;
 };
 
 /** 출고 요청 사유 코드 → 이름 — 이력 「예정분을 가져감」의 사유를 이름으로 보인다. */
