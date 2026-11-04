@@ -23,7 +23,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanPane>[0]> = {}) => 
   const onCancel = vi.fn<() => void>();
 
   /* 품목 칸은 서버에서 검색하는 선택칸이라 API 맥락이 있어야 선다(사용자 지시 2026-11-04). */
-  renderWithProviders(
+  const { unmount } = renderWithProviders(
     <PlanPane
       mode="edit"
       plan={inspectionPlanFixtures[0]!}
@@ -45,7 +45,7 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanPane>[0]> = {}) => 
     />,
   );
 
-  return { onChange, onSave, onCancel, user: userEvent.setup() };
+  return { onChange, onSave, onCancel, unmount, user: userEvent.setup() };
 };
 
 describe('PlanPane — 표시', () => {
@@ -110,6 +110,16 @@ describe('PlanPane — 표시', () => {
     expect(screen.getByLabelText('기준코드')).toHaveAttribute('aria-required');
     expect(screen.getByLabelText('기준명')).toHaveAttribute('aria-required');
     expect(screen.getByRole('combobox', { name: '검사 유형' })).toHaveAttribute('aria-required');
+  });
+
+  /* PQC 기준은 공정이 필수다(사용자 결정 2026-11-04). */
+  it('PQC 기준이면 공정 칸에 필수 표시가 붙고, IQC 면 붙지 않는다', () => {
+    const pqc = renderPane({ values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionTypeCode: 'PQC' } });
+    expect(screen.getByRole('combobox', { name: '공정' })).toHaveAttribute('aria-required');
+    pqc.unmount();
+
+    renderPane({ values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionTypeCode: 'IQC' } });
+    expect(screen.getByRole('combobox', { name: '공정' })).not.toHaveAttribute('aria-required');
   });
 });
 

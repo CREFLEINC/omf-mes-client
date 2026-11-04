@@ -194,9 +194,11 @@ export const PlanPane = ({
           error={fieldErrors.inspectionTypeCode}
         />
 
-        {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
+        {/* IQC · OQC 는 공정을 비워도 된다 — PQC 만 필수다. */}
         <SelectField
           label={t.fields.process}
+          /* PQC 기준은 공정이 필수다(사용자 결정 2026-11-04). */
+          required={values.inspectionTypeCode === 'PQC'}
           options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
           value={values.processId}
           placeholder={t.values.notSelected}
