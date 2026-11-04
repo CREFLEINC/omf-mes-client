@@ -96,15 +96,13 @@ export const TerminalConnections = ({
                 <caption>설비 및 공정 연결 현황</caption>
                 <thead>
                   <tr>
-                    {['단말기', '유형', '연결 설비', '공정 설정', '연결 기준', '상태'].map(
-                      (title) => (
-                        <th key={title}>{title}</th>
-                      ),
-                    )}
+                    {['단말기', '유형', '연결 설비', '공정 설정', '상태'].map((title) => (
+                      <th key={title}>{title}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {links.map(({ terminal, process, sameEquipment }) => (
+                  {links.map(({ terminal, process }) => (
                     <tr key={terminal.terminalId}>
                       <td>{terminal.terminalCode}</td>
                       <td>
@@ -146,11 +144,6 @@ export const TerminalConnections = ({
                         ) : (
                           '미연결'
                         )}
-                      </td>
-                      <td>
-                        {[sameEquipment && '설비 일치', process && '공정 연결']
-                          .filter(Boolean)
-                          .join(', ')}
                       </td>
                       <td>
                         {terminal.isActive ? '사용' : '사용 중지'} /{' '}

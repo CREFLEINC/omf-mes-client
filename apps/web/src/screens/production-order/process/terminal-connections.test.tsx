@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders, jsonResponse } from '../../../test/api-harness';
@@ -52,10 +52,7 @@ describe('배포 연결 단말기 조회', () => {
     expect(table).not.toHaveTextContent('POP-3');
     expect(table).toHaveTextContent('작업 시작');
     expect(table).toHaveTextContent('실적 입력');
-    expect(within(table).getByText('POP-1').closest('tr')).toHaveTextContent(
-      '설비 일치, 공정 연결',
-    );
-    expect(within(table).getByText('POP-2').closest('tr')).toHaveTextContent('공정 연결');
+    expect(screen.queryByRole('columnheader', { name: '연결 기준' })).toBeNull();
   });
   it('공정 조회 실패를 미연결로 단정하지 않고 재조회할 수 있다', async () => {
     let fail = true;
