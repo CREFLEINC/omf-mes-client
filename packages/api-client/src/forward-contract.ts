@@ -975,6 +975,37 @@ export type WorkOrderDetailForward = components['schemas']['WorkOrder'] & {
   productionWarehouses?: WorkOrderProductionWarehouse[];
 };
 
+/** 배포 결과의 「재고 있는 생산 창고 없음」 자재(계약 §2, FR-007a) — 배포는 성공이다. */
+export interface ReleaseUnsourcedShortage {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  shortageQty: number;
+  uomCode: string;
+}
+
+/**
+ * 배포 응답(서버 S5 `WorkOrderReleaseResult`) — 생산 창고 공장에서만 출고 요청 요약(창고별)과
+ * 미배정 자재를 싣는다.
+ */
+export type WorkOrderReleaseResultForward = components['schemas']['WorkOrder'] & {
+  materialIssueRequests?: {
+    materialIssueRequestId: number;
+    issueRequestNo: string;
+    sourceWarehouseId: number;
+    statusCode: string;
+    issueWorkDate: string;
+  }[];
+  unsourcedShortages?: ReleaseUnsourcedShortage[];
+};
+
+/** 배포 400 의 출고 요청 기준정보 사유(계약 §2). */
+export const RELEASE_BLOCK_CODES = [
+  'LINE_DEPARTMENT_MISSING',
+  'PRODUCTION_WAREHOUSE_MISSING',
+  'PRODUCTION_FLOOR_LOCATION_MISSING',
+] as const;
+
 export interface ForwardPaths {
   /** 시리얼 투입 자재 — 서버 선행 P-107. */
   '/trace/serial-numbers/{serialNo}/input-materials': {

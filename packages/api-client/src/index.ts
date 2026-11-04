@@ -72,6 +72,8 @@ export type {
   ItemResourceMapListQuery,
   MaterialIssueDisplayStatus,
   MaterialIssueHistoryEventCode,
+  ReleaseUnsourcedShortage,
+  WorkOrderReleaseResultForward,
   MaterialIssueRequestCreateForward,
   MaterialIssueRequestCreateResultForward,
   PlannedStockConflictDetail,
@@ -94,3 +96,4 @@ export type {
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
 } from './forward-contract';
+export { RELEASE_BLOCK_CODES } from './forward-contract';

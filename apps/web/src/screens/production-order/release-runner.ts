@@ -1,4 +1,11 @@
-import { createIdempotencyKey, type ApiClient, type ApiError } from '@omf-mes/api-client';
+import {
+  createIdempotencyKey,
+  RELEASE_BLOCK_CODES,
+  type ApiClient,
+  type ApiError,
+  type ReleaseUnsourcedShortage,
+  type WorkOrderReleaseResultForward,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
 
@@ -21,7 +28,21 @@ export interface ReleaseTarget {
 export interface ReleaseAttempt extends ReleaseTarget {
   status: ReleaseAttemptStatus;
   reason: string | null;
+  /**
+   * 피처 003 — 배포 400 의 출고 요청 기준정보 사유 코드(계약 §2). 화면이 코드마다 문구와 바로가기를 낸다.
+   * 그 밖의 실패는 비어 있고 `reason` 만 쓴다.
+   */
+  blocks?: string[];
+  /** 배포는 됐지만 재고 있는 생산 창고가 없어 요청에 넣지 못한 자재(FR-007a). */
+  unsourced?: ReleaseUnsourcedShortage[];
 }
+
+/** 400 오류에서 출고 요청 기준정보 사유만 고른다(중복 없이, 계약 차례로). */
+export const releaseBlocksOf = (error: ApiError): string[] => {
+  if (error.kind !== 'validation') return [];
+  const codes = new Set(error.errors.map((item) => item.code));
+  return RELEASE_BLOCK_CODES.filter((code) => codes.has(code));
+};
 
 export const apiErrorText = (error: ApiError): string => {
   if (error.kind === 'validation' || error.kind === 'stateLocked') {
@@ -114,7 +135,7 @@ export const releaseWorkOrder = async (
     const { etag, verdict } = await inspect(client, queryClient, target.workOrderId, lotSize);
     if (!verdict.ready) return outcome('skipped', verdict.reason);
     if (etag === null) return outcome('failed', messages.save.staleToken);
-    await runRequest(() =>
+    const released = (await runRequest(() =>
       client.POST('/production/work-orders/{workOrderId}:release', {
         params: {
           path: { workOrderId: target.workOrderId },
@@ -122,10 +143,17 @@ export const releaseWorkOrder = async (
         },
         body: { lotSize: verdict.lotSize },
       }),
-    );
-    return outcome('released', null);
+    )) as WorkOrderReleaseResultForward;
+    const unsourced = released.unsourcedShortages ?? [];
+    return unsourced.length === 0
+      ? outcome('released', null)
+      : { ...outcome('released', null), unsourced };
   } catch (cause) {
-    return outcome('failed', apiErrorText(toApiError(cause)));
+    const error = toApiError(cause);
+    const blocks = releaseBlocksOf(error);
+    return blocks.length === 0
+      ? outcome('failed', apiErrorText(error))
+      : { ...outcome('failed', apiErrorText(error)), blocks };
   }
 };
 

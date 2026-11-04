@@ -108,6 +108,7 @@ export const shopfloorReceipt = {
      */
     overIssuedTitle: '출고 수량보다 많이 받을 수 없습니다',
     overIssuedGuide:
+      // ui-check-ignore: C-13 메뉴 이름 「물류 전표 조회·취소」 그대로
       '도착한 실물이 출고 수량보다 많으면 출고 전표를 먼저 정정해야 합니다. 관리웹 물류 전표 조회·취소에서 해당 전표의 취소를 요청하거나, 초과분은 추가 출고 요청으로 출고 전표를 새로 발행합니다.',
   },
   /*
