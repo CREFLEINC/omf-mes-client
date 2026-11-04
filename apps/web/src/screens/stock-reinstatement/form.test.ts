@@ -19,6 +19,7 @@ describe('재고 재등록 본문', () => {
       lotId: 6101,
       versionNo: 7,
       uomId: 7101,
+      concession: false,
       now: new Date('2026-09-05T10:20:30+09:00'),
     });
 
@@ -44,6 +45,7 @@ describe('재고 재등록 본문', () => {
         maxQty: 200,
         stockableLocationCount: 2,
         releaseReasonsReady: true,
+        concession: false,
         text: t.form,
       }),
     ).toEqual({
@@ -66,6 +68,7 @@ describe('재고 재등록 본문', () => {
         maxQty: 200,
         stockableLocationCount: 1,
         releaseReasonsReady: true,
+        concession: false,
         text: t.form,
       }),
     ).toEqual({});
@@ -84,8 +87,36 @@ describe('재고 재등록 본문', () => {
         maxQty: 200,
         stockableLocationCount: 0,
         releaseReasonsReady: true,
+        concession: false,
         text: t.form,
       }),
     ).toEqual({ toWarehouseId: t.form.noStockableLocation });
+  });
+
+  it('특채(#207)는 보류·해제 사유를 묻지 않고 본문에도 싣지 않는다', () => {
+    const draft = { ...EMPTY_DRAFT, toWarehouseId: '202', qty: '6' };
+    expect(
+      validateDraft({
+        draft,
+        maxQty: 6,
+        stockableLocationCount: 1,
+        releaseReasonsReady: false,
+        concession: true,
+        text: t.form,
+      }),
+    ).toEqual({});
+
+    const body = toCreateBody({
+      draft,
+      dispositionDecisionId: 3101,
+      lotId: 6101,
+      versionNo: 7,
+      uomId: 7101,
+      concession: true,
+      now: new Date('2026-11-03T10:20:30+07:00'),
+    });
+    expect(body).toMatchObject({ dispositionDecisionId: 3101, qty: 6, toWarehouseId: 202 });
+    expect(body).not.toHaveProperty('lotHoldId');
+    expect(body).not.toHaveProperty('releaseReasonCode');
   });
 });

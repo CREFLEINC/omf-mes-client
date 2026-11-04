@@ -16,9 +16,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
+    reactivate: 'Sử dụng lại',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
-    itemClear: 'Xóa mặt hàng',
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
@@ -38,7 +38,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   actionReasons: {
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
-    routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
+    routingNeedsItem: 'Chọn mặt hàng thì routing sẽ hiển thị.',
+    pqcNeedsProcess: 'PQC phải chọn công đoạn.',
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
@@ -89,9 +90,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Phiên bản đã hủy bỏ thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
-    deactivateTitle: 'Ngừng sử dụng tiêu chuẩn kiểm tra này?',
+    deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
+    activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
+    activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
-      'Không xóa. Sau khi ngừng sử dụng thì không dùng tiêu chuẩn này cho lần kiểm tra mới được nữa.',
+      'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
@@ -125,6 +128,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
+    activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',
@@ -196,7 +200,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemPlaceholder: 'Chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',
     all: 'Tất cả',
-    itemPick: 'Chọn',
     chipItem: (label: string): string => `Mặt hàng: ${label}`,
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',
   },
@@ -208,7 +211,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
     itemUnset: 'Chưa chỉ định mặt hàng',
-    pqcSkipOn: 'Bật',
+    pqcSkipOn: 'Áp dụng',
+    pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
   },
   versionSection: {
@@ -446,6 +450,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       sampleByLot: 'Lấy mẫu (theo LOT)',
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    routingSummary: (code: string, version: number): string =>
+      `Mã ${code} · Phiên bản Rev ${String(version)}`,
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
     confirmed: 'Đã xác nhận',
