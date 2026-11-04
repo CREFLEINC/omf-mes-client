@@ -56,9 +56,9 @@ describe('BOM Routing 본문 상세', () => {
     const change = mount();
     await screen.findByText('ERP-SYN · 개정 2');
     const routing = screen.getByRole('region', { name: 'Routing 상세 정보' });
-    await within(routing).findByRole('heading', { name: '사출' });
+    await within(routing).findByRole('cell', { name: '사출' });
     await userEvent.setup().click(within(routing).getByRole('button', { name: 'R2 개정 2' }));
-    await within(routing).findByRole('heading', { name: '검사' });
+    await within(routing).findByRole('cell', { name: '검사' });
     expect(change).not.toHaveBeenCalled();
     await userEvent
       .setup()
@@ -68,7 +68,7 @@ describe('BOM Routing 본문 상세', () => {
   });
   it('확정 계획의 상세는 표시하되 개정 변경은 제공하지 않는다', async () => {
     const change = mount(true);
-    await screen.findByRole('heading', { name: '사출' });
+    await screen.findByRole('cell', { name: '사출' });
     expect(screen.queryByRole('group', { name: 'Routing 개정 목록' })).toBeNull();
     expect(screen.queryByRole('button', { name: '이 작업 순서 적용' })).toBeNull();
     expect(change).not.toHaveBeenCalled();

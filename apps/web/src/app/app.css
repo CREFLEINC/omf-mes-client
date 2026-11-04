@@ -32893,3 +32893,18 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-multi-body > .erp-wo-multi-execution { min-height: 0; flex-shrink: 1; }
 .erp-wo-multi-execution .process-page { min-height: 0; height: 0; flex: 1; }
 .erp-wo-multi-execution .action-bar { position: static; }
+
+.erp-wo-dense-metadata { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); font: var(--type-body-sm); }
+.erp-wo-dense-metadata > span { color: var(--on-surface-variant); }
+.erp-wo-dense-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--outline-variant); border-radius: 6px; }
+.erp-wo-dense-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: var(--type-body-sm); }
+.erp-wo-dense-table caption.visually-hidden { width: 1px; }
+.erp-wo-dense-table th, .erp-wo-dense-table td { text-align: left; padding: 9px 7px; vertical-align: middle; border-bottom: 1px solid var(--outline-variant); overflow-wrap: anywhere; background: var(--surface-container-lowest, var(--surface)); }
+.erp-wo-dense-table th { background: var(--surface-container); color: var(--on-surface-variant); }
+.erp-wo-dense-table tbody tr:last-child td { border-bottom: 0; }
+.erp-wo-dense-table .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.erp-wo-dense-table .fixed-code { position: sticky; left: 0; z-index: 1; }
+.erp-wo-dense-table .fixed-name { position: sticky; left: 104px; z-index: 1; border-right: 1px solid var(--outline-variant); }
+.erp-wo-table-pagebar, .erp-wo-table-page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.erp-wo-table-pagebar { justify-content: space-between; }
+.erp-wo-table-page-actions > [role='combobox'] { width: 5rem; }

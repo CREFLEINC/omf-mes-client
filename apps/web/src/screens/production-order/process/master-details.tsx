@@ -2,7 +2,7 @@ import { Button } from '@crefle/web-ui';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useRoutingOperations } from '../../routing/queries';
-import { BomContents, RoutingContents } from './revision-detail';
+import { BomTable, RoutingTable } from './revision-tables';
 
 const readableRevision = (label: string) => label.replace(/\bRev\.?\s*/g, '개정 ');
 
@@ -38,24 +38,20 @@ export const MasterDetails = ({
     <div className="erp-wo-master-details">
       <section className="pane erp-wo-inline-revision" aria-label="BOM 상세 정보">
         <div className="section-heading-row">
-          <h2 className="section-title">
-            자재 구성과 필요 수량 <small className="field-note">BOM</small>
-          </h2>
+          <h2 className="section-title">BOM 구성</h2>
           <span className="field-note">
             {locked ? '확정 계획 적용 개정' : 'ERP 기본 개정 자동 적용'}
           </span>
         </div>
         {Number(bomId) > 0 ? (
-          <BomContents id={Number(bomId)} plain />
+          <BomTable key={bomId} id={Number(bomId)} />
         ) : (
           <p>사용 가능한 ERP 기본 BOM이 없습니다.</p>
         )}
       </section>
       <section className="pane erp-wo-inline-revision" aria-label="Routing 상세 정보">
         <div className="section-heading-row">
-          <h2 className="section-title">
-            생산 작업 순서 <small className="field-note">Routing</small>
-          </h2>
+          <h2 className="section-title">Routing</h2>
           <span className="field-note">
             {applied ? `현재 적용: ${readableRevision(applied.label)}` : 'Routing 미지정'}
           </span>
@@ -83,12 +79,7 @@ export const MasterDetails = ({
         )}
         {candidate ? (
           <>
-            <RoutingContents
-              id={Number(preview)}
-              label={readableRevision(candidate.label)}
-              showHeader
-              plain
-            />
+            <RoutingTable key={preview} id={Number(preview)} />
             {!locked && (
               <p className="field-note" aria-live="polite">
                 {preview === routingId
