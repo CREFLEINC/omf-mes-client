@@ -573,17 +573,26 @@ export const useProcessOptions = (): LookupResult => {
  * Rev 목록에는 페이지네이션이 없다(계약) — 잘림을 판정할 자리가 없으므로 늘 거짓이다.
  */
 /**
- * 품목을 고르면 라우팅에 자동으로 넣을 값(사용자 지시 2026-11-04) — 최신 확정 Rev, 확정이 없으면 최신 Rev.
- * W/O 배포가 확정 Rev 를 읽어, 작성 중 Rev 를 고르면 그 기준이 현장 W/O 에 닿지 않는다.
+ * 품목을 고르면 라우팅 칸에 채울 Rev(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
+ * 저장하면 서버가 작성 중 Rev 는 그 자리에서 고치고, 확정 Rev 는 새 Rev 로 확정한다(PQC 연동).
  */
-const latestRoutingId = (routings: readonly { routingId: number; routingVersion: number; statusCode: string }[]): string | null => {
-  const newest = (rows: typeof routings) =>
-    rows.reduce<(typeof routings)[number] | null>((best, row) => (best === null || row.routingVersion > best.routingVersion ? row : best), null);
-  const picked = newest(routings.filter((routing) => routing.statusCode === 'CONFIRMED')) ?? newest(routings.filter((routing) => routing.statusCode !== 'OBSOLETE'));
+const autoRoutingId = (routings: readonly { routingId: number; routingVersion: number; statusCode: string }[]): string | null => {
+  const newest = (statusCode: string) =>
+    routings.filter((row) => row.statusCode === statusCode)
+      .reduce<(typeof routings)[number] | null>((best, row) => (best === null || row.routingVersion > best.routingVersion ? row : best), null);
+  const picked = newest('DRAFT') ?? newest('CONFIRMED');
   return picked === null ? null : String(picked.routingId);
 };
 
-export const useRoutingOptions = (itemId: number | null): LookupResult & { latestRoutingId: string | null } => {
+const routingStatusLabel = (statusCode: string): string => {
+  const values = messages.inspectionStandard.values;
+  if (statusCode === 'DRAFT') return values.draft;
+  if (statusCode === 'CONFIRMED') return values.confirmed;
+  return values.obsolete;
+};
+
+/** `autoRoutingId` 가 undefined 면 아직 받는 중이다 — null(채울 Rev 없음)과 가른다. */
+export const useRoutingOptions = (itemId: number | null): LookupResult & { autoRoutingId: string | null | undefined } => {
   const { client } = useApiClient();
 
   const routings = useQuery({
@@ -602,17 +611,14 @@ export const useRoutingOptions = (itemId: number | null): LookupResult & { lates
     entries:
       routings.data?.items.map((routing) => ({
         value: String(routing.routingId),
-        label: messages.inspectionStandard.values.routingOption(
-          routing.routingCode,
-          routing.routingVersion,
-        ),
+        label: `${messages.inspectionStandard.values.routingOption(routing.routingCode, routing.routingVersion)} (${routingStatusLabel(routing.statusCode)})`,
         // 라우팅에는 사용 여부가 없다(상태는 작성중·확정·폐기다) — 전부 고를 수 있는 값으로 둔다.
         isActive: true,
       })) ?? EMPTY_ENTRIES,
     truncated: false,
     isError: routings.isError,
     isLoading: itemId !== null && routings.isPending,
-    latestRoutingId: routings.data === undefined ? null : latestRoutingId(routings.data.items),
+    autoRoutingId: routings.data === undefined ? undefined : autoRoutingId(routings.data.items),
   };
 };
 

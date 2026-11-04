@@ -1095,7 +1095,8 @@ describe('InspectionStandardScreen — 기준 저장', () => {
       inspectionTypeCode: 'IQC',
       itemId: 5001,
       processId: null,
-      routingId: null,
+      /* 창을 열면 그 품목의 작성 중 최신 Rev 로 다시 채운다(사용자 지시 2026-11-04). */
+      routingId: 7003,
       defaultSkip: false,
     });
     expect('approvedBy' in body).toBe(false);
@@ -1279,8 +1280,8 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
 
     await awaitPlanForm();
-    expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
-    expect(screen.getByText('품목을 선택하면 라우팅을 선택할 수 있습니다.')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '라우팅' })).not.toBeInTheDocument();
+    expect(screen.getByText('품목을 선택하면 라우팅이 표시됩니다.')).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
 
@@ -1296,17 +1297,17 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     await waitFor(() => {
       expect(requestsTo(requests, '/planning/routings')).toHaveLength(1);
     });
-    /* 라우팅 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04). */
+    /* 라우팅 칸이 나타나고 작성 중 최신 Rev 가 채워진다(사용자 지시 2026-11-04 · 칸으로 커서를 옮기지 않는다). */
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: '라우팅' })).toHaveFocus();
+      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-01 · Rev 3 (작성중)');
     });
     expect(requestsTo(requests, '/planning/routings')[0]?.url.searchParams.get('itemId')).toBe(
       '5001',
     );
   });
 
-  /* 다른 품목의 라우팅을 가리키면 안 된다 — 바꾼 품목의 최신 라우팅으로 다시 채운다(사용자 지시 2026-11-04 · 확정 Rev 우선). */
-  it('품목을 바꾸면 그 품목의 최신 확정 라우팅으로 바뀐다', async () => {
+  /* 다른 품목의 라우팅을 가리키면 안 된다 — 바꾼 품목의 Rev 로 다시 채운다(사용자 지시 2026-11-04 · 작성 중 Rev 우선). */
+  it('품목을 바꾸면 그 품목의 작성 중 최신 라우팅으로 바뀐다', async () => {
     const perItem: StubRoute = {
       match: (request) => isGet(request, '/planning/routings') && new URL(request.url).searchParams.get('itemId') === '5002',
       respond: () =>
@@ -1324,15 +1325,37 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: '라우팅' })).toHaveTextContent(
-        'SYN-ROUTE-01 · Rev 3',
-      );
+      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-01 · Rev 3 (작성중)');
     });
 
     await pickPlanItem(user, 'SYN-ITEM-02');
 
     await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: '라우팅' })).toHaveTextContent('SYN-ROUTE-02 · Rev 1');
+      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-02 · Rev 2 (작성중)');
+    });
+  });
+
+  it('작성 중 Rev 가 없으면 확정 최신 Rev 를 채운다', async () => {
+    const perItem: StubRoute = {
+      match: (request) => isGet(request, '/planning/routings') && new URL(request.url).searchParams.get('itemId') === '5002',
+      respond: () =>
+        jsonResponse({
+          items: [
+            { routingId: 7012, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 3, statusCode: 'OBSOLETE', effectiveFrom: '2026-03-01', effectiveTo: null },
+            { routingId: 7010, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 1, statusCode: 'CONFIRMED', effectiveFrom: '2026-03-01', effectiveTo: null },
+          ],
+        }),
+    };
+    const { user } = renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), perItem, ...lookupRoutes()],
+      '?plan=3002',
+    );
+
+    await awaitPlanForm();
+    await pickPlanItem(user, 'SYN-ITEM-02');
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-02 · Rev 1 (확정)');
     });
   });
 

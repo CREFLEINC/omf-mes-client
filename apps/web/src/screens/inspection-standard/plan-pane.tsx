@@ -1,6 +1,6 @@
 import { Button, Checkbox, Chip, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 
@@ -24,6 +24,8 @@ export interface PlanPaneProps {
   plan: InspectionPlan | null;
   values: PlanFormValues;
   onChange: (patch: Partial<PlanFormValues>) => void;
+  /** 라우팅을 자동으로 채울 때 부른다. 없으면 `onChange` 로 넣는다. */
+  onRoutingRefresh?: (routingId: string) => void;
   /** 필드별 인라인 오류 — 로컬 검증 결과와 서버 필드 오류를 상위가 병합해 넘긴다. */
   fieldErrors: Record<string, string>;
   /** 저장 실패 배너 슬롯 */
@@ -33,8 +35,8 @@ export interface PlanPaneProps {
   itemOptions: SelectOption[];
   processOptions: SelectOption[];
   routingOptions: SelectOption[];
-  /** 품목을 고르면 라우팅에 자동으로 넣을 값 — 그 품목의 최신 확정 Rev(사용자 지시 2026-11-04). 받기 전이면 null. */
-  latestRoutingId?: string | null;
+  /** 라우팅 칸에 채울 값 — 그 품목의 작성 중 최신 Rev, 없으면 확정 최신 Rev(사용자 지시 2026-11-04). 받는 중이면 undefined, 없으면 null. */
+  autoRoutingId?: string | null | undefined;
   /**
    * 라우팅을 고를 수 없는 사유. null이면 고를 수 있다.
    * 계약의 라우팅 조회가 품목을 필수로 두어 「전 품목 공통 기준」에는 이을 라우팅이 없다.
@@ -68,13 +70,14 @@ export const PlanPane = ({
   plan,
   values,
   onChange,
+  onRoutingRefresh,
   fieldErrors,
   banner,
   optionsNotice,
   itemOptions,
   processOptions,
   routingOptions,
-  latestRoutingId = null,
+  autoRoutingId,
   routingDisabledReason,
   codeLockReason,
   isDirty,
@@ -93,8 +96,6 @@ export const PlanPane = ({
   const itemOption = itemOptions.find((option) => option.value === values.itemId) ?? null;
   const routingId = useId();
   const routingHintId = useId();
-  /* 품목을 고르면 라우팅 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04). 칸이 그려진 뒤에 옮긴다. */
-  const [focusRouting, setFocusRouting] = useState(false);
   const isRoutingShown = routingDisabledReason === null;
 
   /*
@@ -113,20 +114,21 @@ export const PlanPane = ({
       : {};
   };
   const isPqc = values.inspectionTypeCode === 'PQC';
-  useEffect(() => {
-    if (!focusRouting || !isRoutingShown) return;
-    document.getElementById(routingId)?.focus();
-    setFocusRouting(false);
-  }, [focusRouting, isRoutingShown, routingId]);
 
-  /* 품목을 고르면 그 품목의 최신 라우팅을 자동으로 넣는다(사용자 지시 2026-11-04) — 라우팅 목록이 도착한 뒤 한 번. 사람이 바꿀 수 있다. */
-  const [autoRoutingFor, setAutoRoutingFor] = useState<string | null>(null);
+  /*
+   * 라우팅은 고르지 않고 자동으로 채운다(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
+   * 이미 저장된 기준도 창을 열면 지금 Rev 로 다시 채운다. 품목을 비우면 라우팅도 비운다.
+   */
   useEffect(() => {
-    if (autoRoutingFor === null || autoRoutingFor !== values.itemId || latestRoutingId === null) return;
-    setAutoRoutingFor(null);
-    if (values.routingId === '') onChange({ routingId: latestRoutingId });
-  }, [autoRoutingFor, values.itemId, values.routingId, latestRoutingId, onChange]);
-
+    const refresh = onRoutingRefresh ?? ((routingId: string) => onChange({ routingId }));
+    if (values.itemId === '') {
+      if (values.routingId !== '') refresh('');
+      return;
+    }
+    if (autoRoutingId === undefined) return;
+    const next = autoRoutingId ?? '';
+    if (values.routingId !== next) refresh(next);
+  }, [values.itemId, values.routingId, autoRoutingId, onChange, onRoutingRefresh]);
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
@@ -261,13 +263,7 @@ export const PlanPane = ({
             leadingOptions={ALL_ITEMS}
             value={values.itemId}
             placeholder={t.values.allItems}
-            onChange={(value) => {
-              onChange({ itemId: value });
-              if (value !== '') {
-                setFocusRouting(true);
-                setAutoRoutingFor(value);
-              }
-            }}
+            onChange={(value) => onChange({ itemId: value })}
             invalid={fieldErrors.itemId !== undefined}
             aria-describedby={fieldErrors.itemId === undefined ? undefined : itemErrorId}
           />
@@ -280,18 +276,19 @@ export const PlanPane = ({
 
         {/*
          * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내는 품목 이름 오른쪽).
-         * 품목을 고르면 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04).
+         * 고르는 칸이 아니라 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04).
          */}
         {isRoutingShown && (
-          <SelectField
-            id={routingId}
-              label={t.fields.routing}
-            options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
-            value={values.routingId}
-            placeholder={t.values.notSelected}
-            onChange={(routingId) => onChange({ routingId })}
-            error={fieldErrors.routingId}
-          />
+          <div className="field-cell">
+            <FieldLabel htmlFor={routingId} label={t.fields.routing} />
+            <TextField
+              id={routingId}
+              value={routingOptions.find((option) => option.value === values.routingId)?.label ?? t.values.none}
+              readOnly
+              onChange={() => undefined}
+              error={fieldErrors.routingId}
+            />
+          </div>
         )}
       </div>
 

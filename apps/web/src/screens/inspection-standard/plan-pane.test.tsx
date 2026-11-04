@@ -166,19 +166,22 @@ describe('PlanPane — 잠금과 사유', () => {
   it('품목을 고르지 않으면 라우팅 칸이 없고 품목 이름 옆에 안내가 있다', () => {
     renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '' },
-      routingDisabledReason: '품목을 선택하면 라우팅을 선택할 수 있습니다.',
+      routingDisabledReason: '품목을 선택하면 라우팅이 표시됩니다.',
     });
 
     expect(screen.queryByText('라우팅')).not.toBeInTheDocument();
-    const hint = screen.getByText('품목을 선택하면 라우팅을 선택할 수 있습니다.');
+    const hint = screen.getByText('품목을 선택하면 라우팅이 표시됩니다.');
     expect(hint).toHaveClass('inspection-standard-label-hint');
     expect(hint.closest('.field-label')).toHaveTextContent('품목');
   });
 
-  it('품목이 있으면 라우팅 칸이 열려 있다', () => {
-    renderPane();
+  /* 라우팅은 고르지 않는다 — 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04). */
+  it('품목이 있으면 라우팅을 고르는 칸 없이 글자로 보인다', () => {
+    renderPane({ values: { ...planToFormValues(inspectionPlanFixtures[0]!), routingId: '7003' }, autoRoutingId: '7003' });
 
-    expect(screen.getByRole('combobox', { name: '라우팅' })).toBeEnabled();
+    expect(screen.queryByRole('combobox', { name: '라우팅' })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveValue('SYN-ROUTE-01 · Rev 3');
+    expect(screen.getByRole('textbox', { name: '라우팅' })).toHaveAttribute('readonly');
   });
 });
 

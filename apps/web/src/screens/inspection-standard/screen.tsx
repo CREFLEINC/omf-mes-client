@@ -1144,6 +1144,19 @@ export const InspectionStandardScreen = () => {
     clearFieldErrors(patch, setPlanFieldErrors, planWrite.clearFieldError);
   };
 
+  /* 자동으로 채운 라우팅(사용자 지시 2026-11-04) — 저장된 품목 그대로면 기준값도 맞춰, 창을 열기만 해도 고친 것으로 잡히지 않게 한다. */
+  const refreshPlanRouting = (routingId: string) => {
+    setFormState((prev) =>
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            values: { ...prev.values, routingId },
+            baseline: prev.values.itemId === prev.baseline.itemId ? { ...prev.baseline, routingId } : prev.baseline,
+          },
+    );
+  };
+
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
     const patch = withItemChangeRule(rawPatch);
 
@@ -1419,7 +1432,7 @@ export const InspectionStandardScreen = () => {
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
           processOptions={optionsFor(processOptions, createValues.processId)}
           routingOptions={optionsFor(routingOptions, createValues.routingId)}
-          latestRoutingId={routingOptions.latestRoutingId}
+          autoRoutingId={routingOptions.autoRoutingId}
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
@@ -1539,6 +1552,7 @@ export const InspectionStandardScreen = () => {
               plan={planDetail.data.inspectionPlan}
               values={formState.values}
               onChange={changePlanValues}
+              onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
               fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
               banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
@@ -1546,7 +1560,7 @@ export const InspectionStandardScreen = () => {
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
               processOptions={optionsFor(processOptions, formState.values.processId)}
               routingOptions={optionsFor(routingOptions, formState.values.routingId)}
-              latestRoutingId={routingOptions.latestRoutingId}
+              autoRoutingId={routingOptions.autoRoutingId}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
               // 다른 자료가 쓰는 기준은 건수 대신 짧은 한 줄로 알린다(사용자 시안 · #208).
