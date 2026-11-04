@@ -32791,4 +32791,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-auto-result-table td { overflow-wrap: anywhere; }
 .erp-wo-auto-result-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--type-label-sm); }
 
-.erp-wo-result-scope { padding-bottom: var(--space-3); margin-bottom: var(--space-2); border-bottom: 1px solid var(--outline-variant); }
+.erp-wo-result-scope { padding: var(--space-3) var(--space-4); margin: 0; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; }
+.erp-wo-result-scope .section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); font: var(--type-title-sm); min-width: 0; }
+.erp-wo-result-scope .field-note { display: inline; margin: 0; }

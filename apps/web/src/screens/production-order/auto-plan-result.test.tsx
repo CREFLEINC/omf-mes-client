@@ -71,7 +71,7 @@ describe('자동 계획 실행 결과', () => {
       'href',
       '/production/production-orders/ERP-1',
     );
-    await user.click(within(result).getByRole('button', { name: '결과 닫기' }));
+    await user.click(within(result).getByRole('button', { name: '전체 ERP W/O 조회' }));
     expect(screen.queryByRole('region', { name: '자동 계획 실행 결과' })).toBeNull();
   });
   it('기존 캐시의 미확정과 실패 결과도 구분한다', () => {

@@ -378,11 +378,9 @@ export const ProductionOrderScreen = ({
             outcomes={bulk.run.outcomes}
             filter={autoResultFilter}
             onFilterChange={setAutoResultFilter}
-            onClose={() => {
-              bulk.clear();
-              setAutoResultFilter(null);
-              setResultFilter(null);
-            }}
+            onClose={() =>
+              apply({ ...DEFAULT_WORKLIST_FILTERS, plant: filters.plant, state: 'ALL', page: 1 })
+            }
           />
         ) : (
           <BulkResult
@@ -456,8 +454,14 @@ export const ProductionOrderScreen = ({
               {bulk.run?.kind === 'autoPlan' ? '자동 계획 실행 대상' : '일괄 배포 실행 대상'}{' '}
               <span className="field-note">{rows.length}건</span>
             </h2>
-            <Button size="sm" variant="outlined" onClick={() => apply({ ...filters, page: 1 })}>
-              업무 목록으로
+            <Button
+              size="sm"
+              variant="outlined"
+              onClick={() =>
+                apply({ ...DEFAULT_WORKLIST_FILTERS, plant: filters.plant, state: 'ALL', page: 1 })
+              }
+            >
+              전체 목록으로 돌아가기
             </Button>
           </div>
         )}

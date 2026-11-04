@@ -545,7 +545,7 @@ describe('작업지시 목록 작업함', () => {
       expect(button).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('heading', { name: '자동 계획 실행 대상 1건' })).toBeVisible();
     expect(screen.getByRole('button', { name: '실행 대상 전체 1건' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: '업무 목록으로' }));
+    await user.click(screen.getByRole('button', { name: '전체 목록으로 돌아가기' }));
     expect(screen.queryByRole('region', { name: '자동 계획 실행 결과' })).toBeNull();
     expect(within(statuses).getByRole('button', { name: /^전체 / })).toHaveAttribute(
       'aria-pressed',

@@ -48,8 +48,8 @@ export const AutoPlanResult = ({
     <section className="pane erp-wo-auto-result" aria-label="자동 계획 실행 결과">
       <div className="section-heading-row">
         <h2 className="section-title">자동 계획 실행 결과</h2>
-        <Button size="sm" variant="text" onClick={onClose}>
-          결과 닫기
+        <Button size="sm" variant="outlined" onClick={onClose}>
+          전체 ERP W/O 조회
         </Button>
       </div>
       <div className="erp-wo-auto-result-filters" role="group" aria-label="자동 계획 결과 필터">
