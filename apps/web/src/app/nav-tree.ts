@@ -204,6 +204,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '자재 불출 요청',
             labelVi: 'Yêu cầu cấp phát vật tư',
           },
+          /* W-02-11 — 출고 요청을 보고 고치고 취소하고 부족을 본다(피처 003, 확정 항목 3). */
+          {
+            to: '/production/material-issue-status',
+            label: '출고 요청 현황',
+            labelVi: 'Tình trạng yêu cầu xuất kho',
+          },
           {
             to: '/logistics/supplier-return',
             label: '공급사 반품 처리',

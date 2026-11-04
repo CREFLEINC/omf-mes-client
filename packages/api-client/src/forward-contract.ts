@@ -742,6 +742,192 @@ export type OperationPolicyListQueryForward = Omit<OperationPolicyListQuery, 'po
 type DepartmentId = { departmentId: number };
 
 /**
+ * 서버 선행(003 계획 기반 출고 요청 · 계약 §1, S5·S8) — 출고 요청 화면 표시 상태. `closedAt` 이 있으면 `DONE`
+ * 이고 화면은 `closeReasonCode` 를 함께 보인다. `statusCode` 는 저장 상태 그대로다.
+ */
+export type MaterialIssueDisplayStatus =
+  'WAITING' | 'RELEASED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+
+/**
+ * 출고 요청(계약 §1 바뀌는 응답 칸 + 「화면 이름 칸」, 2026-11-04 보탬). 목록 · 상세 · PUT · cancel 응답이
+ * 같은 모양이다.
+ */
+export interface MaterialIssueRequestForward {
+  materialIssueRequestId: number;
+  issueRequestNo: string;
+  workOrderId: number;
+  workOrderNo: string;
+  destinationLocationId: number;
+  destinationLocationName: string;
+  statusCode: string;
+  displayStatus: MaterialIssueDisplayStatus;
+  reasonCode?: string | null;
+  sourceWarehouseId?: number | null;
+  sourceWarehouseName?: string | null;
+  issueWorkDate?: string | null;
+  productionDate?: string | null;
+  productionPlanId?: number | null;
+  productionPlanNo: string | null;
+  releasedAt?: string | null;
+  releaseErrorText?: string | null;
+  closedAt?: string | null;
+  /** `WO_CANCELLED` · `WO_CLOSED`. */
+  closeReasonCode?: string | null;
+  lineCount: number;
+  /** 줄 `shortageQty`(저장 부족) 합 — 목록이 줄을 싣지 않으므로 요청에 둔다. */
+  shortageQtyTotal: number;
+  /** 줄 `dynamicShortageQty`(동적 부족) 합. 화면의 「부족 N」 = 저장 + 동적(서버 S8e). */
+  dynamicShortageQtyTotal: number;
+  /** PUT · cancel 본문에 그대로 돌려보낸다. ETag 는 쓰지 않는다. */
+  versionNo: number;
+}
+
+/** 출고 요청 줄 — 계약 §1 줄 추가(`shortageQty` · `pickedQty` · `outstandingQty`)와 이름 칸. */
+export interface MaterialIssueRequestLineForward {
+  materialIssueRequestLineId: number;
+  materialIssueRequestId: number;
+  lineNo: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  uomId: number;
+  uomCode: string;
+  requestedQty: number;
+  issuedQty: number;
+  pickedQty?: number;
+  outstandingQty?: number;
+  shortageQty?: number | null;
+  /** 동적 부족 — 줄 부족 표시는 `shortageQty + dynamicShortageQty`. */
+  dynamicShortageQty?: number;
+}
+
+export interface MaterialIssueRequestDetailForward {
+  materialIssueRequest: MaterialIssueRequestForward;
+  lines: MaterialIssueRequestLineForward[];
+}
+
+/** 목록 조건(계약 §1 「조건 추가」). 여러 값은 같은 이름을 되풀이한다. */
+export interface MaterialIssueRequestListQueryForward {
+  workOrderId?: number;
+  q?: string;
+  displayStatus?: MaterialIssueDisplayStatus[];
+  issueWorkDateFrom?: string;
+  issueWorkDateTo?: string;
+  productionDateFrom?: string;
+  productionDateTo?: string;
+  plantId?: number;
+  sourceWarehouseId?: number;
+  productionPlanId?: number;
+  hasShortage?: boolean;
+  releaseFailed?: boolean;
+  page?: number;
+  size?: number;
+}
+
+/** 새 `PUT …/{id}` 본문 — 모든 칸 선택. 진행 있음이면 `lines` 만. */
+export interface MaterialIssueRequestUpdateForward {
+  versionNo: number;
+  issueWorkDate?: string;
+  sourceWarehouseId?: number;
+  destinationLocationId?: number;
+  lines?: { materialIssueRequestLineId: number; requestedQty: number }[];
+  acknowledgeHoliday?: boolean;
+}
+
+/** 새 `POST …/{id}:cancel` 본문. */
+export interface MaterialIssueRequestCancelForward {
+  versionNo: number;
+  reason?: string;
+}
+
+/** 이력 사건(계약 §1 history). */
+export type MaterialIssueHistoryEventCode =
+  | 'CREATED'
+  | 'RELEASED'
+  | 'RELEASE_FAILED'
+  | 'REVERTED_TO_WAITING'
+  | 'ISSUE_DATE_CHANGED'
+  | 'SOURCE_CHANGED'
+  | 'DESTINATION_CHANGED'
+  | 'QTY_CHANGED'
+  | 'CANCELLED'
+  | 'CLOSED'
+  /** 다른 W/O 의 예정분을 가져감(긴급 대응 · 부족 보충, FR-018). */
+  | 'PLANNED_OVERRIDE';
+
+/**
+ * 새 `GET …/{id}/history` 항목 — 최근 것이 먼저. 서버는 문장을 만들지 않는다(화면이 `eventCode` 로 ko · vi
+ * 문장을 만든다). `actorName` 은 러너 배포면 null.
+ */
+export interface MaterialIssueRequestHistoryEntry {
+  occurredAt: string;
+  actorName: string | null;
+  eventCode: MaterialIssueHistoryEventCode;
+  detail: {
+    /** 날짜(YYYY-MM-DD) · 창고/위치 이름 · 수량. */
+    before?: string | number | null;
+    /** 바뀐 값. `PLANNED_OVERRIDE` 는 `[{ itemId, requestedQty }]`. */
+    after?: string | number | null | { itemId: number; requestedQty: number }[];
+    itemCode?: string;
+    /** 취소 사유 · 닫힘 사유(`WO_CANCELLED` · `WO_CLOSED`) · 요청 사유 코드(`PLANNED_OVERRIDE`). */
+    reason?: string | null;
+    errorText?: string;
+  };
+}
+
+/** 새 `GET …/planned-stock` — 생산 창고 출고 예정 재고(FR-015)와 부족 목록(FR-016). */
+export interface PlannedStockRow {
+  sourceWarehouseId: number;
+  sourceWarehouseName?: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  availableQty: number;
+  plannedQty: number;
+  freeQty: number;
+  shortageQty: number;
+  requests: {
+    materialIssueRequestId: number;
+    issueRequestNo: string;
+    workOrderId: number;
+    workOrderNo: string;
+    issueWorkDate: string | null;
+    plannedQty: number;
+    shortageQty: number;
+  }[];
+}
+
+/** 「재고 있는 생산 창고 없음」 행(FR-007a) — `onlyShortage=true` 일 때만 실린다. */
+export interface UnsourcedShortageRow {
+  unsourcedShortageId: number;
+  workOrderId: number;
+  workOrderNo: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  shortageQty: number;
+  uomCode: string;
+  resolvedRequestId?: number | null;
+  resolvedRequestNo?: string | null;
+  /** 계약 밖 선택 칸 — 생산일(시안 「W/O · 생산일」). */
+  productionDate?: string | null;
+}
+
+export interface PlannedStockResponse {
+  items: PlannedStockRow[];
+  unsourced?: UnsourcedShortageRow[];
+}
+
+export interface PlannedStockQuery {
+  plantId: number;
+  sourceWarehouseId?: number;
+  itemId?: number;
+  onlyShortage?: boolean;
+}
+
+type MaterialIssueRequestId = { materialIssueRequestId: number };
+
+/**
  * omf-all-around#207 — 일부 특채는 적용 때 LOT 을 나눈다. 재고가 있는 LOT 을 나누면 원장 영업일이 필요해 적용에
  * 본문(선택)이 생겼고, 응답에 떼어 낸 자식 LOT·새 부적합(`splitResult`)이 «적용 응답에만» 실린다.
  * 서버 전달본이 갱신될 때 동등성을 대조하고 제거한다.
@@ -1180,6 +1366,67 @@ export interface ForwardPaths {
       { query?: never; header: { 'Idempotency-Key': string }; path?: never; cookie?: never },
       { content: { 'application/json': OperationPolicyCreateForward } },
       { 201: Json<components['schemas']['OperationPolicy']> }
+    >;
+  };
+  /** 서버 선행(003 · 계약 §1, S8) — 출고 요청 목록 조건 추가 · 표시 상태. 등록은 생성 타입 그대로(C3 에서 바꾼다). */
+  '/logistics/material-issue-requests': Omit<paths['/logistics/material-issue-requests'], 'get'> & {
+    get: Op<
+      {
+        query?: MaterialIssueRequestListQueryForward;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      },
+      never,
+      { 200: Json<{ items: MaterialIssueRequestForward[]; page: PageMeta }> }
+    >;
+  };
+  /** 서버 선행(003 · 계약 §1, S7) — 상세(표시 칸) · 수정. */
+  '/logistics/material-issue-requests/{materialIssueRequestId}': Unused & {
+    parameters: NoParameters;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: MaterialIssueRequestId; cookie?: never },
+      never,
+      { 200: Json<MaterialIssueRequestDetailForward> }
+    >;
+    put: Op<
+      Params<never, { 'Idempotency-Key': string }, MaterialIssueRequestId>,
+      { content: { 'application/json': MaterialIssueRequestUpdateForward } },
+      { 200: Json<MaterialIssueRequestDetailForward> }
+    >;
+  };
+  /** 서버 선행(003 · 계약 §1, S7) — 취소(피킹 지시도 닫힌다). */
+  '/logistics/material-issue-requests/{materialIssueRequestId}:cancel': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, { 'Idempotency-Key': string }, MaterialIssueRequestId>,
+      { content: { 'application/json': MaterialIssueRequestCancelForward } },
+      { 200: Json<MaterialIssueRequestDetailForward> }
+    >;
+  };
+  /** 서버 선행(003 · 계약 §1, S8) — 이력. */
+  '/logistics/material-issue-requests/{materialIssueRequestId}/history': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: MaterialIssueRequestId; cookie?: never },
+      never,
+      { 200: Json<{ items: MaterialIssueRequestHistoryEntry[] }> }
+    >;
+  };
+  /** 서버 선행(003 · 계약 §1, S8) — 출고 예정 재고 · 부족 목록. */
+  '/logistics/material-issue-requests/planned-stock': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: PlannedStockQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<PlannedStockResponse> }
     >;
   };
 }
