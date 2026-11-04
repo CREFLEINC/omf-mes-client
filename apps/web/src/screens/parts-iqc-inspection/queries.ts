@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
 import type { QueueListQuery } from '../iqc-inspection/filters';
@@ -287,7 +288,8 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
       });
     },
     etagPath: null,
-    invalidateKeys: [ALL_KEY, ['iqc-inspection']],
+    /* 위 「대기 · 진행 · 완료」 숫자와 탭 배지도 다시 받는다 — 빠지면 확정 뒤에도 옛 숫자가 남는다. */
+    invalidateKeys: [ALL_KEY, ['iqc-inspection'], INSPECTION_HUB_COUNTS_KEY],
     // `defects` — 서버가 불량 수량 합계 ≠ 불합격 수량을 400 으로 돌려준다(omf-all-around#205 · P-156). 불량 유형 칸 아래에 붙인다.
     knownFields: ['judgmentChangeReason', 'defectRecords', 'defects', 'X-Worker-No'],
     keyLifetime: 'until-applied',

@@ -37,8 +37,15 @@ const concession = (statusCode: string) => ({
   usable: statusCode === 'APPROVED',
 });
 
+const SPLIT = {
+  splitLotId: 8802,
+  splitLotNo: 'MLOT-8801-S1',
+  splitNonconformanceId: 42,
+  splitNonconformanceNo: 'NC-0042',
+};
+
 const stub =
-  (rows: unknown[], writes: Request[], applyFailure?: unknown): StubFetch =>
+  (rows: unknown[], writes: Request[], applyFailure?: unknown, split = false): StubFetch =>
   async (request) => {
     const url = new URL(request.url);
     if (url.pathname === '/quality/concessions' && request.method === 'GET') {
@@ -51,7 +58,7 @@ const stub =
     if (url.pathname === '/quality/concessions/61:apply') {
       writes.push(request.clone());
       if (applyFailure !== undefined) return jsonResponse(applyFailure, { status: 400 });
-      return jsonResponse(concession('APPROVED'));
+      return jsonResponse({ ...concession('APPROVED'), splitResult: split ? SPLIT : null });
     }
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
@@ -71,10 +78,15 @@ const renderDialog = () => {
   return { writes, onClose, user: userEvent.setup() };
 };
 
-const renderHistory = (rows: unknown[], readOnly = false, applyFailure?: unknown) => {
+const renderHistory = (
+  rows: unknown[],
+  readOnly = false,
+  applyFailure?: unknown,
+  split = false,
+) => {
   const writes: Request[] = [];
   renderWithProviders(<ConcessionHistory nonconformanceId={41} readOnly={readOnly} />, {
-    fetch: stub(rows, writes, applyFailure),
+    fetch: stub(rows, writes, applyFailure, split),
   });
   return { writes, user: userEvent.setup() };
 };
@@ -135,6 +147,18 @@ describe('ConcessionHistory', () => {
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(new URL(writes[0]?.url ?? '').pathname).toBe('/quality/concessions/61:apply');
     expect(await screen.findByText(t.applied)).toBeInTheDocument();
+    // 재고를 나눌 때 쓸 영업일을 늘 싣는다(#207 · C-8).
+    expect(await writes[0]?.json()).toEqual({
+      businessDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
+  });
+
+  it('일부 특채로 LOT 이 나뉘면 떼어 낸 LOT·새 부적합 번호를 알린다(#207)', async () => {
+    const { user } = renderHistory([concession('PENDING')], false, undefined, true);
+
+    await user.click(await screen.findByRole('button', { name: t.apply }));
+
+    expect(await screen.findByText(t.appliedSplit('MLOT-8801-S1', 'NC-0042'))).toBeInTheDocument();
   });
 
   it('적용 시점에 남은 수량을 넘으면(서버 400 approvedQty) 그 메시지를 오류 배너로 보인다', async () => {

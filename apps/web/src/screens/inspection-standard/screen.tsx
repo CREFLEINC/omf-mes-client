@@ -82,6 +82,7 @@ import { PlanPane } from './plan-pane';
 import { PLAN_FORM_FIELDS, validatePlanForm } from './plan-validation';
 import { resolveVersionStatus } from './plan-version-status';
 import {
+  lookupKeys,
   planDetailPath,
   planKeys,
   useInspectionItemSpecs,
@@ -430,12 +431,14 @@ export const InspectionStandardScreen = () => {
      */
     etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
     /* 품목 전용 IQC 기준의 기본 생략은 품목 「IQC 대상」을 함께 바꾼다(#215) — 품목 화면 자료도 다시 읽게 한다. */
-    invalidateKeys: [planKeys.all, itemKeys.all],
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
     knownFields: PLAN_FORM_FIELDS,
     onSuccess: (saved) => {
       setPlanFieldErrors({});
       const next = planToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      /* 저장하면 「기본 정보 수정」 창을 닫는다(사용자 지시 2026-11-04). */
+      setIsPlanEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -448,7 +451,7 @@ export const InspectionStandardScreen = () => {
       }),
     // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
     etagPath: null,
-    invalidateKeys: [planKeys.all, itemKeys.all],
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
     knownFields: PLAN_FORM_FIELDS,
     onSuccess: (saved) => {
       setCreateValues(null);
@@ -486,8 +489,29 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /* 다시 사용(사용자 지시 2026-11-04) — 사용 중지와 같은 규약(If-Match). IQC · PQC 기준은 품목 · 라우팅이 따라 바뀌어 품목 자료도 다시 읽는다. */
+  const activateWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:activate', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: t.result.activated });
+    },
+  });
+
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = deactivateWrite;
+  const planActionWrite = planAction === 'activate' ? activateWrite : deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
@@ -826,6 +850,7 @@ export const InspectionStandardScreen = () => {
     planWrite.reset();
     createWrite.reset();
     deactivateWrite.reset();
+    activateWrite.reset();
     setPlanAction(null);
     setFormState(null);
     setPlanFieldErrors({});
@@ -1119,6 +1144,22 @@ export const InspectionStandardScreen = () => {
     clearFieldErrors(patch, setPlanFieldErrors, planWrite.clearFieldError);
   };
 
+  /* 자동으로 채운 라우팅(사용자 지시 2026-11-04) — 저장된 품목 그대로면 기준값도 맞춰, 창을 열기만 해도 고친 것으로 잡히지 않게 한다. */
+  const refreshPlanRouting = (routingId: string) => {
+    setFormState((prev) =>
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            values: { ...prev.values, routingId },
+            baseline:
+              prev.values.itemId === prev.baseline.itemId
+                ? { ...prev.baseline, routingId }
+                : prev.baseline,
+          },
+    );
+  };
+
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
     const patch = withItemChangeRule(rawPatch);
 
@@ -1393,7 +1434,8 @@ export const InspectionStandardScreen = () => {
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
           processOptions={optionsFor(processOptions, createValues.processId)}
-          routingOptions={optionsFor(routingOptions, createValues.routingId)}
+          routingRevisions={routingOptions.revisions}
+          autoRoutingId={routingOptions.autoRoutingId}
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
@@ -1466,7 +1508,19 @@ export const InspectionStandardScreen = () => {
               ? null
               : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
           }
-          onEdit={() => setIsPlanEditOpen(true)}
+          routingRevision={routingOptions.revisions.find(
+            (revision) =>
+              revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
+          )}
+          /*
+           * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,
+           * 열어 둔 화면의 옛 잠금 토큰으로 저장하면 「다른 사용자가 먼저 저장」으로 막힌다.
+           */
+          onEdit={() => {
+            void planDetail.refetch();
+            void queryClient.invalidateQueries({ queryKey: lookupKeys.routingsAll });
+            setIsPlanEditOpen(true);
+          }}
           /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
           onDeactivate={
             planDetail.data.inspectionPlan.isActive
@@ -1477,6 +1531,16 @@ export const InspectionStandardScreen = () => {
               : undefined
           }
           isDeactivating={deactivateWrite.isSaving}
+          /* 미사용이면 같은 자리에 「재사용」(사용자 지시 2026-11-04). */
+          onActivate={
+            planDetail.data.inspectionPlan.isActive
+              ? undefined
+              : () => {
+                  activateWrite.reset();
+                  setPlanAction('activate');
+                }
+          }
+          isActivating={activateWrite.isSaving}
         />
 
         {renderVersionBar()}
@@ -1490,6 +1554,8 @@ export const InspectionStandardScreen = () => {
             closeOnBackdropClick={false}
             showCloseButton={false}
             title={t.detail.editBasic}
+            /* 첫 줄에 기본 생략 · 기준코드 · 기준명이 서도록 창을 넓힌다(사용자 지시 2026-11-04). */
+            className="inspection-standard-plan-edit-dialog"
             onClose={() => {
               cancelPlanEdit();
               setIsPlanEditOpen(false);
@@ -1501,13 +1567,15 @@ export const InspectionStandardScreen = () => {
               plan={planDetail.data.inspectionPlan}
               values={formState.values}
               onChange={changePlanValues}
+              onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
               fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
               banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
               processOptions={optionsFor(processOptions, formState.values.processId)}
-              routingOptions={optionsFor(routingOptions, formState.values.routingId)}
+              routingRevisions={routingOptions.revisions}
+              autoRoutingId={routingOptions.autoRoutingId}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
               // 다른 자료가 쓰는 기준은 건수 대신 짧은 한 줄로 알린다(사용자 시안 · #208).

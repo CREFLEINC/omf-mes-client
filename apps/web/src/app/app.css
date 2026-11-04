@@ -316,6 +316,26 @@ main > * + * {
   gap: var(--space-4);
 }
 
+/*
+ * 칸 이름 오른쪽 같은 줄의 짧은 안내 — 잠긴 기준코드(사용자 지시 2026-11-04). 모양은 검사 조회·판정의 정보 안내 줄
+ * (`.iqc-inspection-action-note[data-tone="info"]`)이고, 라벨 줄이 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게 여백 · 글자만 줄인다.
+ */
+.field-label > .inspection-standard-label-hint {
+  margin-left: var(--space-2);
+  white-space: nowrap;
+  padding: 1px var(--space-2);
+  font: var(--type-label-sm);
+}
+
+/* 이 폼의 라벨 줄은 안내 라벨 높이에 맞춘다 — 한 칸만 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게. */
+.inspection-standard-plan-pane .form-grid .field-label {
+  display: flex;
+  align-items: center;
+  /* 필수 표시 앞 띄움 — 묶음 안 공백 글자는 flex 에서 사라진다. */
+  column-gap: 0.2em;
+  min-height: 1.625rem;
+}
+
 .inspection-standard-plan-head {
   display: flex;
   flex-wrap: wrap;
@@ -331,15 +351,52 @@ main > * + * {
   gap: var(--space-2);
 }
 
-/* 기본 정보 수정 창의 PQC 생략 허용 — 위아래 구분선 사이 한 줄 구획(사용자 시안 · #208). */
-.inspection-standard-pqc-skip {
-  padding: var(--space-3) 0 0;
-  border-top: 1px solid var(--outline-variant);
+/*
+ * 기본 정보 폼 배치(사용자 시안 2026-11-04) — 첫 줄 기본 생략 | 기준코드 · 기준명, 둘째 줄 검사 유형 · 공정,
+ * 셋째 줄 품목 · 라우팅(품목을 고른 뒤). 둘째 · 셋째 줄은 반씩, 첫 줄은 체크 뒤 두 칸이 나머지를 반씩 쓴다.
+ */
+.inspection-standard-plan-head-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
 }
 
-.inspection-standard-pqc-skip > .field-note {
-  max-width: none;
+/* 체크가 없을 때(검사 유형을 고르기 전) 두 칸이 첫 칸부터 선다. */
+.inspection-standard-plan-head-row:not(:has(> .inspection-standard-plan-skip)) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 기본 정보 수정 창 — 첫 줄에 세 칸(기본 생략 · 기준코드 · 기준명)이 서도록 넓힌다(사용자 지시 2026-11-04). */
+.inspection-standard-plan-edit-dialog {
+  --dialog-max-lg: 60rem;
+}
+
+/* 체크는 라벨이 없어 옆 칸의 입력 줄 높이에 맞춰 세우고, 오른쪽 세로선으로 기준코드와 가른다. */
+.inspection-standard-plan-skip {
+  display: flex;
+  align-self: end;
+  align-items: center;
+  min-height: 2.5rem;
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--outline-variant);
+}
+
+/* 기준 상세 머리의 라우팅 — 코드 · 버전 글자 옆에 상태 칩. */
+.inspection-standard-plan-routing-fact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 라우팅 — 입력칸이 아닌 값 글자(사용자 지시 2026-11-04). 옆 칸 입력 줄과 같은 높이에서 가운데 맞춘다. */
+.inspection-standard-plan-routing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
   margin: 0;
+  color: var(--on-surface);
 }
 
 .inspection-standard-plan-head > .pane-title {
@@ -30580,25 +30637,47 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 검사 이력(사용자 지시 2026-10-30) — 회차 줄, 누르면 아래에 그 회차의 측정값 · 불량 유형이 펼쳐진다. */
+/* 목록 표(DS Table · compact)와 같은 모양으로 맞춘다(사용자 지시 2026-11-04) — 머리줄 바탕 · 글꼴 · 칸 여백 · 올림 · 선택 줄. */
 .parts-iqc-history {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  color: var(--on-surface);
+  background: var(--surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .parts-iqc-history th,
 .parts-iqc-history td {
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.parts-iqc-history thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
 }
 
 .parts-iqc-history tbody tr:not(.parts-iqc-history-detail) {
   cursor: pointer;
 }
 
+.parts-iqc-history tbody tr:not(.parts-iqc-history-detail):hover > td {
+  background: var(--surface-container-high);
+}
+
 .parts-iqc-history tbody tr.is-open > td {
-  background: var(--surface-container-low);
+  background: var(--primary-container);
 }
 
 .parts-iqc-history-detail > td {
@@ -30651,11 +30730,79 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-2);
 }
 
+/* 제출 확인 창(사용자 시안 2026-11-04) — 안내 · 대상 줄 · 치수/외관 카드 · XRF 줄을 구분선으로 가른다. */
 .parts-iqc-confirm {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-4);
+}
+
+.parts-iqc-confirm-note {
   margin: 0;
-  padding-left: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-confirm-rows {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.parts-iqc-confirm-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.parts-iqc-confirm-rows dt {
+  flex: none;
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-confirm-rows dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.parts-iqc-confirm-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-confirm-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.parts-iqc-confirm-card h4 {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.parts-iqc-confirm-card strong {
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.parts-iqc-confirm-verdict {
+  font: var(--type-label-md);
+}
+
+.parts-iqc-confirm-verdict[data-tone='ok'] {
+  color: var(--semantic-success-text);
+}
+
+.parts-iqc-confirm-verdict[data-tone='check'] {
+  color: var(--semantic-error-text);
 }
 
 /* 검사 기준 버전 상세 「도면」 탭(omf-all-around#208 · patterns/inspection-drawings.tsx) — 그림을 위아래로, 칸 폭에 맞춰 줄인다. */
@@ -31183,7 +31330,93 @@ button.iqc-inspection-step-toggle:focus-visible {
 .parts-iqc-defect-options {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2) var(--space-5);
+}
+
+/* 불량 유형 선택칸 — 여러 개 고르는 검색 선택칸 + 고른 유형 칩(사용자 지시 2026-11-04). */
+.parts-iqc-defect-options > .searchable-select {
+  /* 「불량 유형을 선택하세요」가 들어갈 만큼만(사용자 지시 2026-11-04). */
+  width: 13.5rem;
+}
+
+/* 불량 유형별 수량 상자(사용자 시안 2026-11-04) — 머리 줄(제목 · 입력 합계), 줄마다 유형 · 수량 · 휴지통. */
+.parts-iqc-defect-qty-box {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.parts-iqc-defect-qty-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-defect-qty-head h4 {
+  margin: 0;
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.parts-iqc-defect-qty-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parts-iqc-defect-qty-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+
+.parts-iqc-defect-qty-list > li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-defect-qty-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.parts-iqc-defect-qty-input {
+  flex: none;
+  width: 10rem;
+}
+
+.parts-iqc-defect-sum {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.parts-iqc-defect-sum-label {
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-defect-sum strong {
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.parts-iqc-defect-sum[data-mismatch] strong {
+  color: var(--semantic-error-text);
+}
+
+.defect-multi-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .parts-iqc-defect-qtys {
@@ -31222,6 +31455,30 @@ button.iqc-inspection-step-toggle:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-5);
+}
+
+/* 외관 불량 수 · 외관 불량 유형 좌우 배치 — 좁아지면 아래로 내려간다(사용자 지시 2026-11-04). */
+.parts-iqc-visual-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4) var(--space-5);
+}
+
+.parts-iqc-visual-defects {
+  display: grid;
+  /* 표 · 합계가 넓어도 외관 불량 수 옆에 남는다 — 남는 폭 안에서 줄을 바꾼다. */
+  flex: 1 1 0;
+  min-width: 20rem;
+  gap: var(--space-3);
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 이름표 · 등록 단추 · 목록을 왼쪽부터 붙인다 — 외관 불량 수 줄과 같은 높이에서 가운데 맞춤. */
+.parts-iqc-visual-defects > .parts-iqc-defect-line {
+  justify-content: flex-start;
+  min-height: 2.5rem;
 }
 
 .parts-iqc-inline-field {
