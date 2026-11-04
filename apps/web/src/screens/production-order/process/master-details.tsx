@@ -78,7 +78,7 @@ export const MasterDetails = ({
         {candidate ? (
           <>
             {candidate.period && <p className="field-note">{candidate.period}</p>}
-            <RoutingContents id={Number(preview)} label={candidate.label} />
+            <RoutingContents id={Number(preview)} label={candidate.label} showHeader />
             <div className="section-heading-row erp-wo-inline-routing-actions">
               {itemId != null && (
                 <Link

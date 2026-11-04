@@ -32835,3 +32835,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-master-selected { min-width: 0; }
 .erp-wo-master-selected-heading { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
 @media (max-width: 1000px) { .erp-wo-master-selection-layout { grid-template-columns: 1fr; } .erp-wo-master-order-list { grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); } }
+
+.erp-wo-origin-summary { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-block: 1px solid var(--outline-variant); }
+.erp-wo-source-label { color: var(--on-surface-variant); font: var(--type-body-sm); }
+.erp-wo-source-unavailable { padding: var(--space-3); background: var(--surface-container); border-radius: 8px; font: var(--type-body-sm); overflow-wrap: anywhere; }
+.erp-wo-source-unavailable p { margin-top: var(--space-2); color: var(--on-surface-variant); }
+.erp-wo-origin-summary + .erp-wo-revision-table th:first-child { width: 38%; }
+.erp-wo-origin-summary + .erp-wo-revision-table th:nth-child(2) { width: 23%; }

@@ -202,6 +202,15 @@ const serve = (state: World) => {
         ]),
       );
     }
+    if (at === '/planning/routings/21')
+      return jsonResponse({
+        routing: {
+          routingCode: 'SYN-RT',
+          routingVersion: 1,
+          statusCode: 'CONFIRMED',
+          isDefault: true,
+        },
+      });
     if (at === '/planning/routings/21/operations') {
       return jsonResponse(
         page([{ routingOperationId: 1, operationSeq: 10, operationName: '조립' }]),

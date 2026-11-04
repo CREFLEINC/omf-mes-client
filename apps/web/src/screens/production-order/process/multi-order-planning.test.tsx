@@ -97,6 +97,10 @@ const mount = (initialPlans: Record<string, unknown>[] = []) => {
     if (url.pathname.endsWith('/components')) return jsonResponse({ items: [] });
     if (/\/boms\/\d+$/.test(url.pathname))
       return jsonResponse({ bom: { ...fixtures.boms.data.items[0], baseQty: 1, baseUomId: 1 } });
+    if (/\/routings\/\d+$/.test(url.pathname))
+      return jsonResponse({
+        routing: { routingCode: 'R1', routingVersion: 1, statusCode: 'CONFIRMED', isDefault: true },
+      });
     if (url.pathname.endsWith('/operations'))
       return jsonResponse({
         items: [{ routingOperationId: 1, operationSeq: 10, operationName: '사출' }],

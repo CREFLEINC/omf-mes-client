@@ -26,6 +26,15 @@ const mount = (locked = false) => {
           return jsonResponse({
             bom: { bomCode: 'ERP-SYN', bomVersion: 2, baseQty: 1, baseUomId: 1 },
           });
+        if (/\/routings\/\d+$/.test(new URL(req.url).pathname))
+          return jsonResponse({
+            routing: {
+              routingCode: 'R1',
+              routingVersion: 1,
+              statusCode: 'CONFIRMED',
+              isDefault: true,
+            },
+          });
         if (req.url.endsWith('/operations'))
           return jsonResponse({
             items: [
