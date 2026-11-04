@@ -875,6 +875,9 @@ export interface MaterialIssueRequestHistoryEntry {
     /** 취소 사유 · 닫힘 사유(`WO_CANCELLED` · `WO_CLOSED`) · 요청 사유 코드(`PLANNED_OVERRIDE`). */
     reason?: string | null;
     errorText?: string;
+    /** `QTY_CHANGED` — 부족(상한에 걸려 줄인 양)의 전 · 뒤 값(서버 S9). */
+    shortageBefore?: number;
+    shortageAfter?: number;
   };
 }
 

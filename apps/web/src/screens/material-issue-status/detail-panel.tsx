@@ -14,6 +14,7 @@ import type {
   MaterialIssueRequestUpdateForward,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
@@ -22,6 +23,7 @@ import { toApiError } from '../../patterns/request';
 import { Select } from '../../patterns/select';
 import {
   hasErrorCode,
+  statusKeys,
   useCancelRequest,
   useDestinationOptions,
   useRequestDetail,
@@ -63,6 +65,7 @@ export interface DetailPanelProps {
  */
 export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const titleId = useId();
   const detail = useRequestDetail(requestId);
   const history = useRequestHistory(requestId);
@@ -121,8 +124,11 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
             ? t.toast.releasedNow(formatDay(date))
             : t.toast.dateChanged(formatDay(date)),
       });
-    setSeeded(null);
-    void saved;
+    /*
+     * 응답을 바로 상세로 둔다 — 진행 있음 요청이 미출고 0 이 되면 응답이 이미 완료(DONE)라 다시 받기 전에도
+     * 그 상태로 바뀐다(서버 S9).
+     */
+    queryClient.setQueryData(statusKeys.detail(requestId), saved);
   });
   const cancel = useCancelRequest(requestId, () => {
     setDialog(null);
@@ -247,6 +253,26 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
     const errorBanner = (() => {
       const error = update.error ?? cancel.error;
       if (error === null || hasErrorCode(error, HOLIDAY_ACK_REQUIRED)) return null;
+      /* 400 을 알아듣게(서버 S9) — 출발 창고가 라인 부서 생산 창고가 아님, 기출고 미만(RANGE). */
+      if (error.kind === 'validation') {
+        if (error.errors.some((item) => item.field === 'sourceWarehouseId')) {
+          return (
+            <AlertBanner
+              variant="error"
+              action={
+                <Button variant="outlined" size="sm" onClick={reload}>
+                  {t.errors.reload}
+                </Button>
+              }
+            >
+              {t.errors.sourceWarehouseInvalid}
+            </AlertBanner>
+          );
+        }
+        if (error.errors.some((item) => item.code === 'RANGE')) {
+          return <AlertBanner variant="error">{t.errors.belowIssued}</AlertBanner>;
+        }
+      }
       if (error.kind === 'conflict' || error.kind === 'stateLocked') {
         return (
           <AlertBanner

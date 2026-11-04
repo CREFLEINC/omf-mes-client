@@ -133,7 +133,15 @@ export const historyText = (
     case 'DESTINATION_CHANGED':
       return e.DESTINATION_CHANGED(text(d.before), text(d.after));
     case 'QTY_CHANGED':
-      return e.QTY_CHANGED(d.itemCode ?? '', text(d.before), text(d.after));
+      return d.shortageBefore === undefined || d.shortageAfter === undefined
+        ? e.QTY_CHANGED(d.itemCode ?? '', text(d.before), text(d.after))
+        : e.QTY_CHANGED_SHORTAGE(
+            d.itemCode ?? '',
+            text(d.before),
+            text(d.after),
+            String(d.shortageBefore),
+            String(d.shortageAfter),
+          );
     case 'CANCELLED':
       return e.CANCELLED(d.reason ?? '');
     case 'CLOSED':

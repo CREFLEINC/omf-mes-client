@@ -133,6 +133,15 @@ export const materialIssueStatus = {
         `입고지 변경 ${before} → ${after}`,
       QTY_CHANGED: (item: string, before: string, after: string): string =>
         `${item} 요청 수량 변경 ${before} → ${after}`,
+      /** 부족(상한에 걸려 줄인 양)도 바뀐 수량 변경(서버 S9 `shortageBefore` · `shortageAfter`). */
+      QTY_CHANGED_SHORTAGE: (
+        item: string,
+        before: string,
+        after: string,
+        shortageBefore: string,
+        shortageAfter: string,
+      ): string =>
+        `${item} 요청 수량 변경 ${before} → ${after}, 부족 ${shortageBefore} → ${shortageAfter}`,
       CANCELLED: (reason: string): string => (reason === '' ? '취소' : `취소: ${reason}`),
       CLOSED: (reason: string): string =>
         reason === '' ? '미출고분 닫음' : `미출고분 닫음: ${reason}`,
@@ -185,6 +194,11 @@ export const materialIssueStatus = {
     cancelled: (requestNo: string): string => `${requestNo} 를 취소했습니다. 출고 예정을 풀었습니다`,
   },
   errors: {
+    /** 400 `sourceWarehouseId` INVALID(서버 S9) — 라인 담당 부서의 생산 창고가 아니다. */
+    sourceWarehouseInvalid:
+      '출발 생산 창고는 이 W/O 라인 담당 부서의 생산 창고만 고를 수 있습니다. 다시 불러온 뒤 고르세요.',
+    /** 400 `RANGE` — 기출고 미만 수량. */
+    belowIssued: '요청 수량은 기출고량보다 적을 수 없습니다.',
     versionConflict: '다른 사람이 먼저 이 요청을 바꿨습니다. 다시 불러온 뒤 고치세요.',
     stateLocked: '그 사이 피킹이 시작돼 이 변경을 저장할 수 없습니다. 다시 불러왔습니다.',
     reload: '다시 불러오기',

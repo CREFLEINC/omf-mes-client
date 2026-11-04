@@ -150,9 +150,12 @@ interface SetupOptions {
   respondPut?: (body: Record<string, unknown>) => Response | undefined;
   /** 이력 조회 응답 상태(기본 200). */
   historyStatus?: number;
+  /** 저장(PUT) 뒤 상세 조회가 돌려줄 상태 — 서버처럼 저장 결과가 남는다. */
+  detailAfterPut?: MaterialIssueRequestDetailForward;
 }
 
 const setup = (options: SetupOptions = {}) => {
+  let putDone = false;
   const writes: Recorded[] = [];
   const lists: URL[] = [];
   const pathOf = (request: Request) => new URL(request.url).pathname;
@@ -273,6 +276,9 @@ const setup = (options: SetupOptions = {}) => {
       match: (request) => isGet(request, /^\/logistics\/material-issue-requests\/\d+$/),
       respond: (request) => {
         const id = Number(pathOf(request).split('/').at(-1));
+        if (putDone && options.detailAfterPut !== undefined) {
+          return jsonResponse(options.detailAfterPut);
+        }
         return id === 404
           ? jsonResponse({ message: '없음' }, { status: 404 })
           : jsonResponse(detailOf(id));
@@ -295,6 +301,7 @@ const setup = (options: SetupOptions = {}) => {
       respond: async (request) => {
         const body = JSON.parse(await request.clone().text()) as Record<string, unknown>;
         writes.push({ method: request.method, url: new URL(request.url), body });
+        if (request.method === 'PUT') putDone = true;
         const custom = request.method === 'PUT' ? options.respondPut?.(body) : undefined;
         if (custom !== undefined) return custom;
         const id = Number(pathOf(request).split('/').at(-1)?.split(':')[0]);
@@ -604,5 +611,70 @@ describe('W-02-11 출고 요청 현황 — G2 확인', () => {
         ),
       ),
     ).toBeInTheDocument();
+  });
+
+  const editQty = async (user: ReturnType<typeof userEvent.setup>, id: number, value: string) => {
+    const detail = await panel();
+    const field = await detail.findByRole('textbox', {
+      name: t.detail.lines.qtyLabel('SYN-IT-1'),
+    });
+    await user.clear(field);
+    await user.type(field, value);
+    await user.click(detail.getByRole('button', { name: t.detail.save }));
+    void id;
+    return detail;
+  };
+
+  it('US5-10 서버 400 RANGE(기출고 미만)는 알아듣는 안내로 보인다', async () => {
+    const { user } = setup({
+      route: '/production/material-issue-status?id=1',
+      respondPut: () =>
+        jsonResponse(
+          { errors: [{ scope: 'field', field: 'lines', code: 'RANGE', message: 'range' }] },
+          { status: 400 },
+        ),
+    });
+    const detail = await editQty(user, 1, '90');
+
+    expect(await detail.findByText(t.errors.belowIssued)).toBeInTheDocument();
+  });
+
+  it('US2-6 서버 400 sourceWarehouseId INVALID 는 라인 부서 생산 창고만 고를 수 있다고 안내한다', async () => {
+    const { user } = setup({
+      route: '/production/material-issue-status?id=1',
+      respondPut: () =>
+        jsonResponse(
+          {
+            errors: [
+              { scope: 'field', field: 'sourceWarehouseId', code: 'INVALID', message: 'invalid' },
+            ],
+          },
+          { status: 400 },
+        ),
+    });
+    const detail = await editQty(user, 1, '90');
+
+    expect(await detail.findByText(t.errors.sourceWarehouseInvalid)).toBeInTheDocument();
+  });
+
+  it('US5-9 진행 있음 요청이 미출고 0 이 되면 응답대로 바로 완료로 바뀐다', async () => {
+    const before = detailOf(2);
+    const done = {
+      ...before,
+      materialIssueRequest: {
+        ...before.materialIssueRequest,
+        displayStatus: 'DONE' as const,
+        statusCode: 'POSTED',
+      },
+      lines: before.lines.map((line) => ({ ...line, requestedQty: 40, outstandingQty: 0 })),
+    };
+    const { user } = setup({
+      route: '/production/material-issue-status?id=2',
+      respondPut: () => jsonResponse(done),
+      detailAfterPut: done,
+    });
+    const detail = await editQty(user, 2, '40');
+
+    expect(await detail.findByText(t.detail.done)).toBeInTheDocument();
   });
 });

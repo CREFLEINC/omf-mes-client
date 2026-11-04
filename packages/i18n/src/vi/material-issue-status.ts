@@ -127,6 +127,14 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
         `Đổi nơi nhận ${before} → ${after}`,
       QTY_CHANGED: (item: string, before: string, after: string): string =>
         `Đổi số lượng yêu cầu ${item} ${before} → ${after}`,
+      QTY_CHANGED_SHORTAGE: (
+        item: string,
+        before: string,
+        after: string,
+        shortageBefore: string,
+        shortageAfter: string,
+      ): string =>
+        `Đổi số lượng yêu cầu ${item} ${before} → ${after}, thiếu ${shortageBefore} → ${shortageAfter}`,
       CANCELLED: (reason: string): string => (reason === '' ? 'Hủy' : `Hủy: ${reason}`),
       CLOSED: (reason: string): string =>
         reason === '' ? 'Đóng phần chưa xuất' : `Đóng phần chưa xuất: ${reason}`,
@@ -178,6 +186,9 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     cancelled: (requestNo: string): string => `Đã hủy ${requestNo}. Đã giải phóng dự kiến xuất`,
   },
   errors: {
+    sourceWarehouseInvalid:
+      'Kho sản xuất xuất đi chỉ được chọn trong các kho sản xuất của phòng ban phụ trách chuyền của W/O này. Hãy tải lại rồi chọn.',
+    belowIssued: 'Số lượng yêu cầu không được nhỏ hơn số đã xuất.',
     versionConflict: 'Người khác đã đổi yêu cầu này trước. Hãy tải lại rồi sửa.',
     stateLocked: 'Trong lúc đó đã bắt đầu lấy hàng nên không lưu được thay đổi này. Đã tải lại.',
     reload: 'Tải lại',
