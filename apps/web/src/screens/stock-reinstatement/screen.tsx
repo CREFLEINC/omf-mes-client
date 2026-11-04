@@ -47,6 +47,8 @@ import {
 import {
   displayItem,
   remainingDays,
+  isConcession,
+  lotLabelOf,
   remainingDecisionQty,
   type DecisionView,
   type SelectOption,
@@ -170,8 +172,11 @@ export const StockReinstatementScreen = () => {
   const query = useMemo<CandidateQuery>(
     () => ({
       ...(warehouseId === null ? {} : { warehouseId }),
+      /*
+       * 진입 축은 `reinstatable` 하나다 — `followUpPending` 은 폐기 후속(SCRAP)이라 함께 걸면 목록이 늘 빈다
+       * (omf-all-around#207 에서 발견).
+       */
       reinstatable: true,
-      followUpPending: true,
       ...(page === 1 ? {} : { page }),
       size: PAGE_SIZE,
     }),
@@ -184,13 +189,16 @@ export const StockReinstatementScreen = () => {
     candidates.data?.items.find((item) => item.dispositionDecisionId === selectedId) ?? null;
   const decision = useDecision(selectedId);
   const selected = decision.data ?? selectedFromList;
+  const concession = selected !== null && selected !== undefined && isConcession(selected);
   const lotId = selected?.lotId ?? null;
   const rawDecision = decision.data;
   const nonconformance = useNonconformance(selected?.nonconformanceId ?? null);
   const resolvedItemId = selected?.itemId ?? nonconformance.data?.itemId ?? null;
   const lot = useLotDetail(lotId);
+  const lotLabel = lotLabelOf(lot.data?.lot.lotTypeCode, t.fields);
   const lotStatus = useLotStatus(lotId, resolvedItemId, selected?.lotNo ?? null);
-  const holds = useOpenHolds(lotId);
+  /* 특채는 보류를 고르지 않는다 — 적용이 보류를 이미 닫았다(#207). */
+  const holds = useOpenHolds(concession ? null : lotId);
 
   const [draft, setDraft] = useState<ReinstatementDraft>(EMPTY_DRAFT);
   const [errors, setErrors] = useState<DraftErrors>({});
@@ -239,10 +247,15 @@ export const StockReinstatementScreen = () => {
       );
     }
   }, [onlyHold]);
+  /*
+   * 보유 수량을 읽은 «뒤»에 채운다 — 판정 수량으로 먼저 채우면 일부 특채(판정 수량 = 나눈 뒤 남은 수량 전체)에서
+   * 보유보다 큰 값이 남는다(#207).
+   */
+  const heldQty = lotStatus.data?.onHandQty ?? null;
   useEffect(() => {
-    if (maxQty !== null && draft.qty === '')
-      setDraft((current) => ({ ...current, qty: String(maxQty) }));
-  }, [draft.qty, maxQty]);
+    if (heldQty !== null && draft.qty === '')
+      setDraft((current) => ({ ...current, qty: String(heldQty) }));
+  }, [draft.qty, heldQty]);
 
   const reinstate = useReinstate((result) => {
     setConfirming(false);
@@ -289,6 +302,7 @@ export const StockReinstatementScreen = () => {
       maxQty,
       stockableLocationCount,
       releaseReasonsReady: (lookups.data?.releaseReasons.length ?? 0) > 0,
+      concession,
       text: t.form,
     });
     setErrors(nextErrors);
@@ -311,6 +325,7 @@ export const StockReinstatementScreen = () => {
         lotId,
         versionNo: lotStatus.data.versionNo,
         uomId: lotStatus.data.uomId ?? selected.uomId,
+        concession,
         now: new Date(),
       }),
     );
@@ -325,8 +340,11 @@ export const StockReinstatementScreen = () => {
   );
   const targetWarehouses = (lookups.data?.warehouses ?? [])
     .filter(
+      /* 반품품은 완제품창고로, 특채 자재는 불량창고만 아니면 어디로든 옮긴다(#207 결정 · 도착 창고 제한 없음). */
       (warehouse) =>
-        warehouse.isActive && !warehouse.isDefect && warehouse.warehouseTypeCode === 'PRODUCT',
+        warehouse.isActive &&
+        !warehouse.isDefect &&
+        (concession || warehouse.warehouseTypeCode === 'PRODUCT'),
     )
     .map((warehouse) => ({
       value: String(warehouse.warehouseId),
@@ -377,7 +395,7 @@ export const StockReinstatementScreen = () => {
   const columns: Column<DecisionView>[] = [
     {
       key: 'lot',
-      header: t.fields.lot,
+      header: t.fields.anyLot,
       render: (row) => (
         <button
           type="button"
@@ -403,7 +421,11 @@ export const StockReinstatementScreen = () => {
       header: t.fields.disposition,
       render: (row) => (
         <Chip variant="status" status="success" size="sm">
-          {row.dispositionTypeCode === 'NORMAL' ? t.values.normal : t.values.rework}
+          {row.dispositionTypeCode === 'NORMAL'
+            ? t.values.normal
+            : isConcession(row)
+              ? t.values.concession
+              : t.values.rework}
         </Chip>
       ),
     },
@@ -536,7 +558,7 @@ export const StockReinstatementScreen = () => {
               )}
               <dl className="stock-reinstatement-summary">
                 <div>
-                  <dt>{t.fields.lot}</dt>
+                  <dt>{lotLabel}</dt>
                   <dd>{selected.lotNo}</dd>
                 </div>
                 <div>
@@ -633,13 +655,17 @@ export const StockReinstatementScreen = () => {
                       }
                     />
                   )}
-                  <SelectField
-                    label={t.fields.hold}
-                    value={draft.lotHoldId}
-                    options={holdOptions}
-                    error={errors.lotHoldId ?? reinstate.fieldErrors.lotHoldId}
-                    onChange={(value) => setDraft((current) => ({ ...current, lotHoldId: value }))}
-                  />
+                  {!concession && (
+                    <SelectField
+                      label={t.fields.hold}
+                      value={draft.lotHoldId}
+                      options={holdOptions}
+                      error={errors.lotHoldId ?? reinstate.fieldErrors.lotHoldId}
+                      onChange={(value) =>
+                        setDraft((current) => ({ ...current, lotHoldId: value }))
+                      }
+                    />
+                  )}
                   <div className="field-cell">
                     <TextField
                       label={t.fields.qty}
@@ -655,16 +681,18 @@ export const StockReinstatementScreen = () => {
                       }
                     />
                   </div>
-                  <SelectField
-                    label={t.fields.releaseReason}
-                    value={draft.releaseReasonCode}
-                    options={lookups.data?.releaseReasons ?? []}
-                    note={lookups.isPending ? t.form.releaseReasonUnavailable : undefined}
-                    error={errors.releaseReasonCode ?? reinstate.fieldErrors.releaseReasonCode}
-                    onChange={(value) =>
-                      setDraft((current) => ({ ...current, releaseReasonCode: value }))
-                    }
-                  />
+                  {!concession && (
+                    <SelectField
+                      label={t.fields.releaseReason}
+                      value={draft.releaseReasonCode}
+                      options={lookups.data?.releaseReasons ?? []}
+                      note={lookups.isPending ? t.form.releaseReasonUnavailable : undefined}
+                      error={errors.releaseReasonCode ?? reinstate.fieldErrors.releaseReasonCode}
+                      onChange={(value) =>
+                        setDraft((current) => ({ ...current, releaseReasonCode: value }))
+                      }
+                    />
+                  )}
                   <SelectField
                     label={t.fields.reason}
                     value={draft.reasonCode}
@@ -687,6 +715,7 @@ export const StockReinstatementScreen = () => {
                     />
                   </div>
                 </div>
+                {concession && <p className="field-note">{t.values.concessionNote}</p>}
                 {maxQty !== null && Number(draft.qty) > 0 && (
                   <p className="field-note">
                     {Number(draft.qty) < maxQty
@@ -697,9 +726,16 @@ export const StockReinstatementScreen = () => {
                 {days !== null && days < 180 && (
                   <AlertBanner variant="warning">{t.warning.shelfLife(days)}</AlertBanner>
                 )}
-                <AlertBanner variant="warning" title={t.warning.title}>
-                  <p>{t.warning.transition}</p>
-                  <p>{t.warning.stock(Number(draft.qty) || 0)}</p>
+                <AlertBanner
+                  variant="warning"
+                  title={concession ? t.warning.concessionTitle : t.warning.title}
+                >
+                  {!concession && <p>{t.warning.transition}</p>}
+                  <p>
+                    {concession
+                      ? t.warning.concessionStock(Number(draft.qty) || 0)
+                      : t.warning.stock(Number(draft.qty) || 0)}
+                  </p>
                   <p>{t.warning.noUndo}</p>
                 </AlertBanner>
                 <div className="form-actions">
@@ -724,6 +760,8 @@ export const StockReinstatementScreen = () => {
       <ConfirmDialog
         open={confirming}
         summary={summary}
+        concession={concession}
+        lotLabel={lotLabel}
         isSaving={reinstate.isSaving}
         error={<ReinstatementErrorBanner error={reinstate.error} />}
         onConfirm={confirm}

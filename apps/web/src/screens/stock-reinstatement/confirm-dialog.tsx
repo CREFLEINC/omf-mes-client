@@ -14,6 +14,10 @@ export interface ReinstatementSummary {
 export interface ConfirmDialogProps {
   open: boolean;
   summary: ReinstatementSummary;
+  /** 특채 재등록(#207) — LOT 은 이미 정상이라 상태 전이 줄이 없다. */
+  concession: boolean;
+  /** LOT 칸 이름 — LOT 종류로 화면이 정한다(#207). */
+  lotLabel: string;
   isSaving: boolean;
   error: ReactNode;
   onConfirm: () => void;
@@ -23,6 +27,8 @@ export interface ConfirmDialogProps {
 export const ConfirmDialog = ({
   open,
   summary,
+  concession,
+  lotLabel,
   isSaving,
   error,
   onConfirm,
@@ -53,7 +59,7 @@ export const ConfirmDialog = ({
       <p>{t.confirm.lead}</p>
       <dl className="stock-reinstatement-confirm-summary">
         <div>
-          <dt>{t.fields.lot}</dt>
+          <dt>{lotLabel}</dt>
           <dd>{summary.lotNo}</dd>
         </div>
         <div>
@@ -75,9 +81,12 @@ export const ConfirmDialog = ({
           </div>
         )}
       </dl>
-      <AlertBanner variant="warning" title={t.warning.title}>
-        <p>{t.warning.transition}</p>
-        <p>{t.warning.stock(summary.qty)}</p>
+      <AlertBanner
+        variant="warning"
+        title={concession ? t.warning.concessionTitle : t.warning.title}
+      >
+        {!concession && <p>{t.warning.transition}</p>}
+        <p>{concession ? t.warning.concessionStock(summary.qty) : t.warning.stock(summary.qty)}</p>
         <p>{t.warning.noUndo}</p>
       </AlertBanner>
     </Dialog>

@@ -36,7 +36,7 @@ const completeRequiredFields = async (user: ReturnType<typeof userEvent.setup>):
 };
 
 describe('StockReinstatementScreen', () => {
-  it('후속 처리 대기·재등록 가능 축을 서버 목록 요청에 고정한다', async () => {
+  it('재등록 가능 축 하나만 서버 목록 요청에 고정한다 — 폐기 후속 축을 함께 걸면 목록이 늘 빈다(#207)', async () => {
     renderScreen();
     await screen.findByRole('button', { name: t.actions.selectRow('LOT-SYNTH-6101') });
     const request = requestsSent().find(
@@ -44,9 +44,46 @@ describe('StockReinstatementScreen', () => {
     );
     const query = new URL(request?.url ?? 'http://api.test').searchParams;
     expect(query.get('reinstatable')).toBe('true');
-    expect(query.get('followUpPending')).toBe('true');
+    expect(query.has('followUpPending')).toBe(false);
     expect(query.get('size')).toBe('50');
     expect(query.has('dispositionTypeCode')).toBe(false);
+  });
+
+  describe('LOT 칸 이름은 처분 유형이 아니라 LOT 종류로 정한다(#207)', () => {
+    const renderWith = (options: Parameters<typeof reinstatementStub>[0]) => {
+      renderWithProviders(<StockReinstatementScreen />, {
+        fetch: reinstatementStub(options),
+        route: '/shipment/stock-reinstatements',
+      });
+      return userEvent.setup();
+    };
+
+    it('반품 제품에 특채를 걸었으면 「제품 LOT」 이고 보류 칸은 없다', async () => {
+      const user = renderWith({ dispositionTypeCode: 'CONCESSION', lotTypeCode: 'PRODUCT' });
+      await chooseTarget(user);
+
+      expect((await screen.findAllByText(t.fields.lot)).length).toBeGreaterThan(0);
+      expect(screen.queryByText(t.fields.materialLot)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(t.fields.hold)).not.toBeInTheDocument();
+      expect(screen.getByText(t.values.concessionNote)).toBeInTheDocument();
+    });
+
+    it('자재에 처분 정상을 내렸으면 「자재 LOT」 이고 보류 칸은 그대로다', async () => {
+      const user = renderWith({ dispositionTypeCode: 'NORMAL', lotTypeCode: 'MATERIAL' });
+      await chooseTarget(user);
+
+      expect((await screen.findAllByText(t.fields.materialLot)).length).toBeGreaterThan(0);
+      expect(screen.queryByText(t.fields.lot)).not.toBeInTheDocument();
+      expect(screen.getByLabelText(t.fields.hold)).toBeInTheDocument();
+      // LOT 종류로 거르지 않고 찾아야 자재 LOT 의 보유 수량·현재 창고가 선다.
+      const statusRequest = requestsSent().find(
+        (item) => new URL(item.url).pathname === '/quality/lot-statuses',
+      );
+      expect(new URL(statusRequest?.url ?? 'http://api.test').searchParams.has('lotTypeCode')).toBe(
+        false,
+      );
+      expect(screen.getAllByText(/WH-DEFECT/).length).toBeGreaterThan(0);
+    });
   });
 
   it('선택 뒤 LOT·보류·품질 토큰과 시간순 판정 이력을 읽는다', async () => {
