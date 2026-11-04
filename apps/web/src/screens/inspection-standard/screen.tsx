@@ -1505,7 +1505,15 @@ export const InspectionStandardScreen = () => {
               ? null
               : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
           }
-          onEdit={() => setIsPlanEditOpen(true)}
+          /*
+           * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,
+           * 열어 둔 화면의 옛 잠금 토큰으로 저장하면 「다른 사용자가 먼저 저장」으로 막힌다.
+           */
+          onEdit={() => {
+            void planDetail.refetch();
+            void queryClient.invalidateQueries({ queryKey: lookupKeys.routingsAll });
+            setIsPlanEditOpen(true);
+          }}
           /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
           onDeactivate={
             planDetail.data.inspectionPlan.isActive

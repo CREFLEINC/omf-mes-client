@@ -946,7 +946,8 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
     expect(requestsTo(requests, PLAN_DETAIL_PATH)).toHaveLength(0);
   });
 
-  it('기준을 고르면 상세 요청이 한 번 나가고 폼이 응답 값으로 채워진다', async () => {
+  /* 고를 때 한 번, 「기본 정보 수정」 창을 열 때 한 번 더(잠금 토큰을 새로 받는다 · 사용자 보고 2026-11-04). */
+  it('기준을 고르면 상세 요청이 한 번 나가고, 수정 창을 열면 다시 받아 폼이 응답 값으로 채워진다', async () => {
     const { requests, user } = renderScreen([
       planListRoute(),
       planDetailRoute(),
@@ -957,7 +958,9 @@ describe('InspectionStandardScreen — 기준 상세 조회', () => {
 
     expect(await findPlanField('기준코드')).toHaveValue('SYN-PLAN-01');
     expect(screen.getByLabelText('기준명')).toHaveValue('합성 검사기준 A');
-    expect(requestsTo(requests, PLAN_DETAIL_PATH)).toHaveLength(1);
+    await waitFor(() => {
+      expect(requestsTo(requests, PLAN_DETAIL_PATH)).toHaveLength(2);
+    });
   });
 
   it('상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
