@@ -154,6 +154,13 @@ const stub = ({
         },
       });
     }
+    if (path(request).endsWith(':auto-plan'))
+      return jsonResponse({
+        productionOrderId: 701,
+        outcome: 'DRAFT',
+        productionPlanId: 501,
+        reasons: ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED'],
+      });
     if (path(request) === '/mdm/uoms') {
       return jsonResponse(page([{ uomId: 8101, uomCode: 'EA', uomName: '개', isActive: true }]));
     }
@@ -522,6 +529,30 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
+  it('자동 계획 결과 조회 중에는 업무 상태 선택을 해제하고 업무 목록 복귀 시 복원한다', async () => {
+    const user = userEvent.setup();
+    render(
+      { orders: [REVIEW, DONE_BLOCKED, DONE_READY] },
+      '/production/production-orders?state=ALL',
+    );
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    await user.click(within(row).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '실행' }));
+    await screen.findByRole('region', { name: '자동 계획 실행 결과' });
+    const statuses = screen.getByRole('group', { name: t.counts.label });
+    for (const button of within(statuses).getAllByRole('button'))
+      expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('heading', { name: '자동 계획 실행 대상 1건' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '실행 대상 전체 1건' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '업무 목록으로' }));
+    expect(screen.queryByRole('region', { name: '자동 계획 실행 결과' })).toBeNull();
+    expect(within(statuses).getByRole('button', { name: /^전체 / })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(await screen.findByRole('link', { name: t.list.openRow('SYN-PO-703') })).toBeVisible();
+  });
   it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 처리 상태 칸은 결과가 아니라 실제 상태를 보인다(C-16, C-18)', async () => {
     const user = userEvent.setup();
     render({ orders: [DONE_BLOCKED, DONE_READY] }, '/production/production-orders?state=ALL');

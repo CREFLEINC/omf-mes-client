@@ -123,6 +123,7 @@ export const ProductionOrderScreen = ({
     };
   };
   const liveRows = facts.map(toRow);
+  const showingResultRows = bulk.run?.kind === 'autoPlan' || resultFilter !== null;
   const activeResultFilter = bulk.run?.kind === 'autoPlan' ? autoResultFilter : resultFilter;
   const resultRows = [
     ...new Map(
@@ -345,7 +346,7 @@ export const ProductionOrderScreen = ({
             key={entry.state}
             className="erp-wo-status-filter"
             aria-label={entry.label}
-            aria-pressed={filters.state === entry.state}
+            aria-pressed={!showingResultRows && filters.state === entry.state}
             onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
           >
             <span className="erp-wo-status-name">{entry.name}</span>
@@ -449,6 +450,17 @@ export const ProductionOrderScreen = ({
         </div>
       </section>
       <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
+        {showingResultRows && (
+          <div className="section-heading-row erp-wo-result-scope">
+            <h2 className="section-title">
+              {bulk.run?.kind === 'autoPlan' ? '자동 계획 실행 대상' : '일괄 배포 실행 대상'}{' '}
+              <span className="field-note">{rows.length}건</span>
+            </h2>
+            <Button size="sm" variant="outlined" onClick={() => apply({ ...filters, page: 1 })}>
+              업무 목록으로
+            </Button>
+          </div>
+        )}
         {list.isError && isForbidden(list.error) ? (
           <ForbiddenNotice menuPath={permissionMenuPath} />
         ) : list.isError ? (

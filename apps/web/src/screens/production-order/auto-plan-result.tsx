@@ -59,7 +59,7 @@ export const AutoPlanResult = ({
           aria-pressed={filter === null}
           onClick={() => onFilterChange(null)}
         >
-          전체 {outcomes.length}건
+          실행 대상 전체 {outcomes.length}건
         </Button>
         {codes.map((code) => (
           <Button
