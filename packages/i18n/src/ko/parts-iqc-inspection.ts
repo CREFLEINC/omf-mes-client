@@ -182,13 +182,29 @@ export const partsIqcInspection = {
     undo: '되돌리기',
     redo: '다시 실행',
     clear: '비우기',
-    review: '다시 보기',
-    summaryDimension: (all: number, out: number, missing: number) =>
-      `치수 ${String(all)}항목 중 규격 밖 ${String(out)} · 미입력 ${String(missing)}`,
-    summaryVisual: (defects: number, xrf: string) => `외관 불량 ${String(defects)} · XRF ${xrf}`,
     submit: '제출',
     submitting: '제출 중…',
     submitted: '검사를 확정했습니다.',
-    confirmSubmit: (judgment: string) => `${judgment}(으)로 확정합니다 — 되돌릴 수 없습니다`,
+  },
+  /** 제출 확인 창(사용자 시안 2026-11-04). 조사는 판정 끝 글자의 받침으로 고른다(합격으로 · 보류로). */
+  confirm: {
+    title: (judgment: string): string => {
+      const last = judgment.charCodeAt(judgment.length - 1) - 0xac00;
+      const batchim = last >= 0 && last <= 11171 ? last % 28 : 0;
+      return `${judgment}${batchim === 0 || batchim === 8 ? '로' : '으로'} 확정하시겠습니까?`;
+    },
+    note: '확정 후에는 판정을 변경할 수 없습니다.',
+    target: '검사 대상',
+    lot: 'LOT',
+    supplier: '공급업체',
+    dimension: '치수 검사',
+    dimensionValue: (out: number, missing: number) => `규격 밖 ${String(out)} · 미입력 ${String(missing)}`,
+    visual: '외관 검사',
+    visualValue: (defects: number) => `불량 ${String(defects)}`,
+    ok: '이상 없음',
+    check: '확인 필요',
+    xrf: 'XRF',
+    back: '돌아가기',
+    action: (judgment: string) => `${judgment} 확정`,
   },
 };

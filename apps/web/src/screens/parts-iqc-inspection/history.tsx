@@ -1,13 +1,17 @@
-import { Chip, EmptyState, Icon } from '@crefle/web-ui';
+import { Chip, EmptyState, Icon, type Column } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useState } from 'react';
 
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useDraftRejectionRecords, useMeasurements } from '../iqc-inspection/queries';
 import { useRoundHistory } from './queries';
 
 type ItemSpec = components['schemas']['InspectionItemSpec'];
+type InspectionResultRow = components['schemas']['InspectionResult'];
 
 const t = messages.partsIqcInspection;
 
@@ -27,6 +31,29 @@ const judgmentStatus = (code: string): 'success' | 'error' | 'warning' | 'idle' 
         ? 'warning'
         : 'idle';
 
+/* 수입검사 목록 표처럼 열 폭 끌기 · 순서 바꾸기(사용자 지시 2026-11-04). 줄을 펼치는 표라 DS 표 대신 이 열 정의로 직접 그린다. */
+const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
+  { key: 'round', header: t.history.round, width: '80px', render: (row) => t.history.roundNo(row.inspectionRound) },
+  { key: 'inspectedAt', header: t.history.inspectedAt, width: '160px', render: (row) => formatPlantDateTime(row.inspectedAt) ?? '-' },
+  { key: 'inspector', header: t.history.inspector, render: (row) => row.inspectorName ?? '-' },
+  { key: 'inspectedQty', header: t.history.inspectedQty, width: '100px', render: (row) => row.inspectedQty },
+  { key: 'rejectedQty', header: t.history.rejectedQty, width: '100px', render: (row) => row.rejectedQty },
+  {
+    key: 'judgment',
+    header: t.history.judgment,
+    width: '96px',
+    render: (row) =>
+      row.overallJudgmentCode === '' ? (
+        '-'
+      ) : (
+        <Chip size="sm" status={judgmentStatus(row.overallJudgmentCode)}>
+          {t.judgment[row.overallJudgmentCode] ?? row.overallJudgmentCode}
+        </Chip>
+      ),
+  },
+  { key: 'status', header: t.history.status, width: '96px', render: (row) => t.history.statusOf[row.statusCode] ?? row.statusCode },
+];
+
 /**
  * 검사 이력(사용자 지시 2026-10-30) — 이 의뢰의 회차를 위에서부터 최신 순으로 읽는다. 줄을 누르면 그 회차의 측정값 ·
  * 판정 항목 · 불량 유형을 펼친다. 읽기 전용이다 — 확정한 회차는 고치지 않는다(재검사는 새 회차).
@@ -34,6 +61,9 @@ const judgmentStatus = (code: string): 'success' | 'error' | 'warning' | 'idle' 
 export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: HistoryProps) => {
   const history = useRoundHistory(inspectionRequestId);
   const [openId, setOpenId] = useState<number | null>(null);
+  const ordered = useColumnOrder('omf-mes:parts-iqc:columns:history:order', HISTORY_COLUMNS);
+  const resizable = useColumnWidths('omf-mes:parts-iqc:columns:history', ordered, { fitContent: true });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   if (history.isPending) return <p className="field-note">{t.history.loading}</p>;
   if (history.isError) return <p className="field-note">{t.history.failed}</p>;
@@ -44,17 +74,15 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
     );
 
   return (
-    <div className="parts-iqc-grid-scroll">
+    <div ref={fit.ref} className="parts-iqc-grid-scroll wide-table" style={resizable.style}>
       <table className="parts-iqc-history">
         <thead>
           <tr>
-            <th scope="col">{t.history.round}</th>
-            <th scope="col">{t.history.inspectedAt}</th>
-            <th scope="col">{t.history.inspector}</th>
-            <th scope="col">{t.history.inspectedQty}</th>
-            <th scope="col">{t.history.rejectedQty}</th>
-            <th scope="col">{t.history.judgment}</th>
-            <th scope="col">{t.history.status}</th>
+            {fit.columns.map((column) => (
+              <th key={column.key} scope="col" style={{ width: column.width }}>
+                {column.header}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -73,25 +101,13 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
                     setOpenId(open ? null : row.inspectionResultId);
                   }}
                 >
-                  <td>{t.history.roundNo(row.inspectionRound)}</td>
-                  <td>{formatPlantDateTime(row.inspectedAt) ?? '-'}</td>
-                  <td>{row.inspectorName ?? '-'}</td>
-                  <td>{row.inspectedQty}</td>
-                  <td>{row.rejectedQty}</td>
-                  <td>
-                    {row.overallJudgmentCode === '' ? (
-                      '-'
-                    ) : (
-                      <Chip size="sm" status={judgmentStatus(row.overallJudgmentCode)}>
-                        {t.judgment[row.overallJudgmentCode] ?? row.overallJudgmentCode}
-                      </Chip>
-                    )}
-                  </td>
-                  <td>{t.history.statusOf[row.statusCode] ?? row.statusCode}</td>
+                  {fit.columns.map((column, index) => (
+                    <td key={column.key}>{column.render?.(row, index)}</td>
+                  ))}
                 </tr>
                 {open && (
                   <tr className="parts-iqc-history-detail">
-                    <td colSpan={7}>
+                    <td colSpan={fit.columns.length}>
                       <RoundDetail
                         inspectionResultId={row.inspectionResultId}
                         remarks={row.remarks ?? null}

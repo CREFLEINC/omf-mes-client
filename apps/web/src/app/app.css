@@ -30670,11 +30670,78 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-2);
 }
 
+/* 제출 확인 창(사용자 시안 2026-11-04) — 안내 · 대상 줄 · 치수/외관 카드 · XRF 줄을 구분선으로 가른다. */
 .parts-iqc-confirm {
   display: grid;
-  gap: var(--space-1);
+  gap: var(--space-4);
+}
+
+.parts-iqc-confirm-note {
   margin: 0;
-  padding-left: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-confirm-rows {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.parts-iqc-confirm-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.parts-iqc-confirm-rows dt {
+  flex: none;
+  color: var(--on-surface-variant);
+}
+
+.parts-iqc-confirm-rows dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.parts-iqc-confirm-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-confirm-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.parts-iqc-confirm-card h4 {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.parts-iqc-confirm-card strong {
+  font: var(--type-title-md);
+}
+
+.parts-iqc-confirm-verdict {
+  font: var(--type-label-md);
+}
+
+.parts-iqc-confirm-verdict[data-tone='ok'] {
+  color: var(--semantic-success-text);
+}
+
+.parts-iqc-confirm-verdict[data-tone='check'] {
+  color: var(--semantic-error-text);
 }
 
 /* 검사 기준 버전 상세 「도면」 탭(omf-all-around#208 · patterns/inspection-drawings.tsx) — 그림을 위아래로, 칸 폭에 맞춰 줄인다. */

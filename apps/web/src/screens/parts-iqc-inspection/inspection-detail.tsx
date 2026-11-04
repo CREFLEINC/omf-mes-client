@@ -219,11 +219,10 @@ export const InspectionDetail = ({
     );
   };
 
-  /* 고른 탭은 의뢰마다 처음부터 — 확정이 끝난 의뢰는 이력부터 연다(입력 탭에는 「확정됨」 안내뿐이다). */
+  /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
   const confirmed = round !== null && round.statusCode === 'CONFIRMED';
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
-  const tab =
-    picked?.requestId === inspectionRequestId ? picked.tab : confirmed ? 'history' : 'input';
+  const tab = confirmed ? 'history' : picked?.requestId === inspectionRequestId ? picked.tab : 'input';
 
   /* 목록 아래(또는 옆) 상세 구획에 선다 — 기존 검사 조회·판정과 같은 배치(팝업이 아니다 · 사용자 지시 2026-10-29). */
   return (
@@ -245,7 +244,7 @@ export const InspectionDetail = ({
         value={tab}
         onChange={(next) => setPicked({ requestId: inspectionRequestId, tab: next })}
         items={[
-          { value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null },
+          ...(confirmed ? [] : [{ value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null }]),
           {
             value: 'history',
             label: t.tabs.history,
@@ -1073,50 +1072,74 @@ const InspectionForm = (props: FormProps) => {
         </div>
       </section>
 
-      {ask && (
-        <Dialog
-          open
-          size="sm"
-          showCloseButton={false}
-          closeOnBackdropClick={false}
-          title={t.footer.confirmSubmit(t.judgment[overall ?? ''] ?? '')}
-          onClose={() => setAsk(false)}
-          footer={
-            <>
-              <Button variant="text" onClick={() => setAsk(false)}>
-                {t.footer.review}
-              </Button>
-              <Button variant="filled" onClick={onSubmit}>
-                {t.footer.submit}
-              </Button>
-            </>
-          }
-        >
-          {/* 내기 전에 무엇으로 나가는지 한 번 더 본다 — 규격 밖·덜 적은 항목이 여기서 드러난다(참고: omf-dx-vina 수입검사) */}
-          <ul className="parts-iqc-confirm">
-            <li>
-              {[
-                props.itemParts?.name ?? props.itemParts?.code ?? '-',
-                `LOT ${props.lotNo}`,
-                props.inbound?.supplierLabel ?? '-',
-              ].join(' · ')}
-            </li>
-            <li>
-              {t.footer.summaryDimension(
-                dimensions.length,
-                dimensionStates.filter((st) => st === 'err').length,
-                dimensionStates.filter((st) => st === 'empty' || st === 'wait').length,
-              )}
-            </li>
-            <li>
-              {t.footer.summaryVisual(
-                visualDefectQty ?? 0,
-                xrfItems.length === 0 ? '-' : t.visual.xrf[form.xrf],
-              )}
-            </li>
-          </ul>
-        </Dialog>
-      )}
+      {ask && (() => {
+        const judgment = t.judgment[overall ?? ''] ?? '';
+        const outOfSpec = dimensionStates.filter((st) => st === 'err').length;
+        const missing = dimensionStates.filter((st) => st === 'empty' || st === 'wait').length;
+        const defects = visualDefectQty ?? 0;
+        const verdict = (ok: boolean) => (
+          <span className="parts-iqc-confirm-verdict" data-tone={ok ? 'ok' : 'check'}>
+            {ok ? t.confirm.ok : t.confirm.check}
+          </span>
+        );
+        return (
+          <Dialog
+            open
+            size="md"
+            showCloseButton={false}
+            closeOnBackdropClick={false}
+            title={t.confirm.title(judgment)}
+            onClose={() => setAsk(false)}
+            footer={
+              <>
+                <Button variant="outlined" onClick={() => setAsk(false)}>
+                  {t.confirm.back}
+                </Button>
+                <Button variant="filled" onClick={onSubmit}>
+                  {t.confirm.action(judgment)}
+                </Button>
+              </>
+            }
+          >
+            {/* 내기 전에 무엇으로 나가는지 한 번 더 본다 — 규격 밖·덜 적은 항목이 여기서 드러난다(사용자 시안 2026-11-04). */}
+            <div className="parts-iqc-confirm">
+              <p className="parts-iqc-confirm-note">{t.confirm.note}</p>
+              <dl className="parts-iqc-confirm-rows">
+                <div>
+                  <dt>{t.confirm.target}</dt>
+                  <dd>{props.itemParts?.name ?? props.itemParts?.code ?? '-'}</dd>
+                </div>
+                <div>
+                  <dt>{t.confirm.lot}</dt>
+                  <dd>{props.lotNo}</dd>
+                </div>
+                <div>
+                  <dt>{t.confirm.supplier}</dt>
+                  <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
+                </div>
+              </dl>
+              <div className="parts-iqc-confirm-cards">
+                <section className="parts-iqc-confirm-card">
+                  <h4>{t.confirm.dimension}</h4>
+                  <strong>{t.confirm.dimensionValue(outOfSpec, missing)}</strong>
+                  {verdict(outOfSpec === 0 && missing === 0)}
+                </section>
+                <section className="parts-iqc-confirm-card">
+                  <h4>{t.confirm.visual}</h4>
+                  <strong>{t.confirm.visualValue(defects)}</strong>
+                  {verdict(defects === 0)}
+                </section>
+              </div>
+              <dl className="parts-iqc-confirm-rows">
+                <div>
+                  <dt>{t.confirm.xrf}</dt>
+                  <dd>{xrfItems.length === 0 ? '-' : t.visual.xrf[form.xrf]}</dd>
+                </div>
+              </dl>
+            </div>
+          </Dialog>
+        );
+      })()}
       <SaveErrorBanner error={submit.error} />
 
       {/* 아래 줄은 레퍼런스 화면 그대로다 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 제출(사용자 확인 2026-10-29) */}
