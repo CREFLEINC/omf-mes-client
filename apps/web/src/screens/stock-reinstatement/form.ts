@@ -37,6 +37,8 @@ export interface ValidationInput {
    */
   stockableLocationCount: number | null;
   releaseReasonsReady: boolean;
+  /** 처분이 특채면 보류·해제 사유를 묻지 않는다 — 특채 적용이 보류를 이미 닫았다(omf-all-around#207). */
+  concession: boolean;
   text: {
     warehouseRequired: string;
     noStockableLocation: string;
@@ -63,10 +65,11 @@ export const validateDraft = (input: ValidationInput): DraftErrors => {
   ) {
     errors.toLocationId = input.text.locationRequired;
   }
-  if (input.draft.lotHoldId === '') errors.lotHoldId = input.text.holdRequired;
+  if (!input.concession && input.draft.lotHoldId === '') errors.lotHoldId = input.text.holdRequired;
   if (!Number.isFinite(qty) || qty < 1) errors.qty = input.text.qtyRequired;
   else if (input.maxQty !== null && qty > input.maxQty)
     errors.qty = input.text.qtyExceeded(input.maxQty);
+  if (input.concession) return errors;
   if (!input.releaseReasonsReady) errors.releaseReasonCode = input.text.releaseReasonUnavailable;
   else if (input.draft.releaseReasonCode === '') {
     errors.releaseReasonCode = input.text.releaseReasonRequired;
@@ -93,18 +96,19 @@ export interface BodyInput {
   lotId: number;
   versionNo: number;
   uomId: number;
+  concession: boolean;
   now: Date;
 }
 
 export const toCreateBody = (input: BodyInput): StockReinstatementCreate => ({
   dispositionDecisionId: input.dispositionDecisionId,
   lot: { lotId: input.lotId, versionNo: input.versionNo },
-  lotHoldId: Number(input.draft.lotHoldId),
+  ...(input.concession ? {} : { lotHoldId: Number(input.draft.lotHoldId) }),
   toWarehouseId: Number(input.draft.toWarehouseId),
   ...(input.draft.toLocationId === '' ? {} : { toLocationId: Number(input.draft.toLocationId) }),
   qty: Number(input.draft.qty),
   uomId: input.uomId,
-  releaseReasonCode: input.draft.releaseReasonCode,
+  ...(input.concession ? {} : { releaseReasonCode: input.draft.releaseReasonCode }),
   ...(input.draft.reasonCode === '' ? {} : { reasonCode: input.draft.reasonCode }),
   businessDate: toBusinessDate(input.now),
   occurredAt: toOccurredAt(input.now),

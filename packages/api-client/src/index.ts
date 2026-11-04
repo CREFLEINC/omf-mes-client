@@ -96,5 +96,10 @@ export type {
   OperationPolicyListQueryForward,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
+  ConcessionApplyForward,
+  ConcessionAppliedForward,
+  ConcessionSplitResult,
+  StockReinstatementCreateForward,
+  StockReinstatementResponseForward,
 } from './forward-contract';
 export { RELEASE_BLOCK_CODES } from './forward-contract';

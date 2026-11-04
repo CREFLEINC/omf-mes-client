@@ -18,6 +18,9 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
     targetLocation: 'Vị trí đích',
     completedOnly: 'Chỉ đã đánh giá xong',
     lot: 'LOT thành phẩm',
+    materialLot: 'LOT vật tư',
+    productionLot: 'LOT sản xuất',
+    anyLot: 'LOT',
     item: 'Mặt hàng',
     qty: 'Số lượng',
     disposition: 'Quyết định xử lý',
@@ -47,6 +50,9 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
   values: {
     normal: 'Bình thường',
     rework: 'Đã làm lại xong',
+    concession: 'Đặc cách',
+    concessionNote:
+      'Tồn kho đặc cách. Lệnh giữ đã được đóng khi áp dụng đặc cách — chỉ chuyển tồn kho ở kho lỗi sang kho đã chọn và đăng ký là bình thường · khả dụng.',
     empty: '—',
     noExpiry: '⚠ Không có',
     remainingDays: (days: number): string => `Còn lại ${String(days)} ngày`,
@@ -80,6 +86,9 @@ export const stockReinstatement: Translated<typeof ko.stockReinstatement> = {
     title: 'Đăng ký lại xong thì LOT này sẽ xuất hàng được',
     transition: 'Lot Status: Hold → Release',
     stock: (qty: number): string => `Tồn kho: kho hàng lỗi → kho thành phẩm ${String(qty)}`,
+    concessionTitle: 'Đăng ký lại xong thì tồn kho đặc cách này được dùng như tồn kho khác',
+    concessionStock: (qty: number): string =>
+      `Tồn kho: kho hàng lỗi → kho đã chọn ${String(qty)} (bình thường · khả dụng)`,
     noUndo: 'Không có nút hoàn tác. Muốn chặn lại thì phải làm lại thủ tục đánh giá và tạm giữ.',
     shelfLife: (days: number): string =>
       days < 0

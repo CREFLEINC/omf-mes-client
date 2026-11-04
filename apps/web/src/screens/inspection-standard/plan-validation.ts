@@ -23,8 +23,9 @@ export const PLAN_FORM_FIELDS: readonly string[] = [
  * **코드 중복은 검사하지 않는다** — 계약이 그 판정을 서버 몫으로 두었고(전역 유일 제약),
  * 화면이 흉내 내면 서버와 다른 답을 낼 수 있다.
  *
- * **품목·공정·라우팅을 필수로 두지 않는다** — 계약이 셋 다 널을 허용한다.
+ * **품목·라우팅을 필수로 두지 않는다** — 계약이 둘 다 널을 허용한다.
  * 품목을 비운 것은 「전 품목 공통 기준」이고 IQC 에는 공정이 없다.
+ * 공정은 PQC 기준에서만 필수다(사용자 결정 2026-11-04 · 서버도 400 으로 막는다).
  */
 export const validatePlanForm = (values: PlanFormValues): Record<string, string> => {
   const errors: Record<string, string> = {};
@@ -43,6 +44,10 @@ export const validatePlanForm = (values: PlanFormValues): Record<string, string>
 
   if (values.inspectionTypeCode === '') {
     errors.inspectionTypeCode = t.required;
+  }
+
+  if (values.inspectionTypeCode === 'PQC' && values.processId === '') {
+    errors.processId = t.required;
   }
 
   return errors;
