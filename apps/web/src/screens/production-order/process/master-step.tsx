@@ -3,6 +3,7 @@ import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { plantToday } from '../../../patterns/plant-time';
 import { Select } from '../../../patterns/select';
 import type { BomRevisionFact, RoutingRevisionFact } from '../../production-plan/reference-queries';
 
@@ -86,7 +87,6 @@ export interface MasterStepProps {
   /** 확정된 계획이 있으면 그 계획의 개정을 읽기 전용으로 보인다. */
   locked: boolean;
   statusNameOf: (code: string) => string;
-  onBomChange: (value: string) => void;
   onRoutingChange: (value: string) => void;
 }
 
@@ -100,7 +100,6 @@ export const MasterStep = ({
   routingId,
   locked,
   statusNameOf,
-  onBomChange,
   onRoutingChange,
 }: MasterStepProps) => {
   if (boms.isLoading || routings.isLoading) return <SkeletonText lines={3} />;
@@ -127,6 +126,7 @@ export const MasterStep = ({
   const period = (from: string | null, to: string | null) =>
     t.effective(from ?? '', to ?? t.periodOpen);
 
+  const selectedBom = boms.items.find((item) => String(item.bomId) === bomId);
   const selectedRouting = routings.items.find((item) => String(item.routingId) === routingId);
   const checked =
     boms.items.some((item) => String(item.bomId) === bomId) &&
@@ -158,19 +158,18 @@ export const MasterStep = ({
                 <span className="erp-wo-master-item">{itemLabel ?? '—'}</span>
               </td>
               <td data-label={t.bom} className="erp-wo-master-revision">
-                <RevisionField
-                  label={t.bom}
-                  items={boms.items}
-                  value={bomId}
-                  idOf={(item) => item.bomId}
-                  labelOf={(item) =>
-                    t.revision(item.bomCode, item.bomVersion, statusNameOf(item.statusCode))
-                  }
-                  periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
-                  isDefault={(item) => item.isDefault}
-                  locked={locked}
-                  onChange={onBomChange}
-                />
+                <p className="erp-wo-master-value">
+                  {selectedBom
+                    ? t.revision(
+                        selectedBom.bomCode,
+                        selectedBom.bomVersion,
+                        statusNameOf(selectedBom.statusCode),
+                      )
+                    : '사용 가능한 ERP 기본 BOM 없음'}
+                </p>
+                <span className="erp-wo-master-note">
+                  {locked ? '확정 계획 적용 개정' : 'ERP 기본 개정 자동 적용'}
+                </span>
                 <RevisionDetailButton kind="BOM" value={bomId} />
               </td>
               <td data-label={t.routing} className="erp-wo-master-revision">
@@ -213,7 +212,14 @@ export const MasterStep = ({
 
 /** 기본 BOM 개정이 하나면 그것(기존 W-02-02 규칙). */
 export const automaticBomId = (items: readonly BomRevisionFact[]): number | null => {
-  const defaults = items.filter((item) => item.isDefault);
+  const today = plantToday();
+  const defaults = items.filter(
+    (item) =>
+      item.isDefault &&
+      item.statusCode === 'CONFIRMED' &&
+      item.effectiveFrom <= today &&
+      (item.effectiveTo == null || item.effectiveTo >= today),
+  );
   return defaults.length === 1 ? (defaults[0]?.bomId ?? null) : null;
 };
 

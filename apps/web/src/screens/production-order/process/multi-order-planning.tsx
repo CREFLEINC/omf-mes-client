@@ -48,7 +48,6 @@ interface Controller {
   locked: boolean;
   bomOptions: { value: string; label: string }[];
   routingOptions: { value: string; label: string }[];
-  onBomChange: (value: string) => void;
   onRoutingChange: (value: string) => void;
 }
 
@@ -90,10 +89,17 @@ const ReadyOrderSession = ({
   const units = useUomReferenceLookup();
   const unit = units.entries.find((entry) => entry.value === String(order.uomId))?.label ?? '';
   const decimalScale = units.decimalScaleOf?.(order.uomId);
-  const [bom, setBom] = useState<string | null>(null);
   const [routing, setRouting] = useState<string | null>(null);
   const first = editor.rows[0];
-  const bomId = bom ?? first?.draft.bomId ?? String(automaticBomId(boms.data?.items ?? []) ?? '');
+  const draftBomId = String(automaticBomId(boms.data?.items ?? []) ?? '');
+  const confirmed = editor.rows.find((row) => row.confirmed);
+  const bomId = confirmed?.draft.bomId ?? draftBomId;
+  useEffect(() => {
+    if (boms.isPending || boms.isError) return;
+    editor.rows
+      .filter((row) => !row.confirmed && !row.isPending && row.draft.bomId !== draftBomId)
+      .forEach((row) => editor.change(row.key, 'bomId', draftBomId));
+  }, [draftBomId, editor.rows, editor.change, boms.isPending, boms.isError]);
   const routingId =
     routing ??
     first?.draft.routingId ??
@@ -115,7 +121,7 @@ const ReadyOrderSession = ({
   const defaults: NewProductionPlanDefaults = {
     planDate: plantToday(),
     plannedQty: '1',
-    bomId,
+    bomId: draftBomId,
     routingId,
   };
   useEffect(() => {
@@ -141,12 +147,6 @@ const ReadyOrderSession = ({
         value: String(item.routingId),
         label: `${item.routingCode} (Rev ${item.routingVersion})`,
       })),
-      onBomChange: (value) => {
-        setBom(value);
-        rows
-          .filter((row) => !row.confirmed)
-          .forEach((row) => editor.change(row.key, 'bomId', value));
-      },
       onRoutingChange: (value) => {
         setRouting(value);
         rows
@@ -162,6 +162,7 @@ const ReadyOrderSession = ({
     rows,
     editor.isHydrated,
     bomId,
+    draftBomId,
     routingId,
     ready,
     lines.data,
@@ -421,23 +422,13 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                       <td data-label="ERP W/O">{entry.order.productionOrderNo}</td>
                       <td data-label="품목">{entry.item}</td>
                       <td data-label="BOM 개정" className="erp-wo-master-revision">
-                        {entry.locked ? (
-                          <p className="erp-wo-master-value">
-                            {entry.bomOptions.find((option) => option.value === entry.bomId)
-                              ?.label ?? '개정 정보 확인 필요'}
-                          </p>
-                        ) : (
-                          <Select
-                            title={
-                              entry.bomOptions.find((option) => option.value === entry.bomId)?.label
-                            }
-                            aria-label={`${entry.order.productionOrderNo} BOM`}
-                            value={entry.bomId}
-                            options={entry.bomOptions}
-                            disabled={busy}
-                            onChange={entry.onBomChange}
-                          />
-                        )}
+                        <p className="erp-wo-master-value">
+                          {entry.bomOptions.find((option) => option.value === entry.bomId)?.label ??
+                            '사용 가능한 ERP 기본 BOM 없음'}
+                        </p>
+                        <span className="erp-wo-master-note">
+                          {entry.locked ? '확정 계획 적용 개정' : 'ERP 기본 개정 자동 적용'}
+                        </span>
                         <RevisionDetailButton kind="BOM" value={entry.bomId} />
                       </td>
                       <td data-label="Routing 개정" className="erp-wo-master-revision">

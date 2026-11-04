@@ -42,7 +42,7 @@ describe('처리 화면 단계 판정(C-5)', () => {
     });
     expect(judgeMaster({ ...master, routingCount: 0 }, '생산계획').blockedOutside).toBe('routing');
     expect(judgeMaster({ ...master, bomSelected: false }, '생산계획').guidance).toEqual({
-      text: 'BOM을 고르세요',
+      text: r.bomMissing,
     });
   });
 

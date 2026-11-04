@@ -30,6 +30,7 @@ interface Plan {
   planNo: string;
   plannedLineId?: number;
   plannedQty: number;
+  bomId?: number;
   confirmedAt?: string;
   versionNo: number;
 }
@@ -71,7 +72,7 @@ const world = (overrides: Partial<World> = {}): World => ({
       parentItemId: 7101,
       bomCode: 'SYN-BOM',
       bomVersion: 1,
-      statusCode: 'ACTIVE',
+      statusCode: 'CONFIRMED',
       isDefault: true,
       effectiveFrom: '2026-01-01',
       baseQty: 1,
@@ -341,6 +342,41 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
+  it.each([false, true])(
+    'ERP BOM 변경 시 확정=%s 계획은 확정 여부에 따라 개정을 적용한다',
+    async (confirmed) => {
+      const user = userEvent.setup();
+      const old = {
+        ...(world().boms[0] as Record<string, unknown>),
+        isDefault: false,
+        statusCode: 'OBSOLETE',
+      };
+      const latest = { ...old, bomId: 12, bomVersion: 2, isDefault: true, statusCode: 'CONFIRMED' };
+      const state = world({
+        boms: [old, latest],
+        plans: [{ ...(confirmed ? CONFIRMED_PLAN : DRAFT_PLAN), bomId: 11 }],
+      });
+      const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+      if (confirmed) {
+        await currentStep(tp.steps.assign);
+        await user.click(screen.getByRole('tab', { name: tp.steps.master }));
+        await screen.findByText(/확정 계획 적용 개정/);
+        expect(screen.queryByRole('combobox', { name: 'BOM 개정' })).toBeNull();
+        expect(screen.getByText(/SYN-BOM.*Rev 1/)).toBeVisible();
+      }
+      if (!confirmed) {
+        await currentStep(tp.steps.plan);
+        await user.click(screen.getByRole('button', { name: tp.plan.confirm }));
+        const dialog = await screen.findByRole('dialog', { name: tp.planConfirm.title });
+        await user.click(within(dialog).getByRole('button', { name: tp.planConfirm.confirm }));
+        await currentStep(tp.steps.assign);
+        expect(state.plans[0]?.bomId).toBe(12);
+      } else {
+        expect(state.plans[0]?.bomId).toBe(11);
+        expect(server.writes).toHaveLength(0);
+      }
+    },
+  );
   it('부분 확정 계획은 초기 4M 요청이 있어도 전량 미달이면 생산계획에 남는다', async () => {
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,

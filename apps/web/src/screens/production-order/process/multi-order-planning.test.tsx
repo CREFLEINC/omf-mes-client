@@ -30,7 +30,14 @@ const fixtures = vi.hoisted(() => {
   const boms = {
     data: {
       items: [
-        { bomId: 11, bomCode: 'BOM', bomVersion: 1, isDefault: true, effectiveFrom: '2026-01-01' },
+        {
+          bomId: 11,
+          bomCode: 'BOM',
+          bomVersion: 1,
+          statusCode: 'CONFIRMED',
+          isDefault: true,
+          effectiveFrom: '2026-01-01',
+        },
       ],
     },
     isPending: false,

@@ -289,7 +289,7 @@ export const erpWorkOrderFlow = {
     /** 하단 바 문장(C-5). `select`, `enter`, `choose`, `resolve`, `canProceed`의 인자는 조사를 붙여 넘긴다. */
     remaining: {
       bomMissing:
-        '기본 BOM이 등록되지 않아 진행할 수 없습니다. ERP 담당자에게 BOM 등록을 요청하세요',
+        '사용 가능한 ERP 기본 BOM이 하나로 정해지지 않아 진행할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요',
       routingMissing:
         '사용할 수 있는 Routing이 등록되지 않아 진행할 수 없습니다. 기준정보 담당자에게 Routing 등록을 요청하세요',
       loadFailed: '기준 정보를 불러오지 못했습니다. 다시 시도하세요',

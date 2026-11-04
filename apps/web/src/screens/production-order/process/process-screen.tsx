@@ -125,16 +125,15 @@ export const ProcessWorkspace = ({
    */
   const fixedByPlan = confirmedPlans.length > 0;
   const routings = useRoutingReferenceQuery(order.itemId, !fixedByPlan);
-  const planBom = confirmedPlans[0]?.bomId ?? planFacts[0]?.bomId;
+  const planBom = confirmedPlans[0]?.bomId;
   const planRouting = confirmedPlans[0]?.routingId ?? planFacts[0]?.routingId;
-  const [bomChoice, setBomChoice] = useState<string | null>(null);
   const [routingChoice, setRoutingChoice] = useState<string | null>(null);
   const bomItems = boms.data?.items ?? [];
   const routingItems = routings.data?.items ?? [];
-  const fallbackBom = planBom ?? automaticBomId(bomItems);
+  const draftBomId = String(automaticBomId(bomItems) ?? '');
+  const fallbackBom = planBom ?? (draftBomId === '' ? null : Number(draftBomId));
   const fallbackRouting = planRouting ?? automaticRoutingId(routingItems);
-  const bomId =
-    bomChoice ?? (fallbackBom === undefined || fallbackBom === null ? '' : String(fallbackBom));
+  const bomId = fallbackBom === undefined || fallbackBom === null ? '' : String(fallbackBom);
   const routingId =
     routingChoice ??
     (fallbackRouting === undefined || fallbackRouting === null ? '' : String(fallbackRouting));
@@ -155,13 +154,14 @@ export const ProcessWorkspace = ({
   /* 생산계획: 확정 전 줄은 BOM·Routing 단계의 BOM, Routing을 따른다. */
   const { change } = editor;
   useEffect(() => {
+    if (boms.isPending || boms.isError) return;
     editor.rows.forEach((row) => {
       if (row.confirmed || row.isPending) return;
-      if (bomId !== '' && row.draft.bomId !== bomId) change(row.key, 'bomId', bomId);
+      if (row.draft.bomId !== draftBomId) change(row.key, 'bomId', draftBomId);
       if (routingId !== '' && row.draft.routingId !== routingId)
         change(row.key, 'routingId', routingId);
     });
-  }, [bomId, change, editor.rows, routingId]);
+  }, [draftBomId, change, editor.rows, routingId, boms.isPending, boms.isError]);
   const rowName = (row: (typeof editor.rows)[number]) =>
     row.planNo ?? tp.plan.newRow(row.displayNo);
   const unconfirmedRows = editor.rows.filter((row) => !row.confirmed);
@@ -563,7 +563,6 @@ export const ProcessWorkspace = ({
             routingId={routingId}
             locked={fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
-            onBomChange={setBomChoice}
             onRoutingChange={setRoutingChoice}
           />
         );
@@ -601,7 +600,7 @@ export const ProcessWorkspace = ({
                         ),
                     ),
                   ),
-                  bomId,
+                  bomId: draftBomId,
                   routingId,
                   plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
                 })
@@ -610,7 +609,7 @@ export const ProcessWorkspace = ({
               distributionOrderLabel={`${order.productionOrderNo} / ${item === undefined ? '' : named(item.itemName, item.itemCode)}`}
               onDistributionDirtyChange={setDistributionDirty}
               onAppend={(drafts) =>
-                editor.addMany(drafts.map((draft) => ({ ...draft, bomId, routingId })))
+                editor.addMany(drafts.map((draft) => ({ ...draft, bomId: draftBomId, routingId })))
               }
               onSplit={(row, qty) => editor.split(row.key, qty)}
               onChange={editor.change}

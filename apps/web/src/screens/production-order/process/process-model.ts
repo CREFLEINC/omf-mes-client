@@ -51,7 +51,8 @@ export const judgeMaster = (facts: MasterFacts, next: string): StepJudgment => {
     return { complete: false, guidance: say(t.bomMissing), blockedOutside: 'bom' };
   if (facts.routingCount === 0)
     return { complete: false, guidance: say(t.routingMissing), blockedOutside: 'routing' };
-  if (!facts.bomSelected) return { complete: false, guidance: say(t.select(josa('BOM', '을/를'))) };
+  if (!facts.bomSelected)
+    return { complete: false, guidance: say(t.bomMissing), blockedOutside: 'bom' };
   if (!facts.routingSelected)
     return { complete: false, guidance: say(t.select(josa('Routing', '을/를'))) };
   return { complete: true, guidance: proceed(next) };
