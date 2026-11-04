@@ -1,7 +1,6 @@
 import {
   AlertBanner,
   Button,
-  Checkbox,
   Chip,
   DatePicker,
   Dialog,
@@ -15,6 +14,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -27,6 +27,7 @@ import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
+  iqcInspectionKeys,
   useDefectCodes,
   useInspectionItemSpecs,
   useInspectionRequestDetail,
@@ -37,6 +38,8 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
+import { DefectMultiSelect } from './defect-multi-select';
+import { DefectQtyTable } from './defect-qty-table';
 import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -83,6 +86,7 @@ type DefectCode = {
 const t = messages.partsIqcInspection;
 /** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
 const STANDARD_PATH = '/master-data/inspection-standard';
+const DEFECT_CODE_PATH = '/master-data/defect-cause-code';
 
 const TIME_LABELS: TimeFieldLabels = {
   field: t.lot.inspectedTime,
@@ -117,6 +121,7 @@ export const InspectionDetail = ({
 }: InspectionDetailProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const rounds = useInspectionRounds(inspectionRequestId);
   const versionId = detail.data?.inspectionPlanVersionId ?? null;
@@ -201,6 +206,18 @@ export const InspectionDetail = ({
         drawings={drawings.data ?? []}
         defectCodes={(defectCodes.data ?? []) as DefectCode[]}
         defectCodesFailed={defectCodes.isError}
+        /* 불량 코드가 없으면 그 화면으로 옮겨 바로 등록한다(사용자 지시 2026-11-04 — 새 창이 아니라 화면 이동). */
+        onRegisterDefectCode={
+          toWebAccess(session?.permissions).allows(DEFECT_CODE_PATH)
+            ? () => {
+                /* 등록하고 돌아오면 목록을 다시 받는다. */
+                void queryClient.invalidateQueries({ queryKey: iqcInspectionKeys.defectCodes });
+                navigate(
+                  `${DEFECT_CODE_PATH}?mode=create${(defectCodes.data ?? []).length === 0 ? '&as=category' : ''}`,
+                );
+              }
+            : undefined
+        }
         inspector={session?.worker ?? null}
         appUserId={session?.userId ?? null}
         draft={
@@ -219,11 +236,14 @@ export const InspectionDetail = ({
     );
   };
 
-  /* 고른 탭은 의뢰마다 처음부터 — 확정이 끝난 의뢰는 이력부터 연다(입력 탭에는 「확정됨」 안내뿐이다). */
+  /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
   const confirmed = round !== null && round.statusCode === 'CONFIRMED';
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
-  const tab =
-    picked?.requestId === inspectionRequestId ? picked.tab : confirmed ? 'history' : 'input';
+  const tab = confirmed
+    ? 'history'
+    : picked?.requestId === inspectionRequestId
+      ? picked.tab
+      : 'input';
 
   /* 목록 아래(또는 옆) 상세 구획에 선다 — 기존 검사 조회·판정과 같은 배치(팝업이 아니다 · 사용자 지시 2026-10-29). */
   return (
@@ -245,7 +265,9 @@ export const InspectionDetail = ({
         value={tab}
         onChange={(next) => setPicked({ requestId: inspectionRequestId, tab: next })}
         items={[
-          { value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null },
+          ...(confirmed
+            ? []
+            : [{ value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null }]),
           {
             value: 'history',
             label: t.tabs.history,
@@ -348,6 +370,8 @@ interface FormProps {
   drawings: { attachmentId: number; blob: Blob }[];
   defectCodes: DefectCode[];
   defectCodesFailed: boolean;
+  /** 불량 코드가 하나도 없을 때 「불량 코드 등록」 단추 — 그 화면 권한이 없으면 undefined */
+  onRegisterDefectCode?: () => void;
   inspector: { workerName: string } | null;
   /** 작업자 연결 창이 이을 계정 — 세션이 없으면 버튼을 두지 않는다. */
   appUserId: number | null;
@@ -800,49 +824,139 @@ const InspectionForm = (props: FormProps) => {
             </span>
           )}
         </div>
-        <div className="parts-iqc-visual-line">
-          <div className="parts-iqc-inline-field">
-            <FieldLabel htmlFor="parts-iqc-visual-defect" label={t.visual.defectQty} required />
-            <TextField
-              id="parts-iqc-visual-defect"
-              inputMode="numeric"
-              value={form.visualDefectQty}
-              trailingIcon={<span>{t.visual.unit}</span>}
-              error={
-                defectQtyRaw === null
-                  ? t.visual.invalidQty
-                  : defectOver
-                    ? t.visual.overQty
-                    : undefined
-              }
-              onChange={(event) => change({ ...form, visualDefectQty: event.target.value })}
-            />
-          </div>
-          {xrfItems.length > 0 && (
-            <div className="field-cell parts-iqc-xrf-cell">
-              <span className="field-label" id="parts-iqc-xrf">
-                {t.visual.xrfResult}
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
+        {/* 외관 불량 수(왼쪽) · 외관 불량 유형(오른쪽)을 좌우로(사용자 지시 2026-11-04). */}
+        <div className="parts-iqc-visual-row">
+          <div className="parts-iqc-visual-line">
+            <div className="parts-iqc-inline-field">
+              <FieldLabel htmlFor="parts-iqc-visual-defect" label={t.visual.defectQty} required />
+              <TextField
+                id="parts-iqc-visual-defect"
+                inputMode="numeric"
+                value={form.visualDefectQty}
+                trailingIcon={<span>{t.visual.unit}</span>}
+                error={
+                  defectQtyRaw === null
+                    ? t.visual.invalidQty
+                    : defectOver
+                      ? t.visual.overQty
+                      : undefined
+                }
+                /* 앞자리 0 은 떼어 「01」처럼 서지 않게 한다(사용자 지시 2026-11-04). */
+                onChange={(event) =>
+                  change({ ...form, visualDefectQty: event.target.value.replace(/^0+(?=\d)/, '') })
+                }
+              />
+            </div>
+            {xrfItems.length > 0 && (
+              <div className="field-cell parts-iqc-xrf-cell">
+                <span className="field-label" id="parts-iqc-xrf">
+                  {t.visual.xrfResult}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
                 </span>
-              </span>
-              <RadioGroup
-                name="parts-iqc-xrf"
-                orientation="horizontal"
-                aria-labelledby="parts-iqc-xrf"
-                value={form.xrf}
-                onChange={(value) => change({ ...form, xrf: value as XrfResult })}
+                <RadioGroup
+                  name="parts-iqc-xrf"
+                  orientation="horizontal"
+                  aria-labelledby="parts-iqc-xrf"
+                  value={form.xrf}
+                  onChange={(value) => change({ ...form, xrf: value as XrfResult })}
+                >
+                  {(['NOT_DONE', 'OK', 'NG'] as XrfResult[]).map((value) => (
+                    <Radio key={value} value={value}>
+                      {t.visual.xrfChoice[value]}
+                    </Radio>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
+          </div>
+
+          {/* 불량이 있을 때만 불량 유형을 고른다 — 불합격 판정이거나 불합격 수량이 있을 때. 외관 불량 수 오른쪽에 둔다(사용자 지시 2026-11-04). */}
+          {defectsRequired && (
+            <div className="parts-iqc-visual-defects">
+              {/*
+               * 한 줄 — 「외관 불량 유형 *」(외관 불량 수와 같은 이름표) · 불량 코드 등록 · 목록(사용자 지시 2026-11-04).
+               * 「하나 이상 선택하세요」 글은 두지 않는다 — 제출이 막혀 있다. 수량 · 합계 오류는 남긴다.
+               */}
+              <div
+                className="parts-iqc-defect-line"
+                role="group"
+                aria-labelledby="parts-iqc-defect-type"
               >
-                {(['NOT_DONE', 'OK', 'NG'] as XrfResult[]).map((value) => (
-                  <Radio key={value} value={value}>
-                    {t.visual.xrfChoice[value]}
-                  </Radio>
-                ))}
-              </RadioGroup>
+                <span className="field-label" id="parts-iqc-defect-type">
+                  {t.visual.defectType}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </span>
+                {!props.defectCodesFailed &&
+                  leafCodes.length === 0 &&
+                  props.onRegisterDefectCode !== undefined && (
+                    <Button variant="outlined" onClick={props.onRegisterDefectCode}>
+                      {t.visual.defectCodeRegister}
+                    </Button>
+                  )}
+                {props.defectCodesFailed ? (
+                  <p className="field-note">{t.visual.defectCodesFailed}</p>
+                ) : leafCodes.length === 0 ? (
+                  /* 안내는 정보 아이콘 + 파란 바탕 한 줄(사용자 지시 2026-11-04 — 라벨 형식). */
+                  <span className="iqc-inspection-action-note" data-tone="info">
+                    <Icon name="info" size={14} aria-hidden />
+                    {t.visual.defectCodesEmpty}
+                  </span>
+                ) : (
+                  /* 검색되는 선택칸에서 닫지 않고 여러 개 넣고 뺀다(사용자 지시 2026-11-04 — 체크란 대신). 둘 이상이면 아래 표의 휴지통으로도 뺀다. */
+                  <div className="parts-iqc-defect-options">
+                    <DefectMultiSelect
+                      aria-labelledby="parts-iqc-defect-type"
+                      options={leafCodes.map((code) => ({
+                        value: String(code.defectCodeId),
+                        label: code.defectName,
+                      }))}
+                      values={form.defectCodeIds.map(String)}
+                      placeholder={t.visual.defectTypePlaceholder}
+                      pickedLabel={t.visual.defectTypePicked}
+                      searchLabel={t.visual.defectTypeSearch}
+                      emptyText={t.visual.defectTypeNoMatch}
+                      invalid={form.defectCodeIds.length === 0}
+                      onChange={(values) => change({ ...form, defectCodeIds: values.map(Number) })}
+                    />
+                  </div>
+                )}
+                {/* 빈 칸 · 유형 수량 누락 · 합계 어긋남 글은 두지 않는다 — 합계는 수량 표 오른쪽 라벨이 맡는다(사용자 지시 2026-11-04). */}
+                {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
+                {submit.fieldErrors.defects !== undefined && (
+                  <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
+                    <Icon name="error" />
+                    {submit.fieldErrors.defects}
+                  </p>
+                )}
+              </div>
+              {/* 둘 이상 고르면 유형마다 수량을 표로 — 합계가 불합격 수량과 같아야 한다(#205 · 사용자 지시 2026-11-04). 하나면 외관 불량 수가 그 수량이다. */}
+              {form.defectCodeIds.length > 1 && (
+                <DefectQtyTable
+                  rows={form.defectCodeIds.map((id) => ({
+                    defectCodeId: id,
+                    name:
+                      leafCodes.find((code) => code.defectCodeId === id)?.defectName ?? String(id),
+                  }))}
+                  qtys={form.defectQtys}
+                  target={defectTarget}
+                  onRemove={(id) =>
+                    change({
+                      ...form,
+                      defectCodeIds: form.defectCodeIds.filter((kept) => kept !== id),
+                    })
+                  }
+                  onChange={(id, value) =>
+                    change({ ...form, defectQtys: { ...form.defectQtys, [id]: value } })
+                  }
+                />
+              )}
             </div>
           )}
         </div>
-
         {xrfItems.length > 0 && (
           <div className="parts-iqc-file">
             <div className="parts-iqc-file-text">
@@ -897,7 +1011,7 @@ const InspectionForm = (props: FormProps) => {
         )}
       </section>
 
-      {/* 기타 검사 항목 — 표(No. · 검사 항목 · 판정), 같은 상자에 외관 불량 유형 · 비고(사용자 시안 2026-10-29) */}
+      {/* 기타 검사 항목 — 표(No. · 검사 항목 · 판정), 같은 상자에 비고(사용자 시안 2026-10-29). 외관 불량 유형은 외관 상자로 옮겼다(2026-11-04). */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-checks">
         {checkItems.length > 0 && (
           <>
@@ -960,102 +1074,6 @@ const InspectionForm = (props: FormProps) => {
           </>
         )}
 
-        <div className={checkItems.length > 0 ? 'parts-iqc-card-split' : undefined}>
-          <div className="parts-iqc-defect-head">
-            <h3 id="parts-iqc-defect-type">
-              {t.visual.defectType}
-              {defectsRequired && (
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
-                </span>
-              )}
-            </h3>
-            {(visualDefectQty ?? 0) > 0 && form.defectCodeIds.length > 0 && (
-              <span className="parts-iqc-badge parts-iqc-badge-success">
-                {t.visual.defectPicked(form.defectCodeIds.length)}
-              </span>
-            )}
-          </div>
-          <div
-            className="parts-iqc-defect-line"
-            role="group"
-            aria-labelledby="parts-iqc-defect-type"
-          >
-            {props.defectCodesFailed ? (
-              <p className="field-note">{t.visual.defectCodesFailed}</p>
-            ) : leafCodes.length === 0 ? (
-              <p className="field-note">{t.visual.defectCodesEmpty}</p>
-            ) : (
-              <div className="parts-iqc-defect-options">
-                {leafCodes.map((code) => (
-                  <Checkbox
-                    key={code.defectCodeId}
-                    checked={form.defectCodeIds.includes(code.defectCodeId)}
-                    onChange={(event) =>
-                      change({
-                        ...form,
-                        defectCodeIds: event.target.checked
-                          ? [...form.defectCodeIds, code.defectCodeId]
-                          : form.defectCodeIds.filter((id) => id !== code.defectCodeId),
-                      })
-                    }
-                  >
-                    {code.defectName}
-                  </Checkbox>
-                ))}
-              </div>
-            )}
-            {defectsSent && 'blocked' in defectResult && (
-              <p className="parts-iqc-hint parts-iqc-hint-inline">
-                <Icon name="error" />
-                {defectResult.blocked === 'required'
-                  ? t.visual.defectTypeHint
-                  : defectResult.blocked === 'qty'
-                    ? t.visual.defectQtyRequired
-                    : t.visual.defectSumMismatch(defectTarget)}
-              </p>
-            )}
-            {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
-            {submit.fieldErrors.defects !== undefined && (
-              <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
-                <Icon name="error" />
-                {submit.fieldErrors.defects}
-              </p>
-            )}
-          </div>
-          {/* 둘 이상 고르면 유형마다 수량 — 합계가 불합격 수량과 같아야 한다(#205) */}
-          {form.defectCodeIds.length > 1 && (
-            <div className="parts-iqc-defect-qtys">
-              {form.defectCodeIds.map((id) => {
-                const code = leafCodes.find((c) => c.defectCodeId === id);
-                return (
-                  <div key={id} className="field-cell parts-iqc-stretch">
-                    <FieldLabel
-                      htmlFor={`parts-iqc-defect-qty-${String(id)}`}
-                      label={code?.defectName ?? String(id)}
-                      required
-                    />
-                    <TextField
-                      id={`parts-iqc-defect-qty-${String(id)}`}
-                      fullWidth
-                      size="sm"
-                      inputMode="numeric"
-                      value={form.defectQtys[id] ?? ''}
-                      trailingIcon={<span>{t.visual.unit}</span>}
-                      onChange={(event) =>
-                        change({
-                          ...form,
-                          defectQtys: { ...form.defectQtys, [id]: event.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         <div className="field-cell parts-iqc-stretch">
           <h3 className="parts-iqc-sub-title">
             <label htmlFor="parts-iqc-remarks">{t.visual.remarks}</label>
@@ -1073,50 +1091,75 @@ const InspectionForm = (props: FormProps) => {
         </div>
       </section>
 
-      {ask && (
-        <Dialog
-          open
-          size="sm"
-          showCloseButton={false}
-          closeOnBackdropClick={false}
-          title={t.footer.confirmSubmit(t.judgment[overall ?? ''] ?? '')}
-          onClose={() => setAsk(false)}
-          footer={
-            <>
-              <Button variant="text" onClick={() => setAsk(false)}>
-                {t.footer.review}
-              </Button>
-              <Button variant="filled" onClick={onSubmit}>
-                {t.footer.submit}
-              </Button>
-            </>
-          }
-        >
-          {/* 내기 전에 무엇으로 나가는지 한 번 더 본다 — 규격 밖·덜 적은 항목이 여기서 드러난다(참고: omf-dx-vina 수입검사) */}
-          <ul className="parts-iqc-confirm">
-            <li>
-              {[
-                props.itemParts?.name ?? props.itemParts?.code ?? '-',
-                `LOT ${props.lotNo}`,
-                props.inbound?.supplierLabel ?? '-',
-              ].join(' · ')}
-            </li>
-            <li>
-              {t.footer.summaryDimension(
-                dimensions.length,
-                dimensionStates.filter((st) => st === 'err').length,
-                dimensionStates.filter((st) => st === 'empty' || st === 'wait').length,
-              )}
-            </li>
-            <li>
-              {t.footer.summaryVisual(
-                visualDefectQty ?? 0,
-                xrfItems.length === 0 ? '-' : t.visual.xrf[form.xrf],
-              )}
-            </li>
-          </ul>
-        </Dialog>
-      )}
+      {ask &&
+        (() => {
+          const judgment = t.judgment[overall ?? ''] ?? '';
+          const outOfSpec = dimensionStates.filter((st) => st === 'err').length;
+          const missing = dimensionStates.filter((st) => st === 'empty' || st === 'wait').length;
+          const defects = visualDefectQty ?? 0;
+          const verdict = (ok: boolean) => (
+            <span className="parts-iqc-confirm-verdict" data-tone={ok ? 'ok' : 'check'}>
+              {ok ? t.confirm.ok : t.confirm.check}
+            </span>
+          );
+          return (
+            <Dialog
+              open
+              size="md"
+              showCloseButton={false}
+              closeOnBackdropClick={false}
+              title={t.confirm.title(judgment)}
+              onClose={() => setAsk(false)}
+              footer={
+                <>
+                  <Button variant="outlined" onClick={() => setAsk(false)}>
+                    {t.confirm.back}
+                  </Button>
+                  <Button variant="filled" onClick={onSubmit}>
+                    {t.confirm.action(judgment)}
+                  </Button>
+                </>
+              }
+            >
+              {/* 내기 전에 무엇으로 나가는지 한 번 더 본다 — 규격 밖·덜 적은 항목이 여기서 드러난다(사용자 시안 2026-11-04). */}
+              <div className="parts-iqc-confirm">
+                <p className="parts-iqc-confirm-note">{t.confirm.note}</p>
+                <dl className="parts-iqc-confirm-rows">
+                  <div>
+                    <dt>{t.confirm.target}</dt>
+                    <dd>{props.itemParts?.name ?? props.itemParts?.code ?? '-'}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.confirm.lot}</dt>
+                    <dd>{props.lotNo}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.confirm.supplier}</dt>
+                    <dd>{props.inbound?.supplierLabel ?? '-'}</dd>
+                  </div>
+                </dl>
+                <div className="parts-iqc-confirm-cards">
+                  <section className="parts-iqc-confirm-card">
+                    <h4>{t.confirm.dimension}</h4>
+                    <strong>{t.confirm.dimensionValue(outOfSpec, missing)}</strong>
+                    {verdict(outOfSpec === 0 && missing === 0)}
+                  </section>
+                  <section className="parts-iqc-confirm-card">
+                    <h4>{t.confirm.visual}</h4>
+                    <strong>{t.confirm.visualValue(defects)}</strong>
+                    {verdict(defects === 0)}
+                  </section>
+                </div>
+                <dl className="parts-iqc-confirm-rows">
+                  <div>
+                    <dt>{t.confirm.xrf}</dt>
+                    <dd>{xrfItems.length === 0 ? '-' : t.visual.xrf[form.xrf]}</dd>
+                  </div>
+                </dl>
+              </div>
+            </Dialog>
+          );
+        })()}
       <SaveErrorBanner error={submit.error} />
 
       {/* 아래 줄은 레퍼런스 화면 그대로다 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 제출(사용자 확인 2026-10-29) */}
