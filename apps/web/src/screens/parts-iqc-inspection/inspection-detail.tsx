@@ -918,7 +918,6 @@ const InspectionForm = (props: FormProps) => {
                       placeholder={t.visual.defectTypePlaceholder}
                       pickedLabel={t.visual.defectTypePicked}
                       searchLabel={t.visual.defectTypeSearch}
-                      searchPlaceholder={t.visual.defectTypeSearch}
                       emptyText={t.visual.defectTypeNoMatch}
                       invalid={form.defectCodeIds.length === 0}
                       onChange={(values) => change({ ...form, defectCodeIds: values.map(Number) })}

@@ -11,7 +11,6 @@ export interface DefectMultiSelectProps {
   /** 고른 개수 표시 — 칸에 「n개 선택」 */
   pickedLabel: (count: number) => string;
   searchLabel: string;
-  searchPlaceholder: string;
   emptyText: string;
   invalid?: boolean;
   'aria-labelledby'?: string;
@@ -29,7 +28,6 @@ export const DefectMultiSelect = ({
   placeholder,
   pickedLabel,
   searchLabel,
-  searchPlaceholder,
   emptyText,
   invalid = false,
   'aria-labelledby': labelledBy,
@@ -118,7 +116,6 @@ export const DefectMultiSelect = ({
             aria-label={searchLabel}
             clearLabel={messages.common.clear}
             aria-controls={listId}
-            placeholder={searchPlaceholder}
             value={term}
             onChange={(event) => {
               setTerm(event.target.value);

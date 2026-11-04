@@ -31298,20 +31298,60 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 /* 불량 유형 선택칸 — 여러 개 고르는 검색 선택칸 + 고른 유형 칩(사용자 지시 2026-11-04). */
 .parts-iqc-defect-options > .searchable-select {
-  width: 14rem;
+  /* 「불량 유형을 선택하세요」가 들어갈 만큼만(사용자 지시 2026-11-04). */
+  width: 13.5rem;
 }
 
-/* 유형별 수량 표 + 오른쪽 합계(사용자 시안 2026-11-04). */
-.parts-iqc-defect-qty-wrap {
+/* 불량 유형별 수량 상자(사용자 시안 2026-11-04) — 머리 줄(제목 · 입력 합계), 줄마다 유형 · 수량 · 휴지통. */
+.parts-iqc-defect-qty-box {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.parts-iqc-defect-qty-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3) var(--space-5);
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
-.parts-iqc-defect-qty-wrap > .parts-iqc-grid-scroll {
-  flex: 1 1 22rem;
+.parts-iqc-defect-qty-head h4 {
+  margin: 0;
+  font: var(--type-title-sm);
+  font-weight: 700;
+}
+
+.parts-iqc-defect-qty-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.parts-iqc-defect-qty-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+
+.parts-iqc-defect-qty-list > li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.parts-iqc-defect-qty-name {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.parts-iqc-defect-qty-input {
+  flex: none;
+  width: 10rem;
 }
 
 .parts-iqc-defect-sum {
