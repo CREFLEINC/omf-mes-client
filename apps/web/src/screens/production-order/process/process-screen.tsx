@@ -661,6 +661,7 @@ export const ProcessWorkspace = ({
       case 'release':
         return (
           <ReleaseStep
+            plantId={order.plantId ?? undefined}
             lines={releaseLines}
             orderNo={order.productionOrderNo}
             itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}

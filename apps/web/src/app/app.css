@@ -32769,3 +32769,14 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .process-page-body > .process-page-past { margin-bottom: var(--space-3); }
 @container erp-wo-page (min-width: 52rem) { .process-page:has(.erp-wo-release-workspace) .process-page-past { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+
+.erp-wo-terminal-connections { min-width: 0; padding-block: var(--space-3); border-top: 1px solid var(--outline-variant); }
+.erp-wo-terminal-target { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); margin-block: var(--space-3); }
+.erp-wo-terminal-target dt { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.erp-wo-terminal-target dd { margin: var(--space-1) 0 0; font: var(--type-body-sm); overflow-wrap: anywhere; }
+.erp-wo-terminal-table { max-width: 100%; overflow-x: auto; }
+.erp-wo-terminal-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-terminal-table th,.erp-wo-terminal-table td { text-align: left; vertical-align: top; padding: var(--space-2); border-bottom: 1px solid var(--outline-variant); min-width: 6rem; }
+.erp-wo-terminal-table th { background: var(--surface-container); }
+.erp-wo-terminal-table small { display: block; margin-top: var(--space-1); }
+.erp-wo-terminal-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--type-label-sm); }

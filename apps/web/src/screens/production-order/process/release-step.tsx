@@ -1,3 +1,4 @@
+import { TerminalConnections } from './terminal-connections';
 import { AlertBanner, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
@@ -68,6 +69,7 @@ export const toReleaseLines = (
   });
 
 export interface ReleaseStepProps {
+  plantId?: number;
   lines: ReleaseLine[] | undefined;
   orderNo?: string;
   itemLabel?: string;
@@ -84,6 +86,7 @@ export interface ReleaseStepProps {
  * 배포 확인 단계(마지막 확인 단계). 결과를 바꾸는 값(W/O, 수량, LOT 크기)과 반영 사항을 1280×800 첫 화면 안에 보인다.
  */
 export const ReleaseStep = ({
+  plantId,
   lines,
   orderNo,
   itemLabel,
@@ -166,6 +169,9 @@ export const ReleaseStep = ({
             </dl>
           </div>
         </section>
+        {plantId != null && (
+          <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
+        )}
         <section className="erp-wo-release-effects">
           <AlertBanner variant="info">
             <div className="erp-wo-release-notice">

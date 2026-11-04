@@ -9,6 +9,7 @@ import { toValidationReport, toWorkOrderFact, workOrderKeys } from '../../work-o
 
 type WorkOrder = components['schemas']['WorkOrder'] & {
   routingOperationName?: string;
+  processId?: number;
   productionOrderId?: number;
 };
 
@@ -18,6 +19,8 @@ export interface OrderWorkOrder {
   workOrderNo: string;
   productionPlanId: number;
   productionLineId?: number | null;
+  plannedEquipmentId?: number | null;
+  processId?: number;
   operationName: string;
   orderQty: number;
   uomId: number;
@@ -39,6 +42,8 @@ const toOrderWorkOrder = (item: WorkOrder): OrderWorkOrder => ({
   workOrderNo: item.workOrderNo,
   productionPlanId: item.productionPlanId,
   productionLineId: item.productionLineId ?? null,
+  plannedEquipmentId: item.plannedEquipmentId ?? null,
+  processId: item.processId,
   operationName: item.routingOperationName ?? '',
   orderQty: item.orderQty,
   uomId: item.uomId,
