@@ -436,6 +436,8 @@ export const InspectionStandardScreen = () => {
       setPlanFieldErrors({});
       const next = planToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      /* 저장하면 「기본 정보 수정」 창을 닫는다(사용자 지시 2026-11-04). */
+      setIsPlanEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });

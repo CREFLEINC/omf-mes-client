@@ -1068,6 +1068,16 @@ describe('InspectionStandardScreen — 기준 저장', () => {
     expect(put?.headers.get('If-Match')).toBe('"7"');
   });
 
+  it('저장하면 「기본 정보 수정」 창이 닫힌다', async () => {
+    const { user } = renderSelectedPlan([planSaveRoute()]);
+
+    await user.type(await findPlanField('기준명'), 'X');
+    await user.click(within(planForm()).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('저장했습니다');
+    expect(screen.queryByRole('region', { name: '기준 정보' })).not.toBeInTheDocument();
+  });
+
   /* 승인 정보와 사용 여부는 전용 액션으로만 바뀐다 — 수정 본문에 실으면 계약 위반이다. */
   it('저장 본문에 승인 정보와 사용 여부를 싣지 않는다', async () => {
     const { requests, user } = renderSelectedPlan([planSaveRoute()]);
