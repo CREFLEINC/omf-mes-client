@@ -322,6 +322,7 @@ main > * + * {
  */
 .field-label > .inspection-standard-label-hint {
   margin-left: var(--space-2);
+  white-space: nowrap;
   padding: 2px var(--space-2);
   font: var(--type-label-sm);
 }
@@ -351,34 +352,34 @@ main > * + * {
 }
 
 /*
- * 기본 정보 폼 배치(사용자 지시 2026-11-04) — 첫 줄 기준코드 · 기준명, 둘째 줄 기본 생략 · 검사 유형 · 공정,
- * 셋째 줄 품목 · 라우팅. 여섯 칸 격자에 두 칸 줄은 셋씩, 세 칸 줄은 둘씩 차지한다.
+ * 기본 정보 폼 배치(사용자 시안 2026-11-04) — 첫 줄 기본 생략 | 기준코드 · 기준명, 둘째 줄 검사 유형 · 공정,
+ * 셋째 줄 품목 · 라우팅(품목을 고른 뒤). 둘째 · 셋째 줄은 반씩, 첫 줄은 체크 뒤 두 칸이 나머지를 반씩 쓴다.
  */
-.form-grid.inspection-standard-plan-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+.inspection-standard-plan-head-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
 }
 
-.inspection-standard-plan-grid > .field-cell {
-  grid-column: span 3;
+/* 체크가 없을 때(검사 유형을 고르기 전) 두 칸이 첫 칸부터 선다. */
+.inspection-standard-plan-head-row:not(:has(> .inspection-standard-plan-skip)) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.inspection-standard-plan-grid > .field-cell.inspection-standard-plan-third {
-  grid-column: span 2;
+/* 기본 정보 수정 창 — 첫 줄에 세 칸(기본 생략 · 기준코드 · 기준명)이 서도록 넓힌다(사용자 지시 2026-11-04). */
+.inspection-standard-plan-edit-dialog {
+  --dialog-max-lg: 60rem;
 }
 
-/*
- * 선택칸 폭은 격자 칸에 맞춘다(사용자 지시 2026-11-04) — 검사 유형 · 공정 · 라우팅은 셋째 칸 폭으로 같고,
- * 라우팅은 공정 바로 아래 같은 폭이다. 품목은 이름이 길어 그 앞 두 칸(기본 생략 · 검사 유형 아래)을 쓴다.
- */
-.inspection-standard-plan-grid > .field-cell.inspection-standard-plan-item {
-  grid-column: 1 / span 4;
-}
-
-/* 체크는 라벨이 없어 옆 선택칸의 입력 줄 높이에 맞춰 세운다. */
-.inspection-standard-plan-grid > .inspection-standard-plan-skip {
+/* 체크는 라벨이 없어 옆 칸의 입력 줄 높이에 맞춰 세우고, 오른쪽 세로선으로 기준코드와 가른다. */
+.inspection-standard-plan-skip {
+  display: flex;
   align-self: end;
-  justify-content: center;
+  align-items: center;
   min-height: 2.5rem;
+  padding-right: var(--space-4);
+  border-right: 1px solid var(--outline-variant);
 }
 
 .inspection-standard-plan-head > .pane-title {

@@ -1492,6 +1492,8 @@ export const InspectionStandardScreen = () => {
             closeOnBackdropClick={false}
             showCloseButton={false}
             title={t.detail.editBasic}
+            /* 첫 줄에 기본 생략 · 기준코드 · 기준명이 서도록 창을 넓힌다(사용자 지시 2026-11-04). */
+            className="inspection-standard-plan-edit-dialog"
             onClose={() => {
               cancelPlanEdit();
               setIsPlanEditOpen(false);

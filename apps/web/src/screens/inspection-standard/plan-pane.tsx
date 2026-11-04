@@ -133,11 +133,25 @@ export const PlanPane = ({
       {optionsNotice}
       {banner}
 
-      <div className="form-grid inspection-standard-plan-grid">
+      <div className="form-grid">
         {/*
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
+        {/* 첫 줄 — 기본 생략 | 기준코드 · 기준명(사용자 시안 2026-11-04). */}
+        <div className="inspection-standard-plan-head-row">
+          {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. */}
+          {values.inspectionTypeCode !== '' && (
+            <div className="inspection-standard-plan-skip">
+              <Checkbox
+                checked={values.defaultSkip}
+                onChange={(event) => onChange({ defaultSkip: event.target.checked })}
+              >
+                {t.fields.defaultSkip}
+              </Checkbox>
+            </div>
+          )}
+
         <div className="field-cell">
           <FieldLabel
             htmlFor={codeId}
@@ -168,22 +182,10 @@ export const PlanPane = ({
             aria-required
           />
         </div>
+        </div>
 
-        {/* 둘째 줄 — 기본 생략 · 검사 유형 · 공정(사용자 지시 2026-11-04). */}
-        {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. */}
-        {values.inspectionTypeCode !== '' && (
-          <div className="field-cell inspection-standard-plan-third inspection-standard-plan-skip">
-            <Checkbox
-              checked={values.defaultSkip}
-              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
-            >
-              {t.fields.defaultSkip}
-            </Checkbox>
-          </div>
-        )}
-
+        {/* 둘째 줄 — 검사 유형 · 공정(사용자 시안 2026-11-04). */}
         <SelectField
-          className="inspection-standard-plan-third"
           label={t.fields.inspectionType}
           required
           options={ensureOption(INSPECTION_TYPE_OPTIONS, values.inspectionTypeCode)}
@@ -194,7 +196,6 @@ export const PlanPane = ({
 
         {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
         <SelectField
-          className="inspection-standard-plan-third"
           label={t.fields.process}
           options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
           value={values.processId}
@@ -209,7 +210,7 @@ export const PlanPane = ({
          * 품목은 **칸에서 바로 검색해서 고른다**(사용자 지시 2026-11-04 — 품목 선택 창을 띄우지 않는다).
          * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
-        <div className="field-cell search-select-cell inspection-standard-plan-item">
+        <div className="field-cell search-select-cell">
           {/* 품목을 고르기 전에는 라우팅 칸 대신 품목 이름 오른쪽에 안내를 둔다(사용자 지시 2026-11-04). */}
           <FieldLabel
             htmlFor={itemId}
@@ -245,8 +246,7 @@ export const PlanPane = ({
         {isRoutingShown && (
           <SelectField
             id={routingId}
-            className="inspection-standard-plan-third"
-            label={t.fields.routing}
+              label={t.fields.routing}
             options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
             value={values.routingId}
             placeholder={t.values.notSelected}
