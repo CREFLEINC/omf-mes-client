@@ -30751,7 +30751,8 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .parts-iqc-confirm-card strong {
-  font: var(--type-title-md);
+  font: var(--type-title-sm);
+  font-weight: 700;
 }
 
 .parts-iqc-confirm-verdict {
