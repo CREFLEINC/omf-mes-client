@@ -150,10 +150,18 @@ export const useWorklistBulk = () => {
             },
           }),
         );
-        if (result.outcome === 'CONFIRMED') return outcomeOf(target, 'processed', null);
+        const reason = [...new Set(result.reasons.map(reasonLabel))].join(', ');
+        if (result.outcome === 'CONFIRMED')
+          return { ...outcomeOf(target, 'processed', reason || null), resultCode: result.outcome };
         if (result.outcome === 'DRAFT')
-          return outcomeOf(target, 'skipped', t.bulk.outcomeReasons.draft);
-        return outcomeOf(target, 'skipped', result.reasons.map(reasonLabel).join(', '));
+          return {
+            ...outcomeOf(target, 'skipped', reason || t.bulk.outcomeReasons.draft),
+            resultCode: result.outcome,
+          };
+        return {
+          ...outcomeOf(target, 'skipped', reason || '생산계획과 기준정보를 확인하세요.'),
+          resultCode: result.outcome,
+        };
       } catch (cause) {
         return outcomeOf(target, 'failed', apiErrorText(toApiError(cause)));
       }

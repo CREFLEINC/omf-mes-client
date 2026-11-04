@@ -32780,3 +32780,13 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-terminal-table th { background: var(--surface-container); }
 .erp-wo-terminal-table small { display: block; margin-top: var(--space-1); }
 .erp-wo-terminal-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--type-label-sm); }
+
+.erp-wo-auto-result { display: grid; gap: var(--space-3); min-width: 0; }
+.erp-wo-auto-result-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.erp-wo-auto-result-filters [aria-pressed='true'] { background: var(--secondary-container); color: var(--on-secondary-container); }
+.erp-wo-auto-result-table { max-width: 100%; overflow-x: auto; }
+.erp-wo-auto-result-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-auto-result-table th,.erp-wo-auto-result-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--outline-variant); vertical-align: top; min-width: 7rem; }
+.erp-wo-auto-result-table th { background: var(--surface-container); }
+.erp-wo-auto-result-table td { overflow-wrap: anywhere; }
+.erp-wo-auto-result-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--type-label-sm); }

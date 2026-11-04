@@ -1,3 +1,4 @@
+import { AutoPlanResult, autoPlanResultCode, type AutoPlanResultFilter } from './auto-plan-result';
 /**
  * W-02-01 작업지시 목록 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
@@ -100,6 +101,7 @@ export const ProductionOrderScreen = ({
   const bulk = useWorklistBulk();
   const [checked, setChecked] = useState<string[]>([]);
   const [dialog, setDialog] = useState<{ kind: BulkKind; targets: BulkTarget[] } | null>(null);
+  const [autoResultFilter, setAutoResultFilter] = useState<AutoPlanResultFilter>(null);
   const [resultFilter, setResultFilter] = useState<BulkResultFilter>(null);
   /* 실행 당시의 행. 결과로 목록을 좁힐 때 다음 조회에서 빠진 건도 보이게 한다(C-18). */
   const [runRows, setRunRows] = useState<WorklistRow[]>([]);
@@ -121,22 +123,45 @@ export const ProductionOrderScreen = ({
     };
   };
   const liveRows = facts.map(toRow);
+  const activeResultFilter = bulk.run?.kind === 'autoPlan' ? autoResultFilter : resultFilter;
+  const resultRows = [
+    ...new Map(
+      [...liveRows, ...runRows]
+        .filter((row) => outcomes.has(String(row.fact.productionOrderId)))
+        .map((row) => [row.fact.productionOrderId, row]),
+    ).values(),
+  ];
   const rows =
-    resultFilter === null
-      ? liveRows
-      : runRows
+    bulk.run?.kind === 'autoPlan'
+      ? resultRows
           .filter(
-            (row) => outcomes.get(String(row.fact.productionOrderId))?.status === resultFilter,
+            (row) =>
+              autoResultFilter === null ||
+              autoPlanResultCode(outcomes.get(String(row.fact.productionOrderId))!) ===
+                autoResultFilter,
           )
           .map(
             (row) =>
               liveRows.find((live) => live.fact.productionOrderId === row.fact.productionOrderId) ??
               row,
-          );
+          )
+      : activeResultFilter === null
+        ? liveRows
+        : runRows
+            .filter(
+              (row) => outcomes.get(String(row.fact.productionOrderId))?.status === resultFilter,
+            )
+            .map(
+              (row) =>
+                liveRows.find(
+                  (live) => live.fact.productionOrderId === row.fact.productionOrderId,
+                ) ?? row,
+            );
 
   const apply = (next: WorklistFilters) => {
     bulk.clear();
     setResultFilter(null);
+    setAutoResultFilter(null);
     setChecked([]);
     const params = toWorklistSearchParams(
       lockedPlant === undefined ? next : { ...next, plant: '' },
@@ -346,19 +371,32 @@ export const ProductionOrderScreen = ({
           onReset={() => apply(DEFAULT_WORKLIST_FILTERS)}
         />
       </section>
-      {bulk.run !== null && (
-        <BulkResult
-          title={t.bulk.resultTitle[bulk.run.kind]}
-          itemName={bulk.run.kind === 'release' ? t.bulk.itemName : undefined}
-          outcomes={bulk.run.outcomes}
-          filter={resultFilter}
-          onFilterChange={setResultFilter}
-          onClose={() => {
-            bulk.clear();
-            setResultFilter(null);
-          }}
-        />
-      )}
+      {bulk.run !== null &&
+        (bulk.run.kind === 'autoPlan' ? (
+          <AutoPlanResult
+            outcomes={bulk.run.outcomes}
+            filter={autoResultFilter}
+            onFilterChange={setAutoResultFilter}
+            onClose={() => {
+              bulk.clear();
+              setAutoResultFilter(null);
+              setResultFilter(null);
+            }}
+          />
+        ) : (
+          <BulkResult
+            title={t.bulk.resultTitle[bulk.run.kind]}
+            itemName={bulk.run.kind === 'release' ? t.bulk.itemName : undefined}
+            outcomes={bulk.run.outcomes}
+            filter={resultFilter}
+            onFilterChange={setResultFilter}
+            onClose={() => {
+              bulk.clear();
+              setResultFilter(null);
+              setAutoResultFilter(null);
+            }}
+          />
+        ))}
       <section className="erp-wo-selection-toolbar" aria-label={t.bulk.selectionActions}>
         <div className="erp-wo-selection-info">
           <strong>{t.bulk.selected(checkedRows.length)}</strong>
@@ -452,7 +490,9 @@ export const ProductionOrderScreen = ({
               checkedIds={checked}
               onCheckedChange={setChecked}
               empty={
-                hasSearchConditions(filters) ? (
+                bulk.run?.kind === 'autoPlan' ? (
+                  <EmptyState size="sm" title="선택한 실행 결과에 해당하는 ERP W/O가 없습니다" />
+                ) : hasSearchConditions(filters) ? (
                   /* 조회 조건 때문에 비었으면 조건을 지우는 길을 둔다. 고른 칩(처리 상태)과 쪽 크기는 그대로다. */
                   <EmptyState
                     size="sm"
@@ -491,7 +531,7 @@ export const ProductionOrderScreen = ({
                 )
               }
             />
-            {resultFilter === null && (
+            {bulk.run?.kind !== 'autoPlan' && activeResultFilter === null && (
               <PageNav
                 meta={list.data.page}
                 onChangePage={(page) => apply({ ...filters, page })}
@@ -512,6 +552,7 @@ export const ProductionOrderScreen = ({
             setDialog(null);
             setRunRows(checkedRows);
             setResultFilter(null);
+            setAutoResultFilter(null);
             void bulk.start(kind, chosen).then(() => setChecked([]));
           }}
         />

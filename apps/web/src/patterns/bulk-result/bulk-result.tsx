@@ -19,6 +19,8 @@ export interface BulkOutcome {
   label: string;
   status: BulkOutcomeStatus;
   reason: string | null;
+  /** 기능별 원본 처리 결과. 목록의 현재 업무 상태와는 별개다. */
+  resultCode?: string;
   /** 이 행 아래 항목 중 처리한 수와 전체 수(예: W/O 1 / 3) */
   items?: { done: number; total: number };
   /** 고칠 곳. 처리되지 않은 줄에만 쓴다. */

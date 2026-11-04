@@ -331,10 +331,7 @@ export const ProcessWorkspace = ({
     onSuccess: (result) => {
       toast.show({
         variant: result.outcome === 'CONFIRMED' ? 'success' : 'warning',
-        description:
-          result.outcome === 'NOT_PLANNED'
-            ? `${tp.autoPlanResult.NOT_PLANNED}: ${result.reasons.map(reasonLabel).join(', ')}`
-            : tp.autoPlanResult[result.outcome],
+        description: `${tp.autoPlanResult[result.outcome]}${result.reasons.length ? `: ${[...new Set(result.reasons.map(reasonLabel))].join(', ')}` : ''}`,
       });
       setStep(null);
     },

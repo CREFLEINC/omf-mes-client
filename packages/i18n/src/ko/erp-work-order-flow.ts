@@ -270,8 +270,8 @@ export const erpWorkOrderFlow = {
     rerunAutoPlan: '자동 계획 다시 실행',
     autoPlanResult: {
       CONFIRMED: '자동 계획으로 계획을 확정했습니다',
-      DRAFT: '작성 중 계획이 있습니다. 생산계획 단계에서 확정하세요',
-      NOT_PLANNED: '자동 계획으로 계획을 만들지 못했습니다',
+      DRAFT: '미확정 계획입니다. 생산계획에서 보완하세요',
+      NOT_PLANNED: '자동 계획 미처리. 생산계획과 기준정보를 확인하세요',
       running: '자동 계획이 진행 중입니다. 잠시 뒤 다시 실행하세요',
     },
     steps,
