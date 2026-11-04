@@ -314,9 +314,9 @@ export const PlanPane = ({
   );
 };
 
-/** 라우팅 코드 · 버전 글자와 상태 칩(사용자 지시 2026-11-04 — 상태는 라벨 형식). */
-const RoutingSummary = ({ revision }: { revision: RoutingRevision | undefined }) => {
-  if (revision === undefined) return <>{t.values.none}</>;
+/** 라우팅 코드 · 버전 글자와 상태 칩(사용자 지시 2026-11-04 — 상태는 라벨 형식). 기준 상세 머리도 쓴다. */
+export const RoutingSummary = ({ revision }: { revision: RoutingRevision | undefined }) => {
+  if (revision === undefined) return <>-</>;
   const status = resolveVersionStatus(revision.statusCode);
   return (
     <>

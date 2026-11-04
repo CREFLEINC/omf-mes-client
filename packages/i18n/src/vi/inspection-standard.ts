@@ -210,7 +210,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
     itemUnset: 'Chưa chỉ định mặt hàng',
-    pqcSkipOn: 'Bật',
+    pqcSkipOn: 'Áp dụng',
+    pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
   },
   versionSection: {

@@ -382,6 +382,13 @@ main > * + * {
   border-right: 1px solid var(--outline-variant);
 }
 
+/* 기준 상세 머리의 라우팅 — 코드 · 버전 글자 옆에 상태 칩. */
+.inspection-standard-plan-routing-fact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* 라우팅 — 입력칸이 아닌 값 글자(사용자 지시 2026-11-04). 옆 칸 입력 줄과 같은 높이에서 가운데 맞춘다. */
 .inspection-standard-plan-routing {
   display: flex;
