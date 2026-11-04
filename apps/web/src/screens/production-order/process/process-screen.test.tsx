@@ -178,6 +178,13 @@ const serve = (state: World) => {
     }
     if (at === '/planning/production-orders/701') return jsonResponse(orderBody(state));
     if (at === '/planning/boms') return jsonResponse(page(state.boms));
+    if (/^\/planning\/boms\/\d+\/components$/.test(at)) return jsonResponse({ items: [] });
+    if (/^\/planning\/boms\/\d+$/.test(at))
+      return jsonResponse({
+        bom: state.boms.find(
+          (bom) => (bom as { bomId: number }).bomId === Number(at.split('/').at(-1)),
+        ),
+      });
     if (at === '/planning/routings') {
       if (state.routingDraft === true && url.searchParams.get('usableOnly') === 'true') {
         return jsonResponse(page([]));

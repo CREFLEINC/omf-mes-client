@@ -1,9 +1,8 @@
-import { RevisionDetailButton } from './revision-detail';
+import { MasterDetails } from './master-details';
 import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { plantToday } from '../../../patterns/plant-time';
-import { RoutingPicker } from './routing-picker';
 import type { BomRevisionFact, RoutingRevisionFact } from '../../production-plan/reference-queries';
 
 const t = messages.erpWorkOrderFlow.process.master;
@@ -35,8 +34,6 @@ export interface MasterStepProps {
 export const MasterStep = ({
   boms,
   routings,
-  orderNo,
-  itemLabel,
   bomId,
   routingId,
   locked,
@@ -67,7 +64,6 @@ export const MasterStep = ({
   const period = (from: string | null, to: string | null) =>
     t.effective(from ?? '', to ?? t.periodOpen);
 
-  const selectedBom = boms.items.find((item) => String(item.bomId) === bomId);
   const selectedRouting = routings.items.find((item) => String(item.routingId) === routingId);
   const checked =
     boms.items.some((item) => String(item.bomId) === bomId) &&
@@ -80,84 +76,19 @@ export const MasterStep = ({
           {checked ? t.checked : t.needsCheck}
         </Chip>
       </div>
-      <div className="pane erp-wo-master-board">
-        <table className="erp-wo-master-table" role="table">
-          <thead>
-            <tr>
-              <th>{t.orderNo}</th>
-              <th>{t.item}</th>
-              <th>{t.bom}</th>
-              <th>{t.routing}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td data-label={t.orderNo}>
-                <span className="mono-cell">{orderNo ?? '—'}</span>
-              </td>
-              <td data-label={t.item}>
-                <span className="erp-wo-master-item">{itemLabel ?? '—'}</span>
-              </td>
-              <td data-label={t.bom} className="erp-wo-master-revision">
-                <p className="erp-wo-master-value">
-                  {selectedBom
-                    ? t.revision(
-                        selectedBom.bomCode,
-                        selectedBom.bomVersion,
-                        statusNameOf(selectedBom.statusCode),
-                      )
-                    : '사용 가능한 ERP 기본 BOM 없음'}
-                </p>
-                <span className="erp-wo-master-note">
-                  {locked ? '확정 계획 적용 개정' : 'ERP 기본 개정 자동 적용'}
-                </span>
-                <RevisionDetailButton kind="BOM" value={bomId} />
-              </td>
-              <td data-label={t.routing} className="erp-wo-master-revision">
-                <p className="erp-wo-master-value">
-                  {selectedRouting
-                    ? t.revision(
-                        selectedRouting.routingCode,
-                        selectedRouting.routingVersion,
-                        statusNameOf(selectedRouting.statusCode),
-                      )
-                    : 'Routing 미지정'}
-                </p>
-                {!locked && (
-                  <RoutingPicker
-                    value={routingId}
-                    options={routings.items.map((item) => ({
-                      value: String(item.routingId),
-                      label: t.revision(
-                        item.routingCode,
-                        item.routingVersion,
-                        statusNameOf(item.statusCode),
-                      ),
-                      period: period(item.effectiveFrom, item.effectiveTo),
-                      isDefault: item.isDefault,
-                    }))}
-                    onChange={onRoutingChange}
-                  />
-                )}
-                <RevisionDetailButton
-                  kind="Routing"
-                  itemId={selectedRouting?.itemId}
-                  value={routingId}
-                  label={
-                    selectedRouting
-                      ? t.revision(
-                          selectedRouting.routingCode,
-                          selectedRouting.routingVersion,
-                          statusNameOf(selectedRouting.statusCode),
-                        )
-                      : undefined
-                  }
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <MasterDetails
+        bomId={bomId}
+        routingId={routingId}
+        locked={locked}
+        itemId={selectedRouting?.itemId}
+        options={routings.items.map((item) => ({
+          value: String(item.routingId),
+          label: t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode)),
+          period: period(item.effectiveFrom, item.effectiveTo),
+          isDefault: item.isDefault,
+        }))}
+        onRoutingChange={onRoutingChange}
+      />
       {locked && <p className="field-note">{t.fixedByPlan}</p>}
     </section>
   );

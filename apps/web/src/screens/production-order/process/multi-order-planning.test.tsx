@@ -72,7 +72,10 @@ vi.mock('../../production-plan/reference-queries', () => ({
   useProductionLineReferenceQuery: () => fixtures.lines,
 }));
 vi.mock('../reference-lookups', () => ({ useUomReferenceLookup: () => fixtures.units }));
-vi.mock('../item-lookups', () => ({ useItemCodeNames: () => fixtures.items }));
+vi.mock('../item-lookups', () => ({
+  useItemCodeNames: () => fixtures.items,
+  useProductionOrderItemNames: () => ({ items: [] }),
+}));
 vi.mock('./process-screen', () => ({
   ProcessWorkspace: ({ initialStep }: { initialStep: string }) => <p>실행 단계 {initialStep}</p>,
 }));
@@ -91,6 +94,13 @@ const mount = (initialPlans: Record<string, unknown>[] = []) => {
     const url = new URL(request.url);
     const page = (items: unknown[]) =>
       jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+    if (url.pathname.endsWith('/components')) return jsonResponse({ items: [] });
+    if (/\/boms\/\d+$/.test(url.pathname))
+      return jsonResponse({ bom: { ...fixtures.boms.data.items[0], baseQty: 1, baseUomId: 1 } });
+    if (url.pathname.endsWith('/operations'))
+      return jsonResponse({
+        items: [{ routingOperationId: 1, operationSeq: 10, operationName: '사출' }],
+      });
     if (request.method === 'GET')
       return page(
         plans.filter(
@@ -217,6 +227,20 @@ const distribute = async (targets: Record<string, string> = {}) => {
   return user;
 };
 describe('복수 ERP W/O 편성 저장 연결', () => {
+  it('왼쪽 ERP W/O를 선택하면 오른쪽에 해당 상세만 표시한다', async () => {
+    mount();
+    const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
+    await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
+    const buttons = within(list).getAllByRole('button');
+    await userEvent.setup().click(buttons[1]!);
+    expect(buttons[1]).toHaveAttribute('aria-pressed', 'true');
+    const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
+    expect(within(detail).getByText('B', { exact: true })).toBeVisible();
+    expect(within(detail).queryByText('A', { exact: true })).toBeNull();
+    expect(within(detail).getByRole('region', { name: 'BOM 상세 정보' })).toBeVisible();
+    expect(within(detail).getByRole('region', { name: 'Routing 상세 정보' })).toBeVisible();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
   it('분배한 계획을 ERP W/O별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
     const user = await distribute();

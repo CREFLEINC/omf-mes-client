@@ -1,5 +1,4 @@
-import { RoutingPicker } from './routing-picker';
-import { RevisionDetailButton } from './revision-detail';
+import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, Dialog, SkeletonText, Tabs, TextField } from '@crefle/web-ui';
@@ -191,6 +190,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     [],
   );
   const [stage, setStage] = useState('master');
+  const [masterFocus, setMasterFocus] = useState(orderNumbers[0] ?? '');
   const [planView, setPlanView] = useState('week');
   const [distributionDirty, setDistributionDirty] = useState(false);
   const [focus, setFocus] = useState(orderNumbers[0] ?? '');
@@ -408,65 +408,55 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {stage === 'master' && (
           <section className="erp-wo-master-workspace">
             <h2 className="section-title">{messages.erpWorkOrderFlow.process.master.heading}</h2>
-            <div className="pane erp-wo-master-board">
-              <table className="erp-wo-master-table" role="table">
-                <thead>
-                  <tr>
-                    <th>ERP W/O</th>
-                    <th>품목</th>
-                    <th>BOM 개정</th>
-                    <th>Routing 개정</th>
-                    <th>점검</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((entry) => (
-                    <tr key={entry.order.productionOrderNo}>
-                      <td data-label="ERP W/O">{entry.order.productionOrderNo}</td>
-                      <td data-label="품목">{entry.item}</td>
-                      <td data-label="BOM 개정" className="erp-wo-master-revision">
-                        <p className="erp-wo-master-value">
-                          {entry.bomOptions.find((option) => option.value === entry.bomId)?.label ??
-                            '사용 가능한 ERP 기본 BOM 없음'}
-                        </p>
-                        <span className="erp-wo-master-note">
-                          {entry.locked ? '확정 계획 적용 개정' : 'ERP 기본 개정 자동 적용'}
-                        </span>
-                        <RevisionDetailButton kind="BOM" value={entry.bomId} />
-                      </td>
-                      <td data-label="Routing 개정" className="erp-wo-master-revision">
-                        <p className="erp-wo-master-value">
-                          {entry.routingOptions.find((option) => option.value === entry.routingId)
-                            ?.label ?? 'Routing 미지정'}
-                        </p>
-                        {!entry.locked && (
-                          <RoutingPicker
-                            options={entry.routingOptions}
-                            value={entry.routingId}
-                            disabled={busy}
-                            onChange={entry.onRoutingChange}
-                            label={`${entry.order.productionOrderNo} Routing 선택`}
-                          />
-                        )}
-                        <RevisionDetailButton
-                          kind="Routing"
-                          itemId={entry.order.itemId}
-                          value={entry.routingId}
-                          label={
-                            entry.routingOptions.find((option) => option.value === entry.routingId)
-                              ?.label
-                          }
-                        />
-                      </td>
-                      <td data-label="점검" className="erp-wo-master-check">
-                        {entry.ready ? '개정 선택 완료' : '개정 선택 필요'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="erp-wo-master-selection-layout">
+              <aside className="erp-wo-master-order-list" aria-label="ERP W/O 목록">
+                {entries.map((entry) => (
+                  <Button
+                    key={entry.order.productionOrderNo}
+                    variant="outlined"
+                    disabled={busy}
+                    aria-pressed={
+                      (controllers[masterFocus]
+                        ? masterFocus
+                        : entries[0]?.order.productionOrderNo) === entry.order.productionOrderNo
+                    }
+                    onClick={() => setMasterFocus(entry.order.productionOrderNo)}
+                  >
+                    <strong>{entry.order.productionOrderNo}</strong>
+                    <span>{entry.item}</span>
+                    <span>
+                      {entry.order.orderQty} {entry.unit} ·{' '}
+                      {entry.ready ? '기준 확인 완료' : '기준 확인 필요'}
+                    </span>
+                  </Button>
+                ))}
+              </aside>
+              {(() => {
+                const entry = controllers[masterFocus] ?? entries[0];
+                return entry ? (
+                  <div
+                    className="erp-wo-master-selected"
+                    key={entry.order.productionOrderNo}
+                    role="region"
+                    aria-label="선택 ERP W/O 상세"
+                  >
+                    <div className="erp-wo-master-selected-heading">
+                      <strong>{entry.order.productionOrderNo}</strong>
+                      <span>{entry.item}</span>
+                    </div>
+                    <MasterDetails
+                      bomId={entry.bomId}
+                      routingId={entry.routingId}
+                      locked={entry.locked}
+                      itemId={entry.order.itemId}
+                      options={entry.routingOptions}
+                      onRoutingChange={entry.onRoutingChange}
+                      disabled={busy}
+                    />
+                  </div>
+                ) : null;
+              })()}
             </div>
-            <p className="field-note">확정 계획에 사용한 개정은 변경할 수 없습니다.</p>
           </section>
         )}
 

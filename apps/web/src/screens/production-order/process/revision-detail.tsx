@@ -22,7 +22,7 @@ const Properties = ({ values }: { values: [string, string][] }) => (
   </dl>
 );
 
-const BomContents = ({ id }: { id: number }) => {
+export const BomContents = ({ id }: { id: number }) => {
   const { client } = useApiClient();
   const header = useQuery({
     queryKey: ['plan-revision-detail', 'bom', id],
