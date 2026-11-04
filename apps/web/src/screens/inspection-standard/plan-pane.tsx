@@ -209,8 +209,15 @@ export const PlanPane = ({
          * 품목은 **칸에서 바로 검색해서 고른다**(사용자 지시 2026-11-04 — 품목 선택 창을 띄우지 않는다).
          * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
-        <div className="field-cell search-select-cell">
-          <FieldLabel htmlFor={itemId} label={t.fields.item} />
+        <div className="field-cell search-select-cell inspection-standard-plan-item">
+          {/* 품목을 고르기 전에는 라우팅 칸 대신 품목 이름 오른쪽에 안내를 둔다(사용자 지시 2026-11-04). */}
+          <FieldLabel
+            htmlFor={itemId}
+            label={t.fields.item}
+            {...(routingDisabledReason !== null
+              ? { hint: routingDisabledReason, hintId: routingHintId }
+              : {})}
+          />
           <ItemSelect
             id={itemId}
             selectedOption={itemOption}
@@ -232,12 +239,13 @@ export const PlanPane = ({
         </div>
 
         {/*
-         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 선택칸을 두지 않고 라벨 오른쪽에 안내만 둔다.
-         * 품목을 고르면 선택칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04).
+         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내는 품목 이름 오른쪽).
+         * 품목을 고르면 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04).
          */}
-        {isRoutingShown ? (
+        {isRoutingShown && (
           <SelectField
             id={routingId}
+            className="inspection-standard-plan-third"
             label={t.fields.routing}
             options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
             value={values.routingId}
@@ -245,15 +253,6 @@ export const PlanPane = ({
             onChange={(routingId) => onChange({ routingId })}
             error={fieldErrors.routingId}
           />
-        ) : (
-          <div className="field-cell">
-            <FieldLabel
-              htmlFor={routingId}
-              label={t.fields.routing}
-              hint={routingDisabledReason ?? undefined}
-              hintId={routingHintId}
-            />
-          </div>
         )}
       </div>
 

@@ -326,20 +326,6 @@ main > * + * {
   font: var(--type-label-sm);
 }
 
-/*
- * 이 폼의 선택칸(검사 유형 · 품목 · 공정 · 라우팅)은 칸 폭을 다 채우지 않고 고른 값 글자만큼만 선다(사용자 지시 2026-11-04).
- * 너무 좁아지지 않게 최소 폭을 두고, 긴 품목명은 칸 폭에서 멈춰 말줄임이 된다.
- */
-.inspection-standard-plan-pane .form-grid > .field-cell:has(> div > [role="combobox"]) {
-  align-items: flex-start;
-}
-
-.inspection-standard-plan-pane .form-grid > .field-cell > div:has(> [role="combobox"]) {
-  width: fit-content;
-  min-width: 12rem;
-  max-width: 100%;
-}
-
 /* 이 폼의 라벨 줄은 안내 라벨 높이에 맞춘다 — 한 칸만 높아져 옆 칸과 입력칸 윗선이 어긋나지 않게. */
 .inspection-standard-plan-pane .form-grid .field-label {
   display: flex;
@@ -378,6 +364,14 @@ main > * + * {
 
 .inspection-standard-plan-grid > .field-cell.inspection-standard-plan-third {
   grid-column: span 2;
+}
+
+/*
+ * 선택칸 폭은 격자 칸에 맞춘다(사용자 지시 2026-11-04) — 검사 유형 · 공정 · 라우팅은 셋째 칸 폭으로 같고,
+ * 라우팅은 공정 바로 아래 같은 폭이다. 품목은 이름이 길어 그 앞 두 칸(기본 생략 · 검사 유형 아래)을 쓴다.
+ */
+.inspection-standard-plan-grid > .field-cell.inspection-standard-plan-item {
+  grid-column: 1 / span 4;
 }
 
 /* 체크는 라벨이 없어 옆 선택칸의 입력 줄 높이에 맞춰 세운다. */
