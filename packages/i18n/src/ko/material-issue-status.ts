@@ -49,8 +49,8 @@ export const materialIssueStatus = {
   },
   /** 닫힌 요청(완료)의 사유 — 「완료, W/O 취소」. */
   closeReasons: {
-    WORK_ORDER_CANCELLED: 'W/O 취소',
-    WORK_ORDER_CLOSED: 'W/O 마감',
+    WO_CANCELLED: 'W/O 취소',
+    WO_CLOSED: 'W/O 마감',
   } as Record<string, string>,
   statusWithReason: (status: string, reason: string): string => `${status}, ${reason}`,
   releaseFailed: '배포 실패',
@@ -133,6 +133,11 @@ export const materialIssueStatus = {
       CANCELLED: (reason: string): string => (reason === '' ? '취소' : `취소: ${reason}`),
       CLOSED: (reason: string): string =>
         reason === '' ? '미출고분 닫음' : `미출고분 닫음: ${reason}`,
+      /** 다른 W/O 의 출고 예정분을 가져감(FR-018) — 사유는 요청 사유 이름. */
+      PLANNED_OVERRIDE: (reason: string): string =>
+        reason === ''
+          ? '다른 W/O 의 출고 예정분을 가져감'
+          : `다른 W/O 의 출고 예정분을 가져감, 사유 ${reason}`,
     },
     cancel: '요청 취소',
     cancelLocked: '일부 진행돼 취소할 수 없습니다',

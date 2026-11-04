@@ -217,6 +217,30 @@ export const useCancelRequest = (
   });
 };
 
+/** 출고 요청 사유 코드 → 이름 — 이력 「예정분을 가져감」의 사유를 이름으로 보인다. */
+export const useReasonNames = (): UseQueryResult<Map<string, string>> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: ['material-issue-status', 'reasons'] as const,
+    queryFn: async () =>
+      new Map(
+        (
+          await runRequest(() =>
+            client.GET('/mdm/code-values', {
+              params: {
+                query: {
+                  codeGroupCode: 'MATERIAL_ISSUE_REQUEST_REASON',
+                  includeInactive: true,
+                  size: 100,
+                },
+              },
+            }),
+          )
+        ).items.map((item) => [item.code, item.codeName]),
+      ),
+  });
+};
+
 /** 오류 응답에 이 업무 코드가 있는가 — 422 `HOLIDAY_ACK_REQUIRED` · 409 `STATE_LOCKED` 등. */
 export const hasErrorCode = (error: ApiError | null, code: string): boolean => {
   if (error === null) return false;

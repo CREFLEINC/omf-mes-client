@@ -11,7 +11,9 @@ import {
   editScope,
   historyText,
   isReleaseFailed,
+  lineShortage,
   quantityError,
+  requestShortage,
   statusLabel,
 } from './status';
 
@@ -32,6 +34,7 @@ const request = (
   productionPlanNo: null,
   lineCount: 1,
   shortageQtyTotal: 0,
+  dynamicShortageQtyTotal: 0,
   versionNo: 1,
   ...overrides,
 });
@@ -59,7 +62,7 @@ describe('W-02-11 상태 표시', () => {
   });
 
   it('US5-11 닫힌 요청은 「완료」에 닫힘 사유를 붙인다', () => {
-    expect(statusLabel({ displayStatus: 'DONE', closeReasonCode: 'WORK_ORDER_CANCELLED' })).toBe(
+    expect(statusLabel({ displayStatus: 'DONE', closeReasonCode: 'WO_CANCELLED' })).toBe(
       '완료, W/O 취소',
     );
     expect(statusLabel({ displayStatus: 'DONE', closeReasonCode: 'UNKNOWN' })).toBe('완료');
@@ -150,9 +153,22 @@ describe('W-02-11 이력 문장', () => {
     expect(historyText(entry('RELEASE_FAILED', { errorText: '창고 비활성' }))).toBe(
       '배포 실패: 창고 비활성',
     );
-    expect(historyText(entry('CLOSED', { reason: 'WORK_ORDER_CANCELLED' }))).toBe(
+    expect(historyText(entry('CLOSED', { reason: 'WO_CANCELLED' }))).toBe(
       '미출고분 닫음: W/O 취소',
     );
     expect(historyText(entry('RELEASED'))).toBe('배포');
+    expect(
+      historyText(entry('PLANNED_OVERRIDE', { reason: 'SYN_URGENT' }), (code) =>
+        code === 'SYN_URGENT' ? '합성 긴급 대응' : code,
+      ),
+    ).toBe('다른 W/O 의 출고 예정분을 가져감, 사유 합성 긴급 대응');
+  });
+});
+
+describe('W-02-11 부족 합', () => {
+  it('US6-2 부족은 저장 부족 + 동적 부족이다(요청 · 줄 모두)', () => {
+    expect(requestShortage({ shortageQtyTotal: 15, dynamicShortageQtyTotal: 5 })).toBe(20);
+    expect(lineShortage({ ...line(0), shortageQty: 10, dynamicShortageQty: 20 })).toBe(30);
+    expect(lineShortage(line(0))).toBe(0);
   });
 });

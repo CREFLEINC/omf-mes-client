@@ -771,10 +771,13 @@ export interface MaterialIssueRequestForward {
   releasedAt?: string | null;
   releaseErrorText?: string | null;
   closedAt?: string | null;
+  /** `WO_CANCELLED` · `WO_CLOSED`. */
   closeReasonCode?: string | null;
   lineCount: number;
-  /** 줄 `shortageQty` 합 — 목록이 줄을 싣지 않으므로 요청에 둔다. */
+  /** 줄 `shortageQty`(저장 부족) 합 — 목록이 줄을 싣지 않으므로 요청에 둔다. */
   shortageQtyTotal: number;
+  /** 줄 `dynamicShortageQty`(동적 부족) 합. 화면의 「부족 N」 = 저장 + 동적(서버 S8e). */
+  dynamicShortageQtyTotal: number;
   /** PUT · cancel 본문에 그대로 돌려보낸다. ETag 는 쓰지 않는다. */
   versionNo: number;
 }
@@ -794,6 +797,8 @@ export interface MaterialIssueRequestLineForward {
   pickedQty?: number;
   outstandingQty?: number;
   shortageQty?: number | null;
+  /** 동적 부족 — 줄 부족 표시는 `shortageQty + dynamicShortageQty`. */
+  dynamicShortageQty?: number;
 }
 
 export interface MaterialIssueRequestDetailForward {
@@ -846,7 +851,9 @@ export type MaterialIssueHistoryEventCode =
   | 'DESTINATION_CHANGED'
   | 'QTY_CHANGED'
   | 'CANCELLED'
-  | 'CLOSED';
+  | 'CLOSED'
+  /** 다른 W/O 의 예정분을 가져감(긴급 대응 · 부족 보충, FR-018). */
+  | 'PLANNED_OVERRIDE';
 
 /**
  * 새 `GET …/{id}/history` 항목 — 최근 것이 먼저. 서버는 문장을 만들지 않는다(화면이 `eventCode` 로 ko · vi
@@ -857,10 +864,13 @@ export interface MaterialIssueRequestHistoryEntry {
   actorName: string | null;
   eventCode: MaterialIssueHistoryEventCode;
   detail: {
-    before?: string;
-    after?: string;
+    /** 날짜(YYYY-MM-DD) · 창고/위치 이름 · 수량. */
+    before?: string | number | null;
+    /** 바뀐 값. `PLANNED_OVERRIDE` 는 `[{ itemId, requestedQty }]`. */
+    after?: string | number | null | { itemId: number; requestedQty: number }[];
     itemCode?: string;
-    reason?: string;
+    /** 취소 사유 · 닫힘 사유(`WO_CANCELLED` · `WO_CLOSED`) · 요청 사유 코드(`PLANNED_OVERRIDE`). */
+    reason?: string | null;
     errorText?: string;
   };
 }
@@ -879,9 +889,9 @@ export interface PlannedStockRow {
   requests: {
     materialIssueRequestId: number;
     issueRequestNo: string;
-    workOrderId?: number;
+    workOrderId: number;
     workOrderNo: string;
-    issueWorkDate: string;
+    issueWorkDate: string | null;
     plannedQty: number;
     shortageQty: number;
   }[];
@@ -897,6 +907,7 @@ export interface UnsourcedShortageRow {
   itemName: string;
   shortageQty: number;
   uomCode: string;
+  resolvedRequestId?: number | null;
   resolvedRequestNo?: string | null;
   /** 계약 밖 선택 칸 — 생산일(시안 「W/O · 생산일」). */
   productionDate?: string | null;

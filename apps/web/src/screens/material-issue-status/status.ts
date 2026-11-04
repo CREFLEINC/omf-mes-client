@@ -66,9 +66,14 @@ export const editScope = (request: MaterialIssueRequestForward): EditScope => {
   }
 };
 
-/** 줄 부족 합 — 저장 부족 + 동적 부족을 서버가 줄 `shortageQty` 로 낸다. */
-export const shortageOf = (lines: readonly MaterialIssueRequestLineForward[]): number =>
-  lines.reduce((sum, line) => sum + (line.shortageQty ?? 0), 0);
+/** 줄 부족 — 저장 부족 + 동적 부족(서버 S8e). */
+export const lineShortage = (line: MaterialIssueRequestLineForward): number =>
+  (line.shortageQty ?? 0) + (line.dynamicShortageQty ?? 0);
+
+/** 요청 「부족 N」 — 저장 부족 합 + 동적 부족 합. */
+export const requestShortage = (
+  request: Pick<MaterialIssueRequestForward, 'shortageQtyTotal' | 'dynamicShortageQtyTotal'>,
+): number => request.shortageQtyTotal + request.dynamicShortageQtyTotal;
 
 /** 수량 칸 검사 — 기출고 미만이면 첫 줄의 오류 문구. */
 export const quantityError = (
@@ -97,26 +102,40 @@ export const formatDay = (iso: string | null | undefined): string => {
 };
 
 /** 이력 한 줄의 문장 — 서버는 사건 코드와 값만 준다(계약 §1 history). 날짜 값은 `MM-DD(요일)` 로. */
-export const historyText = (entry: MaterialIssueRequestHistoryEntry): string => {
+export const historyText = (
+  entry: MaterialIssueRequestHistoryEntry,
+  /** 요청 사유 코드 → 이름(공통코드). 모르면 코드 그대로. */
+  reasonName: (code: string) => string = (code) => code,
+): string => {
   const e = t.detail.events;
   const d = entry.detail;
-  const dayOrText = (value: string | undefined): string =>
-    value === undefined ? '' : /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDay(value) : value;
+  const text = (value: unknown): string =>
+    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const dayOrText = (value: unknown): string => {
+    const raw = text(value);
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? formatDay(raw) : raw;
+  };
   switch (entry.eventCode) {
     case 'RELEASE_FAILED':
       return e.RELEASE_FAILED(d.errorText ?? '');
     case 'ISSUE_DATE_CHANGED':
       return e.ISSUE_DATE_CHANGED(dayOrText(d.before), dayOrText(d.after));
     case 'SOURCE_CHANGED':
-      return e.SOURCE_CHANGED(d.before ?? '', d.after ?? '');
+      return e.SOURCE_CHANGED(text(d.before), text(d.after));
     case 'DESTINATION_CHANGED':
-      return e.DESTINATION_CHANGED(d.before ?? '', d.after ?? '');
+      return e.DESTINATION_CHANGED(text(d.before), text(d.after));
     case 'QTY_CHANGED':
-      return e.QTY_CHANGED(d.itemCode ?? '', d.before ?? '', d.after ?? '');
+      return e.QTY_CHANGED(d.itemCode ?? '', text(d.before), text(d.after));
     case 'CANCELLED':
       return e.CANCELLED(d.reason ?? '');
     case 'CLOSED':
-      return e.CLOSED(d.reason === undefined ? '' : (t.closeReasons[d.reason] ?? d.reason));
+      return e.CLOSED(
+        d.reason === undefined || d.reason === null ? '' : (t.closeReasons[d.reason] ?? d.reason),
+      );
+    case 'PLANNED_OVERRIDE':
+      return e.PLANNED_OVERRIDE(
+        d.reason === undefined || d.reason === null ? '' : reasonName(d.reason),
+      );
     default:
       return e[entry.eventCode]();
   }

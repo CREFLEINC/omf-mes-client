@@ -24,6 +24,7 @@ import {
   useCancelRequest,
   useDestinationOptions,
   useRequestDetail,
+  useReasonNames,
   useRequestHistory,
   useUpdateRequest,
   useWarehouseOptions,
@@ -35,6 +36,7 @@ import {
   formatQty,
   historyText,
   isReleaseFailed,
+  lineShortage,
   quantityError,
   STATUS_TONE,
   statusLabel,
@@ -64,6 +66,8 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
   const titleId = useId();
   const detail = useRequestDetail(requestId);
   const history = useRequestHistory(requestId);
+  const reasons = useReasonNames();
+  const reasonName = (code: string): string => reasons.data?.get(code) ?? code;
   const today = plantToday();
 
   const [seeded, setSeeded] = useState<MaterialIssueRequestDetailForward | null>(null);
@@ -361,9 +365,9 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
                   )}
                 </td>
                 <td>
-                  {(line.shortageQty ?? 0) > 0 && (
+                  {lineShortage(line) > 0 && (
                     <Chip size="sm" status="warning">
-                      {formatQty(line.shortageQty ?? 0)}
+                      {formatQty(lineShortage(line))}
                     </Chip>
                   )}
                 </td>
@@ -392,7 +396,7 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
                       entry.actorName ?? t.detail.systemActor
                     }`}
                   </span>
-                  <span>{historyText(entry)}</span>
+                  <span>{historyText(entry, reasonName)}</span>
                 </li>
               ))}
             </ul>

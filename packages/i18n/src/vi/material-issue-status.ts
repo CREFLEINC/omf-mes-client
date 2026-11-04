@@ -47,8 +47,8 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
     CANCELLED: 'Đã hủy',
   },
   closeReasons: {
-    WORK_ORDER_CANCELLED: 'Hủy W/O',
-    WORK_ORDER_CLOSED: 'Đóng W/O',
+    WO_CANCELLED: 'Hủy W/O',
+    WO_CLOSED: 'Đóng W/O',
   },
   statusWithReason: (status: string, reason: string): string => `${status}, ${reason}`,
   releaseFailed: 'Phát hành lỗi',
@@ -127,6 +127,10 @@ export const materialIssueStatus: Translated<typeof ko.materialIssueStatus> = {
       CANCELLED: (reason: string): string => (reason === '' ? 'Hủy' : `Hủy: ${reason}`),
       CLOSED: (reason: string): string =>
         reason === '' ? 'Đóng phần chưa xuất' : `Đóng phần chưa xuất: ${reason}`,
+      PLANNED_OVERRIDE: (reason: string): string =>
+        reason === ''
+          ? 'Lấy phần dự kiến xuất của W/O khác'
+          : `Lấy phần dự kiến xuất của W/O khác, lý do ${reason}`,
     },
     cancel: 'Hủy yêu cầu',
     cancelLocked: 'Đã thực hiện một phần nên không thể hủy',

@@ -50,6 +50,7 @@ const request = (
   productionPlanNo: 'SYN-PP-01',
   lineCount: 1,
   shortageQtyTotal: 0,
+  dynamicShortageQtyTotal: 0,
   versionNo: 3,
   ...overrides,
 });
@@ -62,8 +63,9 @@ const REQUESTS = [
     productionPlanId: 9002,
     productionPlanNo: 'SYN-PP-02',
   }),
-  request(3, { shortageQtyTotal: 20 }),
-  request(4, { displayStatus: 'DONE', closeReasonCode: 'WORK_ORDER_CANCELLED' }),
+  /* 「부족 N」 = 저장 부족 15 + 동적 부족 5(서버 S8e). */
+  request(3, { shortageQtyTotal: 15, dynamicShortageQtyTotal: 5 }),
+  request(4, { displayStatus: 'DONE', closeReasonCode: 'WO_CANCELLED' }),
   request(5, { releaseErrorText: '출발 생산 창고가 비활성입니다.' }),
 ];
 
@@ -213,6 +215,16 @@ const setup = (options: SetupOptions = {}) => {
         }),
     },
     {
+      match: (request) => isGet(request, '/mdm/code-values'),
+      respond: () =>
+        jsonResponse({
+          items: [
+            { codeValueId: 1, code: 'SYN_URGENT', codeName: '합성 긴급 대응', displayOrder: 1 },
+          ],
+          page: { page: 1, size: 100, total: 1 },
+        }),
+    },
+    {
       match: (request) => isGet(request, '/logistics/material-issue-requests/planned-stock'),
       respond: () => jsonResponse(SHORTAGE),
     },
@@ -231,6 +243,12 @@ const setup = (options: SetupOptions = {}) => {
       respond: () =>
         jsonResponse({
           items: [
+            {
+              occurredAt: '2026-11-03T09:15:00+07:00',
+              actorName: '합성 관리자',
+              eventCode: 'PLANNED_OVERRIDE',
+              detail: { reason: 'SYN_URGENT', after: [{ itemId: 601, requestedQty: 30 }] },
+            },
             {
               occurredAt: '2026-11-03T00:00:00+07:00',
               actorName: null,
@@ -448,6 +466,10 @@ describe('W-02-11 출고 요청 현황 — 상세', () => {
     ).toBeInTheDocument();
     expect(detail.getByText(/자동 배포/)).toBeInTheDocument();
     expect(detail.getByText(t.detail.events.CREATED())).toBeInTheDocument();
+    /* FR-018 — 예정분을 가져간 사건은 요청 사유를 이름으로 보인다. */
+    expect(
+      await detail.findByText(t.detail.events.PLANNED_OVERRIDE('합성 긴급 대응')),
+    ).toBeInTheDocument();
   });
 
   it('배포 실패 요청은 상세 위에 원인을 보인다', async () => {

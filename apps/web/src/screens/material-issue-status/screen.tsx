@@ -41,6 +41,7 @@ import {
   formatDay,
   formatQty,
   isReleaseFailed,
+  requestShortage,
   STATUS_TONE,
   statusLabel,
 } from './status';
@@ -259,9 +260,9 @@ export const MaterialIssueStatusScreen = () => {
         </span>
       </td>
       <td>
-        {request.shortageQtyTotal > 0 && (
+        {requestShortage(request) > 0 && (
           <Chip size="sm" status="warning">
-            {t.shortageChip(formatQty(request.shortageQtyTotal))}
+            {t.shortageChip(formatQty(requestShortage(request)))}
           </Chip>
         )}
       </td>
@@ -321,7 +322,7 @@ export const MaterialIssueStatusScreen = () => {
                     <span className="field-note">
                       {t.planGroup.meta(
                         group.rows.length,
-                        group.rows.filter((request) => request.shortageQtyTotal > 0).length,
+                        group.rows.filter((request) => requestShortage(request) > 0).length,
                       )}
                     </span>
                   </th>
