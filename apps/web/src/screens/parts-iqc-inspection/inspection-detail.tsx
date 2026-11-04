@@ -1,7 +1,6 @@
 import {
   AlertBanner,
   Button,
-  Checkbox,
   Chip,
   DatePicker,
   Dialog,
@@ -15,6 +14,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -27,6 +27,7 @@ import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
+  iqcInspectionKeys,
   useDefectCodes,
   useInspectionItemSpecs,
   useInspectionRequestDetail,
@@ -118,6 +119,7 @@ export const InspectionDetail = ({
 }: InspectionDetailProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const rounds = useInspectionRounds(inspectionRequestId);
   const versionId = detail.data?.inspectionPlanVersionId ?? null;
@@ -202,16 +204,15 @@ export const InspectionDetail = ({
         drawings={drawings.data ?? []}
         defectCodes={(defectCodes.data ?? []) as DefectCode[]}
         defectCodesFailed={defectCodes.isError}
-        /* 불량 코드가 없으면 그 화면을 새 탭으로 열어 바로 등록한다 — 이 탭의 입력은 그대로 둔다(사용자 지시 2026-11-04). */
+        /* 불량 코드가 없으면 그 화면으로 옮겨 바로 등록한다(사용자 지시 2026-11-04 — 새 창이 아니라 화면 이동). */
         onRegisterDefectCode={
           toWebAccess(session?.permissions).allows(DEFECT_CODE_PATH)
             ? () => {
-                window.open(
-                  `${DEFECT_CODE_PATH}?mode=create${(defectCodes.data ?? []).length === 0 ? '&as=category' : ''}`,
-                  '_blank',
-                );
                 /* 등록하고 돌아오면 목록을 다시 받는다. */
-                window.addEventListener('focus', () => void defectCodes.refetch(), { once: true });
+                void queryClient.invalidateQueries({ queryKey: iqcInspectionKeys.defectCodes });
+                navigate(
+                  `${DEFECT_CODE_PATH}?mode=create${(defectCodes.data ?? []).length === 0 ? '&as=category' : ''}`,
+                );
               }
             : undefined
         }
@@ -838,7 +839,10 @@ const InspectionForm = (props: FormProps) => {
                       ? t.visual.overQty
                       : undefined
                 }
-                onChange={(event) => change({ ...form, visualDefectQty: event.target.value })}
+                /* 앞자리 0 은 떼어 「01」처럼 서지 않게 한다(사용자 지시 2026-11-04). */
+                onChange={(event) =>
+                  change({ ...form, visualDefectQty: event.target.value.replace(/^0+(?=\d)/, '') })
+                }
               />
             </div>
             {xrfItems.length > 0 && (
@@ -894,25 +898,51 @@ const InspectionForm = (props: FormProps) => {
                 {props.defectCodesFailed ? (
                   <p className="field-note">{t.visual.defectCodesFailed}</p>
                 ) : leafCodes.length === 0 ? (
-                  <span className="field-note">{t.visual.defectCodesEmpty}</span>
+                  /* 안내는 정보 아이콘 + 파란 바탕 한 줄(사용자 지시 2026-11-04 — 라벨 형식). */
+                  <span className="iqc-inspection-action-note" data-tone="info">
+                    <Icon name="info" size={14} aria-hidden />
+                    {t.visual.defectCodesEmpty}
+                  </span>
                 ) : (
+                  /* 검색되는 선택칸에서 하나씩 더하고, 고른 유형은 칩으로 보이며 ×로 뺀다(사용자 지시 2026-11-04 — 체크란 대신). */
                   <div className="parts-iqc-defect-options">
-                    {leafCodes.map((code) => (
-                      <Checkbox
-                        key={code.defectCodeId}
-                        checked={form.defectCodeIds.includes(code.defectCodeId)}
-                        onChange={(event) =>
-                          change({
-                            ...form,
-                            defectCodeIds: event.target.checked
-                              ? [...form.defectCodeIds, code.defectCodeId]
-                              : form.defectCodeIds.filter((id) => id !== code.defectCodeId),
-                          })
-                        }
-                      >
-                        {code.defectName}
-                      </Checkbox>
-                    ))}
+                    <Select
+                      searchable
+                      aria-labelledby="parts-iqc-defect-type"
+                      options={leafCodes
+                        .filter((code) => !form.defectCodeIds.includes(code.defectCodeId))
+                        .map((code) => ({
+                          value: String(code.defectCodeId),
+                          label: code.defectName,
+                        }))}
+                      value=""
+                      placeholder={t.visual.defectTypePlaceholder}
+                      invalid={form.defectCodeIds.length === 0}
+                      onChange={(value) =>
+                        value !== '' &&
+                        change({ ...form, defectCodeIds: [...form.defectCodeIds, Number(value)] })
+                      }
+                    />
+                    {form.defectCodeIds.map((id) => {
+                      const name =
+                        leafCodes.find((code) => code.defectCodeId === id)?.defectName ??
+                        String(id);
+                      return (
+                        <Chip
+                          key={id}
+                          size="sm"
+                          removeLabel={t.visual.removeDefectType(name)}
+                          onRemove={() =>
+                            change({
+                              ...form,
+                              defectCodeIds: form.defectCodeIds.filter((kept) => kept !== id),
+                            })
+                          }
+                        >
+                          {name}
+                        </Chip>
+                      );
+                    })}
                   </div>
                 )}
                 {(visualDefectQty ?? 0) > 0 && form.defectCodeIds.length > 0 && (
