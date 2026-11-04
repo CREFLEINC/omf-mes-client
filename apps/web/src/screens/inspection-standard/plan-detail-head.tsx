@@ -103,7 +103,8 @@ export const PlanDetailHead = ({
                 {t.detail.pqcSkipOn}
               </Chip>
             ) : (
-              <Chip variant="status" size="sm" status="idle">
+              /* 회색(idle) 칩은 바탕이 옅어 글자처럼 보인다 — 미승인 칩과 같은 색으로 라벨임을 드러낸다(사용자 지시 2026-11-04). */
+              <Chip variant="status" size="sm" status="warning">
                 {t.detail.pqcSkipOff}
               </Chip>
             )}
