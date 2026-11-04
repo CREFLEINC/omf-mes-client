@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -89,11 +90,11 @@ const BomContents = ({ id }: { id: number }) => {
             <tbody>
               {[...rows.data.items]
                 .sort((a, b) => a.sequenceNo - b.sequenceNo)
-                .map((row, index) => {
+                .map((row) => {
                   const name = names.items.find((item) => item.itemId === row.componentItemId);
                   return (
                     <tr key={row.bomComponentId}>
-                      <td>{index + 1}</td>
+                      <td>{row.sequenceNo}</td>
                       <td>
                         {name?.label ??
                           (name?.status === 'loading' ? '자재 조회 중' : '자재 정보 확인 필요')}
@@ -162,9 +163,9 @@ const RoutingContents = ({ id, label }: { id: number; label?: string }) => {
             <tbody>
               {[...rows.data.items]
                 .sort((a, b) => a.operationSeq - b.operationSeq)
-                .map((row, index) => (
+                .map((row) => (
                   <tr key={row.routingOperationId}>
-                    <td>{index + 1}</td>
+                    <td>{row.operationSeq}</td>
                     <td>{row.operationName}</td>
                     <td>{flag(row.mesManaged)}</td>
                     <td>{flag(row.materialInputManaged)}</td>
@@ -194,10 +195,12 @@ export const RevisionDetailButton = ({
   kind,
   value,
   label,
+  itemId,
 }: {
   kind: 'BOM' | 'Routing';
   value: string;
   label?: string;
+  itemId?: number;
 }) => {
   const [open, setOpen] = useState(false);
   const id = Number(value);
@@ -222,9 +225,22 @@ export const RevisionDetailButton = ({
             title={`${kind} 상세`}
             onClose={() => setOpen(false)}
             footer={
-              <Button variant="outlined" onClick={() => setOpen(false)}>
-                닫기
-              </Button>
+              <>
+                {kind === 'Routing' && itemId != null && itemId > 0 && (
+                  <Link
+                    to={`/master-data/routing?item=${itemId}&rev=${id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="erp-wo-revision-master-link"
+                    aria-label="Routing 관리 화면 열기 (새 탭)"
+                  >
+                    Routing 관리 화면 열기 ↗
+                  </Link>
+                )}
+                <Button variant="outlined" onClick={() => setOpen(false)}>
+                  닫기
+                </Button>
+              </>
             }
           >
             <div className="erp-wo-revision-detail">

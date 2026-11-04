@@ -32796,3 +32796,5 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-result-scope .field-note { display: inline; margin: 0; }
 
 .erp-wo-result-page { min-width: 0; display: grid; gap: var(--space-5); align-content: start; }
+
+.erp-wo-revision-master-link { display: inline-flex; align-items: center; margin-inline-end: var(--space-4); white-space: normal; overflow-wrap: anywhere; }

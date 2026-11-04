@@ -189,6 +189,7 @@ export const MasterStep = ({
                 />
                 <RevisionDetailButton
                   kind="Routing"
+                  itemId={selectedRouting?.itemId}
                   value={routingId}
                   label={
                     selectedRouting

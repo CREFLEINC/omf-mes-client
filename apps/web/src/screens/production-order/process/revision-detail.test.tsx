@@ -27,9 +27,12 @@ describe('선택 개정 읽기 전용 상세', () => {
         ],
       });
     });
-    renderWithProviders(<RevisionDetailButton kind="Routing" value="7" label="R7 (Rev 2)" />, {
-      fetch,
-    });
+    renderWithProviders(
+      <RevisionDetailButton kind="Routing" value="7" itemId={91} label="R7 (Rev 2)" />,
+      {
+        fetch,
+      },
+    );
     expect(fetch).not.toHaveBeenCalled();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Routing 상세 보기' }));
@@ -37,6 +40,10 @@ describe('선택 개정 읽기 전용 상세', () => {
     await within(dialog).findByText('사출');
     const rows = within(dialog).getAllByRole('row');
     expect(rows[1]).toHaveTextContent('사출');
+    expect(within(rows[1]!).getAllByRole('cell')[0]).toHaveTextContent('10');
+    const link = within(dialog).getByRole('link', { name: 'Routing 관리 화면 열기 (새 탭)' });
+    expect(link).toHaveAttribute('href', '/master-data/routing?item=91&rev=7');
+    expect(link).toHaveAttribute('target', '_blank');
     expect(rows[2]).toHaveTextContent('검사');
     expect(rows[2]).toHaveTextContent('95%');
     await user.click(within(dialog).getAllByRole('button', { name: '닫기' }).at(-1)!);

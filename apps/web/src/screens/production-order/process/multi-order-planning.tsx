@@ -462,6 +462,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                         )}
                         <RevisionDetailButton
                           kind="Routing"
+                          itemId={entry.order.itemId}
                           value={entry.routingId}
                           label={
                             entry.routingOptions.find((option) => option.value === entry.routingId)
