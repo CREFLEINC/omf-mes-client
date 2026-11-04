@@ -135,7 +135,6 @@ export const partsIqcInspection = {
     defectQtyRequired: '유형마다 불량 수량을 입력하세요.',
     defectSumMismatch: (n: number) => `유형별 수량 합계가 ${String(n)}개와 같아야 합니다.`,
     noFile: '첨부된 파일 없음',
-    defectTypeHint: '불량 유형을 하나 이상 선택하세요.',
     defectCodesEmpty: '등록된 불량 유형이 없습니다.',
     defectCodeRegister: '불량 코드 등록',
     defectCodesFailed: '불량 유형을 불러오지 못했습니다.',

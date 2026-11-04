@@ -31333,6 +31333,28 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-3) var(--space-5);
 }
 
+/* 외관 불량 수 · 외관 불량 유형 좌우 배치 — 좁아지면 아래로 내려간다(사용자 지시 2026-11-04). */
+.parts-iqc-visual-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4) var(--space-5);
+}
+
+.parts-iqc-visual-defects {
+  display: grid;
+  flex: 1 1 20rem;
+  gap: var(--space-3);
+  padding-left: var(--space-5);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 이름표 · 등록 단추 · 목록을 왼쪽부터 붙인다 — 외관 불량 수 줄과 같은 높이에서 가운데 맞춤. */
+.parts-iqc-visual-defects > .parts-iqc-defect-line {
+  justify-content: flex-start;
+  min-height: 2.5rem;
+}
+
 .parts-iqc-inline-field {
   display: flex;
   align-items: center;

@@ -141,7 +141,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     defectQtyRequired: 'Nhập số lượng lỗi cho từng loại.',
     defectSumMismatch: (n: number) => `Tổng số lượng theo loại phải bằng ${String(n)}.`,
     noFile: 'Chưa có tệp đính kèm',
-    defectTypeHint: 'Chọn ít nhất một loại lỗi.',
     defectCodesEmpty: 'Chưa có loại lỗi nào.',
     defectCodeRegister: 'Đăng ký mã lỗi',
     defectCodesFailed: 'Không tải được loại lỗi.',

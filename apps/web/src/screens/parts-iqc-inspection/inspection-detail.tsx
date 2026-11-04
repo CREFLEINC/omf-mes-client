@@ -821,155 +821,157 @@ const InspectionForm = (props: FormProps) => {
             </span>
           )}
         </div>
-        <div className="parts-iqc-visual-line">
-          <div className="parts-iqc-inline-field">
-            <FieldLabel htmlFor="parts-iqc-visual-defect" label={t.visual.defectQty} required />
-            <TextField
-              id="parts-iqc-visual-defect"
-              inputMode="numeric"
-              value={form.visualDefectQty}
-              trailingIcon={<span>{t.visual.unit}</span>}
-              error={
-                defectQtyRaw === null
-                  ? t.visual.invalidQty
-                  : defectOver
-                    ? t.visual.overQty
-                    : undefined
-              }
-              onChange={(event) => change({ ...form, visualDefectQty: event.target.value })}
-            />
-          </div>
-          {xrfItems.length > 0 && (
-            <div className="field-cell parts-iqc-xrf-cell">
-              <span className="field-label" id="parts-iqc-xrf">
-                {t.visual.xrfResult}
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
-                </span>
-              </span>
-              <RadioGroup
-                name="parts-iqc-xrf"
-                orientation="horizontal"
-                aria-labelledby="parts-iqc-xrf"
-                value={form.xrf}
-                onChange={(value) => change({ ...form, xrf: value as XrfResult })}
-              >
-                {(['NOT_DONE', 'OK', 'NG'] as XrfResult[]).map((value) => (
-                  <Radio key={value} value={value}>
-                    {t.visual.xrfChoice[value]}
-                  </Radio>
-                ))}
-              </RadioGroup>
+        {/* 외관 불량 수(왼쪽) · 외관 불량 유형(오른쪽)을 좌우로(사용자 지시 2026-11-04). */}
+        <div className="parts-iqc-visual-row">
+          <div className="parts-iqc-visual-line">
+            <div className="parts-iqc-inline-field">
+              <FieldLabel htmlFor="parts-iqc-visual-defect" label={t.visual.defectQty} required />
+              <TextField
+                id="parts-iqc-visual-defect"
+                inputMode="numeric"
+                value={form.visualDefectQty}
+                trailingIcon={<span>{t.visual.unit}</span>}
+                error={
+                  defectQtyRaw === null
+                    ? t.visual.invalidQty
+                    : defectOver
+                      ? t.visual.overQty
+                      : undefined
+                }
+                onChange={(event) => change({ ...form, visualDefectQty: event.target.value })}
+              />
             </div>
-          )}
-        </div>
-
-        {/* 불량이 있을 때만 불량 유형을 고른다 — 불합격 판정이거나 불합격 수량이 있을 때. 외관 불량 수 아래에 둔다(사용자 지시 2026-11-04). */}
-        {defectsRequired && (
-          <div className="parts-iqc-card-split">
-            <div className="parts-iqc-defect-head">
-              <h3 id="parts-iqc-defect-type">
-                {t.visual.defectType}
-                {defectsRequired && (
+            {xrfItems.length > 0 && (
+              <div className="field-cell parts-iqc-xrf-cell">
+                <span className="field-label" id="parts-iqc-xrf">
+                  {t.visual.xrfResult}
                   <span className="required-mark" aria-hidden="true">
                     {' *'}
                   </span>
-                )}
-              </h3>
-              {(visualDefectQty ?? 0) > 0 && form.defectCodeIds.length > 0 && (
-                <span className="parts-iqc-badge parts-iqc-badge-success">
-                  {t.visual.defectPicked(form.defectCodeIds.length)}
                 </span>
-              )}
-            </div>
-            <div
-              className="parts-iqc-defect-line"
-              role="group"
-              aria-labelledby="parts-iqc-defect-type"
-            >
-              {props.defectCodesFailed ? (
-                <p className="field-note">{t.visual.defectCodesFailed}</p>
-              ) : leafCodes.length === 0 ? (
-                <span className="parts-iqc-no-plan">
-                  <span className="field-note">{t.visual.defectCodesEmpty}</span>
-                  {props.onRegisterDefectCode !== undefined && (
-                    <Button variant="outlined" size="sm" onClick={props.onRegisterDefectCode}>
-                      {t.visual.defectCodeRegister}
-                    </Button>
-                  )}
-                </span>
-              ) : (
-                <div className="parts-iqc-defect-options">
-                  {leafCodes.map((code) => (
-                    <Checkbox
-                      key={code.defectCodeId}
-                      checked={form.defectCodeIds.includes(code.defectCodeId)}
-                      onChange={(event) =>
-                        change({
-                          ...form,
-                          defectCodeIds: event.target.checked
-                            ? [...form.defectCodeIds, code.defectCodeId]
-                            : form.defectCodeIds.filter((id) => id !== code.defectCodeId),
-                        })
-                      }
-                    >
-                      {code.defectName}
-                    </Checkbox>
+                <RadioGroup
+                  name="parts-iqc-xrf"
+                  orientation="horizontal"
+                  aria-labelledby="parts-iqc-xrf"
+                  value={form.xrf}
+                  onChange={(value) => change({ ...form, xrf: value as XrfResult })}
+                >
+                  {(['NOT_DONE', 'OK', 'NG'] as XrfResult[]).map((value) => (
+                    <Radio key={value} value={value}>
+                      {t.visual.xrfChoice[value]}
+                    </Radio>
                   ))}
-                </div>
-              )}
-              {defectsSent && 'blocked' in defectResult && (
-                <p className="parts-iqc-hint parts-iqc-hint-inline">
-                  <Icon name="error" />
-                  {defectResult.blocked === 'required'
-                    ? t.visual.defectTypeHint
-                    : defectResult.blocked === 'qty'
-                      ? t.visual.defectQtyRequired
-                      : t.visual.defectSumMismatch(defectTarget)}
-                </p>
-              )}
-              {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
-              {submit.fieldErrors.defects !== undefined && (
-                <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
-                  <Icon name="error" />
-                  {submit.fieldErrors.defects}
-                </p>
-              )}
-            </div>
-            {/* 둘 이상 고르면 유형마다 수량 — 합계가 불합격 수량과 같아야 한다(#205) */}
-            {form.defectCodeIds.length > 1 && (
-              <div className="parts-iqc-defect-qtys">
-                {form.defectCodeIds.map((id) => {
-                  const code = leafCodes.find((c) => c.defectCodeId === id);
-                  return (
-                    <div key={id} className="field-cell parts-iqc-stretch">
-                      <FieldLabel
-                        htmlFor={`parts-iqc-defect-qty-${String(id)}`}
-                        label={code?.defectName ?? String(id)}
-                        required
-                      />
-                      <TextField
-                        id={`parts-iqc-defect-qty-${String(id)}`}
-                        fullWidth
-                        size="sm"
-                        inputMode="numeric"
-                        value={form.defectQtys[id] ?? ''}
-                        trailingIcon={<span>{t.visual.unit}</span>}
-                        onChange={(event) =>
-                          change({
-                            ...form,
-                            defectQtys: { ...form.defectQtys, [id]: event.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  );
-                })}
+                </RadioGroup>
               </div>
             )}
           </div>
-        )}
 
+          {/* 불량이 있을 때만 불량 유형을 고른다 — 불합격 판정이거나 불합격 수량이 있을 때. 외관 불량 수 오른쪽에 둔다(사용자 지시 2026-11-04). */}
+          {defectsRequired && (
+            <div className="parts-iqc-visual-defects">
+              {/*
+               * 한 줄 — 「외관 불량 유형 *」(외관 불량 수와 같은 이름표) · 불량 코드 등록 · 목록(사용자 지시 2026-11-04).
+               * 「하나 이상 선택하세요」 글은 두지 않는다 — 제출이 막혀 있다. 수량 · 합계 오류는 남긴다.
+               */}
+              <div
+                className="parts-iqc-defect-line"
+                role="group"
+                aria-labelledby="parts-iqc-defect-type"
+              >
+                <span className="field-label" id="parts-iqc-defect-type">
+                  {t.visual.defectType}
+                  <span className="required-mark" aria-hidden="true">
+                    {' *'}
+                  </span>
+                </span>
+                {!props.defectCodesFailed &&
+                  leafCodes.length === 0 &&
+                  props.onRegisterDefectCode !== undefined && (
+                    <Button variant="outlined" onClick={props.onRegisterDefectCode}>
+                      {t.visual.defectCodeRegister}
+                    </Button>
+                  )}
+                {props.defectCodesFailed ? (
+                  <p className="field-note">{t.visual.defectCodesFailed}</p>
+                ) : leafCodes.length === 0 ? (
+                  <span className="field-note">{t.visual.defectCodesEmpty}</span>
+                ) : (
+                  <div className="parts-iqc-defect-options">
+                    {leafCodes.map((code) => (
+                      <Checkbox
+                        key={code.defectCodeId}
+                        checked={form.defectCodeIds.includes(code.defectCodeId)}
+                        onChange={(event) =>
+                          change({
+                            ...form,
+                            defectCodeIds: event.target.checked
+                              ? [...form.defectCodeIds, code.defectCodeId]
+                              : form.defectCodeIds.filter((id) => id !== code.defectCodeId),
+                          })
+                        }
+                      >
+                        {code.defectName}
+                      </Checkbox>
+                    ))}
+                  </div>
+                )}
+                {(visualDefectQty ?? 0) > 0 && form.defectCodeIds.length > 0 && (
+                  <span className="parts-iqc-badge parts-iqc-badge-success">
+                    {t.visual.defectPicked(form.defectCodeIds.length)}
+                  </span>
+                )}
+                {defectsSent &&
+                  'blocked' in defectResult &&
+                  defectResult.blocked !== 'required' && (
+                    <p className="parts-iqc-hint parts-iqc-hint-inline">
+                      <Icon name="error" />
+                      {defectResult.blocked === 'qty'
+                        ? t.visual.defectQtyRequired
+                        : t.visual.defectSumMismatch(defectTarget)}
+                    </p>
+                  )}
+                {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
+                {submit.fieldErrors.defects !== undefined && (
+                  <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
+                    <Icon name="error" />
+                    {submit.fieldErrors.defects}
+                  </p>
+                )}
+              </div>
+              {/* 둘 이상 고르면 유형마다 수량 — 합계가 불합격 수량과 같아야 한다(#205) */}
+              {form.defectCodeIds.length > 1 && (
+                <div className="parts-iqc-defect-qtys">
+                  {form.defectCodeIds.map((id) => {
+                    const code = leafCodes.find((c) => c.defectCodeId === id);
+                    return (
+                      <div key={id} className="field-cell parts-iqc-stretch">
+                        <FieldLabel
+                          htmlFor={`parts-iqc-defect-qty-${String(id)}`}
+                          label={code?.defectName ?? String(id)}
+                          required
+                        />
+                        <TextField
+                          id={`parts-iqc-defect-qty-${String(id)}`}
+                          fullWidth
+                          size="sm"
+                          inputMode="numeric"
+                          value={form.defectQtys[id] ?? ''}
+                          trailingIcon={<span>{t.visual.unit}</span>}
+                          onChange={(event) =>
+                            change({
+                              ...form,
+                              defectQtys: { ...form.defectQtys, [id]: event.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {xrfItems.length > 0 && (
           <div className="parts-iqc-file">
             <div className="parts-iqc-file-text">
