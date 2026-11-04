@@ -67,23 +67,35 @@ export const PlannedStockDialog = ({
    * 가져갈 예정분이 없으면(가져갈 수량 0, 영향받는 요청 없음) 「남은 수량보다 많습니다」(G2 7).
    */
   const stocked = conflict.details.filter((detail) => detail.noStockedWarehouse !== true);
+  /*
+   * 「재고 있는 생산 창고 없음」 줄이 하나라도 있으면 서버는 `acceptPlannedOverride` 를 보내도 다시 409 다 —
+   * 「그래도 요청」을 열지 않고 그 줄을 빼라고 알린다(총괄 확인 2026-11-04). 나머지 줄 안내는 그대로.
+   */
+  const hasNoStocked = stocked.length < conflict.details.length;
   const canOverride =
-    stocked.length > 0 && stocked.every((detail) => detail.overridable) && onOverride !== undefined;
+    !hasNoStocked &&
+    stocked.length > 0 &&
+    stocked.every((detail) => detail.overridable) &&
+    onOverride !== undefined;
   const takesPlanned = stocked.some(
     (detail) => detail.takeFromPlannedQty > 0 || (detail.affectedRequests?.length ?? 0) > 0,
   );
-  const title = canOverride
-    ? takesPlanned
-      ? t.override.title
-      : t.override.shortTitle
-    : t.override.blockedTitle;
-  const body = canOverride
-    ? takesPlanned
-      ? t.override.body
-      : t.override.shortBody
-    : stocked.length === 0
-      ? t.override.noStockedBody
-      : t.override.blockedBody;
+  const title = hasNoStocked
+    ? t.override.noStockedTitle
+    : canOverride
+      ? takesPlanned
+        ? t.override.title
+        : t.override.shortTitle
+      : t.override.blockedTitle;
+  const body = hasNoStocked
+    ? t.override.noStockedRemoveBody
+    : canOverride
+      ? takesPlanned
+        ? t.override.body
+        : t.override.shortBody
+      : stocked.length === 0
+        ? t.override.noStockedBody
+        : t.override.blockedBody;
 
   return (
     <Dialog
@@ -122,7 +134,7 @@ export const PlannedStockDialog = ({
               <td>{labelOf(detail.itemId)}</td>
               <td>
                 {detail.noStockedWarehouse === true
-                  ? t.override.noStockedWarehouse
+                  ? t.override.noStockedRow
                   : detail.sourceWarehouseId === null || detail.sourceWarehouseId === undefined
                     ? t.values.empty
                     : warehouseLabel(detail.sourceWarehouseId)}

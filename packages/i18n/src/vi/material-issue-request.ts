@@ -168,6 +168,10 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
       affected: 'Yêu cầu bị ảnh hưởng',
     },
     noStockedWarehouse: 'Không có kho sản xuất còn tồn',
+    noStockedRow: 'Không có kho sản xuất còn tồn — phải bỏ dòng này mới yêu cầu được',
+    noStockedTitle: 'Có mặt hàng không có kho sản xuất còn tồn',
+    noStockedRemoveBody:
+      'Mặt hàng không có kho sản xuất còn tồn không đưa vào yêu cầu này được. Hãy xóa dòng đó rồi yêu cầu lại. Sau khi bổ sung kho sản xuất thì cũng yêu cầu được mặt hàng đó.',
     affected: (requestNo: string, workOrderNo: string, date: string): string =>
       `${requestNo} (${workOrderNo}, ${date})`,
     fix: 'Sửa lại số lượng',

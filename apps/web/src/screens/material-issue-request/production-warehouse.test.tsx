@@ -251,9 +251,7 @@ describe('W-02-10 생산 창고 공장', () => {
 
     expect(await screen.findByText(t.result.splitTitle(2))).toBeInTheDocument();
     /* 결과 목록 안에서 찾는다 — 품목 표의 출발 생산 창고 열에도 같은 이름이 선다. */
-    const result = within(
-      document.querySelector('.material-issue-request-created') as HTMLElement,
-    );
+    const result = within(document.querySelector('.material-issue-request-created') as HTMLElement);
     expect(result.getByText('합성 생산창고 A')).toBeInTheDocument();
     expect(result.getByText('합성 생산창고 B')).toBeInTheDocument();
     expect(screen.getAllByText(t.status.WAITING ?? '')).toHaveLength(2);
@@ -378,40 +376,54 @@ describe('W-02-10 생산 창고 공장', () => {
     expect(dialog.getByRole('button', { name: t.override.submit })).toBeInTheDocument();
   });
 
-  it('US2-9 재고 있는 생산 창고가 없는 품목은 그 줄에만 알리고 창 전체를 막지 않는다', async () => {
-    const { user } = setup(() =>
-      conflictWith([
-        {
-          itemId: 7402,
-          requestedQty: 5,
-          freeQty: 0,
-          takeFromPlannedQty: 0,
-          overridable: false,
-          noStockedWarehouse: true,
-        },
-        {
-          itemId: 7401,
-          sourceWarehouseId: 7211,
-          requestedQty: 80,
-          freeQty: 50,
-          takeFromPlannedQty: 30,
-          overridable: true,
-          affectedRequests: [
+  it('US2-9 재고 있는 생산 창고가 없는 품목이 있으면 「그래도 요청」을 열지 않고, 그 줄을 지우면 다시 발행한다', async () => {
+    const { user, posts } = setup((body) =>
+      (body.lines as { itemId: number }[]).some((line) => line.itemId === 7403)
+        ? conflictWith([
             {
-              issueRequestNo: 'SAMPLE-MIR-0040',
-              workOrderNo: 'SAMPLE-WO-0040',
-              issueWorkDate: '2026-11-11',
+              itemId: 7403,
+              requestedQty: 10,
+              freeQty: 0,
+              takeFromPlannedQty: 0,
+              overridable: false,
+              noStockedWarehouse: true,
             },
-          ],
-        },
-      ]),
+            {
+              itemId: 7401,
+              sourceWarehouseId: 7211,
+              requestedQty: 80,
+              freeQty: 50,
+              takeFromPlannedQty: 30,
+              overridable: true,
+              affectedRequests: [
+                {
+                  issueRequestNo: 'SAMPLE-MIR-0040',
+                  workOrderNo: 'SAMPLE-WO-0040',
+                  issueWorkDate: '2026-11-11',
+                },
+              ],
+            },
+          ])
+        : created(1),
     );
     await readyToPublish(user);
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
 
-    const dialog = within(await screen.findByRole('dialog', { name: t.override.title }));
-    expect(dialog.getByText(t.override.noStockedWarehouse)).toBeInTheDocument();
-    expect(dialog.getByRole('button', { name: t.override.submit })).toBeInTheDocument();
+    const dialog = within(await screen.findByRole('dialog', { name: t.override.noStockedTitle }));
+    expect(dialog.getByText(t.override.noStockedRow)).toBeInTheDocument();
+    expect(dialog.getByText(t.override.noStockedRemoveBody)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: t.override.submit })).not.toBeInTheDocument();
+
+    await user.click(dialog.getByRole('button', { name: t.override.fix }));
+    /* 셋째 줄(SAMPLE-ITEM-03)이 재고 없는 품목이다 — 지우고 다시 발행한다. */
+    await user.click(screen.getByRole('button', { name: t.actions.removeLine(3) }));
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect((posts[1]?.lines as { itemId: number }[]).map((line) => line.itemId)).not.toContain(
+      7402,
+    );
+    expect(await screen.findByText(t.result.splitTitle(1))).toBeInTheDocument();
   });
 
   it('US4-7 품목 표에 출발 생산 창고 · 남은 수량을 보이고 넘으면 「+N」(자동은 남은 수량이 큰 창고)', async () => {

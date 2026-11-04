@@ -171,6 +171,11 @@ export const materialIssueRequest = {
       affected: '영향받는 요청',
     },
     noStockedWarehouse: '재고 있는 생산 창고 없음',
+    /** 서버는 이런 줄이 있으면 늘 다시 409 를 낸다 — 줄을 빼야 요청할 수 있다. */
+    noStockedRow: '재고 있는 생산 창고 없음 — 이 줄을 빼야 요청할 수 있습니다',
+    noStockedTitle: '재고 있는 생산 창고가 없는 품목이 있습니다',
+    noStockedRemoveBody:
+      '재고 있는 생산 창고가 없는 품목은 이 요청에 넣을 수 없습니다. 그 줄을 지운 뒤 다시 요청하세요. 생산 창고를 채운 뒤에는 그 품목도 요청할 수 있습니다.',
     affected: (requestNo: string, workOrderNo: string, date: string): string =>
       `${requestNo} (${workOrderNo}, ${date})`,
     fix: '수량 다시 고치기',
