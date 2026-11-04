@@ -906,7 +906,7 @@ const InspectionForm = (props: FormProps) => {
                     {t.visual.defectCodesEmpty}
                   </span>
                 ) : (
-                  /* 검색되는 선택칸에서 닫지 않고 여러 개 넣고 뺀다. 고른 유형은 칩으로 보이며 ×로도 뺀다(사용자 지시 2026-11-04 — 체크란 대신). */
+                  /* 검색되는 선택칸에서 닫지 않고 여러 개 넣고 뺀다(사용자 지시 2026-11-04 — 체크란 대신). 둘 이상이면 아래 표의 휴지통으로도 뺀다. */
                   <div className="parts-iqc-defect-options">
                     <DefectMultiSelect
                       aria-labelledby="parts-iqc-defect-type"
@@ -923,35 +923,9 @@ const InspectionForm = (props: FormProps) => {
                       invalid={form.defectCodeIds.length === 0}
                       onChange={(values) => change({ ...form, defectCodeIds: values.map(Number) })}
                     />
-                    {form.defectCodeIds.map((id) => {
-                      const name =
-                        leafCodes.find((code) => code.defectCodeId === id)?.defectName ??
-                        String(id);
-                      return (
-                        <Chip
-                          key={id}
-                          size="sm"
-                          removeLabel={t.visual.removeDefectType(name)}
-                          onRemove={() =>
-                            change({
-                              ...form,
-                              defectCodeIds: form.defectCodeIds.filter((kept) => kept !== id),
-                            })
-                          }
-                        >
-                          {name}
-                        </Chip>
-                      );
-                    })}
                   </div>
                 )}
-                {/* 빈 칸 · 유형 수량 누락 글은 두지 않는다(사용자 지시 2026-11-04) — 합계가 어긋날 때만 알린다. */}
-                {defectsSent && 'blocked' in defectResult && defectResult.blocked === 'sum' && (
-                  <p className="parts-iqc-hint parts-iqc-hint-inline">
-                    <Icon name="error" />
-                    {t.visual.defectSumMismatch(defectTarget)}
-                  </p>
-                )}
+                {/* 빈 칸 · 유형 수량 누락 · 합계 어긋남 글은 두지 않는다 — 합계는 수량 표 오른쪽 라벨이 맡는다(사용자 지시 2026-11-04). */}
                 {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
                 {submit.fieldErrors.defects !== undefined && (
                   <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
@@ -969,6 +943,13 @@ const InspectionForm = (props: FormProps) => {
                       leafCodes.find((code) => code.defectCodeId === id)?.defectName ?? String(id),
                   }))}
                   qtys={form.defectQtys}
+                  target={defectTarget}
+                  onRemove={(id) =>
+                    change({
+                      ...form,
+                      defectCodeIds: form.defectCodeIds.filter((kept) => kept !== id),
+                    })
+                  }
                   onChange={(id, value) =>
                     change({ ...form, defectQtys: { ...form.defectQtys, [id]: value } })
                   }
