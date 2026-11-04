@@ -1,9 +1,4 @@
-import type {
-  components,
-  MaterialIssueRequestCreateForward,
-  MaterialIssueRequestCreateResultForward,
-  MaterialIssueRequestForward,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 /**
@@ -21,7 +16,10 @@ type WorkOrderResponse = components['schemas']['WorkOrder'];
 type ShortageLineResponse = components['schemas']['MaterialIssueShortageLine'];
 
 /** 등록 본문 — 피처 003 칸(출발 창고 · 예정분 가져가기 · 미배정 부족 행)을 더한 계약 §1 모양. */
-export type MaterialIssueRequestCreate = MaterialIssueRequestCreateForward;
+export type MaterialIssueRequestCreate = components['schemas']['MaterialIssueRequestCreate'];
+/** 등록 응답 — 옛 칸(첫 요청) + `requests[]`(출발 창고별). */
+export type MaterialIssueRequestCreated = components['schemas']['MaterialIssueRequestCreated'];
+type MaterialIssueRequestForward = components['schemas']['MaterialIssueRequest'];
 export type MaterialIssueRequestCreateLine =
   components['schemas']['MaterialIssueRequestCreateLine'];
 
@@ -118,9 +116,7 @@ export interface ExistingRequestListResult {
 
 /** 표시 상태가 있으면 5종 라벨, 없으면(지금 방식 응답) 서버 원문 그대로. */
 export const statusLabelOf = (
-  data: Pick<MaterialIssueRequestForward, 'statusCode'> & {
-    displayStatus?: MaterialIssueRequestForward['displayStatus'];
-  },
+  data: Pick<MaterialIssueRequestForward, 'statusCode' | 'displayStatus'>,
 ): string =>
   (data.displayStatus === undefined
     ? undefined
@@ -130,10 +126,8 @@ export const statusLabelOf = (
 export const toExistingRequestView = (
   data: Pick<
     MaterialIssueRequestForward,
-    'materialIssueRequestId' | 'issueRequestNo' | 'statusCode' | 'requiredAt'
-  > & {
-    displayStatus?: MaterialIssueRequestForward['displayStatus'];
-  },
+    'materialIssueRequestId' | 'issueRequestNo' | 'statusCode' | 'requiredAt' | 'displayStatus'
+  >,
 ): ExistingRequestView => ({
   materialIssueRequestId: data.materialIssueRequestId,
   issueRequestNo: data.issueRequestNo,
@@ -160,7 +154,7 @@ export interface CreatedRequestView {
 }
 
 export const toCreatedRequestView = (
-  data: MaterialIssueRequestCreateResultForward,
+  data: MaterialIssueRequestCreated,
   body: Pick<MaterialIssueRequestCreate, 'acceptPlannedOverride' | 'unsourcedShortageId'>,
 ): CreatedRequestView => ({
   /* 옛 단건 응답(첫 요청)도 읽는다 — `requests` 가 없으면 그 한 장. */

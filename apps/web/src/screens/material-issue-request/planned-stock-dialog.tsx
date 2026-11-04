@@ -147,8 +147,8 @@ export const PlannedStockDialog = ({
                 {(detail.affectedRequests ?? [])
                   .map((request) =>
                     t.override.affected(
-                      request.issueRequestNo,
-                      request.workOrderNo,
+                      request.issueRequestNo ?? t.values.empty,
+                      request.workOrderNo ?? t.values.empty,
                       request.issueWorkDate?.slice(5) ?? t.values.empty,
                     ),
                   )

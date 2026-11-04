@@ -8,11 +8,6 @@ import {
   TextField,
   useToast,
 } from '@crefle/web-ui';
-import type {
-  MaterialIssueRequestDetailForward,
-  MaterialIssueRequestLineForward,
-  MaterialIssueRequestUpdateForward,
-} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState } from 'react';
@@ -45,12 +40,17 @@ import {
   STATUS_TONE,
   statusLabel,
 } from './status';
+import type {
+  MaterialIssueRequestDetailView,
+  MaterialIssueRequestLineView,
+  MaterialIssueRequestUpdate,
+} from './api-types';
 
 const t = messages.materialIssueStatus;
 
 const HOLIDAY_ACK_REQUIRED = 'HOLIDAY_ACK_REQUIRED';
 
-const itemText = (line: MaterialIssueRequestLineForward): string => line.itemCode;
+const itemText = (line: MaterialIssueRequestLineView): string => line.itemCode;
 
 type DialogState = 'date' | 'holiday' | 'cancel' | null;
 
@@ -73,7 +73,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
   const reasonName = (code: string): string => reasons.data?.get(code) ?? code;
   const today = plantToday();
 
-  const [seeded, setSeeded] = useState<MaterialIssueRequestDetailForward | null>(null);
+  const [seeded, setSeeded] = useState<MaterialIssueRequestDetailView | null>(null);
   const [qty, setQty] = useState<ReadonlyMap<number, string>>(new Map());
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
@@ -196,7 +196,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
     const dirty = lineChanges.length > 0 || sourceChanged || destinationChanged;
 
     const save = (): void => {
-      const patch: MaterialIssueRequestUpdateForward = {
+      const patch: MaterialIssueRequestUpdate = {
         versionNo: request.versionNo,
         ...(lineChanges.length > 0 ? { lines: lineChanges } : {}),
         ...(sourceChanged ? { sourceWarehouseId: Number(source) } : {}),

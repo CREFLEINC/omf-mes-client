@@ -1,7 +1,3 @@
-import type {
-  MaterialIssueRequestForward,
-  MaterialIssueRequestLineForward,
-} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
@@ -16,12 +12,11 @@ import {
   requestShortage,
   statusLabel,
 } from './status';
+import type { MaterialIssueRequestLineView, MaterialIssueRequestView } from './api-types';
 
 const t = messages.materialIssueStatus;
 
-const request = (
-  overrides: Partial<MaterialIssueRequestForward> = {},
-): MaterialIssueRequestForward => ({
+const request = (overrides: Partial<MaterialIssueRequestView> = {}): MaterialIssueRequestView => ({
   materialIssueRequestId: 1,
   issueRequestNo: 'SYN-MIR-01',
   workOrderId: 11,
@@ -39,7 +34,7 @@ const request = (
   ...overrides,
 });
 
-const line = (issuedQty: number): MaterialIssueRequestLineForward => ({
+const line = (issuedQty: number): MaterialIssueRequestLineView => ({
   materialIssueRequestLineId: 7,
   materialIssueRequestId: 1,
   lineNo: 1,
@@ -65,7 +60,9 @@ describe('W-02-11 상태 표시', () => {
     expect(statusLabel({ displayStatus: 'DONE', closeReasonCode: 'WO_CANCELLED' })).toBe(
       '완료, W/O 취소',
     );
-    expect(statusLabel({ displayStatus: 'DONE', closeReasonCode: 'UNKNOWN' })).toBe('완료');
+    expect(statusLabel({ displayStatus: 'DONE', closeReasonCode: 'UNKNOWN' as 'WO_CLOSED' })).toBe(
+      '완료',
+    );
   });
 
   it('배포 실패는 원인 글이 있는 대기 요청이다', () => {
@@ -89,7 +86,7 @@ describe('W-02-11 고칠 수 있는 범위', () => {
 
   it('US5-10 요청 수량이 기출고 미만이면 칸 오류', () => {
     const lines = [line(40)];
-    const text = (value: MaterialIssueRequestLineForward) => value.itemCode ?? '';
+    const text = (value: MaterialIssueRequestLineView) => value.itemCode ?? '';
     expect(quantityError(lines, new Map([[7, '30']]), text)).toBe(
       t.detail.lines.belowIssued('SYN-IT-1', '40'),
     );

@@ -1,12 +1,12 @@
-import type {
-  MaterialIssueDisplayStatus,
-  MaterialIssueRequestForward,
-  MaterialIssueRequestHistoryEntry,
-  MaterialIssueRequestLineForward,
-} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import type {
+  MaterialIssueDisplayStatus,
+  MaterialIssueRequestHistoryItem,
+  MaterialIssueRequestLineView,
+  MaterialIssueRequestView,
+} from './api-types';
 
 const t = messages.materialIssueStatus;
 
@@ -32,7 +32,7 @@ export const STATUS_TONE: Record<
 
 /** 「완료」 칩에 닫힘 사유를 붙인다 — 「완료, W/O 취소」. 모르는 사유 코드는 붙이지 않는다. */
 export const statusLabel = (
-  request: Pick<MaterialIssueRequestForward, 'displayStatus' | 'closeReasonCode'>,
+  request: Pick<MaterialIssueRequestView, 'displayStatus' | 'closeReasonCode'>,
 ): string => {
   const label = t.status[request.displayStatus];
   const reason =
@@ -42,7 +42,7 @@ export const statusLabel = (
   return reason === undefined ? label : t.statusWithReason(label, reason);
 };
 
-export const isReleaseFailed = (request: MaterialIssueRequestForward): boolean =>
+export const isReleaseFailed = (request: MaterialIssueRequestView): boolean =>
   request.displayStatus === 'WAITING' &&
   request.releaseErrorText !== null &&
   request.releaseErrorText !== undefined &&
@@ -55,7 +55,7 @@ export type EditScope = 'all' | 'quantity' | 'none';
  * 생산 창고 규칙으로 만든 요청(`sourceWarehouseId` 있음)만 고친다 — 지금 방식 요청은 보기만(R-17).
  * 대기 · 배포는 전부, 진행 중은 수량만(기출고 이상), 완료 · 취소는 보기만.
  */
-export const editScope = (request: MaterialIssueRequestForward): EditScope => {
+export const editScope = (request: MaterialIssueRequestView): EditScope => {
   if (request.sourceWarehouseId === null || request.sourceWarehouseId === undefined) return 'none';
   switch (request.displayStatus) {
     case 'WAITING':
@@ -69,19 +69,19 @@ export const editScope = (request: MaterialIssueRequestForward): EditScope => {
 };
 
 /** 줄 부족 — 저장 부족 + 동적 부족(서버 S8e). */
-export const lineShortage = (line: MaterialIssueRequestLineForward): number =>
+export const lineShortage = (line: MaterialIssueRequestLineView): number =>
   (line.shortageQty ?? 0) + (line.dynamicShortageQty ?? 0);
 
 /** 요청 「부족 N」 — 저장 부족 합 + 동적 부족 합. */
 export const requestShortage = (
-  request: Pick<MaterialIssueRequestForward, 'shortageQtyTotal' | 'dynamicShortageQtyTotal'>,
+  request: Pick<MaterialIssueRequestView, 'shortageQtyTotal' | 'dynamicShortageQtyTotal'>,
 ): number => request.shortageQtyTotal + request.dynamicShortageQtyTotal;
 
 /** 수량 칸 검사 — 기출고 미만이면 첫 줄의 오류 문구. */
 export const quantityError = (
-  lines: readonly MaterialIssueRequestLineForward[],
+  lines: readonly MaterialIssueRequestLineView[],
   drafts: ReadonlyMap<number, string>,
-  itemText: (line: MaterialIssueRequestLineForward) => string,
+  itemText: (line: MaterialIssueRequestLineView) => string,
 ): string | null => {
   for (const line of lines) {
     const draft = drafts.get(line.materialIssueRequestLineId);
@@ -111,7 +111,7 @@ export const plantMinute = (value: string): string => {
 
 /** 이력 한 줄의 문장 — 서버는 사건 코드와 값만 준다(계약 §1 history). 날짜 값은 `MM-DD(요일)` 로. */
 export const historyText = (
-  entry: MaterialIssueRequestHistoryEntry,
+  entry: MaterialIssueRequestHistoryItem,
   /** 요청 사유 코드 → 이름(공통코드). 모르면 코드 그대로. */
   reasonName: (code: string) => string = (code) => code,
 ): string => {
