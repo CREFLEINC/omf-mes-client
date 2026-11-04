@@ -37,7 +37,7 @@ const COUNTS: TerminalWorkCounts = {
 };
 
 interface Setup {
-  counts?: TerminalWorkCounts | 'fail';
+  counts?: TerminalWorkCounts | 'fail' | (() => TerminalWorkCounts);
   signedIn?: boolean;
   path?: string;
   warehouseName?: string | null;
@@ -67,13 +67,17 @@ const GoHome = () => {
 
 const setup = (options: Setup = {}) => {
   const counted: Request[] = [];
+  const paths: string[] = [];
   const fetch: StubFetch = async (request) => {
     const { pathname } = new URL(request.url);
+    paths.push(pathname);
     if (pathname === '/app/terminal-work-counts') {
       counted.push(request);
       return options.counts === 'fail'
         ? jsonResponse({ message: '' }, { status: 503 })
-        : jsonResponse(options.counts ?? COUNTS);
+        : jsonResponse(
+            typeof options.counts === 'function' ? options.counts() : (options.counts ?? COUNTS),
+          );
     }
     if (pathname.startsWith('/mdm/terminals/')) {
       return jsonResponse({
@@ -117,7 +121,7 @@ const setup = (options: Setup = {}) => {
       </Routes>
     </Shell>,
   );
-  return { counted };
+  return { counted, paths };
 };
 
 const warehouseLabel = t.areas.warehouse.label;
@@ -254,5 +258,31 @@ describe('모바일 홈 남은 작업 배지(피처 002)', () => {
     token.value = tokenFor(9001);
     setup({ warehouseName: null });
     expect(await screen.findByText(t.workCount.basisPlant)).toBeInTheDocument();
+  });
+});
+
+describe('모바일 홈 배지 — 출고 요청 대기 · 배포(피처 003)', () => {
+  it('US1-4 대기 요청은 피킹 배지에 세지 않고, 배포되면 다시 받을 때 센다 — 화면은 출고 요청을 따로 세지 않는다', async () => {
+    const user = userEvent.setup();
+    /* 서버 수 — 대기 요청은 피킹 지시가 없어 0, 00:00 배포 뒤 피킹 지시가 생기면 1. */
+    let released = false;
+    const { paths } = setup({
+      path: '/screens/warehouse',
+      counts: () => ({ ...COUNTS, materialPicking: released ? 1 : 0 }),
+    });
+
+    await screen.findByRole('link', { name: t.workCount.label(messages.putaway.title, 2) });
+    expect(screen.getByRole('link', { name: messages.materialPicking.title })).toBeInTheDocument();
+
+    released = true;
+    await user.click(screen.getByRole('button', { name: '홈으로' }));
+    await user.click(await screen.findByRole('link', { name: new RegExp(`^${warehouseLabel}`) }));
+
+    expect(
+      await screen.findByRole('link', {
+        name: t.workCount.label(messages.materialPicking.title, 1),
+      }),
+    ).toBeInTheDocument();
+    expect(paths.some((path) => path.startsWith('/logistics/material-issue-requests'))).toBe(false);
   });
 });
