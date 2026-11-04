@@ -1,8 +1,3 @@
-import type {
-  MaterialIssueRequestDetailForward,
-  MaterialIssueRequestForward,
-  PlannedStockResponse,
-} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -16,6 +11,11 @@ import {
 } from '../../test/api-harness';
 import { MaterialIssueStatusScreen } from './screen';
 import { replenishLink } from './shortage-view';
+import type {
+  MaterialIssueRequestDetailView,
+  MaterialIssueRequestView,
+  PlannedStockResponse,
+} from './api-types';
 
 const t = messages.materialIssueStatus;
 
@@ -32,8 +32,8 @@ const PLANT = {
 
 const request = (
   id: number,
-  overrides: Partial<MaterialIssueRequestForward> = {},
-): MaterialIssueRequestForward => ({
+  overrides: Partial<MaterialIssueRequestView> = {},
+): MaterialIssueRequestView => ({
   materialIssueRequestId: id,
   issueRequestNo: `SYN-MIR-${String(id).padStart(2, '0')}`,
   workOrderId: 100 + id,
@@ -69,7 +69,7 @@ const REQUESTS = [
   request(5, { releaseErrorText: '출발 생산 창고가 비활성입니다.' }),
 ];
 
-const detailOf = (id: number): MaterialIssueRequestDetailForward => ({
+const detailOf = (id: number): MaterialIssueRequestDetailView => ({
   materialIssueRequest: REQUESTS.find((row) => row.materialIssueRequestId === id) ?? request(id),
   lines: [
     {
@@ -151,7 +151,7 @@ interface SetupOptions {
   /** 이력 조회 응답 상태(기본 200). */
   historyStatus?: number;
   /** 저장(PUT) 뒤 상세 조회가 돌려줄 상태 — 서버처럼 저장 결과가 남는다. */
-  detailAfterPut?: MaterialIssueRequestDetailForward;
+  detailAfterPut?: MaterialIssueRequestDetailView;
 }
 
 const setup = (options: SetupOptions = {}) => {

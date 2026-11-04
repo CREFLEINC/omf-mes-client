@@ -1,5 +1,4 @@
 import { AlertBanner, SkeletonText, TextField, type Column } from '@crefle/web-ui';
-import type { WorkOrderDetailForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
@@ -115,12 +114,12 @@ export const useReleaseIssueDates = (
     queries: workOrders.map((workOrder) => ({
       queryKey: ['work-orders', 'release-issue-dates', workOrder.workOrderId] as const,
       retry: false,
-      queryFn: async () =>
-        (await runRequest(() =>
+      queryFn: () =>
+        runRequest(() =>
           client.GET('/production/work-orders/{workOrderId}', {
             params: { path: { workOrderId: workOrder.workOrderId } },
           }),
-        )) as WorkOrderDetailForward,
+        ),
     })),
   });
   const usesProductionWarehouses = details.some(

@@ -1,10 +1,10 @@
 import { AlertBanner, Button, Chip, Skeleton } from '@crefle/web-ui';
-import type { PlannedStockResponse } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
 import { useOverrideNotes, useReasonNames } from './queries';
 import { formatDay, formatQty, historyText, plantMinute } from './status';
+import type { PlannedStockResponse } from './api-types';
 
 const t = messages.materialIssueStatus;
 

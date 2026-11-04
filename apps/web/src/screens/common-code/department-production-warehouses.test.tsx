@@ -1,4 +1,4 @@
-import type { DepartmentProductionWarehouse } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,6 +13,7 @@ import {
 import { departmentFixtures } from './fixtures';
 import { CommonCodeScreen } from './screen';
 
+type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
 const t = messages.commonCode.department.productionWarehouses;
 
 /**

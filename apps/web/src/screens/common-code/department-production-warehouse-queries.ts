@@ -1,9 +1,4 @@
-import {
-  createIdempotencyKey,
-  type DepartmentProductionWarehouse,
-  type DepartmentProductionWarehouseReplace,
-  type DepartmentProductionWarehouseReplaceResult,
-} from '@omf-mes/api-client';
+import { createIdempotencyKey, type components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -11,6 +6,12 @@ import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { departmentKeys } from './department-queries';
+
+type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
+type DepartmentProductionWarehouseReplace =
+  components['schemas']['DepartmentProductionWarehouseReplace'];
+type DepartmentProductionWarehouseReplaceResult =
+  components['schemas']['DepartmentProductionWarehouseReplaceResponse'];
 
 /**
  * 부서 생산 창고(003 계획 기반 출고 요청 · 계약 §3)의 조회와 저장.

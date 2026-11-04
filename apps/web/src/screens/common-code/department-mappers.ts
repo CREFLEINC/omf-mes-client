@@ -1,4 +1,4 @@
-import type { components, DepartmentWithProductionWarehouseCount } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 
 import type { Department, DepartmentFormValues, DepartmentRow } from './types';
 
@@ -30,7 +30,7 @@ const foldSelfReference = (
     : parentDepartmentId;
 
 export const toDepartmentRows = (departments: readonly Department[]): DepartmentRow[] =>
-  departments.map((department: DepartmentWithProductionWarehouseCount) => ({
+  departments.map((department) => ({
     departmentId: department.departmentId,
     departmentCode: department.departmentCode,
     departmentName: department.departmentName,
