@@ -373,6 +373,8 @@ export const lookupKeys = {
   items: ['inspection-standard-items'] as const,
   itemDetail: (itemId: number) => ['inspection-standard-item-detail', itemId] as const,
   processes: ['inspection-standard-processes'] as const,
+  /** PQC 기준 저장이 확정 라우팅을 새 Rev 로 바꿀 수 있어, 저장 뒤 이 접두로 라우팅 목록을 다시 받는다. */
+  routingsAll: ['inspection-standard-routings'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
   uoms: ['inspection-standard-uoms'] as const,
   equipments: ['inspection-standard-equipments'] as const,
