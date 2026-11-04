@@ -3,7 +3,8 @@ import type { PlannedStockResponse } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
-import { formatDay, formatQty } from './status';
+import { useOverrideNotes, useReasonNames } from './queries';
+import { formatDay, formatQty, historyText, plantMinute } from './status';
 
 const t = messages.materialIssueStatus;
 
@@ -52,6 +53,16 @@ export interface ShortageViewProps {
  * 요청 배분 줄마다 「보충 요청 →」(검토 3).
  */
 export const ShortageView = ({ data, isPending, isError, onRetry }: ShortageViewProps) => {
+  const reasons = useReasonNames();
+  const overrideNotes = useOverrideNotes(
+    (data?.items ?? []).flatMap((row) =>
+      row.shortageQty > 0
+        ? row.requests
+            .filter((request) => request.shortageQty > 0)
+            .map((request) => request.materialIssueRequestId)
+        : [],
+    ),
+  );
   if (isError) {
     return (
       <AlertBanner
@@ -163,6 +174,26 @@ export const ShortageView = ({ data, isPending, isError, onRetry }: ShortageView
                 </Chip>
               </td>
               <td>
+                {row.requests
+                  .filter((request) => request.shortageQty > 0)
+                  .flatMap((request) => {
+                    const note = overrideNotes.get(request.materialIssueRequestId);
+                    return note === undefined
+                      ? []
+                      : [
+                          <p
+                            key={`note-${String(request.materialIssueRequestId)}`}
+                            className="field-note"
+                          >
+                            {t.shortage.overrideNote(
+                              plantMinute(note.occurredAt),
+                              note.actorName ?? t.detail.systemActor,
+                              request.issueRequestNo,
+                              historyText(note, (code) => reasons.data?.get(code) ?? code),
+                            )}
+                          </p>,
+                        ];
+                  })}
                 {row.requests
                   .filter((request) => request.shortageQty > 0)
                   .map((request) => (

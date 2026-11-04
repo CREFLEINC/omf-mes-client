@@ -142,7 +142,8 @@ export const MaterialIssueStatusScreen = () => {
       <div className="material-issue-status-filter-row">
         <Select
           aria-label={t.filters.plant}
-          value={draft.plant}
+          /* 처음 열 때(주소에 공장이 없거나 목록을 받기 전)도 실제 조회 중인 공장을 보인다(G2 2). */
+          value={draft.plant === '' ? filters.plant : draft.plant}
           options={(plants.data ?? []).map((plant) => ({
             value: String(plant.plantId),
             label: plant.plantName,
@@ -430,7 +431,7 @@ export const MaterialIssueStatusScreen = () => {
       </div>
       {body()}
       {view === 'list' && selectedId !== null && (
-        <DetailPanel requestId={selectedId} plantId={plantId} onClose={() => select(null)} />
+        <DetailPanel requestId={selectedId} onClose={() => select(null)} />
       )}
     </>
   );

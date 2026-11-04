@@ -14,20 +14,23 @@ import type {
   MaterialIssueRequestUpdateForward,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
+import { toApiError } from '../../patterns/request';
 import { Select } from '../../patterns/select';
 import {
   hasErrorCode,
+  statusKeys,
   useCancelRequest,
   useDestinationOptions,
   useRequestDetail,
   useReasonNames,
   useRequestHistory,
   useUpdateRequest,
-  useWarehouseOptions,
+  useWorkOrderWarehouseOptions,
 } from './queries';
 import {
   dateEffect,
@@ -35,6 +38,7 @@ import {
   formatDay,
   formatQty,
   historyText,
+  plantMinute,
   isReleaseFailed,
   lineShortage,
   quantityError,
@@ -52,8 +56,6 @@ type DialogState = 'date' | 'holiday' | 'cancel' | null;
 
 export interface DetailPanelProps {
   requestId: number;
-  /** 출발 생산 창고 후보를 고를 공장(목록 조건의 공장). */
-  plantId: number | null;
   onClose: () => void;
 }
 
@@ -61,8 +63,9 @@ export interface DetailPanelProps {
  * W-02-11 상세 — 오른쪽 덮개(screens/W-02-11.md 레이아웃). 대기 · 배포는 출고 작업일 · 출발 생산 창고 ·
  * 입고지 · 수량 · 취소, 진행 중은 수량만(기출고 이상), 완료 · 취소 · 지금 방식 요청은 보기만.
  */
-export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) => {
+export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const titleId = useId();
   const detail = useRequestDetail(requestId);
   const history = useRequestHistory(requestId);
@@ -100,7 +103,10 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
 
   const request = detail.data?.materialIssueRequest;
   const scope = request === undefined ? 'none' : editScope(request);
-  const warehouses = useWarehouseOptions(scope === 'all' ? plantId : null);
+  /* 출발 창고 후보는 W/O 라인 부서의 생산 창고만(FR-010, G2 13). */
+  const warehouses = useWorkOrderWarehouseOptions(
+    scope === 'all' ? (request?.workOrderId ?? null) : null,
+  );
   const destinations = useDestinationOptions(
     scope === 'all' ? (request?.destinationLocationId ?? null) : null,
   );
@@ -118,8 +124,11 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
             ? t.toast.releasedNow(formatDay(date))
             : t.toast.dateChanged(formatDay(date)),
       });
-    setSeeded(null);
-    void saved;
+    /*
+     * 응답을 바로 상세로 둔다 — 진행 있음 요청이 미출고 0 이 되면 응답이 이미 완료(DONE)라 다시 받기 전에도
+     * 그 상태로 바뀐다(서버 S9).
+     */
+    queryClient.setQueryData(statusKeys.detail(requestId), saved);
   });
   const cancel = useCancelRequest(requestId, () => {
     setDialog(null);
@@ -143,10 +152,15 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
 
   const body = () => {
     if (detail.isError) {
+      /* 상세에 맞는 문구 — 없는 번호(404)는 다시 불러도 풀리지 않는다(G2 5). */
+      const error = toApiError(detail.error);
+      if (error.kind === 'http' && error.status === 404) {
+        return <AlertBanner variant="error">{t.detail.notFound}</AlertBanner>;
+      }
       return (
         <AlertBanner
           variant="error"
-          title={messages.httpError.loadTitle}
+          title={t.detail.loadFailed}
           action={
             <Button variant="outlined" size="sm" onClick={() => void detail.refetch()}>
               {messages.common.retry}
@@ -239,6 +253,26 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
     const errorBanner = (() => {
       const error = update.error ?? cancel.error;
       if (error === null || hasErrorCode(error, HOLIDAY_ACK_REQUIRED)) return null;
+      /* 400 을 알아듣게(서버 S9) — 출발 창고가 라인 부서 생산 창고가 아님, 기출고 미만(RANGE). */
+      if (error.kind === 'validation') {
+        if (error.errors.some((item) => item.field === 'sourceWarehouseId')) {
+          return (
+            <AlertBanner
+              variant="error"
+              action={
+                <Button variant="outlined" size="sm" onClick={reload}>
+                  {t.errors.reload}
+                </Button>
+              }
+            >
+              {t.errors.sourceWarehouseInvalid}
+            </AlertBanner>
+          );
+        }
+        if (error.errors.some((item) => item.code === 'RANGE')) {
+          return <AlertBanner variant="error">{t.errors.belowIssued}</AlertBanner>;
+        }
+      }
       if (error.kind === 'conflict' || error.kind === 'stateLocked') {
         return (
           <AlertBanner
@@ -385,16 +419,34 @@ export const DetailPanel = ({ requestId, plantId, onClose }: DetailPanelProps) =
           <h3 id={`${titleId}-history`} className="subsection-title">
             {t.detail.history}
           </h3>
-          {(history.data?.length ?? 0) === 0 ? (
+          {history.isError ? (
+            /* 403 · 오류는 「이력이 없습니다」가 아니다(G2 4). */
+            <AlertBanner
+              variant="error"
+              action={
+                <Button variant="outlined" size="sm" onClick={() => void history.refetch()}>
+                  {messages.common.retry}
+                </Button>
+              }
+            >
+              {(() => {
+                const error = toApiError(history.error);
+                return error.kind === 'http' && error.status === 403
+                  ? messages.httpError.forbidden
+                  : t.detail.historyFailed;
+              })()}
+            </AlertBanner>
+          ) : history.isPending ? (
+            <Skeleton variant="rect" height="3rem" />
+          ) : history.data.length === 0 ? (
             <p className="field-note">{t.detail.noHistory}</p>
           ) : (
             <ul className="material-issue-status-history">
-              {history.data?.map((entry, index) => (
+              {history.data.map((entry, index) => (
                 <li key={`${entry.occurredAt}-${String(index)}`}>
                   <span className="field-note">
-                    {`${entry.occurredAt.slice(5, 16).replace('T', ' ')} ${
-                      entry.actorName ?? t.detail.systemActor
-                    }`}
+                    {/* 공장 현지 시각(G2 3) — 응답은 UTC 일 수 있다. */}
+                    {`${plantMinute(entry.occurredAt)} ${entry.actorName ?? t.detail.systemActor}`}
                   </span>
                   <span>{historyText(entry, reasonName)}</span>
                 </li>

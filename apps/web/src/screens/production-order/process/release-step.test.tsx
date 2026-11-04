@@ -104,8 +104,8 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     const later = addDays(plantToday(), 10);
     const latest = addDays(plantToday(), 12);
     const issueDates = new Map<number, IssueDates>([
-      [1, { productionDate: addDays(later, 1), issueWorkDate: later }],
-      [2, { productionDate: addDays(latest, 1), issueWorkDate: latest }],
+      [1, { productionDate: addDays(later, 1), issueWorkDate: later, undetermined: false }],
+      [2, { productionDate: addDays(latest, 1), issueWorkDate: latest, undetermined: false }],
     ]);
     renderStep({ issueDates });
 
@@ -114,10 +114,11 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     const effects = within(
       screen.getByRole('region', { name: messages.screenPatterns.effectList.title(t.task) }),
     );
-    expect(
-      effects.getByText(new RegExp(pw.materials(pw.dates(later.slice(5), 1)))),
-    ).toBeInTheDocument();
-    expect(effects.getByText(new RegExp(pw.picking))).toBeInTheDocument();
+    /* G2 — 두 문장이 마침표 없이 붙지 않는다. */
+    expect(effects.getByText(pw.materialsLine(pw.dates(later.slice(5), 1)))).toHaveTextContent(
+      /외 1일\. 생산 창고별로 나눕니다\./,
+    );
+    expect(effects.getByText(pw.pickingLine)).toBeInTheDocument();
     expect(effects.queryByText(t.effects.materials)).not.toBeInTheDocument();
   });
 
@@ -125,8 +126,8 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     const past = addDays(plantToday(), -1);
     renderStep({
       issueDates: new Map([
-        [1, { productionDate: plantToday(), issueWorkDate: past }],
-        [2, { productionDate: plantToday(), issueWorkDate: past }],
+        [1, { productionDate: plantToday(), issueWorkDate: past, undetermined: false }],
+        [2, { productionDate: plantToday(), issueWorkDate: past, undetermined: false }],
       ]),
     });
 
@@ -163,5 +164,28 @@ describe('배포 확인 단계 — 생산 창고 공장', () => {
     expect(lines).toEqual([
       pw.unsourced('SYN-WO-1', 1, pw.unsourcedItem('SYN-IT-1', '합성 도료', '20', 'KG')),
     ]);
+  });
+
+  it('계획 시작일이 없는 W/O 는 오늘로 보고 바로 배포한다(빈 문구를 내지 않는다)', () => {
+    renderStep({
+      issueDates: new Map([
+        [1, { productionDate: null, issueWorkDate: plantToday(), undetermined: false }],
+        [2, { productionDate: null, issueWorkDate: plantToday(), undetermined: false }],
+      ]),
+    });
+
+    expect(screen.getByText(pw.materialsNow(plantToday().slice(5)))).toBeInTheDocument();
+  });
+
+  it('근무일 정책을 못 읽으면 출고 작업일을 「배포 때 정함」으로 두고 날짜를 지어내지 않는다', () => {
+    renderStep({
+      issueDates: new Map([
+        [1, { productionDate: '2026-11-23', issueWorkDate: null, undetermined: true }],
+        [2, { productionDate: '2026-11-24', issueWorkDate: null, undetermined: true }],
+      ]),
+    });
+
+    expect(screen.getAllByText(pw.decidedAtRelease)).toHaveLength(2);
+    expect(screen.getByText(pw.materialsUndetermined)).toBeInTheDocument();
   });
 });

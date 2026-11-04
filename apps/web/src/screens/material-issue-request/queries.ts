@@ -60,6 +60,40 @@ export const useWorkOrderDetail = (
   });
 };
 
+/**
+ * 생산 창고의 품목별 남은 수량(`freeQty` = 가용 − 예정, 계약 §1 planned-stock). 열쇠는 `창고:품목`.
+ * 공장 번호는 W/O 응답에 없어 첫 생산 창고의 공장으로 묻는다(생산 창고는 모두 W/O 공장 창고다).
+ */
+export const usePlannedStockFree = (
+  warehouseIds: readonly number[],
+): UseQueryResult<Map<string, number>> => {
+  const { client } = useApiClient();
+  const first = warehouseIds[0] ?? null;
+
+  return useQuery({
+    queryKey: ['material-issue-request', 'planned-stock', ...warehouseIds] as const,
+    enabled: first !== null,
+    retry: false,
+    queryFn: async () => {
+      const { warehouse } = await runRequest(() =>
+        client.GET('/mdm/warehouses/{warehouseId}', {
+          params: { path: { warehouseId: first ?? 0 } },
+        }),
+      );
+      const stock = await runRequest(() =>
+        client.GET('/logistics/material-issue-requests/planned-stock', {
+          params: { query: { plantId: warehouse.plantId } },
+        }),
+      );
+      return new Map(
+        stock.items
+          .filter((row) => warehouseIds.includes(row.sourceWarehouseId))
+          .map((row) => [`${String(row.sourceWarehouseId)}:${String(row.itemId)}`, row.freeQty]),
+      );
+    },
+  });
+};
+
 /** 채워 열 품목의 기본 단위 — W-02-11 「보충 요청」은 품목 번호만 준다. */
 export const useItemBaseUom = (itemId: number | null): UseQueryResult<number | null> => {
   const { client } = useApiClient();

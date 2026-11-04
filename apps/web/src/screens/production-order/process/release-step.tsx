@@ -93,6 +93,8 @@ export const unsourcedNotices = (attempts: readonly ReleaseAttempt[]): string[] 
 export interface IssueDates {
   productionDate: string | null;
   issueWorkDate: string | null;
+  /** 공장 근무일 정책을 못 읽어(권한 · 오류) 출고 작업일을 미리 셀 수 없다 — 「배포 때 정함」. */
+  undetermined: boolean;
 }
 
 /**
@@ -100,7 +102,9 @@ export interface IssueDates {
  * `undefined` — 배포 단계가 지금 그대로다.
  *
  * 생산 창고 공장 판정은 W/O 상세의 `productionWarehouseMode`(공장 기준, 계약 §2)로 한다.
- * 생산일은 W/O 계획 시작의 공장 날짜, 근무일은 공장의 `WEEKLY_WORKING_DAYS`(없으면 주 5일).
+ * 생산일은 W/O 계획 시작의 공장 날짜, 근무일은 공장의 `WEEKLY_WORKING_DAYS`(행이 없으면 주 5일).
+ * 계획 시작이 없으면 서버처럼 오늘로 보고 바로 배포한다. 정책 조회가 막히면(권한 · 오류 · 받는 중) 주 5일로
+ * 지어내지 않고 「배포 때 정함」으로 둔다 — 주 6일 공장에서 틀린 날짜를 보이지 않게(G2).
  */
 export const useReleaseIssueDates = (
   workOrders: readonly OrderWorkOrder[],
@@ -142,14 +146,20 @@ export const useReleaseIssueDates = (
   if (!usesProductionWarehouses) return undefined;
 
   const today = plantToday();
+  const policyKnown = policies.isSuccess;
   const days = toWorkingDays(currentPolicy(policies.data ?? [], plantId ?? 0, today)?.valueNumeric);
   const map = new Map<number, IssueDates>();
   workOrders.forEach((workOrder, index) => {
     const start = details[index]?.data?.plannedStartAt;
     const productionDate = start === undefined ? null : (toPlantDateTimeParts(start)?.date ?? null);
+    if (productionDate === null) {
+      map.set(workOrder.workOrderId, { productionDate, issueWorkDate: today, undetermined: false });
+      return;
+    }
     map.set(workOrder.workOrderId, {
       productionDate,
-      issueWorkDate: productionDate === null ? null : previousWorkingDay(productionDate, days).date,
+      issueWorkDate: policyKnown ? previousWorkingDay(productionDate, days).date : null,
+      undetermined: !policyKnown,
     });
   });
   return map;
@@ -253,7 +263,9 @@ export const ReleaseStep = ({
             header: pw.issueWorkDate,
             render: (row) => (
               <span className="nowrap-cell">
-                {monthDay(issueDates.get(row.workOrder.workOrderId)?.issueWorkDate)}
+                {issueDates.get(row.workOrder.workOrderId)?.undetermined === true
+                  ? pw.decidedAtRelease
+                  : monthDay(issueDates.get(row.workOrder.workOrderId)?.issueWorkDate)}
               </span>
             ),
           },
@@ -267,6 +279,12 @@ export const ReleaseStep = ({
       return [
         { key: 'materials', label: t.effects.materials },
         { key: 'picking', label: t.effects.picking },
+      ];
+    }
+    if (lines.some((line) => issueDates.get(line.workOrder.workOrderId)?.undetermined === true)) {
+      return [
+        { key: 'materials', label: pw.materialsUndetermined },
+        { key: 'picking', label: pw.pickingLine },
       ];
     }
     const dates = [
@@ -288,9 +306,11 @@ export const ReleaseStep = ({
     return [
       {
         key: 'materials',
-        label: `${pw.materials(pw.dates(monthDay(upcoming[0] ?? first), Math.max(0, upcoming.length - 1)))} ${pw.materialsNote}`,
+        label: pw.materialsLine(
+          pw.dates(monthDay(upcoming[0] ?? first), Math.max(0, upcoming.length - 1)),
+        ),
       },
-      { key: 'picking', label: `${pw.picking} ${pw.pickingNote}` },
+      { key: 'picking', label: pw.pickingLine },
     ];
   })();
   const hasBlocks = failures.some((failure) => failure.links.length > 0);

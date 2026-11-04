@@ -157,6 +157,18 @@ describe('W-02-11 이력 문장', () => {
       '미출고분 닫음: W/O 취소',
     );
     expect(historyText(entry('RELEASED'))).toBe('배포');
+    /* 서버 S9 — 수량 변경에 부족 변화가 함께 오면 그것도 보인다. */
+    expect(
+      historyText(
+        entry('QTY_CHANGED', {
+          itemCode: 'SYN-IT-1',
+          before: 60,
+          after: 80,
+          shortageBefore: 0,
+          shortageAfter: 20,
+        }),
+      ),
+    ).toBe('SYN-IT-1 요청 수량 변경 60 → 80, 부족 0 → 20');
     expect(
       historyText(entry('PLANNED_OVERRIDE', { reason: 'SYN_URGENT' }), (code) =>
         code === 'SYN_URGENT' ? '합성 긴급 대응' : code,

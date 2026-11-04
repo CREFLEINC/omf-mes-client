@@ -480,10 +480,15 @@ export const erpWorkOrderFlow = {
         issueWorkDate: '출고 작업일',
         dates: (first: string, more: number): string =>
           more > 0 ? `${first} 외 ${String(more)}일` : first,
-        materials: (dates: string): string => `출고 요청 대기, 출고 작업일 ${dates}`,
-        materialsNote: '생산 창고별로 나눕니다. 장 수는 배포 결과에서 보입니다.',
-        picking: '피킹 지시와 인계 작업 알림은 출고 작업일 00:00 에',
-        pickingNote: '재고가 모자라면 배포는 되고 부족분이 출고 요청 현황에 보입니다.',
+        /** 효과 한 줄 — 문장마다 마침표로 끝난다(두 문장을 이어 붙이지 않는다). */
+        materialsLine: (dates: string): string =>
+          `출고 요청 대기, 출고 작업일 ${dates}. 생산 창고별로 나눕니다. 장 수는 배포 결과에서 보입니다.`,
+        /** 근무일 정책을 못 읽으면 틀린 날짜를 보이지 않는다(G2 11). */
+        decidedAtRelease: '배포 때 정함',
+        materialsUndetermined:
+          '출고 요청 대기, 출고 작업일은 배포 때 정합니다. 생산 창고별로 나눕니다. 장 수는 배포 결과에서 보입니다.',
+        pickingLine:
+          '피킹 지시와 인계 작업 알림은 출고 작업일 00:00 에 나갑니다. 재고가 모자라면 배포는 되고 부족분이 출고 요청 현황에 보입니다.',
         materialsNow: (date: string): string => `출고 요청 바로 출고 (출고 작업일 ${date} 지남)`,
         pickingNow: '피킹 지시와 인계 작업 알림(바로)',
         blockedTitle: '배포하지 못했습니다. 출고 요청에 필요한 기준정보가 빠졌습니다',

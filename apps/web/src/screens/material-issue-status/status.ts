@@ -6,6 +6,8 @@ import type {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
+
 const t = messages.materialIssueStatus;
 
 export const DISPLAY_STATUSES: readonly MaterialIssueDisplayStatus[] = [
@@ -101,6 +103,12 @@ export const formatDay = (iso: string | null | undefined): string => {
   return `${iso.slice(5)}(${messages.plantWorkingDays.weekdays[day] ?? ''})`;
 };
 
+/** `MM-DD HH:mm`(공장 시각) — 이력 시각은 UTC 로 올 수 있다(G2 3). */
+export const plantMinute = (value: string): string => {
+  const parts = toPlantDateTimeParts(value);
+  return parts === null ? value : `${parts.date.slice(5)} ${parts.time}`;
+};
+
 /** 이력 한 줄의 문장 — 서버는 사건 코드와 값만 준다(계약 §1 history). 날짜 값은 `MM-DD(요일)` 로. */
 export const historyText = (
   entry: MaterialIssueRequestHistoryEntry,
@@ -125,7 +133,15 @@ export const historyText = (
     case 'DESTINATION_CHANGED':
       return e.DESTINATION_CHANGED(text(d.before), text(d.after));
     case 'QTY_CHANGED':
-      return e.QTY_CHANGED(d.itemCode ?? '', text(d.before), text(d.after));
+      return d.shortageBefore === undefined || d.shortageAfter === undefined
+        ? e.QTY_CHANGED(d.itemCode ?? '', text(d.before), text(d.after))
+        : e.QTY_CHANGED_SHORTAGE(
+            d.itemCode ?? '',
+            text(d.before),
+            text(d.after),
+            String(d.shortageBefore),
+            String(d.shortageAfter),
+          );
     case 'CANCELLED':
       return e.CANCELLED(d.reason ?? '');
     case 'CLOSED':

@@ -61,6 +61,18 @@ const created = (count: number) => {
   return jsonResponse({ materialIssueRequest: requests[0], lines: [], requests }, { status: 201 });
 };
 
+/** 품목별 충돌을 직접 준다(G2 6 · 7 · 14). */
+const conflictWith = (details: Record<string, unknown>[]) =>
+  jsonResponse(
+    {
+      errors: [
+        { scope: 'screen', code: 'PLANNED_STOCK_CONFLICT', message: '예정 재고를 넘습니다' },
+      ],
+      plannedStockConflicts: details,
+    },
+    { status: 409 },
+  );
+
 /** 서버 S8e `PlannedStockConflictResponse` — 품목별 충돌은 최상위 `plannedStockConflicts`. */
 const conflict = (overridable: boolean) =>
   jsonResponse(
@@ -117,6 +129,48 @@ const setup = (
     get('/mdm/items/7401', {
       item: { ...itemFixtures[0], isActive: true },
       editability: { editableFields: [], readOnlyFields: [] },
+    }),
+    /* 품목 목록 첫 쪽에 없는 품목 — 경고 창이 상세로 코드 · 이름을 푼다(G2 6). */
+    get('/mdm/items/7409', {
+      item: {
+        itemId: 7409,
+        itemCode: 'SAMPLE-ITEM-09',
+        itemName: '합성 품목 자',
+        baseUomId: 7501,
+        isActive: true,
+      },
+      editability: { editableFields: [], readOnlyFields: [] },
+    }),
+    get('/mdm/warehouses/7211', {
+      warehouse: { ...warehouseFixtures[0], warehouseId: 7211, plantId: 7000 },
+      editability: { editableFields: [], readOnlyFields: [] },
+    }),
+    /* 남은 수량(G2 9) — 창고 A 50, 창고 B 30. */
+    get('/logistics/material-issue-requests/planned-stock', {
+      items: [
+        {
+          sourceWarehouseId: 7211,
+          itemId: 7401,
+          itemCode: 'SAMPLE-ITEM-01',
+          itemName: '합성 품목 가',
+          availableQty: 100,
+          plannedQty: 50,
+          freeQty: 50,
+          shortageQty: 0,
+          requests: [],
+        },
+        {
+          sourceWarehouseId: 7212,
+          itemId: 7401,
+          itemCode: 'SAMPLE-ITEM-01',
+          itemName: '합성 품목 가',
+          availableQty: 30,
+          plannedQty: 0,
+          freeQty: 30,
+          shortageQty: 0,
+          requests: [],
+        },
+      ],
     }),
     get('/mdm/uoms', { items: uomFixtures, page: pageOf(uomFixtures) }),
     get('/mdm/code-values', {
@@ -196,8 +250,10 @@ describe('W-02-10 생산 창고 공장', () => {
     await user.click(screen.getByRole('button', { name: t.actions.publish }));
 
     expect(await screen.findByText(t.result.splitTitle(2))).toBeInTheDocument();
-    expect(screen.getByText('합성 생산창고 A')).toBeInTheDocument();
-    expect(screen.getByText('합성 생산창고 B')).toBeInTheDocument();
+    /* 결과 목록 안에서 찾는다 — 품목 표의 출발 생산 창고 열에도 같은 이름이 선다. */
+    const result = within(document.querySelector('.material-issue-request-created') as HTMLElement);
+    expect(result.getByText('합성 생산창고 A')).toBeInTheDocument();
+    expect(result.getByText('합성 생산창고 B')).toBeInTheDocument();
     expect(screen.getAllByText(t.status.WAITING ?? '')).toHaveLength(2);
   });
 
@@ -272,5 +328,136 @@ describe('W-02-10 생산 창고 공장', () => {
     expect(screen.queryByLabelText(t.formFields.warehouse)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.publish })).toBeDisabled();
     expect(posts).toHaveLength(0);
+  });
+
+  it('US4-7 경고 창의 품목은 번호가 아니라 코드 · 이름이다(목록에 없으면 상세로 푼다)', async () => {
+    const { user } = setup((body) =>
+      body.acceptPlannedOverride === true
+        ? created(1)
+        : conflictWith([
+            {
+              itemId: 7409,
+              sourceWarehouseId: 7211,
+              requestedQty: 10,
+              freeQty: 0,
+              takeFromPlannedQty: 10,
+              overridable: true,
+              affectedRequests: [],
+            },
+          ]),
+    );
+    await readyToPublish(user);
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    const dialog = within(await screen.findByRole('dialog', { name: t.override.title }));
+    expect(await dialog.findByText('SAMPLE-ITEM-09 합성 품목 자')).toBeInTheDocument();
+    expect(dialog.queryByText('7409')).not.toBeInTheDocument();
+  });
+
+  it('US4-7 가져갈 예정분이 없으면(가져갈 수량 0, 영향받는 요청 없음) 「남은 수량보다 많습니다」', async () => {
+    const { user } = setup(() =>
+      conflictWith([
+        {
+          itemId: 7401,
+          sourceWarehouseId: 7211,
+          requestedQty: 80,
+          freeQty: 50,
+          takeFromPlannedQty: 0,
+          overridable: true,
+          affectedRequests: [],
+        },
+      ]),
+    );
+    await readyToPublish(user);
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    const dialog = within(await screen.findByRole('dialog', { name: t.override.shortTitle }));
+    expect(dialog.getByText(t.override.shortBody)).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: t.override.submit })).toBeInTheDocument();
+  });
+
+  it('US2-9 재고 있는 생산 창고가 없는 품목이 있으면 「그래도 요청」을 열지 않고, 그 줄을 지우면 다시 발행한다', async () => {
+    const { user, posts } = setup((body) =>
+      (body.lines as { itemId: number }[]).some((line) => line.itemId === 7403)
+        ? conflictWith([
+            {
+              itemId: 7403,
+              requestedQty: 10,
+              freeQty: 0,
+              takeFromPlannedQty: 0,
+              overridable: false,
+              noStockedWarehouse: true,
+            },
+            {
+              itemId: 7401,
+              sourceWarehouseId: 7211,
+              requestedQty: 80,
+              freeQty: 50,
+              takeFromPlannedQty: 30,
+              overridable: true,
+              affectedRequests: [
+                {
+                  issueRequestNo: 'SAMPLE-MIR-0040',
+                  workOrderNo: 'SAMPLE-WO-0040',
+                  issueWorkDate: '2026-11-11',
+                },
+              ],
+            },
+          ])
+        : created(1),
+    );
+    await readyToPublish(user);
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    const dialog = within(await screen.findByRole('dialog', { name: t.override.noStockedTitle }));
+    expect(dialog.getByText(t.override.noStockedRow)).toBeInTheDocument();
+    expect(dialog.getByText(t.override.noStockedRemoveBody)).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: t.override.submit })).not.toBeInTheDocument();
+
+    await user.click(dialog.getByRole('button', { name: t.override.fix }));
+    /* 셋째 줄(SAMPLE-ITEM-03)이 재고 없는 품목이다 — 지우고 다시 발행한다. */
+    await user.click(screen.getByRole('button', { name: t.actions.removeLine(3) }));
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect((posts[1]?.lines as { itemId: number }[]).map((line) => line.itemId)).not.toContain(
+      7402,
+    );
+    expect(await screen.findByText(t.result.splitTitle(1))).toBeInTheDocument();
+  });
+
+  it('US4-7 품목 표에 출발 생산 창고 · 남은 수량을 보이고 넘으면 「+N」(자동은 남은 수량이 큰 창고)', async () => {
+    const { user } = setup(() => created(1));
+    await readyToPublish(user);
+
+    const table = within(screen.getByRole('table'));
+    expect(
+      table.getByRole('columnheader', { name: t.lineTable.sourceWarehouse }),
+    ).toBeInTheDocument();
+    expect(await table.findByText('합성 생산창고 A')).toBeInTheDocument();
+    expect(table.getByText(t.lineTable.overRemaining('30'))).toBeInTheDocument();
+  });
+
+  it('US2-6 생산 창고 공장은 사용자가 고르지 않은 입고지를 보내지 않는다(서버가 라인 생산 현장으로)', async () => {
+    const { user, posts } = setup(() => created(1));
+    await readyToPublish(user);
+
+    await user.click(screen.getByRole('button', { name: t.actions.publish }));
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).not.toHaveProperty('destinationLocationId');
+  });
+
+  it('US4-6 보충 요청으로 연 W/O 의 BOM 을 불러 BOM 안 자재에 「BOM 밖」을 붙이지 않는다', async () => {
+    setup(
+      () => created(1),
+      `/production/material-issue-requests?wo=${String(WORK_ORDER.workOrderId)}&item=7401&qty=20&reason=SAMPLE_MIR_R_B`,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toHaveValue('20'),
+    );
+    await waitFor(() => expect(screen.queryByText(t.warnings.outsideBom)).not.toBeInTheDocument());
+    expect(screen.queryByText(t.warnings.outsideBomTitle)).not.toBeInTheDocument();
   });
 });

@@ -798,7 +798,8 @@ export interface MaterialIssueRequestLineForward {
   issuedQty: number;
   pickedQty?: number;
   outstandingQty?: number;
-  shortageQty?: number | null;
+  /** 저장 부족(계약은 number). */
+  shortageQty?: number;
   /** 동적 부족 — 줄 부족 표시는 `shortageQty + dynamicShortageQty`. */
   dynamicShortageQty?: number;
 }
@@ -874,6 +875,9 @@ export interface MaterialIssueRequestHistoryEntry {
     /** 취소 사유 · 닫힘 사유(`WO_CANCELLED` · `WO_CLOSED`) · 요청 사유 코드(`PLANNED_OVERRIDE`). */
     reason?: string | null;
     errorText?: string;
+    /** `QTY_CHANGED` — 부족(상한에 걸려 줄인 양)의 전 · 뒤 값(서버 S9). */
+    shortageBefore?: number;
+    shortageAfter?: number;
   };
 }
 
@@ -911,7 +915,7 @@ export interface UnsourcedShortageRow {
   uomCode: string;
   resolvedRequestId?: number | null;
   resolvedRequestNo?: string | null;
-  /** 계약 밖 선택 칸 — 생산일(시안 「W/O · 생산일」). */
+  /** 생산일(서버 S8e `UnsourcedShortage.productionDate`, 없으면 null). */
   productionDate?: string | null;
 }
 

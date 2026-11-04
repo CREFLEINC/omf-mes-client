@@ -45,6 +45,11 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
     requestedQtyLabel: (rowIndex: number) => `Số lượng yêu cầu dòng ${String(rowIndex)}`,
     uom: 'Đơn vị',
     uomLabel: (rowIndex: number) => `Đơn vị dòng ${String(rowIndex)}`,
+    sourceWarehouse: 'Kho sản xuất xuất đi',
+    remainingQty: 'Số còn lại',
+    overRemaining: (qty: string): string => `+${qty}`,
+    overRemainingLabel: (qty: string): string => `Nhiều hơn số còn lại ${qty}`,
+    noStockedWarehouse: 'Không có kho sản xuất còn tồn',
     rowActions: 'Thao tác dòng',
   },
   actions: {
@@ -148,6 +153,8 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
   override: {
     title: 'Lấy phần dự kiến xuất của W/O khác',
     body: 'Đã yêu cầu nhiều hơn số còn lại. Nếu vẫn yêu cầu, sẽ lấy phần dự kiến của các yêu cầu bên dưới và các yêu cầu đó hiển thị thiếu.',
+    shortTitle: 'Nhiều hơn số còn lại',
+    shortBody: 'Nếu yêu cầu, chỉ xuất đến số còn lại, phần còn lại ghi là thiếu.',
     blockedTitle: 'Không còn số lượng nên không yêu cầu được',
     blockedBody: 'Với lý do này chỉ yêu cầu được đến số còn lại. Chỉ ứng phó khẩn cấp hoặc bổ sung thiếu mới lấy được phần dự kiến của yêu cầu khác.',
     noStockedBody: 'Có vật tư không có kho sản xuất còn tồn nên không yêu cầu được. Hãy bổ sung kho sản xuất rồi yêu cầu.',
@@ -161,6 +168,10 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
       affected: 'Yêu cầu bị ảnh hưởng',
     },
     noStockedWarehouse: 'Không có kho sản xuất còn tồn',
+    noStockedRow: 'Không có kho sản xuất còn tồn — phải bỏ dòng này mới yêu cầu được',
+    noStockedTitle: 'Có mặt hàng không có kho sản xuất còn tồn',
+    noStockedRemoveBody:
+      'Mặt hàng không có kho sản xuất còn tồn không đưa vào yêu cầu này được. Hãy xóa dòng đó rồi yêu cầu lại. Sau khi bổ sung kho sản xuất thì cũng yêu cầu được mặt hàng đó.',
     affected: (requestNo: string, workOrderNo: string, date: string): string =>
       `${requestNo} (${workOrderNo}, ${date})`,
     fix: 'Sửa lại số lượng',
