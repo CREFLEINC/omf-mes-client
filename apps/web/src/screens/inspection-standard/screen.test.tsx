@@ -1305,10 +1305,20 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
   });
 
-  /* 다른 품목의 라우팅을 가리키면 안 된다 — 자동 승계를 넣지 않는다. */
-  it('품목을 바꾸면 라우팅 값이 비워진다', async () => {
+  /* 다른 품목의 라우팅을 가리키면 안 된다 — 바꾼 품목의 최신 라우팅으로 다시 채운다(사용자 지시 2026-11-04 · 확정 Rev 우선). */
+  it('품목을 바꾸면 그 품목의 최신 확정 라우팅으로 바뀐다', async () => {
+    const perItem: StubRoute = {
+      match: (request) => isGet(request, '/planning/routings') && new URL(request.url).searchParams.get('itemId') === '5002',
+      respond: () =>
+        jsonResponse({
+          items: [
+            { routingId: 7011, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 2, statusCode: 'DRAFT', effectiveFrom: '2026-03-01', effectiveTo: null },
+            { routingId: 7010, itemId: 5002, routingCode: 'SYN-ROUTE-02', routingVersion: 1, statusCode: 'CONFIRMED', effectiveFrom: '2026-03-01', effectiveTo: null },
+          ],
+        }),
+    };
     const { user } = renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), ...lookupRoutes()],
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), perItem, ...lookupRoutes()],
       '?plan=3002',
     );
 
@@ -1321,9 +1331,9 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await pickPlanItem(user, 'SYN-ITEM-02');
 
-    expect(screen.getByRole('combobox', { name: '라우팅' })).not.toHaveTextContent(
-      'SYN-ROUTE-01 · Rev 3',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '라우팅' })).toHaveTextContent('SYN-ROUTE-02 · Rev 1');
+    });
   });
 
   /*

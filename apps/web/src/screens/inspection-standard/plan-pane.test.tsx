@@ -182,6 +182,36 @@ describe('PlanPane — 잠금과 사유', () => {
   });
 });
 
+/* 라우팅을 고른 기준은 그 라우팅의 공정만 쓴다(사용자 결정 2026-11-04). */
+describe('PlanPane — 라우팅 공정', () => {
+  it('라우팅 공정이 하나뿐이고 지금 공정이 거기 없으면 그 공정을 넣는다', () => {
+    const { onChange } = renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), processId: '' },
+      routingProcessIds: ['9001'],
+    });
+
+    expect(onChange).toHaveBeenCalledWith({ processId: '9001' });
+  });
+
+  it('라우팅 공정이 여럿이고 지금 공정이 거기 없으면 비운다', () => {
+    const { onChange } = renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), processId: '9999' },
+      routingProcessIds: ['9001', '9002'],
+    });
+
+    expect(onChange).toHaveBeenCalledWith({ processId: '' });
+  });
+
+  it('지금 공정이 라우팅에 있으면 건드리지 않는다', () => {
+    const { onChange } = renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), processId: '9001' },
+      routingProcessIds: ['9001', '9002'],
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
 describe('PlanPane — 편집', () => {
   it('기준명을 고치면 그 값만 알린다', async () => {
     const { onChange, user } = renderPane();

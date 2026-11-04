@@ -98,6 +98,7 @@ import {
   useItemOptions,
   useProcessOptions,
   useRoutingOptions,
+  useRoutingProcessIds,
   useUomOptions,
   useVersionHistory,
   versionDetailPath,
@@ -1081,6 +1082,12 @@ export const InspectionStandardScreen = () => {
   const itemOptions = useItemOptions(activeItemId);
   const processOptions = useProcessOptions();
   const routingOptions = useRoutingOptions(activeItemId);
+  const routingProcessIds = useRoutingProcessIds(Number(activeValues?.routingId ?? '') || null);
+  /* 라우팅을 고르면 공정 선택지를 그 라우팅의 공정만으로 좁힌다(사용자 결정 2026-11-04). */
+  const processOptionsFor = (selected: string) => {
+    const options = optionsFor(processOptions, selected);
+    return routingProcessIds === null ? options : options.filter((option) => routingProcessIds.includes(option.value));
+  };
 
   /**
    * 선택 목록이 잘리거나 실패했다는 사실을 폼 위에 낸다.
@@ -1416,8 +1423,10 @@ export const InspectionStandardScreen = () => {
           banner={<SaveErrorBanner error={createWrite.error} />}
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
-          processOptions={optionsFor(processOptions, createValues.processId)}
+          processOptions={processOptionsFor(createValues.processId)}
+          routingProcessIds={routingProcessIds}
           routingOptions={optionsFor(routingOptions, createValues.routingId)}
+          latestRoutingId={routingOptions.latestRoutingId}
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
@@ -1542,8 +1551,10 @@ export const InspectionStandardScreen = () => {
               banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
-              processOptions={optionsFor(processOptions, formState.values.processId)}
+              processOptions={processOptionsFor(formState.values.processId)}
+              routingProcessIds={routingProcessIds}
               routingOptions={optionsFor(routingOptions, formState.values.routingId)}
+              latestRoutingId={routingOptions.latestRoutingId}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
               // 다른 자료가 쓰는 기준은 건수 대신 짧은 한 줄로 알린다(사용자 시안 · #208).

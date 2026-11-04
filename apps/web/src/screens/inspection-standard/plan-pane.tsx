@@ -33,6 +33,10 @@ export interface PlanPaneProps {
   itemOptions: SelectOption[];
   processOptions: SelectOption[];
   routingOptions: SelectOption[];
+  /** 고른 라우팅의 공정 번호들 — 공정이 거기 없으면 비우고, 하나뿐이면 자동으로 넣는다. null 이면 좁히지 않는다. */
+  routingProcessIds?: string[] | null;
+  /** 품목을 고르면 라우팅에 자동으로 넣을 값 — 그 품목의 최신 확정 Rev(사용자 지시 2026-11-04). 받기 전이면 null. */
+  latestRoutingId?: string | null;
   /**
    * 라우팅을 고를 수 없는 사유. null이면 고를 수 있다.
    * 계약의 라우팅 조회가 품목을 필수로 두어 「전 품목 공통 기준」에는 이을 라우팅이 없다.
@@ -72,6 +76,8 @@ export const PlanPane = ({
   itemOptions,
   processOptions,
   routingOptions,
+  latestRoutingId = null,
+  routingProcessIds = null,
   routingDisabledReason,
   codeLockReason,
   isDirty,
@@ -115,6 +121,24 @@ export const PlanPane = ({
     document.getElementById(routingId)?.focus();
     setFocusRouting(false);
   }, [focusRouting, isRoutingShown, routingId]);
+
+  /* 품목을 고르면 그 품목의 최신 라우팅을 자동으로 넣는다(사용자 지시 2026-11-04) — 라우팅 목록이 도착한 뒤 한 번. 사람이 바꿀 수 있다. */
+  const [autoRoutingFor, setAutoRoutingFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (autoRoutingFor === null || autoRoutingFor !== values.itemId || latestRoutingId === null) return;
+    setAutoRoutingFor(null);
+    if (values.routingId === '') onChange({ routingId: latestRoutingId });
+  }, [autoRoutingFor, values.itemId, values.routingId, latestRoutingId, onChange]);
+
+  /*
+   * 라우팅에 없는 공정은 둘 수 없다(사용자 결정 2026-11-04) — 고른 라우팅이 바뀌어 지금 공정이 거기 없으면,
+   * 공정이 하나뿐인 라우팅은 그 공정을 넣고 아니면 비운다(빈 칸은 PQC 면 빨간 테두리로 보인다).
+   */
+  useEffect(() => {
+    if (routingProcessIds === null || values.processId === '' && routingProcessIds.length !== 1) return;
+    if (routingProcessIds.includes(values.processId)) return;
+    onChange({ processId: routingProcessIds.length === 1 ? routingProcessIds[0]! : '' });
+  }, [routingProcessIds, values.processId, onChange]);
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
@@ -251,7 +275,10 @@ export const PlanPane = ({
             placeholder={t.values.allItems}
             onChange={(value) => {
               onChange({ itemId: value });
-              if (value !== '') setFocusRouting(true);
+              if (value !== '') {
+                setFocusRouting(true);
+                setAutoRoutingFor(value);
+              }
             }}
             invalid={fieldErrors.itemId !== undefined}
             aria-describedby={fieldErrors.itemId === undefined ? undefined : itemErrorId}
