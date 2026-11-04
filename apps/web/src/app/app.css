@@ -30599,25 +30599,47 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 검사 이력(사용자 지시 2026-10-30) — 회차 줄, 누르면 아래에 그 회차의 측정값 · 불량 유형이 펼쳐진다. */
+/* 목록 표(DS Table · compact)와 같은 모양으로 맞춘다(사용자 지시 2026-11-04) — 머리줄 바탕 · 글꼴 · 칸 여백 · 올림 · 선택 줄. */
 .parts-iqc-history {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  color: var(--on-surface);
+  background: var(--surface);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
 }
 
 .parts-iqc-history th,
 .parts-iqc-history td {
-  padding: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.parts-iqc-history thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
 }
 
 .parts-iqc-history tbody tr:not(.parts-iqc-history-detail) {
   cursor: pointer;
 }
 
+.parts-iqc-history tbody tr:not(.parts-iqc-history-detail):hover > td {
+  background: var(--surface-container-high);
+}
+
 .parts-iqc-history tbody tr.is-open > td {
-  background: var(--surface-container-low);
+  background: var(--primary-container);
 }
 
 .parts-iqc-history-detail > td {

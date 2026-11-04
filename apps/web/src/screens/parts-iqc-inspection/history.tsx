@@ -3,9 +3,11 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Fragment, useState } from 'react';
 
+import { useClientPage } from '../../patterns/client-page';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useDraftRejectionRecords, useMeasurements } from '../iqc-inspection/queries';
 import { useRoundHistory } from './queries';
@@ -33,11 +35,31 @@ const judgmentStatus = (code: string): 'success' | 'error' | 'warning' | 'idle' 
 
 /* 수입검사 목록 표처럼 열 폭 끌기 · 순서 바꾸기(사용자 지시 2026-11-04). 줄을 펼치는 표라 DS 표 대신 이 열 정의로 직접 그린다. */
 const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
-  { key: 'round', header: t.history.round, width: '80px', render: (row) => t.history.roundNo(row.inspectionRound) },
-  { key: 'inspectedAt', header: t.history.inspectedAt, width: '160px', render: (row) => formatPlantDateTime(row.inspectedAt) ?? '-' },
+  {
+    key: 'round',
+    header: t.history.round,
+    width: '80px',
+    render: (row) => t.history.roundNo(row.inspectionRound),
+  },
+  {
+    key: 'inspectedAt',
+    header: t.history.inspectedAt,
+    width: '160px',
+    render: (row) => formatPlantDateTime(row.inspectedAt) ?? '-',
+  },
   { key: 'inspector', header: t.history.inspector, render: (row) => row.inspectorName ?? '-' },
-  { key: 'inspectedQty', header: t.history.inspectedQty, width: '100px', render: (row) => row.inspectedQty },
-  { key: 'rejectedQty', header: t.history.rejectedQty, width: '100px', render: (row) => row.rejectedQty },
+  {
+    key: 'inspectedQty',
+    header: t.history.inspectedQty,
+    width: '100px',
+    render: (row) => row.inspectedQty,
+  },
+  {
+    key: 'rejectedQty',
+    header: t.history.rejectedQty,
+    width: '100px',
+    render: (row) => row.rejectedQty,
+  },
   {
     key: 'judgment',
     header: t.history.judgment,
@@ -51,7 +73,12 @@ const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
         </Chip>
       ),
   },
-  { key: 'status', header: t.history.status, width: '96px', render: (row) => t.history.statusOf[row.statusCode] ?? row.statusCode },
+  {
+    key: 'status',
+    header: t.history.status,
+    width: '96px',
+    render: (row) => t.history.statusOf[row.statusCode] ?? row.statusCode,
+  },
 ];
 
 /**
@@ -62,8 +89,12 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
   const history = useRoundHistory(inspectionRequestId);
   const [openId, setOpenId] = useState<number | null>(null);
   const ordered = useColumnOrder('omf-mes:parts-iqc:columns:history:order', HISTORY_COLUMNS);
-  const resizable = useColumnWidths('omf-mes:parts-iqc:columns:history', ordered, { fitContent: true });
+  const resizable = useColumnWidths('omf-mes:parts-iqc:columns:history', ordered, {
+    fitContent: true,
+  });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
+  /* 건수 · 쪽 표시는 목록 표 아래 줄과 같은 부품(「총 N건」 · 쪽 크기 · 쪽 넘김 · 사용자 지시 2026-11-04). */
+  const paging = useClientPage(history.data ?? []);
 
   if (history.isPending) return <p className="field-note">{t.history.loading}</p>;
   if (history.isError) return <p className="field-note">{t.history.failed}</p>;
@@ -74,55 +105,58 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
     );
 
   return (
-    <div ref={fit.ref} className="parts-iqc-grid-scroll wide-table" style={resizable.style}>
-      <table className="parts-iqc-history">
-        <thead>
-          <tr>
-            {fit.columns.map((column) => (
-              <th key={column.key} scope="col" style={{ width: column.width }}>
-                {column.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {history.data.map((row) => {
-            const open = openId === row.inspectionResultId;
-            return (
-              <Fragment key={row.inspectionResultId}>
-                <tr
-                  className={open ? 'is-open' : undefined}
-                  aria-expanded={open}
-                  tabIndex={0}
-                  onClick={() => setOpenId(open ? null : row.inspectionResultId)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
-                    event.preventDefault();
-                    setOpenId(open ? null : row.inspectionResultId);
-                  }}
-                >
-                  {fit.columns.map((column, index) => (
-                    <td key={column.key}>{column.render?.(row, index)}</td>
-                  ))}
-                </tr>
-                {open && (
-                  <tr className="parts-iqc-history-detail">
-                    <td colSpan={fit.columns.length}>
-                      <RoundDetail
-                        inspectionResultId={row.inspectionResultId}
-                        remarks={row.remarks ?? null}
-                        specs={specs}
-                        defectCodes={defectCodes}
-                      />
-                    </td>
+    <>
+      <div ref={fit.ref} className="parts-iqc-grid-scroll wide-table" style={resizable.style}>
+        <table className="parts-iqc-history">
+          <thead>
+            <tr>
+              {fit.columns.map((column) => (
+                <th key={column.key} scope="col" style={{ width: column.width }}>
+                  {column.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paging.rows.map((row) => {
+              const open = openId === row.inspectionResultId;
+              return (
+                <Fragment key={row.inspectionResultId}>
+                  <tr
+                    className={open ? 'is-open' : undefined}
+                    aria-expanded={open}
+                    tabIndex={0}
+                    onClick={() => setOpenId(open ? null : row.inspectionResultId)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return;
+                      event.preventDefault();
+                      setOpenId(open ? null : row.inspectionResultId);
+                    }}
+                  >
+                    {fit.columns.map((column, index) => (
+                      <td key={column.key}>{column.render?.(row, index)}</td>
+                    ))}
                   </tr>
-                )}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  {open && (
+                    <tr className="parts-iqc-history-detail">
+                      <td colSpan={fit.columns.length}>
+                        <RoundDetail
+                          inspectionResultId={row.inspectionResultId}
+                          remarks={row.remarks ?? null}
+                          specs={specs}
+                          defectCodes={defectCodes}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <PageNav {...paging.nav} />
+    </>
   );
 };
 
