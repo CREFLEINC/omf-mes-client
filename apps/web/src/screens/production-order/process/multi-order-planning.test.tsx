@@ -231,6 +231,24 @@ const distribute = async (targets: Record<string, string> = {}) => {
   return user;
 };
 describe('복수 ERP W/O 편성 저장 연결', () => {
+  it('복수 목록과 선택 상세에서 품목코드·품목명을 구분하며 괄호 표기를 보존한다', async () => {
+    const original = fixtures.items.get(1)!;
+    fixtures.items.set(1, { ...original, itemName: '시험 품목 【 TEST-100 】' });
+    try {
+      mount();
+      const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
+      await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
+      const first = within(list).getAllByRole('button')[0]!;
+      expect(within(first).getByText('품목코드', { exact: true })).toBeVisible();
+      expect(within(first).getByText('ITEM1', { exact: true })).toBeVisible();
+      expect(within(first).getByText('품목명', { exact: true })).toBeVisible();
+      expect(within(first).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
+      const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
+      expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
+    } finally {
+      fixtures.items.set(1, original);
+    }
+  });
   it('왼쪽 ERP W/O를 선택하면 오른쪽에 해당 상세만 표시한다', async () => {
     mount();
     const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });

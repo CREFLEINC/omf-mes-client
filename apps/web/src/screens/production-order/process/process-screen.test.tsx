@@ -274,7 +274,7 @@ const serve = (state: World) => {
         item: {
           itemId: 7101,
           itemCode: 'SYN-ITEM',
-          itemName: '합성 품목',
+          itemName: '합성 품목 【 SYN-001 】',
           baseUomId: 8101,
           defaultProductionLotSize: 100,
           ...(state.itemGroupCode === undefined ? {} : { erpItemGroupCode: state.itemGroupCode }),
@@ -419,6 +419,15 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(document.body).toHaveTextContent(tp.remaining.bomMissing);
   });
 
+  it('상단 품목코드와 품목명을 분리하고 품목명 안의 표기를 유지한다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world());
+    await currentStep(tp.steps.plan);
+    const summary = document.querySelector('.erp-wo-summary')! as HTMLElement;
+    expect(within(summary).getByText(t.list.columns.itemCode, { exact: true })).toBeVisible();
+    expect(within(summary).getByText(t.list.columns.itemName, { exact: true })).toBeVisible();
+    expect(within(summary).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
+    expect(within(summary).getByText('SYN-ITEM', { exact: true })).toBeVisible();
+  });
   it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo: 'ERP-701' }));
     await currentStep(tp.steps.master);

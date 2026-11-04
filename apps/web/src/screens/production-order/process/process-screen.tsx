@@ -806,9 +806,13 @@ export const ProcessWorkspace = ({
             <dt>{tp.orderNumber}</dt>
             <dd>{order.productionOrderNo}</dd>
           </div>
-          <div className="is-key">
-            <dt>{tp.summary.item}</dt>
-            <dd>{item === undefined ? '' : named(item.itemName, item.itemCode)}</dd>
+          <div className="is-item-code">
+            <dt>{t.list.columns.itemCode}</dt>
+            <dd>{item?.itemCode ?? '—'}</dd>
+          </div>
+          <div className="is-key is-item-name">
+            <dt>{t.list.columns.itemName}</dt>
+            <dd>{item?.itemName ?? '—'}</dd>
           </div>
           {item?.erpItemGroupCode != null && item.erpItemGroupCode !== '' && (
             <div>

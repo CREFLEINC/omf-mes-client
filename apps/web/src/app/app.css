@@ -32908,3 +32908,13 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-table-pagebar, .erp-wo-table-page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .erp-wo-table-pagebar { justify-content: space-between; }
 .erp-wo-table-page-actions > [role='combobox'] { width: 5rem; }
+
+.erp-wo-summary .is-item-code { min-width: 0; }
+.erp-wo-summary .is-item-name { flex: 1 1 18rem; min-width: 0; }
+.erp-wo-summary .is-item-name dd { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-master-order-list .erp-wo-item-field { display: grid; gap: 2px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-master-order-list .erp-wo-item-field-label { color: var(--on-surface-variant); font: var(--type-label-sm); }
+.erp-wo-selected-item-fields { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); margin: 0; min-width: 0; }
+.erp-wo-selected-item-fields > div { min-width: 0; }
+.erp-wo-selected-item-fields dt { color: var(--on-surface-variant); font: var(--type-label-sm); }
+.erp-wo-selected-item-fields dd { margin: var(--space-1) 0 0; white-space: normal; overflow-wrap: anywhere; }

@@ -37,6 +37,8 @@ type Editor = ReturnType<typeof useProductionPlanEditorSession>;
 interface Controller {
   order: ProductionOrderFact;
   item: string;
+  itemCode: string;
+  itemName: string;
   unit: string;
   decimalScale?: number;
   editor: Editor;
@@ -128,6 +130,8 @@ const ReadyOrderSession = ({
     publish(order.productionOrderNo, {
       order,
       item: itemLabel,
+      itemCode: item?.itemCode ?? '—',
+      itemName: item?.itemName ?? '—',
       unit,
       decimalScale,
       editor,
@@ -159,6 +163,8 @@ const ReadyOrderSession = ({
   }, [
     order,
     itemLabel,
+    item?.itemCode,
+    item?.itemName,
     unit,
     decimalScale,
     rows,
@@ -423,7 +429,14 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                     onClick={() => setMasterFocus(entry.order.productionOrderNo)}
                   >
                     <strong>{entry.order.productionOrderNo}</strong>
-                    <span>{entry.item}</span>
+                    <span className="erp-wo-item-field">
+                      <span className="erp-wo-item-field-label">품목코드</span>
+                      <span>{entry.itemCode}</span>
+                    </span>
+                    <span className="erp-wo-item-field">
+                      <span className="erp-wo-item-field-label">품목명</span>
+                      <span>{entry.itemName}</span>
+                    </span>
                     <span>
                       {entry.order.orderQty} {entry.unit} ·{' '}
                       {entry.ready ? '기준 확인 완료' : '기준 확인 필요'}
@@ -442,7 +455,16 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   >
                     <div className="erp-wo-master-selected-heading">
                       <strong>{entry.order.productionOrderNo}</strong>
-                      <span>{entry.item}</span>
+                      <dl className="erp-wo-selected-item-fields">
+                        <div>
+                          <dt>품목코드</dt>
+                          <dd>{entry.itemCode}</dd>
+                        </div>
+                        <div>
+                          <dt>품목명</dt>
+                          <dd>{entry.itemName}</dd>
+                        </div>
+                      </dl>
                     </div>
                     <MasterDetails
                       bomId={entry.bomId}
