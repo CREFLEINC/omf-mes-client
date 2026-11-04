@@ -92,20 +92,29 @@ export interface ReinstatementStubOptions {
   postResponse?: () => Response;
   /** 대상 창고(202)의 위치 목록. 기본은 고를 수 있는 둘과 고를 수 없는 둘. */
   locations?: readonly Record<string, unknown>[];
+  /** 처분 유형 — 기본 정상. 특채(#207)도 이 화면에 온다. */
+  dispositionTypeCode?: string;
+  /** LOT 종류 — 기본 제품. 처분 유형과 따로 움직인다(제품 + 특채 · 자재 + 정상). */
+  lotTypeCode?: string;
 }
 
 export const reinstatementStub = (options: ReinstatementStubOptions = {}): StubFetch => {
   sent = [];
+  const decision = {
+    ...decisionFixture,
+    dispositionTypeCode: options.dispositionTypeCode ?? 'NORMAL',
+  };
+  const lotTypeCode = options.lotTypeCode ?? 'PRODUCT';
   const inner = createStubFetch([
     {
       match: (request) =>
         request.method === 'GET' && pathOf(request) === '/quality/disposition-decisions',
-      respond: () => jsonResponse(page([decisionFixture])),
+      respond: () => jsonResponse(page([decision])),
     },
     {
       match: (request) =>
         request.method === 'GET' && /^\/quality\/disposition-decisions\/\d+$/.test(pathOf(request)),
-      respond: () => jsonResponse(decisionFixture),
+      respond: () => jsonResponse(decision),
     },
     {
       match: (request) =>
@@ -134,7 +143,7 @@ export const reinstatementStub = (options: ReinstatementStubOptions = {}): StubF
             lotId: 6101,
             lotNo: 'LOT-SYNTH-6101',
             itemId: 8101,
-            lotTypeCode: 'PRODUCT',
+            lotTypeCode,
             plantId: 1,
             initialQty: 200,
             uomId: 7101,
@@ -156,7 +165,7 @@ export const reinstatementStub = (options: ReinstatementStubOptions = {}): StubF
               lotId: 6101,
               lotNo: 'LOT-SYNTH-6101',
               itemId: 8101,
-              lotTypeCode: 'PRODUCT',
+              lotTypeCode,
               lotStatusCode: 'DEFECTIVE',
               versionNo: 7,
               warehouseId: 101,
