@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 
 import { useApiClient } from '../../../patterns/api-context';
-import { EffectList } from '../../../patterns/process-page';
 import { runRequest } from '../../../patterns/request';
 import { Select } from '../../../patterns/select';
 import { evaluateWorkOrderReleaseDraft } from '../../work-order-release/release-draft';
@@ -147,45 +146,44 @@ export const ReleaseStep = ({
               <dt>{t.line}</dt>
               <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
             </div>
-            <div>
-              <dt>{t.columns.lotSize}</dt>
-              <dd>
-                <TextField
-                  size="sm"
-                  fullWidth
-                  inputMode="decimal"
-                  aria-label={t.lotSizeLabel(wo.workOrderNo)}
-                  value={selected.lotSizeText}
-                  error={
-                    selected.touched || revealErrors ? (selected.error ?? undefined) : undefined
-                  }
-                  onChange={(event) => onLotSizeChange(wo.workOrderId, event.target.value)}
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>{t.columns.lotCount}</dt>
-              <dd>{selected.lotCount === null ? '—' : String(selected.lotCount)}</dd>
-            </div>
           </dl>
+          <div className="erp-wo-release-lot-input" role="group" aria-label="LOT 설정">
+            <h3 className="section-title">LOT 설정</h3>
+            <TextField
+              size="sm"
+              label={t.columns.lotSize}
+              inputMode="decimal"
+              aria-label={t.lotSizeLabel(wo.workOrderNo)}
+              value={selected.lotSizeText}
+              error={selected.touched || revealErrors ? (selected.error ?? undefined) : undefined}
+              onChange={(event) => onLotSizeChange(wo.workOrderId, event.target.value)}
+            />
+            <dl className="erp-wo-release-lot-result">
+              <div>
+                <dt>{t.columns.lotCount}</dt>
+                <dd>{selected.lotCount === null ? '—' : String(selected.lotCount)}</dd>
+              </div>
+            </dl>
+          </div>
         </section>
-        <section className="pane erp-wo-release-effects">
-          <EffectList
-            task={t.task}
-            items={[
-              { key: 'status', label: t.effects.status(lines.length) },
-              {
-                key: 'lots',
-                label: lines.some((line) => line.lotCount === null)
-                  ? t.lotsPending
-                  : t.effects.lots(totalLots),
-              },
-              { key: 'materials', label: t.effects.materials },
-              { key: 'picking', label: t.effects.picking },
-              { key: 'pqc', label: t.effects.pqc },
-            ]}
-          />
-          <AlertBanner variant="info">{t.irreversible}</AlertBanner>
+        <section className="erp-wo-release-effects">
+          <AlertBanner variant="info">
+            <div className="erp-wo-release-notice">
+              <h3 className="section-title">배포 시 반영 사항</h3>
+              <ul>
+                <li>{t.effects.status(lines.length)}</li>
+                <li>
+                  {lines.some((line) => line.lotCount === null)
+                    ? t.lotsPending
+                    : t.effects.lots(totalLots)}
+                </li>
+                <li>{t.effects.materials}</li>
+                <li>{t.effects.picking}</li>
+                <li>{t.effects.pqc}</li>
+              </ul>
+              <p>{t.irreversible}</p>
+            </div>
+          </AlertBanner>
           {failures.length > 0 && (
             <AlertBanner variant="error">
               <ul className="erp-wo-release-failures">

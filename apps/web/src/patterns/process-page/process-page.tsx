@@ -152,6 +152,8 @@ export interface ProcessPageProps {
   onSelectStep: (key: string) => void;
   /** 지난 단계에서 정한 값만. 단계별 묶음과 「라벨 값」 쌍. */
   pastSummary?: PastSummaryGroup[];
+  /** 최종 확인에서는 이전 단계 요약도 본문과 함께 스크롤한다. */
+  pastSummaryInBody?: boolean;
   children: ReactNode;
   actionBar: ReactNode;
 }
@@ -167,6 +169,7 @@ export const ProcessPage = ({
   steps,
   onSelectStep,
   pastSummary,
+  pastSummaryInBody = false,
   children,
   actionBar,
 }: ProcessPageProps) => (
@@ -191,8 +194,15 @@ export const ProcessPage = ({
       <div className="process-page-summary">{summary}</div>
     </header>
     {stepNavigation ?? <ProcessStepper steps={steps} onSelect={onSelectStep} />}
-    {pastSummary !== undefined && pastSummary.length > 0 && <PastSummary groups={pastSummary} />}
-    <div className="process-page-body">{children}</div>
+    {!pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (
+      <PastSummary groups={pastSummary} />
+    )}
+    <div className="process-page-body">
+      {pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (
+        <PastSummary groups={pastSummary} />
+      )}
+      {children}
+    </div>
     {actionBar}
   </div>
 );

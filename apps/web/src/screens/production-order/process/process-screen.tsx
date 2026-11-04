@@ -91,13 +91,11 @@ const PLAN_FIELD_NAMES: Partial<Record<ProductionPlanDraftField, string>> = {
 export const ProcessWorkspace = ({
   order,
   initialStep,
-  executionScope = false,
   onDirtyChange,
   onStepChange,
 }: {
   order: ProductionOrderFact;
   initialStep?: ProcessStepKey;
-  executionScope?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
   onStepChange?: (step: ProcessStepKey) => void;
 }) => {
@@ -190,10 +188,7 @@ export const ProcessWorkspace = ({
       })(),
       totalQty: editor.rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
       confirmedQty: confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
-      // 복수 편성은 확정한 부분 계획을 실행하며, 단일 오더의 기존 전량 판정은 유지한다.
-      orderQty: executionScope
-        ? confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0)
-        : order.orderQty,
+      orderQty: order.orderQty,
     },
     stepName('assign'),
   );
@@ -287,7 +282,7 @@ export const ProcessWorkspace = ({
   }, [planDirty, distributionDirty, assignDirty, lotDirty, onDirtyChange]);
 
   /* 단계 */
-  const [step, setStep] = useState<ScreenStep | null>(initialStep ?? null);
+  const [step, setStep] = useState<ScreenStep | null>(null);
   const stepChangeRef = useRef(onStepChange);
   stepChangeRef.current = onStepChange;
   useEffect(() => {
@@ -308,8 +303,14 @@ export const ProcessWorkspace = ({
   useEffect(() => {
     if (step !== null || loading) return;
     /* 처음 한 번만 정한다(T-W-C 처음 여는 단계). 이후 이동은 사용자가 한다. */
-    setStep(alreadyReleased ? 'done' : firstOpenStep(judgments));
-  }, [alreadyReleased, judgments, loading, step]);
+    setStep(
+      alreadyReleased
+        ? 'done'
+        : initialStep && canEnter(initialStep, judgments)
+          ? initialStep
+          : firstOpenStep(judgments),
+    );
+  }, [alreadyReleased, initialStep, judgments, loading, step]);
   useEffect(() => {
     if (step === 'assign' && assignSelected === null) {
       const first = firstBlocked ?? unreleased.data?.[0];
@@ -876,6 +877,7 @@ export const ProcessWorkspace = ({
       steps={steps}
       onSelectStep={goTo}
       pastSummary={pastGroups}
+      pastSummaryInBody={step === 'release'}
       actionBar={
         <ActionBar
           remaining={

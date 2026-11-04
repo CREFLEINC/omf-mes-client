@@ -32749,3 +32749,23 @@ body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] > span:la
 body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='listbox'] { max-width: calc(100vw - var(--space-6)); }
 body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='option'] { height: auto; padding-block: var(--space-2); }
 body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+
+.erp-wo-assign-selected-target { padding: var(--space-3); background: var(--surface-container); border-radius: var(--radius-sm); }
+.erp-wo-assign-selected-target > h3 { margin: 0 0 var(--space-2); }
+.erp-wo-assign-selected-target .erp-wo-assign-summary { padding: 0; background: none; }
+.erp-wo-assignment-input-title { margin: var(--space-3) 0 0; }
+.erp-wo-release-workspace .erp-wo-release-layout { grid-template-columns: minmax(0,1fr); }
+.erp-wo-release-lot-input { display: grid; grid-template-columns: minmax(0,12rem) minmax(0,1fr); align-items: end; gap: var(--space-3); border-top: 1px solid var(--outline-variant); padding-top: var(--space-3); }
+.erp-wo-release-lot-input > h3 { grid-column: 1 / -1; margin: 0; }
+.erp-wo-release-lot-input > * { min-width: 0; }
+.erp-wo-release-lot-result { margin: 0; }
+.erp-wo-release-lot-result dt { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.erp-wo-release-lot-result dd { margin: var(--space-1) 0 0; font: var(--type-title-sm); }
+.erp-wo-release-notice > h3, .erp-wo-release-notice > p { margin: 0; }
+.erp-wo-release-notice ul { padding-left: var(--space-4); margin-block: var(--space-2); }
+.process-page:has(.erp-wo-release-workspace) .process-page-past > .process-past-group { border: 0; border-radius: 0; background: none; padding: var(--space-2) 0; }
+.process-page:has(.erp-wo-release-workspace) .process-page-past { border-bottom: 1px solid var(--outline-variant); }
+@container erp-wo-page (max-width: 36rem) { .erp-wo-release-lot-input { grid-template-columns: minmax(0,1fr); } .erp-wo-release-lot-input > :nth-child(2) { max-width: 12rem; } }
+
+.process-page-body > .process-page-past { margin-bottom: var(--space-3); }
+@container erp-wo-page (min-width: 52rem) { .process-page:has(.erp-wo-release-workspace) .process-page-past { grid-template-columns: repeat(3,minmax(0,1fr)); } }

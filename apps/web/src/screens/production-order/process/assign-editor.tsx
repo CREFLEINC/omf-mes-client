@@ -556,7 +556,8 @@ const EditorSession = ({
       <span id={`${headingId}-save-note`} className="visually-hidden">
         {t.actions.noChanges}
       </span>
-      <div className="erp-wo-assign-selected-target">
+      <div className="erp-wo-assign-selected-target" role="group" aria-label="작업지시 정보">
+        <h3 className="field-label">작업지시 정보</h3>
         <p>{title}</p>
         {summary && <p className="erp-wo-assign-summary">{summary}</p>}
       </div>
@@ -567,6 +568,7 @@ const EditorSession = ({
         {findingText !== null && <span className="assign-check-text">{findingText}</span>}
       </p>
       <SaveErrorBanner error={update.error} />
+      <h3 className="section-title erp-wo-assignment-input-title">배정 입력</h3>
       <div className="assign-form">
         <h3 className="assign-group-title">{t.groups.equipmentAndMold}</h3>
         <div className="erp-wo-assign-line-control">

@@ -215,14 +215,19 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   const originalKey = (key: string) => key.slice(key.indexOf('::') + 2);
   const dirty = combined.some((row) => row.isDirty);
   const editable = combined.some((row) => !row.confirmed);
-  const enough =
-    entries.some((entry) => entry.editor.rows.length > 0) &&
-    entries.every((entry) => entry.editor.rows.every((row) => row.confirmed));
   const confirmedOf = (entry: Controller) =>
     entry.order.confirmedPlanQty ??
     entry.editor.rows
       .filter((row) => row.confirmed)
       .reduce((sum, row) => sum + Number(row.draft.plannedQty), 0);
+  const enough =
+    allReady &&
+    entries.every(
+      (entry) =>
+        entry.editor.rows.length > 0 &&
+        entry.editor.rows.every((row) => row.confirmed) &&
+        Math.abs(confirmedOf(entry) - entry.order.orderQty) < 0.0000001,
+    );
   const roundQty = (value: number) => Number(value.toFixed(6));
   const draftOf = (entry: Controller) =>
     roundQty(
@@ -251,7 +256,11 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   );
   const fullyAllocated =
     validTargets &&
-    entries.every((entry) => Math.abs(draftOf(entry) - targetOf(entry)) < 0.0000001);
+    entries.every(
+      (entry) =>
+        Math.abs(draftOf(entry) - targetOf(entry)) < 0.0000001 &&
+        Math.abs(confirmedOf(entry) + draftOf(entry) - entry.order.orderQty) < 0.0000001,
+    );
   const save = async (doConfirm: boolean) => {
     if (running.current || !allReady) return;
     if (doConfirm && distributionDirty) {
@@ -259,7 +268,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       return;
     }
     if (doConfirm && !fullyAllocated) {
-      setResults(['이번 계획 수량과 미확정 편성 수량을 ERP W/O별로 맞춘 뒤 확정하세요.']);
+      setResults(['ERP W/O 전량을 편성한 뒤 확정하세요.']);
       return;
     }
     const invalid = entries.flatMap((entry) =>
@@ -341,6 +350,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   };
   const moveStage = (value: string) => {
     if (busy || value === stage) return;
+    if ((value === 'assign' || value === 'release') && (!enough || dirty || distributionDirty))
+      return;
     if (executionDirty || (stage === 'plan' && distributionDirty))
       setPendingAction(() => () => {
         setExecutionDirty(false);
@@ -652,7 +663,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 key={`${focus}-${stage}`}
                 order={target.order}
                 initialStep={stage}
-                executionScope
                 onDirtyChange={setExecutionDirty}
                 onStepChange={(value) => {
                   setStage(value);
@@ -708,7 +718,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                       : !validTargets
                         ? '이번 계획 수량은 계획 가능한 수량과 단위의 소수 자릿수에 맞게 입력하세요.'
                         : !fullyAllocated && editable
-                          ? '이번 계획 수량과 ERP W/O별 편성 수량을 맞추세요.'
+                          ? 'ERP W/O별 미계획 수량을 모두 편성하세요.'
                           : dirty
                             ? '미저장 계획이 있습니다.'
                             : !editable && !enough

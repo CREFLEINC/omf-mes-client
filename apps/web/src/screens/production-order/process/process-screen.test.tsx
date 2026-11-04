@@ -278,7 +278,7 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const renderAt = (route: string, state: World, executionScope = false) => {
+const renderAt = (route: string, state: World, startAtAssign = false) => {
   const server = serve(state);
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -294,13 +294,12 @@ const renderAt = (route: string, state: World, executionScope = false) => {
         path: `${WORKLIST}/:productionOrderNo`,
         element: (
           <>
-            {executionScope ? (
+            {startAtAssign ? (
               <ProcessWorkspace
                 order={toProductionOrderFact(
                   orderBody(state) as Parameters<typeof toProductionOrderFact>[0],
                 )}
                 initialStep="assign"
-                executionScope
               />
             ) : (
               <ProductionOrderProcessScreen />
@@ -342,7 +341,7 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
-  it('복수 편성의 부분 확정 계획은 ERP W/O 잔량과 별개로 4M에서 배포 확인으로 진행할 수 있다', async () => {
+  it('부분 확정 계획은 초기 4M 요청이 있어도 전량 미달이면 생산계획에 남는다', async () => {
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
       world({
@@ -351,8 +350,15 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
       }),
       true,
     );
-    await currentStep(tp.steps.assign);
-    expect(screen.getByRole('tab', { name: tp.steps.release })).toBeEnabled();
+    await currentStep(tp.steps.plan);
+    expect(screen.getByRole('tab', { name: tp.steps.assign })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('tab', { name: tp.steps.release })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {

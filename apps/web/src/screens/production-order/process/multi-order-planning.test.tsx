@@ -70,8 +70,14 @@ vi.mock('./process-screen', () => ({
   ProcessWorkspace: ({ initialStep }: { initialStep: string }) => <p>실행 단계 {initialStep}</p>,
 }));
 
-const mount = () => {
-  const plans: Record<string, unknown>[] = [];
+const mount = (initialPlans: Record<string, unknown>[] = []) => {
+  const plans: Record<string, unknown>[] = [...initialPlans];
+  for (const order of Object.values(fixtures.orders))
+    order.confirmedPlanQty = plans
+      .filter(
+        (p) => p.productionOrderId === order.productionOrderId && p.statusCode === 'CONFIRMED',
+      )
+      .reduce((sum, p) => sum + Number(p.plannedQty), 0);
   const writes: { method: string; owner?: number; match: string | null }[] = [];
   const state = { rejectB: false };
   const fetch = async (request: Request) => {
@@ -128,6 +134,15 @@ const mount = () => {
     if (match[2]) {
       row.confirmedAt = '2026-11-03T00:00:00Z';
       row.statusCode = 'CONFIRMED';
+      const order = Object.values(fixtures.orders).find(
+        (o) => o.productionOrderId === row.productionOrderId,
+      );
+      if (order)
+        order.confirmedPlanQty = plans
+          .filter(
+            (p) => p.productionOrderId === row.productionOrderId && p.statusCode === 'CONFIRMED',
+          )
+          .reduce((sum, p) => sum + Number(p.plannedQty), 0);
     } else Object.assign(row, await request.json());
     return jsonResponse(row);
   };
@@ -249,6 +264,15 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await waitFor(() => expect(server.plans).toHaveLength(1));
     expect(server.plans[0]?.productionOrderId).toBe(101);
     expect(server.plans[0]?.plannedQty).toBe(60);
+    expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: '3. 4M 배정' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('tab', { name: '4. 배포 확인' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
   it('ERP W/O 선택은 계획 추가 때만 표시하고 새 계획의 편집 대상과 연결한다', async () => {
     mount();
@@ -272,6 +296,49 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(screen.getByRole('button', { name: '전개 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
   });
+  it.each([
+    [60, 80],
+    [120, 0],
+  ])(
+    '기존 확정 계획만 있어도 ERP W/O 전량이 아니거나 빈 대상이 있으면 진입을 막는다 (%s/%s)',
+    async (a, b) => {
+      mount(
+        [
+          [101, a],
+          [102, b],
+        ]
+          .filter(([, qty]) => Number(qty) > 0)
+          .map(([owner, qty], index) => ({
+            productionPlanId: 501 + index,
+            productionOrderId: owner,
+            planNo: `PP-${501 + index}`,
+            planDate: '2026-11-04',
+            plannedQty: qty,
+            uomId: 1,
+            bomId: 11,
+            routingId: 21,
+            plannedLineId: 31,
+            statusCode: 'CONFIRMED',
+            confirmedAt: '2026-11-04T00:00:00Z',
+            versionNo: 1,
+          })),
+      );
+      const user = userEvent.setup();
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled(),
+      );
+      await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
+      expect(screen.getByRole('tab', { name: '3. 4M 배정' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(screen.getByRole('tab', { name: '4. 배포 확인' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
+    },
+  );
   it('적용하지 않은 분배 조건이 있으면 단계 이동 전에 버릴지 확인한다', async () => {
     mount();
     const user = userEvent.setup();
