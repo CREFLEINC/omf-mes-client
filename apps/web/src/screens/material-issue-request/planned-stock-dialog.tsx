@@ -9,6 +9,8 @@ export interface PlannedStockDialogProps {
   conflict: PlannedStockConflict;
   /** 품목 번호 → 「코드 이름」. 응답은 번호만 준다. */
   itemLabel: (itemId: number) => string;
+  /** 생산 창고 번호 → 이름. 응답은 번호만 준다(W/O 의 라인 부서 생산 창고에서 푼다). */
+  warehouseLabel: (warehouseId: number) => string;
   isSaving: boolean;
   onFix: () => void;
   /** 「그래도 요청」 — `acceptPlannedOverride: true` 로 다시 보낸다. 막힘이면 주지 않는다. */
@@ -23,6 +25,7 @@ export interface PlannedStockDialogProps {
 export const PlannedStockDialog = ({
   conflict,
   itemLabel,
+  warehouseLabel,
   isSaving,
   onFix,
   onOverride,
@@ -74,19 +77,21 @@ export const PlannedStockDialog = ({
               <td>
                 {detail.noStockedWarehouse === true
                   ? t.override.noStockedWarehouse
-                  : (detail.sourceWarehouseName ?? t.values.empty)}
+                  : detail.sourceWarehouseId === null || detail.sourceWarehouseId === undefined
+                    ? t.values.empty
+                    : warehouseLabel(detail.sourceWarehouseId)}
               </td>
               <td>{detail.requestedQty.toLocaleString('ko-KR')}</td>
               <td>{detail.freeQty.toLocaleString('ko-KR')}</td>
               <td>{detail.takeFromPlannedQty.toLocaleString('ko-KR')}</td>
               <td>
                 {/* 늦은 출고 작업일부터 가져간다(계약 §1) — 서버가 준 차례 그대로. */}
-                {detail.affectedRequests
+                {(detail.affectedRequests ?? [])
                   .map((request) =>
                     t.override.affected(
                       request.issueRequestNo,
                       request.workOrderNo,
-                      request.issueWorkDate.slice(5),
+                      request.issueWorkDate?.slice(5) ?? t.values.empty,
                     ),
                   )
                   .join(', ') || t.values.empty}

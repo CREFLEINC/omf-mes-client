@@ -26,25 +26,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 /**
- * 오류 본문에서 예정 재고 충돌을 꺼낸다. ⚠ 계약 §1 은 `details` 가 어느 봉투에 실리는지 적지 않았다 —
- * 최상위(`{ code, details }`)와 저장소 관례 봉투(`{ errors: [{ code, details }] }`)를 모두 읽는다.
+ * 오류 본문에서 예정 재고 충돌을 꺼낸다 — 서버 S8e `PlannedStockConflictResponse`
+ * (`{ errors: [{ code: 'PLANNED_STOCK_CONFLICT' }], plannedStockConflicts: [...] }`). 그 밖의 409 는 `null`.
  */
 export const readPlannedStockConflict = (body: unknown): PlannedStockConflict | null => {
-  if (!isRecord(body)) return null;
-  const candidates: unknown[] = [body, ...(Array.isArray(body.errors) ? body.errors : [])];
-  for (const candidate of candidates) {
-    if (!isRecord(candidate) || candidate.code !== PLANNED_STOCK_CONFLICT) continue;
-    const raw = candidate.details;
-    const details = (Array.isArray(raw) ? raw : []).filter(
-      isRecord,
-    ) as unknown as PlannedStockConflictDetail[];
-    return {
-      details,
-      overridable: details.length > 0 && details.every((detail) => detail.overridable !== false),
-      noStockedWarehouse: details.some((detail) => detail.noStockedWarehouse === true),
-    };
-  }
-  return null;
+  if (!isRecord(body) || !Array.isArray(body.plannedStockConflicts)) return null;
+  const details = body.plannedStockConflicts.filter(
+    isRecord,
+  ) as unknown as PlannedStockConflictDetail[];
+  return {
+    details,
+    overridable: details.length > 0 && details.every((detail) => detail.overridable),
+    noStockedWarehouse: details.some((detail) => detail.noStockedWarehouse === true),
+  };
 };
 
 export const useMaterialIssueRequestMutation = (options: {

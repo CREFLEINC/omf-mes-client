@@ -198,17 +198,33 @@ export const existingRequestFixtures: MaterialIssueRequestResponse[] = [
 ];
 
 /**
- * 등록 응답 — 피처 003 부터 배열이다(계약 §1, D-6). 지금 방식 공장 응답이라 표시 상태 칸이 없다.
+ * 등록 응답 — 서버 S8e 부터 옛 칸(첫 요청)과 만든 요청 전부(`requests`)를 함께 싣는다. 지금 방식 공장 응답이라
+ * 표시 상태 칸이 없다.
  */
+const createdRequest = {
+  materialIssueRequestId: 7703,
+  issueRequestNo: 'SAMPLE-MIR-0003',
+  workOrderId: 7101,
+  destinationLocationId: 7301,
+  statusCode: 'SAMPLE_MIR_S_A',
+  lineCount: 1,
+} as MaterialIssueRequestCreateResultForward['materialIssueRequest'];
+
 export const createdRequestFixture: MaterialIssueRequestCreateResultForward = {
-  requests: [
+  materialIssueRequest: createdRequest,
+  lines: [
     {
+      materialIssueRequestLineId: 7901,
       materialIssueRequestId: 7703,
-      issueRequestNo: 'SAMPLE-MIR-0003',
-      workOrderId: 7101,
-      destinationLocationId: 7301,
-      statusCode: 'SAMPLE_MIR_S_A',
-      lineCount: 1,
-    } as MaterialIssueRequestCreateResultForward['requests'][number],
+      lineNo: 1,
+      itemId: 7401,
+      itemCode: 'SAMPLE-ITEM-01',
+      itemName: '합성 품목 가',
+      requestedQty: 80,
+      issuedQty: 0,
+      uomId: 7501,
+      uomCode: 'SAMPLE-UOM-EA',
+    },
   ],
+  requests: [createdRequest],
 };

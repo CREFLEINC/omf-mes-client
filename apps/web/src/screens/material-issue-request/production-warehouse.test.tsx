@@ -45,48 +45,42 @@ const pageOf = (items: readonly unknown[]) => ({
   total: items.length,
 });
 
-const created = (count: number) =>
-  jsonResponse(
-    {
-      requests: PRODUCTION_WAREHOUSES.slice(0, count).map((warehouse, index) => ({
-        materialIssueRequestId: 7710 + index,
-        issueRequestNo: `SAMPLE-MIR-001${String(index)}`,
-        workOrderId: WORK_ORDER.workOrderId,
-        destinationLocationId: 7301,
-        statusCode: 'WAITING',
-        displayStatus: 'WAITING',
-        sourceWarehouseId: warehouse.warehouseId,
-        sourceWarehouseName: warehouse.warehouseName,
-        lineCount: 1,
-      })),
-    },
-    { status: 201 },
-  );
+/** 서버 S8e 등록 응답 — 옛 칸(첫 요청)과 만든 요청 전부(`requests`). */
+const created = (count: number) => {
+  const requests = PRODUCTION_WAREHOUSES.slice(0, count).map((warehouse, index) => ({
+    materialIssueRequestId: 7710 + index,
+    issueRequestNo: `SAMPLE-MIR-001${String(index)}`,
+    workOrderId: WORK_ORDER.workOrderId,
+    destinationLocationId: 7301,
+    statusCode: 'WAITING',
+    displayStatus: 'WAITING',
+    sourceWarehouseId: warehouse.warehouseId,
+    sourceWarehouseName: warehouse.warehouseName,
+    lineCount: 1,
+  }));
+  return jsonResponse({ materialIssueRequest: requests[0], lines: [], requests }, { status: 201 });
+};
 
+/** 서버 S8e `PlannedStockConflictResponse` — 품목별 충돌은 최상위 `plannedStockConflicts`. */
 const conflict = (overridable: boolean) =>
   jsonResponse(
     {
       errors: [
+        { scope: 'screen', code: 'PLANNED_STOCK_CONFLICT', message: '예정 재고를 넘습니다' },
+      ],
+      plannedStockConflicts: [
         {
-          scope: 'screen',
-          code: 'PLANNED_STOCK_CONFLICT',
-          message: '예정 재고를 넘습니다',
-          details: [
+          itemId: 7401,
+          sourceWarehouseId: 7211,
+          requestedQty: 80,
+          freeQty: 50,
+          takeFromPlannedQty: 30,
+          overridable,
+          affectedRequests: [
             {
-              itemId: 7401,
-              sourceWarehouseId: 7211,
-              sourceWarehouseName: '합성 생산창고 A',
-              requestedQty: 80,
-              freeQty: 50,
-              takeFromPlannedQty: 30,
-              overridable,
-              affectedRequests: [
-                {
-                  issueRequestNo: 'SAMPLE-MIR-0040',
-                  workOrderNo: 'SAMPLE-WO-0040',
-                  issueWorkDate: '2026-11-11',
-                },
-              ],
+              issueRequestNo: 'SAMPLE-MIR-0040',
+              workOrderNo: 'SAMPLE-WO-0040',
+              issueWorkDate: '2026-11-11',
             },
           ],
         },

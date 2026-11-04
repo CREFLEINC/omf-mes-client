@@ -764,6 +764,10 @@ export const MaterialIssueRequestScreen = () => {
                     items.entries.find((entry) => entry.value === String(itemId))?.label ??
                     String(itemId)
                   }
+                  warehouseLabel={(warehouseId) =>
+                    productionWarehouses.find((warehouse) => warehouse.warehouseId === warehouseId)
+                      ?.warehouseName ?? String(warehouseId)
+                  }
                   isSaving={create.isSaving}
                   onFix={() => setConflict(null)}
                   onOverride={() => publish(true)}

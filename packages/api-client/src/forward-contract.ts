@@ -943,22 +943,36 @@ export type MaterialIssueRequestCreateForward = Omit<
   unsourcedShortageId?: number;
 };
 
-/** 등록 응답 — 하나여도 배열(계약 §1, 차이 D-6). 줄 수는 계약 밖 선택 칸. */
-export interface MaterialIssueRequestCreateResultForward {
-  requests: MaterialIssueRequestForward[];
+/**
+ * 등록 응답(서버 S8e `MaterialIssueRequestCreated`) — 옛 칸(`materialIssueRequest` · `lines`, 첫 요청)은 기존
+ * 호환용으로 남고, 만든 요청 전부(출발 창고별)는 `requests`. 화면은 `requests` 를 읽는다(지금 방식 공장도 한 장).
+ */
+export interface MaterialIssueRequestCreateResultForward extends MaterialIssueRequestDetailForward {
+  requests?: MaterialIssueRequestForward[];
 }
 
-/** 409 `PLANNED_STOCK_CONFLICT` 의 품목별 `details`(계약 §1). */
+/** 409 `PLANNED_STOCK_CONFLICT` 의 품목별 항목 — 응답 최상위 `plannedStockConflicts`(서버 S8e). */
 export interface PlannedStockConflictDetail {
   itemId: number;
-  sourceWarehouseId?: number;
-  sourceWarehouseName?: string;
+  sourceWarehouseId?: number | null;
   requestedQty: number;
+  /** 쓸 수 있는 양(가용 − 예정, 0 미만은 0). */
   freeQty: number;
+  /** 확인하면 다른 요청의 예정에서 가져갈 양. */
   takeFromPlannedQty: number;
-  overridable?: boolean;
+  overridable: boolean;
   noStockedWarehouse?: boolean;
-  affectedRequests: { issueRequestNo: string; workOrderNo: string; issueWorkDate: string }[];
+  affectedRequests?: {
+    issueRequestNo: string;
+    workOrderNo: string;
+    issueWorkDate: string | null;
+  }[];
+}
+
+/** 409 본문(서버 S8e `PlannedStockConflictResponse`). */
+export interface PlannedStockConflictResponse {
+  errors: { scope: string; code: string; message: string }[];
+  plannedStockConflicts: PlannedStockConflictDetail[];
 }
 
 /** 라인 담당 부서의 이 공장 활성 생산 창고 한 줄(계약 §2, 코드순). */

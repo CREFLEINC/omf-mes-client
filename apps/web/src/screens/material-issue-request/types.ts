@@ -163,7 +163,8 @@ export const toCreatedRequestView = (
   data: MaterialIssueRequestCreateResultForward,
   body: Pick<MaterialIssueRequestCreate, 'acceptPlannedOverride' | 'unsourcedShortageId'>,
 ): CreatedRequestView => ({
-  requests: data.requests.map((request) => ({
+  /* 옛 단건 응답(첫 요청)도 읽는다 — `requests` 가 없으면 그 한 장. */
+  requests: (data.requests ?? [data.materialIssueRequest]).map((request) => ({
     issueRequestNo: request.issueRequestNo,
     statusLabel: statusLabelOf(request),
     sourceWarehouseName: request.sourceWarehouseName ?? null,

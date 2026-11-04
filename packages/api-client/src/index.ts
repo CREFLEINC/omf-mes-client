@@ -77,6 +77,7 @@ export type {
   MaterialIssueRequestCreateForward,
   MaterialIssueRequestCreateResultForward,
   PlannedStockConflictDetail,
+  PlannedStockConflictResponse,
   WorkOrderDetailForward,
   WorkOrderProductionWarehouse,
   MaterialIssueRequestCancelForward,
