@@ -123,6 +123,14 @@ export const MaterialIssueStatusScreen = () => {
     setSearchParams(params);
   };
 
+  /*
+   * 조회 — 조건 줄의 공장이 비어 있으면(공장 목록을 받기 전에 조건 줄을 세웠다) 지금 조회 중인 공장을 싣는다.
+   * 빼고 보내면 주소에서 공장이 빠져 첫 공장으로 넘어갔다(omf-all-around#232 1).
+   */
+  const search = (): void => {
+    go(view, { ...draft, plant: draft.plant === '' ? filters.plant : draft.plant });
+  };
+
   const select = (id: number | null): void => {
     const params = new URLSearchParams(searchParams);
     if (id === null) params.delete('id');
@@ -176,7 +184,7 @@ export const MaterialIssueStatusScreen = () => {
           value={draft.q}
           onChange={(event) => setDraft({ ...draft, q: event.target.value })}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') go(view, draft);
+            if (event.key === 'Enter') search();
           }}
         />
         <Select
@@ -185,7 +193,7 @@ export const MaterialIssueStatusScreen = () => {
           options={[{ value: '', label: t.filters.all }, ...(warehouses.data ?? [])]}
           onChange={(value) => setDraft({ ...draft, warehouse: value })}
         />
-        <Button onClick={() => go(view, draft)}>{t.filters.search}</Button>
+        <Button onClick={search}>{t.filters.search}</Button>
         <Button
           variant="outlined"
           onClick={() => go(view, { ...EMPTY_FILTERS, plant: filters.plant })}
