@@ -1436,7 +1436,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
 
 const planActionRoute = (
-  action: 'deactivate',
+  action: 'deactivate' | 'activate',
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
@@ -1509,7 +1509,7 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
 
     await user.click(await screen.findByRole('button', { name: '사용 중지' }));
 
-    expect(screen.getByText('이 검사기준을 사용 중지할까요?')).toBeInTheDocument();
+    expect(screen.getByText('검사 기준을 사용 중지하시겠습니까?')).toBeInTheDocument();
     expect(requestsTo(requests, DEACTIVATE_PATH)).toHaveLength(0);
   });
 
@@ -1522,6 +1522,33 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
 
     await screen.findByRole('button', { name: '기본 정보 수정' });
     expect(screen.queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+  });
+
+  /* 미사용 기준은 같은 자리에 「재사용」이 선다(사용자 지시 2026-11-04). 사용 중이면 없다. */
+  it('미사용 기준은 재사용 단추가 서고, 확인하면 If-Match 를 실어 다시 사용한다', async () => {
+    const inactive = { ...inspectionPlanFixtures[0]!, isActive: false };
+    const { requests, user } = renderScreen(
+      [planListRoute(), planDetailRoute(inactive), ...lookupRoutes(), planActionRoute('activate')],
+      '?plan=3001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: '재사용' }));
+    expect(screen.getByText('검사 기준을 다시 사용하시겠습니까?')).toBeInTheDocument();
+    expect(requestsTo(requests, `${PLANS_PATH}/3001:activate`)).toHaveLength(0);
+
+    await user.click(within(await dialog()).getByRole('button', { name: '재사용' }));
+    await screen.findByText(t.result.activated);
+
+    const posts = requestsTo(requests, `${PLANS_PATH}/3001:activate`);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('If-Match')).toBe('"7"');
+  });
+
+  it('사용 중인 기준에는 재사용 단추가 없다', async () => {
+    renderSelectedPlan();
+
+    await screen.findByRole('button', { name: '사용 중지' });
+    expect(screen.queryByRole('button', { name: '재사용' })).not.toBeInTheDocument();
   });
 
   /* 사용 중지에는 409가 있다(계약 실측) — 재조회하면 풀린다. */

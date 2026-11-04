@@ -488,8 +488,29 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /* 다시 사용(사용자 지시 2026-11-04) — 사용 중지와 같은 규약(If-Match). IQC · PQC 기준은 품목 · 라우팅이 따라 바뀌어 품목 자료도 다시 읽는다. */
+  const activateWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:activate', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
+    invalidateKeys: [planKeys.all, itemKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: t.result.activated });
+    },
+  });
+
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = deactivateWrite;
+  const planActionWrite = planAction === 'activate' ? activateWrite : deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
@@ -828,6 +849,7 @@ export const InspectionStandardScreen = () => {
     planWrite.reset();
     createWrite.reset();
     deactivateWrite.reset();
+    activateWrite.reset();
     setPlanAction(null);
     setFormState(null);
     setPlanFieldErrors({});
@@ -1479,6 +1501,16 @@ export const InspectionStandardScreen = () => {
               : undefined
           }
           isDeactivating={deactivateWrite.isSaving}
+          /* 미사용이면 같은 자리에 「재사용」(사용자 지시 2026-11-04). */
+          onActivate={
+            planDetail.data.inspectionPlan.isActive
+              ? undefined
+              : () => {
+                  activateWrite.reset();
+                  setPlanAction('activate');
+                }
+          }
+          isActivating={activateWrite.isSaving}
         />
 
         {renderVersionBar()}

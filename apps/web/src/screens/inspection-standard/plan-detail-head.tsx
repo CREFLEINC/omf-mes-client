@@ -17,6 +17,9 @@ export interface PlanDetailHeadProps {
   /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
   onDeactivate?: () => void;
   isDeactivating?: boolean;
+  /** 미사용 기준을 다시 켠다 — 사용 중이면 두지 않는다(사용자 지시 2026-11-04). */
+  onActivate?: () => void;
+  isActivating?: boolean;
 }
 
 /**
@@ -30,6 +33,8 @@ export const PlanDetailHead = ({
   onEdit,
   onDeactivate,
   isDeactivating = false,
+  onActivate,
+  isActivating = false,
 }: PlanDetailHeadProps) => {
   const approvedAt = formatApprovedAt(plan.approvedAt);
 
@@ -54,6 +59,11 @@ export const PlanDetailHead = ({
           {onDeactivate !== undefined && (
             <Button variant="outlined" disabled={isDeactivating} onClick={onDeactivate}>
               {messages.common.deactivate}
+            </Button>
+          )}
+          {onActivate !== undefined && (
+            <Button variant="outlined" disabled={isActivating} onClick={onActivate}>
+              {t.actions.reactivate}
             </Button>
           )}
           <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>

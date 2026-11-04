@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 const t = messages.inspectionStandard;
 
-export type PlanActionKind = 'deactivate';
+export type PlanActionKind = 'deactivate' | 'activate';
 
 export interface PlanActionDialogProps {
   open: boolean;
@@ -17,7 +17,7 @@ export interface PlanActionDialogProps {
 }
 
 /**
- * 사용 중지 확인. 승인 단추는 걷었다 — 승인이 현장 검사에 효력이 없는 기록뿐이라(사용자 지시 · #208).
+ * 사용 중지 · 다시 사용(사용자 지시 2026-11-04) 확인. 승인 단추는 걷었다 — 승인이 현장 검사에 효력이 없는 기록뿐이라(사용자 지시 · #208).
  *
  * **되돌릴 수 없다** — 물리 삭제가 없어 사용 중지가 마지막 상태다.
  * 그래서 확인을 한 단계 두고 **무엇이 일어나는지 먼저 밝힌다.**
@@ -27,6 +27,7 @@ export interface PlanActionDialogProps {
  */
 export const PlanActionDialog = ({
   open,
+  kind,
   onClose,
   onConfirm,
   isSaving,
@@ -36,7 +37,7 @@ export const PlanActionDialog = ({
     open={open}
     onClose={onClose}
     size="sm"
-    title={t.dialog.deactivateTitle}
+    title={kind === 'activate' ? t.dialog.activateTitle : t.dialog.deactivateTitle}
     closeOnBackdropClick={false}
     showCloseButton={false}
     footer={
@@ -45,12 +46,12 @@ export const PlanActionDialog = ({
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {messages.common.deactivate}
+          {kind === 'activate' ? t.actions.reactivate : messages.common.deactivate}
         </Button>
       </>
     }
   >
     {banner}
-    <p>{t.dialog.deactivateDescription}</p>
+    <p>{kind === 'activate' ? t.dialog.activateDescription : t.dialog.deactivateDescription}</p>
   </Dialog>
 );

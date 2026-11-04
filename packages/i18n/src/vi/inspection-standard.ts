@@ -16,6 +16,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
+    reactivate: 'Sử dụng lại',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
     prevPage: 'Trước',
@@ -89,9 +90,10 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Phiên bản đã hủy bỏ thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
-    deactivateTitle: 'Ngừng sử dụng tiêu chuẩn kiểm tra này?',
-    deactivateDescription:
-      'Không xóa. Sau khi ngừng sử dụng thì không dùng tiêu chuẩn này cho lần kiểm tra mới được nữa.',
+    deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
+    activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
+    activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
+    deactivateDescription: 'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
@@ -125,6 +127,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
+    activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',

@@ -16,6 +16,8 @@ export const inspectionStandard = {
     items: '검사 항목',
   },
   actions: {
+    /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
+    reactivate: '재사용',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: '임시 저장',
     prevPage: '이전',
@@ -98,9 +100,11 @@ export const inspectionStandard = {
     obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
-    deactivateTitle: '이 검사기준을 사용 중지할까요?',
-    deactivateDescription:
-      '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
+    deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
+    /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
+    activateTitle: '검사 기준을 다시 사용하시겠습니까?',
+    activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
+    deactivateDescription: '기준은 삭제되지 않으며, 새 검사에 적용할 수 없게 됩니다.',
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
@@ -135,6 +139,7 @@ export const inspectionStandard = {
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
+    activated: '검사기준을 다시 사용합니다.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
