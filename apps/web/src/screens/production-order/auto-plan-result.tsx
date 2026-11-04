@@ -7,7 +7,7 @@ import { messages } from '@omf-mes/i18n';
 const labels = {
   CONFIRMED: '계획 확정',
   DRAFT: '미확정 계획',
-  NOT_PLANNED: '자동 계획 미처리',
+  NOT_PLANNED: '자동 전개 미처리',
   FAILED: '실행 실패',
 } as const;
 export type AutoPlanResultCode = keyof typeof labels;
@@ -45,14 +45,14 @@ export const AutoPlanResult = ({
   const codes = Object.keys(labels) as AutoPlanResultCode[];
   const shown = outcomes.filter((item) => filter === null || autoPlanResultCode(item) === filter);
   return (
-    <section className="pane erp-wo-auto-result" aria-label="자동 계획 실행 결과">
+    <section className="pane erp-wo-auto-result" aria-label="생산계획 자동 전개 결과">
       <div className="section-heading-row">
-        <h2 className="section-title">자동 계획 실행 결과</h2>
+        <h2 className="section-title">생산계획 자동 전개 결과</h2>
         <Button size="sm" variant="outlined" onClick={onClose}>
           전체 ERP W/O 조회
         </Button>
       </div>
-      <div className="erp-wo-auto-result-filters" role="group" aria-label="자동 계획 결과 필터">
+      <div className="erp-wo-auto-result-filters" role="group" aria-label="생산계획 자동 전개 결과 필터">
         <Button
           size="sm"
           variant="outlined"

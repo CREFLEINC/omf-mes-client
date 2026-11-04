@@ -46,7 +46,7 @@ const reasons = {
   LINE_UNKNOWN: '생산 라인 지정 필요',
   PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
   QTY_REMAINING: '남은 수량 계획 필요',
-  AUTO_PLAN_RERUN_NEEDED: '자동 계획 다시 실행 필요',
+  AUTO_PLAN_RERUN_NEEDED: '생산계획 자동 전개 다시 실행 필요',
   NO_LIVE_WORK_ORDER: '계획 추가 필요',
   WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
   WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
@@ -108,7 +108,7 @@ export const erpWorkOrderFlow = {
       `이 품목에 쓸 수 있는 공정(Routing)이 여럿이고 기본이 없거나 둘 이상입니다. 공정(Routing) 화면에서 기본을 하나로 지정하거나 ${steps.master} 단계에서 골라야 합니다.`,
     LINE_UNKNOWN: (): string =>
       // ui-check-ignore: C-13 메뉴 경로 「품목·BOM 정보 › 설비·금형」을 그대로 쓴다
-      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 자동 계획을 다시 실행해야 합니다.`,
+      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 생산계획 자동 전개를 다시 실행해야 합니다.`,
     PLAN_NOT_CONFIRMED: (): string =>
       `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
     QTY_REMAINING: ({ orderQty, plannedQty, uom = '' }: ReasonDetail): string =>
@@ -116,7 +116,7 @@ export const erpWorkOrderFlow = {
         ? `주문 ${`${orderQty} ${uom}`.trim()} 중 ${`${plannedQty} ${uom}`.trim()}만 계획되었습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`
         : `확정한 계획 수량이 주문 수량보다 적습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`,
     AUTO_PLAN_RERUN_NEEDED: (): string =>
-      '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
+      '기준정보가 갖춰졌거나 생산계획 자동 전개가 실패했습니다. 처리 화면 오른쪽 위 [생산계획 자동 전개 다시 실행]을 눌러야 합니다.',
     NO_LIVE_WORK_ORDER: (): string =>
       `확정한 계획의 W/O가 없거나 모두 취소되었습니다. ${steps.plan} 단계에서 [${planButtons.add}]로 필요한 수량을 다시 계획하고 [${planButtons.confirm}]을 눌러야 합니다.`,
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
@@ -181,7 +181,7 @@ export const erpWorkOrderFlow = {
     autoPlanShortHelp: '기본값 생성, 가능하면 확정',
     releaseShortHelp: '배정 완료된 작업지시 전달',
     release: '작업지시 일괄 배포',
-    autoPlan: '자동 계획 실행',
+    autoPlan: '생산계획 자동 전개',
     selectionActions: '선택한 ERP W/O 처리',
     selected: (count: number): string => `선택한 ERP W/O ${count}건`,
     selectionHelp: '선택한 ERP W/O를 대상으로 처리합니다.',
@@ -220,27 +220,27 @@ export const erpWorkOrderFlow = {
       confirm: '배포',
     },
     autoPlanDialog: {
-      title: '자동 계획 실행',
+      title: '생산계획 자동 전개',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
-      task: '자동 계획',
+      task: '생산계획 자동 전개',
       /*
        * 설비와 금형은 품목의 기본(★) 매핑으로 배정한다. 공정을 지정한 매핑은 그 공정의 W/O에, 「전체 공정」 매핑은
        * 그것이 필요한 첫 공정에만 붙는다(서버 `resource-assign.ts`).
        */
       effects: ['생산계획 작성과 확정', 'W/O 전개', '품목에 ★로 지정한 설비와 금형 자동 배정'],
       skipTitle: '처리하지 않는 조건',
-      /* 확정 계획이 있으면 자동 계획은 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
+      /* 확정 계획이 있으면 생산계획 자동 전개는 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
       skipConditions: [
         '기본 BOM이나 Routing이 없거나 하나로 정해지지 않은 ERP W/O',
         '확정한 계획 수량이 주문 수량보다 적고 작성 중인 계획이 없는 ERP W/O(남은 수량은 생산계획 단계에서 계획)',
       ],
-      /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 자동 계획 결과 DRAFT). */
+      /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 생산계획 자동 전개 결과 DRAFT). */
       draftNote: '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
       confirm: '실행',
     },
     resultTitle: {
       release: '작업지시 일괄 배포 결과',
-      autoPlan: '자동 계획 실행 결과',
+      autoPlan: '생산계획 자동 전개 결과',
     },
     outcomeReasons: {
       noWorkOrders: '배포할 W/O 없음',
@@ -267,12 +267,12 @@ export const erpWorkOrderFlow = {
       dueDate: '납기일',
       erpNo: 'ERP 원번호',
     },
-    rerunAutoPlan: '자동 계획 다시 실행',
+    rerunAutoPlan: '생산계획 자동 전개 다시 실행',
     autoPlanResult: {
-      CONFIRMED: '자동 계획으로 계획을 확정했습니다',
+      CONFIRMED: '생산계획 자동 전개로 계획을 확정했습니다',
       DRAFT: '미확정 계획입니다. 생산계획에서 보완하세요',
-      NOT_PLANNED: '자동 계획 미처리. 생산계획과 기준정보를 확인하세요',
-      running: '자동 계획이 진행 중입니다. 잠시 뒤 다시 실행하세요',
+      NOT_PLANNED: '자동 전개 미처리. 생산계획과 기준정보를 확인하세요',
+      running: '생산계획 자동 전개가 진행 중입니다. 잠시 뒤 다시 실행하세요',
     },
     steps,
     /** 지난 단계 요약의 「라벨 값」 쌍(T-W-C 지난 단계 요약 형식) */

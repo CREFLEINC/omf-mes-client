@@ -272,7 +272,7 @@ describe('작업지시 목록 작업함', () => {
         expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
       ]),
     );
-    expect(screen.queryByText('자동 계획', { exact: true })).toBeNull();
+    expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
   });
 
   it('행 상태 칩은 서버 판정(worklistState) 그대로다', async () => {
@@ -363,7 +363,7 @@ describe('작업지시 목록 작업함', () => {
     ],
     ['NEW_CODE', '조치 필요(NEW_CODE)', '처리 화면을 열어 남은 일을 확인해야 합니다.'],
   ])(
-    '자동 계획이 끝났는데 막힌 사유 %s는 칩 「%s」와 도움말로 보인다',
+    '생산계획 자동 전개가 끝났는데 막힌 사유 %s는 칩 「%s」와 도움말로 보인다',
     async (code, label, help) => {
       const blocked = order(
         720,
@@ -383,7 +383,7 @@ describe('작업지시 목록 작업함', () => {
     },
   );
 
-  it('자동 계획 확인 필요의 새 사유 AUTO_PLAN_RERUN_NEEDED는 다시 실행하라고 말한다', async () => {
+  it('생산계획 자동 전개 확인 필요의 새 사유 AUTO_PLAN_RERUN_NEEDED는 다시 실행하라고 말한다', async () => {
     const rerun = order(721, 'SYN-PO-721', {
       status: 'NEEDS_REVIEW',
       reasons: ['AUTO_PLAN_RERUN_NEEDED'],
@@ -391,9 +391,9 @@ describe('작업지시 목록 작업함', () => {
     render({ orders: [rerun] });
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-721') });
-    const chip = within(row).getByText('자동 계획 다시 실행 필요');
+    const chip = within(row).getByText('생산계획 자동 전개 다시 실행 필요');
     expect(chip.closest('button')).toHaveAccessibleDescription(
-      '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
+      '기준정보가 갖춰졌거나 생산계획 자동 전개가 실패했습니다. 처리 화면 오른쪽 위 [생산계획 자동 전개 다시 실행]을 눌러야 합니다.',
     );
   });
 
@@ -506,7 +506,7 @@ describe('작업지시 목록 작업함', () => {
     expect(release).toHaveAccessibleDescription(t.bulk.reasons.noneChecked);
   });
 
-  it('자동 계획 확인 창은 라인을 모를 때 건너뛰지 않고 작성 중 계획만 만든다고 말한다', async () => {
+  it('생산계획 자동 전개 확인 창은 라인을 모를 때 건너뛰지 않고 작성 중 계획만 만든다고 말한다', async () => {
     const user = userEvent.setup();
     render({ orders: [REVIEW] });
 
@@ -529,7 +529,7 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
-  it('자동 계획 결과 조회 중에는 업무 상태 선택을 해제하고 업무 목록 복귀 시 복원한다', async () => {
+  it('생산계획 자동 전개 결과 조회 중에는 업무 상태 선택을 해제하고 업무 목록 복귀 시 복원한다', async () => {
     const user = userEvent.setup();
     render(
       { orders: [REVIEW, DONE_BLOCKED, DONE_READY] },
@@ -539,14 +539,14 @@ describe('작업지시 목록 작업함', () => {
     await user.click(within(row).getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '실행' }));
-    await screen.findByRole('region', { name: '자동 계획 실행 결과' });
+    await screen.findByRole('region', { name: '생산계획 자동 전개 결과' });
     const statuses = screen.getByRole('group', { name: t.counts.label });
     for (const button of within(statuses).getAllByRole('button'))
       expect(button).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('heading', { name: '자동 계획 실행 대상 1건' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '생산계획 자동 전개 대상 1건' })).toBeVisible();
     expect(screen.getByRole('button', { name: '실행 대상 전체 1건' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '전체 목록으로 돌아가기' }));
-    expect(screen.queryByRole('region', { name: '자동 계획 실행 결과' })).toBeNull();
+    expect(screen.queryByRole('region', { name: '생산계획 자동 전개 결과' })).toBeNull();
     expect(within(statuses).getByRole('button', { name: /^전체 / })).toHaveAttribute(
       'aria-pressed',
       'true',

@@ -27,7 +27,7 @@ const Harness = () => {
     </>
   );
 };
-describe('자동 계획 실행 결과', () => {
+describe('생산계획 자동 전개 결과', () => {
   it('실제 응답 코드를 구분하고 미확정 사유를 보존하며 모든 결과를 필터한다', async () => {
     renderWithProviders(<Harness />, {
       fetch: async (request) => {
@@ -50,11 +50,11 @@ describe('자동 계획 실행 결과', () => {
     });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '시험 실행' }));
-    const result = await screen.findByRole('region', { name: '자동 계획 실행 결과' });
+    const result = await screen.findByRole('region', { name: '생산계획 자동 전개 결과' });
     for (const label of [
       '계획 확정 1건',
       '미확정 계획 1건',
-      '자동 계획 미처리 1건',
+      '자동 전개 미처리 1건',
       '실행 실패 1건',
     ])
       expect(within(result).getByRole('button', { name: label })).toBeVisible();
@@ -72,7 +72,7 @@ describe('자동 계획 실행 결과', () => {
       '/production/production-orders/ERP-1',
     );
     await user.click(within(result).getByRole('button', { name: '전체 ERP W/O 조회' }));
-    expect(screen.queryByRole('region', { name: '자동 계획 실행 결과' })).toBeNull();
+    expect(screen.queryByRole('region', { name: '생산계획 자동 전개 결과' })).toBeNull();
   });
   it('기존 캐시의 미확정과 실패 결과도 구분한다', () => {
     expect(autoPlanResultCode({ id: '1', label: 'A', status: 'processed', reason: null })).toBe(

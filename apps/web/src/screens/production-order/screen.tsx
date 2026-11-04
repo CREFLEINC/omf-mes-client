@@ -451,7 +451,7 @@ export const ProductionOrderScreen = ({
         {showingResultRows && (
           <div className="section-heading-row erp-wo-result-scope">
             <h2 className="section-title">
-              {bulk.run?.kind === 'autoPlan' ? '자동 계획 실행 대상' : '일괄 배포 실행 대상'}{' '}
+              {bulk.run?.kind === 'autoPlan' ? '생산계획 자동 전개 대상' : '일괄 배포 실행 대상'}{' '}
               <span className="field-note">{rows.length}건</span>
             </h2>
             <Button
