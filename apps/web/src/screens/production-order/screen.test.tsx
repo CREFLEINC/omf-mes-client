@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
+import { Route, Routes, useLocation } from 'react-router';
+import { AutoPlanResultPage } from './auto-plan-result-page';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -195,7 +196,14 @@ const render = (
   const harness = stub(options);
   renderInSession(
     <>
-      <ProductionOrderScreen />
+      <Routes>
+        <Route path="/production/production-orders" element={<ProductionOrderScreen />} />
+        <Route
+          path="/production/production-orders/auto-plan-results"
+          element={<AutoPlanResultPage />}
+        />
+        <Route path="/production/production-orders/:id" element={<div />} />
+      </Routes>
       <Location />
     </>,
     { fetch: harness.fetch, route },
@@ -540,13 +548,13 @@ describe('작업지시 목록 작업함', () => {
     await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '실행' }));
     await screen.findByRole('region', { name: '생산계획 자동 전개 결과' });
-    const statuses = screen.getByRole('group', { name: t.counts.label });
-    for (const button of within(statuses).getAllByRole('button'))
-      expect(button).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('heading', { name: '생산계획 자동 전개 대상 1건' })).toBeVisible();
+    expect(screen.queryByRole('group', { name: t.counts.label })).toBeNull();
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(screen.getByRole('heading', { name: '생산계획 자동 전개 결과' })).toBeVisible();
     expect(screen.getByRole('button', { name: '실행 대상 전체 1건' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: '전체 목록으로 돌아가기' }));
+    await user.click(screen.getByRole('button', { name: '작업계획 목록으로' }));
     expect(screen.queryByRole('region', { name: '생산계획 자동 전개 결과' })).toBeNull();
+    const statuses = screen.getByRole('group', { name: t.counts.label });
     expect(within(statuses).getByRole('button', { name: /^전체 / })).toHaveAttribute(
       'aria-pressed',
       'true',
