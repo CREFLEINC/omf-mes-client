@@ -169,9 +169,9 @@ export const itemExtendedAttrs = {
     units: {
       days: '일',
     },
-    /** IQC 대상 스위치 아래 안내 — 검사 기준의 IQC 「기본 생략」과 연동된다(omf-all-around#215). */
+    /** IQC 대상 스위치 아래 안내 — 검사 기준의 IQC 「기본 생략」과 연동된다(omf-all-around#215). 전용 기준이 없으면 공통 기준을 따른다(2026-11-04). */
     inspectionRequiredSyncNote:
-      '검사 기준의 IQC ‘기본 생략’과 함께 바뀝니다. 끄면 이 품목의 IQC 기준이 기본 생략이 됩니다.',
+      '검사 기준의 IQC ‘기본 생략’과 함께 바뀝니다. 이 품목 전용 IQC 기준이 없으면 바꿀 때 새로 만들어지고, 그 전까지는 전 품목 공통 IQC 기준을 따릅니다.',
     values: {
       active: '사용 중',
       inactive: '미사용',

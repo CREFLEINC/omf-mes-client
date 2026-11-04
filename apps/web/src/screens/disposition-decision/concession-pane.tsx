@@ -1,5 +1,5 @@
 import { Button, Chip, DatePicker, Dialog, Table, TextField, type Column } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import type { ConcessionAppliedForward, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
@@ -73,7 +73,8 @@ export interface ConcessionHistoryProps {
  * ⭐ 요청 → 결재(W-03-09) → 적용. 이 구획은 요청과 적용만 한다 — 승인은 결재 경로의 몫이다.
  * ⭐ 적용은 서버가 LOT 을 정상으로 열고 수입검사 대기 보류를 닫고 처분 판정(특채)을 남긴다 — 그래서
  *    성공하면 이 화면의 상세·판정을 함께 다시 부른다.
- * ⛔ 사용 가능 수량은 기록일 뿐 출고·투입에서 막지 않는다(#84 범위).
+ * ⭐ 일부 특채면 적용이 승인 안 된 수량을 «불량으로 남은 LOT»(새 번호)·새 부적합으로 나눈다(#207) — 응답의 `splitResult` 로 알린다.
+ * ⛔ 사용 가능 수량·허용 조건은 기록일 뿐 출고·투입에서 막지 않는다(#84 범위 · #207 결정).
  */
 /** 이 부적합의 특채 목록 — 구획과 탭 이름의 건수가 같은 조회를 쓴다(#223). */
 export const useConcessions = (nonconformanceId: number | null) => {
@@ -250,20 +251,29 @@ export const ConcessionHistory = ({
 
   const list = useConcessions(nonconformanceId);
 
-  const applyWrite = useMasterWrite<{ concessionId: number }, Concession>({
+  const applyWrite = useMasterWrite<{ concessionId: number }, ConcessionAppliedForward>({
+    /* 일부 특채는 LOT 을 나누며 재고도 원장으로 나눈다 — 그때 쓰는 영업일을 늘 싣는다(#207 · C-8). */
     request: ({ concessionId }, headers) =>
       client.POST('/quality/concessions/{concessionId}:apply', {
         params: {
           path: { concessionId },
           header: { 'Idempotency-Key': headers['Idempotency-Key'] },
         },
+        body: { businessDate: toBusinessDate(new Date()) },
       }),
     etagPath: null,
     /* 적용은 LOT·부적합·판정을 함께 바꾼다 — 이 화면의 뿌리 키를 다시 부른다. */
     invalidateKeys: [dispositionKeys.all],
     knownFields: [],
     keyLifetime: 'until-applied',
-    onSuccess: (data) => setNotice(data.statusCode === 'REJECTED' ? t.rejected : t.applied),
+    onSuccess: (data) =>
+      setNotice(
+        data.statusCode === 'REJECTED'
+          ? t.rejected
+          : data.splitResult
+            ? t.appliedSplit(data.splitResult.splitLotNo, data.splitResult.splitNonconformanceNo)
+            : t.applied,
+      ),
   });
 
   const statusChip = (row: Concession) => (

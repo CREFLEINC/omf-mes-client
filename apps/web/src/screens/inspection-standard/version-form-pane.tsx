@@ -305,7 +305,8 @@ export const VersionFormPane = ({
 
         <Button
           variant="outlined"
-          disabled={!inDialog && (!isDirty || isLocked)}
+          /* 등록 폼의 「취소」는 폼을 닫는 길이라 늘 누를 수 있다(사용자 지시 2026-11-04). */
+          disabled={mode !== 'create' && !inDialog && (!isDirty || isLocked)}
           onClick={onCancel}
         >
           {messages.common.cancel}

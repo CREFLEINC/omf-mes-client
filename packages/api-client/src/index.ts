@@ -88,4 +88,9 @@ export type {
   OperationPolicyListQueryForward,
   TerminalRegistrationConfirmation,
   TerminalRegistrationStatusCode,
+  ConcessionApplyForward,
+  ConcessionAppliedForward,
+  ConcessionSplitResult,
+  StockReinstatementCreateForward,
+  StockReinstatementResponseForward,
 } from './forward-contract';

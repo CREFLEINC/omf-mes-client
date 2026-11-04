@@ -1,4 +1,8 @@
-import type { components } from '@omf-mes/api-client';
+import type {
+  StockReinstatementCreateForward,
+  StockReinstatementResponseForward,
+  components,
+} from '@omf-mes/api-client';
 
 export type DecisionResponse = components['schemas']['DispositionDecision'];
 export type NonconformanceResponse = components['schemas']['Nonconformance'];
@@ -7,8 +11,9 @@ export type LotStatusResponse = components['schemas']['LotQualityStatus'];
 export type LotHoldResponse = components['schemas']['LotHold'];
 export type WarehouseResponse = components['schemas']['Warehouse'];
 export type LocationResponse = components['schemas']['Location'];
-export type StockReinstatementCreate = components['schemas']['StockReinstatementCreate'];
-export type StockReinstatementResponse = components['schemas']['StockReinstatementResponse'];
+/** 처분 «특채»는 보류를 고르지 않는다 — 보류·해제 사유가 선택이다(omf-all-around#207). */
+export type StockReinstatementCreate = StockReinstatementCreateForward;
+export type StockReinstatementResponse = StockReinstatementResponseForward;
 export type PageMeta = components['schemas']['PageMeta'];
 
 export interface DecisionView {
@@ -54,6 +59,23 @@ export const displayItem = (decision: DecisionView): string =>
   [decision.itemCode, decision.itemName]
     .filter((value) => value !== null && value !== '')
     .join(' · ') || '—';
+
+/** 특채 적용이 남긴 처분 — 보류 없이 불량창고 재고만 정상 창고로 옮긴다(omf-all-around#207). */
+export const isConcession = (decision: Pick<DecisionView, 'dispositionTypeCode'>): boolean =>
+  decision.dispositionTypeCode === 'CONCESSION';
+
+/** LOT 칸의 이름 — 처분 유형이 아니라 LOT 자체의 종류로 정한다(#207). 모르면 그냥 「LOT」. */
+export const lotLabelOf = (
+  lotTypeCode: string | null | undefined,
+  text: { lot: string; materialLot: string; productionLot: string; anyLot: string },
+): string =>
+  lotTypeCode === 'PRODUCT'
+    ? text.lot
+    : lotTypeCode === 'MATERIAL'
+      ? text.materialLot
+      : lotTypeCode === 'PRODUCTION'
+        ? text.productionLot
+        : text.anyLot;
 
 export const remainingDecisionQty = (decision: DecisionView): number =>
   Math.max(0, decision.decisionQty - decision.followUpQty);
