@@ -93,6 +93,23 @@ export const PlanPane = ({
   /* 품목을 고르면 라우팅 칸이 나타나고 커서가 그리로 간다(사용자 지시 2026-11-04). 칸이 그려진 뒤에 옮긴다. */
   const [focusRouting, setFocusRouting] = useState(false);
   const isRoutingShown = routingDisabledReason === null;
+
+  /*
+   * 비어 있는 필수 칸은 처음부터 테두리만 빨갛게 한다(사용자 지시 2026-11-04) — 「필수 입력 항목입니다」 글은 화면에
+   * 띄우지 않고 화면 읽기로만 남긴다. 검사 항목 추가 창(item-form-dialog)과 같은 규칙이고, 다른 오류(중복 등)는 글로 낸다.
+   */
+  const requiredMessage = t.validation.required;
+  const isBlank = (value: string): boolean => value.trim() === '';
+  const shownError = (key: string): string | undefined =>
+    fieldErrors[key] === requiredMessage ? undefined : fieldErrors[key];
+  const requiredText = (key: string, value: string) => {
+    const error = shownError(key);
+    if (error !== undefined) return { error };
+    return isBlank(value)
+      ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
+      : {};
+  };
+  const isPqc = values.inspectionTypeCode === 'PQC';
   useEffect(() => {
     if (!focusRouting || !isRoutingShown) return;
     document.getElementById(routingId)?.focus();
@@ -167,7 +184,9 @@ export const PlanPane = ({
             /* 잠긴 칸은 자물쇠 표시 + 라벨 오른쪽 짧은 안내(사용자 시안 · #208 · 2026-11-04 라벨 옆으로). */
             trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
             aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
-            error={fieldErrors.inspectionPlanCode}
+            {...(isCodeLocked
+              ? { error: fieldErrors.inspectionPlanCode }
+              : requiredText('inspectionPlanCode', values.inspectionPlanCode))}
             aria-required={!isCodeLocked}
           />
         </div>
@@ -178,7 +197,7 @@ export const PlanPane = ({
             id={nameId}
             value={values.inspectionPlanName}
             onChange={(event) => onChange({ inspectionPlanName: event.target.value })}
-            error={fieldErrors.inspectionPlanName}
+            {...requiredText('inspectionPlanName', values.inspectionPlanName)}
             aria-required
           />
         </div>
@@ -191,19 +210,22 @@ export const PlanPane = ({
           options={ensureOption(INSPECTION_TYPE_OPTIONS, values.inspectionTypeCode)}
           value={values.inspectionTypeCode}
           onChange={(inspectionTypeCode) => onChange({ inspectionTypeCode })}
-          error={fieldErrors.inspectionTypeCode}
+          error={shownError('inspectionTypeCode')}
+          invalid={isBlank(values.inspectionTypeCode)}
         />
 
         {/* IQC · OQC 는 공정을 비워도 된다 — PQC 만 필수다. */}
         <SelectField
           label={t.fields.process}
-          /* PQC 기준은 공정이 필수다(사용자 결정 2026-11-04). */
-          required={values.inspectionTypeCode === 'PQC'}
+          /* PQC 기준은 공정이 필수다 — 필수 표시 · 이름 오른쪽 안내 · 빈 칸 빨간 테두리(사용자 지시 2026-11-04). */
+          required={isPqc}
+          {...(isPqc ? { hint: t.actionReasons.pqcNeedsProcess } : {})}
           options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
           value={values.processId}
           placeholder={t.values.notSelected}
           onChange={(processId) => onChange({ processId })}
-          error={fieldErrors.processId}
+          error={shownError('processId')}
+          invalid={isPqc && isBlank(values.processId)}
         />
 
         {/* 셋째 줄 — 품목 · 라우팅(사용자 지시 2026-11-04). */}

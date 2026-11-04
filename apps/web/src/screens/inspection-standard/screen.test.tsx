@@ -1255,7 +1255,11 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
     await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
 
-    expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
+    /* 빈 필수 칸은 글 없이 빨간 테두리만 선다(사용자 지시 2026-11-04 · 검사 항목 추가 창과 같다). */
+    await waitFor(() => {
+      expect(within(createForm()).getByLabelText('기준명')).toHaveAttribute('aria-invalid', 'true');
+    });
+    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveAttribute('aria-invalid', 'true');
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 });

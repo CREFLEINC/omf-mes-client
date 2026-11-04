@@ -121,6 +121,29 @@ describe('PlanPane — 표시', () => {
     renderPane({ values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionTypeCode: 'IQC' } });
     expect(screen.getByRole('combobox', { name: '공정' })).not.toHaveAttribute('aria-required');
   });
+
+  /* 검사 유형이 PQC 면 공정 이름 오른쪽에 안내를 두고, 공정이 비면 빨간 테두리(사용자 지시 2026-11-04). */
+  it('PQC 기준이면 공정 이름 옆에 안내가 서고, 공정이 비면 공정 칸이 빨갛다', () => {
+    renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionTypeCode: 'PQC', processId: '' },
+    });
+
+    expect(screen.getByText('PQC는 공정을 선택해야 합니다.')).toHaveClass('inspection-standard-label-hint');
+    expect(screen.getByRole('combobox', { name: '공정' })).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /* 비어 있는 필수 칸은 처음부터 테두리만 빨갛다 — 글은 띄우지 않는다(사용자 지시 2026-11-04). */
+  it('비어 있는 필수 칸은 빨간 테두리가 선다', () => {
+    renderPane({
+      mode: 'create',
+      plan: null,
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionPlanName: '', inspectionTypeCode: '' },
+    });
+
+    expect(screen.getByLabelText('기준명')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('combobox', { name: '검사 유형' })).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('기준코드')).not.toHaveAttribute('aria-invalid', 'true');
+  });
 });
 
 describe('PlanPane — 잠금과 사유', () => {

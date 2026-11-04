@@ -323,7 +323,7 @@ main > * + * {
 .field-label > .inspection-standard-label-hint {
   margin-left: var(--space-2);
   white-space: nowrap;
-  padding: 2px var(--space-2);
+  padding: 1px var(--space-2);
   font: var(--type-label-sm);
 }
 
@@ -333,7 +333,7 @@ main > * + * {
   align-items: center;
   /* 필수 표시 앞 띄움 — 묶음 안 공백 글자는 flex 에서 사라진다. */
   column-gap: 0.2em;
-  min-height: 1.5rem;
+  min-height: 1.625rem;
 }
 
 .inspection-standard-plan-head {

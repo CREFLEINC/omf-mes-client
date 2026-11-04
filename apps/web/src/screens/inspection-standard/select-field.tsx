@@ -23,6 +23,8 @@ export interface SelectFieldProps {
   /** 문구 없이 테두리만 빨갛게 — 비어 있는 필수 칸(검사 조회·판정과 같다 · #196) */
   invalid?: boolean;
   placeholder?: string;
+  /** 라벨 오른쪽 같은 줄의 짧은 안내(정보 라벨). 없으면 두지 않는다. */
+  hint?: string;
 }
 
 /**
@@ -50,16 +52,26 @@ export const SelectField = ({
   error,
   invalid = false,
   placeholder,
+  hint,
 }: SelectFieldProps) => {
   const fallbackId = useId();
   const id = givenId ?? fallbackId;
   const noteId = `${id}-note`;
   // 지금 고칠 수 있는 것을 먼저 보인다 — 오류가 있으면 안내를 밀어낸다.
   const message = error ?? (disabled ? disabledReason : note) ?? undefined;
+  const hintId = `${id}-hint`;
+  const describedBy = [message === undefined ? null : noteId, hint === undefined ? null : hintId]
+    .filter((part) => part !== null)
+    .join(' ');
 
   return (
     <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>
-      <FieldLabel htmlFor={id} label={label} required={required} />
+      <FieldLabel
+        htmlFor={id}
+        label={label}
+        required={required}
+        {...(hint === undefined ? {} : { hint, hintId })}
+      />
       <Select
         id={id}
         options={options}
@@ -69,7 +81,7 @@ export const SelectField = ({
         disabled={disabled}
         invalid={error !== undefined || invalid}
         aria-required={required || undefined}
-        aria-describedby={message === undefined ? undefined : noteId}
+        aria-describedby={describedBy === '' ? undefined : describedBy}
       />
       {message !== undefined && (
         <span id={noteId} className={error === undefined ? 'field-note' : 'field-error'}>
