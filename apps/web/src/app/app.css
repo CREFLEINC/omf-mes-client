@@ -31296,10 +31296,16 @@ button.iqc-inspection-step-toggle:focus-visible {
   gap: var(--space-2) var(--space-5);
 }
 
-/* 불량 유형 선택칸 — 검색되는 선택칸 하나 + 고른 유형 칩(사용자 지시 2026-11-04). */
-.parts-iqc-defect-options > .select-root,
-.parts-iqc-defect-options > div:first-child {
+/* 불량 유형 선택칸 — 여러 개 고르는 검색 선택칸 + 고른 유형 칩(사용자 지시 2026-11-04). */
+.parts-iqc-defect-options > .searchable-select {
   min-width: 14rem;
+}
+
+.defect-multi-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .parts-iqc-defect-qtys {

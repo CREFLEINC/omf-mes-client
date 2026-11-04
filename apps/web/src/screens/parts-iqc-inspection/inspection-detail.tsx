@@ -38,6 +38,8 @@ import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup'
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
+import { DefectMultiSelect } from './defect-multi-select';
+import { DefectQtyTable } from './defect-qty-table';
 import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -904,24 +906,22 @@ const InspectionForm = (props: FormProps) => {
                     {t.visual.defectCodesEmpty}
                   </span>
                 ) : (
-                  /* 검색되는 선택칸에서 하나씩 더하고, 고른 유형은 칩으로 보이며 ×로 뺀다(사용자 지시 2026-11-04 — 체크란 대신). */
+                  /* 검색되는 선택칸에서 닫지 않고 여러 개 넣고 뺀다. 고른 유형은 칩으로 보이며 ×로도 뺀다(사용자 지시 2026-11-04 — 체크란 대신). */
                   <div className="parts-iqc-defect-options">
-                    <Select
-                      searchable
+                    <DefectMultiSelect
                       aria-labelledby="parts-iqc-defect-type"
-                      options={leafCodes
-                        .filter((code) => !form.defectCodeIds.includes(code.defectCodeId))
-                        .map((code) => ({
-                          value: String(code.defectCodeId),
-                          label: code.defectName,
-                        }))}
-                      value=""
+                      options={leafCodes.map((code) => ({
+                        value: String(code.defectCodeId),
+                        label: code.defectName,
+                      }))}
+                      values={form.defectCodeIds.map(String)}
                       placeholder={t.visual.defectTypePlaceholder}
+                      pickedLabel={t.visual.defectTypePicked}
+                      searchLabel={t.visual.defectTypeSearch}
+                      searchPlaceholder={t.visual.defectTypeSearch}
+                      emptyText={t.visual.defectTypeNoMatch}
                       invalid={form.defectCodeIds.length === 0}
-                      onChange={(value) =>
-                        value !== '' &&
-                        change({ ...form, defectCodeIds: [...form.defectCodeIds, Number(value)] })
-                      }
+                      onChange={(values) => change({ ...form, defectCodeIds: values.map(Number) })}
                     />
                     {form.defectCodeIds.map((id) => {
                       const name =
@@ -945,21 +945,13 @@ const InspectionForm = (props: FormProps) => {
                     })}
                   </div>
                 )}
-                {(visualDefectQty ?? 0) > 0 && form.defectCodeIds.length > 0 && (
-                  <span className="parts-iqc-badge parts-iqc-badge-success">
-                    {t.visual.defectPicked(form.defectCodeIds.length)}
-                  </span>
+                {/* 빈 칸 · 유형 수량 누락 글은 두지 않는다(사용자 지시 2026-11-04) — 합계가 어긋날 때만 알린다. */}
+                {defectsSent && 'blocked' in defectResult && defectResult.blocked === 'sum' && (
+                  <p className="parts-iqc-hint parts-iqc-hint-inline">
+                    <Icon name="error" />
+                    {t.visual.defectSumMismatch(defectTarget)}
+                  </p>
                 )}
-                {defectsSent &&
-                  'blocked' in defectResult &&
-                  defectResult.blocked !== 'required' && (
-                    <p className="parts-iqc-hint parts-iqc-hint-inline">
-                      <Icon name="error" />
-                      {defectResult.blocked === 'qty'
-                        ? t.visual.defectQtyRequired
-                        : t.visual.defectSumMismatch(defectTarget)}
-                    </p>
-                  )}
                 {/* 서버가 불량 유형을 거부한 까닭(합계 불일치 등) — 화면 검사를 지나 온 경우다(#205). */}
                 {submit.fieldErrors.defects !== undefined && (
                   <p className="parts-iqc-hint parts-iqc-hint-inline" role="alert">
@@ -968,36 +960,19 @@ const InspectionForm = (props: FormProps) => {
                   </p>
                 )}
               </div>
-              {/* 둘 이상 고르면 유형마다 수량 — 합계가 불합격 수량과 같아야 한다(#205) */}
+              {/* 둘 이상 고르면 유형마다 수량을 표로 — 합계가 불합격 수량과 같아야 한다(#205 · 사용자 지시 2026-11-04). 하나면 외관 불량 수가 그 수량이다. */}
               {form.defectCodeIds.length > 1 && (
-                <div className="parts-iqc-defect-qtys">
-                  {form.defectCodeIds.map((id) => {
-                    const code = leafCodes.find((c) => c.defectCodeId === id);
-                    return (
-                      <div key={id} className="field-cell parts-iqc-stretch">
-                        <FieldLabel
-                          htmlFor={`parts-iqc-defect-qty-${String(id)}`}
-                          label={code?.defectName ?? String(id)}
-                          required
-                        />
-                        <TextField
-                          id={`parts-iqc-defect-qty-${String(id)}`}
-                          fullWidth
-                          size="sm"
-                          inputMode="numeric"
-                          value={form.defectQtys[id] ?? ''}
-                          trailingIcon={<span>{t.visual.unit}</span>}
-                          onChange={(event) =>
-                            change({
-                              ...form,
-                              defectQtys: { ...form.defectQtys, [id]: event.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+                <DefectQtyTable
+                  rows={form.defectCodeIds.map((id) => ({
+                    defectCodeId: id,
+                    name:
+                      leafCodes.find((code) => code.defectCodeId === id)?.defectName ?? String(id),
+                  }))}
+                  qtys={form.defectQtys}
+                  onChange={(id, value) =>
+                    change({ ...form, defectQtys: { ...form.defectQtys, [id]: value } })
+                  }
+                />
               )}
             </div>
           )}
