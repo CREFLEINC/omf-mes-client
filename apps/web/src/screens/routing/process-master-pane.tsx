@@ -5,7 +5,6 @@ import {
   type Column,
   Dialog,
   EmptyState,
-  SearchInput,
   SkeletonText,
   Table,
   TextField,
@@ -17,14 +16,25 @@ import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import {
   SaveErrorBanner,
   codeLockMessage,
   requireIfMatch,
   useMasterWrite,
 } from '../../patterns/master';
-import { toApiError } from '../../patterns/request';
-import { Select } from '../../patterns/select';
+import { TAB_PAGE_SIZES, type TabPageSize } from '../../patterns/client-page';
+import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import { runRequest, toApiError } from '../../patterns/request';
+import { PagedSelect, Select } from '../../patterns/select';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import {
   emptyProcessFormValues,
   isSameProcessValues,
@@ -34,18 +44,24 @@ import {
 } from './process-master';
 import { PROCESS_FORM_FIELDS, validateProcess } from './process-validation';
 import {
-  isTruncated,
+  type ListPaging,
   processDetailPath,
   processKeys,
   useProcessDetail,
   useProcessList,
   useProcessTypeOptions,
 } from './queries';
+import { ROUTING_ORIENTATION_KEY } from './split-layout';
 import type { Process, ProcessDetailResponse, ProcessFilters, ProcessFormValues } from './types';
+import { centerColumns } from './table-align';
 
 const t = messages.routing;
+const hubText = messages.common.inspectionHub;
 
 const DEFAULT_FILTERS: ProcessFilters = { q: '', includeInactive: false };
+
+/** 공정 검색 칸이 한 번에 받는 건수 — 목록 끝에 닿으면 다음 쪽을 받는다. */
+const PROCESS_SEARCH_PAGE_SIZE = 20;
 
 interface ProcessFormState {
   source: 'create' | ProcessDetailResponse;
@@ -95,6 +111,10 @@ export const ProcessMasterPane = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { client } = useApiClient();
   const toast = useToast();
+  /* 조회 상자 · 목록 | 상세 — 공정 경로 탭과 같은 분할 · 같은 배치(#231). */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:routing:process-split', 0.45);
+  const layout = useSplitOrientation(ROUTING_ORIENTATION_KEY);
 
   const filters = useMemo<ProcessFilters>(
     () => ({
@@ -103,10 +123,18 @@ export const ProcessMasterPane = () => {
     }),
     [searchParams],
   );
+  /* 공정 목록 쪽 — 주소가 소유한다(#231). */
+  const paging = useMemo<ListPaging>(
+    () => ({
+      page: Math.max(1, Number(searchParams.get('page')) || 1),
+      size: TAB_PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
+    }),
+    [searchParams],
+  );
   const isCreateMode = searchParams.get('mode') === 'create';
   const selectedId = isCreateMode ? null : Number(searchParams.get('sel') ?? '') || null;
 
-  const list = useProcessList(filters);
+  const list = useProcessList(filters, paging);
   const processes = list.data?.items ?? [];
   const detail = useProcessDetail(selectedId);
   const typeOptions = useProcessTypeOptions();
@@ -208,6 +236,8 @@ export const ProcessMasterPane = () => {
     updateParams({
       q: nextFilters.q === '' ? null : nextFilters.q,
       inactive: nextFilters.includeInactive ? '1' : null,
+      /* 조건이 바뀌면 첫 쪽부터 본다. */
+      page: null,
       sel: null,
       mode: null,
     });
@@ -246,11 +276,13 @@ export const ProcessMasterPane = () => {
     {
       key: 'processCode',
       header: t.fields.processCode,
+      /* 코드는 본문 글자 — 줄 아무 곳이나 눌러 고른다. 단추는 키보드·화면 낭독기 길이자 고른 줄 표시 자리다(#231). */
       render: (process) => (
         <button
           type="button"
-          className="link-cell"
+          className="inspection-standard-plan-open routing-process-open"
           aria-current={process.processId === selectedId ? 'true' : undefined}
+          title={process.processCode}
           onClick={() => updateParams({ sel: String(process.processId), mode: null })}
         >
           {process.processCode}
@@ -272,20 +304,32 @@ export const ProcessMasterPane = () => {
     },
   ];
 
-  const page = list.data?.page;
-  const truncated = page !== undefined && isTruncated(page, processes.length);
-
   return (
     <>
-      {truncated && page !== undefined && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">
-            {t.listTruncated(processes.length, page.total)}
-          </AlertBanner>
-        </div>
-      )}
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
-      <div className="two-pane routing-process-layout">
+      {/* 조회 조건 — 목록과 다른 상자에 둔다. 「공정 추가」는 조회 · 초기화 뒤 구분선 너머에 선다(#231). */}
+      <section
+        ref={aboveRef}
+        className="pane inspection-standard-search routing-search"
+        role="search"
+      >
+        <ProcessFilterBar
+          filters={filters}
+          onApplyFilters={applyFilters}
+          onAdd={() => {
+            write.reset();
+            setLocalErrors({});
+            updateParams({ mode: 'create', sel: null });
+          }}
+        />
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split routing-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <ProcessListPane
           processes={processes}
           columns={columns}
@@ -296,44 +340,54 @@ export const ProcessMasterPane = () => {
               <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />
             ) : null
           }
-          onApplyFilters={applyFilters}
-          onAdd={() => {
-            write.reset();
-            setLocalErrors({});
-            updateParams({ mode: 'create', sel: null });
-          }}
+          pageMeta={list.data?.page ?? { ...paging, total: 0 }}
+          onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
+          onChangePageSize={(size) =>
+            updateParams({ page: null, size: size === 20 ? null : String(size) })
+          }
         />
 
-        <section className="pane" aria-label={t.panes.processForm}>
-          <h2 className="pane-title">{t.panes.processForm}</h2>
-          <ProcessFormSlot
-            isCreateMode={isCreateMode}
-            selectedId={selectedId}
-            detail={detail}
-            formState={formState}
-            values={values}
-            fieldErrors={{ ...write.fieldErrors, ...localErrors }}
-            typeOptions={typeOptions.data ?? []}
-            typeOptionsError={typeOptions.isError}
-            isDirty={isDirty}
-            isSaving={write.isSaving}
-            writeError={write.error}
-            onChange={changeValues}
-            onSave={handleSave}
-            onCancel={() => {
-              write.reset();
-              setLocalErrors({});
-              setFormState((current) =>
-                current === null ? current : { ...current, values: current.baseline },
-              );
-            }}
-            onReload={reloadDetail}
-            onActivate={(intent) => {
-              activationWrite.reset();
-              setActivationIntent(intent);
-            }}
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
           />
-        </section>
+        )}
+
+        <div className="inspection-standard-detail routing-detail">
+          <section className="pane" aria-label={t.panes.processForm}>
+            <h2 className="pane-title">{t.panes.processForm}</h2>
+            <ProcessFormSlot
+              isCreateMode={isCreateMode}
+              selectedId={selectedId}
+              detail={detail}
+              formState={formState}
+              values={values}
+              fieldErrors={{ ...write.fieldErrors, ...localErrors }}
+              typeOptions={typeOptions.data ?? []}
+              typeOptionsError={typeOptions.isError}
+              isDirty={isDirty}
+              isSaving={write.isSaving}
+              writeError={write.error}
+              onChange={changeValues}
+              onSave={handleSave}
+              onCancel={() => {
+                write.reset();
+                setLocalErrors({});
+                setFormState((current) =>
+                  current === null ? current : { ...current, values: current.baseline },
+                );
+              }}
+              onReload={reloadDetail}
+              onActivate={(intent) => {
+                activationWrite.reset();
+                setActivationIntent(intent);
+              }}
+            />
+          </section>
+        </div>
       </div>
 
       <ProcessActivationDialog
@@ -350,14 +404,96 @@ export const ProcessMasterPane = () => {
   );
 };
 
+interface ProcessFilterBarProps {
+  filters: ProcessFilters;
+  onApplyFilters: (filters: ProcessFilters) => void;
+  onAdd: () => void;
+}
+
+/** 공정 조회 조건 — 검색 · 미사용 포함 · 조회 · 초기화 | 공정 추가. */
+const ProcessFilterBar = ({ filters, onApplyFilters, onAdd }: ProcessFilterBarProps) => {
+  const { client } = useApiClient();
+  const searchId = useId();
+  const [draft, setDraft] = useState(filters.q);
+
+  useEffect(() => setDraft(filters.q), [filters.q]);
+
+  return (
+    <div className="filter-bar routing-process-filter">
+      {/*
+       * 공정은 칸에서 바로 검색해서 고른다(다른 화면과 같다 · #226 · #231) — 고른 공정코드가 검색어로 들어간다.
+       * 「전체」는 조건을 푼다. 조회를 눌러야 목록에 걸린다(종전 검색어와 같은 트리거 · 같은 서버 조건 `q`).
+       */}
+      <div className="field-cell search-select-cell">
+        <label className="field-label" htmlFor={searchId}>
+          {t.filters.processSearchLabel}
+        </label>
+        <PagedSelect
+          id={searchId}
+          queryKey={['routing-processes', 'process-select', filters.includeInactive]}
+          fetchPage={async (q, page) => {
+            const data = await runRequest(() =>
+              client.GET('/mdm/processes', {
+                params: {
+                  query: {
+                    ...(q === '' ? {} : { q }),
+                    /* 목록과 같은 범위에서 찾는다 — 목록에 없는 공정을 고르지 않게. */
+                    ...(filters.includeInactive ? { includeInactive: true } : {}),
+                    page,
+                    size: PROCESS_SEARCH_PAGE_SIZE,
+                  },
+                },
+              }),
+            );
+            return {
+              options: data.items.map((process) => ({
+                value: process.processCode,
+                label: `${process.processCode} · ${process.processName}`,
+              })),
+              total: data.page.total,
+            };
+          }}
+          selectedOption={draft === '' ? null : { value: draft, label: draft }}
+          leadingOptions={[{ value: '', label: t.filters.all }]}
+          value={draft}
+          placeholder={t.filters.all}
+          onChange={setDraft}
+        />
+      </div>
+      <div className="field-cell field-cell-unlabeled">
+        <Checkbox
+          checked={filters.includeInactive}
+          onChange={(event) =>
+            onApplyFilters({ ...filters, includeInactive: event.target.checked })
+          }
+        >
+          {messages.common.includeInactive}
+        </Checkbox>
+      </div>
+      <div className="filter-actions field-cell-unlabeled">
+        <Button onClick={() => onApplyFilters({ ...filters, q: draft })}>
+          {messages.common.search}
+        </Button>
+        <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_FILTERS)}>
+          {messages.common.reset}
+        </Button>
+        <span className="inspection-standard-filter-divider" aria-hidden />
+        <Button onClick={onAdd}>{t.actions.addProcess}</Button>
+      </div>
+    </div>
+  );
+};
+
 interface ProcessListPaneProps {
   processes: Process[];
   columns: Column<Process>[];
   filters: ProcessFilters;
   isLoading: boolean;
   loadError: ReactNode;
-  onApplyFilters: (filters: ProcessFilters) => void;
-  onAdd: () => void;
+  /** 쪽 이동 줄 — 총 건수 · 건수 고르기 · 처음/이전/다음/마지막(#231). */
+  pageMeta: PageNavMeta;
+  onChangePage: (page: number) => void;
+  onChangePageSize: (size: TabPageSize) => void;
 }
 
 const ProcessListPane = ({
@@ -366,12 +502,16 @@ const ProcessListPane = ({
   filters,
   isLoading,
   loadError,
-  onApplyFilters,
-  onAdd,
+  pageMeta,
+  onChangePage,
+  onChangePageSize,
 }: ProcessListPaneProps) => {
-  const [draft, setDraft] = useState(filters.q);
-
-  useEffect(() => setDraft(filters.q), [filters.q]);
+  /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(표 공통 · #231). */
+  const ordered = useColumnOrder('omf-mes:routing:process-columns:order', centerColumns(columns));
+  const resizable = useColumnWidths('omf-mes:routing:process-columns', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   let listSlot: ReactNode;
   if (loadError !== null && loadError !== undefined) listSlot = loadError;
@@ -383,66 +523,63 @@ const ProcessListPane = ({
     );
   } else {
     listSlot = (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={processes}
-        getRowId={(process) => String(process.processId)}
-        empty={
-          <EmptyState
-            size="sm"
-            live
-            title={
-              filters.q !== '' || filters.includeInactive
-                ? t.empty.processNoMatchTitle
-                : t.empty.processNoneTitle
-            }
-            description={
-              filters.q !== '' || filters.includeInactive
-                ? t.empty.processNoMatchDescription
-                : t.empty.processNoneDescription
-            }
-          />
-        }
-      />
+      /* 줄 아무 곳이나 눌러도 고른다 — DS 표에 줄 클릭이 없어 눌린 줄의 코드 단추로 넘긴다. */
+      <div
+        ref={fit.ref}
+        className="inspection-queue-table inspection-standard-plan-rows inspection-standard-table-box wide-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.routing-process-open')
+            ?.click();
+        }}
+      >
+        <Table
+          density="compact"
+          columns={fit.columns}
+          rows={processes}
+          getRowId={(process) => String(process.processId)}
+          empty={
+            <EmptyState
+              size="sm"
+              live
+              title={
+                filters.q !== '' || filters.includeInactive
+                  ? t.empty.processNoMatchTitle
+                  : t.empty.processNoneTitle
+              }
+              description={
+                filters.q !== '' || filters.includeInactive
+                  ? t.empty.processNoMatchDescription
+                  : t.empty.processNoneDescription
+              }
+            />
+          }
+        />
+      </div>
     );
   }
 
   return (
-    <section className="pane" aria-label={t.panes.processList}>
-      <div className="pane-heading-row">
-        <h2 className="pane-title">{t.panes.processList}</h2>
-        <Button onClick={onAdd}>{t.actions.addProcess}</Button>
-      </div>
-      <div className="filter-bar routing-process-filter">
-        <SearchInput
-          label={t.filters.processSearchLabel}
-          placeholder={t.filters.processSearchPlaceholder}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onSearch={(value) => onApplyFilters({ ...filters, q: value })}
-          clearLabel={messages.common.clear}
-        />
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={filters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...filters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
-        <div className="filter-actions field-cell-unlabeled">
-          <Button onClick={() => onApplyFilters({ ...filters, q: draft })}>
-            {messages.common.search}
-          </Button>
-          <Button variant="outlined" onClick={() => onApplyFilters(DEFAULT_FILTERS)}>
-            {messages.common.reset}
-          </Button>
-        </div>
-      </div>
+    <section
+      className="pane inspection-standard-list-pane routing-process-list-pane"
+      aria-label={t.panes.processList}
+    >
+      <h2 className="pane-title">{t.panes.processList}</h2>
       {listSlot}
+
+      {(loadError === null || loadError === undefined) && !isLoading && (
+        <PageNav
+          meta={pageMeta}
+          buttonSize="md"
+          sizes={TAB_PAGE_SIZES}
+          onChangePage={onChangePage}
+          onChangeSize={onChangePageSize}
+        />
+      )}
     </section>
   );
 };
@@ -522,23 +659,36 @@ const ProcessFormSlot = ({
           disabled={codeLockReason !== null}
           disabledReason={codeLockReason}
           error={fieldErrors.processCode}
+          /* 필수 칸 — 라벨 옆 빨간 *, 비어 있으면 빨간 테두리(사용자 지시 · #231). */
+          required
+          containerClassName={
+            values.processCode.trim() === '' ? 'routing-required-empty' : undefined
+          }
         />
         <TextField
           label={t.fields.processName}
           value={values.processName}
           onChange={(event) => onChange({ processName: event.target.value })}
           error={fieldErrors.processName}
+          required
+          containerClassName={
+            values.processName.trim() === '' ? 'routing-required-empty' : undefined
+          }
         />
         <div className="field-cell">
           <span className="field-label">
             <label htmlFor={typeId}>{t.fields.processType}</label>
+            <span className="required-mark" aria-hidden="true">
+              {' '}*
+            </span>
           </span>
           <Select
             id={typeId}
             value={values.processTypeCode}
             options={typeOptions}
             onChange={(value) => onChange({ processTypeCode: value })}
-            invalid={fieldErrors.processTypeCode !== undefined}
+            invalid={fieldErrors.processTypeCode !== undefined || values.processTypeCode === ''}
+            aria-required
             aria-describedby={fieldErrors.processTypeCode === undefined ? undefined : typeErrorId}
           />
           {fieldErrors.processTypeCode !== undefined && (

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -56,8 +56,9 @@ describe('HeaderPane', () => {
     renderPane();
 
     expect(screen.getByLabelText('Routing 코드')).toHaveValue('STANDARD');
-    expect(screen.getByLabelText('유효시작')).toHaveValue('2026-02-01');
-    expect(screen.getByLabelText('유효종료')).toHaveValue('2026-02-28');
+    /* 유효 시작일 · 종료일은 입력받지 않는다(#231). */
+    expect(screen.queryByLabelText('유효시작')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('유효종료')).not.toBeInTheDocument();
     expect(screen.getByText('ITM-001 · 하우징 커버')).toBeInTheDocument();
     expect(screen.getByText('Rev 3')).toBeInTheDocument();
     expect(screen.getByText('작성중')).toBeInTheDocument();
@@ -67,7 +68,6 @@ describe('HeaderPane', () => {
     renderPane();
 
     expect(screen.getByLabelText('Routing 코드')).toBeEnabled();
-    expect(screen.getByLabelText('유효시작')).toBeEnabled();
     expect(screen.queryByText(STATE_LOCK_CONFIRMED)).not.toBeInTheDocument();
   });
 
@@ -76,48 +76,36 @@ describe('HeaderPane', () => {
 
     await user.type(screen.getByLabelText('Routing 코드'), 'X');
     expect(onChange).toHaveBeenCalledWith({ routingCode: 'STANDARDX' });
-
-    // 날짜 입력은 달력 위젯을 거치므로 값 변경을 직접 일으켜 확인한다.
-    fireEvent.change(screen.getByLabelText('유효종료'), { target: { value: '2026-03-31' } });
-    expect(onChange).toHaveBeenCalledWith({ effectiveTo: '2026-03-31' });
   });
 
-  it('확정 Rev에서는 헤더 입력 전부가 잠기고 푸는 방법을 안내한다', () => {
-    renderPane({ status: resolveRoutingStatus('CONFIRMED') });
+  /* 확정 · 폐기는 경고 상자 없이 읽기 전용 값으로 낸다 — 카드 머리 「Rev · 상태」가 잠금을 말한다(#231). */
+  it.each(['CONFIRMED', 'OBSOLETE'])(
+    '%s Rev 에서는 Routing 코드를 읽기 전용 값으로 내고 경고 상자가 없다',
+    (code) => {
+      renderPane({ status: resolveRoutingStatus(code) });
 
-    expect(screen.getByLabelText('Routing 코드')).toBeDisabled();
-    expect(screen.getByLabelText('유효시작')).toBeDisabled();
-    expect(screen.getByLabelText('유효종료')).toBeDisabled();
-    expect(screen.getByText(STATE_LOCK_CONFIRMED)).toBeInTheDocument();
-  });
-
-  it('폐기 Rev에서도 입력이 잠기고 폐기에 맞는 안내가 나온다', () => {
-    renderPane({ status: resolveRoutingStatus('OBSOLETE') });
-
-    expect(screen.getByLabelText('Routing 코드')).toBeDisabled();
-    expect(
-      screen.getByText('폐기된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.'),
-    ).toBeInTheDocument();
-  });
+      const value = screen.getByLabelText('Routing 코드');
+      expect(value).toHaveTextContent('STANDARD');
+      expect(value).toHaveAttribute('aria-readonly', 'true');
+      /* 입력칸이 아니라 값 표기다. */
+      expect(value.tagName).toBe('SPAN');
+      expect(screen.queryByText(STATE_LOCK_CONFIRMED)).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    },
+  );
 
   /*
-   * 상태 잠금과 코드 잠금은 사유가 다르다 — 하나로 뭉뚱그리면 사용자가 무엇을 하면 풀리는지 알 수 없다.
+   * 상태 잠금과 코드 잠금은 사유가 다르다 — 코드 잠금은 값 옆 라벨로 따로 알린다.
    */
-  it('코드 잠금은 Routing 코드만 잠그고 상태 잠금과 다른 문구를 낸다', () => {
+  it('코드 잠금은 읽기 전용 값 옆에 「사용 중 · 변경 불가」 라벨을 달고 사유를 숨긴 글로 잇는다', () => {
     renderPane({ codeLockReason: CODE_LOCK });
 
-    expect(screen.getByLabelText('Routing 코드')).toBeDisabled();
-    expect(screen.getByLabelText('유효시작')).toBeEnabled();
-    expect(screen.getByLabelText('유효종료')).toBeEnabled();
-    expect(screen.getByText(CODE_LOCK)).toBeInTheDocument();
-    expect(screen.queryByText(STATE_LOCK_CONFIRMED)).not.toBeInTheDocument();
-  });
-
-  it('상태와 코드가 함께 잠기면 두 사유가 모두 보인다', () => {
-    renderPane({ status: resolveRoutingStatus('CONFIRMED'), codeLockReason: CODE_LOCK });
-
-    expect(screen.getByText(STATE_LOCK_CONFIRMED)).toBeInTheDocument();
-    expect(screen.getByText(CODE_LOCK)).toBeInTheDocument();
+    const value = screen.getByLabelText('Routing 코드');
+    expect(value).toHaveAttribute('aria-readonly', 'true');
+    /* 긴 문장 대신 값 옆 라벨(#231) — 문장은 숨긴 글로 값에 이어 화면 낭독기가 읽는다. */
+    expect(screen.getByText('사용 중 · 변경 불가')).toBeInTheDocument();
+    expect(screen.getByText(CODE_LOCK)).toHaveClass('visually-hidden');
+    expect(value).toHaveAccessibleDescription(CODE_LOCK);
   });
 
   it('모르는 상태 코드는 원본 코드를 배지로 내고 편집을 막지 않는다', () => {
@@ -127,18 +115,12 @@ describe('HeaderPane', () => {
     expect(screen.getByLabelText('Routing 코드')).toBeEnabled();
   });
 
-  /*
-   * 유효종료는 「지정하지 않음」이 정상 값이라 표시를 붙이지 않는다 —
-   * 필수인 칸과 아닌 칸이 같은 폼에 있으므로 표시가 그 차이를 밝힌다.
-   */
   it('필수 입력칸에만 표시를 붙이고 접근성 이름은 그대로 둔다', () => {
     renderPane();
 
     expect(screen.getByLabelText('Routing 코드')).toHaveAttribute('aria-required', 'true');
-    expect(screen.getByLabelText('유효시작')).toHaveAttribute('aria-required', 'true');
-    expect(screen.getByLabelText('유효종료')).not.toHaveAttribute('aria-required');
-
-    expect(screen.getAllByText('*', { selector: '[aria-hidden="true"]' })).toHaveLength(2);
+    /* 남은 입력칸은 코드 하나뿐이다(#231). */
+    expect(screen.getAllByText('*', { selector: '[aria-hidden="true"]' })).toHaveLength(1);
   });
 
   it('필드 오류를 그 입력칸에 인라인으로 낸다', () => {
@@ -157,6 +139,13 @@ describe('HeaderPane', () => {
         'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('Rev 1 에는 견줄 앞 판이 없어 Rev 비교 · 변경 이력을 세우지 않는다(#231)', () => {
+    renderPane({ routingVersion: 1 });
+
+    expect(screen.queryByRole('button', { name: 'Rev 비교' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
   });
 
   /*
@@ -179,11 +168,12 @@ describe('HeaderPane', () => {
     expect(screen.getByText(CONFIRM_NEEDS_OPERATIONS)).toBeInTheDocument();
   });
 
-  it('작성중이면 폐기가 비활성이고 먼저 확정하라고 알린다', () => {
+  /* 작성중은 폐기할 수 없다 — 비활성으로 두지 않고 단추를 세우지 않는다(사용자 지시 · #231). */
+  it('작성중이면 폐기 단추를 세우지 않는다', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();
-    expect(screen.getByText(OBSOLETE_NEEDS_CONFIRMED)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '폐기' })).not.toBeInTheDocument();
+    expect(screen.queryByText(OBSOLETE_NEEDS_CONFIRMED)).not.toBeInTheDocument();
   });
 
   it('확정 Rev에서는 폐기를 눌러 상위에 올린다', async () => {
@@ -199,9 +189,17 @@ describe('HeaderPane', () => {
   });
 
   it('전이 요청이 도는 동안에는 확정·폐기를 다시 누를 수 없다', () => {
-    renderPane({ obsoleteDisabledReason: null, isTransitioning: true });
-
+    renderPane({ isTransitioning: true });
     expect(screen.getByRole('button', { name: '확정' })).toBeDisabled();
+  });
+
+  it('전이 요청이 도는 동안에는 확정 Rev 의 폐기를 다시 누를 수 없다', () => {
+    renderPane({
+      status: resolveRoutingStatus('CONFIRMED'),
+      obsoleteDisabledReason: null,
+      isTransitioning: true,
+    });
+
     expect(screen.getByRole('button', { name: '폐기' })).toBeDisabled();
   });
 
@@ -220,10 +218,18 @@ describe('HeaderPane', () => {
   });
 
   /* 잠긴 상태에서는 고칠 수도 없지만, 잠금 직전에 고친 값이 남아 있을 수 있어 함께 막는다. */
-  it('확정 Rev에서는 고친 값이 남아 있어도 저장이 비활성이다', () => {
-    renderPane({ isDirty: true, status: resolveRoutingStatus('CONFIRMED') });
+  /* 확정 Rev 에서는 쓸 수 없는 취소 · 저장 · 확정을 세우지 않는다(#231). */
+  it('확정 Rev에서는 취소 · 저장 · 확정을 세우지 않고 폐기만 둔다', () => {
+    renderPane({
+      isDirty: true,
+      status: resolveRoutingStatus('CONFIRMED'),
+      obsoleteDisabledReason: null,
+    });
 
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '확정' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '폐기' })).toBeEnabled();
   });
 
   it('저장 중에는 저장이 비활성이다', () => {

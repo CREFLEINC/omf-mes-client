@@ -1,14 +1,28 @@
-import { Button, type Column, EmptyState, IconButton, SkeletonText, Table } from '@crefle/web-ui';
+import {
+  Button,
+  type Column,
+  EmptyState,
+  Icon,
+  IconButton,
+  SkeletonText,
+  Table,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { DisabledAction } from './disabled-action';
 import { OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft } from './types';
+import { centerColumns } from './table-align';
 
 const t = messages.routing;
 
 export interface OperationsPaneProps {
+  /**
+   * 구역 제목(상세 카드 「공정 구성 N개」 · #231). 주면 공정 추가 · 선후행 단추가 제목 줄 오른쪽에 선다 —
+   * 막힌 사유 글도 그 단추 아래에 붙어 표와 겹치지 않는다.
+   */
+  title?: ReactNode;
   drafts: OperationDraft[];
   /** 공정 id를 사람이 읽는 이름으로. 선택 목록에 없으면 코드를 그대로 낸다. */
   processLabel: (processId: string) => string;
@@ -29,6 +43,10 @@ export interface OperationsPaneProps {
   removeBlockedReason: (draft: OperationDraft) => string | null;
   /** 선후행 창을 열 수 없는 이유. 잠긴 Rev 는 읽기 전용으로 열리므로 잠금은 이유가 아니다 */
   dependenciesBlockedReason: string | null;
+  /** 취소 · 저장을 이 칸 아래에 둘지. 상세 카드는 설정 탭 맨 아래 한 줄로 모은다(#231). */
+  showSaveActions?: boolean;
+  /** 공정 추가 · 공정 연결 단추를 세울지. Rev 상세 보기 창은 보기만 해 두지 않는다(#231). */
+  showTools?: boolean;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
   onAdd: () => void;
@@ -55,6 +73,42 @@ const managedItemsLabel = (draft: OperationDraft): string => {
   return enabled.length === 0 ? t.values.none : enabled.join(' · ');
 };
 
+/**
+ * 관리 항목 칸 — 「첫 항목 외 N개 ▾」를 누르면 칸 안에서 펼쳐 전체를 한 줄씩 보인다(아코디언 · 사용자 지시 · #231).
+ * 마우스를 올려 띄우는 말풍선은 쓰지 않는다. 한 개뿐이거나 없으면 그대로 낸다.
+ */
+const ManagedItemsSummary = ({ draft }: { draft: OperationDraft }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const listId = useId();
+  const enabled = OPERATION_FLAG_KEYS.filter((key) => draft[key]).map(
+    (key) => t.operationFlags[key],
+  );
+  const [first] = enabled;
+  if (first === undefined || enabled.length === 1) return <>{managedItemsLabel(draft)}</>;
+
+  return (
+    <div className="routing-managed-accordion">
+      <button
+        type="button"
+        className="routing-managed-toggle"
+        aria-expanded={isOpen}
+        aria-controls={listId}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        {t.values.moreItems(first, enabled.length - 1)}
+        <Icon name={isOpen ? 'expand_less' : 'expand_more'} size={18} aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <ul id={listId} className="routing-managed-list">
+          {enabled.map((label) => (
+            <li key={label}>{label}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 /** 값이 없다는 것과 0이라는 것은 다르다 — 빈 값을 빈 칸으로 두면 둘이 같아 보인다. */
 const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : value);
 
@@ -71,6 +125,7 @@ const orEmptyMark = (value: string): string => (value === '' ? t.values.empty : 
  * 중간 상태가 반드시 제약을 위반한다 — 최종 순서 전체를 「저장」에서 한 번에 보낸다(공유계약 A-5).
  */
 export const OperationsPane = ({
+  title,
   drafts,
   processLabel,
   isLoading,
@@ -92,6 +147,8 @@ export const OperationsPane = ({
   onSave,
   onCancel,
   onOpenDependencies,
+  showSaveActions = true,
+  showTools = true,
 }: OperationsPaneProps) => {
   const lockNoteId = useId();
   const columns: Column<OperationDraft>[] = [
@@ -116,7 +173,7 @@ export const OperationsPane = ({
     {
       key: 'managedItems',
       header: t.fields.managedItems,
-      render: (row) => managedItemsLabel(row),
+      render: (row) => <ManagedItemsSummary draft={row} />,
     },
     {
       key: 'standardCycleTimeSec',
@@ -130,8 +187,9 @@ export const OperationsPane = ({
       header: t.fields.standardYieldRate,
       align: 'end',
       width: '120px',
-      // 비율 그대로 낸다. 퍼센트로 보이면서 비율로 저장하면 100배 오입력이 조용히 통과한다.
-      render: (row) => orEmptyMark(row.standardYieldRate),
+      // 초안이 이미 퍼센트(0~100)다 — 서버 비율과의 변환은 operation-order.ts 한 곳에서 한다(#231).
+      render: (row) =>
+        row.standardYieldRate === '' ? t.values.empty : t.values.percent(row.standardYieldRate),
     },
     {
       key: 'rowActions',
@@ -201,7 +259,7 @@ export const OperationsPane = ({
      * 값의 근거는 docs/layout-conventions.md의 도출 표에 있다.
      */
     return (
-      <div className="wide-table">
+      <div className="wide-table routing-operations-table">
         {!isEditable && (
           <span id={lockNoteId} className="routing-visually-hidden">
             {lockReason}
@@ -209,7 +267,10 @@ export const OperationsPane = ({
         )}
         <Table
           density="compact"
-          columns={columns}
+          /* 잠긴 Rev 에는 고칠 수 없는 편집 칸을 두지 않는다 — 조회할 정보 칸만(사용자 지시 · #231). */
+          columns={centerColumns(
+            isEditable ? columns : columns.filter((column) => column.key !== 'rowActions'),
+          )}
           rows={drafts}
           getRowId={(row) => row.draftId}
           /*
@@ -236,38 +297,55 @@ export const OperationsPane = ({
   /** 잠금이 먼저다 — 잠긴 상태에서는 헤더 편집 여부가 사용자에게 아무 도움이 되지 않는다. */
   const saveReason = isEditable ? saveBlockedReason : lockReason;
 
+  /* 공정 추가 · 선후행 — 제목 줄 오른쪽(상세 카드) 또는 표 위 단추 줄에 선다. */
+  const tools = (
+    <>
+      {/* 잠긴 Rev(확정 · 폐기)에서는 공정 추가를 세우지 않는다 — 비활성 단추와 사유 문장 대신(사용자 지시 · #231). */}
+      {isEditable && (
+        <div className="field-cell">
+          <Button variant="outlined" onClick={onAdd}>
+            {t.actions.addOperation}
+          </Button>
+        </div>
+      )}
+
+      {dependenciesBlockedReason === null ? (
+        <div className="field-cell">
+          <Button variant="outlined" onClick={onOpenDependencies}>
+            {t.actions.dependencies}
+          </Button>
+        </div>
+      ) : (
+        <DisabledAction
+          label={t.actions.dependencies}
+          reason={dependenciesBlockedReason}
+          badge={t.values.dependenciesBlockedBadge}
+        />
+      )}
+    </>
+  );
+
   return (
     <section className="pane" aria-label={t.panes.operations}>
       {optionsNotice}
       {banner}
 
-      {isRevisionSelected && (
-        <div className="filter-bar">
-          {isEditable ? (
-            <div className="field-cell">
-              <Button variant="outlined" onClick={onAdd}>
-                {t.actions.addOperation}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction label={t.actions.addOperation} reason={lockReason} />
-          )}
-
-          {dependenciesBlockedReason === null ? (
-            <div className="field-cell">
-              <Button variant="outlined" onClick={onOpenDependencies}>
-                {t.actions.dependencies}
-              </Button>
-            </div>
-          ) : (
-            <DisabledAction label={t.actions.dependencies} reason={dependenciesBlockedReason} />
+      {/* 상세 카드는 제목 줄 오른쪽에 단추를 둔다(#231). 제목이 없으면 종전처럼 표 위 단추 줄. */}
+      {title !== undefined && (
+        <div className="pane-heading-row routing-operations-heading">
+          <h3 className="pane-title">{title}</h3>
+          {isRevisionSelected && showTools && (
+            <div className="routing-card-section-tools">{tools}</div>
           )}
         </div>
+      )}
+      {title === undefined && isRevisionSelected && showTools && (
+        <div className="filter-bar">{tools}</div>
       )}
 
       {listSlot()}
 
-      {isRevisionSelected && (
+      {isRevisionSelected && showSaveActions && (
         <div className="form-actions">
           {/*
            * 저장을 막는 사유는 그 버튼 아래에 붙인다(배치 규범 4).

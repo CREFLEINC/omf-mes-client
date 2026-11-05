@@ -1,9 +1,9 @@
-import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
+import { Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
+import { RoutingActions } from './routing-actions';
 import type { RoutingStatusView } from './routing-status';
 import type { RoutingHeaderFormValues } from './types';
 
@@ -44,6 +44,10 @@ export interface HeaderPaneProps {
   isTransitioning: boolean;
   onConfirm: () => void;
   onObsolete: () => void;
+  /** 품목 · Rev 값 칸을 보일지. 상세 카드는 머리에 이미 보이므로 끈다(#231). */
+  showSubject?: boolean;
+  /** 취소 · 저장 · 확정 줄을 이 칸에 둘지. 상세 카드는 설정 탭 맨 아래 한 줄로 모은다(#231). */
+  showActions?: boolean;
 }
 
 /**
@@ -74,41 +78,44 @@ export const HeaderPane = ({
   isTransitioning,
   onConfirm,
   onObsolete,
+  showSubject = true,
+  showActions = true,
 }: HeaderPaneProps) => {
   const itemLabelId = useId();
   const revisionLabelId = useId();
   const statusLabelId = useId();
   const routingCodeId = useId();
-  const effectiveFromId = useId();
+  const routingCodeLabelId = useId();
+  const codeLockNoteId = useId();
+
+  /* 「코드 · 이름」을 나눠 칸마다 낸다. 구분자가 없으면(값 없음) 코드 칸에 그대로. */
+  const separatorAt = itemLabel.indexOf(' · ');
+  const itemParts =
+    separatorAt < 0
+      ? null
+      : { code: itemLabel.slice(0, separatorAt), name: itemLabel.slice(separatorAt + 3) };
 
   const isLockedByState = status !== null && !status.isEditable;
-
-  const stateLockMessage =
-    status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
+  const isCodeReadOnly = isLockedByState || codeLockReason !== null;
 
   return (
-    <section className="pane" aria-label={t.panes.header}>
-      {isLockedByState && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.stateLock.title}>
-            {stateLockMessage}
-          </AlertBanner>
-        </div>
-      )}
-
+    <section className="pane routing-header-pane" aria-label={t.panes.header}>
+      {/* 확정 · 폐기 잠금은 경고 상자로 알리지 않는다 — 카드 머리 「Rev · 상태」와 읽기 전용 값이 대신 말한다(사용자 지시 · #231). */}
       {banner}
 
       <div className="form-grid">
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
-        <div>
-          <span className="field-label" id={itemLabelId}>
-            {t.fields.item}
-          </span>
-          <p aria-labelledby={itemLabelId}>{itemLabel}</p>
-        </div>
+        {showSubject && (
+          <div>
+            <span className="field-label" id={itemLabelId}>
+              {t.fields.item}
+            </span>
+            <p aria-labelledby={itemLabelId}>{itemLabel}</p>
+          </div>
+        )}
 
         {/* 등록 전에는 판 번호가 없다 — 서버가 채우는 값을 미리 지어내 보이지 않는다. */}
-        {routingVersion !== null && (
+        {showSubject && routingVersion !== null && (
           <div>
             <span className="field-label" id={revisionLabelId}>
               {t.fields.revision}
@@ -121,24 +128,82 @@ export const HeaderPane = ({
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={routingCodeId} label={t.fields.routingCode} required />
-          <TextField
-            id={routingCodeId}
-            value={values.routingCode}
-            onChange={(event) => onChange({ routingCode: event.target.value })}
-            disabled={isLockedByState || codeLockReason !== null}
-            /*
-             * 상태 잠금 사유는 여기 붙이지 않는다 — 구획 배너가 이미 한 번 말했고,
-             * 입력칸마다 되풀이하면 무엇이 코드만의 사유인지 흐려진다.
-             */
-            disabledReason={codeLockReason}
-            error={fieldErrors.routingCode}
-            aria-required
-          />
+        {/*
+         * Routing 코드 — 라벨 · 값을 한 줄로(사용자 지시 · #231). 고칠 수 없으면(확정 · 폐기 · 사용 중) 입력칸 대신 읽기 전용 값으로 낸다.
+         * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
+         */}
+        {/*
+         * 품목 · Routing 코드 요약 줄 — 테두리 상자 안에 칸이 나란히, 칸마다 이름 위 · 값 아래, 칸 사이 세로 구분선
+         * (검사 기본 정보 줄과 같은 모양 · 사용자 지시 · #231). 고칠 수 없으면(확정 · 폐기 · 사용 중) 입력칸 대신 읽기 전용 값.
+         */}
+        <div className="routing-code-line">
+          {/* 품목코드 · 품목명은 칸을 나눠 보인다(사용자 지시 · #231). 품목명이 길면 말줄임, 전체는 마우스를 올리면. */}
+          {!showSubject && (
+            <>
+              <div className="routing-fact">
+                <span className="field-label">{t.fields.itemCode}</span>
+                <span className="routing-code-value">{itemParts?.code ?? itemLabel}</span>
+              </div>
+              <div className="routing-fact routing-fact-wide">
+                <span className="field-label">{t.fields.itemName}</span>
+                <span className="routing-fact-item-name" title={itemParts?.name}>
+                  {itemParts?.name ?? t.values.empty}
+                </span>
+              </div>
+            </>
+          )}
+          <div className="routing-fact">
+            {isCodeReadOnly ? (
+              <span className="field-label" id={routingCodeLabelId}>
+                {t.fields.routingCode}
+              </span>
+            ) : (
+              /* 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3). */
+              <FieldLabel htmlFor={routingCodeId} label={t.fields.routingCode} required />
+            )}
+            <div className="routing-fact-value">
+              {isCodeReadOnly ? (
+                <span
+                  className="routing-code-value"
+                  role="textbox"
+                  aria-readonly="true"
+                  aria-labelledby={routingCodeLabelId}
+                  {...(codeLockReason === null ? {} : { 'aria-describedby': codeLockNoteId })}
+                >
+                  {values.routingCode}
+                </span>
+              ) : (
+                <TextField
+                  id={routingCodeId}
+                  value={values.routingCode}
+                  onChange={(event) => onChange({ routingCode: event.target.value })}
+                  error={fieldErrors.routingCode}
+                  aria-required
+                  /* 필수인데 비어 있으면 빨간 테두리(사용자 지시 · #231) — 채우면 사라진다. */
+                  containerClassName={
+                    values.routingCode.trim() === '' ? 'routing-required-empty' : undefined
+                  }
+                />
+              )}
+              {/* 코드 잠금 사유는 긴 문장 대신 값 옆 라벨로 줄인다(사용자 지시 · #231) — 문장은 라벨 위 마우스 · 숨긴 글. */}
+              {codeLockReason !== null && (
+                <>
+                  <span title={codeLockReason}>
+                    <Chip variant="status" status="idle" aria-hidden="true">
+                      {t.values.codeLockedBadge}
+                    </Chip>
+                  </span>
+                  <span id={codeLockNoteId} className="visually-hidden">
+                    {codeLockReason}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {status !== null && (
+        {/* 상세 카드는 상태를 구역 머리 칩(「Rev · 상태」)으로 보인다(#231). */}
+        {showSubject && status !== null && (
           <div>
             <span className="field-label" id={statusLabelId}>
               {t.fields.status}
@@ -151,79 +216,25 @@ export const HeaderPane = ({
           </div>
         )}
 
-        {/* DS에 DatePicker가 없다(고정 커밋 기준). 날짜 입력은 TextField의 date 형을 쓴다. */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={effectiveFromId} label={t.fields.effectiveFrom} required />
-          <TextField
-            id={effectiveFromId}
-            type="date"
-            value={values.effectiveFrom}
-            onChange={(event) => onChange({ effectiveFrom: event.target.value })}
-            disabled={isLockedByState}
-            error={fieldErrors.effectiveFrom}
-            aria-required
-          />
-        </div>
-
-        {/* 유효종료는 「지정하지 않음」이 정상 값이라 필수 표시를 붙이지 않는다. */}
-        <TextField
-          type="date"
-          label={t.fields.effectiveTo}
-          value={values.effectiveTo}
-          onChange={(event) => onChange({ effectiveTo: event.target.value })}
-          disabled={isLockedByState}
-          error={fieldErrors.effectiveTo}
-        />
+        {/* 유효 시작일 · 종료일은 입력받지 않는다(사용자 지시 · #231). */}
       </div>
 
-      <div className="form-actions">
-        {/*
-         * 사유가 붙은 비활성 액션은 줄 왼쪽에, 주 액션(취소·저장)은 오른쪽에 남긴다.
-         * 왼쪽 묶음의 마지막 항목이 auto 여백을 가져 그 뒤가 오른쪽으로 밀린다.
-         */}
-        {confirmDisabledReason === null ? (
-          <div className="field-cell">
-            <Button variant="outlined" disabled={isTransitioning} onClick={onConfirm}>
-              {t.actions.confirm}
-            </Button>
-          </div>
-        ) : (
-          <DisabledAction label={t.actions.confirm} reason={confirmDisabledReason} />
-        )}
-
-        {obsoleteDisabledReason === null ? (
-          <div className="field-cell">
-            <Button variant="outlined" disabled={isTransitioning} onClick={onObsolete}>
-              {t.actions.obsolete}
-            </Button>
-          </div>
-        ) : (
-          <DisabledAction label={t.actions.obsolete} reason={obsoleteDisabledReason} />
-        )}
-
-        <DisabledAction
-          label={t.actions.compareRevisions}
-          reason={t.actionReasons.compareRevisionsUnavailable}
+      {showActions && (
+        <RoutingActions
+          mode={mode}
+          routingVersion={routingVersion}
+          status={status}
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onSave={onSave}
+          onCancel={onCancel}
+          confirmDisabledReason={confirmDisabledReason}
+          obsoleteDisabledReason={obsoleteDisabledReason}
+          isTransitioning={isTransitioning}
+          onConfirm={onConfirm}
+          onObsolete={onObsolete}
         />
-        <DisabledAction
-          label={t.actions.changeHistory}
-          reason={t.actionReasons.changeHistoryUnavailable}
-          className="form-actions-secondary"
-        />
-
-        <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
-          {messages.common.cancel}
-        </Button>
-
-        {/* 잠긴 상태에서는 고칠 수도 없지만, 잠금 직전에 고친 값이 남아 있을 수 있어 함께 막는다. */}
-        <Button
-          disabled={!isDirty || isSaving || isLockedByState}
-          loading={isSaving}
-          onClick={onSave}
-        >
-          {mode === 'create' ? t.actions.createRouting : messages.common.save}
-        </Button>
-      </div>
+      )}
     </section>
   );
 };

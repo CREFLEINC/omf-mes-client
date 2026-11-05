@@ -7,11 +7,6 @@
 export const routing = {
   title: 'Routing(공정)',
   breadcrumbRoot: '기준정보 관리',
-  tabs: {
-    label: 'Routing·공정 마스터',
-    routing: 'Routing',
-    processes: '공정 마스터',
-  },
   panes: {
     item: '품목',
     revision: 'Rev 목록',
@@ -20,7 +15,22 @@ export const routing = {
     processList: '공정 목록',
     processForm: '공정 등록·편집',
   },
+  /** 상세 카드(사용자 시안 · #231) — 머리 · 탭 · 구역 제목. */
+  card: {
+    title: '공정 경로',
+    tabsLabel: '공정 경로 상세',
+    settingsTab: '설정',
+    historyTab: 'Rev 이력',
+    /** 설정 탭 맨 아래 취소 · 저장 · 확정 · 폐기 줄(#231). */
+    actionsLabel: '편집 단추',
+    operationsTitle: '공정 구성',
+    operationsCount: (count: number): string => `${count}개`,
+    revisionChip: (revision: string, status: string): string => `${revision} · ${status}`,
+  },
   actions: {
+    /** Rev 이력 표의 「상세」 칸 단추 — 누르면 설정 탭에서 그 Rev 를 연다(#231). */
+    viewDetail: '상세 보기',
+    viewDetailLabel: (revision: string): string => `${revision} 상세 보기`,
     newRevision: '신규 Rev 발행',
     createRouting: 'Routing 등록',
     addOperation: '공정 추가',
@@ -28,7 +38,7 @@ export const routing = {
     activateProcess: '다시 사용',
     confirm: '확정',
     obsolete: '폐기',
-    dependencies: '선후행 설정',
+    dependencies: '공정 연결',
     compareRevisions: 'Rev 비교',
     changeHistory: '변경 이력',
     /*
@@ -41,19 +51,17 @@ export const routing = {
   actionReasons: {
     /* 선후행은 저장된 라인만 가리킬 수 있다 — 저장 전 라인에는 서버 식별자가 없다. */
     dependenciesBlockedByUnsaved:
-      '선후행 설정은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
-    dependenciesNeedOperations: '선후행 설정은 공정이 2건 이상 저장돼 있어야 할 수 있습니다.',
+      '공정 연결은 저장하지 않은 공정 라인이 있으면 할 수 없습니다. 먼저 공정을 저장하거나 취소하세요.',
+    dependenciesNeedOperations: '공정 연결은 공정 2개 이상 등록 시 사용 가능합니다.',
     removeBlockedWhileCheckingDependencies: '선후행을 확인하는 중입니다. 잠시 뒤 다시 시도하세요.',
     removeBlockedByDependencyLoadError:
       '선후행을 불러오지 못해 지울 수 있는지 확인할 수 없습니다. 새로고침한 뒤 다시 시도하세요.',
     removeBlockedByDependencies: (relations: string): string =>
-      `이 공정에 선후행이 걸려 있습니다(${relations}). 먼저 [선후행 설정]에서 그 관계를 지우고 공정을 지우세요.`,
+      `이 공정에 선후행이 걸려 있습니다(${relations}). 먼저 [공정 연결]에서 그 관계를 지우고 공정을 지우세요.`,
     compareRevisionsUnavailable:
       'Rev 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     changeHistoryUnavailable:
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
-    outsourcedUnavailable:
-      '외주 공정은 아직 지정할 수 없습니다. 저장할 항목이 준비되면 이 확인칸을 쓸 수 있습니다.',
     /** 계약이 라인 1건 이상을 요구한다(위반 시 400 LINE_REQUIRED) — 화면이 먼저 막고 사유를 밝힌다. */
     confirmNeedsOperations: '확정은 공정을 1건 이상 등록해야 할 수 있습니다.',
     confirmNeedsDraft: '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
@@ -96,20 +104,12 @@ export const routing = {
     stay: '계속 편집',
     confirm: '저장하지 않고 이동',
   },
-  /** 확정·폐기 Rev의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
-  stateLock: {
-    title: '지금은 수정할 수 없는 Rev입니다',
-    confirmed: '확정된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.',
-    obsolete: '폐기된 Rev는 수정할 수 없습니다. 변경하려면 신규 Rev를 발행하세요.',
-  },
   filters: {
     searchLabel: '품목 검색',
-    searchPlaceholder: '품목코드 또는 품목명',
-    onlyWithoutRouting: 'Routing 미보유만',
+    /** 검색 칸의 「전체」 — 조건을 푼다(#231). */
+    all: '전체',
     processSearchLabel: '공정 검색',
-    processSearchPlaceholder: '공정코드 또는 공정명',
     chipRemoveKeyword: '검색어 조건 제거',
-    chipRemoveOnlyWithoutRouting: 'Routing 미보유만 조건 제거',
     chipKeyword: (value: string): string => `검색어: ${value}`,
   },
   loading: {
@@ -120,8 +120,6 @@ export const routing = {
     processes: '공정 목록을 불러오는 중',
     processDetail: '공정 상세를 불러오는 중',
   },
-  listTruncated: (shown: number, total: number): string =>
-    `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
@@ -129,10 +127,10 @@ export const routing = {
     itemNoneDescription: '품목이 등록되면 이 목록에서 고를 수 있습니다.',
     itemNoMatchTitle: '조건에 맞는 품목이 없습니다',
     itemNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-    itemNotSelected: '좌측에서 품목을 먼저 고르세요',
+    itemNotSelected: '품목을 선택하세요',
     revisionNoneTitle: '등록된 Rev가 없습니다',
     revisionNoneDescription: '「Routing 등록」으로 첫 Rev를 만드세요.',
-    revisionNotSelected: '가운데에서 Rev를 먼저 고르세요',
+    revisionNotSelected: '개정을 선택하세요',
     operationNoneTitle: '등록된 공정이 없습니다',
     operationNoneDescription: '「공정 추가」로 첫 공정을 등록하세요.',
     processNoneTitle: '등록된 공정이 없습니다',
@@ -148,8 +146,15 @@ export const routing = {
     routingCode: 'Routing 코드',
     revision: 'Rev',
     status: '상태',
-    effectiveFrom: '유효시작',
-    effectiveTo: '유효종료',
+    /** 이력 관리 표 — 확정 일시(#231). */
+    confirmedAt: '확정 일시',
+    detail: '상세',
+    /** 품목 목록 열 — 그 품목의 기본 Rev(#231). */
+    defaultRevision: '기본 Rev',
+    /** 품목 목록 열 — 최신 Rev · 그 상태 · 발행한 Rev 수(#231). */
+    latestRevision: '최신 Rev',
+    progressStatus: '상태',
+    revisionCount: '개정 수',
     operationNo: '순서',
     process: '공정',
     processCode: '공정코드',
@@ -161,7 +166,7 @@ export const routing = {
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */
     standardCycleTimeSec: '표준 C/T(초)',
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
-    standardYieldRate: '표준 수율(0~1)',
+    standardYieldRate: '표준 수율(%)',
     outsourced: '외주 공정',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
     rowActions: '편집',
@@ -176,6 +181,61 @@ export const routing = {
     equipmentRequired: '설비 필수',
     moldRequired: '금형 필수',
   },
+  /** Rev 비교(#231) — 두 Rev 의 기본 정보 · 공정 구성을 화면이 견준다(서버 비교 경로 없음). */
+  compare: {
+    title: 'Rev 비교',
+    base: '기준 Rev',
+    target: '비교 Rev',
+    headerTitle: '기본 정보 비교',
+    operationsTitle: '공정 구성 비교',
+    fieldColumn: '항목',
+    processColumn: '공정',
+    changesColumn: '변경',
+    detailColumn: '변경 내용',
+    added: '추가',
+    removed: '삭제',
+    changed: '변경',
+    same: '같음',
+    hideSame: '동일 공정 숨기기',
+    noDiff: '바뀐 공정이 없습니다.',
+    noOperations: '두 Rev 모두 공정이 없습니다.',
+    count: (count: number): string => `총 ${String(count)}건`,
+    loading: '비교할 Rev를 불러오는 중',
+  },
+  /** 변경 이력(#231) — 서버가 Routing 쓰기마다 남긴 감사 이력. 최근 1년만 조회한다(조회 경로가 기간을 요구한다). */
+  history: {
+    title: '변경 이력',
+    range: '최근 1년',
+    occurredAt: '일시',
+    performedBy: '처리자',
+    action: '구분',
+    changes: '변경 내용',
+    created: 'Routing 등록',
+    revised: '신규 Rev 발행',
+    headerSaved: '기본 정보 수정',
+    operationsSaved: '공정 구성 수정',
+    dependenciesSaved: '공정 연결 수정',
+    confirmed: '확정',
+    obsoleted: '폐기',
+    defaultSet: '기본 지정',
+    defaultUnset: '기본 해제',
+    updated: '수정',
+    copiedFrom: '원본',
+    operationCountLabel: '공정 수',
+    countValue: (count: number): string => `${String(count)}개`,
+    dependencyCountLabel: '공정 연결',
+    dependencyCountValue: (count: number): string => `${String(count)}건`,
+    operationField: (process: string, field: string): string => `${process} · ${field}`,
+    operationAdded: '공정 추가',
+    operationRemoved: '공정 삭제',
+    yes: '예',
+    no: '아니요',
+    unknownUser: (userId: number): string => `사용자 #${String(userId)}`,
+    system: '시스템',
+    none: '변경 이력이 없습니다',
+    noneDescription: '저장 · 확정 · 폐기 · 기본 지정 때부터 기록됩니다.',
+    loading: '변경 이력을 불러오는 중',
+  },
   values: {
     draft: '작성중',
     confirmed: '확정',
@@ -184,14 +244,33 @@ export const routing = {
     active: '사용',
     inactive: '미사용',
     none: '없음',
+    /** 관리 항목 요약 — 첫 항목 외 나머지 수(사용자 시안 · #231). */
+    moreItems: (first: string, rest: number): string => `${first} 외 ${rest}개`,
     empty: '—',
+    /** 표준 수율 표시 — 화면은 퍼센트(#231). */
+    percent: (value: string): string => `${value}%`,
     inactiveSuffix: ' (미사용)',
     revision: (version: number): string => `Rev ${version}`,
+    /** 품목 목록 「진행 상태」 — Rev 가 하나도 없는 품목(#231). */
+    unregistered: '미등록',
+    /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
+    codeLockedBadge: '사용 중 · 변경 불가',
+    dependenciesBlockedBadge: '공정 2개 이상 등록 시 사용 가능',
+    /** 이력 관리 — 기본 Rev 고르기 칸 · 확인 창(#231). */
+    defaultSelect: '기본 Rev',
+    defaultNone: '미지정',
+    defaultNoConfirmed: '미지정',
+    /** Rev 상세 보기 창 제목(#231). */
+    detailTitle: (revision: string): string => `${revision} 상세`,
+    setDefaultConfirm: '기본으로 지정',
+    setDefaultTitle: '기본 Rev 지정',
+    setDefaultQuestion: (revision: string): string => `${revision}를 기본 Rev로 지정하시겠습니까?`,
+    setDefaultDescription: '기존 기본 Rev가 있다면 자동으로 해제됩니다.',
+    setDefaultDone: '기본 Rev로 지정했습니다.',
   },
   validation: {
     required: '필수 입력 항목입니다.',
     codeBlank: 'Routing 코드는 공백만으로 지정할 수 없습니다.',
-    effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
     operationNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
     processCodeBlank: '공정코드는 공백만으로 지정할 수 없습니다.',
     processNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
@@ -199,7 +278,7 @@ export const routing = {
     /** 단위가 초이고 0은 불가다 — 라벨과 같은 말을 오류에도 적어야 무엇을 고칠지 알 수 있다. */
     cycleTimeInvalid: '표준 C/T는 0보다 큰 초 단위 숫자여야 합니다.',
     /** 퍼센트로 넣으면 여기서 막힌다. 막지 않으면 100배 오입력이 조용히 통과한다. */
-    yieldRateInvalid: '표준 수율은 0과 1 사이의 비율이어야 합니다. 퍼센트가 아닙니다.',
+    yieldRateInvalid: '표준 수율은 0~100 사이로 입력하세요.',
   },
   dialog: {
     operationCreateTitle: '공정 추가',
@@ -211,13 +290,11 @@ export const routing = {
     confirmTitle: '이 Rev를 확정할까요?',
     confirmDescription:
       '확정하면 이 Rev는 더 이상 수정할 수 없습니다. 변경하려면 신규 Rev를 발행해야 합니다.',
-    obsoleteTitle: '이 Rev를 폐기할까요?',
-    obsoleteDescription: '삭제하지 않습니다. 폐기하면 새 작업에서 이 Rev를 쓸 수 없게 됩니다.',
-    /*
-     * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
-     * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
-     */
-    operationLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
+    obsoleteTitle: (revision: string): string => `${revision}를 폐기하시겠습니까?`,
+    obsoleteDescription: '폐기된 Rev는 신규 작업에 사용할 수 없습니다.',
+    obsoleteNote: '폐기 후에도 기존 이력은 유지됩니다.',
+    /** 공정 편집 창 관리 항목 제목 옆 — 켠 항목 수(#231). */
+    flagsSelected: (count: number): string => `${String(count)}개 선택`,
     deactivateProcessTitle: '이 공정을 사용 중지할까요?',
     deactivateProcessDescription:
       '기존 확정 Routing은 그대로 유지되고, 앞으로 새 공정 라인에서만 고를 수 없게 됩니다.',
@@ -228,18 +305,18 @@ export const routing = {
   },
   /** 공정 선후행 설정 창. */
   dependencies: {
-    title: (subject: string): string => `선후행 설정 — ${subject}`,
+    title: (revision: string): string => `공정 연결 · ${revision}`,
+    itemCode: (code: string): string => `품목코드 ${code}`,
     predecessor: '선행 공정',
     successor: '후행 공정',
     type: '관계',
     remove: (rowNo: number): string => `${String(rowNo)}번째 선후행 삭제`,
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,
-    add: '관계 추가',
+    add: '연결 추가',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
     unknownOperation: '알 수 없는 공정',
     loading: '선후행을 불러오는 중',
-    noneTitle: '등록된 선후행이 없습니다',
-    noneDescription: '「관계 추가」로 공정 사이의 순서를 정하세요.',
+    noneTitle: '등록된 공정 연결이 없습니다.',
     typesLoadFailed:
       '관계 유형 목록을 불러오지 못했습니다. 다시 시도하세요. 불러오기 전에는 저장할 수 없습니다.',
     saveBlockedWhileLoadingTypes: '관계 유형 목록을 불러오는 중입니다. 잠시 뒤 저장하세요.',

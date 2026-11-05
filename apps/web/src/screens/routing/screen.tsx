@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  Chip,
   EmptyState,
   PageHeader,
   SkeletonText,
@@ -11,16 +12,25 @@ import {
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router';
+import { Navigate, useLocation, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import { usePageHub } from '../../patterns/page-hub';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import { TAB_PAGE_SIZES } from '../../patterns/client-page';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { toApiError } from '../../patterns/request';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { DependencyDialog } from './dependency-dialog';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
-import { ItemPane } from './item-pane';
+import { ItemFilterBar, ItemPane, ItemStatusChips } from './item-pane';
 import { DiscardDialog, LeaveGuard } from './leave-guard';
 import {
   emptyHeaderFormValues,
@@ -42,11 +52,13 @@ import {
 import { hasIncompleteDraft, validateOperationDraft } from './operation-validation';
 import { OperationsPane } from './operations-pane';
 import { ProcessMasterPane } from './process-master-pane';
+import { ROUTING_ORIENTATION_KEY } from './split-layout';
 import {
-  isTruncated,
+  type ListPaging,
   routingDetailPath,
   routingKeys,
   useItemList,
+  useItemRevisionSummaries,
   useOperationDependencies,
   useProcessOptions,
   useRoutingDetail,
@@ -54,7 +66,12 @@ import {
   useRoutingOperations,
   type RoutingOperationListResponse,
 } from './queries';
-import { RevisionPane } from './revision-pane';
+import { RevisionActions, RevisionPane } from './revision-pane';
+import { RoutingActions } from './routing-actions';
+import { RevisionCompareDialog } from './revision-compare-dialog';
+import { RevisionDetailDialog } from './revision-detail-dialog';
+import { RevisionHistoryDialog } from './revision-history-dialog';
+import { SetDefaultDialog } from './set-default-dialog';
 import { resolveRoutingStatus } from './routing-status';
 import { TransitionConfirmDialog, type RoutingTransitionKind } from './transition-confirm-dialog';
 import type {
@@ -92,8 +109,13 @@ interface OperationDialogState {
 }
 
 const t = messages.routing;
+const hubText = messages.common.inspectionHub;
 
 /** 바뀌면 편집 대상이 바뀌는 질의 — 품목과 Rev. */
+/** 주소의 진행 상태(`status`) — 모르는 값은 조건 없음으로 읽는다(#231). */
+const parseLatestStatus = (value: string | null): ItemFilters['latestStatus'] =>
+  value === 'DRAFT' || value === 'CONFIRMED' || value === 'OBSOLETE' ? value : '';
+
 const EDIT_TARGET_PARAMS = ['item', 'rev'] as const;
 
 /**
@@ -131,7 +153,8 @@ interface LoadErrorBannerProps {
 type TransitionPath =
   | '/planning/routings/{routingId}:confirm'
   | '/planning/routings/{routingId}:obsolete'
-  | '/planning/routings/{routingId}:new-revision';
+  | '/planning/routings/{routingId}:new-revision'
+  | '/planning/routings/{routingId}:set-default';
 
 interface RoutingTransitionOptions {
   /** 계약 클라이언트. 훅이 화면 상태를 알 필요가 없도록 필요한 것만 받는다 */
@@ -200,11 +223,25 @@ const RoutingWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
+  /* 조회 상자 · 목록 | 상세 — 검사 조회·판정과 같은 분할(#231). 비율 · 배치는 브라우저에 남는다. */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:routing:split', 0.35);
+  const layout = useSplitOrientation(ROUTING_ORIENTATION_KEY);
 
   const filters = useMemo<ItemFilters>(
     () => ({
       q: searchParams.get('q') ?? '',
       onlyWithoutRouting: searchParams.get('noRouting') === '1',
+      latestStatus: parseLatestStatus(searchParams.get('status')),
+    }),
+    [searchParams],
+  );
+
+  /* 품목 목록 쪽 — 주소가 소유한다(#231). 건수는 쪽 이동 줄이 고르는 10 · 20 · 50 중 하나다(기본 20). */
+  const itemPaging = useMemo<ListPaging>(
+    () => ({
+      page: Math.max(1, Number(searchParams.get('page')) || 1),
+      size: TAB_PAGE_SIZES.find((size) => String(size) === searchParams.get('size')) ?? 20,
     }),
     [searchParams],
   );
@@ -212,8 +249,10 @@ const RoutingWorkspace = () => {
   const selectedItemId = Number(searchParams.get('item') ?? '') || null;
   const selectedRoutingId = Number(searchParams.get('rev') ?? '') || null;
 
-  const itemList = useItemList(filters);
+  const itemList = useItemList(filters, itemPaging);
   const items = itemList.data?.items ?? [];
+  /* 보이는 쪽 품목의 기본 Rev · 작성중 Rev · 개정 수 — 품목 목록 열(#231). */
+  const revisionSummaries = useItemRevisionSummaries(items.map((item) => item.itemId));
 
   const revisionList = useRoutingList(selectedItemId);
   const revisions = revisionList.data?.items ?? [];
@@ -243,6 +282,13 @@ const RoutingWorkspace = () => {
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
 
+  /**
+   * 하단 「저장」 한 번으로 기본 정보 → 공정 구성을 차례로 저장한다(사용자 지시 · #231). 서버는 둘을 따로 받는다.
+   * 기본 정보가 성공하면 그때 공정 구성을 보낸다 — 기본 정보가 실패하면 공정 구성은 보내지 않는다.
+   */
+  const operationsAfterHeaderRef = useRef<OperationDraft[] | null>(null);
+  const operationsWriteRef = useRef<((drafts: OperationDraft[]) => void) | null>(null);
+
   const headerWrite = useMasterWrite<RoutingHeaderFormValues, Routing>({
     request: (values, headers) =>
       client.PUT('/planning/routings/{routingId}', {
@@ -266,6 +312,13 @@ const RoutingWorkspace = () => {
       setLocalFieldErrors({});
       const next = routingToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      /* 하단 「저장」이 공정 구성도 함께 저장할 차례면 이어서 보낸다(#231) — 기본 정보가 성공한 뒤에만. */
+      const pendingOperations = operationsAfterHeaderRef.current;
+      operationsAfterHeaderRef.current = null;
+      if (pendingOperations !== null) {
+        operationsWriteRef.current?.(pendingOperations);
+        return;
+      }
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -332,6 +385,9 @@ const RoutingWorkspace = () => {
     updateParams({
       q: next.q === '' ? null : next.q,
       noRouting: next.onlyWithoutRouting ? '1' : null,
+      status: next.latestStatus === '' ? null : next.latestStatus,
+      /* 조건이 바뀌면 첫 쪽부터 본다. */
+      page: null,
     });
   };
 
@@ -360,19 +416,6 @@ const RoutingWorkspace = () => {
     });
   };
 
-  const handleSelectRevision = (routingId: number) => {
-    if (routingId === selectedRoutingId) return;
-    guardMove(() => {
-      resetHeaderEditing();
-      resetOperationEditing();
-      resetTransition();
-      updateParams({ rev: String(routingId) });
-    });
-  };
-
-  const itemPage = itemList.data?.page;
-  const isItemListTruncated = itemPage !== undefined && isTruncated(itemPage, items.length);
-
   /** 어느 품목의 Routing인지 값으로 밝힌다. 조건이 좁아져 목록에 없으면 지어내지 않는다. */
   const selectedItem = items.find((item) => item.itemId === selectedItemId) ?? null;
   const itemLabel =
@@ -394,6 +437,8 @@ const RoutingWorkspace = () => {
   const [operationDialog, setOperationDialog] = useState<OperationDialogState | null>(null);
   const [operationDialogErrors, setOperationDialogErrors] = useState<Record<string, string>>({});
   const [isDependencyDialogOpen, setIsDependencyDialogOpen] = useState(false);
+  /** 상세 카드에서 직접 고른 탭. null 이면 상황으로 정한다(#231). */
+  const [detailTab, setDetailTab] = useState<'settings' | 'history' | null>(null);
 
   /*
    * 라인은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -451,6 +496,8 @@ const RoutingWorkspace = () => {
     },
   });
 
+  operationsWriteRef.current = operationsWrite.write;
+
   /** 다른 Rev·품목으로 옮기면 앞의 편집과 실패 표시를 들고 가지 않는다. */
   const resetOperationEditing = () => {
     operationsWrite.reset();
@@ -501,6 +548,33 @@ const RoutingWorkspace = () => {
     operationsWrite.write(draftState.drafts);
   };
 
+  /** 하단 「취소」 — 기본 정보 · 공정 구성의 고친 것을 함께 되돌린다(#231). */
+  const handleCancelAll = () => {
+    operationsAfterHeaderRef.current = null;
+    resetHeaderEditing();
+    setFormState((prev) => (prev === null ? prev : { ...prev, values: prev.baseline }));
+    operationsWrite.reset();
+    setDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
+  };
+
+  /** 하단 「저장」 — 바뀐 쪽만, 기본 정보 → 공정 구성 순서로(#231). */
+  const handleSaveAll = () => {
+    const pendingOperations = isOperationsDirty && draftState !== null ? draftState.drafts : null;
+
+    if (isHeaderDirty && formState !== null) {
+      const errors = validateRoutingHeader(formState.values);
+      setLocalFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+
+      operationsWrite.reset();
+      operationsAfterHeaderRef.current = pendingOperations;
+      headerWrite.write(formState.values);
+      return;
+    }
+
+    if (pendingOperations !== null) operationsWrite.write(pendingOperations);
+  };
+
   const [transition, setTransition] = useState<RoutingTransitionKind | null>(null);
 
   /*
@@ -548,6 +622,25 @@ const RoutingWorkspace = () => {
     },
   });
 
+  /** Rev 비교 · 변경 이력 창(#231). */
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  /** Rev 이력의 「상세 보기」로 연 Rev(#231). null 이면 창이 닫혀 있다. */
+  const [detailRevision, setDetailRevision] = useState<Routing | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  /** 「기본 Rev」 확인 창의 대상 개정(#231). null 이면 창이 닫혀 있다. */
+  const [defaultTarget, setDefaultTarget] = useState<Routing | null>(null);
+  const setDefaultWrite = useRoutingTransition({
+    client,
+    routingId: defaultTarget?.routingId ?? null,
+    path: '/planning/routings/{routingId}:set-default',
+    onDone: () => {
+      /* 개정 목록 · 품목 목록 「기본 Rev」 열은 같은 열쇠(routingKeys.all)로 다시 받는다. */
+      setDefaultTarget(null);
+      toast.show({ variant: 'success', description: t.values.setDefaultDone });
+    },
+  });
+
   /**
    * 첫 Rev 등록 폼의 값. null이면 폼이 닫혀 있다.
    *
@@ -555,6 +648,35 @@ const RoutingWorkspace = () => {
    * 섞으면 「기준값이 서버에서 왔는가」가 흐려지고, 등록 성공 후 어느 쪽을 비울지도 갈린다.
    */
   const [createValues, setCreateValues] = useState<RoutingHeaderFormValues | null>(null);
+
+  /*
+   * 품목을 고르면 볼 개정을 바로 연다(사용자 지시 · #231) — 작성중 개정이 있으면 그것, 없으면 가장 최근 확정 개정.
+   * 폐기뿐이거나 개정이 없으면 열지 않는다(이력 관리 탭 · 등록 단추가 선다). 주소의 `rev` 만 채우는 것이라
+   * 사용자가 그 줄을 누른 것과 같다 — 기록은 늘리지 않는다(replace). 등록 칸이 열려 있으면 건드리지 않는다.
+   */
+  const autoRevisionId = useMemo(() => {
+    if (selectedItemId === null || selectedRoutingId !== null || revisionList.data === undefined) {
+      return null;
+    }
+    const byLatest = [...revisionList.data.items].sort(
+      (a, b) => b.routingVersion - a.routingVersion,
+    );
+    const draft = byLatest.find((row) => {
+      const status = resolveRoutingStatus(row.statusCode);
+      return status.isRecognized && status.status === 'draft';
+    });
+    const confirmed = byLatest.find(
+      (row) => resolveRoutingStatus(row.statusCode).status === 'confirmed',
+    );
+    return (draft ?? confirmed)?.routingId ?? null;
+  }, [selectedItemId, selectedRoutingId, revisionList.data]);
+
+  useEffect(() => {
+    if (autoRevisionId === null || createValues !== null) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('rev', String(autoRevisionId));
+    setSearchParams(next, { replace: true });
+  }, [autoRevisionId, createValues, searchParams, setSearchParams]);
   const discardBody = createValues === null ? t.discard.body : t.discard.bodyCreating;
   const hasUnsavedChanges =
     isHeaderDirty ||
@@ -746,14 +868,6 @@ const RoutingWorkspace = () => {
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
   const renderHeaderPane = () => {
-    if (selectedItemId === null) {
-      return (
-        <section className="pane" aria-label={t.panes.header}>
-          <EmptyState size="sm" title={t.empty.itemNotSelected} />
-        </section>
-      );
-    }
-
     /*
      * 첫 Rev 등록 폼. 아직 없는 Rev를 만드는 자리라 상세 조회가 없고 판 번호·상태도 없다 —
      * 서버가 채우는 값을 미리 지어내 보이지 않는다.
@@ -761,6 +875,7 @@ const RoutingWorkspace = () => {
     if (createValues !== null) {
       return (
         <HeaderPane
+          showSubject={false}
           mode="create"
           itemLabel={itemLabel}
           routingVersion={null}
@@ -798,13 +913,8 @@ const RoutingWorkspace = () => {
       );
     }
 
-    if (selectedRoutingId === null) {
-      return (
-        <section className="pane" aria-label={t.panes.header}>
-          <EmptyState size="sm" title={t.empty.revisionNotSelected} />
-        </section>
-      );
-    }
+    /* 품목 · 개정을 고르기 전은 상세 칸이 안내 상자 하나로 대신한다(#231). */
+    if (selectedRoutingId === null) return null;
 
     if (detail.isError) {
       return (
@@ -826,6 +936,8 @@ const RoutingWorkspace = () => {
 
     return (
       <HeaderPane
+        showSubject={false}
+        showActions={false}
         mode="edit"
         itemLabel={itemLabel}
         routingVersion={detail.data.routing.routingVersion}
@@ -859,6 +971,159 @@ const RoutingWorkspace = () => {
     );
   };
 
+  /*
+   * 상세 카드 탭(#231). 직접 고르기 전에는 지금 상황으로 정한다 — 작성중 · 최근 확정 개정이 자동으로 열리므로
+   * 대개 설정이고, 열 개정이 없을 때(폐기뿐)만 개정을 고를 이력 관리. 개정이 없으면 「Routing 등록」이 설정 탭 머리에 있다. 품목 · 개정을 새로 고르면 다시 이 규칙으로 돌아간다.
+   */
+  const hasNoRevisions = revisionList.data !== undefined && revisions.length === 0;
+  /* 이력 관리는 「목록을 받았고, 열 개정이 없고(폐기뿐), 아무것도 열려 있지 않을」 때만 — 받는 중에 탭이 뛰지 않게. */
+  const showHistoryFirst =
+    revisionList.isError ||
+    (revisionList.data !== undefined &&
+      revisions.length > 0 &&
+      autoRevisionId === null &&
+      selectedRoutingId === null &&
+      createValues === null);
+  const activeDetailTab: 'settings' | 'history' =
+    detailTab ?? (showHistoryFirst ? 'history' : 'settings');
+
+  const handleNewRevision = () => {
+    newRevisionWrite.write();
+  };
+  const handleOpenCreate = () => {
+    resetHeaderEditing();
+    setCreateFieldErrors({});
+    setCreateValues(emptyHeaderFormValues());
+    setDetailTab(null);
+  };
+
+  /** 설정 탭 — 「기본 정보」 · 「공정 구성」(공정 라인). 각 칸의 동작은 종전 그대로다. */
+  const isViewingDraft =
+    selectedRoutingId !== null &&
+    detailStatus?.isRecognized === true &&
+    detailStatus.status === 'draft';
+
+  const renderSettingsTab = () => {
+    const isRevisionOpen = createValues !== null || selectedRoutingId !== null;
+    return (
+      <div className="routing-card-body">
+        {/*
+         * 「기본 정보」 상자 · 제목은 두지 않는다 — 칸이 Routing 코드 하나뿐이다(사용자 지시 · #231).
+         * 신규 Rev 발행 · Routing 등록은 카드 머리 오른쪽에 있다.
+         */}
+        {/* 발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */}
+        <SaveErrorBanner error={newRevisionWrite.error} />
+        {isRevisionOpen ? (
+          renderHeaderPane()
+        ) : (
+          <div className="routing-detail-empty">
+            <EmptyState
+              size="sm"
+              icon={<PaneEmptyIcon name="layers" />}
+              title={hasNoRevisions ? t.empty.revisionNoneTitle : t.empty.revisionNotSelected}
+              {...(hasNoRevisions ? { description: t.empty.revisionNoneDescription } : {})}
+            />
+          </div>
+        )}
+
+        {isRevisionOpen && (
+          <div className="routing-card-section routing-operations-section">
+            <OperationsPane
+              title={
+                <>
+                  {t.card.operationsTitle}
+                  <span className="routing-card-count">
+                    {t.card.operationsCount(operationDrafts.length)}
+                  </span>
+                </>
+              }
+              drafts={operationDrafts}
+              processLabel={processLabelOf}
+              isLoading={operationList.isPending}
+              isRevisionSelected={selectedRoutingId !== null}
+              loadError={
+                operationList.isError ? (
+                  <LoadErrorBanner
+                    error={operationList.error}
+                    onRetry={() => void operationList.refetch()}
+                  />
+                ) : null
+              }
+              optionsNotice={processNotice}
+              isEditable={isOperationsEditable}
+              lockReason={t.actionReasons.operationsLocked}
+              isDirty={isOperationsDirty}
+              isSaving={operationsWrite.isSaving}
+              saveBlockedReason={operationsSaveBlockedReason}
+              dependenciesBlockedReason={dependenciesBlockedReason}
+              removeBlockedReason={removeBlockedReason}
+              /* 라인 저장에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니라 onReload를 넘기지 않는다. */
+              banner={<SaveErrorBanner error={operationsWrite.error} />}
+              onAdd={handleAddOperation}
+              onEdit={handleEditOperation}
+              onRemove={(draftId) => {
+                changeOperationDrafts((drafts) => removeDraft(drafts, draftId));
+              }}
+              /* 순서 이동은 초안만 바꾼다. 여기서 서버를 부르지 않는다(공유계약 A-5). */
+              onReorder={(from, to) => {
+                changeOperationDrafts((drafts) => moveDraft(drafts, from, to));
+              }}
+              onSave={handleSaveOperations}
+              /* 취소 · 저장은 설정 탭 맨 아래 한 줄로 모은다(#231). */
+              showSaveActions={false}
+              onOpenDependencies={() => setIsDependencyDialogOpen(true)}
+              onCancel={() => {
+                operationsWrite.reset();
+                setDraftState((prev) =>
+                  prev === null ? prev : { ...prev, drafts: prev.baseline },
+                );
+              }}
+            />
+          </div>
+        )}
+
+        {/*
+         * 취소 · 저장 · 확정 · 폐기는 설정 탭 맨 아래 한 줄(사용자 지시 · #231). 저장은 기본 정보 · 공정 구성 중 바뀐 쪽을 함께 저장한다.
+         * 첫 등록은 기본 정보 칸에 「Routing 등록」 줄이 그대로 있다.
+         */}
+        {createValues === null &&
+          selectedRoutingId !== null &&
+          detail.data !== undefined &&
+          formState !== null && (
+            <section className="routing-card-actions" aria-label={t.card.actionsLabel}>
+              <RoutingActions
+                mode="edit"
+                routingVersion={detail.data.routing.routingVersion}
+                status={detailStatus}
+                isDirty={isHeaderDirty || isOperationsDirty}
+                isSaving={headerWrite.isSaving || operationsWrite.isSaving}
+                saveBlockedReason={
+                  isOperationsDirty && hasIncompleteDraft(operationDrafts)
+                    ? t.actionReasons.operationsSaveBlockedByInvalid
+                    : null
+                }
+                onSave={handleSaveAll}
+                onCancel={handleCancelAll}
+                onCompare={() => setIsCompareOpen(true)}
+                onHistory={() => setIsHistoryOpen(true)}
+                confirmDisabledReason={confirmDisabledReason}
+                obsoleteDisabledReason={obsoleteDisabledReason}
+                isTransitioning={confirmWrite.isSaving || obsoleteWrite.isSaving}
+                onConfirm={() => {
+                  confirmWrite.reset();
+                  setTransition('confirm');
+                }}
+                onObsolete={() => {
+                  obsoleteWrite.reset();
+                  setTransition('obsolete');
+                }}
+              />
+            </section>
+          )}
+      </div>
+    );
+  };
+
   return (
     <>
       <LeaveGuard
@@ -879,22 +1144,40 @@ const RoutingWorkspace = () => {
           }}
         />
       )}
-      {/*
-       * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
-       * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
-       */}
-      {isItemListTruncated && itemPage !== undefined && (
-        <AlertBanner variant="warning">{t.listTruncated(items.length, itemPage.total)}</AlertBanner>
-      )}
+      {/* 진행 상태 칩은 탭 줄에서 배치 단추 왼쪽 — 먼저 그려야 같은 자리에서 앞에 선다(사용자 지시 · #231). */}
+      <ItemStatusChips appliedFilters={filters} onApplyFilters={handleApplyFilters} />
+      <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} />
 
-      <div className="three-pane">
+      {/* 조회 조건 — 검사 조회·판정처럼 목록과 다른 상자에 둔다(#231). */}
+      <section
+        ref={aboveRef}
+        className="pane inspection-standard-search routing-search"
+        role="search"
+      >
+        <ItemFilterBar appliedFilters={filters} onApplyFilters={handleApplyFilters} />
+      </section>
+
+      <div
+        ref={splitRef}
+        className={`po-board-split inspection-split inspection-standard-split routing-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
         <ItemPane
           items={items}
           isLoading={itemList.isPending}
           appliedFilters={filters}
           onApplyFilters={handleApplyFilters}
           selectedItemId={selectedItemId}
-          onSelect={handleSelectItem}
+          onSelect={(itemId) => {
+            setDetailTab(null);
+            handleSelectItem(itemId);
+          }}
+          revisionSummaryOf={(itemId) => revisionSummaries.get(itemId)}
+          pageMeta={itemList.data?.page ?? { ...itemPaging, total: 0 }}
+          onChangePage={(page) => updateParams({ page: page === 1 ? null : String(page) })}
+          onChangePageSize={(size) =>
+            updateParams({ page: null, size: size === 20 ? null : String(size) })
+          }
           loadError={
             itemList.isError ? (
               <LoadErrorBanner error={itemList.error} onRetry={() => void itemList.refetch()} />
@@ -902,77 +1185,112 @@ const RoutingWorkspace = () => {
           }
         />
 
-        <RevisionPane
-          revisions={revisions}
-          isLoading={revisionList.isPending}
-          isItemSelected={selectedItemId !== null}
-          selectedRoutingId={selectedRoutingId}
-          onSelect={handleSelectRevision}
-          loadError={
-            revisionList.isError ? (
-              <LoadErrorBanner
-                error={revisionList.error}
-                onRetry={() => void revisionList.refetch()}
-              />
-            ) : null
-          }
-          newRevisionDisabledReason={newRevisionDisabledReason}
-          isCreating={createValues !== null}
-          isPublishing={newRevisionWrite.isSaving}
-          onNewRevision={() => {
-            newRevisionWrite.write();
-          }}
-          onCreateRouting={() => {
-            resetHeaderEditing();
-            setCreateFieldErrors({});
-            setCreateValues(emptyHeaderFormValues());
-          }}
-          /* 발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={newRevisionWrite.error} />}
-        />
-
-        <div className="pane-stack">
-          {renderHeaderPane()}
-
-          <OperationsPane
-            drafts={operationDrafts}
-            processLabel={processLabelOf}
-            isLoading={operationList.isPending}
-            isRevisionSelected={selectedRoutingId !== null}
-            loadError={
-              operationList.isError ? (
-                <LoadErrorBanner
-                  error={operationList.error}
-                  onRetry={() => void operationList.refetch()}
-                />
-              ) : null
-            }
-            optionsNotice={processNotice}
-            isEditable={isOperationsEditable}
-            lockReason={t.actionReasons.operationsLocked}
-            isDirty={isOperationsDirty}
-            isSaving={operationsWrite.isSaving}
-            saveBlockedReason={operationsSaveBlockedReason}
-            dependenciesBlockedReason={dependenciesBlockedReason}
-            removeBlockedReason={removeBlockedReason}
-            /* 라인 저장에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니라 onReload를 넘기지 않는다. */
-            banner={<SaveErrorBanner error={operationsWrite.error} />}
-            onAdd={handleAddOperation}
-            onEdit={handleEditOperation}
-            onRemove={(draftId) => {
-              changeOperationDrafts((drafts) => removeDraft(drafts, draftId));
-            }}
-            /* 순서 이동은 초안만 바꾼다. 여기서 서버를 부르지 않는다(공유계약 A-5). */
-            onReorder={(from, to) => {
-              changeOperationDrafts((drafts) => moveDraft(drafts, from, to));
-            }}
-            onSave={handleSaveOperations}
-            onOpenDependencies={() => setIsDependencyDialogOpen(true)}
-            onCancel={() => {
-              operationsWrite.reset();
-              setDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
-            }}
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
           />
+        )}
+
+        {/*
+         * 상세 — 사용자 시안(#231): 「공정 경로」 카드 하나에 머리(품목 · Rev · 상태) · 설정 / 이력 관리 탭.
+         * 설정 = 기본 정보 + 공정 구성, 이력 관리 = 개정 목록. 저장 · 확정 · 폐기 · 발행 · 라인 편집 동작은 종전 그대로다.
+         */}
+        <div className="inspection-standard-detail routing-detail">
+          {selectedItemId === null ? (
+            <section className="pane routing-detail-empty" aria-label={t.panes.header}>
+              <EmptyState
+                size="sm"
+                icon={<PaneEmptyIcon name="layers" />}
+                title={t.empty.itemNotSelected}
+              />
+            </section>
+          ) : (
+            <section className="pane routing-detail-card" aria-label={t.card.title}>
+              <div className="routing-card-head">
+                <h2 className="pane-title routing-card-title">
+                  {t.card.title}
+                </h2>
+                <div className="routing-card-section-tools">
+                  {/* 지금 보는 개정 — 「Rev · 상태」 칩은 카드 머리 오른쪽(사용자 시안 · #231). */}
+                  {selectedRoutingId !== null &&
+                    detail.data !== undefined &&
+                    detailStatus !== null && (
+                      <Chip variant="status" status={detailStatus.tone}>
+                        {t.card.revisionChip(
+                          t.values.revision(detail.data.routing.routingVersion),
+                          detailStatus.label,
+                        )}
+                      </Chip>
+                    )}
+                  {/*
+                   * 신규 Rev 발행(개정이 없으면 Routing 등록)은 카드 머리 오른쪽의 주요 작업(사용자 지시 · #231).
+                   * 작성중 개정을 보고 있으면 세우지 않는다.
+                   */}
+                  {!isViewingDraft && (
+                    <RevisionActions
+                      hasRevisions={revisions.length > 0}
+                      newRevisionDisabledReason={newRevisionDisabledReason}
+                      isCreating={createValues !== null}
+                      isPublishing={newRevisionWrite.isSaving}
+                      onNewRevision={handleNewRevision}
+                      onCreateRouting={handleOpenCreate}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <Tabs
+                aria-label={t.card.tabsLabel}
+                value={activeDetailTab}
+                onChange={(value) => setDetailTab(value === 'history' ? 'history' : 'settings')}
+                items={[
+                  {
+                    value: 'settings',
+                    label: t.card.settingsTab,
+                    content: activeDetailTab === 'settings' ? renderSettingsTab() : null,
+                  },
+                  {
+                    value: 'history',
+                    label: t.card.historyTab,
+                    content:
+                      activeDetailTab === 'history' ? (
+                        <RevisionPane
+                          revisions={revisions}
+                          isLoading={revisionList.isPending}
+                          isItemSelected={selectedItemId !== null}
+                          selectedRoutingId={selectedRoutingId}
+                          /* 상세 보기는 창으로 연다 — 설정 탭으로 넘어가지 않는다(사용자 지시 · #231). */
+                          onViewDetail={setDetailRevision}
+                          loadError={
+                            revisionList.isError ? (
+                              <LoadErrorBanner
+                                error={revisionList.error}
+                                onRetry={() => void revisionList.refetch()}
+                              />
+                            ) : null
+                          }
+                          newRevisionDisabledReason={newRevisionDisabledReason}
+                          isCreating={createValues !== null}
+                          isPublishing={newRevisionWrite.isSaving}
+                          onNewRevision={handleNewRevision}
+                          onCreateRouting={handleOpenCreate}
+                          /* 발행 · 첫 등록 단추와 그 실패 표시는 설정 탭 머리에 있다. */
+                          banner={null}
+                          showActions={false}
+                          onSetDefault={(row) => {
+                            setDefaultWrite.reset();
+                            setDefaultTarget(row);
+                          }}
+                        />
+                      ) : null,
+                  },
+                ]}
+              />
+            </section>
+          )}
         </div>
       </div>
 
@@ -1010,12 +1328,66 @@ const RoutingWorkspace = () => {
       {isDependencyDialogOpen && selectedRoutingId !== null && detail.data !== undefined && (
         <DependencyDialog
           routingId={selectedRoutingId}
-          subject={`${selectedItem?.itemCode ?? t.values.empty} · ${t.values.revision(detail.data.routing.routingVersion)}`}
+          revisionLabel={t.values.revision(detail.data.routing.routingVersion)}
+          itemCode={selectedItem?.itemCode ?? t.values.empty}
           operations={dependencyOperations}
           isEditable={isOperationsEditable}
-          lockReason={t.actionReasons.operationsLocked}
           renderLoadError={(error, onRetry) => <LoadErrorBanner error={error} onRetry={onRetry} />}
           onClose={() => setIsDependencyDialogOpen(false)}
+        />
+      )}
+
+      {detailRevision !== null && (
+        <RevisionDetailDialog
+          revision={detailRevision}
+          itemCode={selectedItem?.itemCode ?? t.values.empty}
+          itemName={selectedItem?.itemName ?? t.values.empty}
+          processLabel={processLabelOf}
+          renderLoadError={(error, onRetry) => <LoadErrorBanner error={error} onRetry={onRetry} />}
+          onClose={() => setDetailRevision(null)}
+        />
+      )}
+
+      {isCompareOpen &&
+        selectedRoutingId !== null &&
+        detail.data !== undefined &&
+        (() => {
+          /* 기준은 지금 Rev 바로 앞 판, 비교는 지금 Rev(#231). */
+          const current = detail.data.routing.routingVersion;
+          const previous = [...revisions]
+            .filter((row) => row.routingVersion < current)
+            .sort((a, b) => b.routingVersion - a.routingVersion)[0];
+          if (previous === undefined) return null;
+          return (
+            <RevisionCompareDialog
+              revisions={revisions}
+              initialBaseId={previous.routingId}
+              initialTargetId={selectedRoutingId}
+              processLabel={processLabelOf}
+              renderLoadError={(error, onRetry) => (
+                <LoadErrorBanner error={error} onRetry={onRetry} />
+              )}
+              onClose={() => setIsCompareOpen(false)}
+            />
+          );
+        })()}
+
+      {isHistoryOpen && selectedRoutingId !== null && detail.data !== undefined && (
+        <RevisionHistoryDialog
+          routingId={selectedRoutingId}
+          processLabel={processLabelOf}
+          renderLoadError={(error, onRetry) => <LoadErrorBanner error={error} onRetry={onRetry} />}
+          onClose={() => setIsHistoryOpen(false)}
+        />
+      )}
+
+      {defaultTarget !== null && (
+        <SetDefaultDialog
+          revisionLabel={t.values.revision(defaultTarget.routingVersion)}
+          isSaving={setDefaultWrite.isSaving}
+          banner={<SaveErrorBanner error={setDefaultWrite.error} />}
+          onClose={() => setDefaultTarget(null)}
+          onConfirm={() => setDefaultWrite.write()}
         />
       )}
 
@@ -1027,6 +1399,9 @@ const RoutingWorkspace = () => {
         <TransitionConfirmDialog
           open
           kind={transition}
+          revisionLabel={
+            detail.data === undefined ? '' : t.values.revision(detail.data.routing.routingVersion)
+          }
           onClose={resetTransition}
           onConfirm={() => {
             transitionWrite.write();
@@ -1042,45 +1417,41 @@ const RoutingWorkspace = () => {
 
 type RoutingTab = 'routing' | 'processes';
 
-/** W-06-01은 축이 다른 두 업무를 최상위 탭으로 가른다. 비활성 탭은 요청도 렌더도 하지 않는다. */
-export const RoutingScreen = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tab: RoutingTab = searchParams.get('tab') === 'processes' ? 'processes' : 'routing';
+interface RoutingScreenProps {
+  /** 보일 탭. 주소가 정한다 — 공정 경로는 `/master-data/routing`, 공정 관리는 `/master-data/processes`. */
+  tab?: RoutingTab;
+}
 
-  const changeTab = (value: string) => {
-    const next: RoutingTab = value === 'processes' ? 'processes' : 'routing';
-    // 서로 다른 축의 선택·필터를 넘기지 않는다. 탭만 남겨 각 화면의 첫 상태로 들어간다.
-    setSearchParams(new URLSearchParams({ tab: next }));
-  };
+/**
+ * W-06-01은 축이 다른 두 업무(공정 경로 · 공정 관리)를 탭으로 가른다. 탭은 셸 탭 막대(주소)로 고른다 —
+ * 화면 안 탭 줄은 두지 않는다(#231 · 품질 코드 관리와 같다). 비활성 탭은 요청도 렌더도 하지 않는다.
+ */
+export const RoutingScreen = ({ tab }: RoutingScreenProps) => {
+  const hub = usePageHub();
+  const [searchParams] = useSearchParams();
+
+  /* 종전 주소 `?tab=processes` 는 새 주소로 옮긴다 — 북마크·다른 화면 연결이 산다. */
+  if (tab === undefined && searchParams.get('tab') === 'processes') {
+    return <Navigate replace to="/master-data/processes" />;
+  }
+
+  const activeTab: RoutingTab = tab ?? 'routing';
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-      />
-      <Tabs
-        aria-label={t.tabs.label}
-        value={tab}
-        onChange={changeTab}
-        items={[
-          {
-            value: 'routing',
-            label: t.tabs.routing,
-            content: tab === 'routing' ? <RoutingWorkspace /> : null,
-          },
-          {
-            value: 'processes',
-            label: t.tabs.processes,
-            content: tab === 'processes' ? <ProcessMasterPane /> : null,
-          },
-        ]}
-      />
+      {/* 탭 묶음 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않는다(#231). */}
+      {hub === null && (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+        />
+      )}
+      {activeTab === 'processes' ? <ProcessMasterPane /> : <RoutingWorkspace />}
     </>
   );
 };

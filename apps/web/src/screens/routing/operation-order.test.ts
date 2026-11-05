@@ -61,7 +61,8 @@ describe('toOperationDrafts', () => {
     expect(first?.processId).toBe('9001');
     expect(first?.standardCycleTimeSec).toBe('45');
     // 비율 그대로 옮긴다 — 퍼센트로 바꾸면 100배 오입력이 조용히 통과한다.
-    expect(first?.standardYieldRate).toBe('0.98');
+    /* 서버 비율 0.98 → 화면 퍼센트 98(#231). */
+    expect(first?.standardYieldRate).toBe('98');
     expect(second?.standardCycleTimeSec).toBe('');
     expect(second?.standardYieldRate).toBe('');
   });
@@ -197,6 +198,23 @@ describe('toOperationsPayload', () => {
     expect(payload[1]?.standardYieldRate).toBeNull();
   });
 
+  /* 표준 수율 — 화면 퍼센트 ↔ 서버 비율. 부동소수 찌꺼기 없이 오가고, 받은 값을 그대로 보내면 같은 값이다(#231). */
+  it('표준 수율은 받을 때 ×100, 보낼 때 ÷100 이고 왕복해도 값이 같다', () => {
+    const [base] = routingOperationFixtures;
+    if (base === undefined) throw new Error('픽스처가 없습니다');
+    for (const ratio of [0.95, 0.07, 1, 0, 0.123456]) {
+      const [draft] = toOperationDrafts([{ ...base, standardYieldRate: ratio }]);
+      if (draft === undefined) throw new Error('초안이 없습니다');
+      expect(toOperationsPayload(7003, [draft])[0]?.standardYieldRate).toBe(ratio);
+    }
+    const [draft] = toOperationDrafts([{ ...base, standardYieldRate: 0.95 }]);
+    expect(draft?.standardYieldRate).toBe('95');
+    if (draft === undefined) throw new Error('초안이 없습니다');
+    expect(
+      toOperationsPayload(7003, [{ ...draft, standardYieldRate: '95.5' }])[0]?.standardYieldRate,
+    ).toBe(0.955);
+  });
+
   /**
    * client#603 — `isOutsourced`가 2026-08-30 계약에 되살아나 필수가 됐다. 이 화면은 아직 그 칸을
    * 입력받지 않아(폼의 체크칸이 비활성 고정) **항상 `false`를 싣는다** — 값을 지어내는 게 아니라
@@ -233,7 +251,7 @@ describe('isSameDrafts', () => {
     const drafts = toOperationDrafts(routingOperationFixtures);
     const edited = upsertDraft(drafts, {
       ...(drafts[0] as (typeof drafts)[number]),
-      standardYieldRate: '0.5',
+      standardYieldRate: '50',
     });
 
     expect(isSameDrafts(drafts, removeDraft(drafts, 'saved:8001'))).toBe(false);

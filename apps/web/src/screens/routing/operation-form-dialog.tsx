@@ -54,7 +54,8 @@ const ProcessSelectField = ({
         options={options}
         value={value === '' ? null : value}
         onChange={onChange}
-        invalid={error !== undefined}
+        /* 필수인데 비어 있으면 빨간 테두리(사용자 지시 · #231). */
+        invalid={error !== undefined || value === ''}
         aria-required
         aria-describedby={error === undefined ? undefined : errorId}
       />
@@ -75,7 +76,7 @@ const ProcessSelectField = ({
  *
  * **이 창의 확인은 서버 저장이 아니다.** 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않으므로,
  * 확인은 표(로컬 초안)에만 반영하고 서버 반영은 「저장」 한 번뿐이다(공유계약 A-5).
- * 그 사실을 창 안에서 밝힌다 — 밝히지 않으면 확인을 누르고 창을 닫은 사용자가 저장된 줄 안다.
+ * 그 안내 문장은 창에서 뺐다(사용자 시안 · #231) — 설정 탭 아래 「저장」이 켜지는 것으로 드러난다.
  */
 export const OperationFormDialog = ({
   open,
@@ -89,7 +90,8 @@ export const OperationFormDialog = ({
   onSubmit,
 }: OperationFormDialogProps) => {
   const operationNameId = useId();
-  const outsourcedNoteId = useId();
+  const flagTitleId = useId();
+  const selectedFlagCount = OPERATION_FLAG_KEYS.filter((key) => values[key]).length;
 
   return (
     <Dialog
@@ -97,6 +99,8 @@ export const OperationFormDialog = ({
       onClose={onClose}
       size="lg"
       title={mode === 'create' ? t.dialog.operationCreateTitle : t.dialog.operationEditTitle}
+      /* 취소 단추가 이미 닫기라 우상단 X 는 두지 않는다(사용자 지시 · #231). */
+      showCloseButton={false}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
@@ -129,6 +133,10 @@ export const OperationFormDialog = ({
             onChange={(event) => onChange({ operationName: event.target.value })}
             error={fieldErrors.operationName}
             aria-required
+            /* 필수인데 비어 있으면 빨간 테두리(사용자 지시 · #231) — 채우면 사라진다. */
+            containerClassName={
+              values.operationName.trim() === '' ? 'routing-required-empty' : undefined
+            }
           />
         </div>
 
@@ -142,11 +150,11 @@ export const OperationFormDialog = ({
           error={fieldErrors.standardCycleTimeSec}
         />
 
-        {/* 0~1 비율이다. 퍼센트로 보이면서 비율로 저장하면 100배 오입력이 조용히 통과한다. */}
+        {/* 퍼센트(0~100)로 받는다 — 서버에는 ÷100 해 0~1 비율로 보낸다(operation-order.ts · #231). */}
         <TextField
           type="number"
           min={0}
-          max={1}
+          max={100}
           step={0.01}
           label={t.fields.standardYieldRate}
           value={values.standardYieldRate}
@@ -155,33 +163,36 @@ export const OperationFormDialog = ({
         />
       </div>
 
-      <div className="check-group">
-        {OPERATION_FLAG_KEYS.map((key) => (
-          <Checkbox
-            key={key}
-            checked={values[key]}
-            onChange={(event) => onChange({ [key]: event.target.checked })}
-          >
-            {t.operationFlags[key]}
-          </Checkbox>
-        ))}
+      {/* 관리 항목 — 구분선 아래 제목 · 고른 개수, 두 줄 칸에 확인칸(사용자 시안 · #231). */}
+      <section className="routing-flag-section" aria-labelledby={flagTitleId}>
+        <div className="routing-flag-head">
+          <h3 className="pane-title" id={flagTitleId}>
+            {t.fields.managedItems}
+          </h3>
+          <span className="routing-flag-count">{t.dialog.flagsSelected(selectedFlagCount)}</span>
+        </div>
+        <div className="routing-flag-grid">
+          {OPERATION_FLAG_KEYS.map((key) => (
+            <Checkbox
+              key={key}
+              checked={values[key]}
+              onChange={(event) => onChange({ [key]: event.target.checked })}
+            >
+              {t.operationFlags[key]}
+            </Checkbox>
+          ))}
 
-        {/*
-         * 계약에 저장할 자리가 없다. 감추면 사용자가 「이 화면에는 없는 항목」으로 오해하고
-         * 다른 곳을 찾는다 — 감추지 않고 사유와 함께 비활성으로 둔다(배치 규범 4).
-         * 저장 본문에도 넣지 않는다(operation-order.ts).
-         */}
-        <div className="field-cell">
-          <Checkbox checked={false} disabled aria-describedby={outsourcedNoteId} readOnly>
+          {/*
+           * 계약에 저장할 자리가 없다. 감추면 사용자가 「이 화면에는 없는 항목」으로 오해하고
+           * 다른 곳을 찾는다 — 감추지 않고 사유와 함께 비활성으로 둔다(배치 규범 4).
+           * 저장 본문에도 넣지 않는다(operation-order.ts).
+           */}
+          {/* 안내 문장은 두지 않는다(사용자 지시 · #231) — 흐린 확인칸이 「지금은 못 고친다」를 말한다. */}
+          <Checkbox checked={false} disabled readOnly>
             {t.fields.outsourced}
           </Checkbox>
-          <span id={outsourcedNoteId} className="field-note">
-            {t.actionReasons.outsourcedUnavailable}
-          </span>
         </div>
-      </div>
-
-      <p className="field-note">{t.dialog.operationLocalNote}</p>
+      </section>
     </Dialog>
   );
 };

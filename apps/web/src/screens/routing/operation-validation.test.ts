@@ -10,7 +10,7 @@ const validDraft = (overrides: Partial<OperationDraft> = {}): OperationDraft => 
   processId: '9001',
   operationName: '1차 사출',
   standardCycleTimeSec: '45',
-  standardYieldRate: '0.98',
+  standardYieldRate: '98',
   ...overrides,
 });
 
@@ -57,18 +57,18 @@ describe('validateOperationDraft', () => {
    * 퍼센트로 보이면서 비율로 저장하면 100배 오입력이 조용히 통과한다.
    * 화면은 비율만 받고, 퍼센트로 들어온 값은 여기서 막는다.
    */
-  it('표준 수율이 1을 넘으면 걸린다 — 퍼센트 입력을 막는다', () => {
-    expect(validateOperationDraft(validDraft({ standardYieldRate: '98' })).standardYieldRate).toBe(
-      '표준 수율은 0과 1 사이의 비율이어야 합니다. 퍼센트가 아닙니다.',
-    );
+  it('표준 수율(%)이 100을 넘으면 걸린다', () => {
+    expect(
+      validateOperationDraft(validDraft({ standardYieldRate: '100.1' })).standardYieldRate,
+    ).toBe('표준 수율은 0~100 사이로 입력하세요.');
   });
 
-  it('표준 수율이 음수면 걸리고 경계값 0·1은 통과한다', () => {
+  it('표준 수율이 음수면 걸리고 경계값 0·100은 통과한다', () => {
     expect(
       validateOperationDraft(validDraft({ standardYieldRate: '-0.1' })).standardYieldRate,
     ).toBeDefined();
     expect(validateOperationDraft(validDraft({ standardYieldRate: '0' }))).toEqual({});
-    expect(validateOperationDraft(validDraft({ standardYieldRate: '1' }))).toEqual({});
+    expect(validateOperationDraft(validDraft({ standardYieldRate: '100' }))).toEqual({});
   });
 
   /** 빈 값은 「지정하지 않음」이며 계약이 널을 허용한다 — 0과 다르다. */
@@ -80,7 +80,7 @@ describe('validateOperationDraft', () => {
 
   it('여러 칸이 함께 걸리면 모두 돌려준다', () => {
     const errors = validateOperationDraft(
-      validDraft({ processId: '', operationName: '', standardYieldRate: '2' }),
+      validDraft({ processId: '', operationName: '', standardYieldRate: '200' }),
     );
 
     expect(Object.keys(errors).sort()).toEqual([

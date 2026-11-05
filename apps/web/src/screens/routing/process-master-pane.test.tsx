@@ -137,23 +137,20 @@ const renderScreen = () => {
     });
     return stub(request);
   };
-  renderWithProviders(<RoutingScreen />, {
+  renderWithProviders(<RoutingScreen tab="processes" />, {
     fetch,
-    route: '/master-data/routing?tab=processes&inactive=1',
+    route: '/master-data/processes?inactive=1',
     dataRouter: true,
   });
   return { recorded, user: userEvent.setup() };
 };
 
-describe('RoutingScreen — 공정 마스터 탭', () => {
-  it('고정 설계의 두 탭을 제공하고 공정 목록은 품목 선택 없이 조회한다', async () => {
+describe('RoutingScreen — 공정 관리 탭', () => {
+  it('탭은 셸 탭 막대(주소)가 고르고, 공정 목록은 품목 선택 없이 조회한다', async () => {
     const { recorded } = renderScreen();
 
-    expect(screen.getByRole('tab', { name: 'Routing' })).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getByRole('tab', { name: '공정 마스터' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    /* 화면 안 탭 줄은 두지 않는다(#231) — 탭 막대는 셸이 세운다. */
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'OP-INJ' })).toBeInTheDocument();
     expect(screen.getByText('가공')).toBeInTheDocument();
 

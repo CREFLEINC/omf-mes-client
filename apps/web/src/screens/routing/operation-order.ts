@@ -46,6 +46,17 @@ const optionalNumberToText = (value: number | null | undefined): string =>
 const textToOptionalNumber = (value: string): number | null =>
   value === '' ? null : Number(value);
 
+/*
+ * 표준 수율 — 서버(DB `Decimal(9,6)` · 계약)는 0~1 비율, 화면은 0~100 퍼센트(사용자 지시 · #231).
+ * 바꾸는 곳은 이 두 함수뿐이다: 받을 때 ×100, 보낼 때 ÷100. 소수 자릿수를 DB 정밀도(비율 6자리 = 퍼센트 4자리)에서
+ * 끊어 0.95 × 100 = 95.00000000000001 같은 부동소수 찌꺼기가 값 · 「고친 것 있음」 판정에 끼지 않게 한다.
+ */
+export const ratioToPercentText = (value: number | null | undefined): string =>
+  value === null || value === undefined ? '' : String(Number((value * 100).toFixed(4)));
+
+const percentTextToRatio = (value: string): number | null =>
+  value === '' ? null : Number((Number(value) / 100).toFixed(6));
+
 /**
  * 서버 응답을 로컬 초안으로 옮긴다.
  *
@@ -67,8 +78,8 @@ export const toOperationDrafts = (operations: RoutingOperation[]): OperationDraf
     equipmentRequired: operation.equipmentRequired,
     moldRequired: operation.moldRequired,
     standardCycleTimeSec: optionalNumberToText(operation.standardCycleTimeSec),
-    // 비율(0~1) 그대로 옮긴다. 퍼센트로 바꾸면 100배 오입력이 조용히 통과한다.
-    standardYieldRate: optionalNumberToText(operation.standardYieldRate),
+    // 서버 비율(0~1) → 화면 퍼센트(0~100). 입력 · 표 · 검증이 모두 퍼센트로 다룬다.
+    standardYieldRate: ratioToPercentText(operation.standardYieldRate),
   }));
 
 /**
@@ -169,8 +180,8 @@ export const toOperationsPayload = (
     equipmentRequired: draft.equipmentRequired,
     moldRequired: draft.moldRequired,
     standardCycleTimeSec: textToOptionalNumber(draft.standardCycleTimeSec),
-    // 비율(0~1) 그대로 보낸다 — 퍼센트로 환산하면 100배 오입력이 조용히 통과한다.
-    standardYieldRate: textToOptionalNumber(draft.standardYieldRate),
+    // 화면 퍼센트(0~100) → 서버 비율(0~1). 서버 값의 뜻은 그대로다.
+    standardYieldRate: percentTextToRatio(draft.standardYieldRate),
   }));
 
 const isSameDraft = (a: OperationDraft, b: OperationDraft | undefined): boolean =>

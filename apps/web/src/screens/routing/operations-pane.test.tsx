@@ -73,11 +73,23 @@ describe('OperationsPane', () => {
    * 확인 아이콘을 7개 늘어놓으면 보조기술에서 의미가 잡히지 않고 열이 화면 폭을 먹는다.
    * 켜진 것의 이름만 이어 한 칸에 낸다.
    */
-  it('관리 항목 열에 켜진 항목의 이름만 이어 낸다', () => {
-    renderPane();
+  /* 「첫 항목 외 N개」로 줄이고, 누르면 칸 안에서 전체를 펼친다(아코디언 · #231). */
+  it('관리 항목 열은 「첫 항목 외 N개」로 줄이고, 누르면 전체를 펼치고 다시 누르면 접는다', async () => {
+    const { user } = renderPane();
 
     const first = bodyRows()[0] as HTMLElement;
-    expect(within(first).getByText('MES 관리 · 실적 관리 · 검사 관리')).toBeInTheDocument();
+    const toggle = within(first).getByRole('button', { name: 'MES 관리 외 2개' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(within(first).queryByRole('list')).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const items = within(within(first).getByRole('list')).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual(['MES 관리', '실적 관리', '검사 관리']);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(within(first).queryByRole('list')).not.toBeInTheDocument();
   });
 
   it('관리 항목이 전부 꺼져 있으면 「없음」을 낸다', () => {
@@ -86,13 +98,13 @@ describe('OperationsPane', () => {
     expect(within(bodyRows()[1] as HTMLElement).getByText('없음')).toBeInTheDocument();
   });
 
-  it('표준 수율을 비율 그대로 내고 라벨에 허용 범위를 적는다', () => {
+  /* 서버 비율 0.98 을 화면은 98% 로 보인다(사용자 지시 · #231). */
+  it('표준 수율을 퍼센트로 내고 라벨에 (%)를 적는다', () => {
     renderPane();
 
-    expect(screen.getByText('표준 수율(0~1)')).toBeInTheDocument();
-    expect(within(bodyRows()[0] as HTMLElement).getByText('0.98')).toBeInTheDocument();
-    // 퍼센트 환산을 하지 않는다 — 100배 오입력이 조용히 통과하는 길이 열린다.
-    expect(screen.queryByText('98')).not.toBeInTheDocument();
+    expect(screen.getByText('표준 수율(%)')).toBeInTheDocument();
+    expect(within(bodyRows()[0] as HTMLElement).getByText('98%')).toBeInTheDocument();
+    expect(screen.queryByText('0.98')).not.toBeInTheDocument();
   });
 
   it('표준 C/T 라벨에 단위 「초」가 있고 값이 없으면 빈 값 표식을 낸다', () => {
@@ -122,7 +134,7 @@ describe('OperationsPane', () => {
   it('Rev를 고르기 전에는 선택 안내만 낸다', () => {
     renderPane({ isRevisionSelected: false, drafts: [] });
 
-    expect(screen.getByText('가운데에서 Rev를 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('개정을 선택하세요')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -149,14 +161,14 @@ describe('OperationsPane', () => {
   it('선후행 설정을 막는 이유가 있으면 감추지 않고 사유와 함께 비활성으로 둔다', () => {
     renderPane({ dependenciesBlockedReason: '선후행을 지금은 열 수 없습니다.' });
 
-    expect(screen.getByRole('button', { name: '선후행 설정' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '공정 연결' })).toBeDisabled();
     expect(screen.getByText('선후행을 지금은 열 수 없습니다.')).toBeInTheDocument();
   });
 
   it('잠긴 Rev 에서도 선후행 설정은 열 수 있다 — 읽기 전용으로 보여 준다', async () => {
     const { props, user } = renderPane({ isEditable: false });
 
-    await user.click(screen.getByRole('button', { name: '선후행 설정' }));
+    await user.click(screen.getByRole('button', { name: '공정 연결' }));
 
     expect(props.onOpenDependencies).toHaveBeenCalledTimes(1);
   });
@@ -270,36 +282,26 @@ describe('OperationsPane — 편집', () => {
    * 확정·폐기 Rev에서는 라인도 잠긴다. 「추가·수정·삭제·순서 이동·저장」이 전부 막히고
    * 무엇이 막혔는지·어떻게 푸는지가 한 번 보인다(여러 컨트롤이 공유하는 안내 — 배치 규범 4의 이탈 조건).
    */
-  it('잠긴 상태에서는 추가·수정·삭제·순서 이동·저장이 전부 막히고 사유가 보인다', () => {
-    renderPane({ isEditable: false, isDirty: true });
+  /*
+   * 잠긴 Rev(확정 · 폐기)는 고칠 수단을 세우지 않는다 — 비활성 단추와 사유 문장 대신 조회할 정보만(사용자 지시 · #231).
+   * 저장 · 취소는 이 칸이 아니라 설정 탭 맨 아래 줄 몫이고, 그 줄도 잠긴 Rev 에는 세우지 않는다.
+   */
+  it('잠긴 상태에서는 공정 추가 · 수정 · 삭제 · 순서 이동을 세우지 않고 정보 칸만 낸다', () => {
+    /* 상세 카드처럼 저장 줄은 바깥(설정 탭 맨 아래)에 맡긴다. */
+    renderPane({ isEditable: false, isDirty: true, showSaveActions: false });
 
-    expect(screen.getByRole('button', { name: '공정 추가' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
-
+    expect(screen.queryByRole('button', { name: '공정 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /편집/ })).not.toBeInTheDocument();
     for (const row of bodyRows()) {
-      expect(within(row).getByRole('button', { name: /공정 수정$/ })).toBeDisabled();
-      expect(within(row).getByRole('button', { name: /공정 삭제$/ })).toBeDisabled();
+      expect(within(row).queryByRole('button', { name: /공정 수정$/ })).toBeNull();
+      expect(within(row).queryByRole('button', { name: /공정 삭제$/ })).toBeNull();
     }
-
-    // 이동은 디자인 시스템이 렌더하는 열이라 비활성 스위치가 없다 — 열 자체를 내지 않는다.
     expect(screen.queryByRole('button', { name: '위로 이동' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '아래로 이동' })).not.toBeInTheDocument();
-
-    expect(screen.getAllByText(OPERATIONS_LOCK_REASON).length).toBeGreaterThan(0);
-  });
-
-  it('잠긴 Rev 에서는 공정 수정·삭제 아이콘마다 까닭을 붙인다', () => {
-    renderPane({ isEditable: false });
-
-    const row = bodyRows()[0] as HTMLElement;
-    for (const icon of within(row).getAllByRole('button')) {
-      expect(icon).toBeDisabled();
-      expect(icon).toHaveAccessibleDescription(OPERATIONS_LOCK_REASON);
+    /* 사유 문장은 화면에 펼치지 않는다 — 남은 것은 화면 낭독기용 숨긴 글뿐이다. */
+    for (const note of screen.queryAllByText(OPERATIONS_LOCK_REASON)) {
+      expect(note.className).toMatch(/visually-hidden/);
     }
-    expect(within(row).getAllByRole('button')[0]?.parentElement).toHaveAttribute(
-      'title',
-      OPERATIONS_LOCK_REASON,
-    );
+    /* 공정 정보는 그대로 보인다. */
+    expect(screen.getByText('1차 사출')).toBeInTheDocument();
   });
 });

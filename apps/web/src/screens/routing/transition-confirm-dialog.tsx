@@ -9,6 +9,8 @@ export type RoutingTransitionKind = 'confirm' | 'obsolete';
 export interface TransitionConfirmDialogProps {
   open: boolean;
   kind: RoutingTransitionKind;
+  /** 대상 개정(「Rev N」) — 폐기 확인 제목에 담아 무엇을 폐기하는지 못 박는다(#231). */
+  revisionLabel: string;
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
@@ -29,6 +31,7 @@ export interface TransitionConfirmDialogProps {
 export const TransitionConfirmDialog = ({
   open,
   kind,
+  revisionLabel,
   onClose,
   onConfirm,
   isSaving,
@@ -38,8 +41,10 @@ export const TransitionConfirmDialog = ({
     open={open}
     onClose={onClose}
     size="sm"
-    title={kind === 'confirm' ? t.dialog.confirmTitle : t.dialog.obsoleteTitle}
+    title={kind === 'confirm' ? t.dialog.confirmTitle : t.dialog.obsoleteTitle(revisionLabel)}
     closeOnBackdropClick={false}
+    /* 폐기 확인은 취소 단추가 닫기라 우상단 X 를 두지 않는다(사용자 지시 · #231). */
+    showCloseButton={kind !== 'obsolete'}
     footer={
       <>
         <Button variant="outlined" onClick={onClose}>
@@ -52,6 +57,14 @@ export const TransitionConfirmDialog = ({
     }
   >
     {banner}
-    <p>{kind === 'confirm' ? t.dialog.confirmDescription : t.dialog.obsoleteDescription}</p>
+    {kind === 'confirm' ? (
+      <p>{t.dialog.confirmDescription}</p>
+    ) : (
+      /* 폐기 — 결과 한 줄(본문) 아래 보조 설명 한 줄(사용자 시안 · #231). */
+      <>
+        <p className="routing-obsolete-description">{t.dialog.obsoleteDescription}</p>
+        <p className="routing-obsolete-note">{t.dialog.obsoleteNote}</p>
+      </>
+    )}
   </Dialog>
 );
