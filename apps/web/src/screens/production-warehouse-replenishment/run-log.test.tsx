@@ -36,6 +36,8 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
     const query = gets.find((url) => url.pathname === '/logistics/replenishment-runs');
     expect(query?.searchParams.get('plantId')).toBe('8401');
     expect(query?.searchParams.get('runDateFrom')).not.toBeNull();
+    /* 서버 기본 50건에서 잘리지 않게 쪽을 실어 끝까지 받는다(G2 확인 4). */
+    expect(query?.searchParams.get('size')).not.toBeNull();
   });
 
   it('US5-10 결과 줄은 만든 요청과 건너뛴 품목을 사유별로 센다(일부만 요청은 건너뜀이 아니다)', async () => {
@@ -44,9 +46,9 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
       runs: [
         {
           replenishmentRunId: 3,
-          warehouseId: 7001,
-          warehouseCode: 'SYN-PW-A',
-          warehouseName: '합성 생산창고 A',
+          productionWarehouseId: 7001,
+          productionWarehouseCode: 'SYN-PW-A',
+          productionWarehouseName: '합성 생산창고 A',
           runDate: '2026-11-05',
           status: 'DONE',
           startedAt: '2026-11-05T00:00:10Z',
@@ -62,7 +64,7 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
               resultCode: 'CREATED',
               usableQty: 40,
               requestedQty: 160,
-              shortageQty: null,
+              shortageQty: 0,
               issueRequestNo: 'SYN-MIR-31',
             },
             {
@@ -81,8 +83,8 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
               itemName: '합성',
               resultCode: 'IN_PROGRESS',
               usableQty: 60,
-              requestedQty: null,
-              shortageQty: null,
+              requestedQty: 0,
+              shortageQty: 0,
               issueRequestNo: null,
             },
             {
@@ -91,8 +93,8 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
               itemName: '합성',
               resultCode: 'NO_SOURCE_STOCK',
               usableQty: 12,
-              requestedQty: null,
-              shortageQty: null,
+              requestedQty: 0,
+              shortageQty: 0,
               issueRequestNo: null,
             },
           ],

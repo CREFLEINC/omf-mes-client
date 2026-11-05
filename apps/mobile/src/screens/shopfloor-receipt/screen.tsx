@@ -12,7 +12,7 @@ import { useCodeValues } from '../../patterns/code-values';
 import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
-import { useLocation } from '../../patterns/locations';
+import { PUTAWAY_STAGING, WAREHOUSE_WHOLE, useLocation } from '../../patterns/locations';
 import { useItemCodes } from '../../patterns/masters';
 import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -70,6 +70,14 @@ const receivedFieldId = (goodsIssueLineId: number): string =>
   `shopfloor-received-${goodsIssueLineId}`;
 
 const measuredFieldId = (key: string): string => `shopfloor-measured-${key}`;
+
+/** 창고 보충 도착 위치 이름 — 서버가 둔 위치는 역할 이름, 사람이 만든 위치는 코드. */
+const destinationName = (location: { systemRoleCode?: string | null; locationCode: string }) =>
+  location.systemRoleCode === PUTAWAY_STAGING
+    ? t.issue.destinationStaging
+    : location.systemRoleCode === WAREHOUSE_WHOLE
+      ? t.issue.destinationWhole
+      : location.locationCode;
 
 /** 받을 수 있는 출고인가 — W/O 출고는 W/O · 도착 위치, 창고 보충 출고(004)는 도착 위치. */
 const receivable = (issue: ScannedIssue): boolean =>
@@ -470,7 +478,17 @@ export const ShopfloorReceiptScreen = () => {
             <Card.Body className="card-body">
               {/* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */}
               {destination.data === undefined ? null : (
-                <p>{t.issue.destination(destination.data.locationCode)}</p>
+                <p>
+                  {t.issue.destination(
+                    /*
+                     * 창고 보충(004)은 서버가 둔 위치(적치 대기 · 창고 전체)로 들어온다 — 코드(`SYS-…`) 대신 역할 이름.
+                     * W/O 출고 표시는 지금 그대로 코드다.
+                     */
+                    issue.kind === 'REPLENISHMENT'
+                      ? destinationName(destination.data)
+                      : destination.data.locationCode,
+                  )}
+                </p>
               )}
               {destination.isError ? (
                 <p className="shopfloor-receipt__note">

@@ -1058,16 +1058,17 @@ export interface ReplenishmentRunLine {
   itemName: string;
   resultCode: ReplenishmentRunResultCode;
   usableQty: number;
-  requestedQty: number | null;
-  shortageQty: number | null;
+  /** 요청을 만들지 않은 줄은 0. */
+  requestedQty: number;
+  shortageQty: number;
   issueRequestNo: string | null;
 }
 
 export interface ReplenishmentRun {
   replenishmentRunId: number;
-  warehouseId: number;
-  warehouseCode: string;
-  warehouseName: string;
+  productionWarehouseId: number;
+  productionWarehouseCode: string;
+  productionWarehouseName: string;
   /** 공장 현지 날짜. */
   runDate: string;
   status: 'DONE' | 'FAILED';
@@ -1084,6 +1085,8 @@ export interface ReplenishmentRunListQuery {
   productionWarehouseId?: number;
   runDateFrom?: string;
   runDateTo?: string;
+  page?: number;
+  size?: number;
 }
 
 export interface ForwardPaths {
@@ -1095,7 +1098,7 @@ export interface ForwardPaths {
     get: Op<
       { query: ReplenishmentRunListQuery; header?: never; path?: never; cookie?: never },
       never,
-      { 200: Json<{ items: ReplenishmentRun[] }> }
+      { 200: Json<ListOf<ReplenishmentRun>> }
     >;
   };
   /** 004 C2 — 도착 대기(계약 §2). */

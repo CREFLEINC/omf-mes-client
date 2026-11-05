@@ -287,6 +287,7 @@ export const productionWarehouseReplenishment: Translated<
     },
     selectAll: 'Chọn tất cả trang này',
     selectRow: (no: string): string => `Chọn ${no}`,
+    lotCount: (item: string, count: number): string => `${item}, ${String(count)} LOT`,
     itemCount: (count: number): string => `${String(count)} mặt hàng`,
     expand: (no: string): string => `Mở mặt hàng của ${no}`,
     elapsed: (days: number): string => `${String(days)} ngày`,

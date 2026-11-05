@@ -26,7 +26,9 @@ describe('W-02-12 생산 창고 보충 — 도착 대기 보기', () => {
     expect(one.getByText('SYN-MIR-02')).toBeInTheDocument();
     expect(one.getByText(t.origin.DIRECT)).toBeInTheDocument();
     expect(one.getByText('합성 생산창고 A')).toBeInTheDocument();
-    expect(one.getByText('SYN-STAGING')).toBeInTheDocument();
+    /* 서버가 둔 위치는 코드(SYS-STAGING) 대신 역할 이름(G2 확인 2). */
+    expect(await one.findByText('적치 대기')).toBeInTheDocument();
+    expect(one.queryByText('SYS-STAGING')).toBeNull();
     expect(one.getByText('합성 동선, SYN-L-910')).toBeInTheDocument();
     expect(one.getByText('30 KG')).toBeInTheDocument();
     /* UTC 로 와도 공장 현지 시각(UTC+7). */
@@ -36,7 +38,14 @@ describe('W-02-12 생산 창고 보충 — 도착 대기 보기', () => {
     /* 경과 3일 이상은 노랑(표시만). */
     expect((await rowOf('SYN-GI-92')).getByText(ta.elapsed(4))).toHaveClass('replenishment-late');
 
+    /* 같은 품목 LOT 두 줄은 1품목 — 「품목, LOT 2개」와 수량 합(G2 확인 3). */
+    const lots = await rowOf('SYN-GI-92');
+    expect(lots.getByText(ta.lotCount('SYN-IT-1 합성 동선', 2))).toBeInTheDocument();
+    expect(lots.getByText('30 KG')).toBeInTheDocument();
+
     const multi = await rowOf('SYN-GI-93');
+    expect(multi.getByText(ta.itemCount(2))).toBeInTheDocument();
+    expect(await multi.findByText('합성 A열 1칸')).toBeInTheDocument();
     await user.click(multi.getByRole('button', { name: ta.expand('SYN-GI-93') }));
     expect(multi.getByText('SYN-IT-2 합성 라벨지, SYN-L-932, 50 EA')).toBeInTheDocument();
 

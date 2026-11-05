@@ -5,11 +5,13 @@ import type {
   ReplenishmentRun,
   ReplenishmentSettings,
 } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
+import { SYSTEM_LOCATION_ROLE } from '../../patterns/system-location';
 import {
   toArrivalQuery,
   toItemQuery,
@@ -50,6 +52,8 @@ export const replenishmentKeys = {
   arrivals: (plantId: number, filters: ArrivalFilters, page: number) =>
     ['production-warehouse-replenishment', 'arrivals', plantId, filters, page] as const,
   varianceReasons: ['production-warehouse-replenishment', 'variance-reasons'] as const,
+  location: (locationId: number) =>
+    ['production-warehouse-replenishment', 'location', locationId] as const,
   runs: (plantId: number, from: string) =>
     ['production-warehouse-replenishment', 'runs', plantId, from] as const,
   counts: (plantId: number) => ['production-warehouse-replenishment', 'counts', plantId] as const,
@@ -478,7 +482,7 @@ export const addDays = (iso: string, days: number): string => {
   return date.toISOString().slice(0, 10);
 };
 
-/** 공장의 자동 보충 실행 기록(계약 §5) — 최근 `RUN_LOG_DAYS` 일. */
+/** 공장의 자동 보충 실행 기록(계약 §5) — 최근 `RUN_LOG_DAYS` 일, 쪽을 끝까지 받는다(서버 기본 50건). */
 export const useRuns = (
   plantId: number | null,
   today: string,
@@ -490,11 +494,55 @@ export const useRuns = (
     enabled: plantId !== null,
     queryFn: async () =>
       (
-        await runRequest(() =>
-          client.GET('/logistics/replenishment-runs', {
-            params: { query: { plantId: plantId ?? 0, runDateFrom: from, runDateTo: today } },
-          }),
+        await fetchAllPages((page, size) =>
+          runRequest(() =>
+            client.GET('/logistics/replenishment-runs', {
+              params: {
+                query: { plantId: plantId ?? 0, runDateFrom: from, runDateTo: today, page, size },
+              },
+            }),
+          ),
         )
       ).items,
   });
+};
+
+const SYSTEM_ROLE_NAMES = messages.warehouseLocation.values.systemRoles;
+
+/**
+ * 도착 위치 표시 이름(G2 확인 2) — 서버가 창고마다 두는 위치(적치 대기 · 창고 전체)는 코드(`SYS-…`) 대신 역할 이름,
+ * 사람이 만든 위치는 위치 이름. 위치를 아직 못 받았으면 코드로 보인다.
+ */
+export const useLocationNames = (
+  locations: readonly { id: number; code: string }[],
+): ReadonlyMap<number, string> => {
+  const { client } = useApiClient();
+  const ids = [...new Set(locations.map((each) => each.id))];
+  const results = useQueries({
+    queries: ids.map((locationId) => ({
+      queryKey: replenishmentKeys.location(locationId),
+      staleTime: 5 * 60 * 1000,
+      retry: false,
+      queryFn: async () =>
+        (
+          await runRequest(() =>
+            client.GET('/mdm/locations/{locationId}', { params: { path: { locationId } } }),
+          )
+        ).location,
+    })),
+  });
+  const names = new Map<number, string>();
+  for (const each of locations) {
+    const found = results[ids.indexOf(each.id)]?.data;
+    const role = found?.systemRoleCode;
+    names.set(
+      each.id,
+      role === SYSTEM_LOCATION_ROLE.putawayStaging
+        ? SYSTEM_ROLE_NAMES.PUTAWAY_STAGING
+        : role === SYSTEM_LOCATION_ROLE.warehouseWhole
+          ? SYSTEM_ROLE_NAMES.WAREHOUSE_WHOLE
+          : (found?.locationName ?? each.code),
+    );
+  }
+  return names;
 };

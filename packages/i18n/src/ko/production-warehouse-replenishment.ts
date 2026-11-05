@@ -286,6 +286,7 @@ export const productionWarehouseReplenishment = {
     },
     selectAll: '이 쪽 모두 고르기',
     selectRow: (no: string): string => `${no} 고르기`,
+    lotCount: (item: string, count: number): string => `${item}, LOT ${String(count)}개`,
     itemCount: (count: number): string => `${String(count)}품목`,
     expand: (no: string): string => `${no} 품목 펼치기`,
     elapsed: (days: number): string => `${String(days)}일`,

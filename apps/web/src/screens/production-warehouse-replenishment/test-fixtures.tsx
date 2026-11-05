@@ -253,9 +253,16 @@ export const arrival = (
 /** 도착 대기 — 91 한 줄 30 KG, 92 경과 4일, 93 두 품목. */
 export const ARRIVALS: ReplenishmentArrival[] = [
   arrival(91),
-  arrival(92, { elapsedDays: 4, issuedAt: '2026-11-01T09:30:00Z' }),
+  /* 같은 품목 LOT 두 줄 — 「품목, LOT 2개」, 수량은 합. */
+  arrival(92, {
+    elapsedDays: 4,
+    issuedAt: '2026-11-01T09:30:00Z',
+    lines: [arrivalLine(921, 601, 20), arrivalLine(922, 601, 10)],
+  }),
   arrival(93, {
     replenishmentOriginCode: 'AUTO',
+    destinationLocationId: 502,
+    destinationLocationCode: 'SYN-A-01',
     lines: [arrivalLine(931, 601, 20), arrivalLine(932, 602, 50, 'EA')],
   }),
 ];
@@ -264,8 +271,8 @@ const runLine = (
   itemId: number,
   resultCode: ReplenishmentRun['lines'][number]['resultCode'],
   usableQty: number,
-  requestedQty: number | null = null,
-  shortageQty: number | null = null,
+  requestedQty = 0,
+  shortageQty = 0,
   issueRequestNo: string | null = null,
 ) => ({
   itemId,
@@ -282,9 +289,9 @@ const runLine = (
 export const RUNS: ReplenishmentRun[] = [
   {
     replenishmentRunId: 3,
-    warehouseId: 7001,
-    warehouseCode: 'SYN-PW-A',
-    warehouseName: '합성 생산창고 A',
+    productionWarehouseId: 7001,
+    productionWarehouseCode: 'SYN-PW-A',
+    productionWarehouseName: '합성 생산창고 A',
     runDate: '2026-11-04',
     status: 'DONE',
     startedAt: '2026-11-04T00:00:10Z',
@@ -293,7 +300,7 @@ export const RUNS: ReplenishmentRun[] = [
     createdRequestCount: 2,
     errorText: null,
     lines: [
-      runLine(601, 'CREATED', 40, 160, null, 'SYN-MIR-31'),
+      runLine(601, 'CREATED', 40, 160, 0, 'SYN-MIR-31'),
       runLine(602, 'SHORTAGE', 40, 100, 60, 'SYN-MIR-32'),
       runLine(603, 'IN_PROGRESS', 60),
       runLine(604, 'NO_SOURCE_STOCK', 12),
@@ -301,9 +308,9 @@ export const RUNS: ReplenishmentRun[] = [
   },
   {
     replenishmentRunId: 5,
-    warehouseId: 7001,
-    warehouseCode: 'SYN-PW-A',
-    warehouseName: '합성 생산창고 A',
+    productionWarehouseId: 7001,
+    productionWarehouseCode: 'SYN-PW-A',
+    productionWarehouseName: '합성 생산창고 A',
     runDate: '2026-11-05',
     status: 'FAILED',
     startedAt: '2026-11-05T00:00:10Z',
@@ -315,9 +322,9 @@ export const RUNS: ReplenishmentRun[] = [
   },
   {
     replenishmentRunId: 6,
-    warehouseId: 7002,
-    warehouseCode: 'SYN-PW-B',
-    warehouseName: '합성 생산창고 B',
+    productionWarehouseId: 7002,
+    productionWarehouseCode: 'SYN-PW-B',
+    productionWarehouseName: '합성 생산창고 B',
     runDate: '2026-11-05',
     status: 'DONE',
     startedAt: '2026-11-04T18:00:10Z',
@@ -528,8 +535,26 @@ export const setupScreen = (options: SetupOptions = {}) => {
         ),
     },
     {
+      /* 도착 위치 — 501 은 서버가 둔 적치 대기(SYS-STAGING), 502 는 사람이 만든 위치. */
+      match: (req) => isGet(req, /^\/mdm\/locations\/\d+$/),
+      respond: (req) => {
+        const id = Number(pathOf(req).split('/').at(-1));
+        return jsonResponse({
+          location: {
+            locationId: id,
+            warehouseId: 7001,
+            locationCode: id === 501 ? 'SYS-STAGING' : 'SYN-A-01',
+            locationName: id === 501 ? 'SYS-STAGING' : '합성 A열 1칸',
+            systemRoleCode: id === 501 ? 'PUTAWAY_STAGING' : null,
+            isActive: true,
+          },
+          editability: {},
+        });
+      },
+    },
+    {
       match: (req) => isGet(req, '/logistics/replenishment-runs'),
-      respond: () => jsonResponse({ items: options.runs ?? RUNS }),
+      respond: () => jsonResponse(page(options.runs ?? RUNS)),
     },
     {
       match: (req) => isGet(req, '/logistics/replenishment-requests/arrivals'),

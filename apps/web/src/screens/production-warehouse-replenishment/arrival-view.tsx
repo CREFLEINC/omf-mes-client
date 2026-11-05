@@ -22,12 +22,16 @@ import { Select } from '../../patterns/select';
 import type { ArrivalFilters } from './filters';
 import { useBulkReceive } from './mutations';
 import { OriginChip } from './progress-view';
-import { PAGE_SIZE, replenishmentKeys, useArrivalList } from './queries';
+import { PAGE_SIZE, replenishmentKeys, useArrivalList, useLocationNames } from './queries';
 import { ReceiveDialog } from './receive-dialog';
 import { plantMinute, qtyWithUom } from './types';
 
 const t = messages.productionWarehouseReplenishment;
 const ta = t.arrival;
+
+/** 서로 다른 품목 수 — 같은 품목의 LOT 여러 줄은 한 품목이다(G2 확인 3). */
+export const distinctItems = (row: ReplenishmentArrival): number =>
+  new Set(row.lines.map((line) => line.itemId)).size;
 
 /** 경과 이 일수 이상이면 노랑(표시만, 알림 없음 — 시안 검토 3). */
 export const ELAPSED_WARN_DAYS = 3;
@@ -85,6 +89,9 @@ export const ArrivalView = ({
   });
 
   const rows = list.data?.items ?? [];
+  const locationNames = useLocationNames(
+    rows.map((row) => ({ id: row.destinationLocationId, code: row.destinationLocationCode })),
+  );
   /* 목록이 바뀌면(받음 · 조회) 사라진 장의 고름을 버린다. */
   const selected = rows.filter((row) => checked.has(row.goodsIssueId));
   const allChecked = rows.length > 0 && selected.length === rows.length;
@@ -164,7 +171,9 @@ export const ArrivalView = ({
             });
           }}
         >
-          {ta.itemCount(row.lines.length)}
+          {distinctItems(row) === 1 && only !== undefined
+            ? ta.lotCount(`${only.itemCode} ${only.itemName}`, row.lines.length)
+            : ta.itemCount(distinctItems(row))}
         </Button>
         {open && (
           <ul className="replenishment-result-list">
@@ -261,11 +270,17 @@ export const ArrivalView = ({
                       <OriginChip origin={row.replenishmentOriginCode} />
                     </td>
                     <td>{row.productionWarehouseName}</td>
-                    <td>{row.destinationLocationCode}</td>
+                    <td>
+                      {locationNames.get(row.destinationLocationId) ?? row.destinationLocationCode}
+                    </td>
                     <td className="is-wrap">{itemCell(row)}</td>
                     <td className="is-number">
-                      {row.lines.length === 1 && only !== undefined
-                        ? qtyWithUom(only.issueQty, only.uomCode)
+                      {/* 한 품목(여러 LOT 포함)이면 출고 수량 합, 여러 품목이면 단위가 갈려 더하지 않는다. */}
+                      {distinctItems(row) === 1 && only !== undefined
+                        ? qtyWithUom(
+                            row.lines.reduce((sum, line) => sum + line.issueQty, 0),
+                            only.uomCode,
+                          )
                         : t.common.none}
                     </td>
                     <td>{plantMinute(row.issuedAt)}</td>

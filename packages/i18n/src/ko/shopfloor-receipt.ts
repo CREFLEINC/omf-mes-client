@@ -49,6 +49,9 @@ export const shopfloorReceipt = {
     /** 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
     destination: (code: string) => `도착 ${code}`,
     /** 004 — 수령 종류 칩. W/O 출고는 「생산 현장」, 창고 보충 요청에서 나간 출고는 「창고 보충」. */
+    /** 004 — 창고 보충 도착 위치가 서버가 둔 자리일 때의 이름(코드 SYS-… 대신). */
+    destinationStaging: '적치 대기',
+    destinationWhole: '창고 전체',
     kindWorkOrder: '생산 현장',
     kindReplenishment: '창고 보충',
     /** 창고 보충이면 W/O 자리에 요청번호. */

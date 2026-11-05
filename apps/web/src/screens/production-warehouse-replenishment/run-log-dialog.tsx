@@ -85,14 +85,10 @@ export const RunLogDialog = ({ warehouseName, runs, onClose }: RunLogDialogProps
                         <td>{tl.results[line.resultCode]}</td>
                         <td className="is-number">{formatQty(line.usableQty)}</td>
                         <td className="is-number">
-                          {line.requestedQty === null || line.requestedQty === 0
-                            ? t.common.none
-                            : formatQty(line.requestedQty)}
+                          {line.requestedQty === 0 ? t.common.none : formatQty(line.requestedQty)}
                         </td>
                         <td className="is-number">
-                          {line.shortageQty === null || line.shortageQty === 0
-                            ? t.common.none
-                            : formatQty(line.shortageQty)}
+                          {line.shortageQty === 0 ? t.common.none : formatQty(line.shortageQty)}
                         </td>
                         <td className="replenishment-code">
                           {line.issueRequestNo ?? t.common.none}

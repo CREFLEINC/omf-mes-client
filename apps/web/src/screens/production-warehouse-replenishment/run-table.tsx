@@ -66,7 +66,7 @@ export const RunTable = ({ plantId, settings }: RunTableProps) => {
 
   const runsOf = (warehouseId: number): ReplenishmentRun[] =>
     (runs.data ?? [])
-      .filter((run) => run.warehouseId === warehouseId)
+      .filter((run) => run.productionWarehouseId === warehouseId)
       .sort((left, right) => right.runDate.localeCompare(left.runDate));
 
   const openWarehouse = settings.warehouses.find((row) => row.warehouseId === open);
