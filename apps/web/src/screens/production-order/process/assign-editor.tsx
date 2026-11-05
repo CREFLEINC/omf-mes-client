@@ -378,6 +378,7 @@ const EditorSession = ({
     } = {},
   ) => (
     <ReferenceField
+      wrapValue
       size="sm"
       label={label}
       valueLabel={labelOf(field)}

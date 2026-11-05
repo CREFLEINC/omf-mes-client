@@ -55,7 +55,7 @@ export const AssignStep = ({
       header: t.columns.operation,
       render: (row) => (
         <span className="erp-wo-assign-target">
-          <span className="ellipsis-cell" title={row.workOrderNo}>
+          <span className="erp-wo-complete-value" title={row.workOrderNo}>
             {row.workOrderNo}
           </span>
           <small>{row.operationName}</small>

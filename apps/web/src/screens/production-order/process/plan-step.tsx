@@ -157,7 +157,7 @@ export const PlanStep = ({
       key: 'planNo',
       header: t.columns.planNo,
       render: (row) => (
-        <span className="ellipsis-cell" title={nameOf(row)}>
+        <span className="erp-wo-complete-value" title={nameOf(row)}>
           {nameOf(row)}
         </span>
       ),
@@ -179,7 +179,7 @@ export const PlanStep = ({
       key: 'line',
       header: t.columns.line,
       render: (row) => (
-        <span className="ellipsis-cell" title={lineName(row.draft.plannedLineId)}>
+        <span className="erp-wo-complete-value" title={lineName(row.draft.plannedLineId)}>
           {lineName(row.draft.plannedLineId)}
         </span>
       ),
@@ -432,6 +432,7 @@ export const PlanStep = ({
               <div className="field-cell">
                 <span className="field-label">{t.columns.line}</span>
                 <ReferenceField
+                  wrapValue
                   hideLabel
                   size="sm"
                   label={t.fieldLabel(nameOf(selected), t.columns.line)}

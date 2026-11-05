@@ -32927,3 +32927,31 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-summary .is-item-code dd, .erp-wo-summary .is-item-name dd, .erp-wo-selected-item-fields dd { white-space: normal; overflow-wrap: anywhere; max-width: 100%; overflow: visible; text-overflow: clip; }
 .erp-wo-master-order-list .erp-wo-item-field > span:last-child { display: block; white-space: normal; overflow-wrap: anywhere; max-width: 100%; overflow: visible; text-overflow: clip; }
 .erp-wo-master-order-list > button, .erp-wo-selected-item-fields, .erp-wo-selected-item-fields > div { max-width: 100%; }
+
+/* 작업계획 절차의 참조값과 조회값은 말줄임으로 숨기지 않는다. */
+.reference-field-full-value { display: flex; align-items: stretch; gap: var(--space-1); min-width: 0; }
+.reference-field-full-value > button:first-child { flex: 1; min-width: 0; height: auto; min-height: var(--control-height-sm); text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.reference-field-full-value > button:first-child > span { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
+.reference-field-full-value > button:last-child:not(:first-child) { flex-shrink: 0; }
+.erp-wo-complete-value { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+.erp-wo-plan-grid { max-width: 100%; overflow-x: auto; }
+.erp-wo-plan-grid table { width: 100%; min-width: 42rem; table-layout: auto; }
+.erp-wo-plan-grid .erp-wo-complete-value { white-space: nowrap; overflow-wrap: normal; }
+.erp-wo-week-plan > *, .erp-wo-week-plan small { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-week-table th > span { display: block; white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem); }
+.erp-wo-plan-editor .reference-field, .erp-wo-plan-editor .field-cell { min-width: 0; }
+.erp-wo-assign-target, .erp-wo-assign-target small, .assign-fold-pair dd, .assign-recommend button { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.erp-wo-assign-editor .assign-plan-row { grid-template-columns: minmax(0, 1fr); }
+.erp-wo-assign-editor .date-time-field-controls { grid-template-columns: minmax(12rem, 1fr) 5.5rem; }
+.erp-wo-release-target-table table { table-layout: auto; width: 100%; }
+.erp-wo-release-target-table th, .erp-wo-release-target-table td { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-release-target-table td:has(input) { min-width: 9rem; }
+.erp-wo-release-target-table td input { width: 100%; min-width: 7rem; max-width: 11rem; }
+.erp-wo-release-detail summary, .erp-wo-release-summary dd, .erp-wo-terminal-target dd { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-terminal-table table { min-width: 48rem; table-layout: auto; }
+.erp-wo-terminal-table td, .erp-wo-terminal-table th { white-space: nowrap; }
+@container erp-wo-page (max-width: 52rem) { .erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr); } }
+@container erp-wo-assign (max-width: 24rem) { .erp-wo-assign-editor .date-time-field-controls { grid-template-columns: minmax(0, 1fr); } }
+.erp-wo-week-table tbody th > span { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }

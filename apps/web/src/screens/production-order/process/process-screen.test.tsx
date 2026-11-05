@@ -465,7 +465,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ plans: [{ ...DRAFT_PLAN }] }));
     await currentStep(tp.steps.plan);
     expect(
-      screen.getByRole('searchbox', { name: tp.plan.fieldLabel('PP-501', tp.plan.columns.line) }),
+      screen.getByRole('button', { name: tp.plan.fieldLabel('PP-501', tp.plan.columns.line) }),
     ).toBeVisible();
   });
 
