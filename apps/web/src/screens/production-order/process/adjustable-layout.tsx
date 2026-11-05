@@ -1,4 +1,12 @@
-import { Children, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Children,
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   PaneLayoutToggle,
   PaneSplitter,
@@ -6,6 +14,9 @@ import {
   type PaneLayout,
 } from '../../../patterns/po-board';
 import { PaneHeightSplitter, useSplitOrientation } from '../../../patterns/split-orientation';
+
+const LayoutOrientation = createContext<PaneLayout>('side');
+export const useAdjustableOrientation = () => useContext(LayoutOrientation);
 
 /** 배치와 비율만 바꾼다. 저장 중인 편집 상태와 선택 대상은 그대로 유지한다. */
 export const AdjustableLayout = ({
@@ -64,40 +75,42 @@ export const AdjustableLayout = ({
           }}
         />
       </div>
-      <div
-        ref={ref}
-        data-left-collapsed={side && collapsible && split.collapsed ? 'true' : undefined}
-        className={`erp-wo-adjustable-grid ${side ? 'is-side' : 'is-stacked'} ${className}`}
-        style={{ ...split.style, ...height.style }}
-      >
-        <div className="erp-wo-adjustable-first" hidden={side && collapsible && split.collapsed}>
-          {panes[0]}
+      <LayoutOrientation.Provider value={side ? 'side' : 'stack'}>
+        <div
+          ref={ref}
+          data-left-collapsed={side && collapsible && split.collapsed ? 'true' : undefined}
+          className={`erp-wo-adjustable-grid ${side ? 'is-side' : 'is-stacked'} ${className}`}
+          style={{ ...split.style, ...height.style }}
+        >
+          <div className="erp-wo-adjustable-first" hidden={side && collapsible && split.collapsed}>
+            {panes[0]}
+          </div>
+          {side ? (
+            <PaneSplitter
+              label={`${label} 너비 조절`}
+              ratio={split.ratio}
+              onChange={split.commit}
+              collapse={
+                collapsible
+                  ? {
+                      collapsed: split.collapsed,
+                      onToggle: split.toggleCollapsed,
+                      collapseLabel: '목록 접기',
+                      expandLabel: '목록 펼치기',
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <PaneHeightSplitter
+              label={`${label} 높이 조절`}
+              height={height.listHeight}
+              onChange={height.changeListHeight}
+            />
+          )}
+          <div className="erp-wo-adjustable-second">{panes[1]}</div>
         </div>
-        {side ? (
-          <PaneSplitter
-            label={`${label} 너비 조절`}
-            ratio={split.ratio}
-            onChange={split.commit}
-            collapse={
-              collapsible
-                ? {
-                    collapsed: split.collapsed,
-                    onToggle: split.toggleCollapsed,
-                    collapseLabel: '목록 접기',
-                    expandLabel: '목록 펼치기',
-                  }
-                : undefined
-            }
-          />
-        ) : (
-          <PaneHeightSplitter
-            label={`${label} 높이 조절`}
-            height={height.listHeight}
-            onChange={height.changeListHeight}
-          />
-        )}
-        <div className="erp-wo-adjustable-second">{panes[1]}</div>
-      </div>
+      </LayoutOrientation.Provider>
     </section>
   );
 };

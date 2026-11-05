@@ -1,6 +1,6 @@
 import { BoardTable } from '../../../patterns/board-table';
 import { AdjustableNativeTable } from './adjustable-table';
-import { AdjustableLayout } from './adjustable-layout';
+import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
 import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -78,6 +78,7 @@ const ErpWorkOrderList = ({
   showReadiness?: boolean;
   onSelect: (value: string) => void;
 }) => {
+  const side = useAdjustableOrientation() === 'side';
   const columns: Column<Controller>[] = [
     {
       key: 'number',
@@ -111,11 +112,11 @@ const ErpWorkOrderList = ({
       </h2>
       <BoardTable
         label="ERP W/O 목록"
-        columns={columns}
+        columns={side ? columns.slice(0, 1) : columns}
         rows={entries}
         getRowId={(entry) => entry.order.productionOrderNo}
-        widthKey="omf-mes:work-planning:erp-wo-list-columns"
-        minWidth="46rem"
+        widthKey={`omf-mes:work-planning:erp-wo-list-columns:${side ? 'side' : 'stack'}`}
+        minWidth={side ? '10.5rem' : '46rem'}
         className="erp-wo-order-table"
         pick={{
           columnKey: 'number',
@@ -131,24 +132,35 @@ const ErpWorkOrderList = ({
   );
 };
 
-const ErpWorkOrderInformation = ({ entry }: { entry: Controller }) => (
-  <section className="erp-wo-order-information" aria-label="현재 ERP W/O 정보">
-    <h2 className="pane-title">ERP W/O 상세</h2>
-    <dl className="form-grid erp-wo-order-information-grid">
-      {[
-        ['ERP W/O', entry.order.productionOrderNo],
-        ['품목코드', entry.itemCode],
-        ['품목명', entry.itemName],
-        ['ERP W/O 수량', `${entry.order.orderQty} ${entry.unit}`],
-      ].map(([label, value]) => (
-        <div className="field-cell" key={label}>
-          <dt className="field-label">{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
-  </section>
-);
+const ErpWorkOrderInformation = ({
+  entry,
+  showReadiness = false,
+}: {
+  entry: Controller;
+  showReadiness?: boolean;
+}) => {
+  const orientation = useAdjustableOrientation();
+  if (orientation === 'stack') return null;
+  return (
+    <section className="erp-wo-order-information" aria-label="현재 ERP W/O 정보">
+      <h2 className="pane-title">ERP W/O 상세</h2>
+      <dl className="form-grid erp-wo-order-information-grid">
+        {[
+          ['ERP W/O', entry.order.productionOrderNo],
+          ['품목코드', entry.itemCode],
+          ['품목명', entry.itemName],
+          ['ERP W/O 수량', `${entry.order.orderQty} ${entry.unit}`],
+          ...(showReadiness ? [['기준 확인', entry.ready ? '완료' : '필요']] : []),
+        ].map(([label, value]) => (
+          <div className="field-cell" key={label}>
+            <dt className="field-label">{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+};
 
 const OrderSession = ({
   number,
@@ -524,7 +536,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               storageKey="omf-mes:work-planning:erp-wo-layout"
               collapsible
               label="ERP W/O 목록과 상세"
-              ratio={0.4}
+              ratio={0.25}
               className="erp-wo-master-selection-layout"
             >
               <ErpWorkOrderList
@@ -550,7 +562,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                     role="region"
                     aria-label="선택 ERP W/O 상세"
                   >
-                    <ErpWorkOrderInformation entry={entry} />
+                    <ErpWorkOrderInformation entry={entry} showReadiness />
                     <MasterDetails
                       bomId={entry.bomId}
                       routingId={entry.routingId}
@@ -785,7 +797,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               storageKey="omf-mes:work-planning:erp-wo-layout"
               collapsible
               label="ERP W/O 목록과 상세"
-              ratio={0.4}
+              ratio={0.25}
               className="erp-wo-master-selection-layout erp-wo-execution-selection-layout"
             >
               <ErpWorkOrderList
