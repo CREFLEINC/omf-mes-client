@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, DatePicker, TextField } from '@crefle/web-ui';
 import { Select } from '../../../patterns/select';
+import { DistributionHelp } from './distribution-help';
 import { DistributionLinePicker } from './distribution-line-picker';
 import { plantToday } from '../../../patterns/plant-time';
 import { shiftPlanDate } from './plan-view-model';
@@ -45,6 +46,7 @@ export const DistributionControls = ({
   const sequence = useRef(0);
   const lock = useRef(false);
   const [open, setOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [rows, setRows] = useState<DistributionSegment[]>([]);
   const baseline = useRef<DistributionSegment[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -114,15 +116,28 @@ export const DistributionControls = ({
     );
   return (
     <section className="erp-wo-distribution">
-      <Button
-        variant="outlined"
-        aria-expanded={open}
-        aria-controls={`${id}-conditions`}
-        disabled={disabled}
-        onClick={toggleOpen}
-      >
-        자동 분배
-      </Button>
+      <div className="erp-wo-distribution-actions">
+        <Button
+          variant="outlined"
+          aria-expanded={open}
+          aria-controls={`${id}-conditions`}
+          disabled={disabled}
+          onClick={toggleOpen}
+        >
+          자동 분배
+        </Button>
+        <Button
+          size="sm"
+          variant="text"
+          className="erp-wo-distribution-help-trigger"
+          aria-label="자동 분배 도움말"
+          aria-haspopup="dialog"
+          onClick={() => setHelpOpen(true)}
+        >
+          ?
+        </Button>
+      </div>
+      {helpOpen && <DistributionHelp onClose={() => setHelpOpen(false)} />}
       {open && (
         <div id={`${id}-conditions`} className="pane erp-wo-distribution-settings">
           <div className="erp-wo-distribution-heading">
@@ -146,9 +161,8 @@ export const DistributionControls = ({
             </Button>
           </div>
           <p className="field-note">
-            ERP W/O 선택 → 기간·라인 지정 → 수량 입력 후 분배 미리보기에서 확인하세요. ERP W/O별로 구간을
-            추가할 수 있으며 기존 계획은 유지합니다. 같은 ERP W/O의 날짜·라인이 겹치면 수량을
-            합산합니다.
+            ERP W/O별로 기간, 생산 라인과 수량을 입력하고 분배 미리보기를 확인하세요. 기존 계획은
+            유지합니다.
           </p>
           <details className="erp-wo-common-conditions">
             <summary>선택 구간에 공통 기간과 라인 입력</summary>
@@ -429,7 +443,8 @@ export const DistributionControls = ({
           </div>
           {!rows.length && (
             <p className="field-note">
-              편성할 구간이 없습니다. 구간을 추가하거나 ERP W/O별 계획 수량의 이번 계획 수량을 확인하세요.
+              편성할 구간이 없습니다. 구간을 추가하거나 ERP W/O별 계획 수량의 이번 계획 수량을
+              확인하세요.
             </p>
           )}
           <div className="erp-wo-distribution-actions">

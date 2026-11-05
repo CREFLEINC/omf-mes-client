@@ -33072,3 +33072,19 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-adjustable-grid > .po-board-gutter > .po-board-collapse { display: flex; position: absolute; top: 0; left: -6px; z-index: 3; }
 .erp-wo-adjustable-grid > .po-board-gutter > .po-board-collapse { left: 50%; transform: translateX(-50%); align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid var(--outline); border-radius: var(--radius-full); background: var(--surface); color: var(--on-surface-variant); cursor: pointer; }
 .erp-wo-master-selection-layout.is-side > .erp-wo-adjustable-second { padding-inline-start: var(--space-3); box-sizing: border-box; }
+.erp-wo-distribution-actions { display: inline-flex; align-items: center; gap: var(--space-2); justify-self: start; }
+.erp-wo-distribution-help-trigger { min-width: var(--control-height-sm); width: var(--control-height-sm); padding-inline: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-full); color: var(--on-surface-variant); }
+.erp-wo-distribution-help { display: grid; gap: var(--space-5); min-width: 0; font: var(--type-body-sm); }
+.erp-wo-distribution-help p { margin: 0; line-height: 1.6; }
+.erp-wo-distribution-help h3 { margin: 0 0 var(--space-3); font: var(--type-title-sm); }
+.erp-wo-distribution-help h4 { margin: 0 0 var(--space-2); font: var(--type-title-sm); }
+.erp-wo-distribution-help-flow { display: grid; gap: var(--space-2); padding-left: var(--space-5); margin: 0; }
+.erp-wo-distribution-help-flow li > span { display: block; margin-top: var(--space-1); color: var(--on-surface-variant); }
+.erp-wo-distribution-help-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: var(--space-3); }
+.erp-wo-distribution-help-modes > div { min-width: 0; padding: var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); }
+.erp-wo-distribution-help-modes .field-note { margin-top: var(--space-3); }
+.erp-wo-distribution-help table { width: 100%; border-collapse: collapse; margin-top: var(--space-2); }
+.erp-wo-distribution-help th, .erp-wo-distribution-help td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--outline-variant); white-space: normal; }
+.erp-wo-distribution-help ul { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-3); line-height: 1.6; }
+.erp-wo-distribution-help-note { padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-container); }
+.erp-wo-distribution-help-flow { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); column-gap: var(--space-6); }

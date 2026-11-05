@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../../test/api-harness';
@@ -26,6 +26,35 @@ const configure = async () => {
   return user;
 };
 describe('분배 조건과 미리보기 적용', () => {
+  it('도움말은 조건과 계획을 변경하지 않고 열고 닫는다', async () => {
+    const user = userEvent.setup();
+    const apply = vi.fn();
+    const dirty = vi.fn();
+    renderWithProviders(
+      <DistributionControls
+        orders={orders}
+        existing={[]}
+        disabled={false}
+        onApply={apply}
+        onDirtyChange={dirty}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '자동 분배 도움말' }));
+    const dialog = screen.getByRole('dialog', { name: '자동 분배 도움말' });
+    expect(within(dialog).getByRole('heading', { name: '균등 배분' })).toBeVisible();
+    expect(within(dialog).getByRole('heading', { name: '날짜별 수량' })).toBeVisible();
+    expect(within(dialog).getByText('34 EA')).toBeVisible();
+    expect(within(dialog).getByText(/주말과 공휴일도 포함/)).toBeVisible();
+    expect(screen.getByRole('button', { name: '자동 분배' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(apply).not.toHaveBeenCalled();
+    expect(dirty).not.toHaveBeenCalledWith(true);
+    await user.click(within(dialog).getAllByRole('button', { name: '닫기' }).at(-1)!);
+    expect(screen.queryByRole('dialog', { name: '자동 분배 도움말' })).toBeNull();
+  });
+
   it('미리보기는 변경을 전송하지 않고 적용 후에만 계획을 추가하며 재실행을 막는다', async () => {
     const apply = vi.fn();
     renderWithProviders(
