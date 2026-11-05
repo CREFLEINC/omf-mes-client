@@ -230,3 +230,18 @@ describe('창고 보충 지시 결과(004)', () => {
     expect(originOf(base)).toBe('구매 입고');
   });
 });
+
+describe('원천 요청번호(004, 서버 S7e)', () => {
+  it('창고 보충은 요청번호를 괄호로 붙이고, 번호가 없으면 이름만', () => {
+    const base = { taskQty: 30 } as Parameters<typeof originOf>[0];
+    expect(
+      originOf({ ...base, originCode: 'REPLENISHMENT_RECEIPT', originDocumentNo: 'MIR-1' }),
+    ).toBe('창고 보충(MIR-1)');
+    expect(originOf({ ...base, originCode: 'REPLENISHMENT_RECEIPT', originDocumentNo: null })).toBe(
+      '창고 보충',
+    );
+    expect(originOf({ ...base, originCode: 'GOODS_RECEIPT', originDocumentNo: 'GR-1' })).toBe(
+      '구매 입고',
+    );
+  });
+});

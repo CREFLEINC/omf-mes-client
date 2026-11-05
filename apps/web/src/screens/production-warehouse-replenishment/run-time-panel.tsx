@@ -7,6 +7,8 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 import { useSaveRunTimes } from './mutations';
+import { lastRunSummary } from './run-table';
+import { formatDay, plantMinute } from './types';
 
 const t = messages.productionWarehouseReplenishment;
 const tt = t.runTime;
@@ -98,6 +100,17 @@ export const RunTimePanel = ({ plantId, settings }: RunTimePanelProps) => {
                 setByWarehouse((prev) => new Map(prev).set(row.warehouseId, value));
               }}
             />
+            {/* 마지막 실행(계약 §4 `lastRun`) — 시각을 바꾸기 전에 오늘 이미 돌았는지 보인다. */}
+            {row.lastRun === null ? null : (
+              <span className="field-note">
+                {tt.lastRun(
+                  row.lastRun.finishedAt === null
+                    ? formatDay(row.lastRun.runDate)
+                    : plantMinute(row.lastRun.finishedAt),
+                  lastRunSummary(row.lastRun),
+                )}
+              </span>
+            )}
           </span>
         ))}
         {!dirty && (

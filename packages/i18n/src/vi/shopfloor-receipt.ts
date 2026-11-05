@@ -28,6 +28,8 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     notForShopfloorWhy:
       'Ở đây chỉ nhận phiếu xuất để đưa vào sản xuất. Phiếu xuất để trả hàng hoặc hủy bỏ thì không nhận. Hãy kiểm tra lại số phiếu.',
     destination: (code: string) => `Nơi đến ${code}`,
+    destinationStaging: 'Chờ cất hàng',
+    destinationWhole: 'Toàn kho',
     kindWorkOrder: 'Hiện trường sản xuất',
     kindReplenishment: 'Bổ sung kho',
     requestNo: (no: string) => `Yêu cầu ${no}`,

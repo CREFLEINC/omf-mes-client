@@ -34,6 +34,8 @@ export const putaway = {
     taskNoLabel: '지시 번호',
     /** 004 — 지시가 어디서 생겼나. 창고 보충 수령에서 생긴 지시도 같은 목록에 선다(screens/M-putaway.md). */
     originLabel: '원천',
+    /** 창고 보충 원천 — 요청번호를 괄호로(가운뎃점 나열 대신, C-13). */
+    originWithNo: (origin: string, no: string) => `${origin}(${no})`,
     origin: {
       GOODS_RECEIPT: '구매 입고',
       REPLENISHMENT_RECEIPT: '창고 보충',

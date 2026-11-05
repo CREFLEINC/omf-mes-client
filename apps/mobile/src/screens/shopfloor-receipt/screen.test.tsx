@@ -1340,3 +1340,43 @@ describe('생산창고 입고 화면 — 창고 보충 출고(004)', () => {
     expect(await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다')).toBeTruthy();
   });
 });
+
+describe('생산창고 입고 화면 — 창고 보충 도착 위치 이름(004)', () => {
+  it('US2-6 창고 보충은 서버가 둔 도착 위치를 코드 대신 「적치 대기」로 보이고, W/O 출고는 코드 그대로다', async () => {
+    const staging: StubRoute = {
+      match: (req) => new URL(req.url).pathname === '/mdm/locations/42',
+      respond: () =>
+        jsonResponse({
+          location: {
+            locationId: 42,
+            warehouseId: 12,
+            locationCode: 'SYS-STAGING',
+            locationName: 'SYS-STAGING',
+            aliasName: null,
+            locationLevelCode: null,
+            isLeaf: true,
+            systemRoleCode: 'PUTAWAY_STAGING',
+            hasItemRestriction: false,
+            isActive: true,
+          },
+          editability: {},
+        }),
+    };
+    mount({ extra: [staging, ...replenishmentRequest()] });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('도착 적치 대기')).toBeTruthy();
+    expect(screen.queryByText('도착 SYS-STAGING')).toBeNull();
+  });
+
+  it('W/O 출고의 도착 위치는 지금처럼 코드로 보인다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('도착 L1-STG')).toBeTruthy();
+  });
+});

@@ -1041,11 +1041,68 @@ export interface PutawayTaskOriginForward {
   originCode?: PutawayOriginCode;
   /** 완료 응답 — 실제로 옮긴 양. 지시 수량보다 적을 수 있다(0 이면 원장 없이 닫힘). */
   movedQty?: number;
+  /** 원천 문서 번호(서버 S7e) — 구매 입고면 입고 번호, 창고 보충 수령이면 창고 보충 요청 번호. */
+  originDocumentNo?: string | null;
 }
 
 type ArrivalId = { goodsIssueId: number };
 
+/**
+ * 서버 선행(004 C3 — 자동 보충 실행 기록, 설계 계약 §5). 서버 S7 이 만드는 중 — 병합 뒤 `gen:api` 로 다시 만들고 걷는다.
+ * 줄은 보충 시점 아래 품목만 싣는다(기준 이상은 `checkedItemCount` 로만 센다).
+ */
+export type ReplenishmentRunResultCode =
+  'CREATED' | 'SHORTAGE' | 'IN_PROGRESS' | 'NO_SOURCE_STOCK' | 'SOURCE_INACTIVE';
+
+export interface ReplenishmentRunLine {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  resultCode: ReplenishmentRunResultCode;
+  usableQty: number;
+  /** 요청을 만들지 않은 줄은 0. */
+  requestedQty: number;
+  shortageQty: number;
+  issueRequestNo: string | null;
+}
+
+export interface ReplenishmentRun {
+  replenishmentRunId: number;
+  productionWarehouseId: number;
+  productionWarehouseCode: string;
+  productionWarehouseName: string;
+  /** 공장 현지 날짜. */
+  runDate: string;
+  status: 'DONE' | 'FAILED';
+  startedAt: string;
+  finishedAt: string | null;
+  checkedItemCount: number;
+  createdRequestCount: number;
+  errorText: string | null;
+  lines: ReplenishmentRunLine[];
+}
+
+export interface ReplenishmentRunListQuery {
+  plantId: number;
+  productionWarehouseId?: number;
+  runDateFrom?: string;
+  runDateTo?: string;
+  page?: number;
+  size?: number;
+}
+
 export interface ForwardPaths {
+  /** 004 C3 — 자동 보충 실행 기록(계약 §5). */
+  '/logistics/replenishment-runs': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: ReplenishmentRunListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<ListOf<ReplenishmentRun>> }
+    >;
+  };
   /** 004 C2 — 도착 대기(계약 §2). */
   '/logistics/replenishment-requests/arrivals': Unused & {
     parameters: NoParameters;
