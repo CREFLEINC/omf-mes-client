@@ -1,3 +1,4 @@
+import { splitPlanQuantity } from './quantity-split';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ProductionPlanDraftErrors, ProductionPlanDraftField } from './editor-model';
@@ -101,25 +102,22 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
     [updateRows],
   );
   const split = useCallback(
-    (key: string, quantity: number) => {
+    (key: string, quantity: number, decimalScale = 6) => {
       nextNewRow.current += 1;
       const nextKey = `new-plan-${nextNewRow.current}`;
       updateRows((rows) => {
         const row = rows.find((item) => item.key === key);
-        const total = Number(row?.draft.plannedQty);
-        if (
-          !row ||
-          row.confirmed ||
-          row.isPending ||
-          !Number.isSafeInteger(quantity) ||
-          quantity <= 0 ||
-          quantity >= total
-        )
-          return rows;
-        const changed = changeProductionPlanRow(rows, key, 'plannedQty', String(total - quantity));
+        const quantities = splitPlanQuantity(Number(row?.draft.plannedQty), quantity, decimalScale);
+        if (!row || row.confirmed || row.isPending || quantities === null) return rows;
+        const changed = changeProductionPlanRow(
+          rows,
+          key,
+          'plannedQty',
+          String(quantities.remaining),
+        );
         const appended = appendProductionPlanRow(changed, nextKey, {
           ...row.draft,
-          plannedQty: String(quantity),
+          plannedQty: String(quantities.split),
         });
         return changeProductionPlanRow(appended, nextKey, 'remarks', row.draft.remarks).map(
           (item) => (item.key === nextKey ? { ...item, splitSourceKey: row.key } : item),

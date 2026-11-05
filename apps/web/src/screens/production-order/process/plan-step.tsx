@@ -1,3 +1,4 @@
+import { splitPlanQuantity } from '../../production-plan/quantity-split';
 import {
   AlertBanner,
   Button,
@@ -50,6 +51,7 @@ export interface PlanStepProps {
   hideTotals?: boolean;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
   orderContextOf?: (row: ProductionPlanEditorStateRow) => ReactNode;
+  rowDecimalScaleOf?: (row: ProductionPlanEditorStateRow) => number | undefined;
   rowUomLabelOf?: (row: ProductionPlanEditorStateRow) => string;
   onAppend?: (drafts: ScheduledDraft[]) => void;
   distributionOrderLabel?: string;
@@ -93,6 +95,7 @@ export const PlanStep = ({
   orderNameOf,
   orderContextOf,
   rowUomLabelOf,
+  rowDecimalScaleOf,
   onChange,
   onRemove,
 }: PlanStepProps) => {
@@ -484,7 +487,7 @@ export const PlanStep = ({
                     label="분할 수량"
                     aria-label="분할 수량"
                     value={splitQty}
-                    inputMode="numeric"
+                    inputMode="decimal"
                     disabled={disabled}
                     onChange={(event) => {
                       setSplitQty(event.target.value);
@@ -502,11 +505,15 @@ export const PlanStep = ({
                     onClick={() => {
                       const quantity = Number(splitQty);
                       if (
-                        !Number.isSafeInteger(quantity) ||
-                        quantity <= 0 ||
-                        quantity >= Number(selected.draft.plannedQty)
+                        splitPlanQuantity(
+                          Number(selected.draft.plannedQty),
+                          quantity,
+                          rowDecimalScaleOf?.(selected) ?? distributionDecimalScale ?? 6,
+                        ) === null
                       ) {
-                        setSplitError('원래 계획보다 작은 양의 정수를 입력하세요.');
+                        setSplitError(
+                          '원래 계획보다 작은 수량을 단위 소수 자릿수에 맞게 입력하세요.',
+                        );
                         return;
                       }
                       beforeAdded.current = new Set(rows.map((row) => row.key));

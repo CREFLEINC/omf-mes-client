@@ -179,3 +179,35 @@ describe('생산계획 보기와 선택 편집', () => {
     ).toHaveValue('50');
   });
 });
+
+it('선택 계획의 단위 자릿수에 맞게 소수 분할을 허용한다', async () => {
+  const user = userEvent.setup();
+  const onSplit = vi.fn();
+  renderWithProviders(
+    <PlanStep
+      rows={initialRows().map((row) => ({ ...row, draft: { ...row.draft, plannedQty: '0.75' } }))}
+      orderQty={0.75}
+      confirmedQty={0}
+      uomLabel="KG"
+      plantId={null}
+      lines={[]}
+      statusNameOf={(value) => value}
+      disabled={false}
+      failures={[]}
+      onAdd={() => {}}
+      onRemove={() => {}}
+      onChange={() => {}}
+      onSplit={onSplit}
+      distributionDecimalScale={0}
+      rowDecimalScaleOf={() => 2}
+    />,
+  );
+  await user.click(screen.getByText('계획 분할', { selector: 'summary' }));
+  await user.type(screen.getByRole('textbox', { name: '분할 수량' }), '0.001');
+  await user.click(screen.getByRole('button', { name: '분할 적용' }));
+  expect(onSplit).not.toHaveBeenCalled();
+  await user.clear(screen.getByRole('textbox', { name: '분할 수량' }));
+  await user.type(screen.getByRole('textbox', { name: '분할 수량' }), '0.25');
+  await user.click(screen.getByRole('button', { name: '분할 적용' }));
+  expect(onSplit).toHaveBeenCalledWith(expect.objectContaining({ key: 'new-1' }), 0.25);
+});

@@ -315,3 +315,18 @@ describe('계획 분할과 일괄 추가', () => {
     expect(new Set(result.current.rows.map((row) => row.key)).size).toBe(3);
   });
 });
+
+it('단위 소수 자릿수를 지키며 분할 전후 수량을 보존한다', async () => {
+  const fetch: StubFetch = async () =>
+    jsonResponse({
+      items: [productionPlan(501, 701, 0.3)],
+      page: { page: 1, size: 100, total: 1 },
+    });
+  const { result } = renderHookWithProviders(() => useProductionPlanEditorSession(701), { fetch });
+  await waitFor(() => expect(result.current.rows).toHaveLength(1));
+  act(() => result.current.split('plan-501', 0.01, 1));
+  expect(result.current.rows).toHaveLength(1);
+  act(() => result.current.split('plan-501', 0.1, 1));
+  expect(result.current.rows.map((row) => row.draft.plannedQty)).toEqual(['0.2', '0.1']);
+  expect(result.current.rows[1]?.splitSourceKey).toBe('plan-501');
+});

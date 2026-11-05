@@ -744,6 +744,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 ).values(),
               ]}
               rowUomLabelOf={(row) => ownerOf(row.key)?.unit ?? ''}
+              rowDecimalScaleOf={(row) => ownerOf(row.key)?.decimalScale}
               orderContextOf={(row) => {
                 const entry = ownerOf(row.key);
                 return entry ? (
@@ -786,7 +787,13 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               onChange={(key, field, value) =>
                 ownerOf(key)?.editor.change(originalKey(key), field, value)
               }
-              onSplit={(row, qty) => ownerOf(row.key)?.editor.split(originalKey(row.key), qty)}
+              onSplit={(row, qty) =>
+                ownerOf(row.key)?.editor.split(
+                  originalKey(row.key),
+                  qty,
+                  ownerOf(row.key)?.decimalScale,
+                )
+              }
               onRemove={(row) => void remove(row)}
             />
           </div>
