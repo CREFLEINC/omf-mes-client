@@ -39,6 +39,11 @@ const PRODUCTION_WAREHOUSES = [
   { warehouseId: 7212, warehouseCode: 'SAMPLE-PW-B', warehouseName: '합성 생산창고 B' },
 ];
 
+const FREE_STOCK_ROWS = [
+  { warehouseId: 7211, itemId: 7401, availableQty: 100, plannedQty: 50, freeQty: 50 },
+  { warehouseId: 7212, itemId: 7401, availableQty: 30, plannedQty: 0, freeQty: 30 },
+];
+
 const pageOf = (items: readonly unknown[]) => ({
   page: 1,
   size: items.length,
@@ -107,6 +112,7 @@ const setup = (
   warehouses: readonly (typeof PRODUCTION_WAREHOUSES)[number][] = PRODUCTION_WAREHOUSES,
 ) => {
   const posts: Record<string, unknown>[] = [];
+  const freeStockQueries: { warehouseIds: string[]; itemIds: string[] }[] = [];
   const get = (pathname: string, body: unknown): StubRoute => ({
     match: (request) => request.method === 'GET' && new URL(request.url).pathname === pathname,
     respond: () => jsonResponse(body),
@@ -145,33 +151,28 @@ const setup = (
       warehouse: { ...warehouseFixtures[0], warehouseId: 7211, plantId: 7000 },
       editability: { editableFields: [], readOnlyFields: [] },
     }),
-    /* 남은 수량(G2 9) — 창고 A 50, 창고 B 30. */
-    get('/logistics/material-issue-requests/planned-stock', {
-      items: [
-        {
-          sourceWarehouseId: 7211,
-          itemId: 7401,
-          itemCode: 'SAMPLE-ITEM-01',
-          itemName: '합성 품목 가',
-          availableQty: 100,
-          plannedQty: 50,
-          freeQty: 50,
-          shortageQty: 0,
-          requests: [],
-        },
-        {
-          sourceWarehouseId: 7212,
-          itemId: 7401,
-          itemCode: 'SAMPLE-ITEM-01',
-          itemName: '합성 품목 가',
-          availableQty: 30,
-          plannedQty: 0,
-          freeQty: 30,
-          shortageQty: 0,
-          requests: [],
-        },
-      ],
-    }),
+    /*
+     * 남은 수량(G2 9) — 창고 A 50(예정 50), 창고 B 30(예정 없음). 서버처럼 물은 창고·품목만,
+     * 가용도 예정도 없는 쌍은 빼고 낸다(omf-all-around#232 2).
+     */
+    {
+      match: (request) =>
+        request.method === 'GET' &&
+        new URL(request.url).pathname === '/logistics/material-issue-requests/free-stock',
+      respond: (request) => {
+        const query = new URL(request.url).searchParams;
+        const warehouseIds = (query.get('warehouseIds') ?? '').split(',');
+        const itemIds = (query.get('itemIds') ?? '').split(',');
+        freeStockQueries.push({ warehouseIds, itemIds });
+        return jsonResponse({
+          items: FREE_STOCK_ROWS.filter(
+            (row) =>
+              warehouseIds.includes(String(row.warehouseId)) &&
+              itemIds.includes(String(row.itemId)),
+          ),
+        });
+      },
+    },
     get('/mdm/uoms', { items: uomFixtures, page: pageOf(uomFixtures) }),
     get('/mdm/code-values', {
       items: reasonCodeValueFixtures,
@@ -195,7 +196,7 @@ const setup = (
     fetch: createStubFetch(routes),
     route,
   });
-  return { user: userEvent.setup(), posts };
+  return { user: userEvent.setup(), posts, freeStockQueries };
 };
 
 type User = ReturnType<typeof userEvent.setup>;
@@ -436,6 +437,22 @@ describe('W-02-10 생산 창고 공장', () => {
     ).toBeInTheDocument();
     expect(await table.findByText('합성 생산창고 A')).toBeInTheDocument();
     expect(table.getByText(t.lineTable.overRemaining('30'))).toBeInTheDocument();
+  });
+
+  it('#232 2 출고 예정이 없는 자재도 재고가 있으면 그 창고 · 남은 수량을 보인다(「재고 있는 생산 창고 없음」 아님)', async () => {
+    const { user, freeStockQueries } = setup(() => created(1), undefined, [
+      PRODUCTION_WAREHOUSES[1]!,
+    ]);
+    await readyToPublish(user);
+
+    const table = within(screen.getByRole('table'));
+    expect(await table.findByText('합성 생산창고 B')).toBeInTheDocument();
+    expect(table.getByText(t.lineTable.overRemaining('50'))).toBeInTheDocument();
+    /* 재고가 정말 없는 나머지 두 자재만 「재고 있는 생산 창고 없음」이다. */
+    expect(table.getAllByText(t.lineTable.noStockedWarehouse)).toHaveLength(2);
+    /* 남은 수량은 쓸 수 있는 양 조회로 — 생산 창고와 줄의 품목을 실어 묻는다. */
+    expect(freeStockQueries.at(-1)?.warehouseIds).toEqual(['7212']);
+    expect(freeStockQueries.at(-1)?.itemIds).toContain('7401');
   });
 
   it('US2-6 생산 창고 공장은 사용자가 고르지 않은 입고지를 보내지 않는다(서버가 라인 생산 현장으로)', async () => {

@@ -28,7 +28,7 @@ import { usePublishSubmission } from './publish-submission';
 import {
   useExistingRequests,
   useItemBaseUom,
-  usePlannedStockFree,
+  useFreeStock,
   useShortage,
   useWorkOrderDetail,
   useWorkOrderSearch,
@@ -219,8 +219,15 @@ export const MaterialIssueRequestScreen = () => {
     workOrderDetail.data.productionWarehouseMode === true;
   /** 새 규칙 공장인데 이 W/O 라인 부서에 생산 창고가 없다 — 알리고 만들기를 막는다(서버도 400). */
   const lacksProductionWarehouse = usesProductionWarehouses && productionWarehouses.length === 0;
-  const plannedFree = usePlannedStockFree(
+  /* 남은 수량을 물을 품목 — 줄의 품목 번호(중복 없이 정렬, 조회 열쇠가 줄 순서로 흔들리지 않게). */
+  const lineItemIds = [
+    ...new Set(
+      lines.map((row) => Number(row.itemId)).filter((id) => Number.isInteger(id) && id > 0),
+    ),
+  ].sort((a, b) => a - b);
+  const freeStock = useFreeStock(
     usesProductionWarehouses ? productionWarehouses.map((warehouse) => warehouse.warehouseId) : [],
+    usesProductionWarehouses ? lineItemIds : [],
   );
   /**
    * 줄마다 출발 생산 창고와 남은 수량(검토 4). 「자동」이면 남은 수량이 가장 많은 생산 창고(서버 규칙의 미리
@@ -228,7 +235,7 @@ export const MaterialIssueRequestScreen = () => {
    */
   const sourceOf = (row: MaterialIssueLineDraft): LineSource | null => {
     const itemId = Number(row.itemId);
-    if (!Number.isInteger(itemId) || itemId <= 0 || plannedFree.data === undefined) return null;
+    if (!Number.isInteger(itemId) || itemId <= 0 || freeStock.data === undefined) return null;
     const candidates =
       form.sourceWarehouseId === ''
         ? productionWarehouses
@@ -237,7 +244,7 @@ export const MaterialIssueRequestScreen = () => {
           );
     let best: { name: string; free: number } | null = null;
     for (const warehouse of candidates) {
-      const free = plannedFree.data.get(`${String(warehouse.warehouseId)}:${String(itemId)}`);
+      const free = freeStock.data.get(`${String(warehouse.warehouseId)}:${String(itemId)}`);
       if (free !== undefined && (best === null || free > best.free)) {
         best = { name: warehouse.warehouseName, free };
       }

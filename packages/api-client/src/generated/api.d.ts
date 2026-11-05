@@ -19438,7 +19438,7 @@ export interface paths {
           requiredAtFrom?: string;
           /** @description 필요 시각 종료 */
           requiredAtTo?: string;
-          /** @description 요청번호 검색 */
+          /** @description 요청번호·W/O 번호 부분 검색(대소문자 무시). 근거: omf-all-around#232 */
           q?: string;
           page?: number;
           size?: number;
@@ -19687,6 +19687,68 @@ export interface paths {
           };
         };
         /** @description 권한 없음. 근거: W-02-11 · W-02-10 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-issue-requests/free-stock': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 창고·품목별 쓸 수 있는 양
+     * @description 창고·품목마다 집을 수 있는 가용 · 다른 요청의 출고 예정 · 쓸 수 있는 양(가용 − 예정, 0 미만은 0). 출발 창고 선택과 새 요청 상한이 쓰는 식과 같다. 출고 예정이 없는 품목도 가용이 있으면 싣고, 가용도 예정도 없는 쌍은 싣지 않는다. W-02-10 품목 줄의 남은 수량용 — 출고 예정 재고(…/planned-stock)는 예정이 잡힌 쌍만 다루므로 남은 수량에 쓰지 않는다. 근거: omf-all-around#232
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 창고(생산 창고) 번호 — 여럿은 쉼표로 이어 보낸다. 최대 20. 근거: omf-all-around#232 */
+          warehouseIds: number[];
+          /** @description 품목 번호 — 여럿은 쉼표로 이어 보낸다. 최대 200. 근거: omf-all-around#232 */
+          itemIds: number[];
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 쓸 수 있는 양 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['FreeStockResponse'];
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-02-10 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -51922,6 +51984,21 @@ export interface components {
         /** @description 이 요청에 배분된 동적 부족 + 이 요청 줄의 저장 부족 */
         shortageQty: number;
       }[];
+    };
+    FreeStockResponse: {
+      items: components['schemas']['FreeStockRow'][];
+    };
+    FreeStockRow: {
+      /** Format: int64 */
+      warehouseId: number;
+      /** Format: int64 */
+      itemId: number;
+      /** @description 집을 수 있는 가용(정상 품질 · 가용 상태 · 보류 아님) */
+      availableQty: number;
+      /** @description 다른 요청의 출고 예정(미출고분) */
+      plannedQty: number;
+      /** @description 쓸 수 있는 양 = 가용 − 예정, 0 미만은 0 */
+      freeQty: number;
     };
     UnsourcedShortage: {
       /** Format: int64 */

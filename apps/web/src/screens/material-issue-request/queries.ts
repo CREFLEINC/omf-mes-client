@@ -61,34 +61,29 @@ export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<W
 };
 
 /**
- * 생산 창고의 품목별 남은 수량(`freeQty` = 가용 − 예정, 계약 §1 planned-stock). 열쇠는 `창고:품목`.
- * 공장 번호는 W/O 응답에 없어 첫 생산 창고의 공장으로 묻는다(생산 창고는 모두 W/O 공장 창고다).
+ * 생산 창고 · 품목별 남은 수량(쓸 수 있는 양 = 가용 − 출고 예정, 계약 `GET …/free-stock`). 열쇠는 `창고:품목`.
+ * 출고 예정이 없는 자재도 가용이 있으면 온다 — 출고 예정 재고 조회(`…/planned-stock`)는 예정이 잡힌 쌍만
+ * 다뤄, 재고가 있어도 「재고 있는 생산 창고 없음」으로 보였다(omf-all-around#232 2). 응답에 없는 쌍은
+ * 가용도 예정도 없다.
  */
-export const usePlannedStockFree = (
+export const useFreeStock = (
   warehouseIds: readonly number[],
+  itemIds: readonly number[],
 ): UseQueryResult<Map<string, number>> => {
   const { client } = useApiClient();
-  const first = warehouseIds[0] ?? null;
 
   return useQuery({
-    queryKey: ['material-issue-request', 'planned-stock', ...warehouseIds] as const,
-    enabled: first !== null,
+    queryKey: ['material-issue-request', 'free-stock', [...warehouseIds], [...itemIds]] as const,
+    enabled: warehouseIds.length > 0 && itemIds.length > 0,
     retry: false,
     queryFn: async () => {
-      const { warehouse } = await runRequest(() =>
-        client.GET('/mdm/warehouses/{warehouseId}', {
-          params: { path: { warehouseId: first ?? 0 } },
-        }),
-      );
       const stock = await runRequest(() =>
-        client.GET('/logistics/material-issue-requests/planned-stock', {
-          params: { query: { plantId: warehouse.plantId } },
+        client.GET('/logistics/material-issue-requests/free-stock', {
+          params: { query: { warehouseIds: [...warehouseIds], itemIds: [...itemIds] } },
         }),
       );
       return new Map(
-        stock.items
-          .filter((row) => warehouseIds.includes(row.sourceWarehouseId))
-          .map((row) => [`${String(row.sourceWarehouseId)}:${String(row.itemId)}`, row.freeQty]),
+        stock.items.map((row) => [`${String(row.warehouseId)}:${String(row.itemId)}`, row.freeQty]),
       );
     },
   });
