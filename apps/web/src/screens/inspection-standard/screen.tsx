@@ -1518,8 +1518,16 @@ export const InspectionStandardScreen = () => {
             if (plan.itemId === null || !toWebAccess(session?.permissions).allows(ROUTING_PATH)) {
               return undefined;
             }
-            const rev = plan.routingId === null ? '' : `&rev=${String(plan.routingId)}`;
-            return () => navigate(`${ROUTING_PATH}?item=${String(plan.itemId)}${rev}`);
+            /*
+             * 품목 코드로 조회한 채 연다 — 라우팅 화면은 품목 이름을 조회 목록(첫 50건)에서 찾아, 목록 밖 품목이면 「—」로 보인다.
+             */
+            const code = itemPartsOf(plan.itemId)?.code;
+            const query = new URLSearchParams({
+              ...(code === null || code === undefined ? {} : { q: code }),
+              item: String(plan.itemId),
+              ...(plan.routingId === null ? {} : { rev: String(plan.routingId) }),
+            });
+            return () => navigate(`${ROUTING_PATH}?${query.toString()}`);
           })()}
           /*
            * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,

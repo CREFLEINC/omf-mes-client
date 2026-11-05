@@ -1292,14 +1292,29 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
   /* 상세 머리의 「라우팅 보기」 — 그 품목 · Rev 의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
   it('품목이 있는 기준은 「라우팅 보기」로 그 품목의 라우팅 화면으로 옮긴다', async () => {
     const { user, router } = renderScreen(
-      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), ...lookupRoutes()],
+      [
+        planListRoute(),
+        planDetailRoute(inspectionPlanFixtures[1]),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/items/5001'),
+          respond: () =>
+            jsonResponse({
+              item: { itemId: 5001, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 A' },
+            }),
+        },
+      ],
       '?plan=3002',
     );
 
+    await screen.findByText(/\(SYN-ITEM-01\)/);
     await user.click(await screen.findByRole('button', { name: '라우팅 보기' }));
 
     expect(router?.state.location.pathname).toBe('/master-data/routing');
-    expect(router?.state.location.search).toBe('?item=5001&rev=7003');
+    /* 품목 코드로 조회한 채 연다 — 라우팅 화면이 첫 50건 밖 품목의 이름을 비우지 않게. */
+    await waitFor(() => {
+      expect(router?.state.location.search).toBe('?q=SYN-ITEM-01&item=5001&rev=7003');
+    });
   });
 
   /* 라우팅 화면 「검사 기준 수정」이 보낸 주소 — 그 기준의 「기본 정보 수정」 창을 바로 연다(사용자 보고 2026-11-05). */
