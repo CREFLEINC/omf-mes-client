@@ -183,9 +183,8 @@ export const routing: Translated<typeof ko.routing> = {
     inactiveSuffix: ' (ngừng dùng)',
     revision: (version: number): string => `Rev ${version}`,
     pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
-    pqcPlanCommon: (code: string, name: string): string => `${code} · ${name} (chung mọi mặt hàng)`,
     pqcPlanNone:
-      'Chưa có — đăng ký tiêu chuẩn PQC ở màn hình tiêu chuẩn kiểm tra thì hạng mục kiểm tra sẽ hiện.',
+      'Không có — mặt hàng này không thuộc đối tượng PQC. Đăng ký tiêu chuẩn PQC cho mặt hàng ở màn hình tiêu chuẩn kiểm tra để áp dụng.',
   },
   validation: {
     required: 'Đây là mục bắt buộc.',

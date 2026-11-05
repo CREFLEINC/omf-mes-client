@@ -38,6 +38,14 @@ export const OPERATION_FLAG_KEYS: readonly OperationFlagKey[] = [
   'moldRequired',
 ];
 
+/**
+ * 표와 편집 창에 보이는 플래그 — 「검사 관리」는 뺀다. PQC 대상은 공정이 아니라 품목이라(사용자 결정 2026-11-05)
+ * 그 값은 PQC 에 쓰이지 않는다. 저장된 값은 저장 본문에 그대로 실어 지우지 않는다.
+ */
+export const SHOWN_OPERATION_FLAG_KEYS: readonly OperationFlagKey[] = OPERATION_FLAG_KEYS.filter(
+  (key) => key !== 'inspectionManaged',
+);
+
 /** 널·없음을 빈 문자열로 모은다 — 입력칸의 「지정하지 않음」이 하나의 값이어야 한다. */
 const optionalNumberToText = (value: number | null | undefined): string =>
   value === null || value === undefined ? '' : String(value);

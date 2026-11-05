@@ -73,11 +73,11 @@ describe('OperationsPane', () => {
    * 확인 아이콘을 7개 늘어놓으면 보조기술에서 의미가 잡히지 않고 열이 화면 폭을 먹는다.
    * 켜진 것의 이름만 이어 한 칸에 낸다.
    */
-  it('관리 항목 열에 켜진 항목의 이름만 이어 낸다', () => {
+  it('관리 항목 열에 켜진 항목의 이름만 이어 낸다 — 검사 관리는 빼고(사용자 결정 2026-11-05)', () => {
     renderPane();
 
     const first = bodyRows()[0] as HTMLElement;
-    expect(within(first).getByText('MES 관리 · 실적 관리 · 검사 관리')).toBeInTheDocument();
+    expect(within(first).getByText('MES 관리 · 실적 관리')).toBeInTheDocument();
   });
 
   it('관리 항목이 전부 꺼져 있으면 「없음」을 낸다', () => {

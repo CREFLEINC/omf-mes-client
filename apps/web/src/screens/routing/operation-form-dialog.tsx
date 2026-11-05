@@ -4,7 +4,7 @@ import { useId } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
-import { OPERATION_FLAG_KEYS } from './operation-order';
+import { SHOWN_OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft, SelectOption } from './types';
 
 const t = messages.routing;
@@ -156,7 +156,7 @@ export const OperationFormDialog = ({
       </div>
 
       <div className="check-group">
-        {OPERATION_FLAG_KEYS.map((key) => (
+        {SHOWN_OPERATION_FLAG_KEYS.map((key) => (
           <Checkbox
             key={key}
             checked={values[key]}

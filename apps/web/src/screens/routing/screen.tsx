@@ -742,15 +742,13 @@ const RoutingWorkspace = () => {
     return null;
   })();
 
-  /* 머리에 이 품목의 PQC 검사 기준을 보인다 — 검사 항목은 공정이 아니라 품목에 붙는다(사용자 지시 2026-11-05). */
+  /* 머리에 이 품목의 PQC 검사 기준을 보인다 — PQC 대상은 공정이 아니라 품목이다(사용자 지시 2026-11-05). */
   const pqcPlan = usePqcPlanForItem(selectedItemId);
   const pqcPlanLabel = (() => {
-    const plan = pqcPlan.data;
-    if (plan === undefined) return null;
-    if (plan.kind === 'none') return t.values.pqcPlanNone;
-    return plan.kind === 'item'
-      ? t.values.pqcPlanItem(plan.code, plan.name)
-      : t.values.pqcPlanCommon(plan.code, plan.name);
+    if (pqcPlan.data === undefined) return null;
+    return pqcPlan.data === null
+      ? t.values.pqcPlanNone
+      : t.values.pqcPlanItem(pqcPlan.data.code, pqcPlan.data.name);
   })();
 
   /**

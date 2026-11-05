@@ -328,52 +328,32 @@ export const useProcessOptions = (): ProcessLookupResult => {
   };
 };
 
-/** 이 품목의 작업지시가 PQC 의뢰에 쓸 검사 기준. `none` 이면 의뢰에 걸 기준이 없다. */
-export type PqcPlanForItem =
-  { kind: 'item' | 'common'; code: string; name: string } | { kind: 'none' };
-
-/** 공통 기준을 찾을 때 한 번에 받는 수 — PQC 기준은 품목당 하나라 많지 않다. */
-const PQC_PLAN_PAGE_SIZE = 200;
+/** 이 품목의 PQC 검사 기준 — 있으면 이 품목이 PQC 대상이다. `null` 이면 대상이 아니다. */
+export interface PqcPlanForItem {
+  code: string;
+  name: string;
+}
 
 /**
- * 「검사 관리」를 켠 공정이 쓸 PQC 검사 기준(사용자 지시 2026-11-05) — 검사 항목은 공정이 아니라 품목에 붙는다.
- * 서버가 의뢰를 만들 때와 같은 순서로 고른다: 그 품목의 사용 중 기준, 없으면 「전 품목 공통」 기준. 둘 이상이면 없음.
+ * PQC 대상은 공정이 아니라 품목이다(사용자 결정 2026-11-05) — 사용 중인 품목 전용 PQC 기준이 있으면 그 품목의
+ * 작업지시마다 의뢰가 선다. 「전 품목 공통」 기준은 대상을 만들지 않아 찾지 않는다. 제품당 하나로 막혀 있다.
  */
-export const usePqcPlanForItem = (itemId: number | null): UseQueryResult<PqcPlanForItem> => {
+export const usePqcPlanForItem = (itemId: number | null): UseQueryResult<PqcPlanForItem | null> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: ['routing-pqc-plan', itemId ?? 0] as const,
     enabled: itemId !== null,
-    queryFn: async (): Promise<PqcPlanForItem> => {
-      const pick = (
-        plans: { inspectionPlanCode: string; inspectionPlanName: string }[],
-        kind: 'item' | 'common',
-      ) => {
-        const [plan] = plans;
-        return plans.length === 1 && plan !== undefined
-          ? { kind, code: plan.inspectionPlanCode, name: plan.inspectionPlanName }
-          : null;
-      };
-
-      const own = await runRequest(() =>
+    queryFn: async (): Promise<PqcPlanForItem | null> => {
+      const { items } = await runRequest(() =>
         client.GET('/quality/inspection-plans', {
           params: { query: { inspectionTypeCode: 'PQC', itemId: itemId ?? 0 } },
         }),
       );
-      if (own.items.length > 0) return pick(own.items, 'item') ?? { kind: 'none' };
-
-      const all = await runRequest(() =>
-        client.GET('/quality/inspection-plans', {
-          params: { query: { inspectionTypeCode: 'PQC', size: PQC_PLAN_PAGE_SIZE } },
-        }),
-      );
-      return (
-        pick(
-          all.items.filter((plan) => plan.itemId === null),
-          'common',
-        ) ?? { kind: 'none' }
-      );
+      const [plan] = items;
+      return plan === undefined
+        ? null
+        : { code: plan.inspectionPlanCode, name: plan.inspectionPlanName };
     },
   });
 };

@@ -190,8 +190,8 @@ export const routing = {
     inactiveSuffix: ' (미사용)',
     revision: (version: number): string => `Rev ${version}`,
     pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
-    pqcPlanCommon: (code: string, name: string): string => `${code} · ${name} (전 품목 공통)`,
-    pqcPlanNone: '없음 — 검사 기준 화면에서 PQC 기준을 등록하면 검사 항목이 나타납니다.',
+    pqcPlanNone:
+      '없음 — PQC 대상이 아닙니다. 검사 기준 화면에서 이 품목의 PQC 기준을 등록하면 대상이 됩니다.',
   },
   validation: {
     required: '필수 입력 항목입니다.',
