@@ -33088,3 +33088,15 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-distribution-help ul { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-3); line-height: 1.6; }
 .erp-wo-distribution-help-note { padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-container); }
 .erp-wo-distribution-help-flow { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); column-gap: var(--space-6); }
+.erp-wo-auto-plan-help-actions { display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; }
+.erp-wo-auto-plan-help-actions > button:first-child { flex: 1; min-width: 0; white-space: normal; }
+.erp-wo-auto-plan-help-actions > button:last-child { flex-shrink: 0; }
+.erp-wo-auto-plan-help-facts { margin: 0 0 var(--space-3); }
+.erp-wo-auto-plan-help-facts dd { margin: 0; line-height: 1.6; }
+.erp-wo-auto-plan-help-table { min-width: 0; }
+.erp-wo-auto-plan-help-table th { width: 28%; vertical-align: top; }
+.erp-wo-auto-plan-help-table td { vertical-align: top; line-height: 1.6; }
+.erp-wo-distribution-help details > summary { cursor: pointer; font-weight: 500; }
+.erp-wo-distribution-help details > p { margin-top: var(--space-2); }
+.erp-wo-auto-plan-help-facts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.erp-wo-auto-plan-help-table th:not(:first-child) { width: auto; }

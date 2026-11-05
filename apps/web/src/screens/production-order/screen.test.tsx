@@ -240,6 +240,25 @@ const countPlantIds = (requests: Request[]) =>
   listQueries(requests, '1').map((query) => query.get('plantId'));
 
 describe('작업지시 목록 작업함', () => {
+  it('선택 대상 없이도 자동 전개 도움말을 읽고 닫으며 실행 요청은 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = render({ orders: [REVIEW] });
+    await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    expect(screen.getByRole('button', { name: t.bulk.autoPlan })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '생산계획 자동 전개 도움말' }));
+    const dialog = screen.getByRole('dialog', { name: '생산계획 자동 전개 도움말' });
+    expect(
+      within(dialog).getByRole('heading', { name: '준비할 ERP 데이터와 MES 기준정보' }),
+    ).toBeVisible();
+    expect(within(dialog).getByText(/기본 BOM 개정이 정확히 1개/)).toBeVisible();
+    expect(within(dialog).getByText(/먼저 생성된 미확정 계획 1건/)).toBeVisible();
+    expect(
+      requests.some((request) => request.method === 'POST' && request.url.includes('auto-plan')),
+    ).toBe(false);
+    await user.click(within(dialog).getAllByRole('button', { name: '닫기' }).at(-1)!);
+    expect(screen.queryByRole('dialog', { name: '생산계획 자동 전개 도움말' })).toBeNull();
+  });
+
   it('기본 조건은 「조치 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
     const { requests } = render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
 

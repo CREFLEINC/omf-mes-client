@@ -1,3 +1,4 @@
+import { AutoPlanHelp } from './auto-plan-help';
 import { AUTO_PLAN_RESULT_PATH } from './auto-plan-result-page';
 /**
  * W-02-01 작업지시 목록 작업함
@@ -101,6 +102,7 @@ export const ProductionOrderScreen = ({
   const bulk = useWorklistBulk();
   const [checked, setChecked] = useState<string[]>([]);
   const [dialog, setDialog] = useState<{ kind: BulkKind; targets: BulkTarget[] } | null>(null);
+  const [autoPlanHelpOpen, setAutoPlanHelpOpen] = useState(false);
   const [resultFilter, setResultFilter] = useState<BulkResultFilter>(null);
   /* 실행 당시의 행. 결과로 목록을 좁힐 때 다음 조회에서 빠진 건도 보이게 한다(C-18). */
   const [runRows, setRunRows] = useState<WorklistRow[]>([]);
@@ -387,15 +389,27 @@ export const ProductionOrderScreen = ({
             <small>{t.bulk.planHelp}</small>
           </div>
           <div className="erp-wo-action-choice">
-            <Button
-              variant="outlined"
-              title={t.bulk.autoPlanHelp}
-              disabled={bulkReason !== null}
-              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-              onClick={() => setDialog({ kind: 'autoPlan', targets })}
-            >
-              {t.bulk.autoPlan}
-            </Button>
+            <div className="erp-wo-auto-plan-help-actions">
+              <Button
+                variant="outlined"
+                title={t.bulk.autoPlanHelp}
+                disabled={bulkReason !== null}
+                aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+                onClick={() => setDialog({ kind: 'autoPlan', targets })}
+              >
+                {t.bulk.autoPlan}
+              </Button>
+              <Button
+                size="sm"
+                variant="text"
+                className="erp-wo-distribution-help-trigger"
+                aria-label="생산계획 자동 전개 도움말"
+                aria-haspopup="dialog"
+                onClick={() => setAutoPlanHelpOpen(true)}
+              >
+                ?
+              </Button>
+            </div>
             <small>{t.bulk.autoPlanShortHelp}</small>
           </div>
           <div className="erp-wo-action-choice">
@@ -520,6 +534,7 @@ export const ProductionOrderScreen = ({
           </>
         )}
       </section>
+      {autoPlanHelpOpen && <AutoPlanHelp onClose={() => setAutoPlanHelpOpen(false)} />}
       {dialog !== null && (
         <WorklistBulkDialog
           kind={dialog.kind}
