@@ -1,4 +1,4 @@
-import { AlertBanner, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -28,6 +28,7 @@ import {
   useAlreadyReceived,
   useHopperStock,
   useScannedGoodsIssue,
+  type ScannedIssue,
 } from './queries';
 import {
   INVENTORY_ADJUSTMENT_REASON,
@@ -47,6 +48,7 @@ import {
   isShort,
   needsReason,
   qtyProblemOf,
+  putawayCountOf,
   queuedReceiptsFor,
   toReceiptDraft,
   varianceOf,
@@ -69,6 +71,11 @@ const receivedFieldId = (goodsIssueLineId: number): string =>
 
 const measuredFieldId = (key: string): string => `shopfloor-measured-${key}`;
 
+/** 받을 수 있는 출고인가 — W/O 출고는 W/O · 도착 위치, 창고 보충 출고(004)는 도착 위치. */
+const receivable = (issue: ScannedIssue): boolean =>
+  issue.destinationLocationId !== null &&
+  (issue.kind === 'REPLENISHMENT' || (issue.kind === 'WORK_ORDER' && issue.workOrderId !== null));
+
 export const ShopfloorReceiptScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
@@ -82,6 +89,8 @@ export const ShopfloorReceiptScreen = () => {
   const [scanned, setScanned] = useState<string | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /** 창고 보충을 구역 나눈 창고로 받아 생긴 적치 지시 수(확정 응답). */
+  const [putawayCount, setPutawayCount] = useState(0);
   const [saveFailed, setSaveFailed] = useState(false);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
@@ -125,9 +134,11 @@ export const ShopfloorReceiptScreen = () => {
       hasReasonOptions,
     ) &&
     issue !== null &&
-    /* 작업지시와 도착 위치를 못 찾은 전표는 수령 전표를 만들 수 없다. 단추를 열지 않는다. */
-    issue.workOrderId !== null &&
-    issue.destinationLocationId !== null;
+    /*
+     * 받을 출고가 아니거나 도착 위치를 못 찾은 전표는 수령 전표를 만들 수 없다. 단추를 열지 않는다. W/O 출고는 W/O 도
+     * 있어야 하고, 창고 보충 출고(004)는 도착 위치만 있으면 된다.
+     */
+    receivable(issue);
 
   /* 전표를 열면 그 라인으로 적을 자리를 만든다. 조회가 끝난 뒤라 렌더 중에 하지 않는다. */
   useEffect(() => {
@@ -309,6 +320,7 @@ export const ShopfloorReceiptScreen = () => {
     /* 라인 번호로 기억하므로, 두고 가면 다른 전표의 같은 번호 줄에 붙은 채로 열린다. */
     setKeypadFor(null);
     setOutcome(null);
+    setPutawayCount(0);
     setSaveFailed(false);
     scanField.focus();
   };
@@ -318,8 +330,8 @@ export const ShopfloorReceiptScreen = () => {
       return;
     }
 
-    /* 두 값이 없으면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
-    if (issue.workOrderId === null || issue.destinationLocationId === null) {
+    /* 받을 출고가 아니면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
+    if (!receivable(issue) || issue.destinationLocationId === null) {
       return;
     }
 
@@ -361,6 +373,7 @@ export const ShopfloorReceiptScreen = () => {
         return;
       }
 
+      setPutawayCount(putawayCountOf(result?.responses.get(draft.idempotencyKey)));
       setOutcome(result === null || result.remaining.some(mine) ? 'held' : 'sent');
     } finally {
       inFlight.current = false;
@@ -370,7 +383,11 @@ export const ShopfloorReceiptScreen = () => {
   if (outcome !== null) {
     return (
       <div className="shopfloor-receipt">
-        {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
+        {outcome === 'sent' ? (
+          <AlertBanner variant="success" title={t.sent.title}>
+            {putawayCount > 0 ? t.sent.putaway(putawayCount) : null}
+          </AlertBanner>
+        ) : null}
         {outcome === 'held' ? (
           <AlertBanner variant="warning" title={t.held.title}>
             {t.held.description}
@@ -431,7 +448,7 @@ export const ShopfloorReceiptScreen = () => {
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
         ) : null}
         {/* 무엇이 없어서 받을 수 없는지 그 자리에서 말한다. 단말 설정과는 무관한 일이다. */}
-        {issue !== null && issue.workOrderId === null ? (
+        {issue !== null && issue.kind === null ? (
           <AlertBanner variant="error" title={t.issue.notForShopfloor}>
             {t.issue.notForShopfloorWhy}
           </AlertBanner>
@@ -440,6 +457,14 @@ export const ShopfloorReceiptScreen = () => {
         {issue === null ? null : (
           <Card bordered>
             <Card.Header>
+              {/* 004 — 수령 종류 칩. 창고 보충이면 W/O 자리에 요청번호(screens/M-01-09.md). */}
+              {issue.kind === null ? null : (
+                <Chip size="sm" status={issue.kind === 'REPLENISHMENT' ? 'info' : 'idle'}>
+                  {issue.kind === 'REPLENISHMENT'
+                    ? t.issue.kindReplenishment
+                    : t.issue.kindWorkOrder}
+                </Chip>
+              )}{' '}
               {t.issue.summary(issue.issue.goodsIssueNo, issue.lines.length)}
             </Card.Header>
             <Card.Body className="card-body">
@@ -454,6 +479,9 @@ export const ShopfloorReceiptScreen = () => {
                   })}
                 </p>
               ) : null}
+              {issue.issueRequestNo === null ? null : (
+                <p>{t.issue.requestNo(issue.issueRequestNo)}</p>
+              )}
               {issue.lines.length === 0 ? <p>{t.issue.empty}</p> : null}
             </Card.Body>
           </Card>

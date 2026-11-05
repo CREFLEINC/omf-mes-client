@@ -1240,3 +1240,103 @@ describe('생산창고 입고 화면', () => {
     expect(screen.queryByText('호퍼 잔량을 기록했습니다')).toBeNull();
   });
 });
+
+/*
+ * 004 생산 창고 보충(omf-all-around#230) — 창고 보충 요청에서 나간 출고는 W/O 없이 받는다(screens/M-01-09.md).
+ * 기존 받침은 그대로 두고 `extra` 로 출고 요청 응답만 덧댄다.
+ */
+const replenishmentRequest = (seen?: Request[], putawayTaskIds: number[] = []): StubRoute[] => [
+  {
+    match: (req) => /\/logistics\/material-issue-requests\/\d+$/.test(new URL(req.url).pathname),
+    respond: () =>
+      jsonResponse({
+        materialIssueRequest: {
+          materialIssueRequestId: 200,
+          issueRequestNo: 'MIR-2026-000777',
+          workOrderId: null,
+          destinationLocationId: 42,
+          statusCode: 'REGISTERED',
+          requestTypeCode: 'REPLENISHMENT',
+          replenishmentOriginCode: 'DIRECT',
+        },
+        lines: [],
+      }),
+  },
+  {
+    match: (req) =>
+      req.method === 'POST' && new URL(req.url).pathname === '/logistics/shopfloor-receipts',
+    respond: (req) => {
+      seen?.push(req.clone());
+      return jsonResponse(
+        {
+          shopfloorReceipt: {
+            shopfloorReceiptId: 901,
+            shopfloorReceiptNo: 'SR-2026-000901',
+            goodsIssueId: 500,
+            workOrderId: null,
+            destinationLocationId: 42,
+            receivedAt: '2026-11-05T09:00:00+07:00',
+            statusCode: 'RECEIVED',
+            putawayTaskIds,
+          },
+          lines: [],
+        },
+        { status: 201 },
+      );
+    },
+  },
+];
+
+describe('생산창고 입고 화면 — 창고 보충 출고(004)', () => {
+  it('US2-6 창고 보충 출고를 대면 W/O 없이 열리고 「창고 보충」 칩과 요청번호를 보인다', async () => {
+    mount({ extra: replenishmentRequest() });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('창고 보충')).toBeTruthy();
+    expect(screen.getByText('요청 MIR-2026-000777')).toBeTruthy();
+    expect(screen.queryByText('생산창고 입고 대상이 아닌 출고 전표입니다')).toBeNull();
+    expect(await receivedField()).toBeTruthy();
+  });
+
+  it('US2-6 W/O 출고는 지금처럼 「생산 현장」 칩이고 요청번호를 보이지 않는다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('생산 현장')).toBeTruthy();
+    expect(screen.queryByText(/^요청 /)).toBeNull();
+  });
+
+  it('US2-6 창고 보충 확정은 workOrderId 없이 도착 위치로 보내고, 적치 지시가 생기면 그 수를 알린다(US6-2)', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ extra: replenishmentRequest(seen, [61, 62]) });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+    await user.type(await receivedField(), '500');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
+    });
+    await user.click(screen.getByRole('button', { name: '입고 확정' }));
+
+    expect(await screen.findByText('입고를 기록했습니다')).toBeTruthy();
+    expect(await screen.findByText('적치 지시 2건이 생겼습니다')).toBeTruthy();
+
+    const body = (await seen[0]?.json()) as Record<string, unknown>;
+    expect(body).not.toHaveProperty('workOrderId');
+    expect(body.destinationLocationId).toBe(42);
+  });
+
+  it('W/O 출고도 창고 보충도 아니면 지금처럼 막는다', async () => {
+    mount({ pickingSourceTypeCode: 'SHIPMENT_ORDER' });
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다')).toBeTruthy();
+  });
+});

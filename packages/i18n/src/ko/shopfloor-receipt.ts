@@ -48,6 +48,11 @@ export const shopfloorReceipt = {
       '생산에 투입하려고 나간 출고만 여기서 받습니다. 반품이나 폐기로 나간 전표는 받지 않습니다. 전표 번호를 다시 확인하세요.',
     /** 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
     destination: (code: string) => `도착 ${code}`,
+    /** 004 — 수령 종류 칩. W/O 출고는 「생산 현장」, 창고 보충 요청에서 나간 출고는 「창고 보충」. */
+    kindWorkOrder: '생산 현장',
+    kindReplenishment: '창고 보충',
+    /** 창고 보충이면 W/O 자리에 요청번호. */
+    requestNo: (no: string) => `요청 ${no}`,
     /*
      * 끊긴 것과 서버가 없다고 답한 것을 가른다. 앞은 자리를 옮기면 풀리고 뒤는 옮겨도
      * 그대로다 - 뭉뚱그리면 될 일 없는 이동을 시킨다.
@@ -163,6 +168,8 @@ export const shopfloorReceipt = {
   },
   sent: {
     title: '입고를 기록했습니다',
+    /** 창고 보충을 구역 나눈 생산 창고로 받았다(모바일 적치로 이어진다). */
+    putaway: (count: number) => `적치 지시 ${String(count)}건이 생겼습니다`,
   },
   held: {
     title: '입고를 전송 대기에 넣었습니다',
