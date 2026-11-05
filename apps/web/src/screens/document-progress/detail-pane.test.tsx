@@ -16,6 +16,8 @@ const noop = (): void => undefined;
 const summaryOf = (): HTMLElement =>
   screen.getByRole('group', { name: t.detail.summary('SYN-GR-2026-0001') });
 
+const NAMES = { statusName: (code: string) => code, subTypeName: (code: string) => code };
+
 describe('DetailPane — 요약', () => {
   /**
    * ⭐ **요약의 근거는 상세 응답의 `progress`다**(C2-4). 목록 행을 그대로 다시 그리면 두 조회의
@@ -23,13 +25,20 @@ describe('DetailPane — 요약', () => {
    * 값(`SYN_STATUS_DETAIL`)인 것이 그 축을 잰다.
    */
   it('상세 응답의 값을 그린다', () => {
-    render(<DetailPane detail={documentProgressDetail()} routes={SCREEN_ROUTES} onOpen={noop} />);
+    render(
+      <DetailPane
+        detail={documentProgressDetail()}
+        routes={SCREEN_ROUTES}
+        onOpen={noop}
+        {...NAMES}
+      />,
+    );
 
     const summary = summaryOf();
 
     expect(within(summary).getByText('SYN_STATUS_DETAIL')).toBeInTheDocument();
     expect(within(summary).getByText('SYN-GR-2026-0001')).toBeInTheDocument();
-    expect(within(summary).getByText('GOODS_RECEIPT')).toBeInTheDocument();
+    expect(within(summary).getByText('입고')).toBeInTheDocument();
     expect(within(summary).getByText('2026-08-06')).toBeInTheDocument();
   });
 
@@ -41,6 +50,7 @@ describe('DetailPane — 요약', () => {
         })}
         routes={SCREEN_ROUTES}
         onOpen={noop}
+        {...NAMES}
       />,
     );
 
@@ -61,6 +71,7 @@ describe('DetailPane — 요약', () => {
         })}
         routes={SCREEN_ROUTES}
         onOpen={noop}
+        {...NAMES}
       />,
     );
 
@@ -69,14 +80,28 @@ describe('DetailPane — 요약', () => {
 
   /* 위아래가 다른 값을 말할 수 있다는 사실을 감추지 않는다. */
   it('요약이 상세 조회 결과임을 밝힌다', () => {
-    render(<DetailPane detail={documentProgressDetail()} routes={SCREEN_ROUTES} onOpen={noop} />);
+    render(
+      <DetailPane
+        detail={documentProgressDetail()}
+        routes={SCREEN_ROUTES}
+        onOpen={noop}
+        {...NAMES}
+      />,
+    );
 
     expect(screen.getByText(t.detail.summaryNote)).toBeInTheDocument();
   });
 
   /* 내부 번호는 화면에 나오지 않는다(omf-mes#44). */
   it('내부 번호가 화면에 나오지 않는다', () => {
-    render(<DetailPane detail={documentProgressDetail()} routes={SCREEN_ROUTES} onOpen={noop} />);
+    render(
+      <DetailPane
+        detail={documentProgressDetail()}
+        routes={SCREEN_ROUTES}
+        onOpen={noop}
+        {...NAMES}
+      />,
+    );
 
     expect(screen.queryByText('9001')).not.toBeInTheDocument();
     expect(screen.queryByText('SYN-SCREEN-01')).not.toBeInTheDocument();
@@ -89,7 +114,14 @@ describe('DetailPane — 문서 열기', () => {
    * ⛔ 잠긴 버튼도 두지 않는다 — 사유만 글자로 밝힌다.
    */
   it('표가 비어 있으면 열기 손잡이가 서지 않고 사유가 보인다', () => {
-    render(<DetailPane detail={documentProgressDetail()} routes={SCREEN_ROUTES} onOpen={noop} />);
+    render(
+      <DetailPane
+        detail={documentProgressDetail()}
+        routes={SCREEN_ROUTES}
+        onOpen={noop}
+        {...NAMES}
+      />,
+    );
 
     expect(screen.queryByRole('button', { name: t.actions.openDocument })).not.toBeInTheDocument();
     /* ⭐ **화면은 아는데 이 프로그램에 그 화면이 없다** — 이 저장소가 풀 수 있는 쪽이다. */
@@ -102,7 +134,14 @@ describe('DetailPane — 문서 열기', () => {
     const onOpen = vi.fn();
     const user = userEvent.setup();
 
-    render(<DetailPane detail={documentProgressDetail()} routes={filledRoutes} onOpen={onOpen} />);
+    render(
+      <DetailPane
+        detail={documentProgressDetail()}
+        routes={filledRoutes}
+        onOpen={onOpen}
+        {...NAMES}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: t.actions.openDocument }));
 
@@ -124,6 +163,7 @@ describe('DetailPane — 문서 열기', () => {
         detail={documentProgressDetail({ screenId: null })}
         routes={filledRoutes}
         onOpen={noop}
+        {...NAMES}
       />,
     );
 
@@ -136,7 +176,14 @@ describe('DetailPane — 문서 열기', () => {
 describe('DetailPane — 아래 두 구획', () => {
   /* 처리 경과와 후속이 **한 구획에 함께** 선다 — 「어디까지 갔는가」와 「무엇이 걸려 있는가」다. */
   it('처리 경과와 후속 목록을 함께 낸다', () => {
-    render(<DetailPane detail={documentProgressDetail()} routes={SCREEN_ROUTES} onOpen={noop} />);
+    render(
+      <DetailPane
+        detail={documentProgressDetail()}
+        routes={SCREEN_ROUTES}
+        onOpen={noop}
+        {...NAMES}
+      />,
+    );
 
     expect(screen.getByRole('table', { name: t.steps.caption })).toBeInTheDocument();
     expect(screen.getByRole('table', { name: t.successors.caption })).toBeInTheDocument();
@@ -148,6 +195,7 @@ describe('DetailPane — 아래 두 구획', () => {
         detail={documentProgressDetail({ successors: [] })}
         routes={SCREEN_ROUTES}
         onOpen={noop}
+        {...NAMES}
       />,
     );
 

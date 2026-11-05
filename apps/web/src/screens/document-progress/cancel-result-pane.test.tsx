@@ -15,7 +15,7 @@ const REVERSED: CancelExecutionView = {
 };
 
 const renderPane = (overrides: Partial<CancelExecutionView> = {}) =>
-  render(<CancelResultPane result={{ ...REVERSED, ...overrides }} />);
+  render(<CancelResultPane result={{ ...REVERSED, ...overrides }} statusName={(code) => code} />);
 
 describe('CancelResultPane — reversed가 두 문면을 가른다 · C4-12', () => {
   it('참이면 원장에 역트랜잭션이 생겼다고 말한다', () => {

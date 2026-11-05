@@ -1,6 +1,7 @@
 import { Button, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { documentTypeName } from './document-types';
 import {
   describeScreenOpenBlock,
   judgeScreenOpen,
@@ -46,7 +47,7 @@ export const buildSuccessorColumns = (
     key: 'successorTypeCode',
     header: t.successors.typeCode,
     width: '344px',
-    render: (successor) => successor.successorTypeCode,
+    render: (successor) => documentTypeName(successor.successorTypeCode),
   },
   {
     key: 'successorNo',
