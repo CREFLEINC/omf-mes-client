@@ -253,7 +253,7 @@ export const BomTable = ({ id }: { id: number }) => {
           columns={[
             '자재 코드',
             '자재명',
-            '기준 수량당 소요량',
+            '소요량',
             '단위',
             '로스율',
             '필수 여부',
