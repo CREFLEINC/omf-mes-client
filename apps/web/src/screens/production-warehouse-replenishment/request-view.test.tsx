@@ -42,8 +42,12 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     );
     /* 기본값을 바꿀 수 있다 — 후보에 생산 창고 자신 · 불량창고는 없다(FR-002). */
     await user.click(row.getByRole('combobox', { name: tr.sourceLabel(1) }));
-    expect(await screen.findByRole('option', { name: 'SYN-MW-2 합성 자재창고 2' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'SYN-PW-A 합성 생산창고 A' })).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: 'SYN-MW-2 합성 자재창고 2' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'SYN-PW-A 합성 생산창고 A' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'SYN-NG 합성 불량창고' })).not.toBeInTheDocument();
   });
 

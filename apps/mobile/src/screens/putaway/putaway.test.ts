@@ -7,6 +7,8 @@ import {
   allowedSummaryOf,
   businessDateOf,
   canComplete,
+  movedNoteOf,
+  originOf,
   scansLocation,
   toOutboxDraft,
   verdictOf,
@@ -207,5 +209,24 @@ describe('완료 본문', () => {
     const body = toOutboxDraft(task({ allowedLocations: [] }), location(), NOW, '900028').body;
 
     expect(body).not.toHaveProperty('confirmedNoRule');
+  });
+});
+
+/* 004 생산 창고 보충(omf-all-around#230) — 완료 응답의 옮긴 양으로 결과 한 줄을 만든다. */
+describe('창고 보충 지시 결과(004)', () => {
+  const base = { taskQty: 30 } as Parameters<typeof movedNoteOf>[0];
+
+  it('US6-4 덜 옮겼으면 남은 양, 0 이면 닫음, 다 옮겼거나 응답이 없으면 없음', () => {
+    expect(movedNoteOf(base, { movedQty: 20 }, 'KG')).toBe(
+      '적치 대기에 남은 20 KG 만 옮겼습니다(나머지는 먼저 출고됨)',
+    );
+    expect(movedNoteOf(base, { movedQty: 0 }, 'KG')).toBe('옮길 재고가 없어 지시를 닫았습니다');
+    expect(movedNoteOf(base, { movedQty: 30 }, 'KG')).toBeNull();
+    expect(movedNoteOf(base, undefined, 'KG')).toBeNull();
+  });
+
+  it('원천을 모르는 지시(예전 지시)는 구매 입고다', () => {
+    expect(originOf({ ...base, originCode: 'REPLENISHMENT_RECEIPT' })).toBe('창고 보충');
+    expect(originOf(base)).toBe('구매 입고');
   });
 });

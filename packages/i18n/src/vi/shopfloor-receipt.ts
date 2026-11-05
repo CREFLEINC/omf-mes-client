@@ -28,6 +28,9 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     notForShopfloorWhy:
       'Ở đây chỉ nhận phiếu xuất để đưa vào sản xuất. Phiếu xuất để trả hàng hoặc hủy bỏ thì không nhận. Hãy kiểm tra lại số phiếu.',
     destination: (code: string) => `Nơi đến ${code}`,
+    kindWorkOrder: 'Hiện trường sản xuất',
+    kindReplenishment: 'Bổ sung kho',
+    requestNo: (no: string) => `Yêu cầu ${no}`,
     destinationOffline: 'Không xác nhận được vị trí đến. Hãy kiểm tra kết nối.',
     destinationUnknown:
       'Không xác nhận được vị trí đến. Không phải do kết nối, hãy báo người phụ trách.',
@@ -106,6 +109,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
   },
   sent: {
     title: 'Đã ghi nhận nhập kho',
+    putaway: (count: number) => `Đã phát sinh ${String(count)} chỉ thị cất hàng`,
   },
   held: {
     title: 'Đã đưa việc nhập kho vào hàng chờ gửi',

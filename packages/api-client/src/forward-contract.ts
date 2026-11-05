@@ -942,7 +942,143 @@ type MirId = { materialIssueRequestId: number };
 type ReplenishmentItemId = { replenishmentItemId: number };
 type IdemOnly = { 'Idempotency-Key': string };
 
+/**
+ * 서버 선행(004 C2 — 도착 대기 · 수령 · 적치, 설계 계약 §2 · §3 · §6, 서버 S5 · S6 계약 `logistics-01자재창고.json`).
+ * 서버 병합 뒤 `gen:api` 로 다시 만들고 걷는다(D-12, T065).
+ */
+export interface ReplenishmentArrivalLine {
+  goodsIssueLineId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  lotId: number;
+  lotNo: string;
+  issueQty: number;
+  uomId: number;
+  uomCode: string;
+}
+
+/** 도착 대기 한 장 — 창고 보충 요청에서 나온 `POSTED` 출고 중 수령이 없는 것. */
+export interface ReplenishmentArrival {
+  goodsIssueId: number;
+  goodsIssueNo: string;
+  issuedAt: string;
+  /** 공장 현지 날짜 기준 경과 일수. */
+  elapsedDays: number;
+  materialIssueRequestId: number;
+  issueRequestNo: string;
+  replenishmentOriginCode: ReplenishmentOriginCode;
+  productionWarehouseId: number;
+  productionWarehouseName: string;
+  destinationLocationId: number;
+  destinationLocationCode: string;
+  lines: ReplenishmentArrivalLine[];
+}
+
+export interface ReplenishmentArrivalListQuery {
+  plantId: number;
+  productionWarehouseId?: number;
+  goodsIssuedFrom?: string;
+  goodsIssuedTo?: string;
+  page?: number;
+  size?: number;
+}
+
+/** 생산창고 입고 줄(기존 `POST /shopfloor-receipts` 줄과 같다). */
+export type ShopfloorReceiptLineCreateForward = components['schemas']['ShopfloorReceiptLineCreate'];
+
+/** 웹 개별 수령 본문(`…/arrivals/{goodsIssueId}:receive`) — 도착 위치 · W/O 는 서버가 채운다. */
+export interface ReplenishmentArrivalReceive {
+  businessDate: string;
+  receivedAt: string;
+  occurredAt: string;
+  lines: ShopfloorReceiptLineCreateForward[];
+}
+
+/** 생산창고 입고 — `workOrderId` 선택(주지 않으면 창고 보충 출고여야 한다), 응답에 적치 지시 번호들. */
+export type ShopfloorReceiptCreateForward = Omit<
+  components['schemas']['ShopfloorReceiptCreate'],
+  'workOrderId'
+> & { workOrderId?: number | null };
+
+export type ShopfloorReceiptForward = Omit<
+  components['schemas']['ShopfloorReceipt'],
+  'workOrderId'
+> & {
+  workOrderId: number | null;
+  /** 창고 보충 수령이고 구역을 나눈 생산 창고일 때 생긴 적치 지시. */
+  putawayTaskIds?: number[];
+};
+
+export interface ShopfloorReceiptDetailForward {
+  shopfloorReceipt: ShopfloorReceiptForward;
+  lines: components['schemas']['ShopfloorReceiptLine'][];
+}
+
+export interface ShopfloorReceiptBulkCreate {
+  businessDate: string;
+  receivedAt: string;
+  /** 최대 100장. */
+  goodsIssueIds: number[];
+}
+
+export type ShopfloorReceiptBulkOutcome = 'RECEIVED' | 'ALREADY_RECEIVED' | 'FAILED';
+
+export interface ShopfloorReceiptBulkResult {
+  results: {
+    goodsIssueId: number;
+    outcome: ShopfloorReceiptBulkOutcome;
+    shopfloorReceiptId?: number;
+    message?: string;
+  }[];
+}
+
+/** 적치 지시 원천(§6) — 창고 보충 수령에서 생긴 지시는 남은 재고만큼만 옮긴다(`movedQty`). */
+export type PutawayOriginCode = 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT';
+
+export interface PutawayTaskOriginForward {
+  shopfloorReceiptLineId?: number | null;
+  originCode?: PutawayOriginCode;
+  /** 완료 응답 — 실제로 옮긴 양. 지시 수량보다 적을 수 있다(0 이면 원장 없이 닫힘). */
+  movedQty?: number;
+}
+
+type ArrivalId = { goodsIssueId: number };
+
 export interface ForwardPaths {
+  /** 004 C2 — 도착 대기(계약 §2). */
+  '/logistics/replenishment-requests/arrivals': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: ReplenishmentArrivalListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<ListOf<ReplenishmentArrival>> }
+    >;
+  };
+  /** 004 C2 — 웹 개별 수령(권한 W-02-12, 보충 출고만). */
+  '/logistics/replenishment-requests/arrivals/{goodsIssueId}:receive': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, ArrivalId>,
+      { content: { 'application/json': ReplenishmentArrivalReceive } },
+      { 201: Json<ShopfloorReceiptDetailForward> }
+    >;
+  };
+  /** 004 C2 — 일괄 수령(권한 W-02-12, 보충 출고만, 받은 = 출고). */
+  '/logistics/shopfloor-receipts:bulk': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': ShopfloorReceiptBulkCreate } },
+      { 200: Json<ShopfloorReceiptBulkResult> }
+    >;
+  };
   /** 004 — 목록 조건 추가 · 응답 새 칸(계약 §1). */
   '/logistics/material-issue-requests': Omit<MaterialIssueRequestsPath, 'get'> & {
     get: Omit<MaterialIssueRequestsPath['get'], 'parameters' | 'responses'> & {

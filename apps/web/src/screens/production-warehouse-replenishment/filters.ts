@@ -1,15 +1,25 @@
 import type {
   MaterialIssueRequestListQueryForward,
+  ReplenishmentArrivalListQuery,
   ReplenishmentItemListQuery,
   ReplenishmentOriginCode,
 } from '@omf-mes/api-client';
 
 import { FILTER_STATUSES, SERVER_STATUS, type ReplenishmentStatus } from './types';
 
-/** 보기 — 주소 `?view=`(screens/W-02-12.md 「진입」). 도착 대기는 C2 에서 더한다. */
-export type ReplenishmentView = 'request' | 'progress' | 'items';
+/** 보기 — 주소 `?view=`(screens/W-02-12.md 「진입」). */
+export type ReplenishmentView = 'request' | 'progress' | 'arrival' | 'items';
 
-const VIEWS: readonly ReplenishmentView[] = ['request', 'progress', 'items'];
+const VIEWS: readonly ReplenishmentView[] = ['request', 'progress', 'arrival', 'items'];
+
+/** 도착 대기 조건(계약 §2 arrivals). */
+export interface ArrivalFilters {
+  warehouse: string;
+  from: string;
+  to: string;
+}
+
+export const EMPTY_ARRIVAL: ArrivalFilters = { warehouse: '', from: '', to: '' };
 
 export interface ProgressFilters {
   warehouse: string;
@@ -78,6 +88,12 @@ export const readProgress = (params: URLSearchParams): ProgressFilters => {
   };
 };
 
+export const readArrival = (params: URLSearchParams): ArrivalFilters => ({
+  warehouse: readId(params.get('aw')),
+  from: readDate(params.get('afrom')),
+  to: readDate(params.get('ato')),
+});
+
 export const readItems = (params: URLSearchParams): ItemFilters => ({
   warehouse: readId(params.get('ipw')),
   item: readId(params.get('iitem')),
@@ -89,6 +105,7 @@ export interface ScreenState {
   view: ReplenishmentView;
   plant: string;
   progress: ProgressFilters;
+  arrival: ArrivalFilters;
   items: ItemFilters;
   page: number;
   id: number | null;
@@ -106,6 +123,10 @@ export const toSearchParams = (state: ScreenState): URLSearchParams => {
   for (const status of p.statuses) params.append('st', status);
   if (p.from !== '') params.set('from', p.from);
   if (p.to !== '') params.set('to', p.to);
+  const a = state.arrival;
+  if (a.warehouse !== '') params.set('aw', a.warehouse);
+  if (a.from !== '') params.set('afrom', a.from);
+  if (a.to !== '') params.set('ato', a.to);
   const i = state.items;
   if (i.warehouse !== '') params.set('ipw', i.warehouse);
   if (i.item !== '') params.set('iitem', i.item);
@@ -151,6 +172,20 @@ export const toItemQuery = (
   ...(filters.item === '' ? {} : { itemId: Number(filters.item) }),
   ...(filters.source === '' ? {} : { sourceWarehouseId: Number(filters.source) }),
   ...(filters.belowOnly ? { belowPointOnly: true } : {}),
+  page,
+  size,
+});
+
+export const toArrivalQuery = (
+  plantId: number,
+  filters: ArrivalFilters,
+  page: number,
+  size: number,
+): ReplenishmentArrivalListQuery => ({
+  plantId,
+  ...(filters.warehouse === '' ? {} : { productionWarehouseId: Number(filters.warehouse) }),
+  ...(filters.from === '' ? {} : { goodsIssuedFrom: filters.from }),
+  ...(filters.to === '' ? {} : { goodsIssuedTo: filters.to }),
   page,
   size,
 });

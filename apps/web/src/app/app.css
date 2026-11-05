@@ -13180,6 +13180,20 @@ button.app-button-neutral {
   overflow-x: auto;
 }
 
+/* 도착 대기 — 경과 3일 이상은 노랑(표시만, 시안 검토 3). */
+.replenishment-table td.replenishment-late {
+  background: var(--semantic-warning-container);
+}
+
+.replenishment-cap.is-info {
+  color: var(--on-surface-muted);
+}
+
+/* 줄 전체의 설명 — `.field-note` 의 폭 제한(20rem)을 풀어 한 줄로 읽히게. */
+.replenishment-wide-note {
+  max-width: none;
+}
+
 /* 관리 품목 표 — 행 어디를 눌러도 수정 창(키보드는 품목 링크). */
 .replenishment-table tr.is-clickable {
   cursor: pointer;
