@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { compareOperations } from './revision-compare';
 import { resolveRoutingStatus } from './routing-status';
 import type { RoutingOperation } from './types';
@@ -56,7 +57,12 @@ const FIELDS: Record<string, { label: string; format: (value: unknown) => string
       typeof value === 'string' ? resolveRoutingStatus(value).label : plain(value),
   },
   isDefault: { label: t.fields.defaultRevision, format: plain },
-  confirmedAt: { label: t.fields.confirmedAt, format: plain },
+  /* 공장 시각 「YYYY-MM-DD HH:mm」 — 원본 ISO 문자열을 그대로 내지 않는다(#231). */
+  confirmedAt: {
+    label: t.fields.confirmedAt,
+    format: (value) =>
+      typeof value === 'string' ? (formatPlantDateTime(value) ?? plain(value)) : plain(value),
+  },
   copiedFromRoutingId: { label: t.history.copiedFrom, format: plain },
 };
 

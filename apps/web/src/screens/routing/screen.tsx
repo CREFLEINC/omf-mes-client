@@ -56,6 +56,7 @@ import { OperationsPane } from './operations-pane';
 import { ProcessMasterPane } from './process-master-pane';
 import { ROUTING_ORIENTATION_KEY } from './split-layout';
 import {
+  itemKeys,
   type ListPaging,
   routingDetailPath,
   routingKeys,
@@ -190,7 +191,8 @@ const useRoutingTransition = ({ client, routingId, path, onDone }: RoutingTransi
         },
       }),
     etagPath: null,
-    invalidateKeys: [routingKeys.all],
+    /* 상태가 바뀌면 품목 목록의 상태 라벨 · 건수(작성중 · 확정 · 폐기 · 미등록)도 다시 센다(#231). */
+    invalidateKeys: [routingKeys.all, itemKeys.all],
     // 전이에는 입력칸이 없다 — 인라인으로 낼 자리가 없어 서버 오류는 전부 배너로 간다.
     knownFields: [],
     onSuccess: onDone,
@@ -621,7 +623,8 @@ const RoutingWorkspace = () => {
         },
       }),
     etagPath: null,
-    invalidateKeys: [routingKeys.all],
+    /* 지운 Rev 의 상세 · 라인은 다시 읽지 않는다(없어서 404) — 개정 목록 · 품목 상태 건수만 다시 읽는다(#231). */
+    invalidateKeys: [routingKeys.list(selectedItemId ?? 0), itemKeys.all],
     knownFields: [],
     onSuccess: () => {
       setTransition(null);
@@ -748,7 +751,8 @@ const RoutingWorkspace = () => {
       }),
     // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
     etagPath: null,
-    invalidateKeys: [routingKeys.all],
+    /* 상태가 바뀌면 품목 목록의 상태 라벨 · 건수(작성중 · 확정 · 폐기 · 미등록)도 다시 센다(#231). */
+    invalidateKeys: [routingKeys.all, itemKeys.all],
     knownFields: ROUTING_HEADER_FORM_FIELDS,
     onSuccess: (saved) => {
       setCreateValues(null);
@@ -1115,7 +1119,8 @@ const RoutingWorkspace = () => {
           </div>
         )}
 
-        {isRevisionOpen && (
+        {/* 첫 Rev 등록 중에는 공정을 넣을 Rev 가 아직 없다 — 빈 공정 구성 상자를 두지 않는다(#231). */}
+        {isRevisionOpen && createValues === null && (
           <div className="routing-card-section routing-operations-section">
             <OperationsPane
               title={
