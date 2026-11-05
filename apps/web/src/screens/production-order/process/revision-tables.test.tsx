@@ -52,7 +52,7 @@ const fetch = async (req: Request) => {
         moldRequired: false,
         materialInputManaged: true,
         productionResultManaged: true,
-        inspectionManaged: false,
+        inspectionManaged: true,
         isOutsourced: false,
         outputLotRequired: false,
         mesManaged: true,
@@ -96,6 +96,10 @@ describe('대량 BOM Routing 표', () => {
     const row = within(table).getByRole('cell', { name: '공정 11' }).closest('tr')!;
     expect(within(row).getByRole('cell', { name: '11' })).toBeVisible();
     expect(within(table).getByRole('columnheader', { name: '순서' })).toBeVisible();
+    expect(within(table).queryByRole('columnheader', { name: '검사 관리' })).toBeNull();
+    expect(within(row).getAllByRole('cell')).toHaveLength(
+      within(table).getAllByRole('columnheader').length,
+    );
     expect(within(row).getByRole('cell', { name: '한국어 공정 11' })).toBeVisible();
     expect(within(row).getByRole('cell', { name: 'Cong doan 11' })).toBeVisible();
     expect(within(row).getByRole('cell', { name: '20초' })).toBeVisible();

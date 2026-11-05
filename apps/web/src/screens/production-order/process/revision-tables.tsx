@@ -374,7 +374,6 @@ export const RoutingTable = ({ id }: { id: number }) => {
             '금형 필수',
             '자재 투입',
             '실적 관리',
-            '검사 관리',
             '외주',
             '산출 LOT',
             '표준 사이클',
@@ -383,7 +382,7 @@ export const RoutingTable = ({ id }: { id: number }) => {
             '한국어 표시명',
             '베트남어 표시명',
           ]}
-          widths={[104, 180, 48, 70, 70, 75, 75, 75, 58, 85, 105, 85, 80, 160, 160]}
+          widths={[104, 180, 48, 70, 70, 75, 75, 58, 85, 105, 85, 80, 160, 160]}
           total={rows.length}
           paging={paging}
         >
@@ -396,7 +395,6 @@ export const RoutingTable = ({ id }: { id: number }) => {
               <td>{mode(row.moldRequired, '필수', '선택')}</td>
               <td>{mode(row.materialInputManaged)}</td>
               <td>{mode(row.productionResultManaged)}</td>
-              <td>{mode(row.inspectionManaged)}</td>
               <td>{mode(row.isOutsourced, '예', '아니요')}</td>
               <td>{mode(row.outputLotRequired, '필수', '선택')}</td>
               <td className="numeric">

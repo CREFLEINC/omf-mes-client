@@ -355,7 +355,6 @@ export const RoutingContents = ({
                     row.standardCycleTimeSec == null ? '미설정' : `${row.standardCycleTimeSec}초`,
                   ],
                   ['자재 투입 관리', row.materialInputManaged ? '사용' : '사용 안 함'],
-                  ['공정 중 검사 관리', row.inspectionManaged ? '사용' : '사용 안 함'],
                 ]}
               />
             </section>
@@ -469,7 +468,6 @@ export const RoutingContents = ({
                           ['MES 관리', flag(row.mesManaged)],
                           ['자재 투입', flag(row.materialInputManaged)],
                           ['실적 관리', flag(row.productionResultManaged)],
-                          ['검사 관리', flag(row.inspectionManaged)],
                           ['외주', flag(row.isOutsourced)],
                           ['산출 LOT 필수', flag(row.outputLotRequired)],
                           ['설비 필수', flag(row.equipmentRequired)],
