@@ -14,7 +14,6 @@ const ITEM_OPTIONS = [
   { value: '5001', label: 'SYN-ITEM-01 · 합성 품목 A' },
   { value: '5002', label: 'SYN-ITEM-02 · 합성 품목 B' },
 ];
-const PROCESS_OPTIONS = [{ value: '9001', label: '합성 공정 A' }];
 const ROUTING_REVISIONS = [
   { routingId: '7003', routingCode: 'SYN-ROUTE-01', routingVersion: 3, statusCode: 'DRAFT' },
 ];
@@ -35,7 +34,6 @@ const renderPane = (overrides: Partial<Parameters<typeof PlanPane>[0]> = {}) => 
       banner={null}
       optionsNotice={null}
       itemOptions={ITEM_OPTIONS}
-      processOptions={PROCESS_OPTIONS}
       routingRevisions={ROUTING_REVISIONS}
       routingDisabledReason={null}
       codeLockReason={null}
@@ -114,22 +112,8 @@ describe('PlanPane — 표시', () => {
     expect(screen.getByRole('combobox', { name: '검사 유형' })).toHaveAttribute('aria-required');
   });
 
-  /* PQC 기준은 공정이 필수다(사용자 결정 2026-11-04). */
-  it('PQC 기준이면 공정 칸에 필수 표시가 붙고, IQC 면 붙지 않는다', () => {
-    const pqc = renderPane({
-      values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionTypeCode: 'PQC' },
-    });
-    expect(screen.getByRole('combobox', { name: '공정' })).toHaveAttribute('aria-required');
-    pqc.unmount();
-
-    renderPane({
-      values: { ...planToFormValues(inspectionPlanFixtures[0]!), inspectionTypeCode: 'IQC' },
-    });
-    expect(screen.getByRole('combobox', { name: '공정' })).not.toHaveAttribute('aria-required');
-  });
-
-  /* 검사 유형이 PQC 면 공정 이름 오른쪽에 안내를 두고, 공정이 비면 빨간 테두리(사용자 지시 2026-11-04). */
-  it('PQC 기준이면 공정 이름 옆에 안내가 서고, 공정이 비면 공정 칸이 빨갛다', () => {
+  /* PQC 기준은 제품에 붙는다 — 공정 칸이 없다(사용자 결정 2026-11-04). */
+  it('검사 유형과 관계없이 공정 칸을 두지 않는다', () => {
     renderPane({
       values: {
         ...planToFormValues(inspectionPlanFixtures[0]!),
@@ -137,11 +121,7 @@ describe('PlanPane — 표시', () => {
         processId: '',
       },
     });
-
-    expect(screen.getByText('PQC는 공정을 선택해야 합니다.')).toHaveClass(
-      'inspection-standard-label-hint',
-    );
-    expect(screen.getByRole('combobox', { name: '공정' })).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByRole('combobox', { name: '공정' })).toBeNull();
   });
 
   /* 비어 있는 필수 칸은 처음부터 테두리만 빨갛다 — 글은 띄우지 않는다(사용자 지시 2026-11-04). */
@@ -178,20 +158,26 @@ describe('PlanPane — 잠금과 사유', () => {
     expect(code).toHaveAttribute('aria-describedby', hint.id);
   });
 
-  /*
-   * 계약의 라우팅 조회가 품목을 필수로 둔다 — 품목을 고르기 전에는 라우팅 칸 전체를 두지 않고
-   * 품목 이름 오른쪽에 안내를 둔다(사용자 지시 2026-11-04).
-   */
-  it('품목을 고르지 않으면 라우팅 칸이 없고 품목 이름 옆에 안내가 있다', () => {
+  /* 품목을 고르기 전에는 라우팅 칸도 안내 문구도 두지 않는다(사용자 지시 2026-11-05). */
+  it('품목을 고르지 않으면 라우팅 칸과 안내가 없다', () => {
     renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '' },
       routingDisabledReason: '품목을 선택하면 라우팅이 표시됩니다.',
     });
 
     expect(screen.queryByText('라우팅')).not.toBeInTheDocument();
-    const hint = screen.getByText('품목을 선택하면 라우팅이 표시됩니다.');
-    expect(hint).toHaveClass('inspection-standard-label-hint');
-    expect(hint.closest('.field-label')).toHaveTextContent('품목');
+    expect(screen.queryByText('품목을 선택하면 라우팅이 표시됩니다.')).not.toBeInTheDocument();
+  });
+
+  /* 라우팅이 없는 품목이면 칸을 두지 않는다(사용자 지시 2026-11-05). */
+  it('품목에 라우팅이 없으면 라우팅 칸이 없다', () => {
+    renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), routingId: '' },
+      routingRevisions: [],
+      autoRoutingId: null,
+    });
+
+    expect(screen.queryByText('라우팅')).not.toBeInTheDocument();
   });
 
   /* 라우팅은 고르지 않는다 — 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04). */

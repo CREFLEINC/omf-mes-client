@@ -2061,6 +2061,18 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-bottom: 0;
 }
 
+/* Routing 머리의 「PQC 검사 기준」은 한 줄을 다 쓴다 — 품목 · Rev 줄 아래(사용자 지시 2026-11-05). */
+.routing-header-wide {
+  grid-column: 1 / -1;
+}
+
+/* 기준 글자 오른쪽에 「검사 기준 수정」 단추를 붙인다(사용자 지시 2026-11-05). */
+.routing-pqc-plan-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .routing-row-actions {
   display: inline-flex;
 }

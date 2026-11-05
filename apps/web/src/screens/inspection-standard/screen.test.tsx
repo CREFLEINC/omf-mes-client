@@ -13,6 +13,8 @@ import {
 } from '../../test/api-harness';
 import { pickDate } from '../../test/date-picker';
 import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixtures';
+import { SessionProvider } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { InspectionStandardScreen } from './screen';
 
 const ROUTE = '/master-data/inspection-standard';
@@ -74,15 +76,23 @@ const renderScreen = (
   requests: RecordedRequest[];
   user: ReturnType<typeof userEvent.setup>;
   queryClient: QueryClient;
+  router: ReturnType<typeof renderWithProviders>['router'];
 } => {
   const { fetch, requests } = createRecordingFetch(routes);
-  const { queryClient } = renderWithProviders(<InspectionStandardScreen />, {
-    fetch,
-    route: `${ROUTE}${search}`,
-    dataRouter: true,
-  });
+  const { queryClient, router } = renderWithProviders(
+    /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+    <SessionProvider>
+      <InspectionStandardScreen />
+    </SessionProvider>,
+    {
+      session: SYNTHETIC_SESSION,
+      fetch,
+      route: `${ROUTE}${search}`,
+      dataRouter: true,
+    },
+  );
 
-  return { requests, user: userEvent.setup(), queryClient };
+  return { requests, user: userEvent.setup(), queryClient, router };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -230,11 +240,18 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   });
 
   it('네트워크가 끊기면 연결 안내를 낸다', async () => {
-    renderWithProviders(<InspectionStandardScreen />, {
-      fetch: () => Promise.reject(new Error('네트워크 실패')),
-      route: ROUTE,
-      dataRouter: true,
-    });
+    renderWithProviders(
+      /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+      <SessionProvider>
+        <InspectionStandardScreen />
+      </SessionProvider>,
+      {
+        session: SYNTHETIC_SESSION,
+        fetch: () => Promise.reject(new Error('네트워크 실패')),
+        route: ROUTE,
+        dataRouter: true,
+      },
+    );
 
     expect(
       await screen.findByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
@@ -795,23 +812,6 @@ const itemOptionsRoute = (): StubRoute => ({
     }),
 });
 
-const processOptionsRoute = (total = 1): StubRoute => ({
-  match: (request) => isGet(request, '/mdm/processes'),
-  respond: () =>
-    jsonResponse({
-      items: [
-        {
-          processId: 9001,
-          processCode: 'SYN-OP-01',
-          processName: '합성 공정 A',
-          processTypeCode: 'STANDARD',
-          isActive: true,
-        },
-      ],
-      page: { page: 1, size: 50, total },
-    }),
-});
-
 const routingOptionsRoute = (): StubRoute => ({
   match: (request) => isGet(request, '/planning/routings'),
   respond: () =>
@@ -890,7 +890,6 @@ const codeValuesRoute = (): StubRoute => ({
 
 const lookupRoutes = (): StubRoute[] => [
   itemOptionsRoute(),
-  processOptionsRoute(),
   routingOptionsRoute(),
   codeValuesRoute(),
 ];
@@ -1279,7 +1278,6 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
         planListRoute(),
         planDetailRoute(inspectionPlanFixtures[2]),
         itemOptionsRoute(),
-        processOptionsRoute(),
         routingOptionsRoute(),
       ],
       '?plan=3003',
@@ -1287,8 +1285,57 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     expect(screen.queryByLabelText('라우팅')).not.toBeInTheDocument();
-    expect(screen.getByText('품목을 선택하면 라우팅이 표시됩니다.')).toBeInTheDocument();
+    expect(screen.queryByText('품목을 선택하면 라우팅이 표시됩니다.')).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
+  });
+
+  /* 상세 머리의 「라우팅 보기」 — 그 품목 · Rev 의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
+  it('품목이 있는 기준은 「라우팅 보기」로 그 품목의 라우팅 화면으로 옮긴다', async () => {
+    const { user, router } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute(inspectionPlanFixtures[1]),
+        ...lookupRoutes(),
+        {
+          match: (request) => isGet(request, '/mdm/items/5001'),
+          respond: () =>
+            jsonResponse({
+              item: { itemId: 5001, itemCode: 'SYN-ITEM-01', itemName: '합성 품목 A' },
+            }),
+        },
+      ],
+      '?plan=3002',
+    );
+
+    await screen.findByText(/\(SYN-ITEM-01\)/);
+    await user.click(await screen.findByRole('button', { name: '라우팅 보기' }));
+
+    expect(router?.state.location.pathname).toBe('/master-data/routing');
+    /* 품목 코드로 조회한 채 연다 — 라우팅 화면이 첫 50건 밖 품목의 이름을 비우지 않게. */
+    await waitFor(() => {
+      expect(router?.state.location.search).toBe('?q=SYN-ITEM-01&item=5001&rev=7003');
+    });
+  });
+
+  /* 라우팅 화면 「검사 기준 수정」이 보낸 주소 — 그 기준의 「기본 정보 수정」 창을 바로 연다(사용자 보고 2026-11-05). */
+  it('주소에 edit=1 이 있으면 기본 정보 수정 창을 열고 그 키를 지운다', async () => {
+    const { router } = renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), ...lookupRoutes()],
+      '?plan=3002&edit=1',
+    );
+
+    expect(await screen.findByRole('dialog', { name: '기본 정보 수정' })).toBeInTheDocument();
+    expect(router?.state.location.search).toBe('?plan=3002');
+  });
+
+  it('전 품목 공통 기준에는 「라우팅 보기」가 없다', async () => {
+    renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
+      '?plan=3003',
+    );
+
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: '라우팅 보기' })).not.toBeInTheDocument();
   });
 
   it('품목을 고르면 그 품목의 라우팅을 조회한다', async () => {
@@ -1498,26 +1545,6 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
   });
 
   /* 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다. */
-  it('선택 목록이 잘리면 그 사실을 폼 위에 낸다', async () => {
-    renderScreen(
-      [
-        planListRoute(),
-        planDetailRoute(),
-        itemOptionsRoute(),
-        processOptionsRoute(120),
-        routingOptionsRoute(),
-      ],
-      '?plan=3001',
-    );
-
-    /* 잘림 안내는 기본 정보 폼 위에 선다 — 그 폼은 「기본 정보 수정」 창 안이다(#196). */
-    await awaitPlanForm();
-    expect(
-      await screen.findByText(
-        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
-      ),
-    ).toBeInTheDocument();
-  });
 });
 
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
@@ -3364,15 +3391,13 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
  * 「아예 못 불러왔습니다」를 덮어 사용자가 지금 목록을 믿게 된다.
  */
 describe('InspectionStandardScreen — 선택 목록 조회 실패', () => {
-  it('품목·공정 조회가 실패하면 기준 폼 위에 그 사실을 내고 잘림 안내로 덮지 않는다', async () => {
+  it('품목 조회가 실패하면 기준 폼 위에 그 사실을 낸다', async () => {
     renderScreen(
       [
         {
           match: (request) => isGet(request, '/mdm/items'),
           respond: () => jsonResponse({ message: '' }, { status: 500 }),
         },
-        // 공정 목록은 성공하되 잘려서 온다 — 두 안내가 함께 참인 상태를 만든다.
-        processOptionsRoute(120),
         planListRoute(),
         planDetailRoute(),
         versionListRoute(),

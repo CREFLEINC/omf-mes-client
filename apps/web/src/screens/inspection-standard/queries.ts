@@ -372,8 +372,7 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 export const lookupKeys = {
   items: ['inspection-standard-items'] as const,
   itemDetail: (itemId: number) => ['inspection-standard-item-detail', itemId] as const,
-  processes: ['inspection-standard-processes'] as const,
-  /** PQC 기준 저장이 확정 라우팅을 새 Rev 로 바꿀 수 있어, 저장 뒤 이 접두로 라우팅 목록을 다시 받는다. */
+  /** 라우팅 화면에서 Rev 가 바뀌었을 수 있어, 수정 창을 열 때 · 저장 뒤 이 접두로 라우팅 목록을 다시 받는다. */
   routingsAll: ['inspection-standard-routings'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
   uoms: ['inspection-standard-uoms'] as const,
@@ -533,33 +532,6 @@ export const useItemOptions = (selectedItemId: number | null): LookupResult => {
       items.isError ||
       (isMissingSelected && selectedItem.isError && !isNotFound(selectedItem.error)),
     isLoading: items.isPending || (isMissingSelected && selectedItem.isPending),
-  };
-};
-
-/** 공정 선택 목록. IQC 기준에는 공정이 없으므로 비우는 것이 정상 값이다. */
-export const useProcessOptions = (): LookupResult => {
-  const { client } = useApiClient();
-
-  const processes = useQuery({
-    queryKey: lookupKeys.processes,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),
-      ),
-  });
-
-  const data = processes.data;
-
-  return {
-    entries:
-      data?.items.map((process) => ({
-        value: String(process.processId),
-        label: process.processName,
-        isActive: process.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: processes.isError,
-    isLoading: processes.isPending,
   };
 };
 

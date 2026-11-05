@@ -16,6 +16,8 @@ import {
   routingFixtures,
   routingOperationFixtures,
 } from './fixtures';
+import { SessionProvider } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { RoutingScreen } from './screen';
 import type { Routing } from './types';
 
@@ -87,11 +89,18 @@ const routingDetailRoute = (
 const renderScreen = (routes: StubRoute[], search = '') => {
   const { fetch, requests } = createRecordingFetch(routes);
   /* 앱처럼 데이터 라우터로 감싼다 — 저장하지 않은 편집의 이동 확인이 그 위에서만 선다. */
-  const { router } = renderWithProviders(<RoutingScreen />, {
-    fetch,
-    route: `${ROUTE}${search}`,
-    dataRouter: true,
-  });
+  const { router } = renderWithProviders(
+    /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+    <SessionProvider>
+      <RoutingScreen />
+    </SessionProvider>,
+    {
+      session: SYNTHETIC_SESSION,
+      fetch,
+      route: `${ROUTE}${search}`,
+      dataRouter: true,
+    },
+  );
 
   return { requests, router, user: userEvent.setup() };
 };
@@ -933,6 +942,51 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
 
     expect(operationNames()).toEqual(['1차 사출', '2차 조립', '3차 검사']);
     expect(savePuts(requests)).toHaveLength(0);
+  });
+
+  /* PQC 대상은 품목이다 — 머리에 이 품목의 PQC 검사 기준을 보이고, 없으면 대상이 아니라고 보인다(사용자 지시 2026-11-05). */
+  it('머리에 이 품목의 PQC 검사 기준을 보인다', async () => {
+    const { requests, router, user } = renderDraftOperations([
+      {
+        match: (request) => isGet(request, '/quality/inspection-plans'),
+        respond: () =>
+          jsonResponse(
+            listBody([
+              {
+                inspectionPlanId: 3101,
+                inspectionPlanCode: 'PQC-5001',
+                inspectionPlanName: '하우징 공정검사',
+                itemId: 5001,
+              },
+            ]),
+          ),
+      },
+    ]);
+
+    const label = await screen.findByText('PQC-5001 · 하우징 공정검사');
+    expect(headerRegion()).toContainElement(label);
+    const asked = requestsTo(requests, '/quality/inspection-plans')[0];
+    expect(asked?.url.searchParams.get('inspectionTypeCode')).toBe('PQC');
+    expect(asked?.url.searchParams.get('itemId')).toBe('5001');
+
+    /* 옆 「검사 기준 수정」은 그 기준을 검사 기준 화면에서 연다(사용자 지시 2026-11-05). */
+    await user.click(within(headerRegion()).getByRole('button', { name: '검사 기준 수정' }));
+    expect(router?.state.location.pathname).toBe('/master-data/inspection-standard');
+    expect(router?.state.location.search).toBe('?plan=3101&edit=1');
+  });
+
+  it('품목 PQC 검사 기준이 없으면 PQC 대상이 아니라고 보이고 「검사 기준 등록」으로 등록 창을 연다', async () => {
+    const { router, user } = renderDraftOperations([
+      {
+        match: (request) => isGet(request, '/quality/inspection-plans'),
+        respond: () => jsonResponse(listBody([])),
+      },
+    ]);
+
+    expect(await screen.findByText(/없음 — PQC 대상이 아닙니다/)).toBeInTheDocument();
+    await user.click(within(headerRegion()).getByRole('button', { name: '검사 기준 등록' }));
+    expect(router?.state.location.pathname).toBe('/master-data/inspection-standard');
+    expect(router?.state.location.search).toBe('?new=PQC&newItem=5001');
   });
 
   it('새 행은 식별자 없이 저장 본문에 실린다', async () => {

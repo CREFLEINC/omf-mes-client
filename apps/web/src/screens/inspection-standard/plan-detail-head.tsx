@@ -13,11 +13,11 @@ export interface PlanDetailHeadProps {
   plan: InspectionPlan;
   /** 품목 표시 이름. 비었으면(전 품목 공통 기준) 「품목 미지정」 */
   itemLabel: string | null;
-  /** 공정 표시 이름. 없으면 적지 않는다 */
-  processLabel: string | null;
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
+  /** 품목이 있는 기준에만 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
+  onOpenRouting?: () => void;
   /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
   onDeactivate?: () => void;
   isDeactivating?: boolean;
@@ -28,14 +28,14 @@ export interface PlanDetailHeadProps {
 
 /**
  * 검사 기준 상세 카드의 머리(omf-all-around#196) — 기준명 · 기준 코드 · 승인/사용 칩 · 「유형 · 품목」 한 줄.
- * 기본 정보(코드 · 이름 · 유형 · 품목 · 공정 · 라우팅)는 「기본 정보 수정」 창에서 고친다.
+ * 기본 정보(코드 · 이름 · 유형 · 품목 · 라우팅)는 「기본 정보 수정」 창에서 고친다.
  */
 export const PlanDetailHead = ({
   plan,
   itemLabel,
-  processLabel,
   routingRevision,
   onEdit,
+  onOpenRouting,
   onDeactivate,
   isDeactivating = false,
   onActivate,
@@ -61,6 +61,11 @@ export const PlanDetailHead = ({
           </Chip>
         </div>
         <div className="inspection-standard-plan-head-actions">
+          {onOpenRouting !== undefined && (
+            <Button variant="outlined" onClick={onOpenRouting}>
+              {t.actions.openRouting}
+            </Button>
+          )}
           {onDeactivate !== undefined && (
             <Button variant="outlined" disabled={isDeactivating} onClick={onDeactivate}>
               {messages.common.deactivate}
@@ -86,8 +91,6 @@ export const PlanDetailHead = ({
           { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
           { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
           { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
-          /* 공정 · 생략 여부 · 라우팅은 비었거나 꺼져도 늘 보인다(사용자 지시 2026-11-04). */
-          { label: t.fields.process, value: processLabel ?? '-' },
         ].map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>
@@ -110,12 +113,15 @@ export const PlanDetailHead = ({
             )}
           </dd>
         </div>
-        <div>
-          <dt className="field-label">{t.fields.routing}</dt>
-          <dd className="inspection-standard-plan-routing-fact">
-            <RoutingSummary revision={routingRevision} />
-          </dd>
-        </div>
+        {/* 라우팅이 없으면 칸을 두지 않는다(사용자 지시 2026-11-05). */}
+        {routingRevision !== undefined && (
+          <div>
+            <dt className="field-label">{t.fields.routing}</dt>
+            <dd className="inspection-standard-plan-routing-fact">
+              <RoutingSummary revision={routingRevision} />
+            </dd>
+          </div>
+        )}
       </dl>
     </div>
   );

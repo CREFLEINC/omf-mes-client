@@ -35,7 +35,6 @@ export interface PlanPaneProps {
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   itemOptions: SelectOption[];
-  processOptions: SelectOption[];
   /** 그 품목의 라우팅 Rev 들 — 채운 Rev 를 코드 · 버전 · 상태로 보인다. */
   routingRevisions: RoutingRevision[];
   /** 라우팅 칸에 채울 값 — 그 품목의 작성 중 최신 Rev, 없으면 확정 최신 Rev(사용자 지시 2026-11-04). 받는 중이면 undefined, 없으면 null. */
@@ -78,7 +77,6 @@ export const PlanPane = ({
   banner,
   optionsNotice,
   itemOptions,
-  processOptions,
   routingRevisions,
   autoRoutingId,
   routingDisabledReason,
@@ -98,8 +96,13 @@ export const PlanPane = ({
   const itemErrorId = useId();
   const itemOption = itemOptions.find((option) => option.value === values.itemId) ?? null;
   const routingId = useId();
-  const routingHintId = useId();
-  const isRoutingShown = routingDisabledReason === null;
+  const routingRevision = routingRevisions.find(
+    (revision) => revision.routingId === values.routingId,
+  );
+  /* 라우팅이 없는 품목이면 칸을 두지 않는다(사용자 지시 2026-11-05) — 오류가 있으면 오류는 보인다. */
+  const isRoutingShown =
+    routingDisabledReason === null &&
+    (routingRevision !== undefined || fieldErrors.routingId !== undefined);
 
   /*
    * 비어 있는 필수 칸은 처음부터 테두리만 빨갛게 한다(사용자 지시 2026-11-04) — 「필수 입력 항목입니다」 글은 화면에
@@ -116,8 +119,6 @@ export const PlanPane = ({
       ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
       : {};
   };
-  const isPqc = values.inspectionTypeCode === 'PQC';
-
   /*
    * 라우팅은 고르지 않고 자동으로 채운다(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
    * 이미 저장된 기준도 창을 열면 지금 Rev 로 다시 채운다. 품목을 비우면 라우팅도 비운다.
@@ -220,7 +221,7 @@ export const PlanPane = ({
           </div>
         </div>
 
-        {/* 둘째 줄 — 검사 유형 · 공정(사용자 시안 2026-11-04). */}
+        {/* 둘째 줄 — 검사 유형(사용자 시안 2026-11-04). 공정 칸은 없다 — PQC 기준은 제품에 붙고, 검사할 공정은 라우팅 「검사 관리」가 정한다(사용자 결정 2026-11-04). */}
         <SelectField
           label={t.fields.inspectionType}
           required
@@ -231,20 +232,6 @@ export const PlanPane = ({
           invalid={isBlank(values.inspectionTypeCode)}
         />
 
-        {/* IQC · OQC 는 공정을 비워도 된다 — PQC 만 필수다. */}
-        <SelectField
-          label={t.fields.process}
-          /* PQC 기준은 공정이 필수다 — 필수 표시 · 이름 오른쪽 안내 · 빈 칸 빨간 테두리(사용자 지시 2026-11-04). */
-          required={isPqc}
-          {...(isPqc ? { hint: t.actionReasons.pqcNeedsProcess } : {})}
-          options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
-          value={values.processId}
-          placeholder={t.values.notSelected}
-          onChange={(processId) => onChange({ processId })}
-          error={shownError('processId')}
-          invalid={isPqc && isBlank(values.processId)}
-        />
-
         {/* 셋째 줄 — 품목 · 라우팅(사용자 지시 2026-11-04). */}
         {/*
          * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
@@ -252,14 +239,7 @@ export const PlanPane = ({
          * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
         <div className="field-cell search-select-cell">
-          {/* 품목을 고르기 전에는 라우팅 칸 대신 품목 이름 오른쪽에 안내를 둔다(사용자 지시 2026-11-04). */}
-          <FieldLabel
-            htmlFor={itemId}
-            label={t.fields.item}
-            {...(routingDisabledReason !== null
-              ? { hint: routingDisabledReason, hintId: routingHintId }
-              : {})}
-          />
+          <FieldLabel htmlFor={itemId} label={t.fields.item} />
           <ItemSelect
             id={itemId}
             selectedOption={itemOption}
@@ -278,7 +258,7 @@ export const PlanPane = ({
         </div>
 
         {/*
-         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내는 품목 이름 오른쪽).
+         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내 문구도 두지 않는다 · 사용자 지시 2026-11-05).
          * 고르는 칸이 아니라 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04).
          */}
         {isRoutingShown && (
@@ -288,11 +268,7 @@ export const PlanPane = ({
             </span>
             {/* 입력칸 모양도 두지 않는다 — 값 글자만(사용자 지시 2026-11-04). */}
             <p className="inspection-standard-plan-routing" aria-labelledby={routingId}>
-              <RoutingSummary
-                revision={routingRevisions.find(
-                  (revision) => revision.routingId === values.routingId,
-                )}
-              />
+              <RoutingSummary revision={routingRevision} />
             </p>
             {fieldErrors.routingId !== undefined && (
               <span className="field-error">{fieldErrors.routingId}</span>

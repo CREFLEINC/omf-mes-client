@@ -13,7 +13,6 @@ export const PLAN_FORM_FIELDS: readonly string[] = [
   'inspectionPlanName',
   'inspectionTypeCode',
   'itemId',
-  'processId',
   'routingId',
 ];
 
@@ -44,10 +43,6 @@ export const validatePlanForm = (values: PlanFormValues): Record<string, string>
 
   if (values.inspectionTypeCode === '') {
     errors.inspectionTypeCode = t.required;
-  }
-
-  if (values.inspectionTypeCode === 'PQC' && values.processId === '') {
-    errors.processId = t.required;
   }
 
   return errors;

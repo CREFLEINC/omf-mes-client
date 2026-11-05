@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { DisabledAction } from './disabled-action';
-import { OPERATION_FLAG_KEYS } from './operation-order';
+import { SHOWN_OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft } from './types';
 
 const t = messages.routing;
@@ -48,7 +48,7 @@ export interface OperationsPaneProps {
  * 열이 화면 폭을 먹기 때문이다. 전체 항목은 행 편집 다이얼로그에서 본다.
  */
 const managedItemsLabel = (draft: OperationDraft): string => {
-  const enabled = OPERATION_FLAG_KEYS.filter((key) => draft[key]).map(
+  const enabled = SHOWN_OPERATION_FLAG_KEYS.filter((key) => draft[key]).map(
     (key) => t.operationFlags[key],
   );
 

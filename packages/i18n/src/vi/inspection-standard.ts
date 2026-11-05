@@ -16,6 +16,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
+    openRouting: 'Xem routing',
     reactivate: 'Sử dụng lại',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
@@ -39,7 +40,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actionReasons: {
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
     routingNeedsItem: 'Chọn mặt hàng thì routing sẽ hiển thị.',
-    pqcNeedsProcess: 'PQC phải chọn công đoạn.',
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',

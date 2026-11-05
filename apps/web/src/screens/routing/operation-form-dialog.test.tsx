@@ -51,28 +51,29 @@ describe('OperationFormDialog', () => {
     expect(screen.getByText('공정 수정')).toBeInTheDocument();
   });
 
-  it('관리 플래그 7종을 확인칸으로 낸다', () => {
+  /* 「검사 관리」는 두지 않는다 — PQC 대상은 공정이 아니라 품목이다(사용자 결정 2026-11-05). */
+  it('관리 플래그 6종을 확인칸으로 내고 검사 관리는 두지 않는다', () => {
     renderDialog();
 
     for (const name of [
       'MES 관리',
       '자재투입 관리',
       '실적 관리',
-      '검사 관리',
       '산출 LOT 필수',
       '설비 필수',
       '금형 필수',
     ]) {
       expect(screen.getByRole('checkbox', { name })).toBeInTheDocument();
     }
+    expect(screen.queryByRole('checkbox', { name: '검사 관리' })).not.toBeInTheDocument();
   });
 
   it('확인칸을 누르면 그 항목만 바꾼 패치를 올린다', async () => {
     const { props, user } = renderDialog();
 
-    await user.click(screen.getByRole('checkbox', { name: '검사 관리' }));
+    await user.click(screen.getByRole('checkbox', { name: '금형 필수' }));
 
-    expect(props.onChange).toHaveBeenCalledWith({ inspectionManaged: true });
+    expect(props.onChange).toHaveBeenCalledWith({ moldRequired: true });
   });
 
   /*

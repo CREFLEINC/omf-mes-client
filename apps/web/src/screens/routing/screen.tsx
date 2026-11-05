@@ -11,12 +11,14 @@ import {
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel, selectableLookupOptions } from '../../patterns/lookup-display';
 import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { DependencyDialog } from './dependency-dialog';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
@@ -48,6 +50,7 @@ import {
   routingKeys,
   useItemList,
   useOperationDependencies,
+  usePqcPlanForItem,
   useProcessOptions,
   useRoutingDetail,
   useRoutingList,
@@ -92,6 +95,9 @@ interface OperationDialogState {
 }
 
 const t = messages.routing;
+
+/** 검사 기준 화면 — 「PQC 검사 기준」 옆 단추가 이 주소로 옮긴다(`plan` · `edit` · `new` · `newItem` 은 그 화면의 주소 칸이다). */
+const INSPECTION_STANDARD_PATH = '/master-data/inspection-standard';
 
 /** 바뀌면 편집 대상이 바뀌는 질의 — 품목과 Rev. */
 const EDIT_TARGET_PARAMS = ['item', 'rev'] as const;
@@ -198,6 +204,8 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
  */
 const RoutingWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { session } = useSession();
   const toast = useToast();
   const { client } = useApiClient();
 
@@ -741,6 +749,32 @@ const RoutingWorkspace = () => {
     return null;
   })();
 
+  /* 머리에 이 품목의 PQC 검사 기준을 보인다 — PQC 대상은 공정이 아니라 품목이다(사용자 지시 2026-11-05). */
+  const pqcPlan = usePqcPlanForItem(selectedItemId);
+  const pqcPlanLabel = (() => {
+    if (pqcPlan.data === undefined) return null;
+    return pqcPlan.data === null
+      ? t.values.pqcPlanNone
+      : t.values.pqcPlanItem(pqcPlan.data.code, pqcPlan.data.name);
+  })();
+  /* 검사 기준 화면으로 옮긴다 — 기준이 있으면 그 기준을, 없으면 이 품목의 PQC 기준 등록 창을 연다(사용자 지시 2026-11-05). */
+  const pqcPlanAction = (() => {
+    if (pqcPlan.data === undefined || selectedItemId === null) return null;
+    if (!toWebAccess(session?.permissions).allows(INSPECTION_STANDARD_PATH)) return null;
+    const plan = pqcPlan.data;
+    return plan === null
+      ? {
+          label: t.actions.registerPqcPlan,
+          onClick: () =>
+            navigate(`${INSPECTION_STANDARD_PATH}?new=PQC&newItem=${String(selectedItemId)}`),
+        }
+      : {
+          label: t.actions.editPqcPlan,
+          onClick: () =>
+            navigate(`${INSPECTION_STANDARD_PATH}?plan=${String(plan.inspectionPlanId)}&edit=1`),
+        };
+  })();
+
   /**
    * 우측 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
@@ -764,6 +798,8 @@ const RoutingWorkspace = () => {
           mode="create"
           itemLabel={itemLabel}
           routingVersion={null}
+          pqcPlanLabel={pqcPlanLabel}
+          pqcPlanAction={pqcPlanAction}
           status={null}
           values={createValues}
           onChange={(patch) => {
@@ -829,6 +865,8 @@ const RoutingWorkspace = () => {
         mode="edit"
         itemLabel={itemLabel}
         routingVersion={detail.data.routing.routingVersion}
+        pqcPlanLabel={pqcPlanLabel}
+        pqcPlanAction={pqcPlanAction}
         status={resolveRoutingStatus(detail.data.routing.statusCode)}
         values={formState.values}
         onChange={changeHeaderValues}
