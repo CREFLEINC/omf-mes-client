@@ -1449,7 +1449,7 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     renderRoutedApp('/quality/lot-status', [...productionOrderRoutes(), ...lotStatusRoutes()]);
 
     const link = within(screen.getByRole('navigation', { name: '주 메뉴' })).getByRole('link', {
-      name: '작업지시 목록',
+      name: '작업계획',
     });
     link.focus();
     await user.keyboard('{Enter}');
@@ -1458,7 +1458,7 @@ describe('appRouter — 작업지시 목록 작업함의 진입 경로', () => {
     expect(
       screen.getAllByRole('heading', { level: 1, name: messages.erpWorkOrderFlow.title }),
     ).toHaveLength(1);
-    expect(hubTab('작업지시 목록', '작업지시 목록')).toHaveAttribute('aria-current', 'page');
+    expect(hubTab('작업계획', '작업계획')).toHaveAttribute('aria-current', 'page');
     expect(
       await screen.findByText(messages.erpWorkOrderFlow.list.emptyActionRequiredTitle),
     ).toBeVisible();

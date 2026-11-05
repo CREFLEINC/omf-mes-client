@@ -47,6 +47,31 @@ describe('ReferenceField와 PickerDialog(C-12)', () => {
     expect(onPick).toHaveBeenCalledWith({ id: 2, code: 'LN-B', name: '조립 B라인' });
   });
 
+  it('전체 표시 선택값도 팝업 선택과 지우기를 제공한다', async () => {
+    const user = userEvent.setup();
+    const onClear = vi.fn();
+    const onPick = vi.fn();
+    const value = '긴 이름의 생산 라인 ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    renderWithProviders(
+      <ReferenceField
+        wrapValue
+        label="생산 라인"
+        valueLabel={value}
+        source={source()}
+        onPick={onPick}
+        onClear={onClear}
+      />,
+    );
+    expect(screen.getByRole('button', { name: '생산 라인' })).toHaveTextContent(value);
+    await user.click(screen.getByRole('button', { name: t.clear('생산 라인') }));
+    expect(onClear).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: '생산 라인' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByText('조립 B라인'));
+    await user.click(within(dialog).getByRole('button', { name: t.pick }));
+    expect(onPick).toHaveBeenCalledWith({ id: 2, code: 'LN-B', name: '조립 B라인' });
+  });
+
   it('검색어로 다시 찾는다(Enter로도)', async () => {
     const user = userEvent.setup();
     const search = vi.fn();

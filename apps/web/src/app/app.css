@@ -3018,7 +3018,7 @@ dialog.routing-history-dialog {
   overflow-x: auto;
 }
 
-/* C-16 가로 넘침 금지 — BOM과 Routing을 마스터 점검 단계로 옮겨 한 행 입력 칸을 4개로 줄였다. 행 동작은 오른쪽 고정. */
+/* C-16 가로 넘침 금지 — BOM과 Routing을 BOM·Routing 단계로 옮겨 한 행 입력 칸을 4개로 줄였다. 행 동작은 오른쪽 고정. */
 .wide-table.production-plan-table table {
   min-width: 0;
 }
@@ -25261,6 +25261,12 @@ body:has(.page-nav-size [aria-expanded="true"])
   gap: var(--space-3);
 }
 
+/* 팝업에는 조건 칸이 키워드 하나뿐이라 고정 폭 대신 남는 폭을 채운다. */
+.reference-picker-keyword {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .date-time-field {
   align-items: stretch;
   min-width: 0;
@@ -25311,8 +25317,9 @@ body:has(.page-nav-size [aria-expanded="true"])
   color: var(--on-surface-variant);
 }
 
+/* 공장, 번호, 납기, 품목 네 칸과 버튼은 1280px 한 줄에 들어가지 않는다. 칸 폭을 줄이지 않고 버튼을 다음 줄 오른쪽 끝으로 내린다. */
 .filter-bar.erp-wo-filter-bar {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: var(--space-3);
   margin-bottom: 0;
 }
@@ -25342,17 +25349,31 @@ body:has(.page-nav-size [aria-expanded="true"])
   cursor: help;
 }
 
-/* 사유 도움말은 사유마다 한 줄이다. */
-.reason-help {
+/* 사유 도움말 말풍선: 사유마다 한 줄. 모양은 DS 툴팁과 같고, 위치는 `ReasonHelpBubble`이 정한다. */
+.reason-help-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  white-space: normal;
+  width: max-content;
+  max-width: 22rem;
+  padding: var(--space-1) var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-2);
+  pointer-events: none;
 }
 
 .erp-wo-summary {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-4);
   margin: 0;
   font: var(--type-body-sm);
@@ -25360,7 +25381,14 @@ body:has(.page-nav-size [aria-expanded="true"])
 
 .erp-wo-summary > div {
   display: flex;
+  align-items: baseline;
   gap: var(--space-1);
+}
+
+/* 처리하는 내내 확인하는 값(품목, 주문 수량)은 소제목 단계로 키운다. 번호는 제목이 이미 보인다. */
+.erp-wo-summary > .is-key dd {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
 }
 
 .erp-wo-summary dt {
@@ -25579,6 +25607,782 @@ body:has(.page-nav-size [aria-expanded="true"])
 .erp-wo-table td:first-child,
 .erp-wo-table th:first-child {
   padding-inline: var(--space-2);
+}
+
+/* W-02-01: 기존 DS의 표면과 조작을 유지하고 업무 구역의 너비·위계만 맞춘다. */
+/* 표 스크롤은 한 겹으로 두어 마지막 이동 열의 고정 기준이 본문 너비와 같게 한다. */
+.erp-wo-table > div {
+  overflow: visible;
+}
+
+.erp-wo-table th,
+.erp-wo-table td {
+  padding-inline: var(--space-1);
+}
+
+.erp-wo-counts {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+
+.erp-wo-filter-pane,
+.erp-wo-list-pane {
+  min-width: 0;
+}
+
+.erp-wo-list-pane {
+  padding: 0;
+  overflow: hidden;
+}
+
+.erp-wo-list-pane > .page-nav,
+.erp-wo-list-pane > [role='status'],
+.erp-wo-list-pane > [role='alert'] {
+  margin: var(--space-3) var(--space-4);
+}
+
+.erp-wo-table {
+  position: relative;
+  min-width: 0;
+}
+
+.erp-wo-table .ellipsis-cell {
+  max-width: 8rem;
+}
+
+.erp-wo-table th,
+.erp-wo-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 머리 정보는 잘라 숨기지 않고 라벨·값 한 쌍을 유지하며 다음 줄로 보낸다. */
+.erp-wo-summary {
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  padding-block: var(--space-2);
+}
+
+.erp-wo-summary > div {
+  min-width: 0;
+}
+
+.erp-wo-summary dd {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.process-page:has(.erp-wo-summary) .process-page-summary {
+  overflow: visible;
+  white-space: normal;
+}
+
+.process-page:has(.erp-wo-summary) .process-stepper {
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--outline-variant);
+}
+
+.erp-wo-master-grid,
+.erp-wo-assign-layout,
+.erp-wo-release-layout {
+  min-width: 0;
+}
+
+.erp-wo-assign-layout {
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+
+.erp-wo-assign-list,
+.erp-wo-assign-editor {
+  min-width: 0;
+}
+
+.erp-wo-assign-list .ellipsis-cell {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-wo-assign-editor {
+  padding: var(--space-3) var(--space-4);
+  container-type: inline-size;
+}
+
+.erp-wo-assign-editor .assign-editor-head {
+  top: calc(-1 * var(--space-3));
+  padding-block: var(--space-2);
+}
+
+.erp-wo-assign-editor .assign-editor-head > .section-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-assign-editor .assign-editor-actions {
+  flex: none;
+}
+
+/* 입력 감싸개의 고유 최소 폭이 두 번째 열을 패널 밖으로 밀지 않게 한다. */
+.erp-wo-assign-editor .assign-form > *,
+.erp-wo-assign-editor .assign-plan-row > * {
+  min-width: 0;
+}
+
+.erp-wo-assign-editor .assign-form .field-cell > *,
+.erp-wo-assign-editor .assign-form input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.erp-wo-assign-editor .assign-form input {
+  width: 100%;
+}
+
+.erp-wo-assign-editor .assign-fold {
+  flex-wrap: wrap;
+}
+
+.erp-wo-release-layout {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+
+.erp-wo-release-layout > * {
+  min-width: 0;
+}
+
+@container (max-width: 28rem) {
+  .erp-wo-assign-editor .assign-plan-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .erp-wo-assign-editor .assign-editor-head {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1100px) {
+  .erp-wo-assign-layout {
+    grid-template-columns: minmax(11rem, 1fr) minmax(0, 2fr);
+  }
+
+  .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .erp-wo-assign-layout,
+  .erp-wo-master-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* 내용 없는 탭 패널 여백은 빼고 현재 단계 본문 한 곳에만 내용을 둔다. */
+.erp-wo-stage-tabs [role="tabpanel"],
+.erp-wo-plan-toolbar [role="tabpanel"] {
+  display: none;
+}
+
+.erp-wo-plan-editor {
+  padding: var(--space-3);
+}
+
+.erp-wo-plan-editor .section-title {
+  font: var(--type-title-sm);
+}
+
+.erp-wo-plan-remarks > summary {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.erp-wo-assign-list table {
+  table-layout: fixed;
+}
+
+/* W-02-01: 시안의 정보 구조를 기존 DS 탭·폼·표로 구성한다. */
+.erp-wo-stage-tabs {
+  flex: none;
+  margin-block: var(--space-2);
+}
+
+.erp-wo-plan-workspace {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  align-content: start;
+}
+
+.erp-wo-plan-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.erp-wo-plan-toolbar > :first-child {
+  min-width: 0;
+}
+
+.erp-wo-plan-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-plan-totals > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.erp-wo-plan-totals dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-plan-totals dd {
+  margin: 0;
+  font: var(--type-title-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-wo-plan-note {
+  margin: 0;
+}
+
+.erp-wo-plan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem);
+  gap: var(--space-4);
+  min-width: 0;
+  align-items: start;
+}
+
+.erp-wo-plan-board,
+.erp-wo-plan-editor {
+  min-width: 0;
+}
+
+.erp-wo-plan-editor {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.erp-wo-plan-editor .section-title {
+  margin: 0;
+}
+
+.erp-wo-plan-editor-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.erp-wo-plan-editor-title > .mono-cell {
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-plan-editor > *,
+.erp-wo-plan-editor .field-cell > *,
+.erp-wo-plan-editor input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.erp-wo-plan-editor input {
+  width: 100%;
+}
+
+.erp-wo-plan-grid table {
+  table-layout: fixed;
+}
+
+.erp-wo-plan-grid .ellipsis-cell {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.erp-wo-plan-total {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+  text-align: right;
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-wo-week-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font: var(--type-body-sm);
+}
+
+.erp-wo-week-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.erp-wo-week-scroll {
+  overflow-x: auto;
+}
+
+.erp-wo-week-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-label-sm);
+}
+
+.erp-wo-week-table th,
+.erp-wo-week-table td {
+  padding: var(--space-1);
+  border: 1px solid var(--outline-variant);
+  vertical-align: top;
+}
+
+.erp-wo-week-table thead th {
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  text-align: center;
+  font-weight: 500;
+}
+
+.erp-wo-week-table thead th > span {
+  display: block;
+}
+
+.erp-wo-week-table tbody th > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-wo-week-table td {
+  height: 7rem;
+}
+
+.erp-wo-week-plan {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  min-width: 0;
+  margin-bottom: var(--space-1);
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font: var(--type-label-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.erp-wo-week-plan > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+}
+
+.erp-wo-week-plan[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.erp-wo-plan-outside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-assign-target {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.erp-wo-assign-target > small {
+  color: var(--on-surface-variant);
+  font: var(--type-label-sm);
+}
+
+@media (max-width: 1100px) {
+  .erp-wo-plan-layout {
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: var(--space-3);
+  }
+
+  .erp-wo-plan-board {
+    padding: var(--space-2);
+  }
+}
+
+@media (max-width: 760px) {
+  .erp-wo-plan-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* 작업계획 시안: 번호보다 업무 제목과 선택한 오더의 정보를 먼저 읽도록 둔다. */
+.process-page:has(.erp-wo-summary) .process-page-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+}
+
+.process-page:has(.erp-wo-summary) .process-page-back {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding-inline: 0;
+}
+
+.process-page:has(.erp-wo-summary) .process-page-title {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.process-page:has(.erp-wo-summary) .process-page-badges {
+  flex-wrap: wrap;
+}
+
+.process-page:has(.erp-wo-summary) .process-page-head-actions {
+  margin-left: 0;
+}
+
+.erp-wo-summary {
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-1);
+}
+
+.erp-wo-summary .is-order dd {
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.process-page:has(.erp-wo-summary) .process-page-past {
+  padding: var(--space-1) 0;
+  border: 0;
+  border-bottom: 1px solid var(--outline-variant);
+  border-radius: 0;
+}
+
+.erp-wo-stage-tabs {
+  margin-block: var(--space-2) 0;
+}
+
+.erp-wo-stage-index {
+  margin-right: var(--space-1);
+}
+
+.erp-wo-plan-totals {
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+}
+
+.erp-wo-plan-totals > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.erp-wo-plan-totals dd {
+  font: var(--type-body-sm);
+  font-weight: 500;
+}
+
+.erp-wo-plan-board,
+.erp-wo-plan-editor,
+.erp-wo-assign-list,
+.erp-wo-assign-editor {
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-plan-editor {
+  padding: var(--space-3);
+  gap: var(--space-1);
+}
+
+.erp-wo-plan-board {
+  padding: var(--space-3);
+}
+
+.erp-wo-week-table tbody th {
+  width: 5rem;
+  padding: var(--space-2) var(--space-1);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+
+.erp-wo-week-table td {
+  height: 7rem;
+  background: var(--surface);
+}
+
+.erp-wo-week-plan {
+  padding: var(--space-2) var(--space-1);
+}
+
+.erp-wo-plan-editor-title {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+@media (max-width: 1100px) {
+  .process-page:has(.erp-wo-summary) .process-page-title-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .process-page:has(.erp-wo-summary) .process-page-head-actions {
+    grid-column: 3;
+  }
+
+  .erp-wo-plan-editor {
+    padding: var(--space-3);
+    gap: var(--space-1);
+  }
+}
+
+
+/* 4M은 위치·계획 시간도 처음부터 표시한다. */
+.erp-wo-assign-editor .assign-form > .assign-group-title,
+.erp-wo-assign-editor .assign-form > .assign-empty {
+  display: none;
+}
+
+.erp-wo-assign-editor .assign-form {
+  align-items: start;
+  gap: var(--space-2) var(--space-3);
+}
+
+.erp-wo-assign-editor .assign-plan-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.erp-wo-assign-editor .date-time-field-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem;
+  gap: var(--space-1);
+}
+
+.erp-wo-assign-editor .date-time-field-controls > *,
+.erp-wo-assign-editor .date-time-field-time {
+  min-width: 0;
+  width: auto;
+}
+
+.erp-wo-plan-board-title {
+  margin: 0 0 var(--space-2);
+  font: var(--type-title-sm);
+}
+
+/* W-02-01 각 단계: 공통 제목 아래에 대상·선택·반영 사항을 같은 위계로 둔다. */
+.erp-wo-master-workspace,
+.erp-wo-release-workspace {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  align-content: start;
+}
+
+.erp-wo-master-workspace .section-heading-row,
+.erp-wo-release-workspace .section-heading-row {
+  margin: 0;
+}
+
+.erp-wo-master-workspace .section-title,
+.erp-wo-release-workspace .section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.erp-wo-master-board {
+  min-width: 0;
+  padding: 0;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-master-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--type-body-sm);
+}
+
+.erp-wo-master-table th {
+  padding: var(--space-3);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  text-align: left;
+  font: var(--type-label-sm);
+}
+
+.erp-wo-master-table td {
+  padding: var(--space-4) var(--space-3);
+  vertical-align: top;
+}
+
+.erp-wo-master-table th:nth-child(1) {
+  width: 10rem;
+}
+
+.erp-wo-master-table th:nth-child(2) {
+  width: 22%;
+}
+
+.erp-wo-master-table td > *,
+.erp-wo-master-field,
+.erp-wo-master-field > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.erp-wo-master-item {
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-master-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: var(--space-1);
+}
+
+.erp-wo-master-value {
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-assign-selected-target {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.erp-wo-assign-count {
+  margin-left: var(--space-2);
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) .action-bar-left {
+  display: contents;
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) .action-bar-remaining {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.action-bar:has(.erp-wo-assign-footer-actions) .action-bar-actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.erp-wo-assign-footer-actions {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.erp-wo-release-scope {
+  margin: 0;
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+
+.erp-wo-release-detail {
+  min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.erp-wo-release-detail > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.erp-wo-release-summary {
+  margin: var(--space-3) 0 0;
+}
+
+.erp-wo-release-summary > div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-1);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.erp-wo-release-summary > div:last-child {
+  border-bottom: 0;
+}
+
+.erp-wo-release-summary dt {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.erp-wo-release-summary dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-wo-release-effects {
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 1100px) {
+  .erp-wo-release-workspace .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+
+  .erp-wo-master-table td {
+    padding: var(--space-3) var(--space-2);
+  }
+}
+
+@media (max-width: 760px) {
+  .erp-wo-release-workspace .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /*
@@ -32969,6 +33773,691 @@ button.iqc-inspection-step-toggle:focus-visible {
   width: 10rem;
 }
 
+/* 작업계획 시안의 패널 비율: 계획 편집 고정 폭, 4M 목록:입력 0.85:1.4, 배포 상세:반영 3:2. */
+.erp-wo-plan-layout {
+  grid-template-columns: minmax(0, 1fr) 15.5rem;
+  gap: var(--space-3);
+}
+
+.erp-wo-assign-layout {
+  grid-template-columns: minmax(15.625rem, 0.85fr) minmax(0, 1.4fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.erp-wo-release-workspace .erp-wo-release-layout {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.erp-wo-release-summary > div {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+.erp-wo-release-summary dd {
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .erp-wo-plan-layout,
+  .erp-wo-assign-layout,
+  .erp-wo-release-workspace .erp-wo-release-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 목록 폭이 좁아져도 선택할 작업지시 번호는 끝까지 읽을 수 있어야 한다. */
+.erp-wo-assign-list .ellipsis-cell {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* 복수 오더는 한 편집 세션에서 계획을 모으고, 실행 단계는 오더별 기존 검증을 사용한다. */
+.erp-wo-multi-page { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--space-3); }
+.erp-wo-multi-header { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.erp-wo-multi-header h1 { margin: 0; font: var(--type-title-lg); }
+.erp-wo-multi-header p { margin: 0; font: var(--type-body-sm); color: var(--on-surface-variant); }
+.erp-wo-multi-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-3); }
+.erp-wo-multi-orders { flex: none; max-height: 13rem; overflow: auto; padding: 0; }
+.erp-wo-multi-orders td { padding: var(--space-2) var(--space-3); }
+.erp-wo-multi-orders .is-active { background: var(--primary-container); color: var(--on-primary-container); }
+.erp-wo-multi-body > * { flex-shrink: 0; min-width: 0; }
+.erp-wo-multi-execution { display: flex; flex: 1; flex-direction: column; min-height: 30rem; gap: var(--space-3); }
+.erp-wo-multi-execution > .field-cell { max-width: 32rem; }
+.erp-wo-multi-execution .process-page > .process-page-head,
+.erp-wo-multi-execution .process-page > .erp-wo-stage-tabs { display: none; }
+.erp-wo-multi-execution .process-page { flex: 1; min-height: 30rem; }
+.erp-wo-multi-execution .action-bar { position: sticky; bottom: 0; z-index: 2; background: var(--surface); }
+.erp-wo-distribution { display: grid; gap: var(--space-2); justify-items: start; }
+.erp-wo-distribution-settings { width: 100%; display: grid; gap: var(--space-3); }
+.erp-wo-distribution-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.erp-wo-distribution-fields > * { min-width: 0; }
+.erp-wo-plan-split { display: grid; gap: var(--space-2); padding-block: var(--space-2); border-block: 1px solid var(--outline-variant); }
+.erp-wo-plan-order { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-assign-line-control { grid-column: 1 / -1; }
+.erp-wo-assign-selected-target > p { margin: 0; }
+.erp-wo-assign-selected-target .erp-wo-assign-summary { margin-top: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-container); border-radius: var(--radius-sm); }
+@media (max-width: 1100px) { .erp-wo-distribution-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .erp-wo-distribution-fields { grid-template-columns: minmax(0, 1fr); } }
+
+.erp-wo-batch-qty { width: 5rem; min-width: 0; padding: var(--space-1); border: 1px solid var(--outline); border-radius: var(--radius-sm); background: var(--surface); color: var(--on-surface); font: var(--type-body-sm); text-align: right; }
+.erp-wo-multi-orders table { min-width: 48rem; }
+.erp-wo-multi-orders td { overflow-wrap: anywhere; }
+
+.erp-wo-multi-page .erp-wo-multi-orders { max-height: none; }
+.erp-wo-multi-page .erp-wo-multi-orders table { min-width: 57rem; }
+.erp-wo-multi-page .erp-wo-multi-orders th:first-child { width: 10rem; }
+.erp-wo-multi-page .erp-wo-multi-orders th:nth-child(2) { width: 12rem; }
+.erp-wo-multi-week-heading { display: grid; gap: var(--space-2); }
+.erp-wo-multi-week-heading .field-cell { max-width: 30rem; }
+.erp-wo-week-plan small { display: block; font-size: 0.65rem; overflow-wrap: anywhere; }
+
+.erp-wo-multi-view-tabs [role='tabpanel'] { display: none; }
+.erp-wo-multi-week-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-3); }
+.erp-wo-multi-week-tools > .erp-wo-distribution { display: contents; }
+.erp-wo-multi-week-tools > .erp-wo-distribution > button { grid-column: 2; grid-row: 1; align-self: start; margin-top: var(--space-5); }
+.erp-wo-multi-week-tools .erp-wo-distribution-settings { grid-column: 1 / -1; }
+.erp-wo-multi-page .erp-wo-plan-board-title { display: none; }
+.erp-wo-multi-page .erp-wo-plan-toolbar .section-title { margin: 0; }
+
+.erp-wo-multi-week-heading .field-note { margin: 0; max-width: none; }
+.erp-wo-multi-week-tools > .erp-wo-distribution > button { margin-top: 0; }
+
+/* 작업계획 목록: 상태별 조회와 선택 대상의 처리를 서로 다른 줄에 둔다. */
+.erp-wo-status-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.erp-wo-status-filter { min-height: 3.75rem; width: 100%; justify-content: space-between; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); }
+.erp-wo-status-filter[aria-pressed='true'] { background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
+.erp-wo-status-name { font: var(--type-title-sm); }
+.erp-wo-status-number { display: inline-flex; align-items: baseline; gap: var(--space-1); font: var(--type-title-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.erp-wo-status-number small { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.erp-wo-selection-toolbar { display: grid; grid-template-columns: minmax(10rem, 1fr) auto; gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container); }
+.erp-wo-selection-info strong { font: var(--type-title-sm); }
+.erp-wo-selection-info p { margin: var(--space-1) 0 0; font: var(--type-body-sm); color: var(--on-surface-variant); }
+.erp-wo-selection-toolbar .erp-wo-bulk-actions { align-self: center; gap: var(--space-2); }
+@media (max-width: 1100px) { .erp-wo-selection-toolbar { grid-template-columns: minmax(0, 1fr); } .erp-wo-selection-toolbar .erp-wo-bulk-actions { justify-content: flex-start; } }
+@media (max-width: 600px) { .erp-wo-status-filters { grid-template-columns: minmax(0, 1fr); } }
+
+.erp-wo-status-filter { display: flex; align-items: center; border: 1px solid var(--outline-variant); background: var(--surface); color: var(--on-surface); cursor: pointer; text-align: left; }
+.erp-wo-status-filter:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.erp-wo-status-filter:hover { border-color: var(--primary); }
+.erp-wo-action-choice { display: grid; gap: var(--space-1); justify-items: stretch; }
+.erp-wo-action-choice small { font: var(--type-label-sm); color: var(--on-surface-variant); text-align: center; }
+.erp-wo-selection-toolbar .erp-wo-bulk-actions { align-items: start; }
+
+.erp-wo-multi-week-tools { align-items: center; }
+.erp-wo-multi-week-tools .erp-wo-multi-week-heading { align-content: center; }
+.erp-wo-multi-week-tools > .erp-wo-distribution > button { margin-top: 0; align-self: center; }
+
+.erp-wo-multi-plan-week { display: grid; gap: var(--space-3); min-width: 0; }
+.erp-wo-multi-plan-week[hidden] { display: none; }
+
+/* 사이드바를 제외한 실제 작업 영역 너비를 기준으로 배치를 바꾼다. */
+.erp-wo-multi-page,
+.process-page:has(.erp-wo-summary) { container: erp-wo-page / inline-size; }
+.erp-wo-master-workspace { container: erp-wo-master / inline-size; }
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(1) { width: 16%; }
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(2) { width: 24%; }
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(3),
+.erp-wo-master-workspace .erp-wo-master-table th:nth-child(4) { width: 30%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(1) { width: 14%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(2) { width: 18%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(3),
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(4) { width: 29%; }
+.erp-wo-master-workspace .erp-wo-master-table:has(.erp-wo-master-check) th:nth-child(5) { width: 10%; }
+.erp-wo-master-workspace .erp-wo-master-table td { min-width: 0; overflow-wrap: anywhere; }
+.erp-wo-master-revision [role='combobox'] { height: auto; min-height: var(--control-height-md); padding-block: var(--space-2); align-items: center; text-align: left; }
+.erp-wo-master-revision [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.5; }
+body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+@container erp-wo-master (max-width: 64rem) {
+  .erp-wo-master-board { overflow-x: visible; }
+  .erp-wo-master-table { display: block; position: relative; }
+  .erp-wo-master-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .erp-wo-master-table tbody { display: grid; }
+  .erp-wo-master-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3) var(--space-4); padding: var(--space-4); border-bottom: 1px solid var(--outline-variant); }
+  .erp-wo-master-table tbody tr:last-child { border-bottom: 0; }
+  .erp-wo-master-table td { display: block; padding: 0; }
+  .erp-wo-master-table td::before { display: block; content: attr(data-label); margin-bottom: var(--space-1); color: var(--on-surface-variant); font: var(--type-label-sm); }
+  .erp-wo-master-check { grid-column: 1 / -1; }
+}
+@container erp-wo-master (max-width: 36rem) {
+  .erp-wo-master-table tbody tr { grid-template-columns: minmax(0, 1fr); }
+}
+@container erp-wo-page (max-width: 52rem) {
+  .erp-wo-plan-layout,
+  .erp-wo-release-workspace .erp-wo-release-layout { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-distribution-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container erp-wo-page (max-width: 46rem) {
+  .erp-wo-assign-layout { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-assign-list { max-height: 14rem; overflow: auto; }
+  .erp-wo-multi-orders table { min-width: 50rem; }
+}
+@container erp-wo-page (max-width: 36rem) {
+  .erp-wo-distribution-fields { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-multi-week-tools { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-multi-week-tools > .erp-wo-distribution > button { grid-column: 1; grid-row: auto; justify-self: start; }
+  .erp-wo-stage-tabs [role='tablist'], .erp-wo-multi-view-tabs [role='tablist'] { max-width: 100%; overflow-x: auto; }
+  .action-bar { flex-wrap: wrap; gap: var(--space-2); }
+  .action-bar-left { flex: 1 1 100%; flex-wrap: wrap; }
+  .action-bar-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .action-bar:has(.erp-wo-assign-footer-actions) { grid-template-columns: minmax(0, 1fr) auto; }
+  .action-bar:has(.erp-wo-assign-footer-actions) .action-bar-remaining { grid-column: 1 / -1; grid-row: 1; }
+  .action-bar:has(.erp-wo-assign-footer-actions) .action-bar-actions { grid-column: 1; grid-row: 2; }
+  .action-bar:has(.erp-wo-assign-footer-actions) .erp-wo-assign-footer-actions { grid-column: 2; grid-row: 2; }
+  .process-page-title-row { grid-template-columns: minmax(0, 1fr) !important; }
+  .process-page-head-actions { grid-column: 1 !important; }
+  .erp-wo-assign-editor .assign-form { grid-template-columns: minmax(0, 1fr); }
+  .erp-wo-assign-editor .assign-plan-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container erp-wo-page (max-width: 52rem) {
+  .erp-wo-week-table { min-width: 40rem; }
+  .erp-wo-plan-editor { scroll-margin-top: var(--space-3); }
+}
+@container erp-wo-page (max-width: 36rem) {
+  .action-bar-actions { margin-left: auto; }
+}
+
+/* 하단 동작 바 아래로 입력이 가려지지 않도록 본문만 남은 높이 안에서 스크롤한다. */
+.process-page:has(.erp-wo-summary) { height: 100%; min-height: 0; }
+.process-page:has(.erp-wo-summary) > .process-page-body { min-height: 0; overflow: auto; }
+.process-page:has(.erp-wo-summary) > .process-page-head,
+.process-page:has(.erp-wo-summary) > .erp-wo-stage-tabs,
+.process-page:has(.erp-wo-summary) > .process-page-past,
+.process-page:has(.erp-wo-summary) > .action-bar { flex-shrink: 0; }
+body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] { padding-block: var(--space-2); }
+
+.erp-wo-distribution-heading, .erp-wo-distribution-row-head, .erp-wo-distribution-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.erp-wo-distribution-heading .section-title { margin: 0; }
+.erp-wo-distribution-row-head .field-cell { flex: 1; min-width: 12rem; }
+.erp-wo-distribution-segments { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,26rem),1fr)); align-items: start; gap: var(--space-3); }
+.erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
+.erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
+.erp-wo-segment-fields { display: grid; grid-template-columns: minmax(0,14rem) minmax(0,12rem); gap: var(--space-3); margin-top: var(--space-3); }
+.erp-wo-segment-fields > * { min-width: 0; }
+.erp-wo-daily-quantities { display: grid; grid-template-columns: repeat(auto-fill,minmax(8rem,10rem)); gap: var(--space-2); max-height: 18rem; overflow: auto; margin-top: var(--space-3); }
+.erp-wo-checkbox { display: flex; align-items: center; gap: var(--space-2); font: var(--type-body-sm); }
+.erp-wo-checkbox input { flex: none; }
+.erp-wo-common-conditions { padding: var(--space-3); background: var(--surface-container); border-radius: var(--radius-md); }
+.erp-wo-common-conditions > * + * { margin-top: var(--space-3); }
+.erp-wo-distribution-preview { display: grid; gap: var(--space-3); min-width: 0; }
+.erp-wo-preview-scroll { max-width: 100%; overflow: auto; max-height: 22rem; }
+.erp-wo-preview-scroll table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); min-width: 34rem; }
+.erp-wo-preview-scroll th, .erp-wo-preview-scroll td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; }
+.erp-wo-preview-scroll th { background: var(--surface-container); }
+.erp-wo-preview-scroll caption { text-align: left; font: var(--type-title-sm); padding-block: var(--space-2); }
+.erp-wo-distribution-settings [role='combobox'] { height: auto; min-height: var(--control-height-sm); padding-block: var(--space-2); text-align: left; }
+.erp-wo-distribution-settings [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+
+.erp-wo-distribution-preview > button { justify-self: end; }
+body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] > span:last-child { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; min-width: 0; }
+body:has(.erp-wo-distribution-settings [role='combobox'][aria-expanded='true']) [role='listbox'] [role='option'] { padding-block: var(--space-2); }
+
+.erp-wo-segment-line { grid-column: 1 / -1; }
+.erp-wo-distribution-line-field { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.erp-wo-distribution-line-value { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); font: var(--type-body-sm); overflow-wrap: anywhere; background: var(--surface); }
+.erp-wo-distribution-line-buttons { display: flex; gap: var(--space-1); flex-shrink: 0; }
+@container erp-wo-page (max-width: 36rem) { .erp-wo-segment-fields { grid-template-columns: minmax(0,1fr); } .erp-wo-distribution-line-field { flex-wrap: wrap; } .erp-wo-distribution-line-value { flex-basis: 100%; } }
+
+.erp-wo-segment-date { width: 100%; max-width: 12rem; }
+.erp-wo-segment-mode { width: 100%; max-width: 14rem; }
+.erp-wo-segment-quantity { width: 100%; max-width: 10rem; justify-self: start; }
+
+.erp-wo-segment-fields > .field-note { grid-column: 1 / -1; }
+
+.erp-wo-distribution-segment .erp-wo-distribution-row-head { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; }
+.erp-wo-distribution-segment .erp-wo-distribution-row-head .field-cell { flex-basis: 100%; min-width: 0; }
+.erp-wo-distribution-segment .erp-wo-distribution-row-head [role="combobox"] { width: 100%; }
+.erp-wo-distribution-segment .erp-wo-distribution-row-head > button { margin-left: auto; }
+.erp-wo-distribution-segment > .erp-wo-checkbox { padding-bottom: var(--space-2); border-bottom: 1px solid var(--outline-variant); font: var(--type-title-sm); }
+.erp-wo-distribution-segment summary { color: var(--on-surface-variant); }
+.erp-wo-distribution-actions { justify-content: flex-end; padding-top: var(--space-3); border-top: 1px solid var(--outline-variant); }
+.erp-wo-common-conditions > summary { cursor: pointer; font: var(--type-body-sm); }
+
+/* 편성 화면의 세로 스크롤은 본문 한 곳이 소유한다. */
+main:has(> .erp-wo-multi-page),
+main:has(> .process-page .erp-wo-summary) { display: flex; flex-direction: column; overflow: hidden; }
+main > .erp-wo-multi-page,
+main > .process-page:has(.erp-wo-summary) { flex: 1; height: auto; min-height: 0; }
+.erp-wo-distribution-settings .erp-wo-daily-quantities { max-height: none; overflow: visible; }
+.erp-wo-distribution-settings .erp-wo-preview-scroll { max-height: none; overflow-y: hidden; }
+
+/* 4M도 페이지 본문에서 이동한다. 입력 패널을 별도 세로 스크롤로 가두지 않는다. */
+.erp-wo-assign-editor { overflow: visible; max-height: none; container-name: erp-wo-assign; }
+.erp-wo-assign-editor .assign-editor-head { position: static; flex-wrap: wrap; }
+.erp-wo-assign-editor .assign-editor-actions { margin-left: auto; }
+.erp-wo-assign-editor .assign-form > .assign-group-title { display: block; grid-column: 1 / -1; margin: var(--space-3) 0 0; padding-top: var(--space-2); border-top: 1px solid var(--outline-variant); }
+.erp-wo-assign-editor .assign-plan-row > :nth-child(3) { width: 100%; max-width: 10rem; }
+.erp-wo-assign-list { max-height: none; overflow-y: hidden; }
+.erp-wo-assign-editor [role='combobox'],
+.erp-wo-release-detail > [role='combobox'] { height: auto; min-height: var(--control-height-sm); text-align: left; padding-block: var(--space-2); }
+.erp-wo-assign-editor [role='combobox'] > span:not([aria-hidden='true']),
+.erp-wo-release-detail > [role='combobox'] > span:not([aria-hidden='true']) { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+.erp-wo-release-summary dd:has(input) { width: 100%; max-width: 10rem; justify-self: end; }
+.erp-wo-release-summary dd { min-width: 0; }
+.erp-wo-release-effects { min-width: 0; }
+@container erp-wo-assign (max-width: 32rem) {
+  .erp-wo-assign-editor .assign-form,
+  .erp-wo-assign-editor .assign-plan-row { grid-template-columns: minmax(0,1fr); }
+}
+@container erp-wo-page (max-width: 36rem) {
+  .erp-wo-release-summary > div { grid-template-columns: minmax(0,1fr); gap: var(--space-1); }
+  .erp-wo-release-summary dd { text-align: left; }
+  .erp-wo-release-summary dd:has(input) { justify-self: start; }
+}
+
+.erp-wo-master-revision [role='combobox'] { width: 100%; }
+.erp-wo-master-value { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-container); }
+.erp-wo-master-note { margin-top: var(--space-2); }
+
+/* 지난 단계 정보는 단계 카드 안에서 항목명과 값을 위아래로 구분한다. */
+.process-page:has(.erp-wo-summary) .process-page-past {
+  display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,22rem),1fr));
+  gap: var(--space-3); padding: 0; border: 0; white-space: normal; overflow: visible; align-items: stretch;
+}
+.process-page:has(.erp-wo-summary) .process-page-past > .process-past-group {
+  display: grid; align-content: start; gap: var(--space-2); min-width: 0;
+  margin: 0; padding: var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container-low);
+}
+.process-page:has(.erp-wo-summary) .process-past-step { font: var(--type-title-sm); color: var(--on-surface); }
+.process-page:has(.erp-wo-summary) .process-past-pairs { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,10rem),1fr)); gap: var(--space-2) var(--space-4); }
+.process-page:has(.erp-wo-summary) .process-past-pair { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
+.process-page:has(.erp-wo-summary) .process-past-pair > dd { overflow-wrap: anywhere; font-weight: 500; }
+
+.erp-wo-plan-create { display: grid; grid-template-columns: auto auto minmax(0,1fr); align-items: center; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container-low); }
+.erp-wo-plan-create-label { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.erp-wo-plan-create > .erp-wo-distribution { display: contents; }
+.erp-wo-plan-create > .erp-wo-distribution > button { justify-self: start; }
+.erp-wo-plan-create .erp-wo-distribution-settings { grid-column: 1 / -1; }
+
+.erp-wo-revision-detail { min-width: 0; display: grid; gap: var(--space-3); }
+.erp-wo-revision-detail p { margin: 0; }
+ .erp-wo-revision-table { max-width: 100%; }
+.erp-wo-revision-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-revision-table th, .erp-wo-revision-table td { padding: var(--space-3); border-bottom: 1px solid var(--outline-variant); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.erp-wo-revision-table th { background: var(--surface-container); }
+.erp-wo-revision-table th:first-child { width: 3.5rem; }
+.erp-wo-revision-table th:nth-child(2) { width: 24%; }
+.erp-wo-revision-table caption { text-align: left; font: var(--type-title-sm); padding-bottom: var(--space-3); }
+.erp-wo-revision-properties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin: 0; }
+.erp-wo-revision-properties > div { min-width: 0; }
+.erp-wo-revision-properties dt { color: var(--on-surface-variant); font: var(--type-label-sm); }
+.erp-wo-revision-properties dd { margin: var(--space-1) 0 0; font-weight: 600; }
+.erp-wo-revision-properties dd[data-enabled="true"] { color: var(--primary); }
+.erp-wo-revision-quantity { font-variant-numeric: tabular-nums; }
+.erp-wo-routing-candidates { display: grid; gap: var(--space-4); min-width: 0; }
+.erp-wo-routing-candidate { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md, 12px); padding: var(--space-3); }
+.erp-wo-routing-candidate[data-selected="true"] { border-color: var(--primary); }
+.erp-wo-routing-candidate-heading { display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); cursor: pointer; }
+.erp-wo-routing-candidate-heading input { flex: 0 0 auto; margin-top: .25rem; }
+.erp-wo-routing-candidate-heading span { min-width: 0; overflow-wrap: anywhere; }
+.erp-wo-routing-candidate-heading small { display: block; color: var(--on-surface-variant); }
+.erp-wo-routing-default { margin-inline-start: var(--space-2); color: var(--primary); font: var(--type-label-sm); }
+@media (max-width: 800px) {
+  .erp-wo-revision-table table, .erp-wo-revision-table tbody, .erp-wo-revision-table tr, .erp-wo-revision-table td { display: block; width: 100%; min-width: 0; box-sizing: border-box; }
+  .erp-wo-revision-table caption { display: block; width: 100%; box-sizing: border-box; }
+  .erp-wo-revision-table thead { display: none; }
+  .erp-wo-revision-table tr { border: 1px solid var(--outline-variant); border-radius: 8px; margin-bottom: var(--space-3); }
+  .erp-wo-revision-table td { border: 0; }
+  .erp-wo-revision-table td::before { content: attr(data-label); display: block; color: var(--on-surface-variant); font: var(--type-label-sm); margin-bottom: var(--space-1); }
+}
+.erp-wo-master-revision > .erp-wo-revision-detail-trigger { display: flex; width: fit-content; margin-top: var(--space-2); }
+.erp-wo-revision-base { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; font: var(--type-body-sm); }
+.erp-wo-revision-base dt { color: var(--on-surface-variant); }
+.erp-wo-revision-base dd { margin: 0; }
+
+.erp-wo-plan-add-form { display: grid; gap: var(--space-3); min-width: 0; width: 100%; max-width: 100%; }
+.erp-wo-plan-add-form > *, .erp-wo-plan-add-form .field-cell { min-width: 0; max-width: 100%; }
+.erp-wo-plan-add-form [role='combobox'] { width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: var(--control-height-md); padding-block: var(--space-2); text-align: left; }
+.erp-wo-plan-add-form [role='combobox'] > span:not([aria-hidden='true']) { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='listbox'] { max-width: calc(100vw - var(--space-6)); }
+body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] { height: auto; padding-block: var(--space-2); }
+body:has(.erp-wo-plan-add-form [aria-expanded='true']) [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+
+/* 작업계획의 선택값은 긴 품목명·개정명 때문에 열 너비를 밀어내지 않는다. */
+:is(.erp-wo-filter-bar, .erp-wo-multi-page, .process-page:has(.erp-wo-summary)) [role='combobox'] {
+  min-width: 0; max-width: 100%; height: auto; min-height: var(--control-height-sm); padding-block: var(--space-2); text-align: left;
+}
+:is(.erp-wo-filter-bar, .erp-wo-multi-page, .process-page:has(.erp-wo-summary)) [role='combobox'] > span:not([aria-hidden='true']) {
+  min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip;
+}
+.erp-wo-multi-execution > .field-cell { width: 100%; min-width: 0; }
+.erp-wo-multi-execution > .field-cell [role='combobox'] { width: 100%; }
+body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='listbox'] { max-width: calc(100vw - var(--space-6)); }
+body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='option'] { height: auto; padding-block: var(--space-2); }
+body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-summary)) [role='combobox'][aria-expanded='true']) [role='option'] > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+
+.erp-wo-assign-selected-target { padding: var(--space-3); background: var(--surface-container); border-radius: var(--radius-sm); }
+.erp-wo-assign-selected-target > h3 { margin: 0 0 var(--space-2); }
+.erp-wo-assign-selected-target .erp-wo-assign-summary { padding: 0; background: none; }
+.erp-wo-assignment-input-title { margin: var(--space-3) 0 0; }
+.erp-wo-release-workspace .erp-wo-release-layout { grid-template-columns: minmax(0,1fr); }
+.erp-wo-release-lot-input { display: grid; grid-template-columns: minmax(0,12rem) minmax(0,1fr); align-items: end; gap: var(--space-3); border-top: 1px solid var(--outline-variant); padding-top: var(--space-3); }
+.erp-wo-release-lot-input > h3 { grid-column: 1 / -1; margin: 0; }
+.erp-wo-release-lot-input > * { min-width: 0; }
+.erp-wo-release-lot-result { margin: 0; }
+.erp-wo-release-lot-result dt { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.erp-wo-release-lot-result dd { margin: var(--space-1) 0 0; font: var(--type-title-sm); }
+.erp-wo-release-notice > h3, .erp-wo-release-notice > p { margin: 0; }
+.erp-wo-release-notice ul { padding-left: var(--space-4); margin-block: var(--space-2); }
+.process-page:has(.erp-wo-release-workspace) .process-page-past > .process-past-group { border: 0; border-radius: 0; background: none; padding: var(--space-2) 0; }
+.process-page:has(.erp-wo-release-workspace) .process-page-past { border-bottom: 1px solid var(--outline-variant); }
+@container erp-wo-page (max-width: 36rem) { .erp-wo-release-lot-input { grid-template-columns: minmax(0,1fr); } .erp-wo-release-lot-input > :nth-child(2) { max-width: 12rem; } }
+
+.process-page-body > .process-page-past { margin-bottom: var(--space-3); }
+@container erp-wo-page (min-width: 52rem) { .process-page:has(.erp-wo-release-workspace) .process-page-past { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+
+.erp-wo-terminal-connections { min-width: 0; padding-block: var(--space-3); border-top: 1px solid var(--outline-variant); }
+.erp-wo-terminal-target { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); margin-block: var(--space-3); }
+.erp-wo-terminal-target dt { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.erp-wo-terminal-target dd { margin: var(--space-1) 0 0; font: var(--type-body-sm); overflow-wrap: anywhere; }
+.erp-wo-terminal-table { max-width: 100%; overflow-x: auto; }
+.erp-wo-terminal-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-terminal-table th,.erp-wo-terminal-table td { text-align: left; vertical-align: top; padding: var(--space-2); border-bottom: 1px solid var(--outline-variant); min-width: 6rem; }
+.erp-wo-terminal-table th { background: var(--surface-container); }
+.erp-wo-terminal-table small { display: block; margin-top: var(--space-1); }
+.erp-wo-terminal-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--type-label-sm); }
+
+.erp-wo-auto-result { display: grid; gap: var(--space-3); min-width: 0; }
+.erp-wo-auto-result-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.erp-wo-auto-result-filters [aria-pressed='true'] { background: var(--primary-container); color: var(--on-primary-container); }
+.erp-wo-auto-result-table { max-width: 100%; overflow-x: auto; }
+.erp-wo-auto-result-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-auto-result-table th,.erp-wo-auto-result-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--outline-variant); vertical-align: top; min-width: 7rem; }
+.erp-wo-auto-result-table th { background: var(--surface-container); }
+.erp-wo-auto-result-table td { overflow-wrap: anywhere; }
+.erp-wo-auto-result-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--type-label-sm); }
+
+.erp-wo-result-scope { padding: var(--space-3) var(--space-4); margin: 0; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; }
+.erp-wo-result-scope .section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); font: var(--type-title-sm); min-width: 0; }
+.erp-wo-result-scope .field-note { display: inline; margin: 0; }
+
+.erp-wo-result-page { min-width: 0; display: grid; gap: var(--space-5); align-content: start; }
+
+.erp-wo-revision-master-link { display: inline-flex; align-items: center; margin-inline-end: var(--space-4); white-space: normal; overflow-wrap: anywhere; }
+
+.erp-wo-master-details { display: grid; gap: var(--space-4); min-width: 0; }
+.erp-wo-inline-revision { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); }
+.erp-wo-inline-revision p { margin: 0; }
+.erp-wo-inline-routing-options { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.erp-wo-inline-routing-actions { margin-top: var(--space-2); }
+.erp-wo-master-selection-layout { display: grid; grid-template-columns: minmax(210px, 260px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.erp-wo-master-order-list { display: grid; gap: var(--space-2); min-width: 0; }
+.erp-wo-master-order-list > button { width: 100%; text-align: left; white-space: normal; height: auto; border-radius: 10px; padding: var(--space-3); }
+.erp-wo-master-order-list > button > span { display: grid; gap: var(--space-1); width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.erp-wo-master-order-list > button[aria-pressed="true"] { border-color: var(--primary); color: var(--on-primary-container); background: var(--primary-container); box-shadow: inset 3px 0 0 var(--primary); }
+.erp-wo-master-selected { min-width: 0; }
+.erp-wo-master-selected-heading { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+@media (max-width: 1000px) { .erp-wo-master-selection-layout { grid-template-columns: 1fr; } .erp-wo-master-order-list { grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); } }
+
+.erp-wo-origin-summary { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-block: 1px solid var(--outline-variant); }
+.erp-wo-source-label { color: var(--on-surface-variant); font: var(--type-body-sm); }
+.erp-wo-source-unavailable { padding: var(--space-3); background: var(--surface-container); border-radius: 8px; font: var(--type-body-sm); overflow-wrap: anywhere; }
+.erp-wo-source-unavailable p { margin-top: var(--space-2); color: var(--on-surface-variant); }
+.erp-wo-origin-summary + .erp-wo-revision-table th:first-child { width: 38%; }
+.erp-wo-origin-summary + .erp-wo-revision-table th:nth-child(2) { width: 23%; }
+
+.erp-wo-plain-revision { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: baseline; }
+.erp-wo-plain-revision > span { color: var(--on-surface-variant); font: var(--type-body-sm); }
+.erp-wo-plain-materials th:first-child { width: 50%; }
+.erp-wo-plain-materials th:nth-child(2) { width: 27%; }
+.erp-wo-plain-details { border-top: 1px solid var(--outline-variant); padding-top: var(--space-3); }
+.erp-wo-plain-details > summary { color: var(--on-surface-variant); cursor: pointer; }
+.erp-wo-plain-settings { display: grid; gap: var(--space-4); padding-top: var(--space-3); min-width: 0; }
+.erp-wo-plain-settings > section { display: grid; gap: var(--space-2); }
+.erp-wo-operation-card { border-top: 1px solid var(--outline-variant); padding-block: var(--space-3); }
+.erp-wo-operation-heading { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.erp-wo-operation-heading > span { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--outline-variant); border-radius: 50%; flex-shrink: 0; }
+.erp-wo-operation-card > .erp-wo-revision-properties { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 700px) { .erp-wo-operation-card > .erp-wo-revision-properties { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.erp-wo-plain-materials caption.visually-hidden { width: 1px; }
+.erp-wo-inline-revision h2 > .field-note { display: inline; margin-inline-start: var(--space-2); }
+
+.erp-wo-plan-toolbar { gap: var(--space-3); flex-wrap: wrap; }
+.erp-wo-plan-create { margin-block: var(--space-3); }
+.erp-wo-assignment-progress { margin-block: var(--space-2) var(--space-3); }
+.erp-wo-assign-editor .assign-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.erp-wo-assign-editor .erp-wo-assign-line-control { grid-column: 1 / -1; }
+.erp-wo-release-targets { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); }
+.erp-wo-release-target-table { min-width: 0; }
+.erp-wo-release-target-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font: var(--type-body-sm); }
+.erp-wo-release-target-table th, .erp-wo-release-target-table td { text-align: left; vertical-align: top; padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--outline-variant); overflow-wrap: anywhere; }
+.erp-wo-release-target-table th { background: var(--surface-container); }
+.erp-wo-release-target-table th:first-child { width: 25%; }
+.erp-wo-release-target-table th:nth-child(2) { width: 25%; }
+.erp-wo-release-target-table td input { width: 100%; max-width: 9rem; }
+.erp-wo-release-target-table td p { margin: var(--space-1) 0 0; }
+.erp-wo-release-target-table td button { white-space: normal; text-align: left; height: auto; padding-inline: 0; }
+.erp-wo-release-terminals { padding: var(--space-3); min-width: 0; }
+.erp-wo-release-terminals > summary { cursor: pointer; }
+.erp-wo-release-detail .erp-wo-release-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.erp-wo-release-detail .erp-wo-release-summary > div { display: block; border: 0; }
+.erp-wo-release-detail .erp-wo-release-summary dd { text-align: left; margin-top: var(--space-1); }
+@container erp-wo-assign (max-width: 28rem) { .erp-wo-assign-editor .assign-form { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1000px) {
+  .erp-wo-release-target-table table, .erp-wo-release-target-table tbody, .erp-wo-release-target-table tr, .erp-wo-release-target-table td { display: block; width: 100%; box-sizing: border-box; }
+  .erp-wo-release-target-table thead { display: none; }
+  .erp-wo-release-target-table tr { border: 1px solid var(--outline-variant); border-radius: 8px; margin-bottom: var(--space-3); }
+  .erp-wo-release-target-table td { border: 0; }
+  .erp-wo-release-target-table td::before { content: attr(data-label); display: block; font: var(--type-label-sm); color: var(--on-surface-variant); margin-bottom: var(--space-1); }
+  .erp-wo-release-detail .erp-wo-release-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* 복수 ERP W/O 실행 단계도 안쪽 본문만 스크롤하고 하단 동작은 고정한다. */
+.erp-wo-multi-body:has(> .erp-wo-multi-execution) { overflow: hidden; padding-bottom: 0; }
+.erp-wo-multi-body > .erp-wo-multi-execution { min-height: 0; flex-shrink: 1; }
+.erp-wo-multi-execution .process-page { min-height: 0; height: 0; flex: 1; }
+.erp-wo-multi-execution .action-bar { position: static; }
+
+.erp-wo-dense-metadata { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); font: var(--type-body-sm); }
+.erp-wo-dense-metadata > span { color: var(--on-surface-variant); }
+.erp-wo-dense-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--outline-variant); border-radius: 6px; }
+.erp-wo-dense-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: var(--type-body-sm); }
+.erp-wo-dense-table caption.visually-hidden { width: 1px; }
+.erp-wo-dense-table th, .erp-wo-dense-table td { text-align: left; padding: 9px 7px; vertical-align: middle; border-bottom: 1px solid var(--outline-variant); overflow-wrap: anywhere; background: var(--surface); }
+.erp-wo-dense-table th { background: var(--surface-container); color: var(--on-surface-variant); }
+.erp-wo-dense-table tbody tr:last-child td { border-bottom: 0; }
+.erp-wo-dense-table .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.erp-wo-dense-table .fixed-code { position: sticky; left: 0; z-index: 1; }
+.erp-wo-dense-table .fixed-name { position: sticky; left: 104px; z-index: 1; border-right: 1px solid var(--outline-variant); }
+.erp-wo-table-pagebar, .erp-wo-table-page-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.erp-wo-table-pagebar { justify-content: space-between; }
+.erp-wo-table-page-actions > [role='combobox'] { width: 5rem; }
+
+.erp-wo-summary .is-item-code { min-width: 0; }
+.erp-wo-summary .is-item-name { flex: 1 1 18rem; min-width: 0; }
+.erp-wo-summary .is-item-name dd { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-master-order-list .erp-wo-item-field { display: grid; gap: 2px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-master-order-list .erp-wo-item-field-label { color: var(--on-surface-variant); font: var(--type-label-sm); }
+.erp-wo-selected-item-fields { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); margin: 0; min-width: 0; }
+.erp-wo-selected-item-fields > div { min-width: 0; }
+.erp-wo-selected-item-fields dt { color: var(--on-surface-variant); font: var(--type-label-sm); }
+.erp-wo-selected-item-fields dd { margin: var(--space-1) 0 0; white-space: normal; overflow-wrap: anywhere; }
+
+/* 긴 원문은 한 행으로 보존하고 표 안에서 이동한다. */
+.erp-wo-dense-table { width: 100%; table-layout: auto; }
+.erp-wo-dense-table th, .erp-wo-dense-table td { white-space: nowrap; overflow-wrap: normal; word-break: normal; overflow: visible; text-overflow: clip; }
+.erp-wo-dense-table .fixed-name { left: var(--revision-code-width, 104px); }
+.erp-wo-dense-table-scroll[data-freeze-name="false"] .fixed-name { position: static; }
+.erp-wo-summary .is-item-code dd, .erp-wo-summary .is-item-name dd, .erp-wo-selected-item-fields dd { white-space: normal; overflow-wrap: anywhere; max-width: 100%; overflow: visible; text-overflow: clip; }
+.erp-wo-master-order-list .erp-wo-item-field > span:last-child { display: block; white-space: normal; overflow-wrap: anywhere; max-width: 100%; overflow: visible; text-overflow: clip; }
+.erp-wo-master-order-list > button, .erp-wo-selected-item-fields, .erp-wo-selected-item-fields > div { max-width: 100%; }
+
+/* 작업계획 절차의 참조값과 조회값은 말줄임으로 숨기지 않는다. */
+.reference-field-full-value { display: flex; align-items: stretch; gap: var(--space-1); min-width: 0; }
+.reference-field-full-value > button:first-child { flex: 1; min-width: 0; height: auto; min-height: var(--control-height-sm); text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.reference-field-full-value > button:first-child > span { min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
+.reference-field-full-value > button:last-child:not(:first-child) { flex-shrink: 0; }
+.erp-wo-complete-value { white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+.erp-wo-plan-grid { max-width: 100%; overflow-x: auto; }
+.erp-wo-plan-grid table { width: 100%; min-width: 42rem; table-layout: auto; }
+.erp-wo-plan-grid .erp-wo-complete-value { white-space: nowrap; overflow-wrap: normal; }
+.erp-wo-week-plan > *, .erp-wo-week-plan small { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-week-table th > span { display: block; white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem); }
+.erp-wo-plan-editor .reference-field, .erp-wo-plan-editor .field-cell { min-width: 0; }
+.erp-wo-assign-target, .erp-wo-assign-target small, .assign-fold-pair dd, .assign-recommend button { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.erp-wo-assign-editor .assign-plan-row { grid-template-columns: minmax(0, 1fr); }
+.erp-wo-assign-editor .date-time-field-controls { grid-template-columns: minmax(12rem, 1fr) 5.5rem; }
+.erp-wo-release-target-table table { table-layout: auto; width: 100%; }
+.erp-wo-release-target-table th, .erp-wo-release-target-table td { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-release-target-table td:has(input) { min-width: 9rem; }
+.erp-wo-release-target-table td input { width: 100%; min-width: 7rem; max-width: 11rem; }
+.erp-wo-release-detail summary, .erp-wo-release-summary dd, .erp-wo-terminal-target dd { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-terminal-table table { min-width: 48rem; table-layout: auto; }
+.erp-wo-terminal-table td, .erp-wo-terminal-table th { white-space: nowrap; }
+@container erp-wo-page (max-width: 52rem) { .erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr); } }
+@container erp-wo-assign (max-width: 24rem) { .erp-wo-assign-editor .date-time-field-controls { grid-template-columns: minmax(0, 1fr); } }
+.erp-wo-week-table tbody th > span { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+
+/* 기존 표·영역 손잡이와 동일한 배치 조절. 값의 정렬은 머리글과 함께 맞춘다. */
+.erp-wo-adjustable { min-width: 0; display: grid; gap: var(--space-2); }
+.erp-wo-layout-tools { display: flex; justify-content: flex-end; flex-wrap: wrap; }
+.erp-wo-layout-tools .po-board-layout-toggle { display: flex; }
+.erp-wo-adjustable-grid { min-width: 0; display: grid; gap: 0; align-items: start; }
+.erp-wo-adjustable-grid.is-side { grid-template-columns: minmax(0, var(--split-left)) 12px minmax(0, var(--split-right)); }
+.erp-wo-adjustable-grid.is-stacked { grid-template-columns: minmax(0, 1fr); }
+.erp-wo-adjustable-first, .erp-wo-adjustable-second { min-width: 0; max-width: 100%; }
+.erp-wo-adjustable-first > *, .erp-wo-adjustable-second > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.erp-wo-adjustable-grid.is-side > .po-board-gutter { align-self: stretch; display: flex; }
+.erp-wo-adjustable-grid.is-stacked > .erp-wo-adjustable-first { height: var(--stacked-list-height, auto); overflow: auto; }
+.erp-wo-adjustable-grid.is-stacked > .inspection-height-splitter { display: block; }
+.erp-wo-adjustable-grid .erp-wo-plan-editor { position: static; width: 100%; }
+.erp-wo-adjustable-grid .erp-wo-assign-editor { width: 100%; }
+.erp-wo-dense-table th, .erp-wo-dense-table td, .erp-wo-dense-table .numeric,
+.erp-wo-plan-workspace th, .erp-wo-plan-workspace td, .erp-wo-assign-list th, .erp-wo-assign-list td,
+.erp-wo-release-workspace th, .erp-wo-release-workspace td, .erp-wo-master-table th, .erp-wo-master-table td,
+.erp-wo-plan-workspace td input, .erp-wo-release-workspace td input, .erp-wo-master-table td input { text-align: left; }
+.erp-wo-dense-table th { position: relative; }
+.erp-wo-dense-table th.fixed-code, .erp-wo-dense-table th.fixed-name { position: sticky; }
+.erp-wo-adjustable-grid .erp-wo-plan-grid table { min-width: max(42rem, var(--col-floor, 0px)); }
+.erp-wo-adjustable-table { min-width: 0; max-width: 100%; overflow-x: auto; }
+.erp-wo-adjustable-table table { border-collapse: collapse; }
+.erp-wo-adjustable-table th { position: relative; }
+.erp-wo-adjustable-grid > .po-board-gutter { position: relative; width: 12px; min-height: 100px; }
+.erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter { display: block; width: 12px; height: 100%; min-height: 100px; cursor: col-resize; border-inline: 4px solid transparent; background: var(--outline-variant); background-clip: content-box; }
+.erp-wo-adjustable-grid > .inspection-height-splitter { height: 12px; margin: 0; cursor: row-resize; border-block: 4px solid transparent; background: var(--outline-variant); background-clip: content-box; }
+.erp-wo-adjustable-grid > .inspection-height-splitter:hover, .erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter:hover { background-color: var(--primary); }
+.erp-wo-plan-workspace .erp-wo-week-table { min-width: max(56rem, var(--col-floor, 0px)); }
+.erp-wo-adjustable-grid .erp-wo-week-table thead th > span > span { display: block; }
+@media (max-width: 1000px) { .erp-wo-release-target-table .erp-wo-adjustable-table > table { min-width: 0 !important; } }
+.erp-wo-plan-workspace .erp-wo-week-table thead th,
+.erp-wo-plan-workspace .erp-wo-week-table tbody th,
+.erp-wo-multi-body .erp-wo-master-table th,
+.erp-wo-multi-body .erp-wo-master-table td { text-align: left; }
+.erp-wo-layout-tools[hidden] { display: none; }
+.erp-wo-adjustable-second > .erp-wo-release-layout { display: grid; grid-template-columns: minmax(0, 1fr); container-type: inline-size; container-name: release-details; }
+@container release-details (max-width: 30rem) { .erp-wo-release-detail .erp-wo-release-summary { grid-template-columns: minmax(0, 1fr); } }
+
+/* 참조 선택은 다른 개선 화면의 SearchInput과 같은 외곽선·검색 아이콘을 쓴다. */
+.reference-field-full-value { align-items: center; gap: var(--space-2); border-radius: var(--radius-md); box-shadow: inset 0 0 0 1px var(--outline); background: transparent; }
+.reference-field-full-value > button:first-child { display: flex; align-items: center; gap: var(--space-2); align-self: stretch; padding: var(--space-1) var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--on-surface); font: var(--type-body-sm); cursor: pointer; }
+.reference-field-full-value > button:first-child > svg, .reference-field-full-value > button:first-child > [aria-hidden='true'] { flex-shrink: 0; color: var(--on-surface-variant); }
+.reference-field-full-value .reference-field-placeholder { color: var(--on-surface-variant); }
+.reference-field-full-value:focus-within { box-shadow: inset 0 0 0 2px var(--primary), var(--focus-ring); }
+.reference-field-full-value:hover:not([data-disabled]):not([data-invalid]):not(:focus-within) { box-shadow: inset 0 0 0 1px var(--on-surface); }
+.reference-field-full-value[data-invalid] { box-shadow: inset 0 0 0 1px var(--semantic-error); }
+.reference-field-full-value[data-disabled] { box-shadow: inset 0 0 0 1px var(--state-disabled-fill); }
+.reference-field-full-value[data-disabled] > button:first-child, .reference-field-full-value[data-disabled] .reference-field-placeholder { color: var(--state-disabled-text); cursor: default; }
+.reference-field-full-value > button:last-child:not(:first-child) { margin-inline-end: var(--space-1); }
+
+.reference-field-full-value > button:first-child:focus-visible { outline: none; }
+.reference-field-full-value[data-invalid]:focus-within { box-shadow: inset 0 0 0 2px var(--semantic-error), var(--focus-ring); }
+
+/* 이전 단계 정보도 조회 정보 영역과 같은 항목·값 행으로 읽고 본문과 함께 이동한다. */
+.process-page:has(.erp-wo-summary) .process-page-body > .process-page-past {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) 0; margin: 0 0 var(--space-3); border: 0; border-bottom: 1px solid var(--outline-variant); background: transparent; align-items: start;
+}
+.process-page:has(.erp-wo-summary) .process-page-body > .process-page-past > .process-past-group {
+  display: grid; gap: var(--space-2); padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent;
+}
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-step { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pairs { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pair { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-3); align-items: baseline; }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pair > dt { font: var(--type-label-sm); white-space: normal; }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pair > dd { font: var(--type-body-sm); font-weight: 500; margin: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+
+/* 복수 편성도 단일 처리 화면과 같은 제목·조회 정보 순서를 따른다. */
+.erp-wo-multi-header { display: grid; gap: var(--space-2); min-width: 0; }
+.erp-wo-multi-header > button { justify-self: start; }
+.erp-wo-multi-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2) var(--space-4); min-width: 0; }
+.erp-wo-multi-title-row p { white-space: normal; }
+.erp-wo-multi-current-target { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); padding-bottom: var(--space-3); border-bottom: 1px solid var(--outline-variant); min-width: 0; }
+.erp-wo-multi-current-target > .field-cell { flex: 0 1 15rem; min-width: min(15rem, 100%); }
+.erp-wo-multi-current-target > dl { flex: 1 1 22rem; min-width: 0; }
+.erp-wo-multi-current-target dd { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-multi-current-target > dl > div:has(dt + dd) { min-width: 0; }
+.erp-wo-plan-owner { display: grid; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--outline-variant); }
+.erp-wo-plan-owner > div { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-2); }
+.erp-wo-plan-owner dd { margin: 0; }
+
+/* 복수 실행 단계도 BOM·Routing과 같은 ERP W/O 목록·상세 틀을 쓴다. */
+.erp-wo-multi-execution > .erp-wo-adjustable { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.erp-wo-execution-selection-layout { flex: 1; min-height: 0; align-items: stretch; }
+.erp-wo-execution-selection-layout > .erp-wo-adjustable-first { min-height: 0; overflow: auto; }
+.erp-wo-execution-selection-layout > .erp-wo-adjustable-second { display: flex; flex-direction: column; min-height: 0; }
+.erp-wo-execution-selection-layout.is-stacked { grid-template-rows: var(--stacked-list-height, 10rem) 12px minmax(0, 1fr); }
+.erp-wo-execution-selection-layout.is-stacked > .erp-wo-adjustable-first { height: 100%; }
+.erp-wo-execution-selected { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.erp-wo-execution-selected > .erp-wo-multi-current-target { flex: none; padding: 0 0 var(--space-2); gap: var(--space-2); }
+.erp-wo-execution-selected > .erp-wo-multi-current-target > strong { flex-basis: 100%; overflow-wrap: anywhere; }
+.erp-wo-execution-selected > .process-page { min-height: 0; }
+.erp-wo-execution-selection-layout .erp-wo-master-order-list { grid-template-columns: minmax(0, 1fr); }
+
+/* ERP 연동 현황·이력의 BoardTable / pane-title / form-grid 표시를 함께 쓴다. */
+.erp-wo-order-table-pane { display: flex; flex-direction: column; min-width: 0; padding: var(--space-4); gap: var(--space-3); }
+.erp-wo-order-table-pane > .pane-title { margin: 0; }
+.erp-wo-order-table { min-width: 0; max-width: 100%; overflow: auto; }
+.erp-wo-order-table table { width: 100%; table-layout: auto; }
+.erp-wo-order-table th, .erp-wo-order-table td { white-space: nowrap; overflow: visible; text-overflow: clip; text-align: left; }
+.erp-wo-order-table .board-table-pick { color: inherit; text-decoration: none; white-space: nowrap; max-width: none; overflow: visible; text-overflow: clip; }
+.erp-wo-order-information { padding: var(--space-4); border-bottom: 1px solid var(--outline-variant); min-width: 0; }
+.erp-wo-order-information > .pane-title { margin: 0 0 var(--space-4); }
+.erp-wo-order-information-grid { margin: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.erp-wo-order-information-grid dt { margin: 0; }
+.erp-wo-order-information-grid dd { margin: 0; white-space: normal; overflow-wrap: anywhere; font: var(--type-body-sm); }
+.erp-wo-order-information-grid .field-cell:has(dt:first-child + dd) { min-width: 0; }
+.erp-wo-master-selected > .erp-wo-order-information { padding-top: 0; margin-bottom: var(--space-3); }
+.erp-wo-execution-selected > .erp-wo-order-information { flex: none; padding-top: 0; padding-inline: 0; }
+.erp-wo-execution-selection-layout > .erp-wo-adjustable-first > .erp-wo-order-table-pane { min-height: 100%; }
+.erp-wo-adjustable-grid.is-side[data-left-collapsed='true'] { grid-template-columns: 12px minmax(0, 1fr); }
+.erp-wo-adjustable-grid > .erp-wo-adjustable-first[hidden] { display: none; }
+.erp-wo-adjustable-grid > .po-board-gutter > .po-board-collapse { display: flex; position: absolute; top: 0; left: -6px; z-index: 3; }
+.erp-wo-adjustable-grid > .po-board-gutter > .po-board-collapse { left: 50%; transform: translateX(-50%); align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid var(--outline); border-radius: var(--radius-full); background: var(--surface); color: var(--on-surface-variant); cursor: pointer; }
+.erp-wo-master-selection-layout.is-side > .erp-wo-adjustable-second { padding-inline-start: var(--space-3); box-sizing: border-box; }
+.erp-wo-distribution-actions { display: inline-flex; align-items: center; gap: var(--space-2); justify-self: start; }
+.erp-wo-distribution-help-trigger { min-width: var(--control-height-sm); width: var(--control-height-sm); padding-inline: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-full); color: var(--on-surface-variant); }
+.erp-wo-distribution-help { display: grid; gap: var(--space-5); min-width: 0; font: var(--type-body-sm); }
+.erp-wo-distribution-help p { margin: 0; line-height: 1.6; }
+.erp-wo-distribution-help h3 { margin: 0 0 var(--space-3); font: var(--type-title-sm); }
+.erp-wo-distribution-help h4 { margin: 0 0 var(--space-2); font: var(--type-title-sm); }
+.erp-wo-distribution-help-flow { display: grid; gap: var(--space-2); padding-left: var(--space-5); margin: 0; }
+.erp-wo-distribution-help-flow li > span { display: block; margin-top: var(--space-1); color: var(--on-surface-variant); }
+.erp-wo-distribution-help-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: var(--space-3); }
+.erp-wo-distribution-help-modes > div { min-width: 0; padding: var(--space-3); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); }
+.erp-wo-distribution-help-modes .field-note { margin-top: var(--space-3); }
+.erp-wo-distribution-help table { width: 100%; border-collapse: collapse; margin-top: var(--space-2); }
+.erp-wo-distribution-help th, .erp-wo-distribution-help td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--outline-variant); white-space: normal; }
+.erp-wo-distribution-help ul { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-3); line-height: 1.6; }
+.erp-wo-distribution-help-note { padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-container); }
+.erp-wo-distribution-help-flow { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); column-gap: var(--space-6); }
+.erp-wo-auto-plan-help-actions { display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; }
+.erp-wo-auto-plan-help-actions > button:first-child { flex: 1; min-width: 0; white-space: normal; }
+.erp-wo-auto-plan-help-actions > button:last-child { flex-shrink: 0; }
+.erp-wo-auto-plan-help-facts { margin: 0 0 var(--space-3); }
+.erp-wo-auto-plan-help-facts dd { margin: 0; line-height: 1.6; }
+.erp-wo-auto-plan-help-table { min-width: 0; }
+.erp-wo-auto-plan-help-table th { width: 28%; vertical-align: top; }
+.erp-wo-auto-plan-help-table td { vertical-align: top; line-height: 1.6; }
+.erp-wo-distribution-help details > summary { cursor: pointer; font-weight: 500; }
+.erp-wo-distribution-help details > p { margin-top: var(--space-2); }
+.erp-wo-auto-plan-help-facts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.erp-wo-auto-plan-help-table th:not(:first-child) { width: auto; }
 /*
  * 검사 조회·판정 조회 조건(omf-all-around#228) — 수입(IQC) · 공정(PQC) · 출하(OQC).
  * ① 칸 폭은 공정 · 출하도 수입검사와 같게 — 셀렉터는 글자 폭, 입력란은 기본 폭(아래 맨 끝 규칙).

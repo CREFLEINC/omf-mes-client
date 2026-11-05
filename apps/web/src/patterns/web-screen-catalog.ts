@@ -329,6 +329,10 @@ export interface WebScreenTab {
  * ⛔ **설계 화면 코드가 있는 탭은 여기 두지 않는다**(ERP 송신 `W-06-12` · ERP 데이터 탭 `W-06-16~23` 처럼 위에 둔다).
  */
 export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
+  {
+    path: '/production/production-orders/auto-plan-results',
+    ownerPath: '/production/production-orders',
+  },
   /*
    * ERP 수신 — 연동 현황·이력(W-06-10) 위에 접혀 있던 ERP 받기 상태를 탭으로 뗐다(사용자 지시 2026-10-27). 서버도
    * 그 기능을 「ERP 연동 현황·이력 탭(W-06-10)」의 일로 적었고 「지금 읽기」를 W-06-10 오퍼레이션에 묶었다.

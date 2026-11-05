@@ -1,19 +1,24 @@
 import { Button, Chip, Dialog, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
-import { SelectableTable } from '../../../patterns/selectable-table';
+import { AdjustableTable } from './adjustable-table';
+import { AdjustableLayout } from './adjustable-layout';
 import { AssignEditor } from './assign-editor';
-import { nextIncompleteId } from './process-model';
+import { formatQty, nextIncompleteId } from './process-model';
 import type { OrderWorkOrder } from './queries';
 
 const t = messages.erpWorkOrderFlow.process.assign;
 
 export interface AssignStepProps {
+  actionTargetId?: string;
+  itemLabel?: string;
   workOrders: OrderWorkOrder[] | undefined;
   blockedIds: ReadonlySet<number> | undefined;
   plantId: number | null;
   planDateOf: (productionPlanId: number) => string | null;
+  lineNameOf?: (lineId: number | null) => string;
+  uomLabelOf?: (uomId: number) => string;
   selectedId: number | null;
   onSelect: (workOrderId: number) => void;
   onDirtyChange: (dirty: boolean) => void;
@@ -29,44 +34,20 @@ export interface AssignStepProps {
  * (T-W-C 높이가 모자랄 때 ②, 이탈. 구성안 8장).
  */
 export const AssignStep = ({
+  actionTargetId,
+  itemLabel,
   workOrders,
   blockedIds,
   plantId,
   planDateOf,
+  lineNameOf,
+  uomLabelOf,
   selectedId,
   onSelect,
   onDirtyChange,
 }: AssignStepProps) => {
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
-  const editorRef = useRef<HTMLElement>(null);
-  /* 편집 영역 높이를 하단 바 윗변까지로 둔다. 넘치는 부분은 편집 영역 안에서 스크롤한다. 위쪽 요약 줄 수가 바뀔 수 있어 그릴 때마다 다시 잰다. */
-  useLayoutEffect(() => {
-    const element = editorRef.current;
-    if (element === null) return undefined;
-    const fit = () => {
-      /* 하단 바가 아래에 붙었을 때의 윗변. 본문 길이에 따라 바 위치가 바뀌지 않게 스크롤 영역 아래 끝에서 계산한다. */
-      const bar = document.querySelector<HTMLElement>('.action-bar');
-      let scroller = element.parentElement;
-      while (scroller !== null && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) {
-        scroller = scroller.parentElement;
-      }
-      /* 붙는 위치는 스크롤 영역의 안쪽 여백을 뺀 아래 끝이 기준이다. */
-      const bottom =
-        scroller === null
-          ? window.innerHeight
-          : scroller.getBoundingClientRect().bottom -
-            (parseFloat(getComputedStyle(scroller).paddingBottom) || 0);
-      const limit =
-        bar === null
-          ? bottom
-          : bottom - (parseFloat(getComputedStyle(bar).bottom) || 0) - bar.offsetHeight;
-      element.style.maxHeight = `${String(Math.floor(limit - element.getBoundingClientRect().top))}px`;
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  });
   if (workOrders === undefined || blockedIds === undefined) return <SkeletonText lines={4} />;
   const selected = workOrders.find((item) => item.workOrderId === selectedId);
   const columns: Column<OrderWorkOrder>[] = [
@@ -74,8 +55,16 @@ export const AssignStep = ({
       key: 'operation',
       header: t.columns.operation,
       render: (row) => (
-        <span className="ellipsis-cell" title={row.operationName}>
-          {row.operationName}
+        <span className="erp-wo-assign-target">
+          <span className="erp-wo-complete-value" title={row.workOrderNo}>
+            {row.workOrderNo}
+          </span>
+          <small>{row.operationName}</small>
+          <small>
+            {planDateOf(row.productionPlanId) ?? '—'} / {formatQty(row.orderQty)}{' '}
+            {uomLabelOf?.(row.uomId) ?? ''}
+          </small>
+          {lineNameOf !== undefined && <small>{lineNameOf(row.productionLineId ?? null)}</small>}
         </span>
       ),
     },
@@ -100,50 +89,66 @@ export const AssignStep = ({
   };
 
   return (
-    <div className="erp-wo-assign-layout">
-      <section className="pane erp-wo-assign-list" aria-label={t.listHeading}>
-        <h2 className="section-title">{t.listHeading}</h2>
-        <SelectableTable
-          columns={columns}
-          rows={workOrders}
-          getRowId={(row) => String(row.workOrderId)}
-          activeId={selectedId === null ? null : String(selectedId)}
-          rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
-          onActivate={(row) => {
-            if (row.workOrderId === selectedId) return;
-            if (dirty) setPending(row.workOrderId);
-            else onSelect(row.workOrderId);
-          }}
-          empty={<EmptyState size="sm" title={t.empty} />}
-        />
-      </section>
-      <section
-        ref={editorRef}
-        className="pane erp-wo-assign-editor"
-        aria-label={selected === undefined ? t.editorHeading : t.editorLabel(selected.workOrderNo)}
+    <>
+      <AdjustableLayout
+        storageKey="omf-mes:work-planning:assign-layout"
+        label="작업지시 목록과 4M 배정"
+        ratio={0.36}
+        className="erp-wo-assign-layout"
       >
-        {selected === undefined ? (
-          <EmptyState size="sm" title={t.selectPrompt} />
-        ) : (
-          <AssignEditor
-            key={selected.workOrderId}
-            title={t.editorTitle(selected.workOrderNo, selected.operationName)}
-            workOrderId={selected.workOrderId}
-            plantId={plantId}
-            planDate={planDateOf(selected.productionPlanId)}
-            onDirtyChange={changeDirty}
-            onSaved={(ready) => {
-              const next = nextIncompleteId(
-                workOrders.map((item) => item.workOrderId),
-                blockedIds,
-                selected.workOrderId,
-                ready,
-              );
-              if (next !== null) onSelect(next);
+        <section className="pane erp-wo-assign-list" aria-label={t.listHeading}>
+          <h2 className="section-title">
+            {t.listHeading} <span className="erp-wo-assign-count">{workOrders.length}</span>
+          </h2>
+          <p className="field-note erp-wo-assignment-progress">
+            배정 완료 후 다음 미완료 작업지시를 자동 선택합니다.
+          </p>
+          <AdjustableTable
+            storageKey="omf-mes:work-planning:assign-columns"
+            columns={columns}
+            rows={workOrders}
+            getRowId={(row) => String(row.workOrderId)}
+            activeId={selectedId === null ? null : String(selectedId)}
+            rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
+            onActivate={(row) => {
+              if (row.workOrderId === selectedId) return;
+              if (dirty) setPending(row.workOrderId);
+              else onSelect(row.workOrderId);
             }}
+            empty={<EmptyState size="sm" title={t.empty} />}
           />
-        )}
-      </section>
+        </section>
+        <section
+          className="pane erp-wo-assign-editor"
+          aria-label={
+            selected === undefined ? t.editorHeading : t.editorLabel(selected.workOrderNo)
+          }
+        >
+          {selected === undefined ? (
+            <EmptyState size="sm" title={t.selectPrompt} />
+          ) : (
+            <AssignEditor
+              actionTargetId={actionTargetId}
+              summary={`${itemLabel ? `${itemLabel} / ` : ''}${lineNameOf?.(selected.productionLineId ?? null) ?? ''} / ${planDateOf(selected.productionPlanId) ?? '—'} / ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
+              key={selected.workOrderId}
+              title={t.editorTitle(selected.workOrderNo, selected.operationName)}
+              workOrderId={selected.workOrderId}
+              plantId={plantId}
+              planDate={planDateOf(selected.productionPlanId)}
+              onDirtyChange={changeDirty}
+              onSaved={(ready) => {
+                const next = nextIncompleteId(
+                  workOrders.map((item) => item.workOrderId),
+                  blockedIds,
+                  selected.workOrderId,
+                  ready,
+                );
+                if (next !== null) onSelect(next);
+              }}
+            />
+          )}
+        </section>
+      </AdjustableLayout>
       {pending !== null && (
         <Dialog
           open
@@ -170,6 +175,6 @@ export const AssignStep = ({
           <p className="dialog-text">{t.discard.body}</p>
         </Dialog>
       )}
-    </div>
+    </>
   );
 };

@@ -1,3 +1,5 @@
+import { AutoPlanHelp } from './auto-plan-help';
+import { AUTO_PLAN_RESULT_PATH } from './auto-plan-result-page';
 /**
  * W-02-01 작업지시 목록 작업함
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
@@ -17,14 +19,11 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
-import {
-  BulkOutcomeChip,
-  BulkResult,
-  type BulkOutcome,
-  type BulkResultFilter,
-} from '../../patterns/bulk-result';
+import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
+import { useSession } from '../../patterns/session';
+import { plantNote, usePlantOptions, type DataScope } from '../dashboard/lookups';
 import { useWorklistBulk, type BulkKind, type BulkTarget } from './bulk-actions';
 import { ForbiddenNotice, isForbidden } from './forbidden-notice';
 import { WorklistBulkDialog } from './bulk-dialog';
@@ -41,13 +40,22 @@ import {
 import { WorklistFilterBar } from './worklist-filter-bar';
 import { deriveWorklistState, type WorklistDerived } from './worklist-model';
 import { useWorklist, useWorklistCount, type WorklistFilters } from './worklist-queries';
-import { CountChip, ProcessStateChip, ReasonChips } from './worklist-chips';
+import { ProcessStateChip, ReasonChips } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
 
-/** 조회 조건 칸(번호, 납기, 품목)에 값이 있는가. 처리 상태 칩은 조건으로 치지 않는다. */
+const NO_SCOPES: readonly DataScope[] = [];
+
+/** 공장 선택지 이름은 「코드 · 이름」이다(dashboard `usePlantOptions`). 표에는 앞의 코드만 쓴다. */
+const PLANT_LABEL_SEPARATOR = ' · ';
+
+/** 조회 조건 칸(번호, 납기, 품목, 고른 공장)에 값이 있는가. 처리 상태 칩과 정해진 공장은 조건으로 치지 않는다. */
 const hasSearchConditions = (filters: WorklistFilters): boolean =>
-  filters.q !== '' || filters.dueFrom !== '' || filters.dueTo !== '' || filters.item !== '';
+  filters.q !== '' ||
+  filters.dueFrom !== '' ||
+  filters.dueTo !== '' ||
+  filters.item !== '' ||
+  filters.plant !== '';
 
 /** 칩 건수. 건수를 받지 못했으면(권한 없음, 오류, 불러오는 중) 0으로 보이지 않고 이름만 보인다. */
 const countLabel = (
@@ -65,7 +73,6 @@ export interface WorklistRow {
   itemCode: string;
   itemName: string;
   qtyLabel: string;
-  outcome: BulkOutcome | undefined;
 }
 
 export interface ProductionOrderScreenProps {
@@ -79,14 +86,23 @@ export const ProductionOrderScreen = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const filters = useMemo(() => readWorklistFilters(searchParams), [searchParams]);
-  const list = useWorklist(filters);
-  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
-  const releasePendingCount = useWorklistCount('RELEASE_PENDING');
-  const allCount = useWorklistCount('ALL');
+  const { session } = useSession();
+  const plants = usePlantOptions(session?.scopes ?? NO_SCOPES);
+  /* 범위 안 공장이 하나뿐이면 그 공장으로 정해지고 바꿀 수 없다. 주소에는 남기지 않는다. 범위가 없거나 여럿이면 고른다. */
+  const lockedPlant =
+    (session?.scopes ?? NO_SCOPES).length > 0 && plants.entries.length === 1
+      ? plants.entries[0]?.value
+      : undefined;
+  const plant = lockedPlant ?? filters.plant;
+  const list = useWorklist({ ...filters, plant });
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', plant);
+  const releasePendingCount = useWorklistCount('RELEASE_PENDING', plant);
+  const allCount = useWorklistCount('ALL', plant);
   const uoms = useUomReferenceLookup();
   const bulk = useWorklistBulk();
   const [checked, setChecked] = useState<string[]>([]);
   const [dialog, setDialog] = useState<{ kind: BulkKind; targets: BulkTarget[] } | null>(null);
+  const [autoPlanHelpOpen, setAutoPlanHelpOpen] = useState(false);
   const [resultFilter, setResultFilter] = useState<BulkResultFilter>(null);
   /* 실행 당시의 행. 결과로 목록을 좁힐 때 다음 조회에서 빠진 건도 보이게 한다(C-18). */
   const [runRows, setRunRows] = useState<WorklistRow[]>([]);
@@ -105,10 +121,11 @@ export const ProductionOrderScreen = ({
       itemCode: item?.itemCode ?? '',
       itemName: item?.itemName ?? '',
       qtyLabel: `${quantity(fact.orderQty)} ${uom}`.trim(),
-      outcome: outcomes.get(String(fact.productionOrderId)),
     };
   };
   const liveRows = facts.map(toRow);
+  const showingResultRows = resultFilter !== null;
+  const activeResultFilter = resultFilter;
   const rows =
     resultFilter === null
       ? liveRows
@@ -118,19 +135,17 @@ export const ProductionOrderScreen = ({
           )
           .map(
             (row) =>
-              liveRows.find(
-                (live) => live.fact.productionOrderId === row.fact.productionOrderId,
-              ) ?? {
-                ...row,
-                outcome: outcomes.get(String(row.fact.productionOrderId)),
-              },
+              liveRows.find((live) => live.fact.productionOrderId === row.fact.productionOrderId) ??
+              row,
           );
 
   const apply = (next: WorklistFilters) => {
     bulk.clear();
     setResultFilter(null);
     setChecked([]);
-    const params = toWorklistSearchParams(next);
+    const params = toWorklistSearchParams(
+      lockedPlant === undefined ? next : { ...next, plant: '' },
+    );
     rememberWorklistSearch(params);
     setSearchParams(params);
   };
@@ -148,12 +163,38 @@ export const ProductionOrderScreen = ({
       ? t.bulk.reasons.noneChecked
       : null;
 
+  const hasPlanQuantities = facts.some(
+    (fact) =>
+      fact.confirmedPlanQty !== undefined ||
+      fact.draftPlanQty !== undefined ||
+      fact.remainingQty !== undefined,
+  );
+
   const columns: Column<WorklistRow>[] = [
     {
       key: 'orderNo',
       header: t.list.columns.orderNo,
       render: (row) => <span className="nowrap-cell mono-cell">{row.fact.productionOrderNo}</span>,
     },
+    /* 공장이 정해져 있으면 모든 행이 같은 공장이라 열을 두지 않는다. 표가 좁아 코드만 보이고 이름은 마우스를 올리면 나온다. */
+    ...(plant === ''
+      ? [
+          {
+            key: 'plant',
+            header: t.list.columns.plant,
+            render: (row: WorklistRow) => {
+              const label =
+                plants.entries.find((entry) => entry.value === String(row.fact.plantId))?.label ??
+                '';
+              return (
+                <span className="nowrap-cell" title={label}>
+                  {label.split(PLANT_LABEL_SEPARATOR)[0]}
+                </span>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: 'itemCode',
       header: t.list.columns.itemCode,
@@ -163,7 +204,7 @@ export const ProductionOrderScreen = ({
       key: 'itemName',
       header: t.list.columns.itemName,
       render: (row) => (
-        <span className="ellipsis-cell" title={row.itemName}>
+        <span className="ellipsis-cell" title={`${row.itemName} (${row.itemCode})`}>
           {row.itemName}
         </span>
       ),
@@ -174,6 +215,18 @@ export const ProductionOrderScreen = ({
       align: 'end',
       render: (row) => <span className="nowrap-cell">{row.qtyLabel}</span>,
     },
+    ...(['confirmedPlanQty', 'draftPlanQty', 'remainingQty'] as const).map(
+      (key): Column<WorklistRow> => ({
+        key,
+        header: t.list.columns[key],
+        align: 'end',
+        render: (row) => (
+          <span className="nowrap-cell">
+            {typeof row.fact[key] === 'number' ? quantity(row.fact[key] as number) : '—'}
+          </span>
+        ),
+      }),
+    ),
     {
       key: 'dueDate',
       header: t.list.columns.dueDate,
@@ -198,16 +251,8 @@ export const ProductionOrderScreen = ({
     {
       key: 'status',
       header: t.list.columns.status,
-      /*
-       * 일괄 결과가 있는 행은 결과 칩을 상태 칩 자리에 보인다. 칩을 둘 놓으면 칸이 넓어져 이동 표시 열이 밀린다(C-16, G-49).
-       * 결과를 닫으면 상태 칩으로 돌아간다.
-       */
-      render: (row) =>
-        row.outcome !== undefined ? (
-          <BulkOutcomeChip outcome={row.outcome} />
-        ) : (
-          <ProcessStateChip state={row.derived.state} />
-        ),
+      /* 일괄 동작 결과를 여기 대신 보이면 오더의 실제 상태(예: 조치 필요)가 가려진다. 건별 결과와 사유는 결과 영역(C-18)이 보인다. */
+      render: (row) => <ProcessStateChip state={row.derived.state} />,
     },
     {
       key: 'reasons',
@@ -224,6 +269,7 @@ export const ProductionOrderScreen = ({
     },
     {
       key: 'open',
+      width: '2rem',
       header: <span className="visually-hidden">{t.list.columns.open}</span>,
       align: 'end',
       render: () => (
@@ -244,75 +290,71 @@ export const ProductionOrderScreen = ({
             aria-label={messages.common.shell.breadcrumb}
           />
         }
-        description={
-          /*
-           * 조건 칩은 「전체」를 맨 앞에 두고 나머지는 처리 순서대로 놓는다. 사용자가 처리할 조건만 칩으로 둔다(계획 전,
-           * 배포 완료, 취소는 행 칩으로만 보인다). 보이는 묶음 이름은 두지 않고 접근명만 붙인다.
-           */
-          <span className="erp-wo-counts" role="group" aria-label={t.counts.label}>
-            <CountChip
-              state="BEFORE_PLAN"
-              label={countLabel(allCount.data, t.counts.all, t.counts.allName)}
-              selected={filters.state === 'ALL'}
-              onSelect={() => apply({ ...filters, state: 'ALL', page: 1 })}
-            />
-            <CountChip
-              state="ACTION_REQUIRED"
-              label={countLabel(
-                actionRequiredCount.data,
-                t.counts.actionRequired,
-                t.status.ACTION_REQUIRED,
-              )}
-              selected={filters.state === 'ACTION_REQUIRED'}
-              onSelect={() => apply({ ...filters, state: 'ACTION_REQUIRED', page: 1 })}
-            />
-            <CountChip
-              state="RELEASE_PENDING"
-              label={countLabel(
-                releasePendingCount.data,
-                t.counts.releasePending,
-                t.status.RELEASE_PENDING,
-              )}
-              selected={filters.state === 'RELEASE_PENDING'}
-              onSelect={() => apply({ ...filters, state: 'RELEASE_PENDING', page: 1 })}
-            />
-          </span>
-        }
-        actions={
-          <div className="erp-wo-bulk-actions">
-            <Button
-              variant="outlined"
-              disabled={bulkReason !== null}
-              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-              onClick={() => setDialog({ kind: 'autoPlan', targets })}
-            >
-              {t.bulk.autoPlan}
-            </Button>
-            <Button
-              disabled={bulkReason !== null}
-              loading={bulk.isRunning}
-              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-              onClick={() => setDialog({ kind: 'release', targets })}
-            >
-              {t.bulk.release}
-            </Button>
-            <span id={bulkReasonId} className="erp-wo-bulk-reason">
-              {bulkReason}
-            </span>
-          </div>
-        }
       />
+      <section className="erp-wo-status-filters" role="group" aria-label={t.counts.label}>
+        {[
+          {
+            state: 'ALL' as const,
+            name: t.counts.allName,
+            count: allCount.data,
+            label: countLabel(allCount.data, t.counts.all, t.counts.allName),
+          },
+          {
+            state: 'ACTION_REQUIRED' as const,
+            name: t.status.ACTION_REQUIRED,
+            count: actionRequiredCount.data,
+            label: countLabel(
+              actionRequiredCount.data,
+              t.counts.actionRequired,
+              t.status.ACTION_REQUIRED,
+            ),
+          },
+          {
+            state: 'RELEASE_PENDING' as const,
+            name: t.status.RELEASE_PENDING,
+            count: releasePendingCount.data,
+            label: countLabel(
+              releasePendingCount.data,
+              t.counts.releasePending,
+              t.status.RELEASE_PENDING,
+            ),
+          },
+        ].map((entry) => (
+          <button
+            type="button"
+            key={entry.state}
+            className="erp-wo-status-filter"
+            aria-label={entry.label}
+            aria-pressed={!showingResultRows && filters.state === entry.state}
+            onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
+          >
+            <span className="erp-wo-status-name">{entry.name}</span>
+            {entry.count !== undefined && (
+              <>
+                {' '}
+                <span className="erp-wo-status-number">
+                  {quantity(entry.count)}
+                  <small>{t.counts.unit}</small>
+                </span>
+              </>
+            )}
+          </button>
+        ))}
+      </section>
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
         <WorklistFilterBar
-          applied={filters}
+          applied={{ ...filters, plant }}
+          plantOptions={plants.entries.map(({ value, label }) => ({ value, label }))}
+          plantLocked={lockedPlant !== undefined}
+          plantNote={plantNote(plants)}
           onSearch={(draft) => apply({ ...filters, ...draft, page: 1 })}
           onReset={() => apply(DEFAULT_WORKLIST_FILTERS)}
         />
       </section>
-      {bulk.run !== null && (
+      {bulk.run?.kind === 'release' && (
         <BulkResult
-          title={t.bulk.resultTitle[bulk.run.kind]}
-          itemName={bulk.run.kind === 'release' ? t.bulk.itemName : undefined}
+          title={t.bulk.resultTitle.release}
+          itemName={t.bulk.itemName}
           outcomes={bulk.run.outcomes}
           filter={resultFilter}
           onFilterChange={setResultFilter}
@@ -322,7 +364,86 @@ export const ProductionOrderScreen = ({
           }}
         />
       )}
+      <section className="erp-wo-selection-toolbar" aria-label={t.bulk.selectionActions}>
+        <div className="erp-wo-selection-info">
+          <strong>{t.bulk.selected(checkedRows.length)}</strong>
+          <p id={bulkReasonId}>{bulkReason ?? t.bulk.selectionHelp}</p>
+        </div>
+        <div className="erp-wo-bulk-actions">
+          <div className="erp-wo-action-choice">
+            <Button
+              aria-describedby={bulkReasonId}
+              disabled={bulkReason !== null}
+              onClick={() => {
+                const first = checkedRows[0];
+                if (!first) return;
+                rememberWorklistSearch(searchParams);
+                const params = new URLSearchParams({
+                  orders: checkedRows.map((row) => row.fact.productionOrderNo).join(','),
+                });
+                void navigate(`${processPath(first.fact.productionOrderNo)}?${params}`);
+              }}
+            >
+              {t.bulk.plan}
+            </Button>
+            <small>{t.bulk.planHelp}</small>
+          </div>
+          <div className="erp-wo-action-choice">
+            <div className="erp-wo-auto-plan-help-actions">
+              <Button
+                variant="outlined"
+                title={t.bulk.autoPlanHelp}
+                disabled={bulkReason !== null}
+                aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+                onClick={() => setDialog({ kind: 'autoPlan', targets })}
+              >
+                {t.bulk.autoPlan}
+              </Button>
+              <Button
+                size="sm"
+                variant="text"
+                className="erp-wo-distribution-help-trigger"
+                aria-label="생산계획 자동 전개 도움말"
+                aria-haspopup="dialog"
+                onClick={() => setAutoPlanHelpOpen(true)}
+              >
+                ?
+              </Button>
+            </div>
+            <small>{t.bulk.autoPlanShortHelp}</small>
+          </div>
+          <div className="erp-wo-action-choice">
+            <Button
+              variant="outlined"
+              title={t.bulk.releaseHelp}
+              disabled={bulkReason !== null}
+              loading={bulk.isRunning}
+              aria-describedby={bulkReason === null ? undefined : bulkReasonId}
+              onClick={() => setDialog({ kind: 'release', targets })}
+            >
+              {t.bulk.release}
+            </Button>
+            <small>{t.bulk.releaseShortHelp}</small>
+          </div>
+        </div>
+      </section>
       <section className="pane erp-wo-list-pane" aria-label={t.list.pane}>
+        {showingResultRows && (
+          <div className="section-heading-row erp-wo-result-scope">
+            <h2 className="section-title">
+              일괄 배포 실행 대상 <span className="field-note">{rows.length}건</span>
+            </h2>
+            <Button
+              size="sm"
+              variant="outlined"
+              onClick={() =>
+                apply({ ...DEFAULT_WORKLIST_FILTERS, plant: filters.plant, state: 'ALL', page: 1 })
+              }
+            >
+              전체 목록으로 돌아가기
+            </Button>
+          </div>
+        )}
         {list.isError && isForbidden(list.error) ? (
           <ForbiddenNotice menuPath={permissionMenuPath} />
         ) : list.isError ? (
@@ -345,8 +466,13 @@ export const ProductionOrderScreen = ({
           <>
             <SelectableTable
               className="erp-wo-table"
+              stickyLastColumn
               caption={<span className="visually-hidden">{t.list.caption}</span>}
-              columns={columns}
+              columns={columns.filter((column) =>
+                hasPlanQuantities
+                  ? !['itemCode', 'dueDate', 'pending'].includes(column.key)
+                  : !['confirmedPlanQty', 'draftPlanQty', 'remainingQty'].includes(column.key),
+              )}
               rows={rows}
               getRowId={(row) => String(row.fact.productionOrderId)}
               rowLabel={(row) => t.list.openRow(row.fact.productionOrderNo)}
@@ -398,7 +524,7 @@ export const ProductionOrderScreen = ({
                 )
               }
             />
-            {resultFilter === null && (
+            {activeResultFilter === null && (
               <PageNav
                 meta={list.data.page}
                 onChangePage={(page) => apply({ ...filters, page })}
@@ -408,6 +534,7 @@ export const ProductionOrderScreen = ({
           </>
         )}
       </section>
+      {autoPlanHelpOpen && <AutoPlanHelp onClose={() => setAutoPlanHelpOpen(false)} />}
       {dialog !== null && (
         <WorklistBulkDialog
           kind={dialog.kind}
@@ -419,7 +546,11 @@ export const ProductionOrderScreen = ({
             setDialog(null);
             setRunRows(checkedRows);
             setResultFilter(null);
-            void bulk.start(kind, chosen).then(() => setChecked([]));
+            rememberWorklistSearch(searchParams);
+            void bulk.start(kind, chosen).then(() => {
+              setChecked([]);
+              if (kind === 'autoPlan') void navigate(AUTO_PLAN_RESULT_PATH);
+            });
           }}
         />
       )}

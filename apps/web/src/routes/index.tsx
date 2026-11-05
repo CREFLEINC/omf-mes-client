@@ -1,3 +1,4 @@
+import { AutoPlanResultPage } from '../screens/production-order/auto-plan-result-page';
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
@@ -366,6 +367,10 @@ export const appRouter = createBrowserRouter([
       {
         path: 'production/production-orders',
         element: <ProductionOrderRoute />,
+      },
+      {
+        path: 'production/production-orders/auto-plan-results',
+        element: <AutoPlanResultPage permissionMenuPath={navMenuPath('/system/users-roles')} />,
       },
       /* W-02-01 처리 화면 — 주소에 업무 번호(ERP W/O 번호)를 쓴다. W-02-02~04 를 단계로 합쳤다. */
       {

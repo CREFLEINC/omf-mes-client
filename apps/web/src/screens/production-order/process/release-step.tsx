@@ -1,20 +1,22 @@
-import { AlertBanner, SkeletonText, TextField, type Column } from '@crefle/web-ui';
+import { AdjustableLayout } from './adjustable-layout';
+import { AdjustableNativeTable } from './adjustable-table';
+import { TerminalConnections } from './terminal-connections';
+import { AlertBanner, Button, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-
-import { useApiClient } from '../../../patterns/api-context';
-import { EffectList } from '../../../patterns/process-page';
 import { fetchAllPages } from '../../../patterns/fetch-all-pages';
 import { plantToday, toPlantDateTimeParts } from '../../../patterns/plant-time';
-import { runRequest } from '../../../patterns/request';
-import { SelectableTable } from '../../../patterns/selectable-table';
 import {
   currentPolicy,
   previousWorkingDay,
   toWorkingDays,
   WORKING_DAYS_POLICY_CODE,
 } from '../../plant-working-days/working-days';
+
+import { useApiClient } from '../../../patterns/api-context';
+import { runRequest } from '../../../patterns/request';
 import { evaluateWorkOrderReleaseDraft } from '../../work-order-release/release-draft';
 import type { ReleaseAttempt } from '../release-runner';
 import { productionOrderItemKeys } from '../item-lookups';
@@ -22,6 +24,7 @@ import { formatQty } from './process-model';
 import type { OrderWorkOrder } from './queries';
 
 const t = messages.erpWorkOrderFlow.process.release;
+
 const pw = t.productionWarehouse;
 
 /** W-02-11 부족 보기 — 배포 결과의 「재고 있는 생산 창고 없음」 안내가 가리킨다. */
@@ -219,10 +222,14 @@ export const toReleaseLines = (
   });
 
 export interface ReleaseStepProps {
+  plantId?: number;
   lines: ReleaseLine[] | undefined;
+  orderNo?: string;
+  itemLabel?: string;
+  planDateOf?: (planId: number) => string | null;
+  lineNameOf?: (lineId: number | null) => string;
   uomLabelOf: (uomId: number) => string;
   failures: ReleaseFailure[];
-  /** 생산 창고 공장이면 W/O 마다 생산일 · 출고 작업일(피처 003). 없으면 지금 배포 단계 그대로. */
   issueDates?: Map<number, IssueDates>;
   /** 배포를 눌렀으면 손대지 않은 줄의 오류도 보인다. */
   revealErrors: boolean;
@@ -233,42 +240,26 @@ export interface ReleaseStepProps {
  * 배포 확인 단계(마지막 확인 단계). 결과를 바꾸는 값(W/O, 수량, LOT 크기)과 반영 사항을 1280×800 첫 화면 안에 보인다.
  */
 export const ReleaseStep = ({
+  plantId,
   lines,
+  orderNo,
+  itemLabel,
+  planDateOf,
+  lineNameOf,
   uomLabelOf,
   failures,
   issueDates,
   revealErrors,
   onLotSizeChange,
 }: ReleaseStepProps) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   if (lines === undefined) return <SkeletonText lines={4} />;
   const totalLots = lines.reduce((sum, line) => sum + (line.lotCount ?? 0), 0);
-  const monthDay = (iso: string | null | undefined): string =>
-    iso === null || iso === undefined ? '' : iso.slice(5);
-  const dateColumns: Column<ReleaseLine>[] =
-    issueDates === undefined
-      ? []
-      : [
-          {
-            key: 'productionDate',
-            header: pw.productionDate,
-            render: (row) => (
-              <span className="nowrap-cell">
-                {monthDay(issueDates.get(row.workOrder.workOrderId)?.productionDate)}
-              </span>
-            ),
-          },
-          {
-            key: 'issueWorkDate',
-            header: pw.issueWorkDate,
-            render: (row) => (
-              <span className="nowrap-cell">
-                {issueDates.get(row.workOrder.workOrderId)?.undetermined === true
-                  ? pw.decidedAtRelease
-                  : monthDay(issueDates.get(row.workOrder.workOrderId)?.issueWorkDate)}
-              </span>
-            ),
-          },
-        ];
+  const selected =
+    lines.find((line) => String(line.workOrder.workOrderId) === selectedId) ?? lines[0];
+  if (selected === undefined) return <p className="empty-line">{t.empty}</p>;
+  const wo = selected.workOrder;
+  const monthDay = (iso: string | null | undefined): string => (iso == null ? '' : iso.slice(5));
   /*
    * 생산 창고 공장의 효과 문구 — 날짜만(검토 14). 출고 작업일이 오늘 이하면 「바로 출고」.
    * 날짜가 여럿이면 가장 이른 날 「외 N일」.
@@ -313,95 +304,185 @@ export const ReleaseStep = ({
     ];
   })();
   const hasBlocks = failures.some((failure) => failure.links.length > 0);
-  const columns: Column<ReleaseLine>[] = [
-    {
-      key: 'workOrderNo',
-      header: t.columns.workOrderNo,
-      render: (row) => <span className="nowrap-cell mono-cell">{row.workOrder.workOrderNo}</span>,
-    },
-    {
-      key: 'operation',
-      header: t.columns.operation,
-      render: (row) => (
-        <span className="ellipsis-cell" title={row.workOrder.operationName}>
-          {row.workOrder.operationName}
-        </span>
-      ),
-    },
-    {
-      key: 'orderQty',
-      header: t.columns.orderQty,
-      align: 'end',
-      render: (row) => (
-        <span className="nowrap-cell">{`${formatQty(row.workOrder.orderQty)} ${uomLabelOf(row.workOrder.uomId)}`}</span>
-      ),
-    },
-    {
-      key: 'lotSize',
-      header: t.columns.lotSize,
-      width: '9rem',
-      render: (row) => (
-        <TextField
-          size="sm"
-          fullWidth
-          inputMode="decimal"
-          aria-label={t.lotSizeLabel(row.workOrder.workOrderNo)}
-          value={row.lotSizeText}
-          error={row.touched || revealErrors ? (row.error ?? undefined) : undefined}
-          onChange={(event) => onLotSizeChange(row.workOrder.workOrderId, event.target.value)}
-        />
-      ),
-    },
-    {
-      key: 'lotCount',
-      header: t.columns.lotCount,
-      align: 'end',
-      render: (row) => (
-        <span className="nowrap-cell">{row.lotCount === null ? '' : String(row.lotCount)}</span>
-      ),
-    },
-    ...dateColumns,
-  ];
 
   return (
-    <div className="erp-wo-release-layout">
-      <section className="pane erp-wo-step-pane" aria-label={t.heading}>
+    <div className="erp-wo-release-workspace">
+      <div className="section-heading-row">
         <h2 className="section-title">{t.heading}</h2>
-        <SelectableTable
-          columns={columns}
-          rows={lines}
-          getRowId={(row) => String(row.workOrder.workOrderId)}
-        />
-      </section>
-      <section className="pane erp-wo-release-effects">
-        <EffectList
-          task={t.task}
-          items={[
-            { key: 'status', label: t.effects.status(lines.length) },
-            { key: 'lots', label: t.effects.lots(totalLots) },
-            ...effectItems,
-            { key: 'pqc', label: t.effects.pqc },
-          ]}
-        />
-        <AlertBanner variant="info">{t.irreversible}</AlertBanner>
-        {failures.length > 0 && (
-          <AlertBanner variant="error" title={hasBlocks ? pw.blockedTitle : undefined}>
-            <ul className="erp-wo-release-failures">
-              {failures.map((failure) => (
-                <li key={failure.key}>
-                  {failure.text}
-                  {/* 바로가기는 새 탭 — 처리 화면을 잃지 않게(screens/W-02-01-release.md). */}
-                  {failure.links.map((link) => (
-                    <Link key={link.to} to={link.to} target="_blank" rel="noreferrer">
-                      {link.label}
-                    </Link>
+        <span className="field-note">{t.scope(lines.length)}</span>
+      </div>
+      <p className="erp-wo-release-scope">{t.scopeHelp}</p>
+      <AdjustableLayout
+        storageKey="omf-mes:work-planning:release-layout"
+        label="배포 확인"
+        initial="stack"
+        ratio={0.6}
+      >
+        <section className="pane erp-wo-release-targets" aria-label="배포 대상 및 LOT 설정">
+          <h3 className="section-title">배포 대상 및 LOT 설정</h3>
+          <div className="erp-wo-release-target-table">
+            <AdjustableNativeTable
+              storageKey="omf-mes:work-planning:release-columns"
+              widths={
+                issueDates === undefined
+                  ? [220, 220, 120, 160, 120]
+                  : [220, 220, 120, 160, 120, 120, 120]
+              }
+              labels={[
+                '작업지시 · 공정',
+                '계획일 · 생산 라인',
+                t.columns.orderQty,
+                t.columns.lotSize,
+                t.columns.lotCount,
+                ...(issueDates === undefined ? [] : [pw.productionDate, pw.issueWorkDate]),
+              ]}
+            >
+              <tbody>
+                {lines.map((line) => {
+                  const target = line.workOrder;
+                  return (
+                    <tr
+                      key={target.workOrderId}
+                      data-selected={target.workOrderId === wo.workOrderId}
+                    >
+                      <td data-label="작업지시 · 공정">
+                        <Button
+                          variant="text"
+                          size="sm"
+                          aria-label={`${target.workOrderNo} 상세 확인`}
+                          aria-pressed={target.workOrderId === wo.workOrderId}
+                          onClick={() => setSelectedId(String(target.workOrderId))}
+                        >
+                          {target.workOrderNo}
+                        </Button>
+                        <p>{target.operationName}</p>
+                      </td>
+                      <td data-label="계획일 · 생산 라인">
+                        {planDateOf?.(target.productionPlanId) ?? '—'}
+                        <p>{lineNameOf?.(target.productionLineId ?? null) ?? '—'}</p>
+                      </td>
+                      <td data-label={t.columns.orderQty}>
+                        {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
+                      </td>
+                      <td data-label={t.columns.lotSize}>
+                        <TextField
+                          size="sm"
+                          inputMode="decimal"
+                          aria-label={t.lotSizeLabel(target.workOrderNo)}
+                          value={line.lotSizeText}
+                          error={
+                            line.touched || revealErrors ? (line.error ?? undefined) : undefined
+                          }
+                          onChange={(event) =>
+                            onLotSizeChange(target.workOrderId, event.target.value)
+                          }
+                        />
+                        <span className="field-note">{uomLabelOf(target.uomId)}</span>
+                      </td>
+                      <td data-label={t.columns.lotCount}>
+                        {line.lotCount == null ? '—' : `${line.lotCount}개`}
+                      </td>
+                      {issueDates !== undefined && (
+                        <>
+                          <td data-label={pw.productionDate}>
+                            {monthDay(issueDates.get(target.workOrderId)?.productionDate)}
+                          </td>
+                          <td data-label={pw.issueWorkDate}>
+                            {issueDates.get(target.workOrderId)?.undetermined === true
+                              ? pw.decidedAtRelease
+                              : monthDay(issueDates.get(target.workOrderId)?.issueWorkDate)}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </AdjustableNativeTable>
+          </div>
+        </section>
+        <div className="erp-wo-release-layout">
+          <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+            <summary>
+              선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
+            </summary>
+            <dl className="erp-wo-release-summary">
+              <div>
+                <dt>{t.orderNo}</dt>
+                <dd>{orderNo ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t.item}</dt>
+                <dd>{itemLabel ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t.columns.operation}</dt>
+                <dd>{wo.operationName}</dd>
+              </div>
+              <div>
+                <dt>{t.columns.orderQty}</dt>
+                <dd>
+                  {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
+                </dd>
+              </div>
+              <div>
+                <dt>{t.planDate}</dt>
+                <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t.line}</dt>
+                <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
+              </div>
+            </dl>
+          </details>
+          {plantId != null && (
+            <details className="pane erp-wo-release-terminals">
+              <summary>연결 단말기 확인</summary>
+              <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
+            </details>
+          )}
+          <section className="erp-wo-release-effects">
+            <div className="pane">
+              <div
+                className="erp-wo-release-notice"
+                role="region"
+                aria-label={messages.screenPatterns.effectList.title(t.task)}
+              >
+                <h3 className="section-title">배포 시 반영 사항</h3>
+                <ul>
+                  <li>{t.effects.status(lines.length)}</li>
+                  <li>
+                    {lines.some((line) => line.lotCount === null)
+                      ? t.lotsPending
+                      : t.effects.lots(totalLots)}
+                  </li>
+                  {effectItems.map((effect) => (
+                    <li key={effect.key}>{effect.label}</li>
                   ))}
-                </li>
-              ))}
-            </ul>
-          </AlertBanner>
-        )}
-      </section>
+                  <li>{t.effects.pqc}</li>
+                </ul>
+                <p>{t.irreversible}</p>
+              </div>
+            </div>
+            {failures.length > 0 && (
+              <AlertBanner variant="error" title={hasBlocks ? pw.blockedTitle : undefined}>
+                <ul className="erp-wo-release-failures">
+                  {failures.map((failure) => (
+                    <li key={failure.key}>
+                      {failure.text}
+                      {failure.links.map((link) => (
+                        <Link key={link.to} to={link.to} target="_blank" rel="noreferrer">
+                          {link.label}
+                        </Link>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </AlertBanner>
+            )}
+          </section>
+        </div>
+      </AdjustableLayout>
     </div>
   );
 };

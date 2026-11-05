@@ -1,11 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
-import { useState } from 'react';
+import { Route, Routes, useLocation } from 'react-router';
+import { AutoPlanResultPage } from './auto-plan-result-page';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider, type Session } from '../../patterns/session';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { ProductionOrderScreen } from './screen';
 import { reasonHelpText, reasonLabel } from './worklist-chips';
 
@@ -76,12 +79,15 @@ interface Options {
   released?: number[];
   /** 목록과 건수 조회를 403(오류 봉투)으로 거절한다 */
   forbidden?: boolean;
+  /** `/mdm/plants` 응답. 범위 안 공장 선택지와 공장 열의 이름이 된다. */
+  plants?: { plantId: number; plantCode: string; plantName: string; isActive: boolean }[];
 }
 
 const stub = ({
   orders,
   released = [],
   forbidden = false,
+  plants = [],
 }: Options): { fetch: StubFetch; requests: Request[] } => {
   const requests: Request[] = [];
   /* 9004는 배포 시각이 없지만 취소된 W/O다. 배포 전 W/O로 세지 않는다. */
@@ -149,10 +155,18 @@ const stub = ({
         },
       });
     }
+    if (path(request).endsWith(':auto-plan'))
+      return jsonResponse({
+        productionOrderId: 701,
+        outcome: 'DRAFT',
+        productionPlanId: 501,
+        reasons: ['LINE_UNKNOWN', 'PLAN_NOT_CONFIRMED'],
+      });
     if (path(request) === '/mdm/uoms') {
       return jsonResponse(page([{ uomId: 8101, uomCode: 'EA', uomName: '개', isActive: true }]));
     }
     if (path(request) === '/mdm/code-values') return jsonResponse(page([]));
+    if (path(request) === '/mdm/plants') return jsonResponse(page(plants));
     throw new Error(`unexpected request: ${request.method} ${request.url}`);
   };
   return { fetch, requests };
@@ -163,19 +177,88 @@ const Location = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const render = (options: Options, route = '/production/production-orders') => {
+/** 화면이 세션의 데이터 범위로 공장 선택지를 정한다. 범위 줄이 없으면 전체 공장(admin)이다. */
+const renderInSession = (
+  ui: ReactNode,
+  options: Parameters<typeof renderWithProviders>[1],
+  scopes: Session['scopes'] = [],
+) =>
+  renderWithProviders(<SessionProvider>{ui}</SessionProvider>, {
+    session: { ...SYNTHETIC_SESSION, scopes },
+    ...options,
+  });
+
+const render = (
+  options: Options,
+  route = '/production/production-orders',
+  scopes: Session['scopes'] = [],
+) => {
   const harness = stub(options);
-  renderWithProviders(
+  renderInSession(
     <>
-      <ProductionOrderScreen />
+      <Routes>
+        <Route path="/production/production-orders" element={<ProductionOrderScreen />} />
+        <Route
+          path="/production/production-orders/auto-plan-results"
+          element={<AutoPlanResultPage />}
+        />
+        <Route path="/production/production-orders/:id" element={<div />} />
+      </Routes>
       <Location />
     </>,
     { fetch: harness.fetch, route },
+    scopes,
   );
   return harness;
 };
 
+const SYN_PLANTS = [
+  {
+    plantId: 8401,
+    plantCode: 'SYN-P1',
+    plantName: '합성 공장 가',
+    isActive: true,
+    businessUnitId: 8301,
+  },
+  {
+    plantId: 8402,
+    plantCode: 'SYN-P2',
+    plantName: '합성 공장 나',
+    isActive: true,
+    businessUnitId: 8301,
+  },
+];
+
+const listQueries = (requests: Request[], size: string) =>
+  requests
+    .filter((request) => path(request) === '/planning/production-orders')
+    .map((request) => new URL(request.url).searchParams)
+    .filter((query) => query.get('size') === size);
+const listPlantIds = (requests: Request[]) =>
+  listQueries(requests, '20').map((query) => query.get('plantId'));
+const countPlantIds = (requests: Request[]) =>
+  listQueries(requests, '1').map((query) => query.get('plantId'));
+
 describe('작업지시 목록 작업함', () => {
+  it('선택 대상 없이도 자동 전개 도움말을 읽고 닫으며 실행 요청은 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = render({ orders: [REVIEW] });
+    await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    expect(screen.getByRole('button', { name: t.bulk.autoPlan })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '생산계획 자동 전개 도움말' }));
+    const dialog = screen.getByRole('dialog', { name: '생산계획 자동 전개 도움말' });
+    expect(
+      within(dialog).getByRole('heading', { name: '준비할 ERP 데이터와 MES 기준정보' }),
+    ).toBeVisible();
+    expect(within(dialog).getByText(/기본 BOM 개정이 정확히 1개/)).toBeVisible();
+    expect(within(dialog).getByText(/먼저 생성된 미확정 계획 1건/)).toBeVisible();
+    expect(
+      requests.some((request) => request.method === 'POST' && request.url.includes('auto-plan')),
+    ).toBe(false);
+    await user.click(within(dialog).getAllByRole('button', { name: '닫기' }).at(-1)!);
+    expect(screen.queryByRole('dialog', { name: '생산계획 자동 전개 도움말' })).toBeNull();
+  });
+
   it('기본 조건은 「조치 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
     const { requests } = render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
 
@@ -216,7 +299,7 @@ describe('작업지시 목록 작업함', () => {
         expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
       ]),
     );
-    expect(screen.queryByText('자동 계획', { exact: true })).toBeNull();
+    expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
   });
 
   it('행 상태 칩은 서버 판정(worklistState) 그대로다', async () => {
@@ -303,11 +386,11 @@ describe('작업지시 목록 작업함', () => {
     [
       'NO_LIVE_WORK_ORDER',
       '계획 추가 필요',
-      '확정한 계획의 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 [계획 추가]로 필요한 수량을 다시 계획하고 [전개 확정]을 눌러야 합니다.',
+      '확정한 계획의 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 [계획 추가]로 필요한 수량을 다시 계획하고 [계획 확정 후 4M 배정]을 눌러야 합니다.',
     ],
     ['NEW_CODE', '조치 필요(NEW_CODE)', '처리 화면을 열어 남은 일을 확인해야 합니다.'],
   ])(
-    '자동 계획이 끝났는데 막힌 사유 %s는 칩 「%s」와 도움말로 보인다',
+    '생산계획 자동 전개가 끝났는데 막힌 사유 %s는 칩 「%s」와 도움말로 보인다',
     async (code, label, help) => {
       const blocked = order(
         720,
@@ -327,7 +410,7 @@ describe('작업지시 목록 작업함', () => {
     },
   );
 
-  it('자동 계획 확인 필요의 새 사유 AUTO_PLAN_RERUN_NEEDED는 다시 실행하라고 말한다', async () => {
+  it('생산계획 자동 전개 확인 필요의 새 사유 AUTO_PLAN_RERUN_NEEDED는 다시 실행하라고 말한다', async () => {
     const rerun = order(721, 'SYN-PO-721', {
       status: 'NEEDS_REVIEW',
       reasons: ['AUTO_PLAN_RERUN_NEEDED'],
@@ -335,9 +418,9 @@ describe('작업지시 목록 작업함', () => {
     render({ orders: [rerun] });
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-721') });
-    const chip = within(row).getByText('자동 계획 다시 실행 필요');
+    const chip = within(row).getByText('생산계획 자동 전개 다시 실행 필요');
     expect(chip.closest('button')).toHaveAccessibleDescription(
-      '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
+      '기준정보가 갖춰졌거나 생산계획 자동 전개가 실패했습니다. 처리 화면 오른쪽 위 [생산계획 자동 전개 다시 실행]을 눌러야 합니다.',
     );
   });
 
@@ -382,7 +465,7 @@ describe('작업지시 목록 작업함', () => {
 
   it('권한 안내는 라우트가 넘긴 메뉴 경로를 가리킨다', async () => {
     const harness = stub({ orders: [REVIEW], forbidden: true });
-    renderWithProviders(<ProductionOrderScreen permissionMenuPath="시스템 관리 › 권한" />, {
+    renderInSession(<ProductionOrderScreen permissionMenuPath="시스템 관리 › 권한" />, {
       fetch: harness.fetch,
       route: '/production/production-orders',
     });
@@ -450,7 +533,7 @@ describe('작업지시 목록 작업함', () => {
     expect(release).toHaveAccessibleDescription(t.bulk.reasons.noneChecked);
   });
 
-  it('자동 계획 확인 창은 라인을 모를 때 건너뛰지 않고 작성 중 계획만 만든다고 말한다', async () => {
+  it('생산계획 자동 전개 확인 창은 라인을 모를 때 건너뛰지 않고 작성 중 계획만 만든다고 말한다', async () => {
     const user = userEvent.setup();
     render({ orders: [REVIEW] });
 
@@ -473,7 +556,31 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
-  it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 결과 칩을 상태 칩 자리에 보인다(C-16, C-18)', async () => {
+  it('생산계획 자동 전개 결과 조회 중에는 업무 상태 선택을 해제하고 업무 목록 복귀 시 복원한다', async () => {
+    const user = userEvent.setup();
+    render(
+      { orders: [REVIEW, DONE_BLOCKED, DONE_READY] },
+      '/production/production-orders?state=ALL',
+    );
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    await user.click(within(row).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '실행' }));
+    await screen.findByRole('region', { name: '생산계획 자동 전개 결과' });
+    expect(screen.queryByRole('group', { name: t.counts.label })).toBeNull();
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(screen.getByRole('heading', { name: '생산계획 자동 전개 결과' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '실행 대상 전체 1건' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '작업계획 목록으로' }));
+    expect(screen.queryByRole('region', { name: '생산계획 자동 전개 결과' })).toBeNull();
+    const statuses = screen.getByRole('group', { name: t.counts.label });
+    expect(within(statuses).getByRole('button', { name: /^전체 / })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(await screen.findByRole('link', { name: t.list.openRow('SYN-PO-703') })).toBeVisible();
+  });
+  it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 처리 상태 칸은 결과가 아니라 실제 상태를 보인다(C-16, C-18)', async () => {
     const user = userEvent.setup();
     render({ orders: [DONE_BLOCKED, DONE_READY] }, '/production/production-orders?state=ALL');
 
@@ -510,12 +617,13 @@ describe('작업지시 목록 작업함', () => {
     );
     const narrowed = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-702') });
     expect(
-      within(narrowed).getByText(messages.screenPatterns.bulkResult.outcome.partial),
-    ).toBeVisible();
+      within(narrowed).queryByText(messages.screenPatterns.bulkResult.outcome.partial),
+    ).toBeNull();
+    expect(within(narrowed).getByText(new RegExp(Object.values(t.status).join('|')))).toBeVisible();
     expect(screen.queryByRole('link', { name: t.list.openRow('SYN-PO-703') })).toBeNull();
   });
 
-  it('모든 대상이 건너뛸 것이면 확인 창의 [배포]를 잠그고 이유를 적는다(C-18)', async () => {
+  it('모든 대상이 처리되지 않을 것이면 확인 창의 [배포]를 잠그고 이유를 적는다(C-18)', async () => {
     const user = userEvent.setup();
     render({ orders: [DONE_BLOCKED], released: [9002] }, '/production/production-orders?state=ALL');
 
@@ -538,6 +646,46 @@ describe('작업지시 목록 작업함', () => {
     ).toBeVisible();
   });
 
+  it('범위가 없으면 공장은 「전체」로 열려 고를 수 있고, 고른 공장은 주소와 조회에 실린다', async () => {
+    const user = userEvent.setup();
+    const { requests } = render({
+      orders: [{ ...REVIEW, plantId: 8402 }],
+      plants: SYN_PLANTS,
+    });
+
+    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    expect(within(row).getByText('SYN-P2')).toHaveAttribute('title', 'SYN-P2 · 합성 공장 나');
+    const plant = screen.getByLabelText(t.filters.plant);
+    expect(plant).toBeEnabled();
+    expect(plant).toHaveTextContent(t.filters.allPlants);
+
+    await user.click(plant);
+    await user.click(await screen.findByRole('option', { name: 'SYN-P2 · 합성 공장 나' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('plant=8402'));
+    await waitFor(() => expect(listPlantIds(requests)).toContain('8402'));
+    expect(listPlantIds(requests)[0]).toBeNull();
+  });
+
+  it('범위 안 공장이 하나면 그 공장으로 정해지고 바꿀 수 없으며, 공장 열과 주소 값은 없다', async () => {
+    const { requests } = render(
+      { orders: [{ ...REVIEW, plantId: 8401 }], plants: SYN_PLANTS },
+      '/production/production-orders',
+      [{ businessUnitId: 8301, plantId: 8401 }],
+    );
+
+    await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    const plant = screen.getByLabelText(t.filters.plant);
+    await waitFor(() => expect(plant).toHaveTextContent('SYN-P1 · 합성 공장 가'));
+    expect(plant).toBeDisabled();
+    expect(screen.queryByRole('columnheader', { name: t.list.columns.plant })).toBeNull();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('plant=');
+    /* 목록과 칩 건수가 모두 그 공장으로 걸린다. */
+    await waitFor(() => expect(listPlantIds(requests).at(-1)).toBe('8401'));
+    expect(countPlantIds(requests).slice(-3)).toEqual(['8401', '8401', '8401']);
+  });
+
   it('일괄 배포 중에 다른 화면으로 갔다 돌아와도 결과가 남는다', async () => {
     const user = userEvent.setup();
     const harness = stub({ orders: [DONE_READY] });
@@ -552,7 +700,7 @@ describe('작업지시 목록 작업함', () => {
         </>
       );
     };
-    renderWithProviders(<Toggle />, {
+    renderInSession(<Toggle />, {
       fetch: harness.fetch,
       route: '/production/production-orders?state=RELEASE_PENDING',
     });

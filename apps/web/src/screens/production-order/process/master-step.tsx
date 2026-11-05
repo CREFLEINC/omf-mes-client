@@ -1,69 +1,11 @@
+import { MasterDetails } from './master-details';
 import { AlertBanner, Button, Chip, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
-import { Select } from '../../../patterns/select';
+import { plantToday } from '../../../patterns/plant-time';
 import type { BomRevisionFact, RoutingRevisionFact } from '../../production-plan/reference-queries';
 
 const t = messages.erpWorkOrderFlow.process.master;
-
-interface RevisionFieldProps<T> {
-  label: string;
-  items: readonly T[];
-  value: string;
-  idOf: (item: T) => number;
-  labelOf: (item: T) => string;
-  periodOf: (item: T) => string;
-  isDefault: (item: T) => boolean;
-  locked: boolean;
-  onChange: (value: string) => void;
-}
-
-const RevisionField = <T,>({
-  label,
-  items,
-  value,
-  idOf,
-  labelOf,
-  periodOf,
-  isDefault,
-  locked,
-  onChange,
-}: RevisionFieldProps<T>) => {
-  const id = useId();
-  const selected = items.find((item) => String(idOf(item)) === value);
-  return (
-    <div className="field-cell erp-wo-master-field">
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      {locked && selected !== undefined ? (
-        <p id={id} className="erp-wo-master-value">
-          {labelOf(selected)}
-        </p>
-      ) : (
-        <Select
-          id={id}
-          value={value === '' ? null : value}
-          placeholder={t.placeholder}
-          options={items.map((item) => ({ value: String(idOf(item)), label: labelOf(item) }))}
-          onChange={onChange}
-        />
-      )}
-      {selected !== undefined && (
-        <span className="erp-wo-master-note">
-          {periodOf(selected)}
-          {isDefault(selected) && (
-            <Chip variant="status" size="sm" status="info">
-              {t.autoSelected}
-            </Chip>
-          )}
-          {locked && <span>{t.fixedByPlan}</span>}
-        </span>
-      )}
-    </div>
-  );
-};
 
 export interface MasterStepProps {
   boms: {
@@ -78,16 +20,17 @@ export interface MasterStepProps {
     isError: boolean;
     refetch: () => void;
   };
+  orderNo?: string;
+  itemLabel?: string;
   bomId: string;
   routingId: string;
   /** 확정된 계획이 있으면 그 계획의 개정을 읽기 전용으로 보인다. */
   locked: boolean;
   statusNameOf: (code: string) => string;
-  onBomChange: (value: string) => void;
   onRoutingChange: (value: string) => void;
 }
 
-/** 마스터 점검 단계: 계획에 쓸 BOM과 Routing 개정. 없으면 「남은 일」이 담당과 할 일을 말한다(하단 바). */
+/** BOM·Routing 단계: 계획에 쓸 BOM과 Routing 개정. 없으면 「남은 일」이 담당과 할 일을 말한다(하단 바). */
 export const MasterStep = ({
   boms,
   routings,
@@ -95,7 +38,6 @@ export const MasterStep = ({
   routingId,
   locked,
   statusNameOf,
-  onBomChange,
   onRoutingChange,
 }: MasterStepProps) => {
   if (boms.isLoading || routings.isLoading) return <SkeletonText lines={3} />;
@@ -122,44 +64,46 @@ export const MasterStep = ({
   const period = (from: string | null, to: string | null) =>
     t.effective(from ?? '', to ?? t.periodOpen);
 
+  const selectedRouting = routings.items.find((item) => String(item.routingId) === routingId);
+  const checked =
+    boms.items.some((item) => String(item.bomId) === bomId) &&
+    routings.items.some((item) => String(item.routingId) === routingId);
   return (
-    <section className="pane erp-wo-step-pane" aria-label={t.heading}>
-      <h2 className="section-title">{t.heading}</h2>
-      <div className="erp-wo-master-grid">
-        <RevisionField
-          label={t.bom}
-          items={boms.items}
-          value={bomId}
-          idOf={(item) => item.bomId}
-          labelOf={(item) =>
-            t.revision(item.bomCode, item.bomVersion, statusNameOf(item.statusCode))
-          }
-          periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
-          isDefault={(item) => item.isDefault}
-          locked={locked}
-          onChange={onBomChange}
-        />
-        <RevisionField
-          label={t.routing}
-          items={routings.items}
-          value={routingId}
-          idOf={(item) => item.routingId}
-          labelOf={(item) =>
-            t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode))
-          }
-          periodOf={(item) => period(item.effectiveFrom, item.effectiveTo)}
-          isDefault={(item) => item.isDefault}
-          locked={locked}
-          onChange={onRoutingChange}
-        />
+    <section className="erp-wo-master-workspace" aria-label={t.heading}>
+      <div className="section-heading-row">
+        <h2 className="section-title">{t.heading}</h2>
+        <Chip size="sm" variant="status" status={checked ? 'success' : 'warning'}>
+          {checked ? t.checked : t.needsCheck}
+        </Chip>
       </div>
+      <MasterDetails
+        bomId={bomId}
+        routingId={routingId}
+        locked={locked}
+        itemId={selectedRouting?.itemId}
+        options={routings.items.map((item) => ({
+          value: String(item.routingId),
+          label: t.revision(item.routingCode, item.routingVersion, statusNameOf(item.statusCode)),
+          period: period(item.effectiveFrom, item.effectiveTo),
+          isDefault: item.isDefault,
+        }))}
+        onRoutingChange={onRoutingChange}
+      />
+      {locked && <p className="field-note">{t.fixedByPlan}</p>}
     </section>
   );
 };
 
 /** 기본 BOM 개정이 하나면 그것(기존 W-02-02 규칙). */
 export const automaticBomId = (items: readonly BomRevisionFact[]): number | null => {
-  const defaults = items.filter((item) => item.isDefault);
+  const today = plantToday();
+  const defaults = items.filter(
+    (item) =>
+      item.isDefault &&
+      item.statusCode === 'CONFIRMED' &&
+      item.effectiveFrom <= today &&
+      (item.effectiveTo == null || item.effectiveTo >= today),
+  );
   return defaults.length === 1 ? (defaults[0]?.bomId ?? null) : null;
 };
 

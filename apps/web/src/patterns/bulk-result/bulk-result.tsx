@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
 /**
- * C-18 일괄 동작 결과 영역과 행 결과 칩.
+ * C-18 일괄 동작 결과 영역과 결과 칩. 목록 행의 처리 상태 칸에는 쓰지 않는다.
  *
  * 결과는 목록 행 단위로 세고, 행 아래 항목이 일부만 처리되면 「일부 처리」로 센다. 둘째 줄에 항목 단위 수를 보인다.
  * 사용자가 닫거나 다시 조회할 때까지 남긴다(부르는 쪽 상태). 처리되지 않은 줄에는 고칠 곳 링크를 둔다.
@@ -19,6 +19,8 @@ export interface BulkOutcome {
   label: string;
   status: BulkOutcomeStatus;
   reason: string | null;
+  /** 기능별 원본 처리 결과. 목록의 현재 업무 상태와는 별개다. */
+  resultCode?: string;
   /** 이 행 아래 항목 중 처리한 수와 전체 수(예: W/O 1 / 3) */
   items?: { done: number; total: number };
   /** 고칠 곳. 처리되지 않은 줄에만 쓴다. */

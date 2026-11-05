@@ -95,7 +95,9 @@ export const usePlantReferenceLookup = (): ReferenceLookupResult => {
   }));
 };
 
-export const useUomReferenceLookup = (): ReferenceLookupResult => {
+export const useUomReferenceLookup = (): ReferenceLookupResult & {
+  decimalScaleOf: (id: number) => number | undefined;
+} => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: productionOrderReferenceKeys.uoms,
@@ -103,11 +105,14 @@ export const useUomReferenceLookup = (): ReferenceLookupResult => {
       runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
   });
 
-  return toLookupResult(query, (uom) => ({
-    value: String(uom.uomId),
-    /* 수량 옆에 붙는 단위다 — 「100 EA · 개」처럼 단위가 두 번 읽히지 않게 코드만 보인다. */
-    label: uom.uomCode,
-  }));
+  return {
+    ...toLookupResult(query, (uom) => ({
+      value: String(uom.uomId),
+      /* 수량 옆에 붙는 단위다 — 「100 EA · 개」처럼 단위가 두 번 읽히지 않게 코드만 보인다. */
+      label: uom.uomCode,
+    })),
+    decimalScaleOf: (id) => query.data?.items.find((uom) => uom.uomId === id)?.decimalScale,
+  };
 };
 
 export const resolveReference = (

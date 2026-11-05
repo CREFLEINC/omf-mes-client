@@ -10,7 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { ApiClientProvider } from '../../../patterns/api-context';
 import { jsonResponse } from '../../../test/api-harness';
 import { LegacyAssignmentRedirect, LegacyPlanRedirect } from './legacy-redirects';
-import { ProductionOrderProcessScreen } from './process-screen';
+import { ProductionOrderProcessScreen, ProcessWorkspace } from './process-screen';
+import { toProductionOrderFact } from '../queries';
 
 /*
  * 처리 화면(T-W-C) 컴포넌트 시험. 이탈 확인(`useBlocker`)이 데이터 라우터에서만 동작하므로 공용 하네스의
@@ -29,6 +30,7 @@ interface Plan {
   planNo: string;
   plannedLineId?: number;
   plannedQty: number;
+  bomId?: number;
   confirmedAt?: string;
   versionNo: number;
 }
@@ -52,6 +54,10 @@ interface World {
   /** 서버 칩 판정. 시험 도중 바꿔 머리가 다시 읽는지 본다. */
   worklistState?: string;
   worklistReasons?: { code: string; workOrderCount: number }[];
+  /** 품목의 ERP 품목그룹. 주지 않으면 서버가 이 칸을 모르는 것처럼 키를 뺀다. */
+  itemGroupCode?: string | null;
+  /** 주문의 ERP 원번호. 주지 않으면 제목 번호와 다른 `ERP-701`이다. */
+  erpOrderNo?: string | null;
   /** Routing 21이 작성중(쓸 수 없는) 개정이라 usableOnly 목록에 없다 */
   routingDraft?: boolean;
   /** 이 경로를 403으로 거절한다 */
@@ -66,7 +72,7 @@ const world = (overrides: Partial<World> = {}): World => ({
       parentItemId: 7101,
       bomCode: 'SYN-BOM',
       bomVersion: 1,
-      statusCode: 'ACTIVE',
+      statusCode: 'CONFIRMED',
       isDefault: true,
       effectiveFrom: '2026-01-01',
       baseQty: 1,
@@ -95,7 +101,7 @@ const LINE = {
 const orderBody = (state: World) => ({
   productionOrderId: 701,
   productionOrderNo: ORDER_NO,
-  erpOrderNo: 'ERP-701',
+  erpOrderNo: state.erpOrderNo === undefined ? 'ERP-701' : state.erpOrderNo,
   plantId: 1,
   itemId: 7101,
   orderQty: 300,
@@ -172,6 +178,13 @@ const serve = (state: World) => {
     }
     if (at === '/planning/production-orders/701') return jsonResponse(orderBody(state));
     if (at === '/planning/boms') return jsonResponse(page(state.boms));
+    if (/^\/planning\/boms\/\d+\/components$/.test(at)) return jsonResponse({ items: [] });
+    if (/^\/planning\/boms\/\d+$/.test(at))
+      return jsonResponse({
+        bom: state.boms.find(
+          (bom) => (bom as { bomId: number }).bomId === Number(at.split('/').at(-1)),
+        ),
+      });
     if (at === '/planning/routings') {
       if (state.routingDraft === true && url.searchParams.get('usableOnly') === 'true') {
         return jsonResponse(page([]));
@@ -189,6 +202,15 @@ const serve = (state: World) => {
         ]),
       );
     }
+    if (at === '/planning/routings/21')
+      return jsonResponse({
+        routing: {
+          routingCode: 'SYN-RT',
+          routingVersion: 1,
+          statusCode: 'CONFIRMED',
+          isDefault: true,
+        },
+      });
     if (at === '/planning/routings/21/operations') {
       return jsonResponse(
         page([{ routingOperationId: 1, operationSeq: 10, operationName: '조립' }]),
@@ -252,9 +274,10 @@ const serve = (state: World) => {
         item: {
           itemId: 7101,
           itemCode: 'SYN-ITEM',
-          itemName: '합성 품목',
+          itemName: '합성 품목 【 SYN-001 】',
           baseUomId: 8101,
           defaultProductionLotSize: 100,
+          ...(state.itemGroupCode === undefined ? {} : { erpItemGroupCode: state.itemGroupCode }),
         },
       });
     }
@@ -272,7 +295,7 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-const renderAt = (route: string, state: World) => {
+const renderAt = (route: string, state: World, startAtAssign = false) => {
   const server = serve(state);
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -288,7 +311,16 @@ const renderAt = (route: string, state: World) => {
         path: `${WORKLIST}/:productionOrderNo`,
         element: (
           <>
-            <ProductionOrderProcessScreen />
+            {startAtAssign ? (
+              <ProcessWorkspace
+                order={toProductionOrderFact(
+                  orderBody(state) as Parameters<typeof toProductionOrderFact>[0],
+                )}
+                initialStep="assign"
+              />
+            ) : (
+              <ProductionOrderProcessScreen />
+            )}
             <LocationProbe />
           </>
         ),
@@ -311,13 +343,7 @@ const renderAt = (route: string, state: World) => {
 };
 
 const currentStep = async (name: string) =>
-  waitFor(() =>
-    expect(
-      within(screen.getByRole('list', { name: messages.screenPatterns.processPage.steps }))
-        .getAllByText(name)
-        .some((element) => element.getAttribute('aria-current') === 'step'),
-    ).toBe(true),
-  );
+  waitFor(() => expect(screen.getByRole('tab', { name, selected: true })).toBeInTheDocument());
 
 const actionBar = () =>
   screen.getByRole('button', { name: messages.screenPatterns.actionBar.prev });
@@ -332,17 +358,114 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
+  it.each([false, true])(
+    'ERP BOM 변경 시 확정=%s 계획은 확정 여부에 따라 개정을 적용한다',
+    async (confirmed) => {
+      const user = userEvent.setup();
+      const old = {
+        ...(world().boms[0] as Record<string, unknown>),
+        isDefault: false,
+        statusCode: 'OBSOLETE',
+      };
+      const latest = { ...old, bomId: 12, bomVersion: 2, isDefault: true, statusCode: 'CONFIRMED' };
+      const state = world({
+        boms: [old, latest],
+        plans: [{ ...(confirmed ? CONFIRMED_PLAN : DRAFT_PLAN), bomId: 11 }],
+      });
+      const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+      if (confirmed) {
+        await currentStep(tp.steps.assign);
+        await user.click(screen.getByRole('tab', { name: tp.steps.master }));
+        await screen.findByText(/확정 계획 적용 개정/);
+        expect(screen.queryByRole('combobox', { name: 'BOM 개정' })).toBeNull();
+        expect(screen.getByText(/SYN-BOM.*개정 1/)).toBeVisible();
+      }
+      if (!confirmed) {
+        await currentStep(tp.steps.plan);
+        await user.click(screen.getByRole('button', { name: tp.plan.confirm }));
+        const dialog = await screen.findByRole('dialog', { name: tp.planConfirm.title });
+        await user.click(within(dialog).getByRole('button', { name: tp.planConfirm.confirm }));
+        await currentStep(tp.steps.assign);
+        expect(state.plans[0]?.bomId).toBe(12);
+      } else {
+        expect(state.plans[0]?.bomId).toBe(11);
+        expect(server.writes).toHaveLength(0);
+      }
+    },
+  );
+  it('부분 확정 계획은 초기 4M 요청이 있어도 전량 미달이면 생산계획에 남는다', async () => {
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        plans: [{ ...CONFIRMED_PLAN, plannedQty: 150 }],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+      }),
+      true,
+    );
+    await currentStep(tp.steps.plan);
+    expect(screen.getByRole('tab', { name: tp.steps.assign })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    expect(screen.getByRole('tab', { name: tp.steps.release })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+  });
+
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);
     expect(document.body).toHaveTextContent(tp.remaining.bomMissing);
   });
 
+  it('상단 품목코드와 품목명을 분리하고 품목명 안의 표기를 유지한다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world());
+    await currentStep(tp.steps.plan);
+    const summary = document.querySelector('.erp-wo-summary')! as HTMLElement;
+    expect(within(summary).getByText(t.list.columns.itemCode, { exact: true })).toBeVisible();
+    expect(within(summary).getByText(t.list.columns.itemName, { exact: true })).toBeVisible();
+    expect(within(summary).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
+    expect(within(summary).getByText('SYN-ITEM', { exact: true })).toBeVisible();
+  });
+  it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo: 'ERP-701' }));
+    await currentStep(tp.steps.master);
+    expect(screen.getByText(tp.summary.erpNo)).toBeVisible();
+    expect(screen.getByText('ERP-701')).toBeVisible();
+  });
+
+  it('품목그룹이 있으면 머리에 보이고, 없으면 보이지 않는다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], itemGroupCode: 'G100' }));
+    await currentStep(tp.steps.master);
+    expect(await screen.findByText(tp.summary.itemGroup)).toBeVisible();
+    expect(screen.getByText('G100')).toBeVisible();
+  });
+
+  it.each([undefined, null, ''])(
+    '품목그룹이 %j 이면 머리에 보이지 않는다',
+    async (itemGroupCode) => {
+      renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], itemGroupCode }));
+      await currentStep(tp.steps.master);
+      await within(document.querySelector('.process-page-head') as HTMLElement).findByText(
+        '합성 품목',
+        { exact: false },
+      );
+      expect(screen.queryByText(tp.summary.itemGroup)).toBeNull();
+    },
+  );
+
+  it.each([ORDER_NO, '', null])('ERP 원번호가 %j 이면 머리에 보이지 않는다', async (erpOrderNo) => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo }));
+    await currentStep(tp.steps.master);
+    expect(screen.queryByText(tp.summary.erpNo)).toBeNull();
+  });
+
   it('작성 중 계획이 있으면 생산계획 단계로 열고, 라인 칸은 「계획 번호 라인」 이름을 가진다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ plans: [{ ...DRAFT_PLAN }] }));
     await currentStep(tp.steps.plan);
     expect(
-      screen.getByRole('searchbox', { name: tp.plan.fieldLabel('PP-501', tp.plan.columns.line) }),
+      screen.getByRole('button', { name: tp.plan.fieldLabel('PP-501', tp.plan.columns.line) }),
     ).toBeVisible();
   });
 
@@ -400,11 +523,10 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
      * [저장]은 라인 기본 위치가 초안에 채워져야 열린다 — 라인 목록이 늦게 오면 편집기가 먼저
      * 보이므로, 열리기 전에 누르면 아무 일도 일어나지 않는다.
      */
-    const save = await within(editor).findByRole('button', { name: tp.assign.actions.save });
     await waitFor(() => {
-      expect(save).toBeEnabled();
+      expect(screen.getByRole('button', { name: tp.assign.actions.save })).toBeEnabled();
     });
-    await user.click(save);
+    await user.click(screen.getByRole('button', { name: tp.assign.actions.save }));
 
     expect(
       await screen.findByRole('region', { name: tp.assign.editorLabel('SYN-WO-9002') }),
@@ -426,7 +548,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     const editor = await screen.findByRole('region', {
       name: tp.assign.editorLabel('SYN-WO-9001'),
     });
-    const save = await within(editor).findByRole('button', { name: tp.assign.actions.save });
+    const save = await screen.findByRole('button', { name: tp.assign.actions.save });
     await waitFor(() => {
       expect(save).toBeEnabled();
     });
@@ -439,7 +561,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.queryByText(t.reasons.WORK_ORDER_LOCATION_MISSING)).toBeNull();
   });
 
-  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 마스터 점검은 그 개정으로 통과한다', async () => {
+  it('확정된 계획이 쓰는 Routing 개정이 이제 쓸 수 없어도 BOM·Routing 단계는 그 개정으로 통과한다', async () => {
     renderAt(
       `${WORKLIST}/${ORDER_NO}`,
       world({

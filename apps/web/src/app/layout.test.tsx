@@ -724,15 +724,15 @@ describe('AppLayout', () => {
     ]);
   });
 
-  it('생산 관리 섹션의 작업지시 목록·배포·진행·마감이 업무 순서대로 있다', () => {
+  it('생산 관리 섹션의 작업계획·배포·진행·마감이 업무 순서대로 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
     const links = sidebarHrefs();
 
     expect(within(sidebar).getByText('생산 관리')).toBeInTheDocument();
-    /* 작업함과 변경 확인은 「작업지시 목록」 묶음 한 줄이다 — 줄은 작업함(첫 탭)을 건다. */
-    expect(within(sidebar).getByRole('link', { name: '작업지시 목록' })).toHaveAttribute(
+    /* 작업함과 변경 확인은 「작업계획」 묶음 한 줄이다 — 줄은 작업함(첫 탭)을 건다. */
+    expect(within(sidebar).getByRole('link', { name: '작업계획' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
@@ -742,7 +742,7 @@ describe('AppLayout', () => {
      */
     expect(links).not.toContain('/production/production-plans');
     expect(links).not.toContain('/production/work-order-assignments');
-    /* W-02-04(확정, 배포)는 「작업지시 목록」 작업함의 일괄 배포와 처리 화면 마지막 단계로 합쳐 메뉴에 «없다». */
+    /* W-02-04(확정, 배포)는 「작업계획」 작업함의 일괄 배포와 처리 화면 마지막 단계로 합쳐 메뉴에 «없다». */
     expect(links).not.toContain('/production/work-order-release');
     expect(within(sidebar).getByRole('link', { name: 'W/O 마감·ERP 실적 송신' })).toHaveAttribute(
       'href',
@@ -760,7 +760,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/quality/dispositions') + 1,
     );
-    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(작업지시 목록) 뒤다. */
+    /* W-02-07 — 계획을 거치지 않는 갈래라 정규 흐름(작업계획) 뒤다. */
     expect(links.indexOf('/production/emergency-work-orders')).toBe(
       links.indexOf('/production/production-orders') + 1,
     );
@@ -793,12 +793,12 @@ describe('AppLayout', () => {
    * 변경 판정은 조회 바로 뒤 탭이다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06).
    * 옛 「P/O 변경 관리자 확인」 — 「P/O」는 구매오더만 뜻하게 되어 「ERP W/O」로 바꿨다.
    */
-  it('작업지시 목록 탭 막대가 작업지시 목록 → ERP W/O 변경 확인 차례다', () => {
+  it('작업계획 탭 막대가 작업계획 → ERP W/O 변경 확인 차례다', () => {
     renderLayout('본문 내용', { route: '/production/po-change-review' });
 
-    const tabs = screen.getByRole('navigation', { name: '작업지시 목록' });
+    const tabs = screen.getByRole('navigation', { name: '작업계획' });
 
-    expect(within(tabs).getByRole('link', { name: '작업지시 목록' })).toHaveAttribute(
+    expect(within(tabs).getByRole('link', { name: '작업계획' })).toHaveAttribute(
       'href',
       '/production/production-orders',
     );
@@ -806,7 +806,7 @@ describe('AppLayout', () => {
       'href',
       '/production/po-change-review',
     );
-    expect(hubTabHrefs('작업지시 목록')).toEqual([
+    expect(hubTabHrefs('작업계획')).toEqual([
       '/production/production-orders',
       '/production/po-change-review',
     ]);
@@ -1006,8 +1006,8 @@ describe('AppLayout', () => {
       '/quality/lot-status' /* ← LOT 상태 */,
       '/quality/approvals',
       '/quality/dispositions',
-      /* 생산 관리 — 작업지시 목록(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
-      '/production/production-orders' /* ← 작업지시 목록 */,
+      /* 생산 관리 — 작업계획(작업함, 변경 확인) → (긴급) → 진행 → LOT 생산 이력 조회 → 마감. */
+      '/production/production-orders' /* ← 작업계획 */,
       '/production/emergency-work-orders',
       '/production/work-order-progress',
       '/production/lot-trace',
@@ -1087,7 +1087,7 @@ describe('AppLayout', () => {
         '/quality/lot-status-transition',
         '/quality/suspicious-material-hold',
       ],
-      '작업지시 목록': ['/production/production-orders', '/production/po-change-review'],
+      작업계획: ['/production/production-orders', '/production/po-change-review'],
       '설비 보전': [
         '/equipment/failures',
         '/equipment/maintenance-orders',
@@ -2162,7 +2162,7 @@ describe('AppLayout — 탭 묶음 검색', () => {
 
   /*
    * 비슷한 이름의 탭이 여러 묶음에 있어도 검색 결과에서 묶음 이름으로 갈린다 — 생산 관리
-   * 「작업지시 목록」 묶음의 「ERP W/O 변경 확인」 탭과 ERP 연동 현황·이력의 「ERP W/O」 탭이 각자 묶음 이름을 달고 선다.
+   * 「작업계획」 묶음의 「ERP W/O 변경 확인」 탭과 ERP 연동 현황·이력의 「ERP W/O」 탭이 각자 묶음 이름을 달고 선다.
    */
   it('비슷한 이름의 탭이 검색 결과에서 묶음 이름으로 갈린다', async () => {
     const { user } = renderLayout('본문 내용', { expandGroups: false });
@@ -2170,7 +2170,7 @@ describe('AppLayout — 탭 묶음 검색', () => {
     await user.type(searchBox(), 'ERP W/O');
 
     expect(
-      within(navSidebar()).getByRole('link', { name: '작업지시 목록 › ERP W/O 변경 확인' }),
+      within(navSidebar()).getByRole('link', { name: '작업계획 › ERP W/O 변경 확인' }),
     ).toHaveAttribute('href', '/production/po-change-review');
     expect(
       within(navSidebar()).getByRole('link', { name: 'ERP 연동 현황·이력 › ERP W/O' }),

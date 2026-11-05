@@ -1,5 +1,5 @@
 /**
- * W-02-01 작업지시 목록. 작업함(받은 ERP W/O 목록)과 처리 화면(마스터 점검, 생산계획, 4M 배정, 배포 확인).
+ * W-02-01 작업지시 목록. 작업함(받은 ERP W/O 목록)과 처리 화면(BOM·Routing, 생산계획, 4M 배정, 배포 확인).
  *
  * 화면 구성 규범 T-W-C와 C-17에 따라 W-02-02(W/O 전개, 편성), W-02-03(4M 자원배정),
  * W-02-04(W/O 확정, 배포)를 이 화면의 단계와 일괄 동작으로 합쳤다.
@@ -10,7 +10,7 @@
  * 화면 이름. 제목, 돌아가기 링크, 완료 화면 버튼, 안내용 메뉴 경로(`production-order.ts`)가 이 값을 쓴다.
  * 사이드바 이름은 `nav-tree.ts`에 따로 적고, `nav-menu-path.test.ts`가 둘이 같은지 잰다.
  */
-const SCREEN_NAME = '작업지시 목록';
+const SCREEN_NAME = '작업계획';
 
 /**
  * 처리 상태 이름. 키는 서버 칩 판정(`worklistState`)이다. 조건 칩, 행 상태 칩이 같은 이름을 쓴다(C-17).
@@ -26,7 +26,7 @@ const status = {
 
 /** 처리 화면 단계 이름. 사유 칩 도움말이 고칠 단계를 이 이름으로 말한다. */
 const steps = {
-  master: '마스터 점검',
+  master: 'BOM·Routing',
   plan: '생산계획',
   assign: '4M 배정',
   release: '배포 확인',
@@ -35,7 +35,7 @@ const steps = {
 /** 생산계획 단계의 버튼 이름. 사유 칩 도움말이 같은 이름으로 가리킨다. */
 const planButtons = {
   add: '계획 추가',
-  confirm: '전개 확정',
+  confirm: '계획 확정 후 4M 배정',
 } as const;
 
 /** 사유 칩 이름. 무엇을 해야 하는지로 짓는다. */
@@ -46,7 +46,7 @@ const reasons = {
   LINE_UNKNOWN: '생산 라인 지정 필요',
   PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
   QTY_REMAINING: '남은 수량 계획 필요',
-  AUTO_PLAN_RERUN_NEEDED: '자동 계획 다시 실행 필요',
+  AUTO_PLAN_RERUN_NEEDED: '생산계획 자동 전개 다시 실행 필요',
   NO_LIVE_WORK_ORDER: '계획 추가 필요',
   WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
   WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
@@ -83,6 +83,7 @@ export const erpWorkOrderFlow = {
   /** 페이지 머리 조건 칩. `label`은 보이지 않는 칩 묶음의 접근명이다. */
   counts: {
     label: '처리 상태',
+    unit: '건',
     allName: '전체',
     all: (count: number): string => `전체 ${String(count)}건`,
     actionRequired: (count: number): string => `${status.ACTION_REQUIRED} ${String(count)}건`,
@@ -107,7 +108,7 @@ export const erpWorkOrderFlow = {
       `이 품목에 쓸 수 있는 공정(Routing)이 여럿이고 기본이 없거나 둘 이상입니다. 공정(Routing) 화면에서 기본을 하나로 지정하거나 ${steps.master} 단계에서 골라야 합니다.`,
     LINE_UNKNOWN: (): string =>
       // ui-check-ignore: C-13 메뉴 경로 「품목·BOM 정보 › 설비·금형」을 그대로 쓴다
-      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 자동 계획을 다시 실행해야 합니다.`,
+      `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 생산계획 자동 전개를 다시 실행해야 합니다.`,
     PLAN_NOT_CONFIRMED: (): string =>
       `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
     QTY_REMAINING: ({ orderQty, plannedQty, uom = '' }: ReasonDetail): string =>
@@ -115,7 +116,7 @@ export const erpWorkOrderFlow = {
         ? `주문 ${`${orderQty} ${uom}`.trim()} 중 ${`${plannedQty} ${uom}`.trim()}만 계획되었습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`
         : `확정한 계획 수량이 주문 수량보다 적습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`,
     AUTO_PLAN_RERUN_NEEDED: (): string =>
-      '기준정보가 갖춰졌거나 자동 계획이 실패했습니다. 처리 화면 오른쪽 위 [자동 계획 다시 실행]을 눌러야 합니다.',
+      '기준정보가 갖춰졌거나 생산계획 자동 전개가 실패했습니다. 처리 화면 오른쪽 위 [생산계획 자동 전개 다시 실행]을 눌러야 합니다.',
     NO_LIVE_WORK_ORDER: (): string =>
       `확정한 계획의 W/O가 없거나 모두 취소되었습니다. ${steps.plan} 단계에서 [${planButtons.add}]로 필요한 수량을 다시 계획하고 [${planButtons.confirm}]을 눌러야 합니다.`,
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
@@ -134,6 +135,8 @@ export const erpWorkOrderFlow = {
     qPlaceholder: 'ERP W/O 번호',
     due: '납기 기간',
     duePlaceholder: '시작일 ~ 종료일',
+    plant: '공장',
+    allPlants: '전체',
     item: '품목',
     itemPicker: '품목 선택',
     itemCode: '품목 코드',
@@ -145,10 +148,14 @@ export const erpWorkOrderFlow = {
     caption: SCREEN_NAME,
     columns: {
       orderNo: 'ERP W/O 번호',
+      plant: '공장',
       itemCode: '품목 코드',
       itemName: '품목명',
-      orderQty: '주문 수량',
+      orderQty: 'ERP W/O 수량',
       dueDate: '납기일',
+      confirmedPlanQty: '확정 계획량',
+      draftPlanQty: '미확정 계획량',
+      remainingQty: '미계획 수량',
       pendingWorkOrders: '배포 전 W/O',
       status: '처리 상태',
       reasons: '필요한 조치',
@@ -169,15 +176,25 @@ export const erpWorkOrderFlow = {
   },
 
   bulk: {
-    release: '일괄 배포',
-    autoPlan: '자동 계획 재실행',
+    plan: '생산계획 편성',
+    planHelp: '날짜, 라인, 수량 직접 지정',
+    autoPlanShortHelp: '기본값 생성, 가능하면 확정',
+    releaseShortHelp: '배정 완료된 작업지시 전달',
+    release: '작업지시 일괄 배포',
+    autoPlan: '생산계획 자동 전개',
+    selectionActions: '선택한 ERP W/O 처리',
+    selected: (count: number): string => `선택한 ERP W/O ${count}건`,
+    selectionHelp: '선택한 ERP W/O를 대상으로 처리합니다.',
+    autoPlanHelp:
+      '기본 기준으로 계획을 생성하거나 기존 계획을 확정합니다. 실행 전 처리 내용을 확인하세요.',
+    releaseHelp: '4M 배정을 마친 작업지시를 현장에 배포합니다.',
     itemName: 'W/O',
     reasons: {
-      noneChecked: `${SCREEN_NAME}에서 일괄 처리할 ERP W/O를 고르세요`,
+      noneChecked: '아래 목록에서 처리할 ERP W/O를 선택하세요.',
       running: '일괄 동작을 실행하는 중입니다',
     },
     releaseDialog: {
-      title: '일괄 배포',
+      title: '작업지시 일괄 배포',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
       task: '배포',
       /* 피킹 지시는 출고 요청과 함께(BOM 투입 자재가 있을 때), PQC 의뢰는 검사 공정일 때 서버 배포가 만든다(work-order-release.service). */
@@ -188,7 +205,7 @@ export const erpWorkOrderFlow = {
         '피킹 지시(투입 자재가 있을 때)',
         '공정검사(PQC) 의뢰(검사 공정일 때)',
       ],
-      skipTitle: '건너뛰는 조건',
+      skipTitle: '처리하지 않는 조건',
       skipConditions: [
         '생산 라인이나 기본 위치가 정해지지 않은 W/O',
         '품목 기본 LOT 크기가 등록되지 않은 W/O',
@@ -196,34 +213,34 @@ export const erpWorkOrderFlow = {
       ],
       forecastTitle: '실행 예고',
       forecast: (processed: number, partial: number, skipped: number, workOrders: number): string =>
-        `처리 ${String(processed)}건, 일부 처리 ${String(partial)}건, 건너뜀 ${String(skipped)}건(W/O ${String(workOrders)}건 배포 예정)`,
+        `처리 ${String(processed)}건, 일부 처리 ${String(partial)}건, 미처리 ${String(skipped)}건(W/O ${String(workOrders)}건 배포 예정)`,
       forecasting: '배포할 W/O를 확인하는 중입니다',
-      nothing: '모든 대상이 건너뛰어집니다. 처리 화면에서 4M 배정을 마친 뒤 배포하세요',
-      irreversible: '배포 후에는 수정할 수 없습니다. W/O 취소로 처리합니다.',
+      nothing: '모든 대상이 처리되지 않습니다. 처리 화면에서 4M 배정을 마친 뒤 배포하세요',
+      irreversible: '배포 후에는 수정할 수 없습니다.',
       confirm: '배포',
     },
     autoPlanDialog: {
-      title: '자동 계획 재실행',
+      title: '생산계획 자동 전개',
       target: (count: number): string => `대상 ERP W/O ${String(count)}건`,
-      task: '자동 계획',
+      task: '생산계획 자동 전개',
       /*
        * 설비와 금형은 품목의 기본(★) 매핑으로 배정한다. 공정을 지정한 매핑은 그 공정의 W/O에, 「전체 공정」 매핑은
        * 그것이 필요한 첫 공정에만 붙는다(서버 `resource-assign.ts`).
        */
       effects: ['생산계획 작성과 확정', 'W/O 전개', '품목에 ★로 지정한 설비와 금형 자동 배정'],
-      skipTitle: '건너뛰는 조건',
-      /* 확정 계획이 있으면 자동 계획은 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
+      skipTitle: '처리하지 않는 조건',
+      /* 확정 계획이 있으면 생산계획 자동 전개는 남은 수량을 채우지 않는다(서버 `act`: 작성 중 계획이 없으면 NOT_PLANNED). */
       skipConditions: [
         '기본 BOM이나 Routing이 없거나 하나로 정해지지 않은 ERP W/O',
         '확정한 계획 수량이 주문 수량보다 적고 작성 중인 계획이 없는 ERP W/O(남은 수량은 생산계획 단계에서 계획)',
       ],
-      /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 자동 계획 결과 DRAFT). */
+      /** 라인을 모르면 건너뛰지 않고 작성 중 계획을 남긴다(서버 생산계획 자동 전개 결과 DRAFT). */
       draftNote: '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
-      confirm: '재실행',
+      confirm: '실행',
     },
     resultTitle: {
-      release: '일괄 배포 결과',
-      autoPlan: '자동 계획 재실행 결과',
+      release: '작업지시 일괄 배포 결과',
+      autoPlan: '생산계획 자동 전개 결과',
     },
     outcomeReasons: {
       noWorkOrders: '배포할 W/O 없음',
@@ -235,7 +252,9 @@ export const erpWorkOrderFlow = {
   },
 
   process: {
-    back: SCREEN_NAME,
+    title: '작업계획 편성',
+    orderNumber: 'ERP W/O',
+    back: '작업계획 목록으로',
     loading: 'ERP W/O 불러오는 중',
     notFound: '이 번호의 ERP W/O를 찾을 수 없습니다',
     notFoundDescription: '작업함에서 다시 고르세요.',
@@ -243,16 +262,17 @@ export const erpWorkOrderFlow = {
     retry: '다시 시도',
     summary: {
       item: '품목',
-      orderQty: '주문 수량',
+      itemGroup: '품목그룹',
+      orderQty: 'ERP W/O 수량',
       dueDate: '납기일',
       erpNo: 'ERP 원번호',
     },
-    rerunAutoPlan: '자동 계획 다시 실행',
+    rerunAutoPlan: '생산계획 자동 전개 다시 실행',
     autoPlanResult: {
-      CONFIRMED: '자동 계획으로 계획을 확정했습니다',
-      DRAFT: '작성 중 계획이 있습니다. 생산계획 단계에서 확정하세요',
-      NOT_PLANNED: '자동 계획으로 계획을 만들지 못했습니다',
-      running: '자동 계획이 진행 중입니다. 잠시 뒤 다시 실행하세요',
+      CONFIRMED: '생산계획 자동 전개로 계획을 확정했습니다',
+      DRAFT: '미확정 계획입니다. 생산계획에서 보완하세요',
+      NOT_PLANNED: '자동 전개 미처리. 생산계획과 기준정보를 확인하세요',
+      running: '생산계획 자동 전개가 진행 중입니다. 잠시 뒤 다시 실행하세요',
     },
     steps,
     /** 지난 단계 요약의 「라벨 값」 쌍(T-W-C 지난 단계 요약 형식) */
@@ -261,7 +281,7 @@ export const erpWorkOrderFlow = {
       routing: 'Routing',
       revision: (code: string, version: number): string => `${code} (Rev ${String(version)})`,
       confirmedQty: '확정 수량',
-      line: '라인',
+      line: '생산 라인',
       assigned: '배정 완료',
       workOrders: (count: number): string => `W/O ${String(count)}건`,
       unset: '미지정',
@@ -269,7 +289,7 @@ export const erpWorkOrderFlow = {
     /** 하단 바 문장(C-5). `select`, `enter`, `choose`, `resolve`, `canProceed`의 인자는 조사를 붙여 넘긴다. */
     remaining: {
       bomMissing:
-        '기본 BOM이 등록되지 않아 진행할 수 없습니다. ERP 담당자에게 BOM 등록을 요청하세요',
+        '사용 가능한 ERP 기본 BOM이 하나로 정해지지 않아 진행할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요',
       routingMissing:
         '사용할 수 있는 Routing이 등록되지 않아 진행할 수 없습니다. 기준정보 담당자에게 Routing 등록을 요청하세요',
       loadFailed: '기준 정보를 불러오지 못했습니다. 다시 시도하세요',
@@ -289,7 +309,7 @@ export const erpWorkOrderFlow = {
         `${operation} 공정의 ${fieldWithJosa} 고르세요`,
       resolve: (findingWithJosa: string): string => `${findingWithJosa} 해결하세요`,
       releaseFinal: '배포 후 수정 불가',
-      enterLot: (workOrderNo: string): string => `${workOrderNo}의 LOT 크기를 입력하세요`,
+      enterLot: (workOrderNo: string): string => `${workOrderNo}의 LOT당 수량을 입력하세요`,
       remainingOrders: (count: number): string => `남은 ERP W/O ${String(count)}건`,
     },
     links: {
@@ -297,7 +317,12 @@ export const erpWorkOrderFlow = {
       routing: 'Routing 화면 열기',
     },
     master: {
-      heading: '계획에 쓸 BOM과 Routing',
+      orderNo: 'ERP W/O',
+      item: '품목',
+      checked: '개정 선택 완료',
+      needsCheck: '개정 선택 필요',
+      // ui-check-ignore: C-13 사용자 확정 단계 이름 「BOM·Routing」을 쓴다
+      heading: 'BOM·Routing 점검',
       bom: 'BOM',
       routing: 'Routing',
       placeholder: '개정을 고르세요',
@@ -309,17 +334,39 @@ export const erpWorkOrderFlow = {
       fixedByPlan: '확정된 계획이 쓰는 개정',
     },
     plan: {
-      heading: '생산계획',
+      heading: '생산계획 편성',
       add: planButtons.add,
       confirm: planButtons.confirm,
-      saveDraft: '임시 저장',
+      saveDraft: '계획 저장',
+      workspace: {
+        views: '생산계획 보기',
+        grid: 'ERP W/O별 계획 수량',
+        week: '주간 편성',
+        weekHeading: '생산 라인별 주간 편성',
+        gridHeading: '계획 목록',
+        editor: '선택 계획 편집',
+        orderQty: 'ERP W/O 수량',
+        confirmedQty: '확정 계획량',
+        draftQty: '미확정 계획량',
+        remainingQty: '미계획 수량',
+        unconfirmed: '미확정',
+        unassigned: '생산 라인 미지정',
+        selectPrompt: '왼쪽에서 계획을 선택하세요.',
+        readonly: '확정된 계획은 수정할 수 없습니다.',
+        unsavedSummary: '편집 중인 수량을 포함합니다. 하단에서 계획을 저장하거나 확정하세요.',
+        previousWeek: '이전 주',
+        nextWeek: '다음 주',
+        weekdays: ['월', '화', '수', '목', '금', '토', '일'],
+        outsideWeek: '다른 주의 계획',
+        selectPlan: (name: string): string => `${name} 선택`,
+      },
       newRow: (displayNo: number): string => `신규 계획 ${String(displayNo)}`,
       newStatus: '신규',
       columns: {
         planNo: '계획 번호',
         planDate: '계획일',
-        plannedQty: '계획 수량',
-        line: '라인',
+        plannedQty: '생산량',
+        line: '생산 라인',
         status: '상태',
         remarks: '비고',
         actions: '행 동작',
@@ -339,16 +386,16 @@ export const erpWorkOrderFlow = {
         `계획 수량 합계 ${planned} / ${ordered} ${uom}`,
     },
     planConfirm: {
-      title: '전개 확정',
+      title: '계획 확정 및 작업지시 생성',
       target: (plans: string): string => `대상 계획: ${plans}`,
-      task: '전개 확정',
+      task: '계획 확정',
       effects: {
         plans: (count: number): string => `생산계획 상태 변경: 확정 (${String(count)}건)`,
         workOrders: (count: number, operations: string): string =>
           `W/O ${String(count)}건 생성: ${operations}`,
       },
-      irreversible: '확정 후에는 수정할 수 없습니다. W/O 취소로 처리합니다.',
-      confirm: '전개 확정',
+      irreversible: '확정 후에는 수정할 수 없습니다.',
+      confirm: '계획 확정',
     },
     pickers: {
       line: '생산 라인 선택',
@@ -371,14 +418,14 @@ export const erpWorkOrderFlow = {
       },
     },
     assign: {
-      listHeading: 'W/O 목록',
+      listHeading: '작업지시 목록',
       columns: {
         workOrderNo: 'W/O 번호',
         operation: '공정',
         status: '배정',
       },
       done: '배정 완료',
-      pending: '배정 미완',
+      pending: '배정 필요',
       empty: '배포할 W/O가 없습니다',
       selectPrompt: '왼쪽 목록에서 W/O를 고르세요',
       editorHeading: '4M 배정',
@@ -393,8 +440,8 @@ export const erpWorkOrderFlow = {
       groups: {
         equipmentAndMold: '설비와 금형',
         workerAndShift: '작업자와 교대',
-        plan: '계획',
-        location: '위치',
+        plan: '계획 시간',
+        location: '위치 설정',
       },
       shiftOption: (name: string, start: string, end: string): string =>
         `${name} ${start} ~ ${end}`,
@@ -402,11 +449,11 @@ export const erpWorkOrderFlow = {
         productionLineId: '생산 라인',
         plannedEquipmentId: '설비',
         plannedMoldId: '금형',
-        responsibleWorkerId: '담당 작업자',
-        plannedShiftId: '계획 교대',
-        defaultWipLocationId: '기본 WIP 위치',
-        defaultFgLocationId: '기본 완제품 위치',
-        defaultScrapLocationId: '기본 스크랩 위치',
+        responsibleWorkerId: '작업자',
+        plannedShiftId: '교대',
+        defaultWipLocationId: 'WIP 위치',
+        defaultFgLocationId: '완제품 위치',
+        defaultScrapLocationId: '스크랩 위치',
         plannedStartAtLocal: '계획 시작',
         plannedEndAtLocal: '계획 종료',
         priorityNo: '우선순위',
@@ -446,20 +493,30 @@ export const erpWorkOrderFlow = {
       actions: {
         check: '점검 다시 실행',
         reset: '변경 취소',
-        save: '저장',
+        save: '배정 저장',
+        noChanges: '변경한 배정 내용이 없습니다.',
       },
       loadFailed: 'W/O를 불러오지 못했습니다',
     },
     release: {
-      heading: '배포할 W/O',
+      lotsPending: '생성 예정 LOT 수: LOT당 수량 입력 후 확인',
+      selectedTarget: '선택 작업지시 정보',
+      orderNo: 'ERP W/O',
+      item: '품목',
+      planDate: '계획일',
+      line: '생산 라인',
+      empty: '배포할 작업지시가 없습니다.',
+      scope: (count: number): string => `전체 배포 대상 ${String(count)}건`,
+      scopeHelp: 'LOT당 수량은 작업지시별로 설정합니다. 하단 배포 버튼은 대상 전체를 처리합니다.',
+      heading: '배포 확인',
       columns: {
         workOrderNo: 'W/O 번호',
         operation: '공정',
-        orderQty: '지시 수량',
-        lotSize: 'LOT 크기',
-        lotCount: '생산 LOT 수',
+        orderQty: '작업지시 수량',
+        lotSize: 'LOT당 수량',
+        lotCount: '생성 예정 LOT 수',
       },
-      lotSizeLabel: (workOrderNo: string): string => `${workOrderNo} LOT 크기`,
+      lotSizeLabel: (workOrderNo: string): string => `${workOrderNo} LOT당 수량`,
       task: '배포',
       effects: {
         status: (count: number): string => `W/O 상태 변경: 배포 (${String(count)}건)`,
@@ -468,7 +525,7 @@ export const erpWorkOrderFlow = {
         picking: '피킹 지시(투입 자재가 있을 때)',
         pqc: '공정검사(PQC) 의뢰(검사 공정일 때)',
       },
-      irreversible: '배포 후에는 수정할 수 없습니다. W/O 취소로 처리합니다.',
+      irreversible: '배포 후에는 수정할 수 없습니다.',
       release: '배포',
       failed: (workOrderNo: string, reason: string): string => `${workOrderNo}: ${reason}`,
       /**
@@ -516,7 +573,7 @@ export const erpWorkOrderFlow = {
       statusLine: (workOrderNo: string, operation: string, status: string): string =>
         `${workOrderNo} ${operation}: ${status}`,
       /** 작업함으로 돌아가는 버튼. 부르는 쪽이 「으로/로」를 붙인다(C-5). */
-      toWorklist: SCREEN_NAME,
+      toWorklist: '작업계획 목록',
       nextOrder: '다음 ERP W/O',
       alreadyReleased: '이 ERP W/O의 W/O는 모두 배포되었습니다',
     },

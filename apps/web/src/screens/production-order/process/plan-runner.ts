@@ -82,8 +82,22 @@ export const runPlanStep = async (
   const result: PlanRunResult = { saved: [], failures: [], confirmed: 0 };
   /* 확정할 계획과 그 판. 방금 저장한 계획은 저장 응답의 판을 쓴다. */
   const toConfirm = new Map<number, number | null>();
+  const savedSources = new Set(rows.filter((row) => row.confirmed).map((row) => row.key));
   for (const row of rows) {
     if (row.confirmed) continue;
+    if (
+      row.splitSourceKey &&
+      rows.some((source) => source.key === row.splitSourceKey) &&
+      !savedSources.has(row.splitSourceKey)
+    ) {
+      result.failures.push({
+        key: row.key,
+        errors: {},
+        message: '분할 원본 계획 저장을 먼저 완료하세요.',
+        error: null,
+      });
+      continue;
+    }
     const prepared = prepareProductionPlanRow(row, context);
     if (!prepared.ok) {
       result.failures.push({ key: row.key, errors: prepared.errors, message: null, error: null });
@@ -120,6 +134,7 @@ export const runPlanStep = async (
       } else if (row.productionPlanId !== null) {
         toConfirm.set(row.productionPlanId, row.versionNo);
       }
+      savedSources.add(row.key);
     } catch (cause) {
       result.failures.push({ key: row.key, ...fieldErrors(cause) });
     }

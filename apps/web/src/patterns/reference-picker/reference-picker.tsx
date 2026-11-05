@@ -1,4 +1,13 @@
-import { Button, Dialog, EmptyState, SearchInput, TextField, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Dialog,
+  EmptyState,
+  Icon,
+  IconButton,
+  SearchInput,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
@@ -50,12 +59,13 @@ export interface ReferenceSource {
 export const REFERENCE_PAGE_SIZE = 20;
 
 export interface PickerDialogProps {
+  wrapValue?: boolean;
   source: ReferenceSource;
   onClose: () => void;
   onPick: (row: ReferenceRow) => void;
 }
 
-export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => {
+export const PickerDialog = ({ source, onClose, onPick, wrapValue = false }: PickerDialogProps) => {
   const keywordId = useId();
   const reasonId = useId();
   const [keyword, setKeyword] = useState('');
@@ -78,7 +88,7 @@ export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => 
       key: 'name',
       header: source.columns.name,
       render: (row) => (
-        <span className="ellipsis-cell" title={row.name}>
+        <span className={wrapValue ? 'erp-wo-complete-value' : 'ellipsis-cell'} title={row.name}>
           {row.name}
         </span>
       ),
@@ -159,7 +169,7 @@ export const PickerDialog = ({ source, onClose, onPick }: PickerDialogProps) => 
               />
             </div>
           )}
-          <div className="field-cell filter-field-md">
+          <div className="field-cell reference-picker-keyword">
             <label className="field-label" htmlFor={keywordId}>
               {t.keyword}
             </label>
@@ -209,6 +219,8 @@ export interface ReferenceFieldProps {
   size?: 'sm' | 'md';
   /** 고른 값의 「이름 (코드)」. 비었으면 ''. */
   valueLabel: string;
+  /** 긴 선택값을 줄바꿈하여 전체 표시한다. */
+  wrapValue?: boolean;
   /** 비었을 때 흐린 문구. 기본은 「눌러서 찾기」. */
   placeholder?: string;
   source: ReferenceSource | null;
@@ -230,6 +242,7 @@ export const ReferenceField = ({
   hideLabel = false,
   size = 'md',
   valueLabel,
+  wrapValue = false,
   source,
   required = false,
   disabled = false,
@@ -255,28 +268,65 @@ export const ReferenceField = ({
         )}
         {labelAddon}
       </span>
-      <SearchInput
-        id={id}
-        fullWidth
-        size={size}
-        value={valueLabel}
-        readOnly
-        title={valueLabel === '' ? undefined : valueLabel}
-        placeholder={placeholder ?? t.open}
-        aria-haspopup="dialog"
-        aria-required={required || undefined}
-        aria-invalid={invalid || undefined}
-        aria-describedby={describedBy}
-        clearLabel={t.clear(label)}
-        disabled={locked}
-        onClick={() => !locked && setOpen(true)}
-        onSearch={() => !locked && setOpen(true)}
-        onChange={() => undefined}
-        onClear={onClear}
-      />
+      {wrapValue ? (
+        <div
+          className="reference-field-full-value"
+          data-disabled={locked || undefined}
+          data-invalid={invalid || undefined}
+          data-size={size}
+        >
+          <button
+            type="button"
+            id={id}
+            aria-label={label}
+            aria-haspopup="dialog"
+            aria-required={required || undefined}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+            disabled={locked}
+            onClick={() => setOpen(true)}
+          >
+            <Icon name="search" size={20} />
+            <span className={valueLabel ? 'reference-field-value' : 'reference-field-placeholder'}>
+              {valueLabel || placeholder || t.select(label)}
+            </span>
+          </button>
+          {valueLabel !== '' && (
+            <IconButton
+              icon="close"
+              size="sm"
+              variant="standard"
+              aria-label={t.clear(label)}
+              disabled={locked}
+              onClick={onClear}
+            />
+          )}
+        </div>
+      ) : (
+        <SearchInput
+          id={id}
+          fullWidth
+          size={size}
+          value={valueLabel}
+          readOnly
+          title={valueLabel === '' ? undefined : valueLabel}
+          placeholder={placeholder ?? t.open}
+          aria-haspopup="dialog"
+          aria-required={required || undefined}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+          clearLabel={t.clear(label)}
+          disabled={locked}
+          onClick={() => !locked && setOpen(true)}
+          onSearch={() => !locked && setOpen(true)}
+          onChange={() => undefined}
+          onClear={onClear}
+        />
+      )}
       {children}
       {open && source !== null && (
         <PickerDialog
+          wrapValue={wrapValue}
           source={source}
           onClose={() => setOpen(false)}
           onPick={(row) => {

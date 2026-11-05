@@ -81,7 +81,12 @@ export const useItemDefaultLotSize = (
 export interface ItemCodeName {
   itemCode: string;
   itemName: string;
+  /** ERP `ITEM_GROUP_CD`. 값이 없으면 서버가 null 을 주고, 이 칸을 모르는 서버는 키를 뺀다. */
+  erpItemGroupCode: string | null;
 }
+
+/** 서버가 품목 응답에 더한 칸. 계약 사본이 같은 이름으로 실려 오면 이 교차를 걷는다. */
+type ItemWithGroup = { erpItemGroupCode?: string | null };
 
 /**
  * 품목 코드와 이름을 따로 돌려준다. 표에서 코드 열과 이름 열을 나누기 위해서다(C-10).
@@ -101,7 +106,12 @@ export const useItemCodeNames = (itemIds: readonly number[]): Map<number, ItemCo
   results.forEach((result, index) => {
     const itemId = uniqueIds[index];
     if (itemId !== undefined && result.data !== undefined) {
-      map.set(itemId, { itemCode: result.data.item.itemCode, itemName: result.data.item.itemName });
+      const { itemCode, itemName } = result.data.item;
+      map.set(itemId, {
+        itemCode,
+        itemName,
+        erpItemGroupCode: (result.data.item as ItemWithGroup).erpItemGroupCode ?? null,
+      });
     }
   });
   return map;

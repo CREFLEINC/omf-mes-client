@@ -276,3 +276,57 @@ describe('useProductionPlanEditorSession', () => {
     expect(result.current.isHydrated).toBe(false);
   });
 });
+
+describe('계획 분할과 일괄 추가', () => {
+  it('분할은 총수량·개정·날짜·라인·비고를 유지하고 저장 전 두 행을 수정할 수 있다', async () => {
+    const fetch: StubFetch = async () =>
+      jsonResponse({
+        items: [{ ...productionPlan(501), plannedLineId: 31, remarks: '유지할 비고' }],
+        page: { page: 1, size: 100, total: 1 },
+      });
+    const { result } = renderHookWithProviders(() => useProductionPlanEditorSession(701), {
+      fetch,
+    });
+    await waitFor(() => expect(result.current.rows).toHaveLength(1));
+    act(() => result.current.split('plan-501', 20));
+    expect(result.current.rows.map((row) => row.draft.plannedQty)).toEqual(['30', '20']);
+    expect(
+      result.current.rows.every(
+        (row) =>
+          row.isDirty && row.draft.remarks === '유지할 비고' && row.draft.plannedLineId === '31',
+      ),
+    ).toBe(true);
+    expect(result.current.rows[1]?.productionPlanId).toBeNull();
+  });
+  it('확정된 계획과 잘못된 수량은 분할하지 않는다', async () => {
+    const fetch: StubFetch = async () =>
+      jsonResponse({
+        items: [{ ...productionPlan(501), confirmedAt: '2026-11-01T00:00:00Z' }],
+        page: { page: 1, size: 100, total: 1 },
+      });
+    const { result } = renderHookWithProviders(() => useProductionPlanEditorSession(701), {
+      fetch,
+    });
+    await waitFor(() => expect(result.current.rows).toHaveLength(1));
+    act(() => result.current.split('plan-501', 20));
+    expect(result.current.rows).toHaveLength(1);
+    act(() => result.current.addMany([defaults, { ...defaults, planDate: '2026-08-28' }]));
+    expect(result.current.rows).toHaveLength(3);
+    expect(new Set(result.current.rows.map((row) => row.key)).size).toBe(3);
+  });
+});
+
+it('단위 소수 자릿수를 지키며 분할 전후 수량을 보존한다', async () => {
+  const fetch: StubFetch = async () =>
+    jsonResponse({
+      items: [productionPlan(501, 701, 0.3)],
+      page: { page: 1, size: 100, total: 1 },
+    });
+  const { result } = renderHookWithProviders(() => useProductionPlanEditorSession(701), { fetch });
+  await waitFor(() => expect(result.current.rows).toHaveLength(1));
+  act(() => result.current.split('plan-501', 0.01, 1));
+  expect(result.current.rows).toHaveLength(1);
+  act(() => result.current.split('plan-501', 0.1, 1));
+  expect(result.current.rows.map((row) => row.draft.plannedQty)).toEqual(['0.2', '0.1']);
+  expect(result.current.rows[1]?.splitSourceKey).toBe('plan-501');
+});

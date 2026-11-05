@@ -2,16 +2,17 @@
  * W-02-01 작업지시 목록 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
  * 이탈: C-17 「자동」 표시 없음(배정 출처 칸 계약 대기, omf-all-around#129).
- *       C-12 마스터 점검의 BOM, Routing 개정은 그 품목의 개정 목록이라 Select다(구성안 C-20 표).
+ *       C-12 BOM·Routing 단계의 BOM, Routing 개정은 그 품목의 개정 목록이라 Select다(구성안 C-20 표).
  *       T-W-C 4M 편집 영역은 위치 묶음을 펼치면(라인에 기본 위치가 없을 때) 1280×800에 들어가지 않아
  *       편집 영역 안에서만 스크롤하고 머리를 고정한다(높이가 모자랄 때 ②, 구성안 8장).
  */
-import { AlertBanner, Button, SkeletonText, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
 import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { MultiOrderPlanning } from './multi-order-planning';
 
 import { ActionBar } from '../../../patterns/action-bar';
 import { useApiClient } from '../../../patterns/api-context';
@@ -96,7 +97,18 @@ const PLAN_FIELD_NAMES: Partial<Record<ProductionPlanDraftField, string>> = {
   plannedLineId: tp.plan.columns.line,
 };
 
-const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
+export const ProcessWorkspace = ({
+  order,
+  initialStep,
+  onDirtyChange,
+  onStepChange,
+}: {
+  order: ProductionOrderFact;
+  initialStep?: ProcessStepKey;
+  onDirtyChange?: (dirty: boolean) => void;
+  onStepChange?: (step: ProcessStepKey) => void;
+}) => {
+  const assignActionTargetId = useId();
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -109,10 +121,11 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const item = useItemCodeNames([order.itemId]).get(order.itemId);
   const stepName = (key: ProcessStepKey) => tp.steps[key];
 
-  /* 마스터 점검 */
+  /* BOM·Routing */
   const boms = useBomReferenceQuery(order.itemId);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const editor = useProductionPlanEditorSession(order.productionOrderId);
+  const [distributionDirty, setDistributionDirty] = useState(false);
   const planFacts = editor.plans.data?.items ?? [];
   const confirmedPlans = planFacts.filter((plan) => plan.confirmedAt !== null);
   /*
@@ -121,16 +134,15 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
    */
   const fixedByPlan = confirmedPlans.length > 0;
   const routings = useRoutingReferenceQuery(order.itemId, !fixedByPlan);
-  const planBom = confirmedPlans[0]?.bomId ?? planFacts[0]?.bomId;
+  const planBom = confirmedPlans[0]?.bomId;
   const planRouting = confirmedPlans[0]?.routingId ?? planFacts[0]?.routingId;
-  const [bomChoice, setBomChoice] = useState<string | null>(null);
   const [routingChoice, setRoutingChoice] = useState<string | null>(null);
   const bomItems = boms.data?.items ?? [];
   const routingItems = routings.data?.items ?? [];
-  const fallbackBom = planBom ?? automaticBomId(bomItems);
+  const draftBomId = String(automaticBomId(bomItems) ?? '');
+  const fallbackBom = planBom ?? (draftBomId === '' ? null : Number(draftBomId));
   const fallbackRouting = planRouting ?? automaticRoutingId(routingItems);
-  const bomId =
-    bomChoice ?? (fallbackBom === undefined || fallbackBom === null ? '' : String(fallbackBom));
+  const bomId = fallbackBom === undefined || fallbackBom === null ? '' : String(fallbackBom);
   const routingId =
     routingChoice ??
     (fallbackRouting === undefined || fallbackRouting === null ? '' : String(fallbackRouting));
@@ -148,16 +160,17 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     stepName('plan'),
   );
 
-  /* 생산계획: 확정 전 줄은 마스터 점검의 BOM, Routing을 따른다. */
+  /* 생산계획: 확정 전 줄은 BOM·Routing 단계의 BOM, Routing을 따른다. */
   const { change } = editor;
   useEffect(() => {
+    if (boms.isPending || boms.isError) return;
     editor.rows.forEach((row) => {
       if (row.confirmed || row.isPending) return;
-      if (bomId !== '' && row.draft.bomId !== bomId) change(row.key, 'bomId', bomId);
+      if (row.draft.bomId !== draftBomId) change(row.key, 'bomId', draftBomId);
       if (routingId !== '' && row.draft.routingId !== routingId)
         change(row.key, 'routingId', routingId);
     });
-  }, [bomId, change, editor.rows, routingId]);
+  }, [draftBomId, change, editor.rows, routingId, boms.isPending, boms.isError]);
   const rowName = (row: (typeof editor.rows)[number]) =>
     row.planNo ?? tp.plan.newRow(row.displayNo);
   const unconfirmedRows = editor.rows.filter((row) => !row.confirmed);
@@ -273,8 +286,20 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     releaseLines === undefined || releaseLines.length === 0 ? null : missingLot,
   );
 
+  const lotDirty = Object.entries(lotSizeTexts).some(
+    ([workOrderId, text]) => text !== String(defaultLots.get(Number(workOrderId)) ?? ''),
+  );
+  useEffect(() => {
+    onDirtyChange?.(planDirty || distributionDirty || assignDirty || lotDirty);
+  }, [planDirty, distributionDirty, assignDirty, lotDirty, onDirtyChange]);
+
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(null);
+  const stepChangeRef = useRef(onStepChange);
+  stepChangeRef.current = onStepChange;
+  useEffect(() => {
+    if (step !== null && step !== 'done') stepChangeRef.current?.(step);
+  }, [step]);
   const [releasedCount, setReleasedCount] = useState<number | null>(null);
   const loading =
     boms.isPending ||
@@ -290,8 +315,14 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   useEffect(() => {
     if (step !== null || loading) return;
     /* 처음 한 번만 정한다(T-W-C 처음 여는 단계). 이후 이동은 사용자가 한다. */
-    setStep(alreadyReleased ? 'done' : firstOpenStep(judgments));
-  }, [alreadyReleased, judgments, loading, step]);
+    setStep(
+      alreadyReleased
+        ? 'done'
+        : initialStep && canEnter(initialStep, judgments)
+          ? initialStep
+          : firstOpenStep(judgments),
+    );
+  }, [alreadyReleased, initialStep, judgments, loading, step]);
   useEffect(() => {
     if (step === 'assign' && assignSelected === null) {
       const first = firstBlocked ?? unreleased.data?.[0];
@@ -312,10 +343,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     onSuccess: (result) => {
       toast.show({
         variant: result.outcome === 'CONFIRMED' ? 'success' : 'warning',
-        description:
-          result.outcome === 'NOT_PLANNED'
-            ? `${tp.autoPlanResult.NOT_PLANNED}: ${result.reasons.map(reasonLabel).join(', ')}`
-            : tp.autoPlanResult[result.outcome],
+        description: `${tp.autoPlanResult[result.outcome]}${result.reasons.length ? `: ${[...new Set(result.reasons.map(reasonLabel))].join(', ')}` : ''}`,
       });
       setStep(null);
     },
@@ -333,7 +361,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
   const lastSearch = useMemo(() => rememberedWorklistSearch(), []);
   const lastFilters = useMemo(() => readWorklistFilters(lastSearch), [lastSearch]);
   const nextList = useWorklist(lastFilters);
-  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED');
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', lastFilters.plant);
   const nextOrder = (() => {
     const items = nextList.data?.items ?? [];
     const index = items.findIndex((entry) => entry.productionOrderNo === order.productionOrderNo);
@@ -501,11 +529,12 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
    * 저장하지 않은 변경(T-W-C 저장하지 않은 변경): 생산계획의 고친 줄, 4M 편집, 배포 확인의 LOT 크기.
    * 단계 표시와 [이전]은 지금 단계의 변경을, 화면을 떠나는 이동은 모든 변경을 확인한다.
    */
-  const lotDirty = Object.entries(lotSizeTexts).some(
-    ([workOrderId, text]) => text !== String(defaultLots.get(Number(workOrderId)) ?? ''),
-  );
   const unsavedIn = (key: ScreenStep): boolean =>
-    key === 'plan' ? planDirty : key === 'assign' ? assignDirty : key === 'release' && lotDirty;
+    key === 'plan'
+      ? planDirty || distributionDirty
+      : key === 'assign'
+        ? assignDirty
+        : key === 'release' && lotDirty;
   const goTo = (key: string) => {
     if (key !== step && unsavedIn(step)) {
       setPendingStep(key as ProcessStepKey);
@@ -527,6 +556,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       case 'master':
         return (
           <MasterStep
+            orderNo={order.productionOrderNo}
+            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             boms={{
               items: bomItems,
               isLoading: boms.isPending,
@@ -543,7 +574,6 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             routingId={routingId}
             locked={fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
-            onBomChange={setBomChoice}
             onRoutingChange={setRoutingChoice}
           />
         );
@@ -561,6 +591,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
             <PlanStep
               rows={editor.rows}
               orderQty={order.orderQty}
+              confirmedQty={order.confirmedPlanQty}
               uomLabel={uomLabelOf(order.uomId)}
               plantId={order.plantId}
               lines={planLines}
@@ -580,11 +611,18 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
                         ),
                     ),
                   ),
-                  bomId,
+                  bomId: draftBomId,
                   routingId,
                   plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
                 })
               }
+              distributionDecimalScale={uoms.decimalScaleOf?.(order.uomId)}
+              distributionOrderLabel={`${order.productionOrderNo} / ${item === undefined ? '' : named(item.itemName, item.itemCode)}`}
+              onDistributionDirtyChange={setDistributionDirty}
+              onAppend={(drafts) =>
+                editor.addMany(drafts.map((draft) => ({ ...draft, bomId: draftBomId, routingId })))
+              }
+              onSplit={(row, qty) => editor.split(row.key, qty, uoms.decimalScaleOf?.(order.uomId))}
               onChange={editor.change}
               onRemove={(row) => {
                 if (row.productionPlanId === null) {
@@ -607,12 +645,21 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       case 'assign':
         return (
           <AssignStep
+            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+            actionTargetId={assignActionTargetId}
             workOrders={unreleased.data}
             blockedIds={blockedIds}
             plantId={order.plantId}
             planDateOf={(planId) =>
               planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
             }
+            lineNameOf={(lineId) => {
+              const line = planLines.find((entry) => entry.id === lineId);
+              return line === undefined
+                ? tp.plan.workspace.unassigned
+                : named(line.name, line.code);
+            }}
+            uomLabelOf={uomLabelOf}
             selectedId={assignSelected}
             onSelect={setAssignSelected}
             onDirtyChange={setAssignDirty}
@@ -621,7 +668,19 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       case 'release':
         return (
           <ReleaseStep
+            plantId={order.plantId ?? undefined}
             lines={releaseLines}
+            orderNo={order.productionOrderNo}
+            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+            planDateOf={(planId) =>
+              planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
+            }
+            lineNameOf={(lineId) => {
+              const line = planLines.find((entry) => entry.id === lineId);
+              return line === undefined
+                ? tp.plan.workspace.unassigned
+                : named(line.name, line.code);
+            }}
             uomLabelOf={uomLabelOf}
             failures={failures}
             issueDates={issueDates}
@@ -717,8 +776,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
           {prev}
           <Button
             loading={planBusy}
-            disabled={!plan.canConfirm || planBusy}
-            aria-describedby={plan.canConfirm ? undefined : remainingId}
+            disabled={!plan.canConfirm || planBusy || distributionDirty}
+            aria-describedby={plan.canConfirm && !distributionDirty ? undefined : remainingId}
             onClick={() => setConfirmOpen(true)}
           >
             {tp.plan.confirm}
@@ -731,8 +790,11 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       <>
         {prev}
         <Button
-          disabled={!complete}
-          aria-describedby={complete ? undefined : remainingId}
+          variant={step === 'assign' ? 'outlined' : undefined}
+          disabled={!complete || (step === 'plan' && distributionDirty)}
+          aria-describedby={
+            complete && !(step === 'plan' && distributionDirty) ? undefined : remainingId
+          }
           onClick={() => nextKey !== undefined && goTo(nextKey)}
         >
           {messages.screenPatterns.actionBar.next(nextKey === undefined ? '' : stepName(nextKey))}
@@ -751,7 +813,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
     <ProcessPage
       backLabel={tp.back}
       onBack={() => void navigate(worklistPath(lastSearch))}
-      title={order.productionOrderNo}
+      title={tp.title}
       badges={
         <>
           <ProcessStateChip state={derived.state} />
@@ -769,11 +831,25 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
       }
       summary={
         <dl className="erp-wo-summary">
-          <div>
-            <dt>{tp.summary.item}</dt>
-            <dd>{item === undefined ? '' : named(item.itemName, item.itemCode)}</dd>
+          <div className="is-order">
+            <dt>{tp.orderNumber}</dt>
+            <dd>{order.productionOrderNo}</dd>
           </div>
-          <div>
+          <div className="is-item-code">
+            <dt>{t.list.columns.itemCode}</dt>
+            <dd>{item?.itemCode ?? '—'}</dd>
+          </div>
+          <div className="is-key is-item-name">
+            <dt>{t.list.columns.itemName}</dt>
+            <dd>{item?.itemName ?? '—'}</dd>
+          </div>
+          {item?.erpItemGroupCode != null && item.erpItemGroupCode !== '' && (
+            <div>
+              <dt>{tp.summary.itemGroup}</dt>
+              <dd>{item.erpItemGroupCode}</dd>
+            </div>
+          )}
+          <div className="is-key">
             <dt>{tp.summary.orderQty}</dt>
             <dd>{`${formatQty(order.orderQty)} ${uomLabelOf(order.uomId)}`}</dd>
           </div>
@@ -783,12 +859,15 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
               <dd>{order.dueDate}</dd>
             </div>
           )}
-          {order.erpOrderNo !== null && (
-            <div>
-              <dt>{tp.summary.erpNo}</dt>
-              <dd>{order.erpOrderNo}</dd>
-            </div>
-          )}
+          {/* 제목 번호와 같은 값은 되풀이일 뿐이다. 수기 등록 오더만 번호가 다를 수 있다. */}
+          {order.erpOrderNo !== null &&
+            order.erpOrderNo !== '' &&
+            order.erpOrderNo !== order.productionOrderNo && (
+              <div>
+                <dt>{tp.summary.erpNo}</dt>
+                <dd>{order.erpOrderNo}</dd>
+              </div>
+            )}
         </dl>
       }
       headerActions={
@@ -802,12 +881,41 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
           </Button>
         ) : undefined
       }
+      stepNavigation={
+        step === 'done' ? undefined : (
+          <Tabs
+            className="erp-wo-stage-tabs"
+            aria-label={messages.screenPatterns.processPage.steps}
+            value={step}
+            onChange={(key) => goTo(key as ProcessStepKey)}
+            items={steps.map((entry, index) => ({
+              value: entry.key,
+              label: (
+                <>
+                  <span className="erp-wo-stage-index" aria-hidden="true">
+                    {index + 1}.
+                  </span>
+                  {entry.label}
+                </>
+              ),
+              content: null,
+              disabled: !canEnter(entry.key as ProcessStepKey, judgments),
+            }))}
+          />
+        )
+      }
       steps={steps}
       onSelectStep={goTo}
       pastSummary={pastGroups}
+      pastSummaryInBody={step !== 'master'}
+      bodyScrollKey={step ?? undefined}
       actionBar={
         <ActionBar
-          remaining={guidance?.text ?? null}
+          remaining={
+            step === 'plan' && distributionDirty
+              ? '분배 미리보기를 적용하거나 조건 변경을 취소하세요.'
+              : (guidance?.text ?? null)
+          }
           remainingLink={remainingLink}
           remainingId={remainingId}
           leading={
@@ -815,6 +923,8 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
               <Button variant="outlined" disabled={planBusy} onClick={() => void savePlans(false)}>
                 {tp.plan.saveDraft}
               </Button>
+            ) : step === 'assign' ? (
+              <div id={assignActionTargetId} className="erp-wo-assign-footer-actions" />
             ) : undefined
           }
         >
@@ -830,7 +940,7 @@ const ProcessWorkspace = ({ order }: { order: ProductionOrderFact }) => {
         </AlertBanner>
       )}
       {body}
-      <LeaveGuard when={planDirty || assignDirty || lotDirty} />
+      <LeaveGuard when={planDirty || distributionDirty || assignDirty || lotDirty} />
       {pendingStep !== null && (
         <DiscardDialog
           onCancel={() => setPendingStep(null)}
@@ -864,6 +974,8 @@ export const ProductionOrderProcessScreen = ({
   permissionMenuPath = null,
 }: ProductionOrderProcessScreenProps) => {
   const { productionOrderNo = '' } = useParams();
+  const [params] = useSearchParams();
+  const selectedOrders = [...new Set((params.get('orders') ?? '').split(',').filter(Boolean))];
   const navigate = useNavigate();
   const order = useProductionOrderByNumber(productionOrderNo);
 
@@ -898,5 +1010,6 @@ export const ProductionOrderProcessScreen = ({
       </AlertBanner>
     );
   }
+  if (selectedOrders.length > 1) return <MultiOrderPlanning orderNumbers={selectedOrders} />;
   return <ProcessWorkspace key={order.data.productionOrderId} order={order.data} />;
 };
