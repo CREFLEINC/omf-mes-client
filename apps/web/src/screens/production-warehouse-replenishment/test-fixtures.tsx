@@ -1,6 +1,7 @@
 import type {
   MaterialIssueRequestDetailForward,
   MaterialIssueRequestForward,
+  ReplenishmentArrival,
   ReplenishmentItem,
   ReplenishmentSettings,
 } from '@omf-mes/api-client';
@@ -192,6 +193,67 @@ export const CLOSE_REASONS = [
   },
 ];
 
+/** 수령 차이 사유 공통코드(`VARIANCE_REASON`). */
+export const VARIANCE_REASONS = [
+  {
+    codeValueId: 11,
+    codeGroupId: 91,
+    code: 'SHORT_DELIVERY',
+    codeName: '합성 덜 옴',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 12,
+    codeGroupId: 91,
+    code: 'DAMAGED',
+    codeName: '합성 파손',
+    displayOrder: 2,
+    isActive: true,
+  },
+];
+
+const arrivalLine = (goodsIssueLineId: number, itemId: number, qty: number, uomCode = 'KG') => ({
+  goodsIssueLineId,
+  itemId,
+  itemCode: `SYN-IT-${String(itemId - 600)}`,
+  itemName: itemId === 601 ? '합성 동선' : '합성 라벨지',
+  lotId: goodsIssueLineId + 100,
+  lotNo: `SYN-L-${String(goodsIssueLineId)}`,
+  issueQty: qty,
+  uomId: uomCode === 'KG' ? 1 : 2,
+  uomCode,
+});
+
+export const arrival = (
+  goodsIssueId: number,
+  overrides: Partial<ReplenishmentArrival> = {},
+): ReplenishmentArrival => ({
+  goodsIssueId,
+  goodsIssueNo: `SYN-GI-${String(goodsIssueId)}`,
+  issuedAt: '2026-11-05T01:10:00Z',
+  elapsedDays: 0,
+  materialIssueRequestId: 2,
+  issueRequestNo: 'SYN-MIR-02',
+  replenishmentOriginCode: 'DIRECT',
+  productionWarehouseId: 7001,
+  productionWarehouseName: '합성 생산창고 A',
+  destinationLocationId: 501,
+  destinationLocationCode: 'SYN-STAGING',
+  lines: [arrivalLine(goodsIssueId * 10, 601, 30)],
+  ...overrides,
+});
+
+/** 도착 대기 — 91 한 줄 30 KG, 92 경과 4일, 93 두 품목. */
+export const ARRIVALS: ReplenishmentArrival[] = [
+  arrival(91),
+  arrival(92, { elapsedDays: 4, issuedAt: '2026-11-01T09:30:00Z' }),
+  arrival(93, {
+    replenishmentOriginCode: 'AUTO',
+    lines: [arrivalLine(931, 601, 20), arrivalLine(932, 602, 50, 'EA')],
+  }),
+];
+
 export const request = (
   id: number,
   overrides: Partial<MaterialIssueRequestForward> = {},
@@ -315,6 +377,8 @@ export interface SetupOptions {
   respondWrite?: (method: string, path: string, body: unknown) => Response | undefined;
   /** 이력에 넣을 사건. */
   history?: unknown[];
+  /** 도착 대기 출고. 없으면 `ARRIVALS`. */
+  arrivals?: ReplenishmentArrival[];
 }
 
 const pathOf = (req: Request) => new URL(req.url).pathname;
@@ -377,7 +441,18 @@ export const setupScreen = (options: SetupOptions = {}) => {
     },
     {
       match: (req) => isGet(req, '/mdm/code-values'),
-      respond: () => jsonResponse(page(CLOSE_REASONS)),
+      respond: (req) =>
+        jsonResponse(
+          page(
+            new URL(req.url).searchParams.get('codeGroupCode') === 'VARIANCE_REASON'
+              ? VARIANCE_REASONS
+              : CLOSE_REASONS,
+          ),
+        ),
+    },
+    {
+      match: (req) => isGet(req, '/logistics/replenishment-requests/arrivals'),
+      respond: () => jsonResponse(page(options.arrivals ?? ARRIVALS)),
     },
     {
       match: (req) => isGet(req, '/logistics/replenishment-items'),

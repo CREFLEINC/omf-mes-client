@@ -1,10 +1,22 @@
-import type { components, ReplenishmentItem, ReplenishmentSettings } from '@omf-mes/api-client';
+import type {
+  components,
+  ReplenishmentArrival,
+  ReplenishmentItem,
+  ReplenishmentSettings,
+} from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
-import { toItemQuery, toProgressQuery, type ItemFilters, type ProgressFilters } from './filters';
+import {
+  toArrivalQuery,
+  toItemQuery,
+  toProgressQuery,
+  type ArrivalFilters,
+  type ItemFilters,
+  type ProgressFilters,
+} from './filters';
 import {
   toDetailView,
   toRequestView,
@@ -34,6 +46,9 @@ export const replenishmentKeys = {
     ['production-warehouse-replenishment', 'items', plantId, filters, page] as const,
   progress: (plantId: number, filters: ProgressFilters, page: number) =>
     ['production-warehouse-replenishment', 'progress', plantId, filters, page] as const,
+  arrivals: (plantId: number, filters: ArrivalFilters, page: number) =>
+    ['production-warehouse-replenishment', 'arrivals', plantId, filters, page] as const,
+  varianceReasons: ['production-warehouse-replenishment', 'variance-reasons'] as const,
   counts: (plantId: number) => ['production-warehouse-replenishment', 'counts', plantId] as const,
   detail: (id: number) => ['production-warehouse-replenishment', 'detail', id] as const,
   history: (id: number) => ['production-warehouse-replenishment', 'history', id] as const,
@@ -271,6 +286,8 @@ export interface HeaderCounts {
   active: number;
   /** 보충 시점 아래 관리 품목 수. */
   below: number;
+  /** 미수령 출고 전표 수(도착 대기). */
+  arrivals: number;
 }
 
 /** 보기 이름 옆 숫자(screens/W-02-12.md 「머리」) — 한 건만 받아 전체 수를 읽는다. */
@@ -280,7 +297,7 @@ export const useHeaderCounts = (plantId: number | null): UseQueryResult<HeaderCo
     queryKey: replenishmentKeys.counts(plantId ?? 0),
     enabled: plantId !== null,
     queryFn: async () => {
-      const [active, below] = await Promise.all([
+      const [active, below, arrivals] = await Promise.all([
         runRequest(() =>
           client.GET('/logistics/material-issue-requests', {
             params: {
@@ -301,8 +318,17 @@ export const useHeaderCounts = (plantId: number | null): UseQueryResult<HeaderCo
             },
           }),
         ),
+        runRequest(() =>
+          client.GET('/logistics/replenishment-requests/arrivals', {
+            params: { query: { plantId: plantId ?? 0, page: 1, size: 1 } },
+          }),
+        ),
       ]);
-      return { active: active.page.total, below: below.page.total };
+      return {
+        active: active.page.total,
+        below: below.page.total,
+        arrivals: arrivals.page.total,
+      };
     },
   });
 };
@@ -393,5 +419,48 @@ export const useCloseReasons = (): UseQueryResult<CloseReasons> => {
         names: new Map(items.map((item) => [item.code, item.codeName])),
       };
     },
+  });
+};
+
+/** 도착 대기 — 창고 보충 요청에서 나간 `POSTED` 출고 중 수령이 없는 것(계약 §2). */
+export const useArrivalList = (
+  plantId: number | null,
+  filters: ArrivalFilters,
+  page: number,
+): UseQueryResult<{ items: ReplenishmentArrival[]; page: PageMeta }> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: replenishmentKeys.arrivals(plantId ?? 0, filters, page),
+    enabled: plantId !== null,
+    /* 모바일 생산창고 입고에서 받은 전표가 바로 빠지게 — 열 때마다 새로 받는다. */
+    staleTime: 0,
+    refetchOnMount: 'always',
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/logistics/replenishment-requests/arrivals', {
+          params: { query: toArrivalQuery(plantId ?? 0, filters, page, PAGE_SIZE) },
+        }),
+      ),
+  });
+};
+
+export const VARIANCE_REASON_GROUP = 'VARIANCE_REASON';
+
+/** 수령 차이 사유 — 모바일 생산창고 입고와 같은 공통코드(`VARIANCE_REASON`). */
+export const useVarianceReasons = (): UseQueryResult<Option[]> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: replenishmentKeys.varianceReasons,
+    queryFn: async () =>
+      (
+        await runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: { query: { codeGroupCode: VARIANCE_REASON_GROUP, size: 100 } },
+          }),
+        )
+      ).items
+        .filter((item) => item.isActive)
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((item) => ({ value: item.code, label: item.codeName })),
   });
 };

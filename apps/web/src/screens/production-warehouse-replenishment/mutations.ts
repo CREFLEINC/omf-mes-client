@@ -8,7 +8,11 @@ import type {
   ReplenishmentItemUpdate,
   ReplenishmentRequestCreate,
   ReplenishmentRequestCreated,
+  ReplenishmentArrivalReceive,
   ReplenishmentSettings,
+  ShopfloorReceiptBulkCreate,
+  ShopfloorReceiptBulkResult,
+  ShopfloorReceiptDetailForward,
 } from '@omf-mes/api-client';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 
@@ -215,6 +219,46 @@ export const useSaveRunTimes = (onSuccess: () => void): MasterWriteResult<RunTim
       if (last === undefined) throw new Error('바꾼 시각이 없으면 저장하지 않는다.');
       return last;
     },
+    etagPath: null,
+    invalidateKeys: [replenishmentKeys.all],
+    knownFields: [],
+    onSuccess,
+  });
+};
+
+/** 웹 개별 수령(계약 §2 `…/arrivals/{goodsIssueId}:receive`) — `POST /shopfloor-receipts` 는 부르지 않는다(권한 M-01-09). */
+export const useReceiveArrival = (
+  goodsIssueId: number,
+  onSuccess: (saved: ShopfloorReceiptDetailForward) => void,
+): MasterWriteResult<ReplenishmentArrivalReceive> => {
+  const { client } = useApiClient();
+  return useMasterWrite({
+    request: (body, headers) =>
+      client.POST('/logistics/replenishment-requests/arrivals/{goodsIssueId}:receive', {
+        params: {
+          path: { goodsIssueId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body,
+      }),
+    etagPath: null,
+    invalidateKeys: [replenishmentKeys.all],
+    knownFields: [],
+    onSuccess,
+  });
+};
+
+/** 일괄 수령(계약 §3 `:bulk`) — 받은 = 출고, 건마다 따로 확정, 결과는 장마다. */
+export const useBulkReceive = (
+  onSuccess: (result: ShopfloorReceiptBulkResult) => void,
+): MasterWriteResult<ShopfloorReceiptBulkCreate> => {
+  const { client } = useApiClient();
+  return useMasterWrite({
+    request: (body, headers) =>
+      client.POST('/logistics/shopfloor-receipts:bulk', {
+        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        body,
+      }),
     etagPath: null,
     invalidateKeys: [replenishmentKeys.all],
     knownFields: [],

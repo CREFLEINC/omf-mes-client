@@ -5,9 +5,12 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import { ArrivalView } from './arrival-view';
 import {
+  EMPTY_ARRIVAL,
   EMPTY_ITEMS,
   EMPTY_PROGRESS,
+  readArrival,
   readItems,
   readPage,
   readPlant,
@@ -40,6 +43,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
     view: readView(searchParams),
     plant: readPlant(searchParams),
     progress: readProgress(searchParams),
+    arrival: readArrival(searchParams),
     items: readItems(searchParams),
     page: readPage(searchParams),
     id: readSelectedId(searchParams),
@@ -72,6 +76,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
 
   const active = counts.data?.active ?? 0;
   const below = counts.data?.below ?? 0;
+  const arrivals = counts.data?.arrivals ?? 0;
 
   const body = (): ReactNode => {
     if (plants.isError || settings.isError) {
@@ -123,6 +128,18 @@ export const ProductionWarehouseReplenishmentScreen = () => {
             onSelect={(id) => setSearchParams(toSearchParams({ ...state, view: 'progress', id }))}
           />
         );
+      case 'arrival':
+        return (
+          <ArrivalView
+            plantId={plantId}
+            productionWarehouses={productionWarehouses}
+            filters={state.arrival}
+            page={state.page}
+            onSearch={(arrival) => go({ view: 'arrival', arrival })}
+            onReset={() => go({ view: 'arrival', arrival: EMPTY_ARRIVAL })}
+            onPage={(page) => go({ view: 'arrival', page })}
+          />
+        );
       case 'items':
         return (
           <ItemsView
@@ -165,6 +182,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
         <div role="group" aria-label={t.views.label}>
           {viewButton('request', t.views.request)}
           {viewButton('progress', active > 0 ? t.views.progressCount(active) : t.views.progress)}
+          {viewButton('arrival', arrivals > 0 ? t.views.arrivalCount(arrivals) : t.views.arrival)}
           {viewButton('items', below > 0 ? t.views.itemsBelow(below) : t.views.items)}
         </div>
         <div className="replenishment-plant">
@@ -178,7 +196,12 @@ export const ProductionWarehouseReplenishmentScreen = () => {
                 label: plant.plantName,
               }))}
               onChange={(value) =>
-                go({ plant: value, progress: EMPTY_PROGRESS, items: EMPTY_ITEMS })
+                go({
+                  plant: value,
+                  progress: EMPTY_PROGRESS,
+                  arrival: EMPTY_ARRIVAL,
+                  items: EMPTY_ITEMS,
+                })
               }
             />
           )}
