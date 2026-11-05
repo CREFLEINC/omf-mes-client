@@ -58,6 +58,41 @@ describe('생산계획 보기와 선택 편집', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('복수 ERP W/O는 계획별 단위와 소속을 표시하고 단일 ERP W/O 합계를 표시하지 않는다', async () => {
+    const user = userEvent.setup();
+    const rows = [
+      ...initialRows(),
+      ...initialRows().map((row) => ({ ...row, key: 'second', displayNo: 2 })),
+    ];
+    renderWithProviders(
+      <PlanStep
+        rows={rows}
+        orderQty={0}
+        uomLabel=""
+        rowUomLabelOf={(row) => (row.key === 'second' ? 'KG' : 'EA')}
+        orderContextOf={(row) => <p>{row.key === 'second' ? 'ERP W/O B' : 'ERP W/O A'}</p>}
+        hideTotals
+        plantId={null}
+        lines={[{ id: 31, code: 'LN-31', name: '라인 A' }]}
+        statusNameOf={(value) => value}
+        disabled={false}
+        failures={[]}
+        onAdd={() => {}}
+        onRemove={() => {}}
+        onChange={() => {}}
+      />,
+    );
+    expect(document.querySelector('.erp-wo-plan-total')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: t.workspace.selectPlan(t.newRow(1)) }),
+    ).toHaveTextContent('200 EA');
+    const second = screen.getByRole('button', { name: t.workspace.selectPlan(t.newRow(2)) });
+    expect(second).toHaveTextContent('200 KG');
+    await user.click(second);
+    expect(screen.getByText('ERP W/O B')).toBeVisible();
+    expect(screen.getByText('단위 KG')).toBeVisible();
+  });
+
   it('확정된 계획을 선택해도 편집이나 삭제를 허용하지 않는다', () => {
     const rows = initialRows().map((row) => ({
       ...row,

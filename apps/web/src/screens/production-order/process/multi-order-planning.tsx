@@ -3,7 +3,7 @@ import { AdjustableLayout } from './adjustable-layout';
 import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AlertBanner, Button, Dialog, SkeletonText, Tabs, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, SkeletonText, Tabs, TextField } from '@crefle/web-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { ActionBar } from '../../../patterns/action-bar';
@@ -374,13 +374,22 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   };
   return (
     <div className="erp-wo-multi-page">
-      <div className="erp-wo-multi-header">
-        <Button variant="text" onClick={() => void navigate(worklistPath())}>
+      <header className="erp-wo-multi-header">
+        <Button
+          variant="text"
+          size="sm"
+          leadingIcon={<Icon name="arrow_back" size={18} />}
+          onClick={() => void navigate(worklistPath())}
+        >
           {messages.erpWorkOrderFlow.process.back}
         </Button>
-        <h1 className="page-title">{messages.erpWorkOrderFlow.process.title}</h1>
-        <p>선택 ERP W/O {orderNumbers.length}건</p>
-      </div>
+        <div className="erp-wo-multi-title-row">
+          <h1 className="page-title">{messages.erpWorkOrderFlow.process.title}</h1>
+          <p>
+            선택 ERP W/O <strong>{orderNumbers.length}건</strong>
+          </p>
+        </div>
+      </header>
       <Tabs
         className="erp-wo-stage-tabs"
         value={stage}
@@ -505,12 +514,13 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {stage === 'plan' && planView === 'grid' && (
           <section aria-label="선택 ERP W/O" className="pane erp-wo-multi-orders">
             <AdjustableNativeTable
-              storageKey="omf-mes:work-planning:erp-wo-quantity-columns"
+              storageKey="omf-mes:work-planning:erp-wo-quantity-columns:v2"
               className="erp-wo-master-table"
-              widths={[168, 240, 128, 128, 128, 128, 144]}
+              widths={[168, 136, 240, 128, 128, 128, 128, 144]}
               labels={[
                 'ERP W/O',
-                '품목',
+                '품목코드',
+                '품목명',
                 'ERP W/O 수량',
                 '확정 계획량',
                 '미확정 계획량',
@@ -522,7 +532,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 {entries.map((entry) => (
                   <tr key={entry.order.productionOrderNo}>
                     <td>{entry.order.productionOrderNo}</td>
-                    <td>{entry.item}</td>
+                    <td>{entry.itemCode}</td>
+                    <td>{entry.itemName}</td>
                     <td>
                       {entry.order.orderQty} {entry.unit}
                     </td>
@@ -578,12 +589,36 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           <div className="erp-wo-multi-plan-week" hidden={planView !== 'week'}>
             <div className="erp-wo-multi-week-tools">
               <div className="erp-wo-multi-week-heading">
-                <p className="field-note">
-                  대상 ERP W/O {entries.length}건
-                  {units.size === 1
-                    ? ` / 이번 계획 ${roundQty(entries.reduce((sum, entry) => sum + targetOf(entry), 0))} / 편성 ${roundQty(entries.reduce((sum, entry) => sum + draftOf(entry), 0))} / 편성 대기 ${roundQty(entries.reduce((sum, entry) => sum + toSchedule(entry), 0))} ${target.unit}`
-                    : ' / ERP W/O별 수량은 ERP W/O별 계획 수량에서 확인하세요.'}
-                </p>
+                <dl className="erp-wo-plan-totals" aria-label="선택 ERP W/O 계획 수량 요약">
+                  <div>
+                    <dt>선택 ERP W/O</dt>
+                    <dd>{entries.length}건</dd>
+                  </div>
+                  {units.size === 1 ? (
+                    [
+                      [
+                        'ERP W/O 수량',
+                        entries.reduce((sum, entry) => sum + entry.order.orderQty, 0),
+                      ],
+                      ['확정 계획량', entries.reduce((sum, entry) => sum + confirmedOf(entry), 0)],
+                      ['이번 계획 수량', entries.reduce((sum, entry) => sum + targetOf(entry), 0)],
+                      ['미확정 계획량', entries.reduce((sum, entry) => sum + draftOf(entry), 0)],
+                      ['편성 대기', entries.reduce((sum, entry) => sum + toSchedule(entry), 0)],
+                    ].map(([label, value]) => (
+                      <div key={String(label)}>
+                        <dt>{label}</dt>
+                        <dd>
+                          {roundQty(Number(value))} {target.unit}
+                        </dd>
+                      </div>
+                    ))
+                  ) : (
+                    <div>
+                      <dt>계획 수량</dt>
+                      <dd>단위가 달라 ERP W/O별로 표시</dd>
+                    </div>
+                  )}
+                </dl>
               </div>
             </div>
             <PlanStep
@@ -622,7 +657,34 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               hideTotals
               uomLabel={units.size === 1 ? target.unit : ''}
               plantId={target.order.plantId}
-              lines={target.lines}
+              lines={[
+                ...new Map(
+                  entries.flatMap((entry) => entry.lines).map((line) => [line.id, line]),
+                ).values(),
+              ]}
+              rowUomLabelOf={(row) => ownerOf(row.key)?.unit ?? ''}
+              orderContextOf={(row) => {
+                const entry = ownerOf(row.key);
+                return entry ? (
+                  <dl
+                    className="erp-wo-selected-item-fields erp-wo-plan-owner"
+                    aria-label="선택 계획 ERP W/O"
+                  >
+                    <div>
+                      <dt>ERP W/O</dt>
+                      <dd>{entry.order.productionOrderNo}</dd>
+                    </div>
+                    <div>
+                      <dt>품목코드</dt>
+                      <dd>{entry.itemCode}</dd>
+                    </div>
+                    <div>
+                      <dt>품목명</dt>
+                      <dd>{entry.itemName}</dd>
+                    </div>
+                  </dl>
+                ) : null;
+              }}
               orderNameOf={(row) => {
                 const entry = ownerOf(row.key);
                 return `${entry?.order.productionOrderNo ?? ''} / ${entry?.item ?? ''}`;
@@ -650,23 +712,44 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         )}
         {(stage === 'assign' || stage === 'release') && (
           <section className="erp-wo-multi-execution">
-            <div className="field-cell">
-              <span className="field-label">ERP W/O</span>
-              <Select
-                value={focus}
-                options={entries.map((entry) => ({
-                  value: entry.order.productionOrderNo,
-                  label: `${entry.order.productionOrderNo} / ${entry.item}`,
-                }))}
-                onChange={(value) => {
-                  if (executionDirty)
-                    setPendingAction(() => () => {
-                      setExecutionDirty(false);
-                      setFocus(value);
-                    });
-                  else setFocus(value);
-                }}
-              />
+            <div className="erp-wo-multi-current-target">
+              <div className="field-cell">
+                <span className="field-label">처리할 ERP W/O</span>
+                <Select
+                  aria-label="처리할 ERP W/O"
+                  value={focus}
+                  options={entries.map((entry) => ({
+                    value: entry.order.productionOrderNo,
+                    label: entry.order.productionOrderNo,
+                  }))}
+                  onChange={(value) => {
+                    if (executionDirty)
+                      setPendingAction(() => () => {
+                        setExecutionDirty(false);
+                        setFocus(value);
+                      });
+                    else setFocus(value);
+                  }}
+                />
+              </div>
+              {target && (
+                <dl className="erp-wo-selected-item-fields" aria-label="현재 ERP W/O 정보">
+                  <div>
+                    <dt>품목코드</dt>
+                    <dd>{target.itemCode}</dd>
+                  </div>
+                  <div>
+                    <dt>품목명</dt>
+                    <dd>{target.itemName}</dd>
+                  </div>
+                  <div>
+                    <dt>ERP W/O 수량</dt>
+                    <dd>
+                      {target.order.orderQty} {target.unit}
+                    </dd>
+                  </div>
+                </dl>
+              )}
             </div>
             {target && (
               <ProcessWorkspace

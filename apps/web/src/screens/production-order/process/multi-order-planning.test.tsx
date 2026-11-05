@@ -343,9 +343,10 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await user.click(within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }));
     await user.click(screen.getByRole('option', { name: 'B / 시험 품목 (ITEM1)' }));
     await user.click(within(dialog).getByRole('button', { name: '추가' }));
-    expect(await screen.findByRole('region', { name: '선택 계획 편집' })).toHaveTextContent(
-      'B / 시험 품목',
-    );
+    const selectedPlan = await screen.findByRole('region', { name: '선택 계획 편집' });
+    expect(within(selectedPlan).getByText('B', { exact: true })).toBeVisible();
+    expect(within(selectedPlan).getByText('ITEM1', { exact: true })).toBeVisible();
+    expect(within(selectedPlan).getByText('시험 품목', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
   });

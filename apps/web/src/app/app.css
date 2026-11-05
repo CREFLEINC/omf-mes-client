@@ -33023,3 +33023,17 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .process-page:has(.erp-wo-summary) .process-page-body .process-past-pair { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-3); align-items: baseline; }
 .process-page:has(.erp-wo-summary) .process-page-body .process-past-pair > dt { font: var(--type-label-sm); white-space: normal; }
 .process-page:has(.erp-wo-summary) .process-page-body .process-past-pair > dd { font: var(--type-body-sm); font-weight: 500; margin: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+
+/* 복수 편성도 단일 처리 화면과 같은 제목·조회 정보 순서를 따른다. */
+.erp-wo-multi-header { display: grid; gap: var(--space-2); min-width: 0; }
+.erp-wo-multi-header > button { justify-self: start; }
+.erp-wo-multi-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2) var(--space-4); min-width: 0; }
+.erp-wo-multi-title-row p { white-space: normal; }
+.erp-wo-multi-current-target { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); padding-bottom: var(--space-3); border-bottom: 1px solid var(--outline-variant); min-width: 0; }
+.erp-wo-multi-current-target > .field-cell { flex: 0 1 15rem; min-width: min(15rem, 100%); }
+.erp-wo-multi-current-target > dl { flex: 1 1 22rem; min-width: 0; }
+.erp-wo-multi-current-target dd { white-space: normal; overflow-wrap: anywhere; }
+.erp-wo-multi-current-target > dl > div:has(dt + dd) { min-width: 0; }
+.erp-wo-plan-owner { display: grid; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--outline-variant); }
+.erp-wo-plan-owner > div { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-2); }
+.erp-wo-plan-owner dd { margin: 0; }

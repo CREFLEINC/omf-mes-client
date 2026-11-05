@@ -49,6 +49,8 @@ export interface PlanStepProps {
   viewMode?: 'grid' | 'week';
   hideTotals?: boolean;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
+  orderContextOf?: (row: ProductionPlanEditorStateRow) => ReactNode;
+  rowUomLabelOf?: (row: ProductionPlanEditorStateRow) => string;
   onAppend?: (drafts: ScheduledDraft[]) => void;
   distributionOrderLabel?: string;
   distributionDecimalScale?: number;
@@ -89,6 +91,8 @@ export const PlanStep = ({
   hideTotals = false,
   viewMode,
   orderNameOf,
+  orderContextOf,
+  rowUomLabelOf,
   onChange,
   onRemove,
 }: PlanStepProps) => {
@@ -124,6 +128,7 @@ export const PlanStep = ({
     beforeAdded.current = null;
   }, [rows, selectAdded]);
 
+  const unitOf = (row: ProductionPlanEditorStateRow) => rowUomLabelOf?.(row) ?? uomLabel;
   const nameOf = (row: ProductionPlanEditorStateRow) => row.planNo ?? t.newRow(row.displayNo);
   const lineName = (value: string) => {
     const line = lines.find((line) => String(line.id) === value);
@@ -174,7 +179,7 @@ export const PlanStep = ({
       header: t.columns.plannedQty,
       width: '6rem',
       align: 'end',
-      render: (row) => formatQty(Number(row.draft.plannedQty) || 0),
+      render: (row) => `${formatQty(Number(row.draft.plannedQty) || 0)} ${unitOf(row)}`,
     },
     {
       key: 'line',
@@ -362,7 +367,7 @@ export const PlanStep = ({
                                 <button
                                   key={row.key}
                                   className="erp-wo-week-plan"
-                                  title={`${nameOf(row)} / ${row.draft.plannedQty} ${uomLabel}`}
+                                  title={`${nameOf(row)} / ${row.draft.plannedQty} ${unitOf(row)}`}
                                   aria-label={ui.selectPlan(nameOf(row))}
                                   aria-pressed={selected?.key === row.key}
                                   aria-controls={editorId}
@@ -371,7 +376,7 @@ export const PlanStep = ({
                                   <span>{nameOf(row)}</span>
                                   <strong>
                                     {orderNameOf && <small>{orderNameOf(row)}</small>}
-                                    {formatQty(Number(row.draft.plannedQty) || 0)} {uomLabel}
+                                    {formatQty(Number(row.draft.plannedQty) || 0)} {unitOf(row)}
                                   </strong>
                                   <small>
                                     {row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed}
@@ -406,9 +411,11 @@ export const PlanStep = ({
               )}
             </>
           )}
-          <p className="erp-wo-plan-total">
-            {t.total(formatQty(total), formatQty(orderQty), uomLabel)}
-          </p>
+          {!hideTotals && (
+            <p className="erp-wo-plan-total">
+              {t.total(formatQty(total), formatQty(orderQty), uomLabel)}
+            </p>
+          )}
         </section>
         <section className="pane erp-wo-plan-editor" id={editorId} aria-label={ui.editor}>
           <h2 className="section-title">{ui.editor}</h2>
@@ -416,9 +423,11 @@ export const PlanStep = ({
             <p className="empty-line">{ui.selectPrompt}</p>
           ) : (
             <>
-              {orderNameOf && (
-                <p className="field-note erp-wo-plan-order">{orderNameOf(selected)}</p>
-              )}
+              {orderContextOf
+                ? orderContextOf(selected)
+                : orderNameOf && (
+                    <p className="field-note erp-wo-plan-order">{orderNameOf(selected)}</p>
+                  )}
               <div className="erp-wo-plan-editor-title">
                 <span className="mono-cell">{nameOf(selected)}</span>
                 <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>
@@ -461,6 +470,7 @@ export const PlanStep = ({
                 label={t.columns.plannedQty}
                 aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
                 inputMode="decimal"
+                helperText={rowUomLabelOf ? `단위 ${unitOf(selected)}` : undefined}
                 value={selected.draft.plannedQty}
                 error={errorText(selected.errors, 'plannedQty')}
                 disabled={editDisabled}
