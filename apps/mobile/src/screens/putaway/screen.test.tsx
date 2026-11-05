@@ -896,3 +896,38 @@ describe('적치 화면 — 창고 보충 지시(004)', () => {
     expect(await screen.findByText('옮길 재고가 없어 지시를 닫았습니다')).toBeTruthy();
   });
 });
+
+describe('적치 화면 — 원천 요청번호(004, 서버 S7e)', () => {
+  it('US6-2 창고 보충 지시는 원천 줄에 요청번호를 붙인다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks',
+        respond: () =>
+          jsonResponse({
+            items: [{ ...replenishmentTask, originDocumentNo: 'MIR-2026-000777' }],
+            page,
+          }),
+      },
+    ]);
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+    expect(pick.textContent).toContain('원천 창고 보충(MIR-2026-000777)');
+  });
+
+  it('구매 입고 지시는 입고 번호가 와도 지금과 같이 원천 줄을 붙이지 않는다', async () => {
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks',
+        respond: () =>
+          jsonResponse({
+            items: [task({ originCode: 'GOODS_RECEIPT', originDocumentNo: 'GR-2026-000123' })],
+            page,
+          }),
+      },
+    ]);
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+    expect(pick.textContent).not.toContain('원천');
+    expect(pick.textContent).not.toContain('GR-2026-000123');
+  });
+});

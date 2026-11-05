@@ -127,9 +127,17 @@ export const toOutboxDraft = (
   };
 };
 
-/** 원천 한 줄(screens/M-putaway.md) — 원천을 모르면(예전 지시) 구매 입고다. */
-export const originOf = (task: PutawayTask): string =>
-  messages.putaway.tasks.origin[task.originCode ?? 'GOODS_RECEIPT'];
+/**
+ * 원천 한 줄(screens/M-putaway.md) — 원천을 모르면(예전 지시) 구매 입고다. 창고 보충은 요청번호(`originDocumentNo`,
+ * 서버 S7e)를 붙인다.
+ */
+export const originOf = (task: PutawayTask): string => {
+  const name = messages.putaway.tasks.origin[task.originCode ?? 'GOODS_RECEIPT'];
+  const no = task.originDocumentNo;
+  return task.originCode === 'REPLENISHMENT_RECEIPT' && no !== null && no !== undefined && no !== ''
+    ? messages.putaway.tasks.originWithNo(name, no)
+    : name;
+};
 
 /**
  * 완료 응답으로 본 결과 한 줄 — 창고 보충 지시가 지시 수량보다 덜 옮겼으면 「남은 N 만」, 0 이면 「닫았습니다」.

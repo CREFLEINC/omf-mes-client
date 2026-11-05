@@ -21,6 +21,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     itemNameLabel: 'Tên mặt hàng',
     taskNoLabel: 'Số lệnh',
     originLabel: 'Nguồn',
+    originWithNo: (origin: string, no: string) => `${origin} (${no})`,
     origin: {
       GOODS_RECEIPT: 'Nhập kho mua hàng',
       REPLENISHMENT_RECEIPT: 'Bổ sung kho',

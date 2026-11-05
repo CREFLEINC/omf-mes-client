@@ -1041,6 +1041,8 @@ export interface PutawayTaskOriginForward {
   originCode?: PutawayOriginCode;
   /** 완료 응답 — 실제로 옮긴 양. 지시 수량보다 적을 수 있다(0 이면 원장 없이 닫힘). */
   movedQty?: number;
+  /** 원천 문서 번호(서버 S7e) — 구매 입고면 입고 번호, 창고 보충 수령이면 창고 보충 요청 번호. */
+  originDocumentNo?: string | null;
 }
 
 type ArrivalId = { goodsIssueId: number };
