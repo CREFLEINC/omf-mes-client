@@ -26,6 +26,7 @@ const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
       mode="edit"
       itemLabel="ITM-001 · 하우징 커버"
       routingVersion={3}
+      pqcPlanLabel={null}
       status={resolveRoutingStatus('DRAFT')}
       values={VALUES}
       onChange={onChange}
@@ -52,6 +53,18 @@ const STATE_LOCK_CONFIRMED = '확정된 Rev는 수정할 수 없습니다. 변�
 const CODE_LOCK = '이미 다른 자료에서 사용 중이라 코드를 바꿀 수 없습니다.';
 
 describe('HeaderPane', () => {
+  /* 검사 항목은 품목에 붙는다 — 이 품목의 PQC 검사 기준을 머리에 보인다(사용자 지시 2026-11-05). */
+  it('이 품목의 PQC 검사 기준을 보인다', () => {
+    renderPane({ pqcPlanLabel: 'PQC-1 · 하우징 공정검사' });
+    expect(screen.getByText('PQC 검사 기준')).toBeInTheDocument();
+    expect(screen.getByText('PQC-1 · 하우징 공정검사')).toBeInTheDocument();
+  });
+
+  it('PQC 검사 기준을 아직 모르면 칸이 없다', () => {
+    renderPane();
+    expect(screen.queryByText('PQC 검사 기준')).not.toBeInTheDocument();
+  });
+
   it('받은 값으로 폼과 값 표기를 채운다', () => {
     renderPane();
 

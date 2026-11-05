@@ -18,6 +18,8 @@ export interface HeaderPaneProps {
   itemLabel: string;
   /** 판 번호는 시스템 채번이라 값 표기로만 낸다. 등록 전에는 없으므로 null이다. */
   routingVersion: number | null;
+  /** 이 품목의 PQC 검사 기준 글자. 아직 모르면 `null` 이고 칸을 두지 않는다. */
+  pqcPlanLabel: string | null;
   /** 상태도 서버가 정한다. 등록 전에는 없으므로 null이며, 없는 값을 지어내 보이지 않는다. */
   status: RoutingStatusView | null;
   values: RoutingHeaderFormValues;
@@ -59,6 +61,7 @@ export const HeaderPane = ({
   mode,
   itemLabel,
   routingVersion,
+  pqcPlanLabel,
   status,
   values,
   onChange,
@@ -77,6 +80,7 @@ export const HeaderPane = ({
 }: HeaderPaneProps) => {
   const itemLabelId = useId();
   const revisionLabelId = useId();
+  const pqcPlanLabelId = useId();
   const statusLabelId = useId();
   const routingCodeId = useId();
   const effectiveFromId = useId();
@@ -114,6 +118,19 @@ export const HeaderPane = ({
               {t.fields.revision}
             </span>
             <p aria-labelledby={revisionLabelId}>{t.values.revision(routingVersion)}</p>
+          </div>
+        )}
+
+        {/*
+         * 검사 항목은 공정이 아니라 품목에 붙는다 — 「검사 관리」를 켠 공정의 작업지시가 쓸 기준을 품목 옆에 보인다
+         * (사용자 지시 2026-11-05). 한 줄을 다 쓴다.
+         */}
+        {pqcPlanLabel !== null && (
+          <div className="routing-header-wide">
+            <span className="field-label" id={pqcPlanLabelId}>
+              {t.fields.pqcPlan}
+            </span>
+            <p aria-labelledby={pqcPlanLabelId}>{pqcPlanLabel}</p>
           </div>
         )}
 

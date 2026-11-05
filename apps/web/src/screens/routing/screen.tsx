@@ -48,6 +48,7 @@ import {
   routingKeys,
   useItemList,
   useOperationDependencies,
+  usePqcPlanForItem,
   useProcessOptions,
   useRoutingDetail,
   useRoutingList,
@@ -741,6 +742,17 @@ const RoutingWorkspace = () => {
     return null;
   })();
 
+  /* 머리에 이 품목의 PQC 검사 기준을 보인다 — 검사 항목은 공정이 아니라 품목에 붙는다(사용자 지시 2026-11-05). */
+  const pqcPlan = usePqcPlanForItem(selectedItemId);
+  const pqcPlanLabel = (() => {
+    const plan = pqcPlan.data;
+    if (plan === undefined) return null;
+    if (plan.kind === 'none') return t.values.pqcPlanNone;
+    return plan.kind === 'item'
+      ? t.values.pqcPlanItem(plan.code, plan.name)
+      : t.values.pqcPlanCommon(plan.code, plan.name);
+  })();
+
   /**
    * 우측 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
@@ -764,6 +776,7 @@ const RoutingWorkspace = () => {
           mode="create"
           itemLabel={itemLabel}
           routingVersion={null}
+          pqcPlanLabel={pqcPlanLabel}
           status={null}
           values={createValues}
           onChange={(patch) => {
@@ -829,6 +842,7 @@ const RoutingWorkspace = () => {
         mode="edit"
         itemLabel={itemLabel}
         routingVersion={detail.data.routing.routingVersion}
+        pqcPlanLabel={pqcPlanLabel}
         status={resolveRoutingStatus(detail.data.routing.statusCode)}
         values={formState.values}
         onChange={changeHeaderValues}

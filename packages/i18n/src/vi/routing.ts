@@ -157,6 +157,7 @@ export const routing: Translated<typeof ko.routing> = {
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
     standardYieldRate: 'Tỷ lệ đạt tiêu chuẩn (0~1)',
     outsourced: 'Công đoạn thuê ngoài',
+    pqcPlan: 'Tiêu chuẩn PQC',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
     rowActions: 'Chỉnh sửa',
   },
@@ -181,6 +182,10 @@ export const routing: Translated<typeof ko.routing> = {
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',
     revision: (version: number): string => `Rev ${version}`,
+    pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
+    pqcPlanCommon: (code: string, name: string): string => `${code} · ${name} (chung mọi mặt hàng)`,
+    pqcPlanNone:
+      'Chưa có — đăng ký tiêu chuẩn PQC ở màn hình tiêu chuẩn kiểm tra thì hạng mục kiểm tra sẽ hiện.',
   },
   validation: {
     required: 'Đây là mục bắt buộc.',

@@ -935,6 +935,34 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     expect(savePuts(requests)).toHaveLength(0);
   });
 
+  /* 검사 항목은 공정이 아니라 품목에 붙는다 — 품목 기준이 없으면 「전 품목 공통」 기준을 머리에 보인다(사용자 지시 2026-11-05). */
+  it('머리에 이 품목이 쓸 PQC 검사 기준을 보인다', async () => {
+    const plan = (code: string, name: string, itemId: number | null) => ({
+      inspectionPlanCode: code,
+      inspectionPlanName: name,
+      itemId,
+    });
+    const { requests } = renderDraftOperations([
+      {
+        match: (request) => isGet(request, '/quality/inspection-plans'),
+        respond: (request) =>
+          jsonResponse(
+            listBody(
+              new URL(request.url).searchParams.has('itemId')
+                ? []
+                : [plan('PQC-A', '다른 품목', 9), plan('PQC-ALL', '공통 공정검사', null)],
+            ),
+          ),
+      },
+    ]);
+
+    const note = await screen.findByText('PQC-ALL · 공통 공정검사 (전 품목 공통)');
+    expect(headerRegion()).toContainElement(note);
+    const own = requestsTo(requests, '/quality/inspection-plans')[0];
+    expect(own?.url.searchParams.get('inspectionTypeCode')).toBe('PQC');
+    expect(own?.url.searchParams.get('itemId')).not.toBeNull();
+  });
+
   it('새 행은 식별자 없이 저장 본문에 실린다', async () => {
     const { requests, user } = renderDraftOperations([operationSaveRoute()]);
     await screen.findByText('1차 사출');
