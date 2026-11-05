@@ -152,6 +152,8 @@ interface SetupOptions {
   historyStatus?: number;
   /** 저장(PUT) 뒤 상세 조회가 돌려줄 상태 — 서버처럼 저장 결과가 남는다. */
   detailAfterPut?: MaterialIssueRequestDetailView;
+  /** 공장 목록에 더할 공장(기본은 합성 1공장 하나). */
+  extraPlants?: (typeof PLANT)[];
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -166,7 +168,10 @@ const setup = (options: SetupOptions = {}) => {
   const routes: StubRoute[] = [
     {
       match: (request) => isGet(request, '/mdm/plants'),
-      respond: () => jsonResponse({ items: [PLANT], page: { page: 1, size: 200, total: 1 } }),
+      respond: () => {
+        const plants = [PLANT, ...(options.extraPlants ?? [])];
+        return jsonResponse({ items: plants, page: { page: 1, size: 200, total: plants.length } });
+      },
     },
     {
       match: (request) => isGet(request, '/mdm/warehouses'),
@@ -559,6 +564,22 @@ describe('W-02-11 출고 요청 현황 — G2 확인', () => {
     setup();
     await listTable();
 
+    expect(screen.getByLabelText(t.filters.plant)).toHaveTextContent('합성 1공장');
+  });
+
+  it('#232 1 주소로 고른 공장에서 W/O 번호를 검색해도 공장이 첫 공장으로 바뀌지 않는다', async () => {
+    /* 코드 순으로 앞서는 공장 — 주소에 공장이 빠지면 화면이 이 공장으로 넘어간다. */
+    const first = { ...PLANT, plantId: 8400, plantCode: 'A0', plantName: '합성 0공장' };
+    const { user, lists } = setup({
+      route: '/production/material-issue-status?plant=8401',
+      extraPlants: [first],
+    });
+    await listTable();
+
+    await user.type(screen.getByLabelText(t.filters.workOrder), 'SYN-WO-3{Enter}');
+
+    await waitFor(() => expect(lists.at(-1)?.searchParams.get('q')).toBe('SYN-WO-3'));
+    expect(lists.at(-1)?.searchParams.get('plantId')).toBe('8401');
     expect(screen.getByLabelText(t.filters.plant)).toHaveTextContent('합성 1공장');
   });
 

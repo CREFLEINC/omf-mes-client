@@ -19438,7 +19438,7 @@ export interface paths {
           requiredAtFrom?: string;
           /** @description 필요 시각 종료 */
           requiredAtTo?: string;
-          /** @description 요청번호 검색 */
+          /** @description 요청번호·W/O 번호 부분 검색(대소문자 무시). 근거: omf-all-around#232 */
           q?: string;
           page?: number;
           size?: number;
