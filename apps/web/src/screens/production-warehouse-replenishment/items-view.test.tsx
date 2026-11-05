@@ -155,6 +155,13 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
     );
     expect(await screen.findByText(t.toast.itemDeletedInProgress(2))).toBeInTheDocument();
   });
+
+  it('행의 링크 아닌 칸(생산 창고)을 눌러도 수정 창이 열린다', async () => {
+    const { user } = setupScreen({ route: ITEMS });
+
+    await user.click((await rowOf('SYN-IT-2')).getByText('400'));
+    expect(await screen.findByRole('dialog', { name: td.editTitle })).toBeInTheDocument();
+  });
 });
 
 describe('W-02-12 생산 창고 보충 — 자동 보충 시각', () => {

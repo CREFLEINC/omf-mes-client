@@ -174,10 +174,22 @@ export const ItemsView = ({
             </thead>
             <tbody>
               {list.data.items.map((row) => (
-                <tr key={row.replenishmentItemId}>
+                /* 행 어디를 눌러도 수정 창(screens/W-02-12.md 보기 4). 키보드는 품목 링크가 맡는다. */
+                <tr
+                  key={row.replenishmentItemId}
+                  className="is-clickable"
+                  onClick={() => setEditing(row)}
+                >
                   <td>{row.productionWarehouseName}</td>
                   <td className="is-wrap">
-                    <button type="button" className="link-cell" onClick={() => setEditing(row)}>
+                    <button
+                      type="button"
+                      className="link-cell"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditing(row);
+                      }}
+                    >
                       <span className="replenishment-code">{row.itemCode}</span> {row.itemName}
                     </button>
                   </td>

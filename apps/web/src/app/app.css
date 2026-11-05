@@ -13173,9 +13173,20 @@ button.app-button-neutral {
 
 /* 좁은 폭에서 표는 가로로 밀고, 첫 열(요청번호)은 고정한다(W-02-11 과 같은 규칙, 시안 Narrow). */
 .replenishment-table-scroll {
+  /* 표 안의 숨김 글자(절대 위치)도 이 상자 안에 가둔다 — 문서 폭을 넓히지 않게. */
+  position: relative;
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+}
+
+/* 관리 품목 표 — 행 어디를 눌러도 수정 창(키보드는 품목 링크). */
+.replenishment-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.replenishment-table tr.is-clickable:hover > td {
+  background: var(--surface-container-high);
 }
 
 /* 품목을 고르기 전에도 「품목 검색」 칸이 넓게 보인다(시안). */
