@@ -61,7 +61,8 @@ describe('toOperationDrafts', () => {
     expect(first?.processId).toBe('9001');
     expect(first?.standardCycleTimeSec).toBe('45');
     // 비율 그대로 옮긴다 — 퍼센트로 바꾸면 100배 오입력이 조용히 통과한다.
-    expect(first?.standardYieldRate).toBe('0.98');
+    /* 서버 비율 0.98 → 화면 퍼센트 98(#231). */
+    expect(first?.standardYieldRate).toBe('98');
     expect(second?.standardCycleTimeSec).toBe('');
     expect(second?.standardYieldRate).toBe('');
   });
@@ -197,16 +198,36 @@ describe('toOperationsPayload', () => {
     expect(payload[1]?.standardYieldRate).toBeNull();
   });
 
-  /**
-   * client#603 — `isOutsourced`가 2026-08-30 계약에 되살아나 필수가 됐다. 이 화면은 아직 그 칸을
-   * 입력받지 않아(폼의 체크칸이 비활성 고정) **항상 `false`를 싣는다** — 값을 지어내는 게 아니라
-   * 폼이 실제로 보이는 값 그대로다. `draftId`(화면 전용 키)는 여전히 싣지 않는다.
-   */
-  it('외주 공정은 항상 false를 싣고, 화면 전용 키는 싣지 않는다', () => {
-    const payload = toOperationsPayload(7003, toOperationDrafts(routingOperationFixtures));
+  /* 표준 수율 — 화면 퍼센트 ↔ 서버 비율. 부동소수 찌꺼기 없이 오가고, 받은 값을 그대로 보내면 같은 값이다(#231). */
+  it('표준 수율은 받을 때 ×100, 보낼 때 ÷100 이고 왕복해도 값이 같다', () => {
+    const [base] = routingOperationFixtures;
+    if (base === undefined) throw new Error('픽스처가 없습니다');
+    for (const ratio of [0.95, 0.07, 1, 0, 0.123456]) {
+      const [draft] = toOperationDrafts([{ ...base, standardYieldRate: ratio }]);
+      if (draft === undefined) throw new Error('초안이 없습니다');
+      expect(toOperationsPayload(7003, [draft])[0]?.standardYieldRate).toBe(ratio);
+    }
+    const [draft] = toOperationDrafts([{ ...base, standardYieldRate: 0.95 }]);
+    expect(draft?.standardYieldRate).toBe('95');
+    if (draft === undefined) throw new Error('초안이 없습니다');
+    expect(
+      toOperationsPayload(7003, [{ ...draft, standardYieldRate: '95.5' }])[0]?.standardYieldRate,
+    ).toBe(0.955);
+  });
 
+  /** 외주 공정(#231) — 받은 값을 초안에 담고, 고친 값 그대로 싣는다. `draftId`(화면 전용 키)는 싣지 않는다. */
+  it('외주 공정은 받은 값을 담아 그대로 싣고, 화면 전용 키는 싣지 않는다', () => {
+    const [base] = routingOperationFixtures;
+    if (base === undefined) throw new Error('픽스처가 없습니다');
+    const drafts = toOperationDrafts([
+      { ...base, isOutsourced: true },
+      ...routingOperationFixtures.slice(1),
+    ]);
+    expect(drafts.map((draft) => draft.isOutsourced)).toEqual([true, false]);
+
+    const payload = toOperationsPayload(7003, drafts);
+    expect(payload.map((item) => item.isOutsourced)).toEqual([true, false]);
     for (const item of payload) {
-      expect(item.isOutsourced).toBe(false);
       expect('outsourced' in item).toBe(false);
       expect('draftId' in item).toBe(false);
     }
@@ -233,7 +254,7 @@ describe('isSameDrafts', () => {
     const drafts = toOperationDrafts(routingOperationFixtures);
     const edited = upsertDraft(drafts, {
       ...(drafts[0] as (typeof drafts)[number]),
-      standardYieldRate: '0.5',
+      standardYieldRate: '50',
     });
 
     expect(isSameDrafts(drafts, removeDraft(drafts, 'saved:8001'))).toBe(false);
