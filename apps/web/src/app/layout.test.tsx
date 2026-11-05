@@ -406,6 +406,7 @@ describe('AppLayout', () => {
     expect(hubTabHrefs('출고 관리')).toEqual([
       '/production/material-issue-requests',
       '/production/material-issue-status',
+      '/production/warehouse-replenishment',
       '/logistics/supplier-return',
       '/logistics/disposal-issue',
     ]);
@@ -1064,6 +1065,7 @@ describe('AppLayout', () => {
       '출고 관리': [
         '/production/material-issue-requests',
         '/production/material-issue-status',
+        '/production/warehouse-replenishment',
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],

@@ -62,6 +62,7 @@ import { alarmRecipientSettings } from './alarm-recipient-settings';
 import { handoverAlertSettings } from './handover-alert-settings';
 import { plantWorkingDays } from './plant-working-days';
 import { materialIssueStatus } from './material-issue-status';
+import { productionWarehouseReplenishment } from './production-warehouse-replenishment';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
@@ -223,6 +224,7 @@ export const ko = {
   handoverAlertSettings,
   plantWorkingDays,
   materialIssueStatus,
+  productionWarehouseReplenishment,
   zaloConnection,
   dispatchHistory,
   iqcInspection,

@@ -173,6 +173,7 @@ import { dispatchHistory } from './dispatch-history';
 import { handoverAlertSettings } from './handover-alert-settings';
 import { plantWorkingDays } from './plant-working-days';
 import { materialIssueStatus } from './material-issue-status';
+import { productionWarehouseReplenishment } from './production-warehouse-replenishment';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -180,6 +181,7 @@ export const vi: Translated<Messages> = {
   handoverAlertSettings,
   plantWorkingDays,
   materialIssueStatus,
+  productionWarehouseReplenishment,
   approvalInbox,
   approvalRoute,
   collectionChannel,

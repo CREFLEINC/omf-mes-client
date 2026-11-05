@@ -699,3 +699,20 @@ describe('W-02-11 출고 요청 현황 — G2 확인', () => {
     expect(await detail.findByText(t.detail.done)).toBeInTheDocument();
   });
 });
+
+/* 004 생산 창고 보충(omf-all-around#230) — W-02-11 은 W/O 요청만 본다. 보충 요청이 안 보이는 것은 서버 기본값(R2-1)이 맡는다. */
+describe('W-02-11 출고 요청 현황 — 004 뒤 불변', () => {
+  it('R2-1 목록 요청에 requestTypeCode 를 싣지 않아 서버 기본값(WORK_ORDER)으로 지금과 같은 목록을 받는다', async () => {
+    const { user, lists } = setup();
+
+    await rowOf('SYN-MIR-01');
+    expect(lists.length).toBeGreaterThan(0);
+    expect(lists.every((url) => !url.searchParams.has('requestTypeCode'))).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: t.status.WAITING }));
+    await waitFor(() =>
+      expect(lists.at(-1)?.searchParams.getAll('displayStatus')).toEqual(['WAITING']),
+    );
+    expect(lists.at(-1)?.searchParams.has('requestTypeCode')).toBe(false);
+  });
+});
