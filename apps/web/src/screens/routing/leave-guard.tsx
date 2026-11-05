@@ -1,22 +1,33 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useBlocker } from 'react-router';
 
 const t = messages.routing.discard;
 
 export interface DiscardDialogProps {
   /** 무엇이 사라지는지. 편집 중인 대상에 따라 화면이 고른다 */
-  body?: string;
+  body?: ReactNode;
+  /** 제목 — 주지 않으면 라우팅 화면 문구 */
+  title?: string;
+  /** 오른쪽 위 닫기(×) — 주지 않으면 둔다 */
+  showCloseButton?: boolean;
   onStay: () => void;
   onLeave: () => void;
 }
 
 /** 저장하지 않은 편집을 두고 떠날 때의 확인. */
-export const DiscardDialog = ({ body = t.body, onStay, onLeave }: DiscardDialogProps) => (
+export const DiscardDialog = ({
+  body = t.body,
+  title = t.title,
+  showCloseButton,
+  onStay,
+  onLeave,
+}: DiscardDialogProps) => (
   <Dialog
     open
-    title={t.title}
+    title={title}
+    showCloseButton={showCloseButton}
     onClose={onStay}
     footer={
       <>
@@ -27,7 +38,7 @@ export const DiscardDialog = ({ body = t.body, onStay, onLeave }: DiscardDialogP
       </>
     }
   >
-    <p className="dialog-text">{body}</p>
+    {typeof body === 'string' ? <p className="dialog-text">{body}</p> : body}
   </Dialog>
 );
 
@@ -40,7 +51,9 @@ export interface LeaveGuardProps {
   watchedParams?: readonly string[];
   /** 화면이 이미 물어 확인받은 이동 — 이번 한 번은 막지 않는다. 이동이 끝나면 화면이 되돌린다. */
   bypassRef?: { current: boolean };
-  discardBody?: string;
+  discardBody?: ReactNode;
+  discardTitle?: string;
+  showCloseButton?: boolean;
 }
 
 /**
@@ -52,6 +65,8 @@ export const LeaveGuard = ({
   watchedParams = [],
   bypassRef,
   discardBody,
+  discardTitle,
+  showCloseButton,
 }: LeaveGuardProps) => {
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (!when || bypassRef?.current === true) return false;
@@ -70,6 +85,8 @@ export const LeaveGuard = ({
   return (
     <DiscardDialog
       body={discardBody}
+      title={discardTitle}
+      showCloseButton={showCloseButton}
       onStay={() => blocker.reset()}
       onLeave={() => blocker.proceed()}
     />

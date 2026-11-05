@@ -5,7 +5,6 @@ import {
   type Column,
   DatePicker,
   EmptyState,
-  Icon,
   SearchInput,
   SkeletonText,
   Table,
@@ -23,13 +22,8 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
-import {
-  lookupDisplayLabelWithInactive,
-  type LookupSource,
-  selectableLookupOptions,
-} from '../../patterns/lookup-display';
+import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
-import { Select } from '../../patterns/select';
 import {
   codeName,
   lotStatusTone,
@@ -49,10 +43,8 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav } from '../../patterns/page-nav';
 import { LOT_HOLD_RELEASE_REASON_GROUP, useLotHoldReasonOptions } from './code-options';
-import {
-  useItemNameSources,
-  useItemReferenceOptions,
-} from '../lot-status-history/reference-options';
+import { useItemNameSources } from '../lot-status-history/reference-options';
+import { ItemFilterField } from '../lot-status-history/item-filter-field';
 import {
   defaultTransitionPeriod,
   toTransitionPeriodBounds,
@@ -60,6 +52,7 @@ import {
 } from './period';
 import { LotStatusTransitionPreparation } from './transition-preparation';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 type LotStatusCandidateQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
@@ -191,35 +184,6 @@ const formatDateTime = (value: string | undefined): string => {
   return formatPlantDateTime(value) ?? value;
 };
 
-interface FilterSelectProps {
-  /** 칸의 폭 규칙 — 값 길이가 다른 두 선택칸(자재·품질 상태)이 서로 다른 폭을 갖게 한다. */
-  cellClassName: string;
-  disabled: boolean;
-  label: string;
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (value: string) => void;
-}
-
-const FilterSelect = ({
-  cellClassName,
-  disabled,
-  label,
-  options,
-  value,
-  onChange,
-}: FilterSelectProps) => {
-  const id = useId();
-  return (
-    <div className={`field-cell ${cellClassName}`}>
-      <label className="field-label" htmlFor={id}>
-        {label}
-      </label>
-      <Select id={id} disabled={disabled} options={options} value={value} onChange={onChange} />
-    </div>
-  );
-};
-
 export const LotStatusTransitionCandidateScreen = () => {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(() => defaultLotStatusCandidateFilters(new Date()));
@@ -259,7 +223,6 @@ export const LotStatusTransitionCandidateScreen = () => {
     },
     [queryClient],
   );
-  const items = useItemReferenceOptions();
   const uomCodeOf = useUomCodeOf();
   const lotTypes = useLotTypeOptions();
   /* 단위를 못 풀면 수량만 낸다 — 「알 수 없음」 같은 말을 새로 만들지 않는다(LOT 현황과 같은 단위 풀이). */
@@ -280,7 +243,6 @@ export const LotStatusTransitionCandidateScreen = () => {
     if (hold !== code) return hold;
     return releaseReasonNames.options.find((option) => option.value === code)?.label ?? code;
   };
-  const periodLabelId = useId();
   const periodReasonId = useId();
   const detailId = useId();
   /* 자재는 상세 조건으로 접어 둔다 — 걸린 자재가 있으면 펼친 채로 들어온다(LOT 상태 이력의 처리자와 같다). */
@@ -293,12 +255,6 @@ export const LotStatusTransitionCandidateScreen = () => {
       : periodError === 'reversed'
         ? t.filters.periodReversed
         : null;
-  const itemSource: LookupSource = {
-    entries: items.data?.entries ?? [],
-    isLoading: items.isPending,
-    isError: items.isError,
-  };
-  const itemOptions = selectableLookupOptions(itemSource, draft.itemId);
   const statusOptions =
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
   /* 이름은 보이는 행의 품목 상세로 푼다 — 품목 목록은 첫 쪽만 받아 그 밖 품목이 「알 수 없음」이 된다(#1336). */
@@ -471,30 +427,42 @@ export const LotStatusTransitionCandidateScreen = () => {
         {hubTarget === null && <div className="lot-status-search-head">{statusChips}</div>}
         <div className="filter-bar lot-status-filter lot-status-transition-filter">
           {/* 기간 — 「기간」 한 이름 아래 [시작일] [종료일] 두 달력 칸. 기준(최근 전이일)과 처음 값(최근 30일)은 종전 그대로다. */}
-          <div className="field-cell" role="group" aria-labelledby={periodLabelId}>
-            <span className="field-label" id={periodLabelId}>
-              {tHistory.historyFilter.fields.period}
-            </span>
+          <div
+            className="field-cell"
+            role="group"
+            aria-label={tHistory.historyFilter.fields.period}
+          >
+            {/* 「기간」 한 이름 대신 칸마다 「조회 시작일」 · 「조회 종료일」(omf-all-around#228). */}
             <div className="lot-status-date-range-row">
-              <DatePicker
-                className="lot-status-date-field"
-                aria-label={tHistory.historyFilter.fields.from}
-                placeholder={tHistory.historyFilter.fields.from}
-                disabled={confirmationPinned}
-                invalid={draft.from === ''}
-                value={draft.from === '' ? null : draft.from}
-                onChange={(from) => setDraft((current) => ({ ...current, from }))}
-              />
-              <DatePicker
-                className="lot-status-date-field"
-                aria-label={tHistory.historyFilter.fields.to}
-                placeholder={tHistory.historyFilter.fields.to}
-                disabled={confirmationPinned}
-                invalid={draft.to === '' || periodReason !== null}
-                value={draft.to === '' ? null : draft.to}
-                onChange={(to) => setDraft((current) => ({ ...current, to }))}
-                aria-describedby={periodReason === null ? undefined : periodReasonId}
-              />
+              <div className="field-cell lot-status-date-cell">
+                <span className="field-label" aria-hidden="true">
+                  {tHistory.historyFilter.fields.fromLabel}
+                </span>
+                <DatePicker
+                  className="lot-status-date-field"
+                  aria-label={tHistory.historyFilter.fields.fromLabel}
+                  placeholder={tHistory.historyFilter.fields.from}
+                  disabled={confirmationPinned}
+                  invalid={draft.from === ''}
+                  value={draft.from === '' ? null : draft.from}
+                  onChange={(from) => setDraft((current) => ({ ...current, from }))}
+                />
+              </div>
+              <div className="field-cell lot-status-date-cell">
+                <span className="field-label" aria-hidden="true">
+                  {tHistory.historyFilter.fields.toLabel}
+                </span>
+                <DatePicker
+                  className="lot-status-date-field"
+                  aria-label={tHistory.historyFilter.fields.toLabel}
+                  placeholder={tHistory.historyFilter.fields.to}
+                  disabled={confirmationPinned}
+                  invalid={draft.to === '' || periodReason !== null}
+                  value={draft.to === '' ? null : draft.to}
+                  onChange={(to) => setDraft((current) => ({ ...current, to }))}
+                  aria-describedby={periodReason === null ? undefined : periodReasonId}
+                />
+              </div>
             </div>
             {periodReason !== null && (
               <span id={periodReasonId} className="field-error" role="alert">
@@ -539,12 +507,11 @@ export const LotStatusTransitionCandidateScreen = () => {
         {/* `hidden` 은 감싸는 상자에 둔다 — `.filter-bar` 의 display 가 속성을 덮는다. */}
         <div id={detailId} hidden={!isDetailOpen}>
           <div className="filter-bar lot-status-filter lot-status-transition-filter">
-            <FilterSelect
-              cellClassName="wide-select lot-status-transition-item-filter"
-              disabled={confirmationPinned}
+            {/* 자재도 칸에서 바로 검색해서 고른다 — 의심자재 보류 · LOT 현황과 같은 칸(omf-all-around#228). */}
+            <ItemFilterField
               label={t.filters.item}
-              options={[{ value: '', label: t.filters.all }, ...itemOptions]}
               value={draft.itemId}
+              disabled={confirmationPinned}
               onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
             />
           </div>
@@ -594,7 +561,15 @@ export const LotStatusTransitionCandidateScreen = () => {
                   rows={candidates.data.items}
                   getRowId={rowKey}
                   sort={null}
-                  empty={<EmptyState size="sm" live title={t.empty} />}
+                  empty={
+                    <EmptyState
+                      size="sm"
+                      live
+                      icon={<PaneEmptyIcon name="assignment" />}
+                      title={t.empty}
+                      description={t.emptyHint}
+                    />
+                  }
                 />
               </div>
               {meta !== undefined && (
@@ -627,15 +602,13 @@ export const LotStatusTransitionCandidateScreen = () => {
           {selected === null ? (
             <section
               className="pane lot-status-pane lot-status-transition-pane"
-              aria-labelledby="lot-status-transition-pick-title"
+              aria-label={tSelected.title}
             >
-              <h2 className="pane-title" id="lot-status-transition-pick-title">
-                {tSelected.title}
-              </h2>
               <EmptyState
                 size="sm"
-                icon={<Icon name="arrow_selector_tool" size={24} />}
+                icon={<PaneEmptyIcon name="layers" />}
                 title={tHistory.detail.pick}
+                description={tHistory.detail.pickHint}
               />
             </section>
           ) : (

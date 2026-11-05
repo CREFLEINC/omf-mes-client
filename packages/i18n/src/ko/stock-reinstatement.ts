@@ -14,6 +14,11 @@ export const stockReinstatement = {
     targetLocation: '대상 위치',
     completedOnly: '판정 완료만',
     lot: '제품 LOT',
+    /** omf-all-around#207 — LOT 칸 이름은 LOT 종류로 고른다(처분 유형과 무관). */
+    materialLot: '자재 LOT',
+    productionLot: '생산 LOT',
+    /** 목록 머리 — 제품·자재 LOT 이 함께 나온다(처분 유형과 LOT 종류는 따로 움직인다). */
+    anyLot: 'LOT',
     item: '품목',
     qty: '수량',
     disposition: '처분',
@@ -43,6 +48,10 @@ export const stockReinstatement = {
   values: {
     normal: '정상',
     rework: '재작업 완료',
+    concession: '특채',
+    /** omf-all-around#207 — 특채는 보류·해제 사유를 묻지 않는다. */
+    concessionNote:
+      '특채 재고입니다. 보류는 특채 적용 때 이미 닫혔고, 불량창고 재고만 고른 창고로 옮겨 정상·가용으로 등록합니다.',
     empty: '—',
     noExpiry: '⚠ 없음',
     remainingDays: (days: number): string => `잔여 ${String(days)}일`,
@@ -75,6 +84,10 @@ export const stockReinstatement = {
     title: '재등록하면 이 LOT이 출하 가능해집니다',
     transition: 'Lot Status: Hold → Release',
     stock: (qty: number): string => `재고: 불량창고 → 완제품창고 ${String(qty)}`,
+    /** omf-all-around#207 — 특채는 LOT 이 이미 정상이라 상태 전이 줄이 없다. */
+    concessionTitle: '재등록하면 이 특채 재고를 다른 재고와 똑같이 쓸 수 있습니다',
+    concessionStock: (qty: number): string =>
+      `재고: 불량창고 → 고른 창고 ${String(qty)} (정상·가용)`,
     noUndo: '되돌리기 버튼은 없습니다. 다시 막으려면 판정·보류 절차를 거쳐야 합니다.',
     shelfLife: (days: number): string =>
       days < 0

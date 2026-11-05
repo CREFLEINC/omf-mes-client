@@ -40,8 +40,8 @@ describe('DispositionDecisionScreen 조회', () => {
 
     expect(await screen.findByRole('region', { name: t.panes.list })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: t.panes.list })).toBeNull();
-    /* 오른쪽은 한 구획 — 「부적합 상세 및 판정」 안에 판정이 선다(#223). */
-    expect(screen.getByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
+    /* 고르기 전에는 상세 칸 제목 「부적합 상세 및 판정」을 두지 않는다 — 안내만(omf-all-around#228). */
+    expect(screen.queryByRole('heading', { name: t.panes.detailDecision })).toBeNull();
     /* 고르기 전에는 판정 구역을 세우지 않는다(#223). */
     expect(screen.queryByRole('heading', { name: t.form.heading })).toBeNull();
 
@@ -57,6 +57,8 @@ describe('DispositionDecisionScreen 조회', () => {
   it('행을 고르면 상세와 대상 LOT을 보인다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
+    /* 고르면 상세 칸 제목이 선다(omf-all-around#228). */
+    expect(await screen.findByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
 
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();

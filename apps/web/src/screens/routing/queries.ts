@@ -327,3 +327,42 @@ export const useProcessOptions = (): ProcessLookupResult => {
     isLoading: processes.isPending,
   };
 };
+
+/** 이 품목의 PQC 검사 기준 — 있으면 이 품목이 PQC 대상이다. `null` 이면 대상이 아니다. */
+export interface PqcPlanForItem {
+  inspectionPlanId: number;
+  code: string;
+  name: string;
+}
+
+/**
+ * PQC 대상은 공정이 아니라 품목이다(사용자 결정 2026-11-05) — 사용 중인 품목 전용 PQC 기준이 있으면 그 품목의
+ * 작업지시마다 의뢰가 선다. 「전 품목 공통」 기준은 대상을 만들지 않아 찾지 않는다. 제품당 하나로 막혀 있다.
+ */
+export const usePqcPlanForItem = (itemId: number | null): UseQueryResult<PqcPlanForItem | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    /*
+     * 검사 기준 화면의 키 묶음(`inspection-plans`) 아래에 둔다 — 그 화면이 기준을 저장 · 사용 중지하면 이 조회도 함께 낡아,
+     * 「검사 기준 등록」 뒤 「라우팅 보기」로 돌아왔을 때 옛 「없음」이 남지 않는다.
+     */
+    queryKey: ['inspection-plans', 'routing-pqc', itemId ?? 0] as const,
+    enabled: itemId !== null,
+    queryFn: async (): Promise<PqcPlanForItem | null> => {
+      const { items } = await runRequest(() =>
+        client.GET('/quality/inspection-plans', {
+          params: { query: { inspectionTypeCode: 'PQC', itemId: itemId ?? 0 } },
+        }),
+      );
+      const [plan] = items;
+      return plan === undefined
+        ? null
+        : {
+            inspectionPlanId: plan.inspectionPlanId,
+            code: plan.inspectionPlanCode,
+            name: plan.inspectionPlanName,
+          };
+    },
+  });
+};

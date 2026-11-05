@@ -563,6 +563,42 @@ describe('유형 표를 채우면 — 조회가 살아난다', () => {
   });
 });
 
+describe('코드 이름', () => {
+  const codeRoute: StubRoute = {
+    match: (request) => isGet(request, '/mdm/code-values'),
+    respond: (request) =>
+      jsonResponse(
+        listBody(
+          new URL(request.url).searchParams.get('codeGroupCode') === 'LOGISTICS_DOCUMENT_STATUS'
+            ? [{ code: 'SYN_STATUS_A', codeName: '합성 상태 이름' }]
+            : [{ code: 'SYN_SUB_A', codeName: '합성 구분 이름' }],
+        ),
+      ),
+  };
+
+  it('세부구분과 상태가 코드 대신 이름으로 나오고, 세부구분은 유형에 맞는 그룹에서 받는다', async () => {
+    fillDocumentTypes();
+    const { requests } = renderScreen([listRoute(), codeRoute], `?ty=${SELECTABLE_TYPE}`);
+
+    expect((await screen.findAllByText('합성 상태 이름')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('합성 구분 이름').length).toBeGreaterThan(0);
+    expect(screen.queryByText('SYN_STATUS_A')).not.toBeInTheDocument();
+    expect(
+      requests
+        .filter((request) => request.url.pathname === '/mdm/code-values')
+        .map((request) => request.url.searchParams.get('codeGroupCode'))
+        .sort(),
+    ).toEqual(['LOGISTICS_DOCUMENT_STATUS', 'RECEIPT_TYPE']);
+  });
+
+  it('이름을 못 받아도 목록은 코드로 나온다', async () => {
+    fillDocumentTypes();
+    renderScreen([listRoute()], `?ty=${SELECTABLE_TYPE}`);
+
+    expect((await screen.findAllByText('SYN_STATUS_A')).length).toBeGreaterThan(0);
+  });
+});
+
 describe('초기화', () => {
   /**
    * ⭐ **초기화가 주소를 비우지 않으면 화면이 두 가지를 말한다.**

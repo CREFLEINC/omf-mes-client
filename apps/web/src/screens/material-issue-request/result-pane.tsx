@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
@@ -39,9 +39,26 @@ export const ResultPane = ({ publishBlockReason, banner, created, onPublish }: R
 
       {created !== null && (
         <div className="banner-slot">
-          <AlertBanner variant="success" title={t.result.title}>
-            {t.result.issueRequestNo(created.issueRequestNo)} ·{' '}
-            {t.result.statusCode(created.statusCode)} · {t.result.lineCount(created.lineCount)}
+          {/* 출발 생산 창고별로 나뉘면 여러 장이다(계약 §1 배열 응답, screens/W-02-10.md 「발행 흐름」). */}
+          <AlertBanner variant="success" title={t.result.splitTitle(created.requests.length)}>
+            <ul className="material-issue-request-created">
+              {created.requests.map((request) => (
+                <li key={request.issueRequestNo}>
+                  <span>{t.result.issueRequestNo(request.issueRequestNo)}</span>
+                  {request.sourceWarehouseName !== null && (
+                    <span>{request.sourceWarehouseName}</span>
+                  )}
+                  <Chip size="sm" status="info">
+                    {request.statusLabel}
+                  </Chip>
+                  {request.lineCount !== null && (
+                    <span>{t.result.lineCount(request.lineCount)}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {created.overridden && <p className="field-note">{t.result.overrideNote}</p>}
+            {created.fromUnsourced && <p className="field-note">{t.result.unsourcedNote}</p>}
           </AlertBanner>
         </div>
       )}

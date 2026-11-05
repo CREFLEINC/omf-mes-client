@@ -1,6 +1,9 @@
 import type { paths } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
 import type { SelectOption } from './types';
+
+const typeNames = messages.documentProgress.documentTypes;
 
 /** 계약이 문서 유형을 닫았다(코드 사전 2026-09-03) — 목록 질의값·상세 경로 조각이 같은 형이다. */
 export type DocumentTypeCode =
@@ -58,46 +61,76 @@ export interface DocumentTypeEntry {
 
 /** 유형 표 — OpenAPI enum과 같은 9개만 둔다. */
 export const DOCUMENT_TYPES: readonly DocumentTypeEntry[] = [
-  { code: 'PURCHASE_ORDER', label: 'PURCHASE_ORDER', cancelResource: null, disabledReason: null },
+  {
+    code: 'PURCHASE_ORDER',
+    label: typeNames.PURCHASE_ORDER,
+    cancelResource: null,
+    disabledReason: null,
+  },
   {
     code: 'INBOUND_RECEIPT',
-    label: 'INBOUND_RECEIPT',
+    label: typeNames.INBOUND_RECEIPT,
     cancelResource: 'inbound-receipts',
     disabledReason: null,
   },
   {
     code: 'GOODS_RECEIPT',
-    label: 'GOODS_RECEIPT',
+    label: typeNames.GOODS_RECEIPT,
     cancelResource: 'goods-receipts',
     disabledReason: null,
   },
   {
     code: 'MATERIAL_ISSUE_REQUEST',
-    label: 'MATERIAL_ISSUE_REQUEST',
+    label: typeNames.MATERIAL_ISSUE_REQUEST,
     cancelResource: null,
     disabledReason: null,
   },
-  { code: 'PICKING_ORDER', label: 'PICKING_ORDER', cancelResource: null, disabledReason: null },
-  { code: 'STOCK_TRANSFER', label: 'STOCK_TRANSFER', cancelResource: null, disabledReason: null },
+  {
+    code: 'PICKING_ORDER',
+    label: typeNames.PICKING_ORDER,
+    cancelResource: null,
+    disabledReason: null,
+  },
+  {
+    code: 'STOCK_TRANSFER',
+    label: typeNames.STOCK_TRANSFER,
+    cancelResource: null,
+    disabledReason: null,
+  },
   {
     code: 'SUBCONTRACT_ISSUE',
-    label: 'SUBCONTRACT_ISSUE',
+    label: typeNames.SUBCONTRACT_ISSUE,
     cancelResource: null,
     disabledReason: null,
   },
   {
     code: 'SUBCONTRACT_RECEIPT',
-    label: 'SUBCONTRACT_RECEIPT',
+    label: typeNames.SUBCONTRACT_RECEIPT,
     cancelResource: null,
     disabledReason: null,
   },
   {
     code: 'GOODS_ISSUE',
-    label: 'GOODS_ISSUE',
+    label: typeNames.GOODS_ISSUE,
     cancelResource: 'goods-issues',
     disabledReason: null,
   },
 ];
+
+/** 문서 유형 이름. 후속 문서는 이 표 밖의 유형도 올 수 있어 — 이름이 없으면 코드를 그대로 보인다. */
+export const documentTypeName = (code: string): string =>
+  (typeNames as Record<string, string | undefined>)[code] ?? code;
+
+/**
+ * 세부구분이 어느 코드 그룹의 값인가 — 입고 계열은 `RECEIPT_TYPE`, 출고 계열은 `ISSUE_TYPE`.
+ * 그 밖의 유형은 세부구분이 비어 와서 그룹이 없다.
+ */
+export const subTypeGroupOf = (code: string): 'RECEIPT_TYPE' | 'ISSUE_TYPE' | null => {
+  if (code === 'GOODS_RECEIPT' || code === 'SUBCONTRACT_RECEIPT') return 'RECEIPT_TYPE';
+  if (code === 'GOODS_ISSUE' || code === 'SUBCONTRACT_ISSUE') return 'ISSUE_TYPE';
+
+  return null;
+};
 
 /**
  * 값 목록이 아직 오지 않았는가.

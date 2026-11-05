@@ -44,6 +44,7 @@ import { TemplateBasicDialog, type TemplateBasics } from './basic-dialog';
 import { TemplateEditor, TemplateStatusChip } from './template-editor';
 import { UsageChips, type UsageChipValue } from './usage-chips';
 import { usePageHub } from '../../patterns/page-hub';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 const t = messages.inspectionSheetTemplate;
 const hubText = messages.common.inspectionHub;
@@ -492,6 +493,7 @@ const InspectionSheetTemplateScreenBody = () => {
                 <EmptyState
                   size="sm"
                   live
+                  icon={list.isPending ? undefined : <PaneEmptyIcon name="assignment" />}
                   title={
                     list.isPending
                       ? t.list.loading

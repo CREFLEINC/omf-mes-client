@@ -75,7 +75,16 @@ import {
   type StepJudgment,
 } from './process-model';
 import { useAllOrderWorkOrders, useUnreleasedWorkOrders, useWorkOrderReadiness } from './queries';
-import { ReleaseStep, toReleaseLines, useDefaultLotSizes } from './release-step';
+import {
+  MATERIAL_ISSUE_SHORTAGE_PATH,
+  ReleaseStep,
+  toReleaseFailures,
+  toReleaseLines,
+  unsourcedNotices,
+  useDefaultLotSizes,
+  useReleaseIssueDates,
+  type ReleaseFailure,
+} from './release-step';
 
 const t = messages.erpWorkOrderFlow;
 const tp = t.process;
@@ -259,8 +268,11 @@ export const ProcessWorkspace = ({
 
   /* 배포 확인 */
   const defaultLots = useDefaultLotSizes(unreleased.data ?? []);
+  const issueDates = useReleaseIssueDates(unreleased.data ?? [], order.plantId);
   const [lotSizeTexts, setLotSizeTexts] = useState<Record<number, string>>({});
-  const [failures, setFailures] = useState<string[]>([]);
+  const [failures, setFailures] = useState<ReleaseFailure[]>([]);
+  /** 피처 003 — 배포는 됐지만 재고 있는 생산 창고가 없어 요청에 넣지 못한 자재 안내(US2-9). */
+  const [unsourcedLines, setUnsourcedLines] = useState<string[]>([]);
   const [releasing, setReleasing] = useState(false);
   /* 같은 W/O와 LOT 크기의 배포는 반영될 때까지 같은 멱등 키를 다시 쓴다(옛 배포 화면의 until-applied 수명). */
   const releaseKeys = useRef(new Map<string, string>());
@@ -445,15 +457,14 @@ export const ProcessWorkspace = ({
     }
     await invalidateFlow(queryClient);
     setReleasing(false);
+    setUnsourcedLines(unsourcedNotices(attempts));
     const problems = attempts.filter((attempt) => attempt.status !== 'released');
     if (problems.length === 0) {
       setLotSizeTexts({});
       setReleasedCount(attempts.length);
       setStep('done');
     } else {
-      setFailures(
-        problems.map((attempt) => tp.release.failed(attempt.workOrderNo, attempt.reason ?? '')),
-      );
+      setFailures(toReleaseFailures(problems, tp.release.failed));
     }
   };
 
@@ -672,6 +683,7 @@ export const ProcessWorkspace = ({
             }}
             uomLabelOf={uomLabelOf}
             failures={failures}
+            issueDates={issueDates}
             revealErrors={false}
             onLotSizeChange={(workOrderId, value) =>
               setLotSizeTexts((current) => ({ ...current, [workOrderId]: value }))
@@ -687,6 +699,23 @@ export const ProcessWorkspace = ({
                 ? tp.done.alreadyReleased
                 : tp.done.success(order.productionOrderNo, releasedCount)}
             </p>
+            {unsourcedLines.length > 0 && (
+              /* 막힘이 아니다 — 배포는 됐다(FR-007a). 노랑 안내 + 부족 보기 바로가기. */
+              <AlertBanner
+                variant="warning"
+                action={
+                  <Link to={MATERIAL_ISSUE_SHORTAGE_PATH}>
+                    {tp.release.productionWarehouse.openShortage}
+                  </Link>
+                }
+              >
+                <ul className="erp-wo-plain-list">
+                  {unsourcedLines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </AlertBanner>
+            )}
             <ul className="erp-wo-plain-list">
               {(allWorkOrders.data ?? []).map((workOrder) => (
                 <li key={workOrder.workOrderId}>

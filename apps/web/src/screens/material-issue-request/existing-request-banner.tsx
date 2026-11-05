@@ -48,7 +48,8 @@ export const ExistingRequestBanner = ({ requests, total }: ExistingRequestBanner
             <li key={request.materialIssueRequestId}>
               {t.warnings.existingRequestRow(
                 request.issueRequestNo,
-                request.statusCode,
+                /* 피처 003 — 표시 상태 5종 라벨(없으면 서버 원문, screens/W-02-10.md 「상태 표시」). */
+                request.statusLabel,
                 formatRequiredAt(request.requiredAt),
               )}
             </li>

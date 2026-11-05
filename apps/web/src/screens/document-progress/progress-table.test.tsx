@@ -24,6 +24,8 @@ const baseProps = (overrides: Partial<ProgressTableProps> = {}): ProgressTablePr
   selectedDocumentId: null,
   isLocked: false,
   onToggleSelect: vi.fn(),
+  statusName: (code) => code,
+  subTypeName: (code) => code,
   ...overrides,
 });
 
@@ -73,6 +75,8 @@ describe('buildProgressColumns — 열 구성과 폭 예산', () => {
     selectedDocumentId: null,
     isLocked: false,
     onToggleSelect: vi.fn(),
+    statusName: (code) => code,
+    subTypeName: (code) => code,
   });
 
   /*

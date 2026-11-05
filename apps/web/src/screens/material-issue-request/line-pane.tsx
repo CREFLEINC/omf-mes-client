@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { countOutsideBomLines } from './bom-origin';
-import { LineTable } from './line-table';
+import { LineTable, type LineTableProps } from './line-table';
 import type { LookupSource } from '../../patterns/lookup-display';
 import type { ItemLookupResult, LookupResult } from './lookups';
 import type { MaterialIssueLineDraft, SelectOption } from './types';
@@ -35,6 +35,8 @@ export interface LinePaneProps {
   onAddLine: () => void;
   onPatchLine: (key: string, patch: Partial<Omit<MaterialIssueLineDraft, 'key'>>) => void;
   onRemoveLine: (key: string) => void;
+  /** 생산 창고 공장이면 줄마다 출발 생산 창고 · 남은 수량(`LineTable`). */
+  sourceOf?: LineTableProps['sourceOf'];
 }
 
 /**
@@ -63,6 +65,7 @@ export const LinePane = ({
   onAddLine,
   onPatchLine,
   onRemoveLine,
+  sourceOf,
 }: LinePaneProps) => {
   const outsideBomCount = countOutsideBomLines(rows);
   const linesErrorId = useId();
@@ -112,6 +115,7 @@ export const LinePane = ({
           isLocked={isLocked}
           onPatch={onPatchLine}
           onRemove={onRemoveLine}
+          {...(sourceOf === undefined ? {} : { sourceOf })}
         />
       )}
 

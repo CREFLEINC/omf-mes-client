@@ -32,7 +32,6 @@ const renderPane = (overrides: Partial<CodeListPaneProps> = {}) => {
     selectedId: null,
     onSelect: vi.fn(),
     processLabelOf: (processId) => (processId === 7001 ? 'P-10 · 조립' : null),
-    onAddCategory: vi.fn(),
     pageMeta: { page: 1, size: 20, total: orderedRows.length },
     onChangePage: vi.fn(),
     onChangePageSize: vi.fn(),
@@ -146,6 +145,8 @@ describe('CodeListPane — 상태별 표시', () => {
 
     expect(screen.getByText('아직 등록된 코드가 없습니다')).toBeInTheDocument();
     expect(screen.getByText('「대분류 추가」로 첫 대분류를 등록하세요.')).toBeInTheDocument();
+    // 대분류 추가는 조회 카드 단추 하나만 둔다 — 빈 안내에 같은 단추를 겹쳐 두지 않는다(omf-all-around#228).
+    expect(screen.queryByRole('button', { name: '대분류 추가' })).not.toBeInTheDocument();
   });
 
   it('조건이 걸린 0건이면 조건을 고치라는 빈 상태를 낸다', async () => {

@@ -630,17 +630,25 @@ export const DispositionDecisionScreen = ({
           className="pane po-board-pane po-board-scroll disposition-pane disposition-side"
           aria-label={tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
         >
-          {/* 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). */}
-          <div className="disposition-side-head">
-            <h2 className="pane-title">
-              {tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
-            </h2>
-            {selectedId !== null && detail.data !== undefined && (
-              <Chip size="sm" status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}>
-                {codeValueLabel(status, detail.data.statusCode)}
-              </Chip>
-            )}
-          </div>
+          {/*
+           * 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). 고르기 전에는 제목 없이 안내만 —
+           * 목록에서 고르면 제목과 상세가 선다(omf-all-around#228).
+           */}
+          {selectedId !== null && (
+            <div className="disposition-side-head">
+              <h2 className="pane-title">
+                {tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
+              </h2>
+              {detail.data !== undefined && (
+                <Chip
+                  size="sm"
+                  status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}
+                >
+                  {codeValueLabel(status, detail.data.statusCode)}
+                </Chip>
+              )}
+            </div>
+          )}
           <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
             <DetailSlot
               selectedId={selectedId}

@@ -26,7 +26,7 @@ export const inspectionResultInsights: Translated<typeof ko.inspectionResultInsi
     from: 'Chọn ngày bắt đầu',
     to: 'Chọn ngày kết thúc',
     inspectionType: 'Chọn loại kiểm tra',
-    item: 'Chọn mặt hàng',
+    item: 'Tìm mặt hàng',
     itemPlaceholder: 'Tìm mặt hàng',
     itemClear: 'Xóa mặt hàng',
     itemPick: 'Chọn',

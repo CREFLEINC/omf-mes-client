@@ -28,6 +28,11 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     notForShopfloorWhy:
       'Ở đây chỉ nhận phiếu xuất để đưa vào sản xuất. Phiếu xuất để trả hàng hoặc hủy bỏ thì không nhận. Hãy kiểm tra lại số phiếu.',
     destination: (code: string) => `Nơi đến ${code}`,
+    destinationStaging: 'Chờ cất hàng',
+    destinationWhole: 'Toàn kho',
+    kindWorkOrder: 'Hiện trường sản xuất',
+    kindReplenishment: 'Bổ sung kho',
+    requestNo: (no: string) => `Yêu cầu ${no}`,
     destinationOffline: 'Không xác nhận được vị trí đến. Hãy kiểm tra kết nối.',
     destinationUnknown:
       'Không xác nhận được vị trí đến. Không phải do kết nối, hãy báo người phụ trách.',
@@ -66,7 +71,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
     reasonRequired: 'Mặt hàng bị thiếu thì phải chọn lý do',
     overIssuedTitle: 'Không nhận được nhiều hơn số lượng xuất kho',
     overIssuedGuide:
-      'Nếu hàng thực tế đến nhiều hơn số lượng xuất kho thì phải đính chính phiếu xuất kho trước. Hãy yêu cầu hủy phiếu xuất kho đó tại màn hình Tra cứu · hủy chứng từ logistics trên web quản trị, hoặc nếu chỉ xử lý riêng phần vượt thì phát hành thêm phiếu xuất bằng Yêu cầu cấp phát vật tư.',
+      'Nếu hàng thực tế đến nhiều hơn số lượng xuất kho thì phải đính chính phiếu xuất kho trước. Hãy yêu cầu hủy phiếu xuất kho đó tại màn hình Tra cứu · hủy chứng từ logistics trên web quản trị, hoặc nếu chỉ xử lý riêng phần vượt thì phát hành thêm phiếu xuất bằng Yêu cầu xuất kho bổ sung.',
   },
   hopper: {
     legend: 'Lượng còn lại trong phễu',
@@ -106,6 +111,7 @@ export const shopfloorReceipt: Translated<typeof ko.shopfloorReceipt> = {
   },
   sent: {
     title: 'Đã ghi nhận nhập kho',
+    putaway: (count: number) => `Đã phát sinh ${String(count)} chỉ thị cất hàng`,
   },
   held: {
     title: 'Đã đưa việc nhập kho vào hàng chờ gửi',

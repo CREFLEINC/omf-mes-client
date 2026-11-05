@@ -46,8 +46,9 @@ export const lotStatusHistory = {
       lotType: 'LOT 유형',
       lotNo: 'LOT 번호',
       item: '품목 검색',
-      warehouse: '창고 선택',
-      location: '위치 선택',
+      /* 검색해서 고르는 칸은 「검색」(omf-all-around#228). */
+      warehouse: '창고 검색',
+      location: '위치 검색',
     },
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
     lotScanLabel: 'LOT 스캔',
@@ -85,6 +86,9 @@ export const lotStatusHistory = {
       period: '기간',
       from: '시작일',
       to: '종료일',
+      /** 달력 칸 이름 — 「기간」 한 이름 대신 칸마다(omf-all-around#228). */
+      fromLabel: '조회 시작일',
+      toLabel: '조회 종료일',
       actor: '처리자',
       lot: 'LOT 번호',
     },
@@ -134,6 +138,8 @@ export const lotStatusHistory = {
       refreshingText: 'LOT 목록을 갱신하는 중입니다.',
       emptyPage: '이 쪽에는 결과가 없습니다',
       empty: '조건에 맞는 LOT이 없습니다',
+      /** 빈 목록 소제목 — 검사 조회·판정과 같은 문구(omf-all-around#228). */
+      emptyHint: '검색 조건을 변경하거나 필터를 초기화하세요.',
       firstPage: '첫 쪽으로',
       pagination: 'LOT 목록 쪽 이동',
     },
@@ -186,8 +192,9 @@ export const lotStatusHistory = {
     refreshing: 'LOT 이력 갱신 중',
     refreshingText: 'LOT 이력을 갱신하는 중입니다.',
     empty: {
-      title: '이 기간의 이력이 없습니다',
-      description: '현재 LOT 상태와 일치하지 않아도 오류가 아닙니다.',
+      /* 다른 LOT 화면과 같은 문구(omf-all-around#228). */
+      title: '조건에 맞는 LOT이 없습니다.',
+      description: '검색 조건을 변경하거나 필터를 초기화하세요.',
     },
     truncated: '보류 사건이 많아 일부만 표시합니다. 기간을 좁혀 조회하세요.',
     pagination: 'LOT 이력 쪽 이동',
@@ -217,6 +224,8 @@ export const lotStatusHistory = {
     retryLabel: (name: string): string => `${name} 재시도`,
     /** 아직 고른 LOT 이 없을 때 상세 칸 안내. */
     pick: '목록에서 LOT을 선택해 주세요.',
+    /** 고르기 전 소제목(omf-all-around#228). */
+    pickHint: '선택한 LOT의 상세 정보가 표시됩니다.',
     trace: '생산 이력 조회',
     /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
     historyTabs: 'LOT 이력',

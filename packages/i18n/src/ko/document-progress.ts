@@ -15,6 +15,18 @@ export const documentProgress = {
   panes: {
     detail: '고른 문서',
   },
+  /** 문서 유형 이름 — 계약이 표시명을 싣지 않고 다국어 사전에 맡겼다(G-33). */
+  documentTypes: {
+    PURCHASE_ORDER: '발주',
+    INBOUND_RECEIPT: '입하',
+    GOODS_RECEIPT: '입고',
+    MATERIAL_ISSUE_REQUEST: '출고 요청',
+    PICKING_ORDER: '피킹',
+    STOCK_TRANSFER: '이동 요청',
+    SUBCONTRACT_ISSUE: '외주 출고',
+    SUBCONTRACT_RECEIPT: '외주 입고',
+    GOODS_ISSUE: '출고',
+  },
   /** 조건 줄의 칸 이름. 순서가 곧 화면의 배치 순서다. */
   fields: {
     documentType: '문서 유형',

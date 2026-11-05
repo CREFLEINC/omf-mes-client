@@ -88,6 +88,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   detail: {
     select: 'Hãy chọn mục không phù hợp cần đánh giá trong danh sách.',
     selectHistory: 'Hãy chọn lịch sử xử lý cần xem trong danh sách.',
+    selectHint: 'Thông tin chi tiết của mục không phù hợp đã chọn sẽ hiển thị.',
     loading: 'Đang tải chi tiết không phù hợp',
     notFound: 'Không tìm thấy mục không phù hợp',
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn mục không phù hợp khác.',
@@ -126,6 +127,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reason: 'Lý do đặc cách',
     requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
     applied: 'Đã áp dụng đặc cách. LOT đã được giải phóng về bình thường.',
+    appliedSplit: (lotNo: string, nonconformanceNo: string): string =>
+      `Đã áp dụng đặc cách. Chỉ số lượng được duyệt trở về bình thường. Số lượng còn lỗi được tách sang LOT mới ${lotNo} và xử lý ở phiếu không phù hợp ${nonconformanceNo}. Hãy dán nhãn mới cho LOT còn lỗi.`,
     rejected: 'Phê duyệt bị từ chối nên đã đóng đặc cách.',
     blocked: {
       lot: 'Hãy chọn LOT.',

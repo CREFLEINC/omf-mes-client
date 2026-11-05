@@ -372,7 +372,8 @@ const EMPTY_ENTRIES: LookupEntry[] = [];
 export const lookupKeys = {
   items: ['inspection-standard-items'] as const,
   itemDetail: (itemId: number) => ['inspection-standard-item-detail', itemId] as const,
-  processes: ['inspection-standard-processes'] as const,
+  /** 라우팅 화면에서 Rev 가 바뀌었을 수 있어, 수정 창을 열 때 · 저장 뒤 이 접두로 라우팅 목록을 다시 받는다. */
+  routingsAll: ['inspection-standard-routings'] as const,
   routings: (itemId: number) => ['inspection-standard-routings', itemId] as const,
   uoms: ['inspection-standard-uoms'] as const,
   equipments: ['inspection-standard-equipments'] as const,
@@ -534,33 +535,6 @@ export const useItemOptions = (selectedItemId: number | null): LookupResult => {
   };
 };
 
-/** 공정 선택 목록. IQC 기준에는 공정이 없으므로 비우는 것이 정상 값이다. */
-export const useProcessOptions = (): LookupResult => {
-  const { client } = useApiClient();
-
-  const processes = useQuery({
-    queryKey: lookupKeys.processes,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),
-      ),
-  });
-
-  const data = processes.data;
-
-  return {
-    entries:
-      data?.items.map((process) => ({
-        value: String(process.processId),
-        label: process.processName,
-        isActive: process.isActive,
-      })) ?? EMPTY_ENTRIES,
-    truncated: data !== undefined && isTruncated(data.page, data.items.length),
-    isError: processes.isError,
-    isLoading: processes.isPending,
-  };
-};
-
 /**
  * 라우팅 선택 목록.
  *
@@ -570,7 +544,38 @@ export const useProcessOptions = (): LookupResult => {
  *
  * Rev 목록에는 페이지네이션이 없다(계약) — 잘림을 판정할 자리가 없으므로 늘 거짓이다.
  */
-export const useRoutingOptions = (itemId: number | null): LookupResult => {
+/**
+ * 품목을 고르면 라우팅 칸에 채울 Rev(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
+ * 저장하면 서버가 작성 중 Rev 는 그 자리에서 고치고, 확정 Rev 는 새 Rev 로 확정한다(PQC 연동).
+ */
+const autoRoutingId = (
+  routings: readonly { routingId: number; routingVersion: number; statusCode: string }[],
+): string | null => {
+  const newest = (statusCode: string) =>
+    routings
+      .filter((row) => row.statusCode === statusCode)
+      .reduce<(typeof routings)[number] | null>(
+        (best, row) => (best === null || row.routingVersion > best.routingVersion ? row : best),
+        null,
+      );
+  const picked = newest('DRAFT') ?? newest('CONFIRMED');
+  return picked === null ? null : String(picked.routingId);
+};
+
+/** 기준 수정 창이 라우팅을 코드 · 버전 · 상태로 나눠 보인다(사용자 지시 2026-11-04). */
+export interface RoutingRevision {
+  routingId: string;
+  routingCode: string;
+  routingVersion: number;
+  statusCode: string;
+}
+
+const EMPTY_REVISIONS: RoutingRevision[] = [];
+
+/** `autoRoutingId` 가 undefined 면 아직 받는 중이다 — null(채울 Rev 없음)과 가른다. */
+export const useRoutingOptions = (
+  itemId: number | null,
+): LookupResult & { autoRoutingId: string | null | undefined; revisions: RoutingRevision[] } => {
   const { client } = useApiClient();
 
   const routings = useQuery({
@@ -599,6 +604,14 @@ export const useRoutingOptions = (itemId: number | null): LookupResult => {
     truncated: false,
     isError: routings.isError,
     isLoading: itemId !== null && routings.isPending,
+    autoRoutingId: routings.data === undefined ? undefined : autoRoutingId(routings.data.items),
+    revisions:
+      routings.data?.items.map((routing) => ({
+        routingId: String(routing.routingId),
+        routingCode: routing.routingCode,
+        routingVersion: routing.routingVersion,
+        statusCode: routing.statusCode,
+      })) ?? EMPTY_REVISIONS,
   };
 };
 

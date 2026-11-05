@@ -370,7 +370,7 @@ const lastRequest = (urls: URL[], path: string): URL | undefined =>
 
 /** 창고는 칸에서 바로 검색해 고른다(#226) — 창(팝업)을 거치지 않는다. */
 const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, code: string) => {
-  await user.click(screen.getByLabelText('창고 선택'));
+  await user.click(screen.getByLabelText('창고 검색'));
   await screen.findByRole('searchbox', { name: messages.common.selectSearch });
   await user.keyboard(code);
   await user.click(await screen.findByRole('option', { name: new RegExp(`^${code} · `) }));
@@ -407,7 +407,7 @@ describe('Lot Status 화면 shell', () => {
     /* 품목 · 창고 · 위치는 접힌 상세 조건 줄이다(입하 예정 조회와 같다). */
     const detailToggle = screen.getByRole('button', { name: '상세 검색 펼치기' });
     expect(detailToggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByLabelText('창고 선택')).not.toBeVisible();
+    expect(screen.queryByLabelText('창고 검색')).not.toBeVisible();
     await choose(user, 'LOT 유형', '합성 자재');
     await user.click(detailToggle);
     expect(screen.getByRole('button', { name: '상세 검색 접기' })).toHaveAttribute(
@@ -524,8 +524,8 @@ describe('Lot Status 화면 shell', () => {
     );
     const user = userEvent.setup();
 
-    await pickDate(user, screen.getByLabelText('시작일'), '2026-07-20');
-    await pickDate(user, screen.getByLabelText('종료일'), '2026-07-25');
+    await pickDate(user, screen.getByLabelText('조회 시작일'), '2026-07-20');
+    await pickDate(user, screen.getByLabelText('조회 종료일'), '2026-07-25');
     await choose(user, '처리자', '합성 해제자 (미사용)');
     await user.clear(screen.getByLabelText('LOT 스캔'));
     await user.type(screen.getByLabelText('LOT 스캔'), 'SAMPLE-LOT-001');
@@ -630,8 +630,8 @@ describe('Lot Status 화면 shell', () => {
       ...holdRoutes(),
       ...eventRoutes(200, true),
     ]);
-    expect(await screen.findByText('이 기간의 이력이 없습니다')).toBeVisible();
-    expect(screen.getByText('현재 LOT 상태와 일치하지 않아도 오류가 아닙니다.')).toBeVisible();
+    expect(await screen.findByText(messages.lotStatusHistory.history.empty.title)).toBeVisible();
+    expect(screen.getByText(messages.lotStatusHistory.history.empty.description)).toBeVisible();
   });
 
   it('첫 응답을 기다리는 동안 로딩 상태를 표시한다', () => {

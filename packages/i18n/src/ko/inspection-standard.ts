@@ -16,8 +16,12 @@ export const inspectionStandard = {
     items: '검사 항목',
   },
   actions: {
-    /* 기본 정보 폼의 품목 칸 지우기 — 비우면 전 품목 공통 기준이다(#196). */
-    itemClear: '품목 지우기',
+    /* 상세 머리 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
+    openRouting: '라우팅 보기',
+    /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
+    reactivate: '재사용',
+    /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
+    tempSave: '임시 저장',
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
@@ -44,7 +48,8 @@ export const inspectionStandard = {
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
-    routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
+    routingNeedsItem: '품목을 선택하면 라우팅이 표시됩니다.',
+    /* PQC 기준은 공정이 필수다 — 검사 유형이 PQC 일 때 공정 이름 오른쪽에 둔다(사용자 지시 2026-11-04). */
     /*
      * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
      */
@@ -96,9 +101,11 @@ export const inspectionStandard = {
     obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
-    deactivateTitle: '이 검사기준을 사용 중지할까요?',
-    deactivateDescription:
-      '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
+    deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
+    /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
+    activateTitle: '검사 기준을 다시 사용하시겠습니까?',
+    activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
+    deactivateDescription: '기준은 삭제되지 않으며, 새 검사에 적용할 수 없게 됩니다.',
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
@@ -133,6 +140,7 @@ export const inspectionStandard = {
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
+    activated: '검사기준을 다시 사용합니다.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
@@ -211,7 +219,6 @@ export const inspectionStandard = {
     itemClear: '품목 조건 지우기',
     /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
     all: '전체',
-    itemPick: '선택',
     chipItem: (label: string): string => `품목: ${label}`,
     chipRemoveItem: '품목 조건 제거',
   },
@@ -228,7 +235,8 @@ export const inspectionStandard = {
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
     itemUnset: '품목 미지정',
-    pqcSkipOn: '켜짐',
+    pqcSkipOn: '적용',
+    pqcSkipOff: '미적용',
     close: '닫기',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
@@ -258,10 +266,25 @@ export const inspectionStandard = {
     tabDrawingsCount: (count: number): string => `도면 ${String(count)}건`,
     drawingsLoading: '도면을 불러오는 중',
     drawingsNone: '등록된 도면이 없습니다',
-    drawingsNoneHint: '기준서(TCKT) 엑셀을 올리면 도면이 함께 붙습니다.',
     drawingAlt: (index: number): string => `도면 ${String(index)}`,
     drawingPrev: '이전 도면',
     drawingNext: '다음 도면',
+    /* 도면 추가·수정·제거 — 작성 중 버전만(omf-all-around#227). */
+    drawingAdd: '도면 추가',
+    drawingReplace: '도면 수정',
+    drawingRemove: '도면 제거',
+    drawingFileInvalid: 'PNG·JPEG 그림만 올릴 수 있습니다.',
+    drawingFileTooLarge: '10MB 이하 그림만 올릴 수 있습니다.',
+    /* 이미 붙은 도면과 내용이 같은 그림(#227). */
+    drawingDuplicate: '이미 등록된 도면입니다.',
+    drawingDuplicateFile: (name: string): string =>
+      `${name} 파일은 이미 등록되어 있어 추가할 수 없습니다.`,
+    /* 그림이 아니거나 큰 파일 — 제목이 까닭을 말한다. */
+    drawingRejectedFile: (name: string): string => `${name} 파일은 추가할 수 없습니다.`,
+    drawingRemoveTitle: '도면 제거',
+    drawingRemoveBody: '현재 보고 있는 도면을 제거하시겠습니까?',
+    drawingRemoveNote: '현재 작성 중인 버전에서만 제거되며, 다른 버전에는 영향을 주지 않습니다.',
+    drawingRemoveConfirm: '제거',
     notSet: '미설정',
   },
   /* 검사 기준 목록 표의 추가 열(omf-all-around#196). */
@@ -357,6 +380,12 @@ export const inspectionStandard = {
     versionDetail: '버전 정보를 불러오는 중',
     items: '검사 항목을 불러오는 중',
   },
+  /* 임시 저장하지 않고 떠날 때 확인 창(사용자 시안 · #227) — 단추는 라우팅 화면과 같다. */
+  discard: {
+    title: '저장하지 않은 변경 사항',
+    bodyLead: '저장하지 않은 변경 사항이 있습니다.',
+    bodyLoss: '이동하면 변경 사항이 사라집니다.',
+  },
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   empty: {
@@ -434,18 +463,6 @@ export const inspectionStandard = {
     notSelected: '선택 안 함',
     /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
     codeInUseLocked: '사용 중인 코드는 변경할 수 없습니다.',
-    /** 검사 유형마다 무엇이 생략되는지(#212). */
-    defaultSkipNote: (inspectionTypeCode: string): string =>
-      inspectionTypeCode === 'IQC'
-        ? '켜면 이 기준이 걸리는 입하 LOT 은 수입검사 없이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
-        : inspectionTypeCode === 'OQC'
-          ? '켜면 이 기준이 걸리는 출하작업지시는 출하검사 없이 통과합니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.'
-          : '켜면 이 기준이 걸리는 작업지시는 PQC 없이 진행하고, 실적을 등록하면 LOT 이 바로 정상이 됩니다. 검사 목록에는 「생략(기본 설정)」으로 보입니다.',
-    defaultSkipAllItemsNote:
-      '품목을 비운 IQC 기준이라 자기 기준이 없는 모든 품목의 수입검사가 생략됩니다.',
-    /** 품목 전용 IQC 기준 — 품목 기준정보 「IQC 대상」과 연동된다(omf-all-around#215). */
-    defaultSkipItemSyncNote:
-      '품목 기준정보의 ‘IQC 대상’과 함께 바뀝니다. 기본 생략을 켜면 그 품목의 IQC 대상이 꺼집니다.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (미사용)',
@@ -474,6 +491,9 @@ export const inspectionStandard = {
       sampleByLot: '샘플링(LOT 단위)',
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    /** 기준 수정 창의 라우팅 — 코드 · 버전임을 밝힌다(사용자 지시 2026-11-04). 상태는 옆 칩이 맡는다. */
+    routingSummary: (code: string, version: number): string =>
+      `코드 ${code} · 버전 Rev ${String(version)}`,
     version: (planVersion: number): string => `버전 ${String(planVersion)}`,
     draft: '작성중',
     confirmed: '확정',

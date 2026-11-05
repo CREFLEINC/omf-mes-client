@@ -39,6 +39,7 @@ import {
   describeDisabledTypes,
   DOCUMENT_TYPES,
   isDocumentTypeListPending,
+  subTypeGroupOf,
   toDocumentTypeOptions,
 } from './document-types';
 import { ExecuteCancelDialog } from './execute-cancel-dialog';
@@ -61,6 +62,7 @@ import {
   isDocumentProgressNotFound,
   useCancelApprovalRequest,
   useCancelResourceLock,
+  useCodeNames,
   useDocumentProgressDetail,
   useDocumentProgressList,
   useExecuteDocumentCancel,
@@ -172,6 +174,10 @@ export const DocumentProgressScreen = () => {
    */
   const listQuery = toListQuery(filters, documentTypes, page);
   const list = useDocumentProgressList(listQuery);
+  const statusName = useCodeNames(listQuery === null ? null : 'LOGISTICS_DOCUMENT_STATUS');
+  const subTypeName = useCodeNames(
+    listQuery === null ? null : subTypeGroupOf(listQuery.documentTypeCode),
+  );
 
   const rows = list.data?.items ?? [];
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -825,7 +831,13 @@ export const DocumentProgressScreen = () => {
 
     return (
       <>
-        <DetailPane detail={detail.data} routes={SCREEN_ROUTES} onOpen={openScreen} />
+        <DetailPane
+          detail={detail.data}
+          routes={SCREEN_ROUTES}
+          onOpen={openScreen}
+          statusName={statusName}
+          subTypeName={subTypeName}
+        />
 
         {/*
          * ⭐ **취소 축이 상세 구획 안에 선다.** 후속 목록 바로 아래에 두는 이유는, 취소할 수
@@ -893,6 +905,7 @@ export const DocumentProgressScreen = () => {
               /* 창이 열려 있으면 실패는 창이 갖는다 — 두 자리에 같은 배너를 세우지 않는다. */
               banner={executeDialogDocumentNo === null ? executeFailureSlot() : null}
               result={executionResult}
+              statusName={statusName}
               onOpenConfirm={() => {
                 openExecuteDialog(progress.documentNo);
               }}
@@ -973,6 +986,8 @@ export const DocumentProgressScreen = () => {
               selectedDocumentId={selection?.documentId ?? null}
               isLocked={isCancelLocked}
               onToggleSelect={toggleSelect}
+              statusName={statusName}
+              subTypeName={subTypeName}
             />
             {listQuery !== null && !list.isPending && (
               <PageNav

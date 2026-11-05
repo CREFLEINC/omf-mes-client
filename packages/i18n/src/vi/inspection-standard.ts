@@ -16,7 +16,10 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     items: 'Hạng mục kiểm tra',
   },
   actions: {
-    itemClear: 'Xóa mặt hàng',
+    openRouting: 'Xem routing',
+    reactivate: 'Sử dụng lại',
+    /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
+    tempSave: 'Lưu tạm',
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
@@ -36,7 +39,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   actionReasons: {
     /* 계약의 Routing 조회가 품목을 필수 쿼리로 둔다 — 품목을 비우면 고를 라우팅 자체가 없다. */
-    routingNeedsItem: 'Routing chỉ chọn được sau khi đã chọn mặt hàng. Hãy chọn mặt hàng trước.',
+    routingNeedsItem: 'Chọn mặt hàng thì routing sẽ hiển thị.',
     /* 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다. */
     newVersionBlockedByUnsaved:
       'Việc phát hành phiên bản mới không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
@@ -87,9 +90,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Phiên bản đã hủy bỏ thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
-    deactivateTitle: 'Ngừng sử dụng tiêu chuẩn kiểm tra này?',
+    deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
+    activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
+    activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
-      'Không xóa. Sau khi ngừng sử dụng thì không dùng tiêu chuẩn này cho lần kiểm tra mới được nữa.',
+      'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
@@ -123,6 +128,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
+    activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',
@@ -194,7 +200,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemPlaceholder: 'Chọn mặt hàng',
     itemClear: 'Xóa điều kiện mặt hàng',
     all: 'Tất cả',
-    itemPick: 'Chọn',
     chipItem: (label: string): string => `Mặt hàng: ${label}`,
     chipRemoveItem: 'Bỏ điều kiện mặt hàng',
   },
@@ -206,7 +211,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     chipInactive: 'Ngừng dùng',
     editBasic: 'Sửa thông tin cơ bản',
     itemUnset: 'Chưa chỉ định mặt hàng',
-    pqcSkipOn: 'Bật',
+    pqcSkipOn: 'Áp dụng',
+    pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
   },
   versionSection: {
@@ -232,10 +238,24 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     tabDrawingsCount: (count: number): string => `Bản vẽ ${String(count)}`,
     drawingsLoading: 'Đang tải bản vẽ',
     drawingsNone: 'Chưa có bản vẽ',
-    drawingsNoneHint: 'Tải lên tệp Excel tiêu chuẩn (TCKT) thì bản vẽ được đính kèm cùng.',
     drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
     drawingPrev: 'Bản vẽ trước',
     drawingNext: 'Bản vẽ sau',
+    drawingAdd: 'Thêm bản vẽ',
+    drawingReplace: 'Sửa bản vẽ',
+    drawingRemove: 'Xóa bản vẽ',
+    drawingFileInvalid: 'Chỉ tải lên được hình PNG·JPEG.',
+    drawingFileTooLarge: 'Chỉ tải lên được hình tối đa 10MB.',
+    /* 이미 붙은 도면과 내용이 같은 그림(#227). */
+    drawingDuplicate: 'Bản vẽ đã được đăng ký.',
+    drawingDuplicateFile: (name: string): string =>
+      `Không thể thêm tệp ${name} vì đã được đăng ký.`,
+    /* 그림이 아니거나 큰 파일 — 제목이 까닭을 말한다. */
+    drawingRejectedFile: (name: string): string => `Không thể thêm tệp ${name}.`,
+    drawingRemoveTitle: 'Xóa bản vẽ',
+    drawingRemoveBody: 'Bạn có muốn xóa bản vẽ đang xem không?',
+    drawingRemoveNote: 'Chỉ xóa khỏi phiên bản đang soạn, không ảnh hưởng đến các phiên bản khác.',
+    drawingRemoveConfirm: 'Xóa',
     notSet: 'Chưa thiết lập',
   },
   listColumns: {
@@ -327,6 +347,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     versionDetail: 'Đang tải thông tin phiên bản',
     items: 'Đang tải hạng mục kiểm tra',
   },
+  /* 임시 저장하지 않고 떠날 때 확인 창(사용자 시안 · #227) — 단추는 라우팅 화면과 같다. */
+  discard: {
+    title: 'Thay đổi chưa lưu',
+    bodyLead: 'Có thay đổi chưa lưu.',
+    bodyLoss: 'Nếu chuyển đi, các thay đổi sẽ bị mất.',
+  },
   optionsTruncated:
     'Chỉ hiển thị một phần danh sách chọn. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách chọn. Chỉ hiển thị giá trị đang lưu.',
@@ -399,16 +425,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     notSelected: 'Không chọn',
     /* 다른 자료가 쓰는 기준의 코드 잠금 안내(사용자 시안 · #208). */
     codeInUseLocked: 'Không thể thay đổi mã đang được sử dụng.',
-    defaultSkipNote: (inspectionTypeCode: string): string =>
-      inspectionTypeCode === 'IQC'
-        ? 'Khi bật, LOT nhập theo tiêu chuẩn này trở thành bình thường ngay mà không kiểm tra đầu vào. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
-        : inspectionTypeCode === 'OQC'
-          ? 'Khi bật, lệnh xuất hàng theo tiêu chuẩn này được thông qua mà không kiểm tra xuất hàng. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».'
-          : 'Khi bật, lệnh sản xuất theo tiêu chuẩn này chạy không cần PQC; khi đăng ký kết quả, LOT trở thành bình thường ngay. Danh sách kiểm tra hiển thị «Bỏ qua (mặc định)».',
-    defaultSkipAllItemsNote:
-      'Tiêu chuẩn IQC không chọn mặt hàng nên mọi mặt hàng không có tiêu chuẩn riêng đều được bỏ qua kiểm tra đầu vào.',
-    defaultSkipItemSyncNote:
-      'Thay đổi cùng với ‘Đối tượng IQC’ trong thông tin mặt hàng. Khi bật bỏ qua mặc định, mặt hàng đó sẽ không còn là đối tượng IQC.',
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
     empty: '—',
     inactiveSuffix: ' (ngừng dùng)',
@@ -434,6 +450,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       sampleByLot: 'Lấy mẫu (theo LOT)',
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    routingSummary: (code: string, version: number): string =>
+      `Mã ${code} · Phiên bản Rev ${String(version)}`,
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
     confirmed: 'Đã xác nhận',

@@ -220,6 +220,8 @@ describe('주 메뉴 트리', () => {
       '/logistics/stocktaking → inventory',
       '/logistics/stock-adjust → inventory',
       '/production/material-issue-requests → outbox',
+      '/production/material-issue-status → outbox',
+      '/production/warehouse-replenishment → outbox',
       '/logistics/supplier-return → outbox',
       '/logistics/disposal-issue → outbox',
       '/logistics/document-progress → manage_search',
@@ -297,6 +299,7 @@ describe('주 메뉴 트리', () => {
       '/notification/zalo-connection → link',
       '/notification/dispatch-history → history',
       '/master-data/common-code → list_alt',
+      '/system/plant-working-days → event_available',
       '/system/terminal-process-map → tablet_android',
     ]);
   });

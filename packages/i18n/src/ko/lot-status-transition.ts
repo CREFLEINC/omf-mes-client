@@ -46,6 +46,8 @@ export const lotStatusTransition = {
     failed: 'LOT 후보를 불러오지 못했습니다.',
     retry: '다시 시도',
     empty: '조건에 맞는 LOT이 없습니다.',
+    /** 빈 목록 소제목(omf-all-around#228). */
+    emptyHint: '검색 조건을 변경하거나 필터를 초기화하세요.',
   },
   /** 고른 LOT의 식별과 현재 수량·상태를 되짚어 주는 패널. */
   selected: {

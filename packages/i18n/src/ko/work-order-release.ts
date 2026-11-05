@@ -109,7 +109,7 @@ export const workOrderRelease = {
     action: (count: number): string => `선택한 ${String(count)}건 일괄 배포`,
     dialogTitle: (count: number): string => `${String(count)}건을 일괄 배포할까요?`,
     dialogBody:
-      '건마다 품목 기본 LOT 크기로 생산 LOT 을 선발행하고 자재 출고요청을 만듭니다. 되돌릴 수 없습니다. 4M 설정이 덜 됐거나 품목 기본 LOT 크기가 없는 건은 처리하지 않습니다.',
+      '건마다 품목 기본 LOT 크기로 생산 LOT 을 선발행하고 출고 요청을 만듭니다. 되돌릴 수 없습니다. 4M 설정이 덜 됐거나 품목 기본 LOT 크기가 없는 건은 처리하지 않습니다.',
     confirm: '일괄 배포',
     cancel: '취소',
     running: '일괄 배포 중입니다…',

@@ -55,17 +55,24 @@ export const InspectionDrawingImages = ({
   drawings,
   altOf,
   labels,
+  current: controlled,
+  onCurrentChange,
 }: {
   drawings: readonly InspectionDrawing[];
   altOf: (index: number) => string;
   labels: { prev: string; next: string };
+  /** 보이는 도면 자리를 부모가 쥘 때 준다(검사 기준 도면 탭의 바꾸기·빼기 · #227). 주면 도면이 바뀌어도 첫 장으로 돌리지 않는다. */
+  current?: number;
+  onCurrentChange?: (index: number) => void;
 }) => {
   const [urls, setUrls] = useState<string[]>([]);
-  const [current, setCurrent] = useState(0);
+  const [own, setOwn] = useState(0);
+  const current = controlled ?? own;
+  const setCurrent = onCurrentChange ?? setOwn;
   useEffect(() => {
     const made = drawings.map((drawing) => URL.createObjectURL(drawing.blob));
     setUrls(made);
-    setCurrent(0);
+    setOwn(0);
     return () => made.forEach((url) => URL.revokeObjectURL(url));
   }, [drawings]);
 

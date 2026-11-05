@@ -27,10 +27,10 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
       itemSearch: 'Tìm mặt hàng',
       warehouseSearch: 'Tìm vị trí',
       /** 조회 줄 기간 두 칸(사용자 2026-11-02). */
-      periodFrom: 'Chọn ngày bắt đầu đổi trạng thái',
-      periodTo: 'Chọn ngày kết thúc đổi trạng thái',
-      periodFromPlaceholder: 'Hãy chọn ngày bắt đầu',
-      periodToPlaceholder: 'Hãy chọn ngày kết thúc',
+      periodFrom: 'Ngày bắt đầu tra cứu',
+      periodTo: 'Ngày kết thúc tra cứu',
+      periodFromPlaceholder: 'Năm-tháng-ngày',
+      periodToPlaceholder: 'Năm-tháng-ngày',
       lotScan: 'Số LOT',
     },
     values: {
@@ -56,6 +56,7 @@ export const suspiciousMaterialHold: Translated<typeof ko.suspiciousMaterialHold
     loading: 'Đang tải ứng viên vật tư nghi ngờ',
     failed: 'Không tải được ứng viên vật tư nghi ngờ.',
     empty: 'Không có LOT nào khớp điều kiện.',
+    emptyHint: 'Hãy thay đổi điều kiện tìm kiếm hoặc đặt lại bộ lọc.',
   },
   input: {
     pane: 'Nhập đăng ký tạm giữ',

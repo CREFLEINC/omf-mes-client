@@ -256,8 +256,8 @@ describe('Lot Status 전이 후보', () => {
     await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' });
     const period = screen.getByRole('group', { name: '기간' });
     const today = defaultTransitionPeriod(new Date());
-    expect(within(period).getByLabelText('시작일')).toHaveTextContent(today.from);
-    expect(within(period).getByLabelText('종료일')).toHaveTextContent(today.to);
+    expect(within(period).getByLabelText('조회 시작일')).toHaveTextContent(today.from);
+    expect(within(period).getByLabelText('조회 종료일')).toHaveTextContent(today.to);
     expect(screen.queryByText('최근 전이일을 기준으로 LOT을 조회합니다.')).toBeNull();
     expect(screen.queryByText('최근 전이 기간')).toBeNull();
     /* 상태는 조건 줄이 아니라 위쪽 칩으로 고른다. */

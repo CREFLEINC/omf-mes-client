@@ -8,6 +8,7 @@ import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
 import { HandoverAlertSettingsScreen } from '../screens/handover-alert-settings/screen';
+import { PlantWorkingDaysScreen } from '../screens/plant-working-days/screen';
 import { ZaloConnectionScreen } from '../screens/zalo-connection/screen';
 import { DispatchHistoryScreen } from '../screens/dispatch-history/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -21,6 +22,8 @@ import { WorkCalendarScreen } from '../screens/work-calendar/screen';
 import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
+import { MaterialIssueStatusScreen } from '../screens/material-issue-status/screen';
+import { ProductionWarehouseReplenishmentScreen } from '../screens/production-warehouse-replenishment/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { LotTraceScreen } from '../screens/lot-trace/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
@@ -190,6 +193,8 @@ export const appRouter = createBrowserRouter([
        * (정책 §5.2 — 접근 불가능한 경계).
        */
       { path: 'system/approval-route', element: <ApprovalRouteScreen /> },
+      /* W-CO-15 — 공장별 주간 근무일(피처 003). 출고 작업일 계산에 쓴다. */
+      { path: 'system/plant-working-days', element: <PlantWorkingDaysScreen /> },
       /*
        * W-CO-10 — 앞머리는 옛 사이드바 섹션(시스템 관리)을 따른다. **누구나 자기 것을 바꾸는
        * 자리**라 사이드바가 아니라 **상단 바의 사용자 자리**에서 연다(`app/layout.tsx`
@@ -393,6 +398,13 @@ export const appRouter = createBrowserRouter([
        * 긴급 발행 바로 뒤에 둔다 — 그 화면이 만든 W/O 의 부족분을 여기서 잇는다.
        */
       { path: 'production/material-issue-requests', element: <MaterialIssueRequestScreen /> },
+      /* W-02-11 — 출고 요청 현황(피처 003). */
+      { path: 'production/material-issue-status', element: <MaterialIssueStatusScreen /> },
+      /* W-02-12 — 생산 창고 보충(피처 004). */
+      {
+        path: 'production/warehouse-replenishment',
+        element: <ProductionWarehouseReplenishmentScreen />,
+      },
       /*
        * W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다.
        * 저장 액션이 없는 읽기 전용 화면이다.

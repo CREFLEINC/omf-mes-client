@@ -5,6 +5,7 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 
 export type GoodsIssue = components['schemas']['GoodsIssue'];
 export type GoodsIssueLine = components['schemas']['GoodsIssueLine'];
+/** 004 — `workOrderId` 선택(창고 보충 출고는 W/O 없이 받는다, 계약 §3). */
 export type ShopfloorReceiptCreate = components['schemas']['ShopfloorReceiptCreate'];
 export type ShopfloorReceiptLineCreate = components['schemas']['ShopfloorReceiptLineCreate'];
 
@@ -124,7 +125,8 @@ export const queuedReceiptsFor = (entries: { body?: unknown }[], goodsIssueId: n
 
 export const toReceiptDraft = (
   issue: GoodsIssue,
-  workOrderId: number,
+  /** 창고 보충 출고면 null — 본문에 싣지 않는다. */
+  workOrderId: number | null,
   destinationLocationId: number,
   lines: DraftLine[],
   now: Date,
@@ -132,7 +134,7 @@ export const toReceiptDraft = (
 ): OutboxDraft => {
   const body: ShopfloorReceiptCreate = {
     goodsIssueId: issue.goodsIssueId,
-    workOrderId,
+    ...(workOrderId === null ? {} : { workOrderId }),
     destinationLocationId,
     receivedAt: now.toISOString(),
     /* 오프라인에서 늦게 닿아도 언제 한 일인지가 남아야 수불이 그날로 선다. */
@@ -159,4 +161,11 @@ export const toReceiptDraft = (
     occurredAt: now.toISOString(),
     confirmation: 'pending',
   };
+};
+
+/** 확정 응답에서 적치 지시 수를 읽는다(창고 보충 · 구역 나눈 창고). 응답을 못 받았으면 0. */
+export const putawayCountOf = (response: unknown): number => {
+  const ids = (response as { shopfloorReceipt?: { putawayTaskIds?: unknown } } | undefined)
+    ?.shopfloorReceipt?.putawayTaskIds;
+  return Array.isArray(ids) ? ids.length : 0;
 };

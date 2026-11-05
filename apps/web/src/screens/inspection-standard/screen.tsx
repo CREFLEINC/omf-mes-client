@@ -13,9 +13,9 @@ import {
 } from '@crefle/web-ui';
 import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
@@ -31,7 +31,10 @@ import {
 } from '../../patterns/split-orientation';
 import { runRequest, toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { itemKeys } from '../item-extended-attrs/item-queries';
+import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import {
   DATA_TYPE_CODE_GROUP,
   FREQUENCY_INTERVAL_UOM_CODE_GROUP,
@@ -81,6 +84,7 @@ import { PlanPane } from './plan-pane';
 import { PLAN_FORM_FIELDS, validatePlanForm } from './plan-validation';
 import { resolveVersionStatus } from './plan-version-status';
 import {
+  lookupKeys,
   planDetailPath,
   planKeys,
   useInspectionItemSpecs,
@@ -95,7 +99,6 @@ import {
   useItemNameParts,
   useEquipmentOptions,
   useItemOptions,
-  useProcessOptions,
   useRoutingOptions,
   useUomOptions,
   useVersionHistory,
@@ -123,7 +126,7 @@ import {
 import type { CompareLabels } from './version-compare';
 import { VersionCompareDialog } from './version-compare-dialog';
 import { UsageChips, usageOf, withUsage } from './usage-chips';
-import { VersionDrawings } from './version-drawings';
+import { useVersionDrawingDraft, VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionSummary } from './version-summary';
@@ -135,6 +138,12 @@ type InspectionPlanVersionDetailResponse =
   components['schemas']['InspectionPlanVersionDetailResponse'];
 
 const t = messages.inspectionStandard;
+
+/** 라우팅 화면 — 상세 머리의 「라우팅 보기」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
+const ROUTING_PATH = '/master-data/routing';
+
+/** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
+const EDIT_TARGET_PARAMS = ['plan', 'ver'] as const;
 const hubText = messages.common.inspectionHub;
 
 /** 폼의 현재 값과 그것이 어디서 나왔는지. 「고친 것이 있는가」는 둘의 비교로 판정한다. */
@@ -230,6 +239,8 @@ const withPairedFields = (changed: string[]): string[] => [
 /** 「기준 추가」 창을 미리 채워 여는 주소 키 — 부품 IQC 화면의 「검사기준 설정」이 쓴다(#225). */
 const NEW_PLAN_TYPE_KEY = 'new';
 const NEW_PLAN_ITEM_KEY = 'newItem';
+/** 다른 화면이 「검사 기준 수정」으로 보낸 주소(`?plan=…&edit=1`) — 그 기준의 「기본 정보 수정」 창을 바로 연다(사용자 지시 2026-11-05). */
+const EDIT_PLAN_KEY = 'edit';
 
 /**
  * W-06-02 컨테이너 — 기준 목록 → 버전 목록 → 기준·버전·항목을 3단으로 놓는다.
@@ -247,6 +258,8 @@ const NEW_PLAN_ITEM_KEY = 'newItem';
  */
 export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { session } = useSession();
   const hub = usePageHub();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -426,12 +439,14 @@ export const InspectionStandardScreen = () => {
      */
     etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
     /* 품목 전용 IQC 기준의 기본 생략은 품목 「IQC 대상」을 함께 바꾼다(#215) — 품목 화면 자료도 다시 읽게 한다. */
-    invalidateKeys: [planKeys.all, itemKeys.all],
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
     knownFields: PLAN_FORM_FIELDS,
     onSuccess: (saved) => {
       setPlanFieldErrors({});
       const next = planToFormValues(saved);
       setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      /* 저장하면 「기본 정보 수정」 창을 닫는다(사용자 지시 2026-11-04). */
+      setIsPlanEditOpen(false);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -444,7 +459,7 @@ export const InspectionStandardScreen = () => {
       }),
     // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
     etagPath: null,
-    invalidateKeys: [planKeys.all, itemKeys.all],
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
     knownFields: PLAN_FORM_FIELDS,
     onSuccess: (saved) => {
       setCreateValues(null);
@@ -482,8 +497,29 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /* 다시 사용(사용자 지시 2026-11-04) — 사용 중지와 같은 규약(If-Match). IQC · PQC 기준은 품목 · 라우팅이 따라 바뀌어 품목 자료도 다시 읽는다. */
+  const activateWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:activate', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+      }),
+    etagPath: selectedPlanId === null ? null : planDetailPath(selectedPlanId),
+    invalidateKeys: [planKeys.all, itemKeys.all, lookupKeys.routingsAll],
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: t.result.activated });
+    },
+  });
+
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = deactivateWrite;
+  const planActionWrite = planAction === 'activate' ? activateWrite : deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
@@ -492,6 +528,8 @@ export const InspectionStandardScreen = () => {
   const versionHistory = useVersionHistory(selectedVersionId);
   /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
   const versionDrawings = useInspectionDrawings(selectedVersionId);
+  /* 도면 탭의 저장 전 변경(#227) — 확정 · 신규 버전 발행을 막는 「저장하지 않은 변경」에 들어간다. */
+  const drawingDraft = useVersionDrawingDraft(selectedVersionId, versionDrawings);
 
   /**
    * 버전 등록 폼의 값. null이면 폼이 닫혀 있다.
@@ -763,6 +801,7 @@ export const InspectionStandardScreen = () => {
     setVersionFormState(null);
     setVersionFieldErrors({});
     setItemDraftState(null);
+    drawingDraft.reset();
     setItemDialog(null);
     setItemDialogErrors({});
   };
@@ -819,6 +858,7 @@ export const InspectionStandardScreen = () => {
     planWrite.reset();
     createWrite.reset();
     deactivateWrite.reset();
+    activateWrite.reset();
     setPlanAction(null);
     setFormState(null);
     setPlanFieldErrors({});
@@ -848,26 +888,62 @@ export const InspectionStandardScreen = () => {
     });
   }, [searchParams]);
 
+  /* 한 번 열면 그 키를 주소에서 지운다 — 새로고침에 다시 뜨지 않게. 창은 상세를 받은 뒤 그 안에서 선다. */
+  useEffect(() => {
+    if (searchParams.get(EDIT_PLAN_KEY) === null) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete(EDIT_PLAN_KEY);
+    setSearchParams(next, { replace: true });
+    if (selectedPlanId !== null) setIsPlanEditOpen(true);
+  }, [searchParams]);
+
+  /**
+   * 임시 저장하지 않은 편집(검사 항목 · 도면 · 버전 설정)을 두고 다른 기준 · 버전 · 조건으로 옮기거나 다른 화면으로 가면 먼저 묻는다(사용자 지시 · #227).
+   * 라우팅 화면과 같은 확인 창이다. 화면이 물어 확인받은 이동은 이동 감시(`LeaveGuard`)가 다시 묻지 않는다.
+   */
+  const [pendingMove, setPendingMove] = useState<(() => void) | null>(null);
+  /* 두 줄 문장(사용자 시안 · #227). */
+  const discardBody = (
+    <p className="dialog-text">
+      {t.discard.bodyLead}
+      <br />
+      {t.discard.bodyLoss}
+    </p>
+  );
+  const confirmedMoveRef = useRef(false);
+  const guardMove = (move: () => void) => {
+    if (isAnythingDirty) setPendingMove(() => move);
+    else move();
+  };
+  /* 이동이 끝나면 되돌린다 — 질의가 그대로인 이동이어도 기록 항목(key)은 바뀐다. */
+  const location = useLocation();
+  useEffect(() => {
+    confirmedMoveRef.current = false;
+  }, [location.key]);
+
   /**
    * 조건·쪽이 바뀌면 **주소를 통째로 새로 만든다.**
    * 그래야 `plan`·`ver`가 자연히 사라진다 — 보이는 행이 달라지는데 선택이 남으면
    * 우 칸의 폼이 어디서 온 것인지 알 수 없다.
    */
-  const applyFilters = (next: PlanFilters) => {
-    resetPlanEditing();
-    setSearchParams(toSearchParams(next, 1, pageSize));
-  };
+  const applyFilters = (next: PlanFilters) =>
+    guardMove(() => {
+      resetPlanEditing();
+      setSearchParams(toSearchParams(next, 1, pageSize));
+    });
 
-  const changePage = (nextPage: number) => {
-    resetPlanEditing();
-    setSearchParams(toSearchParams(filters, nextPage, pageSize));
-  };
+  const changePage = (nextPage: number) =>
+    guardMove(() => {
+      resetPlanEditing();
+      setSearchParams(toSearchParams(filters, nextPage, pageSize));
+    });
 
   /* 쪽 크기를 바꾸면 첫 쪽부터 — 같은 쪽 번호가 다른 행을 가리킨다(#196). */
-  const changePageSize = (nextSize: number) => {
-    resetPlanEditing();
-    setSearchParams(toSearchParams(filters, 1, nextSize));
-  };
+  const changePageSize = (nextSize: number) =>
+    guardMove(() => {
+      resetPlanEditing();
+      setSearchParams(toSearchParams(filters, 1, nextSize));
+    });
 
   /** 기준을 바꾸면 버전 선택을 지운다 — 다른 기준의 버전을 가리키면 안 된다. */
   function selectPlan(inspectionPlanId: number): void {
@@ -878,8 +954,9 @@ export const InspectionStandardScreen = () => {
   }
 
   /**
-   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 **확정된 버전 중** 최신(판 번호가 가장 큰 것)을 바로 고른다
-   * (사용자 지시 · #196). 작성중 · 폐기 버전은 고르지 않는다 — 확정된 버전이 없으면 고르지 않고 「버전을 선택하세요」로 둔다.
+   * 목록에서 기준을 고르면 버전 목록 창을 띄우지 않고 **확정 · 작성중 버전 중** 최신(판 번호가 가장 큰 것)을 바로 고른다
+   * (사용자 지시 · #196, 작성중 포함은 omf-all-around#227 사용자 지시 — 작성 중인 기준은 작성 중 내용이 바로 보여야 한다).
+   * 폐기 버전은 고르지 않는다 — 고를 버전이 없으면 「버전을 선택하세요」로 둔다.
    * 버전 목록이 와야 고를 수 있어, 고른 기준 번호를 쥐고 있다가 그 기준의 목록이 오면 한 번 고른다.
    * 주소로 들어온 경우(새로고침 · 공유)는 주소의 선택을 그대로 둔다 — 목록을 누른 때만 고른다.
    */
@@ -916,7 +993,10 @@ export const InspectionStandardScreen = () => {
     setLatestPendingPlanId(null);
     if (selectedVersionId !== null) return;
     const latest = versionList.data.items
-      .filter((version) => resolveVersionStatus(version.statusCode).status === 'confirmed')
+      .filter((version) => {
+        const { status } = resolveVersionStatus(version.statusCode);
+        return status === 'confirmed' || status === 'draft';
+      })
       .reduce<InspectionPlanVersion | null>(
         (best, version) =>
           best === null || version.planVersion > best.planVersion ? version : best,
@@ -1017,7 +1097,6 @@ export const InspectionStandardScreen = () => {
   const activeItemId = Number(activeValues?.itemId ?? '') || null;
 
   const itemOptions = useItemOptions(activeItemId);
-  const processOptions = useProcessOptions();
   const routingOptions = useRoutingOptions(activeItemId);
 
   /**
@@ -1025,21 +1104,12 @@ export const InspectionStandardScreen = () => {
    * 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다.
    */
   const optionsNotice = (() => {
-    const lookups: LookupResult[] = [itemOptions, processOptions, routingOptions];
+    const lookups: LookupResult[] = [itemOptions, routingOptions];
 
     if (lookups.some((lookup) => lookup.isError)) {
       return (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.optionsLoadFailed}</AlertBanner>
-        </div>
-      );
-    }
-
-    /* 품목은 품목 선택 창에서 검색해 고른다 — 목록이 잘려도 고를 수 있어 잘림 안내 대상이 아니다(#196). */
-    if ([processOptions, routingOptions].some((lookup) => lookup.truncated)) {
-      return (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.optionsTruncated}</AlertBanner>
         </div>
       );
     }
@@ -1079,6 +1149,22 @@ export const InspectionStandardScreen = () => {
       prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
     );
     clearFieldErrors(patch, setPlanFieldErrors, planWrite.clearFieldError);
+  };
+
+  /* 자동으로 채운 라우팅(사용자 지시 2026-11-04) — 저장된 품목 그대로면 기준값도 맞춰, 창을 열기만 해도 고친 것으로 잡히지 않게 한다. */
+  const refreshPlanRouting = (routingId: string) => {
+    setFormState((prev) =>
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            values: { ...prev.values, routingId },
+            baseline:
+              prev.values.itemId === prev.baseline.itemId
+                ? { ...prev.baseline, routingId }
+                : prev.baseline,
+          },
+    );
   };
 
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
@@ -1135,7 +1221,7 @@ export const InspectionStandardScreen = () => {
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
-  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty;
+  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
 
   /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
   const draftVersion = versions.find((version) => {
@@ -1291,7 +1377,9 @@ export const InspectionStandardScreen = () => {
       isLoading={versionList.isPending}
       isPlanSelected={selectedPlanId !== null}
       selectedVersionId={selectedVersionId}
-      onSelect={handleSelectVersion}
+      onSelect={(inspectionPlanVersionId) =>
+        guardMove(() => handleSelectVersion(inspectionPlanVersionId))
+      }
       loadError={
         versionList.isError ? (
           <LoadErrorBanner error={versionList.error} onRetry={() => void versionList.refetch()} />
@@ -1352,8 +1440,8 @@ export const InspectionStandardScreen = () => {
           banner={<SaveErrorBanner error={createWrite.error} />}
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
-          processOptions={optionsFor(processOptions, createValues.processId)}
-          routingOptions={optionsFor(routingOptions, createValues.routingId)}
+          routingRevisions={routingOptions.revisions}
+          autoRoutingId={routingOptions.autoRoutingId}
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
@@ -1420,13 +1508,36 @@ export const InspectionStandardScreen = () => {
         <PlanDetailHead
           plan={planDetail.data.inspectionPlan}
           itemLabel={itemLabel}
-          processLabel={
-            planDetail.data.inspectionPlan.processId === null ||
-            planDetail.data.inspectionPlan.processId === undefined
-              ? null
-              : lookupDisplayLabel(processOptions, String(planDetail.data.inspectionPlan.processId))
-          }
-          onEdit={() => setIsPlanEditOpen(true)}
+          routingRevision={routingOptions.revisions.find(
+            (revision) =>
+              revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
+          )}
+          /* 품목이 있는 기준은 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05) — 이동 감시가 고친 내용을 먼저 묻는다. */
+          onOpenRouting={(() => {
+            const plan = planDetail.data.inspectionPlan;
+            if (plan.itemId === null || !toWebAccess(session?.permissions).allows(ROUTING_PATH)) {
+              return undefined;
+            }
+            /*
+             * 품목 코드로 조회한 채 연다 — 라우팅 화면은 품목 이름을 조회 목록(첫 50건)에서 찾아, 목록 밖 품목이면 「—」로 보인다.
+             */
+            const code = itemPartsOf(plan.itemId)?.code;
+            const query = new URLSearchParams({
+              ...(code === null || code === undefined ? {} : { q: code }),
+              item: String(plan.itemId),
+              ...(plan.routingId === null ? {} : { rev: String(plan.routingId) }),
+            });
+            return () => navigate(`${ROUTING_PATH}?${query.toString()}`);
+          })()}
+          /*
+           * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,
+           * 열어 둔 화면의 옛 잠금 토큰으로 저장하면 「다른 사용자가 먼저 저장」으로 막힌다.
+           */
+          onEdit={() => {
+            void planDetail.refetch();
+            void queryClient.invalidateQueries({ queryKey: lookupKeys.routingsAll });
+            setIsPlanEditOpen(true);
+          }}
           /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
           onDeactivate={
             planDetail.data.inspectionPlan.isActive
@@ -1437,6 +1548,16 @@ export const InspectionStandardScreen = () => {
               : undefined
           }
           isDeactivating={deactivateWrite.isSaving}
+          /* 미사용이면 같은 자리에 「재사용」(사용자 지시 2026-11-04). */
+          onActivate={
+            planDetail.data.inspectionPlan.isActive
+              ? undefined
+              : () => {
+                  activateWrite.reset();
+                  setPlanAction('activate');
+                }
+          }
+          isActivating={activateWrite.isSaving}
         />
 
         {renderVersionBar()}
@@ -1450,6 +1571,8 @@ export const InspectionStandardScreen = () => {
             closeOnBackdropClick={false}
             showCloseButton={false}
             title={t.detail.editBasic}
+            /* 첫 줄에 기본 생략 · 기준코드 · 기준명이 서도록 창을 넓힌다(사용자 지시 2026-11-04). */
+            className="inspection-standard-plan-edit-dialog"
             onClose={() => {
               cancelPlanEdit();
               setIsPlanEditOpen(false);
@@ -1461,13 +1584,14 @@ export const InspectionStandardScreen = () => {
               plan={planDetail.data.inspectionPlan}
               values={formState.values}
               onChange={changePlanValues}
+              onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
               fieldErrors={{ ...planWrite.fieldErrors, ...planFieldErrors }}
               banner={<SaveErrorBanner error={planWrite.error} onReload={handleReloadPlanDetail} />}
               optionsNotice={optionsNotice}
               itemOptions={optionsFor(itemOptions, formState.values.itemId)}
-              processOptions={optionsFor(processOptions, formState.values.processId)}
-              routingOptions={optionsFor(routingOptions, formState.values.routingId)}
+              routingRevisions={routingOptions.revisions}
+              autoRoutingId={routingOptions.autoRoutingId}
               routingDisabledReason={routingDisabledReason}
               // 판정의 주인은 codeEditable이다. reason은 문구 선택에만 쓴다.
               // 다른 자료가 쓰는 기준은 건수 대신 짧은 한 줄로 알린다(사용자 시안 · #208).
@@ -1544,6 +1668,24 @@ export const InspectionStandardScreen = () => {
               content: renderItemPane(),
             },
             {
+              value: 'drawings',
+              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). 건수는 검사 항목처럼 저장 전 초안으로 센다(#227). 탭 순서는 검사 항목 · 도면 · 이력(사용자 지시 · #227). */
+              label:
+                versionDrawings.data === undefined
+                  ? t.versionSection.tabDrawings
+                  : t.versionSection.tabDrawingsCount(drawingDraft.list.length),
+              content:
+                selectedVersionId === null ? null : (
+                  /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
+                  <VersionDrawings
+                    key={selectedVersionId}
+                    drawings={versionDrawings}
+                    draft={drawingDraft}
+                    isEditable={versionStatus?.isEditable === true}
+                  />
+                ),
+            },
+            {
               value: 'history',
               /* 건수는 검사 항목 탭과 같이 붙인다(#208). 받기 전에는 이름만 낸다 — 0건을 지어내지 않는다. */
               label:
@@ -1559,16 +1701,6 @@ export const InspectionStandardScreen = () => {
                     showRange
                   />
                 ),
-            },
-            {
-              value: 'drawings',
-              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). */
-              label:
-                versionDrawings.data === undefined
-                  ? t.versionSection.tabDrawings
-                  : t.versionSection.tabDrawingsCount(versionDrawings.data.length),
-              content:
-                selectedVersionId === null ? null : <VersionDrawings drawings={versionDrawings} />,
             },
           ]}
         />
@@ -1890,16 +2022,34 @@ export const InspectionStandardScreen = () => {
           changeItemDrafts((drafts) => moveItemDraft(drafts, from, to));
         }}
         onSave={handleSaveItems}
-        onCancel={() => {
-          itemsWrite.reset();
-          setItemDraftState((prev) => (prev === null ? prev : { ...prev, drafts: prev.baseline }));
-        }}
       />
     );
   };
 
   return (
     <>
+      <LeaveGuard
+        when={isAnythingDirty}
+        watchedParams={EDIT_TARGET_PARAMS}
+        bypassRef={confirmedMoveRef}
+        discardTitle={t.discard.title}
+        discardBody={discardBody}
+        showCloseButton={false}
+      />
+      {pendingMove !== null && (
+        <DiscardDialog
+          title={t.discard.title}
+          body={discardBody}
+          showCloseButton={false}
+          onStay={() => setPendingMove(null)}
+          onLeave={() => {
+            const move = pendingMove;
+            setPendingMove(null);
+            confirmedMoveRef.current = true;
+            move();
+          }}
+        />
+      )}
       {/* 탭 줄 오른쪽 — 사용 여부 칩 다음에 좌우 · 상하 배치(사용자 지시 · #208). 그린 순서대로 선다. */}
       <UsageChips
         counts={usageCounts.data ?? null}
@@ -1940,10 +2090,12 @@ export const InspectionStandardScreen = () => {
               <Button
                 leadingIcon={<Icon name="add" size={18} />}
                 disabled={createValues !== null}
-                onClick={() => {
-                  resetPlanEditing();
-                  setCreateValues(emptyPlanFormValues());
-                }}
+                onClick={() =>
+                  guardMove(() => {
+                    resetPlanEditing();
+                    setCreateValues(emptyPlanFormValues());
+                  })
+                }
               >
                 {t.actions.addPlan}
               </Button>
@@ -1969,7 +2121,7 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          onSelect={handleSelectPlan}
+          onSelect={(inspectionPlanId) => guardMove(() => handleSelectPlan(inspectionPlanId))}
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />

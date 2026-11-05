@@ -20,6 +20,12 @@ export const putaway: Translated<typeof ko.putaway> = {
     itemLabel: 'Mặt hàng',
     itemNameLabel: 'Tên mặt hàng',
     taskNoLabel: 'Số lệnh',
+    originLabel: 'Nguồn',
+    originWithNo: (origin: string, no: string) => `${origin} (${no})`,
+    origin: {
+      GOODS_RECEIPT: 'Nhập kho mua hàng',
+      REPLENISHMENT_RECEIPT: 'Bổ sung kho',
+    },
     qtyLabel: 'Số lượng',
     allowedLabel: 'Vị trí bảo quản',
     allowed: (codes: string) => `Vị trí bảo quản ${codes}`,
@@ -75,6 +81,9 @@ export const putaway: Translated<typeof ko.putaway> = {
   done: {
     count: (count: string) => `Đã cất ${count} lượt`,
     row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
+    movedPartial: (qty: string) =>
+      `Chỉ chuyển ${qty} còn lại ở khu chờ cất (phần còn lại đã xuất trước)`,
+    movedNone: 'Không còn tồn để chuyển nên đã đóng chỉ thị',
     submit: 'Xong cất hàng',
     locked: 'Cất ít nhất một lệnh thì mới hoàn tất được',
   },

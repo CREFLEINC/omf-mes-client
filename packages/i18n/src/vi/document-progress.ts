@@ -11,6 +11,17 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
   panes: {
     detail: 'Chứng từ đã chọn',
   },
+  documentTypes: {
+    PURCHASE_ORDER: 'Đơn mua hàng',
+    INBOUND_RECEIPT: 'Nhận hàng',
+    GOODS_RECEIPT: 'Nhập kho',
+    MATERIAL_ISSUE_REQUEST: 'Yêu cầu xuất kho',
+    PICKING_ORDER: 'Lấy hàng',
+    STOCK_TRANSFER: 'Yêu cầu chuyển kho',
+    SUBCONTRACT_ISSUE: 'Xuất gia công',
+    SUBCONTRACT_RECEIPT: 'Nhập gia công',
+    GOODS_ISSUE: 'Xuất kho',
+  },
   fields: {
     documentType: 'Loại chứng từ',
     status: 'Trạng thái',

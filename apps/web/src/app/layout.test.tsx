@@ -402,8 +402,11 @@ describe('AppLayout', () => {
       'href',
       '/logistics/disposal-issue',
     );
+    /* W-02-11 출고 요청 현황(003) — W-02-10 다음 탭이다(확정 항목 3). */
     expect(hubTabHrefs('출고 관리')).toEqual([
       '/production/material-issue-requests',
+      '/production/material-issue-status',
+      '/production/warehouse-replenishment',
       '/logistics/supplier-return',
       '/logistics/disposal-issue',
     ]);
@@ -432,7 +435,7 @@ describe('AppLayout', () => {
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).not.toContain('/production/material-issue-requests');
-    expect(within(sidebar).queryByRole('link', { name: '자재 불출 요청' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '추가 출고 요청' })).toBeNull();
     expect(screen.queryByRole('link', { name: '추가 자재 출고 요청' })).toBeNull();
 
     expect(within(purchase).getByRole('link', { name: '출고 관리' })).toHaveAttribute(
@@ -441,7 +444,8 @@ describe('AppLayout', () => {
     );
     const first = within(tabs).getAllByRole('link')[0];
 
-    expect(first).toHaveTextContent('자재 불출 요청');
+    /* #76 표기 통일(피처 003, 검토 1) — 「자재 불출 요청」 → 「추가 출고 요청」. */
+    expect(first).toHaveTextContent('추가 출고 요청');
     expect(first).toHaveAttribute('href', '/production/material-issue-requests');
     expect(first).toHaveAttribute('aria-current', 'page');
   });
@@ -911,8 +915,12 @@ describe('AppLayout', () => {
     expect(links.indexOf('/master-data/common-code')).toBe(
       links.indexOf('/notification/dispatch-history') + 1,
     );
-    expect(links.indexOf('/system/terminal-process-map')).toBe(
+    /* W-CO-15 — 공장 근무일 설정(003). 공통코드·조직·작업자 다음 줄이다. */
+    expect(links.indexOf('/system/plant-working-days')).toBe(
       links.indexOf('/master-data/common-code') + 1,
+    );
+    expect(links.indexOf('/system/terminal-process-map')).toBe(
+      links.indexOf('/system/plant-working-days') + 1,
     );
   });
 
@@ -1035,6 +1043,7 @@ describe('AppLayout', () => {
       '/notification/zalo-connection',
       '/notification/dispatch-history',
       '/master-data/common-code',
+      '/system/plant-working-days',
       '/system/terminal-process-map',
     ]);
   });
@@ -1055,6 +1064,8 @@ describe('AppLayout', () => {
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',
+        '/production/material-issue-status',
+        '/production/warehouse-replenishment',
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
@@ -1076,7 +1087,7 @@ describe('AppLayout', () => {
         '/quality/lot-status-transition',
         '/quality/suspicious-material-hold',
       ],
-      '작업계획': ['/production/production-orders', '/production/po-change-review'],
+      작업계획: ['/production/production-orders', '/production/po-change-review'],
       '설비 보전': [
         '/equipment/failures',
         '/equipment/maintenance-orders',
@@ -1664,7 +1675,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /*
@@ -1714,7 +1725,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
@@ -1981,18 +1992,29 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
   });
 
   /**
-   * 볼 수 있는 탭이 **하나뿐이면 탭 막대를 세우지 않는다** — 오갈 곳이 없는 막대가 화면 제목 위에
-   * 한 줄을 먹는다. 묶음 줄은 그 한 탭을 건 채 남는다.
+   * 볼 수 있는 탭이 **하나뿐이어도 탭 막대를 세운다** — 권한에 따라 같은 화면이 탭 막대로도, 경로·제목으로도
+   * 보이면 모양이 갈린다(omf-all-around#228). 막대에는 볼 수 있는 그 한 탭만 선다.
    */
-  it('볼 수 있는 탭이 하나뿐이면 탭 막대가 서지 않는다', async () => {
+  it('볼 수 있는 탭이 하나뿐이어도 그 한 탭으로 탭 막대가 선다', async () => {
     await renderWithPermissions(['W-CO-08'], { route: '/master-data/warehouse-layout' });
 
-    /* 짝 양성 — 묶음 줄은 남아 그 한 탭을 건다. */
+    /* 묶음 줄은 남아 그 한 탭을 건다. */
     expect(within(navSidebar()).getByRole('link', { name: '창고·위치' })).toHaveAttribute(
       'href',
       '/master-data/warehouse-layout',
     );
-    expect(screen.queryByRole('navigation', { name: '창고·위치' })).toBeNull();
+    expect(hubTabHrefsOf('창고·위치')).toEqual(['/master-data/warehouse-layout']);
+  });
+
+  /**
+   * 볼 수 있는 탭이 없는 묶음의 화면을 주소로 열어도 **지금 화면의 탭 하나로** 막대가 선다(omf-all-around#228).
+   * 볼 수 없는 다른 탭은 세우지 않고, 사이드바에서는 종전처럼 빠진다.
+   */
+  it('볼 수 있는 탭이 없는 묶음의 화면을 주소로 열면 지금 화면 탭 하나만 선다', async () => {
+    await renderWithPermissions(['W-06-01'], { route: '/master-data/warehouse-layout' });
+
+    expect(hubTabHrefsOf('창고·위치')).toEqual(['/master-data/warehouse-layout']);
+    expect(hasMenu('창고·위치')).toBe(false);
   });
 
   /** 탭이 하나도 남지 않은 묶음은 줄째 빠진다 — 누를 곳이 없는 줄을 세우지 않는다. */

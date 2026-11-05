@@ -171,11 +171,17 @@ import { workerAssignment } from './worker-assignment';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { handoverAlertSettings } from './handover-alert-settings';
+import { plantWorkingDays } from './plant-working-days';
+import { materialIssueStatus } from './material-issue-status';
+import { productionWarehouseReplenishment } from './production-warehouse-replenishment';
 
 export const vi: Translated<Messages> = {
   ...ko,
   alarmRecipientSettings,
   handoverAlertSettings,
+  plantWorkingDays,
+  materialIssueStatus,
+  productionWarehouseReplenishment,
   approvalInbox,
   approvalRoute,
   collectionChannel,

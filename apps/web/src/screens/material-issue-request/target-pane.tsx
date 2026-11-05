@@ -38,6 +38,16 @@ export interface TargetPaneProps {
   /** 화면이 잡은 것과 서버가 준 것을 합친 머리 오류 */
   headerErrors: Record<string, string>;
   isLocked: boolean;
+  /**
+   * 생산 창고 공장(피처 003)의 출발 생산 창고 칸. 주면 「창고」 칸을 숨기고(검토 13) 도착 위치를
+   * 「입고지(생산 현장)」 선택 칸으로 부른다(비우면 서버가 라인 생산 현장으로 채운다).
+   */
+  sourceWarehouse?: {
+    options: SelectOption[];
+    value: string;
+    note: string;
+    onChange: (value: string) => void;
+  };
 }
 
 /**
@@ -77,6 +87,7 @@ export const TargetPane = ({
   onChangeRequiredTime,
   headerErrors,
   isLocked,
+  sourceWarehouse,
 }: TargetPaneProps) => {
   const dateId = useId();
   const requiredAtErrorId = useId();
@@ -140,25 +151,47 @@ export const TargetPane = ({
           </div>
         )}
 
-        <SelectField
-          wide
-          label={t.formFields.warehouse}
-          options={warehouseOptions}
-          value={warehouseId}
-          placeholder={t.placeholders.select}
-          note={warehouseNote}
-          disabled={isLocked}
-          onChange={onChangeWarehouse}
-        />
+        {sourceWarehouse !== undefined && (
+          <SelectField
+            wide
+            label={t.sourceWarehouse.label}
+            options={sourceWarehouse.options}
+            value={sourceWarehouse.value}
+            note={sourceWarehouse.note}
+            disabled={isLocked}
+            onChange={sourceWarehouse.onChange}
+          />
+        )}
+
+        {sourceWarehouse === undefined && (
+          <SelectField
+            wide
+            label={t.formFields.warehouse}
+            options={warehouseOptions}
+            value={warehouseId}
+            placeholder={t.placeholders.select}
+            note={warehouseNote}
+            disabled={isLocked}
+            onChange={onChangeWarehouse}
+          />
+        )}
 
         <SelectField
           wide
-          required
-          label={t.formFields.destinationLocation}
+          required={sourceWarehouse === undefined}
+          label={
+            sourceWarehouse === undefined
+              ? t.formFields.destinationLocation
+              : t.sourceWarehouse.destination
+          }
           options={locationOptions}
           value={destinationLocationId}
           placeholder={t.placeholders.select}
-          note={locationNote}
+          note={
+            sourceWarehouse === undefined
+              ? locationNote
+              : (locationNote ?? t.sourceWarehouse.destinationHelp)
+          }
           error={headerErrors.destinationLocationId}
           disabled={isLocked}
           onChange={onChangeDestination}

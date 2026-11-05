@@ -4450,6 +4450,147 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/mdm/departments/{departmentId}/production-warehouses': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        departmentId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 부서 생산 창고
+     * @description 이 부서 라인의 W/O 자재가 나가는 생산 창고(공장 → 창고 코드 순). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          departmentId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 연결한 생산 창고 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['DepartmentProductionWarehouseListResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-06 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 부서 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    /**
+     * 부서 생산 창고 바꾸기
+     * @description 연결을 통째로 바꾼다 — 빈 배열이면 연결을 모두 뺀다. 활성 창고만 받고 창고 유형(불량·외부 등)으로 거르지 않는다. 부서에는 공장 축이 없어 다른 공장 창고를 함께 연결할 수 있다 — 출발 창고는 W/O 공장 창고만 후보로 본다. 연결을 빼도 이미 만든 출고 요청은 그 창고에서 그대로 나간다 — 응답 removed 가 뺀 창고마다 그런 요청 수를 알린다. dryRun=true 면 저장하지 않고 같은 응답을 낸다(연결 해제 확인 창). 400: 없거나 쓰지 않는 창고(warehouseIds INVALID). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+     */
+    put: {
+      parameters: {
+        query?: {
+          /** @description 참이면 저장하지 않고 결과만 낸다 — 뺄 창고의 활성 요청 수를 저장 전에 안내한다(US8-AC2) */
+          dryRun?: boolean;
+        };
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          departmentId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['DepartmentProductionWarehouseReplace'];
+        };
+      };
+      responses: {
+        /** @description 바뀐(dryRun 이면 바뀔) 생산 창고와 뺀 창고 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['DepartmentProductionWarehouseReplaceResponse'];
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-06 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 부서 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/mdm/departments/{departmentId}:deactivate': {
     parameters: {
       query?: never;
@@ -7009,6 +7150,270 @@ export interface paths {
     };
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}/drawings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 검사기준 버전 도면 추가
+     * @description ⭐ 서버 선행(omf-all-around#227) — 도면 한 장을 버전 끝에 붙인다. 작성중 버전만 고친다 — 상태≠작성중이면 400(code=STATE_LOCKED), 확정 버전은 신규 버전에서 고친다. 그림 파일은 지우지 않는다(신규 버전 발행이 같은 파일을 가리킬 수 있다). 도면 목록·내용은 GET /app/attachments(targetTypeCode=INSPECTION_PLAN_VERSION)·GET /app/attachments/{attachmentId}/content 로 읽는다. 근거: omf-all-around#227
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          inspectionPlanVersionId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
+             * Format: binary
+             * @description 도면 그림. PNG·JPEG 만 받는다(앞 바이트로 가린다). 10MB 까지.
+             * @example (바이너리)
+             */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 붙은 도면 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionPlanDrawing'];
+          };
+        };
+        /** @description 파일이 없거나 PNG·JPEG 가 아니다, 또는 작성중 버전이 아니다(code=STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 검사기준 버전 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 파일이 10MB 를 넘는다 */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}/drawings/{attachmentId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 검사기준 버전 도면 바꾸기
+     * @description ⭐ 서버 선행(omf-all-around#227) — 그 도면 자리의 그림을 바꾼다. 첨부 id 가 그대로라 도면 순서가 유지된다. 작성중 버전만 고친다 — 상태≠작성중이면 400(code=STATE_LOCKED), 확정 버전은 신규 버전에서 고친다. 그림 파일은 지우지 않는다(신규 버전 발행이 같은 파일을 가리킬 수 있다). 도면 목록·내용은 GET /app/attachments(targetTypeCode=INSPECTION_PLAN_VERSION)·GET /app/attachments/{attachmentId}/content 로 읽는다. 근거: omf-all-around#227
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          inspectionPlanVersionId: number;
+          attachmentId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
+             * Format: binary
+             * @description 도면 그림. PNG·JPEG 만 받는다(앞 바이트로 가린다). 10MB 까지.
+             * @example (바이너리)
+             */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 바뀐 도면 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['InspectionPlanDrawing'];
+          };
+        };
+        /** @description 파일이 없거나 PNG·JPEG 가 아니다, 또는 작성중 버전이 아니다(code=STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 검사기준 버전이거나 이 버전의 도면이 아니다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 파일이 10MB 를 넘는다 */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    /**
+     * 검사기준 버전 도면 빼기
+     * @description ⭐ 서버 선행(omf-all-around#227) — 버전에서 도면 한 장을 뺀다. 작성중 버전만 고친다 — 상태≠작성중이면 400(code=STATE_LOCKED), 확정 버전은 신규 버전에서 고친다. 그림 파일은 지우지 않는다(신규 버전 발행이 같은 파일을 가리킬 수 있다). 도면 목록·내용은 GET /app/attachments(targetTypeCode=INSPECTION_PLAN_VERSION)·GET /app/attachments/{attachmentId}/content 로 읽는다. 근거: omf-all-around#227
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          inspectionPlanVersionId: number;
+          attachmentId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 빠짐 */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description 작성중 버전이 아니다(code=STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 검사기준 버전이거나 이 버전의 도면이 아니다 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -19033,10 +19438,42 @@ export interface paths {
           requiredAtFrom?: string;
           /** @description 필요 시각 종료 */
           requiredAtTo?: string;
-          /** @description 요청번호 검색 */
+          /** @description 요청번호·W/O 번호 부분 검색(대소문자 무시). 근거: omf-all-around#232 */
           q?: string;
           page?: number;
           size?: number;
+          /** @description 표시 상태로 거른다 — 여럿은 쉼표로 이어 보낸다. WAITING 대기 · RELEASED 배포(집은 것·출고 없음) · IN_PROGRESS 진행 중 · DONE 완료(전기완료 또는 W/O 취소·마감으로 닫힘) · CANCELLED 취소 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          displayStatus?: ('WAITING' | 'RELEASED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED')[];
+          /** @description 출고 작업일 기간 시작(포함) 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          issueWorkDateFrom?: string;
+          /** @description 출고 작업일 기간 끝(포함) 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          issueWorkDateTo?: string;
+          /** @description 생산일(W/O 계획 시작의 공장 현지 날짜) 기간 시작. plantId 가 없으면 하노이 시간대로 푼다 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          productionDateFrom?: string;
+          /** @description 생산일 기간 끝(포함) 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          productionDateTo?: string;
+          /** @description 공장 — W/O 계획의 공장 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 공장 = 출발 창고의 공장(출발 창고 없는 옛 요청은 W/O 공장). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+          plantId?: number;
+          /** @description 출발 생산 창고 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          sourceWarehouseId?: number;
+          /** @description 생산계획(W/O 의 계획) 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          productionPlanId?: number;
+          /** @description 참이면 저장 부족(만들 때 줄인 양) 또는 동적 부족(예정 > 가용)이 있는 요청만 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          hasShortage?: boolean;
+          /** @description 참이면 배포 실패 원인이 남은 대기 요청만 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          releaseFailed?: boolean;
+          /** @description 요청 유형. 주지 않으면 WORK_ORDER — W-02-11 은 지금과 같은 목록이고 창고 보충 요청은 W-02-12 에서 REPLENISHMENT 로 본다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 단 replenishmentStatus 만 주면 REPLENISHMENT 로 본다. */
+          requestTypeCode?: 'WORK_ORDER' | 'REPLENISHMENT';
+          /** @description 창고 보충 요청의 구분. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+          replenishmentOriginCode?: 'DIRECT' | 'AUTO';
+          /** @description 입고지(도착 위치)의 창고 — 보충받는 생산 창고. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+          destinationWarehouseId?: number;
+          /** @description 이 품목 줄이 있는 요청만. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+          itemId?: number;
+          /** @description 창고 보충 요청 상태로 거른다(여럿은 쉼표) — 보충 요청에만 걸린다. 서버에서 걸러 쪽 나눔이 맞다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 requestTypeCode 를 비우고 이 조건을 주면 서버는 REPLENISHMENT 로 본다. */
+          replenishmentStatus?: (
+            'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'REMAINDER_CLOSED' | 'CANCELLED'
+          )[];
         };
         header?: never;
         path?: never;
@@ -19070,7 +19507,7 @@ export interface paths {
     put?: never;
     /**
      * 추가 자재 출고 요청 발행
-     * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 추가 자재 출고 요청(W-02-10)은 관리웹이고, 관리웹 셸에는 오프라인이 없다(공유계약 C-5 · W-02-10 §1). Idempotency-Key 는 필수이나 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(C-8) — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6
+     * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 추가 자재 출고 요청(W-02-10)은 관리웹이고, 관리웹 셸에는 오프라인이 없다(공유계약 C-5 · W-02-10 §1). Idempotency-Key 는 필수이나 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(C-8) — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6 ⭐ 생산 창고를 쓰는 공장(피처 003): 출발 생산 창고별로 요청을 나눠 만들고 바로 배포한다. 쓸 수 있는 양(가용 − 예정)을 넘으면 409 PLANNED_STOCK_CONFLICT — 사유가 긴급 대응·부족 보충이면 overridable=true(acceptPlannedOverride 로 다시 보내면 실제 가용까지 가져가고 다른 요청에 동적 부족이 생기며 이력이 남는다), 그 밖 사유는 쓸 수 있는 양까지만 담고(나머지 부족) 쓸 수 있는 양이 0 이면 overridable=false. 「자동」인데 어느 부서 생산 창고에도 가용 재고가 없는 자재는 noStockedWarehouse=true · overridable=false. 응답에 만든 요청 전부 requests(하나여도 배열 · 지금 방식 공장도 싣는다). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
      */
     post: {
       parameters: {
@@ -19096,7 +19533,7 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['MaterialIssueRequestDetailResponse'];
+            'application/json': components['schemas']['MaterialIssueRequestCreated'];
           };
         };
         /** @description 검증 실패. 고쳐야 풀린다 */
@@ -19126,13 +19563,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+        /** @description 저장 충돌(ConflictResponse) 또는 생산 창고 예정 재고 충돌(PlannedStockConflictResponse) */
         409: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['ConflictResponse'];
+            'application/json':
+              | components['schemas']['ConflictResponse']
+              | components['schemas']['PlannedStockConflictResponse'];
           };
         };
       };
@@ -19203,6 +19642,156 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/material-issue-requests/planned-stock': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 생산 창고 출고 예정 재고·부족
+     * @description 생산 창고의 출고 예정 재고(FR-015)와 부족(FR-016). 행 = (출발 창고, 품목) — 가용 · 예정 · 여유(가용 − 예정, 0 미만은 0) · 부족(예정 − 가용, 0 미만은 0) · 그 쌍을 잡은 요청 배분(부족은 출고 작업일이 늦은 요청부터). onlyShortage=true 면 부족 > 0 인 행만, 그리고 unsourced(재고 있는 생산 창고가 없어 요청에 넣지 못한 자재 — W/O 가 취소·마감이 아닌 것)를 함께 싣는다. 기존 …/shortage(W/O BOM 대비 부족)와 다르다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청도 출발 창고의 예정에 든다(requests[].requestTypeCode). 권한: W-02-10·W-02-11·W-02-12. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          plantId: number;
+          /** @description 출발 생산 창고 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          sourceWarehouseId?: number;
+          /** @description 품목 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          itemId?: number;
+          /** @description 부족 행만 + 미배정 자재 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+          onlyShortage?: boolean;
+          /** @description 참이면 예정 줄이 없어도 가용 잔액이 있는 (창고, 품목) 쌍을 행으로 싣는다(plannedQty 0 · requests 빈 배열). sourceWarehouseId·itemId 중 하나 이상이 있어야 한다(없으면 400 REQUIRED). 이때 행이 없는 쌍은 가용 0·예정 0 이다. W-02-12 요청 보기가 쓴다. 근거: 피처 004 생산 창고 보충 G1 보완 · omf-all-around#230 */
+          includeUnplanned?: boolean;
+          /** @description 주면 그 유형의 요청만 requests[] 에 싣고 그런 요청이 없는 행은 뺀다. 예정·부족 계산은 모든 유형 그대로다. W-02-11 부족 탭은 WORK_ORDER 를 보낸다. 근거: 피처 004 생산 창고 보충 G1 보완 · omf-all-around#230 */
+          requestTypeCode?: 'WORK_ORDER' | 'REPLENISHMENT';
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 예정·부족 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PlannedStockResponse'];
+          };
+        };
+        /** @description 검증 실패 — includeUnplanned 를 sourceWarehouseId·itemId 없이 주면 REQUIRED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-02-10 · W-02-11 · W-02-12(생산 창고 보충 — 피처 004 · omf-all-around#230) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-issue-requests/free-stock': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 창고·품목별 쓸 수 있는 양
+     * @description 창고·품목마다 집을 수 있는 가용 · 다른 요청의 출고 예정 · 쓸 수 있는 양(가용 − 예정, 0 미만은 0). 출발 창고 선택과 새 요청 상한이 쓰는 식과 같다. 출고 예정이 없는 품목도 가용이 있으면 싣고, 가용도 예정도 없는 쌍은 싣지 않는다. W-02-10 품목 줄의 남은 수량용 — 출고 예정 재고(…/planned-stock)는 예정이 잡힌 쌍만 다루므로 남은 수량에 쓰지 않는다. 근거: omf-all-around#232
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 창고(생산 창고) 번호 — 여럿은 쉼표로 이어 보낸다. 최대 20. 근거: omf-all-around#232 */
+          warehouseIds: number[];
+          /** @description 품목 번호 — 여럿은 쉼표로 이어 보낸다. 최대 200. 근거: omf-all-around#232 */
+          itemIds: number[];
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 쓸 수 있는 양 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['FreeStockResponse'];
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-02-10 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/logistics/material-issue-requests/{materialIssueRequestId}': {
     parameters: {
       query?: never;
@@ -19246,6 +19835,250 @@ export interface paths {
           };
         };
         /** @description 대상 없음 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    /**
+     * 출고 요청 수정
+     * @description 생산 창고 규칙으로 만든 요청(sourceWarehouseId 있음)만 고친다 — 지금 방식 요청은 409 STATE_LOCKED. 모든 칸은 선택. 진행(줄 집은 양 또는 기출고 > 0) 없음: 출고 작업일·출발 창고(W/O 라인 담당 부서의 이 공장 활성 생산 창고만 — 아니면 400 sourceWarehouseId INVALID)·입고지·수량을 고치고, 배포된 요청이면 피킹 지시를 닫은 뒤 출고 작업일이 공장 오늘 이하면 다시 배포, 미래면 대기로 되돌린다. 수량·출발 창고가 바뀌면 생산 창고의 쓸 수 있는 양(가용 − 다른 요청의 예정)을 넘는 양은 줄여 shortageQty 로 남긴다. 진행 있음: lines 만 — requestedQty 는 기출고 이상(400 RANGE), 늘리면 같은 상한을 건다(넘는 양은 부족), 미출고가 모두 0 이 되면 완료(POSTED · displayStatus DONE)로 옮기고 남은 피킹을 닫는다, 집었지만 출고하지 않은 양이 있으면 409 STATE_LOCKED(잠시 뒤 다시). 날짜·창고 변경은 409 STATE_LOCKED. 휴일(공장 주간 근무일 밖)로 바꾸는데 acknowledgeHoliday 가 없으면 422 HOLIDAY_ACK_REQUIRED. versionNo 가 다르면 409 저장 충돌. 이력을 남긴다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청(requestTypeCode=REPLENISHMENT)은 고칠 수 없다 — 409 STATE_LOCKED(취소하고 다시 요청한다). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          materialIssueRequestId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['MaterialIssueRequestUpdate'];
+        };
+      };
+      responses: {
+        /** @description 바뀐 요청 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialIssueRequestDetailResponse'];
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-02-11 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 요청 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌(conflictCause — 다시 읽으면 풀림) 또는 상태 잠김(errors[].code=STATE_LOCKED — 진행 있음·진행 중 피킹·지금 방식 요청·창고 보충 요청) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json':
+              components['schemas']['ConflictResponse'] | components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 휴일 확인 필요 — HOLIDAY_ACK_REQUIRED */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-issue-requests/{materialIssueRequestId}:cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        materialIssueRequestId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 출고 요청 취소
+     * @description 진행(줄 집은 양 또는 기출고 > 0) 없는 생산 창고 규칙 요청만 취소한다 — 피킹 지시도 닫고 출고 예정이 풀린다. 진행 있음·지금 방식 요청·이미 끝난 요청은 409 STATE_LOCKED. versionNo 가 다르면 409 저장 충돌. 이력을 남긴다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청도 같은 규칙으로 취소한다. 권한: W/O 요청은 W-02-11, 창고 보충 요청은 W-02-12 — 경로는 둘 중 하나로 들어오고 요청 유형이 맞지 않으면 403. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          materialIssueRequestId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['MaterialIssueRequestCancel'];
+        };
+      };
+      responses: {
+        /** @description 취소된 요청 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialIssueRequestDetailResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-02-11 — W/O 요청에 W-02-11, 창고 보충 요청에 W-02-12 가 없음 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 요청 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌(conflictCause — 다시 읽으면 풀림) 또는 상태 잠김(errors[].code=STATE_LOCKED — 진행 있음·진행 중 피킹·지금 방식 요청) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json':
+              components['schemas']['ConflictResponse'] | components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-issue-requests/{materialIssueRequestId}/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        materialIssueRequestId: number;
+      };
+      cookie?: never;
+    };
+    /**
+     * 출고 요청 이력
+     * @description 만듦·수정·취소·출고 작업일 변경·출발지·입고지 변경·배포·배포 실패·미룸·닫힘(W/O 취소·마감)·예정 가져감. 최근 것부터. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청 이력은 W-02-12, W/O 요청 이력은 W-02-11 로 읽는다(취소와 같은 유형 대칭 — 맞지 않으면 403). 근거: 피처 004 생산 창고 보충 G1 보완 · omf-all-around#230
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          materialIssueRequestId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 이력 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialIssueRequestHistoryResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W/O 요청은 W-02-11, 창고 보충 요청은 W-02-12(피처 004 · omf-all-around#230) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 요청 */
         404: {
           headers: {
             [name: string]: unknown;
@@ -20239,6 +21072,7 @@ export interface paths {
         query?: {
           /** @description 담당자로 거른다. ⛔ 「비우면 본인」이 아니다 — 모바일·POP 은 계정 로그인이 없고 서버가 사번 세션을 갖지 않아 「본인」을 풀 근거가 없다(공유계약 D-5·F-2). 현장 셸은 사번으로 GET /mdm/workers?q=<사번> 을 한 번 받아 얻은 workerId 를 여기에 싣는다. */
           assignedWorkerId?: number;
+          /** @description 구매 입고 원천은 입고 전표의 창고, 창고 보충 수령 원천은 출발 위치의 창고로 거른다(입고 지시 결과는 그대로). 단말 범위도 같은 축. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
           warehouseId?: number;
           /** @description 적치 작업 상태로 거른다 — 적치 대기(PENDING) · 적치 완료(COMPLETED) · 임시 적치 완료(COMPLETED_TEMPORARY) · 공급사 전량 반품 취소(CANCELLED). ⚠ 임시 적치는 사유가 함께 필수다(PUTAWAY_TASK_TEMPORARY_REASON). CANCELLED 는 공급사 전량 반품으로 원천 입고 LOT·위치의 잔액이 0이 될 때 남은 PENDING 지시를 서버가 자동으로 닫은 상태다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PUTAWAY_TASK_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           statusCode?: string;
@@ -20363,7 +21197,7 @@ export interface paths {
     put?: never;
     /**
      * 적치 완료
-     * @description `allowedLocations` 가 있으면 그 중 하나여야 한다 — 아니면 400 으로 막는다. 비어 있으면 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있으며, 이때도 실제 위치는 반드시 남는다. 근거: M-01-05 §5-2-1 · 사용자 결정 2026-10-29(적치 규칙 제거)
+     * @description `allowedLocations` 가 있으면 그 중 하나여야 한다 — 아니면 400 으로 막는다. 비어 있으면 이 창고의 켜진 맨 아래 위치 어디든 둘 수 있으며, 이때도 실제 위치는 반드시 남는다. 근거: M-01-05 §5-2-1 · 사용자 결정 2026-10-29(적치 규칙 제거) 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
      */
     post: {
       parameters: {
@@ -20456,7 +21290,7 @@ export interface paths {
     put?: never;
     /**
      * 임시 위치 적재
-     * @description 정상 적치와 상태가 구분된다. 사유 코드와 비고 중 적어도 하나는 있어야 한다. 근거: M-01-07 §5-5
+     * @description 정상 적치와 상태가 구분된다. 사유 코드와 비고 중 적어도 하나는 있어야 한다. 근거: M-01-07 §5-5 창고 보충 수령 원천 지시는 적치 대기에 남은 만큼만 옮기고 끝낸다(0 이면 원장 없이 완료) — 응답 movedQty. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
      */
     post: {
       parameters: {
@@ -20634,7 +21468,7 @@ export interface paths {
     };
     /**
      * 생산창고 입고 목록
-     * @description 근거: M-01-09 §3
+     * @description 근거: M-01-09 §3 W/O 없는 행(창고 보충 수령)의 단말 공장 범위는 도착 위치 창고의 공장이다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
      */
     get: {
       parameters: {
@@ -20678,7 +21512,7 @@ export interface paths {
     put?: never;
     /**
      * 생산창고 입고 확정
-     * @description 화면이 「입고 확정」 한 버튼이므로 등록이 곧 확정이다. 근거: M-01-09 §5-6
+     * @description 화면이 「입고 확정」 한 버튼이므로 등록이 곧 확정이다. 근거: M-01-09 §5-6 workOrderId 는 선택 — 비우면 창고 보충 출고만 받는다(공장은 출고의 출발 창고). destinationLocationId 는 출고 도착 위치와 같아야 한다. 권한은 그대로 M-01-09(웹 W-02-12 는 …/arrivals/{goodsIssueId}:receive). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
      */
     post: {
       parameters: {
@@ -23355,6 +24189,969 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/logistics/replenishment-items': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 관리 품목 목록
+     * @description 공장의 관리 품목과 계산 값. belowPointOnly=true 면 쓸 수 있는 양이 보충 시점 아래인 것만(서버에서 걸러 쪽을 나눈다). 정렬 = 생산 창고 코드 → 품목 코드. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          productionWarehouseId?: number;
+          itemId?: number;
+          sourceWarehouseId?: number;
+          belowPointOnly?: boolean;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['ReplenishmentItem'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * 관리 품목 추가
+     * @description 같은 생산 창고·품목이 있으면 409 DUPLICATE. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ReplenishmentItemCreate'];
+        };
+      };
+      responses: {
+        /** @description 추가됨 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReplenishmentItem'];
+          };
+        };
+        /** @description RANGE(보충 시점·유지량) · INVALID(생산 창고·품목·출고 자재 창고 규칙) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description DUPLICATE — 이미 있는 관리 품목 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-items/{replenishmentItemId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        replenishmentItemId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 관리 품목 수정
+     * @description 보충 시점·유지량·출고 자재 창고. versionNo 가 다르면 409 저장 충돌. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          replenishmentItemId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ReplenishmentItemUpdate'];
+        };
+      };
+      responses: {
+        /** @description 바뀐 관리 품목 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReplenishmentItem'];
+          };
+        };
+        /** @description RANGE · INVALID */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 관리 품목 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌(conflictCause — 다시 읽으면 풀림) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json':
+              components['schemas']['ConflictResponse'] | components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    /**
+     * 관리 품목 삭제
+     * @description 행을 지운다(이력은 감사 이벤트). 이미 나간 창고 보충 요청은 그대로 진행된다 — 그 수를 inProgressRequestCount 로 돌려준다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          replenishmentItemId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 지웠다 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReplenishmentItemDeleted'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 관리 품목 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자동 보충 실행 시각
+     * @description 공장 기본 시각(운영 정책 REPLENISHMENT_RUN_TIME — 저장은 기존 운영 정책 경로)과 생산 창고별 시각·마지막 실행. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 설정 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReplenishmentSettings'];
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 공장 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-settings/warehouses/{warehouseId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        warehouseId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * 생산 창고 실행 시각
+     * @description runTime null = 공장 기본. 오늘 이미 실행했으면 다음 실행은 내일부터다. 생산 창고가 아니면 400 INVALID. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          warehouseId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ReplenishmentWarehouseSettingUpdate'];
+        };
+      };
+      responses: {
+        /** @description 바뀐 창고 설정 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReplenishmentWarehouseSetting'];
+          };
+        };
+        /** @description RANGE(시각 형식) · INVALID(생산 창고 아님) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌(conflictCause — 다시 읽으면 풀림) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json':
+              components['schemas']['ConflictResponse'] | components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-requests': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 창고 보충 직접 요청
+     * @description 생산 창고가 자재 창고에 W/O 없이 자재를 요청한다(유형 REPLENISHMENT · 구분 DIRECT). 줄을 출고 자재 창고별로 묶어 창고마다 요청 한 장을 만들고 같은 트랜잭션에서 배포한다(피킹 지시·인계 알림, 담당자 없음). 도착 위치 = 생산 창고가 나뉘었으면 적치 대기, 아니면 창고 전체. (출고 자재 창고, 품목)의 쓸 수 있는 양(가용 − 예정)까지만 요청하고 넘는 양은 shortageQty, 0 인 줄은 만들지 않고 skippedLines 로 알린다. 모든 줄이 0 이면 409 PLANNED_STOCK_CONFLICT(overridable=false — 다른 요청의 예정분을 가져가는 길은 없다). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ReplenishmentRequestCreate'];
+        };
+      };
+      responses: {
+        /** @description 만듦 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReplenishmentRequestCreated'];
+          };
+        };
+        /** @description REQUIRED · RANGE · INVALID(생산 창고·출고 자재 창고·품목·중복 줄) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description PLANNED_STOCK_CONFLICT — 모든 줄의 쓸 수 있는 양이 0 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PlannedStockConflictResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/material-issue-requests/{materialIssueRequestId}:close-remaining': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        materialIssueRequestId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 창고 보충 요청 잔량 마감
+     * @description 일부만 출고된 창고 보충 요청의 나머지를 더 내보내지 않는다 — 상태는 그대로, closedAt·closeReasonCode=REMAINDER_CLOSED·closeReasonDetailCode·closeRemark·closedBy 를 남기고 남은 피킹 줄을 닫는다. 출고 예정에서 빠진다. 이미 나간 출고 전표는 그대로 수령한다. 409 STATE_LOCKED: W/O 요청 · 끝났거나 닫힌 요청 · 진행 없음(요청 취소를 쓴다) · 집었지만 출고하지 않은 양이 있음(먼저 출고한다). versionNo 가 다르면 409 저장 충돌. 이력을 남긴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          materialIssueRequestId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['MaterialIssueCloseRemaining'];
+        };
+      };
+      responses: {
+        /** @description 닫은 요청 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['MaterialIssueRequest'];
+          };
+        };
+        /** @description REQUIRED · INVALID(사유 코드) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 요청 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 저장 충돌(conflictCause) 또는 STATE_LOCKED */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json':
+              components['schemas']['ConflictResponse'] | components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-requests/arrivals': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 창고 보충 도착 대기
+     * @description 창고 보충 요청 피킹에서 나온 POSTED 출고 가운데 생산창고 입고(수령) 기록이 없는 것. 정렬 = 출고 시각 → 출고 id. W/O 출고는 나오지 않는다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 보충받는 생산 창고의 공장 */
+          plantId: number;
+          productionWarehouseId?: number;
+          /** @description 출고 날짜(공장 현지) 시작 */
+          goodsIssuedFrom?: string;
+          /** @description 출고 날짜(공장 현지) 끝(포함) */
+          goodsIssuedTo?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['ReplenishmentArrival'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 공장 */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-requests/arrivals/{goodsIssueId}:receive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        goodsIssueId: number;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 창고 보충 출고 웹 개별 수령
+     * @description W-02-12 도착 대기의 「하나씩 받기」. 생산창고 입고(POST /shopfloor-receipts)와 같은 서비스 함수로 확정한다 — 출고당 한 번, 전 라인 필수, 0 ≤ 받은 ≤ 출고, 차이면 사유. 도착 위치는 출고 도착 위치를 서버가 채운다. 창고 보충 출고가 아니면 400 INVALID, 이미 수령이면 409 ALREADY_RECEIVED. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          goodsIssueId: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ReplenishmentArrivalReceive'];
+        };
+      };
+      responses: {
+        /** @description 확정됨 */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShopfloorReceiptDetailResponse'];
+          };
+        };
+        /** @description 검증 실패 — INVALID(창고 보충 출고 아님·라인 대조) · RANGE · REQUIRED · LINE_REQUIRED */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description ALREADY_RECEIVED — 이미 수령한 출고 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/shopfloor-receipts:bulk': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * 창고 보충 출고 일괄 수령
+     * @description 창고 보충 출고만. 건마다 따로 확정한다(한 건이 실패해도 나머지는 확정). 줄마다 받은 수량 = 출고 수량. 결과: RECEIVED · ALREADY_RECEIVED(먼저 수령됨) · FAILED(message — 창고 보충 출고가 아님 등). 상한 100건. 권한 W-02-12. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShopfloorReceiptBulkCreate'];
+        };
+      };
+      responses: {
+        /** @description 건별 결과 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ShopfloorReceiptBulkResult'];
+          };
+        };
+        /** @description RANGE — 100건 초과 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/replenishment-runs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 자동 보충 실행 기록
+     * @description 정렬 = 실행 날짜 역순 → 창고 코드. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+     */
+    get: {
+      parameters: {
+        query: {
+          plantId: number;
+          productionWarehouseId?: number;
+          /** @description 공장 현지 날짜 */
+          runDateFrom?: string;
+          /** @description 공장 현지 날짜(포함) */
+          runDateTo?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['ReplenishmentRun'][];
+              page: components['schemas']['PageMeta'];
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — W-02-12(생산 창고 보충). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/app/approval-routes': {
     parameters: {
       query?: never;
@@ -25634,15 +27431,6 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한·단말 게이팅에 막혔다 */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
         /** @description 없다 */
         404: {
           headers: {
@@ -25787,7 +27575,7 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
-        /** @description 권한·단말 게이팅에 막혔다 */
+        /** @description 볼 수 없는 공장이다 — plantId 가 사용자 데이터 범위 밖이다(field: plantId). 기능 권한은 보지 않는다 — 로그인한 사용자는 누구나 본다 */
         403: {
           headers: {
             [name: string]: unknown;
@@ -25825,7 +27613,9 @@ export interface paths {
             | 'SHOT_CONVERSION_RATIO'
             | 'MINOR_STOP_THRESHOLD_MINUTES'
             | 'PRECHECK_CONTROL_LEVEL'
-            | 'FIFO_ENFORCEMENT_LEVEL';
+            | 'FIFO_ENFORCEMENT_LEVEL'
+            | 'WEEKLY_WORKING_DAYS'
+            | 'REPLENISHMENT_RUN_TIME';
           businessUnitId?: number;
           plantId?: number;
           itemId?: number;
@@ -25948,7 +27738,9 @@ export interface paths {
             | 'SHOT_CONVERSION_RATIO'
             | 'MINOR_STOP_THRESHOLD_MINUTES'
             | 'PRECHECK_CONTROL_LEVEL'
-            | 'FIFO_ENFORCEMENT_LEVEL';
+            | 'FIFO_ENFORCEMENT_LEVEL'
+            | 'WEEKLY_WORKING_DAYS'
+            | 'REPLENISHMENT_RUN_TIME';
           businessUnitId?: number;
           plantId?: number;
           itemId?: number;
@@ -26027,6 +27819,15 @@ export interface paths {
         };
         /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
         401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음. 근거: W-05-01 · W-CO-15(공장 근무일 설정)는 policyCode=WEEKLY_WORKING_DAYS 인 행만 읽는다 — 피처 003 · omf-all-around#66 · W-02-12(생산 창고 보충)는 policyCode=REPLENISHMENT_RUN_TIME 인 행만 — 피처 004 · omf-all-around#230 */
+        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -26368,15 +28169,6 @@ export interface paths {
         };
         /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
         401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ErrorResponse'];
-          };
-        };
-        /** @description 권한·단말 게이팅에 막혔다 */
-        403: {
           headers: {
             [name: string]: unknown;
           };
@@ -30701,10 +32493,10 @@ export interface paths {
             [name: string]: unknown;
           };
           content: {
-            'application/json': components['schemas']['WorkOrder'];
+            'application/json': components['schemas']['WorkOrderReleaseResult'];
           };
         };
-        /** @description 검증 실패. 고쳐야 풀린다 */
+        /** @description 검증 실패. 고쳐야 풀린다. 생산 창고를 쓰는 공장(피처 003)은 빠진 기준정보를 errors 에 모아 낸다 — LINE_DEPARTMENT_MISSING(productionLineId · 라인에 담당 부서 없음) · PRODUCTION_WAREHOUSE_MISSING(departmentId · 부서에 이 공장의 활성 생산 창고 없음) · PRODUCTION_FLOOR_LOCATION_MISSING(productionLineId · 라인에 생산 현장 위치 없음). 재고 부족은 배포를 막지 않는다. 근거: omf-all-around#66 */
         400: {
           headers: {
             [name: string]: unknown;
@@ -32139,7 +33931,7 @@ export interface paths {
     put?: never;
     /**
      * 특채 적용
-     * @description 승인된 특채를 적용한다 — 한 트랜잭션에서 특채 APPROVED · 부적합에 처분 판정(CONCESSION) 1건 · LOT 정상(C25) · 수입검사 대기 보류 해제(CONCESSION_APPROVED). 결재가 진행 중이면 400 APPROVAL_IN_PROGRESS, 반려면 특채를 REJECTED 로 닫고 200(statusCode=REJECTED · LOT 은 그대로). 이미 적용·반려된 특채는 400 STATE_LOCKED. 근거: omf-all-around#84 (서버 선행 · 장부 P-79)
+     * @description 승인된 특채를 적용한다 — 한 트랜잭션에서 특채 APPROVED · 부적합에 처분 판정(CONCESSION) 1건 · LOT 정상(C25) · 수입검사 대기 보류 해제(CONCESSION_APPROVED). ⭐ 일부 특채(승인 수량 < 부적합의 남은 수량)면 LOT 을 나눈다 — 나머지는 선별처럼 자식 LOT(불량 · C24) + 새 부적합(판정 대기)으로 떼고, 판정 수량은 남은 수량 전체라 원 부적합이 닫힌다. 원 LOT 에 재고가 있으면 같은 위치에서 원장으로 나누므로 businessDate 가 필요하다(없으면 400 businessDate). LOT 이 여럿인 부적합 · 재고가 여러 위치인 LOT 은 일부 특채를 400 STATE_LOCKED 로 막는다. 결재가 진행 중이면 400 APPROVAL_IN_PROGRESS, 반려면 특채를 REJECTED 로 닫고 200(statusCode=REJECTED · LOT 은 그대로). 이미 적용·반려된 특채는 400 STATE_LOCKED. 근거: omf-all-around#84 · #207 (장부 P-79)
      */
     post: {
       parameters: {
@@ -32153,7 +33945,11 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody?: {
+        content: {
+          'application/json': components['schemas']['ConcessionApply'];
+        };
+      };
       responses: {
         /** @description 적용됨 */
         200: {
@@ -32491,7 +34287,7 @@ export interface paths {
           decidedTo?: string;
           /** @description 보관 창고로 거른다. 형제 오퍼레이션 GET /quality/nonconformances 와 같은 축이다 — 응답을 화면이 거르는 것으로는 성립하지 않는다(목록이 페이지 단위다) */
           warehouseId?: number;
-          /** @description 재고로 되돌릴 수 있는 결정만. 처분이 정상이거나, 처분이 재작업이고 그 재작업이 끝난 것을 서버가 한 축으로 판정해 낸다 — 화면이 두 조건을 각각 질의해 합치지 않는다(공유계약 L-2). ⛔ 폐기 결정은 포함하지 않는다 */
+          /** @description 재고로 되돌릴 수 있는 결정만. 처분이 정상이거나, 특채(CONCESSION)이고 그 LOT 에 불량창고 재고가 남았거나(입고 전 특채·이미 옮긴 특채는 빠진다 · omf-all-around#207), 처분이 재작업이고 그 재작업이 끝난 것을 서버가 한 축으로 판정해 낸다 — 화면이 두 조건을 각각 질의해 합치지 않는다(공유계약 L-2). ⛔ 폐기 결정은 포함하지 않는다 */
           reinstatable?: boolean;
           /** @description 후속 처리가 남은 결정만. ⭐ W-04-10(폐기 요청)·W-04-11(재고 재등록)의 진입 목록이 이 오퍼레이션이다 — 처리한 건이 계속 남으면 같은 건을 두 번 처리한다. P-04-03(재작업 실적)은 진입이 02 W/O 목록이고 이 값을 상세의 「미처리 수량」으로 쓴다(P-04-03 §3 ④·§6). 근거: W-04-07 §5-5(부분 처분이 정상) */
           followUpPending?: boolean;
@@ -35151,6 +36947,8 @@ export interface paths {
           workOrderId?: number;
           itemId?: number;
           statusCode?: 'IN_PROGRESS' | 'COMPLETED';
+          /** @description 출력 양식(OP향 · PP향 제품검사표)으로 거른다 — 검사표 기준의 양식이다(omf-all-around#217). */
+          formLayoutCode?: 'OP' | 'PP';
           createdFrom?: string;
           createdTo?: string;
           page?: number;
@@ -36025,7 +37823,7 @@ export interface paths {
     put?: never;
     /**
      * 재고 재등록 확정
-     * @description 판정이 끝난 반품품을 판매 가능 재고로 되돌린다. 반출·도착·보류 해제·Lot Status 전이를 한 트랜잭션으로 처리한다 — 이 화면의 「재등록 확정」은 한 번의 확정이고 중간 상태를 남기지 않는다(공유계약 B-8 규칙 1 · B-8-1). ⭐ 이 경로에서만 반영 목적의 Hold → 정상 전이가 허용된다 — 「Release 로 할 것인가」를 정하는 것은 W-03-02·W-04-03 이고 이 경로는 그 결정을 재고에 반영할 뿐이다(공유계약 B-13). ⛔ 창고 간 이동의 2단계 스캔(POST /logistics/stock-transfers → :arrive)을 쓰지 않는다 — 재등록은 이동 중 구간이 없는 한 번의 행위라 그 형태가 맞지 않는다. 근거: W-04-11 §0 · §5-3 · §5-6
+     * @description 판정이 끝난 반품품을 판매 가능 재고로 되돌린다. 반출·도착·보류 해제·Lot Status 전이를 한 트랜잭션으로 처리한다 — 이 화면의 「재등록 확정」은 한 번의 확정이고 중간 상태를 남기지 않는다(공유계약 B-8 규칙 1 · B-8-1). ⭐ 이 경로에서만 반영 목적의 Hold → 정상 전이가 허용된다 — 「Release 로 할 것인가」를 정하는 것은 W-03-02·W-04-03 이고 이 경로는 그 결정을 재고에 반영할 뿐이다(공유계약 B-13). ⛔ 창고 간 이동의 2단계 스캔(POST /logistics/stock-transfers → :arrive)을 쓰지 않는다 — 재등록은 이동 중 구간이 없는 한 번의 행위라 그 형태가 맞지 않는다. 근거: W-04-11 §0 · §5-3 · §5-6 ⭐ 처분이 특채(CONCESSION)여도 받는다 — 특채 LOT 의 불량창고 재고를 정상 창고로 옮기며 정상·가용으로 등록한다. 특채는 보류를 고르지 않고(lotHoldId·releaseReasonCode 비움) 보류 해제·LOT 전이를 하지 않으며(LOT 은 적용 때 이미 정상), 한도는 판정 수량이 아니라 특채 승인 수량이다. 근거: omf-all-around#207
      */
     post: {
       parameters: {
@@ -41518,7 +43316,7 @@ export interface components {
        */
       productionResultManaged: boolean;
       /**
-       * @description PQC opt-in 의 근거 필드(결정 07) — 끄면 PQC 생략
+       * @description PQC opt-in 의 근거 필드(결정 07) — 끄면 PQC 생략 ⭐ 그 품목 · 공정 PQC 검사 기준(품목 · 공정이 지정된 사용 중 PQC 기준)의 defaultSkip 과 반대 값으로 연동된다 — 공정 라인을 저장할 때 이 값을 바꾼 공정(새 공정은 켠 경우만)은 서버가 같은 트랜잭션에서 그 기준들의 defaultSkip 을 맞추고(어긋난 기준만 · 기준 versionNo +1), 기준이 없으면 품목 + 공정 PQC 기준(버전 없는 헤더 · 코드 PQC-품목코드-공정코드)을 만든다. 공정이 지정된 PQC 기준을 저장하면 작성중 Rev 는 이 값이 바로 맞춰지고, 확정 Rev 는 값을 맞춘 새 확정 Rev 가 생기고 옛 Rev 는 폐기된다(사용자 결정 2026-11-04).
        * @default false
        * @example false
        */
@@ -41606,7 +43404,7 @@ export interface components {
        */
       productionResultManaged: boolean;
       /**
-       * @description PQC opt-in 의 근거 필드(결정 07) — 끄면 PQC 생략
+       * @description PQC opt-in 의 근거 필드(결정 07) — 끄면 PQC 생략 ⭐ 그 품목 · 공정 PQC 검사 기준(품목 · 공정이 지정된 사용 중 PQC 기준)의 defaultSkip 과 반대 값으로 연동된다 — 공정 라인을 저장할 때 이 값을 바꾼 공정(새 공정은 켠 경우만)은 서버가 같은 트랜잭션에서 그 기준들의 defaultSkip 을 맞추고(어긋난 기준만 · 기준 versionNo +1), 기준이 없으면 품목 + 공정 PQC 기준(버전 없는 헤더 · 코드 PQC-품목코드-공정코드)을 만든다. 공정이 지정된 PQC 기준을 저장하면 작성중 Rev 는 이 값이 바로 맞춰지고, 확정 Rev 는 값을 맞춘 새 확정 Rev 가 생기고 옛 Rev 는 폐기된다(사용자 결정 2026-11-04).
        * @default false
        * @example false
        */
@@ -41944,6 +43742,11 @@ export interface components {
        * @enum {string}
        */
       sourceSystemCode?: 'ERP' | 'MES';
+      /**
+       * @description 이 부서에 연결한 생산 창고 수(W-06-06 부서 목록 「생산 창고」 열). 목록(GET /mdm/departments)에만 싣는다 — 상세·쓰기 응답에는 없다. 근거: 피처 003 · omf-all-around#66
+       * @example 2
+       */
+      productionWarehouseCount?: number;
     };
     /** @description 부서 등록 요청. isActive 는 받지 않는다. 근거: W-06-06 §4-C·§5-1 */
     DepartmentCreate: {
@@ -42160,7 +43963,7 @@ export interface components {
        */
       shelfLifeDays?: number | null;
       /**
-       * @description MES 확장 · W-01-01 IQC 대상 판정의 입력 ⭐ 그 품목 전용 IQC 검사 기준(품목이 지정된 사용 중 IQC 기준)의 defaultSkip 과 반대 값으로 연동된다 — 이 칸을 저장하면 서버가 같은 트랜잭션에서 그 기준들의 defaultSkip 을 맞추고(어긋난 기준만 · 기준 versionNo +1), 기준을 저장하면 이 칸이 맞춰진다. 꺼져 있어도 전용 IQC 기준이 기본 생략이면 입하가 생략 의뢰(skipBasisCode=DEFAULT)를 남긴다. omf-all-around#215
+       * @description MES 확장 · W-01-01 IQC 대상 판정의 입력 ⭐ 그 품목 전용 IQC 검사 기준(품목이 지정된 사용 중 IQC 기준)의 defaultSkip 과 반대 값으로 연동된다 — 이 칸을 저장하면 서버가 같은 트랜잭션에서 그 기준들의 defaultSkip 을 맞추고(어긋난 기준만 · 기준 versionNo +1), 기준을 저장하면 이 칸이 맞춰진다. 꺼져 있어도 전용 IQC 기준이 기본 생략이면 입하가 생략 의뢰(skipBasisCode=DEFAULT)를 남긴다. 전용 IQC 기준이 없는 품목에서 이 값을 바꾸면 서버가 같은 트랜잭션에서 그 품목 전용 IQC 기준(버전 없는 헤더 · 코드 IQC-품목코드)을 만들어 설정을 고정한다. 전용 기준이 없는 품목은 「전 품목 공통」 IQC 기준을 저장할 때 그 defaultSkip 의 반대 값으로 맞춰진다(사용자 결정 2026-11-04). omf-all-around#215
        * @default false
        * @example true
        */
@@ -42238,7 +44041,7 @@ export interface components {
        */
       shelfLifeDays?: number | null;
       /**
-       * @description ⭐ 그 품목 전용 IQC 검사 기준(품목이 지정된 사용 중 IQC 기준)의 defaultSkip 과 반대 값으로 연동된다 — 이 칸을 저장하면 서버가 같은 트랜잭션에서 그 기준들의 defaultSkip 을 맞추고(어긋난 기준만 · 기준 versionNo +1), 기준을 저장하면 이 칸이 맞춰진다. 꺼져 있어도 전용 IQC 기준이 기본 생략이면 입하가 생략 의뢰(skipBasisCode=DEFAULT)를 남긴다. omf-all-around#215
+       * @description ⭐ 그 품목 전용 IQC 검사 기준(품목이 지정된 사용 중 IQC 기준)의 defaultSkip 과 반대 값으로 연동된다 — 이 칸을 저장하면 서버가 같은 트랜잭션에서 그 기준들의 defaultSkip 을 맞추고(어긋난 기준만 · 기준 versionNo +1), 기준을 저장하면 이 칸이 맞춰진다. 꺼져 있어도 전용 IQC 기준이 기본 생략이면 입하가 생략 의뢰(skipBasisCode=DEFAULT)를 남긴다. 전용 IQC 기준이 없는 품목에서 이 값을 바꾸면 서버가 같은 트랜잭션에서 그 품목 전용 IQC 기준(버전 없는 헤더 · 코드 IQC-품목코드)을 만들어 설정을 고정한다. 전용 기준이 없는 품목은 「전 품목 공통」 IQC 기준을 저장할 때 그 defaultSkip 의 반대 값으로 맞춰진다(사용자 결정 2026-11-04). omf-all-around#215
        * @example true
        */
       inspectionRequired: boolean;
@@ -42630,7 +44433,7 @@ export interface components {
        */
       approvedAt?: string | null;
       /**
-       * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 공통 기준(itemId 없음)·PQC·OQC 는 연동하지 않는다. omf-all-around#215
+       * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 품목이 빈(전 품목 공통) IQC 기준은 생성·defaultSkip 변경·다시 사용 때 전용 IQC 기준(사용 중)이 없는 모든 품목의 inspectionRequired 를 반대 값으로 맞춘다(어긋난 품목만 · 품목 versionNo +1 · 이름만 바꾼 저장은 건드리지 않는다 · 사용자 결정 2026-11-04). 공정이 지정된 PQC 기준(사용 중)은 생성 · defaultSkip(또는 품목 · 공정 · 라우팅) 변경 · 다시 사용 때 라우팅 공정의 inspectionManaged 를 반대 값으로 맞춘다 — 품목이 있으면 그 품목 라우팅(라우팅이 있으면 그 라우팅만)의 그 공정, 품목이 비면 그 공정에 품목 전용 PQC 기준이 없는 품목의 라우팅 그 공정. 작성중 Rev 는 이 칸을 바로 고치고(어긋난 공정만 · 공정 versionNo +1), 확정 Rev 는 새 Rev 로 복사해 바로 확정한 뒤 옛 Rev 를 폐기한다 — 기본 Rev 지정과 옛 Rev 를 가리키던 검사 기준의 routingId 도 새 Rev 로 옮긴다(기준 versionNo +1). 폐기 Rev 는 건드리지 않는다. 공정이 빈 PQC 기준은 연동하지 않는다(사용자 결정 2026-11-04). OQC 는 연동하지 않는다. omf-all-around#215
        * @default false
        * @example false
        */
@@ -42673,6 +44476,7 @@ export interface components {
       itemId?: number | null;
       /**
        * Format: int64
+       * @description 공정. ⛔ inspectionTypeCode=PQC 면 필수 — 비우면 400 REQUIRED(field: processId). 수정 본문에 없으면 저장된 값을 본다(사용자 결정 2026-11-04 · 라우팅 「검사 관리」 연동이 공정으로 걸린다). IQC · OQC 는 비워도 된다
        * @example 1001
        */
       processId?: number | null;
@@ -42687,7 +44491,7 @@ export interface components {
        */
       inspectionTypeCode: string;
       /**
-       * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 공통 기준(itemId 없음)·PQC·OQC 는 연동하지 않는다. omf-all-around#215
+       * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 품목이 빈(전 품목 공통) IQC 기준은 생성·defaultSkip 변경·다시 사용 때 전용 IQC 기준(사용 중)이 없는 모든 품목의 inspectionRequired 를 반대 값으로 맞춘다(어긋난 품목만 · 품목 versionNo +1 · 이름만 바꾼 저장은 건드리지 않는다 · 사용자 결정 2026-11-04). 공정이 지정된 PQC 기준(사용 중)은 생성 · defaultSkip(또는 품목 · 공정 · 라우팅) 변경 · 다시 사용 때 라우팅 공정의 inspectionManaged 를 반대 값으로 맞춘다 — 품목이 있으면 그 품목 라우팅(라우팅이 있으면 그 라우팅만)의 그 공정, 품목이 비면 그 공정에 품목 전용 PQC 기준이 없는 품목의 라우팅 그 공정. 작성중 Rev 는 이 칸을 바로 고치고(어긋난 공정만 · 공정 versionNo +1), 확정 Rev 는 새 Rev 로 복사해 바로 확정한 뒤 옛 Rev 를 폐기한다 — 기본 Rev 지정과 옛 Rev 를 가리키던 검사 기준의 routingId 도 새 Rev 로 옮긴다(기준 versionNo +1). 폐기 Rev 는 건드리지 않는다. 공정이 빈 PQC 기준은 연동하지 않는다(사용자 결정 2026-11-04). OQC 는 연동하지 않는다. omf-all-around#215
        * @default false
        * @example false
        */
@@ -42721,6 +44525,7 @@ export interface components {
       itemId?: number | null;
       /**
        * Format: int64
+       * @description 공정. ⛔ inspectionTypeCode=PQC 면 필수 — 비우면 400 REQUIRED(field: processId). 수정 본문에 없으면 저장된 값을 본다(사용자 결정 2026-11-04 · 라우팅 「검사 관리」 연동이 공정으로 걸린다). IQC · OQC 는 비워도 된다
        * @example 1001
        */
       processId?: number | null;
@@ -42735,7 +44540,7 @@ export interface components {
        */
       inspectionTypeCode: string;
       /**
-       * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 공통 기준(itemId 없음)·PQC·OQC 는 연동하지 않는다. omf-all-around#215
+       * @description 기본 생략 — 검사 유형(IQC·PQC·OQC) 공통. 켜진 기준이 걸리는 입하 LOT(IQC)·작업지시(PQC)·출하작업지시(OQC)는 검사할 의뢰를 세우지 않고 생략(SKIPPED · skipBasisCode=DEFAULT) 기록만 남긴다. 요청에 없으면 pqcSkipAllowed 를 그 값으로 읽는다. 서버 선행 · 장부 P-152 · omf-all-around#212 ⭐ 품목이 지정된 IQC 기준이면 그 품목의 inspectionRequired 와 반대 값으로 연동된다 — 저장하거나 다시 사용(:activate)하면 서버가 같은 트랜잭션에서 품목 값을 맞춘다(어긋난 경우만 · 품목 versionNo +1). 품목이 빈(전 품목 공통) IQC 기준은 생성·defaultSkip 변경·다시 사용 때 전용 IQC 기준(사용 중)이 없는 모든 품목의 inspectionRequired 를 반대 값으로 맞춘다(어긋난 품목만 · 품목 versionNo +1 · 이름만 바꾼 저장은 건드리지 않는다 · 사용자 결정 2026-11-04). 공정이 지정된 PQC 기준(사용 중)은 생성 · defaultSkip(또는 품목 · 공정 · 라우팅) 변경 · 다시 사용 때 라우팅 공정의 inspectionManaged 를 반대 값으로 맞춘다 — 품목이 있으면 그 품목 라우팅(라우팅이 있으면 그 라우팅만)의 그 공정, 품목이 비면 그 공정에 품목 전용 PQC 기준이 없는 품목의 라우팅 그 공정. 작성중 Rev 는 이 칸을 바로 고치고(어긋난 공정만 · 공정 versionNo +1), 확정 Rev 는 새 Rev 로 복사해 바로 확정한 뒤 옛 Rev 를 폐기한다 — 기본 Rev 지정과 옛 Rev 를 가리키던 검사 기준의 routingId 도 새 Rev 로 옮긴다(기준 versionNo +1). 폐기 Rev 는 건드리지 않는다. 공정이 빈 PQC 기준은 연동하지 않는다(사용자 결정 2026-11-04). OQC 는 연동하지 않는다. omf-all-around#215
        * @default false
        * @example false
        */
@@ -44316,8 +46121,8 @@ export interface components {
        */
       y: number;
       /**
-       * @description 표식 너비 — 도면 폭 대비 비율(x 와 같은 단위). 기본값 0.05
-       * @example 0.05
+       * @description 표식 너비 — 도면 폭 대비 비율(x 와 같은 단위). 기본값 0.12
+       * @example 0.12
        */
       width: number;
       /**
@@ -44331,7 +46136,7 @@ export interface components {
        */
       rotation: number;
     };
-    /** @description WarehouseLayoutMarker 에서 width·height·rotation 을 선택으로 바꾼 저장 요청 항목. 빼면 서버가 기본값(0.05 · 0.05 · 0)을 채워 저장한다 */
+    /** @description WarehouseLayoutMarker 에서 width·height·rotation 을 선택으로 바꾼 저장 요청 항목. 빼면 서버가 기본값(0.12 · 0.05 · 0)을 채워 저장한다 */
     WarehouseLayoutMarkerUpsert: {
       /**
        * Format: int64
@@ -44349,9 +46154,9 @@ export interface components {
        */
       y: number;
       /**
-       * @description 표식 너비 — 도면 폭 대비 비율(x 와 같은 단위). 기본값 0.05
-       * @default 0.05
-       * @example 0.05
+       * @description 표식 너비 — 도면 폭 대비 비율(x 와 같은 단위). 기본값 0.12
+       * @default 0.12
+       * @example 0.12
        */
       width?: number;
       /**
@@ -46000,6 +47805,93 @@ export interface components {
        *     ]
        */
       itemIds: number[];
+    };
+    DepartmentProductionWarehouse: {
+      /**
+       * Format: int64
+       * @example 12
+       */
+      warehouseId: number;
+      /** @example PW-A */
+      warehouseCode: string;
+      /** @example 생산 창고 A */
+      warehouseName: string;
+      /**
+       * Format: int64
+       * @example 1
+       */
+      plantId: number;
+    };
+    DepartmentProductionWarehouseListResponse: {
+      items: components['schemas']['DepartmentProductionWarehouse'][];
+    };
+    /** @description 연결할 생산 창고 전부. 같은 id 는 한 번으로 센다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+    DepartmentProductionWarehouseReplace: {
+      /**
+       * @example [
+       *       12,
+       *       13
+       *     ]
+       */
+      warehouseIds: number[];
+    };
+    DepartmentProductionWarehouseRemoved: {
+      /**
+       * Format: int64
+       * @example 13
+       */
+      warehouseId: number;
+      /**
+       * @description 이 창고가 출발지인 이 부서(W/O 생산 라인의 부서) 출고 요청 중 대기·배포이고 닫히지 않은 것의 수. 저장해도 그 요청은 그대로 진행된다
+       * @example 2
+       */
+      activeRequestCount: number;
+    };
+    DepartmentProductionWarehouseReplaceResponse: {
+      items: components['schemas']['DepartmentProductionWarehouse'][];
+      /** @description 이번에 연결에서 빠지는 창고(창고 id 순). 없으면 빈 배열 */
+      removed: components['schemas']['DepartmentProductionWarehouseRemoved'][];
+    };
+    /** @description 검사기준 버전 도면 한 장 — 첨부(Attachment, targetTypeCode=INSPECTION_PLAN_VERSION)와 같은 모양이다. omf-all-around#227 */
+    InspectionPlanDrawing: {
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      attachmentId: number;
+      /**
+       * @example INSPECTION_PLAN_VERSION
+       * @enum {string}
+       */
+      targetTypeCode: 'INSPECTION_PLAN_VERSION';
+      /**
+       * Format: int64
+       * @description 검사기준 버전 id
+       * @example 1001
+       */
+      targetId: number;
+      /** @example drawing.png */
+      fileName: string;
+      /**
+       * @example image/png
+       * @enum {string}
+       */
+      contentType: 'image/png' | 'image/jpeg';
+      /**
+       * Format: int64
+       * @example 204800
+       */
+      byteSize: number;
+      /**
+       * Format: date-time
+       * @example 2026-11-03T09:12:00+07:00
+       */
+      uploadedAt: string;
+      /**
+       * Format: int64
+       * @example 1001
+       */
+      uploadedBy?: number | null;
     };
     /** @description 사용자 등록 응답. temporaryPassword는 요청에 password를 담지 «않았을» 때만 실린다 — 담았다면 그 칸 자체가 없다. */
     AppUserCreated: components['schemas']['AppUser'] & {
@@ -49234,7 +51126,7 @@ export interface components {
       /** @example 비고 문자열 */
       remarks?: string | null;
     };
-    /** @description 자재 출고 요청. 01 화면은 읽기만 한다 — 요청을 만드는 것은 생산 도메인이다. 근거: M-01-08 */
+    /** @description 자재 출고 요청. 01 화면은 읽기만 한다 — 요청을 만드는 것은 생산 도메인이다. 근거: M-01-08 목록·상세·발행·수정·취소 응답이 같은 모양이다(이름·화면 값 포함). 저장 충돌 보호는 versionNo 로 하고 ETag 를 쓰지 않는다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
     MaterialIssueRequest: {
       /**
        * Format: int64
@@ -49245,9 +51137,10 @@ export interface components {
       issueRequestNo: string;
       /**
        * Format: int64
+       * @description 창고 보충 요청(requestTypeCode=REPLENISHMENT)이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example 1001
        */
-      workOrderId: number;
+      workOrderId: number | null;
       /**
        * Format: int64
        * @example 1001
@@ -49258,7 +51151,7 @@ export interface components {
        * @example 2026-08-06T09:12:00+09:00
        */
       requiredAt?: string | null;
-      /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
+      /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). WAITING(대기) = 출고 작업일 00:00 전의 계획 기반 요청 — 피킹 지시가 없다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
       statusCode: string;
       /**
        * Format: int64
@@ -49272,6 +51165,126 @@ export interface components {
       reasonCode?: string | null;
       /** @example 비고 문자열 */
       remarks?: string | null;
+      /**
+       * Format: int64
+       * @description 출발 생산 창고. null = 이 기능 전 요청이거나 생산 창고를 쓰지 않는 공장의 요청 — 출고 예정 재고에 들지 않는다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       * @example 12
+       */
+      sourceWarehouseId?: number | null;
+      /**
+       * Format: date
+       * @description 출고 작업일(공장 현지 날짜) — 생산일의 직전 근무일. 이날 공장 현지 00:00 에 대기 요청이 배포된다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       * @example 2026-11-13
+       */
+      issueWorkDate?: string | null;
+      /**
+       * Format: date-time
+       * @description 대기 → 배포 시각. 즉시 배포도 기록한다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       */
+      releasedAt?: string | null;
+      /** @description 마지막 배포 실패 원인. 성공하면 null. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      releaseErrorText?: string | null;
+      /**
+       * Format: date-time
+       * @description 진행된 요청의 미출고분을 W/O 취소·마감으로 닫은 시각. 상태는 그대로다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       */
+      closedAt?: string | null;
+      /**
+       * @description 닫힌 사유. REMAINDER_CLOSED = 창고 보충 요청 잔량 마감(피처 004). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 · 피처 004 · omf-all-around#230
+       * @enum {string|null}
+       */
+      closeReasonCode?: 'WO_CANCELLED' | 'WO_CLOSED' | 'REMAINDER_CLOSED' | null;
+      /**
+       * @description 요청 유형. WORK_ORDER = W/O 자재 출고 요청, REPLENISHMENT = 창고 보충 요청(W/O 없음 · 생산 창고가 자재 창고에 요청). 시스템 소유 값. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @enum {string}
+       */
+      requestTypeCode?: 'WORK_ORDER' | 'REPLENISHMENT';
+      /**
+       * @description 창고 보충 요청의 구분 — DIRECT(직접) · AUTO(자동). W/O 요청은 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @enum {string|null}
+       */
+      replenishmentOriginCode?: 'DIRECT' | 'AUTO' | null;
+      /** @description 잔량 마감 사유(공통코드 REPLENISHMENT_CLOSE_REASON). closeReasonCode=REMAINDER_CLOSED 일 때만. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      closeReasonDetailCode?: string | null;
+      /** @description 잔량 마감 메모. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      closeRemark?: string | null;
+      /**
+       * Format: int64
+       * @description 잔량 마감한 사용자. W/O 취소·마감으로 닫힌 요청은 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       */
+      closedBy?: number | null;
+      /** @description 저장 충돌 보호 버전 — PUT·:cancel 본문 versionNo 로 되돌려 보낸다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      versionNo?: number;
+      /**
+       * @description 화면 표시 상태(파생 · 저장하지 않음). closedAt 이 있으면 DONE — closeReasonCode 를 함께 보인다. 요청 줄이 모두 0 인 배포 요청은 피킹이 없어 RELEASED 다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       * @enum {string}
+       */
+      displayStatus?: 'WAITING' | 'RELEASED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+      /** @description 출발 생산 창고 이름(목록·상세 표기용). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      sourceWarehouseName?: string | null;
+      /** @description W/O 번호(목록 표기용). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      workOrderNo?: string | null;
+      /**
+       * Format: date
+       * @description 생산일 — W/O 계획 시작의 공장 현지 날짜. 계획 시작이 없으면 null. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       */
+      productionDate?: string | null;
+      /**
+       * Format: int64
+       * @description W/O 의 생산계획. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       */
+      productionPlanId?: number | null;
+      /** @description 생산계획 번호(없으면 null). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 창고 보충 요청이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      productionPlanNo?: string | null;
+      /** @description 입고지 이름. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      destinationLocationName?: string;
+      /**
+       * Format: int64
+       * @description 입고지(도착 위치)의 창고 — 창고 보충 요청에서는 보충받는 생산 창고(목록·상세 표기용 · 파생). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       */
+      destinationWarehouseId?: number;
+      /** @description 입고지 창고 이름(목록·상세 표기용 · 파생). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      destinationWarehouseName?: string;
+      /** @description 줄 수(목록 「품목 수」). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      lineCount?: number;
+      /** @description 줄 shortageQty(만들 때 줄인 양)의 합 — 목록이 줄을 싣지 않으므로. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      shortageQtyTotal?: number;
+      /** @description 줄에 배분된 동적 부족(예정 > 가용)의 합. 화면 「부족 N」 = shortageQtyTotal + 이 값. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      dynamicShortageQtyTotal?: number;
+      /**
+       * @description 창고 보충 요청의 상태 — DISPATCHED 배포(배포 실패로 남은 대기 포함) · IN_PROGRESS 진행 중 · COMPLETED 완료 · REMAINDER_CLOSED 잔량 마감 · CANCELLED 취소. W/O 요청은 null. displayStatus 는 003 그대로(완료·마감 둘 다 DONE). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @enum {string|null}
+       */
+      replenishmentStatus?:
+        'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'REMAINDER_CLOSED' | 'CANCELLED' | null;
+      /** @description 창고 보충 요청이 한 품목일 때만 수량 합 — 두 품목 이상이거나 W/O 요청이면 null(단위가 다른 줄을 더하지 않는다). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      qtySummary?: {
+        requestedQty: number;
+        issuedQty: number;
+        /** @description 잔량 마감한 요청의 요청 − 출고, 아니면 0 */
+        closedQty: number;
+        uomCode: string;
+      } | null;
+      /** @description 창고 보충 요청의 수령 요약(FR-023). W/O 요청은 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      receiptSummary?: {
+        /** @description 그 요청 피킹에서 나온 POSTED 출고 전표 수 */
+        issuedCount: number;
+        /** @description 그중 생산창고 입고(수령) 기록이 있는 수 */
+        receivedCount: number;
+      } | null;
+      /** @description 상세(GET …/{id}·수정·취소 응답)에만 — 창고 보충 요청의 출고 전표 목록(출고 시각 순). W/O 요청은 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      goodsIssues?:
+        | {
+            /** Format: int64 */
+            goodsIssueId: number;
+            goodsIssueNo: string;
+            /** Format: date-time */
+            issuedAt: string;
+            received: boolean;
+            /** Format: int64 */
+            shopfloorReceiptId?: number | null;
+          }[]
+        | null;
     };
     /** @description 추가 자재 출고 요청 발행. 라인이 1건 이상이고 수량이 0 보다 커야 한다. 근거: W-02-10 §5-6 */
     MaterialIssueRequestCreate: {
@@ -49283,10 +51296,10 @@ export interface components {
       workOrderId: number;
       /**
        * Format: int64
-       * @description 도착 위치. FK 라 실재하는 위치여야 한다. 근거: W-02-10 §5-4
+       * @description 도착 위치. FK 라 실재하는 위치여야 한다. 근거: W-02-10 §5-4 생산 창고를 쓰는 공장에서는 비울 수 있다 — 라인의 생산 현장. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
        * @example 1001
        */
-      destinationLocationId: number;
+      destinationLocationId?: number;
       /**
        * Format: date-time
        * @description 필요 시각
@@ -49317,6 +51330,18 @@ export interface components {
        * @example 2026-08-12T10:22:00+09:00
        */
       occurredAt: string;
+      /**
+       * Format: int64
+       * @description 출발 생산 창고(생산 창고를 쓰는 공장만). 비우면 자재마다 FR-007 규칙으로 채우고 창고가 여럿이면 요청을 나눈다. 고르면 모든 줄을 그 창고에서. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       */
+      sourceWarehouseId?: number | null;
+      /** @description 409 PLANNED_STOCK_CONFLICT(overridable=true)를 보고 다른 W/O 의 예정분을 가져가겠다고 확인했다 — 사유가 URGENT_WO_RESPONSE·SHORTAGE_SUPPLEMENT 일 때만 받는다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      acceptPlannedOverride?: boolean;
+      /**
+       * Format: int64
+       * @description 「재고 있는 생산 창고 없음」 부족 행에서 연 보충 요청 — 만들면 그 행 resolvedRequestId 를 채운다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       */
+      unsourcedShortageId?: number | null;
     };
     /** @description 출고 요청 라인. bomComponentId 가 비면 BOM 밖 품목이다 — 모델이 허용하므로 계약도 허용하되 화면이 경고를 붙인다. 근거: W-02-10 §5-3 */
     MaterialIssueRequestCreateLine: {
@@ -49376,7 +51401,10 @@ export interface components {
        * @example 1001
        */
       itemId: number;
-      /** @example 100 */
+      /**
+       * @description 0 일 수 있다 — 생산 창고의 쓸 수 있는 양이 없어 전부 부족(shortageQty)으로 만든 줄. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       * @example 100
+       */
       requestedQty: number;
       /**
        * @description 누적 출고 수량. 요청 수량을 넘지 않는다
@@ -49388,6 +51416,23 @@ export interface components {
        * @example 1001
        */
       uomId: number;
+      /**
+       * @description 만들 때 생산 창고의 쓸 수 있는 양(가용 − 출고 예정)에 걸려 줄인 양. 소요 = requestedQty + shortageQty. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66
+       * @example 20
+       */
+      shortageQty?: number;
+      /** @description 집은 양(취소 안 된 피킹 줄의 합 · 파생). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      pickedQty?: number;
+      /** @description 미출고 = requestedQty − issuedQty(파생). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      outstandingQty?: number;
+      /** @description 지금 예정이 가용을 넘어 이 줄에 배분된 부족(파생 · FR-018). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      dynamicShortageQty?: number;
+      /** @description 품목 코드. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      itemCode?: string;
+      /** @description 품목 이름. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      itemName?: string;
+      /** @description 단위 코드. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      uomCode?: string;
     };
     /** @description 한 W/O 의 품목별 소요·기출고·부족 한 줄 */
     MaterialIssueShortageLine: {
@@ -49973,9 +52018,24 @@ export interface components {
       putawayTaskNo: string;
       /**
        * Format: int64
+       * @description 구매 입고 원천의 입고 줄. 창고 보충 수령 원천이면 null(shopfloorReceiptLineId 가 있다). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example 1001
        */
-      goodsReceiptLineId: number;
+      goodsReceiptLineId: number | null;
+      /**
+       * Format: int64
+       * @description 창고 보충 수령 원천의 생산창고 입고 줄. 구매 입고 원천이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       */
+      shopfloorReceiptLineId?: number | null;
+      /**
+       * @description 지시 원천 — 구매 입고 · 창고 보충 수령. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+       * @enum {string}
+       */
+      originCode: 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT';
+      /** @description 원천 문서 번호 — 구매 입고 원천은 입고 번호, 창고 보충 수령 원천은 창고 보충 요청 번호(모바일 「창고 보충 · 요청번호」). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230 */
+      originDocumentNo: string | null;
+      /** @description :complete·:complete-temporary 응답에만 — 실제로 옮긴 양. 창고 보충 수령 원천은 적치 대기에 남은 그 LOT 가용과 지시 수량 중 작은 양을 옮기고 끝내며, 0 이면 원장 없이 완료한다. 구매 입고 원천은 지시 수량. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      movedQty?: number;
       /**
        * Format: int64
        * @example 1001
@@ -50009,7 +52069,7 @@ export interface components {
       actualLocationId?: number | null;
       /**
        * Format: int64
-       * @description 적치 «목적» 창고. GET /mdm/locations?warehouseId= 가 이 값을 required 로 받으므로 지시가 실어 내린다 — fromLocationId(입하장·하역장)는 다른 창고일 수 있어 대신 쓸 수 없다. 근거: M-01-05 §5-3 · M-01-07 §5-5
+       * @description 적치 «목적» 창고. GET /mdm/locations?warehouseId= 가 이 값을 required 로 받으므로 지시가 실어 내린다 — fromLocationId(입하장·하역장)는 다른 창고일 수 있어 대신 쓸 수 없다. 근거: M-01-05 §5-3 · M-01-07 §5-5 창고 보충 수령 원천은 출발 위치(적치 대기)의 창고. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example 1001
        */
       warehouseId: number;
@@ -50209,9 +52269,10 @@ export interface components {
       goodsIssueId: number;
       /**
        * Format: int64
+       * @description 창고 보충 출고 수령이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example 1001
        */
-      workOrderId: number;
+      workOrderId: number | null;
       /**
        * Format: int64
        * @example 1001
@@ -50231,6 +52292,8 @@ export interface components {
       statusCode: string;
       /** @description 이 수령 전표의 라인. 목록 응답도 라인을 함께 싣는다 — 한 W/O 에 수령 전표가 여러 건 서므로 라인을 보려고 전표마다 상세를 다시 부르면 1+N 왕복이 된다. 근거: P-02-03 §3 · M-01-09 §4-B */
       readonly lines?: components['schemas']['ShopfloorReceiptLine'][];
+      /** @description 확정 응답(POST /shopfloor-receipts · …/arrivals/{goodsIssueId}:receive)에만 — 창고 보충 수령이 나뉜 생산 창고의 적치 대기로 들어와 받은 줄마다 만든 적치 지시. 그 밖에는 빈 배열. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      putawayTaskIds?: number[];
     };
     /** @description 생산창고 입고 확정. 화면이 「입고 확정」 한 버튼이므로 등록이 곧 확정이다. 근거: M-01-09 §5-6 */
     ShopfloorReceiptCreate: {
@@ -50241,11 +52304,13 @@ export interface components {
       goodsIssueId: number;
       /**
        * Format: int64
+       * @description W/O 출고 수령이면 그 W/O. 비우면 그 출고가 창고 보충 요청 피킹에서 나온 것이어야 한다(아니면 400 INVALID). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example 1001
        */
-      workOrderId: number;
+      workOrderId?: number | null;
       /**
        * Format: int64
+       * @description 창고 보충 출고(workOrderId 없음)는 출고가 실은 도착 위치와 같아야 한다(아니면 400 INVALID). W/O 출고는 대조하지 않는다(지금 동작 그대로). 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230
        * @example 1001
        */
       destinationLocationId: number;
@@ -50886,6 +52951,445 @@ export interface components {
       inventoryStatusCode: string;
       /** @example 10 */
       qty: number;
+    };
+    /** @description 모든 칸 선택 — 준 칸만 바꾼다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+    MaterialIssueRequestUpdate: {
+      /** @description 상세에서 받은 버전(저장 충돌 보호) */
+      versionNo: number;
+      /**
+       * Format: date
+       * @description 새 출고 작업일(공장 현지). 오늘 이하면 저장하면서 배포한다
+       */
+      issueWorkDate?: string;
+      /**
+       * Format: int64
+       * @description 새 출발 생산 창고 — W/O 라인 담당 부서에 연결한 이 공장의 활성 생산 창고(W/O 상세 productionWarehouses)
+       */
+      sourceWarehouseId?: number;
+      /**
+       * Format: int64
+       * @description 새 입고지
+       */
+      destinationLocationId?: number;
+      lines?: {
+        /** Format: int64 */
+        materialIssueRequestLineId: number;
+        requestedQty: number;
+      }[];
+      /** @description 휴일로 바꾸는 것을 확인했다(422 뒤 다시 보낼 때) */
+      acknowledgeHoliday?: boolean;
+    };
+    MaterialIssueRequestCancel: {
+      versionNo: number;
+      /** @description 취소 사유(이력에 남는다) */
+      reason?: string | null;
+    };
+    MaterialIssueRequestHistoryResponse: {
+      /** @description 최근 것이 먼저. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      items: components['schemas']['MaterialIssueRequestHistoryItem'][];
+    };
+    MaterialIssueRequestHistoryItem: {
+      /** Format: date-time */
+      occurredAt: string;
+      /** @description 한 사람 이름. 00:00 러너 배포·배포 실패처럼 사람이 없으면 null */
+      actorName: string | null;
+      /**
+       * @description 만듦 · 배포 · 배포 실패 · 대기로 되돌림 · 출고 작업일 변경 · 출발 창고 변경 · 입고지 변경 · 수량 변경 · 취소 · 닫힘(W/O 취소·마감) · 예정 가져감(긴급 대응·부족 보충, FR-018). 한 저장이 여러 칸을 바꾸면 칸마다 한 줄. 문장은 화면이 이 코드로 만든다
+       * @enum {string}
+       */
+      eventCode:
+        | 'CREATED'
+        | 'RELEASED'
+        | 'RELEASE_FAILED'
+        | 'REVERTED_TO_WAITING'
+        | 'ISSUE_DATE_CHANGED'
+        | 'SOURCE_CHANGED'
+        | 'DESTINATION_CHANGED'
+        | 'QTY_CHANGED'
+        | 'CANCELLED'
+        | 'CLOSED'
+        | 'PLANNED_OVERRIDE';
+      detail: {
+        /** @description 바뀌기 전 값 — 날짜(YYYY-MM-DD) · 창고/위치 이름 · 수량 */
+        before?: unknown;
+        /** @description 바뀐 값. PLANNED_OVERRIDE 는 [{itemId, requestedQty}] */
+        after?: unknown;
+        /** @description QTY_CHANGED 의 품목 */
+        itemCode?: string;
+        /** @description 취소 사유 · 닫힘 사유(WO_CANCELLED·WO_CLOSED) · 요청 사유 코드 */
+        reason?: string | null;
+        /** @description RELEASE_FAILED 원인 */
+        errorText?: string;
+        /** @description QTY_CHANGED — 부족(상한에 걸려 줄인 양)의 전 값 */
+        shortageBefore?: number;
+        /** @description QTY_CHANGED — 부족의 뒤 값. 요청은 그대로여도 소요가 바뀌어 부족이 바뀌면 이력이 남는다 */
+        shortageAfter?: number;
+      };
+    };
+    PlannedStockResponse: {
+      items: components['schemas']['PlannedStockRow'][];
+      /** @description onlyShortage=true 일 때만 — 재고 있는 생산 창고 없음(FR-007a). */
+      unsourced?: components['schemas']['UnsourcedShortage'][];
+    };
+    PlannedStockRow: {
+      /** Format: int64 */
+      sourceWarehouseId: number;
+      sourceWarehouseName?: string;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      availableQty: number;
+      plannedQty: number;
+      freeQty: number;
+      shortageQty: number;
+      requests: {
+        /** Format: int64 */
+        materialIssueRequestId: number;
+        issueRequestNo: string;
+        /**
+         * @description 요청 유형 — 출고 예정 조회는 유형을 가리지 않는다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+         * @enum {string}
+         */
+        requestTypeCode: 'WORK_ORDER' | 'REPLENISHMENT';
+        /**
+         * Format: int64
+         * @description 창고 보충 요청이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+         */
+        workOrderId: number | null;
+        /** @description 창고 보충 요청이면 null — issueRequestNo 로 표기한다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+        workOrderNo: string | null;
+        /** Format: date */
+        issueWorkDate: string | null;
+        plannedQty: number;
+        /** @description 이 요청에 배분된 동적 부족 + 이 요청 줄의 저장 부족 */
+        shortageQty: number;
+      }[];
+    };
+    FreeStockResponse: {
+      items: components['schemas']['FreeStockRow'][];
+    };
+    FreeStockRow: {
+      /** Format: int64 */
+      warehouseId: number;
+      /** Format: int64 */
+      itemId: number;
+      /** @description 집을 수 있는 가용(정상 품질 · 가용 상태 · 보류 아님) */
+      availableQty: number;
+      /** @description 다른 요청의 출고 예정(미출고분) */
+      plannedQty: number;
+      /** @description 쓸 수 있는 양 = 가용 − 예정, 0 미만은 0 */
+      freeQty: number;
+    };
+    UnsourcedShortage: {
+      /** Format: int64 */
+      unsourcedShortageId: number;
+      /** Format: int64 */
+      workOrderId: number;
+      workOrderNo: string;
+      /** Format: date */
+      productionDate?: string | null;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      shortageQty: number;
+      uomCode: string;
+      /** Format: int64 */
+      resolvedRequestId?: number | null;
+      /** @description 보충 요청을 만들었으면 그 요청 번호(「보충 요청됨」) */
+      resolvedRequestNo?: string | null;
+    };
+    MaterialIssueRequestCreated: components['schemas']['MaterialIssueRequestDetailResponse'] & {
+      /** @description 만든 요청 전부(출발 창고별). 첫 요청은 materialIssueRequest·lines 와 같다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      requests?: components['schemas']['MaterialIssueRequest'][];
+    };
+    PlannedStockConflictResponse: {
+      errors: components['schemas']['ErrorItem'][];
+      plannedStockConflicts: {
+        /** Format: int64 */
+        itemId: number;
+        /** Format: int64 */
+        sourceWarehouseId?: number | null;
+        requestedQty: number;
+        /** @description 쓸 수 있는 양(가용 − 예정, 0 미만은 0) */
+        freeQty: number;
+        /** @description 확인하면 다른 요청의 예정에서 가져갈 양 */
+        takeFromPlannedQty: number;
+        overridable: boolean;
+        /** @description 어느 부서 생산 창고에도 가용 재고가 없다 */
+        noStockedWarehouse?: boolean;
+        affectedRequests?: {
+          issueRequestNo?: string;
+          /**
+           * @description 요청 유형. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
+           * @enum {string}
+           */
+          requestTypeCode?: 'WORK_ORDER' | 'REPLENISHMENT';
+          /** @description 창고 보충 요청이면 null. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+          workOrderNo?: string | null;
+          /** Format: date */
+          issueWorkDate?: string | null;
+        }[];
+      }[];
+    };
+    /** @description 관리 품목 — 생산 창고·품목의 보충 시점·유지량·출고 자재 창고. 계산 값은 저장하지 않는다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentItem: {
+      /** Format: int64 */
+      replenishmentItemId: number;
+      /** Format: int64 */
+      productionWarehouseId: number;
+      productionWarehouseCode: string;
+      productionWarehouseName: string;
+      /** Format: int64 */
+      itemId: number;
+      itemCode: string;
+      itemName: string;
+      /**
+       * Format: int64
+       * @description 출고 자재 창고
+       */
+      sourceWarehouseId: number;
+      sourceWarehouseCode: string;
+      sourceWarehouseName: string;
+      /** @description 보충 시점(품목 기본 단위) */
+      reorderPointQty: number;
+      /** @description 유지량(품목 기본 단위) — 보충 시점보다 크다 */
+      targetQty: number;
+      /** @description 품목 기본 단위 */
+      uomCode: string;
+      /** @description 생산 창고 가용(피킹이 집을 수 있는 잔액 · 적치 대기 포함) — 계산 값 */
+      availableQty: number;
+      /** @description 그 생산 창고가 출발지인 출고 예정 — 계산 값 */
+      plannedQty: number;
+      /** @description 쓸 수 있는 양 = 가용 − 출고 예정(음수일 수 있다) — 계산 값 */
+      usableQty: number;
+      /** @description 진행 중 보충 — 그 생산 창고로 들어오는 활성 창고 보충 요청의 미출고 합 — 계산 값 */
+      inProgressQty: number;
+      /** @description 쓸 수 있는 양 < 보충 시점 */
+      belowPoint: boolean;
+      versionNo: number;
+    };
+    /** @description 0 < reorderPointQty < targetQty(아니면 400 RANGE). 품목은 활성 원자재·부자재, 출고 자재 창고는 같은 공장 활성·생산 창고 자신 아님·불량창고 아님(아니면 400 INVALID). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentItemCreate: {
+      /** Format: int64 */
+      productionWarehouseId: number;
+      /** Format: int64 */
+      itemId: number;
+      reorderPointQty: number;
+      targetQty: number;
+      /** Format: int64 */
+      sourceWarehouseId: number;
+    };
+    /** @description 생산 창고·품목은 바꾸지 않는다(지우고 다시 넣는다). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentItemUpdate: {
+      reorderPointQty: number;
+      targetQty: number;
+      /** Format: int64 */
+      sourceWarehouseId: number;
+      versionNo: number;
+    };
+    ReplenishmentItemDeleted: {
+      /** @description 지운 품목의 진행 중 창고 보충 요청 수 — 요청은 그대로 진행된다(안내용). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+      inProgressRequestCount: number;
+    };
+    /** @description 생산 창고별 자동 보충 실행 시각. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentWarehouseSetting: {
+      /** Format: int64 */
+      warehouseId: number;
+      warehouseCode: string;
+      warehouseName: string;
+      /** @description 창고 실행 시각(공장 현지 HH:MM). null = 공장 기본 */
+      runTime: string | null;
+      /** @description 실제로 쓰는 시각 — runTime ?? 공장 기본 */
+      effectiveRunTime: string;
+      /** @description 창고 설정 판 번호. 설정 행이 아직 없으면 0 — PUT 에 그대로 보낸다 */
+      versionNo: number;
+      /** @description 마지막 자동 보충 실행(가장 최근 날짜). 실행 기록이 없으면 null. */
+      lastRun: {
+        /** Format: date */
+        runDate: string;
+        /** @enum {string} */
+        status: 'DONE' | 'FAILED';
+        /** Format: date-time */
+        finishedAt: string | null;
+        createdRequestCount: number;
+      } | null;
+    };
+    /** @description 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentSettings: {
+      /** @description 공장 기본 실행 시각(운영 정책 REPLENISHMENT_RUN_TIME, 없으면 01:00) */
+      plantDefaultRunTime: string;
+      /** @enum {string} */
+      plantDefaultSource: 'POLICY' | 'SERVER_DEFAULT';
+      /** @description 공장 생산 창고(부서에 연결된 활성 창고) 전부 */
+      warehouses: components['schemas']['ReplenishmentWarehouseSetting'][];
+    };
+    /** @description 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentWarehouseSettingUpdate: {
+      /** @description HH:MM(00:00~23:59) 또는 null(공장 기본). 형식이 틀리면 400 RANGE */
+      runTime: string | null;
+      /** @description GET 의 versionNo — 설정 행이 없으면 0 */
+      versionNo: number;
+    };
+    /** @description 출고 자재 창고별로 요청을 나눠 만들고 바로 배포한다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentRequestCreate: {
+      /**
+       * Format: int64
+       * @description 보충받을 생산 창고(부서에 연결된 활성 창고) — 아니면 400 INVALID
+       */
+      productionWarehouseId: number;
+      /**
+       * Format: date
+       * @description 채번 기간 축(클라이언트가 보낸다 — 공유계약 C-8). 출고 작업일은 서버가 공장 오늘로 정한다
+       */
+      businessDate: string;
+      remarks?: string | null;
+      lines: {
+        /**
+         * Format: int64
+         * @description 사용 중인 품목
+         */
+        itemId: number;
+        /** @description 0 보다 크다(품목 기본 단위) */
+        requestedQty: number;
+        /**
+         * Format: int64
+         * @description 출고 자재 창고. 비우면 관리 품목의 값, 관리 품목이 아니면 400 REQUIRED. 같은 공장 활성·생산 창고 자신 아님·불량창고 아님(아니면 400 INVALID). 같은 품목·같은 출고 자재 창고 줄이 둘이면 400 INVALID
+         */
+        sourceWarehouseId?: number | null;
+      }[];
+    };
+    /** @description 쓸 수 있는 양이 0 이라 만들지 않은 줄. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentSkippedLine: {
+      /** Format: int64 */
+      itemId: number;
+      /** Format: int64 */
+      sourceWarehouseId: number;
+      requestedQty: number;
+      /** @description 그 출고 자재 창고의 쓸 수 있는 양(가용 − 예정) — 0 */
+      freeQty: number;
+    };
+    /** @description 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentRequestCreated: {
+      /** @description 만든 요청(출고 자재 창고 순 · 목록과 같은 모양). 쓸 수 있는 양을 넘은 양은 줄의 shortageQty */
+      requests: components['schemas']['MaterialIssueRequest'][];
+      skippedLines: components['schemas']['ReplenishmentSkippedLine'][];
+    };
+    /** @description 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    MaterialIssueCloseRemaining: {
+      versionNo: number;
+      /** @description 잔량 마감 사유(공통코드 REPLENISHMENT_CLOSE_REASON 의 사용 중인 값 — 아니면 400 INVALID) */
+      reasonCode: string;
+      remark?: string | null;
+    };
+    /** @description 수령 기록이 없는 창고 보충 출고 전표(도착 대기). 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentArrival: {
+      /** Format: int64 */
+      goodsIssueId: number;
+      goodsIssueNo: string;
+      /** Format: date-time */
+      issuedAt: string;
+      /** @description 공장 현지 날짜로 센 출고 뒤 경과 일수 */
+      elapsedDays: number;
+      /** Format: int64 */
+      materialIssueRequestId: number;
+      issueRequestNo: string;
+      /** @enum {string} */
+      replenishmentOriginCode: 'DIRECT' | 'AUTO';
+      /** Format: int64 */
+      productionWarehouseId: number;
+      productionWarehouseName: string;
+      /** Format: int64 */
+      destinationLocationId: number;
+      destinationLocationCode: string;
+      lines: {
+        /** Format: int64 */
+        goodsIssueLineId: number;
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+        /** Format: int64 */
+        lotId: number;
+        lotNo: string;
+        issueQty: number;
+        /** Format: int64 */
+        uomId: number;
+        uomCode: string;
+      }[];
+    };
+    /** @description 웹 개별 수령 본문 — 줄은 POST /shopfloor-receipts 의 줄과 같은 모양(전 라인 필수·0 ≤ 받은 ≤ 출고·차이면 사유). 도착 위치·W/O 는 받지 않고 서버가 채운다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 본문에 다른 칸(goodsIssueId·workOrderId·destinationLocationId 등)을 실으면 400 — 출고는 경로, 도착 위치는 서버가 정한다. 근거: 피처 004 생산 창고 보충 G2 보완 · omf-all-around#230 */
+    ReplenishmentArrivalReceive: {
+      /** Format: date */
+      businessDate: string;
+      /** Format: date-time */
+      receivedAt: string;
+      /** Format: date-time */
+      occurredAt: string;
+      lines: components['schemas']['ShopfloorReceiptLineCreate'][];
+    };
+    /** @description 창고 보충 출고 일괄 수령 — 줄마다 받은 수량 = 출고 수량. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ShopfloorReceiptBulkCreate: {
+      /** Format: date */
+      businessDate: string;
+      /** Format: date-time */
+      receivedAt: string;
+      /** @description 최대 100건(넘으면 400 RANGE) */
+      goodsIssueIds: number[];
+    };
+    /** @description 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ShopfloorReceiptBulkResult: {
+      results: {
+        /** Format: int64 */
+        goodsIssueId: number;
+        /** @enum {string} */
+        outcome: 'RECEIVED' | 'ALREADY_RECEIVED' | 'FAILED';
+        /** Format: int64 */
+        shopfloorReceiptId?: number;
+        message?: string;
+      }[];
+    };
+    /** @description 생산 창고의 하루 한 번 자동 보충 실행 기록. 보충 시점 이상 품목은 줄이 없고 checkedItemCount 로만 센다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230 */
+    ReplenishmentRun: {
+      /** Format: int64 */
+      replenishmentRunId: number;
+      /** Format: int64 */
+      productionWarehouseId: number;
+      productionWarehouseCode: string;
+      productionWarehouseName: string;
+      /**
+       * Format: date
+       * @description 공장 현지 날짜
+       */
+      runDate: string;
+      /** @enum {string} */
+      status: 'DONE' | 'FAILED';
+      /** Format: date-time */
+      startedAt: string;
+      /** Format: date-time */
+      finishedAt: string | null;
+      /** @description 살펴본 관리 품목 수 */
+      checkedItemCount: number;
+      createdRequestCount: number;
+      /** @description FAILED 일 때 원인 — 그 창고는 그날 다시 돌지 않는다 */
+      errorText: string | null;
+      lines: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+        /**
+         * @description CREATED 요청함 · SHORTAGE 일부만(쓸 수 있는 양까지) · IN_PROGRESS 진행 중 보충 있음 · NO_SOURCE_STOCK 자재 창고 남은 수량 0 · SOURCE_INACTIVE 출고 자재 창고 사용 중지
+         * @enum {string}
+         */
+        resultCode: 'CREATED' | 'SHORTAGE' | 'IN_PROGRESS' | 'NO_SOURCE_STOCK' | 'SOURCE_INACTIVE';
+        /** @description 계산 당시 생산 창고 쓸 수 있는 양 */
+        usableQty: number;
+        requestedQty: number;
+        shortageQty: number;
+        issueRequestNo: string | null;
+      }[];
     };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.
@@ -52493,7 +54997,7 @@ export interface components {
        */
       operationPolicyId: number;
       /**
-       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다.
+       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다. WEEKLY_WORKING_DAYS = 공장의 주간 근무일(valueNumeric · 5 = 월~금 | 6 = 월~토). 범위는 공장만 받는다 — plantId 를 주고 itemId·processId 는 비운다(아니면 400). ⭐ 이 코드만 예외로, 맞는 정책이 없으면 서버가 5 로 계산한다(출고 요청의 출고 작업일 = 생산일의 직전 근무일). effective 는 그대로 resolved=false 를 낸다. 설정 화면은 W-CO-15(공장 근무일 설정). 근거: 피처 003 · omf-all-around#66 REPLENISHMENT_RUN_TIME = 자동 보충 실행 시각(valueText · 공장 현지 HH:MM, 00:00~23:59 — 아니면 400 RANGE). 범위는 공장만 받는다. 맞는 정책이 없으면 서버가 01:00 으로 돈다(effective 는 그대로 resolved=false). 설정 화면은 W-02-12(생산 창고 보충) — W-02-12 권한은 이 코드 행만 읽고 쓴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example SHOT_CONVERSION_RATIO
        * @enum {string}
        */
@@ -52502,7 +55006,9 @@ export interface components {
         | 'SHOT_CONVERSION_RATIO'
         | 'MINOR_STOP_THRESHOLD_MINUTES'
         | 'PRECHECK_CONTROL_LEVEL'
-        | 'FIFO_ENFORCEMENT_LEVEL';
+        | 'FIFO_ENFORCEMENT_LEVEL'
+        | 'WEEKLY_WORKING_DAYS'
+        | 'REPLENISHMENT_RUN_TIME';
       /**
        * Format: int64
        * @example 1001
@@ -52544,7 +55050,7 @@ export interface components {
     /** @description 값 칸은 셋 중 하나만 쓴다. 물리 제약은 「셋 중 하나 이상」이라 셋 다 채워도 통과하지만, 어느 칸을 쓰는지는 정책 코드가 정한다 — 쓰지 않는 칸을 채우면 읽는 쪽이 헷갈린다. 범위 축은 넷 다 비울 수 있고 비면 전체를 뜻한다. 여럿이 동시에 맞으면 더 좁은 것이 이기며 축 우선순위는 품목 · 공정 · 공장 · 사업부 차례다. 이 판정은 서버가 하고 화면은 effective 경로로 결과를 받는다 */
     OperationPolicyCreate: {
       /**
-       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다.
+       * @description 무엇을 정하는 정책인가. SHOT_CONVERSION_ENABLED = 생산 수량으로 타발수를 환산할지(valueBoolean). SHOT_CONVERSION_RATIO = 수량 대비 타발수 비율(valueNumeric · 0 보다 커야 한다). MINOR_STOP_THRESHOLD_MINUTES = 경미 정지로 볼 시간 임계(valueNumeric · 기본 5). PRECHECK_CONTROL_LEVEL = 작업 전 점검 통제 수준(valueText · BLOCK | WARN | OFF). ⭐ resolved 가 거짓이면 화면이 기본값을 지어내지 않고 WARN 으로 다룬다 — 통제 수준이 없다고 무통제로 열지 않는다(P-02-02 §6 확정). 코드는 화면이 붙인다 — 사용자가 만들지 않는다 FIFO_ENFORCEMENT_LEVEL = 선출(FEFO/FIFO) 위반을 어떻게 다루는가(valueText · BLOCK | WARN | OFF). 「선택적 적용 + 강제 옵션」 요구를 담고 화면은 기본 WARN 으로 시작한다. WEEKLY_WORKING_DAYS = 공장의 주간 근무일(valueNumeric · 5 = 월~금 | 6 = 월~토). 범위는 공장만 받는다 — plantId 를 주고 itemId·processId 는 비운다(아니면 400). ⭐ 이 코드만 예외로, 맞는 정책이 없으면 서버가 5 로 계산한다(출고 요청의 출고 작업일 = 생산일의 직전 근무일). effective 는 그대로 resolved=false 를 낸다. 설정 화면은 W-CO-15(공장 근무일 설정). 근거: 피처 003 · omf-all-around#66 REPLENISHMENT_RUN_TIME = 자동 보충 실행 시각(valueText · 공장 현지 HH:MM, 00:00~23:59 — 아니면 400 RANGE). 범위는 공장만 받는다. 맞는 정책이 없으면 서버가 01:00 으로 돈다(effective 는 그대로 resolved=false). 설정 화면은 W-02-12(생산 창고 보충) — W-02-12 권한은 이 코드 행만 읽고 쓴다. 근거: 피처 004 생산 창고 보충 · omf-all-around#230
        * @example SHOT_CONVERSION_RATIO
        * @enum {string}
        */
@@ -52553,7 +55059,9 @@ export interface components {
         | 'SHOT_CONVERSION_RATIO'
         | 'MINOR_STOP_THRESHOLD_MINUTES'
         | 'PRECHECK_CONTROL_LEVEL'
-        | 'FIFO_ENFORCEMENT_LEVEL';
+        | 'FIFO_ENFORCEMENT_LEVEL'
+        | 'WEEKLY_WORKING_DAYS'
+        | 'REPLENISHMENT_RUN_TIME';
       /**
        * Format: int64
        * @example 1001
@@ -52623,7 +55131,9 @@ export interface components {
         | 'SHOT_CONVERSION_RATIO'
         | 'MINOR_STOP_THRESHOLD_MINUTES'
         | 'PRECHECK_CONTROL_LEVEL'
-        | 'FIFO_ENFORCEMENT_LEVEL';
+        | 'FIFO_ENFORCEMENT_LEVEL'
+        | 'WEEKLY_WORKING_DAYS'
+        | 'REPLENISHMENT_RUN_TIME';
       /**
        * @description 거짓이면 맞는 정책이 없다. 화면은 기본값을 지어내 그리지 않고 「적용 정책 없음」으로 밝힌다
        * @example true
@@ -54251,7 +56761,43 @@ export interface components {
       /** @example 2 */
       warnCount: number;
     };
+    /** @description 배포된 W/O 와, 생산 창고 공장이면 만든 출고 요청·미배정 자재. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+    WorkOrderReleaseResult: components['schemas']['WorkOrder'] & {
+      /** @description 생산 창고를 쓰는 공장에서만 싣는다 — 출발 창고별로 만든 출고 요청 요약(창고 id 순). 출고 작업일이 공장 오늘 이하면 이미 배포(REGISTERED)됐다. 생산 창고를 연결하지 않은 공장은 칸이 없다(지금 방식). 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      materialIssueRequests?: {
+        /** Format: int64 */
+        materialIssueRequestId: number;
+        issueRequestNo: string;
+        /** Format: int64 */
+        sourceWarehouseId: number;
+        /** @example WAITING */
+        statusCode: string;
+        /**
+         * Format: date
+         * @example 2026-11-13
+         */
+        issueWorkDate: string;
+      }[];
+      /** @description 부서 생산 창고 어디에도 가용 재고가 없어 요청에 넣지 못한 자재(FR-007a) — 배포는 성공이다. W-02-11 부족 목록에도 남는다. 생산 창고를 쓰는 공장에서만 싣는다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      unsourcedShortages?: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+        shortageQty: number;
+        uomCode: string;
+      }[];
+    };
     WorkOrder: {
+      /** @description 상세(GET /production/work-orders/{id})에만 — 이 W/O 공장이 생산 창고 규칙(FR-009a 공장 모드 · 공장 기준)인가. W-02-10 출발 창고 칸이 쓴다. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      productionWarehouseMode?: boolean;
+      /** @description 상세에만 — 라인 담당 부서에 연결한 이 공장의 활성 생산 창고(코드순). 지금 방식 공장이거나 부서·연결이 없으면 빈 배열. productionWarehouseMode 가 참인데 비면 추가 출고 요청은 400 PRODUCTION_WAREHOUSE_MISSING. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
+      productionWarehouses?: {
+        /** Format: int64 */
+        warehouseId: number;
+        warehouseCode: string;
+        warehouseName: string;
+      }[];
       /**
        * Format: int64
        * @example 1001
@@ -55383,6 +57929,15 @@ export interface components {
       /** @description 특채 사유 — 결재 요청 사유와 특채 비고에 함께 남는다. */
       reason: string;
     };
+    /** @description 특채 적용 본문(선택 · omf-all-around#207). */
+    ConcessionApply: {
+      /**
+       * Format: date
+       * @description 원장 영업일(C-8) — 일부 특채로 재고가 있는 LOT 을 나눌 때만 쓴다. 화면은 늘 보낸다.
+       * @example 2026-11-03
+       */
+      businessDate?: string;
+    };
     /** @description 특채 — 단순 판정이 아니라 사용 범위 통제 데이터다. ⛔ 생성 경로를 두지 않는다(요청을 만드는 화면이 미정 · W-03-09 §8-4). ⛔ 승인·반려는 app-공통 계약이다. ⛔ 조건 수정을 두지 않는다 — 결재는 예/아니오다(공유계약 J-10) */
     Concession: {
       /**
@@ -55468,6 +58023,15 @@ export interface components {
       remarks?: string;
       /** @example 1 */
       versionNo?: number;
+      /** @description 적용(:apply) «응답»에만 — 일부 특채로 LOT 을 나눴을 때 떼어 낸 자식 LOT 과 새 부적합. 나누지 않았으면 null. 조회 응답에는 없다. 근거: omf-all-around#207 */
+      splitResult?: {
+        /** Format: int64 */
+        splitLotId: number;
+        splitLotNo: string;
+        /** Format: int64 */
+        splitNonconformanceId: number;
+        splitNonconformanceNo: string;
+      } | null;
     };
     DefectDistribution: {
       nodes: components['schemas']['DefectDistributionNode'][];
@@ -58318,10 +60882,10 @@ export interface components {
       };
       /**
        * Format: int64
-       * @description 닫을 보류 문서. GET /quality/lot-holds?lotId=&open=true 에서 얻는다 — 식별자이지 잠금 토큰이 아니다
+       * @description 닫을 보류 문서. GET /quality/lot-holds?lotId=&open=true 에서 얻는다 — 식별자이지 잠금 토큰이 아니다 ⭐ 처분이 정상(NORMAL)이면 필수(없으면 400 REQUIRED), 특채(CONCESSION)면 비운다 — 특채 적용이 수입검사 보류를 이미 닫았다(실으면 400 INVALID). 근거: omf-all-around#207
        * @example 1001
        */
-      lotHoldId: number;
+      lotHoldId?: number | null;
       /**
        * Format: int64
        * @description 되돌릴 창고(완제품창고)
@@ -58346,10 +60910,10 @@ export interface components {
        */
       uomId: number;
       /**
-       * @description 보류 해제 사유 — 필수다. LotHoldRelease 와 같은 축을 유지한다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON. 근거: 공유계약 G-32 · omf-mes#293
+       * @description 보류 해제 사유 — 처분이 정상이면 필수다(없으면 400 REQUIRED), 특채면 닫을 보류가 없어 쓰지 않는다(#207). LotHoldRelease 와 같은 축을 유지한다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON. 근거: 공유계약 G-32 · omf-mes#293
        * @example RETEST_PASS
        */
-      releaseReasonCode: string;
+      releaseReasonCode?: string | null;
       /** @description 재등록 사유. ⭐ 「재등록이 몇 건인가」를 세려면 코드 축이어야 한다(§I-41 · omf-mes#84). 값 목록은 GET /mdm/code-values?codeGroupCode=STOCK_REINSTATEMENT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
       reasonCode?: string | null;
       /**
@@ -58394,10 +60958,10 @@ export interface components {
       lotStatusCode: string;
       /**
        * Format: int64
-       * @description 닫힌 보류
+       * @description 닫힌 보류 — 특채 재등록은 닫을 보류가 없어 null(omf-all-around#207)
        * @example 1001
        */
-      releasedLotHoldId: number;
+      releasedLotHoldId: number | null;
       /**
        * Format: double
        * @example 200
@@ -58427,7 +60991,7 @@ export interface components {
     };
     StockReinstatementConflictResponse: {
       /**
-       * @description ALREADY_REINSTATED 는 이 처분 결정이 이미 재등록됐다는 뜻이다 — followUpPending 이 이미 내려갔다. HOLD_ALREADY_RELEASED 는 다른 경로에서 보류가 먼저 풀렸다는 뜻이다(판정 화면 W-03-02 가 그럴 수 있다). DISPOSITION_NOT_REINSTATABLE 은 처분이 폐기이거나 아직 판정 대기라는 뜻이다. 근거: W-04-11 §5-2 · §6
+       * @description ALREADY_REINSTATED 는 이 처분 결정이 이미 재등록됐다는 뜻이다 — followUpPending 이 이미 내려갔다. HOLD_ALREADY_RELEASED 는 다른 경로에서 보류가 먼저 풀렸다는 뜻이다(판정 화면 W-03-02 가 그럴 수 있다). DISPOSITION_NOT_REINSTATABLE 은 처분이 정상도 특채도 아니거나(폐기·재작업·판정 대기), 특채인데 이 LOT 에 적용된 특채가 없다는 뜻이다(#207). 근거: W-04-11 §5-2 · §6
        * @example VERSION_CONFLICT
        * @enum {string}
        */

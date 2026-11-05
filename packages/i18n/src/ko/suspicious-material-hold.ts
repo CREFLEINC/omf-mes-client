@@ -19,10 +19,11 @@ export const suspiciousMaterialHold = {
       itemSearch: '품목 검색',
       warehouseSearch: '위치 검색',
       /** 조회 줄 기간 두 칸 — 이름 · 흐린 글자(사용자 2026-11-02). */
-      periodFrom: '상태 변경 시작일 선택',
-      periodTo: '상태 변경 종료일 선택',
-      periodFromPlaceholder: '시작일을 선택하세요',
-      periodToPlaceholder: '종료일을 선택하세요',
+      /* LOT 상태 이력 · 변경과 같은 이름, 흐린 문구는 연월일 꼴(omf-all-around#228). */
+      periodFrom: '조회 시작일',
+      periodTo: '조회 종료일',
+      periodFromPlaceholder: '연도-월-일',
+      periodToPlaceholder: '연도-월-일',
       /** LOT 스캔 칸 이름 — 스캔 · 직접 입력 모두 되므로 「LOT 번호」. */
       lotScan: 'LOT 번호',
     },
@@ -49,6 +50,8 @@ export const suspiciousMaterialHold = {
     loading: '의심자재 후보를 불러오는 중',
     failed: '의심자재 후보를 불러오지 못했습니다.',
     empty: '조건에 맞는 LOT이 없습니다.',
+    /** 빈 목록 소제목(omf-all-around#228). */
+    emptyHint: '검색 조건을 변경하거나 필터를 초기화하세요.',
   },
   input: {
     pane: '보류 등록 입력',

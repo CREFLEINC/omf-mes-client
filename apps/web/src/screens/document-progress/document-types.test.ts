@@ -5,9 +5,11 @@ import {
   cancelTargetOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
+  documentTypeName,
   findDocumentType,
   findSelectableDocumentType,
   isDocumentTypeListPending,
+  subTypeGroupOf,
   toDocumentTypeOptions,
 } from './document-types';
 import { documentTypeFixtures } from './fixtures';
@@ -185,5 +187,33 @@ describe('cancelTargetOf', () => {
   it('취소 리소스가 없거나 고를 수 없는 유형이면 null이다', () => {
     expect(cancelTargetOf('GOODS_RECEIPT', documentTypeFixtures)).toBeNull();
     expect(cancelTargetOf('INBOUND_RECEIPT', documentTypeFixtures)).toBeNull();
+  });
+});
+
+describe('documentTypeName', () => {
+  it('출고 전표는 「출고」, 출고 요청은 「출고 요청」이다', () => {
+    expect(documentTypeName('GOODS_ISSUE')).toBe('출고');
+    expect(documentTypeName('MATERIAL_ISSUE_REQUEST')).toBe('출고 요청');
+  });
+
+  it('선택지에도 코드가 아니라 이름이 나온다', () => {
+    const labels = toDocumentTypeOptions(DOCUMENT_TYPES).map((option) => option.label);
+
+    expect(labels).toContain('출고');
+    expect(labels).not.toContain('GOODS_ISSUE');
+  });
+
+  it('표에 없는 유형은 코드를 그대로 보인다', () => {
+    expect(documentTypeName('SHIPMENT')).toBe('SHIPMENT');
+  });
+});
+
+describe('subTypeGroupOf', () => {
+  it('입고 계열은 RECEIPT_TYPE, 출고 계열은 ISSUE_TYPE, 그 밖은 없다', () => {
+    expect(subTypeGroupOf('GOODS_RECEIPT')).toBe('RECEIPT_TYPE');
+    expect(subTypeGroupOf('SUBCONTRACT_RECEIPT')).toBe('RECEIPT_TYPE');
+    expect(subTypeGroupOf('GOODS_ISSUE')).toBe('ISSUE_TYPE');
+    expect(subTypeGroupOf('SUBCONTRACT_ISSUE')).toBe('ISSUE_TYPE');
+    expect(subTypeGroupOf('PURCHASE_ORDER')).toBeNull();
   });
 });

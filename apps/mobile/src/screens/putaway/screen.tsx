@@ -34,6 +34,8 @@ import {
   toOutboxDraft,
   verdictOf,
   type PutawayTask,
+  movedNoteOf,
+  originOf,
 } from './putaway';
 import './screen.css';
 
@@ -51,6 +53,8 @@ interface Registered {
   locationCode: string;
   qty: string;
   outcome: Outcome;
+  /** 창고 보충 지시가 덜 옮겼거나 옮길 것이 없었다(004, 완료 응답). */
+  note: string | null;
 }
 
 export const PutawayScreen = () => {
@@ -250,7 +254,11 @@ export const PutawayScreen = () => {
             ? 'queued'
             : 'sent';
 
-      setRegistered((prev) => [...prev, { ...row, outcome }]);
+      const note =
+        outcome === 'sent'
+          ? movedNoteOf(task, result?.responses.get(entry.idempotencyKey), uomOf(task.uomId))
+          : null;
+      setRegistered((prev) => [...prev, { ...row, outcome, note }]);
 
       /*
        * 목록을 다시 읽는다 - 그러지 않으면 방금 끝낸 지시가 그대로 서 있어 같은 자리를 두 번
@@ -269,23 +277,32 @@ export const PutawayScreen = () => {
    * 사람만 읽는다. 한 줄에 하나씩 쌓던 것을 두 칸씩 접어 카드가 절반 높이가 된다(개편 제안 v2).
    */
   const taskFields = (each: PutawayTask, extra?: ReactNode) => (
-    <dl className={`putaway__task-fields ${TASK_FACTS}`}>
-      <div>
-        <dt>{t.tasks.itemLabel}</dt>
-        <dd>
-          <strong>{referenceLabel(itemCode(each.itemId))}</strong>
-        </dd>
-      </div>
-      <div>
-        <dt>{t.tasks.taskNoLabel}</dt>
-        <dd>{each.putawayTaskNo}</dd>
-      </div>
-      <div>
-        <dt>{t.tasks.qtyLabel}</dt>
-        <dd>{`${String(each.taskQty)} ${uomOf(each.uomId)}`}</dd>
-      </div>
-      {extra}
-    </dl>
+    <>
+      {/*
+       * 004 — 창고 보충 수령에서 생긴 지시는 원천 한 줄을 붙인다(screens/M-putaway.md). 구매 입고 지시는 지금과
+       * 똑같이 보인다(T053).
+       */}
+      {each.originCode === 'REPLENISHMENT_RECEIPT' ? (
+        <p className="putaway__origin">{`${t.tasks.originLabel} ${originOf(each)}`}</p>
+      ) : null}
+      <dl className={`putaway__task-fields ${TASK_FACTS}`}>
+        <div>
+          <dt>{t.tasks.itemLabel}</dt>
+          <dd>
+            <strong>{referenceLabel(itemCode(each.itemId))}</strong>
+          </dd>
+        </div>
+        <div>
+          <dt>{t.tasks.taskNoLabel}</dt>
+          <dd>{each.putawayTaskNo}</dd>
+        </div>
+        <div>
+          <dt>{t.tasks.qtyLabel}</dt>
+          <dd>{`${String(each.taskQty)} ${uomOf(each.uomId)}`}</dd>
+        </div>
+        {extra}
+      </dl>
+    </>
   );
 
   /* 어디에 두는가 — 지시가 둬도 되는 위치를 코드로 싣는다. 비면 이 창고 어디든이다. */
@@ -664,6 +681,9 @@ export const PutawayScreen = () => {
                 />
                 <span className="putaway__scanned">
                   {t.done.row(each.lotNo, each.locationCode, each.qty)}
+                  {each.note === null ? null : (
+                    <span className="putaway__moved-note">{each.note}</span>
+                  )}
                 </span>
                 {each.outcome === 'rejected' ? (
                   <Chip status="error">{t.rejected.title}</Chip>
