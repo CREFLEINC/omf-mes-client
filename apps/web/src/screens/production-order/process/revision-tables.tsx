@@ -1,6 +1,6 @@
 import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import { Select } from '../../../patterns/select';
@@ -93,35 +93,66 @@ const Grid = ({
   children: ReactNode;
   total: number;
   paging: ReturnType<typeof useDisplayPage>;
-}) => (
-  <>
-    <div className="erp-wo-dense-table-scroll" role="region" aria-label={`${label} 가로 스크롤 표`}>
-      <table className="erp-wo-dense-table" style={{ width: widths.reduce((a, b) => a + b, 0) }}>
-        <caption className="visually-hidden">{label}</caption>
-        <colgroup>
-          {widths.map((width, index) => (
-            <col key={index} style={{ width }} />
-          ))}
-        </colgroup>
-        <thead>
-          <tr>
-            {columns.map((column, index) => (
-              <th
-                key={column}
-                scope="col"
-                className={index === 0 ? 'fixed-code' : index === 1 ? 'fixed-name' : undefined}
-              >
-                {column}
-              </th>
+}) => {
+  const scroller = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const code = element.querySelector<HTMLElement>('th.fixed-code');
+    const name = element.querySelector<HTMLElement>('th.fixed-name');
+    const measure = () => {
+      const codeWidth = code?.getBoundingClientRect().width ?? 104;
+      const nameWidth = name?.getBoundingClientRect().width ?? 180;
+      element.style.setProperty('--revision-code-width', `${codeWidth}px`);
+      if (element.clientWidth > 0)
+        element.dataset.freezeName = String(codeWidth + nameWidth + 80 <= element.clientWidth);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    if (code) observer.observe(code);
+    if (name) observer.observe(name);
+    return () => observer.disconnect();
+  }, [children]);
+  return (
+    <>
+      <div
+        ref={scroller}
+        className="erp-wo-dense-table-scroll"
+        role="region"
+        aria-label={`${label} 가로 스크롤 표`}
+      >
+        <table
+          className="erp-wo-dense-table"
+          style={{ minWidth: `max(100%, ${widths.reduce((a, b) => a + b, 0)}px)` }}
+        >
+          <caption className="visually-hidden">{label}</caption>
+          <colgroup>
+            {widths.map((width, index) => (
+              <col key={index} style={{ width }} />
             ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
-    </div>
-    <PageControls label={label} total={total} paging={paging} />
-  </>
-);
+          </colgroup>
+          <thead>
+            <tr>
+              {columns.map((column, index) => (
+                <th
+                  key={column}
+                  scope="col"
+                  className={index === 0 ? 'fixed-code' : index === 1 ? 'fixed-name' : undefined}
+                >
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+      <PageControls label={label} total={total} paging={paging} />
+    </>
+  );
+};
 const mode = (value: boolean | undefined, yes = '사용', no = '미사용') =>
   value == null ? '미제공' : value ? yes : no;
 
@@ -193,6 +224,15 @@ export const BomTable = ({ id }: { id: number }) => {
         <strong>
           기준 수량 {bom.baseQty} {unit(bom.baseUomId)}
         </strong>
+        <span>
+          상태:{' '}
+          {({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' } as Record<string, string>)[
+            bom.statusCode
+          ] ??
+            bom.statusCode ??
+            '미제공'}
+        </span>
+        <span>{mode(bom.isDefault, '기본 BOM', '기본 아님')}</span>
         <span>자재 {rows.length}건</span>
       </div>
       {rows.length ? (
@@ -295,6 +335,15 @@ export const RoutingTable = ({ id }: { id: number }) => {
               {header.data.routing.routingCode} · 개정 {header.data.routing.routingVersion}
             </strong>
             <span>
+              상태:{' '}
+              {({ CONFIRMED: '확정', DRAFT: '작성중', OBSOLETE: '폐기' } as Record<string, string>)[
+                header.data.routing.statusCode
+              ] ??
+                header.data.routing.statusCode ??
+                '미제공'}
+            </span>
+            <span>{mode(header.data.routing.isDefault, '기본 Routing', '기본 아님')}</span>
+            <span>
               유효기간 {header.data.routing.effectiveFrom ?? '미설정'} ~{' '}
               {header.data.routing.effectiveTo ?? '종료일 없음'}
             </span>
@@ -319,8 +368,10 @@ export const RoutingTable = ({ id }: { id: number }) => {
             '표준 사이클',
             '표준 수율',
             'MES 관리',
+            '한국어 표시명',
+            '베트남어 표시명',
           ]}
-          widths={[104, 180, 48, 70, 70, 75, 75, 75, 58, 85, 105, 85, 80]}
+          widths={[104, 180, 48, 70, 70, 75, 75, 75, 58, 85, 105, 85, 80, 160, 160]}
           total={rows.length}
           paging={paging}
         >
@@ -345,6 +396,8 @@ export const RoutingTable = ({ id }: { id: number }) => {
                   : `${Number((row.standardYieldRate * 100).toFixed(6))}%`}
               </td>
               <td>{mode(row.mesManaged)}</td>
+              <td>{row.nameKo ?? '미설정'}</td>
+              <td>{row.nameVi ?? '미설정'}</td>
             </tr>
           ))}
         </Grid>

@@ -32918,3 +32918,12 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-selected-item-fields > div { min-width: 0; }
 .erp-wo-selected-item-fields dt { color: var(--on-surface-variant); font: var(--type-label-sm); }
 .erp-wo-selected-item-fields dd { margin: var(--space-1) 0 0; white-space: normal; overflow-wrap: anywhere; }
+
+/* 긴 원문은 한 행으로 보존하고 표 안에서 이동한다. */
+.erp-wo-dense-table { width: 100%; table-layout: auto; }
+.erp-wo-dense-table th, .erp-wo-dense-table td { white-space: nowrap; overflow-wrap: normal; word-break: normal; overflow: visible; text-overflow: clip; }
+.erp-wo-dense-table .fixed-name { left: var(--revision-code-width, 104px); }
+.erp-wo-dense-table-scroll[data-freeze-name="false"] .fixed-name { position: static; }
+.erp-wo-summary .is-item-code dd, .erp-wo-summary .is-item-name dd, .erp-wo-selected-item-fields dd { white-space: normal; overflow-wrap: anywhere; max-width: 100%; overflow: visible; text-overflow: clip; }
+.erp-wo-master-order-list .erp-wo-item-field > span:last-child { display: block; white-space: normal; overflow-wrap: anywhere; max-width: 100%; overflow: visible; text-overflow: clip; }
+.erp-wo-master-order-list > button, .erp-wo-selected-item-fields, .erp-wo-selected-item-fields > div { max-width: 100%; }

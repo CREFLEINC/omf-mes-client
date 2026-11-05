@@ -31,7 +31,13 @@ const fetch = async (req: Request) => {
     });
   if (path.startsWith('/mdm/items/')) {
     const id = Number(path.split('/').at(-1));
-    return jsonResponse({ item: { itemId: id, itemCode: `MAT-${id}`, itemName: `자재 ${id}` } });
+    return jsonResponse({
+      item: {
+        itemId: id,
+        itemCode: `MAT-${id}`,
+        itemName: id === 1 ? '자재 1 【 원문-100 】' : `자재 ${id}`,
+      },
+    });
   }
   if (path.endsWith('/operations'))
     return jsonResponse({
@@ -40,6 +46,8 @@ const fetch = async (req: Request) => {
         processId: 1,
         operationSeq: (i + 1) * 10,
         operationName: `공정 ${i + 1}`,
+        nameKo: `한국어 공정 ${i + 1}`,
+        nameVi: `Cong doan ${i + 1}`,
         equipmentRequired: true,
         moldRequired: false,
         materialInputManaged: true,
@@ -66,7 +74,12 @@ describe('대량 BOM Routing 표', () => {
     expect(within(table).queryByRole('columnheader', { name: 'ERP 순번' })).toBeNull();
     expect(within(table).queryByRole('columnheader', { name: 'MES 표시 순서' })).toBeNull();
     expect(within(table).getByRole('cell', { name: 'MAT-1' })).toHaveClass('fixed-code');
-    expect(within(table).getByRole('cell', { name: '자재 1' })).toHaveClass('fixed-name');
+    expect(within(table).getByRole('cell', { name: '자재 1 【 원문-100 】' })).toHaveClass(
+      'fixed-name',
+    );
+    expect(within(table).getByRole('cell', { name: '자재 1 【 원문-100 】' }).textContent).toBe(
+      '자재 1 【 원문-100 】',
+    );
     await user.click(screen.getByRole('button', { name: '다음' }));
     await within(table).findByRole('cell', { name: 'MAT-11' });
     expect(within(table).queryByRole('cell', { name: 'MAT-1' })).toBeNull();
@@ -83,6 +96,8 @@ describe('대량 BOM Routing 표', () => {
     const row = within(table).getByRole('cell', { name: '공정 11' }).closest('tr')!;
     expect(within(row).getByRole('cell', { name: '11' })).toBeVisible();
     expect(within(table).getByRole('columnheader', { name: '순서' })).toBeVisible();
+    expect(within(row).getByRole('cell', { name: '한국어 공정 11' })).toBeVisible();
+    expect(within(row).getByRole('cell', { name: 'Cong doan 11' })).toBeVisible();
     expect(within(row).getByRole('cell', { name: '20초' })).toBeVisible();
   });
 });
