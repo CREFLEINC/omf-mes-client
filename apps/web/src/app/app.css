@@ -33298,7 +33298,7 @@ button.iqc-inspection-step-toggle:focus-visible {
 .erp-wo-multi-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-3); }
 .erp-wo-multi-orders { flex: none; max-height: 13rem; overflow: auto; padding: 0; }
 .erp-wo-multi-orders td { padding: var(--space-2) var(--space-3); }
-.erp-wo-multi-orders .is-active { background: var(--secondary-container); }
+.erp-wo-multi-orders .is-active { background: var(--primary-container); color: var(--on-primary-container); }
 .erp-wo-multi-body > * { flex-shrink: 0; min-width: 0; }
 .erp-wo-multi-execution { display: flex; flex: 1; flex-direction: column; min-height: 30rem; gap: var(--space-3); }
 .erp-wo-multi-execution > .field-cell { max-width: 32rem; }
@@ -33344,7 +33344,7 @@ button.iqc-inspection-step-toggle:focus-visible {
 /* 작업계획 목록: 상태별 조회와 선택 대상의 처리를 서로 다른 줄에 둔다. */
 .erp-wo-status-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
 .erp-wo-status-filter { min-height: 3.75rem; width: 100%; justify-content: space-between; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); }
-.erp-wo-status-filter[aria-pressed='true'] { background: var(--secondary-container); color: var(--on-secondary-container); border-color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
+.erp-wo-status-filter[aria-pressed='true'] { background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
 .erp-wo-status-name { font: var(--type-title-sm); }
 .erp-wo-status-number { display: inline-flex; align-items: baseline; gap: var(--space-1); font: var(--type-title-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
 .erp-wo-status-number small { font: var(--type-label-sm); color: var(--on-surface-variant); }
@@ -33639,7 +33639,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-auto-result { display: grid; gap: var(--space-3); min-width: 0; }
 .erp-wo-auto-result-filters { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.erp-wo-auto-result-filters [aria-pressed='true'] { background: var(--secondary-container); color: var(--on-secondary-container); }
+.erp-wo-auto-result-filters [aria-pressed='true'] { background: var(--primary-container); color: var(--on-primary-container); }
 .erp-wo-auto-result-table { max-width: 100%; overflow-x: auto; }
 .erp-wo-auto-result-table table { width: 100%; border-collapse: collapse; font: var(--type-body-sm); }
 .erp-wo-auto-result-table th,.erp-wo-auto-result-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--outline-variant); vertical-align: top; min-width: 7rem; }
@@ -33664,7 +33664,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-master-order-list { display: grid; gap: var(--space-2); min-width: 0; }
 .erp-wo-master-order-list > button { width: 100%; text-align: left; white-space: normal; height: auto; border-radius: 10px; padding: var(--space-3); }
 .erp-wo-master-order-list > button > span { display: grid; gap: var(--space-1); width: 100%; min-width: 0; overflow-wrap: anywhere; }
-.erp-wo-master-order-list > button[aria-pressed="true"] { border-color: var(--primary); color: var(--on-secondary-container); background: var(--secondary-container); box-shadow: inset 3px 0 0 var(--primary); }
+.erp-wo-master-order-list > button[aria-pressed="true"] { border-color: var(--primary); color: var(--on-primary-container); background: var(--primary-container); box-shadow: inset 3px 0 0 var(--primary); }
 .erp-wo-master-selected { min-width: 0; }
 .erp-wo-master-selected-heading { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
 @media (max-width: 1000px) { .erp-wo-master-selection-layout { grid-template-columns: 1fr; } .erp-wo-master-order-list { grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); } }
@@ -33732,7 +33732,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-dense-table-scroll { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--outline-variant); border-radius: 6px; }
 .erp-wo-dense-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: var(--type-body-sm); }
 .erp-wo-dense-table caption.visually-hidden { width: 1px; }
-.erp-wo-dense-table th, .erp-wo-dense-table td { text-align: left; padding: 9px 7px; vertical-align: middle; border-bottom: 1px solid var(--outline-variant); overflow-wrap: anywhere; background: var(--surface-container-lowest, var(--surface)); }
+.erp-wo-dense-table th, .erp-wo-dense-table td { text-align: left; padding: 9px 7px; vertical-align: middle; border-bottom: 1px solid var(--outline-variant); overflow-wrap: anywhere; background: var(--surface); }
 .erp-wo-dense-table th { background: var(--surface-container); color: var(--on-surface-variant); }
 .erp-wo-dense-table tbody tr:last-child td { border-bottom: 0; }
 .erp-wo-dense-table .numeric { text-align: right; font-variant-numeric: tabular-nums; }
