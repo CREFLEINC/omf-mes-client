@@ -1,10 +1,10 @@
 import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
-import type { MaterialIssueCloseRemaining } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { SaveErrorBanner, type MasterWriteResult } from '../../patterns/master';
 import { Select } from '../../patterns/select';
+import type { MaterialIssueCloseRemaining } from './api-types';
 import { useCloseReasons } from './queries';
 import { lineClosedQty, qtyWithUom, type ReplenishmentDetailView } from './types';
 

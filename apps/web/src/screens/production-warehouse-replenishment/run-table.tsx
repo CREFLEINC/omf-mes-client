@@ -1,14 +1,14 @@
 import { AlertBanner, Button, Chip, Skeleton } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
+
+import { plantToday } from '../../patterns/plant-time';
 import type {
   ReplenishmentLastRun,
   ReplenishmentRun,
   ReplenishmentRunResultCode,
   ReplenishmentSettings,
-} from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
-
-import { plantToday } from '../../patterns/plant-time';
+} from './api-types';
 import { useRuns } from './queries';
 import { RunLogDialog, runWhen } from './run-log-dialog';
 import { formatDay, plantMinute } from './types';

@@ -1,10 +1,5 @@
 import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
-import type {
-  components,
-  ReplenishmentItem,
-  ReplenishmentRequestCreated,
-  ReplenishmentSettings,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
@@ -12,6 +7,11 @@ import { ItemSelect } from '../../patterns/item-select';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import type {
+  ReplenishmentItem,
+  ReplenishmentRequestCreated,
+  ReplenishmentSettings,
+} from './api-types';
 import { useCreateRequest } from './mutations';
 import {
   sourceOptions,

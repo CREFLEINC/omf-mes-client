@@ -1,11 +1,11 @@
-import type { components, PutawayTaskOriginForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { isWarehouseWhole, type Location } from '../../patterns/locations';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 
-/** 004 — 원천(`originCode`)과 완료 응답의 옮긴 양(`movedQty`)을 함께 읽는다(계약 §6). */
-export type PutawayTask = components['schemas']['PutawayTask'] & PutawayTaskOriginForward;
+/** 004 — 원천(`originCode` · `originDocumentNo`)과 완료 응답의 옮긴 양(`movedQty`)도 생성 타입에 있다(계약 §6). */
+export type PutawayTask = components['schemas']['PutawayTask'];
 export type PutawayTaskComplete = components['schemas']['PutawayTaskComplete'];
 export type { Location };
 

@@ -1,11 +1,3 @@
-import type {
-  MaterialIssueRequestDetailForward,
-  MaterialIssueRequestForward,
-  ReplenishmentArrival,
-  ReplenishmentItem,
-  ReplenishmentRun,
-  ReplenishmentSettings,
-} from '@omf-mes/api-client';
 import userEvent from '@testing-library/user-event';
 
 import {
@@ -14,6 +6,14 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import type {
+  MaterialIssueRequest,
+  MaterialIssueRequestDetail,
+  ReplenishmentArrival,
+  ReplenishmentItem,
+  ReplenishmentRun,
+  ReplenishmentSettings,
+} from './api-types';
 import { ProductionWarehouseReplenishmentScreen } from './screen';
 
 /**
@@ -338,11 +338,11 @@ export const RUNS: ReplenishmentRun[] = [
 
 export const request = (
   id: number,
-  overrides: Partial<MaterialIssueRequestForward> = {},
-): MaterialIssueRequestForward => ({
+  overrides: Partial<MaterialIssueRequest> = {},
+): MaterialIssueRequest => ({
   materialIssueRequestId: id,
   issueRequestNo: `SYN-MIR-${String(id).padStart(2, '0')}`,
-  workOrderId: 0,
+  workOrderId: null,
   destinationLocationId: 501,
   destinationLocationName: '합성 적치 대기',
   statusCode: 'REGISTERED',
@@ -364,7 +364,7 @@ export const request = (
   ...overrides,
 });
 
-export const REQUESTS: MaterialIssueRequestForward[] = [
+export const REQUESTS: MaterialIssueRequest[] = [
   request(1, { replenishmentOriginCode: 'AUTO' }),
   request(2, {
     displayStatus: 'IN_PROGRESS',
@@ -384,7 +384,7 @@ export const REQUESTS: MaterialIssueRequestForward[] = [
     displayStatus: 'DONE',
     replenishmentStatus: 'REMAINDER_CLOSED',
     qtySummary: { requestedQty: 160, issuedQty: 100, closedQty: 60, uomCode: 'KG' },
-    closeReasonCode: 'REMAINDER_CLOSED' as unknown as 'WO_CLOSED',
+    closeReasonCode: 'REMAINDER_CLOSED',
     closeReasonDetailCode: 'STOCK_OUT',
     closeRemark: '합성 납기 지연',
     closedAt: '2026-11-05T10:00:00+07:00',
@@ -413,7 +413,7 @@ const line = (requestId: number, requested: number, picked: number, issued: numb
 });
 
 /** 상세 — 1 진행 없음, 2 출고 100/160, 3 집고 출고 안 함 120, 4 마감(출고 100, 마감 60). */
-export const detailOf = (id: number): MaterialIssueRequestDetailForward => {
+export const detailOf = (id: number): MaterialIssueRequestDetail => {
   const base = REQUESTS.find((row) => row.materialIssueRequestId === id) ?? request(id);
   const lines =
     id === 2

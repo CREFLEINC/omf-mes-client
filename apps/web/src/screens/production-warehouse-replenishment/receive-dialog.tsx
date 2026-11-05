@@ -1,11 +1,11 @@
 import { AlertBanner, Button, Dialog, TextField, useToast } from '@crefle/web-ui';
-import type { ReplenishmentArrival } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import type { ReplenishmentArrival } from './api-types';
 import { useReceiveArrival } from './mutations';
 import { useVarianceReasons } from './queries';
 import { hasErrorCode, parseQty, qtyWithUom } from './types';

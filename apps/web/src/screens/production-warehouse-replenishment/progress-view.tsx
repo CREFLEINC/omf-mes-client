@@ -1,11 +1,11 @@
 import { AlertBanner, Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
-import type { ReplenishmentOriginCode, ReplenishmentSettings } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
+import type { ReplenishmentOriginCode, ReplenishmentSettings } from './api-types';
 import { DetailPanel } from './detail-panel';
 import type { ProgressFilters } from './filters';
 import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';

@@ -14,7 +14,7 @@ import type {
   MaterialIssueRequestView,
   PlannedStockResponse,
 } from './api-types';
-import { toDetailView, toRequestView } from './api-types';
+import { toDetailView, toPlannedShortageView, toRequestView } from './api-types';
 
 type Plant = components['schemas']['Plant'];
 type PageMeta = components['schemas']['PageMeta'];
@@ -123,7 +123,7 @@ export const usePlannedShortage = (
             query: { plantId: plantId ?? 0, onlyShortage: true, requestTypeCode: 'WORK_ORDER' },
           },
         }),
-      ),
+      ).then(toPlannedShortageView),
   });
 };
 

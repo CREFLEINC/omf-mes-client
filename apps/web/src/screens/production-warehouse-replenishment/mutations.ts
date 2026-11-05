@@ -1,24 +1,24 @@
+import { createIdempotencyKey } from '@omf-mes/api-client';
+
+import { useApiClient } from '../../patterns/api-context';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { runRequestWithResponse, type ApiCallResult } from '../../patterns/request';
 import type {
   MaterialIssueCloseRemaining,
-  MaterialIssueRequestDetailForward,
-  MaterialIssueRequestForward,
+  MaterialIssueRequest,
+  MaterialIssueRequestDetail,
+  ReplenishmentArrivalReceive,
   ReplenishmentItem,
   ReplenishmentItemCreate,
   ReplenishmentItemDeleted,
   ReplenishmentItemUpdate,
   ReplenishmentRequestCreate,
   ReplenishmentRequestCreated,
-  ReplenishmentArrivalReceive,
   ReplenishmentSettings,
   ShopfloorReceiptBulkCreate,
   ShopfloorReceiptBulkResult,
-  ShopfloorReceiptDetailForward,
-} from '@omf-mes/api-client';
-import { createIdempotencyKey } from '@omf-mes/api-client';
-
-import { useApiClient } from '../../patterns/api-context';
-import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { runRequestWithResponse, type ApiCallResult } from '../../patterns/request';
+  ShopfloorReceiptDetail,
+} from './api-types';
 import { replenishmentKeys } from './queries';
 
 /** 창고 보충 직접 요청(계약 §2). 출고 자재 창고별로 요청이 나뉘고 바로 배포된다. */
@@ -42,7 +42,7 @@ export const useCreateRequest = (
 /** 출고 전 취소 — 003 경로 그대로(보충 요청이면 W-02-12 권한). */
 export const useCancelRequest = (
   id: number,
-  onSuccess: (saved: MaterialIssueRequestDetailForward) => void,
+  onSuccess: (saved: MaterialIssueRequestDetail) => void,
 ): MasterWriteResult<{ versionNo: number }> => {
   const { client } = useApiClient();
   return useMasterWrite({
@@ -64,7 +64,7 @@ export const useCancelRequest = (
 /** 일부 출고 뒤 잔량 마감(계약 §2). */
 export const useCloseRemaining = (
   id: number,
-  onSuccess: (saved: MaterialIssueRequestForward) => void,
+  onSuccess: (saved: MaterialIssueRequest) => void,
 ): MasterWriteResult<MaterialIssueCloseRemaining> => {
   const { client } = useApiClient();
   return useMasterWrite({
@@ -229,7 +229,7 @@ export const useSaveRunTimes = (onSuccess: () => void): MasterWriteResult<RunTim
 /** 웹 개별 수령(계약 §2 `…/arrivals/{goodsIssueId}:receive`) — `POST /shopfloor-receipts` 는 부르지 않는다(권한 M-01-09). */
 export const useReceiveArrival = (
   goodsIssueId: number,
-  onSuccess: (saved: ShopfloorReceiptDetailForward) => void,
+  onSuccess: (saved: ShopfloorReceiptDetail) => void,
 ): MasterWriteResult<ReplenishmentArrivalReceive> => {
   const { client } = useApiClient();
   return useMasterWrite({

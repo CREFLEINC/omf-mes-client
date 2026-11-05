@@ -1,4 +1,4 @@
-import type { components, ShopfloorReceiptCreateForward } from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
@@ -6,7 +6,7 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 export type GoodsIssue = components['schemas']['GoodsIssue'];
 export type GoodsIssueLine = components['schemas']['GoodsIssueLine'];
 /** 004 — `workOrderId` 선택(창고 보충 출고는 W/O 없이 받는다, 계약 §3). */
-export type ShopfloorReceiptCreate = ShopfloorReceiptCreateForward;
+export type ShopfloorReceiptCreate = components['schemas']['ShopfloorReceiptCreate'];
 export type ShopfloorReceiptLineCreate = components['schemas']['ShopfloorReceiptLineCreate'];
 
 /**
