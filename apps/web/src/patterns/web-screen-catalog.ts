@@ -211,6 +211,10 @@ export const WEB_SCREENS: readonly WebScreen[] = [
     code: 'W-02-10',
     name: '추가 자재 출고 요청(수동)',
   },
+  /* 003(omf-all-around#66) — 출고 요청 현황 · 수정 · 취소 · 부족. 출고 관리 탭에서 W-02-10 다음이다. */
+  { path: '/production/material-issue-status', code: 'W-02-11', name: '출고 요청 현황' },
+  /* 004(omf-all-around#230) — 창고 보충 요청 · 진행 · 관리 품목. 출고 관리 탭에서 W-02-11 다음이다. */
+  { path: '/production/warehouse-replenishment', code: 'W-02-12', name: '생산 창고 보충' },
   {
     path: '/production/work-order-progress',
     code: 'W-02-08',
@@ -299,6 +303,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 자리다(첫째는 `/master-data/warehouse-layout`). 코드는 설계가 붙인 값을 따른다.
    */
   { path: '/system/approval-route', code: 'W-06-15', name: '결재선 정의' },
+  /* 003(omf-all-around#66) — 공장별 주간 근무일. 서버가 운영 정책 `WEEKLY_WORKING_DAYS` 읽기 · 쓰기에 이 권한을 매핑한다(계약 §4). */
+  { path: '/system/plant-working-days', code: 'W-CO-15', name: '공장 근무일 설정' },
   { path: '/system/terminal-process-map', code: 'W-CO-06', name: '단말기-공정 매핑 설정(EX-10)' },
   /*
    * ⚠ **관리자 초기화(`W-CO-02` 의 액션)와 다른 화면이다** — 이것은 본인이 자기 것을 바꾼다.

@@ -1,10 +1,11 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, PutawayTaskOriginForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { isWarehouseWhole, type Location } from '../../patterns/locations';
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 
-export type PutawayTask = components['schemas']['PutawayTask'];
+/** 004 — 원천(`originCode`)과 완료 응답의 옮긴 양(`movedQty`)을 함께 읽는다(계약 §6). */
+export type PutawayTask = components['schemas']['PutawayTask'] & PutawayTaskOriginForward;
 export type PutawayTaskComplete = components['schemas']['PutawayTaskComplete'];
 export type { Location };
 
@@ -124,4 +125,28 @@ export const toOutboxDraft = (
     occurredAt,
     confirmation: 'pending',
   };
+};
+
+/**
+ * 원천 한 줄(screens/M-putaway.md) — 원천을 모르면(예전 지시) 구매 입고다. 창고 보충은 요청번호(`originDocumentNo`,
+ * 서버 S7e)를 붙인다.
+ */
+export const originOf = (task: PutawayTask): string => {
+  const name = messages.putaway.tasks.origin[task.originCode ?? 'GOODS_RECEIPT'];
+  const no = task.originDocumentNo;
+  return task.originCode === 'REPLENISHMENT_RECEIPT' && no !== null && no !== undefined && no !== ''
+    ? messages.putaway.tasks.originWithNo(name, no)
+    : name;
+};
+
+/**
+ * 완료 응답으로 본 결과 한 줄 — 창고 보충 지시가 지시 수량보다 덜 옮겼으면 「남은 N 만」, 0 이면 「닫았습니다」.
+ * 응답을 못 받았거나(오프라인 담기) 다 옮겼으면 null.
+ */
+export const movedNoteOf = (task: PutawayTask, response: unknown, uom: string): string | null => {
+  const moved = (response as { movedQty?: unknown } | undefined)?.movedQty;
+  if (typeof moved !== 'number' || moved >= task.taskQty) return null;
+  return moved <= 0
+    ? messages.putaway.done.movedNone
+    : messages.putaway.done.movedPartial(`${String(moved)} ${uom}`.trim());
 };

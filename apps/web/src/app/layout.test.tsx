@@ -402,8 +402,11 @@ describe('AppLayout', () => {
       'href',
       '/logistics/disposal-issue',
     );
+    /* W-02-11 출고 요청 현황(003) — W-02-10 다음 탭이다(확정 항목 3). */
     expect(hubTabHrefs('출고 관리')).toEqual([
       '/production/material-issue-requests',
+      '/production/material-issue-status',
+      '/production/warehouse-replenishment',
       '/logistics/supplier-return',
       '/logistics/disposal-issue',
     ]);
@@ -432,7 +435,7 @@ describe('AppLayout', () => {
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).not.toContain('/production/material-issue-requests');
-    expect(within(sidebar).queryByRole('link', { name: '자재 불출 요청' })).toBeNull();
+    expect(within(sidebar).queryByRole('link', { name: '추가 출고 요청' })).toBeNull();
     expect(screen.queryByRole('link', { name: '추가 자재 출고 요청' })).toBeNull();
 
     expect(within(purchase).getByRole('link', { name: '출고 관리' })).toHaveAttribute(
@@ -441,7 +444,8 @@ describe('AppLayout', () => {
     );
     const first = within(tabs).getAllByRole('link')[0];
 
-    expect(first).toHaveTextContent('자재 불출 요청');
+    /* #76 표기 통일(피처 003, 검토 1) — 「자재 불출 요청」 → 「추가 출고 요청」. */
+    expect(first).toHaveTextContent('추가 출고 요청');
     expect(first).toHaveAttribute('href', '/production/material-issue-requests');
     expect(first).toHaveAttribute('aria-current', 'page');
   });
@@ -911,8 +915,12 @@ describe('AppLayout', () => {
     expect(links.indexOf('/master-data/common-code')).toBe(
       links.indexOf('/notification/dispatch-history') + 1,
     );
-    expect(links.indexOf('/system/terminal-process-map')).toBe(
+    /* W-CO-15 — 공장 근무일 설정(003). 공통코드·조직·작업자 다음 줄이다. */
+    expect(links.indexOf('/system/plant-working-days')).toBe(
       links.indexOf('/master-data/common-code') + 1,
+    );
+    expect(links.indexOf('/system/terminal-process-map')).toBe(
+      links.indexOf('/system/plant-working-days') + 1,
     );
   });
 
@@ -1035,6 +1043,7 @@ describe('AppLayout', () => {
       '/notification/zalo-connection',
       '/notification/dispatch-history',
       '/master-data/common-code',
+      '/system/plant-working-days',
       '/system/terminal-process-map',
     ]);
   });
@@ -1055,6 +1064,8 @@ describe('AppLayout', () => {
       '재고 관리': ['/logistics/stock-status', '/logistics/stocktaking', '/logistics/stock-adjust'],
       '출고 관리': [
         '/production/material-issue-requests',
+        '/production/material-issue-status',
+        '/production/warehouse-replenishment',
         '/logistics/supplier-return',
         '/logistics/disposal-issue',
       ],
@@ -1664,7 +1675,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /*
@@ -1714,7 +1725,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(44);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

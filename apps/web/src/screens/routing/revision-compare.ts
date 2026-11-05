@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { ratioToPercentText } from './operation-order';
+import { ratioToPercentText, SHOWN_OPERATION_FLAG_KEYS } from './operation-order';
 import type { RoutingOperation } from './types';
 
 const t = messages.routing;
@@ -29,15 +29,8 @@ export interface OperationFieldChange {
 export const changeText = (change: OperationFieldChange): string =>
   `${change.label}: ${change.before} → ${change.after}`;
 
-const FLAG_KEYS = [
-  'mesManaged',
-  'materialInputManaged',
-  'productionResultManaged',
-  'inspectionManaged',
-  'outputLotRequired',
-  'equipmentRequired',
-  'moldRequired',
-] as const;
+/* 화면에 보이는 관리 항목만 견준다 — 「검사 관리」는 빠졌다(PQC 는 품목 단위 · 2026-11-05). */
+const FLAG_KEYS = SHOWN_OPERATION_FLAG_KEYS;
 
 const show = (value: unknown): string =>
   value === null || value === undefined || value === '' ? t.values.empty : String(value);

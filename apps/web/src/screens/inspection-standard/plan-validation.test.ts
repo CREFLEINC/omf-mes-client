@@ -29,6 +29,12 @@ describe('validatePlanForm', () => {
     expect(errors.inspectionTypeCode).toBe('필수 입력 항목입니다.');
   });
 
+  /* PQC 기준은 공정이 필수다(사용자 결정 2026-11-04). IQC · OQC 는 비워도 된다. */
+  /* PQC 기준은 제품에 붙는다 — 공정을 묻지 않는다(사용자 결정 2026-11-04). */
+  it('PQC 기준도 공정 없이 통과한다', () => {
+    expect(validatePlanForm(values({ inspectionTypeCode: 'PQC' }))).toEqual({});
+  });
+
   /* 앞뒤 공백만 있는 값은 눈으로 구분되지 않는 다른 값이 된다. */
   it('공백만 넣은 기준코드·기준명은 거부한다', () => {
     expect(validatePlanForm(values({ inspectionPlanCode: '   ' })).inspectionPlanCode).toBe(

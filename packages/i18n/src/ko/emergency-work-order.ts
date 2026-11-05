@@ -50,9 +50,9 @@ export const emergencyWorkOrder = {
      * 막힌 것만 알리고 길을 안 알려주면 사람이 화면 밖에서 임의로 처리한다(G-3).
      */
     materialRequest: {
-      label: '자재 출고요청',
+      label: '출고 요청',
       value: '자동 발행하지 않음',
-      note: '필요한 자재는 「자재 불출 요청」에서 요청하세요.',
+      note: '필요한 자재는 「추가 출고 요청」에서 요청하세요.',
     },
     resource: {
       label: '자원 배정',

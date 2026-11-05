@@ -32,6 +32,8 @@ export const routing: Translated<typeof ko.routing> = {
   actions: {
     viewDetail: 'Xem chi tiết',
     viewDetailLabel: (revision: string): string => `Xem chi tiết ${revision}`,
+    editPqcPlan: 'Sửa tiêu chuẩn kiểm tra',
+    registerPqcPlan: 'Đăng ký tiêu chuẩn kiểm tra',
     newRevision: 'Phát hành Rev mới',
     createRouting: 'Đăng ký Routing',
     addOperation: 'Thêm công đoạn',
@@ -158,6 +160,7 @@ export const routing: Translated<typeof ko.routing> = {
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
     standardYieldRate: 'Tỷ lệ đạt tiêu chuẩn (%)',
     outsourced: 'Công đoạn thuê ngoài',
+    pqcPlan: 'Tiêu chuẩn PQC',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
     rowActions: 'Chỉnh sửa',
   },
@@ -254,6 +257,9 @@ export const routing: Translated<typeof ko.routing> = {
     setDefaultQuestion: (revision: string): string => `Chỉ định ${revision} làm Rev mặc định?`,
     setDefaultDescription: 'Nếu đang có Rev mặc định, Rev đó sẽ tự động bị bỏ mặc định.',
     setDefaultDone: 'Đã chỉ định Rev mặc định.',
+    pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
+    pqcPlanNone:
+      'Không có — mặt hàng này không thuộc đối tượng PQC. Đăng ký tiêu chuẩn PQC cho mặt hàng ở màn hình tiêu chuẩn kiểm tra để áp dụng.',
   },
   validation: {
     required: 'Đây là mục bắt buộc.',

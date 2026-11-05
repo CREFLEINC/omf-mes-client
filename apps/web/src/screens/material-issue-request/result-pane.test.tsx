@@ -42,19 +42,33 @@ describe('ResultPane', () => {
     expect(screen.getByRole('button', { name: t.actions.publish })).toBeEnabled();
   });
 
+  /*
+   * 피처 003 — 등록 응답이 배열이 됐다(계약 §1, D-6). 표시 상태가 있으면 5종 라벨, 없으면(지금 방식 공장)
+   * 서버 글자를 그대로 보인다(공유계약 G-2 는 지금 방식에서 그대로다).
+   */
   it('결과 카드가 요청번호·상태 글자·품목 건수를 그대로 보인다', () => {
     render(
       <ResultPane
         publishBlockReason={t.actionReasons.alreadyPublished}
         banner={null}
-        created={{ issueRequestNo: 'SAMPLE-MIR-0003', statusCode: 'SAMPLE_MIR_S_A', lineCount: 1 }}
+        created={{
+          requests: [
+            {
+              issueRequestNo: 'SAMPLE-MIR-0003',
+              statusLabel: 'SAMPLE_MIR_S_A',
+              sourceWarehouseName: null,
+              lineCount: 1,
+            },
+          ],
+          overridden: false,
+          fromUnsourced: false,
+        }}
         onPublish={vi.fn()}
       />,
     );
 
     expect(screen.getByText(t.result.title)).toBeInTheDocument();
     expect(screen.getByText(/SAMPLE-MIR-0003/)).toBeInTheDocument();
-    /* 상태를 옮겨 적지 않는다 — 값 목록이 확정되기 전에 뜻을 지어내면 안 된다(공유계약 G-2). */
     expect(screen.getByText(/SAMPLE_MIR_S_A/)).toBeInTheDocument();
   });
 

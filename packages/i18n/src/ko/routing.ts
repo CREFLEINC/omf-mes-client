@@ -31,6 +31,9 @@ export const routing = {
     /** Rev 이력 표의 「상세」 칸 단추 — 누르면 설정 탭에서 그 Rev 를 연다(#231). */
     viewDetail: '상세 보기',
     viewDetailLabel: (revision: string): string => `${revision} 상세 보기`,
+    /* 「PQC 검사 기준」 옆 — 검사 기준 화면으로 옮긴다(사용자 지시 2026-11-05). 기준이 없으면 등록 창을 연다. */
+    editPqcPlan: '검사 기준 수정',
+    registerPqcPlan: '검사 기준 등록',
     newRevision: '신규 Rev 발행',
     createRouting: 'Routing 등록',
     addOperation: '공정 추가',
@@ -168,6 +171,8 @@ export const routing = {
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
     standardYieldRate: '표준 수율(%)',
     outsourced: '외주 공정',
+    /* 검사 항목은 공정이 아니라 품목에 붙는다 — 이 품목의 작업지시가 PQC 의뢰에 쓸 기준(사용자 지시 2026-11-05). */
+    pqcPlan: 'PQC 검사 기준',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
     rowActions: '편집',
   },
@@ -267,6 +272,9 @@ export const routing = {
     setDefaultQuestion: (revision: string): string => `${revision}를 기본 Rev로 지정하시겠습니까?`,
     setDefaultDescription: '기존 기본 Rev가 있다면 자동으로 해제됩니다.',
     setDefaultDone: '기본 Rev로 지정했습니다.',
+    pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
+    pqcPlanNone:
+      '없음 — PQC 대상이 아닙니다. 검사 기준 화면에서 이 품목의 PQC 기준을 등록하면 대상이 됩니다.',
   },
   validation: {
     required: '필수 입력 항목입니다.',

@@ -37,6 +37,10 @@ export interface DepartmentRow {
   parentDepartmentId: number | null;
   businessUnitId: number | null;
   isActive: boolean;
+  /**
+   * 연결한 생산 창고 수(003 · W-06-06 목록 열, 부서 목록 `productionWarehouseCount`). 칸이 없으면 열은 「—」.
+   */
+  productionWarehouseCount?: number;
 }
 
 /**

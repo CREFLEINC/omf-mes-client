@@ -217,3 +217,14 @@
   white-space: normal;
   text-align: center;
 }
+
+/* 004 — 창고 보충 지시가 남은 양만 옮겼을 때의 한 줄. */
+.putaway__moved-note {
+  display: block;
+  color: var(--on-surface-muted);
+}
+
+.putaway__origin {
+  margin: 0;
+  font-weight: 500;
+}

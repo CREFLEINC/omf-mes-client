@@ -4,7 +4,7 @@ import { useId } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
-import { OPERATION_FLAG_KEYS } from './operation-order';
+import { SHOWN_OPERATION_FLAG_KEYS } from './operation-order';
 import type { OperationDraft, SelectOption } from './types';
 
 const t = messages.routing;
@@ -91,7 +91,7 @@ export const OperationFormDialog = ({
 }: OperationFormDialogProps) => {
   const operationNameId = useId();
   const flagTitleId = useId();
-  const selectedFlagCount = OPERATION_FLAG_KEYS.filter((key) => values[key]).length;
+  const selectedFlagCount = SHOWN_OPERATION_FLAG_KEYS.filter((key) => values[key]).length;
 
   return (
     <Dialog
@@ -172,7 +172,7 @@ export const OperationFormDialog = ({
           <span className="routing-flag-count">{t.dialog.flagsSelected(selectedFlagCount)}</span>
         </div>
         <div className="routing-flag-grid">
-          {OPERATION_FLAG_KEYS.map((key) => (
+          {SHOWN_OPERATION_FLAG_KEYS.map((key) => (
             <Checkbox
               key={key}
               checked={values[key]}

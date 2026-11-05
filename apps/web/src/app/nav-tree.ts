@@ -201,8 +201,21 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         tabs: [
           {
             to: '/production/material-issue-requests',
-            label: '자재 불출 요청',
-            labelVi: 'Yêu cầu cấp phát vật tư',
+            /* #76 표기 통일(피처 003, 검토 1) — 옆 탭 「출고 요청 현황」과 겹쳐 읽히지 않게 「추가」를 붙인다. */
+            label: '추가 출고 요청',
+            labelVi: 'Yêu cầu xuất kho bổ sung',
+          },
+          /* W-02-11 — 출고 요청을 보고 고치고 취소하고 부족을 본다(피처 003, 확정 항목 3). */
+          {
+            to: '/production/material-issue-status',
+            label: '출고 요청 현황',
+            labelVi: 'Tình trạng yêu cầu xuất kho',
+          },
+          /* W-02-12 — 생산 창고가 자재 창고에 W/O 없이 자재를 요청한다(피처 004, 시안 검토 1). */
+          {
+            to: '/production/warehouse-replenishment',
+            label: '생산 창고 보충',
+            labelVi: 'Bổ sung kho sản xuất',
           },
           {
             to: '/logistics/supplier-return',
@@ -904,6 +917,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         icon: 'list_alt',
         label: '공통코드·조직·작업자',
         labelVi: 'Mã chung · tổ chức · nhân viên',
+      },
+      /* W-CO-15 — 출고 작업일을 셀 공장별 주간 근무일(피처 003). 공통코드·조직·작업자 다음 줄이다(검토 7 확정 2026-11-03). */
+      {
+        to: '/system/plant-working-days',
+        icon: 'event_available',
+        label: '공장 근무일 설정',
+        labelVi: 'Thiết lập ngày làm việc nhà máy',
       },
       /* W-CO-06 — 단말은 시스템 관리의 자원이다. */
       {

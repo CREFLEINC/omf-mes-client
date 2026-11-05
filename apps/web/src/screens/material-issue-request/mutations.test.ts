@@ -86,7 +86,7 @@ describe('useMaterialIssueRequestMutation', () => {
     const onSuccess = vi.fn();
 
     const { result } = renderHookWithProviders(
-      () => useMaterialIssueRequestMutation({ onSuccess }),
+      () => useMaterialIssueRequestMutation({ onSuccess, onPlannedStockConflict: vi.fn() }),
       { fetch: createStubFetch(captureRoutes(capture, 201, createdRequestFixture)) },
     );
 
@@ -100,10 +100,18 @@ describe('useMaterialIssueRequestMutation', () => {
 
     expect(capture.keys[0]).toBeTruthy();
     expect(capture.ifMatch[0]).toBeNull();
+    /* 피처 003 — 등록 응답이 배열이다(계약 §1, D-6). 표시 상태가 없으면 서버 글자 그대로. */
     expect(onSuccess).toHaveBeenCalledWith({
-      issueRequestNo: 'SAMPLE-MIR-0003',
-      statusCode: 'SAMPLE_MIR_S_A',
-      lineCount: 1,
+      requests: [
+        {
+          issueRequestNo: 'SAMPLE-MIR-0003',
+          statusLabel: 'SAMPLE_MIR_S_A',
+          sourceWarehouseName: null,
+          lineCount: 1,
+        },
+      ],
+      overridden: false,
+      fromUnsourced: false,
     });
   });
 
@@ -112,7 +120,8 @@ describe('useMaterialIssueRequestMutation', () => {
     const routes = captureRoutes(capture, 500, { message: '합성 서버 오류' });
 
     const { result } = renderHookWithProviders(
-      () => useMaterialIssueRequestMutation({ onSuccess: vi.fn() }),
+      () =>
+        useMaterialIssueRequestMutation({ onSuccess: vi.fn(), onPlannedStockConflict: vi.fn() }),
       { fetch: createStubFetch(routes) },
     );
 
@@ -141,7 +150,8 @@ describe('useMaterialIssueRequestMutation', () => {
     const routes = captureRoutes(capture, 500, { message: '합성 서버 오류' });
 
     const { result } = renderHookWithProviders(
-      () => useMaterialIssueRequestMutation({ onSuccess: vi.fn() }),
+      () =>
+        useMaterialIssueRequestMutation({ onSuccess: vi.fn(), onPlannedStockConflict: vi.fn() }),
       { fetch: createStubFetch(routes) },
     );
 
@@ -167,7 +177,8 @@ describe('useMaterialIssueRequestMutation', () => {
     const routes = captureRoutes(capture, 500, { message: '합성 서버 오류' });
 
     const { result } = renderHookWithProviders(
-      () => useMaterialIssueRequestMutation({ onSuccess: vi.fn() }),
+      () =>
+        useMaterialIssueRequestMutation({ onSuccess: vi.fn(), onPlannedStockConflict: vi.fn() }),
       { fetch: createStubFetch(routes) },
     );
 
@@ -193,7 +204,8 @@ describe('useMaterialIssueRequestMutation', () => {
     const routes = captureRoutes(capture, 201, createdRequestFixture);
 
     const { result } = renderHookWithProviders(
-      () => useMaterialIssueRequestMutation({ onSuccess: vi.fn() }),
+      () =>
+        useMaterialIssueRequestMutation({ onSuccess: vi.fn(), onPlannedStockConflict: vi.fn() }),
       { fetch: createStubFetch(routes) },
     );
 
@@ -239,7 +251,8 @@ describe('useMaterialIssueRequestMutation', () => {
     ];
 
     const { result } = renderHookWithProviders(
-      () => useMaterialIssueRequestMutation({ onSuccess: vi.fn() }),
+      () =>
+        useMaterialIssueRequestMutation({ onSuccess: vi.fn(), onPlannedStockConflict: vi.fn() }),
       { fetch: createStubFetch(routes) },
     );
 

@@ -16,10 +16,12 @@ export const inspectionStandard = {
     items: '검사 항목',
   },
   actions: {
+    /* 상세 머리 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
+    openRouting: '라우팅 보기',
+    /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
+    reactivate: '재사용',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: '임시 저장',
-    /* 기본 정보 폼의 품목 칸 지우기 — 비우면 전 품목 공통 기준이다(#196). */
-    itemClear: '품목 지우기',
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
@@ -46,7 +48,8 @@ export const inspectionStandard = {
      * 고를 수 있는 라우팅 자체가 없다. 값을 고를 수 없는 칸을 활성으로 두면
      * 사용자가 무엇이 막혔는지 모르고, 감추면 「이 화면에는 없는 항목」으로 오해한다.
      */
-    routingNeedsItem: '라우팅은 품목을 선택한 뒤에 선택할 수 있습니다. 먼저 품목을 선택하세요.',
+    routingNeedsItem: '품목을 선택하면 라우팅이 표시됩니다.',
+    /* PQC 기준은 공정이 필수다 — 검사 유형이 PQC 일 때 공정 이름 오른쪽에 둔다(사용자 지시 2026-11-04). */
     /*
      * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
      */
@@ -98,9 +101,11 @@ export const inspectionStandard = {
     obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
-    deactivateTitle: '이 검사기준을 사용 중지할까요?',
-    deactivateDescription:
-      '삭제하지 않습니다. 사용 중지하면 새 검사에서 이 기준을 쓸 수 없게 됩니다.',
+    deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
+    /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
+    activateTitle: '검사 기준을 다시 사용하시겠습니까?',
+    activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
+    deactivateDescription: '기준은 삭제되지 않으며, 새 검사에 적용할 수 없게 됩니다.',
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
@@ -135,6 +140,7 @@ export const inspectionStandard = {
   /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
+    activated: '검사기준을 다시 사용합니다.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
@@ -213,7 +219,6 @@ export const inspectionStandard = {
     itemClear: '품목 조건 지우기',
     /** 조건 줄의 「전체」 — 좁히지 않는다는 뜻이다(빈 값과 같은 자리). */
     all: '전체',
-    itemPick: '선택',
     chipItem: (label: string): string => `품목: ${label}`,
     chipRemoveItem: '품목 조건 제거',
   },
@@ -230,7 +235,8 @@ export const inspectionStandard = {
     chipInactive: '미사용',
     editBasic: '기본 정보 수정',
     itemUnset: '품목 미지정',
-    pqcSkipOn: '켜짐',
+    pqcSkipOn: '적용',
+    pqcSkipOff: '미적용',
     close: '닫기',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
@@ -485,6 +491,9 @@ export const inspectionStandard = {
       sampleByLot: '샘플링(LOT 단위)',
     },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
+    /** 기준 수정 창의 라우팅 — 코드 · 버전임을 밝힌다(사용자 지시 2026-11-04). 상태는 옆 칩이 맡는다. */
+    routingSummary: (code: string, version: number): string =>
+      `코드 ${code} · 버전 Rev ${String(version)}`,
     version: (planVersion: number): string => `버전 ${String(planVersion)}`,
     draft: '작성중',
     confirmed: '확정',

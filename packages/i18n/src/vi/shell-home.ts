@@ -25,7 +25,7 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     putaway: 'Đưa vật tư đã nhập vào vị trí cất và hoàn tất nhập kho',
     temporaryPutaway: 'Để tạm ở vị trí tạm khi chưa cất được vào vị trí',
     stockTransfer: 'Chuyển tồn kho giữa các vị trí · Quét khi đến sau khi xuất',
-    materialPicking: 'Lấy vật tư theo chỉ thị xuất',
+    materialPicking: 'Lấy vật tư theo yêu cầu xuất kho',
     physicalCount: 'Đếm và ghi nhận hàng thực tế tại vị trí',
     materialLocation: 'Tra cứu LOT · mặt hàng đang ở vị trí nào',
     shopfloorReceipt: 'Nhận vật tư vào kho sản xuất',

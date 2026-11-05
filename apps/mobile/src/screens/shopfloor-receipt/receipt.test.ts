@@ -4,6 +4,7 @@ import {
   canConfirm,
   isShort,
   needsReason,
+  putawayCountOf,
   qtyProblemOf,
   queuedReceiptsFor,
   toReceiptDraft,
@@ -249,5 +250,38 @@ describe('보낼 것', () => {
     const body = draft.body as { businessDate: string };
 
     expect(body.businessDate).toBe(now.toISOString().slice(0, 10));
+  });
+});
+
+/* 004 생산 창고 보충(omf-all-around#230) — 창고 보충 출고는 W/O 없이 받는다. */
+describe('창고 보충 수령(004)', () => {
+  it('US2-6 workOrderId 가 null 이면 본문에 싣지 않는다', () => {
+    const draft = toReceiptDraft(
+      { goodsIssueId: 500, goodsIssueNo: 'GI-1' } as Parameters<typeof toReceiptDraft>[0],
+      null,
+      42,
+      [
+        {
+          goodsIssueLineId: 1,
+          itemId: 100,
+          lotId: 1000,
+          issuedQty: 30,
+          uomId: 9,
+          receivedQty: '30',
+          reasonCode: '',
+        },
+      ],
+      new Date('2026-11-05T02:00:00Z'),
+      '900028',
+    );
+
+    expect(draft.body).not.toHaveProperty('workOrderId');
+    expect((draft.body as { destinationLocationId: number }).destinationLocationId).toBe(42);
+  });
+
+  it('US6-2 확정 응답의 적치 지시 수를 읽고, 없으면 0', () => {
+    expect(putawayCountOf({ shopfloorReceipt: { putawayTaskIds: [1, 2, 3] } })).toBe(3);
+    expect(putawayCountOf({ shopfloorReceiptId: 900 })).toBe(0);
+    expect(putawayCountOf(undefined)).toBe(0);
   });
 });

@@ -1,16 +1,21 @@
-import { Button, Checkbox, Chip, Icon, SearchInput, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId } from 'react';
 
-import { ItemPickerDialog } from '../../patterns/item-picker';
+import { ItemSelect } from '../../patterns/item-select';
 
 import { INSPECTION_TYPE_OPTIONS, ensureOption } from './code-options';
 import { FieldLabel } from './field-label';
 import { formatApprovedAt } from './plan-mappers';
+import { resolveVersionStatus } from './plan-version-status';
+import type { RoutingRevision } from './queries';
 import { SelectField } from './select-field';
 import type { InspectionPlan, PlanFormValues, SelectOption } from './types';
 
 const t = messages.inspectionStandard;
+
+/** 품목 칸 맨 앞 — 비우면 「전 품목 공통」 기준이다. */
+const ALL_ITEMS = [{ value: '', label: t.values.allItems }];
 
 export type PlanPaneMode = 'edit' | 'create';
 
@@ -21,6 +26,8 @@ export interface PlanPaneProps {
   plan: InspectionPlan | null;
   values: PlanFormValues;
   onChange: (patch: Partial<PlanFormValues>) => void;
+  /** 라우팅을 자동으로 채울 때 부른다. 없으면 `onChange` 로 넣는다. */
+  onRoutingRefresh?: (routingId: string) => void;
   /** 필드별 인라인 오류 — 로컬 검증 결과와 서버 필드 오류를 상위가 병합해 넘긴다. */
   fieldErrors: Record<string, string>;
   /** 저장 실패 배너 슬롯 */
@@ -28,8 +35,10 @@ export interface PlanPaneProps {
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   itemOptions: SelectOption[];
-  processOptions: SelectOption[];
-  routingOptions: SelectOption[];
+  /** 그 품목의 라우팅 Rev 들 — 채운 Rev 를 코드 · 버전 · 상태로 보인다. */
+  routingRevisions: RoutingRevision[];
+  /** 라우팅 칸에 채울 값 — 그 품목의 작성 중 최신 Rev, 없으면 확정 최신 Rev(사용자 지시 2026-11-04). 받는 중이면 undefined, 없으면 null. */
+  autoRoutingId?: string | null | undefined;
   /**
    * 라우팅을 고를 수 없는 사유. null이면 고를 수 있다.
    * 계약의 라우팅 조회가 품목을 필수로 두어 「전 품목 공통 기준」에는 이을 라우팅이 없다.
@@ -63,12 +72,13 @@ export const PlanPane = ({
   plan,
   values,
   onChange,
+  onRoutingRefresh,
   fieldErrors,
   banner,
   optionsNotice,
   itemOptions,
-  processOptions,
-  routingOptions,
+  routingRevisions,
+  autoRoutingId,
   routingDisabledReason,
   codeLockReason,
   isDirty,
@@ -82,15 +92,47 @@ export const PlanPane = ({
   const codeId = useId();
   const codeLockNoteId = useId();
   const nameId = useId();
-  const [isItemPickerOpen, setIsItemPickerOpen] = useState(false);
-  /* 창에서 고른 품목의 이름 — 선택지 목록(첫 쪽)에 없는 품목도 이름이 보이게 둔다(#196). */
-  const [pickedItemLabels, setPickedItemLabels] = useState<Record<string, string>>({});
-  const itemLabel =
-    values.itemId === ''
-      ? ''
-      : (pickedItemLabels[values.itemId] ??
-        itemOptions.find((option) => option.value === values.itemId)?.label ??
-        '');
+  const itemId = useId();
+  const itemErrorId = useId();
+  const itemOption = itemOptions.find((option) => option.value === values.itemId) ?? null;
+  const routingId = useId();
+  const routingRevision = routingRevisions.find(
+    (revision) => revision.routingId === values.routingId,
+  );
+  /* 라우팅이 없는 품목이면 칸을 두지 않는다(사용자 지시 2026-11-05) — 오류가 있으면 오류는 보인다. */
+  const isRoutingShown =
+    routingDisabledReason === null &&
+    (routingRevision !== undefined || fieldErrors.routingId !== undefined);
+
+  /*
+   * 비어 있는 필수 칸은 처음부터 테두리만 빨갛게 한다(사용자 지시 2026-11-04) — 「필수 입력 항목입니다」 글은 화면에
+   * 띄우지 않고 화면 읽기로만 남긴다. 검사 항목 추가 창(item-form-dialog)과 같은 규칙이고, 다른 오류(중복 등)는 글로 낸다.
+   */
+  const requiredMessage = t.validation.required;
+  const isBlank = (value: string): boolean => value.trim() === '';
+  const shownError = (key: string): string | undefined =>
+    fieldErrors[key] === requiredMessage ? undefined : fieldErrors[key];
+  const requiredText = (key: string, value: string) => {
+    const error = shownError(key);
+    if (error !== undefined) return { error };
+    return isBlank(value)
+      ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
+      : {};
+  };
+  /*
+   * 라우팅은 고르지 않고 자동으로 채운다(사용자 지시 2026-11-04) — 작성 중 최신 Rev, 없으면 확정 최신 Rev.
+   * 이미 저장된 기준도 창을 열면 지금 Rev 로 다시 채운다. 품목을 비우면 라우팅도 비운다.
+   */
+  useEffect(() => {
+    const refresh = onRoutingRefresh ?? ((routingId: string) => onChange({ routingId }));
+    if (values.itemId === '') {
+      if (values.routingId !== '') refresh('');
+      return;
+    }
+    if (autoRoutingId === undefined) return;
+    const next = autoRoutingId ?? '';
+    if (values.routingId !== next) refresh(next);
+  }, [values.itemId, values.routingId, autoRoutingId, onChange, onRoutingRefresh]);
 
   const approvedAt = formatApprovedAt(plan?.approvedAt);
   /* 바꿀 수 없는 칸에는 필수 표시를 두지 않는다 — 고칠 수 없는 칸에 「꼭 채우라」는 뜻이 없다(사용자 지시 · #196). */
@@ -131,100 +173,106 @@ export const PlanPane = ({
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
-        <div className="field-cell">
-          <FieldLabel
-            htmlFor={codeId}
-            label={t.fields.inspectionPlanCode}
-            required={!isCodeLocked}
-          />
-          <TextField
-            id={codeId}
-            value={values.inspectionPlanCode}
-            onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
-            disabled={isCodeLocked}
-            /* 잠긴 칸은 자물쇠 표시 + 칸 바로 아래 작은 안내 한 줄(사용자 시안 · #208). */
-            trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
-            aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
-            error={fieldErrors.inspectionPlanCode}
-            aria-required={!isCodeLocked}
-          />
-          {isCodeLocked && (
-            <p id={codeLockNoteId} className="field-note">
-              {codeLockReason}
-            </p>
+        {/* 첫 줄 — 기본 생략 | 기준코드 · 기준명(사용자 시안 2026-11-04). */}
+        <div className="inspection-standard-plan-head-row">
+          {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. */}
+          {values.inspectionTypeCode !== '' && (
+            <div className="inspection-standard-plan-skip">
+              <Checkbox
+                checked={values.defaultSkip}
+                onChange={(event) => onChange({ defaultSkip: event.target.checked })}
+              >
+                {t.fields.defaultSkip}
+              </Checkbox>
+            </div>
           )}
+
+          <div className="field-cell">
+            <FieldLabel
+              htmlFor={codeId}
+              label={t.fields.inspectionPlanCode}
+              required={!isCodeLocked}
+              {...(codeLockReason !== null ? { hint: codeLockReason, hintId: codeLockNoteId } : {})}
+            />
+            <TextField
+              id={codeId}
+              value={values.inspectionPlanCode}
+              onChange={(event) => onChange({ inspectionPlanCode: event.target.value })}
+              disabled={isCodeLocked}
+              /* 잠긴 칸은 자물쇠 표시 + 라벨 오른쪽 짧은 안내(사용자 시안 · #208 · 2026-11-04 라벨 옆으로). */
+              trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
+              aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
+              {...(isCodeLocked
+                ? { error: fieldErrors.inspectionPlanCode }
+                : requiredText('inspectionPlanCode', values.inspectionPlanCode))}
+              aria-required={!isCodeLocked}
+            />
+          </div>
+
+          <div className="field-cell">
+            <FieldLabel htmlFor={nameId} label={t.fields.inspectionPlanName} required />
+            <TextField
+              id={nameId}
+              value={values.inspectionPlanName}
+              onChange={(event) => onChange({ inspectionPlanName: event.target.value })}
+              {...requiredText('inspectionPlanName', values.inspectionPlanName)}
+              aria-required
+            />
+          </div>
         </div>
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={nameId} label={t.fields.inspectionPlanName} required />
-          <TextField
-            id={nameId}
-            value={values.inspectionPlanName}
-            onChange={(event) => onChange({ inspectionPlanName: event.target.value })}
-            error={fieldErrors.inspectionPlanName}
-            aria-required
-          />
-        </div>
-
+        {/* 둘째 줄 — 검사 유형(사용자 시안 2026-11-04). 공정 칸은 없다 — PQC 기준은 제품에 붙고, 검사할 공정은 라우팅 「검사 관리」가 정한다(사용자 결정 2026-11-04). */}
         <SelectField
           label={t.fields.inspectionType}
           required
           options={ensureOption(INSPECTION_TYPE_OPTIONS, values.inspectionTypeCode)}
           value={values.inspectionTypeCode}
           onChange={(inspectionTypeCode) => onChange({ inspectionTypeCode })}
-          error={fieldErrors.inspectionTypeCode}
+          error={shownError('inspectionTypeCode')}
+          invalid={isBlank(values.inspectionTypeCode)}
         />
 
+        {/* 셋째 줄 — 품목 · 라우팅(사용자 지시 2026-11-04). */}
         {/*
          * 비우면 「전 품목 공통 기준」이다 — 계약이 널을 허용한다.
-         * 품목은 **창에서 검색해서 고른다**(#196) — 선택칸은 품목 목록의 첫 쪽만 담아 뒤쪽 품목을 고를 수 없었다.
-         * 읽기 전용 칸을 누르거나 엔터를 치면 품목 선택 창이 열린다. 조회 줄의 품목 조건과 같은 모양이다.
+         * 품목은 **칸에서 바로 검색해서 고른다**(사용자 지시 2026-11-04 — 품목 선택 창을 띄우지 않는다).
+         * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
-        <SearchInput
-          label={t.fields.item}
-          placeholder={t.values.allItems}
-          value={itemLabel}
-          readOnly
-          title={itemLabel === '' ? undefined : itemLabel}
-          aria-haspopup="dialog"
-          clearLabel={t.actions.itemClear}
-          error={fieldErrors.itemId}
-          onClick={() => setIsItemPickerOpen(true)}
-          onSearch={() => setIsItemPickerOpen(true)}
-          onChange={() => undefined}
-          onClear={() => onChange({ itemId: '' })}
-        />
+        <div className="field-cell search-select-cell">
+          <FieldLabel htmlFor={itemId} label={t.fields.item} />
+          <ItemSelect
+            id={itemId}
+            selectedOption={itemOption}
+            leadingOptions={ALL_ITEMS}
+            value={values.itemId}
+            placeholder={t.values.allItems}
+            onChange={(value) => onChange({ itemId: value })}
+            invalid={fieldErrors.itemId !== undefined}
+            aria-describedby={fieldErrors.itemId === undefined ? undefined : itemErrorId}
+          />
+          {fieldErrors.itemId !== undefined && (
+            <span id={itemErrorId} className="field-error">
+              {fieldErrors.itemId}
+            </span>
+          )}
+        </div>
 
-        {/* IQC 에는 공정이 없다 — 비우는 것이 정상 값이다. */}
-        <SelectField
-          label={t.fields.process}
-          options={[{ value: '', label: t.values.notSelected }, ...processOptions]}
-          value={values.processId}
-          placeholder={t.values.notSelected}
-          onChange={(processId) => onChange({ processId })}
-          error={fieldErrors.processId}
-        />
-
-        <SelectField
-          label={t.fields.routing}
-          options={[{ value: '', label: t.values.notSelected }, ...routingOptions]}
-          value={values.routingId}
-          placeholder={t.values.notSelected}
-          onChange={(routingId) => onChange({ routingId })}
-          disabled={routingDisabledReason !== null}
-          disabledReason={routingDisabledReason ?? undefined}
-          error={fieldErrors.routingId}
-        />
-
-        {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. 위아래 구분선을 둔 한 줄 구획(사용자 시안 · #208). */}
-        {values.inspectionTypeCode !== '' && (
-          <div className="field-cell form-grid-full inspection-standard-pqc-skip">
-            <Checkbox
-              checked={values.defaultSkip}
-              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
-            >
-              {t.fields.defaultSkip}
-            </Checkbox>
+        {/*
+         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내 문구도 두지 않는다 · 사용자 지시 2026-11-05).
+         * 고르는 칸이 아니라 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04).
+         */}
+        {isRoutingShown && (
+          <div className="field-cell">
+            <span className="field-label" id={routingId}>
+              {t.fields.routing}
+            </span>
+            {/* 입력칸 모양도 두지 않는다 — 값 글자만(사용자 지시 2026-11-04). */}
+            <p className="inspection-standard-plan-routing" aria-labelledby={routingId}>
+              <RoutingSummary revision={routingRevision} />
+            </p>
+            {fieldErrors.routingId !== undefined && (
+              <span className="field-error">{fieldErrors.routingId}</span>
+            )}
           </div>
         )}
       </div>
@@ -244,26 +292,20 @@ export const PlanPane = ({
           {mode === 'create' ? t.actions.addPlan : messages.common.save}
         </Button>
       </div>
-      {isItemPickerOpen && (
-        <ItemPickerDialog
-          multiple={false}
-          compact
-          showAvailability={false}
-          confirmLabel={t.filters.itemPick}
-          onClose={() => setIsItemPickerOpen(false)}
-          onConfirm={([item]) => {
-            if (item !== undefined) {
-              const itemId = String(item.itemId);
-              setPickedItemLabels((prev) => ({
-                ...prev,
-                [itemId]: `${item.itemCode} · ${item.itemName}`,
-              }));
-              onChange({ itemId });
-            }
-            setIsItemPickerOpen(false);
-          }}
-        />
-      )}
     </section>
+  );
+};
+
+/** 라우팅 코드 · 버전 글자와 상태 칩(사용자 지시 2026-11-04 — 상태는 라벨 형식). 기준 상세 머리도 쓴다. */
+export const RoutingSummary = ({ revision }: { revision: RoutingRevision | undefined }) => {
+  if (revision === undefined) return <>-</>;
+  const status = resolveVersionStatus(revision.statusCode);
+  return (
+    <>
+      <span>{t.values.routingSummary(revision.routingCode, revision.routingVersion)}</span>
+      <Chip variant="status" size="sm" status={status.tone}>
+        {status.label}
+      </Chip>
+    </>
   );
 };

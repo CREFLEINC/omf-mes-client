@@ -87,7 +87,7 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
       where: 'PDA › Kho › Xếp hàng lên kệ',
     },
     MATERIAL_PICKING_REQUESTED: {
-      when: 'Khi yêu cầu xuất (phát hành W/O, yêu cầu xuất thêm) tạo lệnh lấy hàng — mỗi lệnh 1 lần',
+      when: 'Khi yêu cầu xuất kho được phát hành và tạo lệnh lấy hàng (00:00 ngày xuất kho hoặc ngay) — mỗi lệnh 1 lần',
       where: 'PDA › Kho › Xuất vật tư, lấy hàng',
     },
     STOCK_TRANSFER_ARRIVAL_PENDING: {

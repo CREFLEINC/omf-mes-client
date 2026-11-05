@@ -32,6 +32,14 @@ export const putaway = {
     /** 작업 카드에서 코드 옆에 서는 품목 이름의 이름(낭독기용). */
     itemNameLabel: '품목명',
     taskNoLabel: '지시 번호',
+    /** 004 — 지시가 어디서 생겼나. 창고 보충 수령에서 생긴 지시도 같은 목록에 선다(screens/M-putaway.md). */
+    originLabel: '원천',
+    /** 창고 보충 원천 — 요청번호를 괄호로(가운뎃점 나열 대신, C-13). */
+    originWithNo: (origin: string, no: string) => `${origin}(${no})`,
+    origin: {
+      GOODS_RECEIPT: '구매 입고',
+      REPLENISHMENT_RECEIPT: '창고 보충',
+    },
     qtyLabel: '수량',
     /** 둬도 되는 위치. 서버는 품목의 보관 위치(위치 「보관 품목」)로 계산한다. */
     allowedLabel: '보관 위치',
@@ -103,6 +111,9 @@ export const putaway = {
   done: {
     count: (count: string) => `적치됨 ${count}건`,
     row: (lotNo: string, code: string, qty: string) => `${lotNo} → ${code} ${qty}`,
+    /** 창고 보충 지시는 적치 대기에 남은 양만큼만 옮긴다(004). */
+    movedPartial: (qty: string) => `적치 대기에 남은 ${qty} 만 옮겼습니다(나머지는 먼저 출고됨)`,
+    movedNone: '옮길 재고가 없어 지시를 닫았습니다',
     /** 담기지 않은 건이 없어야 마친다. */
     submit: '적치 완료',
     /** 마칠 것이 없을 때. 한 건이라도 적치해야 마친다. */

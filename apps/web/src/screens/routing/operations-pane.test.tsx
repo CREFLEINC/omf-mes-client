@@ -78,14 +78,14 @@ describe('OperationsPane', () => {
     const { user } = renderPane();
 
     const first = bodyRows()[0] as HTMLElement;
-    const toggle = within(first).getByRole('button', { name: 'MES 관리 외 2개' });
+    const toggle = within(first).getByRole('button', { name: 'MES 관리 외 1개' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(within(first).queryByRole('list')).not.toBeInTheDocument();
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const items = within(within(first).getByRole('list')).getAllByRole('listitem');
-    expect(items.map((item) => item.textContent)).toEqual(['MES 관리', '실적 관리', '검사 관리']);
+    expect(items.map((item) => item.textContent)).toEqual(['MES 관리', '실적 관리']);
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
 
     await user.click(toggle);

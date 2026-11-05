@@ -26,7 +26,23 @@ export interface ScannedIssue {
    */
   workOrderId: number | null;
   destinationLocationId: number | null;
+  /**
+   * 수령 종류(004) — W/O 출고(`WORK_ORDER`)와 창고 보충 출고(`REPLENISHMENT`, W/O 없음). 출고 요청까지 따라가지
+   * 못하면 null — 이 화면이 받을 출고가 아니다.
+   */
+  kind: ReceiptKind | null;
+  /** 창고 보충이면 요청번호(머리의 W/O 자리). */
+  issueRequestNo: string | null;
 }
+
+export type ReceiptKind = 'WORK_ORDER' | 'REPLENISHMENT';
+
+const NOT_TARGET = {
+  workOrderId: null,
+  destinationLocationId: null,
+  kind: null,
+  issueRequestNo: null,
+};
 
 /**
  * 이 경로에는 번호 정확 일치 축이 없어 부분 검색으로 묻고 화면이 고른다.
@@ -98,7 +114,7 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
    * 화면은 조회 권한 문구를 달아 사람을 단말 설정으로 보냈다.
    */
   if (issue.sourceDocumentTypeCode !== 'PICKING_ORDER') {
-    return { issue, lines: lines.items, workOrderId: null, destinationLocationId: null };
+    return { issue, lines: lines.items, ...NOT_TARGET };
   }
 
   const picking = await runRequest(() =>
@@ -112,7 +128,7 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
    * 가른다. 출하 피킹에서 나온 출고를 여기 대면 출하 지시 번호로 자재 출고요청을 묻게 된다.
    */
   if (picking.pickingOrder.sourceDocumentTypeCode !== 'MATERIAL_ISSUE_REQUEST') {
-    return { issue, lines: lines.items, workOrderId: null, destinationLocationId: null };
+    return { issue, lines: lines.items, ...NOT_TARGET };
   }
 
   const request = await runRequest(() =>
@@ -121,11 +137,27 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
     }),
   );
 
+  const found = request.materialIssueRequest;
+
+  /* 창고 보충 요청(004)은 W/O 가 없다 — 도착 위치만으로 받는다(screens/M-01-09.md). */
+  if (found.requestTypeCode === 'REPLENISHMENT') {
+    return {
+      issue,
+      lines: lines.items,
+      workOrderId: null,
+      destinationLocationId: found.destinationLocationId,
+      kind: 'REPLENISHMENT',
+      issueRequestNo: found.issueRequestNo,
+    };
+  }
+
   return {
     issue,
     lines: lines.items,
-    workOrderId: request.materialIssueRequest.workOrderId,
-    destinationLocationId: request.materialIssueRequest.destinationLocationId,
+    workOrderId: found.workOrderId,
+    destinationLocationId: found.destinationLocationId,
+    kind: 'WORK_ORDER',
+    issueRequestNo: null,
   };
 };
 

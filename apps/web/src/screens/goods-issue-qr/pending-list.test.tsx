@@ -482,3 +482,27 @@ describe('QR 발행 대기 목록', () => {
     expect(await screen.findByText(t.pending.sectionLabel)).toBeTruthy();
   });
 });
+
+/*
+ * 004 생산 창고 보충(omf-all-around#230, FR-014 · R-12) — 창고 보충 요청의 피킹에서 나온 출고도 W/O 출고와 같은
+ * `PRODUCTION` 유형 · 피킹지시 원천이다. QR 발행 대기 목록은 유형으로만 거르므로 그 출고도 서야 한다.
+ */
+describe('QR 발행 대기 목록 — 창고 보충 출고(004)', () => {
+  it('SC-007 창고 보충 출고(PRODUCTION 유형)도 W/O 출고와 함께 대기 목록에 선다', async () => {
+    const requests: string[] = [];
+    render({
+      requests,
+      issues: [
+        issue(901, 'GI-20261105-0001', '2026-11-05T01:00:00Z'),
+        /* 창고 보충 요청 피킹에서 나온 출고 — 모양은 W/O 출고와 같다(도착 = 생산 창고 위치). */
+        issue(902, 'GI-20261105-0002', '2026-11-05T02:00:00Z'),
+      ],
+    });
+
+    await screen.findByText('GI-20261105-0002');
+    expect(within(pendingPane()).getByText('GI-20261105-0001')).toBeTruthy();
+    expect(
+      requests.every((url) => new URL(url).searchParams.get('issueTypeCode') === 'PRODUCTION'),
+    ).toBe(true);
+  });
+});

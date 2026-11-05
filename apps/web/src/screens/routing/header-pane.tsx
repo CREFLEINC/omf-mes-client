@@ -1,4 +1,4 @@
-import { Chip, TextField } from '@crefle/web-ui';
+import { Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
@@ -18,6 +18,10 @@ export interface HeaderPaneProps {
   itemLabel: string;
   /** 판 번호는 시스템 채번이라 값 표기로만 낸다. 등록 전에는 없으므로 null이다. */
   routingVersion: number | null;
+  /** 이 품목의 PQC 검사 기준 글자. 아직 모르면 `null` 이고 칸을 두지 않는다. */
+  pqcPlanLabel: string | null;
+  /** 「PQC 검사 기준」 옆 단추 — 검사 기준 화면으로 옮긴다. 권한이 없거나 아직 모르면 `null` 이고 두지 않는다. */
+  pqcPlanAction: { label: string; onClick: () => void } | null;
   /** 상태도 서버가 정한다. 등록 전에는 없으므로 null이며, 없는 값을 지어내 보이지 않는다. */
   status: RoutingStatusView | null;
   values: RoutingHeaderFormValues;
@@ -63,6 +67,8 @@ export const HeaderPane = ({
   mode,
   itemLabel,
   routingVersion,
+  pqcPlanLabel,
+  pqcPlanAction,
   status,
   values,
   onChange,
@@ -83,6 +89,7 @@ export const HeaderPane = ({
 }: HeaderPaneProps) => {
   const itemLabelId = useId();
   const revisionLabelId = useId();
+  const pqcPlanLabelId = useId();
   const statusLabelId = useId();
   const routingCodeId = useId();
   const routingCodeLabelId = useId();
@@ -121,6 +128,26 @@ export const HeaderPane = ({
               {t.fields.revision}
             </span>
             <p aria-labelledby={revisionLabelId}>{t.values.revision(routingVersion)}</p>
+          </div>
+        )}
+
+        {/*
+         * 검사 항목은 공정이 아니라 품목에 붙는다 — 「검사 관리」를 켠 공정의 작업지시가 쓸 기준을 품목 옆에 보인다
+         * (사용자 지시 2026-11-05). 한 줄을 다 쓴다.
+         */}
+        {pqcPlanLabel !== null && (
+          <div className="routing-header-wide">
+            <span className="field-label" id={pqcPlanLabelId}>
+              {t.fields.pqcPlan}
+            </span>
+            <div className="routing-pqc-plan-value">
+              <p aria-labelledby={pqcPlanLabelId}>{pqcPlanLabel}</p>
+              {pqcPlanAction !== null && (
+                <Button variant="outlined" size="sm" onClick={pqcPlanAction.onClick}>
+                  {pqcPlanAction.label}
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

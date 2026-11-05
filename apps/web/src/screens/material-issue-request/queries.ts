@@ -1,4 +1,6 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
+
+type WorkOrder = components['schemas']['WorkOrder'];
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -32,6 +34,76 @@ export const materialIssueRequestKeys = {
   shortage: (workOrderId: number) => ['material-issue-request', 'shortage', workOrderId] as const,
   existingAll: ['material-issue-request', 'existing'] as const,
   existing: (workOrderId: number) => ['material-issue-request', 'existing', workOrderId] as const,
+  workOrder: (workOrderId: number) =>
+    ['material-issue-request', 'work-order', workOrderId] as const,
+  item: (itemId: number) => ['material-issue-request', 'item', itemId] as const,
+};
+
+/**
+ * W/O 상세 — 피처 003 의 공장 모드(`productionWarehouseMode`)와 라인 부서 생산 창고(`productionWarehouses`,
+ * 계약 §2)와, W-02-11 「보충 요청」으로 열 때 고를 W/O 자체. 모드가 아니면 화면이 지금 그대로다(FR-009a).
+ * 조회가 실패해도 지금 방식으로 둔다 — 이 칸 때문에 요청 발행을 막지 않는다.
+ */
+export const useWorkOrderDetail = (workOrderId: number | null): UseQueryResult<WorkOrder> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: materialIssueRequestKeys.workOrder(workOrderId ?? 0),
+    enabled: workOrderId !== null,
+    retry: false,
+    queryFn: async () =>
+      await runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId: workOrderId ?? 0 } },
+        }),
+      ),
+  });
+};
+
+/**
+ * 생산 창고 · 품목별 남은 수량(쓸 수 있는 양 = 가용 − 출고 예정, 계약 `GET …/free-stock`). 열쇠는 `창고:품목`.
+ * 출고 예정이 없는 자재도 가용이 있으면 온다 — 출고 예정 재고 조회(`…/planned-stock`)는 예정이 잡힌 쌍만
+ * 다뤄, 재고가 있어도 「재고 있는 생산 창고 없음」으로 보였다(omf-all-around#232 2). 응답에 없는 쌍은
+ * 가용도 예정도 없다.
+ */
+export const useFreeStock = (
+  warehouseIds: readonly number[],
+  itemIds: readonly number[],
+): UseQueryResult<Map<string, number>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['material-issue-request', 'free-stock', [...warehouseIds], [...itemIds]] as const,
+    enabled: warehouseIds.length > 0 && itemIds.length > 0,
+    retry: false,
+    queryFn: async () => {
+      const stock = await runRequest(() =>
+        client.GET('/logistics/material-issue-requests/free-stock', {
+          params: { query: { warehouseIds: [...warehouseIds], itemIds: [...itemIds] } },
+        }),
+      );
+      return new Map(
+        stock.items.map((row) => [`${String(row.warehouseId)}:${String(row.itemId)}`, row.freeQty]),
+      );
+    },
+  });
+};
+
+/** 채워 열 품목의 기본 단위 — W-02-11 「보충 요청」은 품목 번호만 준다. */
+export const useItemBaseUom = (itemId: number | null): UseQueryResult<number | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: materialIssueRequestKeys.item(itemId ?? 0),
+    enabled: itemId !== null,
+    retry: false,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/items/{itemId}', { params: { path: { itemId: itemId ?? 0 } } }),
+      );
+      return data.item.baseUomId ?? null;
+    },
+  });
 };
 
 const fetchWorkOrders = async (client: Client, q: string): Promise<WorkOrderListResult> => {

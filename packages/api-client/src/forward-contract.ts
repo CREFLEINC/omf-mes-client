@@ -722,7 +722,545 @@ export type StockReinstatementResponseForward = Omit<
 
 type StockReinstatementsPath = paths['/logistics/stock-reinstatements'];
 
+/**
+ * 서버 선행(004 생산 창고 보충, omf-all-around#230 · 설계 계약 replenishment-api.md §1·§2·§4) — 창고 보충.
+ * 서버 병합 뒤 `gen:api` 로 다시 만들고 이 덧댐을 걷는다(D-12, T065).
+ *
+ * 출고 요청 응답(`MaterialIssueRequest`)은 «새 칸만 선택으로 더한다». 계약은 보충 요청의 W/O 칸을 null 로 두지만
+ * 여기서 W/O 칸을 nullable 로 바꾸면 W-02-10·W-02-11 타입이 흔들린다 — 그 둘은 W/O 요청만 받는다(목록 기본 조건
+ * `WORK_ORDER`). W/O 칸을 읽지 않는 W-02-12 가 화면 쪽에서 null 로 다룬다.
+ */
+export type MaterialIssueRequestTypeCode = 'WORK_ORDER' | 'REPLENISHMENT';
+export type ReplenishmentOriginCode = 'DIRECT' | 'AUTO';
+/** 보충 요청 상태(data-model 「상태와 표시」). `displayStatus` 는 003 그대로(완료 · 마감 둘 다 `DONE`). */
+export type ReplenishmentStatusCode =
+  'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'REMAINDER_CLOSED' | 'CANCELLED';
+
+/** 한 품목 요청의 수량 합(두 품목 이상이면 null — 단위가 다른 줄을 더하지 않는다). */
+export interface ReplenishmentQtySummary {
+  requestedQty: number;
+  issuedQty: number;
+  closedQty: number;
+  uomCode: string;
+}
+/** 잔량 마감 사유 — 공통코드 `REPLENISHMENT_CLOSE_REASON`(고객이 값을 늘린다). */
+export type ReplenishmentCloseReasonCode = string;
+
+/** 보충 요청의 출고 전표 한 장(상세에만, FR-023). */
+export interface ReplenishmentGoodsIssue {
+  goodsIssueId: number;
+  goodsIssueNo: string;
+  issuedAt: string;
+  received: boolean;
+  shopfloorReceiptId?: number | null;
+}
+
+/**
+ * 닫힘 사유 `closeReasonCode` 에 계약은 `REMAINDER_CLOSED`(잔량 마감)를 더한다. 같은 응답을 받는 모바일 피킹 타입이
+ * 흔들리지 않게 여기서는 넓히지 않고, W-02-12 가 받는 자리에서 넓혀 읽는다.
+ */
+export type MaterialIssueRequestForward = components['schemas']['MaterialIssueRequest'] & {
+  requestTypeCode?: MaterialIssueRequestTypeCode;
+  replenishmentOriginCode?: ReplenishmentOriginCode | null;
+  destinationWarehouseId?: number | null;
+  destinationWarehouseName?: string | null;
+  closeReasonDetailCode?: ReplenishmentCloseReasonCode | null;
+  closeRemark?: string | null;
+  /** 닫은 사람(사용자 번호). 화면은 이력의 마감 사건에서 이름을 보인다. */
+  closedBy?: number | null;
+  /** 보충 요청만 — 출고 전표 수 · 그중 수령 수(진행 보기 「수령」). W/O 요청은 null. */
+  receiptSummary?: { issuedCount: number; receivedCount: number } | null;
+  /** 보충 요청만 — 상태(진행 보기 칩 · 조건). W/O 요청은 null. */
+  replenishmentStatus?: ReplenishmentStatusCode | null;
+  /** 보충 요청만 — 한 품목일 때 요청 · 출고 · 마감 수량. */
+  qtySummary?: ReplenishmentQtySummary | null;
+  /** 상세에만 — 출고 전표 목록. */
+  goodsIssues?: ReplenishmentGoodsIssue[] | null;
+};
+
+export interface MaterialIssueRequestDetailForward {
+  materialIssueRequest: MaterialIssueRequestForward;
+  lines: components['schemas']['MaterialIssueRequestLine'][];
+}
+
+type MaterialIssueRequestsPath = paths['/logistics/material-issue-requests'];
+type MaterialIssueRequestPath =
+  paths['/logistics/material-issue-requests/{materialIssueRequestId}'];
+type PlannedStockPath = paths['/logistics/material-issue-requests/planned-stock'];
+
+/**
+ * 출고 예정 조회 조건 추가(계약 §1, G1 보완) — `includeUnplanned` 는 예정이 없어도 가용 잔액이 있는 쌍을 싣는다
+ * (`sourceWarehouseId` 나 `itemId` 가 함께 있어야 한다). `requestTypeCode` 는 그 유형 요청만 `requests[]` 에 싣는다.
+ */
+export type PlannedStockQueryForward = PlannedStockPath['get']['parameters']['query'] & {
+  includeUnplanned?: boolean;
+  requestTypeCode?: MaterialIssueRequestTypeCode;
+};
+
+type MaterialIssueCancelPath =
+  paths['/logistics/material-issue-requests/{materialIssueRequestId}:cancel'];
+
+/** 목록 조건 추가(계약 §1) — `requestTypeCode` 를 주지 않으면 서버가 `WORK_ORDER` 로 거른다. */
+export type MaterialIssueRequestListQueryForward = NonNullable<
+  MaterialIssueRequestsPath['get']['parameters']['query']
+> & {
+  requestTypeCode?: MaterialIssueRequestTypeCode;
+  replenishmentOriginCode?: ReplenishmentOriginCode;
+  destinationWarehouseId?: number;
+  itemId?: number;
+  /** 보충 요청에만 적용(여러 값). */
+  replenishmentStatus?: ReplenishmentStatusCode[];
+};
+
+/** `POST /logistics/replenishment-requests` 본문(계약 §2). 줄의 출고 자재 창고를 비우면 관리 품목 값. */
+export interface ReplenishmentRequestCreate {
+  productionWarehouseId: number;
+  businessDate: string;
+  remarks?: string | null;
+  lines: { itemId: number; requestedQty: number; sourceWarehouseId?: number }[];
+}
+
+/** 쓸 수 있는 양이 0 이라 만들지 않은 줄. */
+export interface ReplenishmentSkippedLine {
+  itemId: number;
+  sourceWarehouseId: number;
+  requestedQty: number;
+  freeQty: number;
+}
+
+export interface ReplenishmentRequestCreated {
+  requests: MaterialIssueRequestForward[];
+  skippedLines: ReplenishmentSkippedLine[];
+}
+
+/** `POST …/{id}:close-remaining` 본문(계약 §2). */
+export interface MaterialIssueCloseRemaining {
+  versionNo: number;
+  reasonCode: ReplenishmentCloseReasonCode;
+  remark?: string | null;
+}
+
+/** 관리 품목 행(계약 §4). 계산 값(가용 · 예정 · 쓸 수 있는 양 · 보충 중 · 기준 아래)은 저장하지 않는다. */
+export interface ReplenishmentItem {
+  replenishmentItemId: number;
+  productionWarehouseId: number;
+  productionWarehouseCode: string;
+  productionWarehouseName: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  sourceWarehouseId: number;
+  sourceWarehouseCode: string;
+  sourceWarehouseName: string;
+  reorderPointQty: number;
+  targetQty: number;
+  uomCode: string;
+  availableQty: number;
+  plannedQty: number;
+  usableQty: number;
+  inProgressQty: number;
+  belowPoint: boolean;
+  versionNo: number;
+}
+
+export interface ReplenishmentItemListQuery {
+  plantId: number;
+  productionWarehouseId?: number;
+  itemId?: number;
+  sourceWarehouseId?: number;
+  belowPointOnly?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export interface ReplenishmentItemCreate {
+  productionWarehouseId: number;
+  itemId: number;
+  reorderPointQty: number;
+  targetQty: number;
+  sourceWarehouseId: number;
+}
+
+export interface ReplenishmentItemUpdate {
+  reorderPointQty: number;
+  targetQty: number;
+  sourceWarehouseId: number;
+  versionNo: number;
+}
+
+/** DELETE 응답 — 진행 중 요청은 그대로 간다는 안내용 수. */
+export interface ReplenishmentItemDeleted {
+  inProgressRequestCount: number;
+}
+
+export interface ReplenishmentLastRun {
+  runDate: string;
+  status: 'DONE' | 'FAILED';
+  finishedAt: string | null;
+  createdRequestCount: number;
+}
+
+/** `GET /logistics/replenishment-settings?plantId=` — 공장 기본 시각과 창고별 시각(계약 §4). */
+export interface ReplenishmentSettings {
+  plantDefaultRunTime: string;
+  plantDefaultSource: 'POLICY' | 'SERVER_DEFAULT';
+  warehouses: {
+    warehouseId: number;
+    warehouseCode: string;
+    warehouseName: string;
+    runTime: string | null;
+    effectiveRunTime: string;
+    /** 창고 설정 판 번호 — PUT 본문 `versionNo`. 0 이면 아직 설정 행이 없다. */
+    versionNo: number;
+    lastRun: ReplenishmentLastRun | null;
+  }[];
+}
+
+export interface ReplenishmentWarehouseSettingUpdate {
+  runTime: string | null;
+  versionNo: number;
+}
+
+/** 운영 정책 코드 `REPLENISHMENT_RUN_TIME`(공장 범위, `valueText` `HH:MM`) — 요청 쪽만 넓힌다. */
+export type OperationPolicyCodeForward =
+  components['schemas']['OperationPolicyCreate']['policyCode'] | 'REPLENISHMENT_RUN_TIME';
+
+type OperationPoliciesPath = paths['/app/operation-policies'];
+
+export type OperationPolicyCreateForward = Omit<
+  components['schemas']['OperationPolicyCreate'],
+  'policyCode'
+> & { policyCode: OperationPolicyCodeForward };
+
+export type OperationPolicyListQueryForward = Omit<
+  NonNullable<OperationPoliciesPath['get']['parameters']['query']>,
+  'policyCode'
+> & { policyCode?: OperationPolicyCodeForward };
+
+type ListOf<T> = { items: T[]; page: PageMeta };
+type MirId = { materialIssueRequestId: number };
+type ReplenishmentItemId = { replenishmentItemId: number };
+type IdemOnly = { 'Idempotency-Key': string };
+
+/**
+ * 서버 선행(004 C2 — 도착 대기 · 수령 · 적치, 설계 계약 §2 · §3 · §6, 서버 S5 · S6 계약 `logistics-01자재창고.json`).
+ * 서버 병합 뒤 `gen:api` 로 다시 만들고 걷는다(D-12, T065).
+ */
+export interface ReplenishmentArrivalLine {
+  goodsIssueLineId: number;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  lotId: number;
+  lotNo: string;
+  issueQty: number;
+  uomId: number;
+  uomCode: string;
+}
+
+/** 도착 대기 한 장 — 창고 보충 요청에서 나온 `POSTED` 출고 중 수령이 없는 것. */
+export interface ReplenishmentArrival {
+  goodsIssueId: number;
+  goodsIssueNo: string;
+  issuedAt: string;
+  /** 공장 현지 날짜 기준 경과 일수. */
+  elapsedDays: number;
+  materialIssueRequestId: number;
+  issueRequestNo: string;
+  replenishmentOriginCode: ReplenishmentOriginCode;
+  productionWarehouseId: number;
+  productionWarehouseName: string;
+  destinationLocationId: number;
+  destinationLocationCode: string;
+  lines: ReplenishmentArrivalLine[];
+}
+
+export interface ReplenishmentArrivalListQuery {
+  plantId: number;
+  productionWarehouseId?: number;
+  goodsIssuedFrom?: string;
+  goodsIssuedTo?: string;
+  page?: number;
+  size?: number;
+}
+
+/** 생산창고 입고 줄(기존 `POST /shopfloor-receipts` 줄과 같다). */
+export type ShopfloorReceiptLineCreateForward = components['schemas']['ShopfloorReceiptLineCreate'];
+
+/** 웹 개별 수령 본문(`…/arrivals/{goodsIssueId}:receive`) — 도착 위치 · W/O 는 서버가 채운다. */
+export interface ReplenishmentArrivalReceive {
+  businessDate: string;
+  receivedAt: string;
+  occurredAt: string;
+  lines: ShopfloorReceiptLineCreateForward[];
+}
+
+/** 생산창고 입고 — `workOrderId` 선택(주지 않으면 창고 보충 출고여야 한다), 응답에 적치 지시 번호들. */
+export type ShopfloorReceiptCreateForward = Omit<
+  components['schemas']['ShopfloorReceiptCreate'],
+  'workOrderId'
+> & { workOrderId?: number | null };
+
+export type ShopfloorReceiptForward = Omit<
+  components['schemas']['ShopfloorReceipt'],
+  'workOrderId'
+> & {
+  workOrderId: number | null;
+  /** 창고 보충 수령이고 구역을 나눈 생산 창고일 때 생긴 적치 지시. */
+  putawayTaskIds?: number[];
+};
+
+export interface ShopfloorReceiptDetailForward {
+  shopfloorReceipt: ShopfloorReceiptForward;
+  lines: components['schemas']['ShopfloorReceiptLine'][];
+}
+
+export interface ShopfloorReceiptBulkCreate {
+  businessDate: string;
+  receivedAt: string;
+  /** 최대 100장. */
+  goodsIssueIds: number[];
+}
+
+export type ShopfloorReceiptBulkOutcome = 'RECEIVED' | 'ALREADY_RECEIVED' | 'FAILED';
+
+export interface ShopfloorReceiptBulkResult {
+  results: {
+    goodsIssueId: number;
+    outcome: ShopfloorReceiptBulkOutcome;
+    shopfloorReceiptId?: number;
+    message?: string;
+  }[];
+}
+
+/** 적치 지시 원천(§6) — 창고 보충 수령에서 생긴 지시는 남은 재고만큼만 옮긴다(`movedQty`). */
+export type PutawayOriginCode = 'GOODS_RECEIPT' | 'REPLENISHMENT_RECEIPT';
+
+export interface PutawayTaskOriginForward {
+  shopfloorReceiptLineId?: number | null;
+  originCode?: PutawayOriginCode;
+  /** 완료 응답 — 실제로 옮긴 양. 지시 수량보다 적을 수 있다(0 이면 원장 없이 닫힘). */
+  movedQty?: number;
+  /** 원천 문서 번호(서버 S7e) — 구매 입고면 입고 번호, 창고 보충 수령이면 창고 보충 요청 번호. */
+  originDocumentNo?: string | null;
+}
+
+type ArrivalId = { goodsIssueId: number };
+
+/**
+ * 서버 선행(004 C3 — 자동 보충 실행 기록, 설계 계약 §5). 서버 S7 이 만드는 중 — 병합 뒤 `gen:api` 로 다시 만들고 걷는다.
+ * 줄은 보충 시점 아래 품목만 싣는다(기준 이상은 `checkedItemCount` 로만 센다).
+ */
+export type ReplenishmentRunResultCode =
+  'CREATED' | 'SHORTAGE' | 'IN_PROGRESS' | 'NO_SOURCE_STOCK' | 'SOURCE_INACTIVE';
+
+export interface ReplenishmentRunLine {
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  resultCode: ReplenishmentRunResultCode;
+  usableQty: number;
+  /** 요청을 만들지 않은 줄은 0. */
+  requestedQty: number;
+  shortageQty: number;
+  issueRequestNo: string | null;
+}
+
+export interface ReplenishmentRun {
+  replenishmentRunId: number;
+  productionWarehouseId: number;
+  productionWarehouseCode: string;
+  productionWarehouseName: string;
+  /** 공장 현지 날짜. */
+  runDate: string;
+  status: 'DONE' | 'FAILED';
+  startedAt: string;
+  finishedAt: string | null;
+  checkedItemCount: number;
+  createdRequestCount: number;
+  errorText: string | null;
+  lines: ReplenishmentRunLine[];
+}
+
+export interface ReplenishmentRunListQuery {
+  plantId: number;
+  productionWarehouseId?: number;
+  runDateFrom?: string;
+  runDateTo?: string;
+  page?: number;
+  size?: number;
+}
+
 export interface ForwardPaths {
+  /** 004 C3 — 자동 보충 실행 기록(계약 §5). */
+  '/logistics/replenishment-runs': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: ReplenishmentRunListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<ListOf<ReplenishmentRun>> }
+    >;
+  };
+  /** 004 C2 — 도착 대기(계약 §2). */
+  '/logistics/replenishment-requests/arrivals': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: ReplenishmentArrivalListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<ListOf<ReplenishmentArrival>> }
+    >;
+  };
+  /** 004 C2 — 웹 개별 수령(권한 W-02-12, 보충 출고만). */
+  '/logistics/replenishment-requests/arrivals/{goodsIssueId}:receive': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, ArrivalId>,
+      { content: { 'application/json': ReplenishmentArrivalReceive } },
+      { 201: Json<ShopfloorReceiptDetailForward> }
+    >;
+  };
+  /** 004 C2 — 일괄 수령(권한 W-02-12, 보충 출고만, 받은 = 출고). */
+  '/logistics/shopfloor-receipts:bulk': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': ShopfloorReceiptBulkCreate } },
+      { 200: Json<ShopfloorReceiptBulkResult> }
+    >;
+  };
+  /** 004 — 목록 조건 추가 · 응답 새 칸(계약 §1). */
+  '/logistics/material-issue-requests': Omit<MaterialIssueRequestsPath, 'get'> & {
+    get: Omit<MaterialIssueRequestsPath['get'], 'parameters' | 'responses'> & {
+      parameters: Omit<MaterialIssueRequestsPath['get']['parameters'], 'query'> & {
+        query?: MaterialIssueRequestListQueryForward;
+      };
+      responses: Omit<MaterialIssueRequestsPath['get']['responses'], 200> & {
+        200: Json<ListOf<MaterialIssueRequestForward>>;
+      };
+    };
+  };
+  /** 004 — 상세 응답 새 칸(출고 전표 목록 등). */
+  '/logistics/material-issue-requests/{materialIssueRequestId}': Omit<
+    MaterialIssueRequestPath,
+    'get'
+  > & {
+    get: Omit<MaterialIssueRequestPath['get'], 'responses'> & {
+      responses: Omit<MaterialIssueRequestPath['get']['responses'], 200> & {
+        200: Json<MaterialIssueRequestDetailForward>;
+      };
+    };
+  };
+  /** 004 — 보충 요청 취소도 같은 경로(권한 W-02-12). 응답 새 칸. */
+  '/logistics/material-issue-requests/{materialIssueRequestId}:cancel': Omit<
+    MaterialIssueCancelPath,
+    'post'
+  > & {
+    post: Omit<MaterialIssueCancelPath['post'], 'responses'> & {
+      responses: Omit<MaterialIssueCancelPath['post']['responses'], 200> & {
+        200: Json<MaterialIssueRequestDetailForward>;
+      };
+    };
+  };
+  /** 004 — 출고 예정 조회 조건 추가(계약 §1). */
+  '/logistics/material-issue-requests/planned-stock': Omit<PlannedStockPath, 'get'> & {
+    get: Omit<PlannedStockPath['get'], 'parameters'> & {
+      parameters: Omit<PlannedStockPath['get']['parameters'], 'query'> & {
+        query: PlannedStockQueryForward;
+      };
+    };
+  };
+  /** 004 — 보충 요청 잔량 마감(계약 §2). */
+  '/logistics/material-issue-requests/{materialIssueRequestId}:close-remaining': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, MirId>,
+      { content: { 'application/json': MaterialIssueCloseRemaining } },
+      { 200: Json<MaterialIssueRequestForward> }
+    >;
+  };
+  /** 004 — 창고 보충 직접 요청(계약 §2). */
+  '/logistics/replenishment-requests': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': ReplenishmentRequestCreate } },
+      { 201: Json<ReplenishmentRequestCreated> }
+    >;
+  };
+  /** 004 — 관리 품목 목록 · 추가(계약 §4). */
+  '/logistics/replenishment-items': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    get: Op<
+      { query: ReplenishmentItemListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<ListOf<ReplenishmentItem>> }
+    >;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': ReplenishmentItemCreate } },
+      { 201: Json<ReplenishmentItem> }
+    >;
+  };
+  '/logistics/replenishment-items/{replenishmentItemId}': Omit<Unused, 'delete'> & {
+    parameters: NoParameters;
+    get?: never;
+    post?: never;
+    put: Op<
+      Params<never, IdemOnly, ReplenishmentItemId>,
+      { content: { 'application/json': ReplenishmentItemUpdate } },
+      { 200: Json<ReplenishmentItem> }
+    >;
+    delete: Op<
+      Params<never, IdemOnly, ReplenishmentItemId>,
+      never,
+      { 200: Json<ReplenishmentItemDeleted> }
+    >;
+  };
+  /** 004 — 자동 보충 실행 시각(계약 §4). */
+  '/logistics/replenishment-settings': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: { plantId: number }; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<ReplenishmentSettings> }
+    >;
+  };
+  '/logistics/replenishment-settings/warehouses/{warehouseId}': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    post?: never;
+    put: Op<
+      Params<never, IdemOnly, { warehouseId: number }>,
+      { content: { 'application/json': ReplenishmentWarehouseSettingUpdate } },
+      { 200: Json<ReplenishmentSettings['warehouses'][number]> }
+    >;
+  };
+  /** 004 — 운영 정책 코드 `REPLENISHMENT_RUN_TIME`(공장 기본 시각). 요청만 넓힌다. */
+  '/app/operation-policies': Omit<OperationPoliciesPath, 'get' | 'post'> & {
+    get: Omit<OperationPoliciesPath['get'], 'parameters'> & {
+      parameters: Omit<OperationPoliciesPath['get']['parameters'], 'query'> & {
+        query?: OperationPolicyListQueryForward;
+      };
+    };
+    post: Omit<OperationPoliciesPath['post'], 'requestBody'> & {
+      requestBody: { content: { 'application/json': OperationPolicyCreateForward } };
+    };
+  };
   /** 적용 본문(선택)과 분할 결과 — `ConcessionApplyForward` 참고(#207). */
   '/quality/concessions/{concessionId}:apply': Omit<ConcessionApplyPath, 'post'> & {
     post: Omit<ConcessionApplyPath['post'], 'requestBody' | 'responses'> & {
