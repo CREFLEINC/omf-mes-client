@@ -237,6 +237,8 @@ export const ItemPane = ({
     {
       key: 'itemCode',
       header: t.fields.itemCode,
+      /* 짧은 칸은 기본 폭을 준다 — 폭이 없으면 모든 칸이 똑같이 줄어 상태 라벨까지 잘렸다(#231). 품목명이 남는 폭을 가진다. */
+      width: '120px',
       /*
        * 코드는 링크 모양 없이 본문 글자 — 줄 아무 곳이나 눌러 고른다(검사 기준 탭과 같다 · #231).
        * 단추는 남긴다: 키보드·화면 낭독기가 줄을 고르는 길이고, 고른 줄 표시(`aria-current`)가 여기 실린다.
@@ -261,6 +263,7 @@ export const ItemPane = ({
     {
       key: 'latestRevision',
       header: t.fields.latestRevision,
+      width: '80px',
       render: (row) => {
         const summary = revisionSummaryOf(row.itemId);
         if (summary === undefined) return '';
@@ -271,21 +274,22 @@ export const ItemPane = ({
     {
       key: 'progressStatus',
       header: t.fields.progressStatus,
+      width: '88px',
       render: (row) => {
         const summary = revisionSummaryOf(row.itemId);
         if (summary === undefined) return '';
         const revision = summary.latestRevision;
-        /* 라벨로 낸다 — 개정 목록의 상태 열과 같은 모양(사용자 지시 · #231). 미등록은 회색. */
+        /* 라벨로 낸다 — 개정 목록의 상태 열과 같은 작은 칩(사용자 지시 · #231). 미등록은 노랑 — 등록할 일이 남았다. */
         if (revision === null) {
           return (
-            <Chip variant="status" status="idle">
+            <Chip variant="status" size="sm" status="warning">
               {t.values.unregistered}
             </Chip>
           );
         }
         const status = resolveRoutingStatus(revision.statusCode);
         return (
-          <Chip variant="status" status={status.tone}>
+          <Chip variant="status" size="sm" status={status.tone}>
             {status.label}
           </Chip>
         );
@@ -294,6 +298,7 @@ export const ItemPane = ({
     {
       key: 'revisionCount',
       header: t.fields.revisionCount,
+      width: '80px',
       render: (row) => {
         const summary = revisionSummaryOf(row.itemId);
         return summary === undefined ? '' : String(summary.revisionCount);
@@ -302,6 +307,7 @@ export const ItemPane = ({
     {
       key: 'defaultRevision',
       header: t.fields.defaultRevision,
+      width: '80px',
       render: (row) => {
         const summary = revisionSummaryOf(row.itemId);
         if (summary === undefined) return '';

@@ -22,6 +22,8 @@ export interface RoutingActionsProps {
   isTransitioning: boolean;
   onConfirm: () => void;
   onObsolete: () => void;
+  /** 작성중 Rev 취소(삭제 · #231). 작성중에서만 단추가 선다. */
+  onDiscard?: () => void;
   /** Rev 비교 · 변경 이력 창을 연다(#231). 주지 않으면 단추를 사유와 함께 비활성으로 둔다. */
   onCompare?: () => void;
   onHistory?: () => void;
@@ -45,6 +47,7 @@ export const RoutingActions = ({
   isTransitioning,
   onConfirm,
   onObsolete,
+  onDiscard,
   onCompare,
   onHistory,
 }: RoutingActionsProps) => {
@@ -96,6 +99,15 @@ export const RoutingActions = ({
        */}
       {!isLockedByState && (
         <>
+          {/* 작성 취소 — 저장한 작성중 Rev 를 지운다. 입력만 되돌리는 「취소」와 떨어뜨려 왼쪽에 둔다(#231). */}
+          {mode === 'edit' && status?.status === 'draft' && onDiscard !== undefined && (
+            <div className="field-cell routing-discard-action">
+              <Button variant="outlined" disabled={isTransitioning} onClick={onDiscard}>
+                {t.actions.discard}
+              </Button>
+            </div>
+          )}
+
           <Button variant="outlined" disabled={!isDirty} onClick={onCancel}>
             {messages.common.cancel}
           </Button>

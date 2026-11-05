@@ -2202,8 +2202,10 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .routing-fact {
   display: grid;
-  flex: none;
-  align-content: center;
+  /* 칸마다 내용 폭 + 남는 폭을 고르게 나눠 칸 사이가 한쪽에 몰리지 않는다(사용자 지시 · #231). */
+  flex: 1 1 auto;
+  /* 이름은 모든 칸에서 같은 높이 — 값 줄 높이(칩 · 단추)가 달라도 이름 줄이 어긋나지 않는다. */
+  align-content: start;
   gap: var(--space-1);
   min-width: 0;
   padding: 0 var(--space-4);
@@ -2215,12 +2217,10 @@ h2:has(> .inspection-standard-dialog-title) {
   border-left: 0;
 }
 
-/*
- * 품목명 칸이 남는 폭을 다 쓰고, 모자라면 이 칸만 줄어 말줄임한다 — 화면 폭에 맞춰 늘고 준다(사용자 지시 · #231).
- * 그래도 좁으면(품목명 12rem 미만) 다음 줄로 넘긴다.
- */
+/* 품목명 — 폭이 모자라면 이 칸이 먼저 줄어 말줄임한다. 그래도 좁으면(12rem 미만) 다음 줄로 넘긴다(#231). */
 .routing-fact-wide {
   flex: 1 1 12rem;
+  min-width: 0;
 }
 
 .routing-fact > .field-label,
@@ -2232,7 +2232,9 @@ h2:has(> .inspection-standard-dialog-title) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-2) var(--space-3);
+  /* 값 줄 높이를 단추 높이에 맞춘다 — 칩 · 단추가 있는 칸과 글자만 있는 칸의 값이 같은 선에 선다. */
+  min-height: var(--control-height-md);
 }
 
 .routing-fact-value > :is(div, .text-field):not(.visually-hidden) {
@@ -2250,6 +2252,11 @@ h2:has(> .inspection-standard-dialog-title) {
   white-space: nowrap;
 }
 
+/* 글자만 있는 값(품목코드 · 품목명)도 단추 높이 줄에 세워 Routing 코드 · PQC 칸 값과 같은 선에 맞춘다(#231). */
+.routing-code-line > .routing-fact > :is(.routing-code-value, .routing-fact-item-name) {
+  line-height: var(--control-height-md);
+}
+
 .routing-code-value {
   color: var(--on-surface);
   font: var(--type-title-sm);
@@ -2262,11 +2269,21 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-left: auto;
 }
 
+/* 작성 취소 — 오른쪽 묶음 맨 앞에 두되, 입력만 되돌리는 「취소」와 헷갈리지 않게 간격을 더 띄운다(#231). */
+.routing-discard-action {
+  margin-right: var(--space-5);
+}
+
 /* 막힌 단추 옆 짧은 라벨(「공정 2건 이상 필요」 · #231) — 사유 문장은 라벨 위 마우스로 본다. */
 .disabled-action-inline {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* 공정 구성 표 — 칸 글자는 한 줄로 둔다(두 줄로 꺾이지 않게 · 사용자 지시 · #231). 폭이 모자라면 표가 가로로 넘긴다. */
+.routing-operations-table :is(th, td) {
+  white-space: nowrap;
 }
 
 /* 관리 항목 아코디언 — 「MES 관리 외 1개 ▾」를 누르면 칸 안에서 전체가 한 줄씩 펼쳐진다(#231). */
@@ -2325,9 +2342,45 @@ h2:has(> .inspection-standard-dialog-title) {
 
 /* 공정 연결 창 — 제목 아래 품목코드, 연결이 없으면 빈 표 대신 안내 상자(사용자 시안 · #231). */
 .routing-dependency-subtitle {
-  margin: 0 0 var(--space-3);
+  /*
+   * 제목 바로 아래 보조 글 — 표와 좁게(사용자 지시 · #231). 위로 당기지 않는다: 창 본문이 넘침을 잘라
+   * 음수 여백으로 올리면 글자 윗부분이 잘렸다.
+   */
+  margin: 0 0 var(--space-2);
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
+}
+
+/* 「+ 연결 추가」 — 표 위 오른쪽(사용자 지시 · #231). */
+.routing-dependency-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * 공정 연결 입력 표 — 선택칸이 칸 폭을 다 쓰고(DS Select 뿌리가 inline-block 이라 내용 폭으로 줄어드는 것을 막는다),
+ * 오류 문구는 그 칸 바로 아래 한 줄. 줄이 많으면 표만 스크롤한다(사용자 지시 · #231).
+ */
+.routing-dependency-cell {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  text-align: left;
+}
+
+.routing-dependency-cell > .field-error {
+  font: var(--type-body-sm);
+  white-space: normal;
+}
+
+.routing-dependency-rows {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.routing-dependency-rows td {
+  padding-block: var(--space-1);
 }
 
 .routing-dependency-empty {
@@ -2343,22 +2396,6 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .routing-dependency-empty > p {
   margin: 0;
-}
-
-/*
- * Rev 이력 표(#231) — 줄 클릭 없이 「상세 보기」 단추로 연다. 줄은 누를 수 없으니 손가락 커서를 쓰지 않고,
- * 고른 줄은 검사 기준 목록과 같은 바탕 + 왼쪽 강조선(단추의 현재 위치 표식으로 칠한다).
- */
-.routing-revision-rows tbody tr {
-  cursor: default;
-}
-
-.routing-revision-rows tbody tr:nth-child(n):has(.routing-revision-open[aria-current="true"]) {
-  background: var(--surface-container-high);
-}
-
-.routing-revision-rows tbody tr:has(.routing-revision-open[aria-current="true"]) > td:first-child {
-  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 /*
@@ -2410,18 +2447,13 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .routing-flag-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
 .routing-flag-head > .pane-title {
   margin: 0;
-}
-
-.routing-flag-count {
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
 }
 
 .routing-flag-grid {
@@ -2436,6 +2468,73 @@ h2:has(> .inspection-standard-dialog-title) {
  */
 .routing-required-empty > div:has(input) {
   box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/*
+ * 변경 이력 표(#231) — 「변경 항목 | 변경 전 | 변경 후」 세 칸은 왼쪽 맞춤에 줄을 바꿔 다 보인다(값이 길면 잘리던 버그).
+ * DS 표 칸은 한 줄 · 넘침 숨김이라 이 세 칸만 푼다.
+ */
+.routing-history-rows :is(th, td):nth-child(n + 4) {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+/*
+ * 변경 이력 · Rev 상세 창 — 화면 폭에 맞춰 넓어진다(사용자 지시 · #231). DS 「lg」(720px)보다 넓게, 화면이 좁으면 화면 폭까지만.
+ * 요소 + 클래스로 DS 크기 클래스보다 무겁게 덮는다.
+ */
+dialog.routing-history-dialog {
+  max-width: min(75rem, calc(100vw - var(--space-8)));
+}
+
+/*
+ * Rev 이력 줄 — 누르면 상세 창이 열린다는 것을 보인다(사용자 지시 · #231): 손가락 커서, 올리면 줄 바탕이 밝아진다.
+ * 칸(td)에 바탕을 칠하는 규칙이 있어도 보이도록 칸 단위로 칠한다.
+ */
+.routing-revision-rows tbody tr,
+.routing-revision-rows tbody td {
+  cursor: pointer;
+}
+
+.routing-revision-rows tbody tr:hover > td {
+  background: var(--state-hover-neutral);
+}
+
+/* 공정 사용 중지 확인 — 영향 상자: 이름 왼쪽 · 값 오른쪽, 줄 사이 옅은 선(사용자 시안 · #231). */
+.routing-impact-box {
+  display: grid;
+  margin: var(--space-3) 0 0;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-low, var(--surface-container));
+}
+
+.routing-impact-box > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.routing-impact-box > div + div {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.routing-impact-box dt {
+  color: var(--on-surface-variant);
+}
+
+.routing-impact-box dd {
+  margin: 0;
+  color: var(--on-surface);
+}
+
+/* 공정 추가 팝업 — 공정코드 · 공정명 · 공정 유형을 한 칸씩 위아래로(사용자 지시 · #231). */
+.form-grid.routing-process-create-form {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* 공정 구성 제목 옆 개수(「공정 구성 1개」 · 사용자 시안 · #231). */
@@ -2461,9 +2560,8 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 .routing-header-pane > .form-grid {
-  flex: 1 1 280px;
-  max-width: 640px;
-  /* 칸이 Routing 코드 하나뿐이라 두 칸 격자로 나누지 않는다 — 나누면 칸이 절반 폭으로 줄어 코드가 잘렸다. */
+  /* 요약 줄(품목코드 · 품목명 · Routing 코드 · PQC 검사 기준)이 카드 폭을 다 쓴다 — 폭을 묶으면 칸이 좁아 잘렸다(#231). */
+  flex: 1 1 100%;
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -2477,16 +2575,33 @@ h2:has(> .inspection-standard-dialog-title) {
   padding: var(--space-6) 0;
 }
 
-/* Routing 머리의 「PQC 검사 기준」은 한 줄을 다 쓴다 — 품목 · Rev 줄 아래(사용자 지시 2026-11-05). */
-.routing-header-wide {
-  grid-column: 1 / -1;
+/* 공정 관리 탭 — 빈 목록 · 고르기 전 상세의 아이콘 안내를 칸 가운데에(공정 경로 탭과 같은 모양 · #231). */
+.routing-process-list-pane > .routing-detail-empty,
+.routing-detail-card > .routing-detail-empty {
+  display: grid;
+  flex: 1 1 auto;
+  place-items: center;
+  min-height: 12rem;
+  padding: var(--space-6) 0;
 }
 
-/* 기준 글자 오른쪽에 「검사 기준 수정」 단추를 붙인다(사용자 지시 2026-11-05). */
+/*
+ * 「PQC 검사 기준」 — 품목 · Routing 코드 요약 줄의 마지막 칸(사용자 지시 · #231). 남는 폭을 쓰고, 기준 이름이 길면
+ * 이 칸만 줄어 말줄임한다. 기준 글자 오른쪽에 「검사 기준 수정」 단추(사용자 지시 2026-11-05).
+ */
+
+
 .routing-pqc-plan-value {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.routing-pqc-plan-value > .routing-fact-item-name {
+  min-width: 0;
+}
+
+.routing-pqc-plan-value > :not(.routing-fact-item-name) {
+  flex: none;
 }
 
 .routing-row-actions {

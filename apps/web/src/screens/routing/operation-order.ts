@@ -26,7 +26,9 @@ export type OperationFlagKey =
   | 'inspectionManaged'
   | 'outputLotRequired'
   | 'equipmentRequired'
-  | 'moldRequired';
+  | 'moldRequired'
+  /* 외주 공정(#231) — 서버는 이미 저장 · 조회한다(물리 칸 `is_subcontract`). 화면도 다른 관리 항목처럼 고친다. */
+  | 'isOutsourced';
 
 export const OPERATION_FLAG_KEYS: readonly OperationFlagKey[] = [
   'mesManaged',
@@ -36,6 +38,7 @@ export const OPERATION_FLAG_KEYS: readonly OperationFlagKey[] = [
   'outputLotRequired',
   'equipmentRequired',
   'moldRequired',
+  'isOutsourced',
 ];
 
 /**
@@ -85,6 +88,8 @@ export const toOperationDrafts = (operations: RoutingOperation[]): OperationDraf
     outputLotRequired: operation.outputLotRequired,
     equipmentRequired: operation.equipmentRequired,
     moldRequired: operation.moldRequired,
+    // 서버가 값을 주지 않으면(옛 응답) 외주 아님 — 계약 기본값과 같다.
+    isOutsourced: operation.isOutsourced ?? false,
     standardCycleTimeSec: optionalNumberToText(operation.standardCycleTimeSec),
     // 서버 비율(0~1) → 화면 퍼센트(0~100). 입력 · 표 · 검증이 모두 퍼센트로 다룬다.
     standardYieldRate: ratioToPercentText(operation.standardYieldRate),
@@ -112,6 +117,7 @@ export const createOperationDraft = (): OperationDraft => {
     outputLotRequired: false,
     equipmentRequired: false,
     moldRequired: false,
+    isOutsourced: false,
     standardCycleTimeSec: '',
     standardYieldRate: '',
   };
@@ -165,8 +171,7 @@ export const upsertDraft = (drafts: OperationDraft[], draft: OperationDraft): Op
  * 전체 치환은 행 교체가 아니라 순서 갱신이라, 식별자를 버리면 진행 중 작업지시가 참조하던 행이 사라진다.
  *
  * ⭐ **client#603 — 외주 공정(`isOutsourced`)이 2026-08-30 계약에 되살아나 필수가 됐다.**
- * 이 화면은 아직 그 칸을 입력받지 않는다(폼의 체크칸은 비활성 고정) — 그 사실 그대로
- * **항상 `false`를 싣는다.** 칸을 열지는 별도 판단(설계 확인)이 필요하다.
+ * 공정 편집 창의 「외주 공정」 확인칸 값 그대로 싣는다(사용자 지시 · #231 — 서버는 이미 저장 · 조회한다).
  */
 export const toOperationsPayload = (
   routingId: number,
@@ -183,7 +188,8 @@ export const toOperationsPayload = (
     materialInputManaged: draft.materialInputManaged,
     productionResultManaged: draft.productionResultManaged,
     inspectionManaged: draft.inspectionManaged,
-    isOutsourced: false,
+    // 화면에서 고른 값 그대로 — 예전처럼 늘 false 로 보내면 저장된 외주 표시가 지워졌다(#231).
+    isOutsourced: draft.isOutsourced,
     outputLotRequired: draft.outputLotRequired,
     equipmentRequired: draft.equipmentRequired,
     moldRequired: draft.moldRequired,

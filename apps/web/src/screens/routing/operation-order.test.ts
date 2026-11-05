@@ -215,16 +215,19 @@ describe('toOperationsPayload', () => {
     ).toBe(0.955);
   });
 
-  /**
-   * client#603 — `isOutsourced`가 2026-08-30 계약에 되살아나 필수가 됐다. 이 화면은 아직 그 칸을
-   * 입력받지 않아(폼의 체크칸이 비활성 고정) **항상 `false`를 싣는다** — 값을 지어내는 게 아니라
-   * 폼이 실제로 보이는 값 그대로다. `draftId`(화면 전용 키)는 여전히 싣지 않는다.
-   */
-  it('외주 공정은 항상 false를 싣고, 화면 전용 키는 싣지 않는다', () => {
-    const payload = toOperationsPayload(7003, toOperationDrafts(routingOperationFixtures));
+  /** 외주 공정(#231) — 받은 값을 초안에 담고, 고친 값 그대로 싣는다. `draftId`(화면 전용 키)는 싣지 않는다. */
+  it('외주 공정은 받은 값을 담아 그대로 싣고, 화면 전용 키는 싣지 않는다', () => {
+    const [base] = routingOperationFixtures;
+    if (base === undefined) throw new Error('픽스처가 없습니다');
+    const drafts = toOperationDrafts([
+      { ...base, isOutsourced: true },
+      ...routingOperationFixtures.slice(1),
+    ]);
+    expect(drafts.map((draft) => draft.isOutsourced)).toEqual([true, false]);
 
+    const payload = toOperationsPayload(7003, drafts);
+    expect(payload.map((item) => item.isOutsourced)).toEqual([true, false]);
     for (const item of payload) {
-      expect(item.isOutsourced).toBe(false);
       expect('outsourced' in item).toBe(false);
       expect('draftId' in item).toBe(false);
     }

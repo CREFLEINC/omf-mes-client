@@ -63,6 +63,8 @@ export const RevisionDetailDialog = ({
     <Dialog
       open
       size="lg"
+      /* 공정 표가 6칸이라 창을 화면 폭에 맞춰 넓힌다 — 좁으면 표준 C/T · 수율이 밀려 안 보였다(#231). */
+      className="routing-history-dialog"
       showCloseButton={false}
       title={t.values.detailTitle(t.values.revision(revision.routingVersion))}
       onClose={onClose}

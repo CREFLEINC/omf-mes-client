@@ -16,7 +16,7 @@ export const routing: Translated<typeof ko.routing> = {
     header: 'Thông tin Routing',
     operations: 'Dòng công đoạn',
     processList: 'Danh sách công đoạn',
-    processForm: 'Đăng ký · chỉnh sửa công đoạn',
+    processForm: 'Chi tiết công đoạn',
   },
   card: {
     title: 'Lộ trình công đoạn',
@@ -30,7 +30,6 @@ export const routing: Translated<typeof ko.routing> = {
     revisionChip: (revision: string, status: string): string => `${revision} · ${status}`,
   },
   actions: {
-    viewDetail: 'Xem chi tiết',
     viewDetailLabel: (revision: string): string => `Xem chi tiết ${revision}`,
     editPqcPlan: 'Sửa tiêu chuẩn kiểm tra',
     registerPqcPlan: 'Đăng ký tiêu chuẩn kiểm tra',
@@ -38,9 +37,11 @@ export const routing: Translated<typeof ko.routing> = {
     createRouting: 'Đăng ký Routing',
     addOperation: 'Thêm công đoạn',
     addProcess: 'Thêm công đoạn',
+    editProcess: 'Sửa',
     activateProcess: 'Dùng lại',
     confirm: 'Xác nhận',
     obsolete: 'Hủy bỏ',
+    discard: 'Hủy bản nháp',
     dependencies: 'Thiết lập trước sau',
     compareRevisions: 'So sánh Rev',
     changeHistory: 'Lịch sử thay đổi',
@@ -94,6 +95,8 @@ export const routing: Translated<typeof ko.routing> = {
     body: 'Nếu chuyển đi bây giờ, thông tin Routing và công đoạn đã sửa ở Rev này sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi lưu.',
     bodyCreating:
       'Nếu chuyển đi bây giờ, nội dung đăng ký Rev đầu tiên đã nhập sẽ mất vì chưa lưu. Muốn giữ lại, hãy bấm «Tiếp tục sửa» rồi đăng ký.',
+    bodyProcess:
+      'Nếu chuyển đi bây giờ, thông tin công đoạn đã nhập sẽ không được lưu và bị mất. Để giữ lại, hãy bấm «Tiếp tục chỉnh sửa» rồi lưu.',
     stay: 'Tiếp tục sửa',
     confirm: 'Chuyển mà không lưu',
   },
@@ -130,7 +133,7 @@ export const routing: Translated<typeof ko.routing> = {
     processNoneDescription: 'Hãy đăng ký công đoạn đầu tiên bằng «Thêm công đoạn».',
     processNoMatchTitle: 'Không có công đoạn khớp điều kiện',
     processNoMatchDescription: 'Hãy giảm bớt hoặc đặt lại điều kiện rồi tra cứu lại.',
-    processNotSelected: 'Hãy chọn công đoạn ở bên trái hoặc thêm công đoạn mới',
+    processNotSelected: 'Hãy chọn công đoạn hoặc thêm công đoạn mới',
   },
   fields: {
     item: 'Mặt hàng',
@@ -141,7 +144,6 @@ export const routing: Translated<typeof ko.routing> = {
     status: 'Trạng thái',
     /** 이력 관리 표 — 확정 일시(#231). */
     confirmedAt: 'Thời điểm xác nhận',
-    detail: 'Chi tiết',
     defaultRevision: 'Rev mặc định',
     /** 품목 목록 열 — 최신 Rev · 그 상태 · 발행한 Rev 수(#231). */
     latestRevision: 'Rev mới nhất',
@@ -159,7 +161,6 @@ export const routing: Translated<typeof ko.routing> = {
     standardCycleTimeSec: 'C/T tiêu chuẩn (giây)',
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
     standardYieldRate: 'Tỷ lệ đạt tiêu chuẩn (%)',
-    outsourced: 'Công đoạn thuê ngoài',
     pqcPlan: 'Tiêu chuẩn PQC',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
     rowActions: 'Chỉnh sửa',
@@ -173,6 +174,7 @@ export const routing: Translated<typeof ko.routing> = {
     outputLotRequired: 'Bắt buộc LOT đầu ra',
     equipmentRequired: 'Bắt buộc thiết bị',
     moldRequired: 'Bắt buộc khuôn',
+    isOutsourced: 'Công đoạn thuê ngoài',
   },
   compare: {
     title: 'So sánh Rev',
@@ -200,9 +202,12 @@ export const routing: Translated<typeof ko.routing> = {
     occurredAt: 'Thời điểm',
     performedBy: 'Người xử lý',
     action: 'Loại',
-    changes: 'Nội dung thay đổi',
+    changeField: 'Mục thay đổi',
+    before: 'Trước',
+    after: 'Sau',
     created: 'Đăng ký lộ trình',
     revised: 'Phát hành Rev mới',
+    discarded: 'Hủy bản nháp',
     headerSaved: 'Sửa thông tin cơ bản',
     operationsSaved: 'Sửa cấu thành công đoạn',
     dependenciesSaved: 'Sửa liên kết công đoạn',
@@ -245,6 +250,7 @@ export const routing: Translated<typeof ko.routing> = {
     unregistered: 'Chưa đăng ký',
     /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
     codeLockedBadge: 'Đang dùng · không đổi được',
+    lockedBadge: 'Không thể sửa · thay đổi',
     dependenciesBlockedBadge: 'Cần từ 2 công đoạn',
     /** 이력 관리 — 기본 Rev 고르기 칸 · 확인 창(#231). */
     defaultSelect: 'Rev mặc định',
@@ -258,13 +264,14 @@ export const routing: Translated<typeof ko.routing> = {
     setDefaultDescription: 'Nếu đang có Rev mặc định, Rev đó sẽ tự động bị bỏ mặc định.',
     setDefaultDone: 'Đã chỉ định Rev mặc định.',
     pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
-    pqcPlanNone:
-      'Không có — mặt hàng này không thuộc đối tượng PQC. Đăng ký tiêu chuẩn PQC cho mặt hàng ở màn hình tiêu chuẩn kiểm tra để áp dụng.',
+    pqcPlanNone: 'Chưa chỉ định tiêu chuẩn kiểm tra',
   },
   validation: {
     required: 'Đây là mục bắt buộc.',
     codeBlank: 'Mã Routing không được chỉ gồm khoảng trắng.',
     operationNameBlank: 'Tên công đoạn không được chỉ gồm khoảng trắng.',
+    processCodeRequired: 'Hãy nhập mã công đoạn.',
+    processNameRequired: 'Hãy nhập tên công đoạn.',
     processCodeBlank: 'Mã công đoạn không được chỉ gồm khoảng trắng.',
     processNameBlank: 'Tên công đoạn không được chỉ gồm khoảng trắng.',
     processTypeRequired: 'Hãy chọn loại công đoạn.',
@@ -283,14 +290,22 @@ export const routing: Translated<typeof ko.routing> = {
     obsoleteTitle: (revision: string): string => `Hủy bỏ ${revision}?`,
     obsoleteDescription: 'Rev đã hủy bỏ không dùng được cho công việc mới.',
     obsoleteNote: 'Sau khi hủy bỏ, lịch sử hiện có vẫn được giữ nguyên.',
+    discardTitle: (revision: string): string => `Hủy bản nháp ${revision}?`,
+    discardDescription: 'Rev nháp cùng cấu hình công đoạn · liên kết công đoạn sẽ bị xóa.',
+    discardNote: 'Không thể khôi phục sau khi xóa. Lịch sử thay đổi vẫn được giữ.',
+    discardDone: 'Đã hủy bản nháp.',
+    flagsTitle: 'Thiết lập quản lý',
     flagsSelected: (count: number): string => `Đã chọn ${String(count)}`,
-    deactivateProcessTitle: 'Ngừng sử dụng công đoạn này?',
+    deactivateProcessTitle: 'Ngừng sử dụng công đoạn?',
     deactivateProcessDescription:
-      'Các Routing đã xác nhận vẫn giữ nguyên, chỉ từ nay không chọn được ở dòng công đoạn mới.',
-    deactivateProcessReferences: (count: number): string =>
-      `Có ${String(count)} nơi đang tham chiếu công đoạn này.`,
-    activateProcessTitle: 'Dùng lại công đoạn này?',
-    activateProcessDescription: 'Từ nay có thể chọn lại công đoạn này ở dòng công đoạn mới.',
+      'Sau khi ngừng sử dụng, không thể thêm công đoạn này vào quy trình công đoạn mới.',
+    deactivateImpactConfirmed: 'Quy trình đã xác nhận',
+    deactivateImpactConfirmedValue: 'Không ảnh hưởng',
+    deactivateImpactReferences: 'Đang tham chiếu',
+    deactivateImpactReferencesValue: (count: number): string => `${String(count)}`,
+    activateProcessTitle: 'Dùng lại công đoạn?',
+    activateProcessDescription:
+      'Khi dùng lại, có thể thêm công đoạn này vào quy trình công đoạn mới.',
   },
   dependencies: {
     title: (revision: string): string => `Liên kết công đoạn · ${revision}`,
@@ -300,6 +315,7 @@ export const routing: Translated<typeof ko.routing> = {
     type: 'Quan hệ',
     remove: (rowNo: number): string => `Xóa quan hệ thứ ${String(rowNo)}`,
     rowField: (rowNo: number, field: string): string => `${field} dòng ${String(rowNo)}`,
+    removeColumn: 'Xóa',
     add: 'Thêm quan hệ',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
     unknownOperation: 'Công đoạn không xác định',
@@ -307,13 +323,12 @@ export const routing: Translated<typeof ko.routing> = {
     noneTitle: 'Chưa có quan hệ trước sau',
     typesLoadFailed:
       'Không tải được danh sách loại quan hệ. Hãy thử lại. Chưa tải xong thì chưa lưu được.',
-    saveBlockedWhileLoadingTypes: 'Đang tải danh sách loại quan hệ. Hãy lưu sau giây lát.',
-    saveBlockedByInvalid:
-      'Hãy sửa các vấn đề được đánh dấu trong bảng rồi mới lưu quan hệ trước sau.',
     stateLocked:
       'Rev này đã được xác nhận nên không thể đổi quan hệ trước sau. Đã tải lại danh sách — muốn đổi thì hãy phát hành Rev mới.',
     validation: {
-      required: 'Hãy chọn cả công đoạn trước và công đoạn sau.',
+      required: 'Hãy chọn công đoạn trước và công đoạn sau.',
+      predecessorRequired: 'Hãy chọn công đoạn trước.',
+      successorRequired: 'Hãy chọn công đoạn sau.',
       self: 'Không thể chọn cùng một công đoạn cho trước và sau. Hãy chọn công đoạn khác.',
       duplicate: (from: string, to: string): string =>
         `Quan hệ này đã có (${from} → ${to}). Hãy xóa một dòng.`,

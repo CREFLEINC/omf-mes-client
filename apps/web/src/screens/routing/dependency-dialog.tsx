@@ -83,7 +83,6 @@ export const DependencyDialog = ({
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const saveNoteId = useId();
 
   const dependencies = useOperationDependencies(routingId);
   const types = useDependencyTypeOptions();
@@ -198,67 +197,87 @@ export const DependencyDialog = ({
     { key: 'type', header: td.type, render: (row) => typeLabel(row.typeCode) },
   ];
 
+  /*
+   * 오류는 빠진 칸에만 — 한쪽만 비었으면 그 칸만 붉게 하고 문구도 그 칸 아래에, 둘 다 비었거나 다른 규칙(같은 공정 ·
+   * 중복 · 순환 · 서버)에 걸리면 두 칸을 붉게 하고 문구는 선행 칸 아래 한 번만(사용자 지시 · #231).
+   */
+  const fieldError = (
+    row: DependencyDraft,
+    field: 'predecessor' | 'successor',
+  ): string | undefined => {
+    const error = errors[row.draftId];
+    if (error === undefined) return undefined;
+    const missing = { predecessor: row.predecessorId === '', successor: row.successorId === '' };
+    if (missing.predecessor || missing.successor) return missing[field] ? error : undefined;
+    return error;
+  };
+  const noteField = (row: DependencyDraft): 'predecessor' | 'successor' =>
+    row.predecessorId !== '' && row.successorId === '' ? 'successor' : 'predecessor';
+  const errorIdOf = (row: DependencyDraft, field: 'predecessor' | 'successor') =>
+    fieldError(row, field) === undefined ? undefined : `${row.draftId}-error`;
+  const errorNote = (row: DependencyDraft, field: 'predecessor' | 'successor'): ReactNode =>
+    errors[row.draftId] === undefined || noteField(row) !== field ? null : (
+      <span id={`${row.draftId}-error`} className="field-error">
+        {errors[row.draftId]}
+      </span>
+    );
+
   const editColumns: Column<DependencyDraft>[] = [
     {
       key: 'predecessor',
       header: td.predecessor,
-      render: (row, rowIndex) => {
-        const error = errors[row.draftId];
-        const errorId = `${row.draftId}-error`;
-
-        return (
-          <>
-            <Select
-              aria-label={td.rowField(rowIndex + 1, td.predecessor)}
-              options={operationOptions}
-              value={row.predecessorId === '' ? null : row.predecessorId}
-              onChange={(predecessorId) => changeRow(row.draftId, { predecessorId })}
-              invalid={error !== undefined}
-              aria-describedby={error === undefined ? undefined : errorId}
-            />
-            {error !== undefined && (
-              <span id={errorId} className="field-error">
-                {error}
-              </span>
-            )}
-          </>
-        );
-      },
+      render: (row, rowIndex) => (
+        <div className="routing-dependency-cell">
+          <Select
+            aria-label={td.rowField(rowIndex + 1, td.predecessor)}
+            options={operationOptions}
+            value={row.predecessorId === '' ? null : row.predecessorId}
+            onChange={(predecessorId) => changeRow(row.draftId, { predecessorId })}
+            invalid={fieldError(row, 'predecessor') !== undefined}
+            aria-describedby={errorIdOf(row, 'predecessor')}
+          />
+          {errorNote(row, 'predecessor')}
+        </div>
+      ),
     },
     {
       key: 'successor',
       header: td.successor,
-      render: (row, rowIndex) => {
-        const error = errors[row.draftId];
-
-        return (
+      render: (row, rowIndex) => (
+        <div className="routing-dependency-cell">
           <Select
             aria-label={td.rowField(rowIndex + 1, td.successor)}
             options={operationOptions}
             value={row.successorId === '' ? null : row.successorId}
             onChange={(successorId) => changeRow(row.draftId, { successorId })}
-            invalid={error !== undefined}
-            aria-describedby={error === undefined ? undefined : `${row.draftId}-error`}
+            invalid={fieldError(row, 'successor') !== undefined}
+            aria-describedby={errorIdOf(row, 'successor')}
           />
-        );
-      },
+          {errorNote(row, 'successor')}
+        </div>
+      ),
     },
     {
       key: 'type',
       header: td.type,
+      /* 관계 값(「선행 완료 후 착수」)이 잘리지 않는 폭 — 선행 · 후행 칸이 남는 폭을 나눠 갖는다(#231). */
+      width: '13rem',
       render: (row, rowIndex) => (
-        <Select
-          aria-label={td.rowField(rowIndex + 1, td.type)}
-          options={typeOptions}
-          value={row.typeCode}
-          onChange={(typeCode) => changeRow(row.draftId, { typeCode })}
-        />
+        <div className="routing-dependency-cell">
+          <Select
+            aria-label={td.rowField(rowIndex + 1, td.type)}
+            options={typeOptions}
+            value={row.typeCode}
+            onChange={(typeCode) => changeRow(row.draftId, { typeCode })}
+          />
+        </div>
       ),
     },
     {
       key: 'remove',
-      header: t.fields.rowActions,
-      width: '64px',
+      /* 삭제 단추 하나뿐인 칸 — 최소 폭(사용자 지시 · #231). */
+      header: td.removeColumn,
+      width: '56px',
       render: (row, rowIndex) => (
         <IconButton
           icon="delete"
@@ -309,22 +328,18 @@ export const DependencyDialog = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={centerColumns(isEditable ? editColumns : readOnlyColumns)}
-        /* 잠긴 Rev 는 서버 값만 보인다 — 저장되지 못한 편집이 남아 있어도 그것은 이 Rev 의 관계가 아니다. */
-        rows={rows}
-        getRowId={(row) => row.draftId}
-      />
+      <div className="routing-dependency-rows">
+        <Table
+          density="compact"
+          columns={centerColumns(isEditable ? editColumns : readOnlyColumns)}
+          /* 잠긴 Rev 는 서버 값만 보인다 — 저장되지 못한 편집이 남아 있어도 그것은 이 Rev 의 관계가 아니다. */
+          rows={rows}
+          getRowId={(row) => row.draftId}
+        />
+      </div>
     );
   };
 
-  const saveBlockedReason = ((): string | null => {
-    if (hasErrors) return td.saveBlockedByInvalid;
-    if (types.isPending) return td.saveBlockedWhileLoadingTypes;
-
-    return null;
-  })();
   const canSave = isDirty && !hasErrors && types.data !== undefined && !write.isSaving;
 
   return (
@@ -343,21 +358,14 @@ export const DependencyDialog = ({
               <Button variant="outlined" onClick={requestClose}>
                 {messages.common.cancel}
               </Button>
-              <div className="field-cell">
-                <Button
-                  disabled={!canSave}
-                  loading={write.isSaving}
-                  aria-describedby={saveBlockedReason === null ? undefined : saveNoteId}
-                  onClick={() => write.write(drafts)}
-                >
-                  {messages.common.save}
-                </Button>
-                {saveBlockedReason !== null && (
-                  <span id={saveNoteId} className="field-note">
-                    {saveBlockedReason}
-                  </span>
-                )}
-              </div>
+              {/* 막힌 사유는 단추 아래 문장 대신 그 입력칸에 보인다(사용자 지시 · #231) — 활성 조건은 그대로다. */}
+              <Button
+                disabled={!canSave}
+                loading={write.isSaving}
+                onClick={() => write.write(drafts)}
+              >
+                {messages.common.save}
+              </Button>
             </>
           ) : (
             /* 조회 전용 — 저장할 것이 없어 닫기 하나만(사용자 시안 · #231). */
@@ -392,11 +400,12 @@ export const DependencyDialog = ({
           </div>
         )}
 
-        {body()}
-
+        {/* 연결 추가는 표 위 오른쪽(사용자 지시 · #231). 연결이 없으면 빈 안내 상자 안에 있다. */}
         {isEditable && state !== null && drafts.length > 0 && (
-          <div className="filter-bar">{addButton}</div>
+          <div className="routing-dependency-tools">{addButton}</div>
         )}
+
+        {body()}
       </Dialog>
 
       {isDiscardOpen && (

@@ -16,8 +16,13 @@ export type ProcessDetailResponse = components['schemas']['ProcessDetailResponse
 
 export interface ProcessFilters {
   q: string;
-  includeInactive: boolean;
+  /** 공정 유형 코드(#231). '' 면 거르지 않는다. */
+  processTypeCode: string;
+  /** 사용 여부 라벨(#231) — 'ACTIVE' · 'INACTIVE' 면 그 값만, '' 면 사용 · 미사용 전체. */
+  activeState: ProcessActiveState;
 }
+
+export type ProcessActiveState = 'ACTIVE' | 'INACTIVE' | '';
 
 export interface ProcessFormValues {
   processCode: string;
@@ -72,6 +77,8 @@ export interface OperationDraft {
   outputLotRequired: boolean;
   equipmentRequired: boolean;
   moldRequired: boolean;
+  /** 외주 공정 — 계약 `isOutsourced`(물리 칸 `is_subcontract`) · #231. */
+  isOutsourced: boolean;
   /** 단위는 초. 빈 문자열은 「지정하지 않음」이며 계약의 널로 옮긴다. */
   standardCycleTimeSec: string;
   /** 0~1 비율. 퍼센트가 아니다. */

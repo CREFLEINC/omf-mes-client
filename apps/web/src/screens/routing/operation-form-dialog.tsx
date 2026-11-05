@@ -1,4 +1,4 @@
-import { Button, Checkbox, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -167,9 +167,12 @@ export const OperationFormDialog = ({
       <section className="routing-flag-section" aria-labelledby={flagTitleId}>
         <div className="routing-flag-head">
           <h3 className="pane-title" id={flagTitleId}>
-            {t.fields.managedItems}
+            {t.dialog.flagsTitle}
           </h3>
-          <span className="routing-flag-count">{t.dialog.flagsSelected(selectedFlagCount)}</span>
+          {/* 켠 개수는 라벨로 — Rev 비교의 「총 N건」과 같은 칩(사용자 지시 · #231). */}
+          <Chip variant="status" size="sm" status="idle">
+            {t.dialog.flagsSelected(selectedFlagCount)}
+          </Chip>
         </div>
         <div className="routing-flag-grid">
           {SHOWN_OPERATION_FLAG_KEYS.map((key) => (
@@ -181,16 +184,6 @@ export const OperationFormDialog = ({
               {t.operationFlags[key]}
             </Checkbox>
           ))}
-
-          {/*
-           * 계약에 저장할 자리가 없다. 감추면 사용자가 「이 화면에는 없는 항목」으로 오해하고
-           * 다른 곳을 찾는다 — 감추지 않고 사유와 함께 비활성으로 둔다(배치 규범 4).
-           * 저장 본문에도 넣지 않는다(operation-order.ts).
-           */}
-          {/* 안내 문장은 두지 않는다(사용자 지시 · #231) — 흐린 확인칸이 「지금은 못 고친다」를 말한다. */}
-          <Checkbox checked={false} disabled readOnly>
-            {t.fields.outsourced}
-          </Checkbox>
         </div>
       </section>
     </Dialog>

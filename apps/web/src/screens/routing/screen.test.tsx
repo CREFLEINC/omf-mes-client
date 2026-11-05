@@ -958,21 +958,21 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     expect(operations.map((item) => item.routingOperationId)).toEqual([8002, 8001]);
   });
 
-  /**
-   * client#603 — `isOutsourced`가 되살아나 필수가 됐다. 화면이 그 칸을 아직 입력받지 않으므로
-   * 항상 `false`로 싣는다(폼이 실제로 보이는 값 그대로) — `draftId`(화면 전용 키)는 여전히 안 싣는다.
-   */
-  it('저장 본문에 외주 공정은 항상 false로 실리고 화면 전용 키는 실리지 않는다', async () => {
+  /** 외주 공정(#231) — 공정 편집 창에서 켠 값이 저장 본문에 실린다. `draftId`(화면 전용 키)는 안 싣는다. */
+  it('공정 편집 창에서 외주 공정을 켜면 저장 본문에 true 로 실리고 화면 전용 키는 실리지 않는다', async () => {
     const { requests, user } = renderDraftOperations([operationSaveRoute()]);
     await screen.findByText('1차 사출');
 
     await user.click(
-      within(operationRows()[0] as HTMLElement).getByRole('button', { name: '아래로 이동' }),
+      within(operationRows()[0] as HTMLElement).getByRole('button', { name: '1번 공정 수정' }),
     );
+    await user.click(await screen.findByRole('checkbox', { name: '외주 공정' }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
     await user.click(within(actionsRegion()).getByRole('button', { name: '저장' }));
     await screen.findByText('저장했습니다');
 
     const body = savePuts(requests)[0]?.body ?? '';
+    expect(body).toContain('"isOutsourced":true');
     expect(body).toContain('"isOutsourced":false');
     expect(body).not.toContain('draftId');
   });
@@ -1118,7 +1118,7 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
       },
     ]);
 
-    expect(await screen.findByText(/없음 — PQC 대상이 아닙니다/)).toBeInTheDocument();
+    expect(await screen.findByText('검사 기준 미지정')).toBeInTheDocument();
     await user.click(within(headerRegion()).getByRole('button', { name: '검사 기준 등록' }));
     expect(router?.state.location.pathname).toBe('/master-data/inspection-standard');
     expect(router?.state.location.search).toBe('?new=PQC&newItem=5001');
@@ -1284,6 +1284,106 @@ const transitionRoute = (
 
 const stateLockedResponse = (message: string): Response =>
   jsonResponse({ errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] }, { status: 400 });
+
+/* 작성중 Rev 취소(#231) — 확인 뒤 DELETE 하나, 지운 Rev 는 주소에서 빠진다. */
+describe('RoutingScreen — 작성 취소', () => {
+  const discardRoute = (respond: StubRoute['respond']): StubRoute => ({
+    match: (request) =>
+      request.method === 'DELETE' && new URL(request.url).pathname === '/planning/routings/7003',
+    respond,
+  });
+
+  it('작성중 Rev 에서 작성 취소를 확인하면 DELETE 하나가 나가고 남은 확정 Rev 가 열린다', async () => {
+    /* 지운 뒤에는 서버 목록에서 작성중 Rev 3 이 빠진다 — 화면은 남은 최신 확정 Rev 2 를 연다. */
+    let discarded = false;
+    const { requests, router, user } = renderScreen(
+      [
+        itemListRoute(),
+        {
+          match: (request) => isGet(request, '/planning/routings'),
+          respond: () =>
+            jsonResponse({
+              items: discarded
+                ? routingFixtures.filter((row) => row.routingId !== 7003)
+                : routingFixtures,
+            }),
+        },
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+        dependencyListRoute(),
+        routingDetailRoute(routingFixtures[1]),
+        operationListRoute(7002),
+        discardRoute(() => {
+          discarded = true;
+          return new Response(null, { status: 204 });
+        }),
+      ],
+      '?item=5001&rev=7003',
+    );
+    if (router === null) throw new Error('데이터 라우터가 없습니다');
+    await screen.findByText('1차 사출');
+
+    await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성을 취소하시겠습니까?' });
+    expect(requests.filter((request) => request.method === 'DELETE')).toHaveLength(0);
+    await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
+
+    expect(await screen.findByText('작성을 취소했습니다.')).toBeInTheDocument();
+    const deletes = requests.filter((request) => request.method === 'DELETE');
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    await waitFor(() => expect(router.state.location.search).toContain('rev=7002'));
+  });
+
+  it('확정 Rev 에는 작성 취소 단추가 없다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(routingFixtures[1]),
+        operationListRoute(7002),
+        processListRoute(),
+        dependencyListRoute(),
+      ],
+      '?item=5001&rev=7002',
+    );
+    await screen.findByText('1차 사출');
+
+    expect(within(actionsRegion()).queryByRole('button', { name: '작성 취소' })).toBeNull();
+  });
+
+  it('서버가 거절하면 창을 닫지 않고 그 사유를 보인다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(),
+        processListRoute(),
+        dependencyListRoute(),
+        discardRoute(() =>
+          stateLockedResponse(
+            '이 Rev 를 쓰는 생산계획 · 작업지시 · BOM · 검사기준이 있어 취소할 수 없습니다.',
+          ),
+        ),
+      ],
+      '?item=5001&rev=7003',
+    );
+    const { user } = { user: userEvent.setup() };
+    await screen.findByText('1차 사출');
+
+    await user.click(within(actionsRegion()).getByRole('button', { name: '작성 취소' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rev 3 작성을 취소하시겠습니까?' });
+    await user.click(within(dialog).getByRole('button', { name: '작성 취소' }));
+
+    expect(
+      await within(dialog).findByText(
+        '이 Rev 를 쓰는 생산계획 · 작업지시 · BOM · 검사기준이 있어 취소할 수 없습니다.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
 
 describe('RoutingScreen — 확정·폐기', () => {
   /* 되돌릴 수 없는 전이다 — 확인 단계를 건너뛰면 실수로 판이 잠긴다. */
@@ -1470,6 +1570,27 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
       '?item=5001&rev=7002',
     );
 
+  /* 폐기 개정에서는 발행을 서버가 받지 않는다 — 단추를 세우지 않는다(사용자 지시 · #231). */
+  it('폐기된 Rev 를 보고 있으면 신규 Rev 발행 단추가 없다', async () => {
+    renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(routingFixtures[2]),
+        operationListRoute(7001),
+        processListRoute(),
+        dependencyListRoute(),
+      ],
+      '?item=5001&rev=7001',
+    );
+
+    const card = await screen.findByRole('region', { name: '공정 경로' });
+    expect(await within(card).findByText('Rev 1 · 폐기')).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: '신규 Rev 발행' })).toBeNull();
+    /* 안내 상자 대신 머리 라벨 하나. */
+    expect(within(card).getByText('수정 · 변경 불가')).toBeInTheDocument();
+  });
+
   it('Rev가 1건 이상이면 발행 버튼이 활성되고 멱등 키만 실어 요청한다', async () => {
     const { requests, user } = renderConfirmedRevision([
       transitionRoute('new-revision', 7002, () =>
@@ -1517,20 +1638,22 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
     expect(requestsTo(requests, '/planning/routings/7004/operations')).toHaveLength(1);
   });
 
-  it('상태 잠김은 「최신 불러오기」 없는 배너로 낸다', async () => {
-    const { user } = renderConfirmedRevision([
+  /* 발행 상태 잠금은 붉은 상자 대신 개정을 다시 읽는다 — 새 상태는 머리 라벨이 말한다(사용자 지시 · #231). */
+  it('발행이 상태 잠김으로 거절되면 안내 상자 없이 개정을 다시 읽는다', async () => {
+    const { requests, user } = renderConfirmedRevision([
       transitionRoute('new-revision', 7002, () =>
         stateLockedResponse('확정된 Rev에서만 신규 Rev를 발행할 수 있습니다.'),
       ),
     ]);
     await screen.findByText('1차 사출');
+    const detailReads = () => requestsTo(requests, '/planning/routings/7002').length;
+    const before = detailReads();
 
     await user.click(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' }));
 
-    expect(
-      await screen.findByText('확정된 Rev에서만 신규 Rev를 발행할 수 있습니다.'),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '최신 불러오기' })).not.toBeInTheDocument();
+    await waitFor(() => expect(detailReads()).toBeGreaterThan(before));
+    expect(screen.queryByText('지금은 저장할 수 없는 상태입니다')).toBeNull();
+    expect(screen.queryByText('확정된 Rev에서만 신규 Rev를 발행할 수 있습니다.')).toBeNull();
   });
 
   /*
@@ -1708,11 +1831,21 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
     expect(within(dialog).getByText('품목코드 ITM-001')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: '연결 추가' }));
 
-    expect(within(dialog).getByText('선행·후행 공정을 모두 고르세요.')).toBeInTheDocument();
+    expect(within(dialog).getByText('선행·후행 공정을 선택해 주세요.')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    /* 저장 단추 아래 사유 문장은 두지 않는다 — 문제는 그 입력칸에서 본다(#231). */
+    expect(within(dialog).queryByText(/표에 표시된 문제/)).toBeNull();
 
     await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' }));
     await user.click(await screen.findByRole('option', { name: '1. 1차 사출' }));
+    /* 선행을 고르면 남은 후행 칸만 짚는다. */
+    expect(within(dialog).getByText('후행 공정을 선택해 주세요.')).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('combobox', { name: '1번째 줄 후행 공정' }),
+    ).toHaveAccessibleDescription('후행 공정을 선택해 주세요.');
+    expect(
+      within(dialog).getByRole('combobox', { name: '1번째 줄 선행 공정' }),
+    ).not.toHaveAccessibleDescription('후행 공정을 선택해 주세요.');
     await user.click(within(dialog).getByRole('combobox', { name: '1번째 줄 후행 공정' }));
     await user.click(await screen.findByRole('option', { name: '2. 2차 조립' }));
     expect(within(dialog).getByRole('combobox', { name: '1번째 줄 관계' })).toHaveTextContent(
@@ -1746,9 +1879,7 @@ describe('RoutingScreen — 공정 선후행 설정', () => {
       '선후행이 순환합니다(1. 1차 사출 → 2. 2차 조립 → 1. 1차 사출). 이 중 한 줄을 지우거나 방향을 바꾸세요.';
     expect(within(dialog).getAllByText(message).length).toBeGreaterThan(0);
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(
-      within(dialog).getByText('선후행 저장은 표에 표시된 문제를 고쳐야 할 수 있습니다.'),
-    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/표에 표시된 문제/)).toBeNull();
     expect(dependencyPuts(requests)).toHaveLength(0);
   });
 
@@ -1946,7 +2077,7 @@ describe('RoutingScreen — 선후행이 걸린 공정 삭제와 서버 거부',
     );
   });
 
-  it('관계 유형 목록을 받는 동안에는 선후행 저장을 막고 그 까닭을 말한다', async () => {
+  it('관계 유형 목록을 받는 동안에는 선후행 저장을 막는다', async () => {
     const { user } = renderDraftOperations([
       {
         match: (request) => isGet(request, '/mdm/code-values'),
@@ -1957,9 +2088,6 @@ describe('RoutingScreen — 선후행이 걸린 공정 삭제와 서버 거부',
     const dialog = await openDependencies(user);
 
     expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(
-      await within(dialog).findByText('관계 유형 목록을 불러오는 중입니다. 잠시 뒤 저장하세요.'),
-    ).toBeInTheDocument();
   });
 
   it('서버가 공정 삭제를 거부하면 서버 문구를 띠로 보인다', async () => {
@@ -2280,13 +2408,67 @@ describe('RoutingScreen — Rev 비교 · 변경 이력 (#231)', () => {
     await user.click(within(actionsRegion()).getByRole('button', { name: '변경 이력' }));
 
     const dialog = await screen.findByRole('dialog', { name: /변경 이력/ });
-    /* 이름은 왼쪽, 「전 → 후」는 오른쪽 — 검사 기준 변경 이력과 같은 모양(#231). */
-    const change = (await within(dialog).findByText('Routing 코드')).closest('li');
-    expect(change).toHaveTextContent(/^Routing 코드A.*B$/);
+    /* 바뀐 칸 하나가 한 줄 — 「변경 항목 | 변경 전 | 변경 후」(사용자 시안 · #231). */
+    const change = (await within(dialog).findByText('Routing 코드')).closest('tr');
+    expect(
+      Array.from(change?.querySelectorAll('td') ?? [])
+        .slice(3)
+        .map((cell) => cell.textContent),
+    ).toEqual(['Routing 코드', 'A', 'B']);
     expect(within(dialog).getByText('기본 정보 수정')).toBeInTheDocument();
     const audit = requestsTo(requests, '/audit/events')[0];
     expect(audit?.url.searchParams.get('targetTypeCode')).toBe('ROUTING');
     expect(audit?.url.searchParams.get('targetId')).toBe('7003');
     expect(audit?.url.searchParams.has('occurredFrom')).toBe(true);
+  });
+
+  /* 일시 머리를 누르면 오름 · 내림차순이 바뀐다 — 처음은 최신이 위(사용자 지시 · #231). */
+  it('변경 이력은 최신이 위로 시작하고, 일시 머리를 누르면 오래된 것이 위로 온다', async () => {
+    const event = (auditEventId: number, occurredAt: string, routingCode: string) => ({
+      auditEventId,
+      occurredAt,
+      targetTypeCode: 'ROUTING',
+      targetId: 7003,
+      eventTypeCode: 'UPDATE',
+      beforeValue: { routingCode: 'A' },
+      afterValue: { routingCode },
+      performedBy: null,
+    });
+    const { user } = renderScreen(
+      [
+        itemListRoute(),
+        revisionListRoute(),
+        routingDetailRoute(),
+        operationListRoute(7003),
+        processListRoute(),
+        {
+          match: (request) => isGet(request, '/audit/events'),
+          respond: () =>
+            jsonResponse({
+              items: [
+                event(1, '2026-11-04T01:00:00.000Z', 'OLD'),
+                event(2, '2026-11-05T01:00:00.000Z', 'NEW'),
+              ],
+              page: { page: 1, size: 100, total: 2 },
+            }),
+        },
+      ],
+      '?item=5001&rev=7003',
+    );
+
+    await screen.findByText('1차 사출');
+    await user.click(within(actionsRegion()).getByRole('button', { name: '변경 이력' }));
+    const dialog = await screen.findByRole('dialog', { name: /변경 이력/ });
+    await within(dialog).findByText('NEW');
+
+    const order = () =>
+      within(dialog)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => (row.textContent?.includes('NEW') === true ? 'NEW' : 'OLD'));
+    expect(order()).toEqual(['NEW', 'OLD']);
+
+    await user.click(within(dialog).getByRole('button', { name: /일시/ }));
+    expect(order()).toEqual(['OLD', 'NEW']);
   });
 });

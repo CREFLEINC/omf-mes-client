@@ -62,6 +62,7 @@ const FIELDS: Record<string, { label: string; format: (value: unknown) => string
 
 /** 이력 한 건의 구분 — 무엇이 바뀌었는지로 정한다(서버는 CREATE · UPDATE 만 적는다). */
 const actionOf = (event: RoutingAuditEvent, before: Fields, after: Fields): string => {
+  if (event.eventTypeCode === 'DELETE') return t.history.discarded;
   if (event.eventTypeCode === 'CREATE') {
     return 'copiedFromRoutingId' in after ? t.history.revised : t.history.created;
   }
@@ -119,7 +120,7 @@ export const toHistoryRow = (
 
   /* 등록 · 신규 Rev 발행은 바뀐 칸이 아니라 새로 생긴 것이라 변경 내용을 비운다(검사 기준 변경 이력과 같다). */
   const changes: HistoryChange[] =
-    event.eventTypeCode === 'CREATE'
+    event.eventTypeCode === 'CREATE' || event.eventTypeCode === 'DELETE'
       ? []
       : keys.flatMap((key): HistoryChange[] => {
           if (key === 'operations') return operationChanges(before[key], after[key], processLabel);

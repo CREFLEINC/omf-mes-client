@@ -13,7 +13,7 @@ export const routing = {
     header: 'Routing 정보',
     operations: '공정 라인',
     processList: '공정 목록',
-    processForm: '공정 등록·편집',
+    processForm: '공정 상세',
   },
   /** 상세 카드(사용자 시안 · #231) — 머리 · 탭 · 구역 제목. */
   card: {
@@ -29,7 +29,6 @@ export const routing = {
   },
   actions: {
     /** Rev 이력 표의 「상세」 칸 단추 — 누르면 설정 탭에서 그 Rev 를 연다(#231). */
-    viewDetail: '상세 보기',
     viewDetailLabel: (revision: string): string => `${revision} 상세 보기`,
     /* 「PQC 검사 기준」 옆 — 검사 기준 화면으로 옮긴다(사용자 지시 2026-11-05). 기준이 없으면 등록 창을 연다. */
     editPqcPlan: '검사 기준 수정',
@@ -38,9 +37,12 @@ export const routing = {
     createRouting: 'Routing 등록',
     addOperation: '공정 추가',
     addProcess: '공정 추가',
-    activateProcess: '다시 사용',
+    editProcess: '수정',
+    activateProcess: '재사용',
     confirm: '확정',
     obsolete: '폐기',
+    /** 작성중 Rev 취소(삭제) · #231 */
+    discard: '작성 취소',
     dependencies: '공정 연결',
     compareRevisions: 'Rev 비교',
     changeHistory: '변경 이력',
@@ -104,6 +106,9 @@ export const routing = {
     /* 첫 Rev 등록 중에는 아직 Rev 가 없다 — 「이 Rev에서 고친」이 가리킬 것이 없다. */
     bodyCreating:
       '지금 옮기면 입력한 첫 Rev 등록 내용이 저장되지 않고 사라집니다. 남기려면 「계속 편집」을 누른 뒤 등록하세요.',
+    /** 공정 관리 탭 — 공정 추가 · 편집 중 이동(#231). */
+    bodyProcess:
+      '지금 옮기면 입력한 공정 정보가 저장되지 않고 사라집니다. 남기려면 「계속 편집」을 누른 뒤 저장하세요.',
     stay: '계속 편집',
     confirm: '저장하지 않고 이동',
   },
@@ -140,7 +145,7 @@ export const routing = {
     processNoneDescription: '「공정 추가」로 첫 공정을 등록하세요.',
     processNoMatchTitle: '조건에 맞는 공정이 없습니다',
     processNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
-    processNotSelected: '좌측에서 공정을 고르거나 새 공정을 추가하세요',
+    processNotSelected: '공정을 고르거나 새 공정을 추가하세요',
   },
   fields: {
     item: '품목',
@@ -151,7 +156,6 @@ export const routing = {
     status: '상태',
     /** 이력 관리 표 — 확정 일시(#231). */
     confirmedAt: '확정 일시',
-    detail: '상세',
     /** 품목 목록 열 — 그 품목의 기본 Rev(#231). */
     defaultRevision: '기본 Rev',
     /** 품목 목록 열 — 최신 Rev · 그 상태 · 발행한 Rev 수(#231). */
@@ -170,7 +174,6 @@ export const routing = {
     standardCycleTimeSec: '표준 C/T(초)',
     /** 허용 범위를 라벨에 적는다 — 퍼센트로 오입력하면 100배가 조용히 통과한다. */
     standardYieldRate: '표준 수율(%)',
-    outsourced: '외주 공정',
     /* 검사 항목은 공정이 아니라 품목에 붙는다 — 이 품목의 작업지시가 PQC 의뢰에 쓸 기준(사용자 지시 2026-11-05). */
     pqcPlan: 'PQC 검사 기준',
     /** 행 안의 수정·삭제 열. 머리글이 없으면 보조기술이 열의 뜻을 읽을 수 없다. */
@@ -179,12 +182,13 @@ export const routing = {
   /** 공정 라인의 관리 플래그 7종. 표에서는 켜진 것의 이름만 이어 낸다. */
   operationFlags: {
     mesManaged: 'MES 관리',
-    materialInputManaged: '자재투입 관리',
+    materialInputManaged: '자재 투입 관리',
     productionResultManaged: '실적 관리',
     inspectionManaged: '검사 관리',
     outputLotRequired: '산출 LOT 필수',
     equipmentRequired: '설비 필수',
     moldRequired: '금형 필수',
+    isOutsourced: '외주 공정',
   },
   /** Rev 비교(#231) — 두 Rev 의 기본 정보 · 공정 구성을 화면이 견준다(서버 비교 경로 없음). */
   compare: {
@@ -214,9 +218,12 @@ export const routing = {
     occurredAt: '일시',
     performedBy: '처리자',
     action: '구분',
-    changes: '변경 내용',
+    changeField: '변경 항목',
+    before: '변경 전',
+    after: '변경 후',
     created: 'Routing 등록',
     revised: '신규 Rev 발행',
+    discarded: '작성 취소',
     headerSaved: '기본 정보 수정',
     operationsSaved: '공정 구성 수정',
     dependenciesSaved: '공정 연결 수정',
@@ -260,6 +267,8 @@ export const routing = {
     unregistered: '미등록',
     /** 코드 잠금 · 선후행 막힘을 긴 문장 대신 보이는 짧은 라벨(#231). 문장은 라벨 위 마우스로 본다. */
     codeLockedBadge: '사용 중 · 변경 불가',
+    /** 폐기 개정 — 카드 머리 라벨(#231). */
+    lockedBadge: '수정 · 변경 불가',
     dependenciesBlockedBadge: '공정 2개 이상 등록 시 사용 가능',
     /** 이력 관리 — 기본 Rev 고르기 칸 · 확인 창(#231). */
     defaultSelect: '기본 Rev',
@@ -273,13 +282,14 @@ export const routing = {
     setDefaultDescription: '기존 기본 Rev가 있다면 자동으로 해제됩니다.',
     setDefaultDone: '기본 Rev로 지정했습니다.',
     pqcPlanItem: (code: string, name: string): string => `${code} · ${name}`,
-    pqcPlanNone:
-      '없음 — PQC 대상이 아닙니다. 검사 기준 화면에서 이 품목의 PQC 기준을 등록하면 대상이 됩니다.',
+    pqcPlanNone: '검사 기준 미지정',
   },
   validation: {
     required: '필수 입력 항목입니다.',
     codeBlank: 'Routing 코드는 공백만으로 지정할 수 없습니다.',
     operationNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
+    processCodeRequired: '공정코드를 입력하세요.',
+    processNameRequired: '공정명을 입력하세요.',
     processCodeBlank: '공정코드는 공백만으로 지정할 수 없습니다.',
     processNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
     processTypeRequired: '공정 유형을 고르세요.',
@@ -301,15 +311,25 @@ export const routing = {
     obsoleteTitle: (revision: string): string => `${revision}를 폐기하시겠습니까?`,
     obsoleteDescription: '폐기된 Rev는 신규 작업에 사용할 수 없습니다.',
     obsoleteNote: '폐기 후에도 기존 이력은 유지됩니다.',
+    /** 작성중 Rev 취소 확인(#231). */
+    discardTitle: (revision: string): string => `${revision} 작성을 취소하시겠습니까?`,
+    discardDescription: '작성중 Rev와 그 공정 구성 · 공정 연결이 삭제됩니다.',
+    discardNote: '삭제 후에는 되돌릴 수 없습니다. 변경 이력에는 남습니다.',
+    discardDone: '작성을 취소했습니다.',
     /** 공정 편집 창 관리 항목 제목 옆 — 켠 항목 수(#231). */
+    /** 공정 편집 창 관리 항목 구역 제목(#231). */
+    flagsTitle: '관리 설정',
     flagsSelected: (count: number): string => `${String(count)}개 선택`,
-    deactivateProcessTitle: '이 공정을 사용 중지할까요?',
+    deactivateProcessTitle: '공정 사용을 중지하시겠습니까?',
     deactivateProcessDescription:
-      '기존 확정 Routing은 그대로 유지되고, 앞으로 새 공정 라인에서만 고를 수 없게 됩니다.',
-    deactivateProcessReferences: (count: number): string =>
-      `이 공정을 참조하는 곳이 ${String(count)}건 있습니다.`,
-    activateProcessTitle: '이 공정을 다시 사용할까요?',
-    activateProcessDescription: '앞으로 새 공정 라인에서도 이 공정을 다시 고를 수 있습니다.',
+      '사용을 중지하면 새로운 공정 경로에 해당 공정을 추가할 수 없습니다.',
+    /** 사용 중지 확인 창의 영향 상자 — 기존 확정 경로 유지 · 현재 참조 건수(사용자 시안 · #231). */
+    deactivateImpactConfirmed: '기존 확정 경로',
+    deactivateImpactConfirmedValue: '영향 없음',
+    deactivateImpactReferences: '현재 참조',
+    deactivateImpactReferencesValue: (count: number): string => `${String(count)}건`,
+    activateProcessTitle: '공정을 재사용하시겠습니까?',
+    activateProcessDescription: '재사용하면 새로운 공정 경로에 이 공정을 추가할 수 있습니다.',
   },
   /** 공정 선후행 설정 창. */
   dependencies: {
@@ -320,6 +340,7 @@ export const routing = {
     type: '관계',
     remove: (rowNo: number): string => `${String(rowNo)}번째 선후행 삭제`,
     rowField: (rowNo: number, field: string): string => `${String(rowNo)}번째 줄 ${field}`,
+    removeColumn: '삭제',
     add: '연결 추가',
     operationOption: (displayNo: number, name: string): string => `${String(displayNo)}. ${name}`,
     unknownOperation: '알 수 없는 공정',
@@ -327,12 +348,12 @@ export const routing = {
     noneTitle: '등록된 공정 연결이 없습니다.',
     typesLoadFailed:
       '관계 유형 목록을 불러오지 못했습니다. 다시 시도하세요. 불러오기 전에는 저장할 수 없습니다.',
-    saveBlockedWhileLoadingTypes: '관계 유형 목록을 불러오는 중입니다. 잠시 뒤 저장하세요.',
-    saveBlockedByInvalid: '선후행 저장은 표에 표시된 문제를 고쳐야 할 수 있습니다.',
     stateLocked:
       '이 Rev는 이미 확정돼 선후행을 바꿀 수 없습니다. 목록을 새로 읽었습니다 — 바꾸려면 신규 Rev를 발행하세요.',
     validation: {
-      required: '선행·후행 공정을 모두 고르세요.',
+      required: '선행·후행 공정을 선택해 주세요.',
+      predecessorRequired: '선행 공정을 선택해 주세요.',
+      successorRequired: '후행 공정을 선택해 주세요.',
       self: '선행과 후행에 같은 공정을 고를 수 없습니다. 다른 공정을 고르세요.',
       duplicate: (from: string, to: string): string =>
         `같은 선후행이 이미 있습니다(${from} → ${to}). 한 줄을 지우세요.`,

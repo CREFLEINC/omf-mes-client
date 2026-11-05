@@ -10,6 +10,7 @@ import type {
   LookupEntry,
   Process,
   ProcessDetailResponse,
+  ProcessActiveState,
   ProcessFilters,
   LatestRoutingStatus,
 } from './types';
@@ -349,7 +350,10 @@ export const useProcessList = (
           params: {
             query: {
               ...(filters.q === '' ? {} : { q: filters.q }),
-              ...(filters.includeInactive ? { includeInactive: true } : {}),
+              ...processListScope(filters.activeState),
+              ...(filters.processTypeCode === ''
+                ? {}
+                : { processTypeCode: filters.processTypeCode }),
               page: paging.page,
               size: paging.size,
             },
@@ -357,6 +361,48 @@ export const useProcessList = (
         }),
       ),
   });
+};
+
+/** 사용 여부 라벨 → 서버 조건 `isActive`(#231). '' 면 싣지 않는다. */
+export const processActiveQuery = (state: ProcessActiveState): { isActive?: boolean } =>
+  state === '' ? {} : { isActive: state === 'ACTIVE' };
+
+/**
+ * 목록 범위 — 라벨을 고르지 않으면 사용 · 미사용 전체(`includeInactive`), 고르면 그 값만(`isActive`).
+ * 「미사용 포함」 확인칸은 라벨로 바뀌어 없다(사용자 지시 · #231).
+ */
+export const processListScope = (
+  state: ProcessActiveState,
+): { includeInactive?: boolean; isActive?: boolean } =>
+  state === '' ? { includeInactive: true } : processActiveQuery(state);
+
+/** 사용 · 미사용 라벨의 건수 — 지금 검색어로, 라벨마다 한 줄만 받아 전체 건수를 쓴다(공정 경로 상태 라벨과 같다 · #231). */
+export const useProcessActiveCounts = (
+  q: string,
+  processTypeCode: string,
+  states: readonly Exclude<ProcessActiveState, ''>[],
+): (number | undefined)[] => {
+  const { client } = useApiClient();
+  const results = useQueries({
+    queries: states.map((state) => ({
+      queryKey: [...processKeys.all, 'active-count', q, processTypeCode, state] as const,
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/mdm/processes', {
+            params: {
+              query: {
+                ...(q === '' ? {} : { q }),
+                ...(processTypeCode === '' ? {} : { processTypeCode }),
+                ...processActiveQuery(state),
+                page: 1,
+                size: 1,
+              },
+            },
+          }),
+        ).then((list) => list.page.total),
+    })),
+  });
+  return results.map((result) => result.data);
 };
 
 export const useProcessDetail = (

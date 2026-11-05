@@ -609,6 +609,32 @@ const RoutingWorkspace = () => {
   });
 
   /*
+   * 작성중 Rev 취소(#231) — 지우고 나면 그 Rev 를 볼 수 없으니 주소의 `rev` 를 비운다. 그러면 품목의 남은
+   * 개정 가운데 볼 것이 자동으로 열리고, 남은 것이 없으면 「Routing 등록」 상태로 돌아간다.
+   */
+  const discardWrite = useMasterWrite<void, void>({
+    request: (_variables, headers) =>
+      client.DELETE('/planning/routings/{routingId}', {
+        params: {
+          path: { routingId: selectedRoutingId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [routingKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setTransition(null);
+      resetHeaderEditing();
+      resetOperationEditing();
+      /* 지운 Rev 의 편집은 함께 사라졌다 — 이동 감시가 묻지 않게 한다. */
+      confirmedMoveRef.current = true;
+      updateParams({ rev: null });
+      toast.show({ variant: 'success', description: t.dialog.discardDone });
+    },
+  });
+
+  /*
    * 복사할 원본은 고른 Rev다. 아무것도 고르지 않았으면 최신 판을 쓴다 —
    * 계약이 목록을 판 번호 내림차순으로 준다고 정했으므로 첫 행이 최신이다.
    * 원본이 확정이 아니면 서버가 400(STATE_LOCKED)으로 거부하고 화면이 그 사유를 배너로 낸다.
@@ -629,6 +655,20 @@ const RoutingWorkspace = () => {
       toast.show({ variant: 'success', description: messages.common.created });
     },
   });
+
+  /*
+   * 발행이 상태 잠금으로 거절되면(그사이 다른 사람이 폐기 등) 붉은 상자 대신 개정을 다시 읽는다 —
+   * 새 상태가 머리의 「Rev · 상태」와 「수정 · 변경 불가」 라벨로 보이고 발행 단추가 사라진다(#231).
+   */
+  const isNewRevisionStateLocked = newRevisionWrite.error?.kind === 'stateLocked';
+  /* 결과 객체는 렌더마다 새로 와서 의존값에 넣으면 거듭 다시 읽는다 — 늘 같은 refetch 함수만 쓴다. */
+  const { refetch: refetchDetail } = detail;
+  const { refetch: refetchRevisions } = revisionList;
+  useEffect(() => {
+    if (!isNewRevisionStateLocked) return;
+    void refetchDetail();
+    void refetchRevisions();
+  }, [isNewRevisionStateLocked, refetchDetail, refetchRevisions]);
 
   /** Rev 비교 · 변경 이력 창(#231). */
   const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -738,13 +778,19 @@ const RoutingWorkspace = () => {
     setCreateFieldErrors({});
   };
 
-  const transitionWrite = transition === 'obsolete' ? obsoleteWrite : confirmWrite;
+  const transitionWrite =
+    transition === 'obsolete'
+      ? obsoleteWrite
+      : transition === 'discard'
+        ? discardWrite
+        : confirmWrite;
 
   /** 다른 Rev·품목으로 옮기면 열려 있던 확인 창과 실패 표시를 들고 가지 않는다. */
   const resetTransition = () => {
     setTransition(null);
     confirmWrite.reset();
     obsoleteWrite.reset();
+    discardWrite.reset();
   };
 
   /**
@@ -1040,6 +1086,8 @@ const RoutingWorkspace = () => {
     selectedRoutingId !== null &&
     detailStatus?.isRecognized === true &&
     detailStatus.status === 'draft';
+  /* 폐기된 개정에서는 신규 Rev 를 발행할 수 없다 — 서버가 확정 개정에서만 받는다(사용자 지시 · #231). */
+  const isViewingObsolete = selectedRoutingId !== null && detailStatus?.status === 'obsolete';
 
   const renderSettingsTab = () => {
     const isRevisionOpen = createValues !== null || selectedRoutingId !== null;
@@ -1049,8 +1097,11 @@ const RoutingWorkspace = () => {
          * 「기본 정보」 상자 · 제목은 두지 않는다 — 칸이 Routing 코드 하나뿐이다(사용자 지시 · #231).
          * 신규 Rev 발행 · Routing 등록은 카드 머리 오른쪽에 있다.
          */}
-        {/* 발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */}
-        <SaveErrorBanner error={newRevisionWrite.error} />
+        {/*
+         * 발행에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다.
+         * 상태 잠금(폐기 개정에서 발행 등)은 붉은 상자 대신 머리의 「수정 · 변경 불가」 라벨이 말한다(사용자 지시 · #231).
+         */}
+        {!isNewRevisionStateLocked && <SaveErrorBanner error={newRevisionWrite.error} />}
         {isRevisionOpen ? (
           renderHeaderPane()
         ) : (
@@ -1146,7 +1197,9 @@ const RoutingWorkspace = () => {
                 onHistory={() => setIsHistoryOpen(true)}
                 confirmDisabledReason={confirmDisabledReason}
                 obsoleteDisabledReason={obsoleteDisabledReason}
-                isTransitioning={confirmWrite.isSaving || obsoleteWrite.isSaving}
+                isTransitioning={
+                  confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving
+                }
                 onConfirm={() => {
                   confirmWrite.reset();
                   setTransition('confirm');
@@ -1154,6 +1207,10 @@ const RoutingWorkspace = () => {
                 onObsolete={() => {
                   obsoleteWrite.reset();
                   setTransition('obsolete');
+                }}
+                onDiscard={() => {
+                  discardWrite.reset();
+                  setTransition('discard');
                 }}
               />
             </section>
@@ -1248,9 +1305,7 @@ const RoutingWorkspace = () => {
           ) : (
             <section className="pane routing-detail-card" aria-label={t.card.title}>
               <div className="routing-card-head">
-                <h2 className="pane-title routing-card-title">
-                  {t.card.title}
-                </h2>
+                <h2 className="pane-title routing-card-title">{t.card.title}</h2>
                 <div className="routing-card-section-tools">
                   {/* 지금 보는 개정 — 「Rev · 상태」 칩은 카드 머리 오른쪽(사용자 시안 · #231). */}
                   {selectedRoutingId !== null &&
@@ -1263,11 +1318,17 @@ const RoutingWorkspace = () => {
                         )}
                       </Chip>
                     )}
+                  {/* 폐기 개정은 고칠 수도 발행할 수도 없다 — 안내 상자 대신 라벨 하나(사용자 지시 · #231). */}
+                  {isViewingObsolete && (
+                    <Chip variant="status" status="idle">
+                      {t.values.lockedBadge}
+                    </Chip>
+                  )}
                   {/*
                    * 신규 Rev 발행(개정이 없으면 Routing 등록)은 카드 머리 오른쪽의 주요 작업(사용자 지시 · #231).
-                   * 작성중 개정을 보고 있으면 세우지 않는다.
+                   * 작성중 · 폐기 개정을 보고 있으면 세우지 않는다 — 서버가 확정 개정에서만 발행을 받는다.
                    */}
-                  {!isViewingDraft && (
+                  {!isViewingDraft && !isViewingObsolete && (
                     <RevisionActions
                       hasRevisions={revisions.length > 0}
                       newRevisionDisabledReason={newRevisionDisabledReason}

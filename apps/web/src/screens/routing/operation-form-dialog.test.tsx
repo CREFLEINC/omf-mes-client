@@ -57,7 +57,7 @@ describe('OperationFormDialog', () => {
 
     for (const name of [
       'MES 관리',
-      '자재투입 관리',
+      '자재 투입 관리',
       '실적 관리',
       '산출 LOT 필수',
       '설비 필수',
@@ -80,11 +80,14 @@ describe('OperationFormDialog', () => {
    * 계약에 저장할 자리가 없다 — 감추면 사용자가 「이 화면에는 없는 항목」으로 오해한다.
    * 감추지 않고 사유와 함께 비활성으로 둔다.
    */
-  it('외주 공정 확인칸은 비활성이고 안내 문장은 두지 않는다', () => {
-    renderDialog();
+  /* 외주 공정(#231) — 다른 관리 항목처럼 켜고 끈다. */
+  it('외주 공정 확인칸을 누르면 그 값을 올린다', async () => {
+    const { props, user } = renderDialog();
 
-    expect(screen.getByRole('checkbox', { name: '외주 공정' })).toBeDisabled();
-    expect(screen.queryByText('외주 공정은 현재 설정할 수 없습니다.')).toBeNull();
+    const outsourced = screen.getByRole('checkbox', { name: '외주 공정' });
+    expect(outsourced).toBeEnabled();
+    await user.click(outsourced);
+    expect(props.onChange).toHaveBeenCalledWith({ isOutsourced: true });
   });
 
   /*
@@ -127,7 +130,7 @@ describe('OperationFormDialog', () => {
   it('관리 항목 제목 옆에 켠 개수를 보이고, 우상단 X 단추를 두지 않는다', () => {
     renderDialog();
 
-    expect(screen.getByRole('region', { name: '관리 항목' })).toHaveTextContent(/\d+개 선택/);
+    expect(screen.getByRole('region', { name: '관리 설정' })).toHaveTextContent(/\d+개 선택/);
     expect(
       screen.queryByText('확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.'),
     ).toBeNull();

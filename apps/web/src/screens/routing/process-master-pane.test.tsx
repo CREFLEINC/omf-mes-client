@@ -145,6 +145,15 @@ const renderScreen = () => {
   return { recorded, user: userEvent.setup() };
 };
 
+/** 공정 목록 요청 — 사용 · 미사용 라벨의 건수 요청(size=1 · #231)은 뺀다. */
+const processListRequests = <T extends { method: string; url: URL }>(recorded: T[]): T[] =>
+  recorded.filter(
+    (request) =>
+      request.method === 'GET' &&
+      request.url.pathname === '/mdm/processes' &&
+      request.url.searchParams.get('size') !== '1',
+  );
+
 describe('RoutingScreen — 공정 관리 탭', () => {
   it('탭은 셸 탭 막대(주소)가 고르고, 공정 목록은 품목 선택 없이 조회한다', async () => {
     const { recorded } = renderScreen();
@@ -154,18 +163,39 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     expect(await screen.findByRole('button', { name: 'OP-INJ' })).toBeInTheDocument();
     expect(screen.getByText('가공')).toBeInTheDocument();
 
-    const listRequest = recorded.find(
-      (request) => request.method === 'GET' && request.url.pathname === '/mdm/processes',
-    );
+    const listRequest = processListRequests(recorded)[0];
     expect(listRequest?.url.searchParams.get('includeInactive')).toBe('true');
     expect(recorded.some((request) => request.url.pathname === '/mdm/items')).toBe(false);
+  });
+
+  /* 사용 여부 라벨(#231) — 탭 줄에 「사용 N · 미사용 N」, 누르면 서버 조건 isActive 로 거르고 다시 누르면 푼다. */
+  it('사용 · 미사용 라벨은 서버가 센 건수를 보이고, 누르면 isActive 로 거르고 다시 누르면 푼다', async () => {
+    const { recorded, user } = renderScreen();
+
+    const inactive = await screen.findByRole('button', { name: /^미사용/ });
+    expect(screen.queryByRole('button', { name: /^전체/ })).toBeNull();
+    await user.click(inactive);
+    await waitFor(() => {
+      expect(processListRequests(recorded).at(-1)?.url.searchParams.get('isActive')).toBe('false');
+    });
+    expect(screen.getByRole('button', { name: /^미사용/ })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByRole('button', { name: /^미사용/ }));
+    await waitFor(() => {
+      expect(processListRequests(recorded).at(-1)?.url.searchParams.has('isActive')).toBe(false);
+    });
   });
 
   it('상세의 editability로 코드만 잠그고 수정에는 상세 ETag를 보낸다', async () => {
     const { recorded, user } = renderScreen();
     await user.click(await screen.findByRole('button', { name: 'OP-INJ' }));
 
-    const form = await screen.findByRole('region', { name: '공정 등록·편집' });
+    const form = await screen.findByRole('region', { name: '공정 상세' });
+    /* 고르면 먼저 보기 — 입력칸 없이 값만, [수정]을 눌러야 고칠 수 있다(사용자 지시 · #231). */
+    expect(await within(form).findByText('OP-INJ')).toBeInTheDocument();
+    expect(within(form).queryByRole('textbox')).toBeNull();
+    await user.click(within(form).getByRole('button', { name: '수정' }));
+
     expect(within(form).getByLabelText('공정코드')).toBeDisabled();
     expect(within(form).getByText(/12건/)).toBeInTheDocument();
 
@@ -188,17 +218,23 @@ describe('RoutingScreen — 공정 관리 탭', () => {
       processName: '정밀 사출',
       processTypeCode: 'MACHINING',
     });
+    /* 저장하면 다시 보기로 돌아간다. */
+    await waitFor(() => expect(within(form).queryByRole('button', { name: '저장' })).toBeNull());
+    expect(within(form).getByRole('button', { name: '수정' })).toBeInTheDocument();
   });
 
   it('사용 중지 전에 참조 건수와 기존 Routing 보존 범위를 확인하고 If-Match를 보낸다', async () => {
     const { recorded, user } = renderScreen();
     await user.click(await screen.findByRole('button', { name: 'OP-INJ' }));
-    const form = await screen.findByRole('region', { name: '공정 등록·편집' });
+    const form = await screen.findByRole('region', { name: '공정 상세' });
 
     await user.click(within(form).getByRole('button', { name: '사용 중지' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(/기존 확정 Routing은 그대로 유지/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/12건/)).toBeInTheDocument();
+    /* 영향 상자 — 기존 확정 경로는 영향 없음, 현재 참조 건수(사용자 시안 · #231). */
+    expect(within(dialog).getByText('기존 확정 경로').nextElementSibling).toHaveTextContent(
+      '영향 없음',
+    );
+    expect(within(dialog).getByText('현재 참조').nextElementSibling).toHaveTextContent('12건');
     await user.click(within(dialog).getByRole('button', { name: '사용 중지' }));
 
     await waitFor(() => {
@@ -211,15 +247,17 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     expect(request?.body).toBe('');
   });
 
-  it('미사용 공정은 별도 activate 경로로 다시 사용한다', async () => {
+  it('미사용 공정은 별도 activate 경로로 재사용한다', async () => {
     const { recorded, user } = renderScreen();
     await user.click(await screen.findByRole('button', { name: 'OP-PNT' }));
-    const form = await screen.findByRole('region', { name: '공정 등록·편집' });
+    const form = await screen.findByRole('region', { name: '공정 상세' });
 
-    await user.click(within(form).getByRole('button', { name: '다시 사용' }));
+    await user.click(within(form).getByRole('button', { name: '재사용' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(/새 공정 라인에서도/)).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: '다시 사용' }));
+    expect(
+      within(dialog).getByText(/새로운 공정 경로에 이 공정을 추가할 수 있습니다/),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: '재사용' }));
 
     await waitFor(() => {
       expect(recorded.filter((request) => request.url.pathname.endsWith(':activate'))).toHaveLength(
@@ -230,12 +268,39 @@ describe('RoutingScreen — 공정 관리 탭', () => {
     expect(request?.headers.get('If-Match')).toBe('"4"');
   });
 
-  it('새 공정은 코드·명칭·동적 유형만 등록하고 저장된 행을 선택한다', async () => {
+  it('고른 공정을 한 번 더 누르면 선택이 풀리고 상세는 고르기 전 안내로 돌아간다', async () => {
+    const { user } = renderScreen();
+    await user.click(await screen.findByRole('button', { name: 'OP-INJ' }));
+    expect(screen.getByRole('button', { name: 'OP-INJ' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'OP-INJ' }));
+
+    expect(screen.getByRole('button', { name: 'OP-INJ' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByText('공정을 고르거나 새 공정을 추가하세요')).toBeInTheDocument();
+  });
+
+  /* 수정 중 저장하지 않고 다른 공정으로 옮기면 묻는다(사용자 지시 · #231). */
+  it('수정 중 저장하지 않고 다른 공정을 누르면 묻고, 계속 편집하면 그대로 둔다', async () => {
+    const { user } = renderScreen();
+    await user.click(await screen.findByRole('button', { name: 'OP-INJ' }));
+    const form = await screen.findByRole('region', { name: '공정 상세' });
+    await user.click(await within(form).findByRole('button', { name: '수정' }));
+    await user.type(within(form).getByLabelText('공정명'), '-X');
+
+    await user.click(screen.getByRole('button', { name: 'OP-PNT' }));
+    const dialog = await screen.findByRole('dialog', { name: '저장하지 않은 변경이 있습니다' });
+    await user.click(within(dialog).getByRole('button', { name: '계속 편집' }));
+
+    expect(within(form).getByLabelText('공정명')).toHaveValue('사출-X');
+  });
+
+  /* 공정 추가는 팝업(사용자 지시 · #231) — 저장하면 닫히고 새 공정이 오른쪽 상자에 보인다. */
+  it('새 공정은 팝업에서 코드·명칭·동적 유형만 등록하고, 닫힌 뒤 저장된 공정을 고른다', async () => {
     const { recorded, user } = renderScreen();
     await screen.findByRole('button', { name: 'OP-INJ' });
     await user.click(screen.getByRole('button', { name: '공정 추가' }));
 
-    const form = screen.getByRole('region', { name: '공정 등록·편집' });
+    const form = await screen.findByRole('dialog', { name: '공정 추가' });
     await user.type(within(form).getByLabelText('공정코드'), ' OP-CUT ');
     await user.type(within(form).getByLabelText('공정명'), ' 절단 ');
     await user.click(within(form).getByLabelText('공정 유형'));
@@ -258,6 +323,8 @@ describe('RoutingScreen — 공정 관리 탭', () => {
       processTypeCode: 'MACHINING',
     });
     expect(create?.headers.get('If-Match')).toBeNull();
-    expect(await screen.findByDisplayValue('OP-CUT')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '공정 추가' })).toBeNull());
+    const detail = screen.getByRole('region', { name: '공정 상세' });
+    expect(await within(detail).findByText('OP-CUT')).toBeInTheDocument();
   });
 });

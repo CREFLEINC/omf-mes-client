@@ -162,10 +162,10 @@ export const OperationsPane = ({
     {
       key: 'processId',
       header: t.fields.process,
-      width: '112px',
       render: (row) => processLabel(row.processId),
     },
-    { key: 'operationName', header: t.fields.operationName, width: '144px' },
+    /* 공정 · 공정명은 내용 폭만큼 — 고정 폭이면 긴 이름이 두 줄로 꺾였다(사용자 지시 · #231). */
+    { key: 'operationName', header: t.fields.operationName },
     /*
      * 관리 항목만 폭을 지정하지 않는다 — 여러 값을 이어 담는 칸이라 남는 폭을 이 열이 가져가는 것이 맞다.
      * 나머지 열의 폭 합과 표 최소 폭의 차이가 곧 이 열의 하한이다(도출 표는 배치 규범 문서에).

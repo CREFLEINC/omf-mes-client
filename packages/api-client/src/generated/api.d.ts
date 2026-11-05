@@ -2731,7 +2731,51 @@ export interface paths {
       };
     };
     post?: never;
-    delete?: never;
+    /**
+     * 작성중 Rev 취소
+     * @description 작성중 Rev 와 그 공정 라인 · 선후행을 지운다. 상태≠작성중이면 400(code=STATE_LOCKED). 생산계획 · W/O · BOM · 검사기준이 가리키면 400(code=STATE_LOCKED). 근거: omf-all-around#231
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          routingId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 취소됨(지워짐) */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description 상태가 작성중이 아니거나, 생산계획 · W/O · BOM · 검사기준이 가리킴(code=STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 Routing */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -9436,6 +9480,10 @@ export interface paths {
           /** @description 코드·명칭 검색 */
           q?: string;
           includeInactive?: boolean;
+          /** @description 사용 여부 — 주면 그 값만 준다(true=사용, false=미사용). includeInactive 의 기본(사용만)보다 앞선다. 근거: omf-all-around#231 */
+          isActive?: boolean;
+          /** @description 공정 유형 코드(PROCESS_TYPE) — 주면 그 유형만 준다. 근거: omf-all-around#231 */
+          processTypeCode?: string;
           page?: number;
           size?: number;
         };

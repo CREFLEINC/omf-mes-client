@@ -5,6 +5,7 @@ import { type ReactNode, useId } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 import { DisabledAction } from './disabled-action';
@@ -118,7 +119,21 @@ export const RevisionPane = ({
       key: 'routingVersion',
       header: t.fields.revision,
       width: '96px',
-      render: (row) => t.values.revision(row.routingVersion),
+      /*
+       * 줄 아무 곳이나 누르면 그 Rev 의 상세 창이 열린다 — 「상세 보기」 칸 대신(사용자 지시 · #231).
+       * 판 번호 단추는 키보드 · 화면 낭독기 길이자, 설정 탭에서 보고 있는 Rev 의 줄 표시(바탕 · 왼쪽 강조선) 자리다.
+       */
+      render: (row) => (
+        <button
+          type="button"
+          className="inspection-standard-plan-open routing-revision-open"
+          aria-label={t.actions.viewDetailLabel(t.values.revision(row.routingVersion))}
+          aria-current={row.routingId === selectedRoutingId ? 'true' : undefined}
+          onClick={() => onViewDetail(row)}
+        >
+          {t.values.revision(row.routingVersion)}
+        </button>
+      ),
     },
     { key: 'routingCode', header: t.fields.routingCode },
     {
@@ -142,27 +157,6 @@ export const RevisionPane = ({
       header: t.fields.confirmedAt,
       width: '160px',
       render: (row) => formatPlantDateTime(row.confirmedAt) ?? t.values.empty,
-    },
-    /*
-     * 상세 보기(사용자 지시 · #231) — 줄 클릭 대신 이 단추로만 연다. 누르면 그 Rev 의 정보를 창으로 보인다(조회만).
-     * 설정 탭에서 보고 있는 Rev 의 줄은 바탕 · 왼쪽 강조선으로 칠한다 — 이 단추의 현재 위치 표식이 그 자리다.
-     */
-    {
-      key: 'detail',
-      header: t.fields.detail,
-      width: '120px',
-      render: (row) => (
-        <Button
-          variant="outlined"
-          size="sm"
-          className="routing-revision-open"
-          aria-label={t.actions.viewDetailLabel(t.values.revision(row.routingVersion))}
-          aria-current={row.routingId === selectedRoutingId ? 'true' : undefined}
-          onClick={() => onViewDetail(row)}
-        >
-          {t.actions.viewDetail}
-        </Button>
-      ),
     },
   ];
 
@@ -189,26 +183,41 @@ export const RevisionPane = ({
       );
     }
 
+    /* Rev 가 없으면 빈 표 대신 설정 탭과 같은 안내(아이콘 · 제목 · 설명 · 사용자 지시 · #231). */
+    if (revisions.length === 0) {
+      return (
+        <div className="routing-detail-empty">
+          <EmptyState
+            size="sm"
+            live
+            icon={<PaneEmptyIcon name="layers" />}
+            title={t.empty.revisionNoneTitle}
+            description={t.empty.revisionNoneDescription}
+          />
+        </div>
+      );
+    }
+
     return (
-      /* 줄 클릭은 두지 않는다 — 「상세 보기」 단추 하나로 연다(사용자 지시 · #231). */
+      /* 줄 아무 곳이나 누르면 상세 창 — DS 표에 줄 클릭이 없어 눌린 줄의 판 번호 단추로 넘긴다(#231). */
       <div
         ref={fit.ref}
         className="inspection-queue-table inspection-standard-plan-rows inspection-standard-table-box wide-table routing-revision-rows"
         style={resizable.style}
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.routing-revision-open')
+            ?.click();
+        }}
       >
         <Table
           density="compact"
           columns={fit.columns}
           rows={revisions}
           getRowId={(row) => String(row.routingId)}
-          empty={
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.revisionNoneTitle}
-              description={t.empty.revisionNoneDescription}
-            />
-          }
         />
       </div>
     );
