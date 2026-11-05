@@ -29,6 +29,8 @@ const SKIPPED: readonly ReplenishmentRunResultCode[] = [
  */
 export const runSummary = (run: ReplenishmentRun): string => {
   if (run.status === 'FAILED') return tu.failed;
+  /* 관리 품목이 하나도 없던 창고는 「모두 보충 시점 이상」이 아니다(G2 재확인). */
+  if (run.checkedItemCount === 0) return tu.noItems;
   if (run.lines.length === 0) return `${tu.created(0)}, ${tu.allAbove}`;
   const parts = SKIPPED.map((code) => ({
     code,

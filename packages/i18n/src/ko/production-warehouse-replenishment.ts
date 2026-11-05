@@ -350,6 +350,7 @@ export const productionWarehouseReplenishment = {
     created: (count: number): string => (count > 0 ? `요청 ${String(count)}장` : '요청 없음'),
     skipped: (count: number, detail: string): string => `건너뜀 ${String(count)}(${detail})`,
     skippedPart: (name: string, count: number): string => `${name} ${String(count)}`,
+    noItems: '관리 품목 없음',
     allAbove: '모든 관리 품목이 보충 시점 이상',
     showLog: '기록 보기',
     showLogLabel: (name: string): string => `${name} 실행 기록 보기`,

@@ -359,6 +359,7 @@ export const productionWarehouseReplenishment: Translated<
       count > 0 ? `${String(count)} yêu cầu` : 'Không có yêu cầu',
     skipped: (count: number, detail: string): string => `Bỏ qua ${String(count)} (${detail})`,
     skippedPart: (name: string, count: number): string => `${name} ${String(count)}`,
+    noItems: 'Không có mặt hàng quản lý',
     allAbove: 'Mọi mặt hàng quản lý đều trên điểm bổ sung',
     showLog: 'Xem nhật ký',
     showLogLabel: (name: string): string => `Xem nhật ký chạy của ${name}`,

@@ -160,4 +160,30 @@ describe('W-02-12 생산 창고 보충 — 자동 보충 실행', () => {
     const panel = within(await screen.findByRole('region', { name: t.runTime.title }));
     expect(panel.getByText(t.runTime.lastRun('11-05 01:00', tu.created(0)))).toBeInTheDocument();
   });
+
+  it('US5-10 관리 품목이 없던 창고(검토 0개)는 「관리 품목 없음」', async () => {
+    setupScreen({
+      route: PROGRESS,
+      runs: [
+        {
+          replenishmentRunId: 9,
+          productionWarehouseId: 7002,
+          productionWarehouseCode: 'SYN-PW-B',
+          productionWarehouseName: '합성 생산창고 B',
+          runDate: '2026-11-05',
+          status: 'DONE',
+          startedAt: '2026-11-04T18:00:10Z',
+          finishedAt: '2026-11-04T18:00:30Z',
+          checkedItemCount: 0,
+          createdRequestCount: 0,
+          errorText: null,
+          lines: [],
+        },
+      ],
+    });
+
+    const b = await rowOf('합성 생산창고 B');
+    expect(b.getByText(tu.noItems)).toBeInTheDocument();
+    expect(b.queryByText(`${tu.created(0)}, ${tu.allAbove}`)).toBeNull();
+  });
 });
