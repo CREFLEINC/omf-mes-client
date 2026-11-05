@@ -1,5 +1,6 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { useState } from 'react';
+import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
@@ -26,7 +27,7 @@ export const AutoPlanResultPage = ({
         title="생산계획 자동 전개 결과"
         breadcrumb={
           <Breadcrumb
-            aria-label="탐색 경로"
+            aria-label={messages.common.shell.breadcrumb}
             items={[
               { label: '작업계획', href: worklistPath() },
               { label: '생산계획 자동 전개 결과' },
