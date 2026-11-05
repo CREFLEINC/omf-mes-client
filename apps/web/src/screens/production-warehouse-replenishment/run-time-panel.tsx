@@ -1,11 +1,11 @@
 import { AlertBanner, Button, useToast } from '@crefle/web-ui';
-import type { ReplenishmentSettings } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import type { ReplenishmentSettings } from './api-types';
 import { useSaveRunTimes } from './mutations';
 import { lastRunSummary } from './run-table';
 import { formatDay, plantMinute } from './types';

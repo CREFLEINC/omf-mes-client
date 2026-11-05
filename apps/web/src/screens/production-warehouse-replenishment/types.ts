@@ -1,15 +1,14 @@
-import type {
-  ApiError,
-  components,
-  MaterialIssueRequestDetailForward,
-  MaterialIssueRequestForward,
-  ReplenishmentGoodsIssue,
-  ReplenishmentQtySummary,
-  ReplenishmentStatusCode,
-} from '@omf-mes/api-client';
+import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import type {
+  MaterialIssueRequest,
+  MaterialIssueRequestDetail,
+  ReplenishmentGoodsIssue,
+  ReplenishmentQtySummary,
+  ReplenishmentStatusCode,
+} from './api-types';
 
 const t = messages.productionWarehouseReplenishment;
 
@@ -78,8 +77,8 @@ export interface ReplenishmentRequestView {
   status: ReplenishmentStatus;
   releaseFailed: boolean;
   releaseErrorText: string | null;
-  /** 넓혀 읽은 닫힘 사유 — `REMAINDER_CLOSED` 포함. */
-  closeReasonCode: string | null;
+  /** 닫힘 사유 — 창고 보충 잔량 마감은 `REMAINDER_CLOSED`. */
+  closeReasonCode: NonNullable<MaterialIssueRequest['closeReasonCode']> | null;
   closeReasonDetailCode: string | null;
   closeRemark: string | null;
   closedAt: string | null;
@@ -109,7 +108,7 @@ export interface ReplenishmentDetailView {
 }
 
 /** 대기(배포 실패)만 `displayStatus` 로 보고, 나머지는 서버 `replenishmentStatus` 를 그대로 옮긴다. */
-const statusOf = (raw: MaterialIssueRequestForward): ReplenishmentStatus => {
+const statusOf = (raw: MaterialIssueRequest): ReplenishmentStatus => {
   if (raw.displayStatus === 'WAITING') return 'WAITING';
   if (raw.replenishmentStatus !== null && raw.replenishmentStatus !== undefined) {
     return FROM_SERVER[raw.replenishmentStatus];
@@ -117,9 +116,7 @@ const statusOf = (raw: MaterialIssueRequestForward): ReplenishmentStatus => {
   return raw.displayStatus ?? 'WAITING';
 };
 
-export const toRequestView = (raw: MaterialIssueRequestForward): ReplenishmentRequestView => {
-  /* 계약은 `REMAINDER_CLOSED` 를 더한다 — 생성 타입이 아직 모르는 값이라 문자열로 넓혀 읽는다. */
-  const closeReason = (raw.closeReasonCode as string | null | undefined) ?? null;
+export const toRequestView = (raw: MaterialIssueRequest): ReplenishmentRequestView => {
   const status = statusOf(raw);
   const releaseErrorText = raw.releaseErrorText ?? null;
   return {
@@ -135,7 +132,7 @@ export const toRequestView = (raw: MaterialIssueRequestForward): ReplenishmentRe
     status,
     releaseFailed: status === 'WAITING' && releaseErrorText !== null && releaseErrorText !== '',
     releaseErrorText,
-    closeReasonCode: closeReason,
+    closeReasonCode: raw.closeReasonCode ?? null,
     closeReasonDetailCode: raw.closeReasonDetailCode ?? null,
     closeRemark: raw.closeRemark ?? null,
     closedAt: raw.closedAt ?? null,
@@ -159,7 +156,7 @@ const toLineView = (raw: Line): ReplenishmentLineView => ({
   shortage: (raw.shortageQty ?? 0) + (raw.dynamicShortageQty ?? 0),
 });
 
-export const toDetailView = (raw: MaterialIssueRequestDetailForward): ReplenishmentDetailView => ({
+export const toDetailView = (raw: MaterialIssueRequestDetail): ReplenishmentDetailView => ({
   request: toRequestView(raw.materialIssueRequest),
   lines: raw.lines.map(toLineView),
 });
