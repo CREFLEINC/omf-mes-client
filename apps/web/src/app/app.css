@@ -33009,3 +33009,17 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .reference-field-full-value > button:first-child:focus-visible { outline: none; }
 .reference-field-full-value[data-invalid]:focus-within { box-shadow: inset 0 0 0 2px var(--semantic-error), var(--focus-ring); }
+
+/* 이전 단계 정보도 조회 정보 영역과 같은 항목·값 행으로 읽고 본문과 함께 이동한다. */
+.process-page:has(.erp-wo-summary) .process-page-body > .process-page-past {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) 0; margin: 0 0 var(--space-3); border: 0; border-bottom: 1px solid var(--outline-variant); background: transparent; align-items: start;
+}
+.process-page:has(.erp-wo-summary) .process-page-body > .process-page-past > .process-past-group {
+  display: grid; gap: var(--space-2); padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent;
+}
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-step { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pairs { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pair { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-3); align-items: baseline; }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pair > dt { font: var(--type-label-sm); white-space: normal; }
+.process-page:has(.erp-wo-summary) .process-page-body .process-past-pair > dd { font: var(--type-body-sm); font-weight: 500; margin: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }

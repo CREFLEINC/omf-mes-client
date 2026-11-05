@@ -154,6 +154,8 @@ export interface ProcessPageProps {
   pastSummary?: PastSummaryGroup[];
   /** 최종 확인에서는 이전 단계 요약도 본문과 함께 스크롤한다. */
   pastSummaryInBody?: boolean;
+  /** 단계가 바뀌면 본문 첫 정보부터 읽도록 스크롤을 초기화한다. */
+  bodyScrollKey?: string;
   children: ReactNode;
   actionBar: ReactNode;
 }
@@ -170,39 +172,46 @@ export const ProcessPage = ({
   onSelectStep,
   pastSummary,
   pastSummaryInBody = false,
+  bodyScrollKey,
   children,
   actionBar,
-}: ProcessPageProps) => (
-  <div className="process-page">
-    <header className="process-page-head">
-      <div className="process-page-title-row">
-        <Button
-          variant="text"
-          size="sm"
-          className="process-page-back"
-          leadingIcon={<Icon name="arrow_back" size={18} aria-hidden="true" />}
-          onClick={onBack}
-        >
-          {backLabel}
-        </Button>
-        <h1 className="process-page-title">{title}</h1>
-        {badges !== undefined && <div className="process-page-badges">{badges}</div>}
-        {headerActions !== undefined && (
-          <div className="process-page-head-actions">{headerActions}</div>
-        )}
-      </div>
-      <div className="process-page-summary">{summary}</div>
-    </header>
-    {stepNavigation ?? <ProcessStepper steps={steps} onSelect={onSelectStep} />}
-    {!pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (
-      <PastSummary groups={pastSummary} />
-    )}
-    <div className="process-page-body">
-      {pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (
+}: ProcessPageProps) => {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (bodyScrollKey !== undefined && bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [bodyScrollKey]);
+  return (
+    <div className="process-page">
+      <header className="process-page-head">
+        <div className="process-page-title-row">
+          <Button
+            variant="text"
+            size="sm"
+            className="process-page-back"
+            leadingIcon={<Icon name="arrow_back" size={18} aria-hidden="true" />}
+            onClick={onBack}
+          >
+            {backLabel}
+          </Button>
+          <h1 className="process-page-title">{title}</h1>
+          {badges !== undefined && <div className="process-page-badges">{badges}</div>}
+          {headerActions !== undefined && (
+            <div className="process-page-head-actions">{headerActions}</div>
+          )}
+        </div>
+        <div className="process-page-summary">{summary}</div>
+      </header>
+      {stepNavigation ?? <ProcessStepper steps={steps} onSelect={onSelectStep} />}
+      {!pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (
         <PastSummary groups={pastSummary} />
       )}
-      {children}
+      <div ref={bodyRef} className="process-page-body">
+        {pastSummaryInBody && pastSummary !== undefined && pastSummary.length > 0 && (
+          <PastSummary groups={pastSummary} />
+        )}
+        {children}
+      </div>
+      {actionBar}
     </div>
-    {actionBar}
-  </div>
-);
+  );
+};

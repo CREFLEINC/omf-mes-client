@@ -878,7 +878,8 @@ export const ProcessWorkspace = ({
       steps={steps}
       onSelectStep={goTo}
       pastSummary={pastGroups}
-      pastSummaryInBody={step === 'release'}
+      pastSummaryInBody={step !== 'master'}
+      bodyScrollKey={step ?? undefined}
       actionBar={
         <ActionBar
           remaining={
