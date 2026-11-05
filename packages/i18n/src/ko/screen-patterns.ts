@@ -58,6 +58,7 @@ export const screenPatterns = {
   /** C-12 참조 선택 팝업 */
   referencePicker: {
     open: '눌러서 찾기',
+    select: (label: string): string => `${label} 선택`,
     clear: (label: string): string => `${label} 지우기`,
     keyword: '검색어',
     keywordPlaceholder: '코드나 이름',

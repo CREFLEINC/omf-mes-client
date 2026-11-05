@@ -1,4 +1,13 @@
-import { Button, Dialog, EmptyState, SearchInput, TextField, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Dialog,
+  EmptyState,
+  Icon,
+  IconButton,
+  SearchInput,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
@@ -260,11 +269,15 @@ export const ReferenceField = ({
         {labelAddon}
       </span>
       {wrapValue ? (
-        <div className="reference-field-full-value">
-          <Button
+        <div
+          className="reference-field-full-value"
+          data-disabled={locked || undefined}
+          data-invalid={invalid || undefined}
+          data-size={size}
+        >
+          <button
+            type="button"
             id={id}
-            size={size}
-            variant="outlined"
             aria-label={label}
             aria-haspopup="dialog"
             aria-required={required || undefined}
@@ -273,18 +286,20 @@ export const ReferenceField = ({
             disabled={locked}
             onClick={() => setOpen(true)}
           >
-            {valueLabel || placeholder || t.open}
-          </Button>
+            <Icon name="search" size={20} />
+            <span className={valueLabel ? 'reference-field-value' : 'reference-field-placeholder'}>
+              {valueLabel || placeholder || t.select(label)}
+            </span>
+          </button>
           {valueLabel !== '' && (
-            <Button
-              size={size}
-              variant="text"
+            <IconButton
+              icon="close"
+              size="sm"
+              variant="standard"
               aria-label={t.clear(label)}
               disabled={locked}
               onClick={onClear}
-            >
-              ×
-            </Button>
+            />
           )}
         </div>
       ) : (
