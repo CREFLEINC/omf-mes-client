@@ -842,3 +842,57 @@ describe('적치·입고 완료 화면', () => {
     expect(seen).toHaveLength(0);
   });
 });
+
+/* 004 생산 창고 보충(omf-all-around#230) — 창고 보충 수령에서 생긴 지시(screens/M-putaway.md). */
+const replenishmentTask = task({
+  goodsReceiptLineId: null,
+  shopfloorReceiptLineId: 55,
+  originCode: 'REPLENISHMENT_RECEIPT',
+});
+
+const replenishmentList: StubRoute = {
+  match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks',
+  respond: () => jsonResponse({ items: [replenishmentTask], page }),
+};
+
+const completeWith = (movedQty: number): StubRoute => ({
+  match: (req) =>
+    new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete' && req.method === 'POST',
+  respond: () => jsonResponse({ ...replenishmentTask, actualLocationId: 5, movedQty }),
+});
+
+describe('적치 화면 — 창고 보충 지시(004)', () => {
+  it('US6-2 창고 보충 수령에서 생긴 지시는 원천 한 줄 「창고 보충」을 붙이고, 구매 입고 지시는 지금과 같다', async () => {
+    mount([replenishmentList]);
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+    expect(pick.textContent).toContain('원천 창고 보충');
+  });
+
+  it('구매 입고 지시는 원천 줄을 붙이지 않는다(지금과 같음)', async () => {
+    mount();
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+    expect(pick.textContent).not.toContain('원천');
+  });
+
+  it('US6-4 남은 재고만 옮겼으면(movedQty < 지시 수량) 「남은 N 만 옮겼습니다」', async () => {
+    const user = userEvent.setup();
+    mount([replenishmentList, completeWith(20)]);
+    await readyToRecord(user);
+    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+
+    expect(
+      await screen.findByText('적치 대기에 남은 20 EA 만 옮겼습니다(나머지는 먼저 출고됨)'),
+    ).toBeTruthy();
+  });
+
+  it('US6-4 옮길 재고가 없었으면(movedQty 0) 「지시를 닫았습니다」', async () => {
+    const user = userEvent.setup();
+    mount([replenishmentList, completeWith(0)]);
+    await readyToRecord(user);
+    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+
+    expect(await screen.findByText('옮길 재고가 없어 지시를 닫았습니다')).toBeTruthy();
+  });
+});
