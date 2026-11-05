@@ -55,6 +55,46 @@ interface Controller {
   onRoutingChange: (value: string) => void;
 }
 
+const ErpWorkOrderList = ({
+  entries,
+  selected,
+  disabled,
+  showReadiness = false,
+  onSelect,
+}: {
+  entries: Controller[];
+  selected: string;
+  disabled: boolean;
+  showReadiness?: boolean;
+  onSelect: (value: string) => void;
+}) => (
+  <aside className="erp-wo-master-order-list" aria-label="ERP W/O 목록">
+    {entries.map((entry) => (
+      <Button
+        key={entry.order.productionOrderNo}
+        variant="outlined"
+        disabled={disabled}
+        aria-pressed={selected === entry.order.productionOrderNo}
+        onClick={() => onSelect(entry.order.productionOrderNo)}
+      >
+        <strong>{entry.order.productionOrderNo}</strong>
+        <span className="erp-wo-item-field">
+          <span className="erp-wo-item-field-label">품목코드</span>
+          <span>{entry.itemCode}</span>
+        </span>
+        <span className="erp-wo-item-field">
+          <span className="erp-wo-item-field-label">품목명</span>
+          <span>{entry.itemName}</span>
+        </span>
+        <span>
+          {entry.order.orderQty} {entry.unit}
+          {showReadiness ? ` / ${entry.ready ? '기준 확인 완료' : '기준 확인 필요'}` : ''}
+        </span>
+      </Button>
+    ))}
+  </aside>
+);
+
 const OrderSession = ({
   number,
   publish,
@@ -431,35 +471,20 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               ratio={0.25}
               className="erp-wo-master-selection-layout"
             >
-              <aside className="erp-wo-master-order-list" aria-label="ERP W/O 목록">
-                {entries.map((entry) => (
-                  <Button
-                    key={entry.order.productionOrderNo}
-                    variant="outlined"
-                    disabled={busy}
-                    aria-pressed={
-                      (controllers[masterFocus]
-                        ? masterFocus
-                        : entries[0]?.order.productionOrderNo) === entry.order.productionOrderNo
-                    }
-                    onClick={() => setMasterFocus(entry.order.productionOrderNo)}
-                  >
-                    <strong>{entry.order.productionOrderNo}</strong>
-                    <span className="erp-wo-item-field">
-                      <span className="erp-wo-item-field-label">품목코드</span>
-                      <span>{entry.itemCode}</span>
-                    </span>
-                    <span className="erp-wo-item-field">
-                      <span className="erp-wo-item-field-label">품목명</span>
-                      <span>{entry.itemName}</span>
-                    </span>
-                    <span>
-                      {entry.order.orderQty} {entry.unit} ·{' '}
-                      {entry.ready ? '기준 확인 완료' : '기준 확인 필요'}
-                    </span>
-                  </Button>
-                ))}
-              </aside>
+              <ErpWorkOrderList
+                entries={entries}
+                selected={
+                  controllers[masterFocus]
+                    ? masterFocus
+                    : (entries[0]?.order.productionOrderNo ?? '')
+                }
+                disabled={busy}
+                showReadiness
+                onSelect={(value) => {
+                  setMasterFocus(value);
+                  setFocus(value);
+                }}
+              />
               {(() => {
                 const entry = controllers[masterFocus] ?? entries[0];
                 return entry ? (
@@ -712,56 +737,66 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         )}
         {(stage === 'assign' || stage === 'release') && (
           <section className="erp-wo-multi-execution">
-            <div className="erp-wo-multi-current-target">
-              <div className="field-cell">
-                <span className="field-label">처리할 ERP W/O</span>
-                <Select
-                  aria-label="처리할 ERP W/O"
-                  value={focus}
-                  options={entries.map((entry) => ({
-                    value: entry.order.productionOrderNo,
-                    label: entry.order.productionOrderNo,
-                  }))}
-                  onChange={(value) => {
-                    if (executionDirty)
-                      setPendingAction(() => () => {
-                        setExecutionDirty(false);
-                        setFocus(value);
-                      });
-                    else setFocus(value);
-                  }}
-                />
-              </div>
-              {target && (
-                <dl className="erp-wo-selected-item-fields" aria-label="현재 ERP W/O 정보">
-                  <div>
-                    <dt>품목코드</dt>
-                    <dd>{target.itemCode}</dd>
-                  </div>
-                  <div>
-                    <dt>품목명</dt>
-                    <dd>{target.itemName}</dd>
-                  </div>
-                  <div>
-                    <dt>ERP W/O 수량</dt>
-                    <dd>
-                      {target.order.orderQty} {target.unit}
-                    </dd>
-                  </div>
-                </dl>
-              )}
-            </div>
-            {target && (
-              <ProcessWorkspace
-                key={`${focus}-${stage}`}
-                order={target.order}
-                initialStep={stage}
-                onDirtyChange={setExecutionDirty}
-                onStepChange={(value) => {
-                  setStage(value);
+            <AdjustableLayout
+              storageKey="omf-mes:work-planning:erp-wo-layout"
+              label="ERP W/O 목록과 상세"
+              ratio={0.25}
+              className="erp-wo-master-selection-layout erp-wo-execution-selection-layout"
+            >
+              <ErpWorkOrderList
+                entries={entries}
+                selected={focus}
+                disabled={busy}
+                onSelect={(value) => {
+                  if (value === focus) return;
+                  const select = () => {
+                    setExecutionDirty(false);
+                    setFocus(value);
+                    setMasterFocus(value);
+                  };
+                  if (executionDirty) setPendingAction(() => select);
+                  else select();
                 }}
               />
-            )}
+              <div
+                className="erp-wo-execution-selected"
+                role="region"
+                aria-label="선택 ERP W/O 상세"
+              >
+                <div className="erp-wo-multi-current-target">
+                  <strong>{focus}</strong>
+                  {target && (
+                    <dl className="erp-wo-selected-item-fields" aria-label="현재 ERP W/O 정보">
+                      <div>
+                        <dt>품목코드</dt>
+                        <dd>{target.itemCode}</dd>
+                      </div>
+                      <div>
+                        <dt>품목명</dt>
+                        <dd>{target.itemName}</dd>
+                      </div>
+                      <div>
+                        <dt>ERP W/O 수량</dt>
+                        <dd>
+                          {target.order.orderQty} {target.unit}
+                        </dd>
+                      </div>
+                    </dl>
+                  )}
+                </div>
+                {target && (
+                  <ProcessWorkspace
+                    key={`${focus}-${stage}`}
+                    order={target.order}
+                    initialStep={stage}
+                    onDirtyChange={setExecutionDirty}
+                    onStepChange={(value) => {
+                      setStage(value);
+                    }}
+                  />
+                )}
+              </div>
+            </AdjustableLayout>
           </section>
         )}
         {results.length > 0 && (

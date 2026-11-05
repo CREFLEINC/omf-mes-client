@@ -286,6 +286,23 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     const buttons = screen.getAllByRole('button', { name: '계획 확정' });
     await user.click(buttons.at(-1)!);
     expect(await screen.findByText('실행 단계 assign')).toBeVisible();
+    const executionList = screen.getByRole('complementary', { name: 'ERP W/O 목록' });
+    expect(within(executionList).getAllByRole('button')).toHaveLength(2);
+    expect(screen.queryByRole('combobox', { name: '처리할 ERP W/O' })).toBeNull();
+    await user.click(within(executionList).getByRole('button', { name: /^B/ }));
+    expect(
+      within(screen.getByRole('region', { name: '선택 ERP W/O 상세' })).getByText('B', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: '4. 배포 확인' }));
+    expect(await screen.findByText('실행 단계 release')).toBeVisible();
+    expect(
+      within(screen.getByRole('complementary', { name: 'ERP W/O 목록' })).getByRole('button', {
+        name: /^B/,
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
     expect(server.writes.filter((w) => w.match !== null).map((w) => w.match)).toEqual([
       '1',
       '1',

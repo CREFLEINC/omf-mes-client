@@ -33037,3 +33037,16 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-owner { display: grid; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--outline-variant); }
 .erp-wo-plan-owner > div { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-2); }
 .erp-wo-plan-owner dd { margin: 0; }
+
+/* 복수 실행 단계도 BOM·Routing과 같은 ERP W/O 목록·상세 틀을 쓴다. */
+.erp-wo-multi-execution > .erp-wo-adjustable { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.erp-wo-execution-selection-layout { flex: 1; min-height: 0; align-items: stretch; }
+.erp-wo-execution-selection-layout > .erp-wo-adjustable-first { min-height: 0; overflow: auto; }
+.erp-wo-execution-selection-layout > .erp-wo-adjustable-second { display: flex; flex-direction: column; min-height: 0; }
+.erp-wo-execution-selection-layout.is-stacked { grid-template-rows: var(--stacked-list-height, 10rem) 12px minmax(0, 1fr); }
+.erp-wo-execution-selection-layout.is-stacked > .erp-wo-adjustable-first { height: 100%; }
+.erp-wo-execution-selected { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.erp-wo-execution-selected > .erp-wo-multi-current-target { flex: none; padding: 0 0 var(--space-2); gap: var(--space-2); }
+.erp-wo-execution-selected > .erp-wo-multi-current-target > strong { flex-basis: 100%; overflow-wrap: anywhere; }
+.erp-wo-execution-selected > .process-page { min-height: 0; }
+.erp-wo-execution-selection-layout .erp-wo-master-order-list { grid-template-columns: minmax(0, 1fr); }
