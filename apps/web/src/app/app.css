@@ -13110,6 +13110,171 @@ button.app-button-neutral {
   gap: var(--space-2);
 }
 
+/* W-02-12 생산 창고 보충(004) — W-02-11 과 같은 구성: 보기 전환 · 조건 · 표 · 오른쪽 상세(screens/W-02-12.md). */
+.replenishment-views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.replenishment-views > [role='group'],
+.replenishment-plant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replenishment-request,
+.replenishment-run-time,
+.replenishment-filters {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.replenishment-section-head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.replenishment-section-head > .subsection-title {
+  margin: 0;
+}
+
+.replenishment-filter-row,
+.replenishment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replenishment-actions-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.replenishment-run-time-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 좁은 폭에서 표는 가로로 밀고, 첫 열(요청번호)은 고정한다(W-02-11 과 같은 규칙, 시안 Narrow). */
+.replenishment-table-scroll {
+  overflow-x: auto;
+}
+
+.replenishment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+
+.replenishment-table th,
+.replenishment-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.replenishment-table .is-number {
+  text-align: end;
+}
+
+.replenishment-table tr[aria-selected='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.replenishment-table.is-sticky-first th:first-child,
+.replenishment-table.is-sticky-first td:first-child {
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--surface);
+}
+
+.replenishment-line-note,
+.replenishment-cap {
+  display: block;
+  white-space: normal;
+}
+
+.replenishment-cap.is-warning {
+  color: var(--semantic-warning);
+}
+
+.replenishment-cap.is-error {
+  color: var(--semantic-error-text);
+}
+
+.replenishment-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.replenishment-code {
+  font-family: var(--font-mono);
+}
+
+.replenishment-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.replenishment-detail,
+.replenishment-result,
+.replenishment-form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.replenishment-head {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.replenishment-head > dd {
+  margin: 0;
+}
+
+.replenishment-history,
+.replenishment-result-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replenishment-history > li {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 1024px) {
+  .replenishment-panel {
+    width: 88%;
+  }
+}
+
 /* W-CO-15 공장 근무일 설정(003) — 바뀐 줄은 노랑 바탕 + 「바뀜」(screens/W-CO-15.md). */
 .plant-working-days-plant {
   display: inline-flex;

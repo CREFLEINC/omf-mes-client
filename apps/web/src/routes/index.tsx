@@ -22,6 +22,7 @@ import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
 import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
 import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
 import { MaterialIssueStatusScreen } from '../screens/material-issue-status/screen';
+import { ProductionWarehouseReplenishmentScreen } from '../screens/production-warehouse-replenishment/screen';
 import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { LotTraceScreen } from '../screens/lot-trace/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
@@ -394,6 +395,11 @@ export const appRouter = createBrowserRouter([
       { path: 'production/material-issue-requests', element: <MaterialIssueRequestScreen /> },
       /* W-02-11 — 출고 요청 현황(피처 003). */
       { path: 'production/material-issue-status', element: <MaterialIssueStatusScreen /> },
+      /* W-02-12 — 생산 창고 보충(피처 004). */
+      {
+        path: 'production/warehouse-replenishment',
+        element: <ProductionWarehouseReplenishmentScreen />,
+      },
       /*
        * W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다.
        * 저장 액션이 없는 읽기 전용 화면이다.

@@ -211,6 +211,12 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '출고 요청 현황',
             labelVi: 'Tình trạng yêu cầu xuất kho',
           },
+          /* W-02-12 — 생산 창고가 자재 창고에 W/O 없이 자재를 요청한다(피처 004, 시안 검토 1). */
+          {
+            to: '/production/warehouse-replenishment',
+            label: '생산 창고 보충',
+            labelVi: 'Bổ sung kho sản xuất',
+          },
           {
             to: '/logistics/supplier-return',
             label: '공급사 반품 처리',

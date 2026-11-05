@@ -221,6 +221,7 @@ describe('주 메뉴 트리', () => {
       '/logistics/stock-adjust → inventory',
       '/production/material-issue-requests → outbox',
       '/production/material-issue-status → outbox',
+      '/production/warehouse-replenishment → outbox',
       '/logistics/supplier-return → outbox',
       '/logistics/disposal-issue → outbox',
       '/logistics/document-progress → manage_search',

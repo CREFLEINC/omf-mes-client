@@ -213,6 +213,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   },
   /* 003(omf-all-around#66) — 출고 요청 현황 · 수정 · 취소 · 부족. 출고 관리 탭에서 W-02-10 다음이다. */
   { path: '/production/material-issue-status', code: 'W-02-11', name: '출고 요청 현황' },
+  /* 004(omf-all-around#230) — 창고 보충 요청 · 진행 · 관리 품목. 출고 관리 탭에서 W-02-11 다음이다. */
+  { path: '/production/warehouse-replenishment', code: 'W-02-12', name: '생산 창고 보충' },
   {
     path: '/production/work-order-progress',
     code: 'W-02-08',
