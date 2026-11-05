@@ -4,11 +4,13 @@ import type { ReactNode } from 'react';
 
 const t = messages.routing;
 
-export type RoutingTransitionKind = 'confirm' | 'obsolete';
+export type RoutingTransitionKind = 'confirm' | 'obsolete' | 'discard';
 
 export interface TransitionConfirmDialogProps {
   open: boolean;
   kind: RoutingTransitionKind;
+  /** 대상 개정(「Rev N」) — 폐기 확인 제목에 담아 무엇을 폐기하는지 못 박는다(#231). */
+  revisionLabel: string;
   onClose: () => void;
   onConfirm: () => void;
   isSaving: boolean;
@@ -29,6 +31,7 @@ export interface TransitionConfirmDialogProps {
 export const TransitionConfirmDialog = ({
   open,
   kind,
+  revisionLabel,
   onClose,
   onConfirm,
   isSaving,
@@ -38,20 +41,44 @@ export const TransitionConfirmDialog = ({
     open={open}
     onClose={onClose}
     size="sm"
-    title={kind === 'confirm' ? t.dialog.confirmTitle : t.dialog.obsoleteTitle}
+    title={
+      kind === 'confirm'
+        ? t.dialog.confirmTitle
+        : kind === 'obsolete'
+          ? t.dialog.obsoleteTitle(revisionLabel)
+          : t.dialog.discardTitle(revisionLabel)
+    }
     closeOnBackdropClick={false}
+    /* 확정 · 폐기 확인 모두 취소 단추가 닫기라 우상단 X 를 두지 않는다(사용자 지시 · #231). */
+    showCloseButton={false}
     footer={
       <>
         <Button variant="outlined" onClick={onClose}>
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {kind === 'confirm' ? t.actions.confirm : t.actions.obsolete}
+          {kind === 'confirm'
+            ? t.actions.confirm
+            : kind === 'obsolete'
+              ? t.actions.obsolete
+              : t.actions.discard}
         </Button>
       </>
     }
   >
     {banner}
-    <p>{kind === 'confirm' ? t.dialog.confirmDescription : t.dialog.obsoleteDescription}</p>
+    {kind === 'confirm' ? (
+      <p>{t.dialog.confirmDescription}</p>
+    ) : (
+      /* 폐기 · 작성 취소 — 결과 한 줄(본문) 아래 보조 설명 한 줄(사용자 시안 · #231). */
+      <>
+        <p className="routing-obsolete-description">
+          {kind === 'obsolete' ? t.dialog.obsoleteDescription : t.dialog.discardDescription}
+        </p>
+        <p className="routing-obsolete-note">
+          {kind === 'obsolete' ? t.dialog.obsoleteNote : t.dialog.discardNote}
+        </p>
+      </>
+    )}
   </Dialog>
 );

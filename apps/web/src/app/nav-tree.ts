@@ -644,11 +644,19 @@ export const NAV_GROUPS: readonly NavGroup[] = [
           { to: '/master-data/item-boms', label: 'BOM', labelVi: 'BOM' },
         ],
       },
+      /*
+       * 공정 경로 관리 — 공정 경로(Routing) · 공정 관리(공정 마스터)를 사이드바 한 줄 · 본문 맨 위 탭으로 묶는다
+       * (사용자 지시 · omf-all-around#231). 두 탭 모두 W-06-01 이다.
+       */
       {
         to: '/master-data/routing',
         icon: 'account_tree',
-        label: '공정(Routing)',
-        labelVi: 'Công đoạn (Routing)',
+        label: '공정 경로 관리',
+        labelVi: 'Quản lý lộ trình công đoạn',
+        tabs: [
+          { to: '/master-data/routing', label: '공정 경로', labelVi: 'Lộ trình công đoạn' },
+          { to: '/master-data/processes', label: '공정 관리', labelVi: 'Quản lý công đoạn' },
+        ],
       },
       /*
        * 설비 — 설비를 세우고(마스터) 그 설비가 언제 돌고(작업 캘린더) 무엇을 보내오는지(수집

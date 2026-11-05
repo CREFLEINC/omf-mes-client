@@ -51,11 +51,11 @@ export const validateOperationDraft = (draft: OperationDraft): Record<string, st
     }
   }
 
-  // 0~1 비율이며 퍼센트가 아니다. 98이 들어오면 여기서 막힌다.
+  // 화면은 퍼센트(0~100)로 받는다 — 서버에는 ÷100 해 0~1 비율로 보낸다(operation-order.ts).
   if (!isBlank(draft.standardYieldRate)) {
     const rate = Number(draft.standardYieldRate);
 
-    if (!Number.isFinite(rate) || rate < 0 || rate > 1) {
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
       errors.standardYieldRate = t.yieldRateInvalid;
     }
   }

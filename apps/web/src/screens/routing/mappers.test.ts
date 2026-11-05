@@ -63,6 +63,13 @@ describe('toRoutingUpdate', () => {
     expect(body.routingCode).toBe('STANDARD');
   });
 
+  /* 빈 유효 시작일은 싣지 않는다 — 빈 문자열은 날짜 형식이 아니라 서버가 400 으로 막는다(#231). */
+  it('유효 시작일이 비어 있으면 본문에 싣지 않는다', () => {
+    const body = toRoutingUpdate({ routingCode: 'STANDARD', effectiveFrom: '', effectiveTo: '' });
+
+    expect('effectiveFrom' in body).toBe(false);
+  });
+
   it('비운 유효종료는 널로 되돌린다', () => {
     const body = toRoutingUpdate({
       routingCode: 'STANDARD',
@@ -85,7 +92,8 @@ describe('toRoutingUpdate', () => {
 });
 
 describe('emptyHeaderFormValues', () => {
-  it('빈 폼은 모든 칸이 빈 문자열이다', () => {
+  /* 날짜는 입력받지 않는다 — 새 폼은 모든 칸이 빈 문자열이다(#231). */
+  it('새 폼은 모든 칸이 빈 문자열이다', () => {
     expect(emptyHeaderFormValues()).toEqual({
       routingCode: '',
       effectiveFrom: '',

@@ -148,6 +148,8 @@ export const appRouter = createBrowserRouter([
         element: <Navigate to="/master-data/warehouse-location" replace />,
       },
       { path: 'master-data/routing', element: <RoutingScreen /> },
+      /* 공정 경로 관리의 「공정 관리」 탭을 탭 막대로 뗀 주소(#231) — 같은 화면이 보일 탭만 받는다. */
+      { path: 'master-data/processes', element: <RoutingScreen tab="processes" /> },
       { path: 'master-data/inspection-standard', element: <InspectionStandardScreen /> },
       /* W-06-24 — 검사표 기준(omf-all-around#89 · 설계보다 앞선 화면). OA 제품 검사표의 모델별 단계·항목. */
       { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },

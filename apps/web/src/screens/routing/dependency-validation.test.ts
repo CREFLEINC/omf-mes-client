@@ -8,6 +8,16 @@ const row = (predecessorId: string, successorId: string) =>
   createDependencyDraft({ predecessorId, successorId });
 
 describe('validateDependencies', () => {
+  /* 빠진 칸만 짚는다 — 둘 다 비면 한 문장(사용자 지시 · #231). */
+  it('빈 칸은 빠진 쪽을 말하고, 둘 다 비면 한 문장으로 말한다', () => {
+    const both = row('', '');
+    const noSuccessor = row('1', '');
+    const errors = validateDependencies([both, noSuccessor], label);
+
+    expect(errors[both.draftId]).toBe('선행·후행 공정을 선택해 주세요.');
+    expect(errors[noSuccessor.draftId]).toBe('후행 공정을 선택해 주세요.');
+  });
+
   it('빈 칸·자기 자신·중복을 그 줄에 하나씩 짚는다', () => {
     const empty = row('', '2');
     const self = row('1', '1');
@@ -16,7 +26,7 @@ describe('validateDependencies', () => {
 
     const errors = validateDependencies([empty, self, first, duplicate], label);
 
-    expect(errors[empty.draftId]).toBe('선행·후행 공정을 모두 고르세요.');
+    expect(errors[empty.draftId]).toBe('선행 공정을 선택해 주세요.');
     expect(errors[self.draftId]).toBe(
       '선행과 후행에 같은 공정을 고를 수 없습니다. 다른 공정을 고르세요.',
     );

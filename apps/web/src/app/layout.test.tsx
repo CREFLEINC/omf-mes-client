@@ -194,12 +194,12 @@ describe('AppLayout', () => {
     );
   });
 
-  it('사이드바에 공정(Routing) 메뉴가 보인다', () => {
+  it('사이드바에 공정 경로 관리 메뉴가 보인다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
 
-    expect(within(sidebar).getByRole('link', { name: '공정(Routing)' })).toHaveAttribute(
+    expect(within(sidebar).getByRole('link', { name: '공정 경로 관리' })).toHaveAttribute(
       'href',
       '/master-data/routing',
     );
@@ -1477,10 +1477,10 @@ describe('AppLayout — 묶음 접기', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
     /*
-     * 「기준정보 관리」는 사이드바 줄 7개에 **화면 13개**다 — 손잡이는 「화면」을 세므로 탭 묶음은
-     * 탭 수만큼 센다(설비 3 · 툴·금형 2 · 계측기 2 · 창고·위치 3 + 단독 3). `nav-tree.ts` 가 정본이다.
+     * 「기준정보 관리」는 사이드바 줄 7개에 **화면 14개**다 — 손잡이는 「화면」을 세므로 탭 묶음은
+     * 탭 수만큼 센다(공정 경로 관리 두 탭 · #231 포함). `nav-tree.ts` 가 정본이다.
      */
-    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 13개)');
+    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 14개)');
   });
 
   /*
@@ -2059,7 +2059,7 @@ describe('AppLayout — 탭 막대', () => {
 
   /** 탭 막대는 묶음 안 화면의 것이다 — 묶음이 아닌 화면 위에 한 줄을 먹지 않는다. */
   it('탭 묶음이 아닌 화면에서는 탭 막대가 서지 않는다', () => {
-    renderLayout('본문 내용', { route: '/master-data/routing' });
+    renderLayout('본문 내용', { route: '/master-data/master-change' });
 
     /* 짝 양성 — 본문은 섰다. */
     expect(within(screen.getByRole('main')).getByText('본문 내용')).toBeInTheDocument();

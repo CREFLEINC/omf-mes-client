@@ -15,15 +15,15 @@ type RoutingCreate = components['schemas']['RoutingCreate'];
 export const routingToFormValues = (routing: Routing): RoutingHeaderFormValues => ({
   routingCode: routing.routingCode,
   /*
-   * 계약이 유효시작을 **선택**으로 풀었다(#201 과 같은 리비전). 화면은 아직 필수로 막는다 —
-   * 완화는 사용자 흐름 변경이라 대응 통지를 확인한 뒤에 한다(#201 착수 코멘트로 질의).
-   * 여기서는 없는 값이 입력칸으로 새지 않게 막는 것까지만 한다.
+   * 유효 시작일 · 종료일은 화면에서 입력받지 않는다(사용자 지시 · #231 — 계약도 선택이다). 받은 값은 폼에 그대로 실어
+   * 저장 때 되돌려 보낸다 — 입력 칸이 없다고 비워 보내면 이미 있던 날짜가 조용히 지워진다.
    */
   effectiveFrom: routing.effectiveFrom ?? '',
   // 널·없음을 모두 빈 문자열로 모은다 — 입력칸의 「지정하지 않음」이 하나의 값이어야 한다.
   effectiveTo: routing.effectiveTo ?? '',
 });
 
+/** 첫 Rev 등록 칸의 처음 값 — 날짜는 받지 않으므로 비어 있다(#231). */
 export const emptyHeaderFormValues = (): RoutingHeaderFormValues => ({
   routingCode: '',
   effectiveFrom: '',
@@ -39,7 +39,8 @@ export const emptyHeaderFormValues = (): RoutingHeaderFormValues => ({
 export const toRoutingUpdate = (values: RoutingHeaderFormValues): RoutingUpdate => ({
   // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 코드가 된다.
   routingCode: values.routingCode.trim(),
-  effectiveFrom: values.effectiveFrom,
+  // 비어 있으면 싣지 않는다 — 빈 문자열은 날짜 형식이 아니라 서버가 400 으로 막는다(계약상 선택 칸).
+  ...(values.effectiveFrom === '' ? {} : { effectiveFrom: values.effectiveFrom }),
   effectiveTo: values.effectiveTo === '' ? null : values.effectiveTo,
 });
 

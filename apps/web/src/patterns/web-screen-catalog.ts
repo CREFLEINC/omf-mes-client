@@ -344,6 +344,8 @@ export const WEB_SCREEN_TABS: readonly WebScreenTab[] = [
    */
   { path: '/master-data/cause-code', ownerPath: '/master-data/defect-cause-code' },
   { path: '/master-data/defect-process-mapping', ownerPath: '/master-data/defect-cause-code' },
+  /* 공정 관리 — 공정 경로 관리(W-06-01) 화면 안 「공정 마스터」 탭을 탭 막대로 뗐다(사용자 지시 · omf-all-around#231). */
+  { path: '/master-data/processes', ownerPath: '/master-data/routing' },
   /* LOT 변경 이력 — LOT 현황(W-03-01)의 「변경 이력」 검색 방식을 「LOT 상태」 탭 막대로 뗐다(사용자 지시 2026-10-30 · #210). */
   { path: '/quality/lot-status-history', ownerPath: '/quality/lot-status' },
 ];

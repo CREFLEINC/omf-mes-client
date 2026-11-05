@@ -16,8 +16,13 @@ export type ProcessDetailResponse = components['schemas']['ProcessDetailResponse
 
 export interface ProcessFilters {
   q: string;
-  includeInactive: boolean;
+  /** 공정 유형 코드(#231). '' 면 거르지 않는다. */
+  processTypeCode: string;
+  /** 사용 여부 라벨(#231) — 'ACTIVE' · 'INACTIVE' 면 그 값만, '' 면 사용 · 미사용 전체. */
+  activeState: ProcessActiveState;
 }
+
+export type ProcessActiveState = 'ACTIVE' | 'INACTIVE' | '';
 
 export interface ProcessFormValues {
   processCode: string;
@@ -30,7 +35,12 @@ export interface ItemFilters {
   q: string;
   /** 켜면 `hasRouting=false`를 보낸다. 끄면 파라미터를 보내지 않는다 — true는 「보유한 것만」이 되어 뜻이 달라진다. */
   onlyWithoutRouting: boolean;
+  /** 가장 최근 Rev 의 상태(진행 상태 칩 · #231). '' 이면 거르지 않는다. 미등록은 `onlyWithoutRouting` 이 맡는다. */
+  latestStatus: LatestRoutingStatus | '';
 }
+
+/** 진행 상태 칩이 서버에 거는 값 — 계약 `latestRoutingStatus` enum. */
+export type LatestRoutingStatus = 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
 
 /** 폼 값이 전부 문자열인 이유: DS 입력·선택이 문자열을 다룬다. 계약 표현으로의 변환은 mappers.ts가 맡는다. */
 export interface RoutingHeaderFormValues {
@@ -67,6 +77,8 @@ export interface OperationDraft {
   outputLotRequired: boolean;
   equipmentRequired: boolean;
   moldRequired: boolean;
+  /** 외주 공정 — 계약 `isOutsourced`(물리 칸 `is_subcontract`) · #231. */
+  isOutsourced: boolean;
   /** 단위는 초. 빈 문자열은 「지정하지 않음」이며 계약의 널로 옮긴다. */
   standardCycleTimeSec: string;
   /** 0~1 비율. 퍼센트가 아니다. */

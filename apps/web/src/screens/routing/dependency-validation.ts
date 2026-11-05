@@ -92,8 +92,14 @@ export const validateDependencies = (
   const seen = new Set<string>();
 
   for (const draft of drafts) {
+    /* 빠진 칸만 짚는다 — 둘 다 비면 한 문장으로(사용자 지시 · #231). 막는 규칙은 그대로다. */
     if (draft.predecessorId === '' || draft.successorId === '') {
-      errors[draft.draftId] = t.validation.required;
+      errors[draft.draftId] =
+        draft.predecessorId === '' && draft.successorId === ''
+          ? t.validation.required
+          : draft.predecessorId === ''
+            ? t.validation.predecessorRequired
+            : t.validation.successorRequired;
       continue;
     }
 

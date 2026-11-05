@@ -57,7 +57,7 @@ describe('OperationFormDialog', () => {
 
     for (const name of [
       'MES 관리',
-      '자재투입 관리',
+      '자재 투입 관리',
       '실적 관리',
       '산출 LOT 필수',
       '설비 필수',
@@ -80,15 +80,14 @@ describe('OperationFormDialog', () => {
    * 계약에 저장할 자리가 없다 — 감추면 사용자가 「이 화면에는 없는 항목」으로 오해한다.
    * 감추지 않고 사유와 함께 비활성으로 둔다.
    */
-  it('외주 공정 확인칸은 비활성이고 사유가 함께 보인다', () => {
-    renderDialog();
+  /* 외주 공정(#231) — 다른 관리 항목처럼 켜고 끈다. */
+  it('외주 공정 확인칸을 누르면 그 값을 올린다', async () => {
+    const { props, user } = renderDialog();
 
-    expect(screen.getByRole('checkbox', { name: '외주 공정' })).toBeDisabled();
-    expect(
-      screen.getByText(
-        '외주 공정은 아직 지정할 수 없습니다. 저장할 항목이 준비되면 이 확인칸을 쓸 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    const outsourced = screen.getByRole('checkbox', { name: '외주 공정' });
+    expect(outsourced).toBeEnabled();
+    await user.click(outsourced);
+    expect(props.onChange).toHaveBeenCalledWith({ isOutsourced: true });
   });
 
   /*
@@ -111,14 +110,14 @@ describe('OperationFormDialog', () => {
     renderDialog();
 
     expect(screen.getByLabelText('표준 C/T(초)')).not.toHaveAttribute('aria-required');
-    expect(screen.getByLabelText('표준 수율(0~1)')).not.toHaveAttribute('aria-required');
+    expect(screen.getByLabelText('표준 수율(%)')).not.toHaveAttribute('aria-required');
   });
 
   it('표준 C/T와 표준 수율 라벨에 단위와 허용 범위를 적는다', () => {
     renderDialog();
 
     expect(screen.getByLabelText('표준 C/T(초)')).toBeInTheDocument();
-    expect(screen.getByLabelText('표준 수율(0~1)')).toBeInTheDocument();
+    expect(screen.getByLabelText('표준 수율(%)')).toBeInTheDocument();
   });
 
   it('필드 오류를 그 입력칸 옆에 낸다', () => {
@@ -127,16 +126,15 @@ describe('OperationFormDialog', () => {
     expect(screen.getByText('필수 입력 항목입니다.')).toBeInTheDocument();
   });
 
-  /*
-   * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다.
-   * 이 창의 확인이 서버 저장이 아니라는 것을 사용자가 알아야 한다.
-   */
-  it('확인이 서버 저장이 아니라는 사실을 밝힌다', () => {
+  /* 관리 항목 — 제목 옆에 켠 개수, 안내 문장 없이 X 단추도 없다(사용자 시안 · #231). */
+  it('관리 항목 제목 옆에 켠 개수를 보이고, 우상단 X 단추를 두지 않는다', () => {
     renderDialog();
 
+    expect(screen.getByRole('region', { name: '관리 설정' })).toHaveTextContent(/\d+개 선택/);
     expect(
-      screen.getByText('확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.'),
-    ).toBeInTheDocument();
+      screen.queryByText('확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.'),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: /닫기/ })).toBeNull();
   });
 
   it('확인을 누르면 제출을 올리고 취소는 닫기를 올린다', async () => {

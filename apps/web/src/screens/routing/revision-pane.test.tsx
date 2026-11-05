@@ -6,7 +6,7 @@ import { routingFixtures } from './fixtures';
 import { RevisionPane, type RevisionPaneProps } from './revision-pane';
 
 const renderPane = (overrides: Partial<RevisionPaneProps> = {}) => {
-  const onSelect = vi.fn();
+  const onViewDetail = vi.fn();
   const onNewRevision = vi.fn();
   const onCreateRouting = vi.fn();
 
@@ -16,7 +16,7 @@ const renderPane = (overrides: Partial<RevisionPaneProps> = {}) => {
       isLoading={false}
       isItemSelected
       selectedRoutingId={null}
-      onSelect={onSelect}
+      onViewDetail={onViewDetail}
       loadError={null}
       newRevisionDisabledReason={null}
       isCreating={false}
@@ -28,10 +28,63 @@ const renderPane = (overrides: Partial<RevisionPaneProps> = {}) => {
     />,
   );
 
-  return { onSelect, onNewRevision, onCreateRouting, user: userEvent.setup() };
+  return { onViewDetail, onNewRevision, onCreateRouting, user: userEvent.setup() };
 };
 
 describe('RevisionPane', () => {
+  /* 확정 일시(#231) — 공장 시각 yyyy-MM-dd HH:mm, 없으면 「—」. */
+  it('확정 일시 열을 보이고, 값이 없는 개정은 「—」로 적는다', () => {
+    renderPane({
+      revisions: routingFixtures.map((row, index) => ({
+        ...row,
+        confirmedAt: index === 0 ? '2026-11-05T01:30:00.000Z' : null,
+      })),
+    });
+
+    expect(screen.getByRole('columnheader', { name: /확정 일시/ })).toBeInTheDocument();
+    expect(screen.getByText(/^2026-11-05 \d{2}:30$/)).toBeInTheDocument();
+  });
+
+  /* 기본 Rev 고르기(#231) — 확정 개정만 고를 수 있고, 지금 기본을 다시 고르면 아무 일도 없다. */
+  it('기본 Rev 칸은 확정 개정만 고르게 하고, 고른 개정을 상위에 올린다', async () => {
+    const onSetDefault = vi.fn();
+    const { user } = renderPane({
+      revisions: routingFixtures.map((row) => ({ ...row, isDefault: false })),
+      onSetDefault,
+    });
+
+    const select = screen.getByLabelText('기본 Rev');
+    expect(select).toHaveTextContent('미지정');
+    await user.click(select);
+    /* 확정(Rev 2)만 — 작성중 Rev 3 · 폐기 Rev 1 은 고를 수 없다. */
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+    expect(screen.getByRole('option', { name: 'Rev 2' })).toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'Rev 2' }));
+
+    expect(onSetDefault).toHaveBeenCalledTimes(1);
+  });
+
+  it('기본 Rev 칸은 onSetDefault 를 주지 않으면 세우지 않는다', () => {
+    renderPane();
+    expect(screen.queryByLabelText('기본 Rev')).not.toBeInTheDocument();
+  });
+
+  /* 이력 관리 칸 — 기본 지정 표시 · 요약 · 지정 단추는 두지 않는다(#231). */
+  it('기본 열 · 기본 Rev 요약 줄 · 기본으로 지정 단추가 없다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('columnheader', { name: /^기본/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/기본 Rev:/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '기본으로 지정' })).not.toBeInTheDocument();
+  });
+
+  /* 유효 시작일 · 종료일은 보이지 않는다(#231). */
+  it('유효 시작일 · 종료일 열이 없다', () => {
+    renderPane();
+
+    expect(screen.queryByRole('columnheader', { name: /유효/ })).not.toBeInTheDocument();
+  });
+
   it('받은 순서대로 Rev와 상태 배지를 그린다 — 계약이 판 번호 내림차순으로 준다', () => {
     renderPane();
 
@@ -47,25 +100,30 @@ describe('RevisionPane', () => {
     expect(screen.getByText('폐기')).toBeInTheDocument();
   });
 
-  it('Rev를 누르면 선택을 알린다', async () => {
-    const { onSelect, user } = renderPane();
+  it('상세 보기를 누르면 그 Rev 를 알린다', async () => {
+    const { onViewDetail, user } = renderPane();
 
-    await user.click(screen.getByRole('button', { name: 'Rev 2' }));
+    await user.click(screen.getByRole('button', { name: 'Rev 2 상세 보기' }));
 
-    expect(onSelect).toHaveBeenCalledWith(7002);
+    expect(onViewDetail).toHaveBeenCalledWith(expect.objectContaining({ routingId: 7002 }));
   });
 
   it('선택된 Rev에 현재 위치 표식이 붙는다', () => {
     renderPane({ selectedRoutingId: 7002 });
 
-    expect(screen.getByRole('button', { name: 'Rev 2' })).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByRole('button', { name: 'Rev 3' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: 'Rev 2 상세 보기' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Rev 3 상세 보기' })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 
   it('품목을 고르기 전에는 선택 안내만 낸다', () => {
     renderPane({ isItemSelected: false, revisions: [] });
 
-    expect(screen.getByText('좌측에서 품목을 먼저 고르세요')).toBeInTheDocument();
+    expect(screen.getByText('품목을 선택하세요')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 

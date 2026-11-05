@@ -265,6 +265,7 @@ describe('주 메뉴 트리', () => {
       '/master-data/item-extended-attrs → category',
       '/master-data/item-boms → category',
       '/master-data/routing → account_tree',
+      '/master-data/processes → account_tree',
       '/equipment/master → precision_manufacturing',
       '/equipment/work-calendar → precision_manufacturing',
       '/equipment/collection-channels → precision_manufacturing',

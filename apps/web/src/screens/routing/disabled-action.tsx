@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { useId } from 'react';
 
 export interface DisabledActionProps {
@@ -7,6 +7,16 @@ export interface DisabledActionProps {
   reason: string;
   /** 액션 줄에서 위치를 정하는 배치 클래스(예: `form-actions-secondary`). */
   className?: string;
+  /**
+   * 짧은 라벨(#231 사용자 지시). 주면 긴 사유 문장을 화면에 펼치지 않고 단추 옆 라벨로 줄인다 —
+   * 사유 문장은 라벨에 마우스를 올리면 보이고, 화면 낭독기는 숨긴 글로 그대로 읽는다.
+   */
+  badge?: string;
+  /**
+   * 사유 문장을 화면에 펼치지 않는다(사용자 지시 · #231) — 단추만 흐리게 두고, 사유는 단추에 마우스를 올리면 보이며
+   * 화면 낭독기는 숨긴 글로 그대로 읽는다.
+   */
+  quiet?: boolean;
 }
 
 /**
@@ -19,8 +29,49 @@ export interface DisabledActionProps {
  * - 사유는 그 컨트롤 바로 아래 왼쪽 가장자리를 맞춰 놓는다(`.field-cell`).
  * - `variant`는 `outlined`다. `text`는 비활성일 때 흐린 글자만 남아 버튼으로 읽히지 않는다.
  */
-export const DisabledAction = ({ label, reason, className }: DisabledActionProps) => {
+export const DisabledAction = ({
+  label,
+  reason,
+  className,
+  badge,
+  quiet = false,
+}: DisabledActionProps) => {
   const noteId = useId();
+
+  if (quiet) {
+    return (
+      <span className={className} title={reason}>
+        <Button variant="outlined" disabled aria-describedby={noteId}>
+          {label}
+        </Button>
+        <span id={noteId} className="visually-hidden">
+          {reason}
+        </span>
+      </span>
+    );
+  }
+
+  if (badge !== undefined) {
+    return (
+      <div
+        className={
+          className === undefined ? 'disabled-action-inline' : `disabled-action-inline ${className}`
+        }
+      >
+        <Button variant="outlined" disabled aria-describedby={noteId}>
+          {label}
+        </Button>
+        <span title={reason}>
+          <Chip variant="status" status="idle" aria-hidden="true">
+            {badge}
+          </Chip>
+        </span>
+        <span id={noteId} className="visually-hidden">
+          {reason}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={className === undefined ? 'field-cell' : `field-cell ${className}`}>

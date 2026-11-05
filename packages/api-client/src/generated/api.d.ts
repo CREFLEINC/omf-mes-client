@@ -2731,7 +2731,51 @@ export interface paths {
       };
     };
     post?: never;
-    delete?: never;
+    /**
+     * 작성중 Rev 취소
+     * @description 작성중 Rev 와 그 공정 라인 · 선후행을 지운다. 상태≠작성중이면 400(code=STATE_LOCKED). 생산계획 · W/O · BOM · 검사기준이 가리키면 400(code=STATE_LOCKED). 근거: omf-all-around#231
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description 전 쓰기 API 필수. */
+          'Idempotency-Key': components['parameters']['IdempotencyKey'];
+        };
+        path: {
+          routingId: number;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 취소됨(지워짐) */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description 상태가 작성중이 아니거나, 생산계획 · W/O · BOM · 검사기준이 가리킴(code=STATE_LOCKED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 Routing */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
     options?: never;
     head?: never;
     patch?: never;
@@ -5109,6 +5153,8 @@ export interface paths {
           itemTypeCode?: string[];
           /** @description Routing 보유 여부로 거른다. false 면 Routing 이 한 건도 없는 품목만 낸다 — W-06-01 §6 「Routing 미보유 품목 필터를 제공해 보강 등록을 돕는다」. 이것이 없으면 화면이 전 품목과 전 Routing 을 받아 스스로 대조해야 한다 */
           hasRouting?: boolean;
+          /** @description 가장 최근 Rev(routingVersion 이 가장 큰 개정)의 상태로 거른다 — 공정 경로 관리 품목 목록의 진행 상태 칩(omf-all-around#231). Routing 이 없는 품목은 어느 값에도 들지 않는다(그 품목은 hasRouting=false 로 거른다) */
+          latestRoutingStatus?: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
           includeInactive?: boolean;
           page?: number;
           size?: number;
@@ -9434,6 +9480,10 @@ export interface paths {
           /** @description 코드·명칭 검색 */
           q?: string;
           includeInactive?: boolean;
+          /** @description 사용 여부 — 주면 그 값만 준다(true=사용, false=미사용). includeInactive 의 기본(사용만)보다 앞선다. 근거: omf-all-around#231 */
+          isActive?: boolean;
+          /** @description 공정 유형 코드(PROCESS_TYPE) — 주면 그 유형만 준다. 근거: omf-all-around#231 */
+          processTypeCode?: string;
           page?: number;
           size?: number;
         };
@@ -43215,6 +43265,12 @@ export interface components {
        * @example true
        */
       isDefault?: boolean;
+      /**
+       * Format: date-time
+       * @description 확정 일시 — :confirm 이 그 시각을 적는다(omf-all-around#231). 작성중이거나 이 칸이 생기기 전에 확정된 Rev 는 null
+       * @example 2026-11-05T01:30:00.000Z
+       */
+      confirmedAt?: string | null;
     };
     /** @description Routing 최초 등록(Rev 1) 요청 — 품목에 Rev 가 하나도 없을 때만 쓴다. routingVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-01 §4-A · §5-1 */
     RoutingCreate: {
