@@ -1,13 +1,14 @@
 import { AlertBanner, Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
 import type { ReplenishmentOriginCode, ReplenishmentSettings } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
 import type { ProgressFilters } from './filters';
-import { PAGE_SIZE, useProgressList } from './queries';
+import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
 import {
   FILTER_STATUSES,
   formatQty,
@@ -100,6 +101,12 @@ export const ProgressView = ({
     setDraft(filters);
   }
   const list = useProgressList(plantId, filters, page, true);
+  const queryClient = useQueryClient();
+  /* [조회]는 조건이 같아도 목록 · 열린 상세 · 머리 숫자를 새로 받는다(G1 확인 4). */
+  const search = (next: ProgressFilters): void => {
+    void queryClient.invalidateQueries({ queryKey: replenishmentKeys.all });
+    onSearch(next);
+  };
 
   const toggleOrigin = (origin: ReplenishmentOriginCode): void =>
     onSearch({ ...filters, origin: filters.origin === origin ? '' : origin });
@@ -141,7 +148,7 @@ export const ProgressView = ({
           value={draft.from === '' ? null : [draft.from, draft.to]}
           onChange={(value) => setDraft({ ...draft, from: value?.[0] ?? '', to: value?.[1] ?? '' })}
         />
-        <Button onClick={() => onSearch(draft)}>{t.common.search}</Button>
+        <Button onClick={() => search(draft)}>{t.common.search}</Button>
         <Button variant="outlined" onClick={onReset}>
           {t.common.reset}
         </Button>

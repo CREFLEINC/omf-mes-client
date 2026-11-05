@@ -104,7 +104,8 @@ export const useWarehouses = (plantId: number | null): UseQueryResult<WarehouseO
         .filter((warehouse) => warehouse.plantId === plantId && warehouse.isActive)
         .map((warehouse) => ({
           value: String(warehouse.warehouseId),
-          label: warehouse.warehouseName,
+          /* 이름이 같은 창고가 있어 코드를 앞에 붙인다(G1 확인 5). */
+          label: `${warehouse.warehouseCode} ${warehouse.warehouseName}`,
           isDefect: warehouse.isDefect,
         })),
   });
@@ -311,6 +312,9 @@ export const useDetail = (id: number | null): UseQueryResult<ReplenishmentDetail
   return useQuery({
     queryKey: replenishmentKeys.detail(id ?? 0),
     enabled: id !== null,
+    /* 다른 기기의 출고 · 피킹이 바로 보이게 — 열 때마다 새로 받는다(G1 확인 4). */
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () =>
       toDetailView(
         await runRequest(() =>
@@ -327,6 +331,9 @@ export const useHistory = (id: number | null): UseQueryResult<HistoryItem[]> => 
   return useQuery({
     queryKey: replenishmentKeys.history(id ?? 0),
     enabled: id !== null,
+    /* 다른 기기의 출고 · 피킹이 바로 보이게 — 열 때마다 새로 받는다(G1 확인 4). */
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () =>
       (
         await runRequest(() =>

@@ -253,21 +253,24 @@ export const RequestView = ({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {lines.map((line, index) => {
-              const row = index + 1;
-              const check = checks[index] ?? { error: null, cap: null };
-              const managedItem = line.itemId === '' ? undefined : managedOf(line.itemId);
-              const usable = line.itemId === '' ? null : usableOf(stock, warehouse, line.itemId);
-              const free =
-                line.itemId === '' || line.source === ''
-                  ? undefined
-                  : stockOf(stock, line.source, line.itemId)?.free;
-              return (
-                <tr key={line.key}>
-                  <td>
+          {lines.map((line, index) => {
+            const row = index + 1;
+            const check = checks[index] ?? { error: null, cap: null };
+            const managedItem = line.itemId === '' ? undefined : managedOf(line.itemId);
+            const usable = line.itemId === '' ? null : usableOf(stock, warehouse, line.itemId);
+            const free =
+              line.itemId === '' || line.source === ''
+                ? undefined
+                : stockOf(stock, line.source, line.itemId)?.free;
+            const notes = check.cap !== null || check.error !== null;
+            /* 줄마다 묶음 — 남은 수량 안내 · 오류는 줄 아래 전체 폭 한 줄(screens/W-02-12.md 보기 1). */
+            return (
+              <tbody key={line.key} className="replenishment-line">
+                <tr>
+                  <td className="replenishment-item-cell">
                     <ItemSelect
                       aria-label={tr.itemLabel(row)}
+                      placeholder={tr.itemPlaceholder}
                       value={line.itemId === '' ? null : line.itemId}
                       {...(line.itemId === ''
                         ? {}
@@ -285,7 +288,7 @@ export const RequestView = ({
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td className="replenishment-source-cell">
                     <Select
                       aria-label={tr.sourceLabel(row)}
                       placeholder={tr.sourcePlaceholder}
@@ -303,19 +306,6 @@ export const RequestView = ({
                       value={line.qty}
                       onChange={(event) => update(line.key, { qty: event.target.value })}
                     />
-                    {check.cap !== null && (
-                      <span
-                        className={`replenishment-cap is-${check.cap.tone}`}
-                        role={check.cap.tone === 'error' ? 'alert' : undefined}
-                      >
-                        {check.cap.text}
-                      </span>
-                    )}
-                    {check.error !== null && (
-                      <span className="field-error" role="alert">
-                        {check.error}
-                      </span>
-                    )}
                   </td>
                   <td>{line.uomCode}</td>
                   <td className="is-number">
@@ -341,9 +331,28 @@ export const RequestView = ({
                     </Button>
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
+                {notes && (
+                  <tr className="replenishment-note-row">
+                    <td colSpan={7}>
+                      {check.cap !== null && (
+                        <span
+                          className={`replenishment-cap is-${check.cap.tone}`}
+                          role={check.cap.tone === 'error' ? 'alert' : undefined}
+                        >
+                          {check.cap.text}
+                        </span>
+                      )}
+                      {check.error !== null && (
+                        <span className="field-error" role="alert">
+                          {check.error}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            );
+          })}
         </table>
       </div>
       <div className="replenishment-actions">

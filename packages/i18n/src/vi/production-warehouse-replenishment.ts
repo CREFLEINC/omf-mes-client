@@ -61,6 +61,7 @@ export const productionWarehouseReplenishment: Translated<
     sourceLabel: (row: number): string => `Kho vật tư xuất dòng ${String(row)}`,
     qtyLabel: (row: number): string => `Số lượng yêu cầu dòng ${String(row)}`,
     removeLabel: (row: number): string => `Bỏ dòng ${String(row)}`,
+    itemPlaceholder: 'Tìm mặt hàng',
     sourcePlaceholder: 'Chọn kho vật tư xuất',
     managedNote: (point: string, target: string): string =>
       `Mặt hàng quản lý, điểm bổ sung ${point}, mức duy trì ${target}`,
@@ -171,6 +172,7 @@ export const productionWarehouseReplenishment: Translated<
     },
     closed: (issued: string, closed: string, reason: string): string =>
       `Đã xuất ${issued}, đóng ${closed}, ${reason}`,
+    closedRemark: (remark: string): string => `Ghi chú: ${remark}`,
     closedBy: (when: string, who: string): string => `(${when} ${who})`,
     cancelled: 'Yêu cầu đã hủy.',
     done: 'Yêu cầu đã xuất đủ.',

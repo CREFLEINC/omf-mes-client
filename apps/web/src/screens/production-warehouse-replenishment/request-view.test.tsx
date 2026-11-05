@@ -12,7 +12,8 @@ type User = ReturnType<typeof setupScreen>['user'];
 
 const table = async () => within(await screen.findByRole('table', { name: tr.title }));
 const rowOf = async (index: number) => {
-  const rows = (await table()).getAllByRole('row').slice(1);
+  /* 줄마다 묶음(tbody) — 줄 아래 안내 줄까지 한 묶음이다. 첫 묶음은 머리(thead). */
+  const rows = (await table()).getAllByRole('rowgroup').slice(1);
   const row = rows[index];
   if (row === undefined) throw new Error(`${String(index + 1)}번 줄이 없다`);
   return within(row);
@@ -37,13 +38,13 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     const row = await rowOf(0);
     expect(await row.findByText(tr.managedNote('50', '200'))).toBeInTheDocument();
     expect(row.getByRole('combobox', { name: tr.sourceLabel(1) })).toHaveTextContent(
-      '합성 자재창고 1',
+      'SYN-MW-1 합성 자재창고 1',
     );
     /* 기본값을 바꿀 수 있다 — 후보에 생산 창고 자신 · 불량창고는 없다(FR-002). */
     await user.click(row.getByRole('combobox', { name: tr.sourceLabel(1) }));
-    expect(await screen.findByRole('option', { name: '합성 자재창고 2' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: '합성 생산창고 A' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: '합성 불량창고' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'SYN-MW-2 합성 자재창고 2' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'SYN-PW-A 합성 생산창고 A' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'SYN-NG 합성 불량창고' })).not.toBeInTheDocument();
   });
 
   it('US1-3 관리 품목이 아니면 출고 자재 창고가 비어 있고, 고르기 전에는 보낼 수 없다', async () => {
@@ -57,7 +58,7 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     expect(row.getByText(tr.sourceRequired)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: tr.submit })).toBeDisabled();
 
-    await pickSource(user, 1, '합성 자재창고 1');
+    await pickSource(user, 1, 'SYN-MW-1 합성 자재창고 1');
     expect(row.queryByText(tr.sourceRequired)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: tr.submit })).toBeEnabled();
   });
@@ -66,7 +67,7 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     const { user, gets } = setupScreen();
 
     await pickItem(user, 1, 'SYN-IT-3 · 합성 테이프');
-    await pickSource(user, 1, '합성 자재창고 1');
+    await pickSource(user, 1, 'SYN-MW-1 합성 자재창고 1');
     const row = await rowOf(0);
     await user.type(row.getByRole('textbox', { name: tr.qtyLabel(1) }), '5');
     /* 생산창고 A 의 테이프: 가용 10 − 예정 0(관리 품목 아닌 품목도). 자재창고 1 에는 테이프 행이 없다 → 0. */
@@ -101,7 +102,7 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     const { user } = setupScreen();
 
     await pickItem(user, 1, 'SYN-IT-3 · 합성 테이프');
-    await pickSource(user, 1, '합성 자재창고 2');
+    await pickSource(user, 1, 'SYN-MW-2 합성 자재창고 2');
     const row = await rowOf(0);
     await user.type(row.getByRole('textbox', { name: tr.qtyLabel(1) }), '20');
 
@@ -118,10 +119,10 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     const row = await rowOf(0);
     expect(await row.findByRole('textbox', { name: tr.qtyLabel(1) })).toHaveValue('880');
     expect(row.getByRole('combobox', { name: tr.sourceLabel(1) })).toHaveTextContent(
-      '합성 자재창고 2',
+      'SYN-MW-2 합성 자재창고 2',
     );
     /* 기준 이상인 동선은 불러오지 않는다. */
-    expect((await table()).getAllByRole('row')).toHaveLength(2);
+    expect((await table()).getAllByRole('rowgroup')).toHaveLength(2);
   });
 
   it('US1-6 · US1-7 [요청 보내기] 결과 창은 창고별 장 수 · 부족 · 건너뛴 줄을 보이고 [진행에서 보기]로 넘어간다', async () => {
@@ -151,7 +152,7 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     await user.type((await rowOf(0)).getByRole('textbox', { name: tr.qtyLabel(1) }), '300');
     await user.click(screen.getByRole('button', { name: tr.addLine }));
     await pickItem(user, 2, 'SYN-IT-3 · 합성 테이프');
-    await pickSource(user, 2, '합성 자재창고 2');
+    await pickSource(user, 2, 'SYN-MW-2 합성 자재창고 2');
     await user.type((await rowOf(1)).getByRole('textbox', { name: tr.qtyLabel(2) }), '20');
     await user.click(screen.getByRole('button', { name: tr.submit }));
 

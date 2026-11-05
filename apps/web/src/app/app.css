@@ -13132,6 +13132,8 @@ button.app-button-neutral {
 .replenishment-run-time,
 .replenishment-filters {
   display: grid;
+  /* 칸 폭을 내용에 맡기면 넓은 표가 페이지를 밀어낸다 — 표는 자기 상자 안에서만 민다(G1 확인 1). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
   margin-bottom: var(--space-3);
   padding: var(--space-3);
@@ -13171,7 +13173,38 @@ button.app-button-neutral {
 
 /* 좁은 폭에서 표는 가로로 밀고, 첫 열(요청번호)은 고정한다(W-02-11 과 같은 규칙, 시안 Narrow). */
 .replenishment-table-scroll {
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+}
+
+/* 품목을 고르기 전에도 「품목 검색」 칸이 넓게 보인다(시안). */
+.replenishment-item-cell {
+  min-width: 18rem;
+}
+
+.replenishment-source-cell {
+  min-width: 13rem;
+}
+
+/* 남은 수량 안내 · 오류는 줄 아래 전체 폭 한 줄(G1 확인 2). */
+.replenishment-table .replenishment-note-row > td {
+  padding-top: 0;
+  white-space: normal;
+}
+
+.replenishment-line:has(.replenishment-note-row) > tr:first-child > td {
+  border-bottom: 0;
+}
+
+/* 관리 품목 표 — 머리와 품목 이름은 두 줄을 허용해 1440 폭에 들게 한다(G1 확인 6). */
+.replenishment-table.is-wrap-head th,
+.replenishment-table .is-wrap {
+  white-space: normal;
+}
+
+.replenishment-table .is-wrap {
+  min-width: 10rem;
 }
 
 .replenishment-table {
@@ -13204,6 +13237,7 @@ button.app-button-neutral {
   background: var(--surface);
 }
 
+.replenishment-banner-line,
 .replenishment-line-note,
 .replenishment-cap {
   display: block;
@@ -13241,7 +13275,14 @@ button.app-button-neutral {
 .replenishment-result,
 .replenishment-form {
   display: grid;
+  /* 창 안 내용이 창 폭을 넘지 않게(G1 확인 3). */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+}
+
+.replenishment-form > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .replenishment-head {

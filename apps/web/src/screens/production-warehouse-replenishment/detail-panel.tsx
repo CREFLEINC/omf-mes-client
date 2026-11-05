@@ -116,7 +116,6 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
               request.closeReasonDetailCode);
         const text = [
           td.closed(qtyWithUom(issued, uom), qtyWithUom(closedQty, uom), reason),
-          request.closeRemark ?? '',
           closedEntry === undefined
             ? ''
             : td.closedBy(
@@ -126,7 +125,17 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         ]
           .filter((part) => part !== '')
           .join(' ');
-        return <AlertBanner variant="success">{text}</AlertBanner>;
+        /* 사유와 메모를 섞지 않게 메모는 따로 한 줄(G1 확인 7). */
+        return (
+          <AlertBanner variant="success">
+            <span className="replenishment-banner-line">{text}</span>
+            {request.closeRemark !== null && request.closeRemark !== '' && (
+              <span className="replenishment-banner-line">
+                {td.closedRemark(request.closeRemark)}
+              </span>
+            )}
+          </AlertBanner>
+        );
       }
       if (request.status === 'CANCELLED')
         return <AlertBanner variant="info">{td.cancelled}</AlertBanner>;

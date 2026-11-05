@@ -175,9 +175,11 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
 
     expect(
       await detail.findByText(
-        `${td.closed('100 KG', '60 KG', '합성 자재 창고 결품')} 합성 납기 지연 ${td.closedBy('11-05 10:00', '합성 관리자')}`,
+        `${td.closed('100 KG', '60 KG', '합성 자재 창고 결품')} ${td.closedBy('11-05 10:00', '합성 관리자')}`,
       ),
     ).toBeInTheDocument();
+    /* 메모는 사유와 섞지 않고 따로 한 줄(G1 확인 7). */
+    expect(detail.getByText(td.closedRemark('합성 납기 지연'))).toBeInTheDocument();
     expect(detail.queryByRole('button', { name: td.closeRemaining })).not.toBeInTheDocument();
     expect(detail.queryByRole('button', { name: td.cancel })).not.toBeInTheDocument();
   });
@@ -202,5 +204,23 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
 
     expect(await detail.findByText(t.errors.versionConflict)).toBeInTheDocument();
     expect(detail.getByRole('button', { name: t.common.reload })).toBeInTheDocument();
+  });
+
+  it('상세는 다시 열 때와 [조회] 때 새로 받는다 — 다른 기기의 출고가 바로 보이게', async () => {
+    const { user, gets } = setupScreen({ route: `${PROGRESS}&id=2` });
+    const detailGets = () =>
+      gets.filter((url) => url.pathname === '/logistics/material-issue-requests/2').length;
+    const first = await panel('SYN-MIR-02');
+    await waitFor(() => expect(detailGets()).toBe(1));
+
+    await user.click(first.getAllByRole('button', { name: /닫기/ })[0] as HTMLElement);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /SYN-MIR-02/ })).toBeNull());
+    await user.click((await listTable()).getByRole('button', { name: 'SYN-MIR-02' }));
+    await panel('SYN-MIR-02');
+    await waitFor(() => expect(detailGets()).toBe(2));
+
+    const before = listQueries(gets).length;
+    await user.click(screen.getByRole('button', { name: t.common.search }));
+    await waitFor(() => expect(listQueries(gets).length).toBeGreaterThan(before));
   });
 });

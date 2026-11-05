@@ -60,6 +60,7 @@ export const productionWarehouseReplenishment = {
     sourceLabel: (row: number): string => `${String(row)}번 줄 출고 자재 창고`,
     qtyLabel: (row: number): string => `${String(row)}번 줄 요청 수량`,
     removeLabel: (row: number): string => `${String(row)}번 줄 빼기`,
+    itemPlaceholder: '품목 검색',
     sourcePlaceholder: '출고 자재 창고 고르기',
     managedNote: (point: string, target: string): string =>
       `관리 품목, 보충 시점 ${point}, 유지량 ${target}`,
@@ -170,6 +171,7 @@ export const productionWarehouseReplenishment = {
     } as Record<string, string>,
     closed: (issued: string, closed: string, reason: string): string =>
       `출고 ${issued}, 마감 ${closed}, ${reason}`,
+    closedRemark: (remark: string): string => `메모: ${remark}`,
     closedBy: (when: string, who: string): string => `(${when} ${who})`,
     cancelled: '취소한 요청입니다.',
     done: '전량 출고한 요청입니다.',

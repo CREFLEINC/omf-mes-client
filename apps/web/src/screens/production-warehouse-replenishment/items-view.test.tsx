@@ -38,7 +38,7 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
       '400',
       '1,000',
       'EA',
-      '합성 자재창고 2',
+      'SYN-MW-2 합성 자재창고 2',
       '160',
       '40',
       '120',
@@ -54,7 +54,7 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
     const filters = within(screen.getByRole('region', { name: ti.filters.label }));
 
     await user.click(filters.getByRole('combobox', { name: ti.filters.source }));
-    await user.click(await screen.findByRole('option', { name: '합성 자재창고 2' }));
+    await user.click(await screen.findByRole('option', { name: 'SYN-MW-2 합성 자재창고 2' }));
     await user.click(filters.getByRole('combobox', { name: ti.filters.item }));
     await user.click(await screen.findByRole('option', { name: 'SYN-IT-2 · 합성 라벨지' }));
     await user.click(filters.getByRole('button', { name: t.common.search }));
@@ -116,7 +116,7 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
     await user.type(dialog.getByLabelText(td.point), '30');
     await user.type(dialog.getByLabelText(td.target), '100');
     await user.click(dialog.getByRole('combobox', { name: td.source }));
-    await user.click(await screen.findByRole('option', { name: '합성 자재창고 2' }));
+    await user.click(await screen.findByRole('option', { name: 'SYN-MW-2 합성 자재창고 2' }));
     await user.click(dialog.getByRole('button', { name: td.save }));
 
     await waitFor(() => expect(writesTo(writes, 'POST', '/replenishment-items')).toHaveLength(1));

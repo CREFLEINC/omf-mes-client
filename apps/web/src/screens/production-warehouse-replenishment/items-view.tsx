@@ -141,7 +141,10 @@ export const ItemsView = ({
     return (
       <>
         <div className="replenishment-table-scroll">
-          <table className="replenishment-table is-sticky-first" aria-label={ti.listLabel}>
+          <table
+            className="replenishment-table is-sticky-first is-wrap-head"
+            aria-label={ti.listLabel}
+          >
             <thead>
               <tr>
                 <th scope="col">{ti.columns.productionWarehouse}</th>
@@ -173,7 +176,7 @@ export const ItemsView = ({
               {list.data.items.map((row) => (
                 <tr key={row.replenishmentItemId}>
                   <td>{row.productionWarehouseName}</td>
-                  <td>
+                  <td className="is-wrap">
                     <button type="button" className="link-cell" onClick={() => setEditing(row)}>
                       <span className="replenishment-code">{row.itemCode}</span> {row.itemName}
                     </button>
@@ -181,7 +184,7 @@ export const ItemsView = ({
                   <td className="is-number">{formatQty(row.reorderPointQty)}</td>
                   <td className="is-number">{formatQty(row.targetQty)}</td>
                   <td>{row.uomCode}</td>
-                  <td>{row.sourceWarehouseName}</td>
+                  <td className="is-wrap">{`${row.sourceWarehouseCode} ${row.sourceWarehouseName}`}</td>
                   <td className="is-number">{formatQty(row.availableQty)}</td>
                   <td className="is-number">{formatQty(row.plannedQty)}</td>
                   <td className="is-number">{formatQty(row.usableQty)}</td>
