@@ -15,7 +15,9 @@ describe('W-02-12 생산 창고 보충 — 화면 틀', () => {
     expect(await screen.findByText(t.noProductionWarehouse.title)).toBeInTheDocument();
     expect(screen.getByText(t.noProductionWarehouse.description)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.request.submit })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.noProductionWarehouse.action })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.noProductionWarehouse.action }),
+    ).toBeInTheDocument();
   });
 
   it('보기 토글은 주소(?view=)를 바꾸고, 보기 이름 옆에 활성 요청 수와 기준 아래 품목 수를 보인다', async () => {
@@ -23,7 +25,9 @@ describe('W-02-12 생산 창고 보충 — 화면 틀', () => {
 
     /* 기본 보기는 요청. */
     expect(await screen.findByRole('table', { name: t.request.title })).toBeInTheDocument();
-    expect(await views().findByRole('button', { name: t.views.progressCount(3) })).toBeInTheDocument();
+    expect(
+      await views().findByRole('button', { name: t.views.progressCount(3) }),
+    ).toBeInTheDocument();
     expect(views().getByRole('button', { name: t.views.itemsBelow(1) })).toBeInTheDocument();
 
     await user.click(views().getByRole('button', { name: t.views.progressCount(3) }));

@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Checkbox,
-  Chip,
-  EmptyState,
-  Skeleton,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
 import type { ReplenishmentItem, ReplenishmentSettings } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
@@ -205,7 +198,12 @@ export const ItemsView = ({
         </div>
         <div className="replenishment-pager">
           <span className="field-note">{t.progress.pager.total(total)}</span>
-          <Button variant="outlined" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          <Button
+            variant="outlined"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => onPage(page - 1)}
+          >
             {t.progress.pager.previous}
           </Button>
           <Button

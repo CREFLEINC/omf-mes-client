@@ -8,7 +8,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { CloseDialog } from './close-dialog';
 import { useCancelRequest, useCloseRemaining } from './mutations';
 import { OriginChip, StatusChips } from './progress-view';
-import { useDetail, useHistory } from './queries';
+import { useCloseReasons, useDetail, useHistory } from './queries';
 import {
   detailAction,
   formatQty,
@@ -48,6 +48,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
   const lockId = useId();
   const detail = useDetail(requestId);
   const history = useHistory(requestId);
+  const reasons = useCloseReasons();
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const cancel = useCancelRequest(requestId, (saved) => {
@@ -111,7 +112,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
         const reason =
           request.closeReasonDetailCode === null
             ? ''
-            : ((t.closeReasons as Record<string, string>)[request.closeReasonDetailCode] ??
+            : (reasons.data?.names.get(request.closeReasonDetailCode) ??
               request.closeReasonDetailCode);
         const text = [
           td.closed(qtyWithUom(issued, uom), qtyWithUom(closedQty, uom), reason),
@@ -127,7 +128,8 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
           .join(' ');
         return <AlertBanner variant="success">{text}</AlertBanner>;
       }
-      if (request.status === 'CANCELLED') return <AlertBanner variant="info">{td.cancelled}</AlertBanner>;
+      if (request.status === 'CANCELLED')
+        return <AlertBanner variant="info">{td.cancelled}</AlertBanner>;
       if (request.status === 'DONE') return <AlertBanner variant="info">{td.done}</AlertBanner>;
       if (action === 'close' && picked > 0) {
         return (

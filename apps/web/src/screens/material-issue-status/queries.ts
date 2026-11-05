@@ -107,7 +107,7 @@ export const useRequestHistory = (
   });
 };
 
-/** 부족 보기 — 부족 행만(`onlyShortage=true`)과 「재고 있는 생산 창고 없음」 묶음. */
+/** 부족 보기 — 부족 행만(`onlyShortage=true`)과 「재고 있는 생산 창고 없음」 묶음. W/O 요청만. */
 export const usePlannedShortage = (
   plantId: number | null,
 ): UseQueryResult<PlannedStockResponse> => {
@@ -118,7 +118,10 @@ export const usePlannedShortage = (
     queryFn: () =>
       runRequest(() =>
         client.GET('/logistics/material-issue-requests/planned-stock', {
-          params: { query: { plantId: plantId ?? 0, onlyShortage: true } },
+          /* W/O 요청만 배분 줄에 싣는다 — 004 창고 보충 요청이 섞이지 않게(계약 §1 G1 보완, Q21). */
+          params: {
+            query: { plantId: plantId ?? 0, onlyShortage: true, requestTypeCode: 'WORK_ORDER' },
+          },
         }),
       ),
   });

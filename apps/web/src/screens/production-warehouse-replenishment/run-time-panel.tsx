@@ -39,7 +39,8 @@ export const RunTimePanel = ({ plantId, settings }: RunTimePanelProps) => {
   const noteId = useId();
   const [plantDefault, setPlantDefault] = useState(settings.plantDefaultRunTime);
   const [byWarehouse, setByWarehouse] = useState<ReadonlyMap<number, string>>(
-    () => new Map(settings.warehouses.map((row) => [row.warehouseId, row.runTime ?? PLANT_DEFAULT])),
+    () =>
+      new Map(settings.warehouses.map((row) => [row.warehouseId, row.runTime ?? PLANT_DEFAULT])),
   );
   const [seeded, setSeeded] = useState(settings);
   /* 저장 뒤 다시 받은 설정으로 입력을 다시 세운다 — 렌더 중 갱신. */
@@ -119,7 +120,7 @@ export const RunTimePanel = ({ plantId, settings }: RunTimePanelProps) => {
                 return {
                   warehouseId: row.warehouseId,
                   runTime: value === PLANT_DEFAULT ? null : value,
-                  versionNo: row.versionNo ?? 0,
+                  versionNo: row.versionNo,
                 };
               }),
             })

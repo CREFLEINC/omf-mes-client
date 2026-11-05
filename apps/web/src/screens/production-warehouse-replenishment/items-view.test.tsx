@@ -150,7 +150,9 @@ describe('W-02-12 생산 창고 보충 — 관리 품목 보기', () => {
     expect(confirm.getByText(td.deleteBody('SYN-IT-2 합성 라벨지', true))).toBeInTheDocument();
     await user.click(confirm.getByRole('button', { name: td.deleteConfirm }));
 
-    await waitFor(() => expect(writesTo(writes, 'DELETE', '/replenishment-items/2')).toHaveLength(1));
+    await waitFor(() =>
+      expect(writesTo(writes, 'DELETE', '/replenishment-items/2')).toHaveLength(1),
+    );
     expect(await screen.findByText(t.toast.itemDeletedInProgress(2))).toBeInTheDocument();
   });
 });

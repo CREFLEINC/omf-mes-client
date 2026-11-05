@@ -33,12 +33,6 @@ export const productionWarehouseReplenishment = {
     CANCELLED: '취소',
   },
   releaseFailed: '배포 실패',
-  closeReasons: {
-    STOCK_OUT: '자재 창고 결품',
-    SOURCE_ISSUE: '자재 창고 사정',
-    REQUEST_ERROR: '요청 착오',
-    OTHER: '기타',
-  },
   common: {
     all: '전체',
     search: '조회',
@@ -207,7 +201,8 @@ export const productionWarehouseReplenishment = {
   },
   toast: {
     cancelled: (no: string): string => `${no} 요청을 취소했습니다.`,
-    closed: (no: string): string => `${no} 의 남은 양을 마감했습니다. 자재 창고 출고 예정에서 빠졌습니다.`,
+    closed: (no: string): string =>
+      `${no} 의 남은 양을 마감했습니다. 자재 창고 출고 예정에서 빠졌습니다.`,
     itemSaved: '관리 품목을 저장했습니다.',
     itemDeleted: '관리 품목을 지웠습니다.',
     itemDeletedInProgress: (count: number): string =>

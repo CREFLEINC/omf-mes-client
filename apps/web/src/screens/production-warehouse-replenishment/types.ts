@@ -20,12 +20,7 @@ type Line = components['schemas']['MaterialIssueRequestLine'];
  * `WAITING` 은 배포 실패(대기 + 실패 글)에만 쓴다.
  */
 export type ReplenishmentStatus =
-  | 'WAITING'
-  | 'RELEASED'
-  | 'IN_PROGRESS'
-  | 'DONE'
-  | 'CLOSED'
-  | 'CANCELLED';
+  'WAITING' | 'RELEASED' | 'IN_PROGRESS' | 'DONE' | 'CLOSED' | 'CANCELLED';
 
 /** 진행 보기 상태 조건 5종(시안 순서). */
 export const FILTER_STATUSES: readonly ReplenishmentStatus[] = [
@@ -51,7 +46,10 @@ export const STATUS_TONE: Record<
 export const REMAINDER_CLOSED = 'REMAINDER_CLOSED';
 
 /** 화면 상태 ↔ 서버 `replenishmentStatus`(계약 §1). */
-export const SERVER_STATUS: Record<Exclude<ReplenishmentStatus, 'WAITING'>, ReplenishmentStatusCode> = {
+export const SERVER_STATUS: Record<
+  Exclude<ReplenishmentStatus, 'WAITING'>,
+  ReplenishmentStatusCode
+> = {
   RELEASED: 'DISPATCHED',
   IN_PROGRESS: 'IN_PROGRESS',
   DONE: 'COMPLETED',

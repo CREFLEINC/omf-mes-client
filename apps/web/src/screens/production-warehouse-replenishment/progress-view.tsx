@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Chip,
-  DatePicker,
-  EmptyState,
-  Skeleton,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
 import type { ReplenishmentOriginCode, ReplenishmentSettings } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
@@ -280,7 +273,12 @@ export const ProgressView = ({
         </div>
         <div className="replenishment-pager">
           <span className="field-note">{tp.pager.total(total)}</span>
-          <Button variant="outlined" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          <Button
+            variant="outlined"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => onPage(page - 1)}
+          >
             {tp.pager.previous}
           </Button>
           <Button
@@ -300,9 +298,7 @@ export const ProgressView = ({
     <>
       {filterBar}
       {body()}
-      {selectedId !== null && (
-        <DetailPanel requestId={selectedId} onClose={() => onSelect(null)} />
-      )}
+      {selectedId !== null && <DetailPanel requestId={selectedId} onClose={() => onSelect(null)} />}
     </>
   );
 };

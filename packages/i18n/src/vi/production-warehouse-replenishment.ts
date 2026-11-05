@@ -34,12 +34,6 @@ export const productionWarehouseReplenishment: Translated<
     CANCELLED: 'Đã hủy',
   },
   releaseFailed: 'Phát hành thất bại',
-  closeReasons: {
-    STOCK_OUT: 'Kho vật tư hết hàng',
-    SOURCE_ISSUE: 'Lý do từ kho vật tư',
-    REQUEST_ERROR: 'Yêu cầu nhầm',
-    OTHER: 'Khác',
-  },
   common: {
     all: 'Tất cả',
     search: 'Tra cứu',

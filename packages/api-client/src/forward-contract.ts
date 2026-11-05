@@ -722,7 +722,6 @@ export type StockReinstatementResponseForward = Omit<
 
 type StockReinstatementsPath = paths['/logistics/stock-reinstatements'];
 
-
 /**
  * 서버 선행(004 생산 창고 보충, omf-all-around#230 · 설계 계약 replenishment-api.md §1·§2·§4) — 창고 보충.
  * 서버 병합 뒤 `gen:api` 로 다시 만들고 이 덧댐을 걷는다(D-12, T065).
@@ -735,11 +734,7 @@ export type MaterialIssueRequestTypeCode = 'WORK_ORDER' | 'REPLENISHMENT';
 export type ReplenishmentOriginCode = 'DIRECT' | 'AUTO';
 /** 보충 요청 상태(data-model 「상태와 표시」). `displayStatus` 는 003 그대로(완료 · 마감 둘 다 `DONE`). */
 export type ReplenishmentStatusCode =
-  | 'DISPATCHED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'REMAINDER_CLOSED'
-  | 'CANCELLED';
+  'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'REMAINDER_CLOSED' | 'CANCELLED';
 
 /** 한 품목 요청의 수량 합(두 품목 이상이면 null — 단위가 다른 줄을 더하지 않는다). */
 export interface ReplenishmentQtySummary {
@@ -748,8 +743,8 @@ export interface ReplenishmentQtySummary {
   closedQty: number;
   uomCode: string;
 }
-/** 잔량 마감 사유 — 공통코드 `REPLENISHMENT_CLOSE_REASON`. */
-export type ReplenishmentCloseReasonCode = 'STOCK_OUT' | 'SOURCE_ISSUE' | 'REQUEST_ERROR' | 'OTHER';
+/** 잔량 마감 사유 — 공통코드 `REPLENISHMENT_CLOSE_REASON`(고객이 값을 늘린다). */
+export type ReplenishmentCloseReasonCode = string;
 
 /** 보충 요청의 출고 전표 한 장(상세에만, FR-023). */
 export interface ReplenishmentGoodsIssue {
@@ -789,7 +784,19 @@ export interface MaterialIssueRequestDetailForward {
 }
 
 type MaterialIssueRequestsPath = paths['/logistics/material-issue-requests'];
-type MaterialIssueRequestPath = paths['/logistics/material-issue-requests/{materialIssueRequestId}'];
+type MaterialIssueRequestPath =
+  paths['/logistics/material-issue-requests/{materialIssueRequestId}'];
+type PlannedStockPath = paths['/logistics/material-issue-requests/planned-stock'];
+
+/**
+ * 출고 예정 조회 조건 추가(계약 §1, G1 보완) — `includeUnplanned` 는 예정이 없어도 가용 잔액이 있는 쌍을 싣는다
+ * (`sourceWarehouseId` 나 `itemId` 가 함께 있어야 한다). `requestTypeCode` 는 그 유형 요청만 `requests[]` 에 싣는다.
+ */
+export type PlannedStockQueryForward = PlannedStockPath['get']['parameters']['query'] & {
+  includeUnplanned?: boolean;
+  requestTypeCode?: MaterialIssueRequestTypeCode;
+};
+
 type MaterialIssueCancelPath =
   paths['/logistics/material-issue-requests/{materialIssueRequestId}:cancel'];
 
@@ -903,8 +910,8 @@ export interface ReplenishmentSettings {
     warehouseName: string;
     runTime: string | null;
     effectiveRunTime: string;
-    /** 창고 설정 판 번호 — PUT 본문 `versionNo`. */
-    versionNo?: number;
+    /** 창고 설정 판 번호 — PUT 본문 `versionNo`. 0 이면 아직 설정 행이 없다. */
+    versionNo: number;
     lastRun: ReplenishmentLastRun | null;
   }[];
 }
@@ -916,8 +923,7 @@ export interface ReplenishmentWarehouseSettingUpdate {
 
 /** 운영 정책 코드 `REPLENISHMENT_RUN_TIME`(공장 범위, `valueText` `HH:MM`) — 요청 쪽만 넓힌다. */
 export type OperationPolicyCodeForward =
-  | components['schemas']['OperationPolicyCreate']['policyCode']
-  | 'REPLENISHMENT_RUN_TIME';
+  components['schemas']['OperationPolicyCreate']['policyCode'] | 'REPLENISHMENT_RUN_TIME';
 
 type OperationPoliciesPath = paths['/app/operation-policies'];
 
@@ -967,6 +973,14 @@ export interface ForwardPaths {
     post: Omit<MaterialIssueCancelPath['post'], 'responses'> & {
       responses: Omit<MaterialIssueCancelPath['post']['responses'], 200> & {
         200: Json<MaterialIssueRequestDetailForward>;
+      };
+    };
+  };
+  /** 004 — 출고 예정 조회 조건 추가(계약 §1). */
+  '/logistics/material-issue-requests/planned-stock': Omit<PlannedStockPath, 'get'> & {
+    get: Omit<PlannedStockPath['get'], 'parameters'> & {
+      parameters: Omit<PlannedStockPath['get']['parameters'], 'query'> & {
+        query: PlannedStockQueryForward;
       };
     };
   };

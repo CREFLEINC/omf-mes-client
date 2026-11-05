@@ -62,18 +62,27 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
     expect(screen.getByRole('button', { name: tr.submit })).toBeEnabled();
   });
 
-  it('「생산 창고 쓸 수 있는 양」·「자재 창고 남은 수량」은 출고 예정 조회 값이다(관리 품목 아닌 품목도)', async () => {
+  it('US1-7 「생산 창고 쓸 수 있는 양」·「자재 창고 남은 수량」은 창고별 출고 예정 조회(includeUnplanned) 값이고, 행이 없는 쌍은 0 → 빨강 안내', async () => {
     const { user, gets } = setupScreen();
 
     await pickItem(user, 1, 'SYN-IT-3 · 합성 테이프');
     await pickSource(user, 1, '합성 자재창고 1');
     const row = await rowOf(0);
-    /* 생산창고 A 의 테이프: 가용 10 − 예정 0. 자재창고 1 에는 테이프 행이 없어 모른다(—). */
+    await user.type(row.getByRole('textbox', { name: tr.qtyLabel(1) }), '5');
+    /* 생산창고 A 의 테이프: 가용 10 − 예정 0(관리 품목 아닌 품목도). 자재창고 1 에는 테이프 행이 없다 → 0. */
+    await waitFor(() => expect(row.getAllByRole('cell')[5]).toHaveTextContent('0'));
     expect(row.getAllByRole('cell')[4]).toHaveTextContent('10');
-    expect(row.getAllByRole('cell')[5]).toHaveTextContent(t.common.none);
-    expect(
-      gets.some((url) => url.pathname === '/logistics/material-issue-requests/planned-stock'),
-    ).toBe(true);
+    expect(row.getByText(tr.noFree)).toHaveClass('is-error');
+
+    const stockQueries = gets.filter(
+      (url) => url.pathname === '/logistics/material-issue-requests/planned-stock',
+    );
+    expect(stockQueries.every((url) => url.searchParams.get('includeUnplanned') === 'true')).toBe(
+      true,
+    );
+    expect(stockQueries.map((url) => url.searchParams.get('sourceWarehouseId'))).toEqual(
+      expect.arrayContaining(['7001', '7101']),
+    );
   });
 
   it('US1-6 요청 수량이 자재 창고 남은 수량을 넘으면 줄 아래 노랑 안내 「남은 N 까지만, 나머지 M 부족」', async () => {
@@ -148,8 +157,12 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
 
     const result = within(await screen.findByRole('dialog', { name: tr.result.title }));
     expect(result.getByText(tr.result.created(2))).toBeInTheDocument();
-    expect(result.getByText(tr.result.request('합성 자재창고 1', 'SYN-MIR-21', 1))).toBeInTheDocument();
-    expect(result.getByText(tr.result.request('합성 자재창고 2', 'SYN-MIR-22', 1))).toBeInTheDocument();
+    expect(
+      result.getByText(tr.result.request('합성 자재창고 1', 'SYN-MIR-21', 1)),
+    ).toBeInTheDocument();
+    expect(
+      result.getByText(tr.result.request('합성 자재창고 2', 'SYN-MIR-22', 1)),
+    ).toBeInTheDocument();
     expect(result.getByText(tr.result.shortage('SYN-MIR-21', '40'))).toBeInTheDocument();
     expect(result.getByText(tr.result.skipped('SYN-IT-3 합성 테이프', '20'))).toBeInTheDocument();
 
@@ -172,9 +185,7 @@ describe('W-02-12 생산 창고 보충 — 요청 보기', () => {
       respondWrite: () =>
         jsonResponse(
           {
-            errors: [
-              { scope: 'screen', code: 'PLANNED_STOCK_CONFLICT', message: 'conflict' },
-            ],
+            errors: [{ scope: 'screen', code: 'PLANNED_STOCK_CONFLICT', message: 'conflict' }],
             plannedStockConflicts: [],
           },
           { status: 409 },

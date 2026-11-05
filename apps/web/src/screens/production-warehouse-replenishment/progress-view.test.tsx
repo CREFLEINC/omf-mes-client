@@ -17,7 +17,8 @@ const rowOf = async (no: string) => {
   if (found === null) throw new Error(`${no} 줄이 없다`);
   return within(found);
 };
-const panel = async (no: string) => within(await screen.findByRole('dialog', { name: new RegExp(no) }));
+const panel = async (no: string) =>
+  within(await screen.findByRole('dialog', { name: new RegExp(no) }));
 const listQueries = (gets: readonly URL[]) =>
   gets.filter(
     (url) =>
@@ -79,9 +80,9 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
       );
     }
     await waitFor(() =>
-      expect(
-        listQueries(gets).at(-1)?.searchParams.getAll('replenishmentStatus').join(','),
-      ).toBe('DISPATCHED,REMAINDER_CLOSED'),
+      expect(listQueries(gets).at(-1)?.searchParams.getAll('replenishmentStatus').join(',')).toBe(
+        'DISPATCHED,REMAINDER_CLOSED',
+      ),
     );
     expect(listQueries(gets).at(-1)?.searchParams.has('displayStatus')).toBe(false);
   });
@@ -95,7 +96,9 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
     expect(within(rows[0] as HTMLElement).getByText('SYN-GI-91')).toBeInTheDocument();
     /* UTC 로 와도 공장 현지 시각(UTC+7). */
     expect(within(rows[0] as HTMLElement).getByText('11-03 14:20')).toBeInTheDocument();
-    expect(within(rows[0] as HTMLElement).getByText(td.goodsIssues.receivedYes)).toBeInTheDocument();
+    expect(
+      within(rows[0] as HTMLElement).getByText(td.goodsIssues.receivedYes),
+    ).toBeInTheDocument();
     expect(within(rows[1] as HTMLElement).getByText(td.goodsIssues.receivedNo)).toBeInTheDocument();
   });
 
@@ -130,8 +133,11 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
     expect(dialog.getByText(t.closeDialog.reasonRequired)).toBeInTheDocument();
     expect(writesTo(writes, 'POST', ':close-remaining')).toHaveLength(0);
 
+    /* 사유는 공통코드에서 읽는다 — 고객이 더한 사유도 나오고, 쓰지 않는 사유는 없다. */
     await user.click(dialog.getByRole('combobox', { name: t.closeDialog.reason }));
-    await user.click(await screen.findByRole('option', { name: t.closeReasons.STOCK_OUT }));
+    expect(await screen.findByRole('option', { name: '합성 고객 사유' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '합성 지난 사유' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('option', { name: '합성 자재 창고 결품' }));
     await user.type(dialog.getByLabelText(t.closeDialog.remark), '합성 납기 지연');
     await user.click(dialog.getByRole('button', { name: t.closeDialog.submit }));
 
@@ -169,7 +175,7 @@ describe('W-02-12 생산 창고 보충 — 진행 보기', () => {
 
     expect(
       await detail.findByText(
-        `${td.closed('100 KG', '60 KG', t.closeReasons.STOCK_OUT)} 합성 납기 지연 ${td.closedBy('11-05 10:00', '합성 관리자')}`,
+        `${td.closed('100 KG', '60 KG', '합성 자재 창고 결품')} 합성 납기 지연 ${td.closedBy('11-05 10:00', '합성 관리자')}`,
       ),
     ).toBeInTheDocument();
     expect(detail.queryByRole('button', { name: td.closeRemaining })).not.toBeInTheDocument();

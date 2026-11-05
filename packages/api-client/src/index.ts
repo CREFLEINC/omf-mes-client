@@ -78,6 +78,7 @@ export type {
   MaterialIssueRequestListQueryForward,
   MaterialIssueRequestTypeCode,
   OperationPolicyCodeForward,
+  PlannedStockQueryForward,
   OperationPolicyCreateForward,
   ReplenishmentCloseReasonCode,
   ReplenishmentGoodsIssue,

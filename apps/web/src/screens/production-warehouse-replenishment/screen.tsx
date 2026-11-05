@@ -57,8 +57,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
   const go = (next: Partial<ScreenState>): void => {
     setSearchParams(toSearchParams({ ...state, page: 1, id: null, ...next }));
   };
-  const showView = (view: ReplenishmentView, id: number | null = null): void =>
-    go({ view, id });
+  const showView = (view: ReplenishmentView, id: number | null = null): void => go({ view, id });
 
   const viewButton = (view: ReplenishmentView, label: string): ReactNode => (
     <Button
@@ -121,9 +120,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
             onSearch={(progress) => go({ view: 'progress', progress })}
             onReset={() => go({ view: 'progress', progress: EMPTY_PROGRESS })}
             onPage={(page) => go({ view: 'progress', page })}
-            onSelect={(id) =>
-              setSearchParams(toSearchParams({ ...state, view: 'progress', id }))
-            }
+            onSelect={(id) => setSearchParams(toSearchParams({ ...state, view: 'progress', id }))}
           />
         );
       case 'items':

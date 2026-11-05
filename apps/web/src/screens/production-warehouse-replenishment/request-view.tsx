@@ -15,12 +15,12 @@ import { Select } from '../../patterns/select';
 import { useCreateRequest } from './mutations';
 import {
   sourceOptions,
-  stockKey,
+  stockOf,
   useManagedItems,
   usePlannedStock,
   useUomCodes,
   useWarehouses,
-  type StockFigures,
+  type StockLookup,
 } from './queries';
 import { formatQty, hasErrorCode, parseQty } from './types';
 
@@ -62,12 +62,12 @@ export interface LineCheck {
 
 /**
  * 줄 검사(screens/W-02-12.md 보기 1 · 「입력·검증」). 남은 수량은 서버가 다시 계산한다 — 화면 안내는 막지 않는다
- * (US1-6 · US1-7). 남은 수량을 모르면(출고 예정 조회에 그 쌍이 없음) 안내하지 않는다.
+ * (US1-6 · US1-7). 그 창고 조회를 아직 받지 못했으면 안내하지 않는다(받은 창고에 행이 없으면 0).
  */
 export const checkLine = (
   line: DraftLine,
   lines: readonly DraftLine[],
-  stock: ReadonlyMap<string, StockFigures> | undefined,
+  stock: StockLookup,
 ): LineCheck => {
   if (line.itemId === '') return { error: null, cap: null };
   if (line.source === '') return { error: tr.sourceRequired, cap: null };
@@ -78,7 +78,7 @@ export const checkLine = (
       other.key !== line.key && other.itemId === line.itemId && other.source === line.source,
   );
   if (duplicate) return { error: tr.duplicate, cap: null };
-  const free = stock?.get(stockKey(line.source, line.itemId))?.free;
+  const free = stockOf(stock, line.source, line.itemId)?.free;
   if (free === undefined) return { error: null, cap: null };
   if (free <= 0) return { error: null, cap: { tone: 'error', text: tr.noFree } };
   if (qty > free) {
@@ -91,12 +91,8 @@ export const checkLine = (
 };
 
 /** 생산 창고에서 쓸 수 있는 양 = 가용 − 출고 예정(관리 품목 아닌 품목도 같은 값). */
-const usableOf = (
-  stock: ReadonlyMap<string, StockFigures> | undefined,
-  warehouseId: string,
-  itemId: string,
-): number | null => {
-  const figures = stock?.get(stockKey(warehouseId, itemId));
+const usableOf = (stock: StockLookup, warehouseId: string, itemId: string): number | null => {
+  const figures = stockOf(stock, warehouseId, itemId);
   return figures === undefined ? null : figures.available - figures.planned;
 };
 
@@ -107,7 +103,11 @@ export interface RequestViewProps {
 }
 
 /** 보기 1 — 직접 요청(US1). 만들면 서버가 출고 자재 창고별로 나누고 바로 배포한다. */
-export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: RequestViewProps) => {
+export const RequestView = ({
+  plantId,
+  productionWarehouses,
+  onShowProgress,
+}: RequestViewProps) => {
   const noteId = useId();
   const [warehouse, setWarehouse] = useState(String(productionWarehouses[0]?.warehouseId ?? ''));
   const [remarks, setRemarks] = useState('');
@@ -118,7 +118,6 @@ export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: R
   const [sent, setSent] = useState<DraftLine[]>([]);
 
   const warehouses = useWarehouses(plantId);
-  const stock = usePlannedStock(plantId);
   const managed = useManagedItems(plantId, warehouse === '' ? null : Number(warehouse));
   const uoms = useUomCodes();
   const managedOf = (itemId: string): ReplenishmentItem | undefined =>
@@ -161,21 +160,21 @@ export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: R
       const kept = prev.filter((line) => line.itemId !== '');
       const added = below
         .filter((row) => !kept.some((line) => line.itemId === String(row.itemId)))
-        .map(
-          (row): DraftLine => ({
-            ...emptyLine(),
-            itemId: String(row.itemId),
-            itemText: `${row.itemCode} ${row.itemName}`,
-            uomCode: row.uomCode,
-            source: String(row.sourceWarehouseId),
-            qty: String(Math.max(0, row.targetQty - row.usableQty)),
-          }),
-        );
+        .map((row): DraftLine => ({
+          ...emptyLine(),
+          itemId: String(row.itemId),
+          itemText: `${row.itemCode} ${row.itemName}`,
+          uomCode: row.uomCode,
+          source: String(row.sourceWarehouseId),
+          qty: String(Math.max(0, row.targetQty - row.usableQty)),
+        }));
       return [...kept, ...added].length === 0 ? [emptyLine()] : [...kept, ...added];
     });
   };
 
-  const checks = lines.map((line) => checkLine(line, lines, stock.data));
+  /* 생산 창고와 줄마다 고른 출고 자재 창고를 창고별로 묻는다(계약 §1 includeUnplanned). */
+  const stock = usePlannedStock(plantId, [warehouse, ...lines.map((line) => line.source)]);
+  const checks = lines.map((line) => checkLine(line, lines, stock));
   const filled = lines.filter((line) => line.itemId !== '');
   const blocked = filled.length === 0 || checks.some((check) => check.error !== null);
 
@@ -259,11 +258,11 @@ export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: R
               const row = index + 1;
               const check = checks[index] ?? { error: null, cap: null };
               const managedItem = line.itemId === '' ? undefined : managedOf(line.itemId);
-              const usable = line.itemId === '' ? null : usableOf(stock.data, warehouse, line.itemId);
+              const usable = line.itemId === '' ? null : usableOf(stock, warehouse, line.itemId);
               const free =
                 line.itemId === '' || line.source === ''
                   ? undefined
-                  : stock.data?.get(stockKey(line.source, line.itemId))?.free;
+                  : stockOf(stock, line.source, line.itemId)?.free;
               return (
                 <tr key={line.key}>
                   <td>
@@ -319,7 +318,9 @@ export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: R
                     )}
                   </td>
                   <td>{line.uomCode}</td>
-                  <td className="is-number">{usable === null ? t.common.none : formatQty(usable)}</td>
+                  <td className="is-number">
+                    {usable === null ? t.common.none : formatQty(usable)}
+                  </td>
                   <td className="is-number">
                     {free === undefined ? t.common.none : formatQty(free)}
                   </td>
@@ -346,7 +347,11 @@ export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: R
         </table>
       </div>
       <div className="replenishment-actions">
-        <Button variant="outlined" size="sm" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
+        <Button
+          variant="outlined"
+          size="sm"
+          onClick={() => setLines((prev) => [...prev, emptyLine()])}
+        >
           {tr.addLine}
         </Button>
         <Button variant="outlined" size="sm" disabled={managed.isPending} onClick={loadBelow}>
@@ -413,7 +418,10 @@ export const RequestView = ({ plantId, productionWarehouses, onShowProgress }: R
               .filter((request) => (request.shortageQtyTotal ?? 0) > 0)
               .map((request) => (
                 <AlertBanner key={request.materialIssueRequestId} variant="warning">
-                  {tr.result.shortage(request.issueRequestNo, formatQty(request.shortageQtyTotal ?? 0))}
+                  {tr.result.shortage(
+                    request.issueRequestNo,
+                    formatQty(request.shortageQtyTotal ?? 0),
+                  )}
                 </AlertBanner>
               ))}
             {created.skippedLines.length > 0 && (

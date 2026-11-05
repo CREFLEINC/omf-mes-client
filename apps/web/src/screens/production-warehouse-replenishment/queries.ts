@@ -1,19 +1,10 @@
-import type {
-  components,
-  ReplenishmentItem,
-  ReplenishmentSettings,
-} from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { components, ReplenishmentItem, ReplenishmentSettings } from '@omf-mes/api-client';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
-import {
-  toItemQuery,
-  toProgressQuery,
-  type ItemFilters,
-  type ProgressFilters,
-} from './filters';
+import { toItemQuery, toProgressQuery, type ItemFilters, type ProgressFilters } from './filters';
 import {
   toDetailView,
   toRequestView,
@@ -31,11 +22,12 @@ export const PAGE_SIZE = 50;
 export const replenishmentKeys = {
   all: ['production-warehouse-replenishment'] as const,
   plants: ['production-warehouse-replenishment', 'plants'] as const,
-  settings: (plantId: number) => ['production-warehouse-replenishment', 'settings', plantId] as const,
+  settings: (plantId: number) =>
+    ['production-warehouse-replenishment', 'settings', plantId] as const,
   warehouses: (plantId: number) =>
     ['production-warehouse-replenishment', 'warehouses', plantId] as const,
-  plannedStock: (plantId: number) =>
-    ['production-warehouse-replenishment', 'planned-stock', plantId] as const,
+  plannedStock: (plantId: number, warehouseId: string) =>
+    ['production-warehouse-replenishment', 'planned-stock', plantId, warehouseId] as const,
   managed: (plantId: number, warehouseId: number) =>
     ['production-warehouse-replenishment', 'managed', plantId, warehouseId] as const,
   items: (plantId: number, filters: ItemFilters, page: number) =>
@@ -46,6 +38,7 @@ export const replenishmentKeys = {
   detail: (id: number) => ['production-warehouse-replenishment', 'detail', id] as const,
   history: (id: number) => ['production-warehouse-replenishment', 'history', id] as const,
   uoms: ['production-warehouse-replenishment', 'uoms'] as const,
+  closeReasons: ['production-warehouse-replenishment', 'close-reasons'] as const,
 };
 
 export const usePlants = (): UseQueryResult<Plant[]> => {
@@ -132,29 +125,70 @@ export interface StockFigures {
   free: number;
 }
 
-/** (창고, 품목) → 가용 · 예정 · 남은 수량(계약 §1 `planned-stock`, W-02-12 권한 추가). */
+/** 창고별로 받은 (창고, 품목) 수치. 받은 창고만 `loaded` 에 든다. */
+export interface StockLookup {
+  figures: ReadonlyMap<string, StockFigures>;
+  loaded: ReadonlySet<string>;
+}
+
+const ZERO: StockFigures = { available: 0, planned: 0, free: 0 };
+
+/**
+ * (창고, 품목) 가용 · 예정 · 남은 수량(계약 §1 `planned-stock`, G1 보완). 창고마다 `includeUnplanned=true` +
+ * `sourceWarehouseId` 로 부른다 — 예정이 없어도 잔액이 있는 쌍이 오고, 받은 창고에 행이 없는 쌍은 가용 0 · 예정 0 이다.
+ */
 export const usePlannedStock = (
   plantId: number | null,
-): UseQueryResult<ReadonlyMap<string, StockFigures>> => {
+  warehouseIds: readonly string[],
+): StockLookup => {
   const { client } = useApiClient();
-  return useQuery({
-    queryKey: replenishmentKeys.plannedStock(plantId ?? 0),
-    enabled: plantId !== null,
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/logistics/material-issue-requests/planned-stock', {
-          params: { query: { plantId: plantId ?? 0 } },
-        }),
-      );
-      return new Map(
-        data.items.map((row) => [
-          stockKey(row.sourceWarehouseId, row.itemId),
-          { available: row.availableQty, planned: row.plannedQty, free: row.freeQty },
-        ]),
-      );
-    },
+  const ids = [...new Set(warehouseIds.filter((id) => id !== ''))].sort();
+  const results = useQueries({
+    queries: ids.map((warehouseId) => ({
+      queryKey: replenishmentKeys.plannedStock(plantId ?? 0, warehouseId),
+      enabled: plantId !== null,
+      queryFn: async () =>
+        (
+          await runRequest(() =>
+            client.GET('/logistics/material-issue-requests/planned-stock', {
+              params: {
+                query: {
+                  plantId: plantId ?? 0,
+                  sourceWarehouseId: Number(warehouseId),
+                  includeUnplanned: true,
+                },
+              },
+            }),
+          )
+        ).items,
+    })),
   });
+  const figures = new Map<string, StockFigures>();
+  const loaded = new Set<string>();
+  ids.forEach((warehouseId, index) => {
+    const rows = results[index]?.data;
+    if (rows === undefined) return;
+    loaded.add(warehouseId);
+    for (const row of rows) {
+      figures.set(stockKey(row.sourceWarehouseId, row.itemId), {
+        available: row.availableQty,
+        planned: row.plannedQty,
+        free: row.freeQty,
+      });
+    }
+  });
+  return { figures, loaded };
 };
+
+/** 받은 창고면 행이 없어도 0, 아직 못 받았으면 undefined(「—」). */
+export const stockOf = (
+  stock: StockLookup,
+  warehouseId: string,
+  itemId: string,
+): StockFigures | undefined =>
+  stock.loaded.has(warehouseId)
+    ? (stock.figures.get(stockKey(warehouseId, itemId)) ?? ZERO)
+    : undefined;
 
 export const stockKey = (warehouseId: number | string, itemId: number | string): string =>
   `${String(warehouseId)}:${String(itemId)}`;
@@ -317,5 +351,40 @@ export const useUomCodes = (): UseQueryResult<ReadonlyMap<number, string>> => {
           )
         ).items.map((uom) => [uom.uomId, uom.uomCode]),
       ),
+  });
+};
+
+export const CLOSE_REASON_GROUP = 'REPLENISHMENT_CLOSE_REASON';
+
+export interface CloseReasons {
+  /** 고를 수 있는 사유(사용 중, 표시 순서). */
+  options: Option[];
+  /** 코드 → 이름(지난 사유 포함). */
+  names: ReadonlyMap<string, string>;
+}
+
+/** 잔량 마감 사유 — 공통코드 `REPLENISHMENT_CLOSE_REASON`(고객이 값을 늘린다, 계약 §2). */
+export const useCloseReasons = (): UseQueryResult<CloseReasons> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: replenishmentKeys.closeReasons,
+    queryFn: async () => {
+      const items = (
+        await runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: {
+              query: { codeGroupCode: CLOSE_REASON_GROUP, includeInactive: true, size: 100 },
+            },
+          }),
+        )
+      ).items;
+      return {
+        options: items
+          .filter((item) => item.isActive)
+          .sort((left, right) => left.displayOrder - right.displayOrder)
+          .map((item) => ({ value: item.code, label: item.codeName })),
+        names: new Map(items.map((item) => [item.code, item.codeName])),
+      };
+    },
   });
 };

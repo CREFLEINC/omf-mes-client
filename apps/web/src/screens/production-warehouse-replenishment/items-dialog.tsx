@@ -72,7 +72,11 @@ export const ItemDialog = ({ item, settings, warehouses, onClose }: ItemDialogPr
 
   const rangeOk = pointRangeOk(point, target);
   const complete =
-    warehouse !== '' && itemId !== '' && source !== '' && point.trim() !== '' && target.trim() !== '';
+    warehouse !== '' &&
+    itemId !== '' &&
+    source !== '' &&
+    point.trim() !== '' &&
+    target.trim() !== '';
   const blocked = !rangeOk || !complete;
   const touch = (): void => save.reset();
 

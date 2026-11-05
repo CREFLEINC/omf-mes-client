@@ -156,6 +156,42 @@ export const PLANNED_STOCK = {
   })),
 };
 
+/** 잔량 마감 사유 공통코드 — 고객이 더한 사유 하나, 쓰지 않는 사유 하나를 섞는다. */
+export const CLOSE_REASONS = [
+  {
+    codeValueId: 1,
+    codeGroupId: 90,
+    code: 'STOCK_OUT',
+    codeName: '합성 자재 창고 결품',
+    displayOrder: 1,
+    isActive: true,
+  },
+  {
+    codeValueId: 2,
+    codeGroupId: 90,
+    code: 'OTHER',
+    codeName: '합성 기타',
+    displayOrder: 9,
+    isActive: true,
+  },
+  {
+    codeValueId: 3,
+    codeGroupId: 90,
+    code: 'SYN_CUSTOM',
+    codeName: '합성 고객 사유',
+    displayOrder: 5,
+    isActive: true,
+  },
+  {
+    codeValueId: 4,
+    codeGroupId: 90,
+    code: 'SYN_OLD',
+    codeName: '합성 지난 사유',
+    displayOrder: 2,
+    isActive: false,
+  },
+];
+
 export const request = (
   id: number,
   overrides: Partial<MaterialIssueRequestForward> = {},
@@ -211,7 +247,11 @@ export const REQUESTS: MaterialIssueRequestForward[] = [
     receiptSummary: { issuedCount: 1, receivedCount: 1 },
   }),
   request(5, { displayStatus: 'DONE', replenishmentStatus: 'COMPLETED' }),
-  request(6, { displayStatus: 'CANCELLED', statusCode: 'CANCELLED', replenishmentStatus: 'CANCELLED' }),
+  request(6, {
+    displayStatus: 'CANCELLED',
+    statusCode: 'CANCELLED',
+    replenishmentStatus: 'CANCELLED',
+  }),
 ];
 
 const line = (requestId: number, requested: number, picked: number, issued: number) => ({
@@ -301,7 +341,10 @@ export const setupScreen = (options: SetupOptions = {}) => {
       match: (req) => isGet(req, '/logistics/replenishment-settings'),
       respond: () => jsonResponse(options.settings ?? SETTINGS),
     },
-    { match: (req) => isGet(req, '/mdm/warehouses'), respond: () => jsonResponse(page(WAREHOUSES)) },
+    {
+      match: (req) => isGet(req, '/mdm/warehouses'),
+      respond: () => jsonResponse(page(WAREHOUSES)),
+    },
     {
       match: (req) => isGet(req, '/mdm/uoms'),
       respond: () =>
@@ -321,8 +364,20 @@ export const setupScreen = (options: SetupOptions = {}) => {
     },
     { match: (req) => isGet(req, '/mdm/items'), respond: () => jsonResponse(page(ITEMS)) },
     {
+      /* 창고별 조회(includeUnplanned) — 그 창고 행만 돌려준다. */
       match: (req) => isGet(req, '/logistics/material-issue-requests/planned-stock'),
-      respond: () => jsonResponse(PLANNED_STOCK),
+      respond: (req) => {
+        const warehouseId = new URL(req.url).searchParams.get('sourceWarehouseId');
+        return jsonResponse({
+          items: PLANNED_STOCK.items.filter(
+            (row) => warehouseId === null || String(row.sourceWarehouseId) === warehouseId,
+          ),
+        });
+      },
+    },
+    {
+      match: (req) => isGet(req, '/mdm/code-values'),
+      respond: () => jsonResponse(page(CLOSE_REASONS)),
     },
     {
       match: (req) => isGet(req, '/logistics/replenishment-items'),
