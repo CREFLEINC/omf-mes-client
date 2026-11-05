@@ -119,6 +119,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
           <ProgressView
             plantId={plantId}
             productionWarehouses={productionWarehouses}
+            settings={settings.data}
             filters={state.progress}
             page={state.page}
             selectedId={state.id}

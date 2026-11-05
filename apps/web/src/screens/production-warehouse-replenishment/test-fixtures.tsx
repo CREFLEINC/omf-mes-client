@@ -3,6 +3,7 @@ import type {
   MaterialIssueRequestForward,
   ReplenishmentArrival,
   ReplenishmentItem,
+  ReplenishmentRun,
   ReplenishmentSettings,
 } from '@omf-mes/api-client';
 import userEvent from '@testing-library/user-event';
@@ -69,7 +70,12 @@ export const SETTINGS: ReplenishmentSettings = {
       runTime: null,
       effectiveRunTime: '01:00',
       versionNo: 1,
-      lastRun: null,
+      lastRun: {
+        runDate: '2026-11-05',
+        status: 'DONE',
+        finishedAt: '2026-11-04T18:00:30Z',
+        createdRequestCount: 0,
+      },
     },
   ],
 };
@@ -254,6 +260,75 @@ export const ARRIVALS: ReplenishmentArrival[] = [
   }),
 ];
 
+const runLine = (
+  itemId: number,
+  resultCode: ReplenishmentRun['lines'][number]['resultCode'],
+  usableQty: number,
+  requestedQty: number | null = null,
+  shortageQty: number | null = null,
+  issueRequestNo: string | null = null,
+) => ({
+  itemId,
+  itemCode: `SYN-IT-${String(itemId - 600)}`,
+  itemName: `합성 품목 ${String(itemId - 600)}`,
+  resultCode,
+  usableQty,
+  requestedQty,
+  shortageQty,
+  issueRequestNo,
+});
+
+/** 실행 기록 — 창고 A: 11-05 실패, 11-04 완료(기준 아래 4), 창고 B: 11-05 완료(모두 기준 이상). */
+export const RUNS: ReplenishmentRun[] = [
+  {
+    replenishmentRunId: 3,
+    warehouseId: 7001,
+    warehouseCode: 'SYN-PW-A',
+    warehouseName: '합성 생산창고 A',
+    runDate: '2026-11-04',
+    status: 'DONE',
+    startedAt: '2026-11-04T00:00:10Z',
+    finishedAt: '2026-11-04T00:00:30Z',
+    checkedItemCount: 12,
+    createdRequestCount: 2,
+    errorText: null,
+    lines: [
+      runLine(601, 'CREATED', 40, 160, null, 'SYN-MIR-31'),
+      runLine(602, 'SHORTAGE', 40, 100, 60, 'SYN-MIR-32'),
+      runLine(603, 'IN_PROGRESS', 60),
+      runLine(604, 'NO_SOURCE_STOCK', 12),
+    ],
+  },
+  {
+    replenishmentRunId: 5,
+    warehouseId: 7001,
+    warehouseCode: 'SYN-PW-A',
+    warehouseName: '합성 생산창고 A',
+    runDate: '2026-11-05',
+    status: 'FAILED',
+    startedAt: '2026-11-05T00:00:10Z',
+    finishedAt: '2026-11-05T00:00:12Z',
+    checkedItemCount: 0,
+    createdRequestCount: 0,
+    errorText: '출고 자재 창고를 쓰지 않습니다',
+    lines: [],
+  },
+  {
+    replenishmentRunId: 6,
+    warehouseId: 7002,
+    warehouseCode: 'SYN-PW-B',
+    warehouseName: '합성 생산창고 B',
+    runDate: '2026-11-05',
+    status: 'DONE',
+    startedAt: '2026-11-04T18:00:10Z',
+    finishedAt: '2026-11-04T18:00:30Z',
+    checkedItemCount: 5,
+    createdRequestCount: 0,
+    errorText: null,
+    lines: [],
+  },
+];
+
 export const request = (
   id: number,
   overrides: Partial<MaterialIssueRequestForward> = {},
@@ -377,6 +452,8 @@ export interface SetupOptions {
   respondWrite?: (method: string, path: string, body: unknown) => Response | undefined;
   /** 이력에 넣을 사건. */
   history?: unknown[];
+  /** 실행 기록. 없으면 `RUNS`. */
+  runs?: ReplenishmentRun[];
   /** 도착 대기 출고. 없으면 `ARRIVALS`. */
   arrivals?: ReplenishmentArrival[];
 }
@@ -449,6 +526,10 @@ export const setupScreen = (options: SetupOptions = {}) => {
               : CLOSE_REASONS,
           ),
         ),
+    },
+    {
+      match: (req) => isGet(req, '/logistics/replenishment-runs'),
+      respond: () => jsonResponse({ items: options.runs ?? RUNS }),
     },
     {
       match: (req) => isGet(req, '/logistics/replenishment-requests/arrivals'),

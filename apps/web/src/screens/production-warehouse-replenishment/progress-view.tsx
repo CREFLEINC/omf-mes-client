@@ -9,6 +9,7 @@ import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
 import type { ProgressFilters } from './filters';
 import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
+import { RunTable } from './run-table';
 import {
   FILTER_STATUSES,
   formatQty,
@@ -28,6 +29,8 @@ const ORIGINS: readonly ReplenishmentOriginCode[] = ['DIRECT', 'AUTO'];
 export interface ProgressViewProps {
   plantId: number;
   productionWarehouses: ReplenishmentSettings['warehouses'];
+  /** 아래 「자동 보충 실행」 표(실행 시각 · 마지막 실행). */
+  settings: ReplenishmentSettings;
   filters: ProgressFilters;
   page: number;
   selectedId: number | null;
@@ -85,6 +88,7 @@ export const qtyCells = (request: ReplenishmentRequestView): [string, string, st
 export const ProgressView = ({
   plantId,
   productionWarehouses,
+  settings,
   filters,
   page,
   selectedId,
@@ -305,6 +309,7 @@ export const ProgressView = ({
     <>
       {filterBar}
       {body()}
+      <RunTable plantId={plantId} settings={settings} />
       {selectedId !== null && <DetailPanel requestId={selectedId} onClose={() => onSelect(null)} />}
     </>
   );

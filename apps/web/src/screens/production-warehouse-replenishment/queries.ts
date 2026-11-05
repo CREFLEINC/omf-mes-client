@@ -2,6 +2,7 @@ import type {
   components,
   ReplenishmentArrival,
   ReplenishmentItem,
+  ReplenishmentRun,
   ReplenishmentSettings,
 } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
@@ -49,6 +50,8 @@ export const replenishmentKeys = {
   arrivals: (plantId: number, filters: ArrivalFilters, page: number) =>
     ['production-warehouse-replenishment', 'arrivals', plantId, filters, page] as const,
   varianceReasons: ['production-warehouse-replenishment', 'variance-reasons'] as const,
+  runs: (plantId: number, from: string) =>
+    ['production-warehouse-replenishment', 'runs', plantId, from] as const,
   counts: (plantId: number) => ['production-warehouse-replenishment', 'counts', plantId] as const,
   detail: (id: number) => ['production-warehouse-replenishment', 'detail', id] as const,
   history: (id: number) => ['production-warehouse-replenishment', 'history', id] as const,
@@ -462,5 +465,36 @@ export const useVarianceReasons = (): UseQueryResult<Option[]> => {
         .filter((item) => item.isActive)
         .sort((left, right) => left.displayOrder - right.displayOrder)
         .map((item) => ({ value: item.code, label: item.codeName })),
+  });
+};
+
+/** 실행 기록을 받는 기간(일) — 최근 실행과 [기록 보기]가 같은 묶음을 쓴다. */
+export const RUN_LOG_DAYS = 14;
+
+/** `YYYY-MM-DD` 에 날을 더한다(달력 날짜, 시간대와 무관). */
+export const addDays = (iso: string, days: number): string => {
+  const date = new Date(`${iso}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+/** 공장의 자동 보충 실행 기록(계약 §5) — 최근 `RUN_LOG_DAYS` 일. */
+export const useRuns = (
+  plantId: number | null,
+  today: string,
+): UseQueryResult<ReplenishmentRun[]> => {
+  const { client } = useApiClient();
+  const from = addDays(today, -(RUN_LOG_DAYS - 1));
+  return useQuery({
+    queryKey: replenishmentKeys.runs(plantId ?? 0, from),
+    enabled: plantId !== null,
+    queryFn: async () =>
+      (
+        await runRequest(() =>
+          client.GET('/logistics/replenishment-runs', {
+            params: { query: { plantId: plantId ?? 0, runDateFrom: from, runDateTo: today } },
+          }),
+        )
+      ).items,
   });
 };
