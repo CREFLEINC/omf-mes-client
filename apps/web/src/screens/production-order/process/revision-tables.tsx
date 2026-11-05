@@ -1,6 +1,7 @@
-import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText, type Column } from '@crefle/web-ui';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useColumnWidths } from '../../../patterns/column-resize';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import { Select } from '../../../patterns/select';
@@ -94,6 +95,14 @@ const Grid = ({
   total: number;
   paging: ReturnType<typeof useDisplayPage>;
 }) => {
+  const resized = useColumnWidths(
+    `omf-mes:work-planning:revision-columns:${label}`,
+    columns.map((column, index): Column<unknown> => ({
+      key: String(index),
+      header: column,
+      width: `${widths[index]}px`,
+    })),
+  );
   const scroller = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const element = scroller.current;
@@ -119,18 +128,21 @@ const Grid = ({
     <>
       <div
         ref={scroller}
+        style={resized.style}
         className="erp-wo-dense-table-scroll"
         role="region"
         aria-label={`${label} 가로 스크롤 표`}
       >
         <table
           className="erp-wo-dense-table"
-          style={{ minWidth: `max(100%, ${widths.reduce((a, b) => a + b, 0)}px)` }}
+          style={{
+            minWidth: `max(100%, ${resized.columns.reduce((sum, col) => sum + Number.parseFloat(col.width ?? '0'), 0)}px)`,
+          }}
         >
           <caption className="visually-hidden">{label}</caption>
           <colgroup>
-            {widths.map((width, index) => (
-              <col key={index} style={{ width }} />
+            {resized.columns.map((column, index) => (
+              <col key={index} style={{ width: column.width }} />
             ))}
           </colgroup>
           <thead>
@@ -141,7 +153,7 @@ const Grid = ({
                   scope="col"
                   className={index === 0 ? 'fixed-code' : index === 1 ? 'fixed-name' : undefined}
                 >
-                  {column}
+                  {resized.columns[index]?.header}
                 </th>
               ))}
             </tr>

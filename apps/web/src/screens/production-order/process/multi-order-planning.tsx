@@ -1,3 +1,5 @@
+import { AdjustableNativeTable } from './adjustable-table';
+import { AdjustableLayout } from './adjustable-layout';
 import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -414,7 +416,12 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {stage === 'master' && (
           <section className="erp-wo-master-workspace">
             <h2 className="section-title">{messages.erpWorkOrderFlow.process.master.heading}</h2>
-            <div className="erp-wo-master-selection-layout">
+            <AdjustableLayout
+              storageKey="omf-mes:work-planning:erp-wo-layout"
+              label="ERP W/O 목록과 상세"
+              ratio={0.25}
+              className="erp-wo-master-selection-layout"
+            >
               <aside className="erp-wo-master-order-list" aria-label="ERP W/O 목록">
                 {entries.map((entry) => (
                   <Button
@@ -478,7 +485,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   </div>
                 ) : null;
               })()}
-            </div>
+            </AdjustableLayout>
           </section>
         )}
 
@@ -497,18 +504,20 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         )}
         {stage === 'plan' && planView === 'grid' && (
           <section aria-label="선택 ERP W/O" className="pane erp-wo-multi-orders">
-            <table className="erp-wo-master-table">
-              <thead>
-                <tr>
-                  <th>ERP W/O</th>
-                  <th>품목</th>
-                  <th>ERP W/O 수량</th>
-                  <th>확정 계획량</th>
-                  <th>미확정 계획량</th>
-                  <th>미계획 수량</th>
-                  <th>이번 계획 수량</th>
-                </tr>
-              </thead>
+            <AdjustableNativeTable
+              storageKey="omf-mes:work-planning:erp-wo-quantity-columns"
+              className="erp-wo-master-table"
+              widths={[168, 240, 128, 128, 128, 128, 144]}
+              labels={[
+                'ERP W/O',
+                '품목',
+                'ERP W/O 수량',
+                '확정 계획량',
+                '미확정 계획량',
+                '미계획 수량',
+                '이번 계획 수량',
+              ]}
+            >
               <tbody>
                 {entries.map((entry) => (
                   <tr key={entry.order.productionOrderNo}>
@@ -549,7 +558,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </AdjustableNativeTable>
           </section>
         )}
         {stage === 'plan' && !validTargets && (

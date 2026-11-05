@@ -32955,3 +32955,42 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 @media (max-width: 1100px) { .erp-wo-plan-layout { grid-template-columns: minmax(0, 1fr); } }
 @container erp-wo-assign (max-width: 24rem) { .erp-wo-assign-editor .date-time-field-controls { grid-template-columns: minmax(0, 1fr); } }
 .erp-wo-week-table tbody th > span { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+
+/* 기존 표·영역 손잡이와 동일한 배치 조절. 값의 정렬은 머리글과 함께 맞춘다. */
+.erp-wo-adjustable { min-width: 0; display: grid; gap: var(--space-2); }
+.erp-wo-layout-tools { display: flex; justify-content: flex-end; flex-wrap: wrap; }
+.erp-wo-layout-tools .po-board-layout-toggle { display: flex; }
+.erp-wo-adjustable-grid { min-width: 0; display: grid; gap: 0; align-items: start; }
+.erp-wo-adjustable-grid.is-side { grid-template-columns: minmax(0, var(--split-left)) 12px minmax(0, var(--split-right)); }
+.erp-wo-adjustable-grid.is-stacked { grid-template-columns: minmax(0, 1fr); }
+.erp-wo-adjustable-first, .erp-wo-adjustable-second { min-width: 0; max-width: 100%; }
+.erp-wo-adjustable-first > *, .erp-wo-adjustable-second > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.erp-wo-adjustable-grid.is-side > .po-board-gutter { align-self: stretch; display: flex; }
+.erp-wo-adjustable-grid.is-stacked > .erp-wo-adjustable-first { height: var(--stacked-list-height, auto); overflow: auto; }
+.erp-wo-adjustable-grid.is-stacked > .inspection-height-splitter { display: block; }
+.erp-wo-adjustable-grid .erp-wo-plan-editor { position: static; width: 100%; }
+.erp-wo-adjustable-grid .erp-wo-assign-editor { width: 100%; }
+.erp-wo-dense-table th, .erp-wo-dense-table td, .erp-wo-dense-table .numeric,
+.erp-wo-plan-workspace th, .erp-wo-plan-workspace td, .erp-wo-assign-list th, .erp-wo-assign-list td,
+.erp-wo-release-workspace th, .erp-wo-release-workspace td, .erp-wo-master-table th, .erp-wo-master-table td,
+.erp-wo-plan-workspace td input, .erp-wo-release-workspace td input, .erp-wo-master-table td input { text-align: left; }
+.erp-wo-dense-table th { position: relative; }
+.erp-wo-dense-table th.fixed-code, .erp-wo-dense-table th.fixed-name { position: sticky; }
+.erp-wo-adjustable-grid .erp-wo-plan-grid table { min-width: max(42rem, var(--col-floor, 0px)); }
+.erp-wo-adjustable-table { min-width: 0; max-width: 100%; overflow-x: auto; }
+.erp-wo-adjustable-table table { border-collapse: collapse; }
+.erp-wo-adjustable-table th { position: relative; }
+.erp-wo-adjustable-grid > .po-board-gutter { position: relative; width: 12px; min-height: 100px; }
+.erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter { display: block; width: 12px; height: 100%; min-height: 100px; cursor: col-resize; border-inline: 4px solid transparent; background: var(--outline-variant); background-clip: content-box; }
+.erp-wo-adjustable-grid > .inspection-height-splitter { height: 12px; margin: 0; cursor: row-resize; border-block: 4px solid transparent; background: var(--outline-variant); background-clip: content-box; }
+.erp-wo-adjustable-grid > .inspection-height-splitter:hover, .erp-wo-adjustable-grid > .po-board-gutter > .po-board-splitter:hover { background-color: var(--primary); }
+.erp-wo-plan-workspace .erp-wo-week-table { min-width: max(56rem, var(--col-floor, 0px)); }
+.erp-wo-adjustable-grid .erp-wo-week-table thead th > span > span { display: block; }
+@media (max-width: 1000px) { .erp-wo-release-target-table .erp-wo-adjustable-table > table { min-width: 0 !important; } }
+.erp-wo-plan-workspace .erp-wo-week-table thead th,
+.erp-wo-plan-workspace .erp-wo-week-table tbody th,
+.erp-wo-multi-body .erp-wo-master-table th,
+.erp-wo-multi-body .erp-wo-master-table td { text-align: left; }
+.erp-wo-layout-tools[hidden] { display: none; }
+.erp-wo-adjustable-second > .erp-wo-release-layout { display: grid; grid-template-columns: minmax(0, 1fr); container-type: inline-size; container-name: release-details; }
+@container release-details (max-width: 30rem) { .erp-wo-release-detail .erp-wo-release-summary { grid-template-columns: minmax(0, 1fr); } }

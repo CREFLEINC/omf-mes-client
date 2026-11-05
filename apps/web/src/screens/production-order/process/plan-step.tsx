@@ -10,9 +10,10 @@ import {
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
+import { AdjustableLayout } from './adjustable-layout';
+import { AdjustableTable, AdjustableNativeTable } from './adjustable-table';
 import { plantToday } from '../../../patterns/plant-time';
 import { ReferenceField } from '../../../patterns/reference-picker';
-import { SelectableTable } from '../../../patterns/selectable-table';
 import type {
   ProductionPlanDraftErrors,
   ProductionPlanDraftField,
@@ -279,7 +280,12 @@ export const PlanStep = ({
           </ul>
         </AlertBanner>
       )}
-      <div className="erp-wo-plan-layout">
+      <AdjustableLayout
+        storageKey="omf-mes:work-planning:plan-layout"
+        label="생산계획"
+        ratio={0.65}
+        className="erp-wo-plan-layout"
+      >
         <section
           className="pane erp-wo-plan-board"
           aria-label={view === 'week' ? ui.week : ui.grid}
@@ -288,7 +294,8 @@ export const PlanStep = ({
             {view === 'week' ? ui.weekHeading : ui.gridHeading}
           </h2>
           {view === 'grid' ? (
-            <SelectableTable
+            <AdjustableTable
+              storageKey="omf-mes:work-planning:plan-columns"
               className="erp-wo-plan-grid"
               columns={columns}
               rows={rows}
@@ -324,19 +331,20 @@ export const PlanStep = ({
                 </div>
               </div>
               <div className="erp-wo-week-scroll">
-                <table className="erp-wo-week-table">
-                  <caption className="visually-hidden">{ui.week}</caption>
-                  <thead>
-                    <tr>
-                      <th>{t.columns.line}</th>
-                      {week.map((date, index) => (
-                        <th key={date}>
-                          {date.slice(5)}
-                          <span>{ui.weekdays[index]}</span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+                <AdjustableNativeTable
+                  storageKey="omf-mes:work-planning:week-columns"
+                  className="erp-wo-week-table"
+                  widths={[144, 112, 112, 112, 112, 112, 112, 112]}
+                  labels={[
+                    t.columns.line,
+                    ...week.map((date, index) => (
+                      <span key={date}>
+                        {date.slice(5)}
+                        <span>{ui.weekdays[index]}</span>
+                      </span>
+                    )),
+                  ]}
+                >
                   <tbody>
                     {groups.map((group) => (
                       <tr key={group}>
@@ -375,7 +383,7 @@ export const PlanStep = ({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </AdjustableNativeTable>
               </div>
               {rows.length === 0 && <p className="empty-line">{t.empty}</p>}
               {outsideWeek.length > 0 && (
@@ -527,7 +535,7 @@ export const PlanStep = ({
             </>
           )}
         </section>
-      </div>
+      </AdjustableLayout>
     </section>
   );
 };

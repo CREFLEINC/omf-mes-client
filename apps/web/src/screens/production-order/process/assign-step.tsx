@@ -2,7 +2,8 @@ import { Button, Chip, Dialog, EmptyState, SkeletonText, type Column } from '@cr
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
-import { SelectableTable } from '../../../patterns/selectable-table';
+import { AdjustableTable } from './adjustable-table';
+import { AdjustableLayout } from './adjustable-layout';
 import { AssignEditor } from './assign-editor';
 import { formatQty, nextIncompleteId } from './process-model';
 import type { OrderWorkOrder } from './queries';
@@ -88,56 +89,66 @@ export const AssignStep = ({
   };
 
   return (
-    <div className="erp-wo-assign-layout">
-      <section className="pane erp-wo-assign-list" aria-label={t.listHeading}>
-        <h2 className="section-title">
-          {t.listHeading} <span className="erp-wo-assign-count">{workOrders.length}</span>
-        </h2>
-        <p className="field-note erp-wo-assignment-progress">
-          배정 완료 후 다음 미완료 작업지시를 자동 선택합니다.
-        </p>
-        <SelectableTable
-          columns={columns}
-          rows={workOrders}
-          getRowId={(row) => String(row.workOrderId)}
-          activeId={selectedId === null ? null : String(selectedId)}
-          rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
-          onActivate={(row) => {
-            if (row.workOrderId === selectedId) return;
-            if (dirty) setPending(row.workOrderId);
-            else onSelect(row.workOrderId);
-          }}
-          empty={<EmptyState size="sm" title={t.empty} />}
-        />
-      </section>
-      <section
-        className="pane erp-wo-assign-editor"
-        aria-label={selected === undefined ? t.editorHeading : t.editorLabel(selected.workOrderNo)}
+    <>
+      <AdjustableLayout
+        storageKey="omf-mes:work-planning:assign-layout"
+        label="작업지시 목록과 4M 배정"
+        ratio={0.36}
+        className="erp-wo-assign-layout"
       >
-        {selected === undefined ? (
-          <EmptyState size="sm" title={t.selectPrompt} />
-        ) : (
-          <AssignEditor
-            actionTargetId={actionTargetId}
-            summary={`${itemLabel ? `${itemLabel} / ` : ''}${lineNameOf?.(selected.productionLineId ?? null) ?? ''} / ${planDateOf(selected.productionPlanId) ?? '—'} / ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
-            key={selected.workOrderId}
-            title={t.editorTitle(selected.workOrderNo, selected.operationName)}
-            workOrderId={selected.workOrderId}
-            plantId={plantId}
-            planDate={planDateOf(selected.productionPlanId)}
-            onDirtyChange={changeDirty}
-            onSaved={(ready) => {
-              const next = nextIncompleteId(
-                workOrders.map((item) => item.workOrderId),
-                blockedIds,
-                selected.workOrderId,
-                ready,
-              );
-              if (next !== null) onSelect(next);
+        <section className="pane erp-wo-assign-list" aria-label={t.listHeading}>
+          <h2 className="section-title">
+            {t.listHeading} <span className="erp-wo-assign-count">{workOrders.length}</span>
+          </h2>
+          <p className="field-note erp-wo-assignment-progress">
+            배정 완료 후 다음 미완료 작업지시를 자동 선택합니다.
+          </p>
+          <AdjustableTable
+            storageKey="omf-mes:work-planning:assign-columns"
+            columns={columns}
+            rows={workOrders}
+            getRowId={(row) => String(row.workOrderId)}
+            activeId={selectedId === null ? null : String(selectedId)}
+            rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
+            onActivate={(row) => {
+              if (row.workOrderId === selectedId) return;
+              if (dirty) setPending(row.workOrderId);
+              else onSelect(row.workOrderId);
             }}
+            empty={<EmptyState size="sm" title={t.empty} />}
           />
-        )}
-      </section>
+        </section>
+        <section
+          className="pane erp-wo-assign-editor"
+          aria-label={
+            selected === undefined ? t.editorHeading : t.editorLabel(selected.workOrderNo)
+          }
+        >
+          {selected === undefined ? (
+            <EmptyState size="sm" title={t.selectPrompt} />
+          ) : (
+            <AssignEditor
+              actionTargetId={actionTargetId}
+              summary={`${itemLabel ? `${itemLabel} / ` : ''}${lineNameOf?.(selected.productionLineId ?? null) ?? ''} / ${planDateOf(selected.productionPlanId) ?? '—'} / ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
+              key={selected.workOrderId}
+              title={t.editorTitle(selected.workOrderNo, selected.operationName)}
+              workOrderId={selected.workOrderId}
+              plantId={plantId}
+              planDate={planDateOf(selected.productionPlanId)}
+              onDirtyChange={changeDirty}
+              onSaved={(ready) => {
+                const next = nextIncompleteId(
+                  workOrders.map((item) => item.workOrderId),
+                  blockedIds,
+                  selected.workOrderId,
+                  ready,
+                );
+                if (next !== null) onSelect(next);
+              }}
+            />
+          )}
+        </section>
+      </AdjustableLayout>
       {pending !== null && (
         <Dialog
           open
@@ -164,6 +175,6 @@ export const AssignStep = ({
           <p className="dialog-text">{t.discard.body}</p>
         </Dialog>
       )}
-    </div>
+    </>
   );
 };

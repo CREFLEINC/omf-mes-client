@@ -1,3 +1,5 @@
+import { AdjustableLayout } from './adjustable-layout';
+import { AdjustableNativeTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
 import { AlertBanner, Button, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
@@ -110,142 +112,148 @@ export const ReleaseStep = ({
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
       <p className="erp-wo-release-scope">{t.scopeHelp}</p>
-      <section className="pane erp-wo-release-targets" aria-label="배포 대상 및 LOT 설정">
-        <h3 className="section-title">배포 대상 및 LOT 설정</h3>
-        <div className="erp-wo-release-target-table">
-          <table>
-            <thead>
-              <tr>
-                {[
-                  '작업지시 · 공정',
-                  '계획일 · 생산 라인',
-                  t.columns.orderQty,
-                  t.columns.lotSize,
-                  t.columns.lotCount,
-                ].map((label) => (
-                  <th key={label}>{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line) => {
-                const target = line.workOrder;
-                return (
-                  <tr
-                    key={target.workOrderId}
-                    data-selected={target.workOrderId === wo.workOrderId}
-                  >
-                    <td data-label="작업지시 · 공정">
-                      <Button
-                        variant="text"
-                        size="sm"
-                        aria-label={`${target.workOrderNo} 상세 확인`}
-                        aria-pressed={target.workOrderId === wo.workOrderId}
-                        onClick={() => setSelectedId(String(target.workOrderId))}
-                      >
-                        {target.workOrderNo}
-                      </Button>
-                      <p>{target.operationName}</p>
-                    </td>
-                    <td data-label="계획일 · 생산 라인">
-                      {planDateOf?.(target.productionPlanId) ?? '—'}
-                      <p>{lineNameOf?.(target.productionLineId ?? null) ?? '—'}</p>
-                    </td>
-                    <td data-label={t.columns.orderQty}>
-                      {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
-                    </td>
-                    <td data-label={t.columns.lotSize}>
-                      <TextField
-                        size="sm"
-                        inputMode="decimal"
-                        aria-label={t.lotSizeLabel(target.workOrderNo)}
-                        value={line.lotSizeText}
-                        error={line.touched || revealErrors ? (line.error ?? undefined) : undefined}
-                        onChange={(event) =>
-                          onLotSizeChange(target.workOrderId, event.target.value)
-                        }
-                      />
-                      <span className="field-note">{uomLabelOf(target.uomId)}</span>
-                    </td>
-                    <td data-label={t.columns.lotCount}>
-                      {line.lotCount == null ? '—' : `${line.lotCount}개`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <div className="erp-wo-release-layout">
-        <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
-          <summary>
-            선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
-          </summary>
-          <dl className="erp-wo-release-summary">
-            <div>
-              <dt>{t.orderNo}</dt>
-              <dd>{orderNo ?? '—'}</dd>
-            </div>
-            <div>
-              <dt>{t.item}</dt>
-              <dd>{itemLabel ?? '—'}</dd>
-            </div>
-            <div>
-              <dt>{t.columns.operation}</dt>
-              <dd>{wo.operationName}</dd>
-            </div>
-            <div>
-              <dt>{t.columns.orderQty}</dt>
-              <dd>
-                {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
-              </dd>
-            </div>
-            <div>
-              <dt>{t.planDate}</dt>
-              <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
-            </div>
-            <div>
-              <dt>{t.line}</dt>
-              <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
-            </div>
-          </dl>
-        </details>
-        {plantId != null && (
-          <details className="pane erp-wo-release-terminals">
-            <summary>연결 단말기 확인</summary>
-            <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
-          </details>
-        )}
-        <section className="erp-wo-release-effects">
-          <div className="pane">
-            <div className="erp-wo-release-notice">
-              <h3 className="section-title">배포 시 반영 사항</h3>
-              <ul>
-                <li>{t.effects.status(lines.length)}</li>
-                <li>
-                  {lines.some((line) => line.lotCount === null)
-                    ? t.lotsPending
-                    : t.effects.lots(totalLots)}
-                </li>
-                <li>{t.effects.materials}</li>
-                <li>{t.effects.picking}</li>
-                <li>{t.effects.pqc}</li>
-              </ul>
-              <p>{t.irreversible}</p>
-            </div>
+      <AdjustableLayout
+        storageKey="omf-mes:work-planning:release-layout"
+        label="배포 확인"
+        initial="stack"
+        ratio={0.6}
+      >
+        <section className="pane erp-wo-release-targets" aria-label="배포 대상 및 LOT 설정">
+          <h3 className="section-title">배포 대상 및 LOT 설정</h3>
+          <div className="erp-wo-release-target-table">
+            <AdjustableNativeTable
+              storageKey="omf-mes:work-planning:release-columns"
+              widths={[220, 220, 120, 160, 120]}
+              labels={[
+                '작업지시 · 공정',
+                '계획일 · 생산 라인',
+                t.columns.orderQty,
+                t.columns.lotSize,
+                t.columns.lotCount,
+              ]}
+            >
+              <tbody>
+                {lines.map((line) => {
+                  const target = line.workOrder;
+                  return (
+                    <tr
+                      key={target.workOrderId}
+                      data-selected={target.workOrderId === wo.workOrderId}
+                    >
+                      <td data-label="작업지시 · 공정">
+                        <Button
+                          variant="text"
+                          size="sm"
+                          aria-label={`${target.workOrderNo} 상세 확인`}
+                          aria-pressed={target.workOrderId === wo.workOrderId}
+                          onClick={() => setSelectedId(String(target.workOrderId))}
+                        >
+                          {target.workOrderNo}
+                        </Button>
+                        <p>{target.operationName}</p>
+                      </td>
+                      <td data-label="계획일 · 생산 라인">
+                        {planDateOf?.(target.productionPlanId) ?? '—'}
+                        <p>{lineNameOf?.(target.productionLineId ?? null) ?? '—'}</p>
+                      </td>
+                      <td data-label={t.columns.orderQty}>
+                        {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
+                      </td>
+                      <td data-label={t.columns.lotSize}>
+                        <TextField
+                          size="sm"
+                          inputMode="decimal"
+                          aria-label={t.lotSizeLabel(target.workOrderNo)}
+                          value={line.lotSizeText}
+                          error={
+                            line.touched || revealErrors ? (line.error ?? undefined) : undefined
+                          }
+                          onChange={(event) =>
+                            onLotSizeChange(target.workOrderId, event.target.value)
+                          }
+                        />
+                        <span className="field-note">{uomLabelOf(target.uomId)}</span>
+                      </td>
+                      <td data-label={t.columns.lotCount}>
+                        {line.lotCount == null ? '—' : `${line.lotCount}개`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </AdjustableNativeTable>
           </div>
-          {failures.length > 0 && (
-            <AlertBanner variant="error">
-              <ul className="erp-wo-release-failures">
-                {failures.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </AlertBanner>
-          )}
         </section>
-      </div>
+        <div className="erp-wo-release-layout">
+          <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+            <summary>
+              선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
+            </summary>
+            <dl className="erp-wo-release-summary">
+              <div>
+                <dt>{t.orderNo}</dt>
+                <dd>{orderNo ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t.item}</dt>
+                <dd>{itemLabel ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t.columns.operation}</dt>
+                <dd>{wo.operationName}</dd>
+              </div>
+              <div>
+                <dt>{t.columns.orderQty}</dt>
+                <dd>
+                  {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
+                </dd>
+              </div>
+              <div>
+                <dt>{t.planDate}</dt>
+                <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{t.line}</dt>
+                <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
+              </div>
+            </dl>
+          </details>
+          {plantId != null && (
+            <details className="pane erp-wo-release-terminals">
+              <summary>연결 단말기 확인</summary>
+              <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
+            </details>
+          )}
+          <section className="erp-wo-release-effects">
+            <div className="pane">
+              <div className="erp-wo-release-notice">
+                <h3 className="section-title">배포 시 반영 사항</h3>
+                <ul>
+                  <li>{t.effects.status(lines.length)}</li>
+                  <li>
+                    {lines.some((line) => line.lotCount === null)
+                      ? t.lotsPending
+                      : t.effects.lots(totalLots)}
+                  </li>
+                  <li>{t.effects.materials}</li>
+                  <li>{t.effects.picking}</li>
+                  <li>{t.effects.pqc}</li>
+                </ul>
+                <p>{t.irreversible}</p>
+              </div>
+            </div>
+            {failures.length > 0 && (
+              <AlertBanner variant="error">
+                <ul className="erp-wo-release-failures">
+                  {failures.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </AlertBanner>
+            )}
+          </section>
+        </div>
+      </AdjustableLayout>
     </div>
   );
 };

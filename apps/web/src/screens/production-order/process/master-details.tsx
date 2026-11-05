@@ -2,6 +2,7 @@ import { Button } from '@crefle/web-ui';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useRoutingOperations } from '../../routing/queries';
+import { AdjustableLayout } from './adjustable-layout';
 import { BomTable, RoutingTable } from './revision-tables';
 
 const readableRevision = (label: string) => label.replace(/\bRev\.?\s*/g, '개정 ');
@@ -35,7 +36,12 @@ export const MasterDetails = ({
   const operations = useRoutingOperations(candidate ? Number(preview) : null);
   const applied = options.find((option) => option.value === routingId);
   return (
-    <div className="erp-wo-master-details">
+    <AdjustableLayout
+      storageKey="omf-mes:work-planning:bom-routing"
+      label="BOM Routing"
+      initial="stack"
+      className="erp-wo-master-details"
+    >
       <section className="pane erp-wo-inline-revision" aria-label="BOM 상세 정보">
         <div className="section-heading-row">
           <h2 className="section-title">BOM 구성</h2>
@@ -117,6 +123,6 @@ export const MasterDetails = ({
           <p>사용 가능한 Routing이 없습니다.</p>
         )}
       </section>
-    </div>
+    </AdjustableLayout>
   );
 };
