@@ -96,8 +96,13 @@ export const PlanPane = ({
   const itemErrorId = useId();
   const itemOption = itemOptions.find((option) => option.value === values.itemId) ?? null;
   const routingId = useId();
-  const routingHintId = useId();
-  const isRoutingShown = routingDisabledReason === null;
+  const routingRevision = routingRevisions.find(
+    (revision) => revision.routingId === values.routingId,
+  );
+  /* 라우팅이 없는 품목이면 칸을 두지 않는다(사용자 지시 2026-11-05) — 오류가 있으면 오류는 보인다. */
+  const isRoutingShown =
+    routingDisabledReason === null &&
+    (routingRevision !== undefined || fieldErrors.routingId !== undefined);
 
   /*
    * 비어 있는 필수 칸은 처음부터 테두리만 빨갛게 한다(사용자 지시 2026-11-04) — 「필수 입력 항목입니다」 글은 화면에
@@ -234,14 +239,7 @@ export const PlanPane = ({
          * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
         <div className="field-cell search-select-cell">
-          {/* 품목을 고르기 전에는 라우팅 칸 대신 품목 이름 오른쪽에 안내를 둔다(사용자 지시 2026-11-04). */}
-          <FieldLabel
-            htmlFor={itemId}
-            label={t.fields.item}
-            {...(routingDisabledReason !== null
-              ? { hint: routingDisabledReason, hintId: routingHintId }
-              : {})}
-          />
+          <FieldLabel htmlFor={itemId} label={t.fields.item} />
           <ItemSelect
             id={itemId}
             selectedOption={itemOption}
@@ -260,7 +258,7 @@ export const PlanPane = ({
         </div>
 
         {/*
-         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내는 품목 이름 오른쪽).
+         * 라우팅은 품목에 딸려 있다 — 품목을 고르기 전에는 칸 전체를 두지 않는다(안내 문구도 두지 않는다 · 사용자 지시 2026-11-05).
          * 고르는 칸이 아니라 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04).
          */}
         {isRoutingShown && (
@@ -270,11 +268,7 @@ export const PlanPane = ({
             </span>
             {/* 입력칸 모양도 두지 않는다 — 값 글자만(사용자 지시 2026-11-04). */}
             <p className="inspection-standard-plan-routing" aria-labelledby={routingId}>
-              <RoutingSummary
-                revision={routingRevisions.find(
-                  (revision) => revision.routingId === values.routingId,
-                )}
-              />
+              <RoutingSummary revision={routingRevision} />
             </p>
             {fieldErrors.routingId !== undefined && (
               <span className="field-error">{fieldErrors.routingId}</span>

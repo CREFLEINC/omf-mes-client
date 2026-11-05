@@ -105,12 +105,15 @@ export const PlanDetailHead = ({
             )}
           </dd>
         </div>
-        <div>
-          <dt className="field-label">{t.fields.routing}</dt>
-          <dd className="inspection-standard-plan-routing-fact">
-            <RoutingSummary revision={routingRevision} />
-          </dd>
-        </div>
+        {/* 라우팅이 없으면 칸을 두지 않는다(사용자 지시 2026-11-05). */}
+        {routingRevision !== undefined && (
+          <div>
+            <dt className="field-label">{t.fields.routing}</dt>
+            <dd className="inspection-standard-plan-routing-fact">
+              <RoutingSummary revision={routingRevision} />
+            </dd>
+          </div>
+        )}
       </dl>
     </div>
   );

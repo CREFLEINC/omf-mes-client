@@ -158,20 +158,26 @@ describe('PlanPane — 잠금과 사유', () => {
     expect(code).toHaveAttribute('aria-describedby', hint.id);
   });
 
-  /*
-   * 계약의 라우팅 조회가 품목을 필수로 둔다 — 품목을 고르기 전에는 라우팅 칸 전체를 두지 않고
-   * 품목 이름 오른쪽에 안내를 둔다(사용자 지시 2026-11-04).
-   */
-  it('품목을 고르지 않으면 라우팅 칸이 없고 품목 이름 옆에 안내가 있다', () => {
+  /* 품목을 고르기 전에는 라우팅 칸도 안내 문구도 두지 않는다(사용자 지시 2026-11-05). */
+  it('품목을 고르지 않으면 라우팅 칸과 안내가 없다', () => {
     renderPane({
       values: { ...planToFormValues(inspectionPlanFixtures[0]!), itemId: '' },
       routingDisabledReason: '품목을 선택하면 라우팅이 표시됩니다.',
     });
 
     expect(screen.queryByText('라우팅')).not.toBeInTheDocument();
-    const hint = screen.getByText('품목을 선택하면 라우팅이 표시됩니다.');
-    expect(hint).toHaveClass('inspection-standard-label-hint');
-    expect(hint.closest('.field-label')).toHaveTextContent('품목');
+    expect(screen.queryByText('품목을 선택하면 라우팅이 표시됩니다.')).not.toBeInTheDocument();
+  });
+
+  /* 라우팅이 없는 품목이면 칸을 두지 않는다(사용자 지시 2026-11-05). */
+  it('품목에 라우팅이 없으면 라우팅 칸이 없다', () => {
+    renderPane({
+      values: { ...planToFormValues(inspectionPlanFixtures[0]!), routingId: '' },
+      routingRevisions: [],
+      autoRoutingId: null,
+    });
+
+    expect(screen.queryByText('라우팅')).not.toBeInTheDocument();
   });
 
   /* 라우팅은 고르지 않는다 — 자동으로 채운 Rev 를 글자로만 보인다(사용자 지시 2026-11-04). */

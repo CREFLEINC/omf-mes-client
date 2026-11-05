@@ -1268,7 +1268,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 
     await awaitPlanForm();
     expect(screen.queryByLabelText('라우팅')).not.toBeInTheDocument();
-    expect(screen.getByText('품목을 선택하면 라우팅이 표시됩니다.')).toBeInTheDocument();
+    expect(screen.queryByText('품목을 선택하면 라우팅이 표시됩니다.')).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
 
