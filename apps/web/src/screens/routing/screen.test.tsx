@@ -972,7 +972,7 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     /* 옆 「검사 기준 수정」은 그 기준을 검사 기준 화면에서 연다(사용자 지시 2026-11-05). */
     await user.click(within(headerRegion()).getByRole('button', { name: '검사 기준 수정' }));
     expect(router?.state.location.pathname).toBe('/master-data/inspection-standard');
-    expect(router?.state.location.search).toBe('?plan=3101');
+    expect(router?.state.location.search).toBe('?plan=3101&edit=1');
   });
 
   it('품목 PQC 검사 기준이 없으면 PQC 대상이 아니라고 보이고 「검사 기준 등록」으로 등록 창을 연다', async () => {

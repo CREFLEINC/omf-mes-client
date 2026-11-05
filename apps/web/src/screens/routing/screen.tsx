@@ -96,7 +96,7 @@ interface OperationDialogState {
 
 const t = messages.routing;
 
-/** 검사 기준 화면 — 「PQC 검사 기준」 옆 단추가 이 주소로 옮긴다(`plan` · `new` · `newItem` 은 그 화면의 주소 칸이다). */
+/** 검사 기준 화면 — 「PQC 검사 기준」 옆 단추가 이 주소로 옮긴다(`plan` · `edit` · `new` · `newItem` 은 그 화면의 주소 칸이다). */
 const INSPECTION_STANDARD_PATH = '/master-data/inspection-standard';
 
 /** 바뀌면 편집 대상이 바뀌는 질의 — 품목과 Rev. */
@@ -771,7 +771,7 @@ const RoutingWorkspace = () => {
       : {
           label: t.actions.editPqcPlan,
           onClick: () =>
-            navigate(`${INSPECTION_STANDARD_PATH}?plan=${String(plan.inspectionPlanId)}`),
+            navigate(`${INSPECTION_STANDARD_PATH}?plan=${String(plan.inspectionPlanId)}&edit=1`),
         };
   })();
 

@@ -239,6 +239,8 @@ const withPairedFields = (changed: string[]): string[] => [
 /** 「기준 추가」 창을 미리 채워 여는 주소 키 — 부품 IQC 화면의 「검사기준 설정」이 쓴다(#225). */
 const NEW_PLAN_TYPE_KEY = 'new';
 const NEW_PLAN_ITEM_KEY = 'newItem';
+/** 다른 화면이 「검사 기준 수정」으로 보낸 주소(`?plan=…&edit=1`) — 그 기준의 「기본 정보 수정」 창을 바로 연다(사용자 지시 2026-11-05). */
+const EDIT_PLAN_KEY = 'edit';
 
 /**
  * W-06-02 컨테이너 — 기준 목록 → 버전 목록 → 기준·버전·항목을 3단으로 놓는다.
@@ -884,6 +886,15 @@ export const InspectionStandardScreen = () => {
       inspectionTypeCode: newType,
       itemId: /^\d+$/.test(newItem) ? newItem : '',
     });
+  }, [searchParams]);
+
+  /* 한 번 열면 그 키를 주소에서 지운다 — 새로고침에 다시 뜨지 않게. 창은 상세를 받은 뒤 그 안에서 선다. */
+  useEffect(() => {
+    if (searchParams.get(EDIT_PLAN_KEY) === null) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete(EDIT_PLAN_KEY);
+    setSearchParams(next, { replace: true });
+    if (selectedPlanId !== null) setIsPlanEditOpen(true);
   }, [searchParams]);
 
   /**

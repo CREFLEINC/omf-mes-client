@@ -1302,6 +1302,17 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     expect(router?.state.location.search).toBe('?item=5001&rev=7003');
   });
 
+  /* 라우팅 화면 「검사 기준 수정」이 보낸 주소 — 그 기준의 「기본 정보 수정」 창을 바로 연다(사용자 보고 2026-11-05). */
+  it('주소에 edit=1 이 있으면 기본 정보 수정 창을 열고 그 키를 지운다', async () => {
+    const { router } = renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), ...lookupRoutes()],
+      '?plan=3002&edit=1',
+    );
+
+    expect(await screen.findByRole('dialog', { name: '기본 정보 수정' })).toBeInTheDocument();
+    expect(router?.state.location.search).toBe('?plan=3002');
+  });
+
   it('전 품목 공통 기준에는 「라우팅 보기」가 없다', async () => {
     renderScreen(
       [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
