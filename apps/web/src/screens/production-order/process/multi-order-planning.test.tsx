@@ -239,10 +239,11 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
       await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
       const first = within(list).getAllByRole('button')[0]!;
-      expect(within(first).getByText('품목코드', { exact: true })).toBeVisible();
-      expect(within(first).getByText('ITEM1', { exact: true })).toBeVisible();
-      expect(within(first).getByText('품목명', { exact: true })).toBeVisible();
-      expect(within(first).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
+      const row = first.closest('tr')!;
+      expect(within(list).getByRole('columnheader', { name: '품목코드' })).toBeVisible();
+      expect(within(row).getByText('ITEM1', { exact: true })).toBeVisible();
+      expect(within(list).getByRole('columnheader', { name: '품목명' })).toBeVisible();
+      expect(within(row).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
     } finally {
@@ -255,7 +256,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
     const buttons = within(list).getAllByRole('button');
     await userEvent.setup().click(buttons[1]!);
-    expect(buttons[1]).toHaveAttribute('aria-pressed', 'true');
+    expect(buttons[1]).toHaveAttribute('aria-current', 'true');
     const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
     expect(within(detail).getByText('B', { exact: true })).toBeVisible();
     expect(within(detail).queryByText('A', { exact: true })).toBeNull();
@@ -301,7 +302,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       within(screen.getByRole('complementary', { name: 'ERP W/O 목록' })).getByRole('button', {
         name: /^B/,
       }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    ).toHaveAttribute('aria-current', 'true');
 
     expect(server.writes.filter((w) => w.match !== null).map((w) => w.match)).toEqual([
       '1',

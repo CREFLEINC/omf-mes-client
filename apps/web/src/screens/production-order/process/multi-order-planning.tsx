@@ -1,9 +1,19 @@
+import { BoardTable } from '../../../patterns/board-table';
 import { AdjustableNativeTable } from './adjustable-table';
 import { AdjustableLayout } from './adjustable-layout';
 import { MasterDetails } from './master-details';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { AlertBanner, Button, Dialog, Icon, SkeletonText, Tabs, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  type Column,
+  Dialog,
+  Icon,
+  SkeletonText,
+  Tabs,
+  TextField,
+} from '@crefle/web-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { ActionBar } from '../../../patterns/action-bar';
@@ -67,32 +77,77 @@ const ErpWorkOrderList = ({
   disabled: boolean;
   showReadiness?: boolean;
   onSelect: (value: string) => void;
-}) => (
-  <aside className="erp-wo-master-order-list" aria-label="ERP W/O 목록">
-    {entries.map((entry) => (
-      <Button
-        key={entry.order.productionOrderNo}
-        variant="outlined"
-        disabled={disabled}
-        aria-pressed={selected === entry.order.productionOrderNo}
-        onClick={() => onSelect(entry.order.productionOrderNo)}
-      >
-        <strong>{entry.order.productionOrderNo}</strong>
-        <span className="erp-wo-item-field">
-          <span className="erp-wo-item-field-label">품목코드</span>
-          <span>{entry.itemCode}</span>
-        </span>
-        <span className="erp-wo-item-field">
-          <span className="erp-wo-item-field-label">품목명</span>
-          <span>{entry.itemName}</span>
-        </span>
-        <span>
-          {entry.order.orderQty} {entry.unit}
-          {showReadiness ? ` / ${entry.ready ? '기준 확인 완료' : '기준 확인 필요'}` : ''}
-        </span>
-      </Button>
-    ))}
-  </aside>
+}) => {
+  const columns: Column<Controller>[] = [
+    {
+      key: 'number',
+      header: 'ERP W/O',
+      width: '168px',
+      render: (entry) => entry.order.productionOrderNo,
+    },
+    { key: 'itemCode', header: '품목코드', width: '136px', render: (entry) => entry.itemCode },
+    { key: 'itemName', header: '품목명', width: '220px', render: (entry) => entry.itemName },
+    {
+      key: 'quantity',
+      header: 'ERP W/O 수량',
+      width: '112px',
+      render: (entry) => `${entry.order.orderQty} ${entry.unit}`,
+    },
+    ...(showReadiness
+      ? [
+          {
+            key: 'readiness',
+            header: '기준 확인',
+            width: '120px',
+            render: (entry: Controller) => (entry.ready ? '완료' : '필요'),
+          },
+        ]
+      : []),
+  ];
+  return (
+    <aside className="pane po-board-pane erp-wo-order-table-pane" aria-label="ERP W/O 목록">
+      <h2 className="pane-title">
+        ERP W/O 목록 <span className="field-note">{entries.length}건</span>
+      </h2>
+      <BoardTable
+        label="ERP W/O 목록"
+        columns={columns}
+        rows={entries}
+        getRowId={(entry) => entry.order.productionOrderNo}
+        widthKey="omf-mes:work-planning:erp-wo-list-columns"
+        minWidth="46rem"
+        className="erp-wo-order-table"
+        pick={{
+          columnKey: 'number',
+          currentId: selected,
+          label: (entry) => `${entry.order.productionOrderNo} 선택`,
+          canPick: () => !disabled,
+          onPick: (entry) => {
+            if (!disabled) onSelect(entry.order.productionOrderNo);
+          },
+        }}
+      />
+    </aside>
+  );
+};
+
+const ErpWorkOrderInformation = ({ entry }: { entry: Controller }) => (
+  <section className="erp-wo-order-information" aria-label="현재 ERP W/O 정보">
+    <h2 className="pane-title">ERP W/O 상세</h2>
+    <dl className="form-grid erp-wo-order-information-grid">
+      {[
+        ['ERP W/O', entry.order.productionOrderNo],
+        ['품목코드', entry.itemCode],
+        ['품목명', entry.itemName],
+        ['ERP W/O 수량', `${entry.order.orderQty} ${entry.unit}`],
+      ].map(([label, value]) => (
+        <div className="field-cell" key={label}>
+          <dt className="field-label">{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
 );
 
 const OrderSession = ({
@@ -467,8 +522,9 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             <h2 className="section-title">{messages.erpWorkOrderFlow.process.master.heading}</h2>
             <AdjustableLayout
               storageKey="omf-mes:work-planning:erp-wo-layout"
+              collapsible
               label="ERP W/O 목록과 상세"
-              ratio={0.25}
+              ratio={0.4}
               className="erp-wo-master-selection-layout"
             >
               <ErpWorkOrderList
@@ -494,19 +550,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                     role="region"
                     aria-label="선택 ERP W/O 상세"
                   >
-                    <div className="erp-wo-master-selected-heading">
-                      <strong>{entry.order.productionOrderNo}</strong>
-                      <dl className="erp-wo-selected-item-fields">
-                        <div>
-                          <dt>품목코드</dt>
-                          <dd>{entry.itemCode}</dd>
-                        </div>
-                        <div>
-                          <dt>품목명</dt>
-                          <dd>{entry.itemName}</dd>
-                        </div>
-                      </dl>
-                    </div>
+                    <ErpWorkOrderInformation entry={entry} />
                     <MasterDetails
                       bomId={entry.bomId}
                       routingId={entry.routingId}
@@ -739,8 +783,9 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           <section className="erp-wo-multi-execution">
             <AdjustableLayout
               storageKey="omf-mes:work-planning:erp-wo-layout"
+              collapsible
               label="ERP W/O 목록과 상세"
-              ratio={0.25}
+              ratio={0.4}
               className="erp-wo-master-selection-layout erp-wo-execution-selection-layout"
             >
               <ErpWorkOrderList
@@ -763,27 +808,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 role="region"
                 aria-label="선택 ERP W/O 상세"
               >
-                <div className="erp-wo-multi-current-target">
-                  <strong>{focus}</strong>
-                  {target && (
-                    <dl className="erp-wo-selected-item-fields" aria-label="현재 ERP W/O 정보">
-                      <div>
-                        <dt>품목코드</dt>
-                        <dd>{target.itemCode}</dd>
-                      </div>
-                      <div>
-                        <dt>품목명</dt>
-                        <dd>{target.itemName}</dd>
-                      </div>
-                      <div>
-                        <dt>ERP W/O 수량</dt>
-                        <dd>
-                          {target.order.orderQty} {target.unit}
-                        </dd>
-                      </div>
-                    </dl>
-                  )}
-                </div>
+                {target && <ErpWorkOrderInformation entry={target} />}
                 {target && (
                   <ProcessWorkspace
                     key={`${focus}-${stage}`}

@@ -38,4 +38,19 @@ describe('작업계획 배치와 영역 크기', () => {
     });
     expect(Number(localStorage.getItem(`${key}:height:list-height`))).toBeGreaterThanOrEqual(140);
   });
+  it('목록을 접었다 펼쳐도 상세 입력은 유지한다', async () => {
+    const user = userEvent.setup();
+    render(
+      <AdjustableLayout storageKey={key} label="ERP W/O 목록과 상세" collapsible>
+        <aside>선택 목록</aside>
+        <input aria-label="생산량" defaultValue="120" />
+      </AdjustableLayout>,
+    );
+    await user.click(screen.getByRole('button', { name: '목록 접기' }));
+    expect(screen.getByText('선택 목록')).not.toBeVisible();
+    expect(screen.getByRole('textbox', { name: '생산량' })).toHaveValue('120');
+    await user.click(screen.getByRole('button', { name: '목록 펼치기' }));
+    expect(screen.getByText('선택 목록')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: '생산량' })).toHaveValue('120');
+  });
 });

@@ -14,6 +14,7 @@ export const AdjustableLayout = ({
   initial = 'side',
   ratio = 0.5,
   className = '',
+  collapsible = false,
   children,
 }: {
   storageKey: string;
@@ -21,6 +22,7 @@ export const AdjustableLayout = ({
   initial?: PaneLayout;
   ratio?: number;
   className?: string;
+  collapsible?: boolean;
   children: ReactNode;
 }) => {
   const [layout, setLayout] = useState<PaneLayout>(() => {
@@ -64,12 +66,29 @@ export const AdjustableLayout = ({
       </div>
       <div
         ref={ref}
+        data-left-collapsed={side && collapsible && split.collapsed ? 'true' : undefined}
         className={`erp-wo-adjustable-grid ${side ? 'is-side' : 'is-stacked'} ${className}`}
         style={{ ...split.style, ...height.style }}
       >
-        <div className="erp-wo-adjustable-first">{panes[0]}</div>
+        <div className="erp-wo-adjustable-first" hidden={side && collapsible && split.collapsed}>
+          {panes[0]}
+        </div>
         {side ? (
-          <PaneSplitter label={`${label} 너비 조절`} ratio={split.ratio} onChange={split.commit} />
+          <PaneSplitter
+            label={`${label} 너비 조절`}
+            ratio={split.ratio}
+            onChange={split.commit}
+            collapse={
+              collapsible
+                ? {
+                    collapsed: split.collapsed,
+                    onToggle: split.toggleCollapsed,
+                    collapseLabel: '목록 접기',
+                    expandLabel: '목록 펼치기',
+                  }
+                : undefined
+            }
+          />
         ) : (
           <PaneHeightSplitter
             label={`${label} 높이 조절`}
