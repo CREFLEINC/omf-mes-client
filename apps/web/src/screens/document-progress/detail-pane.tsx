@@ -2,6 +2,8 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { documentTypeName } from './document-types';
+import type { CodeNameOf } from './queries';
 import { describeScreenOpenBlock, judgeScreenOpen, type ScreenRouteTable } from './screen-routes';
 import { StepsPane } from './steps-pane';
 import { SuccessorsPane } from './successors-pane';
@@ -35,6 +37,8 @@ export interface DetailPaneProps {
   routes: ScreenRouteTable;
   /** 열 수 있을 때만 불린다. 어디로 가는지는 화면이 정한다 — 부품은 주소를 모른다. */
   onOpen: (path: string) => void;
+  statusName: CodeNameOf;
+  subTypeName: CodeNameOf;
 }
 
 /**
@@ -52,21 +56,34 @@ export interface DetailPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const DetailPane = ({ detail, routes, onOpen }: DetailPaneProps) => {
+export const DetailPane = ({
+  detail,
+  routes,
+  onOpen,
+  statusName,
+  subTypeName,
+}: DetailPaneProps) => {
   const { progress } = detail;
   const openState = judgeScreenOpen(detail.screenId ?? '', routes);
 
   const items: SummaryItem[] = [
-    { key: 'documentType', label: t.detail.documentType, value: progress.documentTypeCode },
+    {
+      key: 'documentType',
+      label: t.detail.documentType,
+      value: documentTypeName(progress.documentTypeCode),
+    },
     { key: 'documentNo', label: t.detail.documentNo, value: progress.documentNo },
     { key: 'documentDate', label: t.detail.documentDate, value: progress.documentDate },
     {
       key: 'subType',
       label: t.detail.subType,
       /* 없이 오는 문서가 실재한다 — 빈 칸으로 두면 화면이 빠뜨린 것과 구분되지 않는다. */
-      value: progress.documentSubTypeCode ?? t.values.empty,
+      value:
+        progress.documentSubTypeCode === null
+          ? t.values.empty
+          : subTypeName(progress.documentSubTypeCode),
     },
-    { key: 'status', label: t.detail.status, value: progress.statusCode },
+    { key: 'status', label: t.detail.status, value: statusName(progress.statusCode) },
     { key: 'plannedQty', label: t.detail.plannedQty, value: String(progress.plannedQty) },
     { key: 'processedQty', label: t.detail.processedQty, value: String(progress.processedQty) },
     { key: 'remainingQty', label: t.detail.remainingQty, value: String(progress.remainingQty) },

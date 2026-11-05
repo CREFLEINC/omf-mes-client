@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { describeCancelBlockReason, readCancelAvailability } from './cancel-availability';
+import type { CodeNameOf } from './queries';
 import type { DocumentProgressView } from './types';
 
 const t = messages.documentProgress;
@@ -28,6 +29,8 @@ export interface ProgressColumnsInput {
    */
   isLocked: boolean;
   onToggleSelect: (documentId: number) => void;
+  statusName: CodeNameOf;
+  subTypeName: CodeNameOf;
 }
 
 /**
@@ -65,7 +68,7 @@ export interface ProgressColumnsInput {
  * | 선택 | 88px | `sm` 버튼 하나(전례 `gr-table`·`balance-table`의 선택 열과 같은 값) |
  * | **합** | **1,016px** | 표 하한(928px)을 **넘는다** — 아래 주 |
  *
- * ⚠ **세부구분·상태는 폭을 보장할 수 없다.** 그 칸에 서는 것은 **서버가 정하는 코드 문자열**이라
+ * ⚠ **세부구분·상태는 폭을 보장할 수 없다.** 그 칸에 서는 것은 **서버가 정하는 코드 이름**이라
  * 길이에 상한이 없다 — 어떤 폭을 잡아도 더 긴 코드가 올 수 있으므로, 이 두 예산은 **머리글이
  * 접히지 않는 하한**(세부구분 62px · 상태 47px)에 짧은 코드 몫을 더한 값이고 그보다 긴 코드는
  * 접힌다. 지어낸 상한으로 「보장한다」고 적지 않는다. **두 열의 폭을 같은 88px로 두는 이유는
@@ -93,6 +96,8 @@ export const buildProgressColumns = ({
   selectedDocumentId,
   isLocked,
   onToggleSelect,
+  statusName,
+  subTypeName,
 }: ProgressColumnsInput): Column<DocumentProgressView>[] => [
   { key: 'documentNo', header: t.table.documentNo, width: '152px' },
   { key: 'documentDate', header: t.table.documentDate, width: '112px' },
@@ -104,9 +109,15 @@ export const buildProgressColumns = ({
      * 계약이 선택으로 두어 **없이 오는 문서가 실재한다.** 빈 칸으로 두면 값이 없는 것인지
      * 화면이 못 그린 것인지 구분되지 않는다 — 코드를 지어내지 않고 없음을 표식으로 낸다.
      */
-    render: (row) => row.documentSubTypeCode ?? t.values.empty,
+    render: (row) =>
+      row.documentSubTypeCode === null ? t.values.empty : subTypeName(row.documentSubTypeCode),
   },
-  { key: 'statusCode', header: t.table.status, width: '88px' },
+  {
+    key: 'statusCode',
+    header: t.table.status,
+    width: '88px',
+    render: (row) => statusName(row.statusCode),
+  },
   {
     key: 'plannedQty',
     header: t.table.plannedQty,
@@ -243,6 +254,8 @@ export const ProgressTable = ({
   selectedDocumentId,
   isLocked,
   onToggleSelect,
+  statusName,
+  subTypeName,
 }: ProgressTableProps) => {
   if (isLoading) {
     return (
@@ -304,7 +317,13 @@ export const ProgressTable = ({
     <div className="wide-table">
       <Table
         density="compact"
-        columns={buildProgressColumns({ selectedDocumentId, isLocked, onToggleSelect })}
+        columns={buildProgressColumns({
+          selectedDocumentId,
+          isLocked,
+          onToggleSelect,
+          statusName,
+          subTypeName,
+        })}
         rows={rows}
         /*
          * **문서 번호 하나로는 행을 가릴 수 없다.** 같은 번호가 유형이 다르면 다른 문서이고,

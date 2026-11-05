@@ -17,6 +17,7 @@ const renderPane = (overrides: Partial<ExecuteCancelPaneProps> = {}) => {
     banner: null,
     result: null,
     onOpenConfirm: vi.fn(),
+    statusName: (code) => code,
     ...overrides,
   };
 

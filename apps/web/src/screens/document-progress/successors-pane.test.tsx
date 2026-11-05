@@ -91,7 +91,7 @@ describe('SuccessorsPane', () => {
     );
 
     expect(screen.getByText('SYN-GI-2026-0101')).toBeInTheDocument();
-    expect(screen.getAllByText('GOODS_ISSUE')).toHaveLength(2);
+    expect(screen.getAllByText('출고')).toHaveLength(2);
     expect(screen.getByText('400')).toBeInTheDocument();
   });
 
