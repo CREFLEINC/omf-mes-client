@@ -13,6 +13,8 @@ import {
 } from '../../test/api-harness';
 import { pickDate } from '../../test/date-picker';
 import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixtures';
+import { SessionProvider } from '../../patterns/session';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { InspectionStandardScreen } from './screen';
 
 const ROUTE = '/master-data/inspection-standard';
@@ -74,15 +76,23 @@ const renderScreen = (
   requests: RecordedRequest[];
   user: ReturnType<typeof userEvent.setup>;
   queryClient: QueryClient;
+  router: ReturnType<typeof renderWithProviders>['router'];
 } => {
   const { fetch, requests } = createRecordingFetch(routes);
-  const { queryClient } = renderWithProviders(<InspectionStandardScreen />, {
-    fetch,
-    route: `${ROUTE}${search}`,
-    dataRouter: true,
-  });
+  const { queryClient, router } = renderWithProviders(
+    /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+    <SessionProvider>
+      <InspectionStandardScreen />
+    </SessionProvider>,
+    {
+      session: SYNTHETIC_SESSION,
+      fetch,
+      route: `${ROUTE}${search}`,
+      dataRouter: true,
+    },
+  );
 
-  return { requests, user: userEvent.setup(), queryClient };
+  return { requests, user: userEvent.setup(), queryClient, router };
 };
 
 const requestsTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
@@ -230,11 +240,18 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
   });
 
   it('네트워크가 끊기면 연결 안내를 낸다', async () => {
-    renderWithProviders(<InspectionStandardScreen />, {
-      fetch: () => Promise.reject(new Error('네트워크 실패')),
-      route: ROUTE,
-      dataRouter: true,
-    });
+    renderWithProviders(
+      /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+      <SessionProvider>
+        <InspectionStandardScreen />
+      </SessionProvider>,
+      {
+        session: SYNTHETIC_SESSION,
+        fetch: () => Promise.reject(new Error('네트워크 실패')),
+        route: ROUTE,
+        dataRouter: true,
+      },
+    );
 
     expect(
       await screen.findByText('네트워크 연결이 끊겼습니다. 연결을 확인한 뒤 다시 시도하세요.'),
@@ -1270,6 +1287,29 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     expect(screen.queryByLabelText('라우팅')).not.toBeInTheDocument();
     expect(screen.queryByText('품목을 선택하면 라우팅이 표시됩니다.')).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
+  });
+
+  /* 상세 머리의 「라우팅 보기」 — 그 품목 · Rev 의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
+  it('품목이 있는 기준은 「라우팅 보기」로 그 품목의 라우팅 화면으로 옮긴다', async () => {
+    const { user, router } = renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[1]), ...lookupRoutes()],
+      '?plan=3002',
+    );
+
+    await user.click(await screen.findByRole('button', { name: '라우팅 보기' }));
+
+    expect(router?.state.location.pathname).toBe('/master-data/routing');
+    expect(router?.state.location.search).toBe('?item=5001&rev=7003');
+  });
+
+  it('전 품목 공통 기준에는 「라우팅 보기」가 없다', async () => {
+    renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
+      '?plan=3003',
+    );
+
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: '라우팅 보기' })).not.toBeInTheDocument();
   });
 
   it('품목을 고르면 그 품목의 라우팅을 조회한다', async () => {

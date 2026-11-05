@@ -21,6 +21,9 @@ export const routing = {
     processForm: '공정 등록·편집',
   },
   actions: {
+    /* 「PQC 검사 기준」 옆 — 검사 기준 화면으로 옮긴다(사용자 지시 2026-11-05). 기준이 없으면 등록 창을 연다. */
+    editPqcPlan: '검사 기준 수정',
+    registerPqcPlan: '검사 기준 등록',
     newRevision: '신규 Rev 발행',
     createRouting: 'Routing 등록',
     addOperation: '공정 추가',

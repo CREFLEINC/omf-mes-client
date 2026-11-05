@@ -15,7 +15,7 @@ import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useLocation, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
@@ -31,6 +31,8 @@ import {
 } from '../../patterns/split-orientation';
 import { runRequest, toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
+import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { itemKeys } from '../item-extended-attrs/item-queries';
 import { DiscardDialog, LeaveGuard } from '../routing/leave-guard';
 import {
@@ -136,6 +138,9 @@ type InspectionPlanVersionDetailResponse =
   components['schemas']['InspectionPlanVersionDetailResponse'];
 
 const t = messages.inspectionStandard;
+
+/** 라우팅 화면 — 상세 머리의 「라우팅 보기」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
+const ROUTING_PATH = '/master-data/routing';
 
 /** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
 const EDIT_TARGET_PARAMS = ['plan', 'ver'] as const;
@@ -251,6 +256,8 @@ const NEW_PLAN_ITEM_KEY = 'newItem';
  */
 export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { session } = useSession();
   const hub = usePageHub();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -1494,6 +1501,15 @@ export const InspectionStandardScreen = () => {
             (revision) =>
               revision.routingId === String(planDetail.data.inspectionPlan.routingId ?? ''),
           )}
+          /* 품목이 있는 기준은 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05) — 이동 감시가 고친 내용을 먼저 묻는다. */
+          onOpenRouting={(() => {
+            const plan = planDetail.data.inspectionPlan;
+            if (plan.itemId === null || !toWebAccess(session?.permissions).allows(ROUTING_PATH)) {
+              return undefined;
+            }
+            const rev = plan.routingId === null ? '' : `&rev=${String(plan.routingId)}`;
+            return () => navigate(`${ROUTING_PATH}?item=${String(plan.itemId)}${rev}`);
+          })()}
           /*
            * 창을 열 때 상세 · 라우팅을 다시 받는다 — 라우팅 화면의 「검사 관리」 저장이 이 기준(기본 생략 · 버전)을 바꿀 수 있어,
            * 열어 둔 화면의 옛 잠금 토큰으로 저장하면 「다른 사용자가 먼저 저장」으로 막힌다.

@@ -27,6 +27,7 @@ const renderPane = (overrides: Partial<HeaderPaneProps> = {}) => {
       itemLabel="ITM-001 · 하우징 커버"
       routingVersion={3}
       pqcPlanLabel={null}
+      pqcPlanAction={null}
       status={resolveRoutingStatus('DRAFT')}
       values={VALUES}
       onChange={onChange}
@@ -58,6 +59,16 @@ describe('HeaderPane', () => {
     renderPane({ pqcPlanLabel: 'PQC-1 · 하우징 공정검사' });
     expect(screen.getByText('PQC 검사 기준')).toBeInTheDocument();
     expect(screen.getByText('PQC-1 · 하우징 공정검사')).toBeInTheDocument();
+  });
+
+  it('「PQC 검사 기준」 옆 단추를 누르면 올린다', async () => {
+    const onClick = vi.fn();
+    const { user } = renderPane({
+      pqcPlanLabel: 'PQC-1 · 하우징 공정검사',
+      pqcPlanAction: { label: '검사 기준 수정', onClick },
+    });
+    await user.click(screen.getByRole('button', { name: '검사 기준 수정' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it('PQC 검사 기준을 아직 모르면 칸이 없다', () => {
@@ -202,7 +213,8 @@ describe('HeaderPane', () => {
   it('확정 Rev에서는 폐기를 눌러 상위에 올린다', async () => {
     const { onObsolete, user } = renderPane({
       status: resolveRoutingStatus('CONFIRMED'),
-      confirmDisabledReason: '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
+      confirmDisabledReason:
+        '확정은 작성중 Rev에만 할 수 있습니다. 변경하려면 신규 Rev를 발행하세요.',
       obsoleteDisabledReason: null,
     });
 

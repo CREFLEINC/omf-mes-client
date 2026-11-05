@@ -20,6 +20,8 @@ export interface HeaderPaneProps {
   routingVersion: number | null;
   /** 이 품목의 PQC 검사 기준 글자. 아직 모르면 `null` 이고 칸을 두지 않는다. */
   pqcPlanLabel: string | null;
+  /** 「PQC 검사 기준」 옆 단추 — 검사 기준 화면으로 옮긴다. 권한이 없거나 아직 모르면 `null` 이고 두지 않는다. */
+  pqcPlanAction: { label: string; onClick: () => void } | null;
   /** 상태도 서버가 정한다. 등록 전에는 없으므로 null이며, 없는 값을 지어내 보이지 않는다. */
   status: RoutingStatusView | null;
   values: RoutingHeaderFormValues;
@@ -62,6 +64,7 @@ export const HeaderPane = ({
   itemLabel,
   routingVersion,
   pqcPlanLabel,
+  pqcPlanAction,
   status,
   values,
   onChange,
@@ -130,7 +133,14 @@ export const HeaderPane = ({
             <span className="field-label" id={pqcPlanLabelId}>
               {t.fields.pqcPlan}
             </span>
-            <p aria-labelledby={pqcPlanLabelId}>{pqcPlanLabel}</p>
+            <div className="routing-pqc-plan-value">
+              <p aria-labelledby={pqcPlanLabelId}>{pqcPlanLabel}</p>
+              {pqcPlanAction !== null && (
+                <Button variant="outlined" size="sm" onClick={pqcPlanAction.onClick}>
+                  {pqcPlanAction.label}
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

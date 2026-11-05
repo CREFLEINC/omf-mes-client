@@ -24,6 +24,8 @@ export const routing: Translated<typeof ko.routing> = {
     processForm: 'Đăng ký · chỉnh sửa công đoạn',
   },
   actions: {
+    editPqcPlan: 'Sửa tiêu chuẩn kiểm tra',
+    registerPqcPlan: 'Đăng ký tiêu chuẩn kiểm tra',
     newRevision: 'Phát hành Rev mới',
     createRouting: 'Đăng ký Routing',
     addOperation: 'Thêm công đoạn',

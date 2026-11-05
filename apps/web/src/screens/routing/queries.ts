@@ -330,6 +330,7 @@ export const useProcessOptions = (): ProcessLookupResult => {
 
 /** 이 품목의 PQC 검사 기준 — 있으면 이 품목이 PQC 대상이다. `null` 이면 대상이 아니다. */
 export interface PqcPlanForItem {
+  inspectionPlanId: number;
   code: string;
   name: string;
 }
@@ -353,7 +354,11 @@ export const usePqcPlanForItem = (itemId: number | null): UseQueryResult<PqcPlan
       const [plan] = items;
       return plan === undefined
         ? null
-        : { code: plan.inspectionPlanCode, name: plan.inspectionPlanName };
+        : {
+            inspectionPlanId: plan.inspectionPlanId,
+            code: plan.inspectionPlanCode,
+            name: plan.inspectionPlanName,
+          };
     },
   });
 };

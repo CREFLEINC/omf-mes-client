@@ -2066,6 +2066,13 @@ h2:has(> .inspection-standard-dialog-title) {
   grid-column: 1 / -1;
 }
 
+/* 기준 글자 오른쪽에 「검사 기준 수정」 단추를 붙인다(사용자 지시 2026-11-05). */
+.routing-pqc-plan-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .routing-row-actions {
   display: inline-flex;
 }
