@@ -69,4 +69,35 @@ export type MaterialIssueRequestUpdate = components['schemas']['MaterialIssueReq
 export type MaterialIssueRequestCancel = components['schemas']['MaterialIssueRequestCancel'];
 export type MaterialIssueRequestHistoryItem =
   components['schemas']['MaterialIssueRequestHistoryItem'];
-export type PlannedStockResponse = components['schemas']['PlannedStockResponse'];
+type PlannedStockRaw = components['schemas']['PlannedStockResponse'];
+type PlannedStockRow = components['schemas']['PlannedStockRow'];
+type PlannedStockRequestRaw = PlannedStockRow['requests'][number];
+
+/**
+ * 부족 보기의 배분 줄 — W-02-11 은 W/O 요청만 묻는다(`requestTypeCode=WORK_ORDER`). 생성 타입은 004 창고 보충 요청
+ * 때문에 W/O 칸을 nullable 로 두지만, 이 화면이 받는 줄은 늘 W/O 가 있다. 받는 자리에서 한 번 좁힌다.
+ */
+export type PlannedShortageRequest = Omit<
+  PlannedStockRequestRaw,
+  'requestTypeCode' | 'workOrderId' | 'workOrderNo'
+> & {
+  requestTypeCode?: PlannedStockRequestRaw['requestTypeCode'];
+  workOrderId: number;
+  workOrderNo: string;
+};
+
+export type PlannedStockResponse = Omit<PlannedStockRaw, 'items'> & {
+  items: (Omit<PlannedStockRow, 'requests'> & { requests: PlannedShortageRequest[] })[];
+};
+
+export const toPlannedShortageView = (raw: PlannedStockRaw): PlannedStockResponse => ({
+  ...raw,
+  items: raw.items.map((row) => ({
+    ...row,
+    requests: row.requests.flatMap((request) =>
+      request.workOrderId === null || request.workOrderNo === null
+        ? []
+        : [{ ...request, workOrderId: request.workOrderId, workOrderNo: request.workOrderNo }],
+    ),
+  })),
+});

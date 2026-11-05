@@ -1,12 +1,14 @@
 import { messages } from '@omf-mes/i18n';
 
 import { describeLedgerRef, readLedgerRef } from './ledger-ref';
+import type { CodeNameOf } from './queries';
 import type { CancelExecutionView } from './types';
 
 const t = messages.documentProgress;
 
 export interface CancelResultPaneProps {
   result: CancelExecutionView;
+  statusName: CodeNameOf;
 }
 
 /**
@@ -29,7 +31,7 @@ export interface CancelResultPaneProps {
  *
  * 기존 디자인 시스템 컴포넌트 없이 배치 클래스만 쓰므로 이 화면 슬라이스가 소유한다.
  */
-export const CancelResultPane = ({ result }: CancelResultPaneProps) => (
+export const CancelResultPane = ({ result, statusName }: CancelResultPaneProps) => (
   <div role="group" aria-label={t.executionResult.label}>
     {/*
      * ⭐ **결과가 성공 배너가 아니다.** 되돌릴 수 없는 조작의 결과라 「저장했습니다」류 한 줄로
@@ -40,8 +42,7 @@ export const CancelResultPane = ({ result }: CancelResultPaneProps) => (
     <dl className="filter-bar">
       <div className="field-cell">
         <dt className="field-label">{t.executionResult.status}</dt>
-        {/* 상태 코드를 **그대로** 낸다 — 값 목록이 공통코드 소관이다. */}
-        <dd>{result.statusCode}</dd>
+        <dd>{statusName(result.statusCode)}</dd>
       </div>
 
       {result.reversed && (

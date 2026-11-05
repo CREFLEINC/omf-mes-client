@@ -7,11 +7,6 @@ import {
   EmptyState,
   Skeleton,
 } from '@crefle/web-ui';
-import type {
-  ReplenishmentArrival,
-  ReplenishmentSettings,
-  ShopfloorReceiptBulkResult,
-} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
@@ -19,6 +14,11 @@ import { useId, useState, type ReactNode } from 'react';
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import type {
+  ReplenishmentArrival,
+  ReplenishmentSettings,
+  ShopfloorReceiptBulkResult,
+} from './api-types';
 import type { ArrivalFilters } from './filters';
 import { useBulkReceive } from './mutations';
 import { OriginChip } from './progress-view';

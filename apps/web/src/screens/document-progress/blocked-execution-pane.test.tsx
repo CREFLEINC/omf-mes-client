@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { BlockedExecutionPane } from './blocked-execution-pane';
+import { documentTypeName } from './document-types';
 import { documentSuccessor, documentSuccessorFixtures } from './fixtures';
 
 const t = messages.documentProgress;
@@ -69,7 +70,10 @@ describe('BlockedExecutionPane — 걸린 후속을 보인다', () => {
     for (const successor of documentSuccessorFixtures) {
       expect(
         screen.getByText(
-          t.blockedExecution.successorLine(successor.successorNo, successor.successorTypeCode),
+          t.blockedExecution.successorLine(
+            successor.successorNo,
+            documentTypeName(successor.successorTypeCode),
+          ),
         ),
       ).toBeInTheDocument();
     }

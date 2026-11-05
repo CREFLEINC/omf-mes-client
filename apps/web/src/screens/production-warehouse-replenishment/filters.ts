@@ -1,10 +1,9 @@
 import type {
-  MaterialIssueRequestListQueryForward,
+  MaterialIssueRequestListQuery,
   ReplenishmentArrivalListQuery,
   ReplenishmentItemListQuery,
   ReplenishmentOriginCode,
-} from '@omf-mes/api-client';
-
+} from './api-types';
 import { FILTER_STATUSES, SERVER_STATUS, type ReplenishmentStatus } from './types';
 
 /** 보기 — 주소 `?view=`(screens/W-02-12.md 「진입」). */
@@ -143,7 +142,7 @@ export const toProgressQuery = (
   filters: ProgressFilters,
   page: number,
   size: number,
-): MaterialIssueRequestListQueryForward => {
+): MaterialIssueRequestListQuery => {
   const statuses = filters.statuses
     .filter((status): status is Exclude<ReplenishmentStatus, 'WAITING'> => status !== 'WAITING')
     .map((status) => SERVER_STATUS[status]);

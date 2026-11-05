@@ -1,10 +1,4 @@
-import type {
-  components,
-  ReplenishmentArrival,
-  ReplenishmentItem,
-  ReplenishmentRun,
-  ReplenishmentSettings,
-} from '@omf-mes/api-client';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
@@ -12,6 +6,12 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
 import { SYSTEM_LOCATION_ROLE } from '../../patterns/system-location';
+import type {
+  ReplenishmentArrival,
+  ReplenishmentItem,
+  ReplenishmentRun,
+  ReplenishmentSettings,
+} from './api-types';
 import {
   toArrivalQuery,
   toItemQuery,

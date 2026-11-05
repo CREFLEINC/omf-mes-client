@@ -1,10 +1,10 @@
 import { AlertBanner, Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
-import type { ReplenishmentItem, ReplenishmentSettings } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
 import { ItemSelect } from '../../patterns/item-select';
 import { Select } from '../../patterns/select';
+import type { ReplenishmentItem, ReplenishmentSettings } from './api-types';
 import type { ItemFilters } from './filters';
 import { EMPTY_ITEMS } from './filters';
 import { ItemDialog } from './items-dialog';

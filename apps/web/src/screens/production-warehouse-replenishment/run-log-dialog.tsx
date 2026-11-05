@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Chip, Dialog, EmptyState } from '@crefle/web-ui';
-import type { ReplenishmentRun } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import type { ReplenishmentRun } from './api-types';
 import { formatDay, formatQty, plantMinute } from './types';
 
 const t = messages.productionWarehouseReplenishment;

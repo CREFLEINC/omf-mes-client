@@ -1,6 +1,7 @@
 import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { documentTypeName } from './document-types';
 import type { DocumentSuccessorView } from './types';
 
 const t = messages.documentProgress;
@@ -56,7 +57,7 @@ export const BlockedExecutionPane = ({ successors }: BlockedExecutionPaneProps) 
               <li key={successor.successorId}>
                 {t.blockedExecution.successorLine(
                   successor.successorNo,
-                  successor.successorTypeCode,
+                  documentTypeName(successor.successorTypeCode),
                 )}
               </li>
             ))}

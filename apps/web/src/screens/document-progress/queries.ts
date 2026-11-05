@@ -1,7 +1,9 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
 import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
 import type { Submission } from './approval-progress';
@@ -52,6 +54,32 @@ import {
  */
 
 type Client = ApiClient['client'];
+
+export type CodeNameOf = (code: string) => string;
+
+/**
+ * 코드 이름. 사용 중지된 코드로 만든 전표도 있어 사용 중지까지 받는다. 이름을 못 찾으면(조회 실패 포함)
+ * 코드를 그대로 보인다 — 이름 때문에 목록을 막지 않는다. 그룹이 없으면 부르지 않는다.
+ */
+export const useCodeNames = (group: string | null): CodeNameOf => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['document-progress', 'code-names', group],
+    enabled: group !== null,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: group ?? '', includeInactive: true, size: 100 } },
+        }),
+      );
+
+      return new Map(data.items.map((value) => [value.code, masterName(value, value.codeName)]));
+    },
+  });
+  const names = query.data;
+
+  return useCallback((code) => names?.get(code) ?? code, [names]);
+};
 
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 export type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];

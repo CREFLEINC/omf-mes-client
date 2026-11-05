@@ -4,6 +4,7 @@ import { useId, type ReactNode } from 'react';
 
 import type { CancelLock } from './cancel-pane';
 import { CancelResultPane } from './cancel-result-pane';
+import type { CodeNameOf } from './queries';
 import type { CancelExecutionView } from './types';
 
 const t = messages.documentProgress;
@@ -34,6 +35,7 @@ export interface ExecuteCancelPaneProps {
   /** 방금 이 대상에서 끝난 실행의 결과. 없으면 `null`이다. */
   result: CancelExecutionView | null;
   onOpenConfirm: () => void;
+  statusName: CodeNameOf;
 }
 
 /**
@@ -64,6 +66,7 @@ export const ExecuteCancelPane = ({
   banner,
   result,
   onOpenConfirm,
+  statusName,
 }: ExecuteCancelPaneProps) => {
   const noteId = useId();
 
@@ -90,7 +93,7 @@ export const ExecuteCancelPane = ({
        * ⭐ **결과가 구획에 남는다.** 되돌릴 수 없는 조작이라 안내 한 줄로 지나가면 무엇이
        * 일어났는지 다시 볼 수 없다 — 원장에 무엇이 생겼는지가 특히 그렇다.
        */}
-      {result !== null && <CancelResultPane result={result} />}
+      {result !== null && <CancelResultPane result={result} statusName={statusName} />}
 
       {hasCancelRequest ? (
         <div className="form-actions">
