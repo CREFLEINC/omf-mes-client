@@ -228,21 +228,17 @@ describe('AppLayout', () => {
     );
   });
 
-  /* 불량·원인코드의 하위 탭을 탭 막대 한 줄로 폈다 — 판정유형 코드는 그 끝이다(#208). */
-  it('품질 코드 관리 탭 막대에 불량코드 · 원인코드 · 불량코드 공정 연결 · 판정 유형이 한 줄로 선다', () => {
-    renderLayout('본문 내용', { route: '/master-data/judgment-code' });
+  /* 불량·원인코드의 하위 탭을 탭 막대 한 줄로 폈다(#208). 판정 유형 탭은 막는 설정이 없어 메뉴에서 뺐다(omf-all-around#240). */
+  it('품질 코드 관리 탭 막대에 불량코드 · 원인코드 · 불량코드 공정 연결이 한 줄로 서고 판정 유형은 없다', () => {
+    renderLayout('본문 내용', { route: '/master-data/defect-cause-code' });
 
     const tabs = screen.getByRole('navigation', { name: '품질 코드 관리' });
 
-    expect(within(tabs).getByRole('link', { name: '판정 유형' })).toHaveAttribute(
-      'href',
-      '/master-data/judgment-code',
-    );
+    expect(within(tabs).queryByRole('link', { name: '판정 유형' })).toBeNull();
     expect(hubTabHrefs('품질 코드 관리')).toEqual([
       '/master-data/defect-cause-code',
       '/master-data/cause-code',
       '/master-data/defect-process-mapping',
-      '/master-data/judgment-code',
     ]);
   });
 
@@ -1078,7 +1074,6 @@ describe('AppLayout', () => {
         '/master-data/defect-cause-code',
         '/master-data/cause-code',
         '/master-data/defect-process-mapping',
-        '/master-data/judgment-code',
       ],
       '검사 실적·결과': ['/quality/inspection-results', '/quality/inspection-sheets'],
       'LOT 상태': [
