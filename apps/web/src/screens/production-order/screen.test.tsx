@@ -670,13 +670,13 @@ describe('작업지시 목록 작업함', () => {
     });
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
-    expect(within(row).getByText('SYN-P2')).toHaveAttribute('title', 'SYN-P2 · 합성 공장 나');
+    expect(within(row).getByText('합성 공장 나')).toHaveAttribute('title', '합성 공장 나');
     const plant = screen.getByLabelText(t.filters.plant);
     expect(plant).toBeEnabled();
     expect(plant).toHaveTextContent(t.filters.allPlants);
 
     await user.click(plant);
-    await user.click(await screen.findByRole('option', { name: 'SYN-P2 · 합성 공장 나' }));
+    await user.click(await screen.findByRole('option', { name: '합성 공장 나' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('plant=8402'));
@@ -693,7 +693,7 @@ describe('작업지시 목록 작업함', () => {
 
     await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
     const plant = screen.getByLabelText(t.filters.plant);
-    await waitFor(() => expect(plant).toHaveTextContent('SYN-P1 · 합성 공장 가'));
+    await waitFor(() => expect(plant).toHaveTextContent('합성 공장 가'));
     expect(plant).toBeDisabled();
     expect(screen.queryByRole('columnheader', { name: t.list.columns.plant })).toBeNull();
     expect(screen.getByTestId('location')).not.toHaveTextContent('plant=');
