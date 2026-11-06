@@ -1,3 +1,4 @@
+import { ReviewHelp as Help } from './review-help';
 import {
   AlertBanner,
   Breadcrumb,
@@ -8,7 +9,6 @@ import {
   EmptyState,
   PageHeader,
   Tabs,
-  Tooltip,
   type Column,
 } from '@crefle/web-ui';
 import { useId, useMemo, useState } from 'react';
@@ -52,13 +52,6 @@ const planLineLabel = (plan: ReviewPlan) =>
       ),
     ),
   ].join(' / ') || '미지정';
-const Help = ({ title, children }: { title: string; children: string }) => (
-  <Tooltip content={children}>
-    <button type="button" className="info-mark" aria-label={`${title} 도움말`}>
-      ?
-    </button>
-  </Tooltip>
-);
 const ProposalOrderTable = (props: SelectableTableProps<ReviewProposal>) => {
   const side = useAdjustableOrientation() === 'side';
   const lead = ['selection', 'no', 'status'];
