@@ -50,25 +50,27 @@ const operation = (key: string, sequence: number, missing: boolean): ReviewOpera
     defaultScrapLocationId: options.defaultScrapLocationId[0]!,
   },
 });
-export const previewProposals: ReviewProposal[] = [0, 1, 2].map((index) => ({
+export const previewProposals: ReviewProposal[] = [0, 1, 2, 3].map((index) => ({
   id: String(index + 1),
   number: `PD261106${String(index + 1).padStart(6, '0')}`,
   itemCode: `ITEM-${index + 1}`,
   itemName:
     index === 2
       ? '품목 C / 긴 품목명과 규격을 생략하지 않고 확인하는 시험용 품목'
-      : `품목 ${index === 0 ? 'A' : 'B'}`,
+      : `품목 ${index === 0 ? 'A' : index === 1 ? 'B' : 'D'}`,
   plant: '공장 A',
+  erpPlanStartDate: '2026-11-06',
   orderQty: 100,
-  confirmedQty: 0,
+  confirmedQty: index === 3 ? 100 : 0,
   draftQty: index === 1 ? 100 : 0,
-  remainingQty: index === 1 ? 0 : 100,
+  remainingQty: index === 1 || index === 3 ? 0 : 100,
   uom: 'EA',
   issues: [],
   plans: [
     {
       key: `new-${index + 1}`,
-      source: index === 1 ? '작성중 계획' : '신규 제안',
+      ...(index === 1 || index === 3 ? { number: `PLAN-${index + 1}` } : {}),
+      source: index === 3 ? '기존 확정 계획' : index === 1 ? '작성중 계획' : '신규 제안',
       date: '2026-11-06',
       quantity: '100',
       bom: 'BOM-A (Rev 1)',
@@ -83,7 +85,12 @@ export const previewProposals: ReviewProposal[] = [0, 1, 2].map((index) => ({
           operations: [operation('op-10', 10, false)],
         },
       ],
-      operations: [operation('op-10', 10, index === 1), operation('op-20', 20, false)],
+      operations: [operation('op-10', 10, index === 1), operation('op-20', 20, false)].map(
+        (op, position) => ({
+          ...op,
+          ...(index === 3 ? { number: `WO-261106-${position + 1}` } : {}),
+        }),
+      ),
     },
   ],
 }));

@@ -192,3 +192,261 @@
     grid-column: auto;
   }
 }
+
+.proposal-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.proposal-counts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+}
+.proposal-counts span {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-counts strong {
+  font: var(--type-title-lg);
+}
+.proposal-counts small {
+  margin-left: var(--space-1);
+  font: var(--type-label-sm);
+}
+.proposal-review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.proposal-review-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.proposal-review-state {
+  margin-top: calc(-1 * var(--space-3));
+}
+.proposal-detail {
+  background: var(--surface-container-low);
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+.proposal-review-scope {
+  margin: var(--space-2) 0 var(--space-4);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-basis h3,
+.proposal-impact h3,
+.proposal-completion h3 {
+  font: var(--type-title-sm);
+  margin: 0 0 var(--space-3);
+}
+.proposal-basis-reason {
+  display: block;
+  margin-top: var(--space-1);
+  font: var(--type-body-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-impact,
+.proposal-completion {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+.proposal-impact ul {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  margin: 0;
+  font: var(--type-body-sm);
+}
+.proposal-operation summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font: var(--type-title-sm);
+  padding: var(--space-3) 0;
+}
+.proposal-operation summary::before {
+  content: '▸';
+  color: var(--on-surface-variant);
+}
+.proposal-operation[open] summary::before {
+  content: '▾';
+}
+.proposal-operation summary span {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+@media (max-width: 600px) {
+  .proposal-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.proposal-review-body {
+  padding: 0 0 var(--space-4);
+}
+
+.proposal-review-page .proposal-review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+.proposal-review-page .proposal-review-table th,
+.proposal-review-page .proposal-review-table td {
+  text-align: left;
+  vertical-align: middle;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+.proposal-review-page .proposal-review-table thead th {
+  font: var(--type-label-sm);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  background: var(--surface-container);
+  white-space: nowrap;
+}
+.proposal-review-page .proposal-review-table tbody th {
+  font: var(--type-label-sm);
+  font-weight: 600;
+  background: var(--surface-container);
+}
+.proposal-review-page .proposal-review-table td.proposal-nowrap {
+  white-space: nowrap;
+}
+.proposal-completion .proposal-plan-fields {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 320px));
+}
+.proposal-completion .proposal-plan-fields > * {
+  grid-column: auto;
+  min-width: 0;
+}
+
+/* Match the review mockup's hierarchy with existing typography and spacing tokens. */
+.proposal-review-page {
+  font: var(--type-body-sm);
+}
+.proposal-review-page h1 {
+  font: var(--type-title-lg);
+  font-weight: 500;
+}
+.proposal-detail .section-title {
+  font: var(--type-title-sm);
+  font-weight: 500;
+  margin: 0;
+}
+.proposal-review-body {
+  gap: var(--space-4);
+}
+.proposal-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+}
+.proposal-counts > div {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--space-1);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+.proposal-counts strong {
+  font: var(--type-body-sm);
+  font-weight: 500;
+}
+.proposal-counts small {
+  font: var(--type-label-sm);
+}
+.proposal-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0 0 var(--space-4);
+}
+.proposal-facts dd,
+.proposal-quantities dd {
+  font: var(--type-body-sm);
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.proposal-facts dt,
+.proposal-quantities dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-quantities {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+  margin: 0 0 var(--space-4);
+}
+.proposal-quantities > div {
+  min-width: 0;
+}
+.proposal-review-scope {
+  margin: var(--space-2) 0 var(--space-3);
+  font: var(--type-label-sm);
+}
+.proposal-basis h3,
+.proposal-impact h3,
+.proposal-completion h3,
+.proposal-plan-heading h3 {
+  font: var(--type-body-sm);
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+}
+.proposal-plan {
+  margin-top: var(--space-4);
+}
+.proposal-basis-reason {
+  font: var(--type-label-sm);
+  margin-top: var(--space-1);
+}
+.proposal-impact ul {
+  gap: var(--space-1);
+}
+.proposal-operation summary {
+  font: var(--type-body-sm);
+  font-weight: 500;
+  padding: var(--space-2) 0;
+}
+.proposal-operation summary span {
+  flex-basis: 100%;
+  margin-left: var(--space-5);
+}
+.proposal-preview-label {
+  line-height: 1.5;
+}
+@media (max-width: 800px) {
+  .proposal-quantities {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .proposal-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .proposal-quantities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

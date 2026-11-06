@@ -20,6 +20,29 @@ const firstNo = previewProposals[0]!.number;
 const secondNo = previewProposals[1]!.number;
 
 describe('제안 검토 화면', () => {
+  it('승인 시안의 요약, 계획 중심 표, 생성 근거와 반영 사항을 표시한다', () => {
+    renderReview();
+    const summary = screen.getByRole('region', { name: '제안 요약' });
+    for (const label of ['제안 대상', '확정 가능', '검토 필요', '변경 없음'])
+      expect(within(summary).getByText(label)).toBeInTheDocument();
+    for (const label of ['계획일', '생산량', '생산 라인', '확정 검토'])
+      expect(screen.getByRole('columnheader', { name: label })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '생산계획 제안과 생성 근거' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '확정 시 반영 사항' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: `${previewProposals[3]!.number} 확정 선택` }),
+    ).toBeDisabled();
+  });
+  it('제안 보완은 누락·검증 항목만 표시하고 정상 값은 다시 입력하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    expect(screen.queryByRole('heading', { name: /^제안 보완/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '생산량' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('row', { name: `${secondNo} 상세` }));
+    expect(screen.getByRole('button', { name: '생산 라인' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Routing' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '생산량' })).not.toBeInTheDocument();
+  });
   it('상세 선택과 확정 선택을 구분하고 처음에는 체크하지 않는다', async () => {
     const user = userEvent.setup();
     renderReview();
@@ -33,7 +56,9 @@ describe('제안 검토 화면', () => {
   });
   it('수정하면 확정 선택이 해제되고 표와 주간 보기를 바꿔도 보완값을 유지한다', async () => {
     const user = userEvent.setup();
-    renderReview();
+    const rows = structuredClone(previewProposals);
+    rows[0]!.plans[0]!.reviewFields = ['quantity'];
+    renderReview({ initialProposals: rows });
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
     const input = screen.getByRole('textbox', { name: '생산량' });
     await user.clear(input);
@@ -42,10 +67,10 @@ describe('제안 검토 화면', () => {
     await user.click(screen.getByRole('tab', { name: '주간 편성 보기' }));
     expect(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` })).not.toBeChecked();
     await user.click(screen.getByRole('button', { name: '다음 주' }));
-    expect(screen.getByText('현재 주 외 계획 3건')).toBeInTheDocument();
+    expect(screen.getByText('현재 주 외 계획 4건')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'ERP W/O별 표' }));
     expect(screen.getByRole('textbox', { name: '생산량' })).toHaveValue('80');
-    await user.click(screen.getByRole('tab', { name: '공정별 작업지시' }));
+    await user.click(screen.getByRole('tab', { name: /^공정별 작업지시/ }));
     expect(screen.getAllByText(/변경 전 제안/).length).toBeGreaterThan(0);
   });
   it('4M 필수 누락을 표시하고 같은 화면의 선택 팝업에서 보완한다', async () => {
@@ -66,7 +91,7 @@ describe('제안 검토 화면', () => {
     const user = userEvent.setup();
     renderReview({ preview: true });
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
-    expect(screen.getByRole('button', { name: '선택 제안 확정 (1)' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '선택 제안 확정' })).toBeDisabled();
   });
   it('닫기 전에 미확정 보완값 폐기를 확인한다', async () => {
     const user = userEvent.setup();
@@ -82,19 +107,21 @@ describe('제안 검토 화면', () => {
     const rows = structuredClone(previewProposals);
     rows[0]!.plans[0]!.source = '기존 확정 계획';
     renderReview({ initialProposals: rows });
-    expect(screen.getByRole('textbox', { name: '생산량' })).toBeDisabled();
+    expect(screen.queryByRole('textbox', { name: '생산량' })).not.toBeInTheDocument();
     expect(proposalErrors(rows[0]!)).toContain('확정할 제안이 없습니다');
   });
   it('Routing 후보 선택 시 공정 목록을 갱신하고 확정 선택을 해제한다', async () => {
     const user = userEvent.setup();
-    renderReview();
+    const rows = structuredClone(previewProposals);
+    rows[0]!.plans[0]!.reviewFields = ['routing'];
+    renderReview({ initialProposals: rows });
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
     await user.click(screen.getByRole('button', { name: 'Routing' }));
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByText('대체 공정 (Rev 2)'));
     await user.click(within(dialog).getByRole('button', { name: '선택' }));
     expect(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` })).not.toBeChecked();
-    await user.click(screen.getByRole('tab', { name: '공정별 작업지시' }));
+    await user.click(screen.getByRole('tab', { name: /^공정별 작업지시/ }));
     expect(screen.getByText('PR-01')).toBeInTheDocument();
     expect(screen.queryByText('PR-02')).not.toBeInTheDocument();
   });
@@ -109,7 +136,7 @@ describe('제안 검토 화면', () => {
     await user.click(screen.getByRole('checkbox', { name: `${rows[0]!.number} 확정 선택` }));
     await user.click(screen.getByRole('button', { name: '다음' }));
     await user.click(screen.getByRole('checkbox', { name: `${rows[20]!.number} 확정 선택` }));
-    expect(screen.getByRole('button', { name: '선택 제안 확정 (2)' })).toBeInTheDocument();
+    expect(screen.getByText('선택 2건 / 실제 확정 미연결')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '이전' }));
     expect(screen.getByRole('checkbox', { name: `${rows[0]!.number} 확정 선택` })).toBeChecked();
   });

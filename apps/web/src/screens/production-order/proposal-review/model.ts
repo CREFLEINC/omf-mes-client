@@ -14,6 +14,7 @@ export const resourceLabels = {
 } as const;
 export type ResourceField = keyof typeof resourceLabels;
 export interface ReviewOperation {
+  number?: string;
   key: string;
   sequence: number;
   name: string;
@@ -25,6 +26,7 @@ export interface ReviewOperation {
   resources: Record<ResourceField, ReferenceRow | null>;
   required: ResourceField[];
 }
+export type PlanReviewField = 'date' | 'quantity' | 'line' | 'routing';
 export interface ReviewPlan {
   key: string;
   number?: string;
@@ -35,6 +37,7 @@ export interface ReviewPlan {
   routing: string;
   operations: ReviewOperation[];
   recalculationRequired?: boolean;
+  reviewFields?: PlanReviewField[];
   routingOptions?: { value: ReferenceRow; operations: ReviewOperation[] }[];
 }
 export interface ReviewProposal {
@@ -43,6 +46,7 @@ export interface ReviewProposal {
   itemCode: string;
   itemName: string;
   plant: string;
+  erpPlanStartDate?: string;
   orderQty: number;
   confirmedQty: number;
   draftQty: number;
@@ -82,4 +86,31 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
   return [...new Set(errors)];
 };
 export const reviewStatus = (row: ReviewProposal) =>
-  proposalErrors(row).length ? '보완 필요' : '검토 가능';
+  row.plans.length > 0 && row.plans.every((plan) => plan.source === '기존 확정 계획')
+    ? '변경 없음'
+    : proposalErrors(row).length
+      ? '검토 필요'
+      : '확정 가능';
+export const proposalAction = (row: ReviewProposal) =>
+  reviewStatus(row) === '변경 없음'
+    ? '기존 확정 계획 유지'
+    : row.plans.some((plan) => plan.source === '작성중 계획')
+      ? '기존 계획 확정'
+      : '신규 계획 생성 후 확정';
+
+export const completionFields = (row: ReviewProposal, plan: ReviewPlan): PlanReviewField[] => {
+  if (plan.source === '기존 확정 계획') return [];
+  const fields = new Set(plan.reviewFields ?? []);
+  if (!shiftPlanDate(plan.date, 0)) fields.add('date');
+  if (
+    !plan.quantity.trim() ||
+    !Number.isFinite(Number(plan.quantity)) ||
+    Number(plan.quantity) <= 0 ||
+    proposedQuantity(row) > row.orderQty - row.confirmedQty
+  )
+    fields.add('quantity');
+  if (!plan.routing) fields.add('routing');
+  if (plan.operations.some((operation) => !operation.resources.productionLineId))
+    fields.add('line');
+  return [...fields];
+};
