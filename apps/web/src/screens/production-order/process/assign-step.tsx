@@ -1,3 +1,4 @@
+import type { ProductionOrderFact } from '../types';
 import { Button, Chip, Dialog, EmptyState, SkeletonText, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
@@ -16,6 +17,7 @@ export interface AssignStepProps {
   workOrders: OrderWorkOrder[] | undefined;
   blockedIds: ReadonlySet<number> | undefined;
   plantId: number | null;
+  erpStorage?: Pick<ProductionOrderFact, 'erpStorageLocationCode' | 'erpStorageWarehouse'>;
   planDateOf: (productionPlanId: number) => string | null;
   lineNameOf?: (lineId: number | null) => string;
   uomLabelOf?: (uomId: number) => string;
@@ -39,6 +41,7 @@ export const AssignStep = ({
   workOrders,
   blockedIds,
   plantId,
+  erpStorage,
   planDateOf,
   lineNameOf,
   uomLabelOf,
@@ -134,6 +137,7 @@ export const AssignStep = ({
               title={t.editorTitle(selected.workOrderNo, selected.operationName)}
               workOrderId={selected.workOrderId}
               plantId={plantId}
+              erpStorage={erpStorage}
               planDate={planDateOf(selected.productionPlanId)}
               onDirtyChange={changeDirty}
               onSaved={(ready) => {

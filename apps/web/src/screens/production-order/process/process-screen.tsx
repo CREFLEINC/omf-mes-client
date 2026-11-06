@@ -685,6 +685,7 @@ export const ProcessWorkspace = ({
       case 'assign':
         return (
           <AssignStep
+            erpStorage={order}
             itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             actionTargetId={assignActionTargetId}
             workOrders={unreleased.data}
@@ -901,6 +902,14 @@ export const ProcessWorkspace = ({
             </div>
           )}
           <div className="is-key">
+            <dt>ERP 입고 창고 (SL_CD)</dt>
+            <dd>
+              {order.erpStorageLocationCode
+                ? order.erpStorageWarehouse
+                  ? `${order.erpStorageWarehouse.name} (${order.erpStorageWarehouse.code})`
+                  : `${order.erpStorageLocationCode} · 창고 연결 확인 필요`
+                : '미지정'}
+            </dd>
             <dt>{tp.summary.orderQty}</dt>
             <dd>{`${formatQty(order.orderQty)} ${uomLabelOf(order.uomId)}`}</dd>
           </div>

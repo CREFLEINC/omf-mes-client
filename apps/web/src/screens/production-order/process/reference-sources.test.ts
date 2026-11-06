@@ -81,6 +81,69 @@ describe('useLocationSource', () => {
     expect(result.current?.filter?.options.map((option) => option.value)).toEqual(['34']);
   });
 
+  it('완제품은 ERP GENERAL 창고 안으로 제한하고 다른 창고 조회를 차단한다', async () => {
+    const { fetch, requests } = recordingFetch([
+      warehousesRoute([warehouse(34, 'PRODUCT'), warehouse(35, 'GENERAL')]),
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/locations',
+        respond: () =>
+          jsonResponse({
+            items: [
+              {
+                locationId: 7,
+                warehouseId: 35,
+                locationCode: 'SYS-WHOLE',
+                locationName: '창고 전체',
+                isActive: true,
+              },
+              {
+                locationId: 8,
+                warehouseId: 34,
+                locationCode: 'OTHER',
+                locationName: '다른 창고',
+                isActive: true,
+              },
+            ],
+            page: { page: 1, size: 20, total: 2 },
+          }),
+      },
+    ]);
+    const { result } = renderHookWithProviders(
+      () => useLocationSource(501, '', { erpCode: 'SYN-WH-35', warehouseId: 35 }),
+      { fetch },
+    );
+    await waitFor(() => expect(result.current).not.toBeNull());
+    expect(result.current?.filter?.options.map((option) => option.value)).toEqual(['35']);
+    expect((await result.current!.search('', 1, '35')).items.map((row) => row.id)).toEqual([7]);
+    const count = requests.length;
+    expect(await result.current!.search('', 1, '34')).toEqual({ items: [], total: 0 });
+    expect(requests).toHaveLength(count);
+  });
+  it('SL_CD 연결 실패는 다른 창고를 대신 선택하지 않는다', async () => {
+    const { fetch } = recordingFetch([warehousesRoute([warehouse(34, 'PRODUCT')])]);
+    const { result } = renderHookWithProviders(
+      () => useLocationSource(501, '', { erpCode: 'UNMAPPED' }),
+      { fetch },
+    );
+    await waitFor(() => expect(fetch).toBeDefined());
+    expect(result.current).toBeNull();
+  });
+  it('SL_CD가 없으면 GENERAL/PRODUCT를 허용하고 자재·외부·불량·비활성·다른 공장을 제외한다', async () => {
+    const { fetch } = recordingFetch([
+      warehousesRoute([
+        warehouse(34, 'PRODUCT'),
+        warehouse(35, 'GENERAL'),
+        warehouse(36, 'MATERIAL'),
+        { ...warehouse(37, 'GENERAL'), isExternal: true },
+        { ...warehouse(38, 'PRODUCT'), isDefect: true },
+        warehouse(39, 'PRODUCT', 502),
+        warehouse(40, 'PRODUCT', 501, false),
+      ]),
+    ]);
+    const { result } = renderHookWithProviders(() => useLocationSource(501, '', {}), { fetch });
+    await waitFor(() => expect(result.current).not.toBeNull());
+    expect(result.current?.filter?.options.map((option) => option.value)).toEqual(['34', '35']);
+  });
   it('공장을 모르면 창고를 부르지 않고 팝업도 열지 않는다', () => {
     const { fetch, requests } = recordingFetch([]);
     const { result } = renderHookWithProviders(() => useLocationSource(null, 'PRODUCT'), {

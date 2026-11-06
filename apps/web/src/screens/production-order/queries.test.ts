@@ -41,6 +41,17 @@ const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => 
 };
 
 describe('toProductionOrderFact', () => {
+  it('ERP 입고 창고 정보는 응답 그대로 보존한다', () => {
+    const input = {
+      ...productionOrder(101),
+      erpStorageLocationCode: 'WH-A',
+      erpStorageWarehouse: { id: 35, code: 'WH-A', name: '입고 창고' },
+    };
+    expect(toProductionOrderFact(input)).toMatchObject({
+      erpStorageLocationCode: 'WH-A',
+      erpStorageWarehouse: input.erpStorageWarehouse,
+    });
+  });
   it('ERP 계획 시작일을 납기와 구분하여 보존한다', () => {
     expect(
       toProductionOrderFact({

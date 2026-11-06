@@ -13,6 +13,22 @@ type ProductionOrder = components['schemas']['ProductionOrder'] & {
   remainingQty?: number;
 };
 
+const readErpWarehouse = (order: object): Pick<ProductionOrderFact, 'erpStorageWarehouse'> => {
+  const value = 'erpStorageWarehouse' in order ? order.erpStorageWarehouse : undefined;
+  if (
+    value &&
+    typeof value === 'object' &&
+    'id' in value &&
+    typeof value.id === 'number' &&
+    'code' in value &&
+    typeof value.code === 'string' &&
+    'name' in value &&
+    typeof value.name === 'string'
+  )
+    return { erpStorageWarehouse: { id: value.id, code: value.code, name: value.name } };
+  return {};
+};
+
 export const productionOrderKeys = {
   all: ['production-orders'] as const,
   detail: (productionOrderId: number | null) =>
@@ -41,6 +57,10 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
   uomId: order.uomId,
   dueDate: order.dueDate ?? null,
   plannedStartDate: order.plannedStartDate ?? null,
+  ...('erpStorageLocationCode' in order && typeof order.erpStorageLocationCode === 'string'
+    ? { erpStorageLocationCode: order.erpStorageLocationCode }
+    : {}),
+  ...readErpWarehouse(order),
   statusCode: order.statusCode,
   remarks: order.remarks ?? null,
   expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,
