@@ -13,7 +13,8 @@ type AutoPlanReason = components['schemas']['AutoPlanReason'];
 export type ProcessState = WorklistState;
 
 /** 사유 코드. 자동 계획 확인 필요의 사유와, 자동 계획은 끝났지만 배포가 막힌 사유 둘 다다. */
-export type WorklistReason = AutoPlanReason | WorklistReasonCode;
+export type WorklistReason =
+  AutoPlanReason | WorklistReasonCode | 'DRAFT_PLAN_PENDING' | 'PLAN_QTY_REMAINING';
 
 /** 사유 하나. 화면이 모르는 코드가 와도 칩을 그릴 수 있게 코드는 문자열로 받는다. */
 export interface WorklistReasonItem {
@@ -58,6 +59,8 @@ export const REASON_STEP: Record<WorklistReason, ProcessStepKey> = {
   ROUTING_AMBIGUOUS: 'master',
   LINE_UNKNOWN: 'plan',
   PLAN_NOT_CONFIRMED: 'plan',
+  DRAFT_PLAN_PENDING: 'plan',
+  PLAN_QTY_REMAINING: 'plan',
   QTY_REMAINING: 'plan',
   AUTO_PLAN_RERUN_NEEDED: 'plan',
   DRAFT_PLAN_PENDING: 'plan',

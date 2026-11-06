@@ -64,6 +64,8 @@ describe('작업함 처리 상태(C-17)', () => {
   it('사유가 가리키는 단계(구성안 대응표)', () => {
     expect(REASON_STEP.BOM_MISSING).toBe('master');
     expect(REASON_STEP.PLAN_NOT_CONFIRMED).toBe('plan');
+    expect(REASON_STEP.DRAFT_PLAN_PENDING).toBe('plan');
+    expect(REASON_STEP.PLAN_QTY_REMAINING).toBe('plan');
     expect(REASON_STEP.AUTO_PLAN_RERUN_NEEDED).toBe('plan');
     expect(REASON_STEP.NO_LIVE_WORK_ORDER).toBe('plan');
     expect(REASON_STEP.DRAFT_PLAN_PENDING).toBe('plan');
