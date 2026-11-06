@@ -334,12 +334,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '불량코드 공정 연결',
             labelVi: 'Liên kết mã lỗi - công đoạn',
           },
-          {
-            to: '/master-data/judgment-code',
-            // 「판정 유형 코드」 → 「판정 유형」(사용자 지시 2026-10-29 · #209)
-            label: '판정 유형',
-            labelVi: 'Loại đánh giá',
-          },
         ],
       },
       /*
