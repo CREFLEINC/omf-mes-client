@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Route, Routes, useLocation } from 'react-router';
@@ -14,7 +14,7 @@ import {
 } from '../../test/session-harness';
 
 import { readReturnPath } from './return-path';
-import { SessionProvider, useSession } from './session-context';
+import { SessionProvider, sessionKeys, useSession } from './session-context';
 import { GuestOnly, RequireSession } from './session-guards';
 
 const t = messages.session;
@@ -33,8 +33,16 @@ const LocationProbe = () => {
     <>
       <output data-testid="location">{`${location.pathname}${location.search}`}</output>
       <output data-testid="from">{readReturnPath(location.state) ?? '없음'}</output>
+      <output data-testid="from-user">{readCarriedUser(location.state)}</output>
     </>
   );
+};
+
+/** 들려 온 값의 「보던 사람」. 없으면 `없음`. */
+const readCarriedUser = (state: unknown): string => {
+  const userId: unknown = (state as { userId?: unknown } | null)?.userId;
+
+  return typeof userId === 'number' ? String(userId) : '없음';
 };
 
 /** 화면 안에서 스스로 로그아웃한다 — 서버 왕복은 `use-sign-out.test.tsx`가 잰다. */
@@ -50,6 +58,7 @@ const SignOutButton = () => {
 
 const currentPath = (): string => screen.getByTestId('location').textContent ?? '';
 const carriedFrom = (): string => screen.getByTestId('from').textContent ?? '';
+const carriedUser = (): string => screen.getByTestId('from-user').textContent ?? '';
 
 /** 가드가 지키는 화면과 로그인 화면을 한 표에 세운다 — 두 화면 사이의 이동이 재는 대상이다. */
 const renderGuardedApp = (
@@ -123,6 +132,29 @@ describe('RequireSession — 로그인한 사람만 지나간다', () => {
       expect(currentPath()).toBe(LOGIN_ROUTE);
     });
     expect(carriedFrom()).toBe(PROTECTED_ROUTE);
+    /* 한 번도 로그인한 적이 없다 — 즐겨찾기로 처음 연 경우라 누가 로그인하든 그 주소로 간다. */
+    expect(carriedUser()).toBe('없음');
+  });
+
+  /**
+   * ⭐ **세션이 만료되면 보던 사람을 함께 들려 보낸다**(omf-all-around#188). 로그인 화면은 그 값으로
+   * 다음에 로그인한 사람이 같은 사람인지 가른다.
+   */
+  it('만료되면 막힌 주소와 그 주소를 보던 사람을 함께 들려 보낸다', async () => {
+    const { queryClient } = renderGuardedApp(PROTECTED_ROUTE, withSessionStub(signedInRoute()));
+
+    expect(await screen.findByRole('heading', { name: '창고·Location' })).toBeVisible();
+
+    /* 만료 — 업무 조회의 401이 하는 일과 같다(`session-context.tsx`). */
+    act(() => {
+      queryClient.setQueryData(sessionKeys.current, null);
+    });
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(LOGIN_ROUTE);
+    });
+    expect(carriedFrom()).toBe(PROTECTED_ROUTE);
+    expect(carriedUser()).toBe(String(SYNTHETIC_SESSION.userId));
   });
 
   /**

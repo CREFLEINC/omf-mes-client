@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
@@ -320,6 +320,80 @@ describe('SessionProvider — 만료를 업무 조회에서 알아챈다', () =>
     });
 
     expect(status()).toBe('authenticated');
+  });
+});
+
+/**
+ * **만료 뒤 같은 브라우저에 누가 들어오는가**(omf-all-around#188).
+ *
+ * 스스로 로그아웃하면 캐시를 버리고 마지막 화면을 잊는다(#175). 만료는 서버가 정하므로 그
+ * 순간을 화면이 잡지 못한다 — 그래서 **다음 로그인에서** 같은 사람인지 가른다.
+ */
+describe('SessionProvider — 만료 뒤 다른 사람이 로그인한다', () => {
+  const OTHER_USER = sessionFixture({
+    userId: 8102,
+    loginId: 'SYN-LOGIN-02',
+    userName: '합성 사용자 나',
+  });
+  const BUSINESS_KEY = ['probe', 'cached-list'] as const;
+
+  const PreviousUserProbe = () => {
+    const { previousUserId } = useSession();
+
+    return <output data-testid="previous">{previousUserId ?? '없음'}</output>;
+  };
+
+  /** 앞사람이 로그인해 있다가 만료돼 미인증이 된 자리 — 앞사람의 조회 캐시가 남아 있다. */
+  const renderExpired = async (nextUser: Session) => {
+    const user = userEvent.setup();
+    const rendered = renderWithProviders(
+      <SessionProvider>
+        <SignInProbe session={nextUser} />
+        <SessionProbe />
+        <PreviousUserProbe />
+      </SessionProvider>,
+      { session: sessionFixture() },
+    );
+
+    rendered.queryClient.setQueryData(BUSINESS_KEY, ['앞사람이 본 행']);
+    await waitFor(() => {
+      expect(status()).toBe('authenticated');
+    });
+
+    /* 만료 — 업무 조회의 401이 하는 일과 같다(세션 칸을 「없음」으로 덮는다). */
+    act(() => {
+      rendered.queryClient.setQueryData(['app', 'session', 'current'], null);
+    });
+    await waitFor(() => {
+      expect(status()).toBe('anonymous');
+    });
+
+    return { user, queryClient: rendered.queryClient };
+  };
+
+  it('만료된 뒤에도 앞서 로그인해 있던 사람을 기억한다', async () => {
+    await renderExpired(OTHER_USER);
+
+    expect(screen.getByTestId('previous').textContent).toBe(String(SYNTHETIC_SESSION.userId));
+  });
+
+  it('다른 사람이 로그인하면 앞사람의 조회 캐시를 버린다', async () => {
+    const { user, queryClient } = await renderExpired(OTHER_USER);
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    expect(status()).toBe('authenticated');
+    expect(queryClient.getQueryData(BUSINESS_KEY)).toBeUndefined();
+    expect(screen.getByTestId('previous').textContent).toBe('8102');
+  });
+
+  it('같은 사람이 다시 로그인하면 캐시를 남긴다 — 하던 화면을 이어 본다', async () => {
+    const { user, queryClient } = await renderExpired(sessionFixture());
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    expect(status()).toBe('authenticated');
+    expect(queryClient.getQueryData(BUSINESS_KEY)).toEqual(['앞사람이 본 행']);
   });
 });
 

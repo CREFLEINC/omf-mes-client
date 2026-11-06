@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { createEvent, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, createEvent, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -488,6 +488,71 @@ describe('LoginScreen — 성공하면 관리웹으로 넘어간다', () => {
     await user.click(screen.getByRole('button', { name: '뒤로' }));
 
     expect(currentPath()).not.toBe(LOGIN_ROUTE);
+  });
+});
+
+/**
+ * **세션이 만료돼 로그인 화면에 왔을 때 어디로 돌아가는가**(omf-all-around#188).
+ *
+ * 가드는 막힌 주소와 함께 그 주소를 보던 사람을 들려 보낸다. 같은 사람이면 하던 화면으로,
+ * 다른 사람이면 첫 화면으로 간다 — 다른 사람이 앞사람의 화면으로 들어가면 권한이 다를 때
+ * 오류만 남는다.
+ */
+describe('LoginScreen — 만료 뒤 누가 로그인하는가', () => {
+  const BLOCKED_ROUTE = '/system/users-roles';
+
+  const signInAfterExpiry = async (previousUserId: number | undefined) => {
+    const user = userEvent.setup();
+    /* 이동 상태를 심으려면 라우터를 쥐어야 한다 — 데이터 라우터로 감싼다. */
+    const { router } = renderWithProviders(
+      <SessionProvider>
+        <LoginScreen />
+        <LocationProbe />
+      </SessionProvider>,
+      {
+        fetch: createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]),
+        route: LOGIN_ROUTE,
+        session: null,
+        dataRouter: true,
+      },
+    );
+
+    await act(async () => {
+      await router?.navigate(LOGIN_ROUTE, {
+        replace: true,
+        state: {
+          from: BLOCKED_ROUTE,
+          ...(previousUserId === undefined ? {} : { userId: previousUserId }),
+        },
+      });
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+  };
+
+  it('같은 사람이 로그인하면 하던 화면으로 돌아간다', async () => {
+    await signInAfterExpiry(sessionBody().userId);
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(BLOCKED_ROUTE);
+    });
+  });
+
+  it('다른 사람이 로그인하면 첫 화면으로 간다', async () => {
+    await signInAfterExpiry(sessionBody().userId + 1);
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+  });
+
+  it('보던 사람을 모르면 막힌 주소로 간다 — 즐겨찾기로 처음 연 경우다', async () => {
+    await signInAfterExpiry(undefined);
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(BLOCKED_ROUTE);
+    });
   });
 });
 

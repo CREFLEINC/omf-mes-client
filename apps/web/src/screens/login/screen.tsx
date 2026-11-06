@@ -55,13 +55,16 @@ export const LoginScreen = () => {
   const { signIn } = useSession();
 
   /**
-   * 성공 뒤 갈 곳. **가드가 막은 주소가 있으면 그리로 돌아간다**(#1019).
+   * 성공 뒤 갈 곳을 정할 근거. **가드가 막은 주소가 있으면 그리로 돌아간다**(#1019).
    *
-   * ⭐ **판정을 렌더 시점에 해 둔다.** 성공 되먹임 안에서 읽으면 그 사이에 이동 상태가 바뀐
-   * 경우 엉뚱한 곳으로 간다 — 이 값은 「이 화면에 «어떻게» 들어왔는가」이지 「지금 어디인가」가
-   * 아니다.
+   * ⭐ **들고 온 값을 렌더 시점에 잡아 둔다.** 성공 되먹임 안에서 읽으면 그 사이에 이동 상태가
+   * 바뀐 경우 엉뚱한 곳으로 간다 — 이 값은 「이 화면에 «어떻게» 들어왔는가」이지 「지금
+   * 어디인가」가 아니다.
+   *
+   * ⭐ **어디로 갈지는 로그인한 «뒤에» 정한다**(omf-all-around#188). 막힌 주소를 보던 사람과
+   * 방금 로그인한 사람이 다르면 첫 화면으로 간다 — 누가 로그인할지는 성공 응답이 와야 안다.
    */
-  const returnPath = resolveReturnPath(location.state);
+  const returnState: unknown = location.state;
 
   const login = useLogin({
     onSuccess: (session) => {
@@ -80,7 +83,7 @@ export const LoginScreen = () => {
        * 이미 로그인한 사람이 로그인 화면으로 되돌아간다 — 그 화면은 자기가 로그인된 줄
        * 모르므로 사용자는 자격을 한 번 더 친다.
        */
-      void navigate(returnPath, { replace: true });
+      void navigate(resolveReturnPath(returnState, session.userId), { replace: true });
     },
   });
 
