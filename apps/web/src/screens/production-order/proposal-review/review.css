@@ -505,3 +505,36 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.proposal-review-body > .erp-wo-adjustable {
+  min-width: 0;
+}
+.proposal-review-body .erp-wo-adjustable-second .proposal-detail {
+  margin-top: 0;
+}
+
+.proposal-detail {
+  container-type: inline-size;
+  container-name: proposalDetail;
+}
+@container proposalDetail (max-width:600px) {
+  .proposal-quantities {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .proposal-plan-information {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container proposalDetail (max-width:400px) {
+  .proposal-facts,
+  .proposal-plan-information {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.proposal-review-body .erp-wo-adjustable-first .erp-wo-adjustable-table table {
+  min-width: max(70rem, var(--col-floor, 0px));
+}
+.proposal-order-number {
+  white-space: nowrap;
+}

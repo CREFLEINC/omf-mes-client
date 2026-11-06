@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../../test/api-harness';
@@ -36,7 +36,7 @@ describe('제안 검토 화면', () => {
     expect(screen.getByRole('region', { name: '생산계획 정보' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '공정별 작업지시 2건' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '4M 배정' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '확정 시 반영 사항' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '확정 시 반영 사항' })).not.toBeInTheDocument();
     expect(
       screen.getByRole('checkbox', { name: `${previewProposals[3]!.number} 확정 선택` }),
     ).toBeDisabled();
@@ -55,6 +55,35 @@ describe('제안 검토 화면', () => {
     expect(screen.queryByRole('button', { name: 'Routing' })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '생산량' })).not.toBeInTheDocument();
   });
+  it('상하·좌우 배치를 바꿔도 확정 선택과 상세를 유지한다', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
+    await user.click(screen.getByRole('button', { name: '좌우 배치' }));
+    expect(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` })).toBeChecked();
+    expect(screen.getByRole('separator', { name: '제안 표와 상세 너비 조절' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '상하 배치' }));
+    expect(screen.getByRole('region', { name: '생산계획 정보' })).toBeInTheDocument();
+  });
+  it('선택 사항은 숨기되 선택 확정에 넘기는 배정값은 보존한다', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.fn(async (_rows: typeof previewProposals) => {});
+    const rows = structuredClone(previewProposals);
+    rows[0]!.plans[0]!.operations[0]!.resources.plannedEquipmentId = {
+      id: 11,
+      code: 'EQ-01',
+      name: '설비 A',
+    };
+    renderReview({ initialProposals: rows, onConfirm: confirm });
+    expect(screen.queryByRole('button', { name: '설비' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
+    await user.click(screen.getByRole('button', { name: '선택 제안 확정' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '확정' }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+    expect(
+      confirm.mock.calls[0]?.[0]?.[0]?.plans[0]?.operations[0]?.resources.plannedEquipmentId?.id,
+    ).toBe(11);
+  });
   it('상세 선택과 확정 선택을 구분하고 처음에는 체크하지 않는다', async () => {
     const user = userEvent.setup();
     renderReview();
@@ -71,16 +100,16 @@ describe('제안 검토 화면', () => {
     renderReview();
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
     const operation = screen.getByRole('region', { name: '10 성형 배정' });
-    await user.click(within(operation).getByRole('button', { name: '설비' }));
+    await user.click(within(operation).getByRole('button', { name: '생산 라인' }));
     const dialog = screen.getByRole('dialog');
-    await user.click(within(dialog).getByText('설비 A'));
+    await user.click(within(dialog).getByText('생산 라인 B'));
     await user.click(within(dialog).getByRole('button', { name: '선택' }));
     expect(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` })).not.toBeChecked();
     await user.click(screen.getByRole('tab', { name: '주간 편성 보기' }));
     await user.click(screen.getByRole('button', { name: '다음 주' }));
     expect(screen.getByText('현재 주 외 계획 4건')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'ERP W/O별 표' }));
-    expect(screen.getByText('설비 A (EQ-01)')).toBeInTheDocument();
+    expect(screen.getAllByText('생산 라인 B (LINE-02)').length).toBeGreaterThan(0);
   });
   it('생산량·계획일·BOM은 검토 표시가 있어도 정보로만 표시한다', () => {
     const rows = structuredClone(previewProposals);
@@ -107,7 +136,7 @@ describe('제안 검토 화면', () => {
     await user.click(within(dialog).getByText('생산 라인 A'));
     await user.click(within(dialog).getByRole('button', { name: '선택' }));
     expect(screen.queryByText('성형: 생산 라인 미지정')).not.toBeInTheDocument();
-    expect(screen.getAllByText('작업자')).toHaveLength(2);
+    expect(screen.queryByText('작업자')).not.toBeInTheDocument();
     expect(screen.queryByText('작업자을 지정하세요')).not.toBeInTheDocument();
   });
   it('연결하지 않은 미리보기는 선택해도 실제 확정을 실행하지 않는다', async () => {
