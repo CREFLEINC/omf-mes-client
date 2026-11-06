@@ -2,7 +2,6 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes, useLocation } from 'react-router';
-import { AutoPlanResultPage } from './auto-plan-result-page';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -206,7 +205,7 @@ const render = (
         <Route path="/production/production-orders" element={<ProductionOrderScreen />} />
         <Route
           path="/production/production-orders/auto-plan-results"
-          element={<AutoPlanResultPage />}
+          element={<div>제안 검토 경로</div>}
         />
         <Route path="/production/production-orders/:id" element={<div />} />
       </Routes>
@@ -257,7 +256,7 @@ describe('작업지시 목록 작업함', () => {
       within(dialog).getByRole('heading', { name: '준비할 ERP 데이터와 MES 기준정보' }),
     ).toBeVisible();
     expect(within(dialog).getByText(/기본 BOM 개정이 정확히 1개/)).toBeVisible();
-    expect(within(dialog).getByText(/먼저 생성된 미확정 계획 1건/)).toBeVisible();
+    expect(within(dialog).getByText(/저장된 미확정 계획 전부/)).toBeVisible();
     expect(
       requests.some((request) => request.method === 'POST' && request.url.includes('auto-plan')),
     ).toBe(false);
@@ -549,52 +548,32 @@ describe('작업지시 목록 작업함', () => {
     expect(release).toHaveAccessibleDescription(t.bulk.reasons.noneChecked);
   });
 
-  it('생산계획 자동 전개 확인 창은 라인을 모를 때 건너뛰지 않고 작성 중 계획만 만든다고 말한다', async () => {
+  it('자동 전개는 즉시 처리 없이 선택한 ERP W/O의 제안 검토로 이동한다', async () => {
     const user = userEvent.setup();
-    render({ orders: [REVIEW] });
-
+    const { requests } = render({ orders: [REVIEW] });
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
     await user.click(within(row).getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
-
-    const dialog = screen.getByRole('dialog', { name: t.bulk.autoPlanDialog.title });
-    expect(
-      within(dialog).getByText(
-        '생산 라인을 정할 수 없으면 작성 중인 계획만 만들고 확정하지 않습니다.',
-      ),
-    ).toBeVisible();
-    expect(within(dialog).getByText('품목에 ★로 지정한 설비와 금형 자동 배정')).toBeVisible();
-    expect(within(dialog).queryByText('라인을 정할 수 없는 ERP W/O')).toBeNull();
-    expect(
-      within(dialog).getByText(
-        '확정한 계획 수량이 주문 수량보다 적고 작성 중인 계획이 없는 ERP W/O(남은 수량은 생산계획 단계에서 계획)',
-      ),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('/auto-plan-results?ids=701'),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
   });
-
-  it('생산계획 자동 전개 결과 조회 중에는 업무 상태 선택을 해제하고 업무 목록 복귀 시 복원한다', async () => {
+  it('복수 ERP W/O도 저장 요청 없이 선택 ID로 제안 화면에 이동한다', async () => {
     const user = userEvent.setup();
-    render(
-      { orders: [REVIEW, DONE_BLOCKED, DONE_READY] },
+    const { requests } = render(
+      { orders: [REVIEW, DONE_BLOCKED] },
       '/production/production-orders?state=ALL',
     );
-    const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
-    await user.click(within(row).getByRole('checkbox'));
+    for (const no of ['SYN-PO-701', 'SYN-PO-702']) {
+      const row = await screen.findByRole('link', { name: t.list.openRow(no) });
+      await user.click(within(row).getByRole('checkbox'));
+    }
     await user.click(screen.getByRole('button', { name: t.bulk.autoPlan }));
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '실행' }));
-    await screen.findByRole('region', { name: '생산계획 자동 전개 결과' });
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('ids=701,702'));
     expect(screen.queryByRole('group', { name: t.counts.label })).toBeNull();
-    expect(screen.queryByRole('form')).toBeNull();
-    expect(screen.getByRole('heading', { name: '생산계획 자동 전개 결과' })).toBeVisible();
-    expect(screen.getByRole('button', { name: '실행 대상 전체 1건' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: '작업계획 목록으로' }));
-    expect(screen.queryByRole('region', { name: '생산계획 자동 전개 결과' })).toBeNull();
-    const statuses = screen.getByRole('group', { name: t.counts.label });
-    expect(within(statuses).getByRole('button', { name: /^전체 / })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(await screen.findByRole('link', { name: t.list.openRow('SYN-PO-703') })).toBeVisible();
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
   });
   it('일괄 배포는 실행과 같은 판정으로 예고하고, 일부 처리를 따로 세며, 처리 상태 칸은 결과가 아니라 실제 상태를 보인다(C-16, C-18)', async () => {
     const user = userEvent.setup();

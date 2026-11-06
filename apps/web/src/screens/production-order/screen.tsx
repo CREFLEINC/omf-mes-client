@@ -394,7 +394,13 @@ export const ProductionOrderScreen = ({
                 title={t.bulk.autoPlanHelp}
                 disabled={bulkReason !== null}
                 aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-                onClick={() => setDialog({ kind: 'autoPlan', targets })}
+                onClick={() => {
+                  setChecked([]);
+                  rememberWorklistSearch(searchParams);
+                  void navigate(
+                    `${AUTO_PLAN_RESULT_PATH}?ids=${targets.map((target) => target.productionOrderId).join(',')}`,
+                  );
+                }}
               >
                 {t.bulk.autoPlan}
               </Button>

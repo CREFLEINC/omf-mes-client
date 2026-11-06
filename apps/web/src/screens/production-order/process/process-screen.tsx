@@ -38,11 +38,10 @@ import {
 import { useRoutingOperations } from '../../routing/queries';
 import { useProductionOrderCodeNames } from '../code-names';
 import { useItemCodeNames } from '../item-lookups';
-import { useAutoPlanMutation } from '../mutations';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
 import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
-import { ProcessStateChip, ReasonChips, reasonLabel } from '../worklist-chips';
+import { ProcessStateChip, ReasonChips } from '../worklist-chips';
 import {
   processPath,
   readWorklistFilters,
@@ -367,16 +366,6 @@ export const ProcessWorkspace = ({
       queryKey: worklistKeys.byNumber(order.productionOrderNo),
     });
   }, [order.productionOrderNo, plansUpdatedAt, queryClient]);
-
-  const autoPlan = useAutoPlanMutation({
-    onSuccess: (result) => {
-      toast.show({
-        variant: result.outcome === 'CONFIRMED' ? 'success' : 'warning',
-        description: `${tp.autoPlanResult[result.outcome]}${result.reasons.length ? `: ${[...new Set(result.reasons.map(reasonLabel))].join(', ')}` : ''}`,
-      });
-      setStep(null);
-    },
-  });
 
   const derivedBase = deriveWorklistState(order);
   /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 생산 라인 없음)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
@@ -934,8 +923,11 @@ export const ProcessWorkspace = ({
         canRerun && step !== 'done' ? (
           <Button
             variant="outlined"
-            loading={autoPlan.isSaving}
-            onClick={() => autoPlan.write(order.productionOrderId)}
+            onClick={() =>
+              void navigate(
+                `/production/production-orders/auto-plan-results?ids=${order.productionOrderId}`,
+              )
+            }
           >
             {tp.rerunAutoPlan}
           </Button>
@@ -992,13 +984,6 @@ export const ProcessWorkspace = ({
         </ActionBar>
       }
     >
-      {autoPlan.error !== null && (
-        <AlertBanner variant="warning">
-          {autoPlan.error.kind === 'conflict'
-            ? tp.autoPlanResult.running
-            : messages.httpError.description}
-        </AlertBanner>
-      )}
       {body}
       <LeaveGuard when={planDirty || distributionDirty || assignDirty || lotDirty} />
       {pendingStep !== null && (

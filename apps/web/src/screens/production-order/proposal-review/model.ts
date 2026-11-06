@@ -67,6 +67,11 @@ export interface ReviewProposal {
   plans: ReviewPlan[];
   issues: string[];
   changed?: boolean;
+  live?: boolean;
+  plantId?: number;
+  serverKind?: 'NEW_PLAN' | 'REVIEW_DRAFT' | 'KEEP_CONFIRMED' | 'NOT_PROPOSABLE';
+  serverStatus?: string;
+  serverIssues?: string[];
 }
 export const storageFailureLabels: Record<string, string> = {
   FG_WAREHOUSE_UNMAPPED: '생산품 입고 창고 연결 필요',
@@ -101,6 +106,9 @@ export const proposedQuantity = (row: ReviewProposal): number =>
 export const proposalErrors = (row: ReviewProposal): string[] => {
   const editable = row.plans.filter((plan) => plan.source !== '기존 확정 계획');
   const errors = [...row.issues];
+  if (row.live && row.changed) errors.push('보완한 제안의 서버 재검증 필요');
+  if (row.live && !row.changed && row.serverStatus === 'NEEDS_INPUT')
+    errors.push(...(row.serverIssues?.length ? row.serverIssues : ['서버 점검 보완 필요']));
   const storage = row.erpStorage;
   if (storage?.erpStorageLocationCode) {
     if (storage.reasonCode)
@@ -135,7 +143,8 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
   return [...new Set(errors)];
 };
 export const reviewStatus = (row: ReviewProposal) =>
-  row.plans.length > 0 && row.plans.every((plan) => plan.source === '기존 확정 계획')
+  (row.serverKind === 'KEEP_CONFIRMED' && row.serverStatus === 'NO_CHANGE') ||
+  (row.plans.length > 0 && row.plans.every((plan) => plan.source === '기존 확정 계획'))
     ? '변경 없음'
     : proposalErrors(row).length
       ? '검토 필요'

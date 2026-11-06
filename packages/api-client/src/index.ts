@@ -89,3 +89,4 @@ export type {
   InspectionPlanVersionUpdateForward,
   InspectionGuideForward,
 } from './forward-contract';
+export { createProposalReadClient, type PlanProposal } from './proposal-read';

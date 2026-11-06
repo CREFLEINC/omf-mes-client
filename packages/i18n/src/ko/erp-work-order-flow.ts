@@ -197,7 +197,7 @@ export const erpWorkOrderFlow = {
   bulk: {
     plan: '생산계획 편성',
     planHelp: '날짜, 라인, 수량 직접 지정',
-    autoPlanShortHelp: '기본값 생성, 가능하면 확정',
+    autoPlanShortHelp: '제안 조회 후 검토·보완',
     releaseShortHelp: '배정 완료된 작업지시 전달',
     release: '작업지시 일괄 배포',
     autoPlan: '생산계획 자동 전개',
