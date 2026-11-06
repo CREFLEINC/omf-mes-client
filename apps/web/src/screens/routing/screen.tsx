@@ -1,7 +1,6 @@
 import {
   AlertBanner,
   Breadcrumb,
-  Button,
   Chip,
   EmptyState,
   PageHeader,
@@ -9,7 +8,7 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
@@ -21,7 +20,6 @@ import { usePageHub } from '../../patterns/page-hub';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { TAB_PAGE_SIZES } from '../../patterns/client-page';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
-import { toApiError } from '../../patterns/request';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -29,6 +27,7 @@ import {
 } from '../../patterns/split-orientation';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { DependencyDialog } from './dependency-dialog';
 import { HeaderPane } from './header-pane';
 import { ROUTING_HEADER_FORM_FIELDS, validateRoutingHeader } from './header-validation';
@@ -125,37 +124,6 @@ const parseLatestStatus = (value: string | null): ItemFilters['latestStatus'] =>
 
 const EDIT_TARGET_PARAMS = ['item', 'rev'] as const;
 
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다.
- * 저장 실패와 달리 사용자가 할 수 있는 조치가 재시도뿐이라 액션도 하나다.
- *
- * 서버가 빈 문구를 주는 일이 실제로 있다 — `??`는 빈 문자열을 통과시켜 배너 본문을 지운다.
- * 그래서 널이 아니라 빈 문자열까지 명시적으로 검사한다.
- */
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-interface LoadErrorBannerProps {
-  error: unknown;
-  onRetry: () => void;
-}
-
 /** 계약이 정한 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
 type TransitionPath =
   | '/planning/routings/{routingId}:confirm'
@@ -197,23 +165,6 @@ const useRoutingTransition = ({ client, routingId, path, onDone }: RoutingTransi
     knownFields: [],
     onSuccess: onDone,
   });
-
-/** 조회 실패 배너. 규범 6에 따라 화면이 직접 배치하는 배너는 화면이 이음매를 붙인다. */
-const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 /**
  * W-06-01 컨테이너 — 품목 → Rev → 헤더·공정 라인을 3단으로 놓는다.

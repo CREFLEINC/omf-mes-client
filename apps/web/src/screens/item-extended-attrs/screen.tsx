@@ -45,7 +45,7 @@ import {
   useItemNames,
   useItemTypeOptions,
 } from './item-queries';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import {
   useBusinessUnitOptions,
   usePartnerOptions,

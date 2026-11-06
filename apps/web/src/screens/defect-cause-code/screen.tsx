@@ -8,7 +8,6 @@ import {
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
@@ -22,7 +21,6 @@ import {
   SplitOrientationToggle,
   useSplitOrientation,
 } from '../../patterns/split-orientation';
-import { toApiError } from '../../patterns/request';
 import { ChildCodeTable } from './child-code-table';
 import { CodeDetailHead } from './code-detail-head';
 import { CodeFilterBar } from './code-filter-bar';
@@ -59,6 +57,7 @@ import type {
   HierarchyCode,
 } from './types';
 import { usePageHub } from '../../patterns/page-hub';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 
 const t = messages.defectCauseCode;
 const hubText = messages.common.inspectionHub;
@@ -75,55 +74,6 @@ const codeLockReasonOf = (editability: Editability): string | null => {
 
 /** 목록 · 상세 배치는 「품질 코드 관리」 묶음의 탭끼리 함께 쓴다(#209). */
 const DEFECT_JUDGMENT_ORIENTATION_KEY = 'omf-mes:defect-judgment-hub:split-orientation';
-
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다.
- * 저장 실패와 달리 사용자가 할 수 있는 조치가 재시도뿐이라 액션도 하나다.
- *
- * 다른 화면 슬라이스에도 같은 함수가 있으나 가져다 쓰지 않는다 —
- * 화면 슬라이스끼리 참조하면 한쪽의 사정이 다른 쪽 화면을 바꾼다.
- */
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      // 서버가 빈 message를 주는 일이 실제로 있다. ??는 빈 문자열을 통과시켜 본문을 지운다.
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-interface LoadErrorBannerProps {
-  error: unknown;
-  onRetry: () => void;
-}
-
-/** 조회 실패 배너. 규범 6에 따라 화면이 직접 배치하는 배너는 화면이 이음매를 붙인다. */
-const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 /**
  * 폼의 현재 값과 그것이 어디서 나왔는지.

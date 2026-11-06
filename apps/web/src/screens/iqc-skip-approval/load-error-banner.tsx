@@ -1,5 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
@@ -15,11 +15,11 @@ import { toApiError } from '../../patterns/request';
  * 두지 않았다 — 서버가 준 메시지를 그대로 낸다.
  */
 export const describeLoadError = (error: ApiError): string => {
+  if (isForbidden(error)) return messages.httpError.forbidden;
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
       return error.message === undefined || error.message === ''
         ? messages.httpError.description
         : error.message;
@@ -43,8 +43,6 @@ export const describeLoadError = (error: ApiError): string => {
  * **목록에 403이 계약에 적혀 있다** — 이 화면의 목록 응답 갈래는 200과 403 둘뿐이라
  * 실제로 도달하는 갈래다.
  */
-const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
-
 export interface LoadErrorBannerProps {
   error: unknown;
   onRetry: () => void;

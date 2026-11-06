@@ -19,7 +19,7 @@ import {
   restateItemResourceMapApiError,
   restateItemResourceMapError,
 } from './item-resource-map-validation';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { usePlantOptions, useProcessOptions, type LookupResult } from './lookups';
 import { lookupLabel, selectableOptions } from './options';
 import { subsidiaryKeys, useItemResourceMaps } from './subsidiary-queries';

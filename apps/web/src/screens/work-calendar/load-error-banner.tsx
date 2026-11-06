@@ -1,5 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -38,6 +38,7 @@ const usableMessages = (errors: readonly { message: string }[]): string[] =>
   errors.map((item) => item.message).filter((message) => message.trim() !== '');
 
 const toContent = (error: ApiError): BannerContent => {
+  if (isForbidden(error)) return { lines: [messages.httpError.forbidden], canRetry: false };
   switch (error.kind) {
     case 'network':
       return { lines: [messages.httpError.offline], canRetry: true };

@@ -1,13 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Checkbox,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  TextField,
-} from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { Button, Checkbox, type Column, EmptyState, SkeletonText, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -15,7 +6,7 @@ import { useSearchParams } from 'react-router';
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
 import { OneLine } from '../../patterns/po-board';
-import { toApiError } from '../../patterns/request';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { isErpCodeGroup } from './erp-groups';
 import {
   type CodeGroup,
@@ -26,46 +17,6 @@ import {
 } from './queries';
 
 const t = messages.erpCommonCode;
-
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다. 조치가 재시도뿐이라 액션도 하나다.
- * 다른 화면 슬라이스의 같은 함수를 가져다 쓰지 않는다 — 슬라이스끼리 참조하면 한쪽 사정이 번진다.
- */
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      // 서버가 빈 message를 주는 일이 있다. ??는 빈 문자열을 통과시켜 본문을 지운다.
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-const LoadErrorBanner = ({ error, onRetry }: { error: unknown; onRetry: () => void }) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
 const orEmpty = (value: string | number | null | undefined): string =>

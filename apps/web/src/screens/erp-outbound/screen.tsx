@@ -5,7 +5,7 @@ import { Link, useSearchParams } from 'react-router';
 import { BoardTable } from '../../patterns/board-table';
 import { BoardFrame } from '../../patterns/board-frame';
 import { OneLine } from '../../patterns/po-board';
-import { LoadErrorBanner } from '../integration-sync/load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { documentNoOf, messageTitleOf } from '../integration-sync/message-labels';
 import { formatDateTime } from '../integration-sync/message-status';
 import { PageNav } from '../integration-sync/page-nav';

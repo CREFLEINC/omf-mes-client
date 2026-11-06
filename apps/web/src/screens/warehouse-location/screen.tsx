@@ -1,5 +1,5 @@
-import { AlertBanner, Button, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
-import type { ApiError, components } from '@omf-mes/api-client';
+import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
+import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -14,9 +14,10 @@ import {
   parentLocationIds,
 } from '../../patterns/location-tree';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { ApiRequestError, runRequest, toApiError } from '../../patterns/request';
+import { ApiRequestError, runRequest } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import { visibleWarehouses, WarehouseFilterBar } from '../../patterns/warehouse-filter-bar';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { issueLocationCode } from './location-code';
@@ -120,52 +121,6 @@ const ZONE_DEPTH = 0;
 
 /** 라벨 발행 · 발행 이력 집계 한 번의 상한(서버 1000건). 넘으면 일괄 출력을 막는다. */
 const LABEL_BATCH_MAX = 1000;
-
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다.
- * 저장 실패와 달리 사용자가 할 수 있는 조치가 재시도뿐이라 액션도 하나다.
- */
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      // 서버가 빈 message를 주는 일이 실제로 있다. ??는 빈 문자열을 통과시켜 본문을 지운다.
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-interface LoadErrorBannerProps {
-  error: unknown;
-  onRetry: () => void;
-}
-
-/** 조회 실패 배너. 규범 6에 따라 화면이 직접 배치하는 배너는 화면이 이음매를 붙인다. */
-const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 /**
  * W-06-07 컨테이너. 목록·상세·Location 계층을 서버 응답으로 그리고

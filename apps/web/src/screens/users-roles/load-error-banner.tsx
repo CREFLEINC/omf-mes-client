@@ -1,5 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { ApiRequestError, toApiError } from '../../patterns/request';
@@ -12,11 +12,11 @@ import { ApiRequestError, toApiError } from '../../patterns/request';
  * 그래서 널이 아니라 빈 문자열까지 명시적으로 검사한다.
  */
 export const describeLoadError = (error: ApiError): string => {
+  if (isForbidden(error)) return messages.httpError.forbidden;
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
       return error.message === undefined || error.message === ''
         ? messages.httpError.description
         : error.message;
@@ -38,8 +38,6 @@ export const describeLoadError = (error: ApiError): string => {
  * 권한 없음인가. **이 화면에서만 따로 가른다** — 계약이 「이 화면 자체가 권한 관리 화면이라
  * 진입 자체를 막고 배너로 사유를 표시한다」고 못 박은 자리다.
  */
-const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
-
 /** 목록이 막히면 선택 상세와 변경 액션도 함께 숨긴다. */
 export const isForbiddenLoadError = (error: unknown): boolean =>
   (error instanceof ApiRequestError && error.httpStatus === 403) || isForbidden(toApiError(error));

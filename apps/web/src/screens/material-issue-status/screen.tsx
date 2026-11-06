@@ -1,5 +1,4 @@
 import {
-  AlertBanner,
   Breadcrumb,
   Button,
   Checkbox,
@@ -45,6 +44,7 @@ import {
   statusLabel,
 } from './status';
 import type { MaterialIssueRequestView } from './api-types';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.materialIssueStatus;
 
@@ -280,19 +280,7 @@ export const MaterialIssueStatusScreen = () => {
 
   const listBody = (): ReactNode => {
     if (list.isError) {
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
     if (list.data.items.length === 0) {
@@ -366,19 +354,7 @@ export const MaterialIssueStatusScreen = () => {
 
   const body = (): ReactNode => {
     if (plants.isError) {
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void plants.refetch()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={plants.error} onRetry={() => void plants.refetch()} />;
     }
     if (plants.isPending) return <Skeleton variant="rect" height="16rem" />;
     if (plantId === null) return <EmptyState size="sm" title={t.empty.noPlant} />;
@@ -389,6 +365,7 @@ export const MaterialIssueStatusScreen = () => {
           data={shortage.data}
           isPending={shortage.isPending}
           isError={shortage.isError}
+          error={shortage.error}
           onRetry={() => void shortage.refetch()}
         />
       );

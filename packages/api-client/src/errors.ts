@@ -71,6 +71,7 @@ const isConflictCause = (value: unknown): value is ConflictCause =>
  * 481건 전부가 이 코드로 답한다.
  */
 const HTTP_UNAUTHORIZED = 401;
+const HTTP_FORBIDDEN = 403;
 
 /**
  * **잡은 값이 「세션이 끊겼다」인가** — 이 판정은 여기 한 곳뿐이다.
@@ -87,6 +88,18 @@ const HTTP_UNAUTHORIZED = 401;
  */
 export const isUnauthenticated = (error: ApiError): boolean =>
   error.kind === 'http' && error.status === HTTP_UNAUTHORIZED;
+
+/**
+ * **권한 없음(403)인가** — 같은 권한으로 다시 불러도 같은 답이 오므로 「다시 시도」를 두지 않는
+ * 갈래다(omf-all-around#187).
+ *
+ * ⭐ **`kind` 로 가르지 않는다.** 서버는 403 을 계약 오류 봉투(`errors[]`)에 담아 보내고, 정규화는
+ * 그것을 `validation`·`stateLocked` 로 접는다(봉투를 두는 상태라 갈래를 바꾸지 않는다). 상태 코드는
+ * 그 갈래에도 `status` 로 남는다. `kind === 'http'` 로만 보면 실제 서버 응답에서는 한 번도 서지
+ * 않는다 — 몸체 없는 403 만 `http` 로 온다.
+ */
+export const isForbidden = (error: ApiError): boolean =>
+  error.kind !== 'network' && error.status === HTTP_FORBIDDEN;
 
 /**
  * **기다리면 풀리는 상태 코드인가** — 408 요청 시간초과 · 429 요청 과다 · 5xx 서버 오류.

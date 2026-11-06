@@ -25,6 +25,7 @@ import { OriginChip } from './progress-view';
 import { PAGE_SIZE, replenishmentKeys, useArrivalList, useLocationNames } from './queries';
 import { ReceiveDialog } from './receive-dialog';
 import { plantMinute, qtyWithUom } from './types';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
 const ta = t.arrival;
@@ -190,19 +191,7 @@ export const ArrivalView = ({
 
   const body = (): ReactNode => {
     if (list.isError) {
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
     if (rows.length === 0) return <EmptyState size="sm" title={ta.empty} />;

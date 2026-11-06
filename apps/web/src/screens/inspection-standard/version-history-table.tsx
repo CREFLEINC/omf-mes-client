@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { useUserNames, useVersionHistory } from './queries';
 import type { CompareLabels } from './version-compare';
 import { toHistoryRow, type HistoryRow } from './version-history';

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
@@ -10,6 +10,7 @@ import { DetailPanel } from './detail-panel';
 import type { ProgressFilters } from './filters';
 import { PAGE_SIZE, replenishmentKeys, useProgressList } from './queries';
 import { RunTable } from './run-table';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import {
   FILTER_STATUSES,
   formatQty,
@@ -192,19 +193,7 @@ export const ProgressView = ({
 
   const body = (): ReactNode => {
     if (list.isError) {
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
     if (list.data.items.length === 0) return <EmptyState size="sm" title={tp.empty} />;

@@ -24,7 +24,7 @@ import type { CodeValue, CodeValueFormValues } from './code-value-types';
 import { CODE_VALUE_FORM_FIELDS, validateCodeValueForm } from './code-value-validation';
 import { DeactivateDialog } from './deactivate-dialog';
 import { DisabledAction } from './disabled-action';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { toPageView } from './pagination';
 
 type CodeValueDetailResponse = components['schemas']['CodeValueDetailResponse'];

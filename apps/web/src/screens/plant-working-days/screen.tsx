@@ -18,6 +18,7 @@ import { useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { LeaveGuard } from '../routing/leave-guard';
 import { usePlants, useSaveWorkingDays, useWorkingDayPolicies, type DataScope } from './queries';
 import {
@@ -186,23 +187,13 @@ export const PlantWorkingDaysScreen = () => {
     },
   ];
 
-  const loadError = (onRetry: () => void) => (
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {messages.httpError.description}
-    </AlertBanner>
+  const loadError = (error: unknown, onRetry: () => void) => (
+    <LoadErrorAlert error={error} onRetry={onRetry} />
   );
 
   const body = () => {
-    if (plants.isError) return loadError(() => void plants.refetch());
-    if (policies.isError) return loadError(() => void policies.refetch());
+    if (plants.isError) return loadError(plants.error, () => void plants.refetch());
+    if (policies.isError) return loadError(policies.error, () => void policies.refetch());
     if (plants.isPending || policies.isPending) return <Skeleton variant="rect" height="12rem" />;
     if (rows.length === 0) return <EmptyState size="sm" title={t.state.noPlants} />;
 

@@ -1,5 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -12,11 +12,11 @@ import { toApiError } from '../../patterns/request';
  * ⚠ 저장 실패는 여기 오지 않는다 — `patterns/master`의 `SaveErrorBanner`가 맡는다.
  */
 export const describeLoadError = (error: ApiError): string => {
+  if (isForbidden(error)) return messages.httpError.forbidden;
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
       return error.message === undefined || error.message === ''
         ? messages.httpError.description
         : error.message;
@@ -45,16 +45,16 @@ export const LoadErrorBanner = ({
   if (error === null || error === undefined) return null;
 
   const apiError = toApiError(error);
-  const isForbidden = apiError.kind === 'http' && apiError.status === 403;
+  const forbidden = isForbidden(apiError);
   const loadTitle = isDetail ? messages.httpError.title : messages.httpError.loadTitle;
 
   return (
     <div className="banner-slot">
       <AlertBanner
         variant="error"
-        title={isForbidden ? messages.httpError.title : loadTitle}
+        title={forbidden ? messages.httpError.title : loadTitle}
         action={
-          isForbidden ? undefined : (
+          forbidden ? undefined : (
             <Button variant="outlined" size="sm" onClick={onRetry}>
               {messages.common.retry}
             </Button>

@@ -1,10 +1,9 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { Breadcrumb, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { toApiError } from '../../patterns/request';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { ChangeDetailDialog } from './change-detail-dialog';
 import { EventFilterBar } from './event-filter-bar';
 import { EventTable } from './event-table';
@@ -28,55 +27,6 @@ import { defaultPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from '
 import { useAuditEventList, useFilterOptions } from './queries';
 
 const t = messages.masterChange;
-
-/**
- * 조회 실패의 원인을 한 줄 안내로 옮긴다.
- * 이 화면은 쓰기가 없어 사용자가 할 수 있는 조치가 재시도뿐이라 액션도 하나다.
- *
- * 다른 화면 슬라이스에도 같은 함수가 있으나 가져다 쓰지 않는다 —
- * 화면 슬라이스끼리 참조하면 한쪽의 사정이 다른 쪽 화면을 바꾼다.
- */
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      // 서버가 빈 message를 주는 일이 실제로 있다. ??는 빈 문자열을 통과시켜 본문을 지운다.
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-interface LoadErrorBannerProps {
-  error: unknown;
-  onRetry: () => void;
-}
-
-/** 조회 실패 배너. 규범 6에 따라 화면이 직접 배치하는 배너는 화면이 이음매를 붙인다. */
-const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 /**
  * W-06-11 컨테이너 — 이 저장소의 **첫 읽기 전용 조회 형 화면**이다.

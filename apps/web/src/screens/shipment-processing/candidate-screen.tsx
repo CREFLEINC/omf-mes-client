@@ -41,6 +41,7 @@ import { ShipmentLinesPane } from './shipment-lines-pane';
 import { toShipmentCreatePayload } from './shipment-request-payload';
 import { SubmitConfirmDialog } from './submit-confirm-dialog';
 import type { ShipmentRequestCandidate } from './types';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.shipmentProcessing;
 
@@ -273,23 +274,7 @@ export const ShipmentProcessingCandidateScreen = () => {
     allCandidates.length,
   );
   const loadError = candidateQuery.isError ? (
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button
-          variant="outlined"
-          size="sm"
-          onClick={() => {
-            void candidateQuery.refetch();
-          }}
-        >
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {messages.httpError.description}
-    </AlertBanner>
+    <LoadErrorAlert error={candidateQuery.error} onRetry={() => void candidateQuery.refetch()} />
   ) : null;
 
   const rows = allCandidates.map((candidate) => ({
@@ -336,17 +321,7 @@ export const ShipmentProcessingCandidateScreen = () => {
         </section>
       ) : detailState.kind === 'UNAVAILABLE' ? (
         <section className="pane" aria-label={t.panes.lines}>
-          <AlertBanner
-            variant="error"
-            title={messages.httpError.loadTitle}
-            action={
-              <Button variant="outlined" size="sm" onClick={() => void detailQuery.refetch()}>
-                {messages.common.retry}
-              </Button>
-            }
-          >
-            {messages.httpError.description}
-          </AlertBanner>
+          <LoadErrorAlert error={detailQuery.error} onRetry={() => void detailQuery.refetch()} />
         </section>
       ) : (
         <>

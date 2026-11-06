@@ -14,7 +14,7 @@ import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { toApiError } from '../../patterns/request';
-import { describeLoadError, LoadErrorBanner } from '../integration-sync/load-error-banner';
+import { describeLoadError, LoadErrorBanner } from '../../patterns/load-error-banner';
 import { formatDateTime } from '../integration-sync/message-status';
 import {
   isRunFinished,

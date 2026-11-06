@@ -3,6 +3,7 @@ export { createEtagStore, type EtagStore } from './etag-store';
 export { createIdempotencyKey } from './idempotency';
 export {
   NETWORK_ERROR,
+  isForbidden,
   isTransientStatus,
   isUnauthenticated,
   normalizeApiError,

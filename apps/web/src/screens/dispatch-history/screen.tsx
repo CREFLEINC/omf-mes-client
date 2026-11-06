@@ -17,6 +17,7 @@ import { handoverTypeName, useHandoverAlertTypes } from '../../patterns/handover
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 import { Select } from '../../patterns/select';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { DeliveryTable, toDeliveryView } from './delivery-table';
 import { DispatchTable } from './dispatch-table';
 import {
@@ -128,23 +129,13 @@ export const DispatchHistoryScreen = () => {
     </div>
   );
 
-  const loadError = (onRetry: () => void): ReactNode => (
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {messages.httpError.description}
-    </AlertBanner>
+  const loadError = (error: unknown, onRetry: () => void): ReactNode => (
+    <LoadErrorAlert error={error} onRetry={onRetry} />
   );
 
   const dispatchSlot = (): ReactNode => {
     if (periodReason !== null) return <AlertBanner variant="warning">{periodReason}</AlertBanner>;
-    if (dispatches.isError) return loadError(() => void dispatches.refetch());
+    if (dispatches.isError) return loadError(dispatches.error, () => void dispatches.refetch());
     if (dispatches.data === undefined) return <Skeleton variant="rect" height="12rem" />;
 
     const { items, page: meta } = dispatches.data;
@@ -183,7 +174,7 @@ export const DispatchHistoryScreen = () => {
   };
 
   const deliverySlot = (): ReactNode => {
-    if (deliveries.isError) return loadError(() => void deliveries.refetch());
+    if (deliveries.isError) return loadError(deliveries.error, () => void deliveries.refetch());
     if (deliveries.data === undefined) return <Skeleton variant="rect" height="8rem" />;
 
     /* 상태 필터는 화면에서 거른다 — 「대기」가 PENDING·SENDING 둘을 함께 뜻하기 때문이다. */
