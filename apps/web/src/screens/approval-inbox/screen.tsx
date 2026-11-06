@@ -9,6 +9,7 @@ import {
   useToast,
   type TabItem,
 } from '@crefle/web-ui';
+import { isForbidden } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -250,8 +251,7 @@ export const ApprovalInboxScreen = () => {
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isRequestNotFound =
     detailError !== null && detailError.kind === 'http' && detailError.status === 404;
-  const isRequestForbidden =
-    detailError !== null && detailError.kind === 'http' && detailError.status === 403;
+  const isRequestForbidden = detailError !== null && isForbidden(detailError);
 
   /**
    * 404 안내가 매인 대상 — **조건·탭·쪽의 서명**이다.

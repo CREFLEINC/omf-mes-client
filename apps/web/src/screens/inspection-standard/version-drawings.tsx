@@ -10,7 +10,7 @@ import {
   type InspectionDrawing,
 } from '../../patterns/inspection-drawings';
 import { runRequest, toApiError } from '../../patterns/request';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { PlanActionBanner } from './plan-action-banner';
 
 const t = messages.inspectionStandard.versionSection;

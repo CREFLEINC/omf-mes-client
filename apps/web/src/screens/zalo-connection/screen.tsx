@@ -30,6 +30,7 @@ import { useConnection, useEventNames, useReplaceConnection, zaloConnectionKeys 
 import { handoverParamsOf, paramsOf } from './template-params';
 import type { Connection, ConnectionFormValues } from './types';
 import { sameValues, toFormValues, toReplaceBody, validateConnection } from './validation';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.zaloConnection;
 
@@ -182,19 +183,7 @@ export const ZaloConnectionScreen = () => {
 
   const body = (): ReactNode => {
     if (connection.isError) {
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void connection.refetch()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={connection.error} onRetry={() => void connection.refetch()} />;
     }
     if (connection.isPending || values === null) return <Skeleton variant="rect" height="20rem" />;
 

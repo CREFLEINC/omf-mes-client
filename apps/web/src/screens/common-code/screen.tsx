@@ -73,7 +73,7 @@ import {
   toScopedSearchParams,
   toSearchParams,
 } from './filters';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import {
   useActiveUserOptions,
   useBusinessUnitOptions,

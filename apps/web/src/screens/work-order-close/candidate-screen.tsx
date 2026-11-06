@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
 import {
@@ -332,23 +333,7 @@ export const WorkOrderCloseCandidateScreen = () => {
     candidates.length,
   );
   const loadError = candidate.isError ? (
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button
-          variant="outlined"
-          size="sm"
-          onClick={() => {
-            void candidate.refetch();
-          }}
-        >
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {messages.httpError.description}
-    </AlertBanner>
+    <LoadErrorAlert error={candidate.error} onRetry={() => void candidate.refetch()} />
   ) : initialization.kind === 'UNAVAILABLE' ? (
     <AlertBanner variant="warning">{initialization.statusUnavailableReason}</AlertBanner>
   ) : null;
@@ -383,25 +368,7 @@ export const WorkOrderCloseCandidateScreen = () => {
       : detailState.kind === 'UNAVAILABLE'
         ? {
             kind: 'UNAVAILABLE',
-            content: (
-              <AlertBanner
-                variant="error"
-                title={messages.httpError.loadTitle}
-                action={
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={() => {
-                      void detail.refetch();
-                    }}
-                  >
-                    {messages.common.retry}
-                  </Button>
-                }
-              >
-                {messages.httpError.description}
-              </AlertBanner>
-            ),
+            content: <LoadErrorAlert error={detail.error} onRetry={() => void detail.refetch()} />,
           }
         : detailState;
   const reasonOptions = useMemo(
@@ -647,17 +614,10 @@ export const WorkOrderCloseCandidateScreen = () => {
                 isLoading={outboundState.kind === 'CHECKING'}
                 loadError={
                   outboundState.kind === 'UNAVAILABLE' ? (
-                    <AlertBanner
-                      variant="error"
-                      title={messages.httpError.loadTitle}
-                      action={
-                        <Button onClick={() => void outboundSettings.refetch()}>
-                          {messages.common.retry}
-                        </Button>
-                      }
-                    >
-                      {messages.httpError.description}
-                    </AlertBanner>
+                    <LoadErrorAlert
+                      error={outboundSettings.error}
+                      onRetry={() => void outboundSettings.refetch()}
+                    />
                   ) : null
                 }
               />

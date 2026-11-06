@@ -1,5 +1,5 @@
 import { AlertBanner, Button, Chip, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -90,11 +90,11 @@ interface DecisionVariables {
 }
 
 const describeLoadError = (error: ApiError): string => {
+  if (isForbidden(error)) return messages.httpError.forbidden;
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
       return error.message === undefined || error.message === ''
         ? messages.httpError.description
         : error.message;
@@ -400,7 +400,7 @@ export const QualityApprovalScreen = ({
   let error = null;
   if (list.isError) {
     const apiError = toApiError(list.error);
-    const forbidden = apiError.kind === 'http' && apiError.status === 403;
+    const forbidden = isForbidden(apiError);
     const description = describeLoadError(apiError);
 
     error = (
@@ -443,7 +443,7 @@ export const QualityApprovalScreen = ({
         );
       }
 
-      const forbidden = detailError.kind === 'http' && detailError.status === 403;
+      const forbidden = isForbidden(detailError);
       return (
         <AlertBanner
           variant="error"

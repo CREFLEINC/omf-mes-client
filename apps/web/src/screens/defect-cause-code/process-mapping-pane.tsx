@@ -7,7 +7,7 @@ import {
   SkeletonText,
   useToast,
 } from '@crefle/web-ui';
-import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
+import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useId, useMemo, useState, type ReactNode } from 'react';
@@ -16,8 +16,9 @@ import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { runRequest, toApiError, type ApiCallResult } from '../../patterns/request';
+import { runRequest, type ApiCallResult } from '../../patterns/request';
 import { Select } from '../../patterns/select';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { defectCodeAdapter } from './adapters';
 import { CodeSelect } from './code-select';
 import { defectToHierarchyCode } from './mappers';
@@ -60,41 +61,6 @@ const mappingKeys = {
   processes: ['defect-process-mappings', 'processes'] as const,
   row: (defectCodeId: number) => ['defect-process-mappings', 'row', defectCodeId] as const,
 };
-
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-const LoadErrorBanner = ({ error, onRetry }: { error: unknown; onRetry: () => void }) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 const toToggleResult = <T,>(result: {
   data?: T;

@@ -25,6 +25,7 @@ import {
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { RecipientPicker } from '../alarm-recipient-settings/recipient-picker';
 import { SelectField } from '../alarm-recipient-settings/select-field';
 import {
@@ -252,22 +253,12 @@ export const HandoverAlertSettingsScreen = () => {
       label: `${plant.plantCode} ${plant.plantName}`,
     })) ?? [];
 
-  const loadError = (onRetry: () => void) => (
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {messages.httpError.description}
-    </AlertBanner>
+  const loadError = (error: unknown, onRetry: () => void) => (
+    <LoadErrorAlert error={error} onRetry={onRetry} />
   );
 
   const settingBody = () => {
-    if (detail.isError) return loadError(() => void detail.refetch());
+    if (detail.isError) return loadError(detail.error, () => void detail.refetch());
     if (detail.isPending || draft === null) return <Skeleton variant="rect" height="14rem" />;
 
     const missingPhones = noPhoneCount(draft);
@@ -411,7 +402,7 @@ export const HandoverAlertSettingsScreen = () => {
   };
 
   const workspace = () => {
-    if (plants.isError) return loadError(() => void plants.refetch());
+    if (plants.isError) return loadError(plants.error, () => void plants.refetch());
     if (plants.isPending) return <Skeleton variant="rect" height="12rem" />;
     if (plantId === null) return <EmptyState size="sm" title={t.state.noPlants} />;
 
@@ -422,7 +413,7 @@ export const HandoverAlertSettingsScreen = () => {
             {t.panes.types}
           </h2>
           {types.isError || summary.isError ? (
-            loadError(() => {
+            loadError(types.error ?? summary.error, () => {
               void types.refetch();
               void summary.refetch();
             })

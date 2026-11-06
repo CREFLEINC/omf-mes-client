@@ -7,7 +7,7 @@ import { useCodeGroupList } from './code-group-queries';
 import { JudgmentCodeEditor } from './judgment-code-editor';
 import { readPage, readSelectedId } from './filters';
 import { JUDGMENT_TYPE_GROUP_CODE, findJudgmentTypeGroup } from './judgment-group';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import type { CodeGroupFilters } from './types';
 import { usePageHub } from '../../patterns/page-hub';
 import type { CodeUsage } from '../defect-cause-code/usage-chips';

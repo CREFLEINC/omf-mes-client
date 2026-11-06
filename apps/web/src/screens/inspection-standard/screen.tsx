@@ -59,7 +59,7 @@ import {
 } from './item-order';
 import { ItemPane } from './item-pane';
 import { hasInvalidItemDraft, validateItemDraft, warnItemDraft } from './item-validation';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { toPageView } from './pagination';
 import { PlanActionBanner } from './plan-action-banner';
 import { PlanActionDialog, type PlanActionKind } from './plan-action-dialog';

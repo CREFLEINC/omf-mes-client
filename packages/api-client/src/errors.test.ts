@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { NETWORK_ERROR, isTransientStatus, isUnauthenticated, normalizeApiError } from './errors';
+import {
+  NETWORK_ERROR,
+  isForbidden,
+  isTransientStatus,
+  isUnauthenticated,
+  normalizeApiError,
+} from './errors';
 
 describe('normalizeApiError', () => {
   it('409 + ConflictResponse는 저장 충돌로 정규화한다 — 재로드하면 풀린다', () => {
@@ -313,5 +319,33 @@ describe('isTransientStatus — 기다리면 풀리는가', () => {
 describe('NETWORK_ERROR', () => {
   it('응답이 없는 실패를 나타내는 network 변형이다 — 상태 코드를 갖지 않는다', () => {
     expect(NETWORK_ERROR).toEqual({ kind: 'network' });
+  });
+});
+
+/* omf-all-around#187 — 실제 서버의 403 은 오류 봉투에 담겨 와 validation 으로 접힌다. */
+describe('isForbidden', () => {
+  it('오류 봉투에 담긴 403(validation으로 접힘)도 권한 없음이다', () => {
+    const result = normalizeApiError(403, {
+      errors: [
+        { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
+      ],
+    });
+
+    expect(result.kind).toBe('validation');
+    expect(isForbidden(result)).toBe(true);
+  });
+
+  it('몸체 없는 403(http)도 권한 없음이다', () => {
+    expect(isForbidden(normalizeApiError(403, undefined))).toBe(true);
+  });
+
+  it('다른 상태 코드와 연결 끊김은 권한 없음이 아니다', () => {
+    expect(isForbidden(normalizeApiError(500, undefined))).toBe(false);
+    expect(
+      isForbidden(
+        normalizeApiError(400, { errors: [{ scope: 'field', code: 'REQUIRED', message: '필수' }] }),
+      ),
+    ).toBe(false);
+    expect(isForbidden(NETWORK_ERROR)).toBe(false);
   });
 });

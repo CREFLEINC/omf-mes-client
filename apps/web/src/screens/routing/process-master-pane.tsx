@@ -30,8 +30,9 @@ import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { PageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
-import { runRequest, toApiError } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import { PagedSelect, Select } from '../../patterns/select';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import {
   PaneHeightSplitter,
   SplitOrientationToggle,
@@ -91,41 +92,6 @@ interface ProcessFormState {
 }
 
 type ActivationIntent = 'activate' | 'deactivate';
-
-const describeLoadError = (error: ApiError): string => {
-  switch (error.kind) {
-    case 'network':
-      return messages.httpError.offline;
-    case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
-      return error.message === undefined || error.message === ''
-        ? messages.httpError.description
-        : error.message;
-    case 'conflict':
-      return error.message === '' ? messages.httpError.description : error.message;
-    case 'stateLocked':
-    case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
-      return lines === '' ? messages.httpError.description : lines;
-    }
-  }
-};
-
-const LoadErrorBanner = ({ error, onRetry }: { error: unknown; onRetry: () => void }) => (
-  <div className="banner-slot">
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {describeLoadError(toApiError(error))}
-    </AlertBanner>
-  </div>
-);
 
 /** W-06-01의 두 번째 축. 품목과 무관한 공정 마스터를 목록과 편집 페인으로 관리한다. */
 export const ProcessMasterPane = () => {

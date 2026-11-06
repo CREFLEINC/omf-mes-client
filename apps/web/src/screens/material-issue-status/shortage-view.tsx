@@ -1,10 +1,11 @@
-import { AlertBanner, Button, Chip, Skeleton } from '@crefle/web-ui';
+import { AlertBanner, Chip, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
 import { useOverrideNotes, useReasonNames } from './queries';
 import { formatDay, formatQty, historyText, plantMinute } from './status';
 import type { PlannedStockResponse } from './api-types';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.materialIssueStatus;
 
@@ -45,6 +46,8 @@ export interface ShortageViewProps {
   data: PlannedStockResponse | undefined;
   isPending: boolean;
   isError: boolean;
+  /** 조회 실패의 원인. 권한 없음(403)이면 다시 시도를 두지 않는다. */
+  error: unknown;
   onRetry: () => void;
 }
 
@@ -52,7 +55,7 @@ export interface ShortageViewProps {
  * 「부족」 보기 — 맨 위 「재고 있는 생산 창고 없음」 묶음(FR-007a, W/O 단위)과 생산 창고별 부족(FR-016).
  * 요청 배분 줄마다 「보충 요청 →」(검토 3).
  */
-export const ShortageView = ({ data, isPending, isError, onRetry }: ShortageViewProps) => {
+export const ShortageView = ({ data, isPending, isError, error, onRetry }: ShortageViewProps) => {
   const reasons = useReasonNames();
   const overrideNotes = useOverrideNotes(
     (data?.items ?? []).flatMap((row) =>
@@ -64,19 +67,7 @@ export const ShortageView = ({ data, isPending, isError, onRetry }: ShortageView
     ),
   );
   if (isError) {
-    return (
-      <AlertBanner
-        variant="error"
-        title={messages.httpError.loadTitle}
-        action={
-          <Button variant="outlined" size="sm" onClick={onRetry}>
-            {messages.common.retry}
-          </Button>
-        }
-      >
-        {messages.httpError.description}
-      </AlertBanner>
-    );
+    return <LoadErrorAlert error={error} onRetry={onRetry} />;
   }
   if (isPending || data === undefined) return <Skeleton variant="rect" height="16rem" />;
 

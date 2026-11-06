@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState, type ReactNode } from 'react';
 
@@ -11,6 +11,7 @@ import { ItemDialog } from './items-dialog';
 import { PAGE_SIZE, sourceOptions, useItemList, useWarehouses } from './queries';
 import { RunTimePanel } from './run-time-panel';
 import { formatQty } from './types';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
 const ti = t.items;
@@ -117,19 +118,7 @@ export const ItemsView = ({
 
   const body = (): ReactNode => {
     if (list.isError) {
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void list.refetch()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={list.error} onRetry={() => void list.refetch()} />;
     }
     if (list.data === undefined) return <Skeleton variant="rect" height="16rem" />;
     if (list.data.items.length === 0) {

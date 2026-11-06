@@ -4,7 +4,7 @@ import { type ReactNode, useId, useState } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { resolveVersionStatus } from './plan-version-status';
 import { useInspectionItemSpecs, useInspectionPlanVersionDetail } from './queries';
 import type { InspectionPlanVersion } from './types';

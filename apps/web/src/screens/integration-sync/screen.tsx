@@ -24,7 +24,7 @@ import {
   toSearchParams,
   type MessageFilters,
 } from './filters';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { MessageDetailPane } from './message-detail-pane';
 import { MessageFilterBar } from './message-filter-bar';
 import { MessageTable } from './message-table';

@@ -1,5 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
@@ -12,11 +12,11 @@ import { toApiError } from '../../patterns/request';
  * 그래서 널이 아니라 빈 문자열까지 명시적으로 검사한다.
  */
 export const describeLoadError = (error: ApiError): string => {
+  if (isForbidden(error)) return messages.httpError.forbidden;
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
       return error.message === undefined || error.message === ''
         ? messages.httpError.description
         : error.message;
@@ -33,9 +33,6 @@ export const describeLoadError = (error: ApiError): string => {
     }
   }
 };
-
-/** 권한 없음인가. 같은 권한으로 다시 불러도 같은 답이 오므로 재시도를 붙이지 않는다. */
-const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
 
 export interface LoadErrorBannerProps {
   error: unknown;

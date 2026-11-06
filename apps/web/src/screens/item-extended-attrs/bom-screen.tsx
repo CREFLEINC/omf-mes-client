@@ -50,7 +50,7 @@ import {
 } from './bom-tree-queries';
 import { CODE_GROUPS, useCodeValueOptions } from './code-values';
 import { useItemTypeOptions } from './item-queries';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import {
   useProcessOptions,
   useRoutingOperationOptions,

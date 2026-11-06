@@ -20,6 +20,7 @@ import { Link, useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import {
   addRecipients,
   hasInactiveRecipient,
@@ -220,22 +221,12 @@ export const AlarmRecipientSettingsScreen = () => {
       label: `${item.departmentCode} · ${item.departmentName}`,
     })) ?? [];
 
-  const loadError = (onRetry: () => void) => (
-    <AlertBanner
-      variant="error"
-      title={messages.httpError.loadTitle}
-      action={
-        <Button variant="outlined" size="sm" onClick={onRetry}>
-          {messages.common.retry}
-        </Button>
-      }
-    >
-      {messages.httpError.description}
-    </AlertBanner>
+  const loadError = (error: unknown, onRetry: () => void) => (
+    <LoadErrorAlert error={error} onRetry={onRetry} />
   );
 
   const settingBody = () => {
-    if (detail.isError) return loadError(() => void detail.refetch());
+    if (detail.isError) return loadError(detail.error, () => void detail.refetch());
     if (detail.isPending || draft === null) return <Skeleton variant="rect" height="14rem" />;
 
     const missingPhones = noPhoneCount(draft);
@@ -372,7 +363,7 @@ export const AlarmRecipientSettingsScreen = () => {
             {t.panes.events}
           </h2>
           {events.isError || summary.isError ? (
-            loadError(() => {
+            loadError(events.error ?? summary.error, () => {
               void events.refetch();
               void summary.refetch();
             })
@@ -436,7 +427,7 @@ export const AlarmRecipientSettingsScreen = () => {
 
       <div className="alarm-department-bar">
         {departments.isError ? (
-          loadError(() => void departments.refetch())
+          loadError(departments.error, () => void departments.refetch())
         ) : departments.data !== undefined && departments.data.items.length === 0 ? (
           <EmptyState size="sm" title={t.state.noDepartments} />
         ) : (

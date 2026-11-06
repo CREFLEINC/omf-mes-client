@@ -24,7 +24,7 @@ import {
   useReplaceProductionWarehouses,
   type WarehouseCandidate,
 } from './department-production-warehouse-queries';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 
 type DepartmentProductionWarehouse = components['schemas']['DepartmentProductionWarehouse'];
 const t = messages.commonCode.department.productionWarehouses;

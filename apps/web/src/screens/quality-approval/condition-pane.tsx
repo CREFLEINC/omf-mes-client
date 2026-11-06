@@ -4,9 +4,9 @@ import { useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
-import { toApiError } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
 import { dispositionKeys } from '../disposition-decision/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
@@ -111,25 +111,11 @@ export const ConditionPane = ({
 
   const error = candidates.error ?? detail.error;
   if (error !== null) {
-    const description =
-      toApiError(error).kind === 'network'
-        ? messages.httpError.offline
-        : messages.httpError.description;
     const retry = candidates.error === null ? detail.refetch : candidates.refetch;
     return (
       <>
         {requestInfo()}
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void retry()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {description}
-        </AlertBanner>
+        <LoadErrorAlert error={error} onRetry={() => void retry()} />
       </>
     );
   }

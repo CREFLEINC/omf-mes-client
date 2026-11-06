@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, Button, EmptyState, PageHeader, Skeleton } from '@crefle/web-ui';
+import { Breadcrumb, Button, EmptyState, PageHeader, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -26,6 +26,7 @@ import { ProgressView } from './progress-view';
 import { useHeaderCounts, usePlants, useSettings } from './queries';
 import { RequestView } from './request-view';
 import { formatDay } from './types';
+import { LoadErrorAlert } from '../../patterns/load-error-banner';
 
 const t = messages.productionWarehouseReplenishment;
 
@@ -81,19 +82,7 @@ export const ProductionWarehouseReplenishmentScreen = () => {
   const body = (): ReactNode => {
     if (plants.isError || settings.isError) {
       const retry = plants.isError ? plants.refetch : settings.refetch;
-      return (
-        <AlertBanner
-          variant="error"
-          title={messages.httpError.loadTitle}
-          action={
-            <Button variant="outlined" size="sm" onClick={() => void retry()}>
-              {messages.common.retry}
-            </Button>
-          }
-        >
-          {messages.httpError.description}
-        </AlertBanner>
-      );
+      return <LoadErrorAlert error={plants.error ?? settings.error} onRetry={() => void retry()} />;
     }
     if (plants.isPending) return <Skeleton variant="rect" height="16rem" />;
     if (plantId === null) return <EmptyState size="sm" title={t.noPlant} />;

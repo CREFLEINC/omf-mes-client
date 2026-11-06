@@ -1,5 +1,5 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toApiError } from '../../patterns/request';
@@ -22,12 +22,11 @@ import { toApiError } from '../../patterns/request';
 const KEEPS_USER_TEXT = new Set([400, 409, 422]);
 
 export const describeError = (error: ApiError): string => {
+  if (isForbidden(error)) return messages.httpError.forbidden;
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http': {
-      if (error.status === 403) return messages.httpError.forbidden;
-
       /* ⛔ 개발자 몫의 글을 화면에 올리지 않는다 — 정해진 안내로 덮는다. */
       if (!KEEPS_USER_TEXT.has(error.status)) return messages.httpError.description;
 
@@ -45,9 +44,6 @@ export const describeError = (error: ApiError): string => {
     }
   }
 };
-
-/** 권한 없음인가. 같은 권한으로 다시 불러도 같은 답이 오므로 재시도를 붙이지 않는다. */
-const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
 
 export interface LoadErrorBannerProps {
   error: unknown;

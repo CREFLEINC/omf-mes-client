@@ -43,7 +43,7 @@ import { codeValueDetailPath, codeValueKeys, useCodeValueDetail } from './code-v
 import type { CodeValue, CodeValueFormValues } from './code-value-types';
 import { CODE_VALUE_FORM_FIELDS, validateCodeValueForm } from './code-value-validation';
 import { DateField } from './date-field';
-import { LoadErrorBanner } from './load-error-banner';
+import { LoadErrorBanner } from '../../patterns/load-error-banner';
 
 type CodeValueDetailResponse = components['schemas']['CodeValueDetailResponse'];
 

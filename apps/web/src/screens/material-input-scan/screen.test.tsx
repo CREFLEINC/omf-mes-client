@@ -288,17 +288,12 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   });
 
   /*
-   * ⚠ **여기가 지금의 한계다 — 결함을 감지기로 고정해 둔다.**
-   *
-   * 계약이 403에 실으라고 한 본문은 `{ errors: [...] }`인데, 공용 정규화가 그 모양을 보고
-   * **검증 실패로 분류한다**(상태 코드보다 본문 모양이 앞선다). 그래서 권한 없음이 다른 실패와
-   * 같은 배너로 서고 **재시도 버튼까지 붙는다.**
-   *
-   * 이 화면만 고칠 수 있는 자리가 아니다 — 정규화는 모든 화면이 함께 쓰고, 전례(`shipment-
-   * schedule`)도 같은 모양이다. 지금 상태를 감지기로 박아 두어, 정규화가 고쳐지는 날 이
-   * 감지기가 **실패로 알린다.**
+   * 계약이 403에 실으라고 한 본문은 `{ errors: [...] }`이고, 공용 정규화는 그 모양을 보고 검증
+   * 실패로 접는다. 상태 코드는 `status`에 남으므로 배너는 갈래가 아니라 상태 코드로 권한 없음을
+   * 가른다(`isForbidden`, omf-all-around#187). 예전에는 여기가 감지기였다 — 권한 없음이 다른
+   * 실패와 같은 배너로 서고 재시도 버튼까지 붙던 결함을 고정해 두었다.
    */
-  it('계약 형태의 권한 없음은 아직 다른 실패와 구분되지 않는다', async () => {
+  it('계약 형태의 권한 없음은 권한 문구로 서고 재시도를 두지 않는다', async () => {
     renderScreen([
       {
         match: (request) => isGet(request, LIST_PATH),
@@ -310,10 +305,10 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
       },
     ]);
 
-    expect(await screen.findByText(messages.httpError.loadTitle)).toBeTruthy();
-    expect(screen.getByText('합성 거절')).toBeTruthy();
-    expect(screen.queryByText(messages.httpError.forbidden)).toBeNull();
-    expect(screen.getByRole('button', { name: messages.common.retry })).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.forbidden)).toBeTruthy();
+    expect(screen.getByText(messages.httpError.title)).toBeTruthy();
+    expect(screen.queryByText(messages.httpError.loadTitle)).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
   });
 
   it('수령 내역이 없으면 빈 상태를 낸다 — 실패와 다른 말을 한다', async () => {
