@@ -7,6 +7,7 @@ import type { ProductionOrderFact } from './types';
 
 // 서버 집계 칸은 생성 타입 전달 전까지 읽기 전용으로 보존한다.
 type ProductionOrder = components['schemas']['ProductionOrder'] & {
+  plannedStartDate?: string;
   confirmedPlanQty?: number;
   draftPlanQty?: number;
   remainingQty?: number;
@@ -39,6 +40,7 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
     : {}),
   uomId: order.uomId,
   dueDate: order.dueDate ?? null,
+  plannedStartDate: order.plannedStartDate ?? null,
   statusCode: order.statusCode,
   remarks: order.remarks ?? null,
   expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,

@@ -12,6 +12,7 @@ import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { manualPlanDefaults, recommendedPlanDate } from './manual-plan-defaults';
 import { MultiOrderPlanning } from './multi-order-planning';
 
 import { ActionBar } from '../../../patterns/action-bar';
@@ -636,24 +637,25 @@ export const ProcessWorkspace = ({
               disabled={planBusy || !master.complete}
               failures={planFailures}
               onAdd={() =>
-                editor.add({
-                  planDate: plantToday(),
-                  // 남은 수량 = 주문 − 확정 계획량(서버 값) − 작성중 줄(omf-all-around#250)
-                  plannedQty: String(
-                    Math.max(
-                      0,
-                      order.orderQty -
-                        confirmedQty -
-                        editor.rows
-                          .filter((row) => !row.confirmed)
-                          .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
+                editor.add(
+                  manualPlanDefaults(
+                    order,
+                    editor.rows,
+                    planLines.filter(
+                      (line) =>
+                        lines.data?.items.find((item) => item.productionLineId === line.id)
+                          ?.isActive,
                     ),
+                    { bomId: draftBomId, routingId },
+                    plantToday(),
                   ),
-                  bomId: draftBomId,
-                  routingId,
-                  plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
-                })
+                )
               }
+              distributionStartDate={recommendedPlanDate(order.plannedStartDate, plantToday())}
+              distributionLines={planLines.filter(
+                (line) =>
+                  lines.data?.items.find((item) => item.productionLineId === line.id)?.isActive,
+              )}
               distributionDecimalScale={uoms.decimalScaleOf?.(order.uomId)}
               distributionOrderLabel={`${order.productionOrderNo} / ${item === undefined ? '' : named(item.itemName, item.itemCode)}`}
               onDistributionDirtyChange={setDistributionDirty}

@@ -40,6 +40,7 @@ import type { ProductionOrderFact } from '../types';
 import { automaticBomId, automaticRoutingId } from './master-step';
 import { PlanStep, type PlanLine } from './plan-step';
 import { deletePlan, runPlanStep } from './plan-runner';
+import { manualPlanDefaults } from './manual-plan-defaults';
 import { DistributionControls } from './distribution-controls';
 
 import { LeaveGuard, DiscardDialog } from './leave-guard';
@@ -229,12 +230,15 @@ const ReadyOrderSession = ({
       (boms.data?.items.some((item) => String(item.bomId) === bomId) === true &&
         routings.data?.items.some((item) => String(item.routingId) === routingId) === true)) &&
     !!lines.data;
-  const defaults: NewProductionPlanDefaults = {
-    planDate: plantToday(),
-    plannedQty: '1',
-    bomId: draftBomId,
-    routingId,
-  };
+  const defaults = manualPlanDefaults(
+    order,
+    rows,
+    (lines.data?.items ?? [])
+      .filter((line) => line.isActive)
+      .map((line) => ({ id: line.productionLineId, code: line.lineCode, name: line.lineName })),
+    { bomId: draftBomId, routingId },
+    plantToday(),
+  );
   useEffect(() => {
     publish(order.productionOrderNo, {
       order,
@@ -712,6 +716,8 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                     decimalScale: entry.decimalScale,
                     pending: toSchedule(entry),
                     lines: entry.lines,
+                    startDate: entry.defaults.planDate,
+                    lineId: entry.defaults.plannedLineId,
                   }))}
                   existing={entries.flatMap((entry) =>
                     entry.editor.rows.map((row) => ({

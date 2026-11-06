@@ -26,6 +26,33 @@ const configure = async () => {
   return user;
 };
 describe('분배 조건과 미리보기 적용', () => {
+  it('ERP 시작일과 추천 라인을 채우고 사용자의 조건 변경은 다시 열어도 유지한다', async () => {
+    const user = userEvent.setup();
+    const apply = vi.fn();
+    renderWithProviders(
+      <DistributionControls
+        orders={[{ ...orders[0]!, startDate: '2099-11-10', lineId: '31' }]}
+        existing={[]}
+        disabled={false}
+        onApply={apply}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.getByLabelText('구간 1 시작일')).toHaveTextContent('2099-11-10');
+    expect(screen.getByLabelText('구간 1 종료일')).toHaveTextContent('2099-11-16');
+    expect(
+      screen
+        .getByRole('button', { name: '구간 1 생산 라인 선택' })
+        .closest('.erp-wo-distribution-line-field'),
+    ).toHaveTextContent('라인 1');
+    const quantity = screen.getByRole('textbox', { name: '구간 1 수량' });
+    await user.clear(quantity);
+    await user.type(quantity, '2');
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.getByRole('textbox', { name: '구간 1 수량' })).toHaveValue('2');
+    expect(apply).not.toHaveBeenCalled();
+  });
   it('도움말은 조건과 계획을 변경하지 않고 열고 닫는다', async () => {
     const user = userEvent.setup();
     const apply = vi.fn();
@@ -134,7 +161,15 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <DistributionControls
-        orders={[...orders, { ...orders[0]!, id: 'B', label: 'ERP W/O B / 품목 B' }]}
+        orders={[
+          ...orders,
+          {
+            ...orders[0]!,
+            id: 'B',
+            label: 'ERP W/O B / 품목 B',
+            lines: [...orders[0]!.lines, { id: 32, code: 'L2', name: '라인 2' }],
+          },
+        ]}
         existing={[]}
         disabled={false}
         onApply={() => {}}

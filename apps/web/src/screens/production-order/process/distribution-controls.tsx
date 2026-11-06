@@ -4,6 +4,7 @@ import { Select } from '../../../patterns/select';
 import { DistributionHelp } from './distribution-help';
 import { DistributionLinePicker } from './distribution-line-picker';
 import { plantToday } from '../../../patterns/plant-time';
+import { recommendedPlanDate } from './manual-plan-defaults';
 import { shiftPlanDate } from './plan-view-model';
 import {
   expandSegment,
@@ -63,16 +64,27 @@ export const DistributionControls = ({
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
-  const createRow = (owner: string, quantity = ''): DistributionSegment => ({
-    id: `${id}-${++sequence.current}`,
-    owner,
-    start: plantToday(),
-    end: shiftPlanDate(plantToday(), 6),
-    lineId: '',
-    mode: 'equal',
-    quantity,
-    daily: {},
-  });
+  const createRow = (owner: string, quantity = ''): DistributionSegment => {
+    const target = orders.find((order) => order.id === owner);
+    const start = recommendedPlanDate(target?.startDate, plantToday());
+    const previousLine = [...existing].reverse().find((row) => row.owner === owner)?.plannedLineId;
+    const preferredLine = target?.lineId || previousLine;
+    const lines = target?.lines ?? [];
+    return {
+      id: `${id}-${++sequence.current}`,
+      owner,
+      start,
+      end: shiftPlanDate(start, 6),
+      lineId: lines.some((line) => String(line.id) === preferredLine)
+        ? preferredLine!
+        : lines.length === 1
+          ? String(lines[0]!.id)
+          : '',
+      mode: 'equal',
+      quantity,
+      daily: {},
+    };
+  };
   const signature = JSON.stringify({
     rows,
     orders: orders.map((order) => ({

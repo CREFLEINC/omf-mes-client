@@ -55,6 +55,8 @@ export interface PlanStepProps {
   rowUomLabelOf?: (row: ProductionPlanEditorStateRow) => string;
   onAppend?: (drafts: ScheduledDraft[]) => void;
   distributionOrderLabel?: string;
+  distributionStartDate?: string;
+  distributionLines?: readonly PlanLine[];
   distributionDecimalScale?: number;
   onDistributionDirtyChange?: (dirty: boolean) => void;
   onSplit?: (row: ProductionPlanEditorStateRow, quantity: number) => void;
@@ -87,6 +89,8 @@ export const PlanStep = ({
   onAppend,
   planningTools,
   distributionOrderLabel,
+  distributionStartDate,
+  distributionLines,
   distributionDecimalScale,
   onDistributionDirtyChange,
   onSplit,
@@ -271,7 +275,9 @@ export const PlanStep = ({
                   unit: uomLabel,
                   decimalScale: distributionDecimalScale,
                   pending: Math.max(0, remaining ?? orderQty - total),
-                  lines,
+                  lines: distributionLines ?? lines,
+                  startDate: distributionStartDate,
+                  lineId: rows.at(-1)?.draft.plannedLineId,
                 },
               ]}
               existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
