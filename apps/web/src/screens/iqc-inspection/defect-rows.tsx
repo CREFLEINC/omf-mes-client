@@ -10,7 +10,6 @@ import { EMPTY_DEFECT, RejectionReason, type DefectDraft } from './rejection-rea
 const t = messages.iqcInspection.result.rejection;
 
 type DefectCode = components['schemas']['DefectCode'];
-type CauseCode = components['schemas']['CauseCode'];
 
 /**
  * 불량 내역 수량의 합(마이크로 단위) — 불합격 수량이 된다(#197). 수량이 아닌 칸은 세지 않는다(화면이 「수량 확인 필요」로
@@ -28,7 +27,6 @@ export interface DefectRowsProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   codes: readonly DefectCode[];
-  causes: readonly CauseCode[];
   rows: readonly DefectDraft[];
   onChange: (rows: DefectDraft[]) => void;
   uomCode: string | null;
@@ -36,14 +34,13 @@ export interface DefectRowsProps {
 }
 
 /**
- * 불량 내역(사용자 지시 · 시안 2026-10-28 · #197) — 제목 옆 「불량 등록」을 체크하면 불량 유형별로 코드 · 수량 · 추정 원인 · 사유를
+ * 불량 내역(사용자 지시 · 시안 2026-10-28 · #197) — 제목 옆 「불량 등록」을 체크하면 불량 유형별로 코드 · 수량 · 사유를
  * 받는다. 불량 유형이 여럿일 수 있어 줄을 더하고 뺀다. 불합격 수량은 따로 받지 않고 이 수량의 합이 된다(부르는 쪽이 맞춘다).
  */
 export const DefectRows = ({
   checked,
   onCheckedChange,
   codes,
-  causes,
   rows,
   onChange,
   uomCode,
@@ -98,7 +95,6 @@ export const DefectRows = ({
               )}
               <span className="required-mark">{' *'}</span>
             </span>
-            <span>{t.cause}</span>
             <span>{t.description}</span>
           </div>
           <ol className="iqc-inspection-defect-list">
@@ -108,7 +104,6 @@ export const DefectRows = ({
                 <li key={index} className="iqc-inspection-defect-row">
                   <RejectionReason
                     codes={codes}
-                    causes={causes}
                     draft={row}
                     onChange={(next) => update(index, { ...row, ...next })}
                     disabled={disabled}

@@ -233,9 +233,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       defectSumMismatch: 'Tổng số lượng lỗi phải bằng số lượng không đạt.',
       majorMissing: 'Hãy chọn nhóm lỗi.',
       minorMissing: 'Hãy chọn mã lỗi chi tiết.',
-      cause: 'Nguyên nhân dự đoán',
-      causeNone: 'Không chọn',
-      causeInactive: (label: string): string => `${label} (ngừng sử dụng)`,
     },
     fourMChange: {
       sectionTitle: 'Thông tin thay đổi 4M',

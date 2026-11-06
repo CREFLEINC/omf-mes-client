@@ -67,7 +67,6 @@ describe('DefectRows', () => {
         checked={checked}
         onCheckedChange={setChecked}
         codes={codes}
-        causes={[]}
         rows={rows}
         onChange={setRows}
         uomCode="EA"
@@ -111,7 +110,6 @@ describe('DefectRows', () => {
 
     expect(screen.getByLabelText(t.major)).toBeInTheDocument();
     expect(screen.getByLabelText(t.defectQty)).toHaveValue('2');
-    expect(screen.getByLabelText(t.cause)).toBeInTheDocument();
     expect(screen.getByLabelText(t.description)).toBeInTheDocument();
   });
 });

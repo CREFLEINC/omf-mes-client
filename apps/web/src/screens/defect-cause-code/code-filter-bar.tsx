@@ -43,7 +43,7 @@ export const CodeFilterBar = ({
   const codeSelectId = useId();
   const processSelectId = useId();
   const { client } = useApiClient();
-  /* 처분 유형은 불량코드 탭에만(원인코드에는 그 값이 없다), 공정 검색은 두 탭 모두(사용자 지시 · #209). */
+  /* 처분 유형은 처분 값이 있는 코드에만, 공정 검색은 늘(사용자 지시 · #209). */
   const showDisposition = adapter.hasDisposition;
   const dispositionLabel = (code: CodeFilters['dispositionTypeCode']): string =>
     code === '' ? t.filters.all : t.values.disposition[code];

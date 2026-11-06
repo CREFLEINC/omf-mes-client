@@ -4,12 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import type { WriteHeaders } from '../../patterns/master';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest, type ApiCallResult } from '../../patterns/request';
-import {
-  causeToHierarchyCode,
-  defectToHierarchyCode,
-  toWritePayload,
-  type CodeWritePayload,
-} from './mappers';
+import { defectToHierarchyCode, toWritePayload, type CodeWritePayload } from './mappers';
 import type {
   CodeDetailResult,
   CodeFilters,
@@ -23,8 +18,8 @@ import type {
 /**
  * 탭 어댑터 — **리소스 이름이 사는 유일한 자리**다.
  *
- * 불량 코드와 원인 코드는 계약 구조가 같고 경로·필드 이름만 다르다. 화면 부품을 한 벌만 만들고
- * 그 차이를 여기에 담는다. 화면 코드에 `kind === 'defect' ? … : …` 같은 분기를 두지 않는다 —
+ * 불량 코드와 원인 코드는 계약 구조가 같고 경로·필드 이름만 달라 화면 부품을 한 벌만 만들고
+ * 그 차이를 여기에 담았다(원인코드는 omf-all-around#239 에서 없앴다). 화면 코드에 `kind === 'defect' ? … : …` 같은 분기를 두지 않는다 —
  * 두면 탭이 늘 때마다 분기를 빠뜨릴 자리가 생긴다.
  *
  * 요청을 어댑터 안에 **함수로** 두는 이유는 `openapi-fetch`가 경로를 리터럴 타입으로 요구하기
@@ -69,7 +64,7 @@ export interface CodeAdapter {
   labels: CodeLabels;
   /** 처분 유형(재작업 가능 / 폐기)을 갖는가 — 불량코드만(#209) */
   hasDisposition: boolean;
-  /** 서버 목록이 공정 조건(`processId`)을 받는가 — 불량코드만. 원인코드는 화면이 거른다(#209) */
+  /** 서버 목록이 공정 조건(`processId`)을 받는가 — 불량코드만. 받지 않는 목록은 화면이 거른다(#209) */
   serverProcessFilter: boolean;
   fetchList: (client: Client, filters: CodeFilters) => Promise<CodeListResult>;
   /** 계층 판정과 상위 선택지 전용 목록. 화면의 조회 조건과 무관하게 미사용까지 받는다. */
@@ -105,9 +100,7 @@ export interface CodeAdapter {
 const t = messages.defectCauseCode;
 
 type DefectCodeCreate = components['schemas']['DefectCodeCreate'];
-type CauseCodeCreate = components['schemas']['CauseCodeCreate'];
 type DefectCodeUpdate = components['schemas']['DefectCodeUpdate'];
-type CauseCodeUpdate = components['schemas']['CauseCodeUpdate'];
 
 /**
  * 쓰기 응답의 계약 표현을 화면 표현으로 옮긴다.
@@ -134,14 +127,6 @@ const toDefectCreate = (payload: CodeWritePayload): DefectCodeCreate => ({
   ...(payload.parentId === null ? {} : { parentDefectCodeId: payload.parentId }),
 });
 
-const toCauseCreate = (payload: CodeWritePayload): CauseCodeCreate => ({
-  causeCode: payload.code,
-  causeName: payload.name,
-  ...(payload.nameKo === null ? {} : { nameKo: payload.nameKo }),
-  ...(payload.nameVi === null ? {} : { nameVi: payload.nameVi }),
-  ...(payload.parentId === null ? {} : { parentCauseCodeId: payload.parentId }),
-});
-
 /**
  * 수정 본문. 수정은 전체 치환이므로 화면이 아는 값을 모두 실어 보낸다.
  *
@@ -157,15 +142,6 @@ const toDefectUpdate = (payload: CodeWritePayload): DefectCodeUpdate => ({
   nameKo: payload.nameKo,
   nameVi: payload.nameVi,
   parentDefectCodeId: payload.parentId,
-  ...(payload.processId === null ? {} : { processId: payload.processId }),
-});
-
-const toCauseUpdate = (payload: CodeWritePayload): CauseCodeUpdate => ({
-  causeCode: payload.code,
-  causeName: payload.name,
-  nameKo: payload.nameKo,
-  nameVi: payload.nameVi,
-  parentCauseCodeId: payload.parentId,
   ...(payload.processId === null ? {} : { processId: payload.processId }),
 });
 
@@ -287,112 +263,5 @@ export const defectCodeAdapter: CodeAdapter = {
         },
       }),
       defectToHierarchyCode,
-    ),
-};
-
-export const causeCodeAdapter: CodeAdapter = {
-  kind: 'cause',
-  detailPath: (id) => `/quality/cause-codes/${String(id)}`,
-  keys: {
-    all: ['cause-codes'],
-    list: (filters) => ['cause-codes', 'list', filters],
-    detail: (id) => ['cause-codes', 'detail', id],
-    options: ['cause-codes', 'options'],
-  },
-  serverFields: { code: 'causeCode', name: 'causeName', parentId: 'parentCauseCodeId' },
-  hasDisposition: false,
-  serverProcessFilter: false,
-  labels: {
-    tab: t.tabs.cause,
-    code: t.fields.causeCode,
-    name: t.fields.causeName,
-    listCode: t.listColumns.causeCode,
-    listName: t.listColumns.causeName,
-    parent: t.fields.parent,
-    searchLabel: t.filters.causeSearchLabel,
-    searchPlaceholder: t.filters.causeSearchPlaceholder,
-    codePlaceholder: t.dialog.causeCodePlaceholder,
-    namePlaceholder: t.dialog.causeNamePlaceholder,
-  },
-  fetchList: async (client, filters) => {
-    const data = await runRequest(() =>
-      // 원인코드 목록은 공정 조건을 받지 않는다 — 실으면 계약 밖 쿼리다. 공정은 화면이 거른다(#209).
-      client.GET('/quality/cause-codes', {
-        params: { query: listQuery({ ...filters, processId: '' }) },
-      }),
-    );
-
-    return { items: data.items.map(causeToHierarchyCode), page: data.page };
-  },
-  // 끝까지 받는다(#209 버그 수정) — 칩 건수 · 하위 코드 표 · 사용 중지 하위 건수가 이 목록을 전체로 본다.
-  fetchAllForOptions: async (client) => {
-    const data = await fetchAllPages((page, size) =>
-      runRequest(() =>
-        client.GET('/quality/cause-codes', {
-          params: { query: { includeInactive: true, page, size } },
-        }),
-      ),
-    );
-
-    return { items: data.items.map(causeToHierarchyCode), page: data.page };
-  },
-  fetchDetail: async (client, id) => {
-    const data = await runRequest(() =>
-      client.GET('/quality/cause-codes/{causeCodeId}', { params: { path: { causeCodeId: id } } }),
-    );
-
-    return {
-      code: causeToHierarchyCode(data.causeCode),
-      editability: data.editability,
-      processId: data.causeCode.processId ?? null,
-    };
-  },
-  create: async (client, values, headers) =>
-    toWriteResult(
-      await client.POST('/quality/cause-codes', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: toCauseCreate(toWritePayload(values, null)),
-      }),
-      causeToHierarchyCode,
-    ),
-  update: async (client, id, values, preservedProcessId, headers) =>
-    toWriteResult(
-      await client.PUT('/quality/cause-codes/{causeCodeId}', {
-        params: {
-          path: { causeCodeId: id },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
-        },
-        body: toCauseUpdate(toWritePayload(values, preservedProcessId)),
-      }),
-      causeToHierarchyCode,
-    ),
-  deactivate: async (client, id, headers) =>
-    toWriteResult(
-      await client.POST('/quality/cause-codes/{causeCodeId}:deactivate', {
-        params: {
-          path: { causeCodeId: id },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
-        },
-      }),
-      causeToHierarchyCode,
-    ),
-  activate: async (client, id, headers) =>
-    toWriteResult(
-      await client.POST('/quality/cause-codes/{causeCodeId}:activate', {
-        params: {
-          path: { causeCodeId: id },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
-          },
-        },
-      }),
-      causeToHierarchyCode,
     ),
 };

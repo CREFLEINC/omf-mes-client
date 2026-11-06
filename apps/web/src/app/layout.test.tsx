@@ -237,7 +237,6 @@ describe('AppLayout', () => {
     expect(within(tabs).queryByRole('link', { name: '판정 유형' })).toBeNull();
     expect(hubTabHrefs('품질 코드 관리')).toEqual([
       '/master-data/defect-cause-code',
-      '/master-data/cause-code',
       '/master-data/defect-process-mapping',
     ]);
   });
@@ -1072,7 +1071,6 @@ describe('AppLayout', () => {
       ],
       '품질 코드 관리': [
         '/master-data/defect-cause-code',
-        '/master-data/cause-code',
         '/master-data/defect-process-mapping',
       ],
       '검사 실적·결과': ['/quality/inspection-results', '/quality/inspection-sheets'],

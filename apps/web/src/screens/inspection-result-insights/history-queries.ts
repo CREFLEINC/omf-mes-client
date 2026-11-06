@@ -87,14 +87,13 @@ export interface DefectReasonRow {
   defectName: string | null;
   defectCode: string | null;
   qty: number;
-  causeLabel: string | null;
   description: string | null;
 }
 
 const codeLabel = (code: string, name: string): string => `${code} · ${name}`;
 
 /**
- * 그 회차의 불량 사유 — 불량 기록(`inspectionResultId=` · 서버 P-42)에 불량·원인 코드 이름을 붙인다.
+ * 그 회차의 불량 사유 — 불량 기록(`inspectionResultId=` · 서버 P-42)에 불량 코드 이름을 붙인다.
  * 이름을 못 찾은 코드는 id 를 숨기지 않고 그대로 보인다.
  */
 export const useResultDefectReasons = (
@@ -104,7 +103,7 @@ export const useResultDefectReasons = (
   return useQuery({
     queryKey: [...KEY, 'defects', inspectionResultId],
     queryFn: async () => {
-      const [records, defectCodes, causeCodes] = await Promise.all([
+      const [records, defectCodes] = await Promise.all([
         runRequest(() =>
           client.GET('/quality/defect-records', {
             params: { query: { inspectionResultId, page: 1, size: DEFECT_PAGE_SIZE } },
@@ -112,11 +111,6 @@ export const useResultDefectReasons = (
         ),
         runRequest(() =>
           client.GET('/quality/defect-codes', {
-            params: { query: { includeInactive: true, page: 1, size: CODE_PAGE_SIZE } },
-          }),
-        ),
-        runRequest(() =>
-          client.GET('/quality/cause-codes', {
             params: { query: { includeInactive: true, page: 1, size: CODE_PAGE_SIZE } },
           }),
         ),
@@ -128,24 +122,14 @@ export const useResultDefectReasons = (
         ]),
       );
       const defectParts = new Map(defectCodes.items.map((code) => [code.defectCodeId, code]));
-      const causeName = new Map(
-        causeCodes.items.map((code) => [
-          code.causeCodeId,
-          codeLabel(code.causeCode, code.causeName),
-        ]),
-      );
-      return records.items.map((record: DefectRecord) => {
-        const causeId = record.suspectedCauseCodeId;
-        return {
-          defectRecordId: record.defectRecordId,
-          defectCodeLabel: defectName.get(record.defectCodeId) ?? String(record.defectCodeId),
-          defectName: defectParts.get(record.defectCodeId)?.defectName ?? null,
-          defectCode: defectParts.get(record.defectCodeId)?.defectCode ?? null,
-          qty: record.defectQty,
-          causeLabel: causeId === undefined ? null : (causeName.get(causeId) ?? String(causeId)),
-          description: record.defectDescription ?? null,
-        };
-      });
+      return records.items.map((record: DefectRecord) => ({
+        defectRecordId: record.defectRecordId,
+        defectCodeLabel: defectName.get(record.defectCodeId) ?? String(record.defectCodeId),
+        defectName: defectParts.get(record.defectCodeId)?.defectName ?? null,
+        defectCode: defectParts.get(record.defectCodeId)?.defectCode ?? null,
+        qty: record.defectQty,
+        description: record.defectDescription ?? null,
+      }));
     },
   });
 };

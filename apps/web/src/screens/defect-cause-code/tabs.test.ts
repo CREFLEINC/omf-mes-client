@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { CODE_TABS, resolveTab } from './tabs';
 
 describe('CODE_TABS', () => {
-  it('탭 정의 배열이 정본이다 — 항목을 더하면 탭이 늘어난다', () => {
-    expect(CODE_TABS.length).toBeGreaterThanOrEqual(2);
+  /* 원인코드 탭은 없앴다(omf-all-around#239) — 불량코드 하나만 남는다. */
+  it('탭 정의 배열이 정본이다 — 불량코드 탭 하나다', () => {
+    expect(CODE_TABS.map((tab) => tab.kind)).toEqual(['defect']);
   });
 
   it('탭마다 서로 다른 어댑터와 캐시 키를 갖는다 — 한쪽 목록이 다른 탭에 남지 않는다', () => {

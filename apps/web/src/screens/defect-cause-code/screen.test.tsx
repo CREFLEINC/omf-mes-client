@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Link, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,7 +12,6 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import {
-  causeCodeFixtures,
   deepHierarchyCodeFixtures,
   defectCodeFixtures,
   legacyThreeLevelCodeFixtures,
@@ -21,13 +20,11 @@ import { DefectCauseCodeScreen } from './screen';
 import { CODE_TABS } from './tabs';
 
 const ROUTE = '/master-data/defect-cause-code';
-const CAUSE_ROUTE = '/master-data/cause-code';
 
-/** 하위 탭마다 고유 주소다(#208) — 셸 탭 막대가 이 주소로 옮긴다. */
-const TAB_ROUTE: Record<'defect' | 'cause', string> = { defect: ROUTE, cause: CAUSE_ROUTE };
+/** 하위 탭마다 고유 주소다(#208) — 셸 탭 막대가 이 주소로 옮긴다. 원인코드 탭은 없앴다(#239). */
+const TAB_ROUTE: Record<'defect', string> = { defect: ROUTE };
 
 const DEFECT_LIST_PATH = '/quality/defect-codes';
-const CAUSE_LIST_PATH = '/quality/cause-codes';
 
 interface RecordedRequest {
   method: string;
@@ -126,11 +123,6 @@ const defectUpdateRoute = (id: number, respond: StubRoute['respond']): StubRoute
   respond,
 });
 
-const causeListRoute = (items: unknown[] = causeCodeFixtures): StubRoute => ({
-  match: (request) => isGet(request, CAUSE_LIST_PATH),
-  respond: () => jsonResponse(listBody(items)),
-});
-
 /** 쪽 목록 요청만 센다 — 대분류 머리글용 전체 목록(`includeInactive=true`)은 따로 나간다(#209). */
 const pageListRequests = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
   requests.filter(
@@ -168,23 +160,8 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-/**
- * 앱 라우트(routes/index.tsx)처럼 주소에 따라 보일 하위 탭을 넘긴다. 셸 탭 막대 대신 링크 둘을 둔다 —
- * 하위 탭 전환은 이제 주소 이동이다(#208).
- */
-const RoutedScreen = () => {
-  const { pathname } = useLocation();
-
-  return (
-    <>
-      <nav aria-label="시험용 탭 막대">
-        <Link to={ROUTE}>불량코드</Link>
-        <Link to={CAUSE_ROUTE}>원인코드</Link>
-      </nav>
-      <DefectCauseCodeScreen tab={pathname === CAUSE_ROUTE ? 'cause' : undefined} />
-    </>
-  );
-};
+/** 앱 라우트(routes/index.tsx)처럼 불량코드 주소에 화면을 둔다(#208). */
+const RoutedScreen = () => <DefectCauseCodeScreen />;
 
 const renderScreen = (
   routes: StubRoute[],
@@ -265,31 +242,6 @@ describe('DefectCauseCodeScreen — 목록 조회', () => {
       ),
     ).toBe(true);
     expect(screen.getByText('처분 유형: 폐기')).toBeInTheDocument();
-  });
-
-  it('원인코드의 공정 조건은 서버에 싣지 않고 화면이 걸러 그 수로 센다(#209)', async () => {
-    const withProcess = causeCodeFixtures.map((item, index) => ({
-      ...item,
-      processId: index % 2 === 0 ? 3001 : null,
-    }));
-    const { requests } = renderScreen(
-      [
-        {
-          match: (request) => isGet(request, CAUSE_LIST_PATH),
-          respond: () => jsonResponse(listBody(withProcess)),
-        },
-      ],
-      '?proc=3001',
-      TAB_ROUTE.cause,
-    );
-
-    const matched = withProcess.filter((item) => item.processId === 3001);
-    expect(await screen.findByText(`총 ${String(matched.length)}건`)).toBeInTheDocument();
-    expect(
-      requestsTo(requests, CAUSE_LIST_PATH).every(
-        (request) => request.url.searchParams.get('processId') === null,
-      ),
-    ).toBe(true);
   });
 
   it('주소에 있던 조건이 첫 조회에 그대로 실린다 — 새로고침·공유가 같은 결과를 낸다', async () => {
@@ -438,44 +390,14 @@ describe('DefectCauseCodeScreen — 2계층 표시', () => {
 });
 
 describe('DefectCauseCodeScreen — 탭', () => {
-  it('탭을 바꾸면 다른 리소스의 목록을 조회한다', async () => {
-    const { requests, user } = renderScreen([defectListRoute(), causeListRoute()]);
-    await screen.findByRole('button', { name: 'DF-10' });
+  /* 원인코드 탭은 없앴다(omf-all-around#239) — 종전 주소 `?tab=cause` 는 불량코드로 떨어진다. */
+  it('종전 주소의 tab=cause 는 불량코드를 보이고 원인코드를 조회하지 않는다', async () => {
+    const { requests } = renderScreen([defectListRoute()], '?tab=cause');
 
-    await user.click(screen.getByRole('link', { name: '원인코드' }));
-
-    expect(await screen.findByRole('button', { name: 'CS-10' })).toBeInTheDocument();
-    expect(pageListRequests(requests, CAUSE_LIST_PATH)).toHaveLength(1);
-  });
-
-  /*
-   * 한쪽 탭의 코드 번호가 남으면 다른 탭에는 없는 리소스의 상세를 조회하게 된다.
-   * 조회 조건도 함께 지워 규칙을 하나로 둔다 — 「탭이 바뀌면 그 탭의 처음 상태로 간다」.
-   */
-  it('탭을 바꾸면 q·inactive·sel·mode가 주소에서 지워진다', async () => {
-    const { requests, user } = renderScreen(
-      [defectListRoute(), causeListRoute()],
-      '?q=DF&inactive=1&sel=1001&mode=create',
-    );
-    await screen.findByRole('link', { name: '원인코드' });
-
-    await user.click(screen.getByRole('link', { name: '원인코드' }));
-    await screen.findByRole('button', { name: 'CS-10' });
-
-    expect(currentLocation()).toBe(CAUSE_ROUTE);
-
-    const causeRequest = requestsTo(requests, CAUSE_LIST_PATH)[0];
-    expect(causeRequest?.url.searchParams.has('q')).toBe(false);
-    expect(causeRequest?.url.searchParams.has('includeInactive')).toBe(false);
-  });
-
-  /* 종전 주소(`?tab=cause`) 북마크·연결은 새 주소로 옮긴다 — 다른 질의값은 그대로다(#208). */
-  it('종전 주소의 tab=cause 는 원인코드 주소로 옮기고 다른 질의값은 남긴다', async () => {
-    const { requests } = renderScreen([causeListRoute()], '?tab=cause&q=CS&inactive=1');
-
-    expect(await screen.findByRole('button', { name: 'CS-10' })).toBeInTheDocument();
-    expect(currentLocation()).toBe(`${CAUSE_ROUTE}?q=CS&inactive=1`);
-    expect(requestsTo(requests, CAUSE_LIST_PATH)[0]?.url.searchParams.get('q')).toBe('CS');
+    expect(await screen.findByRole('button', { name: 'DF-10' })).toBeInTheDocument();
+    expect(
+      requests.some((request) => request.url.pathname.startsWith('/quality/cause-codes')),
+    ).toBe(false);
   });
 
   it('모르는 탭 값이면 첫 탭으로 떨어진다', async () => {
@@ -483,16 +405,6 @@ describe('DefectCauseCodeScreen — 탭', () => {
 
     expect(await screen.findByRole('button', { name: 'DF-10' })).toBeInTheDocument();
     expect(pageListRequests(requests, DEFECT_LIST_PATH)).toHaveLength(1);
-  });
-
-  it('비활성 탭의 표는 화면에 남지 않는다', async () => {
-    const { user } = renderScreen([defectListRoute(), causeListRoute()]);
-    await screen.findByRole('button', { name: 'DF-10' });
-
-    await user.click(screen.getByRole('link', { name: '원인코드' }));
-    await screen.findByRole('button', { name: 'CS-10' });
-
-    expect(screen.queryByText('DF-10 · 외관')).not.toBeInTheDocument();
   });
 });
 
@@ -1724,8 +1636,8 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     /** 목록 경로는 상세 경로에서 번호만 떼면 나온다 — 탭이 늘어도 여기를 고칠 일이 없다. */
     const detailPath = definition.adapter.detailPath(SELECTED_ID);
     const listPath = detailPath.slice(0, detailPath.lastIndexOf('/'));
-    const fixtures = definition.kind === 'defect' ? defectCodeFixtures : causeCodeFixtures;
-    const firstCode = definition.kind === 'defect' ? 'DF-10' : 'CS-10';
+    const fixtures = defectCodeFixtures;
+    const firstCode = 'DF-10';
 
     const routes: StubRoute[] = [
       {
@@ -1818,7 +1730,7 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
       ...overrides,
     });
 
-    /** 상세 응답의 감싸개 키는 코드 필드 이름과 같다(`defectCode` / `causeCode`). */
+    /** 상세 응답의 감싸개 키는 코드 필드 이름과 같다(`defectCode`). */
     const detailBody = (): Record<string, unknown> => ({
       [editFields.code]: codeRow(),
       editability: DEFAULT_EDITABILITY,

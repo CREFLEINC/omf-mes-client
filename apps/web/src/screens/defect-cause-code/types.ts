@@ -5,16 +5,15 @@ import type { components } from '@omf-mes/api-client';
  *
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이 유지된다.
  *
- * 불량 코드와 원인 코드는 계약 구조가 같고 필드 이름만 다르다. 화면 부품은 그 이름을 알지 않고
+ * 화면 부품은 계약 필드 이름을 알지 않고
  * 아래 `HierarchyCode` 하나만 안다. 리소스 이름은 `adapters.ts` 밖으로 나가지 않는다.
  */
 
 export type DefectCode = components['schemas']['DefectCode'];
-export type CauseCode = components['schemas']['CauseCode'];
 export type PageMeta = components['schemas']['PageMeta'];
 export type Editability = components['schemas']['Editability'];
 
-export type CodeKind = 'defect' | 'cause';
+export type CodeKind = 'defect';
 
 /** 두 탭이 공유하는 화면 표현. */
 export interface HierarchyCode {
@@ -64,7 +63,7 @@ export interface CodeFormValues {
 
 /**
  * 서버가 쓰는 필드 이름. 400 응답의 `field`를 폼 입력칸에 잇는 기준이며,
- * 어댑터가 값을 채운다(불량은 `defectCode`…, 원인은 `causeCode`…).
+ * 어댑터가 값을 채운다(불량은 `defectCode`…).
  */
 export interface ServerFieldNames {
   code: string;

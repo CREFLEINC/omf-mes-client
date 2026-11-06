@@ -188,13 +188,6 @@ describe('W-03-05 상세 창 이력 구획 (omf-all-around#85)', () => {
               ]),
             ),
           ),
-          route('/quality/cause-codes', () =>
-            jsonResponse(
-              page([
-                { causeCodeId: 21, causeCode: 'C-SUP', causeName: '공급사 공정', isActive: true },
-              ]),
-            ),
-          ),
           route('/quality/nonconformances', (req) => {
             expect(new URL(req.url).searchParams.get('lotId')).toBe('201');
             return jsonResponse(
@@ -247,7 +240,10 @@ describe('W-03-05 상세 창 이력 구획 (omf-all-around#85)', () => {
     // 불량 유형 이름이 앞, 코드는 보조 글자(사용자 2026-11-02).
     expect(within(defects).getByText('스크래치')).toBeInTheDocument();
     expect(within(defects).getByText('(D-SCR)')).toBeInTheDocument();
-    expect(within(defects).getByText('C-SUP · 공급사 공정')).toBeInTheDocument();
+    // 예전에 저장된 추정 원인이 있어도 원인 열은 없다(omf-all-around#239).
+    expect(
+      within(defects).queryByRole('columnheader', { name: '추정 원인' }),
+    ).not.toBeInTheDocument();
     expect(within(defects).getByText('표면 긁힘')).toBeInTheDocument();
 
     expect(await within(dialog).findByText('SAMPLE-NC-31')).toBeInTheDocument();

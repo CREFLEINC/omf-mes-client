@@ -10,7 +10,6 @@ export const defectCauseCode = {
   breadcrumbRoot: '품질 관리',
   tabs: {
     defect: '불량코드',
-    cause: '원인코드',
     mapping: '불량코드 공정 연결',
   },
   panes: {
@@ -73,8 +72,6 @@ export const defectCauseCode = {
   filters: {
     defectSearchLabel: '불량코드 검색',
     defectSearchPlaceholder: '불량코드 또는 불량명을 입력하세요',
-    causeSearchLabel: '원인코드 검색',
-    causeSearchPlaceholder: '원인코드 또는 원인명을 입력하세요',
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     chipKeyword: (value: string): string => `검색어: ${value}`,
@@ -96,9 +93,6 @@ export const defectCauseCode = {
     /** 불량코드 탭의 코드 · 이름 칸 이름(창 · 상세 · #209) */
     defectCode: '불량코드',
     defectName: '불량명',
-    /** 원인코드 탭의 코드 · 이름 칸 이름 — 불량코드 탭과 같은 짜임(#209) */
-    causeCode: '원인코드',
-    causeName: '원인명',
     disposition: '처분 유형',
     process: '공정',
     nameKo: '한국어명',
@@ -146,8 +140,6 @@ export const defectCauseCode = {
   listColumns: {
     defectCode: '불량코드',
     defectName: '불량명',
-    causeCode: '원인코드',
-    causeName: '원인명',
     kind: '구분',
     isActive: '사용 여부',
   },
@@ -171,8 +163,6 @@ export const defectCauseCode = {
     /** 코드 · 이름 칸 입력 안내 — 탭마다 다르다(사용자 지시 2026-10-29 · #209) */
     defectCodePlaceholder: '불량코드를 입력하세요',
     defectNamePlaceholder: '불량명을 입력하세요',
-    causeCodePlaceholder: '원인코드를 입력하세요',
-    causeNamePlaceholder: '원인명을 입력하세요',
     nameKoPlaceholder: '한국어명을 입력하세요',
     nameViPlaceholder: '베트남어명을 입력하세요',
   },

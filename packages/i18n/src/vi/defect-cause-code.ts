@@ -12,7 +12,6 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   breadcrumbRoot: 'Quản lý chất lượng',
   tabs: {
     defect: 'Mã lỗi',
-    cause: 'Mã nguyên nhân',
     mapping: 'Liên kết mã lỗi - công đoạn',
   },
   panes: {
@@ -63,8 +62,6 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   filters: {
     defectSearchLabel: 'Tìm mã lỗi',
     defectSearchPlaceholder: 'Nhập mã lỗi hoặc tên lỗi',
-    causeSearchLabel: 'Tìm mã nguyên nhân',
-    causeSearchPlaceholder: 'Nhập mã nguyên nhân hoặc tên nguyên nhân',
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
     chipKeyword: (value: string): string => `Từ khóa: ${value}`,
@@ -84,8 +81,6 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     kind: 'Phân loại',
     defectCode: 'Mã lỗi',
     defectName: 'Tên lỗi',
-    causeCode: 'Mã nguyên nhân',
-    causeName: 'Tên nguyên nhân',
     disposition: 'Loại xử lý',
     process: 'Công đoạn',
     nameKo: 'Tên tiếng Hàn',
@@ -127,8 +122,6 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
   listColumns: {
     defectCode: 'Mã lỗi',
     defectName: 'Tên lỗi',
-    causeCode: 'Mã nguyên nhân',
-    causeName: 'Tên nguyên nhân',
     kind: 'Phân loại',
     isActive: 'Sử dụng',
   },
@@ -162,8 +155,6 @@ export const defectCauseCode: Translated<typeof ko.defectCauseCode> = {
     editTitle: (tab: string): string => `Sửa ${tab}`,
     defectCodePlaceholder: 'Nhập mã lỗi',
     defectNamePlaceholder: 'Nhập tên lỗi',
-    causeCodePlaceholder: 'Nhập mã nguyên nhân',
-    causeNamePlaceholder: 'Nhập tên nguyên nhân',
     nameKoPlaceholder: 'Nhập tên tiếng Hàn',
     nameViPlaceholder: 'Nhập tên tiếng Việt',
   },

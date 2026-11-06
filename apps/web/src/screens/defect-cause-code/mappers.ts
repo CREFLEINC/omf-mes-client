@@ -1,16 +1,9 @@
-import type {
-  CauseCode,
-  CodeFormValues,
-  DefectCode,
-  HierarchyCode,
-  ServerFieldNames,
-} from './types';
+import type { CodeFormValues, DefectCode, HierarchyCode, ServerFieldNames } from './types';
 
 /**
  * 계약 표현과 화면 표현 사이의 변환.
  *
- * 불량 코드와 원인 코드는 필드 이름만 다르고 구조가 같다. 그 이름 차이를 여기와
- * `adapters.ts`에서만 넘고, 화면 부품은 `HierarchyCode` 하나만 다룬다.
+ * 계약 필드 이름은 여기와 `adapters.ts`에서만 넘고, 화면 부품은 `HierarchyCode` 하나만 다룬다.
  */
 
 /**
@@ -33,17 +26,6 @@ export const defectToHierarchyCode = (raw: DefectCode): HierarchyCode => ({
   nameVi: raw.nameVi ?? null,
   processId: raw.processId ?? null,
   dispositionTypeCode: raw.dispositionTypeCode ?? null,
-});
-
-export const causeToHierarchyCode = (raw: CauseCode): HierarchyCode => ({
-  id: raw.causeCodeId,
-  code: raw.causeCode,
-  name: raw.causeName,
-  parentId: foldSelfReference(raw.causeCodeId, raw.parentCauseCodeId),
-  isActive: raw.isActive,
-  nameKo: raw.nameKo ?? null,
-  nameVi: raw.nameVi ?? null,
-  processId: raw.processId ?? null,
 });
 
 /** 상세 응답을 폼 값으로 옮긴다. 대분류는 「고르지 않음」인 빈 문자열이 된다. */

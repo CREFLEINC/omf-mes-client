@@ -324,10 +324,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         tabs: [
           /*
            * 불량·원인코드 화면 안 하위 탭(불량코드 · 원인코드 · 공정 매핑)을 탭 막대 한 줄로 폈다(사용자 지시 · #208).
-           * 원인코드 · 공정 매핑 주소는 W-06-03 의 화면 코드·권한을 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
+           * 원인코드 탭은 없앴다(omf-all-around#239). 공정 매핑 주소는 W-06-03 의 화면 코드·권한을 따른다(web-screen-catalog.ts `WEB_SCREEN_TABS`).
            */
           { to: '/master-data/defect-cause-code', label: '불량코드', labelVi: 'Mã lỗi' },
-          { to: '/master-data/cause-code', label: '원인코드', labelVi: 'Mã nguyên nhân' },
           {
             to: '/master-data/defect-process-mapping',
             // 탭 이름 「공정 매핑」 → 「불량코드 공정 연결」(사용자 지시 2026-10-29 · #209) — 무엇을 잇는지 드러낸다.

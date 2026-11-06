@@ -232,7 +232,6 @@ describe('주 메뉴 트리', () => {
       '/master-data/inspection-sheet-template → rule_settings',
       '/quality/inspection-levels → rule_settings',
       '/master-data/defect-cause-code → report',
-      '/master-data/cause-code → report',
       '/master-data/defect-process-mapping → report',
       '/quality/inspection-results → analytics',
       '/quality/inspection-sheets → analytics',

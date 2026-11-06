@@ -1,4 +1,4 @@
-import { causeCodeAdapter, defectCodeAdapter, type CodeAdapter } from './adapters';
+import { defectCodeAdapter, type CodeAdapter } from './adapters';
 import type { CodeKind } from './types';
 
 /**
@@ -16,7 +16,6 @@ const toTab = (adapter: CodeAdapter): CodeTabDefinition => ({ kind: adapter.kind
 /** 비어 있지 않은 배열로 두어 「첫 탭」이 언제나 존재함을 타입으로 보장한다. */
 export const CODE_TABS: readonly [CodeTabDefinition, ...CodeTabDefinition[]] = [
   toTab(defectCodeAdapter),
-  toTab(causeCodeAdapter),
 ];
 
 /**

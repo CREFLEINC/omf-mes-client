@@ -71,7 +71,6 @@ import {
   useInspectionRounds,
   useCodeValues,
   useConfirmResult,
-  useCauseCodes,
   useDefectCodes,
   useDraftRejectionRecords,
   useRejectedLotFollowUp,
@@ -360,8 +359,6 @@ const IqcInspectionScreenBody = () => {
    */
   const needsDefectCodes = hasDefects || editingResultId !== null;
   const defectCodes = useDefectCodes(needsDefectCodes);
-  /* 추정 원인(omf-all-around#130) — 선택 입력. */
-  const causeCodes = useCauseCodes(needsDefectCodes);
   const resolvedDefects = hasDefects
     ? resolveDefects(defectCodes.data ?? [], defects, toSendableNumber(draft.rejected))
     : resolveDefects([], [], 0);
@@ -968,7 +965,6 @@ const IqcInspectionScreenBody = () => {
                       });
                     }}
                     codes={defectCodes.data ?? []}
-                    causes={causeCodes.data ?? []}
                     rows={defects}
                     onChange={(next) => {
                       setDefects(next);

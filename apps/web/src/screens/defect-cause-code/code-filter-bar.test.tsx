@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
-import { causeCodeAdapter, defectCodeAdapter } from './adapters';
+import { defectCodeAdapter } from './adapters';
 import { CodeFilterBar, type CodeFilterBarProps } from './code-filter-bar';
 import type { CodeFilters } from './types';
 
@@ -174,19 +174,6 @@ describe('CodeFilterBar — 조회 조건', () => {
     await user.click(await screen.findByRole('option', { name: '전체' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
     expect(props.onApplyFilters).toHaveBeenCalledWith(expect.objectContaining({ processId: '' }));
-  });
-
-  it('원인코드 탭에는 처분 유형이 없고 공정 검색은 있다(불량코드 탭 기준 · #209)', () => {
-    renderBar({ adapter: causeCodeAdapter });
-
-    expect(screen.queryByRole('combobox', { name: '처분 유형 선택' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('공정 검색')).toBeInTheDocument();
-  });
-
-  it('원인코드 탭은 원인코드 검색 라벨을 쓴다', () => {
-    renderBar({ adapter: causeCodeAdapter });
-
-    expect(screen.getByLabelText('원인코드 검색')).toBeInTheDocument();
   });
 
   it('조회 · 초기화 뒤에 화면 단추를 그대로 낸다', () => {

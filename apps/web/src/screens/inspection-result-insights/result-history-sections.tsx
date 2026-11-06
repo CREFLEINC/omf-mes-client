@@ -63,16 +63,7 @@ export const DefectReasonSection = ({
       align: 'end',
       render: (row) => (uomCode === null ? number(row.qty) : `${number(row.qty)} ${uomCode}`),
     },
-    /* 추정 원인 · 설명은 적힌 줄이 있을 때만 열을 둔다 — 비면 불량 유형 · 수량 두 열(사용자 시안 2026-11-02). */
-    ...((reasons.data ?? []).some((row) => row.causeLabel !== null && row.causeLabel !== undefined)
-      ? [
-          {
-            key: 'cause',
-            header: t.defects.columns.cause,
-            render: (row: DefectReasonRow) => row.causeLabel ?? EMPTY,
-          },
-        ]
-      : []),
+    /* 설명은 적힌 줄이 있을 때만 열을 둔다 — 비면 불량 유형 · 수량 두 열(사용자 시안 2026-11-02). 추정 원인 열은 없앴다(#239). */
     ...((reasons.data ?? []).some(
       (row) => row.description !== null && row.description !== undefined,
     )
