@@ -8139,6 +8139,8 @@ main:has(.iqc-skip-approval-detail) {
 
 .disposition-pane {
   display: grid;
+  /* 칸 폭은 구획 폭까지만 — 처분 이력 표(최소 44rem)가 구획을 밀어 오른쪽이 잘리지 않게, 표는 제 상자 안에서 가로로 구른다(omf-all-around#241). */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--space-4);
   padding: var(--space-5);
