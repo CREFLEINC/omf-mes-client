@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import { isForbidden, type ApiClient, type components } from '@omf-mes/api-client';
 import { useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -505,9 +505,7 @@ export const isIssueNotFound = (error: unknown): boolean => {
  * 조치가 다르기 때문이다.
  */
 export const isApprovalForbidden = (error: unknown): boolean => {
-  const apiError = toApiError(error);
-
-  return apiError.kind === 'http' && apiError.status === 403;
+  return isForbidden(toApiError(error));
 };
 
 /** 그 승인 요청이 **없는가**(404). 전표는 값을 가리키는데 요청이 사라진 자리다. */

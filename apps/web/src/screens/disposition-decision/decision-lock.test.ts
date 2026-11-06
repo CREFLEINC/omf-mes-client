@@ -1,4 +1,4 @@
-import type { ApiError } from '@omf-mes/api-client';
+import { normalizeApiError, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
@@ -71,6 +71,23 @@ describe('toDecisionLock — 잠그는 경우', () => {
 
   it('⭐ 저장 403도 잠근다 — 읽기는 되고 쓰기만 막히는 게이팅이 있다', () => {
     expect(toDecisionLock(input({ writeError: http(403) })).reason).toBe(t.form.forbiddenReason);
+  });
+
+  /* omf-all-around#242 — 실제 서버는 403 을 오류 봉투에 담아 보내 정규화가 validation 으로 접는다. */
+  it('오류 봉투에 담긴 403 도 잠근다', () => {
+    const contractForbidden = normalizeApiError(403, {
+      errors: [
+        { scope: 'screen', code: 'PERMISSION_DENIED', message: '승인자도 상신자도 아닙니다.' },
+      ],
+    });
+
+    expect(contractForbidden.kind).toBe('validation');
+    expect(toDecisionLock(input({ writeError: contractForbidden })).reason).toBe(
+      t.form.forbiddenReason,
+    );
+    expect(toDecisionLock(input({ detailError: contractForbidden })).reason).toBe(
+      t.form.forbiddenReason,
+    );
   });
 
   it('상세 조회 403도 잠근다', () => {

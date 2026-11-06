@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import { isForbidden, type ApiClient, type components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
@@ -484,9 +484,7 @@ export const useCancelResourceLock = (
  * ⛔ **정규화 갈래(`kind`)가 아니라 상태 코드로 판정한다** — 목록·상세 쪽과 같은 규율이다.
  */
 export const isCancelResourceForbidden = (error: unknown): boolean => {
-  const apiError = toApiError(error);
-
-  return apiError.kind === 'http' && apiError.status === 403;
+  return isForbidden(toApiError(error));
 };
 
 /**
@@ -589,9 +587,7 @@ export const useCancelApprovalRequest = (
  * ⛔ **정규화 갈래(`kind`)가 아니라 상태 코드로 판정한다** — 이 슬라이스의 다른 판정과 같은 규율.
  */
 export const isApprovalForbidden = (error: unknown): boolean => {
-  const apiError = toApiError(error);
-
-  return apiError.kind === 'http' && apiError.status === 403;
+  return isForbidden(toApiError(error));
 };
 
 /**

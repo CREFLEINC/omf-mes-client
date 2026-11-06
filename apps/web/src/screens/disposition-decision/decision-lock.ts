@@ -1,4 +1,4 @@
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { dispositionLockReason } from './disposition-codes';
@@ -48,8 +48,8 @@ const isUnknownOutcome = (error: ApiError | null): boolean =>
   error !== null &&
   (error.kind === 'network' || (error.kind === 'http' && error.status >= HTTP_SERVER_ERROR));
 
-const isForbidden = (error: ApiError | null): boolean =>
-  error !== null && error.kind === 'http' && error.status === 403;
+/* 403 은 봉투에 담겨 `validation` 으로 오므로 상태 코드로 본다(#242). */
+const isForbiddenWrite = (error: ApiError | null): boolean => error !== null && isForbidden(error);
 
 /**
  * 판정 컨트롤을 잠글지, 잠근다면 왜인지.
@@ -76,7 +76,7 @@ export const toDecisionLock = (input: DecisionLockInput): DecisionLock => {
   }
 
   /* ⚠ 저장 403도 본다 — 읽기는 되고 쓰기만 막히는 게이팅이 계약에 있다(단말·권한). */
-  if (isForbidden(input.writeError) || isForbidden(input.detailError)) {
+  if (isForbiddenWrite(input.writeError) || isForbiddenWrite(input.detailError)) {
     return { reason: t.forbiddenReason, isUncertain: false };
   }
 

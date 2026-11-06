@@ -1,4 +1,4 @@
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -496,7 +496,7 @@ export const GoodsIssueQrScreen = () => {
        * 까지이고, 여기서 필요한 것은 **어느 단말에서 다시 하면 되는가**다. 대상 선택은 그대로
        * 둔다 — 재시도는 다른 단말에서 하는 것이지 다시 고르는 것이 아니다.
        */}
-      {isForbidden(write.error) ? (
+      {isIssueForbidden(write.error) ? (
         <div className="banner-slot">
           <AlertBanner variant="error">{t.errors.forbidden}</AlertBanner>
         </div>
@@ -708,9 +708,11 @@ const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQua
   return [...byUom].map(([uomId, qty]) => ({ uomId, qty }));
 };
 
-/** 서버가 이 단말의 발행을 막았는가. 게이트는 서버가 갖는다(통지 #535). */
-const isForbidden = (error: ApiError | null): boolean =>
-  error !== null && error.kind === 'http' && error.status === 403;
+/**
+ * 서버가 이 단말의 발행을 막았는가. 게이트는 서버가 갖는다(통지 #535). 403 은 봉투에 담겨
+ * `validation` 으로 오므로 상태 코드로 본다(#242).
+ */
+const isIssueForbidden = (error: ApiError | null): boolean => error !== null && isForbidden(error);
 
 interface PrinterChipProps {
   isLoading: boolean;

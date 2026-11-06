@@ -1,5 +1,7 @@
+import { isForbidden } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import { forbiddenLines } from '../../patterns/forbidden-lines';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
 
@@ -10,11 +12,12 @@ import { serverReasonOf } from '../../patterns/server-reason';
 export const describeRecordError = (error: unknown): string => {
   const apiError = toApiError(error);
 
+  /* 403 은 봉투에 담겨 `validation` 으로 오므로 갈래보다 먼저 본다(#242). */
+  if (isForbidden(apiError)) return forbiddenLines(apiError).join(' ');
   switch (apiError.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (apiError.status === 403) return messages.httpError.forbidden;
       /* 단말 권한(401) 거부는 서버 문구가 켜는 곳을 말한다. 그 밖의 몸체는 보일 말이 아니다. */
       return serverReasonOf(apiError) ?? messages.httpError.description;
     case 'conflict':

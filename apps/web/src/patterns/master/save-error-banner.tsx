@@ -1,7 +1,9 @@
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+import { forbiddenLines } from '../forbidden-lines';
 
 export interface SaveErrorBannerProps {
   /** null이면 아무것도 렌더하지 않는다. */
@@ -33,6 +35,8 @@ const BannerLines = ({ lines }: { lines: string[] }): ReactNode => {
  * 리소스 이름을 알지 않으므로 공통 규약 문구만 쓴다.
  */
 const describeError = (error: ApiError): BannerContent => {
+  /* 403 은 봉투에 담겨 `validation`·`stateLocked` 로 오므로 갈래보다 먼저 본다(#242). */
+  if (isForbidden(error)) return { title: messages.httpError.title, lines: forbiddenLines(error) };
   switch (error.kind) {
     case 'conflict':
       return { lines: [messages.conflict[error.cause]] };
@@ -55,10 +59,6 @@ const describeError = (error: ApiError): BannerContent => {
       // 삼키면 어디에도 보이지 않는 오류가 된다.
       return { lines: error.errors.map((item) => item.message) };
     case 'http': {
-      if (error.status === 403) {
-        return { title: messages.httpError.title, lines: [messages.httpError.forbidden] };
-      }
-
       // 서버 문구는 있을 때만 덧붙인다. 빈 문자열을 그대로 실으면 빈 줄이 생긴다.
       const serverLines =
         error.message === undefined || error.message === '' ? [] : [error.message];

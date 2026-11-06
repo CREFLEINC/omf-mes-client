@@ -136,9 +136,9 @@ describe('toIssueLock', () => {
    * ⚠ **계약 형태로 온 오류를 상태로 가릴 수 있는가** — 정규화가 무엇을 남기는지에 달렸다.
    * 손으로 지은 오류로만 검사하면 그 사정이 감지기 뒤에 숨으므로 **실제 정규화를 통과시킨다.**
    *
-   * 5xx 는 #789 가 고쳤다 — 봉투가 실려도 상태 코드가 남아 「결과 불명」으로 잡힌다. 반면
-   * 계약이 오류 봉투를 두는 상태(403 등)는 여전히 `validation` 으로 접히므로 상태로 가릴 수
-   * 없다. 그 한계를 눈에 보이게 고정해 둔다 — 부품이 더 고쳐지면 이 검사가 먼저 깨져서 알려 준다.
+   * 5xx 는 #789 가 고쳤다 — 봉투가 실려도 상태 코드가 남아 「결과 불명」으로 잡힌다. 403 은
+   * 여전히 `validation` 으로 접히지만 `status` 가 남으므로, 갈래가 아니라 상태 코드로 본다
+   * (omf-all-around#242).
    */
   describe('⚠ 계약 형태로 온 오류를 상태로 가릴 수 있는가', () => {
     const contractShaped = (status: number): ApiError =>
@@ -154,8 +154,8 @@ describe('toIssueLock', () => {
       expect(toIssueLock(input({ issueError: contractShaped(500) })).isUncertain).toBe(true);
     });
 
-    it('계약 형태의 403 은 권한 사유로 잡히지 않는다', () => {
-      expect(toIssueLock(input({ issueError: contractShaped(403) })).reason).not.toBe(t.forbidden);
+    it('계약 형태의 403 도 권한 사유로 잠근다', () => {
+      expect(toIssueLock(input({ issueError: contractShaped(403) })).reason).toBe(t.forbidden);
     });
 
     /*

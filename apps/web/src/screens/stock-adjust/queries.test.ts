@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import { normalizeApiError, type components } from '@omf-mes/api-client';
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -991,6 +991,23 @@ describe('isApprovalForbidden · isApprovalNotFound', () => {
     expect(isApprovalNotFound(forbidden)).toBe(false);
     expect(isApprovalNotFound(notFound)).toBe(true);
     expect(isApprovalForbidden(notFound)).toBe(false);
+  });
+
+  /* omf-all-around#242 — 실제 서버는 403 을 오류 봉투에 담아 보내 정규화가 validation 으로 접는다. */
+  it('오류 봉투에 담긴 403 도 권한 없음으로 읽는다', () => {
+    const forbidden = new ApiRequestError(
+      normalizeApiError(403, {
+        errors: [
+          { scope: 'screen', code: 'PERMISSION_DENIED', message: '승인자도 상신자도 아닙니다.' },
+        ],
+      }),
+      {
+        httpStatus: 403,
+      },
+    );
+
+    expect(isApprovalForbidden(forbidden)).toBe(true);
+    expect(isApprovalNotFound(forbidden)).toBe(false);
   });
 
   /** 그 밖의 실패는 둘 다 거짓이다 — 셋째 갈래가 서야 서버 문구가 그대로 선다. */

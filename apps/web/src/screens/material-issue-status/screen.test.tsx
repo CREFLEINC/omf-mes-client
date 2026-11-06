@@ -150,6 +150,8 @@ interface SetupOptions {
   respondPut?: (body: Record<string, unknown>) => Response | undefined;
   /** 이력 조회 응답 상태(기본 200). */
   historyStatus?: number;
+  /** 이력 조회 실패의 본문(기본 `{ message: '' }`). 계약 오류 봉투를 그대로 싣는다. */
+  historyErrorBody?: unknown;
   /** 저장(PUT) 뒤 상세 조회가 돌려줄 상태 — 서버처럼 저장 결과가 남는다. */
   detailAfterPut?: MaterialIssueRequestDetailView;
   /** 공장 목록에 더할 공장(기본은 합성 1공장 하나). */
@@ -252,7 +254,9 @@ const setup = (options: SetupOptions = {}) => {
       match: (request) => isGet(request, /^\/logistics\/material-issue-requests\/\d+\/history$/),
       respond: () =>
         options.historyStatus !== undefined
-          ? jsonResponse({ message: '' }, { status: options.historyStatus })
+          ? jsonResponse(options.historyErrorBody ?? { message: '' }, {
+              status: options.historyStatus,
+            })
           : jsonResponse({
               items: [
                 {
@@ -596,6 +600,23 @@ describe('W-02-11 출고 요청 현황 — G2 확인', () => {
 
     expect(await detail.findByText(messages.httpError.forbidden)).toBeInTheDocument();
     expect(detail.queryByText(t.detail.noHistory)).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#242 — 실제 서버는 403 을 오류 봉투에 담아 보내 정규화가 validation 으로 접는다. */
+  it('오류 봉투에 담긴 403 도 이력 자리에 권한 안내를 보인다', async () => {
+    setup({
+      route: '/production/material-issue-status?id=1',
+      historyStatus: 403,
+      historyErrorBody: {
+        errors: [
+          { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
+        ],
+      },
+    });
+    const detail = await panel();
+
+    expect(await detail.findByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(detail.queryByText(t.detail.historyFailed)).not.toBeInTheDocument();
   });
 
   it('없는 요청(404)을 열면 상세에 맞는 안내를 보인다', async () => {

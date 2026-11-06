@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ApiError } from '@omf-mes/api-client';
+import { normalizeApiError, type ApiError } from '@omf-mes/api-client';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RetryErrorBanner } from './retry-error-banner';
@@ -124,6 +124,27 @@ describe('RetryErrorBanner — 그 밖의 실패', () => {
     expect(
       screen.getByText('이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.'),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 조회' })).not.toBeInTheDocument();
+  });
+
+  /* omf-all-around#242 — 실제 서버는 403 을 오류 봉투에 담아 보내 정규화가 validation 으로 접는다. */
+  it('오류 봉투에 담긴 403 도 권한 안내와 서버 사유를 내고 다시 조회를 권하지 않는다', () => {
+    renderBanner(
+      normalizeApiError(403, {
+        errors: [
+          {
+            scope: 'screen',
+            code: 'PERMISSION_DENIED',
+            message: '이 공장에 대한 데이터 권한이 없습니다.',
+          },
+        ],
+      }),
+    );
+
+    expect(
+      screen.getByText('이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('이 공장에 대한 데이터 권한이 없습니다.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '다시 조회' })).not.toBeInTheDocument();
   });
 

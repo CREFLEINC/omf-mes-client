@@ -1,4 +1,4 @@
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { ExpansionState } from './expansion';
@@ -59,9 +59,8 @@ const isUnknownOutcome = (error: ApiError | null): boolean =>
   error !== null &&
   (error.kind === 'network' || (error.kind === 'http' && error.status >= HTTP_SERVER_ERROR));
 
-/** ⚠ 위와 같은 한계가 있다 — 계약 형태로 온 403 은 여기 걸리지 않고 서버 문구가 배너로 간다. */
-const isForbidden = (error: ApiError | null): boolean =>
-  error !== null && error.kind === 'http' && error.status === 403;
+/* 403 은 계약 형태로 와도 `status` 가 남으므로 상태 코드로 본다(#242). */
+const isForbiddenIssue = (error: ApiError | null): boolean => error !== null && isForbidden(error);
 
 const expansionReason = (state: ExpansionState): string | undefined => {
   const t = messages.emergencyWorkOrder.lock;
@@ -134,7 +133,7 @@ export const toIssueLock = (input: IssueLockInput): IssueLock => {
     return { reason: t.uncertain, isUncertain: true, canRetryRelease: false };
   }
 
-  if (isForbidden(input.issueError)) {
+  if (isForbiddenIssue(input.issueError)) {
     return { reason: t.forbidden, isUncertain: false, canRetryRelease: false };
   }
 

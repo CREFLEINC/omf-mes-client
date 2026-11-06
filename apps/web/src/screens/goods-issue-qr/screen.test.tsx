@@ -618,6 +618,27 @@ describe('GoodsIssueQrScreen', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
+  /* omf-all-around#242 — 실제 서버는 403 을 오류 봉투에 담아 보낸다. 그래도 단말 안내가 서야 한다. */
+  it('오류 봉투에 담긴 403 도 이 단말에서 발행할 수 없다고 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0 },
+      issueStatus: 403,
+      issueErrorBody: {
+        errors: [
+          { scope: 'screen', code: 'PERMISSION_DENIED', message: '단말 인증 범위 밖입니다.' },
+        ],
+      },
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('button', { name: t.lines.pick }));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    expect(await screen.findByText(t.errors.forbidden)).toBeInTheDocument();
+    expect(screen.queryByText('단말 인증 범위 밖입니다.')).not.toBeInTheDocument();
+  });
+
   /*
    * ⛔ **필드로 갈린 거부가 배너에서 빠져 나간다.** 공용 오류 분류가 이 칸의 오류를
    * `fieldErrors` 로 빼내고 배너용 오류를 비우므로, 화면이 그 값을 읽지 않으면 **버튼만 멎고
