@@ -252,7 +252,6 @@ export interface DashboardQuality {
   nonconformance: {
     monthQty: number;
     phenomena: DashboardDefectPhenomenon[];
-    causeGroups: { causeCodeId: number; causeName: string; qty: number }[];
     scrapQty: number;
     reworkReleasedQty: number;
     openCount: number;

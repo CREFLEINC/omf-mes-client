@@ -209,7 +209,6 @@ export const inspectionResultInsights: Translated<typeof ko.inspectionResultInsi
       columns: {
         defectCode: 'Loại lỗi',
         qty: 'Số lượng',
-        cause: 'Nguyên nhân nghi ngờ',
         description: 'Mô tả',
       },
     },

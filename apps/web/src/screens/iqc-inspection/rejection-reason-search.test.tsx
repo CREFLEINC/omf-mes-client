@@ -22,13 +22,7 @@ const codes = [
 const renderReason = () => {
   const onChange = vi.fn();
   render(
-    <RejectionReason
-      codes={codes}
-      causes={[]}
-      draft={EMPTY_REJECTION}
-      onChange={onChange}
-      disabled={false}
-    />,
+    <RejectionReason codes={codes} draft={EMPTY_REJECTION} onChange={onChange} disabled={false} />,
   );
   return { onChange };
 };

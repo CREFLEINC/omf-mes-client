@@ -38,7 +38,6 @@ import { formatFigure, toNiceAxis } from './types';
 import { usePeriodTags } from './period';
 import { QualityLotsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
-import type { NamedQty } from './viz-math';
 import {
   CHART_H,
   DeltaMark,
@@ -1386,79 +1385,6 @@ export const OqcTab = ({
   );
 };
 
-/**
- * 가로 막대 + 가로축(⭐ 부적합 원인 구분별 구성 · 사용자 지시 2026-10-19) — 왼쪽 이름, 0 부터 보기 좋은 눈금의 가로축과
- * 세로 눈금선, 막대 끝에 수량. 막대는 중립 단색, 수량 큰 순. 집계는 서버 그대로.
- */
-const AxisBars = ({ entries, caption }: { entries: readonly NamedQty[]; caption: string }) => {
-  if (entries.length === 0) return <NoRecords />;
-  const sorted = [...entries].sort((a, b) => b.value - a.value);
-  const top = Math.max(0, ...sorted.map((entry) => entry.value));
-  const axis = toNiceAxis(top);
-  const max = axis?.max ?? 1;
-  const tickCount = axis?.ticks ?? 2;
-  const ticks = Array.from({ length: tickCount }, (_, index) => (max * index) / (tickCount - 1));
-  const sum = sorted.reduce((acc, entry) => acc + Math.max(0, entry.value), 0);
-  const shareOf = (value: number): string =>
-    `${String(sum === 0 ? 0 : Math.round((Math.max(0, value) / sum) * 100))}%`;
-
-  return (
-    <figure className="dash-axisbars" aria-label={caption}>
-      <ol className="dash-axisbars-rows">
-        {sorted.map((entry) => (
-          <li key={entry.key} className="dash-axisbars-row">
-            <span className="dash-axisbars-name" title={entry.label}>
-              {entry.label}
-            </span>
-            <span className="dash-axisbars-track">
-              {ticks.map((tick) => (
-                <span
-                  key={tick}
-                  className="dash-axisbars-grid"
-                  style={{ left: `${String((tick / max) * 100)}%` }}
-                  aria-hidden="true"
-                />
-              ))}
-              {/* 툴팁은 막대 끝 숫자 바로 오른쪽(⭐ 사용자 지시 2026-10-19 「그래프 오른쪽 = 숫자 옆」). */}
-              <span
-                className="dash-axisbars-bar"
-                style={{ width: `${String((Math.max(0, entry.value) / max) * 100)}%` }}
-                tabIndex={0}
-                aria-label={t.causeTip(
-                  entry.label,
-                  formatFigure(entry.value),
-                  shareOf(entry.value),
-                )}
-              >
-                <span
-                  className="dash-axisbars-value"
-                  data-tip={t.causeTip(
-                    entry.label,
-                    formatFigure(entry.value),
-                    shareOf(entry.value),
-                  )}
-                >
-                  {formatFigure(entry.value)}
-                </span>
-              </span>
-            </span>
-          </li>
-        ))}
-      </ol>
-      <div className="dash-axisbars-axis" aria-hidden="true">
-        <span />
-        <span className="dash-axisbars-ticks">
-          {ticks.map((tick) => (
-            <span key={tick} style={{ left: `${String((tick / max) * 100)}%` }}>
-              {formatFigure(tick)}
-            </span>
-          ))}
-        </span>
-      </div>
-    </figure>
-  );
-};
-
 /** 처분 판정 처리(W-03-10)가 특정 부적합을 여는 주소 — 그 화면 filters.ts 의 진입 키 `nonconformanceId` 와 같다. */
 const dispositionOfNonconformance = (nonconformanceId: number): string =>
   `${DISPOSITION_DECISIONS_PATH}?nonconformanceId=${String(nonconformanceId)}`;
@@ -1719,11 +1645,6 @@ export const NonconformanceTab = ({
     label: entry.defectName,
     value: entry.qty,
   }));
-  const causes = nc.causeGroups.map((entry) => ({
-    key: String(entry.causeCodeId),
-    label: entry.causeName,
-    value: entry.qty,
-  }));
 
   return (
     <QualityTabFrame className="dash-tab-quality-detail">
@@ -1795,25 +1716,17 @@ export const NonconformanceTab = ({
         )}
       </Row>
       {/* ⭐ 부적합 처리 지표(상단 카드와 같은 값)를 빼고 그 자리에 반복 부적합 품목(사용자 지시 2026-10-19). */}
-      <Row kind={nc.repeatedItems === undefined ? 'row2-single' : 'row3'}>
-        {/* ⭐ 원인 구분별 구성 — 가로축 눈금이 있는 가로 막대 · 막대 끝 수량(사용자 지시 2026-10-19 참고 그림). */}
-        <Panel
-          title={t.ncCauseShare}
-          sub={t.ncCauseSub}
-          tag={tags.month}
-          className="dash-axisbars-panel"
-        >
-          <AxisBars entries={causes} caption={t.ncCauseShare} />
-        </Panel>
-        {nc.repeatedItems !== undefined && (
+      {/* 원인 구분별 구성은 없앴다(omf-all-around#239) — 반복 부적합 품목만 남는다. */}
+      {nc.repeatedItems !== undefined && (
+        <Row kind="row3">
           <RepeatedItemsPanel
             rows={nc.repeatedItems}
             total={nc.repeatedItemCount ?? nc.repeatedItems.length}
             tag={tags.month}
             linked={allows(DISPOSITION_DECISIONS_PATH)}
           />
-        )}
-      </Row>
+        </Row>
+      )}
     </QualityTabFrame>
   );
 };

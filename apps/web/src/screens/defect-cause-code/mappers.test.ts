@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { causeCodeAdapter, defectCodeAdapter } from './adapters';
-import { causeCodeFixtures, defectCodeFixtures } from './fixtures';
+import { defectCodeAdapter } from './adapters';
+import { defectCodeFixtures } from './fixtures';
 import {
-  causeToHierarchyCode,
   defectToHierarchyCode,
   emptyCodeFormValues,
   isSameCodeValues,
@@ -54,33 +53,6 @@ describe('defectToHierarchyCode', () => {
 
   it('미사용 여부를 그대로 옮긴다', () => {
     expect(defectToHierarchyCode(defectCodeFixtures[5]!).isActive).toBe(false);
-  });
-});
-
-describe('causeToHierarchyCode', () => {
-  it('원인 코드도 같은 화면 표현으로 옮긴다', () => {
-    expect(causeToHierarchyCode(causeCodeFixtures[1]!)).toEqual({
-      id: 2002,
-      code: 'CS-11',
-      name: '금형 마모',
-      parentId: 2001,
-      isActive: true,
-      nameKo: null,
-      nameVi: null,
-      processId: null,
-    });
-  });
-
-  it('원인 코드도 자기참조를 대분류로 접는다', () => {
-    const raw = {
-      causeCodeId: 2009,
-      causeCode: 'CS-99',
-      causeName: '자기참조',
-      parentCauseCodeId: 2009,
-      isActive: true,
-    };
-
-    expect(causeToHierarchyCode(raw).parentId).toBeNull();
   });
 });
 
@@ -169,12 +141,6 @@ describe('toFormFieldErrors · toServerFieldName', () => {
     });
   });
 
-  it('원인 코드의 필드 이름도 같은 폼 필드로 옮긴다', () => {
-    const errors = toFormFieldErrors({ causeCode: '중복' }, causeCodeAdapter.serverFields);
-
-    expect(errors).toEqual({ code: '중복' });
-  });
-
   /* 화면이 모르는 이름은 여기서 버리지 않는다 — useMasterWrite가 배너로 올린다. */
   it('화면이 모르는 필드 이름은 폼 필드로 옮기지 않는다', () => {
     expect(
@@ -185,6 +151,8 @@ describe('toFormFieldErrors · toServerFieldName', () => {
   it('폼 필드 이름을 서버 필드 이름으로 되돌린다', () => {
     expect(toServerFieldName('code', defectCodeAdapter.serverFields)).toBe('defectCode');
     expect(toServerFieldName('name', defectCodeAdapter.serverFields)).toBe('defectName');
-    expect(toServerFieldName('parentId', causeCodeAdapter.serverFields)).toBe('parentCauseCodeId');
+    expect(toServerFieldName('parentId', defectCodeAdapter.serverFields)).toBe(
+      'parentDefectCodeId',
+    );
   });
 });

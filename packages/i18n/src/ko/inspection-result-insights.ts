@@ -218,7 +218,6 @@ export const inspectionResultInsights = {
       columns: {
         defectCode: '불량 유형',
         qty: '수량',
-        cause: '추정 원인',
         description: '설명',
       },
     },

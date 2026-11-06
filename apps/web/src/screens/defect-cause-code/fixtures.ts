@@ -1,4 +1,4 @@
-import type { CauseCode, DefectCode, HierarchyCode } from './types';
+import type { DefectCode, HierarchyCode } from './types';
 
 /**
  * 테스트 전용 예시 데이터. 런타임 코드는 이 모듈을 참조하지 않는다 —
@@ -69,33 +69,6 @@ export const defectCodeFixtures: DefectCode[] = [
     defectCode: 'DF-91',
     defectName: '분류 미정',
     parentDefectCodeId: 1900,
-    processId: null,
-    isActive: true,
-  },
-];
-
-export const causeCodeFixtures: CauseCode[] = [
-  {
-    causeCodeId: 2001,
-    causeCode: 'CS-10',
-    causeName: '설비',
-    parentCauseCodeId: null,
-    processId: null,
-    isActive: true,
-  },
-  {
-    causeCodeId: 2002,
-    causeCode: 'CS-11',
-    causeName: '금형 마모',
-    parentCauseCodeId: 2001,
-    processId: null,
-    isActive: true,
-  },
-  {
-    causeCodeId: 2003,
-    causeCode: 'CS-20',
-    causeName: '작업 방법',
-    parentCauseCodeId: null,
     processId: null,
     isActive: true,
   },

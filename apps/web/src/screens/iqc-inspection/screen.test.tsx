@@ -126,25 +126,6 @@ const renderScreen = (
               page: { page: 1, size: 500, total: 2 },
             }),
         },
-        /* 원인 코드 마스터 — 추정 원인(omf-all-around#130). 대분류 1 · 상세 1 · 사용 중지 1. */
-        {
-          match: (request) => new URL(request.url).pathname === '/quality/cause-codes',
-          respond: () =>
-            jsonResponse({
-              items: [
-                { causeCodeId: 8001, causeCode: 'SUP', causeName: '공급사', isActive: true },
-                {
-                  causeCodeId: 8002,
-                  causeCode: 'SUP-PRC',
-                  causeName: '공급사 공정',
-                  parentCauseCodeId: 8001,
-                  isActive: true,
-                },
-                { causeCodeId: 8009, causeCode: 'OLD', causeName: '옛 원인', isActive: false },
-              ],
-              page: { page: 1, size: 500, total: 3 },
-            }),
-        },
         /* 작성중 회차에 임시 저장된 사유(#122 · P-48) — 시험이 `draftRecordsForTest` 로 채운다. */
         {
           match: (request) =>
@@ -1625,36 +1606,8 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
     });
   });
 
-  /* omf-all-around#130 — 추정 원인을 고르면 저장 본문에 싣고, 다시 열면 되살린다. */
-  it('추정 원인을 고르면 임시 저장 본문에 원인이 실린다', async () => {
-    draftRecordsForTest = [
-      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
-    ];
-    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
-      rejectedDraft,
-    ]);
-    await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
-    expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
-      t.result.rejection.causeNone,
-    );
-
-    /* 불량 내역은 ① 검사 수량 자리에 있다(#197). */
-    await showDefects();
-    await userEvent.click(screen.getByLabelText(t.result.rejection.cause));
-    await userEvent.click(
-      await screen.findByRole('option', { name: 'SUP-PRC · 공급사 공정 (공급사)' }),
-    );
-    /* 사용 중지된 원인은 고를 수 없다. */
-    expect(screen.queryByRole('option', { name: /OLD · 옛 원인/ })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
-    await waitFor(() => expect(writes).toHaveLength(1));
-
-    expect(await bodyOf(writes[0] as Request)).toMatchObject({
-      defects: [{ defectCodeId: 7002, defectQty: 15, suspectedCauseCodeId: 8002 }],
-    });
-  });
-
-  it('임시 저장된 원인을 되살리고, 사용 중지된 원인도 표시를 붙여 그대로 다시 보낸다', async () => {
+  /* omf-all-around#239 — 추정 원인 칸을 없앴다. 예전에 저장된 원인이 있어도 다시 보내지 않는다. */
+  it('추정 원인 칸이 없고, 임시 저장된 원인이 있어도 저장 본문에 원인을 싣지 않는다', async () => {
     draftRecordsForTest = [
       {
         defectRecordId: 1,
@@ -1664,23 +1617,21 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
         suspectedCauseCodeId: 8009,
       },
     ];
-    const { writes } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
+    const { writes, sent } = renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       rejectedDraft,
     ]);
-    /* 불합격 칸은 ② 판정 자리에 있다 — 되살린 뒤 ② 를 다시 연다(#197). */
     await waitFor(async () => expect(await reasonValue()).toBe('표면 긁힘'));
-    await waitFor(() =>
-      expect(screen.getByLabelText(t.result.rejection.cause)).toHaveTextContent(
-        t.result.rejection.causeInactive('OLD · 옛 원인'),
-      ),
-    );
+    await showDefects();
+    expect(screen.queryByLabelText('추정 원인')).not.toBeInTheDocument();
+
     await editQuantity();
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
 
-    expect(await bodyOf(writes[0] as Request)).toMatchObject({
-      defects: [{ defectCodeId: 7002, suspectedCauseCodeId: 8009 }],
-    });
+    const body = (await bodyOf(writes[0] as Request)) as { defects: Record<string, unknown>[] };
+    expect(body.defects[0]).toMatchObject({ defectCodeId: 7002 });
+    expect(body.defects[0]).not.toHaveProperty('suspectedCauseCodeId');
+    expect(sent.some((url) => url.pathname === '/quality/cause-codes')).toBe(false);
   });
 
   /* #122 리뷰 M2 — 서버의 사유를 모르는 채로 빈 배열을 보내면 서버가 사유를 지운다. */

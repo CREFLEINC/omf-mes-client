@@ -3,7 +3,6 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type ReactNode } from 'react';
 
-import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
 import { toMicro, toSendableNumber } from './quantity-draft';
 import { SearchableSelect } from './searchable-select';
@@ -11,24 +10,18 @@ import { SearchableSelect } from './searchable-select';
 const t = messages.iqcInspection.result.rejection;
 
 type DefectCode = components['schemas']['DefectCode'];
-type CauseCode = components['schemas']['CauseCode'];
 
-/**
- * 불합격 사유 초안 — 대분류·상세는 `defectCodeId` 문자열, 사유는 글 그대로다. 추정 원인은 `causeCodeId`
- * 문자열이고 고르지 않으면 `''` 이다(선택 입력 · omf-all-around#130).
- */
+/** 불합격 사유 초안 — 대분류·상세는 `defectCodeId` 문자열, 사유는 글 그대로다. 추정 원인은 없앴다(omf-all-around#239). */
 export interface RejectionDraft {
   majorId: string;
   minorId: string;
   description: string;
-  causeId: string;
 }
 
 export const EMPTY_REJECTION: RejectionDraft = {
   majorId: '',
   minorId: '',
   description: '',
-  causeId: '',
 };
 
 /**
@@ -40,51 +33,18 @@ export const rejectionDraftOf = (
   record: {
     defectCodeId: number;
     defectDescription?: string | null;
-    suspectedCauseCodeId?: number | null;
   },
 ): RejectionDraft => {
   const code = codes.find((candidate) => candidate.defectCodeId === record.defectCodeId);
   const description = record.defectDescription ?? '';
-  /* 원인은 코드 마스터와 견주지 않고 그대로 되살린다 — 사용 중지된 원인도 다시 보내야 서버 값이 지워지지 않는다(#130). */
-  const causeId = record.suspectedCauseCodeId == null ? '' : String(record.suspectedCauseCodeId);
-  if (code === undefined) return { ...EMPTY_REJECTION, description, causeId };
+  if (code === undefined) return { ...EMPTY_REJECTION, description };
   return code.parentDefectCodeId == null
-    ? { majorId: String(code.defectCodeId), minorId: '', description, causeId }
+    ? { majorId: String(code.defectCodeId), minorId: '', description }
     : {
         majorId: String(code.parentDefectCodeId),
         minorId: String(code.defectCodeId),
         description,
-        causeId,
       };
-};
-
-/**
- * 추정 원인 선택지(omf-all-around#130) — 「선택 안 함」 + 사용 중인 원인. 대분류 뒤에 그 상세를 «상세 (대분류)»로
- * 잇는다 — 칸이 좁아 잘려도 고른 상세가 먼저 보인다(대시보드는 원인 대분류로 묶는다). 지금 고른 원인이 사용 중지됐으면 사라지지 않게 표시를 붙여 남긴다.
- */
-export const causeOptionsOf = (causes: readonly CauseCode[], selectedId: string) => {
-  const label = (cause: CauseCode) => `${cause.causeCode} · ${cause.causeName}`;
-  const byId = new Map(causes.map((cause) => [String(cause.causeCodeId), cause]));
-  const active = causes.filter((cause) => cause.isActive !== false);
-  const majors = active.filter((cause) => cause.parentCauseCodeId == null);
-  const options: { value: string; label: string }[] = [{ value: '', label: t.causeNone }];
-  for (const major of majors) {
-    options.push({ value: String(major.causeCodeId), label: label(major) });
-    for (const minor of active.filter((cause) => cause.parentCauseCodeId === major.causeCodeId)) {
-      options.push({
-        value: String(minor.causeCodeId),
-        label: `${label(minor)} (${major.causeName})`,
-      });
-    }
-  }
-  if (selectedId !== '' && !options.some((option) => option.value === selectedId)) {
-    const selected = byId.get(selectedId);
-    options.push({
-      value: selectedId,
-      label: t.causeInactive(selected === undefined ? `#${selectedId}` : label(selected)),
-    });
-  }
-  return options;
 };
 
 /** 사용 중인 대분류(부모가 없는 코드)와 그 상세. W-06-03 이 두 단계로 관리한다. */
@@ -137,7 +97,6 @@ export interface DefectRecordInput {
   defectCodeId: number;
   defectQty: number;
   defectDescription: string | null;
-  suspectedCauseCodeId?: number;
 }
 
 /**
@@ -162,8 +121,6 @@ export const resolveDefects = (
       defectCodeId: code.defectCodeId,
       defectQty: qty,
       defectDescription: draft.description.trim() === '' ? null : draft.description.trim(),
-      /* 추정 원인(omf-all-around#130) — 골랐을 때만 싣는다. 서버가 회차의 기록을 통째로 갈아 끼우므로 빼면 비워진다. */
-      ...(draft.causeId === '' ? {} : { suspectedCauseCodeId: Number(draft.causeId) }),
     });
   }
   const sum = rows.reduce((total, row) => total + row.defectQty, 0);
@@ -174,8 +131,6 @@ export const resolveDefects = (
 
 export interface RejectionReasonProps {
   codes: readonly DefectCode[];
-  /** 추정 원인 마스터(사용 중지 포함 — 고른 값이 사용 중지돼도 보이게). */
-  causes: readonly CauseCode[];
   draft: RejectionDraft;
   onChange: (draft: RejectionDraft) => void;
   disabled: boolean;
@@ -192,7 +147,6 @@ export interface RejectionReasonProps {
  */
 export const RejectionReason = ({
   codes,
-  causes,
   draft,
   onChange,
   disabled,
@@ -200,7 +154,6 @@ export const RejectionReason = ({
 }: RejectionReasonProps) => {
   const majorId = useId();
   const minorId = useId();
-  const causeId = useId();
   const descriptionId = useId();
   const majors = majorsOf(codes);
   const minors = minorsOf(codes, draft.majorId);
@@ -277,20 +230,6 @@ export const RejectionReason = ({
           )}
         </div>
         {extraFields}
-        {/* 추정 원인 — 선택 입력(omf-all-around#130). */}
-        <div className="field-cell iqc-inspection-rejection-cause">
-          <FieldLabel htmlFor={causeId} label={t.cause} />
-          <Select
-            id={causeId}
-            options={causeOptionsOf(causes, draft.causeId)}
-            value={draft.causeId}
-            placeholder={t.causeNone}
-            disabled={disabled}
-            onChange={(value) => {
-              onChange({ ...draft, causeId: value });
-            }}
-          />
-        </div>
         <div className="field-cell iqc-inspection-rejection-description">
           <FieldLabel htmlFor={descriptionId} label={t.description} />
           <TextField

@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { causeCodeAdapter, defectCodeAdapter } from './adapters';
+import { defectCodeAdapter } from './adapters';
 import { CodeListPane, type CodeListPaneProps } from './code-list-pane';
 import { hierarchyFixtures } from './fixtures';
 import { indexById, orderForGrouping } from './hierarchy';
@@ -209,12 +209,6 @@ describe('CodeListPane — 표에 싣는 값 (#209)', () => {
     expect(screen.getByText('Ngoại quan')).toBeInTheDocument();
     expect(screen.getByText('재작업 가능')).toBeInTheDocument();
     expect(screen.getByText('P-10 · 조립')).toBeInTheDocument();
-  });
-
-  it('원인코드 표에는 처분 유형 칸이 없다', () => {
-    renderPane({ adapter: causeCodeAdapter, rows: rich, byId: indexById(rich) });
-
-    expect(screen.queryByRole('columnheader', { name: '처분 유형' })).not.toBeInTheDocument();
   });
 });
 

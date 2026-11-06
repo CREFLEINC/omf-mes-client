@@ -66,7 +66,6 @@ export const quality = (): DashboardQuality => ({
   nonconformance: {
     monthQty: 30,
     phenomena: [],
-    causeGroups: [],
     scrapQty: 5,
     reworkReleasedQty: 8,
     openCount: 4,

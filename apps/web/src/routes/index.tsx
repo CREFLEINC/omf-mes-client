@@ -156,7 +156,6 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/inspection-sheet-template', element: <InspectionSheetTemplateScreen /> },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
       /* 불량·원인코드 화면의 하위 탭을 탭 막대로 뗀 주소(#208) — 같은 화면이 보일 탭만 받는다. */
-      { path: 'master-data/cause-code', element: <DefectCauseCodeScreen tab="cause" /> },
       {
         path: 'master-data/defect-process-mapping',
         element: <DefectCauseCodeScreen tab="mapping" />,

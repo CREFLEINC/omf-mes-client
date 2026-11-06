@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { causeCodeAdapter, defectCodeAdapter } from './adapters';
+import { defectCodeAdapter } from './adapters';
 import { CodeFormPane, type CodeFormPaneProps } from './code-form-pane';
 
 const PARENT_OPTIONS = [
@@ -235,9 +235,9 @@ describe('CodeFormPane — 창 모양 (#209)', () => {
 
 describe('CodeFormPane — 탭', () => {
   it('창 제목이 붙는다', () => {
-    renderPane({ adapter: causeCodeAdapter, mode: 'edit', title: '원인코드 수정' });
+    renderPane({ mode: 'edit', title: '불량코드 수정' });
 
-    expect(screen.getByRole('dialog', { name: '원인코드 수정' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '불량코드 수정' })).toBeInTheDocument();
   });
 
   it('배너 슬롯을 그대로 낸다', () => {
