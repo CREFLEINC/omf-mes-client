@@ -1,6 +1,8 @@
 import { AlertBanner } from '@crefle/web-ui';
-import type { ApiError } from '@omf-mes/api-client';
+import { isForbidden, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+
+import { forbiddenLines } from '../../patterns/forbidden-lines';
 
 const t = messages.notificationCenter;
 
@@ -20,11 +22,12 @@ const t = messages.notificationCenter;
  * 여러 오류를 이을 때는 **잇기 전에 항목별로** 다듬는다.
  */
 export const describeWriteError = (error: ApiError): string => {
+  /* 403 은 봉투에 담겨 `validation` 으로 오므로 갈래보다 먼저 본다(#242). */
+  if (isForbidden(error)) return forbiddenLines(error).join(' ');
   switch (error.kind) {
     case 'network':
       return messages.httpError.offline;
     case 'http':
-      if (error.status === 403) return messages.httpError.forbidden;
       if (error.status === 404) return t.writeError.notFound;
       return error.message === undefined || error.message.trim() === ''
         ? messages.httpError.description

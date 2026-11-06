@@ -1,8 +1,9 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
-import type { ApiError, ConflictCause } from '@omf-mes/api-client';
+import { isForbidden, type ApiError, type ConflictCause } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { forbiddenLines } from '../../patterns/forbidden-lines';
 import { formatDateTime } from './message-status';
 
 const t = messages.integrationSync;
@@ -74,6 +75,8 @@ const describeValidation = (error: { errors: { code: string; message: string }[]
 };
 
 const describeError = (error: ApiError, lockedAt: string | null | undefined): BannerContent => {
+  /* 403 은 봉투에 담겨 `validation` 으로 오므로 갈래보다 먼저 본다(#242). 다시 조회해도 같다. */
+  if (isForbidden(error)) return { lines: forbiddenLines(error), canReload: false };
   switch (error.kind) {
     case 'conflict':
       // 셋 다 다시 조회하면 풀린다 — 워커가 놓거나, 이미 처리된 결과가 목록에 반영된다.
@@ -99,10 +102,6 @@ const describeError = (error: ApiError, lockedAt: string | null | undefined): Ba
       };
     }
     case 'http': {
-      if (error.status === 403) {
-        return { lines: [messages.httpError.forbidden], canReload: false };
-      }
-
       // 서버 문구는 있을 때만 덧붙인다. 빈 문자열을 그대로 실으면 빈 줄이 생긴다.
       const serverLines =
         error.message === undefined || error.message === '' ? [] : [error.message];

@@ -8,6 +8,7 @@ import {
   TextField,
   useToast,
 } from '@crefle/web-ui';
+import { isForbidden } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useRef, useState } from 'react';
@@ -431,9 +432,7 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
             >
               {(() => {
                 const error = toApiError(history.error);
-                return error.kind === 'http' && error.status === 403
-                  ? messages.httpError.forbidden
-                  : t.detail.historyFailed;
+                return isForbidden(error) ? messages.httpError.forbidden : t.detail.historyFailed;
               })()}
             </AlertBanner>
           ) : history.isPending ? (

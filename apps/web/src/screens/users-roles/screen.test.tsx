@@ -90,7 +90,9 @@ const userListRoute = (items = appUserFixtures, pageMeta: PageStub = DEFAULT_PAG
 });
 
 const forbiddenResponse = {
-  errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' }],
+  errors: [
+    { scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' },
+  ],
 };
 
 const userListErrorRoute = (status: number, body: unknown = { errors: [] }): StubRoute => ({
@@ -838,7 +840,9 @@ describe('UsersRolesScreen 조회 실패', () => {
           respond: (request) => {
             listCalls += 1;
             if (listCalls === 1) return listRoute.respond(request);
-            return new Promise<Response>((resolve) => { finishRefetch = resolve; });
+            return new Promise<Response>((resolve) => {
+              finishRefetch = resolve;
+            });
           },
         },
         departmentsRoute(),
@@ -854,13 +858,19 @@ describe('UsersRolesScreen 조회 실패', () => {
       void queryClient.invalidateQueries({ queryKey: ['users-roles-users', 'list'] });
     });
     await waitFor(() => expect(userRequests(requests)).toHaveLength(2));
-    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+      '합성 사용자 A',
+    );
 
     await act(async () => {
       finishRefetch?.(jsonResponse({ errors: [] }, { status: 500 }));
     });
-    expect(await within(userListPane()).findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
-    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+    expect(
+      await within(userListPane()).findByText('목록을 불러오지 못했습니다'),
+    ).toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue(
+      '합성 사용자 A',
+    );
   });
 
   /** 서버가 빈 문구를 주는 일이 실제로 있다 — 빈 배너가 아니라 기본 안내가 나와야 한다. */
@@ -883,7 +893,12 @@ describe('UsersRolesScreen 조회 실패', () => {
    */
   it('권한이 없으면 지난 선택 주소여도 관리 본문과 상세 요청을 막는다', async () => {
     const { requests } = renderScreen(
-      [userListErrorRoute(403, forbiddenResponse), departmentsRoute(), userDetailRoute(), ...roleRoutes()],
+      [
+        userListErrorRoute(403, forbiddenResponse),
+        departmentsRoute(),
+        userDetailRoute(),
+        ...roleRoutes(),
+      ],
       '?usr=1001',
     );
 
@@ -893,7 +908,9 @@ describe('UsersRolesScreen 조회 실패', () => {
     expect(screen.queryByRole('region', { name: '사용자 정보' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '역할 부여' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '데이터 접근범위' })).not.toBeInTheDocument();
-    expect(within(userListPane()).queryByRole('button', { name: '사용자 추가' })).not.toBeInTheDocument();
+    expect(
+      within(userListPane()).queryByRole('button', { name: '사용자 추가' }),
+    ).not.toBeInTheDocument();
     expect(within(userListPane()).queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByText('등록된 사용자가 없습니다')).not.toBeInTheDocument();
     expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
@@ -971,9 +988,7 @@ describe('UsersRolesScreen 상세 열기', () => {
     await waitForUserList(requests);
 
     expect(
-      within(userFormPane()).getByText(
-        '왼쪽 목록에서 사용자를 선택하세요',
-      ),
+      within(userFormPane()).getByText('왼쪽 목록에서 사용자를 선택하세요'),
     ).toBeInTheDocument();
     expect(within(userFormPane()).queryByRole('textbox')).not.toBeInTheDocument();
   });
@@ -984,7 +999,9 @@ describe('UsersRolesScreen 상세 열기', () => {
 
     await waitForUserList(requests);
 
-    expect(within(userFormPane()).getByRole('heading', { name: '사용자 정보' })).toBeInTheDocument();
+    expect(
+      within(userFormPane()).getByRole('heading', { name: '사용자 정보' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '역할 부여' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '데이터 접근범위' })).not.toBeInTheDocument();
   });
@@ -1152,10 +1169,7 @@ describe('UsersRolesScreen 수정 저장', () => {
 
     await user.clear(within(userFormPane()).getByRole('textbox', { name: '이름' }));
     await user.clear(within(userFormPane()).getByRole('textbox', { name: '이메일' }));
-    await user.type(
-      within(userFormPane()).getByRole('textbox', { name: '이메일' }),
-      'syn.user.a',
-    );
+    await user.type(within(userFormPane()).getByRole('textbox', { name: '이메일' }), 'syn.user.a');
     await user.click(within(userFormPane()).getByRole('button', { name: '저장' }));
 
     expect(await within(userFormPane()).findByText('필수 입력 항목입니다.')).toBeInTheDocument();
@@ -1874,7 +1888,13 @@ describe('UsersRolesScreen 비밀번호 초기화', () => {
 
     const dialog = screen.getByRole('dialog');
 
-    expect(await within(dialog).findByText(/권한/)).toBeInTheDocument();
+    /* omf-all-around#242 — 봉투에 담긴 403 은 할 일(권한 요청)을 먼저 말하고 서버 사유를 덧붙인다. */
+    expect(
+      await within(dialog).findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText('권한이 없습니다.')).toBeInTheDocument();
     expect(screen.queryByText('SynTmp9x2k')).not.toBeInTheDocument();
   });
 });
@@ -2529,7 +2549,9 @@ describe('UsersRolesScreen 역할 부여', () => {
     await openRoleAssign([roleAssignRoute()]);
 
     expect(within(roleAssignPane()).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(within(roleAssignPane()).queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
+    expect(
+      within(roleAssignPane()).queryByText(/저장은 변경된 내용이 있을 때/),
+    ).not.toBeInTheDocument();
   });
 
   /** 되돌려 놓았는데 「고쳤다」로 남으면 취소·저장이 사실과 어긋난다. */
@@ -2993,7 +3015,9 @@ describe('UsersRolesScreen 데이터 접근범위', () => {
     await openDataScopes([dataScopeReplaceRoute()]);
 
     expect(within(dataScopePane()).getByRole('button', { name: '저장' })).toBeDisabled();
-    expect(within(dataScopePane()).queryByText(/저장은 변경된 내용이 있을 때/)).not.toBeInTheDocument();
+    expect(
+      within(dataScopePane()).queryByText(/저장은 변경된 내용이 있을 때/),
+    ).not.toBeInTheDocument();
   });
 
   it('다른 사용자를 고르면 표가 그 사용자의 접근범위로 다시 세워진다', async () => {
@@ -3337,9 +3361,7 @@ describe('UsersRolesScreen 탭 전환', () => {
 
     await waitForRoleList(requests);
 
-    expect(
-      screen.getByText('왼쪽 목록에서 역할을 선택하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('왼쪽 목록에서 역할을 선택하세요.')).toBeInTheDocument();
     expect(requestsTo(requests, `${ROLES_PATH}/1001`)).toHaveLength(0);
   });
 });
@@ -3407,7 +3429,9 @@ describe('UsersRolesScreen 역할 목록 표시', () => {
     expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
     expect(screen.queryByRole('region', { name: '역할 정보' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
-    expect(within(roleListPane()).queryByRole('button', { name: '역할 추가' })).not.toBeInTheDocument();
+    expect(
+      within(roleListPane()).queryByRole('button', { name: '역할 추가' }),
+    ).not.toBeInTheDocument();
     expect(within(roleListPane()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
@@ -3459,9 +3483,7 @@ describe('UsersRolesScreen 역할 상세 열기', () => {
 
     await waitForRoleList(requests);
 
-    expect(
-      screen.getByText('왼쪽 목록에서 역할을 선택하세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('왼쪽 목록에서 역할을 선택하세요.')).toBeInTheDocument();
     expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
   });
 
@@ -4321,7 +4343,9 @@ describe('UsersRolesScreen 기능 권한 격자', () => {
     await user.click(within(roleListPane()).getByRole('button', { name: 'SYN-ROLE-02' }));
 
     await waitFor(() => {
-      expect(within(permissionPane()).getByText('SYN-ROLE-02 역할의 기능 권한')).toBeInTheDocument();
+      expect(
+        within(permissionPane()).getByText('SYN-ROLE-02 역할의 기능 권한'),
+      ).toBeInTheDocument();
     });
 
     /* B 역할은 부여가 0건이다 — A 에서 켠 칸이 따라오지 않는다. */

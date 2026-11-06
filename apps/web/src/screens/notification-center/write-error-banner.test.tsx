@@ -1,3 +1,4 @@
+import { normalizeApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -10,6 +11,20 @@ describe('describeWriteError', () => {
   it('갈래마다 다른 사유를 낸다', () => {
     expect(describeWriteError({ kind: 'network' })).toBe(messages.httpError.offline);
     expect(describeWriteError({ kind: 'http', status: 403 })).toBe(messages.httpError.forbidden);
+    /* omf-all-around#242 — 오류 봉투에 담긴 403(정규화가 validation 으로 접음)도 권한 문구가 앞선다. */
+    expect(
+      describeWriteError(
+        normalizeApiError(403, {
+          errors: [
+            {
+              scope: 'screen',
+              code: 'PERMISSION_DENIED',
+              message: '이 공장에 대한 데이터 권한이 없습니다.',
+            },
+          ],
+        }),
+      ),
+    ).toBe(`${messages.httpError.forbidden} 이 공장에 대한 데이터 권한이 없습니다.`);
     expect(describeWriteError({ kind: 'http', status: 500, message: '합성 서버 사유' })).toBe(
       '합성 서버 사유',
     );

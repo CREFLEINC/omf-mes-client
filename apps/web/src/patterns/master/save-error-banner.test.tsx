@@ -1,9 +1,14 @@
+import { normalizeApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SaveErrorBanner } from './save-error-banner';
+
+const contractForbidden = normalizeApiError(403, {
+  errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '승인자도 상신자도 아닙니다.' }],
+});
 
 const reloadName = messages.conflict.reloadAction;
 
@@ -98,6 +103,34 @@ describe('SaveErrorBanner', () => {
 
     expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: reloadName })).not.toBeInTheDocument();
+  });
+
+  /*
+   * omf-all-around#242 — 실제 서버는 403 을 오류 봉투에 담아 보내 정규화가 validation 으로 접는다.
+   * 할 일(권한 요청)을 먼저 말하고, 무엇이 막혔는지는 서버 사유로 덧붙인다.
+   */
+  it('오류 봉투에 담긴 403 은 권한 문구와 서버 사유를 함께 낸다', () => {
+    render(<SaveErrorBanner error={contractForbidden} onReload={vi.fn()} />);
+
+    const banner = screen.getByRole('alert');
+    expect(banner).toHaveTextContent(messages.httpError.title);
+    expect(banner).toHaveTextContent(messages.httpError.forbidden);
+    expect(banner).toHaveTextContent('승인자도 상신자도 아닙니다.');
+    expect(screen.queryByRole('button', { name: reloadName })).not.toBeInTheDocument();
+  });
+
+  it('오류 봉투의 사유가 비면 권한 문구 한 줄만 낸다', () => {
+    render(
+      <SaveErrorBanner
+        error={normalizeApiError(403, {
+          errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: ' ' }],
+        })}
+      />,
+    );
+
+    const banner = screen.getByRole('alert');
+    expect(banner).toHaveTextContent(messages.httpError.forbidden);
+    expect(banner.querySelectorAll('li')).toHaveLength(0);
   });
 
   it('403이 아닌 http 오류는 일반 문구와 서버가 준 문구를 함께 낸다', () => {
