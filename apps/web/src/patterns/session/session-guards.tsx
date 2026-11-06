@@ -58,7 +58,7 @@ const UnknownNotice = ({ onRetry }: { onRetry: () => void }) => (
  * 떨어지면, 자기가 어디로 가려 했는지 기억해 다시 찾아 들어가야 한다.
  */
 export const RequireSession = ({ children }: { children: ReactNode }) => {
-  const { status, endedBySignOut, retryRestore } = useSession();
+  const { status, endedBySignOut, previousUserId, retryRestore } = useSession();
   const location = useLocation();
 
   if (status === 'restoring') return <RestoringNotice />;
@@ -71,7 +71,15 @@ export const RequireSession = ({ children }: { children: ReactNode }) => {
   if (status === 'anonymous' && endedBySignOut) return <Navigate to={LOGIN_PATH} replace />;
 
   if (status === 'anonymous') {
-    const state: SessionRedirectState = { from: `${location.pathname}${location.search}` };
+    /*
+     * ⭐ **보던 사람을 함께 들려 보낸다**(omf-all-around#188). 만료 뒤 다른 사람이 로그인하면
+     * 로그인 화면이 이 값으로 가려 첫 화면으로 보낸다. 한 번도 로그인한 적이 없으면(즐겨찾기로
+     * 처음 연 경우) 싣지 않는다 — 누가 로그인하든 그 주소로 간다.
+     */
+    const state: SessionRedirectState = {
+      from: `${location.pathname}${location.search}`,
+      ...(previousUserId === null ? {} : { userId: previousUserId }),
+    };
 
     /*
      * **`replace`로 넘긴다.** 밀어 넣으면 막힌 주소가 히스토리에 남아, 로그인한 뒤 뒤로가기
@@ -90,7 +98,7 @@ export const RequireSession = ({ children }: { children: ReactNode }) => {
  * 들어올 길이 사라진다 — 그 사람에게 지금 필요한 것이 바로 이 화면이다.
  */
 export const GuestOnly = ({ children }: { children: ReactNode }) => {
-  const { status } = useSession();
+  const { status, session } = useSession();
   const location = useLocation();
 
   if (status === 'restoring') return <RestoringNotice />;
@@ -99,8 +107,8 @@ export const GuestOnly = ({ children }: { children: ReactNode }) => {
    * 이미 로그인한 사람이 주소창으로 `/login`을 열었을 때다. 로그인 화면을 보이면 자기가
    * 로그인된 줄 모르고 자격을 한 번 더 친다.
    */
-  if (status === 'authenticated')
-    return <Navigate to={resolveReturnPath(location.state)} replace />;
+  if (status === 'authenticated' && session !== null)
+    return <Navigate to={resolveReturnPath(location.state, session.userId)} replace />;
 
   return children;
 };

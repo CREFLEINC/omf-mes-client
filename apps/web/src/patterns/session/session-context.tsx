@@ -63,6 +63,16 @@ export interface SessionValue {
    * 들어가고, 권한이 다르면 그 자리에 오류만 남는다.
    */
   endedBySignOut: boolean;
+  /**
+   * 이 화면에서 **마지막으로 로그인해 있던 사람**. 한 번도 없었으면 `null`.
+   *
+   * ⭐ **세션이 끝난 뒤에도 남는다.** 만료로 `anonymous`가 된 순간 가드가 막힌 주소와 함께
+   * 「누가 보던 주소인가」를 들려 보내는 데 쓴다(omf-all-around#188). 로그인 화면은 이 값으로
+   * 다음에 로그인한 사람이 같은 사람인지 가른다.
+   *
+   * ⚠ 새로고침하면 잊는다 — 그 뒤의 막힌 주소는 즐겨찾기로 처음 연 주소와 같게 다뤄진다.
+   */
+  previousUserId: number | null;
   /** `unknown`에서 다시 물어본다. 다른 상태에서는 할 일이 없다. */
   retryRestore: () => void;
 }
@@ -79,6 +89,19 @@ export const sessionKeys = {
 };
 
 const SESSION_QUERY_HASH = hashKey(sessionKeys.current);
+
+/**
+ * **세션 칸만 남기고 다른 조회의 캐시를 버린다.**
+ *
+ * 관리웹은 사무실에서 여럿이 번갈아 쓰는 화면이라, 캐시를 남겨 두면 다음 사람이 로그인한 직후
+ * **앞사람이 보던 목록**이 잠깐 그려진다(재조회가 끝나기 전까지). 권한 범위가 다른 사람이면
+ * 그 자체가 새는 것이다. 로그아웃(`useSignOut`)과, 만료 뒤 다른 사람의 로그인(`signIn`)이 부른다.
+ */
+export const forgetOtherQueries = (queryClient: QueryClient): void => {
+  queryClient.removeQueries({
+    predicate: (query) => query.queryHash !== SESSION_QUERY_HASH,
+  });
+};
 
 /**
  * 잡은 값이 「자격이 없다」인가. 그 밖의 실패는 전부 「모른다」다.
@@ -183,16 +206,38 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
    */
   const [endedBySignOut, setEndedBySignOut] = useState(false);
 
+  /*
+   * ⭐ **로그인해 있는 사람이 바뀔 때마다 적어 둔다 — 렌더 중에 고친다.** 효과(`useEffect`)로
+   * 적으면 한 박자 늦어, 서버 답과 같은 렌더에 만료가 도착할 때 가드가 빈 값을 들려 보낸다.
+   */
+  const [previousUserId, setPreviousUserId] = useState<number | null>(null);
+  const currentUserId = query.data?.userId ?? null;
+
+  if (currentUserId !== null && currentUserId !== previousUserId) {
+    setPreviousUserId(currentUserId);
+  }
+
   const signIn = useCallback(
     (next: Session): void => {
       setEndedBySignOut(false);
+
+      /*
+       * ⛔ **다른 사람이 들어오면 앞사람의 캐시를 버린다**(omf-all-around#188). 스스로 로그아웃한
+       * 경우에는 이미 버렸고, 만료로 끝난 경우에는 남아 있다 — 만료는 화면이 아니라 서버가
+       * 정하므로 버릴 순간을 따로 잡을 수 없다. 같은 사람이면 하던 화면을 그대로 이어 보도록
+       * 남긴다.
+       */
+      if (previousUserId !== null && previousUserId !== next.userId) {
+        forgetOtherQueries(queryClient);
+      }
+
       /**
        * **응답을 그대로 담는다.** 필요한 것만 골라 담으면 뒤따르는 화면이 권한 범위를 읽을 때
        * 다시 로그인을 시켜야 한다 — 지금 그리는 것이 이름 하나뿐인 것과는 별개다.
        */
       queryClient.setQueryData<Session | null>(sessionKeys.current, next);
     },
-    [queryClient],
+    [queryClient, previousUserId],
   );
 
   const signOut = useCallback((): void => {
@@ -214,9 +259,10 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
       signIn,
       signOut,
       endedBySignOut: status === 'anonymous' && endedBySignOut,
+      previousUserId,
       retryRestore,
     }),
-    [status, query.data, signIn, signOut, endedBySignOut, retryRestore],
+    [status, query.data, signIn, signOut, endedBySignOut, previousUserId, retryRestore],
   );
 
   return <SessionContext value={value}>{children}</SessionContext>;

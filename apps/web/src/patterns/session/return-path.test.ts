@@ -51,16 +51,48 @@ describe('readReturnPath — 돌아갈 수 있는 주소만 꺼낸다', () => {
   });
 });
 
+/** 합성 사용자 번호 — 계약 예시값을 쓰지 않는다(공개 저장소 경계). */
+const SIGNED_IN = 8101;
+const SOMEONE_ELSE = 8102;
+
 describe('resolveReturnPath — 없으면 첫 화면으로', () => {
   it('막힌 주소가 있으면 그리로 간다', () => {
-    expect(resolveReturnPath({ from: '/quality/lot-status' })).toBe('/quality/lot-status');
+    expect(resolveReturnPath({ from: '/quality/lot-status' }, SIGNED_IN)).toBe(
+      '/quality/lot-status',
+    );
   });
 
   it('막힌 주소가 없으면 첫 화면으로 간다', () => {
-    expect(resolveReturnPath(null)).toBe(HOME_PATH);
+    expect(resolveReturnPath(null, SIGNED_IN)).toBe(HOME_PATH);
   });
 
   it('돌아갈 수 없는 주소가 실려 와도 첫 화면으로 간다', () => {
-    expect(resolveReturnPath({ from: '//evil.example' })).toBe(HOME_PATH);
+    expect(resolveReturnPath({ from: '//evil.example' }, SIGNED_IN)).toBe(HOME_PATH);
+  });
+});
+
+describe('resolveReturnPath — 보던 사람이 다르면 첫 화면으로(omf-all-around#188)', () => {
+  it('같은 사람이 다시 로그인하면 하던 화면으로 돌아간다', () => {
+    expect(resolveReturnPath({ from: '/system/users-roles', userId: SIGNED_IN }, SIGNED_IN)).toBe(
+      '/system/users-roles',
+    );
+  });
+
+  it('다른 사람이 로그인하면 첫 화면으로 간다', () => {
+    expect(
+      resolveReturnPath({ from: '/system/users-roles', userId: SOMEONE_ELSE }, SIGNED_IN),
+    ).toBe(HOME_PATH);
+  });
+
+  it('누가 보던 주소인지 모르면 그 주소로 간다 — 즐겨찾기로 처음 연 경우다', () => {
+    expect(resolveReturnPath({ from: '/system/users-roles' }, SIGNED_IN)).toBe(
+      '/system/users-roles',
+    );
+  });
+
+  it('보던 사람 칸의 모양이 틀리면 모르는 것으로 본다', () => {
+    expect(resolveReturnPath({ from: '/system/users-roles', userId: '8102' }, SIGNED_IN)).toBe(
+      '/system/users-roles',
+    );
   });
 });

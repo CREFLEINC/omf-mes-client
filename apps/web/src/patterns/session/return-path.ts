@@ -17,6 +17,16 @@ export const LOGIN_PATH = '/login';
  */
 export interface SessionRedirectState {
   from: string;
+  /**
+   * 그 주소를 **보고 있던 사람**. 세션이 만료되기 전에 로그인해 있던 사용자다(omf-all-around#188).
+   *
+   * ⭐ **로그인한 사람이 다르면 이 주소로 보내지 않는다.** 만료 뒤 같은 브라우저에 다른 사람이
+   * 로그인하면, 앞사람이 보던 화면으로 들어가 권한이 다르면 오류만 남는다.
+   *
+   * 없으면 **누가 보던 주소인지 모른다** — 즐겨찾기로 깊은 화면을 처음 연 경우다. 그때는
+   * 누가 로그인하든 그 주소로 보낸다(지금까지의 동작).
+   */
+  userId?: number;
 }
 
 /**
@@ -44,5 +54,27 @@ export const readReturnPath = (state: unknown): string | null => {
   return from;
 };
 
-/** 로그인 성공 뒤 갈 곳 — 막힌 주소가 있으면 그리로, 없으면 첫 화면으로. */
-export const resolveReturnPath = (state: unknown): string => readReturnPath(state) ?? HOME_PATH;
+/** 들고 온 값에서 그 주소를 보던 사람을 꺼낸다. 없거나 모양이 틀리면 `null`(모른다). */
+const readReturnOwner = (state: unknown): number | null => {
+  if (typeof state !== 'object' || state === null) return null;
+
+  const userId: unknown = (state as { userId?: unknown }).userId;
+
+  return typeof userId === 'number' ? userId : null;
+};
+
+/**
+ * 로그인 성공 뒤 갈 곳 — 막힌 주소가 있으면 그리로, 없으면 첫 화면으로.
+ *
+ * ⛔ **다른 사람이 보던 주소면 첫 화면으로 보낸다**(omf-all-around#188). `signedInUserId`는
+ * 방금 로그인한(또는 이미 로그인해 있는) 사람이다.
+ */
+export const resolveReturnPath = (state: unknown, signedInUserId: number): string => {
+  const path = readReturnPath(state);
+
+  if (path === null) return HOME_PATH;
+
+  const owner = readReturnOwner(state);
+
+  return owner === null || owner === signedInUserId ? path : HOME_PATH;
+};

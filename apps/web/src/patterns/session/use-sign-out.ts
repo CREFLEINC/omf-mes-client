@@ -1,12 +1,12 @@
 import { useToast } from '@crefle/web-ui';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { hashKey, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useApiClient } from '../api-context';
 import { runRequest } from '../request';
 
-import { sessionKeys, useSession } from './session-context';
+import { forgetOtherQueries, useSession } from './session-context';
 
 const t = messages.session;
 
@@ -24,9 +24,7 @@ export interface SignOutAction {
  * 로그인돼 있다. 그래서 실패하면 세션을 유지하고 실패를 말한다 — 같은 규율의 반대편이
  * `session-context.tsx` 머리에 적혀 있다(저장소에 흉내를 내지 않는다).
  *
- * ⭐ **다른 조회의 캐시를 함께 버린다.** 관리웹은 사무실에서 여럿이 번갈아 쓰는 화면이라,
- * 캐시를 남겨 두면 다음 사람이 로그인한 직후 **앞사람이 보던 목록**이 잠깐 그려진다(재조회가
- * 끝나기 전까지). 권한 범위가 다른 사람이면 그 자체가 새는 것이다.
+ * ⭐ **다른 조회의 캐시를 함께 버린다** — 사정은 `forgetOtherQueries`에 적었다.
  *
  * ⛔ **세션 칸은 지우지 않고 「없음」으로 덮는다.** 통째로 지우면 관찰자가 곧바로 다시 물어
  * 보므로, 방금 끊은 세션을 확인하러 요청이 한 번 더 나간다.
@@ -45,9 +43,7 @@ export const useSignOut = (): SignOutAction => {
         }),
       ),
     onSuccess: () => {
-      queryClient.removeQueries({
-        predicate: (query) => hashKey(query.queryKey) !== hashKey(sessionKeys.current),
-      });
+      forgetOtherQueries(queryClient);
       forgetSession();
     },
     onError: () => {
