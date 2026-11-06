@@ -34,6 +34,9 @@ export interface ReviewPlan {
   date: string;
   quantity: string;
   bom: string;
+  bomId?: number;
+  routingId?: number;
+  bomComponents?: { itemCode: string; itemName: string; quantity: number; uom: string }[];
   routing: string;
   operations: ReviewOperation[];
   recalculationRequired?: boolean;
@@ -44,6 +47,7 @@ export interface ReviewProposal {
   id: string;
   number: string;
   itemCode: string;
+  itemId?: number;
   itemName: string;
   plant: string;
   erpPlanStartDate?: string;

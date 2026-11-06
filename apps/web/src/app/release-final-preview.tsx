@@ -34,6 +34,48 @@ if (import.meta.env.DEV) {
     remarks: null,
     versionNo: 1,
     bomLabel: 'BOM-A (개정 1)',
+    revisionContent: {
+      bom: (
+        <table className="erp-wo-final-table">
+          <thead>
+            <tr>
+              <th>자재코드</th>
+              <th>자재명</th>
+              <th>소요량</th>
+              <th>단위</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>MAT-01</td>
+              <td>구성 자재 A</td>
+              <td>1</td>
+              <td>EA</td>
+            </tr>
+          </tbody>
+        </table>
+      ),
+      routing: (
+        <table className="erp-wo-final-table">
+          <thead>
+            <tr>
+              <th>공정 순서</th>
+              <th>공정</th>
+              <th>설비 필수</th>
+              <th>금형 필수</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>10</td>
+              <td>성형</td>
+              <td>필수</td>
+              <td>선택</td>
+            </tr>
+          </tbody>
+        </table>
+      ),
+    },
     routingLabel: 'RT-A (개정 1)',
   };
   const line: ReleaseLine = {

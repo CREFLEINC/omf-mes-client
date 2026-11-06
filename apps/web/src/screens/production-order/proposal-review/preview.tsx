@@ -74,6 +74,10 @@ export const previewProposals: ReviewProposal[] = [0, 1, 2, 3].map((index) => ({
       date: '2026-11-06',
       quantity: '100',
       bom: 'BOM-A (Rev 1)',
+      bomComponents: [
+        { itemCode: 'MAT-01', itemName: '구성 자재 A', quantity: 1, uom: 'EA' },
+        { itemCode: 'MAT-02', itemName: '구성 자재 B', quantity: 0.25, uom: 'KG' },
+      ],
       routing: 'RT-A (Rev 1)',
       routingOptions: [
         {

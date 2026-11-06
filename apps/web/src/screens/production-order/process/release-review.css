@@ -87,3 +87,9 @@
 .release-final-preview-frame h1 {
   font: var(--type-title-lg);
 }
+
+.erp-wo-final-revision {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

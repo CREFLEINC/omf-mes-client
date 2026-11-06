@@ -1,6 +1,6 @@
 import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../../test/api-harness';
 import { ProposalReview } from './review';
 import { previewProposals, previewResourceSource } from './preview';
@@ -20,26 +20,51 @@ const firstNo = previewProposals[0]!.number;
 const secondNo = previewProposals[1]!.number;
 
 describe('제안 검토 화면', () => {
-  it('계획 중심 표와 통합 상세의 모든 정보를 탭 전환 없이 표시한다', () => {
+  beforeEach(() => localStorage.removeItem('omf-mes:proposal-review:layout'));
+  it('상태 열은 ERP W/O 바로 다음이며 상세는 세 탭으로 확인한다', async () => {
+    const user = userEvent.setup();
     renderReview();
-    const summary = screen.getByRole('region', { name: '제안 요약' });
-    for (const label of ['제안 대상', '확정 가능', '검토 필요', '변경 없음'])
-      expect(within(summary).getByText(label)).toBeInTheDocument();
-    for (const label of ['계획일', '생산량', '생산 라인', '확정 검토'])
-      expect(
-        within(screen.getByRole('region', { name: 'ERP W/O 제안 목록' })).getByRole(
-          'columnheader',
-          { name: label },
-        ),
-      ).toBeInTheDocument();
-    expect(screen.queryByRole('tablist', { name: '제안 상세 보기' })).not.toBeInTheDocument();
+    const list = screen.getByRole('region', { name: 'ERP W/O 제안 목록' });
+    const headers = within(list)
+      .getAllByRole('columnheader')
+      .map((cell) => cell.textContent);
+    expect(headers.slice(0, 3)).toEqual(['선택', 'ERP W/O', '확정 검토']);
+    expect(screen.getByRole('tablist', { name: '제안 상세 보기' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '생산계획 정보' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '공정별 작업지시 2건' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '4M 배정' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '확정 시 반영 사항' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '공정별 작업지시' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /^공정별 작업지시/ }));
+    expect(screen.getByRole('region', { name: '공정별 작업지시' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    expect(screen.getByRole('region', { name: '4M 배정' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '작업자' })).not.toBeInTheDocument();
+  });
+  it('좌우 배치 목록은 ERP W/O와 확정 검토만 표시한다', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    await user.click(screen.getByRole('button', { name: '좌우 배치' }));
     expect(
-      screen.getByRole('checkbox', { name: `${previewProposals[3]!.number} 확정 선택` }),
-    ).toBeDisabled();
+      within(screen.getByRole('region', { name: 'ERP W/O 제안 목록' }))
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['선택', 'ERP W/O', '확정 검토']);
+    await user.click(screen.getByRole('button', { name: '상하 배치' }));
+    expect(
+      within(screen.getByRole('region', { name: 'ERP W/O 제안 목록' }))
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent)
+        .slice(0, 3),
+    ).toEqual(['선택', 'ERP W/O', '확정 검토']);
+  });
+  it('BOM과 Routing 정보 옆 아이콘에서 상세 팝업을 확인한다', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    await user.click(screen.getByRole('button', { name: 'BOM 상세 보기' }));
+    const bom = screen.getByRole('dialog');
+    expect(within(bom).getByText('MAT-01')).toBeInTheDocument();
+    expect(within(bom).getByText('구성 자재 A')).toBeInTheDocument();
+    await user.click(within(bom).getAllByRole('button', { name: '닫기' }).at(-1)!);
+    await user.click(screen.getByRole('button', { name: 'Routing 상세 보기' }));
+    expect(within(screen.getByRole('dialog')).getByText('PR-01')).toBeInTheDocument();
   });
   it('제안 보완은 누락·검증 항목만 표시하고 정상 값은 다시 입력하지 않는다', async () => {
     const user = userEvent.setup();
@@ -75,6 +100,7 @@ describe('제안 검토 화면', () => {
       name: '설비 A',
     };
     renderReview({ initialProposals: rows, onConfirm: confirm });
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
     expect(screen.queryByRole('button', { name: '설비' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
     await user.click(screen.getByRole('button', { name: '선택 제안 확정' }));
@@ -99,6 +125,7 @@ describe('제안 검토 화면', () => {
     const user = userEvent.setup();
     renderReview();
     await user.click(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` }));
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
     const operation = screen.getByRole('region', { name: '10 성형 배정' });
     await user.click(within(operation).getByRole('button', { name: '생산 라인' }));
     const dialog = screen.getByRole('dialog');
@@ -127,6 +154,7 @@ describe('제안 검토 화면', () => {
     renderReview();
     await user.click(screen.getByRole('row', { name: `${secondNo} 상세` }));
     expect(screen.getByText('성형: 생산 라인 미지정')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
     await user.click(
       within(screen.getByRole('region', { name: '10 성형 배정' })).getByRole('button', {
         name: '생산 라인',
@@ -173,6 +201,7 @@ describe('제안 검토 화면', () => {
     await user.click(within(dialog).getByText('대체 공정 (Rev 2)'));
     await user.click(within(dialog).getByRole('button', { name: '선택' }));
     expect(screen.getByRole('checkbox', { name: `${firstNo} 확정 선택` })).not.toBeChecked();
+    await user.click(screen.getByRole('tab', { name: /^공정별 작업지시/ }));
     expect(screen.getByText('PR-01')).toBeInTheDocument();
     expect(screen.queryByText('PR-02')).not.toBeInTheDocument();
   });

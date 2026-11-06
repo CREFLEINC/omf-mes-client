@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { RevisionDetailButton } from './revision-detail';
 import { AlertBanner, SkeletonText } from '@crefle/web-ui';
 import { useQueries } from '@tanstack/react-query';
 import { useApiClient } from '../../../patterns/api-context';
@@ -14,6 +16,7 @@ import { formatQty } from './process-model';
 import './release-review.css';
 
 export interface ReleaseReviewPlan extends ProductionPlanFact {
+  revisionContent?: { bom?: ReactNode; routing?: ReactNode };
   bomLabel: string;
   routingLabel: string;
 }
@@ -157,7 +160,30 @@ const ReviewPlan = ({
           ].map(([label, value]) => (
             <div key={label}>
               <dt>{label}</dt>
-              <dd>{value}</dd>
+              <dd
+                className={
+                  label === 'BOM' || label === 'Routing' ? 'erp-wo-final-revision' : undefined
+                }
+              >
+                {value}
+                {label === 'BOM' && (
+                  <RevisionDetailButton
+                    iconOnly
+                    kind="BOM"
+                    value={String(plan.bomId)}
+                    content={plan.revisionContent?.bom}
+                  />
+                )}{' '}
+                {label === 'Routing' && (
+                  <RevisionDetailButton
+                    iconOnly
+                    kind="Routing"
+                    content={plan.revisionContent?.routing}
+                    value={String(plan.routingId)}
+                    label={plan.routingLabel}
+                  />
+                )}
+              </dd>
             </div>
           ))}
         </dl>

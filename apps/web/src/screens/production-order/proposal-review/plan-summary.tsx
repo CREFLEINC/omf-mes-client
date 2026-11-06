@@ -1,3 +1,5 @@
+import { RevisionDetailButton } from '../process/revision-detail';
+import { AdjustableNativeTable } from '../process/adjustable-table';
 import type { ReviewPlan, ReviewProposal } from './model';
 
 export const PlanSummary = ({
@@ -21,7 +23,76 @@ export const PlanSummary = ({
       ].map(([label, value]) => (
         <div key={label}>
           <dt>{label}</dt>
-          <dd>{value}</dd>
+          <dd
+            className={
+              label === 'BOM' || label === 'Routing' ? 'proposal-revision-value' : undefined
+            }
+          >
+            <span>{value}</span>
+            {label === 'BOM' && (
+              <RevisionDetailButton
+                iconOnly
+                kind="BOM"
+                value={String(plan.bomId ?? '')}
+                content={
+                  plan.bomId ? undefined : plan.bomComponents ? (
+                    <AdjustableNativeTable
+                      storageKey="proposal-preview-bom-detail"
+                      className="proposal-revision-popup-table"
+                      labels={['자재코드', '자재명', '소요량', '단위']}
+                      widths={[160, 260, 110, 90]}
+                    >
+                      <tbody>
+                        {plan.bomComponents.map((component) => (
+                          <tr key={component.itemCode}>
+                            <td>{component.itemCode}</td>
+                            <td>{component.itemName}</td>
+                            <td>{component.quantity.toLocaleString('ko-KR')}</td>
+                            <td>{component.uom}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </AdjustableNativeTable>
+                  ) : undefined
+                }
+              />
+            )}{' '}
+            {label === 'Routing' && (
+              <RevisionDetailButton
+                iconOnly
+                kind="Routing"
+                value={String(plan.routingId ?? '')}
+                label={plan.routing}
+                itemId={row.itemId}
+                content={
+                  plan.routingId ? undefined : (
+                    <AdjustableNativeTable
+                      storageKey="proposal-preview-routing-detail"
+                      className="proposal-revision-popup-table"
+                      labels={['공정 순서', '공정코드', '공정명', '설비 필수', '금형 필수']}
+                      widths={[90, 130, 220, 100, 100]}
+                    >
+                      <tbody>
+                        {plan.operations.map((operation) => (
+                          <tr key={operation.key}>
+                            <td>{operation.sequence}</td>
+                            <td>{operation.processCode}</td>
+                            <td>{operation.name}</td>
+                            <td>
+                              {operation.required.includes('plannedEquipmentId') ? '필수' : '선택'}
+                            </td>
+                            <td>
+                              {operation.required.includes('plannedMoldId') ? '필수' : '선택'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </AdjustableNativeTable>
+                  )
+                }
+              />
+            )}
+          </dd>
         </div>
       ))}
     </dl>

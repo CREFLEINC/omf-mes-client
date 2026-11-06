@@ -538,3 +538,28 @@
 .proposal-order-number {
   white-space: nowrap;
 }
+
+.proposal-review-body .erp-wo-adjustable-first .proposal-order-table[data-compact='true'] table {
+  min-width: 0;
+}
+.proposal-revision-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.proposal-revision-popup-table {
+  border-collapse: collapse;
+  width: 100%;
+  font: var(--type-body-sm);
+}
+.proposal-revision-popup-table th,
+.proposal-revision-popup-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: left;
+  vertical-align: middle;
+}
+.proposal-revision-popup-table thead th {
+  font: var(--type-label-sm);
+  background: var(--surface-container);
+}
