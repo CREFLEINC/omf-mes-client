@@ -5,8 +5,6 @@ import {
   Chip,
   Checkbox,
   Dialog,
-  DatePicker,
-  TextField,
   EmptyState,
   PageHeader,
   Tabs,
@@ -36,7 +34,7 @@ import {
   type ReviewProposal,
 } from './model';
 import './review.css';
-import { PlanBasis } from './plan-basis';
+import { PlanSummary } from './plan-summary';
 
 const quantity = (value: number) =>
   Number.isFinite(value)
@@ -87,7 +85,6 @@ export const ProposalReview = ({
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
   const [view, setView] = useState('table');
-  const [detail, setDetail] = useState('plan');
   const [weekDate, setWeekDate] = useState(
     initialProposals.flatMap((row) => row.plans)[0]?.date ?? new Date().toISOString().slice(0, 10),
   );
@@ -543,20 +540,6 @@ export const ProposalReview = ({
                 </ul>
               </AlertBanner>
             )}
-            <Tabs
-              aria-label="제안 상세 보기"
-              value={detail}
-              onChange={setDetail}
-              items={[
-                { value: 'plan', label: '생산계획', content: null },
-                {
-                  value: 'operations',
-                  label: `공정별 작업지시 ${selected.plans.reduce((sum, plan) => sum + plan.operations.length, 0)}건`,
-                  content: null,
-                },
-                { value: 'resources', label: '4M 배정', content: null },
-              ]}
-            />
             {!selected.plans.length && (
               <EmptyState
                 title="생산계획 제안이 없습니다"
@@ -572,186 +555,144 @@ export const ProposalReview = ({
                     {plan.recalculationRequired && <Chip status="warning">공정 재검증 필요</Chip>}
                   </div>
                 )}
-                {detail === 'plan' ? (
-                  <>
-                    <PlanBasis row={selected} plan={plan} line={planLineLabel(plan)} />
-                    <section className="proposal-impact">
-                      <h3>확정 시 반영 사항</h3>
-                      {plan.source === '기존 확정 계획' ? (
-                        <p>기존 생산계획과 작업지시를 유지합니다.</p>
-                      ) : (
-                        <ul>
-                          <li>
-                            {plan.source === '신규 제안'
-                              ? '생산계획 1건 생성 및 확정'
-                              : `기존 미확정 계획 ${plan.number ?? ''} 확정`}
-                          </li>
-                          <li>공정별 작업지시 {plan.operations.length}건 생성 및 4M 보완값 반영</li>
-                          <li>배포는 별도 확인 후 진행</li>
-                        </ul>
-                      )}
-                    </section>
-                    {completionFields(selected, plan).length > 0 && (
-                      <section className="proposal-completion">
-                        <h3>
-                          제안 보완{' '}
-                          <Help title="제안 보완 입력">
-                            입력값은 이번 제안에만 유지됩니다. 수정한 ERP W/O는 선택을 해제하므로
-                            내용을 확인하고 다시 선택하세요.
-                          </Help>
-                        </h3>
-                        <div className="proposal-plan-fields">
-                          {completionFields(selected, plan).includes('date') && (
-                            <div className="field-cell">
-                              <span className="field-label">계획일</span>
-                              <DatePicker
-                                aria-label="계획일"
-                                value={plan.date || null}
-                                disabled={pending || plan.source === '기존 확정 계획'}
-                                onChange={(value) =>
-                                  edit(plan.key, (current) => ({
-                                    ...current,
-                                    date: value,
-                                    recalculationRequired: true,
-                                  }))
-                                }
-                              />
-                            </div>
-                          )}
-                          {completionFields(selected, plan).includes('quantity') && (
-                            <TextField
-                              label={`생산량 (${selected.uom})`}
-                              aria-label="생산량"
-                              inputMode="decimal"
-                              value={plan.quantity}
-                              error={
-                                !plan.quantity ||
-                                !Number.isFinite(Number(plan.quantity)) ||
-                                Number(plan.quantity) <= 0
-                                  ? '생산량은 0보다 커야 합니다'
-                                  : undefined
+                <>
+                  <PlanSummary row={selected} plan={plan} line={planLineLabel(plan)} />
+                  <section className="proposal-impact">
+                    <h3>확정 시 반영 사항</h3>
+                    {plan.source === '기존 확정 계획' ? (
+                      <p>기존 생산계획과 작업지시를 유지합니다.</p>
+                    ) : (
+                      <ul>
+                        <li>
+                          {plan.source === '신규 제안'
+                            ? '생산계획 1건 생성 및 확정'
+                            : `기존 미확정 계획 ${plan.number ?? ''} 확정`}
+                        </li>
+                        <li>공정별 작업지시 {plan.operations.length}건 생성 및 4M 보완값 반영</li>
+                        <li>배포는 별도 확인 후 진행</li>
+                      </ul>
+                    )}
+                  </section>
+                  {completionFields(selected, plan).some(
+                    (field) => field === 'line' || field === 'routing',
+                  ) && (
+                    <section className="proposal-completion" aria-label="제안 보완">
+                      <h3>
+                        제안 보완{' '}
+                        <Help title="제안 보완 입력">
+                          입력값은 이번 제안에만 유지됩니다. 수정한 ERP W/O는 선택을 해제하므로
+                          내용을 확인하고 다시 선택하세요.
+                        </Help>
+                      </h3>
+                      <div className="proposal-plan-fields">
+                        {completionFields(selected, plan).includes('line') && (
+                          <div className="proposal-plan-line">
+                            <ReferenceField
+                              label="생산 라인"
+                              wrapValue
+                              placeholder="생산 라인 선택"
+                              valueLabel={
+                                planLineLabel(plan) === '미지정' ? '' : planLineLabel(plan)
                               }
                               disabled={pending || plan.source === '기존 확정 계획'}
-                              onChange={(event) =>
+                              source={
+                                plan.operations[0]
+                                  ? resourceSource(selected, plan.operations[0], 'productionLineId')
+                                  : null
+                              }
+                              onPick={(value) =>
                                 edit(plan.key, (current) => ({
                                   ...current,
-                                  quantity: event.target.value,
-                                  recalculationRequired: true,
+                                  operations: current.operations.map((operation) => ({
+                                    ...operation,
+                                    resources: {
+                                      ...operation.resources,
+                                      productionLineId: value,
+                                      plannedEquipmentId:
+                                        operation.resources.plannedEquipmentId?.parentId ===
+                                        value.id
+                                          ? operation.resources.plannedEquipmentId
+                                          : null,
+                                    },
+                                  })),
+                                }))
+                              }
+                              onClear={() =>
+                                edit(plan.key, (current) => ({
+                                  ...current,
+                                  operations: current.operations.map((operation) => ({
+                                    ...operation,
+                                    resources: {
+                                      ...operation.resources,
+                                      productionLineId: null,
+                                      plannedEquipmentId: null,
+                                    },
+                                  })),
                                 }))
                               }
                             />
-                          )}
-                          {completionFields(selected, plan).includes('line') && (
-                            <div className="proposal-plan-line">
-                              <ReferenceField
-                                label="생산 라인"
-                                wrapValue
-                                placeholder="생산 라인 선택"
-                                valueLabel={
-                                  planLineLabel(plan) === '미지정' ? '' : planLineLabel(plan)
-                                }
-                                disabled={pending || plan.source === '기존 확정 계획'}
-                                source={
-                                  plan.operations[0]
-                                    ? resourceSource(
-                                        selected,
-                                        plan.operations[0],
-                                        'productionLineId',
-                                      )
-                                    : null
-                                }
-                                onPick={(value) =>
-                                  edit(plan.key, (current) => ({
-                                    ...current,
-                                    operations: current.operations.map((operation) => ({
-                                      ...operation,
-                                      resources: {
-                                        ...operation.resources,
-                                        productionLineId: value,
-                                        plannedEquipmentId:
-                                          operation.resources.plannedEquipmentId?.parentId ===
-                                          value.id
-                                            ? operation.resources.plannedEquipmentId
-                                            : null,
+                          </div>
+                        )}
+                        {completionFields(selected, plan).includes('routing') && (
+                          <div className="proposal-plan-routing">
+                            <ReferenceField
+                              label="Routing"
+                              wrapValue
+                              valueLabel={plan.routing || ''}
+                              placeholder="Routing 선택"
+                              disabled={pending || plan.source === '기존 확정 계획'}
+                              source={
+                                !plan.routingOptions?.length
+                                  ? null
+                                  : {
+                                      title: 'Routing 선택',
+                                      key: ['proposal-routing', selected.id, plan.key],
+                                      columns: {
+                                        code: 'Routing 코드',
+                                        name: 'Routing 명칭/개정',
                                       },
-                                    })),
-                                  }))
-                                }
-                                onClear={() =>
-                                  edit(plan.key, (current) => ({
-                                    ...current,
-                                    operations: current.operations.map((operation) => ({
-                                      ...operation,
-                                      resources: {
-                                        ...operation.resources,
-                                        productionLineId: null,
-                                        plannedEquipmentId: null,
+                                      search: async (term, page) => {
+                                        const items = plan
+                                          .routingOptions!.map((option) => option.value)
+                                          .filter((value) =>
+                                            `${value.code} ${value.name}`.includes(term),
+                                          );
+                                        return {
+                                          items: items.slice((page - 1) * 20, page * 20),
+                                          total: items.length,
+                                        };
                                       },
-                                    })),
-                                  }))
-                                }
-                              />
-                            </div>
-                          )}
-                          {completionFields(selected, plan).includes('routing') && (
-                            <div className="proposal-plan-routing">
-                              <ReferenceField
-                                label="Routing"
-                                wrapValue
-                                valueLabel={plan.routing || ''}
-                                placeholder="Routing 선택"
-                                disabled={pending || plan.source === '기존 확정 계획'}
-                                source={
-                                  !plan.routingOptions?.length
-                                    ? null
-                                    : {
-                                        title: 'Routing 선택',
-                                        key: ['proposal-routing', selected.id, plan.key],
-                                        columns: {
-                                          code: 'Routing 코드',
-                                          name: 'Routing 명칭/개정',
-                                        },
-                                        search: async (term, page) => {
-                                          const items = plan
-                                            .routingOptions!.map((option) => option.value)
-                                            .filter((value) =>
-                                              `${value.code} ${value.name}`.includes(term),
-                                            );
-                                          return {
-                                            items: items.slice((page - 1) * 20, page * 20),
-                                            total: items.length,
-                                          };
-                                        },
-                                      }
-                                }
-                                onClear={() =>
+                                    }
+                              }
+                              onClear={() =>
+                                edit(plan.key, (current) => ({
+                                  ...current,
+                                  routing: '',
+                                  operations: [],
+                                  recalculationRequired: true,
+                                }))
+                              }
+                              onPick={(value) => {
+                                const choice = plan.routingOptions?.find(
+                                  (option) => option.value.id === value.id,
+                                );
+                                if (choice)
                                   edit(plan.key, (current) => ({
                                     ...current,
-                                    routing: '',
-                                    operations: [],
+                                    routing: `${value.name} (${value.code})`,
+                                    operations: structuredClone(choice.operations),
                                     recalculationRequired: true,
-                                  }))
-                                }
-                                onPick={(value) => {
-                                  const choice = plan.routingOptions?.find(
-                                    (option) => option.value.id === value.id,
-                                  );
-                                  if (choice)
-                                    edit(plan.key, (current) => ({
-                                      ...current,
-                                      routing: `${value.name} (${value.code})`,
-                                      operations: structuredClone(choice.operations),
-                                      recalculationRequired: true,
-                                    }));
-                                }}
-                              />
-                            </div>
-                          )}{' '}
-                        </div>
-                      </section>
-                    )}
-                  </>
-                ) : detail === 'operations' ? (
+                                  }));
+                              }}
+                            />
+                          </div>
+                        )}{' '}
+                      </div>
+                    </section>
+                  )}
+                </>
+                <section className="proposal-work-orders" aria-label="공정별 작업지시">
+                  <h3>공정별 작업지시 {plan.operations.length}건</h3>
                   <AdjustableNativeTable
                     storageKey="proposal-review-operations"
                     className="proposal-review-table"
@@ -799,17 +740,23 @@ export const ProposalReview = ({
                       ))}
                     </tbody>
                   </AdjustableNativeTable>
-                ) : (
-                  plan.operations.map((op, index) => (
-                    <details open={index === 0} key={op.key} className="proposal-operation">
-                      <summary>
+                </section>
+                <section className="proposal-four-m" aria-label="4M 배정">
+                  <h3>4M 배정</h3>
+                  {plan.operations.map((op) => (
+                    <section
+                      key={op.key}
+                      className="proposal-operation"
+                      aria-label={`${op.sequence} ${op.name} 배정`}
+                    >
+                      <h4>
                         {op.sequence} {op.name}
                         <span>
                           {op.required.some((field) => !op.resources[field])
                             ? '필수 배정 보완 필요'
                             : '배정값 확인'}
                         </span>
-                      </summary>
+                      </h4>
                       <div className="proposal-resource-fields">
                         {(Object.keys(resourceLabels) as ResourceField[]).map((field) => (
                           <ReferenceField
@@ -837,9 +784,9 @@ export const ProposalReview = ({
                           </ReferenceField>
                         ))}
                       </div>
-                    </details>
-                  ))
-                )}
+                    </section>
+                  ))}
+                </section>
               </section>
             ))}
           </section>

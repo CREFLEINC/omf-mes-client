@@ -450,3 +450,58 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.proposal-plan-information {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+.proposal-plan-information > div {
+  min-width: 0;
+}
+.proposal-plan-information dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-plan-information dd {
+  font: var(--type-body-sm);
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.proposal-plan-summary h3,
+.proposal-work-orders h3,
+.proposal-four-m h3 {
+  font: var(--type-body-sm);
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+}
+.proposal-work-orders,
+.proposal-four-m {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+.proposal-operation h4 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font: var(--type-body-sm);
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+}
+.proposal-operation h4 span {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+@media (max-width: 800px) {
+  .proposal-plan-information {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .proposal-plan-information {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
