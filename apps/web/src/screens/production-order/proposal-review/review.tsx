@@ -28,6 +28,8 @@ import {
   completionFields,
   proposedQuantity,
   resourceLabels,
+  applyReceiptStorage,
+  storageFailureLabels,
   reviewStatus,
   proposalAction,
   type ResourceField,
@@ -91,7 +93,9 @@ export const ProposalReview = ({
   preview = false,
   proposalTime,
 }: ProposalReviewProps) => {
-  const [rows, setRows] = useState(() => structuredClone(initialProposals));
+  const [rows, setRows] = useState(() =>
+    structuredClone(initialProposals).map(applyReceiptStorage),
+  );
   const [active, setActive] = useState(initialProposals[0]?.id ?? '');
   const [checked, setChecked] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -117,7 +121,7 @@ export const ProposalReview = ({
       current.map((row) =>
         row.id !== selected.id
           ? row
-          : {
+          : applyReceiptStorage({
               ...row,
               changed: true,
               plans: row.plans.map((plan) =>
@@ -125,7 +129,7 @@ export const ProposalReview = ({
                   ? { ...update(plan), reviewFields: completionFields(row, plan) }
                   : plan,
               ),
-            },
+            }),
       ),
     );
     setChecked((current) => current.filter((id) => id !== selected.id));
@@ -568,6 +572,33 @@ export const ProposalReview = ({
                   </ul>
                 </AlertBanner>
               )}
+              <section className="proposal-receipt-warehouse" aria-label="생산품 입고 창고">
+                <dl className="proposal-plan-information">
+                  <div>
+                    <dt>생산품 입고 창고</dt>
+                    <dd>
+                      {selected.erpStorage?.erpStorageLocationCode
+                        ? selected.erpStorage.warehouse
+                          ? `${selected.erpStorage.warehouse.name} (${selected.erpStorage.warehouse.code})`
+                          : `${selected.erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
+                        : 'ERP 미지정'}
+                    </dd>
+                  </div>
+                </dl>
+                {selected.erpStorage?.reasonCode ? (
+                  <span role="alert">
+                    {storageFailureLabels[selected.erpStorage.reasonCode] ??
+                      '생산품 입고 창고 확인 필요'}
+                  </span>
+                ) : null}
+                {selected.erpStorage?.locationRole === 'PUTAWAY_STAGING' &&
+                selected.erpStorage.location ? (
+                  <details>
+                    <summary>입고 위치</summary>
+                    {selected.erpStorage.location.name}
+                  </details>
+                ) : null}
+              </section>
               <Tabs
                 aria-label="제안 상세 보기"
                 value={detail}
@@ -795,31 +826,41 @@ export const ProposalReview = ({
                             </span>
                           </h4>
                           <div className="proposal-resource-fields">
-                            {op.required.map((field) => (
-                              <ReferenceField
-                                key={field}
-                                label={resourceLabels[field]}
-                                placeholder={`${resourceLabels[field]} 선택`}
-                                wrapValue
-                                valueLabel={
-                                  op.resources[field]
-                                    ? `${op.resources[field]!.name} (${op.resources[field]!.code})`
-                                    : ''
-                                }
-                                required={op.required.includes(field)}
-                                invalid={op.required.includes(field) && !op.resources[field]}
-                                disabled={pending || plan.source === '기존 확정 계획'}
-                                source={resourceSource(selected, op, field)}
-                                onPick={(value) => pick(plan, op, field, value)}
-                                onClear={() => pick(plan, op, field, null)}
-                              >
-                                {op.required.includes(field) && !op.resources[field] && (
-                                  <span className="field-error">
-                                    {resourceLabels[field]}을 지정하세요
-                                  </span>
-                                )}
-                              </ReferenceField>
-                            ))}
+                            {op.required
+                              .filter(
+                                (field) =>
+                                  field !== 'defaultFgLocationId' ||
+                                  !selected.erpStorage?.erpStorageLocationCode,
+                              )
+                              .map((field) => (
+                                <ReferenceField
+                                  key={field}
+                                  label={
+                                    field === 'defaultFgLocationId'
+                                      ? '입고 위치'
+                                      : resourceLabels[field]
+                                  }
+                                  placeholder={`${resourceLabels[field]} 선택`}
+                                  wrapValue
+                                  valueLabel={
+                                    op.resources[field]
+                                      ? `${op.resources[field]!.name} (${op.resources[field]!.code})`
+                                      : ''
+                                  }
+                                  required={op.required.includes(field)}
+                                  invalid={op.required.includes(field) && !op.resources[field]}
+                                  disabled={pending || plan.source === '기존 확정 계획'}
+                                  source={resourceSource(selected, op, field)}
+                                  onPick={(value) => pick(plan, op, field, value)}
+                                  onClear={() => pick(plan, op, field, null)}
+                                >
+                                  {op.required.includes(field) && !op.resources[field] && (
+                                    <span className="field-error">
+                                      {resourceLabels[field]}을 지정하세요
+                                    </span>
+                                  )}
+                                </ReferenceField>
+                              ))}
                           </div>
                         </section>
                       ))}

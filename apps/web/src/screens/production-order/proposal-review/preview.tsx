@@ -21,7 +21,7 @@ const options: Record<ResourceField, ReferenceRow[]> = {
   responsibleWorkerId: [option(31, 'WK-01', '작업자 A')],
   plannedShiftId: [option(41, 'SHIFT-01', '주간'), option(42, 'SHIFT-02', '야간')],
   defaultWipLocationId: [option(51, 'WIP-01', 'WIP 위치 A')],
-  defaultFgLocationId: [option(61, 'FG-01', '완제품 위치 A')],
+  defaultFgLocationId: [option(61, 'SYS-WHOLE', '창고 전체', 81)],
   defaultScrapLocationId: [option(71, 'SCRAP-01', '스크랩 위치 A')],
 };
 const operation = (key: string, sequence: number, missing: boolean): ReviewOperation => ({
@@ -58,7 +58,14 @@ export const previewProposals: ReviewProposal[] = [0, 1, 2, 3].map((index) => ({
     index === 2
       ? '품목 C / 긴 품목명과 규격을 생략하지 않고 확인하는 시험용 품목'
       : `품목 ${index === 0 ? 'A' : index === 1 ? 'B' : 'D'}`,
-  plant: '공장 A',
+  plant: 'OA Plant',
+  erpStorage: {
+    erpStorageLocationCode: 'WH-A',
+    warehouse: option(81, 'WH-A', '생산품 입고 창고 A'),
+    location: options.defaultFgLocationId[0]!,
+    reasonCode: null,
+    locationRole: 'WAREHOUSE_WHOLE',
+  },
   erpPlanStartDate: '2026-11-06',
   orderQty: 100,
   confirmedQty: index === 3 ? 100 : 0,

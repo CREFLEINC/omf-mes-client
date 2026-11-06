@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../../test/api-harness';
 import { ProposalReview } from './review';
 import { previewProposals, previewResourceSource } from './preview';
-import { proposalErrors } from './model';
+import { applyReceiptStorage, proposalErrors } from './model';
 
 const renderReview = (extra: Partial<React.ComponentProps<typeof ProposalReview>> = {}) =>
   renderWithProviders(
@@ -21,6 +21,70 @@ const secondNo = previewProposals[1]!.number;
 
 describe('제안 검토 화면', () => {
   beforeEach(() => localStorage.removeItem('omf-mes:proposal-review:layout'));
+  it('생산품 입고 창고는 정보로 표시하고 내부 위치 선택은 숨긴다', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    expect(screen.getByRole('region', { name: '생산품 입고 창고' })).toHaveTextContent(
+      '생산품 입고 창고 A (WH-A)',
+    );
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    expect(screen.queryByRole('button', { name: '생산품 입고 창고' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '완제품 위치' })).toBeNull();
+    expect(screen.queryByText('입고 위치', { exact: true })).toBeNull();
+  });
+  it('분할 창고의 내부 위치는 접힌 상세에서만 확인한다', async () => {
+    const user = userEvent.setup();
+    const row = structuredClone(previewProposals[0]!);
+    row.erpStorage = {
+      ...row.erpStorage!,
+      locationRole: 'PUTAWAY_STAGING',
+      location: { id: 62, code: 'SYS-STAGING', name: '적치 대기', parentId: 81 },
+    };
+    renderReview({ initialProposals: [row] });
+    const details = screen.getByText('입고 위치', { exact: true }).closest('details');
+    expect(details).not.toHaveAttribute('open');
+    await user.click(screen.getByText('입고 위치', { exact: true }));
+    expect(details).toHaveAttribute('open');
+    expect(details).toHaveTextContent('적치 대기');
+  });
+  it.each([
+    'FG_WAREHOUSE_UNMAPPED',
+    'FG_WAREHOUSE_INACTIVE',
+    'FG_WAREHOUSE_OTHER_PLANT',
+    'FG_WAREHOUSE_NOT_ALLOWED',
+  ])('창고 연결 차단 %s는 위치 선택으로 해소하지 않는다', async (reasonCode) => {
+    const user = userEvent.setup();
+    const row = structuredClone(previewProposals[0]!);
+    row.erpStorage = { ...row.erpStorage!, warehouse: null, location: null, reasonCode };
+    renderReview({ initialProposals: [row] });
+    expect(proposalErrors(applyReceiptStorage(row)).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    expect(screen.queryByRole('button', { name: '입고 위치' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '생산품 입고 창고' })).toBeNull();
+  });
+  it('서버가 정한 내부 위치를 공정별 확정값에 자동 반영하고 기존 확정 계획은 유지한다', () => {
+    const row = structuredClone(previewProposals[0]!);
+    row.plans.forEach((plan) =>
+      plan.operations.forEach((op) => {
+        op.resources.defaultFgLocationId = null;
+      }),
+    );
+    const normalized = applyReceiptStorage(row);
+    normalized.plans.forEach((plan) =>
+      plan.operations.forEach((op) => {
+        expect(op.resources.defaultFgLocationId).toEqual(row.erpStorage!.location);
+        expect(op.defaultFgLocationSource).toBe('ERP_STORAGE_LOCATION');
+      }),
+    );
+    expect(row.plans[0]!.operations[0]!.resources.defaultFgLocationId).toBeNull();
+    const existing = structuredClone(previewProposals[3]!);
+    existing.plans[0]!.operations[0]!.resources.defaultFgLocationId = {
+      id: 91,
+      code: 'OLD',
+      name: '기존 위치',
+    };
+    expect(applyReceiptStorage(existing).plans).toEqual(existing.plans);
+  });
   it('상태 열은 ERP W/O 바로 다음이며 상세는 세 탭으로 확인한다', async () => {
     const user = userEvent.setup();
     renderReview();

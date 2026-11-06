@@ -9,7 +9,7 @@ export const resourceLabels = {
   responsibleWorkerId: '작업자',
   plannedShiftId: '교대',
   defaultWipLocationId: 'WIP 위치',
-  defaultFgLocationId: '완제품 위치',
+  defaultFgLocationId: '생산품 입고 창고',
   defaultScrapLocationId: '스크랩 위치',
 } as const;
 export type ResourceField = keyof typeof resourceLabels;
@@ -25,6 +25,7 @@ export interface ReviewOperation {
   end: string;
   resources: Record<ResourceField, ReferenceRow | null>;
   required: ResourceField[];
+  defaultFgLocationSource?: 'ERP_STORAGE_LOCATION' | 'LINE_DEFAULT' | 'NONE';
 }
 export type PlanReviewField = 'date' | 'quantity' | 'line' | 'routing';
 export interface ReviewPlan {
@@ -51,6 +52,13 @@ export interface ReviewProposal {
   itemName: string;
   plant: string;
   erpPlanStartDate?: string;
+  erpStorage?: {
+    erpStorageLocationCode: string | null;
+    warehouse: ReferenceRow | null;
+    location: ReferenceRow | null;
+    reasonCode: string | null;
+    locationRole?: 'WAREHOUSE_WHOLE' | 'PUTAWAY_STAGING';
+  };
   orderQty: number;
   confirmedQty: number;
   draftQty: number;
@@ -60,6 +68,32 @@ export interface ReviewProposal {
   issues: string[];
   changed?: boolean;
 }
+export const storageFailureLabels: Record<string, string> = {
+  FG_WAREHOUSE_UNMAPPED: '생산품 입고 창고 연결 필요',
+  FG_WAREHOUSE_INACTIVE: '생산품 입고 창고 사용 상태 확인 필요',
+  FG_WAREHOUSE_OTHER_PLANT: '생산품 입고 창고 공장 확인 필요',
+  FG_WAREHOUSE_NOT_ALLOWED: '생산품 입고 창고 유형 확인 필요',
+};
+export const applyReceiptStorage = (row: ReviewProposal): ReviewProposal => {
+  const storage = row.erpStorage;
+  if (!storage?.erpStorageLocationCode) return row;
+  const location = !storage.reasonCode && storage.warehouse ? storage.location : null;
+  return {
+    ...row,
+    plans: row.plans.map((plan) =>
+      plan.source === '기존 확정 계획'
+        ? plan
+        : {
+            ...plan,
+            operations: plan.operations.map((op) => ({
+              ...op,
+              defaultFgLocationSource: location ? 'ERP_STORAGE_LOCATION' : 'NONE',
+              resources: { ...op.resources, defaultFgLocationId: location },
+            })),
+          },
+    ),
+  };
+};
 export const proposedQuantity = (row: ReviewProposal): number =>
   row.plans
     .filter((plan) => plan.source !== '기존 확정 계획')
@@ -67,6 +101,13 @@ export const proposedQuantity = (row: ReviewProposal): number =>
 export const proposalErrors = (row: ReviewProposal): string[] => {
   const editable = row.plans.filter((plan) => plan.source !== '기존 확정 계획');
   const errors = [...row.issues];
+  const storage = row.erpStorage;
+  if (storage?.erpStorageLocationCode) {
+    if (storage.reasonCode)
+      errors.push(storageFailureLabels[storage.reasonCode] ?? '생산품 입고 창고 확인 필요');
+    else if (!storage.warehouse || !storage.location)
+      errors.push('생산품 입고 창고의 자동 입고 위치 확인 필요');
+  }
   if (!editable.length) errors.push('확정할 제안이 없습니다');
   if (proposedQuantity(row) > row.orderQty - row.confirmedQty)
     errors.push('제안 수량이 미확정 잔량을 초과합니다');
@@ -83,7 +124,11 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
     if (!plan.operations.length) errors.push('Routing 공정을 확인하세요');
     plan.operations.forEach((op) =>
       op.required.forEach((field) => {
-        if (!op.resources[field]) errors.push(`${op.name}: ${resourceLabels[field]} 미지정`);
+        if (
+          !op.resources[field] &&
+          !(field === 'defaultFgLocationId' && storage?.erpStorageLocationCode)
+        )
+          errors.push(`${op.name}: ${resourceLabels[field]} 미지정`);
       }),
     );
   });
