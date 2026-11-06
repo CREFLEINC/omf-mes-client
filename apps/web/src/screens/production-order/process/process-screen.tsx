@@ -902,7 +902,7 @@ export const ProcessWorkspace = ({
             </div>
           )}
           <div className="is-key">
-            <dt>ERP 입고 창고 (SL_CD)</dt>
+            <dt>생산품 입고 창고</dt>
             <dd>
               {order.erpStorageLocationCode
                 ? order.erpStorageWarehouse

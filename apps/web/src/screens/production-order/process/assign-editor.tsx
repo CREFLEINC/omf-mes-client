@@ -1,3 +1,4 @@
+import { useWarehouseArrival } from './arrival-location';
 import { lineLocationDefaults } from './line-location-defaults';
 import type { ProductionOrderFact } from '../types';
 import {
@@ -231,6 +232,24 @@ const EditorSession = ({
     plantId,
     LINE_LOCATION_WAREHOUSE_TYPES.defaultScrapLocationId,
   );
+  const arrival = useWarehouseArrival(
+    erpStorage?.erpStorageLocationCode ? erpStorage.erpStorageWarehouse?.id : undefined,
+  );
+  useEffect(() => {
+    const location = arrival.data?.location;
+    if (!location || !erpStorage?.erpStorageLocationCode || baseline.defaultFgLocationId !== '')
+      return;
+    setDraft((current) =>
+      current.defaultFgLocationId === ''
+        ? { ...current, defaultFgLocationId: String(location.locationId) }
+        : current,
+    );
+  }, [
+    arrival.data,
+    erpStorage?.erpStorageLocationCode,
+    baseline.defaultFgLocationId,
+    draft.defaultFgLocationId,
+  ]);
   const dirty = !workOrderDraftEquals(baseline, draft);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
@@ -494,7 +513,7 @@ const EditorSession = ({
     );
   const locationNames = {
     defaultWipLocationId: t.fold.wip,
-    defaultFgLocationId: t.fold.fg,
+    defaultFgLocationId: '생산품 입고 창고',
     defaultScrapLocationId: t.fold.scrap,
   };
   const locationPairs: FoldPair[] =
@@ -503,7 +522,17 @@ const EditorSession = ({
       : LOCATION_FIELDS.map((field) =>
           draft[field] === ''
             ? { label: locationNames[field], value: t.fold.unset, unset: true }
-            : { label: locationNames[field], value: labelOf(field) },
+            : {
+                label: locationNames[field],
+                value:
+                  field === 'defaultFgLocationId'
+                    ? erpStorage?.erpStorageWarehouse
+                      ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
+                      : (locations.items.find(
+                          (item) => String(item.locationId) === draft.defaultFgLocationId,
+                        )?.warehouseName ?? t.fold.unset)
+                    : labelOf(field),
+              },
         );
   const shiftWindow =
     draft.plannedShiftId === '' || planDate === null
@@ -649,16 +678,39 @@ const EditorSession = ({
             <h3 className="assign-group-title">{t.groups.location}</h3>
             {reference('defaultWipLocationId', t.fields.defaultWipLocationId, wipSource)}
             <div className="field-cell">
-              <span className="field-label">ERP 입고 창고 (SL_CD)</span>
+              <span className="field-label">생산품 입고 창고</span>
               <span>
                 {erpStorage?.erpStorageLocationCode
                   ? erpStorage.erpStorageWarehouse
                     ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
                     : `${erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
-                  : '미지정'}
+                  : (locations.items.find(
+                      (item) => String(item.locationId) === draft.defaultFgLocationId,
+                    )?.warehouseName ?? '미지정')}
               </span>
+              {erpStorage?.erpStorageWarehouse && arrival.isPending ? (
+                <span className="field-note">입고 위치 확인 중</span>
+              ) : null}
+              {erpStorage?.erpStorageWarehouse &&
+              (arrival.isError || (arrival.isSuccess && !arrival.data.location)) ? (
+                <span role="alert">입고 위치 기준정보 확인 필요</span>
+              ) : null}
+              {erpStorage?.erpStorageLocationCode &&
+              arrival.data &&
+              (arrival.data.divided ||
+                (draft.defaultFgLocationId !== '' &&
+                  draft.defaultFgLocationId !== String(arrival.data.location?.locationId))) ? (
+                <details>
+                  <summary>입고 위치</summary>
+                  <span>
+                    {labelOf('defaultFgLocationId') || draft.defaultFgLocationId || '미지정'}
+                  </span>
+                </details>
+              ) : null}
             </div>
-            {reference('defaultFgLocationId', t.fields.defaultFgLocationId, fgSource)}
+            {!erpStorage?.erpStorageLocationCode
+              ? reference('defaultFgLocationId', '입고 위치', fgSource)
+              : null}
             {reference('defaultScrapLocationId', t.fields.defaultScrapLocationId, scrapSource)}
             <span className="assign-empty" aria-hidden="true" />
           </>

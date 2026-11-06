@@ -141,7 +141,7 @@ export const erpWorkOrderFlow = {
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}에 생산 라인이 없습니다. ${steps.assign} 단계에서 생산 라인을 지정해야 합니다.`,
     WORK_ORDER_LOCATION_MISSING: ({ workOrderCount }: ReasonDetail): string =>
-      `${pendingWorkOrders(workOrderCount)}에 기본 WIP 위치, 기본 완제품 위치, 기본 스크랩 위치 가운데 빈 것이 있습니다. ${steps.assign} 단계에서 기본 위치를 지정해야 합니다.`,
+      `${pendingWorkOrders(workOrderCount)}에 WIP 위치, 생산품 입고 창고 또는 스크랩 위치가 지정되지 않았습니다. ${steps.assign} 단계에서 기본 위치를 지정해야 합니다.`,
     LINE_PLANT_MISMATCH: ({ workOrderCount }: ReasonDetail): string =>
       `${pendingWorkOrders(workOrderCount)}의 생산 라인이 이 ERP W/O와 다른 공장의 라인입니다. ${steps.assign} 단계에서 이 공장의 생산 라인으로 바꿔야 합니다.`,
     /** 화면이 모르는 사유 코드. */
@@ -480,7 +480,7 @@ export const erpWorkOrderFlow = {
         responsibleWorkerId: '작업자',
         plannedShiftId: '교대',
         defaultWipLocationId: 'WIP 위치',
-        defaultFgLocationId: '완제품 위치',
+        defaultFgLocationId: '생산품 입고 창고',
         defaultScrapLocationId: '스크랩 위치',
         plannedStartAtLocal: '계획 시작',
         plannedEndAtLocal: '계획 종료',
@@ -495,7 +495,7 @@ export const erpWorkOrderFlow = {
         shiftPlan: '교대 기준 계획',
         plan: '계획',
         wip: 'WIP',
-        fg: '완제품',
+        fg: '생산품 입고 창고',
         scrap: '스크랩',
         start: '시작',
         end: '종료',
