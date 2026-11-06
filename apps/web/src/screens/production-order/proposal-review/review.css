@@ -1,0 +1,194 @@
+.proposal-review-page {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.proposal-review-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-4);
+}
+.proposal-preview-label,
+.proposal-selection-bar,
+.proposal-week-nav,
+.proposal-plan-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.proposal-preview-label {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-selection-bar {
+  margin-block: var(--space-3);
+}
+.proposal-changed {
+  display: inline-block;
+  margin-left: var(--space-2);
+  font: var(--type-label-sm);
+}
+.proposal-detail {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  min-width: 0;
+}
+.proposal-facts {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(220px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr);
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.proposal-facts div,
+.proposal-plan-fields > *,
+.proposal-resource-fields > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.proposal-facts dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.proposal-facts dd {
+  margin: var(--space-1) 0 0;
+  font: var(--type-body-lg);
+}
+.proposal-plan {
+  margin-top: var(--space-4);
+}
+.proposal-plan-heading h3,
+.proposal-operation h4 {
+  font: var(--type-title-sm);
+  margin-block: var(--space-3);
+}
+.proposal-plan-fields {
+  display: grid;
+  grid-template-columns: minmax(150px, 180px) minmax(120px, 150px) repeat(2, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+.proposal-resource-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-4);
+}
+.proposal-operation {
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+.proposal-operation h4 span {
+  color: var(--on-surface-variant);
+  margin-left: var(--space-2);
+}
+.proposal-review-page .erp-wo-adjustable-table {
+  max-width: 100%;
+}
+.proposal-review-page table th,
+.proposal-review-page table td {
+  text-align: left;
+}
+.proposal-review-page .erp-wo-adjustable-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.proposal-week-nav {
+  justify-content: flex-end;
+  margin-block: var(--space-3);
+}
+.proposal-week-scroll {
+  overflow-x: auto;
+}
+.proposal-calendar-card {
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: var(--space-2);
+}
+.proposal-calendar-card.is-active {
+  border-color: var(--primary);
+  background: var(--surface-container);
+}
+.proposal-card-main {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  width: 100%;
+  color: inherit;
+  font: var(--type-body-sm);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.proposal-calendar-card label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font: var(--type-label-sm);
+}
+@media (max-width: 1000px) {
+  .proposal-facts,
+  .proposal-plan-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .proposal-facts,
+  .proposal-plan-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .proposal-detail {
+    padding: var(--space-3);
+  }
+}
+
+.proposal-preview-frame {
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: var(--space-5);
+  background: var(--surface);
+  color: var(--on-surface);
+}
+
+.proposal-review-page > .action-bar {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.proposal-plan-fields {
+  grid-template-columns: minmax(150px, 180px) minmax(120px, 150px) minmax(240px, 1fr);
+}
+.proposal-plan-bom {
+  grid-column: span 2;
+}
+@media (max-width: 1000px) {
+  .proposal-plan-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .proposal-plan-line {
+    grid-column: span 2;
+  }
+  .proposal-plan-bom {
+    grid-column: auto;
+  }
+}
+@media (max-width: 600px) {
+  .proposal-plan-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .proposal-plan-line {
+    grid-column: auto;
+  }
+}
