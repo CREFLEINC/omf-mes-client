@@ -124,7 +124,7 @@ export const DefectRows = ({
                     }
                   />
                   {/*
-                   * 줄 끝 휴지통 — 줄이 하나여도 선다(사용자 지시 2026-10-29). 마지막 한 줄을 지우면 빈 표 대신 그 줄을 비운다.
+                   * 줄 끝 휴지통 — 줄이 하나여도 선다(사용자 지시 2026-10-29). 마지막 한 줄을 지우면 그 줄을 비우고 불량 등록을 끈다(사용자 지시 2026-11-09).
                    */}
                   <IconButton
                     icon="delete"
@@ -133,11 +133,14 @@ export const DefectRows = ({
                     aria-label={t.removeDefect}
                     title={t.removeDefect}
                     disabled={disabled}
-                    onClick={() =>
-                      onChange(
-                        rows.length > 1 ? rows.filter((_, at) => at !== index) : [EMPTY_DEFECT],
-                      )
-                    }
+                    onClick={() => {
+                      if (rows.length > 1) {
+                        onChange(rows.filter((_, at) => at !== index));
+                        return;
+                      }
+                      onChange([EMPTY_DEFECT]);
+                      onCheckedChange(false);
+                    }}
                   />
                 </li>
               );

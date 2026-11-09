@@ -89,10 +89,6 @@ describe('DefectRows', () => {
     render(<Controlled />);
     await userEvent.click(screen.getByRole('checkbox', { name: t.hasDefects }));
 
-    /* 한 줄이어도 휴지통이 있다 — 지우면 빈 표 대신 그 줄을 비운다(#197). */
-    await userEvent.click(screen.getByRole('button', { name: t.removeDefect }));
-    expect(screen.getAllByLabelText(t.defectQty)).toHaveLength(1);
-    expect(screen.getByLabelText(t.defectQty)).toHaveValue('');
     await userEvent.click(screen.getByRole('button', { name: t.addDefect }));
     expect(screen.getAllByLabelText(t.defectQty)).toHaveLength(2);
     await userEvent.type(screen.getAllByLabelText(t.defectQty)[1] as HTMLElement, '1');
@@ -102,6 +98,19 @@ describe('DefectRows', () => {
       screen.getAllByRole('button', { name: t.removeDefect })[1] as HTMLElement,
     );
     expect(screen.getAllByLabelText(t.defectQty)).toHaveLength(1);
+  });
+
+  it('마지막 한 줄의 휴지통은 그 줄을 비우고 불량 등록을 끈다', async () => {
+    render(<Controlled />);
+    await userEvent.click(screen.getByRole('checkbox', { name: t.hasDefects }));
+    await userEvent.type(screen.getByLabelText(t.defectQty), '3');
+
+    await userEvent.click(screen.getByRole('button', { name: t.removeDefect }));
+
+    expect(screen.getByRole('checkbox', { name: t.hasDefects })).not.toBeChecked();
+    expect(screen.queryByLabelText(t.defectQty)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox', { name: t.hasDefects }));
+    expect(screen.getByLabelText(t.defectQty)).toHaveValue('');
   });
 
   it('칸마다 라벨이 있어 표 모양이어도 화면 읽기가 칸 이름을 읽는다(#197)', async () => {
