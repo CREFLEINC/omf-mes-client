@@ -10,12 +10,16 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useDraftRejectionRecords, useMeasurements } from '../iqc-inspection/queries';
+import { useUomLookup } from '../iqc-inspection/uom-lookup';
+import { specLines } from './measurement-table';
 import { useRoundHistory } from './queries';
 
 type ItemSpec = components['schemas']['InspectionItemSpec'];
 type InspectionResultRow = components['schemas']['InspectionResult'];
 
 const t = messages.partsIqcInspection;
+const tm = messages.iqcInspection.measurements;
+const tr = messages.iqcInspection.result.rejection;
 
 interface HistoryProps {
   inspectionRequestId: number;
@@ -160,6 +164,42 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
   );
 };
 
+type Measurement = components['schemas']['InspectionMeasurement'];
+
+const valueTextOf = (m: Measurement): string => {
+  if (m.numericValue != null) return String(m.numericValue);
+  if (m.textValue != null && m.textValue !== '') return m.textValue;
+  if (m.booleanValue != null) return m.booleanValue ? tm.booleanTrue : tm.booleanFalse;
+  return '-';
+};
+
+/** 항목 판정 — 회차 중 불합격이 있으면 불합격, 모두 합격이면 합격. 판정이 없으면 `''`. */
+const itemJudgmentOf = (samples: readonly Measurement[]): string => {
+  if (samples.some((m) => m.judgmentCode === 'REJECTED')) return 'REJECTED';
+  return samples.length > 0 && samples.every((m) => m.judgmentCode === 'ACCEPTED')
+    ? 'ACCEPTED'
+    : '';
+};
+
+/** 규격 — 입력표와 같은 두 줄. 단위는 윗줄 끝에 붙인다. */
+const HistorySpec = ({
+  spec,
+  unitOf,
+}: {
+  spec: ItemSpec;
+  unitOf: (uomId: number | undefined) => string | null;
+}) => {
+  const [nominal, range] = specLines(spec);
+  const top = nominal || range;
+  const unit = top === '-' ? null : unitOf(spec.uomId ?? undefined);
+  return (
+    <>
+      <span>{unit === null ? top : `${top} ${unit}`}</span>
+      {nominal !== '' && range !== nominal && range !== '-' && <span>{range}</span>}
+    </>
+  );
+};
+
 const RoundDetail = ({
   inspectionResultId,
   remarks,
@@ -171,6 +211,7 @@ const RoundDetail = ({
   specs: ItemSpec[];
   defectCodes: HistoryProps['defectCodes'];
 }) => {
+  const uoms = useUomLookup();
   const measurements = useMeasurements(inspectionResultId);
   const defects = useDraftRejectionRecords(inspectionResultId);
   if (measurements.isPending) return <p className="field-note">{t.history.loading}</p>;
@@ -187,6 +228,7 @@ const RoundDetail = ({
   );
   const nameOf = (id: number) =>
     specs.find((spec) => spec.inspectionItemSpecId === id)?.inspectionItemName ?? `#${String(id)}`;
+  const sampleColumns = Math.max(1, ...measurements.data.map((m) => m.sampleNo));
   const defectName = (id: number) =>
     defectCodes.find((code) => code.defectCodeId === id)?.defectName ?? `#${String(id)}`;
 
@@ -195,39 +237,98 @@ const RoundDetail = ({
       {itemIds.length === 0 ? (
         <p className="field-note">{t.history.noMeasurements}</p>
       ) : (
-        <dl className="parts-iqc-history-items">
-          {itemIds.map((id) => (
-            <div key={id}>
-              <dt>{nameOf(id)}</dt>
-              <dd>
-                {[...(byItem.get(id) ?? [])]
-                  .sort((a, b) => a.sampleNo - b.sampleNo)
-                  .map((m) => (
-                    <span
-                      key={m.sampleNo}
-                      className={m.judgmentCode === 'REJECTED' ? 'parts-iqc-history-ng' : undefined}
-                    >
-                      {m.numericValue != null
-                        ? `n${String(m.sampleNo)} ${String(m.numericValue)}`
-                        : m.booleanValue == null
-                          ? '-'
-                          : m.booleanValue
-                            ? t.ok
-                            : t.ng}
-                    </span>
+        <>
+          <h4 className="parts-iqc-history-heading">{tm.caption}</h4>
+          <div className="parts-iqc-grid-scroll">
+            <table className="parts-iqc-grid">
+              <thead>
+                <tr>
+                  <th scope="col">{tm.columns.no}</th>
+                  <th scope="col">{tm.columns.item}</th>
+                  <th scope="col" className="parts-iqc-spec">
+                    {tm.columns.spec}
+                  </th>
+                  {Array.from({ length: sampleColumns }, (_, index) => (
+                    <th key={index} scope="col">
+                      {t.dimension.sample(index + 1)}
+                    </th>
                   ))}
-              </dd>
-            </div>
-          ))}
-        </dl>
+                  <th scope="col" className="parts-iqc-verdict-head">
+                    {tm.columns.judgment}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {itemIds.map((id, position) => {
+                  const samples = byItem.get(id) ?? [];
+                  const spec = specs.find((item) => item.inspectionItemSpecId === id);
+                  const judgment = itemJudgmentOf(samples);
+                  return (
+                    <tr key={id}>
+                      <td>{position + 1}</td>
+                      <td>{nameOf(id)}</td>
+                      <td className="parts-iqc-spec">
+                        {spec === undefined ? (
+                          '-'
+                        ) : (
+                          <HistorySpec spec={spec} unitOf={uoms.codeOf} />
+                        )}
+                      </td>
+                      {Array.from({ length: sampleColumns }, (_, index) => {
+                        const sample = samples.find((m) => m.sampleNo === index + 1);
+                        if (sample === undefined) {
+                          return (
+                            <td key={index} className="parts-iqc-cell-off" aria-hidden="true" />
+                          );
+                        }
+                        return (
+                          <td
+                            key={index}
+                            className={
+                              sample.judgmentCode === 'REJECTED'
+                                ? 'parts-iqc-history-cell-ng'
+                                : undefined
+                            }
+                          >
+                            {valueTextOf(sample)}
+                          </td>
+                        );
+                      })}
+                      <td className="parts-iqc-verdict">
+                        {judgment === '' ? '-' : (tm.judgmentNames[judgment] ?? judgment)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       {(defects.data ?? []).length > 0 && (
-        <p className="parts-iqc-history-defects">
-          <strong>{t.history.defects}</strong>{' '}
-          {(defects.data ?? [])
-            .map((record) => `${defectName(record.defectCodeId)} ${String(record.defectQty)}`)
-            .join(' · ')}
-        </p>
+        <>
+          <h4 className="parts-iqc-history-heading">{t.history.defects}</h4>
+          <div className="parts-iqc-grid-scroll">
+            <table className="parts-iqc-grid">
+              <thead>
+                <tr>
+                  <th scope="col">{tr.defectType}</th>
+                  <th scope="col">{tr.defectQty}</th>
+                  <th scope="col">{tr.description}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(defects.data ?? []).map((record) => (
+                  <tr key={record.defectRecordId}>
+                    <td>{defectName(record.defectCodeId)}</td>
+                    <td>{record.defectQty}</td>
+                    <td>{record.defectDescription ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       {remarks !== null && remarks !== '' && (
         <p className="parts-iqc-history-defects">
