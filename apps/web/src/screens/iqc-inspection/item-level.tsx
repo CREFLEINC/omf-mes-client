@@ -74,15 +74,15 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
   const body = (
     <span className="iqc-inspection-level">
       <span>{label}</span>
-      {/* 수준이 있으면 그 품목의 전환 이력을 창으로 본다 — 검사 수준 관리의 「이력」과 같은 창(#247 · 사용자 지시 2026-11-09). */}
-      {mode === 'view' && row !== null && (
+      {/* 그 품목의 전환 이력을 창으로 본다 — 검사 수준 관리의 「이력」과 같은 창. 미지정이어도 둔다(#247 · 사용자 지시 2026-11-09). */}
+      {mode === 'view' && item !== null && (
         <Button size="md" variant="outlined" onClick={() => setViewing(true)}>
           {t.view}
         </Button>
       )}
-      {viewing && row !== null && (
+      {viewing && item !== null && (
         <ItemHistoryDialog
-          item={row}
+          item={{ itemId, ...item }}
           columns={itemHistoryColumns}
           onClose={() => setViewing(false)}
         />

@@ -44,12 +44,12 @@ const render = (node: React.ReactNode, levels: object[]) =>
 
 /** 검사 수준은 상세 머리에서 보기만 하고, 지정은 검사 중 4M 단계에서 수준이 없을 때만 한다(#247). */
 describe('ItemLevel', () => {
-  it('상세 머리 — 수준이 없어도 [지정]을 두지 않는다', async () => {
+  it('상세 머리 — 수준이 없으면 [지정] 없이 [수준 조회]만 둔다', async () => {
     render(<ItemLevel itemId={501} item={ITEM} />, []);
 
     expect(await screen.findByText(t.unset)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.set })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.view })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.view })).toBeInTheDocument();
   });
 
   it('상세 머리 — 수준이 있으면 [수준 조회]로 그 품목의 이력 창을 연다', async () => {
