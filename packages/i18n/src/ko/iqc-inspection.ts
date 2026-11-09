@@ -220,6 +220,8 @@ export const iqcInspection = {
     sectionTitle: '검사 수량 입력',
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
+    /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
+    mergedSectionTitle: '검사 수량 · 판정',
     judgmentDetailTitle: '판정 상세 입력',
     judgmentDetailOpen: '판정 상세 입력',
     judgmentDetailCancel: '취소',

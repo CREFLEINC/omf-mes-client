@@ -376,7 +376,7 @@ const stepperItems = (): HTMLElement[] => [
  * [변경]으로 다시 연다.
  */
 const qtyDialog = (): HTMLElement | null =>
-  screen.queryByRole('region', { name: t.result.sectionTitle });
+  screen.queryByRole('region', { name: t.result.mergedSectionTitle });
 /** 그 자리의 [확정] — ① 은 [입력 완료](#197). */
 const panelConfirm = (panel: HTMLElement): HTMLButtonElement =>
   within(panel).getByRole('button', {
@@ -404,7 +404,7 @@ const leaveQtyDialog = async (): Promise<void> => {
 };
 /* ② 판정 자리(#197) — 수량 [확정] 뒤 바로 선다. 불합격 사유 · 판정 변경 사유도 이 자리 안에 있다. */
 const judgmentDialog = (): HTMLElement | null =>
-  screen.queryByRole('region', { name: t.result.judgmentSectionTitle });
+  screen.queryByRole('region', { name: t.result.mergedSectionTitle });
 /**
  * [판정 확정] → 확인 창의 [판정 확정](사용자 지시 2026-11-09). 창이 이미 열려 있으면(확정 실패 뒤) 창의 단추만 다시 누른다.
  */
@@ -423,7 +423,7 @@ const openJudgmentDialog = async (): Promise<void> => {
     await leaveQtyDialog();
     if (judgmentDialog() !== null) return;
   }
-  await reopenStep(1);
+  await reopenStep(0);
 };
 const showStep = async (step: number): Promise<void> => {
   await screen.findByRole('form', { name: t.result.heading });
@@ -715,18 +715,16 @@ describe('IqcInspectionScreen', () => {
     expect(await qtyField('held')).toHaveValue('5');
   });
 
-  it('되돌아온 수량이 합계 제약을 만족하면 수량 창의 [확정]이 켜진다 — 1단계를 마칠 수 있다(#197)', async () => {
+  it('되돌아온 수량이 합계 제약을 만족하면 판정까지 있는 회차는 [확정]이 켜진다 — 1단계를 마칠 수 있다(#197)', async () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), [
       { ...draftRound, acceptedQty: 500, rejectedQty: 0, heldQty: 0 },
     ]);
 
     await findRound(1);
     await openQtyDialog();
-    const dialog = await screen.findByRole('region', { name: t.result.sectionTitle });
+    const dialog = await screen.findByRole('region', { name: t.result.mergedSectionTitle });
     expect(within(dialog).getByLabelText(t.result.fields.accepted)).toHaveValue('500');
-    expect(
-      within(dialog).getByRole('button', { name: t.result.stepSummary.qtyDone }),
-    ).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: t.result.stepSummary.next })).toBeEnabled();
   });
 
   /*
@@ -1039,6 +1037,29 @@ describe('IqcInspectionScreen', () => {
     expect(
       screen.getByRole('combobox', { name: t.measurements.judgmentLabel('외관', 1) }),
     ).toHaveTextContent(t.measurements.judgmentNames.ACCEPTED ?? '합격');
+  });
+
+  it('전량 합격이 풀리면 자동으로 채운 항목만 비우고, 사람이 고친 값은 남긴다', async () => {
+    renderScreen('/?ir=1001', undefined, [{ ...draftRound, rejectedQty: 0, heldQty: 0 }], []);
+
+    await findRound(1);
+    await openQtyDialog();
+    await completeQuantities('500', '0', '0');
+    const first = await screen.findByRole('textbox', {
+      name: t.measurements.valueLabel('치수', 1),
+    });
+    expect(first).toHaveValue('10');
+    await userEvent.clear(first);
+    await userEvent.type(first, '10.05');
+
+    await completeQuantities('499', '0', '1');
+
+    expect(screen.getByRole('textbox', { name: t.measurements.valueLabel('치수', 1) })).toHaveValue(
+      '10.05',
+    );
+    expect(screen.getByRole('textbox', { name: t.measurements.valueLabel('치수', 2) })).toHaveValue(
+      '',
+    );
   });
 
   it('자동 판정 항목이 규격 밖이면 항목 판정과 최종 판정이 불합격으로 채워진다', async () => {

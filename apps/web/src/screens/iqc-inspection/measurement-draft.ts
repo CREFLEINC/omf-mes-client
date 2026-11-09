@@ -23,6 +23,8 @@ export interface MeasureEntry {
   /** 서버에 남은 측정 시각 · 계측기 — 값을 고치지 않은 줄은 그대로 다시 싣는다 */
   measuredAt: string | null;
   inspectionEquipmentId: number | null;
+  /** 「전량 합격」으로 채우기 전의 줄 — 전량 합격이 풀리면 이 값으로 되돌린다. 사람이 고치면 `null` */
+  bulkPrev: MeasureEntry | null;
 }
 
 export type MeasureDraft = Record<string, MeasureEntry>;
@@ -39,6 +41,7 @@ const EMPTY_ENTRY: MeasureEntry = {
   autoFilled: false,
   measuredAt: null,
   inspectionEquipmentId: null,
+  bulkPrev: null,
 };
 
 export const entryOf = (draft: MeasureDraft, key: string): MeasureEntry =>
@@ -66,6 +69,7 @@ export const measureDraftOf = (rows: readonly MeasurementRow[]): MeasureDraft =>
           autoFilled: false,
           measuredAt: row.measured?.measuredAt ?? null,
           inspectionEquipmentId: row.measured?.inspectionEquipmentId ?? null,
+          bulkPrev: null,
         },
       ]),
   );
@@ -116,6 +120,7 @@ export const withValue = (
       judgment: keepJudgment ? entry.judgment : (auto ?? ''),
       autoFilled: !keepJudgment && auto !== null,
       measuredAt: null,
+      bulkPrev: null,
     },
   };
 };
@@ -126,7 +131,7 @@ export const withJudgment = (
   judgment: string,
 ): MeasureDraft => ({
   ...draft,
-  [row.key]: { ...entryOf(draft, row.key), judgment, autoFilled: false },
+  [row.key]: { ...entryOf(draft, row.key), judgment, autoFilled: false, bulkPrev: null },
 });
 
 /** 수치 칸에 숫자가 아닌 값이 있는가. */
@@ -174,11 +179,17 @@ export const fillAllAccepted = (
   Object.fromEntries(
     rows.map((row) => {
       const entry = entryOf(draft, row.key);
-      if (entry.judgment !== '' && !entry.autoFilled) return [row.key, entry];
+      if (entry.bulkPrev !== null || (entry.judgment !== '' && !entry.autoFilled))
+        return [row.key, entry];
       if (hasValue(entry)) {
         return [
           row.key,
-          { ...entry, judgment: autoJudgmentOf(row, entry.value) ?? ACCEPTED, autoFilled: true },
+          {
+            ...entry,
+            judgment: autoJudgmentOf(row, entry.value) ?? ACCEPTED,
+            autoFilled: true,
+            bulkPrev: entry,
+          },
         ];
       }
       return [
@@ -189,10 +200,15 @@ export const fillAllAccepted = (
           judgment: ACCEPTED,
           autoFilled: true,
           measuredAt: null,
+          bulkPrev: entry,
         },
       ];
     }),
   );
+
+/** 전량 합격이 풀리면 그때 채운 줄만 채우기 전으로 되돌린다 — 사람이 넣은 값 · 판정은 그대로다(사용자 지시 2026-11-09). */
+export const clearAllAccepted = (draft: MeasureDraft): MeasureDraft =>
+  Object.fromEntries(Object.entries(draft).map(([key, entry]) => [key, entry.bulkPrev ?? entry]));
 
 /**
  * 항목 판정으로 채울 최종 판정(사용자 지시 2026-11-09) — 자동 판정 항목이 하나라도 있을 때만 선다. 불합격 항목이 하나라도

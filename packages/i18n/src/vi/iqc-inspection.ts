@@ -142,6 +142,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     heading: 'Đánh giá số lượng',
     sectionTitle: 'Nhập số lượng kiểm tra',
     judgmentSectionTitle: 'Đánh giá',
+    mergedSectionTitle: 'Số lượng kiểm tra · Đánh giá',
     judgmentDetailTitle: 'Nhập chi tiết đánh giá',
     judgmentDetailOpen: 'Nhập chi tiết đánh giá',
     judgmentDetailCancel: 'Hủy',

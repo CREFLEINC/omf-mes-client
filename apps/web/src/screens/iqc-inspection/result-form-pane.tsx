@@ -119,7 +119,7 @@ export interface ResultFormPaneProps {
   /** 최종 판정 라벨 옆 보조 글 — 자동 판정 기준(#133). 없으면 두지 않는다 */
   judgmentHint?: string;
   /**
-   * ② 판정 단계 맨 위 — 검사 항목별 결과 입력(#247 · 사용자 지시 2026-11-09). 항목 판정을 넣고 그 아래에서 최종 판정을 고른다.
+   * ① 검사 수량 · 판정 단계의 최종 판정 바로 위 — 검사 항목별 결과 입력(#247 · 사용자 지시 2026-11-09). 항목 판정을 넣고 그 아래에서 최종 판정을 고른다.
    * 없으면 두지 않는다
    */
   measurementSlot?: ReactNode;
@@ -150,7 +150,6 @@ export interface ResultFormPaneProps {
   confirmOnlyBlockedReason?: string | null;
   /** 3단계(4M)를 접었을 때 한 줄 요약 — 「4M 변경품」 · 「변경 없음」(#197). */
   fourMSummary?: string;
-  /** ① 수량 [확정]으로 판정 단계로 넘어갈 때 — 부르는 쪽이 최종 판정을 자동으로 채운다(사용자 지시 2026-10-29 · #197). */
   onQtyConfirm?: () => void;
   /** 불량 내역에 수량이 아닌 값이 있다 — 불량 합계를 믿을 수 없어 수량 줄을 「확인 필요」로 보인다(표시 전용 · #197). */
   rejectedUncountable?: boolean;
@@ -244,7 +243,6 @@ export const ResultFormPane = ({
   fourMDone = false,
   fourMSummary,
   rejectedUncountable = false,
-  onQtyConfirm,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
   const qtyIdBase = useId();
@@ -369,11 +367,19 @@ export const ResultFormPane = ({
    * 자리에 다시 연다. 다시 열었을 때는 저장된 값으로 단계를 정한다.
    * ⛔ 확정된 회차는 고칠 것이 없어 종전처럼 모두 펼친다.
    */
-  const lastStep = fourMSlot !== null ? 3 : 2;
+  /* 차례로 여는 단계 — ① 검사 수량 · 판정(합침 · 사용자 지시 2026-11-09), ② 4M. 4M 이 없으면 ① 까지다. */
+  const lastStep = fourMSlot !== null ? 2 : 1;
   /* 덜 채운 첫 단계 — 다 채웠으면 마지막 단계 다음(모든 카드가 「마침」)이다. */
-  const firstOpenStep = currentStep ?? lastStep + 1;
+  const mergedDone = qtyStepDone && judgmentDone;
+  const firstOpenStep = isConfirmed
+    ? lastStep + 1
+    : !mergedDone
+      ? 1
+      : fourMSlot !== null && !fourMDone
+        ? 2
+        : lastStep + 1;
   const isSequential = inlineJudgment && !isConfirmed;
-  /* 저장된 진행 — 수량 합계가 맞게 저장됐으면 ②, 판정까지 저장됐으면 ③(4M 이 없으면 ②까지). */
+  /* 저장된 진행 — 수량 합계가 맞고 판정까지 저장됐으면 ② 4M(4M 이 없으면 ① 까지). */
   const savedStep = (() => {
     if (round === null || isReinspecting) return 1;
     const saved = toTotals(
@@ -385,27 +391,22 @@ export const ResultFormPane = ({
       inspectedQty,
     );
     if (!canConfirm(saved)) return 1;
-    return round.overallJudgmentCode === '' ? 2 : lastStep;
+    return round.overallJudgmentCode === '' ? 1 : lastStep;
   })();
   /*
    * 펼칠 단계 — [변경]으로 고른 단계, 아니면 저장된 진행. 앞 단계가 다시 덜 채워지면 그 단계로 돌아온다. 입력하는 동안
    * 합계가 맞아도 저절로 다음 단계로 넘기지 않는다 — [확정]을 눌러야 넘어간다.
    */
   const shownStep = Math.min(viewStep ?? savedStep, firstOpenStep);
-  const stepDone = (step: number): boolean =>
-    step === 1 ? qtyStepDone : step === 2 ? judgmentDone : fourMDone;
+  const stepDone = (step: number): boolean => (step === 1 ? mergedDone : fourMDone);
   const stepView = (_step: number): StepView => (isSequential ? 'hidden' : 'open');
   /* 보이는 단계 — [확정]으로 도달했거나 저장된 진행까지. 그 뒤 단계는 그리지 않는다(사용자 지시 2026-10-28 · #197). */
   const visibleUpTo = Math.max(reachedStep, savedStep, shownStep);
   const openStep = (step: number): void =>
     setProgress({ roundKey, view: step, qtyConfirmed, reached: reachedStep });
-  const confirmQty = (): void => {
-    onQtyConfirm?.();
+  /* ① 의 [확정] → ② 4M. 4M 이 없으면 펼칠 단계가 없다(2 는 마지막 단계 다음이다). */
+  const confirmMerged = (): void =>
     setProgress({ roundKey, view: 2, qtyConfirmed: true, reached: Math.max(reachedStep, 2) });
-  };
-  /* 판정 [확정] → ③ 4M. 4M 이 없으면 펼칠 단계가 없다(3 은 마지막 단계 다음이다). */
-  const confirmJudgment = (): void =>
-    setProgress({ roundKey, view: 3, qtyConfirmed, reached: Math.max(reachedStep, 3) });
   const qtyText = (raw: string): string => withUom(raw.trim() === '' ? '0' : raw, uomCode);
   const judgmentText =
     judgmentOptions.find((option) => option.value === judgment)?.label ?? judgment;
@@ -441,19 +442,20 @@ export const ResultFormPane = ({
   const stepItems = [
     {
       step: 1,
-      title: t.sectionTitle,
-      summary: t.stepSummary.quantities(
-        qtyText(draft.accepted),
-        qtyText(draft.rejected),
-        qtyText(draft.held),
-      ),
+      title: t.mergedSectionTitle,
+      summary: [
+        t.stepSummary.quantities(
+          qtyText(draft.accepted),
+          qtyText(draft.rejected),
+          qtyText(draft.held),
+        ),
+        judgmentText,
+        measurementSummary,
+      ]
+        .filter((part) => part)
+        .join(' · '),
     },
-    {
-      step: 2,
-      title: t.judgmentSectionTitle,
-      summary: [judgmentText, measurementSummary].filter((part) => part).join(' · '),
-    },
-    { step: 3, title: t.fourMChange.sectionTitle, summary: fourMSummary ?? '' },
+    { step: 2, title: t.fourMChange.sectionTitle, summary: fourMSummary ?? '' },
   ].filter((item) => item.step <= lastStep);
   /*
    * 단계 접기 · 펼치기(사용자 지시 2026-10-28 · #197) — 세 단계를 위아래로 쌓고, 단계 머리를 누르면 그 단계 입력이 바로 아래에
@@ -560,8 +562,8 @@ export const ResultFormPane = ({
         /* Enter 는 임시 저장이 아니라 ② 판정으로 넘어가기다 — [확정]과 같은 조건(사용자 지시 2026-10-27 · 2026-10-28 · #197). */
         onKeyDown={(event) => {
           if (event.key !== 'Enter' || !isSequential) return;
+          /* 판정까지 같은 단계라 Enter 로 넘기지 않는다 — 폼 제출(임시 저장)만 막는다. */
           event.preventDefault();
-          if (canConfirmQty) confirmQty();
         }}
       />
       {variant === 'card' && uomCode !== null && (
@@ -681,16 +683,16 @@ export const ResultFormPane = ({
    * 펼친 단계의 입력 — 그 단계 머리 바로 아래에 선다(창을 띄우지 않는다 · 사용자 지시 2026-10-28 · #197). 칸 · 검증 · [확정]은
    * 종전 창의 것을 그대로 쓴다. ③ 4M 은 선택이라 [확정] 없이 아래 [임시 저장] · [판정 확정]으로 마친다.
    */
-  /* 단계의 [확정] — ① 은 「다음: 판정」(저장이 아니라 판정 단계로 넘어간다 · 사용자 지시 2026-10-29 · #197). */
-  const stepConfirm = (step: number): ReactNode => (
+  /* 수량이 셀 수 있고 판정을 마쳤을 때 ② 4M 으로 넘어간다. */
+  const stepConfirm = (): ReactNode => (
     <Button
       type="button"
       size="md"
-      disabled={isInputLocked || (step === 1 ? !canConfirmQty : !judgmentDone)}
+      disabled={isInputLocked || !canConfirmQty || !judgmentDone}
       aria-describedby={isInputLocked ? blockedNoteId : undefined}
-      onClick={step === 1 ? confirmQty : confirmJudgment}
+      onClick={confirmMerged}
     >
-      {step === 1 ? t.stepSummary.qtyDone : t.stepSummary.next}
+      {t.stepSummary.next}
     </Button>
   );
   const stepPanel = (step: number, title: string): ReactNode => (
@@ -711,26 +713,23 @@ export const ResultFormPane = ({
           <div className="iqc-inspection-qty-body">{qtyCards}</div>
         ) : (
           <div className="iqc-inspection-step-qty-split">
-            <div className="iqc-inspection-qty-body">{progressCards(stepConfirm(step))}</div>
+            <div className="iqc-inspection-qty-body">{progressCards(null)}</div>
             {renderDefects()}
           </div>
         ))}
-      {step === 2 && measurementSlot}
-      {step === 2 && (
+      {step === 1 && measurementSlot}
+      {step === 1 && (
         <div className="iqc-inspection-judgment-dialog">
           {/* 최종 판정 칸과 [확정]은 한 줄(사용자 지시 2026-10-29). */}
           <div className="iqc-inspection-step-judgment-row">
             {judgmentField}
-            {stepConfirm(step)}
+            {stepConfirm()}
           </div>
           {hasJudgmentDetail && judgmentBelow}
           {hasJudgmentDetail && judgmentDetail}
         </div>
       )}
-      {step === 3 && fourMSlot}
-      {step === 1 && renderDefects === null && (
-        <div className="iqc-inspection-step-panel-actions">{stepConfirm(step)}</div>
-      )}
+      {step === 2 && fourMSlot}
     </section>
   );
 

@@ -53,6 +53,7 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import {
   EMPTY_QUANTITY_DRAFT,
   formatMicro,
+  toMicro,
   toSendableNumber,
   type QuantityDraft,
 } from './quantity-draft';
@@ -62,6 +63,7 @@ import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { PlanViewDialog } from './plan-view-dialog';
 import {
   entryOf,
+  clearAllAccepted,
   fillAllAccepted,
   hasMissingRequired,
   isSameMeasureDraft,
@@ -754,8 +756,26 @@ const IqcInspectionScreenBody = () => {
     const sum = defectSumOf(rows);
     return sum > 0n ? formatMicro(sum) : '';
   };
-  const applyAutoJudgment = (next: QuantityDraft): void => {
-    const expected = isOpenRound ? autoJudgmentOf(next, acceptanceNumber, inspectedQty) : null;
+  /*
+   * 최종 판정 자동 채움 — 수량 판정과 항목 판정을 함께 본다(사용자 지시 2026-11-09). 어느 쪽이든 불합격이면 불합격, 그 밖은 수량
+   * 판정이 먼저이고 없으면 항목 판정이다. 둘 다 근거가 없으면 자동으로 채운 판정만 비운다.
+   */
+  const applyAutoJudgment = (
+    next: QuantityDraft,
+    measures: MeasureDraft,
+    { keepPicked = false } = {},
+  ): void => {
+    if (!isOpenRound) return;
+    const isPicked = judgment !== '' && judgment !== autoFilledJudgment.current;
+    if (keepPicked && isPicked) return;
+    const fromQty = autoJudgmentOf(next, acceptanceNumber, inspectedQty);
+    const fromItems = overallFromItems(measurementRows, measures);
+    /* 보류 수량이 있으면 항목이 모두 합격이어도 합격으로 채우지 않는다 — 사람이 고른다(#197 리뷰). */
+    const hasHeld = (toMicro(next.held) ?? 0n) > 0n;
+    const expected =
+      fromQty === 'REJECTED' || fromItems === 'REJECTED'
+        ? 'REJECTED'
+        : (fromQty ?? (hasHeld ? null : fromItems));
     if (expected !== null) {
       autoFilledJudgment.current = expected;
       setJudgment(expected);
@@ -764,21 +784,23 @@ const IqcInspectionScreenBody = () => {
       setJudgment('');
     }
   };
+  /* 수량을 고칠 때 — 전량 합격이 되는 순간 항목을 채우고, 풀리는 순간 채운 줄만 되돌린다(사용자 지시 2026-11-09). */
   const changeDraftAndJudge = (next: QuantityDraft): void => {
     changeDraft(next);
-    applyAutoJudgment(next);
+    const nowAll = isOpenRound && isAllAccepted(next, inspectedQty);
+    const wasAll = isOpenRound && isAllAccepted(draft, inspectedQty);
+    const measures = nowAll
+      ? fillAllAccepted(measurementRows, measureDraft)
+      : wasAll
+        ? clearAllAccepted(measureDraft)
+        : measureDraft;
+    if (measures !== measureDraft) setMeasureDraft(measures);
+    applyAutoJudgment(next, measures);
   };
-  /*
-   * 항목 판정 → 최종 판정(사용자 지시 2026-11-09) — 자동 판정 항목이 있으면 항목 판정으로 최종 판정을 채운다. 사람이 고른 최종
-   * 판정은 덮지 않는다(수량으로 채운 판정과 같은 규율).
-   */
+  /* 항목을 고칠 때 — 사람이 고른 최종 판정은 덮지 않는다. */
   const changeMeasureDraft = (next: MeasureDraft): void => {
     setMeasureDraft(next);
-    const expected = isOpenRound ? overallFromItems(measurementRows, next) : null;
-    if (expected !== null && (judgment === '' || judgment === autoFilledJudgment.current)) {
-      autoFilledJudgment.current = expected;
-      setJudgment(expected);
-    }
+    applyAutoJudgment(draft, next, { keepPicked: true });
   };
 
   /*
@@ -1114,13 +1136,6 @@ const IqcInspectionScreenBody = () => {
                       ? t.measurements.blockedRequired
                       : null
           }
-          /* ① 수량 [확정]으로 판정 단계로 넘어가며 최종 판정을 자동으로 채운다 — 채울 것이 없으면 그대로 둔다(사용자 지시 2026-10-29). */
-          onQtyConfirm={() => {
-            applyAutoJudgment(draft);
-            /* 전량 합격이면 항목 판정도 모두 합격 · 빈 측정 결과는 기준값으로 채운다(사용자 지시 2026-11-09). */
-            if (isOpenRound && isAllAccepted(draft, inspectedQty))
-              changeMeasureDraft(fillAllAccepted(measurementRows, measureDraft));
-          }}
           /* 불량 수량에 수량이 아닌 값이 있으면 합계를 셀 수 없다고 보인다(표시 전용 · #197). */
           rejectedUncountable={hasDefects && hasInvalidDefectQty(defects)}
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */
