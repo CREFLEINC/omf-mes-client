@@ -1034,6 +1034,7 @@ describe('IqcInspectionScreen', () => {
     expect(
       within(screen.getByRole('region', { name: t.measurements.heading })).getByText(
         t.measurements.judgmentNames.ACCEPTED ?? '합격',
+        { selector: '.parts-iqc-verdict' },
       ),
     ).toBeInTheDocument();
     /* 글 항목은 기준값이 없어 결과는 비우고 판정만 합격이다. */
