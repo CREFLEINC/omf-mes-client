@@ -18,7 +18,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
-import { useLoadFailure } from '../../patterns/load-failure';
+import { useLoadFailure, useSaveRefusal } from '../../patterns/load-failure';
 import {
   toCandidates,
   useAvailableByLot,
@@ -184,6 +184,8 @@ const CandidateCard = ({
 export const ProductPickingScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
+  /* 단말 탓 거절은 다시 시도해도 같다 — 서버가 실은 까닭을 보인다(omf-all-around#202). */
+  const saveRefusal = useSaveRefusal();
 
   const online = useOnlineStatus();
   const { worker } = useWorkerSession();
@@ -705,7 +707,7 @@ export const ProductPickingScreen = () => {
             ) ? (
             <AlertBanner variant="error" title={t.conflict} />
           ) : (
-            <AlertBanner variant="error" title={t.failed} />
+            <AlertBanner variant="error" title={saveRefusal(pick.error) ?? t.failed} />
           )}
           <Button
             className="picking__pick"
