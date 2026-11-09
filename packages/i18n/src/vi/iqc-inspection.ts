@@ -331,9 +331,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       `Kết quả đo ${itemName} lần ${String(sampleNo)}`,
     judgmentLabel: (itemName: string, sampleNo: number): string =>
       `Phán định ${itemName} lần ${String(sampleNo)}`,
-    dropDefectsTitle: 'Xóa chi tiết lỗi?',
-    dropDefectsBody: 'Nếu đổi sang đạt, chi tiết lỗi đã nhập dưới hạng mục này sẽ bị xóa.',
-    dropDefectsConfirm: 'Xóa',
     selectPlaceholder: 'Chọn',
     blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
     blockedIncomplete: 'Vui lòng chọn phán định cho các hạng mục đã nhập giá trị đo.',

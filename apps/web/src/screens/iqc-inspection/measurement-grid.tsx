@@ -9,14 +9,7 @@ import {
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import {
-  createContext,
-  useContext,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useClientPage } from '../../patterns/client-page';
@@ -130,8 +123,6 @@ export interface MeasurementGridProps {
   isLoading: boolean;
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
-  /** 그 검사 항목 바로 아래에 펼칠 내용(입력 중만) — 없으면 `null` */
-  renderBelowItem?: (inspectionItemSpecId: number) => ReactNode;
   /** 항목 입력 유형 코드 → 이름(수치 · 텍스트 · 불리언). 없으면 코드 그대로 */
   dataTypeNames?: Record<string, string>;
   /** 검사 중인 회차의 측정 입력(#247). 없으면 읽기다 */
@@ -146,8 +137,6 @@ export interface MeasureEdit {
   /** 측정치 판정 선택지(`INSPECTION_MEASUREMENT_JUDGMENT`) */
   judgmentOptions: CodeOption[];
   disabled: boolean;
-  /** 값 칸에 들어가고(`true`) 벗어날 때(`false`) — 치는 도중 불량 등록 줄이 났다 사라지며 표가 밀리지 않게 한다 */
-  onTyping: (started: boolean) => void;
 }
 
 /* 열 정의는 화면 밖에 고정이라(열 순서 · 폭 기억) 입력 상태는 맥락으로 칸에 넘긴다. */
@@ -213,8 +202,6 @@ const ValueCell = ({ row }: { row: MeasurementRow }) => {
       inputMode={row.dataType === 'NUMERIC' ? 'decimal' : undefined}
       value={entry.value}
       disabled={edit.disabled}
-      onFocus={() => edit.onTyping(true)}
-      onBlur={() => edit.onTyping(false)}
       onChange={(event) => {
         /* 수치 항목은 숫자 · 소수점 · 앞 「-」 말고는 받지 않는다 — 글자를 치면 칸이 그대로다(사용자 지시 2026-11-09). */
         if (row.dataType === 'NUMERIC' && !NUMERIC_TYPING.test(event.target.value)) return;
@@ -252,42 +239,7 @@ const JudgmentCell = ({ row }: { row: MeasurementRow }) => {
   );
 };
 
-/** 표 안에 끼우는 하위 줄(#247) — 불합격 항목 아래 불량 등록. 표가 펼침 행을 주지 않아 한 줄을 만들어 칸을 합친다. */
-interface SlotRow {
-  slot: true;
-  key: string;
-  node: ReactNode;
-}
-type GridRow = MeasurementRow | SlotRow;
-const isSlot = (row: GridRow): row is SlotRow => 'slot' in row;
-
-/* 열 순서를 끌어 바꾸면 같은 칸이 앞뒤로 옮겨 다닌다 — 합침 · 감춤을 서로 되돌려 둔다. */
-const SlotCell = ({ span, children }: { span: number; children: ReactNode }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const cell = ref.current?.closest('td');
-    if (cell == null) return;
-    cell.colSpan = span;
-    cell.style.display = '';
-  }, [span]);
-  return (
-    <div ref={ref} className="iqc-inspection-measure-slot">
-      {children}
-    </div>
-  );
-};
-const SlotGap = () => {
-  const ref = useRef<HTMLSpanElement>(null);
-  useLayoutEffect(() => {
-    const cell = ref.current?.closest('td');
-    if (cell == null) return;
-    cell.colSpan = 1;
-    cell.style.display = 'none';
-  }, []);
-  return <span ref={ref} />;
-};
-
-/** 같은 항목의 2회차부터 항목 · 유형 · 규격을 비워 회차를 한 묶음으로 보인다(입력 중만). */
+/** 같은 항목의 2회차부터 항목 · 유형 · 규격을 비워 회차를 한 묶음으로 보인다(입력 중만 · #247). */
 const GROUPED_COLUMNS = new Set(['item', 'dataType', 'spec']);
 
 const columns: Column<MeasurementRow>[] = [
@@ -362,7 +314,6 @@ export const MeasurementGrid = ({
   scrollX = false,
   edit = null,
   dataTypeNames = {},
-  renderBelowItem,
   onViewPlan,
 }: MeasurementGridProps) => {
   /*
@@ -386,29 +337,15 @@ export const MeasurementGrid = ({
    * 있고, 적용 기준은 상세 머리의 [기준 조회]로 본다.
    */
   const inStep = edit !== null;
-  /* 항목의 이 쪽 마지막 회차 뒤에 하위 줄을 끼운다 — 쪽 나눔은 측정 줄만 센다. */
-  const gridRows: GridRow[] = paging.rows.flatMap((row, index): GridRow[] => {
-    const isLast = paging.rows[index + 1]?.inspectionItemSpecId !== row.inspectionItemSpecId;
-    const node = inStep && isLast ? (renderBelowItem?.(row.inspectionItemSpecId) ?? null) : null;
-    return node === null ? [row] : [row, { slot: true, key: `slot-${row.key}`, node }];
-  });
-  const gridColumns: Column<GridRow>[] = fit.columns.map((column, position) => ({
-    key: column.key,
-    header: column.header,
-    ...(column.align === undefined ? {} : { align: column.align }),
-    ...(column.width === undefined ? {} : { width: column.width }),
-    render: (row, rowIndex) => {
-      if (isSlot(row)) {
-        return position === 0 ? (
-          <SlotCell span={fit.columns.length}>{row.node}</SlotCell>
-        ) : (
-          <SlotGap />
-        );
-      }
-      if (inStep && row.sampleNo > 1 && GROUPED_COLUMNS.has(column.key)) return null;
-      return column.render?.(row, rowIndex);
-    },
-  }));
+  const gridColumns = fit.columns.map((column) =>
+    inStep && GROUPED_COLUMNS.has(column.key)
+      ? {
+          ...column,
+          render: (row: MeasurementRow, rowIndex: number) =>
+            row.sampleNo > 1 ? null : column.render?.(row, rowIndex),
+        }
+      : column,
+  );
 
   return (
     <section
@@ -473,7 +410,7 @@ export const MeasurementGrid = ({
               caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
               density="compact"
               columns={gridColumns}
-              rows={gridRows}
+              rows={paging.rows}
               getRowId={(row) => row.key}
               empty={
                 isLoading ? (

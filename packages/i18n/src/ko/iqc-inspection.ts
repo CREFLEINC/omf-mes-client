@@ -515,10 +515,6 @@ export const iqcInspection = {
       `${itemName} ${String(sampleNo)}회차 측정 결과`,
     judgmentLabel: (itemName: string, sampleNo: number): string =>
       `${itemName} ${String(sampleNo)}회차 판정`,
-    /** 불합격을 풀 때 그 항목 아래 불량 내역 처리(#247). */
-    dropDefectsTitle: '불량 내역을 삭제할까요?',
-    dropDefectsBody: '합격으로 바꾸면 이 항목 아래 입력한 불량 내역이 삭제됩니다.',
-    dropDefectsConfirm: '삭제',
     selectPlaceholder: '선택',
     /** 저장 · 확정을 막는 사유(#247) — 결과 입력 영역의 안내 줄에 선다. */
     blockedInvalid: '검사 항목별 결과에 숫자가 아닌 측정값이 있습니다.',
