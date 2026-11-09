@@ -231,6 +231,21 @@ export const normalMeasurement: InspectionMeasurementResponse = {
   calibrationExpiredAtMeasurement: false,
 };
 
+/** 필수 항목(치수 3회 · 외관 1회)을 모두 잰 측정치 — 필수 항목을 다 재야 확정된다(#247). */
+export const requiredMeasurements: InspectionMeasurementResponse[] = [
+  { ...normalMeasurement, inspectionMeasurementId: 8011, sampleNo: 1, numericValue: 10 },
+  { ...normalMeasurement, inspectionMeasurementId: 8012, sampleNo: 2, numericValue: 10 },
+  { ...normalMeasurement, inspectionMeasurementId: 8013, sampleNo: 3, numericValue: 10 },
+  {
+    ...normalMeasurement,
+    inspectionMeasurementId: 8014,
+    inspectionItemSpecId: appearanceSpec.inspectionItemSpecId,
+    sampleNo: 1,
+    numericValue: undefined,
+    textValue: '양호',
+  },
+];
+
 export const measurementsResponse = (
   items: InspectionMeasurementResponse[],
 ): { items: InspectionMeasurementResponse[]; page: PageMetaResponse } => ({

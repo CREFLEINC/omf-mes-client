@@ -45,6 +45,10 @@ export interface MeasurementRow {
   /** 이 항목이 요구하는 샘플 수 — 같은 항목의 줄들이 공유한다 */
   sampleCount: number;
   required: boolean;
+  /** 항목 자료형(`NUMERIC` · `TEXT` · `BOOLEAN`) — 입력 칸이 이것으로 갈린다(#247) */
+  dataType: string;
+  /** 수치 항목의 값으로 판정을 채워 시작하는가(계약 `automaticJudgment` · #247) */
+  autoJudgment: boolean;
   spec: SpecRange;
   /** 규격·측정치에 붙일 단위 코드. 없거나 모르면 `null` */
   unit: string | null;
@@ -117,6 +121,8 @@ export const toMeasurementRows = (
         sampleNo,
         sampleCount,
         required: spec.requiredFlag,
+        dataType: spec.dataTypeCode,
+        autoJudgment: spec.automaticJudgment,
         unit: unitOf(spec.uomId ?? undefined),
         spec: {
           target: spec.targetValue ?? null,

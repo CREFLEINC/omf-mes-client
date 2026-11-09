@@ -16,6 +16,7 @@ import {
   expiredMeasurement,
   itemSpecsResponse,
   measurementsResponse,
+  requiredMeasurements,
   overallJudgmentCodeValues,
   pageOf,
   queueItems,
@@ -37,8 +38,8 @@ const renderScreen = (
   respond: (request: Request) => Response = () => jsonResponse(queueResponse()),
   /** 회차 응답. 기본은 작성중 1회차이고, 빈 배열이면 아직 손대지 않은 의뢰다 */
   rounds = [draftRound],
-  /** 그 회차에 저장된 측정치 */
-  measurements: InspectionMeasurementResponse[] = [],
+  /** 그 회차에 저장된 측정치. 기본은 필수 항목을 다 잰 것이다 — 필수 항목을 다 재야 확정된다(#247) */
+  measurements: InspectionMeasurementResponse[] = requiredMeasurements,
   /** 검사기준 버전의 항목 규격. 빈 목록이면 그리드가 빈 자리 문구를 그린다 */
   specs = itemSpecsResponse(),
   /**
@@ -923,7 +924,8 @@ describe('IqcInspectionScreen', () => {
     expect(calls.some((url) => url.searchParams.has('codeGroupId'))).toBe(false);
   });
 
-  it('항목 판정 그룹을 종합 판정에 쓰지 않는다 — 그쪽에는 보류가 없다', async () => {
+  /* 항목 판정 그룹은 「검사 항목별 결과」 표의 판정 칸만 쓴다(#247) — 종합 판정은 보류가 있는 자기 그룹으로 부른다. */
+  it('종합 판정과 항목 판정을 각자의 그룹으로 부른다 — 항목 판정에는 보류가 없다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 
     await judgmentField();
@@ -932,7 +934,8 @@ describe('IqcInspectionScreen', () => {
       .filter((url) => url.pathname === '/mdm/code-values')
       .map((url) => url.searchParams.get('codeGroupCode'));
 
-    expect(groups).not.toContain(CODE_GROUPS.measurementJudgment);
+    expect(groups).toContain(CODE_GROUPS.overallJudgment);
+    expect(groups).toContain(CODE_GROUPS.measurementJudgment);
   });
 
   /*
@@ -952,6 +955,60 @@ describe('IqcInspectionScreen', () => {
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(new URL((writes[0] as Request).url).pathname).toContain(':confirm');
     expect(sent.some((url) => url.pathname.endsWith('/items'))).toBe(false);
+  });
+
+  /* 검사 기준(확정안)대로 항목별 측정을 받는다(omf-all-around#247). */
+  it('필수 항목을 다 재지 않으면 확정이 막히고, 측정값을 넣어 임시 저장하면 측정치가 실린다', async () => {
+    draftRecordsForTest = [
+      { defectRecordId: 1, defectCodeId: 7002, defectQty: 15, defectDescription: '표면 긁힘' },
+    ];
+    const { writes } = renderScreen('/?ir=1001', undefined, [draftRound], []);
+
+    await findRound(1);
+    expect(await screen.findByText(t.measurements.blockedRequired)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
+      '10.2',
+    );
+    /* 규격(9.9~10.1) 밖이라 판정이 불합격으로 채워진다 — 사람이 바꿀 수 있다. */
+    expect(
+      screen.getByRole('combobox', { name: t.measurements.judgmentLabel('치수', 1) }),
+    ).toHaveTextContent(t.measurements.judgmentNames.REJECTED ?? '불합격');
+    /* 저장하지 않은 측정값은 확정에 실리지 않아 먼저 저장하게 한다. */
+    expect(screen.getByText(t.measurements.blockedUnsaved)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    const body = (await (writes[0] as Request).clone().json()) as {
+      measurements?: {
+        inspectionItemSpecId: number;
+        numericValue?: number;
+        judgmentCode: string;
+      }[];
+    };
+    expect(body.measurements).toEqual([
+      expect.objectContaining({
+        inspectionItemSpecId: 7001,
+        sampleNo: 1,
+        numericValue: 10.2,
+        judgmentCode: 'REJECTED',
+      }),
+    ]);
+  });
+
+  it('값과 판정 중 하나만 적은 줄이 있으면 임시 저장을 막는다', async () => {
+    renderScreen('/?ir=1001', undefined, [draftRound], []);
+
+    await findRound(1);
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: t.measurements.valueLabel('외관', 1) }),
+      '긁힘',
+    );
+
+    expect(await screen.findByText(t.measurements.blockedIncomplete)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
   });
 
   it('확정하면 되돌릴 수 없는 쓰기가 잠금 토큰과 함께 나간다', async () => {
@@ -1043,9 +1100,14 @@ describe('IqcInspectionScreen', () => {
       samplingRatio: null,
       acceptanceNumber: 5,
     };
-    const { writes } = renderScreen('/?ir=1001', undefined, [draftRound], [], itemSpecsResponse(), [
-      { ...draftRound, statusCode: 'CONFIRMED', confirmedAt: '2026-10-22T04:00:00.000Z' },
-    ]);
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      undefined,
+      [draftRound],
+      requiredMeasurements,
+      itemSpecsResponse(),
+      [{ ...draftRound, statusCode: 'CONFIRMED', confirmedAt: '2026-10-22T04:00:00.000Z' }],
+    );
 
     await findRound(1);
     const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
@@ -1517,7 +1579,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
       '/?ir=1001',
       () => jsonResponse(queueResponse()),
       [rejectedRound],
-      [],
+      requiredMeasurements,
       itemSpecsResponse(),
       [
         {
@@ -1675,7 +1737,7 @@ describe('IqcInspectionScreen — 불합격 사유 임시 저장', () => {
       '/?ir=1002',
       () => jsonResponse(queueResponse()),
       [],
-      [],
+      requiredMeasurements,
       itemSpecsResponse(),
       [rejectedDraft],
     );

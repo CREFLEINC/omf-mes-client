@@ -60,6 +60,14 @@ import { toPageView } from './pagination';
 import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { PlanViewDialog } from './plan-view-dialog';
+import {
+  hasMissingRequired,
+  isSameMeasureDraft,
+  measureDraftOf,
+  measureSaveBlockOf,
+  toMeasurementInputs,
+  type MeasureDraft,
+} from './measurement-draft';
 import { MeasurementGrid } from './measurement-grid';
 import { toMeasurementRows } from './measurement-rows';
 import {
@@ -472,9 +480,43 @@ const IqcInspectionScreenBody = () => {
     setSavedHasDefects(true);
   }, [editingResultId, draftRejection.data, defectCodes.data]);
 
+  /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
+  const uoms = useUomLookup();
+  /*
+   * ⚠ **검사 시점에 고정된 기준 버전으로 부른다** — 의뢰가 준 버전을 그대로 쓰고 「최신
+   * 기준」을 찾지 않는다. 최신을 부르면 검사자가 재지 않은 항목이 그리드에 나타난다.
+   */
+  const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
+  /*
+   * ⚠ **재검사 중에는 앞 회차의 측정치를 그리지 않는다.** 그리면 아직 아무것도 재지 않은 새
+   * 회차에 앞 회차의 값이 들어 있는 것처럼 보이고, 검사자가 그것을 자기가 잰 값으로 읽는다.
+   */
+  const measurements = useMeasurements(
+    isReinspectingNow ? null : (round?.inspectionResultId ?? null),
+  );
+
+  const measurementRows = toMeasurementRows(
+    itemSpecs.data ?? [],
+    measurements.data ?? [],
+    uoms.codeOf,
+  );
+
+  /*
+   * 항목별 측정 입력(omf-all-around#247) — 검사 중인 회차는 「검사 항목별 결과」 표에서 값 · 판정을 넣고 임시 저장에 싣는다.
+   * 저장된 측정치가 바뀌면(의뢰 · 회차를 바꾸거나 저장 뒤 재조회) 그 값으로 되돌린다. 재검사 회차는 빈 칸에서 시작한다.
+   */
+  const savedMeasureDraft = measureDraftOf(measurementRows);
+  const savedMeasureKey = JSON.stringify(savedMeasureDraft);
+  const [measureDraft, setMeasureDraft] = useState<MeasureDraft>({});
+  useEffect(() => {
+    setMeasureDraft(JSON.parse(savedMeasureKey) as MeasureDraft);
+  }, [selectedId, isReinspectingNow, savedMeasureKey]);
+  const measureChanged = !isSameMeasureDraft(measureDraft, savedMeasureDraft);
+  const measurementJudgmentValues = useCodeValues(CODE_GROUPS.measurementJudgment);
+
   /*
    * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
-   * 종합 판정이다. 회차가 없거나 재검사 회차를 쓰는 중이면 기준은 빈 초기 상태다.
+   * 종합 판정이다(+ 항목별 측정 · #247). 회차가 없거나 재검사 회차를 쓰는 중이면 기준은 빈 초기 상태다.
    * ⛔ 저장 요청 본문·계산·검증·확정 조건과는 무관하다 — 단추를 켜고 끄는 데만 쓴다.
    */
   const savedDraft = isReinspectingNow ? EMPTY_QUANTITY_DRAFT : draftOf(round);
@@ -487,7 +529,8 @@ const IqcInspectionScreenBody = () => {
     (keepsDefects &&
       (hasDefects !== savedHasDefects ||
         (hasDefects && JSON.stringify(defects) !== JSON.stringify(savedDefects)))) ||
-    fourMChanged;
+    fourMChanged ||
+    measureChanged;
 
   const rows = queue.data?.rows ?? [];
   const pageView = toPageView(queue.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -672,6 +715,14 @@ const IqcInspectionScreenBody = () => {
    */
   const acceptanceNumber = samplingRule.data?.acceptanceNumber ?? null;
   const isOpenRound = isReinspectingNow || round?.statusCode !== 'CONFIRMED';
+  /* 측정 입력이 저장을 막는 사유(#247) — 숫자가 아닌 값 · 값과 판정 중 하나만 적은 줄. */
+  const measureSaveBlock = isOpenRound ? measureSaveBlockOf(measurementRows, measureDraft) : null;
+  const measureSaveBlockReason =
+    measureSaveBlock === 'invalid'
+      ? t.measurements.blockedInvalid
+      : measureSaveBlock === 'incomplete'
+        ? t.measurements.blockedIncomplete
+        : null;
   const expectedJudgment = isOpenRound ? expectedJudgmentOf(draft, acceptanceNumber) : null;
   const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
   /*
@@ -700,8 +751,6 @@ const IqcInspectionScreenBody = () => {
     changeDraft(next);
     applyAutoJudgment(next);
   };
-  /* 수량 옆 단위 코드(표시 전용). 회차는 의뢰의 단위로 저장되므로(저장 요청의 `uomId`) 의뢰 단위 하나를 쓴다. */
-  const uoms = useUomLookup();
 
   /*
    * 품목·자재 LOT 은 **번호마다 하나씩** 이름으로 푼다 — 계약이 식별자만 싣고, 번호를 그대로
@@ -722,25 +771,6 @@ const IqcInspectionScreenBody = () => {
   const historyRounds = isReinspectingNow
     ? [...(rounds.data ?? [])].sort((left, right) => right.inspectionRound - left.inspectionRound)
     : previousRounds(rounds.data ?? []);
-
-  /*
-   * ⚠ **검사 시점에 고정된 기준 버전으로 부른다** — 의뢰가 준 버전을 그대로 쓰고 「최신
-   * 기준」을 찾지 않는다. 최신을 부르면 검사자가 재지 않은 항목이 그리드에 나타난다.
-   */
-  const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
-  /*
-   * ⚠ **재검사 중에는 앞 회차의 측정치를 그리지 않는다.** 그리면 아직 아무것도 재지 않은 새
-   * 회차에 앞 회차의 값이 들어 있는 것처럼 보이고, 검사자가 그것을 자기가 잰 값으로 읽는다.
-   */
-  const measurements = useMeasurements(
-    isReinspectingNow ? null : (round?.inspectionResultId ?? null),
-  );
-
-  const measurementRows = toMeasurementRows(
-    itemSpecs.data ?? [],
-    measurements.data ?? [],
-    uoms.codeOf,
-  );
 
   /**
    * 저장이 보낼 값을 만든다.
@@ -785,6 +815,8 @@ const IqcInspectionScreenBody = () => {
           ? [EMPTY_DEFECT]
           : defects;
     savingNewRound.current = editingResultId === null;
+    /* 검사한 시각은 지금이다. 순수 함수가 아니라 이 자리에서 읽는다. */
+    const now = new Date().toISOString();
     save.write({
       inspectionRequestId,
       inspectedQty: inspected,
@@ -798,8 +830,7 @@ const IqcInspectionScreenBody = () => {
        * 그 쓰기는 되돌릴 수 없다.
        */
       overallJudgmentCode: judgment,
-      /* 검사한 시각은 지금이다. 순수 함수가 아니라 이 자리에서 읽는다. */
-      inspectedAt: new Date().toISOString(),
+      inspectedAt: now,
       /*
        * 재검사면 앞 회차를 가리킨다 — 이 값이 있어야 서버가 회차를 +1 하고 사슬을 잇는다.
        * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
@@ -807,6 +838,10 @@ const IqcInspectionScreenBody = () => {
       previousResultId: reinspectingFrom,
       defects: defectsBody,
       fourMChange: fourMValue,
+      /* 측정 입력을 고쳤을 때만 싣는다 — 서버가 그 회차의 측정치를 통째로 갈아 끼운다(#247). */
+      measurements: measureChanged
+        ? toMeasurementInputs(measurementRows, measureDraft, now)
+        : undefined,
     });
   };
 
@@ -919,7 +954,7 @@ const IqcInspectionScreenBody = () => {
               ? t.result.workerNotLinked
               : fourMBlocked
                 ? t.result.fourMChange.blocked
-                : null
+                : measureSaveBlockReason
           }
           isInputLocked={workerMissing}
           onConnectWorker={workerMissing ? () => setIsWorkerConnectOpen(true) : null}
@@ -1025,7 +1060,12 @@ const IqcInspectionScreenBody = () => {
                 ? t.result.judgmentChange.required
                 : fourMBlocked
                   ? t.result.fourMChange.blocked
-                  : null
+                  : /* 측정 입력은 확정 요청에 실리지 않는다 — 먼저 저장해야 남는다. 필수 항목은 다 재야 확정한다(#247). */
+                    measureChanged
+                    ? t.measurements.blockedUnsaved
+                    : hasMissingRequired(measurementRows, measureDraft)
+                      ? t.measurements.blockedRequired
+                      : null
           }
           /* ① 수량 [확정]으로 판정 단계로 넘어가며 최종 판정을 자동으로 채운다 — 채울 것이 없으면 그대로 둔다(사용자 지시 2026-10-29). */
           onQtyConfirm={() => applyAutoJudgment(draft)}
@@ -1115,6 +1155,17 @@ const IqcInspectionScreenBody = () => {
                     rows={measurementRows}
                     isLoading={itemSpecs.isLoading || measurements.isLoading}
                     scrollX
+                    /* 검사 중인 회차는 여기서 측정값을 넣는다(#247). 확정된 회차 · 끝난 의뢰는 읽기다. */
+                    edit={
+                      isOpenRound && !rounds.isPending
+                        ? {
+                            draft: measureDraft,
+                            onChange: setMeasureDraft,
+                            judgmentOptions: toCodeOptions(measurementJudgmentValues.data ?? []),
+                            disabled: workerMissing || save.isSaving || confirm.isSaving,
+                          }
+                        : null
+                    }
                     /* [기준 조회]와 같은 창을 연다(사용자 지시 2026-10-28 · #197). */
                     onViewPlan={
                       samplingRule.data === undefined ||

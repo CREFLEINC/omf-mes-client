@@ -317,6 +317,16 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     calibrationWarning:
       'Hãy kiểm tra lại giá trị đo đó. Việc này không chặn kiểm tra — về hiệu chuẩn thiết bị đo, hãy hỏi người phụ trách thiết bị.',
     calibrationExpired: 'Hết hạn hiệu chuẩn',
+    valueLabel: (itemName: string, sampleNo: number): string =>
+      `Kết quả đo ${itemName} lần ${String(sampleNo)}`,
+    judgmentLabel: (itemName: string, sampleNo: number): string =>
+      `Phán định ${itemName} lần ${String(sampleNo)}`,
+    selectPlaceholder: 'Chọn',
+    invalidNumber: 'Vui lòng nhập số.',
+    blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
+    blockedIncomplete: 'Vui lòng nhập cả giá trị đo và phán định trong kết quả theo hạng mục.',
+    blockedRequired: 'Cần nhập đủ giá trị đo và phán định của các hạng mục bắt buộc để xác nhận.',
+    blockedUnsaved: 'Vui lòng lưu tạm kết quả theo hạng mục kiểm tra trước.',
   },
 
   pageNav: {

@@ -1,6 +1,15 @@
-import { AlertBanner, Button, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Chip,
+  EmptyState,
+  Icon,
+  Table,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useClientPage } from '../../patterns/client-page';
@@ -8,6 +17,15 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';
+import { Select } from '../../patterns/select';
+import type { CodeOption } from './code-options';
+import {
+  entryOf,
+  isInvalidValue,
+  withJudgment,
+  withValue,
+  type MeasureDraft,
+} from './measurement-draft';
 import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './measurement-rows';
 
 /**
@@ -16,9 +34,8 @@ import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './me
  * ⭐ **새 부품을 만들지 않았다.** 「편집 가능한 표」가 갭처럼 보이지만 `Table` 의 컬럼이
  * 커스텀 렌더러를 지원해 조합으로 선다(스펙 §7-1 — `c` 조합 · DS 이슈 없음).
  *
- * ⚠ **이 회차는 읽기다.** 측정치 입력은 항목의 자료형(`dataTypeCode`)에 따라 세 칸 중
- * 하나만 채워야 하는데, 그 값 목록이 아직 확정되지 않았다(omf-mes#179). 모양으로 추론해
- * 그리면 불리언 항목이 텍스트로 떨어져 자료가 틀어진다 — 답이 온 뒤에 붙인다.
+ * ⭐ **검사 중인 회차는 여기서 측정값을 넣는다**(omf-all-around#247). 값 칸은 항목 자료형(`dataTypeCode`)으로 갈린다 —
+ * 수치는 숫자, 글은 글, 예/아니오는 양호 · 불량. `edit` 를 주지 않으면 종전처럼 읽기다.
  *
  * ⛔ **미검교정을 화면이 계산하지 않는다.** 서버가 측정 시점 기준으로 판정해 내려 준
  * 값을 그대로 보인다(공유계약 L-2). 그리고 **차단하지 않는다** — 무효화 정책이 미결이라
@@ -112,9 +129,105 @@ export interface MeasurementGridProps {
   isLoading: boolean;
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
+  /** 검사 중인 회차의 측정 입력(#247). 없으면 읽기다 */
+  edit?: MeasureEdit | null;
   /** 적용 검사 기준 창을 연다 — [기준 조회]와 같다(창의 [수정]으로 검사기준 화면에 간다 · #197). 없으면 단추를 두지 않는다 */
   onViewPlan?: () => void;
 }
+
+export interface MeasureEdit {
+  draft: MeasureDraft;
+  onChange: (draft: MeasureDraft) => void;
+  /** 측정치 판정 선택지(`INSPECTION_MEASUREMENT_JUDGMENT`) */
+  judgmentOptions: CodeOption[];
+  disabled: boolean;
+}
+
+/* 열 정의는 화면 밖에 고정이라(열 순서 · 폭 기억) 입력 상태는 맥락으로 칸에 넘긴다. */
+const EditContext = createContext<MeasureEdit | null>(null);
+
+const BOOLEAN_OPTIONS: CodeOption[] = [
+  { value: 'true', label: t.booleanTrue },
+  { value: 'false', label: t.booleanFalse },
+];
+
+/** 이 줄의 판정 — 입력 중이면 초안의 판정, 아니면 저장된 판정. 없으면 `''`. */
+const judgmentOf = (row: MeasurementRow, edit: MeasureEdit | null): string =>
+  edit === null ? (row.measured?.judgmentCode ?? '') : entryOf(edit.draft, row.key).judgment;
+
+const ValueCell = ({ row }: { row: MeasurementRow }) => {
+  const edit = useContext(EditContext);
+  if (edit === null) {
+    return (
+      <>
+        {describeValue(row)}
+        {row.measured?.calibrationExpired === true && (
+          <>
+            {' '}
+            <Chip variant="status" size="sm" status="warning">
+              {t.calibrationExpired}
+            </Chip>
+          </>
+        )}
+      </>
+    );
+  }
+  const entry = entryOf(edit.draft, row.key);
+  const label = t.valueLabel(row.itemName, row.sampleNo);
+  if (row.dataType === 'BOOLEAN') {
+    return (
+      <Select
+        size="sm"
+        aria-label={label}
+        options={BOOLEAN_OPTIONS}
+        value={entry.value === '' ? null : entry.value}
+        placeholder={t.selectPlaceholder}
+        disabled={edit.disabled}
+        onChange={(value) => edit.onChange(withValue(edit.draft, row, value))}
+      />
+    );
+  }
+  return (
+    <TextField
+      size="sm"
+      fullWidth
+      aria-label={label}
+      inputMode={row.dataType === 'NUMERIC' ? 'decimal' : undefined}
+      value={entry.value}
+      error={isInvalidValue(row, entry) ? t.invalidNumber : undefined}
+      disabled={edit.disabled}
+      onChange={(event) => edit.onChange(withValue(edit.draft, row, event.target.value))}
+    />
+  );
+};
+
+const JudgmentCell = ({ row }: { row: MeasurementRow }) => {
+  const edit = useContext(EditContext);
+  const code = judgmentOf(row, edit);
+  if (edit === null) {
+    return code === '' ? (
+      t.notMeasured
+    ) : (
+      <Chip variant="status" size="sm" status={JUDGMENT_STATUS[code] ?? 'idle'}>
+        {t.judgmentNames[code] ?? code}
+      </Chip>
+    );
+  }
+  const entry = entryOf(edit.draft, row.key);
+  return (
+    <Select
+      size="sm"
+      aria-label={t.judgmentLabel(row.itemName, row.sampleNo)}
+      options={edit.judgmentOptions}
+      value={code === '' ? null : code}
+      placeholder={t.selectPlaceholder}
+      /* 값을 적었는데 판정이 비면 빨간 테두리 — 그 줄 때문에 저장이 막힌다. */
+      invalid={code === '' && entry.value.trim() !== ''}
+      disabled={edit.disabled || edit.judgmentOptions.length === 0}
+      onChange={(value) => edit.onChange(withJudgment(edit.draft, row, value))}
+    />
+  );
+};
 
 const columns: Column<MeasurementRow>[] = [
   {
@@ -160,37 +273,14 @@ const columns: Column<MeasurementRow>[] = [
     align: 'center',
     header: t.columns.value,
     width: '96px',
-    render: (row) => (
-      <>
-        {describeValue(row)}
-        {row.measured?.calibrationExpired === true && (
-          <>
-            {' '}
-            <Chip variant="status" size="sm" status="warning">
-              {t.calibrationExpired}
-            </Chip>
-          </>
-        )}
-      </>
-    ),
+    render: (row) => <ValueCell row={row} />,
   },
   {
     key: 'judgment',
     align: 'center',
     header: t.columns.judgment,
     width: '96px',
-    render: (row) =>
-      row.measured === null ? (
-        t.notMeasured
-      ) : (
-        <Chip
-          variant="status"
-          size="sm"
-          status={JUDGMENT_STATUS[row.measured.judgmentCode] ?? 'idle'}
-        >
-          {t.judgmentNames[row.measured.judgmentCode] ?? row.measured.judgmentCode}
-        </Chip>
-      ),
+    render: (row) => <JudgmentCell row={row} />,
   },
 ];
 
@@ -201,6 +291,7 @@ export const MeasurementGrid = ({
   rows,
   isLoading,
   scrollX = false,
+  edit = null,
   onViewPlan,
 }: MeasurementGridProps) => {
   /*
@@ -214,11 +305,9 @@ export const MeasurementGrid = ({
   /* 합격 · 불합격으로 거른 뒤 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). 칩 건수는 거르기 전 전체에서 센다. */
   const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
   const countOf = (code: string): number =>
-    rows.filter((row) => row.measured?.judgmentCode === code).length;
+    rows.filter((row) => judgmentOf(row, edit) === code).length;
   const paging = useClientPage(
-    judgmentFilter === null
-      ? rows
-      : rows.filter((row) => row.measured?.judgmentCode === judgmentFilter),
+    judgmentFilter === null ? rows : rows.filter((row) => judgmentOf(row, edit) === judgmentFilter),
   );
 
   return (
@@ -273,26 +362,28 @@ export const MeasurementGrid = ({
         className="iqc-inspection-table-box inspection-queue-table"
         style={resizable.style}
       >
-        <Table
-          caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-          density="compact"
-          columns={fit.columns}
-          rows={paging.rows}
-          getRowId={(row) => row.key}
-          empty={
-            isLoading ? (
-              <p className="field-note">{t.loading}</p>
-            ) : (
-              /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
-              <EmptyState
-                size="sm"
-                icon={<Icon name="content_paste_off" size={32} />}
-                title={t.noItems}
-                description={t.noItemsHint}
-              />
-            )
-          }
-        />
+        <EditContext.Provider value={edit}>
+          <Table
+            caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+            density="compact"
+            columns={fit.columns}
+            rows={paging.rows}
+            getRowId={(row) => row.key}
+            empty={
+              isLoading ? (
+                <p className="field-note">{t.loading}</p>
+              ) : (
+                /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
+                <EmptyState
+                  size="sm"
+                  icon={<Icon name="content_paste_off" size={32} />}
+                  title={t.noItems}
+                  description={t.noItemsHint}
+                />
+              )
+            }
+          />
+        </EditContext.Provider>
       </div>
       <PageNav {...paging.nav} />
     </section>

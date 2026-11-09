@@ -26,6 +26,7 @@ import {
 } from './types';
 
 type InspectionDefectInput = components['schemas']['InspectionDefectInput'];
+type InspectionMeasurementInput = components['schemas']['InspectionMeasurementInput'];
 
 /**
  * 이 회차의 요청 — **읽기 하나다.**
@@ -270,6 +271,11 @@ export interface SaveDraftVariables {
    * 4M 변경품(omf-all-around#63 · 서버 선행 P-86) — `undefined` 면 키를 싣지 않는다(LOT 없는 의뢰). `null` 이면 변경품 아님.
    */
   fourMChange: FourMChangeForward | null | undefined;
+  /**
+   * 항목별 측정치(omf-all-around#247) — 서버가 그 회차의 측정치를 이 값으로 갈아 끼운다(빈 배열 = 지움).
+   * `undefined` 면 키를 싣지 않는다 — 서버가 기존 측정치에 손대지 않는다(측정 입력을 고치지 않았다).
+   */
+  measurements: InspectionMeasurementInput[] | undefined;
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
@@ -372,6 +378,9 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreateForward => (
   /* 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다. */
   ...(v.defects === undefined || v.defects.length === 0 ? {} : { defects: v.defects }),
   ...fourMOf(v.fourMChange),
+  ...(v.measurements === undefined || v.measurements.length === 0
+    ? {}
+    : { measurements: v.measurements }),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => ({
@@ -383,6 +392,7 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdateForward => (
   /* ⭐ 빈 배열도 싣는다 — 불합격을 풀고 저장하면 앞서 임시 저장한 사유를 지워야 한다. `undefined` 는 키를 뺀다. */
   ...(v.defects === undefined ? {} : { defects: v.defects }),
   ...fourMOf(v.fourMChange),
+  ...(v.measurements === undefined ? {} : { measurements: v.measurements }),
 });
 
 const fetchItemSpecs = (

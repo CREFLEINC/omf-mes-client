@@ -497,6 +497,18 @@ export const iqcInspection = {
     calibrationWarning:
       '해당 측정치를 다시 확인하세요. 검사를 막지는 않습니다 — 계측기 교정은 설비 담당자에게 문의하세요.',
     calibrationExpired: '교정 만료',
+    /** 검사 중 측정 입력(#247) — 칸의 접근 이름 · 빈 선택 칸 글 · 수치 칸 오류. */
+    valueLabel: (itemName: string, sampleNo: number): string =>
+      `${itemName} ${String(sampleNo)}회차 측정 결과`,
+    judgmentLabel: (itemName: string, sampleNo: number): string =>
+      `${itemName} ${String(sampleNo)}회차 판정`,
+    selectPlaceholder: '선택',
+    invalidNumber: '숫자로 입력해 주세요.',
+    /** 저장 · 확정을 막는 사유(#247) — 결과 입력 영역의 안내 줄에 선다. */
+    blockedInvalid: '검사 항목별 결과에 숫자가 아닌 측정값이 있습니다.',
+    blockedIncomplete: '검사 항목별 결과에서 측정값과 판정을 함께 입력해 주세요.',
+    blockedRequired: '필수 검사 항목의 측정값과 판정을 모두 입력해야 확정할 수 있습니다.',
+    blockedUnsaved: '검사 항목별 결과를 먼저 임시 저장해 주세요.',
   },
 
   pageNav: {
