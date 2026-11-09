@@ -32390,11 +32390,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   font: var(--type-label-lg);
 }
 
-.parts-iqc-history tbody tr:not(.parts-iqc-history-detail) {
+.parts-iqc-history > tbody > tr:not(.parts-iqc-history-detail) {
   cursor: pointer;
 }
 
-.parts-iqc-history tbody tr:not(.parts-iqc-history-detail):hover > td {
+.parts-iqc-history > tbody > tr:not(.parts-iqc-history-detail):hover > td {
   background: var(--surface-container-high);
 }
 
