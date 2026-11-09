@@ -329,8 +329,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     calibrationExpired: 'Hết hạn hiệu chuẩn',
     valueLabel: (itemName: string, sampleNo: number): string =>
       `Kết quả đo ${itemName} lần ${String(sampleNo)}`,
-    judgmentLabel: (itemName: string, sampleNo: number): string =>
-      `Phán định ${itemName} lần ${String(sampleNo)}`,
+    judgmentLabel: (itemName: string): string => `Phán định ${itemName}`,
     selectPlaceholder: 'Chọn',
     blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
     blockedIncomplete: 'Vui lòng chọn phán định cho các hạng mục đã nhập giá trị đo.',

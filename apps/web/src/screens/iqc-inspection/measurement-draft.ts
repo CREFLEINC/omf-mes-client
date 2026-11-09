@@ -134,6 +134,13 @@ export const withJudgment = (
   [row.key]: { ...entryOf(draft, row.key), judgment, autoFilled: false, bulkPrev: null },
 });
 
+/** 항목의 판정을 고른다 — 그 항목의 모든 회차에 같은 판정이 들어간다. */
+export const withItemJudgment = (
+  draft: MeasureDraft,
+  samples: readonly MeasurementRow[],
+  judgment: string,
+): MeasureDraft => samples.reduce((next, sample) => withJudgment(next, sample, judgment), draft);
+
 /** 수치 칸에 숫자가 아닌 값이 있는가. */
 export const isInvalidValue = (row: MeasurementRow, entry: MeasureEntry): boolean =>
   row.dataType === 'NUMERIC' &&

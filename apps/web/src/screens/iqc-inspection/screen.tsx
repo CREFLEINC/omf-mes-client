@@ -74,6 +74,7 @@ import {
   type MeasureDraft,
 } from './measurement-draft';
 import { MeasurementGrid } from './measurement-grid';
+import { MeasurementSheet } from './measurement-sheet';
 import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   useInspectionItemSpecs,
@@ -1083,10 +1084,8 @@ const IqcInspectionScreenBody = () => {
           /* 검사 항목별 결과 입력 — ② 판정 맨 위(#247 · 사용자 지시 2026-11-09). 검사 기준에 항목이 없으면 두지 않는다. */
           measurementSlot={
             isOpenRound && measurementRows.length > 0 ? (
-              <MeasurementGrid
+              <MeasurementSheet
                 rows={measurementRows}
-                isLoading={itemSpecs.isLoading || measurements.isLoading}
-                scrollX
                 dataTypeNames={dataTypeNames}
                 edit={{
                   draft: measureDraft,

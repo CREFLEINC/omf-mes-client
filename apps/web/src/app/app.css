@@ -29591,10 +29591,9 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: transparent;
 }
 
-/* 같은 항목의 2회차부터는 비운 칸의 윗선을 지워 한 칸처럼 보인다. */
-.iqc-inspection-measure-sheet table td:empty:nth-child(n):nth-child(n) {
-  border-top-color: transparent;
-  box-shadow: 0 -1px 0 var(--surface);
+/* 이 항목이 재지 않는 회차 칸 — 부품 입력표처럼 바탕이 어둡다. */
+.iqc-inspection-measure-sheet table tbody tr:nth-child(n) > td:empty {
+  background: var(--surface-container-low);
 }
 
 .iqc-inspection-measure-sheet .parts-iqc-spec {
@@ -29609,7 +29608,13 @@ button.iqc-inspection-step-toggle:focus-visible {
 
 .iqc-inspection-measure-sheet button[role="combobox"] {
   width: 100%;
+  min-width: 0;
+  padding-inline: var(--space-2);
   border-radius: var(--radius-sm);
+}
+
+.iqc-inspection-measure-sheet button[role="combobox"] > :last-child {
+  margin-inline-start: 0;
 }
 
 /*

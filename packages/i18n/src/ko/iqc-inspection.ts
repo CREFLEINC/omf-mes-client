@@ -513,8 +513,7 @@ export const iqcInspection = {
     /** 검사 중 측정 입력(#247) — 칸의 접근 이름 · 빈 선택 칸 글 · 수치 칸 오류. */
     valueLabel: (itemName: string, sampleNo: number): string =>
       `${itemName} ${String(sampleNo)}회차 측정 결과`,
-    judgmentLabel: (itemName: string, sampleNo: number): string =>
-      `${itemName} ${String(sampleNo)}회차 판정`,
+    judgmentLabel: (itemName: string): string => `${itemName} 판정`,
     selectPlaceholder: '선택',
     /** 저장 · 확정을 막는 사유(#247) — 결과 입력 영역의 안내 줄에 선다. */
     blockedInvalid: '검사 항목별 결과에 숫자가 아닌 측정값이 있습니다.',
