@@ -129,6 +129,13 @@ export const ProcessWorkspace = ({
   const planFacts = editor.plans.data?.items ?? [];
   const confirmedPlans = planFacts.filter((plan) => plan.confirmedAt !== null);
   /*
+   * 확정 계획량. 서버 값(`confirmedPlanQty`)은 W/O 가 모두 취소된 확정 계획을 뺀다 — 목록의 「남은 수량 계획 필요」와
+   * 생산계획 단계의 남은 수량이 이 값이다. 단계 판정과 요약도 같은 값을 써야 「완료」로 잘못 보이지 않는다.
+   * 서버가 싣지 않을 때만 확정 계획을 더한다.
+   */
+  const confirmedQty =
+    order.confirmedPlanQty ?? confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0);
+  /*
    * 확정된 계획이 있으면 개정은 바꿀 수 없다. 그 계획이 쓰는 개정이 지금은 쓸 수 없는(작성중, 기간 밖) 개정이어도
    * 보여야 하므로, 이때는 쓸 수 있는 것만이 아니라 모든 개정을 받는다.
    */
@@ -196,7 +203,7 @@ export const ProcessWorkspace = ({
         return row === undefined ? null : rowName(row);
       })(),
       totalQty: editor.rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
-      confirmedQty: confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
+      confirmedQty,
       orderQty: order.orderQty,
     },
     stepName('assign'),
@@ -487,7 +494,7 @@ export const ProcessWorkspace = ({
     });
   }
   if (index > 1) {
-    const qty = confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0);
+    const qty = confirmedQty;
     const planLineNames = [
       ...new Set(confirmedPlans.map((entry) => lineName(entry.plannedLineId))),
     ];
@@ -821,9 +828,7 @@ export const ProcessWorkspace = ({
             reasons={derived.reasons}
             detail={{
               orderQty: formatQty(order.orderQty),
-              plannedQty: formatQty(
-                confirmedPlans.reduce((sum, entry) => sum + entry.plannedQty, 0),
-              ),
+              plannedQty: formatQty(confirmedQty),
               uom: uomLabelOf(order.uomId),
             }}
           />

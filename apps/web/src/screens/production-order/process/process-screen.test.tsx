@@ -54,6 +54,8 @@ interface World {
   /** 서버 칩 판정. 시험 도중 바꿔 머리가 다시 읽는지 본다. */
   worklistState?: string;
   worklistReasons?: { code: string; workOrderCount: number }[];
+  /** 서버 확정 계획량. W/O 가 모두 취소된 확정 계획은 빠진다. 주지 않으면 키를 뺀다. */
+  confirmedPlanQty?: number;
   /** 품목의 ERP 품목그룹. 주지 않으면 서버가 이 칸을 모르는 것처럼 키를 뺀다. */
   itemGroupCode?: string | null;
   /** 주문의 ERP 원번호. 주지 않으면 제목 번호와 다른 `ERP-701`이다. */
@@ -113,6 +115,7 @@ const orderBody = (state: World) => ({
   autoPlan: state.autoPlan,
   ...(state.worklistState === undefined ? {} : { worklistState: state.worklistState }),
   ...(state.worklistReasons === undefined ? {} : { worklistReasons: state.worklistReasons }),
+  ...(state.confirmedPlanQty === undefined ? {} : { confirmedPlanQty: state.confirmedPlanQty }),
 });
 
 const planBody = (plan: Plan) => ({
@@ -410,6 +413,29 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(screen.getByRole('tab', { name: tp.steps.release })).toHaveAttribute(
       'aria-disabled',
       'true',
+    );
+  });
+
+  it('W/O 가 모두 취소된 확정 계획은 확정 계획량에서 빠져, 생산계획 단계로 열고 남은 수량을 말한다(#246)', async () => {
+    /* 확정 계획 둘(200 + 100) 가운데 100 의 W/O 가 모두 취소됐다. 서버 확정 계획량은 200 이다. */
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [
+          { ...CONFIRMED_PLAN, plannedQty: 200 },
+          { ...CONFIRMED_PLAN, productionPlanId: 502, planNo: 'PP-502', plannedQty: 100 },
+        ],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+        confirmedPlanQty: 200,
+        worklistState: 'ACTION_REQUIRED',
+        worklistReasons: [{ code: 'PLAN_QTY_REMAINING', workOrderCount: 0 }],
+      }),
+    );
+    await currentStep(tp.steps.plan);
+    const chip = await screen.findByText(t.reasons.PLAN_QTY_REMAINING);
+    expect(chip.closest('button')).toHaveAccessibleDescription(
+      /주문 300.* 중 200.*만 계획되었습니다/,
     );
   });
 
