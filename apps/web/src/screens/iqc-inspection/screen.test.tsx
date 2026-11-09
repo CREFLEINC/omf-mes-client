@@ -990,9 +990,12 @@ describe('IqcInspectionScreen', () => {
       '10.2',
     );
     /* 규격(9.9~10.1) 밖이라 판정이 불합격으로 채워진다 — 사람이 바꿀 수 있다. */
+    /* 값으로 판정되는 항목은 글자로 보인다(부품 입력표와 같다). */
     expect(
-      screen.getByRole('combobox', { name: t.measurements.judgmentLabel('치수') }),
-    ).toHaveTextContent(t.measurements.judgmentNames.REJECTED ?? '불합격');
+      within(screen.getByRole('region', { name: t.measurements.heading })).getByText(
+        t.measurements.judgmentNames.REJECTED ?? '불합격',
+      ),
+    ).toBeInTheDocument();
     /* 저장하지 않은 측정값은 확정에 실리지 않아 먼저 저장하게 한다. */
     expect(screen.getByText(t.measurements.blockedUnsaved)).toBeInTheDocument();
 
@@ -1027,9 +1030,12 @@ describe('IqcInspectionScreen', () => {
     expect(
       await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
     ).toHaveValue('10');
+    /* 값으로 판정되는 항목은 글자로 보인다(부품 입력표와 같다). */
     expect(
-      screen.getByRole('combobox', { name: t.measurements.judgmentLabel('치수') }),
-    ).toHaveTextContent(t.measurements.judgmentNames.ACCEPTED ?? '합격');
+      within(screen.getByRole('region', { name: t.measurements.heading })).getByText(
+        t.measurements.judgmentNames.ACCEPTED ?? '합격',
+      ),
+    ).toBeInTheDocument();
     /* 글 항목은 기준값이 없어 결과는 비우고 판정만 합격이다. */
     expect(screen.getByRole('textbox', { name: t.measurements.valueLabel('외관', 1) })).toHaveValue(
       '',

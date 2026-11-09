@@ -29575,6 +29575,17 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 /* 입력 중인 항목 표 — 부품 사업부 수입 검사 입력표(`.parts-iqc-grid`)처럼 모든 칸에 얇은 선, 좁은 여백(#247). */
+/* 둥근 상자 없이 표만 — 부품 입력표와 같다. */
+.iqc-inspection-table-box.iqc-inspection-measure-sheet {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.iqc-inspection-measure-sheet table:nth-child(n) {
+  border-collapse: collapse;
+}
+
 .iqc-inspection-measure-sheet table th:nth-child(n):nth-child(n),
 .iqc-inspection-measure-sheet table td:nth-child(n):nth-child(n) {
   padding: var(--space-1);
@@ -29614,8 +29625,12 @@ button.iqc-inspection-step-toggle:focus-visible {
 }
 
 .iqc-inspection-measure-sheet .parts-iqc-cell {
-  height: var(--control-height-sm);
   min-width: 0;
+}
+
+/* 불합격 줄은 바탕이 붉다(부품 입력표와 같다). */
+.iqc-inspection-measure-sheet table tbody tr:nth-child(n):has([data-row-ng]) > td:nth-child(n) {
+  background: var(--semantic-error-container);
 }
 
 .iqc-inspection-measure-sheet button[role="combobox"] {

@@ -14,6 +14,7 @@ import {
   withItemJudgment,
   withValue,
   type MeasureDraft,
+  type MeasureEntry,
 } from './measurement-draft';
 import { ItemCell, describeSpec, withUnit } from './measurement-grid';
 import { hasCalibrationWarning, type MeasurementRow } from './measurement-rows';
@@ -72,7 +73,7 @@ const ValueInput = ({ row, edit }: { row: MeasurementRow; edit: MeasureEdit }) =
   if (row.dataType === 'BOOLEAN') {
     return (
       <Select
-        size="sm"
+        size="md"
         aria-label={label}
         options={BOOLEAN_OPTIONS}
         value={entry.value === '' ? null : entry.value}
@@ -120,20 +121,39 @@ const SpecLines = ({ row }: { row: MeasurementRow }) => {
   );
 };
 
+/** 회차 판정들 → 항목 판정. 불합격이 있으면 불합격, 모두 합격이면 합격, 아직이면 `''`. */
+const itemJudgmentOf = (entries: readonly MeasureEntry[]): string =>
+  entries.some((entry) => entry.judgment === 'REJECTED')
+    ? 'REJECTED'
+    : entries.every((entry) => entry.judgment === 'ACCEPTED')
+      ? 'ACCEPTED'
+      : '';
+
+/** 값만으로 판정이 정해지는 항목인가 — 자동 판정이 켜진 선택형, 또는 규격이 있는 수치. */
+const isJudgedByValue = (row: MeasurementRow): boolean =>
+  row.autoJudgment &&
+  (row.dataType === 'BOOLEAN' ||
+    (row.dataType === 'NUMERIC' && (row.spec.lower !== null || row.spec.upper !== null)));
+
 /**
  * 항목 판정 — 회차 중 불합격이 있으면 불합격, 모두 합격이면 합격, 아직이면 빈 칸. 고르면 그 항목의 모든 회차에 같은 판정이
  * 들어간다. ⭐ 저장은 종전대로 회차마다 한 건이다.
  */
 const JudgmentSelect = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
   const entries = row.samples.map((sample) => entryOf(edit.draft, sample.key));
-  const code = entries.some((entry) => entry.judgment === 'REJECTED')
-    ? 'REJECTED'
-    : entries.every((entry) => entry.judgment === 'ACCEPTED')
-      ? 'ACCEPTED'
-      : '';
-  return (
+  const code = itemJudgmentOf(entries);
+  const body = isJudgedByValue(row.first) ? (
+    /* 값으로 판정되는 항목은 글자로만 보인다(부품 입력표와 같다) — 덜 잰 줄은 「1/3」처럼 잰 수. */
+    <span className="parts-iqc-verdict">
+      {code !== ''
+        ? (t.judgmentNames[code] ?? code)
+        : entries.some((entry) => entry.judgment !== '')
+          ? `${String(entries.filter((entry) => entry.judgment !== '').length)}/${String(entries.length)}`
+          : t.notMeasured}
+    </span>
+  ) : (
     <Select
-      size="sm"
+      size="md"
       aria-label={t.judgmentLabel(row.first.itemName)}
       options={edit.judgmentOptions}
       value={code === '' ? null : code}
@@ -144,6 +164,8 @@ const JudgmentSelect = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => 
       onChange={(value) => edit.onChange(withItemJudgment(edit.draft, row.samples, value))}
     />
   );
+  /* 불합격 줄은 바탕이 붉다 — 표가 줄에 표식을 주지 않아 칸의 표식으로 줄을 찾는다(CSS `:has`). */
+  return <span data-row-ng={code === 'REJECTED' ? '' : undefined}>{body}</span>;
 };
 
 /** 유형별 표의 차례와 회차 칸 폭. 값 목록에 없는 유형은 글로 받으므로 텍스트 표에 든다. */
