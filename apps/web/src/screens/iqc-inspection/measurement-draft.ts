@@ -217,9 +217,16 @@ export const fillAllAccepted = (
 export const clearAllAccepted = (draft: MeasureDraft): MeasureDraft =>
   Object.fromEntries(Object.entries(draft).map(([key, entry]) => [key, entry.bulkPrev ?? entry]));
 
-/** 모든 검사 항목(회차)의 판정이 합격인가. 항목이 없으면 참이다. */
-export const allItemsAccepted = (rows: readonly MeasurementRow[], draft: MeasureDraft): boolean =>
-  rows.every((row) => entryOf(draft, row.key).judgment === ACCEPTED);
+/** 필수 검사 항목(회차)의 판정이 모두 합격인가. 필수 항목이 없는 기준은 모든 항목을 본다. 항목이 없으면 참이다. */
+export const requiredItemsAccepted = (
+  rows: readonly MeasurementRow[],
+  draft: MeasureDraft,
+): boolean => {
+  const required = rows.filter((row) => row.required);
+  return (required.length > 0 ? required : rows).every(
+    (row) => entryOf(draft, row.key).judgment === ACCEPTED,
+  );
+};
 
 /**
  * 항목 판정으로 채울 최종 판정(사용자 지시 2026-11-09) — 자동 판정 항목이 하나라도 있을 때만 선다. 불합격 항목이 하나라도

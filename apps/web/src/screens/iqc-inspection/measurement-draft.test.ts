@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { appearanceSpec, dimensionSpec, normalMeasurement, optionalSpec } from './fixtures';
 import {
-  allItemsAccepted,
+  requiredItemsAccepted,
   fillAllAccepted,
   hasMissingRequired,
   overallFromItems,
@@ -149,11 +149,19 @@ describe('measurement-draft', () => {
     expect(overallFromItems(manual, fillAllAccepted(manual, {}))).toBeNull();
   });
 
-  it('모든 회차가 합격이어야 전 항목 합격이다 — 빈 줄이나 불합격이 있으면 아니다', () => {
+  it('필수 항목의 모든 회차가 합격이면 참이다 — 선택 항목은 비어도 된다', () => {
     const filled = fillAllAccepted(rows, {});
-    expect(allItemsAccepted(rows, filled)).toBe(true);
-    expect(allItemsAccepted(rows, withJudgment(filled, appear, 'REJECTED'))).toBe(false);
-    expect(allItemsAccepted(rows, withValue({}, dim1, '10'))).toBe(false);
+    const optional = rowOf(optionalSpec.inspectionItemSpecId);
+    const { [optional.key]: _dropped, ...requiredOnly } = filled;
+    expect(requiredItemsAccepted(rows, requiredOnly)).toBe(true);
+    expect(requiredItemsAccepted(rows, withJudgment(filled, appear, 'REJECTED'))).toBe(false);
+    expect(requiredItemsAccepted(rows, withValue({}, dim1, '10'))).toBe(false);
+  });
+
+  it('필수 항목이 없는 기준은 모든 항목을 본다', () => {
+    const allOptional = toMeasurementRows([optionalSpec], []);
+    expect(requiredItemsAccepted(allOptional, {})).toBe(false);
+    expect(requiredItemsAccepted(allOptional, fillAllAccepted(allOptional, {}))).toBe(true);
   });
 
   it('판정만 있는 줄은 값 칸 없이 싣는다', () => {

@@ -235,6 +235,9 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
       render: (row) => <JudgmentSelect row={row} edit={edit} />,
     },
   ];
+  const filled = sheetRows.filter((row) =>
+    row.samples.some((sample) => entryOf(edit.draft, sample.key).value.trim() !== ''),
+  ).length;
   const storageKey = `omf-mes:iqc-inspection:columns:measure-sheet:${type}`;
   const ordered = useColumnOrder(`${storageKey}:order`, columns);
   const resizable = useColumnWidths(storageKey, ordered, { fitContent: true });
@@ -243,9 +246,11 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
 
   return (
     <div className="iqc-inspection-measure-type">
-      <h4>
-        {title} {messages.iqcInspection.detail.historyCount(sheetRows.length)}
-      </h4>
+      {/* 표 위 제목 · 진행 현황은 부품 입력표와 같다(사용자 지시 2026-11-09). */}
+      <div className="parts-iqc-block-head">
+        <h3>{title}</h3>
+        <span className="parts-iqc-muted">{tn.progress(filled, sheetRows.length)}</span>
+      </div>
       <div
         ref={fit.ref}
         className="iqc-inspection-table-box inspection-queue-table iqc-inspection-measure-sheet"

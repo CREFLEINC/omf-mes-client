@@ -53,6 +53,7 @@ import { QueueLoadErrorBanner } from './load-error-banner';
 import {
   EMPTY_QUANTITY_DRAFT,
   formatMicro,
+  fromServerQty,
   toMicro,
   toSendableNumber,
   type QuantityDraft,
@@ -63,7 +64,7 @@ import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { PlanViewDialog } from './plan-view-dialog';
 import {
   entryOf,
-  allItemsAccepted,
+  requiredItemsAccepted,
   clearAllAccepted,
   fillAllAccepted,
   hasMissingRequired,
@@ -376,6 +377,7 @@ const IqcInspectionScreenBody = () => {
    * 길이 된다 — 값이 그럴듯해서 아무도 눈치채지 못한다.
    */
   const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
+  const [prefilledAccepted, setPrefilledAccepted] = useState('');
 
   /*
    * 불량 코드 · 원인은 「불량 등록」을 켰거나 고칠 회차가 있을 때 부른다 — 저장된 불량 기록을 되살리려면 코드가 있어야 한다.
@@ -540,7 +542,11 @@ const IqcInspectionScreenBody = () => {
    * 종합 판정이다(+ 항목별 측정 · #247). 회차가 없거나 재검사 회차를 쓰는 중이면 기준은 빈 초기 상태다.
    * ⛔ 저장 요청 본문·계산·검증·확정 조건과는 무관하다 — 단추를 켜고 끄는 데만 쓴다.
    */
-  const savedDraft = isReinspectingNow ? EMPTY_QUANTITY_DRAFT : draftOf(round);
+  /* 새 회차는 합격 수량이 미리 차 있다(아래) — 그것만으로는 「바뀐 것」이 아니다. */
+  const savedDraft =
+    isReinspectingNow || round === null
+      ? { ...EMPTY_QUANTITY_DRAFT, accepted: prefilledAccepted }
+      : draftOf(round);
   const savedJudgment = isReinspectingNow ? '' : storedJudgment;
   const hasChanges =
     draft.accepted !== savedDraft.accepted ||
@@ -729,6 +735,26 @@ const IqcInspectionScreenBody = () => {
     round?.inspectedQty ?? sampleQtyOf(detail.data?.targetQty ?? 0, samplingRule.data ?? null);
 
   /*
+   * 새 회차는 합격 수량에 총 검사 수량을 넣어 둔다(사용자 지시 2026-11-09). 검사 수량이 정해진 뒤 한 번만, 비어 있을 때만 넣는다.
+   * ⚠ 항목 · 최종 판정은 채우지 않는다 — 재지 않은 항목이 합격으로 확정되면 안 된다.
+   */
+  const isNewRound = isReinspectingNow || round === null;
+  const isInspectedQtyKnown =
+    !rounds.isPending &&
+    detail.data !== undefined &&
+    (detail.data.inspectionPlanVersionId === null || !samplingRule.isPending);
+  useEffect(() => {
+    if (!isNewRound || !isInspectedQtyKnown) return;
+    const accepted = formatMicro(fromServerQty(inspectedQty));
+    setPrefilledAccepted(accepted);
+    setDraft((current) =>
+      current.accepted === '' && current.rejected === '' && current.held === ''
+        ? { ...current, accepted }
+        : current,
+    );
+  }, [selectedId, isNewRound, isInspectedQtyKnown, inspectedQty]);
+
+  /*
    * 합격판정개수 기준 자동 판정(omf-all-around#125) — 기준에 합격판정개수가 있을 때만. 수량을 고치면 판정을 채우고
    * (사용자가 다시 바꿀 수 있다), 다르게 고르면 변경 사유를 받아야 확정된다. 확정된 회차에는 걸지 않는다.
    * 합격판정개수가 없어도 검사 수량 전부가 합격이면 「합격」을 채운다 — 이때는 변경 사유를 받지 않는다(#197).
@@ -778,10 +804,10 @@ const IqcInspectionScreenBody = () => {
       fromQty === 'REJECTED' || fromItems === 'REJECTED'
         ? 'REJECTED'
         : (fromQty ?? (hasHeld ? null : fromItems));
-    /* 합격으로 채우는 것은 합격 수량 = 전체 수량이고 모든 항목이 합격일 때뿐이다(사용자 지시 2026-11-09). */
+    /* 합격으로 채우는 것은 합격 수량 = 전체 수량이고 필수 항목이 모두 합격일 때뿐이다(사용자 지시 2026-11-09). */
     const expected =
       candidate === 'ACCEPTED' &&
-      !(isAllAccepted(next, inspectedQty) && allItemsAccepted(measurementRows, measures))
+      !(isAllAccepted(next, inspectedQty) && requiredItemsAccepted(measurementRows, measures))
         ? null
         : candidate;
     if (expected !== null) {
@@ -792,16 +818,32 @@ const IqcInspectionScreenBody = () => {
       setJudgment('');
     }
   };
-  /* 수량을 고칠 때 — 전량 합격이 되는 순간 항목을 채우고, 풀리는 순간 채운 줄만 되돌린다(사용자 지시 2026-11-09). */
-  const changeDraftAndJudge = (next: QuantityDraft): void => {
+  /** 합격 수량 = 총 검사 수량 − 불량 − 보류. 0 아래로 내려가지 않고, 수량이 아닌 칸이 있으면 `null`. */
+  const remainingAcceptedOf = (next: QuantityDraft): string | null => {
+    const rejected = next.rejected.trim() === '' ? 0n : toMicro(next.rejected);
+    const held = next.held.trim() === '' ? 0n : toMicro(next.held);
+    if (rejected === null || held === null) return null;
+    const remaining = fromServerQty(inspectedQty) - rejected - held;
+    return formatMicro(remaining < 0n ? 0n : remaining);
+  };
+  /*
+   * 수량을 고칠 때(사용자 지시 2026-11-09) — 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다. 항목 자동 채움은 합격 수량을 직접 고쳐
+   * 전량이 될 때만 하고, 전량 합격이 풀리는 순간 채운 줄만 되돌린다.
+   */
+  const changeDraftAndJudge = (typed: QuantityDraft): void => {
+    const typedAccepted = typed.accepted !== draft.accepted;
+    const lossChanged = typed.rejected !== draft.rejected || typed.held !== draft.held;
+    const recalculated = !typedAccepted && lossChanged ? remainingAcceptedOf(typed) : null;
+    const next = recalculated === null ? typed : { ...typed, accepted: recalculated };
     changeDraft(next);
     const nowAll = isOpenRound && isAllAccepted(next, inspectedQty);
     const wasAll = isOpenRound && isAllAccepted(draft, inspectedQty);
-    const measures = nowAll
-      ? fillAllAccepted(measurementRows, measureDraft)
-      : wasAll
-        ? clearAllAccepted(measureDraft)
-        : measureDraft;
+    const measures =
+      nowAll && typedAccepted
+        ? fillAllAccepted(measurementRows, measureDraft)
+        : wasAll && !nowAll
+          ? clearAllAccepted(measureDraft)
+          : measureDraft;
     if (measures !== measureDraft) setMeasureDraft(measures);
     applyAutoJudgment(next, measures);
   };

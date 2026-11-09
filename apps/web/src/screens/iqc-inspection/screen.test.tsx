@@ -675,6 +675,7 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.clear(await qtyField('accepted'));
     await userEvent.type(await qtyField('accepted'), '1');
     await userEvent.click(await findOpenButton('IR-2026-0002'));
 
@@ -687,6 +688,7 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.clear(await qtyField('accepted'));
     await userEvent.type(await qtyField('accepted'), '1');
     await userEvent.click(await findOpenButton('IR-2026-0002'));
 
@@ -737,12 +739,18 @@ describe('IqcInspectionScreen', () => {
     renderScreen('/?ir=1001', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await userEvent.clear(await qtyField('accepted'));
     await userEvent.type(await qtyField('accepted'), '123');
     expect(await qtyField('accepted')).toHaveValue('123');
 
     await goToRequest('IR-2026-0002');
 
-    await waitFor(async () => expect(await qtyField('accepted')).toHaveValue(''));
+    /* 다음 의뢰는 그 의뢰의 총 검사 수량으로 다시 차 있다(사용자 지시 2026-11-09). */
+    await waitFor(async () => {
+      const accepted = await qtyField('accepted');
+      expect(accepted).not.toHaveValue('123');
+      expect(accepted).not.toHaveValue('');
+    });
   });
 
   /* omf-all-around#104 — 검사자는 계정에 연결된 작업자다. 연결이 없으면 누르기 전에 막고 이유를 말한다. */
@@ -797,13 +805,79 @@ describe('IqcInspectionScreen', () => {
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
     expect((await screen.findAllByText(/^50\b/)).length).toBeGreaterThan(0);
-    await userEvent.type(await qtyField('accepted'), '50');
+    /* 합격 수량은 총 검사 수량(샘플 수량)으로 미리 차 있고, 보류를 넣으면 그만큼 준다. */
+    expect(await qtyField('accepted')).toHaveValue('50');
+    await userEvent.type(await qtyField('held'), '1');
+    expect(await qtyField('accepted')).toHaveValue('49');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
     const body = await bodyOf(writes[0]!);
     expect(body.inspectedQty).toBe(50);
-    expect(body.acceptedQty).toBe(50);
+    expect(body.acceptedQty).toBe(49);
+    expect(body.heldQty).toBe(1);
+  });
+
+  describe('합격 수량 미리 채움 · 자동 감소(사용자 지시 2026-11-09)', () => {
+    const open = async (): Promise<void> => {
+      renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+      await screen.findByText(t.result.confirmBlockedByUnsaved);
+    };
+
+    it('새 회차는 합격 수량만 차 있고, 항목 · 최종 판정은 비어 있으며 저장할 변경도 없다', async () => {
+      await open();
+
+      const accepted = await qtyField('accepted');
+      await waitFor(() => expect(accepted).not.toHaveValue(''));
+      expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent(
+        t.result.judgmentPlaceholder,
+      );
+      expect(
+        screen.getByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
+      ).toHaveValue('');
+      expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    });
+
+    it('보류를 지우면 합격 수량이 돌아오지만 항목은 채우지 않는다', async () => {
+      await open();
+      const accepted = await qtyField('accepted');
+      await waitFor(() => expect(accepted).not.toHaveValue(''));
+      const total = Number((accepted as HTMLInputElement).value);
+
+      const held = await qtyField('held');
+      await userEvent.type(held, '2');
+      expect(accepted).toHaveValue(String(total - 2));
+      await userEvent.clear(held);
+
+      expect(accepted).toHaveValue(String(total));
+      expect(
+        screen.getByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
+      ).toHaveValue('');
+    });
+
+    it('보류가 전체를 넘어도 합격 수량은 0 아래로 내려가지 않는다', async () => {
+      await open();
+      const accepted = await qtyField('accepted');
+      await waitFor(() => expect(accepted).not.toHaveValue(''));
+
+      await userEvent.type(await qtyField('held'), '999999');
+
+      expect(accepted).toHaveValue('0');
+    });
+
+    it('합격 수량을 직접 고쳐도 다음에 불량 · 보류를 바꾸면 다시 계산한다', async () => {
+      await open();
+      const accepted = await qtyField('accepted');
+      await waitFor(() => expect(accepted).not.toHaveValue(''));
+      const total = Number((accepted as HTMLInputElement).value);
+
+      await userEvent.clear(accepted);
+      await userEvent.type(accepted, '1');
+      expect(accepted).toHaveValue('1');
+      await userEvent.type(await qtyField('held'), '3');
+
+      expect(accepted).toHaveValue(String(total - 3));
+    });
   });
 
   it('회차가 없으면 저장이 새로 만든다', async () => {
@@ -1298,6 +1372,25 @@ describe('IqcInspectionScreen', () => {
   });
 
   /* 합격 수량 = 전체 수량이고 모든 항목이 합격일 때만 합격을 채운다(사용자 지시 2026-11-09). */
+  it('합격 수량이 전체이고 필수 항목이 모두 합격이면 선택 항목이 비어도 최종 판정에 합격을 채운다', async () => {
+    renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
+    await screen.findByText(t.result.confirmBlockedByUnsaved);
+    await waitFor(async () => expect(await qtyField('accepted')).not.toHaveValue(''));
+
+    for (const sample of [1, 2, 3]) {
+      await userEvent.type(
+        screen.getByRole('textbox', { name: t.measurements.valueLabel('치수', sample) }),
+        '10',
+      );
+    }
+    await userEvent.type(
+      screen.getByRole('textbox', { name: t.measurements.valueLabel('외관', 1) }),
+      '양호',
+    );
+
+    expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('합격');
+  });
+
   it('항목이 모두 합격이어도 합격 수량이 전체가 아니면 최종 판정에 합격을 채우지 않는다', async () => {
     renderScreen('/?ir=1001', undefined, [
       { ...draftRound, acceptedQty: 400, rejectedQty: 0, heldQty: 0, overallJudgmentCode: '' },
@@ -2027,7 +2120,8 @@ describe('IqcInspectionScreen — 재검사 저장 뒤', () => {
     expect(stored).not.toBe('');
 
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspect }));
-    expect(accepted().value).toBe('');
+    /* 새 회차는 합격 수량이 총 검사 수량으로 다시 차 있다(사용자 지시 2026-11-09). */
+    await waitFor(() => expect(accepted().value).toBe(String(confirmedRound.inspectedQty)));
 
     await userEvent.click(screen.getByRole('button', { name: t.result.reinspectCancel }));
 
@@ -2072,17 +2166,18 @@ describe('IqcInspectionScreen — 임시 저장 단추', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled());
   });
 
-  it('회차가 없는 의뢰는 빈 칸이 기준이다 — 넣었다 지우면 다시 꺼진다', async () => {
+  it('회차가 없는 의뢰는 미리 채운 합격 수량이 기준이다 — 보류를 넣었다 지우면 다시 꺼진다', async () => {
     renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
     const save = screen.getByRole('button', { name: t.result.save });
+    await waitFor(async () => expect(await qtyField('accepted')).not.toHaveValue(''));
     expect(save).toBeDisabled();
 
-    await userEvent.type(await qtyField('accepted'), '3');
+    await userEvent.type(await qtyField('held'), '3');
     expect(save).toBeEnabled();
 
-    await userEvent.clear(await qtyField('accepted'));
+    await userEvent.clear(await qtyField('held'));
     expect(save).toBeDisabled();
   });
 });
@@ -2092,13 +2187,14 @@ describe('IqcInspectionScreen — 수량 칸 앞자리 0', () => {
     const { writes } = renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), []);
 
     await screen.findByText(t.result.confirmBlockedByUnsaved);
-    const accepted = await qtyField('accepted');
-    await userEvent.type(accepted, '0007');
-    expect(accepted).toHaveValue('7');
-
     const held = await qtyField('held');
     await userEvent.type(held, '00.5');
     expect(held).toHaveValue('0.5');
+
+    const accepted = await qtyField('accepted');
+    await userEvent.clear(accepted);
+    await userEvent.type(accepted, '0007');
+    expect(accepted).toHaveValue('7');
 
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
     await waitFor(() => expect(writes).toHaveLength(1));
