@@ -713,16 +713,19 @@ export const ResultFormPane = ({
           <div className="iqc-inspection-qty-body">{qtyCards}</div>
         ) : (
           <div className="iqc-inspection-step-qty-split">
-            <div className="iqc-inspection-qty-body">{progressCards(null)}</div>
+            {/* 최종 판정은 수량 칸과 같은 줄 오른쪽(사용자 지시 2026-11-09). */}
+            <div className="iqc-inspection-qty-body" data-with-judgment="">
+              {progressCards(judgmentField)}
+            </div>
             {renderDefects()}
           </div>
         ))}
       {step === 1 && measurementSlot}
       {step === 1 && (
         <div className="iqc-inspection-judgment-dialog">
-          {/* 최종 판정 칸과 [확정]은 한 줄(사용자 지시 2026-10-29). */}
           <div className="iqc-inspection-step-judgment-row">
-            {judgmentField}
+            {/* 수량 줄 오른쪽에 못 세우는 구성(불량 내역을 쓰지 않는 화면)만 여기 둔다. */}
+            {renderDefects === null && judgmentField}
             {stepConfirm()}
           </div>
           {hasJudgmentDetail && judgmentBelow}

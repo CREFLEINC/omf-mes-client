@@ -32004,6 +32004,53 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: 0 1 24rem;
 }
 
+/*
+ * 한 줄에 수량 · 불량 수량 · 미입력 · 최종 판정(사용자 지시 2026-11-09). 좌우 배치의 좁은 폭에서도 줄이 나뉘지 않게 수량 칸이 먼저
+ * 줄고, 미입력 글은 두 줄로 접힌다. [확정]만 남은 줄은 오른쪽 끝.
+ */
+.iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-line {
+  flex-wrap: nowrap;
+  gap: var(--space-3);
+}
+
+.iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-group[data-group="manual"] {
+  flex: 0 1 20rem;
+  min-width: 0;
+}
+
+.iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-group[data-group="auto"] {
+  flex: none;
+}
+
+.iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-status {
+  flex: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  height: auto;
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+.iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-line-action {
+  flex: 1 1 8rem;
+  align-self: flex-start;
+  min-width: 0;
+  justify-content: flex-end;
+  max-width: 24rem;
+  height: auto;
+  margin-left: auto;
+}
+
+.iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-judgment-field:nth-child(n) {
+  width: 100%;
+  min-width: 0;
+}
+
+.iqc-inspection-step-judgment-row:has(> button:only-child) {
+  justify-content: flex-end;
+}
+
 .iqc-inspection-step-judgment-row > button {
   min-width: 5.5rem;
   margin-left: auto;

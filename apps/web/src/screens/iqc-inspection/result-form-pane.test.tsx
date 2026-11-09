@@ -530,6 +530,22 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('불량 내역을 쓰는 화면은 최종 판정이 수량과 같은 줄에 서고, 항목 표는 그 아래다', () => {
+    renderPane(FULL_DRAFT, NEW, 500, {
+      inlineJudgment: true,
+      renderDefects: () => null,
+      measurementSlot: <p>항목 표</p>,
+    });
+
+    const panel = mergedPanel() as HTMLElement;
+    const judgment = within(panel).getByRole('combobox', { name: t.judgment });
+    expect(judgment.closest('.iqc-inspection-qty-line')).not.toBeNull();
+    expect(
+      judgment.compareDocumentPosition(within(panel).getByText('항목 표')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('항목별 결과 표는 수량과 최종 판정 사이에 선다', () => {
     renderPane(FULL_DRAFT, NEW, 500, {
       inlineJudgment: true,
