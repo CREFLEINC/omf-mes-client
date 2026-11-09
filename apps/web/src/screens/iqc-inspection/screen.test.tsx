@@ -1017,6 +1017,43 @@ describe('IqcInspectionScreen', () => {
     ]);
   });
 
+  /* 전량 합격이면 항목 판정도 모두 합격 · 빈 측정 결과는 기준값으로(사용자 지시 2026-11-09). */
+  it('검사 수량을 전량 합격으로 확정하면 항목 판정이 모두 합격 · 측정 결과는 기준값으로 채워진다', async () => {
+    renderScreen('/?ir=1001', undefined, [{ ...draftRound, rejectedQty: 0, heldQty: 0 }], []);
+
+    await findRound(1);
+    await openQtyDialog();
+    await completeQuantities('500', '0', '0');
+    await openJudgmentDialog();
+
+    expect(
+      await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
+    ).toHaveValue('10');
+    expect(
+      screen.getByRole('combobox', { name: t.measurements.judgmentLabel('치수', 3) }),
+    ).toHaveTextContent(t.measurements.judgmentNames.ACCEPTED ?? '합격');
+    /* 글 항목은 기준값이 없어 결과는 비우고 판정만 합격이다. */
+    expect(screen.getByRole('textbox', { name: t.measurements.valueLabel('외관', 1) })).toHaveValue(
+      '',
+    );
+    expect(
+      screen.getByRole('combobox', { name: t.measurements.judgmentLabel('외관', 1) }),
+    ).toHaveTextContent(t.measurements.judgmentNames.ACCEPTED ?? '합격');
+  });
+
+  it('자동 판정 항목이 규격 밖이면 항목 판정과 최종 판정이 불합격으로 채워진다', async () => {
+    renderScreen('/?ir=1001', undefined, [{ ...draftRound, overallJudgmentCode: '' }], []);
+
+    await findRound(1);
+    await openJudgmentDialog();
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
+      '10.5',
+    );
+
+    expect(await judgmentField()).toHaveTextContent('불합격');
+  });
+
   /* 하단 탭에 같은 입력이 겹치지 않게 — 검사 중에는 ② 판정에서 넣고, 확정된 회차는 하단 탭에서 읽기로 본다(#247). */
   it('검사 항목별 결과 탭은 확정된 회차에서만 선다', async () => {
     const tabName = new RegExp(`^${t.measurements.caption}`);

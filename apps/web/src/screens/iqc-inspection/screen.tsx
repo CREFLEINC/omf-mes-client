@@ -62,10 +62,12 @@ import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { PlanViewDialog } from './plan-view-dialog';
 import {
   entryOf,
+  fillAllAccepted,
   hasMissingRequired,
   isSameMeasureDraft,
   measureDraftOf,
   measureSaveBlockOf,
+  overallFromItems,
   toMeasurementInputs,
   type MeasureDraft,
 } from './measurement-draft';
@@ -97,6 +99,7 @@ import {
 } from './four-m-change';
 import {
   autoJudgmentOf,
+  isAllAccepted,
   expectedJudgmentOf,
   JudgmentChange,
   needsJudgmentChangeReason,
@@ -760,6 +763,18 @@ const IqcInspectionScreenBody = () => {
     changeDraft(next);
     applyAutoJudgment(next);
   };
+  /*
+   * 항목 판정 → 최종 판정(사용자 지시 2026-11-09) — 자동 판정 항목이 있으면 항목 판정으로 최종 판정을 채운다. 사람이 고른 최종
+   * 판정은 덮지 않는다(수량으로 채운 판정과 같은 규율).
+   */
+  const changeMeasureDraft = (next: MeasureDraft): void => {
+    setMeasureDraft(next);
+    const expected = isOpenRound ? overallFromItems(measurementRows, next) : null;
+    if (expected !== null && (judgment === '' || judgment === autoFilledJudgment.current)) {
+      autoFilledJudgment.current = expected;
+      setJudgment(expected);
+    }
+  };
 
   /*
    * 품목·자재 LOT 은 **번호마다 하나씩** 이름으로 푼다 — 계약이 식별자만 싣고, 번호를 그대로
@@ -1047,7 +1062,7 @@ const IqcInspectionScreenBody = () => {
                 scrollX
                 edit={{
                   draft: measureDraft,
-                  onChange: setMeasureDraft,
+                  onChange: changeMeasureDraft,
                   judgmentOptions: toCodeOptions(measurementJudgmentValues.data ?? []),
                   disabled: workerMissing || save.isSaving || confirm.isSaving,
                 }}
@@ -1094,7 +1109,12 @@ const IqcInspectionScreenBody = () => {
                       : null
           }
           /* ① 수량 [확정]으로 판정 단계로 넘어가며 최종 판정을 자동으로 채운다 — 채울 것이 없으면 그대로 둔다(사용자 지시 2026-10-29). */
-          onQtyConfirm={() => applyAutoJudgment(draft)}
+          onQtyConfirm={() => {
+            applyAutoJudgment(draft);
+            /* 전량 합격이면 항목 판정도 모두 합격 · 빈 측정 결과는 기준값으로 채운다(사용자 지시 2026-11-09). */
+            if (isOpenRound && isAllAccepted(draft, inspectedQty))
+              changeMeasureDraft(fillAllAccepted(measurementRows, measureDraft));
+          }}
           /* 불량 수량에 수량이 아닌 값이 있으면 합계를 셀 수 없다고 보인다(표시 전용 · #197). */
           rejectedUncountable={hasDefects && hasInvalidDefectQty(defects)}
           /* 좌우 · 상하 배치 모두 수량 · 판정을 한 줄로(좁으면 위아래 · 사용자 지시 2026-10-27 · #185). */

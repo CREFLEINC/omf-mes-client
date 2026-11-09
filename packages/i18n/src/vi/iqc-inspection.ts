@@ -332,8 +332,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     selectPlaceholder: 'Chọn',
     invalidNumber: 'Vui lòng nhập số.',
     blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
-    blockedIncomplete: 'Vui lòng nhập cả giá trị đo và phán định trong kết quả theo hạng mục.',
-    blockedRequired: 'Cần nhập đủ giá trị đo và phán định của các hạng mục bắt buộc để xác nhận.',
+    blockedIncomplete: 'Vui lòng chọn phán định cho các hạng mục đã nhập giá trị đo.',
+    blockedRequired: 'Cần nhập đủ phán định của các hạng mục bắt buộc để xác nhận.',
     blockedUnsaved: 'Vui lòng lưu tạm kết quả theo hạng mục kiểm tra trước.',
   },
 

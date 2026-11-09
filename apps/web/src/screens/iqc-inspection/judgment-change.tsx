@@ -59,12 +59,17 @@ export const autoJudgmentOf = (
   if (acceptanceNumber !== null) return expectedJudgmentOf(draft, acceptanceNumber);
   if (hasQuantityError(validateQuantities(draft))) return null;
   if ((toMicro(draft.rejected) ?? 0n) > 0n) return 'REJECTED';
+  return isAllAccepted(draft, inspectedQty) ? 'ACCEPTED' : null;
+};
+
+/** 검사 수량 전부가 합격인가(합계가 맞고 합격 = 검사 수량) — 항목 판정을 모두 합격으로 채우는 기준이기도 하다(#247). */
+export const isAllAccepted = (draft: QuantityDraft, inspectedQty: number): boolean => {
   const totals = toTotals(draft, inspectedQty);
-  const allAccepted =
+  return (
     totals.kind === 'counted' &&
     totals.matches &&
-    toMicro(draft.accepted) === fromServerQty(inspectedQty);
-  return allAccepted ? 'ACCEPTED' : null;
+    toMicro(draft.accepted) === fromServerQty(inspectedQty)
+  );
 };
 
 /** 고른 판정이 자동 판정과 다른가 — 다르면 변경 사유가 있어야 확정할 수 있다. */

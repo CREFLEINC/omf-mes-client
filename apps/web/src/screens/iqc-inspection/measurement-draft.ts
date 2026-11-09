@@ -10,8 +10,9 @@ type MeasurementInput = components['schemas']['InspectionMeasurementInput'];
  * ⭐ 값 칸은 항목 자료형으로 갈린다 — 수치(`NUMERIC`)는 숫자, 글(`TEXT`)은 글, 예/아니오(`BOOLEAN`)는 양호 · 불량(`'true'` ·
  * `'false'`). 계약이 셋 중 하나만 채우게 한다.
  *
- * ⭐ 판정은 사람이 정한다. 수치 항목에 자동 판정이 켜져 있고 상·하한이 있으면 값으로 판정을 «채워 시작»하되 바꿀 수 있다
- * (계약 P-02-13 §5-11). ⛔ 종합 판정은 항목 판정으로 자동으로 내리지 않는다(계약 P-02-13 §6).
+ * ⭐ 자동 판정이 켜진 항목은 값으로 판정을 채운다 — 수치는 상·하한, 예/아니오는 양호 · 불량으로(계약 P-02-13 §5-11 · 사용자 지시
+ * 2026-11-09). 채운 판정은 사람이 바꿀 수 있고, 사람이 고른 판정은 덮지 않는다. 최종 판정도 항목 판정으로 채워 시작한다
+ * (`overallFromItems` · 사용자 지시 2026-11-09) — 확정은 언제나 사람이 누른다.
  */
 export interface MeasureEntry {
   value: string;
@@ -79,9 +80,15 @@ export const isSameMeasureDraft = (left: MeasureDraft, right: MeasureDraft): boo
   });
 };
 
-/** 값으로 채울 판정 — 자동 판정 · 수치 · 상·하한 중 하나 이상이 있을 때만. 값이 숫자가 아니면 `null`. */
+/**
+ * 값으로 채울 판정 — 자동 판정이 켜진 항목만. 수치는 상·하한 중 하나 이상이 있을 때(값이 숫자가 아니면 `null`), 예/아니오는
+ * 양호 → 합격 · 불량 → 불합격. 글 항목은 채우지 않는다.
+ */
 export const autoJudgmentOf = (row: MeasurementRow, value: string): string | null => {
-  if (!row.autoJudgment || row.dataType !== 'NUMERIC') return null;
+  if (!row.autoJudgment) return null;
+  if (row.dataType === 'BOOLEAN')
+    return value === '' ? null : value === 'true' ? ACCEPTED : REJECTED;
+  if (row.dataType !== 'NUMERIC') return null;
   const { lower, upper } = row.spec;
   if (lower === null && upper === null) return null;
   const text = value.trim();
@@ -131,7 +138,8 @@ export const isInvalidValue = (row: MeasurementRow, entry: MeasureEntry): boolea
 const hasValue = (entry: MeasureEntry): boolean => entry.value.trim() !== '';
 
 /**
- * 저장을 막는 사유 — 숫자가 아닌 수치 값 · 값과 판정 중 하나만 적은 줄. 다 비운 줄은 재지 않은 것이라 막지 않는다.
+ * 저장을 막는 사유 — 숫자가 아닌 수치 값 · 값만 적고 판정이 빈 줄. 다 비운 줄은 재지 않은 것이라 막지 않는다.
+ * 판정만 있는 줄은 보낸다 — 기준값이 없는 항목을 「전량 합격」으로 채우면 값 없이 판정만 선다(계약상 값 칸은 모두 선택이다).
  * ⛔ 반쯤 적은 줄을 빼고 보내지 않는다 — 계약이 측정치를 통째로 갈아 끼워, 빼면 저장 뒤 그 줄이 사라진다.
  */
 export const measureSaveBlockOf = (
@@ -140,16 +148,66 @@ export const measureSaveBlockOf = (
 ): 'invalid' | 'incomplete' | null => {
   const entries = rows.map((row) => ({ row, entry: entryOf(draft, row.key) }));
   if (entries.some(({ row, entry }) => isInvalidValue(row, entry))) return 'invalid';
-  if (entries.some(({ entry }) => hasValue(entry) !== (entry.judgment !== ''))) return 'incomplete';
+  if (entries.some(({ entry }) => hasValue(entry) && entry.judgment === '')) return 'incomplete';
   return null;
 };
 
-/** 필수 항목 중 아직 재지 않은 줄이 있는가 — 확정만 막는다(임시 저장은 된다). */
+/** 필수 항목 중 아직 판정하지 않은 줄이 있는가 — 확정만 막는다(임시 저장은 된다). */
 export const hasMissingRequired = (rows: readonly MeasurementRow[], draft: MeasureDraft): boolean =>
-  rows.some((row) => {
-    const entry = entryOf(draft, row.key);
-    return row.required && (!hasValue(entry) || entry.judgment === '');
-  });
+  rows.some((row) => row.required && entryOf(draft, row.key).judgment === '');
+
+/** 「전량 합격」일 때 채울 측정 결과 — 수치는 기준값(없으면 빈 칸), 예/아니오는 양호, 글은 빈 칸. */
+const defaultValueOf = (row: MeasurementRow): string => {
+  if (row.dataType === 'NUMERIC') return row.spec.target === null ? '' : String(row.spec.target);
+  if (row.dataType === 'BOOLEAN') return 'true';
+  return '';
+};
+
+/**
+ * 검사 수량이 전량 합격이면 항목 판정을 모두 합격으로 채운다(사용자 지시 2026-11-09) — 빈 측정 결과는 기준값으로.
+ * ⛔ 사람이 고른 판정 · 이미 적은 값은 덮지 않는다. 적은 값이 규격 밖이면 그 판정(불합격)을 그대로 둔다.
+ */
+export const fillAllAccepted = (
+  rows: readonly MeasurementRow[],
+  draft: MeasureDraft,
+): MeasureDraft =>
+  Object.fromEntries(
+    rows.map((row) => {
+      const entry = entryOf(draft, row.key);
+      if (entry.judgment !== '' && !entry.autoFilled) return [row.key, entry];
+      if (hasValue(entry)) {
+        return [
+          row.key,
+          { ...entry, judgment: autoJudgmentOf(row, entry.value) ?? ACCEPTED, autoFilled: true },
+        ];
+      }
+      return [
+        row.key,
+        {
+          ...entry,
+          value: defaultValueOf(row),
+          judgment: ACCEPTED,
+          autoFilled: true,
+          measuredAt: null,
+        },
+      ];
+    }),
+  );
+
+/**
+ * 항목 판정으로 채울 최종 판정(사용자 지시 2026-11-09) — 자동 판정 항목이 하나라도 있을 때만 선다. 불합격 항목이 하나라도
+ * 있으면 「불합격」, 필수 항목을 다 판정했고 모두 합격이면 「합격」, 그 밖은 `null`(채우지 않는다).
+ */
+export const overallFromItems = (
+  rows: readonly MeasurementRow[],
+  draft: MeasureDraft,
+): string | null => {
+  if (!rows.some((row) => row.autoJudgment)) return null;
+  const codes = rows.map((row) => entryOf(draft, row.key).judgment);
+  if (codes.includes(REJECTED)) return REJECTED;
+  if (!codes.includes(ACCEPTED) || hasMissingRequired(rows, draft)) return null;
+  return ACCEPTED;
+};
 
 const valueFieldOf = (
   row: MeasurementRow,
@@ -160,7 +218,7 @@ const valueFieldOf = (
   return { textValue: text };
 };
 
-/** 요청에 실을 측정치 — 값과 판정을 다 적은 줄만. 고치지 않은 줄은 서버의 측정 시각 · 계측기를 그대로 싣는다. */
+/** 요청에 실을 측정치 — 판정한 줄만(값이 비면 값 칸 없이). 고치지 않은 줄은 서버의 측정 시각 · 계측기를 그대로 싣는다. */
 export const toMeasurementInputs = (
   rows: readonly MeasurementRow[],
   draft: MeasureDraft,
@@ -168,12 +226,12 @@ export const toMeasurementInputs = (
 ): MeasurementInput[] =>
   rows.flatMap((row) => {
     const entry = entryOf(draft, row.key);
-    if (!hasValue(entry) || entry.judgment === '') return [];
+    if (entry.judgment === '') return [];
     return [
       {
         inspectionItemSpecId: row.inspectionItemSpecId,
         sampleNo: row.sampleNo,
-        ...valueFieldOf(row, entry.value.trim()),
+        ...(hasValue(entry) ? valueFieldOf(row, entry.value.trim()) : {}),
         judgmentCode: entry.judgment,
         measuredAt: entry.measuredAt ?? now,
         ...(entry.inspectionEquipmentId === null

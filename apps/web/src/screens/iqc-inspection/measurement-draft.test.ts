@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { appearanceSpec, dimensionSpec, normalMeasurement, optionalSpec } from './fixtures';
 import {
+  fillAllAccepted,
   hasMissingRequired,
+  overallFromItems,
   isSameMeasureDraft,
   measureDraftOf,
   measureSaveBlockOf,
@@ -91,5 +93,47 @@ describe('measurement-draft', () => {
         inspectionEquipmentId: 6001,
       },
     ]);
+  });
+
+  it('자동 판정이 켜진 예/아니오 항목은 양호 → 합격 · 불량 → 불합격으로 채운다', () => {
+    const [flag] = toMeasurementRows(
+      [{ ...appearanceSpec, dataTypeCode: 'BOOLEAN', automaticJudgment: true }],
+      [],
+    );
+    if (flag === undefined) throw new Error('없는 줄');
+    expect(withValue({}, flag, 'true')[flag.key]?.judgment).toBe('ACCEPTED');
+    expect(withValue({}, flag, 'false')[flag.key]?.judgment).toBe('REJECTED');
+  });
+
+  it('전량 합격이면 빈 줄을 기준값 · 합격으로 채우고, 사람이 고른 판정 · 규격 밖 값은 그대로 둔다', () => {
+    const picked = withJudgment({}, appear, 'REJECTED');
+    const outOfSpec = withValue(picked, rowOf(dimensionSpec.inspectionItemSpecId, 2), '11');
+    const filled = fillAllAccepted(rows, outOfSpec);
+    expect(filled[dim1.key]).toMatchObject({ value: '10', judgment: 'ACCEPTED' });
+    expect(filled[rowOf(dimensionSpec.inspectionItemSpecId, 2).key]?.judgment).toBe('REJECTED');
+    expect(filled[appear.key]?.judgment).toBe('REJECTED');
+    expect(filled[rowOf(optionalSpec.inspectionItemSpecId).key]).toMatchObject({
+      value: '',
+      judgment: 'ACCEPTED',
+    });
+  });
+
+  it('최종 판정 — 불합격 항목이 있으면 불합격, 필수를 다 판정하고 모두 합격이면 합격, 덜 했으면 채우지 않는다', () => {
+    expect(overallFromItems(rows, withValue({}, dim1, '11'))).toBe('REJECTED');
+    expect(overallFromItems(rows, withValue({}, dim1, '10'))).toBeNull();
+    expect(overallFromItems(rows, fillAllAccepted(rows, {}))).toBe('ACCEPTED');
+    /* 자동 판정 항목이 없는 기준이면 최종 판정을 채우지 않는다. */
+    const manual = toMeasurementRows([appearanceSpec], []);
+    expect(overallFromItems(manual, fillAllAccepted(manual, {}))).toBeNull();
+  });
+
+  it('판정만 있는 줄은 값 칸 없이 싣는다', () => {
+    const [input] = toMeasurementInputs(rows, withJudgment({}, appear, 'ACCEPTED'), NOW);
+    expect(input).toEqual({
+      inspectionItemSpecId: appearanceSpec.inspectionItemSpecId,
+      sampleNo: 1,
+      judgmentCode: 'ACCEPTED',
+      measuredAt: NOW,
+    });
   });
 });
