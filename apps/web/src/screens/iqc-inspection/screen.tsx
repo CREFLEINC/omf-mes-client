@@ -65,6 +65,7 @@ import {
   entryOf,
   clearAllAccepted,
   fillAllAccepted,
+  rejectedSpecsOf,
   hasMissingRequired,
   isSameMeasureDraft,
   measureDraftOf,
@@ -107,7 +108,7 @@ import {
   needsJudgmentChangeReason,
 } from './judgment-change';
 import { RejectedLotGuide } from './rejected-lot-guide';
-import { DefectRows, defectSumOf, hasInvalidDefectQty } from './defect-rows';
+import { DefectRows, defectSumOf, hasInvalidDefectQty, isBlankDefect } from './defect-rows';
 import {
   EMPTY_DEFECT,
   defectDraftOf,
@@ -526,6 +527,23 @@ const IqcInspectionScreenBody = () => {
     setMeasureDraft(JSON.parse(savedMeasureKey) as MeasureDraft);
   }, [selectedId, isReinspectingNow, savedMeasureKey]);
   const measureChanged = !isSameMeasureDraft(measureDraft, savedMeasureDraft);
+  /*
+   * 불량 등록은 불합격 항목 아래에 선다(#247 · 사용자 지시 2026-11-09) — 화면 배치일 뿐 저장은 종전대로 회차의 불량 기록 한 벌이다.
+   * 항목을 모르는 줄(저장 뒤 다시 연 줄 등)은 첫 불합격 항목 아래에 둔다.
+   */
+  /* 값 칸에 치는 동안은 칸에 들어갈 때의 불합격 상태로 보인다 — 자동 판정이 글자마다 바뀌어도 불량 줄이 들썩이지 않는다. */
+  const [typingFrom, setTypingFrom] = useState<MeasureDraft | null>(null);
+  const rejectedSpecs = rejectedSpecsOf(measurementRows, typingFrom ?? measureDraft);
+  const hasRejectedItem = rejectedSpecs.length > 0;
+  const hasDefectContent = defects.some((row) => !isBlankDefect(row));
+  const ownerOfDefect = (row: DefectDraft): number | null =>
+    row.specId !== undefined && rejectedSpecs.includes(row.specId)
+      ? row.specId
+      : (rejectedSpecs[0] ?? null);
+  /* 불합격 항목이 생기면 불량 내역을 받는다. */
+  if (rejectedSpecs.length > 0 && !hasDefects) setHasDefects(true);
+  /* 불합격을 풀었는데 그 항목 아래 적은 불량이 있으면 묻는다 — 답하기 전에는 아무것도 바꾸지 않는다. */
+  const [pendingMeasure, setPendingMeasure] = useState<MeasureDraft | null>(null);
   const measurementJudgmentValues = useCodeValues(CODE_GROUPS.measurementJudgment);
   /* 항목 입력 유형 이름 — 검사 기준 화면과 같은 공통코드(수치 · 텍스트 · 불리언). */
   const dataTypeValues = useCodeValues(CODE_GROUPS.itemDataType);
@@ -798,9 +816,75 @@ const IqcInspectionScreenBody = () => {
     applyAutoJudgment(next, measures);
   };
   /* 항목을 고칠 때 — 사람이 고른 최종 판정은 덮지 않는다. */
+  const orphansDefects = (next: MeasureDraft): boolean => {
+    const remaining = rejectedSpecsOf(measurementRows, next);
+    return defects.some((row) => {
+      const owner = ownerOfDefect(row);
+      return !isBlankDefect(row) && owner !== null && !remaining.includes(owner);
+    });
+  };
+  const releaseDefectsIfNone = (next: MeasureDraft): void => {
+    if (rejectedSpecsOf(measurementRows, next).length === 0 && !hasDefectContent)
+      setHasDefects(false);
+  };
   const changeMeasureDraft = (next: MeasureDraft): void => {
+    if (typingFrom === null) {
+      if (orphansDefects(next)) {
+        setPendingMeasure(next);
+        return;
+      }
+      releaseDefectsIfNone(next);
+    }
     setMeasureDraft(next);
     applyAutoJudgment(draft, next, { keepPicked: true });
+  };
+
+  /* 항목 아래 불량 내역을 고칠 때 — 불합격 수량은 종전대로 불량 수량의 합이다. 전량 합격으로 채운 항목은 비우지 않는다. */
+  /* 값 칸을 벗어나는 순간 판단한다 — 불합격이 풀려 적은 불량이 남으면 묻고, 답하기 전에는 칸에 들어갈 때 값으로 둔다. */
+  const changeTyping = (started: boolean): void => {
+    if (started) {
+      setTypingFrom(measureDraft);
+      return;
+    }
+    if (typingFrom === null) return;
+    setTypingFrom(null);
+    if (orphansDefects(measureDraft)) {
+      setPendingMeasure(measureDraft);
+      setMeasureDraft(typingFrom);
+      applyAutoJudgment(draft, typingFrom, { keepPicked: true });
+    } else {
+      releaseDefectsIfNone(measureDraft);
+    }
+  };
+  const commitDefects = (next: DefectDraft[], measures: MeasureDraft = measureDraft): void => {
+    setDefects(next.length === 0 ? [EMPTY_DEFECT] : next);
+    const nextDraft = { ...draft, rejected: rejectedTextOf(next) };
+    changeDraft(nextDraft);
+    setMeasureDraft(measures);
+    applyAutoJudgment(nextDraft, measures);
+  };
+  const changeItemDefects = (specId: number, rows: DefectDraft[]): void => {
+    const only = rows[0];
+    const mine =
+      rows.length === 1 && only !== undefined && isBlankDefect(only)
+        ? []
+        : rows.map((row) => ({ ...row, specId }));
+    const others = defects.filter(
+      (row) => ownerOfDefect(row) !== specId && !(isBlankDefect(row) && row.specId === undefined),
+    );
+    commitDefects([...others, ...mine]);
+  };
+  /* 불합격을 풀며 그 항목의 불량 내역을 지운다 — 서버에는 임시 저장할 때 반영된다. */
+  const confirmDropDefects = (): void => {
+    if (pendingMeasure === null) return;
+    const remaining = rejectedSpecsOf(measurementRows, pendingMeasure);
+    const owned = defects.filter((row) => {
+      const owner = ownerOfDefect(row);
+      return owner === null || remaining.includes(owner);
+    });
+    commitDefects(owned, pendingMeasure);
+    if (remaining.length === 0) setHasDefects(false);
+    setPendingMeasure(null);
   };
 
   /*
@@ -959,6 +1043,27 @@ const IqcInspectionScreenBody = () => {
         />
       </div>
       {/* IQC 생략(#212)은 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
+      {pendingMeasure !== null && (
+        <Dialog
+          open
+          closeOnBackdropClick={false}
+          showCloseButton={false}
+          title={t.measurements.dropDefectsTitle}
+          footer={
+            <>
+              <Button variant="outlined" size="md" onClick={() => setPendingMeasure(null)}>
+                {t.result.confirmDialog.cancel}
+              </Button>
+              <Button variant="filled" size="md" onClick={confirmDropDefects}>
+                {t.measurements.dropDefectsConfirm}
+              </Button>
+            </>
+          }
+          onClose={() => setPendingMeasure(null)}
+        >
+          <p>{t.measurements.dropDefectsBody}</p>
+        </Dialog>
+      )}
       {isWorkerConnectOpen && session !== null && (
         <WorkerConnectDialog
           appUserId={session.userId}
@@ -1040,27 +1145,29 @@ const IqcInspectionScreenBody = () => {
           confirmError={confirm.error}
           renderDefects={
             isOpenRound
-              ? () => (
-                  <DefectRows
-                    checked={hasDefects}
-                    onCheckedChange={(checked) => {
-                      setHasDefects(checked);
-                      changeDraftAndJudge({
-                        ...draft,
-                        rejected: checked ? rejectedTextOf(defects) : '',
-                      });
-                    }}
-                    codes={defectCodes.data ?? []}
-                    rows={defects}
-                    onChange={(next) => {
-                      setDefects(next);
-                      /* 불합격 수량은 불량 내역 수량의 합이다(사용자 시안 2026-10-28 · #197). */
-                      changeDraftAndJudge({ ...draft, rejected: rejectedTextOf(next) });
-                    }}
-                    uomCode={uomCode}
-                    disabled={confirm.isSaving || workerMissing}
-                  />
-                )
+              ? () =>
+                  /* 검사 항목이 있으면 불합격 항목 아래에 선다. 항목 없는 의뢰와, 불합격 항목 없이 남은 기록만 여기 둔다. */
+                  measurementRows.length > 0 && (hasRejectedItem || !hasDefects) ? null : (
+                    <DefectRows
+                      checked={hasDefects}
+                      onCheckedChange={(checked) => {
+                        setHasDefects(checked);
+                        changeDraftAndJudge({
+                          ...draft,
+                          rejected: checked ? rejectedTextOf(defects) : '',
+                        });
+                      }}
+                      codes={defectCodes.data ?? []}
+                      rows={defects}
+                      onChange={(next) => {
+                        setDefects(next);
+                        /* 불합격 수량은 불량 내역 수량의 합이다(사용자 시안 2026-10-28 · #197). */
+                        changeDraftAndJudge({ ...draft, rejected: rejectedTextOf(next) });
+                      }}
+                      uomCode={uomCode}
+                      disabled={confirm.isSaving || workerMissing}
+                    />
+                  )
               : null
           }
           judgmentBelow={
@@ -1088,11 +1195,28 @@ const IqcInspectionScreenBody = () => {
                 isLoading={itemSpecs.isLoading || measurements.isLoading}
                 scrollX
                 dataTypeNames={dataTypeNames}
+                renderBelowItem={(specId) => {
+                  if (!rejectedSpecs.includes(specId)) return null;
+                  const owned = defects.filter((row) => ownerOfDefect(row) === specId);
+                  return (
+                    <DefectRows
+                      inline
+                      checked
+                      onCheckedChange={() => undefined}
+                      codes={defectCodes.data ?? []}
+                      rows={owned.length === 0 ? [{ ...EMPTY_DEFECT, specId }] : owned}
+                      onChange={(next) => changeItemDefects(specId, next)}
+                      uomCode={uomCode}
+                      disabled={confirm.isSaving || workerMissing}
+                    />
+                  );
+                }}
                 edit={{
                   draft: measureDraft,
                   onChange: changeMeasureDraft,
                   judgmentOptions: toCodeOptions(measurementJudgmentValues.data ?? []),
                   disabled: workerMissing || save.isSaving || confirm.isSaving,
+                  onTyping: changeTyping,
                 }}
               />
             ) : null

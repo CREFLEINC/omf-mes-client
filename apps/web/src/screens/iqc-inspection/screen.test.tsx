@@ -358,8 +358,12 @@ const reasonValue = async (): Promise<string> => {
 /** 「불합격 존재」를 켜 불량 내역을 연다(#197) — 저장된 불량 기록이 있으면 이미 켜져 있다. */
 const showDefects = async (): Promise<void> => {
   await openQtyDialog();
-  const box = await screen.findByRole('checkbox', { name: t.result.rejection.hasDefects });
-  if (!(box as HTMLInputElement).checked) await userEvent.click(box);
+  if (screen.queryByLabelText(t.result.rejection.defectQty) !== null) return;
+  /* 검사 항목이 있는 의뢰는 불합격 항목 아래에서 불량을 적는다(#247). */
+  await userEvent.click(
+    await screen.findByRole('combobox', { name: t.measurements.judgmentLabel('외관', 1) }),
+  );
+  await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
 };
 /** 불량 내역 첫 줄의 불량 수량(#197). */
 const typeDefectQty = async (value: string): Promise<void> => {
@@ -1098,6 +1102,69 @@ describe('IqcInspectionScreen', () => {
     expect(box).toHaveValue('1.5');
   });
 
+  describe('불합격 항목 아래 불량 등록(#247)', () => {
+    const markRejected = async (name: string): Promise<void> => {
+      await userEvent.click(
+        await screen.findByRole('combobox', { name: t.measurements.judgmentLabel(name, 1) }),
+      );
+      await userEvent.click(await screen.findByRole('option', { name: '불합격' }));
+    };
+    const defectSections = () =>
+      screen.queryAllByRole('region', { name: t.result.rejection.defectsHeading });
+
+    it('합격 항목에는 불량 등록이 없고, 불합격이면 그 항목 아래에 서며 여러 줄을 더할 수 있다', async () => {
+      renderScreen('/?ir=1001', undefined, [{ ...draftRound, rejectedQty: 0, heldQty: 0 }]);
+      await findRound(1);
+      await openQtyDialog();
+      expect(defectSections()).toHaveLength(0);
+
+      await markRejected('외관');
+      const [section] = defectSections();
+      expect(section).toBeDefined();
+      const addButton = within(section as HTMLElement).getByRole('button', {
+        name: t.result.rejection.addDefect,
+      });
+      await userEvent.click(addButton);
+      expect(
+        within(section as HTMLElement).getAllByLabelText(t.result.rejection.defectQty),
+      ).toHaveLength(2);
+    });
+
+    it('적은 불량이 있는 항목을 합격으로 바꾸면 묻고, 취소하면 그대로다', async () => {
+      renderScreen('/?ir=1001', undefined, [{ ...draftRound, rejectedQty: 0, heldQty: 0 }]);
+      await findRound(1);
+      await openQtyDialog();
+      await markRejected('외관');
+      await userEvent.type(screen.getByLabelText(t.result.rejection.defectQty), '3');
+
+      await userEvent.click(
+        screen.getByRole('combobox', { name: t.measurements.judgmentLabel('외관', 1) }),
+      );
+      await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+      const dialog = await screen.findByRole('dialog', { name: t.measurements.dropDefectsTitle });
+
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: t.result.confirmDialog.cancel }),
+      );
+      expect(screen.getByLabelText(t.result.rejection.defectQty)).toHaveValue('3');
+      expect(defectSections()).toHaveLength(1);
+    });
+
+    it('적은 것이 없으면 묻지 않고 영역만 닫힌다', async () => {
+      renderScreen('/?ir=1001', undefined, [{ ...draftRound, rejectedQty: 0, heldQty: 0 }]);
+      await findRound(1);
+      await openQtyDialog();
+      await markRejected('외관');
+
+      await userEvent.click(
+        screen.getByRole('combobox', { name: t.measurements.judgmentLabel('외관', 1) }),
+      );
+      await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      await waitFor(() => expect(defectSections()).toHaveLength(0));
+    });
+  });
+
   it('값과 판정 중 하나만 적은 줄이 있으면 임시 저장을 막는다', async () => {
     renderScreen('/?ir=1001', undefined, [draftRound], []);
 
@@ -1251,10 +1318,7 @@ describe('IqcInspectionScreen', () => {
     const accepted = await qtyField('accepted');
     await userEvent.clear(accepted);
     await userEvent.type(accepted, '475');
-    /* 불합격 25 > 20 — 자동으로 불합격이 된다. 불량 내역은 ① 의 「불량 등록」 체크로 연다(#197). */
-    expect(
-      await screen.findByRole('checkbox', { name: t.result.rejection.hasDefects }),
-    ).toBeInTheDocument();
+    /* 불합격 25 > 20 — 자동으로 불합격이 된다. */
     await openJudgmentDialog();
     await waitFor(() =>
       expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('불합격'),

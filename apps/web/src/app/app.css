@@ -29574,6 +29574,16 @@ button.iqc-inspection-step-toggle:focus-visible {
   min-width: 0;
 }
 
+/* 불합격 항목 아래 불량 등록(#247) — 항목의 하위 줄이라 왼쪽 정렬, 표 칸 안에서 카드 없이 선다. */
+.iqc-inspection-measure-slot {
+  text-align: start;
+}
+
+.iqc-inspection-measure-slot .iqc-inspection-defects:nth-child(n) {
+  padding: 0;
+  border: 0;
+}
+
 /*
  * 항목 표의 선택 칸 — 체크 표시 자리를 오른쪽 끝으로 옮겨 글자가 선택 칸 글자와 같은 왼쪽에 선다(사용자 지시 2026-11-09).
  * 펼친 목록은 부품이 문서 끝에 따로 그려 이 표가 펼쳐져 있을 때만 건다(쪽 크기 선택과 같은 방식).

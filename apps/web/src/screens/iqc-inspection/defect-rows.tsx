@@ -22,7 +22,16 @@ export const defectSumOf = (rows: readonly DefectDraft[]): bigint =>
 export const hasInvalidDefectQty = (rows: readonly DefectDraft[]): boolean =>
   rows.some((row) => row.qty.trim() !== '' && toMicro(row.qty) === null);
 
+/** 아무것도 적지 않은 줄인가. */
+export const isBlankDefect = (row: DefectDraft): boolean =>
+  row.majorId === '' &&
+  row.minorId === '' &&
+  row.qty.trim() === '' &&
+  row.description.trim() === '';
+
 export interface DefectRowsProps {
+  /** 검사 항목 아래에 펼칠 때(#247) — 제목 · 체크 없이 줄과 [불량 추가]만 선다. */
+  inline?: boolean;
   /** 「불량 등록」 체크 — 켜야 불량 내역 줄이 선다. */
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -38,6 +47,7 @@ export interface DefectRowsProps {
  * 받는다. 불량 유형이 여럿일 수 있어 줄을 더하고 뺀다. 불합격 수량은 따로 받지 않고 이 수량의 합이 된다(부르는 쪽이 맞춘다).
  */
 export const DefectRows = ({
+  inline = false,
   checked,
   onCheckedChange,
   codes,
@@ -52,31 +62,33 @@ export const DefectRows = ({
 
   return (
     <section className="iqc-inspection-defects" aria-label={t.defectsHeading}>
-      <div className="iqc-inspection-defects-head">
-        <h4>{t.defectsHeading}</h4>
-        <Checkbox
-          checked={checked}
-          disabled={disabled}
-          onChange={(event) => onCheckedChange(event.target.checked)}
-        >
-          {t.hasDefects}
-        </Checkbox>
-        {/* [불량 추가]는 제목 줄 오른쪽 끝(사용자 시안 2026-10-29). */}
-        <div className="iqc-inspection-defects-actions">
-          {checked && (
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              leadingIcon={<Icon name="add" size={18} aria-hidden />}
-              disabled={disabled}
-              onClick={() => onChange([...rows, EMPTY_DEFECT])}
-            >
-              {t.addDefect}
-            </Button>
-          )}
+      {!inline && (
+        <div className="iqc-inspection-defects-head">
+          <h4>{t.defectsHeading}</h4>
+          <Checkbox
+            checked={checked}
+            disabled={disabled}
+            onChange={(event) => onCheckedChange(event.target.checked)}
+          >
+            {t.hasDefects}
+          </Checkbox>
+          {/* [불량 추가]는 제목 줄 오른쪽 끝(사용자 시안 2026-10-29). */}
+          <div className="iqc-inspection-defects-actions">
+            {checked && (
+              <Button
+                type="button"
+                variant="outlined"
+                size="md"
+                leadingIcon={<Icon name="add" size={18} aria-hidden />}
+                disabled={disabled}
+                onClick={() => onChange([...rows, EMPTY_DEFECT])}
+              >
+                {t.addDefect}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {checked && (
         <div className="iqc-inspection-defect-table">
           {/*
@@ -143,6 +155,20 @@ export const DefectRows = ({
               );
             })}
           </ol>
+          {inline && (
+            <div className="iqc-inspection-defects-actions">
+              <Button
+                type="button"
+                variant="outlined"
+                size="sm"
+                leadingIcon={<Icon name="add" size={18} aria-hidden />}
+                disabled={disabled}
+                onClick={() => onChange([...rows, EMPTY_DEFECT])}
+              >
+                {t.addDefect}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </section>

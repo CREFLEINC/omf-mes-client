@@ -161,6 +161,15 @@ export const measureSaveBlockOf = (
 export const hasMissingRequired = (rows: readonly MeasurementRow[], draft: MeasureDraft): boolean =>
   rows.some((row) => row.required && entryOf(draft, row.key).judgment === '');
 
+/** 불합격 줄이 있는 검사 항목(화면 차례) — 그 항목 아래에 불량 등록이 선다. */
+export const rejectedSpecsOf = (rows: readonly MeasurementRow[], draft: MeasureDraft): number[] => [
+  ...new Set(
+    rows
+      .filter((row) => entryOf(draft, row.key).judgment === REJECTED)
+      .map((row) => row.inspectionItemSpecId),
+  ),
+];
+
 /** 「전량 합격」일 때 채울 측정 결과 — 수치는 기준값(없으면 빈 칸), 예/아니오는 양호, 글은 빈 칸. */
 const defaultValueOf = (row: MeasurementRow): string => {
   if (row.dataType === 'NUMERIC') return row.spec.target === null ? '' : String(row.spec.target);

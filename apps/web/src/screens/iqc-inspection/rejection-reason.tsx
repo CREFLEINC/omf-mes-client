@@ -80,6 +80,11 @@ export const resolveDefectCode = (
 /** 불량 내역 한 줄(#197) — 불량 코드 · 추정 원인 · 사유에 그 유형의 수량을 더했다. 수량은 친 글 그대로다. */
 export interface DefectDraft extends RejectionDraft {
   qty: string;
+  /**
+   * 화면에서 이 줄을 세운 검사 항목(#247 · 사용자 지시 2026-11-09). ⛔ 서버에 보내지 않고 저장되지 않는다 — 불량 기록에 항목 칸이
+   * 없다. 다시 열면 비어 있고, 그때는 첫 불합격 항목 아래에 선다.
+   */
+  specId?: number;
 }
 
 export const EMPTY_DEFECT: DefectDraft = { ...EMPTY_REJECTION, qty: '' };
