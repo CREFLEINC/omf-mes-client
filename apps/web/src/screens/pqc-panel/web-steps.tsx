@@ -196,46 +196,64 @@ export const PqcWebSteps = ({
         .join(' · '),
       render: () => (
         <>
-          <InspectionQtyLine
-            uomCode={uomCode}
-            disabled={isLocked}
-            status={status}
-            /*
-             * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
-             * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
-             */
-            fields={[
-              ...(
-                [
-                  ['accepted', t.quantity.accepted],
-                  ['rejected', t.quantity.rejected],
-                  ['held', t.quantity.held],
-                ] as const
-              ).map(([key, label]) => ({
-                key,
-                kind: key,
-                label,
-                value: draft[key],
-                onChange: (raw: string) => {
-                  const typed = { ...draft, [key]: raw };
-                  /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
-                  const remaining =
-                    key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
-                  const next = remaining === null ? typed : { ...typed, accepted: remaining };
-                  onChange(next);
-                  applyAuto(next);
-                },
-                error:
-                  serverErrorOf(key) ??
-                  (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
-              })),
-            ]}
-          >
-            {inspectionRound !== null && (
-              <p className="field-note">{t.quantity.round(inspectionRound)}</p>
-            )}
-            {errorBanner}
-          </InspectionQtyLine>
+          <div className="iqc-inspection-qty-body" data-with-judgment="">
+            <InspectionQtyLine
+              uomCode={uomCode}
+              disabled={isLocked}
+              status={status}
+              /* 최종 판정은 수량 줄 오른쪽(IQC 와 같다 · 사용자 지시 2026-11-09). */
+              trailing={
+                <PqcJudgmentFields
+                  part="judgment"
+                  judgmentOptions={judgmentOptions}
+                  judgment={judgment}
+                  onJudgmentChange={(code) => {
+                    autoFilled.current = null;
+                    onJudgmentChange(code);
+                  }}
+                  disposition={disposition}
+                  onDispositionChange={onDispositionChange}
+                  rejected={draft.rejected}
+                  isLocked={isLocked}
+                />
+              }
+              /*
+               * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
+               * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
+               */
+              fields={[
+                ...(
+                  [
+                    ['accepted', t.quantity.accepted],
+                    ['rejected', t.quantity.rejected],
+                    ['held', t.quantity.held],
+                  ] as const
+                ).map(([key, label]) => ({
+                  key,
+                  kind: key,
+                  label,
+                  value: draft[key],
+                  onChange: (raw: string) => {
+                    const typed = { ...draft, [key]: raw };
+                    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
+                    const remaining =
+                      key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
+                    const next = remaining === null ? typed : { ...typed, accepted: remaining };
+                    onChange(next);
+                    applyAuto(next);
+                  },
+                  error:
+                    serverErrorOf(key) ??
+                    (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
+                })),
+              ]}
+            >
+              {inspectionRound !== null && (
+                <p className="field-note">{t.quantity.round(inspectionRound)}</p>
+              )}
+              {errorBanner}
+            </InspectionQtyLine>
+          </div>
           {inspectionPlanVersionId !== null && (
             <WebItemTable
               inStep
@@ -252,6 +270,7 @@ export const PqcWebSteps = ({
             />
           )}
           <PqcJudgmentFields
+            part="disposition"
             judgmentOptions={judgmentOptions}
             judgment={judgment}
             onJudgmentChange={(code) => {

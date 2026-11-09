@@ -27,6 +27,8 @@ export interface InspectionQtyLineProps {
   /** 수량 줄 오른쪽 끝 [확정] — 주지 않으면 단추가 없다(잠긴 회차). */
   onConfirm?: (() => void) | null;
   confirmDisabled?: boolean;
+  /** 수량 줄 오른쪽 끝에 세울 것(최종 판정 칸) — [확정] 자리에 선다. */
+  trailing?: ReactNode;
   /** 칸 아래 · 줄 위에 붙일 것(오류 띠 등). */
   children?: ReactNode;
   /** 칸들이 함께 가리킬 설명(잠긴 까닭 등)의 id. */
@@ -44,6 +46,7 @@ export const InspectionQtyLine = ({
   status,
   onConfirm = null,
   confirmDisabled = false,
+  trailing = null,
   children,
   describedBy,
 }: InspectionQtyLineProps) => {
@@ -108,6 +111,7 @@ export const InspectionQtyLine = ({
             </>
           )}
         </p>
+        {trailing !== null && <div className="iqc-inspection-qty-line-action">{trailing}</div>}
         {onConfirm !== null && (
           <div className="iqc-inspection-qty-line-action">
             <Button
