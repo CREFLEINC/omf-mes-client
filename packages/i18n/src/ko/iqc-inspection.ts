@@ -181,6 +181,7 @@ export const iqcInspection = {
     },
     level: {
       unset: '미지정',
+      saveFailed: '검사 수준을 지정하지 못했습니다. 검사 수준 관리 화면에서 지정해 주세요.',
       loadFailed: '불러오지 못함',
       set: '지정',
     },

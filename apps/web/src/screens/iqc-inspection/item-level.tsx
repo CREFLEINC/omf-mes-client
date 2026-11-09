@@ -1,16 +1,14 @@
-import { Button, useToast } from '@crefle/web-ui';
+import { Button } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { LevelDialog } from '../inspection-level/level-dialog';
-import { useLevelWrite } from '../inspection-level/level-write';
+import { LevelDialog, type LevelDialogValues } from '../inspection-level/level-dialog';
 import { inspectionLevelKeys, type Paged } from '../inspection-level/queries';
 
 type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
@@ -30,17 +28,26 @@ export interface ItemLevelProps {
    * 없을 때만 서고 [지정]을 둔다(omf-all-around#247 · 사용자 지시 2026-11-09).
    */
   mode?: 'view' | 'set-if-unset';
+  /** 4M 단계에서 골라 둔 수준 — 판정 확정 때 저장된다(사용자 지시 2026-11-09). 없으면 `null` */
+  pending?: LevelDialogValues | null;
+  /** 창의 [저장] — 서버에 쓰지 않고 골라 두기만 한다 */
+  onPick?: (values: LevelDialogValues) => void;
 }
 
 /**
  * IQC 「검사 수준」 칸(omf-all-around#133) — 품목의 현재 검사 수준을 보인다. 지정은 검사 중 수준이 없을 때만
- * 4M 변경 정보 단계에서 한다(#247) — 변경은 검사 수준 관리 화면에서 한다. 창과 저장은 그 화면과 같다.
+ * 4M 변경 정보 단계에서 고르고, 판정을 확정할 때 저장된다(#247) — 변경은 검사 수준 관리 화면에서 한다.
  * 자동 전환은 없다 — 사용자가 정한 수준만 쓴다.
  */
-export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
+export const ItemLevel = ({
+  itemId,
+  item,
+  mode = 'view',
+  pending = null,
+  onPick,
+}: ItemLevelProps) => {
   const { client } = useApiClient();
   const { session } = useSession();
-  const toast = useToast();
   const canEdit = toWebAccess(session?.permissions).allows(INSPECTION_LEVEL_PATH);
   const [editing, setEditing] = useState(false);
 
@@ -53,10 +60,6 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
         }),
       ).then((page: Paged<ItemInspectionLevel>) => page.items[0] ?? null),
   });
-  const write = useLevelWrite(() => {
-    setEditing(false);
-    toast.show({ variant: 'success', description: messages.common.saved });
-  });
 
   const row = level.data ?? null;
   if (mode === 'set-if-unset' && !(level.isSuccess && row === null) && !editing) return null;
@@ -65,21 +68,16 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
     : level.isError
       ? t.loadFailed
       : row === null
-        ? t.unset
+        ? pending !== null
+          ? (levelNames[pending.level] ?? pending.level)
+          : t.unset
         : (levelNames[row.inspectionLevelCode] ?? row.inspectionLevelCode);
 
   const body = (
     <span className="iqc-inspection-level">
       <span>{label}</span>
       {mode === 'set-if-unset' && canEdit && item !== null && row === null && (
-        <Button
-          size="md"
-          variant="outlined"
-          onClick={() => {
-            write.reset();
-            setEditing(true);
-          }}
-        >
+        <Button size="md" variant="outlined" onClick={() => setEditing(true)}>
           {t.set}
         </Button>
       )}
@@ -87,20 +85,14 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
         <LevelDialog
           row={row}
           presetItem={{ itemId, ...item }}
-          fieldErrors={write.fieldErrors}
-          banner={
-            <SaveErrorBanner
-              error={write.error}
-              onReload={() => {
-                write.reset();
-                setEditing(false);
-                void level.refetch();
-              }}
-            />
-          }
-          isSaving={write.isSaving}
+          fieldErrors={{}}
+          banner={null}
+          isSaving={false}
           onClose={() => setEditing(false)}
-          onSave={(values) => write.write({ row, values })}
+          onSave={(values) => {
+            onPick?.(values);
+            setEditing(false);
+          }}
         />
       )}
     </span>
@@ -115,6 +107,13 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
 };
 
 /** 4M 변경 정보 단계의 「검사 수준」 줄 — 품목 수준이 없을 때만 선다(#247). */
-export const ItemLevelStep = ({ itemId, item }: Omit<ItemLevelProps, 'mode'>) => (
-  <ItemLevel key={itemId} itemId={itemId} item={item} mode="set-if-unset" />
+export const ItemLevelStep = ({ itemId, item, pending, onPick }: Omit<ItemLevelProps, 'mode'>) => (
+  <ItemLevel
+    key={itemId}
+    itemId={itemId}
+    item={item}
+    mode="set-if-unset"
+    pending={pending ?? null}
+    {...(onPick === undefined ? {} : { onPick })}
+  />
 );

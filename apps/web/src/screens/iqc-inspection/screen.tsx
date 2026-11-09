@@ -121,6 +121,8 @@ import {
 import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
+import type { LevelDialogValues } from '../inspection-level/level-dialog';
+import { useLevelWrite } from '../inspection-level/level-write';
 import { ItemLevel, ItemLevelStep } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
@@ -139,6 +141,27 @@ import {
 import { useUomLookup } from './uom-lookup';
 
 /** 품목 풀이 → 검사 수준 창의 품목. 못 풀었으면 창을 열지 않는다(#133). */
+const pendingLevelKey = (requestId: number): string =>
+  `omf-mes:iqc-inspection:pending-level:${String(requestId)}`;
+
+const readPendingLevel = (requestId: number): LevelDialogValues | null => {
+  try {
+    const raw = window.localStorage.getItem(pendingLevelKey(requestId));
+    return raw === null ? null : (JSON.parse(raw) as LevelDialogValues);
+  } catch {
+    return null;
+  }
+};
+
+const storePendingLevel = (requestId: number, values: LevelDialogValues | null): void => {
+  try {
+    if (values === null) window.localStorage.removeItem(pendingLevelKey(requestId));
+    else window.localStorage.setItem(pendingLevelKey(requestId), JSON.stringify(values));
+  } catch {
+    /* 저장하지 못해도 이번 화면에서는 그대로 쓴다. */
+  }
+};
+
 const toLevelItem = (parts: ItemNameParts | null) =>
   parts === null ? null : { itemCode: parts.code, itemName: parts.name };
 
@@ -308,8 +331,29 @@ const IqcInspectionScreenBody = () => {
   /** 방금 확정했는가. **상태가 아니라 결과다** — 고른 의뢰가 바뀌면 지워진다. */
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
 
+  /*
+   * 4M 단계에서 골라 둔 검사 수준(사용자 지시 2026-11-09) — 판정을 확정해야 저장한다. 임시 저장 뒤 다시 열어도 남도록 의뢰별로
+   * 이 브라우저에 둔다(서버에는 임시 저장할 자리가 없다).
+   */
+  const [pendingLevel, setPendingLevel] = useState<LevelDialogValues | null>(null);
+  useEffect(() => {
+    setPendingLevel(selectedId === null ? null : readPendingLevel(selectedId));
+  }, [selectedId]);
+  const levelWrite = useLevelWrite(() => undefined);
+  useEffect(() => {
+    if (levelWrite.error !== null) {
+      toast.show({ variant: 'error', description: t.detail.level.saveFailed });
+    }
+    /* 실패할 때 한 번만 알린다 — 그래서 `toast` 를 넣지 않는다. */
+  }, [levelWrite.error]);
+
   const confirm = useConfirmResult(selectedId, editingResultId, () => {
     setIsJustConfirmed(true);
+    if (pendingLevel !== null && selectedId !== null) {
+      levelWrite.write({ row: null, values: pendingLevel });
+      storePendingLevel(selectedId, null);
+      setPendingLevel(null);
+    }
   });
 
   /*
@@ -1160,6 +1204,11 @@ const IqcInspectionScreenBody = () => {
                 <ItemLevelStep
                   itemId={detail.data.itemId}
                   item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
+                  pending={pendingLevel}
+                  onPick={(values) => {
+                    setPendingLevel(values);
+                    storePendingLevel(detail.data.inspectionRequestId, values);
+                  }}
                 />
               </>
             ) : null

@@ -56,6 +56,21 @@ describe('ItemLevel', () => {
     expect(await screen.findByRole('button', { name: t.set })).toBeInTheDocument();
   });
 
+  it('4M 단계 — 골라 둔 수준을 보이되 서버에 쓰지 않는다(판정 확정 때 저장)', async () => {
+    render(
+      <ItemLevelStep
+        itemId={501}
+        item={ITEM}
+        pending={{ itemId: 501, level: 'NORMAL', reason: '' }}
+      />,
+      [],
+    );
+
+    expect(
+      await screen.findByText(messages.inspectionLevel.levels.NORMAL ?? 'NORMAL'),
+    ).toBeInTheDocument();
+  });
+
   it('4M 단계 — 수준이 있으면 줄을 두지 않는다', async () => {
     /* 머리 칸과 같은 조회를 나눠 쓴다 — 머리에 수준 이름이 서면 조회가 끝난 것이다. */
     const { container } = render(
