@@ -14,6 +14,7 @@ import {
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
@@ -118,6 +119,13 @@ const emptyIcon = (
 );
 
 /** 이력의 사유 칸 — 자동은 연속 합격 수나 불합격 의뢰, 수동은 입력한 사유. */
+/** 주소의 품목 조건 — 숫자 id 가 아니면 없는 것으로 본다. */
+const itemFromParams = (params: URLSearchParams): { itemId: number; label: string } | null => {
+  const itemId = Number(params.get('item'));
+  if (!Number.isInteger(itemId) || itemId <= 0) return null;
+  return { itemId, label: params.get('itemLabel') ?? String(itemId) };
+};
+
 export const historyReason = (row: ItemInspectionLevelHistory): string => {
   if (row.changeTypeCode === 'AUTO') {
     if (row.consecutiveAcceptCount !== null)
@@ -126,56 +134,6 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
   }
   return row.reason ?? '—';
 };
-
-/*
- * 품목 이력 창의 열 — 사용자 시안(#208): 변경 일시 · 검사 수준(새 수준 칩 + 아래 「최초 지정」/「이전 수준에서 변경」) ·
- * 변경 방식 · 변경 사유 · 처리자. 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
- * IQC 상세 [수준 조회](#247)도 같은 창을 쓴다.
- */
-export const itemHistoryColumns: Column<ItemInspectionLevelHistory>[] = [
-  {
-    key: 'changedAt',
-    header: t.history.itemColumns.changedAt,
-    width: '150px',
-    render: (row) => formatPlantDateTime(row.changedAt) ?? '',
-  },
-  {
-    key: 'level',
-    header: t.history.itemColumns.level,
-    width: '130px',
-    render: (row) => (
-      <span className="inspection-level-history-level">
-        <LevelChip code={row.toLevelCode} />
-        <span className="inspection-sheet-template-muted">
-          {row.fromLevelCode === null
-            ? t.history.firstSetNote
-            : t.history.changedFrom(levelName(row.fromLevelCode))}
-        </span>
-      </span>
-    ),
-  },
-  {
-    key: 'type',
-    header: t.history.itemColumns.type,
-    width: '90px',
-    render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
-  },
-  {
-    key: 'reason',
-    header: t.history.itemColumns.reason,
-    width: '150px',
-    render: (row) => {
-      const reason = historyReason(row);
-      return <span title={reason}>{reason}</span>;
-    },
-  },
-  {
-    key: 'changedBy',
-    header: t.history.itemColumns.changedBy,
-    width: '120px',
-    render: (row) => row.changedByName ?? '',
-  },
-];
 
 /**
  * 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준을 지정·수동 변경하고 전환 이력을 본다.
@@ -190,14 +148,18 @@ export const InspectionLevelScreen = () => {
   const toast = useToast();
 
   /* 품목 — 조회 줄의 「품목 검색」 칸에서 바로 검색해서 고른다(#226). */
-  const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(null);
+  /* IQC [수준 조회] 창의 [수정]이 그 품목으로 좁혀 연다 — 주소의 `item`·`itemLabel`(omf-all-around#247). */
+  const [searchParams] = useSearchParams();
+  const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(() =>
+    itemFromParams(searchParams),
+  );
   const itemSelectId = useId();
-  const [filter, setFilter] = useState<LevelListFilter>({
-    itemId: null,
+  const [filter, setFilter] = useState<LevelListFilter>(() => ({
+    itemId: itemFromParams(searchParams)?.itemId ?? null,
     level: '',
     page: 1,
     size: PAGE_SIZE,
-  });
+  }));
   const [historyItem, setHistoryItem] = useState<ItemInspectionLevel | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [historySize, setHistorySize] = useState<number>(PAGE_SIZE);
@@ -345,6 +307,55 @@ export const InspectionLevelScreen = () => {
       align: 'center',
       header: t.history.columns.changedBy,
       width: '112px',
+      render: (row) => row.changedByName ?? '',
+    },
+  ];
+
+  /*
+   * 품목 이력 창의 열 — 사용자 시안(#208): 변경 일시 · 검사 수준(새 수준 칩 + 아래 「최초 지정」/「이전 수준에서 변경」) ·
+   * 변경 방식 · 변경 사유 · 처리자. 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
+   */
+  const itemHistoryColumns: Column<ItemInspectionLevelHistory>[] = [
+    {
+      key: 'changedAt',
+      header: t.history.itemColumns.changedAt,
+      width: '150px',
+      render: (row) => formatPlantDateTime(row.changedAt) ?? '',
+    },
+    {
+      key: 'level',
+      header: t.history.itemColumns.level,
+      width: '130px',
+      render: (row) => (
+        <span className="inspection-level-history-level">
+          <LevelChip code={row.toLevelCode} />
+          <span className="inspection-sheet-template-muted">
+            {row.fromLevelCode === null
+              ? t.history.firstSetNote
+              : t.history.changedFrom(levelName(row.fromLevelCode))}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: 'type',
+      header: t.history.itemColumns.type,
+      width: '90px',
+      render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
+    },
+    {
+      key: 'reason',
+      header: t.history.itemColumns.reason,
+      width: '150px',
+      render: (row) => {
+        const reason = historyReason(row);
+        return <span title={reason}>{reason}</span>;
+      },
+    },
+    {
+      key: 'changedBy',
+      header: t.history.itemColumns.changedBy,
+      width: '120px',
       render: (row) => row.changedByName ?? '',
     },
   ];

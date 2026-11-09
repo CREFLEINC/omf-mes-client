@@ -13,8 +13,7 @@ type ItemInspectionLevelHistory = components['schemas']['ItemInspectionLevelHist
 const t = messages.inspectionLevel;
 
 export interface ItemHistoryDialogProps {
-  /** 품목 — 수준이 아직 없는 품목도 연다(IQC [수준 조회] · #247). */
-  item: Pick<ItemInspectionLevel, 'itemId' | 'itemCode' | 'itemName'>;
+  item: ItemInspectionLevel;
   /** 이력 열 — 품목은 창 머리가 말하므로 없다. */
   columns: Column<ItemInspectionLevelHistory>[];
   onClose: () => void;

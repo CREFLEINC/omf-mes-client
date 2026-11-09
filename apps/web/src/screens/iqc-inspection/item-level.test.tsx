@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -11,7 +11,16 @@ vi.mock('../../patterns/session', async (importOriginal) => ({
   useSession: () => ({ session: { permissions: ['W-03-12'] } }),
 }));
 
-const { ItemLevel, ItemLevelStep } = await import('./item-level');
+/* [수정]이 옮겨 가는 주소를 받아 둔다 — 화면 이동 자체는 leave-guard 가 맡는다. */
+const navigated: string[] = [];
+vi.mock('../../patterns/leave-guard', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../patterns/leave-guard')>()),
+  useLeaveFor: () => (href: string) => {
+    navigated.push(href);
+  },
+}));
+
+const { ItemLevel, ItemLevelStep, levelScreenHref } = await import('./item-level');
 
 const t = messages.iqcInspection.detail.level;
 const ITEM = { itemCode: 'SYN-ITEM-01', itemName: '합성 품목' };
@@ -44,22 +53,31 @@ const render = (node: React.ReactNode, levels: object[]) =>
 
 /** 검사 수준은 상세 머리에서 보기만 하고, 지정은 검사 중 4M 단계에서 수준이 없을 때만 한다(#247). */
 describe('ItemLevel', () => {
-  it('상세 머리 — 수준이 없으면 [지정] 없이 [수준 조회]만 둔다', async () => {
+  it('상세 머리 — 수준이 없으면 [지정] 없이 [수준 조회]만 두고, 창은 「미지정」을 보인다', async () => {
     render(<ItemLevel itemId={501} item={ITEM} />, []);
 
-    expect(await screen.findByText(t.unset)).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: t.view }));
     expect(screen.queryByRole('button', { name: t.set })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.view })).toBeInTheDocument();
+
+    const dialog = within(await screen.findByRole('dialog', { name: t.viewTitle }));
+    expect(dialog.getByText(t.unset)).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: t.edit })).toBeInTheDocument();
   });
 
-  it('상세 머리 — 수준이 있으면 [수준 조회]로 그 품목의 이력 창을 연다', async () => {
+  it('상세 머리 — [수준 조회] 창은 현재 수준을 보이고 [수정]은 검사 수준 관리를 그 품목으로 연다', async () => {
     render(<ItemLevel itemId={501} item={ITEM} />, [LEVEL]);
 
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: t.view }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.viewTitle }));
+    expect(
+      dialog.getByText(messages.inspectionLevel.levels.NORMAL ?? 'NORMAL'),
+    ).toBeInTheDocument();
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(ITEM.itemName)).toBeInTheDocument();
+    await user.click(dialog.getByRole('button', { name: t.edit }));
+    expect(navigated).toEqual([levelScreenHref(501, ITEM)]);
+    expect(navigated[0]).toContain('/quality/inspection-levels?item=501');
   });
 
   it('4M 단계 — 수준이 없으면 [지정]을 둔다', async () => {
