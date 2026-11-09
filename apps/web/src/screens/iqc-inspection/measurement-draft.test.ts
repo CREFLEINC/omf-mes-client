@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { appearanceSpec, dimensionSpec, normalMeasurement, optionalSpec } from './fixtures';
 import {
+  allItemsAccepted,
   fillAllAccepted,
   hasMissingRequired,
   overallFromItems,
@@ -146,6 +147,13 @@ describe('measurement-draft', () => {
     /* 자동 판정 항목이 없는 기준이면 최종 판정을 채우지 않는다. */
     const manual = toMeasurementRows([appearanceSpec], []);
     expect(overallFromItems(manual, fillAllAccepted(manual, {}))).toBeNull();
+  });
+
+  it('모든 회차가 합격이어야 전 항목 합격이다 — 빈 줄이나 불합격이 있으면 아니다', () => {
+    const filled = fillAllAccepted(rows, {});
+    expect(allItemsAccepted(rows, filled)).toBe(true);
+    expect(allItemsAccepted(rows, withJudgment(filled, appear, 'REJECTED'))).toBe(false);
+    expect(allItemsAccepted(rows, withValue({}, dim1, '10'))).toBe(false);
   });
 
   it('판정만 있는 줄은 값 칸 없이 싣는다', () => {

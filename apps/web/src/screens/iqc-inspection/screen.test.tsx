@@ -1297,6 +1297,23 @@ describe('IqcInspectionScreen', () => {
     expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
   });
 
+  /* 합격 수량 = 전체 수량이고 모든 항목이 합격일 때만 합격을 채운다(사용자 지시 2026-11-09). */
+  it('항목이 모두 합격이어도 합격 수량이 전체가 아니면 최종 판정에 합격을 채우지 않는다', async () => {
+    renderScreen('/?ir=1001', undefined, [
+      { ...draftRound, acceptedQty: 400, rejectedQty: 0, heldQty: 0, overallJudgmentCode: '' },
+    ]);
+
+    await findRound(1);
+    await openJudgmentDialog();
+    const box = await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) });
+    await userEvent.clear(box);
+    await userEvent.type(box, '10.05');
+
+    expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent(
+      t.result.judgmentPlaceholder,
+    );
+  });
+
   it('자동으로 채운 합격은 근거가 사라지면 비운다 — 보류가 있는 채 합격으로 확정되지 않게(#197 리뷰)', async () => {
     samplingVersion = {
       samplingMethodCode: 'FULL_INSPECTION',

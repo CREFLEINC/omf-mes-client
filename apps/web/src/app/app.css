@@ -32038,6 +32038,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
     gap: var(--space-1);
   }
 
+  .iqc-inspection-qty-status-total {
+    display: none;
+  }
+
   .iqc-inspection-qty-input input {
     font: var(--type-body-lg);
   }
@@ -32062,12 +32066,9 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: none;
 }
 
+/* 입력 현황은 한 줄(사용자 지시 2026-11-09). 좁은 폭에서는 「전체 N EA 중」을 빼고 남은 수량만 보인다. */
 .iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-status {
   flex: none;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-  height: auto;
   margin: 0;
   font: var(--type-body-sm);
 }

@@ -63,6 +63,7 @@ import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { PlanViewDialog } from './plan-view-dialog';
 import {
   entryOf,
+  allItemsAccepted,
   clearAllAccepted,
   fillAllAccepted,
   hasMissingRequired,
@@ -773,10 +774,16 @@ const IqcInspectionScreenBody = () => {
     const fromItems = overallFromItems(measurementRows, measures);
     /* 보류 수량이 있으면 항목이 모두 합격이어도 합격으로 채우지 않는다 — 사람이 고른다(#197 리뷰). */
     const hasHeld = (toMicro(next.held) ?? 0n) > 0n;
-    const expected =
+    const candidate =
       fromQty === 'REJECTED' || fromItems === 'REJECTED'
         ? 'REJECTED'
         : (fromQty ?? (hasHeld ? null : fromItems));
+    /* 합격으로 채우는 것은 합격 수량 = 전체 수량이고 모든 항목이 합격일 때뿐이다(사용자 지시 2026-11-09). */
+    const expected =
+      candidate === 'ACCEPTED' &&
+      !(isAllAccepted(next, inspectedQty) && allItemsAccepted(measurementRows, measures))
+        ? null
+        : candidate;
     if (expected !== null) {
       autoFilledJudgment.current = expected;
       setJudgment(expected);
