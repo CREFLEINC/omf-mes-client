@@ -1,13 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Chip,
-  EmptyState,
-  Icon,
-  Table,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
@@ -195,9 +186,11 @@ const ValueCell = ({ row }: { row: MeasurementRow }) => {
     );
   }
   return (
-    <TextField
-      size="sm"
-      fullWidth
+    /* 부품 사업부 수입 검사 입력표와 같은 칸(#247 · 사용자 지시 2026-11-09). 불합격 줄의 값은 칸이 붉다. */
+    <input
+      className={
+        entry.judgment === 'REJECTED' ? 'parts-iqc-cell parts-iqc-cell-ng' : 'parts-iqc-cell'
+      }
       aria-label={label}
       inputMode={row.dataType === 'NUMERIC' ? 'decimal' : undefined}
       value={entry.value}
@@ -208,6 +201,21 @@ const ValueCell = ({ row }: { row: MeasurementRow }) => {
         edit.onChange(withValue(edit.draft, row, event.target.value));
       }}
     />
+  );
+};
+
+/** 규격 — 입력 중에는 부품 입력표처럼 「기준 ± 공차」 아래에 「하한 ~ 상한」을 한 줄 더 보인다. */
+const SpecCell = ({ row }: { row: MeasurementRow }) => {
+  const edit = useContext(EditContext);
+  const text = withUnit(describeSpec(row.spec), row.spec, row.unit);
+  const { target, lower, upper } = row.spec;
+  if (edit === null || target === null || lower === null || upper === null) return text;
+  const range = t.range(lower, upper);
+  return (
+    <span className="parts-iqc-spec">
+      <span>{text}</span>
+      {text !== range && <span>{range}</span>}
+    </span>
   );
 };
 
@@ -280,7 +288,7 @@ const columns: Column<MeasurementRow>[] = [
     align: 'center',
     header: t.columns.spec,
     width: '102px',
-    render: (row) => withUnit(describeSpec(row.spec), row.spec, row.unit),
+    render: (row) => <SpecCell row={row} />,
   },
   {
     key: 'sample',
@@ -401,7 +409,7 @@ export const MeasurementGrid = ({
       {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}
       <div
         ref={fit.ref}
-        className="iqc-inspection-table-box inspection-queue-table"
+        className={`iqc-inspection-table-box inspection-queue-table${inStep ? ' iqc-inspection-measure-sheet' : ''}`}
         style={resizable.style}
       >
         <TypeNameContext.Provider value={dataTypeNames}>
