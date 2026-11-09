@@ -95,7 +95,16 @@ const PLAN_FIELD_NAMES: Partial<Record<ProductionPlanDraftField, string>> = {
   planDate: tp.plan.columns.planDate,
   plannedQty: tp.plan.columns.plannedQty,
   plannedLineId: tp.plan.columns.line,
+  bomId: tp.master.bom,
+  routingId: tp.master.routing,
 };
+/** 계획 편집 영역에 칸이 없는 BOM·Routing 칸 */
+const MASTER_FIELD_KIND: Partial<Record<ProductionPlanDraftField, 'bom' | 'routing'>> = {
+  bomId: 'bom',
+  routingId: 'routing',
+};
+const masterUnsetText = (kind: 'bom' | 'routing', plan: string): string =>
+  kind === 'bom' ? tp.remaining.planBomMissing(plan) : tp.remaining.planRoutingMissing(plan);
 
 export const ProcessWorkspace = ({
   order,
@@ -167,7 +176,11 @@ export const ProcessWorkspace = ({
     stepName('plan'),
   );
 
-  /* 생산계획: 확정 전 줄은 BOM·Routing 단계의 BOM, Routing을 따른다. */
+  /*
+   * 생산계획: 확정 전 줄은 품목의 지금 ERP 기본 BOM과 BOM·Routing 단계의 Routing을 따른다. 서버가 작성중 계획에
+   * 기본 BOM만 받는다(`BOM_NOT_DEFAULT`) — 확정 계획의 BOM을 이어 쓰지 않는다. 기본 BOM이 없으면 비워 두고 막힌 까닭을
+   * 하단 문구와 저장 실패 목록으로 알린다(#249).
+   */
   const { change } = editor;
   useEffect(() => {
     if (boms.isPending || boms.isError) return;
@@ -189,9 +202,16 @@ export const ProcessWorkspace = ({
       );
       return field === undefined
         ? null
-        : { plan: rowName(row), field: PLAN_FIELD_NAMES[field] ?? '' };
+        : {
+            plan: rowName(row),
+            field: PLAN_FIELD_NAMES[field] ?? '',
+            master: MASTER_FIELD_KIND[field],
+          };
     })
     .find((entry) => entry !== null);
+  const [planFailures, setPlanFailures] = useState<string[]>([]);
+  /* 불러온 뒤 서버 계획이 바뀌어 저장이 409로 돌아온 경우. 덮어쓰지 않고 다시 불러오기를 안내한다. */
+  const [planConflict, setPlanConflict] = useState<ApiError | null>(null);
   const plan = judgePlan(
     {
       loading: !editor.isHydrated,
@@ -208,14 +228,12 @@ export const ProcessWorkspace = ({
         unconfirmedRows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
       confirmedQty,
       orderQty: order.orderQty,
+      saveFailed: planFailures.length > 0 || planConflict !== null,
     },
     stepName('assign'),
   );
   const planDirty = unconfirmedRows.some((row) => row.productionPlanId === null || row.isDirty);
   const [planBusy, setPlanBusy] = useState(false);
-  const [planFailures, setPlanFailures] = useState<string[]>([]);
-  /* 불러온 뒤 서버 계획이 바뀌어 저장이 409로 돌아온 경우. 덮어쓰지 않고 다시 불러오기를 안내한다. */
-  const [planConflict, setPlanConflict] = useState<ApiError | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const planLines = (lines.data?.items ?? []).map((line) => ({
     id: line.productionLineId,
@@ -402,9 +420,17 @@ export const ProcessWorkspace = ({
           setPlanConflict(conflict.error);
         }
         setPlanFailures(
-          result.failures.flatMap((failure) =>
-            failure.message === null || failure.error?.kind === 'conflict' ? [] : [failure.message],
-          ),
+          result.failures.flatMap((failure) => {
+            if (failure.error?.kind === 'conflict') return [];
+            if (failure.message !== null) return [failure.message];
+            /* 저장 전 검사에서 막힌 줄. 편집 영역에 없는 칸(BOM·Routing)은 칸 오류가 보일 곳이 없어 여기서 알린다(#249). */
+            const kind = (['bomId', 'routingId'] as const)
+              .filter((name) => failure.errors[name] !== undefined)
+              .map((name) => MASTER_FIELD_KIND[name])[0];
+            const row = editor.rows.find((entry) => entry.key === failure.key);
+            if (kind === undefined || row === undefined) return [];
+            return [masterUnsetText(kind, row.planNo ?? tp.plan.newRow(row.displayNo))];
+          }),
         );
         return;
       }
@@ -529,7 +555,8 @@ export const ProcessWorkspace = ({
         ? releaseGuidance
         : judgments[step].guidance;
   const remainingLink =
-    step === 'master' && master.blockedOutside === 'bom' ? (
+    (step === 'master' && master.blockedOutside === 'bom') ||
+    (step === 'plan' && invalidRow?.master === 'bom') ? (
       <Link to="/system/erp-data/boms">{tp.links.bom}</Link>
     ) : step === 'master' && master.blockedOutside === 'routing' ? (
       <Link to="/master-data/routing">{tp.links.routing}</Link>

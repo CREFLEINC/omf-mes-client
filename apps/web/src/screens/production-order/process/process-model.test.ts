@@ -85,6 +85,29 @@ describe('처리 화면 단계 판정(C-5)', () => {
     expect(judgePlan(plan, '4M 배정').complete).toBe(true);
   });
 
+  it('BOM·Routing 이 빈 줄은 막힌 까닭을 말하고, 저장에 실패하면 다음 단계로 가라고 하지 않는다(#249)', () => {
+    const noBom = judgePlan(
+      { ...plan, unconfirmed: 1, invalid: { plan: '신규 계획 5', field: 'BOM', master: 'bom' } },
+      '4M 배정',
+    );
+    expect(noBom.guidance?.text).toBe(r.planBomMissing('신규 계획 5'));
+    expect(noBom.canConfirm).toBe(false);
+    expect(
+      judgePlan(
+        {
+          ...plan,
+          unconfirmed: 1,
+          invalid: { plan: '신규 계획 5', field: 'Routing', master: 'routing' },
+        },
+        '4M 배정',
+      ).guidance?.text,
+    ).toBe(r.planRoutingMissing('신규 계획 5'));
+    const failed = judgePlan({ ...plan, unconfirmed: 1, saveFailed: true }, '4M 배정');
+    expect(failed.guidance?.text).toBe(r.saveFailed);
+    expect(failed.canConfirm).toBe(false);
+    expect(failed.complete).toBe(false);
+  });
+
   it('4M은 저장 안 한 변경, 미배정 칸, 점검 결과 순으로 말한다', () => {
     expect(judgeAssign({ ...assign, unsaved: 'WO-1' }, '배포 확인').guidance?.text).toBe(
       'WO-1의 변경을 저장하세요',

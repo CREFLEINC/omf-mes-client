@@ -63,8 +63,10 @@ export interface PlanFacts {
   rowCount: number;
   /** 확정 전 줄 수(새 줄 포함) */
   unconfirmed: number;
-  /** 첫 잘못된 칸(계획 이름과 칸 이름) */
-  invalid: { plan: string; field: string } | null;
+  /** 첫 잘못된 칸(계획 이름과 칸 이름). `master` 면 편집 영역에 없는 BOM·Routing 칸이다. */
+  invalid: { plan: string; field: string; master?: 'bom' | 'routing' } | null;
+  /** 마지막 저장이 실패했다. 다음 단계로 가도 된다고 말하지 않는다. */
+  saveFailed?: boolean;
   /** 라인을 고르지 않은 첫 확정 전 계획 */
   missingLine: string | null;
   totalQty: number;
@@ -81,11 +83,21 @@ export const judgePlan = (facts: PlanFacts, next: string): PlanJudgment => {
   if (facts.loading) return { complete: false, canConfirm: false, guidance: null };
   if (facts.rowCount === 0) return { complete: false, canConfirm: false, guidance: say(t.addPlan) };
   if (facts.invalid !== null) {
+    const { plan, field, master } = facts.invalid;
     return {
       complete: false,
       canConfirm: false,
-      guidance: say(t.enter(facts.invalid.plan, josa(facts.invalid.field, '을/를'))),
+      guidance: say(
+        master === 'bom'
+          ? t.planBomMissing(plan)
+          : master === 'routing'
+            ? t.planRoutingMissing(plan)
+            : t.enter(plan, josa(field, '을/를')),
+      ),
     };
+  }
+  if (facts.saveFailed === true) {
+    return { complete: false, canConfirm: false, guidance: say(t.saveFailed) };
   }
   if (facts.missingLine !== null) {
     return { complete: false, canConfirm: false, guidance: say(t.chooseLine(facts.missingLine)) };

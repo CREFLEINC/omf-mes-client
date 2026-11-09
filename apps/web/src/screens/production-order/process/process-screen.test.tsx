@@ -475,6 +475,33 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(document.body).toHaveTextContent(tp.remaining.qtyShort('50'));
   });
 
+  it('기본 BOM 이 없는 품목은 [계획 추가] 줄을 보내지 않고 막힌 까닭을 알린다(#249)', async () => {
+    const user = userEvent.setup();
+    /* BOM 11 은 기본 BOM 이 아니다. 서버는 작성중 계획에 기본 BOM 만 받는다(BOM_NOT_DEFAULT). */
+    const state = world({
+      boms: [{ ...(world().boms[0] as Record<string, unknown>), isDefault: false }],
+      plans: [{ ...CONFIRMED_PLAN, plannedQty: 200 }],
+      workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+      confirmedPlanQty: 200,
+    });
+    const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+    await currentStep(tp.steps.plan);
+
+    await user.click(screen.getByRole('button', { name: tp.plan.add }));
+    const blocked = tp.remaining.planBomMissing(tp.plan.newRow(2));
+    expect(await screen.findByText(blocked)).toBeVisible();
+    expect(screen.getByRole('link', { name: tp.links.bom })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: tp.plan.saveDraft }));
+    const alert = await screen.findByText(tp.plan.failedTitle);
+    expect(alert.closest('[role="alert"], .alert-banner') ?? document.body).toHaveTextContent(
+      blocked,
+    );
+    expect(document.body).not.toHaveTextContent(tp.remaining.canProceed('4M 배정으로'));
+    expect(server.writes).toEqual([]);
+    expect(state.plans).toHaveLength(1);
+  });
+
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);
