@@ -311,6 +311,15 @@ export const erpWorkOrderFlow = {
       enter: (plan: string, fieldWithJosa: string): string =>
         `${plan}의 ${fieldWithJosa} 입력하세요`,
       chooseLine: (plan: string): string => `${plan}의 라인을 고르세요`,
+      /**
+       * 작성중 계획은 품목의 지금 ERP 기본 BOM 만 쓸 수 있다(서버 `BOM_NOT_DEFAULT`). BOM·Routing 은 계획 편집 영역에
+       * 칸이 없어, 비면 칸 오류 대신 이 문장으로 막힌 까닭을 알린다(omf-all-around#249).
+       */
+      planBomMissing: (plan: string): string =>
+        `${plan}에 쓸 ERP 기본 BOM이 하나로 정해지지 않아 저장할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요`,
+      planRoutingMissing: (plan: string): string =>
+        `${plan}에 쓸 Routing이 정해지지 않아 저장할 수 없습니다. BOM·Routing 단계를 확인하세요`,
+      saveFailed: '계획을 저장하지 못했습니다. 오류를 확인하세요',
       qtyShort: (qty: string): string => `계획 수량이 ${qty} 부족합니다. 계획을 추가하세요`,
       canProceed: (stepWithJosa: string): string => `${stepWithJosa} 진행할 수 있습니다`,
       checking: '배포 가능 여부를 확인하는 중입니다',
