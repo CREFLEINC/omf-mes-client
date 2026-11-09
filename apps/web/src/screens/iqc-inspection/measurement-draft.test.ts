@@ -32,6 +32,20 @@ describe('measurement-draft', () => {
     expect(withValue({}, dim1, '9.8')[dim1.key]?.judgment).toBe('REJECTED');
   });
 
+  it('자동 판정이 꺼진 항목도 값으로 판정을 채운다 — 사람이 고른 판정은 그대로다', () => {
+    const [flag] = toMeasurementRows(
+      [{ ...appearanceSpec, dataTypeCode: 'BOOLEAN', automaticJudgment: false }],
+      [],
+    );
+    const [limited] = toMeasurementRows([{ ...dimensionSpec, automaticJudgment: false }], []);
+    if (flag === undefined || limited === undefined) throw new Error('없는 줄');
+    expect(withValue({}, flag, 'true')[flag.key]?.judgment).toBe('ACCEPTED');
+    expect(withValue({}, flag, 'false')[flag.key]?.judgment).toBe('REJECTED');
+    expect(withValue({}, limited, '11')[limited.key]?.judgment).toBe('REJECTED');
+    const picked = withJudgment({}, flag, 'REJECTED');
+    expect(withValue(picked, flag, 'true')[flag.key]?.judgment).toBe('REJECTED');
+  });
+
   it('사람이 고른 판정은 값을 고쳐도 덮지 않는다', () => {
     const picked = withJudgment(withValue({}, dim1, '10.2'), dim1, 'ACCEPTED');
     expect(withValue(picked, dim1, '10.3')[dim1.key]?.judgment).toBe('ACCEPTED');

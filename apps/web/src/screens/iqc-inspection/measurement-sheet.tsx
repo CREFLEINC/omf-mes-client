@@ -83,8 +83,8 @@ const ValueInput = ({ row, edit }: { row: MeasurementRow; edit: MeasureEdit }) =
       />
     );
   }
-  /* 규격을 벗어난 값은 그 칸이 붉다(부품 입력표와 같다). 자동 판정 여부와 상관없이 규격으로 본다. */
-  const isOut = autoJudgmentOf({ ...row, autoJudgment: true }, entry.value) === 'REJECTED';
+  /* 규격을 벗어난 값은 그 칸이 붉다(부품 입력표와 같다). */
+  const isOut = autoJudgmentOf(row, entry.value) === 'REJECTED';
   return (
     <input
       className={isOut ? 'parts-iqc-cell parts-iqc-cell-ng' : 'parts-iqc-cell'}

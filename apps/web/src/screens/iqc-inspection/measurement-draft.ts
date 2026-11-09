@@ -10,7 +10,7 @@ type MeasurementInput = components['schemas']['InspectionMeasurementInput'];
  * ⭐ 값 칸은 항목 자료형으로 갈린다 — 수치(`NUMERIC`)는 숫자, 글(`TEXT`)은 글, 예/아니오(`BOOLEAN`)는 양호 · 불량(`'true'` ·
  * `'false'`). 계약이 셋 중 하나만 채우게 한다.
  *
- * ⭐ 자동 판정이 켜진 항목은 값으로 판정을 채운다 — 수치는 상·하한, 예/아니오는 양호 · 불량으로(계약 P-02-13 §5-11 · 사용자 지시
+ * ⭐ 값이 판정의 근거가 되는 항목은 값으로 판정을 채운다 — 수치는 상·하한, 예/아니오는 양호 · 불량으로(계약 P-02-13 §5-11 · 사용자 지시
  * 2026-11-09). 채운 판정은 사람이 바꿀 수 있고, 사람이 고른 판정은 덮지 않는다. 최종 판정도 항목 판정으로 채워 시작한다
  * (`overallFromItems` · 사용자 지시 2026-11-09) — 확정은 언제나 사람이 누른다.
  */
@@ -85,11 +85,10 @@ export const isSameMeasureDraft = (left: MeasureDraft, right: MeasureDraft): boo
 };
 
 /**
- * 값으로 채울 판정 — 자동 판정이 켜진 항목만. 수치는 상·하한 중 하나 이상이 있을 때(값이 숫자가 아니면 `null`), 예/아니오는
- * 양호 → 합격 · 불량 → 불합격. 글 항목은 채우지 않는다.
+ * 값으로 채울 판정 — 자동 판정이 꺼진 항목도 채운다(사람이 바꿀 수 있다 · 사용자 지시 2026-11-09). 수치는 상·하한 중 하나
+ * 이상이 있을 때(값이 숫자가 아니면 `null`), 예/아니오는 양호 → 합격 · 불량 → 불합격. 글 항목은 채우지 않는다.
  */
 export const autoJudgmentOf = (row: MeasurementRow, value: string): string | null => {
-  if (!row.autoJudgment) return null;
   if (row.dataType === 'BOOLEAN')
     return value === '' ? null : value === 'true' ? ACCEPTED : REJECTED;
   if (row.dataType !== 'NUMERIC') return null;
