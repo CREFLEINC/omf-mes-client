@@ -104,7 +104,7 @@ import {
 import { sampleQtyOf } from './sample-qty';
 import { QueueFilterBar } from './queue-filter-bar';
 import { QueueTable } from './queue-table';
-import { ItemLevel } from './item-level';
+import { ItemLevel, ItemLevelStep } from './item-level';
 import { RequestDetailPane } from './request-detail-pane';
 import { ResultFormPane } from './result-form-pane';
 import { WorkerConnectDialog } from './worker-connect-dialog';
@@ -996,13 +996,20 @@ const IqcInspectionScreenBody = () => {
           }
           fourMSlot={
             hasFourMTarget && isOpenRound ? (
-              <FourMChange
-                draft={fourM}
-                onChange={(next) => {
-                  setFourM(next);
-                }}
-                disabled={confirm.isSaving || workerMissing}
-              />
+              <>
+                <FourMChange
+                  draft={fourM}
+                  onChange={(next) => {
+                    setFourM(next);
+                  }}
+                  disabled={confirm.isSaving || workerMissing}
+                />
+                {/* 품목 검사 수준이 없으면 여기서 함께 지정한다 — 상세 머리는 보기만 한다(#247 · 사용자 지시 2026-11-09). */}
+                <ItemLevelStep
+                  itemId={detail.data.itemId}
+                  item={toLevelItem(itemNames.partsOf(detail.data.itemId))}
+                />
+              </>
             ) : null
           }
           reinspectReplacement={

@@ -182,8 +182,8 @@ export const iqcInspection = {
     level: {
       unset: '미지정',
       loadFailed: '불러오지 못함',
-      change: '변경',
       set: '지정',
+      view: '수준 조회',
     },
     /**
      * client#589 — 기준이 등록되지 않은 상태에서도 검사를 진행할 수 있어 이 칸이 빌 수 있다.
@@ -247,7 +247,6 @@ export const iqcInspection = {
     /** 끝난 의뢰(COMPLETED · 최신 회차 확정)의 읽기 전용 요약 — 입력 칸을 두지 않는다(3단계 검증). */
     closed: {
       title: '검사 완료',
-      note: '이 의뢰의 검사는 끝났습니다. 최신 회차의 확정 결과입니다.',
       finalJudgment: '최종 판정',
       round: '회차',
       confirmedAt: '확정 시각',

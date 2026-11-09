@@ -127,6 +127,56 @@ export const historyReason = (row: ItemInspectionLevelHistory): string => {
   return row.reason ?? '—';
 };
 
+/*
+ * 품목 이력 창의 열 — 사용자 시안(#208): 변경 일시 · 검사 수준(새 수준 칩 + 아래 「최초 지정」/「이전 수준에서 변경」) ·
+ * 변경 방식 · 변경 사유 · 처리자. 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
+ * IQC 상세 [수준 조회](#247)도 같은 창을 쓴다.
+ */
+export const itemHistoryColumns: Column<ItemInspectionLevelHistory>[] = [
+  {
+    key: 'changedAt',
+    header: t.history.itemColumns.changedAt,
+    width: '150px',
+    render: (row) => formatPlantDateTime(row.changedAt) ?? '',
+  },
+  {
+    key: 'level',
+    header: t.history.itemColumns.level,
+    width: '130px',
+    render: (row) => (
+      <span className="inspection-level-history-level">
+        <LevelChip code={row.toLevelCode} />
+        <span className="inspection-sheet-template-muted">
+          {row.fromLevelCode === null
+            ? t.history.firstSetNote
+            : t.history.changedFrom(levelName(row.fromLevelCode))}
+        </span>
+      </span>
+    ),
+  },
+  {
+    key: 'type',
+    header: t.history.itemColumns.type,
+    width: '90px',
+    render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
+  },
+  {
+    key: 'reason',
+    header: t.history.itemColumns.reason,
+    width: '150px',
+    render: (row) => {
+      const reason = historyReason(row);
+      return <span title={reason}>{reason}</span>;
+    },
+  },
+  {
+    key: 'changedBy',
+    header: t.history.itemColumns.changedBy,
+    width: '120px',
+    render: (row) => row.changedByName ?? '',
+  },
+];
+
 /**
  * 검사 수준 관리(관리웹 · 품질 관리). 품목별 IQC 검사 수준을 지정·수동 변경하고 전환 이력을 본다.
  * 자동 전환은 없다 — 사용자가 정한 수준만 쓴다(omf-all-around#133). 이력의 「자동」 줄은 그 전 기록이다.
@@ -295,55 +345,6 @@ export const InspectionLevelScreen = () => {
       align: 'center',
       header: t.history.columns.changedBy,
       width: '112px',
-      render: (row) => row.changedByName ?? '',
-    },
-  ];
-
-  /*
-   * 품목 이력 창의 열 — 사용자 시안(#208): 변경 일시 · 검사 수준(새 수준 칩 + 아래 「최초 지정」/「이전 수준에서 변경」) ·
-   * 변경 방식 · 변경 사유 · 처리자. 품목은 창 머리가 말하므로 열에서 뺀다. 왼쪽 정렬.
-   */
-  const itemHistoryColumns: Column<ItemInspectionLevelHistory>[] = [
-    {
-      key: 'changedAt',
-      header: t.history.itemColumns.changedAt,
-      width: '150px',
-      render: (row) => formatPlantDateTime(row.changedAt) ?? '',
-    },
-    {
-      key: 'level',
-      header: t.history.itemColumns.level,
-      width: '130px',
-      render: (row) => (
-        <span className="inspection-level-history-level">
-          <LevelChip code={row.toLevelCode} />
-          <span className="inspection-sheet-template-muted">
-            {row.fromLevelCode === null
-              ? t.history.firstSetNote
-              : t.history.changedFrom(levelName(row.fromLevelCode))}
-          </span>
-        </span>
-      ),
-    },
-    {
-      key: 'type',
-      header: t.history.itemColumns.type,
-      width: '90px',
-      render: (row) => t.history.types[row.changeTypeCode] ?? row.changeTypeCode,
-    },
-    {
-      key: 'reason',
-      header: t.history.itemColumns.reason,
-      width: '150px',
-      render: (row) => {
-        const reason = historyReason(row);
-        return <span title={reason}>{reason}</span>;
-      },
-    },
-    {
-      key: 'changedBy',
-      header: t.history.itemColumns.changedBy,
-      width: '120px',
       render: (row) => row.changedByName ?? '',
     },
   ];

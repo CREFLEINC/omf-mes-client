@@ -41,7 +41,6 @@ export const ClosedSummary = ({
         <h3>{t.closed.title}</h3>
         <p className="field-note">{t.round(round.inspectionRound)}</p>
       </div>
-      <p className="field-note">{t.closed.note}</p>
       <dl className="iqc-inspection-closed-grid">
         <div>
           <dt className="field-label">{t.closed.finalJudgment}</dt>

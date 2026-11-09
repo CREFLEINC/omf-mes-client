@@ -113,8 +113,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     level: {
       unset: 'Chưa chỉ định',
       loadFailed: 'Không tải được',
-      change: 'Đổi',
       set: 'Chỉ định',
+      view: 'Xem mức kiểm tra',
     },
     auxTabs: 'Thông tin tham khảo kiểm tra',
     noPlanVersion: 'Không có tiêu chuẩn',
@@ -161,7 +161,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmed: 'Lần này đã xác nhận. Để kiểm tra lại, hãy thêm lần mới.',
     closed: {
       title: 'Đã kiểm tra xong',
-      note: 'Yêu cầu này đã kiểm tra xong. Đây là kết quả xác nhận của lượt mới nhất.',
       finalJudgment: 'Đánh giá cuối cùng',
       round: 'Lượt',
       confirmedAt: 'Thời điểm xác nhận',
