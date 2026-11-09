@@ -32033,17 +32033,15 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 .iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-line-action {
-  flex: 1 1 8rem;
+  flex: none;
   align-self: flex-start;
-  min-width: 0;
-  justify-content: flex-end;
-  max-width: 24rem;
   height: auto;
   margin-left: auto;
 }
 
+/* 「최종 판정을 선택하세요」 글이 잘리지 않는 폭(사용자 지시 2026-11-09). */
 .iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-judgment-field:nth-child(n) {
-  width: 100%;
+  width: 14rem;
   min-width: 0;
 }
 
