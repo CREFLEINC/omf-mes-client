@@ -1066,6 +1066,17 @@ describe('IqcInspectionScreen', () => {
     expect(await screen.findByRole('tab', { name: tabName })).toBeInTheDocument();
   });
 
+  it('수치 항목 칸은 글자를 받지 않고 숫자만 받는다', async () => {
+    renderScreen('/?ir=1001', undefined, [draftRound], []);
+
+    await findRound(1);
+    await openJudgmentDialog();
+    const box = await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) });
+    await userEvent.type(box, 'a1b.-5');
+
+    expect(box).toHaveValue('1.5');
+  });
+
   it('값과 판정 중 하나만 적은 줄이 있으면 임시 저장을 막는다', async () => {
     renderScreen('/?ir=1001', undefined, [draftRound], []);
 

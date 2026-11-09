@@ -525,6 +525,11 @@ const IqcInspectionScreenBody = () => {
   }, [selectedId, isReinspectingNow, savedMeasureKey]);
   const measureChanged = !isSameMeasureDraft(measureDraft, savedMeasureDraft);
   const measurementJudgmentValues = useCodeValues(CODE_GROUPS.measurementJudgment);
+  /* 항목 입력 유형 이름 — 검사 기준 화면과 같은 공통코드(수치 · 텍스트 · 불리언). */
+  const dataTypeValues = useCodeValues(CODE_GROUPS.itemDataType);
+  const dataTypeNames = Object.fromEntries(
+    toCodeOptions(dataTypeValues.data ?? []).map((option) => [option.value, option.label]),
+  );
 
   /*
    * 마지막 저장 상태와 견줘 바뀐 것이 있는가 — 없으면 [임시 저장]을 끈다. 견주는 것은 세 수량 칸과
@@ -1060,6 +1065,7 @@ const IqcInspectionScreenBody = () => {
                 rows={measurementRows}
                 isLoading={itemSpecs.isLoading || measurements.isLoading}
                 scrollX
+                dataTypeNames={dataTypeNames}
                 edit={{
                   draft: measureDraft,
                   onChange: changeMeasureDraft,
@@ -1205,6 +1211,7 @@ const IqcInspectionScreenBody = () => {
                           rows={measurementRows}
                           isLoading={itemSpecs.isLoading || measurements.isLoading}
                           scrollX
+                          dataTypeNames={dataTypeNames}
                           /* [기준 조회]와 같은 창을 연다(사용자 지시 2026-10-28 · #197). */
                           onViewPlan={
                             samplingRule.data === undefined ||

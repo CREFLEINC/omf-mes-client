@@ -19,13 +19,7 @@ import { FilterChips } from '../../patterns/filter-chips';
 import { PageNav } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import type { CodeOption } from './code-options';
-import {
-  entryOf,
-  isInvalidValue,
-  withJudgment,
-  withValue,
-  type MeasureDraft,
-} from './measurement-draft';
+import { entryOf, withJudgment, withValue, type MeasureDraft } from './measurement-draft';
 import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './measurement-rows';
 
 /**
@@ -129,6 +123,8 @@ export interface MeasurementGridProps {
   isLoading: boolean;
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
+  /** 항목 입력 유형 코드 → 이름(수치 · 텍스트 · 불리언). 없으면 코드 그대로 */
+  dataTypeNames?: Record<string, string>;
   /** 검사 중인 회차의 측정 입력(#247). 없으면 읽기다 */
   edit?: MeasureEdit | null;
   /** 적용 검사 기준 창을 연다 — [기준 조회]와 같다(창의 [수정]으로 검사기준 화면에 간다 · #197). 없으면 단추를 두지 않는다 */
@@ -145,6 +141,17 @@ export interface MeasureEdit {
 
 /* 열 정의는 화면 밖에 고정이라(열 순서 · 폭 기억) 입력 상태는 맥락으로 칸에 넘긴다. */
 const EditContext = createContext<MeasureEdit | null>(null);
+
+/** 수치 칸에 치는 도중의 모양 — 「-」 · 「1.」처럼 덜 친 숫자도 받는다. */
+const NUMERIC_TYPING = /^-?\d*\.?\d*$/;
+
+/* 입력 유형 이름(공통코드 `INSPECTION_ITEM_SPEC_DATA_TYPE` — 검사 기준 화면과 같은 이름). 모르면 코드 그대로다. */
+const TypeNameContext = createContext<Record<string, string>>({});
+
+const TypeCell = ({ row }: { row: MeasurementRow }) => {
+  const names = useContext(TypeNameContext);
+  return names[row.dataType] ?? row.dataType;
+};
 
 const BOOLEAN_OPTIONS: CodeOption[] = [
   { value: 'true', label: t.booleanTrue },
@@ -194,9 +201,12 @@ const ValueCell = ({ row }: { row: MeasurementRow }) => {
       aria-label={label}
       inputMode={row.dataType === 'NUMERIC' ? 'decimal' : undefined}
       value={entry.value}
-      error={isInvalidValue(row, entry) ? t.invalidNumber : undefined}
       disabled={edit.disabled}
-      onChange={(event) => edit.onChange(withValue(edit.draft, row, event.target.value))}
+      onChange={(event) => {
+        /* 수치 항목은 숫자 · 소수점 · 앞 「-」 말고는 받지 않는다 — 글자를 치면 칸이 그대로다(사용자 지시 2026-11-09). */
+        if (row.dataType === 'NUMERIC' && !NUMERIC_TYPING.test(event.target.value)) return;
+        edit.onChange(withValue(edit.draft, row, event.target.value));
+      }}
     />
   );
 };
@@ -254,6 +264,14 @@ const columns: Column<MeasurementRow>[] = [
       </span>
     ),
   },
+  /* 입력 유형 — 수치 · 텍스트 · 불리언(사용자 지시 2026-11-09). */
+  {
+    key: 'dataType',
+    align: 'center',
+    header: t.columns.dataType,
+    width: '80px',
+    render: (row) => <TypeCell row={row} />,
+  },
   {
     key: 'spec',
     align: 'center',
@@ -292,6 +310,7 @@ export const MeasurementGrid = ({
   isLoading,
   scrollX = false,
   edit = null,
+  dataTypeNames = {},
   onViewPlan,
 }: MeasurementGridProps) => {
   /*
@@ -373,28 +392,30 @@ export const MeasurementGrid = ({
         className="iqc-inspection-table-box inspection-queue-table"
         style={resizable.style}
       >
-        <EditContext.Provider value={edit}>
-          <Table
-            caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-            density="compact"
-            columns={fit.columns}
-            rows={paging.rows}
-            getRowId={(row) => row.key}
-            empty={
-              isLoading ? (
-                <p className="field-note">{t.loading}</p>
-              ) : (
-                /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
-                <EmptyState
-                  size="sm"
-                  icon={<Icon name="content_paste_off" size={32} />}
-                  title={t.noItems}
-                  description={t.noItemsHint}
-                />
-              )
-            }
-          />
-        </EditContext.Provider>
+        <TypeNameContext.Provider value={dataTypeNames}>
+          <EditContext.Provider value={edit}>
+            <Table
+              caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+              density="compact"
+              columns={fit.columns}
+              rows={paging.rows}
+              getRowId={(row) => row.key}
+              empty={
+                isLoading ? (
+                  <p className="field-note">{t.loading}</p>
+                ) : (
+                  /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
+                  <EmptyState
+                    size="sm"
+                    icon={<Icon name="content_paste_off" size={32} />}
+                    title={t.noItems}
+                    description={t.noItemsHint}
+                  />
+                )
+              }
+            />
+          </EditContext.Provider>
+        </TypeNameContext.Provider>
       </div>
       {/* 단계 안에서는 한 쪽에 다 들면 쪽 이동 줄을 두지 않는다 — 높이를 줄인다. */}
       {(!inStep || rows.length > paging.rows.length) && <PageNav {...paging.nav} />}

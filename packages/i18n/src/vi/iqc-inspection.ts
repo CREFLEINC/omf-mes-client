@@ -301,6 +301,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     noItems: 'Chưa có hạng mục kiểm tra nào.',
     noItemsHint: 'Hãy kiểm tra thông tin tiêu chuẩn kiểm tra.',
     columns: {
+      dataType: 'Loại',
       item: 'Hạng mục kiểm tra',
       spec: 'Quy cách',
       sample: 'Lần đo',
@@ -330,7 +331,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     judgmentLabel: (itemName: string, sampleNo: number): string =>
       `Phán định ${itemName} lần ${String(sampleNo)}`,
     selectPlaceholder: 'Chọn',
-    invalidNumber: 'Vui lòng nhập số.',
     blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
     blockedIncomplete: 'Vui lòng chọn phán định cho các hạng mục đã nhập giá trị đo.',
     blockedRequired: 'Cần nhập đủ phán định của các hạng mục bắt buộc để xác nhận.',

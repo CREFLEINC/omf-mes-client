@@ -466,6 +466,7 @@ export const iqcInspection = {
     noItems: '등록된 검사 항목이 없습니다.',
     noItemsHint: '검사 기준 정보를 확인해 주세요.',
     columns: {
+      dataType: '유형',
       item: '검사 항목',
       spec: '규격',
       sample: '측정 회차',
@@ -513,7 +514,6 @@ export const iqcInspection = {
     judgmentLabel: (itemName: string, sampleNo: number): string =>
       `${itemName} ${String(sampleNo)}회차 판정`,
     selectPlaceholder: '선택',
-    invalidNumber: '숫자로 입력해 주세요.',
     /** 저장 · 확정을 막는 사유(#247) — 결과 입력 영역의 안내 줄에 선다. */
     blockedInvalid: '검사 항목별 결과에 숫자가 아닌 측정값이 있습니다.',
     blockedIncomplete: '검사 항목별 결과에서 측정값을 적은 항목의 판정을 선택해 주세요.',
