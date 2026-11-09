@@ -217,9 +217,6 @@ const JudgmentCell = ({ row }: { row: MeasurementRow }) => {
   return (
     <Select
       size="sm"
-      /* 합격은 초록 · 불합격은 빨간 글자(#247 · 사용자 지시 2026-11-09). */
-      className="iqc-inspection-measure-judgment"
-      data-judgment={code}
       aria-label={t.judgmentLabel(row.itemName, row.sampleNo)}
       options={edit.judgmentOptions}
       value={code === '' ? null : code}
