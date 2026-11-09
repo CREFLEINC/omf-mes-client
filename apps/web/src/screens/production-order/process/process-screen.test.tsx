@@ -439,6 +439,42 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     );
   });
 
+  it('계획 수량 합계와 [계획 추가] 기본 생산량은 W/O 가 모두 취소된 확정 계획을 빼고 센다(#250)', async () => {
+    const user = userEvent.setup();
+    /* 확정 계획 둘(200 + 100) 가운데 100 의 W/O 가 모두 취소됐다. 서버 확정 계획량은 200 이다. */
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [
+          { ...CONFIRMED_PLAN, plannedQty: 200 },
+          { ...CONFIRMED_PLAN, productionPlanId: 502, planNo: 'PP-502', plannedQty: 100 },
+        ],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+        confirmedPlanQty: 200,
+        worklistState: 'ACTION_REQUIRED',
+        worklistReasons: [{ code: 'PLAN_QTY_REMAINING', workOrderCount: 0 }],
+      }),
+    );
+    await currentStep(tp.steps.plan);
+    expect(document.querySelector('.erp-wo-plan-total')).toHaveTextContent(
+      /^계획 수량 합계 200 \/ 300/,
+    );
+
+    await user.click(screen.getByRole('button', { name: tp.plan.add }));
+    const qty = await screen.findByRole('textbox', {
+      name: (name) => name.startsWith('신규 계획') && name.includes(tp.plan.columns.plannedQty),
+    });
+    expect(qty).toHaveValue('100');
+    expect(document.querySelector('.erp-wo-plan-total')).toHaveTextContent(
+      /^계획 수량 합계 300 \/ 300/,
+    );
+    /* 작성중 50 이면 확정 200 + 50 이라 50 이 모자란다(취소된 100 을 세면 다 찬 것으로 보였다). */
+    await user.clear(qty);
+    await user.type(qty, '50');
+    expect(document.body).toHaveTextContent(tp.remaining.qtyShort('50'));
+  });
+
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [] }));
     await currentStep(tp.steps.master);
