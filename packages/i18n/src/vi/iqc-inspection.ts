@@ -208,10 +208,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động.',
     followUp: {
-      title: 'LOT bị lỗi — hãy xử lý thay vì kiểm tra lại',
-      body: 'LOT đã xác nhận không đạt thì không thể xác nhận lượt kiểm tra lại. Hãy chọn làm lại (kiểm tra lại)·hủy·bình thường ở màn hình phán định xử lý, hoặc trả lại nhà cung cấp.',
-      toDisposition: 'Đến phán định xử lý',
-      toSupplierReturn: 'Đến trả hàng nhà cung cấp',
+      title: 'LOT không đạt · Không thể kiểm tra lại',
+      body: 'LOT đã xác nhận không đạt thì không thể kiểm tra lại. Vui lòng thực hiện phán định xử lý hoặc trả hàng nhà cung cấp.',
+      toDisposition: 'Phán định xử lý',
+      toSupplierReturn: 'Trả hàng nhà cung cấp',
       noNonconformance:
         'Không tìm thấy sự không phù hợp đang chờ xử lý. Hãy tìm LOT này trong danh sách phán định xử lý.',
     },

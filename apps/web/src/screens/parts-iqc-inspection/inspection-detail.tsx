@@ -303,7 +303,10 @@ export const InspectionDetail = ({
         <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
       )}
       {confirmed && followUp.data?.isDefective === false && !followUp.data.isInspectionPending && (
-        <p className="field-note">{tResult.reinspectLotNotPending}</p>
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {tResult.reinspectLotNotPending}
+        </p>
       )}
       {isReinspecting && <p className="field-note">{t.dialog.reinspectNote}</p>}
       {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}

@@ -35,6 +35,7 @@ const ROUND = {
   inspectionRound: 1,
   inspectedAt: '2026-11-04T00:00:00Z',
   inspectedQty: 100,
+  uomId: 4,
   acceptedQty: 100,
   rejectedQty: 0,
   heldQty: 0,
@@ -94,7 +95,7 @@ describe('검사 이력 펼친 영역', () => {
     const defect = within(
       screen.getByRole('cell', { name: '스크래치' }).closest('tr') as HTMLElement,
     );
-    expect(defect.getByRole('cell', { name: '3' })).toBeInTheDocument();
+    expect(defect.getByRole('cell', { name: '3 M' })).toBeInTheDocument();
     expect(defect.getByRole('cell', { name: '표면 긁힘' })).toBeInTheDocument();
   });
 });

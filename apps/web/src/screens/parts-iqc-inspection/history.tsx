@@ -10,7 +10,7 @@ import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useDraftRejectionRecords, useMeasurements } from '../iqc-inspection/queries';
-import { useUomLookup } from '../iqc-inspection/uom-lookup';
+import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import { specLines } from './measurement-table';
 import { useRoundHistory } from './queries';
 
@@ -37,6 +37,12 @@ const judgmentStatus = (code: string): 'success' | 'error' | 'warning' | 'idle' 
         ? 'warning'
         : 'idle';
 
+/** 수량 + 단위 — 단위를 모르면 수량만. */
+const QtyCell = ({ qty, uomId }: { qty: number; uomId: number }) => {
+  const uoms = useUomLookup();
+  return withUom(String(qty), uoms.codeOf(uomId));
+};
+
 /* 수입검사 목록 표처럼 열 폭 끌기 · 순서 바꾸기(사용자 지시 2026-11-04). 줄을 펼치는 표라 DS 표 대신 이 열 정의로 직접 그린다. */
 const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
   {
@@ -56,13 +62,13 @@ const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
     key: 'inspectedQty',
     header: t.history.inspectedQty,
     width: '100px',
-    render: (row) => row.inspectedQty,
+    render: (row) => <QtyCell qty={row.inspectedQty} uomId={row.uomId} />,
   },
   {
     key: 'rejectedQty',
     header: t.history.rejectedQty,
     width: '100px',
-    render: (row) => row.rejectedQty,
+    render: (row) => <QtyCell qty={row.rejectedQty} uomId={row.uomId} />,
   },
   {
     key: 'judgment',
@@ -147,6 +153,7 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
                         <RoundDetail
                           inspectionResultId={row.inspectionResultId}
                           remarks={row.remarks ?? null}
+                          uomId={row.uomId}
                           specs={specs}
                           defectCodes={defectCodes}
                         />
@@ -203,11 +210,13 @@ const HistorySpec = ({
 const RoundDetail = ({
   inspectionResultId,
   remarks,
+  uomId,
   specs,
   defectCodes,
 }: {
   inspectionResultId: number;
   remarks: string | null;
+  uomId: number;
   specs: ItemSpec[];
   defectCodes: HistoryProps['defectCodes'];
 }) => {
@@ -321,7 +330,7 @@ const RoundDetail = ({
                 {(defects.data ?? []).map((record) => (
                   <tr key={record.defectRecordId}>
                     <td>{defectName(record.defectCodeId)}</td>
-                    <td>{record.defectQty}</td>
+                    <td>{withUom(String(record.defectQty), uoms.codeOf(uomId))}</td>
                     <td>{record.defectDescription ?? '-'}</td>
                   </tr>
                 ))}
