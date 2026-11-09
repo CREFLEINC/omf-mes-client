@@ -32415,6 +32415,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-history-heading {
   margin: 0;
+  text-align: start;
   font: var(--type-label-lg);
 }
 
@@ -32681,6 +32682,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+.parts-iqc-detail-head > .parts-iqc-reinspect {
+  margin-left: auto;
 }
 
 .parts-iqc-block {

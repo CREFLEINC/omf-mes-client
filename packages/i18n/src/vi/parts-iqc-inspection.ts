@@ -59,6 +59,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   },
 
   dialog: {
+    reinspectNote: 'Khi gửi, một lượt kiểm tra mới sẽ được thêm và kết quả cũ được giữ nguyên.',
     title: 'Kiểm tra đầu vào IQC',
     loading: 'Đang tải thông tin kiểm tra.',
     loadFailed: 'Không tải được thông tin kiểm tra.',

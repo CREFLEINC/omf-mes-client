@@ -53,6 +53,7 @@ export const partsIqcInspection = {
   },
 
   dialog: {
+    reinspectNote: '제출하면 새 검사 회차가 추가되며, 기존 결과는 유지됩니다.',
     title: 'IQC 수입검사',
     loading: '검사 정보를 불러오는 중입니다.',
     loadFailed: '검사 정보를 불러오지 못했습니다.',

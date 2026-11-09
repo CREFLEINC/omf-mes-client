@@ -154,6 +154,8 @@ export interface SubmitVariables {
   inspectionRequestId: number;
   /** 이 의뢰에 남은 작성중 회차 — 있으면 그 회차를 고쳐 확정한다(새 회차를 만들지 않는다). */
   draftResultId: number | null;
+  /** 재검사면 앞 회차 — 서버가 회차를 +1 하고 사슬을 잇는다. 아니면 `null` */
+  previousResultId: number | null;
   uomId: number;
   inspectedAt: string;
   inspectedQty: number;
@@ -230,6 +232,7 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
                 inspectedAt: quantities.inspectedAt,
                 overallJudgmentCode: quantities.overallJudgmentCode,
                 measurements: quantities.measurements,
+                ...(v.previousResultId === null ? {} : { previousResultId: v.previousResultId }),
                 // 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다.
                 ...(quantities.defects.length === 0 ? {} : { defects: quantities.defects }),
               },

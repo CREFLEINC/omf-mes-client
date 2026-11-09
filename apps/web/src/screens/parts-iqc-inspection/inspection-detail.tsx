@@ -32,8 +32,10 @@ import {
   useInspectionItemSpecs,
   useInspectionRequestDetail,
   useInspectionRounds,
+  useRejectedLotFollowUp,
   useMeasurements,
 } from '../iqc-inspection/queries';
+import { RejectedLotGuide } from '../iqc-inspection/rejected-lot-guide';
 import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup';
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
@@ -84,6 +86,7 @@ type DefectCode = {
 };
 
 const t = messages.partsIqcInspection;
+const tResult = messages.iqcInspection.result;
 /** 검사 기준 화면 — 기준이 없을 때 「검사기준 설정」이 이 주소로 그 화면의 「기준 추가」 창을 유형 · 품목을 채워 연다(`new` · `newItem`). */
 const STANDARD_PATH = '/master-data/inspection-standard';
 const DEFECT_CODE_PATH = '/master-data/defect-cause-code';
@@ -139,6 +142,16 @@ export const InspectionDetail = ({
   const draftRound = round !== null && round.statusCode === 'DRAFT' ? round : null;
   const measurements = useMeasurements(draftRound?.inspectionResultId ?? null);
 
+  /*
+   * 재검사(OA 화면과 같다 · 사용자 지시 2026-11-09) — 확정된 회차를 두고 새 회차를 쌓는다. 회차가 바뀌면(제출됨) 저절로 풀린다.
+   * 불량 LOT 은 처분으로, 검사 대기가 아닌 LOT 은 사유로 잇는다 — 서버가 받지 않는 길을 열지 않는다.
+   */
+  const latestRoundId = round?.inspectionResultId ?? null;
+  const [reinspectingFrom, setReinspectingFrom] = useState<number | null>(null);
+  const isReinspecting = reinspectingFrom !== null && reinspectingFrom === latestRoundId;
+  const confirmed = round !== null && round.statusCode === 'CONFIRMED' && !isReinspecting;
+  const followUp = useRejectedLotFollowUp(detail.data?.lotId ?? null, confirmed);
+
   const loading =
     detail.isPending ||
     rounds.isPending ||
@@ -163,10 +176,12 @@ export const InspectionDetail = ({
         />
       );
     }
-    if (round !== null && round.statusCode === 'CONFIRMED') {
+    if (confirmed) {
       return (
         <AlertBanner variant="info">
-          {t.dialog.confirmed(t.judgment[round.overallJudgmentCode] ?? round.overallJudgmentCode)}
+          {t.dialog.confirmed(
+            t.judgment[round?.overallJudgmentCode ?? ''] ?? round?.overallJudgmentCode,
+          )}
         </AlertBanner>
       );
     }
@@ -193,7 +208,7 @@ export const InspectionDetail = ({
     }
     return (
       <InspectionForm
-        key={`${String(inspectionRequestId)}-${String(draftRound?.inspectionResultId ?? 0)}-${measurements.isSuccess ? 'm' : '-'}`}
+        key={`${String(inspectionRequestId)}-${String(isReinspecting)}-${String(draftRound?.inspectionResultId ?? 0)}-${measurements.isSuccess ? 'm' : '-'}`}
         request={detail.data}
         version={version.data}
         specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
@@ -220,6 +235,7 @@ export const InspectionDetail = ({
         }
         inspector={session?.worker ?? null}
         appUserId={session?.userId ?? null}
+        previousResultId={isReinspecting ? (round?.inspectionResultId ?? null) : null}
         draft={
           draftRound === null
             ? null
@@ -237,7 +253,6 @@ export const InspectionDetail = ({
   };
 
   /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
-  const confirmed = round !== null && round.statusCode === 'CONFIRMED';
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
   const tab = confirmed
     ? 'history'
@@ -255,7 +270,42 @@ export const InspectionDetail = ({
             {t.requestStatus[detail.data.statusCode]}
           </Chip>
         )}
+        {isReinspecting ? (
+          <Button
+            variant="outlined"
+            size="sm"
+            className="parts-iqc-reinspect"
+            onClick={() => {
+              setReinspectingFrom(null);
+              onDirtyChange(false);
+            }}
+          >
+            {tResult.reinspectCancel}
+          </Button>
+        ) : (
+          confirmed &&
+          followUp.data?.isInspectionPending === true && (
+            <Button
+              variant="outlined"
+              size="sm"
+              className="parts-iqc-reinspect"
+              onClick={() => {
+                setReinspectingFrom(latestRoundId);
+                setPicked({ requestId: inspectionRequestId, tab: 'input' });
+              }}
+            >
+              {tResult.reinspect}
+            </Button>
+          )
+        )}
       </div>
+      {confirmed && followUp.data?.isDefective === true && (
+        <RejectedLotGuide nonconformanceId={followUp.data.nonconformanceId} />
+      )}
+      {confirmed && followUp.data?.isDefective === false && !followUp.data.isInspectionPending && (
+        <p className="field-note">{tResult.reinspectLotNotPending}</p>
+      )}
+      {isReinspecting && <p className="field-note">{t.dialog.reinspectNote}</p>}
       {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
       {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
@@ -373,6 +423,8 @@ interface FormProps {
   /** 불량 코드가 하나도 없을 때 「불량 코드 등록」 단추 — 그 화면 권한이 없으면 undefined */
   onRegisterDefectCode?: () => void;
   inspector: { workerName: string } | null;
+  /** 재검사면 앞 회차, 아니면 `null` */
+  previousResultId: number | null;
   /** 작업자 연결 창이 이을 계정 — 세션이 없으면 버튼을 두지 않는다. */
   appUserId: number | null;
   draft: {
@@ -562,6 +614,7 @@ const InspectionForm = (props: FormProps) => {
     submit.write({
       inspectionRequestId: request.inspectionRequestId,
       draftResultId: draft?.inspectionResultId ?? null,
+      previousResultId: props.previousResultId,
       uomId: request.uomId,
       inspectedAt: toOffset(form.inspectedAt),
       inspectedQty,
