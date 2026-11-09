@@ -219,6 +219,27 @@ describe('DispatchHistoryScreen', () => {
     expect(dispatchQueries).toHaveLength(0);
   });
 
+  it('기간은 날짜 선택 부품으로 고르고, 기간 오류로 잠긴 [조회]는 그 사유를 가리킨다(#189 C-12·C-4)', async () => {
+    setup({ route: '/notification/dispatch-history?from=2026-09-01&to=2026-10-21' });
+
+    await dispatchPane().findByText(t.errors.periodTooLong);
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    expect(screen.getByLabelText(t.filters.period)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.filters.search })).toHaveAccessibleDescription(
+      t.errors.periodTooLong,
+    );
+  });
+
+  it('부서 선택지는 「이름 (코드)」, Zalo 집계는 쉼표로 나열한다(#189 C-13)', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await dispatchPane().findByText('WO-20261021-001');
+    expect(t.zaloSummary(2, 1, 0, 0, 3)).toBe('성공 2, 실패 1, 대기 0, 만료 0, 번호없음 3');
+    await user.click(screen.getByRole('combobox', { name: t.filters.department }));
+    expect(await screen.findByRole('option', { name: '생산1팀 (D-PRD1)' })).toBeInTheDocument();
+  });
+
   it('US8-1 행을 고르면 기간과 함께 Zalo 발송 상세를 부르고 SENDING 을 「대기」로 보인다', async () => {
     const user = userEvent.setup();
     const { deliveryQueries } = setup({

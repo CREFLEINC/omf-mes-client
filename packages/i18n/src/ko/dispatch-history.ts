@@ -5,8 +5,7 @@ export const dispatchHistory = {
   description: '이벤트마다 알림이 갔는지, 안 갔다면 왜인지, 수신자별 Zalo 결과를 봅니다.',
   panes: { dispatches: '이벤트 처리 결과', deliveries: 'Zalo 발송 상세' },
   filters: {
-    from: '시작일',
-    to: '종료일',
+    period: '기간',
     event: '이벤트',
     department: '부서',
     result: '결과',
@@ -36,7 +35,7 @@ export const dispatchHistory = {
     expired: number,
     noPhone: number,
   ): string =>
-    `성공 ${String(sent)} · 실패 ${String(failed)} · 대기 ${String(pending)} · 만료 ${String(expired)} · 번호없음 ${String(noPhone)}`,
+    `성공 ${String(sent)}, 실패 ${String(failed)}, 대기 ${String(pending)}, 만료 ${String(expired)}, 번호없음 ${String(noPhone)}`,
   columns: {
     occurredAt: '발생 시각',
     event: '이벤트',
