@@ -217,6 +217,9 @@ const JudgmentCell = ({ row }: { row: MeasurementRow }) => {
   return (
     <Select
       size="sm"
+      /* 합격은 초록 · 불합격은 빨간 글자(#247 · 사용자 지시 2026-11-09). */
+      className="iqc-inspection-measure-judgment"
+      data-judgment={code}
       aria-label={t.judgmentLabel(row.itemName, row.sampleNo)}
       options={edit.judgmentOptions}
       value={code === '' ? null : code}
@@ -310,10 +313,19 @@ export const MeasurementGrid = ({
     judgmentFilter === null ? rows : rows.filter((row) => judgmentOf(row, edit) === judgmentFilter),
   );
 
+  /*
+   * 입력 중이면 ② 판정 단계 안에 선다(#247 · 사용자 지시 2026-11-09) — 제목 · 거르기 줄 없이 표만 둔다. 단계 제목이 이미
+   * 있고, 적용 기준은 상세 머리의 [기준 조회]로 본다.
+   */
+  const inStep = edit !== null;
+
   return (
-    <section className="iqc-inspection-section" aria-label={t.heading}>
+    <section
+      className={inStep ? 'iqc-inspection-step-measure' : 'iqc-inspection-section'}
+      aria-label={t.heading}
+    >
       {/* 다른 구획처럼 왼쪽 제목으로 선다 — 표 제목(caption)은 화면에서 감추고 접근 이름으로 남긴다. */}
-      <h3>{t.caption}</h3>
+      {!inStep && <h3>{t.caption}</h3>}
       {/*
        * ⛔ 경고일 뿐 차단이 아니다. 무효화 정책이 미결이라(스펙 §8-6) 화면이 값을 빼거나
        * 확정을 막지 않는다 — 무엇을 다시 볼지만 알린다.
@@ -327,34 +339,36 @@ export const MeasurementGrid = ({
       )}
 
       {/* 거르기 칩 줄 오른쪽 끝에 [수정] — 검사 항목은 검사기준에서 정한다(사용자 지시 2026-10-28 · #197). */}
-      <div className="iqc-inspection-measure-toolbar">
-        {rows.length > 0 && (
-          <FilterChips
-            label={t.filterLabel}
-            options={[
-              { value: null, label: t.filterAll },
-              ...JUDGMENT_FILTERS.map((code) => ({
-                value: code,
-                label: t.judgmentNames[code] ?? code,
-              })),
-            ]}
-            value={judgmentFilter}
-            countOf={(code) => (code === null ? rows.length : countOf(code))}
-            onChange={setJudgmentFilter}
-          />
-        )}
-        {onViewPlan !== undefined && (
-          <Button
-            type="button"
-            variant="outlined"
-            size="sm"
-            className="iqc-inspection-measure-edit"
-            onClick={onViewPlan}
-          >
-            {messages.iqcInspection.measurements.viewPlan}
-          </Button>
-        )}
-      </div>
+      {!inStep && (
+        <div className="iqc-inspection-measure-toolbar">
+          {rows.length > 0 && (
+            <FilterChips
+              label={t.filterLabel}
+              options={[
+                { value: null, label: t.filterAll },
+                ...JUDGMENT_FILTERS.map((code) => ({
+                  value: code,
+                  label: t.judgmentNames[code] ?? code,
+                })),
+              ]}
+              value={judgmentFilter}
+              countOf={(code) => (code === null ? rows.length : countOf(code))}
+              onChange={setJudgmentFilter}
+            />
+          )}
+          {onViewPlan !== undefined && (
+            <Button
+              type="button"
+              variant="outlined"
+              size="sm"
+              className="iqc-inspection-measure-edit"
+              onClick={onViewPlan}
+            >
+              {messages.iqcInspection.measurements.viewPlan}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* 표 전체를 얇은 테두리 상자로 감싼다(#133). */}
       <div
@@ -385,7 +399,8 @@ export const MeasurementGrid = ({
           />
         </EditContext.Provider>
       </div>
-      <PageNav {...paging.nav} />
+      {/* 단계 안에서는 한 쪽에 다 들면 쪽 이동 줄을 두지 않는다 — 높이를 줄인다. */}
+      {(!inStep || rows.length > paging.rows.length) && <PageNav {...paging.nav} />}
     </section>
   );
 };

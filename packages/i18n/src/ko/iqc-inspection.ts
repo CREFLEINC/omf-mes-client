@@ -225,7 +225,17 @@ export const iqcInspection = {
     judgmentDetailCancel: '취소',
     judgmentDetailDone: '완료',
     /** 마친 단계를 접은 한 줄 요약(#197) — 누르면 다시 펼쳐 고친다. */
+    /** 판정 확정 확인 창(사용자 지시 2026-11-09). */
+    confirmDialog: {
+      title: '판정을 확정할까요?',
+      judgment: (label: string): string => `최종 판정: ${label}`,
+      irreversible: '확정하면 수정할 수 없습니다.',
+      cancel: '취소',
+    },
     stepSummary: {
+      /** ② 판정을 접었을 때 항목 판정 요약(#247). */
+      measurements: (accepted: number, rejected: number): string =>
+        `항목 합격 ${String(accepted)} · 불합격 ${String(rejected)}`,
       quantities: (accepted: string, rejected: string, held: string): string =>
         `합격 ${accepted} · 불량 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 사용자 지시 요약 표기(2026-10-29 · #197)
       fourMChanged: '4M 변경품',

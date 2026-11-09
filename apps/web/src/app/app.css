@@ -29567,6 +29567,24 @@ button.iqc-inspection-step-toggle:focus-visible {
   justify-content: flex-end;
 }
 
+/* ② 판정 맨 위 검사 항목별 결과 입력(#247) — 제목 · 거르기 줄 없이 표만. 입력 칸은 칸 폭 안에 든다. */
+.iqc-inspection-step-measure {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 항목 판정 — 합격은 초록 · 불합격은 빨간 글자(#247). */
+.iqc-inspection-measure-judgment [data-judgment="ACCEPTED"],
+.iqc-inspection-measure-judgment [data-judgment="ACCEPTED"] > span {
+  color: var(--semantic-success);
+}
+
+.iqc-inspection-measure-judgment [data-judgment="REJECTED"],
+.iqc-inspection-measure-judgment [data-judgment="REJECTED"] > span {
+  color: var(--semantic-error);
+}
+
 /* ② 판정 — 최종 판정 칸은 불합격 사유 칸들과 같은 폭으로 둔다. */
 .iqc-inspection-step-panel .iqc-inspection-judgment-field:nth-child(n),
 .iqc-inspection-step-panel .iqc-inspection-judgment-field > div,

@@ -240,8 +240,26 @@ describe('ResultFormPane', () => {
     );
 
     expect(confirmButton()).toBeEnabled();
+    /* 단추는 확인 창을 연다 — 요청은 창의 [판정 확정]에서만 나간다(사용자 지시 2026-11-09). */
     await userEvent.click(confirmButton() as HTMLElement);
+    expect(onConfirm).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog', { name: t.confirmDialog.title });
+    await userEvent.click(within(dialog).getByRole('button', { name: t.confirm }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('확인 창의 [취소]는 확정하지 않고 창만 닫는다', async () => {
+    const { onConfirm } = renderPane(
+      { accepted: '480', rejected: '15', held: '5' },
+      savedRound,
+      500,
+      { judgment: 'ACCEPTED' },
+    );
+
+    await userEvent.click(confirmButton() as HTMLElement);
+    await userEvent.click(screen.getByRole('button', { name: t.confirmDialog.cancel }));
+    expect(screen.queryByRole('dialog', { name: t.confirmDialog.title })).not.toBeInTheDocument();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it('셀 수 없는 수량이 있으면 확정을 막는다 — 「일치」를 지어내지 않는다', () => {

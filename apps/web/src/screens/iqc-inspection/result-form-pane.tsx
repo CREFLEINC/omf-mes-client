@@ -118,6 +118,13 @@ export interface ResultFormPaneProps {
   judgmentBelow?: ReactNode;
   /** 최종 판정 라벨 옆 보조 글 — 자동 판정 기준(#133). 없으면 두지 않는다 */
   judgmentHint?: string;
+  /**
+   * ② 판정 단계 맨 위 — 검사 항목별 결과 입력(#247 · 사용자 지시 2026-11-09). 항목 판정을 넣고 그 아래에서 최종 판정을 고른다.
+   * 없으면 두지 않는다
+   */
+  measurementSlot?: ReactNode;
+  /** ② 판정을 접었을 때 판정 뒤에 붙일 항목 판정 요약(「항목 합격 3 · 불합격 1」). 없으면 판정만 */
+  measurementSummary?: string | null;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
   fourMSlot?: ReactNode;
   /**
@@ -222,6 +229,8 @@ export const ResultFormPane = ({
   judgmentDetail = null,
   renderDefects = null,
   fourMSlot = null,
+  measurementSlot = null,
+  measurementSummary = null,
   judgmentHint,
   judgmentBelow = null,
   confirmOnlyBlockedReason = null,
@@ -247,6 +256,9 @@ export const ResultFormPane = ({
   const totals = toTotals(draft, inspectedQty);
   const [showErrors, setShowErrors] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  /* 확정이 끝나면 창을 닫는다 — 재검사로 회차가 다시 열려도 창이 되살아나지 않게 상태도 내린다. */
+  if (isConfirmDialogOpen && (isJustConfirmed || isConfirmed)) setIsConfirmDialogOpen(false);
 
   /**
    * 저장. **합계가 맞지 않아도 보낸다** — 막는 것은 보낼 수 없는 값이 남아 있을 때뿐이다.
@@ -436,7 +448,11 @@ export const ResultFormPane = ({
         qtyText(draft.held),
       ),
     },
-    { step: 2, title: t.judgmentSectionTitle, summary: judgmentText },
+    {
+      step: 2,
+      title: t.judgmentSectionTitle,
+      summary: [judgmentText, measurementSummary].filter((part) => part).join(' · '),
+    },
     { step: 3, title: t.fourMChange.sectionTitle, summary: fourMSummary ?? '' },
   ].filter((item) => item.step <= lastStep);
   /*
@@ -699,6 +715,7 @@ export const ResultFormPane = ({
             {renderDefects()}
           </div>
         ))}
+      {step === 2 && measurementSlot}
       {step === 2 && (
         <div className="iqc-inspection-judgment-dialog">
           {/* 최종 판정 칸과 [확정]은 한 줄(사용자 지시 2026-10-29). */}
@@ -847,7 +864,8 @@ export const ResultFormPane = ({
                 variant="filled"
                 size="md"
                 disabled={confirmBlockedReason !== null || isSaving || isConfirming}
-                onClick={onConfirm}
+                /* 되돌릴 수 없는 쓰기라 확인 창을 거친다 — 요청은 창의 [확정]에서만 나간다(사용자 지시 2026-11-09). */
+                onClick={() => setIsConfirmDialogOpen(true)}
               >
                 {isConfirming ? t.confirming : t.confirm}
               </Button>
@@ -1059,6 +1077,55 @@ export const ResultFormPane = ({
         )}
 
         <SaveErrorBanner error={saveError ?? confirmError} onReload={onReload} />
+
+        {/*
+         * 판정 확정 확인 창(사용자 지시 2026-11-09). 바깥을 눌러 닫지 않고, 확정 중에는 닫히지 않는다. 실패하면 창 안에
+         * 사유를 내고 그대로 둔다 — 같은 창에서 다시 누르면 같은 멱등 키가 나가 서버가 두 번 실행하지 않는다.
+         */}
+        {isConfirmDialogOpen && (
+          <Dialog
+            open
+            closeOnBackdropClick={false}
+            showCloseButton={false}
+            title={t.confirmDialog.title}
+            footer={
+              <>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="md"
+                  disabled={isConfirming}
+                  onClick={() => setIsConfirmDialogOpen(false)}
+                >
+                  {t.confirmDialog.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  variant="filled"
+                  size="md"
+                  loading={isConfirming}
+                  onClick={onConfirm}
+                >
+                  {t.confirm}
+                </Button>
+              </>
+            }
+            onClose={() => {
+              if (!isConfirming) setIsConfirmDialogOpen(false);
+            }}
+          >
+            <SaveErrorBanner error={confirmError} onReload={onReload} />
+            <p>{t.confirmDialog.judgment(judgmentText)}</p>
+            <p>
+              {t.stepSummary.quantities(
+                qtyText(draft.accepted),
+                qtyText(draft.rejected),
+                qtyText(draft.held),
+              )}
+            </p>
+            <p>{t.confirmDialog.irreversible}</p>
+          </Dialog>
+        )}
 
         {/*
          * ⛔ **되돌릴 수 없는 쓰기가 끝난 것을 말한다.** 확정 여부와 무관하게 쓰기가 성공한

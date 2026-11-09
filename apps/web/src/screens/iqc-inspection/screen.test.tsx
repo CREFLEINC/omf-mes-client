@@ -405,6 +405,16 @@ const leaveQtyDialog = async (): Promise<void> => {
 /* ② 판정 자리(#197) — 수량 [확정] 뒤 바로 선다. 불합격 사유 · 판정 변경 사유도 이 자리 안에 있다. */
 const judgmentDialog = (): HTMLElement | null =>
   screen.queryByRole('region', { name: t.result.judgmentSectionTitle });
+/**
+ * [판정 확정] → 확인 창의 [판정 확정](사용자 지시 2026-11-09). 창이 이미 열려 있으면(확정 실패 뒤) 창의 단추만 다시 누른다.
+ */
+const confirmJudgment = async (): Promise<void> => {
+  if (screen.queryByRole('dialog', { name: t.result.confirmDialog.title }) === null) {
+    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+  }
+  const dialog = await screen.findByRole('dialog', { name: t.result.confirmDialog.title });
+  await userEvent.click(within(dialog).getByRole('button', { name: t.result.confirm }));
+};
 const openJudgmentDialog = async (): Promise<void> => {
   await screen.findByRole('form', { name: t.result.heading });
   if (judgmentDialog() !== null) return;
@@ -460,8 +470,10 @@ const editQuantity = async (): Promise<void> => {
  * 입력 칸 위의 검사 회차(「N회차」) — 아래 검사 항목별 결과의 측정 회차와 같은 글이라(#133) 입력 영역 안에서만 찾는다.
  */
 const findRound = async (round: number): Promise<HTMLElement> =>
+  /* 회차 라벨로 좁힌다 — ② 판정의 항목 표에도 「1회차」(측정 회차)가 있다(#247). */
   within(await screen.findByRole('form', { name: t.result.heading })).findByText(
     t.result.round(round),
+    { selector: '.iqc-inspection-round-badge' },
   );
 
 describe('IqcInspectionScreen', () => {
@@ -866,6 +878,8 @@ describe('IqcInspectionScreen', () => {
   it('검사 시점에 고정된 기준 버전으로 항목을 부른다 — 최신 기준을 따로 찾지 않는다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 
+    /* 검사 중에는 항목 표가 ② 판정 단계 안에 선다(#247). */
+    await openJudgmentDialog();
     await screen.findByRole('region', { name: messages.iqcInspection.measurements.heading });
 
     const itemsCall = sent.find((url) => url.pathname.endsWith('/items'));
@@ -881,12 +895,14 @@ describe('IqcInspectionScreen', () => {
    * 이 계속 참이다. 그것을 그대로 쓰면 그리드가 영영 「불러오는 중」에 머문다.
    * ⚠ 줄이 있으면 빈 자리 문구가 아예 안 그려지므로, 항목이 0건인 기준으로 재야 갈린다.
    */
-  it('아직 시작하지 않은 의뢰의 그리드가 「불러오는 중」에 머물지 않는다', async () => {
+  /* 검사 중 항목 표는 ② 판정 안에 서고(#247), 기준에 항목이 없으면 표 자체를 두지 않는다 — 빈 표 · 「불러오는 중」이 남지 않는다. */
+  it('아직 시작하지 않은 의뢰 · 항목 없는 기준이면 항목 표를 두지 않고 「불러오는 중」에 머물지 않는다', async () => {
     renderScreen('/?ir=1002', () => jsonResponse(queueResponse()), [], [], itemSpecsResponse([]));
 
+    await screen.findByRole('form', { name: t.result.heading });
     expect(
-      await screen.findByText(messages.iqcInspection.measurements.noItems),
-    ).toBeInTheDocument();
+      screen.queryByRole('region', { name: messages.iqcInspection.measurements.heading }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(messages.iqcInspection.measurements.loading)).not.toBeInTheDocument();
   });
 
@@ -898,6 +914,7 @@ describe('IqcInspectionScreen', () => {
       [expiredMeasurement],
     );
 
+    await openJudgmentDialog();
     expect(
       await screen.findByText(messages.iqcInspection.measurements.calibrationWarningTitle),
     ).toBeInTheDocument();
@@ -950,7 +967,7 @@ describe('IqcInspectionScreen', () => {
     const { sent, writes } = renderScreen('/?ir=1004');
 
     await findRound(1);
-    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(new URL((writes[0] as Request).url).pathname).toContain(':confirm');
@@ -968,6 +985,8 @@ describe('IqcInspectionScreen', () => {
     expect(await screen.findByText(t.measurements.blockedRequired)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
 
+    /* 항목 표는 ② 판정 단계 맨 위에 있다(#247). */
+    await openJudgmentDialog();
     await userEvent.type(
       await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
       '10.2',
@@ -998,10 +1017,23 @@ describe('IqcInspectionScreen', () => {
     ]);
   });
 
+  /* 하단 탭에 같은 입력이 겹치지 않게 — 검사 중에는 ② 판정에서 넣고, 확정된 회차는 하단 탭에서 읽기로 본다(#247). */
+  it('검사 항목별 결과 탭은 확정된 회차에서만 선다', async () => {
+    const tabName = new RegExp(`^${t.measurements.caption}`);
+    const { view } = renderScreen('/?ir=1001', undefined, [draftRound]);
+    await findRound(1);
+    expect(screen.queryByRole('tab', { name: tabName })).not.toBeInTheDocument();
+    view.unmount();
+
+    renderScreen('/?ir=1001', undefined, [confirmedRound]);
+    expect(await screen.findByRole('tab', { name: tabName })).toBeInTheDocument();
+  });
+
   it('값과 판정 중 하나만 적은 줄이 있으면 임시 저장을 막는다', async () => {
     renderScreen('/?ir=1001', undefined, [draftRound], []);
 
     await findRound(1);
+    await openJudgmentDialog();
     await userEvent.type(
       await screen.findByRole('textbox', { name: t.measurements.valueLabel('외관', 1) }),
       '긁힘',
@@ -1019,7 +1051,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     await findRound(1);
-    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
 
     await waitFor(() => expect(writes).toHaveLength(1));
 
@@ -1062,7 +1094,7 @@ describe('IqcInspectionScreen', () => {
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
 
     await userEvent.type(reason, '  재확인 결과 사용 가능 ');
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(await bodyOf(writes[0] as Request)).toEqual({
@@ -1112,7 +1144,7 @@ describe('IqcInspectionScreen', () => {
     await findRound(1);
     const reason = await screen.findByLabelText(new RegExp(t.result.judgmentChange.reason));
     await userEvent.type(reason, '재확인');
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
     await waitFor(() => expect(writes).toHaveLength(1));
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: t.result.confirm })).not.toBeInTheDocument(),
@@ -1240,7 +1272,7 @@ describe('IqcInspectionScreen', () => {
     const { writes } = renderScreen('/?ir=1001');
 
     await findRound(1);
-    await userEvent.click(await screen.findByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(
@@ -1279,12 +1311,12 @@ describe('IqcInspectionScreen', () => {
     confirmResponder = failOnce;
 
     await findRound(1);
-    const button = await screen.findByRole('button', { name: t.result.confirm });
 
-    await userEvent.click(button);
+    await confirmJudgment();
     await waitFor(() => expect(writes).toHaveLength(1));
 
-    await userEvent.click(button);
+    /* 실패해도 확인 창은 남는다 — 같은 창에서 다시 누른다. */
+    await confirmJudgment();
     await waitFor(() => expect(writes).toHaveLength(2));
 
     expect(writes[1]?.headers.get('Idempotency-Key')).toBe(
@@ -1461,7 +1493,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await findRound(1);
     await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
 
     expect(await screen.findByText(t.result.confirmSucceeded)).toBeInTheDocument();
   });
@@ -1474,7 +1506,7 @@ describe('IqcInspectionScreen — 확정 결과 문면', () => {
     await findRound(1);
     await userEvent.click(await judgmentField());
     await userEvent.click(await screen.findByRole('option', { name: '합격' }));
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
     await screen.findByText(t.result.confirmSucceeded);
 
     await goToRequest(queueItems[1]!.inspectionRequestNo);
@@ -1525,7 +1557,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
     await typeDefectQty('15');
     await typeReason('표면 긁힘');
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect(new URL((writes[0] as Request).url).pathname).toContain(':confirm');
@@ -1555,11 +1587,11 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     await userEvent.click(await screen.findByRole('option', { name: 'APP-SCR · 스크래치' }));
     await typeDefectQty('15');
     await typeReason('처음');
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
     await waitFor(() => expect(writes).toHaveLength(1));
 
     await typeReason('고친 사유', { replace: true });
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
     await waitFor(() => expect(writes).toHaveLength(2));
 
     expect(writes.every((request) => new URL(request.url).pathname.endsWith(':confirm'))).toBe(
@@ -1609,7 +1641,7 @@ describe('IqcInspectionScreen — 불합격 사유', () => {
     expect(await reasonValue()).toBe('표면 긁힘');
 
     const savedCount = writes.length;
-    await userEvent.click(screen.getByRole('button', { name: t.result.confirm }));
+    await confirmJudgment();
     await waitFor(() => expect(writes.length).toBe(savedCount + 1));
     const confirmed = writes[savedCount] as Request;
     expect(new URL(confirmed.url).pathname).toContain(':confirm');

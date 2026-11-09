@@ -146,7 +146,15 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     judgmentDetailOpen: 'Nhập chi tiết đánh giá',
     judgmentDetailCancel: 'Hủy',
     judgmentDetailDone: 'Xong',
+    confirmDialog: {
+      title: 'Xác nhận phán định?',
+      judgment: (label: string): string => `Phán định cuối: ${label}`,
+      irreversible: 'Sau khi xác nhận sẽ không thể sửa.',
+      cancel: 'Hủy',
+    },
     stepSummary: {
+      measurements: (accepted: number, rejected: number): string =>
+        `Hạng mục đạt ${String(accepted)} · không đạt ${String(rejected)}`,
       quantities: (accepted: string, rejected: string, held: string): string =>
         `Đạt ${accepted} · Lỗi ${rejected} · Tạm giữ ${held}`,
       fourMChanged: 'Hàng thay đổi 4M',

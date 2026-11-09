@@ -61,6 +61,7 @@ import { ClosedSummary } from './closed-summary';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
 import { PlanViewDialog } from './plan-view-dialog';
 import {
+  entryOf,
   hasMissingRequired,
   isSameMeasureDraft,
   measureDraftOf,
@@ -69,7 +70,7 @@ import {
   type MeasureDraft,
 } from './measurement-draft';
 import { MeasurementGrid } from './measurement-grid';
-import { toMeasurementRows } from './measurement-rows';
+import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   useInspectionItemSpecs,
   useInspectionRequestDetail,
@@ -154,6 +155,14 @@ const REQUEST_COMPLETED = 'COMPLETED';
  */
 
 const t = messages.iqcInspection;
+
+/** ② 판정을 접었을 때 붙일 항목 판정 요약(#247). 아직 판정한 항목이 없으면 `null`. */
+const measureSummaryOf = (rows: readonly MeasurementRow[], draft: MeasureDraft): string | null => {
+  const codes = rows.map((row) => entryOf(draft, row.key).judgment);
+  const accepted = codes.filter((code) => code === 'ACCEPTED').length;
+  const rejected = codes.filter((code) => code === 'REJECTED').length;
+  return accepted + rejected === 0 ? null : t.result.stepSummary.measurements(accepted, rejected);
+};
 const hubText = messages.common.inspectionHub;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
@@ -1029,6 +1038,23 @@ const IqcInspectionScreenBody = () => {
               ? t.result.judgmentChange.basis(acceptanceNumber)
               : undefined
           }
+          /* 검사 항목별 결과 입력 — ② 판정 맨 위(#247 · 사용자 지시 2026-11-09). 검사 기준에 항목이 없으면 두지 않는다. */
+          measurementSlot={
+            isOpenRound && measurementRows.length > 0 ? (
+              <MeasurementGrid
+                rows={measurementRows}
+                isLoading={itemSpecs.isLoading || measurements.isLoading}
+                scrollX
+                edit={{
+                  draft: measureDraft,
+                  onChange: setMeasureDraft,
+                  judgmentOptions: toCodeOptions(measurementJudgmentValues.data ?? []),
+                  disabled: workerMissing || save.isSaving || confirm.isSaving,
+                }}
+              />
+            ) : null
+          }
+          measurementSummary={measureSummaryOf(measurementRows, measureDraft)}
           fourMSlot={
             hasFourMTarget && isOpenRound ? (
               <>
@@ -1139,44 +1165,38 @@ const IqcInspectionScreenBody = () => {
           key={selectedId}
           aria-label={messages.iqcInspection.detail.auxTabs}
           items={[
-            {
-              value: 'measurements',
-              /* 탭마다 건수를 붙인다(사용자 지시 2026-10-27 · #185). */
-              label: `${messages.iqcInspection.measurements.caption} ${messages.iqcInspection.detail.historyCount(measurementRows.length)}`,
-              content: (
-                <div className="iqc-inspection-tab-body iqc-inspection-fold">
-                  {/*
-                   * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
-                   * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
-                   * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
-                   * 실제로 부르는 중을 잡는다.
-                   */}
-                  <MeasurementGrid
-                    rows={measurementRows}
-                    isLoading={itemSpecs.isLoading || measurements.isLoading}
-                    scrollX
-                    /* 검사 중인 회차는 여기서 측정값을 넣는다(#247). 확정된 회차 · 끝난 의뢰는 읽기다. */
-                    edit={
-                      isOpenRound && !rounds.isPending
-                        ? {
-                            draft: measureDraft,
-                            onChange: setMeasureDraft,
-                            judgmentOptions: toCodeOptions(measurementJudgmentValues.data ?? []),
-                            disabled: workerMissing || save.isSaving || confirm.isSaving,
+            /* 검사 중에는 ② 판정 단계에서 넣으므로 여기 두지 않는다 — 확정된 회차 · 끝난 의뢰만 읽기로 본다(#247). */
+            ...(isOpenRound
+              ? []
+              : [
+                  {
+                    value: 'measurements',
+                    /* 탭마다 건수를 붙인다(사용자 지시 2026-10-27 · #185). */
+                    label: `${messages.iqcInspection.measurements.caption} ${messages.iqcInspection.detail.historyCount(measurementRows.length)}`,
+                    content: (
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        {/*
+                         * ⚠ **`isPending` 이 아니라 `isLoading` 이다.** 측정치 조회는 회차가 없을 때
+                         * 비활성이고, 비활성이면 `isPending` 이 계속 참이라 아직 시작하지 않은 의뢰의
+                         * 그리드가 영영 「불러오는 중」이 된다. `isLoading`(= pending && fetching)만
+                         * 실제로 부르는 중을 잡는다.
+                         */}
+                        <MeasurementGrid
+                          rows={measurementRows}
+                          isLoading={itemSpecs.isLoading || measurements.isLoading}
+                          scrollX
+                          /* [기준 조회]와 같은 창을 연다(사용자 지시 2026-10-28 · #197). */
+                          onViewPlan={
+                            samplingRule.data === undefined ||
+                            detail.data.inspectionPlanVersionId === null
+                              ? undefined
+                              : () => setIsPlanViewOpen(true)
                           }
-                        : null
-                    }
-                    /* [기준 조회]와 같은 창을 연다(사용자 지시 2026-10-28 · #197). */
-                    onViewPlan={
-                      samplingRule.data === undefined ||
-                      detail.data.inspectionPlanVersionId === null
-                        ? undefined
-                        : () => setIsPlanViewOpen(true)
-                    }
-                  />
-                </div>
-              ),
-            },
+                        />
+                      </div>
+                    ),
+                  },
+                ]),
             /* ⛔ 읽기 전용이다 — 앞 회차는 정정하지 않고 새 회차를 쌓는다(§5-3). */
             ...(historyRounds.length > 0
               ? [
