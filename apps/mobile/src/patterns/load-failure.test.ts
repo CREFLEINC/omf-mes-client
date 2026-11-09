@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { waitFor } from '@testing-library/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { act, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,7 +10,7 @@ import {
   type StubRoute,
 } from '../test/api-harness';
 import { useApiClient } from './api-context';
-import { TOKEN_CHECK_PATIENCE_MS, useLoadFailure } from './load-failure';
+import { TOKEN_CHECK_PATIENCE_MS, useLoadFailure, useSaveRefusal } from './load-failure';
 import { forgetPlant, rememberPlant } from './plant';
 import { runRequest } from './request';
 
@@ -30,6 +30,14 @@ vi.mock('./local-store', () => ({
 
 const OFFLINE = '사번을 확인할 수 없습니다. 연결을 확인하세요.';
 const denied = { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '거절' }] };
+/** 서버 `loginRequired()` - 토큰이 없거나 죽었을 때, 단말에 열지 않은 경로일 때 같은 문구다. */
+const loginRequired = {
+  errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '로그인이 필요합니다.' }],
+};
+/** 서버 `wrongTerminalType()` - 토큰은 맞는데 단말 유형이 다르다(omf-mes-server#859). */
+const WRONG_TYPE =
+  '이 기능은 POP 단말에서만 쓸 수 있습니다(지금 단말: PDA(모바일 단말)) — POP 단말에서 하세요.';
+const wrongType = { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: WRONG_TYPE }] };
 const page = { page: 1, size: 1, total: 0 };
 
 /** 화면의 조회 하나와 문구 고르기를 함께 돌린다. */
@@ -105,7 +113,7 @@ describe('조회 실패 문구 고르기', () => {
   /* 토큰은 사는데 이 조회만 막혔다. 새 QR 을 받아도 풀리지 않는다. */
   it('거절됐지만 토큰이 살아 있으면 이 조회가 막혔다고 말한다', async () => {
     const fetch = createStubFetch([
-      items(() => jsonResponse(denied, { status: 401 })),
+      items(() => jsonResponse(loginRequired, { status: 401 })),
       probe(() => jsonResponse({ items: [], page })),
     ]);
 
@@ -113,6 +121,20 @@ describe('조회 실패 문구 고르기', () => {
 
     await waitFor(() => {
       expect(result.current.text).toBe(messages.httpError.deviceNotAllowed);
+    });
+  });
+
+  /* 토큰은 사는데 단말 유형이 다르다. 서버가 어느 단말·화면에서 할지를 실어 보낸다(#202). */
+  it('거절됐고 토큰이 살아 있으면 서버가 실은 까닭을 그대로 보인다', async () => {
+    const fetch = createStubFetch([
+      items(() => jsonResponse(wrongType, { status: 401 })),
+      probe(() => jsonResponse({ items: [], page })),
+    ]);
+
+    const { result } = renderHookWithProviders(useScreen, { fetch });
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(WRONG_TYPE);
     });
   });
 
@@ -134,7 +156,7 @@ describe('조회 실패 문구 고르기', () => {
   it('토큰 확인이 답하기 전에는 거절 문구를 달지 않는다', async () => {
     let answer: ((response: Response) => void) | null = null;
     const fetch = createStubFetch([
-      items(() => jsonResponse(denied, { status: 401 })),
+      items(() => jsonResponse(loginRequired, { status: 401 })),
       probe(
         () =>
           new Promise<Response>((resolve) => {
@@ -320,5 +342,81 @@ describe('조회 실패 문구 고르기', () => {
       expect(result.current.first.text).toBeNull();
     });
     expect(probes).toBe(1);
+  });
+});
+
+/** 화면의 바로 저장 하나와 거절 문구 고르기를 함께 돌린다. */
+const useSave = () => {
+  const { client } = useApiClient();
+  const save = useMutation({
+    mutationFn: () => runRequest(() => client.GET('/mdm/items', {})),
+  });
+  const refusal = useSaveRefusal();
+
+  return { save, text: save.isError ? refusal(save.error) : null };
+};
+
+describe('바로 저장 거절 문구(#202)', () => {
+  beforeEach(async () => {
+    store.clear();
+    await rememberPlant(7);
+  });
+
+  it('토큰이 살아 있는데 거절되면 서버가 실은 까닭을 보인다', async () => {
+    const fetch = createStubFetch([
+      items(() => jsonResponse(wrongType, { status: 401 })),
+      probe(() => jsonResponse({ items: [], page })),
+    ]);
+    const { result } = renderHookWithProviders(useSave, { fetch });
+
+    act(() => {
+      result.current.save.mutate();
+    });
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(WRONG_TYPE);
+    });
+  });
+
+  it('단말에 열지 않은 경로의 로그인 문구는 그대로 보이지 않는다', async () => {
+    const fetch = createStubFetch([
+      items(() => jsonResponse(loginRequired, { status: 401 })),
+      probe(() => jsonResponse({ items: [], page })),
+    ]);
+    const { result } = renderHookWithProviders(useSave, { fetch });
+
+    act(() => {
+      result.current.save.mutate();
+    });
+
+    await waitFor(() => {
+      expect(result.current.text).toBe(messages.httpError.deviceNotAllowed);
+    });
+  });
+
+  it('토큰이 죽었거나 401 이 아니면 화면의 지금 문구를 쓴다(null)', async () => {
+    const dead = createStubFetch([
+      items(() => jsonResponse(loginRequired, { status: 401 })),
+      probe(() => jsonResponse(loginRequired, { status: 401 })),
+    ]);
+    const first = renderHookWithProviders(useSave, { fetch: dead });
+    act(() => {
+      first.result.current.save.mutate();
+    });
+    await waitFor(() => {
+      expect(first.result.current.save.isError).toBe(true);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(first.result.current.text).toBeNull();
+
+    const server = createStubFetch([items(() => jsonResponse({}, { status: 500 }))]);
+    const second = renderHookWithProviders(useSave, { fetch: server });
+    act(() => {
+      second.result.current.save.mutate();
+    });
+    await waitFor(() => {
+      expect(second.result.current.save.isError).toBe(true);
+    });
+    expect(second.result.current.text).toBeNull();
   });
 });

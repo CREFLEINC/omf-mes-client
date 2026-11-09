@@ -119,28 +119,14 @@ const isRejectedQuery = (query: Query): boolean =>
   isUnauthenticated(query.state.error.apiError);
 
 /**
- * 조회 실패를 사람이 할 일로 옮기는 문구를 고른다.
- *
- * 화면마다 적어 둔 실패 문구는 「연결을 확인하세요」로 끝나는 것이 많다. 연결이 끊긴 때에만
- * 맞는 말인데 서버가 거절해도 같은 문구가 떠, 현장은 멀쩡한 망을 뒤졌다(#1187). 화면의 문구는
- * 연결 실패일 때만 쓰고 나머지는 여기서 가른다.
- *
- * 401 이 보이면 토큰 확인을 한 번 부른다. 확인은 캐시에 두어 여러 조회가 한꺼번에 거절돼도
- * 한 번만 나간다.
- *
- * ⛔ 토큰이 죽었으면 null 을 준다. 등록 만료는 조회 하나의 실패가 아니라 기기의 상태라 셸이
- * 화면 위에 한 번만 알린다(`ShellGate`). 조회마다 같은 문장을 달면 한 화면에 여러 번 뜬다(#1198).
- * 받는 자리는 `FailureBanner` 로 그려 null 이면 배너째 감춘다.
- *
- * @returns `(error, offline, options) => 문구 | null` - `offline` 은 그 자리의 연결 실패 문구다.
- *   `other` 를 주면 서버 오류일 때 그 문구를 쓴다(그 자리가 이미 따로 적어 둔 경우).
- *   `caution` 은 연결이 아닌 실패 문구 뒤에 붙인다 - 연결 문구에 섞여 있던 주의를 잃지 않게.
+ * 401 이 토큰 탓인지 가리는 토큰 확인을 부르고 그 판정을 준다. 조회와 바로 저장(뮤테이션)의 401 을 보면
+ * 확인을 한 번 부른다 - 확인은 캐시에 두어 여러 건이 한꺼번에 거절돼도 한 번만 나간다.
  */
-export const useLoadFailure = (): ((
-  error: unknown,
-  offline: string,
-  options?: LoadFailureOptions,
-) => string | null) => {
+const useTokenVerdict = (): {
+  tokenState: DeviceTokenState;
+  settled: boolean;
+  patienceOver: boolean;
+} => {
   const queryClient = useQueryClient();
   const { client } = useApiClient();
 
@@ -164,7 +150,7 @@ export const useLoadFailure = (): ((
       check(queryClient);
     }
 
-    return cache.subscribe((event) => {
+    const unsubscribeQueries = cache.subscribe((event) => {
       if (
         event.type === 'updated' &&
         event.action.type === 'error' &&
@@ -173,6 +159,22 @@ export const useLoadFailure = (): ((
         check(queryClient);
       }
     });
+    /* 바로 저장(뮤테이션)의 거절도 같은 확인으로 가른다(omf-all-around#202). */
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
+      if (
+        event.type === 'updated' &&
+        event.action.type === 'error' &&
+        event.mutation.state.error instanceof ApiRequestError &&
+        isUnauthenticated(event.mutation.state.error.apiError)
+      ) {
+        check(queryClient);
+      }
+    });
+
+    return () => {
+      unsubscribeQueries();
+      unsubscribeMutations();
+    };
   }, [client, queryClient]);
 
   const tokenState: DeviceTokenState = token.data ?? 'unknown';
@@ -201,20 +203,49 @@ export const useLoadFailure = (): ((
     };
   }, [settled, checking]);
 
+  return { tokenState, settled, patienceOver };
+};
+
+/**
+ * 조회 실패를 사람이 할 일로 옮기는 문구를 고른다.
+ *
+ * 화면마다 적어 둔 실패 문구는 「연결을 확인하세요」로 끝나는 것이 많다. 연결이 끊긴 때에만
+ * 맞는 말인데 서버가 거절해도 같은 문구가 떠, 현장은 멀쩡한 망을 뒤졌다(#1187). 화면의 문구는
+ * 연결 실패일 때만 쓰고 나머지는 여기서 가른다.
+ *
+ * 401 이 보이면 토큰 확인을 한 번 부른다(`useTokenVerdict`). 토큰이 살아 있으면 서버가 실은 까닭
+ * (예: 「이 기능은 PDA…에서만…」)을 그대로 보인다(#202).
+ *
+ * ⛔ 토큰이 죽었으면 null 을 준다. 등록 만료는 조회 하나의 실패가 아니라 기기의 상태라 셸이
+ * 화면 위에 한 번만 알린다(`ShellGate`). 조회마다 같은 문장을 달면 한 화면에 여러 번 뜬다(#1198).
+ * 받는 자리는 `FailureBanner` 로 그려 null 이면 배너째 감춘다.
+ *
+ * @returns `(error, offline, options) => 문구 | null` - `offline` 은 그 자리의 연결 실패 문구다.
+ *   `other` 를 주면 서버 오류일 때 그 문구를 쓴다(그 자리가 이미 따로 적어 둔 경우).
+ *   `caution` 은 연결이 아닌 실패 문구 뒤에 붙인다 - 연결 문구에 섞여 있던 주의를 잃지 않게.
+ */
+export const useLoadFailure = (): ((
+  error: unknown,
+  offline: string,
+  options?: LoadFailureOptions,
+) => string | null) => {
+  const { tokenState, settled, patienceOver } = useTokenVerdict();
+
   return useCallback(
     (error: unknown, offline: string, options: LoadFailureOptions = {}): string | null => {
       if (error instanceof ApiRequestError && error.apiError.kind === 'network') {
         return offline;
       }
 
-      const rejected = error instanceof ApiRequestError && isUnauthenticated(error.apiError);
+      const rejected =
+        error instanceof ApiRequestError && isUnauthenticated(error.apiError) ? error : null;
 
       /* 까닭을 가리는 중이다. 먼저 단정하는 문구를 달았다가 바꾸지 않는다. */
-      if (rejected && !settled && !patienceOver) {
+      if (rejected !== null && !settled && !patienceOver) {
         return null;
       }
 
-      if (rejected && tokenState === 'dead') {
+      if (rejected !== null && tokenState === 'dead') {
         return null;
       }
 
@@ -223,15 +254,53 @@ export const useLoadFailure = (): ((
        * 문제가 아니다 - 연결을 보라고 하면 사람이 할 수 없는 조치를 하게 된다(`toApiError` 와
        * 같은 판단).
        */
-      const told = rejected
-        ? tokenState === 'alive'
-          ? messages.httpError.deviceNotAllowed
-          : messages.httpError.deviceRejected
-        : (options.other ?? messages.httpError.loadServer);
+      const told =
+        rejected !== null
+          ? tokenState === 'alive'
+            ? refusalOf(rejected)
+            : messages.httpError.deviceRejected
+          : (options.other ?? messages.httpError.loadServer);
 
       return options.caution === undefined ? told : `${told} ${options.caution}`;
     },
     [tokenState, settled, patienceOver],
+  );
+};
+
+/**
+ * 서버가 단말 토큰이 없거나 죽었을 때, 그리고 단말에 열지 않은 경로에 쓰는 401 문구(서버 `loginRequired()`).
+ * 토큰이 살아 있는데 이 문구가 오면 단말에 열리지 않은 경로다 - 현장 단말에는 로그인이 없으므로 그대로 보이지 않는다.
+ */
+const LOGIN_REQUIRED_MESSAGE = '로그인이 필요합니다.';
+
+/**
+ * 토큰이 살아 있는데 거절된 까닭. 서버는 단말 유형이 맞지 않으면 어느 단말·화면에서 해야 하는지를 401 문구에
+ * 싣는다(omf-mes-server#859, omf-all-around#202). 그 문구가 있으면 그대로 쓰고, 없거나 로그인 문구면 고정 문구로 둔다.
+ */
+const refusalOf = (error: ApiRequestError): string => {
+  const told = error.apiError.kind === 'http' ? error.apiError.message?.trim() : undefined;
+
+  return told === undefined || told === '' || told === LOGIN_REQUIRED_MESSAGE
+    ? messages.httpError.deviceNotAllowed
+    : told;
+};
+
+/**
+ * 바로 저장이 단말 탓으로 거절됐을 때 보일 문구. 토큰이 살아 있는데 401 이면 다시 보내도 같은 답이 오므로
+ * 화면의 「다시 시도하세요」 대신 이 문구를 보인다. 그 밖의 실패(토큰이 죽었거나 아직 모름, 401 이 아님)는
+ * null - 화면이 지금 문구를 그대로 쓴다. 등록 만료는 셸이 따로 알린다.
+ */
+export const useSaveRefusal = (): ((error: unknown) => string | null) => {
+  const { tokenState } = useTokenVerdict();
+
+  return useCallback(
+    (error: unknown): string | null =>
+      error instanceof ApiRequestError &&
+      isUnauthenticated(error.apiError) &&
+      tokenState === 'alive'
+        ? refusalOf(error)
+        : null,
+    [tokenState],
   );
 };
 
