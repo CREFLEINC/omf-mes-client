@@ -469,7 +469,9 @@ export const iqcInspection = {
     noItemsHint: '검사 기준 정보를 확인해 주세요.',
     columns: {
       dataType: '유형',
-      item: '검사 항목',
+      /** 표 안의 항목 번호(1, 2, 3 · 사용자 지시 2026-11-09). */
+      no: '항목',
+      item: '검사 내용',
       spec: '규격',
       sample: '측정 회차',
       value: '측정 결과',

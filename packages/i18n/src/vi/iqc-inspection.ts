@@ -303,7 +303,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     noItemsHint: 'Hãy kiểm tra thông tin tiêu chuẩn kiểm tra.',
     columns: {
       dataType: 'Loại',
-      item: 'Hạng mục kiểm tra',
+      no: 'Hạng mục',
+      item: 'Nội dung kiểm tra',
       spec: 'Quy cách',
       sample: 'Lần đo',
       value: 'Kết quả đo',

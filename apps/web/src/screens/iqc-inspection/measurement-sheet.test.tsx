@@ -29,15 +29,26 @@ describe('MeasurementSheet', () => {
     const tables = screen.getAllByRole('table');
     expect(tables).toHaveLength(3);
     expect(screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual([
-      '수치',
-      '선택형',
-      '텍스트',
+      '수치 1건',
+      '선택형 1건',
+      '텍스트 1건',
     ]);
     const [numeric, flag] = tables as [HTMLElement, HTMLElement, HTMLElement];
     expect(within(numeric).getByText(t.columns.spec)).toBeInTheDocument();
     expect(within(numeric).getByText('n3')).toBeInTheDocument();
     expect(within(flag).queryByText(t.columns.spec)).not.toBeInTheDocument();
     expect(within(flag).queryByText('n2')).not.toBeInTheDocument();
+  });
+
+  it('표마다 항목 수를 보이고 항목 번호는 1부터 센다', () => {
+    render([appearanceSpec, { ...appearanceSpec, inspectionItemSpecId: 7010, sequenceNo: 30 }]);
+
+    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('텍스트 2건');
+    expect(
+      screen.getByRole('columnheader', { name: new RegExp(t.columns.no) }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '2' })).toBeInTheDocument();
   });
 
   it('없는 유형의 표는 그리지 않는다', () => {

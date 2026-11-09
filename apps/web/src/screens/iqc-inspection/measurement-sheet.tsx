@@ -39,6 +39,8 @@ export interface MeasurementSheetProps {
 /** 표의 한 줄 — 검사 항목 하나와 그 측정 회차들. */
 interface SheetRow {
   key: string;
+  /** 이 표 안의 항목 번호. 1부터 */
+  no: number;
   first: MeasurementRow;
   samples: MeasurementRow[];
 }
@@ -48,9 +50,11 @@ const toSheetRows = (rows: readonly MeasurementRow[]): SheetRow[] => {
   for (const row of rows) {
     bySpec.set(row.inspectionItemSpecId, [...(bySpec.get(row.inspectionItemSpecId) ?? []), row]);
   }
-  return [...bySpec.values()].flatMap((samples) => {
+  return [...bySpec.values()].flatMap((samples, index) => {
     const first = samples[0];
-    return first === undefined ? [] : [{ key: String(first.inspectionItemSpecId), first, samples }];
+    return first === undefined
+      ? []
+      : [{ key: String(first.inspectionItemSpecId), no: index + 1, first, samples }];
   });
 };
 
@@ -166,10 +170,17 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
   const sampleColumns = Math.max(1, ...sheetRows.map((row) => row.samples.length));
   const columns: Column<SheetRow>[] = [
     {
+      key: 'no',
+      align: 'center',
+      header: t.columns.no,
+      width: '52px',
+      render: (row) => row.no,
+    },
+    {
       key: 'item',
       align: 'center',
       header: t.columns.item,
-      width: '128px',
+      width: '116px',
       render: (row) => <ItemCell row={row.first} />,
     },
     ...(hasSpec
@@ -178,7 +189,7 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
             key: 'spec',
             align: 'center',
             header: t.columns.spec,
-            width: '110px',
+            width: '102px',
             render: (row: SheetRow) => <SpecLines row={row.first} />,
           } satisfies Column<SheetRow>,
         ]
@@ -210,7 +221,9 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
 
   return (
     <div className="iqc-inspection-measure-type">
-      <h4>{title}</h4>
+      <h4>
+        {title} {messages.iqcInspection.detail.historyCount(sheetRows.length)}
+      </h4>
       <div
         ref={fit.ref}
         className="iqc-inspection-table-box inspection-queue-table iqc-inspection-measure-sheet"
