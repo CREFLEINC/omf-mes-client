@@ -27867,19 +27867,11 @@ body:has(.page-nav-size [aria-expanded="true"])
   border-left: 0;
 }
 
+/* 칸이 다 안 들어가면 줄을 바꾼다 — 한 줄로 고정하면 품목 칸이 옆 칸에 가려 잘린다(사용자 지시 2026-11-09). */
 @container (min-width: 60rem) {
-  .pqc-web .pqc-web-summary .pqc-web-facts {
-    flex-wrap: nowrap;
-  }
-
   .pqc-web .pqc-web-summary .pqc-web-fact {
-    flex-shrink: 0;
+    max-width: 100%;
     overflow-wrap: normal;
-  }
-
-  .pqc-web .pqc-web-summary .pqc-web-fact:has(.pqc-web-fact-item) {
-    flex-shrink: 1;
-    min-width: 0;
   }
 
   .pqc-web .pqc-web-summary .pqc-web-fact > dd {
@@ -29605,6 +29597,35 @@ button.iqc-inspection-step-toggle:focus-visible {
 /* 이 항목이 재지 않는 회차 칸 — 부품 입력표처럼 바탕이 어둡다. */
 .iqc-inspection-measure-sheet table tbody tr:nth-child(n) > td:empty {
   background: var(--surface-container-low);
+}
+
+/* 판정 확정 창(사용자 시안 2026-11-09). */
+.iqc-inspection-confirm-body {
+  display: grid;
+  gap: var(--space-3);
+  color: var(--on-surface);
+}
+
+.iqc-inspection-confirm-body > p {
+  margin: 0;
+}
+
+.iqc-inspection-confirm-body > p > span {
+  margin-right: var(--space-2);
+  color: var(--on-surface-variant);
+}
+
+.iqc-inspection-confirm-body strong[data-judgment="ACCEPTED"] {
+  color: var(--semantic-success-text);
+}
+
+.iqc-inspection-confirm-body strong[data-judgment="REJECTED"] {
+  color: var(--semantic-error-text);
+}
+
+.iqc-inspection-confirm-body > .iqc-inspection-confirm-note {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
 }
 
 .iqc-inspection-measure-type {

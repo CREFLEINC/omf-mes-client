@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { DispositionState } from '../pqc-inspection/disposition';
 import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from '../pqc-inspection/quantity-draft';
 
-import { autoJudgmentOf, PqcWebSteps } from './web-steps';
+import { autoJudgmentOf, PqcWebSteps, remainingAcceptedOf } from './web-steps';
 
 const t = messages.pqcInspectionRegister.web;
 
@@ -75,6 +75,17 @@ describe('PqcWebSteps 자동 판정', () => {
 });
 
 const draft = (accepted: string, rejected: string, held: string) => ({ accepted, rejected, held });
+
+describe('remainingAcceptedOf (PQC)', () => {
+  it.each([
+    [draft('100', '3', '2'), '95'],
+    [draft('100', '', ''), '100'],
+    [draft('100', '90', '20'), '0'],
+    [draft('100', 'x', ''), null],
+  ])('검사 수량 100 · %o → %s', (quantities, expected) => {
+    expect(remainingAcceptedOf(quantities, 100)).toBe(expected);
+  });
+});
 
 /** PQC [확정] 때 채우는 최종 판정(사용자 지시 2026-10-29 · #197) — IQC 와 같은 규칙. */
 describe('autoJudgmentOf (PQC)', () => {

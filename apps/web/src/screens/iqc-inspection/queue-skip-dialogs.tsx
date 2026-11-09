@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 
 import { useApiClient } from '../../patterns/api-context';
 import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { SaveErrorBanner, useMasterWrite, type MasterWriteOptions } from '../../patterns/master';
 import { FieldLabel } from '../oqc-inspection/field-label';
 import {
   qualityApprovalKeys,
@@ -39,20 +39,60 @@ export const SkipRequestDialog = ({
   onClose,
 }: SkipDialogProps & { workerNo: string }) => {
   const { client } = useApiClient();
+  return (
+    <SkipRequestForm
+      texts={t}
+      resultText={d.requestResult}
+      approvalKey={approvalKey}
+      onClose={onClose}
+      send={(body, headers) =>
+        client.POST('/trace/lots/{lotId}:request-iqc-skip', {
+          params: {
+            path: { lotId },
+            header: { 'Idempotency-Key': headers['Idempotency-Key'], 'X-Worker-No': workerNo },
+          },
+          body,
+        })
+      }
+    />
+  );
+};
+
+/** 생략 요청 창 문구 — IQC · PQC 가 같은 모양의 묶음을 낸다. */
+export interface SkipFormTexts {
+  heading: string;
+  reason: string;
+  reasonPlaceholder: string;
+  reasonRequired: string;
+  reasonCount: (count: number) => string;
+  cancel: string;
+  request: string;
+  requesting: string;
+  requested: string;
+  executing: string;
+  executed: string;
+}
+
+export const SkipRequestForm = ({
+  texts: t,
+  resultText,
+  approvalKey,
+  onClose,
+  send,
+}: {
+  texts: SkipFormTexts;
+  resultText: string;
+  approvalKey: readonly unknown[];
+  onClose: () => void;
+  send: MasterWriteOptions<{ reason: string }, unknown>['request'];
+}) => {
   const toast = useToast();
   const reasonId = useId();
   const [reason, setReason] = useState('');
   const [touched, setTouched] = useState(false);
 
   const write = useMasterWrite<{ reason: string }, unknown>({
-    request: (body, headers) =>
-      client.POST('/trace/lots/{lotId}:request-iqc-skip', {
-        params: {
-          path: { lotId },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'], 'X-Worker-No': workerNo },
-        },
-        body,
-      }),
+    request: send,
     etagPath: null,
     invalidateKeys: [approvalKey, qualityApprovalKeys.all, iqcSkipApprovalKeys.all],
     knownFields: ['reason'],
@@ -96,7 +136,7 @@ export const SkipRequestDialog = ({
         }
       >
         <div className="oqc-inspection-skip-dialog">
-          <p className="oqc-inspection-skip-result">{d.requestResult}</p>
+          <p className="oqc-inspection-skip-result">{resultText}</p>
           <FieldLabel htmlFor={reasonId} label={t.reason} required />
           <TextArea
             id={reasonId}
@@ -134,7 +174,12 @@ export const SkipApproveDialog = ({
   approvalRequestId,
   approvalKey,
   onClose,
-}: Omit<SkipDialogProps, 'lotId'> & { approvalRequestId: number }) => {
+  copy = d,
+}: Omit<SkipDialogProps, 'lotId'> & {
+  approvalRequestId: number;
+  /** 검사 유형에 따라 다른 창 제목 · 알림. 기본은 IQC. */
+  copy?: { approveTitle: string; approved: string; rejected: string };
+}) => {
   const { client } = useApiClient();
   const toast = useToast();
   const commentId = useId();
@@ -169,7 +214,7 @@ export const SkipApproveDialog = ({
     onSuccess: () => {
       toast.show({
         variant: 'success',
-        description: sent.current === 'reject' ? d.rejected : d.approved,
+        description: sent.current === 'reject' ? copy.rejected : copy.approved,
       });
       onClose();
     },
@@ -194,7 +239,7 @@ export const SkipApproveDialog = ({
         open
         onClose={close}
         showCloseButton={false}
-        title={d.approveTitle}
+        title={copy.approveTitle}
         footer={
           <>
             <Button
@@ -268,20 +313,44 @@ export const SkipExecuteDialog = ({
   alsoInvalidate?: readonly (readonly unknown[])[];
 }) => {
   const { client } = useApiClient();
+  return (
+    <SkipExecuteForm
+      texts={t}
+      copy={d}
+      onClose={onClose}
+      invalidateKeys={[iqcInspectionKeys.all, ...alsoInvalidate]}
+      send={(_body, headers) =>
+        client.POST('/trace/lots/{lotId}:skip-iqc', {
+          params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+        })
+      }
+    />
+  );
+};
+
+export const SkipExecuteForm = ({
+  texts: t,
+  copy,
+  onClose,
+  invalidateKeys,
+  send,
+}: {
+  texts: SkipFormTexts;
+  copy: { executeTitle: string; executeBody: string; execute: string };
+  onClose: () => void;
+  invalidateKeys: readonly (readonly unknown[])[];
+  send: MasterWriteOptions<Record<string, never>, unknown>['request'];
+}) => {
   const toast = useToast();
 
   const write = useMasterWrite<Record<string, never>, unknown>({
-    request: (_body, headers) =>
-      client.POST('/trace/lots/{lotId}:skip-iqc', {
-        params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-      }),
+    request: send,
     etagPath: null,
     invalidateKeys: [
-      iqcInspectionKeys.all,
       INSPECTION_HUB_COUNTS_KEY,
       qualityApprovalKeys.all,
       iqcSkipApprovalKeys.all,
-      ...alsoInvalidate,
+      ...invalidateKeys,
     ],
     knownFields: [],
     keyLifetime: 'until-applied',
@@ -302,7 +371,7 @@ export const SkipExecuteDialog = ({
         onClose={close}
         showCloseButton={false}
         size="lg"
-        title={d.executeTitle}
+        title={copy.executeTitle}
         footer={
           <>
             <Button
@@ -314,13 +383,13 @@ export const SkipExecuteDialog = ({
               {t.cancel}
             </Button>
             <Button variant="filled" disabled={write.isSaving} onClick={() => write.write({})}>
-              {write.isSaving ? t.executing : d.execute}
+              {write.isSaving ? t.executing : copy.execute}
             </Button>
           </>
         }
       >
         <div className="oqc-inspection-skip-dialog">
-          <p className="oqc-inspection-skip-result">{d.executeBody}</p>
+          <p className="oqc-inspection-skip-result">{copy.executeBody}</p>
           <SaveErrorBanner error={write.error} />
         </div>
       </Dialog>

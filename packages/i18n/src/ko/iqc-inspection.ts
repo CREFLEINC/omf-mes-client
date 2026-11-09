@@ -230,9 +230,8 @@ export const iqcInspection = {
     /** 마친 단계를 접은 한 줄 요약(#197) — 누르면 다시 펼쳐 고친다. */
     /** 판정 확정 확인 창(사용자 지시 2026-11-09). */
     confirmDialog: {
-      title: '판정을 확정할까요?',
-      judgment: (label: string): string => `최종 판정: ${label}`,
-      irreversible: '확정하면 수정할 수 없습니다.',
+      title: '판정을 확정하시겠습니까?',
+      irreversible: '확정 후에는 판정을 수정할 수 없습니다.',
       cancel: '취소',
     },
     stepSummary: {

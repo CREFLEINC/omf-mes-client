@@ -1095,6 +1095,7 @@ export const ResultFormPane = ({
                 <Button
                   type="button"
                   variant="outlined"
+                  className="app-button-neutral"
                   size="md"
                   disabled={isConfirming}
                   onClick={() => setIsConfirmDialogOpen(false)}
@@ -1117,15 +1118,20 @@ export const ResultFormPane = ({
             }}
           >
             <SaveErrorBanner error={confirmError} onReload={onReload} />
-            <p>{t.confirmDialog.judgment(judgmentText)}</p>
-            <p>
-              {t.stepSummary.quantities(
-                qtyText(draft.accepted),
-                qtyText(draft.rejected),
-                qtyText(draft.held),
-              )}
-            </p>
-            <p>{t.confirmDialog.irreversible}</p>
+            <div className="iqc-inspection-confirm-body">
+              <p>
+                <span>{t.judgment}</span>
+                <strong data-judgment={judgment}>{judgmentText}</strong>
+              </p>
+              <p>
+                {t.stepSummary.quantities(
+                  qtyText(draft.accepted),
+                  qtyText(draft.rejected),
+                  qtyText(draft.held),
+                )}
+              </p>
+              <p className="iqc-inspection-confirm-note">{t.confirmDialog.irreversible}</p>
+            </div>
           </Dialog>
         )}
 

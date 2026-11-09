@@ -10,6 +10,7 @@ import { toStatusBadge } from '../oqc-inspection/status-badge';
 import type { InspectionQueueRow } from '../oqc-inspection/types';
 import { useUoms } from '../pqc-inspection/queries';
 import { useItem } from '../production-result/flow-queries';
+import { PqcQueueSkipCell } from './queue-skip-cell';
 import { useTargetLots, useWorkOrder } from '../production-result/queries';
 
 const t = messages.pqcInspectionRegister;
@@ -23,6 +24,7 @@ const WorkOrderCell = ({ workOrderId }: { workOrderId: number }) => {
 };
 
 const VOIDED_LIFECYCLE = 'VOIDED';
+const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
 
 /**
  * 대상 LOT — PQC 의뢰는 작업지시 단위라 그 작업지시의 생산 LOT(폐번 제외)을 보인다(상세 「대상 LOT」과 같다).
@@ -161,6 +163,22 @@ export const PqcQueueTable = ({
       width: '160px',
       sortable: true,
       render: (row) => formatPlantDateTime(row.requestedAt) ?? row.requestedAt,
+    },
+    {
+      key: 'skip',
+      align: 'center',
+      header: t.columns.skip,
+      width: '120px',
+      /* 대기 · 진행 중인 작업지시 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09). */
+      render: (row) =>
+        row.targetTypeCode === 'WORK_ORDER' && SKIPPABLE.includes(row.statusCode) ? (
+          <PqcQueueSkipCell
+            inspectionRequestId={row.inspectionRequestId}
+            workOrderId={row.targetId}
+          />
+        ) : (
+          empty
+        ),
     },
   ];
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */

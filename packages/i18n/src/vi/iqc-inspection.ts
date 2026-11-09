@@ -151,7 +151,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     judgmentDetailDone: 'Xong',
     confirmDialog: {
       title: 'Xác nhận phán định?',
-      judgment: (label: string): string => `Phán định cuối: ${label}`,
       irreversible: 'Sau khi xác nhận sẽ không thể sửa.',
       cancel: 'Hủy',
     },

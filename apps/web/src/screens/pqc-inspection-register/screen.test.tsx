@@ -195,20 +195,11 @@ const web = t.web;
 const hub = messages.common.inspectionHub;
 
 /* 입력 단계(#197) — ② 수량의 [확정]으로 ③ 판정이 열린다. */
-const confirmQuantities = async (
-  user: ReturnType<typeof userEvent.setup>,
-  pane: ReturnType<typeof within>,
-): Promise<void> => {
-  await user.click(pane.getByRole('button', { name: hub.stepConfirm }));
-};
-/* 저장된 회차가 수량을 다 채웠으면 ② 가 접혀 선다 — 되살린 뒤 펼친다. */
-const expandQuantities = async (
-  user: ReturnType<typeof userEvent.setup>,
-  pane: ReturnType<typeof within>,
-): Promise<void> => {
-  const toggle = await pane.findByRole('button', { name: new RegExp(`^${web.quantity.heading}`) });
-  await waitFor(() => expect(toggle).toHaveTextContent(hub.stepChange));
-  await user.click(toggle);
+/* 수량과 판정은 한 단계다(사용자 지시 2026-11-09) — 넘길 [확정]이 없다. */
+const confirmQuantities = async (_user: unknown, _pane: unknown): Promise<void> => undefined;
+/* 단계가 하나라 늘 펼쳐져 있다 — 그 자리가 선 것만 기다린다. */
+const expandQuantities = async (_user: unknown, pane: ReturnType<typeof within>): Promise<void> => {
+  await pane.findByRole('region', { name: web.mergedHeading });
 };
 
 /* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
@@ -377,7 +368,8 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     renderScreen();
     const pane = await openRequest(user);
 
-    await user.type(await pane.findByRole('textbox', { name: web.quantity.accepted }), '1');
+    await user.clear(await pane.findByRole('textbox', { name: web.quantity.accepted }));
+    await user.type(pane.getByRole('textbox', { name: web.quantity.accepted }), '1');
     /* 고른 줄을 다시 누르면 고르지 않은 상태로 — 상세를 닫는다(#197). */
     await user.click(
       within(screen.getByRole('region', { name: t.queue.heading })).getByText(
@@ -405,7 +397,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     renderScreen();
     const pane = await openRequest(user);
 
-    const quantity = await pane.findByRole('region', { name: web.quantity.heading });
+    const quantity = await pane.findByRole('region', { name: web.mergedHeading });
     /* 총 검사 수량은 수량 줄 오른쪽 「전체 5 EA 중」으로 선다(#197). */
     await waitFor(() =>
       expect(quantity).toHaveTextContent(new RegExp(hub.qtyTotalOf('5(?: \\S+)?'))),
@@ -418,7 +410,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const pane = await openRequest(user);
     await expandQuantities(user, pane);
 
-    const quantity = await pane.findByRole('region', { name: web.quantity.heading });
+    const quantity = await pane.findByRole('region', { name: web.mergedHeading });
     await waitFor(() => expect(quantity).toHaveTextContent(web.quantity.round(1)));
   });
 
