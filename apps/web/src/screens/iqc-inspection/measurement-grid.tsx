@@ -248,7 +248,7 @@ const columns: Column<MeasurementRow>[] = [
      * 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을 폭 비율대로 나눠 갖게 한다
      * (항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
      */
-    width: '200px',
+    width: '150px',
     /*
      * 항목명은 칸 한가운데, 「필수」는 같은 칸 왼쪽 끝 — 셋으로 나눈 격자(1fr · 이름 · 1fr)라
      * 「필수」가 있든 없든 이름의 가운데가 같은 자리다(#133 · 담당자 지시).
@@ -269,35 +269,35 @@ const columns: Column<MeasurementRow>[] = [
     key: 'dataType',
     align: 'center',
     header: t.columns.dataType,
-    width: '80px',
+    width: '64px',
     render: (row) => <TypeCell row={row} />,
   },
   {
     key: 'spec',
     align: 'center',
     header: t.columns.spec,
-    width: '148px',
+    width: '112px',
     render: (row) => withUnit(describeSpec(row.spec), row.spec, row.unit),
   },
   {
     key: 'sample',
     align: 'center',
     header: t.columns.sample,
-    width: '96px',
+    width: '76px',
     render: (row) => t.sampleOf(row.sampleNo),
   },
   {
     key: 'value',
     align: 'center',
     header: t.columns.value,
-    width: '96px',
+    width: '120px',
     render: (row) => <ValueCell row={row} />,
   },
   {
     key: 'judgment',
     align: 'center',
     header: t.columns.judgment,
-    width: '96px',
+    width: '104px',
     render: (row) => <JudgmentCell row={row} />,
   },
 ];
