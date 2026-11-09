@@ -98,13 +98,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     receivedAt: 'Thời gian nhập kho',
     inspectedQty: 'Số lượng kiểm tra',
     invalidInspectedQty: 'Nhập số nguyên từ 1 trở lên.',
-    inspectedAt: 'Thời gian kiểm tra',
-    inspectedTime: 'Giờ kiểm tra',
-    inspectedHour: 'Giờ kiểm tra (giờ)',
-    inspectedMinute: 'Giờ kiểm tra (phút)',
-    hourHead: 'Giờ',
-    minuteHead: 'Phút',
-    timePlaceholder: 'Chọn giờ',
   },
 
   dimension: {

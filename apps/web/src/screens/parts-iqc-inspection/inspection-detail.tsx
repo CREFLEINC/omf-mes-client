@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Chip,
-  DatePicker,
   Dialog,
   IconButton,
   Icon,
@@ -22,10 +21,9 @@ import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
-import { formatPlantDateTime, plantNowLocal, PLANT_UTC_OFFSET } from '../../patterns/plant-time';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
-import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
   iqcInspectionKeys,
   useDefectCodes,
@@ -91,16 +89,6 @@ const tResult = messages.iqcInspection.result;
 const STANDARD_PATH = '/master-data/inspection-standard';
 const DEFECT_CODE_PATH = '/master-data/defect-cause-code';
 
-const TIME_LABELS: TimeFieldLabels = {
-  field: t.lot.inspectedTime,
-  hourList: t.lot.inspectedHour,
-  minuteList: t.lot.inspectedMinute,
-  hourHead: t.lot.hourHead,
-  minuteHead: t.lot.minuteHead,
-  placeholder: t.lot.timePlaceholder,
-};
-
-const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
 /** 비고 글자 수 — 사용자 시안(0/200). 서버 칸에는 길이 제한이 없다. */
 const REMARKS_MAX = 200;
 
@@ -478,7 +466,7 @@ const InspectionForm = (props: FormProps) => {
   );
 
   const initial = useMemo((): PartsIqcForm => {
-    const form = emptyForm(plantNowLocal());
+    const form = emptyForm();
     form.visualInspectedQty = draft === null ? defaultQty : String(draft.inspectedQty);
     for (const m of draft?.measured ?? []) {
       const spec = specs.find((s) => s.inspectionItemSpecId === m.inspectionItemSpecId);
@@ -498,11 +486,6 @@ const InspectionForm = (props: FormProps) => {
   const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
   const form = history.present;
   const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
-  const inspectedAtId = useId();
-  const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
-  const inspectedTime = inspectedTimeRaw.slice(0, 5);
-  const changeInspectedAt = (date: string, time: string) =>
-    change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
   const [chosen, setChosen] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -511,6 +494,10 @@ const InspectionForm = (props: FormProps) => {
   const [connectOpen, setConnectOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const submit = useSubmitInspection(props.onSubmitted);
+  const submittedAt = useRef<string | null>(null);
+  useEffect(() => {
+    submittedAt.current = null;
+  }, [form]);
 
   const inspectedQty = countOf(form.visualInspectedQty);
   const defectQtyRaw = countOf(form.visualDefectQty);
@@ -567,8 +554,7 @@ const InspectionForm = (props: FormProps) => {
   );
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
-  const measurementsOf = (): SubmitVariables['measurements'] => {
-    const measuredAt = toOffset(form.inspectedAt);
+  const measurementsOf = (measuredAt: string): SubmitVariables['measurements'] => {
     const out: SubmitVariables['measurements'] = [];
     dimensions.forEach((item) => {
       for (let i = 0; i < item.measurementCount; i += 1) {
@@ -613,17 +599,20 @@ const InspectionForm = (props: FormProps) => {
 
   const onSubmit = () => {
     setAsk(false);
+    /* 검사일시는 제출한 시점이다(사용자 지시 2026-11-09). 실패 뒤 그대로 다시 내면 같은 시각을 써 같은 멱등 키가 나간다. */
+    submittedAt.current ??= new Date().toISOString();
+    const inspectedAt = submittedAt.current;
     if (blocked || overall === null || inspectedQty === null) return;
     submit.write({
       inspectionRequestId: request.inspectionRequestId,
       draftResultId: draft?.inspectionResultId ?? null,
       previousResultId: props.previousResultId,
       uomId: request.uomId,
-      inspectedAt: toOffset(form.inspectedAt),
+      inspectedAt,
       inspectedQty,
       rejectedQty: overall === 'ACCEPTED' ? Math.min(rejectedQty, inspectedQty) : rejectedQty,
       overallJudgmentCode: overall,
-      measurements: measurementsOf(),
+      measurements: measurementsOf(inspectedAt),
       defects:
         defectsSent && 'rows' in defectResult
           ? defectResult.rows.map((row) => ({ ...row, defectDescription: null }))
@@ -760,32 +749,8 @@ const InspectionForm = (props: FormProps) => {
             </div>
           </dl>
           <div className="parts-iqc-lot-inspected">
-            {/* 시각은 입고 화면과 같은 시·분 고르기(공용 패턴) — 글자 입력 대신 DS 모양으로(사용자 지시 2026-10-29). */}
-            <div className="field-cell date-time-field">
-              <label className="field-label" htmlFor={inspectedAtId}>
-                {t.lot.inspectedAt}
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
-                </span>
-              </label>
-              <div className="date-time-field-controls">
-                <DatePicker
-                  id={inspectedAtId}
-                  value={inspectedDate === '' ? null : inspectedDate}
-                  onChange={(next) => changeInspectedAt(next, inspectedTime)}
-                />
-                <TimeField
-                  labels={TIME_LABELS}
-                  hour={inspectedTime.slice(0, 2)}
-                  minute={inspectedTime.slice(3, 5)}
-                  disabled={false}
-                  invalid={false}
-                  onChange={(hour, minute) => changeInspectedAt(inspectedDate, `${hour}:${minute}`)}
-                />
-              </div>
-            </div>
             {/* 검사 수량 — 이 회차에 실제로 검사한 수(사용자 지시 2026-10-30). 기본은 검사기준의 시료 수, 고칠 수 있다.
-                검사일시와 한 줄, 칸 이름은 위에(검사일시와 같은 모양 · 사용자 지시 2026-10-30). */}
+                칸 이름은 위에(사용자 지시 2026-10-30). */}
             <div className="field-cell parts-iqc-inspected-qty">
               <FieldLabel htmlFor="parts-iqc-inspected-qty" label={t.lot.inspectedQty} required />
               <TextField
@@ -1240,7 +1205,7 @@ const InspectionForm = (props: FormProps) => {
           variant="text"
           disabled={submit.isSaving}
           onClick={() => {
-            const cleared = emptyForm(form.inspectedAt);
+            const cleared = emptyForm();
             cleared.visualInspectedQty = defaultQty;
             change(cleared);
             setChosen(null);

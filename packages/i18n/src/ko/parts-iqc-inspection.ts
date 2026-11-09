@@ -92,13 +92,6 @@ export const partsIqcInspection = {
     receivedAt: '입고일시',
     inspectedQty: '검사 수량',
     invalidInspectedQty: '1 이상 정수를 입력하세요.',
-    inspectedAt: '검사일시',
-    inspectedTime: '검사 시각',
-    inspectedHour: '검사 시각(시)',
-    inspectedMinute: '검사 시각(분)',
-    hourHead: '시',
-    minuteHead: '분',
-    timePlaceholder: '시각 선택',
   },
 
   dimension: {

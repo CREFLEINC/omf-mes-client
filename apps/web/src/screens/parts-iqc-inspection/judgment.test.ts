@@ -124,7 +124,7 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
 
 describe('입력 되돌리기·다시 실행', () => {
   it('되돌리면 앞 값, 다시 실행하면 뒤 값 — 되돌린 뒤 새로 고치면 다시 실행할 칸이 사라진다', () => {
-    const first = emptyForm('2026-10-29T00:00:00.000Z');
+    const first = emptyForm();
     const second = withValue(first, 1, 0, '6.7');
     const third = withValue(second, 1, 1, '6.8');
     let state = historyReducer(startHistory(first), { type: 'change', next: second });
