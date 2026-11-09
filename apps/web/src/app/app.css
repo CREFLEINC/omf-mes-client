@@ -29596,6 +29596,18 @@ button.iqc-inspection-step-toggle:focus-visible {
   background: var(--surface-container-low);
 }
 
+.iqc-inspection-measure-type {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.iqc-inspection-measure-type > h4 {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+}
+
 .iqc-inspection-measure-sheet .parts-iqc-spec {
   display: block;
   font-variant-numeric: tabular-nums;

@@ -97,14 +97,20 @@ const ValueInput = ({ row, edit }: { row: MeasurementRow; edit: MeasureEdit }) =
   );
 };
 
-/** 규격 — 「기준 ± 공차」 아래에 「하한 ~ 상한」(부품 입력표와 같다). */
+const tidy = (value: number): number => Number(value.toFixed(6));
+
+/** 규격 — 「기준 ± 공차」(위아래가 다르면 「기준 +a/-b」) 아래에 「하한 ~ 상한」(부품 입력표와 같다). */
 const SpecLines = ({ row }: { row: MeasurementRow }) => {
-  const text = withUnit(describeSpec(row.spec), row.spec, row.unit);
   const { target, lower, upper } = row.spec;
-  if (target === null || lower === null || upper === null) return text;
+  if (target === null || lower === null || upper === null) {
+    return withUnit(describeSpec(row.spec), row.spec, row.unit);
+  }
+  const plus = tidy(upper - target);
+  const minus = tidy(target - lower);
+  const nominal = plus === minus ? describeSpec(row.spec) : `${target} +${plus}/-${minus}`;
   return (
     <span className="parts-iqc-spec">
-      <span>{text}</span>
+      <span>{withUnit(nominal, row.spec, row.unit)}</span>
       <span>{t.range(lower, upper)}</span>
     </span>
   );
@@ -136,11 +142,26 @@ const JudgmentSelect = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => 
   );
 };
 
-/**
- * 검사 중 항목별 입력표(#247 · 사용자 지시 2026-11-09) — 부품 사업부 입력표처럼 한 줄에 항목 · 규격 · n1~nN · 판정. 열은 가장 많이
- * 재는 항목의 회차 수만큼이고, 항목마다 자기 회차 수까지만 칸이 열린다. 열 순서 · 폭 조절은 다른 표와 같다.
- */
-export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheetProps) => {
+/** 유형별 표의 차례와 회차 칸 폭. 값 목록에 없는 유형은 글로 받으므로 텍스트 표에 든다. */
+const TYPE_TABLES = [
+  { type: 'NUMERIC', sampleWidth: '80px', hasSpec: true },
+  { type: 'BOOLEAN', sampleWidth: '100px', hasSpec: false },
+  { type: 'TEXT', sampleWidth: '240px', hasSpec: false },
+] as const;
+
+const tableTypeOf = (dataType: string): string =>
+  TYPE_TABLES.some((table) => table.type === dataType) ? dataType : 'TEXT';
+
+interface TypeTableProps {
+  type: string;
+  title: string;
+  rows: MeasurementRow[];
+  sampleWidth: string;
+  hasSpec: boolean;
+  edit: MeasureEdit;
+}
+
+const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableProps) => {
   const sheetRows = toSheetRows(rows);
   const sampleColumns = Math.max(1, ...sheetRows.map((row) => row.samples.length));
   const columns: Column<SheetRow>[] = [
@@ -151,25 +172,22 @@ export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheet
       width: '128px',
       render: (row) => <ItemCell row={row.first} />,
     },
-    {
-      key: 'dataType',
-      align: 'center',
-      header: t.columns.dataType,
-      width: '66px',
-      render: (row) => dataTypeNames[row.first.dataType] ?? row.first.dataType,
-    },
-    {
-      key: 'spec',
-      align: 'center',
-      header: t.columns.spec,
-      width: '92px',
-      render: (row) => <SpecLines row={row.first} />,
-    },
+    ...(hasSpec
+      ? [
+          {
+            key: 'spec',
+            align: 'center',
+            header: t.columns.spec,
+            width: '110px',
+            render: (row: SheetRow) => <SpecLines row={row.first} />,
+          } satisfies Column<SheetRow>,
+        ]
+      : []),
     ...Array.from({ length: sampleColumns }, (_, index): Column<SheetRow> => ({
       key: `n${String(index + 1)}`,
       align: 'center',
       header: tn.sample(index + 1),
-      width: '80px',
+      width: sampleWidth,
       /* 이 항목이 재지 않는 회차는 칸을 비워 둔다(바탕이 어둡다). */
       render: (row) => {
         const sample = row.samples[index];
@@ -184,30 +202,22 @@ export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheet
       render: (row) => <JudgmentSelect row={row} edit={edit} />,
     },
   ];
-  const ordered = useColumnOrder('omf-mes:iqc-inspection:columns:measure-sheet:order', columns);
-  const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:measure-sheet', ordered, {
-    fitContent: true,
-  });
+  const storageKey = `omf-mes:iqc-inspection:columns:measure-sheet:${type}`;
+  const ordered = useColumnOrder(`${storageKey}:order`, columns);
+  const resizable = useColumnWidths(storageKey, ordered, { fitContent: true });
   const fit = useFitColumns(resizable.columns, { scrollX: true });
   const paging = useClientPage(sheetRows);
 
   return (
-    <section className="iqc-inspection-step-measure" aria-label={t.heading}>
-      {/* ⛔ 경고일 뿐 차단이 아니다(스펙 §8-6). */}
-      {hasCalibrationWarning(rows) && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.calibrationWarningTitle}>
-            {t.calibrationWarning}
-          </AlertBanner>
-        </div>
-      )}
+    <div className="iqc-inspection-measure-type">
+      <h4>{title}</h4>
       <div
         ref={fit.ref}
         className="iqc-inspection-table-box inspection-queue-table iqc-inspection-measure-sheet"
         style={resizable.style}
       >
         <Table
-          caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+          caption={<span className="iqc-inspection-table-caption">{title}</span>}
           density="compact"
           columns={fit.columns}
           rows={paging.rows}
@@ -216,6 +226,37 @@ export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheet
       </div>
       {/* 한 쪽에 다 들면 쪽 이동 줄을 두지 않는다 — 높이를 줄인다. */}
       {sheetRows.length > paging.rows.length && <PageNav {...paging.nav} />}
-    </section>
+    </div>
   );
 };
+
+/**
+ * 검사 중 항목별 입력표(#247 · 사용자 지시 2026-11-09) — 부품 사업부 입력표처럼 한 줄에 항목 · 규격 · n1~nN · 판정. 규격이 있는 수치와
+ * 선택형 · 텍스트를 표로 나눈다. 열은 그 표에서 가장 많이 재는 항목의 회차 수만큼이고, 항목마다 자기 회차 수까지만 칸이 열린다.
+ */
+export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheetProps) => (
+  <section className="iqc-inspection-step-measure" aria-label={t.heading}>
+    {/* ⛔ 경고일 뿐 차단이 아니다(스펙 §8-6). */}
+    {hasCalibrationWarning(rows) && (
+      <div className="banner-slot">
+        <AlertBanner variant="warning" title={t.calibrationWarningTitle}>
+          {t.calibrationWarning}
+        </AlertBanner>
+      </div>
+    )}
+    {TYPE_TABLES.map(({ type, sampleWidth, hasSpec }) => {
+      const typeRows = rows.filter((row) => tableTypeOf(row.dataType) === type);
+      return typeRows.length === 0 ? null : (
+        <TypeTable
+          key={type}
+          type={type}
+          title={dataTypeNames[type] ?? type}
+          rows={typeRows}
+          sampleWidth={sampleWidth}
+          hasSpec={hasSpec}
+          edit={edit}
+        />
+      );
+    })}
+  </section>
+);
