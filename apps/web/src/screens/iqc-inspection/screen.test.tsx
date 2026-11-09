@@ -15,6 +15,7 @@ import {
   draftRound,
   expiredMeasurement,
   itemSpecsResponse,
+  dimensionSpec,
   measurementsResponse,
   requiredMeasurements,
   overallJudgmentCodeValues,
@@ -1106,13 +1107,20 @@ describe('IqcInspectionScreen', () => {
   });
 
   it('값과 판정 중 하나만 적은 줄이 있으면 임시 저장을 막는다', async () => {
-    renderScreen('/?ir=1001', undefined, [draftRound], []);
+    /* 규격 없는 수치 — 값만으로 판정이 정해지지 않는 항목이다. */
+    renderScreen(
+      '/?ir=1001',
+      undefined,
+      [draftRound],
+      [],
+      itemSpecsResponse([{ ...dimensionSpec, lowerLimit: undefined, upperLimit: undefined }]),
+    );
 
     await findRound(1);
     await openJudgmentDialog();
     await userEvent.type(
-      await screen.findByRole('textbox', { name: t.measurements.valueLabel('외관', 1) }),
-      '긁힘',
+      await screen.findByRole('textbox', { name: t.measurements.valueLabel('치수', 1) }),
+      '10',
     );
 
     expect(await screen.findByText(t.measurements.blockedIncomplete)).toBeInTheDocument();

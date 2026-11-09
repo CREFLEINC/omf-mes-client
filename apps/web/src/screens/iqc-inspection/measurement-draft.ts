@@ -86,12 +86,13 @@ export const isSameMeasureDraft = (left: MeasureDraft, right: MeasureDraft): boo
 
 /**
  * 값으로 채울 판정 — 자동 판정이 꺼진 항목도 채운다(사람이 바꿀 수 있다 · 사용자 지시 2026-11-09). 수치는 상·하한 중 하나
- * 이상이 있을 때(값이 숫자가 아니면 `null`), 예/아니오는 양호 → 합격 · 불량 → 불합격. 글 항목은 채우지 않는다.
+ * 이상이 있을 때(값이 숫자가 아니면 `null`), 예/아니오는 양호 → 합격 · 불량 → 불합격, 글 항목은 적으면 합격이다.
  */
 export const autoJudgmentOf = (row: MeasurementRow, value: string): string | null => {
   if (row.dataType === 'BOOLEAN')
     return value === '' ? null : value === 'true' ? ACCEPTED : REJECTED;
-  if (row.dataType !== 'NUMERIC') return null;
+  /* 글 항목은 적으면 합격이다(사용자 지시 2026-11-09). */
+  if (row.dataType !== 'NUMERIC') return value.trim() === '' ? null : ACCEPTED;
   const { lower, upper } = row.spec;
   if (lower === null && upper === null) return null;
   const text = value.trim();

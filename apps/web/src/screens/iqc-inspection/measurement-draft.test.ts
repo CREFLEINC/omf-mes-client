@@ -51,14 +51,21 @@ describe('measurement-draft', () => {
     expect(withValue(picked, dim1, '10.3')[dim1.key]?.judgment).toBe('ACCEPTED');
   });
 
-  it('글 항목은 판정을 채우지 않는다 — 사람이 고른다', () => {
-    expect(withValue({}, appear, '양호')[appear.key]?.judgment).toBe('');
+  it('글 항목은 적으면 합격, 지우면 빈 판정이다', () => {
+    const written = withValue({}, appear, '양호');
+    expect(written[appear.key]?.judgment).toBe('ACCEPTED');
+    expect(withValue(written, appear, '')[appear.key]?.judgment).toBe('');
   });
 
   it('숫자가 아닌 수치 값 · 반쯤 적은 줄은 저장을 막고, 빈 줄은 막지 않는다', () => {
     expect(measureSaveBlockOf(rows, {})).toBeNull();
     expect(measureSaveBlockOf(rows, withValue({}, dim1, '10.x'))).toBe('invalid');
-    expect(measureSaveBlockOf(rows, withValue({}, appear, '양호'))).toBe('incomplete');
+    const [noLimit] = toMeasurementRows(
+      [{ ...dimensionSpec, lowerLimit: undefined, upperLimit: undefined }],
+      [],
+    );
+    if (noLimit === undefined) throw new Error('없는 줄');
+    expect(measureSaveBlockOf([noLimit], withValue({}, noLimit, '10'))).toBe('incomplete');
   });
 
   it('필수 항목을 다 재야 확정된다 — 선택 항목은 비어도 된다', () => {
