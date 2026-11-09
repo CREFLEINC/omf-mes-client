@@ -159,6 +159,7 @@ export const ResultFormPane = ({
   isInputLocked = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
+  const serialJudgmentId = useId();
   const lockNoteId = useId();
   const coaNoteId = useId();
   const blockedNoteId = useId();
@@ -260,116 +261,112 @@ export const ResultFormPane = ({
           isZero: totals.remaining === 0n,
         };
   const qtyText = (raw: string): string => withUom(raw.trim() === '' ? '0' : raw, uomCode);
-  const confirmButton = (confirm: () => void): ReactNode => (
-    <div className="inspection-step-footer">
-      <Button type="button" size="md" onClick={confirm}>
-        {tHub.stepConfirm}
-      </Button>
-    </div>
-  );
-
   /*
    * ⛔ **실패해도 창을 닫지 않는다.** 배너를 창 안에 내고 같은 창에서 다시 누르게 한다 —
    * 그래야 같은 멱등 키가 나가 서버가 두 번째 쓰기로 보지 않는다.
    */
   const banner = <SaveErrorBanner error={saveError} onReload={onReload} />;
 
-  /* ── ① 검사 수량 — 검사수량을 합격 · 불합격 · 보류로 나눈 결과(잠긴 회차는 [확정] 없이 보이기만) ── */
-  const quantityLine = (confirm: (() => void) | null): ReactNode => (
-    <InspectionQtyLine
-      uomCode={uomCode}
-      disabled={isLocked || isSaving || isInputLocked}
-      status={qtyStatus}
-      describedBy={isLocked ? lockNoteId : undefined}
-      /* 수량이 아닌 값이 남으면 넘어가지 않는다 — 합계가 덜 맞아도 넘어간다(IQC 와 같다). */
-      confirmDisabled={totals.kind !== 'counted'}
-      onConfirm={confirm}
-      fields={(
-        [
-          ['accepted', t.fields.accepted],
-          ['rejected', t.fields.rejected],
-          ['held', t.fields.held],
-        ] as const
-      ).map(([key, label]) => ({
-        key,
-        kind: key,
-        label,
-        value: draft[key],
-        onChange: (raw: string) => onChange({ ...draft, [key]: raw }),
-        /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
-        error: serverErrorOf(key) ?? (showErrors && errors[key] ? t.quantityInvalid : undefined),
-      }))}
+  /*
+   * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고, 목록이
+   * 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2).
+   * 고른 판정을 테두리 색으로 바로 알아보게 한다(합격 초록 · 불합격 빨강 · 보류 주황 — app.css `[data-judgment]`).
+   */
+  /* 탭 두 곳에 서므로 칸 id 를 따로 받는다 — 같은 id 면 라벨이 겹쳐 읽힌다. */
+  const judgmentFieldOf = (fieldId: string, showHint = true): ReactNode => (
+    <div
+      className="field-cell oqc-inspection-judgment-field"
+      data-judgment={judgment === '' ? undefined : judgment}
     >
-      {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 저장 단추 옆이 말한다). */}
-      {isReinspecting ? (
-        <p className="field-note">{t.reinspectRound}</p>
-      ) : round !== null ? (
-        <p className="field-note">{t.round(round.inspectionRound)}</p>
-      ) : null}
+      <FieldLabel
+        htmlFor={fieldId}
+        label={t.judgment}
+        required
+        /* 합격판정개수 기준과 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있고 열린 회차일 때만 라벨 옆 한 줄로. */
+        hint={
+          showHint && acceptanceNumber !== null && !isLocked
+            ? `${t.judgmentChange.basis(acceptanceNumber)}${
+                expectedJudgmentLabel === null
+                  ? ''
+                  : ` · ${t.judgmentChange.expected(expectedJudgmentLabel)}` // ui-check-ignore: C-13 종전 표기(#126) — 단계로 옮기며 들여쓰기만 바뀌었다
+              }`
+            : undefined
+        }
+      />
+      <Select
+        id={fieldId}
+        options={judgmentOptions}
+        value={judgment}
+        placeholder={t.judgmentPlaceholder}
+        disabled={isLocked || isSaving || judgmentOptions.length === 0}
+        onChange={onJudgmentChange}
+      />
+      {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
       {/*
-       * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이
-       * 어디에도 없다. 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
+       * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
+       * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
        */}
-      {isReinspecting && (
-        <>
-          <p className="field-note">{t.reinspectNote}</p>
-          <p className="field-note">{t.reinspectReasonPending}</p>
-        </>
+      {!isKnownCode(judgmentOptions, judgment) && (
+        <p className="field-note">{t.judgmentUnknown(judgment)}</p>
       )}
-      {/* 잠긴 이유를 **묶음에 한 번** 낸다 — 잠긴 것은 칸 하나가 아니라 이 회차다. */}
-      {isLocked && (
-        <p className="field-note" id={lockNoteId}>
-          {isConfirmed ? t.confirmed : t.draftElsewhere}
-        </p>
-      )}
-    </InspectionQtyLine>
+    </div>
   );
 
-  /* ── ② 판정 — 종합 판정을 고르고, 자동 판정과 다르면 사유를 받는다 ── */
+  /* ── ① 검사 수량 — 검사수량을 합격 · 불합격 · 보류로 나눈 결과(잠긴 회차는 [확정] 없이 보이기만) ── */
+  const quantityLine = (
+    <div className="iqc-inspection-qty-body" data-with-judgment="">
+      <InspectionQtyLine
+        uomCode={uomCode}
+        disabled={isLocked || isSaving || isInputLocked}
+        status={qtyStatus}
+        describedBy={isLocked ? lockNoteId : undefined}
+        /* 최종 판정은 수량 줄 오른쪽(IQC 와 같다 · 사용자 지시 2026-11-09). */
+        trailing={judgmentFieldOf(judgmentId)}
+        fields={(
+          [
+            ['accepted', t.fields.accepted],
+            ['rejected', t.fields.rejected],
+            ['held', t.fields.held],
+          ] as const
+        ).map(([key, label]) => ({
+          key,
+          kind: key,
+          label,
+          value: draft[key],
+          onChange: (raw: string) => onChange({ ...draft, [key]: raw }),
+          /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
+          error: serverErrorOf(key) ?? (showErrors && errors[key] ? t.quantityInvalid : undefined),
+        }))}
+      >
+        {/* 회차 상태 — 회차가 아직 없으면 아무것도 보이지 않는다(막힌 이유는 저장 단추 옆이 말한다). */}
+        {isReinspecting ? (
+          <p className="field-note">{t.reinspectRound}</p>
+        ) : round !== null ? (
+          <p className="field-note">{t.round(round.inspectionRound)}</p>
+        ) : null}
+        {/*
+         * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 대응 코드 그룹이
+         * 어디에도 없다. 감추지 않고 왜 없는지 밝힌다(공유계약 G-2).
+         */}
+        {isReinspecting && (
+          <>
+            <p className="field-note">{t.reinspectNote}</p>
+            <p className="field-note">{t.reinspectReasonPending}</p>
+          </>
+        )}
+        {/* 잠긴 이유를 **묶음에 한 번** 낸다 — 잠긴 것은 칸 하나가 아니라 이 회차다. */}
+        {isLocked && (
+          <p className="field-note" id={lockNoteId}>
+            {isConfirmed ? t.confirmed : t.draftElsewhere}
+          </p>
+        )}
+      </InspectionQtyLine>
+    </div>
+  );
+
+  /* 판정 뒤에 받을 것 — 변경 사유 · 불합격 사유 · 안내. */
   const judgmentFields = (
     <>
-      {/*
-       * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고, 목록이
-       * 비어도 **감추지 않고 사유를 밝힌다**(공유계약 G-2).
-       * 고른 판정을 테두리 색으로 바로 알아보게 한다(합격 초록 · 불합격 빨강 · 보류 주황 — app.css `[data-judgment]`).
-       */}
-      <div
-        className="field-cell oqc-inspection-judgment-field"
-        data-judgment={judgment === '' ? undefined : judgment}
-      >
-        <FieldLabel
-          htmlFor={judgmentId}
-          label={t.judgment}
-          required
-          /* 합격판정개수 기준과 자동 판정(omf-all-around#126) — 기준에 합격판정개수가 있고 열린 회차일 때만 라벨 옆 한 줄로. */
-          hint={
-            acceptanceNumber !== null && !isLocked
-              ? `${t.judgmentChange.basis(acceptanceNumber)}${
-                  expectedJudgmentLabel === null
-                    ? ''
-                    : ` · ${t.judgmentChange.expected(expectedJudgmentLabel)}` // ui-check-ignore: C-13 종전 표기(#126) — 단계로 옮기며 들여쓰기만 바뀌었다
-                }`
-              : undefined
-          }
-        />
-        <Select
-          id={judgmentId}
-          options={judgmentOptions}
-          value={judgment}
-          placeholder={t.judgmentPlaceholder}
-          disabled={isLocked || isSaving || judgmentOptions.length === 0}
-          onChange={onJudgmentChange}
-        />
-        {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
-        {/*
-         * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-         * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
-         */}
-        {!isKnownCode(judgmentOptions, judgment) && (
-          <p className="field-note">{t.judgmentUnknown(judgment)}</p>
-        )}
-      </div>
-
       {/* 판정 변경 사유(omf-all-around#126) — 최종 판정 바로 아래, 자동 판정과 다르게 고를 때만. */}
       {acceptanceNumber !== null && !isLocked && (
         <JudgmentChange
@@ -420,47 +417,54 @@ export const ResultFormPane = ({
           showAll={isLocked || isInputLocked}
           steps={[
             {
-              title: t.sectionTitle,
-              done: canConfirm(totals),
+              /* 검사 수량과 판정을 한 단계로(IQC 와 같다 · 사용자 지시 2026-11-09). */
+              title: t.mergedSectionTitle,
+              done: canConfirm(totals) && judgment !== '',
               attention: Object.values(FIELD_OF).some((name) => fieldErrors[name] !== undefined),
-              summary: tHub.qtySummary(
-                qtyText(draft.accepted),
-                qtyText(draft.rejected),
-                qtyText(draft.held),
-              ),
-              render: (confirm) =>
-                !isLocked && serialSection !== undefined ? (
-                  <div className="oqc-inspection-entry-tabs">
-                    <Tabs
-                      aria-label={t.sectionTitle}
-                      items={[
-                        {
-                          value: 'quantity',
-                          label: t.entryTabs.lot,
-                          content: quantityLine(confirm),
-                        },
-                        {
-                          value: 'serials',
-                          label: t.entryTabs.serial,
-                          content: (
-                            <>
-                              {serialSection}
-                              {confirmButton(confirm)}
-                            </>
-                          ),
-                        },
-                      ]}
-                    />
-                  </div>
-                ) : (
-                  quantityLine(isLocked ? null : confirm)
+              summary: [
+                tHub.qtySummary(
+                  qtyText(draft.accepted),
+                  qtyText(draft.rejected),
+                  qtyText(draft.held),
                 ),
-            },
-            {
-              title: t.judgmentSectionTitle,
-              done: judgment !== '',
-              summary: judgment === '' ? '' : labelOfCode(judgmentOptions, judgment),
-              render: () => judgmentFields,
+                judgment === '' ? '' : labelOfCode(judgmentOptions, judgment),
+              ]
+                .filter((part) => part !== '')
+                .join(' · '),
+              render: () => (
+                <>
+                  {!isLocked && serialSection !== undefined ? (
+                    <div className="oqc-inspection-entry-tabs">
+                      <Tabs
+                        aria-label={t.mergedSectionTitle}
+                        items={[
+                          {
+                            value: 'quantity',
+                            label: t.entryTabs.lot,
+                            content: quantityLine,
+                          },
+                          {
+                            value: 'serials',
+                            label: t.entryTabs.serial,
+                            content: (
+                              <>
+                                {serialSection}
+                                {/* 시리얼 탭에는 수량 줄이 없다 — 최종 판정만 따로 둔다. */}
+                                <div className="inspection-step-footer">
+                                  {judgmentFieldOf(serialJudgmentId, false)}
+                                </div>
+                              </>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                  ) : (
+                    quantityLine
+                  )}
+                  {judgmentFields}
+                </>
+              ),
             },
           ]}
         />

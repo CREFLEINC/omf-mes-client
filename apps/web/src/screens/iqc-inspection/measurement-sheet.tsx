@@ -2,9 +2,6 @@ import { AlertBanner, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { useClientPage } from '../../patterns/client-page';
-import { useFitColumns } from '../../patterns/column-fit';
-import { useColumnOrder } from '../../patterns/column-grip-order';
-import { useColumnWidths } from '../../patterns/column-resize';
 import { PageNav } from '../../patterns/page-nav';
 import { Select } from '../../patterns/select';
 import type { CodeOption } from './code-options';
@@ -238,10 +235,6 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
   const filled = sheetRows.filter((row) =>
     row.samples.some((sample) => entryOf(edit.draft, sample.key).value.trim() !== ''),
   ).length;
-  const storageKey = `omf-mes:iqc-inspection:columns:measure-sheet:${type}`;
-  const ordered = useColumnOrder(`${storageKey}:order`, columns);
-  const resizable = useColumnWidths(storageKey, ordered, { fitContent: true });
-  const fit = useFitColumns(resizable.columns, { scrollX: true });
   const paging = useClientPage(sheetRows);
 
   return (
@@ -251,15 +244,11 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
         <h3>{title}</h3>
         <span className="parts-iqc-muted">{tn.progress(filled, sheetRows.length)}</span>
       </div>
-      <div
-        ref={fit.ref}
-        className="iqc-inspection-table-box inspection-queue-table iqc-inspection-measure-sheet"
-        style={resizable.style}
-      >
+      <div className="iqc-inspection-table-box inspection-queue-table iqc-inspection-measure-sheet">
         <Table
           caption={<span className="iqc-inspection-table-caption">{title}</span>}
           density="compact"
-          columns={fit.columns}
+          columns={columns}
           rows={paging.rows}
           getRowId={(row) => row.key}
         />

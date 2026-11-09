@@ -20,6 +20,7 @@ export const oqcInspection = {
      * 대상 LOT·기준 버전 같은 나머지는 고른 뒤 우측 창이 보인다.
      */
     columns: {
+      skip: '생략',
       inspectionRequestNo: '의뢰번호',
       itemId: '품목',
       targetQty: '검사수량',
@@ -190,6 +191,8 @@ export const oqcInspection = {
     sectionTitle: '검사 수량 입력',
     /** 시리얼 판정 의뢰의 입력 탭 이름(#136). */
     entryTabs: { lot: 'LOT별 검사', serial: '시리얼별 검사' },
+    /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
+    mergedSectionTitle: '검사 수량 · 판정',
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
     saveNote: '판정 저장 후 수정이 불가합니다.',
@@ -373,6 +376,16 @@ export const oqcInspection = {
    * OQC 생략(omf-all-around#119 · 서버 선행 P-83) — 요청 → 「특채·한도승인 승인 처리」 결재 → 여기서 실행.
    * ⭐ 단위는 출하작업지시 하나다 — 실행하면 그 출하작업지시의 열린 OQC 의뢰가 함께 생략된다.
    */
+  /** 목록 「생략」 칸의 창(사용자 지시 2026-11-09). */
+  skipDialog: {
+    approveTitle: 'OQC (출하검사) 생략 승인 처리',
+    approved: 'OQC 생략 요청을 승인했습니다.',
+    rejected: 'OQC 생략 요청을 반려했습니다.',
+    executeTitle: '출하검사를 생략하시겠습니까?',
+    executeBody:
+      '실행하면 이 출하작업지시의 남은 출하검사가 생략되고, 검사 결과는 합격으로 처리됩니다.',
+    execute: '생략 실행',
+  },
   skip: {
     heading: 'OQC (출하검사) 생략 요청',
     /** 요청 → 승인 → 실행 단계(#136). */

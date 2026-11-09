@@ -32102,12 +32102,14 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 /* 「최종 판정을 선택하세요」 글이 잘리지 않는 폭(사용자 지시 2026-11-09). */
+.iqc-inspection-qty-body[data-with-judgment] .oqc-inspection-judgment-field:nth-child(n),
 .iqc-inspection-qty-body[data-with-judgment] .pqc-web-judgment-field:nth-child(n),
 .iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-judgment-field:nth-child(n) {
   width: 14rem;
   min-width: 0;
 }
 
+.iqc-inspection-qty-body[data-with-judgment] .oqc-inspection-judgment-field button[role="combobox"],
 .iqc-inspection-qty-body[data-with-judgment] .pqc-web-judgment-field button[role="combobox"] {
   width: 100%;
 }

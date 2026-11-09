@@ -14,13 +14,9 @@ const t = messages.oqcInspection.result;
 const transition = messages.oqcInspection.transition;
 const hub = messages.common.inspectionHub;
 
-/* 입력 단계(#197) — ① 수량의 [확정]으로 ② 판정이 열리고, 마친 단계는 머리를 눌러 다시 편다. */
-const confirmQuantities = (): void => {
-  fireEvent.click(screen.getByRole('button', { name: hub.stepConfirm }));
-};
-const reopenQuantities = (): void => {
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${t.sectionTitle}`) }));
-};
+/* 수량과 판정은 한 단계다(사용자 지시 2026-11-09) — 넘기거나 다시 펼 일이 없다. */
+const confirmQuantities = (): void => undefined;
+const reopenQuantities = (): void => undefined;
 const confirm = messages.oqcInspection.confirm;
 
 const options = toCodeOptions(overallJudgmentCodeValues);

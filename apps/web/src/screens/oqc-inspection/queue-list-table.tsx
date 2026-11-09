@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
+import { OqcQueueSkipCell } from './queue-skip-cell';
 import type { ItemNameLookup } from './reference-lookup';
 import { toStatusBadge } from './status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
@@ -31,6 +32,7 @@ import { formatDateTime, type InspectionQueueRow } from './types';
  */
 
 const t = messages.oqcInspection.queue;
+const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
 
 const columnsOf = (
   selectedId: number | null,
@@ -136,6 +138,22 @@ const columnsOf = (
     /* 정렬은 원문(RFC3339)으로 한다 — 표기용 문자열로 정렬하면 형식이 아닌 값이 섞일 때 어긋난다. */
     sortAccessor: (row) => row.requestedAt,
     render: (row) => <span className="oqc-inspection-num">{formatDateTime(row.requestedAt)}</span>,
+  },
+  {
+    key: 'skip',
+    align: 'center',
+    header: t.columns.skip,
+    width: '120px',
+    /* 대기 · 진행 중인 출하작업지시 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(사용자 지시 2026-11-09). */
+    render: (row) =>
+      row.targetTypeCode === 'SHIPMENT_REQUEST' && SKIPPABLE.includes(row.statusCode) ? (
+        <OqcQueueSkipCell
+          inspectionRequestId={row.inspectionRequestId}
+          shipmentRequestId={row.targetId}
+        />
+      ) : (
+        messages.iqcInspection.queue.emptyValue
+      ),
   },
 ];
 

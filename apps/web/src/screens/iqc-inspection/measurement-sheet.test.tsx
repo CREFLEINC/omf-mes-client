@@ -51,6 +51,13 @@ describe('MeasurementSheet', () => {
     expect(screen.getByRole('cell', { name: '2' })).toBeInTheDocument();
   });
 
+  it('폭 조절 · 열 순서 손잡이를 두지 않는다', () => {
+    const { container } = render([dimensionSpec]);
+
+    expect(container.querySelector('.col-resizer')).toBeNull();
+    expect(container.querySelector('.col-grip')).toBeNull();
+  });
+
   it('없는 유형의 표는 그리지 않는다', () => {
     render([dimensionSpec]);
 
