@@ -343,7 +343,7 @@ export const iqcInspection = {
       required: '불합격인 경우 판정 상세를 입력해야 합니다.',
       minorRequired: '이 대분류에는 상세 코드가 있습니다. 상세 코드를 고르세요.',
       noCodes: '등록된 불량 코드가 없습니다. 기준정보 > 불량·원인 코드에서 먼저 등록하세요.',
-      majorPlaceholder: '선택하세요',
+      majorPlaceholder: '불량 유형을 선택하세요',
       minorPlaceholder: '선택하세요',
       /** 대분류에 상세가 있으면 뜨는 상세 선택 창(#185). */
       /** 상세 고르는 창 제목 — 고른 대분류는 그 아래 줄에 따로 보인다(사용자 시안 2026-10-29). */

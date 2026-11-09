@@ -31808,8 +31808,9 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 @container iqc-defects (min-width: 36rem) {
   .iqc-inspection-defect-row,
   .iqc-inspection-defect-header {
+    /* 불량 유형 칸은 「불량 유형을 선택하세요」 글이 잘리지 않는 폭(사용자 지시 2026-11-09). */
     grid-template-columns:
-      minmax(0, 1.3fr) 6rem minmax(0, 3.1fr)
+      14rem 6rem minmax(0, 1fr)
       var(--control-height-md);
     grid-template-areas: "type qty desc del";
     align-items: center;
@@ -32008,6 +32009,30 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
  * 한 줄에 수량 · 불량 수량 · 미입력 · 최종 판정(사용자 지시 2026-11-09). 좌우 배치의 좁은 폭에서도 줄이 나뉘지 않게 수량 칸이 먼저
  * 줄고, 미입력 글은 두 줄로 접힌다. [확정]만 남은 줄은 오른쪽 끝.
  */
+.iqc-inspection-qty-body[data-with-judgment] {
+  container: iqc-qty-line / inline-size;
+}
+
+/* 좌우 배치의 좁은 폭 — 수량 칸이 숫자를 가리지 않게 글자 · 여백을 줄인다. */
+@container iqc-qty-line (max-width: 46rem) {
+  .iqc-inspection-qty-line {
+    gap: var(--space-2);
+  }
+
+  .iqc-inspection-qty-group-fields {
+    gap: var(--space-1);
+  }
+
+  .iqc-inspection-qty-input input {
+    font: var(--type-body-lg);
+  }
+
+  .iqc-inspection-qty-input [class*="_inputWrap"] {
+    padding-inline: var(--space-1);
+    gap: var(--space-1);
+  }
+}
+
 .iqc-inspection-qty-body[data-with-judgment] .iqc-inspection-qty-line {
   flex-wrap: nowrap;
   gap: var(--space-3);

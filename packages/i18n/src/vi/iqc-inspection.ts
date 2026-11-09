@@ -223,7 +223,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       required: 'Nếu không đạt, phải nhập chi tiết đánh giá.',
       minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
       noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
-      majorPlaceholder: 'Hãy chọn nhóm lỗi chính',
+      majorPlaceholder: 'Hãy chọn loại lỗi',
       minorPlaceholder: 'Hãy chọn chi tiết lỗi',
       minorPickerTitle: 'Chọn lỗi chi tiết',
       minorPickerClose: 'Đóng',
