@@ -14,7 +14,6 @@ import {
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnOrder } from '../../patterns/column-grip-order';
@@ -119,13 +118,6 @@ const emptyIcon = (
 );
 
 /** 이력의 사유 칸 — 자동은 연속 합격 수나 불합격 의뢰, 수동은 입력한 사유. */
-/** 주소의 품목 조건 — 숫자 id 가 아니면 없는 것으로 본다. */
-const itemFromParams = (params: URLSearchParams): { itemId: number; label: string } | null => {
-  const itemId = Number(params.get('item'));
-  if (!Number.isInteger(itemId) || itemId <= 0) return null;
-  return { itemId, label: params.get('itemLabel') ?? String(itemId) };
-};
-
 export const historyReason = (row: ItemInspectionLevelHistory): string => {
   if (row.changeTypeCode === 'AUTO') {
     if (row.consecutiveAcceptCount !== null)
@@ -148,18 +140,14 @@ export const InspectionLevelScreen = () => {
   const toast = useToast();
 
   /* 품목 — 조회 줄의 「품목 검색」 칸에서 바로 검색해서 고른다(#226). */
-  /* IQC [수준 조회] 창의 [수정]이 그 품목으로 좁혀 연다 — 주소의 `item`·`itemLabel`(omf-all-around#247). */
-  const [searchParams] = useSearchParams();
-  const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(() =>
-    itemFromParams(searchParams),
-  );
+  const [itemInput, setItemInput] = useState<{ itemId: number; label: string } | null>(null);
   const itemSelectId = useId();
-  const [filter, setFilter] = useState<LevelListFilter>(() => ({
-    itemId: itemFromParams(searchParams)?.itemId ?? null,
+  const [filter, setFilter] = useState<LevelListFilter>({
+    itemId: null,
     level: '',
     page: 1,
     size: PAGE_SIZE,
-  }));
+  });
   const [historyItem, setHistoryItem] = useState<ItemInspectionLevel | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [historySize, setHistorySize] = useState<number>(PAGE_SIZE);

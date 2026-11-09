@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { useLeaveFor } from '../../patterns/leave-guard';
 import { SaveErrorBanner } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
 import { useSession } from '../../patterns/session';
@@ -13,7 +12,6 @@ import { toWebAccess } from '../../patterns/web-access';
 import { LevelDialog } from '../inspection-level/level-dialog';
 import { useLevelWrite } from '../inspection-level/level-write';
 import { inspectionLevelKeys, type Paged } from '../inspection-level/queries';
-import { LevelViewDialog } from './level-view-dialog';
 
 type ItemInspectionLevel = components['schemas']['ItemInspectionLevel'];
 
@@ -22,16 +20,6 @@ const levelNames = messages.inspectionLevel.levels;
 
 /** 검사 수준 관리 화면 주소 — 이 권한(`W-03-12`)이 있어야 서버가 지정·변경을 받는다. */
 const INSPECTION_LEVEL_PATH = '/quality/inspection-levels';
-
-/** 검사 수준 관리 화면을 그 품목으로 좁혀 여는 주소 — 화면이 `item`·`itemLabel` 로 품목 조건을 채운다(#247). */
-export const levelScreenHref = (
-  itemId: number,
-  item: { itemCode: string; itemName: string },
-): string =>
-  `${INSPECTION_LEVEL_PATH}?${new URLSearchParams({
-    item: String(itemId),
-    itemLabel: `${item.itemCode} ${item.itemName}`,
-  }).toString()}`;
 
 export interface ItemLevelProps {
   itemId: number;
@@ -53,10 +41,8 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
   const { client } = useApiClient();
   const { session } = useSession();
   const toast = useToast();
-  const leaveFor = useLeaveFor();
   const canEdit = toWebAccess(session?.permissions).allows(INSPECTION_LEVEL_PATH);
   const [editing, setEditing] = useState(false);
-  const [viewing, setViewing] = useState(false);
 
   const level = useQuery({
     queryKey: [...inspectionLevelKeys.all, 'item', itemId] as const,
@@ -85,27 +71,6 @@ export const ItemLevel = ({ itemId, item, mode = 'view' }: ItemLevelProps) => {
   const body = (
     <span className="iqc-inspection-level">
       <span>{label}</span>
-      {/* 품목의 현재 수준을 창으로 본다. [수정]은 검사 수준 관리 화면을 그 품목으로 연다(#247 · 사용자 지시 2026-11-09). */}
-      {mode === 'view' && item !== null && level.isSuccess && (
-        <Button size="md" variant="outlined" onClick={() => setViewing(true)}>
-          {t.view}
-        </Button>
-      )}
-      {viewing && item !== null && (
-        <LevelViewDialog
-          item={item}
-          row={row}
-          onEdit={
-            canEdit
-              ? () => {
-                  setViewing(false);
-                  leaveFor(levelScreenHref(itemId, item));
-                }
-              : null
-          }
-          onClose={() => setViewing(false)}
-        />
-      )}
       {mode === 'set-if-unset' && canEdit && item !== null && row === null && (
         <Button
           size="md"

@@ -183,13 +183,6 @@ export const iqcInspection = {
       unset: '미지정',
       loadFailed: '불러오지 못함',
       set: '지정',
-      view: '수준 조회',
-      viewTitle: '검사 수준 조회',
-      viewItemCode: (code: string): string => `품목코드 ${code}`,
-      viewLevel: '검사 수준',
-      viewUpdatedAt: '변경 일시',
-      close: '닫기',
-      edit: '수정',
     },
     /**
      * client#589 — 기준이 등록되지 않은 상태에서도 검사를 진행할 수 있어 이 칸이 빌 수 있다.

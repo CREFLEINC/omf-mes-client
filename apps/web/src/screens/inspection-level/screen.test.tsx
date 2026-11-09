@@ -88,7 +88,7 @@ interface Recorded {
   body: string;
 }
 
-const setup = (route?: string) => {
+const setup = () => {
   const requests: Recorded[] = [];
   const stub = createStubFetch([
     {
@@ -136,11 +136,7 @@ const setup = (route?: string) => {
     return stub(request);
   };
   const user = userEvent.setup();
-  renderWithProviders(<InspectionLevelScreen />, {
-    fetch,
-    session: null,
-    ...(route === undefined ? {} : { route }),
-  });
+  renderWithProviders(<InspectionLevelScreen />, { fetch, session: null });
   return { user, requests };
 };
 
@@ -148,18 +144,6 @@ const levelTable = () => screen.getByRole('table', { name: t.list.caption });
 const historyTable = () => screen.getByRole('table', { name: t.history.caption });
 
 describe('검사 수준 관리', () => {
-  it('주소에 품목이 오면 그 품목으로 좁혀 연다 — IQC [수준 조회]의 [수정](#247)', async () => {
-    const { requests } = setup(
-      '/quality/inspection-levels?item=3076&itemLabel=PPAD003200%20PAPER%20PAD%20EJECT',
-    );
-
-    await within(levelTable()).findByRole('row', { name: /PPAD003200/ });
-    const listCalls = requests.filter((r) => r.method === 'GET' && r.url.pathname.endsWith(LEVELS));
-    expect(listCalls.length).toBeGreaterThan(0);
-    expect(listCalls.every((r) => r.url.searchParams.get('itemId') === '3076')).toBe(true);
-    expect(screen.getByText('PPAD003200 PAPER PAD EJECT')).toBeInTheDocument();
-  });
-
   it('품목별 현재 수준을 보이고 자동 전환 칸은 없다, 이력의 사유를 구분해 보인다(#133)', async () => {
     setup();
 

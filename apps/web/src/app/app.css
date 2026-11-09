@@ -21108,7 +21108,7 @@ button.app-button-neutral {
   transform: translateY(-50%);
 }
 
-/* IQC 「검사 수준」 칸 — 수준 이름 바로 옆에 테두리 있는 [수준 조회]·[지정] 버튼(omf-all-around#133 · #247). */
+/* IQC 「검사 수준」 칸 — 수준 이름 바로 옆에 테두리 있는 [지정] 버튼(omf-all-around#133 · #247). */
 .iqc-inspection-level {
   display: inline-flex;
   align-items: center;
