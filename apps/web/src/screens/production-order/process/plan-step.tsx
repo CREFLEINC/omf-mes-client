@@ -138,10 +138,15 @@ export const PlanStep = ({
     return line === undefined ? ui.unassigned : named(line.name, line.code);
   };
   const week = planWeek(anchor ?? (selected?.draft.planDate || plantToday()));
-  const total = rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
   const draftQty = rows
     .filter((row) => !row.confirmed)
     .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
+  // 서버 확정 계획량은 W/O 가 모두 취소된 확정 계획을 빼고 센다(omf-all-around#250).
+  // 서버가 싣지 않을 때만 확정 줄을 더한다.
+  const total =
+    confirmedQty == null
+      ? rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0)
+      : confirmedQty + draftQty;
   const remaining = confirmedQty == null ? null : orderQty - confirmedQty - draftQty;
   const displayQty = (qty: number | null | undefined) =>
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;

@@ -202,7 +202,10 @@ export const ProcessWorkspace = ({
         const row = unconfirmedRows.find((entry) => entry.draft.plannedLineId === '');
         return row === undefined ? null : rowName(row);
       })(),
-      totalQty: editor.rows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
+      /* 확정 계획량(서버 값) + 작성중 줄. W/O 가 모두 취소된 확정 계획은 세지 않는다(#250). */
+      totalQty:
+        confirmedQty +
+        unconfirmedRows.reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
       confirmedQty,
       orderQty: order.orderQty,
     },
@@ -608,14 +611,15 @@ export const ProcessWorkspace = ({
               onAdd={() =>
                 editor.add({
                   planDate: plantToday(),
+                  // 남은 수량 = 주문 − 확정 계획량(서버 값) − 작성중 줄(omf-all-around#250)
                   plannedQty: String(
                     Math.max(
                       0,
                       order.orderQty -
-                        editor.rows.reduce(
-                          (sum, row) => sum + (Number(row.draft.plannedQty) || 0),
-                          0,
-                        ),
+                        confirmedQty -
+                        editor.rows
+                          .filter((row) => !row.confirmed)
+                          .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
                     ),
                   ),
                   bomId: draftBomId,
