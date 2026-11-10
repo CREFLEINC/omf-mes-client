@@ -3,9 +3,6 @@ import type { DashboardItemGroupProduction, DashboardProduction } from '@omf-mes
 import { messages } from '@omf-mes/i18n';
 import { useContext, useState } from 'react';
 
-import { useFitColumns } from '../../patterns/column-fit';
-import { useColumnOrder } from '../../patterns/column-grip-order';
-import { useColumnWidths } from '../../patterns/column-resize';
 import { FilterQueryContext, useSingleDay } from './period';
 import { useDashboardItemGroupDefects } from './queries';
 import { formatFigure } from './types';
@@ -24,33 +21,24 @@ const groupNameOf = (
 const rateText = (rate: number | null): string =>
   rate === null ? k.none : `${formatFigure(rate)}%`;
 
-/* 시안(사용자 지시 2026-11-10) — 이름은 왼쪽, 수량 · 비율은 오른쪽. 단위는 부제가 말해 열 제목에 두지 않는다. */
+/* 모든 칸 가운데 정렬(대시보드 표 공통 · 사용자 지시 2026-11-10). 단위는 부제가 말해 열 제목에 두지 않는다. */
 const COLUMNS: Column<ItemGroupRow>[] = [
   {
     key: 'group',
     header: t.group,
     render: (row) => (row.sum === true ? <strong>{t.sum}</strong> : groupNameOf(row)),
   },
-  {
-    key: 'totalQty',
-    header: t.totalQty,
-    align: 'end',
-    render: (row) => formatFigure(row.totalQty),
-  },
-  { key: 'goodQty', header: t.goodQty, align: 'end', render: (row) => formatFigure(row.goodQty) },
-  { key: 'ngQty', header: t.ngQty, align: 'end', render: (row) => formatFigure(row.ngQty) },
-  {
-    key: 'defectRate',
-    header: t.defectRate,
-    align: 'end',
-    render: (row) => rateText(row.defectRate),
-  },
+  { key: 'totalQty', header: t.totalQty, render: (row) => formatFigure(row.totalQty) },
+  { key: 'goodQty', header: t.goodQty, render: (row) => formatFigure(row.goodQty) },
+  { key: 'ngQty', header: t.ngQty, render: (row) => formatFigure(row.ngQty) },
+  { key: 'defectRate', header: t.defectRate, render: (row) => rateText(row.defectRate) },
 ];
 
 /**
  * 제품군별 생산 현황(omf-all-around#251) — KPI 띠 아래 한 줄 표. 값은 summary 의 `production.byItemGroup` 그대로이고
  * 맨 끝 「합계」는 공장 합(`production`)이다 — 서버가 같은 규칙이라 제품군 합과 같다. 서버가 칸을 주지 않으면(이전 서버) 그리지 않는다.
- * 머리 오른쪽 「상세 보기」로 제품군별 불량 현황 창을 연다(사용자 지시 2026-11-10 — 종합 불량률 칸을 누르는 대신).
+ * 표 아래 오른쪽 「상세 보기」로 제품군별 불량 현황 창을 연다(사용자 지시 2026-11-10 — 종합 불량률 칸을 누르는 대신).
+ * 요약 표라 열 폭 조절 · 순서 바꾸기는 두지 않는다(사용자 지시 2026-11-10).
  */
 export const ItemGroupPanel = ({
   production,
@@ -60,12 +48,6 @@ export const ItemGroupPanel = ({
   isLoading: boolean;
 }) => {
   const singleDay = useSingleDay();
-  /* 열 순서 · 폭은 사용자가 바꾸고 브라우저에 남는다(표 공통 규칙). */
-  const ordered = useColumnOrder('omf-mes:dashboard:item-group:columns:order', COLUMNS);
-  const resizable = useColumnWidths('omf-mes:dashboard:item-group:columns', ordered, {
-    fitContent: true,
-  });
-  const fit = useFitColumns(resizable.columns, { scrollX: true });
   /* 한 번 연 뒤에는 남겨 둔다 — 닫을 때 포커스가 「상세 보기」로 돌아온다. */
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -90,47 +72,38 @@ export const ItemGroupPanel = ({
         ];
 
   return (
-    <Panel
-      title={t.title}
-      sub={t.sub}
-      tag={singleDay ? k.tagToday : k.tagPeriod}
-      className="dash-item-group-panel"
-      /* 「상세 보기」는 카드 머리 오른쪽 — 기간 표시 옆(사용자 지시 2026-11-10 · 눈에 띄게). */
-      action={
-        rows.length > 0 ? (
-          <Button
-            variant="text"
-            size="sm"
-            className="dash-item-group-detail"
-            aria-label={t.detailButtonLabel}
-            trailingIcon={<Icon name="chevron_right" size={18} aria-hidden="true" />}
-            onClick={() => {
-              setOpen(true);
-              setMounted(true);
-            }}
-          >
-            {t.detailButton}
-          </Button>
-        ) : undefined
-      }
-    >
+    <Panel title={t.title} sub={t.sub} tag={singleDay ? k.tagToday : k.tagPeriod}>
       {isLoading ? (
         <Skeleton variant="rect" height="5rem" />
       ) : (
-        <div
-          ref={fit.ref}
-          className="dash-table-wrap dash-item-group-table"
-          style={resizable.style}
-        >
-          <Table
-            columns={fit.columns}
-            rows={rows}
-            getRowId={(row) => row.key}
-            density="compact"
-            aria-label={t.title}
-            empty={<NoRecords description={t.empty} />}
-          />
-        </div>
+        <>
+          <div className="dash-table-wrap dash-item-group-table">
+            <Table
+              columns={COLUMNS}
+              rows={rows}
+              getRowId={(row) => row.key}
+              density="compact"
+              aria-label={t.title}
+              empty={<NoRecords description={t.empty} />}
+            />
+          </div>
+          {rows.length > 0 && (
+            <div className="dash-item-group-footer">
+              <Button
+                variant="text"
+                size="sm"
+                aria-label={t.detailButtonLabel}
+                trailingIcon={<Icon name="chevron_right" size={18} aria-hidden="true" />}
+                onClick={() => {
+                  setOpen(true);
+                  setMounted(true);
+                }}
+              >
+                {t.detailButton}
+              </Button>
+            </div>
+          )}
+        </>
       )}
       {mounted && (
         <ItemGroupDefectsDialog

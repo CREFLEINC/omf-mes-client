@@ -16772,18 +16772,9 @@ button.app-button-neutral {
 }
 
 /*
- * 제품군별 생산 현황 표(사용자 시안 2026-11-10 · #251) — 대시보드 표의 가운데 정렬에서 빼 이름은 왼쪽, 수치는 오른쪽.
- * 바탕은 카드와 같게 두고, 열 폭 손잡이 선은 머리줄에 마우스를 올릴 때만 보인다(끌기 · 순서 바꾸기는 그대로).
+ * 제품군별 생산 현황 표(#251 · 사용자 지시 2026-11-10) — 가운데 정렬은 대시보드 표 공통 규칙 그대로. 바탕은 카드와 같게(줄무늬
+ * 없음), 줄 높이 38px, 표 아래 오른쪽에 「상세 보기」.
  */
-.dash-panel .dash-item-group-table :is(th, td):not([data-align]) {
-  text-align: start;
-}
-
-.dash-panel .dash-item-group-table :is(th, td)[data-align='end'] {
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
 .dash-item-group-table table,
 .dash-item-group-table thead th,
 .dash-item-group-table td,
@@ -16791,32 +16782,16 @@ button.app-button-neutral {
   background: transparent;
 }
 
-.dash-item-group-table thead .col-resizer::after {
-  background: transparent;
-}
-
-.dash-item-group-table thead:hover th:not(:last-child) > .col-resizer::after {
-  background: var(--outline-variant);
-}
-
-/* 머리 — 제목 칸이 남는 폭을 차지해 「금일」과 「상세 보기」가 오른쪽에 나란히 선다. 단추 글자색은 기본(강조색) 그대로. */
-.dash-item-group-panel .dash-panel-head {
-  align-items: center;
-}
-
-.dash-item-group-panel .dash-panel-head > :first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.dash-item-group-panel .dash-item-group-detail {
-  margin-block: calc(var(--space-1) * -1);
-}
-
-/* 줄 높이 38px(머리 · 데이터 같게) — 데이터 양에 비해 세로를 덜 쓴다. */
 .dash-panel .dash-item-group-table :is(th, td) {
   height: 2.375rem;
   padding-block: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-item-group-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
 }
 
 /* 합계 줄 — 한 단계 밝은 바탕 + 굵게. 강조색은 쓰지 않는다(빈 표의 안내 한 줄에는 걸지 않는다). */

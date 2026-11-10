@@ -73,17 +73,13 @@ describe('제품군별 생산 현황(omf-all-around#251)', () => {
       `${t.unclassified}10095` + '10' + '10%',
       `${t.sum}40037730` + '7.5%',
     ]);
-    /* 이름은 왼쪽, 수치는 오른쪽(시안 2026-11-10). */
-    expect(within(table).getByRole('columnheader', { name: t.group })).not.toHaveAttribute(
-      'data-align',
-    );
-    expect(within(table).getByRole('columnheader', { name: t.totalQty })).toHaveAttribute(
-      'data-align',
-      'end',
-    );
+    /* 모든 칸 가운데 정렬 — 대시보드 표 공통 규칙에 맡겨 정렬 속성을 두지 않는다(사용자 지시 2026-11-10). */
+    for (const header of within(table).getAllByRole('columnheader')) {
+      expect(header).not.toHaveAttribute('data-align');
+    }
   });
 
-  it('오른쪽 아래 「상세 보기」를 누르면 제품군별 불량 현황 창이 열린다', async () => {
+  it('표 아래 「상세 보기」를 누르면 제품군별 불량 현황 창이 열린다', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <FilterQueryContext.Provider value={{ dateFrom: '2026-11-10', dateTo: '2026-11-10' }}>
