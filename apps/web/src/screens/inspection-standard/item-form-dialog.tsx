@@ -293,7 +293,7 @@ export const ItemFormDialog = ({
         <Dialog
           open
           onClose={() => setNumericSpec(null)}
-          size="sm"
+          size="md"
           showCloseButton={false}
           title={t.dialog.numericSpecTitle}
           footer={
@@ -305,7 +305,7 @@ export const ItemFormDialog = ({
             </>
           }
         >
-          <div className="form-grid">
+          <div className="form-grid inspection-standard-numeric-spec-grid">
             <SelectField
               label={t.fields.uom}
               required

@@ -1214,6 +1214,14 @@ h2:has(> .inspection-standard-dialog-title) {
   margin-top: var(--space-4);
 }
 
+/*
+ * 수치 기준 입력 창 — 칸이 흐린 문구(「검사 단위를 선택하세요」 등)보다 좁아지면 한 줄에 하나씩 내린다.
+ * 2열 고정이면 좁은 창·화면에서 문구가 잘렸다(사용자 지시 2026-11-10).
+ */
+.form-grid.inspection-standard-numeric-spec-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
 /* 발행 단추 자리의 안내(작성중 버전이 있을 때 · #196) — 모양은 안내 알약(#208). */
 .inspection-standard-new-revision-notice {
   margin: 0;
