@@ -50,7 +50,7 @@ export const useInspectionGuide = (inspectionRequestId: number | null) => {
 
 /**
  * 검사 안내 띠(omf-all-around#252) — IQC · PQC · OQC 검사 화면의 기준 정보 바로 아래에 둔다. 전 품목 공통 기준의 안내와
- * 품목 기준의 안내를 함께(공통이 위) 정보 아이콘 + 파란 바탕으로 보이고, 줄바꿈은 그대로 둔다. 둘 다 있을 때만 「공통 안내」 ·
+ * 품목 기준의 안내를 함께(공통이 위) 어두운 카드에 보이고(파랑은 표식 · 테두리만), 적은 줄바꿈 · 빈 줄은 그대로 둔다. 둘 다 있을 때만 「공통 안내」 ·
  * 「품목 안내」 이름표를 붙인다. 문구가 없거나 읽지 못하면 아무것도 그리지 않는다 — 검사를 막지 않는다.
  *
  * 본문은 2줄까지만 보이고 넘는 줄은 「…」로 줄인다. 「펼치기」는 **그려진 줄 수**가 2줄을 넘을 때만 보인다 — 글자 수가 아니라
@@ -84,14 +84,11 @@ export const InspectionGuideNotice = ({
   if (blocks.length === 0) return null;
   const t = messages.common.inspectionHub;
   return (
-    <div
-      className="iqc-inspection-action-note inspection-guide-note"
-      data-tone="info"
-      role="note"
+    <div className="inspection-guide-note" role="note"
       aria-label={t.guide}
     >
       <div className="inspection-guide-head">
-        <Icon name="info" size={16} aria-hidden />
+        <Icon name="info" size={18} aria-hidden />
         <strong className="inspection-guide-title">{t.guide}</strong>
         {(overflowing || expanded) && (
           <Button
