@@ -8,7 +8,7 @@ const t = messages.iqcInspection.drawing;
 export const PlanDrawings = ({ versionId }: { versionId: number | null }) => {
   const drawings = useInspectionDrawings(versionId).data ?? [];
   return (
-    <section className="parts-iqc-block" aria-label={t.heading}>
+    <section className="parts-iqc-card" aria-label={t.heading}>
       <div className="parts-iqc-block-head">
         <h3>{t.heading}</h3>
         {drawings.length === 0 && <span className="parts-iqc-muted">{t.none}</span>}

@@ -51,7 +51,7 @@ export const DefectRows = ({
     onChange(rows.map((row, at) => (at === index ? next : row)));
 
   return (
-    <section className="iqc-inspection-defects" aria-label={t.defectsHeading}>
+    <section className="iqc-inspection-defects parts-iqc-card" aria-label={t.defectsHeading}>
       <div className="iqc-inspection-defects-head">
         <h4>{t.defectsHeading}</h4>
         <Checkbox

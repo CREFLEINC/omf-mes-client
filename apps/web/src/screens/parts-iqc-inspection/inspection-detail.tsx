@@ -437,7 +437,7 @@ interface FormProps {
 
 /** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
 const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
-  <section className="parts-iqc-block" aria-label={t.drawing.heading}>
+  <section className="parts-iqc-card" aria-label={t.drawing.heading}>
     <div className="parts-iqc-block-head">
       <h3>{t.drawing.heading}</h3>
       {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}

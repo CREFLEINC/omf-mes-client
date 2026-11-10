@@ -276,7 +276,7 @@ const TypeTable = ({ type, title, rows, edit }: TypeTableProps) => {
   const paging = useClientPage(sheetRows);
 
   return (
-    <div className="iqc-inspection-measure-type">
+    <div className="iqc-inspection-measure-type parts-iqc-card">
       {/* 표 위 제목 · 진행 현황은 부품 입력표와 같다(사용자 지시 2026-11-09). */}
       <div className="parts-iqc-block-head">
         <h3>{title}</h3>

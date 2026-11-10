@@ -88,7 +88,7 @@ export const MeasurementTable = ({
   };
 
   return (
-    <section className="parts-iqc-block" aria-labelledby="parts-iqc-dimension">
+    <section className="parts-iqc-card" aria-labelledby="parts-iqc-dimension">
       <div className="parts-iqc-block-head">
         <h3 id="parts-iqc-dimension">
           {t.dimension.heading}
