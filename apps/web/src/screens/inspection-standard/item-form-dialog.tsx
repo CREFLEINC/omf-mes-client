@@ -1,6 +1,6 @@
 import { Button, Checkbox, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
 import { NUMERIC_DATA_TYPE } from './item-validation';
@@ -38,8 +38,8 @@ export interface ItemFormDialogProps {
  * 확인은 표(로컬 초안)에만 반영하고 서버 반영은 「저장」 한 번뿐이다(공유계약 A-5).
  * 그 사실을 창 안에서 밝힌다 — 밝히지 않으면 확인을 누르고 창을 닫은 사용자가 저장된 줄 안다.
  *
- * **조건부 표시를 만들지 않는다** — 단위·목표값·상하한은 항상 보인다.
- * 조건부 필수는 하나뿐이다: 검사값 유형이 수치(NUMERIC)면 단위가 필수다(사용자 결정 2026-11-10).
+ * 단위는 검사값 유형이 수치(NUMERIC)일 때만 보이고 필수다. 수치를 고르면 단위 선택 창이 바로 뜨고,
+ * 수치가 아닌 유형으로 바꾸면 고른 단위를 비운다(사용자 지시 2026-11-10). 목표값·상하한은 항상 보인다.
  */
 export const ItemFormDialog = ({
   open,
@@ -79,7 +79,27 @@ export const ItemFormDialog = ({
       ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
       : {};
   };
-  const uomRequired = values.dataTypeCode === NUMERIC_DATA_TYPE;
+  const isNumeric = values.dataTypeCode === NUMERIC_DATA_TYPE;
+  const [uomPicker, setUomPicker] = useState<{ value: string; tried: boolean } | null>(null);
+
+  const changeDataType = (dataTypeCode: string): void => {
+    if (dataTypeCode !== NUMERIC_DATA_TYPE) {
+      onChange({ dataTypeCode, uomId: '' });
+      return;
+    }
+    onChange({ dataTypeCode });
+    if (!isNumeric) setUomPicker({ value: values.uomId, tried: false });
+  };
+
+  const confirmUomPicker = (): void => {
+    if (uomPicker === null) return;
+    if (isBlank(uomPicker.value)) {
+      setUomPicker({ ...uomPicker, tried: true });
+      return;
+    }
+    onChange({ uomId: uomPicker.value });
+    setUomPicker(null);
+  };
 
   return (
     <Dialog
@@ -145,21 +165,23 @@ export const ItemFormDialog = ({
           options={dataTypeOptions}
           value={values.dataTypeCode}
           placeholder={ph.dataType}
-          onChange={(dataTypeCode) => onChange({ dataTypeCode })}
+          onChange={changeDataType}
           error={shownError('dataTypeCode')}
           invalid={isBlank(values.dataTypeCode)}
         />
 
-        <SelectField
-          label={t.fields.uom}
-          required={uomRequired}
-          options={[{ value: '', label: t.values.empty }, ...uomOptions]}
-          value={values.uomId}
-          placeholder={ph.uom}
-          onChange={(uomId) => onChange({ uomId })}
-          error={shownError('uomId')}
-          invalid={uomRequired && isBlank(values.uomId)}
-        />
+        {isNumeric && (
+          <SelectField
+            label={t.fields.uom}
+            required
+            options={uomOptions}
+            value={values.uomId}
+            placeholder={ph.uom}
+            onChange={(uomId) => onChange({ uomId })}
+            error={shownError('uomId')}
+            invalid={isBlank(values.uomId)}
+          />
+        )}
 
         {/*
          * 목표값이 범위 밖인 것은 **경고이지 차단이 아니다**(계약 A-9 ⓑ) —
@@ -243,6 +265,33 @@ export const ItemFormDialog = ({
         <Icon name="info" size={18} aria-hidden />
         {t.dialog.itemLocalNote}
       </p>
+
+      {/* 취소하면 단위는 빈 채로 남고 단위 칸이 빨간 테두리로 막는다 — 칸에서 다시 고를 수 있다. */}
+      <Dialog
+        open={uomPicker !== null}
+        onClose={() => setUomPicker(null)}
+        size="sm"
+        showCloseButton={false}
+        title={t.dialog.uomPickerTitle}
+        footer={
+          <>
+            <Button variant="outlined" onClick={() => setUomPicker(null)}>
+              {messages.common.cancel}
+            </Button>
+            <Button onClick={confirmUomPicker}>{messages.common.confirm}</Button>
+          </>
+        }
+      >
+        <SelectField
+          label={t.fields.uom}
+          required
+          options={uomOptions}
+          value={uomPicker?.value ?? ''}
+          placeholder={ph.uom}
+          onChange={(value) => setUomPicker({ value, tried: false })}
+          invalid={uomPicker?.tried === true && isBlank(uomPicker.value)}
+        />
+      </Dialog>
     </Dialog>
   );
 };
