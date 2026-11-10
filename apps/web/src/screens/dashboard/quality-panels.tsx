@@ -585,6 +585,7 @@ const LOT_STATUS_OF_ROW: Record<string, DashboardQualityLotStatus> = {
   receiptHold: 'RECEIPT_HOLD',
   pending: 'PQC_PENDING',
   ncOpen: 'NC_OPEN',
+  sorted: 'IQC_SORTED',
 };
 
 export const QualityOverviewTab = ({
@@ -861,7 +862,7 @@ export const IqcTab = ({
                   tone: countTone(iqcReceiptHold.count, 'warning'),
                   selectable: iqcReceiptHold.count > 0,
                 },
-                /* 선별 처분 LOT(omf-all-around#251) — 원래 IQC 검사 LOT 기준. 목록 창은 없다(누를 수 없다). */
+                /* 선별 처분 LOT(omf-all-around#251) — 원래 IQC 검사 LOT 기준. 누르면 처분마다 한 줄인 LOT 목록 창(사용자 지시 2026-11-10). */
                 ...(iqc.sortedLotCount === undefined
                   ? []
                   : [
@@ -871,7 +872,7 @@ export const IqcTab = ({
                         note: t.sortedLotsNote,
                         value: formatFigure(iqc.sortedLotCount),
                         unit: t.lotUnit,
-                        selectable: false,
+                        selectable: iqc.sortedLotCount > 0,
                       },
                     ]),
               ]}

@@ -23,7 +23,7 @@ const t = messages.dashboard.quality;
 const v = messages.dashboard.viz;
 
 describe('품질 탭', () => {
-  it('#251 — 품질 종합에 반복 부적합 품목, IQC 에 선별 처분 LOT(누를 수 없는 줄), 서버가 주지 않으면 줄이 없다', () => {
+  it('#251 — 품질 종합에 반복 부적합 품목(누를 수 없는 줄), IQC 에 선별 처분 LOT(LOT 목록 창), 서버가 주지 않으면 줄이 없다', () => {
     const base = quality();
     const data = {
       ...base,
@@ -42,7 +42,7 @@ describe('품질 탭', () => {
         name: new RegExp(t.sortedLots),
       },
     );
-    expect(sorted).toBeDisabled();
+    expect(sorted).toBeEnabled();
     expect(sorted).toHaveTextContent(`${t.sortedLotsNote}2${t.lotUnit}`);
     iqc.unmount();
 

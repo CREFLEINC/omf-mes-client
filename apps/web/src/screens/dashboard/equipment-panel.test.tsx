@@ -150,7 +150,7 @@ describe('EquipmentBoard', () => {
     expect(within(legend).getByText(t.status.RUNNING).closest('li')).toHaveTextContent('0');
   });
 
-  it('상세 — 머리는 코드 + 상태 배지 · 라인 · 설비 종류, 본문은 상태 시간 · 생산 실적 · 현재 작업이고 X 로 닫힌다', async () => {
+  it('상세 — 머리는 코드 + 상태 배지 · 라인 · 설비 종류, 본문은 요약 띠 4칸 + 묶음(현재 작업 · 표준 대비 · 시간 · 정지 사유 · 불량 유형)이고 X 로 닫힌다', async () => {
     const user = userEvent.setup();
     render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
 
@@ -161,23 +161,20 @@ describe('EquipmentBoard', () => {
     expect(heading).toHaveTextContent('EQ-02');
     expect(heading).toHaveTextContent(t.status.STOPPED);
     expect(heading).toHaveTextContent('시험 설비 1 · 2라인 · 100T');
-    for (const group of [t.groupRun, t.groupOutput, t.groupWork]) {
+    for (const group of [t.groupWork, t.groupStandard, t.groupTime, t.groupStops, t.groupDefects]) {
       expect(within(dialog).getByRole('heading', { name: group })).toBeInTheDocument();
     }
-    /* 사용자 지정 용어. 라인 · 설비 종류 · 상태는 머리로 올려 본문에 되풀이하지 않는다. */
-    expect(t.ngQty).toBe('불량 수량');
+    /* 요약 띠 — 대시보드 KPI 칸과 같은 부품. 멈춘 설비는 상태 지속 칸에 사유 · 시작 시각이 함께 선다. */
+    expect(within(dialog).getByRole('group', { name: t.todayQty })).toHaveTextContent('1,200EA');
+    expect(within(dialog).getByRole('group', { name: t.defectRate })).toHaveTextContent(
+      t.ngNote('6'),
+    );
+    const elapsed = within(dialog).getByRole('group', { name: t.elapsed });
+    expect(elapsed).toHaveTextContent('유압 이상');
+    expect(elapsed).toHaveTextContent(t.sinceNote('2026-10-16 08:35'));
+    /* 라인 · 설비 종류 · 상태는 머리로 올려 본문에 되풀이하지 않는다. */
     expect(within(dialog).queryByText(t.line)).not.toBeInTheDocument();
-    for (const label of [
-      t.reason,
-      t.since,
-      t.elapsed,
-      t.todayQty,
-      t.ngQty,
-      t.defectRate,
-      t.standardCycleTime,
-      t.workOrder,
-      t.item,
-    ]) {
+    for (const label of [t.standardCycleTime, t.workOrder, t.item]) {
       expect(within(dialog).getByText(label)).toBeInTheDocument();
     }
     /* 닫기 단추는 오른쪽 위 X 하나뿐 — 하단 「닫기」 · 빈 바닥줄은 없다. */
@@ -248,13 +245,21 @@ describe('EquipmentBoard', () => {
     expect(
       within(dialog).getByText(t.progressValue('1,248', '6,289', '19.8%')),
     ).toBeInTheDocument();
+    /* 가동률은 요약 띠, 시간 분포는 100% 누적 막대의 범례(가동 · 작업 중 정지 · 작업 없음). */
+    expect(within(dialog).getByRole('group', { name: t.availabilityRate })).toHaveTextContent(
+      '78.3%',
+    );
+    expect(within(dialog).getByRole('group', { name: t.todayQty })).toHaveTextContent(
+      t.goodNote('1,196'),
+    );
     const time = within(dialog).getByRole('region', { name: t.groupTime });
-    expect(within(time).getByText(formatElapsed(470))).toBeInTheDocument();
-    expect(within(time).getByText(formatElapsed(70))).toBeInTheDocument();
-    expect(within(time).getByText('78.3%')).toBeInTheDocument();
+    expect(time).toHaveTextContent(`${t.runningTime}${formatElapsed(470)}`);
+    expect(time).toHaveTextContent(`${t.stoppedInWork}${formatElapsed(60)}`);
+    expect(time).toHaveTextContent(`${t.noWorkTime}${formatElapsed(70)}`);
     const standard = within(dialog).getByRole('region', { name: t.groupStandard });
-    expect(standard).toHaveTextContent('1,266');
-    expect(standard).toHaveTextContent('-18');
+    expect(standard).toHaveTextContent(`${t.standardQty}1,266 EA`);
+    expect(standard).toHaveTextContent(`${t.actualQty}1,248 EA`);
+    expect(standard).toHaveTextContent(t.differenceLine('-18'));
     expect(standard).toHaveTextContent(t.excludedSessions('1'));
     const defects = within(dialog).getByRole('region', { name: t.groupDefects });
     expect(defects).toHaveTextContent('찍힘30 EA');

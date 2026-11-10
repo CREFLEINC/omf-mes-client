@@ -16771,64 +16771,150 @@ button.app-button-neutral {
   margin: calc(-1 * var(--space-1)) 0 var(--space-2);
 }
 
-/* 제품군별 불량 창 — 제품군마다 한 묶음, 넓으면 여러 열. */
-.dash-group-defects {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--space-4);
+/*
+ * 제품군별 생산 현황 표(사용자 시안 2026-11-10 · #251) — 대시보드 표의 가운데 정렬에서 빼 이름은 왼쪽, 수치는 오른쪽.
+ * 바탕은 카드와 같게 두고, 열 폭 손잡이 선은 머리줄에 마우스를 올릴 때만 보인다(끌기 · 순서 바꾸기는 그대로).
+ */
+.dash-panel .dash-item-group-table :is(th, td):not([data-align]) {
+  text-align: start;
 }
 
-.dash-group-defect {
+.dash-panel .dash-item-group-table :is(th, td)[data-align='end'] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-item-group-table table,
+.dash-item-group-table thead th,
+.dash-item-group-table td,
+.dash-panel .dash-item-group-table tbody tr[data-parity] td {
+  background: transparent;
+}
+
+.dash-item-group-table thead .col-resizer::after {
+  background: transparent;
+}
+
+.dash-item-group-table thead:hover th:not(:last-child) > .col-resizer::after {
+  background: var(--outline-variant);
+}
+
+.dash-item-group-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* 제품군별 불량 창 — 「현재 현황」 LOT 목록 창과 같은 목록형(머리줄 · 줄 구분선), 줄 안에 불량 유형 순위 막대. */
+.dash-group-list {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.dash-group-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-group-colhead,
+.dash-group-section {
   display: grid;
-  align-content: start;
-  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr) 4.5rem 5.5rem 6.5rem;
+  align-items: baseline;
+  column-gap: var(--space-4);
+}
+
+.dash-group-colhead {
+  padding: 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-group-colhead span:not(:first-child),
+.dash-group-rate,
+.dash-group-qty {
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-group-row + .dash-group-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dash-group-section {
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+}
+
+.dash-group-name {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+}
+
+.dash-group-rate {
+  font-weight: 700;
+}
+
+.dash-group-types {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
   min-width: 0;
 }
 
-.dash-group-defect .dash-detail-title {
-  margin-bottom: 0;
-}
-
-.dash-group-defect-caption {
-  margin: var(--space-1) 0 0;
+.dash-group-caption {
+  margin: 0;
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
   color: var(--on-surface-muted);
 }
 
 /*
- * 종합 불량률 칸 — 칸 위에 투명 단추를 깐다(칸 안 설명 단추 ⓘ 를 단추로 감쌀 수 없다). ⓘ 는 단추 위로 올린다.
+ * 설비 상세 창(#251 보강) — 맨 위 요약 띠는 대시보드 KPI 칸 그대로(바탕만 창 바탕), 아래는 두 열.
+ * 좁으면 요약 띠 2열 · 본문 1열로 쌓는다.
  */
-.dash-kpi-openable {
-  position: relative;
+.dash-detail-kpis > * {
+  background: var(--surface-container-high);
 }
 
-.dash-kpi-openable > .dash-kpi {
-  height: 100%;
+.dash-detail-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-6);
 }
 
-.dash-kpi-open {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  cursor: pointer;
+.dash-detail-column {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.dash-kpi-open:hover {
-  background: var(--state-hover-neutral);
+.dash-detail-progress-row {
+  display: grid;
+  grid-template-columns: minmax(4rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.dash-kpi-open:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+.dash-detail-progress {
+  display: block;
 }
 
-.dash-kpi-openable .dash-info {
-  position: relative;
-  z-index: 1;
+@media (max-width: 760px) {
+  .dash-detail-kpis {
+    --dash-kpi-cols: 2;
+  }
+
+  .dash-detail-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /*

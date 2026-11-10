@@ -399,8 +399,9 @@ export interface DashboardCardForward {
  * `totalCount` 는 dashboard-summary 의 해당 숫자와 같은 정의다. 목록은 오래된 것부터 최대 200건. DB에 없는 값은
  * `null`. 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다.
  */
+/** `IQC_SORTED` — IQC 선별 처분(서버 #251): 처분마다 한 줄, LOT 수는 원래 검사 LOT. 기간은 대시보드와 같다. */
 export type DashboardQualityLotStatus =
-  'INSPECTION_HELD' | 'RECEIPT_HOLD' | 'PQC_PENDING' | 'NC_OPEN';
+  'INSPECTION_HELD' | 'RECEIPT_HOLD' | 'PQC_PENDING' | 'NC_OPEN' | 'IQC_SORTED';
 
 export interface DashboardQualityLotItem {
   key: string;

@@ -1,6 +1,7 @@
 import type { DashboardItemGroupDefects, DashboardProduction } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -68,10 +69,42 @@ describe('제품군별 생산 현황(omf-all-around#251)', () => {
     const table = screen.getByRole('table', { name: t.title });
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows.map((row) => row.textContent)).toEqual([
-      'ADT 그룹30028220' + '6.7',
-      `${t.unclassified}10095` + '10' + '10',
-      `${t.sum}40037730` + '7.5',
+      'ADT 그룹30028220' + '6.7%',
+      `${t.unclassified}10095` + '10' + '10%',
+      `${t.sum}40037730` + '7.5%',
     ]);
+    /* 이름은 왼쪽, 수치는 오른쪽(시안 2026-11-10). */
+    expect(within(table).getByRole('columnheader', { name: t.group })).not.toHaveAttribute(
+      'data-align',
+    );
+    expect(within(table).getByRole('columnheader', { name: t.totalQty })).toHaveAttribute(
+      'data-align',
+      'end',
+    );
+  });
+
+  it('오른쪽 아래 「상세 보기」를 누르면 제품군별 불량 현황 창이 열린다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <FilterQueryContext.Provider value={{ dateFrom: '2026-11-10', dateTo: '2026-11-10' }}>
+        <ItemGroupPanel production={production} isLoading={false} />
+      </FilterQueryContext.Provider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) =>
+              new URL(request.url).pathname.endsWith('/app/dashboard-item-group-defects'),
+            respond: () => jsonResponse(defects),
+          },
+        ]),
+      },
+    );
+
+    await user.click(screen.getByRole('button', { name: t.detailButtonLabel }));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByRole('region', { name: 'ADT 그룹' })).toHaveTextContent(
+      '찍힘15 EA',
+    );
   });
 
   it('서버가 제품군 칸을 주지 않으면(이전 서버) 그리지 않는다', () => {

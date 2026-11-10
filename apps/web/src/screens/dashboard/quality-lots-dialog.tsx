@@ -19,6 +19,7 @@ export const QUALITY_LOT_STATUS: Record<
   RECEIPT_HOLD: { label: t.receiptHold, tone: 'warning', cases: false },
   PQC_PENDING: { label: t.pendingLots, tone: 'idle', cases: false },
   NC_OPEN: { label: t.ncOpen, tone: 'error', cases: true },
+  IQC_SORTED: { label: t.sortedLots, tone: 'info', cases: false },
 };
 
 /** 줄의 보조 정보 — 상태마다 있는 값만(검사 구분 · 상대 · 호기 · 업무 번호 · 설명), 없으면 빈 줄. */

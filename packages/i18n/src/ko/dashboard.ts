@@ -151,6 +151,11 @@ export const dashboard = {
     empty: '이 공장에 표시할 생산 설비가 없습니다.',
     lineEmpty: '고른 라인에 설비가 없습니다.',
     /** 서버가 아직 설비 섹션을 주지 않을 때(2차 규격 배포 전). ⛔ 「설비 없음」과 같은 말로 그리지 않는다. */
+    goodNote: (qty: string): string => `양품 ${qty} EA`,
+    ngNote: (qty: string): string => `불량 ${qty} EA`,
+    runningNote: (time: string): string => `가동 ${time}`,
+    sinceNote: (time: string): string => `${time}부터`,
+    differenceLine: (qty: string): string => `표준 대비 ${qty} EA`,
     mold: '금형',
     moldValue: (code: string, name: string, cavity: string): string =>
       code === name ? `${code} (캐비티 ${cavity})` : `${code} ${name} (캐비티 ${cavity})`,
@@ -206,20 +211,22 @@ export const dashboard = {
   /** 대시보드 안의 탭(omf-all-around#113). 탭은 같은 응답을 나눠 보인다 — 탭마다 다시 부르지 않는다. */
   itemGroup: {
     title: '제품군별 생산 현황',
-    sub: 'EA, ERP 품목군 기준',
+    sub: 'ERP 품목군 기준 · 단위: EA', // ui-check-ignore: C-13 사용자 시안 문구(#251)
     group: '제품군',
-    totalQty: '총생산(EA)',
-    goodQty: '양품(EA)',
-    ngQty: '불량(EA)',
-    defectRate: '불량률(%)',
+    totalQty: '총생산',
+    goodQty: '양품',
+    ngQty: '불량',
+    defectRate: '불량률',
     sum: '합계',
     unclassified: '미분류',
     empty: '이 기간에 생산 실적이 없습니다.',
-    openDefects: '제품군별 불량 현황 보기',
+    detailButton: '상세 보기',
+    detailButtonLabel: '제품군별 불량 현황 상세 보기',
     dialogTitle: '제품군별 불량 현황',
     dialogSub: (rate: string, ng: string): string => `종합 불량률 ${rate}, 불량 ${ng} EA`,
-    groupLine: (rate: string, ng: string, total: string): string =>
-      `불량률 ${rate}, 불량 ${ng} EA, 생산 ${total} EA`,
+    rateColumn: '불량률',
+    ngColumn: '불량',
+    totalColumn: '생산',
     worst: '불량 유형 상위 5',
     noTypes: '유형이 적힌 불량 기록이 없습니다.',
     untypedQty: (qty: string): string => `유형 미입력 ${qty} EA`,
