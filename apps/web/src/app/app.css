@@ -16776,10 +16776,24 @@ button.app-button-neutral {
  * 없음), 줄 높이 38px, 표 아래 오른쪽에 「상세 보기」.
  */
 .dash-item-group-table table,
-.dash-item-group-table thead th,
 .dash-item-group-table td,
 .dash-panel .dash-item-group-table tbody tr[data-parity] td {
   background: transparent;
+}
+
+/*
+ * 높이 상한(사용자 지시 2026-11-10 「제한 · 화면 크기에 따라 반응형」) — 화면 높이의 38%(최소 12rem · 최대 26rem)까지만
+ * 쓰고 넘치면 표 안에서 스크롤한다. 제품군 5개 안팎은 상한 안이라 스크롤이 생기지 않는다. 열 이름 줄 · 합계 줄은
+ * 스크롤해도 고정 — 머리줄 바탕은 카드 바탕과 같은 색이라 지나가는 줄을 가린다.
+ */
+/* 공용 표는 자기 스크롤 상자(표 바로 바깥 div)를 갖는다 — 고정 줄이 그 상자 기준이라 상한도 그 상자에 건다. */
+.dash-panel .dash-item-group-table > div {
+  max-height: clamp(12rem, 38vh, 26rem);
+  overflow: auto;
+}
+
+.dash-item-group-table thead th {
+  background: var(--surface-container);
 }
 
 .dash-panel .dash-item-group-table :is(th, td) {
@@ -16796,6 +16810,9 @@ button.app-button-neutral {
 
 /* 합계 줄 — 한 단계 밝은 바탕 + 굵게. 강조색은 쓰지 않는다(빈 표의 안내 한 줄에는 걸지 않는다). */
 .dash-panel .dash-item-group-table tbody tr:last-child:not(:only-child) td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   background: var(--surface-container-high);
   font-weight: 700;
 }
@@ -16821,7 +16838,12 @@ button.app-button-neutral {
 }
 
 .dash-group-colhead {
-  padding: 0 var(--space-2) var(--space-2);
+  /* 창 본문이 스크롤해도 열 이름 줄은 위에 남는다(바탕 = 창 바탕). */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container-high);
+  padding: var(--space-1) var(--space-2) var(--space-2);
   border-bottom: 1px solid var(--outline-variant);
   font: var(--type-label-sm);
   letter-spacing: var(--type-label-sm-tracking);
