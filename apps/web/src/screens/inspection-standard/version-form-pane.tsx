@@ -10,8 +10,6 @@ import { SelectField } from './select-field';
 import type { SelectOption, VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
-/** 서버 · 계약과 같은 길이(#252). */
-const GUIDE_TEXT_MAX = 3000;
 
 export type VersionFormMode = 'edit' | 'create';
 
@@ -300,28 +298,6 @@ export const VersionFormPane = ({
           note={codeOptionsNote}
           error={fieldErrors.frequencyIntervalUomCode}
         />
-      </div>
-
-      {/*
-       * 검사 안내 문구(omf-all-around#252) — 검사 화면의 기준 정보 바로 아래에 보인다. 한국어 · 베트남어를 따로 받고, 화면 언어
-       * 문구가 비면 다른 언어 문구를 보인다. 확정된 버전은 잠긴다 — 고치려면 신규 버전을 발행한다.
-       */}
-      <div className="inspection-standard-guide-fields">
-        {(['guideTextKo', 'guideTextVi'] as const).map((field) => (
-          <TextArea
-            key={field}
-            fullWidth
-            label={t.fields[field]}
-            helperText={t.versionSection.guideTextHint}
-            value={values[field]}
-            rows={3}
-            maxLength={GUIDE_TEXT_MAX}
-            showCount
-            onChange={(event) => onChange({ [field]: event.target.value })}
-            disabled={isLocked}
-            error={fieldErrors[field]}
-          />
-        ))}
       </div>
 
       <div className="form-actions">

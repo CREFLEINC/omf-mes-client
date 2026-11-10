@@ -1,3 +1,4 @@
+import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
@@ -11,7 +12,11 @@ export interface VersionSummaryProps {
   /** 검사 주기 · 주기 단위 선택지 — 공통코드에서 받은 것(버전 폼과 같은 출처 · #194). */
   inspectionFrequencyOptions: SelectOption[];
   frequencyIntervalUomOptions: SelectOption[];
+  /** 안내 문구 언어별 「수정」 — 작성중 버전에서만 넘긴다(확정 버전은 잠긴다 · #252). */
+  onEditGuide?: (field: GuideTextField) => void;
 }
+
+export type GuideTextField = 'guideTextKo' | 'guideTextVi';
 
 const labelOf = (options: { value: string; label: string }[], value: string): string =>
   value === ''
@@ -28,6 +33,7 @@ export const VersionSummary = ({
   values,
   inspectionFrequencyOptions,
   frequencyIntervalUomOptions,
+  onEditGuide,
 }: VersionSummaryProps) => {
   const sampling = labelOf(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode);
   /* 샘플링 검사면 비율(%) 또는 개수 중 들어 있는 쪽을 함께 낸다(#201). */
@@ -73,9 +79,12 @@ export const VersionSummary = ({
     },
   ];
 
-  /* 안내 문구(#252)는 길 수 있어 요약 줄 아래에 언어별로 따로 보인다 — 둘 다 비면 두지 않는다. */
+  /*
+   * 안내 문구(#252)는 길 수 있어 요약 줄 아래에 언어별로 따로 보인다. 고칠 수 있는 버전이면 비어도 두 줄 다 두고 줄마다 「수정」 —
+   * 긴 글을 버전 설정 창에서 고치지 않고 언어별 창에서 고친다(사용자 지시). 잠긴 버전은 문구가 있는 줄만, 둘 다 비면 두지 않는다.
+   */
   const guides = (['guideTextKo', 'guideTextVi'] as const).filter(
-    (field) => values[field].trim() !== '',
+    (field) => onEditGuide !== undefined || values[field].trim() !== '',
   );
 
   return (
@@ -92,8 +101,20 @@ export const VersionSummary = ({
         <dl className="inspection-standard-guide-line">
           {guides.map((field) => (
             <div key={field}>
-              <dt className="field-label">{t.fields[field]}</dt>
-              <dd>{values[field]}</dd>
+              <dt className="field-label">
+                {t.fields[field]}
+                {onEditGuide !== undefined && (
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    aria-label={t.versionSection.editGuide(t.fields[field])}
+                    onClick={() => onEditGuide(field)}
+                  >
+                    {t.versionSection.guideEdit}
+                  </Button>
+                )}
+              </dt>
+              <dd>{values[field].trim() === '' ? t.versionSection.notSet : values[field]}</dd>
             </div>
           ))}
         </dl>

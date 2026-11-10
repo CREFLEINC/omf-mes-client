@@ -21612,14 +21612,7 @@ button.app-button-neutral {
   font-weight: 700;
 }
 
-/* 검사 기준 버전 입력 창 · 요약의 안내 문구(#252). */
-.inspection-standard-guide-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
-
+/* 검사 기준 버전 요약의 안내 문구(#252). */
 .inspection-standard-guide-line {
   display: grid;
   gap: var(--space-2);
@@ -21628,6 +21621,14 @@ button.app-button-neutral {
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
   background: var(--surface-container);
+}
+
+/* 언어 이름 오른쪽 끝에 「수정」(#252). */
+.inspection-standard-guide-line dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .inspection-standard-guide-line dd {

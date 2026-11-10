@@ -220,6 +220,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     /* 검사 안내 문구(#252). */
     guideText: 'Hướng dẫn',
     guideTextHint: 'Hiển thị ngay dưới thông tin tiêu chuẩn trên màn hình kiểm tra.',
+    guideEdit: 'Sửa',
+    editGuide: (label: string): string => `Sửa ${label.toLowerCase()}`,
     samplingByRatio: 'Tỷ lệ (%)',
     samplingByQty: 'Số lượng',
     samplingBasis: 'Chọn cách lấy mẫu',
