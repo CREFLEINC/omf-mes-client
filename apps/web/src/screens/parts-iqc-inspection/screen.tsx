@@ -52,6 +52,7 @@ import { QueueFilterBar } from '../iqc-inspection/queue-filter-bar';
 import { QueueTable } from '../iqc-inspection/queue-table';
 import { useItemNames, useLotNumbers, useLotSuppliers } from '../iqc-inspection/reference-lookup';
 import { withDraft, withStatus } from '../oqc-inspection/filters';
+import { LeaveGuard } from '../routing/leave-guard';
 import { InspectionDetail } from './inspection-detail';
 import { partsIqcKeys, usePartsQueue } from './queries';
 import { plantTodayRange } from './today';
@@ -369,6 +370,12 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
         </section>
       </div>
 
+      {/* 고친 것이 있는 채로 다른 화면으로 가거나 새로 고치면 묻는다(#247 · 사용자 지시 2026-11-10). 의뢰를 바꾸는 이동은 아래 창이 묻는다. */}
+      <LeaveGuard
+        when={dirty}
+        discardTitle={t.dialog.title}
+        discardBody={t.dialog.discardConfirm}
+      />
       {leaveTo !== null && (
         <Dialog
           open

@@ -10,6 +10,7 @@ export const partsIqcInspection = {
     loading: '검사 이력을 불러오는 중입니다.',
     failed: '검사 이력을 불러오지 못했습니다.',
     empty: '검사 이력이 없습니다.',
+    emptyHint: '검사 결과를 저장하면 이곳에 기록됩니다.',
     round: '회차',
     roundNo: (n: number) => `${String(n)}회차`,
     inspectedAt: '검사일시',
@@ -19,7 +20,7 @@ export const partsIqcInspection = {
     judgment: '판정',
     status: '상태',
     statusOf: { DRAFT: '작성 중', CONFIRMED: '확정' } as Record<string, string>,
-    noMeasurements: '기록된 측정값이 없습니다.',
+    noMeasurements: '검사 이력이 없습니다.',
     defects: '불량 유형',
   },
   today: '오늘 입고',
@@ -165,7 +166,6 @@ export const partsIqcInspection = {
   ng: 'NG',
 
   footer: {
-    draftSaved: '임시 저장했습니다.',
     undo: '되돌리기',
     redo: '다시 실행',
     clear: '비우기',

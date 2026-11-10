@@ -115,9 +115,14 @@ export const InspectionHistory = ({ inspectionRequestId, specs, defectCodes }: H
   if (history.isPending) return <p className="field-note">{t.history.loading}</p>;
   if (history.isError) return <p className="field-note">{t.history.failed}</p>;
   if (history.data.length === 0)
-    /* 아이콘 + 한 줄(사용자 시안 2026-10-30) */
+    /* 첨부 파일 탭의 빈 화면과 같은 모양 — 아이콘 · 제목 · 안내(#247 · 사용자 지시 2026-11-10). */
     return (
-      <EmptyState size="sm" icon={<Icon name="assignment" size={24} />} title={t.history.empty} />
+      <EmptyState
+        size="sm"
+        icon={<Icon name="assignment" size={32} />}
+        title={t.history.empty}
+        description={t.history.emptyHint}
+      />
     );
 
   return (
@@ -250,7 +255,12 @@ const RoundDetail = ({
   return (
     <div className="parts-iqc-history-body">
       {itemIds.length === 0 ? (
-        <p className="field-note">{t.history.noMeasurements}</p>
+        <EmptyState
+          size="sm"
+          icon={<Icon name="assignment" size={32} />}
+          title={t.history.noMeasurements}
+          description={t.history.emptyHint}
+        />
       ) : (
         <>
           <h4 className="parts-iqc-history-heading">{tm.caption}</h4>

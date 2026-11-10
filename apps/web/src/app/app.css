@@ -32441,6 +32441,18 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-overflow: ellipsis;
 }
 
+/* 이름만 흐름에 두고 끌기 손잡이는 이름 오른쪽 바깥에 띄운다 — 머리 이름이 칸 가운데, 아래 값과 같은 자리(#247 · 사용자 지시 2026-11-10). */
+.parts-iqc-history thead .col-head {
+  position: relative;
+}
+
+.parts-iqc-history thead .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
+}
+
 .parts-iqc-history thead th {
   position: sticky;
   top: 0;

@@ -14,7 +14,7 @@ import {
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
@@ -39,6 +39,7 @@ import {
   useRejectedLotFollowUp,
   useMeasurements,
 } from '../iqc-inspection/queries';
+import { DiscardDialog } from '../routing/leave-guard';
 import { RejectedLotGuide } from '../iqc-inspection/rejected-lot-guide';
 import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup';
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
@@ -136,8 +137,16 @@ export const InspectionDetail = ({
 
   const round = latestRound(rounds.data ?? []);
   const draftRound = round !== null && round.statusCode === 'DRAFT' ? round : null;
-  /* 「임시 저장했습니다」 — 저장 뒤 입력 폼이 저장된 회차로 다시 열려도 남도록 여기 둔다. 다른 의뢰에서는 보이지 않는다. */
-  const [draftSavedFor, setDraftSavedFor] = useState<number | null>(null);
+  /* 검사 진행 탭에 고친 것이 있는가 — 다른 탭으로 옮기면 입력이 사라지므로 먼저 묻는다(#247 · 사용자 지시 2026-11-10). */
+  const [formDirty, setFormDirty] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const changeDirty = useCallback(
+    (next: boolean) => {
+      setFormDirty(next);
+      onDirtyChange(next);
+    },
+    [onDirtyChange],
+  );
   const measurements = useMeasurements(draftRound?.inspectionResultId ?? null);
 
   /*
@@ -236,9 +245,7 @@ export const InspectionDetail = ({
               }
         }
         onSubmitted={onSubmitted}
-        draftSaved={draftSavedFor === inspectionRequestId}
-        onDraftSaved={() => setDraftSavedFor(inspectionRequestId)}
-        onDirtyChange={onDirtyChange}
+        onDirtyChange={changeDirty}
       />
     );
   };
@@ -270,7 +277,7 @@ export const InspectionDetail = ({
             className="parts-iqc-reinspect"
             onClick={() => {
               setReinspectingFrom(null);
-              onDirtyChange(false);
+              changeDirty(false);
             }}
           >
             {tResult.reinspectCancel}
@@ -309,7 +316,10 @@ export const InspectionDetail = ({
         size="md"
         aria-label={t.dialog.title}
         value={tab}
-        onChange={(next) => setPicked({ requestId: inspectionRequestId, tab: next })}
+        onChange={(next) => {
+          if (tab === 'input' && next !== 'input' && formDirty) setPendingTab(next);
+          else setPicked({ requestId: inspectionRequestId, tab: next });
+        }}
         items={[
           ...(confirmed
             ? []
@@ -327,32 +337,35 @@ export const InspectionDetail = ({
                     ),
                   content:
                     tab === 'documents' ? (
-                      <AttachmentPanel
-                        key={lotId}
-                        targetTypeCode="LOT"
-                        targetId={lotId}
-                        scrollX
-                        paged
-                        bulkDownload
-                        toolbarStart={
-                          <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
-                            <Icon name="attach_file" size={16} aria-hidden />
-                            <span>
-                              {messages.inspectionDocuments.help
-                                .split(/(\d+\s*MB)/)
-                                .map((part, index) =>
-                                  /^\d+\s*MB$/.test(part) ? (
-                                    <strong key={index} className="iqc-inspection-docs-limit">
-                                      {part}
-                                    </strong>
-                                  ) : (
-                                    part
-                                  ),
-                                )}
+                      /* OA 첨부 탭과 같은 상자 — 안내 · 단추 줄과 표 사이를 띄운다(겹침 · #247). */
+                      <div className="iqc-inspection-tab-body iqc-inspection-fold">
+                        <AttachmentPanel
+                          key={lotId}
+                          targetTypeCode="LOT"
+                          targetId={lotId}
+                          scrollX
+                          paged
+                          bulkDownload
+                          toolbarStart={
+                            <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
+                              <Icon name="attach_file" size={16} aria-hidden />
+                              <span>
+                                {messages.inspectionDocuments.help
+                                  .split(/(\d+\s*MB)/)
+                                  .map((part, index) =>
+                                    /^\d+\s*MB$/.test(part) ? (
+                                      <strong key={index} className="iqc-inspection-docs-limit">
+                                        {part}
+                                      </strong>
+                                    ) : (
+                                      part
+                                    ),
+                                  )}
+                              </span>
                             </span>
-                          </span>
-                        }
-                      />
+                          }
+                        />
+                      </div>
                     ) : null,
                 },
               ]),
@@ -374,6 +387,18 @@ export const InspectionDetail = ({
           },
         ]}
       />
+      {pendingTab !== null && (
+        <DiscardDialog
+          title={t.dialog.title}
+          body={t.dialog.discardConfirm}
+          onStay={() => setPendingTab(null)}
+          onLeave={() => {
+            changeDirty(false);
+            setPicked({ requestId: inspectionRequestId, tab: pendingTab });
+            setPendingTab(null);
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -477,9 +502,6 @@ interface FormProps {
     }[];
   } | null;
   onSubmitted: () => void;
-  /** 이 의뢰를 방금 임시 저장했는가 — 고치기 전까지 아래 줄에 알린다. */
-  draftSaved: boolean;
-  onDraftSaved: () => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
@@ -603,7 +625,6 @@ const InspectionForm = (props: FormProps) => {
   latestForm.current = form;
   const saveDraft = useSubmitInspection(() => {
     dispatch({ type: 'reset', form: latestForm.current });
-    props.onDraftSaved();
   });
 
   const input = judgmentInputOf(form);
@@ -701,10 +722,12 @@ const InspectionForm = (props: FormProps) => {
     submit.write(variablesOf(overall, inspectedQty));
   };
   /*
-   * 임시 저장(#247 · 사용자 지시 2026-11-10) — 판정을 확정하지 않고 지금 입력을 회차에 남긴다. 검사자 · 검사 수량 · 검사일시만 있으면
-   * 된다(판정은 아직 없어도 된다).
+   * 임시 저장(#247 · 사용자 지시 2026-11-10) — 판정을 확정하지 않고 지금 입력을 회차에 남긴다. 고친 것이 있고 검사자 · 검사 수량 ·
+   * 검사일시가 있으면 된다(판정은 아직 없어도 된다). 저장했다는 안내는 두지 않는다.
    */
+  /* 고친 것이 있을 때만 켠다(#247 · 사용자 지시 2026-11-10). */
   const draftBlocked =
+    history.past.length === 0 ||
     props.inspector === null ||
     inspectedQty === null ||
     inspectedQty <= 0 ||
@@ -1122,11 +1145,6 @@ const InspectionForm = (props: FormProps) => {
           onClick={() => dispatch({ type: 'redo' })}
         />
         <span className="parts-iqc-footer-gap" />
-        {props.draftSaved && !dirty && (
-          <span className="parts-iqc-muted" role="status">
-            {t.footer.draftSaved}
-          </span>
-        )}
         {/*
          * 부분 입고 — OA 화면과 같이 자리만 두고 누를 수 없다(규칙 미정 · 스펙 §8 #2 · #247 사용자 지시 2026-11-10).
          * 「업데이트 예정」은 단추 설명(마우스를 올리면 보이는 글)으로 둔다.

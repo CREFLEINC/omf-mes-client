@@ -13,6 +13,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     loading: 'Đang tải lịch sử kiểm tra.',
     failed: 'Không tải được lịch sử kiểm tra.',
     empty: 'Chưa có lịch sử kiểm tra.',
+    emptyHint: 'Kết quả kiểm tra sẽ được ghi ở đây sau khi lưu.',
     round: 'Lần',
     roundNo: (n: number) => `Lần ${String(n)}`,
     inspectedAt: 'Thời gian kiểm tra',
@@ -22,7 +23,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     judgment: 'Phán định',
     status: 'Trạng thái',
     statusOf: { DRAFT: 'Đang nhập', CONFIRMED: 'Đã xác nhận' } as Record<string, string>,
-    noMeasurements: 'Không có giá trị đo.',
+    noMeasurements: 'Không có lịch sử kiểm tra.',
     defects: 'Loại lỗi',
   },
   today: 'Nhập hôm nay',
@@ -162,7 +163,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   ng: 'NG',
 
   footer: {
-    draftSaved: 'Đã lưu tạm.',
     undo: 'Hoàn tác',
     redo: 'Làm lại',
     clear: 'Xóa trắng',
