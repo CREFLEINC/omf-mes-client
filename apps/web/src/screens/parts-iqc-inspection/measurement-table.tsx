@@ -199,8 +199,12 @@ export const MeasurementTable = ({
                             : 'parts-iqc-verdict'
                       }
                     >
-                      {/* 치수는 규격으로 저절로 판정한다 — OA 화면처럼 「자동 판정」을 붙인다(#247 · 사용자 지시 2026-11-10). */}
-                      <span className="iqc-inspection-auto-judgment">
+                      {/* 치수는 규격으로 저절로 판정한다 — 판정 전에는 「자동 판정」 라벨, 판정이 나면 합격 · 불합격 글만(#247 · 사용자 지시 2026-11-10). */}
+                      {state === 'err' ? (
+                        t.judgment.REJECTED
+                      ) : state === 'done' ? (
+                        t.judgment.ACCEPTED
+                      ) : (
                         <Chip
                           variant="status"
                           size="sm"
@@ -209,10 +213,7 @@ export const MeasurementTable = ({
                         >
                           {messages.iqcInspection.measurements.autoJudgmentMark}
                         </Chip>
-                        {/* 판정이 나면 합격 · 불합격만, 아직이면 라벨만(사용자 지시 2026-11-10). */}
-                        {state === 'err' && <span>{t.judgment.REJECTED}</span>}
-                        {state === 'done' && <span>{t.judgment.ACCEPTED}</span>}
-                      </span>
+                      )}
                     </td>
                   </tr>
                 );

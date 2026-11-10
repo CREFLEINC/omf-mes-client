@@ -32911,7 +32911,14 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border: 0;
 }
 
-/* 기준 상세 창의 정보 — 검사 화면 기본 정보와 같은 상자를 세 칸 두 줄로 고르게(#247 · 사용자 지시 2026-11-10). */
+/*
+ * 기준 상세 창의 정보 — 검사 화면 기본 정보와 같은 상자를 창 폭에 맞춰 고르게 나눈다(#247 · 사용자 지시 2026-11-10).
+ * 넓으면 여섯 칸 한 줄, 보통은 세 칸 두 줄, 좁으면 두 칸 · 한 칸. 줄 첫 칸에는 세로선을 두지 않는다.
+ */
+.parts-iqc-plan {
+  container: parts-iqc-plan / inline-size;
+}
+
 .parts-iqc-plan .parts-iqc-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -32920,6 +32927,44 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .parts-iqc-plan .parts-iqc-fact:nth-child(3n + 1) {
   padding-left: 0;
   border-left: 0;
+}
+
+@container parts-iqc-plan (min-width: 60rem) {
+  .parts-iqc-plan .parts-iqc-facts {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .parts-iqc-plan .parts-iqc-fact:nth-child(3n + 1):not(:first-child) {
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--outline-variant);
+  }
+}
+
+@container parts-iqc-plan (max-width: 36rem) {
+  .parts-iqc-plan .parts-iqc-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .parts-iqc-plan .parts-iqc-fact:nth-child(n) {
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--outline-variant);
+  }
+
+  .parts-iqc-plan .parts-iqc-fact:nth-child(2n + 1) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@container parts-iqc-plan (max-width: 22rem) {
+  .parts-iqc-plan .parts-iqc-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .parts-iqc-plan .parts-iqc-fact:nth-child(n) {
+    padding-left: 0;
+    border-left: 0;
+  }
 }
 
 /* 항목 표 — 검사 화면 표(`.parts-iqc-grid`)와 같은 칸 선 · 가운데 정렬, 테두리 상자 모서리만 둥글게. */
