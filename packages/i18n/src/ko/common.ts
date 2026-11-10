@@ -83,6 +83,8 @@ export const common = {
   inspectionHub: {
     /** 검사 기준 안내 문구 띠(omf-all-around#252). */
     guide: '검사 안내',
+    guideCommon: '공통 안내',
+    guideItem: '품목 안내',
     label: '검사 의뢰 상태',
     requested: '대기',
     inProgress: '진행',

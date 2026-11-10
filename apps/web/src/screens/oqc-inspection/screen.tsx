@@ -660,7 +660,7 @@ export const OqcInspectionScreen = () => {
           />
         </LeaveGuardProvider>
         {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
-        <InspectionGuideNotice inspectionPlanVersionId={detail.data.inspectionPlanVersionId} />
+        <InspectionGuideNotice inspectionRequestId={detail.data.inspectionRequestId} />
 
         {rounds.isError ? (
           /* 회차를 모르는 채로 저장을 열지 않는다 — 몇 회차인지 모르면 재검사인지도 모른다. */

@@ -602,7 +602,7 @@ export const PqcInspectionScreen = () => {
       workerNo={workerNo}
     >
       {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
-      <InspectionGuideNotice inspectionPlanVersionId={planVersionId} />
+      <InspectionGuideNotice inspectionRequestId={detail.data.inspectionRequestId} />
       {renderInspect(isConfirmed, planVersionId, detail.data.uomId)}
 
       <ActionBar

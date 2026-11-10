@@ -809,10 +809,31 @@ export interface InspectionPlanVersionGuideForward {
 export type InspectionPlanVersionForward = components['schemas']['InspectionPlanVersion'] &
   InspectionPlanVersionGuideForward;
 
+/** 의뢰 상세의 검사 안내 한 벌(#252) — 공통 기준(COMMON) · 품목 기준(ITEM). 상세 조회만 싣는다. */
+export interface InspectionGuideForward {
+  scopeCode: 'COMMON' | 'ITEM';
+  guideTextKo: string | null;
+  guideTextVi: string | null;
+}
+
+type InspectionRequestDetailPath = paths['/quality/inspection-requests/{inspectionRequestId}'];
+
 type PlanVersionsPath = paths['/quality/inspection-plan-versions'];
 type PlanVersionPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}'];
 
 export interface ForwardPaths {
+  /** 의뢰 상세 — 검사 안내(공통 · 품목, #252). */
+  '/quality/inspection-requests/{inspectionRequestId}': Omit<InspectionRequestDetailPath, 'get'> & {
+    get: Omit<InspectionRequestDetailPath['get'], 'responses'> & {
+      responses: Omit<InspectionRequestDetailPath['get']['responses'], 200> & {
+        200: Json<
+          components['schemas']['InspectionRequest'] & {
+            inspectionGuides?: InspectionGuideForward[];
+          }
+        >;
+      };
+    };
+  };
   /** 기준 버전 목록 · 만들기 — 안내 문구 칸(#252). */
   '/quality/inspection-plan-versions': Omit<PlanVersionsPath, 'get' | 'post'> & {
     get: Omit<PlanVersionsPath['get'], 'responses'> & {

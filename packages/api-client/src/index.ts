@@ -79,4 +79,5 @@ export type {
   StockReinstatementResponseForward,
   InspectionPlanVersionForward,
   InspectionPlanVersionGuideForward,
+  InspectionGuideForward,
 } from './forward-contract';

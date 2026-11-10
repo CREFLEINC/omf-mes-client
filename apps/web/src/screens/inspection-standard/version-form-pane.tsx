@@ -11,7 +11,7 @@ import type { SelectOption, VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
 /** 서버 · 계약과 같은 길이(#252). */
-const GUIDE_TEXT_MAX = 1000;
+const GUIDE_TEXT_MAX = 3000;
 
 export type VersionFormMode = 'edit' | 'create';
 

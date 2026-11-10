@@ -433,7 +433,7 @@ export const PqcPanel = ({
           uomCode={uomCodeOf(target.uomId)}
         />
         {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
-        <InspectionGuideNotice inspectionPlanVersionId={planVersionId} />
+        <InspectionGuideNotice inspectionRequestId={target.inspectionRequestId} />
 
         {roundLoadFailed && (
           <QueueLoadErrorBanner
@@ -516,7 +516,7 @@ export const PqcPanel = ({
     <div className="pqc-panel">
       <PanelTargetHeader detail={target} />
       {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
-      <InspectionGuideNotice inspectionPlanVersionId={planVersionId} />
+      <InspectionGuideNotice inspectionRequestId={target.inspectionRequestId} />
 
       {roundLoadFailed && (
         <QueueLoadErrorBanner

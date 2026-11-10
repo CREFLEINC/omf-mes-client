@@ -952,7 +952,7 @@ const InspectionForm = (props: FormProps) => {
           </div>
         </dl>
         {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
-        <InspectionGuideNotice inspectionPlanVersionId={version.inspectionPlanVersionId} />
+        <InspectionGuideNotice inspectionRequestId={request.inspectionRequestId} />
 
         <div className="parts-iqc-lot-box" role="group" aria-labelledby="parts-iqc-lot">
           <h4 id="parts-iqc-lot">{t.lot.heading}</h4>

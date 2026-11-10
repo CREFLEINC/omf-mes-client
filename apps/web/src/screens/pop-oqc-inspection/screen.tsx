@@ -213,7 +213,7 @@ export const PopOqcInspectionScreen = () => {
       <>
         <PopRequestSummary detail={detail.data} />
         {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
-        <InspectionGuideNotice inspectionPlanVersionId={detail.data.inspectionPlanVersionId} />
+        <InspectionGuideNotice inspectionRequestId={detail.data.inspectionRequestId} />
 
         {rounds.isError ? (
           <QueueLoadErrorBanner
