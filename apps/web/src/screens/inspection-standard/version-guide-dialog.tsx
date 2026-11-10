@@ -58,7 +58,6 @@ export const VersionGuideDialog = ({
       <TextArea
         fullWidth
         label={t.fields[field]}
-        helperText={t.versionSection.guideTextHint}
         value={text}
         rows={16}
         maxLength={GUIDE_TEXT_MAX}

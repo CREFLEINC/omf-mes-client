@@ -245,7 +245,6 @@ export const inspectionStandard = {
   versionSection: {
     /* 검사 안내 문구(#252). */
     guideText: '안내 문구',
-    guideTextHint: '검사 화면의 기준 정보 바로 아래에 보입니다.',
     /** 버전 요약의 언어별 안내 문구 수정 단추 · 그 창 제목(#252). */
     guideEdit: '수정',
     editGuide: (label: string): string => `${label} 수정`,
