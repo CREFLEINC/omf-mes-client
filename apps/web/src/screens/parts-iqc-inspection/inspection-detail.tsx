@@ -275,6 +275,7 @@ export const InspectionDetail = ({
             ? null
             : {
                 inspectionResultId: draftRound.inspectionResultId,
+                versionNo: draftRound.versionNo,
                 inspectedQty: draftRound.inspectedQty,
                 inspectedAt: draftRound.inspectedAt,
                 overallJudgmentCode: draftRound.overallJudgmentCode,
@@ -545,6 +546,8 @@ interface FormProps {
   appUserId: number | null;
   draft: {
     inspectionResultId: number;
+    /** 불러올 때의 판 번호 — 그사이 다른 사람이 저장했으면 서버가 이 저장을 막는다(#247 클릭 점검). */
+    versionNo: number;
     inspectedQty: number;
     inspectedAt: string;
     overallJudgmentCode: string;
@@ -682,11 +685,18 @@ const InspectionForm = (props: FormProps) => {
   const [ask, setAsk] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
-  const submit = useSubmitInspection(props.onSubmitted);
-  /* 같은 회차를 다시 저장하면 폼이 다시 열리지 않는다 — 저장한 지금 값을 새 출발점으로 삼아 「고친 것」을 비운다. */
+  /*
+   * 같은 회차를 다시 저장하면 폼이 다시 열리지 않는다 — 저장한 지금 값을 새 출발점으로 삼아 「고친 것」을 비운다.
+   * [임시 저장] · [제출]은 한 통로로 쓴다 — 방금 임시 저장한 판 번호를 제출이 이어 써야 자기 저장에 막히지 않는다(#247 클릭 점검).
+   */
   const latestForm = useRef(form);
   latestForm.current = form;
-  const saveDraft = useSubmitInspection(() => {
+  const [savingDraft, setSavingDraft] = useState(false);
+  const submit = useSubmitInspection((result) => {
+    if (result.statusCode !== 'DRAFT') {
+      props.onSubmitted();
+      return;
+    }
     setBaseline(latestForm.current);
     dispatch({ type: 'reset', form: latestForm.current });
   });
@@ -766,6 +776,7 @@ const InspectionForm = (props: FormProps) => {
   const variablesOf = (judgment: string, qty: number): SubmitVariables => ({
     inspectionRequestId: request.inspectionRequestId,
     draftResultId: draft?.inspectionResultId ?? null,
+    draftVersionNo: draft?.versionNo ?? null,
     previousResultId: props.previousResultId,
     uomId: request.uomId,
     inspectedAt: toOffset(form.inspectedAt),
@@ -785,6 +796,7 @@ const InspectionForm = (props: FormProps) => {
   const onSubmit = () => {
     setAsk(false);
     if (blocked || overall === null || inspectedQty === null) return;
+    setSavingDraft(false);
     submit.write(variablesOf(overall, inspectedQty));
   };
   /*
@@ -799,11 +811,11 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty <= 0 ||
     form.inspectedAt === '' ||
     fourMBlocked ||
-    submit.isSaving ||
-    saveDraft.isSaving;
+    submit.isSaving;
   const onSaveDraft = () => {
     if (draftBlocked || inspectedQty === null) return;
-    saveDraft.write({ ...variablesOf(overall ?? '', inspectedQty), draftOnly: true });
+    setSavingDraft(true);
+    submit.write({ ...variablesOf(overall ?? '', inspectedQty), draftOnly: true });
   };
 
   const { onDirtyChange } = props;
@@ -1221,7 +1233,7 @@ const InspectionForm = (props: FormProps) => {
             </Dialog>
           );
         })()}
-      <SaveErrorBanner error={submit.error ?? saveDraft.error} />
+      <SaveErrorBanner error={submit.error} />
 
       {/* 아래 줄은 레퍼런스 화면 그대로다 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 제출(사용자 확인 2026-10-29) */}
       <div className="parts-iqc-footer">
@@ -1250,7 +1262,7 @@ const InspectionForm = (props: FormProps) => {
         </Button>
         <Button
           variant="outlined"
-          loading={saveDraft.isSaving}
+          loading={submit.isSaving && savingDraft}
           disabled={draftBlocked}
           onClick={onSaveDraft}
         >
@@ -1273,11 +1285,11 @@ const InspectionForm = (props: FormProps) => {
         <Button
           variant="filled"
           className="parts-iqc-submit"
-          loading={submit.isSaving}
+          loading={submit.isSaving && !savingDraft}
           disabled={blocked || submit.isSaving}
           onClick={() => setAsk(true)}
         >
-          {submit.isSaving ? t.footer.submitting : t.footer.submit}
+          {submit.isSaving && !savingDraft ? t.footer.submitting : t.footer.submit}
         </Button>
       </div>
     </div>

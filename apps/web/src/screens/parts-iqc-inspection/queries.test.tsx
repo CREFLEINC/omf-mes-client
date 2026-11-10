@@ -70,3 +70,17 @@ describe('useSubmitInspection OA 4M 변경 정보 (#247)', () => {
     ).not.toHaveProperty('overallJudgmentCode');
   });
 });
+
+describe('useSubmitInspection 수량', () => {
+  it('보류로 확정하면 불량이 아닌 수량을 보류 수량으로 싣는다', async () => {
+    expect(
+      await submit({ ...VARIABLES, overallJudgmentCode: 'HELD', rejectedQty: 2 }),
+    ).toMatchObject({ acceptedQty: 0, rejectedQty: 2, heldQty: 8 });
+  });
+
+  it('합격 · 불합격은 불량이 아닌 수량을 합격 수량으로 싣는다', async () => {
+    expect(
+      await submit({ ...VARIABLES, overallJudgmentCode: 'REJECTED', rejectedQty: 2 }),
+    ).toMatchObject({ acceptedQty: 8, rejectedQty: 2, heldQty: 0 });
+  });
+});

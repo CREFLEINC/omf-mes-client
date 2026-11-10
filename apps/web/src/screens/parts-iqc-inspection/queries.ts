@@ -155,6 +155,11 @@ export interface SubmitVariables {
   inspectionRequestId: number;
   /** 이 의뢰에 남은 작성중 회차 — 있으면 그 회차를 고쳐 확정한다(새 회차를 만들지 않는다). */
   draftResultId: number | null;
+  /**
+   * 그 회차를 불러올 때의 판 번호 — 저장 직전에 다시 읽지 않는다. 다시 읽으면 그사이 다른 사람이 저장한 내용을 말없이 덮는다
+   * (#247 클릭 점검). 모르면 `null` — 그때만 지금 판을 읽는다.
+   */
+  draftVersionNo?: number | null;
   /** 재검사면 앞 회차 — 서버가 회차를 +1 하고 사슬을 잇는다. 아니면 `null` */
   previousResultId: number | null;
   uomId: number;
@@ -180,7 +185,10 @@ export interface SubmitVariables {
  * ⭐ 앞 단계가 성공한 회차를 기억한다 — 확정이 실패한 뒤 다시 누르면 새 회차를 만들지 않고 그 회차를 고쳐 확정한다.
  * ⛔ 확정은 되돌릴 수 없다 — 키를 적용될 때까지 쓴다(서버가 두 번 실행하지 않는다).
  */
-export const useSubmitInspection = (onDone: () => void): MasterWriteResult<SubmitVariables> => {
+export const useSubmitInspection = (
+  /** 끝난 회차 — 임시 저장만 했으면 `statusCode` 가 `DRAFT` 다. */
+  onDone: (result: InspectionResult) => void,
+): MasterWriteResult<SubmitVariables> => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
   const saved = useRef<{
@@ -191,10 +199,16 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
 
   return useMasterWrite<SubmitVariables, InspectionResult>({
     request: async (v, headers): Promise<ApiCallResult<InspectionResult>> => {
+      /*
+       * 불량이 아닌 수량은 판정이 보류면 보류 수량, 아니면 합격 수량이다(#247 클릭 점검) — 보류로 확정하고 합격 수량을 채우면
+       * 대시보드 「검사 보류」 수량이 0 이 되고, 수량으로 보는 자동 판정(합격판정개수)과도 어긋난다.
+       */
+      const good = v.inspectedQty - v.rejectedQty;
+      const held = v.overallJudgmentCode === 'HELD';
       const quantities = {
-        acceptedQty: v.inspectedQty - v.rejectedQty,
+        acceptedQty: held ? 0 : good,
         rejectedQty: v.rejectedQty,
-        heldQty: 0,
+        heldQty: held ? good : 0,
         inspectedAt: v.inspectedAt,
         ...(v.overallJudgmentCode === '' ? {} : { overallJudgmentCode: v.overallJudgmentCode }),
         measurements: v.measurements,
@@ -205,7 +219,7 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         defects: v.defects,
       };
       const prior = saved.current?.requestId === v.inspectionRequestId ? saved.current : null;
-      // 남은 작성중 회차는 지금 판 번호를 읽어 고친다(잠금 토큰).
+      // 남은 작성중 회차는 불러올 때의 판 번호로 고친다(잠금 토큰) — 모를 때만 지금 판을 읽는다.
       const existing =
         prior ??
         (v.draftResultId === null
@@ -214,13 +228,15 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
               requestId: v.inspectionRequestId,
               resultId: v.draftResultId,
               versionNo:
+                v.draftVersionNo ??
                 (
                   await runRequest(() =>
                     client.GET('/quality/inspection-results/{inspectionResultId}', {
                       params: { path: { inspectionResultId: v.draftResultId as number } },
                     }),
                   )
-                ).versionNo ?? 0,
+                ).versionNo ??
+                0,
             });
       const draft =
         existing === null
@@ -293,10 +309,11 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
     // `defects` — 서버가 불량 수량 합계 ≠ 불합격 수량을 400 으로 돌려준다(omf-all-around#205 · P-156). 불량 유형 칸 아래에 붙인다.
     knownFields: ['judgmentChangeReason', 'defectRecords', 'defects', 'X-Worker-No'],
     keyLifetime: 'until-applied',
-    onSuccess: () => {
-      saved.current = null;
+    onSuccess: (data) => {
+      /* 임시 저장만 했으면 그 회차 · 판 번호를 이어 쓴다 — 다음 저장이 내가 방금 쓴 판으로 나간다. */
+      if (data.statusCode !== 'DRAFT') saved.current = null;
       void queryClient.invalidateQueries({ queryKey: ALL_KEY });
-      onDone();
+      onDone(data);
     },
   });
 };
