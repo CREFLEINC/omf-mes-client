@@ -430,7 +430,7 @@ export const ResultFormPane = ({
                 judgment === '' ? '' : labelOfCode(judgmentOptions, judgment),
               ]
                 .filter((part) => part !== '')
-                .join(' · '),
+                .join(' · '), // ui-check-ignore: C-13 사용자 지시 표기(#247)
               render: () => (
                 <>
                   {!isLocked && serialSection !== undefined ? (

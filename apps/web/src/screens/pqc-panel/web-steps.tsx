@@ -193,7 +193,7 @@ export const PqcWebSteps = ({
         judgmentText,
       ]
         .filter((part) => part !== '')
-        .join(' · '),
+        .join(' · '), // ui-check-ignore: C-13 사용자 지시 표기(#247)
       render: () => (
         <>
           <div className="iqc-inspection-qty-body" data-with-judgment="">

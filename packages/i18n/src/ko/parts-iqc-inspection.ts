@@ -186,7 +186,7 @@ export const partsIqcInspection = {
     dimension: '치수 검사',
     dimensionValue: (out: number, missing: number) =>
       `규격 밖 ${String(out)} · 미입력 ${String(missing)}`,
-    checksValue: (ng: number, missing: number) => `NG ${String(ng)} · 미판정 ${String(missing)}`,
+    checksValue: (ng: number, missing: number) => `NG ${String(ng)} · 미판정 ${String(missing)}`, // ui-check-ignore: C-13 사용자 지시 표기(#247)
     ok: '이상 없음',
     check: '확인 필요',
     back: '돌아가기',

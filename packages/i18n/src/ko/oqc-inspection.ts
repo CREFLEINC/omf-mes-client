@@ -192,7 +192,7 @@ export const oqcInspection = {
     /** 시리얼 판정 의뢰의 입력 탭 이름(#136). */
     entryTabs: { lot: 'LOT별 검사', serial: '시리얼별 검사' },
     /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
-    mergedSectionTitle: '검사 수량 · 판정',
+    mergedSectionTitle: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
     saveNote: '판정 저장 후 수정이 불가합니다.',

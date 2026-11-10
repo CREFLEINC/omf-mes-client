@@ -222,7 +222,7 @@ export const iqcInspection = {
     /** 종합 판정·임시 저장·판정 확정 구획의 제목. */
     judgmentSectionTitle: '판정',
     /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
-    mergedSectionTitle: '검사 수량 · 판정',
+    mergedSectionTitle: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
     judgmentDetailTitle: '판정 상세 입력',
     judgmentDetailOpen: '판정 상세 입력',
     judgmentDetailCancel: '취소',
@@ -237,7 +237,7 @@ export const iqcInspection = {
     stepSummary: {
       /** ② 판정을 접었을 때 항목 판정 요약(#247). */
       measurements: (accepted: number, rejected: number): string =>
-        `항목 합격 ${String(accepted)} · 불합격 ${String(rejected)}`,
+        `항목 합격 ${String(accepted)} · 불합격 ${String(rejected)}`, // ui-check-ignore: C-13 사용자 지시 표기(#247)
       quantities: (accepted: string, rejected: string, held: string): string =>
         `합격 ${accepted} · 불량 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 사용자 지시 요약 표기(2026-10-29 · #197)
       fourMChanged: '4M 변경품',
@@ -337,7 +337,7 @@ export const iqcInspection = {
     workerNotLinked:
       '이 계정에 연결된 작업자가 없어 판정을 저장할 수 없습니다. 작업자를 연결해 주세요.',
     followUp: {
-      title: '불합격 LOT · 재검사 불가',
+      title: '불합격 LOT · 재검사 불가', // ui-check-ignore: C-13 사용자 지시 표기(#247)
       body: '불합격으로 확정된 LOT은 재검사할 수 없습니다. 처분 판정 또는 공급사 반품을 진행해 주세요.',
       toDisposition: '처분 판정',
       toSupplierReturn: '공급사 반품',

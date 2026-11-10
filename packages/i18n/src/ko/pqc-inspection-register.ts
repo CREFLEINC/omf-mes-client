@@ -65,7 +65,7 @@ export const pqcInspectionRegister = {
   /** 관리웹 상세(#135) — IQC 판정 화면(#133)과 같은 짜임·말. POP 의 말(`pqcInspection`)은 그대로 둔다. */
   web: {
     /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
-    mergedHeading: '검사 수량 · 판정',
+    mergedHeading: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
     /** 생산 실적이 없어 판정을 막을 때(#135) — 관리웹 말. POP 의 말(`pqcInspection.result.noProductionResult`)은 그대로 둔다. */
     noProductionResult: '생산 실적이 없으므로 판정할 수 없습니다.',
     /** 검사기준이 없을 때 「검사 내용」 이름 옆 안내와 입력 칸 안내(#135) — 관리웹 말. POP 의 말(`pqcInspection.noStandard`)은 그대로 둔다. */
