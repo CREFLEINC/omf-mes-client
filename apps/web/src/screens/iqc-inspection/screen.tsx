@@ -200,6 +200,21 @@ const hubText = messages.common.inspectionHub;
 /** 종합 판정 불합격(시드 `INSPECTION_RESULT_OVERALL_JUDGMENT`) — 이 값일 때만 불합격 사유를 받는다. */
 const REJECTED_JUDGMENT = 'REJECTED';
 
+/** ① 검사 수량 · 판정의 입력 한 벌 — [되돌리기]가 이 단위로 돌아간다(#247). */
+interface StepOneSnapshot {
+  draft: QuantityDraft;
+  judgment: string;
+  autoFilled: string | null;
+  measureDraft: MeasureDraft;
+  defects: DefectDraft[];
+  hasDefects: boolean;
+  remarks: string;
+  changeReason: string;
+}
+
+/** 되돌리기 칸 수 — 부품 화면과 같다. */
+const STEP_ONE_UNDO_LIMIT = 200;
+
 /** 「오늘 입고」 켜짐 — 부품 IQC 화면과 같은 주소 키(omf-all-around#228). */
 const TODAY_KEY = 'td';
 
@@ -580,6 +595,15 @@ const IqcInspectionScreenBody = () => {
     setMeasureDraft(JSON.parse(savedMeasureKey) as MeasureDraft);
   }, [selectedId, isReinspectingNow, savedMeasureKey]);
   const measureChanged = !isSameMeasureDraft(measureDraft, savedMeasureDraft);
+
+  /*
+   * ① 검사 수량 · 판정의 [되돌리기] · [비우기](#247 · 사용자 지시 2026-11-10) — 부품 화면처럼 고친 것 하나씩 되돌린다.
+   * 고친 직전 값을 쌓고, 의뢰 · 회차가 바뀌면 비운다(저장 뒤 다시 불러온 값은 쌓지 않는다).
+   */
+  const [stepOneUndo, setStepOneUndo] = useState<StepOneSnapshot[]>([]);
+  useEffect(() => {
+    setStepOneUndo([]);
+  }, [selectedId, roundId, isReinspectingNow]);
   /* 항목 입력 유형 이름 — 검사 기준 화면과 같은 공통코드(수치 · 텍스트 · 불리언). */
   const dataTypeValues = useCodeValues(CODE_GROUPS.itemDataType);
   const dataTypeNames = Object.fromEntries(
@@ -884,7 +908,48 @@ const IqcInspectionScreenBody = () => {
    * 수량을 고칠 때(사용자 지시 2026-11-09) — 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다. 항목 자동 채움은 합격 수량을 직접 고쳐
    * 전량이 될 때만 하고, 전량 합격이 풀리는 순간 채운 줄만 되돌린다.
    */
+  const rememberStepOne = (): void => {
+    const snapshot: StepOneSnapshot = {
+      draft,
+      judgment,
+      autoFilled: autoFilledJudgment.current,
+      measureDraft,
+      defects,
+      hasDefects,
+      remarks,
+      changeReason,
+    };
+    setStepOneUndo((stack) => [...stack, snapshot].slice(-STEP_ONE_UNDO_LIMIT));
+  };
+  const undoStepOne = (): void => {
+    const last = stepOneUndo.at(-1);
+    if (last === undefined) return;
+    setStepOneUndo((stack) => stack.slice(0, -1));
+    setDraft(last.draft);
+    setJudgment(last.judgment);
+    autoFilledJudgment.current = last.autoFilled;
+    setMeasureDraft(last.measureDraft);
+    setDefects(last.defects);
+    setHasDefects(last.hasDefects);
+    setRemarks(last.remarks);
+    setChangeReason(last.changeReason);
+  };
+  /* 비우기 — 새 회차를 연 때처럼 합격 수량만 전체 수량으로 차 있다. 항목 · 불량 내역 · 판정 · 비고는 빈 칸이다. */
+  const clearStepOne = (): void => {
+    rememberStepOne();
+    const next = { ...EMPTY_QUANTITY_DRAFT, accepted: formatMicro(fromServerQty(inspectedQty)) };
+    const expected = autoResultOf(next, {});
+    setDraft(next);
+    autoFilledJudgment.current = expected;
+    setJudgment(expected ?? '');
+    setMeasureDraft({});
+    setDefects([EMPTY_DEFECT]);
+    setHasDefects(false);
+    setRemarks('');
+    setChangeReason('');
+  };
   const changeDraftAndJudge = (typed: QuantityDraft): void => {
+    rememberStepOne();
     const typedAccepted = typed.accepted !== draft.accepted;
     const lossChanged = typed.rejected !== draft.rejected || typed.held !== draft.held;
     const recalculated = !typedAccepted && lossChanged ? remainingAcceptedOf(typed) : null;
@@ -903,6 +968,7 @@ const IqcInspectionScreenBody = () => {
   };
   /* 항목을 고칠 때 — 사람이 고른 최종 판정은 덮지 않는다. */
   const changeMeasureDraft = (next: MeasureDraft): void => {
+    rememberStepOne();
     setMeasureDraft(next);
     applyAutoJudgment(draft, next, { keepPicked: true });
   };
@@ -1129,6 +1195,7 @@ const IqcInspectionScreenBody = () => {
           judgment={judgment}
           /* 불량 내역은 검사 수량 단계의 것이라 판정을 바꿔도 지우지 않는다(#197) — 불합격이 아니면 싣지 않을 뿐이다. */
           onJudgmentChange={(code) => {
+            rememberStepOne();
             autoFilledJudgment.current = null;
             setJudgment(code);
           }}
@@ -1176,6 +1243,7 @@ const IqcInspectionScreenBody = () => {
                 needsReason={needsChangeReason}
                 reason={changeReason}
                 onReasonChange={(next) => {
+                  rememberStepOne();
                   setChangeReason(next);
                 }}
                 disabled={confirm.isSaving || workerMissing}
@@ -1201,12 +1269,24 @@ const IqcInspectionScreenBody = () => {
             ) : null
           }
           measurementSummary={measureSummaryOf(measurementRows, measureDraft)}
+          stepOneActions={
+            isOpenRound
+              ? {
+                  canUndo: stepOneUndo.length > 0,
+                  onUndo: undoStepOne,
+                  onClear: clearStepOne,
+                }
+              : null
+          }
           autoResult={isOpenRound ? autoResultOf(draft, measureDraft) : null}
           remarksSlot={
             isOpenRound ? (
               <RemarksField
                 value={remarks}
-                onChange={setRemarks}
+                onChange={(next) => {
+                  rememberStepOne();
+                  setRemarks(next);
+                }}
                 disabled={confirm.isSaving || workerMissing}
               />
             ) : null

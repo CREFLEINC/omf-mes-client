@@ -131,6 +131,8 @@ export interface ResultFormPaneProps {
   autoResult?: string | null;
   /** ② 판정을 접었을 때 판정 뒤에 붙일 항목 판정 요약(「항목 합격 3 · 불합격 1」). 없으면 판정만 */
   measurementSummary?: string | null;
+  /** ① 단계 아래 줄의 [되돌리기] · [비우기](#247). 확정된 회차처럼 고칠 수 없으면 `null` — 그때는 [제출]만 둔다. */
+  stepOneActions?: { canUndo: boolean; onUndo: () => void; onClear: () => void } | null;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
   fourMSlot?: ReactNode;
   /**
@@ -239,6 +241,7 @@ export const ResultFormPane = ({
   remarksSlot = null,
   autoResult = null,
   measurementSummary = null,
+  stepOneActions = null,
   judgmentHint,
   judgmentBelow = null,
   confirmOnlyBlockedReason = null,
@@ -782,7 +785,34 @@ export const ResultFormPane = ({
       {step === 1 && overallSection}
       {step === 1 && drawingSlot}
       {step === 1 && remarksSlot}
-      {step === 1 && <div className="iqc-inspection-step-judgment-row">{stepConfirm()}</div>}
+      {/* 부품 화면 아래 줄처럼 왼쪽 되돌리기, 오른쪽 비우기 · 제출(#247 · 사용자 지시 2026-11-10). */}
+      {step === 1 && (
+        <div className="iqc-inspection-step-judgment-row">
+          {stepOneActions !== null && (
+            <>
+              <Button
+                type="button"
+                variant="text"
+                leadingIcon={<Icon name="undo" />}
+                disabled={isInputLocked || !stepOneActions.canUndo}
+                onClick={stepOneActions.onUndo}
+              >
+                {t.stepSummary.undo}
+              </Button>
+              <span className="parts-iqc-footer-gap" />
+              <Button
+                type="button"
+                variant="text"
+                disabled={isInputLocked}
+                onClick={stepOneActions.onClear}
+              >
+                {t.stepSummary.clear}
+              </Button>
+            </>
+          )}
+          {stepConfirm()}
+        </div>
+      )}
       {step === 2 && fourMSlot}
     </section>
   );

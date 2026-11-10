@@ -855,6 +855,37 @@ describe('IqcInspectionScreen', () => {
       ).toHaveValue('');
     });
 
+    it('[되돌리기]는 고친 것 하나씩 되돌리고, [비우기]는 합격 수량만 전체로 채운 처음 상태로 만든다', async () => {
+      await open();
+      const accepted = await qtyField('accepted');
+      await waitFor(() => expect(accepted).not.toHaveValue(''));
+      const total = (accepted as HTMLInputElement).value;
+      const undo = screen.getByRole('button', { name: t.result.stepSummary.undo });
+      expect(undo).toBeDisabled();
+
+      const held = await qtyField('held');
+      await userEvent.type(held, '12');
+      await userEvent.click(undo);
+      expect(held).toHaveValue('1');
+      await userEvent.click(undo);
+      expect(held).toHaveValue('');
+      expect(accepted).toHaveValue(total);
+      expect(undo).toBeDisabled();
+
+      const remarks = screen.getByRole('textbox', { name: t.result.remarks });
+      await userEvent.type(held, '3');
+      await userEvent.type(remarks, '메모');
+      await userEvent.click(screen.getByRole('button', { name: t.result.stepSummary.clear }));
+      expect(held).toHaveValue('');
+      expect(accepted).toHaveValue(total);
+      expect(remarks).toHaveValue('');
+
+      /* 비운 것도 되돌린다. */
+      await userEvent.click(undo);
+      expect(held).toHaveValue('3');
+      expect(remarks).toHaveValue('메모');
+    });
+
     it('보류가 전체를 넘어도 합격 수량은 0 아래로 내려가지 않는다', async () => {
       await open();
       const accepted = await qtyField('accepted');
