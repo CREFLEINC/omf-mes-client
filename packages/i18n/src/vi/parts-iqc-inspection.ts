@@ -103,7 +103,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   },
 
   dimension: {
-    heading: 'Đo kích thước',
+    heading: 'Hạng mục kiểm tra',
     progress: (done: number, total: number) => `${String(done)}/${String(total)} hạng mục`,
     item: 'No.',
     content: 'Nội dung kiểm tra',
@@ -112,7 +112,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     judgment: 'Phán định',
     cell: (seq: number, n: number) => `Giá trị đo hạng mục ${String(seq)} n${String(n)}`,
     state: { err: 'Ngoài quy cách', empty: 'Chưa nhập', wait: 'Nhập chưa đủ', done: 'Hoàn thành' },
-    none: 'Không có hạng mục đo',
+    none: 'Không có hạng mục kiểm tra',
   },
 
   drawing: {
