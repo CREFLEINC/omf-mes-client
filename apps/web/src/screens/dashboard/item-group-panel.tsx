@@ -18,6 +18,15 @@ const groupNameOf = (
 ): string =>
   row.itemGroupCode === null ? t.unclassified : (row.itemGroupName ?? row.itemGroupCode);
 
+/** 상위 5 아래 한 줄 — 「기타 유형 n EA · 유형 미입력 m EA」, 0 인 쪽은 뺀다(시안 2026-11-10). */
+const restOf = (group: { otherTypedQty?: number; untypedNgQty: number }): string =>
+  t.restLine([
+    ...((group.otherTypedQty ?? 0) > 0
+      ? [t.otherTypesQty(formatFigure(group.otherTypedQty ?? 0))]
+      : []),
+    ...(group.untypedNgQty > 0 ? [t.untypedQty(formatFigure(group.untypedNgQty))] : []),
+  ]);
+
 const rateText = (rate: number | null): string =>
   rate === null ? k.none : `${formatFigure(rate)}%`;
 
@@ -119,8 +128,9 @@ export const ItemGroupPanel = ({
 };
 
 /**
- * 제품군별 불량 현황 창(omf-all-around#251). 「현재 현황」 LOT 목록 창과 같은 목록형 — 머리 줄(제품군 · 불량률 · 불량 · 생산)과
- * 줄 구분선, 본문만 스크롤. 줄마다 불량 유형 상위 5 를 대시보드 순위 막대로 보이고, 유형 없이 들어온 불량은 「유형 미입력」으로 적는다.
+ * 제품군별 불량 현황 창(omf-all-around#251 · 시안 2026-11-10). 「현재 현황」 LOT 목록 창과 같은 목록형 — 머리 줄(제품군 · 불량률 · 불량 ·
+ * 생산)과 줄 구분선, 본문만 스크롤. 줄마다 불량 유형 상위 5 를 바탕 줄이 있는 막대로 보이고, 그 아래 한 줄에 상위 5 밖 유형과
+ * 유형 없이 들어온 불량을 적는다.
  */
 export const ItemGroupDefectsDialog = ({
   open,
@@ -180,7 +190,6 @@ export const ItemGroupDefectsDialog = ({
                 <span className="dash-group-qty">{`${formatFigure(group.ngQty)} EA`}</span>
                 <span className="dash-group-qty">{`${formatFigure(group.totalQty)} EA`}</span>
                 <div className="dash-group-types">
-                  <p className="dash-group-caption">{t.worst}</p>
                   {group.topDefects.length === 0 ? (
                     <p className="dash-detail-none">{t.noTypes}</p>
                   ) : (
@@ -194,11 +203,7 @@ export const ItemGroupDefectsDialog = ({
                       showShare={false}
                     />
                   )}
-                  {group.untypedNgQty > 0 && (
-                    <p className="dash-detail-none">
-                      {t.untypedQty(formatFigure(group.untypedNgQty))}
-                    </p>
-                  )}
+                  {restOf(group) !== '' && <p className="dash-detail-none">{restOf(group)}</p>}
                 </div>
               </section>
             </li>

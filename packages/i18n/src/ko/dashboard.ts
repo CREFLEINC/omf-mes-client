@@ -223,13 +223,15 @@ export const dashboard = {
     detailButton: '상세 보기',
     detailButtonLabel: '제품군별 불량 현황 상세 보기',
     dialogTitle: '제품군별 불량 현황',
-    dialogSub: (rate: string, ng: string): string => `종합 불량률 ${rate}, 불량 ${ng} EA`,
+    dialogSub: (rate: string, ng: string): string => `종합 불량률 ${rate} · 불량 ${ng} EA`, // ui-check-ignore: C-13 사용자 시안 문구(#251)
     rateColumn: '불량률',
     ngColumn: '불량',
     totalColumn: '생산',
     worst: '불량 유형 상위 5',
     noTypes: '유형이 적힌 불량 기록이 없습니다.',
     untypedQty: (qty: string): string => `유형 미입력 ${qty} EA`,
+    otherTypesQty: (qty: string): string => `기타 유형 ${qty} EA`,
+    restLine: (parts: string[]): string => parts.join(' · '), // ui-check-ignore: C-13 사용자 시안 문구(#251)
     loading: '제품군별 불량 현황을 불러오는 중입니다.',
     failed: '제품군별 불량 현황을 불러오지 못했습니다.',
   },

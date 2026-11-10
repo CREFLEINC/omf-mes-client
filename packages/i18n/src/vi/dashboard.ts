@@ -198,6 +198,8 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     worst: 'Top 5 loại lỗi',
     noTypes: 'Không có bản ghi lỗi có loại lỗi.',
     untypedQty: (qty: string): string => `Chưa nhập loại lỗi ${qty} EA`,
+    otherTypesQty: (qty: string): string => `Loại khác ${qty} EA`,
+    restLine: (parts: string[]): string => parts.join(', '),
     loading: 'Đang tải tình trạng lỗi theo nhóm sản phẩm.',
     failed: 'Không tải được tình trạng lỗi theo nhóm sản phẩm.',
   },

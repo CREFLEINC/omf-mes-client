@@ -305,6 +305,8 @@ export interface DashboardItemGroupDefects {
   groups: (Omit<DashboardItemGroupProduction, 'goodQty'> & {
     /** 생산실적에 붙은 불량 기록의 유형별 수량 — 많은 순 상위 5. */
     topDefects: DashboardDefectPhenomenon[];
+    /** 상위 5 밖 유형들의 수량 합. 없으면(이전 서버) 줄에 적지 않는다. */
+    otherTypedQty?: number;
     /** NG − 유형이 적힌 불량 수량(0 이상) — 폐기 · 재작업 수량과 유형 없이 들어온 불량. */
     untypedNgQty: number;
   })[];

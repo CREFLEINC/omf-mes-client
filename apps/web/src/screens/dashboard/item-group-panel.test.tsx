@@ -48,6 +48,7 @@ const defects: DashboardItemGroupDefects = {
       ngQty: 20,
       defectRate: 6.7,
       topDefects: [{ defectCodeId: 1, defectCode: 'D1', defectName: '찍힘', qty: 15 }],
+      otherTypedQty: 1,
       untypedNgQty: 5,
     },
     {
@@ -134,7 +135,9 @@ describe('제품군별 생산 현황(omf-all-around#251)', () => {
     expect(dialog).toHaveTextContent(t.dialogSub('7.5%', '30'));
     const adt = await within(dialog).findByRole('region', { name: 'ADT 그룹' });
     expect(adt).toHaveTextContent('찍힘15 EA');
-    expect(adt).toHaveTextContent(t.untypedQty('5'));
+    /* 상위 5 아래 한 줄 — 기타 유형 · 유형 미입력(0 인 쪽은 뺀다). 반복 문구 「불량 유형 상위 5」는 없다. */
+    expect(adt).toHaveTextContent(t.restLine([t.otherTypesQty('1'), t.untypedQty('5')]));
+    expect(dialog).not.toHaveTextContent(t.worst);
     expect(within(dialog).getByRole('region', { name: t.unclassified })).toHaveTextContent(
       t.noTypes,
     );

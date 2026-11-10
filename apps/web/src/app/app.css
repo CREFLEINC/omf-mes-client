@@ -16863,11 +16863,27 @@ button.app-button-neutral {
   min-width: 0;
 }
 
-.dash-group-caption {
-  margin: 0;
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-  color: var(--on-surface-muted);
+/* 불량 유형 막대(시안 2026-11-10) — 둥근 바탕 줄 위에 같은 색으로 채운다. 수량은 굵게 하지 않는다. */
+.dash-group-types .dash-rank-row {
+  grid-template-columns: minmax(6rem, 10rem) minmax(3rem, 1fr) 4.5rem;
+}
+
+.dash-group-types .dash-rank-track {
+  display: block;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  /* 창 바탕이 surface-container-high 라 바탕 줄은 구분선 색으로 — 같은 색이면 줄이 보이지 않는다. */
+  background: var(--outline-variant);
+}
+
+.dash-group-types .dash-rank-bar {
+  border-radius: var(--radius-full);
+  background: var(--chart-2);
+}
+
+.dash-group-types .dash-rank-value {
+  font-weight: 400;
 }
 
 /*
