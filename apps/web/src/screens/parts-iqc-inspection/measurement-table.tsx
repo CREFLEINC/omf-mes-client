@@ -1,3 +1,4 @@
+import { Chip } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, type KeyboardEvent } from 'react';
@@ -8,6 +9,18 @@ import { acceptanceOf, judgeDimension, judgeValue } from './judgment';
 type ItemSpec = components['schemas']['InspectionItemSpec'];
 
 const t = messages.partsIqcInspection;
+
+/** 검사 내용 칸 — 이름은 칸 가운데, 필수 항목만 왼쪽에 「필수」(OA 화면과 같은 모양 · #247 · 사용자 지시 2026-11-10). */
+export const ItemNameCell = ({ item }: { item: ItemSpec }) => (
+  <span className="iqc-inspection-item-cell">
+    {item.requiredFlag && (
+      <Chip variant="status" size="sm" status="idle">
+        {messages.iqcInspection.measurements.requiredMark}
+      </Chip>
+    )}
+    <span className="iqc-inspection-item-name">{item.inspectionItemName}</span>
+  </span>
+);
 
 /** 「6.76 ±0.1」 — 위아래 공차가 같으면 ±, 다르면 「+a/-b」. 규격이 한쪽뿐이면 그 한쪽만. */
 export const specLines = (item: ItemSpec): [string, string] => {
@@ -90,14 +103,7 @@ export const MeasurementTable = ({
   return (
     <section className="parts-iqc-card" aria-labelledby="parts-iqc-dimension">
       <div className="parts-iqc-block-head">
-        <h3 id="parts-iqc-dimension">
-          {t.dimension.heading}
-          {items.length > 0 && (
-            <span className="required-mark" aria-hidden="true">
-              {' *'}
-            </span>
-          )}
-        </h3>
+        <h3 id="parts-iqc-dimension">{t.dimension.heading}</h3>
         <span className="parts-iqc-muted">
           {items.length === 0 ? t.dimension.none : t.dimension.progress(filled, items.length)}
         </span>
@@ -150,7 +156,9 @@ export const MeasurementTable = ({
                     <th scope="row" title={t.dimension.state[state]}>
                       {position + 1}
                     </th>
-                    <td className="parts-iqc-name">{item.inspectionItemName}</td>
+                    <td className="parts-iqc-name">
+                      <ItemNameCell item={item} />
+                    </td>
                     <td className="parts-iqc-spec">
                       <span>{nominal || range}</span>
                       {/* 공차 표기가 없는 규격은 위 줄이 이미 범위다 — 같은 말을 두 번 적지 않는다 */}

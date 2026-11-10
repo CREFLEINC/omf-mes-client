@@ -74,7 +74,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
 
   target: {
     heading: 'Đối tượng kiểm tra',
-    change: 'Đổi',
     itemCode: 'Mã vật tư',
     itemName: 'Tên vật tư',
     plan: 'Tiêu chuẩn kiểm tra',
@@ -98,6 +97,13 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     receivedAt: 'Thời gian nhập kho',
     inspectedQty: 'Số lượng kiểm tra',
     invalidInspectedQty: 'Nhập số nguyên từ 1 trở lên.',
+    inspectedAt: 'Thời gian kiểm tra',
+    inspectedTime: 'Giờ kiểm tra',
+    inspectedHour: 'Giờ kiểm tra (giờ)',
+    inspectedMinute: 'Giờ kiểm tra (phút)',
+    hourHead: 'Giờ',
+    minuteHead: 'Phút',
+    timePlaceholder: 'Chọn giờ',
   },
 
   dimension: {
@@ -147,7 +153,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     removeDefectType: (name: string) => `Bỏ ${name}`,
     defectCodesFailed: 'Không tải được loại lỗi.',
     checks: 'Hạng mục kiểm tra khác',
-    checkCount: (n: number) => `${String(n)} hạng mục`,
     checkNo: 'No.',
     checkItem: 'Hạng mục kiểm tra',
     checkValue: 'Kết quả đo',

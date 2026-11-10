@@ -2,6 +2,7 @@ import type { XrfResult, ItemJudgment } from './judgment';
 
 /** 입력 칸 글자 그대로 둔다 — 「1.」처럼 쓰는 중인 값을 숫자로 바꾸면 커서 앞 글자가 사라진다. */
 export interface PartsIqcForm {
+  inspectedAt: string;
   /** 항목 id → 시료 순서대로 입력 글자 */
   values: Record<number, string[]>;
   /** 기타 합격/불합격 항목 id → 판정 */
@@ -17,7 +18,8 @@ export interface PartsIqcForm {
   remarks: string;
 }
 
-export const emptyForm = (): PartsIqcForm => ({
+export const emptyForm = (inspectedAt: string): PartsIqcForm => ({
+  inspectedAt,
   values: {},
   checks: {},
   texts: {},

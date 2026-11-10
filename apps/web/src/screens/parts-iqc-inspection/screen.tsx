@@ -357,7 +357,6 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           ) : (
             <InspectionDetail
               inspectionRequestId={selectedId}
-              onClose={() => moveTo(null)}
               onDirtyChange={onDirtyChange}
               onSubmitted={() => {
                 setDirty(false);

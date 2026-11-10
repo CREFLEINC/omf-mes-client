@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Chip,
+  DatePicker,
   Dialog,
   IconButton,
   Icon,
@@ -21,9 +22,11 @@ import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
-import { formatPlantDateTime } from '../../patterns/plant-time';
+import { AttachmentPanel, useAttachments } from '../inspection-documents/attachment-panel';
+import { formatPlantDateTime, plantNowLocal, PLANT_UTC_OFFSET } from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
+import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
 import {
   iqcInspectionKeys,
   useDefectCodes,
@@ -63,7 +66,7 @@ import {
   type ItemJudgment,
   type XrfResult,
 } from './judgment';
-import { MeasurementTable, rowStateOf } from './measurement-table';
+import { ItemNameCell, MeasurementTable, rowStateOf } from './measurement-table';
 import {
   partsIqcKeys,
   useDrawings,
@@ -89,24 +92,32 @@ const tResult = messages.iqcInspection.result;
 const STANDARD_PATH = '/master-data/inspection-standard';
 const DEFECT_CODE_PATH = '/master-data/defect-cause-code';
 
+const TIME_LABELS: TimeFieldLabels = {
+  field: t.lot.inspectedTime,
+  hourList: t.lot.inspectedHour,
+  minuteList: t.lot.inspectedMinute,
+  hourHead: t.lot.hourHead,
+  minuteHead: t.lot.minuteHead,
+  placeholder: t.lot.timePlaceholder,
+};
+
+const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
 /** 비고 글자 수 — 사용자 시안(0/200). 서버 칸에는 길이 제한이 없다. */
 const REMARKS_MAX = 200;
 
 export interface InspectionDetailProps {
   inspectionRequestId: number;
-  onClose: () => void;
   onSubmitted: () => void;
   /** 입력이 있는가 — 목록에서 다른 의뢰를 고르거나 닫을 때 화면이 한 번 묻는다. */
   onDirtyChange: (dirty: boolean) => void;
 }
 
 /**
- * 부품 공장 IQC 수입검사 상세(omf-all-around#211 · 레퍼런스 화면) — 검사 대상 → 로트 → 치수 측정 → 기준서 도면 → 외관·XRF → 판정.
+ * 부품 공장 IQC 수입검사 상세(omf-all-around#211 · 레퍼런스 화면) — 로트 → 치수 측정 → 외관·XRF → 기타 검사 항목 → 판정 → 기준서 도면 → 비고.
  * [제출]은 측정값과 함께 임시 저장하고, XRF 성적서를 올린 뒤 확정한다(`useSubmitInspection`).
  */
 export const InspectionDetail = ({
   inspectionRequestId,
-  onClose,
   onSubmitted,
   onDirtyChange,
 }: InspectionDetailProps) => {
@@ -139,6 +150,9 @@ export const InspectionDetail = ({
   const isReinspecting = reinspectingFrom !== null && reinspectingFrom === latestRoundId;
   const confirmed = round !== null && round.statusCode === 'CONFIRMED' && !isReinspecting;
   const followUp = useRejectedLotFollowUp(detail.data?.lotId ?? null, confirmed);
+  /* 첨부 파일 탭 건수 — OA 화면과 같은 LOT 첨부(#247). LOT 이 없는 의뢰는 부르지 않는다. */
+  const lotId = detail.data?.lotId ?? null;
+  const attachments = useAttachments('LOT', lotId ?? 0, lotId !== null);
 
   const loading =
     detail.isPending ||
@@ -233,7 +247,6 @@ export const InspectionDetail = ({
                 measured: measurements.data ?? [],
               }
         }
-        onClose={onClose}
         onSubmitted={onSubmitted}
         onDirtyChange={onDirtyChange}
       />
@@ -242,11 +255,13 @@ export const InspectionDetail = ({
 
   /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
+  /* 확정된 의뢰는 이력에서 시작하고, 첨부 파일 탭은 고를 수 있다(#247). */
+  const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
   const tab = confirmed
-    ? 'history'
-    : picked?.requestId === inspectionRequestId
-      ? picked.tab
-      : 'input';
+    ? pickedTab === 'documents'
+      ? 'documents'
+      : 'history'
+    : (pickedTab ?? 'input');
 
   /* 목록 아래(또는 옆) 상세 구획에 선다 — 기존 검사 조회·판정과 같은 배치(팝업이 아니다 · 사용자 지시 2026-10-29). */
   return (
@@ -298,7 +313,7 @@ export const InspectionDetail = ({
       )}
       {isReinspecting && <p className="field-note">{t.dialog.reinspectNote}</p>}
       {/* IQC 생략은 OA 화면처럼 목록 「생략」 칸으로 옮겼다(omf-all-around#225). */}
-      {/* 검사 입력 · 검사 이력(사용자 지시 2026-10-30) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
+      {/* 검사 진행 · 첨부 파일 · 검사 이력 순(#247 · 사용자 지시 2026-11-10) — 이력은 이 의뢰의 회차를 읽기 전용으로 */}
       <Tabs
         className="parts-iqc-detail-tabs"
         size="md"
@@ -309,6 +324,48 @@ export const InspectionDetail = ({
           ...(confirmed
             ? []
             : [{ value: 'input', label: t.tabs.input, content: tab === 'input' ? body() : null }]),
+          /* 첨부 파일 — OA 화면 「첨부 파일」 탭과 같은 LOT 첨부(시험성적서 등 · #247 · 사용자 지시 2026-11-10). */
+          ...(lotId === null
+            ? []
+            : [
+                {
+                  value: 'documents',
+                  label: messages.inspectionDocuments.heading,
+                  badge:
+                    attachments.data === undefined || attachments.data.length === 0 ? undefined : (
+                      <span className="parts-iqc-muted">{attachments.data.length}</span>
+                    ),
+                  content:
+                    tab === 'documents' ? (
+                      <AttachmentPanel
+                        key={lotId}
+                        targetTypeCode="LOT"
+                        targetId={lotId}
+                        scrollX
+                        paged
+                        bulkDownload
+                        toolbarStart={
+                          <span className="iqc-inspection-head-badge iqc-inspection-docs-help">
+                            <Icon name="attach_file" size={16} aria-hidden />
+                            <span>
+                              {messages.inspectionDocuments.help
+                                .split(/(\d+\s*MB)/)
+                                .map((part, index) =>
+                                  /^\d+\s*MB$/.test(part) ? (
+                                    <strong key={index} className="iqc-inspection-docs-limit">
+                                      {part}
+                                    </strong>
+                                  ) : (
+                                    part
+                                  ),
+                                )}
+                            </span>
+                          </span>
+                        }
+                      />
+                    ) : null,
+                },
+              ]),
           {
             value: 'history',
             label: t.tabs.history,
@@ -430,7 +487,6 @@ interface FormProps {
       judgmentCode?: string | null;
     }[];
   } | null;
-  onClose: () => void;
   onSubmitted: () => void;
   onDirtyChange: (dirty: boolean) => void;
 }
@@ -470,7 +526,7 @@ const InspectionForm = (props: FormProps) => {
   );
 
   const initial = useMemo((): PartsIqcForm => {
-    const form = emptyForm();
+    const form = emptyForm(plantNowLocal());
     form.visualInspectedQty = draft === null ? defaultQty : String(draft.inspectedQty);
     for (const m of draft?.measured ?? []) {
       const spec = specs.find((s) => s.inspectionItemSpecId === m.inspectionItemSpecId);
@@ -507,6 +563,11 @@ const InspectionForm = (props: FormProps) => {
         judged === null && text.trim() !== '' ? { ...form.checks, [id]: 'ACCEPTED' } : form.checks,
     });
   };
+  const inspectedAtId = useId();
+  const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
+  const inspectedTime = inspectedTimeRaw.slice(0, 5);
+  const changeInspectedAt = (date: string, time: string) =>
+    change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
   const [chosen, setChosen] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -515,10 +576,6 @@ const InspectionForm = (props: FormProps) => {
   const [connectOpen, setConnectOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const submit = useSubmitInspection(props.onSubmitted);
-  const submittedAt = useRef<string | null>(null);
-  useEffect(() => {
-    submittedAt.current = null;
-  }, [form]);
 
   const inspectedQty = countOf(form.visualInspectedQty);
   const defectQtyRaw = countOf(form.visualDefectQty);
@@ -575,7 +632,8 @@ const InspectionForm = (props: FormProps) => {
   );
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
-  const measurementsOf = (measuredAt: string): SubmitVariables['measurements'] => {
+  const measurementsOf = (): SubmitVariables['measurements'] => {
+    const measuredAt = toOffset(form.inspectedAt);
     const out: SubmitVariables['measurements'] = [];
     dimensions.forEach((item) => {
       for (let i = 0; i < item.measurementCount; i += 1) {
@@ -633,20 +691,17 @@ const InspectionForm = (props: FormProps) => {
 
   const onSubmit = () => {
     setAsk(false);
-    /* 검사일시는 제출한 시점이다(사용자 지시 2026-11-09). 실패 뒤 그대로 다시 내면 같은 시각을 써 같은 멱등 키가 나간다. */
-    submittedAt.current ??= new Date().toISOString();
-    const inspectedAt = submittedAt.current;
     if (blocked || overall === null || inspectedQty === null) return;
     submit.write({
       inspectionRequestId: request.inspectionRequestId,
       draftResultId: draft?.inspectionResultId ?? null,
       previousResultId: props.previousResultId,
       uomId: request.uomId,
-      inspectedAt,
+      inspectedAt: toOffset(form.inspectedAt),
       inspectedQty,
       rejectedQty: overall === 'ACCEPTED' ? Math.min(rejectedQty, inspectedQty) : rejectedQty,
       overallJudgmentCode: overall,
-      measurements: measurementsOf(inspectedAt),
+      measurements: measurementsOf(),
       defects:
         defectsSent && 'rows' in defectResult
           ? defectResult.rows.map((row) => ({ ...row, defectDescription: null }))
@@ -701,19 +756,7 @@ const InspectionForm = (props: FormProps) => {
         <WorkerConnectDialog appUserId={props.appUserId} onClose={() => setConnectOpen(false)} />
       )}
 
-      <section className="parts-iqc-block" aria-labelledby="parts-iqc-target">
-        {/* 검사 대상 — 칸 이름 아래 테두리 상자에 자재 코드, 오른쪽 끝에 [변경](사용자 시안 2026-10-29) */}
-        <div className="field-cell">
-          <span className="field-label" id="parts-iqc-target">
-            {t.target.heading}
-          </span>
-          <div className="parts-iqc-target-box">
-            <strong>{props.itemParts?.code ?? '-'}</strong>
-            <Button variant="text" size="sm" onClick={props.onClose}>
-              {t.target.change}
-            </Button>
-          </div>
-        </div>
+      <section className="parts-iqc-block" aria-label={t.target.heading}>
         {/* 기본 정보 — OQC 상세의 기본 정보와 같은 짜임: 테두리 상자 안에 칸을 나란히, 칸 사이 세로선(사용자 시안 2026-10-29) */}
         <dl className="parts-iqc-facts">
           <div className="parts-iqc-fact">
@@ -783,8 +826,32 @@ const InspectionForm = (props: FormProps) => {
             </div>
           </dl>
           <div className="parts-iqc-lot-inspected">
+            {/* 시각은 입고 화면과 같은 시·분 고르기(공용 패턴) — 글자 입력 대신 DS 모양으로(사용자 지시 2026-10-29). */}
+            <div className="field-cell date-time-field">
+              <label className="field-label" htmlFor={inspectedAtId}>
+                {t.lot.inspectedAt}
+                <span className="required-mark" aria-hidden="true">
+                  {' *'}
+                </span>
+              </label>
+              <div className="date-time-field-controls">
+                <DatePicker
+                  id={inspectedAtId}
+                  value={inspectedDate === '' ? null : inspectedDate}
+                  onChange={(next) => changeInspectedAt(next, inspectedTime)}
+                />
+                <TimeField
+                  labels={TIME_LABELS}
+                  hour={inspectedTime.slice(0, 2)}
+                  minute={inspectedTime.slice(3, 5)}
+                  disabled={false}
+                  invalid={false}
+                  onChange={(hour, minute) => changeInspectedAt(inspectedDate, `${hour}:${minute}`)}
+                />
+              </div>
+            </div>
             {/* 검사 수량 — 이 회차에 실제로 검사한 수(사용자 지시 2026-10-30). 기본은 검사기준의 시료 수, 고칠 수 있다.
-                칸 이름은 위에(사용자 지시 2026-10-30). */}
+                검사일시와 한 줄, 칸 이름은 위에(검사일시와 같은 모양 · 사용자 지시 2026-10-30). */}
             <div className="field-cell parts-iqc-inspected-qty">
               <FieldLabel htmlFor="parts-iqc-inspected-qty" label={t.lot.inspectedQty} required />
               <TextField
@@ -811,63 +878,6 @@ const InspectionForm = (props: FormProps) => {
         disabled={submit.isSaving}
         onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
       />
-
-      {/* 종합 판정 — 치수 측정 바로 아래(사용자 지시 2026-10-30). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
-      <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
-        <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
-          {t.verdict.overall}
-        </h3>
-        <div className="parts-iqc-verdict-line">
-          <div
-            className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
-          >
-            <span className="parts-iqc-auto-label">{t.verdict.suggested}</span>
-            {suggested === null ? (
-              <span className="parts-iqc-muted">{t.verdict.pending}</span>
-            ) : (
-              <span className="parts-iqc-auto-value">
-                <strong>{t.judgment[suggested] ?? suggested}</strong>
-                {` ${t.verdict.rejectedQty(rejectedQty)}`}
-              </span>
-            )}
-          </div>
-          <div className="parts-iqc-inline-field parts-iqc-overall">
-            <span className="field-label" id="parts-iqc-overall">
-              {t.verdict.overall}
-              <span className="required-mark" aria-hidden="true">
-                {' *'}
-              </span>
-            </span>
-            <Select
-              aria-labelledby="parts-iqc-overall"
-              value={overall}
-              disabled={suggested === null}
-              options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
-                value,
-                label: t.judgment[value] ?? value,
-              }))}
-              onChange={(value) => setChosen(value)}
-            />
-          </div>
-        </div>
-        {needsReason && (
-          <div className="field-cell parts-iqc-stretch">
-            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
-            <TextArea
-              id="parts-iqc-reason"
-              fullWidth
-              helperText={t.verdict.reasonHint}
-              value={reason}
-              maxLength={500}
-              rows={2}
-              error={submit.fieldErrors.judgmentChangeReason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </div>
-        )}
-      </section>
-
-      <DrawingImages drawings={props.drawings} />
 
       {/* 외관 · XRF — 한 줄에 수량 둘 · 세로선 · XRF 결과, 구분선 아래 XRF 성적서(사용자 시안 2026-10-29) */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-visual">
@@ -1066,99 +1076,167 @@ const InspectionForm = (props: FormProps) => {
         )}
       </section>
 
-      {/* 기타 검사 항목 — 표(No. · 검사 항목 · 판정), 같은 상자에 비고(사용자 시안 2026-10-29). 외관 불량 유형은 외관 상자로 옮겼다(2026-11-04). */}
-      <section className="parts-iqc-card" aria-labelledby="parts-iqc-checks">
-        {checkItems.length > 0 && (
-          <>
-            <div className="parts-iqc-block-head">
-              <h3 id="parts-iqc-checks">
-                {t.visual.checks}
-                <span className="required-mark" aria-hidden="true">
-                  {' *'}
-                </span>
-              </h3>
-              <span className="parts-iqc-muted">{t.visual.checkCount(checkItems.length)}</span>
-            </div>
-            <div className="parts-iqc-grid-scroll">
-              <table className="parts-iqc-check-table">
-                <thead>
-                  <tr>
-                    <th scope="col">{t.visual.checkNo}</th>
-                    <th scope="col">{t.visual.checkItem}</th>
-                    {hasTextChecks && <th scope="col">{t.visual.checkValue}</th>}
-                    <th scope="col">{t.dimension.judgment}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {checkItems.map((item, index) => (
-                    <tr key={item.inspectionItemSpecId}>
-                      <td>{index + 1}</td>
-                      <td>{item.inspectionItemName}</td>
-                      {hasTextChecks && (
-                        <td className="parts-iqc-check-value">
-                          {item.dataTypeCode === 'TEXT' && (
-                            <TextField
-                              fullWidth
-                              aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
-                              value={form.texts[item.inspectionItemSpecId] ?? ''}
-                              maxLength={200}
-                              onChange={(event) => changeText(item, event.target.value)}
-                            />
-                          )}
-                        </td>
-                      )}
-                      <td>
-                        <div
-                          className="parts-iqc-check-row"
-                          role="group"
-                          aria-label={item.inspectionItemName}
-                        >
-                          {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
-                            <Chip
-                              key={value}
-                              variant="filter"
-                              data-judgment={value}
-                              aria-pressed={form.checks[item.inspectionItemSpecId] === value}
-                              selected={form.checks[item.inspectionItemSpecId] === value}
-                              onSelectedChange={(on) =>
-                                change({
-                                  ...form,
-                                  checks: {
-                                    ...form.checks,
-                                    [item.inspectionItemSpecId]: on ? value : null,
-                                  },
-                                })
-                              }
-                            >
-                              {value === 'ACCEPTED' ? t.ok : t.ng}
-                            </Chip>
-                          ))}
-                        </div>
+      {/* 기타 검사 항목 — 표(No. · 검사 내용 · 측정 결과 · 판정). 비고는 기준서 도면 아래 제 칸으로(#247 · 사용자 지시 2026-11-10). */}
+      {checkItems.length > 0 && (
+        <section className="parts-iqc-card" aria-labelledby="parts-iqc-checks">
+          <div className="parts-iqc-block-head">
+            <h3 id="parts-iqc-checks">{t.visual.checks}</h3>
+            {/* 치수 측정처럼 「판정한 항목 / 전체」(#247 · 사용자 지시 2026-11-10). */}
+            <span className="parts-iqc-muted">
+              {t.dimension.progress(
+                checkItems.filter(
+                  (item) => (form.checks[item.inspectionItemSpecId] ?? null) !== null,
+                ).length,
+                checkItems.length,
+              )}
+            </span>
+          </div>
+          <div className="parts-iqc-grid-scroll">
+            {/* 치수 측정 표와 같은 모양 · 같은 머리 이름(#247 · 사용자 지시 2026-11-10). */}
+            <table className="parts-iqc-grid">
+              <thead>
+                <tr>
+                  <th scope="col" className="parts-iqc-item">
+                    {t.visual.checkNo}
+                  </th>
+                  <th scope="col" className="parts-iqc-name">
+                    {t.dimension.content}
+                  </th>
+                  {hasTextChecks && <th scope="col">{t.visual.checkValue}</th>}
+                  <th scope="col" className="parts-iqc-verdict-head">
+                    {t.dimension.judgment}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {checkItems.map((item, index) => (
+                  <tr key={item.inspectionItemSpecId}>
+                    <td>{index + 1}</td>
+                    <td className="parts-iqc-name">
+                      <ItemNameCell item={item} />
+                    </td>
+                    {hasTextChecks && (
+                      <td className="parts-iqc-check-value">
+                        {item.dataTypeCode === 'TEXT' && (
+                          <TextField
+                            fullWidth
+                            aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
+                            value={form.texts[item.inspectionItemSpecId] ?? ''}
+                            maxLength={200}
+                            onChange={(event) => changeText(item, event.target.value)}
+                          />
+                        )}
                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+                    )}
+                    <td>
+                      <div
+                        className="parts-iqc-check-row"
+                        role="group"
+                        aria-label={item.inspectionItemName}
+                      >
+                        {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
+                          <Chip
+                            key={value}
+                            variant="filter"
+                            data-judgment={value}
+                            aria-pressed={form.checks[item.inspectionItemSpecId] === value}
+                            selected={form.checks[item.inspectionItemSpecId] === value}
+                            onSelectedChange={(on) =>
+                              change({
+                                ...form,
+                                checks: {
+                                  ...form.checks,
+                                  [item.inspectionItemSpecId]: on ? value : null,
+                                },
+                              })
+                            }
+                          >
+                            {value === 'ACCEPTED' ? t.ok : t.ng}
+                          </Chip>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
-        <div className="field-cell parts-iqc-stretch">
-          <h3 className="parts-iqc-sub-title">
-            <label htmlFor="parts-iqc-remarks">{t.visual.remarks}</label>
-          </h3>
-          <TextArea
-            id="parts-iqc-remarks"
-            fullWidth
-            placeholder={t.visual.remarksPlaceholder}
-            value={form.remarks}
-            rows={3}
-            maxLength={REMARKS_MAX}
-            showCount
-            onChange={(event) => change({ ...form, remarks: event.target.value })}
-          />
+      {/* 종합 판정 — 기타 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
+      <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
+        <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
+          {t.verdict.overall}
+        </h3>
+        <div className="parts-iqc-verdict-line">
+          <div
+            className={`parts-iqc-auto-box${suggested === 'REJECTED' ? ' is-ng' : suggested === 'ACCEPTED' ? ' is-ok' : ''}`}
+          >
+            <span className="parts-iqc-auto-label">{t.verdict.suggested}</span>
+            {suggested === null ? (
+              <span className="parts-iqc-muted">{t.verdict.pending}</span>
+            ) : (
+              <span className="parts-iqc-auto-value">
+                <strong>{t.judgment[suggested] ?? suggested}</strong>
+                {` ${t.verdict.rejectedQty(rejectedQty)}`}
+              </span>
+            )}
+          </div>
+          <div className="parts-iqc-inline-field parts-iqc-overall">
+            <span className="field-label" id="parts-iqc-overall">
+              {t.verdict.overall}
+              <span className="required-mark" aria-hidden="true">
+                {' *'}
+              </span>
+            </span>
+            <Select
+              aria-labelledby="parts-iqc-overall"
+              value={overall}
+              disabled={suggested === null}
+              options={['ACCEPTED', 'REJECTED', 'HELD'].map((value) => ({
+                value,
+                label: t.judgment[value] ?? value,
+              }))}
+              onChange={(value) => setChosen(value)}
+            />
+          </div>
         </div>
+        {needsReason && (
+          <div className="field-cell parts-iqc-stretch">
+            <FieldLabel htmlFor="parts-iqc-reason" label={t.verdict.reason} required />
+            <TextArea
+              id="parts-iqc-reason"
+              fullWidth
+              helperText={t.verdict.reasonHint}
+              value={reason}
+              maxLength={500}
+              rows={2}
+              error={submit.fieldErrors.judgmentChangeReason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </div>
+        )}
       </section>
+
+      <DrawingImages drawings={props.drawings} />
+
+      {/* 비고 — 맨 아래(#247 · 사용자 지시 2026-11-10). */}
+      <div className="field-cell parts-iqc-stretch">
+        <h3 className="parts-iqc-sub-title">
+          <label htmlFor="parts-iqc-remarks">{t.visual.remarks}</label>
+        </h3>
+        <TextArea
+          id="parts-iqc-remarks"
+          fullWidth
+          placeholder={t.visual.remarksPlaceholder}
+          value={form.remarks}
+          rows={3}
+          maxLength={REMARKS_MAX}
+          showCount
+          onChange={(event) => change({ ...form, remarks: event.target.value })}
+        />
+      </div>
 
       {ask &&
         (() => {
@@ -1253,7 +1331,7 @@ const InspectionForm = (props: FormProps) => {
           variant="text"
           disabled={submit.isSaving}
           onClick={() => {
-            const cleared = emptyForm();
+            const cleared = emptyForm(form.inspectedAt);
             cleared.visualInspectedQty = defaultQty;
             change(cleared);
             setChosen(null);

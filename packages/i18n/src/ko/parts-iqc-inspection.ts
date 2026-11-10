@@ -68,7 +68,6 @@ export const partsIqcInspection = {
 
   target: {
     heading: '검사 대상',
-    change: '변경',
     itemCode: '자재 코드 No.',
     itemName: '자재명',
     plan: '검사 기준서',
@@ -92,6 +91,13 @@ export const partsIqcInspection = {
     receivedAt: '입고일시',
     inspectedQty: '검사 수량',
     invalidInspectedQty: '1 이상 정수를 입력하세요.',
+    inspectedAt: '검사일시',
+    inspectedTime: '검사 시각',
+    inspectedHour: '검사 시각(시)',
+    inspectedMinute: '검사 시각(분)',
+    hourHead: '시',
+    minuteHead: '분',
+    timePlaceholder: '시각 선택',
   },
 
   dimension: {
@@ -142,7 +148,6 @@ export const partsIqcInspection = {
     removeDefectType: (name: string) => `${name} 빼기`,
     defectCodesFailed: '불량 유형을 불러오지 못했습니다.',
     checks: '기타 검사 항목',
-    checkCount: (n: number) => `${String(n)}개 항목`,
     checkNo: 'No.',
     checkItem: '검사 항목',
     /** 텍스트 항목의 글 칸(#247 · 사용자 지시 2026-11-10) — 다른 항목 줄은 비어 있다. */

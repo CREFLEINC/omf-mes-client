@@ -32349,12 +32349,8 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   width: 4rem;
 }
 
-/* 검사 내용 — 항목 이름은 왼쪽 정렬(#247). */
-.parts-iqc-grid td.parts-iqc-name {
-  text-align: start;
-}
-
-.parts-iqc-grid th.parts-iqc-name {
+.parts-iqc-grid th.parts-iqc-name,
+.parts-iqc-grid .iqc-inspection-item-name {
   white-space: nowrap;
 }
 
@@ -32775,20 +32771,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .parts-iqc-muted {
   margin: 0;
   color: var(--on-surface-variant);
-}
-
-.parts-iqc-target-box {
-  /* 칸 묶음(.field-cell)은 내용을 왼쪽에 붙여 폭을 줄인다 — 상자는 가로 전체를 쓴다. */
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: var(--control-height-md);
-  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-md);
-  background: var(--surface);
 }
 
 /* 기본 정보 — OQC 상세 `.oqc-inspection-facts` 와 같은 모양(테두리 상자 · 칸 사이 세로선). */
@@ -33290,54 +33272,9 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   gap: var(--space-2);
 }
 
-.parts-iqc-check-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
-
-.parts-iqc-check-table th,
-.parts-iqc-check-table td {
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--outline-variant);
-  text-align: start;
-}
-
-.parts-iqc-check-table thead th {
-  background: var(--surface-container);
-  color: var(--on-surface-variant);
-  font-weight: 500;
-}
-
-.parts-iqc-check-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.parts-iqc-check-table th:first-child,
-.parts-iqc-check-table td:first-child {
-  width: 4rem;
-  text-align: center;
-  border-right: 1px solid var(--outline-variant);
-}
-
-.parts-iqc-check-table th:last-child,
-.parts-iqc-check-table td:last-child {
-  width: 10rem;
-  text-align: center;
-  border-left: 1px solid var(--outline-variant);
-}
-
-.parts-iqc-check-table .parts-iqc-check-row {
+/* 기타 검사 항목의 OK · NG 단추 — 치수 측정 표와 같은 칸에서 가운데(#247). */
+.parts-iqc-grid .parts-iqc-check-row {
   justify-content: center;
-}
-
-/* 검사 항목 글은 왼쪽 — 검사 화면 표의 가운데 정렬 규칙보다 앞서도록 무게를 올린다. */
-.parts-iqc-check-table td:nth-child(2):nth-child(n),
-.parts-iqc-check-table th:nth-child(2):nth-child(n) {
-  text-align: left;
 }
 
 .parts-iqc-card-split {
