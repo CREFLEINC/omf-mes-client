@@ -21541,39 +21541,63 @@ button.app-button-neutral {
   color: var(--on-semantic-info-container);
 }
 
-/* 검사 안내 문구(omf-all-around#252) — 줄 전체 폭, 여러 줄이면 줄바꿈 그대로. 아이콘은 첫 줄에 맞춘다. */
-/* 한 줄 안내의 알약 모양(:nth-child(n) 규칙)보다 앞서야 한다. */
+/*
+ * 검사 안내 문구(omf-all-around#252) — 줄 전체 폭. 위 줄은 정보 표식 · 「검사 안내」 · 오른쪽 끝 「전체 보기/접기」, 아래는 본문.
+ * 한 줄 안내의 알약 모양(:nth-child(n) 규칙)보다 앞서야 한다.
+ */
 .inspection-guide-note.iqc-inspection-action-note:nth-child(n) {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  gap: var(--space-1);
   width: 100%;
   box-sizing: border-box;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   /* 여러 줄 안내라 알약 모서리를 쓰지 않는다 — 길면 타원으로 그려졌다. */
   border-radius: var(--radius-md);
+}
+
+.inspection-guide-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 1.5rem;
+}
+
+.inspection-guide-title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.inspection-guide-head > button {
+  margin-block: calc(var(--space-1) * -1);
+  color: inherit;
+}
+
+/*
+ * 본문 — 적은 줄바꿈은 그대로, 긴 낱말도 칸 안에서 끊는다. 기본은 2줄까지만(넘으면 「…」). 안쪽 스크롤은 두지 않는다 — 펼치면
+ * 칸이 늘고 페이지가 스크롤된다.
+ */
+.inspection-guide-blocks {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-width: 0;
+  overflow: hidden;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
 
-.inspection-guide-note > span:first-child {
-  flex: none;
-  margin-top: 2px;
+.inspection-guide-blocks[data-expanded="true"] {
+  display: block;
+  -webkit-line-clamp: none;
 }
 
-/* 공통 · 품목 안내를 위아래로 — 둘 다 있을 때 이름표를 단다(#252). */
-.inspection-guide-blocks {
-  display: grid;
-  gap: var(--space-2);
-  min-width: 0;
+.inspection-guide-block + .inspection-guide-block {
+  margin-top: var(--space-1);
 }
 
-.inspection-guide-block {
-  display: grid;
-  gap: var(--space-1);
-}
-
+/* 이름표는 본문 첫 줄 앞에 붙인다 — 따로 한 줄을 차지하면 접힌 2줄 중 하나가 이름표로 끝난다. */
 .inspection-guide-scope {
-  font: var(--type-label-md);
+  margin-right: var(--space-2);
   font-weight: 600;
 }
 

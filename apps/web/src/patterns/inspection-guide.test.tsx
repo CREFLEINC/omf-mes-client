@@ -1,5 +1,5 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
 import { InspectionGuideNotice, guideTextOf } from './inspection-guide';
@@ -60,5 +60,41 @@ describe('검사 안내 문구', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(container.querySelector('.inspection-guide-note')).toBeNull();
+  });
+
+  describe('2줄 접기', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    /* 시험 환경은 그리지 않는다 — 그려진 높이(scrollHeight > clientHeight)를 흉내 낸다. */
+    const drawnLines = (lines: number) => {
+      vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(lines * 16);
+      vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(Math.min(lines, 2) * 16);
+    };
+
+    it('2줄 이하로 그려지면 「전체 보기」가 없다', async () => {
+      drawnLines(2);
+      renderNotice([{ scopeCode: 'ITEM', guideTextKo: '장갑 착용\n도면 3번 확인', guideTextVi: null }]);
+
+      await screen.findByRole('note', { name: '검사 안내' });
+      expect(screen.queryByRole('button', { name: '전체 보기' })).toBeNull();
+    });
+
+    it('2줄을 넘으면 「전체 보기」로 펼치고 「접기」로 다시 접는다', async () => {
+      drawnLines(5);
+      renderNotice([{ scopeCode: 'ITEM', guideTextKo: '1\n2\n3\n4\n5', guideTextVi: null }]);
+
+      const note = await screen.findByRole('note', { name: '검사 안내' });
+      const body = note.querySelector('.inspection-guide-blocks');
+      expect(body).not.toHaveAttribute('data-expanded');
+
+      fireEvent.click(await screen.findByRole('button', { name: '전체 보기' }));
+      expect(body).toHaveAttribute('data-expanded', 'true');
+
+      fireEvent.click(screen.getByRole('button', { name: '접기' }));
+      expect(body).not.toHaveAttribute('data-expanded');
+      expect(screen.getByRole('button', { name: '전체 보기' })).toBeInTheDocument();
+    });
   });
 });

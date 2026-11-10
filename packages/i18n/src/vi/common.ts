@@ -66,6 +66,8 @@ export const common: Translated<typeof ko.common> = {
     guide: 'Hướng dẫn kiểm tra',
     guideCommon: 'Hướng dẫn chung',
     guideItem: 'Hướng dẫn theo sản phẩm',
+    guideExpand: 'Xem tất cả',
+    guideCollapse: 'Thu gọn',
     label: 'Trạng thái yêu cầu kiểm tra',
     requested: 'Chờ',
     inProgress: 'Đang làm',

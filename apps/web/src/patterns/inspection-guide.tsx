@@ -1,10 +1,11 @@
-import { Icon } from '@crefle/web-ui';
+import { Button, Icon } from '@crefle/web-ui';
 import type {
   InspectionGuideForward,
   InspectionPlanVersionGuideForward,
 } from '@omf-mes/api-client';
 import { activeLocale, messages, type Locale } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
@@ -51,6 +52,9 @@ export const useInspectionGuide = (inspectionRequestId: number | null) => {
  * 검사 안내 띠(omf-all-around#252) — IQC · PQC · OQC 검사 화면의 기준 정보 바로 아래에 둔다. 전 품목 공통 기준의 안내와
  * 품목 기준의 안내를 함께(공통이 위) 정보 아이콘 + 파란 바탕으로 보이고, 줄바꿈은 그대로 둔다. 둘 다 있을 때만 「공통 안내」 ·
  * 「품목 안내」 이름표를 붙인다. 문구가 없거나 읽지 못하면 아무것도 그리지 않는다 — 검사를 막지 않는다.
+ *
+ * 본문은 2줄까지만 보이고 넘는 줄은 「…」로 줄인다. 「전체 보기」는 **그려진 줄 수**가 2줄을 넘을 때만 보인다 — 글자 수가 아니라
+ * 실제 높이로 재고, 폭이 바뀌면 다시 잰다. 펼친 뒤에는 「접기」로 바뀐다.
  */
 export const InspectionGuideNotice = ({
   inspectionRequestId,
@@ -58,6 +62,25 @@ export const InspectionGuideNotice = ({
   inspectionRequestId: number | null;
 }) => {
   const blocks = useInspectionGuide(inspectionRequestId).data ?? [];
+  const bodyRef = useRef<HTMLDivElement>(null);
+  /* 다른 의뢰로 옮기면 다시 접힌다. */
+  const [expandedFor, setExpandedFor] = useState<number | null>(null);
+  const expanded = expandedFor !== null && expandedFor === inspectionRequestId;
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    /* 펼친 동안에는 잴 수 없다 — 「접기」를 그대로 둔다. */
+    if (body === null || expanded) return;
+    const measure = () => setOverflowing(body.scrollHeight > body.clientHeight + 1);
+    measure();
+    /* 시험 환경(jsdom)에는 `ResizeObserver` 가 없다. */
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [blocks, expanded]);
+
   if (blocks.length === 0) return null;
   const t = messages.common.inspectionHub;
   return (
@@ -67,8 +90,25 @@ export const InspectionGuideNotice = ({
       role="note"
       aria-label={t.guide}
     >
-      <Icon name="info" size={16} aria-hidden />
-      <div className="inspection-guide-blocks">
+      <div className="inspection-guide-head">
+        <Icon name="info" size={16} aria-hidden />
+        <strong className="inspection-guide-title">{t.guide}</strong>
+        {(overflowing || expanded) && (
+          <Button
+            variant="text"
+            size="sm"
+            aria-expanded={expanded}
+            onClick={() => setExpandedFor(expanded ? null : inspectionRequestId)}
+          >
+            {expanded ? t.guideCollapse : t.guideExpand}
+          </Button>
+        )}
+      </div>
+      <div
+        ref={bodyRef}
+        className="inspection-guide-blocks"
+        data-expanded={expanded ? 'true' : undefined}
+      >
         {blocks.map((block) => (
           <div key={block.scopeCode} className="inspection-guide-block">
             {blocks.length > 1 && (
