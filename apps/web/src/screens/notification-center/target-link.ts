@@ -50,20 +50,30 @@ export interface TargetLink {
  * 값을 함수로 두는 이유는 주소마다 번호를 싣는 자리가 다르기 때문이다 — 지금은 질의 인자
  * 하나뿐이지만 경로 조각을 쓰는 유형이 오면 그 유형만 다른 함수를 갖는다.
  */
-const DESTINATIONS: Record<string, (targetId: number) => string> = {
-  APPROVAL_REQUEST: (targetId) => `/approval/inbox?rq=${String(targetId)}`,
-  INBOUND_RECEIPT: () => '/logistics/iqc-inspection',
+interface Destination {
+  to: (targetId: number) => string;
+  /** 단추에 보이는 할 일 */
+  action: string;
+}
+
+const DESTINATIONS: Record<string, Destination> = {
+  APPROVAL_REQUEST: {
+    to: (targetId) => `/approval/inbox?rq=${String(targetId)}`,
+    action: t.actions.targetActions.approval,
+  },
+  INBOUND_RECEIPT: {
+    to: () => '/logistics/iqc-inspection',
+    action: t.actions.targetActions.iqcInspection,
+  },
 };
 
 /** 같은 대상 유형이라도 알림 종류가 도착지를 정하는 경우 — 유형 표보다 먼저 본다. */
-const EVENT_DESTINATIONS: Record<
-  string,
-  { targetTypeCode: string; to: (targetId: number) => string }
-> = {
+const EVENT_DESTINATIONS: Record<string, Destination & { targetTypeCode: string }> = {
   IQC_INSPECTION_REJECTED: {
     targetTypeCode: 'LOT',
     to: (targetId) =>
       `/logistics/inbound-schedule?lot=${String(targetId)}&post=${String(targetId)}`,
+    action: t.actions.targetActions.defectReceipt,
   },
 };
 
@@ -85,13 +95,13 @@ export const toTargetLink = (view: NotificationView, title: string): TargetLink 
 
   const byEvent = EVENT_DESTINATIONS[view.eventCode];
   const destination =
-    byEvent?.targetTypeCode === targetTypeCode ? byEvent.to : DESTINATIONS[targetTypeCode];
+    byEvent?.targetTypeCode === targetTypeCode ? byEvent : DESTINATIONS[targetTypeCode];
 
   if (destination === undefined) return null;
 
   return {
-    to: destination(targetId),
-    label: t.actions.openTarget(title),
-    shortLabel: t.actions.openTargetShort,
+    to: destination.to(targetId),
+    label: t.actions.openTarget(title, destination.action),
+    shortLabel: destination.action,
   };
 };

@@ -1,3 +1,4 @@
+import { Icon } from '@crefle/web-ui';
 import { Link } from 'react-router';
 
 import { NotificationCard, type NotificationCardProps } from './notification-card';
@@ -53,8 +54,9 @@ export const NotificationRow = ({ view, title, ...card }: NotificationRowProps) 
          * 이름이 같으면 음성 조작도 보조 기술도 어느 것을 부르는지 가릴 수 없다.
          * ⚠ 보이는 글자를 이름에 그대로 담는다 — 담지 않으면 보이는 글자로 부를 수 없다.
          */
-        <Link to={link.to} aria-label={link.label}>
+        <Link className="notification-target-link" to={link.to} aria-label={link.label}>
           {link.shortLabel}
+          <Icon name="arrow_forward" size={16} />
         </Link>
       )}
     </div>
