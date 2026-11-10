@@ -8,13 +8,14 @@ import { runRequest } from './request';
 type HandoverAlertType = components['schemas']['HandoverAlertType'];
 
 /**
- * 인계 작업 종류 10종(피처 002, omf-all-around#190) — 기존 알림 이벤트 6종과 **다른 목록**이다(research R-1).
+ * 인계 작업 종류 11종(피처 002, omf-all-around#190) — 기존 알림 이벤트 6종과 **다른 목록**이다(research R-1).
  *
  * 여러 화면(W-CO-14 설정, W-CO-12 템플릿, W-CO-03·W-CO-13·대시보드 이름 풀이)이 같은 조회를 쓴다.
  * 이름은 서버 목록이 정본이고, 화면에 세우는 차례는 업무 흐름 순서다(확정 2026-10-28).
  */
 export const HANDOVER_ALERT_ORDER = [
   'IQC_INSPECTION_REQUESTED',
+  'IQC_INSPECTION_REJECTED',
   'PUTAWAY_REQUESTED',
   'MATERIAL_PICKING_REQUESTED',
   'STOCK_TRANSFER_ARRIVAL_PENDING',

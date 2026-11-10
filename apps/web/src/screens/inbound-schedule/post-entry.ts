@@ -26,3 +26,13 @@ export const withoutPostEntry = (params: URLSearchParams): URLSearchParams => {
 
   return next;
 };
+
+/**
+ * 「검사 불합격(IQC)」 알림이 여는 주소 — `lot=<LOT 번호(내부)>`. 알림은 LOT 만 알고 발주를 모르므로 목록을 그 LOT 이
+ * 입하된 발주로 좁힌다(기간·조건 없이). 다른 조건으로 조회하면 주소를 새로 쓰므로 이 키는 사라진다.
+ */
+export const readLotEntry = (params: URLSearchParams): number | null => {
+  const raw = params.get('lot') ?? '';
+
+  return POSITIVE_INTEGER.test(raw) && Number(raw) >= 1 ? Number(raw) : null;
+};

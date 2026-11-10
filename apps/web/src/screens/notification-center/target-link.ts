@@ -15,6 +15,7 @@ import type { NotificationView } from './types';
  * | --- | --- | :-: |
  * | `APPROVAL_REQUEST` | `/approval/inbox?rq=<번호>` — 그 화면이 `rq`를 조건 없이 읽어 곧바로 상세를 연다(실측 `approval-inbox/filters.ts`의 `readSelectedRequestId`) | ✅ |
  * | `LOT` | ⛔ 재고 현황은 **창고 번호가 함께 있어야** 선택을 읽는다. 알림은 그것을 주지 않는다 |  |
+ * | `LOT` · 알림 `IQC_INSPECTION_REJECTED` | `/logistics/inbound-schedule?lot=<번호>&post=<번호>` — 입고 관리가 그 LOT 의 발주를 찾아 「입고 처리」 창을 연다(불량 창고만 고를 수 있다) | ✅ |
  * | `WORK_ORDER` | ⛔ 생산실행 화면이 아직 없다 |  |
  * | `NONCONFORMANCE` | ⛔ 품질 화면이 아직 없다 |  |
  * | `INBOUND_RECEIPT` | `/logistics/iqc-inspection` — 인계 T10(피처 002, R-8). IQC 화면은 입하로 거르지 못해 **탭만 연다** | ✅ |
@@ -54,6 +55,18 @@ const DESTINATIONS: Record<string, (targetId: number) => string> = {
   INBOUND_RECEIPT: () => '/logistics/iqc-inspection',
 };
 
+/** 같은 대상 유형이라도 알림 종류가 도착지를 정하는 경우 — 유형 표보다 먼저 본다. */
+const EVENT_DESTINATIONS: Record<
+  string,
+  { targetTypeCode: string; to: (targetId: number) => string }
+> = {
+  IQC_INSPECTION_REJECTED: {
+    targetTypeCode: 'LOT',
+    to: (targetId) =>
+      `/logistics/inbound-schedule?lot=${String(targetId)}&post=${String(targetId)}`,
+  },
+};
+
 /**
  * 이 알림이 갈 수 있는 곳. **갈 수 없으면 `null`이고, 그때 링크를 만들지 않는다.**
  *
@@ -70,7 +83,9 @@ export const toTargetLink = (view: NotificationView, title: string): TargetLink 
 
   if (targetTypeCode === null || targetId === null) return null;
 
-  const destination = DESTINATIONS[targetTypeCode];
+  const byEvent = EVENT_DESTINATIONS[view.eventCode];
+  const destination =
+    byEvent?.targetTypeCode === targetTypeCode ? byEvent.to : DESTINATIONS[targetTypeCode];
 
   if (destination === undefined) return null;
 

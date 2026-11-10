@@ -4,7 +4,7 @@ import { HANDOVER_ALERT_ORDER } from '../../patterns/handover-alert-types';
 import { HANDOVER_TEMPLATE_PARAMS, TEMPLATE_PARAMS, handoverParamsOf } from './template-params';
 
 /**
- * 고객사에 전달한 영문 템플릿 10종의 파라미터 이름 — `specs/002-terminal-task-alerts/zalo-templates.md`
+ * 고객사에 전달한 영문 템플릿 11종의 파라미터 이름 — `specs/002-terminal-task-alerts/zalo-templates.md`
  * 표의 「파라미터」 칸을 그대로 옮겼다. 고객사는 이 이름으로 템플릿을 등록한다.
  */
 const ZALO_TEMPLATES_MD: Record<string, string> = {
@@ -19,10 +19,11 @@ const ZALO_TEMPLATES_MD: Record<string, string> = {
   OQC_INSPECTION_REQUESTED: 'request_no, request_count, ship_date, event_time',
   REWORK_WORK_ORDER_CREATED: 'wo_no, item, qty, ncr_no, process, event_time, actor',
   IQC_INSPECTION_REQUESTED: 'receipt_no, lot_count, supplier, event_time',
+  IQC_INSPECTION_REJECTED: 'receipt_no, item, lot_no, supplier, qty, next_step, event_time',
 };
 
 describe('인계 템플릿 파라미터 — SC-006 클라이언트 쪽', () => {
-  it('SC-006 10종 파라미터 이름이 zalo-templates.md 와 100% 같다', () => {
+  it('SC-006 11종 파라미터 이름이 zalo-templates.md 와 100% 같다', () => {
     expect(Object.keys(HANDOVER_TEMPLATE_PARAMS).sort()).toEqual(
       Object.keys(ZALO_TEMPLATES_MD).sort(),
     );
@@ -31,7 +32,7 @@ describe('인계 템플릿 파라미터 — SC-006 클라이언트 쪽', () => {
     }
   });
 
-  it('SC-006 화면이 세우는 10종 차례와 파라미터 표의 종류가 같다', () => {
+  it('SC-006 화면이 세우는 11종 차례와 파라미터 표의 종류가 같다', () => {
     expect([...HANDOVER_ALERT_ORDER].sort()).toEqual(Object.keys(HANDOVER_TEMPLATE_PARAMS).sort());
   });
 

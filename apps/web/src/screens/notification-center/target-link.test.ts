@@ -20,6 +20,20 @@ describe('toTargetLink — 대응표에 있는 유형', () => {
     expect(toTargetLink(viewOf(APPROVAL), TITLE)?.to).toBe('/approval/inbox?rq=7201');
   });
 
+  it('검사 불합격(IQC) 알림은 입고 관리의 그 LOT 입고 처리 창을 가리킨다', () => {
+    const view = viewOf({
+      eventCode: 'IQC_INSPECTION_REJECTED',
+      targetTypeCode: 'LOT',
+      targetId: 55,
+    });
+
+    expect(toTargetLink(view, TITLE)?.to).toBe('/logistics/inbound-schedule?lot=55&post=55');
+  });
+
+  it('다른 알림의 LOT 대상은 여전히 열지 않는다', () => {
+    expect(toTargetLink(viewOf({ targetTypeCode: 'LOT', targetId: 55 }), TITLE)).toBeNull();
+  });
+
   it('번호가 주소에 그대로 실린다 — 다른 건이 열리면 안 된다', () => {
     expect(toTargetLink(viewOf({ ...APPROVAL, targetId: 7209 }), TITLE)?.to).toContain('rq=7209');
   });

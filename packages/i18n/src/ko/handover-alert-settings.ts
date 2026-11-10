@@ -85,6 +85,10 @@ export const handoverAlertSettings = {
       // ui-check-ignore: C-13 메뉴 이름 「검사 조회·판정」 그대로
       where: '관리웹 품질 관리 › 검사 조회·판정 (IQC 탭)',
     },
+    IQC_INSPECTION_REJECTED: {
+      when: 'IQC 판정이 불합격으로 확정될 때 — 불합격 LOT 1건에 1번',
+      where: '관리웹 구매 / 자재 관리 › 입고 관리 (입고 처리 — 불량 창고로)',
+    },
     PUTAWAY_REQUESTED: {
       when: '입고 처리로 적치 지시가 생길 때 — 입고 1건에 1번(적치 지시 수를 내용에)',
       where: '모바일 PDA › 창고 › 적치',

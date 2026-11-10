@@ -1924,6 +1924,31 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     });
   });
 
+  it('「검사 불합격(IQC)」 알림 주소(lot·post)로 오면 그 LOT 의 발주만 조회해 입고 처리 창을 연다', async () => {
+    const emptyListRoute = (pathname: string): StubRoute => ({
+      match: (request) => isGet(request, pathname),
+      respond: () => jsonResponse(listBody([])),
+    });
+    const { requests } = renderScreen(
+      [
+        emptyListRoute('/logistics/inbound-receipts/7501'),
+        emptyListRoute('/mdm/warehouses'),
+        emptyListRoute('/mdm/locations'),
+        ...progressRoutes(ROWS_WITH_STAGES.slice(0, 1)),
+        emptyListRoute(CODE_VALUES_PATH),
+      ],
+      '?lot=7703&post=7703',
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: tg.panel.title });
+    expect(dialog).toHaveTextContent('SAMPLE|LOT|0003');
+
+    const list = requestsTo(requests, LIST_PATH);
+    expect(list[0]?.url.search).toBe('?lotId=7703&openOnly=false&size=20');
+    /* 단계 칩 수는 기간 조건 기준이라 LOT 으로 좁힌 목록과 어긋난다 — 세지 않는다. */
+    expect(requestsTo(requests, STAGE_COUNTS_PATH)).toHaveLength(0);
+  });
+
   it('입고 처리 권한(W-01-10)이 없으면 「입고 처리」 단추가 없다', async () => {
     renderScreen(progressRoutes(), '?po=7101', {
       ...SYNTHETIC_SESSION,
