@@ -42,6 +42,18 @@ describe('validateItemDraft — 필수', () => {
       '필수 입력 항목입니다.',
     );
   });
+
+  /* 사용자 결정 2026-11-10 — 수치 항목은 단위 필수, 텍스트·불리언은 선택. 서버도 같은 검사로 거절한다. */
+  it('수치 항목의 단위가 비면 필수 오류를 낸다', () => {
+    expect(validateItemDraft(draft({ dataTypeCode: 'NUMERIC', uomId: '' }), []).uomId).toBe(
+      '필수 입력 항목입니다.',
+    );
+    expect(validateItemDraft(draft({ dataTypeCode: 'NUMERIC', uomId: '41' }), [])).toEqual({});
+  });
+
+  it.each(['TEXT', 'BOOLEAN'])('%s 항목은 단위가 비어도 통과한다', (dataTypeCode) => {
+    expect(validateItemDraft(draft({ dataTypeCode, uomId: '' }), [])).toEqual({});
+  });
 });
 
 describe('validateItemDraft — 항목코드 중복', () => {

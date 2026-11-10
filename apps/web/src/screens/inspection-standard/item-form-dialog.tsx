@@ -1,12 +1,18 @@
 import { Button, Checkbox, Dialog, Icon, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { FieldLabel } from './field-label';
+import { NUMERIC_DATA_TYPE } from './item-validation';
 import { SelectField } from './select-field';
 import type { ItemDraft, SelectOption } from './types';
 
 const t = messages.inspectionStandard;
+
+/** 「수치 기준 입력」 창의 칸 — 확인 전까지는 항목에 넣지 않는다. */
+type NumericSpec = Pick<ItemDraft, 'uomId' | 'targetValue' | 'lowerLimit' | 'upperLimit'> & {
+  tried: boolean;
+};
 
 export interface ItemFormDialogProps {
   open: boolean;
@@ -37,8 +43,8 @@ export interface ItemFormDialogProps {
  * 확인은 표(로컬 초안)에만 반영하고 서버 반영은 「저장」 한 번뿐이다(공유계약 A-5).
  * 그 사실을 창 안에서 밝힌다 — 밝히지 않으면 확인을 누르고 창을 닫은 사용자가 저장된 줄 안다.
  *
- * **조건부 필수·조건부 표시를 만들지 않는다.** 계약의 `dataTypeCode` 값 목록이 [추정]이라
- * 자료형으로 표시를 가르면 지어낸 값에 화면 구조가 매달린다 — 단위·목표값·상하한은 항상 보이고 항상 선택이다.
+ * 단위·기준값·상하한은 검사값 유형이 수치(NUMERIC)일 때만 보이고, 단위만 필수다. 수치를 고르면 이 네 칸을 받는
+ * 「수치 기준 입력」 창이 바로 뜨고, 수치가 아닌 유형으로 바꾸면 그 칸들의 값을 비운다(사용자 지시 2026-11-10).
  */
 export const ItemFormDialog = ({
   open,
@@ -77,6 +83,37 @@ export const ItemFormDialog = ({
     return isBlank(value)
       ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
       : {};
+  };
+  const isNumeric = values.dataTypeCode === NUMERIC_DATA_TYPE;
+  const [numericSpec, setNumericSpec] = useState<NumericSpec | null>(null);
+  const specTargetId = useId();
+  const specLowerId = useId();
+  const specUpperId = useId();
+
+  const changeDataType = (dataTypeCode: string): void => {
+    if (dataTypeCode !== NUMERIC_DATA_TYPE) {
+      onChange({ dataTypeCode, uomId: '', targetValue: '', lowerLimit: '', upperLimit: '' });
+      return;
+    }
+    onChange({ dataTypeCode });
+    if (!isNumeric) {
+      const { uomId, targetValue, lowerLimit, upperLimit } = values;
+      setNumericSpec({ uomId, targetValue, lowerLimit, upperLimit, tried: false });
+    }
+  };
+
+  const patchNumericSpec = (patch: Partial<NumericSpec>): void =>
+    setNumericSpec((spec) => (spec === null ? spec : { ...spec, ...patch }));
+
+  const confirmNumericSpec = (): void => {
+    if (numericSpec === null) return;
+    if (isBlank(numericSpec.uomId)) {
+      patchNumericSpec({ tried: true });
+      return;
+    }
+    const { tried: _tried, ...patch } = numericSpec;
+    onChange(patch);
+    setNumericSpec(null);
   };
 
   return (
@@ -143,62 +180,70 @@ export const ItemFormDialog = ({
           options={dataTypeOptions}
           value={values.dataTypeCode}
           placeholder={ph.dataType}
-          onChange={(dataTypeCode) => onChange({ dataTypeCode })}
+          onChange={changeDataType}
           error={shownError('dataTypeCode')}
           invalid={isBlank(values.dataTypeCode)}
         />
 
-        <SelectField
-          label={t.fields.uom}
-          options={[{ value: '', label: t.values.empty }, ...uomOptions]}
-          value={values.uomId}
-          placeholder={ph.uom}
-          onChange={(uomId) => onChange({ uomId })}
-          error={fieldErrors.uomId}
-        />
-
-        {/*
-         * 목표값이 범위 밖인 것은 **경고이지 차단이 아니다**(계약 A-9 ⓑ) —
-         * 관리 한계와 규격 한계가 다른 경우가 업무상 정상이라 서버가 허용하기로 정했다.
-         * 경고를 오류 자리에 넣으면 확인이 막힌 것처럼 보이므로 보조 문구로 낸다.
-         */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={targetValueId} label={t.fields.targetValue} />
-          <TextField
-            id={targetValueId}
-            type="number"
-            value={values.targetValue}
-            placeholder={ph.targetValue}
-            onChange={(event) => onChange({ targetValue: event.target.value })}
-            error={fieldErrors.targetValue}
-            helperText={fieldWarnings.targetValue}
+        {isNumeric && (
+          <SelectField
+            label={t.fields.uom}
+            required
+            options={uomOptions}
+            value={values.uomId}
+            placeholder={ph.uom}
+            onChange={(uomId) => onChange({ uomId })}
+            error={shownError('uomId')}
+            invalid={isBlank(values.uomId)}
           />
-        </div>
+        )}
 
-        {/* 라벨은 다른 칸과 같은 `FieldLabel` 로 단다 — 내장 라벨이면 라벨 줄 모양이 갈린다(#196). */}
-        <div className="field-cell">
-          <FieldLabel htmlFor={lowerLimitId} label={t.fields.lowerLimit} />
-          <TextField
-            id={lowerLimitId}
-            type="number"
-            value={values.lowerLimit}
-            placeholder={ph.lowerLimit}
-            onChange={(event) => onChange({ lowerLimit: event.target.value })}
-            error={fieldErrors.lowerLimit}
-          />
-        </div>
+        {isNumeric && (
+          <>
+            {/*
+             * 목표값이 범위 밖인 것은 **경고이지 차단이 아니다**(계약 A-9 ⓑ) —
+             * 관리 한계와 규격 한계가 다른 경우가 업무상 정상이라 서버가 허용하기로 정했다.
+             * 경고를 오류 자리에 넣으면 확인이 막힌 것처럼 보이므로 보조 문구로 낸다.
+             */}
+            <div className="field-cell">
+              <FieldLabel htmlFor={targetValueId} label={t.fields.targetValue} />
+              <TextField
+                id={targetValueId}
+                type="number"
+                value={values.targetValue}
+                placeholder={ph.targetValue}
+                onChange={(event) => onChange({ targetValue: event.target.value })}
+                error={fieldErrors.targetValue}
+                helperText={fieldWarnings.targetValue}
+              />
+            </div>
 
-        <div className="field-cell">
-          <FieldLabel htmlFor={upperLimitId} label={t.fields.upperLimit} />
-          <TextField
-            id={upperLimitId}
-            type="number"
-            value={values.upperLimit}
-            placeholder={ph.upperLimit}
-            onChange={(event) => onChange({ upperLimit: event.target.value })}
-            error={fieldErrors.upperLimit}
-          />
-        </div>
+            {/* 라벨은 다른 칸과 같은 `FieldLabel` 로 단다 — 내장 라벨이면 라벨 줄 모양이 갈린다(#196). */}
+            <div className="field-cell">
+              <FieldLabel htmlFor={lowerLimitId} label={t.fields.lowerLimit} />
+              <TextField
+                id={lowerLimitId}
+                type="number"
+                value={values.lowerLimit}
+                placeholder={ph.lowerLimit}
+                onChange={(event) => onChange({ lowerLimit: event.target.value })}
+                error={fieldErrors.lowerLimit}
+              />
+            </div>
+
+            <div className="field-cell">
+              <FieldLabel htmlFor={upperLimitId} label={t.fields.upperLimit} />
+              <TextField
+                id={upperLimitId}
+                type="number"
+                value={values.upperLimit}
+                placeholder={ph.upperLimit}
+                onChange={(event) => onChange({ upperLimit: event.target.value })}
+                error={fieldErrors.upperLimit}
+              />
+            </div>
+          </>
+        )}
 
         {/* 계약 CHECK > 0이고 표본 번호의 상한이라 정수여야 한다. */}
         <div className="field-cell">
@@ -239,6 +284,70 @@ export const ItemFormDialog = ({
         <Icon name="info" size={18} aria-hidden />
         {t.dialog.itemLocalNote}
       </p>
+
+      {/*
+       * 수치를 고르면 뜬다 — 단위만 필수, 기준값·상하한은 선택. 취소하면 단위는 빈 채로 남고
+       * 이 창의 단위 칸이 빨간 테두리로 막는다 — 아래 칸에서 다시 넣을 수 있다.
+       */}
+      {numericSpec !== null && (
+        <Dialog
+          open
+          onClose={() => setNumericSpec(null)}
+          size="md"
+          showCloseButton={false}
+          title={t.dialog.numericSpecTitle}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setNumericSpec(null)}>
+                {messages.common.cancel}
+              </Button>
+              <Button onClick={confirmNumericSpec}>{messages.common.confirm}</Button>
+            </>
+          }
+        >
+          <div className="form-grid inspection-standard-numeric-spec-grid">
+            <SelectField
+              label={t.fields.uom}
+              required
+              options={uomOptions}
+              value={numericSpec.uomId}
+              placeholder={ph.uom}
+              onChange={(uomId) => patchNumericSpec({ uomId, tried: false })}
+              invalid={numericSpec.tried && isBlank(numericSpec.uomId)}
+            />
+            <div className="field-cell">
+              <FieldLabel htmlFor={specTargetId} label={t.fields.targetValue} />
+              <TextField
+                id={specTargetId}
+                type="number"
+                value={numericSpec.targetValue}
+                placeholder={ph.targetValue}
+                onChange={(event) => patchNumericSpec({ targetValue: event.target.value })}
+              />
+            </div>
+            <div className="field-cell">
+              <FieldLabel htmlFor={specLowerId} label={t.fields.lowerLimit} />
+              <TextField
+                id={specLowerId}
+                type="number"
+                value={numericSpec.lowerLimit}
+                placeholder={ph.lowerLimit}
+                onChange={(event) => patchNumericSpec({ lowerLimit: event.target.value })}
+              />
+            </div>
+            <div className="field-cell">
+              <FieldLabel htmlFor={specUpperId} label={t.fields.upperLimit} />
+              <TextField
+                id={specUpperId}
+                type="number"
+                value={numericSpec.upperLimit}
+                placeholder={ph.upperLimit}
+                onChange={(event) => patchNumericSpec({ upperLimit: event.target.value })}
+              />
+            </div>
+          </div>
+        </Dialog>
+      )}
     </Dialog>
   );
 };
