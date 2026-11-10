@@ -54,7 +54,7 @@ export const notificationCenter = {
      *
      * 목록에 이 링크가 여럿 서므로 **어느 대상인지**가 이름에 들어가야 한다 — 「이동」이
      * 열이면 음성 조작도 보조 기술도 어느 것을 부르는지 가릴 수 없다. ⚠ 보이는 글자를
-     * 그대로 담는다(`이동`) — 담지 않으면 음성 조작이 보이는 글자로 이 링크를 부를 수 없다.
+     * 그대로 담는다(`targetActions` 중 하나) — 담지 않으면 음성 조작이 보이는 글자로 이 링크를 부를 수 없다.
      *
      * ⭐ **전례와 갈리는 자리다.** 옛 `over-receipt-split`(2026-10 지움)은 링크마다 **보이는 글자**가 달라
      * (전표번호) 그것으로 가르는데, 여기는 보이는 글자가 줄마다 「이동」으로 같아 **가르는 짐을
@@ -63,8 +63,13 @@ export const notificationCenter = {
      * 인자는 **화면이 푼 제목**이다 — 원본 코드가 아니다(유형 목록을 못 받았을 때만 코드로
      * 낙하하고, 그 판정은 제목을 만드는 자리가 이미 한다).
      */
-    openTarget: (targetTitle: string): string => `${targetTitle} 대상으로 이동`,
-    openTargetShort: '이동',
+    openTarget: (targetTitle: string, action: string): string => `${targetTitle} — ${action}`,
+    /** 「대상으로 이동」 단추의 보이는 글자 — 「이동」 대신 **눌러서 할 일**을 적는다(사용자 지시 2026-11-10). */
+    targetActions: {
+      approval: '결재하기',
+      iqcInspection: 'IQC 판정하기',
+      defectReceipt: '불량 창고 입고 처리',
+    },
   },
   /**
    * 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(이 파일의 작성 규칙 · 공유계약 G-3).

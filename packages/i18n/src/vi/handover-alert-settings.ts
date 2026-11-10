@@ -82,6 +82,11 @@ export const handoverAlertSettings: Translated<typeof ko.handoverAlertSettings> 
       when: 'Khi đăng ký LOT nhập hàng tạo yêu cầu IQC — 1 lần cho mỗi phiếu nhập (kèm số LOT)',
       where: 'Web quản trị › Quản lý chất lượng › Tra cứu · đánh giá kiểm tra (tab IQC)',
     },
+    IQC_INSPECTION_REJECTED: {
+      when: 'Khi kết quả IQC được xác nhận là không đạt — 1 lần cho mỗi LOT không đạt',
+      where:
+        'Web quản trị › Quản lý mua hàng / vật tư › Quản lý nhập kho (nhập kho — vào kho hàng lỗi)',
+    },
     PUTAWAY_REQUESTED: {
       when: 'Khi nhập kho tạo lệnh xếp kệ — 1 lần cho mỗi phiếu nhập kho (kèm số lệnh)',
       where: 'PDA › Kho › Xếp hàng lên kệ',

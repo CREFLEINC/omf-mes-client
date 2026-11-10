@@ -24,6 +24,7 @@ const CODES = [
 const NAMES = ['생산 실행', '생산 중단', '작업 종료', '생산 마감', '설비 고장 발생', '승인 요청'];
 const HANDOVER_NAMES: Record<string, string> = {
   IQC_INSPECTION_REQUESTED: 'IQC 수입검사',
+  IQC_INSPECTION_REJECTED: '검사 불합격(IQC)',
   PUTAWAY_REQUESTED: '적치',
   MATERIAL_PICKING_REQUESTED: '자재 출고 피킹',
   STOCK_TRANSFER_ARRIVAL_PENDING: '창고 이동 도착',
@@ -104,7 +105,7 @@ const setup = (data: Connection) => {
 const handoverCard = () => within(screen.getByRole('region', { name: t.handover.title }));
 
 describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
-  it('FR-022 기존 6종 칸은 그대로이고 그 아래 별도 카드에 인계 10칸이 업무 흐름 순서로 선다', async () => {
+  it('FR-022 기존 6종 칸은 그대로이고 그 아래 별도 카드에 인계 11칸이 업무 흐름 순서로 선다', async () => {
     setup(connection([{ alertTypeCode: 'MATERIAL_PICKING_REQUESTED', templateId: '200002' }]));
 
     expect(
@@ -115,7 +116,7 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     const card = await waitFor(() => handoverCard());
     expect(card.getByText(t.handover.notice)).toBeInTheDocument();
     const boxes = await card.findAllByRole('textbox');
-    expect(boxes).toHaveLength(10);
+    expect(boxes).toHaveLength(11);
     await waitFor(() => {
       expect(boxes.map((box) => box.getAttribute('aria-label'))).toEqual(
         HANDOVER_ALERT_ORDER.map((code) => t.fields.templateId(HANDOVER_NAMES[code] ?? code)),
@@ -127,10 +128,10 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     expect(
       card.getByText(`${t.fields.params}: receipt_no, lot_count, supplier, event_time`),
     ).toBeInTheDocument();
-    expect(card.getAllByRole('button', { name: /템플릿 파라미터 이름 복사$/ })).toHaveLength(10);
+    expect(card.getAllByRole('button', { name: /템플릿 파라미터 이름 복사$/ })).toHaveLength(11);
   });
 
-  it('FR-022 저장하면 기존 templates 6종과 handoverTemplates 10종을 함께 싣는다', async () => {
+  it('FR-022 저장하면 기존 templates 6종과 handoverTemplates 11종을 함께 싣는다', async () => {
     const user = userEvent.setup();
     const { writes } = setup(connection([]));
 
@@ -146,7 +147,7 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     };
     expect(body.templates).toHaveLength(6);
     expect(body.templates[0]).toEqual({ eventCode: 'WORK_SESSION_STARTED', templateId: 'TPL01' });
-    expect(body.handoverTemplates).toHaveLength(10);
+    expect(body.handoverTemplates).toHaveLength(11);
     expect(body.handoverTemplates).toContainEqual({
       alertTypeCode: 'PUTAWAY_REQUESTED',
       templateId: 'H0001',
@@ -169,12 +170,12 @@ describe('ZaloConnectionScreen — 인계 작업 템플릿(피처 002)', () => {
     expect(writes).toHaveLength(0);
   });
 
-  it('서버가 인계 칸을 아직 싣지 않아도(병합 전) 빈 칸 10개로 보인다', async () => {
+  it('서버가 인계 칸을 아직 싣지 않아도(병합 전) 빈 칸 11개로 보인다', async () => {
     setup(connection());
 
     const card = await waitFor(() => handoverCard());
     const boxes = await card.findAllByRole('textbox');
-    expect(boxes).toHaveLength(10);
+    expect(boxes).toHaveLength(11);
     for (const box of boxes) expect(box).toHaveValue('');
   });
 });

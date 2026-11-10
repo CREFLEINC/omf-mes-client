@@ -52,6 +52,15 @@ export const HANDOVER_TEMPLATE_PARAMS: Record<string, readonly string[]> = {
   OQC_INSPECTION_REQUESTED: ['request_no', 'request_count', 'ship_date', 'event_time'],
   REWORK_WORK_ORDER_CREATED: ['wo_no', 'item', 'qty', 'ncr_no', 'process', 'event_time', 'actor'],
   IQC_INSPECTION_REQUESTED: ['receipt_no', 'lot_count', 'supplier', 'event_time'],
+  IQC_INSPECTION_REJECTED: [
+    'receipt_no',
+    'item',
+    'lot_no',
+    'supplier',
+    'qty',
+    'next_step',
+    'event_time',
+  ],
 };
 
 export const handoverParamsOf = (alertTypeCode: string): string =>

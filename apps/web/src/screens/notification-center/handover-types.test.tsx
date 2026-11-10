@@ -106,9 +106,15 @@ describe('NotificationCenterScreen — 인계 작업 10종 합치기(피처 002)
   it('FR-011 T10 IQC 알림만 IQC 화면으로 가는 링크를 갖는다', async () => {
     render(okTypes);
 
-    const link = await screen.findByRole('link', { name: t.actions.openTarget('IQC 수입검사') });
+    const link = await screen.findByRole('link', {
+      name: t.actions.openTarget('IQC 수입검사', t.actions.targetActions.iqcInspection),
+    });
     expect(link).toHaveAttribute('href', '/logistics/iqc-inspection');
-    expect(screen.queryByRole('link', { name: t.actions.openTarget('적치') })).toBeNull();
+    expect(
+      screen.queryByRole('link', {
+        name: t.actions.openTarget('적치', t.actions.targetActions.iqcInspection),
+      }),
+    ).toBeNull();
   });
 
   it('FR-018 인계 종류 조회가 실패해도 기존 6종 선택지·실패 안내는 그대로이고 제목은 코드로 낙하한다', async () => {

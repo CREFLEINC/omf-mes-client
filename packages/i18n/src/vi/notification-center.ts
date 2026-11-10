@@ -40,11 +40,15 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     goFirstPage: 'Về trang đầu',
     markAllRead: 'Đánh dấu tất cả đã xem',
     /**
-     * ⚠ **보이는 글자(`openTargetShort`)를 그대로 품는다.** 담지 않으면 음성 조작이 보이는
-     * 글자로 이 링크를 부를 수 없다 — 줄마다 글자가 같아 가르는 짐을 이 이름이 진다.
+     * ⚠ **보이는 글자(`targetActions` 중 하나)를 그대로 품는다.** 담지 않으면 음성 조작이 보이는
+     * 글자로 이 링크를 부를 수 없다.
      */
-    openTarget: (targetTitle: string): string => `Đi đến đối tượng ${targetTitle}`,
-    openTargetShort: 'Đi đến',
+    openTarget: (targetTitle: string, action: string): string => `${targetTitle} — ${action}`,
+    targetActions: {
+      approval: 'Phê duyệt',
+      iqcInspection: 'Đánh giá IQC',
+      defectReceipt: 'Nhập kho hàng lỗi',
+    },
   },
   /** 비활성 사유는 **그 컨트롤의 이름으로 시작한다**(공유계약 G-3). 옮긴 말에서도 앞머리를 지킨다. */
   actionReasons: {

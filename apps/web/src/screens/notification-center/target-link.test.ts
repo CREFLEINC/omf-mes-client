@@ -20,6 +20,22 @@ describe('toTargetLink — 대응표에 있는 유형', () => {
     expect(toTargetLink(viewOf(APPROVAL), TITLE)?.to).toBe('/approval/inbox?rq=7201');
   });
 
+  it('검사 불합격(IQC) 알림은 입고 관리의 그 LOT 입고 처리 창을 가리킨다', () => {
+    const view = viewOf({
+      eventCode: 'IQC_INSPECTION_REJECTED',
+      targetTypeCode: 'LOT',
+      targetId: 55,
+    });
+
+    expect(toTargetLink(view, TITLE)?.to).toBe('/logistics/inbound-schedule?lot=55&post=55');
+    /* 「이동」 대신 할 일을 보인다(사용자 지시 2026-11-10). */
+    expect(toTargetLink(view, TITLE)?.shortLabel).toBe(t.actions.targetActions.defectReceipt);
+  });
+
+  it('다른 알림의 LOT 대상은 여전히 열지 않는다', () => {
+    expect(toTargetLink(viewOf({ targetTypeCode: 'LOT', targetId: 55 }), TITLE)).toBeNull();
+  });
+
   it('번호가 주소에 그대로 실린다 — 다른 건이 열리면 안 된다', () => {
     expect(toTargetLink(viewOf({ ...APPROVAL, targetId: 7209 }), TITLE)?.to).toContain('rq=7209');
   });
@@ -33,14 +49,14 @@ describe('toTargetLink — 대응표에 있는 유형', () => {
   it('링크 이름이 카드 제목과 같은 글자를 든다', () => {
     const link = toTargetLink(viewOf({ ...APPROVAL, eventCode: 'SYN-EVENT-07' }), TITLE);
 
-    expect(link?.label).toBe(t.actions.openTarget(TITLE));
+    expect(link?.label).toBe(t.actions.openTarget(TITLE, t.actions.targetActions.approval));
     expect(link?.label).not.toContain('SYN-EVENT-07');
   });
 
   /** 못 푼 코드는 **제목 자체가 원문**이다(T2의 낙하 규율) — 이 함수는 판정하지 않는다. */
   it('제목이 원문이면 링크 이름도 원문을 든다', () => {
     expect(toTargetLink(viewOf(APPROVAL), 'SYN-EVENT-99')?.label).toBe(
-      t.actions.openTarget('SYN-EVENT-99'),
+      t.actions.openTarget('SYN-EVENT-99', t.actions.targetActions.approval),
     );
   });
 
@@ -48,8 +64,8 @@ describe('toTargetLink — 대응표에 있는 유형', () => {
   it('접근성 이름이 보이는 글자를 담는다', () => {
     const link = toTargetLink(viewOf(APPROVAL), TITLE);
 
-    expect(link?.shortLabel).toBe(t.actions.openTargetShort);
-    expect(link?.label).toContain(t.actions.openTargetShort);
+    expect(link?.shortLabel).toBe(t.actions.targetActions.approval);
+    expect(link?.label).toContain(t.actions.targetActions.approval);
   });
 });
 

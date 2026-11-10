@@ -15,6 +15,7 @@ import type { NotificationView } from './types';
  * | --- | --- | :-: |
  * | `APPROVAL_REQUEST` | `/approval/inbox?rq=<번호>` — 그 화면이 `rq`를 조건 없이 읽어 곧바로 상세를 연다(실측 `approval-inbox/filters.ts`의 `readSelectedRequestId`) | ✅ |
  * | `LOT` | ⛔ 재고 현황은 **창고 번호가 함께 있어야** 선택을 읽는다. 알림은 그것을 주지 않는다 |  |
+ * | `LOT` · 알림 `IQC_INSPECTION_REJECTED` | `/logistics/inbound-schedule?lot=<번호>&post=<번호>` — 입고 관리가 그 LOT 의 발주를 찾아 「입고 처리」 창을 연다(불량 창고만 고를 수 있다) | ✅ |
  * | `WORK_ORDER` | ⛔ 생산실행 화면이 아직 없다 |  |
  * | `NONCONFORMANCE` | ⛔ 품질 화면이 아직 없다 |  |
  * | `INBOUND_RECEIPT` | `/logistics/iqc-inspection` — 인계 T10(피처 002, R-8). IQC 화면은 입하로 거르지 못해 **탭만 연다** | ✅ |
@@ -49,9 +50,31 @@ export interface TargetLink {
  * 값을 함수로 두는 이유는 주소마다 번호를 싣는 자리가 다르기 때문이다 — 지금은 질의 인자
  * 하나뿐이지만 경로 조각을 쓰는 유형이 오면 그 유형만 다른 함수를 갖는다.
  */
-const DESTINATIONS: Record<string, (targetId: number) => string> = {
-  APPROVAL_REQUEST: (targetId) => `/approval/inbox?rq=${String(targetId)}`,
-  INBOUND_RECEIPT: () => '/logistics/iqc-inspection',
+interface Destination {
+  to: (targetId: number) => string;
+  /** 단추에 보이는 할 일 */
+  action: string;
+}
+
+const DESTINATIONS: Record<string, Destination> = {
+  APPROVAL_REQUEST: {
+    to: (targetId) => `/approval/inbox?rq=${String(targetId)}`,
+    action: t.actions.targetActions.approval,
+  },
+  INBOUND_RECEIPT: {
+    to: () => '/logistics/iqc-inspection',
+    action: t.actions.targetActions.iqcInspection,
+  },
+};
+
+/** 같은 대상 유형이라도 알림 종류가 도착지를 정하는 경우 — 유형 표보다 먼저 본다. */
+const EVENT_DESTINATIONS: Record<string, Destination & { targetTypeCode: string }> = {
+  IQC_INSPECTION_REJECTED: {
+    targetTypeCode: 'LOT',
+    to: (targetId) =>
+      `/logistics/inbound-schedule?lot=${String(targetId)}&post=${String(targetId)}`,
+    action: t.actions.targetActions.defectReceipt,
+  },
 };
 
 /**
@@ -70,13 +93,15 @@ export const toTargetLink = (view: NotificationView, title: string): TargetLink 
 
   if (targetTypeCode === null || targetId === null) return null;
 
-  const destination = DESTINATIONS[targetTypeCode];
+  const byEvent = EVENT_DESTINATIONS[view.eventCode];
+  const destination =
+    byEvent?.targetTypeCode === targetTypeCode ? byEvent : DESTINATIONS[targetTypeCode];
 
   if (destination === undefined) return null;
 
   return {
-    to: destination(targetId),
-    label: t.actions.openTarget(title),
-    shortLabel: t.actions.openTargetShort,
+    to: destination.to(targetId),
+    label: t.actions.openTarget(title, destination.action),
+    shortLabel: destination.action,
   };
 };

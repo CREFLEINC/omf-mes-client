@@ -20032,6 +20032,8 @@ export interface paths {
           progress?: 'OPEN' | 'COMPLETED';
           /** @description ERP 발주유형(공통코드 ORDER_TYPE) 하나 — 행의 erpOrderTypeCode 가 같은 것만. ORDER_TYPE 에 없는 코드는 400 INVALID(무시하면 전체가 걸러진 것처럼 보인다). 사용 중지된 코드는 받는다 — 지난 발주를 찾는다 */
           erpOrderTypeCode?: string;
+          /** @description 이 LOT 이 입하된 발주만(입하 배분 기준). 알림센터의 「검사 불합격(IQC)」 알림(대상 = LOT)에서 입고 관리 화면을 그 발주·LOT 의 입고 처리 창으로 열 때 쓴다. */
+          lotId?: number;
           /** @description 그 묶음의 LOT 줄이 하나라도 있는 발주만(입고 관리 허브의 단계 칩). 묶음은 :inbound-stage-counts 와 같다. 조건에 맞는 발주의 줄을 모두 판정한 뒤 거르므로 쪽·총계가 맞다 — 조건이 넓으면 느릴 수 있다 */
           inboundStage?: 'LABEL' | 'INSPECTION' | 'HELD' | 'RECEIPT' | 'PUTAWAY';
           /** @description 열 또는 열,방향(asc·desc · 생략하면 asc). 없으면 발주일 최신순. 값이 같으면 purchaseOrderId 내림차순. DB 열: orderDate · purchaseOrderNo · supplierName(대소문자·성조를 가리지 않는다) · expectedReceiptDate(납기 없는 발주는 방향과 상관없이 맨 뒤). 계산 열: overdue(asc 가 지연 → 정상 → 끝남 · 지연은 overdueOnly 와 같은 기준) · openLineCount(행의 값) · inboundStage(가장 뒤처진 묶음의 흐름 순서 LABEL → … → PUTAWAY, 그다음 그 묶음 수 · 묶음 없는 발주는 맨 뒤). 계산 열은 조건에 맞는 발주를 모두 읽어 정렬한 뒤 쪽을 자른다. 모든 조건과 함께 걸린다 */

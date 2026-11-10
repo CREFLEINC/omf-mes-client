@@ -65,7 +65,8 @@ const renderRow = (overrides: Parameters<typeof notificationFixture>[0] = {}, ti
 const card = () => screen.getByRole('button', { name: TITLE });
 
 /** ⭐ **링크로 찾는다** — 버튼으로 찾으면 링크 전환이 조용히 되돌아가도 시험이 통과한다. */
-const moveLink = () => screen.getByRole('link', { name: t.actions.openTarget(TITLE) });
+const moveLink = () =>
+  screen.getByRole('link', { name: t.actions.openTarget(TITLE, t.actions.targetActions.approval) });
 
 describe('NotificationRow — 이동 버튼이 서는 갈래', () => {
   it('대응표에 있는 유형에는 이동 링크가 선다', () => {
@@ -104,7 +105,7 @@ describe('NotificationRow — 이동 버튼이 서지 않는 갈래', () => {
   const expectNoMoveLink = (): void => {
     expect(card()).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    expect(screen.queryByText(t.actions.openTargetShort)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actions.targetActions.approval)).not.toBeInTheDocument();
   };
 
   it('도착지가 없는 계약 유형에는 서지 않는다', () => {
@@ -233,13 +234,15 @@ describe('NotificationRow — 목록에 여럿일 때', () => {
 
     /* 짝 양성 — 링크가 실제로 둘이다. 그래야 이름 단언이 뜻을 갖는다. */
     expect(screen.getAllByRole('link')).toHaveLength(2);
-    expect(screen.getByRole('link', { name: t.actions.openTarget('생산 실행') })).toHaveAttribute(
-      'href',
-      '/approval/inbox?rq=7101',
-    );
-    expect(screen.getByRole('link', { name: t.actions.openTarget('생산 마감') })).toHaveAttribute(
-      'href',
-      '/approval/inbox?rq=7102',
-    );
+    expect(
+      screen.getByRole('link', {
+        name: t.actions.openTarget('생산 실행', t.actions.targetActions.approval),
+      }),
+    ).toHaveAttribute('href', '/approval/inbox?rq=7101');
+    expect(
+      screen.getByRole('link', {
+        name: t.actions.openTarget('생산 마감', t.actions.targetActions.approval),
+      }),
+    ).toHaveAttribute('href', '/approval/inbox?rq=7102');
   });
 });

@@ -40,7 +40,7 @@ import {
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
-import { readPostEntry, withoutPostEntry, withPostEntry } from './post-entry';
+import { readLotEntry, readPostEntry, withoutPostEntry, withPostEntry } from './post-entry';
 import {
   isProgressUnavailable,
   progressKeys,
@@ -172,16 +172,19 @@ export const InboundScheduleScreen = () => {
    * 기간뿐이다(없는 날짜·뒤집힌 기간) — 그런 값은 서버로 보내지 않는다.
    */
   const periodReason = filters.overdueOnly ? null : validatePeriod(period);
+  const lotEntry = readLotEntry(searchParams);
   const listQuery: PurchaseOrderSummaryQuery | null =
-    periodReason === null
-      ? {
-          /* 지연은 납기 기간과 상관없이 늦은 발주 전부다(사용자 지시 2026-10-21) — 기간을 싣지 않는다. */
-          ...(filters.overdueOnly ? {} : toPeriodQuery(period)),
-          ...toFilterQuery(filters),
-          ...(page > 1 ? { page } : {}),
-          size: LIST_PAGE_SIZE,
-        }
-      : null;
+    lotEntry !== null
+      ? { lotId: lotEntry, openOnly: false, size: LIST_PAGE_SIZE }
+      : periodReason === null
+        ? {
+            /* 지연은 납기 기간과 상관없이 늦은 발주 전부다(사용자 지시 2026-10-21) — 기간을 싣지 않는다. */
+            ...(filters.overdueOnly ? {} : toPeriodQuery(period)),
+            ...toFilterQuery(filters),
+            ...(page > 1 ? { page } : {}),
+            size: LIST_PAGE_SIZE,
+          }
+        : null;
 
   const list = usePurchaseOrderSummaries(listQuery);
   const rows = list.data?.items ?? EMPTY_ROWS;
@@ -191,7 +194,7 @@ export const InboundScheduleScreen = () => {
    * 말해야 하고, 단계 칩을 눌러 좁힌 뒤에도 다른 칩의 수가 남아 있어야 옮겨 갈 수 있다. 서버가 모르면(404) 칩을 세우지 않는다.
    */
   const stageCounts = useInboundStageCounts(
-    periodReason === null
+    lotEntry === null && periodReason === null
       ? {
           ...(filters.overdueOnly ? {} : toPeriodQuery(period)),
           ...toFilterQuery({ ...filters, stage: '', sort: null }),
