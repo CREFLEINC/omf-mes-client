@@ -1,8 +1,11 @@
-import type { DashboardEquipmentItem } from '@omf-mes/api-client';
+import type { DashboardEquipmentDetail, DashboardEquipmentItem } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
+
+import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 
 import { toEquipmentView } from './equipment';
 import {
@@ -13,6 +16,44 @@ import {
 } from './equipment-panel';
 
 const t = messages.dashboard.equipment;
+
+const H = 3_600_000;
+const DETAIL: DashboardEquipmentDetail = {
+  equipmentId: 1,
+  asOf: '2026-10-16T03:00:00Z',
+  mold: { moldCode: 'M-1', moldName: '시험 금형', cavityCount: 4 },
+  workOrder: { workOrderNo: 'WO-1', orderQty: 6289, producedQty: 1248, progressRate: 19.8 },
+  output: { totalQty: 1248, goodQty: 1196, ngQty: 52, defectRate: 4.2 },
+  time: {
+    plannedMs: 10 * H,
+    runningMs: 7 * H + 50 * 60_000,
+    stoppedMs: H,
+    noWorkMs: 70 * 60_000,
+    availabilityRate: 78.3,
+  },
+  standardOutput: { expectedQty: 1266, differenceQty: -18, excludedSessionCount: 1 },
+  defectTypes: [
+    { defectCodeId: 1, defectCode: 'D1', defectName: '찍힘', qty: 30 },
+    { defectCodeId: 2, defectCode: 'D2', defectName: '미성형', qty: 12 },
+  ],
+  untypedNgQty: 10,
+  stopReasons: [
+    { reasonCode: 'MOLD', reasonName: '금형 고장', durationMs: 40 * 60_000 },
+    { reasonCode: null, reasonName: null, durationMs: 20 * 60_000 },
+  ],
+};
+
+/** 상세 창이 열리면 설비 상세를 부른다(omf-all-around#251) — 모든 시험이 같은 응답을 받는다. */
+const render = (ui: ReactElement) =>
+  renderWithProviders(ui, {
+    fetch: createStubFetch([
+      {
+        match: (request) =>
+          new URL(request.url).pathname.endsWith('/app/dashboard-equipment-detail'),
+        respond: () => jsonResponse(DETAIL),
+      },
+    ]),
+  });
 
 const item = (overrides: Partial<DashboardEquipmentItem>): DashboardEquipmentItem => ({
   equipmentId: 1,
@@ -193,6 +234,35 @@ describe('EquipmentBoard', () => {
     expect(within(dialog).getByText('ITEM-1 시험 품목')).toBeInTheDocument();
     /* 가동 중이면 상태 사유 자리를 두지 않는다. */
     expect(within(dialog).queryByText(t.reason)).not.toBeInTheDocument();
+  });
+
+  it('상세 창은 금형 · 진도 · 양품 · 가동 시간 · 표준 C/T 기준 생산량 · 불량 유형 · 작업 중 정지 사유를 보인다(#251)', async () => {
+    const user = userEvent.setup();
+    render(<EquipmentBoard view={view} isLoading={false} isFailed={false} />);
+
+    await user.click(tileOf('EQ-01'));
+    const dialog = screen.getByRole('dialog');
+    expect(
+      await within(dialog).findByText(t.moldValue('M-1', '시험 금형', '4')),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(t.progressValue('1,248', '6,289', '19.8%')),
+    ).toBeInTheDocument();
+    const time = within(dialog).getByRole('region', { name: t.groupTime });
+    expect(within(time).getByText(formatElapsed(470))).toBeInTheDocument();
+    expect(within(time).getByText(formatElapsed(70))).toBeInTheDocument();
+    expect(within(time).getByText('78.3%')).toBeInTheDocument();
+    const standard = within(dialog).getByRole('region', { name: t.groupStandard });
+    expect(standard).toHaveTextContent('1,266');
+    expect(standard).toHaveTextContent('-18');
+    expect(standard).toHaveTextContent(t.excludedSessions('1'));
+    const defects = within(dialog).getByRole('region', { name: t.groupDefects });
+    expect(defects).toHaveTextContent('찍힘30 EA');
+    expect(defects).toHaveTextContent(t.untypedQty('10'));
+    const stops = within(dialog).getByRole('region', { name: t.groupStops });
+    expect(stops).toHaveTextContent(`금형 고장${formatElapsed(40)}`);
+    /* 사유 없는 정지는 「사유 미등록」. */
+    expect(stops).toHaveTextContent(`${t.reasonUnknown}${formatElapsed(20)}`);
   });
 
   it('작업지시가 없으면 「진행 중인 작업이 없습니다.」 한 줄', async () => {

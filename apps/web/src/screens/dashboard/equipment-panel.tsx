@@ -1,5 +1,5 @@
 import { Button, Chip, Dialog, Icon, Skeleton, type ChipStatus } from '@crefle/web-ui';
-import type { DashboardEquipmentStatusCode } from '@omf-mes/api-client';
+import type { DashboardEquipmentDetail, DashboardEquipmentStatusCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
   useEffect,
@@ -24,6 +24,7 @@ import {
   type EquipmentItemView,
   type EquipmentView,
 } from './equipment';
+import { useDashboardEquipmentDetail } from './queries';
 import { formatFigure } from './types';
 import { useGridColumns } from './use-grid-columns';
 import { EmptyLine, Panel } from './viz';
@@ -177,6 +178,95 @@ const EquipmentTile = ({ item, onOpen, pointerInput }: EquipmentTileProps) => {
   );
 };
 
+const formatDuration = (ms: number | null): string =>
+  ms === null ? t.none : formatElapsed(Math.round(ms / 60_000));
+
+const signed = (value: number): string =>
+  value > 0 ? `+${formatFigure(value)}` : formatFigure(value);
+
+/**
+ * 설비 상세 서버 칸(omf-all-around#251) — 가동 시간 · 표준 C/T 기준 생산량 · 불량 유형 · 작업 중 정지 사유. 공장 오늘 0시부터
+ * 지금까지다. 가동 + 작업 중 정지 = 작업한 시간, 작업 없음 = 계획 시간 − 작업한 시간(근무 일정이 없으면 「—」).
+ */
+const EquipmentDetailExtra = ({ detail }: { detail: DashboardEquipmentDetail }) => (
+  <>
+    <section aria-label={t.groupTime}>
+      <h3 className="dash-detail-title">{t.groupTime}</h3>
+      <p className="dash-detail-sub dash-detail-lead">{t.groupTimeSub}</p>
+      <dl className="dash-facts">
+        <Fact label={t.runningTime} strong>
+          {formatDuration(detail.time.runningMs)}
+        </Fact>
+        <Fact label={t.availabilityRate}>{formatDefectRate(detail.time.availabilityRate)}</Fact>
+        <Fact label={t.stoppedInWork}>{formatDuration(detail.time.stoppedMs)}</Fact>
+        <Fact label={t.noWorkTime}>{formatDuration(detail.time.noWorkMs)}</Fact>
+      </dl>
+    </section>
+    <section aria-label={t.groupStandard}>
+      <h3 className="dash-detail-title">{t.groupStandard}</h3>
+      <dl className="dash-facts">
+        <Fact label={t.standardQty}>
+          {detail.standardOutput.expectedQty === null
+            ? t.none
+            : formatFigure(detail.standardOutput.expectedQty)}
+          {detail.standardOutput.expectedQty !== null && <span className="dash-kpi-unit">EA</span>}
+        </Fact>
+        <Fact label={t.actualQty}>
+          {formatFigure(detail.output.totalQty)}
+          <span className="dash-kpi-unit">EA</span>
+        </Fact>
+        <Fact label={t.differenceQty} wide>
+          {detail.standardOutput.differenceQty === null
+            ? t.none
+            : signed(detail.standardOutput.differenceQty)}
+          {detail.standardOutput.differenceQty !== null && (
+            <span className="dash-kpi-unit">EA</span>
+          )}
+        </Fact>
+      </dl>
+      {detail.standardOutput.excludedSessionCount > 0 && (
+        <p className="dash-detail-none">
+          {t.excludedSessions(formatFigure(detail.standardOutput.excludedSessionCount))}
+        </p>
+      )}
+    </section>
+    <section aria-label={t.groupDefects}>
+      <h3 className="dash-detail-title">{t.groupDefects}</h3>
+      {detail.defectTypes.length === 0 ? (
+        <p className="dash-detail-none">{t.defectsEmpty}</p>
+      ) : (
+        <ol className="dash-detail-list">
+          {detail.defectTypes.map((defect) => (
+            <li key={defect.defectCodeId}>
+              <span>{defect.defectName}</span>
+              <span className="dash-detail-list-value">{`${formatFigure(defect.qty)} EA`}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {detail.untypedNgQty > 0 && (
+        <p className="dash-detail-none">{t.untypedQty(formatFigure(detail.untypedNgQty))}</p>
+      )}
+      <p className="dash-detail-none">{t.unassignedNote}</p>
+    </section>
+    <section aria-label={t.groupStops}>
+      <h3 className="dash-detail-title">{t.groupStops}</h3>
+      {detail.stopReasons.length === 0 ? (
+        <p className="dash-detail-none">{t.stopsEmpty}</p>
+      ) : (
+        <ol className="dash-detail-list">
+          {detail.stopReasons.map((reason) => (
+            <li key={reason.reasonCode ?? ''}>
+              <span>{reason.reasonName ?? t.reasonUnknown}</span>
+              <span className="dash-detail-list-value">{formatDuration(reason.durationMs)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  </>
+);
+
 interface EquipmentDetailDialogProps {
   item: EquipmentItemView | null;
   onClose: () => void;
@@ -225,6 +315,9 @@ const detailSubOf = (item: EquipmentItemView): string => {
  */
 const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) => {
   const sub = item === null ? '' : detailSubOf(item);
+  /* 금형 · 진도 · 시간 · 불량 유형 · 정지 사유(omf-all-around#251) — 창이 열렸을 때만 부른다. */
+  const detail = useDashboardEquipmentDetail(item?.equipmentId ?? null);
+  const extra = detail.data;
 
   return (
     <Dialog
@@ -273,6 +366,12 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
               </Fact>
               <Fact label={t.defectRate}>{formatDefectRate(item.defectRate)}</Fact>
               <Fact label={t.standardCycleTime}>{formatCycleTime(item.standardCycleTimeSec)}</Fact>
+              {extra !== undefined && (
+                <Fact label={t.goodQty}>
+                  {formatFigure(extra.output.goodQty)}
+                  <span className="dash-kpi-unit">EA</span>
+                </Fact>
+              )}
             </dl>
           </section>
           <section aria-label={t.groupWork}>
@@ -289,9 +388,49 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
                     ? t.none
                     : `${item.currentItemCode} ${item.currentItemName ?? ''}`.trim()}
                 </Fact>
+                {extra?.workOrder != null && (
+                  <Fact label={t.progress} wide>
+                    {t.progressValue(
+                      formatFigure(extra.workOrder.producedQty),
+                      formatFigure(extra.workOrder.orderQty),
+                      formatDefectRate(extra.workOrder.progressRate),
+                    )}
+                  </Fact>
+                )}
+              </dl>
+            )}
+            {extra?.mold != null && (
+              <dl className="dash-facts dash-facts-after">
+                <Fact label={t.mold} wide>
+                  {t.moldValue(
+                    extra.mold.moldCode,
+                    extra.mold.moldName,
+                    formatFigure(extra.mold.cavityCount),
+                  )}
+                </Fact>
               </dl>
             )}
           </section>
+          {detail.isPending ? (
+            <p className="dash-detail-none" aria-live="polite">
+              {t.detailLoading}
+            </p>
+          ) : detail.isError || extra === undefined ? (
+            <div className="dash-lots-state" role="alert">
+              <span>{t.detailFailed}</span>
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => {
+                  void detail.refetch();
+                }}
+              >
+                {messages.common.retry}
+              </Button>
+            </div>
+          ) : (
+            <EquipmentDetailExtra detail={extra} />
+          )}
         </div>
       )}
     </Dialog>

@@ -1,5 +1,7 @@
 import type {
   ApiClient,
+  DashboardEquipmentDetail,
+  DashboardItemGroupDefects,
   DashboardQualityLotStatus,
   DashboardQualityLots,
 } from '@omf-mes/api-client';
@@ -40,6 +42,9 @@ export const dashboardKeys = {
     query: DashboardFilterQuery,
     inspectionType: 'IQC' | 'PQC' | 'OQC' | null,
   ) => ['dashboard', 'quality-lots', status, query, inspectionType] as const,
+  itemGroupDefects: (query: DashboardFilterQuery) =>
+    ['dashboard', 'item-group-defects', query] as const,
+  equipmentDetail: (equipmentId: number) => ['dashboard', 'equipment-detail', equipmentId] as const,
 };
 
 /** 대시보드 요약의 자동 재조회 주기 — 1분(omf-all-around#115). */
@@ -111,6 +116,47 @@ export const useDashboardQualityLots = (
       ),
     enabled: status !== null,
     // 위 요약과 같은 까닭 — 다른 화면에서 처리하고 돌아와 다시 열면 지금 목록을 읽는다(#124).
+    staleTime: 0,
+  });
+};
+
+/**
+ * 제품군별 불량 현황(omf-all-around#251) — 종합 불량률 칸을 눌러 창이 열렸을 때만 부른다. 조건은 대시보드와 같은 기간 ·
+ * 공장. 창이 열린 동안 자동 갱신은 걸지 않는다(상태별 LOT 목록과 같다).
+ */
+export const useDashboardItemGroupDefects = (
+  open: boolean,
+  query: DashboardFilterQuery,
+): UseQueryResult<DashboardItemGroupDefects> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: dashboardKeys.itemGroupDefects(query),
+    queryFn: () =>
+      runRequest(() => client.GET('/app/dashboard-item-group-defects', { params: { query } })),
+    enabled: open,
+    staleTime: 0,
+  });
+};
+
+/**
+ * 설비 상세(omf-all-around#251) — 설비 상세 창을 열었을 때만 부른다(`equipmentId` 가 `null` 이면 부르지 않는다).
+ * 설비 현황처럼 공장 오늘 · 지금 기준이라 대시보드 기간 조건을 넘기지 않는다.
+ */
+export const useDashboardEquipmentDetail = (
+  equipmentId: number | null,
+): UseQueryResult<DashboardEquipmentDetail> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: dashboardKeys.equipmentDetail(equipmentId ?? 0),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/dashboard-equipment-detail', {
+          params: { query: { equipmentId: equipmentId ?? 0 } },
+        }),
+      ),
+    enabled: equipmentId !== null,
     staleTime: 0,
   });
 };

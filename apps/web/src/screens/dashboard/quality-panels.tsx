@@ -693,6 +693,20 @@ export const QualityOverviewTab = ({
                   tone: countTone(quality.nonconformance.openCount, 'error'),
                   selectable: quality.nonconformance.openCount > 0,
                 },
+                /* 반복 부적합 품목 수(omf-all-around#251) — 부적합 현황 탭과 같은 값. 목록 창은 없다(누를 수 없다). */
+                ...(quality.nonconformance.repeatedItemCount === undefined
+                  ? []
+                  : [
+                      {
+                        key: 'repeated',
+                        label: t.repeatedItemsLine,
+                        note: t.repeatedItemsNote,
+                        value: formatFigure(quality.nonconformance.repeatedItemCount),
+                        unit: t.itemUnit,
+                        tone: countTone(quality.nonconformance.repeatedItemCount, 'warning'),
+                        selectable: false,
+                      },
+                    ]),
               ]}
             />
           </Panel>
@@ -847,6 +861,19 @@ export const IqcTab = ({
                   tone: countTone(iqcReceiptHold.count, 'warning'),
                   selectable: iqcReceiptHold.count > 0,
                 },
+                /* 선별 처분 LOT(omf-all-around#251) — 원래 IQC 검사 LOT 기준. 목록 창은 없다(누를 수 없다). */
+                ...(iqc.sortedLotCount === undefined
+                  ? []
+                  : [
+                      {
+                        key: 'sorted',
+                        label: t.sortedLots,
+                        note: t.sortedLotsNote,
+                        value: formatFigure(iqc.sortedLotCount),
+                        unit: t.lotUnit,
+                        selectable: false,
+                      },
+                    ]),
               ]}
             />
           </Panel>
@@ -1656,6 +1683,34 @@ export const NonconformanceTab = ({
           unit={t.qtyUnit}
           tone={nc.monthQty > 0 ? 'error' : undefined}
         />
+        {/*
+         * 부적합 판정률(omf-all-around#251) = (IQC 재검 투입 − OK 복원) ÷ 재검 투입 — IQC 탭 「재검 OK 복원율」의 나머지다
+         * (사용자 결정: IQC 만). 투입 0 이면 값 없음.
+         */}
+        {quality.iqc.fullReinspect !== null && (
+          <KpiTile
+            label={t.ncRate}
+            tag={tags.month}
+            value={
+              quality.iqc.fullReinspect.inputQty > 0
+                ? formatFigure(
+                    Math.max(
+                      0,
+                      Math.round(
+                        ((quality.iqc.fullReinspect.inputQty -
+                          quality.iqc.fullReinspect.restoredQty) /
+                          quality.iqc.fullReinspect.inputQty) *
+                          1000,
+                      ) / 10,
+                    ),
+                  )
+                : t.rateNone
+            }
+            unit={quality.iqc.fullReinspect.inputQty > 0 ? '%' : undefined}
+          >
+            <span>{t.ncRateNote(formatFigure(quality.iqc.fullReinspect.inputQty))}</span>
+          </KpiTile>
+        )}
         <KpiTile
           label={t.ncScrap}
           tag={tags.month}

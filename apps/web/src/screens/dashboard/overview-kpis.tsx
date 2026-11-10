@@ -162,6 +162,8 @@ export interface OverviewKpisProps {
   isLoading: boolean;
   axes: URLSearchParams;
   routes: CardRouteTable;
+  /** 종합 불량률 칸을 누르면 제품군별 불량 현황 창을 연다(omf-all-around#251). 없으면 칸은 누를 수 없다. */
+  onOpenDefects?: () => void;
 }
 
 /**
@@ -183,6 +185,7 @@ export const OverviewKpis = ({
   isLoading,
   axes,
   routes,
+  onOpenDefects,
 }: OverviewKpisProps) => {
   /* 하루면 「금일」, 이틀 이상이면 「선택 기간」(사용자 확정 2026-10-16). 가동 설비 칸은 「실시간」 그대로. */
   const dayTag = useSingleDay() ? k.tagToday : k.tagPeriod;
@@ -290,15 +293,29 @@ export const OverviewKpis = ({
           </KpiTile>
         </Linked>
 
-        <KpiTile
-          label={k.defectRate}
-          info={k.defectRateTip}
-          tag={dayTag}
-          value={qtyOrNone(production?.defectRate)}
-          unit={production?.defectRate === null || production === null ? undefined : '%'}
-        >
-          <span>{k.defectRateNote}</span>
-        </KpiTile>
+        {/*
+         * 칸 전체를 덮는 단추(`::after` 없이 칸 위에 깐다) — 칸 안 설명 단추(ⓘ)를 단추로 감쌀 수 없어서다. 서버가 제품군
+         * 칸을 주지 않으면(이전 서버) 누를 수 없다(omf-all-around#251).
+         */}
+        <div className={onOpenDefects === undefined ? undefined : 'dash-kpi-openable'}>
+          <KpiTile
+            label={k.defectRate}
+            info={k.defectRateTip}
+            tag={dayTag}
+            value={qtyOrNone(production?.defectRate)}
+            unit={production?.defectRate === null || production === null ? undefined : '%'}
+          >
+            <span>{k.defectRateNote}</span>
+          </KpiTile>
+          {onOpenDefects !== undefined && (
+            <button
+              type="button"
+              className="dash-kpi-open"
+              aria-label={t.itemGroup.openDefects}
+              onClick={onOpenDefects}
+            />
+          )}
+        </div>
       </div>
 
       {/*

@@ -16735,6 +16735,102 @@ button.app-button-neutral {
   font-weight: 700;
 }
 
+/* 설비 상세 · 제품군별 불량 창의 이름 … 값 목록(omf-all-around#251) — 줄 구분선, 값은 오른쪽 끝. */
+.dash-detail-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-detail-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
+}
+
+.dash-detail-list li:last-child {
+  border-bottom: 0;
+}
+
+.dash-detail-list-value {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-facts-after {
+  margin-top: var(--space-2);
+}
+
+.dash-detail-lead {
+  margin: calc(-1 * var(--space-1)) 0 var(--space-2);
+}
+
+/* 제품군별 불량 창 — 제품군마다 한 묶음, 넓으면 여러 열. */
+.dash-group-defects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+}
+
+.dash-group-defect {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.dash-group-defect .dash-detail-title {
+  margin-bottom: 0;
+}
+
+.dash-group-defect-caption {
+  margin: var(--space-1) 0 0;
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 종합 불량률 칸 — 칸 위에 투명 단추를 깐다(칸 안 설명 단추 ⓘ 를 단추로 감쌀 수 없다). ⓘ 는 단추 위로 올린다.
+ */
+.dash-kpi-openable {
+  position: relative;
+}
+
+.dash-kpi-openable > .dash-kpi {
+  height: 100%;
+}
+
+.dash-kpi-open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dash-kpi-open:hover {
+  background: var(--state-hover-neutral);
+}
+
+.dash-kpi-open:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dash-kpi-openable .dash-info {
+  position: relative;
+  z-index: 1;
+}
+
 /*
  * ── POP(1024×768 터치 키오스크) ────────────────────────────────────────────
  *

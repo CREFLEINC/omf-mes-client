@@ -23,6 +23,58 @@ const t = messages.dashboard.quality;
 const v = messages.dashboard.viz;
 
 describe('품질 탭', () => {
+  it('#251 — 품질 종합에 반복 부적합 품목, IQC 에 선별 처분 LOT(누를 수 없는 줄), 서버가 주지 않으면 줄이 없다', () => {
+    const base = quality();
+    const data = {
+      ...base,
+      iqc: { ...base.iqc, sortedLotCount: 2 },
+      nonconformance: { ...base.nonconformance, repeatedItemCount: 3 },
+    };
+    const { unmount } = render(<QualityOverviewTab quality={data} />);
+    const current = screen.getByRole('region', { name: t.currentTitle });
+    expect(current).toHaveTextContent(`${t.repeatedItemsLine}${t.repeatedItemsNote}3${t.itemUnit}`);
+    unmount();
+
+    const iqc = render(<IqcTab quality={data} />);
+    const sorted = within(screen.getByRole('region', { name: t.currentTitle })).getByRole(
+      'button',
+      {
+        name: new RegExp(t.sortedLots),
+      },
+    );
+    expect(sorted).toBeDisabled();
+    expect(sorted).toHaveTextContent(`${t.sortedLotsNote}2${t.lotUnit}`);
+    iqc.unmount();
+
+    render(<IqcTab quality={base} />);
+    expect(screen.queryByText(t.sortedLots)).not.toBeInTheDocument();
+  });
+
+  it('#251 — 부적합 판정률 = (IQC 재검 투입 − OK 복원) ÷ 투입, 투입 0 이면 「—」, 재검 칸이 없으면 칸을 두지 않는다', () => {
+    const base = quality();
+    const { rerender } = render(
+      <NonconformanceTab
+        quality={{
+          ...base,
+          iqc: { ...base.iqc, fullReinspect: { inputQty: 200, restoredQty: 50 } },
+        }}
+      />,
+    );
+    const tile = screen.getByRole('group', { name: t.ncRate });
+    expect(tile).toHaveTextContent('75%');
+    expect(tile).toHaveTextContent(t.ncRateNote('200'));
+
+    rerender(
+      <NonconformanceTab
+        quality={{ ...base, iqc: { ...base.iqc, fullReinspect: { inputQty: 0, restoredQty: 0 } } }}
+      />,
+    );
+    expect(screen.getByRole('group', { name: t.ncRate })).toHaveTextContent(t.rateNone);
+
+    rerender(<NonconformanceTab quality={base} />);
+    expect(screen.queryByRole('group', { name: t.ncRate })).not.toBeInTheDocument();
+  });
+
   it('합격률은 서버 값 그대로, 모수가 없으면(null) 0%가 아니라 「—」 · 전월 대비 p', () => {
     expect(formatRate(96.4)).toBe('96.4%');
     expect(formatRate(null)).toBe(t.rateNone);
@@ -56,7 +108,11 @@ describe('품질 탭', () => {
     expect(screen.getByRole('region', { name: t.currentTitle })).toHaveTextContent(t.receiptHold);
   });
 
-  it('⛔ 「선별」을 어디에도 쓰지 않는다 — MES 용어(검사 보류 · 전수 재검)를 쓴다', () => {
+  /*
+   * 검사 보류 · 전수 재검을 「선별」로 부르지 않는다(2026-10-19). 「선별」은 MES 처분 종류 선별(SORT)을 가리킬 때만
+   * 쓴다 — IQC 「선별 처분 LOT」과 반복 부적합 품목 설명(omf-all-around#251).
+   */
+  it('⛔ 「선별」은 선별 처분을 가리킬 때만 쓴다 — 검사 보류 · 전수 재검은 MES 용어 그대로', () => {
     const { container } = render(
       <>
         <QualityOverviewTab quality={quality()} />
@@ -69,8 +125,11 @@ describe('품질 탭', () => {
       </>,
     );
 
-    expect(container.textContent).not.toContain('선별');
-    expect(JSON.stringify(messages.dashboard)).not.toContain('선별');
+    const allowed = [t.sortedLots, t.repeatedItemsNote];
+    const strip = (text: string) =>
+      allowed.reduce((rest, phrase) => rest.split(phrase).join(''), text);
+    expect(strip(container.textContent ?? '')).not.toContain('선별');
+    expect(strip(JSON.stringify(messages.dashboard))).not.toContain('선별');
   });
 
   it('IQC — 전수 재검이 null 이면 칸을 두지 않고, 값이 오면 투입 · 양품 복원을 보인다', () => {

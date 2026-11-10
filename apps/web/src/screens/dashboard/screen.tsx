@@ -17,6 +17,7 @@ import {
   toSearchParams,
   type DashboardFilters,
 } from './filters';
+import { ItemGroupDefectsDialog, ItemGroupPanel } from './item-group-panel';
 import { formatLastUpdated } from './last-updated';
 import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
@@ -118,6 +119,9 @@ export const DashboardScreen = () => {
   const summary = useDashboardSummary(query, { live: isLive });
   /* 2 · 3행이 화면 아래까지 남은 높이를 나눠 갖는다(3행 생산 추이가 먼저 · `.dash-overview`). */
   const [overviewEl, setOverviewEl] = useState<HTMLDivElement | null>(null);
+  /* 종합 불량률 → 제품군별 불량 현황 창(omf-all-around#251). 한 번 연 뒤에는 남겨 두어 닫을 때 포커스가 칸으로 돌아온다. */
+  const [defectsOpen, setDefectsOpen] = useState(false);
+  const [defectsMounted, setDefectsMounted] = useState(false);
   const fillHeight = useFillHeight(overviewEl);
   useTipInside();
   /* 서버가 기간을 거절한 이유(400 field dateFrom · dateTo) — 배너 대신 날짜 칸 옆에 둔다. */
@@ -192,7 +196,25 @@ export const DashboardScreen = () => {
         isLoading={summary.isPending}
         axes={axes}
         routes={CARD_ROUTES}
+        onOpenDefects={
+          view?.production?.byItemGroup === undefined
+            ? undefined
+            : () => {
+                setDefectsOpen(true);
+                setDefectsMounted(true);
+              }
+        }
       />
+      <ItemGroupPanel production={view?.production ?? null} isLoading={summary.isPending} />
+      {defectsMounted && (
+        <ItemGroupDefectsDialog
+          open={defectsOpen}
+          production={view?.production ?? null}
+          onClose={() => {
+            setDefectsOpen(false);
+          }}
+        />
+      )}
 
       {/*
        * ⭐ 행 단위 격자(사용자 지정 2026-10-16) — 2행: 설비 가동 현황 | 가동 외 설비 현황, 3행: 일일 생산실적 추이 |
