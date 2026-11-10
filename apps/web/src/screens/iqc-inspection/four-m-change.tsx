@@ -109,18 +109,17 @@ export const FourMChange = ({ draft, onChange, disabled }: FourMChangeProps) => 
        */}
       {shownRemarks !== '' && (
         <div className="iqc-inspection-four-m-remarks">
-          <div className="iqc-inspection-four-m-remarks-head">
-            <span className="iqc-inspection-four-m-remarks-label">{t.remarks}</span>
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              disabled={disabled}
-              onClick={() => open(draft)}
-            >
-              {t.remarksEdit}
-            </Button>
-          </div>
+          <span className="iqc-inspection-four-m-remarks-label">{t.remarks}</span>
+          {/* [수정]은 비고 글 첫 줄과 같은 높이, 오른쪽 끝(#247 · 사용자 지시 2026-11-10). */}
+          <Button
+            type="button"
+            variant="outlined"
+            size="md"
+            disabled={disabled}
+            onClick={() => open(draft)}
+          >
+            {t.remarksEdit}
+          </Button>
           {/* 세 줄 높이를 넘으면 상자 안에서 굴려 본다(사용자 시안 2026-10-28). */}
           <span className="iqc-inspection-four-m-remarks-text" tabIndex={0}>
             {shownRemarks}

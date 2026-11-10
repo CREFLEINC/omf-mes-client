@@ -29423,11 +29423,26 @@ table.col-measuring td {
 }
 
 /* 「비고」 소제목은 내용 위에 보조색으로. */
-.iqc-inspection-four-m-remarks-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+/* 비고 상자 — 왼쪽 「비고」 · 글, 오른쪽 [수정]은 글 첫 줄과 가운데를 맞춘다(#247 · 사용자 지시 2026-11-10). */
+.iqc-inspection-four-m-remarks:has(> button) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+}
+
+.iqc-inspection-four-m-remarks > .iqc-inspection-four-m-remarks-label {
+  grid-column: 1;
+}
+
+.iqc-inspection-four-m-remarks > .iqc-inspection-four-m-remarks-text {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.iqc-inspection-four-m-remarks > button {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  margin-top: calc((1lh - var(--control-height-md)) / 2);
 }
 
 .iqc-inspection-four-m-remarks-label {
