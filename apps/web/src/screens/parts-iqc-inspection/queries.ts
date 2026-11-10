@@ -1,4 +1,8 @@
-import { createIdempotencyKey, type components } from '@omf-mes/api-client';
+import {
+  createIdempotencyKey,
+  type components,
+  type FourMChangeForward,
+} from '@omf-mes/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
@@ -162,6 +166,10 @@ export interface SubmitVariables {
   defects: DefectInput[];
   judgmentChangeReason?: string;
   remarks: string;
+  /**
+   * 4M 변경품(OA 화면 · omf-all-around#63) — 고쳤을 때만 싣는다. `null` 이면 변경품 아님(기록을 지운다), 생략하면 그대로 둔다.
+   */
+  fourMChange?: FourMChangeForward | null;
   /** 임시 저장만 하고 확정하지 않는다(#247 · 사용자 지시 2026-11-10). 판정을 아직 고르지 않았으면 `overallJudgmentCode` 는 `''`. */
   draftOnly?: boolean;
 }
@@ -192,6 +200,7 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         measurements: v.measurements,
         /* 비고는 임시 저장에도 싣는다 — 다시 열면 칸이 채워진다(#247). */
         remarks: v.remarks.trim(),
+        ...(v.fourMChange === undefined ? {} : { fourMChange: v.fourMChange }),
         // 불합격 판정이거나 불합격 수량이 있으면 그 불량 유형(#205), 아니면 빈 배열 — 앞서 임시 저장한 사유를 지운다.
         defects: v.defects,
       };
@@ -231,6 +240,9 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
                   : { overallJudgmentCode: quantities.overallJudgmentCode }),
                 measurements: quantities.measurements,
                 ...(quantities.remarks === '' ? {} : { remarks: quantities.remarks }),
+                ...(quantities.fourMChange === undefined
+                  ? {}
+                  : { fourMChange: quantities.fourMChange }),
                 ...(v.previousResultId === null ? {} : { previousResultId: v.previousResultId }),
                 // 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다.
                 ...(quantities.defects.length === 0 ? {} : { defects: quantities.defects }),
@@ -268,6 +280,7 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         body: {
           overallJudgmentCode: v.overallJudgmentCode,
           ...(remarks === '' ? {} : { remarks }),
+          ...(v.fourMChange === undefined ? {} : { fourMChange: v.fourMChange }),
           ...(v.judgmentChangeReason === undefined
             ? {}
             : { judgmentChangeReason: v.judgmentChangeReason }),

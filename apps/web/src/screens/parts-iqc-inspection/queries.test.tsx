@@ -51,3 +51,22 @@ describe('useSubmitInspection 재검사', () => {
     );
   });
 });
+
+describe('useSubmitInspection OA 4M 변경 정보 (#247)', () => {
+  it('고친 4M 변경품을 회차 저장에 싣는다', async () => {
+    expect(await submit({ ...VARIABLES, fourMChange: { remarks: '원자재 변경' } })).toMatchObject({
+      fourMChange: { remarks: '원자재 변경' },
+    });
+  });
+
+  it('변경품을 풀면 `null` 을 싣고, 손대지 않으면 키를 싣지 않는다', async () => {
+    expect(await submit({ ...VARIABLES, fourMChange: null })).toMatchObject({ fourMChange: null });
+    expect(await submit(VARIABLES)).not.toHaveProperty('fourMChange');
+  });
+
+  it('임시 저장은 판정을 고르지 않았으면 판정 키를 싣지 않는다', async () => {
+    expect(
+      await submit({ ...VARIABLES, overallJudgmentCode: '', draftOnly: true }),
+    ).not.toHaveProperty('overallJudgmentCode');
+  });
+});

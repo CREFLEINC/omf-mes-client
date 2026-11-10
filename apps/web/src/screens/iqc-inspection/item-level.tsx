@@ -117,3 +117,28 @@ export const ItemLevelStep = ({ itemId, item, pending, onPick }: Omit<ItemLevelP
     {...(onPick === undefined ? {} : { onPick })}
   />
 );
+
+/*
+ * 4M 변경 정보에서 골라 둔 검사 수준(사용자 지시 2026-11-09) — 판정을 확정해야 저장한다. 임시 저장 뒤 다시 열어도 남도록 의뢰별로
+ * 이 브라우저에 둔다(서버에는 임시 저장할 자리가 없다).
+ */
+const pendingLevelKey = (requestId: number): string =>
+  `omf-mes:iqc-inspection:pending-level:${String(requestId)}`;
+
+export const readPendingLevel = (requestId: number): LevelDialogValues | null => {
+  try {
+    const raw = window.localStorage.getItem(pendingLevelKey(requestId));
+    return raw === null ? null : (JSON.parse(raw) as LevelDialogValues);
+  } catch {
+    return null;
+  }
+};
+
+export const storePendingLevel = (requestId: number, values: LevelDialogValues | null): void => {
+  try {
+    if (values === null) window.localStorage.removeItem(pendingLevelKey(requestId));
+    else window.localStorage.setItem(pendingLevelKey(requestId), JSON.stringify(values));
+  } catch {
+    /* 저장소를 못 쓰면 이 화면에서만 기억한다. */
+  }
+};

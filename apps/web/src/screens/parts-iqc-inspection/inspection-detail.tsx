@@ -12,7 +12,7 @@ import {
   TextArea,
   TextField,
 } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import type { components, FourMChangeForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -40,6 +40,22 @@ import {
   useMeasurements,
 } from '../iqc-inspection/queries';
 import { DiscardDialog } from '../routing/leave-guard';
+import type { LevelDialogValues } from '../inspection-level/level-dialog';
+import { useLevelWrite } from '../inspection-level/level-write';
+import {
+  FourMChange,
+  fourMBodyOf,
+  fourMDraftOf,
+  isFourMIncomplete,
+  isSameFourM,
+  type FourMChangeDraft,
+} from '../iqc-inspection/four-m-change';
+import {
+  ItemLevel,
+  ItemLevelStep,
+  readPendingLevel,
+  storePendingLevel,
+} from '../iqc-inspection/item-level';
 import { RejectedLotGuide } from '../iqc-inspection/rejected-lot-guide';
 import { useItemNames, useLotNumbers } from '../iqc-inspection/reference-lookup';
 import { sampleQtyOf } from '../iqc-inspection/sample-qty';
@@ -110,6 +126,10 @@ export interface InspectionDetailProps {
   onSubmitted: () => void;
   /** 입력이 있는가 — 목록에서 다른 의뢰를 고르거나 닫을 때 화면이 한 번 묻는다. */
   onDirtyChange: (dirty: boolean) => void;
+  /**
+   * OA 공장 화면(#247 · 사용자 지시 2026-11-10 — 부품 화면과 같은 상세) — 기본 정보에 「검사 수준」, 비고 아래 「4M 변경 정보」를 더한다.
+   */
+  oa?: boolean;
 }
 
 /**
@@ -120,6 +140,7 @@ export const InspectionDetail = ({
   inspectionRequestId,
   onSubmitted,
   onDirtyChange,
+  oa = false,
 }: InspectionDetailProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -149,6 +170,22 @@ export const InspectionDetail = ({
     [onDirtyChange],
   );
   const measurements = useMeasurements(draftRound?.inspectionResultId ?? null);
+  /*
+   * OA — 4M 변경 정보에서 골라 둔 검사 수준. 판정을 확정해야 저장한다(#247 · 사용자 지시 2026-11-09). 의뢰별로 이 브라우저에 둔다.
+   */
+  const [pendingLevel, setPendingLevel] = useState<LevelDialogValues | null>(null);
+  useEffect(() => {
+    setPendingLevel(oa ? readPendingLevel(inspectionRequestId) : null);
+  }, [oa, inspectionRequestId]);
+  const levelWrite = useLevelWrite(() => undefined);
+  const submitted = () => {
+    if (pendingLevel !== null) {
+      levelWrite.write({ row: null, values: pendingLevel });
+      storePendingLevel(inspectionRequestId, null);
+      setPendingLevel(null);
+    }
+    onSubmitted();
+  };
 
   /*
    * 재검사(OA 화면과 같다 · 사용자 지시 2026-11-09) — 확정된 회차를 두고 새 회차를 쌓는다. 회차가 바뀌면(제출됨) 저절로 풀린다.
@@ -245,8 +282,26 @@ export const InspectionDetail = ({
                 measured: measurements.data ?? [],
               }
         }
-        onSubmitted={onSubmitted}
+        onSubmitted={submitted}
         onDirtyChange={changeDirty}
+        oa={
+          oa
+            ? {
+                hasLot: detail.data.lotId !== null,
+                fourMStored: detail.data.fourMChange,
+                itemId: detail.data.itemId,
+                levelItem: (() => {
+                  const parts = items.partsOf(detail.data.itemId);
+                  return parts === null ? null : { itemCode: parts.code, itemName: parts.name };
+                })(),
+                pendingLevel,
+                onPickLevel: (values: LevelDialogValues) => {
+                  setPendingLevel(values);
+                  storePendingLevel(inspectionRequestId, values);
+                },
+              }
+            : null
+        }
       />
     );
   };
@@ -505,6 +560,16 @@ interface FormProps {
   } | null;
   onSubmitted: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  /** OA 화면에서만 — 검사 수준 · 4M 변경 정보(#247). 부품 화면은 `null`. */
+  oa: {
+    /** 자재 LOT 이 있는 의뢰만 4M 변경품을 적는다. */
+    hasLot: boolean;
+    fourMStored: FourMChangeForward | null;
+    itemId: number;
+    levelItem: { itemCode: string; itemName: string } | null;
+    pendingLevel: LevelDialogValues | null;
+    onPickLevel: (values: LevelDialogValues) => void;
+  } | null;
 }
 
 /** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
@@ -573,7 +638,12 @@ const InspectionForm = (props: FormProps) => {
    * (#247 · 사용자 지시 2026-11-10 — 되돌리기 기록 수로 재면 OK 를 눌렀다 풀어도 [임시 저장]이 켜져 있었다).
    */
   const [baseline, setBaseline] = useState(initial);
-  const dirty = !sameForm(form, baseline);
+  /* OA 4M 변경품 — 서버 기록과 같으면 싣지 않는다(종전 OA 화면과 같다). 고친 것이 있는가에 함께 든다. */
+  const storedFourM = fourMDraftOf(props.oa?.fourMStored ?? null);
+  const [fourM, setFourM] = useState<FourMChangeDraft>(storedFourM);
+  const fourMChanged = props.oa?.hasLot === true && !isSameFourM(fourM, storedFourM);
+  const fourMBlocked = fourMChanged && isFourMIncomplete(fourM);
+  const dirty = !sameForm(form, baseline) || fourMChanged;
   /* 텍스트 항목은 글만 남긴다 — 판정은 검사자가 OK/NG 를 직접 고른다(#247 · 사용자 지시 2026-11-10). */
   const changeText = (item: ItemSpec, text: string) =>
     change({ ...form, texts: { ...form.texts, [item.inspectionItemSpecId]: text } });
@@ -690,6 +760,7 @@ const InspectionForm = (props: FormProps) => {
     overall === null ||
     inspectedQty === null ||
     inspectedQty <= 0 ||
+    fourMBlocked ||
     (needsReason && reason.trim() === '');
 
   const variablesOf = (judgment: string, qty: number): SubmitVariables => ({
@@ -709,6 +780,7 @@ const InspectionForm = (props: FormProps) => {
     defects: [],
     ...(needsReason ? { judgmentChangeReason: reason.trim() } : {}),
     remarks: form.remarks,
+    ...(fourMChanged ? { fourMChange: fourMBodyOf(fourM) } : {}),
   });
   const onSubmit = () => {
     setAsk(false);
@@ -726,6 +798,7 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty === null ||
     inspectedQty <= 0 ||
     form.inspectedAt === '' ||
+    fourMBlocked ||
     submit.isSaving ||
     saveDraft.isSaving;
   const onSaveDraft = () => {
@@ -808,6 +881,20 @@ const InspectionForm = (props: FormProps) => {
                 <dd>{t.target.sampleValue(maxN, versionAcceptance ?? 0)}</dd>
               </div>
             </>
+          )}
+          {props.oa !== null && (
+            <div className="parts-iqc-fact">
+              <dt className="field-label">
+                {messages.iqcInspection.detail.fields.inspectionLevel}
+              </dt>
+              <dd>
+                <ItemLevel
+                  key={props.oa.itemId}
+                  itemId={props.oa.itemId}
+                  item={props.oa.levelItem}
+                />
+              </dd>
+            </div>
           )}
           <div className="parts-iqc-fact">
             <dt className="field-label">{t.target.inspector}</dt>
@@ -1035,7 +1122,23 @@ const InspectionForm = (props: FormProps) => {
 
       <DrawingImages drawings={props.drawings} />
 
-      {/* 비고 — 맨 아래(#247 · 사용자 지시 2026-11-10). */}
+      {/* OA — 4M 변경 정보(번호 없이 검사 진행 안, 비고 위 · #247 사용자 지시 2026-11-10). 품목 검사 수준이 없으면 여기서 함께 지정한다. */}
+      {props.oa !== null && props.oa.hasLot && (
+        <section className="parts-iqc-card" aria-labelledby="parts-iqc-four-m">
+          <h3 id="parts-iqc-four-m" className="parts-iqc-sub-title">
+            {messages.iqcInspection.result.fourMChange.sectionTitle}
+          </h3>
+          <FourMChange draft={fourM} onChange={setFourM} disabled={submit.isSaving} />
+          <ItemLevelStep
+            itemId={props.oa.itemId}
+            item={props.oa.levelItem}
+            pending={props.oa.pendingLevel}
+            onPick={props.oa.onPickLevel}
+          />
+        </section>
+      )}
+
+      {/* 비고 — 맨 아래(#247 · 사용자 지시 2026-11-10). OA 는 4M 변경 정보 다음. */}
       <div className="field-cell parts-iqc-stretch">
         <h3 className="parts-iqc-sub-title">
           <label htmlFor="parts-iqc-remarks">{t.visual.remarks}</label>
@@ -1162,6 +1265,7 @@ const InspectionForm = (props: FormProps) => {
             change(cleared);
             setChosen(null);
             setReason('');
+            setFourM(storedFourM);
           }}
         >
           {t.footer.clear}
