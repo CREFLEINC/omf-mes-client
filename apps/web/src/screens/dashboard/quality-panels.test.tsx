@@ -50,6 +50,38 @@ describe('품질 탭', () => {
     expect(screen.queryByText(t.sortedLots)).not.toBeInTheDocument();
   });
 
+  it('#251 — 품질 종합 「반복 부적합 품목」 줄을 누르면 그 품목 목록 창(품목 · 부적합 건수 · 최근 발생일), 전체가 더 많으면 「상위 n개 / 전체 m개」', async () => {
+    const user = userEvent.setup();
+    const base = quality();
+    render(
+      <QualityOverviewTab
+        quality={{
+          ...base,
+          nonconformance: {
+            ...base.nonconformance,
+            repeatedItemCount: 7,
+            repeatedItems: [
+              {
+                itemId: 1,
+                itemCode: 'GH64-10210A',
+                itemName: '하우징',
+                ncCount: 3,
+                lastOpenedAt: '2026-11-08T05:00:00Z',
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: new RegExp(t.repeatedItemsLine) }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent(t.ncRepeatedCount('7'));
+    expect(dialog).toHaveTextContent(t.ncRepeatedTopOf('1', '7'));
+    const list = within(dialog).getByRole('list', { name: t.lots.listLabel(t.repeatedItemsLine) });
+    expect(list).toHaveTextContent(`GH64-10210A하우징3건${t.lastOpenedOn('2026-11-08')}`);
+  });
+
   it('#251 — 부적합 판정률 = (IQC 재검 투입 − OK 복원) ÷ 투입, 투입 0 이면 「—」, 재검 칸이 없으면 칸을 두지 않는다', () => {
     const base = quality();
     const { rerender } = render(

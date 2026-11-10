@@ -16799,10 +16799,30 @@ button.app-button-neutral {
   background: var(--outline-variant);
 }
 
-.dash-item-group-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: var(--space-2);
+/* 머리 — 제목 칸이 남는 폭을 차지해 「금일」과 「상세 보기」가 오른쪽에 나란히 선다. 단추 글자색은 기본(강조색) 그대로. */
+.dash-item-group-panel .dash-panel-head {
+  align-items: center;
+}
+
+.dash-item-group-panel .dash-panel-head > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-item-group-panel .dash-item-group-detail {
+  margin-block: calc(var(--space-1) * -1);
+}
+
+/* 줄 높이 38px(머리 · 데이터 같게) — 데이터 양에 비해 세로를 덜 쓴다. */
+.dash-panel .dash-item-group-table :is(th, td) {
+  height: 2.375rem;
+  padding-block: 0;
+}
+
+/* 합계 줄 — 한 단계 밝은 바탕 + 굵게. 강조색은 쓰지 않는다(빈 표의 안내 한 줄에는 걸지 않는다). */
+.dash-panel .dash-item-group-table tbody tr:last-child:not(:only-child) td {
+  background: var(--surface-container-high);
+  font-weight: 700;
 }
 
 /* 제품군별 불량 창 — 「현재 현황」 LOT 목록 창과 같은 목록형(머리줄 · 줄 구분선), 줄 안에 불량 유형 순위 막대. */

@@ -487,6 +487,7 @@ export const dashboard = {
     openedOn: (date: string): string => `발생 ${date}`,
     openItemDisposition: (item: string): string => `${item} 처분 판정 보기`,
     repeatedItemsLine: '반복 부적합 품목',
+    lastOpenedOn: (date: string): string => `최근 발생 ${date}`,
     repeatedItemsNote: '같은 품목 2건 이상, 선별로 생긴 부적합 포함',
     itemUnit: '품목',
     sortedLots: '선별 처분 LOT',

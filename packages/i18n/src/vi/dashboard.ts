@@ -425,6 +425,7 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     openedOn: (date: string): string => `Phát sinh ${date}`,
     openItemDisposition: (item: string): string => `Xem phán định xử lý ${item}`,
     repeatedItemsLine: 'Mặt hàng NC lặp lại',
+    lastOpenedOn: (date: string): string => `Phát sinh gần nhất ${date}`,
     repeatedItemsNote: 'Cùng mặt hàng từ 2 lần, gồm NC phát sinh do tuyển lọc',
     itemUnit: 'mặt hàng',
     sortedLots: 'LOT xử lý tuyển lọc',

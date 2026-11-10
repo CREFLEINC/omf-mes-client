@@ -36,7 +36,7 @@ import { compareEquipmentCode } from './equipment';
 import { formatElapsed, pointerFocusProps, usePointerInput } from './equipment-panel';
 import { formatFigure, toNiceAxis } from './types';
 import { usePeriodTags } from './period';
-import { QualityLotsDialog } from './quality-lots-dialog';
+import { QualityLotsDialog, RepeatedItemsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
 import {
   CHART_H,
@@ -601,6 +601,9 @@ export const QualityOverviewTab = ({
   const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
   /* 한 번 연 뒤에는 창을 남겨 둔다 — 닫을 때 없애면 포커스가 눌렀던 줄로 돌아오지 못한다. */
   const [lotDialogMounted, setLotDialogMounted] = useState(false);
+  /* 반복 부적합 품목 창(#251) — LOT 목록이 아니라 품목 목록이라 따로 연다. 한 번 연 뒤 남겨 두는 까닭은 위와 같다. */
+  const [repeatedOpen, setRepeatedOpen] = useState(false);
+  const [repeatedMounted, setRepeatedMounted] = useState(false);
   const pointerInput = usePointerInput();
   const todayLots = sumLots([quality.iqc.todayLots, quality.pqc.todayLots, quality.oqc.todayLots]);
   const monthHeld = sumLots([
@@ -657,6 +660,11 @@ export const QualityOverviewTab = ({
             <StatusList
               rowProps={pointerFocusProps(pointerInput)}
               onSelect={(key) => {
+                if (key === 'repeated') {
+                  setRepeatedOpen(true);
+                  setRepeatedMounted(true);
+                  return;
+                }
                 setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
                 setLotDialogMounted(true);
               }}
@@ -694,7 +702,7 @@ export const QualityOverviewTab = ({
                   tone: countTone(quality.nonconformance.openCount, 'error'),
                   selectable: quality.nonconformance.openCount > 0,
                 },
-                /* 반복 부적합 품목 수(omf-all-around#251) — 부적합 현황 탭과 같은 값. 목록 창은 없다(누를 수 없다). */
+                /* 반복 부적합 품목 수(omf-all-around#251) — 부적합 현황 탭과 같은 값. 누르면 그 품목 목록 창(사용자 지시 2026-11-10). */
                 ...(quality.nonconformance.repeatedItemCount === undefined
                   ? []
                   : [
@@ -705,7 +713,7 @@ export const QualityOverviewTab = ({
                         value: formatFigure(quality.nonconformance.repeatedItemCount),
                         unit: t.itemUnit,
                         tone: countTone(quality.nonconformance.repeatedItemCount, 'warning'),
-                        selectable: false,
+                        selectable: quality.nonconformance.repeatedItemCount > 0,
                       },
                     ]),
               ]}
@@ -727,6 +735,16 @@ export const QualityOverviewTab = ({
           withTime
         />
       </div>
+      {repeatedMounted && (
+        <RepeatedItemsDialog
+          open={repeatedOpen}
+          rows={quality.nonconformance.repeatedItems ?? []}
+          total={quality.nonconformance.repeatedItemCount ?? 0}
+          onClose={() => {
+            setRepeatedOpen(false);
+          }}
+        />
+      )}
       {/* 처음 고를 때 그린다 — 그 전에는 목록을 부르지 않는다(닫힌 동안에도 부르지 않는다 · `enabled`). */}
       {lotDialogMounted && (
         <QualityLotsDialog

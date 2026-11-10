@@ -1,9 +1,13 @@
 import { Button, Dialog, Skeleton, type ChipStatus } from '@crefle/web-ui';
-import type { DashboardQualityLotItem, DashboardQualityLotStatus } from '@omf-mes/api-client';
+import type {
+  DashboardQualityLotItem,
+  DashboardQualityLotStatus,
+  DashboardRepeatedItem,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useContext } from 'react';
 
-import { formatPlantDateTime } from '../../patterns/plant-time';
+import { formatPlantDateTime, toPlantDateTimeParts } from '../../patterns/plant-time';
 import { FilterQueryContext } from './period';
 import { useDashboardQualityLots } from './queries';
 import { formatFigure } from './types';
@@ -164,3 +168,75 @@ export const QualityLotsDialog = ({
     </Dialog>
   );
 };
+
+/**
+ * 반복 부적합 품목 창(omf-all-around#251 · 사용자 지시 2026-11-10 「반복 부적합 품목이 뭔지도 알 수 있어야」). 품질 종합 「주요 현황」의
+ * 같은 줄 숫자와 같은 값 — 부적합 현황 탭 「반복 부적합 품목」 표와 같은 목록(건수 → 최근 발생 순 상위 5)을 LOT 목록 창과 같은
+ * 목록형(왼쪽 품목 코드 · 이름, 오른쪽 건수 굵게 · 그 아래 최근 발생일)으로 보인다. 서버가 상위 5 만 주므로 전체가 더 많으면 「상위 n개 / 전체 m개」. 이동 링크 · 새 동작은 없다.
+ */
+export const RepeatedItemsDialog = ({
+  open,
+  rows,
+  total,
+  onClose,
+}: {
+  open: boolean;
+  rows: readonly DashboardRepeatedItem[];
+  total: number;
+  onClose: () => void;
+}) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    title={
+      <span className="dash-detail-head">
+        <span className="dash-detail-head-row">
+          <span className="dash-dot dash-dot-warning" aria-hidden="true" />
+          {t.repeatedItemsLine}
+        </span>
+        <span className="dash-detail-sub">{t.ncRepeatedCount(formatFigure(total))}</span>
+      </span>
+    }
+    size="md"
+    className="dash-lots-dialog"
+  >
+    {open &&
+      (rows.length === 0 ? (
+        <p className="dash-lots-state">{t.ncRepeatedEmpty}</p>
+      ) : (
+        <>
+          {total > rows.length && (
+            <p className="dash-lots-truncated">
+              {t.ncRepeatedTopOf(formatFigure(rows.length), formatFigure(total))}
+            </p>
+          )}
+          <div className="dash-lots-list">
+            <div className="dash-lots-colhead" aria-hidden="true">
+              <span>{t.column.item}</span>
+              <span />
+              <span>{t.column.ncCount}</span>
+            </div>
+            <ul aria-label={t.lots.listLabel(t.repeatedItemsLine)}>
+              {rows.map((row) => (
+                <li key={row.itemId} className="dash-lots-row">
+                  <span className="dash-lots-name">
+                    <span className="dash-lots-lot">{row.itemCode}</span>
+                    <span className="dash-lots-item">{row.itemName}</span>
+                  </span>
+                  <span className="dash-lots-info" />
+                  <span className="dash-lots-qty">
+                    <span className="dash-lots-qty-value">{`${formatFigure(row.ncCount)}${t.countUnit}`}</span>
+                    <time className="dash-lots-time" dateTime={row.lastOpenedAt}>
+                      {t.lastOpenedOn(
+                        toPlantDateTimeParts(row.lastOpenedAt)?.date ?? row.lastOpenedAt,
+                      )}
+                    </time>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ))}
+  </Dialog>
+);

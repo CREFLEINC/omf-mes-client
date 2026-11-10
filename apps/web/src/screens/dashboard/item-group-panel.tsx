@@ -50,7 +50,7 @@ const COLUMNS: Column<ItemGroupRow>[] = [
 /**
  * 제품군별 생산 현황(omf-all-around#251) — KPI 띠 아래 한 줄 표. 값은 summary 의 `production.byItemGroup` 그대로이고
  * 맨 끝 「합계」는 공장 합(`production`)이다 — 서버가 같은 규칙이라 제품군 합과 같다. 서버가 칸을 주지 않으면(이전 서버) 그리지 않는다.
- * 오른쪽 아래 「상세 보기」로 제품군별 불량 현황 창을 연다(사용자 지시 2026-11-10 — 종합 불량률 칸을 누르는 대신).
+ * 머리 오른쪽 「상세 보기」로 제품군별 불량 현황 창을 연다(사용자 지시 2026-11-10 — 종합 불량률 칸을 누르는 대신).
  */
 export const ItemGroupPanel = ({
   production,
@@ -90,42 +90,47 @@ export const ItemGroupPanel = ({
         ];
 
   return (
-    <Panel title={t.title} sub={t.sub} tag={singleDay ? k.tagToday : k.tagPeriod}>
+    <Panel
+      title={t.title}
+      sub={t.sub}
+      tag={singleDay ? k.tagToday : k.tagPeriod}
+      className="dash-item-group-panel"
+      /* 「상세 보기」는 카드 머리 오른쪽 — 기간 표시 옆(사용자 지시 2026-11-10 · 눈에 띄게). */
+      action={
+        rows.length > 0 ? (
+          <Button
+            variant="text"
+            size="sm"
+            className="dash-item-group-detail"
+            aria-label={t.detailButtonLabel}
+            trailingIcon={<Icon name="chevron_right" size={18} aria-hidden="true" />}
+            onClick={() => {
+              setOpen(true);
+              setMounted(true);
+            }}
+          >
+            {t.detailButton}
+          </Button>
+        ) : undefined
+      }
+    >
       {isLoading ? (
         <Skeleton variant="rect" height="5rem" />
       ) : (
-        <>
-          <div
-            ref={fit.ref}
-            className="dash-table-wrap dash-item-group-table"
-            style={resizable.style}
-          >
-            <Table
-              columns={fit.columns}
-              rows={rows}
-              getRowId={(row) => row.key}
-              density="compact"
-              aria-label={t.title}
-              empty={<NoRecords description={t.empty} />}
-            />
-          </div>
-          {rows.length > 0 && (
-            <div className="dash-item-group-footer">
-              <Button
-                variant="text"
-                size="sm"
-                aria-label={t.detailButtonLabel}
-                trailingIcon={<Icon name="chevron_right" size={18} aria-hidden="true" />}
-                onClick={() => {
-                  setOpen(true);
-                  setMounted(true);
-                }}
-              >
-                {t.detailButton}
-              </Button>
-            </div>
-          )}
-        </>
+        <div
+          ref={fit.ref}
+          className="dash-table-wrap dash-item-group-table"
+          style={resizable.style}
+        >
+          <Table
+            columns={fit.columns}
+            rows={rows}
+            getRowId={(row) => row.key}
+            density="compact"
+            aria-label={t.title}
+            empty={<NoRecords description={t.empty} />}
+          />
+        </div>
       )}
       {mounted && (
         <ItemGroupDefectsDialog
