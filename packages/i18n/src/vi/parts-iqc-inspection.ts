@@ -40,7 +40,6 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     facts: {
       planCode: 'Mã tiêu chuẩn',
       planName: 'Tên model',
-      item: 'Vật tư',
       effectiveFrom: 'Ngày áp dụng',
     },
     dataTypeOf: { NUMERIC: 'Số', BOOLEAN: 'Lựa chọn', TEXT: 'Văn bản' } as Record<string, string>,

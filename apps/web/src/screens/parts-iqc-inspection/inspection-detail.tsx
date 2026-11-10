@@ -506,20 +506,10 @@ interface FormProps {
 }
 
 /** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
-const DrawingImages = ({
-  drawings,
-  withIcon = false,
-}: {
-  drawings: { attachmentId: number; blob: Blob }[];
-  /** 검사 기준 상세 창에서는 제목 앞에 그림 아이콘(#247 · 사용자 시안 2026-11-10). */
-  withIcon?: boolean;
-}) => (
+const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
   <section className="parts-iqc-card" aria-label={t.drawing.heading}>
     <div className="parts-iqc-block-head">
-      <h3 className={withIcon ? 'parts-iqc-icon-title' : undefined}>
-        {withIcon && <Icon name="image" size={24} aria-hidden />}
-        {t.drawing.heading}
-      </h3>
+      <h3>{t.drawing.heading}</h3>
       {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
     </div>
     {drawings.length === 0 ? null : (
@@ -766,7 +756,7 @@ const InspectionForm = (props: FormProps) => {
           itemParts={props.itemParts}
           version={version}
           specs={specs}
-          drawings={<DrawingImages drawings={props.drawings} withIcon />}
+          drawings={<DrawingImages drawings={props.drawings} />}
           onClose={() => setPlanOpen(false)}
         />
       )}

@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, Icon } from '@crefle/web-ui';
+import { Button, Chip, Dialog } from '@crefle/web-ui';
 import { useNavigate } from 'react-router';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
@@ -51,18 +51,18 @@ export const PlanDialog = ({
           ? t.plan.qty(version.samplingQty)
           : '-';
 
-  const facts: { icon: string; label: string; value: string; sub?: string }[] = [
-    { icon: 'description', label: t.plan.facts.planCode, value: planCode },
-    { icon: 'layers', label: t.plan.facts.planName, value: planName },
-    { icon: 'sell', label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
+  /* 검사 화면 위쪽 기본 정보와 같은 칸 — 이름표 위 · 값 아래, 칸 사이 세로선(#247 · 사용자 지시 2026-11-10). */
+  const facts: { label: string; value: string; sub?: string }[] = [
+    { label: t.plan.facts.planCode, value: planCode },
+    { label: t.plan.facts.planName, value: planName },
+    { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
     {
-      icon: 'deployed_code',
-      label: t.plan.facts.item,
-      value: itemParts?.code ?? '-',
-      ...(itemParts === null ? {} : { sub: itemParts.name }),
+      label: t.target.itemName,
+      value: itemParts?.name ?? '-',
+      ...(itemParts === null ? {} : { sub: itemParts.code }),
     },
-    { icon: 'assignment_turned_in', label: t.plan.sampling, value: sampling },
-    { icon: 'calendar_month', label: t.plan.facts.effectiveFrom, value: version.effectiveFrom },
+    { label: t.plan.sampling, value: sampling },
+    { label: t.plan.facts.effectiveFrom, value: version.effectiveFrom },
   ];
 
   return (
@@ -70,6 +70,7 @@ export const PlanDialog = ({
       open
       size="lg"
       title={t.plan.title}
+      showCloseButton={false}
       onClose={onClose}
       footer={
         <>
@@ -92,29 +93,26 @@ export const PlanDialog = ({
       }
     >
       <div className="parts-iqc-plan">
-        {/* 정보 — 테두리 상자 안 세 칸 두 줄, 칸마다 아이콘(#247 · 사용자 시안 2026-11-10) */}
-        <dl className="parts-iqc-plan-facts">
+        {/* 정보 · 검사 항목 · 기준서 도면을 각각 테두리 상자로, 아이콘 없이(#247 · 사용자 지시 2026-11-10). */}
+        <dl className="parts-iqc-facts">
           {facts.map((fact) => (
-            <div key={fact.label} className="parts-iqc-plan-fact">
-              <Icon name={fact.icon} size={24} aria-hidden />
-              <div>
-                <dt>{fact.label}</dt>
-                <dd>
-                  {fact.value}
-                  {fact.sub !== undefined && (
-                    <span className="parts-iqc-plan-fact-sub">{fact.sub}</span>
-                  )}
-                </dd>
-              </div>
+            <div key={fact.label} className="parts-iqc-fact">
+              <dt className="field-label">{fact.label}</dt>
+              <dd className={fact.sub === undefined ? undefined : 'parts-iqc-fact-key'}>
+                {fact.value}
+                {fact.sub !== undefined && <span className="parts-iqc-fact-sub">{fact.sub}</span>}
+              </dd>
             </div>
           ))}
         </dl>
 
-        <section className="parts-iqc-plan-items" aria-labelledby="parts-iqc-plan-items">
-          <h3 id="parts-iqc-plan-items">
-            <Icon name="description" size={20} aria-hidden />
-            {t.plan.items} {t.plan.itemCount(specs.length)}
-          </h3>
+        <section className="parts-iqc-card" aria-labelledby="parts-iqc-plan-items">
+          <div className="parts-iqc-block-head">
+            <h3 id="parts-iqc-plan-items">
+              {t.plan.items}{' '}
+              <span className="parts-iqc-muted">{t.plan.itemCount(specs.length)}</span>
+            </h3>
+          </div>
           <div className="parts-iqc-grid-scroll">
             {/* 검사 화면 표와 같은 칸 선 · 가운데 정렬. 방법 칸은 항목 유형 라벨(선택형 · 수치형 · 텍스트형). */}
             <table className="parts-iqc-grid parts-iqc-plan-table">

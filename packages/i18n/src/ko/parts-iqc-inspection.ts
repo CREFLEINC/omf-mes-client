@@ -37,7 +37,6 @@ export const partsIqcInspection = {
     facts: {
       planCode: '기준서 코드',
       planName: '모델명',
-      item: '자재',
       effectiveFrom: '적용 시작일',
     },
     dataTypeOf: { NUMERIC: '수치형', BOOLEAN: '선택형', TEXT: '텍스트형' } as Record<
