@@ -1,4 +1,4 @@
-import { AlertBanner, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { useClientPage } from '../../patterns/client-page';
@@ -9,6 +9,7 @@ import {
   autoJudgmentOf,
   entryOf,
   withItemJudgment,
+  withJudgment,
   withValue,
   type MeasureDraft,
   type MeasureEntry,
@@ -59,27 +60,9 @@ const toSheetRows = (rows: readonly MeasurementRow[]): SheetRow[] => {
 /** 수치 칸에 치는 도중의 모양 — 「-」 · 「1.」처럼 덜 친 숫자도 받는다. */
 const NUMERIC_TYPING = /^-?\d*\.?\d*$/;
 
-const BOOLEAN_OPTIONS: CodeOption[] = [
-  { value: 'true', label: t.booleanTrue },
-  { value: 'false', label: t.booleanFalse },
-];
-
 const ValueInput = ({ row, edit }: { row: MeasurementRow; edit: MeasureEdit }) => {
   const entry = entryOf(edit.draft, row.key);
   const label = t.valueLabel(row.itemName, row.sampleNo);
-  if (row.dataType === 'BOOLEAN') {
-    return (
-      <Select
-        size="md"
-        aria-label={label}
-        options={BOOLEAN_OPTIONS}
-        value={entry.value === '' ? null : entry.value}
-        placeholder={t.selectPlaceholder}
-        disabled={edit.disabled}
-        onChange={(value) => edit.onChange(withValue(edit.draft, row, value))}
-      />
-    );
-  }
   /* 규격을 벗어난 값은 그 칸이 붉다(부품 입력표와 같다). */
   const isOut = autoJudgmentOf(row, entry.value) === 'REJECTED';
   return (
@@ -165,6 +148,45 @@ const JudgmentSelect = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => 
   return <span data-row-ng={code === 'REJECTED' ? '' : undefined}>{body}</span>;
 };
 
+/**
+ * 기타 검사 항목(선택형)의 판정 — 부품 화면처럼 OK · NG 단추 하나(사용자 지시 2026-11-10). OK 는 양호 · 합격, NG 는 불량 · 불합격으로
+ * 그 항목의 모든 회차에 들어간다. 누른 단추를 다시 누르면 비운다. ⭐ 저장은 종전대로 회차마다 한 건이다.
+ */
+const OkNgButtons = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
+  const code = itemJudgmentOf(row.samples.map((sample) => entryOf(edit.draft, sample.key)));
+  const pick = (judgment: 'ACCEPTED' | 'REJECTED', on: boolean) => {
+    const value = on ? String(judgment === 'ACCEPTED') : '';
+    edit.onChange(
+      row.samples.reduce(
+        (next, sample) => withJudgment(withValue(next, sample, value), sample, on ? judgment : ''),
+        edit.draft,
+      ),
+    );
+  };
+  return (
+    <span
+      className="parts-iqc-check-row"
+      role="group"
+      aria-label={t.judgmentLabel(row.first.itemName)}
+      data-row-ng={code === 'REJECTED' ? '' : undefined}
+    >
+      {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
+        <Chip
+          key={value}
+          variant="filter"
+          data-judgment={value}
+          aria-pressed={code === value}
+          selected={code === value}
+          disabled={edit.disabled}
+          onSelectedChange={(on) => pick(value, on)}
+        >
+          {value === 'ACCEPTED' ? t.booleanTrue : t.booleanFalse}
+        </Chip>
+      ))}
+    </span>
+  );
+};
+
 /** 유형별 표의 차례와 회차 칸 폭. 값 목록에 없는 유형은 글로 받으므로 텍스트 표에 든다. */
 const TYPE_TABLES = [
   { type: 'NUMERIC', sampleWidth: '80px', hasSpec: true },
@@ -213,27 +235,40 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
           } satisfies Column<SheetRow>,
         ]
       : []),
-    ...Array.from({ length: sampleColumns }, (_, index): Column<SheetRow> => ({
-      key: `n${String(index + 1)}`,
-      align: 'center',
-      header: tn.sample(index + 1),
-      width: sampleWidth,
-      /* 이 항목이 재지 않는 회차는 칸을 비워 둔다(바탕이 어둡다). */
-      render: (row) => {
-        const sample = row.samples[index];
-        return sample === undefined ? null : <ValueInput row={sample} edit={edit} />;
-      },
-    })),
+    /* 기타 검사 항목은 회차 칸 없이 판정만(부품 화면과 같다 · 사용자 지시 2026-11-10). */
+    ...Array.from(
+      { length: type === 'BOOLEAN' ? 0 : sampleColumns },
+      (_, index): Column<SheetRow> => ({
+        key: `n${String(index + 1)}`,
+        align: 'center',
+        header: tn.sample(index + 1),
+        width: sampleWidth,
+        /* 이 항목이 재지 않는 회차는 칸을 비워 둔다(바탕이 어둡다). */
+        render: (row) => {
+          const sample = row.samples[index];
+          return sample === undefined ? null : <ValueInput row={sample} edit={edit} />;
+        },
+      }),
+    ),
     {
       key: 'judgment',
       align: 'center',
       header: t.columns.judgment,
-      width: '106px',
-      render: (row) => <JudgmentSelect row={row} edit={edit} />,
+      width: type === 'BOOLEAN' ? '160px' : '106px',
+      render: (row) =>
+        type === 'BOOLEAN' ? (
+          <OkNgButtons row={row} edit={edit} />
+        ) : (
+          <JudgmentSelect row={row} edit={edit} />
+        ),
     },
   ];
   const filled = sheetRows.filter((row) =>
-    row.samples.some((sample) => entryOf(edit.draft, sample.key).value.trim() !== ''),
+    row.samples.some((sample) => {
+      const entry = entryOf(edit.draft, sample.key);
+      /* 기타 검사 항목은 판정을 고르면 입력한 것이다. */
+      return entry.value.trim() !== '' || (type === 'BOOLEAN' && entry.judgment !== '');
+    }),
   ).length;
   const paging = useClientPage(sheetRows);
 

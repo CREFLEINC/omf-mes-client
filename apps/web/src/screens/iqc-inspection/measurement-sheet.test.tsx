@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
@@ -75,5 +76,23 @@ describe('MeasurementSheet', () => {
     render([{ ...dimensionSpec, uomId: undefined }]);
 
     expect(screen.getByText(t.tolerance(10, 0.1))).toBeInTheDocument();
+  });
+
+  it('기타 검사 항목은 회차 칸 없이 OK · NG 단추 — OK 는 양호 · 합격으로 모든 회차에 들어간다', async () => {
+    const onChange = vi.fn();
+    const rows = toMeasurementRows([{ ...flagSpec, measurementCount: 2 }], []);
+    renderWithProviders(
+      <MeasurementSheet rows={rows} dataTypeNames={NAMES} edit={{ ...edit, onChange }} />,
+    );
+
+    expect(screen.queryByText('n1')).not.toBeInTheDocument();
+    const group = screen.getByRole('group', { name: t.judgmentLabel('포장') });
+    await userEvent.click(within(group).getByRole('button', { name: 'OK' }));
+
+    const next = onChange.mock.calls[0]?.[0] as Record<string, { value: string; judgment: string }>;
+    expect(Object.values(next).map((entry) => [entry.value, entry.judgment])).toEqual([
+      ['true', 'ACCEPTED'],
+      ['true', 'ACCEPTED'],
+    ]);
   });
 });
