@@ -114,7 +114,7 @@ export const FourMChange = ({ draft, onChange, disabled }: FourMChangeProps) => 
             <Button
               type="button"
               variant="outlined"
-              size="sm"
+              size="md"
               disabled={disabled}
               onClick={() => open(draft)}
             >
