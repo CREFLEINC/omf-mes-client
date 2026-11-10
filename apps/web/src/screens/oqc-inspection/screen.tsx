@@ -55,6 +55,8 @@ import {
   remainingAcceptedOf,
   needsJudgmentChangeReason,
 } from './judgment-change';
+import { useSamplingRule } from '../iqc-inspection/queries';
+import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import {
   useAcceptanceNumber,
   useCodeValues,
@@ -212,6 +214,8 @@ export const OqcInspectionScreen = () => {
   /** 의뢰에 고정된 검사기준 버전의 합격판정개수 — 있으면 수량으로 종합 판정을 채운다(#126). */
   const acceptance = useAcceptanceNumber(detail.data?.inspectionPlanVersionId ?? null);
   const acceptanceNumber = acceptance.data ?? null;
+  /** 같은 버전의 샘플링 규칙 — 새 회차의 검사수량을 샘플 수량으로 줄인다(IQC 와 같은 규칙). 상세 창과 같은 조회를 나눠 쓴다. */
+  const samplingRule = useSamplingRule(detail.data?.inspectionPlanVersionId ?? null);
 
   /**
    * ⭐ **R3 — 「이 누름이 겨눈 대상」을 누를 때 적어 두고 돌아와 대조한다.**
@@ -456,10 +460,12 @@ export const OqcInspectionScreen = () => {
    * (「아직 없는 새 회차」다) 수량만 그 회차에서 가져오면, 「이 회차는 없는 것으로 친다」와
    * 「그 회차의 검사수량으로 합계를 잰다」가 한 화면에서 어긋난다. 새 회차가 다시 검사하는
    * 대상은 앞 회차가 아니라 **의뢰**다.
+   *
+   * ⭐ 새 회차는 기준이 샘플링이면 **샘플 수량**이다(IQC 와 같은 규칙 — 샘플 개수, 또는 비율로 올림해 최소 한 개).
+   * 저장된 회차는 그 회차에 저장된 검사수량 그대로다.
    */
-  const inspectedQty = isReinspectingNow
-    ? (detail.data?.targetQty ?? 0)
-    : (round?.inspectedQty ?? detail.data?.targetQty ?? 0);
+  const newRoundQty = sampleQtyOf(detail.data?.targetQty ?? 0, samplingRule.data ?? null);
+  const inspectedQty = isReinspectingNow ? newRoundQty : (round?.inspectedQty ?? newRoundQty);
 
   /*
    * 합격판정개수 기준 자동 판정(omf-all-around#126 · IQC #125 와 같다) — 기준에 합격판정개수가 있고 열린 회차일 때만.
@@ -474,7 +480,11 @@ export const OqcInspectionScreen = () => {
    * 한 번만, 비어 있을 때만 넣는다.
    */
   const [prefilledAccepted, setPrefilledAccepted] = useState('');
-  const isTargetLoaded = detail.data?.inspectionRequestId === selectedId && !rounds.isPending;
+  /* 샘플링 규칙이 오기 전에 의뢰수량을 넣어 두면 규칙이 와도 바뀌지 않는다 — 규칙까지 받은 뒤에 넣는다. */
+  const isTargetLoaded =
+    detail.data?.inspectionRequestId === selectedId &&
+    !rounds.isPending &&
+    (detail.data.inspectionPlanVersionId === null || !samplingRule.isPending);
   useEffect(() => {
     if (!isOpenRound || !isTargetLoaded || inspectedQty <= 0) return;
     const accepted = String(inspectedQty);

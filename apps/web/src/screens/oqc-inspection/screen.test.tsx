@@ -70,6 +70,9 @@ interface ScreenOptions {
   detailGate?: { opened: Promise<void> };
   /** 의뢰 기준 버전의 합격판정개수(omf-all-around#126). 기본은 없음 — 자동 판정이 없다 */
   acceptanceNumber?: number | null;
+  /** 의뢰 기준 버전의 샘플링 규칙. 기본은 비율 · 개수 없음 — 검사수량은 의뢰수량이다 */
+  samplingRatio?: number | null;
+  samplingQty?: number | null;
 }
 
 interface SaveBody {
@@ -149,6 +152,8 @@ const renderScreen = (options: ScreenOptions = {}) => {
           inspectionPlanVersionId: Number(path.split('/').at(-1)),
           samplingMethodCode: 'SAMPLE_BY_LOT',
           acceptanceNumber: options.acceptanceNumber ?? null,
+          samplingRatio: options.samplingRatio ?? null,
+          samplingQty: options.samplingQty ?? null,
         },
       });
     }
@@ -358,6 +363,26 @@ describe('OqcInspectionScreen — 편집 초안 vs 서버 조회(V2)', () => {
     await waitFor(() =>
       expect(acceptedField()).toHaveValue(String(anotherWaitingRequest.targetQty)),
     );
+  });
+
+  it('샘플링 기준(비율)이면 새 회차의 검사수량 · 합격 수량이 샘플 수량으로 찬다 — 500 의 2.5% 올림 = 13', async () => {
+    renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+      samplingRatio: 2.5,
+    });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await waitFor(() => expect(acceptedField()).toHaveValue('13'));
+    expect(
+      within(screen.getByRole('form', { name: t.result.heading })).getByRole('status').textContent,
+    ).toContain(messages.common.inspectionHub.qtyTotalOf('13'));
+  });
+
+  it('샘플링 기준(개수)이면 그 개수로 찬다', async () => {
+    renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}`, samplingQty: 20 });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+    await waitFor(() => expect(acceptedField()).toHaveValue('20'));
   });
 
   it('D3 — 저장이 도는 중에 의뢰를 바꾸면 성공 문구가 새 의뢰 창에 서지 않는다', async () => {
