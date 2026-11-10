@@ -1,4 +1,4 @@
-import { Button, Dialog } from '@crefle/web-ui';
+import { Button, Chip, Dialog } from '@crefle/web-ui';
 import { useNavigate } from 'react-router';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
@@ -17,7 +17,7 @@ const STANDARD_PATH = '/master-data/inspection-standard';
 export interface PlanDialogProps {
   planCode: string;
   planName: string;
-  itemLabel: string;
+  itemParts: { code: string; name: string } | null;
   version: PlanVersion;
   specs: ItemSpec[];
   /** 기준서 도면 — 검사 화면과 같은 그림을 그대로 보인다. */
@@ -33,7 +33,7 @@ export interface PlanDialogProps {
 export const PlanDialog = ({
   planCode,
   planName,
-  itemLabel,
+  itemParts,
   version,
   specs,
   drawings,
@@ -50,6 +50,20 @@ export const PlanDialog = ({
         : version.samplingQty != null
           ? t.plan.qty(version.samplingQty)
           : '-';
+
+  /* 검사 화면 위쪽 기본 정보와 같은 칸 — 이름표 위 · 값 아래, 칸 사이 세로선(#247 · 사용자 지시 2026-11-10). */
+  const facts: { label: string; value: string; sub?: string }[] = [
+    { label: t.plan.facts.planCode, value: planCode },
+    { label: t.plan.facts.planName, value: planName },
+    { label: t.plan.version, value: t.plan.versionNo(version.planVersion) },
+    {
+      label: t.target.itemName,
+      value: itemParts?.name ?? '-',
+      ...(itemParts === null ? {} : { sub: itemParts.code }),
+    },
+    { label: t.plan.sampling, value: sampling },
+    { label: t.plan.facts.effectiveFrom, value: version.effectiveFrom },
+  ];
 
   return (
     <Dialog
@@ -79,59 +93,39 @@ export const PlanDialog = ({
       }
     >
       <div className="parts-iqc-plan">
-        {/* 정보 — 세 칸 두 줄(사용자 시안 2026-10-30) */}
-        <dl className="parts-iqc-kv parts-iqc-plan-facts">
-          <div>
-            <dt>{t.target.plan}</dt>
-            <dd>{planCode}</dd>
-          </div>
-          <div>
-            <dt>{t.target.planName}</dt>
-            <dd>{planName}</dd>
-          </div>
-          <div>
-            <dt>{t.plan.version}</dt>
-            <dd>{t.plan.versionValue(version.planVersion, version.effectiveFrom)}</dd>
-          </div>
-          <div>
-            <dt>{t.target.itemName}</dt>
-            <dd>{itemLabel}</dd>
-          </div>
-          <div>
-            <dt>{t.plan.sampling}</dt>
-            <dd>{sampling}</dd>
-          </div>
-          <div>
-            <dt>{t.plan.aqlAcceptance}</dt>
-            <dd>
-              {version.aqlValue == null && version.acceptanceNumber == null
-                ? t.plan.aqlAcceptanceNone
-                : t.plan.aqlAcceptanceValue(
-                    version.aqlValue == null ? '-' : String(version.aqlValue),
-                    version.acceptanceNumber ?? null,
-                  )}
-            </dd>
-          </div>
+        {/* 정보 · 검사 항목 · 기준서 도면을 각각 테두리 상자로, 아이콘 없이(#247 · 사용자 지시 2026-11-10). */}
+        <dl className="parts-iqc-facts">
+          {facts.map((fact) => (
+            <div key={fact.label} className="parts-iqc-fact">
+              <dt className="field-label">{fact.label}</dt>
+              <dd className={fact.sub === undefined ? undefined : 'parts-iqc-fact-key'}>
+                {fact.value}
+                {fact.sub !== undefined && <span className="parts-iqc-fact-sub">{fact.sub}</span>}
+              </dd>
+            </div>
+          ))}
         </dl>
 
-        <section className="parts-iqc-plan-items" aria-labelledby="parts-iqc-plan-items">
-          <h3 id="parts-iqc-plan-items">
-            {t.plan.items} <span className="parts-iqc-muted">{t.plan.itemCount(specs.length)}</span>
-          </h3>
+        <section className="parts-iqc-card" aria-labelledby="parts-iqc-plan-items">
+          <div className="parts-iqc-block-head">
+            <h3 id="parts-iqc-plan-items">
+              {t.plan.items}{' '}
+              <span className="parts-iqc-muted">{t.plan.itemCount(specs.length)}</span>
+            </h3>
+          </div>
           <div className="parts-iqc-grid-scroll">
-            <table className="parts-iqc-plan-table">
+            {/* 검사 화면 표와 같은 칸 선 · 가운데 정렬. 방법 칸은 항목 유형 라벨(선택형 · 수치형 · 텍스트형). */}
+            <table className="parts-iqc-grid parts-iqc-plan-table">
               <thead>
                 <tr>
-                  <th scope="col">{t.plan.no}</th>
+                  <th scope="col" className="parts-iqc-item">
+                    {t.plan.no}
+                  </th>
                   <th scope="col">{t.visual.checkItem}</th>
                   <th scope="col">{t.plan.method}</th>
                   <th scope="col">{t.dimension.spec}</th>
-                  <th scope="col" className="is-num">
-                    {t.plan.count}
-                  </th>
-                  <th scope="col" className="is-num">
-                    {t.plan.acceptance}
-                  </th>
+                  <th scope="col">{t.plan.count}</th>
+                  <th scope="col">{t.plan.acceptance}</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,19 +136,23 @@ export const PlanDialog = ({
                       <td>{index + 1}</td>
                       <td>{spec.inspectionItemName}</td>
                       <td>
-                        {t.plan.methodOf[spec.inspectionMethodCode ?? ''] ??
-                          spec.inspectionMethodCode ??
-                          t.plan.methodNone}
+                        <Chip
+                          variant="status"
+                          size="sm"
+                          status={spec.dataTypeCode === 'BOOLEAN' ? 'info' : 'idle'}
+                        >
+                          {t.plan.dataTypeOf[spec.dataTypeCode] ?? spec.dataTypeCode}
+                        </Chip>
                       </td>
-                      <td>
+                      <td className="parts-iqc-plan-spec">
                         {spec.dataTypeCode === 'NUMERIC'
                           ? nominal === '' || range === nominal
                             ? nominal || range
-                            : `${nominal} (${range.replace(' ~ ', '~')})`
+                            : `${nominal} (${range})`
                           : t.plan.okNg}
                       </td>
-                      <td className="is-num">{spec.measurementCount}</td>
-                      <td className="is-num">{spec.acceptanceNumber ?? '—'}</td>
+                      <td>{spec.measurementCount}</td>
+                      <td>{spec.acceptanceNumber ?? '—'}</td>
                     </tr>
                   );
                 })}

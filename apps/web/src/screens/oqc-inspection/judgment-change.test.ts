@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
+import {
+  autoFillJudgmentOf,
+  remainingAcceptedOf,
+  expectedJudgmentOf,
+  needsJudgmentChangeReason,
+} from './judgment-change';
 
 const draft = (accepted: string, rejected: string, held: string) => ({ accepted, rejected, held });
 
@@ -32,5 +37,34 @@ describe('needsJudgmentChangeReason', () => {
     expect(needsJudgmentChangeReason('REJECTED', 'REJECTED')).toBe(false);
     expect(needsJudgmentChangeReason('', 'REJECTED')).toBe(false);
     expect(needsJudgmentChangeReason('ACCEPTED', null)).toBe(false);
+  });
+});
+
+describe('합격 수량 자동 계산 · 판정 채움(사용자 지시 2026-11-09)', () => {
+  const draft = (accepted: string, rejected: string, held: string) => ({
+    accepted,
+    rejected,
+    held,
+  });
+
+  it.each([
+    [draft('100', '3', '2'), '95'],
+    [draft('100', '', ''), '100'],
+    [draft('100', '90', '20'), '0'],
+    [draft('100', 'x', ''), null],
+  ])('합격 수량 — %o → %s', (quantities, expected) => {
+    expect(remainingAcceptedOf(quantities, 100)).toBe(expected);
+  });
+
+  it.each([
+    [draft('100', '', ''), null, 'ACCEPTED'],
+    [draft('99', '', ''), null, null],
+    [draft('99', '1', ''), null, 'REJECTED'],
+    [draft('99', '', '1'), null, null],
+    [draft('99', '1', ''), 5, null],
+    [draft('90', '10', ''), 5, 'REJECTED'],
+    [draft('99', '', '1'), 5, 'HELD'],
+  ])('판정 채움 — %o · 합격판정개수 %s → %s', (quantities, acceptance, expected) => {
+    expect(autoFillJudgmentOf(quantities, acceptance, 100)).toBe(expected);
   });
 });

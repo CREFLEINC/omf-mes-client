@@ -224,11 +224,10 @@ const detailPane = () => within(screen.getByRole('region', { name: t.detail.head
 
 /** 수량 셋을 채우고 판정을 고른다 — 저장이 열리는 정상 경로. */
 const fillJudgment = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.clear(acceptedField());
   await user.type(acceptedField(), '480');
   await user.type(screen.getByLabelText(t.result.fields.rejected), '15');
   await user.type(screen.getByLabelText(t.result.fields.held), '5');
-  /* 입력 단계(#197) — ① 수량의 [확정]으로 ② 판정이 열린다. */
-  await user.click(screen.getByRole('button', { name: messages.common.inspectionHub.stepConfirm }));
   await user.click(screen.getByRole('combobox', { name: t.result.judgment }));
   await user.click(screen.getByRole('option', { name: '합격' }));
 };
@@ -331,6 +330,7 @@ describe('OqcInspectionScreen — 편집 초안 vs 서버 조회(V2)', () => {
     });
 
     await screen.findByLabelText(t.result.fields.accepted);
+    await user.clear(acceptedField());
     await user.type(acceptedField(), '480');
 
     await queryClient.invalidateQueries({ queryKey: ['oqc-inspection'] });
@@ -345,6 +345,7 @@ describe('OqcInspectionScreen — 편집 초안 vs 서버 조회(V2)', () => {
     renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
 
     await screen.findByLabelText(t.result.fields.accepted);
+    await user.clear(acceptedField());
     await user.type(acceptedField(), '480');
     expect(acceptedField()).toHaveValue('480');
 
@@ -353,7 +354,10 @@ describe('OqcInspectionScreen — 편집 초안 vs 서버 조회(V2)', () => {
     await waitFor(() =>
       expect(detailPane().getByText(anotherWaitingRequest.inspectionRequestNo)).toBeInTheDocument(),
     );
-    expect(acceptedField()).toHaveValue('');
+    /* 다음 의뢰는 그 의뢰의 총 검사 수량으로 다시 차 있다(사용자 지시 2026-11-09). */
+    await waitFor(() =>
+      expect(acceptedField()).toHaveValue(String(anotherWaitingRequest.targetQty)),
+    );
   });
 
   it('D3 — 저장이 도는 중에 의뢰를 바꾸면 성공 문구가 새 의뢰 창에 서지 않는다', async () => {
@@ -674,6 +678,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
     renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
 
     await screen.findByLabelText(t.result.fields.accepted);
+    await user.clear(acceptedField());
     await user.type(acceptedField(), '480');
     await reselectWaiting(user);
 
@@ -690,6 +695,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
     const { saves } = renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
 
     await screen.findByLabelText(t.result.fields.accepted);
+    await user.clear(acceptedField());
     await user.type(acceptedField(), '480');
     await reselectWaiting(user);
     await user.click(screen.getByRole('button', { name: t.detail.leaveAnyway }));
@@ -706,6 +712,7 @@ describe('OqcInspectionScreen — 목록 ↔ 상세(#136)', () => {
     renderScreen({ route: `/?ir=${String(waitingRequest.inspectionRequestId)}` });
 
     await screen.findByLabelText(t.result.fields.accepted);
+    await user.clear(acceptedField());
     await user.type(acceptedField(), '480');
     await user.click(
       await screen.findByRole('button', {
@@ -781,12 +788,10 @@ describe('OqcInspectionScreen — 합격판정개수 기준 자동 판정(#126)'
     });
 
     await screen.findByLabelText(t.result.fields.accepted);
+    await user.clear(acceptedField());
     await user.type(acceptedField(), '480');
     await user.type(screen.getByLabelText(t.result.fields.rejected), '15');
     await user.type(screen.getByLabelText(t.result.fields.held), '5');
-    await user.click(
-      screen.getByRole('button', { name: messages.common.inspectionHub.stepConfirm }),
-    );
 
     expect(await screen.findByText(new RegExp(change.expected('불합격')))).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('불합격');

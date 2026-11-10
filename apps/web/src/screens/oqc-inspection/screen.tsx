@@ -49,7 +49,12 @@ import {
 import { QueueLoadErrorBanner } from './load-error-banner';
 import { toPageView } from './pagination';
 import { EMPTY_QUANTITY_DRAFT, toSendableNumber, type QuantityDraft } from './quantity-draft';
-import { expectedJudgmentOf, needsJudgmentChangeReason } from './judgment-change';
+import {
+  autoFillJudgmentOf,
+  expectedJudgmentOf,
+  remainingAcceptedOf,
+  needsJudgmentChangeReason,
+} from './judgment-change';
 import {
   useAcceptanceNumber,
   useCodeValues,
@@ -77,7 +82,6 @@ import {
   toSerialRow,
   type SerialRow,
 } from './serials';
-import { SkipPane } from './skip-pane';
 import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
 import { latestRound } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
@@ -465,10 +469,42 @@ export const OqcInspectionScreen = () => {
   const isOpenRound = isReinspectingNow || round === null;
   const expectedJudgment = isOpenRound ? expectedJudgmentOf(draft, acceptanceNumber) : null;
   const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
-  const changeDraftAndJudge = (next: QuantityDraft): void => {
+  /*
+   * 새 회차는 합격 수량에 총 검사 수량을 넣어 둔다(IQC 와 같다 · 사용자 지시 2026-11-09). 최종 판정은 채우지 않는다.
+   * 한 번만, 비어 있을 때만 넣는다.
+   */
+  const [prefilledAccepted, setPrefilledAccepted] = useState('');
+  const isTargetLoaded = detail.data?.inspectionRequestId === selectedId && !rounds.isPending;
+  useEffect(() => {
+    if (!isOpenRound || !isTargetLoaded || inspectedQty <= 0) return;
+    const accepted = String(inspectedQty);
+    setPrefilledAccepted(accepted);
+    setDraft((current) =>
+      current.accepted === '' && current.rejected === '' && current.held === ''
+        ? { ...current, accepted }
+        : current,
+    );
+  }, [selectedId, isOpenRound, isTargetLoaded, inspectedQty]);
+  /* 화면이 채운 판정 — 근거가 사라지면 비운다. 사람이 고른 판정은 건드리지 않는다(IQC 와 같다). */
+  const autoFilledJudgment = useRef<string | null>(null);
+  const changeDraftAndJudge = (typed: QuantityDraft): void => {
+    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
+    const lossChanged = typed.rejected !== draft.rejected || typed.held !== draft.held;
+    const recalculated =
+      typed.accepted === draft.accepted && lossChanged
+        ? remainingAcceptedOf(typed, inspectedQty)
+        : null;
+    const next = recalculated === null ? typed : { ...typed, accepted: recalculated };
     setDraft(next);
-    const expected = isOpenRound ? expectedJudgmentOf(next, acceptanceNumber) : null;
-    if (expected !== null) setJudgment(expected);
+    if (!isOpenRound) return;
+    const expected = autoFillJudgmentOf(next, acceptanceNumber, inspectedQty);
+    if (expected !== null) {
+      autoFilledJudgment.current = expected;
+      setJudgment(expected);
+    } else if (autoFilledJudgment.current !== null && judgment === autoFilledJudgment.current) {
+      autoFilledJudgment.current = null;
+      setJudgment('');
+    }
   };
 
   /*
@@ -478,7 +514,7 @@ export const OqcInspectionScreen = () => {
    */
   const hasUnsavedInput =
     isOpenRound &&
-    (draft.accepted !== '' ||
+    (draft.accepted !== prefilledAccepted ||
       draft.rejected !== '' ||
       draft.held !== '' ||
       judgment !== '' ||
@@ -613,17 +649,6 @@ export const OqcInspectionScreen = () => {
           />
         </LeaveGuardProvider>
 
-        {/* OQC 생략(#119) — 출하작업지시 대상이고 판정이 아직 없을 때만. 확정 회차가 있으면 생략으로 덮지 않는다. */}
-        {detail.data.targetTypeCode === 'SHIPMENT_REQUEST' &&
-          rounds.data !== undefined &&
-          rounds.data.every((row) => row.statusCode !== 'CONFIRMED') && (
-            <SkipPane
-              shipmentRequestId={detail.data.targetId}
-              requestStatusCode={detail.data.statusCode}
-              skipBasisCode={detail.data.skipBasisCode}
-            />
-          )}
-
         {rounds.isError ? (
           /* 회차를 모르는 채로 저장을 열지 않는다 — 몇 회차인지 모르면 재검사인지도 모른다. */
           <QueueLoadErrorBanner
@@ -654,7 +679,10 @@ export const OqcInspectionScreen = () => {
             onChange={changeDraftAndJudge}
             judgmentOptions={judgmentOptions}
             judgment={judgment}
-            onJudgmentChange={setJudgment}
+            onJudgmentChange={(code) => {
+              autoFilledJudgment.current = null;
+              setJudgment(code);
+            }}
             acceptanceNumber={acceptanceNumber}
             expectedJudgmentLabel={
               expectedJudgment === null

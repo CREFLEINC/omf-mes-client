@@ -43,6 +43,7 @@ export const pqcInspectionRegister = {
   },
 
   columns: {
+    skip: 'Bỏ qua',
     lot: 'LOT đối tượng',
     workOrder: 'Lệnh sản xuất',
     item: 'Mặt hàng',
@@ -52,6 +53,7 @@ export const pqcInspectionRegister = {
   },
 
   web: {
+    mergedHeading: 'Số lượng kiểm tra · Đánh giá',
     noProductionResult: 'Không thể đánh giá vì chưa có kết quả sản xuất.',
     noStandardNote: 'Yêu cầu này chưa có tiêu chuẩn kiểm tra. Nhập nội dung kiểm tra nếu cần.',
     remarksPlaceholder: 'Nhập nội dung kiểm tra.',
@@ -113,6 +115,15 @@ export const pqcInspectionRegister = {
       confirmNote: 'Sau khi xác nhận không thể sửa.',
       confirmed: 'Đánh giá đã được xác nhận, không thể sửa.',
     },
+  },
+  skipDialog: {
+    approveTitle: 'Phê duyệt bỏ qua PQC (kiểm tra công đoạn)',
+    approved: 'Đã phê duyệt yêu cầu bỏ qua PQC.',
+    rejected: 'Đã từ chối yêu cầu bỏ qua PQC.',
+    executeTitle: 'Bỏ qua kiểm tra công đoạn?',
+    executeBody:
+      'Khi thực hiện, phần kiểm tra công đoạn còn lại của lệnh sản xuất này được bỏ qua và LOT sản xuất đang chờ kiểm tra sẽ chuyển sang bình thường.',
+    execute: 'Thực hiện bỏ qua',
   },
   skip: {
     heading: 'Yêu cầu bỏ qua PQC (kiểm tra công đoạn)',

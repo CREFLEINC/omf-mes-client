@@ -1,4 +1,4 @@
-import type { XrfResult, ItemJudgment } from './judgment';
+import type { ItemJudgment } from './judgment';
 
 /** 입력 칸 글자 그대로 둔다 — 「1.」처럼 쓰는 중인 값을 숫자로 바꾸면 커서 앞 글자가 사라진다. */
 export interface PartsIqcForm {
@@ -7,12 +7,9 @@ export interface PartsIqcForm {
   values: Record<number, string[]>;
   /** 기타 합격/불합격 항목 id → 판정 */
   checks: Record<number, ItemJudgment>;
+  /** 기타 항목 중 텍스트 항목 id → 적은 글(#247 · 사용자 지시 2026-11-10) */
+  texts: Record<number, string>;
   visualInspectedQty: string;
-  visualDefectQty: string;
-  xrf: XrfResult;
-  /** 외관 불량 유형 — 여럿 고른다. 둘 이상이면 유형마다 수량을 적는다(OA 화면 불량 내역과 같은 규칙). */
-  defectCodeIds: number[];
-  defectQtys: Record<number, string>;
   remarks: string;
 }
 
@@ -20,11 +17,8 @@ export const emptyForm = (inspectedAt: string): PartsIqcForm => ({
   inspectedAt,
   values: {},
   checks: {},
+  texts: {},
   visualInspectedQty: '',
-  visualDefectQty: '0',
-  xrf: 'NOT_DONE',
-  defectCodeIds: [],
-  defectQtys: {},
   remarks: '',
 });
 
@@ -103,4 +97,30 @@ export const numberOf = (text: string | undefined): number | null => {
 export const countOf = (text: string): number | null => {
   const trimmed = text.trim();
   return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+};
+
+/**
+ * 두 입력이 같은 내용인가 — 빈 칸 · 고르지 않은 판정은 없는 것과 같다. OK 를 눌렀다 풀거나 적었다 지우면 처음과 같다
+ * (임시 저장 · 떠날 때 묻기의 기준 · #247 사용자 지시 2026-11-10).
+ */
+export const sameForm = (a: PartsIqcForm, b: PartsIqcForm): boolean => {
+  const key = (form: PartsIqcForm) =>
+    JSON.stringify({
+      ...form,
+      values: Object.fromEntries(
+        Object.entries(form.values)
+          .map(([id, row]) => [id, row.map((text) => text.trim())] as const)
+          .filter(([, row]) => row.some((text) => text !== ''))
+          .map(([id, row]) => [id, row.join('|').replace(/\|+$/, '')]),
+      ),
+      checks: Object.fromEntries(Object.entries(form.checks).filter(([, j]) => j != null)),
+      texts: Object.fromEntries(
+        Object.entries(form.texts)
+          .map(([id, text]) => [id, text.trim()] as const)
+          .filter(([, text]) => text !== ''),
+      ),
+      visualInspectedQty: form.visualInspectedQty.trim(),
+      remarks: form.remarks.trim(),
+    });
+  return key(a) === key(b);
 };

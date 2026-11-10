@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Chip, EmptyState, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useClientPage } from '../../patterns/client-page';
@@ -16,9 +16,7 @@ import { hasCalibrationWarning, type MeasurementRow, type SpecRange } from './me
  * ⭐ **새 부품을 만들지 않았다.** 「편집 가능한 표」가 갭처럼 보이지만 `Table` 의 컬럼이
  * 커스텀 렌더러를 지원해 조합으로 선다(스펙 §7-1 — `c` 조합 · DS 이슈 없음).
  *
- * ⚠ **이 회차는 읽기다.** 측정치 입력은 항목의 자료형(`dataTypeCode`)에 따라 세 칸 중
- * 하나만 채워야 하는데, 그 값 목록이 아직 확정되지 않았다(omf-mes#179). 모양으로 추론해
- * 그리면 불리언 항목이 텍스트로 떨어져 자료가 틀어진다 — 답이 온 뒤에 붙인다.
+ * ⚠ **읽기 표다.** 검사 중인 회차의 입력은 `measurement-sheet.tsx` 다(omf-all-around#247).
  *
  * ⛔ **미검교정을 화면이 계산하지 않는다.** 서버가 측정 시점 기준으로 판정해 내려 준
  * 값을 그대로 보인다(공유계약 L-2). 그리고 **차단하지 않는다** — 무효화 정책이 미결이라
@@ -112,9 +110,56 @@ export interface MeasurementGridProps {
   isLoading: boolean;
   /** 넘칠 때 줄이지 않고 표 안에서 가로로 구른다(좌우 배치 · 사용자 지시 2026-10-27 · #185). */
   scrollX?: boolean;
+  /** 항목 입력 유형 코드 → 이름(수치 · 텍스트 · 불리언). 없으면 코드 그대로 */
+  dataTypeNames?: Record<string, string>;
   /** 적용 검사 기준 창을 연다 — [기준 조회]와 같다(창의 [수정]으로 검사기준 화면에 간다 · #197). 없으면 단추를 두지 않는다 */
   onViewPlan?: () => void;
 }
+
+/* 입력 유형 이름(공통코드 `INSPECTION_ITEM_SPEC_DATA_TYPE` — 검사 기준 화면과 같은 이름). 모르면 코드 그대로다. */
+const TypeNameContext = createContext<Record<string, string>>({});
+
+const TypeCell = ({ row }: { row: MeasurementRow }) => {
+  const names = useContext(TypeNameContext);
+  return names[row.dataType] ?? row.dataType;
+};
+
+/** 항목명은 칸 한가운데, 「필수」는 같은 칸 왼쪽 끝. */
+export const ItemCell = ({ row }: { row: MeasurementRow }) => (
+  <span className="iqc-inspection-item-cell">
+    {row.required && (
+      <Chip variant="status" size="sm" status="idle">
+        {t.requiredMark}
+      </Chip>
+    )}
+    <span className="iqc-inspection-item-name">{row.itemName}</span>
+  </span>
+);
+
+const ValueCell = ({ row }: { row: MeasurementRow }) => (
+  <>
+    {describeValue(row)}
+    {row.measured?.calibrationExpired === true && (
+      <>
+        {' '}
+        <Chip variant="status" size="sm" status="warning">
+          {t.calibrationExpired}
+        </Chip>
+      </>
+    )}
+  </>
+);
+
+const JudgmentCell = ({ row }: { row: MeasurementRow }) => {
+  const code = row.measured?.judgmentCode ?? '';
+  return code === '' ? (
+    t.notMeasured
+  ) : (
+    <Chip variant="status" size="sm" status={JUDGMENT_STATUS[code] ?? 'idle'}>
+      {t.judgmentNames[code] ?? code}
+    </Chip>
+  );
+};
 
 const columns: Column<MeasurementRow>[] = [
   {
@@ -125,72 +170,48 @@ const columns: Column<MeasurementRow>[] = [
      * 다섯 열 모두 폭을 주어 표가 카드보다 넓을 때 남는 폭을 폭 비율대로 나눠 갖게 한다
      * (항목 열이 혼자 받지 않게). 긴 항목명은 칸 안에서 줄을 바꾼다.
      */
-    width: '200px',
+    width: '128px',
     /*
      * 항목명은 칸 한가운데, 「필수」는 같은 칸 왼쪽 끝 — 셋으로 나눈 격자(1fr · 이름 · 1fr)라
      * 「필수」가 있든 없든 이름의 가운데가 같은 자리다(#133 · 담당자 지시).
      */
-    render: (row) => (
-      <span className="iqc-inspection-item-cell">
-        {row.required && (
-          <Chip variant="status" size="sm" status="idle">
-            {t.requiredMark}
-          </Chip>
-        )}
-        <span className="iqc-inspection-item-name">{row.itemName}</span>
-      </span>
-    ),
+    render: (row) => <ItemCell row={row} />,
+  },
+  /* 입력 유형 — 수치 · 텍스트 · 불리언(사용자 지시 2026-11-09). */
+  {
+    key: 'dataType',
+    align: 'center',
+    header: t.columns.dataType,
+    width: '72px',
+    render: (row) => <TypeCell row={row} />,
   },
   {
     key: 'spec',
     align: 'center',
     header: t.columns.spec,
-    width: '148px',
+    width: '102px',
     render: (row) => withUnit(describeSpec(row.spec), row.spec, row.unit),
   },
   {
     key: 'sample',
     align: 'center',
     header: t.columns.sample,
-    width: '96px',
+    width: '92px',
     render: (row) => t.sampleOf(row.sampleNo),
   },
   {
     key: 'value',
     align: 'center',
     header: t.columns.value,
-    width: '96px',
-    render: (row) => (
-      <>
-        {describeValue(row)}
-        {row.measured?.calibrationExpired === true && (
-          <>
-            {' '}
-            <Chip variant="status" size="sm" status="warning">
-              {t.calibrationExpired}
-            </Chip>
-          </>
-        )}
-      </>
-    ),
+    width: '110px',
+    render: (row) => <ValueCell row={row} />,
   },
   {
     key: 'judgment',
     align: 'center',
     header: t.columns.judgment,
-    width: '96px',
-    render: (row) =>
-      row.measured === null ? (
-        t.notMeasured
-      ) : (
-        <Chip
-          variant="status"
-          size="sm"
-          status={JUDGMENT_STATUS[row.measured.judgmentCode] ?? 'idle'}
-        >
-          {t.judgmentNames[row.measured.judgmentCode] ?? row.measured.judgmentCode}
-        </Chip>
-      ),
+    width: '122px',
+    render: (row) => <JudgmentCell row={row} />,
   },
 ];
 
@@ -201,6 +222,7 @@ export const MeasurementGrid = ({
   rows,
   isLoading,
   scrollX = false,
+  dataTypeNames = {},
   onViewPlan,
 }: MeasurementGridProps) => {
   /*
@@ -214,11 +236,11 @@ export const MeasurementGrid = ({
   /* 합격 · 불합격으로 거른 뒤 10 · 20 · 50건씩 쪽으로 나눈다(사용자 지시 2026-10-27 · #185). 칩 건수는 거르기 전 전체에서 센다. */
   const [judgmentFilter, setJudgmentFilter] = useState<string | null>(null);
   const countOf = (code: string): number =>
-    rows.filter((row) => row.measured?.judgmentCode === code).length;
+    rows.filter((row) => (row.measured?.judgmentCode ?? '') === code).length;
   const paging = useClientPage(
     judgmentFilter === null
       ? rows
-      : rows.filter((row) => row.measured?.judgmentCode === judgmentFilter),
+      : rows.filter((row) => (row.measured?.judgmentCode ?? '') === judgmentFilter),
   );
 
   return (
@@ -273,26 +295,28 @@ export const MeasurementGrid = ({
         className="iqc-inspection-table-box inspection-queue-table"
         style={resizable.style}
       >
-        <Table
-          caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-          density="compact"
-          columns={fit.columns}
-          rows={paging.rows}
-          getRowId={(row) => row.key}
-          empty={
-            isLoading ? (
-              <p className="field-note">{t.loading}</p>
-            ) : (
-              /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
-              <EmptyState
-                size="sm"
-                icon={<Icon name="content_paste_off" size={32} />}
-                title={t.noItems}
-                description={t.noItemsHint}
-              />
-            )
-          }
-        />
+        <TypeNameContext.Provider value={dataTypeNames}>
+          <Table
+            caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+            density="compact"
+            columns={fit.columns}
+            rows={paging.rows}
+            getRowId={(row) => row.key}
+            empty={
+              isLoading ? (
+                <p className="field-note">{t.loading}</p>
+              ) : (
+                /* 목록의 빈 결과와 같은 모양 — 아이콘 · 한 줄 제목 · 안내(사용자 지시 2026-10-26). */
+                <EmptyState
+                  size="sm"
+                  icon={<Icon name="content_paste_off" size={32} />}
+                  title={t.noItems}
+                  description={t.noItemsHint}
+                />
+              )
+            }
+          />
+        </TypeNameContext.Provider>
       </div>
       <PageNav {...paging.nav} />
     </section>

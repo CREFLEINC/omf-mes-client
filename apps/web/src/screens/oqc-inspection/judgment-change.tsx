@@ -4,7 +4,9 @@ import { useId } from 'react';
 
 import { FieldLabel } from './field-label';
 import {
+  formatMicro,
   hasQuantityError,
+  toMicro,
   toSendableNumber,
   validateQuantities,
   type QuantityDraft,
@@ -31,6 +33,36 @@ export const expectedJudgmentOf = (
   if (toSendableNumber(draft.rejected) > acceptanceNumber) return 'REJECTED';
   if (toSendableNumber(draft.held) > 0) return 'HELD';
   return 'ACCEPTED';
+};
+
+/** 합격 수량 = 총 검사 수량 − 불량 − 보류. 0 아래로 내려가지 않고, 수량이 아닌 칸이 있으면 `null`(IQC 와 같다). */
+export const remainingAcceptedOf = (draft: QuantityDraft, inspectedQty: number): string | null => {
+  const rejected = draft.rejected.trim() === '' ? 0n : toMicro(draft.rejected);
+  const held = draft.held.trim() === '' ? 0n : toMicro(draft.held);
+  const total = toMicro(String(inspectedQty));
+  if (rejected === null || held === null || total === null) return null;
+  const remaining = total - rejected - held;
+  return formatMicro(remaining < 0n ? 0n : remaining);
+};
+
+/**
+ * 최종 판정 칸에 채울 판정(IQC 와 같다 · 사용자 지시 2026-11-09) — 불합격 · 보류는 합격판정개수 기준, 기준이 없으면 불합격 수량이 있을
+ * 때 불합격. 합격은 합격 수량 = 전체 수량일 때만 채운다. 그 밖은 `null`.
+ */
+export const autoFillJudgmentOf = (
+  draft: QuantityDraft,
+  acceptanceNumber: number | null,
+  inspectedQty: number,
+): ExpectedJudgment | null => {
+  if (hasQuantityError(validateQuantities(draft))) return null;
+  const expected = expectedJudgmentOf(draft, acceptanceNumber);
+  if (expected === 'REJECTED' || expected === 'HELD') return expected;
+  if (acceptanceNumber === null && toSendableNumber(draft.rejected) > 0) return 'REJECTED';
+  return toSendableNumber(draft.accepted) === inspectedQty &&
+    toSendableNumber(draft.rejected) === 0 &&
+    toSendableNumber(draft.held) === 0
+    ? 'ACCEPTED'
+    : null;
 };
 
 /** 고른 판정이 자동 판정과 다른가 — 다르면 변경 사유가 있어야 저장할 수 있다. */

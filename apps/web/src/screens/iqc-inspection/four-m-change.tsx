@@ -90,18 +90,17 @@ export const FourMChange = ({ draft, onChange, disabled }: FourMChangeProps) => 
       >
         <span className="iqc-inspection-four-m-label">{t.label}</span>
       </Checkbox>
-      {draft.checked && (
+      {/* 비고를 아직 적지 않았으면 [비고 입력]. 적은 뒤의 [수정]은 비고 상자 오른쪽 위에 둔다(#247 · 사용자 지시 2026-11-10). */}
+      {draft.checked && shownRemarks === '' && (
         <Button
           type="button"
-          /* 체크와 같은 줄 오른쪽 끝 테두리 단추 — ① · ② 카드 [변경]과 같은 크기다(사용자 지시 2026-10-28 · #197). */
           variant="outlined"
           size="md"
           className="iqc-inspection-four-m-edit"
           disabled={disabled}
           onClick={() => open(draft)}
         >
-          {/* 적은 비고가 상자에 보이면 「수정」(사용자 지시 2026-10-28 · #197). */}
-          {shownRemarks === '' ? t.remarksOpen : t.remarksEdit}
+          {t.remarksOpen}
         </Button>
       )}
       {/*
@@ -111,6 +110,16 @@ export const FourMChange = ({ draft, onChange, disabled }: FourMChangeProps) => 
       {shownRemarks !== '' && (
         <div className="iqc-inspection-four-m-remarks">
           <span className="iqc-inspection-four-m-remarks-label">{t.remarks}</span>
+          {/* [수정]은 비고 글 첫 줄과 같은 높이, 오른쪽 끝(#247 · 사용자 지시 2026-11-10). */}
+          <Button
+            type="button"
+            variant="outlined"
+            size="md"
+            disabled={disabled}
+            onClick={() => open(draft)}
+          >
+            {t.remarksEdit}
+          </Button>
           {/* 세 줄 높이를 넘으면 상자 안에서 굴려 본다(사용자 시안 2026-10-28). */}
           <span className="iqc-inspection-four-m-remarks-text" tabIndex={0}>
             {shownRemarks}

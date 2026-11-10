@@ -160,6 +160,12 @@ export interface InspectionResultRound {
   statusCode: string;
   confirmedAt: string | null;
   previousResultId: number | null;
+  /** 회차 비고(#247). 없으면 `''` */
+  remarks: string;
+  /** 검사일시 — 부품 화면이 임시 저장한 회차를 다시 열 때 칸을 채운다(#247). */
+  inspectedAt: string;
+  /** 판 번호 — 연 회차를 고칠 때 잠금 토큰(`If-Match`). 그사이 다른 사람이 고쳤으면 서버가 막는다(#247). */
+  versionNo: number;
 }
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
@@ -173,6 +179,9 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
   statusCode: item.statusCode,
   confirmedAt: item.confirmedAt ?? null,
   previousResultId: item.previousResultId ?? null,
+  remarks: item.remarks ?? '',
+  inspectedAt: item.inspectedAt,
+  versionNo: item.versionNo ?? 0,
 });
 
 /**

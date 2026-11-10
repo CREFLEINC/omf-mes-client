@@ -53,6 +53,7 @@ export const pqcInspectionRegister = {
 
   /** 목록 표 열(#135) — 내부 번호 대신 작업지시 번호 · 품목 이름·코드. */
   columns: {
+    skip: '생략',
     lot: '대상 LOT',
     workOrder: '작업지시',
     item: '품목',
@@ -63,6 +64,8 @@ export const pqcInspectionRegister = {
 
   /** 관리웹 상세(#135) — IQC 판정 화면(#133)과 같은 짜임·말. POP 의 말(`pqcInspection`)은 그대로 둔다. */
   web: {
+    /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
+    mergedHeading: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
     /** 생산 실적이 없어 판정을 막을 때(#135) — 관리웹 말. POP 의 말(`pqcInspection.result.noProductionResult`)은 그대로 둔다. */
     noProductionResult: '생산 실적이 없으므로 판정할 수 없습니다.',
     /** 검사기준이 없을 때 「검사 내용」 이름 옆 안내와 입력 칸 안내(#135) — 관리웹 말. POP 의 말(`pqcInspection.noStandard`)은 그대로 둔다. */
@@ -131,6 +134,16 @@ export const pqcInspectionRegister = {
   /**
    * PQC 건별 생략(omf-all-around#212 · 서버 선행 P-152) — OQC 생략 구획과 같은 모양이다. 요청 → 결재(W-03-09) → 실행.
    */
+  /** 목록 「생략」 칸의 창(사용자 지시 2026-11-09). */
+  skipDialog: {
+    approveTitle: 'PQC (공정검사) 생략 승인 처리',
+    approved: 'PQC 생략 요청을 승인했습니다.',
+    rejected: 'PQC 생략 요청을 반려했습니다.',
+    executeTitle: '공정검사를 생략하시겠습니까?',
+    executeBody:
+      '실행하면 이 작업지시의 남은 공정검사가 생략되고, 검사 대기인 생산 LOT 은 정상이 됩니다.',
+    execute: '생략 실행',
+  },
   skip: {
     heading: 'PQC (공정검사) 생략 요청',
     steps: ['1. 생략 요청', '2. 승인 처리', '3. 생략 실행'],

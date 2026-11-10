@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { Button, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
@@ -24,10 +24,24 @@ export const RejectedLotGuide = ({ nonconformanceId }: RejectedLotGuideProps) =>
   const navigate = useNavigate();
 
   return (
-    <AlertBanner className="iqc-inspection-submit-banner" variant="info" title={t.title}>
+    /* 안내 · 단추 차례는 사용자 시안(2026-11-09). */
+    <section className="iqc-inspection-rejected-guide" aria-label={t.title}>
+      <h4>
+        <Icon name="info" size={20} aria-hidden />
+        {t.title}
+      </h4>
       <p>{t.body}</p>
       {nonconformanceId === null && <p className="field-note">{t.noNonconformance}</p>}
-      <div className="form-actions">
+      <div className="iqc-inspection-rejected-guide-actions">
+        <Button
+          type="button"
+          variant="outlined"
+          className="app-button-neutral"
+          size="md"
+          onClick={() => void navigate(SUPPLIER_RETURN_PATH)}
+        >
+          {t.toSupplierReturn}
+        </Button>
         <Button
           type="button"
           size="md"
@@ -35,15 +49,7 @@ export const RejectedLotGuide = ({ nonconformanceId }: RejectedLotGuideProps) =>
         >
           {t.toDisposition}
         </Button>
-        <Button
-          type="button"
-          variant="outlined"
-          size="md"
-          onClick={() => void navigate(SUPPLIER_RETURN_PATH)}
-        >
-          {t.toSupplierReturn}
-        </Button>
       </div>
-    </AlertBanner>
+    </section>
   );
 };

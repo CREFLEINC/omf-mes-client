@@ -111,9 +111,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       inspectionLevel: 'Mức kiểm tra',
     },
     level: {
+      saveFailed:
+        'Không thể chỉ định mức kiểm tra. Vui lòng chỉ định tại màn hình quản lý mức kiểm tra.',
       unset: 'Chưa chỉ định',
       loadFailed: 'Không tải được',
-      change: 'Đổi',
       set: 'Chỉ định',
     },
     auxTabs: 'Thông tin tham khảo kiểm tra',
@@ -143,16 +144,26 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     heading: 'Đánh giá số lượng',
     sectionTitle: 'Nhập số lượng kiểm tra',
     judgmentSectionTitle: 'Đánh giá',
+    mergedSectionTitle: 'Số lượng kiểm tra · Đánh giá',
     judgmentDetailTitle: 'Nhập chi tiết đánh giá',
     judgmentDetailOpen: 'Nhập chi tiết đánh giá',
     judgmentDetailCancel: 'Hủy',
     judgmentDetailDone: 'Xong',
+    confirmDialog: {
+      title: 'Xác nhận phán định?',
+      irreversible: 'Sau khi xác nhận sẽ không thể sửa.',
+      cancel: 'Hủy',
+    },
     stepSummary: {
+      measurements: (accepted: number, rejected: number): string =>
+        `Hạng mục đạt ${String(accepted)} · không đạt ${String(rejected)}`,
       quantities: (accepted: string, rejected: string, held: string): string =>
         `Đạt ${accepted} · Lỗi ${rejected} · Tạm giữ ${held}`,
       fourMChanged: 'Hàng thay đổi 4M',
       fourMNone: 'Không thay đổi',
-      next: 'Xác nhận',
+      next: 'Gửi',
+      undo: 'Hoàn tác',
+      clear: 'Xóa trắng',
       qtyDone: 'Xác nhận',
       change: 'Mở để sửa',
     },
@@ -161,7 +172,6 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     confirmed: 'Lần này đã xác nhận. Để kiểm tra lại, hãy thêm lần mới.',
     closed: {
       title: 'Đã kiểm tra xong',
-      note: 'Yêu cầu này đã kiểm tra xong. Đây là kết quả xác nhận của lượt mới nhất.',
       finalJudgment: 'Đánh giá cuối cùng',
       round: 'Lượt',
       confirmedAt: 'Thời điểm xác nhận',
@@ -188,6 +198,12 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     saveBlockedByInvalid: 'Hãy sửa các ô số lượng rồi mới lưu được.',
 
     judgment: 'Đánh giá cuối cùng',
+    overallTitle: 'Đánh giá tổng hợp',
+    autoResult: 'Kết quả đánh giá tự động',
+    autoResultPending: 'Nhập hạng mục kiểm tra để xem kết quả đánh giá.',
+    autoResultRejected: (qty: string) => `(Số lượng lỗi ${qty})`,
+    remarks: 'Ghi chú',
+    remarksPlaceholder: 'Nhập ghi chú',
     judgmentPlaceholder: 'Hãy chọn đánh giá cuối cùng',
     judgmentUnavailable: 'Danh sách giá trị đánh giá chưa được chuẩn bị. Hãy hỏi người phụ trách.',
     judgmentUnknown: (code: string): string =>
@@ -200,10 +216,10 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     workerNotLinked:
       'Tài khoản này chưa liên kết người lao động nên không lưu được phán định. Hãy liên kết người lao động.',
     followUp: {
-      title: 'LOT bị lỗi — hãy xử lý thay vì kiểm tra lại',
-      body: 'LOT đã xác nhận không đạt thì không thể xác nhận lượt kiểm tra lại. Hãy chọn làm lại (kiểm tra lại)·hủy·bình thường ở màn hình phán định xử lý, hoặc trả lại nhà cung cấp.',
-      toDisposition: 'Đến phán định xử lý',
-      toSupplierReturn: 'Đến trả hàng nhà cung cấp',
+      title: 'LOT không đạt · Không thể kiểm tra lại',
+      body: 'LOT đã xác nhận không đạt thì không thể kiểm tra lại. Vui lòng thực hiện phán định xử lý hoặc trả hàng nhà cung cấp.',
+      toDisposition: 'Phán định xử lý',
+      toSupplierReturn: 'Trả hàng nhà cung cấp',
       noNonconformance:
         'Không tìm thấy sự không phù hợp đang chờ xử lý. Hãy tìm LOT này trong danh sách phán định xử lý.',
     },
@@ -216,7 +232,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
       required: 'Nếu không đạt, phải nhập chi tiết đánh giá.',
       minorRequired: 'Nhóm lỗi này có mã chi tiết. Hãy chọn mã chi tiết.',
       noCodes: 'Chưa có mã lỗi nào. Hãy đăng ký trước tại Thông tin cơ sở > Mã lỗi·nguyên nhân.',
-      majorPlaceholder: 'Hãy chọn nhóm lỗi chính',
+      majorPlaceholder: 'Hãy chọn loại lỗi',
       minorPlaceholder: 'Hãy chọn chi tiết lỗi',
       minorPickerTitle: 'Chọn lỗi chi tiết',
       minorPickerClose: 'Đóng',
@@ -287,6 +303,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     notConfirmed: 'Chưa xác nhận',
   },
 
+  drawing: {
+    heading: 'Bản vẽ tiêu chuẩn',
+    alt: (n: number) => `Bản vẽ tiêu chuẩn kiểm tra ${String(n)}`,
+    none: 'Chưa có bản vẽ',
+    prev: 'Bản vẽ trước',
+    next: 'Bản vẽ sau',
+  },
+
   measurements: {
     viewPlan: 'Xem hạng mục kiểm tra',
     heading: 'Hạng mục kiểm tra',
@@ -295,7 +319,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     noItems: 'Chưa có hạng mục kiểm tra nào.',
     noItemsHint: 'Hãy kiểm tra thông tin tiêu chuẩn kiểm tra.',
     columns: {
-      item: 'Hạng mục kiểm tra',
+      dataType: 'Loại',
+      no: 'No.',
+      item: 'Nội dung kiểm tra',
       spec: 'Quy cách',
       sample: 'Lần đo',
       value: 'Kết quả đo',
@@ -306,8 +332,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     filterLabel: 'Lọc theo đánh giá',
     filterAll: 'Tất cả',
     sampleOf: (sampleNo: number): string => `Lần ${String(sampleNo)}`,
-    booleanTrue: 'Tốt',
-    booleanFalse: 'Lỗi',
+    booleanTrue: 'OK',
+    booleanFalse: 'NG',
+    autoJudgmentMark: 'Tự động đánh giá',
+    autoJudgmentTitle: 'Tự động đánh giá theo giá trị đo và quy cách',
+    sheetTitles: { NUMERIC: 'Đo kích thước', BOOLEAN: 'Hạng mục kiểm tra khác' } as Record<
+      string,
+      string
+    >,
     range: (lower: number, upper: number): string => `${lower} ~ ${upper}`,
     atLeast: (lower: number): string => `${lower} trở lên`,
     atMost: (upper: number): string => `${upper} trở xuống`,
@@ -319,6 +351,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     calibrationWarning:
       'Hãy kiểm tra lại giá trị đo đó. Việc này không chặn kiểm tra — về hiệu chuẩn thiết bị đo, hãy hỏi người phụ trách thiết bị.',
     calibrationExpired: 'Hết hạn hiệu chuẩn',
+    valueLabel: (itemName: string, sampleNo: number): string =>
+      `Kết quả đo ${itemName} lần ${String(sampleNo)}`,
+    judgmentLabel: (itemName: string): string => `Phán định ${itemName}`,
+    selectPlaceholder: 'Chọn',
+    blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
+    blockedIncomplete: 'Với hạng mục không tự động phán định, nếu đã nhập giá trị đo hãy chọn phán định (OK/NG).',
+    blockedRequired: 'Cần nhập đủ phán định của các hạng mục bắt buộc để xác nhận.',
+    blockedUnsaved: 'Vui lòng lưu tạm kết quả theo hạng mục kiểm tra trước.',
   },
 
   pageNav: {

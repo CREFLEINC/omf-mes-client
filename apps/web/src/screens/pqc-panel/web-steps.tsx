@@ -1,6 +1,5 @@
-import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 import { InspectionQtyLine, type InspectionQtyStatus } from '../../patterns/inspection-qty-line';
 import { InspectionSteps, type InspectionStepItem } from '../../patterns/inspection-steps';
@@ -45,6 +44,16 @@ export const autoJudgmentOf = (draft: QuantityDraft, inspectedQty: number): stri
     (toMicro(draft.accepted) ?? 0n) === totals.inspected
     ? ACCEPTED
     : null;
+};
+
+/** 합격 수량 = 총 검사 수량 − 불량 − 보류. 0 아래로 내려가지 않고, 수량이 아닌 칸이 있으면 `null`(IQC 와 같다). */
+export const remainingAcceptedOf = (draft: QuantityDraft, inspectedQty: number): string | null => {
+  const rejected = draft.rejected.trim() === '' ? 0n : toMicro(draft.rejected);
+  const held = draft.held.trim() === '' ? 0n : toMicro(draft.held);
+  const total = toMicro(String(inspectedQty));
+  if (rejected === null || held === null || total === null) return null;
+  const remaining = total - rejected - held;
+  return formatMicro(remaining < 0n ? 0n : remaining);
 };
 
 const FIELD_OF: Record<string, keyof QuantityDraft> = {
@@ -127,9 +136,19 @@ export const PqcWebSteps = ({
     onJudgmentChange(code);
     if (code !== REJECTED) onDispositionChange(null);
   };
+  /* 합격은 합격 수량 = 전체 수량이고 필수 항목이 모두 합격일 때만, 불합격 항목이 있으면 불합격을 채운다(IQC 와 같다). */
+  const expectedOf = (next: QuantityDraft): string | null => {
+    const judgments = rows.map((row) => drafts[row.key]?.judgment ?? '');
+    if (judgments.includes(REJECTED)) return REJECTED;
+    const fromQty = autoJudgmentOf(next, inspectedQty);
+    if (fromQty !== ACCEPTED) return fromQty;
+    const required = rows.filter((row) => row.required);
+    const targets = required.length > 0 ? required : rows;
+    return targets.every((row) => drafts[row.key]?.judgment === ACCEPTED) ? ACCEPTED : null;
+  };
   const applyAuto = (next: QuantityDraft): void => {
     if (isLocked || (autoFilled.current === null && judgment !== '')) return;
-    const expected = autoJudgmentOf(next, inspectedQty);
+    const expected = expectedOf(next);
     if (expected !== null && isKnownCode(judgmentOptions, expected)) {
       autoFilled.current = expected;
       if (expected !== judgment) setJudgment(expected);
@@ -138,6 +157,16 @@ export const PqcWebSteps = ({
       setJudgment('');
     }
   };
+
+  /* 항목 판정이 바뀌면 최종 판정을 다시 본다 — 처음 열 때는 채우지 않는다. */
+  const judgmentsKey = rows.map((row) => drafts[row.key]?.judgment ?? '').join('|');
+  const lastJudgmentsKey = useRef(judgmentsKey);
+  useEffect(() => {
+    if (lastJudgmentsKey.current === judgmentsKey) return;
+    lastJudgmentsKey.current = judgmentsKey;
+    applyAuto(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [judgmentsKey]);
 
   const status: InspectionQtyStatus =
     totals.kind !== 'counted'
@@ -151,102 +180,97 @@ export const PqcWebSteps = ({
           isZero: totals.remaining === 0n,
         };
   const qtyText = (raw: string): string => withUnit(raw.trim() === '' ? '0' : raw);
-  const confirmButton = (confirm: () => void): ReactNode => (
-    <Button type="button" size="md" onClick={confirm}>
-      {tHub.stepConfirm}
-    </Button>
-  );
-
+  /* 검사 수량 · 항목별 결과 · 최종 판정을 한 단계로(IQC 와 같다 · 사용자 지시 2026-11-09). */
+  const judgmentText =
+    judgmentOptions.find((option) => option.value === judgment)?.label ?? judgment;
   const steps: InspectionStepItem[] = [
-    ...(inspectionPlanVersionId === null
-      ? []
-      : [
-          {
-            title: t.items.heading,
-            done: rows.length > 0 && isAllJudged(rows, drafts),
-            summary: t.items.progress(judgedCount(rows, drafts), rows.length),
-            render: (confirm: () => void) => (
-              <WebItemTable
-                inStep
-                rows={rows}
-                drafts={drafts}
-                onValueChange={onValueChange}
-                onJudgmentChange={onItemJudgmentChange}
-                judgmentOptions={itemJudgmentOptions}
-                uomCodeOf={uomCodeOf}
-                isLoading={itemsLoading}
-                isLocked={isLocked}
-                inspectionPlanVersionId={inspectionPlanVersionId}
-                footer={isLocked ? null : confirmButton(confirm)}
-              />
-            ),
-          },
-        ]),
     {
-      title: t.quantity.heading,
-      done: canConfirm(totals),
+      title: t.mergedHeading,
+      done: canConfirm(totals) && judgment !== '',
       attention: Object.keys(FIELD_OF).some((name) => fieldErrors[name] !== undefined),
-      summary: tHub.qtySummary(
-        qtyText(draft.accepted),
-        qtyText(draft.rejected),
-        qtyText(draft.held),
-      ),
-      render: (confirm) => (
-        <InspectionQtyLine
-          uomCode={uomCode}
-          disabled={isLocked}
-          status={status}
-          /* 수량이 아닌 값이 남으면 넘어가지 않는다 — 합계가 덜 맞아도 넘어간다(IQC 와 같다). */
-          confirmDisabled={totals.kind !== 'counted'}
-          onConfirm={
-            isLocked
-              ? null
-              : () => {
-                  applyAuto(draft);
-                  confirm();
-                }
-          }
-          /*
-           * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
-           * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
-           */
-          fields={[
-            ...(
-              [
-                ['accepted', t.quantity.accepted],
-                ['rejected', t.quantity.rejected],
-                ['held', t.quantity.held],
-              ] as const
-            ).map(([key, label]) => ({
-              key,
-              kind: key,
-              label,
-              value: draft[key],
-              onChange: (raw: string) => {
-                const next = { ...draft, [key]: raw };
-                onChange(next);
-                applyAuto(next);
-              },
-              error:
-                serverErrorOf(key) ??
-                (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
-            })),
-          ]}
-        >
-          {inspectionRound !== null && (
-            <p className="field-note">{t.quantity.round(inspectionRound)}</p>
-          )}
-          {errorBanner}
-        </InspectionQtyLine>
-      ),
-    },
-    {
-      title: t.judgment.heading,
-      done: judgment !== '',
-      summary: judgmentOptions.find((option) => option.value === judgment)?.label ?? judgment,
+      summary: [
+        tHub.qtySummary(qtyText(draft.accepted), qtyText(draft.rejected), qtyText(draft.held)),
+        judgmentText,
+      ]
+        .filter((part) => part !== '')
+        .join(' · '), // ui-check-ignore: C-13 사용자 지시 표기(#247)
       render: () => (
         <>
+          <div className="iqc-inspection-qty-body" data-with-judgment="">
+            <InspectionQtyLine
+              uomCode={uomCode}
+              disabled={isLocked}
+              status={status}
+              /* 최종 판정은 수량 줄 오른쪽(IQC 와 같다 · 사용자 지시 2026-11-09). */
+              trailing={
+                <PqcJudgmentFields
+                  part="judgment"
+                  judgmentOptions={judgmentOptions}
+                  judgment={judgment}
+                  onJudgmentChange={(code) => {
+                    autoFilled.current = null;
+                    onJudgmentChange(code);
+                  }}
+                  disposition={disposition}
+                  onDispositionChange={onDispositionChange}
+                  rejected={draft.rejected}
+                  isLocked={isLocked}
+                />
+              }
+              /*
+               * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
+               * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
+               */
+              fields={[
+                ...(
+                  [
+                    ['accepted', t.quantity.accepted],
+                    ['rejected', t.quantity.rejected],
+                    ['held', t.quantity.held],
+                  ] as const
+                ).map(([key, label]) => ({
+                  key,
+                  kind: key,
+                  label,
+                  value: draft[key],
+                  onChange: (raw: string) => {
+                    const typed = { ...draft, [key]: raw };
+                    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
+                    const remaining =
+                      key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
+                    const next = remaining === null ? typed : { ...typed, accepted: remaining };
+                    onChange(next);
+                    applyAuto(next);
+                  },
+                  error:
+                    serverErrorOf(key) ??
+                    (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
+                })),
+              ]}
+            >
+              {inspectionRound !== null && (
+                <p className="field-note">{t.quantity.round(inspectionRound)}</p>
+              )}
+              {errorBanner}
+            </InspectionQtyLine>
+          </div>
+          {inspectionPlanVersionId !== null && (
+            <WebItemTable
+              inStep
+              rows={rows}
+              drafts={drafts}
+              onValueChange={onValueChange}
+              onJudgmentChange={onItemJudgmentChange}
+              judgmentOptions={itemJudgmentOptions}
+              uomCodeOf={uomCodeOf}
+              isLoading={itemsLoading}
+              isLocked={isLocked}
+              inspectionPlanVersionId={inspectionPlanVersionId}
+              footer={null}
+            />
+          )}
           <PqcJudgmentFields
+            part="disposition"
             judgmentOptions={judgmentOptions}
             judgment={judgment}
             onJudgmentChange={(code) => {

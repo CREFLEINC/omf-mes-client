@@ -98,8 +98,6 @@ export interface PqcPanelProps {
    * 입력을 고치면 참, 서버가 저장·확정을 받았으면 거짓이다.
    */
   onDirtyChange?: (dirty: boolean) => void;
-  /** 관리웹 요청 정보 카드 바로 아래 자리 — PQC 생략 구획이 선다(OQC 판정 화면과 같은 차례 · omf-all-around#212). */
-  afterSummary?: ReactNode;
 }
 
 /**
@@ -119,7 +117,6 @@ export const PqcPanel = ({
   withKeypad,
   variant,
   onDirtyChange,
-  afterSummary,
 }: PqcPanelProps) => {
   const detail = useInspectionRequestDetail(inspectionRequestId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
@@ -214,7 +211,12 @@ export const PqcPanel = ({
     setDirty(false);
     setShowErrors(false);
     setJudgment('');
-    setDraft(EMPTY_QUANTITY_DRAFT);
+    /* 관리웹 새 회차는 합격 수량에 총 검사 수량을 넣어 둔다(IQC 와 같다 · 사용자 지시 2026-11-09). */
+    setDraft(
+      variant === 'web' && storedInspectedQty > 0
+        ? { ...EMPTY_QUANTITY_DRAFT, accepted: String(storedInspectedQty) }
+        : EMPTY_QUANTITY_DRAFT,
+    );
     setDisposition(null);
     setPadField(null);
     clearRejection();
@@ -225,7 +227,7 @@ export const PqcPanel = ({
     /* 초기화가 다시 돌면(재마운트 · StrictMode 재실행) 작성중 회차도 다시 되살린다 — 아래 복원이 이 표시를 본다. */
     restoredKey.current = null;
     measurementsRestoredKey.current = null;
-  }, [inspectionRequestId, storedInspectedQty, clearRejection]);
+  }, [inspectionRequestId, storedInspectedQty, clearRejection, variant]);
 
   /*
    * 작성중 회차를 칸에 되살린다. ⭐ 위 초기화 «뒤»에 선다 — 의뢰 상세가 늦게 와 초기화가 다시 돌아도 저장된 값이
@@ -429,8 +431,6 @@ export const PqcPanel = ({
           planVersion={planVersion.data ?? null}
           uomCode={uomCodeOf(target.uomId)}
         />
-
-        {afterSummary}
 
         {roundLoadFailed && (
           <QueueLoadErrorBanner
