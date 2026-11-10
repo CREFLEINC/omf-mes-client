@@ -126,7 +126,9 @@ describe('치수 측정 표', () => {
       'true',
     );
     const [first] = screen.getAllByRole('row').slice(1);
-    expect(within(first as HTMLElement).getByText('NG')).toBeInTheDocument();
+    /* 자동 판정 항목은 「자동 판정」 라벨과 합격 · 불합격만(#247). */
+    expect(within(first as HTMLElement).getByText('자동 판정')).toBeInTheDocument();
+    expect(within(first as HTMLElement).getByText('불합격')).toBeInTheDocument();
     expect(within(first as HTMLElement).getByText('Kích thước ① 6.76±0.10')).toBeInTheDocument();
     expect(screen.getByText('1/2 항목')).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '항목 1 n4 측정값' })).toBeNull();

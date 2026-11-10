@@ -28,7 +28,7 @@ export const partsIqcInspection = {
 
   /** 검사 기준 조회 팝업(사용자 지시 2026-10-30). */
   plan: {
-    open: '기준 보기',
+    open: '기준 조회',
     title: '검사 기준 상세',
     edit: '수정',
     version: '버전',
@@ -77,9 +77,6 @@ export const partsIqcInspection = {
     sample: '시료 수',
     sampleValue: (n: number, c: number) => `시료 n=${String(n)}, C=${String(c)}`,
     dimensionCount: '치수 항목',
-    xrf: 'XRF',
-    xrfRequired: '필요',
-    xrfNone: '해당 없음',
     inspector: '검사자',
   },
 
@@ -123,30 +120,7 @@ export const partsIqcInspection = {
   },
 
   visual: {
-    heading: '외관 · XRF 검사',
-    defectQty: '외관 불량 수',
     unit: '개',
-    xrfResult: 'XRF 결과',
-    xrf: { NOT_DONE: '미실시', OK: 'OK', NG: 'NG' },
-    xrfReport: 'XRF 성적서',
-    pickFile: '파일 첨부',
-    removeFile: (name: string) => `${name} 빼기`,
-    defectType: '외관 불량 유형',
-    defectPick: '권장',
-    noFile: '첨부된 파일 없음',
-    defectCodesEmpty: '등록된 불량 유형이 없습니다.',
-    defectCodeRegister: '불량 코드 등록',
-    defectQtyTitle: '불량 유형별 수량',
-    defectQtyColumn: '불량 수량',
-    defectSumLabel: '입력 합계',
-    defectSumValue: (sum: number, target: number) => `${String(sum)} / ${String(target)}개`,
-    defectSumMismatchChip: '불일치',
-    defectTypePlaceholder: '불량 유형을 선택하세요',
-    defectTypePicked: (count: number) => `${String(count)}개 선택`,
-    defectTypeSearch: '불량 유형 검색',
-    defectTypeNoMatch: '맞는 불량 유형이 없습니다.',
-    removeDefectType: (name: string) => `${name} 빼기`,
-    defectCodesFailed: '불량 유형을 불러오지 못했습니다.',
     checks: '기타 검사 항목',
     checkNo: 'No.',
     checkItem: '검사 항목',
@@ -155,10 +129,6 @@ export const partsIqcInspection = {
     checkValueLabel: (name: string) => `${name} 측정 결과`,
     remarks: '비고',
     remarksPlaceholder: '비고를 입력하세요',
-    xrfChoice: { NOT_DONE: '미실시', OK: '합격', NG: '불합격' },
-    xrfState: { NOT_DONE: 'XRF 미실시', OK: 'XRF 합격', NG: 'XRF 불합격' },
-    invalidQty: '0 이상 정수를 입력하세요.',
-    overQty: '검사 수량보다 클 수 없습니다.',
   },
 
   verdict: {
@@ -211,11 +181,9 @@ export const partsIqcInspection = {
     dimension: '치수 검사',
     dimensionValue: (out: number, missing: number) =>
       `규격 밖 ${String(out)} · 미입력 ${String(missing)}`,
-    visual: '외관 검사',
-    visualValue: (defects: number) => `불량 ${String(defects)}`,
+    checksValue: (ng: number, missing: number) => `NG ${String(ng)} · 미판정 ${String(missing)}`,
     ok: '이상 없음',
     check: '확인 필요',
-    xrf: 'XRF',
     back: '돌아가기',
     action: (judgment: string) => `${judgment} 확정`,
   },

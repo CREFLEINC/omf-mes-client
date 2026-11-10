@@ -16,7 +16,6 @@ const VARIABLES: SubmitVariables = {
   measurements: [],
   defects: [],
   remarks: '',
-  xrfReports: [],
 };
 
 const submit = async (variables: SubmitVariables): Promise<Record<string, unknown>> => {

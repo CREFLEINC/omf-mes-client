@@ -15,9 +15,6 @@ type DefectInput = components['schemas']['InspectionDefectInput'];
 
 const ALL_KEY = ['parts-iqc-inspection'] as const;
 
-type Client = ReturnType<typeof useApiClient>['client'];
-type AttachmentUpload = NonNullable<Parameters<Client['POST']>[1]>['body'];
-
 export const partsIqcKeys = {
   all: ALL_KEY,
   queue: (query: PartsQueueQuery) => [...ALL_KEY, 'queue', query] as const,
@@ -165,12 +162,10 @@ export interface SubmitVariables {
   defects: DefectInput[];
   judgmentChangeReason?: string;
   remarks: string;
-  /** XRF 성적서 — 여러 건(사용자 지시 2026-10-30). 비면 올리지 않는다. */
-  xrfReports: File[];
 }
 
 /**
- * 제출 한 번 = 임시 저장(측정값 포함) → XRF 성적서 올리기 → 확정.
+ * 제출 한 번 = 임시 저장(측정값 포함) → 확정.
  *
  * ⭐ 앞 단계가 성공한 회차를 기억한다 — 확정이 실패한 뒤 다시 누르면 새 회차를 만들지 않고 그 회차를 고쳐 확정한다.
  * ⛔ 확정은 되돌릴 수 없다 — 키를 적용될 때까지 쓴다(서버가 두 번 실행하지 않는다).
@@ -182,8 +177,6 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
     requestId: number;
     resultId: number;
     versionNo: number;
-    /** 올린 성적서 수 — 확정이 실패해 다시 누르면 남은 파일부터 올린다(같은 파일을 두 번 붙이지 않는다). */
-    uploaded: number;
   } | null>(null);
 
   return useMasterWrite<SubmitVariables, InspectionResult>({
@@ -215,7 +208,6 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
                     }),
                   )
                 ).versionNo ?? 0,
-              uploaded: 0,
             });
       const draft =
         existing === null
@@ -253,24 +245,8 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         requestId: v.inspectionRequestId,
         resultId: result.inspectionResultId,
         versionNo: result.versionNo ?? 0,
-        uploaded: existing?.uploaded ?? 0,
       };
       saved.current = current;
-
-      /* 성적서는 한 건씩 차례로 — 하나가 실패하면 거기서 멈추고, 다시 누르면 그 파일부터 올린다. */
-      for (const file of v.xrfReports.slice(current.uploaded)) {
-        const form = new FormData();
-        form.append('targetTypeCode', 'INSPECTION_RESULT');
-        form.append('targetId', String(result.inspectionResultId));
-        form.append('file', file);
-        const uploaded = await client.POST('/app/attachments', {
-          params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
-          body: form as unknown as AttachmentUpload,
-        });
-        if (uploaded.error !== undefined)
-          return uploaded as unknown as ApiCallResult<InspectionResult>;
-        current.uploaded += 1;
-      }
 
       const remarks = v.remarks.trim();
       return client.POST('/quality/inspection-results/{inspectionResultId}:confirm', {

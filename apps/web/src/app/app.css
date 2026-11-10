@@ -32636,15 +32636,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   background: var(--primary);
 }
 
-.parts-iqc-file,
 .parts-iqc-defects,
 .parts-iqc-checks {
   display: grid;
   gap: var(--space-2);
-}
-
-.parts-iqc-file {
-  justify-items: start;
 }
 
 .parts-iqc-file-name {
@@ -32661,10 +32656,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-check-row > span {
   flex: 1 1 auto;
-}
-
-.parts-iqc-hint {
-  color: var(--semantic-error-text);
 }
 
 .parts-iqc-verdict-row {
@@ -33019,13 +33010,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   gap: var(--space-3);
 }
 
-.parts-iqc-file {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 .parts-iqc-checks > .parts-iqc-check-row {
   padding-block: var(--space-2);
   border-bottom: 1px solid var(--outline-variant);
@@ -33057,178 +33041,15 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border-radius: var(--radius-lg);
 }
 
-.parts-iqc-card .parts-iqc-file {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
-}
-
-.parts-iqc-file-text {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.parts-iqc-file-title {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
 /* 칸 묶음(.field-cell)은 내용을 왼쪽에 붙여 폭을 줄인다 — 입력 칸은 가로 전체를 쓴다. */
 .parts-iqc-stretch {
   align-items: stretch;
-}
-
-.parts-iqc-defect-options {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-5);
-}
-
-/* 불량 유형 선택칸 — 여러 개 고르는 검색 선택칸 + 고른 유형 칩(사용자 지시 2026-11-04). */
-.parts-iqc-defect-options > .searchable-select {
-  /* 「불량 유형을 선택하세요」가 들어갈 만큼만(사용자 지시 2026-11-04). */
-  width: 13.5rem;
-}
-
-/* 불량 유형별 수량 상자(사용자 시안 2026-11-04) — 머리 줄(제목 · 입력 합계), 줄마다 유형 · 수량 · 휴지통. */
-.parts-iqc-defect-qty-box {
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.parts-iqc-defect-qty-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-2) var(--space-4);
-  background: var(--surface-container);
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.parts-iqc-defect-qty-head h4 {
-  margin: 0;
-  font: var(--type-title-sm);
-  font-weight: 700;
-}
-
-.parts-iqc-defect-qty-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.parts-iqc-defect-qty-list > li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-}
-
-.parts-iqc-defect-qty-list > li + li {
-  border-top: 1px solid var(--outline-variant);
-}
-
-.parts-iqc-defect-qty-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.parts-iqc-defect-qty-input {
-  flex: none;
-  width: 10rem;
-}
-
-.parts-iqc-defect-sum {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  white-space: nowrap;
-}
-
-.parts-iqc-defect-sum-label {
-  color: var(--on-surface-variant);
-}
-
-.parts-iqc-defect-sum strong {
-  font: var(--type-title-sm);
-  font-weight: 700;
-}
-
-.parts-iqc-defect-sum[data-mismatch] strong {
-  color: var(--semantic-error-text);
-}
-
-.defect-multi-select-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
 }
 
 .parts-iqc-defect-qtys {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: var(--space-3);
-}
-
-/* ── 외관·XRF · 기타 검사 · 종합 판정 상자(사용자 시안 2026-10-29) ── */
-.parts-iqc-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-md);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-}
-
-.parts-iqc-badge-success {
-  background: var(--semantic-success);
-  color: var(--on-primary);
-}
-
-.parts-iqc-badge-error {
-  background: var(--semantic-error);
-  color: var(--on-primary);
-}
-
-.parts-iqc-badge-warning {
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
-}
-
-.parts-iqc-visual-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-5);
-}
-
-/* 외관 불량 수 · 외관 불량 유형 좌우 배치 — 좁아지면 아래로 내려간다(사용자 지시 2026-11-04). */
-.parts-iqc-visual-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-4) var(--space-5);
-}
-
-.parts-iqc-visual-defects {
-  display: grid;
-  /* 표 · 합계가 넓어도 외관 불량 수 옆에 남는다 — 남는 폭 안에서 줄을 바꾼다. */
-  flex: 1 1 0;
-  min-width: 20rem;
-  gap: var(--space-3);
-  padding-left: var(--space-5);
-  border-left: 1px solid var(--outline-variant);
-}
-
-/* 이름표 · 등록 단추 · 목록을 왼쪽부터 붙인다 — 외관 불량 수 줄과 같은 높이에서 가운데 맞춤. */
-.parts-iqc-visual-defects > .parts-iqc-defect-line {
-  justify-content: flex-start;
-  min-height: 2.5rem;
 }
 
 .parts-iqc-inline-field {
@@ -33240,36 +33061,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .parts-iqc-inline-field > .field-label {
   margin: 0;
   white-space: nowrap;
-}
-
-.parts-iqc-visual-line .parts-iqc-inline-field input {
-  width: 8rem;
-}
-
-.parts-iqc-xrf-cell {
-  padding-left: var(--space-5);
-  border-left: 1px solid var(--outline-variant);
-}
-
-.parts-iqc-card .parts-iqc-file-text {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-}
-
-/* XRF 성적서 여러 건 — 파일 이름 · 빼기 단추를 한 줄씩(사용자 지시 2026-10-30). */
-.parts-iqc-file-list {
-  display: grid;
-  gap: var(--space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.parts-iqc-file-list li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 /* 기타 검사 항목의 OK · NG 단추 — 치수 측정 표와 같은 칸에서 가운데(#247). */
@@ -33284,8 +33075,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   border-top: 1px solid var(--outline-variant);
 }
 
-.parts-iqc-defect-head,
-.parts-iqc-defect-line {
+.parts-iqc-defect-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -33298,13 +33088,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin: 0;
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
-}
-
-.parts-iqc-hint-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin: 0;
 }
 
 .parts-iqc-verdict-line {

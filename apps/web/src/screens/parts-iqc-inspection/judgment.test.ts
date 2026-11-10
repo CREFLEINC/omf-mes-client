@@ -29,17 +29,15 @@ const spec = (over: Record<string, unknown>) =>
 
 const base: JudgmentInput = {
   inspectedQty: 5,
-  visualDefectQty: 0,
   dimensions: [{ judgment: 'ACCEPTED', outCount: 0 }],
-  xrf: { required: true, result: 'OK' },
   checks: [],
 };
 
 describe('부품 IQC 판정 (omf-all-around#211)', () => {
-  it('항목 갈래 — 수치는 치수, RoHS·XRF 는 XRF, 육안은 외관, 나머지는 기타', () => {
+  it('항목 갈래는 검사 유형만 본다 — 수치는 치수 측정, 선택형 · 텍스트는 기타 검사 항목(#247)', () => {
     expect(kindOf(spec({}))).toBe('dimension');
     expect(kindOf(spec({ dataTypeCode: 'BOOLEAN', inspectionItemName: 'RoHS Phù hợp' }))).toBe(
-      'xrf',
+      'check',
     );
     expect(
       kindOf(
@@ -49,20 +47,8 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
           inspectionMethodCode: 'VISUAL',
         }),
       ),
-    ).toBe('visual');
-    expect(kindOf(spec({ dataTypeCode: 'BOOLEAN', inspectionItemName: 'Kiểm tra vật liệu' }))).toBe(
-      'check',
-    );
-    // 외관이 아닌 육안 항목(AF Coating 등)은 OK/NG 를 고르는 기타 항목이다.
-    expect(
-      kindOf(
-        spec({
-          dataTypeCode: 'BOOLEAN',
-          inspectionItemName: 'AF Coating Sản phẩm',
-          inspectionMethodCode: 'VISUAL',
-        }),
-      ),
     ).toBe('check');
+    expect(kindOf(spec({ dataTypeCode: 'TEXT', inspectionItemName: '색상' }))).toBe('check');
   });
 
   it('값은 하한·상한 안이면 합격, 경계값도 합격이다', () => {
@@ -87,32 +73,26 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
 
   it('하나라도 NG 면 불합격, 덜 적었으면 판정을 내지 않는다', () => {
     expect(suggestedJudgmentOf(base)).toBe('ACCEPTED');
-    expect(suggestedJudgmentOf({ ...base, visualDefectQty: 1 })).toBe('REJECTED');
-    expect(
-      suggestedJudgmentOf({ ...base, xrf: { required: true, result: 'NOT_DONE' } }),
-    ).toBeNull();
-    expect(suggestedJudgmentOf({ ...base, xrf: { required: false, result: 'NOT_DONE' } })).toBe(
-      'ACCEPTED',
-    );
+    expect(suggestedJudgmentOf({ ...base, checks: ['REJECTED'] })).toBe('REJECTED');
+    expect(suggestedJudgmentOf({ ...base, checks: [null] })).toBeNull();
     expect(
       suggestedJudgmentOf({ ...base, dimensions: [{ judgment: null, outCount: 0 }] }),
     ).toBeNull();
     expect(suggestedJudgmentOf({ ...base, inspectedQty: null })).toBeNull();
   });
 
-  it('불합격 수량은 외관 불량 + 불합격 치수의 벗어난 시료 + NG 항목이고 검사 수량을 넘지 않는다', () => {
+  it('불합격 수량은 불합격 치수의 벗어난 시료 + NG 항목이고 검사 수량을 넘지 않는다', () => {
     const input: JudgmentInput = {
       ...base,
-      visualDefectQty: 2,
       dimensions: [
         { judgment: 'REJECTED', outCount: 2 },
         { judgment: 'ACCEPTED', outCount: 1 },
       ],
-      xrf: { required: true, result: 'NG' },
+      checks: ['REJECTED', 'ACCEPTED'],
     };
-    expect(rejectedQtyOf(input)).toBe(5);
-    expect(rejectedQtyOf({ ...input, inspectedQty: 100 })).toBe(5);
-    expect(rejectedQtyOf({ ...input, inspectedQty: 3 })).toBe(3);
+    expect(rejectedQtyOf(input)).toBe(3);
+    expect(rejectedQtyOf({ ...input, inspectedQty: 100 })).toBe(3);
+    expect(rejectedQtyOf({ ...input, inspectedQty: 2 })).toBe(2);
   });
 
   it('서버가 기대하는 판정 — 버전 합격판정개수가 없으면 재지 않는다', () => {
@@ -153,21 +133,5 @@ describe('치수 줄의 형편 (참고: omf-dx-vina 수입검사)', () => {
     expect(rowStateOf(2, 5, 1, 1)).toBe('wait');
     expect(rowStateOf(0, 5, 0, 0)).toBe('empty');
     expect(rowStateOf(5, 5, 1, 1)).toBe('done');
-  });
-});
-
-describe('외관 불량 유형 → 불량 기록 (OA 화면 #197 과 같은 규칙)', () => {
-  it('하나면 기준 수량 그대로, 둘 이상이면 유형마다 적고 합계가 기준 수량과 같아야 한다', async () => {
-    const { resolveDefectRows } = await import('./judgment');
-    expect(resolveDefectRows([], {}, 2)).toEqual({ blocked: 'required' });
-    expect(resolveDefectRows([7], {}, 3)).toEqual({ rows: [{ defectCodeId: 7, defectQty: 3 }] });
-    expect(resolveDefectRows([7, 8], { 7: '1' }, 3)).toEqual({ blocked: 'qty' });
-    expect(resolveDefectRows([7, 8], { 7: '1', 8: '1' }, 3)).toEqual({ blocked: 'sum' });
-    expect(resolveDefectRows([7, 8], { 7: '1', 8: '2' }, 3)).toEqual({
-      rows: [
-        { defectCodeId: 7, defectQty: 1 },
-        { defectCodeId: 8, defectQty: 2 },
-      ],
-    });
   });
 });

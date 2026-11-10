@@ -1,4 +1,4 @@
-import type { XrfResult, ItemJudgment } from './judgment';
+import type { ItemJudgment } from './judgment';
 
 /** 입력 칸 글자 그대로 둔다 — 「1.」처럼 쓰는 중인 값을 숫자로 바꾸면 커서 앞 글자가 사라진다. */
 export interface PartsIqcForm {
@@ -10,11 +10,6 @@ export interface PartsIqcForm {
   /** 기타 항목 중 텍스트 항목 id → 적은 글(#247 · 사용자 지시 2026-11-10) */
   texts: Record<number, string>;
   visualInspectedQty: string;
-  visualDefectQty: string;
-  xrf: XrfResult;
-  /** 외관 불량 유형 — 여럿 고른다. 둘 이상이면 유형마다 수량을 적는다(OA 화면 불량 내역과 같은 규칙). */
-  defectCodeIds: number[];
-  defectQtys: Record<number, string>;
   remarks: string;
 }
 
@@ -24,10 +19,6 @@ export const emptyForm = (inspectedAt: string): PartsIqcForm => ({
   checks: {},
   texts: {},
   visualInspectedQty: '',
-  visualDefectQty: '0',
-  xrf: 'NOT_DONE',
-  defectCodeIds: [],
-  defectQtys: {},
   remarks: '',
 });
 
