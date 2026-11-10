@@ -295,6 +295,14 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     notConfirmed: 'Chưa xác nhận',
   },
 
+  drawing: {
+    heading: 'Bản vẽ tiêu chuẩn',
+    alt: (n: number) => `Bản vẽ tiêu chuẩn kiểm tra ${String(n)}`,
+    none: 'Chưa có bản vẽ',
+    prev: 'Bản vẽ trước',
+    next: 'Bản vẽ sau',
+  },
+
   measurements: {
     viewPlan: 'Xem hạng mục kiểm tra',
     heading: 'Hạng mục kiểm tra',

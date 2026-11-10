@@ -123,6 +123,8 @@ export interface ResultFormPaneProps {
    * 없으면 두지 않는다
    */
   measurementSlot?: ReactNode;
+  /** ① 검사 수량 · 판정 단계의 측정 표 아래 — 기준서 도면(#247 · 부품 화면과 같은 자리). 없으면 두지 않는다 */
+  drawingSlot?: ReactNode;
   /** ② 판정을 접었을 때 판정 뒤에 붙일 항목 판정 요약(「항목 합격 3 · 불합격 1」). 없으면 판정만 */
   measurementSummary?: string | null;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
@@ -229,6 +231,7 @@ export const ResultFormPane = ({
   renderDefects = null,
   fourMSlot = null,
   measurementSlot = null,
+  drawingSlot = null,
   measurementSummary = null,
   judgmentHint,
   judgmentBelow = null,
@@ -721,6 +724,7 @@ export const ResultFormPane = ({
           </div>
         ))}
       {step === 1 && measurementSlot}
+      {step === 1 && drawingSlot}
       {step === 1 && (
         <div className="iqc-inspection-judgment-dialog">
           <div className="iqc-inspection-step-judgment-row">

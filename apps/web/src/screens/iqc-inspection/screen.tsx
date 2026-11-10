@@ -77,6 +77,7 @@ import {
 } from './measurement-draft';
 import { MeasurementGrid } from './measurement-grid';
 import { MeasurementSheet } from './measurement-sheet';
+import { PlanDrawings } from './plan-drawings';
 import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   useInspectionItemSpecs,
@@ -1190,6 +1191,9 @@ const IqcInspectionScreenBody = () => {
             ) : null
           }
           measurementSummary={measureSummaryOf(measurementRows, measureDraft)}
+          drawingSlot={
+            isOpenRound ? <PlanDrawings versionId={detail.data.inspectionPlanVersionId} /> : null
+          }
           fourMSlot={
             hasFourMTarget && isOpenRound ? (
               <>
