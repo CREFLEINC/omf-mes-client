@@ -106,7 +106,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
     itemCreateTitle: 'Thêm hạng mục kiểm tra',
     itemEditTitle: 'Sửa hạng mục kiểm tra',
-    uomPickerTitle: 'Chọn đơn vị kiểm tra',
+    numericSpecTitle: 'Nhập tiêu chuẩn số',
     /*
      * 순서 컬럼에 유일 제약이 있어 행 단위 저장이 성립하지 않는다 —
      * 이 창의 확인은 표에만 반영된다는 사실을 감추지 않는다.

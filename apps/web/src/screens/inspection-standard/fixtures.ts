@@ -117,7 +117,8 @@ export const inspectionItemSpecFixtures: InspectionItemSpec[] = [
     sequenceNo: 10,
     inspectionItemCode: 'SYN-ITEM-CODE-01',
     inspectionItemName: '합성 항목 A',
-    dataTypeCode: 'PENDING',
+    // 단위·기준값·상하한이 있는 항목이라 수치다 — 그 칸들은 수치일 때만 보인다(2026-11-10).
+    dataTypeCode: 'NUMERIC',
     uomId: 41,
     targetValue: 10,
     lowerLimit: 9,

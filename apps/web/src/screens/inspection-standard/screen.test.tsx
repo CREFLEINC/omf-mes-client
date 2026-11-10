@@ -2191,7 +2191,8 @@ const itemSpecFixture = {
   sequenceNo: 10,
   inspectionItemCode: 'SYN-ITEM-CODE-01',
   inspectionItemName: '합성 항목 A',
-  dataTypeCode: 'PENDING',
+  // 단위·기준값·상하한이 있는 항목이라 수치다 — 그 칸들은 수치일 때만 보인다(2026-11-10).
+  dataTypeCode: 'NUMERIC',
   uomId: 41,
   targetValue: 10,
   lowerLimit: 9,
@@ -2903,6 +2904,8 @@ const itemFixtures = [
     sequenceNo: 20,
     inspectionItemCode: 'SYN-ITEM-CODE-02',
     inspectionItemName: '합성 항목 B',
+    // 단위가 없으니 수치가 아니다 — 수치 항목은 단위 필수(2026-11-10).
+    dataTypeCode: 'TEXT',
     uomId: null,
     targetValue: null,
     lowerLimit: null,
@@ -3023,8 +3026,8 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
 
     await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
-    // 수치를 고르면 단위 선택 창이 뜬다 — 수치 항목은 단위가 필수다(사용자 지시 2026-11-10).
-    const uomPicker = await screen.findByRole('dialog', { name: '검사 단위 선택' });
+    // 수치를 고르면 수치 기준 입력 창이 뜬다 — 단위만 필수다(사용자 지시 2026-11-10).
+    const uomPicker = await screen.findByRole('dialog', { name: '수치 기준 입력' });
     await user.click(within(uomPicker).getByRole('combobox', { name: '검사 단위' }));
     await user.click(screen.getByRole('option', { name: 'EA · 개' }));
     await user.click(within(uomPicker).getByRole('button', { name: '확인' }));
@@ -3046,7 +3049,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
     await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
-    const uomPicker = await screen.findByRole('dialog', { name: '검사 단위 선택' });
+    const uomPicker = await screen.findByRole('dialog', { name: '수치 기준 입력' });
     await user.click(within(uomPicker).getByRole('combobox', { name: '검사 단위' }));
     await user.click(screen.getByRole('option', { name: 'EA · 개' }));
     await user.click(within(uomPicker).getByRole('button', { name: '확인' }));
@@ -3172,8 +3175,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
     await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
-    // 수치를 고르면 단위 선택 창이 뜬다 — 수치 항목은 단위가 필수다(사용자 지시 2026-11-10).
-    const uomPicker = await screen.findByRole('dialog', { name: '검사 단위 선택' });
+    // 수치를 고르면 수치 기준 입력 창이 뜬다 — 단위만 필수다(사용자 지시 2026-11-10).
+    const uomPicker = await screen.findByRole('dialog', { name: '수치 기준 입력' });
     await user.click(within(uomPicker).getByRole('combobox', { name: '검사 단위' }));
     await user.click(screen.getByRole('option', { name: 'EA · 개' }));
     await user.click(within(uomPicker).getByRole('button', { name: '확인' }));
@@ -3218,8 +3221,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     }
     expect(screen.getAllByRole('option')).toHaveLength(3);
     await user.click(screen.getByRole('option', { name: '수치' }));
-    // 수치를 고르면 단위 선택 창이 뜬다 — 수치 항목은 단위가 필수다(사용자 지시 2026-11-10).
-    const uomPicker = await screen.findByRole('dialog', { name: '검사 단위 선택' });
+    // 수치를 고르면 수치 기준 입력 창이 뜬다 — 단위만 필수다(사용자 지시 2026-11-10).
+    const uomPicker = await screen.findByRole('dialog', { name: '수치 기준 입력' });
     await user.click(within(uomPicker).getByRole('combobox', { name: '검사 단위' }));
     await user.click(screen.getByRole('option', { name: 'EA · 개' }));
     await user.click(within(uomPicker).getByRole('button', { name: '확인' }));
@@ -3381,8 +3384,8 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
     await user.click(within(dialogNode).getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '수치' }));
-    // 수치를 고르면 단위 선택 창이 뜬다 — 수치 항목은 단위가 필수다(사용자 지시 2026-11-10).
-    const uomPicker = await screen.findByRole('dialog', { name: '검사 단위 선택' });
+    // 수치를 고르면 수치 기준 입력 창이 뜬다 — 단위만 필수다(사용자 지시 2026-11-10).
+    const uomPicker = await screen.findByRole('dialog', { name: '수치 기준 입력' });
     await user.click(within(uomPicker).getByRole('combobox', { name: '검사 단위' }));
     await user.click(screen.getByRole('option', { name: 'EA · 개' }));
     await user.click(within(uomPicker).getByRole('button', { name: '확인' }));

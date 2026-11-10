@@ -63,15 +63,27 @@ describe('ItemFormDialog — 표시', () => {
     ).toBeInTheDocument();
   });
 
-  /* 단위는 수치일 때만 보인다(사용자 지시 2026-11-10). 목표값·상하한은 자료형과 무관하게 항상 보인다. */
-  it('자료형과 무관하게 목표값·상하한이 항상 보인다', () => {
-    renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode: '' } });
+  /* 단위·기준값·상하한은 수치일 때만 보인다(사용자 지시 2026-11-10). */
+  it('수치이면 단위·기준값·상하한이 보인다', () => {
+    renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode: 'NUMERIC' } });
 
-    expect(screen.queryByRole('combobox', { name: '검사 단위' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '검사 단위' })).toBeInTheDocument();
     expect(screen.getByLabelText('기준값')).toBeInTheDocument();
     expect(screen.getByLabelText('하한값')).toBeInTheDocument();
     expect(screen.getByLabelText('상한값')).toBeInTheDocument();
   });
+
+  it.each(['', 'TEXT', 'BOOLEAN'])(
+    '자료형이 「%s」이면 단위·기준값·상하한이 없다',
+    (dataTypeCode) => {
+      renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode } });
+
+      expect(screen.queryByRole('combobox', { name: '검사 단위' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('기준값')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('하한값')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('상한값')).not.toBeInTheDocument();
+    },
+  );
 
   it('값을 고치면 그 값만 알린다', () => {
     const { onChange } = renderDialog();
@@ -108,15 +120,16 @@ describe('ItemFormDialog — 차단과 경고', () => {
     expect(uom).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it.each(['TEXT', 'BOOLEAN'])('%s 항목이면 단위 칸이 없다', (dataTypeCode) => {
-    renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode, uomId: '' } });
-
-    expect(screen.queryByRole('combobox', { name: '검사 단위' })).not.toBeInTheDocument();
-  });
-
-  it('수치를 고르면 단위 선택 창이 뜨고, 고른 단위가 항목에 들어간다', async () => {
+  it('수치를 고르면 수치 기준 입력 창이 뜨고, 단위(필수)·기준값·상하한(선택)이 항목에 들어간다', async () => {
     const { onChange, user } = renderDialog({
-      values: { ...savedDrafts()[0]!, dataTypeCode: 'TEXT', uomId: '' },
+      values: {
+        ...savedDrafts()[0]!,
+        dataTypeCode: 'TEXT',
+        uomId: '',
+        targetValue: '',
+        lowerLimit: '',
+        upperLimit: '',
+      },
       dataTypeOptions: [
         { value: 'NUMERIC', label: '수치' },
         { value: 'TEXT', label: '텍스트' },
@@ -127,20 +140,27 @@ describe('ItemFormDialog — 차단과 경고', () => {
     await user.click(screen.getByRole('option', { name: '수치' }));
     expect(onChange).toHaveBeenCalledWith({ dataTypeCode: 'NUMERIC' });
 
-    const picker = screen.getByRole('dialog', { name: '검사 단위 선택' });
+    const picker = screen.getByRole('dialog', { name: '수치 기준 입력' });
     await user.click(within(picker).getByRole('button', { name: '확인' }));
     // 비운 채 확인하면 닫히지 않는다.
-    expect(screen.getByRole('dialog', { name: '검사 단위 선택' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '수치 기준 입력' })).toBeInTheDocument();
 
     await user.click(within(picker).getByRole('combobox', { name: '검사 단위' }));
     await user.click(screen.getByRole('option', { name: 'EA · 개' }));
+    // 기준값·상하한은 선택이다 — 기준값만 넣고 하한·상한은 비운 채 확인한다.
+    fireEvent.change(within(picker).getByLabelText('기준값'), { target: { value: '10' } });
     await user.click(within(picker).getByRole('button', { name: '확인' }));
 
-    expect(onChange).toHaveBeenLastCalledWith({ uomId: '41' });
-    expect(screen.queryByRole('dialog', { name: '검사 단위 선택' })).not.toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith({
+      uomId: '41',
+      targetValue: '10',
+      lowerLimit: '',
+      upperLimit: '',
+    });
+    expect(screen.queryByRole('dialog', { name: '수치 기준 입력' })).not.toBeInTheDocument();
   });
 
-  it('수치가 아닌 유형으로 바꾸면 고른 단위를 비운다', async () => {
+  it('수치가 아닌 유형으로 바꾸면 단위·기준값·상하한을 비운다', async () => {
     const { onChange, user } = renderDialog({
       values: { ...savedDrafts()[0]!, dataTypeCode: 'NUMERIC', uomId: '41' },
       dataTypeOptions: [
@@ -152,8 +172,14 @@ describe('ItemFormDialog — 차단과 경고', () => {
     await user.click(screen.getByRole('combobox', { name: '검사값 유형' }));
     await user.click(screen.getByRole('option', { name: '텍스트' }));
 
-    expect(onChange).toHaveBeenCalledWith({ dataTypeCode: 'TEXT', uomId: '' });
-    expect(screen.queryByRole('dialog', { name: '검사 단위 선택' })).not.toBeInTheDocument();
+    expect(onChange).toHaveBeenCalledWith({
+      dataTypeCode: 'TEXT',
+      uomId: '',
+      targetValue: '',
+      lowerLimit: '',
+      upperLimit: '',
+    });
+    expect(screen.queryByRole('dialog', { name: '수치 기준 입력' })).not.toBeInTheDocument();
   });
 
   it('차단 오류는 그 칸 옆에 낸다', () => {
