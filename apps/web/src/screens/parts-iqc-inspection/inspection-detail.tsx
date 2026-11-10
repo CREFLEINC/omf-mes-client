@@ -689,7 +689,7 @@ const InspectionForm = (props: FormProps) => {
     measurements: measurementsOf(),
     /*
      * 불량 유형 · 수량은 받지 않는다(#247 · 설계 변경 2026-11-10 — 화면은 치수 측정 · 기타 검사 항목만). 빈 배열은 앞서 임시 저장한
-     * 불량 기록을 지운다. ⚠ 지금 서버는 불합격 IQC 확정에 불량 기록을 요구한다 — 서버 변경이 들어오기 전에는 불합격 확정이 막힌다.
+     * 불량 기록을 지운다. 서버도 불합격 IQC 확정에 불량 기록을 요구하지 않는다(서버 #1014 — 선택 입력).
      */
     defects: [],
     ...(needsReason ? { judgmentChangeReason: reason.trim() } : {}),
