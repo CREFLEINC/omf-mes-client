@@ -165,9 +165,11 @@ describe('EquipmentBoard', () => {
       expect(within(dialog).getByRole('heading', { name: group })).toBeInTheDocument();
     }
     /* 요약 띠 — 대시보드 KPI 칸과 같은 부품. 멈춘 설비는 상태 지속 칸에 사유 · 시작 시각이 함께 선다. */
-    expect(within(dialog).getByRole('group', { name: t.todayQty })).toHaveTextContent('1,200EA');
+    /* 상세를 받으면 오늘 수량은 상세 값(실적에 설비가 비면 세션 설비로 센 수량)이다 — 창 안 막대와 같은 기준. */
+    expect(await within(dialog).findByText(t.goodNote('1,196'))).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: t.todayQty })).toHaveTextContent('1,248EA');
     expect(within(dialog).getByRole('group', { name: t.defectRate })).toHaveTextContent(
-      t.ngNote('6'),
+      t.ngNote('52'),
     );
     const elapsed = within(dialog).getByRole('group', { name: t.elapsed });
     expect(elapsed).toHaveTextContent('유압 이상');

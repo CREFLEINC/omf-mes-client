@@ -269,6 +269,18 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
     </p>
   );
   const since = item === null ? null : formatPlantDateTime(item.statusSince);
+  /*
+   * 오늘 수량 — 상세를 받으면 상세 값(실적에 설비가 비었으면 세션 설비로 센 값)을 쓴다. 창 안의 「실제 생산」 막대 · 불량 유형과
+   * 같은 기준이어야 한다. 받기 전에는 현황판 타일 값.
+   */
+  const output =
+    extra !== undefined
+      ? extra.output
+      : {
+          totalQty: item?.todayTotalQty ?? 0,
+          ngQty: item?.todayNgQty ?? 0,
+          defectRate: item?.defectRate ?? null,
+        };
   const time = extra?.time;
   const timeEntries =
     time === undefined
@@ -302,15 +314,15 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
       {item !== null && (
         <div className="dash-detail">
           <div className="dash-kpis dash-detail-kpis">
-            <KpiTile label={t.todayQty} value={formatFigure(item.todayTotalQty)} unit="EA">
+            <KpiTile label={t.todayQty} value={formatFigure(output.totalQty)} unit="EA">
               {extra !== undefined && <span>{t.goodNote(formatFigure(extra.output.goodQty))}</span>}
             </KpiTile>
             <KpiTile
               label={t.defectRate}
-              value={item.defectRate === null ? t.none : formatFigure(item.defectRate)}
-              unit={item.defectRate === null ? undefined : '%'}
+              value={output.defectRate === null ? t.none : formatFigure(output.defectRate)}
+              unit={output.defectRate === null ? undefined : '%'}
             >
-              <span>{t.ngNote(formatFigure(item.todayNgQty))}</span>
+              <span>{t.ngNote(formatFigure(output.ngQty))}</span>
             </KpiTile>
             <KpiTile
               label={t.availabilityRate}
