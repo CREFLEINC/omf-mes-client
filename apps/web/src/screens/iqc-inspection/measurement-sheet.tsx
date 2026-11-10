@@ -3,8 +3,6 @@ import { messages } from '@omf-mes/i18n';
 
 import { useClientPage } from '../../patterns/client-page';
 import { PageNav } from '../../patterns/page-nav';
-import { Select } from '../../patterns/select';
-import type { CodeOption } from './code-options';
 import {
   autoJudgmentOf,
   entryOf,
@@ -23,15 +21,11 @@ const tn = messages.partsIqcInspection.dimension;
 export interface MeasureEdit {
   draft: MeasureDraft;
   onChange: (draft: MeasureDraft) => void;
-  /** 측정치 판정 선택지(`INSPECTION_MEASUREMENT_JUDGMENT`) */
-  judgmentOptions: CodeOption[];
   disabled: boolean;
 }
 
 export interface MeasurementSheetProps {
   rows: MeasurementRow[];
-  /** 항목 입력 유형 코드 → 이름(수치 · 텍스트 · 선택형). 없으면 코드 그대로 */
-  dataTypeNames: Record<string, string>;
   edit: MeasureEdit;
 }
 
@@ -116,45 +110,17 @@ const isJudgedByValue = (row: MeasurementRow): boolean =>
     (row.dataType === 'NUMERIC' && (row.spec.lower !== null || row.spec.upper !== null)));
 
 /**
- * 항목 판정 — 회차 중 불합격이 있으면 불합격, 모두 합격이면 합격, 아직이면 빈 칸. 고르면 그 항목의 모든 회차에 같은 판정이
- * 들어간다. ⭐ 저장은 종전대로 회차마다 한 건이다.
- */
-const JudgmentSelect = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
-  const entries = row.samples.map((sample) => entryOf(edit.draft, sample.key));
-  const code = itemJudgmentOf(entries);
-  const body = isJudgedByValue(row.first) ? (
-    /* 값으로 판정되는 항목은 글자로만 보인다(부품 입력표와 같다) — 덜 잰 줄은 「1/3」처럼 잰 수. */
-    <span className="parts-iqc-verdict">
-      {code !== ''
-        ? (t.judgmentNames[code] ?? code)
-        : entries.some((entry) => entry.judgment !== '')
-          ? `${String(entries.filter((entry) => entry.judgment !== '').length)}/${String(entries.length)}`
-          : t.notMeasured}
-    </span>
-  ) : (
-    <Select
-      size="md"
-      aria-label={t.judgmentLabel(row.first.itemName)}
-      options={edit.judgmentOptions}
-      value={code === '' ? null : code}
-      placeholder={t.selectPlaceholder}
-      /* 값을 적었는데 판정이 빈 회차가 있으면 빨간 테두리 — 그 줄 때문에 저장이 막힌다. */
-      invalid={entries.some((entry) => entry.value.trim() !== '' && entry.judgment === '')}
-      disabled={edit.disabled || edit.judgmentOptions.length === 0}
-      onChange={(value) => edit.onChange(withItemJudgment(edit.draft, row.samples, value))}
-    />
-  );
-  /* 불합격 줄은 바탕이 붉다 — 표가 줄에 표식을 주지 않아 칸의 표식으로 줄을 찾는다(CSS `:has`). */
-  return <span data-row-ng={code === 'REJECTED' ? '' : undefined}>{body}</span>;
-};
-
-/**
- * 기타 검사 항목(선택형)의 판정 — 부품 화면처럼 OK · NG 단추 하나(사용자 지시 2026-11-10). OK 는 양호 · 합격, NG 는 불량 · 불합격으로
- * 그 항목의 모든 회차에 들어간다. 누른 단추를 다시 누르면 비운다. ⭐ 저장은 종전대로 회차마다 한 건이다.
+ * 판정 OK · NG 단추(부품 화면과 같다 · 사용자 지시 2026-11-10) — 고르면 그 항목의 모든 회차에 같은 판정이 들어가고, 누른 단추를 다시
+ * 누르면 비운다. 선택형은 값도 함께 넣는다 — OK 는 양호, NG 는 불량. ⭐ 저장은 종전대로 회차마다 한 건이다.
  */
 const OkNgButtons = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
   const code = itemJudgmentOf(row.samples.map((sample) => entryOf(edit.draft, sample.key)));
+  const setsValue = row.first.dataType === 'BOOLEAN';
   const pick = (judgment: 'ACCEPTED' | 'REJECTED', on: boolean) => {
+    if (!setsValue) {
+      edit.onChange(withItemJudgment(edit.draft, row.samples, on ? judgment : ''));
+      return;
+    }
     const value = on ? String(judgment === 'ACCEPTED') : '';
     edit.onChange(
       row.samples.reduce(
@@ -168,7 +134,6 @@ const OkNgButtons = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
       className="parts-iqc-check-row"
       role="group"
       aria-label={t.judgmentLabel(row.first.itemName)}
-      data-row-ng={code === 'REJECTED' ? '' : undefined}
     >
       {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
         <Chip
@@ -187,28 +152,56 @@ const OkNgButtons = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
   );
 };
 
-/** 유형별 표의 차례와 회차 칸 폭. 값 목록에 없는 유형은 글로 받으므로 텍스트 표에 든다. */
-const TYPE_TABLES = [
-  { type: 'NUMERIC', sampleWidth: '80px', hasSpec: true },
-  { type: 'BOOLEAN', sampleWidth: '100px', hasSpec: false },
-  { type: 'TEXT', sampleWidth: '240px', hasSpec: false },
-] as const;
+/**
+ * 항목 판정 — 회차 중 불합격이 있으면 불합격, 모두 합격이면 합격, 아직이면 빈 칸. 값으로 판정되는 수치 항목은 「자동」 표시와
+ * 글자로, 그 밖(자동 판정이 아니거나 규격이 없는 항목 · 기타 검사 항목)은 OK · NG 단추로 고른다(사용자 지시 2026-11-10).
+ */
+const JudgmentCell = ({ row, edit }: { row: SheetRow; edit: MeasureEdit }) => {
+  const entries = row.samples.map((sample) => entryOf(edit.draft, sample.key));
+  const code = itemJudgmentOf(entries);
+  const body =
+    row.first.dataType === 'NUMERIC' && isJudgedByValue(row.first) ? (
+      <span className="iqc-inspection-auto-judgment">
+        <Chip variant="status" size="sm" status="idle" title={t.autoJudgmentTitle}>
+          {t.autoJudgmentMark}
+        </Chip>
+        {/* 덜 잰 줄은 「1/3」처럼 잰 수(부품 입력표와 같다). */}
+        <span className="parts-iqc-verdict">
+          {code !== ''
+            ? (t.judgmentNames[code] ?? code)
+            : entries.some((entry) => entry.judgment !== '')
+              ? `${String(entries.filter((entry) => entry.judgment !== '').length)}/${String(entries.length)}`
+              : t.notMeasured}
+        </span>
+      </span>
+    ) : (
+      <OkNgButtons row={row} edit={edit} />
+    );
+  /* 불합격 줄은 바탕이 붉다 — 표가 줄에 표식을 주지 않아 칸의 표식으로 줄을 찾는다(CSS `:has`). */
+  return <span data-row-ng={code === 'REJECTED' ? '' : undefined}>{body}</span>;
+};
 
-const tableTypeOf = (dataType: string): string =>
-  TYPE_TABLES.some((table) => table.type === dataType) ? dataType : 'TEXT';
+/**
+ * 표 둘 — 치수 측정(수치)과 기타 검사 항목(선택형 · 텍스트 · 그 밖). 텍스트 항목은 기타 검사 항목 표의 「측정 결과」 칸에 글을 적는다
+ * (부품 화면과 같다 · 사용자 지시 2026-11-10).
+ */
+const TABLES = ['NUMERIC', 'BOOLEAN'] as const;
+
+const tableKeyOf = (dataType: string): string => (dataType === 'NUMERIC' ? 'NUMERIC' : 'BOOLEAN');
 
 interface TypeTableProps {
   type: string;
   title: string;
   rows: MeasurementRow[];
-  sampleWidth: string;
-  hasSpec: boolean;
   edit: MeasureEdit;
 }
 
-const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableProps) => {
+const TypeTable = ({ type, title, rows, edit }: TypeTableProps) => {
   const sheetRows = toSheetRows(rows);
   const sampleColumns = Math.max(1, ...sheetRows.map((row) => row.samples.length));
+  /* 기타 검사 항목 표는 글을 적는 항목(텍스트)이 있을 때만 측정 결과 칸을 둔다. */
+  const hasValueColumn =
+    type === 'BOOLEAN' && sheetRows.some((row) => row.first.dataType !== 'BOOLEAN');
   const columns: Column<SheetRow>[] = [
     {
       key: 'no',
@@ -224,7 +217,7 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
       width: '116px',
       render: (row) => <ItemCell row={row.first} />,
     },
-    ...(hasSpec
+    ...(type === 'NUMERIC'
       ? [
           {
             key: 'spec',
@@ -233,34 +226,44 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
             width: '102px',
             render: (row: SheetRow) => <SpecLines row={row.first} />,
           } satisfies Column<SheetRow>,
+          ...Array.from({ length: sampleColumns }, (_, index): Column<SheetRow> => ({
+            key: `n${String(index + 1)}`,
+            align: 'center',
+            header: tn.sample(index + 1),
+            width: '80px',
+            /* 이 항목이 재지 않는 회차는 칸을 비워 둔다(바탕이 어둡다). */
+            render: (row) => {
+              const sample = row.samples[index];
+              return sample === undefined ? null : <ValueInput row={sample} edit={edit} />;
+            },
+          })),
         ]
       : []),
-    /* 기타 검사 항목은 회차 칸 없이 판정만(부품 화면과 같다 · 사용자 지시 2026-11-10). */
-    ...Array.from(
-      { length: type === 'BOOLEAN' ? 0 : sampleColumns },
-      (_, index): Column<SheetRow> => ({
-        key: `n${String(index + 1)}`,
-        align: 'center',
-        header: tn.sample(index + 1),
-        width: sampleWidth,
-        /* 이 항목이 재지 않는 회차는 칸을 비워 둔다(바탕이 어둡다). */
-        render: (row) => {
-          const sample = row.samples[index];
-          return sample === undefined ? null : <ValueInput row={sample} edit={edit} />;
-        },
-      }),
-    ),
+    ...(hasValueColumn
+      ? [
+          {
+            key: 'value',
+            align: 'center',
+            header: t.columns.value,
+            width: '240px',
+            /* 회차가 여럿이면 칸이 위아래로 선다. 선택형 줄은 비어 있다. */
+            render: (row: SheetRow) =>
+              row.first.dataType === 'BOOLEAN' ? null : (
+                <span className="iqc-inspection-measure-values">
+                  {row.samples.map((sample) => (
+                    <ValueInput key={sample.key} row={sample} edit={edit} />
+                  ))}
+                </span>
+              ),
+          } satisfies Column<SheetRow>,
+        ]
+      : []),
     {
       key: 'judgment',
       align: 'center',
       header: t.columns.judgment,
-      width: type === 'BOOLEAN' ? '160px' : '106px',
-      render: (row) =>
-        type === 'BOOLEAN' ? (
-          <OkNgButtons row={row} edit={edit} />
-        ) : (
-          <JudgmentSelect row={row} edit={edit} />
-        ),
+      width: '150px',
+      render: (row) => <JudgmentCell row={row} edit={edit} />,
     },
   ];
   const filled = sheetRows.filter((row) =>
@@ -298,7 +301,7 @@ const TypeTable = ({ type, title, rows, sampleWidth, hasSpec, edit }: TypeTableP
  * 검사 중 항목별 입력표(#247 · 사용자 지시 2026-11-09) — 부품 사업부 입력표처럼 한 줄에 항목 · 규격 · n1~nN · 판정. 규격이 있는 수치와
  * 선택형 · 텍스트를 표로 나눈다. 열은 그 표에서 가장 많이 재는 항목의 회차 수만큼이고, 항목마다 자기 회차 수까지만 칸이 열린다.
  */
-export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheetProps) => (
+export const MeasurementSheet = ({ rows, edit }: MeasurementSheetProps) => (
   <section className="iqc-inspection-step-measure" aria-label={t.heading}>
     {/* ⛔ 경고일 뿐 차단이 아니다(스펙 §8-6). */}
     {hasCalibrationWarning(rows) && (
@@ -308,16 +311,14 @@ export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheet
         </AlertBanner>
       </div>
     )}
-    {TYPE_TABLES.map(({ type, sampleWidth, hasSpec }) => {
-      const typeRows = rows.filter((row) => tableTypeOf(row.dataType) === type);
+    {TABLES.map((key) => {
+      const typeRows = rows.filter((row) => tableKeyOf(row.dataType) === key);
       return typeRows.length === 0 ? null : (
         <TypeTable
-          key={type}
-          type={type}
-          title={t.sheetTitles[type] ?? dataTypeNames[type] ?? type}
+          key={key}
+          type={key}
+          title={t.sheetTitles[key] ?? key}
           rows={typeRows}
-          sampleWidth={sampleWidth}
-          hasSpec={hasSpec}
           edit={edit}
         />
       );

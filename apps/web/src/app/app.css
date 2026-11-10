@@ -29670,6 +29670,19 @@ button.iqc-inspection-step-toggle:focus-visible {
   font: var(--type-label-lg);
 }
 
+/* 자동 판정 항목 — 「자동」 표시 옆에 판정 글자(#247 · 사용자 지시 2026-11-10). */
+.iqc-inspection-auto-judgment {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 텍스트 항목의 측정 결과 — 회차가 여럿이면 칸이 위아래로 선다(#247). */
+.iqc-inspection-measure-values {
+  display: grid;
+  gap: var(--space-1);
+}
+
 /* 기타 검사 항목의 OK · NG 단추는 판정 칸 가운데(부품 화면과 같다 · #247). */
 .iqc-inspection-measure-sheet .parts-iqc-check-row {
   justify-content: center;

@@ -510,7 +510,7 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     const panel = mergedPanel() as HTMLElement;
     expect(within(stepItem(1)).getByText(t.mergedSectionTitle)).toBeInTheDocument();
     expect(within(panel).getByLabelText(t.fields.accepted)).toBeInTheDocument();
-    expect(within(panel).getByRole('combobox', { name: t.judgment })).toBeInTheDocument();
+    expect(within(panel).getByRole('combobox', { name: t.overallTitle })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.judgmentDetailOpen })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: t.judgmentDetailTitle })).not.toBeInTheDocument();
   });
@@ -530,7 +530,7 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('부품 화면 순서 — 항목 표 · 종합 판정 · 비고 · 도면이 차례로 서고, 판정은 수량 줄에 없다(#247)', () => {
+  it('항목 표 · 종합 판정 · 도면 · 비고가 차례로 서고, 판정은 수량 줄에 없다(#247)', () => {
     renderPane(FULL_DRAFT, NEW, 500, {
       inlineJudgment: true,
       renderDefects: () => null,
@@ -540,14 +540,14 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     });
 
     const panel = mergedPanel() as HTMLElement;
-    const judgment = within(panel).getByRole('combobox', { name: t.judgment });
+    const judgment = within(panel).getByRole('combobox', { name: t.overallTitle });
     expect(judgment.closest('.iqc-inspection-qty-line')).toBeNull();
     expect(within(panel).getByRole('region', { name: t.overallTitle })).toContainElement(judgment);
     const order = [
       within(panel).getByText('항목 표'),
       judgment,
-      within(panel).getByText('비고 칸'),
       within(panel).getByText('도면 칸'),
+      within(panel).getByText('비고 칸'),
     ];
     order.slice(1).forEach((node, index) => {
       expect(
@@ -566,7 +566,7 @@ describe('ResultFormPane — 상하 배치 판정(#185)', () => {
     const panel = mergedPanel() as HTMLElement;
     const table = within(panel).getByText('항목 표');
     const qty = within(panel).getByLabelText(t.fields.accepted);
-    const judgment = within(panel).getByRole('combobox', { name: t.judgment });
+    const judgment = within(panel).getByRole('combobox', { name: t.overallTitle });
     expect(qty.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(table.compareDocumentPosition(judgment) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

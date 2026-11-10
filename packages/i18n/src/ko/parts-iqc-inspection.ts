@@ -97,7 +97,7 @@ export const partsIqcInspection = {
   dimension: {
     heading: '치수 측정',
     progress: (done: number, total: number) => `${String(done)}/${String(total)} 항목`,
-    item: '항목',
+    item: 'No.',
     /** 규격 왼쪽 — 항목 이름(#247 · 사용자 지시 2026-11-10). */
     content: '검사 내용',
     spec: '규격',

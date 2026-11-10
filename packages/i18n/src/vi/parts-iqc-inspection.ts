@@ -103,7 +103,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
   dimension: {
     heading: 'Đo kích thước',
     progress: (done: number, total: number) => `${String(done)}/${String(total)} hạng mục`,
-    item: 'Hạng mục',
+    item: 'No.',
     content: 'Nội dung kiểm tra',
     spec: 'Quy cách',
     sample: (n: number) => `n${String(n)}`,

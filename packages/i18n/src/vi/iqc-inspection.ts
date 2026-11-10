@@ -197,6 +197,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
 
     judgment: 'Đánh giá cuối cùng',
     overallTitle: 'Đánh giá tổng hợp',
+    autoResult: 'Kết quả đánh giá tự động',
+    autoResultPending: 'Nhập hạng mục kiểm tra để xem kết quả đánh giá.',
+    autoResultRejected: (qty: string) => `(Số lượng lỗi ${qty})`,
     remarks: 'Ghi chú',
     remarksPlaceholder: 'Nhập ghi chú',
     judgmentPlaceholder: 'Hãy chọn đánh giá cuối cùng',
@@ -315,7 +318,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     noItemsHint: 'Hãy kiểm tra thông tin tiêu chuẩn kiểm tra.',
     columns: {
       dataType: 'Loại',
-      no: 'Hạng mục',
+      no: 'No.',
       item: 'Nội dung kiểm tra',
       spec: 'Quy cách',
       sample: 'Lần đo',
@@ -329,6 +332,8 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     sampleOf: (sampleNo: number): string => `Lần ${String(sampleNo)}`,
     booleanTrue: 'OK',
     booleanFalse: 'NG',
+    autoJudgmentMark: 'Tự động đánh giá',
+    autoJudgmentTitle: 'Tự động đánh giá theo giá trị đo và quy cách',
     sheetTitles: { NUMERIC: 'Đo kích thước', BOOLEAN: 'Hạng mục kiểm tra khác' } as Record<
       string,
       string

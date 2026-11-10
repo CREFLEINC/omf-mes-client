@@ -302,6 +302,9 @@ export const iqcInspection = {
     judgment: '최종 판정',
     /** 검사 수량 · 판정 단계의 종합 판정 · 비고 구획(#247 · 부품 화면과 같은 이름 · 사용자 지시 2026-11-10). */
     overallTitle: '종합 판정',
+    autoResult: '자동 판정 결과',
+    autoResultPending: '검사 항목 입력 후 판정 결과를 확인하세요.',
+    autoResultRejected: (qty: string) => `(불량 수량 ${qty})`,
     remarks: '비고',
     remarksPlaceholder: '비고를 입력하세요',
     judgmentPlaceholder: '최종 판정을 선택하세요',
@@ -483,7 +486,7 @@ export const iqcInspection = {
     columns: {
       dataType: '유형',
       /** 표 안의 항목 번호(1, 2, 3 · 사용자 지시 2026-11-09). */
-      no: '항목',
+      no: 'No.',
       item: '검사 내용',
       spec: '규격',
       sample: '측정 회차',
@@ -503,6 +506,9 @@ export const iqcInspection = {
     booleanTrue: 'OK',
     booleanFalse: 'NG',
     /** 입력표 제목 — 수치는 「치수 측정」, 선택형은 「기타 검사 항목」(부품 화면과 같은 이름 · 사용자 지시 2026-11-10). 텍스트는 유형 이름 그대로 */
+    /** 값과 규격으로 판정되는 항목의 판정 칸 표시(사용자 지시 2026-11-10). */
+    autoJudgmentMark: '자동 판정',
+    autoJudgmentTitle: '측정값과 규격으로 자동 판정합니다',
     sheetTitles: { NUMERIC: '치수 측정', BOOLEAN: '기타 검사 항목' } as Record<string, string>,
     /**
      * 규격 — **한쪽만 있는 것도 규격이다.** 계약이 상하한을 「둘 다 있을 때만」 견주므로

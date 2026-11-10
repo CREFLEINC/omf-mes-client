@@ -9,8 +9,7 @@ import { toMeasurementRows } from './measurement-rows';
 import { MeasurementSheet } from './measurement-sheet';
 
 const t = messages.iqcInspection.measurements;
-const NAMES = { NUMERIC: '수치', BOOLEAN: '선택형', TEXT: '텍스트' };
-const edit = { draft: {}, onChange: vi.fn(), judgmentOptions: [], disabled: false };
+const edit = { draft: {}, onChange: vi.fn(), disabled: false };
 const flagSpec = {
   ...appearanceSpec,
   inspectionItemSpecId: 7009,
@@ -19,22 +18,22 @@ const flagSpec = {
 };
 
 const render = (specs: Parameters<typeof toMeasurementRows>[0]) =>
-  renderWithProviders(
-    <MeasurementSheet rows={toMeasurementRows(specs, [])} dataTypeNames={NAMES} edit={edit} />,
-  );
+  renderWithProviders(<MeasurementSheet rows={toMeasurementRows(specs, [])} edit={edit} />);
 
 describe('MeasurementSheet', () => {
-  it('치수 측정 · 기타 검사 항목 · 텍스트를 표로 나누고, 규격 열은 치수 측정 표에만 둔다', () => {
+  it('치수 측정과 기타 검사 항목(선택형 · 텍스트)으로 나누고, 규격 열은 치수 측정 표에만 둔다', () => {
     render([appearanceSpec, flagSpec, dimensionSpec]);
 
     const tables = screen.getAllByRole('table');
-    expect(tables).toHaveLength(3);
+    expect(tables).toHaveLength(2);
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
       '치수 측정',
       '기타 검사 항목',
-      '텍스트',
     ]);
-    const [numeric, flag] = tables as [HTMLElement, HTMLElement, HTMLElement];
+    const [numeric, flag] = tables as [HTMLElement, HTMLElement];
+    /* 텍스트 항목은 기타 검사 항목 표의 측정 결과 칸에 글을 적는다. */
+    expect(within(flag).getByText(t.columns.value)).toBeInTheDocument();
+    expect(within(flag).getByRole('textbox')).toBeInTheDocument();
     expect(within(numeric).getByText(t.columns.spec)).toBeInTheDocument();
     expect(within(numeric).getByText('n3')).toBeInTheDocument();
     expect(within(flag).queryByText(t.columns.spec)).not.toBeInTheDocument();
@@ -81,9 +80,7 @@ describe('MeasurementSheet', () => {
   it('기타 검사 항목은 회차 칸 없이 OK · NG 단추 — OK 는 양호 · 합격으로 모든 회차에 들어간다', async () => {
     const onChange = vi.fn();
     const rows = toMeasurementRows([{ ...flagSpec, measurementCount: 2 }], []);
-    renderWithProviders(
-      <MeasurementSheet rows={rows} dataTypeNames={NAMES} edit={{ ...edit, onChange }} />,
-    );
+    renderWithProviders(<MeasurementSheet rows={rows} edit={{ ...edit, onChange }} />);
 
     expect(screen.queryByText('n1')).not.toBeInTheDocument();
     const group = screen.getByRole('group', { name: t.judgmentLabel('포장') });

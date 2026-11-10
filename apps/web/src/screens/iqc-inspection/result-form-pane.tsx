@@ -127,6 +127,8 @@ export interface ResultFormPaneProps {
   drawingSlot?: ReactNode;
   /** ① 검사 수량 · 판정 단계의 종합 판정 아래 — 비고(#247 · 사용자 지시 2026-11-10). 없으면 두지 않는다 */
   remarksSlot?: ReactNode;
+  /** 종합 판정 구획의 「자동 판정 결과」 — 수량 · 항목으로 낸 판정 코드. 아직 근거가 없으면 `null`(#247) */
+  autoResult?: string | null;
   /** ② 판정을 접었을 때 판정 뒤에 붙일 항목 판정 요약(「항목 합격 3 · 불합격 1」). 없으면 판정만 */
   measurementSummary?: string | null;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
@@ -235,6 +237,7 @@ export const ResultFormPane = ({
   measurementSlot = null,
   drawingSlot = null,
   remarksSlot = null,
+  autoResult = null,
   measurementSummary = null,
   judgmentHint,
   judgmentBelow = null,
@@ -659,22 +662,20 @@ export const ResultFormPane = ({
    * 최종 판정 칸 — 상하 배치(넓은 상세)에서는 검사 수량 줄의 세 칸 옆에 선다(사용자 지시 2026-10-27 · #185).
    * 좌우 배치에서는 종전처럼 「판정」 구획 첫 칸이다.
    */
-  const judgmentField = (
-    <div
-      className="field-cell iqc-inspection-judgment-field"
-      data-judgment={judgment === '' ? undefined : judgment}
-    >
-      <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
-      <Select
-        id={judgmentId}
-        options={judgmentOptions}
-        value={judgment}
-        placeholder={t.judgmentPlaceholder}
-        /* 필수 칸이 비어 있으면 빨간 테두리(사용자 지시 2026-10-26) — 고칠 수 없는 회차는 제외. */
-        invalid={judgment === '' && !isConfirmed && !isInputLocked}
-        disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
-        onChange={onJudgmentChange}
-      />
+  const judgmentSelect = (
+    <Select
+      id={judgmentId}
+      options={judgmentOptions}
+      value={judgment}
+      placeholder={t.judgmentPlaceholder}
+      /* 필수 칸이 비어 있으면 빨간 테두리(사용자 지시 2026-10-26) — 고칠 수 없는 회차는 제외. */
+      invalid={judgment === '' && !isConfirmed && !isInputLocked}
+      disabled={isConfirmed || isInputLocked || judgmentOptions.length === 0}
+      onChange={onJudgmentChange}
+    />
+  );
+  const judgmentNotes = (
+    <>
       {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
       {/*
        * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
@@ -683,7 +684,56 @@ export const ResultFormPane = ({
       {!isKnownCode(judgmentOptions, judgment) && (
         <p className="field-note">{t.judgmentUnknown(judgment)}</p>
       )}
+    </>
+  );
+  const judgmentField = (
+    <div
+      className="field-cell iqc-inspection-judgment-field"
+      data-judgment={judgment === '' ? undefined : judgment}
+    >
+      <FieldLabel htmlFor={judgmentId} label={t.judgment} required hint={judgmentHint} />
+      {judgmentSelect}
+      {judgmentNotes}
     </div>
+  );
+  /*
+   * 종합 판정 구획 — 부품 화면과 같다(사용자 시안 2026-11-10): 왼쪽 「자동 판정 결과」 상자 · 세로선 · 오른쪽 「종합 판정 *」 고르기.
+   * 자동 판정 결과는 수량 · 항목으로 낸 값이고, 고른 판정은 사람이 바꿀 수 있다.
+   */
+  const autoResultLabel =
+    autoResult === null
+      ? null
+      : (judgmentOptions.find((option) => option.value === autoResult)?.label ?? autoResult);
+  const overallSection = (
+    <section className="parts-iqc-card iqc-inspection-overall" aria-labelledby={overallTitleId}>
+      <h3 id={overallTitleId} className="parts-iqc-sub-title">
+        {t.overallTitle}
+      </h3>
+      <div className="parts-iqc-verdict-line">
+        <div
+          className={`parts-iqc-auto-box${autoResult === 'REJECTED' ? ' is-ng' : autoResult === 'ACCEPTED' ? ' is-ok' : ''}`}
+        >
+          <span className="parts-iqc-auto-label">{t.autoResult}</span>
+          {autoResultLabel === null ? (
+            <span className="parts-iqc-muted">{t.autoResultPending}</span>
+          ) : (
+            <span className="parts-iqc-auto-value">
+              <strong>{autoResultLabel}</strong>
+              {` ${t.autoResultRejected(qtyText(draft.rejected))}`}
+            </span>
+          )}
+        </div>
+        <div className="parts-iqc-inline-field parts-iqc-overall">
+          <FieldLabel htmlFor={judgmentId} label={t.overallTitle} required />
+          {judgmentSelect}
+        </div>
+      </div>
+      {/* 자동 판정 기준(합격판정개수) — 있을 때만 판정 줄 아래에 선다. */}
+      {judgmentHint !== undefined && <p className="field-note">{judgmentHint}</p>}
+      {judgmentNotes}
+      {hasJudgmentDetail && judgmentBelow}
+      {hasJudgmentDetail && judgmentDetail}
+    </section>
   );
 
   /*
@@ -727,20 +777,11 @@ export const ResultFormPane = ({
             {renderDefects()}
           </div>
         ))}
-      {/* 부품 화면 순서 — 치수 측정 · 기타 검사 항목 · 텍스트 · 종합 판정 · 비고 · 기준서 도면(#247 · 사용자 지시 2026-11-10). */}
+      {/* 부품 화면 순서 — 치수 측정 · 기타 검사 항목 · 종합 판정 · 기준서 도면 · 비고(#247 · 사용자 지시 2026-11-10). */}
       {step === 1 && measurementSlot}
-      {step === 1 && (
-        <section className="parts-iqc-card iqc-inspection-overall" aria-labelledby={overallTitleId}>
-          <div className="parts-iqc-block-head">
-            <h3 id={overallTitleId}>{t.overallTitle}</h3>
-          </div>
-          {judgmentField}
-          {hasJudgmentDetail && judgmentBelow}
-          {hasJudgmentDetail && judgmentDetail}
-        </section>
-      )}
-      {step === 1 && remarksSlot}
+      {step === 1 && overallSection}
       {step === 1 && drawingSlot}
+      {step === 1 && remarksSlot}
       {step === 1 && <div className="iqc-inspection-step-judgment-row">{stepConfirm()}</div>}
       {step === 2 && fourMSlot}
     </section>

@@ -445,7 +445,7 @@ const qtyField = async (key: keyof typeof t.result.fields): Promise<HTMLElement>
 };
 const judgmentField = async (): Promise<HTMLElement> => {
   await showStep(2);
-  return screen.findByLabelText(t.result.judgment);
+  return screen.findByRole('combobox', { name: t.result.overallTitle });
 };
 
 /** 세 수량을 합계가 맞게 다시 넣는다(수량 창은 열어 둔다) — 판정 단계는 창의 [확정]을 눌러야 열린다(#197). */
@@ -829,7 +829,7 @@ describe('IqcInspectionScreen', () => {
 
       const accepted = await qtyField('accepted');
       await waitFor(() => expect(accepted).not.toHaveValue(''));
-      expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent(
+      expect(screen.getByRole('combobox', { name: t.result.overallTitle })).toHaveTextContent(
         t.result.judgmentPlaceholder,
       );
       expect(
@@ -1015,7 +1015,7 @@ describe('IqcInspectionScreen', () => {
   });
 
   /* 항목 판정 그룹은 「검사 항목별 결과」 표의 판정 칸만 쓴다(#247) — 종합 판정은 보류가 있는 자기 그룹으로 부른다. */
-  it('종합 판정과 항목 판정을 각자의 그룹으로 부른다 — 항목 판정에는 보류가 없다', async () => {
+  it('종합 판정은 공통코드 그룹으로 부른다 — 항목 판정은 OK · NG 단추라 값 목록을 부르지 않는다', async () => {
     const { sent } = renderScreen('/?ir=1001');
 
     await judgmentField();
@@ -1025,7 +1025,7 @@ describe('IqcInspectionScreen', () => {
       .map((url) => url.searchParams.get('codeGroupCode'));
 
     expect(groups).toContain(CODE_GROUPS.overallJudgment);
-    expect(groups).toContain(CODE_GROUPS.measurementJudgment);
+    expect(groups).not.toContain(CODE_GROUPS.measurementJudgment);
   });
 
   /*
@@ -1116,9 +1116,13 @@ describe('IqcInspectionScreen', () => {
     expect(screen.getByRole('textbox', { name: t.measurements.valueLabel('외관', 1) })).toHaveValue(
       '',
     );
+    /* 자동 판정이 아닌 항목은 OK · NG 단추 — OK 가 눌려 있다(사용자 지시 2026-11-10). */
     expect(
-      screen.getByRole('combobox', { name: t.measurements.judgmentLabel('외관') }),
-    ).toHaveTextContent(t.measurements.judgmentNames.ACCEPTED ?? '합격');
+      within(screen.getByRole('group', { name: t.measurements.judgmentLabel('외관') })).getByRole(
+        'button',
+        { name: t.measurements.booleanTrue },
+      ),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('전량 합격이 풀리면 자동으로 채운 항목만 비우고, 사람이 고친 값은 남긴다', async () => {
@@ -1346,7 +1350,9 @@ describe('IqcInspectionScreen', () => {
     ).toBeInTheDocument();
     await openJudgmentDialog();
     await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('불합격'),
+      expect(screen.getByRole('combobox', { name: t.result.overallTitle })).toHaveTextContent(
+        '불합격',
+      ),
     );
     expect(screen.queryByLabelText(new RegExp(t.result.judgmentChange.reason))).toBeNull();
     expect(writes).toHaveLength(0);
@@ -1388,7 +1394,7 @@ describe('IqcInspectionScreen', () => {
       '양호',
     );
 
-    expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent('합격');
+    expect(screen.getByRole('combobox', { name: t.result.overallTitle })).toHaveTextContent('합격');
   });
 
   it('항목이 모두 합격이어도 합격 수량이 전체가 아니면 최종 판정에 합격을 채우지 않는다', async () => {
@@ -1402,7 +1408,7 @@ describe('IqcInspectionScreen', () => {
     await userEvent.clear(box);
     await userEvent.type(box, '10.05');
 
-    expect(screen.getByRole('combobox', { name: t.result.judgment })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: t.result.overallTitle })).toHaveTextContent(
       t.result.judgmentPlaceholder,
     );
   });
@@ -2242,7 +2248,7 @@ describe('IqcInspectionScreen — 끝난 의뢰', () => {
     expect(within(summary).getByText(t.result.round(2))).toBeInTheDocument();
     expect(within(summary).getByText(t.result.closed.finalJudgment)).toBeInTheDocument();
     expect(screen.queryByLabelText(t.result.fields.accepted)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(t.result.judgment)).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: t.result.overallTitle })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.result.reinspect })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.result.save })).not.toBeInTheDocument();
   });

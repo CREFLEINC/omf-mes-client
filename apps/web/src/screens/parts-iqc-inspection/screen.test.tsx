@@ -111,7 +111,7 @@ describe('치수 측정 표', () => {
     );
     expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
-      '항목',
+      'No.',
       '검사 내용',
       '규격',
       'n1',

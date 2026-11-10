@@ -580,7 +580,6 @@ const IqcInspectionScreenBody = () => {
     setMeasureDraft(JSON.parse(savedMeasureKey) as MeasureDraft);
   }, [selectedId, isReinspectingNow, savedMeasureKey]);
   const measureChanged = !isSameMeasureDraft(measureDraft, savedMeasureDraft);
-  const measurementJudgmentValues = useCodeValues(CODE_GROUPS.measurementJudgment);
   /* 항목 입력 유형 이름 — 검사 기준 화면과 같은 공통코드(수치 · 텍스트 · 불리언). */
   const dataTypeValues = useCodeValues(CODE_GROUPS.itemDataType);
   const dataTypeNames = Object.fromEntries(
@@ -840,14 +839,8 @@ const IqcInspectionScreenBody = () => {
    * 최종 판정 자동 채움 — 수량 판정과 항목 판정을 함께 본다(사용자 지시 2026-11-09). 어느 쪽이든 불합격이면 불합격, 그 밖은 수량
    * 판정이 먼저이고 없으면 항목 판정이다. 둘 다 근거가 없으면 자동으로 채운 판정만 비운다.
    */
-  const applyAutoJudgment = (
-    next: QuantityDraft,
-    measures: MeasureDraft,
-    { keepPicked = false } = {},
-  ): void => {
-    if (!isOpenRound) return;
-    const isPicked = judgment !== '' && judgment !== autoFilledJudgment.current;
-    if (keepPicked && isPicked) return;
+  /* 수량 · 항목으로 낸 자동 판정 결과 — 아직 근거가 없으면 `null`. 종합 판정 구획의 「자동 판정 결과」도 이 값이다(#247). */
+  const autoResultOf = (next: QuantityDraft, measures: MeasureDraft): string | null => {
     const fromQty = autoJudgmentOf(next, acceptanceNumber, inspectedQty);
     const fromItems = overallFromItems(measurementRows, measures);
     /* 보류 수량이 있으면 항목이 모두 합격이어도 합격으로 채우지 않는다 — 사람이 고른다(#197 리뷰). */
@@ -857,11 +850,20 @@ const IqcInspectionScreenBody = () => {
         ? 'REJECTED'
         : (fromQty ?? (hasHeld ? null : fromItems));
     /* 합격으로 채우는 것은 합격 수량 = 전체 수량이고 필수 항목이 모두 합격일 때뿐이다(사용자 지시 2026-11-09). */
-    const expected =
-      candidate === 'ACCEPTED' &&
+    return candidate === 'ACCEPTED' &&
       !(isAllAccepted(next, inspectedQty) && requiredItemsAccepted(measurementRows, measures))
-        ? null
-        : candidate;
+      ? null
+      : candidate;
+  };
+  const applyAutoJudgment = (
+    next: QuantityDraft,
+    measures: MeasureDraft,
+    { keepPicked = false } = {},
+  ): void => {
+    if (!isOpenRound) return;
+    const isPicked = judgment !== '' && judgment !== autoFilledJudgment.current;
+    if (keepPicked && isPicked) return;
+    const expected = autoResultOf(next, measures);
     if (expected !== null) {
       autoFilledJudgment.current = expected;
       setJudgment(expected);
@@ -1190,17 +1192,16 @@ const IqcInspectionScreenBody = () => {
             isOpenRound && measurementRows.length > 0 ? (
               <MeasurementSheet
                 rows={measurementRows}
-                dataTypeNames={dataTypeNames}
                 edit={{
                   draft: measureDraft,
                   onChange: changeMeasureDraft,
-                  judgmentOptions: toCodeOptions(measurementJudgmentValues.data ?? []),
                   disabled: workerMissing || save.isSaving || confirm.isSaving,
                 }}
               />
             ) : null
           }
           measurementSummary={measureSummaryOf(measurementRows, measureDraft)}
+          autoResult={isOpenRound ? autoResultOf(draft, measureDraft) : null}
           remarksSlot={
             isOpenRound ? (
               <RemarksField
