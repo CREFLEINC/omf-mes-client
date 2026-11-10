@@ -85,7 +85,7 @@ export const common = {
     guide: '검사 안내',
     guideCommon: '공통 안내',
     guideItem: '품목 안내',
-    guideExpand: '전체 보기',
+    guideExpand: '펼치기',
     guideCollapse: '접기',
     label: '검사 의뢰 상태',
     requested: '대기',

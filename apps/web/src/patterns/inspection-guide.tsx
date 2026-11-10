@@ -53,7 +53,7 @@ export const useInspectionGuide = (inspectionRequestId: number | null) => {
  * 품목 기준의 안내를 함께(공통이 위) 정보 아이콘 + 파란 바탕으로 보이고, 줄바꿈은 그대로 둔다. 둘 다 있을 때만 「공통 안내」 ·
  * 「품목 안내」 이름표를 붙인다. 문구가 없거나 읽지 못하면 아무것도 그리지 않는다 — 검사를 막지 않는다.
  *
- * 본문은 2줄까지만 보이고 넘는 줄은 「…」로 줄인다. 「전체 보기」는 **그려진 줄 수**가 2줄을 넘을 때만 보인다 — 글자 수가 아니라
+ * 본문은 2줄까지만 보이고 넘는 줄은 「…」로 줄인다. 「펼치기」는 **그려진 줄 수**가 2줄을 넘을 때만 보인다 — 글자 수가 아니라
  * 실제 높이로 재고, 폭이 바뀌면 다시 잰다. 펼친 뒤에는 「접기」로 바뀐다.
  */
 export const InspectionGuideNotice = ({
@@ -101,6 +101,7 @@ export const InspectionGuideNotice = ({
             onClick={() => setExpandedFor(expanded ? null : inspectionRequestId)}
           >
             {expanded ? t.guideCollapse : t.guideExpand}
+            <Icon name={expanded ? 'expand_less' : 'expand_more'} size={18} aria-hidden />
           </Button>
         )}
       </div>

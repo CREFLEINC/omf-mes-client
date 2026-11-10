@@ -73,15 +73,15 @@ describe('검사 안내 문구', () => {
       vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(Math.min(lines, 2) * 16);
     };
 
-    it('2줄 이하로 그려지면 「전체 보기」가 없다', async () => {
+    it('2줄 이하로 그려지면 「펼치기」가 없다', async () => {
       drawnLines(2);
       renderNotice([{ scopeCode: 'ITEM', guideTextKo: '장갑 착용\n도면 3번 확인', guideTextVi: null }]);
 
       await screen.findByRole('note', { name: '검사 안내' });
-      expect(screen.queryByRole('button', { name: '전체 보기' })).toBeNull();
+      expect(screen.queryByRole('button', { name: '펼치기' })).toBeNull();
     });
 
-    it('2줄을 넘으면 「전체 보기」로 펼치고 「접기」로 다시 접는다', async () => {
+    it('2줄을 넘으면 「펼치기」로 펼치고 「접기」로 다시 접는다', async () => {
       drawnLines(5);
       renderNotice([{ scopeCode: 'ITEM', guideTextKo: '1\n2\n3\n4\n5', guideTextVi: null }]);
 
@@ -89,12 +89,12 @@ describe('검사 안내 문구', () => {
       const body = note.querySelector('.inspection-guide-blocks');
       expect(body).not.toHaveAttribute('data-expanded');
 
-      fireEvent.click(await screen.findByRole('button', { name: '전체 보기' }));
+      fireEvent.click(await screen.findByRole('button', { name: '펼치기' }));
       expect(body).toHaveAttribute('data-expanded', 'true');
 
       fireEvent.click(screen.getByRole('button', { name: '접기' }));
       expect(body).not.toHaveAttribute('data-expanded');
-      expect(screen.getByRole('button', { name: '전체 보기' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '펼치기' })).toBeInTheDocument();
     });
   });
 });

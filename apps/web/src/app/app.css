@@ -21542,7 +21542,7 @@ button.app-button-neutral {
 }
 
 /*
- * 검사 안내 문구(omf-all-around#252) — 줄 전체 폭. 위 줄은 정보 표식 · 「검사 안내」 · 오른쪽 끝 「전체 보기/접기」, 아래는 본문.
+ * 검사 안내 문구(omf-all-around#252) — 줄 전체 폭. 위 줄은 정보 표식 · 「검사 안내」 · 오른쪽 끝 「펼치기/접기」, 아래는 본문.
  * 한 줄 안내의 알약 모양(:nth-child(n) 규칙)보다 앞서야 한다.
  */
 .inspection-guide-note.iqc-inspection-action-note:nth-child(n) {
