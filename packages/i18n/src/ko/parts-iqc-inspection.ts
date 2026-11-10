@@ -32,22 +32,26 @@ export const partsIqcInspection = {
     title: '검사 기준 상세',
     edit: '수정',
     version: '버전',
-    versionValue: (no: number, from: string) => `${String(no)}판 · ${from}부터 적용`,
+    versionNo: (no: number) => `${String(no)}판`,
+    facts: {
+      planCode: '기준서 코드',
+      planName: '모델명',
+      item: '자재',
+      effectiveFrom: '적용 시작일',
+    },
+    dataTypeOf: { NUMERIC: '수치형', BOOLEAN: '선택형', TEXT: '텍스트형' } as Record<
+      string,
+      string
+    >,
     sampling: '검사 방식',
     full: '전수검사',
     ratio: (r: number) => `LOT 의 ${String(r)}%`,
     qty: (n: number) => `${String(n)}개`,
-    aqlAcceptance: '합격 판정 기준',
     no: '번호',
     method: '방법',
-    methodNone: '미등록',
-    methodOf: { MEASUREMENT: '측정', VISUAL: '육안', FUNCTIONAL: '기능' } as Record<string, string>,
     count: '시료 수',
     acceptance: '허용 불량 수',
     okNg: 'OK / NG',
-    aqlAcceptanceValue: (aql: string, c: number | null) =>
-      `AQL ${aql} · 허용 불량 ${c === null ? '-' : `${String(c)}개`}`,
-    aqlAcceptanceNone: '해당 없음',
     items: '검사 항목',
     itemCount: (n: number) => `(${String(n)}개)`,
   },
@@ -74,6 +78,7 @@ export const partsIqcInspection = {
     planName: '모델',
     condition: '검사 조건',
     conditionAql: (aql: number) => `AQL ${String(aql)} · 육안 검사`,
+    conditionNone: '미지정',
     sample: '시료 수',
     sampleValue: (n: number, c: number) => `시료 n=${String(n)}, C=${String(c)}`,
     dimensionCount: '치수 항목',
@@ -114,7 +119,7 @@ export const partsIqcInspection = {
   drawing: {
     heading: '기준서 도면',
     alt: (n: number) => `검사기준서 도면 ${String(n)}`,
-    none: '등록된 도면 없음',
+    none: '도면 미등록',
     prev: '이전 도면',
     next: '다음 도면',
   },
@@ -160,6 +165,7 @@ export const partsIqcInspection = {
   ng: 'NG',
 
   footer: {
+    draftSaved: '임시 저장했습니다.',
     undo: '되돌리기',
     redo: '다시 실행',
     clear: '비우기',

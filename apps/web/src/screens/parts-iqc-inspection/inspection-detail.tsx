@@ -22,7 +22,12 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
 import { AttachmentPanel, useAttachments } from '../inspection-documents/attachment-panel';
-import { formatPlantDateTime, plantNowLocal, PLANT_UTC_OFFSET } from '../../patterns/plant-time';
+import {
+  formatPlantDateTime,
+  plantNowLocal,
+  PLANT_UTC_OFFSET,
+  toPlantDateTimeParts,
+} from '../../patterns/plant-time';
 import { useSession } from '../../patterns/session';
 import { toWebAccess } from '../../patterns/web-access';
 import { TimeField, type TimeFieldLabels } from '../../patterns/time-field';
@@ -131,6 +136,8 @@ export const InspectionDetail = ({
 
   const round = latestRound(rounds.data ?? []);
   const draftRound = round !== null && round.statusCode === 'DRAFT' ? round : null;
+  /* 「임시 저장했습니다」 — 저장 뒤 입력 폼이 저장된 회차로 다시 열려도 남도록 여기 둔다. 다른 의뢰에서는 보이지 않는다. */
+  const [draftSavedFor, setDraftSavedFor] = useState<number | null>(null);
   const measurements = useMeasurements(draftRound?.inspectionResultId ?? null);
 
   /*
@@ -222,10 +229,15 @@ export const InspectionDetail = ({
             : {
                 inspectionResultId: draftRound.inspectionResultId,
                 inspectedQty: draftRound.inspectedQty,
+                inspectedAt: draftRound.inspectedAt,
+                overallJudgmentCode: draftRound.overallJudgmentCode,
+                remarks: draftRound.remarks,
                 measured: measurements.data ?? [],
               }
         }
         onSubmitted={onSubmitted}
+        draftSaved={draftSavedFor === inspectionRequestId}
+        onDraftSaved={() => setDraftSavedFor(inspectionRequestId)}
         onDirtyChange={onDirtyChange}
       />
     );
@@ -452,6 +464,9 @@ interface FormProps {
   draft: {
     inspectionResultId: number;
     inspectedQty: number;
+    inspectedAt: string;
+    overallJudgmentCode: string;
+    remarks: string;
     measured: {
       inspectionItemSpecId: number;
       sampleNo: number;
@@ -462,14 +477,27 @@ interface FormProps {
     }[];
   } | null;
   onSubmitted: () => void;
+  /** 이 의뢰를 방금 임시 저장했는가 — 고치기 전까지 아래 줄에 알린다. */
+  draftSaved: boolean;
+  onDraftSaved: () => void;
   onDirtyChange: (dirty: boolean) => void;
 }
 
 /** 기준서 도면 — 품질 기준 정보 「도면」 탭과 같은 보기(한 장씩 좌우로 넘김 · 사용자 지시 2026-10-30). */
-const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: Blob }[] }) => (
+const DrawingImages = ({
+  drawings,
+  withIcon = false,
+}: {
+  drawings: { attachmentId: number; blob: Blob }[];
+  /** 검사 기준 상세 창에서는 제목 앞에 그림 아이콘(#247 · 사용자 시안 2026-11-10). */
+  withIcon?: boolean;
+}) => (
   <section className="parts-iqc-card" aria-label={t.drawing.heading}>
     <div className="parts-iqc-block-head">
-      <h3>{t.drawing.heading}</h3>
+      <h3 className={withIcon ? 'parts-iqc-icon-title' : undefined}>
+        {withIcon && <Icon name="image" size={24} aria-hidden />}
+        {t.drawing.heading}
+      </h3>
       {drawings.length === 0 && <span className="parts-iqc-muted">{t.drawing.none}</span>}
     </div>
     {drawings.length === 0 ? null : (
@@ -498,8 +526,11 @@ const InspectionForm = (props: FormProps) => {
   );
 
   const initial = useMemo((): PartsIqcForm => {
-    const form = emptyForm(plantNowLocal());
+    /* 임시 저장한 회차는 저장한 검사일시 · 비고로 다시 연다(#247). */
+    const saved = draft === null ? null : toPlantDateTimeParts(draft.inspectedAt);
+    const form = emptyForm(saved === null ? plantNowLocal() : `${saved.date}T${saved.time}`);
     form.visualInspectedQty = draft === null ? defaultQty : String(draft.inspectedQty);
+    form.remarks = draft?.remarks ?? '';
     for (const m of draft?.measured ?? []) {
       const spec = specs.find((s) => s.inspectionItemSpecId === m.inspectionItemSpecId);
       if (spec === undefined) continue;
@@ -539,27 +570,44 @@ const InspectionForm = (props: FormProps) => {
   const inspectedTime = inspectedTimeRaw.slice(0, 5);
   const changeInspectedAt = (date: string, time: string) =>
     change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
-  const [chosen, setChosen] = useState<string | null>(null);
+  const judgmentInputOf = (f: PartsIqcForm) => {
+    const dims = dimensions.map((item) =>
+      judgeDimension(
+        Array.from({ length: item.measurementCount }, (_, i) =>
+          numberOf(f.values[item.inspectionItemSpecId]?.[i]),
+        ),
+        item,
+        versionAcceptance,
+      ),
+    );
+    return {
+      inspectedQty: countOf(f.visualInspectedQty),
+      dimensions: dims,
+      checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
+    };
+  };
+  /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
+  const [chosen, setChosen] = useState<string | null>(() => {
+    const stored = draft?.overallJudgmentCode ?? '';
+    return stored !== '' && stored !== suggestedJudgmentOf(judgmentInputOf(initial))
+      ? stored
+      : null;
+  });
   const [reason, setReason] = useState('');
   const [ask, setAsk] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const submit = useSubmitInspection(props.onSubmitted);
+  /* 같은 회차를 다시 저장하면 폼이 다시 열리지 않는다 — 저장한 지금 값을 새 출발점으로 삼아 「고친 것」을 비운다. */
+  const latestForm = useRef(form);
+  latestForm.current = form;
+  const saveDraft = useSubmitInspection(() => {
+    dispatch({ type: 'reset', form: latestForm.current });
+    props.onDraftSaved();
+  });
 
-  const inspectedQty = countOf(form.visualInspectedQty);
-  const dimensionResults = dimensions.map((item) =>
-    judgeDimension(
-      Array.from({ length: item.measurementCount }, (_, i) =>
-        numberOf(form.values[item.inspectionItemSpecId]?.[i]),
-      ),
-      item,
-      versionAcceptance,
-    ),
-  );
-  const checks: ItemJudgment[] = checkItems.map(
-    (item) => form.checks[item.inspectionItemSpecId] ?? null,
-  );
-  const input = { inspectedQty, dimensions: dimensionResults, checks };
+  const input = judgmentInputOf(form);
+  const { inspectedQty, dimensions: dimensionResults, checks } = input;
   const suggested = suggestedJudgmentOf(input);
   const rejectedQty = rejectedQtyOf(input);
   const dimensionStates = dimensions.map((item, index) =>
@@ -629,27 +677,43 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty <= 0 ||
     (needsReason && reason.trim() === '');
 
+  const variablesOf = (judgment: string, qty: number): SubmitVariables => ({
+    inspectionRequestId: request.inspectionRequestId,
+    draftResultId: draft?.inspectionResultId ?? null,
+    previousResultId: props.previousResultId,
+    uomId: request.uomId,
+    inspectedAt: toOffset(form.inspectedAt),
+    inspectedQty: qty,
+    rejectedQty: judgment === 'ACCEPTED' ? Math.min(rejectedQty, qty) : rejectedQty,
+    overallJudgmentCode: judgment,
+    measurements: measurementsOf(),
+    /*
+     * 불량 유형 · 수량은 받지 않는다(#247 · 설계 변경 2026-11-10 — 화면은 치수 측정 · 기타 검사 항목만). 빈 배열은 앞서 임시 저장한
+     * 불량 기록을 지운다. ⚠ 지금 서버는 불합격 IQC 확정에 불량 기록을 요구한다 — 서버 변경이 들어오기 전에는 불합격 확정이 막힌다.
+     */
+    defects: [],
+    ...(needsReason ? { judgmentChangeReason: reason.trim() } : {}),
+    remarks: form.remarks,
+  });
   const onSubmit = () => {
     setAsk(false);
     if (blocked || overall === null || inspectedQty === null) return;
-    submit.write({
-      inspectionRequestId: request.inspectionRequestId,
-      draftResultId: draft?.inspectionResultId ?? null,
-      previousResultId: props.previousResultId,
-      uomId: request.uomId,
-      inspectedAt: toOffset(form.inspectedAt),
-      inspectedQty,
-      rejectedQty: overall === 'ACCEPTED' ? Math.min(rejectedQty, inspectedQty) : rejectedQty,
-      overallJudgmentCode: overall,
-      measurements: measurementsOf(),
-      /*
-       * 불량 유형 · 수량은 받지 않는다(#247 · 설계 변경 2026-11-10 — 화면은 치수 측정 · 기타 검사 항목만). 빈 배열은 앞서 임시 저장한
-       * 불량 기록을 지운다. ⚠ 지금 서버는 불합격 IQC 확정에 불량 기록을 요구한다 — 서버 변경이 들어오기 전에는 불합격 확정이 막힌다.
-       */
-      defects: [],
-      ...(needsReason ? { judgmentChangeReason: reason.trim() } : {}),
-      remarks: form.remarks,
-    });
+    submit.write(variablesOf(overall, inspectedQty));
+  };
+  /*
+   * 임시 저장(#247 · 사용자 지시 2026-11-10) — 판정을 확정하지 않고 지금 입력을 회차에 남긴다. 검사자 · 검사 수량 · 검사일시만 있으면
+   * 된다(판정은 아직 없어도 된다).
+   */
+  const draftBlocked =
+    props.inspector === null ||
+    inspectedQty === null ||
+    inspectedQty <= 0 ||
+    form.inspectedAt === '' ||
+    submit.isSaving ||
+    saveDraft.isSaving;
+  const onSaveDraft = () => {
+    if (draftBlocked || inspectedQty === null) return;
+    saveDraft.write({ ...variablesOf(overall ?? '', inspectedQty), draftOnly: true });
   };
 
   const dirty = history.past.length > 0;
@@ -676,12 +740,10 @@ const InspectionForm = (props: FormProps) => {
         <PlanDialog
           planCode={props.planLabel}
           planName={props.planName}
-          itemLabel={
-            props.itemParts === null ? '-' : `${props.itemParts.code} · ${props.itemParts.name}`
-          }
+          itemParts={props.itemParts}
           version={version}
           specs={specs}
-          drawings={<DrawingImages drawings={props.drawings} />}
+          drawings={<DrawingImages drawings={props.drawings} withIcon />}
           onClose={() => setPlanOpen(false)}
         />
       )}
@@ -719,7 +781,11 @@ const InspectionForm = (props: FormProps) => {
             <>
               <div className="parts-iqc-fact">
                 <dt className="field-label">{t.target.condition}</dt>
-                <dd>{version.aqlValue == null ? '-' : t.target.conditionAql(version.aqlValue)}</dd>
+                <dd>
+                  {version.aqlValue == null
+                    ? t.target.conditionNone
+                    : t.target.conditionAql(version.aqlValue)}
+                </dd>
               </div>
               <div className="parts-iqc-fact">
                 <dt className="field-label">{t.target.sample}</dt>
@@ -1036,7 +1102,7 @@ const InspectionForm = (props: FormProps) => {
             </Dialog>
           );
         })()}
-      <SaveErrorBanner error={submit.error} />
+      <SaveErrorBanner error={submit.error ?? saveDraft.error} />
 
       {/* 아래 줄은 레퍼런스 화면 그대로다 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 제출(사용자 확인 2026-10-29) */}
       <div className="parts-iqc-footer">
@@ -1056,6 +1122,26 @@ const InspectionForm = (props: FormProps) => {
           onClick={() => dispatch({ type: 'redo' })}
         />
         <span className="parts-iqc-footer-gap" />
+        {props.draftSaved && !dirty && (
+          <span className="parts-iqc-muted" role="status">
+            {t.footer.draftSaved}
+          </span>
+        )}
+        {/*
+         * 부분 입고 — OA 화면과 같이 자리만 두고 누를 수 없다(규칙 미정 · 스펙 §8 #2 · #247 사용자 지시 2026-11-10).
+         * 「업데이트 예정」은 단추 설명(마우스를 올리면 보이는 글)으로 둔다.
+         */}
+        <Button variant="outlined" disabled title={tResult.partialReceiptPending}>
+          {tResult.partialReceipt}
+        </Button>
+        <Button
+          variant="outlined"
+          loading={saveDraft.isSaving}
+          disabled={draftBlocked}
+          onClick={onSaveDraft}
+        >
+          {tResult.save}
+        </Button>
         <Button
           variant="text"
           disabled={submit.isSaving}

@@ -64,7 +64,7 @@ const renderDialog = () =>
     <PlanDialog
       planCode="IQC-AA205-1"
       planName="0090040302 수입검사"
-      itemLabel="0090040302 · BUSH"
+      itemParts={{ code: '0090040302', name: 'BUSH' }}
       version={version}
       specs={specs}
       drawings={null}
@@ -78,13 +78,16 @@ describe('검사 기준 조회 팝업 (사용자 지시 2026-10-30)', () => {
     vi.restoreAllMocks();
   });
 
-  it('기준 · 버전 · 샘플링 · 항목별 규격 · n · c 를 보인다', () => {
+  it('기준 · 버전 · 적용 시작일 · 샘플링 · 항목 유형 · 규격 · n · c 를 보인다', () => {
     renderDialog();
     expect(screen.getByText('IQC-AA205-1')).toBeInTheDocument();
-    expect(screen.getByText('2판 · 2026-01-01부터 적용')).toBeInTheDocument();
+    expect(screen.getByText('2판')).toBeInTheDocument();
+    expect(screen.getByText('2026-01-01')).toBeInTheDocument();
     expect(screen.getByText('LOT 의 10%')).toBeInTheDocument();
-    expect(screen.getByText('AQL 0.65 · 허용 불량 1개')).toBeInTheDocument();
-    expect(screen.getByText('4 ±0.1 (3.9~4.1)')).toBeInTheDocument();
+    expect(screen.getByText('BUSH')).toBeInTheDocument();
+    expect(screen.getByText('수치형')).toBeInTheDocument();
+    expect(screen.getByText('선택형')).toBeInTheDocument();
+    expect(screen.getByText('4 ±0.1 (3.9 ~ 4.1)')).toBeInTheDocument();
     expect(screen.getByText('OK / NG')).toBeInTheDocument();
   });
 

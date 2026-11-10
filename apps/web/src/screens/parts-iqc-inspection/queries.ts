@@ -162,10 +162,12 @@ export interface SubmitVariables {
   defects: DefectInput[];
   judgmentChangeReason?: string;
   remarks: string;
+  /** 임시 저장만 하고 확정하지 않는다(#247 · 사용자 지시 2026-11-10). 판정을 아직 고르지 않았으면 `overallJudgmentCode` 는 `''`. */
+  draftOnly?: boolean;
 }
 
 /**
- * 제출 한 번 = 임시 저장(측정값 포함) → 확정.
+ * 제출 한 번 = 임시 저장(측정값 포함) → 확정. [임시 저장]은 앞 단계만 한다(`draftOnly`).
  *
  * ⭐ 앞 단계가 성공한 회차를 기억한다 — 확정이 실패한 뒤 다시 누르면 새 회차를 만들지 않고 그 회차를 고쳐 확정한다.
  * ⛔ 확정은 되돌릴 수 없다 — 키를 적용될 때까지 쓴다(서버가 두 번 실행하지 않는다).
@@ -186,8 +188,10 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         rejectedQty: v.rejectedQty,
         heldQty: 0,
         inspectedAt: v.inspectedAt,
-        overallJudgmentCode: v.overallJudgmentCode,
+        ...(v.overallJudgmentCode === '' ? {} : { overallJudgmentCode: v.overallJudgmentCode }),
         measurements: v.measurements,
+        /* 비고는 임시 저장에도 싣는다 — 다시 열면 칸이 채워진다(#247). */
+        remarks: v.remarks.trim(),
         // 불합격 판정이거나 불합격 수량이 있으면 그 불량 유형(#205), 아니면 빈 배열 — 앞서 임시 저장한 사유를 지운다.
         defects: v.defects,
       };
@@ -222,8 +226,11 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
                 rejectedQty: quantities.rejectedQty,
                 heldQty: quantities.heldQty,
                 inspectedAt: quantities.inspectedAt,
-                overallJudgmentCode: quantities.overallJudgmentCode,
+                ...(quantities.overallJudgmentCode === undefined
+                  ? {}
+                  : { overallJudgmentCode: quantities.overallJudgmentCode }),
                 measurements: quantities.measurements,
+                ...(quantities.remarks === '' ? {} : { remarks: quantities.remarks }),
                 ...(v.previousResultId === null ? {} : { previousResultId: v.previousResultId }),
                 // 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다.
                 ...(quantities.defects.length === 0 ? {} : { defects: quantities.defects }),
@@ -247,6 +254,7 @@ export const useSubmitInspection = (onDone: () => void): MasterWriteResult<Submi
         versionNo: result.versionNo ?? 0,
       };
       saved.current = current;
+      if (v.draftOnly === true) return draft;
 
       const remarks = v.remarks.trim();
       return client.POST('/quality/inspection-results/{inspectionResultId}:confirm', {

@@ -74,8 +74,9 @@ const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
     key: 'judgment',
     header: t.history.judgment,
     width: '96px',
+    /* 판정 전 회차(작성 중)는 빈 라벨 대신 「-」(#247 · 사용자 지시 2026-11-10). */
     render: (row) =>
-      row.overallJudgmentCode === '' ? (
+      row.overallJudgmentCode == null || row.overallJudgmentCode === '' ? (
         '-'
       ) : (
         <Chip size="sm" status={judgmentStatus(row.overallJudgmentCode)}>
@@ -87,7 +88,12 @@ const HISTORY_COLUMNS: Column<InspectionResultRow>[] = [
     key: 'status',
     header: t.history.status,
     width: '96px',
-    render: (row) => t.history.statusOf[row.statusCode] ?? row.statusCode,
+    /* 상태도 라벨로 — 작성 중은 파랑, 확정은 회색(#247 · 사용자 지시 2026-11-10). */
+    render: (row) => (
+      <Chip size="sm" status={row.statusCode === 'DRAFT' ? 'info' : 'idle'}>
+        {t.history.statusOf[row.statusCode] ?? row.statusCode}
+      </Chip>
+    ),
   },
 ];
 

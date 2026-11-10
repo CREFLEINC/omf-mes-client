@@ -162,6 +162,8 @@ export interface InspectionResultRound {
   previousResultId: number | null;
   /** 회차 비고(#247). 없으면 `''` */
   remarks: string;
+  /** 검사일시 — 부품 화면이 임시 저장한 회차를 다시 열 때 칸을 채운다(#247). */
+  inspectedAt: string;
 }
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
@@ -176,6 +178,7 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
   confirmedAt: item.confirmedAt ?? null,
   previousResultId: item.previousResultId ?? null,
   remarks: item.remarks ?? '',
+  inspectedAt: item.inspectedAt,
 });
 
 /**

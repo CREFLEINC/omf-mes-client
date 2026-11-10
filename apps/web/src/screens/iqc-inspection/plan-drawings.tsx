@@ -4,7 +4,7 @@ import { InspectionDrawingImages, useInspectionDrawings } from '../../patterns/i
 
 const t = messages.iqcInspection.drawing;
 
-/** 기준서 도면 — 부품 IQC 입력 화면의 「기준서 도면」과 같은 보기(#247 · 사용자 지시 2026-11-10). 없으면 「등록된 도면 없음」. */
+/** 기준서 도면 — 부품 IQC 입력 화면의 「기준서 도면」과 같은 보기(#247 · 사용자 지시 2026-11-10). 없으면 「도면 미등록」. */
 export const PlanDrawings = ({ versionId }: { versionId: number | null }) => {
   const drawings = useInspectionDrawings(versionId).data ?? [];
   return (

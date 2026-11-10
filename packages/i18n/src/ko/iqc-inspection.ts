@@ -472,7 +472,7 @@ export const iqcInspection = {
   drawing: {
     heading: '기준서 도면',
     alt: (n: number) => `검사기준서 도면 ${String(n)}`,
-    none: '등록된 도면 없음',
+    none: '도면 미등록',
     prev: '이전 도면',
     next: '다음 도면',
   },
