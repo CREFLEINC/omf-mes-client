@@ -160,6 +160,8 @@ export interface InspectionResultRound {
   statusCode: string;
   confirmedAt: string | null;
   previousResultId: number | null;
+  /** 회차 비고(#247). 없으면 `''` */
+  remarks: string;
 }
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
@@ -173,6 +175,7 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
   statusCode: item.statusCode,
   confirmedAt: item.confirmedAt ?? null,
   previousResultId: item.previousResultId ?? null,
+  remarks: item.remarks ?? '',
 });
 
 /**

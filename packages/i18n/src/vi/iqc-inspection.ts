@@ -196,6 +196,9 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     saveBlockedByInvalid: 'Hãy sửa các ô số lượng rồi mới lưu được.',
 
     judgment: 'Đánh giá cuối cùng',
+    overallTitle: 'Đánh giá tổng hợp',
+    remarks: 'Ghi chú',
+    remarksPlaceholder: 'Nhập ghi chú',
     judgmentPlaceholder: 'Hãy chọn đánh giá cuối cùng',
     judgmentUnavailable: 'Danh sách giá trị đánh giá chưa được chuẩn bị. Hãy hỏi người phụ trách.',
     judgmentUnknown: (code: string): string =>

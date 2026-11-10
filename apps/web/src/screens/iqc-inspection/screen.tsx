@@ -78,6 +78,7 @@ import {
 import { MeasurementGrid } from './measurement-grid';
 import { MeasurementSheet } from './measurement-sheet';
 import { PlanDrawings } from './plan-drawings';
+import { RemarksField } from './remarks-field';
 import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   useInspectionItemSpecs,
@@ -323,6 +324,7 @@ const IqcInspectionScreenBody = () => {
   const judgmentOptions = toCodeOptions(judgmentValues.data ?? []);
 
   const [judgment, setJudgment] = useState('');
+  const [remarks, setRemarks] = useState('');
   /*
    * 화면이 자동으로 채운 판정 — 근거가 사라지면(예: 전량 합격 뒤 보류를 넣음) 그 판정을 비워 사람이 고르게 한다. 사람이 고른
    * 판정은 건드리지 않는다(#197 리뷰).
@@ -444,6 +446,8 @@ const IqcInspectionScreenBody = () => {
   };
 
   const storedJudgment = round?.overallJudgmentCode ?? '';
+  /* 회차 비고 — 종합 판정 아래 칸(#247 · 사용자 지시 2026-11-10). */
+  const storedRemarks = round?.remarks ?? '';
 
   /**
    * 회차가 화면에 보일 값. 회차가 없으면 빈 초안이다.
@@ -480,8 +484,9 @@ const IqcInspectionScreenBody = () => {
     setIsReinspecting(false);
     autoFilledJudgment.current = null;
     setJudgment(storedJudgment);
+    setRemarks(storedRemarks);
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
-  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
+  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment, storedRemarks]);
 
   /*
    * 불합격 사유는 «의뢰가 바뀔 때만» 비운다(3단계 검증 버그 · omf-all-around#106). 위 되돌림에 묶여 있으면 저장 응답이
@@ -593,11 +598,13 @@ const IqcInspectionScreenBody = () => {
       ? { ...EMPTY_QUANTITY_DRAFT, accepted: prefilledAccepted }
       : draftOf(round);
   const savedJudgment = isReinspectingNow ? '' : storedJudgment;
+  const savedRemarks = isReinspectingNow ? '' : storedRemarks;
   const hasChanges =
     draft.accepted !== savedDraft.accepted ||
     draft.rejected !== savedDraft.rejected ||
     draft.held !== savedDraft.held ||
     judgment !== savedJudgment ||
+    remarks.trim() !== savedRemarks ||
     (keepsDefects &&
       (hasDefects !== savedHasDefects ||
         (hasDefects && JSON.stringify(defects) !== JSON.stringify(savedDefects)))) ||
@@ -976,6 +983,7 @@ const IqcInspectionScreenBody = () => {
        * 그 쓰기는 되돌릴 수 없다.
        */
       overallJudgmentCode: judgment,
+      remarks: remarks.trim(),
       inspectedAt: now,
       /*
        * 재검사면 앞 회차를 가리킨다 — 이 값이 있어야 서버가 회차를 +1 하고 사슬을 잇는다.
@@ -1126,6 +1134,8 @@ const IqcInspectionScreenBody = () => {
             const rows = rejectionRows();
             confirm.write({
               overallJudgmentCode: judgment,
+              /* 비고를 함께 싣는다 — 판정 변경 사유가 있으면 서버가 실린 비고 앞에 사유를 붙인다. 빼면 저장한 비고가 사라진다(#247). */
+              ...(remarks.trim() === '' ? {} : { remarks: remarks.trim() }),
               ...(rows.length === 0 ? {} : { defects: rows }),
               ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
               ...(fourMValue === undefined ? {} : { fourMChange: fourMValue }),
@@ -1191,6 +1201,15 @@ const IqcInspectionScreenBody = () => {
             ) : null
           }
           measurementSummary={measureSummaryOf(measurementRows, measureDraft)}
+          remarksSlot={
+            isOpenRound ? (
+              <RemarksField
+                value={remarks}
+                onChange={setRemarks}
+                disabled={confirm.isSaving || workerMissing}
+              />
+            ) : null
+          }
           drawingSlot={
             isOpenRound ? <PlanDrawings versionId={detail.data.inspectionPlanVersionId} /> : null
           }
@@ -1264,6 +1283,7 @@ const IqcInspectionScreenBody = () => {
             /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
             setDraft(EMPTY_QUANTITY_DRAFT);
             setJudgment('');
+            setRemarks('');
             setDefects([EMPTY_DEFECT]);
             setSavedDefects([EMPTY_DEFECT]);
             setHasDefects(false);
@@ -1280,6 +1300,7 @@ const IqcInspectionScreenBody = () => {
              */
             setDraft(draftOf(round));
             setJudgment(storedJudgment);
+            setRemarks(storedRemarks);
           }}
         />
       )}

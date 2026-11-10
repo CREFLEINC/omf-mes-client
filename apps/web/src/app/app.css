@@ -32336,6 +32336,10 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-align: start;
 }
 
+.parts-iqc-grid th.parts-iqc-name {
+  white-space: nowrap;
+}
+
 /* 규격은 두 줄 「목표 ±공차」 · 「하한 ~ 상한」. 글은 모두 가운데(실검증 2026-10-30). */
 .parts-iqc-grid td.parts-iqc-spec,
 .parts-iqc-grid th.parts-iqc-spec {

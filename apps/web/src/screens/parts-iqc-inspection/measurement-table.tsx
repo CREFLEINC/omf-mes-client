@@ -110,7 +110,9 @@ export const MeasurementTable = ({
                 <th scope="col" className="parts-iqc-item">
                   {t.dimension.item}
                 </th>
-                <th scope="col">{t.dimension.content}</th>
+                <th scope="col" className="parts-iqc-name">
+                  {t.dimension.content}
+                </th>
                 <th scope="col" className="parts-iqc-spec">
                   {t.dimension.spec}
                 </th>

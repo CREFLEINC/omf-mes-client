@@ -125,6 +125,8 @@ export interface ResultFormPaneProps {
   measurementSlot?: ReactNode;
   /** ① 검사 수량 · 판정 단계의 측정 표 아래 — 기준서 도면(#247 · 부품 화면과 같은 자리). 없으면 두지 않는다 */
   drawingSlot?: ReactNode;
+  /** ① 검사 수량 · 판정 단계의 종합 판정 아래 — 비고(#247 · 사용자 지시 2026-11-10). 없으면 두지 않는다 */
+  remarksSlot?: ReactNode;
   /** ② 판정을 접었을 때 판정 뒤에 붙일 항목 판정 요약(「항목 합격 3 · 불합격 1」). 없으면 판정만 */
   measurementSummary?: string | null;
   /** 4M 변경 정보 — 판정과 다른 업무라 판정 아래 소제목을 두고 따로 선다(#133). 없으면 구획을 두지 않는다 */
@@ -232,6 +234,7 @@ export const ResultFormPane = ({
   fourMSlot = null,
   measurementSlot = null,
   drawingSlot = null,
+  remarksSlot = null,
   measurementSummary = null,
   judgmentHint,
   judgmentBelow = null,
@@ -248,6 +251,7 @@ export const ResultFormPane = ({
   rejectedUncountable = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
+  const overallTitleId = useId();
   const qtyIdBase = useId();
   const partialNoteId = useId();
   /* 꺼진 단계 단추의 사유 글(C-4) — 단추가 aria-describedby 로 잇는다(#197). */
@@ -716,26 +720,28 @@ export const ResultFormPane = ({
           <div className="iqc-inspection-qty-body">{qtyCards}</div>
         ) : (
           <div className="iqc-inspection-step-qty-split">
-            {/* 최종 판정은 수량 칸과 같은 줄 오른쪽(사용자 지시 2026-11-09). */}
+            {/* 수량 줄은 한 줄 그대로 — 종합 판정은 아래 제 구획으로 옮겼다(#247 · 사용자 지시 2026-11-10). */}
             <div className="iqc-inspection-qty-body" data-with-judgment="">
-              {progressCards(judgmentField)}
+              {progressCards(null)}
             </div>
             {renderDefects()}
           </div>
         ))}
+      {/* 부품 화면 순서 — 치수 측정 · 기타 검사 항목 · 텍스트 · 종합 판정 · 비고 · 기준서 도면(#247 · 사용자 지시 2026-11-10). */}
       {step === 1 && measurementSlot}
-      {step === 1 && drawingSlot}
       {step === 1 && (
-        <div className="iqc-inspection-judgment-dialog">
-          <div className="iqc-inspection-step-judgment-row">
-            {/* 수량 줄 오른쪽에 못 세우는 구성(불량 내역을 쓰지 않는 화면)만 여기 둔다. */}
-            {renderDefects === null && judgmentField}
-            {stepConfirm()}
+        <section className="parts-iqc-card iqc-inspection-overall" aria-labelledby={overallTitleId}>
+          <div className="parts-iqc-block-head">
+            <h3 id={overallTitleId}>{t.overallTitle}</h3>
           </div>
+          {judgmentField}
           {hasJudgmentDetail && judgmentBelow}
           {hasJudgmentDetail && judgmentDetail}
-        </div>
+        </section>
       )}
+      {step === 1 && remarksSlot}
+      {step === 1 && drawingSlot}
+      {step === 1 && <div className="iqc-inspection-step-judgment-row">{stepConfirm()}</div>}
       {step === 2 && fourMSlot}
     </section>
   );
