@@ -375,6 +375,7 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
         when={dirty}
         discardTitle={t.dialog.title}
         discardBody={t.dialog.discardConfirm}
+        showCloseButton={false}
       />
       {leaveTo !== null && (
         <Dialog

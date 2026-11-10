@@ -1424,6 +1424,13 @@ describe('IqcInspectionScreen', () => {
       screen.getByRole('textbox', { name: t.measurements.valueLabel('외관', 1) }),
       '양호',
     );
+    /* 글 항목은 판정을 직접 고른다(#247). */
+    await userEvent.click(
+      within(screen.getByRole('group', { name: t.measurements.judgmentLabel('외관') })).getByRole(
+        'button',
+        { name: 'OK' },
+      ),
+    );
 
     expect(screen.getByRole('combobox', { name: t.result.overallTitle })).toHaveTextContent('합격');
   });

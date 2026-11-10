@@ -75,6 +75,24 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
     expect(suggestedJudgmentOf(base)).toBe('ACCEPTED');
     expect(suggestedJudgmentOf({ ...base, checks: ['REJECTED'] })).toBe('REJECTED');
     expect(suggestedJudgmentOf({ ...base, checks: [null] })).toBeNull();
+    /* 필수 항목만 다 적으면 판정한다 — 선택 항목은 비어 있어도 된다(#247). */
+    expect(
+      suggestedJudgmentOf({
+        ...base,
+        checks: [null],
+        requiredDimensions: [true],
+        requiredChecks: [false],
+      }),
+    ).toBe('ACCEPTED');
+    expect(
+      suggestedJudgmentOf({
+        ...base,
+        dimensions: [{ judgment: null, outCount: 0 }],
+        checks: ['ACCEPTED'],
+        requiredDimensions: [true],
+        requiredChecks: [false],
+      }),
+    ).toBeNull();
     expect(
       suggestedJudgmentOf({ ...base, dimensions: [{ judgment: null, outCount: 0 }] }),
     ).toBeNull();

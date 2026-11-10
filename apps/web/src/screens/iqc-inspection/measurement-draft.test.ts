@@ -52,10 +52,9 @@ describe('measurement-draft', () => {
     expect(withValue(picked, dim1, '10.3')[dim1.key]?.judgment).toBe('ACCEPTED');
   });
 
-  it('글 항목은 적으면 합격, 지우면 빈 판정이다', () => {
+  it('글 항목은 적어도 판정을 채우지 않는다 — 검사자가 OK/NG 를 고른다(#247)', () => {
     const written = withValue({}, appear, '양호');
-    expect(written[appear.key]?.judgment).toBe('ACCEPTED');
-    expect(withValue(written, appear, '')[appear.key]?.judgment).toBe('');
+    expect(written[appear.key]?.judgment).toBe('');
   });
 
   it('숫자가 아닌 수치 값 · 반쯤 적은 줄은 저장을 막고, 빈 줄은 막지 않는다', () => {

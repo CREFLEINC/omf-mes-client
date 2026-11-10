@@ -53,6 +53,7 @@ import {
   emptyForm,
   historyReducer,
   numberOf,
+  sameForm,
   startHistory,
   withValue,
   type PartsIqcForm,
@@ -391,6 +392,7 @@ export const InspectionDetail = ({
         <DiscardDialog
           title={t.dialog.title}
           body={t.dialog.discardConfirm}
+          showCloseButton={false}
           onStay={() => setPendingTab(null)}
           onLeave={() => {
             changeDirty(false);
@@ -566,17 +568,15 @@ const InspectionForm = (props: FormProps) => {
   const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
   const form = history.present;
   const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
-  /* 글을 적으면 판정이 비어 있을 때 OK로 채운다 — OA 화면과 같은 규칙(#247). 고른 판정은 덮지 않는다. */
-  const changeText = (item: ItemSpec, text: string) => {
-    const id = item.inspectionItemSpecId;
-    const judged = form.checks[id] ?? null;
-    change({
-      ...form,
-      texts: { ...form.texts, [id]: text },
-      checks:
-        judged === null && text.trim() !== '' ? { ...form.checks, [id]: 'ACCEPTED' } : form.checks,
-    });
-  };
+  /*
+   * 고친 것이 있는가 — 마지막으로 불러오거나 저장한 내용과 견준다. 눌렀다 풀거나 적었다 지우면 고친 것이 아니다
+   * (#247 · 사용자 지시 2026-11-10 — 되돌리기 기록 수로 재면 OK 를 눌렀다 풀어도 [임시 저장]이 켜져 있었다).
+   */
+  const [baseline, setBaseline] = useState(initial);
+  const dirty = !sameForm(form, baseline);
+  /* 텍스트 항목은 글만 남긴다 — 판정은 검사자가 OK/NG 를 직접 고른다(#247 · 사용자 지시 2026-11-10). */
+  const changeText = (item: ItemSpec, text: string) =>
+    change({ ...form, texts: { ...form.texts, [item.inspectionItemSpecId]: text } });
   const inspectedAtId = useId();
   const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
   const inspectedTime = inspectedTimeRaw.slice(0, 5);
@@ -596,6 +596,9 @@ const InspectionForm = (props: FormProps) => {
       inspectedQty: countOf(f.visualInspectedQty),
       dimensions: dims,
       checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
+      /* 필수 항목만 다 적으면 자동 판정 · 종합 판정이 채워진다(#247 · 사용자 지시 2026-11-10). */
+      requiredDimensions: dimensions.map((item) => item.requiredFlag),
+      requiredChecks: checkItems.map((item) => item.requiredFlag),
     };
   };
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
@@ -614,6 +617,7 @@ const InspectionForm = (props: FormProps) => {
   const latestForm = useRef(form);
   latestForm.current = form;
   const saveDraft = useSubmitInspection(() => {
+    setBaseline(latestForm.current);
     dispatch({ type: 'reset', form: latestForm.current });
   });
 
@@ -717,7 +721,7 @@ const InspectionForm = (props: FormProps) => {
    */
   /* 고친 것이 있을 때만 켠다(#247 · 사용자 지시 2026-11-10). */
   const draftBlocked =
-    history.past.length === 0 ||
+    !dirty ||
     props.inspector === null ||
     inspectedQty === null ||
     inspectedQty <= 0 ||
@@ -729,7 +733,6 @@ const InspectionForm = (props: FormProps) => {
     saveDraft.write({ ...variablesOf(overall ?? '', inspectedQty), draftOnly: true });
   };
 
-  const dirty = history.past.length > 0;
   const { onDirtyChange } = props;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 

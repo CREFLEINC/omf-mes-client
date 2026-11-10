@@ -59,6 +59,9 @@ export interface JudgmentInput {
   inspectedQty: number | null;
   dimensions: { judgment: ItemJudgment; outCount: number }[];
   checks: ItemJudgment[];
+  /** 필수 항목 표시 — `dimensions` · `checks` 와 같은 차례. 주지 않으면 모두 필수로 본다. */
+  requiredDimensions?: boolean[];
+  requiredChecks?: boolean[];
 }
 
 /**
@@ -74,13 +77,19 @@ export const rejectedQtyOf = (input: JudgmentInput): number => {
 };
 
 /**
- * 제안 판정 — 하나라도 NG 면 불합격, 모두 OK 면 합격. 다 적지 않았으면 `null`(제출할 수 없다).
+ * 제안 판정 — 적은 항목 중 하나라도 NG 면 불합격. 필수 항목을 모두 적었고 NG 가 없으면 합격 — 선택 항목은 비어 있어도
+ * 된다(#247 · 사용자 지시 2026-11-10). 필수 항목이 하나도 없는 기준은 모든 항목을 적어야 낸다. 아직이면 `null`.
  */
 export const suggestedJudgmentOf = (input: JudgmentInput): 'ACCEPTED' | 'REJECTED' | null => {
   if (input.inspectedQty === null || input.inspectedQty <= 0) return null;
   const parts: ItemJudgment[] = [...input.dimensions.map((d) => d.judgment), ...input.checks];
   if (parts.some((p) => p === REJECTED)) return REJECTED;
-  if (parts.some((p) => p === null)) return null;
+  const required = [
+    ...input.dimensions.map((_, i) => input.requiredDimensions?.[i] ?? true),
+    ...input.checks.map((_, i) => input.requiredChecks?.[i] ?? true),
+  ];
+  const mustFill = required.some(Boolean) ? parts.filter((_, i) => required[i]) : parts;
+  if (mustFill.some((p) => p === null)) return null;
   return ACCEPTED;
 };
 

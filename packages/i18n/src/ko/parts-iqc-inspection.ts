@@ -67,7 +67,7 @@ export const partsIqcInspection = {
     confirmed: (judgment: string) => `이미 확정된 검사입니다 — 판정: ${judgment}`,
     workerMissing:
       '이 계정에 연결된 작업자가 없어 검사자를 정할 수 없습니다. 관리자에게 작업자 연결을 요청하세요.',
-    discardConfirm: '입력한 내용이 저장되지 않습니다. 이 검사를 닫을까요?',
+    discardConfirm: '입력한 내용이 저장되지 않았습니다. 검사를 닫으면 입력값이 모두 사라집니다.',
   },
 
   target: {

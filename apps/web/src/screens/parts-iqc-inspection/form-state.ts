@@ -98,3 +98,29 @@ export const countOf = (text: string): number | null => {
   const trimmed = text.trim();
   return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
 };
+
+/**
+ * 두 입력이 같은 내용인가 — 빈 칸 · 고르지 않은 판정은 없는 것과 같다. OK 를 눌렀다 풀거나 적었다 지우면 처음과 같다
+ * (임시 저장 · 떠날 때 묻기의 기준 · #247 사용자 지시 2026-11-10).
+ */
+export const sameForm = (a: PartsIqcForm, b: PartsIqcForm): boolean => {
+  const key = (form: PartsIqcForm) =>
+    JSON.stringify({
+      ...form,
+      values: Object.fromEntries(
+        Object.entries(form.values)
+          .map(([id, row]) => [id, row.map((text) => text.trim())] as const)
+          .filter(([, row]) => row.some((text) => text !== ''))
+          .map(([id, row]) => [id, row.join('|').replace(/\|+$/, '')]),
+      ),
+      checks: Object.fromEntries(Object.entries(form.checks).filter(([, j]) => j != null)),
+      texts: Object.fromEntries(
+        Object.entries(form.texts)
+          .map(([id, text]) => [id, text.trim()] as const)
+          .filter(([, text]) => text !== ''),
+      ),
+      visualInspectedQty: form.visualInspectedQty.trim(),
+      remarks: form.remarks.trim(),
+    });
+  return key(a) === key(b);
+};
