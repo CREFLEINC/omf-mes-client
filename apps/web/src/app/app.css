@@ -29423,6 +29423,13 @@ table.col-measuring td {
 }
 
 /* 「비고」 소제목은 내용 위에 보조색으로. */
+.iqc-inspection-four-m-remarks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .iqc-inspection-four-m-remarks-label {
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
