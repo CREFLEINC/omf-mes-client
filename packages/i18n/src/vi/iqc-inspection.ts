@@ -356,7 +356,7 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     judgmentLabel: (itemName: string): string => `Phán định ${itemName}`,
     selectPlaceholder: 'Chọn',
     blockedInvalid: 'Kết quả theo hạng mục kiểm tra có giá trị đo không phải là số.',
-    blockedIncomplete: 'Vui lòng chọn phán định cho các hạng mục đã nhập giá trị đo.',
+    blockedIncomplete: 'Với hạng mục không tự động phán định, nếu đã nhập giá trị đo hãy chọn phán định (OK/NG).',
     blockedRequired: 'Cần nhập đủ phán định của các hạng mục bắt buộc để xác nhận.',
     blockedUnsaved: 'Vui lòng lưu tạm kết quả theo hạng mục kiểm tra trước.',
   },

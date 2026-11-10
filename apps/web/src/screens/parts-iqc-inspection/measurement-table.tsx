@@ -1,10 +1,10 @@
-import { Chip } from '@crefle/web-ui';
+import { Chip, Icon } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, type KeyboardEvent } from 'react';
 
 import { numberOf } from './form-state';
-import { acceptanceOf, judgeDimension, judgeValue } from './judgment';
+import { acceptanceOf, judgeDimension, judgeValue, type ItemJudgment } from './judgment';
 
 type ItemSpec = components['schemas']['InspectionItemSpec'];
 
@@ -62,9 +62,17 @@ export interface MeasurementTableProps {
   items: ItemSpec[];
   values: Record<number, string[]>;
   versionAcceptance: number | null;
+  /** 자동 판정이 꺼진 항목의 고른 판정(항목 id → OK/NG). */
+  judgments: Record<number, ItemJudgment>;
   disabled: boolean;
   onChange: (itemId: number, index: number, text: string) => void;
+  onJudge: (itemId: number, judgment: ItemJudgment) => void;
+  /** 저장을 막는 까닭(값만 적고 판정을 고르지 않은 항목) — 없으면 `null`. */
+  blockedNote?: string | null;
 }
+
+/** 기준서에서 자동 판정을 끈 수치 항목 — 값은 받되 판정은 검사자가 OK/NG 로 고른다(#247 · 사용자 지시 2026-11-10). */
+export const isManualDimension = (item: ItemSpec): boolean => item.automaticJudgment === false;
 
 /**
  * 치수 측정(레퍼런스 화면 · 사용자 시안 2026-10-30) — 엑셀처럼 한 표에 항목 · 검사 내용 · 규격 · n1~nN · 판정(검사 내용 #247). 열은 가장 많이 재는 항목의
@@ -76,14 +84,19 @@ export const MeasurementTable = ({
   items,
   values,
   versionAcceptance,
+  judgments,
   disabled,
   onChange,
+  onJudge,
+  blockedNote = null,
 }: MeasurementTableProps) => {
   const columns = Math.max(1, ...items.map((item) => item.measurementCount));
   const bodyRef = useRef<HTMLTableSectionElement>(null);
 
   const filled = items.filter((item) =>
-    (values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
+    isManualDimension(item)
+      ? (judgments[item.inspectionItemSpecId] ?? null) !== null
+      : (values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
   ).length;
 
   /* 열 순서(n1 의 모든 항목 → n2 …)로 다음 칸 — 시료 수가 적은 항목은 그 열에 칸이 없어 건너뛴다. */
@@ -140,12 +153,22 @@ export const MeasurementTable = ({
                 );
                 const { outCount } = judgeDimension(numbers, item, versionAcceptance);
                 const put = numbers.filter((value) => value !== null).length;
-                const state = rowStateOf(
-                  put,
-                  item.measurementCount,
-                  outCount,
-                  acceptanceOf(item, versionAcceptance),
-                );
+                const manual = isManualDimension(item);
+                const picked = judgments[item.inspectionItemSpecId] ?? null;
+                const state: RowState = manual
+                  ? picked === 'REJECTED'
+                    ? 'err'
+                    : picked === 'ACCEPTED'
+                      ? 'done'
+                      : put === 0
+                        ? 'empty'
+                        : 'wait'
+                  : rowStateOf(
+                      put,
+                      item.measurementCount,
+                      outCount,
+                      acceptanceOf(item, versionAcceptance),
+                    );
                 const [nominal, range] = specLines(item);
                 return (
                   <tr
@@ -200,7 +223,30 @@ export const MeasurementTable = ({
                       }
                     >
                       {/* 치수는 규격으로 저절로 판정한다 — 판정 전에는 「자동 판정」 라벨, 판정이 나면 합격 · 불합격 글만(#247 · 사용자 지시 2026-11-10). */}
-                      {state === 'err' ? (
+                      {/* 자동 판정이 꺼진 항목은 기타 검사 항목처럼 OK/NG 를 고른다. 누른 것을 다시 누르면 푼다. */}
+                      {manual ? (
+                        <div
+                          className="parts-iqc-check-row"
+                          role="group"
+                          aria-label={item.inspectionItemName}
+                        >
+                          {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
+                            <Chip
+                              key={value}
+                              variant="filter"
+                              data-judgment={value}
+                              aria-pressed={picked === value}
+                              selected={picked === value}
+                              disabled={disabled}
+                              onSelectedChange={(on) =>
+                                onJudge(item.inspectionItemSpecId, on ? value : null)
+                              }
+                            >
+                              {value === 'ACCEPTED' ? t.ok : t.ng}
+                            </Chip>
+                          ))}
+                        </div>
+                      ) : state === 'err' ? (
                         t.judgment.REJECTED
                       ) : state === 'done' ? (
                         t.judgment.ACCEPTED
@@ -221,6 +267,12 @@ export const MeasurementTable = ({
             </tbody>
           </table>
         </div>
+      )}
+      {blockedNote !== null && (
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {blockedNote}
+        </p>
       )}
     </section>
   );

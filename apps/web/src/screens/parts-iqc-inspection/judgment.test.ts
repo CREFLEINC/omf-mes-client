@@ -117,6 +117,9 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
     expect(serverExpectedOf(1, 0)).toBe('REJECTED');
     expect(serverExpectedOf(0, 0)).toBe('ACCEPTED');
     expect(serverExpectedOf(3, null)).toBeNull();
+    /* 보류로 확정하면 보류 수량이 나가 서버도 보류를 기대한다 — 사유를 받지 않는다(#247). */
+    expect(serverExpectedOf(0, 0, 10)).toBe('HELD');
+    expect(serverExpectedOf(1, 0, 9)).toBe('REJECTED');
   });
 });
 

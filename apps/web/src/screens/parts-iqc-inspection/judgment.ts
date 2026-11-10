@@ -100,7 +100,10 @@ export const suggestedJudgmentOf = (input: JudgmentInput): 'ACCEPTED' | 'REJECTE
 export const serverExpectedOf = (
   rejectedQty: number,
   versionAcceptance: number | null,
-): 'ACCEPTED' | 'REJECTED' | null => {
+  /** 보류로 확정하면 불량이 아닌 수량이 보류 수량으로 나간다 — 서버는 보류 수량이 있으면 보류를 기대한다(#247 클릭 점검). */
+  heldQty = 0,
+): 'ACCEPTED' | 'REJECTED' | 'HELD' | null => {
   if (versionAcceptance === null) return null;
-  return rejectedQty > versionAcceptance ? REJECTED : ACCEPTED;
+  if (rejectedQty > versionAcceptance) return REJECTED;
+  return heldQty > 0 ? HELD : ACCEPTED;
 };

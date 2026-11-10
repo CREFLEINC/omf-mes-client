@@ -83,7 +83,7 @@ import {
   suggestedJudgmentOf,
   type ItemJudgment,
 } from './judgment';
-import { ItemNameCell, MeasurementTable, rowStateOf } from './measurement-table';
+import { isManualDimension, ItemNameCell, MeasurementTable, rowStateOf } from './measurement-table';
 import {
   partsIqcKeys,
   useDrawings,
@@ -621,6 +621,11 @@ const InspectionForm = (props: FormProps) => {
         const row = [...(form.values[spec.inspectionItemSpecId] ?? [])];
         row[m.sampleNo - 1] = String(m.numericValue);
         form.values[spec.inspectionItemSpecId] = row;
+        if (
+          isManualDimension(spec) &&
+          (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
+        )
+          form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
       } else if (kind === 'check') {
         /* 텍스트 항목은 적은 글과 판정으로 남는다(#247). */
         if (m.textValue != null) form.texts[spec.inspectionItemSpecId] = m.textValue;
@@ -656,15 +661,20 @@ const InspectionForm = (props: FormProps) => {
   const changeInspectedAt = (date: string, time: string) =>
     change({ ...form, inspectedAt: date === '' ? '' : `${date}T${time === '' ? '00:00' : time}` });
   const judgmentInputOf = (f: PartsIqcForm) => {
-    const dims = dimensions.map((item) =>
-      judgeDimension(
+    /* 자동 판정이 꺼진 항목은 고른 OK/NG 가 그 항목의 판정이다 — NG 면 불량 1(기타 검사 항목과 같다 · #247 클릭 점검). */
+    const dims = dimensions.map((item) => {
+      if (isManualDimension(item)) {
+        const picked = f.checks[item.inspectionItemSpecId] ?? null;
+        return { judgment: picked, outCount: picked === 'REJECTED' ? 1 : 0 };
+      }
+      return judgeDimension(
         Array.from({ length: item.measurementCount }, (_, i) =>
           numberOf(f.values[item.inspectionItemSpecId]?.[i]),
         ),
         item,
         versionAcceptance,
-      ),
-    );
+      );
+    });
     return {
       inspectedQty: countOf(f.visualInspectedQty),
       dimensions: dims,
@@ -705,17 +715,38 @@ const InspectionForm = (props: FormProps) => {
   const { inspectedQty, dimensions: dimensionResults, checks } = input;
   const suggested = suggestedJudgmentOf(input);
   const rejectedQty = rejectedQtyOf(input);
-  const dimensionStates = dimensions.map((item, index) =>
-    rowStateOf(
-      (form.values[item.inspectionItemSpecId] ?? []).filter((text) => numberOf(text) !== null)
-        .length,
+  const dimensionStates = dimensions.map((item, index) => {
+    const put = (form.values[item.inspectionItemSpecId] ?? []).filter(
+      (text) => numberOf(text) !== null,
+    ).length;
+    if (isManualDimension(item)) {
+      const picked = form.checks[item.inspectionItemSpecId] ?? null;
+      return picked === 'REJECTED'
+        ? 'err'
+        : picked === 'ACCEPTED'
+          ? 'done'
+          : put === 0
+            ? 'empty'
+            : 'wait';
+    }
+    return rowStateOf(
+      put,
       item.measurementCount,
       dimensionResults[index]?.outCount ?? 0,
       acceptanceOf(item, versionAcceptance),
-    ),
+    );
+  });
+  /* 자동 판정이 꺼진 항목에 값만 적고 판정을 고르지 않았으면 저장을 막는다 — 판정 없는 측정값은 서버가 받지 않는다. */
+  const manualUnjudged = dimensions.filter(
+    (item) =>
+      isManualDimension(item) &&
+      (form.checks[item.inspectionItemSpecId] ?? null) === null &&
+      (form.values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
   );
   const overall = chosen ?? suggested;
-  const expected = serverExpectedOf(rejectedQty, versionAcceptance);
+  const heldQtyOf = (judgment: string | null): number =>
+    judgment === 'HELD' && inspectedQty !== null ? Math.max(0, inspectedQty - rejectedQty) : 0;
+  const expected = serverExpectedOf(rejectedQty, versionAcceptance, heldQtyOf(overall));
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
@@ -723,6 +754,9 @@ const InspectionForm = (props: FormProps) => {
     const measuredAt = toOffset(form.inspectedAt);
     const out: SubmitVariables['measurements'] = [];
     dimensions.forEach((item) => {
+      const picked = isManualDimension(item)
+        ? (form.checks[item.inspectionItemSpecId] ?? null)
+        : null;
       for (let i = 0; i < item.measurementCount; i += 1) {
         const value = numberOf(form.values[item.inspectionItemSpecId]?.[i]);
         if (value === null) continue;
@@ -732,7 +766,8 @@ const InspectionForm = (props: FormProps) => {
           inspectionItemSpecId: item.inspectionItemSpecId,
           sampleNo: i + 1,
           numericValue: value,
-          judgmentCode: value < lower || value > upper ? 'REJECTED' : 'ACCEPTED',
+          /* 자동 판정이 꺼진 항목은 고른 판정을 시료마다 싣는다. */
+          judgmentCode: picked ?? (value < lower || value > upper ? 'REJECTED' : 'ACCEPTED'),
           measuredAt,
         });
       }
@@ -771,6 +806,7 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty === null ||
     inspectedQty <= 0 ||
     fourMBlocked ||
+    manualUnjudged.length > 0 ||
     (needsReason && reason.trim() === '');
 
   const variablesOf = (judgment: string, qty: number): SubmitVariables => ({
@@ -811,6 +847,7 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty <= 0 ||
     form.inspectedAt === '' ||
     fourMBlocked ||
+    manualUnjudged.length > 0 ||
     submit.isSaving;
   const onSaveDraft = () => {
     if (draftBlocked || inspectedQty === null) return;
@@ -985,8 +1022,15 @@ const InspectionForm = (props: FormProps) => {
         items={dimensions}
         values={form.values}
         versionAcceptance={versionAcceptance}
+        judgments={form.checks}
         disabled={submit.isSaving}
         onChange={(itemId, index, text) => change(withValue(form, itemId, index, text))}
+        onJudge={(itemId, judgment) =>
+          change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
+        }
+        blockedNote={
+          manualUnjudged.length > 0 ? messages.iqcInspection.measurements.blockedIncomplete : null
+        }
       />
 
       {/* 기타 검사 항목 — 표(No. · 검사 내용 · 측정 결과 · 판정). 비고는 기준서 도면 아래 제 칸으로(#247 · 사용자 지시 2026-11-10). */}

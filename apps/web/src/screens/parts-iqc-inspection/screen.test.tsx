@@ -105,8 +105,10 @@ describe('치수 측정 표', () => {
         items={[item({}), item({ inspectionItemSpecId: 12, sequenceNo: 2, measurementCount: 5 })]}
         values={{ 11: ['6.7', '6.9', '6.7'] }}
         versionAcceptance={0}
+        judgments={{}}
         disabled={false}
         onChange={() => undefined}
+        onJudge={() => undefined}
       />,
     );
     expect(screen.queryByRole('tab')).toBeNull();
@@ -135,6 +137,29 @@ describe('치수 측정 표', () => {
     expect(screen.getByRole('textbox', { name: '항목 2 n4 측정값' })).toBeInTheDocument();
   });
 
+  it('자동 판정이 꺼진 항목은 판정 칸에 OK/NG 를 두고, 고른 판정을 보인다(#247)', async () => {
+    const onJudge = vi.fn();
+    render(
+      <MeasurementTable
+        items={[item({ automaticJudgment: false })]}
+        values={{ 11: ['6.9', '6.9', '6.9'] }}
+        versionAcceptance={0}
+        judgments={{ 11: 'ACCEPTED' }}
+        disabled={false}
+        onChange={() => undefined}
+        onJudge={onJudge}
+      />,
+    );
+    const group = screen.getByRole('group', { name: 'Kích thước ① 6.76±0.10' });
+    expect(within(group).getByRole('button', { name: 'OK' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByText('자동 판정')).toBeNull();
+    await userEvent.click(within(group).getByRole('button', { name: 'NG' }));
+    expect(onJudge).toHaveBeenCalledWith(11, 'REJECTED');
+  });
+
   it('Enter 는 같은 시료의 아래 칸으로, 열의 마지막 칸에서는 다음 시료 열의 첫 칸으로 간다', async () => {
     const user = userEvent.setup();
     render(
@@ -142,8 +167,10 @@ describe('치수 측정 표', () => {
         items={[item({}), item({ inspectionItemSpecId: 12, sequenceNo: 2 })]}
         values={{}}
         versionAcceptance={0}
+        judgments={{}}
         disabled={false}
         onChange={() => undefined}
+        onJudge={() => undefined}
       />,
     );
     await user.click(screen.getByRole('textbox', { name: '항목 1 n1 측정값' }));

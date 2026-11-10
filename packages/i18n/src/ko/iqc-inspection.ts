@@ -543,7 +543,7 @@ export const iqcInspection = {
     selectPlaceholder: '선택',
     /** 저장 · 확정을 막는 사유(#247) — 결과 입력 영역의 안내 줄에 선다. */
     blockedInvalid: '검사 항목별 결과에 숫자가 아닌 측정값이 있습니다.',
-    blockedIncomplete: '검사 항목별 결과에서 측정값을 적은 항목의 판정을 선택해 주세요.',
+    blockedIncomplete: '자동 판정이 아닌 항목은 측정값을 적었으면 판정(OK/NG)도 선택해 주세요.',
     blockedRequired: '필수 검사 항목의 판정을 모두 입력해야 확정할 수 있습니다.',
     blockedUnsaved: '검사 항목별 결과를 먼저 임시 저장해 주세요.',
   },
