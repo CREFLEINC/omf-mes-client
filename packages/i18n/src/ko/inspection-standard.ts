@@ -243,6 +243,9 @@ export const inspectionStandard = {
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
+    /* 검사 안내 문구(#252). */
+    guideText: '안내 문구',
+    guideTextHint: '검사 화면의 기준 정보 바로 아래에 보입니다.',
     /* 샘플을 비율 · 개수 중 무엇으로 받을지 고르는 칩(#196). */
     samplingByRatio: '비율(%)',
     samplingByQty: '수량',
@@ -440,6 +443,8 @@ export const inspectionStandard = {
     inspectionFrequency: '검사 주기',
     frequencyIntervalValue: '검사 주기 값',
     frequencyIntervalUom: '주기 단위',
+    guideTextKo: '안내 문구(한국어)',
+    guideTextVi: '안내 문구(베트남어)',
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',

@@ -81,6 +81,8 @@ export const common = {
   /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
   columnOrderHandle: '끌어서 열 순서 바꾸기',
   inspectionHub: {
+    /** 검사 기준 안내 문구 띠(omf-all-around#252). */
+    guide: '검사 안내',
     label: '검사 의뢰 상태',
     requested: '대기',
     inProgress: '진행',

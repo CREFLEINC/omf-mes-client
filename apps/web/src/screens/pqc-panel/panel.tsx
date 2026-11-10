@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
+import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 import { CODE_GROUPS, toCodeOptions } from '../pqc-inspection/code-options';
@@ -431,6 +432,8 @@ export const PqcPanel = ({
           planVersion={planVersion.data ?? null}
           uomCode={uomCodeOf(target.uomId)}
         />
+        {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
+        <InspectionGuideNotice inspectionPlanVersionId={planVersionId} />
 
         {roundLoadFailed && (
           <QueueLoadErrorBanner
@@ -512,6 +515,8 @@ export const PqcPanel = ({
   return (
     <div className="pqc-panel">
       <PanelTargetHeader detail={target} />
+      {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
+      <InspectionGuideNotice inspectionPlanVersionId={planVersionId} />
 
       {roundLoadFailed && (
         <QueueLoadErrorBanner

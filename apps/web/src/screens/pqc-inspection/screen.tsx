@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -600,6 +601,8 @@ export const PqcInspectionScreen = () => {
       onRetry={outbox.retryNow}
       workerNo={workerNo}
     >
+      {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
+      <InspectionGuideNotice inspectionPlanVersionId={planVersionId} />
       {renderInspect(isConfirmed, planVersionId, detail.data.uomId)}
 
       <ActionBar

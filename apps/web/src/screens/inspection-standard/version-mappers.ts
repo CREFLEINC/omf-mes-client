@@ -1,10 +1,12 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InspectionPlanVersionGuideForward } from '@omf-mes/api-client';
 
 import { FULL_INSPECTION } from './code-options';
 import type { InspectionPlanVersion, VersionFormValues } from './types';
 
-type InspectionPlanVersionCreate = components['schemas']['InspectionPlanVersionCreate'];
-type InspectionPlanVersionUpdate = components['schemas']['InspectionPlanVersionUpdate'];
+type InspectionPlanVersionCreate = components['schemas']['InspectionPlanVersionCreate'] &
+  InspectionPlanVersionGuideForward;
+type InspectionPlanVersionUpdate = components['schemas']['InspectionPlanVersionUpdate'] &
+  InspectionPlanVersionGuideForward;
 
 /** 널·없음을 빈 문자열로 모은다. **0은 빈 문자열이 아니다** — 「지정하지 않음」과 구분해야 한다. */
 const optionalNumberToText = (value: number | null | undefined): string =>
@@ -27,6 +29,8 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   inspectionFrequencyCode: version.inspectionFrequencyCode,
   frequencyIntervalValue: optionalNumberToText(version.frequencyIntervalValue),
   frequencyIntervalUomCode: version.frequencyIntervalUomCode ?? '',
+  guideTextKo: version.guideTextKo ?? '',
+  guideTextVi: version.guideTextVi ?? '',
 });
 
 export const emptyVersionFormValues = (): VersionFormValues => ({
@@ -42,6 +46,8 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   inspectionFrequencyCode: '',
   frequencyIntervalValue: '',
   frequencyIntervalUomCode: '',
+  guideTextKo: '',
+  guideTextVi: '',
 });
 
 /**
@@ -75,6 +81,9 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   inspectionFrequencyCode: values.inspectionFrequencyCode,
   frequencyIntervalValue: optionalTextToNumber(values.frequencyIntervalValue),
   frequencyIntervalUomCode: optionalText(values.frequencyIntervalUomCode),
+  /* 안내 문구(#252) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
+  guideTextKo: optionalText(values.guideTextKo.trim()),
+  guideTextVi: optionalText(values.guideTextVi.trim()),
 });
 
 /**

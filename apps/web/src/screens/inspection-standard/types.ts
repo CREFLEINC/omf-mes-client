@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InspectionPlanVersionForward } from '@omf-mes/api-client';
 
 type InspectionPlanForward = components['schemas']['InspectionPlan'];
 
@@ -12,7 +12,8 @@ type InspectionPlanForward = components['schemas']['InspectionPlan'];
 
 /** 서버 선행 P-152(omf-all-around#212) — `defaultSkip` 을 싣는다. */
 export type InspectionPlan = InspectionPlanForward;
-export type InspectionPlanVersion = components['schemas']['InspectionPlanVersion'];
+/* 안내 문구(#252)는 서버 선행 칸이라 선행 타입을 쓴다. */
+export type InspectionPlanVersion = InspectionPlanVersionForward;
 export type InspectionItemSpec = components['schemas']['InspectionItemSpec'];
 export type PageMeta = components['schemas']['PageMeta'];
 
@@ -72,6 +73,9 @@ export interface VersionFormValues {
   inspectionFrequencyCode: string;
   frequencyIntervalValue: string;
   frequencyIntervalUomCode: string;
+  /** 검사 안내 문구(#252) — 검사 화면이 기준 정보 바로 아래에 보인다. 언어별로 받는다. */
+  guideTextKo: string;
+  guideTextVi: string;
 }
 
 /**

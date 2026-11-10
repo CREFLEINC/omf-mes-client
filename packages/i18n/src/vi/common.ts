@@ -63,6 +63,7 @@ export const common: Translated<typeof ko.common> = {
   },
   columnOrderHandle: 'Kéo để đổi thứ tự cột',
   inspectionHub: {
+    guide: 'Hướng dẫn kiểm tra',
     label: 'Trạng thái yêu cầu kiểm tra',
     requested: 'Chờ',
     inProgress: 'Đang làm',

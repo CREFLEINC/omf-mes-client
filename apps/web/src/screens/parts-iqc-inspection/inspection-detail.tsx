@@ -18,6 +18,7 @@ import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } 
 import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
+import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
@@ -950,6 +951,8 @@ const InspectionForm = (props: FormProps) => {
             <dd>{props.inspector?.workerName ?? '-'}</dd>
           </div>
         </dl>
+        {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
+        <InspectionGuideNotice inspectionPlanVersionId={version.inspectionPlanVersionId} />
 
         <div className="parts-iqc-lot-box" role="group" aria-labelledby="parts-iqc-lot">
           <h4 id="parts-iqc-lot">{t.lot.heading}</h4>

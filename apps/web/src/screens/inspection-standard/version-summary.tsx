@@ -73,14 +73,31 @@ export const VersionSummary = ({
     },
   ];
 
+  /* 안내 문구(#252)는 길 수 있어 요약 줄 아래에 언어별로 따로 보인다 — 둘 다 비면 두지 않는다. */
+  const guides = (['guideTextKo', 'guideTextVi'] as const).filter(
+    (field) => values[field].trim() !== '',
+  );
+
   return (
-    <dl className="inspection-standard-facts-line">
-      {facts.map((fact) => (
-        <div key={fact.label}>
-          <dt className="field-label">{fact.label}</dt>
-          <dd>{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <>
+      <dl className="inspection-standard-facts-line">
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt className="field-label">{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {guides.length > 0 && (
+        <dl className="inspection-standard-guide-line">
+          {guides.map((field) => (
+            <div key={field}>
+              <dt className="field-label">{t.fields[field]}</dt>
+              <dd>{values[field]}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </>
   );
 };

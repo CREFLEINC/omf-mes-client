@@ -76,6 +76,8 @@ export const compareSettings = (
       label: t.fields.frequencyIntervalUom,
       format: (value) => labelOrEmpty(value, labels.frequencyIntervalUom),
     },
+    { key: 'guideTextKo', label: t.fields.guideTextKo, format: text },
+    { key: 'guideTextVi', label: t.fields.guideTextVi, format: text },
   ];
 
   return fields.map(({ key, label, format }) => ({

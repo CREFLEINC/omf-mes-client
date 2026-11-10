@@ -21541,6 +21541,45 @@ button.app-button-neutral {
   color: var(--on-semantic-info-container);
 }
 
+/* 검사 안내 문구(omf-all-around#252) — 줄 전체 폭, 여러 줄이면 줄바꿈 그대로. 아이콘은 첫 줄에 맞춘다. */
+.inspection-guide-note {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.inspection-guide-note > span:first-child {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* 검사 기준 버전 입력 창 · 요약의 안내 문구(#252). */
+.inspection-standard-guide-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.inspection-standard-guide-line {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+.inspection-standard-guide-line dd {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 .iqc-inspection-action-note[data-tone="warning"] {
   background: var(--semantic-warning-container);
   color: var(--on-semantic-warning-container);

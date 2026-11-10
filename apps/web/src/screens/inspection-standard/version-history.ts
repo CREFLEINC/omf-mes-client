@@ -65,6 +65,8 @@ const versionFields = (
       label: t.fields.frequencyIntervalUom,
       format: code(labels.frequencyIntervalUom),
     },
+    guideTextKo: { label: t.fields.guideTextKo, format: raw },
+    guideTextVi: { label: t.fields.guideTextVi, format: raw },
     planVersion: { label: t.fields.planVersion, format: raw },
     statusCode: { label: t.fields.status, format: raw },
   };
