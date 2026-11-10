@@ -54,7 +54,7 @@ export interface MeasurementTableProps {
 }
 
 /**
- * 치수 측정(레퍼런스 화면 · 사용자 시안 2026-10-30) — 엑셀처럼 한 표에 항목 · 규격 · n1~nN · 판정. 열은 가장 많이 재는 항목의
+ * 치수 측정(레퍼런스 화면 · 사용자 시안 2026-10-30) — 엑셀처럼 한 표에 항목 · 검사 내용 · 규격 · n1~nN · 판정(검사 내용 #247). 열은 가장 많이 재는 항목의
  * 시료 수만큼, 항목마다 자기 시료 수까지만 칸이 열린다. 규격을 벗어난 값은 그 칸이 붉다. 판정 칸은 그 항목의 모든 시료
  * 기준이다 — 덜 적은 줄은 「3/5」처럼 잰 수. Enter 는 같은 시료의 아래 칸으로, 열의 마지막 칸에서는 다음 시료 열의 첫 칸으로 간다
  * (스캐너·키보드 입력 흐름 — 시료 하나를 집어 항목을 차례로 잰다).
@@ -110,6 +110,7 @@ export const MeasurementTable = ({
                 <th scope="col" className="parts-iqc-item">
                   {t.dimension.item}
                 </th>
+                <th scope="col">{t.dimension.content}</th>
                 <th scope="col" className="parts-iqc-spec">
                   {t.dimension.spec}
                 </th>
@@ -147,6 +148,7 @@ export const MeasurementTable = ({
                     <th scope="row" title={t.dimension.state[state]}>
                       {position + 1}
                     </th>
+                    <td className="parts-iqc-name">{item.inspectionItemName}</td>
                     <td className="parts-iqc-spec">
                       <span>{nominal || range}</span>
                       {/* 공차 표기가 없는 규격은 위 줄이 이미 범위다 — 같은 말을 두 번 적지 않는다 */}

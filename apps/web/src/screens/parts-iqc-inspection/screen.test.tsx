@@ -112,6 +112,7 @@ describe('치수 측정 표', () => {
     expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
       '항목',
+      '검사 내용',
       '규격',
       'n1',
       'n2',
@@ -126,6 +127,7 @@ describe('치수 측정 표', () => {
     );
     const [first] = screen.getAllByRole('row').slice(1);
     expect(within(first as HTMLElement).getByText('NG')).toBeInTheDocument();
+    expect(within(first as HTMLElement).getByText('Kích thước ① 6.76±0.10')).toBeInTheDocument();
     expect(screen.getByText('1/2 항목')).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '항목 1 n4 측정값' })).toBeNull();
     expect(screen.getByRole('textbox', { name: '항목 2 n4 측정값' })).toBeInTheDocument();

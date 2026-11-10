@@ -32331,6 +32331,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   width: 4rem;
 }
 
+/* 검사 내용 — 항목 이름은 왼쪽 정렬(#247). */
+.parts-iqc-grid td.parts-iqc-name {
+  text-align: start;
+}
+
 /* 규격은 두 줄 「목표 ±공차」 · 「하한 ~ 상한」. 글은 모두 가운데(실검증 2026-10-30). */
 .parts-iqc-grid td.parts-iqc-spec,
 .parts-iqc-grid th.parts-iqc-spec {

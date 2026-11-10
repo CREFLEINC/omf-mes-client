@@ -6,6 +6,8 @@ export interface PartsIqcForm {
   values: Record<number, string[]>;
   /** 기타 합격/불합격 항목 id → 판정 */
   checks: Record<number, ItemJudgment>;
+  /** 기타 항목 중 텍스트 항목 id → 적은 글(#247 · 사용자 지시 2026-11-10) */
+  texts: Record<number, string>;
   visualInspectedQty: string;
   visualDefectQty: string;
   xrf: XrfResult;
@@ -18,6 +20,7 @@ export interface PartsIqcForm {
 export const emptyForm = (): PartsIqcForm => ({
   values: {},
   checks: {},
+  texts: {},
   visualInspectedQty: '',
   visualDefectQty: '0',
   xrf: 'NOT_DONE',

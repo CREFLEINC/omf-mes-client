@@ -98,6 +98,8 @@ export const partsIqcInspection = {
     heading: '치수 측정',
     progress: (done: number, total: number) => `${String(done)}/${String(total)} 항목`,
     item: '항목',
+    /** 규격 왼쪽 — 항목 이름(#247 · 사용자 지시 2026-11-10). */
+    content: '검사 내용',
     spec: '규격',
     sample: (n: number) => `n${String(n)}`,
     judgment: '판정',
@@ -143,6 +145,9 @@ export const partsIqcInspection = {
     checkCount: (n: number) => `${String(n)}개 항목`,
     checkNo: 'No.',
     checkItem: '검사 항목',
+    /** 텍스트 항목의 글 칸(#247 · 사용자 지시 2026-11-10) — 다른 항목 줄은 비어 있다. */
+    checkValue: '측정 결과',
+    checkValueLabel: (name: string) => `${name} 측정 결과`,
     remarks: '비고',
     remarksPlaceholder: '비고를 입력하세요',
     xrfChoice: { NOT_DONE: '미실시', OK: '합격', NG: '불합격' },

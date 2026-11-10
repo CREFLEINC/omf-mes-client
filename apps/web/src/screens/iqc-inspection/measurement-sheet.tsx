@@ -279,7 +279,7 @@ export const MeasurementSheet = ({ rows, dataTypeNames, edit }: MeasurementSheet
         <TypeTable
           key={type}
           type={type}
-          title={dataTypeNames[type] ?? type}
+          title={t.sheetTitles[type] ?? dataTypeNames[type] ?? type}
           rows={typeRows}
           sampleWidth={sampleWidth}
           hasSpec={hasSpec}

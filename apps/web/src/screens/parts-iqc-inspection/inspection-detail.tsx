@@ -426,6 +426,8 @@ interface FormProps {
       sampleNo: number;
       numericValue?: number | null;
       booleanValue?: boolean | null;
+      textValue?: string | null;
+      judgmentCode?: string | null;
     }[];
   } | null;
   onClose: () => void;
@@ -457,6 +459,8 @@ const InspectionForm = (props: FormProps) => {
   const visualItems = specs.filter((s) => kindOf(s) === 'visual');
   const xrfItems = specs.filter((s) => kindOf(s) === 'xrf');
   const checkItems = specs.filter((s) => kindOf(s) === 'check');
+  /* 텍스트 항목이 있으면 기타 검사 항목 표에 글 칸 열을 둔다(#247 · 사용자 지시 2026-11-10). */
+  const hasTextChecks = checkItems.some((s) => s.dataTypeCode === 'TEXT');
   const defaultQty = String(
     sampleQtyOf(request.targetQty, {
       samplingMethodCode: version.samplingMethodCode,
@@ -477,8 +481,14 @@ const InspectionForm = (props: FormProps) => {
         row[m.sampleNo - 1] = String(m.numericValue);
         form.values[spec.inspectionItemSpecId] = row;
       } else if (kind === 'xrf' && m.booleanValue != null) form.xrf = m.booleanValue ? 'OK' : 'NG';
-      else if (kind === 'check' && m.booleanValue != null)
-        form.checks[spec.inspectionItemSpecId] = m.booleanValue ? 'ACCEPTED' : 'REJECTED';
+      else if (kind === 'check') {
+        /* 텍스트 항목은 적은 글과 판정으로 남는다(#247). */
+        if (m.textValue != null) form.texts[spec.inspectionItemSpecId] = m.textValue;
+        if (m.booleanValue != null)
+          form.checks[spec.inspectionItemSpecId] = m.booleanValue ? 'ACCEPTED' : 'REJECTED';
+        else if (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
+          form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
+      }
     }
     return form;
   }, [draft, specs, defaultQty]);
@@ -486,6 +496,17 @@ const InspectionForm = (props: FormProps) => {
   const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
   const form = history.present;
   const change = (next: PartsIqcForm) => dispatch({ type: 'change', next });
+  /* 글을 적으면 판정이 비어 있을 때 OK로 채운다 — OA 화면과 같은 규칙(#247). 고른 판정은 덮지 않는다. */
+  const changeText = (item: ItemSpec, text: string) => {
+    const id = item.inspectionItemSpecId;
+    const judged = form.checks[id] ?? null;
+    change({
+      ...form,
+      texts: { ...form.texts, [id]: text },
+      checks:
+        judged === null && text.trim() !== '' ? { ...form.checks, [id]: 'ACCEPTED' } : form.checks,
+    });
+  };
   const [chosen, setChosen] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -583,7 +604,20 @@ const InspectionForm = (props: FormProps) => {
     if (form.xrf !== 'NOT_DONE') xrfItems.forEach((item) => bool(item, form.xrf === 'OK'));
     checkItems.forEach((item) => {
       const j = form.checks[item.inspectionItemSpecId];
-      if (j != null) bool(item, j === 'ACCEPTED');
+      if (j == null) return;
+      if (item.dataTypeCode !== 'TEXT') {
+        bool(item, j === 'ACCEPTED');
+        return;
+      }
+      /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
+      const text = (form.texts[item.inspectionItemSpecId] ?? '').trim();
+      out.push({
+        inspectionItemSpecId: item.inspectionItemSpecId,
+        sampleNo: 1,
+        ...(text === '' ? {} : { textValue: text }),
+        judgmentCode: j,
+        measuredAt,
+      });
     });
     return out;
   };
@@ -1051,6 +1085,7 @@ const InspectionForm = (props: FormProps) => {
                   <tr>
                     <th scope="col">{t.visual.checkNo}</th>
                     <th scope="col">{t.visual.checkItem}</th>
+                    {hasTextChecks && <th scope="col">{t.visual.checkValue}</th>}
                     <th scope="col">{t.dimension.judgment}</th>
                   </tr>
                 </thead>
@@ -1059,6 +1094,19 @@ const InspectionForm = (props: FormProps) => {
                     <tr key={item.inspectionItemSpecId}>
                       <td>{index + 1}</td>
                       <td>{item.inspectionItemName}</td>
+                      {hasTextChecks && (
+                        <td className="parts-iqc-check-value">
+                          {item.dataTypeCode === 'TEXT' && (
+                            <TextField
+                              fullWidth
+                              aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
+                              value={form.texts[item.inspectionItemSpecId] ?? ''}
+                              maxLength={200}
+                              onChange={(event) => changeText(item, event.target.value)}
+                            />
+                          )}
+                        </td>
+                      )}
                       <td>
                         <div
                           className="parts-iqc-check-row"

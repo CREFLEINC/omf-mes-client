@@ -324,8 +324,12 @@ export const iqcInspection: Translated<typeof ko.iqcInspection> = {
     filterLabel: 'Lọc theo đánh giá',
     filterAll: 'Tất cả',
     sampleOf: (sampleNo: number): string => `Lần ${String(sampleNo)}`,
-    booleanTrue: 'Tốt',
-    booleanFalse: 'Lỗi',
+    booleanTrue: 'OK',
+    booleanFalse: 'NG',
+    sheetTitles: { NUMERIC: 'Đo kích thước', BOOLEAN: 'Hạng mục kiểm tra khác' } as Record<
+      string,
+      string
+    >,
     range: (lower: number, upper: number): string => `${lower} ~ ${upper}`,
     atLeast: (lower: number): string => `${lower} trở lên`,
     atMost: (upper: number): string => `${upper} trở xuống`,

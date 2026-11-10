@@ -495,9 +495,11 @@ export const iqcInspection = {
     filterAll: '전체',
     /** 「2회차」 — 이 항목을 기준이 정한 횟수만큼 잴 때 몇 번째인가(#133). */
     sampleOf: (sampleNo: number): string => `${String(sampleNo)}회차`,
-    /** 예/아니오 항목의 결과(#133). */
-    booleanTrue: '양호',
-    booleanFalse: '불량',
+    /** 예/아니오 항목의 결과 — 부품 화면과 같은 OK · NG(#247 · 사용자 지시 2026-11-10). */
+    booleanTrue: 'OK',
+    booleanFalse: 'NG',
+    /** 입력표 제목 — 수치는 「치수 측정」, 선택형은 「기타 검사 항목」(부품 화면과 같은 이름 · 사용자 지시 2026-11-10). 텍스트는 유형 이름 그대로 */
+    sheetTitles: { NUMERIC: '치수 측정', BOOLEAN: '기타 검사 항목' } as Record<string, string>,
     /**
      * 규격 — **한쪽만 있는 것도 규격이다.** 계약이 상하한을 「둘 다 있을 때만」 견주므로
      * 한쪽만 있는 항목이 정상이고, 「9.9 이상」 같은 공차는 실제 검사기준에 흔하다.

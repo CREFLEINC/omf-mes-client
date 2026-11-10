@@ -23,14 +23,14 @@ const render = (specs: Parameters<typeof toMeasurementRows>[0]) =>
   );
 
 describe('MeasurementSheet', () => {
-  it('수치 · 선택형 · 텍스트를 표로 나누고, 규격 열은 수치 표에만 둔다', () => {
+  it('치수 측정 · 기타 검사 항목 · 텍스트를 표로 나누고, 규격 열은 치수 측정 표에만 둔다', () => {
     render([appearanceSpec, flagSpec, dimensionSpec]);
 
     const tables = screen.getAllByRole('table');
     expect(tables).toHaveLength(3);
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
-      '수치',
-      '선택형',
+      '치수 측정',
+      '기타 검사 항목',
       '텍스트',
     ]);
     const [numeric, flag] = tables as [HTMLElement, HTMLElement, HTMLElement];
