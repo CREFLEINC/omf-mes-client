@@ -47,6 +47,10 @@ const reasons = {
   PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
   QTY_REMAINING: '남은 수량 계획 필요',
   AUTO_PLAN_RERUN_NEEDED: '생산계획 자동 전개 다시 실행 필요',
+  /** 목록 판정(worklistReasons)의 작성중 계획. 자동 계획 사유 PLAN_NOT_CONFIRMED 와 같은 일이다. */
+  DRAFT_PLAN_PENDING: '생산계획 확정 필요',
+  /** 목록 판정(worklistReasons)의 확정 계획량 부족. 자동 계획 사유 QTY_REMAINING 과 같은 일이다. */
+  PLAN_QTY_REMAINING: '남은 수량 계획 필요',
   NO_LIVE_WORK_ORDER: '계획 추가 필요',
   WORK_ORDER_LINE_MISSING: 'W/O 생산 라인 지정 필요',
   WORK_ORDER_LOCATION_MISSING: 'W/O 기본 위치 지정 필요',
@@ -67,6 +71,15 @@ export interface ReasonDetail {
 /** 「배포 전 W/O N건」. 수를 모르면 「배포 전 W/O 가운데 일부」로 말한다. */
 const pendingWorkOrders = (count: number | undefined): string =>
   count === undefined ? '배포 전 W/O 가운데 일부' : `배포 전 W/O ${String(count)}건`;
+
+/**
+ * 확정 계획량이 주문 수량에 못 미칠 때의 도움말. 수량을 알면(처리 화면) 수량으로, 모르면(목록) 말로 한다.
+ * 자동 계획 사유 QTY_REMAINING 과 목록 사유 PLAN_QTY_REMAINING 이 같은 일이라 함께 쓴다.
+ */
+const qtyRemainingHelp = ({ orderQty, plannedQty, uom = '' }: ReasonDetail): string =>
+  orderQty !== undefined && plannedQty !== undefined
+    ? `주문 ${`${orderQty} ${uom}`.trim()} 중 ${`${plannedQty} ${uom}`.trim()}만 계획되었습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`
+    : `확정한 계획 수량이 주문 수량보다 적습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`;
 
 export const erpWorkOrderFlow = {
   title: SCREEN_NAME,
@@ -111,12 +124,12 @@ export const erpWorkOrderFlow = {
       `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 생산계획 자동 전개를 다시 실행해야 합니다.`,
     PLAN_NOT_CONFIRMED: (): string =>
       `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
-    QTY_REMAINING: ({ orderQty, plannedQty, uom = '' }: ReasonDetail): string =>
-      orderQty !== undefined && plannedQty !== undefined
-        ? `주문 ${`${orderQty} ${uom}`.trim()} 중 ${`${plannedQty} ${uom}`.trim()}만 계획되었습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`
-        : `확정한 계획 수량이 주문 수량보다 적습니다. ${steps.plan} 단계에서 남은 수량을 계획해야 합니다.`,
+    QTY_REMAINING: (detail: ReasonDetail): string => qtyRemainingHelp(detail),
     AUTO_PLAN_RERUN_NEEDED: (): string =>
       '기준정보가 갖춰졌거나 생산계획 자동 전개가 실패했습니다. 처리 화면 오른쪽 위 [생산계획 자동 전개 다시 실행]을 눌러야 합니다.',
+    DRAFT_PLAN_PENDING: (): string =>
+      `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
+    PLAN_QTY_REMAINING: (detail: ReasonDetail): string => qtyRemainingHelp(detail),
     NO_LIVE_WORK_ORDER: (): string =>
       `확정한 계획의 W/O가 없거나 모두 취소되었습니다. ${steps.plan} 단계에서 [${planButtons.add}]로 필요한 수량을 다시 계획하고 [${planButtons.confirm}]을 눌러야 합니다.`,
     WORK_ORDER_LINE_MISSING: ({ workOrderCount }: ReasonDetail): string =>
@@ -298,6 +311,15 @@ export const erpWorkOrderFlow = {
       enter: (plan: string, fieldWithJosa: string): string =>
         `${plan}의 ${fieldWithJosa} 입력하세요`,
       chooseLine: (plan: string): string => `${plan}의 라인을 고르세요`,
+      /**
+       * 작성중 계획은 품목의 지금 ERP 기본 BOM 만 쓸 수 있다(서버 `BOM_NOT_DEFAULT`). BOM·Routing 은 계획 편집 영역에
+       * 칸이 없어, 비면 칸 오류 대신 이 문장으로 막힌 까닭을 알린다(omf-all-around#249).
+       */
+      planBomMissing: (plan: string): string =>
+        `${plan}에 쓸 ERP 기본 BOM이 하나로 정해지지 않아 저장할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요`,
+      planRoutingMissing: (plan: string): string =>
+        `${plan}에 쓸 Routing이 정해지지 않아 저장할 수 없습니다. BOM·Routing 단계를 확인하세요`,
+      saveFailed: '계획을 저장하지 못했습니다. 오류를 확인하세요',
       qtyShort: (qty: string): string => `계획 수량이 ${qty} 부족합니다. 계획을 추가하세요`,
       canProceed: (stepWithJosa: string): string => `${stepWithJosa} 진행할 수 있습니다`,
       checking: '배포 가능 여부를 확인하는 중입니다',

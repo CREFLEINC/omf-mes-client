@@ -9,8 +9,7 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     'Xem từng sự kiện đã gửi thông báo chưa, nếu không thì vì sao, và kết quả Zalo theo người nhận.',
   panes: { dispatches: 'Kết quả xử lý sự kiện', deliveries: 'Chi tiết gửi Zalo' },
   filters: {
-    from: 'Từ ngày',
-    to: 'Đến ngày',
+    period: 'Khoảng thời gian',
     event: 'Sự kiện',
     department: 'Phòng ban',
     result: 'Kết quả',
@@ -42,7 +41,7 @@ export const dispatchHistory: Translated<typeof ko.dispatchHistory> = {
     expired: number,
     noPhone: number,
   ): string =>
-    `Thành công ${String(sent)} · Thất bại ${String(failed)} · Chờ ${String(pending)} · Hết hạn ${String(expired)} · Không số ${String(noPhone)}`,
+    `Thành công ${String(sent)}, Thất bại ${String(failed)}, Chờ ${String(pending)}, Hết hạn ${String(expired)}, Không số ${String(noPhone)}`,
   columns: {
     occurredAt: 'Thời điểm phát sinh',
     event: 'Sự kiện',

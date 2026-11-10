@@ -19,7 +19,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
-import { useLoadFailure } from '../../patterns/load-failure';
+import { useLoadFailure, useSaveRefusal } from '../../patterns/load-failure';
 import {
   canConfirm,
   completedQtyOf,
@@ -49,6 +49,8 @@ interface Handed {
 export const WipHandoverScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
+  /* 단말 탓 거절은 다시 보내도 같다 — 서버가 실은 까닭을 보이고 [다시 보내기]를 두지 않는다(omf-all-around#202). */
+  const saveRefusal = useSaveRefusal();
 
   const navigate = useNavigate();
   const online = useOnlineStatus();
@@ -337,11 +339,17 @@ export const WipHandoverScreen = () => {
 
           <section className="handover__section">
             {confirm.isError ? (
-              <AlertBanner variant="error" title={t.failed.title}>
-                <Button variant="text" onClick={submit}>
-                  {t.failed.retry}
-                </Button>
-              </AlertBanner>
+              saveRefusal(confirm.error) === null ? (
+                <AlertBanner variant="error" title={t.failed.title}>
+                  <Button variant="text" onClick={submit}>
+                    {t.failed.retry}
+                  </Button>
+                </AlertBanner>
+              ) : (
+                <AlertBanner variant="error" title={t.failed.title}>
+                  {saveRefusal(confirm.error)}
+                </AlertBanner>
+              )
             ) : null}
             <Button
               className="handover__wide"

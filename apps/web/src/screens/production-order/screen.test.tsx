@@ -14,6 +14,12 @@ import { reasonHelpText, reasonLabel } from './worklist-chips';
 
 const t = messages.erpWorkOrderFlow;
 const path = (request: Request) => new URL(request.url).pathname;
+/** ERP W/O 단위 사유 — 서버가 workOrderCount 를 0 으로 준다. */
+const PLAN_LEVEL_REASONS = new Set([
+  'DRAFT_PLAN_PENDING',
+  'PLAN_QTY_REMAINING',
+  'NO_LIVE_WORK_ORDER',
+]);
 const page = (items: unknown[]) => ({ items, page: { page: 1, size: 20, total: items.length } });
 
 const order = (
@@ -388,6 +394,16 @@ describe('작업지시 목록 작업함', () => {
       '계획 추가 필요',
       '확정한 계획의 W/O가 없거나 모두 취소되었습니다. 생산계획 단계에서 [계획 추가]로 필요한 수량을 다시 계획하고 [계획 확정 후 4M 배정]을 눌러야 합니다.',
     ],
+    [
+      'DRAFT_PLAN_PENDING',
+      '생산계획 확정 필요',
+      '작성 중인 생산계획이 있습니다. 생산계획 단계에서 계획을 확정해야 합니다.',
+    ],
+    [
+      'PLAN_QTY_REMAINING',
+      '남은 수량 계획 필요',
+      '확정한 계획 수량이 주문 수량보다 적습니다. 생산계획 단계에서 남은 수량을 계획해야 합니다.',
+    ],
     ['NEW_CODE', '조치 필요(NEW_CODE)', '처리 화면을 열어 남은 일을 확인해야 합니다.'],
   ])(
     '생산계획 자동 전개가 끝났는데 막힌 사유 %s는 칩 「%s」와 도움말로 보인다',
@@ -398,7 +414,7 @@ describe('작업지시 목록 작업함', () => {
         { status: 'DONE', reasons: [] },
         2,
         'ACTION_REQUIRED',
-        [{ code, workOrderCount: code === 'NO_LIVE_WORK_ORDER' ? 0 : 2 }],
+        [{ code, workOrderCount: PLAN_LEVEL_REASONS.has(code) ? 0 : 2 }],
       );
       render({ orders: [blocked] });
 

@@ -60,6 +60,8 @@ export const REASON_STEP: Record<WorklistReason, ProcessStepKey> = {
   PLAN_NOT_CONFIRMED: 'plan',
   QTY_REMAINING: 'plan',
   AUTO_PLAN_RERUN_NEEDED: 'plan',
+  DRAFT_PLAN_PENDING: 'plan',
+  PLAN_QTY_REMAINING: 'plan',
   NO_LIVE_WORK_ORDER: 'plan',
   WORK_ORDER_LINE_MISSING: 'assign',
   WORK_ORDER_LOCATION_MISSING: 'assign',

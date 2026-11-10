@@ -2,13 +2,13 @@ import {
   AlertBanner,
   Breadcrumb,
   Button,
+  DatePicker,
   EmptyState,
   PageHeader,
   Skeleton,
-  TextField,
   type SelectItems,
 } from '@crefle/web-ui';
-import { messages } from '@omf-mes/i18n';
+import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -42,6 +42,8 @@ const t = messages.dispatchHistory;
 export const DispatchHistoryScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const fieldId = useId();
+  /* 기간 오류 문구. [조회]를 잠그는 사유이기도 해서 단추가 이 문구를 가리킨다(C-4). */
+  const periodReasonId = `${fieldId}-period-reason`;
   const applied = readPeriod(searchParams);
   const appliedFilters = readFilters(searchParams);
   const page = readPage(searchParams);
@@ -238,19 +240,26 @@ export const DispatchHistoryScreen = () => {
       />
 
       <div className="filter-bar">
-        <TextField
-          type="date"
-          label={t.filters.from}
-          value={period.from}
-          onChange={(event) => setPeriod((prev) => ({ ...prev, from: event.target.value }))}
-        />
-        <TextField
-          type="date"
-          label={t.filters.to}
-          value={period.to}
-          onChange={(event) => setPeriod((prev) => ({ ...prev, to: event.target.value }))}
-          error={draftReason ?? undefined}
-        />
+        <div className="field-cell">
+          <label className="field-label" htmlFor={`${fieldId}-period`}>
+            {t.filters.period}
+          </label>
+          <DatePicker
+            id={`${fieldId}-period`}
+            mode="range"
+            clearable
+            placeholder={messages.common.selectDate}
+            invalid={draftReason !== null}
+            aria-describedby={draftReason === null ? undefined : periodReasonId}
+            value={[period.from === '' ? null : period.from, period.to === '' ? null : period.to]}
+            onChange={(value) => setPeriod({ from: value?.[0] ?? '', to: value?.[1] ?? '' })}
+          />
+          {draftReason !== null && (
+            <span id={periodReasonId} className="field-error">
+              {draftReason}
+            </span>
+          )}
+        </div>
         {selectField(
           'event',
           t.filters.event,
@@ -271,7 +280,7 @@ export const DispatchHistoryScreen = () => {
           filters.department,
           (departments.data ?? []).map((item) => ({
             value: String(item.departmentId),
-            label: `${item.departmentCode} · ${item.departmentName}`,
+            label: named(item.departmentName, item.departmentCode),
           })),
           (value) => setFilters((prev) => ({ ...prev, department: value })),
         )}
@@ -286,7 +295,11 @@ export const DispatchHistoryScreen = () => {
           (value) => setFilters((prev) => ({ ...prev, result: value })),
         )}
         <div className="filter-actions">
-          <Button disabled={draftReason !== null} onClick={search}>
+          <Button
+            disabled={draftReason !== null}
+            aria-describedby={draftReason === null ? undefined : periodReasonId}
+            onClick={search}
+          >
             {t.filters.search}
           </Button>
         </div>

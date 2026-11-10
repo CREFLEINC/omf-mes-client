@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { rememberPlant } from '../../patterns/plant';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { WipHandoverScreen } from './screen';
 
@@ -71,6 +72,8 @@ interface Options {
   goodQty?: number | null;
   /** 인계 확정을 실패시킨다. 재시도 경로를 밟기 위한 것이다. */
   failConfirm?: boolean;
+  /** 인계 확정을 이 문구의 401 로 거절한다(단말 유형 불일치, #202). 토큰 확인은 살아 있다고 답한다. */
+  refuseConfirm?: string;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -123,6 +126,17 @@ const routes = (options: Options = {}): StubRoute[] => [
     respond: (req) => {
       options.seen?.push(req.clone());
 
+      if (options.refuseConfirm !== undefined) {
+        return jsonResponse(
+          {
+            errors: [
+              { scope: 'screen', code: 'PERMISSION_DENIED', message: options.refuseConfirm },
+            ],
+          },
+          { status: 401 },
+        );
+      }
+
       if (options.failConfirm === true) {
         return jsonResponse({ code: 'SERVER_ERROR', message: '실패' }, { status: 500 });
       }
@@ -134,6 +148,11 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/mdm/items',
     respond: () =>
       jsonResponse({ items: [{ itemId: 31, itemCode: 'ABC-123', itemName: '완제품A' }], page }),
+  },
+  {
+    /* 401 의 까닭을 가리는 토큰 확인(load-failure). 답이 오면 토큰은 살아 있다. */
+    match: (req) => new URL(req.url).pathname === '/mdm/workers',
+    respond: () => jsonResponse({ items: [], page }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
@@ -526,6 +545,26 @@ describe('WIP 공정 이동 화면', () => {
     expect(posted).toHaveLength(1);
   });
 
+  it('단말 유형이 맞지 않아 거절되면 서버가 실은 까닭을 보이고 다시 보내기를 두지 않는다(#202)', async () => {
+    const REFUSAL =
+      '이 기능은 POP 단말에서만 쓸 수 있습니다(지금 단말: PDA(모바일 단말)) — POP 단말에서 하세요.';
+    await rememberPlant(7);
+    const user = userEvent.setup();
+    mount({ refuseConfirm: REFUSAL });
+    await screen.findByLabelText(/LOT 스캔/);
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
+    await user.type(screen.getByLabelText(/인계 수량/), '100');
+    await user.click(screen.getByRole('button', { name: '인계 확정' }));
+
+    expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
+    expect(screen.getByText('인계하지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 보내기' })).toBeNull();
+  });
+
   it('확정하면 출발·도착 W/O 와 사번을 싣는다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
@@ -606,5 +645,4 @@ describe('WIP 공정 이동 화면', () => {
 
     expect(await screen.findByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toBeTruthy();
   });
-
 });

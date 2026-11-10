@@ -25,7 +25,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { FailureBanner } from '../../patterns/failure-banner';
-import { useLoadFailure } from '../../patterns/load-failure';
+import { useLoadFailure, useSaveRefusal } from '../../patterns/load-failure';
 import {
   useDefectRecords,
   useDispatchRepair,
@@ -83,6 +83,8 @@ const codeLabel = (
 export const RepairRoundtripScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
+  /* 단말 탓 거절은 다시 시도해도 같다 — 서버가 실은 까닭을 보인다(omf-all-around#202). */
+  const saveRefusal = useSaveRefusal();
 
   const online = useOnlineStatus();
   const { worker } = useWorkerSession();
@@ -367,7 +369,7 @@ export const RepairRoundtripScreen = () => {
             ) ? (
             <AlertBanner variant="warning" title={t.dispatch.already} />
           ) : (
-            <AlertBanner variant="error" title={t.dispatch.failed} />
+            <AlertBanner variant="error" title={saveRefusal(dispatch.error) ?? t.dispatch.failed} />
           )}
           <div className="action-bar">
             <Button
@@ -462,7 +464,9 @@ export const RepairRoundtripScreen = () => {
 
           {/* 수리분은 원 LOT 으로 돌아가지 않는다. 이 화면이 그다음을 약속하지 않는다. */}
           <p className="repair__note">{t.return.afterNote}</p>
-          {returning.isError ? <AlertBanner variant="error" title={t.return.error} /> : null}
+          {returning.isError ? (
+            <AlertBanner variant="error" title={saveRefusal(returning.error) ?? t.return.error} />
+          ) : null}
           <div className="action-bar">
             <Button
               className="repair__submit"

@@ -54,6 +54,8 @@ interface World {
   /** 서버 칩 판정. 시험 도중 바꿔 머리가 다시 읽는지 본다. */
   worklistState?: string;
   worklistReasons?: { code: string; workOrderCount: number }[];
+  /** 서버 확정 계획량. W/O 가 모두 취소된 확정 계획은 빠진다. 주지 않으면 키를 뺀다. */
+  confirmedPlanQty?: number;
   /** 품목의 ERP 품목그룹. 주지 않으면 서버가 이 칸을 모르는 것처럼 키를 뺀다. */
   itemGroupCode?: string | null;
   /** 주문의 ERP 원번호. 주지 않으면 제목 번호와 다른 `ERP-701`이다. */
@@ -113,6 +115,7 @@ const orderBody = (state: World) => ({
   autoPlan: state.autoPlan,
   ...(state.worklistState === undefined ? {} : { worklistState: state.worklistState }),
   ...(state.worklistReasons === undefined ? {} : { worklistReasons: state.worklistReasons }),
+  ...(state.confirmedPlanQty === undefined ? {} : { confirmedPlanQty: state.confirmedPlanQty }),
 });
 
 const planBody = (plan: Plan) => ({
@@ -411,6 +414,92 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
       'aria-disabled',
       'true',
     );
+  });
+
+  it('W/O 가 모두 취소된 확정 계획은 확정 계획량에서 빠져, 생산계획 단계로 열고 남은 수량을 말한다(#246)', async () => {
+    /* 확정 계획 둘(200 + 100) 가운데 100 의 W/O 가 모두 취소됐다. 서버 확정 계획량은 200 이다. */
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [
+          { ...CONFIRMED_PLAN, plannedQty: 200 },
+          { ...CONFIRMED_PLAN, productionPlanId: 502, planNo: 'PP-502', plannedQty: 100 },
+        ],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+        confirmedPlanQty: 200,
+        worklistState: 'ACTION_REQUIRED',
+        worklistReasons: [{ code: 'PLAN_QTY_REMAINING', workOrderCount: 0 }],
+      }),
+    );
+    await currentStep(tp.steps.plan);
+    const chip = await screen.findByText(t.reasons.PLAN_QTY_REMAINING);
+    expect(chip.closest('button')).toHaveAccessibleDescription(
+      /주문 300.* 중 200.*만 계획되었습니다/,
+    );
+  });
+
+  it('계획 수량 합계와 [계획 추가] 기본 생산량은 W/O 가 모두 취소된 확정 계획을 빼고 센다(#250)', async () => {
+    const user = userEvent.setup();
+    /* 확정 계획 둘(200 + 100) 가운데 100 의 W/O 가 모두 취소됐다. 서버 확정 계획량은 200 이다. */
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        autoPlan: { status: 'DONE', reasons: [] },
+        plans: [
+          { ...CONFIRMED_PLAN, plannedQty: 200 },
+          { ...CONFIRMED_PLAN, productionPlanId: 502, planNo: 'PP-502', plannedQty: 100 },
+        ],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+        confirmedPlanQty: 200,
+        worklistState: 'ACTION_REQUIRED',
+        worklistReasons: [{ code: 'PLAN_QTY_REMAINING', workOrderCount: 0 }],
+      }),
+    );
+    await currentStep(tp.steps.plan);
+    expect(document.querySelector('.erp-wo-plan-total')).toHaveTextContent(
+      /^계획 수량 합계 200 \/ 300/,
+    );
+
+    await user.click(screen.getByRole('button', { name: tp.plan.add }));
+    const qty = await screen.findByRole('textbox', {
+      name: (name) => name.startsWith('신규 계획') && name.includes(tp.plan.columns.plannedQty),
+    });
+    expect(qty).toHaveValue('100');
+    expect(document.querySelector('.erp-wo-plan-total')).toHaveTextContent(
+      /^계획 수량 합계 300 \/ 300/,
+    );
+    /* 작성중 50 이면 확정 200 + 50 이라 50 이 모자란다(취소된 100 을 세면 다 찬 것으로 보였다). */
+    await user.clear(qty);
+    await user.type(qty, '50');
+    expect(document.body).toHaveTextContent(tp.remaining.qtyShort('50'));
+  });
+
+  it('기본 BOM 이 없는 품목은 [계획 추가] 줄을 보내지 않고 막힌 까닭을 알린다(#249)', async () => {
+    const user = userEvent.setup();
+    /* BOM 11 은 기본 BOM 이 아니다. 서버는 작성중 계획에 기본 BOM 만 받는다(BOM_NOT_DEFAULT). */
+    const state = world({
+      boms: [{ ...(world().boms[0] as Record<string, unknown>), isDefault: false }],
+      plans: [{ ...CONFIRMED_PLAN, plannedQty: 200 }],
+      workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+      confirmedPlanQty: 200,
+    });
+    const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+    await currentStep(tp.steps.plan);
+
+    await user.click(screen.getByRole('button', { name: tp.plan.add }));
+    const blocked = tp.remaining.planBomMissing(tp.plan.newRow(2));
+    expect(await screen.findByText(blocked)).toBeVisible();
+    expect(screen.getByRole('link', { name: tp.links.bom })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: tp.plan.saveDraft }));
+    const alert = await screen.findByText(tp.plan.failedTitle);
+    expect(alert.closest('[role="alert"], .alert-banner') ?? document.body).toHaveTextContent(
+      blocked,
+    );
+    expect(document.body).not.toHaveTextContent(tp.remaining.canProceed('4M 배정으로'));
+    expect(server.writes).toEqual([]);
+    expect(state.plans).toHaveLength(1);
   });
 
   it('처음 여는 단계는 데이터의 첫 미완료 단계다', async () => {
