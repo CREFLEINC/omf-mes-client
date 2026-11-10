@@ -102,6 +102,23 @@ describe('ItemFormDialog — 차단과 경고', () => {
     expect(screen.getByLabelText('항목명')).not.toHaveAttribute('aria-invalid', 'true');
   });
 
+  /* 사용자 결정 2026-11-10 — 수치 항목만 단위가 필수다. */
+  it('수치 항목이면 단위가 필수 표시되고, 비어 있으면 오류 상태다', () => {
+    renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode: 'NUMERIC', uomId: '' } });
+
+    const uom = screen.getByRole('combobox', { name: '검사 단위' });
+    expect(uom).toHaveAttribute('aria-required', 'true');
+    expect(uom).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it.each(['TEXT', 'BOOLEAN'])('%s 항목이면 단위는 선택이다', (dataTypeCode) => {
+    renderDialog({ values: { ...savedDrafts()[0]!, dataTypeCode, uomId: '' } });
+
+    const uom = screen.getByRole('combobox', { name: '검사 단위' });
+    expect(uom).not.toHaveAttribute('aria-required');
+    expect(uom).not.toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('차단 오류는 그 칸 옆에 낸다', () => {
     renderDialog({
       fieldErrors: {

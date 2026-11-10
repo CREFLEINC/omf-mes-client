@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { FieldLabel } from './field-label';
+import { NUMERIC_DATA_TYPE } from './item-validation';
 import { SelectField } from './select-field';
 import type { ItemDraft, SelectOption } from './types';
 
@@ -37,8 +38,8 @@ export interface ItemFormDialogProps {
  * 확인은 표(로컬 초안)에만 반영하고 서버 반영은 「저장」 한 번뿐이다(공유계약 A-5).
  * 그 사실을 창 안에서 밝힌다 — 밝히지 않으면 확인을 누르고 창을 닫은 사용자가 저장된 줄 안다.
  *
- * **조건부 필수·조건부 표시를 만들지 않는다.** 계약의 `dataTypeCode` 값 목록이 [추정]이라
- * 자료형으로 표시를 가르면 지어낸 값에 화면 구조가 매달린다 — 단위·목표값·상하한은 항상 보이고 항상 선택이다.
+ * **조건부 표시를 만들지 않는다** — 단위·목표값·상하한은 항상 보인다.
+ * 조건부 필수는 하나뿐이다: 검사값 유형이 수치(NUMERIC)면 단위가 필수다(사용자 결정 2026-11-10).
  */
 export const ItemFormDialog = ({
   open,
@@ -78,6 +79,7 @@ export const ItemFormDialog = ({
       ? { error: requiredMessage, containerClassName: 'inspection-standard-border-only' }
       : {};
   };
+  const uomRequired = values.dataTypeCode === NUMERIC_DATA_TYPE;
 
   return (
     <Dialog
@@ -150,11 +152,13 @@ export const ItemFormDialog = ({
 
         <SelectField
           label={t.fields.uom}
+          required={uomRequired}
           options={[{ value: '', label: t.values.empty }, ...uomOptions]}
           value={values.uomId}
           placeholder={ph.uom}
           onChange={(uomId) => onChange({ uomId })}
-          error={fieldErrors.uomId}
+          error={shownError('uomId')}
+          invalid={uomRequired && isBlank(values.uomId)}
         />
 
         {/*

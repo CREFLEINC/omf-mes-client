@@ -28,6 +28,9 @@ const isBlank = (value: string): boolean => value === '';
 
 const POSITIVE_INTEGER = /^\d+$/;
 
+/** 단위가 필수인 검사값 유형 — 공통코드 `INSPECTION_ITEM_SPEC_DATA_TYPE` 의 「수치」. */
+export const NUMERIC_DATA_TYPE = 'NUMERIC';
+
 /**
  * **저장을 막는** 검사 셋.
  *
@@ -65,6 +68,11 @@ export const validateItemDraft = (
   // 서버가 공통코드로 검사하는 필수 값이다 — 비우면 저장이 거절된다(omf-all-around#194).
   if (isBlank(draft.dataTypeCode)) {
     errors.dataTypeCode = t.required;
+  }
+
+  // 수치 항목은 단위가 필수다 — 텍스트·불리언은 선택(사용자 결정 2026-11-10 · 서버도 같은 검사로 거절한다).
+  if (draft.dataTypeCode === NUMERIC_DATA_TYPE && isBlank(draft.uomId)) {
+    errors.uomId = t.required;
   }
 
   // 계약이 둘 다 있을 때만 성립하는 제약으로 정했다 — 한쪽만 있으면 막지 않는다.
