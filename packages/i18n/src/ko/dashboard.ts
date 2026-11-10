@@ -490,10 +490,12 @@ export const dashboard = {
     openItemDisposition: (item: string): string => `${item} 처분 판정 보기`,
     repeatedItemsLine: '반복 부적합 품목',
     lastOpenedOn: (date: string): string => `최근 발생 ${date}`,
-    repeatedItemsNote: '같은 품목 2건 이상, 선별로 생긴 부적합 포함',
+    /** 앞에 기간 이름표(당월 · 선택 기간)를 붙인다 — 「갱신 시점」 칸 안의 기간 누계 숫자다. */
+    repeatedItemsNote: (period: string): string =>
+      `${period} 같은 품목 2건 이상, 선별로 생긴 부적합 포함`,
     itemUnit: '품목',
     sortedLots: '선별 처분 LOT',
-    sortedLotsNote: '원래 검사 LOT 기준',
+    sortedLotsNote: (period: string): string => `${period} 처분, 원래 검사 LOT 기준`,
     ncRate: '부적합 판정률',
     ncRateNote: (input: string): string => `IQC 재검 투입 ${input} EA 중 불합격`,
     absent: '품질 현황이 이 응답에 오지 않았습니다.',

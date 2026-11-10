@@ -439,7 +439,7 @@ const EquipmentDetailDialog = ({ item, onClose }: EquipmentDetailDialogProps) =>
                 ) : (
                   <RankBars
                     entries={extra.stopReasons.map((reason) => ({
-                      key: reason.reasonCode ?? '',
+                      key: `reason:${reason.reasonCode ?? ''}`,
                       label: reason.reasonName ?? t.reasonUnknown,
                       value: reason.durationMs,
                     }))}

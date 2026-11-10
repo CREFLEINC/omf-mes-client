@@ -32,7 +32,9 @@ describe('품질 탭', () => {
     };
     const { unmount } = render(<QualityOverviewTab quality={data} />);
     const current = screen.getByRole('region', { name: t.currentTitle });
-    expect(current).toHaveTextContent(`${t.repeatedItemsLine}${t.repeatedItemsNote}3${t.itemUnit}`);
+    expect(current).toHaveTextContent(
+      `${t.repeatedItemsLine}${t.repeatedItemsNote(t.tagMonth)}3${t.itemUnit}`,
+    );
     unmount();
 
     const iqc = render(<IqcTab quality={data} />);
@@ -43,7 +45,7 @@ describe('품질 탭', () => {
       },
     );
     expect(sorted).toBeEnabled();
-    expect(sorted).toHaveTextContent(`${t.sortedLotsNote}2${t.lotUnit}`);
+    expect(sorted).toHaveTextContent(`${t.sortedLotsNote(t.tagMonth)}2${t.lotUnit}`);
     iqc.unmount();
 
     render(<IqcTab quality={base} />);
@@ -157,7 +159,7 @@ describe('품질 탭', () => {
       </>,
     );
 
-    const allowed = [t.sortedLots, t.repeatedItemsNote];
+    const allowed = [t.sortedLots, t.repeatedItemsNote(t.tagMonth)];
     const strip = (text: string) =>
       allowed.reduce((rest, phrase) => rest.split(phrase).join(''), text);
     expect(strip(container.textContent ?? '')).not.toContain('선별');

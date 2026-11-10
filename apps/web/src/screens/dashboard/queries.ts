@@ -121,7 +121,7 @@ export const useDashboardQualityLots = (
 };
 
 /**
- * 제품군별 불량 현황(omf-all-around#251) — 종합 불량률 칸을 눌러 창이 열렸을 때만 부른다. 조건은 대시보드와 같은 기간 ·
+ * 제품군별 불량 현황(omf-all-around#251) — 「상세 보기」로 창이 열렸을 때만 부른다. 조건은 대시보드와 같은 기간 ·
  * 공장. 창이 열린 동안 자동 갱신은 걸지 않는다(상태별 LOT 목록과 같다).
  */
 export const useDashboardItemGroupDefects = (

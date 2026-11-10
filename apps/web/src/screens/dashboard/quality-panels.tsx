@@ -709,7 +709,7 @@ export const QualityOverviewTab = ({
                       {
                         key: 'repeated',
                         label: t.repeatedItemsLine,
-                        note: t.repeatedItemsNote,
+                        note: t.repeatedItemsNote(tags.month),
                         value: formatFigure(quality.nonconformance.repeatedItemCount),
                         unit: t.itemUnit,
                         tone: countTone(quality.nonconformance.repeatedItemCount, 'warning'),
@@ -887,7 +887,7 @@ export const IqcTab = ({
                       {
                         key: 'sorted',
                         label: t.sortedLots,
-                        note: t.sortedLotsNote,
+                        note: t.sortedLotsNote(tags.month),
                         value: formatFigure(iqc.sortedLotCount),
                         unit: t.lotUnit,
                         selectable: iqc.sortedLotCount > 0,

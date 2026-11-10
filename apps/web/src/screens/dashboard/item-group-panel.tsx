@@ -67,9 +67,9 @@ export const ItemGroupPanel = ({
     production === null || groups === undefined || groups.length === 0
       ? []
       : [
-          ...groups.map((group) => ({ ...group, key: group.itemGroupCode ?? '' })),
+          ...groups.map((group) => ({ ...group, key: `group:${group.itemGroupCode ?? ''}` })),
           {
-            key: 'sum',
+            key: 'sum:',
             sum: true,
             itemGroupCode: null,
             itemGroupName: null,
@@ -183,7 +183,7 @@ export const ItemGroupDefectsDialog = ({
         </div>
         <ul aria-label={t.dialogTitle}>
           {data.groups.map((group) => (
-            <li key={group.itemGroupCode ?? ''} className="dash-group-row">
+            <li key={`group:${group.itemGroupCode ?? ''}`} className="dash-group-row">
               <section aria-label={groupNameOf(group)} className="dash-group-section">
                 <h3 className="dash-group-name">{groupNameOf(group)}</h3>
                 <span className="dash-group-rate">{rateText(group.defectRate)}</span>

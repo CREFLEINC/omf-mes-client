@@ -428,10 +428,11 @@ export const dashboard: Translated<typeof ko.dashboard> = {
     openItemDisposition: (item: string): string => `Xem phán định xử lý ${item}`,
     repeatedItemsLine: 'Mặt hàng NC lặp lại',
     lastOpenedOn: (date: string): string => `Phát sinh gần nhất ${date}`,
-    repeatedItemsNote: 'Cùng mặt hàng từ 2 lần, gồm NC phát sinh do tuyển lọc',
+    repeatedItemsNote: (period: string): string =>
+      `${period}: cùng mặt hàng từ 2 lần, gồm NC phát sinh do tuyển lọc`,
     itemUnit: 'mặt hàng',
     sortedLots: 'LOT xử lý tuyển lọc',
-    sortedLotsNote: 'Theo LOT kiểm tra gốc',
+    sortedLotsNote: (period: string): string => `${period}: xử lý, theo LOT kiểm tra gốc`,
     ncRate: 'Tỷ lệ phán định NC',
     ncRateNote: (input: string): string => `Không đạt trong ${input} EA tái kiểm IQC`,
     absent: 'Phản hồi này không có tình trạng chất lượng.',
