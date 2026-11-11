@@ -290,7 +290,6 @@ export const inspectionStandard = {
     effectivePeriod: '적용 기간',
     noEnd: '종료일 미설정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
-    lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
     tabItems: '검사 항목',
     editSettings: '버전 설정 수정',
     /* 버전 카드의 「버전별 설정」 세 줄 · 「버전 이력」 창(사용자 시안 · omf-all-around#258). */

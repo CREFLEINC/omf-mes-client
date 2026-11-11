@@ -252,7 +252,8 @@ export const ItemPane = ({
               live
               icon={<Icon name="content_paste_off" size={32} />}
               title={t.empty.itemNoneTitle}
-              description={isEditable ? t.empty.itemNoneDescription : t.versionSection.lockedHint}
+              /* 고칠 수 없는 버전에는 설명을 두지 않는다 — 안내는 상태 표시 오른쪽 한 줄(사용자 지시 · #258). */
+              description={isEditable ? t.empty.itemNoneDescription : undefined}
             />
           }
         />
