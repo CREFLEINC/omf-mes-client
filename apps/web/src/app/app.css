@@ -993,14 +993,6 @@ main > * + * {
   margin-top: var(--space-3);
 }
 
-.inspection-standard-history-range {
-  display: inline-flex;
-}
-
-.inspection-standard-history > .inspection-standard-history-range {
-  justify-self: end;
-}
-
 /* 변경 내용 — 바뀐 칸마다 한 줄(이름 왼쪽 · 「전 → 후」 오른쪽), 줄 사이 옅은 선(사용자 시안 · #196). */
 .inspection-standard-history-changes {
   margin: 0;
@@ -1336,16 +1328,6 @@ h2:has(> .inspection-standard-dialog-title) {
 .inspection-standard-version-settings-block {
   display: grid;
   gap: var(--space-2);
-}
-
-.inspection-standard-version-settings-block > .inspection-standard-setting-head {
-  padding-bottom: 0;
-}
-
-.inspection-standard-settings-block-title {
-  flex: 1 1 auto;
-  margin: 0;
-  font: var(--type-title-sm);
 }
 
 .inspection-standard-facts-grid {

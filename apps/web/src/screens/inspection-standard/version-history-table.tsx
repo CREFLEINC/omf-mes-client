@@ -1,4 +1,4 @@
-import { Chip, type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
+import { type Column, EmptyState, Icon, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -13,8 +13,6 @@ const t = messages.inspectionStandard;
 export interface VersionHistoryTableProps {
   inspectionPlanVersionId: number;
   labels: CompareLabels;
-  /** 조회 기간 표기를 표 위 오른쪽에 둔다 — 창에서는 제목 줄이 대신 말한다(#196). */
-  showRange?: boolean;
 }
 
 /**
@@ -24,7 +22,6 @@ export interface VersionHistoryTableProps {
 export const VersionHistoryTable = ({
   inspectionPlanVersionId,
   labels,
-  showRange = false,
 }: VersionHistoryTableProps) => {
   const history = useVersionHistory(inspectionPlanVersionId);
   const events = history.data?.items ?? [];
@@ -97,13 +94,6 @@ export const VersionHistoryTable = ({
 
   return (
     <div className="inspection-standard-history">
-      {showRange && (
-        <span className="inspection-standard-history-range">
-          <Chip variant="status" size="sm" status="idle">
-            {t.history.range}
-          </Chip>
-        </span>
-      )}
       <div className="inspection-queue-table inspection-standard-table-box inspection-standard-history-rows">
         <Table
           density="compact"

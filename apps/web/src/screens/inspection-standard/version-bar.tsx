@@ -1,5 +1,6 @@
 import { Button, Chip, Dialog, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { resolveVersionStatus } from './plan-version-status';
 import { VersionPane, VersionPrimaryAction, type VersionPaneProps } from './version-pane';
@@ -19,6 +20,8 @@ export interface VersionBarProps extends VersionPaneProps {
   /** 「버전 목록」 창이 열렸는가 — 화면이 쥔다(신규 버전 발행에 성공하면 창을 닫는다 · #196). */
   isListOpen: boolean;
   onListOpenChange: (open: boolean) => void;
+  /** 「버전 이력」 오른쪽 — 「버전 설정 수정」(작성중 버전에서만 · 사용자 지시 omf-all-around#258). */
+  versionActions?: ReactNode;
   /** 「버전 이력」 창을 연다 — 고른 버전이 있을 때만 넘긴다(종전 「이력」 탭 · omf-all-around#258). */
   onHistory?: () => void;
   /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 서지 않는다(#208). */
@@ -28,6 +31,7 @@ export interface VersionBarProps extends VersionPaneProps {
 export const VersionBar = ({
   isListOpen,
   onListOpenChange,
+  versionActions,
   onHistory,
   onCompare,
   ...props
@@ -93,6 +97,7 @@ export const VersionBar = ({
               {t.versionSection.history}
             </Button>
           )}
+          {versionActions}
           {/*
            * 작성중 버전을 보고 있으면 발행 단추를 두지 않는다 — 이미 고칠 수 있는 판이다(사용자 지시 · #196).
            * 작성중 버전이 따로 있으면 이 줄에는 단추도 안내도 두지 않는다 — 확정 버전을 보는 자리에 그 안내는

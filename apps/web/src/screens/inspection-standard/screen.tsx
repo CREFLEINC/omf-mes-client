@@ -1530,6 +1530,18 @@ export const InspectionStandardScreen = () => {
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
+      /* 「버전 설정 수정」은 「버전 이력」 오른쪽(사용자 지시 · #258) — 작성중 버전에서만. */
+      versionActions={
+        versionStatus?.isEditable === true && versionCreateValues === null ? (
+          <Button
+            variant="outlined"
+            leadingIcon={<Icon name="edit" size={18} />}
+            onClick={() => setIsVersionEditOpen(true)}
+          >
+            {t.versionSection.editSettings}
+          </Button>
+        ) : undefined
+      }
       onHistory={
         selectedVersionId !== null && versionStatus !== null
           ? () => setIsHistoryOpen(true)
@@ -1931,18 +1943,6 @@ export const InspectionStandardScreen = () => {
       <>
         <VersionSummary
           values={versionFormState.baseline}
-          /* 「버전 설정 수정」은 「버전 설정」 제목 줄 오른쪽(사용자 시안 · #258) — 작성중 버전에서만. */
-          action={
-            versionStatus.isEditable ? (
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="edit" size={18} />}
-                onClick={() => setIsVersionEditOpen(true)}
-              >
-                {t.versionSection.editSettings}
-              </Button>
-            ) : undefined
-          }
           inspectionFrequencyOptions={optionsFor(
             inspectionFrequencyOptions,
             versionFormState.baseline.inspectionFrequencyCode,
@@ -1966,7 +1966,17 @@ export const InspectionStandardScreen = () => {
           <Dialog
             open
             size="lg"
-            title={t.versionSection.history}
+            /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). */
+            title={
+              <span className="inspection-standard-dialog-title">
+                {t.versionSection.history}
+                <span className="inspection-standard-dialog-title-chips">
+                  <Chip variant="status" size="sm" status="idle">
+                    {t.history.range}
+                  </Chip>
+                </span>
+              </span>
+            }
             showCloseButton={false}
             onClose={() => setIsHistoryOpen(false)}
             footer={
@@ -1978,7 +1988,6 @@ export const InspectionStandardScreen = () => {
             <VersionHistoryTable
               inspectionPlanVersionId={selectedVersionId}
               labels={compareLabels}
-              showRange
             />
           </Dialog>
         )}

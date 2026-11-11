@@ -2885,7 +2885,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     /* 변경 이력은 「버전 이력」 창에서 본다 — 종전 「이력」 탭을 창으로 옮겼다(#258 사용자 지시). */
     expect(screen.queryByRole('tab', { name: /이력/ })).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: '버전 이력' }));
-    const dialog = await screen.findByRole('dialog', { name: '버전 이력' });
+    const dialog = await screen.findByRole('dialog', { name: /^버전 이력/ });
 
     expect(await within(dialog).findByText('버전 설정')).toBeInTheDocument();
     expect(within(dialog).getByText('AQL')).toBeInTheDocument();

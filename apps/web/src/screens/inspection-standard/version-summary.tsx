@@ -9,8 +9,6 @@ const t = messages.inspectionStandard;
 export interface VersionSummaryProps {
   /** 저장된 값(편집 중인 초안이 아니다) — 요약은 서버에 있는 사실을 말한다. */
   values: VersionFormValues;
-  /** 「버전 설정」 제목 줄 오른쪽 단추 — 「버전 설정 수정」(작성중 버전에서만 · 사용자 시안 omf-all-around#258). */
-  action?: ReactNode;
   /** 검사 주기 · 주기 단위 선택지 — 공통코드에서 받은 것(버전 폼과 같은 출처 · #194). */
   inspectionFrequencyOptions: SelectOption[];
   frequencyIntervalUomOptions: SelectOption[];
@@ -31,7 +29,6 @@ const orNotSet = (value: string): string => (value === '' ? t.versionSection.not
  */
 export const VersionSummary = ({
   values,
-  action,
   inspectionFrequencyOptions,
   frequencyIntervalUomOptions,
 }: VersionSummaryProps) => {
@@ -82,13 +79,11 @@ export const VersionSummary = ({
 
   /* 지시문(#252)은 「버전별 설정」의 「검사 지시문」 줄로 옮겼다(사용자 시안 · omf-all-around#258). */
   return (
-    <section className="inspection-standard-version-settings-block">
-      <div className="inspection-standard-setting-head">
-        <h3 className="inspection-standard-settings-block-title">
-          {t.versionSection.settingsBlockTitle}
-        </h3>
-        {action}
-      </div>
+    /* 「버전 설정」 제목 글은 두지 않는다(사용자 지시 · #258) — 구획 이름은 화면 낭독기에만. 「버전 설정 수정」은 머리 줄 「버전 이력」 오른쪽. */
+    <section
+      className="inspection-standard-version-settings-block"
+      aria-label={t.versionSection.settingsBlockTitle}
+    >
       <dl className="inspection-standard-facts-grid">
         {facts.map((fact) => (
           <div key={fact.label}>
