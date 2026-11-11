@@ -86,4 +86,23 @@ describe('지시문 수정', () => {
     await userEvent.click(save);
     expect(onSave).toHaveBeenCalledWith('장갑 착용\n도면 3번');
   });
+
+  /* DS TextArea 는 maxLength 로 입력을 막지 않는다 — 3000자를 넘으면 저장을 막고 칸에 알린다. */
+  it('3000자를 넘으면 저장을 막고 알린다', async () => {
+    render(
+      <VersionGuideDialog
+        field="guideTextKo"
+        initialText=""
+        isSaving={false}
+        banner={null}
+        onSave={() => {}}
+        onClose={() => {}}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole('textbox'));
+    await userEvent.paste('가'.repeat(3001));
+    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(screen.getByText(t.versionSection.guideTooLong(3000))).toBeInTheDocument();
+  });
 });

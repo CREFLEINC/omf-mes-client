@@ -35,6 +35,8 @@ export const VersionGuideDialog = ({
 }: VersionGuideDialogProps) => {
   const [text, setText] = useState(initialText);
   const isDirty = text.trim() !== initialText.trim();
+  /* DS TextArea 는 maxLength 로 입력을 막지 않는다 — 넘으면 저장을 막고 칸에 알린다. */
+  const isTooLong = text.trim().length > GUIDE_TEXT_MAX;
   return (
     <Dialog
       open
@@ -48,7 +50,7 @@ export const VersionGuideDialog = ({
           <Button variant="outlined" disabled={isSaving} onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button loading={isSaving} disabled={isSaving || !isDirty} onClick={() => onSave(text)}>
+          <Button loading={isSaving} disabled={isSaving || !isDirty || isTooLong} onClick={() => onSave(text)}>
             {messages.common.save}
           </Button>
         </>
@@ -63,7 +65,7 @@ export const VersionGuideDialog = ({
         maxLength={GUIDE_TEXT_MAX}
         showCount
         onChange={(event) => setText(event.target.value)}
-        error={error}
+        error={isTooLong ? t.versionSection.guideTooLong(GUIDE_TEXT_MAX) : error}
       />
     </Dialog>
   );

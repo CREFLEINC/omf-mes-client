@@ -251,6 +251,7 @@ export const inspectionStandard = {
     /** 버전 요약의 언어별 안내 문구 수정 단추 · 그 창 제목(#252). */
     guideEdit: '수정',
     editGuide: (label: string): string => `${label} 수정`,
+    guideTooLong: (max: number): string => `${max.toLocaleString()}자까지 적을 수 있습니다.`,
     /* 샘플을 비율 · 개수 중 무엇으로 받을지 고르는 칩(#196). */
     samplingByRatio: '비율(%)',
     samplingByQty: '수량',

@@ -223,6 +223,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     guideText: 'Hướng dẫn',
     guideEdit: 'Sửa',
     editGuide: (label: string): string => `Sửa ${label.toLowerCase()}`,
+    guideTooLong: (max: number): string => `Tối đa ${max.toLocaleString()} ký tự.`,
     samplingByRatio: 'Tỷ lệ (%)',
     samplingByQty: 'Số lượng',
     samplingBasis: 'Chọn cách lấy mẫu',
