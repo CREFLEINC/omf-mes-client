@@ -82,4 +82,4 @@ export type WorklistFilter = (typeof WORKLIST_FILTERS)[number];
 export const isWorklistFilter = (value: string | null): value is WorklistFilter =>
   WORKLIST_FILTERS.some((state) => state === value);
 
-export const DEFAULT_WORKLIST_FILTER: WorklistFilter = 'ACTION_REQUIRED';
+export const DEFAULT_WORKLIST_FILTER: WorklistFilter = 'ALL';

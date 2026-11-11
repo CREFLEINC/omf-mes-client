@@ -8,8 +8,9 @@ import {
 } from './worklist-filters';
 
 describe('작업함 주소 조건', () => {
-  it('빈 주소는 기본 조건(조치 필요, 1쪽, 20건)이고 기본값은 주소에 쓰지 않는다', () => {
+  it('빈 주소는 기본 조건(전체, 1쪽, 20건)이고 기본값은 주소에 쓰지 않는다', () => {
     expect(readWorklistFilters(new URLSearchParams())).toEqual(DEFAULT_WORKLIST_FILTERS);
+    expect(readWorklistFilters(new URLSearchParams()).state).toBe('ALL');
     expect(toWorklistSearchParams(DEFAULT_WORKLIST_FILTERS).toString()).toBe('');
   });
 
@@ -31,7 +32,7 @@ describe('작업함 주소 조건', () => {
     expect(stateOf('autoPlan=DONE')).toBe('RELEASE_PENDING');
     expect(stateOf('autoPlan=NEEDS_REVIEW')).toBe('ACTION_REQUIRED');
     expect(stateOf('autoPlan=ALL')).toBe('ALL');
-    expect(stateOf('autoPlan=X')).toBe('ACTION_REQUIRED');
+    expect(stateOf('autoPlan=X')).toBe('ALL');
     expect(stateOf('state=ALL&autoPlan=DONE')).toBe('ALL');
   });
 
