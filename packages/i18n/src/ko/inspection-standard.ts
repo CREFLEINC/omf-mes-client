@@ -265,6 +265,10 @@ export const inspectionStandard = {
     pqcSkipOn: '적용',
     pqcSkipOff: '미적용',
     close: '닫기',
+    /* 상세 정보 상자의 칸 이름 — 여부를 묻는 값임을 밝힌다(사용자 지시 · #258). 등록 · 수정 창의 이름은 그대로. */
+    defaultSkipLabel: '기본 생략 여부',
+    approvalLabel: '승인 여부',
+    activeLabel: '사용 여부',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
@@ -295,7 +299,10 @@ export const inspectionStandard = {
     rowDrawings: '검사 도면',
     rowDrawingsCount: (count: number): string => `등록된 도면 ${String(count)}건`,
     rowGuide: '검사 지시문',
-    guideNone: '등록된 지시문 없음',
+    /* 지시문 · 도면 빈 상태 — 검사 항목 빈 상태와 같은 모양(사용자 지시 · #258). */
+    guideNoneTitle: '등록된 지시문이 없습니다',
+    guideNoneDescription: '지시문을 등록하세요.',
+    drawingsNoneDescription: '도면을 등록하세요.',
     guideEditAction: '지시문 수정',
     history: '버전 이력',
     drawingsLoading: '도면을 불러오는 중',
@@ -387,7 +394,6 @@ export const inspectionStandard = {
   },
   versionBar: {
     label: '버전',
-    placeholder: '버전을 선택하세요',
     openList: '버전 목록',
     close: '닫기',
   },

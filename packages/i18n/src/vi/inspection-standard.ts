@@ -233,6 +233,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     pqcSkipOn: 'Áp dụng',
     pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
+    defaultSkipLabel: 'Có bỏ qua mặc định',
+    approvalLabel: 'Trạng thái phê duyệt',
+    activeLabel: 'Trạng thái sử dụng',
   },
   versionSection: {
     /* 검사 안내 문구(#252). */
@@ -258,7 +261,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     rowDrawings: 'Bản vẽ kiểm tra',
     rowDrawingsCount: (count: number): string => `Đã đăng ký ${String(count)} bản vẽ`,
     rowGuide: 'Chỉ thị kiểm tra',
-    guideNone: 'Chưa đăng ký chỉ thị',
+    guideNoneTitle: 'Chưa có chỉ thị',
+    guideNoneDescription: 'Hãy đăng ký chỉ thị.',
+    drawingsNoneDescription: 'Hãy đăng ký bản vẽ.',
     guideEditAction: 'Sửa chỉ thị',
     history: 'Lịch sử phiên bản',
     drawingsLoading: 'Đang tải bản vẽ',
@@ -346,7 +351,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   },
   versionBar: {
     label: 'Phiên bản',
-    placeholder: 'Hãy chọn phiên bản',
     openList: 'Danh sách phiên bản',
     close: 'Đóng',
   },

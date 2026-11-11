@@ -2897,21 +2897,17 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
   });
 
-  /* 「버전별 설정」 줄은 한 번에 하나만 펼친다 — 종전 탭과 같다(사용자 시안 · omf-all-around#258). */
-  it('버전별 설정은 검사 항목을 펼쳐 두고, 다른 줄을 누르면 그 줄로 옮기고 다시 누르면 접는다', async () => {
-    const { user } = renderSelectedVersion([]);
+  /* 「버전별 설정」은 접고 펴지 않는다 — 검사 항목 · 지시문 · 도면이 늘 보인다(사용자 지시 · omf-all-around#258). */
+  it('버전별 설정은 검사 항목 · 검사 지시문 · 검사 도면 순서로 늘 보인다', async () => {
+    renderSelectedVersion([]);
 
     await awaitVersionForm();
-    const items = screen.getByRole('button', { name: /검사 항목/, expanded: true });
-    const drawings = screen.getByRole('button', { name: /검사 도면/, expanded: false });
-
-    await user.click(drawings);
-    expect(drawings).toHaveAttribute('aria-expanded', 'true');
-    expect(items).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('region', { name: '검사 항목' })).not.toBeInTheDocument();
-
-    await user.click(drawings);
-    expect(drawings).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('region', { name: '검사 항목' })).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll('.inspection-standard-setting-title')).map(
+        (title) => title.textContent,
+      ),
+    ).toEqual(['검사 항목', '검사 지시문', '검사 도면']);
   });
 
   /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교가 서지 않는다. */
@@ -3256,7 +3252,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.click(within(uomPicker).getByRole('button', { name: '확인' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
+    await user.click(screen.getByRole('button', { name: '임시 저장' }));
     await screen.findByText('저장했습니다');
 
     const put = requests.find(
@@ -3304,7 +3300,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await user.click(screen.getByRole('option', { name: '측정' }));
     await user.click(within(dialogNode).getByRole('button', { name: '확인' }));
 
-    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
+    await user.click(screen.getByRole('button', { name: '임시 저장' }));
     await screen.findByText('저장했습니다');
 
     const put = requests.find(
@@ -3339,7 +3335,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
     await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
-    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
+    await user.click(screen.getByRole('button', { name: '임시 저장' }));
 
     await waitFor(() => {
       expect(
@@ -3377,7 +3373,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
     await user.click(within(itemPane()).getByRole('button', { name: '2번 항목 삭제' }));
-    await user.click(within(itemPane()).getByRole('button', { name: '임시 저장' }));
+    await user.click(screen.getByRole('button', { name: '임시 저장' }));
 
     expect(await screen.findByText('SYN-ITEM-CODE-01 · 서버가 고친 이름')).toBeInTheDocument();
     // 서버 채번 값(100)이 아니라 목록 안의 위치를 낸다.
@@ -3398,7 +3394,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findAllByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
-    expect(within(itemPane()).getByRole('button', { name: '임시 저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '임시 저장' })).toBeDisabled();
     expect(
       screen.getByText(
         '항목 저장은 저장할 수 없는 항목이 섞여 있으면 할 수 없습니다. 표에서 그 항목을 수정하세요.',
@@ -3417,7 +3413,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
       target: { value: '40' },
     });
 
-    expect(within(itemPane()).getByRole('button', { name: '임시 저장' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '임시 저장' })).toBeDisabled();
     expect(
       screen.getByText(
         '항목 저장은 버전 정보에 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
@@ -3858,20 +3854,24 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     return Array.from(box?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent ?? '');
   };
 
-  it('기준 상세는 검사 유형 · 품목 · 기준명 · 기준코드 · 기본 생략 순서다', async () => {
+  /* 승인 · 사용 칩을 이 상자로 옮기고 칸 이름을 「~ 여부」로(사용자 지시 · #258). */
+  it('기준 상세는 검사 유형 · 품목 · 기준명 · 기준코드 · 기본 생략 여부 · 승인 여부 · 사용 여부 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
-    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 5)).toEqual([
+    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 7)).toEqual([
       t.fields.inspectionType,
       t.fields.item,
       t.fields.inspectionPlanName,
       t.fields.inspectionPlanCode,
-      t.fields.defaultSkip,
+      t.detail.defaultSkipLabel,
+      t.detail.approvalLabel,
+      t.detail.activeLabel,
     ]);
   });
 
-  it('버전 상세는 검사 방식 · 검사 주기 · 주기 값 · 합격 · 불합격 · AQL · 적용 기간 순서다', async () => {
+  /* 선택칸을 걷고 버전 · 상태를 상자 첫 칸으로 옮겼다(사용자 지시 · #258). */
+  it('버전 상세는 버전 · 상태 · 검사 방식 · 검사 주기 · 주기 값 · 합격 · 불합격 · AQL · 적용 기간 순서다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
@@ -3879,6 +3879,8 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
       (box) => !box.classList.contains('inspection-standard-plan-facts'),
     );
     expect(Array.from(boxes[0]?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent)).toEqual([
+      t.fields.planVersion,
+      t.fields.status,
       t.versionSection.sampling,
       t.fields.inspectionFrequency,
       t.fields.frequencyIntervalValue,

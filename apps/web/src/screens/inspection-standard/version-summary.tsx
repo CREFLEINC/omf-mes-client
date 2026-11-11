@@ -1,6 +1,9 @@
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
 import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
+import type { VersionStatusView } from './plan-version-status';
 import type { SelectOption, VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
@@ -8,6 +11,9 @@ const t = messages.inspectionStandard;
 export interface VersionSummaryProps {
   /** 저장된 값(편집 중인 초안이 아니다) — 요약은 서버에 있는 사실을 말한다. */
   values: VersionFormValues;
+  /** 고른 버전의 번호 · 상태 — 상자 첫 두 칸(선택칸을 걷고 옮겼다 · 사용자 지시 omf-all-around#258). */
+  planVersion: number;
+  status: VersionStatusView;
   /** 검사 주기 · 주기 단위 선택지 — 공통코드에서 받은 것(버전 폼과 같은 출처 · #194). */
   inspectionFrequencyOptions: SelectOption[];
   frequencyIntervalUomOptions: SelectOption[];
@@ -24,10 +30,12 @@ const orNotSet = (value: string): string => (value === '' ? t.versionSection.not
 
 /**
  * 고른 버전의 요약 한 줄 — 샘플링(샘플링 검사면 비율을 함께) · 검사 주기 · 유효기간(사용자 시안 · omf-all-around#196 · #256 순서).
- * 버전 번호 · 상태는 위 선택칸이 말한다. 고칠 수 없는 버전의 「버전 설정」 탭은 이 값들을 되풀이하지 않는다.
+ * 맨 앞에 버전 번호 · 상태를 둔다(사용자 지시 · #258).
  */
 export const VersionSummary = ({
   values,
+  planVersion,
+  status,
   inspectionFrequencyOptions,
   frequencyIntervalUomOptions,
 }: VersionSummaryProps) => {
@@ -44,7 +52,16 @@ export const VersionSummary = ({
         : sampling;
 
   /* 순서 — 어떻게 검사하는지(방식 · 주기)를 먼저, 판정 수 · AQL, 적용 기간은 끝(omf-all-around#256). */
-  const facts: { label: string; value: string }[] = [
+  const facts: { label: string; value: ReactNode }[] = [
+    { label: t.fields.planVersion, value: t.values.version(planVersion) },
+    {
+      label: t.fields.status,
+      value: (
+        <Chip variant="status" size="sm" status={status.tone}>
+          {status.label}
+        </Chip>
+      ),
+    },
     { label: t.versionSection.sampling, value: withRatio },
     {
       label: t.fields.inspectionFrequency,

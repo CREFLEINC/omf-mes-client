@@ -240,15 +240,10 @@ export const VersionDrawings = ({
   drawings,
   draft,
   isEditable,
-  isOpen,
-  onToggle,
 }: {
   drawings: UseQueryResult<InspectionDrawing[]>;
   draft: VersionDrawingDraft;
   isEditable: boolean;
-  /* 「버전별 설정」 줄을 펼쳤는가 — 화면이 쥔다(한 번에 한 줄 · #258). */
-  isOpen: boolean;
-  onToggle: () => void;
 }) => {
   const fileInput = useRef<HTMLInputElement>(null);
   const [pick, setPick] = useState<Pick>({ kind: 'add' });
@@ -306,7 +301,7 @@ export const VersionDrawings = ({
 
   const isLoaded = !drawings.isError && drawings.data !== undefined;
 
-  /* 「+ 도면 추가」는 줄 오른쪽 끝(사용자 시안 · #258) — 고른 파일은 줄을 펼쳐 바로 보인다. */
+  /* 「+ 도면 추가」는 줄 오른쪽 끝(사용자 시안 · #258). */
   const addAction =
     isEditable && isLoaded ? (
       <>
@@ -322,10 +317,7 @@ export const VersionDrawings = ({
           variant="outlined"
           leadingIcon={<Icon name="add" size={18} />}
           disabled={draft.isSaving}
-          onClick={() => {
-            if (!isOpen) onToggle();
-            openPicker({ kind: 'add' });
-          }}
+          onClick={() => openPicker({ kind: 'add' })}
         >
           {t.drawingAdd}
         </Button>
@@ -391,7 +383,13 @@ export const VersionDrawings = ({
       <PlanActionBanner error={draft.error} />
 
       {list.length === 0 ? (
-        <EmptyState size="sm" icon={<Icon name="image" size={32} />} title={t.drawingsNone} />
+        /* 작성중 버전이면 흐린 안내 한 줄 — 검사 항목 빈 상태와 같다(사용자 지시 · #258). */
+        <EmptyState
+          size="sm"
+          icon={<Icon name="image" size={32} />}
+          title={t.drawingsNone}
+          description={isEditable ? t.drawingsNoneDescription : undefined}
+        />
       ) : (
         <InspectionDrawingImages
           drawings={images}
@@ -402,18 +400,7 @@ export const VersionDrawings = ({
         />
       )}
 
-      {/* 검사 항목 탭과 같은 바닥 단추 — 저장해야 작성 중 버전에 담긴다(사용자 지시 · #227). */}
-      {isEditable && (
-        <div className="form-actions">
-          <Button
-            disabled={!draft.isDirty || draft.isSaving}
-            loading={draft.isSaving}
-            onClick={() => void draft.save()}
-          >
-            {messages.inspectionStandard.actions.tempSave}
-          </Button>
-        </div>
-      )}
+      {/* 저장은 카드 바닥 줄 「임시 저장」 하나로 항목과 함께 한다(사용자 지시 · #258) — 저장해야 작성 중 버전에 담긴다(#227). */}
 
       {isRemoving && (
         <Dialog
@@ -453,8 +440,6 @@ export const VersionDrawings = ({
       title={t.rowDrawings}
       summary={isLoaded ? t.rowDrawingsCount(list.length) : ''}
       action={addAction}
-      isOpen={isOpen}
-      onToggle={onToggle}
     >
       {body()}
     </VersionSettingRow>

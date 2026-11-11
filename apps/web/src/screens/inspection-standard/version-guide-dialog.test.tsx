@@ -20,7 +20,7 @@ describe('지시문 수정', () => {
     render(<VersionGuideRow values={values} onEditGuide={onEditGuide} />);
 
   const guideLines = (container: HTMLElement) =>
-    [...container.querySelectorAll('.inspection-standard-setting-summary')].map(
+    [...container.querySelectorAll('.inspection-standard-guide-text')].map(
       (line) => line.textContent,
     );
 
@@ -42,7 +42,9 @@ describe('지시문 수정', () => {
       const onEditGuide = vi.fn();
       const { container } = summary(onEditGuide);
 
-      expect(guideLines(container)).toEqual([t.versionSection.guideNone]);
+      expect(guideLines(container)).toEqual([]);
+      expect(screen.getByText(t.versionSection.guideNoneTitle)).toBeInTheDocument();
+      expect(screen.getByText(t.versionSection.guideNoneDescription)).toBeInTheDocument();
       await userEvent.click(
         screen.getByRole('button', { name: t.versionSection.editGuide(t.fields.guideTextVi) }),
       );

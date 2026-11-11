@@ -1,7 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
@@ -15,18 +14,16 @@ const BASE = `/quality/inspection-plan-versions/${String(VERSION)}/drawings`;
 const Harness = ({ isEditable }: { isEditable: boolean }) => {
   const drawings = useInspectionDrawings(VERSION);
   const draft = useVersionDrawingDraft(VERSION, drawings);
-  /* 「검사 도면」 줄은 펼친 채로 본다(#258). */
-  const [isOpen, setIsOpen] = useState(true);
   return (
     <>
       <span data-testid="draft-count">{draft.list.length}</span>
-      <VersionDrawings
-        drawings={drawings}
-        draft={draft}
-        isEditable={isEditable}
-        isOpen={isOpen}
-        onToggle={() => setIsOpen((open) => !open)}
-      />
+      <VersionDrawings drawings={drawings} draft={draft} isEditable={isEditable} />
+      {/* 화면 바닥 줄 「임시 저장」 대역 — 저장은 화면이 draft.save 로 부른다(#258). */}
+      {isEditable && (
+        <button type="button" disabled={!draft.isDirty} onClick={() => void draft.save()}>
+          {messages.inspectionStandard.actions.tempSave}
+        </button>
+      )}
     </>
   );
 };
@@ -281,7 +278,7 @@ describe('검사 기준 도면 탭 추가·수정·제거 후 저장 (omf-all-ar
     );
   });
 
-  it('바닥에는 [임시 저장]만 둔다 — [취소] 단추가 없다', async () => {
+  it('도면 줄에는 [취소] 단추가 없다', async () => {
     const { fetch } = drawingServer([1]);
     renderWithProviders(<Harness isEditable />, { fetch, session: null });
     await screen.findByRole('img', { name: t.drawingAlt(1) });

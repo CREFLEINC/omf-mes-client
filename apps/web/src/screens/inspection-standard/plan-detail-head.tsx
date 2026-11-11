@@ -60,13 +60,6 @@ export const PlanDetailHead = ({
       <div className="inspection-standard-plan-head">
         <div className="inspection-standard-plan-chips">
           <h2 className="pane-title">{t.detail.title}</h2>
-          {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. */}
-          <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
-            {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
-          </Chip>
-          <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
-            {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
-          </Chip>
         </div>
         <div className="inspection-standard-plan-head-actions">
           {onOpenRouting !== undefined && (
@@ -122,7 +115,7 @@ export const PlanDetailHead = ({
         ))}
         {/* 기본 생략(omf-all-around#212) — 켜진 기준이 걸리는 건은 검사 의뢰 없이 넘어간다. */}
         <div>
-          <dt className="field-label">{t.fields.defaultSkip}</dt>
+          <dt className="field-label">{t.detail.defaultSkipLabel}</dt>
           <dd>
             {(plan.defaultSkip ?? plan.pqcSkipAllowed) === true ? (
               <Chip variant="status" size="sm" status="info">
@@ -134,6 +127,23 @@ export const PlanDetailHead = ({
                 {t.detail.pqcSkipOff}
               </Chip>
             )}
+          </dd>
+        </div>
+        {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. 제목 옆 칩을 이 상자로 옮겼다(사용자 지시 · #258). */}
+        <div>
+          <dt className="field-label">{t.detail.approvalLabel}</dt>
+          <dd>
+            <Chip variant="status" size="sm" status={approvedAt === null ? 'warning' : 'success'}>
+              {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
+            </Chip>
+          </dd>
+        </div>
+        <div>
+          <dt className="field-label">{t.detail.activeLabel}</dt>
+          <dd>
+            <Chip variant="status" size="sm" status={plan.isActive ? 'success' : 'idle'}>
+              {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
+            </Chip>
           </dd>
         </div>
         {/* 라우팅이 없으면 칸을 두지 않는다(사용자 지시 2026-11-05). */}

@@ -1301,21 +1301,9 @@ h2:has(> .inspection-standard-dialog-title) {
   border-top: 0;
 }
 
-.inspection-standard-version-edit {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: calc(var(--space-2) * -1);
-}
-
 .inspection-standard-version-settings {
   display: grid;
   gap: var(--space-3);
-}
-
-.inspection-standard-version-settings-title {
-  margin: 0;
-  font: var(--type-title-md);
-  font-weight: 600;
 }
 
 .inspection-standard-setting-list {
@@ -1323,8 +1311,29 @@ h2:has(> .inspection-standard-dialog-title) {
   border-radius: var(--radius-lg);
 }
 
-.inspection-standard-setting-row + .inspection-standard-setting-row {
+/* 검사 항목 · 검사 지시문 좌우 반반(사용자 지시 · #258) — 좁으면 위아래로. 가운데 세로선은 두 칸 중 높은 쪽까지. */
+.inspection-standard-setting-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inspection-standard-setting-pair > .inspection-standard-setting-row + .inspection-standard-setting-row {
+  border-left: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-setting-pair + .inspection-standard-setting-row {
   border-top: 1px solid var(--outline-variant);
+}
+
+@media (max-width: 1280px) {
+  .inspection-standard-setting-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspection-standard-setting-pair > .inspection-standard-setting-row + .inspection-standard-setting-row {
+    border-top: 1px solid var(--outline-variant);
+    border-left: 0;
+  }
 }
 
 .inspection-standard-setting-head {
@@ -1334,7 +1343,7 @@ h2:has(> .inspection-standard-dialog-title) {
   padding: var(--space-4) var(--space-5);
 }
 
-/* 줄의 왼쪽(아이콘 · 제목 · 요약)이 펼침 단추다 — 오른쪽 할 일 단추와 겹치지 않게 나눈다. */
+/* 줄의 왼쪽(아이콘 · 제목 · 요약) — 오른쪽 할 일 단추와 나눈다. */
 .inspection-standard-setting-toggle {
   display: flex;
   flex: 1 1 auto;
@@ -1349,16 +1358,6 @@ h2:has(> .inspection-standard-dialog-title) {
   text-align: left;
 }
 
-button.inspection-standard-setting-toggle {
-  cursor: pointer;
-}
-
-button.inspection-standard-setting-toggle:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 4px;
-  border-radius: var(--radius-sm);
-}
-
 .inspection-standard-setting-text {
   display: grid;
   flex: 1 1 auto;
@@ -1370,16 +1369,16 @@ button.inspection-standard-setting-toggle:focus-visible {
   font: var(--type-title-sm);
 }
 
-/* 지시문은 길 수 있다 — 두 줄까지만 보이고 전체는 「지시문 수정」 창에서 본다. */
 .inspection-standard-setting-summary {
-  display: -webkit-box;
-  overflow: hidden;
   color: var(--on-surface-variant);
   font: var(--type-body-md);
+}
+
+/* 지시문 본문 — 적은 줄바꿈 그대로(#252). */
+.inspection-standard-guide-text {
+  margin: 0;
   white-space: pre-line;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .inspection-standard-setting-body {
@@ -1393,15 +1392,6 @@ button.inspection-standard-setting-toggle:focus-visible {
 }
 
 .inspection-standard-version-footer {
-  margin-left: 0;
-}
-
-.inspection-standard-version-card .inspection-standard-version-tools-start {
-  margin-left: auto;
-}
-
-/* 오른쪽으로 모은 단추 뒤 「+ 신규 버전 발행」은 그 옆에 붙인다 — 줄 끝으로 다시 밀지 않는다. */
-.inspection-standard-version-card .inspection-standard-version-bar-row > .inspection-standard-version-actions {
   margin-left: 0;
 }
 
