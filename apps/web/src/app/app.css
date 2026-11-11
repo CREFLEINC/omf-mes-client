@@ -1322,7 +1322,14 @@ h2:has(> .inspection-standard-dialog-title) {
 .inspection-standard-setting-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: 0 var(--space-4);
+}
+
+/* 두 카드의 머리 줄 · 본문을 같은 줄에 맞춘다 — 지시문 칸은 건수 줄이 없어도 빈 화면이 검사 항목과 같은 높이에 선다(사용자 지시 · #258). */
+.inspection-standard-setting-pair > .inspection-standard-setting-row {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
 }
 
 /* 「버전 설정」 묶음 — 제목 · 「버전 설정 수정」 한 줄, 아래 값 칸 3열(이름 위 · 값 아래 · 사용자 시안 #258). */
