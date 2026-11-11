@@ -98,11 +98,12 @@ export const PlanDetailHead = ({
        * 모양은 버전 요약 상자와 같다: 테두리 상자 · 칸마다 이름표 위 · 값 아래 · 칸 사이 세로선(사용자 시안).
        */}
       <dl className="inspection-standard-facts-line inspection-standard-plan-facts">
+        {/* 순서 — 어떤 기준인지(유형 · 품목)를 먼저, 이름 · 코드는 뒤(omf-all-around#256). */}
         {[
-          { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
-          { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
           { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
           { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
+          { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
+          { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
         ].map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>

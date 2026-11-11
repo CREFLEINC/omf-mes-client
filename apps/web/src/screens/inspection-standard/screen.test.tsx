@@ -3785,3 +3785,42 @@ describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
     window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
   });
 });
+
+/* 상세 표시 순서(omf-all-around#256) — 어떤 기준인지 · 어떻게 검사하는지를 먼저 보인다. */
+describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
+  const labelsIn = (selector: string): string[] => {
+    const box = document.querySelector(selector);
+    return Array.from(box?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent ?? '');
+  };
+
+  it('기준 상세는 검사 유형 · 품목 · 기준명 · 기준코드 · 기본 생략 순서다', async () => {
+    renderSelectedVersion();
+    await awaitVersionForm();
+
+    expect(labelsIn('.inspection-standard-plan-facts').slice(0, 5)).toEqual([
+      t.fields.inspectionType,
+      t.fields.item,
+      t.fields.inspectionPlanName,
+      t.fields.inspectionPlanCode,
+      t.fields.defaultSkip,
+    ]);
+  });
+
+  it('버전 상세는 검사 방식 · 검사 주기 · 주기 값 · 합격 · 불합격 · AQL · 적용 기간 순서다', async () => {
+    renderSelectedVersion();
+    await awaitVersionForm();
+
+    const boxes = Array.from(document.querySelectorAll('.inspection-standard-facts-line')).filter(
+      (box) => !box.classList.contains('inspection-standard-plan-facts'),
+    );
+    expect(Array.from(boxes[0]?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent)).toEqual([
+      t.versionSection.sampling,
+      t.fields.inspectionFrequency,
+      t.fields.frequencyIntervalValue,
+      t.fields.acceptanceNumber,
+      t.fields.rejectionNumber,
+      t.fields.aqlValue,
+      t.versionSection.effectivePeriod,
+    ]);
+  });
+});
