@@ -80,14 +80,26 @@ type Opened =
  * 사업부 관리자가 등록·확정한다. 확정 기준이 있어야 POP 「제품 검사표 입력」에서 그 모델의 검사표가 열린다.
  */
 /** OA 공장 전용(omf-all-around#89) — 계정 범위에 OA 공장이 없으면 안내만 보이고 조회를 보내지 않는다. */
-export const InspectionSheetTemplateScreen = ({ typeSelect }: { typeSelect?: ReactNode }) => (
+interface InspectionSheetTemplateScreenProps {
+  /** 검사 기준 탭이 조회 줄 맨 앞에 세우는 검사 유형 칸(omf-all-around#255). */
+  typeSelect?: ReactNode;
+  /** 등록 창을 연 채 시작한다 — 검사 기준 「기준 추가」에서 PQC 를 고른 OA 계정이 넘어온다(#255). */
+  startCreating?: boolean;
+}
+
+export const InspectionSheetTemplateScreen = ({
+  typeSelect,
+  startCreating = false,
+}: InspectionSheetTemplateScreenProps) => (
   <OaOnlyGate title={t.title} breadcrumbRoot={t.breadcrumbRoot}>
-    <InspectionSheetTemplateScreenBody typeSelect={typeSelect} />
+    <InspectionSheetTemplateScreenBody typeSelect={typeSelect} startCreating={startCreating} />
   </OaOnlyGate>
 );
 
-/** `typeSelect` — 검사 기준 탭이 조회 줄 맨 앞에 세우는 검사 유형 칸(omf-all-around#255). */
-const InspectionSheetTemplateScreenBody = ({ typeSelect }: { typeSelect?: ReactNode }) => {
+const InspectionSheetTemplateScreenBody = ({
+  typeSelect,
+  startCreating = false,
+}: InspectionSheetTemplateScreenProps) => {
   const hub = usePageHub();
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -123,7 +135,7 @@ const InspectionSheetTemplateScreenBody = ({ typeSelect }: { typeSelect?: ReactN
     return () => window.clearTimeout(timer);
   }, [materialInput]);
   const [opened, setOpened] = useState<Opened>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(startCreating);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
   /** 다른 기준을 열면 단계 고름을 처음으로 돌린다. */
   const open = (next: Opened) => {

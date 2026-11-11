@@ -292,6 +292,10 @@ export const InspectionStandardScreen = () => {
   const toast = useToast();
   const { client } = useApiClient();
   const sheetForPqc = useSheetForPqc();
+  /* OA 공장 계정은 PQC 가 검사표 기준이다 — 일반 PQC 기준을 새로 짓지 않게 복사 · 수정 창의 선택지에서 뺀다(#255). */
+  const planTypeOptions = sheetForPqc
+    ? INSPECTION_TYPE_OPTIONS.filter((option) => option.value !== SHEET_TYPE)
+    : INSPECTION_TYPE_OPTIONS;
 
   const filters = useMemo<PlanFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
@@ -1217,6 +1221,14 @@ export const InspectionStandardScreen = () => {
   };
 
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
+    /* OA 공장 계정의 「기준 추가」에서 PQC 를 고르면 검사표 기준 등록 창으로 넘어간다(#255 사용자 지시). */
+    if (sheetForPqc && copySource === null && rawPatch.inspectionTypeCode === SHEET_TYPE) {
+      createWrite.reset();
+      setCreateValues(null);
+      setCreateFieldErrors({});
+      setSearchParams(new URLSearchParams({ type: SHEET_TYPE, new: '1' }));
+      return;
+    }
     const patch = withItemChangeRule(rawPatch);
 
     setCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
@@ -1493,6 +1505,8 @@ export const InspectionStandardScreen = () => {
           mode="create"
           plan={null}
           values={createValues}
+          /* 새 기준은 PQC 를 고르면 검사표 기준으로 넘어가 그대로 두고, 복사는 PQC 를 뺀다(#255). */
+          typeOptions={copySource === null ? INSPECTION_TYPE_OPTIONS : planTypeOptions}
           onChange={changeCreateValues}
           fieldErrors={{ ...write.fieldErrors, ...createFieldErrors }}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
@@ -1643,6 +1657,10 @@ export const InspectionStandardScreen = () => {
                 setCreateValues({
                   ...planToFormValues(plan),
                   inspectionPlanCode: '',
+                  /* OA 공장 계정은 일반 PQC 기준을 짓지 않는다 — 유형을 다시 고르게 비운다(#255). */
+                  ...(sheetForPqc && plan.inspectionTypeCode === SHEET_TYPE
+                    ? { inspectionTypeCode: '' }
+                    : {}),
                   itemId: '',
                   routingId: '',
                 });
@@ -1673,6 +1691,7 @@ export const InspectionStandardScreen = () => {
               mode="edit"
               plan={planDetail.data.inspectionPlan}
               values={formState.values}
+              typeOptions={planTypeOptions}
               onChange={changePlanValues}
               onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.

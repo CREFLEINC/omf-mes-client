@@ -1,12 +1,12 @@
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useEffect, useId } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { Select } from '../../patterns/select';
 import { InspectionSheetTemplateScreen } from '../inspection-sheet-template/screen';
+import { INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
 import { InspectionStandardScreen } from './screen';
-import { INSPECTION_TYPE_OPTIONS } from './code-options';
 import { SHEET_TYPE, useSheetForPqc } from './type-options';
 
 const t = messages.inspectionStandard;
@@ -32,10 +32,22 @@ const SheetTypeSelect = () => {
 
 /** 검사 기준 탭 — OA 공장 계정이 검사 유형 PQC 를 고르면 검사표 기준 화면을, 아니면 검사 기준 화면을 연다. */
 export const InspectionStandardRoute = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sheetForPqc = useSheetForPqc();
-  return sheetForPqc && searchParams.get('type') === SHEET_TYPE ? (
-    <InspectionSheetTemplateScreen typeSelect={<SheetTypeSelect />} />
+  const isSheet = sheetForPqc && searchParams.get('type') === SHEET_TYPE;
+  /*
+   * `new=1` — 검사 기준 「기준 추가」에서 PQC 를 골라 넘어왔다(#255). 검사표 화면이 붙는 그 렌더에 읽혀 등록 창을 열고,
+   * 주소에서는 바로 지운다 — 새로고침 · 뒤로 가기로 창이 다시 열리지 않게.
+   */
+  const startCreating = searchParams.get('new') === '1';
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('new');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+  return isSheet ? (
+    <InspectionSheetTemplateScreen typeSelect={<SheetTypeSelect />} startCreating={startCreating} />
   ) : (
     <InspectionStandardScreen />
   );

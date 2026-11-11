@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -16,6 +16,13 @@ import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixture
 import { SessionProvider } from '../../patterns/session';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { InspectionStandardScreen } from './screen';
+
+/* OA 공장 계정이면 PQC 가 검사표 기준이다(#255) — 판단은 공장 조회가 필요해 테스트가 직접 켠다. 기본은 부품(꺼짐). */
+const oaSheet = vi.hoisted(() => ({ on: false }));
+vi.mock('./type-options', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./type-options')>()),
+  useSheetForPqc: () => oaSheet.on,
+}));
 
 const ROUTE = '/master-data/inspection-standard';
 const t = messages.inspectionStandard;
@@ -3686,5 +3693,64 @@ describe('InspectionStandardScreen — 기준 복사', () => {
 
     await screen.findByRole('button', { name: '기본 정보 수정' });
     expect(screen.queryByRole('button', { name: t.actions.copy })).not.toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
+  afterEach(() => {
+    oaSheet.on = false;
+  });
+
+  it('「기준 추가」에서 PQC 를 고르면 일반 기준을 짓지 않고 검사표 기준 등록으로 넘어간다', async () => {
+    oaSheet.on = true;
+    const { requests, router, user } = renderScreen([
+      planListRoute(),
+      ...lookupRoutes(),
+      planCreateRoute(),
+    ]);
+
+    /* 실제로는 검사 기준 탭(`InspectionStandardRoute`)이 이 주소에서 검사표 화면으로 바꿔 붙인다. */
+    const searches: string[] = [];
+    router?.subscribe((state) => searches.push(state.location.search));
+
+    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    await waitFor(() => {
+      expect(searches).toContain('?type=PQC&new=1');
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  it('부품 공장 계정은 「기준 추가」에서 PQC 를 골라도 그대로 일반 기준을 짓는다', async () => {
+    const { user } = renderScreen([planListRoute(), ...lookupRoutes(), planCreateRoute()]);
+
+    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveTextContent(
+      'PQC (공정검사)',
+    );
+  });
+
+  it('복사 창은 PQC 를 고를 수 없고, 원본이 PQC 면 유형을 비운다', async () => {
+    oaSheet.on = true;
+    const pqcPlan = inspectionPlanFixtures.find((plan) => plan.inspectionTypeCode === 'PQC')!;
+    const { user } = renderScreen(
+      [planListRoute(), planDetailRoute(pqcPlan), versionListRoute(), ...lookupRoutes()],
+      `?plan=${String(pqcPlan.inspectionPlanId)}&ver=4001`,
+    );
+
+    await user.click(await screen.findByRole('button', { name: t.actions.copy }));
+    const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
+    const typeSelect = within(dialog).getByRole('combobox', { name: '검사 유형' });
+    expect(typeSelect).not.toHaveTextContent('PQC');
+    await user.click(typeSelect);
+
+    expect(screen.queryByRole('option', { name: 'PQC (공정검사)' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'OQC (출하검사)' })).toBeInTheDocument();
   });
 });

@@ -40,7 +40,7 @@ export const inspectionSheetTemplate = {
     usageInactive: 'Ngừng dùng',
     usageCount: (label: string, count: number): string => `${label} ${String(count)}`,
     statusAll: 'Tất cả',
-    add: 'Đăng ký tiêu chuẩn mới',
+    add: 'Thêm tiêu chuẩn',
     empty: 'Chưa có tiêu chuẩn phiếu kiểm tra.',
     emptyFiltered: 'Không có tiêu chuẩn phiếu kiểm tra phù hợp điều kiện.',
     loading: 'Đang tải tiêu chuẩn phiếu kiểm tra.',

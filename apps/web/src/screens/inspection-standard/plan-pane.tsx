@@ -47,6 +47,8 @@ export interface PlanPaneProps {
   /** null이면 기준코드를 편집할 수 있다. */
   codeLockReason: string | null;
   isDirty: boolean;
+  /** 검사 유형 선택지 — OA 공장 계정은 PQC 가 검사표 기준이라 복사 · 수정 창에서 뺀다(#255). 지금 값은 늘 남긴다. */
+  typeOptions?: SelectOption[];
   /** false 면 저장을 막는다 — 기준 추가 창은 필수 칸을 다 채워야 저장이 선다(#255 사용자 지시). */
   canSave?: boolean;
   isSaving: boolean;
@@ -84,6 +86,7 @@ export const PlanPane = ({
   routingDisabledReason,
   codeLockReason,
   isDirty,
+  typeOptions = INSPECTION_TYPE_OPTIONS,
   canSave = true,
   isSaving,
   onSave,
@@ -226,7 +229,7 @@ export const PlanPane = ({
         <SelectField
           label={t.fields.inspectionType}
           required
-          options={ensureOption(INSPECTION_TYPE_OPTIONS, values.inspectionTypeCode)}
+          options={ensureOption(typeOptions, values.inspectionTypeCode)}
           value={values.inspectionTypeCode}
           onChange={(inspectionTypeCode) => onChange({ inspectionTypeCode })}
           error={shownError('inspectionTypeCode')}
