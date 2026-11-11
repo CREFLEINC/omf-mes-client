@@ -983,7 +983,15 @@ export const InspectionStandardScreen = () => {
     guardMove(() => {
       resetPlanEditing();
       setSearchParams(toSearchParams(next, 1, pageSize));
+      /* 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). */
+      if (split.collapsed) split.toggleCollapsed();
     });
+
+  /* 고른 기준 없이 열리면(검사 유형을 바꿔 넘어온 때 포함) 접힌 채 저장된 목록을 펼친다(#255 사용자 지시). */
+  useEffect(() => {
+    if (selectedPlanId === null && split.collapsed) split.toggleCollapsed();
+    // 처음 열 때 한 번만 본다 — 그 뒤 접기 · 펼치기는 사용자가 정한다.
+  }, []);
 
   const changePage = (nextPage: number) =>
     guardMove(() => {

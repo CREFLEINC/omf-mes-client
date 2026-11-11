@@ -231,6 +231,21 @@ describe('검사표 기준', () => {
     );
   });
 
+  it('목록이 접힌 채 조회 조건을 바꾸면 목록이 다시 펼쳐진다', async () => {
+    window.localStorage.removeItem('omf-mes:inspection-sheet-template:split');
+    const { user } = setup(template());
+    await openRow(user);
+    expect(
+      screen.getByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.list.material), '재료');
+
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+
   /* 모델(품목)은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */
   it('모델은 칸에서 검색해 고르면 바로 조회하고, 「전체」를 고르면 조건을 푼다(#226)', async () => {
     const { user, requests } = setup(template());

@@ -142,6 +142,13 @@ const InspectionSheetTemplateScreenBody = ({
     return () => window.clearTimeout(timer);
   }, [materialInput]);
   const [opened, setOpened] = useState<Opened>(null);
+  /*
+   * 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). 처음 열 때도 고른 기준이
+   * 없으니 접힌 채 저장된 목록을 펼친다(검사 유형을 바꿔 넘어온 때 포함). 쪽 · 쪽 크기는 목록이 펼쳐진 때만 바뀐다.
+   */
+  useEffect(() => {
+    if (split.collapsed) split.toggleCollapsed();
+  }, [filter.status, filter.itemId, filter.layout, filter.material, filter.usage]);
   const [isCreating, setIsCreating] = useState(startCreating);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
   /** 다른 기준을 열면 단계 고름을 처음으로 돌린다. */

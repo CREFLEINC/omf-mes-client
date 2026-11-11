@@ -3754,3 +3754,34 @@ describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
     expect(screen.getByRole('option', { name: 'OQC (출하검사)' })).toBeInTheDocument();
   });
 });
+
+describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
+  it('기준을 고르면 목록이 접히고, 조회 조건을 바꾸면 다시 펼쳐진다', async () => {
+    window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
+    const { user } = renderScreen([planListRoute(), planDetailRoute(), ...lookupRoutes()]);
+
+    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형 선택' }),
+    );
+    await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
+
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('고른 기준 없이 열리면 접힌 채 저장된 목록을 펼친다', async () => {
+    window.localStorage.setItem('omf-mes:inspection-standard:split:collapsed', '1');
+    renderScreen([planListRoute(), ...lookupRoutes()]);
+
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
+  });
+});
