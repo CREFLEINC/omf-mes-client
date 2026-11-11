@@ -630,6 +630,8 @@ const InspectionSheetTemplateScreenBody = ({
       {isCreating && (
         <TemplateBasicDialog
           initial={{
+            templateCode: '',
+            templateName: '',
             itemId: null,
             itemLabel: '',
             businessUnitId: scopeIds[0] ?? null,

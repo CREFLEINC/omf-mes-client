@@ -55,7 +55,14 @@ describe('InspectionStandardRoute — OA 공장 계정의 PQC(#255)', () => {
     await act(() =>
       router?.navigate('/master-data/inspection-standard?type=PQC', {
         state: {
-          sheetBasics: { itemId: 7, itemLabel: '모델 A', businessUnitId: 1, formLayoutCode: 'OP' },
+          sheetBasics: {
+            templateCode: 'SYN-SHEET-01',
+            templateName: '합성 검사표',
+            itemId: 7,
+            itemLabel: '모델 A',
+            businessUnitId: 1,
+            formLayoutCode: 'OP',
+          },
         },
       }),
     );

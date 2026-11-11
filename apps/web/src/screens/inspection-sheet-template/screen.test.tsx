@@ -30,6 +30,8 @@ const template = (overrides: Partial<InspectionSheetTemplate> = {}): InspectionS
   itemCode: 'AAR4',
   itemName: 'OA 본체',
   templateVersion: 2,
+  templateCode: 'SHEET-AAR4',
+  templateName: 'OA 본체 검사표',
   businessUnitId: 8301,
   formLayoutCode: 'OP',
   statusCode: 'DRAFT',
@@ -466,12 +468,67 @@ describe('검사표 기준', () => {
       requests.find((r) => r.method === 'POST' && r.path.endsWith(LIST))!.body,
     );
     expect(body).toMatchObject({
+      templateCode: 'SHEET-AAR4',
+      templateName: 'OA 본체 검사표',
       itemId: 5,
       businessUnitId: 8301,
       formLayoutCode: 'OP',
       materialText: '방청 처리',
     });
     expect(body.steps).toHaveLength(1);
+  });
+
+  /* 기준코드 · 기준명(omf-all-around#260) — 옛 기준은 「-」로 보이고, 새 버전을 만들기 전에 코드 · 이름을 받는다. */
+  it('기준코드가 없는 옛 기준은 「-」로 보이고, 새 버전 만들기는 코드 · 이름을 먼저 받아 등록한다', async () => {
+    const { user, requests } = setup(
+      template({
+        templateCode: null,
+        templateName: null,
+        statusCode: 'CONFIRMED',
+        confirmedBy: 1,
+        confirmedAt: '2026-10-21T01:00:00Z',
+      }),
+    );
+    await openRow(user);
+
+    const facts = screen.getByText(t.editor.templateCode).closest('div')!;
+    expect(within(facts).getByText('-')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.editor.copyAsNew }));
+    const dialog = await screen.findByRole('dialog', { name: t.editor.codeHeading });
+    await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
+    expect(within(dialog).getByText(t.editor.noTemplateCode)).toBeInTheDocument();
+    expect(requests.some((r) => r.method === 'POST')).toBe(false);
+
+    await user.type(within(dialog).getByLabelText(t.editor.templateCode), 'SHEET-NEW');
+    await user.type(within(dialog).getByLabelText(t.editor.templateName), '새 검사표');
+    await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
+
+    await waitFor(() =>
+      expect(requests.some((r) => r.method === 'POST' && r.path.endsWith(LIST))).toBe(true),
+    );
+    expect(
+      JSON.parse(requests.find((r) => r.method === 'POST' && r.path.endsWith(LIST))!.body),
+    ).toMatchObject({ templateCode: 'SHEET-NEW', templateName: '새 검사표', itemId: 5 });
+  });
+
+  it('작성중 기준은 「기본 정보 수정」에서 기준코드 · 기준명만 고쳐 저장에 싣는다', async () => {
+    const { user, requests } = setup(template());
+    await openRow(user);
+
+    await user.click(screen.getByRole('button', { name: t.editor.editBasic }));
+    const dialog = await screen.findByRole('dialog', { name: t.editor.codeHeading });
+    expect(within(dialog).queryByText(t.editor.layout)).not.toBeInTheDocument();
+    const name = within(dialog).getByLabelText(t.editor.templateName);
+    await user.clear(name);
+    await user.type(name, '바꾼 이름');
+    await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
+    await user.click(screen.getByRole('button', { name: t.editor.save }));
+
+    await waitFor(() => expect(requests.some((r) => r.method === 'PUT')).toBe(true));
+    expect(JSON.parse(requests.find((r) => r.method === 'PUT')!.body)).toMatchObject({
+      templateCode: 'SHEET-AAR4',
+      templateName: '바꾼 이름',
+    });
   });
 
   /* 새 기준의 모델 · 사업부 · 양식은 팝업에서 고른다 — 검사 기준 탭의 「기준 추가」 창과 같다(#208). */
@@ -483,6 +540,8 @@ describe('검사표 기준', () => {
     await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
 
     expect(within(dialog).getByText(t.editor.noModel)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.editor.noTemplateCode)).toBeInTheDocument();
+    expect(within(dialog).getByText(t.editor.noTemplateName)).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: t.editor.newHeading })).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
   });

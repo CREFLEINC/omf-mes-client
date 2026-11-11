@@ -77,7 +77,6 @@ import {
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
 import type { TemplateBasics } from '../inspection-sheet-template/basic-dialog';
-import { SelectField } from './select-field';
 import { SheetBasicsFields } from './sheet-basics-fields';
 import { SHEET_TYPE, useSheetForPqc } from './type-options';
 import { PlanListPane } from './plan-list-pane';
@@ -271,9 +270,11 @@ export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { session } = useSession();
-  /* 「기준 추가」에서 PQC 를 고른 OA 계정의 검사표 기준 칸 값(사용자 지시 · #258). null 이면 검사 기준 칸이다. */
+  /*
+   * 등록 창에서 PQC 를 고른 OA 계정의 검사표 기준 칸 값 — 사업부 · 출력 양식 · 고른 품목 이름(omf-all-around#260).
+   * 기준코드 · 기준명 · 품목 번호는 등록 폼 값을 쓴다. null 이면 검사 기준 등록이다.
+   */
   const [sheetBasics, setSheetBasics] = useState<TemplateBasics | null>(null);
-  const [sheetItemError, setSheetItemError] = useState('');
   const sheetScopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
   const hub = usePageHub();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
@@ -1280,14 +1281,15 @@ export const InspectionStandardScreen = () => {
 
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
     /*
-     * OA 공장 계정의 「기준 추가」에서 PQC 를 고르면 창을 닫지 않고 그 아래에 검사표 기준 칸(품목 · 사업부 · 출력 양식)을
-     * 보인다(사용자 지시 · #258). 다른 유형으로 돌리면 검사 기준 칸으로 돌아간다.
+     * OA 공장 계정의 등록 창에서 PQC 를 고르면 같은 창에 사업부 · 출력 양식 칸을 더 보인다(사용자 결정 · #260).
+     * 다른 유형으로 돌리면 검사 기준 등록으로 돌아간다.
      */
     if (sheetForPqc && copySource === null && rawPatch.inspectionTypeCode !== undefined) {
-      setSheetItemError('');
       setSheetBasics((prev) =>
         rawPatch.inspectionTypeCode === SHEET_TYPE
           ? (prev ?? {
+              templateCode: '',
+              templateName: '',
               itemId: null,
               itemLabel: '',
               businessUnitId: sheetScopeIds[0] ?? null,
@@ -1595,67 +1597,27 @@ export const InspectionStandardScreen = () => {
       setCreateFieldErrors({});
       setCopySource(null);
       setSheetBasics(null);
-      setSheetItemError('');
     };
 
     /*
-     * PQC 를 고른 OA 계정 — 검사 유형 칸 아래에 검사표 기준 칸(사용자 지시 · #258). 「확인」은 「새 검사표 기준」 창의 「확인」과
-     * 같다: 검사표 기준 화면으로 넘어가 이 값으로 새 편집을 연다. 검사 기준을 짓지 않는다.
+     * PQC 를 고른 OA 계정 — 「기준 추가」는 검사 기준을 짓지 않고 검사표 기준 화면으로 넘어가 이 값으로 새 편집을 연다.
+     * 검사표 기준은 그 화면의 「저장」에서 등록된다(#260).
      */
-    if (sheetBasics !== null) {
-      const basics = sheetBasics;
-      return (
-        <Dialog
-          open
-          size="md"
-          closeOnBackdropClick={false}
-          showCloseButton={false}
-          title={t.detail.createTitle}
-          onClose={closeCreate}
-          footer={
-            <>
-              <Button variant="outlined" onClick={closeCreate}>
-                {messages.common.cancel}
-              </Button>
-              <Button
-                disabled={sheetScopeIds.length === 0}
-                onClick={() => {
-                  if (basics.itemId === null) {
-                    setSheetItemError(messages.inspectionSheetTemplate.editor.noModel);
-                    return;
-                  }
-                  closeCreate();
-                  setSearchParams(new URLSearchParams({ type: SHEET_TYPE }), {
-                    state: { sheetBasics: basics },
-                  });
-                }}
-              >
-                {messages.inspectionSheetTemplate.editor.basicConfirm}
-              </Button>
-            </>
-          }
-        >
-          <div className="inspection-standard-sheet-create">
-            <SelectField
-              label={t.fields.inspectionType}
-              required
-              options={INSPECTION_TYPE_OPTIONS}
-              value={SHEET_TYPE}
-              onChange={(inspectionTypeCode) => changeCreateValues({ inspectionTypeCode })}
-            />
-            <SheetBasicsFields
-              values={basics}
-              onChange={(patch) => {
-                setSheetBasics((prev) => (prev === null ? prev : { ...prev, ...patch }));
-                if (patch.itemId !== undefined && patch.itemId !== null) setSheetItemError('');
-              }}
-              itemError={sheetItemError}
-              businessUnitIds={sheetScopeIds}
-            />
-          </div>
-        </Dialog>
-      );
-    }
+    const sheet = sheetBasics;
+    const startSheet = () => {
+      if (sheet === null || createValues.itemId === '') return;
+      const basics: TemplateBasics = {
+        ...sheet,
+        templateCode: createValues.inspectionPlanCode.trim(),
+        templateName: createValues.inspectionPlanName.trim(),
+        itemId: Number(createValues.itemId),
+      };
+      closeCreate();
+      setSearchParams(new URLSearchParams({ type: SHEET_TYPE }), {
+        state: { sheetBasics: basics },
+      });
+    };
+
     /* 복사 창은 같은 등록 폼을 쓰고 저장만 복사 경로로 보낸다(omf-all-around#255). */
     const write = copySource === null ? createWrite : copyWrite;
 
@@ -1696,11 +1658,31 @@ export const InspectionStandardScreen = () => {
           canSave={
             createValues.inspectionPlanCode.trim() !== '' &&
             createValues.inspectionPlanName.trim() !== '' &&
-            createValues.inspectionTypeCode !== ''
+            createValues.inspectionTypeCode !== '' &&
+            (sheet === null || (createValues.itemId !== '' && sheetScopeIds.length > 0))
           }
           isSaving={write.isSaving}
-          onSave={handleSaveCreate}
+          onSave={sheet === null ? handleSaveCreate : startSheet}
           onCancel={closeCreate}
+          {...(sheet === null
+            ? {}
+            : {
+                sheetFields: (
+                  <SheetBasicsFields
+                    values={sheet}
+                    onChange={(patch) =>
+                      setSheetBasics((prev) => (prev === null ? prev : { ...prev, ...patch }))
+                    }
+                    businessUnitIds={sheetScopeIds}
+                  />
+                ),
+                onItemChange: (item: { itemCode: string; itemName: string }) =>
+                  setSheetBasics((prev) =>
+                    prev === null
+                      ? prev
+                      : { ...prev, itemLabel: `${item.itemName} (${item.itemCode})` },
+                  ),
+              })}
         />
       </Dialog>
     );

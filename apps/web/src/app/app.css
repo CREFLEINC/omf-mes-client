@@ -367,6 +367,16 @@ main > * + * {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* 등록 창에서 PQC 를 고른 OA 계정의 사업부 · 출력 양식 칸 — 등록 폼의 칸 줄에 그대로 끼운다(omf-all-around#260). */
+.inspection-standard-sheet-fields,
+.inspection-standard-sheet-fields > .form-grid {
+  display: contents;
+}
+
+.inspection-standard-sheet-fields .inspection-standard-notice-label {
+  grid-column: 1 / -1;
+}
+
 /* 기본 정보 수정 창 — 첫 줄에 세 칸(기본 생략 · 기준코드 · 기준명)이 서도록 넓힌다(사용자 지시 2026-11-04). */
 .inspection-standard-plan-edit-dialog {
   --dialog-max-lg: 60rem;

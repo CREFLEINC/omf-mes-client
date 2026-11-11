@@ -60,6 +60,13 @@ export interface PlanPaneProps {
   versionSlot?: ReactNode;
   /** 「기본 정보 수정」 창 안이다 — 창 제목이 머리를 맡아 제목 · 칩을 두지 않는다(#196). */
   embedded?: boolean;
+  /**
+   * OA 계정이 등록 창에서 PQC 를 고르면 넘기는 검사표 기준 칸(사업부 · 출력 양식 · omf-all-around#260).
+   * 있으면 품목이 필수가 되고 기본 생략 · 라우팅은 두지 않는다 — 검사표 기준에는 없는 값이다.
+   */
+  sheetFields?: ReactNode;
+  /** 고른 품목 전체 — 검사표 기준 칸이 품목 이름을 들고 간다(#260). */
+  onItemChange?: (item: { itemId: number; itemCode: string; itemName: string }) => void;
 }
 
 /**
@@ -94,7 +101,10 @@ export const PlanPane = ({
   transitionActions,
   versionSlot,
   embedded = false,
+  sheetFields,
+  onItemChange,
 }: PlanPaneProps) => {
+  const isSheet = sheetFields !== undefined;
   const codeId = useId();
   const codeLockNoteId = useId();
   const nameId = useId();
@@ -107,6 +117,7 @@ export const PlanPane = ({
   );
   /* 라우팅이 없는 품목이면 칸을 두지 않는다(사용자 지시 2026-11-05) — 오류가 있으면 오류는 보인다. */
   const isRoutingShown =
+    !isSheet &&
     routingDisabledReason === null &&
     (routingRevision !== undefined || fieldErrors.routingId !== undefined);
 
@@ -181,15 +192,17 @@ export const PlanPane = ({
          */}
         {/* 첫 줄 — 기본 생략 | 기준코드 · 기준명(사용자 시안 2026-11-04). */}
         <div className="inspection-standard-plan-head-row">
-          {/* 기본 생략(omf-all-around#212) — IQC·PQC·OQC 공통이라 검사 유형을 고르기 전부터 보인다(#255). */}
-          <div className="inspection-standard-plan-skip">
-            <Checkbox
-              checked={values.defaultSkip}
-              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
-            >
-              {t.fields.defaultSkip}
-            </Checkbox>
-          </div>
+          {/* 기본 생략(omf-all-around#212) — IQC·PQC·OQC 공통이라 검사 유형을 고르기 전부터 보인다(#255). 검사표 기준에는 없다(#260). */}
+          {!isSheet && (
+            <div className="inspection-standard-plan-skip">
+              <Checkbox
+                checked={values.defaultSkip}
+                onChange={(event) => onChange({ defaultSkip: event.target.checked })}
+              >
+                {t.fields.defaultSkip}
+              </Checkbox>
+            </div>
+          )}
 
           <div className="field-cell">
             <FieldLabel
@@ -243,15 +256,17 @@ export const PlanPane = ({
          * 검색어는 서버로 가 뒤쪽 품목도 찾는다. 조회 줄의 품목 조건과 같은 부품이고, 맨 앞 「전 품목 공통」이 비우는 자리다.
          */}
         <div className="field-cell search-select-cell">
-          <FieldLabel htmlFor={itemId} label={t.fields.item} />
+          {/* 검사표 기준은 품목마다 선다 — 「전 품목 공통」이 없고 필수다(#260). */}
+          <FieldLabel htmlFor={itemId} label={t.fields.item} required={isSheet} />
           <ItemSelect
             id={itemId}
             selectedOption={itemOption}
-            leadingOptions={ALL_ITEMS}
+            leadingOptions={isSheet ? [] : ALL_ITEMS}
             value={values.itemId}
-            placeholder={t.values.allItems}
+            placeholder={isSheet ? t.values.pickItem : t.values.allItems}
             onChange={(value) => onChange({ itemId: value })}
-            invalid={fieldErrors.itemId !== undefined}
+            {...(onItemChange !== undefined ? { onItemChange } : {})}
+            invalid={fieldErrors.itemId !== undefined || (isSheet && isBlank(values.itemId))}
             aria-describedby={fieldErrors.itemId === undefined ? undefined : itemErrorId}
           />
           {fieldErrors.itemId !== undefined && (
@@ -279,6 +294,8 @@ export const PlanPane = ({
             )}
           </div>
         )}
+
+        {isSheet && <div className="inspection-standard-sheet-fields">{sheetFields}</div>}
       </div>
 
       {versionSlot}

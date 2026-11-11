@@ -548,6 +548,9 @@ export interface InspectionSheetTemplate extends Required<InspectionSheetTemplat
   itemCode: string;
   itemName: string;
   templateVersion: number;
+  /** 관리용 기준코드 · 기준명(omf-all-around#260) — 그 전에 등록한 기준은 null. */
+  templateCode: string | null;
+  templateName: string | null;
   businessUnitId: number;
   formLayoutCode: InspectionSheetLayoutCode;
   statusCode: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
@@ -564,6 +567,9 @@ export interface InspectionSheetTemplate extends Required<InspectionSheetTemplat
 
 /** 작성중 판만 고친다. 단계·항목·LOT 칸은 통째로 갈아 끼운다 — 배열 순서가 순번이다. */
 export interface InspectionSheetTemplateUpdate extends InspectionSheetTemplateContent {
+  /** 관리용 기준코드 · 기준명(omf-all-around#260). 빼면 그대로 둔다. */
+  templateCode?: string;
+  templateName?: string;
   lotSources: { slotCode: InspectionSheetLotSlot; itemId: number }[];
   steps: {
     stepCode: InspectionSheetStepCode;
@@ -580,6 +586,8 @@ export interface InspectionSheetTemplateUpdate extends InspectionSheetTemplateCo
 }
 
 export interface InspectionSheetTemplateCreate extends InspectionSheetTemplateUpdate {
+  templateCode: string;
+  templateName: string;
   itemId: number;
   businessUnitId: number;
   formLayoutCode: InspectionSheetLayoutCode;

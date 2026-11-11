@@ -461,6 +461,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     inactiveSuffix: ' (ngừng dùng)',
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: 'Chung mọi mặt hàng',
+    pickItem: 'Hãy chọn mặt hàng',
     /* 승인자 이름을 만들지 않는다 — 계약이 주는 것은 사용자 번호뿐이라 시각만 낸다. */
     approvedAt: (at: string): string => `Đã phê duyệt · ${at}`,
     notApproved: 'Chưa phê duyệt',

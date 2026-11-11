@@ -3763,8 +3763,8 @@ describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
     oaSheet.on = false;
   });
 
-  /* 창을 닫지 않고 유형 칸 아래에 검사표 기준 칸을 보인다(사용자 지시 · #258). */
-  it('「기준 추가」에서 PQC 를 고르면 같은 창 아래에 품목 · 사업부 · 출력 양식 칸이 서고, 다른 유형으로 돌리면 검사 기준 칸으로 돌아간다', async () => {
+  /* 같은 등록 창에 사업부 · 출력 양식 칸을 더 보이고, 품목이 필수가 된다(사용자 결정 · #260). */
+  it('「기준 추가」에서 PQC 를 고르면 같은 창에 사업부 · 출력 양식 칸이 서고 품목 없이는 등록할 수 없으며, 다른 유형으로 돌리면 검사 기준 칸으로 돌아간다', async () => {
     oaSheet.on = true;
     const { requests, user } = renderScreen([
       planListRoute(),
@@ -3776,18 +3776,21 @@ describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
     await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
 
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(sheetT.editor.layout)).toBeInTheDocument();
-    expect(within(dialog).getByText(sheetT.editor.model)).toBeInTheDocument();
-    expect(within(dialog).queryByText(t.fields.inspectionPlanCode)).not.toBeInTheDocument();
+    const form = createForm();
+    expect(within(form).getByText(sheetT.editor.layout)).toBeInTheDocument();
+    expect(within(form).getByText(sheetT.editor.businessUnit)).toBeInTheDocument();
+    expect(within(form).getByText(t.fields.inspectionPlanCode)).toBeInTheDocument();
+    expect(within(form).queryByText(t.fields.defaultSkip)).not.toBeInTheDocument();
 
-    /* 품목 없이 「확인」하면 넘어가지 않고 품목을 고르라고 한다. */
-    await user.click(within(dialog).getByRole('button', { name: sheetT.editor.basicConfirm }));
-    expect(within(dialog).getByText(sheetT.editor.noModel)).toBeInTheDocument();
+    /* 기준코드 · 기준명을 채워도 품목이 없으면 「기준 추가」가 서지 않는다. */
+    await user.type(within(form).getByLabelText('기준코드'), 'SYN-SHEET-01');
+    await user.type(within(form).getByLabelText('기준명'), '합성 검사표');
+    expect(within(form).getByRole('button', { name: t.actions.addPlan })).toBeDisabled();
 
-    await user.click(within(dialog).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(within(form).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'IQC (수입검사)' }));
-    expect(within(createForm()).getByText(t.fields.inspectionPlanCode)).toBeInTheDocument();
+    expect(within(createForm()).queryByText(sheetT.editor.layout)).not.toBeInTheDocument();
+    expect(within(createForm()).getByText(t.fields.defaultSkip)).toBeInTheDocument();
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 

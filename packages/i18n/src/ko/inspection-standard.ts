@@ -117,7 +117,8 @@ export const inspectionStandard = {
     /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실만 짧게(사용자 시안 · #258). */
     approveDescription: '승인 후에는 취소할 수 없습니다.',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
-    deactivateDescription: '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
+    deactivateDescription:
+      '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
@@ -513,6 +514,7 @@ export const inspectionStandard = {
     inactiveSuffix: ' (미사용)',
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: '전 품목 공통',
+    pickItem: '품목을 선택하세요',
     /*
      * 승인자 **이름을 만들지 않는다.** 계약이 주는 것은 사용자 번호이고
      * 이름을 만들려면 이 화면의 관심사가 아닌 사용자 조회가 필요하다 — 시각만 낸다.
