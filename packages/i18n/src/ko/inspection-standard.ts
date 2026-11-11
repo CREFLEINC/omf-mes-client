@@ -113,10 +113,9 @@ export const inspectionStandard = {
     deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
     /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
     activateTitle: '검사 기준을 다시 사용하시겠습니까?',
-    approveTitle: '이 검사기준을 승인할까요?',
-    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실을 먼저 밝힌다. */
-    approveDescription:
-      '승인하면 되돌릴 수 없습니다. 승인 해제는 제공되지 않습니다. 승인자와 승인 시각은 서버가 기록합니다.',
+    approveTitle: '검사 기준을 승인하시겠습니까?',
+    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실만 짧게(사용자 시안 · #258). */
+    approveDescription: '승인 후에는 취소할 수 없습니다.',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
     deactivateDescription: '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
     confirmTitle: '이 버전을 확정할까요?',

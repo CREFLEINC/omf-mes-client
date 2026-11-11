@@ -97,9 +97,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   dialog: {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
     activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
-    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra này?',
-    approveDescription:
-      'Đã phê duyệt thì không hoàn tác được. Không có chức năng bỏ phê duyệt. Người phê duyệt và thời điểm phê duyệt do máy chủ ghi lại.',
+    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra?',
+    approveDescription: 'Sau khi phê duyệt thì không thể hủy.',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
       'Khi ngừng dùng, tiêu chuẩn sẽ không áp dụng được cho lần kiểm tra mới. Thông tin tiêu chuẩn kiểm tra không bị xóa.',
