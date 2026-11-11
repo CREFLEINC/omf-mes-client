@@ -3634,3 +3634,52 @@ describe('InspectionStandardScreen — 범위 밖 쪽', () => {
     expect(planRequests(requests).at(-1)?.url.searchParams.has('page')).toBe(false);
   });
 });
+
+/* 복사(omf-all-around#255) — 고른 버전의 설정 · 항목으로 다른 품목의 기준을 만든다. 등록 창을 원본 값으로 채워 연다. */
+describe('InspectionStandardScreen — 기준 복사', () => {
+  const copyRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === `${PLANS_PATH}/3001:copy`,
+    respond: () =>
+      jsonResponse({ inspectionPlanId: 3009, inspectionPlanVersionId: 4009 }, { status: 201 }),
+  };
+
+  it('고른 버전이 있으면 「복사」가 서고, 창은 기준 코드 · 품목을 비운 채 원본 값으로 열린다', async () => {
+    const { requests, user } = renderVersions([copyRoute], '?plan=3001&ver=4001');
+
+    await user.click(await screen.findByRole('button', { name: t.actions.copy }));
+    const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
+
+    expect(within(dialog).getByText(t.detail.copyNote(1))).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('기준코드')).toHaveValue('');
+    expect(within(dialog).getByLabelText('기준명')).toHaveValue(
+      inspectionPlanFixtures[0]!.inspectionPlanName,
+    );
+    expect(requestsTo(requests, `${PLANS_PATH}/3001:copy`)).toHaveLength(0);
+  });
+
+  it('저장하면 원본 버전을 실어 :copy 를 보내고, 만든 기준을 연다', async () => {
+    const { requests, user } = renderVersions([copyRoute], '?plan=3001&ver=4001');
+
+    await user.click(await screen.findByRole('button', { name: t.actions.copy }));
+    const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
+    await user.type(within(dialog).getByLabelText('기준코드'), 'SYN-PLAN-COPY');
+    await user.click(within(dialog).getByRole('button', { name: t.actions.addPlan }));
+
+    await screen.findByText(t.result.copied);
+    const posts = requestsTo(requests, `${PLANS_PATH}/3001:copy`);
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(posts[0]!.body)).toMatchObject({
+      inspectionPlanCode: 'SYN-PLAN-COPY',
+      inspectionTypeCode: inspectionPlanFixtures[0]!.inspectionTypeCode,
+      sourceVersionId: 4001,
+    });
+  });
+
+  it('버전을 고르지 않았으면 「복사」가 없다', async () => {
+    renderSelectedPlan();
+
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: t.actions.copy })).not.toBeInTheDocument();
+  });
+});

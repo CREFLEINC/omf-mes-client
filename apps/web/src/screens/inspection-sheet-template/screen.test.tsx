@@ -157,6 +157,11 @@ const setup = (
       match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(':obsolete'),
       respond: () => jsonResponse({ ...detail, statusCode: 'OBSOLETE' }),
     },
+    /* 재사용(omf-all-around#255) */
+    {
+      match: (r) => r.method === 'POST' && new URL(r.url).pathname.endsWith(':reactivate'),
+      respond: () => jsonResponse({ ...detail, statusCode: 'CONFIRMED' }),
+    },
     {
       match: (r) => r.method === 'DELETE',
       respond: () =>
@@ -530,6 +535,51 @@ describe('검사표 기준', () => {
       expect(requests.find((r) => r.path.endsWith(':obsolete'))!.headers.get('If-Match')).toBe(
         '"4"',
       );
+    });
+
+    /* 재사용(omf-all-around#255) — 폐기 버전만. 줄은 그 품목의 가장 높은 버전이라 줄은 확정, 연 상세는 폐기로 둔다. */
+    it('폐기 버전은 「재사용」이 서고, 확인 뒤 :reactivate 를 잠금 버전과 함께 보낸다', async () => {
+      const obsolete = template({
+        statusCode: 'OBSOLETE',
+        confirmedBy: 1,
+        confirmedAt: '2026-10-21T01:00:00Z',
+      });
+      const { user, requests } = setup(obsolete, 'PL13', [], null, [
+        { ...obsolete, statusCode: 'CONFIRMED' },
+      ]);
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.obsolete })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: t.editor.reactivate }));
+      const dialog = await screen.findByRole('dialog', { name: t.reactivateDialog.title });
+      await user.click(within(dialog).getByRole('button', { name: t.reactivateDialog.ok }));
+
+      await waitFor(() => expect(requests.some((r) => r.path.endsWith(':reactivate'))).toBe(true));
+      expect(requests.find((r) => r.path.endsWith(':reactivate'))!.headers.get('If-Match')).toBe(
+        '"4"',
+      );
+    });
+
+    it('확정 · 작성중 버전에는 「재사용」이 없다', async () => {
+      const { user } = setup(
+        template({ statusCode: 'CONFIRMED', confirmedBy: 1, confirmedAt: '2026-10-21T01:00:00Z' }),
+      );
+      await openRow(user);
+
+      expect(screen.queryByRole('button', { name: t.editor.reactivate })).not.toBeInTheDocument();
+    });
+
+    /* 다른 모델로 복사(omf-all-around#255) — 기본 정보 창에서 모델을 골라야 넘어간다. */
+    it('「복사」는 「검사표 기준 복사」 창을 열고, 모델을 고르지 않으면 등록하지 않는다', async () => {
+      const { user, requests } = setup(template());
+      await openRow(user);
+
+      await user.click(screen.getByRole('button', { name: t.editor.copyToModel }));
+      const dialog = await screen.findByRole('dialog', { name: t.editor.copyHeading });
+      await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
+
+      expect(within(dialog).getByText(t.editor.noModel)).toBeInTheDocument();
+      expect(requests.some((r) => r.method === 'POST')).toBe(false);
     });
 
     it('변경 이력이 없으면 「변경 이력」 단추가 서지 않는다', async () => {

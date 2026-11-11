@@ -174,6 +174,12 @@ export const inspectionSheetTemplate = {
     history: '변경 이력',
     discarded: '취소됐습니다.',
     obsoleted: '폐기했습니다.',
+    /* 폐기 버전 재사용 · 다른 모델로 복사(omf-all-around#255). */
+    reactivate: '재사용',
+    reactivated: '재사용했습니다. 이 버전이 다시 확정 버전이 됐습니다.',
+    copyToModel: '복사',
+    copyHeading: '검사표 기준 복사',
+    copiedToModel: '복사한 검사표 기준을 작성중으로 만들었습니다. 내용을 확인한 뒤 확정하세요.',
     historyChanged: '변경',
   },
 
@@ -189,6 +195,13 @@ export const inspectionSheetTemplate = {
     body: (itemCode: string, version: number) =>
       `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 폐기합니다. 새 버전을 확정할 때까지 이 품목의 검사표를 새로 만들 수 없습니다. 기존 검사표는 유지됩니다.`,
     ok: '폐기',
+  },
+
+  reactivateDialog: {
+    title: '이 버전을 다시 사용할까요?',
+    body: (itemCode: string, version: number) =>
+      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 다시 확정 버전으로 씁니다. 이 품목에 확정된 다른 버전이 있으면 그 버전은 폐기됩니다.`,
+    ok: '재사용',
   },
 
   confirmDialog: {

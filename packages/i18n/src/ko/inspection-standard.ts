@@ -23,6 +23,8 @@ export const inspectionStandard = {
     openRouting: '라우팅 보기',
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
+    /* 다른 품목으로 복사(omf-all-around#255). */
+    copy: '복사',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: '임시 저장',
     prevPage: '이전',
@@ -146,6 +148,7 @@ export const inspectionStandard = {
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
     activated: '검사기준을 다시 사용합니다.',
+    copied: '복사한 검사 기준을 만들었습니다. 버전은 작성중이니 내용을 확인한 뒤 확정하세요.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 폐기했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
@@ -235,6 +238,10 @@ export const inspectionStandard = {
   detail: {
     title: '검사 기준 상세',
     createTitle: '검사 기준 등록',
+    /* 복사 창(omf-all-around#255) — 고른 버전의 설정 · 검사 항목을 가져간다. 도면은 가져가지 않는다. */
+    copyTitle: '검사 기준 복사',
+    copyNote: (version: number): string =>
+      `버전 ${String(version)}의 설정과 검사 항목을 복사합니다. 도면은 복사하지 않습니다.`,
     chipNotApproved: '미승인',
     chipActive: '사용',
     chipInactive: '미사용',
@@ -497,6 +504,8 @@ export const inspectionStandard = {
       iqc: 'IQC (수입검사)',
       pqc: 'PQC (공정검사)',
       oqc: 'OQC (출하검사)',
+      /* 검사표 기준(W-06-24)을 검사 기준 탭에 합쳤다 — OA 공장 계정에만 보인다(omf-all-around#255). */
+      sheet: '제품 검사표 (OA)',
     },
     samplingMethods: {
       fullInspection: '전수검사',

@@ -170,6 +170,11 @@ export const inspectionSheetTemplate = {
     history: 'Lịch sử thay đổi',
     discarded: 'Đã hủy phiên bản đang soạn.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
+    reactivate: 'Dùng lại',
+    reactivated: 'Đã dùng lại. Phiên bản này đã trở lại là phiên bản xác nhận.',
+    copyToModel: 'Sao chép',
+    copyHeading: 'Sao chép tiêu chuẩn phiếu kiểm tra',
+    copiedToModel: 'Đã tạo bản sao ở trạng thái đang soạn. Hãy kiểm tra nội dung rồi xác nhận.',
     historyChanged: 'Thay đổi',
   },
 
@@ -185,6 +190,13 @@ export const inspectionSheetTemplate = {
     body: (itemCode: string, version: number) =>
       `Hủy bỏ ${itemCode} phiên bản ${version}. Cho đến khi xác nhận phiên bản mới, không thể tạo phiếu kiểm tra mới cho mặt hàng này. Phiếu kiểm tra hiện có được giữ nguyên.`,
     ok: 'Hủy bỏ',
+  },
+
+  reactivateDialog: {
+    title: 'Dùng lại phiên bản này?',
+    body: (itemCode: string, version: number) =>
+      `Dùng lại ${itemCode} phiên bản ${version} làm phiên bản xác nhận. Nếu mặt hàng này có phiên bản xác nhận khác, phiên bản đó sẽ bị hủy bỏ.`,
+    ok: 'Dùng lại',
   },
 
   confirmDialog: {

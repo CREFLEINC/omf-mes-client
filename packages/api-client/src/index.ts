@@ -61,6 +61,8 @@ export type {
   InspectionSheetStep,
   InspectionSheetStepCode,
   InspectionSheetStepResult,
+  InspectionPlanCopy,
+  InspectionPlanCopyResult,
   InspectionSheetStepWrite,
   InspectionSheetTemplate,
   InspectionSheetTemplateCreate,

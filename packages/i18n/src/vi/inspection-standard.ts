@@ -20,6 +20,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actions: {
     openRouting: 'Xem routing',
     reactivate: 'Sử dụng lại',
+    copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
     prevPage: 'Trước',
@@ -132,6 +133,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
+    copied:
+      'Đã tạo bản sao tiêu chuẩn kiểm tra. Phiên bản đang soạn — hãy kiểm tra nội dung rồi xác nhận.',
     confirmed: 'Đã xác nhận phiên bản.',
     obsoleted: 'Đã hủy bỏ phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',
@@ -209,6 +212,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   detail: {
     title: 'Chi tiết tiêu chuẩn kiểm tra',
     createTitle: 'Đăng ký tiêu chuẩn kiểm tra',
+    copyTitle: 'Sao chép tiêu chuẩn kiểm tra',
+    copyNote: (version: number): string =>
+      `Sao chép thiết lập và hạng mục kiểm tra của phiên bản ${String(version)}. Không sao chép bản vẽ.`,
     chipNotApproved: 'Chưa phê duyệt',
     chipActive: 'Sử dụng',
     chipInactive: 'Ngừng dùng',
@@ -453,6 +459,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       iqc: 'IQC (kiểm tra đầu vào)',
       pqc: 'PQC (kiểm tra công đoạn)',
       oqc: 'OQC (kiểm tra xuất hàng)',
+      sheet: 'Phiếu kiểm tra sản phẩm (OA)',
     },
     samplingMethods: {
       fullInspection: 'Kiểm tra toàn bộ',

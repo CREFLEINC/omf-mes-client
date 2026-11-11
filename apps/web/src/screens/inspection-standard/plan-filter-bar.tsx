@@ -10,7 +10,8 @@ import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
 import { clearFilter, toFilterChips, toListQuery } from './filters';
 import { useItemNameLabels } from './queries';
-import type { PlanFilters } from './types';
+import { SHEET_TYPE } from './type-options';
+import type { PlanFilters, SelectOption } from './types';
 
 const t = messages.inspectionStandard;
 
@@ -27,13 +28,20 @@ export interface PlanFilterBarProps {
   onApplyFilters: (next: PlanFilters) => void;
   /** 조회 · 초기화 뒤, 구분선 너머에 서는 화면 단추(엑셀 올리기 · 추가 · #196) */
   actions?: ReactNode;
+  /** 검사 유형 선택지 — 화면이 OA 공장 · 권한을 보고 「제품 검사표 (OA)」를 더한다(omf-all-around#255). */
+  typeOptions?: SelectOption[];
 }
 
 /**
  * 검사기준 조회 조건 — 검사 조회·판정처럼 목록 위 카드 한 줄에 선다(omf-all-around#196).
  * 목록 구획 안에 두면 좌우 배치에서 좁은 목록 칸에 조건 셋이 끼어 줄이 넘친다.
  */
-export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanFilterBarProps) => {
+export const PlanFilterBar = ({
+  appliedFilters,
+  onApplyFilters,
+  actions,
+  typeOptions = INSPECTION_TYPE_OPTIONS,
+}: PlanFilterBarProps) => {
   const typeSelectId = useId();
   const statusSelectId = useId();
   const planSelectId = useId();
@@ -101,9 +109,14 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
           <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
           <Select
             id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
+            options={[{ value: '', label: t.filters.typeAll }, ...typeOptions]}
             value={draft.inspectionTypeCode}
-            onChange={(value) => applyNow({ inspectionTypeCode: value })}
+            /* 「제품 검사표 (OA)」는 검사표 기준을 연다 — 다른 조건은 그 화면에 없어 비운다(omf-all-around#255). */
+            onChange={(value) =>
+              value === SHEET_TYPE
+                ? onApplyFilters({ ...DEFAULT_PLAN_FILTERS, inspectionTypeCode: SHEET_TYPE })
+                : applyNow({ inspectionTypeCode: value })
+            }
           />
         </div>
 

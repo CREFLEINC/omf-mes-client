@@ -11,7 +11,12 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/api-client';
+import {
+  createIdempotencyKey,
+  type ApiClient,
+  type components,
+  type InspectionPlanCopyResult,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -72,6 +77,7 @@ import {
 } from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
+import { useInspectionTypeOptions } from './type-options';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
@@ -286,6 +292,7 @@ export const InspectionStandardScreen = () => {
   const [versionTab, setVersionTab] = useState('items');
   const toast = useToast();
   const { client } = useApiClient();
+  const typeOptions = useInspectionTypeOptions();
 
   const filters = useMemo<PlanFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
@@ -427,6 +434,12 @@ export const InspectionStandardScreen = () => {
    */
   const [createValues, setCreateValues] = useState<PlanFormValues | null>(null);
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
+  /* 「복사」로 연 등록 창이면 원본 기준 · 버전(omf-all-around#255). null 이면 빈 「기준 추가」다. */
+  const [copySource, setCopySource] = useState<{
+    planId: number;
+    versionId: number;
+    version: number;
+  } | null>(null);
 
   const planWrite = useMasterWrite<PlanFormValues, InspectionPlan>({
     request: (values, headers) =>
@@ -478,6 +491,28 @@ export const InspectionStandardScreen = () => {
        */
       selectPlan(saved.inspectionPlanId);
       toast.show({ variant: 'success', description: messages.common.created });
+    },
+  });
+
+  /* 복사(omf-all-around#255) — 서버가 새 기준과 원본 버전의 설정 · 항목을 담은 작성중 버전 1 을 한 번에 만든다. */
+  const copyWrite = useMasterWrite<PlanFormValues, InspectionPlanCopyResult>({
+    request: (values, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:copy', {
+        params: {
+          path: { inspectionPlanId: copySource?.planId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { ...toPlanCreate(values), sourceVersionId: copySource?.versionId ?? 0 },
+      }),
+    etagPath: null,
+    invalidateKeys: [planKeys.all, versionKeys.all, itemKeys.all, lookupKeys.routingsAll],
+    knownFields: PLAN_FORM_FIELDS,
+    onSuccess: (copied) => {
+      setCreateValues(null);
+      setCreateFieldErrors({});
+      setCopySource(null);
+      selectPlan(copied.inspectionPlanId);
+      toast.show({ variant: 'success', description: t.result.copied });
     },
   });
 
@@ -1182,7 +1217,11 @@ export const InspectionStandardScreen = () => {
     const patch = withItemChangeRule(rawPatch);
 
     setCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
-    clearFieldErrors(patch, setCreateFieldErrors, createWrite.clearFieldError);
+    clearFieldErrors(
+      patch,
+      setCreateFieldErrors,
+      copySource === null ? createWrite.clearFieldError : copyWrite.clearFieldError,
+    );
   };
 
   const handleSavePlan = () => {
@@ -1205,7 +1244,8 @@ export const InspectionStandardScreen = () => {
 
     if (Object.keys(errors).length > 0) return;
 
-    createWrite.write(createValues);
+    if (copySource === null) createWrite.write(createValues);
+    else copyWrite.write(createValues);
   };
 
   /**
@@ -1427,9 +1467,13 @@ export const InspectionStandardScreen = () => {
 
     const closeCreate = () => {
       createWrite.reset();
+      copyWrite.reset();
       setCreateValues(null);
       setCreateFieldErrors({});
+      setCopySource(null);
     };
+    /* 복사 창은 같은 등록 폼을 쓰고 저장만 복사 경로로 보낸다(omf-all-around#255). */
+    const write = copySource === null ? createWrite : copyWrite;
 
     return (
       <Dialog
@@ -1437,18 +1481,24 @@ export const InspectionStandardScreen = () => {
         size="lg"
         closeOnBackdropClick={false}
         showCloseButton={false}
-        title={t.detail.createTitle}
+        title={copySource === null ? t.detail.createTitle : t.detail.copyTitle}
         onClose={closeCreate}
       >
+        {copySource !== null && (
+          <p className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.detail.copyNote(copySource.version)}
+          </p>
+        )}
         <PlanPane
           embedded
           mode="create"
           plan={null}
           values={createValues}
           onChange={changeCreateValues}
-          fieldErrors={{ ...createWrite.fieldErrors, ...createFieldErrors }}
+          fieldErrors={{ ...write.fieldErrors, ...createFieldErrors }}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={createWrite.error} />}
+          banner={<SaveErrorBanner error={write.error} />}
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
           routingRevisions={routingOptions.revisions}
@@ -1456,8 +1506,8 @@ export const InspectionStandardScreen = () => {
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
-          isDirty={!isSamePlanValues(createValues, emptyPlanFormValues())}
-          isSaving={createWrite.isSaving}
+          isDirty={copySource !== null || !isSamePlanValues(createValues, emptyPlanFormValues())}
+          isSaving={write.isSaving}
           onSave={handleSaveCreate}
           onCancel={closeCreate}
         />
@@ -1569,6 +1619,32 @@ export const InspectionStandardScreen = () => {
                 }
           }
           isActivating={activateWrite.isSaving}
+          /*
+           * 복사(omf-all-around#255) — 고른 버전의 설정 · 항목으로 다른 품목의 기준을 만든다. 등록 창을 원본 값으로 채워 연다 —
+           * 기준 코드는 유일해야 하고 품목은 새로 고르므로 비운다. 고른 버전이 없으면 가져갈 내용이 없어 두지 않는다.
+           */
+          onCopy={(() => {
+            const source = versions.find(
+              (version) => version.inspectionPlanVersionId === selectedVersionId,
+            );
+            if (source === undefined) return undefined;
+            const plan = planDetail.data.inspectionPlan;
+            return () =>
+              guardMove(() => {
+                resetPlanEditing();
+                setCopySource({
+                  planId: plan.inspectionPlanId,
+                  versionId: source.inspectionPlanVersionId,
+                  version: source.planVersion,
+                });
+                setCreateValues({
+                  ...planToFormValues(plan),
+                  inspectionPlanCode: '',
+                  itemId: '',
+                  routingId: '',
+                });
+              });
+          })()}
         />
 
         {renderVersionBar()}
@@ -2108,6 +2184,7 @@ export const InspectionStandardScreen = () => {
       <section ref={aboveRef} className="pane inspection-standard-search" role="search">
         <PlanFilterBar
           appliedFilters={filters}
+          typeOptions={typeOptions}
           onApplyFilters={applyFilters}
           /* 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기 · 기준 추가(사용자 시안 · #196). 엑셀 올리기는 올리기 창을 연다(#199). */
           actions={

@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { ItemSelect } from '../../patterns/item-select';
@@ -80,13 +80,14 @@ type Opened =
  * 사업부 관리자가 등록·확정한다. 확정 기준이 있어야 POP 「제품 검사표 입력」에서 그 모델의 검사표가 열린다.
  */
 /** OA 공장 전용(omf-all-around#89) — 계정 범위에 OA 공장이 없으면 안내만 보이고 조회를 보내지 않는다. */
-export const InspectionSheetTemplateScreen = () => (
+export const InspectionSheetTemplateScreen = ({ typeSelect }: { typeSelect?: ReactNode }) => (
   <OaOnlyGate title={t.title} breadcrumbRoot={t.breadcrumbRoot}>
-    <InspectionSheetTemplateScreenBody />
+    <InspectionSheetTemplateScreenBody typeSelect={typeSelect} />
   </OaOnlyGate>
 );
 
-const InspectionSheetTemplateScreenBody = () => {
+/** `typeSelect` — 검사 기준 탭이 조회 줄 맨 앞에 세우는 검사 유형 칸(omf-all-around#255). */
+const InspectionSheetTemplateScreenBody = ({ typeSelect }: { typeSelect?: ReactNode }) => {
   const hub = usePageHub();
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -334,6 +335,8 @@ const InspectionSheetTemplateScreenBody = () => {
             }));
           }}
         >
+          {/* 검사 기준 탭 안에서는 맨 앞에 검사 유형 칸이 선다(omf-all-around#255). */}
+          {typeSelect}
           {/* 순서: 양식 선택 → 상태 선택 → 품목 검색 → 재료 검색(사용자 지시 · #208). */}
           <div className="field-cell inspection-sheet-template-status-filter">
             <label className="field-label" htmlFor={layoutFilterId}>

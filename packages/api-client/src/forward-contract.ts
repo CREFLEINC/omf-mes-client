@@ -709,6 +709,16 @@ export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
   }[];
 }
 
+/** 서버 선행 omf-all-around#255 — 검사기준 복사 요청: 새 기준 머리(등록과 같은 칸) + 내용을 가져올 원본 버전. */
+export type InspectionPlanCopy = components['schemas']['InspectionPlanCreate'] & {
+  sourceVersionId: number;
+};
+
+export interface InspectionPlanCopyResult {
+  inspectionPlanId: number;
+  inspectionPlanVersionId: number;
+}
+
 /** 1차·최종 판정을 함께 빼면 항목 판정만 임시 저장한다(서버 선행 P-102 · 판정이 기록된 단계는 400). */
 export interface InspectionSheetStepWrite {
   firstJudgmentCode?: InspectionSheetJudgment;
@@ -1239,6 +1249,24 @@ export interface ForwardPaths {
     get?: never;
     put?: never;
     post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
+  };
+  /** 서버 선행 omf-all-around#255 — 검사표 기준 재사용(폐기 → 확정 · 같은 모델의 지금 확정본은 폐기). */
+  '/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:reactivate': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<Params<never, LockHeader, TemplateId>, never, { 200: Json<InspectionSheetTemplate> }>;
+  };
+  /** 서버 선행 omf-all-around#255 — 검사기준 복사(원본 버전의 설정 · 항목으로 새 기준과 작성중 버전 1). 도면은 가져오지 않는다. */
+  '/quality/inspection-plans/{inspectionPlanId}:copy': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemHeader, { inspectionPlanId: number }>,
+      { content: { 'application/json': InspectionPlanCopy } },
+      { 201: Json<InspectionPlanCopyResult> }
+    >;
   };
   /** 서버 선행 P-102 — 시리얼로 검사표 열기(없으면 만든다). */
   '/quality/inspection-sheets:open-by-serial': Unused & {
