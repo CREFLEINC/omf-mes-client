@@ -1247,7 +1247,8 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     expect(planRequests(requests).length).toBeGreaterThan(1);
   });
 
-  it('등록 폼에서 로컬 검증에 걸리면 요청이 나가지 않는다', async () => {
+  /* 필수 칸(기준코드 · 기준명 · 검사 유형)을 다 채우기 전에는 「기준 추가」가 눌리지 않는다(#255 사용자 지시). */
+  it('필수 칸을 다 채워야 「기준 추가」가 선다 — 공백만인 칸은 빈 칸이다', async () => {
     const { requests, user } = renderScreen([
       planListRoute(),
       ...lookupRoutes(),
@@ -1255,17 +1256,19 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     ]);
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
-    await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
-    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
+    const save = () => within(createForm()).getByRole('button', { name: '기준 추가' });
+    expect(save()).toBeDisabled();
 
-    /* 빈 필수 칸은 글 없이 빨간 테두리만 선다(사용자 지시 2026-11-04 · 검사 항목 추가 창과 같다). */
-    await waitFor(() => {
-      expect(within(createForm()).getByLabelText('기준명')).toHaveAttribute('aria-invalid', 'true');
-    });
-    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
+    expect(save()).toBeDisabled();
+    await user.type(screen.getByLabelText('기준명'), '   ');
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
+    expect(save()).toBeDisabled();
+
+    await user.clear(screen.getByLabelText('기준명'));
+    await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
+    expect(save()).toBeEnabled();
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 });

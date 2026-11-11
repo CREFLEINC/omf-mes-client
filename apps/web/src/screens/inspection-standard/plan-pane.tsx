@@ -47,6 +47,8 @@ export interface PlanPaneProps {
   /** null이면 기준코드를 편집할 수 있다. */
   codeLockReason: string | null;
   isDirty: boolean;
+  /** false 면 저장을 막는다 — 기준 추가 창은 필수 칸을 다 채워야 저장이 선다(#255 사용자 지시). */
+  canSave?: boolean;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;
@@ -82,6 +84,7 @@ export const PlanPane = ({
   routingDisabledReason,
   codeLockReason,
   isDirty,
+  canSave = true,
   isSaving,
   onSave,
   onCancel,
@@ -286,7 +289,7 @@ export const PlanPane = ({
           {messages.common.cancel}
         </Button>
 
-        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
+        <Button disabled={!isDirty || !canSave || isSaving} loading={isSaving} onClick={onSave}>
           {mode === 'create' ? t.actions.addPlan : messages.common.save}
         </Button>
       </div>

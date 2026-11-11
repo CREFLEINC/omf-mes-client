@@ -1511,6 +1511,11 @@ export const InspectionStandardScreen = () => {
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
           isDirty={copySource !== null || !isSamePlanValues(createValues, emptyPlanFormValues())}
+          canSave={
+            createValues.inspectionPlanCode.trim() !== '' &&
+            createValues.inspectionPlanName.trim() !== '' &&
+            createValues.inspectionTypeCode !== ''
+          }
           isSaving={write.isSaving}
           onSave={handleSaveCreate}
           onCancel={closeCreate}
