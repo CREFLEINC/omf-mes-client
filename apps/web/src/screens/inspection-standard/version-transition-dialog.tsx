@@ -6,29 +6,31 @@ const t = messages.inspectionStandard;
 
 export type VersionTransitionKind = 'confirm' | 'obsolete' | 'reactivate' | 'discard';
 
-const TEXT: Record<VersionTransitionKind, { title: string; action: string; description: string }> =
-  {
-    confirm: {
-      title: t.dialog.confirmTitle,
-      action: t.actions.confirm,
-      description: t.dialog.confirmDescription,
-    },
-    obsolete: {
-      title: t.dialog.obsoleteTitle,
-      action: t.actions.obsolete,
-      description: t.dialog.obsoleteDescription,
-    },
-    reactivate: {
-      title: t.dialog.reactivateVersionTitle,
-      action: t.actions.reactivate,
-      description: t.dialog.reactivateVersionDescription,
-    },
-    discard: {
-      title: t.dialog.discardTitle,
-      action: t.actions.discard,
-      description: t.dialog.discardDescription,
-    },
-  };
+const TEXT: Record<
+  VersionTransitionKind,
+  { title: string | ((version: number) => string); action: string; description: string }
+> = {
+  confirm: {
+    title: t.dialog.confirmTitle,
+    action: t.actions.confirm,
+    description: t.dialog.confirmDescription,
+  },
+  obsolete: {
+    title: t.dialog.obsoleteTitle,
+    action: t.actions.obsolete,
+    description: t.dialog.obsoleteDescription,
+  },
+  reactivate: {
+    title: t.dialog.reactivateVersionTitle,
+    action: t.actions.reactivate,
+    description: t.dialog.reactivateVersionDescription,
+  },
+  discard: {
+    title: t.dialog.discardTitle,
+    action: t.actions.discard,
+    description: t.dialog.discardDescription,
+  },
+};
 
 export interface VersionTransitionDialogProps {
   open: boolean;
@@ -38,6 +40,8 @@ export interface VersionTransitionDialogProps {
   isSaving: boolean;
   /** 실패 배너 슬롯. 창을 닫지 않고 이유를 보여야 사용자가 다음 행동을 정할 수 있다. */
   banner: ReactNode;
+  /** 대상 버전 번호 — 사용 중지 창 제목에 넣는다(「버전 1을 사용 중지하시겠습니까?」 · 사용자 시안 #258). */
+  planVersion: number;
 }
 
 /**
@@ -55,26 +59,31 @@ export const VersionTransitionDialog = ({
   onConfirm,
   isSaving,
   banner,
-}: VersionTransitionDialogProps) => (
-  <Dialog
-    open={open}
-    onClose={onClose}
-    size="sm"
-    title={TEXT[kind].title}
-    closeOnBackdropClick={false}
-    showCloseButton={false}
-    footer={
-      <>
-        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
-          {messages.common.cancel}
-        </Button>
-        <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {TEXT[kind].action}
-        </Button>
-      </>
-    }
-  >
-    {banner}
-    <p>{TEXT[kind].description}</p>
-  </Dialog>
-);
+  planVersion,
+}: VersionTransitionDialogProps) => {
+  const { title } = TEXT[kind];
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      /* 사용 중지 창은 제목 · 설명이 한 줄에 가깝게 서도록 넓힌다(사용자 시안 · #258). */
+      size={kind === 'obsolete' ? 'md' : 'sm'}
+      title={typeof title === 'function' ? title(planVersion) : title}
+      closeOnBackdropClick={false}
+      showCloseButton={false}
+      footer={
+        <>
+          <Button variant="outlined" disabled={isSaving} onClick={onClose}>
+            {messages.common.cancel}
+          </Button>
+          <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
+            {TEXT[kind].action}
+          </Button>
+        </>
+      }
+    >
+      {banner}
+      <p>{TEXT[kind].description}</p>
+    </Dialog>
+  );
+};

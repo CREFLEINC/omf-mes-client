@@ -122,9 +122,11 @@ export const inspectionStandard = {
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
-    obsoleteTitle: '이 버전을 사용 중지할까요?',
+    /** 「버전 1을 …」 — 숫자 끝소리에 맞춰 을/를(2·4·5·9 는 「를」 · 사용자 시안 #258). */
+    obsoleteTitle: (version: number): string =>
+      `버전 ${String(version)}${[2, 4, 5, 9].includes(version % 10) ? '를' : '을'} 사용 중지하시겠습니까?`,
     obsoleteDescription:
-      '사용 중지한 버전은 새 검사에서 사용할 수 없습니다. 재사용하면 다시 쓸 수 있고, 기존 데이터는 유지됩니다.',
+      '사용 중지하면 새 검사에 적용되지 않습니다. 기존 데이터는 유지되며, 필요하면 다시 사용할 수 있습니다.',
     /* 사용 중지한 버전을 다시 확정으로(omf-all-around#258). */
     reactivateVersionTitle: '이 버전을 다시 사용할까요?',
     reactivateVersionDescription:

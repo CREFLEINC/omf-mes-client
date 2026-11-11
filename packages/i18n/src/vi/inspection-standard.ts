@@ -106,9 +106,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
-    obsoleteTitle: 'Ngừng dùng phiên bản này?',
+    obsoleteTitle: (version: number): string => `Ngừng dùng phiên bản ${String(version)}?`,
     obsoleteDescription:
-      'Phiên bản đã ngừng dùng không dùng được cho lần kiểm tra mới. Sử dụng lại thì dùng được tiếp, dữ liệu hiện có vẫn được giữ.',
+      'Khi ngừng dùng, phiên bản sẽ không áp dụng cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ, và có thể dùng lại khi cần.',
     reactivateVersionTitle: 'Sử dụng lại phiên bản này?',
     reactivateVersionDescription:
       'Sử dụng lại thì phiên bản này trở lại là phiên bản xác nhận và được áp dụng cho lần kiểm tra mới.',

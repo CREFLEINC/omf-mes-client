@@ -2585,6 +2585,13 @@ export const InspectionStandardScreen = () => {
           isSaving={versionTransitionWrite.isSaving}
           /* 전이에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<PlanActionBanner error={versionTransitionWrite.error} />}
+          /* 전이는 고른 버전에만 열린다 — 상세를 받기 전이면 목록의 번호로. */
+          planVersion={
+            versionDetail.data?.inspectionPlanVersion.planVersion ??
+            versions.find((version) => version.inspectionPlanVersionId === selectedVersionId)
+              ?.planVersion ??
+            0
+          }
         />
       )}
     </>
