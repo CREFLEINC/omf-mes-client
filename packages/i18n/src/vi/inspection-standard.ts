@@ -459,7 +459,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       iqc: 'IQC (kiểm tra đầu vào)',
       pqc: 'PQC (kiểm tra công đoạn)',
       oqc: 'OQC (kiểm tra xuất hàng)',
-      sheet: 'Phiếu kiểm tra sản phẩm (OA)',
     },
     samplingMethods: {
       fullInspection: 'Kiểm tra toàn bộ',

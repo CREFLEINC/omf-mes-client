@@ -77,7 +77,7 @@ import {
 } from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
-import { useInspectionTypeOptions } from './type-options';
+import { SHEET_TYPE, useSheetForPqc } from './type-options';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
@@ -292,7 +292,7 @@ export const InspectionStandardScreen = () => {
   const [versionTab, setVersionTab] = useState('items');
   const toast = useToast();
   const { client } = useApiClient();
-  const typeOptions = useInspectionTypeOptions();
+  const sheetForPqc = useSheetForPqc();
 
   const filters = useMemo<PlanFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
@@ -2188,7 +2188,7 @@ export const InspectionStandardScreen = () => {
       <section ref={aboveRef} className="pane inspection-standard-search" role="search">
         <PlanFilterBar
           appliedFilters={filters}
-          typeOptions={typeOptions}
+          sheetTypeCode={sheetForPqc ? SHEET_TYPE : null}
           onApplyFilters={applyFilters}
           /* 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기 · 기준 추가(사용자 시안 · #196). 엑셀 올리기는 올리기 창을 연다(#199). */
           actions={

@@ -504,8 +504,6 @@ export const inspectionStandard = {
       iqc: 'IQC (수입검사)',
       pqc: 'PQC (공정검사)',
       oqc: 'OQC (출하검사)',
-      /* 검사표 기준(W-06-24)을 검사 기준 탭에 합쳤다 — OA 공장 계정에만 보인다(omf-all-around#255). */
-      sheet: '제품 검사표 (OA)',
     },
     samplingMethods: {
       fullInspection: '전수검사',

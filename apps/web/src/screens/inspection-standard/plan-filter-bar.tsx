@@ -10,8 +10,7 @@ import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { FieldLabel } from './field-label';
 import { clearFilter, toFilterChips, toListQuery } from './filters';
 import { useItemNameLabels } from './queries';
-import { SHEET_TYPE } from './type-options';
-import type { PlanFilters, SelectOption } from './types';
+import type { PlanFilters } from './types';
 
 const t = messages.inspectionStandard;
 
@@ -28,8 +27,8 @@ export interface PlanFilterBarProps {
   onApplyFilters: (next: PlanFilters) => void;
   /** 조회 · 초기화 뒤, 구분선 너머에 서는 화면 단추(엑셀 올리기 · 추가 · #196) */
   actions?: ReactNode;
-  /** 검사 유형 선택지 — 화면이 OA 공장 · 권한을 보고 「제품 검사표 (OA)」를 더한다(omf-all-around#255). */
-  typeOptions?: SelectOption[];
+  /** 검사표 기준을 여는 검사 유형 — OA 공장 계정이면 PQC 가 검사표 기준을 연다(omf-all-around#255). */
+  sheetTypeCode?: string | null;
 }
 
 /**
@@ -40,7 +39,7 @@ export const PlanFilterBar = ({
   appliedFilters,
   onApplyFilters,
   actions,
-  typeOptions = INSPECTION_TYPE_OPTIONS,
+  sheetTypeCode = null,
 }: PlanFilterBarProps) => {
   const typeSelectId = useId();
   const statusSelectId = useId();
@@ -109,12 +108,12 @@ export const PlanFilterBar = ({
           <FieldLabel htmlFor={typeSelectId} label={t.filters.inspectionType} />
           <Select
             id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...typeOptions]}
+            options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
             value={draft.inspectionTypeCode}
-            /* 「제품 검사표 (OA)」는 검사표 기준을 연다 — 다른 조건은 그 화면에 없어 비운다(omf-all-around#255). */
+            /* 검사표 기준을 여는 유형 — 다른 조건은 그 화면에 없어 비운다(omf-all-around#255). */
             onChange={(value) =>
-              value === SHEET_TYPE
-                ? onApplyFilters({ ...DEFAULT_PLAN_FILTERS, inspectionTypeCode: SHEET_TYPE })
+              value === sheetTypeCode
+                ? onApplyFilters({ ...DEFAULT_PLAN_FILTERS, inspectionTypeCode: value })
                 : applyNow({ inspectionTypeCode: value })
             }
           />

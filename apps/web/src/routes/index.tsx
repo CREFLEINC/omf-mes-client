@@ -150,12 +150,12 @@ export const appRouter = createBrowserRouter([
       { path: 'master-data/routing', element: <RoutingScreen /> },
       /* 공정 경로 관리의 「공정 관리」 탭을 탭 막대로 뗀 주소(#231) — 같은 화면이 보일 탭만 받는다. */
       { path: 'master-data/processes', element: <RoutingScreen tab="processes" /> },
-      /* 검사 기준 — 검사 유형 「제품 검사표 (OA)」면 검사표 기준(W-06-24)을 연다(omf-all-around#255). */
+      /* 검사 기준 — OA 공장 계정이 검사 유형 PQC 를 고르면 검사표 기준(W-06-24)을 연다(omf-all-around#255). */
       { path: 'master-data/inspection-standard', element: <InspectionStandardRoute /> },
       /* W-06-24 검사표 기준의 옛 주소 — 검사 기준 탭에 합쳤다(omf-all-around#255). 권한 판단은 이 주소로 남긴다. */
       {
         path: 'master-data/inspection-sheet-template',
-        element: <Navigate to="/master-data/inspection-standard?type=SHEET" replace />,
+        element: <Navigate to="/master-data/inspection-standard?type=PQC" replace />,
       },
       { path: 'master-data/defect-cause-code', element: <DefectCauseCodeScreen /> },
       /* 불량·원인코드 화면의 하위 탭을 탭 막대로 뗀 주소(#208) — 같은 화면이 보일 탭만 받는다. */

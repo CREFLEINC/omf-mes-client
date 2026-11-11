@@ -47,36 +47,44 @@ describe('PlanFilterBar — 조건', () => {
     });
   });
 
-  /* 검사표 기준을 검사 기준 탭에 합쳤다(omf-all-around#255) — 고르면 다른 조건은 비우고 유형만 남긴다. */
-  it('「제품 검사표 (OA)」는 화면이 넘긴 선택지에만 서고, 고르면 다른 조건을 비운다', async () => {
+  /* OA 공장은 PQC 가 검사표 기준을 연다(omf-all-around#255) — 고르면 다른 조건은 비우고 유형만 남긴다. */
+  it('검사표를 여는 유형(OA 의 PQC)을 고르면 다른 조건을 비운다', async () => {
     const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
     renderWithProviders(
       <PlanFilterBar
         appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', unapprovedOnly: true }}
         onApplyFilters={onApplyFilters}
-        typeOptions={[
-          ...INSPECTION_TYPE_OPTIONS,
-          { value: SHEET_TYPE, label: messages.inspectionStandard.values.inspectionTypes.sheet },
-        ]}
+        sheetTypeCode={SHEET_TYPE}
       />,
     );
     const user = userEvent.setup();
 
     await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
-    await user.click(screen.getByRole('option', { name: '제품 검사표 (OA)' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
 
     expect(onApplyFilters).toHaveBeenCalledWith({
       ...DEFAULT_PLAN_FILTERS,
-      inspectionTypeCode: SHEET_TYPE,
+      inspectionTypeCode: 'PQC',
     });
   });
 
-  it('선택지를 넘기지 않으면 「제품 검사표 (OA)」가 없다', async () => {
-    const { user } = renderBar();
+  it('검사표를 여는 유형이 없으면(부품) PQC 는 다른 조건을 그대로 둔다', async () => {
+    const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
+    renderWithProviders(
+      <PlanFilterBar
+        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', unapprovedOnly: true }}
+        onApplyFilters={onApplyFilters}
+      />,
+    );
+    const user = userEvent.setup();
 
     await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
-
     expect(screen.queryByRole('option', { name: '제품 검사표 (OA)' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith(
+      expect.objectContaining({ inspectionTypeCode: 'PQC', q: 'SYN', unapprovedOnly: true }),
+    );
   });
 
   /* 검사 기준은 칸에서 바로 검색해 고른다 — 창(팝업)이 열리지 않는다(#226). 고르기 전에는 「전체」다. */
