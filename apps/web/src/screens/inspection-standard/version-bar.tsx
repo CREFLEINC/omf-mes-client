@@ -1,6 +1,6 @@
 import { Button, Chip, Dialog, Icon, type SelectOptionGroup } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { useId } from 'react';
 
 import { Select } from '../../patterns/select';
 import { FieldLabel } from './field-label';
@@ -22,8 +22,8 @@ export interface VersionBarProps extends VersionPaneProps {
   /** 「버전 목록」 창이 열렸는가 — 화면이 쥔다(신규 버전 발행에 성공하면 창을 닫는다 · #196). */
   isListOpen: boolean;
   onListOpenChange: (open: boolean) => void;
-  /** 고른 버전의 일 — 버전 설정 수정 · 확정 · 폐기(줄 오른쪽 끝 · #196) */
-  versionActions?: ReactNode;
+  /** 「버전 이력」 창을 연다 — 고른 버전이 있을 때만 넘긴다(종전 「이력」 탭 · omf-all-around#258). */
+  onHistory?: () => void;
   /** 「버전 비교」 창을 연다(#196). 견줄 버전이 2개 미만이면 화면이 넘기지 않는다 — 단추가 서지 않는다(#208). */
   onCompare?: () => void;
 }
@@ -31,7 +31,7 @@ export interface VersionBarProps extends VersionPaneProps {
 export const VersionBar = ({
   isListOpen,
   onListOpenChange,
-  versionActions,
+  onHistory,
   onCompare,
   ...props
 }: VersionBarProps) => {
@@ -99,7 +99,12 @@ export const VersionBar = ({
             {selectedStatus.label}
           </Chip>
         )}
-        <Button variant="outlined" onClick={() => setIsListOpen(true)}>
+        {/* 버전 목록 · 비교 · 이력은 줄 오른쪽으로 모은다(사용자 시안 · omf-all-around#258). */}
+        <Button
+          variant="outlined"
+          className="inspection-standard-version-tools-start"
+          onClick={() => setIsListOpen(true)}
+        >
           {t.versionBar.openList}
         </Button>
         {/* 계약에 경로가 없다. 감추지 않고 사유와 함께 비활성으로 둔다(사유는 마우스를 올리면 보인다). */}
@@ -110,9 +115,13 @@ export const VersionBar = ({
             {t.actions.compareVersions}
           </Button>
         )}
-        {/* 오른쪽 끝 — 고른 버전의 일(버전 설정 수정 · 확정 · 폐기), 맨 끝에 「+ 신규 버전 발행」(사용자 시안 · #196). */}
+        {onHistory !== undefined && (
+          <Button variant="outlined" onClick={onHistory}>
+            {t.versionSection.history}
+          </Button>
+        )}
+        {/* 오른쪽 끝 「+ 신규 버전 발행」(사용자 시안 · #196). 확정 · 사용 중지 등 고른 버전의 일은 카드 바닥 줄로 옮겼다(#258). */}
         <div className="inspection-standard-version-actions">
-          {versionActions}
           {/*
            * 작성중 버전을 보고 있으면 발행 단추를 두지 않는다 — 이미 고칠 수 있는 판이다(사용자 지시 · #196).
            * 작성중 버전이 따로 있으면 이 줄에는 단추도 안내도 두지 않는다 — 확정 버전을 보는 자리에 그 안내는

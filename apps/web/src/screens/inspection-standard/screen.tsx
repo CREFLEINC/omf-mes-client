@@ -8,7 +8,6 @@ import {
   Icon,
   PageHeader,
   SkeletonText,
-  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import {
@@ -18,7 +17,7 @@ import {
   type InspectionPlanCopyResult,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -107,7 +106,6 @@ import {
   useItemOptions,
   useRoutingOptions,
   useUomOptions,
-  useVersionHistory,
   versionDetailPath,
   versionKeys,
   type InspectionItemSpecListResponse,
@@ -136,6 +134,7 @@ import { useVersionDrawingDraft, VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionGuideDialog } from './version-guide-dialog';
+import { VersionGuideRow, VersionSettingRow } from './version-setting-row';
 import { type GuideTextField, VersionSummary } from './version-summary';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
@@ -289,7 +288,10 @@ export const InspectionStandardScreen = () => {
   /* 「변경 이력」 창(#196) */
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
+  /* 「버전별 설정」에서 펼친 줄 — 비면 모두 접힌 것(#258). 처음에는 검사 항목을 펼친다(종전 첫 탭). */
   const [versionTab, setVersionTab] = useState('items');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const versionSettingsId = useId();
   const toast = useToast();
   const { client } = useApiClient();
   const sheetForPqc = useSheetForPqc();
@@ -576,7 +578,6 @@ export const InspectionStandardScreen = () => {
   const versions = versionList.data?.items ?? [];
   const selectedVersionId = Number(searchParams.get('ver') ?? '') || null;
   /* 고른 버전의 변경 이력 — 「변경 이력」 단추를 이력이 있을 때만 세운다(#208). 창 · 탭과 같은 조회라 한 번만 나간다. */
-  const versionHistory = useVersionHistory(selectedVersionId);
   /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
   const versionDrawings = useInspectionDrawings(selectedVersionId);
   /* 도면 탭의 저장 전 변경(#227) — 확정 · 신규 버전 발행을 막는 「저장하지 않은 변경」에 들어간다. */
@@ -777,8 +778,8 @@ export const InspectionStandardScreen = () => {
       : versionTransition === 'reactivate'
         ? reactivateWrite
         : versionTransition === 'discard'
-        ? discardWrite
-        : confirmWrite;
+          ? discardWrite
+          : confirmWrite;
 
   /*
    * 검사 항목은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -1457,21 +1458,10 @@ export const InspectionStandardScreen = () => {
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
-      versionActions={
-        selectedVersionId !== null && versionStatus !== null ? (
-          <>
-            {versionStatus.isEditable && (
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="edit" size={18} />}
-                onClick={() => setIsVersionEditOpen(true)}
-              >
-                {t.versionSection.editSettings}
-              </Button>
-            )}
-            {renderVersionTransitionActions()}
-          </>
-        ) : undefined
+      onHistory={
+        selectedVersionId !== null && versionStatus !== null
+          ? () => setIsHistoryOpen(true)
+          : undefined
       }
       versions={versions}
       isLoading={versionList.isPending}
@@ -1707,9 +1697,12 @@ export const InspectionStandardScreen = () => {
           })()}
         />
 
-        {renderVersionBar()}
+        {/* 버전 카드(사용자 시안 · omf-all-around#258) — 머리 줄 · 요약 · 버전별 설정 · 바닥 줄(확정 등). */}
+        <div className="inspection-standard-version-card">
+          {renderVersionBar()}
 
-        {renderVersionBody()}
+          {renderVersionBody()}
+        </div>
 
         {isPlanEditOpen && (
           <Dialog
@@ -1803,58 +1796,50 @@ export const InspectionStandardScreen = () => {
             frequencyIntervalUomOptions,
             versionFormState.baseline.frequencyIntervalUomCode,
           )}
-          onEditGuide={versionStatus.isEditable ? setGuideEditField : undefined}
         />
-        <Tabs
-          aria-label={t.versionSection.tabsLabel}
-          value={versionTab}
-          onChange={setVersionTab}
-          items={[
-            {
-              value: 'items',
-              /* 탭마다 건수를 붙인다 — 검사 조회·판정과 같다(#196). */
-              label: t.versionSection.tabItemsCount(itemDrafts.length),
-              content: renderItemPane(),
-            },
-            {
-              value: 'drawings',
-              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). 건수는 검사 항목처럼 저장 전 초안으로 센다(#227). 탭 순서는 검사 항목 · 도면 · 이력(사용자 지시 · #227). */
-              label:
-                versionDrawings.data === undefined
-                  ? t.versionSection.tabDrawings
-                  : t.versionSection.tabDrawingsCount(drawingDraft.list.length),
-              content:
-                selectedVersionId === null ? null : (
-                  /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
-                  <VersionDrawings
-                    key={selectedVersionId}
-                    drawings={versionDrawings}
-                    draft={drawingDraft}
-                    isEditable={versionStatus?.isEditable === true}
-                  />
-                ),
-            },
-            {
-              value: 'history',
-              /* 건수는 검사 항목 탭과 같이 붙인다(#208). 받기 전에는 이름만 낸다 — 0건을 지어내지 않는다. */
-              label:
-                versionHistory.data === undefined
-                  ? t.versionSection.tabHistory
-                  : t.versionSection.tabHistoryCount(versionHistory.data.items.length),
-              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 단추 · 창은 이 탭과 같아 없앴다(#255 사용자 지시). */
-              content:
-                selectedVersionId === null ? null : (
-                  <VersionHistoryTable
-                    inspectionPlanVersionId={selectedVersionId}
-                    labels={compareLabels}
-                    showRange
-                  />
-                ),
-            },
-          ]}
-        />
+        {/* 「버전 설정 수정」은 요약 아래 오른쪽(사용자 시안 · #258). 작성중 버전에서만 선다. */}
+        {versionStatus.isEditable && (
+          <div className="inspection-standard-version-edit">
+            <Button
+              variant="text"
+              leadingIcon={<Icon name="edit" size={18} />}
+              onClick={() => setIsVersionEditOpen(true)}
+            >
+              {t.versionSection.editSettings}
+            </Button>
+          </div>
+        )}
+
+        {renderVersionSettings()}
+
+        {/* 바닥 줄 오른쪽 — 작성 취소 · 확정 / 사용 중지 / 재사용(사용자 시안 · #258). */}
+        <div className="inspection-standard-version-actions inspection-standard-version-footer">
+          {renderVersionTransitionActions()}
+        </div>
 
         {isCompareOpen && renderCompareDialog()}
+
+        {isHistoryOpen && selectedVersionId !== null && (
+          /* 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). */
+          <Dialog
+            open
+            size="lg"
+            title={t.versionSection.history}
+            showCloseButton={false}
+            onClose={() => setIsHistoryOpen(false)}
+            footer={
+              <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
+                {messages.common.close}
+              </Button>
+            }
+          >
+            <VersionHistoryTable
+              inspectionPlanVersionId={selectedVersionId}
+              labels={compareLabels}
+              showRange
+            />
+          </Dialog>
+        )}
 
         {guideEditField !== null && versionStatus.isEditable && (
           <VersionGuideDialog
@@ -1909,6 +1894,67 @@ export const InspectionStandardScreen = () => {
           </Dialog>
         )}
       </>
+    );
+  };
+
+  /** 줄을 누르면 펼치고, 펼친 줄을 다시 누르면 접는다 — 한 번에 한 줄(종전 탭과 같다 · #258). */
+  const toggleVersionRow = (row: string) => () =>
+    setVersionTab((open) => (open === row ? '' : row));
+
+  /**
+   * 「버전별 설정」(사용자 시안 · omf-all-around#258) — 검사 항목 · 검사 도면 · 검사 지시문 세 줄.
+   * 항목 · 도면은 줄을 펼쳐 종전 탭 내용을 보이고, 지시문은 화면 언어의 문구 한 칸만 보이고 고친다(#252).
+   */
+  const renderVersionSettings = (): ReactNode => {
+    if (versionStatus === null || versionFormState === null) return null;
+    const isEditable = versionStatus.isEditable;
+
+    return (
+      <section className="inspection-standard-version-settings" aria-labelledby={versionSettingsId}>
+        <h3 id={versionSettingsId} className="inspection-standard-version-settings-title">
+          {t.versionSection.settingsTitle}
+        </h3>
+        <div className="inspection-standard-setting-list">
+          <VersionSettingRow
+            icon="assignment_turned_in"
+            title={t.versionSection.tabItems}
+            summary={t.versionSection.rowItemsCount(itemDrafts.length)}
+            action={
+              isEditable ? (
+                <Button
+                  variant="outlined"
+                  leadingIcon={<Icon name="add" size={18} />}
+                  onClick={() => {
+                    setVersionTab('items');
+                    handleAddItem();
+                  }}
+                >
+                  {t.actions.addItem}
+                </Button>
+              ) : undefined
+            }
+            isOpen={versionTab === 'items'}
+            onToggle={toggleVersionRow('items')}
+          >
+            {renderItemPane()}
+          </VersionSettingRow>
+          {selectedVersionId !== null && (
+            /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
+            <VersionDrawings
+              key={selectedVersionId}
+              drawings={versionDrawings}
+              draft={drawingDraft}
+              isEditable={isEditable}
+              isOpen={versionTab === 'drawings'}
+              onToggle={toggleVersionRow('drawings')}
+            />
+          )}
+          <VersionGuideRow
+            values={versionFormState.baseline}
+            onEditGuide={isEditable ? setGuideEditField : undefined}
+          />
+        </div>
+      </section>
     );
   };
 
@@ -2153,7 +2199,6 @@ export const InspectionStandardScreen = () => {
         saveBlockedReason={itemsSaveBlockedReason}
         /* 전체 치환에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
         banner={<PlanActionBanner error={itemsWrite.error} />}
-        onAdd={handleAddItem}
         onEdit={handleEditItem}
         onRemove={(draftId) => {
           changeItemDrafts((drafts) => removeItemDraft(drafts, draftId));

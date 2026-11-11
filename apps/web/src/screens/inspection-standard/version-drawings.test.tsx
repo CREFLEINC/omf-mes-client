@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useInspectionDrawings } from '../../patterns/inspection-drawings';
@@ -14,10 +15,18 @@ const BASE = `/quality/inspection-plan-versions/${String(VERSION)}/drawings`;
 const Harness = ({ isEditable }: { isEditable: boolean }) => {
   const drawings = useInspectionDrawings(VERSION);
   const draft = useVersionDrawingDraft(VERSION, drawings);
+  /* 「검사 도면」 줄은 펼친 채로 본다(#258). */
+  const [isOpen, setIsOpen] = useState(true);
   return (
     <>
       <span data-testid="draft-count">{draft.list.length}</span>
-      <VersionDrawings drawings={drawings} draft={draft} isEditable={isEditable} />
+      <VersionDrawings
+        drawings={drawings}
+        draft={draft}
+        isEditable={isEditable}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((open) => !open)}
+      />
     </>
   );
 };

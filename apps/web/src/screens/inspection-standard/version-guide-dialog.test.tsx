@@ -6,29 +6,22 @@ import { describe, expect, it, vi } from 'vitest';
 import { inspectionPlanVersionFixtures } from './fixtures';
 import { VersionGuideDialog } from './version-guide-dialog';
 import { versionToFormValues } from './version-mappers';
-import { VersionSummary } from './version-summary';
+import { VersionGuideRow } from './version-setting-row';
 
 const t = messages.inspectionStandard;
 
-/** omf-all-around#252 — 지시문은 버전 요약에서 화면 언어 칸 하나만 보이고 「수정」 창에서 고친다. */
+/** omf-all-around#252 — 지시문은 「검사 지시문」 줄(#258)에서 화면 언어 칸 하나만 보이고 「지시문 수정」 창에서 고친다. */
 describe('지시문 수정', () => {
   const values = {
     ...versionToFormValues(inspectionPlanVersionFixtures[0]!),
     guideTextKo: '장갑 착용',
   };
   const summary = (onEditGuide?: (field: 'guideTextKo' | 'guideTextVi') => void) =>
-    render(
-      <VersionSummary
-        values={values}
-        inspectionFrequencyOptions={[]}
-        frequencyIntervalUomOptions={[]}
-        onEditGuide={onEditGuide}
-      />,
-    );
+    render(<VersionGuideRow values={values} onEditGuide={onEditGuide} />);
 
   const guideLines = (container: HTMLElement) =>
-    [...container.querySelectorAll('.inspection-standard-guide-line dd')].map(
-      (dd) => dd.textContent,
+    [...container.querySelectorAll('.inspection-standard-setting-summary')].map(
+      (line) => line.textContent,
     );
 
   it('한국어 화면은 한국어 지시문만 보이고 고친다', async () => {
@@ -43,13 +36,13 @@ describe('지시문 수정', () => {
     expect(onEditGuide).toHaveBeenCalledWith('guideTextKo');
   });
 
-  it('베트남어 화면은 베트남어 지시문만 — 비어 있어도 고칠 수 있게 미설정으로 보인다', async () => {
+  it('베트남어 화면은 베트남어 지시문만 — 비어 있어도 고칠 수 있게 「등록된 지시문 없음」으로 보인다', async () => {
     setLocale('vi');
     try {
       const onEditGuide = vi.fn();
       const { container } = summary(onEditGuide);
 
-      expect(guideLines(container)).toEqual([t.versionSection.notSet]);
+      expect(guideLines(container)).toEqual([t.versionSection.guideNone]);
       await userEvent.click(
         screen.getByRole('button', { name: t.versionSection.editGuide(t.fields.guideTextVi) }),
       );
@@ -59,7 +52,7 @@ describe('지시문 수정', () => {
     }
   });
 
-  it('잠긴 버전은 수정 단추가 없고 빈 언어 줄을 두지 않는다', () => {
+  it('잠긴 버전은 수정 단추가 없고 다른 언어 칸을 두지 않는다', () => {
     summary();
 
     expect(screen.queryByRole('button', { name: /수정/ })).toBeNull();

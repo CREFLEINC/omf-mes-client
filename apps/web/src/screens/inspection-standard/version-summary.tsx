@@ -1,5 +1,4 @@
-import { Button } from '@crefle/web-ui';
-import { activeLocale, messages } from '@omf-mes/i18n';
+import { messages } from '@omf-mes/i18n';
 
 import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
 import type { SelectOption, VersionFormValues } from './types';
@@ -12,8 +11,6 @@ export interface VersionSummaryProps {
   /** 검사 주기 · 주기 단위 선택지 — 공통코드에서 받은 것(버전 폼과 같은 출처 · #194). */
   inspectionFrequencyOptions: SelectOption[];
   frequencyIntervalUomOptions: SelectOption[];
-  /** 화면 언어 지시문의 「수정」 — 작성중 버전에서만 넘긴다(확정 버전은 잠긴다 · #252). */
-  onEditGuide?: (field: GuideTextField) => void;
 }
 
 export type GuideTextField = 'guideTextKo' | 'guideTextVi';
@@ -33,7 +30,6 @@ export const VersionSummary = ({
   values,
   inspectionFrequencyOptions,
   frequencyIntervalUomOptions,
-  onEditGuide,
 }: VersionSummaryProps) => {
   const sampling = labelOf(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode);
   /* 샘플링 검사면 비율(%) 또는 개수 중 들어 있는 쪽을 함께 낸다(#201). */
@@ -80,44 +76,15 @@ export const VersionSummary = ({
     },
   ];
 
-  /*
-   * 지시문(#252)은 길 수 있어 요약 줄 아래에 따로 보인다. 화면 언어의 칸 하나만 보이고 고친다(사용자 지시) —
-   * 고칠 수 있는 버전이면 비어도 두고 「수정」, 잠긴 버전은 문구가 있을 때만 둔다.
-   */
-  const field: GuideTextField = activeLocale() === 'vi' ? 'guideTextVi' : 'guideTextKo';
-  const guides = onEditGuide !== undefined || values[field].trim() !== '' ? [field] : [];
-
+  /* 지시문(#252)은 「버전별 설정」의 「검사 지시문」 줄로 옮겼다(사용자 시안 · omf-all-around#258). */
   return (
-    <>
-      <dl className="inspection-standard-facts-line">
-        {facts.map((fact) => (
-          <div key={fact.label}>
-            <dt className="field-label">{fact.label}</dt>
-            <dd>{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
-      {guides.length > 0 && (
-        <dl className="inspection-standard-guide-line">
-          {guides.map((field) => (
-            <div key={field}>
-              <dt className="field-label">{t.fields[field]}</dt>
-              <dd>{values[field].trim() === '' ? t.versionSection.notSet : values[field]}</dd>
-              {/* 「수정」은 문구 첫 줄 오른쪽에 둔다(사용자 지시). */}
-              {onEditGuide !== undefined && (
-                <Button
-                  variant="outlined"
-                  size="md"
-                  aria-label={t.versionSection.editGuide(t.fields[field])}
-                  onClick={() => onEditGuide(field)}
-                >
-                  {t.versionSection.guideEdit}
-                </Button>
-              )}
-            </div>
-          ))}
-        </dl>
-      )}
-    </>
+    <dl className="inspection-standard-facts-line">
+      {facts.map((fact) => (
+        <div key={fact.label}>
+          <dt className="field-label">{fact.label}</dt>
+          <dd>{fact.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 };

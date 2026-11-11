@@ -2822,7 +2822,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   });
 
   /* 변경 이력은 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다(#196). 처리자 이름은 사용자 상세로 푼다. */
-  it('이력 탭이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
+  it('「버전 이력」 창이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
     const { requests, user } = renderSelectedVersion([
       {
         match: (request) => isGet(request, '/audit/events'),
@@ -2854,10 +2854,10 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     ]);
 
     await awaitVersionForm();
-    /* 변경 이력은 「이력」 탭에서만 본다 — 같은 내용의 「변경 이력」 단추 · 창은 없앴다(#255 사용자 지시). */
-    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
-    await user.click(await screen.findByRole('tab', { name: '이력 1건' }));
-    const dialog = await screen.findByRole('tabpanel');
+    /* 변경 이력은 「버전 이력」 창에서 본다 — 종전 「이력」 탭을 창으로 옮겼다(#258 사용자 지시). */
+    expect(screen.queryByRole('tab', { name: /이력/ })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: '버전 이력' }));
+    const dialog = await screen.findByRole('dialog', { name: '버전 이력' });
 
     expect(await within(dialog).findByText('버전 설정')).toBeInTheDocument();
     expect(within(dialog).getByText('AQL')).toBeInTheDocument();
@@ -2868,6 +2868,23 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('targetTypeCode')).toBe('INSPECTION_PLAN_VERSION');
     expect(history?.url.searchParams.get('targetId')).toBe('4002');
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
+  });
+
+  /* 「버전별 설정」 줄은 한 번에 하나만 펼친다 — 종전 탭과 같다(사용자 시안 · omf-all-around#258). */
+  it('버전별 설정은 검사 항목을 펼쳐 두고, 다른 줄을 누르면 그 줄로 옮기고 다시 누르면 접는다', async () => {
+    const { user } = renderSelectedVersion([]);
+
+    await awaitVersionForm();
+    const items = screen.getByRole('button', { name: /검사 항목/, expanded: true });
+    const drawings = screen.getByRole('button', { name: /검사 도면/, expanded: false });
+
+    await user.click(drawings);
+    expect(drawings).toHaveAttribute('aria-expanded', 'true');
+    expect(items).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('region', { name: '검사 항목' })).not.toBeInTheDocument();
+
+    await user.click(drawings);
+    expect(drawings).toHaveAttribute('aria-expanded', 'false');
   });
 
   /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교가 서지 않는다. */
@@ -3045,7 +3062,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     const { requests, user } = renderItems([itemsSaveRoute()]);
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
 
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
@@ -3072,7 +3089,7 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     const { user } = renderItems([itemsSaveRoute()]);
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
 
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-01');
@@ -3181,12 +3198,12 @@ describe('InspectionStandardScreen — 검사 항목 편집', () => {
     const { user } = renderItems([itemsSaveRoute()]);
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
 
     await user.type(within(await dialog()).getByLabelText('항목코드'), 'SYN-BUFFER');
     await user.click(within(await dialog()).getByRole('button', { name: '취소' }));
 
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
 
     expect(within(await dialog()).getByLabelText('항목코드')).toHaveValue('');
   });
@@ -3199,7 +3216,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
     // 새 행을 하나 더한 뒤 순서를 바꿔 저장한다.
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
@@ -3240,7 +3257,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const { requests, user } = renderItems([itemsSaveRoute()]);
 
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');
@@ -3390,7 +3407,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     await screen.findByText('SYN-ITEM-CODE-01 · 합성 항목 A');
 
     /* 잠긴 버전에는 누를 수 없는 추가 · 수정 단추와 표 위 안내 줄을 두지 않는다(#196). */
-    expect(within(itemPane()).queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
     expect(
       within(itemPane()).queryByRole('button', { name: '1번 항목 수정' }),
     ).not.toBeInTheDocument();
@@ -3408,7 +3425,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     await screen.findByText('등록된 검사 항목이 없습니다');
 
-    await user.click(within(itemPane()).getByRole('button', { name: '항목 추가' }));
+    await user.click(screen.getByRole('button', { name: '항목 추가' }));
     const dialogNode = await dialog();
     await user.type(within(dialogNode).getByLabelText('항목코드'), 'SYN-ITEM-CODE-09');
     await user.type(within(dialogNode).getByLabelText('항목명'), '합성 항목 Z');

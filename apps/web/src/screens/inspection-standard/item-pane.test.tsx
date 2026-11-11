@@ -7,7 +7,6 @@ import { toItemDrafts } from './item-order';
 import { ItemPane } from './item-pane';
 
 const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => {
-  const onAdd = vi.fn<() => void>();
   const onEdit = vi.fn<(draftId: string) => void>();
   const onRemove = vi.fn<(draftId: string) => void>();
   const onReorder = vi.fn<(from: number, to: number) => void>();
@@ -28,7 +27,6 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
       isSaving={false}
       saveBlockedReason={null}
       banner={null}
-      onAdd={onAdd}
       onEdit={onEdit}
       onRemove={onRemove}
       onReorder={onReorder}
@@ -37,7 +35,7 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
     />,
   );
 
-  return { onAdd, onEdit, onRemove, onReorder, onSave, user: userEvent.setup() };
+  return { onEdit, onRemove, onReorder, onSave, user: userEvent.setup() };
 };
 
 const itemRows = (): HTMLElement[] =>
@@ -136,14 +134,6 @@ describe('ItemPane — 표', () => {
 });
 
 describe('ItemPane — 편집', () => {
-  it('「항목 추가」를 누르면 상위에 알린다', async () => {
-    const { onAdd, user } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '항목 추가' }));
-
-    expect(onAdd).toHaveBeenCalled();
-  });
-
   it('행의 삭제를 누르면 그 초안 키를 알린다', async () => {
     const { onRemove, user } = renderPane();
 

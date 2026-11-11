@@ -1284,6 +1284,127 @@ h2:has(> .inspection-standard-dialog-title) {
   white-space: nowrap;
 }
 
+/*
+ * 버전 카드(사용자 시안 · omf-all-around#258) — 머리 줄(버전 · 상태 · 목록 · 비교 · 이력) / 요약 / 「버전 설정 수정」 /
+ * 버전별 설정(검사 항목 · 검사 도면 · 검사 지시문) / 바닥 줄 오른쪽 확정 등.
+ */
+.inspection-standard-version-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-xl, var(--radius-lg));
+}
+
+.inspection-standard-version-card > .inspection-standard-version-bar {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.inspection-standard-version-edit {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.inspection-standard-version-settings {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.inspection-standard-version-settings-title {
+  margin: 0;
+  font: var(--type-title-md);
+  font-weight: 600;
+}
+
+.inspection-standard-setting-list {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.inspection-standard-setting-row + .inspection-standard-setting-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.inspection-standard-setting-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+/* 줄의 왼쪽(아이콘 · 제목 · 요약)이 펼침 단추다 — 오른쪽 할 일 단추와 겹치지 않게 나눈다. */
+.inspection-standard-setting-toggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.inspection-standard-setting-toggle {
+  cursor: pointer;
+}
+
+button.inspection-standard-setting-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.inspection-standard-setting-text {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.inspection-standard-setting-title {
+  font: var(--type-title-sm);
+}
+
+/* 지시문은 길 수 있다 — 두 줄까지만 보이고 전체는 「지시문 수정」 창에서 본다. */
+.inspection-standard-setting-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.inspection-standard-setting-body {
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+.inspection-standard-setting-body > .pane {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.inspection-standard-version-footer {
+  margin-left: 0;
+}
+
+.inspection-standard-version-card .inspection-standard-version-tools-start {
+  margin-left: auto;
+}
+
+/* 오른쪽으로 모은 단추 뒤 「+ 신규 버전 발행」은 그 옆에 붙인다 — 줄 끝으로 다시 밀지 않는다. */
+.inspection-standard-version-card .inspection-standard-version-bar-row > .inspection-standard-version-actions {
+  margin-left: 0;
+}
+
 /* 상세 칸 맨 위 버전 고르기 줄 — 선택칸과 「버전 목록」 단추를 한 줄에(#196). */
 .inspection-standard-version-bar-row {
   display: flex;

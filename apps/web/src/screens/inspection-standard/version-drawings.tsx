@@ -2,7 +2,7 @@ import { AlertBanner, Button, Dialog, EmptyState, Icon, SkeletonText } from '@cr
 import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import {
@@ -12,6 +12,7 @@ import {
 import { runRequest, toApiError } from '../../patterns/request';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { PlanActionBanner } from './plan-action-banner';
+import { VersionSettingRow } from './version-setting-row';
 
 const t = messages.inspectionStandard.versionSection;
 
@@ -232,17 +233,22 @@ export type VersionDrawingDraft = ReturnType<typeof useVersionDrawingDraft>;
 type Pick = { kind: 'add' } | { kind: 'replace'; index: number };
 
 /**
- * 버전 상세 「도면」 탭(omf-all-around#208) — 고른 버전의 기준서 도면. 조회 · 초안은 화면이 쥔다(탭 이름의 건수 · 확정 막기).
+ * 버전 상세 「검사 도면」 줄(omf-all-around#208 · 줄 모양은 #258) — 고른 버전의 기준서 도면. 조회 · 초안은 화면이 쥔다(탭 이름의 건수 · 확정 막기).
  * 작성 중 버전이면 도면을 추가하고, 보고 있는 도면을 수정하거나 제거한 뒤 [저장]한다(#227). 확정 버전은 보기만 한다 — 검사 항목 탭과 같다.
  */
 export const VersionDrawings = ({
   drawings,
   draft,
   isEditable,
+  isOpen,
+  onToggle,
 }: {
   drawings: UseQueryResult<InspectionDrawing[]>;
   draft: VersionDrawingDraft;
   isEditable: boolean;
+  /* 「버전별 설정」 줄을 펼쳤는가 — 화면이 쥔다(한 번에 한 줄 · #258). */
+  isOpen: boolean;
+  onToggle: () => void;
 }) => {
   const fileInput = useRef<HTMLInputElement>(null);
   const [pick, setPick] = useState<Pick>({ kind: 'add' });
@@ -298,57 +304,68 @@ export const VersionDrawings = ({
     setCurrent(list.length + accepted.length - 1);
   };
 
-  if (drawings.isError) {
-    return <LoadErrorBanner error={drawings.error} onRetry={() => void drawings.refetch()} />;
-  }
-  if (drawings.data === undefined) {
-    return (
-      <div role="status" aria-label={t.drawingsLoading}>
-        <SkeletonText lines={3} />
-      </div>
-    );
-  }
+  const isLoaded = !drawings.isError && drawings.data !== undefined;
 
-  return (
+  /* 「+ 도면 추가」는 줄 오른쪽 끝(사용자 시안 · #258) — 고른 파일은 줄을 펼쳐 바로 보인다. */
+  const addAction =
+    isEditable && isLoaded ? (
+      <>
+        <input
+          ref={fileInput}
+          type="file"
+          accept={DRAWING_TYPES.join(',')}
+          hidden
+          data-testid="drawing-file-input"
+          onChange={(event) => void onFile(event)}
+        />
+        <Button
+          variant="outlined"
+          leadingIcon={<Icon name="add" size={18} />}
+          disabled={draft.isSaving}
+          onClick={() => {
+            if (!isOpen) onToggle();
+            openPicker({ kind: 'add' });
+          }}
+        >
+          {t.drawingAdd}
+        </Button>
+      </>
+    ) : undefined;
+
+  const body = (): ReactNode => {
+    if (drawings.isError) {
+      return <LoadErrorBanner error={drawings.error} onRetry={() => void drawings.refetch()} />;
+    }
+    if (drawings.data === undefined) {
+      return (
+        <div role="status" aria-label={t.drawingsLoading}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    }
+    return renderLoaded();
+  };
+
+  const renderLoaded = (): ReactNode => (
     <>
-      {isEditable && (
+      {isEditable && list.length > 0 && (
         <div className="inspection-standard-section-head inspection-standard-tab-toolbar">
-          <input
-            ref={fileInput}
-            type="file"
-            accept={DRAWING_TYPES.join(',')}
-            hidden
-            data-testid="drawing-file-input"
-            onChange={(event) => void onFile(event)}
-          />
           <Button
             variant="outlined"
-            leadingIcon={<Icon name="add" size={18} />}
+            leadingIcon={<Icon name="swap_horiz" size={18} />}
             disabled={draft.isSaving}
-            onClick={() => openPicker({ kind: 'add' })}
+            onClick={() => openPicker({ kind: 'replace', index: shown })}
           >
-            {t.drawingAdd}
+            {t.drawingReplace}
           </Button>
-          {list.length > 0 && (
-            <>
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="swap_horiz" size={18} />}
-                disabled={draft.isSaving}
-                onClick={() => openPicker({ kind: 'replace', index: shown })}
-              >
-                {t.drawingReplace}
-              </Button>
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="delete" size={18} />}
-                disabled={draft.isSaving}
-                onClick={() => setIsRemoving(true)}
-              >
-                {t.drawingRemove}
-              </Button>
-            </>
-          )}
+          <Button
+            variant="outlined"
+            leadingIcon={<Icon name="delete" size={18} />}
+            disabled={draft.isSaving}
+            onClick={() => setIsRemoving(true)}
+          >
+            {t.drawingRemove}
+          </Button>
         </div>
       )}
       {PROBLEM_ORDER.map((problem) => {
@@ -428,5 +445,18 @@ export const VersionDrawings = ({
         </Dialog>
       )}
     </>
+  );
+
+  return (
+    <VersionSettingRow
+      icon="image"
+      title={t.rowDrawings}
+      summary={isLoaded ? t.rowDrawingsCount(list.length) : ''}
+      action={addAction}
+      isOpen={isOpen}
+      onToggle={onToggle}
+    >
+      {body()}
+    </VersionSettingRow>
   );
 };

@@ -121,7 +121,8 @@ export const inspectionStandard = {
       '사용 중지한 버전은 새 검사에서 사용할 수 없습니다. 재사용하면 다시 쓸 수 있고, 기존 데이터는 유지됩니다.',
     /* 사용 중지한 버전을 다시 확정으로(omf-all-around#258). */
     reactivateVersionTitle: '이 버전을 다시 사용할까요?',
-    reactivateVersionDescription: '재사용하면 이 버전이 다시 확정 버전이 되어 새 검사에 적용됩니다.',
+    reactivateVersionDescription:
+      '재사용하면 이 버전이 다시 확정 버전이 되어 새 검사에 적용됩니다.',
     discardTitle: '이 작성중 버전을 취소할까요?',
     discardDescription:
       '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',
@@ -262,8 +263,7 @@ export const inspectionStandard = {
   versionSection: {
     /* 검사 안내 문구(#252). */
     guideText: '지시문',
-    /** 버전 요약의 언어별 안내 문구 수정 단추 · 그 창 제목(#252). */
-    guideEdit: '수정',
+    /** 「검사 지시문」 줄의 수정 단추 접근 이름 · 그 창 제목(#252). */
     editGuide: (label: string): string => `${label} 수정`,
     guideTooLong: (max: number): string => `${max.toLocaleString()}자까지 적을 수 있습니다.`,
     /* 샘플을 비율 · 개수 중 무엇으로 받을지 고르는 칩(#196). */
@@ -280,15 +280,17 @@ export const inspectionStandard = {
     noEnd: '종료일 미설정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
     lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
-    tabsLabel: '버전 내용',
     tabItems: '검사 항목',
     editSettings: '버전 설정 수정',
-    tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
-    tabHistory: '이력',
-    tabHistoryCount: (count: number): string => `이력 ${String(count)}건`,
-    /* 기준서 도면 탭(omf-all-around#208). */
-    tabDrawings: '도면',
-    tabDrawingsCount: (count: number): string => `도면 ${String(count)}건`,
+    /* 버전 카드의 「버전별 설정」 세 줄 · 「버전 이력」 창(사용자 시안 · omf-all-around#258). */
+    settingsTitle: '버전별 설정',
+    rowItemsCount: (count: number): string => `등록된 항목 ${String(count)}건`,
+    rowDrawings: '검사 도면',
+    rowDrawingsCount: (count: number): string => `등록된 도면 ${String(count)}건`,
+    rowGuide: '검사 지시문',
+    guideNone: '등록된 지시문 없음',
+    guideEditAction: '지시문 수정',
+    history: '버전 이력',
     drawingsLoading: '도면을 불러오는 중',
     drawingsNone: '등록된 도면이 없습니다',
     drawingAlt: (index: number): string => `도면 ${String(index)}`,
