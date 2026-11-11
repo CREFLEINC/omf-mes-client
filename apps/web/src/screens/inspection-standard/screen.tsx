@@ -266,6 +266,13 @@ export const InspectionStandardScreen = () => {
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-standard:split', 0.4);
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
+  /* 목록 접기 단추 — 좌우 배치는 세로 막대, 상하 배치는 가로 막대에 같은 모양으로 선다(사용자 지시 · #252). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: t.panes.listCollapse,
+    expandLabel: t.panes.listExpand,
+  };
   /* 「기본 정보 수정」 창 · 버전 내용 탭(검사 항목 / 버전 설정 / 이력) — omf-all-around#196. */
   const [isPlanEditOpen, setIsPlanEditOpen] = useState(false);
   /* 「버전 목록」 창 — 목록에서 기준을 고르면 바로 열어 버전을 고르게 한다(사용자 지시 · #196). */
@@ -2167,18 +2174,14 @@ export const InspectionStandardScreen = () => {
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={{
-            collapsed: split.collapsed,
-            onToggle: split.toggleCollapsed,
-            collapseLabel: t.panes.listCollapse,
-            expandLabel: t.panes.listExpand,
-          }}
+          collapse={listCollapse}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

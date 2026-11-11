@@ -181,6 +181,13 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:parts-iqc-inspection:split', 0.45);
   const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
+  /* 목록 접기 단추 — 좌우 배치는 세로 막대, 상하 배치는 가로 막대에 같은 모양으로 선다(사용자 지시 · #252). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+  };
 
   const emptyContent = queue.isError ? (
     <p className="field-note">{oa.queue.unavailable}</p>
@@ -340,18 +347,14 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           label={hubText.splitter}
           ratio={split.ratio}
           onChange={split.commit}
-          collapse={{
-            collapsed: split.collapsed,
-            onToggle: split.toggleCollapsed,
-            collapseLabel: hubText.listCollapse,
-            expandLabel: hubText.listExpand,
-          }}
+          collapse={listCollapse}
         />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 
