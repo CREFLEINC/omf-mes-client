@@ -23,6 +23,8 @@ export const inspectionStandard = {
     openRouting: '라우팅 조회',
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
+    /* 상세 머리의 승인 — 미승인 기준에만(사용자 지시 · omf-all-around#258). */
+    approve: '승인',
     /* 다른 품목으로 복사(omf-all-around#255). */
     copy: '복사',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
@@ -111,6 +113,10 @@ export const inspectionStandard = {
     deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
     /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
     activateTitle: '검사 기준을 다시 사용하시겠습니까?',
+    approveTitle: '이 검사기준을 승인할까요?',
+    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실을 먼저 밝힌다. */
+    approveDescription:
+      '승인하면 되돌릴 수 없습니다. 승인 해제는 제공되지 않습니다. 승인자와 승인 시각은 서버가 기록합니다.',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
     deactivateDescription: '기준은 삭제되지 않으며, 새 검사에 적용할 수 없게 됩니다.',
     confirmTitle: '이 버전을 확정할까요?',
@@ -155,6 +161,7 @@ export const inspectionStandard = {
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
     activated: '검사기준을 다시 사용합니다.',
+    approved: '검사기준을 승인했습니다.',
     copied: '복사한 검사 기준을 만들었습니다. 버전은 작성중이니 내용을 확인한 뒤 확정하세요.',
     confirmed: '버전을 확정했습니다.',
     obsoleted: '버전을 사용 중지했습니다.',

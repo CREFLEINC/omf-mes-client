@@ -16,6 +16,9 @@ export interface PlanDetailHeadProps {
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
+  /** 미승인 기준에만 — 「승인」(사용자 지시 · omf-all-around#258). 승인 해제는 없다. */
+  onApprove?: () => void;
+  isApproving?: boolean;
   /** 품목이 있는 기준에만 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
   onOpenRouting?: () => void;
   /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
@@ -37,6 +40,8 @@ export const PlanDetailHead = ({
   itemLabel,
   routingRevision,
   onEdit,
+  onApprove,
+  isApproving = false,
   onOpenRouting,
   onDeactivate,
   isDeactivating = false,
@@ -67,6 +72,11 @@ export const PlanDetailHead = ({
           {onOpenRouting !== undefined && (
             <Button variant="outlined" onClick={onOpenRouting}>
               {t.actions.openRouting}
+            </Button>
+          )}
+          {onApprove !== undefined && (
+            <Button variant="outlined" disabled={isApproving} onClick={onApprove}>
+              {t.actions.approve}
             </Button>
           )}
           {onDeactivate !== undefined && (

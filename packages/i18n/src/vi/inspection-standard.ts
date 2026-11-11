@@ -20,6 +20,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   actions: {
     openRouting: 'Tra cứu routing',
     reactivate: 'Sử dụng lại',
+    approve: 'Phê duyệt',
     copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
@@ -96,6 +97,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   dialog: {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
     activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
+    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra này?',
+    approveDescription:
+      'Đã phê duyệt thì không hoàn tác được. Không có chức năng bỏ phê duyệt. Người phê duyệt và thời điểm phê duyệt do máy chủ ghi lại.',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
       'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
@@ -137,6 +141,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
+    approved: 'Đã phê duyệt tiêu chuẩn kiểm tra.',
     copied:
       'Đã tạo bản sao tiêu chuẩn kiểm tra. Phiên bản đang soạn — hãy kiểm tra nội dung rồi xác nhận.',
     confirmed: 'Đã xác nhận phiên bản.',

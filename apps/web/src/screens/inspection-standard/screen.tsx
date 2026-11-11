@@ -80,6 +80,7 @@ import { SHEET_TYPE, useSheetForPqc } from './type-options';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
+  formatApprovedAt,
   isSamePlanValues,
   planToFormValues,
   toPlanCreate,
@@ -571,8 +572,34 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /*
+   * 승인(사용자 지시 · omf-all-around#258) — **`If-Match`를 싣지 않고 본문도 없다**(계약). 승인자 · 시각은 서버가 기록한다.
+   * 확정 버전이 없으면 서버가 거부하고 그 까닭은 확인 창 배너에 낸다.
+   */
+  const approveWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:approve', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [planKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: t.result.approved });
+    },
+  });
+
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = planAction === 'activate' ? activateWrite : deactivateWrite;
+  const planActionWrite =
+    planAction === 'activate'
+      ? activateWrite
+      : planAction === 'approve'
+        ? approveWrite
+        : deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
@@ -1645,6 +1672,16 @@ export const InspectionStandardScreen = () => {
             void queryClient.invalidateQueries({ queryKey: lookupKeys.routingsAll });
             setIsPlanEditOpen(true);
           }}
+          /* 미승인 기준에만 「승인」 — 승인 해제가 없어 승인된 기준에는 두지 않는다(사용자 지시 · #258). */
+          onApprove={
+            formatApprovedAt(planDetail.data.inspectionPlan.approvedAt) === null
+              ? () => {
+                  approveWrite.reset();
+                  setPlanAction('approve');
+                }
+              : undefined
+          }
+          isApproving={approveWrite.isSaving}
           /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
           onDeactivate={
             planDetail.data.inspectionPlan.isActive
@@ -2357,7 +2394,7 @@ export const InspectionStandardScreen = () => {
           kind={planAction}
           onClose={() => {
             setPlanAction(null);
-            deactivateWrite.reset();
+            planActionWrite.reset();
           }}
           onConfirm={() => {
             planActionWrite.write();

@@ -1560,7 +1560,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
 const DEACTIVATE_PATH = `${PLANS_PATH}/3001:deactivate`;
 
 const planActionRoute = (
-  action: 'deactivate' | 'activate',
+  action: 'deactivate' | 'activate' | 'approve',
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
@@ -1588,8 +1588,35 @@ const dialog = async (): Promise<HTMLElement> =>
     return first;
   });
 
-/* 승인은 현장 검사에 효력이 없는 기록뿐이라 단추를 걷었다(사용자 지시 · #208). */
-describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
+/* 승인은 상세 머리에만 둔다 — #208 에서 걷었다가 되살렸다(사용자 지시 · omf-all-around#258). */
+describe('InspectionStandardScreen — 기준 승인', () => {
+  it('미승인 기준은 상세 머리에 승인이 서고, 확인하면 If-Match 없이 보낸다', async () => {
+    const { requests, user } = renderSelectedPlan([planActionRoute('approve')]);
+
+    await user.click(await screen.findByRole('button', { name: '승인' }));
+    expect(screen.getByText(t.dialog.approveTitle)).toBeInTheDocument();
+    expect(requestsTo(requests, `${PLANS_PATH}/3001:approve`)).toHaveLength(0);
+
+    await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
+    await screen.findByText(t.result.approved);
+
+    const posts = requestsTo(requests, `${PLANS_PATH}/3001:approve`);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+  });
+
+  /* 승인 해제가 없다 — 승인된 기준에는 단추를 두지 않는다. */
+  it('승인된 기준에는 승인 단추가 없다', async () => {
+    renderScreen(
+      [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
+      '?plan=3003',
+    );
+
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
+  });
+
   /* 사용 중지는 창 밖, 상세 상자의 「기본 정보 수정」 옆으로 옮겼다(#208). */
   it('기본 정보 수정 창에 승인 · 사용 중지 단추가 없다', async () => {
     renderSelectedPlan();
