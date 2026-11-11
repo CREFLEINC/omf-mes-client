@@ -212,6 +212,25 @@ const openRow = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('검사표 기준', () => {
+  /* 고르면 목록을 접고, 막대의 단추로 다시 펼친다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
+  it('목록에서 기준을 고르면 목록이 접히고 「목록 펼치기」로 다시 펼친다', async () => {
+    window.localStorage.removeItem('omf-mes:inspection-sheet-template:split');
+    const { user } = setup(template());
+    const collapseLabel = messages.inspectionStandard.panes.listCollapse;
+    const expandLabel = messages.inspectionStandard.panes.listExpand;
+
+    expect(await screen.findByRole('button', { name: collapseLabel })).toBeInTheDocument();
+    await openRow(user);
+
+    const expand = screen.getByRole('button', { name: expandLabel });
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    await user.click(expand);
+    expect(screen.getByRole('button', { name: collapseLabel })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
   /* 모델(품목)은 칸에서 바로 검색해 고른다(omf-all-around#226) — 고르면 바로 조회하고 「전체」는 종전 × 처럼 조건을 푼다. */
   it('모델은 칸에서 검색해 고르면 바로 조회하고, 「전체」를 고르면 조건을 푼다(#226)', async () => {
     const { user, requests } = setup(template());

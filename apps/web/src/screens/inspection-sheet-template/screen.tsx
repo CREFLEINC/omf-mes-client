@@ -104,6 +104,13 @@ const InspectionSheetTemplateScreenBody = ({
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-sheet-template:split', 0.4);
+  /* 목록 접기 단추 — 검사 기준 화면과 같은 모양 · 같은 자리(#252 · #255 사용자 지시). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.inspectionStandard.panes.listCollapse,
+    expandLabel: messages.inspectionStandard.panes.listExpand,
+  };
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const statusId = useId();
   const { session } = useSession();
@@ -230,13 +237,15 @@ const InspectionSheetTemplateScreenBody = ({
           aria-label={t.list.openRow(row.itemCode)}
           aria-current={row.itemId === openedItemId ? 'true' : undefined}
           /* 열린 줄을 다시 누르면 상세를 닫는다(사용자 지시 2026-10-30). */
-          onClick={() =>
-            open(
-              row.itemId === openedItemId
-                ? null
-                : { kind: 'existing', id: row.inspectionSheetTemplateId },
-            )
-          }
+          onClick={() => {
+            if (row.itemId === openedItemId) {
+              open(null);
+              return;
+            }
+            open({ kind: 'existing', id: row.inspectionSheetTemplateId });
+            /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
+            if (!split.collapsed) split.toggleCollapsed();
+          }}
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
           <span className="inspection-sheet-template-muted">{row.itemName}</span>
@@ -463,6 +472,7 @@ const InspectionSheetTemplateScreenBody = ({
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section
           className="pane inspection-sheet-template-list-pane quality-standard-list-pane"
@@ -531,12 +541,18 @@ const InspectionSheetTemplateScreenBody = ({
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 
@@ -606,6 +622,7 @@ const InspectionSheetTemplateScreenBody = ({
           onConfirm={(basics) => {
             setIsCreating(false);
             open({ kind: 'new', basics, seq: Date.now() });
+            if (!split.collapsed) split.toggleCollapsed();
           }}
         />
       )}
