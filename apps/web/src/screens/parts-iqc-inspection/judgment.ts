@@ -62,6 +62,11 @@ export interface JudgmentInput {
   /** 필수 항목 표시 — `dimensions` · `checks` 와 같은 차례. 주지 않으면 모두 필수로 본다. */
   requiredDimensions?: boolean[];
   requiredChecks?: boolean[];
+  /**
+   * AQL 샘플링의 합격 판정 수(Ac · omf-all-around#264). 주면 NG 가 있어도 불합격 수량이 Ac 이하이면 불합격으로 보지 않는다 —
+   * 서버 자동 판정(`serverExpectedOf`)과 같은 기준이다.
+   */
+  aqlAcceptance?: number | null;
 }
 
 /**
@@ -83,7 +88,9 @@ export const rejectedQtyOf = (input: JudgmentInput): number => {
 export const suggestedJudgmentOf = (input: JudgmentInput): 'ACCEPTED' | 'REJECTED' | null => {
   if (input.inspectedQty === null || input.inspectedQty <= 0) return null;
   const parts: ItemJudgment[] = [...input.dimensions.map((d) => d.judgment), ...input.checks];
-  if (parts.some((p) => p === REJECTED)) return REJECTED;
+  const aql = input.aqlAcceptance ?? null;
+  if (aql !== null && rejectedQtyOf(input) > aql) return REJECTED;
+  if (aql === null && parts.some((p) => p === REJECTED)) return REJECTED;
   const required = [
     ...input.dimensions.map((_, i) => input.requiredDimensions?.[i] ?? true),
     ...input.checks.map((_, i) => input.requiredChecks?.[i] ?? true),

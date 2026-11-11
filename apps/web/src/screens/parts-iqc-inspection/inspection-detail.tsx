@@ -12,7 +12,7 @@ import {
   TextArea,
   TextField,
 } from '@crefle/web-ui';
-import type { components, FourMChangeForward } from '@omf-mes/api-client';
+import type { components, FourMChangeForward, InspectionAqlPlanForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -530,6 +530,8 @@ interface FormProps {
     lotId: number | null;
     targetQty: number;
     uomId: number;
+    /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). */
+    aqlPlan: InspectionAqlPlanForward | null;
   };
   version: components['schemas']['InspectionPlanVersion'];
   specs: ItemSpec[];
@@ -596,14 +598,18 @@ const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: B
 const InspectionForm = (props: FormProps) => {
   const { request, version, specs, draft } = props;
   const versionAcceptance = version.acceptanceNumber ?? null;
+  /* AQL 샘플링이면 시료 수 · 합격 판정 수(Ac)를 표에서 낸 값으로 쓴다 — 서버 자동 판정도 같은 값이다(omf-all-around#264). */
+  const { aqlPlan } = request;
+  const judgmentAcceptance = aqlPlan?.acceptanceNumber ?? versionAcceptance;
   const dimensions = specs.filter((s) => kindOf(s) === 'dimension');
   const checkItems = specs.filter((s) => kindOf(s) === 'check');
   const defaultQty = String(
-    sampleQtyOf(request.targetQty, {
-      samplingMethodCode: version.samplingMethodCode,
-      samplingRatio: version.samplingRatio ?? null,
-      samplingQty: version.samplingQty ?? null,
-    }),
+    aqlPlan?.sampleSize ??
+      sampleQtyOf(request.targetQty, {
+        samplingMethodCode: version.samplingMethodCode,
+        samplingRatio: version.samplingRatio ?? null,
+        samplingQty: version.samplingQty ?? null,
+      }),
   );
 
   const initial = useMemo((): PartsIqcForm => {
@@ -681,6 +687,7 @@ const InspectionForm = (props: FormProps) => {
       /* 필수 항목만 다 적으면 자동 판정 · 종합 판정이 채워진다(#247 · 사용자 지시 2026-11-10). */
       requiredDimensions: dimensions.map((item) => item.requiredFlag),
       requiredChecks: checkItems.map((item) => item.requiredFlag),
+      aqlAcceptance: aqlPlan?.acceptanceNumber ?? null,
     };
   };
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
@@ -745,7 +752,7 @@ const InspectionForm = (props: FormProps) => {
   const overall = chosen ?? suggested;
   const heldQtyOf = (judgment: string | null): number =>
     judgment === 'HELD' && inspectedQty !== null ? Math.max(0, inspectedQty - rejectedQty) : 0;
-  const expected = serverExpectedOf(rejectedQty, versionAcceptance, heldQtyOf(overall));
+  const expected = serverExpectedOf(rejectedQty, judgmentAcceptance, heldQtyOf(overall));
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
@@ -914,16 +921,33 @@ const InspectionForm = (props: FormProps) => {
             <dt className="field-label">{t.target.planName}</dt>
             <dd>{props.planName}</dd>
           </div>
+          {aqlPlan !== null && (
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.target.condition}</dt>
+              <dd>
+                {t.target.conditionAqlPlan(
+                  aqlPlan.aqlValue,
+                  messages.inspectionStandard.values.aqlLevels[aqlPlan.aqlInspectionLevelCode] ??
+                    aqlPlan.aqlInspectionLevelCode,
+                  aqlPlan.sampleSize,
+                  aqlPlan.acceptanceNumber,
+                  aqlPlan.rejectionNumber,
+                )}
+              </dd>
+            </div>
+          )}
           {dimensions.length > 0 && (
             <>
-              <div className="parts-iqc-fact">
-                <dt className="field-label">{t.target.condition}</dt>
-                <dd>
-                  {version.aqlValue == null
-                    ? t.target.conditionNone
-                    : t.target.conditionAql(version.aqlValue)}
-                </dd>
-              </div>
+              {aqlPlan === null && (
+                <div className="parts-iqc-fact">
+                  <dt className="field-label">{t.target.condition}</dt>
+                  <dd>
+                    {version.aqlValue == null
+                      ? t.target.conditionNone
+                      : t.target.conditionAql(version.aqlValue)}
+                  </dd>
+                </div>
+              )}
               <div className="parts-iqc-fact">
                 <dt className="field-label">{t.target.sample}</dt>
                 <dd>{t.target.sampleValue(maxN, versionAcceptance ?? 0)}</dd>

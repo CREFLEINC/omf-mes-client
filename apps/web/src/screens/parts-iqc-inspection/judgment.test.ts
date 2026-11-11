@@ -121,6 +121,21 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
     expect(serverExpectedOf(0, 0, 10)).toBe('HELD');
     expect(serverExpectedOf(1, 0, 9)).toBe('REJECTED');
   });
+
+  /* omf-all-around#264 — AQL 샘플링은 불합격 수량이 Ac 이하면 합격, 넘으면 불합격(서버 자동 판정과 같다). */
+  it('AQL 합격 판정 수를 주면 NG 가 있어도 Ac 이하이면 합격을 제안한다', () => {
+    const input: JudgmentInput = {
+      ...base,
+      dimensions: [{ judgment: 'ACCEPTED', outCount: 0 }],
+      checks: ['REJECTED', 'ACCEPTED'],
+    };
+    expect(suggestedJudgmentOf(input)).toBe('REJECTED');
+    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 1 })).toBe('ACCEPTED');
+    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 0 })).toBe('REJECTED');
+    expect(
+      suggestedJudgmentOf({ ...input, checks: ['REJECTED', 'REJECTED'], aqlAcceptance: 1 }),
+    ).toBe('REJECTED');
+  });
 });
 
 describe('입력 되돌리기·다시 실행', () => {

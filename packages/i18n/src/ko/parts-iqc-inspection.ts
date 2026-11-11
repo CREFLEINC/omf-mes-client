@@ -79,6 +79,9 @@ export const partsIqcInspection = {
     condition: '검사 조건',
     conditionAql: (aql: number) => `AQL ${String(aql)} · 육안 검사`,
     conditionNone: '미지정',
+    /* AQL 샘플링 기준 — LOT 수량으로 표에서 낸 시료 수 · 합격/불합격 판정 수(omf-all-around#264). */
+    conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>
+      `AQL ${String(aql)} · ${level} → 시료 ${String(n)}개, 불량 ${String(ac)}개 이하 합격 · ${String(re)}개 이상 불합격`,
     sample: '시료 수',
     sampleValue: (n: number, c: number) => `시료 n=${String(n)}, C=${String(c)}`,
     dimensionCount: '치수 항목',

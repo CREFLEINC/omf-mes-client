@@ -67,7 +67,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     confirmed: (judgment: string) => `Kiểm tra đã được xác nhận — Phán định: ${judgment}`,
     workerMissing:
       'Tài khoản này chưa liên kết với công nhân nên không xác định được người kiểm tra. Hãy yêu cầu quản trị viên liên kết.',
-    discardConfirm: 'Nội dung đã nhập chưa được lưu. Nếu đóng kiểm tra, mọi giá trị đã nhập sẽ bị mất.',
+    discardConfirm:
+      'Nội dung đã nhập chưa được lưu. Nếu đóng kiểm tra, mọi giá trị đã nhập sẽ bị mất.',
   },
 
   target: {
@@ -79,6 +80,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     condition: 'Điều kiện kiểm tra',
     conditionAql: (aql: number) => `AQL ${String(aql)} · kiểm tra bằng mắt`,
     conditionNone: 'Chưa chỉ định',
+    conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>
+      `AQL ${String(aql)} · ${level} → mẫu ${String(n)}, lỗi ≤ ${String(ac)} đạt · ≥ ${String(re)} không đạt`,
     sample: 'Số mẫu',
     sampleValue: (n: number, c: number) => `Mẫu n=${String(n)}, C=${String(c)}`,
     dimensionCount: 'Hạng mục kích thước',

@@ -130,11 +130,12 @@ export const MeasurementTable = ({
   const total = items.length + checkItems.length;
   const bodyRef = useRef<HTMLTableSectionElement>(null);
 
-  const filled = items.filter((item) =>
-    isManualDimension(item)
-      ? (judgments[item.inspectionItemSpecId] ?? null) !== null
-      : (values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
-  ).length +
+  const filled =
+    items.filter((item) =>
+      isManualDimension(item)
+        ? (judgments[item.inspectionItemSpecId] ?? null) !== null
+        : (values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
+    ).length +
     checkItems.filter((item) => (judgments[item.inspectionItemSpecId] ?? null) !== null).length;
 
   /* 열 순서(n1 의 모든 항목 → n2 …)로 다음 칸 — 시료 수가 적은 항목은 그 열에 칸이 없어 건너뛴다. */
@@ -305,7 +306,10 @@ export const MeasurementTable = ({
                       <ItemNameCell item={item} />
                     </td>
                     <td className="parts-iqc-spec">-</td>
-                    <td colSpan={items.length === 0 ? 1 : columns} className="parts-iqc-check-value">
+                    <td
+                      colSpan={items.length === 0 ? 1 : columns}
+                      className="parts-iqc-check-value"
+                    >
                       {item.dataTypeCode === 'TEXT' && onText !== undefined && (
                         <TextField
                           fullWidth
