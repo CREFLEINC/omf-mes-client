@@ -129,7 +129,8 @@ import { UsageChips, usageOf, withUsage } from './usage-chips';
 import { useVersionDrawingDraft, VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
-import { VersionSummary } from './version-summary';
+import { VersionGuideDialog } from './version-guide-dialog';
+import { type GuideTextField, VersionSummary } from './version-summary';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 
@@ -265,6 +266,13 @@ export const InspectionStandardScreen = () => {
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-standard:split', 0.4);
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
+  /* 목록 접기 단추 — 좌우 배치는 세로 막대, 상하 배치는 가로 막대에 같은 모양으로 선다(사용자 지시 · #252). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: t.panes.listCollapse,
+    expandLabel: t.panes.listExpand,
+  };
   /* 「기본 정보 수정」 창 · 버전 내용 탭(검사 항목 / 버전 설정 / 이력) — omf-all-around#196. */
   const [isPlanEditOpen, setIsPlanEditOpen] = useState(false);
   /* 「버전 목록」 창 — 목록에서 기준을 고르면 바로 열어 버전을 고르게 한다(사용자 지시 · #196). */
@@ -603,6 +611,8 @@ export const InspectionStandardScreen = () => {
 
   const [versionFormState, setVersionFormState] = useState<VersionFormState | null>(null);
   const [versionFieldErrors, setVersionFieldErrors] = useState<Record<string, string>>({});
+  /** 언어별 안내 문구 수정 창(#252) — 연 언어. */
+  const [guideEditField, setGuideEditField] = useState<GuideTextField | null>(null);
 
   /*
    * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
@@ -647,8 +657,9 @@ export const InspectionStandardScreen = () => {
       setVersionFormState((prev) =>
         prev === null ? prev : { ...prev, baseline: next, values: next },
       );
-      /* 「버전 설정 수정」 창은 저장으로 할 일이 끝난다 — 열어 두면 저장이 된 건지 헷갈린다. */
+      /* 「버전 설정 수정」 · 안내 문구 창은 저장으로 할 일이 끝난다 — 열어 두면 저장이 된 건지 헷갈린다. */
       setIsVersionEditOpen(false);
+      setGuideEditField(null);
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -1655,6 +1666,7 @@ export const InspectionStandardScreen = () => {
             frequencyIntervalUomOptions,
             versionFormState.baseline.frequencyIntervalUomCode,
           )}
+          onEditGuide={versionStatus.isEditable ? setGuideEditField : undefined}
         />
         <Tabs
           aria-label={t.versionSection.tabsLabel}
@@ -1735,6 +1747,28 @@ export const InspectionStandardScreen = () => {
               labels={compareLabels}
             />
           </Dialog>
+        )}
+
+        {guideEditField !== null && versionStatus.isEditable && (
+          <VersionGuideDialog
+            /* 다른 언어 · 다른 버전으로 열면 그 저장값에서 새로 시작한다. */
+            key={`${String(selectedVersionId)}-${guideEditField}`}
+            field={guideEditField}
+            initialText={versionFormState.baseline[guideEditField]}
+            isSaving={versionWrite.isSaving}
+            banner={
+              <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
+            }
+            error={versionWrite.fieldErrors[guideEditField]}
+            /* 저장된 다른 칸은 그대로 두고 이 언어 문구만 바꿔 보낸다. */
+            onSave={(text) =>
+              versionWrite.write({ ...versionFormState.baseline, [guideEditField]: text })
+            }
+            onClose={() => {
+              versionWrite.reset();
+              setGuideEditField(null);
+            }}
+          />
         )}
 
         {isVersionEditOpen && versionStatus.isEditable && (
@@ -2108,6 +2142,7 @@ export const InspectionStandardScreen = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <PlanListPane
           itemPartsOf={itemPartsOf}
@@ -2121,7 +2156,13 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          onSelect={(inspectionPlanId) => guardMove(() => handleSelectPlan(inspectionPlanId))}
+          /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
+          onSelect={(inspectionPlanId) =>
+            guardMove(() => {
+              handleSelectPlan(inspectionPlanId);
+              if (!split.collapsed) split.toggleCollapsed();
+            })
+          }
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />
@@ -2129,12 +2170,18 @@ export const InspectionStandardScreen = () => {
           }
         />
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 

@@ -81,6 +81,12 @@ export const common = {
   /** 검사 조회·판정(IQC · PQC · OQC) 탭 줄 오른쪽 건수 칩(omf-all-around#185). */
   columnOrderHandle: '끌어서 열 순서 바꾸기',
   inspectionHub: {
+    /** 검사 기준 안내 문구 띠(omf-all-around#252). */
+    guide: '검사 안내',
+    guideCommon: '공통 안내',
+    guideItem: '품목 안내',
+    guideExpand: '펼치기',
+    guideCollapse: '접기',
     label: '검사 의뢰 상태',
     requested: '대기',
     inProgress: '진행',
@@ -100,6 +106,9 @@ export const common = {
     close: '닫기',
     splitter: '목록과 상세 폭 나누기',
     heightSplitter: '목록과 상세 높이 나누기',
+    /* 목록 접기 · 펼치기 단추(사용자 지시 · #252). */
+    listCollapse: '목록 접기',
+    listExpand: '목록 펼치기',
     layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
     layoutSideBySide: '좌우 배치',
     layoutStacked: '상하 배치',

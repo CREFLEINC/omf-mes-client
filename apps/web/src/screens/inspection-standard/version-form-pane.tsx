@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 

@@ -1,4 +1,4 @@
-import { Chip, Icon } from '@crefle/web-ui';
+import { Chip, Icon, TextField } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useRef, type KeyboardEvent } from 'react';
@@ -69,13 +69,46 @@ export interface MeasurementTableProps {
   onJudge: (itemId: number, judgment: ItemJudgment) => void;
   /** 저장을 막는 까닭(값만 적고 판정을 고르지 않은 항목) — 없으면 `null`. */
   blockedNote?: string | null;
+  /** 치수가 아닌 검사 항목 — 치수 줄 아래에 같은 표로 잇는다. 판정은 OK/NG 를 고르고, 텍스트 항목은 측정 칸에 글을 적는다. */
+  checkItems?: ItemSpec[];
+  texts?: Record<number, string>;
+  onText?: (item: ItemSpec, text: string) => void;
 }
+
+/** 줄 끝의 OK/NG 고르기 — 누른 것을 다시 누르면 푼다. */
+const JudgmentChips = ({
+  item,
+  picked,
+  disabled,
+  onJudge,
+}: {
+  item: ItemSpec;
+  picked: ItemJudgment;
+  disabled: boolean;
+  onJudge: (itemId: number, judgment: ItemJudgment) => void;
+}) => (
+  <div className="parts-iqc-check-row" role="group" aria-label={item.inspectionItemName}>
+    {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
+      <Chip
+        key={value}
+        variant="filter"
+        data-judgment={value}
+        aria-pressed={picked === value}
+        selected={picked === value}
+        disabled={disabled}
+        onSelectedChange={(on) => onJudge(item.inspectionItemSpecId, on ? value : null)}
+      >
+        {value === 'ACCEPTED' ? t.ok : t.ng}
+      </Chip>
+    ))}
+  </div>
+);
 
 /** 기준서에서 자동 판정을 끈 수치 항목 — 값은 받되 판정은 검사자가 OK/NG 로 고른다(#247 · 사용자 지시 2026-11-10). */
 export const isManualDimension = (item: ItemSpec): boolean => item.automaticJudgment === false;
 
 /**
- * 치수 측정(레퍼런스 화면 · 사용자 시안 2026-10-30) — 엑셀처럼 한 표에 항목 · 검사 내용 · 규격 · n1~nN · 판정(검사 내용 #247). 열은 가장 많이 재는 항목의
+ * 검사 항목(치수 · 기타를 한 상자로 · 사용자 지시 #252). 치수 줄(레퍼런스 화면 · 사용자 시안 2026-10-30) — 엑셀처럼 한 표에 항목 · 검사 내용 · 규격 · n1~nN · 판정(검사 내용 #247). 열은 가장 많이 재는 항목의
  * 시료 수만큼, 항목마다 자기 시료 수까지만 칸이 열린다. 규격을 벗어난 값은 그 칸이 붉다. 판정 칸은 그 항목의 모든 시료
  * 기준이다 — 덜 적은 줄은 「3/5」처럼 잰 수. Enter 는 같은 시료의 아래 칸으로, 열의 마지막 칸에서는 다음 시료 열의 첫 칸으로 간다
  * (스캐너·키보드 입력 흐름 — 시료 하나를 집어 항목을 차례로 잰다).
@@ -89,15 +122,20 @@ export const MeasurementTable = ({
   onChange,
   onJudge,
   blockedNote = null,
+  checkItems = [],
+  texts = {},
+  onText,
 }: MeasurementTableProps) => {
   const columns = Math.max(1, ...items.map((item) => item.measurementCount));
+  const total = items.length + checkItems.length;
   const bodyRef = useRef<HTMLTableSectionElement>(null);
 
   const filled = items.filter((item) =>
     isManualDimension(item)
       ? (judgments[item.inspectionItemSpecId] ?? null) !== null
       : (values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
-  ).length;
+  ).length +
+    checkItems.filter((item) => (judgments[item.inspectionItemSpecId] ?? null) !== null).length;
 
   /* 열 순서(n1 의 모든 항목 → n2 …)로 다음 칸 — 시료 수가 적은 항목은 그 열에 칸이 없어 건너뛴다. */
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
@@ -118,10 +156,10 @@ export const MeasurementTable = ({
       <div className="parts-iqc-block-head">
         <h3 id="parts-iqc-dimension">{t.dimension.heading}</h3>
         <span className="parts-iqc-muted">
-          {items.length === 0 ? t.dimension.none : t.dimension.progress(filled, items.length)}
+          {total === 0 ? t.dimension.none : t.dimension.progress(filled, total)}
         </span>
       </div>
-      {items.length === 0 ? null : (
+      {total === 0 ? null : (
         <div className="parts-iqc-grid-scroll">
           <table className="parts-iqc-grid">
             <thead>
@@ -135,11 +173,16 @@ export const MeasurementTable = ({
                 <th scope="col" className="parts-iqc-spec">
                   {t.dimension.spec}
                 </th>
-                {Array.from({ length: columns }, (_, i) => (
-                  <th key={i} scope="col">
-                    {t.dimension.sample(i + 1)}
-                  </th>
-                ))}
+                {/* 치수 없이 기타 항목만이면 시료 열 대신 측정 결과 한 열이다. */}
+                {items.length === 0 ? (
+                  <th scope="col">{t.visual.checkValue}</th>
+                ) : (
+                  Array.from({ length: columns }, (_, i) => (
+                    <th key={i} scope="col">
+                      {t.dimension.sample(i + 1)}
+                    </th>
+                  ))
+                )}
                 <th scope="col" className="parts-iqc-verdict-head">
                   {t.dimension.judgment}
                 </th>
@@ -225,27 +268,12 @@ export const MeasurementTable = ({
                       {/* 치수는 규격으로 저절로 판정한다 — 판정 전에는 「자동 판정」 라벨, 판정이 나면 합격 · 불합격 글만(#247 · 사용자 지시 2026-11-10). */}
                       {/* 자동 판정이 꺼진 항목은 기타 검사 항목처럼 OK/NG 를 고른다. 누른 것을 다시 누르면 푼다. */}
                       {manual ? (
-                        <div
-                          className="parts-iqc-check-row"
-                          role="group"
-                          aria-label={item.inspectionItemName}
-                        >
-                          {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
-                            <Chip
-                              key={value}
-                              variant="filter"
-                              data-judgment={value}
-                              aria-pressed={picked === value}
-                              selected={picked === value}
-                              disabled={disabled}
-                              onSelectedChange={(on) =>
-                                onJudge(item.inspectionItemSpecId, on ? value : null)
-                              }
-                            >
-                              {value === 'ACCEPTED' ? t.ok : t.ng}
-                            </Chip>
-                          ))}
-                        </div>
+                        <JudgmentChips
+                          item={item}
+                          picked={picked}
+                          disabled={disabled}
+                          onJudge={onJudge}
+                        />
                       ) : state === 'err' ? (
                         t.judgment.REJECTED
                       ) : state === 'done' ? (
@@ -260,6 +288,42 @@ export const MeasurementTable = ({
                           {messages.iqcInspection.measurements.autoJudgmentMark}
                         </Chip>
                       )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {/* 기타 항목 — 치수 다음 번호로 잇는다(치수 번호는 도면 풍선과 맞춘 그대로). 규격 칸은 비우고, 시료 칸 자리는 하나로 합쳐 텍스트 항목만 글을 적는다. */}
+              {checkItems.map((item, index) => {
+                const picked = judgments[item.inspectionItemSpecId] ?? null;
+                return (
+                  <tr
+                    key={item.inspectionItemSpecId}
+                    className={picked === 'REJECTED' ? 'parts-iqc-row-ng' : undefined}
+                  >
+                    <th scope="row">{items.length + index + 1}</th>
+                    <td className="parts-iqc-name">
+                      <ItemNameCell item={item} />
+                    </td>
+                    <td className="parts-iqc-spec">-</td>
+                    <td colSpan={items.length === 0 ? 1 : columns} className="parts-iqc-check-value">
+                      {item.dataTypeCode === 'TEXT' && onText !== undefined && (
+                        <TextField
+                          fullWidth
+                          aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
+                          value={texts[item.inspectionItemSpecId] ?? ''}
+                          maxLength={200}
+                          disabled={disabled}
+                          onChange={(event) => onText(item, event.target.value)}
+                        />
+                      )}
+                    </td>
+                    <td className="parts-iqc-verdict">
+                      <JudgmentChips
+                        item={item}
+                        picked={picked}
+                        disabled={disabled}
+                        onJudge={onJudge}
+                      />
                     </td>
                   </tr>
                 );

@@ -22,6 +22,8 @@ const filled: VersionFormValues = {
   inspectionFrequencyCode: 'PENDING',
   frequencyIntervalValue: '4',
   frequencyIntervalUomCode: 'PENDING',
+  guideTextKo: '장갑 착용',
+  guideTextVi: '',
 };
 
 describe('versionToFormValues', () => {
@@ -38,7 +40,20 @@ describe('versionToFormValues', () => {
       inspectionFrequencyCode: 'PENDING',
       frequencyIntervalValue: '',
       frequencyIntervalUomCode: '',
+      guideTextKo: '',
+      guideTextVi: '',
     });
+  });
+
+  /* 안내 문구(#252)는 그대로 옮기고, 없거나 null 이면 빈 문자열이다. */
+  it('안내 문구를 언어별로 옮긴다', () => {
+    expect(
+      versionToFormValues({
+        ...inspectionPlanVersionFixtures[0]!,
+        guideTextKo: '장갑 착용',
+        guideTextVi: null,
+      }),
+    ).toMatchObject({ guideTextKo: '장갑 착용', guideTextVi: '' });
   });
 
   /* 0과 「지정하지 않음」은 다르다 — 널만 빈 문자열이 된다. */
@@ -83,7 +98,16 @@ describe('toVersionUpdate', () => {
       inspectionFrequencyCode: 'PENDING',
       frequencyIntervalValue: 4,
       frequencyIntervalUomCode: 'PENDING',
+      guideTextKo: '장갑 착용',
+      guideTextVi: null,
     });
+  });
+
+  it('안내 문구는 앞뒤 공백을 걷고, 비우면 널로 지운다(#252)', () => {
+    expect(toVersionUpdate({ ...filled, guideTextKo: '  도면 확인  ' }).guideTextKo).toBe(
+      '도면 확인',
+    );
+    expect(toVersionUpdate({ ...filled, guideTextKo: '   ' }).guideTextKo).toBeNull();
   });
 
   /* omf-all-around#103 — 예전에 「전수검사 + 비율」로 저장된 판도 다른 칸만 고쳐 저장할 수 있어야 한다. */
@@ -145,7 +169,7 @@ describe('toVersionUpdate', () => {
    * 기준 번호는 버전이 붙은 뒤 바꿀 수 없다 — 셋 다 실어 보내면 계약 위반이다.
    */
   it('기준 번호·판 번호·상태를 싣지 않는다', () => {
-    const body = toVersionUpdate(filled) as Record<string, unknown>;
+    const body = toVersionUpdate(filled) as unknown as Record<string, unknown>;
 
     expect('inspectionPlanId' in body).toBe(false);
     expect('planVersion' in body).toBe(false);
@@ -160,7 +184,7 @@ describe('toVersionCreate', () => {
   });
 
   it('등록 본문에도 판 번호와 상태를 싣지 않는다', () => {
-    const body = toVersionCreate(filled, 3001) as Record<string, unknown>;
+    const body = toVersionCreate(filled, 3001) as unknown as Record<string, unknown>;
 
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);

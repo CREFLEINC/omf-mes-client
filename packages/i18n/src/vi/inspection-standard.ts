@@ -14,6 +14,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planForm: 'Thông tin tiêu chuẩn',
     versionForm: 'Thông tin phiên bản',
     items: 'Hạng mục kiểm tra',
+    listCollapse: 'Thu gọn danh sách',
+    listExpand: 'Mở rộng danh sách',
   },
   actions: {
     openRouting: 'Xem routing',
@@ -217,6 +219,11 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     close: 'Đóng',
   },
   versionSection: {
+    /* 검사 안내 문구(#252). */
+    guideText: 'Hướng dẫn',
+    guideEdit: 'Sửa',
+    editGuide: (label: string): string => `Sửa ${label.toLowerCase()}`,
+    guideTooLong: (max: number): string => `Tối đa ${max.toLocaleString()} ký tự.`,
     samplingByRatio: 'Tỷ lệ (%)',
     samplingByQty: 'Số lượng',
     samplingBasis: 'Chọn cách lấy mẫu',
@@ -401,6 +408,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     inspectionFrequency: 'Chu kỳ kiểm tra',
     frequencyIntervalValue: 'Giá trị chu kỳ',
     frequencyIntervalUom: 'Đơn vị chu kỳ',
+    guideTextKo: 'Hướng dẫn (tiếng Hàn)',
+    guideTextVi: 'Hướng dẫn (tiếng Việt)',
     sequence: 'Thứ tự',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: 'Hạng mục',

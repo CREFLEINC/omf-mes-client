@@ -90,7 +90,7 @@ export const partsIqcInspection = {
     supplier: '공급업체',
     lotNo: 'LOT 번호',
     qty: 'LOT 수량',
-    receivedAt: '입고일시',
+    receivedAt: '입하일시',
     inspectedQty: '검사 수량',
     invalidInspectedQty: '1 이상 정수를 입력하세요.',
     inspectedAt: '검사일시',
@@ -103,7 +103,8 @@ export const partsIqcInspection = {
   },
 
   dimension: {
-    heading: '치수 측정',
+    /** 치수 · 기타 항목을 한 상자로(사용자 지시 · #252). */
+    heading: '검사 항목',
     progress: (done: number, total: number) => `${String(done)}/${String(total)} 항목`,
     item: 'No.',
     /** 규격 왼쪽 — 항목 이름(#247 · 사용자 지시 2026-11-10). */
@@ -113,7 +114,7 @@ export const partsIqcInspection = {
     judgment: '판정',
     cell: (seq: number, n: number) => `항목 ${String(seq)} n${String(n)} 측정값`,
     state: { err: '규격 밖', empty: '미입력', wait: '덜 적음', done: '완료' },
-    none: '측정 항목 없음',
+    none: '검사 항목 없음',
   },
 
   drawing: {

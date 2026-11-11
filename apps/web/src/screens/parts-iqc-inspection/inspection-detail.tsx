@@ -18,6 +18,7 @@ import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } 
 import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
+import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import { FieldLabel } from '../iqc-inspection/field-label';
@@ -597,8 +598,6 @@ const InspectionForm = (props: FormProps) => {
   const versionAcceptance = version.acceptanceNumber ?? null;
   const dimensions = specs.filter((s) => kindOf(s) === 'dimension');
   const checkItems = specs.filter((s) => kindOf(s) === 'check');
-  /* 텍스트 항목이 있으면 기타 검사 항목 표에 글 칸 열을 둔다(#247 · 사용자 지시 2026-11-10). */
-  const hasTextChecks = checkItems.some((s) => s.dataTypeCode === 'TEXT');
   const defaultQty = String(
     sampleQtyOf(request.targetQty, {
       samplingMethodCode: version.samplingMethodCode,
@@ -950,7 +949,6 @@ const InspectionForm = (props: FormProps) => {
             <dd>{props.inspector?.workerName ?? '-'}</dd>
           </div>
         </dl>
-
         <div className="parts-iqc-lot-box" role="group" aria-labelledby="parts-iqc-lot">
           <h4 id="parts-iqc-lot">{t.lot.heading}</h4>
           {/* 받은 값(LOT · 공급업체 · 수량 · 입고) 두 줄, 구분선 아래에 적는 값(검사일시) — 사용자 시안 2026-10-29 */}
@@ -1031,97 +1029,12 @@ const InspectionForm = (props: FormProps) => {
         blockedNote={
           manualUnjudged.length > 0 ? messages.iqcInspection.measurements.blockedIncomplete : null
         }
+        checkItems={checkItems}
+        texts={form.texts}
+        onText={changeText}
       />
 
-      {/* 기타 검사 항목 — 표(No. · 검사 내용 · 측정 결과 · 판정). 비고는 기준서 도면 아래 제 칸으로(#247 · 사용자 지시 2026-11-10). */}
-      {checkItems.length > 0 && (
-        <section className="parts-iqc-card" aria-labelledby="parts-iqc-checks">
-          <div className="parts-iqc-block-head">
-            <h3 id="parts-iqc-checks">{t.visual.checks}</h3>
-            {/* 치수 측정처럼 「판정한 항목 / 전체」(#247 · 사용자 지시 2026-11-10). */}
-            <span className="parts-iqc-muted">
-              {t.dimension.progress(
-                checkItems.filter(
-                  (item) => (form.checks[item.inspectionItemSpecId] ?? null) !== null,
-                ).length,
-                checkItems.length,
-              )}
-            </span>
-          </div>
-          <div className="parts-iqc-grid-scroll">
-            {/* 치수 측정 표와 같은 모양 · 같은 머리 이름(#247 · 사용자 지시 2026-11-10). */}
-            <table className="parts-iqc-grid">
-              <thead>
-                <tr>
-                  <th scope="col" className="parts-iqc-item">
-                    {t.visual.checkNo}
-                  </th>
-                  <th scope="col" className="parts-iqc-name">
-                    {t.dimension.content}
-                  </th>
-                  {hasTextChecks && <th scope="col">{t.visual.checkValue}</th>}
-                  <th scope="col" className="parts-iqc-verdict-head">
-                    {t.dimension.judgment}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkItems.map((item, index) => (
-                  <tr key={item.inspectionItemSpecId}>
-                    <td>{index + 1}</td>
-                    <td className="parts-iqc-name">
-                      <ItemNameCell item={item} />
-                    </td>
-                    {hasTextChecks && (
-                      <td className="parts-iqc-check-value">
-                        {item.dataTypeCode === 'TEXT' && (
-                          <TextField
-                            fullWidth
-                            aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
-                            value={form.texts[item.inspectionItemSpecId] ?? ''}
-                            maxLength={200}
-                            onChange={(event) => changeText(item, event.target.value)}
-                          />
-                        )}
-                      </td>
-                    )}
-                    <td>
-                      <div
-                        className="parts-iqc-check-row"
-                        role="group"
-                        aria-label={item.inspectionItemName}
-                      >
-                        {(['ACCEPTED', 'REJECTED'] as const).map((value) => (
-                          <Chip
-                            key={value}
-                            variant="filter"
-                            data-judgment={value}
-                            aria-pressed={form.checks[item.inspectionItemSpecId] === value}
-                            selected={form.checks[item.inspectionItemSpecId] === value}
-                            onSelectedChange={(on) =>
-                              change({
-                                ...form,
-                                checks: {
-                                  ...form.checks,
-                                  [item.inspectionItemSpecId]: on ? value : null,
-                                },
-                              })
-                            }
-                          >
-                            {value === 'ACCEPTED' ? t.ok : t.ng}
-                          </Chip>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* 종합 판정 — 기타 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
+      {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}
       <section className="parts-iqc-card" aria-labelledby="parts-iqc-verdict">
         <h3 id="parts-iqc-verdict" className="parts-iqc-sub-title">
           {t.verdict.overall}
@@ -1176,25 +1089,25 @@ const InspectionForm = (props: FormProps) => {
         )}
       </section>
 
-      <DrawingImages drawings={props.drawings} />
-
-      {/* OA — 4M 변경 정보(번호 없이 검사 진행 안, 비고 위 · #247 사용자 지시 2026-11-10). 품목 검사 수준이 없으면 여기서 함께 지정한다. */}
+      {/* OA — 4M 변경 정보(번호 없이 검사 진행 안, 비고 위 · #247 사용자 지시 2026-11-10). 품목 검사 수준이 없으면 그 오른쪽 제 상자에서 지정한다(사용자 지시 · #252). */}
       {props.oa !== null && props.oa.hasLot && (
-        <section className="parts-iqc-card" aria-labelledby="parts-iqc-four-m">
-          <h3 id="parts-iqc-four-m" className="parts-iqc-sub-title">
-            {messages.iqcInspection.result.fourMChange.sectionTitle}
-          </h3>
-          <FourMChange draft={fourM} onChange={setFourM} disabled={submit.isSaving} />
+        <div className="parts-iqc-card-pair">
+          <section className="parts-iqc-card" aria-labelledby="parts-iqc-four-m">
+            <h3 id="parts-iqc-four-m" className="parts-iqc-sub-title">
+              {messages.iqcInspection.result.fourMChange.sectionTitle}
+            </h3>
+            <FourMChange draft={fourM} onChange={setFourM} disabled={submit.isSaving} />
+          </section>
           <ItemLevelStep
             itemId={props.oa.itemId}
             item={props.oa.levelItem}
             pending={props.oa.pendingLevel}
             onPick={props.oa.onPickLevel}
           />
-        </section>
+        </div>
       )}
 
-      {/* 비고 — 맨 아래(#247 · 사용자 지시 2026-11-10). OA 는 4M 변경 정보 다음. */}
+      {/* 비고 — 4M 변경 정보(OA) 다음, 그 아래 기준서 도면 · 검사 안내(사용자 지시 · #252). */}
       <div className="field-cell parts-iqc-stretch">
         <h3 className="parts-iqc-sub-title">
           <label htmlFor="parts-iqc-remarks">{t.visual.remarks}</label>
@@ -1210,6 +1123,11 @@ const InspectionForm = (props: FormProps) => {
           onChange={(event) => change({ ...form, remarks: event.target.value })}
         />
       </div>
+
+      <DrawingImages drawings={props.drawings} />
+
+      {/* 검사 기준 버전의 안내 문구 — 기준서 도면 아래(사용자 지시 · omf-all-around#252). */}
+      <InspectionGuideNotice inspectionRequestId={request.inspectionRequestId} />
 
       {ask &&
         (() => {

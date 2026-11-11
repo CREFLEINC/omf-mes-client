@@ -81,10 +81,21 @@ export const PaneHeightSplitter = ({
   label,
   height,
   onChange,
+  collapse,
 }: {
   label: string;
   height: number | null;
   onChange: (height: number) => void;
+  /**
+   * 있으면 막대 왼쪽 끝에 목록 접기 단추가 선다 — 좌우 배치 막대(`PaneSplitter`)의 단추와 같은 모양(사용자 지시 · #252).
+   * 접혀 있으면 끌어도 높이를 바꾸지 않는다(목록이 없다).
+   */
+  collapse?: {
+    collapsed: boolean;
+    onToggle: () => void;
+    collapseLabel: string;
+    expandLabel: string;
+  };
 }) => (
   <div
     className="inspection-height-splitter"
@@ -95,7 +106,8 @@ export const PaneHeightSplitter = ({
     tabIndex={0}
     onPointerDown={(event) => {
       const list = event.currentTarget.parentElement?.firstElementChild;
-      if (!(list instanceof HTMLElement) || event.button !== 0) return;
+      if (!(list instanceof HTMLElement) || event.button !== 0 || collapse?.collapsed === true)
+        return;
       event.preventDefault();
       const startY = event.clientY;
       const startHeight = list.getBoundingClientRect().height;
@@ -124,7 +136,22 @@ export const PaneHeightSplitter = ({
         onChange(current + HEIGHT_STEP);
       }
     }}
-  />
+  >
+    {collapse !== undefined && (
+      <button
+        type="button"
+        className="po-board-collapse"
+        aria-label={collapse.collapsed ? collapse.expandLabel : collapse.collapseLabel}
+        aria-expanded={!collapse.collapsed}
+        title={collapse.collapsed ? collapse.expandLabel : collapse.collapseLabel}
+        /* 막대 끌기가 시작되지 않게 한다. */
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={collapse.onToggle}
+      >
+        <Icon name={collapse.collapsed ? 'expand_more' : 'expand_less'} size={18} />
+      </button>
+    )}
+  </div>
 );
 
 /** 좌우로 나란히 설 수 있는 창 폭 — 이보다 좁으면 고른 배치와 상관없이 위아래로 쌓인다(app.css `.po-board-split`). */

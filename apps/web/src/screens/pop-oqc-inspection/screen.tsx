@@ -2,6 +2,7 @@ import { EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
@@ -211,6 +212,8 @@ export const PopOqcInspectionScreen = () => {
     ) : (
       <>
         <PopRequestSummary detail={detail.data} />
+        {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
+        <InspectionGuideNotice inspectionRequestId={detail.data.inspectionRequestId} />
 
         {rounds.isError ? (
           <QueueLoadErrorBanner

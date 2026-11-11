@@ -21,6 +21,8 @@ export const VERSION_FORM_FIELDS = [
   'inspectionFrequencyCode',
   'frequencyIntervalValue',
   'frequencyIntervalUomCode',
+  'guideTextKo',
+  'guideTextVi',
 ] as const satisfies readonly (keyof VersionFormValues)[];
 
 /** 빈 값은 「지정하지 않음」이라 검사 대상이 아니다. 0과 구분해야 한다. */

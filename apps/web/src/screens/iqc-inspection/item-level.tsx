@@ -98,15 +98,18 @@ export const ItemLevel = ({
     </span>
   );
   if (mode === 'view') return body;
+  /* 4M 변경 정보 오른쪽의 제 상자(사용자 지시 · #252) — 수준이 이미 있으면 상자째 서지 않는다. */
   return (
-    <div className="iqc-inspection-level-step">
-      <span className="field-label">{messages.iqcInspection.detail.fields.inspectionLevel}</span>
+    <section className="parts-iqc-card iqc-inspection-level-step" aria-labelledby="iqc-level-step">
+      <h3 id="iqc-level-step" className="parts-iqc-sub-title">
+        {messages.iqcInspection.detail.fields.inspectionLevel}
+      </h3>
       {body}
-    </div>
+    </section>
   );
 };
 
-/** 4M 변경 정보 단계의 「검사 수준」 줄 — 품목 수준이 없을 때만 선다(#247). */
+/** 4M 변경 정보 오른쪽의 「검사 수준」 상자 — 품목 수준이 없을 때만 선다(#247 · #252). */
 export const ItemLevelStep = ({ itemId, item, pending, onPick }: Omit<ItemLevelProps, 'mode'>) => (
   <ItemLevel
     key={itemId}

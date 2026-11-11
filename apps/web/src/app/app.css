@@ -1670,6 +1670,82 @@ h2:has(> .inspection-standard-dialog-title) {
   }
 }
 
+/*
+ * 목록 접기(사용자 지시 · #252) — 검사 기준 · IQC 처럼 막대에 접기 단추를 단 분할만이다. 접으면 목록이 사라지고 상세가 자리를
+ * 다 쓴다. 단추는 입고 관리와 같은 작은 원이다 — 좌우 배치는 세로 막대 위쪽 끝(공용 `.po-board-collapse`), 상하 배치는 가로 막대
+ * (`PaneHeightSplitter`) 왼쪽 끝, 좌우를 골랐어도 창이 좁아 쌓이면 같은 자리에 가로 선을 긋고 그 왼쪽 끝에 선다.
+ */
+.po-board-split.inspection-split[data-left-collapsed]:has(.po-board-collapse) > :first-child {
+  display: none;
+}
+
+.po-board-split.inspection-split.is-stacked[data-left-collapsed] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inspection-height-splitter > .po-board-collapse {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.inspection-height-splitter > .po-board-collapse:hover {
+  border-color: var(--semantic-info);
+  color: var(--on-surface);
+}
+
+@media (max-width: 1439.98px) {
+  .po-board-split.inspection-split:not(.is-stacked) > .po-board-gutter:has(> .po-board-collapse) {
+    position: relative;
+    display: block;
+    height: var(--space-5);
+  }
+
+  .po-board-split.inspection-split:not(.is-stacked) > .po-board-gutter:has(> .po-board-collapse)::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: var(--space-2);
+    right: var(--space-2);
+    height: 2px;
+    transform: translateY(-50%);
+    border-radius: var(--radius-full);
+    background: var(--outline-variant);
+  }
+
+  .po-board-split.inspection-split:not(.is-stacked) > .po-board-gutter > .po-board-collapse {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    transform: translateY(-50%) rotate(90deg);
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--on-surface-variant);
+    cursor: pointer;
+  }
+}
+
 .po-board-split.inspection-split.is-stacked > .inspection-standard-list-pane {
   box-sizing: border-box;
   height: var(--stacked-list-height, auto);
@@ -21369,8 +21445,19 @@ button.app-button-neutral {
 .iqc-inspection-level-step {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  margin-top: var(--space-3);
+  gap: var(--space-2);
+}
+
+/* 4M 변경 정보 | 검사 수준 — 나란히, 좁으면 아래로. 검사 수준 상자가 없으면 4M 이 줄을 다 쓴다(#252). */
+.parts-iqc-card-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.parts-iqc-card-pair > * {
+  flex: 1 1 18rem;
+  min-width: 0;
 }
 
 .iqc-inspection-facts {
@@ -21539,6 +21626,106 @@ button.app-button-neutral {
 .iqc-inspection-action-note[data-tone="info"] {
   background: var(--semantic-info-container);
   color: var(--on-semantic-info-container);
+}
+
+/*
+ * 검사 안내 문구(omf-all-around#252) — 줄 전체 폭의 어두운 카드. 파랑은 정보 표식 · 테두리에만 쓴다(안내가 길면 파란 바탕이
+ * 부담스럽다 · 사용자 지시). 위 줄은 표식 · 「검사 안내」 · 오른쪽 끝 「펼치기/접기」, 아래는 본문.
+ */
+.inspection-guide-note {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--semantic-info) 45%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.inspection-guide-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspection-guide-head > :first-child {
+  flex: none;
+  color: var(--semantic-info);
+}
+
+.inspection-guide-title {
+  flex: 1;
+  font: var(--type-title-sm);
+  font-weight: 700;
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.inspection-guide-head > button {
+  margin-block: calc(var(--space-1) * -1);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 본문 14px · 줄 간격 1.6. 적은 줄바꿈 · 빈 줄 · 공백은 그대로(빈 줄이 문단 간격이 된다), 긴 낱말 · 약어 줄도 칸 안에서 끊는다.
+ * 기본은 2줄까지만(넘으면 「…」). 안쪽 스크롤은 두지 않는다 — 펼치면 칸이 늘고 페이지가 스크롤된다.
+ */
+.inspection-guide-blocks {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-body-sm);
+  line-height: 1.6;
+  letter-spacing: var(--type-body-sm-tracking);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inspection-guide-blocks[data-expanded="true"] {
+  display: block;
+  -webkit-line-clamp: none;
+}
+
+.inspection-guide-block + .inspection-guide-block {
+  margin-top: var(--space-3);
+}
+
+/* 이름표는 본문 첫 줄 앞에 붙인다 — 따로 한 줄을 차지하면 접힌 2줄 중 하나가 이름표로 끝난다. */
+.inspection-guide-scope {
+  margin-right: var(--space-2);
+  font-weight: 700;
+}
+
+/* 검사 기준 버전 요약의 안내 문구(#252). */
+.inspection-standard-guide-line {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container);
+}
+
+/* 「수정」은 문구 첫 줄과 같은 행 오른쪽 끝(#252). */
+.inspection-standard-guide-line > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+}
+
+.inspection-standard-guide-line dt {
+  grid-column: 1 / -1;
+}
+
+.inspection-standard-guide-line dd {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .iqc-inspection-action-note[data-tone="warning"] {

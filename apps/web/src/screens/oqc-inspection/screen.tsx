@@ -12,6 +12,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { useOaAccess } from '../../patterns/oa-access';
 import { LeaveGuardProvider } from '../../patterns/leave-guard';
 import { PageNav } from '../../patterns/page-nav';
@@ -658,6 +659,8 @@ export const OqcInspectionScreen = () => {
             unitFact={unitFact}
           />
         </LeaveGuardProvider>
+        {/* 검사 기준 버전의 안내 문구 — 기준 정보 바로 아래(omf-all-around#252). */}
+        <InspectionGuideNotice inspectionRequestId={detail.data.inspectionRequestId} />
 
         {rounds.isError ? (
           /* 회차를 모르는 채로 저장을 열지 않는다 — 몇 회차인지 모르면 재검사인지도 모른다. */

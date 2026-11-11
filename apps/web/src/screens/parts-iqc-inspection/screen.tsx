@@ -171,12 +171,23 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
     else openRequest(to);
   };
   /* 고른 줄을 다시 누르면 상세가 닫힌다(OA 화면과 같다). */
-  const select = (inspectionRequestId: number): void =>
-    moveTo(inspectionRequestId === selectedId ? null : inspectionRequestId);
+  /* 새 의뢰를 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
+  const select = (inspectionRequestId: number): void => {
+    const next = inspectionRequestId === selectedId ? null : inspectionRequestId;
+    moveTo(next);
+    if (next !== null && !split.collapsed) split.toggleCollapsed();
+  };
 
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:parts-iqc-inspection:split', 0.45);
   const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
+  /* 목록 접기 단추 — 좌우 배치는 세로 막대, 상하 배치는 가로 막대에 같은 모양으로 선다(사용자 지시 · #252). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: hubText.listCollapse,
+    expandLabel: hubText.listExpand,
+  };
 
   const emptyContent = queue.isError ? (
     <p className="field-note">{oa.queue.unavailable}</p>
@@ -296,6 +307,7 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
         ref={splitRef}
         className={`po-board-split inspection-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section
           className="pane iqc-inspection-panes iqc-inspection-queue-pane"
@@ -331,12 +343,18 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 
