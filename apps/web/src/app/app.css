@@ -1318,17 +1318,11 @@ h2:has(> .inspection-standard-dialog-title) {
   border-radius: var(--radius-lg);
 }
 
-/* 검사 항목 · 검사 지시문 좌우 반반(사용자 지시 · #258) — 좁으면 위아래로. 두 카드 높이는 높은 쪽에 맞춘다. */
+/* 검사 항목 · 검사 지시문은 화면 폭과 상관없이 늘 같은 줄 좌우 반반(사용자 지시 · #258). 두 카드 높이는 높은 쪽에 맞춘다. */
 .inspection-standard-setting-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
-}
-
-@media (max-width: 1280px) {
-  .inspection-standard-setting-pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* 「버전 설정」 묶음 — 제목 · 「버전 설정 수정」 한 줄, 아래 값 칸 3열(이름 위 · 값 아래 · 사용자 시안 #258). */
