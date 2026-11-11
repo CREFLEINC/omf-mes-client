@@ -87,7 +87,7 @@ const renderScreen = (
 } => {
   const { fetch, requests } = createRecordingFetch(routes);
   const { queryClient, router } = renderWithProviders(
-    /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+    /* 「검사 기준 수정」 · 「라우팅 조회」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
     <SessionProvider>
       <InspectionStandardScreen />
     </SessionProvider>,
@@ -248,7 +248,7 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
 
   it('네트워크가 끊기면 연결 안내를 낸다', async () => {
     renderWithProviders(
-      /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+      /* 「검사 기준 수정」 · 「라우팅 조회」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
       <SessionProvider>
         <InspectionStandardScreen />
       </SessionProvider>,
@@ -1299,8 +1299,8 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     expect(requestsTo(requests, '/planning/routings')).toHaveLength(0);
   });
 
-  /* 상세 머리의 「라우팅 보기」 — 그 품목 · Rev 의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
-  it('품목이 있는 기준은 「라우팅 보기」로 그 품목의 라우팅 화면으로 옮긴다', async () => {
+  /* 상세 머리의 「라우팅 조회」 — 그 품목 · Rev 의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
+  it('품목이 있는 기준은 「라우팅 조회」로 그 품목의 라우팅 화면으로 옮긴다', async () => {
     const { user, router } = renderScreen(
       [
         planListRoute(),
@@ -1318,7 +1318,7 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     );
 
     await screen.findByText(/\(SYN-ITEM-01\)/);
-    await user.click(await screen.findByRole('button', { name: '라우팅 보기' }));
+    await user.click(await screen.findByRole('button', { name: '라우팅 조회' }));
 
     expect(router?.state.location.pathname).toBe('/master-data/routing');
     /* 품목 코드로 조회한 채 연다 — 라우팅 화면이 첫 50건 밖 품목의 이름을 비우지 않게. */
@@ -1338,14 +1338,14 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
     expect(router?.state.location.search).toBe('?plan=3002');
   });
 
-  it('전 품목 공통 기준에는 「라우팅 보기」가 없다', async () => {
+  it('전 품목 공통 기준에는 「라우팅 조회」가 없다', async () => {
     renderScreen(
       [planListRoute(), planDetailRoute(inspectionPlanFixtures[2]), ...lookupRoutes()],
       '?plan=3003',
     );
 
     await screen.findByRole('button', { name: '기본 정보 수정' });
-    expect(screen.queryByRole('button', { name: '라우팅 보기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '라우팅 조회' })).not.toBeInTheDocument();
   });
 
   it('품목을 고르면 그 품목의 라우팅을 조회한다', async () => {

@@ -20,7 +20,7 @@ export const inspectionStandard = {
   },
   actions: {
     /* 상세 머리 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
-    openRouting: '라우팅 보기',
+    openRouting: '라우팅 조회',
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
     /* 다른 품목으로 복사(omf-all-around#255). */

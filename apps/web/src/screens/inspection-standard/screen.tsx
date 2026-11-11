@@ -146,7 +146,7 @@ type InspectionPlanVersionDetailResponse =
 
 const t = messages.inspectionStandard;
 
-/** 라우팅 화면 — 상세 머리의 「라우팅 보기」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
+/** 라우팅 화면 — 상세 머리의 「라우팅 조회」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
 const ROUTING_PATH = '/master-data/routing';
 
 /** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */

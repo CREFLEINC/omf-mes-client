@@ -575,7 +575,7 @@ export const usePqcPlanForItem = (itemId: number | null): UseQueryResult<PqcPlan
   return useQuery({
     /*
      * 검사 기준 화면의 키 묶음(`inspection-plans`) 아래에 둔다 — 그 화면이 기준을 저장 · 사용 중지하면 이 조회도 함께 낡아,
-     * 「검사 기준 등록」 뒤 「라우팅 보기」로 돌아왔을 때 옛 「없음」이 남지 않는다.
+     * 「검사 기준 등록」 뒤 「라우팅 조회」로 돌아왔을 때 옛 「없음」이 남지 않는다.
      */
     queryKey: ['inspection-plans', 'routing-pqc', itemId ?? 0] as const,
     enabled: itemId !== null,
