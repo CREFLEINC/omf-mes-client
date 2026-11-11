@@ -244,7 +244,7 @@ export const inspectionStandard = {
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
     /* 검사 안내 문구(#252). */
-    guideText: '안내 문구',
+    guideText: '지시문',
     /** 버전 요약의 언어별 안내 문구 수정 단추 · 그 창 제목(#252). */
     guideEdit: '수정',
     editGuide: (label: string): string => `${label} 수정`,
@@ -445,8 +445,8 @@ export const inspectionStandard = {
     inspectionFrequency: '검사 주기',
     frequencyIntervalValue: '검사 주기 값',
     frequencyIntervalUom: '주기 단위',
-    guideTextKo: '안내 문구(한국어)',
-    guideTextVi: '안내 문구(베트남어)',
+    guideTextKo: '지시문(한국어)',
+    guideTextVi: '지시문(베트남어)',
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',
