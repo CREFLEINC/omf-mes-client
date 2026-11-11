@@ -5,8 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
 
-import { DEFAULT_PLAN_FILTERS } from './code-options';
+import { DEFAULT_PLAN_FILTERS, INSPECTION_TYPE_OPTIONS } from './code-options';
 import { PlanFilterBar } from './plan-filter-bar';
+import { SHEET_TYPE } from './type-options';
 import type { PlanFilters } from './types';
 
 const renderBar = (appliedFilters: PlanFilters = DEFAULT_PLAN_FILTERS) => {
@@ -44,6 +45,46 @@ describe('PlanFilterBar — 조건', () => {
       unapprovedOnly: false,
       versionStatus: '',
     });
+  });
+
+  /* OA 공장은 PQC 가 검사표 기준을 연다(omf-all-around#255) — 고르면 다른 조건은 비우고 유형만 남긴다. */
+  it('검사표를 여는 유형(OA 의 PQC)을 고르면 다른 조건을 비운다', async () => {
+    const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
+    renderWithProviders(
+      <PlanFilterBar
+        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', unapprovedOnly: true }}
+        onApplyFilters={onApplyFilters}
+        sheetTypeCode={SHEET_TYPE}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      ...DEFAULT_PLAN_FILTERS,
+      inspectionTypeCode: 'PQC',
+    });
+  });
+
+  it('검사표를 여는 유형이 없으면(부품) PQC 는 다른 조건을 그대로 둔다', async () => {
+    const onApplyFilters = vi.fn<(next: PlanFilters) => void>();
+    renderWithProviders(
+      <PlanFilterBar
+        appliedFilters={{ ...DEFAULT_PLAN_FILTERS, q: 'SYN', unapprovedOnly: true }}
+        onApplyFilters={onApplyFilters}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('combobox', { name: '검사 유형 선택' }));
+    expect(screen.queryByRole('option', { name: '제품 검사표 (OA)' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith(
+      expect.objectContaining({ inspectionTypeCode: 'PQC', q: 'SYN', unapprovedOnly: true }),
+    );
   });
 
   /* 검사 기준은 칸에서 바로 검색해 고른다 — 창(팝업)이 열리지 않는다(#226). 고르기 전에는 「전체」다. */

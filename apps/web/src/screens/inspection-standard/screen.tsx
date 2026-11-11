@@ -11,7 +11,12 @@ import {
   Tabs,
   useToast,
 } from '@crefle/web-ui';
-import { createIdempotencyKey, type ApiClient, type components } from '@omf-mes/api-client';
+import {
+  createIdempotencyKey,
+  type ApiClient,
+  type components,
+  type InspectionPlanCopyResult,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -72,6 +77,7 @@ import {
 } from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
+import { SHEET_TYPE, useSheetForPqc } from './type-options';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
@@ -280,12 +286,16 @@ export const InspectionStandardScreen = () => {
   /* 「버전 비교」 창(#196) — 두 버전을 불러 화면이 견준다. */
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   /* 「변경 이력」 창(#196) */
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
   const [versionTab, setVersionTab] = useState('items');
   const toast = useToast();
   const { client } = useApiClient();
+  const sheetForPqc = useSheetForPqc();
+  /* OA 공장 계정은 PQC 가 검사표 기준이다 — 일반 PQC 기준을 새로 짓지 않게 복사 · 수정 창의 선택지에서 뺀다(#255). */
+  const planTypeOptions = sheetForPqc
+    ? INSPECTION_TYPE_OPTIONS.filter((option) => option.value !== SHEET_TYPE)
+    : INSPECTION_TYPE_OPTIONS;
 
   const filters = useMemo<PlanFilters>(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
@@ -427,6 +437,12 @@ export const InspectionStandardScreen = () => {
    */
   const [createValues, setCreateValues] = useState<PlanFormValues | null>(null);
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
+  /* 「복사」로 연 등록 창이면 원본 기준 · 버전(omf-all-around#255). null 이면 빈 「기준 추가」다. */
+  const [copySource, setCopySource] = useState<{
+    planId: number;
+    versionId: number;
+    version: number;
+  } | null>(null);
 
   const planWrite = useMasterWrite<PlanFormValues, InspectionPlan>({
     request: (values, headers) =>
@@ -478,6 +494,32 @@ export const InspectionStandardScreen = () => {
        */
       selectPlan(saved.inspectionPlanId);
       toast.show({ variant: 'success', description: messages.common.created });
+    },
+  });
+
+  /* 복사(omf-all-around#255) — 서버가 새 기준과 원본 버전의 설정 · 항목을 담은 작성중 버전 1 을 한 번에 만든다. */
+  const copyWrite = useMasterWrite<PlanFormValues, InspectionPlanCopyResult>({
+    request: (values, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:copy', {
+        params: {
+          path: { inspectionPlanId: copySource?.planId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { ...toPlanCreate(values), sourceVersionId: copySource?.versionId ?? 0 },
+      }),
+    etagPath: null,
+    invalidateKeys: [planKeys.all, versionKeys.all, itemKeys.all, lookupKeys.routingsAll],
+    knownFields: PLAN_FORM_FIELDS,
+    onSuccess: (copied) => {
+      setCreateValues(null);
+      setCreateFieldErrors({});
+      setCopySource(null);
+      /* 새로 만든 작성중 버전까지 바로 연다(#255 사용자 지시). */
+      const next = new URLSearchParams(searchParams);
+      next.set('plan', String(copied.inspectionPlanId));
+      next.set('ver', String(copied.inspectionPlanVersionId));
+      setSearchParams(next);
+      toast.show({ variant: 'success', description: t.result.copied });
     },
   });
 
@@ -941,7 +983,15 @@ export const InspectionStandardScreen = () => {
     guardMove(() => {
       resetPlanEditing();
       setSearchParams(toSearchParams(next, 1, pageSize));
+      /* 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). */
+      if (split.collapsed) split.toggleCollapsed();
     });
+
+  /* 고른 기준 없이 열리면(검사 유형을 바꿔 넘어온 때 포함) 접힌 채 저장된 목록을 펼친다(#255 사용자 지시). */
+  useEffect(() => {
+    if (selectedPlanId === null && split.collapsed) split.toggleCollapsed();
+    // 처음 열 때 한 번만 본다 — 그 뒤 접기 · 펼치기는 사용자가 정한다.
+  }, []);
 
   const changePage = (nextPage: number) =>
     guardMove(() => {
@@ -1179,10 +1229,22 @@ export const InspectionStandardScreen = () => {
   };
 
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
+    /* OA 공장 계정의 「기준 추가」에서 PQC 를 고르면 검사표 기준 등록 창으로 넘어간다(#255 사용자 지시). */
+    if (sheetForPqc && copySource === null && rawPatch.inspectionTypeCode === SHEET_TYPE) {
+      createWrite.reset();
+      setCreateValues(null);
+      setCreateFieldErrors({});
+      setSearchParams(new URLSearchParams({ type: SHEET_TYPE, new: '1' }));
+      return;
+    }
     const patch = withItemChangeRule(rawPatch);
 
     setCreateValues((prev) => (prev === null ? prev : { ...prev, ...patch }));
-    clearFieldErrors(patch, setCreateFieldErrors, createWrite.clearFieldError);
+    clearFieldErrors(
+      patch,
+      setCreateFieldErrors,
+      copySource === null ? createWrite.clearFieldError : copyWrite.clearFieldError,
+    );
   };
 
   const handleSavePlan = () => {
@@ -1205,7 +1267,8 @@ export const InspectionStandardScreen = () => {
 
     if (Object.keys(errors).length > 0) return;
 
-    createWrite.write(createValues);
+    if (copySource === null) createWrite.write(createValues);
+    else copyWrite.write(createValues);
   };
 
   /**
@@ -1361,11 +1424,6 @@ export const InspectionStandardScreen = () => {
   const renderVersionBar = (): ReactNode => (
     <VersionBar
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
-      onHistory={
-        selectedVersionId === null || (versionHistory.data?.items.length ?? 0) === 0
-          ? undefined
-          : () => setIsHistoryOpen(true)
-      }
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
       versionActions={
@@ -1427,9 +1485,13 @@ export const InspectionStandardScreen = () => {
 
     const closeCreate = () => {
       createWrite.reset();
+      copyWrite.reset();
       setCreateValues(null);
       setCreateFieldErrors({});
+      setCopySource(null);
     };
+    /* 복사 창은 같은 등록 폼을 쓰고 저장만 복사 경로로 보낸다(omf-all-around#255). */
+    const write = copySource === null ? createWrite : copyWrite;
 
     return (
       <Dialog
@@ -1437,18 +1499,26 @@ export const InspectionStandardScreen = () => {
         size="lg"
         closeOnBackdropClick={false}
         showCloseButton={false}
-        title={t.detail.createTitle}
+        title={copySource === null ? t.detail.createTitle : t.detail.copyTitle}
         onClose={closeCreate}
       >
+        {copySource !== null && (
+          <p className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.detail.copyNote(copySource.version)}
+          </p>
+        )}
         <PlanPane
           embedded
           mode="create"
           plan={null}
           values={createValues}
+          /* 새 기준은 PQC 를 고르면 검사표 기준으로 넘어가 그대로 두고, 복사는 PQC 를 뺀다(#255). */
+          typeOptions={copySource === null ? INSPECTION_TYPE_OPTIONS : planTypeOptions}
           onChange={changeCreateValues}
-          fieldErrors={{ ...createWrite.fieldErrors, ...createFieldErrors }}
+          fieldErrors={{ ...write.fieldErrors, ...createFieldErrors }}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<SaveErrorBanner error={createWrite.error} />}
+          banner={<SaveErrorBanner error={write.error} />}
           optionsNotice={optionsNotice}
           itemOptions={optionsFor(itemOptions, createValues.itemId)}
           routingRevisions={routingOptions.revisions}
@@ -1456,8 +1526,13 @@ export const InspectionStandardScreen = () => {
           routingDisabledReason={routingDisabledReason}
           // 새로 짓는 코드는 잠길 이유가 없다. editability는 이미 있는 자원의 판정이다.
           codeLockReason={null}
-          isDirty={!isSamePlanValues(createValues, emptyPlanFormValues())}
-          isSaving={createWrite.isSaving}
+          isDirty={copySource !== null || !isSamePlanValues(createValues, emptyPlanFormValues())}
+          canSave={
+            createValues.inspectionPlanCode.trim() !== '' &&
+            createValues.inspectionPlanName.trim() !== '' &&
+            createValues.inspectionTypeCode !== ''
+          }
+          isSaving={write.isSaving}
           onSave={handleSaveCreate}
           onCancel={closeCreate}
         />
@@ -1569,6 +1644,36 @@ export const InspectionStandardScreen = () => {
                 }
           }
           isActivating={activateWrite.isSaving}
+          /*
+           * 복사(omf-all-around#255) — 고른 버전의 설정 · 항목으로 다른 품목의 기준을 만든다. 등록 창을 원본 값으로 채워 연다 —
+           * 기준 코드는 유일해야 하고 품목은 새로 고르므로 비운다. 고른 버전이 없으면 가져갈 내용이 없어 두지 않는다.
+           */
+          onCopy={(() => {
+            const source = versions.find(
+              (version) => version.inspectionPlanVersionId === selectedVersionId,
+            );
+            if (source === undefined) return undefined;
+            const plan = planDetail.data.inspectionPlan;
+            return () =>
+              guardMove(() => {
+                resetPlanEditing();
+                setCopySource({
+                  planId: plan.inspectionPlanId,
+                  versionId: source.inspectionPlanVersionId,
+                  version: source.planVersion,
+                });
+                setCreateValues({
+                  ...planToFormValues(plan),
+                  inspectionPlanCode: '',
+                  /* OA 공장 계정은 일반 PQC 기준을 짓지 않는다 — 유형을 다시 고르게 비운다(#255). */
+                  ...(sheetForPqc && plan.inspectionTypeCode === SHEET_TYPE
+                    ? { inspectionTypeCode: '' }
+                    : {}),
+                  itemId: '',
+                  routingId: '',
+                });
+              });
+          })()}
         />
 
         {renderVersionBar()}
@@ -1594,6 +1699,7 @@ export const InspectionStandardScreen = () => {
               mode="edit"
               plan={planDetail.data.inspectionPlan}
               values={formState.values}
+              typeOptions={planTypeOptions}
               onChange={changePlanValues}
               onRoutingRefresh={refreshPlanRouting}
               // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
@@ -1704,7 +1810,7 @@ export const InspectionStandardScreen = () => {
                 versionHistory.data === undefined
                   ? t.versionSection.tabHistory
                   : t.versionSection.tabHistoryCount(versionHistory.data.items.length),
-              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 창과 같은 표. */
+              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 단추 · 창은 이 탭과 같아 없앴다(#255 사용자 지시). */
               content:
                 selectedVersionId === null ? null : (
                   <VersionHistoryTable
@@ -1718,36 +1824,6 @@ export const InspectionStandardScreen = () => {
         />
 
         {isCompareOpen && renderCompareDialog()}
-
-        {isHistoryOpen && selectedVersionId !== null && (
-          <Dialog
-            open
-            size="lg"
-            closeOnBackdropClick={false}
-            showCloseButton={false}
-            /* 제목 줄 오른쪽에 조회 기간(사용자 시안 · #196) */
-            title={
-              <span className="inspection-standard-dialog-title">
-                {t.history.title}
-                {/* 조회 기간은 라벨로(사용자 지시 · #196) */}
-                <Chip variant="status" size="sm" status="idle">
-                  {t.history.range}
-                </Chip>
-              </span>
-            }
-            onClose={() => setIsHistoryOpen(false)}
-            footer={
-              <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
-                {t.versionBar.close}
-              </Button>
-            }
-          >
-            <VersionHistoryTable
-              inspectionPlanVersionId={selectedVersionId}
-              labels={compareLabels}
-            />
-          </Dialog>
-        )}
 
         {guideEditField !== null && versionStatus.isEditable && (
           <VersionGuideDialog
@@ -2108,6 +2184,7 @@ export const InspectionStandardScreen = () => {
       <section ref={aboveRef} className="pane inspection-standard-search" role="search">
         <PlanFilterBar
           appliedFilters={filters}
+          sheetTypeCode={sheetForPqc ? SHEET_TYPE : null}
           onApplyFilters={applyFilters}
           /* 조회 · 초기화 뒤 구분선 너머에 엑셀 올리기 · 기준 추가(사용자 시안 · #196). 엑셀 올리기는 올리기 창을 연다(#199). */
           actions={

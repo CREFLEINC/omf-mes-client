@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { inspectionPlanVersionFixtures } from './fixtures';
 import type { VersionFormValues } from './types';
@@ -75,11 +75,15 @@ describe('versionToFormValues', () => {
 });
 
 describe('emptyVersionFormValues', () => {
-  /* 검사 방식만 전수검사로 시작한다(사용자 지시 · #208). */
-  it('검사 방식은 전수검사, 나머지 칸은 빈 폼을 만든다', () => {
-    const { samplingMethodCode, ...rest } = emptyVersionFormValues();
+  /* 검사 방식은 전수검사(사용자 지시 · #208), 적용 시작일은 오늘(#255 사용자 지시)로 시작한다. */
+  it('검사 방식은 전수검사, 적용 시작일은 오늘, 나머지 칸은 빈 폼을 만든다', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 11, 8, 30));
+    const { samplingMethodCode, effectiveFrom, ...rest } = emptyVersionFormValues();
+    vi.useRealTimers();
 
     expect(samplingMethodCode).toBe('FULL_INSPECTION');
+    expect(effectiveFrom).toBe('2026-11-11');
     expect(Object.values(rest).every((value) => value === '')).toBe(true);
   });
 });

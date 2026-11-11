@@ -283,9 +283,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         ],
       },
       /*
-       * 품질 기준 정보 — 검사기준 · 검사표 기준(W-06-24 · OA 전용) · 검사 수준 관리를 사이드바 한 줄 ·
+       * 품질 기준 정보 — 검사기준 · 검사 수준 관리를 사이드바 한 줄 ·
        * 본문 위 탭으로 묶는다(사용자 2026-10-26). 모두 판정이 기대는 기준·코드 마스터다.
-       * 검사표 기준 탭은 OA 공장이 없는 계정에서 셸이 거른다(`OA_ONLY_PATHS`).
+       * 검사표 기준(W-06-24 · OA 전용)은 검사 기준 탭에 합쳤다 — OA 공장 계정은 검사 유형 PQC 가 검사표 기준을 연다(omf-all-around#255).
        */
       {
         to: '/master-data/inspection-standard',
@@ -297,11 +297,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             to: '/master-data/inspection-standard',
             label: '검사 기준',
             labelVi: 'Tiêu chuẩn kiểm tra',
-          },
-          {
-            to: '/master-data/inspection-sheet-template',
-            label: '검사표 기준',
-            labelVi: 'Tiêu chuẩn phiếu kiểm tra',
           },
           /* W-03-12 — 품목별 IQC 검사 수준과 자동 전환 이력(omf-all-around#64). */
           {

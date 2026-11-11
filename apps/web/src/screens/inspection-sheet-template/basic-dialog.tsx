@@ -17,6 +17,8 @@ export interface TemplateBasics {
 }
 
 export interface TemplateBasicDialogProps {
+  /** 창 제목 — 없으면 「새 검사표 기준」. 복사는 「검사표 기준 복사」(omf-all-around#255). */
+  title?: string;
   initial: TemplateBasics;
   businessUnitIds: readonly number[];
   businessUnitNames: ReadonlyMap<number, string>;
@@ -36,6 +38,7 @@ const Required = () => (
  * 값은 창 안에만 들고 있다가 「확인」에서 넘긴다 — 취소하면 아무것도 바뀌지 않는다(뒤 상세 칸도 그대로).
  */
 export const TemplateBasicDialog = ({
+  title = t.editor.newHeading,
   initial,
   businessUnitIds,
   businessUnitNames,
@@ -59,7 +62,7 @@ export const TemplateBasicDialog = ({
         size="md"
         closeOnBackdropClick={false}
         showCloseButton={false}
-        title={t.editor.newHeading}
+        title={title}
         onClose={onCancel}
         footer={
           <>

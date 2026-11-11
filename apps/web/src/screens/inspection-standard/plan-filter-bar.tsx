@@ -27,13 +27,20 @@ export interface PlanFilterBarProps {
   onApplyFilters: (next: PlanFilters) => void;
   /** 조회 · 초기화 뒤, 구분선 너머에 서는 화면 단추(엑셀 올리기 · 추가 · #196) */
   actions?: ReactNode;
+  /** 검사표 기준을 여는 검사 유형 — OA 공장 계정이면 PQC 가 검사표 기준을 연다(omf-all-around#255). */
+  sheetTypeCode?: string | null;
 }
 
 /**
  * 검사기준 조회 조건 — 검사 조회·판정처럼 목록 위 카드 한 줄에 선다(omf-all-around#196).
  * 목록 구획 안에 두면 좌우 배치에서 좁은 목록 칸에 조건 셋이 끼어 줄이 넘친다.
  */
-export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanFilterBarProps) => {
+export const PlanFilterBar = ({
+  appliedFilters,
+  onApplyFilters,
+  actions,
+  sheetTypeCode = null,
+}: PlanFilterBarProps) => {
   const typeSelectId = useId();
   const statusSelectId = useId();
   const planSelectId = useId();
@@ -103,7 +110,12 @@ export const PlanFilterBar = ({ appliedFilters, onApplyFilters, actions }: PlanF
             id={typeSelectId}
             options={[{ value: '', label: t.filters.typeAll }, ...INSPECTION_TYPE_OPTIONS]}
             value={draft.inspectionTypeCode}
-            onChange={(value) => applyNow({ inspectionTypeCode: value })}
+            /* 검사표 기준을 여는 유형 — 다른 조건은 그 화면에 없어 비운다(omf-all-around#255). */
+            onChange={(value) =>
+              value === sheetTypeCode
+                ? onApplyFilters({ ...DEFAULT_PLAN_FILTERS, inspectionTypeCode: value })
+                : applyNow({ inspectionTypeCode: value })
+            }
           />
         </div>
 

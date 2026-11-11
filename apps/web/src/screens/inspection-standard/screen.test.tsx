@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -16,6 +16,13 @@ import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixture
 import { SessionProvider } from '../../patterns/session';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { InspectionStandardScreen } from './screen';
+
+/* OA 공장 계정이면 PQC 가 검사표 기준이다(#255) — 판단은 공장 조회가 필요해 테스트가 직접 켠다. 기본은 부품(꺼짐). */
+const oaSheet = vi.hoisted(() => ({ on: false }));
+vi.mock('./type-options', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./type-options')>()),
+  useSheetForPqc: () => oaSheet.on,
+}));
 
 const ROUTE = '/master-data/inspection-standard';
 const t = messages.inspectionStandard;
@@ -1247,7 +1254,8 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     expect(planRequests(requests).length).toBeGreaterThan(1);
   });
 
-  it('등록 폼에서 로컬 검증에 걸리면 요청이 나가지 않는다', async () => {
+  /* 필수 칸(기준코드 · 기준명 · 검사 유형)을 다 채우기 전에는 「기준 추가」가 눌리지 않는다(#255 사용자 지시). */
+  it('필수 칸을 다 채워야 「기준 추가」가 선다 — 공백만인 칸은 빈 칸이다', async () => {
     const { requests, user } = renderScreen([
       planListRoute(),
       ...lookupRoutes(),
@@ -1255,17 +1263,19 @@ describe('InspectionStandardScreen — 기준 등록', () => {
     ]);
 
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
-    await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
-    await user.click(within(createForm()).getByRole('button', { name: '기준 추가' }));
+    const save = () => within(createForm()).getByRole('button', { name: '기준 추가' });
+    expect(save()).toBeDisabled();
 
-    /* 빈 필수 칸은 글 없이 빨간 테두리만 선다(사용자 지시 2026-11-04 · 검사 항목 추가 창과 같다). */
-    await waitFor(() => {
-      expect(within(createForm()).getByLabelText('기준명')).toHaveAttribute('aria-invalid', 'true');
-    });
-    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
+    await user.type(await screen.findByLabelText('기준코드'), 'SYN-PLAN-10');
+    expect(save()).toBeDisabled();
+    await user.type(screen.getByLabelText('기준명'), '   ');
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
+    expect(save()).toBeDisabled();
+
+    await user.clear(screen.getByLabelText('기준명'));
+    await user.type(screen.getByLabelText('기준명'), '합성 검사기준 J');
+    expect(save()).toBeEnabled();
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 });
@@ -2791,7 +2801,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   });
 
   /* 변경 이력은 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다(#196). 처리자 이름은 사용자 상세로 푼다. */
-  it('변경 이력 창이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
+  it('이력 탭이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
     const { requests, user } = renderSelectedVersion([
       {
         match: (request) => isGet(request, '/audit/events'),
@@ -2823,8 +2833,10 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     ]);
 
     await awaitVersionForm();
-    await user.click(screen.getByRole('button', { name: '변경 이력' }));
-    const dialog = await screen.findByRole('dialog', { name: /^변경 이력/ });
+    /* 변경 이력은 「이력」 탭에서만 본다 — 같은 내용의 「변경 이력」 단추 · 창은 없앴다(#255 사용자 지시). */
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('tab', { name: '이력 1건' }));
+    const dialog = await screen.findByRole('tabpanel');
 
     expect(await within(dialog).findByText('버전 설정')).toBeInTheDocument();
     expect(within(dialog).getByText('AQL')).toBeInTheDocument();
@@ -2835,12 +2847,10 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('targetTypeCode')).toBe('INSPECTION_PLAN_VERSION');
     expect(history?.url.searchParams.get('targetId')).toBe('4002');
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
-    /* 이력 탭도 검사 항목 탭처럼 건수를 붙인다(#208). */
-    expect(screen.getByRole('tab', { name: '이력 1건' })).toBeInTheDocument();
   });
 
-  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교, 이력이 없으면 변경 이력이 서지 않는다. */
-  it('버전이 하나뿐이고 이력이 없으면 버전 비교 · 변경 이력 단추가 없다', async () => {
+  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교가 서지 않는다. */
+  it('버전이 하나뿐이면 버전 비교 단추가 없다', async () => {
     renderSelectedVersion([
       versionListRoute([inspectionPlanVersionFixtures[0]!]),
       {
@@ -2852,7 +2862,6 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     await awaitVersionForm();
 
     expect(screen.queryByRole('button', { name: '버전 비교' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
   });
 });
 
@@ -3632,5 +3641,147 @@ describe('InspectionStandardScreen — 범위 밖 쪽', () => {
     await user.click(await screen.findByRole('button', { name: '첫 쪽으로' }));
 
     expect(planRequests(requests).at(-1)?.url.searchParams.has('page')).toBe(false);
+  });
+});
+
+/* 복사(omf-all-around#255) — 고른 버전의 설정 · 항목으로 다른 품목의 기준을 만든다. 등록 창을 원본 값으로 채워 연다. */
+describe('InspectionStandardScreen — 기준 복사', () => {
+  const copyRoute: StubRoute = {
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === `${PLANS_PATH}/3001:copy`,
+    respond: () =>
+      jsonResponse({ inspectionPlanId: 3009, inspectionPlanVersionId: 4009 }, { status: 201 }),
+  };
+
+  it('고른 버전이 있으면 「복사」가 서고, 창은 기준 코드 · 품목을 비운 채 원본 값으로 열린다', async () => {
+    const { requests, user } = renderVersions([copyRoute], '?plan=3001&ver=4001');
+
+    await user.click(await screen.findByRole('button', { name: t.actions.copy }));
+    const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
+
+    expect(within(dialog).getByText(t.detail.copyNote(1))).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('기준코드')).toHaveValue('');
+    expect(within(dialog).getByLabelText('기준명')).toHaveValue(
+      inspectionPlanFixtures[0]!.inspectionPlanName,
+    );
+    expect(requestsTo(requests, `${PLANS_PATH}/3001:copy`)).toHaveLength(0);
+  });
+
+  it('저장하면 원본 버전을 실어 :copy 를 보내고, 만든 기준의 작성중 버전을 연다', async () => {
+    const { requests, router, user } = renderVersions([copyRoute], '?plan=3001&ver=4001');
+
+    await user.click(await screen.findByRole('button', { name: t.actions.copy }));
+    const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
+    await user.type(within(dialog).getByLabelText('기준코드'), 'SYN-PLAN-COPY');
+    await user.click(within(dialog).getByRole('button', { name: t.actions.addPlan }));
+
+    await screen.findByText(t.result.copied);
+    const posts = requestsTo(requests, `${PLANS_PATH}/3001:copy`);
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(posts[0]!.body)).toMatchObject({
+      inspectionPlanCode: 'SYN-PLAN-COPY',
+      inspectionTypeCode: inspectionPlanFixtures[0]!.inspectionTypeCode,
+      sourceVersionId: 4001,
+    });
+    const search = new URLSearchParams(router?.state.location.search);
+    expect(search.get('plan')).toBe('3009');
+    expect(search.get('ver')).toBe('4009');
+  });
+
+  it('버전을 고르지 않았으면 「복사」가 없다', async () => {
+    renderSelectedPlan();
+
+    await screen.findByRole('button', { name: '기본 정보 수정' });
+    expect(screen.queryByRole('button', { name: t.actions.copy })).not.toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
+  afterEach(() => {
+    oaSheet.on = false;
+  });
+
+  it('「기준 추가」에서 PQC 를 고르면 일반 기준을 짓지 않고 검사표 기준 등록으로 넘어간다', async () => {
+    oaSheet.on = true;
+    const { requests, router, user } = renderScreen([
+      planListRoute(),
+      ...lookupRoutes(),
+      planCreateRoute(),
+    ]);
+
+    /* 실제로는 검사 기준 탭(`InspectionStandardRoute`)이 이 주소에서 검사표 화면으로 바꿔 붙인다. */
+    const searches: string[] = [];
+    router?.subscribe((state) => searches.push(state.location.search));
+
+    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    await waitFor(() => {
+      expect(searches).toContain('?type=PQC&new=1');
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
+  });
+
+  it('부품 공장 계정은 「기준 추가」에서 PQC 를 골라도 그대로 일반 기준을 짓는다', async () => {
+    const { user } = renderScreen([planListRoute(), ...lookupRoutes(), planCreateRoute()]);
+
+    await user.click(await screen.findByRole('button', { name: '기준 추가' }));
+    await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
+
+    expect(within(createForm()).getByRole('combobox', { name: '검사 유형' })).toHaveTextContent(
+      'PQC (공정검사)',
+    );
+  });
+
+  it('복사 창은 PQC 를 고를 수 없고, 원본이 PQC 면 유형을 비운다', async () => {
+    oaSheet.on = true;
+    const pqcPlan = inspectionPlanFixtures.find((plan) => plan.inspectionTypeCode === 'PQC')!;
+    const { user } = renderScreen(
+      [planListRoute(), planDetailRoute(pqcPlan), versionListRoute(), ...lookupRoutes()],
+      `?plan=${String(pqcPlan.inspectionPlanId)}&ver=4001`,
+    );
+
+    await user.click(await screen.findByRole('button', { name: t.actions.copy }));
+    const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
+    const typeSelect = within(dialog).getByRole('combobox', { name: '검사 유형' });
+    expect(typeSelect).not.toHaveTextContent('PQC');
+    await user.click(typeSelect);
+
+    expect(screen.queryByRole('option', { name: 'PQC (공정검사)' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'OQC (출하검사)' })).toBeInTheDocument();
+  });
+});
+
+describe('InspectionStandardScreen — 목록 접기(#252 · #255)', () => {
+  it('기준을 고르면 목록이 접히고, 조회 조건을 바꾸면 다시 펼쳐진다', async () => {
+    window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
+    const { user } = renderScreen([planListRoute(), planDetailRoute(), ...lookupRoutes()]);
+
+    await user.click(await screen.findByRole('button', { name: 'SYN-PLAN-01' }));
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listExpand }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(screen.getByRole('search')).getByRole('combobox', { name: '검사 유형 선택' }),
+    );
+    await user.click(screen.getByRole('option', { name: 'OQC (출하검사)' }));
+
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('고른 기준 없이 열리면 접힌 채 저장된 목록을 펼친다', async () => {
+    window.localStorage.setItem('omf-mes:inspection-standard:split:collapsed', '1');
+    renderScreen([planListRoute(), ...lookupRoutes()]);
+
+    expect(
+      await screen.findByRole('button', { name: messages.inspectionStandard.panes.listCollapse }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    window.localStorage.removeItem('omf-mes:inspection-standard:split:collapsed');
   });
 });

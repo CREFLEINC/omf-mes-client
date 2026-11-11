@@ -1066,7 +1066,6 @@ describe('AppLayout', () => {
       ],
       '품질 기준 정보': [
         '/master-data/inspection-standard',
-        '/master-data/inspection-sheet-template',
         '/quality/inspection-levels',
       ],
       '품질 코드 관리': [

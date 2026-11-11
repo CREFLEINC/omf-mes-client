@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { ItemSelect } from '../../patterns/item-select';
@@ -80,17 +80,37 @@ type Opened =
  * 사업부 관리자가 등록·확정한다. 확정 기준이 있어야 POP 「제품 검사표 입력」에서 그 모델의 검사표가 열린다.
  */
 /** OA 공장 전용(omf-all-around#89) — 계정 범위에 OA 공장이 없으면 안내만 보이고 조회를 보내지 않는다. */
-export const InspectionSheetTemplateScreen = () => (
+interface InspectionSheetTemplateScreenProps {
+  /** 검사 기준 탭이 조회 줄 맨 앞에 세우는 검사 유형 칸(omf-all-around#255). */
+  typeSelect?: ReactNode;
+  /** 등록 창을 연 채 시작한다 — 검사 기준 「기준 추가」에서 PQC 를 고른 OA 계정이 넘어온다(#255). */
+  startCreating?: boolean;
+}
+
+export const InspectionSheetTemplateScreen = ({
+  typeSelect,
+  startCreating = false,
+}: InspectionSheetTemplateScreenProps) => (
   <OaOnlyGate title={t.title} breadcrumbRoot={t.breadcrumbRoot}>
-    <InspectionSheetTemplateScreenBody />
+    <InspectionSheetTemplateScreenBody typeSelect={typeSelect} startCreating={startCreating} />
   </OaOnlyGate>
 );
 
-const InspectionSheetTemplateScreenBody = () => {
+const InspectionSheetTemplateScreenBody = ({
+  typeSelect,
+  startCreating = false,
+}: InspectionSheetTemplateScreenProps) => {
   const hub = usePageHub();
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:inspection-sheet-template:split', 0.4);
+  /* 목록 접기 단추 — 검사 기준 화면과 같은 모양 · 같은 자리(#252 · #255 사용자 지시). */
+  const listCollapse = {
+    collapsed: split.collapsed,
+    onToggle: split.toggleCollapsed,
+    collapseLabel: messages.inspectionStandard.panes.listCollapse,
+    expandLabel: messages.inspectionStandard.panes.listExpand,
+  };
   const layout = useSplitOrientation(QUALITY_STANDARD_ORIENTATION_KEY);
   const statusId = useId();
   const { session } = useSession();
@@ -122,7 +142,14 @@ const InspectionSheetTemplateScreenBody = () => {
     return () => window.clearTimeout(timer);
   }, [materialInput]);
   const [opened, setOpened] = useState<Opened>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  /*
+   * 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). 처음 열 때도 고른 기준이
+   * 없으니 접힌 채 저장된 목록을 펼친다(검사 유형을 바꿔 넘어온 때 포함). 쪽 · 쪽 크기는 목록이 펼쳐진 때만 바뀐다.
+   */
+  useEffect(() => {
+    if (split.collapsed) split.toggleCollapsed();
+  }, [filter.status, filter.itemId, filter.layout, filter.material, filter.usage]);
+  const [isCreating, setIsCreating] = useState(startCreating);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
   /** 다른 기준을 열면 단계 고름을 처음으로 돌린다. */
   const open = (next: Opened) => {
@@ -217,13 +244,15 @@ const InspectionSheetTemplateScreenBody = () => {
           aria-label={t.list.openRow(row.itemCode)}
           aria-current={row.itemId === openedItemId ? 'true' : undefined}
           /* 열린 줄을 다시 누르면 상세를 닫는다(사용자 지시 2026-10-30). */
-          onClick={() =>
-            open(
-              row.itemId === openedItemId
-                ? null
-                : { kind: 'existing', id: row.inspectionSheetTemplateId },
-            )
-          }
+          onClick={() => {
+            if (row.itemId === openedItemId) {
+              open(null);
+              return;
+            }
+            open({ kind: 'existing', id: row.inspectionSheetTemplateId });
+            /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 검사 기준 화면과 같다(#252 · #255 사용자 지시). */
+            if (!split.collapsed) split.toggleCollapsed();
+          }}
         >
           <span className="inspection-sheet-template-open-code">{row.itemCode}</span>
           <span className="inspection-sheet-template-muted">{row.itemName}</span>
@@ -334,6 +363,8 @@ const InspectionSheetTemplateScreenBody = () => {
             }));
           }}
         >
+          {/* 검사 기준 탭 안에서는 맨 앞에 검사 유형 칸이 선다(omf-all-around#255). */}
+          {typeSelect}
           {/* 순서: 양식 선택 → 상태 선택 → 품목 검색 → 재료 검색(사용자 지시 · #208). */}
           <div className="field-cell inspection-sheet-template-status-filter">
             <label className="field-label" htmlFor={layoutFilterId}>
@@ -448,6 +479,7 @@ const InspectionSheetTemplateScreenBody = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <section
           className="pane inspection-sheet-template-list-pane quality-standard-list-pane"
@@ -516,12 +548,18 @@ const InspectionSheetTemplateScreenBody = () => {
           )}
         </section>
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={listCollapse}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}
             height={layout.listHeight}
             onChange={layout.changeListHeight}
+            collapse={listCollapse}
           />
         )}
 
@@ -591,6 +629,7 @@ const InspectionSheetTemplateScreenBody = () => {
           onConfirm={(basics) => {
             setIsCreating(false);
             open({ kind: 'new', basics, seq: Date.now() });
+            if (!split.collapsed) split.toggleCollapsed();
           }}
         />
       )}

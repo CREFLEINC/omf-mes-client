@@ -116,7 +116,9 @@ export const TemplateEditor = ({
   const [isVersionListOpen, setIsVersionListOpen] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   /* 작성 취소 · 폐기 확인 창, 「변경 이력」 창 — 검사 기준 탭과 같다(omf-all-around#214). */
-  const [transition, setTransition] = useState<'discard' | 'obsolete' | null>(null);
+  const [transition, setTransition] = useState<'discard' | 'obsolete' | 'reactivate' | null>(null);
+  /* 「복사」 — 다른 모델을 고르는 기본 정보 창(omf-all-around#255). */
+  const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const history = useTemplateHistory(template?.inspectionSheetTemplateId ?? null);
   /* 같은 품목의 버전 — 높은 버전이 위. 받기 전에는 연 버전 하나로 둔다. */
@@ -133,17 +135,19 @@ export const TemplateEditor = ({
     setDirty(true);
   };
 
+  const createRequest = (source: TemplateDraft, idempotencyKey: string) =>
+    client.POST('/quality/inspection-sheet-templates', {
+      params: { header: { 'Idempotency-Key': idempotencyKey } },
+      body: {
+        itemId: source.itemId ?? 0,
+        businessUnitId: source.businessUnitId ?? 0,
+        formLayoutCode: source.formLayoutCode,
+        ...toBody(source),
+      },
+    });
+
   const create = useMasterWrite<{ source: TemplateDraft }, InspectionSheetTemplate>({
-    request: ({ source }, headers) =>
-      client.POST('/quality/inspection-sheet-templates', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: {
-          itemId: source.itemId ?? 0,
-          businessUnitId: source.businessUnitId ?? 0,
-          formLayoutCode: source.formLayoutCode,
-          ...toBody(source),
-        },
-      }),
+    request: ({ source }, headers) => createRequest(source, headers['Idempotency-Key']),
     etagPath: null,
     invalidateKeys: [templateKeys.all],
     knownFields: [],
@@ -152,6 +156,18 @@ export const TemplateEditor = ({
         variant: 'success',
         description: template === null ? t.editor.saved : t.editor.copied,
       });
+      onOpened(saved.inspectionSheetTemplateId);
+    },
+  });
+
+  /* 다른 모델로 복사(omf-all-around#255) — 등록과 같은 경로로 새 모델의 작성중 기준을 만들고 그것을 연다. */
+  const copy = useMasterWrite<{ source: TemplateDraft }, InspectionSheetTemplate>({
+    request: ({ source }, headers) => createRequest(source, headers['Idempotency-Key']),
+    etagPath: null,
+    invalidateKeys: [templateKeys.all],
+    knownFields: [],
+    onSuccess: (saved) => {
+      toast.show({ variant: 'success', description: t.editor.copiedToModel });
       onOpened(saved.inspectionSheetTemplateId);
     },
   });
@@ -217,6 +233,27 @@ export const TemplateEditor = ({
     },
   });
 
+  /* 재사용 — 폐기 버전을 다시 확정으로 올린다. 같은 모델의 지금 확정본은 서버가 폐기한다(omf-all-around#255). */
+  const reactivate = useMasterWrite<{ id: number }, InspectionSheetTemplate>({
+    request: ({ id }, headers) =>
+      client.POST('/quality/inspection-sheet-templates/{inspectionSheetTemplateId}:reactivate', {
+        params: {
+          path: { inspectionSheetTemplateId: id },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+      }),
+    etagPath: template === null ? null : templateDetailPath(template.inspectionSheetTemplateId),
+    invalidateKeys: [templateKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setTransition(null);
+      toast.show({ variant: 'success', description: t.editor.reactivated });
+    },
+  });
+
   /* 작성 취소는 버전을 지운다 — 지운 버전에 머물면 상세가 404 다. 남은 가장 높은 버전으로, 없으면 상세를 닫는다. */
   const discard = useMasterWrite<{ id: number }, unknown>({
     request: ({ id }, headers) =>
@@ -242,13 +279,27 @@ export const TemplateEditor = ({
   });
 
   const saving =
-    create.isSaving || update.isSaving || confirm.isSaving || obsolete.isSaving || discard.isSaving;
+    create.isSaving ||
+    copy.isSaving ||
+    update.isSaving ||
+    confirm.isSaving ||
+    obsolete.isSaving ||
+    reactivate.isSaving ||
+    discard.isSaving;
   /* 작성 취소 · 폐기의 실패는 그 확인 창 안에서 알린다 — 창이 열린 채라 뒤 배너는 보이지 않는다(#214). */
-  const writeError = create.error ?? update.error ?? confirm.error;
-  const transitionWrite = transition === 'discard' ? discard : obsolete;
+  const writeError = create.error ?? copy.error ?? update.error ?? confirm.error;
+  const transitionWrite =
+    transition === 'discard' ? discard : transition === 'reactivate' ? reactivate : obsolete;
+  const transitionText =
+    transition === 'discard'
+      ? t.discardDialog
+      : transition === 'reactivate'
+        ? t.reactivateDialog
+        : t.obsoleteDialog;
   const closeTransition = () => {
     setTransition(null);
     obsolete.reset();
+    reactivate.reset();
     discard.reset();
   };
 
@@ -378,6 +429,25 @@ export const TemplateEditor = ({
                   {t.editor.obsolete}
                 </Button>
               )}
+              {/* 폐기 버전은 「재사용」 — 검사 기준 탭의 사용 중지 · 재사용과 같은 자리(omf-all-around#255). */}
+              {template.statusCode === 'OBSOLETE' && (
+                <Button
+                  variant="outlined"
+                  disabled={saving}
+                  onClick={() => setTransition('reactivate')}
+                >
+                  {t.editor.reactivate}
+                </Button>
+              )}
+              {/* 다른 모델로 복사 — 저장된 내용을 새 모델의 작성중 기준으로 만든다(omf-all-around#255). */}
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="content_copy" size={18} />}
+                disabled={saving}
+                onClick={() => setIsCopyOpen(true)}
+              >
+                {t.editor.copyToModel}
+              </Button>
               {!readOnly && (
                 <Button disabled={saving || dirty} onClick={() => setConfirming(true)}>
                   {t.editor.confirm}
@@ -416,6 +486,7 @@ export const TemplateEditor = ({
         error={writeError}
         onReload={() => {
           create.reset();
+          copy.reset();
           update.reset();
           confirm.reset();
         }}
@@ -624,7 +695,7 @@ export const TemplateEditor = ({
         <Dialog
           open
           onClose={closeTransition}
-          title={transition === 'discard' ? t.discardDialog.title : t.obsoleteDialog.title}
+          title={transitionText.title}
           closeOnBackdropClick={false}
           showCloseButton={false}
           footer={
@@ -637,19 +708,14 @@ export const TemplateEditor = ({
                 loading={saving}
                 onClick={() => transitionWrite.write({ id: template.inspectionSheetTemplateId })}
               >
-                {transition === 'discard' ? t.discardDialog.ok : t.obsoleteDialog.ok}
+                {transitionText.ok}
               </Button>
             </>
           }
         >
           {/* 400 STATE_LOCKED · 409 잠금 충돌을 창 안에서 알린다. 「최신 불러오기」는 창을 닫고 상세를 다시 받게 한다. */}
           <SaveErrorBanner error={transitionWrite.error} onReload={closeTransition} />
-          <p>
-            {(transition === 'discard' ? t.discardDialog : t.obsoleteDialog).body(
-              template.itemCode,
-              template.templateVersion,
-            )}
-          </p>
+          <p>{transitionText.body(template.itemCode, template.templateVersion)}</p>
         </Dialog>
       )}
 
@@ -657,6 +723,36 @@ export const TemplateEditor = ({
         <TemplateHistoryDialog
           events={history.data?.items}
           onClose={() => setIsHistoryOpen(false)}
+        />
+      )}
+
+      {isCopyOpen && template !== null && (
+        <TemplateBasicDialog
+          title={t.editor.copyHeading}
+          initial={{
+            itemId: null,
+            itemLabel: '',
+            businessUnitId: template.businessUnitId,
+            formLayoutCode: template.formLayoutCode,
+          }}
+          businessUnitIds={businessUnitIds}
+          businessUnitNames={businessUnitNames}
+          onCancel={() => setIsCopyOpen(false)}
+          onConfirm={(basics) => {
+            setIsCopyOpen(false);
+            /* 저장된 내용을 복사한다 — 고치던 값(저장 전)은 넣지 않는다. 양식을 바꾸면 그 양식의 단계로 옮긴다. */
+            const saved = toDraft(template);
+            copy.write({
+              source: {
+                ...saved,
+                ...basics,
+                steps:
+                  basics.formLayoutCode === saved.formLayoutCode
+                    ? saved.steps
+                    : layoutSteps(basics.formLayoutCode, saved.steps),
+              },
+            });
+          }}
         />
       )}
 

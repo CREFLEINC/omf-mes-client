@@ -24,6 +24,8 @@ export interface PlanDetailHeadProps {
   /** 미사용 기준을 다시 켠다 — 사용 중이면 두지 않는다(사용자 지시 2026-11-04). */
   onActivate?: () => void;
   isActivating?: boolean;
+  /** 고른 버전이 있을 때만 — 그 버전의 설정 · 항목으로 다른 품목의 기준을 만든다(omf-all-around#255). */
+  onCopy?: () => void;
 }
 
 /**
@@ -40,6 +42,7 @@ export const PlanDetailHead = ({
   isDeactivating = false,
   onActivate,
   isActivating = false,
+  onCopy,
 }: PlanDetailHeadProps) => {
   const approvedAt = formatApprovedAt(plan.approvedAt);
 
@@ -74,6 +77,15 @@ export const PlanDetailHead = ({
           {onActivate !== undefined && (
             <Button variant="outlined" disabled={isActivating} onClick={onActivate}>
               {t.actions.reactivate}
+            </Button>
+          )}
+          {onCopy !== undefined && (
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="content_copy" size={18} />}
+              onClick={onCopy}
+            >
+              {t.actions.copy}
             </Button>
           )}
           <Button variant="outlined" leadingIcon={<Icon name="edit" size={18} />} onClick={onEdit}>
