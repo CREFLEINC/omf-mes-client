@@ -22,8 +22,6 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
       values={versionToFormValues(inspectionPlanVersionFixtures[0]!)}
       onChange={onChange}
       fieldErrors={{}}
-      inspectionFrequencyOptions={[{ value: 'PRODUCTION_LOT', label: '생산 LOT' }]}
-      frequencyIntervalUomOptions={[{ value: 'HOUR', label: '시간' }]}
       banner={null}
       isDirty={false}
       isSaving={false}
@@ -171,7 +169,6 @@ describe('VersionFormPane — 상태 잠금', () => {
     expect(screen.getByLabelText('샘플 비율(%)')).toBeDisabled();
     expect(screen.getByLabelText('적용 시작일')).toBeDisabled();
     expect(screen.getByLabelText('AQL')).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: '검사 주기' })).toBeDisabled();
     expect(
       screen.getByText('확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
     ).toBeInTheDocument();
@@ -224,12 +221,13 @@ describe('VersionFormPane — 편집', () => {
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
   });
 
-  /* 선택지를 받지 못했다는 사실을 감추지 않는다 — 감추면 선택칸이 이유 없이 빈다. */
-  it('공통코드 선택지를 받지 못했으면 선택칸에 안내가 붙는다', () => {
-    renderPane({ codeOptionsNote: messages.inspectionStandard.optionsLoadFailed });
+  /* 검사 주기 · 주기 값 · 주기 단위는 기록용이라 입력을 걷었다(omf-all-around#263). */
+  it('검사 주기 · 주기 값 · 주기 단위 칸이 없다', () => {
+    renderPane();
 
-    expect(
-      screen.getAllByText(messages.inspectionStandard.optionsLoadFailed).length,
-    ).toBeGreaterThan(0);
+    const t = messages.inspectionStandard.fields;
+    expect(screen.queryByText(t.inspectionFrequency)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.frequencyIntervalValue)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.frequencyIntervalUom)).not.toBeInTheDocument();
   });
 });

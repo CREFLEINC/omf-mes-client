@@ -238,7 +238,6 @@ const useVersionTransition = ({
  */
 const PAIRED_FIELDS: readonly (readonly [string, string])[] = [
   ['effectiveFrom', 'effectiveTo'],
-  ['frequencyIntervalValue', 'frequencyIntervalUomCode'],
   ['lowerLimit', 'upperLimit'],
 ];
 
@@ -1923,17 +1922,7 @@ export const InspectionStandardScreen = () => {
 
     return (
       <>
-        <VersionSummary
-          values={versionFormState.baseline}
-          inspectionFrequencyOptions={optionsFor(
-            inspectionFrequencyOptions,
-            versionFormState.baseline.inspectionFrequencyCode,
-          )}
-          frequencyIntervalUomOptions={optionsFor(
-            frequencyIntervalUomOptions,
-            versionFormState.baseline.frequencyIntervalUomCode,
-          )}
-        />
+        <VersionSummary values={versionFormState.baseline} />
         {renderVersionSettings()}
 
         {/* 바닥 줄 오른쪽 — 작성 취소 · 확정 / 사용 중지 / 재사용(사용자 시안 · #258). */}
@@ -2094,12 +2083,6 @@ export const InspectionStandardScreen = () => {
    * 우 중단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
-  /** 버전 폼의 공통코드 선택지를 받지 못했으면 선택칸 아래에 알린다 — 감추면 선택칸이 이유 없이 빈다. */
-  const versionCodeOptionsNote =
-    inspectionFrequencyOptions.isError || frequencyIntervalUomOptions.isError
-      ? t.optionsLoadFailed
-      : undefined;
-
   const renderVersionFormPane = (onEditCancel?: () => void): ReactNode => {
     if (versionCreateValues !== null) {
       return (
@@ -2111,15 +2094,6 @@ export const InspectionStandardScreen = () => {
           values={versionCreateValues}
           onChange={handleChangeVersionCreateValues}
           fieldErrors={{ ...versionCreateWrite.fieldErrors, ...versionCreateFieldErrors }}
-          inspectionFrequencyOptions={optionsFor(
-            inspectionFrequencyOptions,
-            versionCreateValues.inspectionFrequencyCode,
-          )}
-          frequencyIntervalUomOptions={optionsFor(
-            frequencyIntervalUomOptions,
-            versionCreateValues.frequencyIntervalUomCode,
-          )}
-          codeOptionsNote={versionCodeOptionsNote}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<PlanActionBanner error={versionCreateWrite.error} />}
           isDirty={!isSameVersionValues(versionCreateValues, emptyVersionFormValues())}
@@ -2181,15 +2155,6 @@ export const InspectionStandardScreen = () => {
         onChange={handleChangeVersionValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...versionWrite.fieldErrors, ...versionFieldErrors }}
-        inspectionFrequencyOptions={optionsFor(
-          inspectionFrequencyOptions,
-          versionFormState.values.inspectionFrequencyCode,
-        )}
-        frequencyIntervalUomOptions={optionsFor(
-          frequencyIntervalUomOptions,
-          versionFormState.values.frequencyIntervalUomCode,
-        )}
-        codeOptionsNote={versionCodeOptionsNote}
         banner={
           <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
         }

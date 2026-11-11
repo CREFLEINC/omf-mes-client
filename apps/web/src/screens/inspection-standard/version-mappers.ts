@@ -1,13 +1,14 @@
-import type { components, InspectionPlanVersionGuideForward } from '@omf-mes/api-client';
+import type {
+  InspectionPlanVersionCreateForward,
+  InspectionPlanVersionUpdateForward,
+} from '@omf-mes/api-client';
 
 import { todayIso } from '../gauge-master/today';
 import { FULL_INSPECTION } from './code-options';
 import type { InspectionPlanVersion, VersionFormValues } from './types';
 
-type InspectionPlanVersionCreate = components['schemas']['InspectionPlanVersionCreate'] &
-  InspectionPlanVersionGuideForward;
-type InspectionPlanVersionUpdate = components['schemas']['InspectionPlanVersionUpdate'] &
-  InspectionPlanVersionGuideForward;
+type InspectionPlanVersionCreate = InspectionPlanVersionCreateForward;
+type InspectionPlanVersionUpdate = InspectionPlanVersionUpdateForward;
 
 /** 널·없음을 빈 문자열로 모은다. **0은 빈 문자열이 아니다** — 「지정하지 않음」과 구분해야 한다. */
 const optionalNumberToText = (value: number | null | undefined): string =>
@@ -27,9 +28,6 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   aqlValue: optionalNumberToText(version.aqlValue),
   acceptanceNumber: optionalNumberToText(version.acceptanceNumber),
   rejectionNumber: optionalNumberToText(version.rejectionNumber),
-  inspectionFrequencyCode: version.inspectionFrequencyCode,
-  frequencyIntervalValue: optionalNumberToText(version.frequencyIntervalValue),
-  frequencyIntervalUomCode: version.frequencyIntervalUomCode ?? '',
   guideText: version.guideText ?? '',
 });
 
@@ -44,9 +42,6 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   aqlValue: '',
   acceptanceNumber: '',
   rejectionNumber: '',
-  inspectionFrequencyCode: '',
-  frequencyIntervalValue: '',
-  frequencyIntervalUomCode: '',
   guideText: '',
 });
 
@@ -78,9 +73,7 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   aqlValue: optionalTextToNumber(values.aqlValue),
   acceptanceNumber: optionalTextToNumber(values.acceptanceNumber),
   rejectionNumber: optionalTextToNumber(values.rejectionNumber),
-  inspectionFrequencyCode: values.inspectionFrequencyCode,
-  frequencyIntervalValue: optionalTextToNumber(values.frequencyIntervalValue),
-  frequencyIntervalUomCode: optionalText(values.frequencyIntervalUomCode),
+  /* 검사 주기 · 주기 값 · 주기 단위는 싣지 않는다 — 기록용이라 입력을 걷었고, 빼면 서버가 그대로 둔다(#263). */
   /* 검사 지시문(#252 · 한 칸 #261) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
   guideText: optionalText(values.guideText.trim()),
 });

@@ -19,9 +19,6 @@ const filled: VersionFormValues = {
   aqlValue: '1',
   acceptanceNumber: '0',
   rejectionNumber: '2',
-  inspectionFrequencyCode: 'PENDING',
-  frequencyIntervalValue: '4',
-  frequencyIntervalUomCode: 'PENDING',
   guideText: '장갑 착용',
 };
 
@@ -36,9 +33,6 @@ describe('versionToFormValues', () => {
       aqlValue: '',
       acceptanceNumber: '0',
       rejectionNumber: '2',
-      inspectionFrequencyCode: 'PENDING',
-      frequencyIntervalValue: '',
-      frequencyIntervalUomCode: '',
       guideText: '',
     });
   });
@@ -96,11 +90,17 @@ describe('toVersionUpdate', () => {
       aqlValue: 1,
       acceptanceNumber: 0,
       rejectionNumber: 2,
-      inspectionFrequencyCode: 'PENDING',
-      frequencyIntervalValue: 4,
-      frequencyIntervalUomCode: 'PENDING',
       guideText: '장갑 착용',
     });
+  });
+
+  /* 기록용이라 입력을 걷었다 — 빼고 보내면 서버가 기존 값을 그대로 둔다(omf-all-around#263). */
+  it('검사 주기 · 주기 값 · 주기 단위를 싣지 않는다', () => {
+    const body = toVersionUpdate(filled);
+
+    expect('inspectionFrequencyCode' in body).toBe(false);
+    expect('frequencyIntervalValue' in body).toBe(false);
+    expect('frequencyIntervalUomCode' in body).toBe(false);
   });
 
   it('안내 문구는 앞뒤 공백을 걷고, 비우면 널로 지운다(#252)', () => {
@@ -123,14 +123,11 @@ describe('toVersionUpdate', () => {
       aqlValue: '',
       acceptanceNumber: '',
       rejectionNumber: '',
-      frequencyIntervalValue: '',
-      frequencyIntervalUomCode: '',
     });
 
     expect(body.effectiveTo).toBeNull();
     expect(body.samplingRatio).toBeNull();
     expect(body.acceptanceNumber).toBeNull();
-    expect(body.frequencyIntervalUomCode).toBeNull();
   });
 
   /*

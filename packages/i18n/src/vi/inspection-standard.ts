@@ -498,8 +498,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planCodeBlank: 'Mã tiêu chuẩn không được chỉ gồm khoảng trắng.',
     planNameBlank: 'Tên tiêu chuẩn không được chỉ gồm khoảng trắng.',
     effectiveRangeReversed: 'Hiệu lực đến phải bằng hoặc sau Hiệu lực từ.',
-    /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-    frequencyPairRequired: 'Giá trị chu kỳ và đơn vị chu kỳ phải cùng điền hoặc cùng để trống.',
     /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
     rejectionNumberInvalid: 'Số bác bỏ phải là số lớn hơn 0.',
     /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */

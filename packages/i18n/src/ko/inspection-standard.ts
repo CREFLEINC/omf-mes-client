@@ -555,8 +555,6 @@ export const inspectionStandard = {
     planCodeBlank: '기준코드는 공백만으로 지정할 수 없습니다.',
     planNameBlank: '기준명은 공백만으로 지정할 수 없습니다.',
     effectiveRangeReversed: '적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.',
-    /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-    frequencyPairRequired: '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
     rejectionNumberInvalid: '불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.',
     /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */

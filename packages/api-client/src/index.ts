@@ -79,7 +79,9 @@ export type {
   ConcessionSplitResult,
   StockReinstatementCreateForward,
   StockReinstatementResponseForward,
+  InspectionPlanVersionCreateForward,
   InspectionPlanVersionForward,
+  InspectionPlanVersionUpdateForward,
   InspectionPlanVersionGuideForward,
   InspectionGuideForward,
 } from './forward-contract';

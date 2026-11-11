@@ -24,11 +24,6 @@ export interface VersionFormPaneProps {
   onChange: (patch: Partial<VersionFormValues>) => void;
   /** 필드별 인라인 오류 — 로컬 검증 결과와 서버 필드 오류를 상위가 병합해 넘긴다. */
   fieldErrors: Record<string, string>;
-  /** 공통코드에서 받은 선택지. 「사용 중인 것 + 지금 고른 값」만 온다. */
-  inspectionFrequencyOptions: SelectOption[];
-  frequencyIntervalUomOptions: SelectOption[];
-  /** 선택지를 받지 못했을 때의 안내. */
-  codeOptionsNote?: string;
   /** 저장·전이 실패 배너 슬롯 */
   banner: ReactNode;
   isDirty: boolean;
@@ -57,9 +52,6 @@ export const VersionFormPane = ({
   values,
   onChange,
   fieldErrors,
-  inspectionFrequencyOptions,
-  frequencyIntervalUomOptions,
-  codeOptionsNote,
   banner,
   isDirty,
   isSaving,
@@ -266,37 +258,6 @@ export const VersionFormPane = ({
           onChange={(event) => onChange({ rejectionNumber: event.target.value })}
           disabled={isLocked}
           error={fieldErrors.rejectionNumber}
-        />
-
-        <SelectField
-          label={t.fields.inspectionFrequency}
-          required
-          options={inspectionFrequencyOptions}
-          value={values.inspectionFrequencyCode}
-          onChange={(inspectionFrequencyCode) => onChange({ inspectionFrequencyCode })}
-          disabled={isLocked}
-          note={codeOptionsNote}
-          error={fieldErrors.inspectionFrequencyCode}
-        />
-
-        <TextField
-          type="number"
-          label={t.fields.frequencyIntervalValue}
-          value={values.frequencyIntervalValue}
-          onChange={(event) => onChange({ frequencyIntervalValue: event.target.value })}
-          disabled={isLocked}
-          error={fieldErrors.frequencyIntervalValue}
-        />
-
-        {/* 주기의 단위다 — 품목 기준단위(`/mdm/uoms`)와 다른 축이라 그쪽 목록을 쓰지 않는다. */}
-        <SelectField
-          label={t.fields.frequencyIntervalUom}
-          options={frequencyIntervalUomOptions}
-          value={values.frequencyIntervalUomCode}
-          onChange={(frequencyIntervalUomCode) => onChange({ frequencyIntervalUomCode })}
-          disabled={isLocked}
-          note={codeOptionsNote}
-          error={fieldErrors.frequencyIntervalUomCode}
         />
       </div>
 

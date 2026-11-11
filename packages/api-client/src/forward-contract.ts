@@ -823,6 +823,24 @@ export interface InspectionPlanVersionGuideForward {
   guideText?: string | null;
 }
 
+/**
+ * 서버 선행(omf-all-around#263) — 검사 주기는 기록용이라 화면이 받지 않는다. 쓰기 본문에서 빼면 그대로(새 버전은 비운다).
+ * 읽은 값은 비어 있을 수 있으나 화면이 읽지 않는다. 서버가 main 에 병합되면 `gen:api` 로 다시 만들고 이 덮개를 걷는다.
+ */
+type FrequencyOptional<T> = Omit<T, 'inspectionFrequencyCode'> & {
+  inspectionFrequencyCode?: string | null;
+};
+
+export type InspectionPlanVersionCreateForward = FrequencyOptional<
+  components['schemas']['InspectionPlanVersionCreate']
+> &
+  InspectionPlanVersionGuideForward;
+
+export type InspectionPlanVersionUpdateForward = FrequencyOptional<
+  components['schemas']['InspectionPlanVersionUpdate']
+> &
+  InspectionPlanVersionGuideForward;
+
 export type InspectionPlanVersionForward = components['schemas']['InspectionPlanVersion'] &
   InspectionPlanVersionGuideForward;
 
@@ -860,8 +878,7 @@ export interface ForwardPaths {
     post: Omit<PlanVersionsPath['post'], 'requestBody' | 'responses'> & {
       requestBody: {
         content: {
-          'application/json': components['schemas']['InspectionPlanVersionCreate'] &
-            InspectionPlanVersionGuideForward;
+          'application/json': InspectionPlanVersionCreateForward;
         };
       };
       responses: Omit<PlanVersionsPath['post']['responses'], 201> & {
@@ -889,8 +906,7 @@ export interface ForwardPaths {
     put: Omit<PlanVersionPath['put'], 'requestBody' | 'responses'> & {
       requestBody: {
         content: {
-          'application/json': components['schemas']['InspectionPlanVersionUpdate'] &
-            InspectionPlanVersionGuideForward;
+          'application/json': InspectionPlanVersionUpdateForward;
         };
       };
       responses: Omit<PlanVersionPath['put']['responses'], 200> & {

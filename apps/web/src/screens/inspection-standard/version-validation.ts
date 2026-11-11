@@ -18,9 +18,6 @@ export const VERSION_FORM_FIELDS = [
   'aqlValue',
   'acceptanceNumber',
   'rejectionNumber',
-  'inspectionFrequencyCode',
-  'frequencyIntervalValue',
-  'frequencyIntervalUomCode',
   'guideText',
 ] as const satisfies readonly (keyof VersionFormValues)[];
 
@@ -40,7 +37,6 @@ export const validateVersionForm = (values: VersionFormValues): Record<string, s
 
   if (isBlank(values.effectiveFrom)) errors.effectiveFrom = t.required;
   if (isBlank(values.samplingMethodCode)) errors.samplingMethodCode = t.required;
-  if (isBlank(values.inspectionFrequencyCode)) errors.inspectionFrequencyCode = t.required;
 
   /*
    * 짝 제약이라 두 칸 모두에 낸다 — 한쪽만 표시하면 어느 쪽을 고쳐야 하는지 알 수 없다.
@@ -53,15 +49,6 @@ export const validateVersionForm = (values: VersionFormValues): Record<string, s
   ) {
     errors.effectiveFrom = t.effectiveRangeReversed;
     errors.effectiveTo = t.effectiveRangeReversed;
-  }
-
-  /*
-   * 주기 값과 단위는 짝이어야 하나 계약이 데이터베이스 CHECK 를 두지 않았다 —
-   * 서버가 막아 주지 않으므로 화면이 먼저 막는다.
-   */
-  if (isBlank(values.frequencyIntervalValue) !== isBlank(values.frequencyIntervalUomCode)) {
-    errors.frequencyIntervalValue = t.frequencyPairRequired;
-    errors.frequencyIntervalUomCode = t.frequencyPairRequired;
   }
 
   // 계약 CHECK > 0 — 0은 「없음」이 아니라 위반이다.

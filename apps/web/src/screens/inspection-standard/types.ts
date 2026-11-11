@@ -70,9 +70,6 @@ export interface VersionFormValues {
   aqlValue: string;
   acceptanceNumber: string;
   rejectionNumber: string;
-  inspectionFrequencyCode: string;
-  frequencyIntervalValue: string;
-  frequencyIntervalUomCode: string;
   /** 검사 지시문(#252) — 검사 화면이 기준 정보 바로 아래에 보인다. 한 칸이다(언어별로 나누지 않는다 · #261). */
   guideText: string;
 }

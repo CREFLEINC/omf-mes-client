@@ -2014,8 +2014,6 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(within(form).getByRole('combobox', { name: '검사 방식' }));
     await user.click(screen.getByRole('option', { name: '샘플링(LOT 단위)' }));
     await user.type(within(form).getByLabelText(/샘플 비율/), '10');
-    await user.click(within(form).getByRole('combobox', { name: '검사 주기' }));
-    await user.click(screen.getByRole('option', { name: '생산 LOT' }));
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
     await screen.findByText('등록했습니다');
@@ -2030,7 +2028,8 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(body.effectiveFrom).toBe('2026-08-01');
     expect(body.samplingMethodCode).toBe('SAMPLE_BY_LOT');
     expect(body.samplingRatio).toBe(10);
-    expect(body.inspectionFrequencyCode).toBe('PRODUCTION_LOT');
+    // 검사 주기는 기록용이라 싣지 않는다(omf-all-around#263).
+    expect('inspectionFrequencyCode' in body).toBe(false);
     expect('planVersion' in body).toBe(false);
     expect('statusCode' in body).toBe(false);
   });
@@ -2180,10 +2179,13 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
 
     const form = screen.getByRole('region', { name: '버전 정보' });
     await pickDate(user, within(form).getByLabelText('적용 시작일'), '2026-08-01');
+    await pickDate(user, within(form).getByLabelText('적용 종료일'), '2026-07-31');
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
-    /* 검사 방식은 전수검사로 시작한다(#208) — 비어 있는 필수는 검사 주기 하나다. */
-    expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(1);
+    /* 검사 방식은 전수검사로 시작하고 검사 주기는 걷었다(#208 · #263) — 기간 뒤바뀜으로 검증을 건다. */
+    expect(
+      await screen.findAllByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.'),
+    ).toHaveLength(2);
     /* 아직 없는 버전에는 전이할 대상이 없다 — 작성 취소 · 확정 · 폐기를 두지 않는다(#208). */
     expect(within(form).queryByRole('button', { name: '확정' })).not.toBeInTheDocument();
     expect(within(form).queryByRole('button', { name: '버전 사용 중지' })).not.toBeInTheDocument();
@@ -2505,23 +2507,6 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     expect(
       screen.queryByText('적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.'),
     ).not.toBeInTheDocument();
-  });
-
-  it('주기 값만 채우면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
-    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
-
-    const form = await awaitVersionForm();
-    fireEvent.change(within(form).getByLabelText('검사 주기 값'), { target: { value: '4' } });
-    await user.click(within(form).getByRole('button', { name: '저장' }));
-
-    expect(
-      await screen.findAllByText('검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.'),
-    ).toHaveLength(2);
-    expect(
-      requests.filter(
-        (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
-      ),
-    ).toHaveLength(0);
   });
 
   /*
@@ -3879,8 +3864,8 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     ]);
   });
 
-  /* 버전 · 상태는 카드 머리 줄로, 나머지는 「버전 설정」 묶음 3열로(사용자 시안 · #258). */
-  it('버전 설정은 검사 방식 · 검사 주기 · 주기 값 · 합격 · 불합격 · AQL · 적용 기간 순서고, 버전 · 상태는 머리 줄에 있다', async () => {
+  /* 버전 · 상태는 카드 머리 줄로, 나머지는 「버전 설정」 묶음으로(사용자 시안 · #258). 검사 주기는 걷었다(#263). */
+  it('버전 설정은 검사 방식 · 합격 · 불합격 · AQL · 적용 기간 순서고, 버전 · 상태는 머리 줄에 있다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
@@ -3889,8 +3874,6 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     const grid = document.querySelector('.inspection-standard-facts-grid');
     expect(Array.from(grid?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent)).toEqual([
       t.versionSection.sampling,
-      t.fields.inspectionFrequency,
-      t.fields.frequencyIntervalValue,
       t.fields.acceptanceNumber,
       t.fields.rejectionNumber,
       t.fields.aqlValue,

@@ -1347,15 +1347,19 @@ h2:has(> .inspection-standard-dialog-title) {
   }
 }
 
-/* 「버전 설정」 묶음 — 제목 · 「버전 설정 수정」 한 줄, 아래 값 칸 3열(이름 위 · 값 아래 · 사용자 시안 #258). */
+/* 「버전 설정」 묶음 — 제목 · 「버전 설정 수정」 한 줄, 아래 값 칸(이름 위 · 값 아래 · 사용자 시안 #258). */
 .inspection-standard-version-settings-block {
   display: grid;
   gap: var(--space-2);
 }
 
+/*
+ * 값 칸은 폭에 들어가는 만큼 한 줄에 두고, 넘치면 다음 줄로 내린다 — 줄마다 칸이 남은 폭을 나눠 가져 빈 자리가 없다
+ * (사용자 지시 · 검사 주기 칸을 걷은 뒤 · omf-all-around#263).
+ */
 .inspection-standard-facts-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4) var(--space-5);
   margin: 0;
   padding: 0 var(--space-5) var(--space-2);
@@ -1363,19 +1367,15 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-facts-grid > div {
   display: grid;
+  flex: 1 1 auto;
+  align-content: start;
   gap: var(--space-1);
-  min-width: 0;
+  min-width: 7rem;
 }
 
 .inspection-standard-facts-grid dd {
   margin: 0;
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 960px) {
-  .inspection-standard-facts-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .inspection-standard-setting-head {
