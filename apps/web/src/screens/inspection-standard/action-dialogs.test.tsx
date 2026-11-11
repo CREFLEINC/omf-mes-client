@@ -49,9 +49,8 @@ describe('PlanActionDialog — 문면 잣대', () => {
 
     expect(screen.getByRole('dialog', { name: t.dialog.deactivateTitle })).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();
-    expect(description).toContain('삭제되지 않으며');
-    expect(description).toContain('새 검사');
-    expect(description).toContain('적용할 수 없게 됩니다');
+    expect(description).toContain('새 검사에 적용할 수 없습니다');
+    expect(description).toContain('삭제되지 않습니다');
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeInTheDocument();
   });
 });

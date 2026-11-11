@@ -118,7 +118,7 @@ export const inspectionStandard = {
     approveDescription:
       '승인하면 되돌릴 수 없습니다. 승인 해제는 제공되지 않습니다. 승인자와 승인 시각은 서버가 기록합니다.',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
-    deactivateDescription: '기준은 삭제되지 않으며, 새 검사에 적용할 수 없게 됩니다.',
+    deactivateDescription: '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',

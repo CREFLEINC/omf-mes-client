@@ -55,7 +55,8 @@ export const PlanActionDialog = ({
   <Dialog
     open={open}
     onClose={onClose}
-    size="sm"
+    /* 사용 중지 창은 설명이 두 줄 안에 들도록 넓힌다(사용자 시안 · #258). */
+    size={kind === 'deactivate' ? 'md' : 'sm'}
     title={TEXT[kind].title}
     closeOnBackdropClick={false}
     showCloseButton={false}
