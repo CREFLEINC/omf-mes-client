@@ -1306,33 +1306,69 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-3);
 }
 
+/* 검사 항목 · 검사 지시문 · 검사 도면은 각각 테두리 카드(사용자 시안 · #258). */
 .inspection-standard-setting-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.inspection-standard-setting-row {
+  min-width: 0;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
 }
 
-/* 검사 항목 · 검사 지시문 좌우 반반(사용자 지시 · #258) — 좁으면 위아래로. 가운데 세로선은 두 칸 중 높은 쪽까지. */
+/* 검사 항목 · 검사 지시문 좌우 반반(사용자 지시 · #258) — 좁으면 위아래로. 두 카드 높이는 높은 쪽에 맞춘다. */
 .inspection-standard-setting-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.inspection-standard-setting-pair > .inspection-standard-setting-row + .inspection-standard-setting-row {
-  border-left: 1px solid var(--outline-variant);
-}
-
-.inspection-standard-setting-pair + .inspection-standard-setting-row {
-  border-top: 1px solid var(--outline-variant);
+  gap: var(--space-4);
 }
 
 @media (max-width: 1280px) {
   .inspection-standard-setting-pair {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .inspection-standard-setting-pair > .inspection-standard-setting-row + .inspection-standard-setting-row {
-    border-top: 1px solid var(--outline-variant);
-    border-left: 0;
+/* 「버전 설정」 묶음 — 제목 · 「버전 설정 수정」 한 줄, 아래 값 칸 3열(이름 위 · 값 아래 · 사용자 시안 #258). */
+.inspection-standard-version-settings-block {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.inspection-standard-version-settings-block > .inspection-standard-setting-head {
+  padding-bottom: 0;
+}
+
+.inspection-standard-settings-block-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.inspection-standard-facts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+  padding: 0 var(--space-5) var(--space-2);
+}
+
+.inspection-standard-facts-grid > div {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.inspection-standard-facts-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  .inspection-standard-facts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1393,13 +1429,25 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-version-footer {
   margin-left: 0;
+  /* 바닥 줄 위 구분선(사용자 시안 · #258). */
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 카드 머리 줄 왼쪽 「버전 N」 · 상태(사용자 시안 · #258). */
+.inspection-standard-version-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font: var(--type-title-lg);
 }
 
 /* 상세 칸 맨 위 버전 고르기 줄 — 선택칸과 「버전 목록」 단추를 한 줄에(#196). */
 .inspection-standard-version-bar-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-3);
 }
 

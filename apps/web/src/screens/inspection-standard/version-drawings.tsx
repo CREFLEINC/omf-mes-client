@@ -436,7 +436,6 @@ export const VersionDrawings = ({
 
   return (
     <VersionSettingRow
-      icon="image"
       title={t.rowDrawings}
       summary={isLoaded ? t.rowDrawingsCount(list.length) : ''}
       action={addAction}

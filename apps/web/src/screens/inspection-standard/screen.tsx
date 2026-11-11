@@ -1514,17 +1514,6 @@ export const InspectionStandardScreen = () => {
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
-      versionActions={
-        versionStatus?.isEditable === true && versionCreateValues === null ? (
-          <Button
-            variant="outlined"
-            leadingIcon={<Icon name="edit" size={18} />}
-            onClick={() => setIsVersionEditOpen(true)}
-          >
-            {t.versionSection.editSettings}
-          </Button>
-        ) : undefined
-      }
       onHistory={
         selectedVersionId !== null && versionStatus !== null
           ? () => setIsHistoryOpen(true)
@@ -1865,8 +1854,18 @@ export const InspectionStandardScreen = () => {
       <>
         <VersionSummary
           values={versionFormState.baseline}
-          planVersion={versionDetail.data.inspectionPlanVersion.planVersion}
-          status={versionStatus}
+          /* 「버전 설정 수정」은 「버전 설정」 제목 줄 오른쪽(사용자 시안 · #258) — 작성중 버전에서만. */
+          action={
+            versionStatus.isEditable ? (
+              <Button
+                variant="outlined"
+                leadingIcon={<Icon name="edit" size={18} />}
+                onClick={() => setIsVersionEditOpen(true)}
+              >
+                {t.versionSection.editSettings}
+              </Button>
+            ) : undefined
+          }
           inspectionFrequencyOptions={optionsFor(
             inspectionFrequencyOptions,
             versionFormState.baseline.inspectionFrequencyCode,
@@ -1981,7 +1980,6 @@ export const InspectionStandardScreen = () => {
           {/* 검사 항목 · 검사 지시문은 좌우 반반, 도면은 그 아래 한 줄 전체(사용자 지시 · #258). */}
           <div className="inspection-standard-setting-pair">
             <VersionSettingRow
-              icon="assignment_turned_in"
               title={t.versionSection.tabItems}
               summary={t.versionSection.rowItemsCount(itemDrafts.length)}
               action={

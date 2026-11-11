@@ -8,7 +8,6 @@ import type { GuideTextField } from './version-summary';
 const t = messages.inspectionStandard;
 
 export interface VersionSettingRowProps {
-  icon: string;
   title: string;
   /** 제목 아래 한 줄 — 건수. 지시문 줄은 두지 않는다(사용자 지시 · #258). */
   summary?: string;
@@ -19,20 +18,13 @@ export interface VersionSettingRowProps {
 }
 
 /**
- * 「버전별 설정」의 한 줄(사용자 시안 · omf-all-around#258) — 아이콘 · 제목 · 요약, 오른쪽 끝 단추.
+ * 「버전별 설정」의 한 칸(사용자 시안 · omf-all-around#258) — 테두리 카드에 제목 · 요약, 오른쪽 끝 단추.
  * 검사 항목 · 도면은 그 아래에 종전 탭 내용을 늘 보인다.
  */
-export const VersionSettingRow = ({
-  icon,
-  title,
-  summary,
-  action,
-  children,
-}: VersionSettingRowProps) => (
+export const VersionSettingRow = ({ title, summary, action, children }: VersionSettingRowProps) => (
   <div className="inspection-standard-setting-row">
     <div className="inspection-standard-setting-head">
       <div className="inspection-standard-setting-toggle">
-        <Icon name={icon} size={22} aria-hidden />
         <span className="inspection-standard-setting-text">
           <span className="inspection-standard-setting-title">{title}</span>
           {summary !== undefined && (
@@ -63,7 +55,6 @@ export const VersionGuideRow = ({
 
   return (
     <VersionSettingRow
-      icon="description"
       title={t.versionSection.rowGuide}
       action={
         onEditGuide === undefined ? undefined : (

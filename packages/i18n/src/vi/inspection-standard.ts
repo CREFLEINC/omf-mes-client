@@ -257,6 +257,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     tabItems: 'Hạng mục kiểm tra',
     editSettings: 'Sửa cài đặt phiên bản',
     settingsTitle: 'Thiết lập theo phiên bản',
+    settingsBlockTitle: 'Cài đặt phiên bản',
     rowItemsCount: (count: number): string => `Đã đăng ký ${String(count)} hạng mục`,
     rowDrawings: 'Bản vẽ kiểm tra',
     rowDrawingsCount: (count: number): string => `Đã đăng ký ${String(count)} bản vẽ`,

@@ -1,9 +1,7 @@
-import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
-import type { VersionStatusView } from './plan-version-status';
 import type { SelectOption, VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
@@ -11,9 +9,8 @@ const t = messages.inspectionStandard;
 export interface VersionSummaryProps {
   /** 저장된 값(편집 중인 초안이 아니다) — 요약은 서버에 있는 사실을 말한다. */
   values: VersionFormValues;
-  /** 고른 버전의 번호 · 상태 — 상자 첫 두 칸(선택칸을 걷고 옮겼다 · 사용자 지시 omf-all-around#258). */
-  planVersion: number;
-  status: VersionStatusView;
+  /** 「버전 설정」 제목 줄 오른쪽 단추 — 「버전 설정 수정」(작성중 버전에서만 · 사용자 시안 omf-all-around#258). */
+  action?: ReactNode;
   /** 검사 주기 · 주기 단위 선택지 — 공통코드에서 받은 것(버전 폼과 같은 출처 · #194). */
   inspectionFrequencyOptions: SelectOption[];
   frequencyIntervalUomOptions: SelectOption[];
@@ -30,12 +27,11 @@ const orNotSet = (value: string): string => (value === '' ? t.versionSection.not
 
 /**
  * 고른 버전의 요약 한 줄 — 샘플링(샘플링 검사면 비율을 함께) · 검사 주기 · 유효기간(사용자 시안 · omf-all-around#196 · #256 순서).
- * 맨 앞에 버전 번호 · 상태를 둔다(사용자 지시 · #258).
+ * 「버전 설정」 제목 · 수정 단추 아래 값 칸을 3열로 둔다. 버전 번호 · 상태는 카드 머리 줄이 말한다(사용자 시안 · #258).
  */
 export const VersionSummary = ({
   values,
-  planVersion,
-  status,
+  action,
   inspectionFrequencyOptions,
   frequencyIntervalUomOptions,
 }: VersionSummaryProps) => {
@@ -53,15 +49,6 @@ export const VersionSummary = ({
 
   /* 순서 — 어떻게 검사하는지(방식 · 주기)를 먼저, 판정 수 · AQL, 적용 기간은 끝(omf-all-around#256). */
   const facts: { label: string; value: ReactNode }[] = [
-    { label: t.fields.planVersion, value: t.values.version(planVersion) },
-    {
-      label: t.fields.status,
-      value: (
-        <Chip variant="status" size="sm" status={status.tone}>
-          {status.label}
-        </Chip>
-      ),
-    },
     { label: t.versionSection.sampling, value: withRatio },
     {
       label: t.fields.inspectionFrequency,
@@ -95,13 +82,21 @@ export const VersionSummary = ({
 
   /* 지시문(#252)은 「버전별 설정」의 「검사 지시문」 줄로 옮겼다(사용자 시안 · omf-all-around#258). */
   return (
-    <dl className="inspection-standard-facts-line">
-      {facts.map((fact) => (
-        <div key={fact.label}>
-          <dt className="field-label">{fact.label}</dt>
-          <dd>{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <section className="inspection-standard-version-settings-block">
+      <div className="inspection-standard-setting-head">
+        <h3 className="inspection-standard-settings-block-title">
+          {t.versionSection.settingsBlockTitle}
+        </h3>
+        {action}
+      </div>
+      <dl className="inspection-standard-facts-grid">
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt className="field-label">{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 };

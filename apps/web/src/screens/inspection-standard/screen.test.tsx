@@ -3870,17 +3870,15 @@ describe('InspectionStandardScreen — 상세 표시 순서(#256)', () => {
     ]);
   });
 
-  /* 선택칸을 걷고 버전 · 상태를 상자 첫 칸으로 옮겼다(사용자 지시 · #258). */
-  it('버전 상세는 버전 · 상태 · 검사 방식 · 검사 주기 · 주기 값 · 합격 · 불합격 · AQL · 적용 기간 순서다', async () => {
+  /* 버전 · 상태는 카드 머리 줄로, 나머지는 「버전 설정」 묶음 3열로(사용자 시안 · #258). */
+  it('버전 설정은 검사 방식 · 검사 주기 · 주기 값 · 합격 · 불합격 · AQL · 적용 기간 순서고, 버전 · 상태는 머리 줄에 있다', async () => {
     renderSelectedVersion();
     await awaitVersionForm();
 
-    const boxes = Array.from(document.querySelectorAll('.inspection-standard-facts-line')).filter(
-      (box) => !box.classList.contains('inspection-standard-plan-facts'),
-    );
-    expect(Array.from(boxes[0]?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent)).toEqual([
-      t.fields.planVersion,
-      t.fields.status,
+    const heading = document.querySelector('.inspection-standard-version-heading');
+    expect(heading?.textContent).toContain(t.values.version(2));
+    const grid = document.querySelector('.inspection-standard-facts-grid');
+    expect(Array.from(grid?.querySelectorAll('dt') ?? []).map((dt) => dt.textContent)).toEqual([
       t.versionSection.sampling,
       t.fields.inspectionFrequency,
       t.fields.frequencyIntervalValue,

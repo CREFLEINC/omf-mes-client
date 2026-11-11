@@ -295,6 +295,8 @@ export const inspectionStandard = {
     editSettings: '버전 설정 수정',
     /* 버전 카드의 「버전별 설정」 세 줄 · 「버전 이력」 창(사용자 시안 · omf-all-around#258). */
     settingsTitle: '버전별 설정',
+    /** 버전 카드의 「버전 설정」 묶음 제목 — 검사 방식 · 주기 · AQL 등(사용자 시안 · omf-all-around#258). */
+    settingsBlockTitle: '버전 설정',
     rowItemsCount: (count: number): string => `등록된 항목 ${String(count)}건`,
     rowDrawings: '검사 도면',
     rowDrawingsCount: (count: number): string => `등록된 도면 ${String(count)}건`,
