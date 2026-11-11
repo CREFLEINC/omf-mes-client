@@ -1,5 +1,6 @@
 import type { components, InspectionPlanVersionGuideForward } from '@omf-mes/api-client';
 
+import { todayIso } from '../gauge-master/today';
 import { FULL_INSPECTION } from './code-options';
 import type { InspectionPlanVersion, VersionFormValues } from './types';
 
@@ -34,7 +35,8 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
 });
 
 export const emptyVersionFormValues = (): VersionFormValues => ({
-  effectiveFrom: '',
+  /* 적용 시작일은 버전을 만드는 날로 채운다 — 고칠 수 있다(#255 사용자 지시). */
+  effectiveFrom: todayIso(),
   effectiveTo: '',
   /* 새 버전의 검사 방식은 전수검사로 시작한다 — 샘플 비율 · 수량 칸은 잠긴다(사용자 지시 · #208). */
   samplingMethodCode: FULL_INSPECTION,
