@@ -34,22 +34,24 @@ const Required = () => (
 );
 
 /**
- * 새 기준의 기본 정보 팝업 — 검사 기준 탭의 「기준 추가」 창과 같다(사용자 지시 · #208).
- * 값은 창 안에만 들고 있다가 「확인」에서 넘긴다 — 취소하면 아무것도 바뀌지 않는다(뒤 상세 칸도 그대로).
+ * 품목 · 사업부 · 출력 양식 칸과 양식 안내 — 이 창과 검사 기준 「기준 추가」 창(PQC 를 고른 때 · 사용자 지시)이 같이 쓴다.
+ * 품목은 누르거나 엔터를 치면 품목 선택 창이 열린다.
  */
-export const TemplateBasicDialog = ({
-  title = t.editor.newHeading,
-  initial,
+export const TemplateBasicFields = ({
+  values,
+  onChange,
+  itemError,
   businessUnitIds,
   businessUnitNames,
-  onConfirm,
-  onCancel,
-}: TemplateBasicDialogProps) => {
+}: {
+  values: TemplateBasics;
+  onChange: (patch: Partial<TemplateBasics>) => void;
+  itemError: string;
+  businessUnitIds: readonly number[];
+  businessUnitNames: ReadonlyMap<number, string>;
+}) => {
   const ids = { item: useId(), bu: useId(), layout: useId() };
-  const [values, setValues] = useState<TemplateBasics>(initial);
-  const [itemError, setItemError] = useState('');
   const [isPicking, setIsPicking] = useState(false);
-
   const scopeOptions = businessUnitIds.map((id) => ({
     value: String(id),
     label: businessUnitNames.get(id) ?? String(id),
@@ -57,102 +59,67 @@ export const TemplateBasicDialog = ({
 
   return (
     <>
-      <Dialog
-        open
-        size="md"
-        closeOnBackdropClick={false}
-        showCloseButton={false}
-        title={title}
-        onClose={onCancel}
-        footer={
-          <>
-            <Button variant="outlined" onClick={onCancel}>
-              {messages.common.cancel}
-            </Button>
-            <Button
-              disabled={scopeOptions.length === 0}
-              onClick={() => {
-                if (values.itemId === null) {
-                  setItemError(t.editor.noModel);
-                  return;
-                }
-                onConfirm(values);
-              }}
-            >
-              {t.editor.basicConfirm}
-            </Button>
-          </>
-        }
-      >
-        {/* 세 칸을 한 열로 같은 폭에 쌓는다(사용자 지시 · #208). */}
-        <div className="form-grid inspection-sheet-template-basic-grid">
-          {/* 품목 — 조회 줄의 「품목 검색」과 같은 칸: 누르거나 엔터를 치면 품목 선택 창이 열린다. */}
-          <div className="field-cell">
-            <span className="field-label">
-              <label htmlFor={ids.item}>{t.editor.model}</label>
-              <Required />
-            </span>
-            <SearchInput
-              id={ids.item}
-              fullWidth
-              placeholder={t.list.modelPlaceholder}
-              value={values.itemLabel}
-              readOnly
-              title={values.itemLabel === '' ? undefined : values.itemLabel}
-              aria-haspopup="dialog"
-              clearLabel={t.list.modelClear}
-              error={itemError === '' ? undefined : itemError}
-              onClick={() => setIsPicking(true)}
-              onSearch={() => setIsPicking(true)}
-              onChange={() => undefined}
-              onClear={() => setValues((prev) => ({ ...prev, itemId: null, itemLabel: '' }))}
-            />
-          </div>
-          <div className="field-cell">
-            <span className="field-label">
-              <label htmlFor={ids.bu}>{t.editor.businessUnit}</label>
-              <Required />
-            </span>
-            {scopeOptions.length === 0 ? (
-              <p className="field-error">{t.editor.noBusinessUnit}</p>
-            ) : (
-              <Select
-                id={ids.bu}
-                options={scopeOptions}
-                value={String(values.businessUnitId ?? '')}
-                onChange={(value) =>
-                  setValues((prev) => ({ ...prev, businessUnitId: Number(value) }))
-                }
-              />
-            )}
-          </div>
-          <div className="field-cell">
-            <span className="field-label">
-              <label htmlFor={ids.layout}>{t.editor.layout}</label>
-              <Required />
-            </span>
-            <Select
-              id={ids.layout}
-              options={(['OP', 'PP'] as const).map((code) => ({
-                value: code,
-                label: t.layouts[code] ?? code,
-              }))}
-              value={values.formLayoutCode}
-              onChange={(value) =>
-                setValues((prev) => ({
-                  ...prev,
-                  formLayoutCode: value as InspectionSheetLayoutCode,
-                }))
-              }
-            />
-          </div>
-          {/* 양식 안내 — 안내 알약(아이콘 + 한 줄 · 사용자 시안 · #208). */}
-          <p className="inspection-standard-notice-label">
-            <Icon name="info" size={16} aria-hidden />
-            {t.editor.layoutNote}
-          </p>
+      {/* 세 칸을 한 열로 같은 폭에 쌓는다(사용자 지시 · #208). */}
+      <div className="form-grid inspection-sheet-template-basic-grid">
+        {/* 품목 — 조회 줄의 「품목 검색」과 같은 칸: 누르거나 엔터를 치면 품목 선택 창이 열린다. */}
+        <div className="field-cell">
+          <span className="field-label">
+            <label htmlFor={ids.item}>{t.editor.model}</label>
+            <Required />
+          </span>
+          <SearchInput
+            id={ids.item}
+            fullWidth
+            placeholder={t.list.modelPlaceholder}
+            value={values.itemLabel}
+            readOnly
+            title={values.itemLabel === '' ? undefined : values.itemLabel}
+            aria-haspopup="dialog"
+            clearLabel={t.list.modelClear}
+            error={itemError === '' ? undefined : itemError}
+            onClick={() => setIsPicking(true)}
+            onSearch={() => setIsPicking(true)}
+            onChange={() => undefined}
+            onClear={() => onChange({ itemId: null, itemLabel: '' })}
+          />
         </div>
-      </Dialog>
+        <div className="field-cell">
+          <span className="field-label">
+            <label htmlFor={ids.bu}>{t.editor.businessUnit}</label>
+            <Required />
+          </span>
+          {scopeOptions.length === 0 ? (
+            <p className="field-error">{t.editor.noBusinessUnit}</p>
+          ) : (
+            <Select
+              id={ids.bu}
+              options={scopeOptions}
+              value={String(values.businessUnitId ?? '')}
+              onChange={(value) => onChange({ businessUnitId: Number(value) })}
+            />
+          )}
+        </div>
+        <div className="field-cell">
+          <span className="field-label">
+            <label htmlFor={ids.layout}>{t.editor.layout}</label>
+            <Required />
+          </span>
+          <Select
+            id={ids.layout}
+            options={(['OP', 'PP'] as const).map((code) => ({
+              value: code,
+              label: t.layouts[code] ?? code,
+            }))}
+            value={values.formLayoutCode}
+            onChange={(value) => onChange({ formLayoutCode: value as InspectionSheetLayoutCode })}
+          />
+        </div>
+        {/* 양식 안내 — 안내 알약(아이콘 + 한 줄 · 사용자 시안 · #208). */}
+        <p className="inspection-standard-notice-label">
+          <Icon name="info" size={16} aria-hidden />
+          {t.editor.layoutNote}
+        </p>
+      </div>
 
       {isPicking && (
         <ItemPickerDialog
@@ -164,15 +131,70 @@ export const TemplateBasicDialog = ({
           onConfirm={([picked]) => {
             setIsPicking(false);
             if (picked === undefined) return;
-            setValues((prev) => ({
-              ...prev,
+            onChange({
               itemId: picked.itemId,
               itemLabel: `${picked.itemName} (${picked.itemCode})`,
-            }));
-            setItemError('');
+            });
           }}
         />
       )}
     </>
+  );
+};
+
+/**
+ * 새 기준의 기본 정보 팝업 — 검사 기준 탭의 「기준 추가」 창과 같다(사용자 지시 · #208).
+ * 값은 창 안에만 들고 있다가 「확인」에서 넘긴다 — 취소하면 아무것도 바뀌지 않는다(뒤 상세 칸도 그대로).
+ */
+export const TemplateBasicDialog = ({
+  title = t.editor.newHeading,
+  initial,
+  businessUnitIds,
+  businessUnitNames,
+  onConfirm,
+  onCancel,
+}: TemplateBasicDialogProps) => {
+  const [values, setValues] = useState<TemplateBasics>(initial);
+  const [itemError, setItemError] = useState('');
+
+  return (
+    <Dialog
+      open
+      size="md"
+      closeOnBackdropClick={false}
+      showCloseButton={false}
+      title={title}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="outlined" onClick={onCancel}>
+            {messages.common.cancel}
+          </Button>
+          <Button
+            disabled={businessUnitIds.length === 0}
+            onClick={() => {
+              if (values.itemId === null) {
+                setItemError(t.editor.noModel);
+                return;
+              }
+              onConfirm(values);
+            }}
+          >
+            {t.editor.basicConfirm}
+          </Button>
+        </>
+      }
+    >
+      <TemplateBasicFields
+        values={values}
+        onChange={(patch) => {
+          setValues((prev) => ({ ...prev, ...patch }));
+          if (patch.itemId !== undefined && patch.itemId !== null) setItemError('');
+        }}
+        itemError={itemError}
+        businessUnitIds={businessUnitIds}
+        businessUnitNames={businessUnitNames}
+      />
+    </Dialog>
   );
 };

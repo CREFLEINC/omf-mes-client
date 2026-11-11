@@ -26,6 +26,7 @@ vi.mock('./type-options', async (importOriginal) => ({
 
 const ROUTE = '/master-data/inspection-standard';
 const t = messages.inspectionStandard;
+const sheetT = messages.inspectionSheetTemplate;
 
 const PLANS_PATH = '/quality/inspection-plans';
 
@@ -3762,26 +3763,31 @@ describe('InspectionStandardScreen — OA 공장 계정의 PQC(#255)', () => {
     oaSheet.on = false;
   });
 
-  it('「기준 추가」에서 PQC 를 고르면 일반 기준을 짓지 않고 검사표 기준 등록으로 넘어간다', async () => {
+  /* 창을 닫지 않고 유형 칸 아래에 검사표 기준 칸을 보인다(사용자 지시 · #258). */
+  it('「기준 추가」에서 PQC 를 고르면 같은 창 아래에 품목 · 사업부 · 출력 양식 칸이 서고, 다른 유형으로 돌리면 검사 기준 칸으로 돌아간다', async () => {
     oaSheet.on = true;
-    const { requests, router, user } = renderScreen([
+    const { requests, user } = renderScreen([
       planListRoute(),
       ...lookupRoutes(),
       planCreateRoute(),
     ]);
 
-    /* 실제로는 검사 기준 탭(`InspectionStandardRoute`)이 이 주소에서 검사표 화면으로 바꿔 붙인다. */
-    const searches: string[] = [];
-    router?.subscribe((state) => searches.push(state.location.search));
-
     await user.click(await screen.findByRole('button', { name: '기준 추가' }));
     await user.click(within(createForm()).getByRole('combobox', { name: '검사 유형' }));
     await user.click(screen.getByRole('option', { name: 'PQC (공정검사)' }));
 
-    await waitFor(() => {
-      expect(searches).toContain('?type=PQC&new=1');
-    });
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(sheetT.editor.layout)).toBeInTheDocument();
+    expect(within(dialog).getByText(sheetT.editor.model)).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.fields.inspectionPlanCode)).not.toBeInTheDocument();
+
+    /* 품목 없이 「확인」하면 넘어가지 않고 품목을 고르라고 한다. */
+    await user.click(within(dialog).getByRole('button', { name: sheetT.editor.basicConfirm }));
+    expect(within(dialog).getByText(sheetT.editor.noModel)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('combobox', { name: '검사 유형' }));
+    await user.click(screen.getByRole('option', { name: 'IQC (수입검사)' }));
+    expect(within(createForm()).getByText(t.fields.inspectionPlanCode)).toBeInTheDocument();
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 
