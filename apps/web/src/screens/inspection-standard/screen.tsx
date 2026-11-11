@@ -2149,11 +2149,11 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          /* 고르면 목록을 접어 상세가 폭을 다 쓴다 — 다시 펼치기는 막대의 단추(사용자 지시 · #252). 위아래 배치는 접지 않는다. */
+          /* 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(사용자 지시 · #252). */
           onSelect={(inspectionPlanId) =>
             guardMove(() => {
               handleSelectPlan(inspectionPlanId);
-              if (layout.orientation !== 'column' && !split.collapsed) split.toggleCollapsed();
+              if (!split.collapsed) split.toggleCollapsed();
             })
           }
           loadError={

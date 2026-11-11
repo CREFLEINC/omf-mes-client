@@ -106,6 +106,9 @@ export const common = {
     close: '닫기',
     splitter: '목록과 상세 폭 나누기',
     heightSplitter: '목록과 상세 높이 나누기',
+    /* 목록 접기 · 펼치기 단추(사용자 지시 · #252). */
+    listCollapse: '목록 접기',
+    listExpand: '목록 펼치기',
     layoutLabel: '목록·상세 배치', // ui-check-ignore: C-13 사용자 지시 문구(2026-10-26 · #185)
     layoutSideBySide: '좌우 배치',
     layoutStacked: '상하 배치',

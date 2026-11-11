@@ -1670,10 +1670,73 @@ h2:has(> .inspection-standard-dialog-title) {
   }
 }
 
-/* 목록을 접으면 상세가 폭을 다 쓴다 — 나란히 설 때만(공용 `.po-board-split[data-left-collapsed]` · #252). */
-.po-board-split.inspection-standard-split:not(.is-stacked)[data-left-collapsed]
-  > .inspection-standard-list-pane {
+/*
+ * 목록 접기(사용자 지시 · #252) — 검사 기준 · IQC 처럼 막대에 접기 단추를 단 분할만이다. 접으면 목록이 사라지고 상세가 자리를
+ * 다 쓴다. 나란히 설 때는 공용 막대(`.po-board-split[data-left-collapsed]`)가, 위아래로 쌓일 때(좁은 창 · 상하 배치)는
+ * 목록과 상세 사이에 접기 단추 한 줄만 선다 — 끌기 막대는 그때도 감춘다.
+ */
+.po-board-split.inspection-split[data-left-collapsed]:has(> .po-board-gutter > .po-board-collapse)
+  > :first-child {
   display: none;
+}
+
+.po-board-split.inspection-split.is-stacked[data-left-collapsed] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.po-board-split.inspection-split.is-stacked > .po-board-gutter:has(> .po-board-collapse) {
+  display: flex;
+  justify-content: center;
+}
+
+.po-board-split.inspection-split.is-stacked > .po-board-gutter > .po-board-splitter {
+  display: none;
+}
+
+.po-board-split.inspection-split.is-stacked > .po-board-gutter > .po-board-collapse {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  transform: none;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+/* 위아래로 쌓이면 화살표도 위(접기) · 아래(펼치기)를 가리킨다. */
+.po-board-split.inspection-split.is-stacked > .po-board-gutter > .po-board-collapse > * {
+  transform: rotate(90deg);
+}
+
+@media (max-width: 1439.98px) {
+  .po-board-split.inspection-split > .po-board-gutter:has(> .po-board-collapse) {
+    display: flex;
+    justify-content: center;
+  }
+
+  .po-board-split.inspection-split > .po-board-gutter > .po-board-collapse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-6);
+    height: var(--space-6);
+    padding: 0;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--on-surface-variant);
+    cursor: pointer;
+  }
+
+  .po-board-split.inspection-split > .po-board-gutter > .po-board-collapse > * {
+    transform: rotate(90deg);
+  }
 }
 
 .po-board-split.inspection-split.is-stacked > .inspection-standard-list-pane {

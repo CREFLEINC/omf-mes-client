@@ -86,6 +86,8 @@ export const common: Translated<typeof ko.common> = {
     close: 'Đóng',
     splitter: 'Chia độ rộng danh sách và chi tiết',
     heightSplitter: 'Chia chiều cao danh sách và chi tiết',
+    listCollapse: 'Thu gọn danh sách',
+    listExpand: 'Mở rộng danh sách',
     layoutLabel: 'Bố cục danh sách · chi tiết',
     layoutSideBySide: 'Trái phải',
     layoutStacked: 'Trên dưới',
