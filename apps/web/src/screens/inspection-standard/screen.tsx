@@ -511,7 +511,11 @@ export const InspectionStandardScreen = () => {
       setCreateValues(null);
       setCreateFieldErrors({});
       setCopySource(null);
-      selectPlan(copied.inspectionPlanId);
+      /* 새로 만든 작성중 버전까지 바로 연다(#255 사용자 지시). */
+      const next = new URLSearchParams(searchParams);
+      next.set('plan', String(copied.inspectionPlanId));
+      next.set('ver', String(copied.inspectionPlanVersionId));
+      setSearchParams(next);
       toast.show({ variant: 'success', description: t.result.copied });
     },
   });

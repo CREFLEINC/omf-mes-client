@@ -3658,8 +3658,8 @@ describe('InspectionStandardScreen — 기준 복사', () => {
     expect(requestsTo(requests, `${PLANS_PATH}/3001:copy`)).toHaveLength(0);
   });
 
-  it('저장하면 원본 버전을 실어 :copy 를 보내고, 만든 기준을 연다', async () => {
-    const { requests, user } = renderVersions([copyRoute], '?plan=3001&ver=4001');
+  it('저장하면 원본 버전을 실어 :copy 를 보내고, 만든 기준의 작성중 버전을 연다', async () => {
+    const { requests, router, user } = renderVersions([copyRoute], '?plan=3001&ver=4001');
 
     await user.click(await screen.findByRole('button', { name: t.actions.copy }));
     const dialog = await screen.findByRole('dialog', { name: t.detail.copyTitle });
@@ -3674,6 +3674,9 @@ describe('InspectionStandardScreen — 기준 복사', () => {
       inspectionTypeCode: inspectionPlanFixtures[0]!.inspectionTypeCode,
       sourceVersionId: 4001,
     });
+    const search = new URLSearchParams(router?.state.location.search);
+    expect(search.get('plan')).toBe('3009');
+    expect(search.get('ver')).toBe('4009');
   });
 
   it('버전을 고르지 않았으면 「복사」가 없다', async () => {
