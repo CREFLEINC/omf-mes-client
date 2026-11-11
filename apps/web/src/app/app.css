@@ -16735,6 +16735,221 @@ button.app-button-neutral {
   font-weight: 700;
 }
 
+/* 설비 상세 · 제품군별 불량 창의 이름 … 값 목록(omf-all-around#251) — 줄 구분선, 값은 오른쪽 끝. */
+.dash-detail-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-detail-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface);
+}
+
+.dash-detail-list li:last-child {
+  border-bottom: 0;
+}
+
+.dash-detail-list-value {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-facts-after {
+  margin-top: var(--space-2);
+}
+
+.dash-detail-lead {
+  margin: calc(-1 * var(--space-1)) 0 var(--space-2);
+}
+
+/*
+ * 제품군별 생산 현황 표(#251 · 사용자 지시 2026-11-10) — 가운데 정렬은 대시보드 표 공통 규칙 그대로. 바탕은 카드와 같게(줄무늬
+ * 없음), 줄 높이 38px, 표 아래 오른쪽에 「상세 보기」.
+ */
+.dash-item-group-table table,
+.dash-item-group-table td,
+.dash-panel .dash-item-group-table tbody tr[data-parity] td {
+  background: transparent;
+}
+
+/*
+ * 높이 상한(사용자 지시 2026-11-10 「제한 · 화면 크기에 따라 반응형」) — 화면 높이의 38%(최소 12rem · 최대 26rem)까지만
+ * 쓰고 넘치면 표 안에서 스크롤한다. 제품군 5개 안팎은 상한 안이라 스크롤이 생기지 않는다. 열 이름 줄 · 합계 줄은
+ * 스크롤해도 고정 — 머리줄 바탕은 카드 바탕과 같은 색이라 지나가는 줄을 가린다.
+ */
+/* 공용 표는 자기 스크롤 상자(표 바로 바깥 div)를 갖는다 — 고정 줄이 그 상자 기준이라 상한도 그 상자에 건다. */
+.dash-panel .dash-item-group-table > div {
+  max-height: clamp(12rem, 38vh, 26rem);
+  overflow: auto;
+}
+
+.dash-item-group-table thead th {
+  background: var(--surface-container);
+}
+
+.dash-panel .dash-item-group-table :is(th, td) {
+  height: 2.375rem;
+  padding-block: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-item-group-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* 합계 줄 — 한 단계 밝은 바탕 + 굵게. 강조색은 쓰지 않는다(빈 표의 안내 한 줄에는 걸지 않는다). */
+.dash-panel .dash-item-group-table tbody tr:last-child:not(:only-child) td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: var(--surface-container-high);
+  font-weight: 700;
+}
+
+/* 제품군별 불량 창 — 「현재 현황」 LOT 목록 창과 같은 목록형(머리줄 · 줄 구분선), 줄 안에 불량 유형 순위 막대. */
+.dash-group-list {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.dash-group-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-group-colhead,
+.dash-group-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5rem 5.5rem 6.5rem;
+  align-items: baseline;
+  column-gap: var(--space-4);
+}
+
+.dash-group-colhead {
+  /* 창 본문이 스크롤해도 열 이름 줄은 위에 남는다(바탕 = 창 바탕). */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-container-high);
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.dash-group-colhead span:not(:first-child),
+.dash-group-rate,
+.dash-group-qty {
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-group-row + .dash-group-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.dash-group-section {
+  row-gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+}
+
+.dash-group-name {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+  font-weight: 600;
+}
+
+.dash-group-rate {
+  font-weight: 700;
+}
+
+.dash-group-types {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 불량 유형 막대(시안 2026-11-10) — 둥근 바탕 줄 위에 같은 색으로 채운다. 수량은 굵게 하지 않는다. */
+.dash-group-types .dash-rank-row {
+  grid-template-columns: minmax(6rem, 10rem) minmax(3rem, 1fr) 4.5rem;
+}
+
+.dash-group-types .dash-rank-track {
+  display: block;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  /* 창 바탕이 surface-container-high 라 바탕 줄은 구분선 색으로 — 같은 색이면 줄이 보이지 않는다. */
+  background: var(--outline-variant);
+}
+
+.dash-group-types .dash-rank-bar {
+  border-radius: var(--radius-full);
+  background: var(--chart-2);
+}
+
+.dash-group-types .dash-rank-value {
+  font-weight: 400;
+}
+
+/*
+ * 설비 상세 창(#251 보강) — 맨 위 요약 띠는 대시보드 KPI 칸 그대로(바탕만 창 바탕), 아래는 두 열.
+ * 좁으면 요약 띠 2열 · 본문 1열로 쌓는다.
+ */
+.dash-detail-kpis > * {
+  background: var(--surface-container-high);
+}
+
+.dash-detail-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-6);
+}
+
+.dash-detail-column {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.dash-detail-progress-row {
+  display: grid;
+  grid-template-columns: minmax(4rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dash-detail-progress {
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .dash-detail-kpis {
+    --dash-kpi-cols: 2;
+  }
+
+  .dash-detail-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /*
  * ── POP(1024×768 터치 키오스크) ────────────────────────────────────────────
  *

@@ -17,6 +17,7 @@ import {
   toSearchParams,
   type DashboardFilters,
 } from './filters';
+import { ItemGroupPanel } from './item-group-panel';
 import { formatLastUpdated } from './last-updated';
 import { LoadErrorBanner, periodErrorOf } from './load-error-banner';
 import { OverviewKpis } from './overview-kpis';
@@ -193,6 +194,7 @@ export const DashboardScreen = () => {
         axes={axes}
         routes={CARD_ROUTES}
       />
+      <ItemGroupPanel production={view?.production ?? null} isLoading={summary.isPending} />
 
       {/*
        * ⭐ 행 단위 격자(사용자 지정 2026-10-16) — 2행: 설비 가동 현황 | 가동 외 설비 현황, 3행: 일일 생산실적 추이 |

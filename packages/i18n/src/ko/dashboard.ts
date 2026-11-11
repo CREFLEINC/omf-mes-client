@@ -151,6 +151,37 @@ export const dashboard = {
     empty: '이 공장에 표시할 생산 설비가 없습니다.',
     lineEmpty: '고른 라인에 설비가 없습니다.',
     /** 서버가 아직 설비 섹션을 주지 않을 때(2차 규격 배포 전). ⛔ 「설비 없음」과 같은 말로 그리지 않는다. */
+    goodNote: (qty: string): string => `양품 ${qty} EA`,
+    ngNote: (qty: string): string => `불량 ${qty} EA`,
+    runningNote: (time: string): string => `가동 ${time}`,
+    sinceNote: (time: string): string => `${time}부터`,
+    differenceLine: (qty: string): string => `표준 대비 ${qty} EA`,
+    mold: '금형',
+    moldValue: (code: string, name: string, cavity: string): string =>
+      code === name ? `${code} (캐비티 ${cavity})` : `${code} ${name} (캐비티 ${cavity})`,
+    progress: '작업지시 진도',
+    progressValue: (produced: string, order: string, rate: string): string =>
+      `${produced} / ${order} EA (${rate})`,
+    goodQty: '양품 수량',
+    groupTime: '가동 시간',
+    groupTimeSub: '오늘 0시부터 지금까지',
+    runningTime: '가동',
+    stoppedInWork: '작업 중 정지',
+    noWorkTime: '작업 없음',
+    availabilityRate: '가동률',
+    groupStandard: '표준 C/T 기준 생산량',
+    standardQty: '표준 기준',
+    actualQty: '실제 생산',
+    differenceQty: '차이',
+    excludedSessions: (count: string): string => `표준 C/T 가 없는 작업 ${count}건은 빠졌습니다.`,
+    groupDefects: '불량 유형',
+    defectsEmpty: '유형이 적힌 불량 기록이 없습니다.',
+    untypedQty: (qty: string): string => `유형 미입력 ${qty} EA`,
+    groupStops: '작업 중 정지 사유',
+    stopsEmpty: '작업 중 정지가 없습니다.',
+    unassignedNote: '설비가 지정되지 않은 실적은 이 설비 수량에서 빠집니다.',
+    detailLoading: '상세를 불러오는 중입니다.',
+    detailFailed: '상세를 불러오지 못했습니다.',
     absent: '설비 현황이 이 응답에 오지 않았습니다.',
     /** 첫 조회가 실패해 보일 값이 없을 때. 재시도는 화면 위 오류 배너가 맡는다. */
     failed: '설비 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
@@ -178,6 +209,33 @@ export const dashboard = {
   },
 
   /** 대시보드 안의 탭(omf-all-around#113). 탭은 같은 응답을 나눠 보인다 — 탭마다 다시 부르지 않는다. */
+  itemGroup: {
+    title: '제품군별 생산 현황',
+    sub: 'ERP 품목군 기준 · 단위: EA', // ui-check-ignore: C-13 사용자 시안 문구(#251)
+    group: '제품군',
+    totalQty: '총생산',
+    goodQty: '양품',
+    ngQty: '불량',
+    defectRate: '불량률',
+    sum: '합계',
+    unclassified: '미분류',
+    empty: '이 기간에 생산 실적이 없습니다.',
+    detailButton: '상세 보기',
+    detailButtonLabel: '제품군별 불량 현황 상세 보기',
+    dialogTitle: '제품군별 불량 현황',
+    dialogSub: (rate: string, ng: string): string => `종합 불량률 ${rate} · 불량 ${ng} EA`, // ui-check-ignore: C-13 사용자 시안 문구(#251)
+    rateColumn: '불량률',
+    ngColumn: '불량',
+    totalColumn: '생산',
+    worst: '불량 유형 상위 5',
+    noTypes: '유형이 적힌 불량 기록이 없습니다.',
+    untypedQty: (qty: string): string => `유형 미입력 ${qty} EA`,
+    otherTypesQty: (qty: string): string => `기타 유형 ${qty} EA`,
+    restLine: (parts: string[]): string => parts.join(' · '), // ui-check-ignore: C-13 사용자 시안 문구(#251)
+    loading: '제품군별 불량 현황을 불러오는 중입니다.',
+    failed: '제품군별 불량 현황을 불러오지 못했습니다.',
+  },
+
   tabs: {
     label: '대시보드 보기',
     overview: '대시보드',
@@ -259,7 +317,8 @@ export const dashboard = {
   /**
    * 품질 현황(omf-all-around#113).
    *
-   * ⛔ 「선별」이라는 말을 쓰지 않는다 — MES 용어는 **검사 보류**(판정 보류)와 **전수 재검**이다.
+   * ⛔ 검사 보류 · 전수 재검을 「선별」이라 부르지 않는다 — MES 용어는 **검사 보류**(판정 보류)와 **전수 재검**이다.
+   *   「선별」은 MES 처분 종류 선별(SORT)을 가리킬 때만 쓴다(omf-all-around#251 — 선별 처분 LOT).
    * ⛔ 목표선 · 목표값을 그리지 않는다(MES DB에 없음). 합격률은 최종 판정 기준이고 보류는 빠진다.
    */
   quality: {
@@ -429,6 +488,16 @@ export const dashboard = {
     ncOpenListSubStatus: (status: string): string => `오래된 순 · 모두 ${status}`,
     openedOn: (date: string): string => `발생 ${date}`,
     openItemDisposition: (item: string): string => `${item} 처분 판정 보기`,
+    repeatedItemsLine: '반복 부적합 품목',
+    lastOpenedOn: (date: string): string => `최근 발생 ${date}`,
+    /** 앞에 기간 이름표(당월 · 선택 기간)를 붙인다 — 「갱신 시점」 칸 안의 기간 누계 숫자다. */
+    repeatedItemsNote: (period: string): string =>
+      `${period} 같은 품목 2건 이상, 선별로 생긴 부적합 포함`,
+    itemUnit: '품목',
+    sortedLots: '선별 처분 LOT',
+    sortedLotsNote: (period: string): string => `${period} 처분, 원래 검사 LOT 기준`,
+    ncRate: '부적합 판정률',
+    ncRateNote: (input: string): string => `IQC 재검 투입 ${input} EA 중 불합격`,
     absent: '품질 현황이 이 응답에 오지 않았습니다.',
     failed: '품질 현황을 불러오지 못했습니다. 위의 「다시 시도」를 누르세요.',
   },

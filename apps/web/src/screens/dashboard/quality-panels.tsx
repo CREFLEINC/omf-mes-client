@@ -36,7 +36,7 @@ import { compareEquipmentCode } from './equipment';
 import { formatElapsed, pointerFocusProps, usePointerInput } from './equipment-panel';
 import { formatFigure, toNiceAxis } from './types';
 import { usePeriodTags } from './period';
-import { QualityLotsDialog } from './quality-lots-dialog';
+import { QualityLotsDialog, RepeatedItemsDialog } from './quality-lots-dialog';
 import { useFillHeight } from './use-fill-height';
 import {
   CHART_H,
@@ -585,6 +585,7 @@ const LOT_STATUS_OF_ROW: Record<string, DashboardQualityLotStatus> = {
   receiptHold: 'RECEIPT_HOLD',
   pending: 'PQC_PENDING',
   ncOpen: 'NC_OPEN',
+  sorted: 'IQC_SORTED',
 };
 
 export const QualityOverviewTab = ({
@@ -600,6 +601,9 @@ export const QualityOverviewTab = ({
   const [lotStatus, setLotStatus] = useState<DashboardQualityLotStatus | null>(null);
   /* 한 번 연 뒤에는 창을 남겨 둔다 — 닫을 때 없애면 포커스가 눌렀던 줄로 돌아오지 못한다. */
   const [lotDialogMounted, setLotDialogMounted] = useState(false);
+  /* 반복 부적합 품목 창(#251) — LOT 목록이 아니라 품목 목록이라 따로 연다. 한 번 연 뒤 남겨 두는 까닭은 위와 같다. */
+  const [repeatedOpen, setRepeatedOpen] = useState(false);
+  const [repeatedMounted, setRepeatedMounted] = useState(false);
   const pointerInput = usePointerInput();
   const todayLots = sumLots([quality.iqc.todayLots, quality.pqc.todayLots, quality.oqc.todayLots]);
   const monthHeld = sumLots([
@@ -656,6 +660,11 @@ export const QualityOverviewTab = ({
             <StatusList
               rowProps={pointerFocusProps(pointerInput)}
               onSelect={(key) => {
+                if (key === 'repeated') {
+                  setRepeatedOpen(true);
+                  setRepeatedMounted(true);
+                  return;
+                }
                 setLotStatus(LOT_STATUS_OF_ROW[key] ?? null);
                 setLotDialogMounted(true);
               }}
@@ -693,6 +702,20 @@ export const QualityOverviewTab = ({
                   tone: countTone(quality.nonconformance.openCount, 'error'),
                   selectable: quality.nonconformance.openCount > 0,
                 },
+                /* 반복 부적합 품목 수(omf-all-around#251) — 부적합 현황 탭과 같은 값. 누르면 그 품목 목록 창(사용자 지시 2026-11-10). */
+                ...(quality.nonconformance.repeatedItemCount === undefined
+                  ? []
+                  : [
+                      {
+                        key: 'repeated',
+                        label: t.repeatedItemsLine,
+                        note: t.repeatedItemsNote(tags.month),
+                        value: formatFigure(quality.nonconformance.repeatedItemCount),
+                        unit: t.itemUnit,
+                        tone: countTone(quality.nonconformance.repeatedItemCount, 'warning'),
+                        selectable: quality.nonconformance.repeatedItemCount > 0,
+                      },
+                    ]),
               ]}
             />
           </Panel>
@@ -712,6 +735,16 @@ export const QualityOverviewTab = ({
           withTime
         />
       </div>
+      {repeatedMounted && (
+        <RepeatedItemsDialog
+          open={repeatedOpen}
+          rows={quality.nonconformance.repeatedItems ?? []}
+          total={quality.nonconformance.repeatedItemCount ?? 0}
+          onClose={() => {
+            setRepeatedOpen(false);
+          }}
+        />
+      )}
       {/* 처음 고를 때 그린다 — 그 전에는 목록을 부르지 않는다(닫힌 동안에도 부르지 않는다 · `enabled`). */}
       {lotDialogMounted && (
         <QualityLotsDialog
@@ -847,6 +880,19 @@ export const IqcTab = ({
                   tone: countTone(iqcReceiptHold.count, 'warning'),
                   selectable: iqcReceiptHold.count > 0,
                 },
+                /* 선별 처분 LOT(omf-all-around#251) — 원래 IQC 검사 LOT 기준. 누르면 처분마다 한 줄인 LOT 목록 창(사용자 지시 2026-11-10). */
+                ...(iqc.sortedLotCount === undefined
+                  ? []
+                  : [
+                      {
+                        key: 'sorted',
+                        label: t.sortedLots,
+                        note: t.sortedLotsNote(tags.month),
+                        value: formatFigure(iqc.sortedLotCount),
+                        unit: t.lotUnit,
+                        selectable: iqc.sortedLotCount > 0,
+                      },
+                    ]),
               ]}
             />
           </Panel>
@@ -1656,6 +1702,34 @@ export const NonconformanceTab = ({
           unit={t.qtyUnit}
           tone={nc.monthQty > 0 ? 'error' : undefined}
         />
+        {/*
+         * 부적합 판정률(omf-all-around#251) = (IQC 재검 투입 − OK 복원) ÷ 재검 투입 — IQC 탭 「재검 OK 복원율」의 나머지다
+         * (사용자 결정: IQC 만). 투입 0 이면 값 없음.
+         */}
+        {quality.iqc.fullReinspect !== null && (
+          <KpiTile
+            label={t.ncRate}
+            tag={tags.month}
+            value={
+              quality.iqc.fullReinspect.inputQty > 0
+                ? formatFigure(
+                    Math.max(
+                      0,
+                      Math.round(
+                        ((quality.iqc.fullReinspect.inputQty -
+                          quality.iqc.fullReinspect.restoredQty) /
+                          quality.iqc.fullReinspect.inputQty) *
+                          1000,
+                      ) / 10,
+                    ),
+                  )
+                : t.rateNone
+            }
+            unit={quality.iqc.fullReinspect.inputQty > 0 ? '%' : undefined}
+          >
+            <span>{t.ncRateNote(formatFigure(quality.iqc.fullReinspect.inputQty))}</span>
+          </KpiTile>
+        )}
         <KpiTile
           label={t.ncScrap}
           tag={tags.month}

@@ -218,6 +218,11 @@ export interface DashboardQuality {
     /** IQC 재검사 회차의 투입(검사) · 합격 수량 합(사용자 결정 2026-10-19). 0건이면 0. */
     fullReinspect: { inputQty: number; restoredQty: number } | null;
     receiptHoldLotCount: number;
+    /**
+     * 누계 구간에 선별 처분이 난 원래 IQC 검사 LOT 수 — 떼어 낸 LOT · 재선별은 따로 세지 않는다(omf-all-around#251).
+     * 없으면(이전 서버) 칸을 두지 않는다.
+     */
+    sortedLotCount?: number;
   };
   pqc: DashboardQualityTypeBlock & {
     pendingLotCount: number;
@@ -277,6 +282,75 @@ export interface DashboardProduction {
   holdQty: number;
   /** NG ÷ 총생산(%), 총생산이 0이면 `null`. */
   defectRate: number | null;
+  /** 제품군(ERP 품목군)별 생산 합 — 총생산 많은 순, 미분류는 맨 끝, 합하면 위 값(omf-all-around#251). 없으면(이전 서버) 표를 두지 않는다. */
+  byItemGroup?: DashboardItemGroupProduction[];
+}
+
+/** 제품군 한 줄. `itemGroupCode` 가 `null` 이면 미분류(품목군 없는 품목). */
+export interface DashboardItemGroupProduction {
+  itemGroupCode: string | null;
+  itemGroupName: string | null;
+  totalQty: number;
+  goodQty: number;
+  ngQty: number;
+  /** NG ÷ 총생산(%) · 0~100. 총생산 0 이면 `null`. */
+  defectRate: number | null;
+}
+
+/** 제품군별 불량 현황 — `GET /app/dashboard-item-group-defects`(서버 #251). 질의는 대시보드 요약과 같다. */
+export interface DashboardItemGroupDefects {
+  dateFrom: string;
+  dateTo: string;
+  asOf: string;
+  groups: (Omit<DashboardItemGroupProduction, 'goodQty'> & {
+    /** 생산실적에 붙은 불량 기록의 유형별 수량 — 많은 순 상위 5. */
+    topDefects: DashboardDefectPhenomenon[];
+    /** 상위 5 밖 유형들의 수량 합. 없으면(이전 서버) 줄에 적지 않는다. */
+    otherTypedQty?: number;
+    /** NG − 유형이 적힌 불량 수량(0 이상) — 폐기 · 재작업 수량과 유형 없이 들어온 불량. */
+    untypedNgQty: number;
+  })[];
+}
+
+/** 설비 상세 — `GET /app/dashboard-equipment-detail`(서버 #251). 설비 현황처럼 공장 «오늘»·«지금» 기준. */
+export interface DashboardEquipmentDetail {
+  equipmentId: number;
+  asOf: string;
+  /** 진행 중 세션의 금형(세션 → 작업지시 계획), 없으면 최근 실적 금형. 모두 없으면 `null`. */
+  mold: { moldCode: string; moldName: string; cavityCount: number } | null;
+  /** 진행 중 작업지시 — 진도는 그 작업지시의 누적 실적(모든 설비) ÷ 지시 수량. 없으면 `null`. */
+  workOrder: {
+    workOrderNo: string;
+    orderQty: number;
+    producedQty: number;
+    progressRate: number | null;
+  } | null;
+  /** 오늘 이 설비 실적 — 설비가 빈 실적은 빠진다. */
+  output: { totalQty: number; goodQty: number; ngQty: number; defectRate: number | null };
+  /** 단위 ms. 가동 + 작업 중 정지 = 작업 세션. 작업 없음 = 계획 − 작업 세션. 근무 일정을 못 풀면 계획 · 작업 없음 · 가동률이 `null`. */
+  time: {
+    plannedMs: number | null;
+    runningMs: number;
+    stoppedMs: number;
+    noWorkMs: number | null;
+    availabilityRate: number | null;
+  };
+  standardOutput: {
+    /** 세션 가동 시간 ÷ 표준 C/T × 캐비티. 셀 세션이 없으면 `null`. */
+    expectedQty: number | null;
+    /** 오늘 생산량 − 표준 기준. */
+    differenceQty: number | null;
+    /** 표준 C/T 가 없어 뺀 세션 수. */
+    excludedSessionCount: number;
+  };
+  defectTypes: DashboardDefectPhenomenon[];
+  untypedNgQty: number;
+  /** 작업 중 정지(정지~재개)의 사유별 시간 — 긴 순. 사유명이 없으면 서버가 코드값을 이름으로 싣는다. */
+  stopReasons: { reasonCode: string | null; reasonName: string | null; durationMs: number }[];
+}
+
+export interface DashboardEquipmentDetailQuery {
+  equipmentId: number;
 }
 
 /** `GET /app/dashboard-summary` 에 더해지는 선택 섹션. */
@@ -327,8 +401,9 @@ export interface DashboardCardForward {
  * `totalCount` 는 dashboard-summary 의 해당 숫자와 같은 정의다. 목록은 오래된 것부터 최대 200건. DB에 없는 값은
  * `null`. 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다.
  */
+/** `IQC_SORTED` — IQC 선별 처분(서버 #251): 처분마다 한 줄, LOT 수는 원래 검사 LOT. 기간은 대시보드와 같다. */
 export type DashboardQualityLotStatus =
-  'INSPECTION_HELD' | 'RECEIPT_HOLD' | 'PQC_PENDING' | 'NC_OPEN';
+  'INSPECTION_HELD' | 'RECEIPT_HOLD' | 'PQC_PENDING' | 'NC_OPEN' | 'IQC_SORTED';
 
 export interface DashboardQualityLotItem {
   key: string;
@@ -780,6 +855,67 @@ export interface ForwardPaths {
         200: {
           headers: { [name: string]: unknown };
           content: { 'application/json': DashboardQualityLots };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/app/dashboard-item-group-defects': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: NonNullable<DashboardSummaryGet['parameters']['query']> &
+          DashboardSummaryPeriodQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': DashboardItemGroupDefects };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/app/dashboard-equipment-detail': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query: DashboardEquipmentDetailQuery;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        200: {
+          headers: { [name: string]: unknown };
+          content: { 'application/json': DashboardEquipmentDetail };
         };
       };
     };

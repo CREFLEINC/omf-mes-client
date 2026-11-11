@@ -307,8 +307,14 @@ export const RankBars = ({
 
 const STACK_CLASSES = ['dash-stack-1', 'dash-stack-2', 'dash-stack-3', 'dash-stack-4'];
 
-/** 100% 누적 막대 + 범례. 다섯째부터는 가장 옅은 색을 되풀이한다. */
-export const StackedBar100 = ({ entries }: { entries: readonly NamedQty[] }) => {
+/** 100% 누적 막대 + 범례. 다섯째부터는 가장 옅은 색을 되풀이한다. 범례 값 표기는 `formatValue`(기본 수량). */
+export const StackedBar100 = ({
+  entries,
+  formatValue = formatFigure,
+}: {
+  entries: readonly NamedQty[];
+  formatValue?: (value: number) => string;
+}) => {
   if (entries.length === 0) return <NoRecords />;
 
   const rows = toShareRows(entries);
@@ -331,7 +337,7 @@ export const StackedBar100 = ({ entries }: { entries: readonly NamedQty[] }) => 
           <li key={row.key}>
             <span className={`dash-swatch ${classOf(index)}`} aria-hidden="true" />
             <span className="dash-legend-label">{row.label}</span>
-            <span className="dash-legend-value">{formatFigure(row.value)}</span>
+            <span className="dash-legend-value">{formatValue(row.value)}</span>
             <span className="dash-legend-share">{formatShare(row.share)}</span>
           </li>
         ))}
