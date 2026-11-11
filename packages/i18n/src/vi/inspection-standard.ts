@@ -14,6 +14,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planForm: 'Thông tin tiêu chuẩn',
     versionForm: 'Thông tin phiên bản',
     items: 'Hạng mục kiểm tra',
+    listCollapse: 'Thu gọn danh sách',
+    listExpand: 'Mở rộng danh sách',
   },
   actions: {
     openRouting: 'Xem routing',

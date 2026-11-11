@@ -2135,6 +2135,7 @@ export const InspectionStandardScreen = () => {
         ref={splitRef}
         className={`po-board-split inspection-split inspection-standard-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
         style={{ ...split.style, ...layout.style }}
+        data-left-collapsed={split.collapsed ? 'true' : undefined}
       >
         <PlanListPane
           itemPartsOf={itemPartsOf}
@@ -2148,7 +2149,13 @@ export const InspectionStandardScreen = () => {
           onChangePageSize={changePageSize}
           onChangePage={changePage}
           selectedPlanId={selectedPlanId}
-          onSelect={(inspectionPlanId) => guardMove(() => handleSelectPlan(inspectionPlanId))}
+          /* 고르면 목록을 접어 상세가 폭을 다 쓴다 — 다시 펼치기는 막대의 단추(사용자 지시 · #252). 위아래 배치는 접지 않는다. */
+          onSelect={(inspectionPlanId) =>
+            guardMove(() => {
+              handleSelectPlan(inspectionPlanId);
+              if (layout.orientation !== 'column' && !split.collapsed) split.toggleCollapsed();
+            })
+          }
           loadError={
             planList.isError ? (
               <LoadErrorBanner error={planList.error} onRetry={() => void planList.refetch()} />
@@ -2156,7 +2163,17 @@ export const InspectionStandardScreen = () => {
           }
         />
 
-        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        <PaneSplitter
+          label={hubText.splitter}
+          ratio={split.ratio}
+          onChange={split.commit}
+          collapse={{
+            collapsed: split.collapsed,
+            onToggle: split.toggleCollapsed,
+            collapseLabel: t.panes.listCollapse,
+            expandLabel: t.panes.listExpand,
+          }}
+        />
         {layout.orientation === 'column' && (
           <PaneHeightSplitter
             label={hubText.heightSplitter}

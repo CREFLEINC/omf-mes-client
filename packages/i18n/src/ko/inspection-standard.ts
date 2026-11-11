@@ -14,6 +14,9 @@ export const inspectionStandard = {
     planForm: '기준 정보',
     versionForm: '버전 정보',
     items: '검사 항목',
+    /* 목록 접기 · 펼치기 — 분할 막대의 단추(사용자 지시 · #252). */
+    listCollapse: '목록 접기',
+    listExpand: '목록 펼치기',
   },
   actions: {
     /* 상세 머리 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */

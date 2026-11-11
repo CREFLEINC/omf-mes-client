@@ -1670,6 +1670,12 @@ h2:has(> .inspection-standard-dialog-title) {
   }
 }
 
+/* 목록을 접으면 상세가 폭을 다 쓴다 — 나란히 설 때만(공용 `.po-board-split[data-left-collapsed]` · #252). */
+.po-board-split.inspection-standard-split:not(.is-stacked)[data-left-collapsed]
+  > .inspection-standard-list-pane {
+  display: none;
+}
+
 .po-board-split.inspection-split.is-stacked > .inspection-standard-list-pane {
   box-sizing: border-box;
   height: var(--stacked-list-height, auto);
@@ -21634,12 +21640,16 @@ button.app-button-neutral {
   background: var(--surface-container);
 }
 
-/* 언어 이름 오른쪽 끝에 「수정」(#252). */
+/* 「수정」은 문구 첫 줄과 같은 행 오른쪽 끝(#252). */
+.inspection-standard-guide-line > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+}
+
 .inspection-standard-guide-line dt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  grid-column: 1 / -1;
 }
 
 .inspection-standard-guide-line dd {

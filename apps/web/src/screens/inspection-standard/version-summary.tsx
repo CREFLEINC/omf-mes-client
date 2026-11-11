@@ -100,20 +100,19 @@ export const VersionSummary = ({
         <dl className="inspection-standard-guide-line">
           {guides.map((field) => (
             <div key={field}>
-              <dt className="field-label">
-                {t.fields[field]}
-                {onEditGuide !== undefined && (
-                  <Button
-                    variant="outlined"
-                    size="sm"
-                    aria-label={t.versionSection.editGuide(t.fields[field])}
-                    onClick={() => onEditGuide(field)}
-                  >
-                    {t.versionSection.guideEdit}
-                  </Button>
-                )}
-              </dt>
+              <dt className="field-label">{t.fields[field]}</dt>
               <dd>{values[field].trim() === '' ? t.versionSection.notSet : values[field]}</dd>
+              {/* 「수정」은 문구 첫 줄 오른쪽에 둔다(사용자 지시). */}
+              {onEditGuide !== undefined && (
+                <Button
+                  variant="outlined"
+                  size="md"
+                  aria-label={t.versionSection.editGuide(t.fields[field])}
+                  onClick={() => onEditGuide(field)}
+                >
+                  {t.versionSection.guideEdit}
+                </Button>
+              )}
             </div>
           ))}
         </dl>
