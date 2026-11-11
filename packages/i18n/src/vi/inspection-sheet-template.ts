@@ -4,7 +4,7 @@ export const inspectionSheetTemplate = {
   breadcrumbRoot: 'Quản lý chất lượng',
 
   layouts: { OP: 'Mẫu OP', PP: 'Mẫu PP' } as Record<string, string>,
-  statuses: { DRAFT: 'Đang soạn', CONFIRMED: 'Đã xác nhận', OBSOLETE: 'Hủy bỏ' } as Record<
+  statuses: { DRAFT: 'Đang soạn', CONFIRMED: 'Đã xác nhận', OBSOLETE: 'Ngừng dùng' } as Record<
     string,
     string
   >,
@@ -105,7 +105,7 @@ export const inspectionSheetTemplate = {
     heading: (itemCode: string, version: number) => `${itemCode} · phiên bản ${version}`,
     loading: 'Đang tải tiêu chuẩn.',
     loadFailed: 'Không tải được tiêu chuẩn.',
-    readOnly: 'Phiên bản đã xác nhận hoặc hủy bỏ không sửa được.',
+    readOnly: 'Phiên bản đã xác nhận hoặc ngừng dùng không sửa được.',
     basicSection: 'Thông tin cơ bản',
     model: 'Mặt hàng',
     pickModel: 'Chọn mặt hàng',
@@ -163,13 +163,13 @@ export const inspectionSheetTemplate = {
     copyAsNew: 'Tạo phiên bản mới',
     close: 'Đóng',
     saved: 'Đã lưu tiêu chuẩn.',
-    confirmed: 'Đã xác nhận tiêu chuẩn. Phiên bản xác nhận trước của mặt hàng này đã bị hủy bỏ.',
+    confirmed: 'Đã xác nhận tiêu chuẩn. Phiên bản xác nhận trước của mặt hàng này đã ngừng dùng.',
     copied: 'Đã tạo phiên bản mới.',
     discard: 'Hủy bản nháp',
-    obsolete: 'Hủy bỏ',
+    obsolete: 'Ngừng dùng',
     history: 'Lịch sử thay đổi',
     discarded: 'Đã hủy phiên bản đang soạn.',
-    obsoleted: 'Đã hủy bỏ phiên bản.',
+    obsoleted: 'Đã ngừng dùng phiên bản.',
     reactivate: 'Dùng lại',
     reactivated: 'Đã dùng lại. Phiên bản này đã trở lại là phiên bản xác nhận.',
     copyToModel: 'Sao chép',
@@ -186,23 +186,23 @@ export const inspectionSheetTemplate = {
   },
 
   obsoleteDialog: {
-    title: 'Hủy bỏ phiên bản này?',
+    title: 'Ngừng dùng phiên bản này?',
     body: (itemCode: string, version: number) =>
-      `Hủy bỏ ${itemCode} phiên bản ${version}. Cho đến khi xác nhận phiên bản mới, không thể tạo phiếu kiểm tra mới cho mặt hàng này. Phiếu kiểm tra hiện có được giữ nguyên.`,
-    ok: 'Hủy bỏ',
+      `Ngừng dùng ${itemCode} phiên bản ${version}. Cho đến khi xác nhận phiên bản mới, không thể tạo phiếu kiểm tra mới cho mặt hàng này. Phiếu kiểm tra hiện có được giữ nguyên.`,
+    ok: 'Ngừng dùng',
   },
 
   reactivateDialog: {
     title: 'Dùng lại phiên bản này?',
     body: (itemCode: string, version: number) =>
-      `Dùng lại ${itemCode} phiên bản ${version} làm phiên bản xác nhận. Nếu mặt hàng này có phiên bản xác nhận khác, phiên bản đó sẽ bị hủy bỏ.`,
+      `Dùng lại ${itemCode} phiên bản ${version} làm phiên bản xác nhận. Nếu mặt hàng này có phiên bản xác nhận khác, phiên bản đó sẽ ngừng dùng.`,
     ok: 'Dùng lại',
   },
 
   confirmDialog: {
     title: 'Xác nhận tiêu chuẩn',
     body: (itemCode: string, version: number) =>
-      `Xác nhận ${itemCode} phiên bản ${version}. Sau khi xác nhận sẽ không sửa được, và phiên bản xác nhận trước của mặt hàng này bị hủy bỏ.`,
+      `Xác nhận ${itemCode} phiên bản ${version}. Sau khi xác nhận sẽ không sửa được, và phiên bản xác nhận trước của mặt hàng này ngừng dùng.`,
     ok: 'Xác nhận',
   },
 

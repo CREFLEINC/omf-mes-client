@@ -62,7 +62,8 @@ const actionOf = (event: VersionAuditEvent): string => {
   if (event.eventTypeCode === 'DELETE') return h.discarded;
   if (event.eventTypeCode === 'CREATE') return h.created;
   if (after.statusCode === 'CONFIRMED') return h.confirmed;
-  if (after.statusCode === 'OBSOLETE') return h.obsoleted;
+  /* 검사표 기준은 되살릴 수 있어 「폐기」가 아니라 「사용 중지」다(#255 사용자 지시). */
+  if (after.statusCode === 'OBSOLETE') return t.statuses.OBSOLETE ?? h.obsoleted;
   return h.updated;
 };
 

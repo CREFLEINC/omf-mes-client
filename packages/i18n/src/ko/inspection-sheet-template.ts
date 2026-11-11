@@ -7,7 +7,7 @@ export const inspectionSheetTemplate = {
   breadcrumbRoot: '품질 관리',
 
   layouts: { OP: 'OP향 양식', PP: 'PP향 양식' } as Record<string, string>,
-  statuses: { DRAFT: '작성중', CONFIRMED: '확정', OBSOLETE: '폐기' } as Record<string, string>,
+  statuses: { DRAFT: '작성중', CONFIRMED: '확정', OBSOLETE: '사용 중지' } as Record<string, string>,
   methods: { FULL: '전수', SAMPLE: '발취(샘플)' } as Record<string, string>,
   slots: { PCB: 'PCB 기판 LOT', SD: 'SD LOT', STAPLE: '스테이플(침) LOT' } as Record<
     string,
@@ -109,7 +109,7 @@ export const inspectionSheetTemplate = {
     heading: (itemCode: string, version: number) => `${itemCode} 버전 ${version}`,
     loading: '검사표 기준을 불러오는 중입니다.',
     loadFailed: '검사표 기준을 불러오지 못했습니다.',
-    readOnly: '확정 또는 폐기된 버전은 고칠 수 없습니다.',
+    readOnly: '확정 또는 사용 중지된 버전은 고칠 수 없습니다.',
     basicSection: '기본 정보',
     model: '품목',
     pickModel: '품목 선택',
@@ -166,15 +166,15 @@ export const inspectionSheetTemplate = {
     copyAsNew: '새 버전 만들기',
     close: '닫기',
     saved: '검사표 기준을 저장했습니다.',
-    confirmed: '검사표 기준을 확정했습니다. 이 품목의 앞 확정 버전은 폐기됐습니다.',
+    confirmed: '검사표 기준을 확정했습니다. 이 품목의 앞 확정 버전은 사용 중지됐습니다.',
     copied: '새 버전을 만들었습니다.',
-    /* 작성 취소 · 폐기 · 변경 이력 — 검사 기준 탭과 같은 단추(omf-all-around#214). */
+    /* 작성 취소 · 사용 중지 · 변경 이력 — 검사 기준 탭과 같은 단추(omf-all-around#214). */
     discard: '작성 취소',
-    obsolete: '폐기',
+    obsolete: '사용 중지',
     history: '변경 이력',
     discarded: '취소됐습니다.',
-    obsoleted: '폐기했습니다.',
-    /* 폐기 버전 재사용 · 다른 모델로 복사(omf-all-around#255). */
+    obsoleted: '사용 중지했습니다.',
+    /* 사용 중지 버전 재사용 · 다른 모델로 복사(omf-all-around#255). */
     reactivate: '재사용',
     reactivated: '재사용했습니다. 이 버전이 다시 확정 버전이 됐습니다.',
     copyToModel: '복사',
@@ -191,23 +191,23 @@ export const inspectionSheetTemplate = {
   },
 
   obsoleteDialog: {
-    title: '이 버전을 폐기할까요?',
+    title: '이 버전을 사용 중지할까요?',
     body: (itemCode: string, version: number) =>
-      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 폐기합니다. 새 버전을 확정할 때까지 이 품목의 검사표를 새로 만들 수 없습니다. 기존 검사표는 유지됩니다.`,
-    ok: '폐기',
+      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 사용 중지합니다. 새 버전을 확정할 때까지 이 품목의 검사표를 새로 만들 수 없습니다. 기존 검사표는 유지됩니다.`,
+    ok: '사용 중지',
   },
 
   reactivateDialog: {
     title: '이 버전을 다시 사용할까요?',
     body: (itemCode: string, version: number) =>
-      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 다시 확정 버전으로 씁니다. 이 품목에 확정된 다른 버전이 있으면 그 버전은 폐기됩니다.`,
+      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 다시 확정 버전으로 씁니다. 이 품목에 확정된 다른 버전이 있으면 그 버전은 사용 중지됩니다.`,
     ok: '재사용',
   },
 
   confirmDialog: {
     title: '검사표 기준 확정',
     body: (itemCode: string, version: number) =>
-      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 버전은 폐기됩니다.`,
+      `${itemCode} 버전 ${version}${noFinal(version) ? '를' : '을'} 확정합니다. 확정하면 고칠 수 없고, 이 품목의 앞 확정 버전은 사용 중지됩니다.`,
     ok: '확정',
   },
 
