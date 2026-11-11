@@ -65,8 +65,10 @@ const versionFields = (
       label: t.fields.frequencyIntervalUom,
       format: code(labels.frequencyIntervalUom),
     },
-    guideTextKo: { label: t.fields.guideTextKo, format: raw },
-    guideTextVi: { label: t.fields.guideTextVi, format: raw },
+    guideText: { label: t.fields.guideText, format: raw },
+    /* 한 칸이 되기 전(#261) 이력의 옛 열쇠 — 같은 이름으로 보인다. */
+    guideTextKo: { label: t.fields.guideText, format: raw },
+    guideTextVi: { label: t.fields.guideText, format: raw },
     planVersion: { label: t.fields.planVersion, format: raw },
     statusCode: { label: t.fields.status, format: raw },
   };

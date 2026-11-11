@@ -429,8 +429,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     inspectionFrequency: 'Chu kỳ kiểm tra',
     frequencyIntervalValue: 'Giá trị chu kỳ',
     frequencyIntervalUom: 'Đơn vị chu kỳ',
-    guideTextKo: 'Hướng dẫn (tiếng Hàn)',
-    guideTextVi: 'Hướng dẫn (tiếng Việt)',
+    guideText: 'Hướng dẫn',
     sequence: 'Thứ tự',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: 'Hạng mục',

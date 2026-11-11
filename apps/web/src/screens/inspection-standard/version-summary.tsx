@@ -14,7 +14,8 @@ export interface VersionSummaryProps {
   frequencyIntervalUomOptions: SelectOption[];
 }
 
-export type GuideTextField = 'guideTextKo' | 'guideTextVi';
+/** 검사 지시문 칸 — 한 칸이다(#261). */
+export type GuideTextField = 'guideText';
 
 const labelOf = (options: { value: string; label: string }[], value: string): string =>
   value === ''

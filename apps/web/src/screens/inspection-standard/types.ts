@@ -73,9 +73,8 @@ export interface VersionFormValues {
   inspectionFrequencyCode: string;
   frequencyIntervalValue: string;
   frequencyIntervalUomCode: string;
-  /** 검사 안내 문구(#252) — 검사 화면이 기준 정보 바로 아래에 보인다. 언어별로 받는다. */
-  guideTextKo: string;
-  guideTextVi: string;
+  /** 검사 지시문(#252) — 검사 화면이 기준 정보 바로 아래에 보인다. 한 칸이다(언어별로 나누지 않는다 · #261). */
+  guideText: string;
 }
 
 /**

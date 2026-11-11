@@ -22,8 +22,7 @@ const filled: VersionFormValues = {
   inspectionFrequencyCode: 'PENDING',
   frequencyIntervalValue: '4',
   frequencyIntervalUomCode: 'PENDING',
-  guideTextKo: '장갑 착용',
-  guideTextVi: '',
+  guideText: '장갑 착용',
 };
 
 describe('versionToFormValues', () => {
@@ -40,20 +39,18 @@ describe('versionToFormValues', () => {
       inspectionFrequencyCode: 'PENDING',
       frequencyIntervalValue: '',
       frequencyIntervalUomCode: '',
-      guideTextKo: '',
-      guideTextVi: '',
+      guideText: '',
     });
   });
 
-  /* 안내 문구(#252)는 그대로 옮기고, 없거나 null 이면 빈 문자열이다. */
-  it('안내 문구를 언어별로 옮긴다', () => {
+  /* 지시문(#252 · 한 칸 #261)은 그대로 옮기고, 없거나 null 이면 빈 문자열이다. */
+  it('지시문 한 칸을 옮긴다', () => {
     expect(
-      versionToFormValues({
-        ...inspectionPlanVersionFixtures[0]!,
-        guideTextKo: '장갑 착용',
-        guideTextVi: null,
-      }),
-    ).toMatchObject({ guideTextKo: '장갑 착용', guideTextVi: '' });
+      versionToFormValues({ ...inspectionPlanVersionFixtures[0]!, guideText: '장갑 착용' }),
+    ).toMatchObject({ guideText: '장갑 착용' });
+    expect(
+      versionToFormValues({ ...inspectionPlanVersionFixtures[0]!, guideText: null }),
+    ).toMatchObject({ guideText: '' });
   });
 
   /* 0과 「지정하지 않음」은 다르다 — 널만 빈 문자열이 된다. */
@@ -102,16 +99,13 @@ describe('toVersionUpdate', () => {
       inspectionFrequencyCode: 'PENDING',
       frequencyIntervalValue: 4,
       frequencyIntervalUomCode: 'PENDING',
-      guideTextKo: '장갑 착용',
-      guideTextVi: null,
+      guideText: '장갑 착용',
     });
   });
 
   it('안내 문구는 앞뒤 공백을 걷고, 비우면 널로 지운다(#252)', () => {
-    expect(toVersionUpdate({ ...filled, guideTextKo: '  도면 확인  ' }).guideTextKo).toBe(
-      '도면 확인',
-    );
-    expect(toVersionUpdate({ ...filled, guideTextKo: '   ' }).guideTextKo).toBeNull();
+    expect(toVersionUpdate({ ...filled, guideText: '  도면 확인  ' }).guideText).toBe('도면 확인');
+    expect(toVersionUpdate({ ...filled, guideText: '   ' }).guideText).toBeNull();
   });
 
   /* omf-all-around#103 — 예전에 「전수검사 + 비율」로 저장된 판도 다른 칸만 고쳐 저장할 수 있어야 한다. */

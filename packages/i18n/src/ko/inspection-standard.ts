@@ -482,8 +482,7 @@ export const inspectionStandard = {
     inspectionFrequency: '검사 주기',
     frequencyIntervalValue: '검사 주기 값',
     frequencyIntervalUom: '주기 단위',
-    guideTextKo: '지시문(한국어)',
-    guideTextVi: '지시문(베트남어)',
+    guideText: '지시문',
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',

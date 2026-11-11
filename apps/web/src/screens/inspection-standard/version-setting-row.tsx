@@ -1,5 +1,5 @@
 import { Button, EmptyState, Icon } from '@crefle/web-ui';
-import { activeLocale, messages } from '@omf-mes/i18n';
+import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import type { VersionFormValues } from './types';
@@ -50,7 +50,7 @@ export const VersionGuideRow = ({
   values: VersionFormValues;
   onEditGuide?: (field: GuideTextField) => void;
 }) => {
-  const field: GuideTextField = activeLocale() === 'vi' ? 'guideTextVi' : 'guideTextKo';
+  const field: GuideTextField = 'guideText';
   const text = values[field].trim();
 
   return (

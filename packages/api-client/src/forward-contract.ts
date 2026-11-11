@@ -815,13 +815,12 @@ export type StockReinstatementResponseForward = Omit<
 type StockReinstatementsPath = paths['/logistics/stock-reinstatements'];
 
 /**
- * 서버 선행(omf-all-around#252) — 검사 기준 버전별 안내 문구(한국어 · 베트남어). 검사 화면이 기준 정보 바로 아래에 보인다.
- * 작성중 버전에서만 고치고, 개정하면 새 버전에 복사된다. 쓰기 본문에서 생략하면 그대로, 공백만이면 서버가 비운다.
+ * 서버 선행(omf-all-around#252 · 한 칸 #261) — 검사 기준 버전별 검사 지시문 한 칸(한/베 두 칸을 걷었다). 검사 화면이 기준 정보
+ * 바로 아래에 보인다. 작성중 버전에서만 고치고, 개정하면 새 버전에 복사된다. 쓰기 본문에서 생략하면 그대로, 공백만이면 서버가 비운다.
  * 서버가 main 에 병합되면 `gen:api` 로 다시 만들고 이 덮개를 걷는다.
  */
 export interface InspectionPlanVersionGuideForward {
-  guideTextKo?: string | null;
-  guideTextVi?: string | null;
+  guideText?: string | null;
 }
 
 export type InspectionPlanVersionForward = components['schemas']['InspectionPlanVersion'] &
@@ -830,8 +829,7 @@ export type InspectionPlanVersionForward = components['schemas']['InspectionPlan
 /** 의뢰 상세의 검사 안내 한 벌(#252) — 공통 기준(COMMON) · 품목 기준(ITEM). 상세 조회만 싣는다. */
 export interface InspectionGuideForward {
   scopeCode: 'COMMON' | 'ITEM';
-  guideTextKo: string | null;
-  guideTextVi: string | null;
+  guideText: string;
 }
 
 type InspectionRequestDetailPath = paths['/quality/inspection-requests/{inspectionRequestId}'];

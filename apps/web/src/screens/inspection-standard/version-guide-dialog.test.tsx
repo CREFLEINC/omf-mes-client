@@ -10,13 +10,13 @@ import { VersionGuideRow } from './version-setting-row';
 
 const t = messages.inspectionStandard;
 
-/** omf-all-around#252 — 지시문은 「검사 지시문」 줄(#258)에서 화면 언어 칸 하나만 보이고 「지시문 수정」 창에서 고친다. */
+/** omf-all-around#252 · #261 — 지시문은 한 칸이다. 「검사 지시문」 줄(#258)에서 보이고 「지시문 수정」 창에서 고친다. */
 describe('지시문 수정', () => {
   const values = {
     ...versionToFormValues(inspectionPlanVersionFixtures[0]!),
-    guideTextKo: '장갑 착용',
+    guideText: '장갑 착용',
   };
-  const summary = (onEditGuide?: (field: 'guideTextKo' | 'guideTextVi') => void) =>
+  const summary = (onEditGuide?: (field: 'guideText') => void) =>
     render(<VersionGuideRow values={values} onEditGuide={onEditGuide} />);
 
   const guideLines = (container: HTMLElement) =>
@@ -24,48 +24,40 @@ describe('지시문 수정', () => {
       (line) => line.textContent,
     );
 
-  it('한국어 화면은 한국어 지시문만 보이고 고친다', async () => {
-    const onEditGuide = vi.fn();
-    const { container } = summary(onEditGuide);
-
-    expect(guideLines(container)).toEqual(['장갑 착용']);
-    expect(screen.queryByText(t.fields.guideTextVi)).toBeNull();
-    await userEvent.click(
-      screen.getByRole('button', { name: t.versionSection.editGuide(t.fields.guideTextKo) }),
-    );
-    expect(onEditGuide).toHaveBeenCalledWith('guideTextKo');
-  });
-
-  it('베트남어 화면은 베트남어 지시문만 — 비어 있어도 고칠 수 있게 「등록된 지시문 없음」으로 보인다', async () => {
+  it('지시문 한 칸을 보이고 고친다 — 화면 언어와 상관없다', async () => {
     setLocale('vi');
     try {
       const onEditGuide = vi.fn();
       const { container } = summary(onEditGuide);
 
-      expect(guideLines(container)).toEqual([]);
-      expect(screen.getByText(t.versionSection.guideNoneTitle)).toBeInTheDocument();
-      expect(screen.getByText(t.versionSection.guideNoneDescription)).toBeInTheDocument();
+      expect(guideLines(container)).toEqual(['장갑 착용']);
       await userEvent.click(
-        screen.getByRole('button', { name: t.versionSection.editGuide(t.fields.guideTextVi) }),
+        screen.getByRole('button', { name: t.versionSection.editGuide(t.fields.guideText) }),
       );
-      expect(onEditGuide).toHaveBeenCalledWith('guideTextVi');
+      expect(onEditGuide).toHaveBeenCalledWith('guideText');
     } finally {
       setLocale('ko');
     }
   });
 
-  it('잠긴 버전은 수정 단추가 없고 다른 언어 칸을 두지 않는다', () => {
+  it('비어 있으면 「등록된 지시문 없음」으로 보인다', () => {
+    render(<VersionGuideRow values={{ ...values, guideText: '' }} onEditGuide={vi.fn()} />);
+
+    expect(screen.getByText(t.versionSection.guideNoneTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.versionSection.guideNoneDescription)).toBeInTheDocument();
+  });
+
+  it('잠긴 버전은 수정 단추가 없다', () => {
     summary();
 
     expect(screen.queryByRole('button', { name: /수정/ })).toBeNull();
-    expect(screen.queryByText(t.fields.guideTextVi)).toBeNull();
   });
 
   it('창은 저장값에서 시작하고, 바꾸기 전에는 저장을 막는다', async () => {
     const onSave = vi.fn();
     render(
       <VersionGuideDialog
-        field="guideTextKo"
+        field="guideText"
         initialText="장갑 착용"
         isSaving={false}
         banner={null}
@@ -86,7 +78,7 @@ describe('지시문 수정', () => {
   it('3000자를 넘으면 저장을 막고 알린다', async () => {
     render(
       <VersionGuideDialog
-        field="guideTextKo"
+        field="guideText"
         initialText=""
         isSaving={false}
         banner={null}

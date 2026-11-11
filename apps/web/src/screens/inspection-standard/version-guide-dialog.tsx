@@ -50,7 +50,11 @@ export const VersionGuideDialog = ({
           <Button variant="outlined" disabled={isSaving} onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button loading={isSaving} disabled={isSaving || !isDirty || isTooLong} onClick={() => onSave(text)}>
+          <Button
+            loading={isSaving}
+            disabled={isSaving || !isDirty || isTooLong}
+            onClick={() => onSave(text)}
+          >
             {messages.common.save}
           </Button>
         </>

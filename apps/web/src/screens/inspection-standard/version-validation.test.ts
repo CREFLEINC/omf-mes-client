@@ -17,8 +17,7 @@ const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues =
   inspectionFrequencyCode: 'PENDING',
   frequencyIntervalValue: '',
   frequencyIntervalUomCode: '',
-  guideTextKo: '',
-  guideTextVi: '',
+  guideText: '',
   ...overrides,
 });
 

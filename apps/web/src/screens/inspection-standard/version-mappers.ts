@@ -30,8 +30,7 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   inspectionFrequencyCode: version.inspectionFrequencyCode,
   frequencyIntervalValue: optionalNumberToText(version.frequencyIntervalValue),
   frequencyIntervalUomCode: version.frequencyIntervalUomCode ?? '',
-  guideTextKo: version.guideTextKo ?? '',
-  guideTextVi: version.guideTextVi ?? '',
+  guideText: version.guideText ?? '',
 });
 
 export const emptyVersionFormValues = (): VersionFormValues => ({
@@ -48,8 +47,7 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   inspectionFrequencyCode: '',
   frequencyIntervalValue: '',
   frequencyIntervalUomCode: '',
-  guideTextKo: '',
-  guideTextVi: '',
+  guideText: '',
 });
 
 /**
@@ -83,9 +81,8 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   inspectionFrequencyCode: values.inspectionFrequencyCode,
   frequencyIntervalValue: optionalTextToNumber(values.frequencyIntervalValue),
   frequencyIntervalUomCode: optionalText(values.frequencyIntervalUomCode),
-  /* 안내 문구(#252) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
-  guideTextKo: optionalText(values.guideTextKo.trim()),
-  guideTextVi: optionalText(values.guideTextVi.trim()),
+  /* 검사 지시문(#252 · 한 칸 #261) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
+  guideText: optionalText(values.guideText.trim()),
 });
 
 /**
