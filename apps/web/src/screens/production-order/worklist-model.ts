@@ -70,6 +70,16 @@ export const REASON_STEP: Record<WorklistReason, ProcessStepKey> = {
 };
 
 /** 작업함 조회 조건. 「전체」는 거르지 않는다. 서버 질의 `worklistState`로 간다. */
-export type WorklistFilter = 'ALL' | 'ACTION_REQUIRED' | 'RELEASE_PENDING';
+export const WORKLIST_FILTERS = [
+  'ALL',
+  'BEFORE_PLAN',
+  'ACTION_REQUIRED',
+  'RELEASE_PENDING',
+  'RELEASED',
+  'CANCELLED',
+] as const;
+export type WorklistFilter = (typeof WORKLIST_FILTERS)[number];
+export const isWorklistFilter = (value: string | null): value is WorklistFilter =>
+  WORKLIST_FILTERS.some((state) => state === value);
 
 export const DEFAULT_WORKLIST_FILTER: WorklistFilter = 'ACTION_REQUIRED';

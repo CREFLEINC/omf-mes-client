@@ -35390,20 +35390,28 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .erp-wo-multi-week-tools > .erp-wo-distribution > button { margin-top: 0; }
 
 /* 작업계획 목록: 상태별 조회와 선택 대상의 처리를 서로 다른 줄에 둔다. */
-.erp-wo-status-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
-.erp-wo-status-filter { min-height: 3.75rem; width: 100%; justify-content: space-between; padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); }
-.erp-wo-status-filter[aria-pressed='true'] { background: var(--primary-container); color: var(--on-primary-container); border-color: var(--primary); box-shadow: inset 3px 0 0 var(--primary); }
-.erp-wo-status-name { font: var(--type-title-sm); }
-.erp-wo-status-number { display: inline-flex; align-items: baseline; gap: var(--space-1); font: var(--type-title-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
-.erp-wo-status-number small { font: var(--type-label-sm); color: var(--on-surface-variant); }
+.erp-wo-status-controls { container-type: inline-size; }
+.erp-wo-status-filters { display: flex; border-bottom: 1px solid var(--outline-variant); }
+.erp-wo-status-filter { display: flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; padding: var(--space-2) var(--space-3); border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: var(--on-surface-variant); cursor: pointer; white-space: nowrap; }
+.erp-wo-status-filter[aria-pressed='true'] { background: var(--primary-container); color: var(--on-primary-container); border-bottom-color: var(--primary); }
+.erp-wo-status-name { font: var(--type-label-lg); }
+.erp-wo-status-number { display: inline-flex; align-items: baseline; gap: var(--space-1); font: var(--type-label-md); font-variant-numeric: tabular-nums; }
+.erp-wo-status-number small { display: none; }
+.erp-wo-status-compact { display: none; }
+@container (max-width: 52rem) {
+  .erp-wo-status-filters { display: none; }
+  .erp-wo-status-compact { display: flex; align-items: center; gap: var(--space-3); }
+  .erp-wo-status-compact > label { white-space: nowrap; font: var(--type-label-lg); }
+  .erp-wo-status-compact > :last-child { width: min(100%, 18rem); min-width: 0; }
+}
 .erp-wo-selection-toolbar { display: grid; grid-template-columns: minmax(10rem, 1fr) auto; gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container); }
 .erp-wo-selection-info strong { font: var(--type-title-sm); }
 .erp-wo-selection-info p { margin: var(--space-1) 0 0; font: var(--type-body-sm); color: var(--on-surface-variant); }
 .erp-wo-selection-toolbar .erp-wo-bulk-actions { align-self: center; gap: var(--space-2); }
 @media (max-width: 1100px) { .erp-wo-selection-toolbar { grid-template-columns: minmax(0, 1fr); } .erp-wo-selection-toolbar .erp-wo-bulk-actions { justify-content: flex-start; } }
-@media (max-width: 600px) { .erp-wo-status-filters { grid-template-columns: minmax(0, 1fr); } }
 
-.erp-wo-status-filter { display: flex; align-items: center; border: 1px solid var(--outline-variant); background: var(--surface); color: var(--on-surface); cursor: pointer; text-align: left; }
+
+
 .erp-wo-status-filter:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .erp-wo-status-filter:hover { border-color: var(--primary); }
 .erp-wo-action-choice { display: grid; gap: var(--space-1); justify-items: stretch; }

@@ -59,15 +59,35 @@ export const useWorklist = (filters: WorklistFilters) => {
   });
 };
 
-/** 페이지 머리 상태별 건수. 목록과 같은 공장 조건에 쪽 크기 1을 주고 서버 총계를 쓴다. */
-export const useWorklistCount = (state: WorklistFilter, plant: string) => {
+/** 페이지 머리 상태별 건수. 목록과 같은 검색 조건에 쪽 크기 1을 주고 서버 총계를 쓴다. */
+export const useWorklistCount = (
+  state: WorklistFilter,
+  plant: string,
+  filters?: WorklistFilters,
+) => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: worklistKeys.count(state, plant),
+    queryKey: [
+      ...worklistKeys.count(state, plant),
+      filters?.q,
+      filters?.dueFrom,
+      filters?.dueTo,
+      filters?.item,
+    ],
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/planning/production-orders', {
-          params: { query: { ...stateQuery(state), ...plantQuery(plant), size: 1 } },
+          params: {
+            query: {
+              ...stateQuery(state),
+              ...plantQuery(plant),
+              ...(filters?.q ? { q: filters.q } : {}),
+              ...(filters?.dueFrom ? { dueDateFrom: filters.dueFrom } : {}),
+              ...(filters?.dueTo ? { dueDateTo: filters.dueTo } : {}),
+              ...(filters?.item ? { itemId: Number(filters.item) } : {}),
+              size: 1,
+            },
+          },
         }),
       );
       return data.page.total;

@@ -35,6 +35,14 @@ describe('작업함 주소 조건', () => {
     expect(stateOf('state=ALL&autoPlan=DONE')).toBe('ALL');
   });
 
+  it.each(['BEFORE_PLAN', 'RELEASED', 'CANCELLED'] as const)(
+    '%s 상태를 주소에 보존한다',
+    (state) => {
+      const params = toWorklistSearchParams({ ...DEFAULT_WORKLIST_FILTERS, state });
+      expect(readWorklistFilters(params).state).toBe(state);
+    },
+  );
+
   it('처리 화면 주소는 업무 번호를 쓴다', () => {
     expect(processPath('UIR-PO-001')).toBe('/production/production-orders/UIR-PO-001');
   });
