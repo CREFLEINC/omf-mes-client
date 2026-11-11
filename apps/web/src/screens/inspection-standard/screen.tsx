@@ -2063,7 +2063,7 @@ export const InspectionStandardScreen = () => {
         aria-label={t.versionSection.settingsTitle}
       >
         <div className="inspection-standard-setting-list">
-          {/* 검사 항목 · 검사 지시문은 좌우 반반, 도면은 그 아래 한 줄 전체(사용자 지시 · #258). */}
+          {/* 검사 항목 · 검사 지시문은 넓으면 좌우 반반, 좁으면 도면과 같이 한 열로 쌓는다(사용자 지시 · #258). */}
           <div className="inspection-standard-setting-pair">
             <VersionSettingRow
               title={t.versionSection.tabItems}
