@@ -175,17 +175,15 @@ export const PlanPane = ({
          */}
         {/* 첫 줄 — 기본 생략 | 기준코드 · 기준명(사용자 시안 2026-11-04). */}
         <div className="inspection-standard-plan-head-row">
-          {/* 기본 생략(omf-all-around#212) — 검사 유형을 고르면 IQC·PQC·OQC 모두 선다. */}
-          {values.inspectionTypeCode !== '' && (
-            <div className="inspection-standard-plan-skip">
-              <Checkbox
-                checked={values.defaultSkip}
-                onChange={(event) => onChange({ defaultSkip: event.target.checked })}
-              >
-                {t.fields.defaultSkip}
-              </Checkbox>
-            </div>
-          )}
+          {/* 기본 생략(omf-all-around#212) — IQC·PQC·OQC 공통이라 검사 유형을 고르기 전부터 보인다(#255). */}
+          <div className="inspection-standard-plan-skip">
+            <Checkbox
+              checked={values.defaultSkip}
+              onChange={(event) => onChange({ defaultSkip: event.target.checked })}
+            >
+              {t.fields.defaultSkip}
+            </Checkbox>
+          </div>
 
           <div className="field-cell">
             <FieldLabel

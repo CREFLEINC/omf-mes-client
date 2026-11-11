@@ -264,7 +264,7 @@ describe('PlanPane — 기본 생략(omf-all-around#212)', () => {
     expect(screen.getByRole('checkbox', { name: t.fields.defaultSkip })).toBeInTheDocument();
   });
 
-  it('검사 유형을 고르기 전에는 체크가 없다', () => {
+  it('검사 유형을 고르기 전에도 체크가 보인다(#255)', () => {
     renderPane({
       mode: 'create',
       plan: null,
@@ -278,6 +278,6 @@ describe('PlanPane — 기본 생략(omf-all-around#212)', () => {
         defaultSkip: false,
       },
     });
-    expect(screen.queryByRole('checkbox', { name: t.fields.defaultSkip })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: t.fields.defaultSkip })).toBeInTheDocument();
   });
 });
