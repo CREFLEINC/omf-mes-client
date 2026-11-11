@@ -187,7 +187,8 @@ interface ItemDialogState {
 /** 계약이 정한 버전 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
 type VersionTransitionPath =
   | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm'
-  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete';
+  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete'
+  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:reactivate';
 
 interface VersionTransitionOptions {
   /** 계약 클라이언트. 훅이 화면 상태를 알 필요가 없도록 필요한 것만 받는다 */
@@ -709,7 +710,7 @@ export const InspectionStandardScreen = () => {
   const [versionTransition, setVersionTransition] = useState<VersionTransitionKind | null>(null);
 
   /*
-   * 전이 두 갈래의 훅을 나눈다 — 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
+   * 전이 갈래마다 훅을 나눈다 — 하나로 묶으면 확정 실패 문구가 사용 중지 창에 남는다.
    */
   const finishVersionTransition = (description: string) => {
     setVersionTransition(null);
@@ -728,6 +729,14 @@ export const InspectionStandardScreen = () => {
     inspectionPlanVersionId: selectedVersionId,
     path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete',
     onDone: () => finishVersionTransition(t.result.obsoleted),
+  });
+
+  /* 사용 중지된 버전을 다시 확정으로(재사용 · omf-all-around#258). */
+  const reactivateWrite = useVersionTransition({
+    client,
+    inspectionPlanVersionId: selectedVersionId,
+    path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:reactivate',
+    onDone: () => finishVersionTransition(t.result.reactivated),
   });
 
   /*
@@ -765,7 +774,9 @@ export const InspectionStandardScreen = () => {
   const versionTransitionWrite =
     versionTransition === 'obsolete'
       ? obsoleteWrite
-      : versionTransition === 'discard'
+      : versionTransition === 'reactivate'
+        ? reactivateWrite
+        : versionTransition === 'discard'
         ? discardWrite
         : confirmWrite;
 
@@ -846,6 +857,7 @@ export const InspectionStandardScreen = () => {
     versionWrite.reset();
     confirmWrite.reset();
     obsoleteWrite.reset();
+    reactivateWrite.reset();
     discardWrite.reset();
     itemsWrite.reset();
     setVersionTransition(null);
@@ -1337,14 +1349,14 @@ export const InspectionStandardScreen = () => {
     return null;
   })();
 
-  /** 폐기는 확정된 버전에만 성립한다 — 계약이 그렇게 정했다. */
+  /** 사용 중지는 확정된 버전에만 성립한다 — 계약이 그렇게 정했다. */
   const obsoleteDisabledReason = ((): string | null => {
     if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
 
     return versionStatus.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
   })();
 
-  /** 작성 취소는 작성중 버전에만 성립한다 — 확정된 버전은 폐기가 그 길이다. */
+  /** 작성 취소는 작성중 버전에만 성립한다 — 확정된 버전은 사용 중지가 그 길이다. */
   const discardDisabledReason = ((): string | null => {
     if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
 
@@ -1352,7 +1364,10 @@ export const InspectionStandardScreen = () => {
   })();
 
   const isVersionTransitionRunning =
-    confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving;
+    confirmWrite.isSaving ||
+    obsoleteWrite.isSaving ||
+    reactivateWrite.isSaving ||
+    discardWrite.isSaving;
 
   const renderVersionTransitionActions = (): ReactNode => (
     <>
@@ -1397,12 +1412,28 @@ export const InspectionStandardScreen = () => {
         <DisabledAction label={t.actions.confirm} reason={confirmDisabledReason} />
       )}
 
-      {/* 작성중 버전에는 폐기를 두지 않는다 — 작성중은 「작성 취소」가 그 길이다(사용자 지시 · #196). */}
-      {versionStatus !== null && versionStatus.isEditable ? null : obsoleteDisabledReason ===
-        null ? (
+      {/* 작성중 버전에는 사용 중지를 두지 않는다 — 작성중은 「작성 취소」가 그 길이다(사용자 지시 · #196).
+       * 사용 중지된 버전은 그 자리에 「재사용」을 둔다(omf-all-around#258). */}
+      {versionStatus !== null && versionStatus.isEditable ? null : versionStatus?.status ===
+        'obsolete' ? (
         <div className="field-cell">
           <Button
             variant="outlined"
+            aria-label={t.actions.reactivateVersion}
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              reactivateWrite.reset();
+              setVersionTransition('reactivate');
+            }}
+          >
+            {t.actions.reactivate}
+          </Button>
+        </div>
+      ) : obsoleteDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            aria-label={t.actions.obsoleteVersion}
             disabled={isVersionTransitionRunning}
             onClick={() => {
               obsoleteWrite.reset();

@@ -1268,6 +1268,17 @@ export interface ForwardPaths {
       { 201: Json<InspectionPlanCopyResult> }
     >;
   };
+  /** 서버 선행 omf-all-around#258 — 검사기준 버전 재사용(사용 중지 → 확정 · 다른 확정 버전은 그대로). */
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}:reactivate': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemHeader, { inspectionPlanVersionId: number }>,
+      never,
+      { 200: Json<components['schemas']['InspectionPlanVersion']> }
+    >;
+  };
   /** 서버 선행 P-102 — 시리얼로 검사표 열기(없으면 만든다). */
   '/quality/inspection-sheets:open-by-serial': Unused & {
     parameters: NoParameters;

@@ -160,7 +160,8 @@ describe('검사기준 상태 변경 — 결과 문면 잣대', () => {
   it.each([
     ['사용 중지', t.result.deactivated, '검사기준', '중지'],
     ['확정', t.result.confirmed, '버전', '확정'],
-    ['폐기', t.result.obsoleted, '버전', '폐기'],
+    ['사용 중지', t.result.obsoleted, '버전', '사용 중지'],
+    ['재사용', t.result.reactivated, '버전', '재사용'],
     ['작성 취소', t.result.discarded, '버전', '취소'],
   ])('%s 결과가 대상·행위·완료를 말한다', (_name, result, target, action) => {
     expect(result).toContain(target);

@@ -35,7 +35,10 @@ export const inspectionStandard = {
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',
     confirm: '확정',
-    obsolete: '폐기',
+    obsolete: '사용 중지',
+    /* 기준의 「사용 중지」 · 「재사용」과 이름이 겹친다 — 버전 단추는 접근 이름에 「버전」을 붙인다(omf-all-around#258). */
+    obsoleteVersion: '버전 사용 중지',
+    reactivateVersion: '버전 재사용',
     discard: '작성 취소',
     compareVersions: '버전 비교',
     addItem: '항목 추가',
@@ -71,12 +74,12 @@ export const inspectionStandard = {
      */
     confirmBlockedByUnsaved:
       '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
-    obsoleteNeedsConfirmed: '폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.',
-    discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 폐기하세요.',
+    obsoleteNeedsConfirmed: '사용 중지는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.',
+    discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 사용 중지하세요.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
-    transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
+    transitionNeedsVersion: '확정·사용 중지는 버전을 먼저 등록해야 할 수 있습니다.',
     /*
-     * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
+     * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
      */
     versionLocked:
@@ -98,11 +101,11 @@ export const inspectionStandard = {
     confirmedVersionRequired: '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
     lineRequired: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
   },
-  /** 확정·폐기 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
+  /** 확정·사용 중지 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
     title: '지금은 수정할 수 없는 버전입니다',
     confirmed: '확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
-    obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
+    obsolete: '사용 중지된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
     deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
@@ -113,8 +116,12 @@ export const inspectionStandard = {
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
-    obsoleteTitle: '이 버전을 폐기할까요?',
-    obsoleteDescription: '폐기한 버전은 새 검사에서 사용할 수 없습니다. 기존 데이터는 유지됩니다.',
+    obsoleteTitle: '이 버전을 사용 중지할까요?',
+    obsoleteDescription:
+      '사용 중지한 버전은 새 검사에서 사용할 수 없습니다. 재사용하면 다시 쓸 수 있고, 기존 데이터는 유지됩니다.',
+    /* 사용 중지한 버전을 다시 확정으로(omf-all-around#258). */
+    reactivateVersionTitle: '이 버전을 다시 사용할까요?',
+    reactivateVersionDescription: '재사용하면 이 버전이 다시 확정 버전이 되어 새 검사에 적용됩니다.',
     discardTitle: '이 작성중 버전을 취소할까요?',
     discardDescription:
       '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',
@@ -149,7 +156,8 @@ export const inspectionStandard = {
     activated: '검사기준을 다시 사용합니다.',
     copied: '복사한 검사 기준을 만들었습니다. 버전은 작성중이니 내용을 확인한 뒤 확정하세요.',
     confirmed: '버전을 확정했습니다.',
-    obsoleted: '버전을 폐기했습니다.',
+    obsoleted: '버전을 사용 중지했습니다.',
+    reactivated: '버전을 재사용했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
   },
   /** 엑셀 올리기 창(#199). 툴 엑셀 올리기와 같이 «올리기 전에» 되돌리지 않음을 말한다. */
@@ -201,7 +209,7 @@ export const inspectionStandard = {
   filters: {
     versionStatus: '상태 선택',
     versionStatusAll: '전체',
-    versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '폐기' },
+    versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '사용 중지' },
     chipVersionStatus: (label: string): string => `상태: ${label}`,
     chipRemoveVersionStatus: '상태 조건 제거',
     searchLabel: '검사 기준 검색',
@@ -354,7 +362,8 @@ export const inspectionStandard = {
     settingsSaved: '버전 설정',
     itemsSaved: '검사 항목',
     confirmed: '확정',
-    obsoleted: '폐기',
+    obsoleted: '사용 중지',
+    reactivated: '재사용',
     discarded: '작성 취소',
     updated: '수정',
     unknownUser: (userId: number): string => `사용자 #${String(userId)}`,
@@ -363,7 +372,7 @@ export const inspectionStandard = {
     itemRemoved: '항목 삭제',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: '변경 이력이 없습니다',
-    noneDescription: '버전 저장 · 확정 · 폐기 시 기록됩니다.',
+    noneDescription: '버전 저장 · 확정 · 사용 중지 · 재사용 시 기록됩니다.',
     loading: '변경 이력을 불러오는 중',
     range: '최근 1년',
   },
@@ -516,7 +525,7 @@ export const inspectionStandard = {
     version: (planVersion: number): string => `버전 ${String(planVersion)}`,
     draft: '작성중',
     confirmed: '확정',
-    obsolete: '폐기',
+    obsolete: '사용 중지',
     none: '없음',
     /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
     itemLabel: (code: string, name: string): string => `${code} · ${name}`,

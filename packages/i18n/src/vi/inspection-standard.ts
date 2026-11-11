@@ -31,7 +31,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     createVersion: 'Đăng ký phiên bản',
     newRevision: 'Phát hành phiên bản mới',
     confirm: 'Xác nhận',
-    obsolete: 'Hủy bỏ',
+    obsolete: 'Ngừng dùng',
+    obsoleteVersion: 'Ngừng dùng phiên bản',
+    reactivateVersion: 'Sử dụng lại phiên bản',
     discard: 'Hủy bản nháp',
     compareVersions: 'So sánh phiên bản',
     addItem: 'Thêm hạng mục',
@@ -56,14 +58,14 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     confirmBlockedByUnsaved:
       'Việc xác nhận không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     obsoleteNeedsConfirmed:
-      'Việc hủy bỏ chỉ thực hiện được với phiên bản đã xác nhận. Hãy xác nhận trước.',
+      'Việc ngừng dùng chỉ thực hiện được với phiên bản đã xác nhận. Hãy xác nhận trước.',
     discardNeedsDraft:
-      'Chỉ hủy bản nháp được với phiên bản đang soạn. Phiên bản đã xác nhận thì hãy hủy bỏ.',
+      'Chỉ hủy bản nháp được với phiên bản đang soạn. Phiên bản đã xác nhận thì hãy ngừng dùng.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion:
-      'Việc xác nhận · hủy bỏ chỉ thực hiện được sau khi đã đăng ký phiên bản.',
+      'Việc xác nhận · ngừng dùng chỉ thực hiện được sau khi đã đăng ký phiên bản.',
     /*
-     * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤이 공유하는 안내라
+     * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤이 공유하는 안내라
      * 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다.
      */
     versionLocked:
@@ -83,13 +85,13 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Việc phê duyệt chỉ thực hiện được khi có phiên bản đã xác nhận. Hãy xác nhận phiên bản trước.',
     lineRequired: 'Việc xác nhận chỉ thực hiện được sau khi đã lưu ít nhất 1 hạng mục kiểm tra.',
   },
-  /** 확정·폐기 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
+  /** 확정·사용 중지 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
     title: 'Đây là phiên bản hiện không sửa được',
     confirmed:
       'Phiên bản đã xác nhận thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
     obsolete:
-      'Phiên bản đã hủy bỏ thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
+      'Phiên bản đã ngừng dùng thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
@@ -100,9 +102,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
-    obsoleteTitle: 'Hủy bỏ phiên bản này?',
+    obsoleteTitle: 'Ngừng dùng phiên bản này?',
     obsoleteDescription:
-      'Phiên bản đã hủy bỏ không dùng được cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ.',
+      'Phiên bản đã ngừng dùng không dùng được cho lần kiểm tra mới. Sử dụng lại thì dùng được tiếp, dữ liệu hiện có vẫn được giữ.',
+    reactivateVersionTitle: 'Sử dụng lại phiên bản này?',
+    reactivateVersionDescription:
+      'Sử dụng lại thì phiên bản này trở lại là phiên bản xác nhận và được áp dụng cho lần kiểm tra mới.',
     discardTitle: 'Hủy phiên bản đang soạn này?',
     discardDescription:
       'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
@@ -135,7 +140,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     copied:
       'Đã tạo bản sao tiêu chuẩn kiểm tra. Phiên bản đang soạn — hãy kiểm tra nội dung rồi xác nhận.',
     confirmed: 'Đã xác nhận phiên bản.',
-    obsoleted: 'Đã hủy bỏ phiên bản.',
+    obsoleted: 'Đã ngừng dùng phiên bản.',
+    reactivated: 'Đã sử dụng lại phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',
   },
   import: {
@@ -182,7 +188,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   filters: {
     versionStatus: 'Chọn trạng thái',
     versionStatusAll: 'Tất cả',
-    versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Đã hủy bỏ' },
+    versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Ngừng dùng' },
     chipVersionStatus: (label: string): string => `Trạng thái: ${label}`,
     chipRemoveVersionStatus: 'Bỏ điều kiện trạng thái',
     searchLabel: 'Tìm tiêu chuẩn kiểm tra',
@@ -318,7 +324,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     settingsSaved: 'Thiết lập phiên bản',
     itemsSaved: 'Hạng mục kiểm tra',
     confirmed: 'Xác nhận',
-    obsoleted: 'Hủy bỏ',
+    obsoleted: 'Ngừng dùng',
+    reactivated: 'Sử dụng lại',
     discarded: 'Hủy soạn',
     updated: 'Sửa',
     unknownUser: (userId: number): string => `Người dùng #${String(userId)}`,
@@ -327,7 +334,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemRemoved: 'Xóa hạng mục',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: 'Chưa có lịch sử thay đổi',
-    noneDescription: 'Được ghi lại khi lưu · xác nhận · hủy bỏ phiên bản.',
+    noneDescription: 'Được ghi lại khi lưu · xác nhận · ngừng dùng · sử dụng lại phiên bản.',
     loading: 'Đang tải lịch sử thay đổi',
     range: '1 năm gần nhất',
   },
@@ -470,7 +477,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
     confirmed: 'Đã xác nhận',
-    obsolete: 'Đã hủy bỏ',
+    obsolete: 'Ngừng dùng',
     none: 'Không có',
     /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
     itemLabel: (code: string, name: string): string => `${code} · ${name}`,

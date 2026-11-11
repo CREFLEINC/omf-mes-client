@@ -177,11 +177,11 @@ describe('VersionFormPane — 상태 잠금', () => {
     ).toBeInTheDocument();
   });
 
-  it('폐기 버전은 다른 문구로 안내한다', () => {
+  it('사용 중지 버전은 다른 문구로 안내한다', () => {
     renderPane({ status: resolveVersionStatus('OBSOLETE') });
 
     expect(
-      screen.getByText('폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
+      screen.getByText('사용 중지된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
     ).toBeInTheDocument();
   });
 

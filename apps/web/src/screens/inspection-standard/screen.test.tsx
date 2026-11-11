@@ -1595,7 +1595,7 @@ describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
     renderSelectedPlan();
 
     const form = await awaitPlanForm();
-    expect(within(form).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '버전 사용 중지' })).not.toBeInTheDocument();
     expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 
@@ -1607,7 +1607,7 @@ describe('InspectionStandardScreen — 기준 승인 단추 없음', () => {
 
     const form = createForm();
     expect(within(form).getByRole('button', { name: '기준 추가' })).toBeInTheDocument();
-    expect(within(form).queryByRole('button', { name: '사용 중지' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '버전 사용 중지' })).not.toBeInTheDocument();
     expect(within(form).queryByRole('button', { name: '승인' })).not.toBeInTheDocument();
   });
 });
@@ -2158,7 +2158,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(1);
     /* 아직 없는 버전에는 전이할 대상이 없다 — 작성 취소 · 확정 · 폐기를 두지 않는다(#208). */
     expect(within(form).queryByRole('button', { name: '확정' })).not.toBeInTheDocument();
-    expect(within(form).queryByRole('button', { name: '폐기' })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('button', { name: '버전 사용 중지' })).not.toBeInTheDocument();
     expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(
       0,
     );
@@ -2228,7 +2228,7 @@ const versionSaveRoute = (
 });
 
 const versionTransitionRoute = (
-  action: 'confirm' | 'obsolete',
+  action: 'confirm' | 'obsolete' | 'reactivate',
   versionId = 4002,
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanVersionFixtures[0]),
 ): StubRoute => ({
@@ -2559,7 +2559,7 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
     /* 확정 버전에는 「버전 설정 수정」이 서지 않는다 — 요약 줄로만 본다(#196). */
     expect(await screen.findByText('적용 기간')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '폐기' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: '버전 사용 중지' })).toBeEnabled();
     });
     expect(screen.queryByRole('button', { name: '버전 설정 수정' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('샘플 비율(%)')).not.toBeInTheDocument();
@@ -2696,7 +2696,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     await awaitVersionForm();
 
-    expect(screen.queryByRole('button', { name: '폐기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '버전 사용 중지' })).not.toBeInTheDocument();
   });
 
   it('확정 버전에서는 폐기가 활성이고 확인하면 요청이 나간다', async () => {
@@ -2711,14 +2711,35 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     /* 확정 버전에는 「버전 설정 수정」이 없다 — 폐기는 버전 줄에서 한다(#196). */
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '폐기' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: '버전 사용 중지' })).toBeEnabled();
     });
 
-    await user.click(screen.getByRole('button', { name: '폐기' }));
-    await user.click(within(await dialog()).getByRole('button', { name: '폐기' }));
+    await user.click(screen.getByRole('button', { name: '버전 사용 중지' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '사용 중지' }));
     await screen.findByText(t.result.obsoleted);
 
     const posts = requestsTo(requests, `${VERSIONS_PATH}/4001:obsolete`);
+    expect(posts).toHaveLength(1);
+    expect(posts[0]?.headers.get('If-Match')).toBeNull();
+  });
+
+  /* 사용 중지된 버전은 그 자리에 「재사용」을 둔다(omf-all-around#258). */
+  it('사용 중지 버전에서는 재사용이 서고 확인하면 요청이 나간다', async () => {
+    const { requests, user } = renderSelectedVersion(
+      [
+        versionDetailRoute({ ...inspectionPlanVersionFixtures[1]!, statusCode: 'OBSOLETE' }),
+        itemListRoute(4001),
+        versionTransitionRoute('reactivate', 4001),
+      ],
+      '?plan=3001&ver=4001',
+    );
+
+    await user.click(await screen.findByRole('button', { name: '버전 재사용' }));
+    expect(screen.queryByRole('button', { name: '버전 사용 중지' })).not.toBeInTheDocument();
+    await user.click(within(await dialog()).getByRole('button', { name: '재사용' }));
+    await screen.findByText(t.result.reactivated);
+
+    const posts = requestsTo(requests, `${VERSIONS_PATH}/4001:reactivate`);
     expect(posts).toHaveLength(1);
     expect(posts[0]?.headers.get('If-Match')).toBeNull();
   });
@@ -2758,7 +2779,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     );
 
     /* 폐기 단추가 서면 버전 줄이 그려진 것이다. */
-    expect(await screen.findByRole('button', { name: '폐기' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '버전 사용 중지' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '작성 취소' })).not.toBeInTheDocument();
   });
 

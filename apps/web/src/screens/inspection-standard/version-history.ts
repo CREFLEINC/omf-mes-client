@@ -110,6 +110,9 @@ const actionOf = (event: VersionAuditEvent): string => {
       : t.history.created;
   }
   if ('items' in before || 'items' in after) return t.history.itemsSaved;
+  /* 사용 중지 → 확정은 재사용이다(omf-all-around#258). */
+  if (after.statusCode === 'CONFIRMED' && before.statusCode === 'OBSOLETE')
+    return t.history.reactivated;
   if (after.statusCode === 'CONFIRMED') return t.history.confirmed;
   if (after.statusCode === 'OBSOLETE') return t.history.obsoleted;
   if (Object.keys(after).length > 0 || Object.keys(before).length > 0)
