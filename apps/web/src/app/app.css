@@ -27619,15 +27619,44 @@ body:has(.page-nav-size [aria-expanded="true"])
 }
 
 .inspection-sheet-template-step-list button {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
   min-height: 36px;
-  padding: 0 var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--outline-variant);
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--on-surface);
   font: var(--type-body-md);
+  text-align: left;
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* 단추 둘째 줄 — 사용 여부(점 · 글) · 항목 수. 사용은 초록, 미사용은 회색(사용자 지시 · 검사 단계 UI/UX). */
+.inspection-sheet-template-step-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.inspection-sheet-template-step-dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+}
+
+.inspection-sheet-template-step-list button[data-enabled="true"] .inspection-sheet-template-step-dot {
+  border-color: var(--semantic-success);
+  background: var(--semantic-success);
+}
+
+.inspection-sheet-template-step-list button[data-enabled="true"] .inspection-sheet-template-step-meta {
+  color: var(--semantic-success-text);
 }
 
 .inspection-sheet-template-step-list button:hover {
@@ -27638,10 +27667,14 @@ body:has(.page-nav-size [aria-expanded="true"])
   color: var(--on-surface-variant);
 }
 
+/* 고른 단계 — 빨간 테두리와 옅은 바탕만. 사용 상태처럼 보이지 않게 채우지 않는다(사용자 지시 · 검사 단계 UI/UX). */
 .inspection-sheet-template-step-list button[aria-current="true"] {
   border-color: var(--primary);
-  background: var(--primary);
-  color: var(--on-primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.inspection-sheet-template-step-list button[aria-current="true"] .inspection-sheet-template-step-name {
   font-weight: 600;
 }
 
@@ -27672,12 +27705,18 @@ body:has(.page-nav-size [aria-expanded="true"])
   border: 0;
 }
 
+/* 머리 줄은 떠 있지 않게 둔다 — 쓰지 않는 단계는 이 줄만 남아, 떠 있으면 칸 높이가 0이 되어 둘째 줄이 잘린다. */
 .inspection-sheet-template-step > legend {
-  float: left;
+  float: none;
+  width: 100%;
   padding: 0;
 }
 
-/* 사용 · 관리자 서명 체크 줄, 오른쪽 끝에 「항목 추가」, 아래 구분선. */
+.inspection-sheet-template-step[data-enabled="true"] > legend {
+  margin-bottom: var(--space-3);
+}
+
+/* 고른 단계 머리 줄 — 왼쪽 단계 이름 · 항목 수, 오른쪽 사용 · 관리자 서명 체크. 쓰는 단계면 아래 구분선. */
 .inspection-sheet-template-step-head {
   display: flex;
   flex-wrap: wrap;
@@ -27686,12 +27725,44 @@ body:has(.page-nav-size [aria-expanded="true"])
   width: 100%;
 }
 
-.inspection-sheet-template-step-head:has(.inspection-sheet-template-add-item),
-.inspection-sheet-template-step-head:has(
-  + .inspection-sheet-template-step-fields
-) {
+.inspection-sheet-template-step[data-enabled="true"] > .inspection-sheet-template-step-head {
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--outline-variant);
+}
+
+.inspection-sheet-template-step-title {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inspection-sheet-template-step-title-name {
+  font: var(--type-title-sm);
+}
+
+.inspection-sheet-template-step-count {
+  color: var(--on-surface-variant);
+  font: var(--type-body-md);
+}
+
+.inspection-sheet-template-step-toggles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+}
+
+/* 검사 항목 칸 머리 — 제목, 오른쪽 위 「항목 추가」. */
+.inspection-sheet-template-items-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inspection-sheet-template-items-title {
+  font: var(--type-label-lg, var(--type-body-md));
+  font-weight: 600;
 }
 
 .inspection-sheet-template-add-item {

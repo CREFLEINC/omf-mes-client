@@ -144,7 +144,13 @@ export const inspectionSheetTemplate = {
     stepList: '검사 단계 목록',
     stepUse: (name: string) => `${name} 사용`,
     stepUnused: '사용 안 함',
-    stepOff: '사용하지 않는 검사 단계입니다.',
+    /** 단계 단추 둘째 줄 — 「● 사용 · 3개」(사용자 지시 · 검사 단계 UI/UX) */
+    stepOnShort: '사용',
+    stepOffShort: '미사용',
+    itemCountShort: (count: number) => `${count}개`,
+    /** 고른 단계 머리 줄 왼쪽 — 단계 이름 아래 항목 수 */
+    itemsRegistered: (count: number) => `등록된 항목 ${count}개`,
+    itemsTitle: '검사 항목',
     itemCount: (count: number) => `항목 ${count}개`,
     noItemsShort: '항목 없음',
     signShort: '서명 필요',
