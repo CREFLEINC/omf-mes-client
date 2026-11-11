@@ -54,6 +54,10 @@ const versionFields = (
     samplingRatio: { label: t.fields.samplingRatio, format: raw },
     samplingQty: { label: t.fields.samplingQty, format: raw },
     aqlValue: { label: t.fields.aqlValue, format: raw },
+    aqlInspectionLevelCode: {
+      label: t.fields.aqlInspectionLevel,
+      format: code((value) => t.values.aqlLevels[value] ?? value),
+    },
     acceptanceNumber: { label: t.fields.acceptanceNumber, format: raw },
     rejectionNumber: { label: t.fields.rejectionNumber, format: raw },
     inspectionFrequencyCode: {

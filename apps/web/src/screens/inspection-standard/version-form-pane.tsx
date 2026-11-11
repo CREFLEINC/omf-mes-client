@@ -2,7 +2,15 @@ import { AlertBanner, Button, Chip, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
-import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
+import {
+  AQL_LEVEL_OPTIONS,
+  AQL_SAMPLING,
+  AQL_VALUE_OPTIONS,
+  DEFAULT_AQL_LEVEL,
+  FULL_INSPECTION,
+  SAMPLING_METHOD_OPTIONS,
+  ensureOption,
+} from './code-options';
 import { DateField } from './date-field';
 import { FieldLabel } from './field-label';
 import type { VersionStatusView } from './plan-version-status';
@@ -77,6 +85,32 @@ export const VersionFormPane = ({
   const isLocked = status !== null && !status.isEditable;
   /* 전수검사는 비율이 뜻이 없다 — 칸을 잠그고 값을 비운다(omf-all-around#103). */
   const isFullInspection = values.samplingMethodCode === FULL_INSPECTION;
+  /* AQL 샘플링은 시료 수 · 판정 수를 검사할 때 LOT 수량으로 표에서 정한다(omf-all-around#264). */
+  const isAql = values.samplingMethodCode === AQL_SAMPLING;
+  const changeSamplingMethod = (samplingMethodCode: string) => {
+    if (samplingMethodCode === AQL_SAMPLING) {
+      onChange({
+        samplingMethodCode,
+        samplingRatio: '',
+        samplingQty: '',
+        acceptanceNumber: '',
+        rejectionNumber: '',
+        aqlInspectionLevelCode: values.aqlInspectionLevelCode || DEFAULT_AQL_LEVEL,
+        /* 표에 없는 값(예: 0)은 AQL 표로 계산할 수 없어 비운다. */
+        aqlValue: AQL_VALUE_OPTIONS.some(
+          (option) => Number(option.value) === Number(values.aqlValue),
+        )
+          ? values.aqlValue
+          : '',
+      });
+      return;
+    }
+    onChange({
+      samplingMethodCode,
+      aqlInspectionLevelCode: '',
+      ...(samplingMethodCode === FULL_INSPECTION ? { samplingRatio: '', samplingQty: '' } : {}),
+    });
+  };
   const stateLockMessage =
     status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
 
@@ -144,13 +178,7 @@ export const VersionFormPane = ({
           required
           options={ensureOption(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode)}
           value={values.samplingMethodCode}
-          onChange={(samplingMethodCode) =>
-            onChange(
-              samplingMethodCode === FULL_INSPECTION
-                ? { samplingMethodCode, samplingRatio: '', samplingQty: '' }
-                : { samplingMethodCode },
-            )
-          }
+          onChange={changeSamplingMethod}
           disabled={isLocked}
           error={fieldErrors.samplingMethodCode}
         />
@@ -163,80 +191,104 @@ export const VersionFormPane = ({
          * 거짓말이 된다). `step="any"` — 계약이 double 이라 소수를 막지 않는다(#201 ③).
          * 개수: 고객사 기준서는 샘플을 개수(n=5)로 적는다(omf-all-around#201).
          */}
-        <div className="field-cell">
-          <div className="inspection-standard-sampling-head">
-            <FieldLabel
-              htmlFor={samplingBasis === 'ratio' ? samplingRatioId : samplingQtyId}
-              label={samplingBasis === 'ratio' ? t.fields.samplingRatio : t.fields.samplingQty}
-            />
-            <div
-              className="inspection-standard-sampling-basis"
-              /* 전수검사면 잠긴 까닭을 마우스를 올리면 보인다(#196). */
-              title={isFullInspection ? t.versionSection.samplingBasisLocked : undefined}
-              role="group"
-              aria-label={t.versionSection.samplingBasis}
-            >
-              <Chip
-                variant="filter"
-                size="sm"
-                selected={samplingBasis === 'ratio'}
-                disabled={isLocked || isFullInspection}
-                onClick={() => {
-                  if (samplingBasis === 'ratio') return;
-                  setSamplingBasis('ratio');
-                  onChange({ samplingQty: '' });
-                }}
+        {isAql ? (
+          <SelectField
+            label={t.fields.aqlInspectionLevel}
+            required
+            options={ensureOption(AQL_LEVEL_OPTIONS, values.aqlInspectionLevelCode)}
+            value={values.aqlInspectionLevelCode}
+            onChange={(aqlInspectionLevelCode) => onChange({ aqlInspectionLevelCode })}
+            disabled={isLocked}
+            error={fieldErrors.aqlInspectionLevelCode}
+          />
+        ) : (
+          <div className="field-cell">
+            <div className="inspection-standard-sampling-head">
+              <FieldLabel
+                htmlFor={samplingBasis === 'ratio' ? samplingRatioId : samplingQtyId}
+                label={samplingBasis === 'ratio' ? t.fields.samplingRatio : t.fields.samplingQty}
+              />
+              <div
+                className="inspection-standard-sampling-basis"
+                /* 전수검사면 잠긴 까닭을 마우스를 올리면 보인다(#196). */
+                title={isFullInspection ? t.versionSection.samplingBasisLocked : undefined}
+                role="group"
+                aria-label={t.versionSection.samplingBasis}
               >
-                {t.versionSection.samplingByRatio}
-              </Chip>
-              <Chip
-                variant="filter"
-                size="sm"
-                selected={samplingBasis === 'qty'}
-                disabled={isLocked || isFullInspection}
-                onClick={() => {
-                  if (samplingBasis === 'qty') return;
-                  setSamplingBasis('qty');
-                  onChange({ samplingRatio: '' });
-                }}
-              >
-                {t.versionSection.samplingByQty}
-              </Chip>
+                <Chip
+                  variant="filter"
+                  size="sm"
+                  selected={samplingBasis === 'ratio'}
+                  disabled={isLocked || isFullInspection}
+                  onClick={() => {
+                    if (samplingBasis === 'ratio') return;
+                    setSamplingBasis('ratio');
+                    onChange({ samplingQty: '' });
+                  }}
+                >
+                  {t.versionSection.samplingByRatio}
+                </Chip>
+                <Chip
+                  variant="filter"
+                  size="sm"
+                  selected={samplingBasis === 'qty'}
+                  disabled={isLocked || isFullInspection}
+                  onClick={() => {
+                    if (samplingBasis === 'qty') return;
+                    setSamplingBasis('qty');
+                    onChange({ samplingRatio: '' });
+                  }}
+                >
+                  {t.versionSection.samplingByQty}
+                </Chip>
+              </div>
             </div>
+            {samplingBasis === 'ratio' ? (
+              <TextField
+                id={samplingRatioId}
+                type="number"
+                max={100}
+                step="any"
+                value={values.samplingRatio}
+                onChange={(event) => onChange({ samplingRatio: event.target.value })}
+                disabled={isLocked || isFullInspection}
+                error={fieldErrors.samplingRatio}
+              />
+            ) : (
+              <TextField
+                id={samplingQtyId}
+                type="number"
+                min={1}
+                step={1}
+                value={values.samplingQty}
+                onChange={(event) => onChange({ samplingQty: event.target.value })}
+                disabled={isLocked || isFullInspection}
+                error={fieldErrors.samplingQty ?? fieldErrors.samplingRatio}
+              />
+            )}
           </div>
-          {samplingBasis === 'ratio' ? (
-            <TextField
-              id={samplingRatioId}
-              type="number"
-              max={100}
-              step="any"
-              value={values.samplingRatio}
-              onChange={(event) => onChange({ samplingRatio: event.target.value })}
-              disabled={isLocked || isFullInspection}
-              error={fieldErrors.samplingRatio}
-            />
-          ) : (
-            <TextField
-              id={samplingQtyId}
-              type="number"
-              min={1}
-              step={1}
-              value={values.samplingQty}
-              onChange={(event) => onChange({ samplingQty: event.target.value })}
-              disabled={isLocked || isFullInspection}
-              error={fieldErrors.samplingQty ?? fieldErrors.samplingRatio}
-            />
-          )}
-        </div>
+        )}
 
-        <TextField
-          type="number"
-          label={t.fields.aqlValue}
-          value={values.aqlValue}
-          onChange={(event) => onChange({ aqlValue: event.target.value })}
-          disabled={isLocked}
-          error={fieldErrors.aqlValue}
-        />
+        {isAql ? (
+          <SelectField
+            label={t.fields.aqlValue}
+            required
+            options={ensureOption(AQL_VALUE_OPTIONS, values.aqlValue)}
+            value={values.aqlValue}
+            onChange={(aqlValue) => onChange({ aqlValue })}
+            disabled={isLocked}
+            error={fieldErrors.aqlValue}
+          />
+        ) : (
+          <TextField
+            type="number"
+            label={t.fields.aqlValue}
+            value={values.aqlValue}
+            onChange={(event) => onChange({ aqlValue: event.target.value })}
+            disabled={isLocked}
+            error={fieldErrors.aqlValue}
+          />
+        )}
 
         {/* 계약 CHECK ≥ 0 — 0이 허용된다. 불합격판정개수와 하한이 다르다. */}
         <TextField
@@ -245,7 +297,8 @@ export const VersionFormPane = ({
           label={t.fields.acceptanceNumber}
           value={values.acceptanceNumber}
           onChange={(event) => onChange({ acceptanceNumber: event.target.value })}
-          disabled={isLocked}
+          disabled={isLocked || isAql}
+          helperText={isAql ? t.versionSection.aqlJudgmentLocked : undefined}
           error={fieldErrors.acceptanceNumber}
         />
 
@@ -256,7 +309,7 @@ export const VersionFormPane = ({
           label={t.fields.rejectionNumber}
           value={values.rejectionNumber}
           onChange={(event) => onChange({ rejectionNumber: event.target.value })}
-          disabled={isLocked}
+          disabled={isLocked || isAql}
           error={fieldErrors.rejectionNumber}
         />
       </div>

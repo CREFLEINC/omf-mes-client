@@ -821,6 +821,22 @@ type StockReinstatementsPath = paths['/logistics/stock-reinstatements'];
  */
 export interface InspectionPlanVersionGuideForward {
   guideText?: string | null;
+  /**
+   * 서버 선행(omf-all-around#264) — AQL 검사 수준(G-I~G-III · S-1~S-4). 검사 방식이 AQL 이면 필수다.
+   * 품목별 IQC 검사 수준(무검사 · 수월 · 보통 · 엄격)과 다른 축이다.
+   */
+  aqlInspectionLevelCode?: string | null;
+}
+
+/** 서버 선행(omf-all-around#264) — 의뢰 수량(LOT 크기)으로 KS Q ISO 2859-1 표에서 낸 AQL 시료 계획. 상세 조회만 싣는다. */
+export interface InspectionAqlPlanForward {
+  aqlValue: number;
+  aqlInspectionLevelCode: string;
+  codeLetter: string;
+  /** 검사할 수 — 표의 시료 수가 의뢰 수량 이상이면 의뢰 수량(전수). */
+  sampleSize: number;
+  acceptanceNumber: number;
+  rejectionNumber: number;
 }
 
 /**
@@ -863,6 +879,7 @@ export interface ForwardPaths {
         200: Json<
           components['schemas']['InspectionRequest'] & {
             inspectionGuides?: InspectionGuideForward[];
+            aqlPlan?: InspectionAqlPlanForward;
           }
         >;
       };

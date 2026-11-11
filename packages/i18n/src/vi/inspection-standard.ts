@@ -247,6 +247,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingBasisLocked:
       'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
     samplingQtyValue: (qty: string): string => `${qty} cái`,
+    aqlJudgmentLocked:
+      'Lấy mẫu AQL: số chấp nhận · số bác bỏ được xác định theo bảng AQL dựa trên số lượng LOT.',
+    aqlByLot: 'Tính theo bảng AQL dựa trên số lượng LOT',
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',
     effectivePeriod: 'Thời hạn hiệu lực',
@@ -423,6 +426,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingRatio: 'Tỷ lệ lấy mẫu (%)',
     samplingQty: 'Số lượng mẫu',
     aqlValue: 'AQL',
+    aqlInspectionLevel: 'Mức kiểm tra AQL',
     /** 합격·불합격 판정 개수는 AQL 표의 Ac·Re 다 — 검사 결과 건수가 아니다. */
     acceptanceNumber: 'Số chấp nhận',
     rejectionNumber: 'Số bác bỏ',
@@ -479,7 +483,17 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       fullInspection: 'Kiểm tra toàn bộ',
       sampleByUnit: 'Lấy mẫu (theo sản phẩm)',
       sampleByLot: 'Lấy mẫu (theo LOT)',
+      aql: 'Lấy mẫu AQL',
     },
+    aqlLevels: {
+      'G-I': 'Thông thường G-I',
+      'G-II': 'Thông thường G-II',
+      'G-III': 'Thông thường G-III',
+      'S-1': 'Đặc biệt S-1',
+      'S-2': 'Đặc biệt S-2',
+      'S-3': 'Đặc biệt S-3',
+      'S-4': 'Đặc biệt S-4',
+    } as Record<string, string>,
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     routingSummary: (code: string, version: number): string =>
       `Mã ${code} · Phiên bản Rev ${String(version)}`,

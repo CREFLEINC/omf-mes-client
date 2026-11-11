@@ -68,6 +68,8 @@ export interface VersionFormValues {
   /** 샘플 **개수**(1 이상 정수). 샘플링 방식이면 비율과 둘 중 하나만 넣는다(omf-all-around#201). */
   samplingQty: string;
   aqlValue: string;
+  /** AQL 검사 수준(G-I~S-4) — 검사 방식이 AQL 일 때만 쓴다(omf-all-around#264). */
+  aqlInspectionLevelCode: string;
   acceptanceNumber: string;
   rejectionNumber: string;
   /** 검사 지시문(#252) — 검사 화면이 기준 정보 바로 아래에 보인다. 한 칸이다(언어별로 나누지 않는다 · #261). */

@@ -1,7 +1,12 @@
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
+import {
+  AQL_SAMPLING,
+  FULL_INSPECTION,
+  SAMPLING_METHOD_OPTIONS,
+  ensureOption,
+} from './code-options';
 import type { VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
@@ -30,20 +35,31 @@ export const VersionSummary = ({ values }: VersionSummaryProps) => {
   /* 샘플링 검사면 비율(%) 또는 개수 중 들어 있는 쪽을 함께 낸다(#201). */
   const isSampling =
     values.samplingMethodCode !== FULL_INSPECTION && values.samplingMethodCode !== '';
+  /* AQL 샘플링이면 검사 수준을 함께 — 판정 수 칸은 검사할 때 LOT 수량으로 정한다고 적는다(omf-all-around#264). */
+  const isAql = values.samplingMethodCode === AQL_SAMPLING;
+  const level = t.values.aqlLevels[values.aqlInspectionLevelCode] ?? values.aqlInspectionLevelCode;
   const withRatio = !isSampling
     ? sampling
-    : values.samplingRatio !== ''
-      ? `${sampling} · ${values.samplingRatio}%`
-      : values.samplingQty !== ''
-        ? `${sampling} · ${t.versionSection.samplingQtyValue(values.samplingQty)}`
-        : sampling;
+    : isAql
+      ? `${sampling} · ${level === '' ? t.versionSection.notSet : level}`
+      : values.samplingRatio !== ''
+        ? `${sampling} · ${values.samplingRatio}%`
+        : values.samplingQty !== ''
+          ? `${sampling} · ${t.versionSection.samplingQtyValue(values.samplingQty)}`
+          : sampling;
 
   /* 순서 — 어떻게 검사하는지(방식)를 먼저, 판정 수 · AQL, 적용 기간은 끝(omf-all-around#256). */
   const facts: { label: string; value: ReactNode }[] = [
     { label: t.versionSection.sampling, value: withRatio },
     /* 「버전 설정」 탭을 걷고 그 값도 이 줄에 싣는다 — 비었으면 「미설정」(사용자 지시 · #196). */
-    { label: t.fields.acceptanceNumber, value: orNotSet(values.acceptanceNumber) },
-    { label: t.fields.rejectionNumber, value: orNotSet(values.rejectionNumber) },
+    {
+      label: t.fields.acceptanceNumber,
+      value: isAql ? t.versionSection.aqlByLot : orNotSet(values.acceptanceNumber),
+    },
+    {
+      label: t.fields.rejectionNumber,
+      value: isAql ? t.versionSection.aqlByLot : orNotSet(values.rejectionNumber),
+    },
     { label: t.fields.aqlValue, value: orNotSet(values.aqlValue) },
     {
       label: t.versionSection.effectivePeriod,

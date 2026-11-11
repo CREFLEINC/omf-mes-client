@@ -4,7 +4,7 @@ import type {
 } from '@omf-mes/api-client';
 
 import { todayIso } from '../gauge-master/today';
-import { FULL_INSPECTION } from './code-options';
+import { AQL_SAMPLING, FULL_INSPECTION } from './code-options';
 import type { InspectionPlanVersion, VersionFormValues } from './types';
 
 type InspectionPlanVersionCreate = InspectionPlanVersionCreateForward;
@@ -26,6 +26,7 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   samplingRatio: optionalNumberToText(version.samplingRatio),
   samplingQty: optionalNumberToText(version.samplingQty),
   aqlValue: optionalNumberToText(version.aqlValue),
+  aqlInspectionLevelCode: version.aqlInspectionLevelCode ?? '',
   acceptanceNumber: optionalNumberToText(version.acceptanceNumber),
   rejectionNumber: optionalNumberToText(version.rejectionNumber),
   guideText: version.guideText ?? '',
@@ -40,7 +41,9 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   samplingRatio: '',
   samplingQty: '',
   aqlValue: '',
-  acceptanceNumber: '',
+  aqlInspectionLevelCode: '',
+  /* 합격 허용 불량 수는 0 으로 시작한다 — 두 사업부 기준서가 모두 c=0 이다(사용자 지시 · omf-all-around#264). */
+  acceptanceNumber: '0',
   rejectionNumber: '',
   guideText: '',
 });
@@ -71,8 +74,17 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   samplingQty:
     values.samplingMethodCode === FULL_INSPECTION ? null : optionalTextToNumber(values.samplingQty),
   aqlValue: optionalTextToNumber(values.aqlValue),
-  acceptanceNumber: optionalTextToNumber(values.acceptanceNumber),
-  rejectionNumber: optionalTextToNumber(values.rejectionNumber),
+  /* AQL 샘플링이면 수준을 싣고 판정 수는 싣지 않는다 — 표가 LOT 수량으로 정한다(omf-all-around#264). */
+  aqlInspectionLevelCode:
+    values.samplingMethodCode === AQL_SAMPLING ? optionalText(values.aqlInspectionLevelCode) : null,
+  acceptanceNumber:
+    values.samplingMethodCode === AQL_SAMPLING
+      ? null
+      : optionalTextToNumber(values.acceptanceNumber),
+  rejectionNumber:
+    values.samplingMethodCode === AQL_SAMPLING
+      ? null
+      : optionalTextToNumber(values.rejectionNumber),
   /* 검사 주기 · 주기 값 · 주기 단위는 싣지 않는다 — 기록용이라 입력을 걷었고, 빼면 서버가 그대로 둔다(#263). */
   /* 검사 지시문(#252 · 한 칸 #261) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
   guideText: optionalText(values.guideText.trim()),

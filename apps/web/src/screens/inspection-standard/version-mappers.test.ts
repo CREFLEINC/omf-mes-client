@@ -17,6 +17,7 @@ const filled: VersionFormValues = {
   samplingRatio: '30',
   samplingQty: '',
   aqlValue: '1',
+  aqlInspectionLevelCode: '',
   acceptanceNumber: '0',
   rejectionNumber: '2',
   guideText: '장갑 착용',
@@ -31,6 +32,7 @@ describe('versionToFormValues', () => {
       samplingRatio: '30',
       samplingQty: '',
       aqlValue: '',
+      aqlInspectionLevelCode: '',
       acceptanceNumber: '0',
       rejectionNumber: '2',
       guideText: '',
@@ -67,14 +69,16 @@ describe('versionToFormValues', () => {
 
 describe('emptyVersionFormValues', () => {
   /* 검사 방식은 전수검사(사용자 지시 · #208), 적용 시작일은 오늘(#255 사용자 지시)로 시작한다. */
-  it('검사 방식은 전수검사, 적용 시작일은 오늘, 나머지 칸은 빈 폼을 만든다', () => {
+  it('검사 방식은 전수검사, 적용 시작일은 오늘, 합격 허용 불량 수는 0, 나머지 칸은 빈 폼을 만든다', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 10, 11, 8, 30));
-    const { samplingMethodCode, effectiveFrom, ...rest } = emptyVersionFormValues();
+    const { samplingMethodCode, effectiveFrom, acceptanceNumber, ...rest } =
+      emptyVersionFormValues();
     vi.useRealTimers();
 
     expect(samplingMethodCode).toBe('FULL_INSPECTION');
     expect(effectiveFrom).toBe('2026-11-11');
+    expect(acceptanceNumber).toBe('0');
     expect(Object.values(rest).every((value) => value === '')).toBe(true);
   });
 });
@@ -88,9 +92,36 @@ describe('toVersionUpdate', () => {
       samplingRatio: 30,
       samplingQty: null,
       aqlValue: 1,
+      aqlInspectionLevelCode: null,
       acceptanceNumber: 0,
       rejectionNumber: 2,
       guideText: '장갑 착용',
+    });
+  });
+
+  /* AQL 샘플링은 판정 수를 LOT 수량으로 표에서 정한다 — 수준을 싣고 판정 수 · 비율은 싣지 않는다(omf-all-around#264). */
+  it('AQL 샘플링이면 검사 수준을 싣고 판정 수는 null 로 보낸다', () => {
+    const body = toVersionUpdate({
+      ...filled,
+      samplingMethodCode: 'AQL',
+      samplingRatio: '',
+      aqlValue: '0.4',
+      aqlInspectionLevelCode: 'G-II',
+    });
+
+    expect(body).toMatchObject({
+      aqlValue: 0.4,
+      aqlInspectionLevelCode: 'G-II',
+      acceptanceNumber: null,
+      rejectionNumber: null,
+    });
+  });
+
+  it('새 버전은 합격 허용 불량 수 0 으로 시작한다', () => {
+    expect(emptyVersionFormValues()).toMatchObject({
+      acceptanceNumber: '0',
+      aqlValue: '',
+      rejectionNumber: '',
     });
   });
 

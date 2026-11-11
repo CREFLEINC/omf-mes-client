@@ -287,6 +287,9 @@ export const inspectionStandard = {
       '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
+    /* AQL 샘플링(omf-all-around#264) — 시료 수 · 판정 수는 검사할 때 LOT 수량으로 표에서 정한다. */
+    aqlJudgmentLocked: 'AQL 샘플링은 합격 · 불합격 판정 수를 LOT 수량에 따라 AQL 표로 정합니다.',
+    aqlByLot: 'LOT 수량에 따라 AQL 표로 계산',
     title: '검사 기준 버전',
     sampling: '검사 방식',
     effectivePeriod: '적용 기간',
@@ -477,6 +480,7 @@ export const inspectionStandard = {
     samplingRatio: '샘플 비율(%)',
     samplingQty: '샘플 수량',
     aqlValue: 'AQL',
+    aqlInspectionLevel: 'AQL 검사 수준',
     acceptanceNumber: '합격 허용 불량 수',
     rejectionNumber: '불합격 판정 불량 수',
     inspectionFrequency: '검사 주기',
@@ -535,7 +539,18 @@ export const inspectionStandard = {
       fullInspection: '전수검사',
       sampleByUnit: '샘플링(제품 단위)',
       sampleByLot: '샘플링(LOT 단위)',
+      aql: 'AQL 샘플링',
     },
+    /* KS Q ISO 2859-1 검사 수준 — 일반 I~III · 특별 S-1~S-4(omf-all-around#264). */
+    aqlLevels: {
+      'G-I': '일반 G-I',
+      'G-II': '일반 G-II',
+      'G-III': '일반 G-III',
+      'S-1': '특별 S-1',
+      'S-2': '특별 S-2',
+      'S-3': '특별 S-3',
+      'S-4': '특별 S-4',
+    } as Record<string, string>,
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     /** 기준 수정 창의 라우팅 — 코드 · 버전임을 밝힌다(사용자 지시 2026-11-04). 상태는 옆 칩이 맡는다. */
     routingSummary: (code: string, version: number): string =>

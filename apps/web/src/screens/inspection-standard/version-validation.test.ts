@@ -12,6 +12,7 @@ const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues =
   samplingRatio: '',
   samplingQty: '',
   aqlValue: '',
+  aqlInspectionLevelCode: '',
   acceptanceNumber: '',
   rejectionNumber: '',
   guideText: '',
@@ -176,5 +177,24 @@ describe('validateVersionForm — 샘플 비율', () => {
     expect(message).toMatch(/비율/);
     expect(message).toMatch(/%/);
     expect(message).not.toMatch(/수량|개수/);
+  });
+});
+
+/* omf-all-around#264 — AQL 샘플링은 AQL 값 · 검사 수준만 받는다. */
+describe('validateVersionForm — AQL 샘플링', () => {
+  it('AQL 값 · 검사 수준이 비면 각각 필수 오류를 낸다', () => {
+    const errors = validateVersionForm(values({ samplingMethodCode: 'AQL' }));
+
+    expect(errors.aqlValue).toBe('필수 입력 항목입니다.');
+    expect(errors.aqlInspectionLevelCode).toBe('필수 입력 항목입니다.');
+    expect(errors.samplingRatio).toBeUndefined();
+  });
+
+  it('둘 다 고르면 샘플 비율 · 개수 없이 통과한다', () => {
+    expect(
+      validateVersionForm(
+        values({ samplingMethodCode: 'AQL', aqlValue: '0.4', aqlInspectionLevelCode: 'G-II' }),
+      ),
+    ).toEqual({});
   });
 });

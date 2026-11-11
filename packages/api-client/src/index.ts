@@ -84,4 +84,5 @@ export type {
   InspectionPlanVersionUpdateForward,
   InspectionPlanVersionGuideForward,
   InspectionGuideForward,
+  InspectionAqlPlanForward,
 } from './forward-contract';

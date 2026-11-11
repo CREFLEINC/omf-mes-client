@@ -125,6 +125,40 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
     expect(screen.getByLabelText(/샘플 비율/)).toBeEnabled();
   });
 
+  /* omf-all-around#264 — AQL 샘플링은 판정 수를 표로 정한다. */
+  it('AQL 샘플링으로 바꾸면 검사 수준을 G-II 로 채우고 비율 · 판정 수를 비운다', async () => {
+    const { onChange, user } = renderPane();
+
+    await user.click(screen.getByRole('combobox', { name: '검사 방식' }));
+    await user.click(screen.getByRole('option', { name: 'AQL 샘플링' }));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        samplingMethodCode: 'AQL',
+        aqlInspectionLevelCode: 'G-II',
+        samplingRatio: '',
+        acceptanceNumber: '',
+        rejectionNumber: '',
+      }),
+    );
+  });
+
+  it('AQL 샘플링이면 AQL · 검사 수준을 고르고 판정 수 칸은 잠긴다', () => {
+    renderPane({
+      values: {
+        ...versionToFormValues(inspectionPlanVersionFixtures[0]!),
+        samplingMethodCode: 'AQL',
+        aqlValue: '0.4',
+        aqlInspectionLevelCode: 'G-II',
+      },
+    });
+
+    expect(screen.getByRole('combobox', { name: /AQL 검사 수준/ })).toBeEnabled();
+    expect(screen.getByLabelText('합격 허용 불량 수')).toBeDisabled();
+    expect(screen.getByLabelText('불합격 판정 불량 수')).toBeDisabled();
+    expect(screen.queryByLabelText(/샘플 비율/)).not.toBeInTheDocument();
+  });
+
   it('전수검사로 바꾸면 비율을 함께 비운다', async () => {
     const { onChange, user } = renderPane();
 
@@ -133,6 +167,7 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
 
     expect(onChange).toHaveBeenCalledWith({
       samplingMethodCode: 'FULL_INSPECTION',
+      aqlInspectionLevelCode: '',
       samplingRatio: '',
       samplingQty: '',
     });

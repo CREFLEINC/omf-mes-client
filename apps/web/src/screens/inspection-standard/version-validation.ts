@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { FULL_INSPECTION } from './code-options';
+import { AQL_SAMPLING, FULL_INSPECTION } from './code-options';
 import type { VersionFormValues } from './types';
 
 const t = messages.inspectionStandard.validation;
@@ -16,6 +16,7 @@ export const VERSION_FORM_FIELDS = [
   'samplingRatio',
   'samplingQty',
   'aqlValue',
+  'aqlInspectionLevelCode',
   'acceptanceNumber',
   'rejectionNumber',
   'guideText',
@@ -67,6 +68,13 @@ export const validateVersionForm = (values: VersionFormValues): Record<string, s
     if (!Number.isFinite(acceptance) || acceptance < 0) {
       errors.acceptanceNumber = t.acceptanceNumberInvalid;
     }
+  }
+
+  /* AQL 샘플링은 시료 수를 표로 정한다 — AQL 값 · 검사 수준만 받는다(omf-all-around#264). */
+  if (values.samplingMethodCode === AQL_SAMPLING) {
+    if (isBlank(values.aqlValue)) errors.aqlValue = t.required;
+    if (isBlank(values.aqlInspectionLevelCode)) errors.aqlInspectionLevelCode = t.required;
+    return errors;
   }
 
   /*

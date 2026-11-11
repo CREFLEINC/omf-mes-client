@@ -64,6 +64,11 @@ export const compareSettings = (
     { key: 'samplingRatio', label: t.fields.samplingRatio, format: text },
     { key: 'samplingQty', label: t.fields.samplingQty, format: text },
     { key: 'aqlValue', label: t.fields.aqlValue, format: text },
+    {
+      key: 'aqlInspectionLevelCode',
+      label: t.fields.aqlInspectionLevel,
+      format: (value) => labelOrEmpty(value, (code) => t.values.aqlLevels[code] ?? code),
+    },
     { key: 'acceptanceNumber', label: t.fields.acceptanceNumber, format: text },
     { key: 'rejectionNumber', label: t.fields.rejectionNumber, format: text },
     { key: 'guideText', label: t.fields.guideText, format: text },
