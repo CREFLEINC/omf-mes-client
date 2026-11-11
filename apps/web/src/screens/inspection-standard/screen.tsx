@@ -2063,39 +2063,39 @@ export const InspectionStandardScreen = () => {
         aria-label={t.versionSection.settingsTitle}
       >
         <div className="inspection-standard-setting-list">
-          {/* 검사 항목 · 검사 지시문은 넓으면 좌우 반반, 좁으면 도면과 같이 한 열로 쌓는다(사용자 지시 · #258). */}
+          {/* 검사 항목은 한 줄 전체, 그 아래 검사 지시문 · 검사 도면을 한 줄에 둔다 — 좁으면 한 열로 쌓는다(사용자 지시 · #258). */}
+          <VersionSettingRow
+            title={t.versionSection.tabItems}
+            summary={t.versionSection.rowItemsCount(itemDrafts.length)}
+            action={
+              isEditable ? (
+                <Button
+                  variant="outlined"
+                  leadingIcon={<Icon name="add" size={18} />}
+                  onClick={handleAddItem}
+                >
+                  {t.actions.addItem}
+                </Button>
+              ) : undefined
+            }
+          >
+            {renderItemPane()}
+          </VersionSettingRow>
           <div className="inspection-standard-setting-pair">
-            <VersionSettingRow
-              title={t.versionSection.tabItems}
-              summary={t.versionSection.rowItemsCount(itemDrafts.length)}
-              action={
-                isEditable ? (
-                  <Button
-                    variant="outlined"
-                    leadingIcon={<Icon name="add" size={18} />}
-                    onClick={handleAddItem}
-                  >
-                    {t.actions.addItem}
-                  </Button>
-                ) : undefined
-              }
-            >
-              {renderItemPane()}
-            </VersionSettingRow>
             <VersionGuideRow
               values={versionFormState.baseline}
               onEditGuide={isEditable ? setGuideEditField : undefined}
             />
+            {selectedVersionId !== null && (
+              /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
+              <VersionDrawings
+                key={selectedVersionId}
+                drawings={versionDrawings}
+                draft={drawingDraft}
+                isEditable={isEditable}
+              />
+            )}
           </div>
-          {selectedVersionId !== null && (
-            /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
-            <VersionDrawings
-              key={selectedVersionId}
-              drawings={versionDrawings}
-              draft={drawingDraft}
-              isEditable={isEditable}
-            />
-          )}
         </div>
       </section>
     );

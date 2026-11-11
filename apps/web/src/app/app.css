@@ -1311,8 +1311,8 @@ h2:has(> .inspection-standard-dialog-title) {
 }
 
 /*
- * 검사 항목 · 검사 지시문 — 카드 폭에 따라 바꾼다(사용자 지시 · #258): 넓으면 같은 줄 좌우 반반, 좁으면 도면과 같이 한 열로 쌓는다.
- * 좁은 칸에 좌우로 두면 표가 옆 카드 위로 넘친다.
+ * 검사 항목은 한 줄 전체, 그 아래 검사 지시문 · 검사 도면은 카드 폭에 따라 바꾼다(사용자 지시 · #258): 넓으면 같은 줄 좌우 반반,
+ * 좁으면 한 열로 쌓는다.
  */
 .inspection-standard-setting-list {
   container-type: inline-size;
@@ -1323,13 +1323,13 @@ h2:has(> .inspection-standard-dialog-title) {
   gap: var(--space-4);
 }
 
-@container (min-width: 80rem) {
+@container (min-width: 40rem) {
   .inspection-standard-setting-pair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 var(--space-4);
   }
 
-  /* 두 카드의 머리 줄 · 본문을 같은 줄에 맞춘다 — 지시문 칸은 건수 줄이 없어도 빈 화면이 검사 항목과 같은 높이에 선다(사용자 지시 · #258). */
+  /* 두 카드의 머리 줄 · 본문을 같은 줄에 맞춘다 — 지시문 칸은 건수 줄이 없어도 빈 화면이 도면과 같은 높이에 선다(사용자 지시 · #258). */
   .inspection-standard-setting-pair > .inspection-standard-setting-row {
     display: grid;
     grid-row: span 2;
@@ -20683,7 +20683,7 @@ button.app-button-neutral {
  * 왼쪽 최종 판정 선택, 오른쪽 그 판정에 따른 칸(자동 판정 안내 · 변경 사유 · 불합격 사유). 제목과 알림은 두 칸을 다 쓴다.
  * 오른쪽 칸은 높이 상한 안에서 구르므로 판정이 바뀌어도 아래 4M · 저장 줄이 크게 밀리지 않는다.
  */
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-judgment-section {
     grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
     column-gap: var(--space-5);
@@ -21624,7 +21624,7 @@ button.app-button-neutral {
   gap: var(--space-3) var(--space-5);
 }
 
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-facts {
     grid-template-columns:
       minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 2fr)
@@ -22194,7 +22194,7 @@ button.app-button-neutral {
   gap: var(--space-3) var(--space-5);
 }
 
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .oqc-inspection-facts {
     grid-template-columns:
       minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.5fr)
@@ -28199,7 +28199,7 @@ body:has(.page-nav-size [aria-expanded="true"])
   gap: var(--space-3) var(--space-5);
 }
 
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .pqc-web-facts {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(
         0,
@@ -29496,7 +29496,7 @@ table.col-measuring td {
 }
 
 /* 판정 구획의 두 칸 배치(#133)는 접기 상자 안 본문이 맡는다 — 종전 구획 직계 규칙과 같은 값. */
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-judgment-section .iqc-inspection-collapsible-body {
     grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
     column-gap: var(--space-5);
@@ -29549,7 +29549,7 @@ table.col-measuring td {
  * 검사 수량 입력 — 합격 · 불합격 · 보류 칸은 좁게, 오른쪽에 같은 줄로 입력 완료 막대(사용자 지시 2026-10-26).
  * 구획이 좁으면(48rem 미만) 종전처럼 세 칸이 폭을 나누고 막대는 아래 줄이다. 안내 글은 두 칸을 다 쓴다.
  */
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-qty-body {
     grid-template-columns: auto minmax(14rem, 1fr);
     grid-auto-flow: row dense;
@@ -29643,7 +29643,7 @@ table.col-measuring td {
   background: none;
 }
 
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-judgment-section .iqc-inspection-collapsible-body {
     /* 선택칸은 값 길이에 맞는 폭까지만(사용자 지시 2026-10-26) — 구획 폭을 다 나눠 갖지 않는다. */
     grid-template-columns: repeat(4, minmax(9rem, 14rem));
@@ -29811,7 +29811,7 @@ table.col-measuring td {
  * 최종 판정 칸 — 값이 합격 · 불합격 · 보류 셋뿐이라 그 길이만큼(8rem · 사용자 지시 2026-10-26). 판정 변경 사유가 서면
  * 첫 칸이 그 칸 폭만큼 넓어진다.
  */
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-judgment-section
     .iqc-inspection-collapsible-body:nth-child(n):nth-child(n) {
     /* 최종 판정 · 불량 대분류 · 불량 상세 · 추정 원인 · 사유(남는 폭 · 사용자 지시 2026-10-26). */
@@ -30948,7 +30948,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   min-width: 0;
 }
 
-@container (min-width: 48rem) {
+@container (min-width: 40rem) {
   .iqc-inspection-judgment-section[data-inline]
     .iqc-inspection-collapsible-body:nth-child(n):nth-child(n):nth-child(n) {
     grid-template-columns: repeat(3, minmax(9rem, 14rem)) minmax(12rem, 1fr);
