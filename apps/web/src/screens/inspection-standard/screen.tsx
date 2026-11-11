@@ -286,7 +286,6 @@ export const InspectionStandardScreen = () => {
   /* 「버전 비교」 창(#196) — 두 버전을 불러 화면이 견준다. */
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   /* 「변경 이력」 창(#196) */
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
   const [versionTab, setVersionTab] = useState('items');
@@ -1405,11 +1404,6 @@ export const InspectionStandardScreen = () => {
   const renderVersionBar = (): ReactNode => (
     <VersionBar
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
-      onHistory={
-        selectedVersionId === null || (versionHistory.data?.items.length ?? 0) === 0
-          ? undefined
-          : () => setIsHistoryOpen(true)
-      }
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
       versionActions={
@@ -1789,7 +1783,7 @@ export const InspectionStandardScreen = () => {
                 versionHistory.data === undefined
                   ? t.versionSection.tabHistory
                   : t.versionSection.tabHistoryCount(versionHistory.data.items.length),
-              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 창과 같은 표. */
+              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 단추 · 창은 이 탭과 같아 없앴다(#255 사용자 지시). */
               content:
                 selectedVersionId === null ? null : (
                   <VersionHistoryTable
@@ -1803,36 +1797,6 @@ export const InspectionStandardScreen = () => {
         />
 
         {isCompareOpen && renderCompareDialog()}
-
-        {isHistoryOpen && selectedVersionId !== null && (
-          <Dialog
-            open
-            size="lg"
-            closeOnBackdropClick={false}
-            showCloseButton={false}
-            /* 제목 줄 오른쪽에 조회 기간(사용자 시안 · #196) */
-            title={
-              <span className="inspection-standard-dialog-title">
-                {t.history.title}
-                {/* 조회 기간은 라벨로(사용자 지시 · #196) */}
-                <Chip variant="status" size="sm" status="idle">
-                  {t.history.range}
-                </Chip>
-              </span>
-            }
-            onClose={() => setIsHistoryOpen(false)}
-            footer={
-              <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
-                {t.versionBar.close}
-              </Button>
-            }
-          >
-            <VersionHistoryTable
-              inspectionPlanVersionId={selectedVersionId}
-              labels={compareLabels}
-            />
-          </Dialog>
-        )}
 
         {guideEditField !== null && versionStatus.isEditable && (
           <VersionGuideDialog

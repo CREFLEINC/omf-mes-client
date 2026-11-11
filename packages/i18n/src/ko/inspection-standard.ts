@@ -38,7 +38,6 @@ export const inspectionStandard = {
     obsolete: '폐기',
     discard: '작성 취소',
     compareVersions: '버전 비교',
-    changeHistory: '변경 이력',
     addItem: '항목 추가',
     /*
      * 행 안의 아이콘 버튼은 보이는 글자가 없어 접근 이름이 곧 이름이다.

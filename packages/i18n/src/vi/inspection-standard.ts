@@ -34,7 +34,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     obsolete: 'Hủy bỏ',
     discard: 'Hủy bản nháp',
     compareVersions: 'So sánh phiên bản',
-    changeHistory: 'Lịch sử thay đổi',
     addItem: 'Thêm hạng mục',
     /* 행 안의 아이콘 버튼은 보이는 글자가 없다 — 표시 번호를 함께 넣어야 행마다 이름이 갈린다. */
     editItem: (displayNo: number): string => `Sửa hạng mục số ${String(displayNo)}`,

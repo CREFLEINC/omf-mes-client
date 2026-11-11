@@ -2794,7 +2794,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
   });
 
   /* 변경 이력은 서버가 버전 쓰기마다 남긴 감사 이력을 읽는다(#196). 처리자 이름은 사용자 상세로 푼다. */
-  it('변경 이력 창이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
+  it('이력 탭이 고른 버전의 감사 이력을 구분 · 처리자 · 바뀐 칸으로 보인다', async () => {
     const { requests, user } = renderSelectedVersion([
       {
         match: (request) => isGet(request, '/audit/events'),
@@ -2826,8 +2826,10 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     ]);
 
     await awaitVersionForm();
-    await user.click(screen.getByRole('button', { name: '변경 이력' }));
-    const dialog = await screen.findByRole('dialog', { name: /^변경 이력/ });
+    /* 변경 이력은 「이력」 탭에서만 본다 — 같은 내용의 「변경 이력」 단추 · 창은 없앴다(#255 사용자 지시). */
+    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('tab', { name: '이력 1건' }));
+    const dialog = await screen.findByRole('tabpanel');
 
     expect(await within(dialog).findByText('버전 설정')).toBeInTheDocument();
     expect(within(dialog).getByText('AQL')).toBeInTheDocument();
@@ -2838,12 +2840,10 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(history?.url.searchParams.get('targetTypeCode')).toBe('INSPECTION_PLAN_VERSION');
     expect(history?.url.searchParams.get('targetId')).toBe('4002');
     expect(history?.url.searchParams.get('occurredFrom')).not.toBeNull();
-    /* 이력 탭도 검사 항목 탭처럼 건수를 붙인다(#208). */
-    expect(screen.getByRole('tab', { name: '이력 1건' })).toBeInTheDocument();
   });
 
-  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교, 이력이 없으면 변경 이력이 서지 않는다. */
-  it('버전이 하나뿐이고 이력이 없으면 버전 비교 · 변경 이력 단추가 없다', async () => {
+  /* 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208) — 버전이 하나면 버전 비교가 서지 않는다. */
+  it('버전이 하나뿐이면 버전 비교 단추가 없다', async () => {
     renderSelectedVersion([
       versionListRoute([inspectionPlanVersionFixtures[0]!]),
       {
@@ -2855,7 +2855,6 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     await awaitVersionForm();
 
     expect(screen.queryByRole('button', { name: '버전 비교' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '변경 이력' })).not.toBeInTheDocument();
   });
 });
 
