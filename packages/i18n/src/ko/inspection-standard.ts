@@ -144,8 +144,11 @@ export const inspectionStandard = {
      */
     itemLocalNote: '확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.',
     /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
+    /* 등록 · 복사 창의 기준코드 — 비우면 서버가 QP-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
+    planCodePlaceholder: '비우면 자동으로 등록됩니다',
     itemPlaceholders: {
-      inspectionItemCode: '항목코드를 입력하세요',
+      /* 비우면 서버가 ITEM-{순서}로 등록한다(omf-all-around#262). */
+      inspectionItemCode: '비우면 자동으로 등록됩니다',
       inspectionItemName: '항목명을 입력하세요',
       dataType: '검사값 유형을 선택하세요',
       uom: '검사 단위를 선택하세요',
@@ -288,7 +291,6 @@ export const inspectionStandard = {
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
     /* AQL 샘플링(omf-all-around#264) — 시료 수 · 판정 수는 검사할 때 LOT 수량으로 표에서 정한다. */
-    aqlJudgmentLocked: 'AQL 샘플링은 합격 · 불합격 판정 수를 LOT 수량에 따라 AQL 표로 정합니다.',
     aqlByLot: 'LOT 수량에 따라 AQL 표로 계산',
     title: '검사 기준 버전',
     sampling: '검사 방식',

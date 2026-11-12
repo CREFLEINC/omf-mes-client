@@ -122,19 +122,46 @@ describe('부품 IQC 판정 (omf-all-around#211)', () => {
     expect(serverExpectedOf(1, 0, 9)).toBe('REJECTED');
   });
 
-  /* omf-all-around#264 — AQL 샘플링은 불합격 수량이 Ac 이하면 합격, 넘으면 불합격(서버 자동 판정과 같다). */
-  it('AQL 합격 판정 수를 주면 NG 가 있어도 Ac 이하이면 합격을 제안한다', () => {
+  /*
+   * omf-all-around#264 — AQL 샘플링은 기타 항목(외관 등)에서 찾은 불량 수 합이 Ac 이하면 합격, 넘으면 불합격.
+   * 치수 항목은 AQL 과 상관없이 하나라도 불합격이면 불합격이다(사용자 결정 2026-11-12) — 서버 자동 판정과 같다.
+   */
+  it('AQL 은 NG 항목의 불량 수 합을 Ac 와 견준다', () => {
     const input: JudgmentInput = {
       ...base,
       dimensions: [{ judgment: 'ACCEPTED', outCount: 0 }],
       checks: ['REJECTED', 'ACCEPTED'],
     };
     expect(suggestedJudgmentOf(input)).toBe('REJECTED');
-    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 1 })).toBe('ACCEPTED');
-    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 0 })).toBe('REJECTED');
+    /* 불량 수를 아직 적지 않았으면 판정을 내지 않는다. */
+    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 1 })).toBeNull();
+    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 1, checkDefects: [1, null] })).toBe(
+      'ACCEPTED',
+    );
+    expect(suggestedJudgmentOf({ ...input, aqlAcceptance: 1, checkDefects: [2, null] })).toBe(
+      'REJECTED',
+    );
+    expect(rejectedQtyOf({ ...input, aqlAcceptance: 1, checkDefects: [2, null] })).toBe(2);
     expect(
-      suggestedJudgmentOf({ ...input, checks: ['REJECTED', 'REJECTED'], aqlAcceptance: 1 }),
+      suggestedJudgmentOf({
+        ...input,
+        checks: ['REJECTED', 'REJECTED'],
+        aqlAcceptance: 1,
+        checkDefects: [1, 1],
+      }),
     ).toBe('REJECTED');
+  });
+
+  it('AQL 이어도 치수 항목이 불합격이면 불합격이다', () => {
+    const input: JudgmentInput = {
+      ...base,
+      dimensions: [{ judgment: 'REJECTED', outCount: 1 }],
+      checks: ['ACCEPTED', 'ACCEPTED'],
+      aqlAcceptance: 1,
+    };
+    expect(suggestedJudgmentOf(input)).toBe('REJECTED');
+    expect(serverExpectedOf(1, 1, 0, true)).toBe('REJECTED');
+    expect(serverExpectedOf(1, 1, 0, false)).toBe('ACCEPTED');
   });
 });
 

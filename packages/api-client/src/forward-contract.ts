@@ -586,7 +586,8 @@ export interface InspectionSheetTemplateUpdate extends InspectionSheetTemplateCo
 }
 
 export interface InspectionSheetTemplateCreate extends InspectionSheetTemplateUpdate {
-  templateCode: string;
+  /** 비우면 그 품목이 쓰던 코드, 없으면 QS-{YYYYMMDD}-{SEQ4}(서버 선행 omf-all-around#262). */
+  templateCode?: string;
   templateName: string;
   itemId: number;
   businessUnitId: number;
@@ -718,7 +719,21 @@ export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
 }
 
 /** 서버 선행 omf-all-around#255 — 검사기준 복사 요청: 새 기준 머리(등록과 같은 칸) + 내용을 가져올 원본 버전. */
-export type InspectionPlanCopy = components['schemas']['InspectionPlanCreate'] & {
+/**
+ * 서버 선행(omf-all-around#262) — 기준코드 · 항목코드를 비우면 서버가 자동 등록한다(기준 QP-{YYYYMMDD}-{SEQ4} · 항목 ITEM-{순서}).
+ * 서버가 main 에 병합되면 `gen:api` 로 다시 만들고 이 덮개를 걷는다.
+ */
+export type InspectionPlanCreateForward = Omit<
+  components['schemas']['InspectionPlanCreate'],
+  'inspectionPlanCode'
+> & { inspectionPlanCode?: string };
+
+export type InspectionItemSpecUpsertForward = Omit<
+  components['schemas']['InspectionItemSpecUpsert'],
+  'inspectionItemCode'
+> & { inspectionItemCode?: string };
+
+export type InspectionPlanCopy = InspectionPlanCreateForward & {
   sourceVersionId: number;
 };
 
@@ -869,6 +884,8 @@ export interface InspectionGuideForward {
 type InspectionRequestDetailPath = paths['/quality/inspection-requests/{inspectionRequestId}'];
 
 type PlanVersionsPath = paths['/quality/inspection-plan-versions'];
+type PlansPath = paths['/quality/inspection-plans'];
+type PlanItemsPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}/items'];
 type PlanVersionPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}'];
 
 export interface ForwardPaths {
@@ -882,6 +899,23 @@ export interface ForwardPaths {
             aqlPlan?: InspectionAqlPlanForward;
           }
         >;
+      };
+    };
+  };
+  /** 기준 등록 — 기준코드를 비우면 자동 등록(#262). */
+  '/quality/inspection-plans': Omit<PlansPath, 'post'> & {
+    post: Omit<PlansPath['post'], 'requestBody'> & {
+      requestBody: { content: { 'application/json': InspectionPlanCreateForward } };
+    };
+  };
+  /** 검사 항목 저장 — 항목코드를 비우면 자동 등록(#262). */
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}/items': Omit<
+    PlanItemsPath,
+    'put'
+  > & {
+    put: Omit<PlanItemsPath['put'], 'requestBody'> & {
+      requestBody: {
+        content: { 'application/json': { items: InspectionItemSpecUpsertForward[] } };
       };
     };
   };

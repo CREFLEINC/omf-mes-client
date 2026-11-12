@@ -118,7 +118,8 @@ export const inspectionSheetTemplate = {
     noModel: '품목을 선택하세요.',
     templateCode: '기준코드',
     templateName: '기준명',
-    noTemplateCode: '기준코드를 입력하세요.',
+    /* 비우면 그 품목이 쓰던 코드, 없으면 서버가 QS-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
+    templateCodePlaceholder: '비우면 자동으로 등록됩니다',
     noTemplateName: '기준명을 입력하세요.',
     codeHeading: '기준코드 · 기준명',
     businessUnit: '사업부',

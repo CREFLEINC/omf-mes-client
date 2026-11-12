@@ -42,6 +42,8 @@ export interface VersionFormPaneProps {
   transitionActions?: ReactNode;
   /** 「버전 설정 수정」 창 안이다 — 「취소」가 창을 닫는 길이라 늘 누를 수 있다(#196). */
   inDialog?: boolean;
+  /** AQL 은 IQC 기준에서만 쓴다 — 아니면 AQL 샘플링 · AQL 칸을 내지 않는다(사용자 지시 · omf-all-around#264). */
+  showAql: boolean;
 }
 
 /**
@@ -67,6 +69,7 @@ export const VersionFormPane = ({
   onCancel,
   transitionActions,
   inDialog = false,
+  showAql,
 }: VersionFormPaneProps) => {
   const versionLabelId = useId();
   const statusLabelId = useId();
@@ -176,7 +179,13 @@ export const VersionFormPane = ({
         <SelectField
           label={t.fields.samplingMethod}
           required
-          options={ensureOption(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode)}
+          /* 이미 AQL 로 저장된 버전은 그 값을 그대로 보인다. */
+          options={ensureOption(
+            showAql
+              ? SAMPLING_METHOD_OPTIONS
+              : SAMPLING_METHOD_OPTIONS.filter((option) => option.value !== AQL_SAMPLING),
+            values.samplingMethodCode,
+          )}
           value={values.samplingMethodCode}
           onChange={changeSamplingMethod}
           disabled={isLocked}
@@ -280,14 +289,16 @@ export const VersionFormPane = ({
             error={fieldErrors.aqlValue}
           />
         ) : (
-          <TextField
-            type="number"
-            label={t.fields.aqlValue}
-            value={values.aqlValue}
-            onChange={(event) => onChange({ aqlValue: event.target.value })}
-            disabled={isLocked}
-            error={fieldErrors.aqlValue}
-          />
+          showAql && (
+            <TextField
+              type="number"
+              label={t.fields.aqlValue}
+              value={values.aqlValue}
+              onChange={(event) => onChange({ aqlValue: event.target.value })}
+              disabled={isLocked}
+              error={fieldErrors.aqlValue}
+            />
+          )
         )}
 
         {/* 계약 CHECK ≥ 0 — 0이 허용된다. 불합격판정개수와 하한이 다르다. */}
@@ -298,7 +309,6 @@ export const VersionFormPane = ({
           value={values.acceptanceNumber}
           onChange={(event) => onChange({ acceptanceNumber: event.target.value })}
           disabled={isLocked || isAql}
-          helperText={isAql ? t.versionSection.aqlJudgmentLocked : undefined}
           error={fieldErrors.acceptanceNumber}
         />
 

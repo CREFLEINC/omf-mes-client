@@ -114,7 +114,7 @@ export const inspectionSheetTemplate = {
     noModel: 'Hãy chọn mặt hàng.',
     templateCode: 'Mã tiêu chuẩn',
     templateName: 'Tên tiêu chuẩn',
-    noTemplateCode: 'Hãy nhập mã tiêu chuẩn.',
+    templateCodePlaceholder: 'Để trống để tự động cấp mã',
     noTemplateName: 'Hãy nhập tên tiêu chuẩn.',
     codeHeading: 'Mã · Tên tiêu chuẩn',
     businessUnit: 'Bộ phận kinh doanh',

@@ -208,7 +208,7 @@ export const PlanPane = ({
             <FieldLabel
               htmlFor={codeId}
               label={t.fields.inspectionPlanCode}
-              required={!isCodeLocked}
+              required={!isCodeLocked && mode !== 'create'}
               {...(codeLockReason !== null ? { hint: codeLockReason, hintId: codeLockNoteId } : {})}
             />
             <TextField
@@ -219,10 +219,12 @@ export const PlanPane = ({
               /* 잠긴 칸은 자물쇠 표시 + 라벨 오른쪽 짧은 안내(사용자 시안 · #208 · 2026-11-04 라벨 옆으로). */
               trailingIcon={isCodeLocked ? <Icon name="lock" size={18} aria-hidden /> : undefined}
               aria-describedby={isCodeLocked ? codeLockNoteId : undefined}
-              {...(isCodeLocked
+              /* 등록 · 복사는 비우면 서버가 자동 등록한다(omf-all-around#262). */
+              {...(mode === 'create' ? { placeholder: t.dialog.planCodePlaceholder } : {})}
+              {...(isCodeLocked || mode === 'create'
                 ? { error: fieldErrors.inspectionPlanCode }
                 : requiredText('inspectionPlanCode', values.inspectionPlanCode))}
-              aria-required={!isCodeLocked}
+              aria-required={!isCodeLocked && mode !== 'create'}
             />
           </div>
 

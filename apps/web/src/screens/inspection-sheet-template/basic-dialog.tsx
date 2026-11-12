@@ -34,7 +34,6 @@ export const basicErrorsOf = (
 ): TemplateBasicErrors => {
   const errors: TemplateBasicErrors = {};
   if (part !== 'scope') {
-    if (values.templateCode.trim() === '') errors.code = t.editor.noTemplateCode;
     if (values.templateName.trim() === '') errors.name = t.editor.noTemplateName;
   }
   if (part === 'all' && values.itemId === null) errors.item = t.editor.noModel;
@@ -95,15 +94,15 @@ export const TemplateBasicFields = ({
             <div className="field-cell">
               <span className="field-label">
                 <label htmlFor={ids.code}>{t.editor.templateCode}</label>
-                <Required />
               </span>
+              {/* 비우면 그 품목이 쓰던 코드, 없으면 서버가 자동 등록한다(omf-all-around#262). */}
               <TextField
                 id={ids.code}
                 fullWidth
                 value={values.templateCode}
+                placeholder={t.editor.templateCodePlaceholder}
                 onChange={(event) => onChange({ templateCode: event.target.value })}
                 error={errors.code}
-                aria-required
               />
             </div>
             <div className="field-cell">

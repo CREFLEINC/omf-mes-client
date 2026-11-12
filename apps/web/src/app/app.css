@@ -983,13 +983,6 @@ main > * + * {
   border: 0;
 }
 
-.inspection-standard-tab-toolbar {
-  justify-content: flex-end;
-  margin-top: var(--space-3);
-  /* 「항목 추가」와 표 사이를 띄운다(사용자 지시 · #196). */
-  margin-bottom: var(--space-3);
-}
-
 .inspection-standard-table-box {
   overflow: hidden;
   border: 1px solid var(--outline-variant);
@@ -1380,9 +1373,24 @@ h2:has(> .inspection-standard-dialog-title) {
 
 .inspection-standard-setting-head {
   display: flex;
+  /* 단추가 여럿이면(검사 도면) 폭이 모자랄 때 제목 아래 줄로 넘긴다(사용자 지시 · #258). */
+  flex-wrap: wrap;
+  /* 옆 카드 머리 줄이 높아져도(subgrid) 제목 줄은 위에 붙인다. */
+  align-content: flex-start;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
+}
+
+/* 줄 오른쪽 할 일 단추 묶음 — 묶음째 제목 아래로 내려가고, 그래도 모자라면 단추끼리 줄을 바꾼다. */
+.inspection-standard-setting-actions {
+  display: flex;
+  flex-shrink: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 /* 줄의 왼쪽(아이콘 · 제목 · 요약) — 오른쪽 할 일 단추와 나눈다. */
@@ -33371,6 +33379,17 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .parts-iqc-check-row > span {
   flex: 1 1 auto;
+}
+
+/* 기타 항목 값 칸 — 텍스트 글 칸과 AQL 불량 수 칸을 한 줄에 둔다(omf-all-around#264). */
+.parts-iqc-check-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.parts-iqc-defects {
+  flex: 0 0 8rem;
 }
 
 .parts-iqc-verdict-row {

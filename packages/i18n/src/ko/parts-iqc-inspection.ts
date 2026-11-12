@@ -136,6 +136,10 @@ export const partsIqcInspection = {
     /** 텍스트 항목의 글 칸(#247 · 사용자 지시 2026-11-10) — 다른 항목 줄은 비어 있다. */
     checkValue: '측정 결과',
     checkValueLabel: (name: string) => `${name} 측정 결과`,
+    /** AQL 기준에서 NG 인 항목의 찾은 불량 수(omf-all-around#264) */
+    defects: '불량 수',
+    defectsLabel: (name: string) => `${name} 불량 수`,
+    defectsRequired: 'NG 를 고른 항목에 찾은 불량 수를 적어 주세요.',
     remarks: '비고',
     remarksPlaceholder: '비고를 입력하세요',
   },

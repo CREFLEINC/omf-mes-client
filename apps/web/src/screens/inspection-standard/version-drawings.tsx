@@ -301,10 +301,13 @@ export const VersionDrawings = ({
 
   const isLoaded = !drawings.isError && drawings.data !== undefined;
 
-  /* 「+ 도면 추가」는 줄 오른쪽 끝(사용자 시안 · #258). */
-  const addAction =
+  /*
+   * 「도면 추가 · 도면 수정 · 도면 제거」는 줄 오른쪽 끝 한 줄에 둔다(사용자 지시 · #258) —
+   * 폭이 모자라면 단추가 다음 줄로 넘어간다.
+   */
+  const actions =
     isEditable && isLoaded ? (
-      <>
+      <div className="inspection-standard-setting-actions">
         <input
           ref={fileInput}
           type="file"
@@ -321,7 +324,27 @@ export const VersionDrawings = ({
         >
           {t.drawingAdd}
         </Button>
-      </>
+        {list.length > 0 && (
+          <>
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="swap_horiz" size={18} />}
+              disabled={draft.isSaving}
+              onClick={() => openPicker({ kind: 'replace', index: shown })}
+            >
+              {t.drawingReplace}
+            </Button>
+            <Button
+              variant="outlined"
+              leadingIcon={<Icon name="delete" size={18} />}
+              disabled={draft.isSaving}
+              onClick={() => setIsRemoving(true)}
+            >
+              {t.drawingRemove}
+            </Button>
+          </>
+        )}
+      </div>
     ) : undefined;
 
   const body = (): ReactNode => {
@@ -340,26 +363,6 @@ export const VersionDrawings = ({
 
   const renderLoaded = (): ReactNode => (
     <>
-      {isEditable && list.length > 0 && (
-        <div className="inspection-standard-section-head inspection-standard-tab-toolbar">
-          <Button
-            variant="outlined"
-            leadingIcon={<Icon name="swap_horiz" size={18} />}
-            disabled={draft.isSaving}
-            onClick={() => openPicker({ kind: 'replace', index: shown })}
-          >
-            {t.drawingReplace}
-          </Button>
-          <Button
-            variant="outlined"
-            leadingIcon={<Icon name="delete" size={18} />}
-            disabled={draft.isSaving}
-            onClick={() => setIsRemoving(true)}
-          >
-            {t.drawingRemove}
-          </Button>
-        </div>
-      )}
       {PROBLEM_ORDER.map((problem) => {
         const names = problems.filter((each) => each.problem === problem).map((each) => each.name);
         if (names.length === 0) return null;
@@ -438,7 +441,7 @@ export const VersionDrawings = ({
     <VersionSettingRow
       title={t.rowDrawings}
       summary={isLoaded ? t.rowDrawingsCount(list.length) : ''}
-      action={addAction}
+      action={actions}
     >
       {body()}
     </VersionSettingRow>

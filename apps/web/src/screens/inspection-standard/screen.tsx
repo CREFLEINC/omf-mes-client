@@ -688,6 +688,12 @@ export const InspectionStandardScreen = () => {
   const [versionFieldErrors, setVersionFieldErrors] = useState<Record<string, string>>({});
   /** 언어별 안내 문구 수정 창(#252) — 연 언어. */
   const [guideEditField, setGuideEditField] = useState<GuideTextField | null>(null);
+  /*
+   * 지시문 창의 「확인」은 화면에만 담는다 — 바닥 줄 「임시 저장」 · 「확정」이 저장한다(사용자 지시).
+   * null 이면 고친 것이 없다. 저장이 끝나면 이어서 할 일(항목 · 도면 저장 또는 확정)을 적어 둔다.
+   */
+  const [guideDraft, setGuideDraft] = useState<string | null>(null);
+  const afterGuideSave = useRef<{ then: () => void; announce: boolean } | null>(null);
 
   /*
    * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
@@ -735,7 +741,14 @@ export const InspectionStandardScreen = () => {
       /* 「버전 설정 수정」 · 안내 문구 창은 저장으로 할 일이 끝난다 — 열어 두면 저장이 된 건지 헷갈린다. */
       setIsVersionEditOpen(false);
       setGuideEditField(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
+      const after = afterGuideSave.current;
+      afterGuideSave.current = null;
+      if (after !== null) setGuideDraft(null);
+      /* 확정이 이어지면 확정 알림 하나만 낸다. */
+      if (after === null || after.announce) {
+        toast.show({ variant: 'success', description: messages.common.saved });
+      }
+      after?.then();
     },
   });
 
@@ -897,6 +910,8 @@ export const InspectionStandardScreen = () => {
     setVersionCreateFieldErrors({});
     setVersionFormState(null);
     setVersionFieldErrors({});
+    setGuideDraft(null);
+    afterGuideSave.current = null;
     setItemDraftState(null);
     drawingDraft.reset();
     setItemDialog(null);
@@ -944,10 +959,26 @@ export const InspectionStandardScreen = () => {
     itemsWrite.write(itemDraftState.drafts);
   };
 
-  /** 바닥 줄 「임시 저장」 — 바뀐 쪽만 보낸다(사용자 지시 · #258). */
+  /**
+   * 담아 둔 지시문을 저장하고 이어서 `after` 를 한다. 저장이 실패하면 이어서 하지 않는다.
+   * 지시문은 버전 수정(If-Match)으로 보내므로 다른 저장과 겹치지 않게 먼저 끝낸다.
+   */
+  const saveGuideThen = (after: () => void, announce: boolean) => {
+    if (guideDraft === null || versionFormState === null) {
+      after();
+      return;
+    }
+    afterGuideSave.current = { then: after, announce };
+    versionWrite.write({ ...versionFormState.baseline, guideText: guideDraft });
+  };
+
+  /** 바닥 줄 「임시 저장」 — 바뀐 쪽만 보낸다(사용자 지시 · #258). 지시문을 먼저 저장한다. */
   const handleTempSave = () => {
-    if (isItemsDirty) handleSaveItems();
-    if (drawingDraft.isDirty) void drawingDraft.save();
+    saveGuideThen(() => {
+      if (isItemsDirty) handleSaveItems();
+      if (drawingDraft.isDirty) void drawingDraft.save();
+      /* 항목 · 도면 저장이 이어지면 그쪽 알림 하나만 낸다. */
+    }, !isItemsDirty && !drawingDraft.isDirty);
   };
 
   /**
@@ -1322,7 +1353,7 @@ export const InspectionStandardScreen = () => {
   const handleSaveCreate = () => {
     if (createValues === null) return;
 
-    const errors = validatePlanForm(createValues);
+    const errors = validatePlanForm(createValues, true);
     setCreateFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) return;
@@ -1355,7 +1386,9 @@ export const InspectionStandardScreen = () => {
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
-  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
+  /* 담아 둔 지시문은 「확정」이 저장하고 확정한다 — 확정을 막는 저장 전 편집에서는 뺀다. */
+  const isDirtyExceptGuide = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
+  const isAnythingDirty = isDirtyExceptGuide || guideDraft !== null;
 
   /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
   const draftVersion = versions.find((version) => {
@@ -1392,7 +1425,7 @@ export const InspectionStandardScreen = () => {
      */
     if (savedItemCount === 0) return t.actionReasons.confirmNeedsItems;
     // 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다.
-    if (isAnythingDirty) return t.actionReasons.confirmBlockedByUnsaved;
+    if (isDirtyExceptGuide) return t.actionReasons.confirmBlockedByUnsaved;
 
     return null;
   })();
@@ -1419,15 +1452,17 @@ export const InspectionStandardScreen = () => {
 
   const renderTempSave = (): ReactNode => {
     /* 항목을 저장할 수 없는 사유는 종전처럼 늘 보인다 — 도면만 바뀌었을 때만 그 사유로 막지 않는다. */
-    const reason = isItemsDirty || !drawingDraft.isDirty ? itemsSaveBlockedReason : null;
+    const isGuideDirty = guideDraft !== null;
+    const reason =
+      isItemsDirty || (!drawingDraft.isDirty && !isGuideDirty) ? itemsSaveBlockedReason : null;
     if (reason !== null) return <DisabledAction label={t.actions.tempSave} reason={reason} />;
-    const isSaving = itemsWrite.isSaving || drawingDraft.isSaving;
+    const isSaving = itemsWrite.isSaving || drawingDraft.isSaving || versionWrite.isSaving;
 
     return (
       <div className="field-cell">
         <Button
           variant="outlined"
-          disabled={(!isItemsDirty && !drawingDraft.isDirty) || isSaving}
+          disabled={(!isItemsDirty && !drawingDraft.isDirty && !isGuideDirty) || isSaving}
           loading={isSaving}
           onClick={handleTempSave}
         >
@@ -1655,7 +1690,6 @@ export const InspectionStandardScreen = () => {
           codeLockReason={null}
           isDirty={copySource !== null || !isSamePlanValues(createValues, emptyPlanFormValues())}
           canSave={
-            createValues.inspectionPlanCode.trim() !== '' &&
             createValues.inspectionPlanName.trim() !== '' &&
             createValues.inspectionTypeCode !== '' &&
             (sheet === null || (createValues.itemId !== '' && sheetScopeIds.length > 0))
@@ -1922,7 +1956,10 @@ export const InspectionStandardScreen = () => {
 
     return (
       <>
-        <VersionSummary values={versionFormState.baseline} />
+        <VersionSummary
+          values={versionFormState.baseline}
+          showAql={planDetail.data?.inspectionPlan.inspectionTypeCode === 'IQC'}
+        />
         {renderVersionSettings()}
 
         {/* 바닥 줄 오른쪽 — 작성 취소 · 확정 / 사용 중지 / 재사용(사용자 시안 · #258). */}
@@ -1968,20 +2005,15 @@ export const InspectionStandardScreen = () => {
             /* 다른 언어 · 다른 버전으로 열면 그 저장값에서 새로 시작한다. */
             key={`${String(selectedVersionId)}-${guideEditField}`}
             field={guideEditField}
-            initialText={versionFormState.baseline[guideEditField]}
-            isSaving={versionWrite.isSaving}
-            banner={
-              <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
-            }
-            error={versionWrite.fieldErrors[guideEditField]}
-            /* 저장된 다른 칸은 그대로 두고 이 언어 문구만 바꿔 보낸다. */
-            onSave={(text) =>
-              versionWrite.write({ ...versionFormState.baseline, [guideEditField]: text })
-            }
-            onClose={() => {
-              versionWrite.reset();
+            initialText={guideDraft ?? versionFormState.baseline[guideEditField]}
+            /* 화면에만 담는다 — 저장된 글과 같아지면 고친 것이 없다. */
+            onSave={(text) => {
+              setGuideDraft(
+                text.trim() === versionFormState.baseline[guideEditField].trim() ? null : text,
+              );
               setGuideEditField(null);
             }}
+            onClose={() => setGuideEditField(null)}
           />
         )}
 
@@ -2054,8 +2086,20 @@ export const InspectionStandardScreen = () => {
           </VersionSettingRow>
           <div className="inspection-standard-setting-pair">
             <VersionGuideRow
-              values={versionFormState.baseline}
+              values={
+                guideDraft === null
+                  ? versionFormState.baseline
+                  : { ...versionFormState.baseline, guideText: guideDraft }
+              }
               onEditGuide={isEditable ? setGuideEditField : undefined}
+              banner={
+                guideDraft === null ? undefined : (
+                  <PlanActionBanner
+                    error={versionWrite.error}
+                    onReload={handleReloadVersionDetail}
+                  />
+                )
+              }
             />
             {selectedVersionId !== null && (
               /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
@@ -2100,6 +2144,7 @@ export const InspectionStandardScreen = () => {
           isSaving={versionCreateWrite.isSaving}
           onSave={handleSaveVersionCreate}
           onCancel={resetVersionEditing}
+          showAql={planDetail.data?.inspectionPlan.inspectionTypeCode === 'IQC'}
           /* 아직 없는 버전에는 전이할 대상이 없다 — 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */
         />
       );
@@ -2164,6 +2209,7 @@ export const InspectionStandardScreen = () => {
         /* 「버전 설정 수정」 창 안이다 — 취소는 고친 값을 버리고 창을 닫는다. 확정 · 폐기는 버전 줄에 있다. */
         onCancel={onEditCancel ?? cancelVersionEdit}
         inDialog={onEditCancel !== undefined}
+        showAql={planDetail.data?.inspectionPlan.inspectionTypeCode === 'IQC'}
       />
     );
   };
@@ -2527,11 +2573,20 @@ export const InspectionStandardScreen = () => {
             discardWrite.reset();
           }}
           onConfirm={() => {
-            versionTransitionWrite.write();
+            /* 확정은 담아 둔 지시문을 먼저 저장한다(사용자 지시). */
+            if (versionTransition === 'confirm') saveGuideThen(() => confirmWrite.write(), false);
+            else versionTransitionWrite.write();
           }}
-          isSaving={versionTransitionWrite.isSaving}
+          isSaving={versionTransitionWrite.isSaving || versionWrite.isSaving}
           /* 전이에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<PlanActionBanner error={versionTransitionWrite.error} />}
+          banner={
+            <PlanActionBanner
+              error={
+                versionTransitionWrite.error ??
+                (versionTransition === 'confirm' ? versionWrite.error : null)
+              }
+            />
+          }
           /* 전이는 고른 버전에만 열린다 — 상세를 받기 전이면 목록의 번호로. */
           planVersion={
             versionDetail.data?.inspectionPlanVersion.planVersion ??

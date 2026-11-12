@@ -638,6 +638,11 @@ const InspectionForm = (props: FormProps) => {
           form.checks[spec.inspectionItemSpecId] = m.booleanValue ? 'ACCEPTED' : 'REJECTED';
         else if (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
           form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
+        /* AQL 은 찾은 불량 수만큼 불량 시료 줄로 남는다 — 줄 수가 불량 수다(omf-all-around#264). */
+        if (aqlPlan !== null && m.judgmentCode === 'REJECTED')
+          form.defects[spec.inspectionItemSpecId] = String(
+            Number(form.defects[spec.inspectionItemSpecId] ?? '0') + 1,
+          );
       }
     }
     return form;
@@ -660,6 +665,11 @@ const InspectionForm = (props: FormProps) => {
   /* 텍스트 항목은 글만 남긴다 — 판정은 검사자가 OK/NG 를 직접 고른다(#247 · 사용자 지시 2026-11-10). */
   const changeText = (item: ItemSpec, text: string) =>
     change({ ...form, texts: { ...form.texts, [item.inspectionItemSpecId]: text } });
+  /** AQL 기준에서 NG 인 기타 항목에 적은 불량 수 — 1 이상 정수가 아니면 아직 없다(omf-all-around#264). */
+  const defectsOf = (f: PartsIqcForm, item: ItemSpec): number | null => {
+    const n = countOf(f.defects[item.inspectionItemSpecId] ?? '');
+    return n === null || n < 1 ? null : n;
+  };
   const inspectedAtId = useId();
   const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
   const inspectedTime = inspectedTimeRaw.slice(0, 5);
@@ -684,6 +694,7 @@ const InspectionForm = (props: FormProps) => {
       inspectedQty: countOf(f.visualInspectedQty),
       dimensions: dims,
       checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
+      checkDefects: checkItems.map((item) => defectsOf(f, item)),
       /* 필수 항목만 다 적으면 자동 판정 · 종합 판정이 채워진다(#247 · 사용자 지시 2026-11-10). */
       requiredDimensions: dimensions.map((item) => item.requiredFlag),
       requiredChecks: checkItems.map((item) => item.requiredFlag),
@@ -752,7 +763,19 @@ const InspectionForm = (props: FormProps) => {
   const overall = chosen ?? suggested;
   const heldQtyOf = (judgment: string | null): number =>
     judgment === 'HELD' && inspectedQty !== null ? Math.max(0, inspectedQty - rejectedQty) : 0;
-  const expected = serverExpectedOf(rejectedQty, judgmentAcceptance, heldQtyOf(overall));
+  const expected = serverExpectedOf(
+    rejectedQty,
+    judgmentAcceptance,
+    heldQtyOf(overall),
+    aqlPlan !== null && dimensionResults.some((d) => d.judgment === 'REJECTED'),
+  );
+  /* AQL 기준에서 NG 를 골랐는데 불량 수를 적지 않은 항목 — 저장 · 제출을 막는다. */
+  const defectsMissing =
+    aqlPlan !== null &&
+    checkItems.some(
+      (item) =>
+        form.checks[item.inspectionItemSpecId] === 'REJECTED' && defectsOf(form, item) === null,
+    );
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
@@ -778,10 +801,10 @@ const InspectionForm = (props: FormProps) => {
         });
       }
     });
-    const bool = (item: ItemSpec, ok: boolean) =>
+    const bool = (item: ItemSpec, ok: boolean, sampleNo: number) =>
       out.push({
         inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo: 1,
+        sampleNo,
         booleanValue: ok,
         judgmentCode: ok ? 'ACCEPTED' : 'REJECTED',
         measuredAt,
@@ -789,19 +812,23 @@ const InspectionForm = (props: FormProps) => {
     checkItems.forEach((item) => {
       const j = form.checks[item.inspectionItemSpecId];
       if (j == null) return;
-      if (item.dataTypeCode !== 'TEXT') {
-        bool(item, j === 'ACCEPTED');
-        return;
+      /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
+      const rows = j === 'REJECTED' && aqlPlan !== null ? (defectsOf(form, item) ?? 1) : 1;
+      for (let sampleNo = 1; sampleNo <= rows; sampleNo += 1) {
+        if (item.dataTypeCode !== 'TEXT') {
+          bool(item, j === 'ACCEPTED', sampleNo);
+          continue;
+        }
+        /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
+        const text = sampleNo === 1 ? (form.texts[item.inspectionItemSpecId] ?? '').trim() : '';
+        out.push({
+          inspectionItemSpecId: item.inspectionItemSpecId,
+          sampleNo,
+          ...(text === '' ? {} : { textValue: text }),
+          judgmentCode: j,
+          measuredAt,
+        });
       }
-      /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
-      const text = (form.texts[item.inspectionItemSpecId] ?? '').trim();
-      out.push({
-        inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo: 1,
-        ...(text === '' ? {} : { textValue: text }),
-        judgmentCode: j,
-        measuredAt,
-      });
     });
     return out;
   };
@@ -813,6 +840,7 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty <= 0 ||
     fourMBlocked ||
     manualUnjudged.length > 0 ||
+    defectsMissing ||
     (needsReason && reason.trim() === '');
 
   const variablesOf = (judgment: string, qty: number): SubmitVariables => ({
@@ -854,6 +882,7 @@ const InspectionForm = (props: FormProps) => {
     form.inspectedAt === '' ||
     fourMBlocked ||
     manualUnjudged.length > 0 ||
+    defectsMissing ||
     submit.isSaving;
   const onSaveDraft = () => {
     if (draftBlocked || inspectedQty === null) return;
@@ -1051,11 +1080,22 @@ const InspectionForm = (props: FormProps) => {
           change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
         }
         blockedNote={
-          manualUnjudged.length > 0 ? messages.iqcInspection.measurements.blockedIncomplete : null
+          manualUnjudged.length > 0
+            ? messages.iqcInspection.measurements.blockedIncomplete
+            : defectsMissing
+              ? t.visual.defectsRequired
+              : null
         }
         checkItems={checkItems}
         texts={form.texts}
         onText={changeText}
+        {...(aqlPlan === null
+          ? {}
+          : {
+              defects: form.defects,
+              onDefects: (itemId: number, text: string) =>
+                change({ ...form, defects: { ...form.defects, [itemId]: text } }),
+            })}
       />
 
       {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}

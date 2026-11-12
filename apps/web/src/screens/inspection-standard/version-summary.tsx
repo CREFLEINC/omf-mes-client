@@ -14,6 +14,8 @@ const t = messages.inspectionStandard;
 export interface VersionSummaryProps {
   /** 저장된 값(편집 중인 초안이 아니다) — 요약은 서버에 있는 사실을 말한다. */
   values: VersionFormValues;
+  /** AQL 은 IQC 기준에서만 쓴다 — 아니면 AQL 칸을 내지 않는다(사용자 지시 · omf-all-around#264). */
+  showAql: boolean;
 }
 
 /** 검사 지시문 칸 — 한 칸이다(#261). */
@@ -30,7 +32,7 @@ const orNotSet = (value: string): string => (value === '' ? t.versionSection.not
  * 고른 버전의 요약 한 줄 — 샘플링(샘플링 검사면 비율을 함께) · 판정 수 · AQL · 유효기간(사용자 시안 · omf-all-around#196 · #256 순서).
  * 검사 주기는 기록용이라 걷었다(#263). 「버전 설정」 제목 · 수정 단추 아래 값 칸은 폭에 맞춰 한 줄에 들어가는 만큼 둔다. 버전 번호 · 상태는 카드 머리 줄이 말한다(사용자 시안 · #258).
  */
-export const VersionSummary = ({ values }: VersionSummaryProps) => {
+export const VersionSummary = ({ values, showAql }: VersionSummaryProps) => {
   const sampling = labelOf(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode);
   /* 샘플링 검사면 비율(%) 또는 개수 중 들어 있는 쪽을 함께 낸다(#201). */
   const isSampling =
@@ -60,7 +62,8 @@ export const VersionSummary = ({ values }: VersionSummaryProps) => {
       label: t.fields.rejectionNumber,
       value: isAql ? t.versionSection.aqlByLot : orNotSet(values.rejectionNumber),
     },
-    { label: t.fields.aqlValue, value: orNotSet(values.aqlValue) },
+    /* 이미 AQL 샘플링으로 저장된 버전은 입력 칸처럼 그대로 보인다. */
+    ...(showAql || isAql ? [{ label: t.fields.aqlValue, value: orNotSet(values.aqlValue) }] : []),
     {
       label: t.versionSection.effectivePeriod,
       value: `${values.effectiveFrom === '' ? messages.common.reference.empty : values.effectiveFrom} ~ ${

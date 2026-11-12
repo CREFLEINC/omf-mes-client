@@ -53,20 +53,18 @@ describe('지시문 수정', () => {
     expect(screen.queryByRole('button', { name: /수정/ })).toBeNull();
   });
 
-  it('창은 저장값에서 시작하고, 바꾸기 전에는 저장을 막는다', async () => {
+  it('창은 보이는 값에서 시작하고, 바꾸기 전에는 확인을 막는다', async () => {
     const onSave = vi.fn();
     render(
       <VersionGuideDialog
         field="guideText"
         initialText="장갑 착용"
-        isSaving={false}
-        banner={null}
         onSave={onSave}
         onClose={() => {}}
       />,
     );
 
-    const save = screen.getByRole('button', { name: messages.common.save });
+    const save = screen.getByRole('button', { name: messages.common.confirm });
     expect(save).toBeDisabled();
 
     await userEvent.type(screen.getByRole('textbox'), '\n도면 3번');
@@ -74,22 +72,15 @@ describe('지시문 수정', () => {
     expect(onSave).toHaveBeenCalledWith('장갑 착용\n도면 3번');
   });
 
-  /* DS TextArea 는 maxLength 로 입력을 막지 않는다 — 3000자를 넘으면 저장을 막고 칸에 알린다. */
-  it('3000자를 넘으면 저장을 막고 알린다', async () => {
+  /* DS TextArea 는 maxLength 로 입력을 막지 않는다 — 3000자를 넘으면 확인을 막고 칸에 알린다. */
+  it('3000자를 넘으면 확인을 막고 알린다', async () => {
     render(
-      <VersionGuideDialog
-        field="guideText"
-        initialText=""
-        isSaving={false}
-        banner={null}
-        onSave={() => {}}
-        onClose={() => {}}
-      />,
+      <VersionGuideDialog field="guideText" initialText="" onSave={() => {}} onClose={() => {}} />,
     );
 
     await userEvent.click(screen.getByRole('textbox'));
     await userEvent.paste('가'.repeat(3001));
-    expect(screen.getByRole('button', { name: messages.common.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: messages.common.confirm })).toBeDisabled();
     expect(screen.getByText(t.versionSection.guideTooLong(3000))).toBeInTheDocument();
   });
 });

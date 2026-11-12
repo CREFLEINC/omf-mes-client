@@ -9,6 +9,8 @@ export interface PartsIqcForm {
   checks: Record<number, ItemJudgment>;
   /** 기타 항목 중 텍스트 항목 id → 적은 글(#247 · 사용자 지시 2026-11-10) */
   texts: Record<number, string>;
+  /** AQL 기준에서 NG 인 기타 항목 id → 찾은 불량 수 글자(omf-all-around#264) */
+  defects: Record<number, string>;
   visualInspectedQty: string;
   remarks: string;
 }
@@ -18,6 +20,7 @@ export const emptyForm = (inspectedAt: string): PartsIqcForm => ({
   values: {},
   checks: {},
   texts: {},
+  defects: {},
   visualInspectedQty: '',
   remarks: '',
 });
@@ -118,6 +121,11 @@ export const sameForm = (a: PartsIqcForm, b: PartsIqcForm): boolean => {
         Object.entries(form.texts)
           .map(([id, text]) => [id, text.trim()] as const)
           .filter(([, text]) => text !== ''),
+      ),
+      defects: Object.fromEntries(
+        Object.entries(form.defects)
+          .map(([id, text]) => [id, text.trim()] as const)
+          .filter(([id, text]) => text !== '' && form.checks[Number(id)] === 'REJECTED'),
       ),
       visualInspectedQty: form.visualInspectedQty.trim(),
       remarks: form.remarks.trim(),

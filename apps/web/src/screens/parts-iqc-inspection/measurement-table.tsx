@@ -73,6 +73,9 @@ export interface MeasurementTableProps {
   checkItems?: ItemSpec[];
   texts?: Record<number, string>;
   onText?: (item: ItemSpec, text: string) => void;
+  /** AQL 기준이면 NG 인 기타 항목에 찾은 불량 수를 받는다(omf-all-around#264). 주지 않으면 칸이 없다. */
+  defects?: Record<number, string>;
+  onDefects?: (itemId: number, text: string) => void;
 }
 
 /** 줄 끝의 OK/NG 고르기 — 누른 것을 다시 누르면 푼다. */
@@ -125,6 +128,8 @@ export const MeasurementTable = ({
   checkItems = [],
   texts = {},
   onText,
+  defects,
+  onDefects,
 }: MeasurementTableProps) => {
   const columns = Math.max(1, ...items.map((item) => item.measurementCount));
   const total = items.length + checkItems.length;
@@ -310,16 +315,37 @@ export const MeasurementTable = ({
                       colSpan={items.length === 0 ? 1 : columns}
                       className="parts-iqc-check-value"
                     >
-                      {item.dataTypeCode === 'TEXT' && onText !== undefined && (
-                        <TextField
-                          fullWidth
-                          aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
-                          value={texts[item.inspectionItemSpecId] ?? ''}
-                          maxLength={200}
-                          disabled={disabled}
-                          onChange={(event) => onText(item, event.target.value)}
-                        />
-                      )}
+                      <div className="parts-iqc-check-fields">
+                        {item.dataTypeCode === 'TEXT' && onText !== undefined && (
+                          <TextField
+                            fullWidth
+                            aria-label={t.visual.checkValueLabel(item.inspectionItemName)}
+                            value={texts[item.inspectionItemSpecId] ?? ''}
+                            maxLength={200}
+                            disabled={disabled}
+                            onChange={(event) => onText(item, event.target.value)}
+                          />
+                        )}
+                        {/* AQL 은 찾은 불량 수로 판정한다 — NG 를 고르면 칸이 열린다(omf-all-around#264). */}
+                        {picked === 'REJECTED' &&
+                          defects !== undefined &&
+                          onDefects !== undefined && (
+                            <TextField
+                              className="parts-iqc-defects"
+                              type="number"
+                              min={1}
+                              step={1}
+                              label={t.visual.defects}
+                              required
+                              aria-label={t.visual.defectsLabel(item.inspectionItemName)}
+                              value={defects[item.inspectionItemSpecId] ?? ''}
+                              disabled={disabled}
+                              onChange={(event) =>
+                                onDefects(item.inspectionItemSpecId, event.target.value)
+                              }
+                            />
+                          )}
+                      </div>
                     </td>
                     <td className="parts-iqc-verdict">
                       <JudgmentChips

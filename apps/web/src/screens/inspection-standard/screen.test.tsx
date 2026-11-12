@@ -2606,6 +2606,52 @@ describe('InspectionStandardScreen — 상태 잠금', () => {
   });
 });
 
+/* 지시문 창의 「확인」은 화면에만 담고, 바닥 줄 「임시 저장」 · 「확정」이 저장한다(사용자 지시). */
+describe('InspectionStandardScreen — 지시문 저장', () => {
+  const editGuide = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
+    await user.click(
+      await screen.findByRole('button', { name: t.versionSection.editGuide(t.fields.guideText) }),
+    );
+    const box = within(await dialog()).getByRole('textbox');
+    await user.clear(box);
+    await user.type(box, text);
+    await user.click(within(await dialog()).getByRole('button', { name: messages.common.confirm }));
+  };
+  const guidePuts = (requests: RecordedRequest[]) =>
+    requests.filter(
+      (request) => request.method === 'PUT' && request.url.pathname === VERSION_DETAIL_PATH,
+    );
+
+  it('「확인」은 저장하지 않고, 「임시 저장」이 지시문을 저장한다', async () => {
+    const { requests, user } = renderSelectedVersion([versionSaveRoute()]);
+
+    await editGuide(user, '장갑 착용');
+    expect(await screen.findByText('장갑 착용')).toBeInTheDocument();
+    expect(guidePuts(requests)).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: t.actions.tempSave }));
+    await waitFor(() => expect(guidePuts(requests)).toHaveLength(1));
+    expect(JSON.parse(guidePuts(requests)[0]?.body ?? '{}').guideText).toBe('장갑 착용');
+  });
+
+  it('「확정」은 담아 둔 지시문을 저장한 뒤 확정한다', async () => {
+    const { requests, user } = renderSelectedVersion([
+      versionSaveRoute(),
+      versionTransitionRoute('confirm'),
+    ]);
+
+    await editGuide(user, '장갑 착용');
+    await user.click(screen.getByRole('button', { name: '확정' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
+    await screen.findByText(t.result.confirmed);
+
+    const order = requests
+      .filter((request) => request.method !== 'GET')
+      .map((request) => request.url.pathname);
+    expect(order).toEqual([VERSION_DETAIL_PATH, `${VERSIONS_PATH}/4002:confirm`]);
+  });
+});
+
 describe('InspectionStandardScreen — 확정과 폐기', () => {
   it('「확정」은 확인 창을 거쳐 본문 없이 If-Match도 없이 나간다', async () => {
     const { requests, user } = renderSelectedVersion([versionTransitionRoute('confirm')]);

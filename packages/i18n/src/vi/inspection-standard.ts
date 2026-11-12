@@ -122,8 +122,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
      * 이 창의 확인은 표에만 반영된다는 사실을 감추지 않는다.
      */
     itemLocalNote: 'Bấm Xác nhận thì thêm vào danh sách, bấm Lưu thì mới áp dụng chính thức.',
+    planCodePlaceholder: 'Để trống để tự động cấp mã',
     itemPlaceholders: {
-      inspectionItemCode: 'Nhập mã hạng mục',
+      inspectionItemCode: 'Để trống để tự động cấp mã',
       inspectionItemName: 'Nhập tên hạng mục',
       dataType: 'Chọn kiểu dữ liệu',
       uom: 'Chọn đơn vị',
@@ -247,8 +248,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingBasisLocked:
       'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
     samplingQtyValue: (qty: string): string => `${qty} cái`,
-    aqlJudgmentLocked:
-      'Lấy mẫu AQL: số chấp nhận · số bác bỏ được xác định theo bảng AQL dựa trên số lượng LOT.',
     aqlByLot: 'Tính theo bảng AQL dựa trên số lượng LOT',
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',

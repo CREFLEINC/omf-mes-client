@@ -45,10 +45,13 @@ export const VersionSettingRow = ({ title, summary, action, children }: VersionS
 export const VersionGuideRow = ({
   values,
   onEditGuide,
+  banner,
 }: {
-  /** 저장된 값 — 편집 중인 초안이 아니다. */
+  /** 보일 값 — 「확인」으로 담아 두고 아직 임시 저장하지 않은 지시문이면 그 글이다. */
   values: VersionFormValues;
   onEditGuide?: (field: GuideTextField) => void;
+  /** 담아 둔 지시문의 저장 실패 알림 */
+  banner?: ReactNode;
 }) => {
   const field: GuideTextField = 'guideText';
   const text = values[field].trim();
@@ -69,6 +72,7 @@ export const VersionGuideRow = ({
         )
       }
     >
+      {banner}
       {text === '' ? (
         <EmptyState
           size="sm"

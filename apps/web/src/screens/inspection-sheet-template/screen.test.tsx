@@ -496,7 +496,8 @@ describe('검사표 기준', () => {
     await user.click(screen.getByRole('button', { name: t.editor.copyAsNew }));
     const dialog = await screen.findByRole('dialog', { name: t.editor.codeHeading });
     await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
-    expect(within(dialog).getByText(t.editor.noTemplateCode)).toBeInTheDocument();
+    /* 기준코드는 비우면 서버가 자동 등록한다(omf-all-around#262) — 기준명만 막는다. */
+    expect(within(dialog).queryByText(t.editor.noTemplateName)).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);
 
     await user.type(within(dialog).getByLabelText(t.editor.templateCode), 'SHEET-NEW');
@@ -540,7 +541,7 @@ describe('검사표 기준', () => {
     await user.click(within(dialog).getByRole('button', { name: t.editor.basicConfirm }));
 
     expect(within(dialog).getByText(t.editor.noModel)).toBeInTheDocument();
-    expect(within(dialog).getByText(t.editor.noTemplateCode)).toBeInTheDocument();
+    expect(within(dialog).queryByText(t.editor.templateCodePlaceholder)).not.toBeInTheDocument();
     expect(within(dialog).getByText(t.editor.noTemplateName)).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: t.editor.newHeading })).toBeInTheDocument();
     expect(requests.some((r) => r.method === 'POST')).toBe(false);

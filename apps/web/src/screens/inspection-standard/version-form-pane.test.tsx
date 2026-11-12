@@ -27,6 +27,7 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
+      showAql
       {...overrides}
     />,
   );
@@ -157,6 +158,16 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
     expect(screen.getByLabelText('합격 허용 불량 수')).toBeDisabled();
     expect(screen.getByLabelText('불합격 판정 불량 수')).toBeDisabled();
     expect(screen.queryByLabelText(/샘플 비율/)).not.toBeInTheDocument();
+  });
+
+  /* AQL 은 IQC 기준에서만 쓴다(사용자 지시 · omf-all-around#264). */
+  it('IQC 기준이 아니면 AQL 샘플링 선택지와 AQL 칸이 없다', async () => {
+    const { user } = renderPane({ showAql: false });
+
+    expect(screen.queryByLabelText('AQL')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: '검사 방식' }));
+    expect(screen.queryByRole('option', { name: 'AQL 샘플링' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '전수검사' })).toBeInTheDocument();
   });
 
   it('전수검사로 바꾸면 비율을 함께 비운다', async () => {

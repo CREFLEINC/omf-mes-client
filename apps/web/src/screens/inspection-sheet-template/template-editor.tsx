@@ -145,7 +145,7 @@ export const TemplateEditor = ({
         businessUnitId: source.businessUnitId ?? 0,
         formLayoutCode: source.formLayoutCode,
         ...toBody(source),
-        templateCode: source.templateCode.trim(),
+        ...(source.templateCode.trim() === '' ? {} : { templateCode: source.templateCode.trim() }),
         templateName: source.templateName.trim(),
       },
     });
@@ -467,7 +467,7 @@ export const TemplateEditor = ({
                   loading={create.isSaving}
                   onClick={() =>
                     /* 새 버전은 기준코드 · 기준명을 이어받는다 — 없는 옛 기준은 먼저 받는다(#260). */
-                    draft.templateCode.trim() === '' || draft.templateName.trim() === ''
+                    draft.templateName.trim() === ''
                       ? setIsRevisionCodeOpen(true)
                       : create.write({
                           source: {
