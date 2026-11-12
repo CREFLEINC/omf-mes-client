@@ -35848,6 +35848,19 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   text-align: end;
 }
 
+/*
+ * 머리는 두 줄까지(노트 기준) — 좁은 수량 칸 머리가 베트남어 「LOT quản lý vật tư」에서 4~5줄로 꺾이지 않게 최소 폭을 준다(G2 L7).
+ */
+.iwr-table th {
+  min-width: 10ch;
+}
+
+.iwr-query {
+  flex: 1 1 18rem;
+  min-width: 16rem;
+  max-width: 28rem;
+}
+
 .iwr-table tr.is-clickable {
   cursor: pointer;
 }

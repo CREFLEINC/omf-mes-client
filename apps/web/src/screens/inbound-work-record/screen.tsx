@@ -151,13 +151,17 @@ export const InboundWorkRecordScreen = () => {
         ]}
         onChange={(value) => update({ supplier: value })}
       />
-      <TextField
-        aria-label={t.filters.query}
-        placeholder={t.filters.queryPlaceholder}
-        type="search"
-        value={query}
-        onChange={(event) => update({ q: event.target.value })}
-      />
+      {/* 베트남어 placeholder 가 잘리지 않는 폭(G2 L7). */}
+      <div className="iwr-query">
+        <TextField
+          fullWidth
+          aria-label={t.filters.query}
+          placeholder={t.filters.queryPlaceholder}
+          type="search"
+          value={query}
+          onChange={(event) => update({ q: event.target.value })}
+        />
+      </div>
     </section>
   );
 
