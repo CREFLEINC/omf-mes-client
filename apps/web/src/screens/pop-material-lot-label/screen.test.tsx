@@ -117,7 +117,7 @@ describe('PopMaterialLotLabelScreen — 오른쪽 표', () => {
     const unprinted = screen.getByRole('checkbox', { name: /\|0001 /u });
     const printed = screen.getByRole('checkbox', { name: /\|0003 /u });
 
-    expect(unprinted).toHaveTextContent('1,000EA');
+    expect(unprinted).toHaveTextContent('1,000 EA');
     expect(unprinted).toHaveTextContent('봉지 10 × 100');
     expect(unprinted).toHaveTextContent('SYN-SL-77');
     expect(unprinted).toHaveTextContent(t.lotState.waiting);

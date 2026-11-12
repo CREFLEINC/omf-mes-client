@@ -89,13 +89,19 @@
 }
 
 .receive__cards-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2, 8px);
   margin: 0;
   font: var(--type-headline-sm);
 }
 
+/* 부제는 통째로 다음 줄로 — 글자 단위로 꺾이지 않게(G1 360 폭). */
 .receive__cards-head small {
   color: var(--on-surface-muted);
   font: var(--type-body-sm);
+  white-space: nowrap;
 }
 
 .receive-card {
@@ -116,11 +122,23 @@
   gap: var(--space-2, 8px);
 }
 
-.receive-card__no,
-.receive-lot__no {
+.receive-card__no {
   font-family: var(--font-mono);
   font-weight: 700;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+
+/*
+ * 자재 관리 LOT 번호는 한 줄(screens/M-01-01.md 「좁은 폭」) — 시안처럼 작은 고정폭 글자로 카드 폭을 다 쓴다.
+ * 그래도 넘치면 끝을 말줄임으로 자른다(번호 전체는 시트 · 해제 버튼 이름에 있다).
+ */
+.receive-lot__no {
+  overflow: hidden;
+  font: var(--type-body-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .receive-card__sum {
@@ -147,7 +165,7 @@
 
 .receive-lot {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: var(--space-2, 8px);
   padding: var(--space-2, 8px);
@@ -174,6 +192,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1, 4px);
+}
+
+.receive-lot__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
 }
 
 .receive-lot__supplier {

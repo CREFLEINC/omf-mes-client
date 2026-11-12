@@ -14001,6 +14001,18 @@ button.app-button-neutral {
   color: var(--on-surface-muted);
 }
 
+/*
+ * 표는 짓누르지 않는다(screens/W-06-25.md 좁은 폭) — 칸은 한 줄, 넘치면 표 상자 안에서 가로로 민다(.wide-table).
+ * 76rem 은 1440 에서 아홉 열이 한 줄로 서는 폭이다(품목명 · 「바꾼 때」가 가장 길다).
+ */
+.wide-table.supplier-item-default-table table {
+  min-width: 76rem;
+}
+
+.supplier-item-default-table td {
+  white-space: nowrap;
+}
+
 .supplier-item-default-help {
   max-width: none;
   margin-top: var(--space-2);

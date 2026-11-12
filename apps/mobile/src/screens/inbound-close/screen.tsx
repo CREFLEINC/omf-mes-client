@@ -28,8 +28,10 @@ import {
   isStateLocked,
   isVersionConflict,
   lotTail,
+  openBlockerAfterConflict,
   openBlockerOf,
   reopenBlockersOf,
+  type OpenBlocker,
   reopenReasonOf,
   shortWhen,
 } from './close';
@@ -63,7 +65,7 @@ type Dialog =
   | { kind: 'unregister'; lot: InboundLotMaterialLot }
   | { kind: 'close' }
   | { kind: 'reopen'; target: InboundLot }
-  | { kind: 'blocked'; target: InboundLot; codes: string[]; openLot: InboundLot | null }
+  | { kind: 'blocked'; target: InboundLot; codes: string[]; openLot: OpenBlocker | null }
   | null;
 
 /**
@@ -196,7 +198,12 @@ export const InboundCloseScreen = () => {
 
         if (codes.length === 0) return false;
 
-        setDialog({ kind: 'blocked', target, codes, openLot: openBlockerOf(target, receiving) });
+        setDialog({
+          kind: 'blocked',
+          target,
+          codes,
+          openLot: openBlockerAfterConflict(target, receiving),
+        });
 
         return true;
       },
@@ -591,11 +598,13 @@ const BlockedDialog = ({
       title={t.blockedDialog.title}
       cancelLabel={t.blockedDialog.close}
       proceedLabel={
-        openLot === null ? t.blockedDialog.close : t.card.open(inboundTail(openLot.inboundLotNo))
+        openLot?.inboundLotId == null
+          ? t.blockedDialog.close
+          : t.card.open(inboundTail(openLot.inboundLotNo))
       }
       onCancel={onClose}
       onProceed={() => {
-        if (openLot === null) onClose();
+        if (openLot?.inboundLotId == null) onClose();
         else onOpen(openLot.inboundLotId);
       }}
     >

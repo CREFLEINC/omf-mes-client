@@ -1,5 +1,6 @@
 import { Icon, IconButton } from '@crefle/web-ui';
 import type {
+  ApiError,
   InboundLotDetail,
   InboundLotMaterialLot,
   InboundLotReceiveResult,
@@ -36,6 +37,8 @@ import {
   lotTail,
   pendingCountFor,
   queuedLotNoOf,
+  registeredInOf,
+  rejectionCodeOf,
   serverMessageOf,
   toReceiveDraft,
   type CardState,
@@ -124,7 +127,7 @@ export const InboundReceiptScreen = () => {
   };
 
   /** 받기 결과를 화면에 — 카드 · 결과 줄 · 자동 마감 띠. */
-  const apply = (result: InboundLotReceiveResult, lotNo: string, quiet = false): void => {
+  const apply = (result: InboundLotReceiveResult, lotNo: string): void => {
     setCards((previous) => applyReceive(previous, result));
 
     for (const lot of result.inboundLots) {
@@ -141,11 +144,7 @@ export const InboundReceiptScreen = () => {
 
     if (first === undefined) return;
 
-    const fromSupplierLabel = first.lots.some((each) => each.fromSupplierLabel);
-    const message = first.created
-      ? t.result.created(first.inboundLotNo)
-      : t.result.added(first.inboundLotNo, first.lotCount);
-
+    /* 성공은 결과 줄 하나로만 알린다 — 알림 줄에 같은 문구를 또 띄우지 않는다(G1 360 폭). */
     pushLine({
       kind: 'ok',
       id: nextLineId(),
@@ -153,24 +152,46 @@ export const InboundReceiptScreen = () => {
       inboundLotNo: first.inboundLotNo,
       created: first.created,
       count: first.lotCount,
-      fromSupplierLabel,
+      fromSupplierLabel: first.lots.some((each) => each.fromSupplierLabel),
     });
-    if (!quiet) {
-      setNotice(fromSupplierLabel ? t.result.toastSupplierLabel(message) : t.result.toast(message));
+  };
+
+  /**
+   * 거부 줄의 이유 · 설명 — 서버 `rejectedLots[].reasonCode` 로 가른다(screens/M-01-01.md 「거부 줄」).
+   * 그 칸이 없는 거부(라벨 형식 · 코드 불일치 400 등)는 서버 문구 그대로.
+   */
+  const rejectLineOf = (lotNo: string, error: ApiError): ScanLine => {
+    const code = rejectionCodeOf(error);
+    const base = { kind: 'reject' as const, id: nextLineId(), lotNo };
+
+    if (code === 'VOIDED') {
+      return { ...base, reason: t.reject.voided, body: t.reject.voidedBody };
     }
+    if (code === 'ALREADY_RECEIVED') {
+      const where = registeredInOf(
+        [...details.values()].map((each) => each.data),
+        lotNo,
+      );
+
+      return {
+        ...base,
+        reason: t.reject.alreadyReceived,
+        body:
+          where === null
+            ? t.reject.alreadyReceivedBody
+            : t.reject.alreadyReceivedIn(where.inboundLotNo, where.receiving),
+      };
+    }
+    if (code === 'NOT_MATERIAL_LOT') {
+      return { ...base, reason: t.reject.notMaterialLot, body: t.reject.notMaterialLotBody };
+    }
+
+    return { ...base, reason: t.reject.refused, body: serverMessageOf(error) ?? t.reject.failed };
   };
 
   const reject = (lotNo: string, cause: unknown): void => {
-    const error = toApiError(cause);
-
     playErrorTone();
-    pushLine({
-      kind: 'reject',
-      id: nextLineId(),
-      lotNo,
-      reason: t.reject.refused,
-      body: serverMessageOf(error) ?? t.reject.failed,
-    });
+    pushLine(rejectLineOf(lotNo, toApiError(cause)));
   };
 
   /** 오프라인 — 등록하지 않고 전송 대기에 둔다(같은 키로 나중에 나간다). */
@@ -197,6 +218,9 @@ export const InboundReceiptScreen = () => {
     const lotNo = raw.trim();
 
     if (lotNo === '' || workerNo === null || inFlight.current) return;
+
+    /* 새 스캔이면 앞선 알림(해제 · 마감 · 전송)은 내린다 — 결과 줄과 겹쳐 남지 않게. */
+    setNotice(null);
 
     if (pending.some((entry) => queuedLotNoOf(entry) === lotNo)) {
       playErrorTone();
@@ -260,22 +284,36 @@ export const InboundReceiptScreen = () => {
 
       if (response !== undefined) {
         registered += 1;
-        apply(response, each.lotNo, true);
+        apply(response, each.lotNo);
       } else if (outbox.isRejected(each.key)) {
         rejected += 1;
         const record = outbox.rejected.find((item) => item.entry.idempotencyKey === each.key);
-        pushLine({
-          kind: 'reject',
-          id: nextLineId(),
-          lotNo: each.lotNo,
-          reason: t.reject.refused,
-          body:
-            record === undefined
-              ? t.reject.failed
-              : (serverMessageOf(record.error) ?? t.reject.failed),
-        });
+        pushLine(
+          record === undefined
+            ? {
+                kind: 'reject',
+                id: nextLineId(),
+                lotNo: each.lotNo,
+                reason: t.reject.refused,
+                body: t.reject.failed,
+              }
+            : rejectLineOf(each.lotNo, record.error),
+        );
       }
     }
+
+    /* 보낸 라벨의 「오프라인」 · 「이미 전송 대기」 줄은 이제 사실이 아니다 — 내린다(G1). */
+    const sentLotNos = new Set(settled.map((each) => each.lotNo));
+    setLines((previous) =>
+      previous.filter(
+        (line) =>
+          !sentLotNos.has(line.lotNo) ||
+          !(
+            line.kind === 'offline' ||
+            (line.kind === 'reject' && line.reason === t.reject.alreadyQueued)
+          ),
+      ),
+    );
 
     const done = new Set(settled.map((each) => each.key));
     setTracked((previous) => previous.filter((each) => !done.has(each.key)));
@@ -449,7 +487,8 @@ export const InboundReceiptScreen = () => {
                 <>
                   <Icon name="cloud_off" size={18} />
                   <span>
-                    {lotTail(line.lotNo)} · {t.offline.scanned}
+                    <strong>{lotTail(line.lotNo)}</strong>
+                    <span className="receive-line__sub">{t.offline.scanned}</span>
                   </span>
                 </>
               ) : line.kind === 'closed' ? (
@@ -557,7 +596,9 @@ export const InboundReceiptScreen = () => {
                 qtyText(closing.receivedQty, closing.uomCode),
               )}
             </p>
-            <p>{t.closeDialog.body}</p>
+            <p>
+              {closing.inspectionRequired ? t.closeDialog.body : t.closeDialog.bodyNoInspection}
+            </p>
           </>
         )}
       </ConfirmDialog>

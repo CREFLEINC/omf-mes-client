@@ -263,6 +263,10 @@ describe('W-06-25 공급사·품목 기본 정보', () => {
     const { user, writes } = setup();
     const dialog = await openAdd(user);
 
+    /* 품목을 고르기 전 도움말에 빈 괄호 「기본 단위()」를 두지 않는다(G1). */
+    expect(dialog.getByText(td.qtyPerPackageHelp(''))).toBeInTheDocument();
+    expect(dialog.queryByText(/기본 단위\(\)/u)).toBeNull();
+
     await pick(user, dialog, td.supplier, 'SYN-S2 · 합성 공급사 나');
     await pick(user, dialog, td.item, 'SYN-CAP · 합성 캡');
 

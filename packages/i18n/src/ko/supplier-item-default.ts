@@ -58,7 +58,10 @@ export const supplierItemDefault = {
     packageUom: '패키징 단위',
     noPackage: '없음',
     qtyPerPackage: '패키징 수량',
-    qtyPerPackageHelp: (baseUomCode: string) => `패키징 1개에 든 기본 단위(${baseUomCode}) 수량`,
+    qtyPerPackageHelp: (baseUomCode: string) =>
+      baseUomCode === ''
+        ? '패키징 1개에 든 기본 단위 수량'
+        : `패키징 1개에 든 기본 단위(${baseUomCode}) 수량`,
     lotQty: '자재 관리 LOT당 재고 수량',
     /** 재고 수량 옆 — 「= 봉지 10개」. */
     countOf: (uomCode: string, count: string) => `= ${uomCode} ${count}개`,
