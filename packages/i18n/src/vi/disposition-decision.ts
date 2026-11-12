@@ -325,4 +325,29 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       COMPLETED: 'Hoàn tất',
     },
   },
+  /** 「지금(바뀌기 전)」 띠(005 · screens/W-03-10.md). */
+  nowBand: {
+    title: 'Trước đây (trước khi thay đổi)',
+    summary:
+      'Chia số lượng xử lý để đánh giá nhiều lần · Phân loại = tách LOT theo số lượng đạt/lỗi (LOT con) · Đặc cách = chọn 1 LOT, có thể một phần số lượng', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    expand: 'Mở rộng',
+    collapse: 'Thu gọn',
+    items: [
+      {
+        label: 'Số lượng xử lý',
+        tag: 'Đã bỏ',
+        note: 'Trước đây có thể chia số lượng xử lý và chỉ đánh giá một phần (đã nhập / chưa nhập).',
+      },
+      {
+        label: 'Số lượng đạt · lỗi (phân loại)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+        tag: 'Đã thay đổi',
+        note: 'Số lượng lỗi được tách thành LOT mới (LOT con) và trở thành sự không phù hợp mới.',
+      },
+      {
+        label: 'Yêu cầu đặc cách',
+        tag: 'Bỏ đặc cách một phần',
+        note: 'Trước đây có thể chọn một LOT và chỉ duyệt một phần số lượng; phần còn lại được tách thành LOT mới và sự không phù hợp mới.',
+      },
+    ],
+  },
 };

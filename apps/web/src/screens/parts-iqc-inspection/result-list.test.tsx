@@ -287,4 +287,81 @@ describe('W-01-01 새 흐름 결과 목록', () => {
       ),
     );
   });
+
+  it('US3-8 자재 관리 LOT 별 판정 — 서버 lotJudgments 로 LOT 마다 판정 · 결과, 대체는 「LOT 0001: 결과 1 불합격 → 결과 2 합격(사유)」', async () => {
+    mount(
+      inspection({
+        previewJudgmentCode: 'REJECTED',
+        results: [
+          result(1, 'REJECTED', [1, 2]),
+          {
+            ...result(2, 'ACCEPTED', [1]),
+            reinspectionReasonCode: 'TST-REMEASURE',
+            reinspectionReasonName: '합성 재측정',
+          },
+        ],
+        lotJudgments: [
+          {
+            lotId: 2,
+            lotNo: lot(2).lotNo,
+            judgmentCode: 'REJECTED',
+            resultId: 701,
+            resultSeqNo: 1,
+            superseded: [],
+          },
+          {
+            lotId: 1,
+            lotNo: lot(1).lotNo,
+            judgmentCode: 'ACCEPTED',
+            resultId: 702,
+            resultSeqNo: 2,
+            superseded: [{ resultId: 701, resultSeqNo: 1, judgmentCode: 'REJECTED' }],
+            reinspectionReasonCode: 'TST-REMEASURE',
+            reinspectionReasonName: '합성 재측정',
+          },
+        ],
+      }),
+    );
+
+    const panel = await screen.findByRole('region', { name: t.results.lotJudgments.heading });
+    const rows = within(panel).getAllByRole('listitem');
+    /* LOT 표 순서(0001 · 0002)를 따른다. */
+    expect(rows[0]).toHaveTextContent('합격');
+    expect(rows[0]).toHaveTextContent(t.results.lotJudgments.byResult(2));
+    expect(rows[0]).toHaveTextContent(
+      t.results.lotJudgments.superseded('0001', 1, '불합격', 2, '합격', '합성 재측정'),
+    );
+    expect(rows[1]).toHaveTextContent('불합격');
+    expect(rows[1]).toHaveTextContent(t.results.lotJudgments.byResult(1));
+    expect(rows[1]).not.toHaveTextContent('→');
+    /* 매칭한 결과가 없는 LOT 0003 은 판정에서 빠진다. */
+    expect(within(panel).getByText(t.results.lotJudgments.unmatched(1))).toBeInTheDocument();
+    /* 종합 판정 미리 보기는 LOT 별 판정 중 가장 나쁜 것 — 서버 값. */
+    expect(screen.getByText(t.detail.banner.preview('불합격', 2))).toBeInTheDocument();
+
+    const table = screen.getByRole('table', { name: t.results.heading(2) });
+    expect(within(table).getAllByRole('row')[2]).toHaveTextContent(t.results.reason('합성 재측정'));
+  });
+
+  it('US3-8 서버가 lotJudgments 를 아직 주지 않으면 결과 목록으로 같은 규칙을 계산해 보인다', async () => {
+    mount(
+      inspection({
+        results: [
+          result(1, 'REJECTED', [1, 2]),
+          {
+            ...result(2, 'ACCEPTED', [1]),
+            reinspectionReasonCode: 'TST-REMEASURE',
+            reinspectionReasonName: '합성 재측정',
+          },
+        ],
+      }),
+    );
+
+    const panel = await screen.findByRole('region', { name: t.results.lotJudgments.heading });
+    expect(
+      within(panel).getByText(
+        t.results.lotJudgments.superseded('0001', 1, '불합격', 2, '합격', '합성 재측정'),
+      ),
+    ).toBeInTheDocument();
+  });
 });

@@ -26,6 +26,8 @@ import {
 import { InboundHistory } from './inbound-history';
 import { LotNo } from './lot-match-field';
 import { ResultDrawer, type ResultDrawerProps } from './result-drawer';
+import { LotJudgmentList } from './lot-judgment-list';
+import { lotJudgmentsOf } from './lot-judgment';
 import { ResultList, judgmentStatus, judgmentText } from './result-list';
 import { SplitLotsDialog } from './split-lots-dialog';
 import { ConfirmActions, ConfirmPermissionNote } from './confirm-bar';
@@ -415,6 +417,9 @@ export const InboundDetail = ({
             </Button>
           )}
         </div>
+        {results.length === 0 ? null : (
+          <LotJudgmentList judgments={lotJudgmentsOf(inspection)} lots={lots} results={results} />
+        )}
         <ResultList
           results={results}
           lots={lots}

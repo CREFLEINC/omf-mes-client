@@ -362,4 +362,32 @@ export const dispositionDecision = {
       COMPLETED: '완료',
     },
   },
+  /**
+   * 「지금(바뀌기 전)」 띠(005 · screens/W-03-10.md · mockups/W0310-After.html) — 처분 방식이 바뀐 점을 알린다.
+   * C5 에서는 한국어 상수였고 C7 에서 언어별 문구로 옮겼다(총괄 지시 2026-11-12).
+   */
+  nowBand: {
+    title: '지금(바뀌기 전)',
+    summary:
+      '처분 수량을 나눠 여러 번 판정 · 선별 = 양품/불량 수량으로 LOT 를 쪼갬(자식 LOT) · 특채 = LOT 1개 고르고 일부 수량도 가능', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    expand: '펼치기',
+    collapse: '접기',
+    items: [
+      {
+        label: '처분 수량',
+        tag: '없어짐',
+        note: '처분 수량을 나눠 일부만 판정할 수 있었습니다(입력 / 미입력).',
+      },
+      {
+        label: '양품 · 불량 수량 (선별)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+        tag: '바뀜',
+        note: '불량 수량은 새 LOT 으로 나뉘어(자식 LOT) 새 부적합이 됐습니다.',
+      },
+      {
+        label: '특채 요청',
+        tag: '일부 특채 없어짐',
+        note: 'LOT 하나를 고르고 일부 수량만 승인할 수 있었고, 나머지는 새 LOT 과 부적합으로 나뉘었습니다.',
+      },
+    ],
+  },
 } as const;

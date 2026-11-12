@@ -55,11 +55,19 @@ export const ResultList = ({
     {
       key: 'judgment',
       header: t.columns.judgment,
-      render: (row) => (
-        <Chip size="sm" status={judgmentStatus(row.overallJudgmentCode)}>
-          {judgmentText(row.overallJudgmentCode)}
-        </Chip>
-      ),
+      render: (row) => {
+        const reason = row.reinspectionReasonName ?? row.reinspectionReasonCode ?? null;
+
+        return (
+          <span className="iqc-inbound-judgment-cell">
+            <Chip size="sm" status={judgmentStatus(row.overallJudgmentCode)}>
+              {judgmentText(row.overallJudgmentCode)}
+            </Chip>
+            {/* 불합격 · 보류를 덮은 결과의 재검 사유(FR-023a · 2026-11-12). */}
+            {reason === null ? null : <span className="parts-iqc-muted">{t.reason(reason)}</span>}
+          </span>
+        );
+      },
     },
     {
       key: 'inspectedQty',

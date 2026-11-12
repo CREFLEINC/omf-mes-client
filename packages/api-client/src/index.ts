@@ -120,6 +120,8 @@ export type {
   InspectionRequestForward,
   InspectionLotForward,
   InspectionResultSummaryForward,
+  InspectionLotJudgmentForward,
+  InspectionLotSupersededForward,
   InspectionRequestInboundDetailForward,
   InboundLotPoAllocation,
   InspectionRequestEventForward,

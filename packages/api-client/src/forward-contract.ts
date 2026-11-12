@@ -58,8 +58,13 @@ export type InspectionResultUpdateForward = Omit<
   'fourMChange'
 > & {
   fourMChange?: FourMChangeForward | null;
-  /** 005 새 흐름 IQC — 매칭을 통째로 바꾼다(계약 §8). */
+  /** 005 새 흐름 IQC — 매칭을 통째로 바꾼다(계약 §8). 1개 이상(2026-11-12 · 0개면 400 `MATCHED_LOT_REQUIRED`). */
   matchedLotIds?: number[];
+  /**
+   * 005 판정 규칙 변경(2026-11-12) — 이 수정이 어떤 자재 관리 LOT 의 판정을 불합격 → 보류 · 합격, 보류 → 합격으로 바꾸면 필수
+   * (공통코드 `REINSPECTION_REASON` · 없으면 400 `REINSPECTION_REASON_REQUIRED`). 만들기 본문에는 생성 타입에 이미 있다.
+   */
+  reinspectionReasonCode?: string;
 };
 
 type InspectionResultsPath = paths['/quality/inspection-results'];
@@ -1259,6 +1264,38 @@ export interface InspectionResultSummaryForward {
   inspectedAt: string;
   statusCode: string;
   versionNo: number;
+  /** 재검 사유(계약 §8 · 2026-11-12) — 불합격 · 보류를 덮은 결과에 있다. */
+  reinspectionReasonCode?: string | null;
+  reinspectionReasonName?: string | null;
+  /** 확정 차수(계약 §8) — 1 = 처음, 2 이상 = 재검사. */
+  confirmCycle?: number | null;
+}
+
+/** 자재 관리 LOT 의 판정에서 대체된 앞 결과(계약 §8 `lotJudgments[].superseded[]`). */
+export interface InspectionLotSupersededForward {
+  resultId: number;
+  resultSeqNo: number;
+  judgmentCode: string | null;
+}
+
+/**
+ * 자재 관리 LOT 별 판정(계약 §8 `lotJudgments[]` · FR-023 · 2026-11-12) — 그 LOT 을 매칭한 결과 중 순번이 가장 큰 결과의 판정.
+ * 매칭한 결과가 없는 LOT 은 싣지 않는다(계산에서 빠진다).
+ */
+export interface InspectionLotJudgmentForward {
+  lotId: number;
+  lotNo: string;
+  judgmentCode: string | null;
+  /** 이 판정을 낸 결과. */
+  resultId: number;
+  resultSeqNo: number;
+  /** 이 LOT 에서 대체된 앞 결과 — 순번 오름차순(C7 정함). 마지막 것이 「결과 a → 결과 b」의 a 다. */
+  superseded: InspectionLotSupersededForward[];
+  /**
+   * 대체한 결과(= `resultId`)의 재검 사유(C7 정함 — 계약은 `superseded[]` 옆에 적었다). 없으면 화면이 `results[]` 의 같은 결과에서 읽는다.
+   */
+  reinspectionReasonCode?: string | null;
+  reinspectionReasonName?: string | null;
 }
 
 /** 입하 LOT 단위 IQC 상세(계약 §8 상세 추가). */
@@ -1271,6 +1308,8 @@ export interface InspectionRequestInboundDetailForward {
   poAllocations?: InboundLotPoAllocation[];
   unallocatedQty?: number | null;
   results?: InspectionResultSummaryForward[];
+  /** 자재 관리 LOT 별 판정 · 대체(계약 §8 · 2026-11-12). 서버 T134 전이면 없다. */
+  lotJudgments?: InspectionLotJudgmentForward[];
   /** 확정한 사람(C3 정함 — 확정 배너 「{확정자} · {시각}」). */
   confirmedByName?: string | null;
   /** 불합격 확정으로 생긴 부적합(C3 정함 — 배너 링크 W-03-10). */
