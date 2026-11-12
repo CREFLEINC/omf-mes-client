@@ -12628,7 +12628,8 @@ a.erp-send-chips:focus-visible {
 
 .location-alias-edit .location-alias-input {
   flex: 1;
-  min-width: 0;
+  /* 칸이 좁아져도 입력칸이 사라지지 않게 — 폭 0 인 입력칸은 IME 확정마다 커서가 맨 앞으로 간다. */
+  min-width: 8rem;
 }
 
 .location-alias-edit .field-error {
