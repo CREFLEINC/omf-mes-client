@@ -34,6 +34,12 @@ const result = (
   inspectorName: null,
   inspectedAt: '2099-11-11T01:00:00Z',
   statusCode: 'DRAFT',
+  confirmCycle: null,
+  acceptedQty: 0,
+  heldQty: 0,
+  matchedLotNos: [],
+  reinspectionReasonCode: null,
+  reinspectionReasonName: null,
   versionNo: 1,
 });
 
@@ -140,6 +146,8 @@ describe('판정 규칙 — 자재 관리 LOT 별 판정(FR-023)', () => {
           resultId: 1,
           resultSeqNo: 1,
           superseded: [],
+          reinspectionReasonCode: null,
+          reinspectionReasonName: null,
         },
         {
           lotId: 1,
@@ -148,6 +156,8 @@ describe('판정 규칙 — 자재 관리 LOT 별 판정(FR-023)', () => {
           resultId: 1,
           resultSeqNo: 1,
           superseded: [],
+          reinspectionReasonCode: null,
+          reinspectionReasonName: null,
         },
       ],
     });
@@ -192,6 +202,10 @@ describe('W-01-01 변경 이력 「내용」(G2 M4)', () => {
     eventCode: 'CONFIRMED',
     actorName: null,
     detail: null,
+    inspectionResultId: null,
+    summaryBefore: null,
+    summaryAfter: null,
+    reason: null,
     ...over,
   });
 

@@ -25,7 +25,7 @@ describe('toLabelLots — 공급사·품목 묶음의 LOT 을 화면 줄로', ()
           lotId: 9001,
           lotNo: 'SYN-ITEM-01|1000|261111|SYN-P-01|0001',
           lotQty: 1000,
-          package: { uomId: 8402, uomCode: '봉지', count: 10, qtyPerPackage: 100 },
+          package: { uomId: 8402, uomCode: '봉지', uomName: '봉지', count: 10, qtyPerPackage: 100 },
           supplierLotNo: 'SYN-SL-1',
           lifecycleStatusCode: 'WAITING',
           statusCode: 'INSPECTION_PENDING',

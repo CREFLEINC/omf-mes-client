@@ -18,6 +18,8 @@ const HOLDS = '/quality/lot-holds';
 const lot = (overrides: Partial<LotStatusCandidate> = {}): LotStatusCandidate => ({
   lotId: 701,
   lotNo: 'SYN-LOT-ALPHA',
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 801,
   lotStatusCode: 'NORMAL',
   versionNo: 7,

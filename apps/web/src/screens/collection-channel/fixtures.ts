@@ -113,6 +113,8 @@ export const makeVersion = (
   effectiveFrom: '2026-01-01',
   samplingMethodCode: 'FULL',
   inspectionFrequencyCode: 'EVERY_LOT',
+  guideText: null,
+  aqlInspectionLevelCode: null,
   statusCode,
 });
 

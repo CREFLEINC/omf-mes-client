@@ -81,7 +81,7 @@ const defaultRow = (
   uomId: 1,
   uomCode: 'EA',
   lotQty: 1000,
-  package: { uomId: 11, uomCode: '봉지', count: 10, qtyPerPackage: 100 },
+  package: { uomId: 11, uomCode: '봉지', uomName: '봉지', count: 10, qtyPerPackage: 100 },
   remarks: null,
   versionNo: 3,
   updatedAt: '2026-11-11T02:02:00Z',

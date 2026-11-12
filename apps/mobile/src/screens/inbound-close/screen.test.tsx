@@ -59,6 +59,7 @@ const inboundLot = (id: number, over: Partial<InboundLot> = {}): InboundLot => (
   unallocatedQty: 0,
   iqc: null,
   inspectionRequired: true,
+  iqcDefaultSkipApplies: false,
   firstRegisteredAt: '2026-11-11T01:05:00Z',
   receivedClosedAt: null,
   closedAutomatically: false,
@@ -71,6 +72,10 @@ const inboundLot = (id: number, over: Partial<InboundLot> = {}): InboundLot => (
   finalizable: false,
   erpSendModeCode: 'ON_FINALIZE',
   versionNo: 3,
+  poAllocations: [],
+  finalizedByName: null,
+  finalizeBlockers: [],
+  lotProgress: { received: 0, inIqc: 0, inDisposition: 0, disposed: 0, returned: 0 },
   ...over,
 });
 
@@ -86,6 +91,8 @@ const detailOf = (lot: InboundLot, count = 2): InboundLotDetail => ({
     statusCode: 'INSPECTION_PENDING',
     registeredAt: '2026-11-11T01:05:00Z',
     fromSupplierLabel: false,
+    goodsReceived: false,
+    dispositionStatusCode: null,
   })),
   events: [],
 });
@@ -305,7 +312,8 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
         package: {
           uomId: 8402,
           uomCode: 'SYN-BAG',
-          uomName: names[index],
+          /* 이름이 빠진 응답(계약 밖)도 코드로 보이는지 지킨다. */
+          uomName: names[index] as string,
           count: 10,
           qtyPerPackage: 100,
         },

@@ -180,9 +180,7 @@ const createServer = (options: ServerOptions = {}) => {
             unallocatedQty: 0,
             iqc: null,
             inspectionRequired: options.inspectionRequired ?? true,
-            ...(options.iqcDefaultSkipApplies === undefined
-              ? {}
-              : { iqcDefaultSkipApplies: options.iqcDefaultSkipApplies }),
+            iqcDefaultSkipApplies: options.iqcDefaultSkipApplies ?? false,
             firstRegisteredAt: '2026-11-11T01:00:00Z',
             receivedClosedAt: null,
             closedAutomatically: false,
@@ -195,6 +193,10 @@ const createServer = (options: ServerOptions = {}) => {
             finalizable: false,
             erpSendModeCode: 'ON_FINALIZE',
             versionNo: 1,
+            poAllocations: [],
+            finalizedByName: null,
+            finalizeBlockers: [],
+            lotProgress: { received: 0, inIqc: 0, inDisposition: 0, disposed: 0, returned: 0 },
             lots: [],
             events: [],
           };
@@ -209,15 +211,18 @@ const createServer = (options: ServerOptions = {}) => {
           package: {
             uomId: 2,
             uomCode: '봉지',
+            /* 이름이 없으면 화면은 코드를 쓴다 — 코드와 같은 값을 실어 그 모양을 지킨다. */
+            uomName: options.packageUomName ?? '봉지',
             count: 10,
             qtyPerPackage: 100,
-            ...(options.packageUomName === undefined ? {} : { uomName: options.packageUomName }),
           },
           supplierLotNo: null,
           lifecycleStatusCode: 'ACTIVE',
           statusCode: 'INSPECTION_PENDING',
           registeredAt: '2026-11-11T01:05:00Z',
           fromSupplierLabel: false,
+          goodsReceived: false,
+          dispositionStatusCode: null,
         };
         open.lots.push(material);
         open.lotCount = open.lots.length;
@@ -233,7 +238,8 @@ const createServer = (options: ServerOptions = {}) => {
                 inboundLotNo: open.inboundLotNo,
                 created,
                 autoClosedInboundLotNo: autoClosed,
-                inboundReceiptNo: open.inboundReceiptNo,
+                iqcDefaultSkipApplies: open.iqcDefaultSkipApplies,
+                inboundReceiptNo: open.inboundReceiptNo ?? '',
                 receivedQty: open.receivedQty,
                 lotCount: open.lotCount,
                 lots: [

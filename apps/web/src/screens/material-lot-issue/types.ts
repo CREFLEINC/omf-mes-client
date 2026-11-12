@@ -8,8 +8,7 @@ import type {
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 
 /**
- * W-01-14 가 읽는 API 모양 — 선행 계약(`forward-contract.ts`, 설계 계약 §1·§9)의 별칭이다. 서버 S3 병합 뒤
- * `gen:api` 로 다시 만들면(T111) 이 별칭이 생성 타입을 가리키게 된다.
+ * W-01-14 가 읽는 API 모양 — 생성 타입(`@omf-mes/api-client` · 설계 계약 §1·§9)의 별칭이다.
  */
 export type Group = WaitingMaterialLotGroup;
 export type Lot = MaterialLotSummary;

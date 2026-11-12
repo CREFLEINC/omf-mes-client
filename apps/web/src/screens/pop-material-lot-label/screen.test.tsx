@@ -256,7 +256,7 @@ describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
     /* 관리웹에서 고친 셈 — 다음 조회부터 새 값이 온다. */
     const changed = defaultInfo({
       lotQty: 2000,
-      package: { uomId: 8402, uomCode: '봉지', count: 20, qtyPerPackage: 100 },
+      package: { uomId: 8402, uomCode: '봉지', uomName: '봉지', count: 20, qtyPerPackage: 100 },
       versionNo: 2,
     });
     defaults[0] = changed;

@@ -4,7 +4,6 @@ import {
   type InboundLotSplitResult,
   type InspectionRequestEventForward,
   type InspectionRequestForward,
-  type InspectionRequestInboundDetailForward,
 } from '@omf-mes/api-client';
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
@@ -22,7 +21,7 @@ import { runRequest } from '../../patterns/request';
 type Client = ReturnType<typeof useApiClient>['client'];
 
 /** 입하 LOT 단위 상세 — 상세 응답 그대로(계약 §8). */
-export type InboundInspection = InspectionRequestForward & InspectionRequestInboundDetailForward;
+export type InboundInspection = InspectionRequestForward;
 
 const ROOT = ['iqc-inbound-lot'] as const;
 

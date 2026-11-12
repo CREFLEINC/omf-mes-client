@@ -36,6 +36,12 @@ const result = (seqNo: number, judgment: string | null, matchedLotIds: number[])
   inspectorName: '합성 검사자',
   inspectedAt: '2099-11-11T01:00:00Z',
   statusCode: 'DRAFT',
+  confirmCycle: null,
+  acceptedQty: 0,
+  heldQty: 0,
+  matchedLotNos: [],
+  reinspectionReasonCode: null,
+  reinspectionReasonName: null,
   versionNo: 2,
 });
 
@@ -309,6 +315,8 @@ describe('W-01-01 새 흐름 결과 목록', () => {
             resultId: 701,
             resultSeqNo: 1,
             superseded: [],
+            reinspectionReasonCode: null,
+            reinspectionReasonName: null,
           },
           {
             lotId: 1,
@@ -357,6 +365,8 @@ describe('W-01-01 새 흐름 결과 목록', () => {
             resultId: 701,
             resultSeqNo: 1,
             superseded: [],
+            reinspectionReasonCode: null,
+            reinspectionReasonName: null,
           },
           ...[2, 3].map((lotId) => ({
             lotId,
@@ -365,6 +375,8 @@ describe('W-01-01 새 흐름 결과 목록', () => {
             resultId: null,
             resultSeqNo: null,
             superseded: [],
+            reinspectionReasonCode: null,
+            reinspectionReasonName: null,
           })),
         ],
       }),

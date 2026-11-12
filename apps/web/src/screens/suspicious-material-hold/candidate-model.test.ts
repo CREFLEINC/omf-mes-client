@@ -15,6 +15,8 @@ type Lot = components['schemas']['LotQualityStatus'];
 const lot = (overrides: Partial<Lot> = {}): Lot => ({
   lotId: 701,
   lotNo: 'SYN-LOT-701',
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 801,
   lotStatusCode: 'INSPECTION_PENDING',
   versionNo: 7,

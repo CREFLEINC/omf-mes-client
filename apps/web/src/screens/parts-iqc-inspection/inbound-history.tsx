@@ -9,9 +9,18 @@ const t = messages.iqcInboundLot.history;
 const judgmentLabel = messages.partsIqcInspection.judgment as Record<string, string | undefined>;
 
 /**
+ * ⚠ `judgmentCode` · `reinspectionReasonName` 은 생성 계약(`InspectionRequestEvent`)에 없다 — G2 M4 때 서버 보고 전에 화면이 가정한
+ * 칸이다(서버는 대신 `summaryBefore` · `summaryAfter` 를 싣는다). 화면 동작을 바꾸지 않으려 이 화면 안에만 남겼다 — 서버와 맞출 때 걷는다(T111 보고).
+ */
+type HistoryEventRow = InspectionRequestEventForward & {
+  judgmentCode?: string | null;
+  reinspectionReasonName?: string | null;
+};
+
+/**
  * 「내용」 칸 — 서버가 만든 한 줄이 있으면 그것, 없으면 판정 · 사유 · 재검 사유로 채운다. 아무것도 없으면 「—」(빈 칸 없음 · G2 M4).
  */
-export const eventDetailOf = (row: InspectionRequestEventForward): string => {
+export const eventDetailOf = (row: HistoryEventRow): string => {
   if (row.detail != null && row.detail.trim() !== '') return row.detail;
   const parts = [
     row.judgmentCode == null ? null : (judgmentLabel[row.judgmentCode] ?? row.judgmentCode),

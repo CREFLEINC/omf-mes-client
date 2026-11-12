@@ -197,18 +197,8 @@ export const QualityApprovalScreen = ({
   const iqcSkipTarget =
     detail.data === undefined
       ? null
-      : skipExecuteTargetOf(
-          {
-            ...detail.data.request,
-            /* 결재 상세의 덧댄 칸(forward-005-lots `ApprovalTargetForward`) — 생성 타입에는 아직 없다(T111). */
-            target: detail.data.request.target as {
-              targetLotId?: number | null;
-              /* 입하 마감 취소로 무효가 된 생략(서버 S12 · G2 L11 · L-a). */
-              targetVoided?: boolean | null;
-            },
-          },
-          IQC_SKIP_TYPE_CODE,
-        );
+      : /* 결재 대상의 `targetLotId` · `targetVoided`(입하 마감 취소로 무효가 된 생략 · 서버 S12 · G2 L11 · L-a)는 생성 타입에 있다. */
+        skipExecuteTargetOf(detail.data.request, IQC_SKIP_TYPE_CODE);
   const approvedIqcSkipLotId = iqcSkipTarget?.kind === 'lot' ? iqcSkipTarget.lotId : null;
   /* 생략 실행은 IQC 생략 화면 권한(W-01-02)이 있어야 한다 — 없으면 LOT 도 읽지 않고 안내만 선다(#186 리뷰). */
   const skipLotId = canOpenIqcSkip ? approvedIqcSkipLotId : null;

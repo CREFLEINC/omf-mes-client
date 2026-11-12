@@ -83,6 +83,8 @@ export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
     inspectionFrequencyCode: 'PENDING',
     frequencyIntervalValue: null,
     frequencyIntervalUomCode: null,
+    guideText: null,
+    aqlInspectionLevelCode: null,
     statusCode: 'DRAFT',
   },
   {
@@ -99,6 +101,8 @@ export const inspectionPlanVersionFixtures: InspectionPlanVersion[] = [
     inspectionFrequencyCode: 'PENDING',
     frequencyIntervalValue: 4,
     frequencyIntervalUomCode: 'PENDING',
+    guideText: null,
+    aqlInspectionLevelCode: null,
     statusCode: 'CONFIRMED',
   },
 ];

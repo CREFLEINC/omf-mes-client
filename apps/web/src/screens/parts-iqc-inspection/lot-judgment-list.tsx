@@ -26,8 +26,11 @@ const reasonOf = (
    * 서버는 그 LOT 의 판정을 불합격 · 보류에서 바꾼 경우에만 값을 싣고 그 밖에는 null 이다(S12 · G2) — 칸이 있으면 그것만 쓴다.
    * 결과의 사유는 다른 LOT 을 덮은 것일 수 있어 칸이 없을 때(서버 T134 전)만 읽는다.
    */
-  if ('reinspectionReasonCode' in judgment || 'reinspectionReasonName' in judgment) {
-    return judgment.reinspectionReasonName ?? judgment.reinspectionReasonCode ?? null;
+  /* 생성 계약은 두 칸을 늘 싣지만, 칸이 없는 응답(서버 T134 전)도 지금처럼 결과에서 읽는다. */
+  const own: { reinspectionReasonCode?: string | null; reinspectionReasonName?: string | null } =
+    judgment;
+  if ('reinspectionReasonCode' in own || 'reinspectionReasonName' in own) {
+    return own.reinspectionReasonName ?? own.reinspectionReasonCode ?? null;
   }
   const result = results.find((each) => each.inspectionResultId === judgment.resultId);
   return result?.reinspectionReasonName ?? result?.reinspectionReasonCode ?? null;

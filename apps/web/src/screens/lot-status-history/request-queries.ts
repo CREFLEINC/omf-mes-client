@@ -1,17 +1,15 @@
-import type { InboundLotFilterQuery, paths } from '@omf-mes/api-client';
+import type { paths } from '@omf-mes/api-client';
 
 import { ALL_LOT_TYPES, toInboundLotRef, type HistoryFilters, type LotFilters } from './filters';
 import { toHistoryPeriodBounds, validateHistoryPeriod } from './period';
 
-/** 005 FR-035 — 입하 LOT 조건 둘(`inboundLotId` · `inboundLotNo`)을 더한다(api-client 덧댐). */
+/** 005 FR-035 — 입하 LOT 조건 둘(`inboundLotId` · `inboundLotNo`)이 들어 있다. */
 export type LotStatusListQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
-> &
-  InboundLotFilterQuery;
+>;
 export type LotStatusSummaryQuery = NonNullable<
   NonNullable<paths['/quality/lot-status-summary']['get']>['parameters']['query']
-> &
-  InboundLotFilterQuery;
+>;
 export type LotHoldEventQuery = NonNullable<
   paths['/quality/lot-hold-events']['get']
 >['parameters']['query'];

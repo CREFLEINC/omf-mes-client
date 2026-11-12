@@ -14,7 +14,7 @@ export const labelLot = (lotId: number, over: Partial<LabelLot> = {}): LabelLot 
   itemName: '합성 품목 가',
   uomCode: 'EA',
   lotQty: 1000,
-  package: { uomId: 8402, uomCode: '봉지', count: 10, qtyPerPackage: 100 },
+  package: { uomId: 8402, uomCode: '봉지', uomName: '봉지', count: 10, qtyPerPackage: 100 },
   supplierLotNo: null,
   lifecycleStatusCode: 'WAITING',
   statusCode: 'INSPECTION_PENDING',

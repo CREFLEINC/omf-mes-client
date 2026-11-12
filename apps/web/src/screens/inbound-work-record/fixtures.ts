@@ -39,6 +39,7 @@ export const lotRow = (inboundLotId: number, over: Partial<WorkRecordLot> = {}):
   unallocatedQty: 0,
   iqc: null,
   inspectionRequired: true,
+  iqcDefaultSkipApplies: false,
   firstRegisteredAt: '2026-11-10T01:00:00Z',
   receivedClosedAt: '2026-11-10T17:00:00Z',
   closedAutomatically: false,
@@ -54,6 +55,7 @@ export const lotRow = (inboundLotId: number, over: Partial<WorkRecordLot> = {}):
   poAllocations: [],
   finalizedByName: null,
   finalizeBlockers: [],
+  lotProgress: { received: 3, inIqc: 0, inDisposition: 0, disposed: 0, returned: 0 },
   ...over,
 });
 
@@ -179,6 +181,7 @@ export const candidate = (
   toleranceQty: 0,
   thisLotQty: 0,
   maxQty: 0,
+  openedAfterReceiptClose: false,
   ...over,
 });
 

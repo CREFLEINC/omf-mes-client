@@ -118,6 +118,8 @@ const referenceRoutes = (itemStatus = 200): StubRoute[] => [
 const statusRow: components['schemas']['LotQualityStatus'] = {
   lotId: 401,
   lotNo: 'SAMPLE-LOT-001',
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 103,
   lotTypeCode: 'SAMPLE_MATERIAL',
   lotStatusCode: 'SAMPLE_UNKNOWN',

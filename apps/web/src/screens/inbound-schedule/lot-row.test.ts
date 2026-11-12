@@ -108,10 +108,11 @@ describe('FR-035 W-01-09 LOT 줄 · 라인의 입하 LOT', () => {
 
   it('FR-035 패키징 단위 이름이 없으면 코드로 보인다', () => {
     expect(
+      /* 생성 계약은 이름을 늘 싣는다 — 이름이 빠진 응답(계약 밖)에도 코드로 보이는지 지킨다. */
       packageText({
         uomId: 8601,
         uomCode: 'SAMPLE-BAG',
-        uomName: null,
+        uomName: null as unknown as string,
         count: 2,
         qtyPerPackage: 50,
       }),

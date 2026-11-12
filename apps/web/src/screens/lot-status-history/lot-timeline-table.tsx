@@ -32,7 +32,10 @@ const reasonText = (
   if (entry.kind === 'hold') {
     return entry.event.reasonCode === null ? EMPTY : codeName(reasons, entry.event.reasonCode);
   }
-  const transition = t.history.transitions[entry.event.transitionCode];
+  /* ⚠ 생성 enum 의 C29 · C30 · C31(005 확정 취소 · 마감 취소 · 등록 해제)은 아직 이름이 없다 — 지금처럼 빈 이름으로 둔다(T111 보고). */
+  const transition = (t.history.transitions as Record<string, string>)[
+    entry.event.transitionCode
+  ] as string;
   return entry.event.reason === null ? transition : `${transition} · ${entry.event.reason}`;
 };
 

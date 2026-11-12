@@ -62,7 +62,13 @@ describe('패키징 환산 · 표기(US6 · FR-033·034)', () => {
   });
 
   it('패키징 단위 이름이 없으면 단위 코드를 쓴다', () => {
-    const unit = packageUnitOf({ uomId: 702, uomCode: 'BOX', count: 4, qtyPerPackage: 50 });
+    /* 생성 계약은 이름을 늘 싣는다 — 이름이 빠진 응답(계약 밖)에도 코드로 보이는지 지킨다. */
+    const unit = packageUnitOf({
+      uomId: 702,
+      uomCode: 'BOX',
+      count: 4,
+      qtyPerPackage: 50,
+    } as Parameters<typeof packageUnitOf>[0]);
 
     expect(unit?.unitName).toBe('BOX');
   });

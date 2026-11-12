@@ -45,6 +45,12 @@ const result = (seqNo: number, judgment: string | null) => ({
   inspectorName: '합성 검사자',
   inspectedAt: '2099-11-11T01:00:00Z',
   statusCode: 'DRAFT',
+  confirmCycle: null,
+  acceptedQty: 0,
+  heldQty: 0,
+  matchedLotNos: [],
+  reinspectionReasonCode: null,
+  reinspectionReasonName: null,
   versionNo: 2,
 });
 
@@ -105,7 +111,7 @@ const mount = (initial: InboundInspection, options: Options = {}) => {
           return jsonResponse(options.confirm.body, { status: options.confirm.status });
         }
         current = confirmedOf({
-          overallJudgmentCode: current.previewJudgmentCode ?? null,
+          overallJudgmentCode: current.previewJudgmentCode ?? undefined,
           nonconformanceNo: current.previewJudgmentCode === 'REJECTED' ? 'TST-NC-0009' : null,
         });
         return jsonResponse(current);

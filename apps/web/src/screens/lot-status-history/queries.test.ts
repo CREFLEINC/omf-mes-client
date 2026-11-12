@@ -17,6 +17,8 @@ const SUMMARY_PATH = '/quality/lot-status-summary';
 const statusRow: components['schemas']['LotQualityStatus'] = {
   lotId: 1001,
   lotNo: 'SAMPLE-LOT-001',
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 2001,
   lotTypeCode: 'SAMPLE_TYPE',
   lotStatusCode: 'SAMPLE_STATUS',

@@ -32,6 +32,8 @@ const receiptLine = (id: number, overrides: Partial<ReceiptLine> = {}): ReceiptL
   uomCode: 'KG',
   supplier: { id: 3, code: 'SUP-A', name: '공급사 A' },
   workOrder: null,
+  inboundLotId: null,
+  inboundLotNo: null,
   ...overrides,
 });
 
@@ -72,6 +74,8 @@ const inputLine = (id: number, overrides: Partial<InputLine> = {}): InputLine =>
   inputQty: 30,
   uomId: 2,
   uomCode: 'KG',
+  inboundLotId: null,
+  inboundLotNo: null,
   ...overrides,
 });
 

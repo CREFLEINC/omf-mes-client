@@ -19,6 +19,8 @@ const optionalTextToNumber = (value: string): number | null =>
 
 const optionalText = (value: string): string | null => (value === '' ? null : value);
 
+type AqlInspectionLevelCode = InspectionPlanVersionCreate['aqlInspectionLevelCode'];
+
 export const versionToFormValues = (version: InspectionPlanVersion): VersionFormValues => ({
   effectiveFrom: version.effectiveFrom,
   effectiveTo: version.effectiveTo ?? '',
@@ -76,7 +78,9 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   aqlValue: optionalTextToNumber(values.aqlValue),
   /* AQL 샘플링이면 수준을 싣고 판정 수는 싣지 않는다 — 표가 LOT 수량으로 정한다(omf-all-around#264). */
   aqlInspectionLevelCode:
-    values.samplingMethodCode === AQL_SAMPLING ? optionalText(values.aqlInspectionLevelCode) : null,
+    values.samplingMethodCode === AQL_SAMPLING
+      ? (optionalText(values.aqlInspectionLevelCode) as AqlInspectionLevelCode)
+      : null,
   acceptanceNumber:
     values.samplingMethodCode === AQL_SAMPLING
       ? null

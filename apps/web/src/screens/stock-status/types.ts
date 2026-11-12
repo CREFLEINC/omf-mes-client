@@ -12,7 +12,7 @@ import type { components, InventoryBalanceForward } from '@omf-mes/api-client';
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
  */
 
-/** 005 FR-035 — `groupBy=LOT` 줄에 입하 LOT 칸이 더해진 모양(api-client 덧댐). */
+/** 005 FR-035 — `groupBy=LOT` 줄에 입하 LOT 칸이 실린 모양. */
 type InventoryBalanceResponse = InventoryBalanceForward;
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
 type InventoryTransactionResponse = components['schemas']['InventoryTransaction'];
