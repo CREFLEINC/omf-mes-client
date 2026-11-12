@@ -329,6 +329,39 @@ describe('W-01-01 확정 취소', () => {
     expect(blocked).toHaveTextContent(t.cancel.blockedTail);
   });
 
+  it('G2 L12 막힘 창은 서버 문장 대신 code · lotNos 로 만든다 — 한국어 문장이 베트남어 화면에 붙지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(confirmedOf(), {
+      cancel: {
+        status: 409,
+        body: {
+          errors: [
+            {
+              scope: 'screen',
+              code: 'GOODS_RECEIVED',
+              message: '입고된 자재 관리 LOT 가 있어 확정을 취소할 수 없습니다.',
+              lotNos: ['TST-ITEM|1000|991111|TS01|0001', 'TST-ITEM|1000|991111|TS01|0002'],
+            },
+            { scope: 'screen', code: 'DISPOSITION_STARTED', message: '처분이 시작되었습니다.' },
+          ],
+        },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.cancel.open }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.cancel.proceed }),
+    );
+
+    const blocked = await screen.findByRole('dialog', { name: t.cancel.blockedTitle });
+    expect(blocked).toHaveTextContent(
+      'TST-ITEM|1000|991111|TS01|0001, TST-ITEM|1000|991111|TS01|0002',
+    );
+    expect(blocked).not.toHaveTextContent('취소할 수 없습니다.');
+    expect(blocked).not.toHaveTextContent('처분이 시작되었습니다.');
+    expect(blocked).toHaveTextContent(t.cancel.blockers.DISPOSITION_STARTED ?? '');
+  });
+
   it('최종 마감된 입하 LOT 은 「최종 마감된 입하 LOT 입니다(W-01-16)」로 막는다', async () => {
     const user = userEvent.setup();
     mount(confirmedOf(), {

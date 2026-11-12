@@ -33,6 +33,14 @@ const BLOCKER_CODES: readonly InspectionConfirmBlockerCode[] = [
   'LOT_STATUS_CHANGED',
 ];
 
+/** 오류 줄의 LOT 번호 — `lotNos` 또는 `details.lotNos`(G2 L12 — 서버가 실는다). */
+const lotNosOf = (item: unknown): string[] | undefined => {
+  if (typeof item !== 'object' || item === null) return undefined;
+  const record = item as { lotNos?: unknown; details?: { lotNos?: unknown } | null };
+  const raw = Array.isArray(record.lotNos) ? record.lotNos : record.details?.lotNos;
+  return Array.isArray(raw) ? raw.filter((no): no is string => typeof no === 'string') : undefined;
+};
+
 /** 판정 확정이 잠기는 까닭(US4-6) — 결과 0건, 판정이 빈 결과. 없으면 null. */
 export const confirmLockOf = (inspection: InboundInspection): string | null => {
   const results = inspection.results ?? [];
@@ -148,7 +156,11 @@ export const ConfirmActions = ({
         apiError.kind === 'validation' || apiError.kind === 'stateLocked'
           ? apiError.errors
               .filter((item) => (BLOCKER_CODES as readonly string[]).includes(item.code))
-              .map((item) => ({ code: item.code, message: item.message }))
+              .map((item) => ({
+                code: item.code,
+                message: item.message,
+                lotNos: lotNosOf(item),
+              }))
           : [];
 
       setAsking(null);
