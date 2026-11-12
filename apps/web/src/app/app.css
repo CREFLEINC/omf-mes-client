@@ -36320,3 +36320,207 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   list-style: none;
   font-family: var(--font-mono);
 }
+
+/* W-01-16 입하/입고 작업 기록(005) */
+.iwr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.iwr-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.iwr-tab-count {
+  margin-inline-start: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-high);
+  font: var(--type-body-sm);
+}
+
+.iwr-table-scroll {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.iwr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+
+.iwr-table th,
+.iwr-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 머리 · 품목 · 매칭 칸은 두 줄까지(베트남어 긴 글), 번호 · 수량은 한 줄. */
+.iwr-table th,
+.iwr-table .is-wrap {
+  white-space: normal;
+}
+
+.iwr-table .is-number {
+  text-align: end;
+}
+
+.iwr-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.iwr-table tr.is-clickable:hover > td,
+.iwr-table tr[aria-selected='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.iwr-table [data-invalid='true'] {
+  color: var(--semantic-error-text);
+}
+
+.iwr-total-row > td {
+  background: var(--surface-container-low);
+  font-weight: 700;
+}
+
+.iwr-code {
+  font-family: var(--font-mono);
+}
+
+.iwr-mark {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.iwr-mark.is-excess {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.iwr-mark.is-unallocated {
+  background: var(--semantic-error-container);
+  color: var(--on-semantic-error-container);
+}
+
+.iwr-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iwr-drawer-body,
+.iwr-section,
+.iwr-finalize-body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.iwr-drawer-body {
+  gap: var(--space-3);
+}
+
+.iwr-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+.iwr-facts > dt {
+  color: var(--on-surface-muted);
+}
+
+.iwr-facts > dd {
+  margin: 0;
+}
+
+.iwr-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.iwr-section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.iwr-section-actions {
+  margin-inline-start: auto;
+}
+
+.iwr-line-note {
+  display: block;
+}
+
+.iwr-qty-input {
+  max-width: 8rem;
+}
+
+.iwr-errors {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+}
+
+.iwr-editor-actions,
+.iwr-dialog-actions,
+.iwr-drawer-foot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.iwr-drawer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.iwr-drawer-foot-actions {
+  margin-inline-start: auto;
+}
+
+.iwr-finalize-body > p {
+  margin: 0;
+}
+
+.iwr-finalize-summary {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  font: var(--type-body-sm);
+}
+
+.iwr-finalize-summary > p {
+  margin: 0;
+}
+
+.iwr-ack {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.po-register-scope-legacy {
+  display: block;
+  margin-top: var(--space-1);
+}

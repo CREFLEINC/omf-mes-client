@@ -17,6 +17,8 @@ export const poRegister: Translated<typeof ko.poRegister> = {
     title: 'Màn hình đăng ký sau cho phần nhập vượt',
     description:
       'Tạo P/O để quyết toán phần vượt chuyển sang từ màn hình tách phần nhập vượt. Đơn mua hàng thông thường không được tạo ở màn hình này.',
+    legacyOnly:
+      'Liên kết phần vượt với P/O chỉ xử lý hàng nhập trước khi có chức năng này. Hàng nhập theo luồng mới được ghép tại Nhật ký công việc nhập hàng / nhập kho (W-01-16).',
   },
   fields: {
     supplier: 'Nhà cung cấp',
@@ -158,6 +160,9 @@ export const poRegister: Translated<typeof ko.poRegister> = {
       `Phiếu đặt hàng ${purchaseOrderNo} đã được tạo nhưng chưa trình phê duyệt`,
     submitFailedDescription:
       'Phiếu vẫn còn nguyên. Bạn có thể trình lại ở dưới, đừng đăng ký lại cùng nội dung.',
+    inboundLotGuide:
+      'Phần Không có P/O của hàng nhập theo luồng mới được gán vào dòng P/O này tại W-01-16',
+    inboundLotGuideLink: 'Mở Nhật ký công việc nhập hàng / nhập kho',
   },
   values: {
     unknown: 'Không xác định',

@@ -330,7 +330,7 @@ describe('AppLayout', () => {
    * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
    * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('입고 관리 탭 막대가 입고 관리 → 초과분 발주 연결 → 자재 관리 LOT 발행 차례고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
+  it('입고 관리 탭 막대가 입고 관리 → 초과분 발주 연결 → 자재 관리 LOT 발행 → 입하/입고 작업 기록 차례고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
     renderLayout('본문 내용', { route: '/logistics/inbound-excess' });
 
     const sidebar = navSidebar();
@@ -344,7 +344,7 @@ describe('AppLayout', () => {
       within(tabs)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['입고 관리', '초과분 발주 연결', '자재 관리 LOT 발행']);
+    ).toEqual(['입고 관리', '초과분 발주 연결', '자재 관리 LOT 발행', '입하/입고 작업 기록']);
     expect(within(tabs).getByRole('link', { name: '초과분 발주 연결' })).toHaveAttribute(
       'aria-current',
       'page',

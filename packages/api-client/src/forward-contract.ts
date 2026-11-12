@@ -1133,6 +1133,25 @@ export interface InboundLot {
   finalizable: boolean;
   erpSendModeCode: 'PER_RECEIPT' | 'ON_FINALIZE';
   versionNo: number;
+  /** P/O 배정(계약 §2 행 칸, 서버 계약 필수) — 마감 전 새 흐름은 빈 배열. W-01-16 「P/O 매칭」 칸. */
+  poAllocations?: InboundLotPoAllocation[];
+  /** 최종 마감한 사람 이름(C6 정함 — W-01-16 상세 「🔒 최종 마감 {시각} · {사람}」). 최종 마감 전 null. */
+  finalizedByName?: string | null;
+  /**
+   * 최종 마감을 막는 것(C6 정함 — 계약은 상세에만 둔다. W-01-16 「진행 중」 목록의 「최종 마감 못 하는 이유」 칸도
+   * 같은 문구라 행에도 싣는다). 입하 중 · 최종 마감 · 마감 승인 대기면 빈 배열.
+   */
+  finalizeBlockers?: InboundLotFinalizeBlocker[];
+}
+
+/** 최종 마감 막힘 코드(계약 §2 상세 `finalizeBlockers[]`, W-01-16). */
+export type InboundLotFinalizeBlockerCode =
+  'IQC_IN_PROGRESS' | 'DISPOSITION_IN_PROGRESS' | 'NOT_RECEIVED' | 'RECEIPT_CANCEL_PENDING';
+
+/** 최종 마감 막힘 한 줄 — 코드와 걸린 자재 관리 LOT 번호(계약 §2 「LOT 번호」, 칸 이름 C6 정함). */
+export interface InboundLotFinalizeBlocker {
+  code: InboundLotFinalizeBlockerCode;
+  lotNos: string[];
 }
 
 /** 입하 LOT 상세의 자재 관리 LOT 한 개(계약 §2 `lots[]`). */
@@ -1148,6 +1167,10 @@ export interface InboundLotMaterialLot {
   registeredAt: string;
   /** 공급사 사전부착 라벨로 받기 때 만든 LOT 인가(C2 정함 — 「공급사 라벨」 칩). */
   fromSupplierLabel: boolean;
+  /** 입고됐는가(계약 §2 「입고 여부」, 칸 이름 C6 정함 — W-01-16 「입고됨」). */
+  goodsReceived?: boolean;
+  /** 처분 상태(계약 §2 「처분 상태」, 값 C6 정함 — W-01-16 「처분 진행 중」 · 「반품 처분 끝」 · 「폐기 처분 끝」). 처분 없음 null. */
+  dispositionStatusCode?: 'IN_PROGRESS' | 'RETURNED' | 'DISPOSED' | null;
 }
 
 export interface InboundLotEvent {
@@ -1159,6 +1182,8 @@ export interface InboundLotEvent {
 export interface InboundLotDetail extends InboundLot {
   lots: InboundLotMaterialLot[];
   events: InboundLotEvent[];
+  /** 최종 마감을 막는 것(계약 §2 상세, W-01-16) — 없으면 빈 배열. */
+  finalizeBlockers?: InboundLotFinalizeBlocker[];
 }
 
 export interface InboundLotListQuery {
@@ -1170,6 +1195,10 @@ export interface InboundLotListQuery {
   reopenable?: boolean;
   closedAutomatically?: boolean;
   finalizable?: boolean;
+  /** W-01-16 은 `ON_FINALIZE` 고정(계약 §2) — 이전 데이터(`PER_RECEIPT`)는 나오지 않는다. */
+  erpSendModeCode?: 'PER_RECEIPT' | 'ON_FINALIZE';
+  receivingDateFrom?: string;
+  receivingDateTo?: string;
   q?: string;
   page?: number;
   size?: number;
@@ -1314,6 +1343,8 @@ export interface InboundLotPoAllocation {
   orderDate: string;
   erpPurchaseOrderNo: string | null;
   qty: number;
+  /** 이 배정이 그 라인 잔량(발주 − 이전 받은 양)을 넘은 양(C6 정함 — W-01-16 「(초과 n)」). 넘지 않으면 0 · 없음. */
+  excessQty?: number | null;
 }
 
 /** 검사 의뢰 이벤트 유형 — 공통코드 `INSPECTION_REQUEST_EVENT_TYPE`(data-model). */

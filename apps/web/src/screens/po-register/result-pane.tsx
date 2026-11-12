@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
+import { Link } from 'react-router';
 
 import type { CreatedPoView } from './types';
 
@@ -39,7 +40,15 @@ export interface ResultPaneProps {
   onChangeReason: (value: string) => void;
   /** 확인을 **요청한다** — 보내는 것은 확인 창을 지난 뒤다. */
   onRequestSubmit: () => void;
+  /**
+   * W-01-16 입하/입고 작업 기록으로 가는 링크를 세울까(005 · R7-2). 그 화면을 볼 수 있을 때만 참 — 아니면 안내 문구만
+   * 선다. 판정은 부르는 쪽이 세션 권한으로 한다.
+   */
+  canOpenWorkRecord?: boolean;
 }
+
+/** W-01-16 주소 — 메뉴(`nav-tree.ts`) · 화면 목록(`web-screen-catalog.ts`)과 같다. */
+export const INBOUND_WORK_RECORD_PATH = '/logistics/inbound-work-record';
 
 /**
  * 등록 결과와 상신 자리 — **화면이 확인한 것만 말한다.**
@@ -70,6 +79,7 @@ export const ResultPane = ({
   banner,
   onChangeReason,
   onRequestSubmit,
+  canOpenWorkRecord = false,
 }: ResultPaneProps) => {
   const blockReasonId = useId();
 
@@ -150,6 +160,20 @@ export const ResultPane = ({
       )}
 
       <p>{t.result.lineCount(created.lineCount)}</p>
+
+      {/*
+       * 005 — 새 흐름 입하의 P/O 없음은 여기서 배정하지 않는다(P/O 의 원천 기록은 근거뿐 · R-7). 관리자가 W-01-16 에서
+       * 이 P/O 라인에 매칭한다 — 그 화면을 볼 수 있을 때만 링크, 아니면 문구만(R7-2).
+       */}
+      <p className="field-note po-register-inbound-guide">
+        {t.result.inboundLotGuide}
+        {canOpenWorkRecord && (
+          <>
+            {' '}
+            <Link to={INBOUND_WORK_RECORD_PATH}>{t.result.inboundLotGuideLink}</Link>
+          </>
+        )}
+      </p>
 
       {canSubmit && (
         <>
