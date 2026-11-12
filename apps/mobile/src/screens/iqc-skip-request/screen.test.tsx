@@ -66,7 +66,7 @@ const approval = (overrides: Record<string, unknown> = {}) => ({
 });
 
 interface RouteOptions {
-  lots?: ReturnType<typeof lot>[];
+  lots?: (ReturnType<typeof lot> & { lifecycleStatusCode?: string })[];
   pending?: ReturnType<typeof approval>[];
   mine?: ReturnType<typeof approval>[];
   seen?: URL[];
@@ -208,6 +208,29 @@ describe('긴급 IQC 생략 요청 화면', () => {
     await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
     expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
+  });
+
+  /* 대기 LOT 도 품질 축은 검사 대기라, 막지 않으면 받지 않은 LOT 의 생략 요청이 올라간다. */
+  it('G2 L16 대기 자재 관리 LOT 은 「아직 입하되지 않은 LOT」로 알리고 요청할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount([], { lots: [{ ...lot(), lifecycleStatusCode: 'WAITING' }] });
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    expect(await screen.findByText('아직 입하되지 않은 LOT')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
+
+    expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
+  });
+
+  it('G2 L16 폐기 자재 관리 LOT 은 「폐기된 LOT」로 알린다', async () => {
+    mount([], { lots: [{ ...lot(), lifecycleStatusCode: 'VOIDED' }] });
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText('폐기된 LOT')).toBeInTheDocument();
   });
 
   it('LOT을 찾지 못하면 그렇게 말한다', async () => {

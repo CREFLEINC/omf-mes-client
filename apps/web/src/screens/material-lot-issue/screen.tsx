@@ -9,13 +9,14 @@ import {
   useToast,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { useUomOptions } from '../../patterns/material-lot-batch';
 import { plantToday } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
+import { useSession } from '../../patterns/session';
 import { DefaultsText } from './defaults-text';
 import { DetailDialog } from './detail-dialog';
 import { IssueDialog } from './issue-dialog';
@@ -29,6 +30,7 @@ const tl = t.list;
 type IssueOpen = { fixed: Group | null } | null;
 
 const NO_GROUPS: Group[] = [];
+const NO_SCOPES: never[] = [];
 
 /**
  * W-01-14 자재 관리 LOT 발행(005 · omf-all-around#254 · screens/W-01-14.md). 「구매 / 자재 관리 › 입고 관리」 탭 묶음의
@@ -49,7 +51,12 @@ export const MaterialLotIssueScreen = () => {
 
   const [issueOpen, setIssueOpen] = useState<IssueOpen>(null);
 
-  const plants = usePlants();
+  const { session } = useSession();
+  const plants = usePlants(session?.scopes ?? NO_SCOPES);
+  const plantFieldId = useId();
+  const supplierFieldId = useId();
+  const itemFieldId = useId();
+  const viewLabelId = useId();
   const plant =
     plants.data?.find((row) => String(row.plantId) === plantParam) ?? plants.data?.[0] ?? null;
   const plantId = plant?.plantId ?? null;
@@ -88,44 +95,65 @@ export const MaterialLotIssueScreen = () => {
           (group) => group.supplierId === openPair.supplierId && group.itemId === openPair.itemId,
         ) ?? null);
 
+  /* 칸마다 이름을 위에 단다 — 시안 「공장 · 공급사 · 품목 · 보기」(G2 L21). */
   const filters = (
     <section className="filter-bar mlot-issue-filters" aria-label={t.filters.label}>
       {(plants.data?.length ?? 0) > 1 && (
-        <Select
-          aria-label={t.filters.plant}
-          value={plantId === null ? null : String(plantId)}
-          options={(plants.data ?? []).map((row) => ({
-            value: String(row.plantId),
-            label: row.plantName,
-          }))}
-          onChange={(value) => update({ plant: value, supplier: null, open: null })}
-        />
+        <div className="field-cell">
+          <label className="field-label" htmlFor={plantFieldId}>
+            {t.filters.plant}
+          </label>
+          <Select
+            id={plantFieldId}
+            value={plantId === null ? null : String(plantId)}
+            options={(plants.data ?? []).map((row) => ({
+              value: String(row.plantId),
+              label: row.plantName,
+            }))}
+            onChange={(value) => update({ plant: value, supplier: null, open: null })}
+          />
+        </div>
       )}
-      <Select
-        aria-label={t.filters.supplier}
-        value={supplierParam === '' ? '' : supplierParam}
-        options={[
-          { value: '', label: t.filters.supplierAll },
-          ...suppliers.map((group) => ({
-            value: String(group.supplierId),
-            label: `${group.supplierName} ${group.supplierCode}`,
-          })),
-        ]}
-        onChange={(value) => update({ supplier: value })}
-      />
-      <TextField
-        aria-label={t.filters.item}
-        placeholder={t.filters.itemPlaceholder}
-        type="search"
-        value={query}
-        onChange={(event) => update({ q: event.target.value })}
-      />
-      <Checkbox
-        checked={waitingOnly}
-        onChange={(event) => update({ waiting: event.target.checked ? '1' : null })}
-      >
-        {t.filters.waitingOnly}
-      </Checkbox>
+      <div className="field-cell">
+        <label className="field-label" htmlFor={supplierFieldId}>
+          {t.filters.supplier}
+        </label>
+        <Select
+          id={supplierFieldId}
+          value={supplierParam === '' ? '' : supplierParam}
+          options={[
+            { value: '', label: t.filters.supplierAll },
+            ...suppliers.map((group) => ({
+              value: String(group.supplierId),
+              label: `${group.supplierName} ${group.supplierCode}`,
+            })),
+          ]}
+          onChange={(value) => update({ supplier: value })}
+        />
+      </div>
+      <div className="field-cell">
+        <label className="field-label" htmlFor={itemFieldId}>
+          {t.filters.item}
+        </label>
+        <TextField
+          id={itemFieldId}
+          placeholder={t.filters.itemPlaceholder}
+          type="search"
+          value={query}
+          onChange={(event) => update({ q: event.target.value })}
+        />
+      </div>
+      <div className="field-cell" role="group" aria-labelledby={viewLabelId}>
+        <span className="field-label" id={viewLabelId}>
+          {t.filters.view}
+        </span>
+        <Checkbox
+          checked={waitingOnly}
+          onChange={(event) => update({ waiting: event.target.checked ? '1' : null })}
+        >
+          {t.filters.waitingOnly}
+        </Checkbox>
+      </div>
     </section>
   );
 
@@ -244,7 +272,7 @@ export const MaterialLotIssueScreen = () => {
         </span>
       </div>
       {table()}
-      <p className="field-note">{tl.help}</p>
+      <p className="field-note mlot-issue-help">{tl.help}</p>
 
       {opened !== null && issueOpen === null && (
         <DetailDialog

@@ -8,7 +8,7 @@ import { useBackStep } from '../../patterns/back-step';
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
-import { useScannedLot } from '../../patterns/lots';
+import { lifecycleNoticeOf, useScannedLot } from '../../patterns/lots';
 import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -138,7 +138,17 @@ export const IqcSkipRequestScreen = () => {
   const statuses = useCodeValues(APPROVAL_REQUEST_STATUS);
 
   const inspectionPending = isInspectionPending(found);
-  const canSubmit = found !== null && inspectionPending && hasReason(reason) && worker !== null;
+  /*
+   * 대기 · 폐기 자재 관리 LOT 도 품질 축은 검사 대기다. 막지 않으면 아직 받지 않은 LOT 의 생략 요청이
+   * 서버까지 갔다가 되돌아온다 — 그 전에 까닭을 말한다(US1-6).
+   */
+  const lifecycleNotice = lifecycleNoticeOf(found);
+  const canSubmit =
+    found !== null &&
+    lifecycleNotice === null &&
+    inspectionPending &&
+    hasReason(reason) &&
+    worker !== null;
 
   /*
    * 아직 나가지 않은 요청. 이 화면은 이름에 긴급이 붙어 있어, 담긴 것을 요청된 것으로 읽으면
@@ -311,6 +321,7 @@ export const IqcSkipRequestScreen = () => {
             </Card.Body>
           </Card>
         )}
+        {lifecycleNotice === null ? null : <AlertBanner variant="error" title={lifecycleNotice} />}
         {/* 막지 않고 알린다. 취소가 없어 다시 올리는 것이 유일한 정정 경로다. */}
         {pending.data == null ? null : (
           <AlertBanner

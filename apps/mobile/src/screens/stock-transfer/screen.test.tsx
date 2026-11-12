@@ -46,6 +46,8 @@ interface Options {
   lotHeld?: boolean;
   /** 재고를 비워 답한다 - 옮길 것이 없는 자리다. */
   noStock?: boolean;
+  /** LOT 의 생애 — 대기 · 폐기 자재 관리 LOT 을 흉내 낸다(US1-6). */
+  lifecycle?: 'WAITING' | 'VOIDED';
   /** 도착 위치가 출발과 같은 창고에 있다고 답한다. */
   sameWarehouse?: boolean;
   /** 반출됐으나 도착하지 않은 이동을 하나 답한다. */
@@ -119,6 +121,7 @@ const routes = (options: Options = {}): StubRoute[] => [
             uomId: 1001,
             statusCode: 'ACTIVE',
             held: options.lotHeld === true,
+            ...(options.lifecycle === undefined ? {} : { lifecycleStatusCode: options.lifecycle }),
           },
         ],
         page,
@@ -323,6 +326,26 @@ describe('재고 이동 화면', () => {
     scanInto('반출 LOT 스캔', LOT_NO);
 
     expect(await screen.findByText('이 LOT은 옮길 재고가 없습니다')).toBeTruthy();
+  });
+
+  it('G2 L16 대기 자재 관리 LOT 은 「아직 입하되지 않은 LOT」로 알리고 담지 않는다', async () => {
+    mount({ lifecycle: 'WAITING', noStock: true });
+    await screen.findByLabelText('반출 LOT 스캔');
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+
+    expect(await screen.findByText('아직 입하되지 않은 LOT')).toBeTruthy();
+    expect(screen.queryByText('이 LOT은 옮길 재고가 없습니다')).toBeNull();
+    expect(screen.queryByLabelText(/반출 수량/)).toBeNull();
+  });
+
+  it('G2 L16 폐기 자재 관리 LOT 은 「폐기된 LOT」로 알린다', async () => {
+    mount({ lifecycle: 'VOIDED', noStock: true });
+    await screen.findByLabelText('반출 LOT 스캔');
+
+    scanInto('반출 LOT 스캔', LOT_NO);
+
+    expect(await screen.findByText('폐기된 LOT')).toBeTruthy();
   });
 
   /*

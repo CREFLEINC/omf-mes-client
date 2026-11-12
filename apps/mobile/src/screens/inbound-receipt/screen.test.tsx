@@ -580,6 +580,22 @@ describe('US2-2 입하 마감', () => {
     expect(await screen.findByRole('group', { name: 'SYN-IL-6002' })).toBeInTheDocument();
   });
 
+  /* 실기 접근성 트리에서 이름 없는 단추로 보고됐다 — 역할 · 이름으로 찾혀야 한다(G2 L22). */
+  it('G2 L22 카드의 [해제] · [입하 마감]은 이름 있는 단추다', async () => {
+    const server = createServer();
+    mount(server);
+
+    await scan(A(1));
+    const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
+
+    expect(
+      await within(lotCard).findByRole('button', { name: t.card.unregister }),
+    ).toHaveAccessibleName('해제');
+    expect(within(lotCard).getByRole('button', { name: t.card.close })).toHaveAccessibleName(
+      '입하 마감',
+    );
+  });
+
   it('US2-9 [해제]는 확인 없이 바로 — 마지막 LOT 을 풀면 카드가 사라진다', async () => {
     const user = userEvent.setup();
     const server = createServer();

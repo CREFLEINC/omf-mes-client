@@ -294,6 +294,40 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(close?.headers.get('Idempotency-Key')).not.toBeNull();
   });
 
+  it('G2 L20 상세 LOT 줄 — 수량 뒤 패키징 「· 봉지 10」(이름, 없으면 코드), LOT 번호는 [해제]와 다른 줄', async () => {
+    const user = userEvent.setup();
+    const base = detailOf(inboundLot(3), 2);
+    const names = ['봉지', null];
+    const detail: InboundLotDetail = {
+      ...base,
+      lots: base.lots.map((lot, index) => ({
+        ...lot,
+        package: {
+          uomId: 8402,
+          uomCode: 'SYN-BAG',
+          uomName: names[index],
+          count: 10,
+          qtyPerPackage: 100,
+        },
+      })),
+    };
+    mount({ details: { 3: detail } });
+
+    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    expect(await screen.findByText('1,000 EA · 봉지 10')).toBeInTheDocument();
+    expect(screen.getByText('1,000 EA · SYN-BAG 10')).toBeInTheDocument();
+
+    /* LOT 번호 줄에는 [해제]가 끼지 않는다 — 번호가 줄 폭을 다 쓴다. */
+    const lotNo = screen.getByText('SYN-ITEM-01|1000|261111|SYN-P-01|0001');
+    expect(lotNo).toHaveClass('inbound-close__lot-no');
+    expect(lotNo.parentElement?.children[0]).toBe(lotNo);
+    expect(
+      within(lotNo.nextElementSibling as HTMLElement).getByRole('button', {
+        name: t.detail.unregister,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('US2-10 검사 불필요 품목은 「검사 생략」으로 남는다고 묻고, 결과는 「검사 불필요, 자재 관리 LOT 정상」', async () => {
     const user = userEvent.setup();
     mount({

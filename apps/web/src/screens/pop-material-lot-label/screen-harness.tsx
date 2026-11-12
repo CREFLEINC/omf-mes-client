@@ -145,6 +145,8 @@ export interface ItemFixture {
 
 export interface HarnessOptions {
   groups?: WaitingMaterialLotGroup[];
+  /** 단위 목록 — 없으면 `UOMS`(G2 L17: 코드와 이름이 다른 단위를 흉내 낸다). */
+  uoms?: readonly (typeof UOMS)[number][];
   defaults?: SupplierItemDefault[];
   items?: ItemFixture[];
   identity?: Partial<PopIdentity>;
@@ -297,7 +299,11 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
     },
     {
       match: (request) => path(request) === '/mdm/uoms',
-      respond: () => jsonResponse({ items: UOMS, page: page(UOMS.length) }),
+      respond: () => {
+        const uoms = options.uoms ?? UOMS;
+
+        return jsonResponse({ items: uoms, page: page(uoms.length) });
+      },
     },
     {
       match: (request) =>

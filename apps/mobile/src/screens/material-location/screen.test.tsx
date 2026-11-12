@@ -132,6 +132,25 @@ describe('자재 위치 확인 화면', () => {
     expect(await screen.findByText('재고가 있는 위치가 없습니다')).toBeInTheDocument();
   });
 
+  it('G2 L16 대기 자재 관리 LOT 은 위치 없음 대신 「아직 입하되지 않은 LOT」로 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({ lots: [{ ...lotRow, lifecycleStatusCode: 'WAITING' }], balances: [] }),
+    });
+    await scan();
+
+    expect(await screen.findByText('아직 입하되지 않은 LOT')).toBeInTheDocument();
+    expect(screen.queryByText('재고가 있는 위치가 없습니다')).not.toBeInTheDocument();
+  });
+
+  it('G2 L16 폐기 자재 관리 LOT 은 「폐기된 LOT」로 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({ lots: [{ ...lotRow, lifecycleStatusCode: 'VOIDED' }], balances: [] }),
+    });
+    await scan();
+
+    expect(await screen.findByText('폐기된 LOT')).toBeInTheDocument();
+  });
+
   it('같은 자리라도 상태가 다른 잔액은 따로 보인다', async () => {
     const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderWithProviders(<MaterialLocationScreen />, {

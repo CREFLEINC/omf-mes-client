@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
 import { playErrorTone } from '../../patterns/error-tone';
-import { useScannedLot } from '../../patterns/lots';
+import { lifecycleNoticeOf, useScannedLot } from '../../patterns/lots';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -143,6 +143,8 @@ export const MaterialLocationScreen = () => {
 
   const lot = useScannedLot(code);
   const lotId = lot.data?.lotId ?? null;
+  /** 대기 · 폐기 자재 관리 LOT 은 위치가 없는 것이 맞다 — 「위치 없음」 대신 그 까닭을 말한다(US1-6). */
+  const lifecycleNotice = lifecycleNoticeOf(lot.data);
   const balances = useLotBalances(lotId);
   const holds = useLotHolds(lotId);
   const names = useReferenceNames(balances.data ?? [], lot.data?.itemId);
@@ -235,6 +237,9 @@ export const MaterialLocationScreen = () => {
           <>
             <p className="material-location__lot-no">{lot.data.lotNo}</p>
             <p>{referenceLabel(names.item(lot.data.itemId))}</p>
+            {lifecycleNotice === null ? null : (
+              <AlertBanner variant="error" title={lifecycleNotice} />
+            )}
             {holdState === 'checking' ? (
               <AlertBanner variant="info" title={t.hold.checking} />
             ) : null}
@@ -251,7 +256,7 @@ export const MaterialLocationScreen = () => {
             {balances.data !== undefined && balances.data.length > 1 ? (
               <p>{t.location.countSuffix(balances.data.length)}</p>
             ) : null}
-            {balances.isSuccess && balances.data.length === 0 ? (
+            {lifecycleNotice === null && balances.isSuccess && balances.data.length === 0 ? (
               <EmptyState
                 live
                 title={t.location.emptyTitle}

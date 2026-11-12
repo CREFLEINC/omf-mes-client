@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POP_SCREENS } from '../../patterns/pop-screen-catalog';
 import { LIST_REFRESH_MS } from './queries';
+import { defaultLineOf } from './supplier-list';
 import {
   HARNESS_NOW,
   PLANT_ID,
@@ -233,6 +234,36 @@ describe('PopMaterialLotLabelScreen — 다시 받기', () => {
     await user.click(screen.getByRole('button', { name: t.work.refresh }));
     await waitFor(() => expect(sentTo(sent, '/logistics/waiting-material-lots')).toHaveLength(2));
     expect(screen.getByText(/받음$/u)).toBeInTheDocument();
+  });
+});
+
+describe('PopMaterialLotLabelScreen — 새로 고침과 기본 정보', () => {
+  it('G2 L19 새로 고침은 공급사·품목 기본 정보도 다시 받아, W-06-25 에서 고친 「기본 …」 줄이 바로 선다', async () => {
+    const user = userEvent.setup();
+    const defaults = [defaultInfo()];
+    const { sent } = renderLabelScreen({ defaults });
+    const plantWide = () =>
+      sentTo(sent, '/mdm/supplier-item-defaults').filter(
+        (each) => each.search.get('supplierId') === null,
+      );
+
+    const firstPair = async () =>
+      within(await screen.findByRole('list', { name: t.pairs.label })).getAllByRole('button')[0];
+    const before = defaultLineOf(defaultInfo());
+    await waitFor(async () => expect(await firstPair()).toHaveTextContent(before));
+    const asked = plantWide().length;
+
+    /* 관리웹에서 고친 셈 — 다음 조회부터 새 값이 온다. */
+    const changed = defaultInfo({
+      lotQty: 2000,
+      package: { uomId: 8402, uomCode: '봉지', count: 20, qtyPerPackage: 100 },
+      versionNo: 2,
+    });
+    defaults[0] = changed;
+    await user.click(screen.getByRole('button', { name: t.work.refresh }));
+
+    await waitFor(() => expect(plantWide().length).toBeGreaterThan(asked));
+    await waitFor(async () => expect(await firstPair()).toHaveTextContent(defaultLineOf(changed)));
   });
 });
 

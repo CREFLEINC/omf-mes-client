@@ -93,7 +93,7 @@ export const supplierItemDefault: Translated<typeof ko.supplierItemDefault> = {
     confirm: 'Xóa',
   },
   toast: {
-    saved: (supplier: string, item: string) => `${supplier}, ${item} đã lưu thông tin mặc định`,
+    saved: (supplier: string, item: string) => `${supplier} · ${item} đã lưu thông tin mặc định`, // ui-check-ignore: C-13 설계 확정 저장 알림(screens/W-06-25.md · G2 L18)
     deleted: 'Đã xóa',
   },
 };

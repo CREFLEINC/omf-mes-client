@@ -14255,6 +14255,34 @@ button.app-button-neutral {
   max-width: none;
 }
 
+/* 재고 수량 칸 옆에 단위 · 「= 봉지 10개」를 한 줄로(시안 「[1,000] EA = 봉지 10개」, G2 L18). */
+.supplier-item-default-qty-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.supplier-item-default-qty-field {
+  flex: 0 1 12rem;
+  min-width: 0;
+}
+
+.supplier-item-default-qty-after {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-md);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+/* 오류 줄 자리를 늘 잡아 둔다 — 나타나고 사라질 때 창 높이가 흔들리지 않게(G2 L18). */
+.supplier-item-default-error {
+  min-height: 1.5em;
+  margin: 0;
+}
+
 .supplier-item-default-foot-hint {
   max-width: none;
   margin-inline-end: auto;
@@ -35626,14 +35654,21 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   gap: var(--space-3);
 }
 
+/* 칸마다 이름을 위에 단다(G2 L21) — 이름 줄 아래 칸들의 밑선을 맞춘다. */
 .mlot-issue-filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
+}
+
+/* 표 아래 도움말은 표 폭으로 — .field-note 의 20rem 에 갇히면 세 줄로 접힌다(G2 L21). */
+.mlot-issue-help {
+  max-width: none;
+  margin: 0;
 }
 
 .mlot-issue-section-head {

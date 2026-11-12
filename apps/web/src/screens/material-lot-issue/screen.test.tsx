@@ -9,7 +9,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { plantToday } from '../../patterns/plant-time';
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
+import { storageText } from './defaults-text';
 import { MaterialLotIssueScreen } from './screen';
 
 const t = messages.materialLotIssue;
@@ -127,10 +130,28 @@ const isGet = (request: Request, path: string | RegExp): boolean =>
   (typeof path === 'string' ? pathOf(request) === path : path.test(pathOf(request)));
 const page = <T,>(items: T[]) => ({ items, page: { page: 1, size: 200, total: items.length } });
 
-const setup = (options: { voidFails?: number[] } = {}) => {
+/** 데이터 범위 밖 공장 — 코드가 앞서 범위로 거르지 않으면 기본 공장이 된다(G2 L21). */
+const OTHER_PLANT = {
+  ...PLANT,
+  plantId: 8402,
+  businessUnitId: 8302,
+  plantCode: 'A0',
+  plantName: '합성 부품공장',
+};
+
+const setup = (
+  options: {
+    voidFails?: number[];
+    plants?: (typeof PLANT)[];
+    uoms?: readonly (typeof UOMS)[number][];
+  } = {},
+) => {
   const writes: Write[] = [];
   const fetch = createStubFetch([
-    { match: (r) => isGet(r, '/mdm/plants'), respond: () => jsonResponse(page([PLANT])) },
+    {
+      match: (r) => isGet(r, '/mdm/plants'),
+      respond: () => jsonResponse(page(options.plants ?? [PLANT])),
+    },
     {
       match: (r) => isGet(r, '/logistics/waiting-material-lots'),
       respond: () => jsonResponse({ items: GROUPS }),
@@ -152,7 +173,10 @@ const setup = (options: { voidFails?: number[] } = {}) => {
         );
       },
     },
-    { match: (r) => isGet(r, '/mdm/uoms'), respond: () => jsonResponse({ items: UOMS }) },
+    {
+      match: (r) => isGet(r, '/mdm/uoms'),
+      respond: () => jsonResponse({ items: options.uoms ?? UOMS }),
+    },
     {
       match: (r) => isGet(r, /^\/mdm\/items\/\d+$/),
       respond: (r) => {
@@ -191,10 +215,17 @@ const setup = (options: { voidFails?: number[] } = {}) => {
       },
     },
   ]);
-  renderWithProviders(<MaterialLotIssueScreen />, {
-    fetch,
-    route: '/logistics/material-lot-issue',
-  });
+  /* 공장 기본값이 세션 데이터 범위를 따른다(G2 L21) — 화면은 셸의 세션 안에서 선다. */
+  renderWithProviders(
+    <SessionProvider>
+      <MaterialLotIssueScreen />
+    </SessionProvider>,
+    {
+      fetch,
+      route: '/logistics/material-lot-issue',
+      session: { ...SYNTHETIC_SESSION, scopes: [{ businessUnitId: 8301 }] },
+    },
+  );
   return { user: userEvent.setup(), writes };
 };
 
@@ -230,6 +261,69 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
 
     expect(screen.getByText(t.banner)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
+  });
+
+  it('G2 L17 기본 정보 없는 줄의 「품목 기본 보관 단위」는 단위 이름(봉지)으로, 발행 창 패키징 단위도 이름으로', async () => {
+    const { user } = setup({
+      uoms: UOMS.map((uom) => (uom.uomId === 3 ? { ...uom, uomCode: 'SYN-BAG' } : uom)),
+    });
+    await listTable();
+
+    /* 받침의 기본 정보 없는 줄(합성 레진)은 보관 단위도 없다 — 보관 단위 글은 글 만드는 함수로 직접 본다. */
+    const bag = { uomId: 3, uomCode: 'SYN-BAG', uomName: '봉지', decimalScale: 0 };
+    expect(storageText({ uomId: 3, qtyPerPackage: 100 }, [bag], 'EA')).toBe('봉지 100 EA');
+    expect(storageText({ uomId: 3, qtyPerPackage: null }, [{ ...bag, uomName: '' }], 'EA')).toBe(
+      'SYN-BAG',
+    );
+
+    await user.click(screen.getByRole('button', { name: t.list.issue }));
+    const dialog = within(await screen.findByRole('dialog', { name: t.dialog.title }));
+    await user.click(dialog.getByRole('combobox', { name: t.dialog.target }));
+    await user.click(
+      await screen.findByRole('option', {
+        name: t.dialog.targetOption('합성 공급사 가', 'SYN-CAP', '합성 캡', 'EA'),
+      }),
+    );
+    await waitFor(() =>
+      expect(dialog.getByRole('combobox', { name: t.dialog.packageUom })).toHaveTextContent('봉지'),
+    );
+    expect(dialog.queryByText('SYN-BAG')).toBeNull();
+  });
+
+  it('G2 L21 공장은 사용자 데이터 범위의 공장으로 열린다(코드가 앞선 범위 밖 공장이 아님)', async () => {
+    setup({ plants: [OTHER_PLANT, PLANT] });
+
+    await listTable();
+    expect(screen.getByText(t.list.note('합성 1공장', plantToday().slice(5)))).toBeInTheDocument();
+    /* 범위 밖 공장은 고를 수도 없다 — 공장이 하나면 공장 칸을 세우지 않는다. */
+    expect(screen.queryByRole('combobox', { name: t.filters.plant })).toBeNull();
+  });
+
+  it('G2 L21 조건 줄의 칸마다 「공급사 · 품목 · 보기」 이름이 보이고, 표 아래 도움말은 줄 폭 제한을 받지 않는다', async () => {
+    setup();
+    await listTable();
+
+    const bar = within(screen.getByRole('region', { name: t.filters.label }));
+    expect(bar.getByText(t.filters.supplier)).toBeVisible();
+    expect(bar.getByText(t.filters.item)).toBeVisible();
+    expect(bar.getByText(t.filters.view)).toBeVisible();
+    expect(bar.getByRole('combobox', { name: t.filters.supplier })).toBeInTheDocument();
+    expect(bar.getByRole('searchbox', { name: t.filters.item })).toBeInTheDocument();
+    expect(bar.getByRole('group', { name: t.filters.view })).toContainElement(
+      bar.getByRole('checkbox', { name: t.filters.waitingOnly }),
+    );
+    expect(screen.getByText(t.list.help)).toHaveClass('mlot-issue-help');
+  });
+
+  it('G2 L21 공장이 여럿이면 공장 칸에도 「공장」 이름이 붙는다', async () => {
+    setup({
+      plants: [PLANT, { ...PLANT, plantId: 8403, plantCode: 'G2', plantName: '합성 2공장' }],
+    });
+    await listTable();
+
+    const bar = within(screen.getByRole('region', { name: t.filters.label }));
+    expect(bar.getByText(t.filters.plant)).toBeVisible();
+    expect(bar.getByRole('combobox', { name: t.filters.plant })).toHaveTextContent('합성 1공장');
   });
 
   it('US1-8 「대기 있는 것만」은 대기 없는 조합을 뺀다', async () => {

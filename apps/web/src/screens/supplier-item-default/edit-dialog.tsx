@@ -87,6 +87,12 @@ export const EditDialog = ({
 
   const uomCodeOf = (id: number | null): string =>
     id === null ? '' : (uoms.data?.find((uom) => uom.uomId === id)?.uomCode ?? '');
+  /** 패키징 단위는 이름(「봉지」)으로 보인다 — 이름이 비면 코드(G2 L17). */
+  const uomNameOf = (id: number | null): string => {
+    if (id === null) return '';
+    const found = uoms.data?.find((uom) => uom.uomId === id);
+    return found === undefined ? '' : found.uomName.trim() === '' ? found.uomCode : found.uomName;
+  };
   const baseUomCode = row?.uomCode ?? uomCodeOf(baseUomId);
 
   /* 같은 공장 · 공급사 · 품목이 이미 있으면 그 행 — 안내에 그 행의 이름을 쓴다. */
@@ -178,10 +184,10 @@ export const EditDialog = ({
     if (itemId === null || storage.isPending) return null;
     const unit = storage.data ?? null;
     if (unit === null) return td.storageNone;
-    const code = uomCodeOf(unit.uomId);
+    const name = uomNameOf(unit.uomId);
     return unit.qtyPerPackage === null
-      ? td.storageUnitOnly(code)
-      : td.storage(code, formatQty(unit.qtyPerPackage), baseUomCode);
+      ? td.storageUnitOnly(name)
+      : td.storage(name, formatQty(unit.qtyPerPackage), baseUomCode);
   })();
 
   const hasPackage = draft.packageUomId !== '';
@@ -189,7 +195,7 @@ export const EditDialog = ({
     { value: '', label: td.noPackage },
     ...(uoms.data ?? [])
       .filter((uom) => uom.uomCode !== baseUomCode)
-      .map((uom) => ({ value: String(uom.uomId), label: uom.uomCode })),
+      .map((uom) => ({ value: String(uom.uomId), label: uomNameOf(uom.uomId) })),
   ];
 
   const lot = parseQtyInput(draft.lotQty);
@@ -197,7 +203,7 @@ export const EditDialog = ({
   const count = hasPackage && lot !== null && per !== null ? packageCountOf(lot, per) : null;
   const countNote =
     problem === null && count !== null
-      ? td.countOf(uomCodeOf(Number(draft.packageUomId)), formatQty(count))
+      ? td.countOf(uomNameOf(Number(draft.packageUomId)), formatQty(count))
       : undefined;
 
   return (
@@ -298,27 +304,35 @@ export const EditDialog = ({
           aria-invalid={problem?.kind === 'qtyPerPackage' && touched}
           onChange={(event) => update({ qtyPerPackage: event.target.value })}
         />
-        <TextField
-          label={td.lotQty}
-          required
-          inputMode="decimal"
-          value={draft.lotQty}
-          helperText={countNote === undefined ? baseUomCode : `${baseUomCode} ${countNote}`}
-          aria-invalid={
-            problem?.kind === 'multiple' || (problem?.kind === 'lotQty' && draft.lotQty !== '')
-          }
-          onChange={(event) => update({ lotQty: event.target.value })}
-        />
+        {/* 시안처럼 「[1,000] EA = 봉지 10개」를 한 줄에 — 도움말 자리에 두면 칸 아래로 내려간다(G2 L18). */}
+        <div className="supplier-item-default-qty-row">
+          <TextField
+            label={td.lotQty}
+            required
+            inputMode="decimal"
+            value={draft.lotQty}
+            containerClassName="supplier-item-default-qty-field"
+            aria-invalid={
+              problem?.kind === 'multiple' || (problem?.kind === 'lotQty' && draft.lotQty !== '')
+            }
+            onChange={(event) => update({ lotQty: event.target.value })}
+          />
+          <span className="supplier-item-default-qty-after">
+            {baseUomCode}
+            {countNote === undefined ? null : (
+              <span className="supplier-item-default-qty-count">{countNote}</span>
+            )}
+          </span>
+        </div>
         <TextField
           label={td.remarks}
           value={draft.remarks}
           onChange={(event) => update({ remarks: event.target.value })}
         />
-        {problemText === null ? null : (
-          <p id={errorId} className="field-error" role="alert">
-            {problemText}
-          </p>
-        )}
+        {/* 오류 줄 자리는 늘 둔다 — 나타나고 사라질 때 창 높이가 흔들리지 않게(G2 L18). */}
+        <p id={errorId} className="field-error supplier-item-default-error" role="alert">
+          {problemText ?? ''}
+        </p>
         {row === null ? null : <p className="field-note">{td.unchanged}</p>}
       </div>
     </Dialog>

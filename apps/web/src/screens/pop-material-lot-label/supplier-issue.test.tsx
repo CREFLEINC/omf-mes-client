@@ -12,6 +12,7 @@ import {
   lot,
   renderLabelScreen,
   sentTo,
+  UOMS,
   type HarnessOptions,
 } from './screen-harness';
 
@@ -73,6 +74,22 @@ describe('US1-1 기본 정보로 채운다', () => {
     expect(field(dialog, tb.qtyPerPackage('EA')).value).toBe('100');
     expect(field(dialog, tb.lotQty).value).toBe('1000');
     expect(within(dialog).getByText('봉지 10 × 100 = 1,000 EA')).toBeInTheDocument();
+  });
+
+  it('G2 L17 패키징 단위 고르는 칸은 단위 코드가 아니라 이름(봉지)을 보인다', async () => {
+    const user = userEvent.setup();
+    renderLabelScreen({
+      uoms: UOMS.map((uom) => (uom.uomId === 8402 ? { ...uom, uomCode: 'SYN-BAG' } : uom)),
+    });
+
+    const dialog = await openBatch(user);
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole('combobox', { name: tb.packageUom })).toHaveTextContent(
+        '봉지',
+      ),
+    );
+    expect(within(dialog).queryByText('SYN-BAG')).toBeNull();
   });
 
   it('US1-1 채운 값은 바꿀 수 있다 — 패키징 수를 바꾸면 재고 수량이 곱을 따라간다', async () => {

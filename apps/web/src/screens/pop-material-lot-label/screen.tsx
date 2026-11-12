@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Chip, useToast } from '@crefle/web-ui';
 import type { MaterialLotSummary, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type FormEvent } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -119,6 +120,16 @@ export const PopMaterialLotLabelScreen = () => {
   const waiting = useWaitingGroups(plantId, isIssuing || dialog !== null);
   const defaults = useSupplierItemDefaults(plantId);
   const defaultsMap = defaults.data ?? new Map();
+  const queryClient = useQueryClient();
+  /*
+   * [새로 고침]은 목록과 함께 공급사·품목 기본 정보도 다시 받는다 — 기본 정보는 오래 들고 있어(60초)
+   * W-06-25 에서 고친 값이 「기본 …」 줄 · 머리에 늦게 섰다. 발행 창이 그 조합 하나로 읽는 값도 낡은 것으로 둔다(G2 L19).
+   */
+  const refreshAll = (): void => {
+    waiting.refetch();
+    void defaults.refetch();
+    void queryClient.invalidateQueries({ queryKey: ['material-lot-batch', 'defaults'] });
+  };
   /* 늘 받는다 — 인쇄 실패한 장을 「인쇄 실패」 사유로 다시 보낼지 이 목록으로 가른다(`PRINT_FAILURE_REASON_CODE`). */
   const reasons = useReissueReasons(true);
 
@@ -519,7 +530,7 @@ export const PopMaterialLotLabelScreen = () => {
               className="pop-mlot-refresh-button"
               aria-busy={waiting.isFetching}
               disabled={isLocked || plantId === null}
-              onClick={waiting.refetch}
+              onClick={refreshAll}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4.2h-4.2" />

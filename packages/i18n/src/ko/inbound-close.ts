@@ -63,6 +63,8 @@ export const inboundClose = {
     pending: '검사 대기 · 보류', // ui-check-ignore: C-13 설계 확정 상태 칩(screens/M-01-03.md)
     normal: '정상',
     unregister: '해제',
+    /** LOT 수량 뒤 패키징 — 「1,000 EA · 봉지 10」(M-01-01 과 같은 표기, G2 L20). */
+    package: (unit: string, count: number) => ` · ${unit} ${String(count)}`, // ui-check-ignore: C-13 설계 확정 표기 「1,000 EA · 봉지 10」(screens/M-01-01.md)
     note: '남은 상자는 M-01-01 입하 등록에서 스캔하면 마감 전까지 이 입하 LOT에 이어 들어갑니다. 공장 날짜가 바뀌면 자동 마감됩니다.',
     close: '마감',
     loading: '입하 LOT를 불러오는 중입니다',

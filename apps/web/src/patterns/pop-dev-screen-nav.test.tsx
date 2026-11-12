@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
-import { POP_DEV_SCREEN_NAV_LABEL, PopDevScreenNav } from './pop-dev-screen-nav';
+import { POP_DEV_SCREEN_NAV_LABEL, POP_DEV_SCREENS, PopDevScreenNav } from './pop-dev-screen-nav';
+import { POP_SCREENS } from './pop-screen-catalog';
 import { renderWithProviders } from '../test/api-harness';
 
 /** 이동 결과를 눈에 보이게 한다 — 라우트 표를 세우지 않으면 주소가 바뀌어도 그릴 것이 없다. */
@@ -53,6 +54,14 @@ describe('PopDevScreenNav — 개발용 POP 화면 이동', () => {
   });
 
   /* 대체하는 버튼과 같은 조건으로 잠긴다 — 작업자가 정해지기 전에는 넘어가지 않는다. */
+  it('G2 L22 P-01-01 항목은 화면 목록의 지금 이름 「자재 관리 LOT 라벨」을 쓴다', () => {
+    const catalog = POP_SCREENS.find((each) => each.code === 'P-01-01');
+    const entry = POP_DEV_SCREENS.find((each) => each.path === catalog?.path);
+
+    expect(entry?.label).toBe(`P-01-01 ${catalog?.name ?? ''}`);
+    expect(entry?.label).toBe('P-01-01 자재 관리 LOT 라벨');
+  });
+
   it('작업자가 없으면 잠긴다', () => {
     renderNav(true);
 
