@@ -62,14 +62,14 @@ export const DistributionPeriodPicker = ({
           className="erp-wo-period-calendar"
           onClose={() => setOpen(false)}
           footer={
-            <>
+            <div className="erp-wo-period-calendar-actions">
               <Button variant="outlined" onClick={() => setMonth(monthOf(plantToday()))}>
                 오늘
               </Button>
               <Button variant="text" onClick={() => setOpen(false)}>
                 취소
               </Button>
-            </>
+            </div>
           }
         >
           <div className="erp-wo-period-month">
