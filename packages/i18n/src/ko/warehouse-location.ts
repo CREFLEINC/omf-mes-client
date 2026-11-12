@@ -171,6 +171,7 @@ export const warehouseLocation = {
       `${created.toLocaleString('ko-KR')}개를 만들었고 랙 ${String(failedRacks)}개는 만들지 못했습니다.`,
     failure: (code: string, reason: string): string => `${code} — ${reason}`,
     retryRest: '남은 것 다시 만들기',
+    renameFailed: (reason: string): string => `만들었지만 이름 맞추기 실패 — ${reason}`,
     netFail: '서버에 닿지 못해 멈췄습니다.',
   },
   /** 목록 별칭 칸에서 바로 고치기(#267 FR-007) — 이름은 그대로, 별칭만 바로 저장한다. */

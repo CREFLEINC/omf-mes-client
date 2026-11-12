@@ -170,6 +170,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
       `Đã tạo ${created.toLocaleString('vi-VN')}, chưa tạo được ${String(failedRacks)} kệ.`,
     failure: (code: string, reason: string): string => `${code} — ${reason}`,
     retryRest: 'Tạo lại phần còn lại',
+    renameFailed: (reason: string): string => `Đã tạo nhưng chưa đặt được tên — ${reason}`,
     netFail: 'Không kết nối được máy chủ nên đã dừng.',
   },
   aliasEdit: {
