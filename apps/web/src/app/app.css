@@ -35505,7 +35505,7 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .erp-wo-distribution-heading, .erp-wo-distribution-row-head, .erp-wo-distribution-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .erp-wo-distribution-heading .section-title { margin: 0; }
 .erp-wo-distribution-row-head .field-cell { flex: 1; min-width: 12rem; }
-.erp-wo-distribution-segments { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,26rem),1fr)); align-items: start; gap: var(--space-3); }
+.erp-wo-distribution-segments { display: block; min-width: 0; }
 .erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
 .erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
 .erp-wo-segment-fields { display: grid; grid-template-columns: minmax(0,14rem) minmax(0,12rem); gap: var(--space-3); margin-top: var(--space-3); }
@@ -36654,3 +36654,13 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   display: block;
   margin-top: var(--space-1);
 }
+/* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
+.erp-wo-distribution-steps { display: flex; gap: var(--space-5); list-style: none; margin: 0; padding: 0 0 var(--space-3); border-bottom: 1px solid var(--outline-variant); font: var(--type-label-lg); color: var(--on-surface-variant); }
+.erp-wo-distribution-steps [aria-current='step'] { color: var(--primary); font-weight: 600; }
+.erp-wo-distribution-condition-list { min-width: 0; }
+.erp-wo-distribution-condition-list tr[data-active='true'] { background: var(--primary-container); color: var(--on-primary-container); }
+.erp-wo-distribution-condition-list td { overflow-wrap: anywhere; }
+.erp-wo-condition-period { min-width: 9rem; }
+.erp-wo-distribution-settings .erp-wo-distribution-actions, .erp-wo-distribution-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-3); }
+.erp-wo-distribution-footer { padding-top: var(--space-3); border-top: 1px solid var(--outline-variant); }
+.erp-wo-distribution-segment > .section-title { margin: 0 0 var(--space-3); }

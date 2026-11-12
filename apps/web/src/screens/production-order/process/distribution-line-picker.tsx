@@ -51,7 +51,7 @@ export const DistributionLinePicker = ({
         {selected
           ? `${selected.name} (${selected.code})`
           : optional
-            ? '각 구간의 라인 유지'
+            ? '각 조건의 생산 라인 유지'
             : '생산 라인을 선택하세요.'}
       </div>
       <div className="erp-wo-distribution-line-buttons">

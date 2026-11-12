@@ -202,21 +202,27 @@ const distribute = async (targets: Record<string, string> = {}) => {
   }
   await user.click(screen.getByRole('tab', { name: '주간 편성' }));
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  const groups = screen.getAllByRole('group', { name: /^분배 구간 \d+$/ });
-  for (const [index, group] of groups.entries()) {
+  const conditionButtons = screen.getAllByRole('button', { name: /^조건 \d+$/ });
+  for (const [index, button] of conditionButtons.entries()) {
+    await user.click(button);
+    const group = screen.getByRole('group', { name: `분배 조건 ${index + 1}` });
     const total = Number(
-      (within(group).getByRole('textbox', { name: `구간 ${index + 1} 수량` }) as HTMLInputElement)
+      (within(group).getByRole('textbox', { name: `조건 ${index + 1} 수량` }) as HTMLInputElement)
         .value,
     );
     await user.click(
-      within(group).getByRole('button', { name: `구간 ${index + 1} 생산 라인 선택` }),
+      within(group).getByRole('button', { name: `조건 ${index + 1} 생산 라인 선택` }),
     );
-    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
+        exact: true,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: '선택' }));
-    await user.click(within(group).getByRole('combobox', { name: `구간 ${index + 1} 배분 방식` }));
+    await user.click(within(group).getByRole('combobox', { name: `조건 ${index + 1} 배분 방식` }));
     await user.click(screen.getByRole('option', { name: '날짜별 직접 입력' }));
     const inputs = within(group).getAllByRole('textbox', {
-      name: new RegExp(`구간 ${index + 1} [0-9]{4}-`),
+      name: new RegExp(`조건 ${index + 1} [0-9]{4}-`),
     });
     for (const [day, input] of inputs.entries()) {
       const qty = index === 0 ? (day === 0 ? total : 0) : day < 2 ? total / 2 : 0;
@@ -426,8 +432,12 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
     await user.click(screen.getByRole('tab', { name: '주간 편성' }));
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    await user.click(screen.getByRole('button', { name: '구간 1 생산 라인 선택' }));
-    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(screen.getByRole('button', { name: '조건 1 생산 라인 선택' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
+        exact: true,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: '선택' }));
     await user.click(screen.getByRole('tab', { name: '1. BOM·Routing' }));
     expect(screen.getByRole('dialog')).toBeVisible();

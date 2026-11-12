@@ -103,7 +103,9 @@ describe('ERP W/O별 다중 구간 분배', () => {
     expect(result.totals[0]).toMatchObject({ existing: 5, added: 30 });
   });
   it('적용한 조건은 재실행으로 중복 추가하지 않는다', () =>
-    expect(() => previewSegments(targets, [segment({ applied: true })], [])).toThrow('새 구간'));
+    expect(() => previewSegments(targets, [segment({ applied: true })], [])).toThrow(
+      '새 분배 조건',
+    ));
   it.each([
     { lineId: '404' },
     { owner: '404' },
@@ -136,7 +138,7 @@ describe('ERP W/O별 다중 구간 분배', () => {
     ]);
     expect(() => expandSegment(segment({ quantity: '1.5' }), 0)).toThrow('소수 0자리');
   });
-  it('새 구간끼리 겹치는 셀은 합산하고 확인 메시지를 제공한다', () => {
+  it('새 분배 조건끼리 겹치는 셀은 합산하고 확인 메시지를 제공한다', () => {
     const result = previewSegments(
       targets,
       [segment({ end: '2026-11-02' }), segment({ id: '2', end: '2026-11-02' })],
