@@ -68,15 +68,26 @@ export const reasonOf = (
   return blockersText(blockers ?? lot.finalizeBlockers) ?? t.list.blockedUnknown;
 };
 
-/** 자재 관리 LOT 한 개의 상태 칩(상세 표 — 시안의 「입고됨 · 반품 처분 끝 · …」). */
+/**
+ * 자재 관리 LOT 한 개의 상태 칩(상세 표 — 시안의 「입고됨 · 반품 처분 끝 · …」). 처분 끝(반품 · 폐기)과 입고 취소 요청 중을 「입고됨」보다
+ * 먼저 본다 — 입고 뒤 공급사 반품한 LOT 도 `goodsReceived` 가 참으로 온다(G2 L5). 입고 취소 요청 중은 LOT 칸이 없어 막힘
+ * `RECEIPT_CANCEL_PENDING` 의 LOT 번호로 가린다.
+ */
 export const materialLotStatus = (
   lot: MaterialLot,
   inboundStatus: WorkRecordLot['statusCode'],
+  blockers: readonly FinalizeBlocker[] = [],
 ): { label: string; status: ChipStatus } => {
   const s = t.detail.lotStatus;
-  if (lot.goodsReceived === true) return { label: s.received, status: 'success' };
   if (lot.dispositionStatusCode === 'RETURNED') return { label: s.returned, status: 'idle' };
   if (lot.dispositionStatusCode === 'DISPOSED') return { label: s.disposed, status: 'idle' };
+  if (
+    blockers.some(
+      (blocker) => blocker.code === 'RECEIPT_CANCEL_PENDING' && blocker.lotNos.includes(lot.lotNo),
+    )
+  )
+    return { label: s.receiptCancelPending, status: 'warning' };
+  if (lot.goodsReceived === true) return { label: s.received, status: 'success' };
   if (lot.dispositionStatusCode === 'IN_PROGRESS')
     return { label: s.dispositionInProgress, status: 'warning' };
   if (lot.statusCode === 'INSPECTION_PENDING')
