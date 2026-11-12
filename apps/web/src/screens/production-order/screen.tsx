@@ -241,6 +241,11 @@ export const ProductionOrderScreen = ({
       }),
     ),
     {
+      key: 'plannedStartDate',
+      header: t.list.columns.plannedStartDate,
+      render: (row) => <span className="nowrap-cell">{row.fact.plannedStartDate ?? '—'}</span>,
+    },
+    {
       key: 'dueDate',
       header: t.list.columns.dueDate,
       render: (row) => <span className="nowrap-cell">{row.fact.dueDate ?? ''}</span>,

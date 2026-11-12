@@ -1,3 +1,4 @@
+import { PlanViewSwitch } from './plan-view-switch';
 import { useProductionOrderCodeNames } from '../code-names';
 import { useUnreleasedWorkOrders, useWorkOrderReadiness } from './queries';
 import { judgeAssign } from './process-model';
@@ -853,19 +854,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {orderNumbers.map((number) => (
           <OrderSession key={number} number={number} publish={publish} />
         ))}
-        {stage === 'plan' && (
-          <Tabs
-            className="erp-wo-multi-view-tabs"
-            size="sm"
-            aria-label="생산계획 보기"
-            value={planView}
-            onChange={setPlanView}
-            items={[
-              { value: 'week', label: '주간 편성', content: null },
-              { value: 'grid', label: '계획 목록', content: null },
-            ]}
-          />
-        )}
+        {stage === 'plan' && <PlanViewSwitch value={planView} onChange={setPlanView} />}
         {stage === 'plan' && target && (
           <div className="erp-wo-multi-plan-week">
             <PlanStep

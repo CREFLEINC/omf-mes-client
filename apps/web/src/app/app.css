@@ -36783,3 +36783,9 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(10rem,.7fr) minmax(0,1.8fr); }
 @container erp-wo-overview (max-width:36rem) { .erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-plan-view-switch { display:flex; align-items:center; gap:var(--space-3); margin-block:var(--space-2); }
+.erp-wo-plan-view-switch > .field-label { margin:0; }
+.erp-wo-plan-view-buttons { display:inline-flex; padding:var(--space-1); gap:var(--space-1); border:1px solid var(--outline-variant); border-radius:var(--radius-md); background:var(--surface-container-low); }
+.erp-wo-plan-view-buttons button[aria-pressed='true'] { color:var(--on-secondary-container); background:var(--secondary-container); }
+.erp-wo-plan-view-buttons button { white-space:nowrap; }

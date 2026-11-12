@@ -1,15 +1,8 @@
+import { PlanViewSwitch } from './plan-view-switch';
 import { planQuantities } from './plan-quantities';
 import { PlanCreationTools } from './plan-creation-tools';
 import { splitPlanQuantity } from '../../production-plan/quantity-split';
-import {
-  AlertBanner,
-  Button,
-  Chip,
-  DatePicker,
-  Tabs,
-  TextField,
-  type Column,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, DatePicker, TextField, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
@@ -318,19 +311,7 @@ export const PlanStep = ({
           </ul>
         </AlertBanner>
       )}
-      {!viewMode && (
-        <Tabs
-          size="sm"
-          className="erp-wo-plan-view-tabs"
-          aria-label={ui.views}
-          value={view}
-          onChange={setView}
-          items={[
-            { value: 'week', label: ui.week, content: null },
-            { value: 'grid', label: ui.grid, content: null },
-          ]}
-        />
-      )}
+      {!viewMode && <PlanViewSwitch value={view} onChange={setView} />}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:plan-layout"
         label="생산계획"

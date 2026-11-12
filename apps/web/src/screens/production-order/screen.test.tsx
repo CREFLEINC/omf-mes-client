@@ -35,6 +35,7 @@ const order = (
   itemId: 7101,
   orderQty: 500,
   uomId: 8101,
+  plannedStartDate: '2026-10-20',
   dueDate: '2026-10-31',
   statusCode: 'RECEIVED',
   expandedWorkOrderCount: expanded,
@@ -245,6 +246,14 @@ const countPlantIds = (requests: Request[]) =>
   listQueries(requests, '1').map((query) => query.get('plantId'));
 
 describe('작업지시 목록 작업함', () => {
+  it('ERP 계획 시작일을 납기일과 별도 열로 표시한다', async () => {
+    render({ orders: [REVIEW] });
+    const link = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
+    const row = link.closest('tr')!;
+    expect(screen.getByRole('columnheader', { name: '계획 시작일' })).toBeVisible();
+    expect(within(row).getByText('2026-10-20', { exact: true })).toBeVisible();
+    expect(within(row).getByText('2026-10-31', { exact: true })).toBeVisible();
+  });
   it('선택 대상 없이도 자동 전개 도움말을 읽고 닫으며 실행 요청은 보내지 않는다', async () => {
     const user = userEvent.setup();
     const { requests } = render({ orders: [REVIEW] });

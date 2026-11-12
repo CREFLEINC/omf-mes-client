@@ -165,6 +165,7 @@ export const erpWorkOrderFlow = {
       itemCode: '품목 코드',
       itemName: '품목명',
       orderQty: 'ERP W/O 수량',
+      plannedStartDate: '계획 시작일',
       dueDate: '납기일',
       confirmedPlanQty: '확정 계획량',
       draftPlanQty: '미확정 계획량',
