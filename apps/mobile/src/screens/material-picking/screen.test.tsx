@@ -1620,6 +1620,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
 
   const mountPackaged = (lot: ReturnType<typeof scannedLot>, stock = 1000) => {
     const picks: Request[] = [];
+    const stockUrls: URL[] = [];
     const serverPicked = new Map<number, number>();
     const routes: StubRoute[] = [
       {
@@ -1662,8 +1663,9 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
       },
       {
         match: (req) => new URL(req.url).pathname === '/inventory/balances',
-        respond: () =>
-          jsonResponse({
+        respond: (req) => {
+          stockUrls.push(new URL(req.url));
+          return jsonResponse({
             items: [
               {
                 groupBy: 'LOT',
@@ -1679,7 +1681,8 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
               },
             ],
             page,
-          }),
+          });
+        },
       },
       {
         match: (req) => new URL(req.url).pathname === '/mdm/uoms',
@@ -1701,7 +1704,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
       { fetch: createStubFetch(routes) },
     );
 
-    return { picks };
+    return { picks, stockUrls };
   };
 
   const scanLot = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -1712,6 +1715,20 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
     await user.click(await screen.findByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
   };
+
+  it('G2 M-a LOT 재고는 피킹 위치(지시의 출발 창고 · 라인의 위치)만 센다 — 모든 위치를 더하지 않는다', async () => {
+    const user = userEvent.setup();
+    const { stockUrls } = mountPackaged(scannedLot());
+    await scanLot(user);
+
+    await waitFor(() => expect(stockUrls.length).toBeGreaterThan(0));
+    expect(Object.fromEntries(stockUrls.at(-1)?.searchParams ?? [])).toMatchObject({
+      lotId: '4',
+      groupBy: 'LOCATION',
+      warehouseId: '11',
+      locationId: '21',
+    });
+  });
 
   it('US6-4 시작 단위 = 기본 단위 — 패키징 칩과 재고 「1000 EA (10봉지)」를 보이고 EA 로 열린다', async () => {
     const user = userEvent.setup();

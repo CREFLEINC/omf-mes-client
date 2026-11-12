@@ -276,7 +276,13 @@ export const MaterialPickingScreen = () => {
   const byPackage = packageUnit !== null && entryUnit === PACKAGE_UNIT;
   const uoms = useUomCodes(foundLot !== null);
   const baseUom = uomLabelOf(uoms.data, line?.uomId);
-  const lotStock = useLotStock(lotMatched ? line.lotId : null);
+  /* 피킹 위치(라인의 출발 창고 · 위치) 재고만 센다(G2 M-a). */
+  const lotStock = useLotStock(
+    lotMatched ? line.lotId : null,
+    lotMatched && order !== null
+      ? { warehouseId: order.warehouseId, locationId: line.locationId }
+      : null,
+  );
   /* 피킹만으로는 현재고가 줄지 않는다. 집어 두고 아직 내보내지 않은 양을 빼서 보인다. */
   const stockNow =
     line === null || lotStock.data === null || lotStock.data === undefined
