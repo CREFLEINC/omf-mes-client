@@ -1280,15 +1280,15 @@ export interface InspectionLotSupersededForward {
 
 /**
  * 자재 관리 LOT 별 판정(계약 §8 `lotJudgments[]` · FR-023 · 2026-11-12) — 그 LOT 을 매칭한 결과 중 순번이 가장 큰 결과의 판정.
- * 매칭한 결과가 없는 LOT 은 싣지 않는다(계산에서 빠진다).
+ * 서버는 자재 관리 LOT 을 모두 싣고, 매칭한 결과가 없는 LOT 은 `judgmentCode` · `resultId` · `resultSeqNo` 가 null 이다(계산에서 빠진다).
  */
 export interface InspectionLotJudgmentForward {
   lotId: number;
   lotNo: string;
   judgmentCode: string | null;
-  /** 이 판정을 낸 결과. */
-  resultId: number;
-  resultSeqNo: number;
+  /** 이 판정을 낸 결과 — 매칭한 결과가 없는 LOT 은 null(서버는 모든 LOT 을 싣는다 · G2 M1). */
+  resultId: number | null;
+  resultSeqNo: number | null;
   /** 이 LOT 에서 대체된 앞 결과 — 순번 오름차순(C7 정함). 마지막 것이 「결과 a → 결과 b」의 a 다. */
   superseded: InspectionLotSupersededForward[];
   /**

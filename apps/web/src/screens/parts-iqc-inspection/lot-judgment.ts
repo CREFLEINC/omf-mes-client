@@ -79,7 +79,7 @@ export const overriddenLotsOf = ({
 
 /**
  * LOT 별 판정 — 서버 `lotJudgments[]` 가 있으면 그대로, 없으면(서버 T134 전) 결과 목록으로 같은 규칙을 계산한다.
- * LOT 표 순서(`lots[]`)를 따르고, 매칭한 결과가 없는 LOT 은 뺀다.
+ * LOT 표 순서(`lots[]`)를 따르고, 매칭한 결과가 없는 LOT(서버 줄의 `resultId` null)은 뺀다.
  */
 export const lotJudgmentsOf = (inspection: {
   lots?: readonly InspectionLotForward[];
@@ -94,7 +94,10 @@ export const lotJudgmentsOf = (inspection: {
   };
 
   if (inspection.lotJudgments !== undefined) {
-    return [...inspection.lotJudgments].sort((a, b) => order(a.lotId) - order(b.lotId));
+    /* 서버는 매칭 결과가 없는 LOT 도 null 로 싣는다 — 그 줄은 빼고 화면이 「매칭 없음」으로 센다(G2 M1). */
+    return inspection.lotJudgments
+      .filter((each) => each.resultId !== null)
+      .sort((a, b) => order(a.lotId) - order(b.lotId));
   }
 
   return lots.flatMap((lot): InspectionLotJudgmentForward[] => {

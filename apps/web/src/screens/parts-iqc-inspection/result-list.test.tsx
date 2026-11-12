@@ -343,6 +343,38 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(within(table).getAllByRole('row')[2]).toHaveTextContent(t.results.reason('합성 재측정'));
   });
 
+  it('G2 M1 서버가 매칭 결과 없는 LOT 을 null 줄로 실으면 「결과 null」 대신 매칭 없음으로 센다', async () => {
+    mount(
+      inspection({
+        results: [result(1, 'ACCEPTED', [1])],
+        previewJudgmentCode: 'ACCEPTED',
+        lotJudgments: [
+          {
+            lotId: 1,
+            lotNo: lot(1).lotNo,
+            judgmentCode: 'ACCEPTED',
+            resultId: 701,
+            resultSeqNo: 1,
+            superseded: [],
+          },
+          ...[2, 3].map((lotId) => ({
+            lotId,
+            lotNo: lot(lotId).lotNo,
+            judgmentCode: null,
+            resultId: null,
+            resultSeqNo: null,
+            superseded: [],
+          })),
+        ],
+      }),
+    );
+
+    const panel = await screen.findByRole('region', { name: t.results.lotJudgments.heading });
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(1);
+    expect(panel).not.toHaveTextContent('null');
+    expect(within(panel).getByText(t.results.lotJudgments.unmatched(2))).toBeInTheDocument();
+  });
+
   it('US3-8 서버가 lotJudgments 를 아직 주지 않으면 결과 목록으로 같은 규칙을 계산해 보인다', async () => {
     mount(
       inspection({

@@ -37,15 +37,19 @@ const reasonOf = (
  * 자재 관리 LOT 별 판정(FR-023 · US3-8 · 2026-11-12) — LOT 마다 그 LOT 를 매칭한 마지막 결과의 판정과, 앞 결과를 대체했으면
  * 「LOT 0001: 결과 1 불합격 → 결과 2 합격(사유)」. 매칭한 결과가 없는 LOT 은 판정에서 빠진다고 알린다.
  */
+type Judged = InspectionLotJudgmentForward & { resultSeqNo: number };
+
 export const LotJudgmentList = ({ judgments, lots, results }: LotJudgmentListProps) => {
-  const unmatched = lots.filter((lot) => !judgments.some((each) => each.lotId === lot.lotId));
+  /* 매칭한 결과가 없는 줄(서버가 null 로 싣는다 · G2 M1)은 「매칭 없음」으로 센다. */
+  const judged = judgments.filter((each): each is Judged => each.resultSeqNo !== null);
+  const unmatched = lots.filter((lot) => !judged.some((each) => each.lotId === lot.lotId));
 
   return (
     <section className="iqc-inbound-lot-judgments" aria-label={t.heading}>
       <h4 className="parts-iqc-sub-title">{t.heading}</h4>
       <p className="field-note">{t.help}</p>
       <ul className="iqc-inbound-lot-judgment-list">
-        {judgments.map((judgment) => {
+        {judged.map((judgment) => {
           const before = judgment.superseded.at(-1);
 
           return (
