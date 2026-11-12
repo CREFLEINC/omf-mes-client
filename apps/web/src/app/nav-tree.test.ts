@@ -217,6 +217,7 @@ describe('주 메뉴 트리', () => {
       '/logistics/inbound-schedule → local_shipping',
       '/logistics/inbound-excess → local_shipping',
       '/logistics/material-lot-issue → local_shipping',
+      '/logistics/inbound-work-record → local_shipping',
       '/logistics/stock-status → inventory',
       '/logistics/stocktaking → inventory',
       '/logistics/stock-adjust → inventory',

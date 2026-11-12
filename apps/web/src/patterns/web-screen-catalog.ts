@@ -140,6 +140,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
   { path: '/logistics/inbound-schedule', code: 'W-01-09', name: '입하 예정 조회' },
   /* 005(omf-all-around#254) — 입고 관리 탭 묶음의 한 탭이지만 설계 화면 코드가 따로 있다(권한 W-01-14). */
   { path: '/logistics/material-lot-issue', code: 'W-01-14', name: '자재 관리 LOT 발행' },
+  /* 005(omf-all-around#254) — 입고 관리 탭 묶음의 마지막 탭, 설계 화면 코드가 따로 있다(권한 W-01-16). */
+  { path: '/logistics/inbound-work-record', code: 'W-01-16', name: '입하/입고 작업 기록' },
   /* W-01-03 은 화면이 아니라 입고 관리 라인 표의 「입하 등록」이다 — 옛 주소는 입고 관리로 옮겨 준다. */
   { path: '/logistics/over-receipt-split', code: 'W-01-03', name: '입하 등록' },
   { path: '/logistics/iqc-inspection', code: 'W-01-01', name: 'IQC 수입검사·판정' },

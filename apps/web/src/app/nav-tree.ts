@@ -171,6 +171,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '자재 관리 LOT 발행',
             labelVi: 'Phát hành LOT quản lý vật tư',
           },
+          /*
+           * W-01-16 — 새 흐름 입하 LOT 의 P/O 매칭을 고치고 최종 마감한다(005 · omf-all-around#254). 탭 묶음의 마지막이다
+           * (screens/W-01-16.md 「진입·이동」).
+           */
+          {
+            to: '/logistics/inbound-work-record',
+            label: '입하/입고 작업 기록',
+            labelVi: 'Nhật ký công việc nhập hàng / nhập kho',
+          },
         ],
       },
       /*

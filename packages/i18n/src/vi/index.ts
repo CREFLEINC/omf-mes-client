@@ -176,6 +176,7 @@ import { plantWorkingDays } from './plant-working-days';
 import { materialIssueStatus } from './material-issue-status';
 import { productionWarehouseReplenishment } from './production-warehouse-replenishment';
 import { materialLotIssue } from './material-lot-issue';
+import { inboundWorkRecord } from './inbound-work-record';
 import { supplierItemDefault } from './supplier-item-default';
 
 export const vi: Translated<Messages> = {
@@ -186,6 +187,7 @@ export const vi: Translated<Messages> = {
   materialIssueStatus,
   productionWarehouseReplenishment,
   materialLotIssue,
+  inboundWorkRecord,
   supplierItemDefault,
   approvalInbox,
   approvalRoute,

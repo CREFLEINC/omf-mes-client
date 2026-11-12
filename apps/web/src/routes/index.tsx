@@ -30,6 +30,7 @@ import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-r
 import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
 import { MaterialLotIssueScreen } from '../screens/material-lot-issue/screen';
+import { InboundWorkRecordScreen } from '../screens/inbound-work-record/screen';
 import { SupplierItemDefaultScreen } from '../screens/supplier-item-default/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionStandardRoute } from '../screens/inspection-standard/sheet-type';
@@ -225,6 +226,8 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/inbound-excess', element: <InboundExcessScreen /> },
       /* 입고 관리 묶음의 셋째 탭 — W-01-14 자재 관리 LOT 발행(005 · omf-all-around#254). */
       { path: 'logistics/material-lot-issue', element: <MaterialLotIssueScreen /> },
+      /* 입고 관리 묶음의 마지막 탭 — W-01-16 입하/입고 작업 기록(005 · omf-all-around#254). */
+      { path: 'logistics/inbound-work-record', element: <InboundWorkRecordScreen /> },
       /*
        * W-01-03 「입하 등록」 — **화면이 아니라 입고 관리의 라인 표에서 바로 한다**(사용자 지시 2026-10-24 · 옛 창은
        * 걷었다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다(고른 발주 `po` 는 그대로).

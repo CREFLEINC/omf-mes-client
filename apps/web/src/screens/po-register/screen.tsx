@@ -1,9 +1,12 @@
 import { Breadcrumb, Button, EmptyState, PageHeader, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { sessionKeys, type Session } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import { readSourceLineId, readSourceReceiptId, withSourceLineId } from './entry';
 import { HeaderForm } from './header-form';
@@ -36,7 +39,7 @@ import {
 } from './queries';
 import { readReason, toApprovalRequest } from './reason-draft';
 import { RegisterConfirmDialog, type RegisterSummary } from './register-confirm-dialog';
-import { ResultPane, type SubmitPhase } from './result-pane';
+import { INBOUND_WORK_RECORD_PATH, ResultPane, type SubmitPhase } from './result-pane';
 import { ScopeBanner } from './scope-banner';
 import { SourceReceiptPane } from './source-receipt-pane';
 import { SubmitConfirmDialog, type SubmitSummary } from './submit-confirm-dialog';
@@ -164,6 +167,9 @@ export const PoRegisterScreen = () => {
   const plants = usePlantOptions();
   const items = useItemOptions();
   const uoms = useUomOptions();
+  /* 005 — 등록 결과의 W-01-16 링크는 그 화면을 볼 수 있을 때만(R7-2). 세션은 앱 머리가 이미 읽어 둔 것을 본다. */
+  const session = useQueryClient().getQueryData<Session | null>(sessionKeys.current);
+  const canOpenWorkRecord = toWebAccess(session?.permissions).allows(INBOUND_WORK_RECORD_PATH);
 
   /**
    * 대상으로 확정된 줄.
@@ -955,6 +961,7 @@ export const PoRegisterScreen = () => {
             submit.clearFieldError('reason');
           }}
           onRequestSubmit={requestSubmit}
+          canOpenWorkRecord={canOpenWorkRecord}
         />
       )}
 

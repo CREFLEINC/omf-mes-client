@@ -18,6 +18,8 @@ export const ScopeBanner = () => (
   <div className="banner-slot">
     <AlertBanner variant="info" title={t.scope.title}>
       {t.scope.description}
+      {/* 005 — 초과분 원천은 이 기능 전 입하만이다. 새 흐름 입하의 매칭은 W-01-16 이 맡는다(R-7). */}
+      <span className="po-register-scope-legacy">{t.scope.legacyOnly}</span>
     </AlertBanner>
   </div>
 );

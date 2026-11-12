@@ -26,6 +26,9 @@ export const poRegister = {
     title: '초과 입하분을 사후에 등록하는 화면입니다',
     description:
       '초과 입하 분리에서 넘어온 초과분을 정산할 P/O를 만듭니다. 일반 구매 발주는 이 화면에서 만들지 않습니다.',
+    /** 005 — 초과분 원천(넘어온 입하 줄)은 이 기능 전 데이터만이다(R-7 · screens/W-01-11.md). */
+    legacyOnly:
+      '초과분 발주 연결은 이 기능 전에 받은 입하만 다룹니다. 새 흐름 입하는 입하/입고 작업 기록(W-01-16)에서 매칭합니다.',
   },
   fields: {
     supplier: '공급사',
@@ -277,6 +280,12 @@ export const poRegister = {
       `발주 전표 ${purchaseOrderNo}는 만들어졌고 결재에는 올라가지 않았습니다`,
     submitFailedDescription:
       '전표는 그대로 남아 있습니다. 아래에서 다시 올릴 수 있으니 같은 내용을 다시 등록하지 마세요.',
+    /**
+     * 005 — 새 흐름 입하 LOT 의 P/O 없음은 이 화면이 배정하지 않는다(P/O 의 원천 기록은 근거뿐 · R-7). W-01-16 에서
+     * 관리자가 이 P/O 라인에 매칭한다. 링크는 W-01-16 을 볼 수 있을 때만 선다.
+     */
+    inboundLotGuide: '새 흐름 입하의 P/O 없음은 W-01-16 에서 이 P/O 라인에 배정합니다',
+    inboundLotGuideLink: '입하/입고 작업 기록 열기',
   },
   values: {
     unknown: '알 수 없음',
