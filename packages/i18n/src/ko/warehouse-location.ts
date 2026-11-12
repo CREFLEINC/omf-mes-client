@@ -125,6 +125,11 @@ export const warehouseLocation = {
     sections: { basic: '기본 정보', layout: '층·셀 구성' },
   },
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 위치 일괄 생성(#267) — 창 문구는 다음 PR 에서 더한다. */
+  bulkCreate: {
+    netFail: '서버에 닿지 못해 멈췄습니다.',
+  },
+
   /** 목록 별칭 칸에서 바로 고치기(#267 FR-007) — 이름은 그대로, 별칭만 바로 저장한다. */
   aliasEdit: {
     edit: (locationCode: string): string => `${locationCode} 별칭 수정`,

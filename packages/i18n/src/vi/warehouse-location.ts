@@ -126,6 +126,10 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
   /** 정보 판에서 연필로 고치는 값(별칭). */
+  bulkCreate: {
+    netFail: 'Không kết nối được máy chủ nên đã dừng.',
+  },
+
   aliasEdit: {
     edit: (locationCode: string): string => `Sửa tên gọi khác ${locationCode}`,
     conflict: 'Người khác đã sửa trước — đã tải tên gọi khác mới nhất.',
