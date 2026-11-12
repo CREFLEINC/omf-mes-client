@@ -383,3 +383,23 @@ describe('W-01-01 확정 취소', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('W-01-01 상세 머리', () => {
+  it('L14-2 머리 단추(변경 이력 · 분리 · 판정 확정)는 한 묶음이다 — 좁으면 묶음째 다음 줄로 내려간다', async () => {
+    mount(base());
+
+    const confirm = await screen.findByRole('button', { name: t.confirm.open });
+    const group = confirm.closest('.iqc-inbound-head-actions');
+
+    expect(group).not.toBeNull();
+    expect(group?.parentElement).toHaveClass('parts-iqc-detail-head');
+    expect(
+      within(group as HTMLElement).getByRole('button', { name: t.history.open }),
+    ).toBeInTheDocument();
+    expect(
+      within(group as HTMLElement).getByRole('button', { name: t.split.open }),
+    ).toBeInTheDocument();
+    /* 제목은 묶음 밖 — 단추가 내려가도 제목 줄은 그대로다. */
+    expect(within(group as HTMLElement).queryByText('IL-20991111-0003')).toBeNull();
+  });
+});

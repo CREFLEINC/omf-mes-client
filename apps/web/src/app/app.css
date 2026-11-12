@@ -33777,6 +33777,35 @@ body:has(.iqc-inspection-step-measure [aria-expanded='true'])
   white-space: nowrap;
 }
 
+/*
+ * 머리 — 제목 · 칩 줄과 단추 묶음. 한 줄에 다 들어가면 지금 그대로(한국어), 안 들어가면 단추 묶음째 다음 줄 오른쪽으로
+ * 내려간다(L14-2 — 베트남어 1024 에서 단추가 세 줄로 꺾이고 상세가 945 로 밀렸다). 단추 이름은 낱말 중간에서 꺾지 않는다.
+ */
+.iqc-inbound-detail > .parts-iqc-detail-head {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: var(--space-2);
+}
+
+.iqc-inbound-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin-inline-start: auto;
+}
+
+.iqc-inbound-head-actions > button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* 상세 카드의 칸은 카드 폭을 넘지 않는다 — 넓은 표(48rem)는 카드를 밀지 않고 표 상자 안에서 가로로 민다(L14-2). */
+.iqc-inbound-detail > .parts-iqc-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .iqc-inbound-facts {
   flex-wrap: wrap;
 }

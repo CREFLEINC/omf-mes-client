@@ -4899,21 +4899,49 @@
  * ⚠ 표가 좁으면(1024×768 에서 692 · 시안 「좁은 폭」) 틈과 고정 열을 줄여 가로 스크롤 없이 넣는다 — LOT 번호는
  *   자르지 않고 13px, 공급사 LOT 은 말줄임, 나머지는 두 줄까지 줄바꿈(시안 README 「좁은 폭 상태」).
  *   넓은 열의 최소 합이 약 1,030px 이라 그보다 좁으면 이 배치를 쓴다 — 1280 에서도 표가 가로로 밀려 라벨 칸이 잘렸다(G2 H4).
+ * ⚠ 체크 · LOT 번호만 고정이고 나머지는 «하한 + 비율»이다(L-e). 고정 열 합이 676 이라 1024(표 682~692)에서 패키징이
+ *   6px 로 접혀 머리가 한 글자씩 쌓였고, 1280(표 906)에서는 상태 칸이 76 에 묶여 「입하됨 · 검사 대기」 칩이 라벨 칸을
+ *   덮었다. 하한 합(+틈 · 끝 여백)이 680 이라 682 에도 들어가고, 넓으면 남는 폭이 비율대로 나뉜다. 칩은 칸 안에서 줄바꿈.
  */
 @container mlot-table (max-width: 1040px) {
   .pop-ui .pop-mlot-table-head,
   .pop-ui .pop-mlot-row {
-    column-gap: var(--space-2);
+    column-gap: 6px;
+    padding-inline-end: var(--space-1);
   }
 
   .pop-ui .pop-mlot-table[data-mode='lots'] .pop-mlot-table-head,
   .pop-ui .pop-mlot-table[data-mode='lots'] .pop-mlot-row {
-    grid-template-columns: 44px 264px 84px minmax(0, 1fr) 64px 76px 76px;
+    grid-template-columns:
+      36px 264px minmax(70px, 1fr) minmax(50px, 1.3fr) minmax(62px, 1.3fr)
+      minmax(76px, 1.5fr) minmax(76px, 1.3fr);
   }
 
   .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-table-head,
   .pop-ui .pop-mlot-table[data-mode='reprint'] .pop-mlot-row {
-    grid-template-columns: 44px 264px minmax(0, 1fr) 84px 84px 76px 76px;
+    grid-template-columns:
+      36px 264px minmax(56px, 2fr) minmax(70px, 1fr) minmax(56px, 1.3fr)
+      minmax(76px, 1.5fr) minmax(76px, 1.3fr);
+  }
+
+  /* 머리는 낱말 단위로 두 줄까지(한 글자씩 쌓이지 않는다). */
+  .pop-ui .pop-mlot-table-head > span {
+    min-width: 0;
+    line-height: 18px;
+    overflow-wrap: break-word;
+  }
+
+  .pop-ui .pop-mlot-row > span {
+    min-width: 0;
+  }
+
+  /* 상태 칩은 칸 폭을 넘지 않고 줄바꿈한다(시안 「좁은 폭」 `.row .chip`). */
+  .pop-ui .pop-mlot-row .pop-mlot-state {
+    box-sizing: border-box;
+    max-width: 100%;
+    padding-block: 2px;
+    line-height: 16px;
+    white-space: normal;
   }
 
   /* 아래 기본 규칙보다 앞에 있으므로 한 단계 좁혀 이긴다. */

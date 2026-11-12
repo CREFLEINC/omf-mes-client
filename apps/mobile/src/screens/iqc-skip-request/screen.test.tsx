@@ -399,6 +399,21 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(await screen.findByText('대기')).toBeInTheDocument();
   });
 
+  it('L-f 내가 올린 요청 시각은 기기 시간대가 아니라 공장 시각(UTC+7)이다', async () => {
+    mount([], { mine: [approval({ requestedAt: '2026-11-12T13:59:00.000Z' })] });
+
+    expect(await screen.findByText('11-12 20:59 요청')).toBeInTheDocument();
+  });
+
+  it('L-f 대상 카드 수량에 천 단위 쉼표를 붙인다', async () => {
+    mount([], { lots: [{ ...lot(), initialQty: 1000 }] });
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText('1,000 kg')).toBeInTheDocument();
+  });
+
   it('올린 요청이 없으면 없다고 말한다', async () => {
     mount([], { mine: [] });
 

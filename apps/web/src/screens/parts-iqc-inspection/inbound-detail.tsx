@@ -279,24 +279,29 @@ export const InboundDetail = ({
             {t.preview(judgmentText(preview))}
           </Chip>
         )}
-        <span className="parts-iqc-footer-gap" />
-        <Button variant="outlined" size="sm" onClick={() => setHistoryOpen(true)}>
-          {th.open}
-        </Button>
-        {/* 분리는 확정 전 · 자재 관리 LOT 2개 이상(US7-1 · screens/W-01-01.md 「자재 관리 LOT 분리 창」). */}
-        <Button
-          variant="outlined"
-          size="sm"
-          disabled={splitLock !== null}
-          aria-describedby={splitLock === null ? undefined : splitLockId}
-          title={splitLock ?? undefined}
-          onClick={() => setSplitOpen(true)}
-        >
-          {ts.open}
-        </Button>
-        {/* 판정 확정 · 확정 취소 — W-01-15 가 있을 때만(US4-7, C4). */}
-        <ConfirmActions inspection={inspection} confirmed={confirmed} />
-        {headActions?.(inspection)}
+        {/*
+         * 단추는 한 묶음 — 좁거나 글이 길면(베트남어 · 1024) 묶음째 다음 줄로 내려간다. 단추 이름은 한 줄(L14-2).
+         * 전에는 단추마다 낱말 사이에서 세 줄로 꺾이고 머리가 칸 밖으로 밀렸다.
+         */}
+        <div className="iqc-inbound-head-actions">
+          <Button variant="outlined" size="sm" onClick={() => setHistoryOpen(true)}>
+            {th.open}
+          </Button>
+          {/* 분리는 확정 전 · 자재 관리 LOT 2개 이상(US7-1 · screens/W-01-01.md 「자재 관리 LOT 분리 창」). */}
+          <Button
+            variant="outlined"
+            size="sm"
+            disabled={splitLock !== null}
+            aria-describedby={splitLock === null ? undefined : splitLockId}
+            title={splitLock ?? undefined}
+            onClick={() => setSplitOpen(true)}
+          >
+            {ts.open}
+          </Button>
+          {/* 판정 확정 · 확정 취소 — W-01-15 가 있을 때만(US4-7, C4). */}
+          <ConfirmActions inspection={inspection} confirmed={confirmed} />
+          {headActions?.(inspection)}
+        </div>
       </div>
       <ConfirmPermissionNote />
       {splitLock === null ? null : (
