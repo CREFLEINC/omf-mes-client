@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { jsonResponse } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import {
   BLOB_URL,
   board,
@@ -14,10 +15,13 @@ import {
   pathOf,
   renderScreen,
   rowOf,
+  stubBoardRect,
   stubObjectUrls,
   t,
   TREE_ROWS,
+  WAREHOUSE_LABEL,
   withDrawing,
+  withoutDrawing,
   wl,
 } from './test-harness';
 
@@ -132,5 +136,125 @@ describe('W-CO-08 창고 배치도 — 도면 보이기', () => {
     const pin = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
 
     expect(pin).toHaveAccessibleDescription(t.map.markerPosition(10, 20));
+  });
+});
+
+/* 피처 006 — 조회 화면은 상태 확인에만 쓴다(FR-001~FR-003 · FR-012). */
+describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
+  const editorTitle = t.editor.title(WAREHOUSE_LABEL);
+
+  it('US2-1 SC-003 ⛔ 판을 누르거나 표식을 끌어도 배치가 바뀌지 않는다 — 편집 단추는 [수정] 하나다', async () => {
+    const { puts } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    stubBoardRect(board());
+
+    /* 위치를 고른 채 빈 자리를 눌러도 표식이 생기지 않는다. */
+    fireEvent.click(locationButton('SYN-LOC-08'));
+    fireEvent.click(board(), { clientX: 140, clientY: 80 });
+    expect(within(board()).getAllByRole('button')).toHaveLength(1);
+
+    /* 표식을 끌어도 자리가 그대로다. */
+    const pin = within(board()).getByRole('button', { name: 'SYN-LOC-07' });
+    fireEvent.pointerDown(pin, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      buttons: 1,
+      clientX: 60,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(pin, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      buttons: 1,
+      clientX: 160,
+      clientY: 100,
+    });
+    fireEvent.pointerUp(pin, { pointerId: 1, pointerType: 'mouse', clientX: 160, clientY: 100 });
+    fireEvent.keyDown(pin, { key: 'ArrowRight' });
+    expect(pin).toHaveAccessibleDescription(t.map.markerPosition(10, 20));
+
+    expect(screen.getByRole('button', { name: t.editor.open })).toBeInTheDocument();
+    for (const name of [t.map.upload, t.map.remove, t.map.reset, t.map.save]) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    expect(screen.queryByRole('group', { name: t.map.shape })).toBeNull();
+    expect(screen.queryByLabelText(t.map.upload, { selector: 'input' })).toBeNull();
+    expect(puts).toHaveLength(0);
+  });
+
+  it('US2-2 ⭐ 목록에서 고르면 표식이 강조되고, 안 찍은 위치는 「도면에 없음」이다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    await user.click(locationButton('SYN-LOC-07'));
+
+    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByText(t.locations.notOnDrawing)).toBeNull();
+
+    await user.click(locationButton('SYN-LOC-08'));
+
+    expect(within(board()).getByRole('button', { name: 'SYN-LOC-07' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByRole('heading', { name: /SYN-LOC-08/ })).toHaveTextContent(
+      t.locations.notOnDrawing,
+    );
+  });
+
+  it('US2-3 SC-006 ⛔ 세션 권한에 W-CO-08 이 없으면 [수정]이 없다', async () => {
+    renderScreen(
+      { layouts: [withDrawing()] },
+      { session: { ...SYNTHETIC_SESSION, permissions: ['W-CO-07'] } },
+    );
+
+    await loaded();
+    expect(screen.queryByRole('button', { name: t.editor.open })).toBeNull();
+  });
+
+  it('US2-3 권한이 있으면 [수정]이 서고, 누르면 편집 창이 열린다', async () => {
+    const { user } = renderScreen(
+      { layouts: [withDrawing()] },
+      { session: { ...SYNTHETIC_SESSION, permissions: ['W-CO-08'] } },
+    );
+
+    await loaded();
+    await user.click(screen.getByRole('button', { name: t.editor.open }));
+
+    expect(await screen.findByRole('dialog', { name: editorTitle })).toBeInTheDocument();
+  });
+
+  it('EC-6 ⭐ 편집 창이 열린 동안 창고 선택과 「중지된 위치도 보기」가 잠긴다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing()] });
+
+    await loaded();
+    const viewList = screen.getByRole('region', { name: t.panes.locations });
+    const viewCheckbox = within(viewList).getByRole('checkbox', {
+      name: t.locations.includeInactive,
+    });
+    expect(viewCheckbox).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: t.editor.open }));
+    await screen.findByRole('dialog', { name: editorTitle });
+
+    expect(viewCheckbox).toBeDisabled();
+    expect(within(viewList).getByLabelText(t.warehouse.select)).toBeDisabled();
+  });
+
+  it('EC-10 ⭐ 위치가 없는 창고면 창고·Location 화면에서 등록하라고 알리고, 위치를 만드는 단추는 없다(FR-012)', async () => {
+    renderScreen({ layouts: [withoutDrawing([])], locations: [] });
+
+    await loaded();
+
+    expect(screen.getByText(t.locations.emptyTitle)).toBeInTheDocument();
+    expect(screen.getByText(t.locations.emptyGuide(wl.title))).toBeInTheDocument();
+    for (const name of [wl.actions.addZone, wl.actions.addRack, wl.actions.addWarehouse]) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
   });
 });

@@ -10,7 +10,10 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { SYNTHETIC_SESSION } from '../../test/session-harness';
+import { SessionProvider, type Session } from '../../patterns/session';
 import { DRAWING_MAX_BYTES } from './layout-draft';
+import { LayoutEditorDialog } from './layout-editor-dialog';
 import { WarehouseLayoutScreen } from './screen';
 
 /**
@@ -22,6 +25,7 @@ export const t = messages.warehouseLayout;
 export const wl = messages.warehouseLocation;
 
 export const WAREHOUSE_ID = 12;
+export const WAREHOUSE_LABEL = 'SYN-WH-12 · 합성 창고';
 export const LAYOUT_PATH = `/mdm/warehouses/${String(WAREHOUSE_ID)}/layout`;
 export const WAREHOUSES_PATH = '/mdm/warehouses';
 export const LOCATIONS_PATH = '/mdm/locations';
@@ -164,7 +168,10 @@ export interface Script {
   puts?: (() => Response | Promise<Response>)[];
 }
 
-export const renderScreen = (script: Script) => {
+/** 그릴 것 — 조회 화면 전체, 또는 편집 창 하나(옮긴 편집 시나리오). */
+type Subject = 'screen' | 'editor';
+
+const renderSubject = (subject: Subject, script: Script, options: RenderOptions = {}) => {
   const layoutGets: Request[] = [];
   const uploads: string[] = [];
   const puts: PutRecord[] = [];
@@ -248,17 +255,62 @@ export const renderScreen = (script: Script) => {
   ];
 
   const user = userEvent.setup();
-  const view = renderWithProviders(<WarehouseLayoutScreen />, {
-    fetch: createStubFetch(routes),
-    route: ROUTE,
-  });
+  const onClose = vi.fn();
+  const onSaved = vi.fn();
+  const view = renderWithProviders(
+    subject === 'screen' ? (
+      <SessionProvider>
+        <WarehouseLayoutScreen />
+      </SessionProvider>
+    ) : (
+      <LayoutEditorDialog
+        warehouseId={WAREHOUSE_ID}
+        warehouseLabel={WAREHOUSE_LABEL}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    ),
+    {
+      fetch: createStubFetch(routes),
+      route: ROUTE,
+      session: options.session ?? SYNTHETIC_SESSION,
+    },
+  );
 
-  return { ...view, user, layoutGets, uploads, puts, contentGets, warehouseGets };
+  return {
+    ...view,
+    user,
+    layoutGets,
+    uploads,
+    puts,
+    contentGets,
+    warehouseGets,
+    onClose,
+    onSaved,
+  };
 };
 
-/** 배치도가 도착할 때까지 — 도착해야 판과 액션 줄이 선다. */
+interface RenderOptions {
+  /** 로그인 상태. 주지 않으면 합성 세션(권한 목록 없음 — 권한을 모르면 [수정]은 선다). */
+  session?: Session;
+}
+
+/** 조회 화면 전체를 그린다. */
+export const renderScreen = (script: Script, options?: RenderOptions) =>
+  renderSubject('screen', script, options);
+
+/**
+ * 편집 창 하나만 그린다 — 조회 화면의 [수정]을 누른 것과 같다(창고 `WAREHOUSE_ID`). 조회 화면과 같은 판 · 목록 이름이
+ * 겹치지 않아, 옮긴 편집 시나리오가 손잡이를 그대로 쓴다.
+ */
+export const renderEditor = (script: Script) => renderSubject('editor', script);
+
+/**
+ * 배치도가 도착할 때까지 — 도착해야 판이 선다. 조회 화면 · 편집 창 모두 판은 배치도를 받은 뒤에 선다(편집 창의 저장
+ * 단추는 발에 늘 서 있어 기다림의 표지가 되지 못한다).
+ */
 export const loaded = async (): Promise<void> => {
-  await screen.findByRole('button', { name: t.map.save });
+  await screen.findByRole('group', { name: t.map.imageLabel });
 };
 
 export const fileInput = (): HTMLElement =>

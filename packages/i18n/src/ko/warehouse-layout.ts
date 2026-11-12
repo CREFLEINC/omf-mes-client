@@ -100,6 +100,20 @@ export const warehouseLayout = {
     cancel: '취소',
   },
 
+  /**
+   * 편집 창(피처 006) — 조회 화면의 [수정]이 브라우저 창을 채우는 편집 창을 연다. 편집 규칙(찍기 · 옮기기 · 크기 · 빼기 ·
+   * 되돌리기 · 도면 올리기 · 저장)은 `map` 문구를 그대로 쓴다. 저장하지 않은 변경이 있으면 닫을 때 버릴지 묻는다.
+   */
+  editor: {
+    open: '수정',
+    title: (warehouse: string): string => `배치도 수정 — ${warehouse}`,
+    cancel: '취소',
+    discardTitle: '변경을 버리고 닫을까요?',
+    discardBody: '저장하지 않은 표식 변경이 사라집니다.',
+    keepEditing: '계속 편집',
+    discard: '버리고 닫기',
+  },
+
   locations: {
     code: '위치 코드',
     name: '이름',
@@ -110,6 +124,10 @@ export const warehouseLayout = {
     notOnMap: '아직',
     /** 위치는 창고·Location 화면에서 등록한다. */
     emptyTitle: '위치가 없습니다',
+    /** 위치가 없는 창고 — 이 화면은 위치를 만들지 않는다(FR-012). 받는 것은 등록하는 화면의 이름이다. */
+    emptyGuide: (screenName: string): string => `${screenName} 화면에서 위치를 등록하세요.`,
+    /** 고른 위치에 표식이 없다(FR-002). */
+    notOnDrawing: '도면에 없음',
     includeInactive: '중지된 위치도 보기',
     /** ⚠ 목록에 없는 위치(중지 · 삭제)가 지도에 남아 있을 수 있다 — 그 표식의 이름. */
     unknown: (locationId: number): string => `위치 ${String(locationId)}`,
