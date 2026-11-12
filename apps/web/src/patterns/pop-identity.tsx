@@ -54,6 +54,11 @@ export interface PopIdentity {
   equipment: PopEquipment | null;
   /** 귀속 사번. 쓰기의 `X-Worker-No` 헤더에 실린다. **인증이 아니라 귀속이다.** */
   workerNo: string | null;
+  /**
+   * 이 단말의 공장(단말 검증이 답한 값). 공장을 본문에 싣는 쓰기(자재 관리 LOT 발행 등 · 005)가 쓴다.
+   * 등록을 마치기 전에는 `null` — 없으면 그 쓰기를 부르지 않는다.
+   */
+  plantId?: number | null;
 }
 
 /** 단말에 붙은 설비. 이름·코드는 **표시용**이고 판정에 쓰는 것은 번호다. */
@@ -69,6 +74,7 @@ export const UNKNOWN_POP_IDENTITY: PopIdentity = {
   processes: null,
   equipment: null,
   workerNo: null,
+  plantId: null,
 };
 
 /**
