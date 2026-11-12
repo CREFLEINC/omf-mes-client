@@ -1259,10 +1259,27 @@ export interface InboundLotPoAllocation {
   qty: number;
 }
 
+/** 검사 의뢰 이벤트 유형 — 공통코드 `INSPECTION_REQUEST_EVENT_TYPE`(data-model). */
+export type InspectionRequestEventCode =
+  | 'RESULT_ADDED'
+  | 'RESULT_UPDATED'
+  | 'RESULT_DELETED'
+  | 'CONFIRMED'
+  | 'CONFIRM_CANCELLED'
+  | 'REOPENED_BY_REWORK'
+  | 'SKIPPED'
+  | 'SKIP_VOIDED'
+  | 'SPLIT_OUT'
+  | 'SPLIT_IN'
+  | 'CANCELLED_BY_REOPEN';
+
 /** 검사 의뢰 이벤트(계약 §8 「이벤트를 함께」 — 칸 이름 C3 정함). */
 export interface InspectionRequestEventForward {
   occurredAt: string;
-  /** REQUESTED · RESULT_CREATED · RESULT_UPDATED · RESULT_DELETED · CONFIRMED · CONFIRM_CANCELLED · LOTS_SPLIT · SPLIT_CREATED. */
+  /**
+   * 공통코드 `INSPECTION_REQUEST_EVENT_TYPE` 값 그대로(data-model · R-11 정본): RESULT_ADDED · RESULT_UPDATED · RESULT_DELETED ·
+   * CONFIRMED · CONFIRM_CANCELLED · REOPENED_BY_REWORK · SKIPPED · SKIP_VOIDED · SPLIT_OUT · SPLIT_IN · CANCELLED_BY_REOPEN.
+   */
   eventCode: string;
   actorName: string | null;
   /** 서버가 만든 한 줄 내용(「결과 1 기록 — 합격 · 검사 200 · 매칭 0001, 0002」). */

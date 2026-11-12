@@ -123,6 +123,7 @@ export type {
   InspectionRequestInboundDetailForward,
   InboundLotPoAllocation,
   InspectionRequestEventForward,
+  InspectionRequestEventCode,
   InspectionResultMatchForward,
   InspectionConfirmBlockerCode,
   InboundLotSplitPreview,
