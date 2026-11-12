@@ -177,6 +177,11 @@ export interface SubmitVariables {
   fourMChange?: FourMChangeForward | null;
   /** 임시 저장만 하고 확정하지 않는다(#247 · 사용자 지시 2026-11-10). 판정을 아직 고르지 않았으면 `overallJudgmentCode` 는 `''`. */
   draftOnly?: boolean;
+  /**
+   * 005 새 흐름(입하 LOT 단위) IQC — 이 결과가 본 자재 관리 LOT(계약 §8). 주면 새 흐름 결과로 보고 싣는다(빈 배열 = 매칭 없음).
+   * 새 흐름은 결과를 확정하지 않는다(검사 단위 판정 확정) — 부르는 쪽이 `draftOnly` 와 함께 준다. 옛 IQC · PQC · OQC 는 주지 않는다.
+   */
+  matchedLotIds?: number[];
 }
 
 /**
@@ -262,6 +267,7 @@ export const useSubmitInspection = (
                 ...(v.previousResultId === null ? {} : { previousResultId: v.previousResultId }),
                 // 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다.
                 ...(quantities.defects.length === 0 ? {} : { defects: quantities.defects }),
+                ...(v.matchedLotIds === undefined ? {} : { matchedLotIds: v.matchedLotIds }),
               },
             })
           : await client.PUT('/quality/inspection-results/{inspectionResultId}', {
@@ -272,7 +278,10 @@ export const useSubmitInspection = (
                   'If-Match': String(existing.versionNo),
                 },
               },
-              body: quantities,
+              body: {
+                ...quantities,
+                ...(v.matchedLotIds === undefined ? {} : { matchedLotIds: v.matchedLotIds }),
+              },
             });
       if (draft.error !== undefined) return draft;
       const result = draft.data;
@@ -305,7 +314,7 @@ export const useSubmitInspection = (
     },
     etagPath: null,
     /* 위 「대기 · 진행 · 완료」 숫자와 탭 배지도 다시 받는다 — 빠지면 확정 뒤에도 옛 숫자가 남는다. */
-    invalidateKeys: [ALL_KEY, ['iqc-inspection'], INSPECTION_HUB_COUNTS_KEY],
+    invalidateKeys: [ALL_KEY, ['iqc-inspection'], ['iqc-inbound-lot'], INSPECTION_HUB_COUNTS_KEY],
     // `defects` — 서버가 불량 수량 합계 ≠ 불합격 수량을 400 으로 돌려준다(omf-all-around#205 · P-156). 불량 유형 칸 아래에 붙인다.
     knownFields: ['judgmentChangeReason', 'defectRecords', 'defects', 'X-Worker-No'],
     keyLifetime: 'until-applied',

@@ -135,6 +135,7 @@ import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { inboundReceipt } from './inbound-receipt';
 import { inboundClose } from './inbound-close';
+import { iqcInboundLot } from './iqc-inbound-lot';
 import { packingRepack } from './packing-repack';
 import { packingWork } from './packing-work';
 import { putaway } from './putaway';
@@ -295,6 +296,7 @@ export const ko = {
   productReceipt,
   inboundReceipt,
   inboundClose,
+  iqcInboundLot,
   packingRepack,
   packingWork,
   putaway,

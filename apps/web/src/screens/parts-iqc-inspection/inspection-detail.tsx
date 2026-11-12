@@ -12,9 +12,22 @@ import {
   TextArea,
   TextField,
 } from '@crefle/web-ui';
-import type { components, FourMChangeForward } from '@omf-mes/api-client';
+import {
+  isInboundLotInspection,
+  type components,
+  type FourMChangeForward,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router';
 
 import { InspectionDrawingImages } from '../../patterns/inspection-drawings';
@@ -63,6 +76,8 @@ import { sampleQtyOf } from '../iqc-inspection/sample-qty';
 import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
+import { InboundDetail, type InboundDetailProps } from './inbound-detail';
+import { useInboundInspection } from './inbound-queries';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
@@ -122,7 +137,14 @@ const toOffset = (local: string): string => `${local}:00${PLANT_UTC_OFFSET}`;
 /** 비고 글자 수 — 사용자 시안(0/200). 서버 칸에는 길이 제한이 없다. */
 const REMARKS_MAX = 200;
 
+/** 고칠 결과를 양식에 다시 채우는 값 — 임시 저장 회차 · 새 흐름 결과 드로어가 같은 모양을 쓴다. */
+export type InspectionFormDraft = NonNullable<FormProps['draft']>;
+
 export interface InspectionDetailProps {
+  /**
+   * 005 새 흐름 상세의 머리 단추 · 아래 줄 — [자재 관리 LOT 분리](C3) · [판정 확정] · [확정 취소](C4). 두 변형이 같은 것을 준다.
+   */
+  inboundHead?: Pick<InboundDetailProps, 'headActions' | 'headNote'>;
   inspectionRequestId: number;
   onSubmitted: () => void;
   /** 입력이 있는가 — 목록에서 다른 의뢰를 고르거나 닫을 때 화면이 한 번 묻는다. */
@@ -142,6 +164,7 @@ export const InspectionDetail = ({
   onSubmitted,
   onDirtyChange,
   oa = false,
+  inboundHead,
 }: InspectionDetailProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -157,6 +180,9 @@ export const InspectionDetail = ({
   const items = useItemNames([detail.data?.itemId]);
   const lots = useLotNumbers([detail.data?.lotId]);
   const uoms = useUomLookup();
+  /* 005 새 흐름(대상 = 입하 LOT) — 결과 목록 · 드로어 상세로 연다. 이전 데이터(대상 LOT)는 아래 지금 경로 그대로(R18-1). */
+  const inboundFlow = detail.data !== undefined && isInboundLotInspection(detail.data);
+  const inboundInspection = useInboundInspection(inboundFlow ? inspectionRequestId : null);
 
   const round = latestRound(rounds.data ?? []);
   const draftRound = round !== null && round.statusCode === 'DRAFT' ? round : null;
@@ -307,6 +333,89 @@ export const InspectionDetail = ({
       />
     );
   };
+
+  const oaOf = (request: NonNullable<typeof detail.data>): FormProps['oa'] =>
+    oa
+      ? {
+          hasLot: request.lotId !== null,
+          fourMStored: request.fourMChange,
+          itemId: request.itemId,
+          levelItem: (() => {
+            const parts = items.partsOf(request.itemId);
+            return parts === null ? null : { itemCode: parts.code, itemName: parts.name };
+          })(),
+          pendingLevel,
+          onPickLevel: (values: LevelDialogValues) => {
+            setPendingLevel(values);
+            storePendingLevel(inspectionRequestId, values);
+          },
+        }
+      : null;
+
+  /* 결과 드로어의 양식 — 지금 IQC 양식 그대로(회차 · 이전 결과 · 재검사 사유 없음), 저장은 확정 없이 결과만. */
+  const renderInboundForm: InboundDetailProps['renderForm'] = ({
+    drawer,
+    draft,
+    formKey,
+    onDirtyChange: formDirtyChange,
+  }) => {
+    if (detail.data === undefined) return null;
+    if (versionId === null || version.data === undefined || specs.data === undefined) {
+      return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+    }
+    return (
+      <InspectionForm
+        key={formKey}
+        request={detail.data}
+        version={version.data}
+        specs={[...specs.data].sort((a, b) => a.sequenceNo - b.sequenceNo)}
+        planLabel={plan.data === undefined ? '-' : plan.data.inspectionPlanCode}
+        planName={plan.data?.inspectionPlanName ?? '-'}
+        itemParts={items.partsOf(detail.data.itemId)}
+        lotNo={inboundInspection.data?.inboundLotNo ?? detail.data.inspectionRequestNo}
+        qtyLabel={withUom(String(detail.data.targetQty), uoms.codeOf(detail.data.uomId))}
+        inbound={
+          inboundInspection.data === undefined
+            ? inbound.data
+            : {
+                supplierLabel: inboundInspection.data.supplierName ?? null,
+                receivedAt: inboundInspection.data.receivedAt ?? null,
+              }
+        }
+        drawings={drawings.data ?? []}
+        inspector={session?.worker ?? null}
+        appUserId={session?.userId ?? null}
+        previousResultId={null}
+        draft={draft}
+        onSubmitted={() => undefined}
+        onDirtyChange={formDirtyChange}
+        drawer={drawer}
+        oa={oaOf(detail.data)}
+      />
+    );
+  };
+
+  if (inboundFlow && detail.data !== undefined) {
+    const aql = version.data?.aqlValue;
+    const planText = [
+      aql == null ? null : t.target.conditionAql(aql),
+      plan.data?.inspectionPlanName ?? null,
+    ]
+      .filter((part): part is string => part !== null && part !== '')
+      .join(' · '); // ui-check-ignore: C-13 설계 확정 표기 「AQL 1.0 · 육안 검사」(screens/W-01-01.md)
+
+    return (
+      <InboundDetail
+        inspectionRequestId={inspectionRequestId}
+        itemParts={items.partsOf(detail.data.itemId)}
+        planText={planText === '' ? '-' : planText}
+        uomCode={uoms.codeOf(detail.data.uomId) ?? ''}
+        renderForm={renderInboundForm}
+        headActions={inboundHead?.headActions}
+        headNote={inboundHead?.headNote}
+      />
+    );
+  }
 
   /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
   const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
@@ -523,6 +632,16 @@ const SkippedSummary = (props: {
   </>
 );
 
+/** 결과 드로어 모드(005 새 흐름). */
+export interface InspectionFormDrawer {
+  /** 고른 자재 관리 LOT — 저장 때 `matchedLotIds` 로 싣는다. */
+  matchedLotIds: number[];
+  /** 매칭 칸(드로어가 그린다). */
+  matchField: ReactNode;
+  onCancel: () => void;
+  onSaved: () => void;
+}
+
 interface FormProps {
   request: {
     inspectionRequestId: number;
@@ -564,6 +683,11 @@ interface FormProps {
   } | null;
   onSubmitted: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  /**
+   * 005 새 흐름(입하 LOT 단위) 결과 드로어(screens/W-01-01.md 「결과 추가·수정 — 오른쪽 드로어」) — 지금 양식 그대로 쓰되
+   * 아래 줄이 [취소] [저장]이고, 저장은 확정 없이 결과만 남긴다(검사 단위 판정 확정). 매칭 칸을 기본 정보 아래에 둔다.
+   */
+  drawer?: InspectionFormDrawer | null;
   /** OA 화면에서만 — 검사 수준 · 4M 변경 정보(#247). 부품 화면은 `null`. */
   oa: {
     /** 자재 LOT 이 있는 의뢰만 4M 변경품을 적는다. */
@@ -702,6 +826,10 @@ const InspectionForm = (props: FormProps) => {
   latestForm.current = form;
   const [savingDraft, setSavingDraft] = useState(false);
   const submit = useSubmitInspection((result) => {
+    if (props.drawer != null) {
+      props.drawer.onSaved();
+      return;
+    }
     if (result.statusCode !== 'DRAFT') {
       props.onSubmitted();
       return;
@@ -852,6 +980,34 @@ const InspectionForm = (props: FormProps) => {
     if (draftBlocked || inspectedQty === null) return;
     setSavingDraft(true);
     submit.write({ ...variablesOf(overall ?? '', inspectedQty), draftOnly: true });
+  };
+
+  /*
+   * 결과 드로어의 [저장] — 확정하지 않고 결과만 남긴다(005 새 흐름). 판정이 없으면 막고 「판정을 고르세요.」 —
+   * 검사 단위 판정 확정이 판정 빈 결과를 받지 않는다(FR-025).
+   */
+  const [judgmentMissing, setJudgmentMissing] = useState(false);
+  const drawerBlocked =
+    submit.isSaving ||
+    props.inspector === null ||
+    inspectedQty === null ||
+    inspectedQty <= 0 ||
+    form.inspectedAt === '' ||
+    fourMBlocked ||
+    manualUnjudged.length > 0 ||
+    (needsReason && reason.trim() === '');
+  const onSaveResult = () => {
+    if (drawerBlocked || inspectedQty === null || props.drawer == null) return;
+    if (overall === null) {
+      setJudgmentMissing(true);
+      return;
+    }
+    setJudgmentMissing(false);
+    submit.write({
+      ...variablesOf(overall, inspectedQty),
+      draftOnly: true,
+      matchedLotIds: props.drawer.matchedLotIds,
+    });
   };
 
   const { onDirtyChange } = props;
@@ -1015,6 +1171,8 @@ const InspectionForm = (props: FormProps) => {
           </div>
         </div>
       </section>
+
+      {props.drawer?.matchField}
 
       <MeasurementTable
         items={dimensions}
@@ -1197,63 +1355,86 @@ const InspectionForm = (props: FormProps) => {
         })()}
       <SaveErrorBanner error={submit.error} />
 
-      {/* 아래 줄은 레퍼런스 화면 그대로다 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 제출(사용자 확인 2026-10-29) */}
-      <div className="parts-iqc-footer">
-        <Button
-          variant="text"
-          leadingIcon={<Icon name="undo" />}
-          disabled={history.past.length === 0 || submit.isSaving}
-          onClick={() => dispatch({ type: 'undo' })}
-        >
-          {t.footer.undo}
-        </Button>
-        <IconButton
-          className="parts-iqc-redo"
-          aria-label={t.footer.redo}
-          icon="redo"
-          disabled={history.future.length === 0 || submit.isSaving}
-          onClick={() => dispatch({ type: 'redo' })}
-        />
-        <span className="parts-iqc-footer-gap" />
-        {/*
-         * 부분 입고 — OA 화면과 같이 자리만 두고 누를 수 없다(규칙 미정 · 스펙 §8 #2 · #247 사용자 지시 2026-11-10).
-         * 「업데이트 예정」은 단추 설명(마우스를 올리면 보이는 글)으로 둔다.
-         */}
-        <Button variant="outlined" disabled title={tResult.partialReceiptPending}>
-          {tResult.partialReceipt}
-        </Button>
-        <Button
-          variant="outlined"
-          loading={submit.isSaving && savingDraft}
-          disabled={draftBlocked}
-          onClick={onSaveDraft}
-        >
-          {tResult.save}
-        </Button>
-        <Button
-          variant="text"
-          disabled={submit.isSaving}
-          onClick={() => {
-            const cleared = emptyForm(form.inspectedAt);
-            cleared.visualInspectedQty = defaultQty;
-            change(cleared);
-            setChosen(null);
-            setReason('');
-            setFourM(storedFourM);
-          }}
-        >
-          {t.footer.clear}
-        </Button>
-        <Button
-          variant="filled"
-          className="parts-iqc-submit"
-          loading={submit.isSaving && !savingDraft}
-          disabled={blocked || submit.isSaving}
-          onClick={() => setAsk(true)}
-        >
-          {submit.isSaving && !savingDraft ? t.footer.submitting : t.footer.submit}
-        </Button>
-      </div>
+      {props.drawer != null ? (
+        <div className="parts-iqc-footer parts-iqc-drawer-footer">
+          {judgmentMissing && (
+            <p className="field-error" role="alert">
+              {messages.iqcInboundLot.drawer.judgmentRequired}
+            </p>
+          )}
+          <span className="field-note">{messages.iqcInboundLot.drawer.saveNote}</span>
+          <span className="parts-iqc-footer-gap" />
+          <Button variant="outlined" disabled={submit.isSaving} onClick={props.drawer.onCancel}>
+            {messages.iqcInboundLot.drawer.cancel}
+          </Button>
+          <Button
+            variant="filled"
+            loading={submit.isSaving}
+            disabled={drawerBlocked}
+            onClick={onSaveResult}
+          >
+            {messages.iqcInboundLot.drawer.save}
+          </Button>
+        </div>
+      ) : (
+        /* 아래 줄은 레퍼런스 화면 그대로다 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 제출(사용자 확인 2026-10-29) */
+        <div className="parts-iqc-footer">
+          <Button
+            variant="text"
+            leadingIcon={<Icon name="undo" />}
+            disabled={history.past.length === 0 || submit.isSaving}
+            onClick={() => dispatch({ type: 'undo' })}
+          >
+            {t.footer.undo}
+          </Button>
+          <IconButton
+            className="parts-iqc-redo"
+            aria-label={t.footer.redo}
+            icon="redo"
+            disabled={history.future.length === 0 || submit.isSaving}
+            onClick={() => dispatch({ type: 'redo' })}
+          />
+          <span className="parts-iqc-footer-gap" />
+          {/*
+           * 부분 입고 — OA 화면과 같이 자리만 두고 누를 수 없다(규칙 미정 · 스펙 §8 #2 · #247 사용자 지시 2026-11-10).
+           * 「업데이트 예정」은 단추 설명(마우스를 올리면 보이는 글)으로 둔다.
+           */}
+          <Button variant="outlined" disabled title={tResult.partialReceiptPending}>
+            {tResult.partialReceipt}
+          </Button>
+          <Button
+            variant="outlined"
+            loading={submit.isSaving && savingDraft}
+            disabled={draftBlocked}
+            onClick={onSaveDraft}
+          >
+            {tResult.save}
+          </Button>
+          <Button
+            variant="text"
+            disabled={submit.isSaving}
+            onClick={() => {
+              const cleared = emptyForm(form.inspectedAt);
+              cleared.visualInspectedQty = defaultQty;
+              change(cleared);
+              setChosen(null);
+              setReason('');
+              setFourM(storedFourM);
+            }}
+          >
+            {t.footer.clear}
+          </Button>
+          <Button
+            variant="filled"
+            className="parts-iqc-submit"
+            loading={submit.isSaving && !savingDraft}
+            disabled={blocked || submit.isSaving}
+            onClick={() => setAsk(true)}
+          >
+            {submit.isSaving && !savingDraft ? t.footer.submitting : t.footer.submit}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

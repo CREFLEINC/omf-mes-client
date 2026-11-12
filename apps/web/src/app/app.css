@@ -20435,6 +20435,59 @@ button.app-button-neutral {
   font-variant-numeric: tabular-nums;
 }
 
+/* W-01-01 대기열 입하 LOT 행(005) */
+.iqc-inbound-queue-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font: var(--type-body-sm);
+  color: var(--on-surface-muted);
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.iqc-inbound-queue-hint > span {
+  min-width: 0;
+}
+
+.iqc-inspection-panes .iqc-inbound-queue-two {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.iqc-inspection-panes .iqc-inbound-queue-two > .iqc-inspection-lot {
+  font-weight: 600;
+}
+
+.iqc-inspection-panes .iqc-inbound-queue-sub {
+  font: var(--type-body-sm);
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.iqc-inbound-queue-none {
+  color: var(--on-surface-muted);
+}
+
+/* 확정 전 미리 보기 칩 — 확정 칩과 점선 테두리로 가른다. */
+.iqc-inbound-queue-preview {
+  border: 1px dashed currentColor;
+}
+
+.iqc-inbound-queue-counts {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font: var(--type-body-sm);
+  color: var(--on-surface-muted);
+  border-top: 1px solid var(--outline-variant);
+}
+
 /*
  * 검색 묶음 — LOT 스캔(첫 줄 전체)과 조회 조건(품목 · 공급사 · 의뢰번호 · 조회/초기화)을
  * 같은 격자·같은 높이로 세운다. 좁아지면 조건 칸이 줄을 바꾸고 단추 묶음은 그 줄 오른쪽 끝에 남는다.
@@ -33734,6 +33787,185 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .parts-iqc-overall > div {
   flex: 1 1 auto;
   min-width: 10rem;
+}
+
+/* W-01-01 새 흐름 상세 · 결과 목록 · 결과 드로어 · 변경 이력(005 · screens/W-01-01.md) */
+.iqc-inbound-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.iqc-inbound-title,
+.iqc-inbound-lot-no {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.iqc-inbound-facts {
+  flex-wrap: wrap;
+}
+
+.iqc-inbound-chips,
+.iqc-inbound-actions,
+.iqc-inbound-locked {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 좁은 폭(1280)에서도 표는 짓누르지 않고 표 상자 안에서 가로로 민다(screens/W-01-01.md 「좁은 폭」). */
+.wide-table.iqc-inbound-table table {
+  min-width: 48rem;
+}
+
+.iqc-inbound-table td {
+  white-space: nowrap;
+}
+
+.iqc-inbound-po {
+  max-width: none;
+}
+
+/* 결과 드로어 — 오른쪽 936(사용자 결정 2026-11-11). 지금 양식의 아래 줄을 드로어 바닥에 붙인다. */
+.iqc-inbound-drawer {
+  width: min(936px, 100vw);
+  max-width: none;
+}
+
+.iqc-inbound-drawer-note {
+  margin: 0 0 var(--space-2);
+}
+
+.parts-iqc-drawer-footer {
+  position: sticky;
+  bottom: 0;
+  flex-wrap: wrap;
+}
+
+.iqc-inbound-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iqc-inbound-match-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.iqc-inbound-also {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+/* 변경 이력 — 오른쪽 덮개 520. */
+.iqc-inbound-history {
+  width: min(520px, 100vw);
+  max-width: none;
+}
+
+/* W-01-01 자재 관리 LOT 분리 창(005) */
+.iqc-split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.iqc-split-intro {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.iqc-split-lots {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.iqc-split-lot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.iqc-split-lot + .iqc-split-lot {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-split-lot-no {
+  font-family: var(--font-mono);
+}
+
+.iqc-split-lot-qty {
+  margin-left: auto;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.iqc-split-hint,
+.iqc-split-muted {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.iqc-split-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.iqc-split-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iqc-split-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.iqc-split-row.is-moved > span:first-child {
+  color: var(--primary);
+}
+
+.iqc-split-row.is-unmatched > span:first-child {
+  color: var(--semantic-warning);
+}
+
+.iqc-split-row.is-kept {
+  color: var(--on-surface-variant);
+}
+
+.iqc-split-result {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 /* 「상세 조건 펼치기」(#225) — 검사 조회·판정 IQC · PQC · OQC 공통. 단추는 스캔 줄 오른쪽 끝, 펼친 조건은 다음 줄 전체. */
