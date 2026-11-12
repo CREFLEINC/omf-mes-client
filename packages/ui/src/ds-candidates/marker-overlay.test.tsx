@@ -950,6 +950,17 @@ describe('사각형 표식 — 이름 줄바꿈 · 글자 맞추기', () => {
     expect(pin('Z01-R001-L02-C03')).toHaveAttribute('aria-label', 'Z01-R001-L02-C03');
   });
 
+  it('US2-2 접근 이름을 따로 주면 그것이 버튼 이름이고, 보이는 글은 받은 글자 그대로다', () => {
+    const { pin } = setup({
+      markers: [{ ...CELL, label: 'A열 1번 랙', ariaLabel: 'Z01-R001 A열 1번 랙' }],
+    });
+    const label = labelOf(pin('Z01-R001 A열 1번 랙'));
+
+    expect(label.textContent).toBe('A열 1번 랙');
+    /* `-` 가 없는 이름에는 끊는 자리를 넣지 않는다 — 낱말 경계(띄어쓰기)에서 줄이 바뀐다. */
+    expect(label.innerHTML).toBe('A열 1번 랙');
+  });
+
   /*
    * ⚠ 스타일 규칙(`marker-overlay.css` 의 말줄임 제거)은 시험 환경이 싣지 않는다(`css: false`) — 여기서는 부품이 잘라 내는
    * 모양을 스스로 붙이지 않는지만 잰다. 규칙 자체는 실제 앱 확인(SC-001)이 본다.

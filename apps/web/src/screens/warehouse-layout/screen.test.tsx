@@ -509,3 +509,38 @@ describe('W-CO-08 조회 화면 — 구역 · 랙만 배치 (2차)', () => {
     }
   });
 });
+
+describe('W-CO-08 창고 배치도 — 표식 이름은 별칭(#267)', () => {
+  const ALIAS_ROWS: LocationSeed[] = [
+    locationSeed(1, 'Z01', { aliasName: 'A구역', isLeaf: false }),
+    locationSeed(7, 'Z01-R001', {
+      parentLocationId: 1,
+      locationLevelCode: 'RACK',
+      aliasName: '  A열 1번 랙 ',
+    }),
+    locationSeed(8, 'Z01-R002', { parentLocationId: 1, locationLevelCode: 'RACK' }),
+  ];
+  const ALIAS_MARKERS = [
+    { locationId: 1, x: 0.5, y: 0.1, width: 0.2, height: 0.05 },
+    { locationId: 7, x: 0.5, y: 0.4, width: 0.3, height: 0.1 },
+    { locationId: 8, x: 0.5, y: 0.7, width: 0.3, height: 0.1 },
+  ];
+
+  it('US2-2 ⭐ 별칭이 있으면 표식에 별칭만 보이고, 접근 이름은 「코드 별칭」이다', async () => {
+    renderScreen({ layouts: [withDrawing(ALIAS_MARKERS)], locations: ALIAS_ROWS });
+
+    await loaded();
+    const rack = await within(board()).findByRole('button', { name: 'Z01-R001 A열 1번 랙' });
+    expect(rack.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^A열 1번 랙$/);
+    const zone = within(board()).getByRole('button', { name: 'Z01 A구역' });
+    expect(zone.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^A구역$/);
+  });
+
+  it('US2-3 별칭이 없으면 표식은 코드다', async () => {
+    renderScreen({ layouts: [withDrawing(ALIAS_MARKERS)], locations: ALIAS_ROWS });
+
+    await loaded();
+    const rack = await within(board()).findByRole('button', { name: 'Z01-R002' });
+    expect(rack.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^Z01-R002$/);
+  });
+});

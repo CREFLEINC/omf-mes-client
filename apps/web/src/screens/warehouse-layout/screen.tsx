@@ -5,6 +5,7 @@ import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
+import { locationMarkerLabel } from '../../patterns/location-label';
 import { initialExpandedLocationIds } from '../../patterns/location-tree';
 import { useSession } from '../../patterns/session';
 import { Select } from '../../patterns/select';
@@ -157,17 +158,29 @@ export const WarehouseLayoutScreen = () => {
     setSelectedLocation(null);
   };
 
+  /** 고른 위치 · 재고 머리의 이름 — 코드 그대로(별칭 표시는 표식 · 목록 몫, #267 K4 에서 선택 칸과 함께 맞춘다). */
   const nameOf = (locationId: number): string => {
     const found = rows.find((row) => row.locationId === locationId);
 
     return found === undefined ? t.locations.unknown(locationId) : found.locationCode;
   };
 
+  /** 표식의 보이는 이름(별칭 또는 코드)과 접근 이름(「코드 별칭」) — #267 FR-008 · 계약 §5. */
+  const markerNames = (locationId: number): { label: string; ariaLabel?: string } => {
+    const found = rows.find((row) => row.locationId === locationId);
+    if (found === undefined) return { label: t.locations.unknown(locationId) };
+    const label = locationMarkerLabel(found);
+
+    return label === found.locationCode
+      ? { label }
+      : { label, ariaLabel: `${found.locationCode} ${label}` };
+  };
+
   const overlayMarkers: OverlayMarker[] = markers.map((marker) => ({
     id: String(marker.locationId),
     x: marker.x,
     y: marker.y,
-    label: nameOf(marker.locationId),
+    ...markerNames(marker.locationId),
     selected: marker.locationId === highlighted,
     width: marker.width,
     height: marker.height,

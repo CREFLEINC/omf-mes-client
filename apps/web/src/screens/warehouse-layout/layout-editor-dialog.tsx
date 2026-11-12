@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
+import { locationMarkerLabel } from '../../patterns/location-label';
 import { initialExpandedLocationIds } from '../../patterns/location-tree';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
@@ -213,17 +214,22 @@ export const LayoutEditorDialog = ({
     onClose();
   };
 
-  const nameOf = (locationId: number): string => {
+  /** 표식의 보이는 이름(별칭 또는 코드)과 접근 이름(「코드 별칭」) — #267 FR-008 · 계약 §5. */
+  const markerNames = (locationId: number): { label: string; ariaLabel?: string } => {
     const found = rows.find((row) => row.locationId === locationId);
+    if (found === undefined) return { label: t.locations.unknown(locationId) };
+    const label = locationMarkerLabel(found);
 
-    return found === undefined ? t.locations.unknown(locationId) : found.locationCode;
+    return label === found.locationCode
+      ? { label }
+      : { label, ariaLabel: `${found.locationCode} ${label}` };
   };
 
   const overlayMarkers: OverlayMarker[] = draft.map((marker) => ({
     id: String(marker.locationId),
     x: marker.x,
     y: marker.y,
-    label: nameOf(marker.locationId),
+    ...markerNames(marker.locationId),
     selected: marker.locationId === selectedLocation,
     width: marker.width,
     height: marker.height,
