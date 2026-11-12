@@ -118,6 +118,11 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       'Đặc cách chỉ yêu cầu cho toàn bộ số lượng còn lại (không có đặc cách một phần). Nếu chỉ muốn dùng một phần, hãy dùng [Phân loại] để tách LOT quản lý vật tư lỗi trước, rồi đặc cách toàn bộ LOT nhập hàng đó.',
     pendingBanner: (concessionNo: string, count: number): string =>
       `Đặc cách ${concessionNo} đang chờ phê duyệt (W-03-09). Khi được duyệt, [Áp dụng đặc cách] sẽ giải phóng toàn bộ ${String(count)} LOT quản lý vật tư về bình thường.`,
+    approvedBanner: (concessionNo: string, count: number): string =>
+      `Đặc cách ${concessionNo} đã được duyệt — chờ áp dụng. [Áp dụng đặc cách] sẽ giải phóng toàn bộ ${String(count)} LOT quản lý vật tư về bình thường.`,
+    rejectedBanner: (concessionNo: string): string =>
+      `Phê duyệt đặc cách ${concessionNo} đã bị từ chối. Hãy đóng đặc cách này bằng [Đóng đặc cách].`,
+    close: 'Đóng đặc cách',
     targetGroup: (count: number): string => `Toàn bộ ${String(count)} LOT quản lý vật tư`,
     historyHeading: 'Lịch sử yêu cầu đặc cách',
     reasonPlaceholder: 'Nhập lý do đặc cách',

@@ -26,7 +26,12 @@ import {
   type DecisionFormValue,
 } from './decision-form';
 import { DecisionResultCard, type DecisionResult } from './decision-result';
-import { ConcessionHistory, ConcessionRequestDialog, useConcessions } from './concession-pane';
+import {
+  ConcessionHistory,
+  ConcessionRequestDialog,
+  PendingConcessionBox,
+  useConcessions,
+} from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -789,11 +794,12 @@ export const DispositionDecisionScreen = ({
                 <div className="disposition-side-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
                 </div>
-                {/* 결재 대기 특채 — 처분은 결재 뒤 [특채 적용](아래 특채 요청 이력)으로 끝난다. */}
+                {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
-                  <p className="iqc-inspection-action-note" data-tone="warning" role="status">
-                    {t.concession.pendingBanner(pendingConcession.concessionNo, lotRows.length)}
-                  </p>
+                  <PendingConcessionBox
+                    concession={pendingConcession}
+                    lotCount={lotRows.length}
+                  />
                 )}
                 <DecisionFormPane
                   value={form}

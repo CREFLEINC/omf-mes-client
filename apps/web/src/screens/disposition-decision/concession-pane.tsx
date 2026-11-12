@@ -421,3 +421,90 @@ export const ConcessionHistory = ({
     </div>
   );
 };
+
+/** 특채 결재 요청의 상태(W-03-09) — 특채는 적용 전까지 PENDING 이라 결재가 끝났는지는 결재 요청이 말한다(G2 M3). */
+export const useConcessionApprovalStatus = (approvalRequestId: number | null) => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: [...dispositionKeys.all, 'concession-approval', approvalRequestId ?? 0] as const,
+    enabled: approvalRequestId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-requests/{approvalRequestId}', {
+          params: { path: { approvalRequestId: approvalRequestId as number } },
+        }),
+      ).then((detail) => detail.request.statusCode),
+  });
+};
+
+export interface PendingConcessionBoxProps {
+  concession: Concession;
+  /** 이 결재로 묶인 자재 관리 LOT 수. */
+  lotCount: number;
+}
+
+/**
+ * 처분 판정 상자의 「적용 전 특채」 줄(screens/W-03-10.md · 시안 W0310-After — 같은 상자에 [특채 적용]). 결재 대기면 「결재 대기 중」,
+ * 승인이면 「승인됨 — 적용 대기」와 [특채 적용], 반려면 [특채 닫기](적용 경로가 반려를 닫는다)(G2 M3).
+ */
+export const PendingConcessionBox = ({ concession, lotCount }: PendingConcessionBoxProps) => {
+  const { client } = useApiClient();
+  const approval = useConcessionApprovalStatus(concession.approvalRequestId);
+  const [notice, setNotice] = useState<string | null>(null);
+  const applyWrite = useMasterWrite<{ concessionId: number }, ConcessionAppliedForward>({
+    request: ({ concessionId }, headers) =>
+      client.POST('/quality/concessions/{concessionId}:apply', {
+        params: {
+          path: { concessionId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { businessDate: toBusinessDate(new Date()) },
+      }),
+    etagPath: null,
+    invalidateKeys: [dispositionKeys.all],
+    knownFields: [],
+    keyLifetime: 'until-applied',
+    onSuccess: (data) =>
+      setNotice(
+        data.statusCode === 'REJECTED'
+          ? t.rejected
+          : lotCount > 1
+            ? t.appliedLots(lotCount)
+            : t.applied,
+      ),
+  });
+  const status = approval.data;
+  const decided = status === 'APPROVED' || status === 'REJECTED';
+
+  return (
+    <div
+      className="iqc-inspection-action-note disposition-pending-concession"
+      data-tone={status === 'APPROVED' ? 'success' : 'warning'}
+      role="status"
+    >
+      <span>
+        {status === 'APPROVED'
+          ? t.approvedBanner(concession.concessionNo, lotCount)
+          : status === 'REJECTED'
+            ? t.rejectedBanner(concession.concessionNo)
+            : t.pendingBanner(concession.concessionNo, lotCount)}
+      </span>
+      {decided ? (
+        <Button
+          size="sm"
+          variant={status === 'APPROVED' ? 'filled' : 'outlined'}
+          loading={applyWrite.isSaving}
+          onClick={() => {
+            setNotice(null);
+            /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
+            applyWrite.write({ concessionId: concession.concessionId });
+          }}
+        >
+          {status === 'APPROVED' ? t.apply : t.close}
+        </Button>
+      ) : null}
+      <SaveErrorBanner error={applyWrite.error} />
+      {notice !== null && <span className="field-note">{notice}</span>}
+    </div>
+  );
+};

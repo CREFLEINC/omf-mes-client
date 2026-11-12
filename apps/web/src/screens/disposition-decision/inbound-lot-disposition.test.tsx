@@ -227,6 +227,31 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     );
   });
 
+  it('US4-4 G2 M3 결재가 승인된 특채는 「승인됨 — 적용 대기」이고 [특채 적용]이 처분 판정 상자 안에 있다', async () => {
+    const pending = {
+      concessionId: 61,
+      concessionNo: 'SAMPLE-CN-0061',
+      nonconformanceId: 41,
+      lotId: 8101,
+      approvedQty: 1000,
+      consumedQty: 0,
+      uomId: 7001,
+      validFrom: '2026-11-11',
+      approvalRequestId: 77,
+      statusCode: 'PENDING',
+    };
+    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'APPROVED' });
+
+    const banner = await screen.findByText(t.concession.approvedBanner('SAMPLE-CN-0061', 3));
+    const box = banner.closest('.disposition-pending-concession') as HTMLElement;
+    /* 처분 판정 상자 안 — 「특채 요청 이력」 탭에만 있지 않다. */
+    expect(box.closest('.disposition-decision-card')).not.toBeNull();
+    expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061', 3))).toBeNull();
+
+    await user.click(within(box).getByRole('button', { name: t.concession.apply }));
+    await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
+  });
+
   it('「지금」 띠는 접힌 채로 시작하고, 펼치면 바뀌기 전 방식을 보인다', async () => {
     const { user } = renderInbound();
     await screen.findByText('SAMPLE-ML|0003');

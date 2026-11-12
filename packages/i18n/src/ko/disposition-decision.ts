@@ -126,6 +126,12 @@ export const dispositionDecision = {
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
     pendingBanner: (concessionNo: string, count: number): string =>
       `특채 ${concessionNo} 결재 대기 중(W-03-09). 승인되면 [특채 적용]으로 자재 관리 LOT ${String(count)}개 전부를 정상으로 풉니다.`,
+    /** 결재가 승인됐고 적용 전(G2 M3). */
+    approvedBanner: (concessionNo: string, count: number): string =>
+      `특채 ${concessionNo} 승인됨 — 적용 대기. [특채 적용]으로 자재 관리 LOT ${String(count)}개 전부를 정상으로 풉니다.`,
+    rejectedBanner: (concessionNo: string): string =>
+      `특채 ${concessionNo} 결재가 반려됐습니다. [특채 닫기]로 이 특채를 닫으세요.`,
+    close: '특채 닫기',
     /** 이력 표의 묶음 한 줄 — 같은 결재의 행(자재 관리 LOT 마다 한 행)을 한 줄로. */
     targetGroup: (count: number): string => `자재 관리 LOT ${String(count)}개 전부`,
     historyHeading: '특채 요청 이력',
