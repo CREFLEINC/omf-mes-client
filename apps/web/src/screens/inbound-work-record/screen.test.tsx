@@ -136,6 +136,15 @@ describe('W-01-16 입하/입고 작업 기록 — 상세', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
+  it('G2 L4 다른 화면이 ?open= 만 넘기면 그 입하 LOT 의 보기(진행 중)로 목록을 맞춘다', async () => {
+    setup(`/logistics/inbound-work-record?open=${String(IQC_PENDING.inboundLotId)}`);
+
+    expect(await drawer(IQC_PENDING.inboundLotNo)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(t.views.prog),
+    );
+  });
+
   it('US8-2 입하 중 상세는 매칭 표 대신 「아직 입하 중」 안내', async () => {
     setup(`${ROUTE}&view=prog&open=${String(RECEIVING.inboundLotId)}`);
 

@@ -1,18 +1,18 @@
 import { DatePicker, EmptyState, Skeleton, Tabs, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
-import { plantToday } from '../../patterns/plant-time';
+import { plantToday, toPlantDateTimeParts } from '../../patterns/plant-time';
 import { Select } from '../../patterns/select';
 import { DetailPanel } from './detail-panel';
 import { FinalizeDialog } from './finalize-dialog';
 import type { WorkRecordDetail, WorkRecordLot } from './forward-contract';
 import { LotTable } from './lot-table';
-import { usePlants, useWorkRecordList, workRecordKeys } from './queries';
-import { parseView, VIEWS, type View } from './types';
+import { usePlants, useWorkRecordDetail, useWorkRecordList, workRecordKeys } from './queries';
+import { parseView, viewOf, VIEWS, type View } from './types';
 
 const t = messages.inboundWorkRecord;
 
@@ -73,6 +73,25 @@ export const InboundWorkRecordScreen = () => {
     }
     setSearchParams(next, { replace: true });
   };
+
+  /*
+   * 다른 화면이 `?open=` 만 넘기면(W-01-09 「매칭 조정」 링크) 연 입하 LOT 의 공장 · 보기 · 입하일로 목록을 맞춘다 — 빠지면 다른 공장 ·
+   * 보기 목록 위에 덮개만 열린다(G2 L4). 주소에 이미 있는 값은 건드리지 않는다.
+   */
+  const opened = useWorkRecordDetail(openId);
+  const openedLot = opened.data;
+  useEffect(() => {
+    if (openedLot === undefined || openedLot.inboundLotId !== openId) return;
+    const patch: Record<string, string> = {};
+    if (!searchParams.has('plant')) patch.plant = String(openedLot.plantId);
+    if (!searchParams.has('view')) patch.view = viewOf(openedLot);
+    const day = toPlantDateTimeParts(openedLot.firstRegisteredAt)?.date;
+    if (!searchParams.has('from') && day !== undefined && day < from) patch.from = day;
+    if (Object.keys(patch).length === 0) return;
+    const next = new URLSearchParams(searchParams);
+    for (const [name, value] of Object.entries(patch)) next.set(name, value);
+    setSearchParams(next, { replace: true });
+  }, [openedLot, openId, searchParams, setSearchParams, from]);
 
   const needle = query.trim().toLocaleLowerCase('ko-KR');
   const matches = (lot: WorkRecordLot): boolean =>
