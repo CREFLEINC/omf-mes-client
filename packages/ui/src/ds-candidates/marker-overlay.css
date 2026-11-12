@@ -86,24 +86,50 @@
 
 /*
  * 사각형 표식 — 크기 · 회전을 가진다(사용자 지시 2026-10-30). 크기는 판에 대한 비율이라 쓰는 쪽이 `width` · `height` 를
- * 백분율로 주고, 회전은 `transform` 으로 준다. 글자는 상자 안에서 말줄임한다.
+ * 백분율로 주고, 회전은 `transform` 으로 준다.
+ *
+ * ⭐ **이름은 말줄임하지 않는다**(피처 006 FR-010 · R-5). `-` 뒤(`<wbr>`)에서 줄을 바꾸고, 그래도 넘치면 부품이 글자를
+ * 12px 에서 최소 8px 까지 줄인다. 최소에서도 넘치면 자르지 않고 상자 밖으로 보인다 — 「Z01-R0…」로는 셀을 가릴 수 없다.
  */
 .marker-overlay-box {
   justify-content: center;
-  padding: 0 0.25rem;
+  padding: 0 0.125rem;
   border-width: 2px;
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface) 85%, transparent);
+  white-space: normal;
+  overflow: visible;
 }
 
 .marker-overlay-box .marker-overlay-pin-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.15;
+  /* 줄바꿈은 `-` 뒤에서만 — 단계 이름 한가운데서 끊으면 코드를 잘못 읽는다. */
+  word-break: keep-all;
+}
+
+/* 최소 글자로도 넘친다 — 상자 밖으로 보인다(자르지 않는다). 표식을 키우라는 뜻이 화면에서 바로 보인다. */
+.marker-overlay-box .marker-overlay-pin-label-overflow {
+  overflow: visible;
 }
 
 .marker-overlay-box.marker-overlay-pin-selected {
   background: color-mix(in srgb, var(--primary, #2563eb) 85%, transparent);
+}
+
+/*
+ * 옅은 표식 — 창고 배치도 조회의 「비어 있음」(피처 006 FR-011 · R-6). 테두리 · 글자를 회색 계열로, 배경을 더 옅게.
+ * 고른 표식은 부품이 이 클래스를 붙이지 않아 늘 채운 모양이 이긴다.
+ */
+.marker-overlay-pin-muted {
+  border-color: var(--outline);
+  color: var(--on-surface-variant);
+  background: color-mix(in srgb, var(--surface-container-high) 90%, transparent);
+}
+
+.marker-overlay-box.marker-overlay-pin-muted {
+  background: color-mix(in srgb, var(--surface-container-high) 90%, transparent);
 }
 
 /* 크기 손잡이 — 모서리 넷. 표식과 함께 돈다. */
