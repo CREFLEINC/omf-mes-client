@@ -79,6 +79,9 @@ export const partsIqcInspection = {
     condition: '검사 조건',
     conditionAql: (aql: number) => `AQL ${String(aql)} · 육안 검사`,
     conditionNone: '미지정',
+    /* AQL 샘플링 기준 — LOT 수량으로 표에서 낸 시료 수 · 합격/불합격 판정 수(omf-all-around#264). */
+    conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>
+      `AQL ${String(aql)} · ${level} → 시료 ${String(n)}개, 불량 ${String(ac)}개 이하 합격 · ${String(re)}개 이상 불합격`,
     sample: '시료 수',
     sampleValue: (n: number, c: number) => `시료 n=${String(n)}, C=${String(c)}`,
     dimensionCount: '치수 항목',
@@ -133,6 +136,10 @@ export const partsIqcInspection = {
     /** 텍스트 항목의 글 칸(#247 · 사용자 지시 2026-11-10) — 다른 항목 줄은 비어 있다. */
     checkValue: '측정 결과',
     checkValueLabel: (name: string) => `${name} 측정 결과`,
+    /** AQL 기준에서 NG 인 항목의 찾은 불량 수(omf-all-around#264) */
+    defects: '불량 수',
+    defectsLabel: (name: string) => `${name} 불량 수`,
+    defectsRequired: 'NG 를 고른 항목에 찾은 불량 수(1 ~ 검사 수량)를 적어 주세요.',
     remarks: '비고',
     remarksPlaceholder: '비고를 입력하세요',
   },

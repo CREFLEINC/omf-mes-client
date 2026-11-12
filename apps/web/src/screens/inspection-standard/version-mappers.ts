@@ -1,13 +1,14 @@
-import type { components, InspectionPlanVersionGuideForward } from '@omf-mes/api-client';
+import type {
+  InspectionPlanVersionCreateForward,
+  InspectionPlanVersionUpdateForward,
+} from '@omf-mes/api-client';
 
 import { todayIso } from '../gauge-master/today';
-import { FULL_INSPECTION } from './code-options';
+import { AQL_SAMPLING, FULL_INSPECTION } from './code-options';
 import type { InspectionPlanVersion, VersionFormValues } from './types';
 
-type InspectionPlanVersionCreate = components['schemas']['InspectionPlanVersionCreate'] &
-  InspectionPlanVersionGuideForward;
-type InspectionPlanVersionUpdate = components['schemas']['InspectionPlanVersionUpdate'] &
-  InspectionPlanVersionGuideForward;
+type InspectionPlanVersionCreate = InspectionPlanVersionCreateForward;
+type InspectionPlanVersionUpdate = InspectionPlanVersionUpdateForward;
 
 /** 널·없음을 빈 문자열로 모은다. **0은 빈 문자열이 아니다** — 「지정하지 않음」과 구분해야 한다. */
 const optionalNumberToText = (value: number | null | undefined): string =>
@@ -25,13 +26,10 @@ export const versionToFormValues = (version: InspectionPlanVersion): VersionForm
   samplingRatio: optionalNumberToText(version.samplingRatio),
   samplingQty: optionalNumberToText(version.samplingQty),
   aqlValue: optionalNumberToText(version.aqlValue),
+  aqlInspectionLevelCode: version.aqlInspectionLevelCode ?? '',
   acceptanceNumber: optionalNumberToText(version.acceptanceNumber),
   rejectionNumber: optionalNumberToText(version.rejectionNumber),
-  inspectionFrequencyCode: version.inspectionFrequencyCode,
-  frequencyIntervalValue: optionalNumberToText(version.frequencyIntervalValue),
-  frequencyIntervalUomCode: version.frequencyIntervalUomCode ?? '',
-  guideTextKo: version.guideTextKo ?? '',
-  guideTextVi: version.guideTextVi ?? '',
+  guideText: version.guideText ?? '',
 });
 
 export const emptyVersionFormValues = (): VersionFormValues => ({
@@ -43,13 +41,11 @@ export const emptyVersionFormValues = (): VersionFormValues => ({
   samplingRatio: '',
   samplingQty: '',
   aqlValue: '',
-  acceptanceNumber: '',
+  aqlInspectionLevelCode: '',
+  /* 합격 허용 불량 수는 0 으로 시작한다 — 두 사업부 기준서가 모두 c=0 이다(사용자 지시 · omf-all-around#264). */
+  acceptanceNumber: '0',
   rejectionNumber: '',
-  inspectionFrequencyCode: '',
-  frequencyIntervalValue: '',
-  frequencyIntervalUomCode: '',
-  guideTextKo: '',
-  guideTextVi: '',
+  guideText: '',
 });
 
 /**
@@ -78,14 +74,20 @@ export const toVersionUpdate = (values: VersionFormValues): InspectionPlanVersio
   samplingQty:
     values.samplingMethodCode === FULL_INSPECTION ? null : optionalTextToNumber(values.samplingQty),
   aqlValue: optionalTextToNumber(values.aqlValue),
-  acceptanceNumber: optionalTextToNumber(values.acceptanceNumber),
-  rejectionNumber: optionalTextToNumber(values.rejectionNumber),
-  inspectionFrequencyCode: values.inspectionFrequencyCode,
-  frequencyIntervalValue: optionalTextToNumber(values.frequencyIntervalValue),
-  frequencyIntervalUomCode: optionalText(values.frequencyIntervalUomCode),
-  /* 안내 문구(#252) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
-  guideTextKo: optionalText(values.guideTextKo.trim()),
-  guideTextVi: optionalText(values.guideTextVi.trim()),
+  /* AQL 샘플링이면 수준을 싣고 판정 수는 싣지 않는다 — 표가 LOT 수량으로 정한다(omf-all-around#264). */
+  aqlInspectionLevelCode:
+    values.samplingMethodCode === AQL_SAMPLING ? optionalText(values.aqlInspectionLevelCode) : null,
+  acceptanceNumber:
+    values.samplingMethodCode === AQL_SAMPLING
+      ? null
+      : optionalTextToNumber(values.acceptanceNumber),
+  rejectionNumber:
+    values.samplingMethodCode === AQL_SAMPLING
+      ? null
+      : optionalTextToNumber(values.rejectionNumber),
+  /* 검사 주기 · 주기 값 · 주기 단위는 싣지 않는다 — 기록용이라 입력을 걷었고, 빼면 서버가 그대로 둔다(#263). */
+  /* 검사 지시문(#252 · 한 칸 #261) — 비우면 null 로 지운다. 앞뒤 공백은 서버가 걷는다. */
+  guideText: optionalText(values.guideText.trim()),
 });
 
 /**

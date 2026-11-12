@@ -119,6 +119,8 @@ export const TemplateEditor = ({
   const [transition, setTransition] = useState<'discard' | 'obsolete' | 'reactivate' | null>(null);
   /* 「복사」 — 다른 모델을 고르는 기본 정보 창(omf-all-around#255). */
   const [isCopyOpen, setIsCopyOpen] = useState(false);
+  /* 기준코드가 없는 옛 기준의 「새 버전 만들기」 — 코드 · 이름을 먼저 받는다(서버가 등록에 요구한다 · #260). */
+  const [isRevisionCodeOpen, setIsRevisionCodeOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const history = useTemplateHistory(template?.inspectionSheetTemplateId ?? null);
   /* 같은 품목의 버전 — 높은 버전이 위. 받기 전에는 연 버전 하나로 둔다. */
@@ -143,6 +145,8 @@ export const TemplateEditor = ({
         businessUnitId: source.businessUnitId ?? 0,
         formLayoutCode: source.formLayoutCode,
         ...toBody(source),
+        ...(source.templateCode.trim() === '' ? {} : { templateCode: source.templateCode.trim() }),
+        templateName: source.templateName.trim(),
       },
     });
 
@@ -338,7 +342,8 @@ export const TemplateEditor = ({
             </h2>
           </div>
           <div className="inspection-standard-plan-head-actions">
-            {template === null && (
+            {/* 등록한 작성중 버전은 기준코드 · 기준명만 고친다(#260). */}
+            {!readOnly && (
               <Button
                 variant="outlined"
                 leadingIcon={<Icon name="edit" size={18} />}
@@ -351,6 +356,8 @@ export const TemplateEditor = ({
         </div>
         <dl className="inspection-standard-facts-line inspection-sheet-template-facts">
           {[
+            { label: t.editor.templateCode, value: draft.templateCode || '-' },
+            { label: t.editor.templateName, value: draft.templateName || '-' },
             { label: t.editor.model, value: draft.itemLabel || '—' },
             {
               label: t.editor.businessUnit,
@@ -459,13 +466,16 @@ export const TemplateEditor = ({
                   disabled={saving}
                   loading={create.isSaving}
                   onClick={() =>
-                    create.write({
-                      source: {
-                        ...draft,
-                        itemId: template.itemId,
-                        businessUnitId: template.businessUnitId,
-                      },
-                    })
+                    /* 새 버전은 기준코드 · 기준명을 이어받는다 — 없는 옛 기준은 먼저 받는다(#260). */
+                    draft.templateName.trim() === ''
+                      ? setIsRevisionCodeOpen(true)
+                      : create.write({
+                          source: {
+                            ...draft,
+                            itemId: template.itemId,
+                            businessUnitId: template.businessUnitId,
+                          },
+                        })
                   }
                 >
                   {t.editor.copyAsNew}
@@ -730,6 +740,8 @@ export const TemplateEditor = ({
         <TemplateBasicDialog
           title={t.editor.copyHeading}
           initial={{
+            templateCode: '',
+            templateName: '',
             itemId: null,
             itemLabel: '',
             businessUnitId: template.businessUnitId,
@@ -756,9 +768,42 @@ export const TemplateEditor = ({
         />
       )}
 
+      {isRevisionCodeOpen && template !== null && (
+        <TemplateBasicDialog
+          title={t.editor.codeHeading}
+          part="code"
+          initial={{
+            templateCode: draft.templateCode,
+            templateName: draft.templateName,
+            itemId: template.itemId,
+            itemLabel: draft.itemLabel,
+            businessUnitId: template.businessUnitId,
+            formLayoutCode: template.formLayoutCode,
+          }}
+          businessUnitIds={businessUnitIds}
+          businessUnitNames={businessUnitNames}
+          onCancel={() => setIsRevisionCodeOpen(false)}
+          onConfirm={({ templateCode, templateName }) => {
+            setIsRevisionCodeOpen(false);
+            create.write({
+              source: {
+                ...draft,
+                templateCode,
+                templateName,
+                itemId: template.itemId,
+                businessUnitId: template.businessUnitId,
+              },
+            });
+          }}
+        />
+      )}
+
       {isBasicOpen && (
         <TemplateBasicDialog
+          {...(template === null ? {} : { title: t.editor.codeHeading, part: 'code' as const })}
           initial={{
+            templateCode: draft.templateCode,
+            templateName: draft.templateName,
             itemId: draft.itemId,
             itemLabel: draft.itemLabel,
             businessUnitId: draft.businessUnitId,
