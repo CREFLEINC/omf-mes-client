@@ -1,7 +1,15 @@
-import { AlertBanner, Button, Checkbox, Dialog, Progress, Skeleton } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Checkbox,
+  Dialog,
+  EmptyState,
+  Progress,
+  Skeleton,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { initialExpandedLocationIds } from '../../patterns/location-tree';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -19,6 +27,7 @@ import {
 import { LoadErrorBanner } from './load-error-banner';
 import { LocationList } from './location-list';
 import { MarkerShapeFields } from './marker-shape-fields';
+import { isPlaceable, splitPlaceable, useKnownLocations } from './placeable';
 import { useDrawingContent, useLayout, useLayoutReplace, useLocations } from './queries';
 import type { LocationView } from './types';
 import { useDrawingReplace } from './use-drawing-replace';
@@ -62,6 +71,13 @@ export interface LayoutEditorDialogProps {
  * 클릭으로는 닫지 않는다 — 큰 창의 가장자리를 잘못 눌러 묻는 창이 뜨지 않게(plan 확인할 것 3).
  *
  * ⛔ **재고 모양 · 재고 표를 그리지 않는다**(FR-014) — 판에 `tone` 을 주지 않는다.
+ *
+ * ⭐ **도면에는 구역 · 랙만 둔다**(2차 · FR-015 · FR-016 · R2-1 · R2-2). 목록은 배치 대상만 보이고, 이미 저장된 층 · 셀 표식은
+ * 서버 배치에서 걸러 낸 뒤 편집 상태를 만든다 — 원본과 편집 상태가 같이 걸러져 「변경」이 아니고(닫을 때 묻지 않음), 저장
+ * 본문이 편집 상태라 다음 저장 때 자연히 빠진다. 걸러 낸 수는 판 위 띠로 알린다.
+ *
+ * ⭐ **창부터 띄우고 판은 다음 프레임에 붙인다**(2차 · FR-017 · R2-5). 표식 그리기 · 글자 맞추기가 끝날 때까지 판 자리에
+ * 「배치를 그리는 중」이 선다 — 계산이 같은 프레임에 있으면 창도 표시도 그려지지 않는다.
  */
 export const LayoutEditorDialog = ({
   warehouseId,
@@ -87,8 +103,32 @@ export const LayoutEditorDialog = ({
   /* 질의는 조회 화면과 같은 키다 — 이미 받은 배치 · 위치 · 그림을 다시 받지 않는다(R-1). */
   const layout = useLayout(warehouseId, false);
   const locations = useLocations(warehouseId, includeInactive);
-  const original = layout.data?.markers ?? EMPTY_MARKERS;
+  const serverMarkers = layout.data?.markers ?? EMPTY_MARKERS;
   const rows = locations.data ?? EMPTY_LOCATIONS;
+  /* 단계를 아는 위치 — 「중지된 위치도 보기」를 바꿔 다시 받는 동안에도 잊지 않는다. */
+  const knownLocations = useKnownLocations(warehouseId, rows);
+  /* 서버 배치에서 층 · 셀 표식을 걷어 낸 것이 편집의 원본이다(R2-2). 걷을 것이 없으면 서버 배치 그대로(같은 배열). */
+  const placeable = useMemo(
+    () => splitPlaceable(serverMarkers, knownLocations),
+    [serverMarkers, knownLocations],
+  );
+  const original = placeable.kept;
+  const placeableRows = useMemo(() => rows.filter(isPlaceable), [rows]);
+
+  /** 판을 붙였는가 — 창 틀 · 목록을 먼저 그리고 다음 프레임에 붙인다(R2-5). */
+  const [boardMounted, setBoardMounted] = useState(false);
+  /** 판의 이름 글자 맞추기가 끝났는가 — 그때까지 「배치를 그리는 중」. */
+  const [labelsFitted, setLabelsFitted] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setBoardMounted(true);
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, []);
 
   /** 편집 상태와 그것을 만든 서버 배치. 둘이 다르면 저장하지 않은 변경이 있다. */
   const [base, setBase] = useState<LayoutDraft>(original);
@@ -340,7 +380,10 @@ export const LayoutEditorDialog = ({
         disabled={!canSave || drawing.isBusy || !draftDirty}
         onClick={() => {
           /* ⛔ 도면 id 를 빼면 서버가 도면을 지운다 — 점만 고치는 저장도 싣는다. */
-          replace.write(toReplaceBody(draft, drawingAttachmentId));
+          /* 층 · 셀은 한 번 더 거른다 — 위치 목록보다 먼저 고친 편집 상태에도 실려 가지 않게(SC-009). */
+          replace.write(
+            toReplaceBody(splitPlaceable(draft, knownLocations).kept, drawingAttachmentId),
+          );
         }}
       >
         {t.map.save}
@@ -382,13 +425,19 @@ export const LayoutEditorDialog = ({
               <Skeleton variant="rect" height="12rem" />
             ) : (
               <LocationList
-                locations={rows}
+                /* ⭐ 배치 대상(구역 · 랙)만 — 층 · 셀은 찍을 수 없다(FR-015). */
+                locations={placeableRows}
                 isPlaced={(locationId) => hasMarker(draft, locationId)}
                 selectedLocationId={selectedLocation}
                 onPick={pickLocation}
                 expandedIds={expandedIds ?? new Set()}
                 onExpandedChange={setExpandedIds}
                 compact
+                empty={
+                  rows.length === 0 ? undefined : (
+                    <EmptyState size="sm" live title={t.editor.emptyPlaceable} />
+                  )
+                }
               />
             )}
           </section>
@@ -404,6 +453,14 @@ export const LayoutEditorDialog = ({
                   dismissLabel={messages.common.close}
                 >
                   {flash}
+                </AlertBanner>
+              </div>
+            )}
+            {/* 저장돼 있던 층 · 셀 표식 — 그리지 않고 다음 저장 때 빠진다(FR-016). 이것만으로는 변경이 아니다. */}
+            {placeable.dropped > 0 && (
+              <div className="banner-slot">
+                <AlertBanner variant="info">
+                  {t.editor.legacyMarkers(placeable.dropped)}
                 </AlertBanner>
               </div>
             )}
@@ -458,28 +515,43 @@ export const LayoutEditorDialog = ({
                         : ({ '--drawing-aspect': String(drawingAspect) } as CSSProperties)
                     }
                   >
-                    <MarkerOverlay
-                      src={drawingSrc}
-                      imageLabel={t.map.imageLabel}
-                      markers={overlayMarkers}
-                      placeholder={drawingPlaceholder}
-                      readOnly={busy}
-                      onPlace={place}
-                      onSelect={(id) => {
-                        pickLocation(Number(id));
-                      }}
-                      onMove={(id, x, y) => {
-                        setDraft(placeMarker(draft, Number(id), x, y));
-                      }}
-                      onShape={(id, shape) => {
-                        setDraft(shapeMarker(draft, Number(id), shape));
-                      }}
-                      /* ⭐ 낭독 문구는 화면이 준다 — 판 부품은 표현 전용이라 사람의 말을 갖지 않는다. */
-                      describePosition={t.map.markerPosition}
-                      describeMove={t.map.markerMoved}
-                      /* ⭐ 잠긴 동안 무엇이 막히고 무엇은 되는지 — 눌러 보고 알게 두지 않는다. */
-                      describeReadOnly={t.map.boardLocked}
-                    />
+                    {boardMounted && (
+                      <MarkerOverlay
+                        src={drawingSrc}
+                        imageLabel={t.map.imageLabel}
+                        markers={overlayMarkers}
+                        placeholder={drawingPlaceholder}
+                        readOnly={busy}
+                        onLabelsFitted={() => {
+                          setLabelsFitted(true);
+                        }}
+                        onPlace={place}
+                        onSelect={(id) => {
+                          pickLocation(Number(id));
+                        }}
+                        onMove={(id, x, y) => {
+                          setDraft(placeMarker(draft, Number(id), x, y));
+                        }}
+                        onShape={(id, shape) => {
+                          setDraft(shapeMarker(draft, Number(id), shape));
+                        }}
+                        /* ⭐ 낭독 문구는 화면이 준다 — 판 부품은 표현 전용이라 사람의 말을 갖지 않는다. */
+                        describePosition={t.map.markerPosition}
+                        describeMove={t.map.markerMoved}
+                        /* ⭐ 잠긴 동안 무엇이 막히고 무엇은 되는지 — 눌러 보고 알게 두지 않는다. */
+                        describeReadOnly={t.map.boardLocked}
+                      />
+                    )}
+
+                    {!(boardMounted && labelsFitted) && (
+                      <div className="layout-editor-drawing" role="status">
+                        <div className="drawing-busy-note">
+                          {/* ⛔ 막대에 이름을 주지 않는다 — 옆 글과 같은 말을 낭독기가 두 번 읽는다. */}
+                          <Progress indeterminate size="sm" aria-hidden />
+                          <span>{t.editor.drawingBoard}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {drawing.isBusy && (
                       /* ⭐ 화면 낭독기에도 전한다 — 「눌렀는데 아무 일도 없다」는 시각만의 문제가 아니다. */

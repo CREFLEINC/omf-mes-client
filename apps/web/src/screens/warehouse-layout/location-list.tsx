@@ -31,7 +31,7 @@ export interface LocationListProps {
   /** 목록이 비었을 때 설 안내. 주지 않으면 「위치가 없습니다」. */
   empty?: ReactNode;
   /**
-   * 좁은 칸(편집 창 왼쪽, 540px)에 맞춘 폭 — 네 칸이 가로 스크롤 없이 든다. 코드 칸이 가장 넓고 이름 · 구분은 줄여
+   * 좁은 칸(편집 창 왼쪽, 480px)에 맞춘 폭 — 네 칸이 가로 스크롤 없이 든다. 코드 칸이 가장 넓고 이름 · 구분은 줄여
    * 말줄임, 도면 칩 칸은 칩 폭만큼(시안 W-CO-08 편집 창 목록). 폭 기억 열쇠도 따로 둔다.
    */
   compact?: boolean;
@@ -41,10 +41,11 @@ export interface LocationListProps {
 const WIDTHS = {
   regular: { code: '280px', level: '88px', placed: '80px', min: '540px' },
   /*
-   * 편집 창 목록(540px). 코드 280px 는 셀 4단계 들여쓰기에서 「Z01-R001-L01-C01」 전체가 드는 폭(실측), 도면 104px 는 베트남어
-   * 「Đã đánh dấu」 칩 폭, 이름은 남은 약 100px(말줄임). ⚠ 열 폭은 px 만 받는다(`column-resize` 의 `pxOf` — 그 밖은 남은 폭 나눔).
+   * 편집 창 목록(480px, 시안). 시안 비율(코드 2.4 : 이름 1 : 구분 64px : 도면 92px)을 480px 에 풀어 쓴 값, 도면 칸은 베트남어
+   * 「Đã đánh dấu」 칩이 들도록 104px. 2차(FR-015)로 목록이 구역 · 랙만이라 셀 4단계 때문에 넓혔던 코드 280px 를 되돌렸다.
+   * ⚠ 열 폭은 px 만 받는다(`column-resize` 의 `pxOf` — 그 밖은 남은 폭 나눔).
    */
-  compact: { code: '280px', level: '56px', placed: '104px', min: '0px' },
+  compact: { code: '220px', level: '64px', placed: '104px', min: '0px' },
 } as const;
 
 /**
