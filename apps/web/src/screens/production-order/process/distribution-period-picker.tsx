@@ -36,9 +36,9 @@ export const DistributionPeriodPicker = ({
   const [choosingEnd, setChoosingEnd] = useState(false);
   return (
     <>
-      <Button
-        variant="outlined"
-        size="sm"
+      <button
+        type="button"
+        className="erp-wo-period-trigger"
         disabled={disabled}
         aria-label={label}
         aria-haspopup="dialog"
@@ -51,9 +51,9 @@ export const DistributionPeriodPicker = ({
           setOpen(true);
         }}
       >
-        {value[0] && value[1] ? `${value[0]} ~ ${value[1]}` : '기간 선택'}
-        <Icon name="calendar_today" size={18} />
-      </Button>
+        <span>{value[0] && value[1] ? `${value[0]} ~ ${value[1]}` : '기간 선택'}</span>
+        <Icon name="calendar_today" size={20} />
+      </button>
       {open && (
         <Dialog
           open
@@ -64,7 +64,7 @@ export const DistributionPeriodPicker = ({
           footer={
             <>
               <Button variant="outlined" onClick={() => setMonth(monthOf(plantToday()))}>
-                오늘로 이동
+                오늘
               </Button>
               <Button variant="text" onClick={() => setOpen(false)}>
                 취소

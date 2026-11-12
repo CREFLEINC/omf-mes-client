@@ -6,7 +6,7 @@ import { plantToday } from '../../../patterns/plant-time';
 import { DistributionPeriodPicker } from './distribution-period-picker';
 
 describe('분배 기간 선택', () => {
-  it('오늘로 이동은 표시 월만 변경하고 기간을 적용하지 않는다', async () => {
+  it('오늘은 표시 월만 변경하고 기간을 적용하지 않는다', async () => {
     const change = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
@@ -19,7 +19,7 @@ describe('분배 기간 선택', () => {
     );
     await user.click(screen.getByRole('button', { name: '분배 기간' }));
     const dialog = screen.getByRole('dialog', { name: '분배 기간' });
-    await user.click(within(dialog).getByRole('button', { name: '오늘로 이동' }));
+    await user.click(within(dialog).getByRole('button', { name: '오늘' }));
     expect(within(dialog).getByRole('button', { name: plantToday() })).toBeVisible();
     expect(dialog.querySelector('[aria-current="date"]')).toBeNull();
     expect(change).not.toHaveBeenCalled();
