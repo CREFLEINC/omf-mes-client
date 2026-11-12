@@ -84,6 +84,8 @@ export const inboundClose = {
     total: (count: number, qty: string) => `자재 관리 LOT ${count}개 · ${qty}.`, // ui-check-ignore: C-13 설계 확정 확인 문구(screens/M-01-03.md)
     withIqc: 'IQC 요청이 생기고',
     withoutIqc: '검사 불필요 품목이라 IQC는 「검사 생략」으로 남고',
+    /** IQC 기본 생략 기준이 없는 검사 불필요 품목(G2 L15 · US2-7). */
+    withoutIqcRecord: '검사 불필요 품목이라 IQC 기록이 생기지 않고',
     rest: ', 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 용어 「공급사·품목」(screens/M-01-03.md)
     cancel: '취소',
     proceed: '마감',

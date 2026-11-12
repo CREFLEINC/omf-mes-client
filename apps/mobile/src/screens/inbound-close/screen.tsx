@@ -392,7 +392,12 @@ export const InboundCloseScreen = () => {
             >
               <p className="inbound-close__text">
                 {`${t.closeDialog.total(target.lots.length, formatQty(target.receivedQty, target.uomCode))} ${
-                  target.inspectionRequired ? t.closeDialog.withIqc : t.closeDialog.withoutIqc
+                  /* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15 · US2-7). */
+                  target.inspectionRequired
+                    ? t.closeDialog.withIqc
+                    : target.iqcDefaultSkipApplies === true
+                      ? t.closeDialog.withoutIqc
+                      : t.closeDialog.withoutIqcRecord
                 }${t.closeDialog.rest}`}
               </p>
             </ConfirmDialog>

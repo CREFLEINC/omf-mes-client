@@ -47,6 +47,8 @@ interface ServerOptions {
   notMaterial?: string[];
   /** 새 입하 LOT 의 검사 필요 여부(기본 참). */
   inspectionRequired?: boolean;
+  /** IQC 기본 생략 기준이 걸리는가(서버 S12 · G2 L15). 주지 않으면 칸을 싣지 않는다. */
+  iqcDefaultSkipApplies?: boolean;
   /** 이미 입하된 번호 — 서버가 거부 줄에 그 입하 LOT 번호 · 상태를 싣는다(S8). */
   /** 패키징 단위 이름(S8) — 없으면 칸을 싣지 않는다. */
   packageUomName?: string;
@@ -178,6 +180,9 @@ const createServer = (options: ServerOptions = {}) => {
             unallocatedQty: 0,
             iqc: null,
             inspectionRequired: options.inspectionRequired ?? true,
+            ...(options.iqcDefaultSkipApplies === undefined
+              ? {}
+              : { iqcDefaultSkipApplies: options.iqcDefaultSkipApplies }),
             firstRegisteredAt: '2026-11-11T01:00:00Z',
             receivedClosedAt: null,
             closedAutomatically: false,
@@ -547,9 +552,23 @@ describe('US2-2 입하 마감', () => {
     });
   });
 
+  it('G2 L15 · US2-7 기본 생략 기준이 없는 검사 불필요 품목은 「IQC 기록이 생기지 않고」 — 「검사 생략」이라 하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(createServer({ inspectionRequired: false, iqcDefaultSkipApplies: false }));
+
+    await scan(A(1));
+    const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
+    await user.click(await within(lotCard).findByRole('button', { name: t.card.close }));
+    const dialog = await screen.findByRole('dialog', { name: t.closeDialog.title('SYN-IL-6001') });
+
+    expect(dialog).toHaveTextContent(t.closeDialog.bodyNoIqcRecord);
+    expect(dialog).not.toHaveTextContent('검사 생략');
+  });
+
   it('G1 검사 불필요 품목의 마감 확인 창은 「검사 생략」 문구 — IQC 요청이 생긴다고 하지 않는다', async () => {
     const user = userEvent.setup();
-    mount(createServer({ inspectionRequired: false }));
+    /* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15). */
+    mount(createServer({ inspectionRequired: false, iqcDefaultSkipApplies: true }));
 
     await scan(A(1));
     const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });

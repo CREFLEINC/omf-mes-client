@@ -328,10 +328,25 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     ).toBeInTheDocument();
   });
 
-  it('US2-10 검사 불필요 품목은 「검사 생략」으로 남는다고 묻고, 결과는 「검사 불필요, 자재 관리 LOT 정상」', async () => {
+  it('G2 L15 · US2-7 기본 생략 기준이 없는 검사 불필요 품목은 「IQC 기록이 생기지 않고」로 묻는다', async () => {
     const user = userEvent.setup();
     mount({
-      closable: [inboundLot(3, { inspectionRequired: false })],
+      closable: [inboundLot(3, { inspectionRequired: false, iqcDefaultSkipApplies: false })],
+      closeResult: { inspectionRequired: false, iqc: null },
+    });
+
+    await user.click(await screen.findByRole('button', { name: /SYN-IL-20261111-0003/u }));
+    await user.click(await screen.findByRole('button', { name: t.detail.close }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent(t.closeDialog.withoutIqcRecord);
+    expect(dialog).not.toHaveTextContent('검사 생략');
+  });
+
+  it('US2-10 검사 불필요 품목은 「검사 생략」으로 남는다고 묻고, 결과는 「검사 불필요, 자재 관리 LOT 정상」', async () => {
+    const user = userEvent.setup();
+    /* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15). */
+    mount({
+      closable: [inboundLot(3, { inspectionRequired: false, iqcDefaultSkipApplies: true })],
       closeResult: { inspectionRequired: false, iqc: null },
     });
 

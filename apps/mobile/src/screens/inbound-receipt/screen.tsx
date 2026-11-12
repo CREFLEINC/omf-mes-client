@@ -598,7 +598,12 @@ export const InboundReceiptScreen = () => {
               )}
             </p>
             <p>
-              {closing.inspectionRequired ? t.closeDialog.body : t.closeDialog.bodyNoInspection}
+              {/* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15 · US2-7). */}
+              {closing.inspectionRequired
+                ? t.closeDialog.body
+                : closing.iqcDefaultSkipApplies === true
+                  ? t.closeDialog.bodyNoInspection
+                  : t.closeDialog.bodyNoIqcRecord}
             </p>
           </>
         )}

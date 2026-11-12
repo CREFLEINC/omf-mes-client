@@ -81,6 +81,7 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     total: (count: number, qty: string) => `${count} LOT quản lý vật tư · ${qty}.`,
     withIqc: 'yêu cầu IQC sẽ được tạo',
     withoutIqc: 'mặt hàng không cần kiểm tra nên IQC được ghi 「Bỏ qua kiểm tra」',
+    withoutIqcRecord: 'mặt hàng không cần kiểm tra nên không tạo bản ghi IQC',
     rest: ', và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
     cancel: 'Hủy',
     proceed: 'Chốt',

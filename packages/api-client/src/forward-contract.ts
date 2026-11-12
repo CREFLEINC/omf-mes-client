@@ -1062,6 +1062,11 @@ export interface InboundLot {
   iqc: InboundLotIqcSummary | null;
   /** 검사 필요 품목인가(C2 정함 — 「검사 대기 · 보류」/「정상」, 검사 불필요 마감 문구). */
   inspectionRequired: boolean;
+  /**
+   * 검사 불필요 품목에 IQC 기본 생략 기준이 걸리는가(서버 S12 · G2 L15 · spec US2-7) — 참이면 마감 때 IQC 「검사 생략」 기록이 남고,
+   * 거짓이면 IQC 요청이 생기지 않는다. 받기 카드 · 목록 행 · 상세에 실린다.
+   */
+  iqcDefaultSkipApplies?: boolean;
   firstRegisteredAt: string | null;
   receivedClosedAt: string | null;
   closedAutomatically: boolean;
