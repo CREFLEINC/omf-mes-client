@@ -131,7 +131,7 @@ export const useItemLookupFor = (
       : [
           {
             value: String(item.itemId),
-            label: `${item.itemCode} · ${nameOr(item.itemName)}`,
+            label: `${item.itemCode} · ${nameOr(item.itemName)}`, // ui-check-ignore: C-13 위 첫 쪽 목록과 같은 「코드 · 이름」 표기
             isActive: item.isActive,
           },
         ];

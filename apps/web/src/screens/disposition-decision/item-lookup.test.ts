@@ -57,4 +57,3 @@ describe('G2 L14-1 특채 요청 창이 열릴 때 문서가 밀리지 않게', 
     await waitFor(() => expect(root.scrollTop).toBe(0));
   });
 });
-
