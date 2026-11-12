@@ -55,6 +55,8 @@ const fakeServer = (
     failRackCalls?: number[];
     failZoneCalls?: number[];
     renameZone?: Record<string, string>;
+    /** 이름 고치기 PUT 이 실패하는 횟수 */
+    failPuts?: number;
   } = {},
 ) => {
   const calls: Call[] = [];
@@ -93,7 +95,13 @@ const fakeServer = (
         { headers: { ETag: '"5"' } },
       );
     }
-    if (request.method === 'PUT') return jsonResponse({ location: created(1, 'X') });
+    if (request.method === 'PUT') {
+      if ((options.failPuts ?? 0) > 0) {
+        options.failPuts = (options.failPuts ?? 0) - 1;
+        return jsonResponse({ message: '' }, { status: 503 });
+      }
+      return jsonResponse({ location: created(1, 'X') });
+    }
     throw new Error(`스텁에 없는 요청: ${request.method} ${path}`);
   };
   return { fetch, calls };
@@ -213,6 +221,31 @@ describe('useBulkCreate', () => {
     expect(posts(server.calls).map((call) => [call.path, call.body?.parentLocationId])).toEqual([
       ['/mdm/locations:rack', 100],
     ]);
+    expect(result.current.state).toEqual({ status: 'done' });
+  });
+
+  it('US1-7 ⭐ 만들기는 성공하고 이름 고치기만 실패하면 — 다시 불러도 POST 하지 않고 이름만 다시 고친다', async () => {
+    const server = fakeServer({ renameZone: { Z01: 'Z02' }, failPuts: 1 });
+    const { result, steps } = renderRun(plan(1, 1, 1, 1), server.fetch);
+
+    await act(() => result.current.run(steps));
+
+    expect(posts(server.calls).map((call) => call.path)).toEqual([
+      '/mdm/locations',
+      '/mdm/locations:rack',
+    ]);
+    expect(result.current.state).toMatchObject({
+      status: 'partial',
+      failures: [{ code: 'Z02' }],
+      failedRacks: 0,
+      created: 4,
+    });
+
+    server.calls.length = 0;
+    await act(() => result.current.run(steps));
+
+    expect(posts(server.calls)).toHaveLength(0);
+    expect(server.calls.filter((call) => call.method === 'PUT')).toHaveLength(1);
     expect(result.current.state).toEqual({ status: 'done' });
   });
 

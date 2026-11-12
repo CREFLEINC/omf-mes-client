@@ -127,6 +127,7 @@ export const warehouseLocation = {
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
   /** 위치 일괄 생성(#267) — 창 문구는 다음 PR 에서 더한다. */
   bulkCreate: {
+    renameFailed: (reason: string): string => `만들었지만 이름 맞추기 실패 — ${reason}`,
     netFail: '서버에 닿지 못해 멈췄습니다.',
   },
 
