@@ -2,6 +2,7 @@ import {
   isInboundLotInspection,
   type components,
   type FourMChangeForward,
+  type InspectionAqlPlanForward,
   type InspectionRequestInboundFields,
 } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
@@ -167,10 +168,12 @@ export interface InspectionRequestDetail {
   skipBasisCode: SkipBasisCode | null;
   /** 의뢰 대상 — 005 새 흐름은 `INBOUND_LOT`(입하 LOT 단위 상세로 연다). */
   targetTypeCode: string;
+  /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). 아니면 `null`. */
+  aqlPlan: InspectionAqlPlanForward | null;
 }
 
 export const toInspectionRequestDetail = (
-  item: InspectionRequestResponse,
+  item: InspectionRequestResponse & { aqlPlan?: InspectionAqlPlanForward },
 ): InspectionRequestDetail => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
@@ -185,6 +188,7 @@ export const toInspectionRequestDetail = (
   fourMChange: item.fourMChange ?? null,
   skipBasisCode: item.skipBasisCode ?? null,
   targetTypeCode: item.targetTypeCode,
+  aqlPlan: item.aqlPlan ?? null,
 });
 
 /**

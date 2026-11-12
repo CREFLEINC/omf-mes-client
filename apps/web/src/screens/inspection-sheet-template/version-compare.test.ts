@@ -9,6 +9,8 @@ const base = (overrides: Partial<InspectionSheetTemplate> = {}): InspectionSheet
   itemCode: 'AAR4',
   itemName: 'OA 본체',
   templateVersion: 1,
+  templateCode: 'SHEET-AAR4',
+  templateName: 'OA 본체 검사표',
   businessUnitId: 8301,
   formLayoutCode: 'OP',
   statusCode: 'CONFIRMED',

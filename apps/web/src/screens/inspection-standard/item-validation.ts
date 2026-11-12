@@ -51,9 +51,9 @@ export const validateItemDraft = (
 
   const code = draft.inspectionItemCode.trim();
 
-  if (isBlank(draft.inspectionItemCode) || code === '') {
-    errors.inspectionItemCode = t.required;
-  } else if (
+  /* 비우면 서버가 자동 등록한다(omf-all-around#262) — 적은 코드만 겹치는지 본다. */
+  if (
+    code !== '' &&
     siblings.some(
       (sibling) => sibling.draftId !== draft.draftId && sibling.inspectionItemCode.trim() === code,
     )

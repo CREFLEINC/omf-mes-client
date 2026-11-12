@@ -81,7 +81,10 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     conditionAql: (aql: number) =>
       `AQL ${Number.isInteger(aql) ? aql.toFixed(1) : String(aql)} · kiểm tra bằng mắt`,
     conditionNone: 'Chưa chỉ định',
+    conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>
+      `AQL ${String(aql)} · ${level} → mẫu ${String(n)}, lỗi ≤ ${String(ac)} đạt · ≥ ${String(re)} không đạt`,
     sample: 'Số mẫu',
+    sampleDimension: 'Số mẫu kích thước',
     sampleValue: (n: number, c: number) => `Mẫu n=${String(n)}, C=${String(c)}`,
     dimensionCount: 'Hạng mục kích thước',
     inspector: 'Người kiểm tra',
@@ -132,6 +135,9 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     checkItem: 'Hạng mục kiểm tra',
     checkValue: 'Kết quả đo',
     checkValueLabel: (name: string) => `Kết quả đo ${name}`,
+    defects: 'Số lỗi',
+    defectsLabel: (name: string) => `Số lỗi ${name}`,
+    defectsRequired: 'Hãy nhập số lỗi tìm thấy (1 ~ số lượng kiểm tra) cho hạng mục đã chọn NG.',
     remarks: 'Ghi chú',
     remarksPlaceholder: 'Nhập ghi chú',
   },
