@@ -134,7 +134,7 @@ describe('W-01-01 자재 관리 LOT 분리 창 (T092 · T093)', () => {
     expect(submitButton()).toBeEnabled();
   });
 
-  it('US7-1 전부 고르면 원래 입하 LOT 에 남아야 한다는 안내를 보이고 [분리]를 잠근다', async () => {
+  it('US7-4 전부 고르면 원래 입하 LOT 에 남아야 한다는 안내를 보이고 [분리]를 잠근다', async () => {
     const user = userEvent.setup();
     const { previewRequests } = setup();
 
@@ -220,7 +220,7 @@ describe('W-01-01 자재 관리 LOT 분리 창 (T092 · T093)', () => {
     expect(splitBodies).toEqual([{ lotIds: [1, 2], versionNo: 4 }]);
   });
 
-  it('US7-4 최종 마감된 입하 LOT 는 409 INBOUND_LOT_FINALIZED 를 창 안에 알린다', async () => {
+  it('최종 마감된 입하 LOT 는 409 INBOUND_LOT_FINALIZED 를 창 안에 알린다', async () => {
     const user = userEvent.setup();
     const { onSplit } = setup({
       splitResponse: () =>
@@ -239,7 +239,7 @@ describe('W-01-01 자재 관리 LOT 분리 창 (T092 · T093)', () => {
     expect(onSplit).not.toHaveBeenCalled();
   });
 
-  it('US7-4 판 충돌(409 VERSION_CONFLICT)은 다시 불러오라고 안내한다', async () => {
+  it('판 충돌(409 VERSION_CONFLICT)은 다시 불러오라고 안내한다', async () => {
     const user = userEvent.setup();
     const { onSplit } = setup({
       splitResponse: () =>
