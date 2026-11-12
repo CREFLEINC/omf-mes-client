@@ -11,7 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
-import { LocationPane } from './location-pane';
+import { LOCATION_TABLE_MIN_WIDTH, LocationPane } from './location-pane';
 import { useCanWriteLocations } from './queries';
 import type { Location } from './types';
 
@@ -283,6 +283,24 @@ describe('별칭 바로 고치기 (목록)', () => {
     expect(screen.queryByRole('textbox', { name: t.aliasEdit.edit('Z01-R001') })).toBeNull();
     const row = screen.getByRole('textbox', { name: t.aliasEdit.edit('Z01') }).closest('tr')!;
     expect(within(row).getByRole('button', { name: 'Z01' })).toBeInTheDocument();
+  });
+});
+
+describe('별칭 칸 폭', () => {
+  /*
+   * jsdom 은 배치를 계산하지 않아 커서 위치(실동작: 칸이 4px 로 눌리면 IME 확정마다 커서가 맨 앞으로 가 「가나다」가 「다나가」)를
+   * 직접 잴 수 없다. 원인인 칸 폭만 잰다 — 별칭 칸은 남는 폭을 맡으므로 표 최소 폭이 고정 열 합 + 240px 이상이어야 한다.
+   */
+  it('US2-1 표 최소 폭이 고정 열(선택 48 · 코드 · 구분 · 사용)보다 별칭 240px 이상 넓다', () => {
+    renderPane();
+
+    const box = document.querySelector<HTMLElement>('.warehouse-location-location-table')!;
+    expect(box.style.getPropertyValue('--board-table-min')).toBe(LOCATION_TABLE_MIN_WIDTH);
+    const fixed = Array.from(box.querySelectorAll('col'))
+      .map((col) => Number.parseFloat(col.style.width))
+      .filter((width) => Number.isFinite(width))
+      .reduce((sum, width) => sum + width, 0);
+    expect(Number.parseFloat(LOCATION_TABLE_MIN_WIDTH) - fixed - 48).toBeGreaterThanOrEqual(240);
   });
 });
 

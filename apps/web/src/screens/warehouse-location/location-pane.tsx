@@ -62,6 +62,9 @@ export interface LocationPaneProps {
 
 const t = messages.warehouseLocation;
 
+/** 선택(약 48) + 코드 320 + 별칭 적어도 240 + 구분 88 + 사용 상태 90. */
+export const LOCATION_TABLE_MIN_WIDTH = '790px';
+
 export const LocationPane = ({
   rows,
   isLoading,
@@ -107,7 +110,8 @@ export const LocationPane = ({
           {t.fields.locationCode}
         </LocationTreeHeader>
       ),
-      width: '380px',
+      /* 별칭 칸에 자리를 내준다(#267) — 셀 코드(Z01-R001-L01-C01)와 세 단계 들여쓰기가 들어가는 폭. */
+      width: '320px',
       /*
        * 위치 코드만 머리·값 왼쪽(사용자 결정 2026-09-18 · omf-all-around#17) — 가운데로 두면 행마다 따로
        * 가운데에 놓여 깊이 들여쓰기가 상쇄돼 상하위가 읽히지 않았다. 별칭·사용 상태는 가운데.
@@ -212,7 +216,11 @@ export const LocationPane = ({
     }
 
     return (
-      /* 입고 관리 짜임의 표(사용자 지시 2026-10-29). 폭 없는 열은 별칭 하나. */
+      /*
+       * 입고 관리 짜임의 표(사용자 지시 2026-10-29). 폭 없는 열은 별칭 하나 — 남는 폭을 맡는다. 최소 폭은 별칭 칸이
+       * 「A열 1번 랙」+ 연필, 고치는 동안 입력칸이 쓸 만한 폭(약 240px)으로 남도록 잡는다. 칸이 좁으면 표가 옆으로 넘어간다.
+       * 별칭 칸이 몇 px 로 눌리면 입력칸 폭이 0 에 가까워져 브라우저가 IME 확정 글자마다 커서를 맨 앞에 둔다(#267 실동작).
+       */
       <BoardTable
         label={t.tabs.location}
         className="location-tree-table warehouse-location-location-table"
@@ -220,7 +228,7 @@ export const LocationPane = ({
         rows={rows}
         getRowId={(row) => String(row.location.locationId)}
         widthKey="omf-mes:warehouse-location:location-widths"
-        minWidth="560px"
+        minWidth={LOCATION_TABLE_MIN_WIDTH}
         selectable
         selectedIds={selectedIds}
         onSelectionChange={onSelectionChange}
