@@ -23,6 +23,12 @@ export interface DispositionStubOptions {
   secondNonconformance?: boolean;
   /** 대상 LOT을 갈아 끼운다(단위 혼재 등). */
   lots?: unknown[];
+  /** 005 — 부적합 칸을 덮는다(입하 LOT · IQC 매칭 · 선별로 생김 등). */
+  nonconformance?: Record<string, unknown>;
+  /** 005 — 특채 목록(`GET /quality/concessions`). 주면 특채 요청(`POST`)도 받는다. */
+  concessions?: unknown[];
+  /** 005 — 특채 요청 응답을 갈아 끼운다. */
+  concessionResponse?: () => Response;
 }
 
 let sent: Request[] = [];
@@ -60,6 +66,7 @@ export const lotFixture = (overrides: Record<string, unknown> = {}): Record<stri
 const nonconformanceFixture = (
   lots: unknown[],
   nonconformanceId = 41,
+  overrides: Record<string, unknown> = {},
 ): Record<string, unknown> => ({
   nonconformanceId,
   nonconformanceNo: `NC-TEST-00${String(nonconformanceId)}`,
@@ -72,6 +79,7 @@ const nonconformanceFixture = (
   uomId: 7001,
   dispositionProgressCode: 'NOT_STARTED',
   lots,
+  ...overrides,
 });
 
 /** 저장 409 응답 몸통. 코드별 필드까지 채운 완성형이라 테스트는 필요한 것만 덮어쓴다. */
@@ -148,8 +156,11 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
           ? jsonResponse(
               listBody(
                 options.secondNonconformance === true
-                  ? [nonconformanceFixture(lots), nonconformanceFixture(lots, 42)]
-                  : [nonconformanceFixture(lots)],
+                  ? [
+                      nonconformanceFixture(lots, 41, options.nonconformance),
+                      nonconformanceFixture(lots, 42),
+                    ]
+                  : [nonconformanceFixture(lots, 41, options.nonconformance)],
               ),
             )
           : jsonResponse({ message: '' }, { status: options.listStatus }),
@@ -173,9 +184,14 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
       match: (request) => /^\/quality\/nonconformances\/\d+$/.test(pathOf(request)),
       respond: (request) =>
         options.detailStatus === undefined
-          ? jsonResponse(nonconformanceFixture(lots, Number(pathOf(request).split('/').pop())), {
-              headers: { ETag: `W/"${pathOf(request).split('/').pop() ?? '7'}"` },
-            })
+          ? jsonResponse(
+              nonconformanceFixture(
+                lots,
+                Number(pathOf(request).split('/').pop()),
+                pathOf(request).endsWith('/41') ? options.nonconformance : {},
+              ),
+              { headers: { ETag: `W/"${pathOf(request).split('/').pop() ?? '7'}"` } },
+            )
           : jsonResponse({ message: '권한이 없습니다' }, { status: options.detailStatus }),
     },
     {
@@ -203,6 +219,17 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
         );
       },
     },
+    ...(options.concessions === undefined
+      ? []
+      : [
+          {
+            match: (request: Request) => pathOf(request) === '/quality/concessions',
+            respond: (request: Request) =>
+              request.method === 'POST'
+                ? (options.concessionResponse?.() ?? jsonResponse({}, { status: 201 }))
+                : jsonResponse(listBody(options.concessions ?? [])),
+          },
+        ]),
     {
       match: (request) => pathOf(request) === '/mdm/items',
       respond: () => jsonResponse(listBody([itemFixture])),

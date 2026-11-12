@@ -49,7 +49,13 @@ export const lotStatusHistory = {
       /* 검색해서 고르는 칸은 「검색」(omf-all-around#228). */
       warehouse: '창고 검색',
       location: '위치 검색',
+      /** 005 FR-035 — 입하 LOT 번호 정확 일치(목록 · 요약에 `inboundLotNo`). */
+      inboundLotNo: '입하 LOT 번호',
     },
+    inboundLotNoPlaceholder: 'IL-YYYYMMDD-NNNN',
+    /** 행의 입하 LOT 번호를 눌러 건 거르기 표시(screens/W-03-01.md). */
+    inboundLotChip: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
+    inboundLotChipRemove: '입하 LOT 거르기 제거',
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
     lotScanLabel: 'LOT 스캔',
     lotNoScanPlaceholder: 'LOT 바코드 스캔 또는 번호를 입력하세요',
@@ -110,7 +116,11 @@ export const lotStatusHistory = {
       onHand: '보유 수량',
       latestTransition: '최종 변경일',
       reason: '상태 사유',
+      /** 005 FR-035 — 입하 LOT(없으면 빈칸). */
+      inboundLot: '입하 LOT',
     },
+    /** 행의 입하 LOT 번호 단추 — 누르면 그 입하 LOT 으로 거른다. */
+    filterInboundLot: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}로 거르기`,
     /** 품목 이름을 아직 못 붙였을 때 왜 못 붙였는지를 칸에 그대로 적는다. */
     itemLabel: {
       loading: '불러오는 중…',

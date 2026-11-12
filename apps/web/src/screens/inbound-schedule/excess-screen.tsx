@@ -2,7 +2,7 @@ import { AlertBanner, Button, Chip, type Column, EmptyState, SkeletonText } from
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useEffect, useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
 import { BoardTable } from '../../patterns/board-table';
@@ -23,6 +23,7 @@ import type {
   UnallocatedLine,
 } from './excess-types';
 import { LoadErrorBanner } from './load-error-banner';
+import { WORK_RECORD_PATH } from './lot-row';
 import { formatDate } from './period';
 import { formatQty, OneLine, orEmpty } from './receipt-status';
 
@@ -297,6 +298,17 @@ export const InboundExcessScreen = () => {
     },
   ];
 
+  /*
+   * 005 — 이 탭은 이전 데이터(`PER_RECEIPT`) 입하 줄만 다룬다(서버가 새 흐름 줄을 빼 준다). 새 흐름의 「P/O 없음」은
+   * W-01-16 에서 매칭한다 — 안내와 링크. 링크는 늘 둔다(이 탭은 세션 제공자 밖에서도 그려진다 — 권한이 없으면 W-01-16 이
+   * 막는다). 새 흐름 줄을 연결하려 하면 서버의 409 를 그대로 보인다.
+   */
+  const newFlowNotice = (
+    <p className="field-note">
+      {t.newFlowNotice} <Link to={WORK_RECORD_PATH}>{t.newFlowLink}</Link>
+    </p>
+  );
+
   const listBody = (): ReactNode => {
     if (unlinked.isError) {
       return (
@@ -469,7 +481,15 @@ export const InboundExcessScreen = () => {
       /* 왼쪽 표의 고정 폭(576px) + 품목 칸이 1920 폭에서 다 보이게 — 오른쪽은 후보 표가 가로로 넘긴다. */
       initialRatio={0.55}
       splitter={{ label: t.splitter, collapseLabel: t.listCollapse, expandLabel: t.listExpand }}
-      list={{ label: t.listTitle, content: listBody() }}
+      list={{
+        label: t.listTitle,
+        content: (
+          <>
+            {newFlowNotice}
+            {listBody()}
+          </>
+        ),
+      }}
       detail={{ label: t.candidates.title, content: detailBody() }}
     />
   );

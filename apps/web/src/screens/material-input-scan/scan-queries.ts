@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import {
   hasMaterial,
+  lifecycleBlockOf,
   toScannedMaterial,
   toScannedMold,
   type ScanDraft,
@@ -33,6 +34,10 @@ type LotItem = Parameters<typeof toScannedMaterial>[0];
  */
 const toLotOutcome = (draft: ScanDraft, code: string, lot: LotItem): ScanOutcome => {
   if (hasMaterial(draft, lot.lotId)) return { kind: 'duplicate', code, lotNo: lot.lotNo };
+
+  /* 대기 · 폐기 LOT 은 상태보다 생애를 먼저 말한다 — 할 일이 「입하」다(005 US1-6). */
+  const lifecycle = lifecycleBlockOf(lot);
+  if (lifecycle !== null) return { kind: 'blocked-lifecycle', code, lotNo: lot.lotNo, lifecycle };
 
   const material = toScannedMaterial(lot);
   if (!isInputAllowedStatus(material.statusCode)) {

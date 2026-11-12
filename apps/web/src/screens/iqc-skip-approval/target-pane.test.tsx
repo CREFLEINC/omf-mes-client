@@ -5,7 +5,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { MAPPED_SCREEN_PATH, targetFixtures } from './fixtures';
 import { TargetPane } from './target-pane';
-import { describeTargetName } from './target';
+import {
+  describeTargetName,
+  isInboundLotReceiving,
+  skipExecuteTargetOf,
+  targetInboundLotOf,
+} from './target';
 
 const t = messages.iqcSkipApproval;
 
@@ -114,5 +119,81 @@ describe('TargetPane — 열기', () => {
     await user.click(screen.getByRole('button', { name: t.target.open }));
 
     expect(onOpen).not.toHaveBeenCalled();
+  });
+});
+
+describe('TargetPane — 입하 LOT(005 FR-032)', () => {
+  it('R16-1 대상 LOT 의 입하 LOT 번호를 보인다 — 실행 전에는 LOT 수를 짓지 않는다', () => {
+    renderPane({ inboundLot: { inboundLotNo: 'IL-261112-0009', lotCount: null } });
+
+    expect(screen.getByText(t.fields.inboundLot)).toBeVisible();
+    expect(screen.getByText('IL-261112-0009')).toBeVisible();
+    expect(screen.queryByText(t.fields.lotCount)).not.toBeInTheDocument();
+  });
+
+  it('R16-1 실행 응답의 LOT 수를 보인다', () => {
+    renderPane({ inboundLot: { inboundLotNo: 'IL-261112-0009', lotCount: 4 } });
+
+    expect(screen.getByText(t.fields.lotCount)).toBeVisible();
+    expect(screen.getByText(t.skipExecute.lotCountValue('4'))).toBeVisible();
+  });
+
+  it('R16-1 입하 LOT 을 모르면 칸을 세우지 않는다', () => {
+    renderPane({ inboundLot: null });
+
+    expect(screen.queryByText(t.fields.inboundLot)).not.toBeInTheDocument();
+  });
+});
+
+describe('입하 LOT 판정(005 FR-032)', () => {
+  it('R16-1 실행 응답이 대상 LOT 조회의 번호를 이긴다', () => {
+    expect(
+      targetInboundLotOf('IL-OLD-0001', { inboundLotNo: 'IL-261112-0009', lotCount: 4 }),
+    ).toEqual({ inboundLotNo: 'IL-261112-0009', lotCount: 4 });
+    expect(targetInboundLotOf('IL-261112-0009', null)).toEqual({
+      inboundLotNo: 'IL-261112-0009',
+      lotCount: null,
+    });
+    expect(targetInboundLotOf(null, null)).toBeNull();
+  });
+
+  it('R16-1 입하 중 409 는 안내 갈래로, 원인만 있는 충돌 409 · 다른 오류는 아니다', () => {
+    expect(
+      isInboundLotReceiving({
+        kind: 'stateLocked',
+        status: 409,
+        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '입하 중' }],
+      }),
+    ).toBe(true);
+    expect(
+      isInboundLotReceiving({ kind: 'conflict', status: 409, cause: 'user', message: '' }),
+    ).toBe(false);
+    expect(isInboundLotReceiving({ kind: 'validation', status: 400, errors: [] })).toBe(false);
+    expect(isInboundLotReceiving({ kind: 'network' })).toBe(false);
+    expect(isInboundLotReceiving(null)).toBe(false);
+  });
+});
+
+describe('생략 실행 대상(005 FR-032 · targetLotId)', () => {
+  const approved = (targetLotId?: number | null) => ({
+    approvalTypeCode: 'IQC_SKIP',
+    statusCode: 'APPROVED',
+    target: { targetId: 7301, targetLotId },
+  });
+
+  it('R16-1 targetLotId 로 실행한다 — targetId(입하 LOT id)는 쓰지 않는다', () => {
+    expect(skipExecuteTargetOf(approved(9411), 'IQC_SKIP')).toEqual({ kind: 'lot', lotId: 9411 });
+  });
+
+  it('R16-1 targetLotId 가 없으면 잠김', () => {
+    expect(skipExecuteTargetOf(approved(null), 'IQC_SKIP')).toEqual({ kind: 'noLot' });
+    expect(skipExecuteTargetOf(approved(), 'IQC_SKIP')).toEqual({ kind: 'noLot' });
+  });
+
+  it('R16-1 승인된 IQC 생략이 아니면 실행 구획이 없다', () => {
+    expect(
+      skipExecuteTargetOf({ ...approved(9411), statusCode: 'PENDING' }, 'IQC_SKIP'),
+    ).toBeNull();
+    expect(skipExecuteTargetOf(approved(9411), null)).toBeNull();
   });
 });

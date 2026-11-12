@@ -50,6 +50,9 @@ describe('toLotStatusRow', () => {
       fullyHeld: false,
       latestTransitionAt: null,
       latestReasonCode: null,
+      /* FR-035 — 입하 LOT 칸(없으면 null). */
+      inboundLotId: null,
+      inboundLotNo: null,
     });
   });
 

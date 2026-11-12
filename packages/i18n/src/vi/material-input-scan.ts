@@ -44,6 +44,8 @@ export const materialInputScan: Translated<typeof ko.materialInputScan> = {
         `${itemWithTopic} đang ở trạng thái 「${statusName}」 nên không thêm được.`,
       blockedStatusUnknown: (item: string): string =>
         `Không xác nhận được trạng thái của ${item}. Vui lòng quét lại.`,
+      waitingLot: 'LOT chưa nhập hàng',
+      voidedLot: 'LOT đã hủy',
       ambiguous: (count: number): string =>
         `Tìm thấy cùng lúc ${String(count)} mục. Vui lòng quét toàn bộ mã trên nhãn.`,
       notFound: (code: string): string =>

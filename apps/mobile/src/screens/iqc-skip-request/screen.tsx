@@ -23,7 +23,15 @@ import {
   usePendingRequest,
   type ApprovalRequest,
 } from './queries';
-import { hasReason, isInspectionPending, isRouteMissing, toOutboxDraft } from './request';
+import {
+  approvalTargetIdOf,
+  hasReason,
+  inboundLotOfResponse,
+  isInboundLotReceiving,
+  isInspectionPending,
+  isRouteMissing,
+  toOutboxDraft,
+} from './request';
 import './screen.css';
 
 const t = messages.iqcSkipRequest;
@@ -95,6 +103,13 @@ export const IqcSkipRequestScreen = () => {
    */
   const inFlight = useRef(false);
   const [noRoute, setNoRoute] = useState(false);
+  /* 005 — 입하 중(마감 전) 입하 LOT 이라 되돌아왔다(FR-032 · 409). */
+  const [receiving, setReceiving] = useState(false);
+  /* 005 — 요청 응답의 입하 LOT 번호 · LOT 수(계약 §11). */
+  const [sentInboundLot, setSentInboundLot] = useState<{
+    inboundLotNo: string;
+    lotCount: number;
+  } | null>(null);
   const reasonSection = useRef<HTMLDivElement | null>(null);
 
   /*
@@ -118,7 +133,7 @@ export const IqcSkipRequestScreen = () => {
   const item = useItem(found?.itemId ?? null);
   const uoms = useUomCodes(found !== null);
   const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
-  const pending = usePendingRequest(found?.lotId ?? null);
+  const pending = usePendingRequest(approvalTargetIdOf(found));
   const mine = useMyRequests(worker?.workerNo ?? null);
   const statuses = useCodeValues(APPROVAL_REQUEST_STATUS);
 
@@ -150,6 +165,8 @@ export const IqcSkipRequestScreen = () => {
     setSaveFailed(false);
 
     setNoRoute(false);
+    setReceiving(false);
+    setSentInboundLot(null);
 
     const draft = toOutboxDraft(found.lotId, reason, new Date().toISOString(), worker.workerNo);
 
@@ -174,6 +191,7 @@ export const IqcSkipRequestScreen = () => {
       if (returned !== undefined) {
         /* 결재선이 없으면 승인자가 정해지지 않아 요청이 설 자리가 없다. 다른 거부와 다른 말을 쓴다. */
         setNoRoute(isRouteMissing(returned.error));
+        setReceiving(isInboundLotReceiving(returned.error));
         setOutcome('rejected');
         return;
       }
@@ -187,6 +205,7 @@ export const IqcSkipRequestScreen = () => {
         return;
       }
 
+      setSentInboundLot(inboundLotOfResponse(result?.responses.get(draft.idempotencyKey)));
       setOutcome(result === null || result.remaining.some(mineEntry) ? 'queued' : 'sent');
       void mine.refetch();
     } finally {
@@ -199,6 +218,8 @@ export const IqcSkipRequestScreen = () => {
     setReason('');
     setOutcome(null);
     setNoRoute(false);
+    setReceiving(false);
+    setSentInboundLot(null);
     scanField.focus();
   };
 
@@ -207,7 +228,9 @@ export const IqcSkipRequestScreen = () => {
       <div className="iqc-skip">
         {outcome === 'sent' ? (
           <AlertBanner variant="success" title={t.sent.title}>
-            {t.sent.description}
+            {sentInboundLot === null
+              ? t.sent.description
+              : `${t.sent.inboundLot(sentInboundLot.inboundLotNo, String(sentInboundLot.lotCount))} ${t.sent.description}`}
           </AlertBanner>
         ) : null}
         {outcome === 'queued' ? (
@@ -217,7 +240,7 @@ export const IqcSkipRequestScreen = () => {
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
-            {noRoute ? t.noRoute : t.rejected.description}
+            {noRoute ? t.noRoute : receiving ? t.receiving : t.rejected.description}
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
@@ -275,6 +298,13 @@ export const IqcSkipRequestScreen = () => {
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
               )}
               <span>{t.lot.quantity(String(found.initialQty), uomOf(found.uomId))}</span>
+              {/* 005 — 상자 라벨 하나로 그 입하 LOT 전체를 요청한다(FR-032). */}
+              {found.inboundLotNo === null || found.inboundLotNo === undefined ? null : (
+                <>
+                  <span>{t.lot.inboundLot(found.inboundLotNo)}</span>
+                  <span className="iqc-skip__note">{t.lot.inboundLotNote}</span>
+                </>
+              )}
               <Chip status={inspectionPending ? 'info' : 'warning'}>
                 {inspectionPending ? t.lot.pending : t.lot.notPending}
               </Chip>

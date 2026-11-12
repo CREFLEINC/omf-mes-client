@@ -1,23 +1,26 @@
 import { Button, Chip, DatePicker, Dialog, Table, TextField, type Column } from '@crefle/web-ui';
-import type { ConcessionAppliedForward, components } from '@omf-mes/api-client';
+import type {
+  ConcessionAppliedForward,
+  ConcessionCreatedForward005,
+  ConcessionCreateForward005,
+  components,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
+import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
-import { Select } from '../../patterns/select';
 import { toBusinessDate } from './decision-form';
+import type { DispositionLookup } from './lookups';
 import { dispositionKeys } from './queries';
-import type { NonconformanceLotRow } from './types';
-
-type ConcessionCreate = components['schemas']['ConcessionCreate'];
+import { formatQty, type NonconformanceLotRow } from './types';
 
 type Concession = components['schemas']['Concession'];
 
 const t = messages.dispositionDecision.concession;
-const DECIMAL = /^\d{1,12}(\.\d{1,6})?$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PENDING = 'PENDING';
 const STATUS_LABEL: Record<string, string> = t.status;
@@ -26,24 +29,27 @@ const concessionKey = (nonconformanceId: number) =>
   [...dispositionKeys.all, 'concessions', nonconformanceId] as const;
 
 interface Draft {
-  lotId: string;
-  qty: string;
   validFrom: string;
   validTo: string;
   reason: string;
 }
 
-const emptyDraft = (lots: readonly NonconformanceLotRow[], today: string): Draft => ({
-  lotId: lots.length === 1 ? String(lots[0]?.lotId) : '',
-  qty: '',
-  validFrom: today,
-  validTo: '',
-  reason: '',
-});
+const emptyDraft = (today: string): Draft => ({ validFrom: today, validTo: '', reason: '' });
 
-const blockedOf = (draft: Draft): string | null => {
-  if (draft.lotId === '') return t.blocked.lot;
-  if (!DECIMAL.test(draft.qty.trim()) || Number(draft.qty) <= 0) return t.blocked.qty;
+/** 자재 관리 LOT 의 단위가 하나면 그 단위 — 섞이면 고르지 않는다(판정 저장과 같은 규칙). */
+const lotsUomId = (lots: readonly NonconformanceLotRow[]): number | undefined => {
+  const first = lots[0];
+  return first !== undefined && lots.every((lot) => lot.uomId === first.uomId)
+    ? first.uomId
+    : undefined;
+};
+
+const blockedOf = (
+  draft: Draft,
+  remainingQty: number | undefined,
+  uomId: number | undefined,
+): string | null => {
+  if (remainingQty === undefined || remainingQty <= 0 || uomId === undefined) return t.blocked.qty;
   if (!DATE.test(draft.validFrom)) return t.blocked.date;
   if (draft.validTo !== '' && (!DATE.test(draft.validTo) || draft.validTo < draft.validFrom)) {
     return t.blocked.date;
@@ -55,10 +61,19 @@ const blockedOf = (draft: Draft): string | null => {
 export interface ConcessionRequestDialogProps {
   nonconformanceId: number;
   lots: readonly NonconformanceLotRow[];
+  /** 남은 수량 — 특채는 이 값 전부만 요청한다(FR-038 · 일부 특채 없음). 모르면 요청할 수 없다. */
+  remainingQty: number | undefined;
+  /** 입하 LOT(자재 입하 IQC 부적합) — 대상 줄에 보인다. */
+  inboundLotNo?: string | null | undefined;
+  /** 단위 이름을 붙인다. 없으면 수만. */
+  uoms?: DispositionLookup | undefined;
   /** 지금 날짜 — 시험이 고정할 수 있게 받는다. */
   today?: Date;
-  /** 요청이 끝나면 `true` 로 닫는다 — 화면이 완료 알림을 띄운다. */
-  onClose: (requested: boolean) => void;
+  /**
+   * 요청이 끝나면 `true` 로 닫는다 — 화면이 완료 알림을 띄운다. 자재 관리 LOT 이 여럿이면 서버가 만든 특채 행 수
+   * (`concessionIds`)를 함께 넘긴다.
+   */
+  onClose: (requested: boolean, lotCount?: number) => void;
 }
 
 export interface ConcessionHistoryProps {
@@ -71,10 +86,9 @@ export interface ConcessionHistoryProps {
  * W-03-10 의 「특채」 구획(omf-all-around#84 · 서버 선행 P-79).
  *
  * ⭐ 요청 → 결재(W-03-09) → 적용. 이 구획은 요청과 적용만 한다 — 승인은 결재 경로의 몫이다.
- * ⭐ 적용은 서버가 LOT 을 정상으로 열고 수입검사 대기 보류를 닫고 처분 판정(특채)을 남긴다 — 그래서
- *    성공하면 이 화면의 상세·판정을 함께 다시 부른다.
- * ⭐ 일부 특채면 적용이 승인 안 된 수량을 «불량으로 남은 LOT»(새 번호)·새 부적합으로 나눈다(#207) — 응답의 `splitResult` 로 알린다.
- * ⛔ 사용 가능 수량·허용 조건은 기록일 뿐 출고·투입에서 막지 않는다(#84 범위 · #207 결정).
+ * ⭐ 005 FR-038 · D-14 — 특채는 남은 수량 전부만(입력 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청하고 서버가
+ *    LOT 마다 특채 행을 같은 결재로 묶어 만든다. 적용은 묶음 중 어느 행으로 불러도 같은 결재의 행 전부를 함께 적용한다.
+ * ⛔ 사용 가능 수량 · 허용 조건은 기록일 뿐 출고 · 투입에서 막지 않는다(#84 범위 · #207 결정).
  */
 /** 이 부적합의 특채 목록 — 구획과 탭 이름의 건수가 같은 조회를 쓴다(#223). */
 export const useConcessions = (nonconformanceId: number | null) => {
@@ -92,23 +106,29 @@ export const useConcessions = (nonconformanceId: number | null) => {
 };
 
 /**
- * 특채 요청 팝업(사용자 지시 · #223) — 처분 대기에서 부적합을 고른 뒤 「특채 요청」 단추로 연다.
- * 요청 본문 · 쓰기는 종전 그대로다(요청 → W-03-09 결재 → 적용).
+ * 특채 요청 팝업(사용자 지시 · #223) — 처분 판정의 「특채」 칸으로 연다.
+ * 대상은 자재 관리 LOT 전부, 사용 가능 수량은 남은 수량 고정(005 · mockups/W0310-After.html).
  */
 export const ConcessionRequestDialog = ({
   nonconformanceId,
   lots,
+  remainingQty,
+  inboundLotNo = null,
+  uoms,
   today,
   onClose,
 }: ConcessionRequestDialogProps) => {
-  const lotFieldId = useId();
   const fromFieldId = useId();
   const toFieldId = useId();
+  const noteId = useId();
+  const blockedId = useId();
   const { client } = useApiClient();
   const todayText = toBusinessDate(today ?? new Date());
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft(lots, todayText));
+  const [draft, setDraft] = useState<Draft>(() => emptyDraft(todayText));
+  const uomId = lotsUomId(lots);
+  const uomLabel = uomId === undefined || uoms === undefined ? '' : lookupDisplayLabel(uoms, uomId);
 
-  const requestWrite = useMasterWrite<ConcessionCreate, Concession>({
+  const requestWrite = useMasterWrite<ConcessionCreateForward005, ConcessionCreatedForward005>({
     request: (body, headers) =>
       client.POST('/quality/concessions', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
@@ -118,20 +138,25 @@ export const ConcessionRequestDialog = ({
     invalidateKeys: [concessionKey(nonconformanceId)],
     knownFields: ['lotId', 'approvedQty', 'uomId', 'validFrom', 'validTo', 'reason'],
     keyLifetime: 'until-applied',
-    onSuccess: () => onClose(true),
+    onSuccess: (data) => {
+      const count = data.concessionIds?.length ?? 0;
+      if (count > 1) onClose(true, count);
+      else onClose(true);
+    },
   });
 
-  const lot = lots.find((row) => String(row.lotId) === draft.lotId);
-  const blocked = blockedOf(draft);
+  const blocked = blockedOf(draft, remainingQty, uomId);
   const isSaving = requestWrite.isSaving;
+  const onlyLot = lots.length === 1 ? lots[0] : undefined;
 
   const submit = (): void => {
-    if (blocked !== null || lot === undefined) return;
+    if (blocked !== null || remainingQty === undefined || uomId === undefined) return;
     requestWrite.write({
       nonconformanceId,
-      lotId: lot.lotId,
-      approvedQty: Number(draft.qty.trim()),
-      uomId: lot.uomId,
+      /* 자재 관리 LOT 이 하나면 지금처럼 그 LOT, 여럿이면 비운다 — 서버가 LOT 마다 특채 행을 만든다(D-14). */
+      ...(onlyLot === undefined ? {} : { lotId: onlyLot.lotId }),
+      approvedQty: remainingQty,
+      uomId,
       validFrom: draft.validFrom,
       ...(draft.validTo === '' ? {} : { validTo: draft.validTo }),
       reason: draft.reason.trim(),
@@ -155,7 +180,11 @@ export const ConcessionRequestDialog = ({
           >
             {messages.common.cancel}
           </Button>
-          <Button disabled={blocked !== null || isSaving} onClick={submit}>
+          <Button
+            disabled={blocked !== null || isSaving}
+            aria-describedby={blocked === null ? undefined : blockedId}
+            onClick={submit}
+          >
             {isSaving ? t.requesting : t.request}
           </Button>
         </>
@@ -164,41 +193,20 @@ export const ConcessionRequestDialog = ({
       <div className="disposition-concession-dialog">
         <p className="field-note">{t.requestNote}</p>
         <SaveErrorBanner error={requestWrite.error} />
-        {lots.length > 1 && (
-          <div className="field-cell">
-            <label className="field-label" htmlFor={lotFieldId}>
-              {t.lot}
-            </label>
-            <Select
-              id={lotFieldId}
-              options={lots.map((row) => ({ value: String(row.lotId), label: row.lotNoText }))}
-              value={draft.lotId}
-              disabled={isSaving}
-              onChange={(value) => setDraft({ ...draft, lotId: value })}
-            />
-          </div>
-        )}
         <div className="disposition-concession-fields">
           <TextField
-            label={t.qty}
-            placeholder={t.qtyPlaceholder}
-            required
+            label={t.target}
+            value={t.targetAll(inboundLotNo, lots.length)}
+            readOnly
             fullWidth
-            inputMode="decimal"
-            value={draft.qty}
-            disabled={isSaving}
-            error={requestWrite.fieldErrors.approvedQty}
-            onChange={(event) => setDraft({ ...draft, qty: event.target.value })}
           />
           <TextField
-            label={t.reason}
-            placeholder={t.reasonPlaceholder}
-            required
+            label={t.qty}
+            value={`${formatQty(remainingQty)}${uomLabel === '' ? '' : ` ${uomLabel}`}`}
+            readOnly
             fullWidth
-            value={draft.reason}
-            disabled={isSaving}
-            error={requestWrite.fieldErrors.reason}
-            onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
+            aria-describedby={noteId}
+            error={requestWrite.fieldErrors.approvedQty}
           />
           <div className="field-cell">
             <label className="field-label" htmlFor={fromFieldId}>
@@ -230,9 +238,45 @@ export const ConcessionRequestDialog = ({
             )}
           </div>
         </div>
+        <p id={noteId} className="field-note disposition-concession-whole">
+          {t.qtyLocked} — {t.wholeHint}
+        </p>
+        <TextField
+          label={t.reason}
+          placeholder={t.reasonPlaceholder}
+          required
+          fullWidth
+          value={draft.reason}
+          disabled={isSaving}
+          error={requestWrite.fieldErrors.reason}
+          onChange={(event) => setDraft({ ...draft, reason: event.target.value })}
+        />
+        {/* 칸별 안내 문구 없이 필수 표시로 알린다 — 단추가 읽을 이유만 가려 둔다. */}
+        {blocked !== null && (
+          <span id={blockedId} className="visually-hidden">
+            {t.requestBlocked}
+          </span>
+        )}
       </div>
     </Dialog>
   );
+};
+
+interface ConcessionGroup {
+  first: Concession;
+  rows: Concession[];
+}
+
+/** 결재 하나에 묶인 특채 행들 — 옛 행은 결재마다 한 행이라 홀로 한 줄이다. 차례는 받은 차례. */
+export const groupConcessions = (rows: readonly Concession[]): ConcessionGroup[] => {
+  const groups = new Map<string, ConcessionGroup>();
+  for (const row of rows) {
+    const key = String(row.approvalRequestId);
+    const group = groups.get(key);
+    if (group === undefined) groups.set(key, { first: row, rows: [row] });
+    else group.rows.push(row);
+  }
+  return [...groups.values()];
 };
 
 /**
@@ -251,8 +295,13 @@ export const ConcessionHistory = ({
 
   const list = useConcessions(nonconformanceId);
 
+  /* 같은 결재(`approvalRequestId`)의 행(자재 관리 LOT 마다 한 행)은 한 줄로 묶어 보인다(005 D-14). */
+  const groups = groupConcessions(list.data ?? []);
+  /* 적용한 묶음의 행 수 — 알림 문구에 쓴다(쓰기 응답은 첫 행만 돌려준다). */
+  const appliedCount = useRef(1);
+
   const applyWrite = useMasterWrite<{ concessionId: number }, ConcessionAppliedForward>({
-    /* 일부 특채는 LOT 을 나누며 재고도 원장으로 나눈다 — 그때 쓰는 영업일을 늘 싣는다(#207 · C-8). */
+    /* 옛 일부 특채 적용은 LOT 을 나누며 재고도 원장으로 나눴다 — 그때 쓰는 영업일을 늘 싣는다(#207 · C-8). */
     request: ({ concessionId }, headers) =>
       client.POST('/quality/concessions/{concessionId}:apply', {
         params: {
@@ -272,7 +321,9 @@ export const ConcessionHistory = ({
           ? t.rejected
           : data.splitResult
             ? t.appliedSplit(data.splitResult.splitLotNo, data.splitResult.splitNonconformanceNo)
-            : t.applied,
+            : appliedCount.current > 1
+              ? t.appliedLots(appliedCount.current)
+              : t.applied,
       ),
   });
 
@@ -281,57 +332,67 @@ export const ConcessionHistory = ({
       variant="status"
       size="sm"
       status={
-        row.statusCode === 'APPROVED' ? 'success' : row.statusCode === PENDING ? 'warning' : 'error'
+        row.statusCode === 'APPROVED' || row.statusCode === 'APPLIED'
+          ? 'success'
+          : row.statusCode === PENDING
+            ? 'warning'
+            : 'error'
       }
     >
       {STATUS_LABEL[row.statusCode] ?? row.statusCode}
     </Chip>
   );
 
-  const columns: Column<Concession>[] = [
+  const columns: Column<ConcessionGroup>[] = [
     {
       key: 'concessionNo',
       align: 'center',
       header: t.columns.concessionNo,
-      render: (row) => row.concessionNo,
+      render: (group) => group.first.concessionNo,
     },
     {
-      key: 'lotNo',
+      key: 'target',
       align: 'center',
-      header: t.columns.lotNo,
-      render: (row) => row.lotNo ?? String(row.lotId),
+      header: t.columns.target,
+      render: (group) =>
+        group.rows.length > 1
+          ? t.targetGroup(group.rows.length)
+          : (group.first.lotNo ?? String(group.first.lotId)),
     },
     {
       key: 'qty',
       align: 'center',
       header: t.columns.qty,
-      render: (row) => String(row.approvedQty),
+      render: (group) => formatQty(group.rows.reduce((sum, row) => sum + row.approvedQty, 0)),
     },
     {
       key: 'period',
       align: 'center',
       header: t.columns.period,
-      render: (row) => `${row.validFrom} ~ ${row.validTo ?? t.validToPlaceholder}`,
+      render: (group) =>
+        `${group.first.validFrom} ~ ${group.first.validTo ?? t.validToPlaceholder}`,
     },
     {
       key: 'status',
       align: 'center',
       header: t.columns.status,
-      render: (row) =>
-        row.statusCode === PENDING && !readOnly ? (
+      render: (group) =>
+        group.first.statusCode === PENDING && !readOnly ? (
           <Button
             variant="outlined"
             size="sm"
             disabled={applyWrite.isSaving}
             onClick={() => {
               setNotice(null);
-              applyWrite.write({ concessionId: row.concessionId });
+              appliedCount.current = group.rows.length;
+              /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
+              applyWrite.write({ concessionId: group.first.concessionId });
             }}
           >
             {applyWrite.isSaving ? t.applying : t.apply}
           </Button>
         ) : (
-          statusChip(row)
+          statusChip(group.first)
         ),
     },
   ];
@@ -347,8 +408,8 @@ export const ConcessionHistory = ({
           caption={<span className="disposition-table-caption">{t.caption}</span>}
           density="compact"
           columns={columns}
-          rows={list.data ?? []}
-          getRowId={(row) => String(row.concessionId)}
+          rows={groups}
+          getRowId={(group) => String(group.first.concessionId)}
           /* 판정 이력과 같이 — 없으면 표 안 행 자리 가운데 한 줄(사용자 지시 · #223). */
           empty={
             <p className="field-note disposition-table-empty">

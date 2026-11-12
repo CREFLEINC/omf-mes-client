@@ -79,6 +79,11 @@ export const inspectionResultInsights: Translated<typeof ko.inspectionResultInsi
     lotFailed: 'Không xác nhận được số LOT.',
     inspectedAtWithRound: (inspectedAt: string, round: number): string =>
       `${inspectedAt} / lần ${String(round)}`,
+    /** 005 D-18 — 입하 LOT IQC 결과(`confirmCycle` 있음)는 확정 주기로 「처음」·「재검 n차」. */
+    firstCycle: 'Lần đầu',
+    reinspectionCycle: (n: number): string => `Kiểm tra lại lần ${String(n)}`,
+    inspectedAtWithCycle: (inspectedAt: string, cycleLabel: string): string =>
+      `${inspectedAt} / ${cycleLabel}`,
     loading: 'Đang tải trang kết quả kiểm tra',
     failed: 'Không tải được kết quả kiểm tra.',
     retry: 'Thử lại',

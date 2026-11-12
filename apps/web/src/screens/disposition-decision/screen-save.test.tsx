@@ -38,10 +38,10 @@ const renderScreen = (options: Parameters<typeof dispositionStub>[0] = {}): { us
   return { user: userEvent.setup() };
 };
 
-const fillDecision = async (user: User, qty: string, reason = '표면만 손상됐다'): Promise<void> => {
+/* 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 칸 없음). */
+const fillDecision = async (user: User, reason = '표면만 손상됐다'): Promise<void> => {
   await screen.findByText('LOT-TEST-0088');
   await user.click(screen.getByRole('radio', { name: '재작업' }));
-  await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), qty);
   await user.type(screen.getByLabelText(t.form.reasonLabel), reason);
 };
 
@@ -57,7 +57,7 @@ const allPosted = (): Request[] => requestsSent().filter((request) => request.me
 describe('DispositionDecisionScreen 판정 저장', () => {
   it('⭐ 멱등 키와 낙관적 잠금 토큰을 실어 보낸다', async () => {
     const { user } = renderScreen();
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
 
     await waitFor(() => {
@@ -70,7 +70,8 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     expect(request?.headers.get('If-Match')).toBe('W/"41"');
     await expect(request?.json()).resolves.toEqual({
       dispositionTypeCode: CODE,
-      decisionQty: 120,
+      /* 005 FR-038 — 남은 수량 전부(대상 320 − 판정 0). */
+      decisionQty: 320,
       uomId: 7001,
       reason: '표면만 손상됐다',
     });
@@ -78,14 +79,13 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
   it('저장에 성공하면 폼을 비우고 알린다 — 부분 판정을 이어서 할 수 있다', async () => {
     const { user } = renderScreen();
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
 
     expect(await screen.findByText(t.form.success)).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveValue('');
+      expect(screen.getByLabelText(t.form.reasonLabel)).toHaveValue('');
     });
-    expect(screen.getByLabelText(t.form.reasonLabel)).toHaveValue('');
   });
 
   it('⛔ 처분 결정 수량 합이 서버 판정 남은 수량을 넘으면 구조화된 문구를 보인다 — message 원문을 파싱하지 않는다', async () => {
@@ -101,7 +101,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
           { status: 409 },
         ),
     });
-    await fillDecision(user, '9999');
+    await fillDecision(user);
     await save(user);
 
     expect(await screen.findByText(t.form.qtyExceededByServer('45'))).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
           { status: 409 },
         ),
     });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
 
     expect(await screen.findByText(t.form.alreadyClosed)).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
           { status: 409 },
         ),
     });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
 
     expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
@@ -146,7 +146,6 @@ describe('DispositionDecisionScreen 판정 저장', () => {
     const { user } = renderScreen();
     await screen.findByText('LOT-TEST-0088');
     await user.click(screen.getByRole('radio', { name: '재작업' }));
-    await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');
     await save(user);
 
     expect(await screen.findByText(t.form.reasonRequired)).toBeInTheDocument();
@@ -186,7 +185,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
           : jsonResponse({}, { status: 201 });
       },
     });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
     await screen.findByText(t.form.alreadyClosed);
     await save(user);
@@ -201,7 +200,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
   it('⭐ 적용 여부를 모르는 저장은 확인을 누르면 풀린다 — 새로고침이 유일한 탈출이 되지 않게 한다', async () => {
     const { user } = renderScreen({ saveThrows: true });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
 
     const check = await screen.findByRole('button', { name: t.form.checkOutcome });
@@ -220,7 +219,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
       requestedPaths().filter((path) => path.startsWith('/mdm/')).length;
 
     const { user } = renderScreen();
-    await fillDecision(user, '120');
+    await fillDecision(user);
     const before = lookupCount();
     await save(user);
 
@@ -237,7 +236,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
       requestedPaths().filter((path) => path.includes('/41/disposition-decisions')).length;
 
     const { user } = renderScreen({ saveThrows: true });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
 
     const before = historyCount();
@@ -250,7 +249,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
   it('⭐ 결과를 모르는 판정은 «겨눈 부적합의 번호»를 대며 다른 부적합에서도 잠근다', async () => {
     const { user } = renderScreen({ saveThrows: true, secondNonconformance: true });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
     await screen.findByRole('button', { name: t.form.checkOutcome });
 
@@ -263,7 +262,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
   it('⭐ 다른 부적합에서 확인을 누르면 겨눈 부적합으로 데려간다 — 거짓 확인이 되지 않게 한다', async () => {
     const { user } = renderScreen({ saveThrows: true, secondNonconformance: true });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
     await screen.findByRole('button', { name: t.form.checkOutcome });
     await user.click(screen.getByText('NC-TEST-0042'));
@@ -284,14 +283,13 @@ describe('DispositionDecisionScreen 판정 저장', () => {
       secondNonconformance: true,
       saveResponse: () => jsonResponse({ code: 'INVALID_STATE', message: '거절' }, { status: 409 }),
     });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
     await screen.findByText(t.form.alreadyClosed);
 
     await user.click(screen.getByText('NC-TEST-0042'));
     await screen.findByText('LOT-TEST-0088');
     await user.click(screen.getByRole('radio', { name: '재작업' }));
-    await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');
     await user.type(screen.getByLabelText(t.form.reasonLabel), '표면만 손상됐다');
     await save(user);
 
@@ -315,7 +313,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
           { status: 400 },
         ),
     });
-    await fillDecision(user, '120');
+    await fillDecision(user);
     await save(user);
     await screen.findByText('사유가 짧습니다');
 
@@ -336,74 +334,4 @@ describe('DispositionDecisionScreen 판정 저장', () => {
   });
 });
 
-/** 선별(omf-all-around#108 · 서버 선행 P-53) — 양품은 정상, 불량분은 자식 LOT·새 부적합. */
-describe('DispositionDecisionScreen 선별', () => {
-  const renderSort = (options: Parameters<typeof dispositionStub>[0] = {}): { user: User } => {
-    renderWithProviders(
-      <SessionProvider>
-        <DispositionDecisionScreen
-          today={TODAY}
-          offsetMinutes={KST}
-          dispositionTypeCodes={['REWORK', 'SORT']}
-        />
-      </SessionProvider>,
-      {
-        session: SYNTHETIC_SESSION,
-        fetch: dispositionStub(options),
-        route: '/quality/dispositions?nonconformanceId=41',
-      },
-    );
-    return { user: userEvent.setup() };
-  };
-
-  const fillSort = async (user: User, accepted: string, rejected: string): Promise<void> => {
-    await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: '선별' }));
-    await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '100');
-    await user.type(screen.getByLabelText(t.form.acceptedQtyLabel), accepted);
-    await user.type(screen.getByLabelText(t.form.rejectedQtyLabel), rejected);
-    await user.type(screen.getByLabelText(t.form.reasonLabel), '외관 선별');
-  };
-
-  it('양품·불량 수량과 업무 일자를 싣고, 불량분이 넘어간 곳을 알린다', async () => {
-    const { user } = renderSort({
-      saveResponse: () =>
-        jsonResponse(
-          {
-            sortResult: {
-              splitLotId: 91,
-              splitLotNo: 'LOT-TEST-0088-S1',
-              splitNonconformanceId: 52,
-              splitNonconformanceNo: 'NC-0052',
-            },
-          },
-          { status: 201 },
-        ),
-    });
-    await fillSort(user, '70', '30');
-    await save(user);
-
-    await waitFor(() => {
-      expect(posted()).toBeDefined();
-    });
-    await expect(posted()?.json()).resolves.toMatchObject({
-      dispositionTypeCode: 'SORT',
-      decisionQty: 100,
-      acceptedQty: 70,
-      rejectedQty: 30,
-      businessDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as unknown,
-    });
-    expect(
-      await screen.findByText(t.form.sortSuccess('LOT-TEST-0088-S1', 'NC-0052')),
-    ).toBeInTheDocument();
-  });
-
-  it('양품 + 불량이 처분 수량과 다르면 보내지 않는다', async () => {
-    const { user } = renderSort();
-    await fillSort(user, '70', '20');
-    await save(user);
-
-    expect(await screen.findByText(t.form.sortSumMismatch)).toBeInTheDocument();
-    expect(allPosted()).toHaveLength(0);
-  });
-});
+/* 옛 수량 분할 선별(#108 · P-53) 시험은 005 FR-038 로 선별이 「불량 자재 관리 LOT 고르기」로 바뀌어 `sort-split.test.tsx` 로 옮겼다. */

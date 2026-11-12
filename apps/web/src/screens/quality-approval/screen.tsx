@@ -21,7 +21,7 @@ import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/quer
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import {
   judgeSkipExecute,
-  skipExecuteLotIdOf,
+  skipExecuteTargetOf,
   type SkipExecuteState,
 } from '../iqc-skip-approval/target';
 import { DISPOSITION_SCREEN_PATH, dispositionEntryPath } from '../disposition-decision/filters';
@@ -189,8 +189,22 @@ export const QualityApprovalScreen = ({
   const conditionCandidates = useConcessionCandidates(
     isOqcSkip || isIqcSkip || isPqcSkip ? null : (detail.data?.request.approvalRequestId ?? null),
   );
-  const approvedIqcSkipLotId =
-    detail.data === undefined ? null : skipExecuteLotIdOf(detail.data.request, IQC_SKIP_TYPE_CODE);
+  /*
+   * IQC 생략 실행 대상 — 결재 대상은 입하 LOT 이라(005 · 계약 §11, 서버 S10) 결재 상세의 대표 자재 관리 LOT
+   * `targetLotId` 로만 실행한다(W-01-02 와 같은 규칙). 없으면 실행하지 않는다.
+   */
+  const iqcSkipTarget =
+    detail.data === undefined
+      ? null
+      : skipExecuteTargetOf(
+          {
+            ...detail.data.request,
+            /* 결재 상세의 덧댄 칸(forward-005-lots `ApprovalTargetForward`) — 생성 타입에는 아직 없다(T111). */
+            target: detail.data.request.target as { targetLotId?: number | null },
+          },
+          IQC_SKIP_TYPE_CODE,
+        );
+  const approvedIqcSkipLotId = iqcSkipTarget?.kind === 'lot' ? iqcSkipTarget.lotId : null;
   /* 생략 실행은 IQC 생략 화면 권한(W-01-02)이 있어야 한다 — 없으면 LOT 도 읽지 않고 안내만 선다(#186 리뷰). */
   const skipLotId = canOpenIqcSkip ? approvedIqcSkipLotId : null;
   const skipLot = useSkipTargetLot(skipLotId);

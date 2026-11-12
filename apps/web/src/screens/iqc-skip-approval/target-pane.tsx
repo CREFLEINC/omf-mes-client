@@ -2,7 +2,7 @@ import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { DisabledAction } from './disabled-action';
-import { describeOpenBlock, type TargetOpenState } from './target';
+import { describeOpenBlock, type TargetInboundLot, type TargetOpenState } from './target';
 
 const t = messages.iqcSkipApproval;
 
@@ -12,6 +12,11 @@ export interface TargetPaneProps {
   openState: TargetOpenState;
   /** 열 수 있을 때만 불린다. 어디로 가는지는 화면이 정한다 — 부품은 주소를 모른다. */
   onOpen: (path: string) => void;
+  /**
+   * 005 — 대상 LOT 의 입하 LOT(FR-032). 생략은 이 입하 LOT 의 자재 관리 LOT 전부에 걸린다.
+   * 없으면(이전 데이터 · 아직 못 읽음) 칸을 세우지 않는다.
+   */
+  inboundLot?: TargetInboundLot | null;
 }
 
 /**
@@ -31,13 +36,25 @@ export interface TargetPaneProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => (
+export const TargetPane = ({ name, openState, onOpen, inboundLot = null }: TargetPaneProps) => (
   <div role="group" aria-label={t.panes.target} className="iqc-skip-approval-section">
     <dl className="iqc-skip-approval-summary">
       <div className="field-cell">
         <dt className="field-label">{t.fields.targetLot}</dt>
         <dd>{name}</dd>
       </div>
+      {inboundLot === null ? null : (
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.inboundLot}</dt>
+          <dd>{inboundLot.inboundLotNo}</dd>
+        </div>
+      )}
+      {inboundLot === null || inboundLot.lotCount === null ? null : (
+        <div className="field-cell">
+          <dt className="field-label">{t.fields.lotCount}</dt>
+          <dd>{t.skipExecute.lotCountValue(String(inboundLot.lotCount))}</dd>
+        </div>
+      )}
     </dl>
 
     {/* 「열기」·잠긴 사유·안내를 한 줄로 — 좁으면 그때 접힌다. */}

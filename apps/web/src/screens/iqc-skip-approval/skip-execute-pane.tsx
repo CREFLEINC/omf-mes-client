@@ -1,6 +1,6 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import type { SkipExecuteState } from './target';
 
@@ -32,6 +32,11 @@ export interface SkipExecutePaneProps {
    * 확인 창은 그대로다(되돌릴 수 없는 조작이라 「정말 실행할 것인가」를 한 번 묻는다).
    */
   compact?: { title: string; summary: string; action: string; done: string };
+  /**
+   * 005 — 실행할 LOT 을 모를 때의 까닭(W-01-02 · 대표 자재 관리 LOT `targetLotId` 가 오지 않음).
+   * 있으면 단추를 잠그고 이 까닭을 `aria-describedby` 로 잇는다 — 상태(`state`)보다 먼저 본다.
+   */
+  lockedReason?: string;
 }
 
 /**
@@ -47,8 +52,30 @@ export const SkipExecutePane = ({
   banner,
   texts: t = IQC_TEXTS,
   compact,
+  lockedReason,
 }: SkipExecutePaneProps) => {
   const [isConfirming, setIsConfirming] = useState(false);
+  const reasonId = useId();
+
+  /* 실행할 LOT 을 모르면 단추를 세우되 잠그고 까닭을 잇는다(비활성 컨트롤은 툴팁에 닿지 않는다). */
+  if (lockedReason !== undefined) {
+    return (
+      <section
+        className={`iqc-skip-approval-section iqc-skip-approval-execute${compact === undefined ? '' : ' is-compact'}`}
+        aria-label={t.heading}
+      >
+        <div className="iqc-skip-approval-execute-text">
+          <h3 className="iqc-skip-approval-heading">{compact?.title ?? t.heading}</h3>
+          <p id={reasonId} className="field-note">
+            {lockedReason}
+          </p>
+        </div>
+        <Button disabled aria-describedby={reasonId}>
+          {compact?.action ?? t.action}
+        </Button>
+      </section>
+    );
+  }
 
   /*
    * 한 줄 압축형에서 실행할 수 없을 때 — 단추 자리에 결과(완료 초록 글)나 사정(확인 중·실행 불가)이 선다.

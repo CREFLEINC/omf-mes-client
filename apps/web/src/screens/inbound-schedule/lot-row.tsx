@@ -1,10 +1,18 @@
 import { Button, Chip, Icon } from '@crefle/web-ui';
+import type { MaterialPackage } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { Link } from 'react-router';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { formatDate } from './period';
 import { formatQty, OneLine } from './receipt-status';
-import { hasLot, stageGroupTone, stageTone } from './stage';
+import {
+  hasLot,
+  isMigratedInboundLot,
+  stageGroupTone,
+  stageTone,
+  type InboundLotShare,
+} from './stage';
 import type {
   InboundLotProgress,
   InboundStageCode,
@@ -124,12 +132,40 @@ export const lotEvidence = (lot: InboundLotProgress): string => {
   return parts.join(t.lot.evidence.separator);
 };
 
+/** W-01-16 입하/입고 작업 기록 — 새 흐름 입하 LOT 의 P/O 매칭을 조정하는 곳(005 FR-035). */
+export const WORK_RECORD_PATH = '/logistics/inbound-work-record';
+
+/** 그 입하 LOT 을 연 채로 W-01-16 을 연다 — W-01-16 이 상세를 여는 질의 키 `open`(입하 LOT id). */
+export const workRecordHref = (inboundLotId: number): string =>
+  `${WORK_RECORD_PATH}?${new URLSearchParams({ open: String(inboundLotId) }).toString()}`;
+
+/** 패키징 「봉지 10 × 100」 — 단위 이름, 없으면 코드. */
+export const packageText = (pkg: MaterialPackage): string =>
+  t.lot.package(pkg.uomName ?? pkg.uomCode, formatQty(pkg.count), formatQty(pkg.qtyPerPackage));
+
+/** 라인의 입하 LOT 몫 한 조각 — 「{IL} · 매칭 {수량} {단위}」 / 「{IL} · 입하 중」. */
+export const inboundLotShareText = (share: InboundLotShare): string =>
+  share.kind === 'allocated'
+    ? t.lot.shareAllocated(share.inboundLotNo, formatQty(share.allocatedQty), share.uomCode)
+    : t.lot.shareReceiving(share.inboundLotNo);
+
 /**
- * 품목명 칸의 LOT 줄 — LOT 번호(그대로) + 근거(보조색 · 넘치면 말줄임).
+ * 품목명 칸의 LOT 줄 — LOT 번호(그대로) + 입하 LOT 칩 · 패키징 · 매칭 조정 링크(005) + 근거(보조색 · 넘치면 말줄임).
  * 라벨 미부착 줄은 LOT 번호 자리에 「라벨 미부착」을 보조색으로 적는다 — 번호를 지어내지 않는다.
+ * 매칭 조정 링크는 새 흐름 입하 LOT 에만 선다 — W-01-16 권한이 없으면(`canOpenWorkRecord` 거짓) 글만.
  */
-export const LotMainCell = ({ lot }: { lot: InboundLotProgress }) => {
+export const LotMainCell = ({
+  lot,
+  canOpenWorkRecord = false,
+}: {
+  lot: InboundLotProgress;
+  canOpenWorkRecord?: boolean;
+}) => {
   const evidence = lotEvidence(lot);
+  const isNewFlow =
+    lot.inboundLotId !== null &&
+    lot.inboundLotNo !== null &&
+    !isMigratedInboundLot(lot.inboundLotNo);
 
   return (
     <span className="po-board-lot-main">
@@ -137,6 +173,27 @@ export const LotMainCell = ({ lot }: { lot: InboundLotProgress }) => {
         <span className="po-board-lot-meta">{t.lot.labelMissing}</span>
       ) : (
         <span className="po-board-lot-no">{lot.lotNo}</span>
+      )}
+      {(lot.inboundLotNo !== null || lot.package !== null) && (
+        <span className="po-board-lot-inbound">
+          {lot.inboundLotNo !== null && (
+            <Chip variant="status" status="idle" size="sm">
+              {t.lot.inboundLot(lot.inboundLotNo)}
+            </Chip>
+          )}
+          {lot.package !== null && (
+            <span className="po-board-lot-meta">{packageText(lot.package)}</span>
+          )}
+          {isNewFlow &&
+            lot.inboundLotId !== null &&
+            (canOpenWorkRecord ? (
+              <Link className="po-board-lot-meta" to={workRecordHref(lot.inboundLotId)}>
+                {t.lot.workRecordLink}
+              </Link>
+            ) : (
+              <span className="po-board-lot-meta">{t.lot.workRecordLink}</span>
+            ))}
+        </span>
       )}
       {evidence !== '' && <OneLine text={evidence} />}
     </span>

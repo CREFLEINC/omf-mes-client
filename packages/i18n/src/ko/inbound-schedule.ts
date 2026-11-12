@@ -205,6 +205,9 @@ export const inboundSchedule = {
     listExpand: '초과분 목록 펼치기',
     /** 목록 이름 — 연결할 초과분만 보인다(연결한 것은 아직 보이지 않는다 · 사용자 결정 2026-10-27). */
     listTitle: '미연결 초과분',
+    /** 005 — 이 탭은 이전 데이터(`PER_RECEIPT`)만 다룬다. 새 흐름의 P/O 없음은 W-01-16 에서 매칭한다. */
+    newFlowNotice: '새 흐름 입하의 P/O 없음은 입하/입고 작업 기록(W-01-16)에서 매칭합니다.',
+    newFlowLink: '입하/입고 작업 기록',
     table: {
       receiptNo: '입하번호',
       receiptDate: '입하일',
@@ -343,5 +346,18 @@ export const inboundSchedule = {
     },
     loading: '입고 진행을 불러오는 중',
     loadFailed: '입고 진행을 불러오지 못했습니다. 라인은 그대로 보입니다.',
+    /** 005 FR-035 — 자재 관리 LOT 줄의 입하 LOT 칩(screens/W-01-09.md 문구). */
+    inboundLot: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
+    /** 자재 관리 LOT 의 패키징 「봉지 10 × 100」 — 단위 이름(없으면 코드) · 개수 × 개당 수량. */
+    package: (uom: string, count: string, qtyPerPackage: string): string =>
+      `${uom} ${count} × ${qtyPerPackage}`,
+    /** 새 흐름 입하 LOT 의 매칭 조정은 W-01-16 에서 — 권한이 없으면 글만 보인다. */
+    workRecordLink: '매칭 조정은 입하/입고 작업 기록에서',
+    /** 라인의 입하 LOT 몫 — 마감한 입하 LOT 은 P/O 매칭 몫, 마감 전은 「입하 중」. */
+    shareAllocated: (inboundLotNo: string, qty: string, uom: string): string =>
+      `${inboundLotNo} · 매칭 ${qty} ${uom}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-09.md)
+    shareReceiving: (inboundLotNo: string): string => `${inboundLotNo} · 입하 중`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-09.md)
+    receiving: '입하 중',
+    shareSeparator: ', ',
   },
 } as const;

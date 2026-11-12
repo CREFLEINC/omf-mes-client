@@ -24,6 +24,12 @@ export const iqcSkipRequest = {
     quantity: (qty: string, uom: string) => `${qty} ${uom}`,
     /** 막지 않는다 - 다시 올리는 것이 취소를 대신하는 유일한 길이라(취소가 없다) 길을 막지 않는다. */
     alreadyRequested: (at: string) => `이미 요청이 올라가 있습니다 (${at})`,
+    /**
+     * 005 — 생략은 이 LOT 의 입하 LOT 단위로 요청된다(FR-032). 상자 라벨 하나를 스캔해도 같은 입하 LOT 의
+     * 자재 관리 LOT 전부에 걸린다는 것을 요청 전에 말한다.
+     */
+    inboundLot: (inboundLotNo: string) => `입하 LOT ${inboundLotNo}`,
+    inboundLotNote: '요청은 이 입하 LOT 의 자재 관리 LOT 전부에 걸립니다.',
   },
   reason: {
     legend: '왜 급한가',
@@ -44,6 +50,9 @@ export const iqcSkipRequest = {
   sent: {
     title: '요청했습니다',
     description: '승인 결과는 아래 목록에서 확인하세요.',
+    /** 005 — 요청 응답의 입하 LOT 번호 · LOT 수(계약 §11). */
+    inboundLot: (inboundLotNo: string, lotCount: string) =>
+      `입하 LOT ${inboundLotNo} (자재 관리 LOT ${lotCount}개)`,
   },
   /** 담긴 것을 요청 완료로 보이지 않는다 - 아무에게도 가지 않은 상태다. */
   queued: {
@@ -60,6 +69,10 @@ export const iqcSkipRequest = {
   },
   /** 결재선이 없으면 승인자가 정해지지 않아 요청이 설 자리가 없다. */
   noRoute: '결재선이 없어 요청할 수 없습니다. 전산담당에게 문의하세요.',
+  /**
+   * 005 — 입하 중(마감 전) 입하 LOT 은 요청할 수 없다(FR-032 · 409). 무엇을 하면 풀리는지 함께 말한다.
+   */
+  receiving: '아직 입하 중인 입하 LOT 이라 요청할 수 없습니다. 입하 마감을 먼저 하세요.',
   another: '다른 자재 요청',
   mine: {
     legend: '내가 올린 요청',

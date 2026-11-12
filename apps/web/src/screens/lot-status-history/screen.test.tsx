@@ -458,7 +458,8 @@ describe('Lot Status 화면 shell', () => {
     );
     expect(requestCount(urls, '/quality/lot-statuses')).toBe(listCalls + 1);
     const table = screen.getByRole('table', { name: 'LOT 현황' });
-    expect(within(table).getAllByRole('columnheader')).toHaveLength(6);
+    /* FR-035 — 「입하 LOT」 칸이 더해져 여섯에서 일곱 칸이 됐다. */
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(7);
     expect(within(table).getByText('0')).toBeVisible();
   });
 
@@ -879,11 +880,12 @@ describe('Lot Status 화면 shell', () => {
     const user = userEvent.setup();
     const table = await screen.findByRole('table', { name: 'LOT 현황' });
 
+    /* FR-035 — 「입하 LOT」 칸이 최종 변경일 앞에 더해졌다. */
     expect(
       within(table)
         .getAllByRole('columnheader')
         .map((header) => (header.textContent ?? '').replace('drag_indicator', '')),
-    ).toEqual(['LOT 번호', '품목', '상태', '보유 수량', '상태 사유', '최종 변경일']);
+    ).toEqual(['LOT 번호', '품목', '상태', '보유 수량', '상태 사유', '입하 LOT', '최종 변경일']);
     const row = await within(table).findByRole('row', { name: /SAMPLE-LOT-Z/ });
     await user.click(within(row).getAllByRole('cell')[2]!);
     await waitFor(() => expect(locationSearch().get('lot')).toBe('401'));

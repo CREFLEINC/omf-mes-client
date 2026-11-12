@@ -49,6 +49,9 @@ describe('readFilters — 주소가 조건의 정본이다', () => {
       inventoryStatus: 'SAMPLE_I_A',
       ownership: 'SAMPLE_O_A',
       includeZero: true,
+      /* FR-035 — 입하 LOT 조건 둘이 더해졌다(이 주소에는 없어 빈 값). */
+      inboundLotNo: '',
+      inboundLot: '',
     });
   });
 

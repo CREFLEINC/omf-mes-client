@@ -5285,6 +5285,11 @@ dialog.routing-history-dialog {
   text-overflow: ellipsis;
 }
 
+/* 입하 LOT 번호 — 흐린 글자 「IL-YYYYMMDD-NNNN」이 다 보이는 폭 (005) */
+.lot-status-filter-inbound-lot {
+  width: 14rem;
+}
+
 /* 창고·위치 — 이름이 중간 길이다. */
 .field-cell.lot-status-filter-place {
   align-items: stretch;
@@ -8626,6 +8631,208 @@ main:has(.iqc-skip-approval-detail) {
   box-shadow: inset 3px 0 0 var(--semantic-info);
 }
 
+/* W-03-10 입하 LOT 단위 처분 · 선별 · 「지금」 띠 (005) */
+.disposition-nc-inbound {
+  display: block;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.disposition-now-band {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.disposition-now-band-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.disposition-now-band-summary {
+  flex: 1 1 20rem;
+  min-width: 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.disposition-now-band-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.disposition-now-band-body[hidden] {
+  display: none;
+}
+
+.disposition-now-band-item dt {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.disposition-now-band-item dd {
+  margin: var(--space-1) 0 0;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.disposition-now-band-tag {
+  color: var(--semantic-error-text);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+}
+
+.disposition-inbound-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--semantic-info-container);
+  color: var(--on-semantic-info-container);
+}
+
+.disposition-subtitle-note {
+  margin-left: var(--space-2);
+  font-weight: 400;
+}
+
+.disposition-sorted-from {
+  margin: 0;
+}
+
+.disposition-iqc-matches {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.disposition-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.disposition-type-option {
+  display: grid;
+  flex: 1 1 10rem;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.disposition-type-option[data-selected='true'] {
+  border-color: var(--primary);
+  background: var(--primary-container);
+}
+
+.disposition-type-option[data-locked='true'] {
+  opacity: 0.72;
+}
+
+.disposition-type-concession {
+  justify-self: start;
+}
+
+.disposition-type-hint {
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  overflow-wrap: anywhere;
+}
+
+.disposition-qty-note {
+  margin: 0;
+}
+
+.disposition-sort {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.disposition-sort-heading {
+  margin: 0;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.disposition-sort-lots {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.disposition-sort-lot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.disposition-sort-lot-qty {
+  margin-left: auto;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.disposition-sort-qty {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.disposition-sort-preview,
+.disposition-result {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.disposition-sort-preview p,
+.disposition-result p,
+.disposition-result strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.disposition-result {
+  border: 1px solid var(--semantic-success);
+}
+
+.disposition-concession-whole {
+  margin: 0;
+}
+
 .filter-bar.disposition-history-filter {
   display: grid;
   grid-template-columns: repeat(2, minmax(12rem, 1fr));
@@ -11673,6 +11880,14 @@ th:hover > .col-drag {
 .po-board-lot-note {
   font: var(--type-label-md);
   color: var(--on-surface-variant);
+}
+
+/* 자재 관리 LOT 줄의 입하 LOT 칩 · 패키징 · 매칭 조정 안내 — 줄이지 않고 근거가 남는 폭을 쓴다 (005) */
+.po-board-lot-main > .po-board-lot-inbound {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* 입고한 뒤 표 위의 한 줄 — 결과를 그 자리에서 알린다. */

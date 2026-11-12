@@ -80,6 +80,11 @@ export const materialInputScan = {
       /** 상태 자체를 받지 못한 경우. 모르는 것을 「정상」으로 그리지 않는다(스펙 §5-2). */
       blockedStatusUnknown: (item: string): string =>
         `${item}의 상태를 확인하지 못했습니다. 다시 스캔해 주세요.`,
+      /**
+       * 005 — 미리 만든 대기 자재 관리 LOT · 폐기된 자재 관리 LOT(US1-6). 모바일 LOT 조회 도우미와 같은 말이다.
+       */
+      waitingLot: '아직 입하되지 않은 LOT',
+      voidedLot: '폐기된 LOT',
       ambiguous: (count: number): string =>
         `${String(count)}건이 함께 검색되었습니다. 라벨의 코드 전체를 스캔해 주세요.`,
       notFound: (code: string): string =>

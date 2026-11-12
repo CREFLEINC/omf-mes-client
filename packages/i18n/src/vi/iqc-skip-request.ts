@@ -18,6 +18,8 @@ export const iqcSkipRequest: Translated<typeof ko.iqcSkipRequest> = {
     notPending: 'Vật tư đã kiểm tra xong',
     quantity: (qty: string, uom: string) => `${qty} ${uom}`,
     alreadyRequested: (at: string) => `Đã có yêu cầu được gửi (${at})`,
+    inboundLot: (inboundLotNo: string) => `LOT nhập hàng ${inboundLotNo}`,
+    inboundLotNote: 'Yêu cầu áp dụng cho tất cả LOT quản lý vật tư của LOT nhập hàng này.',
   },
   reason: {
     legend: 'Vì sao khẩn',
@@ -36,6 +38,8 @@ export const iqcSkipRequest: Translated<typeof ko.iqcSkipRequest> = {
   sent: {
     title: 'Đã gửi yêu cầu',
     description: 'Hãy xem kết quả duyệt ở danh sách bên dưới.',
+    inboundLot: (inboundLotNo: string, lotCount: string) =>
+      `LOT nhập hàng ${inboundLotNo} (${lotCount} LOT quản lý vật tư)`,
   },
   queued: {
     title: 'Đã đưa yêu cầu vào hàng chờ gửi',
@@ -49,6 +53,7 @@ export const iqcSkipRequest: Translated<typeof ko.iqcSkipRequest> = {
     action: 'Xem bản ghi gửi thất bại',
   },
   noRoute: 'Không có luồng duyệt nên không gửi yêu cầu được. Hãy hỏi bộ phận tin học.',
+  receiving: 'LOT nhập hàng vẫn đang nhập nên không gửi yêu cầu được. Hãy chốt nhập hàng trước.',
   another: 'Yêu cầu cho vật tư khác',
   mine: {
     legend: 'Yêu cầu tôi đã gửi',

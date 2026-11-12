@@ -1,4 +1,10 @@
-import type { components, paths } from '@omf-mes/api-client';
+import type {
+  components,
+  NonconformanceForward005,
+  NonconformanceIqcResultRefForward005,
+  NonconformanceLotForward005,
+  paths,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
@@ -7,18 +13,22 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
  * 경로 앞머리가 `/quality/**`로 같아 한 계약처럼 보이지만 정본 파일이 다르다.
  * 소유가 갈린 근거는 공유계약 B-13(누가 정하고 누가 반영하는가)이다.
  */
-export type Nonconformance = components['schemas']['Nonconformance'];
-export type NonconformanceLot = components['schemas']['NonconformanceLot'];
+/** 005 — 입하 LOT · IQC 결과 매칭 요약을 함께 받는다(계약 §10). */
+export type Nonconformance = NonconformanceForward005;
+export type NonconformanceLot = NonconformanceLotForward005;
+export type IqcResultRef = NonconformanceIqcResultRefForward005;
 export type DispositionDecision = components['schemas']['DispositionDecision'];
 export type PageMeta = components['schemas']['PageMeta'];
 /** W-03-10 ② 「남은 수량」 구획 — 판정 이력 조회 봉투가 목록과 함께 싣는다. */
 export type DispositionRemainingSummary = components['schemas']['DispositionRemainingSummary'];
 
 /**
- * 목록 봉투는 계약에서 파생한다 — 손으로 옮겨 적으면 계약이 바뀌어도 컴파일이 잡지 못한다.
+ * 목록 봉투 — 005 덧댐(`ForwardPaths005Quality`)의 행 모양을 쓴다. 생성 계약의 봉투(`items` · `page`)와 같은 짜임이다.
  */
-export type NonconformanceListResponse =
-  paths['/quality/nonconformances']['get']['responses']['200']['content']['application/json'];
+export interface NonconformanceListResponse {
+  items: Nonconformance[];
+  page: PageMeta;
+}
 
 /** 한 부적합에 딸린 판정 목록. 이 봉투에는 그 부적합에 대한 집계 구획이 함께 온다. */
 export type DispositionDecisionListResponse =
@@ -68,6 +78,8 @@ export interface NonconformanceRow {
   openedAtText: string;
   affectedQtyText: string;
   dispositionProgressCode: Nonconformance['dispositionProgressCode'];
+  /** 005 — 자재 입하 IQC 부적합이면 입하 LOT 번호(목록 번호 아래 줄). 반품 · OQC 는 null. */
+  inboundLotNo?: string;
 }
 
 export const toNonconformanceRow = (nonconformance: Nonconformance): NonconformanceRow => ({
@@ -80,6 +92,10 @@ export const toNonconformanceRow = (nonconformance: Nonconformance): Nonconforma
   /* ⭐ lots를 세지 않는다 — 서버가 롤업해 낸 합을 그대로 옮긴다(공유계약 L-2). 근거: omf-mes#253 */
   affectedQtyText: formatQty(nonconformance.affectedQtyTotal),
   dispositionProgressCode: nonconformance.dispositionProgressCode,
+  /* 반품 · OQC 부적합(입하 LOT 없음)은 칸을 두지 않는다. */
+  ...(nonconformance.inboundLotNo === undefined || nonconformance.inboundLotNo === null
+    ? {}
+    : { inboundLotNo: nonconformance.inboundLotNo }),
 });
 
 /**
@@ -111,6 +127,12 @@ export interface NonconformanceLotRow {
   qualityStatusText: string;
   /** 지금 품질 상태(판정 뒤 값) — 상세 LOT 표가 표시명으로 보인다(#223). */
   qualityStatusCode: string;
+  /** 005 — 수량 그대로(선별 미리 보기의 합). */
+  affectedQty?: number;
+  /** 005 — 이 자재 관리 LOT 에 매칭된 IQC 결과(참고용). */
+  matchedResults?: IqcResultRef[];
+  /** 005 — 불합격 결과 수(참고용). 서버가 주지 않으면 없음. */
+  rejectedResultCount?: number;
 }
 
 export const toLotRow = (lot: NonconformanceLot): NonconformanceLotRow => ({
@@ -121,6 +143,13 @@ export const toLotRow = (lot: NonconformanceLot): NonconformanceLotRow => ({
   uomId: lot.uomId,
   qualityStatusText: `${lot.qualityStatusBeforeCode} → ${lot.qualityStatusAfterCode}`,
   qualityStatusCode: lot.qualityStatusAfterCode,
+  affectedQty: lot.affectedQty,
+  ...(lot.matchedResults === undefined || lot.matchedResults === null
+    ? {}
+    : { matchedResults: lot.matchedResults }),
+  ...(lot.rejectedResultCount === undefined || lot.rejectedResultCount === null
+    ? {}
+    : { rejectedResultCount: lot.rejectedResultCount }),
 });
 
 export interface DecisionRow {
@@ -165,6 +194,13 @@ export interface NonconformanceDetailView {
   /** 대상 수량 합 — 「50」. 단위는 LOT 의 단위로 붙인다(#223). */
   affectedQtyText: string;
   lots: NonconformanceLotRow[];
+  /** 005 — 입하 LOT(자재 입하 IQC 부적합). 반품 · OQC 는 null — 선별이 없다. */
+  inboundLotNo?: string | null;
+  inspectionRequestNo?: string | null;
+  supplierName?: string | null;
+  /** 선별로 떼어 낸 불량에서 생긴 부적합이면 원래 부적합. */
+  sortedFrom?: { nonconformanceId: number; nonconformanceNo: string } | null;
+  unmatchedResults?: IqcResultRef[];
 }
 
 export const toDetailView = (nonconformance: Nonconformance): NonconformanceDetailView => ({
@@ -179,6 +215,20 @@ export const toDetailView = (nonconformance: Nonconformance): NonconformanceDeta
       : nonconformance.description,
   affectedQtyText: formatQty(nonconformance.affectedQtyTotal),
   lots: (nonconformance.lots ?? []).map(toLotRow),
+  inboundLotNo: nonconformance.inboundLotNo ?? null,
+  inspectionRequestNo: nonconformance.inspectionRequestNo ?? null,
+  supplierName: nonconformance.supplierName ?? null,
+  sortedFrom:
+    nonconformance.sortedFromNonconformanceId === undefined ||
+    nonconformance.sortedFromNonconformanceId === null
+      ? null
+      : {
+          nonconformanceId: nonconformance.sortedFromNonconformanceId,
+          nonconformanceNo:
+            nonconformance.sortedFromNonconformanceNo ??
+            String(nonconformance.sortedFromNonconformanceId),
+        },
+  unmatchedResults: nonconformance.unmatchedResults ?? [],
 });
 
 /**

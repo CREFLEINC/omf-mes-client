@@ -2833,6 +2833,8 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
       target: {
         targetTypeCode: 'INBOUND_LOT' as const,
         targetId: 9401,
+        /* 005 — 실행은 서버가 채운 대표 자재 관리 LOT 으로 한다(FR-032 · 응답의 새 칸). */
+        targetLotId: 9401,
         displayName: '합성 LOT',
         openable: false,
       },
@@ -2917,5 +2919,87 @@ describe('IqcSkipApprovalScreen — IQC 생략 실행', () => {
 
     await screen.findByRole('group', { name: t.panes.decision });
     expect(screen.queryByRole('region', { name: t.skipExecute.heading })).toBeNull();
+  });
+});
+
+describe('IqcSkipApprovalScreen — 입하 LOT 단위 생략 실행(005 FR-032)', () => {
+  /* 가상 결재 — 대상은 입하 LOT(id 7301), 대표 자재 관리 LOT 은 9411. */
+  const inboundDetail = (targetLotId: number | null) => ({
+    ...contradictoryDetail,
+    request: {
+      ...contradictoryDetail.request,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      target: {
+        targetTypeCode: 'INBOUND_LOT' as const,
+        targetId: 7301,
+        targetLotId,
+        displayName: '합성 입하 LOT',
+        openable: false,
+      },
+    },
+  });
+  const inboundDetailRoute = (targetLotId: number | null): StubRoute => ({
+    match: (request) => isDetailPath(new URL(request.url).pathname),
+    respond: () => jsonResponse(inboundDetail(targetLotId), { headers: { ETag: '"4"' } }),
+  });
+  const lotRoute = (): StubRoute => ({
+    match: (request) =>
+      new URL(request.url).pathname === '/trace/lots/9411' && request.method === 'GET',
+    respond: () =>
+      jsonResponse({
+        lot: { lotId: 9411, lotNo: '합성 LOT 2', statusCode: 'INSPECTION_PENDING' },
+        externalIdentifiers: [],
+        holds: [],
+      }),
+  });
+  const skipRoute = (): StubRoute => ({
+    match: (request) => new URL(request.url).pathname === '/trace/lots/9411:skip-iqc',
+    respond: () =>
+      jsonResponse({
+        lot: { lotId: 9411 },
+        externalIdentifiers: [],
+        holds: [],
+        inboundLotNo: 'IL-261112-0011',
+        lotCount: 3,
+      }),
+  });
+
+  it('R16-1 대표 자재 관리 LOT(targetLotId)으로 상태를 읽고 실행한다 — 결재 targetId 는 LOT 경로에 쓰지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [listRoute(requestFixtures), inboundDetailRoute(9411), lotRoute(), skipRoute()],
+      '?rq=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
+    await user.click(
+      await within(pane).findByRole('button', { name: t.skipExecute.compact.action }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: t.skipExecute.action }));
+
+    await screen.findByText(t.skipExecute.doneInbound('IL-261112-0011', '3'));
+    expect(
+      requests.filter((request) => request.url.pathname === '/trace/lots/9411:skip-iqc'),
+    ).toHaveLength(1);
+    expect(requests.some((request) => request.url.pathname.startsWith('/trace/lots/7301'))).toBe(
+      false,
+    );
+  });
+
+  it('R16-1 targetLotId 가 없으면 실행 단추를 까닭과 함께 잠근다', async () => {
+    const { requests } = renderScreen(
+      [listRoute(requestFixtures), inboundDetailRoute(null)],
+      '?rq=9001',
+    );
+
+    const pane = await screen.findByRole('region', { name: t.skipExecute.heading });
+    const button = within(pane).getByRole('button', { name: t.skipExecute.compact.action });
+    expect(button).toBeDisabled();
+    const reasonId = button.getAttribute('aria-describedby');
+    expect(reasonId).not.toBeNull();
+    expect(document.getElementById(reasonId ?? '')?.textContent).toBe(t.skipExecute.noTargetLot);
+    expect(requests.some((request) => request.url.pathname.startsWith('/trace/lots/'))).toBe(false);
   });
 });

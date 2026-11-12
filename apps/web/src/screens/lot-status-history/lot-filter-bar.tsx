@@ -150,6 +150,8 @@ export const LotFilterBar = ({
     warehouse: appliedWarehouse,
     location: appliedLocation,
     sort: appliedSort,
+    inboundLotNo: appliedInboundLotNo = '',
+    inboundLot: appliedInboundLot = '',
   } = appliedFilters;
 
   useEffect(() => {
@@ -161,6 +163,8 @@ export const LotFilterBar = ({
       warehouse: appliedWarehouse,
       location: appliedLocation,
       sort: appliedSort,
+      inboundLotNo: appliedInboundLotNo,
+      inboundLot: appliedInboundLot,
     });
   }, [
     appliedLotType,
@@ -170,6 +174,8 @@ export const LotFilterBar = ({
     appliedWarehouse,
     appliedLocation,
     appliedSort,
+    appliedInboundLotNo,
+    appliedInboundLot,
   ]);
 
   /*
@@ -178,7 +184,10 @@ export const LotFilterBar = ({
    */
   const detailId = useId();
   const [isDetailOpen, setIsDetailOpen] = useState(
-    appliedItem !== '' || appliedWarehouse !== '' || appliedLocation !== '',
+    appliedItem !== '' ||
+      appliedWarehouse !== '' ||
+      appliedLocation !== '' ||
+      appliedInboundLotNo !== '',
   );
 
   const locations = useLocationReferenceOptions(toIdentifier(filters.warehouse));
@@ -311,6 +320,19 @@ export const LotFilterBar = ({
           <ItemFilterField
             value={filters.item}
             onChange={(item) => setFilters((current) => ({ ...current, item }))}
+          />
+          {/* 005 FR-035 — 입하 LOT 번호(정확 일치). Enter 로 지금 조건을 조회한다. */}
+          <SearchInput
+            containerClassName="lot-status-filter-inbound-lot"
+            label={t.lotFilter.labels.inboundLotNo}
+            placeholder={t.lotFilter.inboundLotNoPlaceholder}
+            value={filters.inboundLotNo ?? ''}
+            onChange={(event) => {
+              const inboundLotNo = event.target.value;
+              setFilters((current) => ({ ...current, inboundLotNo }));
+            }}
+            onSearch={() => search()}
+            clearLabel={messages.common.clear}
           />
         </div>
       </div>

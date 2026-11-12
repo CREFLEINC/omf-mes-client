@@ -12,6 +12,19 @@ import { useBackStep } from '../../patterns/back-step';
 import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
+import { lifecycleNoticeOf, useScannedLot } from '../../patterns/lots';
+import { uomLabelOf, useUomCodes } from '../../patterns/masters';
+import {
+  BASE_UNIT,
+  checkEntry,
+  conversionText,
+  enteredText,
+  packageUnitOf,
+  qtyText,
+  wholePackagesOf,
+  type EntryUnit,
+  type PackageQtyCheck,
+} from '../../patterns/package-qty';
 import { useOutbox } from '../../patterns/outbox';
 import { referenceLabel } from '../../patterns/reference';
 import { toApiError } from '../../patterns/request';
@@ -38,6 +51,7 @@ import {
   isOutOfSequence,
   isOfOrder,
   hasIssuedAllPicked,
+  pickQtyText,
   issuedLinesOf,
   issuableQtyOf,
   isScannedLotOf,
@@ -60,6 +74,7 @@ import {
   usePickingOrders,
   useIssueRequest,
   usePickingOrder,
+  useLotStock,
 } from './queries';
 import './screen.css';
 
@@ -85,6 +100,23 @@ type Outcome = 'queued' | 'sent' | 'rejected';
  */
 const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pickingOrderId)}`;
 
+/**
+ * 이 화면에서 패키징으로 기록한 피킹(005 US6). 출고 확정 결과가 줄마다 「3봉지 + 50 EA」처럼
+ * 넣은 대로 되보이는 데 쓴다 — 서버는 기본 단위만 알아 그 표기를 다시 만들 길이 없다.
+ */
+interface SessionPick {
+  entered: string[];
+  /** 마지막 피킹 뒤 남은 재고 표기. 재고를 몰랐으면 null. */
+  left: string | null;
+  /** 패키징으로 넣은 것이 있었는가. 없으면 결과를 지금처럼 둔다(패키징 없는 LOT 은 그대로). */
+  byPackage: boolean;
+}
+
+const PACKAGE_UNIT: EntryUnit = 'package';
+
+/** 출고 수량 칸 — 피킹 기록 단추가 막힌 사유(칸의 오류 글 `…-error`)를 잇는다. */
+const QTY_FIELD_ID = 'picking-qty';
+
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
   const failureText = useLoadFailure();
@@ -97,6 +129,15 @@ export const MaterialPickingScreen = () => {
   const [lineId, setLineId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [qty, setQty] = useState('');
+  /* 화면은 늘 기본 단위로 열린다. 피킹을 기록하면 다시 기본 단위로 돌아간다(US6-4). */
+  const [entryUnit, setEntryUnit] = useState<EntryUnit>(BASE_UNIT);
+  const [sessionPicks, setSessionPicks] = useState<ReadonlyMap<number, SessionPick>>(new Map());
+  /* 방금 기록한 피킹 한 건 — 「피킹 3봉지 → 남은 재고 700 EA (7봉지)」. */
+  const [pickLog, setPickLog] = useState<string | null>(null);
+  /* 출고 확정 결과의 줄 — 패키징으로 넣은 피킹이 있을 때만 선다. */
+  const [issuedSummary, setIssuedSummary] = useState<
+    { pickingLineId: number; label: string; qty: string; left: string | null }[]
+  >([]);
   /* 숫자판은 칸을 눌렀을 때만 선다. 늘 띄우면 라인 목록과 기록 단추를 덮는다. */
   const [keypadOpen, setKeypadOpen] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -200,6 +241,13 @@ export const MaterialPickingScreen = () => {
   const destination = useLocation(request.data?.destinationLocationId ?? null);
   const line = lines.find((each) => each.pickingLineId === lineId) ?? null;
   /*
+   * 스캔한 LOT 을 읽는다 — 패키징(봉지 등)과 생애(대기 · 폐기)가 여기에만 있다(005 US6 · US1-6).
+   * 못 읽어도 피킹은 막지 않는다. 그때는 지금처럼 기본 단위로만 받는다.
+   */
+  const scannedLot = useScannedLot(line === null ? null : scanned);
+  const foundLot = scannedLot.data ?? null;
+  const lifecycleNotice = lifecycleNoticeOf(foundLot);
+  /*
    * 담긴 피킹을 셈에 넣는다. 서버가 아는 것만 세면 오프라인에서 집은 흔적이 화면에 남지 않아
    * 같은 라인을 다시 집게 되고, 출고 확정도 영영 열리지 않는다.
    */
@@ -216,6 +264,34 @@ export const MaterialPickingScreen = () => {
   );
   /* 계획 대비 아직 덜 집은 라인 수 — 안내가 「끝났다」로 읽히지 않게 이 값으로 가른다. */
   const unpickedLines = unpickedLineCount(lines, queued);
+
+  /*
+   * 패키징 입력(005 US6). 라인의 LOT 과 같고 대기 · 폐기가 아닌 LOT 에 패키징이 있을 때만 단위를
+   * 고른다(US6-3). 보내는 값은 늘 기본 단위다(SC-007).
+   */
+  const lotMatched =
+    line !== null && scanned !== null && isScannedLotOf(line, scanned) && lifecycleNotice === null;
+  const packageUnit = lotMatched ? packageUnitOf(foundLot?.package) : null;
+  const byPackage = packageUnit !== null && entryUnit === PACKAGE_UNIT;
+  const uoms = useUomCodes(foundLot !== null);
+  const baseUom = uomLabelOf(uoms.data, line?.uomId);
+  const lotStock = useLotStock(lotMatched ? line.lotId : null);
+  /* 피킹만으로는 현재고가 줄지 않는다. 집어 두고 아직 내보내지 않은 양을 빼서 보인다. */
+  const stockNow =
+    line === null || lotStock.data === null || lotStock.data === undefined
+      ? null
+      : lotStock.data - issuableQtyOf(line, queued, alreadyIssued);
+  const entry: PackageQtyCheck | null =
+    line === null
+      ? null
+      : checkEntry({
+          text: qty,
+          entryUnit: byPackage ? PACKAGE_UNIT : BASE_UNIT,
+          unit: packageUnit,
+          remaining: remainingQtyOf(line, queued),
+          stock: stockNow,
+        });
+  const sendQty = pickQtyText(qty, byPackage ? PACKAGE_UNIT : BASE_UNIT, packageUnit);
 
   /*
    * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가
@@ -261,7 +337,10 @@ export const MaterialPickingScreen = () => {
    * 스캔한 것이 이 라인의 LOT 이 아니라는 것을 소리로도 알린다(공유계약 D-2). 단말을 허리에
    * 매단 채 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
    */
-  const scanMissed = scanned !== null && line !== null && !isScannedLotOf(line, scanned);
+  const scanMissed =
+    scanned !== null &&
+    line !== null &&
+    (!isScannedLotOf(line, scanned) || lifecycleNotice !== null);
 
   useEffect(() => {
     if (scanMissed) {
@@ -287,6 +366,7 @@ export const MaterialPickingScreen = () => {
     setLineId(null);
     setScanned(null);
     setQty('');
+    setEntryUnit(BASE_UNIT);
   });
   useBackStep(orderId !== null && lineId === null, () => {
     setOrderId(null);
@@ -305,9 +385,11 @@ export const MaterialPickingScreen = () => {
 
   const chooseLine = (next: PickingLine) => {
     setPickOutcome(null);
+    setPickLog(null);
     setLineId(next.pickingLineId);
     setScanned(null);
     setQty('');
+    setEntryUnit(BASE_UNIT);
   };
 
   const restart = () => {
@@ -319,6 +401,10 @@ export const MaterialPickingScreen = () => {
     setIssueNo(null);
     setPickOutcome(null);
     setIssueTypeCode(null);
+    setEntryUnit(BASE_UNIT);
+    setSessionPicks(new Map());
+    setPickLog(null);
+    setIssuedSummary([]);
     scanField.focus();
   };
 
@@ -338,7 +424,7 @@ export const MaterialPickingScreen = () => {
       const draft = toPickDraft(
         order,
         line,
-        qty,
+        sendQty,
         batchIdOf(order.pickingOrderId),
         new Date(),
         worker.workerNo,
@@ -368,9 +454,37 @@ export const MaterialPickingScreen = () => {
       }
 
       setPickOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+
+      /* 넣은 대로 적어 둔다 — 「피킹 3봉지 → 남은 재고 700 EA (7봉지)」(005 US6). */
+      const entered = enteredText(
+        Number(qty.trim()),
+        byPackage ? PACKAGE_UNIT : BASE_UNIT,
+        baseUom,
+        packageUnit,
+      );
+      const left =
+        stockNow === null || entry === null
+          ? null
+          : qtyText(stockNow - entry.baseQty, baseUom, packageUnit);
+      const pickedLineId = line.pickingLineId;
+
+      setSessionPicks((prev) => {
+        const next = new Map(prev);
+        const was = next.get(pickedLineId);
+
+        next.set(pickedLineId, {
+          entered: [...(was?.entered ?? []), entered],
+          left,
+          byPackage: (was?.byPackage ?? false) || byPackage,
+        });
+
+        return next;
+      });
+      setPickLog(left === null ? null : t.pack.log(entered, left));
       setLineId(null);
       setScanned(null);
       setQty('');
+      setEntryUnit(BASE_UNIT);
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -443,6 +557,27 @@ export const MaterialPickingScreen = () => {
 
       const settled = result === null || result.remaining.some(mine) ? 'queued' : 'sent';
 
+      /* 패키징으로 넣은 라인은 넣은 대로 되보인다 — 「3봉지 + 50 EA」 · 「350 EA」(005 US6). */
+      setIssuedSummary(
+        issuedLinesOf(draft).flatMap((each) => {
+          const picked =
+            each.pickingLineId === null || each.pickingLineId === undefined
+              ? undefined
+              : sessionPicks.get(each.pickingLineId);
+
+          return picked === undefined || !picked.byPackage
+            ? []
+            : [
+                {
+                  pickingLineId: each.pickingLineId ?? 0,
+                  label: picked.entered.join(' + '),
+                  qty: t.pack.qty(String(each.issueQty), uomLabelOf(uoms.data, each.uomId)),
+                  left: picked.left,
+                },
+              ];
+        }),
+      );
+
       /*
        * 큐를 타는 쓰기는 응답이 여기서 끊기면 그 값을 다시 얻을 길이 없어, outbox 가 회차의
        * 응답을 멱등키로 들고 있다(`patterns/outbox/send.ts` 의 `responses`).
@@ -490,6 +625,27 @@ export const MaterialPickingScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
+        {outcome === 'rejected' || issuedSummary.length === 0 ? null : (
+          <Card bordered>
+            <Card.Body className="card-body picking-out__issued">
+              <span className="picking-out__line-note">{t.pack.issuedLabel}</span>
+              {issuedSummary.map((each) => (
+                <div key={each.pickingLineId} className="picking-out__issued-line">
+                  <p className="picking-out__issued-row">
+                    <span>{each.label}</span>
+                    <strong>{each.qty}</strong>
+                  </p>
+                  {each.left === null ? null : (
+                    <p className="picking-out__issued-row">
+                      <span>{t.pack.lotLeft}</span>
+                      <strong>{each.left}</strong>
+                    </p>
+                  )}
+                </div>
+              ))}
+            </Card.Body>
+          </Card>
+        )}
         <Button variant="filled" size="2xl" className="picking-out__wide" onClick={restart}>
           {t.another}
         </Button>
@@ -510,7 +666,8 @@ export const MaterialPickingScreen = () => {
   }
 
   const problem = line === null ? null : lineProblemOf(line, queued);
-  const matched = line !== null && scanned !== null && isScannedLotOf(line, scanned);
+  /* 대기 · 폐기 LOT 은 라인의 LOT 과 번호가 같아도 집을 수 없다(US1-6). */
+  const matched = lotMatched;
 
   /*
    * 여백 표시와 판이 같은 조건을 쓴다. 갈라 적으면 판만 지고 여백이 남아 화면 아래가 빈 채로
@@ -521,6 +678,28 @@ export const MaterialPickingScreen = () => {
   const qtyMessage = (): string | undefined => {
     if (line === null || qty.trim() === '') {
       return undefined;
+    }
+
+    /* 패키징으로 넣을 때는 정수 · 남은 봉지 · 환산한 남은 요청을 본다(005 US6). */
+    if (byPackage && packageUnit !== null && entry !== null) {
+      switch (entry.problem) {
+        case null:
+          return undefined;
+        case 'notNumber':
+        case 'notPositive':
+          return t.qty.problem[entry.problem];
+        case 'notInteger':
+          return t.pack.problem.notInteger(packageUnit.unitName);
+        case 'overPackages':
+          return t.pack.problem.overPackages(
+            packageUnit.unitName,
+            String(stockNow === null ? 0 : wholePackagesOf(stockNow, packageUnit)),
+          );
+        case 'overPlanned':
+          return t.pack.problem.overPlanned(
+            qtyText(remainingQtyOf(line, queued), baseUom, packageUnit),
+          );
+      }
     }
 
     const trouble = qtyProblemOf(qty, line, queued);
@@ -598,6 +777,9 @@ export const MaterialPickingScreen = () => {
         >
           {t.pickOutcome[pickOutcome].description}
         </AlertBanner>
+      )}
+      {pickOutcome === 'rejected' || pickLog === null ? null : (
+        <p className="picking-out__note">{pickLog}</p>
       )}
 
       {returned.length === 0 ? null : (
@@ -731,8 +913,18 @@ export const MaterialPickingScreen = () => {
               {scanField.manual ? t.scan.manualSubmit : t.scan.manualLabel}
             </Button>
 
-            {scanned === null ? null : matched ? (
-              <Chip status="success">{t.scan.matched}</Chip>
+            {/* 대기 · 폐기 LOT 은 번호보다 그 사실을 먼저 말한다(US1-6). */}
+            {scanned === null ? null : lifecycleNotice !== null ? (
+              <AlertBanner variant="error" title={lifecycleNotice} />
+            ) : matched ? (
+              <div className="picking-out__chips">
+                <Chip status="success">{t.scan.matched}</Chip>
+                {packageUnit === null ? null : (
+                  <Chip status="info">
+                    {t.pack.chip(packageUnit.unitName, String(packageUnit.qtyPerPackage), baseUom)}
+                  </Chip>
+                )}
+              </div>
             ) : (
               <AlertBanner variant="error" title={t.scan.mismatch(line.lotNo ?? '')} />
             )}
@@ -750,11 +942,55 @@ export const MaterialPickingScreen = () => {
           */}
           {!matched ? null : (
             <section className="picking-out__section picking-out__entry" ref={qtySection}>
+              {stockNow === null ? null : (
+                <p className="picking-out__stock">
+                  <span>{t.pack.stockLabel}</span>
+                  <strong>{qtyText(stockNow, baseUom, packageUnit)}</strong>
+                </p>
+              )}
+              {/*
+               * 패키징이 있는 LOT 만 단위를 고른다(US6-3). 늘 기본 단위로 열린다(US6-4). 단위를 바꾸면
+               * 넣던 값을 비운다 — 3 EA 가 3봉지로 읽히면 100 배가 나간다.
+               */}
+              {packageUnit === null ? null : (
+                <div className="picking-out__unit" role="group" aria-label={t.pack.unitLegend}>
+                  <span className="picking-out__line-note">{t.pack.unitLegend}</span>
+                  {(
+                    [
+                      [BASE_UNIT, baseUom],
+                      [
+                        PACKAGE_UNIT,
+                        t.pack.unitPackage(
+                          packageUnit.unitName,
+                          String(packageUnit.qtyPerPackage),
+                          baseUom,
+                        ),
+                      ],
+                    ] as const
+                  ).map(([unit, label]) => (
+                    <Button
+                      key={unit}
+                      variant={entryUnit === unit ? 'filled' : 'outlined'}
+                      size="xl"
+                      aria-pressed={entryUnit === unit}
+                      onClick={() => {
+                        if (entryUnit !== unit) {
+                          setEntryUnit(unit);
+                          setQty('');
+                        }
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               {/*
                * 장갑을 끼고 한 손으로 조작한다. 운영체제 키보드는 작은 키가 촘촘하고, 올라오면
                * 라인 목록과 확정 단추를 덮는다(설계 §7-1 · 공유계약 G-6).
                */}
               <TextField
+                id={QTY_FIELD_ID}
                 label={required(t.qty.label)}
                 size="xl"
                 fullWidth
@@ -768,12 +1004,30 @@ export const MaterialPickingScreen = () => {
                 }}
                 error={qtyMessage()}
               />
+              {/* 확정 전에 환산을 보인다 — 「3봉지 = 300 EA」(US6-1). */}
+              {byPackage && packageUnit !== null && entry !== null && entry.problem === null ? (
+                <p className="picking-out__conversion">
+                  {conversionText(Number(qty.trim()), packageUnit, baseUom)}
+                </p>
+              ) : null}
+              {stockNow !== null && entry !== null && entry.problem === null ? (
+                <p className="picking-out__note">
+                  {t.pack.after(qtyText(stockNow - entry.baseQty, baseUom, packageUnit))}
+                </p>
+              ) : null}
               {pickSaveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
               <Button
                 variant="filled"
                 size="2xl"
                 className="picking-out__wide"
-                disabled={busy || !loaded || !canPick(line, scanned, qty, worker !== null, queued)}
+                /* 막힌 사유는 수량 칸의 오류 글이다 — 그 글을 잇는다. */
+                aria-describedby={qtyMessage() === undefined ? undefined : `${QTY_FIELD_ID}-error`}
+                disabled={
+                  busy ||
+                  !loaded ||
+                  (byPackage && entry?.problem !== null) ||
+                  !canPick(line, scanned, sendQty, worker !== null, queued)
+                }
                 onClick={() => void pick()}
               >
                 {t.pick}
@@ -850,8 +1104,12 @@ export const MaterialPickingScreen = () => {
           onClose={() => {
             setKeypadOpen(false);
           }}
-          max={remainingQtyOf(line, queued)}
-          allowDecimal
+          max={
+            byPackage && packageUnit !== null
+              ? wholePackagesOf(remainingQtyOf(line, queued), packageUnit)
+              : remainingQtyOf(line, queued)
+          }
+          allowDecimal={!byPackage}
         />
       )}
     </div>

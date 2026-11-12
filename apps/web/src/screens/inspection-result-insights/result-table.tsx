@@ -127,8 +127,11 @@ export const ResultTable = ({
       align: 'center',
       width: '220px',
       sortable: true,
+      /* 005 D-18 — 확정 주기가 있으면 「처음」·「재검 n차」, 없으면(옛 IQC · PQC · OQC) 지금처럼 회차. */
       render: (row) =>
-        t.inspectedAtWithRound(dateTime(row.result.inspectedAt), row.result.inspectionRound),
+        row.cycleLabel === null
+          ? t.inspectedAtWithRound(dateTime(row.result.inspectedAt), row.result.inspectionRound)
+          : t.inspectedAtWithCycle(dateTime(row.result.inspectedAt), row.cycleLabel),
     },
   ];
   /* 순서를 먼저 정하고 그 위에 폭 손잡이를 단다 — 검사 조회·판정 목록과 같다. */

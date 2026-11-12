@@ -99,3 +99,54 @@
   flex-direction: column;
   gap: var(--space-1, 4px);
 }
+
+/* 005 패키징 입력(M-01-08 US6) — 확인 칩 옆의 패키징 칩, LOT 재고, 입력 단위, 환산, 출고 결과. */
+.picking-out__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+}
+
+.picking-out__stock,
+.picking-out__issued-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.picking-out__stock > span {
+  color: var(--on-surface-muted);
+}
+
+/* 단위 단추는 한 덩이로 — 좁으면 단추가 다음 줄로 내려간다. */
+.picking-out__unit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+.picking-out__unit > .picking-out__line-note {
+  flex-basis: 100%;
+}
+
+.picking-out__conversion {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.picking-out__issued {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.picking-out__issued-line + .picking-out__issued-line {
+  border-top: 1px solid var(--outline-variant);
+  padding-top: var(--space-2, 8px);
+}

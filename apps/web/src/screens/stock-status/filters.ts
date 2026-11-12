@@ -37,6 +37,17 @@ export interface BalanceFilters {
   ownership: string;
   /** 잔액이 0인 줄도 내릴지. 계약 기본값이 거짓이다. */
   includeZero: boolean;
+  /**
+   * 005 FR-035 — 입하 LOT 번호(정확 일치 · 요청 `inboundLotNo`). 계약이 범위 조건(창고 · 품목 · LOT 중 하나)으로
+   * 인정해 **창고 없이 이것만으로 조회된다.**
+   */
+  inboundLotNo: string;
+  /**
+   * 005 FR-035 — 행의 입하 LOT 번호를 눌러 건 거르기(요청 `inboundLotId`). 주소 값은 `번호:입하 LOT 번호` 한 칸이다 —
+   * 칩이 번호를 다시 부르지 않고 「입하 LOT {번호}」를 보이려고 둘을 함께 싣는다(고른 거래 `영업일:거래번호`와 같은 갈래).
+   * 이것도 범위 조건이다.
+   */
+  inboundLot: string;
 }
 
 export const EMPTY_FILTERS: BalanceFilters = {
@@ -48,6 +59,8 @@ export const EMPTY_FILTERS: BalanceFilters = {
   inventoryStatus: '',
   ownership: '',
   includeZero: false,
+  inboundLotNo: '',
+  inboundLot: '',
 };
 
 /** 주소 키는 짧게 쓰고 계약 이름과 분리한다 — 주소는 사람이 읽고 고치는 자리다. */
@@ -60,6 +73,8 @@ const URL_KEYS = {
   inventoryStatus: 'is',
   ownership: 'own',
   includeZero: 'zero',
+  inboundLotNo: 'ilno',
+  inboundLot: 'il',
 } as const satisfies Record<keyof BalanceFilters, string>;
 
 const VIEW_KEY = 'view';
@@ -112,7 +127,51 @@ export const readFilters = (params: URLSearchParams): BalanceFilters => ({
   ownership: params.get(URL_KEYS.ownership) ?? '',
   /* 계약 기본값이 거짓이다. 참을 뜻하는 한 가지 표기만 켠 것으로 읽는다. */
   includeZero: params.get(URL_KEYS.includeZero) === 'true',
+  inboundLotNo: (params.get(URL_KEYS.inboundLotNo) ?? '').trim(),
+  inboundLot: readInboundLotParam(params.get(URL_KEYS.inboundLot) ?? ''),
 });
+
+/** 행에서 고른 입하 LOT — 번호와 입하 LOT 번호. */
+export interface InboundLotRef {
+  inboundLotId: number;
+  inboundLotNo: string;
+}
+
+const INBOUND_LOT_SEPARATOR = ':';
+
+/** 고른 입하 LOT 을 주소 값으로 옮긴다. 읽는 쪽(`toInboundLotRef`)과 짝이다. */
+export const toInboundLotParam = (ref: InboundLotRef): string =>
+  `${String(ref.inboundLotId)}${INBOUND_LOT_SEPARATOR}${ref.inboundLotNo}`;
+
+/** 주소 값 `번호:입하 LOT 번호` 를 읽는다. 번호가 1 이상 정수가 아니거나 입하 LOT 번호가 비면 `null`. */
+export const toInboundLotRef = (raw: string): InboundLotRef | null => {
+  const separator = raw.indexOf(INBOUND_LOT_SEPARATOR);
+
+  if (separator < 0) return null;
+
+  const id = raw.slice(0, separator);
+  const no = raw.slice(separator + 1).trim();
+
+  return POSITIVE_INTEGER.test(id) && no !== ''
+    ? { inboundLotId: Number(id), inboundLotNo: no }
+    : null;
+};
+
+/** 손으로 고친 주소의 깨진 값은 조건으로 받지 않는다 — `NaN` 이 요청에 실리면 조회 전체가 400 이다. */
+const readInboundLotParam = (raw: string): string => {
+  const ref = toInboundLotRef(raw);
+
+  return ref === null ? '' : toInboundLotParam(ref);
+};
+
+/**
+ * 조회할 범위가 있는가 — **창고, 또는 입하 LOT 조건**(005 FR-035). 창고 필수는 이 화면의 규칙이고, 입하 LOT 조건은 계약이
+ * 범위 조건으로 인정해 그것만으로 조회된다(범위 안내 없음).
+ */
+export const hasScopeCondition = (filters: BalanceFilters): boolean =>
+  readNumberFilter(filters.warehouse) !== '' ||
+  filters.inboundLotNo.trim() !== '' ||
+  toInboundLotRef(filters.inboundLot) !== null;
 
 /**
  * 주소가 담은 조건을 **지금 뜻이 있는 조건**으로 읽는다.
@@ -237,6 +296,8 @@ export const toSearchParams = (
     [URL_KEYS.qualityStatus, filters.qualityStatus],
     [URL_KEYS.inventoryStatus, filters.inventoryStatus],
     [URL_KEYS.ownership, filters.ownership],
+    [URL_KEYS.inboundLotNo, filters.inboundLotNo.trim()],
+    [URL_KEYS.inboundLot, readInboundLotParam(filters.inboundLot)],
   ];
 
   for (const [key, value] of entries) {
@@ -264,6 +325,9 @@ export interface BalanceFilterQuery {
   inventoryStatusCode?: BalanceQueryParams['inventoryStatusCode'];
   ownershipTypeCode?: string;
   includeZero?: true;
+  /** 005 FR-035 — 입하 LOT(행에서 고른 것) · 입하 LOT 번호(조건 칸). */
+  inboundLotId?: number;
+  inboundLotNo?: string;
 }
 
 export const toBalanceFilterQuery = (filters: BalanceFilters): BalanceFilterQuery => {
@@ -271,6 +335,8 @@ export const toBalanceFilterQuery = (filters: BalanceFilters): BalanceFilterQuer
   const item = readNumberFilter(filters.item);
   const lot = readNumberFilter(filters.lot);
   const location = readNumberFilter(filters.location);
+  const inboundLot = toInboundLotRef(filters.inboundLot);
+  const inboundLotNo = filters.inboundLotNo.trim();
 
   return {
     ...(warehouse === '' ? {} : { warehouseId: Number(warehouse) }),
@@ -286,6 +352,8 @@ export const toBalanceFilterQuery = (filters: BalanceFilters): BalanceFilterQuer
     ...(filters.ownership === '' ? {} : { ownershipTypeCode: filters.ownership }),
     /* 계약 기본값이 거짓이라 꺼진 상태를 실을 이유가 없다. */
     ...(filters.includeZero ? { includeZero: true as const } : {}),
+    ...(inboundLot === null ? {} : { inboundLotId: inboundLot.inboundLotId }),
+    ...(inboundLotNo === '' ? {} : { inboundLotNo }),
   };
 };
 
@@ -347,6 +415,16 @@ export const toFilterChips = (filters: BalanceFilters, names: FilterChipNames): 
       key: 'includeZero',
       label: t.filters.chipIncludeZero,
       removeLabel: t.filters.chipRemoveIncludeZero,
+    },
+    {
+      key: 'inboundLotNo',
+      label: t.filters.chipInboundLotNo(filters.inboundLotNo),
+      removeLabel: t.filters.chipRemoveInboundLotNo,
+    },
+    {
+      key: 'inboundLot',
+      label: t.filters.chipInboundLot(toInboundLotRef(filters.inboundLot)?.inboundLotNo ?? ''),
+      removeLabel: t.filters.chipRemoveInboundLot,
     },
   ];
 

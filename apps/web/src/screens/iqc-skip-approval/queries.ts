@@ -1,9 +1,10 @@
+import type { ApprovalRequestDetailForward } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { RequestListQuery } from './filters';
-import type { ApprovalRequest, ApprovalRequestDetail, PageMeta } from './types';
+import type { ApprovalRequest, PageMeta } from './types';
 
 /**
  * 이 화면의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -96,7 +97,7 @@ const NO_SELECTION_PATH_ID = 0;
  */
 export const useRequestDetail = (
   approvalRequestId: number | null,
-): UseQueryResult<ApprovalRequestDetail> => {
+): UseQueryResult<ApprovalRequestDetailForward> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -117,7 +118,7 @@ export const useRequestDetail = (
  */
 export const useSkipTargetLot = (
   lotId: number | null,
-): { statusCode: string | null; isError: boolean } => {
+): { statusCode: string | null; isError: boolean; inboundLotNo: string | null } => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: ['iqc-skip-approval', 'skip-lot', lotId] as const,
@@ -130,5 +131,10 @@ export const useSkipTargetLot = (
       ),
   });
 
-  return { statusCode: query.data?.lot.statusCode ?? null, isError: query.isError };
+  return {
+    statusCode: query.data?.lot.statusCode ?? null,
+    isError: query.isError,
+    /* 005 — 대상 LOT 의 입하 LOT 번호(계약 §1). 생략은 그 입하 LOT 단위다(FR-032). */
+    inboundLotNo: query.data?.lot.inboundLotNo ?? null,
+  };
 };

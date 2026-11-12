@@ -7,7 +7,7 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../test/api-harness';
-import { useScannedLot } from './lots';
+import { lifecycleBlockOf, lifecycleNoticeOf, useScannedLot } from './lots';
 
 const SCANNED = '7770001118880002229901015554447777';
 
@@ -152,5 +152,40 @@ describe('스캔값으로 LOT 찾기 — 늘 다시 묻기(omf-all-around#28)', 
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(result.current.data).toBeNull();
+  });
+});
+
+describe('US1-6 대기 · 폐기 LOT 안내', () => {
+  it('US1-6 생애 WAITING 은 「아직 입하되지 않은 LOT」', () => {
+    expect(lifecycleBlockOf({ lifecycleStatusCode: 'WAITING' })).toBe('WAITING');
+    expect(lifecycleNoticeOf({ lifecycleStatusCode: 'WAITING' })).toBe('아직 입하되지 않은 LOT');
+  });
+
+  it('US1-6 생애 VOIDED 는 「폐기된 LOT」', () => {
+    expect(lifecycleBlockOf({ lifecycleStatusCode: 'VOIDED' })).toBe('VOIDED');
+    expect(lifecycleNoticeOf({ lifecycleStatusCode: 'VOIDED' })).toBe('폐기된 LOT');
+  });
+
+  it('US1-6 생애 ACTIVE · 없음(이전 LOT · 제품 LOT)은 지금 그대로 — 안내하지 않는다', () => {
+    expect(lifecycleNoticeOf({ lifecycleStatusCode: 'ACTIVE' })).toBeNull();
+    expect(lifecycleNoticeOf({ lifecycleStatusCode: null })).toBeNull();
+    expect(lifecycleNoticeOf({})).toBeNull();
+    expect(lifecycleNoticeOf(null)).toBeNull();
+  });
+
+  it('US1-6 스캔해 찾은 대기 LOT 의 생애가 조회 결과에 그대로 실린다', async () => {
+    const fetch = createStubFetch([
+      route('/trace/lots', {
+        items: [{ ...lotRow(12, SCANNED), lifecycleStatusCode: 'WAITING' }],
+        page,
+      }),
+    ]);
+
+    const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.lotId).toBe(12);
+    });
+    expect(lifecycleNoticeOf(result.current.data)).toBe('아직 입하되지 않은 LOT');
   });
 });

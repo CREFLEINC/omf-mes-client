@@ -1,7 +1,7 @@
 import type { components, paths } from './generated/api';
 import type { ForwardPaths005Inventory } from './forward-005-inventory';
 import type { ForwardPaths005Lots } from './forward-005-lots';
-import type { ForwardPaths005Quality } from './forward-005-quality';
+import type { ForwardPaths005Quality, InspectionResultListForward005 } from './forward-005-quality';
 import type { ForwardPaths005WorkRecord } from './forward-005-work-record';
 
 /** P-7/P-10 선행 계약: 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다. */
@@ -1343,7 +1343,8 @@ type InspectionId = { inspectionRequestId: number };
  * 이미 아래 `ForwardPaths` 에 있는 경로를 고칠 때만 이 파일의 그 자리를 고친다(같은 열쇠를 두 곳에 두지 않는다).
  */
 export interface ForwardPaths
-  extends ForwardPaths005Quality,
+  extends
+    ForwardPaths005Quality,
     ForwardPaths005Lots,
     ForwardPaths005Inventory,
     ForwardPaths005WorkRecord {
@@ -1724,7 +1725,13 @@ export interface ForwardPaths
       requestBody: { content: { 'application/json': InspectionResultConfirmForward } };
     };
   };
-  '/quality/inspection-results': Omit<InspectionResultsPath, 'post'> & {
+  '/quality/inspection-results': Omit<InspectionResultsPath, 'post' | 'get'> & {
+    /** 005 — 행에 `confirmCycle`(계약 §8 · D-18). 모양은 `forward-005-quality.ts`. */
+    get: Omit<InspectionResultsPath['get'], 'responses'> & {
+      responses: Omit<InspectionResultsPath['get']['responses'], 200> & {
+        200: Json<InspectionResultListForward005>;
+      };
+    };
     post: Omit<InspectionResultsPath['post'], 'requestBody'> & {
       requestBody: { content: { 'application/json': InspectionResultCreateForward } };
     };

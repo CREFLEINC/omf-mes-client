@@ -5,30 +5,24 @@ import {
   EMPTY_DECISION_FORM,
   hasBlockingError,
   hasDecisionInput,
-  remainingNotice,
   toDecisionCreateBody,
   validateDecisionForm,
+  type DecisionFormContext,
   type DecisionFormValue,
 } from './decision-form';
-import type { RemainingQty } from './remaining-qty';
 
 const t = messages.dispositionDecision.form;
+const s = messages.dispositionDecision.sort;
 /** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
 const CODE = 'REWORK';
+/** 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음). */
+const CONTEXT: DecisionFormContext = { remainingQty: 120, lotCount: 3 };
 
 const form = (overrides: Partial<DecisionFormValue> = {}): DecisionFormValue => ({
+  ...EMPTY_DECISION_FORM,
   dispositionTypeCode: CODE,
-  qty: '120',
   reason: '표면만 손상돼 재작업으로 회복된다',
-  acceptedQty: '',
-  rejectedQty: '',
   ...overrides,
-});
-
-const remaining = (value: number | undefined): RemainingQty => ({
-  value,
-  text: value === undefined ? '—' : String(value),
-  isSettled: value !== undefined && value <= 0,
 });
 
 describe('hasDecisionInput', () => {
@@ -38,130 +32,69 @@ describe('hasDecisionInput', () => {
 
   it('한 칸이라도 채우면 입력이 있다', () => {
     expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, reason: '가' })).toBe(true);
-    expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, qty: '1' })).toBe(true);
     expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, dispositionTypeCode: CODE })).toBe(true);
+    expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, sortLotIds: [1] })).toBe(true);
+    expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, goodQty: '1' })).toBe(true);
   });
 
   it('공백만 넣은 것은 입력이 아니다 — 어느 칸이든 같다', () => {
     expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, reason: '   ' })).toBe(false);
-    expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, qty: '   ' })).toBe(false);
+    expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, defectQty: '   ' })).toBe(false);
     expect(hasDecisionInput({ ...EMPTY_DECISION_FORM, dispositionTypeCode: '  ' })).toBe(false);
   });
 });
 
 describe('validateDecisionForm', () => {
   it('다 채운 폼에는 오류가 없다', () => {
-    expect(validateDecisionForm(form())).toEqual({});
+    expect(validateDecisionForm(form(), CONTEXT)).toEqual({});
   });
 
   it('처분을 고르지 않으면 막는다', () => {
-    expect(validateDecisionForm(form({ dispositionTypeCode: '' })).dispositionTypeCode).toBe(
-      t.dispositionRequired,
-    );
-  });
-
-  it('수량이 비면 막는다', () => {
-    expect(validateDecisionForm(form({ qty: '   ' })).decisionQty).toBe(t.qtyRequired);
-  });
-
-  it('숫자가 아니면 막는다', () => {
-    expect(validateDecisionForm(form({ qty: '십이' })).decisionQty).toBe(t.qtyNotNumber);
-    expect(validateDecisionForm(form({ qty: '1e3' })).decisionQty).toBe(t.qtyNotNumber);
-    expect(validateDecisionForm(form({ qty: '+12' })).decisionQty).toBe(t.qtyNotNumber);
-    expect(validateDecisionForm(form({ qty: '12.' })).decisionQty).toBe(t.qtyNotNumber);
-    expect(validateDecisionForm(form({ qty: '.5' })).decisionQty).toBe(t.qtyNotNumber);
-    expect(validateDecisionForm(form({ qty: '１２' })).decisionQty).toBe(t.qtyNotNumber);
-  });
-
-  it('⛔ 너무 긴 수를 막는다 — 열어 두면 지수 표기가 되어 전선에 실린다', () => {
-    expect(validateDecisionForm(form({ qty: '999999999999999999999' })).decisionQty).toBe(
-      t.qtyTooLong,
-    );
-  });
-
-  it('⛔ 정밀도를 잃는 정수를 막는다 — 사용자가 친 수와 다른 값이 기록되지 않게 한다', () => {
-    expect(validateDecisionForm(form({ qty: '9007199254740993' })).decisionQty).toBe(t.qtyTooLong);
-  });
-
-  it('소수 여섯 자리를 넘기면 막는다 — 보이는 자릿수와 맞춘다', () => {
-    expect(validateDecisionForm(form({ qty: '1.1234567' })).decisionQty).toBe(t.qtyTooLong);
-    expect(validateDecisionForm(form({ qty: '1.123456' })).decisionQty).toBeUndefined();
-  });
-
-  it('현실적인 수량은 전부 통과한다', () => {
-    expect(validateDecisionForm(form({ qty: '999999999999' })).decisionQty).toBeUndefined();
-    expect(validateDecisionForm(form({ qty: '1' })).decisionQty).toBeUndefined();
-  });
-
-  it('0과 음수를 막는다', () => {
-    expect(validateDecisionForm(form({ qty: '-5' })).decisionQty).toBe(t.qtyNotNumber);
-    expect(validateDecisionForm(form({ qty: '0' })).decisionQty).toBe(t.qtyTooSmall);
-    expect(validateDecisionForm(form({ qty: '0.0' })).decisionQty).toBe(t.qtyTooSmall);
-  });
-
-  it('⭐ 1 미만의 소수 부분 처분을 막지 않는다 — 물리 제약은 「0 초과」다', () => {
-    expect(validateDecisionForm(form({ qty: '0.5' })).decisionQty).toBeUndefined();
+    expect(
+      validateDecisionForm(form({ dispositionTypeCode: '' }), CONTEXT).dispositionTypeCode,
+    ).toBe(t.dispositionRequired);
   });
 
   it('사유가 공백뿐이면 막는다 — 계약이 비울 수 없다고 정한다', () => {
-    expect(validateDecisionForm(form({ reason: '   ' })).reason).toBe(t.reasonRequired);
+    expect(validateDecisionForm(form({ reason: '   ' }), CONTEXT).reason).toBe(t.reasonRequired);
   });
 
-  it('⭐ 남은 수량을 넘겨도 막지 않는다 — 잔량 판정은 서버 몫이다', () => {
-    expect(validateDecisionForm(form({ qty: '999999' })).decisionQty).toBeUndefined();
-  });
-});
-
-/* #108 리뷰 m3 · 담당자 결정 (a) — 선별은 부적합의 남은 수량 전체일 때만이다(서버 같은 규칙 400). */
-describe('validateDecisionForm — 선별 수량', () => {
-  const sort = (qty: string, accepted: string, rejected: string) =>
-    form({ dispositionTypeCode: 'SORT', qty, acceptedQty: accepted, rejectedQty: rejected });
-
-  it('남은 수량 전체면 통과한다', () => {
-    expect(validateDecisionForm(sort('100', '70', '30'), 100).decisionQty).toBeUndefined();
-  });
-
-  it('남은 수량의 일부면 처분 수량 칸에 남은 수량을 밝혀 막는다', () => {
-    expect(validateDecisionForm(sort('60', '40', '20'), 100).decisionQty).toBe(
-      t.sortWholeRemaining('100'),
+  it('남은 수량을 아직 모르면 막는다 — 보낼 수량(남은 수량 전부)을 정할 수 없다', () => {
+    expect(validateDecisionForm(form(), { ...CONTEXT, remainingQty: undefined }).decisionQty).toBe(
+      t.remainingUnknown,
     );
   });
 
-  it('남은 수량을 모르면 화면이 막지 않는다 — 서버가 정본이다', () => {
-    expect(validateDecisionForm(sort('60', '40', '20'), undefined).decisionQty).toBeUndefined();
-  });
-
-  it('선별이 아니면 일부 판정도 그대로다', () => {
-    expect(validateDecisionForm(form({ qty: '60' }), 100).decisionQty).toBeUndefined();
+  it('남은 수량이 없으면 막는다 — 더 판정할 것이 없다', () => {
+    expect(validateDecisionForm(form(), { ...CONTEXT, remainingQty: 0 }).decisionQty).toBe(
+      t.typeLock.closed,
+    );
   });
 });
 
-describe('remainingNotice', () => {
-  it('남은 수량을 넘기면 예고한다', () => {
-    expect(remainingNotice(form({ qty: '200' }), remaining(120))).toBe(t.qtyOverRemaining('120'));
+/* 005 — 선별은 수량이 아니라 불량 자재 관리 LOT 고르기다(옛 양품 · 불량 수량 분할은 없어졌다 · FR-038). */
+describe('validateDecisionForm — 선별', () => {
+  const sort = (overrides: Partial<DecisionFormValue> = {}) =>
+    form({ dispositionTypeCode: 'SORT', sortLotIds: [3], ...overrides });
+
+  it('일부 LOT 을 고르면 통과한다 — 남은 수량을 몰라도 된다', () => {
+    expect(validateDecisionForm(sort(), { ...CONTEXT, remainingQty: undefined })).toEqual({});
   });
 
-  it('⚠ 예고는 명령이 아니다 — 「입력하세요」로 끝나지 않는다', () => {
-    expect(t.qtyOverRemaining('120')).not.toContain('입력하세요');
-    expect(t.qtySettledNotice).not.toContain('입력하세요');
+  it('하나도 고르지 않으면 막는다', () => {
+    expect(validateDecisionForm(sort({ sortLotIds: [] }), CONTEXT).lotIds).toBe(s.noneSelected);
   });
 
-  it('남은 수량과 같으면 예고하지 않는다 — 경계는 허용이다', () => {
-    expect(remainingNotice(form({ qty: '120' }), remaining(120))).toBeUndefined();
+  it('전부 고르면 막는다 — 원래 입하 LOT 에 하나 이상 남아야 한다', () => {
+    expect(validateDecisionForm(sort({ sortLotIds: [1, 2, 3] }), CONTEXT).lotIds).toBe(
+      s.allSelected,
+    );
   });
 
-  it('⭐ 남은 수량이 0이면 막지 않고 예고한다 — 같은 참고값을 다르게 다루지 않는다', () => {
-    expect(remainingNotice(form({ qty: '10' }), remaining(0))).toBe(t.qtySettledNotice);
-    expect(validateDecisionForm(form({ qty: '10' })).decisionQty).toBeUndefined();
-  });
-
-  it('남은 수량을 낼 수 없으면 예고하지 않는다 — 모르는 것으로 겁주지 않는다', () => {
-    expect(remainingNotice(form({ qty: '999' }), remaining(undefined))).toBeUndefined();
-  });
-
-  it('수량이 받는 모양이 아니면 예고 대신 검증이 답한다', () => {
-    expect(remainingNotice(form({ qty: '1e3' }), remaining(120))).toBeUndefined();
-    expect(remainingNotice(form({ qty: '999999999999999999999' }), remaining(120))).toBeUndefined();
+  it('정보 수량은 비워도 되고, 넣으면 0 이상의 수여야 한다', () => {
+    expect(validateDecisionForm(sort({ goodQty: '0', defectQty: '12.5' }), CONTEXT)).toEqual({});
+    expect(validateDecisionForm(sort({ goodQty: '-1' }), CONTEXT).goodQty).toBe(s.qtyInvalid);
+    expect(validateDecisionForm(sort({ defectQty: '1e3' }), CONTEXT).defectQty).toBe(s.qtyInvalid);
   });
 });
 
@@ -176,8 +109,8 @@ describe('hasBlockingError', () => {
 });
 
 describe('toDecisionCreateBody', () => {
-  it('보낼 본문을 만든다 — 수량을 숫자로 바꾸고 사유의 앞뒤 공백을 지운다', () => {
-    expect(toDecisionCreateBody(form({ reason: '  사유  ' }), 7001)).toEqual({
+  it('정상 · 폐기 · 재작업은 남은 수량 전부를 그 단위로 싣고 사유의 앞뒤 공백을 지운다', () => {
+    expect(toDecisionCreateBody(form({ reason: '  사유  ' }), 7001, CONTEXT)).toEqual({
       dispositionTypeCode: CODE,
       decisionQty: 120,
       uomId: 7001,
@@ -186,29 +119,27 @@ describe('toDecisionCreateBody', () => {
   });
 
   it('⛔ 판정자·판정 시각을 싣지 않는다 — 서버가 채운다', () => {
-    const body = toDecisionCreateBody(form(), 7001);
+    const body = toDecisionCreateBody(form(), 7001, CONTEXT);
 
     expect(body).not.toHaveProperty('decidedBy');
     expect(body).not.toHaveProperty('decidedAt');
   });
 
   it('⛔ 검증을 통과하지 못한 폼은 본문을 만들지 않는다', () => {
-    expect(toDecisionCreateBody(form({ qty: '' }), 7001)).toBeUndefined();
-    expect(toDecisionCreateBody(form({ qty: '십이' }), 7001)).toBeUndefined();
-    expect(toDecisionCreateBody(form({ reason: '  ' }), 7001)).toBeUndefined();
-    expect(toDecisionCreateBody(form({ dispositionTypeCode: '' }), 7001)).toBeUndefined();
+    expect(toDecisionCreateBody(form({ reason: '  ' }), 7001, CONTEXT)).toBeUndefined();
+    expect(toDecisionCreateBody(form({ dispositionTypeCode: '' }), 7001, CONTEXT)).toBeUndefined();
+    expect(
+      toDecisionCreateBody(form(), 7001, { ...CONTEXT, remainingQty: undefined }),
+    ).toBeUndefined();
   });
 
-  it('⛔ 직렬화했을 때 수량이 0이나 null이 되지 않는다', () => {
-    for (const qty of ['', '   ', '십이', '0', '-5', '999999999999999999999']) {
-      const body = toDecisionCreateBody(form({ qty }), 7001);
-
-      expect(body).toBeUndefined();
-      expect(JSON.stringify(body ?? {})).not.toContain('"decisionQty"');
-    }
-  });
-
-  it('남은 수량을 넘긴 수량은 본문을 만든다 — 판정은 서버가 한다', () => {
-    expect(toDecisionCreateBody(form({ qty: '999999' }), 7001)?.decisionQty).toBe(999999);
+  it('선별은 고른 LOT 과 넣은 정보 수량만 싣는다 — 수량 · 단위를 싣지 않는다', () => {
+    expect(
+      toDecisionCreateBody(
+        form({ dispositionTypeCode: 'SORT', sortLotIds: [3], defectQty: ' 12 ' }),
+        7001,
+        CONTEXT,
+      ),
+    ).toEqual({ dispositionTypeCode: 'SORT', lotIds: [3], defectQty: 12, reason: form().reason });
   });
 });

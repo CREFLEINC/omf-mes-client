@@ -1,20 +1,32 @@
-import { Button, Icon, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
-import { SORT, type DecisionFormErrors, type DecisionFormValue } from './decision-form';
-import type { CodeOption } from './disposition-codes';
+import {
+  SORT,
+  sortSelectionError,
+  type DecisionFormErrors,
+  type DecisionFormValue,
+} from './decision-form';
+import type { DispositionOption } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
+import { SortSplitPane } from './sort-split-pane';
+import { formatQty, type NonconformanceLotRow } from './types';
+
+/** 특채 칸 — 고르면 특채 요청 팝업을 연다(요청 → W-03-09 결재 → 적용). */
+export interface ConcessionOption {
+  hint: string;
+  lockReason?: string | undefined;
+  onRequest: () => void;
+}
 
 export interface DecisionFormPaneProps {
   value: DecisionFormValue;
   errors: DecisionFormErrors;
-  /** 남은 수량에 대한 예고. 저장을 막지 않는다 — 잔량 판정은 서버 몫이다. */
-  qtyNotice: string | undefined;
-  /** 남은 수량(조회 시점 참고값) — 처분 수량 오른쪽 「입력 / 미입력」에 쓴다(사용자 지시 · #223). 모르면 그 표시를 두지 않는다. */
+  /** 남은 수량(조회 시점 참고값) — 처분 수량은 이 값 전부로 고정한다(FR-038). 모르면 「—」. */
   remainingQty?: number | undefined;
   /** 판정 컨트롤 전체를 잠그는 사유. 없으면 잠그지 않는다. */
   lockReason: string | undefined;
@@ -24,9 +36,15 @@ export interface DecisionFormPaneProps {
    */
   isUncertain: boolean;
   onCheckOutcome: () => void;
-  dispositionOptions: CodeOption[];
+  dispositionOptions: DispositionOption[];
+  /** 특채 칸. 없으면 두지 않는다. */
+  concession?: ConcessionOption | undefined;
   uomId: number | undefined;
   uoms: DispositionLookup;
+  /** 부적합의 자재 관리 LOT — 효과 문구의 수와 선별 고르기에 쓴다. */
+  lots?: readonly NonconformanceLotRow[] | undefined;
+  inboundLotNo?: string | null | undefined;
+  inspectionRequestNo?: string | null | undefined;
   writeError: ApiError | null;
   isSaving: boolean;
   canCancel: boolean;
@@ -36,17 +54,30 @@ export interface DecisionFormPaneProps {
   onReload: () => void;
 }
 
+const WHOLE_CODES = ['NORMAL', 'SCRAP', 'REWORK'] as const;
+type WholeCode = (typeof WHOLE_CODES)[number];
+const isWholeCode = (code: string): code is WholeCode =>
+  (WHOLE_CODES as readonly string[]).includes(code);
+
+/**
+ * 처분 판정 카드(005 · mockups/W0310-After.html) — 유형 칸 다섯(정상 · 폐기 · 재작업 · 선별 · 특채)과 고른 유형의 칸.
+ * 정상 · 폐기 · 재작업은 남은 수량 전부(잠긴 칸) · 판정 하나가 자재 관리 LOT 전부에. 선별은 불량 자재 관리 LOT 고르기.
+ * 특채는 요청 팝업으로 연다(#223 팝업 그대로).
+ */
 export const DecisionFormPane = ({
   value,
   errors,
-  qtyNotice,
   remainingQty,
   lockReason,
   isUncertain,
   onCheckOutcome,
   dispositionOptions,
+  concession,
   uomId,
   uoms,
+  lots = [],
+  inboundLotNo,
+  inspectionRequestNo,
   writeError,
   isSaving,
   canCancel,
@@ -58,134 +89,154 @@ export const DecisionFormPane = ({
   const t = messages.dispositionDecision;
   const groupLabelId = useId();
   const lockReasonId = useId();
-  const noticeId = useId();
+  const qtyNoteId = useId();
+  const optionHintId = useId();
+  const sortBlockId = useId();
   const isLocked = lockReason !== undefined;
+  const isSort = value.dispositionTypeCode === SORT;
   const uomLabel = uomId === undefined ? '' : lookupDisplayLabel(uoms, uomId);
-  /* 숫자로 읽히지 않으면 0 으로 센다 — 형식 오류는 칸 아래 오류가 말한다. */
-  const parsedQty = Number(value.qty.trim());
-  const enteredQty = value.qty.trim() === '' || !Number.isFinite(parsedQty) ? 0 : parsedQty;
-  const restQty =
-    remainingQty === undefined ? 0 : Math.max(Number((remainingQty - enteredQty).toFixed(6)), 0);
+  const remainingText =
+    remainingQty === undefined
+      ? formatQty(undefined)
+      : `${formatQty(remainingQty)}${uomLabel === '' ? '' : ` ${uomLabel}`}`;
+  const effect = isWholeCode(value.dispositionTypeCode)
+    ? value.dispositionTypeCode === 'REWORK' && inboundLotNo !== null && inboundLotNo !== undefined
+      ? t.form.reworkInboundEffect(inboundLotNo)
+      : t.form.effect[value.dispositionTypeCode]
+    : undefined;
+  /* 선별은 고른 LOT 이 없거나 전부면 저장을 잠근다 — 전부는 보이는 오류, 없음은 가린 이유로 단추에 잇는다. */
+  const sortBlock = isSort ? sortSelectionError(value.sortLotIds, lots.length) : undefined;
+  const isAllSelected = isSort && lots.length > 0 && value.sortLotIds.length >= lots.length;
+  const saveDescribedBy = isLocked
+    ? lockReasonId
+    : sortBlock === undefined
+      ? undefined
+      : sortBlockId;
 
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
-      {/*
-       * 카드형(사용자 시안 · #223) — 처분 유형 | 처분 수량 | 판정 사유를 작은 상자 셋으로 나란히. 좁으면 다음 줄로 넘긴다.
-       */}
-      <div className="disposition-decision-cards">
-        <div className="field-cell disposition-decision-subcard">
-          <span className="field-label" id={groupLabelId}>
-            {t.form.dispositionLabel}
-            <span className="required-mark" aria-hidden="true">
-              {' *'}
-            </span>
+      <div className="field-cell disposition-type-cell">
+        <span className="field-label" id={groupLabelId}>
+          {t.form.dispositionLabel}
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
           </span>
-          {/*
-           * G-2 — 값 목록이 확정되기 전에는 선택지를 지어내지 않는다. 필드를 감추지 않고
-           * 비활성 + 사유로 두며, 저장 버튼도 같은 사유로 함께 잠근다(스펙 §6).
-           */}
-          <RadioGroup
-            name="disposition-type"
-            orientation="horizontal"
-            value={value.dispositionTypeCode}
-            disabled={isLocked || dispositionOptions.length === 0}
-            aria-labelledby={groupLabelId}
-            aria-describedby={isLocked ? lockReasonId : undefined}
-            onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
-          >
-            {dispositionOptions.map((option) => (
-              <Radio key={option.value} value={option.value}>
-                {option.label}
-              </Radio>
-            ))}
-          </RadioGroup>
-          {errors.dispositionTypeCode !== undefined && (
-            <span className="field-error">{errors.dispositionTypeCode}</span>
+        </span>
+        {/*
+         * 유형마다 한 줄 설명 — 막힌 유형은 잠그고 설명 자리에 그 이유를 단다(G-2 · 감추지 않는다).
+         * 특채는 라디오가 아니라 요청 팝업을 여는 단추다(결재가 붙는 별도 길).
+         */}
+        <RadioGroup
+          name="disposition-type"
+          orientation="horizontal"
+          className="disposition-type-options"
+          value={value.dispositionTypeCode}
+          disabled={isLocked || dispositionOptions.length === 0}
+          aria-labelledby={groupLabelId}
+          aria-describedby={isLocked ? lockReasonId : undefined}
+          onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
+        >
+          {dispositionOptions.map((option) => {
+            const hintId = `${optionHintId}-${option.value}`;
+            const note = option.lockReason ?? option.hint;
+            return (
+              <div
+                key={option.value}
+                className="disposition-type-option"
+                data-selected={value.dispositionTypeCode === option.value ? 'true' : undefined}
+                data-locked={option.lockReason === undefined ? undefined : 'true'}
+              >
+                <Radio
+                  value={option.value}
+                  disabled={option.lockReason !== undefined}
+                  aria-describedby={note === undefined ? undefined : hintId}
+                >
+                  {option.label}
+                </Radio>
+                {note !== undefined && (
+                  <span id={hintId} className="disposition-type-hint">
+                    {note}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          {concession !== undefined && (
+            <div
+              className="disposition-type-option"
+              data-locked={concession.lockReason === undefined ? undefined : 'true'}
+            >
+              <Button
+                variant="text"
+                size="sm"
+                className="disposition-type-concession"
+                aria-label={t.concession.request}
+                aria-describedby={`${optionHintId}-CONCESSION`}
+                disabled={isLocked || concession.lockReason !== undefined}
+                onClick={concession.onRequest}
+              >
+                {t.values.dispositionType.CONCESSION}
+              </Button>
+              <span id={`${optionHintId}-CONCESSION`} className="disposition-type-hint">
+                {concession.lockReason ?? concession.hint}
+              </span>
+            </div>
           )}
-        </div>
+        </RadioGroup>
+        {errors.dispositionTypeCode !== undefined && (
+          <span className="field-error">{errors.dispositionTypeCode}</span>
+        )}
+      </div>
+
+      {isSort ? (
+        <SortSplitPane
+          lots={lots}
+          value={value}
+          errors={errors}
+          disabled={isLocked}
+          describedBy={isLocked ? lockReasonId : undefined}
+          allSelectedId={sortBlockId}
+          uomLabel={uomLabel}
+          inspectionRequestNo={inspectionRequestNo}
+          onChange={onChange}
+        />
+      ) : (
+        /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). */
         <div className="disposition-decision-subcard disposition-qty-card">
           <TextField
             label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
-            value={value.qty}
-            placeholder={t.form.qtyPlaceholder}
-            required
+            value={remainingText}
+            readOnly
             fullWidth
-            inputMode="decimal"
             disabled={isLocked}
-            aria-describedby={
-              [isLocked ? lockReasonId : '', qtyNotice === undefined ? '' : noticeId]
-                .filter((id) => id !== '')
-                .join(' ') || undefined
-            }
+            aria-describedby={[isLocked ? lockReasonId : '', qtyNoteId]
+              .filter((id) => id !== '')
+              .join(' ')}
             error={errors.decisionQty}
-            onChange={(event) => onChange({ ...value, qty: event.target.value })}
           />
-          {/* 입력 / 미입력 — 적은 수량과 남은 수량에서 그것을 뺀 수(사용자 지시 · #223). 참고값이다 — 확정은 저장 때 서버. */}
-          {remainingQty !== undefined && (
-            /* 숫자를 크게 · 굵게 — 미입력이 남으면 주황, 다 채우면 초록(사용자 지시 · #223). 읽는 이름은 한 문장. */
-            <span
-              className="disposition-qty-progress"
-              role="status"
-              aria-label={t.form.qtyProgress(enteredQty, restQty, uomLabel)}
-            >
-              <span>
-                {t.form.qtyEntered} <strong>{enteredQty}</strong>
-              </span>
-              <span className="disposition-qty-progress-sep" aria-hidden="true">
-                /
-              </span>
-              <span data-tone={restQty > 0 ? 'warning' : 'success'}>
-                {t.form.qtyRest} <strong>{restQty}</strong>
-              </span>
-              {uomLabel !== '' && <span>{uomLabel}</span>}
-            </span>
-          )}
+          <p id={qtyNoteId} className="field-note disposition-qty-note">
+            {effect === undefined ? t.form.qtyLocked : t.form.wholeEffect(lots.length, effect)}
+          </p>
         </div>
-        {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
-        {/* 여러 줄 입력 부품은 필수 표시(*)를 그리지 않아 CSS 로 붙인다(시안 「판정 사유 *」 · #223). */}
-        <div className="disposition-decision-subcard disposition-reason-field">
-          <TextArea
-            label={t.form.reasonLabel}
-            value={value.reason}
-            placeholder={t.form.reasonPlaceholder}
-            required
-            fullWidth
-            rows={2}
-            disabled={isLocked}
-            aria-describedby={isLocked ? lockReasonId : undefined}
-            error={errors.reason}
-            onChange={(event) => onChange({ ...value, reason: event.target.value })}
-          />
-        </div>
-      </div>
-      {/* 선별(omf-all-around#108) — 처분 수량을 양품·불량으로 나눈다. 합은 처분 수량이다. */}
-      {value.dispositionTypeCode === SORT && (
-        <>
-          <p className="field-note">{t.form.sortHelp}</p>
-          <TextField
-            label={t.form.acceptedQtyLabel}
-            value={value.acceptedQty}
-            required
-            fullWidth
-            inputMode="decimal"
-            disabled={isLocked}
-            error={errors.acceptedQty}
-            onChange={(event) => onChange({ ...value, acceptedQty: event.target.value })}
-          />
-          <TextField
-            label={t.form.rejectedQtyLabel}
-            value={value.rejectedQty}
-            required
-            fullWidth
-            inputMode="decimal"
-            disabled={isLocked}
-            error={errors.rejectedQty}
-            onChange={(event) => onChange({ ...value, rejectedQty: event.target.value })}
-          />
-        </>
       )}
+
+      {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
+      <div className="disposition-decision-subcard disposition-reason-field">
+        <TextArea
+          label={t.form.reasonLabel}
+          value={value.reason}
+          placeholder={t.form.reasonPlaceholder}
+          required
+          fullWidth
+          rows={2}
+          disabled={isLocked}
+          aria-describedby={isLocked ? lockReasonId : undefined}
+          error={errors.reason}
+          onChange={(event) => onChange({ ...value, reason: event.target.value })}
+        />
+      </div>
 
       {isLocked && (
         <div className="form-actions">
@@ -199,32 +250,23 @@ export const DecisionFormPane = ({
           )}
         </div>
       )}
+      {/* 선별에서 하나도 고르지 않았을 때 저장 단추가 읽을 이유(전부 고름은 위 오류 문구가 같은 id 를 쓴다). */}
+      {!isLocked && sortBlock !== undefined && !isAllSelected && (
+        <span id={sortBlockId} className="visually-hidden">
+          {sortBlock}
+        </span>
+      )}
 
-      {/*
-       * 버튼은 입력 바로 아래 오른쪽(사용자 시안 · #223). 남은 수량을 넘겼다는 예고는 같은 줄 취소 왼쪽 —
-       * 막지 않는다(저장 때 서버가 확정한다).
-       */}
       <div className="form-actions disposition-decision-actions">
-        {qtyNotice !== undefined && (
-          /* 검사 조회·판정의 안내 라벨과 같은 모양 — 경고 아이콘 + 주황 바탕 한 줄(사용자 지시 · #223). */
-          <p
-            id={noticeId}
-            className="iqc-inspection-action-note disposition-qty-notice"
-            data-tone="warning"
-          >
-            <Icon name="warning" size={14} aria-hidden />
-            {qtyNotice}
-          </p>
-        )}
         <Button variant="outlined" disabled={!canCancel || isSaving} onClick={onCancel}>
           {t.actions.cancel}
         </Button>
         <Button
-          disabled={isLocked || isSaving}
-          aria-describedby={isLocked ? lockReasonId : undefined}
+          disabled={isLocked || isSaving || sortBlock !== undefined}
+          aria-describedby={saveDescribedBy}
           onClick={onSave}
         >
-          {t.actions.save}
+          {isSort ? t.sort.save : t.actions.save}
         </Button>
       </div>
     </div>

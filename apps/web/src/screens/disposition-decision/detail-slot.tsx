@@ -27,6 +27,10 @@ export interface DetailSlotProps {
   emptyTitle?: string;
   /** 대상 LOT 의 지금 상태(#223). */
   lotStatuses?: Record<number, string>;
+  /** 005 — 남은 수량 글(입하 LOT 부적합 기본 정보). */
+  remainingText?: string | undefined;
+  /** 005 — 「선별로 생김 ←」 원래 부적합 열기. */
+  onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
 }
 
 /**
@@ -51,6 +55,8 @@ export const DetailSlot = ({
   onRetry,
   emptyTitle,
   lotStatuses,
+  remainingText,
+  onOpenNonconformance,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
 
@@ -98,6 +104,8 @@ export const DetailSlot = ({
       uoms={uoms}
       severity={severity}
       lotStatuses={lotStatuses}
+      remainingText={remainingText}
+      onOpenNonconformance={onOpenNonconformance}
     />
   );
 };

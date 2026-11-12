@@ -32,6 +32,13 @@ export interface LotFilters {
   warehouse: string;
   location: string;
   sort: LotStatusSort;
+  /** 005 FR-035 — 입하 LOT 번호(정확 일치 · 목록 · 요약에 `inboundLotNo`). 없으면 빈 값과 같다. */
+  inboundLotNo?: string;
+  /**
+   * 005 FR-035 — 행의 입하 LOT 번호를 눌러 건 거르기(`inboundLotId`). 주소 값은 `번호:입하 LOT 번호` — 거르기 표시가 번호를
+   * 다시 부르지 않게 둘을 함께 싣는다. 없으면 빈 값과 같다.
+   */
+  inboundLot?: string;
 }
 
 export interface HistoryFilters {
@@ -49,6 +56,8 @@ export const EMPTY_LOT_FILTERS: LotFilters = {
   warehouse: '',
   location: '',
   sort: DEFAULT_LOT_SORT,
+  inboundLotNo: '',
+  inboundLot: '',
 };
 
 export const EMPTY_HISTORY_FILTERS: HistoryFilters = { from: '', to: '', actor: '', lot: '' };
@@ -62,6 +71,8 @@ const URL_KEYS = {
   warehouse: 'warehouse',
   location: 'location',
   sort: 'sort',
+  inboundLotNo: 'ilno',
+  inboundLot: 'il',
   lotPage: 'page',
   lotPageSize: 'size',
   selectedLot: 'lot',
@@ -92,6 +103,30 @@ const readLotStatusSort = (raw: string | null): LotStatusSort =>
 export const readMode = (params: URLSearchParams): ScreenMode =>
   params.get(URL_KEYS.mode) === 'history' ? 'history' : 'lot';
 
+/** 행에서 고른 입하 LOT. */
+export interface InboundLotRef {
+  inboundLotId: number;
+  inboundLotNo: string;
+}
+
+/** 고른 입하 LOT 을 주소 값으로 옮긴다(`toInboundLotRef` 와 짝). */
+export const toInboundLotParam = (ref: InboundLotRef): string =>
+  `${String(ref.inboundLotId)}:${ref.inboundLotNo}`;
+
+/** 주소 값 `번호:입하 LOT 번호` 를 읽는다. 번호가 1 이상 정수가 아니거나 입하 LOT 번호가 비면 `null`. */
+export const toInboundLotRef = (raw: string): InboundLotRef | null => {
+  const separator = raw.indexOf(':');
+  if (separator < 0) return null;
+  const id = readPositiveInteger(raw.slice(0, separator));
+  const no = raw.slice(separator + 1).trim();
+  return id === null || no === '' ? null : { inboundLotId: id, inboundLotNo: no };
+};
+
+const readInboundLotParam = (raw: string | null): string => {
+  const ref = toInboundLotRef(raw ?? '');
+  return ref === null ? '' : toInboundLotParam(ref);
+};
+
 export const readLotFilters = (params: URLSearchParams): LotFilters => ({
   lotType: params.get(URL_KEYS.lotType) ?? '',
   q: params.get(URL_KEYS.q) ?? '',
@@ -100,6 +135,8 @@ export const readLotFilters = (params: URLSearchParams): LotFilters => ({
   warehouse: readPositiveIntegerString(params.get(URL_KEYS.warehouse)),
   location: readPositiveIntegerString(params.get(URL_KEYS.location)),
   sort: readLotStatusSort(params.get(URL_KEYS.sort)),
+  inboundLotNo: (params.get(URL_KEYS.inboundLotNo) ?? '').trim(),
+  inboundLot: readInboundLotParam(params.get(URL_KEYS.inboundLot)),
 });
 
 /** 오늘(브라우저 시각 기준) — 「YYYY-MM-DD」. */
@@ -179,6 +216,8 @@ export const toAppliedLotSearchParams = (
   setOrDelete(next, URL_KEYS.status, filters.status);
   setOrDelete(next, URL_KEYS.warehouse, filters.warehouse);
   setOrDelete(next, URL_KEYS.location, filters.location);
+  setOrDelete(next, URL_KEYS.inboundLotNo, (filters.inboundLotNo ?? '').trim());
+  setOrDelete(next, URL_KEYS.inboundLot, readInboundLotParam(filters.inboundLot ?? null));
   if (filters.sort === DEFAULT_LOT_SORT) next.delete(URL_KEYS.sort);
   else next.set(URL_KEYS.sort, filters.sort);
   setPage(next, URL_KEYS.lotPage, page);

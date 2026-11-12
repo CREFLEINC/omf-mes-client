@@ -1,4 +1,10 @@
-import type { components, paths } from '@omf-mes/api-client';
+import type {
+  components,
+  InboundLotProgressForward,
+  paths,
+  PurchaseOrderLineListItemForward,
+  ReceivingInboundLot,
+} from '@omf-mes/api-client';
 
 /**
  * W-01-09 화면 슬라이스의 계약.
@@ -21,7 +27,13 @@ export type PageMeta = components['schemas']['PageMeta'];
  * **키는 언제나 다 온다.** 비어 있는 칸은 `null` 로 온다 — 화면이 「키 없음」 갈래를 따로 두지 않는다.
  * `remainingQty` 는 발주 − 누적 입하(0 에서 자른다 · 취소된 라인은 0)다.
  */
-export type InboundScheduleLine = components['schemas']['PurchaseOrderLineListItem'];
+export type InboundScheduleLine = PurchaseOrderLineListItemForward;
+
+/**
+ * 같은 공장 · 공급사 · 품목의 **입하 중** 입하 LOT(005 계약 §12 · G1 · 서버 S7f `receivingInboundLots[]`).
+ * 마감 전 입하 LOT 은 P/O 배정이 없어 LOT 줄이 없다 — 라인에 「{IL} · 입하 중」으로 보인다(FR-035).
+ */
+export type { ReceivingInboundLot };
 
 /**
  * 입하 진행 — **서버가 판정한다**(화면이 규칙을 복사하지 않는다).
@@ -33,8 +45,10 @@ export type InboundScheduleLine = components['schemas']['PurchaseOrderLineListIt
 export type ReceiptStatusCode = InboundScheduleLine['receiptStatusCode'];
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */
-export type InboundScheduleListResult =
-  paths['/logistics/purchase-order-lines']['get']['responses'][200]['content']['application/json'];
+export type InboundScheduleListResult = Omit<
+  paths['/logistics/purchase-order-lines']['get']['responses'][200]['content']['application/json'],
+  'items'
+> & { items: InboundScheduleLine[] };
 
 /**
  * 왼쪽 표 — P/O 묶음 한 줄(server #762 · `GET /logistics/purchase-orders` 의 `PurchaseOrderListItem`).
@@ -87,7 +101,7 @@ export type InboundNextActionCode = NonNullable<
  * **라벨 미부착 입하 라인도 한 줄이다**(`LABEL_PENDING` · 사용자 지시 2026-10-23 「라벨 미부착도 확인해야 해」). 그 줄은
  * LOT 이 아직 없어 `lotId` · `lotNo` · `lotStatusCode` 가 `null` 이고, 줄은 입하 라인(`inboundReceiptLineId`)으로 가린다.
  */
-export type InboundLotProgress = Omit<components['schemas']['InboundLotProgress'], 'stageCode'> & {
+export type InboundLotProgress = Omit<InboundLotProgressForward, 'stageCode'> & {
   stageCode: InboundStageCode | string;
 };
 

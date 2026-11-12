@@ -13,6 +13,7 @@ import { messages } from '@omf-mes/i18n';
 import { toLotStatusSort, toTableSort } from './current-sort';
 import {
   ALL_LOT_TYPES,
+  type InboundLotRef,
   type LotFilters,
   type LotStatusSort,
   LOT_PAGE_SIZES,
@@ -69,6 +70,8 @@ interface CurrentResultsProps {
   onSelectLot: (lotId: number) => void;
   /** 지금 상세에 연 LOT — 그 줄을 파란 바탕으로 표시한다. */
   selectedLotId: number | null;
+  /** 005 FR-035 — 행의 입하 LOT 번호를 누르면 그 입하 LOT 으로 거른다. 없으면 번호를 글로만 보인다. */
+  onFilterInboundLot?: (ref: InboundLotRef) => void;
 }
 
 export const CurrentResults = ({
@@ -82,6 +85,7 @@ export const CurrentResults = ({
   onPageSizeChange,
   onSelectLot,
   selectedLotId,
+  onFilterInboundLot,
 }: CurrentResultsProps) => {
   /*
    * 들어오자마자 목록을 띄운다(사용자 2026-10-30) — 아직 조회 단추를 누르지 않았으면(유형이 빈 값) 「전체」 유형으로
@@ -181,6 +185,34 @@ export const CurrentResults = ({
           }
         />
       ),
+    },
+    /*
+     * 005 FR-035 — 입하 LOT(없으면 빈칸). 번호를 누르면 그 입하 LOT 으로 거른다 — 줄 고르기(줄 아무 곳이나 누르면 상세)와
+     * 겹치지 않게 단추가 누름을 줄로 넘기지 않는다.
+     */
+    {
+      key: 'inboundLot',
+      header: t.current.columns.inboundLot,
+      align: 'center',
+      width: '168px',
+      render: (row) => {
+        const { inboundLotId, inboundLotNo } = row;
+        if (inboundLotId === null || inboundLotNo === null) return '';
+        if (onFilterInboundLot === undefined) return <OneLine text={inboundLotNo} />;
+        return (
+          <Button
+            variant="text"
+            size="sm"
+            aria-label={t.current.filterInboundLot(inboundLotNo)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onFilterInboundLot({ inboundLotId, inboundLotNo });
+            }}
+          >
+            {inboundLotNo}
+          </Button>
+        );
+      },
     },
     {
       key: 'latestTransitionAt',

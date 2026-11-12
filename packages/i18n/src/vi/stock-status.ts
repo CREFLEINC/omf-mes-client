@@ -30,6 +30,8 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     inventoryStatus: 'Trạng thái tồn kho',
     ownership: 'Phân loại sở hữu',
     includeZero: 'Gồm cả số dư 0',
+    inboundLotNo: 'Số LOT nhập hàng',
+    inboundLotNoPlaceholder: 'IL-YYYYMMDD-NNNN',
   },
   actions: {
     prevPage: 'Trước',
@@ -40,6 +42,7 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     deselect: 'Bỏ chọn',
     selectRow: (lotName: string): string => `Chọn ${lotName}`,
     deselectRow: (lotName: string): string => `Bỏ chọn ${lotName}`,
+    filterInboundLot: (inboundLotNo: string): string => `Lọc theo LOT nhập hàng ${inboundLotNo}`,
   },
   reasons: {
     warehouseRequired: 'Hãy chọn kho rồi mới tra cứu. Màn hình này xem tồn kho của một kho.',
@@ -70,6 +73,7 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     inventoryStatus: 'Trạng thái tồn kho',
     ownership: 'Sở hữu',
     lastTransactionAt: 'Giao dịch gần nhất',
+    inboundLot: 'LOT nhập hàng',
     select: 'Chi tiết',
   },
   groupHeader: {
@@ -102,6 +106,10 @@ export const stockStatus: Translated<typeof ko.stockStatus> = {
     chipRemoveInventoryStatus: 'Bỏ điều kiện trạng thái tồn kho',
     chipRemoveOwnership: 'Bỏ điều kiện phân loại sở hữu',
     chipRemoveIncludeZero: 'Bỏ gồm cả số dư 0',
+    chipInboundLotNo: (value: string): string => `Số LOT nhập hàng: ${value}`,
+    chipRemoveInboundLotNo: 'Bỏ điều kiện số LOT nhập hàng',
+    chipInboundLot: (value: string): string => `LOT nhập hàng ${value}`,
+    chipRemoveInboundLot: 'Bỏ lọc LOT nhập hàng',
   },
   pageNav: {
     label: 'Chuyển trang',
