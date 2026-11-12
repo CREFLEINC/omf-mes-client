@@ -35383,7 +35383,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .erp-wo-multi-week-tools > .erp-wo-distribution { display: contents; }
 .erp-wo-multi-week-tools > .erp-wo-distribution > button { grid-column: 2; grid-row: 1; align-self: start; margin-top: var(--space-5); }
 .erp-wo-multi-week-tools .erp-wo-distribution-settings { grid-column: 1 / -1; }
-.erp-wo-multi-page .erp-wo-plan-board-title { display: none; }
+.erp-wo-multi-page .erp-wo-plan-board-title { display: block; }
 .erp-wo-multi-page .erp-wo-plan-toolbar .section-title { margin: 0; }
 
 .erp-wo-multi-week-heading .field-note { margin: 0; max-width: none; }
@@ -36780,3 +36780,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,18rem) minmax(0,1fr); }
 .erp-wo-distribution-period .erp-wo-period-trigger { box-sizing:border-box; }
 @media(max-width:40rem) { .erp-wo-segment-fields, .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(10rem,.7fr) minmax(0,1.8fr); }
+@container erp-wo-overview (max-width:36rem) { .erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(0,1fr); } }

@@ -37,7 +37,6 @@ export interface AssignStepProps {
  */
 export const AssignStep = ({
   actionTargetId,
-  itemLabel,
   workOrders,
   blockedIds,
   plantId,
@@ -132,7 +131,7 @@ export const AssignStep = ({
           ) : (
             <AssignEditor
               actionTargetId={actionTargetId}
-              summary={`${itemLabel ? `${itemLabel} / ` : ''}${lineNameOf?.(selected.productionLineId ?? null) ?? ''} / ${planDateOf(selected.productionPlanId) ?? '—'} / ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
+              summary={`계획일 ${planDateOf(selected.productionPlanId) ?? '—'} / 작업지시 수량 ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
               key={selected.workOrderId}
               title={t.editorTitle(selected.workOrderNo, selected.operationName)}
               workOrderId={selected.workOrderId}

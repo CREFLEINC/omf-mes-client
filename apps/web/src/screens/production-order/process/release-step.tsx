@@ -414,39 +414,41 @@ export const ReleaseStep = ({
           </div>
         </section>
         <div className="erp-wo-release-layout">
-          <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
-            <summary>
-              선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
-            </summary>
-            <dl className="erp-wo-release-summary">
-              <div>
-                <dt>{t.orderNo}</dt>
-                <dd>{orderNo ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t.item}</dt>
-                <dd>{itemLabel ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t.columns.operation}</dt>
-                <dd>{wo.operationName}</dd>
-              </div>
-              <div>
-                <dt>{t.columns.orderQty}</dt>
-                <dd>
-                  {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
-                </dd>
-              </div>
-              <div>
-                <dt>{t.planDate}</dt>
-                <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
-              </div>
-              <div>
-                <dt>{t.line}</dt>
-                <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
-              </div>
-            </dl>
-          </details>
+          {!reviewPlans && (
+            <details className="pane erp-wo-release-detail" aria-label={t.selectedTarget}>
+              <summary>
+                선택 작업지시 상세 · {wo.workOrderNo} · {wo.operationName}
+              </summary>
+              <dl className="erp-wo-release-summary">
+                <div>
+                  <dt>{t.orderNo}</dt>
+                  <dd>{orderNo ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>{t.item}</dt>
+                  <dd>{itemLabel ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>{t.columns.operation}</dt>
+                  <dd>{wo.operationName}</dd>
+                </div>
+                <div>
+                  <dt>{t.columns.orderQty}</dt>
+                  <dd>
+                    {formatQty(wo.orderQty)} {uomLabelOf(wo.uomId)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t.planDate}</dt>
+                  <dd>{planDateOf?.(wo.productionPlanId) ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>{t.line}</dt>
+                  <dd>{lineNameOf?.(wo.productionLineId ?? null) ?? '—'}</dd>
+                </div>
+              </dl>
+            </details>
+          )}
           {plantId != null && (
             <details className="pane erp-wo-release-terminals">
               <summary>연결 단말기 확인</summary>

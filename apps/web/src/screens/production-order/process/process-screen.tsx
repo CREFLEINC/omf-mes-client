@@ -1,3 +1,5 @@
+import { PlanAddDialog } from './plan-add-dialog';
+import { planQuantities } from './plan-quantities';
 import { WorkOrderOverview } from './work-order-overview';
 /**
  * W-02-01 작업지시 목록 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
@@ -21,11 +23,7 @@ import { useApiClient } from '../../../patterns/api-context';
 import { SaveErrorBanner } from '../../../patterns/master';
 import { josa } from '../../../patterns/josa';
 import { plantToday } from '../../../patterns/plant-time';
-import {
-  ProcessPage,
-  type PastSummaryGroup,
-  type ProcessStep,
-} from '../../../patterns/process-page';
+import { ProcessPage, type ProcessStep } from '../../../patterns/process-page';
 import {
   validateProductionPlanDraft,
   type ProductionPlanDraftField,
@@ -236,6 +234,7 @@ export const ProcessWorkspace = ({
   const planDirty = unconfirmedRows.some((row) => row.productionPlanId === null || row.isDirty);
   const [planBusy, setPlanBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const planLines = (lines.data?.items ?? []).map((line) => ({
     id: line.productionLineId,
     code: line.lineCode,
@@ -496,48 +495,6 @@ export const ProcessWorkspace = ({
   };
 
   /* 지난 단계 요약: 지난 단계에서 정한 값만. 단계별 묶음과 「라벨 값」 쌍(T-W-C 지난 단계 요약 형식) */
-  const ps = tp.pastSummary;
-  const pastGroups: PastSummaryGroup[] = [];
-  if (index > 0) {
-    const bom = bomItems.find((entry) => String(entry.bomId) === bomId);
-    const routing = routingItems.find((entry) => String(entry.routingId) === routingId);
-    pastGroups.push({
-      step: stepName('master'),
-      pairs: [
-        bom === undefined
-          ? { label: ps.bom, value: ps.unset, unset: true }
-          : { label: ps.bom, value: ps.revision(bom.bomCode, bom.bomVersion) },
-        routing === undefined
-          ? { label: ps.routing, value: ps.unset, unset: true }
-          : { label: ps.routing, value: ps.revision(routing.routingCode, routing.routingVersion) },
-      ],
-    });
-  }
-  if (index > 1) {
-    const qty = confirmedQty;
-    const planLineNames = [
-      ...new Set(confirmedPlans.map((entry) => lineName(entry.plannedLineId))),
-    ];
-    pastGroups.push({
-      step: stepName('plan'),
-      pairs: [
-        { label: ps.confirmedQty, value: `${formatQty(qty)} ${uomLabelOf(order.uomId)}` },
-        ...(planLineNames.length === 0 ? [null] : planLineNames).map((name) =>
-          name === null
-            ? { label: ps.line, value: ps.unset, unset: true }
-            : { label: ps.line, value: name },
-        ),
-      ],
-    });
-  }
-  if (index > 2) {
-    const count =
-      step === 'done' ? (allWorkOrders.data?.length ?? 0) : (unreleased.data?.length ?? 0);
-    pastGroups.push({
-      step: stepName('assign'),
-      pairs: [{ label: ps.assigned, value: ps.workOrders(count) }],
-    });
-  }
 
   const guidance =
     step === 'done'
@@ -626,21 +583,10 @@ export const ProcessWorkspace = ({
               statusNameOf={codeNames.productionPlanStatus}
               disabled={planBusy || !master.complete}
               failures={planFailures}
-              onAdd={() =>
-                editor.add(
-                  manualPlanDefaults(
-                    order,
-                    editor.rows,
-                    planLines.filter(
-                      (line) =>
-                        lines.data?.items.find((item) => item.productionLineId === line.id)
-                          ?.isActive,
-                    ),
-                    { bomId: draftBomId, routingId },
-                    plantToday(),
-                  ),
-                )
+              addDisabled={
+                planQuantities(order.orderQty, order.confirmedPlanQty, editor.rows).remaining <= 0
               }
+              onAdd={() => setAddOpen(true)}
               distributionStartDate={recommendedPlanDate(order.plannedStartDate, plantToday())}
               distributionLines={planLines.filter(
                 (line) =>
@@ -871,7 +817,14 @@ export const ProcessWorkspace = ({
           />
         </>
       }
-      summary={<WorkOrderOverview order={order} item={item} unitLabel={uomLabelOf(order.uomId)} />}
+      summary={
+        <WorkOrderOverview
+          identityOnly
+          order={order}
+          item={item}
+          unitLabel={uomLabelOf(order.uomId)}
+        />
+      }
       headerActions={
         canRerun && step !== 'done' ? (
           <Button
@@ -911,8 +864,6 @@ export const ProcessWorkspace = ({
       }
       steps={steps}
       onSelectStep={goTo}
-      pastSummary={pastGroups}
-      pastSummaryInBody={step !== 'master'}
       bodyScrollKey={step ?? undefined}
       actionBar={
         <ActionBar
@@ -950,9 +901,51 @@ export const ProcessWorkspace = ({
           }}
         />
       )}
+      {addOpen && (
+        <PlanAddDialog
+          targets={[
+            {
+              id: order.productionOrderNo,
+              label: `${order.productionOrderNo} / ${item ? named(item.itemName, item.itemCode) : ''}`,
+              unit: uomLabelOf(order.uomId),
+              remaining: planQuantities(order.orderQty, order.confirmedPlanQty, editor.rows)
+                .remaining,
+              decimalScale: uoms.decimalScaleOf?.(order.uomId),
+              lines: planLines.filter(
+                (line) =>
+                  lines.data?.items.find((item) => item.productionLineId === line.id)?.isActive,
+              ),
+              defaults: manualPlanDefaults(
+                order,
+                editor.rows,
+                planLines.filter(
+                  (line) =>
+                    lines.data?.items.find((item) => item.productionLineId === line.id)?.isActive,
+                ),
+                { bomId: draftBomId, routingId },
+                plantToday(),
+              ),
+            },
+          ]}
+          onClose={() => setAddOpen(false)}
+          onAdd={(_, draft) => {
+            editor.add(draft);
+            setAddOpen(false);
+          }}
+        />
+      )}
       {confirmOpen && (
         <PlanConfirmDialog
           plans={unconfirmedRows.map(rowName)}
+          groups={[
+            {
+              orderNo: order.productionOrderNo,
+              plans: unconfirmedRows.map(rowName),
+              operations: (operations.data?.items ?? []).map(
+                (operation) => operation.operationName,
+              ),
+            },
+          ]}
           operations={(operations.data?.items ?? []).map((operation) => operation.operationName)}
           running={planBusy}
           onCancel={() => setConfirmOpen(false)}

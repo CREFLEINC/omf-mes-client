@@ -373,7 +373,7 @@ export const erpWorkOrderFlow = {
         remainingQty: '미계획 수량',
         unconfirmed: '미확정',
         unassigned: '생산 라인 미지정',
-        selectPrompt: '왼쪽에서 계획을 선택하세요.',
+        selectPrompt: '계획을 선택하세요.',
         readonly: '확정된 계획은 수정할 수 없습니다.',
         unsavedSummary: '편집 중인 수량을 포함합니다. 하단에서 계획을 저장하거나 확정하세요.',
         previousWeek: '이전 주',

@@ -49,7 +49,17 @@ const fixtures = vi.hoisted(() => {
     refetch: () => {},
   };
   const routings = {
-    data: { items: [{ routingId: 21, routingCode: 'R1', routingVersion: 1, isDefault: true }] },
+    data: {
+      items: [
+        {
+          routingId: 21,
+          routingCode: 'R1',
+          routingVersion: 1,
+          statusCode: 'CONFIRMED',
+          isDefault: true,
+        },
+      ],
+    },
     isPending: false,
     isError: false,
     refetch: () => {},
@@ -63,7 +73,7 @@ const fixtures = vi.hoisted(() => {
   const items = new Map([
     [1, { itemCode: 'ITEM1', itemName: '시험 품목', erpItemGroupCode: 'SYN-GROUP' }],
   ]);
-  return { orders, boms, routings, lines, units, items };
+  return { orders, boms, routings, lines, units, items, readinessReady: true };
 });
 vi.mock('../worklist-queries', () => ({
   useProductionOrderByNumber: (no: string) => ({
@@ -81,6 +91,10 @@ vi.mock('../reference-lookups', () => ({ useUomReferenceLookup: () => fixtures.u
 vi.mock('../item-lookups', () => ({
   useItemCodeNames: () => fixtures.items,
   useProductionOrderItemNames: () => ({ items: [] }),
+}));
+vi.mock('./queries', () => ({
+  useUnreleasedWorkOrders: () => ({ data: [{ workOrderId: 1 }], isPending: false }),
+  useWorkOrderReadiness: () => [{ workOrderId: 1, ready: fixtures.readinessReady }],
 }));
 vi.mock('./process-screen', () => ({
   ProcessWorkspace: ({ initialStep }: { initialStep: string }) => <p>실행 단계 {initialStep}</p>,
@@ -298,6 +312,40 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
     } finally {
       fixtures.items.set(1, original);
+    }
+  });
+  it('전량 확정되어도 선택 ERP W/O의 4M이 미완료면 배포 확인 탭을 막는다', async () => {
+    fixtures.readinessReady = false;
+    try {
+      mount(
+        [101, 102].map((owner, index) => ({
+          productionPlanId: 501 + index,
+          productionOrderId: owner,
+          plannedQty: index === 0 ? 120 : 80,
+          planDate: '2026-11-02',
+          plannedLineId: 31,
+          bomId: 11,
+          routingId: 21,
+          statusCode: 'CONFIRMED',
+          confirmedAt: '2026-11-01T00:00:00Z',
+          versionNo: 1,
+        })),
+      );
+      const user = userEvent.setup();
+      await waitFor(() =>
+        expect(screen.getByRole('tab', { name: '3. 4M 배정' })).not.toHaveAttribute(
+          'aria-disabled',
+          'true',
+        ),
+      );
+      expect(screen.getByRole('tab', { name: '4. 배포 확인' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      await user.click(screen.getByRole('tab', { name: '3. 4M 배정' }));
+      expect(screen.getByText('실행 단계 assign')).toBeVisible();
+    } finally {
+      fixtures.readinessReady = true;
     }
   });
   it('왼쪽 ERP W/O를 선택하면 오른쪽에 해당 상세만 표시한다', async () => {

@@ -1,3 +1,4 @@
+import { planQuantities } from './plan-quantities';
 import type {
   NewProductionPlanDefaults,
   ProductionPlanEditorStateRow,
@@ -17,19 +18,12 @@ export const manualPlanDefaults = (
   revisions: Pick<NewProductionPlanDefaults, 'bomId' | 'routingId'>,
   today: string,
 ): NewProductionPlanDefaults => {
-  const confirmed =
-    order.confirmedPlanQty ??
-    rows
-      .filter((row) => row.confirmed)
-      .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
-  const draft = rows
-    .filter((row) => !row.confirmed)
-    .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
+  const quantities = planQuantities(order.orderQty, order.confirmedPlanQty, rows);
   const previousLine = rows.at(-1)?.draft.plannedLineId;
   return {
     ...revisions,
     planDate: recommendedPlanDate(order.plannedStartDate, today),
-    plannedQty: String(Number(Math.max(0, order.orderQty - confirmed - draft).toFixed(6))),
+    plannedQty: String(quantities.remaining),
     plannedLineId: lines.some((line) => String(line.id) === previousLine)
       ? previousLine
       : lines.length === 1
