@@ -195,6 +195,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       CANCELLED_BY_REOPEN: 'Hủy yêu cầu do hủy chốt',
     } as Record<string, string>,
     empty: 'Không có lịch sử.',
+    reinspectionReason: (name: string) => `Lý do kiểm tra lại: ${name}`,
     loadFailed: 'Không tải được lịch sử thay đổi.',
     close: 'Đóng',
   },

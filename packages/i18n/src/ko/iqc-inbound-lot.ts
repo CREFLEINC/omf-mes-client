@@ -216,6 +216,8 @@ export const iqcInboundLot = {
       CANCELLED_BY_REOPEN: '마감 취소로 의뢰 취소',
     } as Record<string, string>,
     empty: '남은 이력이 없습니다.',
+    /** 「내용」의 재검 사유(G2 M4). */
+    reinspectionReason: (name: string) => `재검 사유: ${name}`,
     loadFailed: '변경 이력을 불러오지 못했습니다.',
     close: '닫기',
   },

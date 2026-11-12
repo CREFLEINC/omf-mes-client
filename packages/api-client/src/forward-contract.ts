@@ -1354,6 +1354,13 @@ export interface InspectionRequestEventForward {
   actorName: string | null;
   /** 서버가 만든 한 줄 내용(「결과 1 기록 — 합격 · 검사 200 · 매칭 0001, 0002」). */
   detail: string | null;
+  /**
+   * G2 M4 대비(칸 이름은 서버 보고 뒤 맞춘다 — 지금은 C7 가정) — `CONFIRMED` · `CONFIRM_CANCELLED` 의 판정 요약, 사유, 재검 사유.
+   * `detail` 이 비어 있을 때 화면이 이것으로 「내용」을 채운다.
+   */
+  judgmentCode?: string | null;
+  reason?: string | null;
+  reinspectionReasonName?: string | null;
 }
 
 /** 결과 쓰기에 매칭을 더한다(계약 §8). 새 흐름 요청만 — 옛 요청 · PQC · OQC 는 싣지 않는다. */

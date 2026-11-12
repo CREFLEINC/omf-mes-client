@@ -2,6 +2,7 @@ import type { ApiError, InspectionResultSummaryForward } from '@omf-mes/api-clie
 import { messages, vi as viMessages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
+import { eventDetailOf } from './inbound-history';
 import { isOverride, lotJudgmentsOf, overriddenLotsOf, splitRuleErrors } from './lot-judgment';
 
 /**
@@ -60,7 +61,11 @@ describe('판정 규칙 — 재검 사유가 필요한가(FR-023a)', () => {
   });
 
   it('결과 수정은 그 결과를 빼고, 그 결과 순번보다 앞선 결과와 견준다(순번은 고쳐도 바뀌지 않는다)', () => {
-    const results = [result(1, 'HELD', [1]), result(2, 'ACCEPTED', [1]), result(3, 'REJECTED', [1])];
+    const results = [
+      result(1, 'HELD', [1]),
+      result(2, 'ACCEPTED', [1]),
+      result(3, 'REJECTED', [1]),
+    ];
 
     expect(
       overriddenLotsOf({
@@ -128,8 +133,22 @@ describe('판정 규칙 — 자재 관리 LOT 별 판정(FR-023)', () => {
       lots,
       results: [],
       lotJudgments: [
-        { lotId: 3, lotNo: lot(3).lotNo, judgmentCode: 'HELD', resultId: 1, resultSeqNo: 1, superseded: [] },
-        { lotId: 1, lotNo: lot(1).lotNo, judgmentCode: 'HELD', resultId: 1, resultSeqNo: 1, superseded: [] },
+        {
+          lotId: 3,
+          lotNo: lot(3).lotNo,
+          judgmentCode: 'HELD',
+          resultId: 1,
+          resultSeqNo: 1,
+          superseded: [],
+        },
+        {
+          lotId: 1,
+          lotNo: lot(1).lotNo,
+          judgmentCode: 'HELD',
+          resultId: 1,
+          resultSeqNo: 1,
+          superseded: [],
+        },
       ],
     });
 
@@ -164,5 +183,26 @@ describe('판정 규칙의 서버 400 코드', () => {
       expect(messages.iqcInboundLot.drawer.ruleErrors[code]).not.toBe('');
       expect(viMessages.iqcInboundLot.drawer.ruleErrors[code]).not.toBe('');
     }
+  });
+});
+
+describe('W-01-01 변경 이력 「내용」(G2 M4)', () => {
+  const event = (over: Record<string, unknown>) => ({
+    occurredAt: '2099-11-11T01:00:00Z',
+    eventCode: 'CONFIRMED',
+    actorName: null,
+    detail: null,
+    ...over,
+  });
+
+  it('서버 한 줄이 있으면 그대로, 없으면 판정 · 사유 · 재검 사유로 채우고 빈 칸을 두지 않는다', () => {
+    expect(eventDetailOf(event({ detail: '합성 한 줄' }))).toBe('합성 한 줄');
+    expect(
+      eventDetailOf(event({ judgmentCode: 'REJECTED', reinspectionReasonName: '합성 재측정' })),
+    ).toBe(`불합격 · ${messages.iqcInboundLot.history.reinspectionReason('합성 재측정')}`);
+    expect(eventDetailOf(event({ eventCode: 'CONFIRM_CANCELLED', reason: '합성 취소 사유' }))).toBe(
+      '합성 취소 사유',
+    );
+    expect(eventDetailOf(event({}))).toBe('—');
   });
 });
