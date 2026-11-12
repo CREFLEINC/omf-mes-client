@@ -13971,6 +13971,68 @@ button.app-button-neutral {
   margin: 0;
 }
 
+/* W-06-25 공급사·품목 기본 정보(005) — 조건 줄 · 목록 머리 · 수정 창. */
+.supplier-item-default-filter {
+  align-items: flex-end;
+  margin-bottom: 0;
+}
+
+.supplier-item-default-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.supplier-item-default-actions-end {
+  margin-inline-start: auto;
+}
+
+.supplier-item-default-actions,
+.supplier-item-default-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.supplier-item-default-code {
+  font-family: var(--font-mono);
+  color: var(--on-surface-muted);
+}
+
+.supplier-item-default-help {
+  max-width: none;
+  margin-top: var(--space-2);
+}
+
+.supplier-item-default-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.supplier-item-default-head {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.supplier-item-default-head > dd {
+  margin: 0;
+}
+
+.supplier-item-default-storage {
+  display: block;
+  max-width: none;
+}
+
+.supplier-item-default-foot-hint {
+  max-width: none;
+  margin-inline-end: auto;
+}
+
 .replenishment-history,
 .replenishment-result-list {
   display: grid;
@@ -35043,4 +35105,176 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .pane.po-board-filter .filter-bar.disposition-filter > .field-cell > .field-cell.search-select-cell {
   width: auto;
+}
+
+/* ── W-01-14 자재 관리 LOT 발행(005 · omf-all-around#254) ─────────────────────────── */
+.mlot-issue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.mlot-issue-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.mlot-issue-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mlot-issue-section-head > h2,
+.mlot-issue-section-head > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.mlot-issue-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.mlot-issue-table-scroll {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.mlot-issue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-sm);
+}
+
+.mlot-issue-table th,
+.mlot-issue-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: start;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* 머리와 품목 · 기본 정보 칸은 두 줄까지(베트남어 긴 글 — 시안 #vi). */
+.mlot-issue-table.is-wrap-head th,
+.mlot-issue-table .is-wrap {
+  white-space: normal;
+}
+
+.mlot-issue-table .is-number {
+  text-align: end;
+}
+
+.mlot-issue-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.mlot-issue-table tr.is-clickable:hover > td,
+.mlot-issue-table tr[aria-selected='true'] > td {
+  background: var(--surface-container-high);
+}
+
+.mlot-issue-table tr.is-void > td {
+  color: var(--on-surface-muted);
+}
+
+.mlot-issue-code,
+.mlot-issue-lot-no {
+  font-family: var(--font-mono);
+}
+
+.mlot-issue-defaults {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mlot-issue-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.mlot-issue-facts > dt {
+  color: var(--on-surface-muted);
+}
+
+.mlot-issue-facts > dd {
+  margin: 0;
+}
+
+.mlot-issue-detail-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.mlot-issue-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.mlot-issue-package {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.mlot-issue-package-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mlot-issue-package-head > strong {
+  flex: 1;
+}
+
+.mlot-issue-switch,
+.mlot-issue-package-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.mlot-issue-bad {
+  color: var(--semantic-error-text);
+}
+
+.mlot-issue-ok {
+  color: var(--semantic-success);
+}
+
+.mlot-issue-summary {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  font: var(--type-body-sm);
+}
+
+.mlot-issue-void-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
 }
