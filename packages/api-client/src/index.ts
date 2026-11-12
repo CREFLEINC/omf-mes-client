@@ -14,6 +14,7 @@ export {
   STATE_LOCKED_CODE,
 } from './errors';
 export type { components, paths } from './generated/api';
+export { isInboundLotInspection } from './forward-contract';
 export type {
   FourMChangeForward,
   InspectionResultConfirmForward,
@@ -110,4 +111,16 @@ export type {
   InboundLotReceive,
   InboundLotReceiveResult,
   InboundLotClosed,
+  InspectionTargetTypeForward,
+  InspectionRequestInboundFields,
+  InspectionRequestForward,
+  InspectionLotForward,
+  InspectionResultSummaryForward,
+  InspectionRequestInboundDetailForward,
+  InboundLotPoAllocation,
+  InspectionRequestEventForward,
+  InspectionResultMatchForward,
+  InspectionConfirmBlockerCode,
+  InboundLotSplitPreview,
+  InboundLotSplitResult,
 } from './forward-contract';
