@@ -36829,3 +36829,7 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-week-scroll.is-compact .erp-wo-week-table { min-width:max(34rem,var(--col-floor,0px)); }
 
 .erp-wo-plan-workspace .erp-wo-week-actions button[aria-pressed='true'] { background:var(--planning-current); border-color:var(--planning-accent); color:var(--planning-accent); }
+
+/* 좌우 배치는 목록과 페이지 위치를 유지한 채 편집 영역만 화면을 따라온다. */
+.erp-wo-plan-layout.is-side > .erp-wo-adjustable-second { position:sticky; top:var(--plan-sticky-top,var(--space-3)); align-self:start; max-height:var(--plan-sticky-height,calc(100dvh - 20rem)); overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.erp-wo-plan-layout.is-side > .erp-wo-adjustable-second > .erp-wo-plan-editor { min-height:0; }

@@ -146,6 +146,37 @@ export const PlanStep = ({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const layout = boardRef.current?.closest<HTMLElement>('.erp-wo-plan-layout');
+    const scrollport = layout?.closest<HTMLElement>('.process-page-body, .erp-wo-multi-body');
+    if (!layout || !scrollport) return;
+    let frame = 0;
+    // 바깥 페이지와 본문이 함께 스크롤되어도 현재 보이는 영역 안에 편집기를 둔다.
+    const measure = () => {
+      const rect = scrollport.getBoundingClientRect();
+      layout.style.setProperty('--plan-sticky-top', `${Math.max(12, 12 - rect.top)}px`);
+      layout.style.setProperty(
+        '--plan-sticky-height',
+        `${Math.max(120, Math.min(rect.bottom, window.innerHeight) - Math.max(0, rect.top) - 24)}px`,
+      );
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    observer?.observe(scrollport);
+    window.addEventListener('scroll', schedule, { capture: true, passive: true });
+    window.addEventListener('resize', schedule);
+    measure();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('scroll', schedule, true);
+      window.removeEventListener('resize', schedule);
+    };
+  }, []);
+
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const view = viewMode ?? localView;
   const [showAll, setShowAll] = useState(false);
@@ -652,11 +683,7 @@ export const PlanStep = ({
                                   controls={editorId}
                                   onSelect={() => {
                                     setContextSelection(plan.productionPlanId);
-                                    requestAnimationFrame(() =>
-                                      document
-                                        .getElementById(editorId)
-                                        ?.scrollIntoView({ block: 'nearest' }),
-                                    );
+                                    requestAnimationFrame(revealEditor);
                                   }}
                                 />
                               ))}
