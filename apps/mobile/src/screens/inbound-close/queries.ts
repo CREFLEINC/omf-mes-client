@@ -42,6 +42,8 @@ export const useClosableLots = (plantId: number | null): UseQueryResult<InboundL
   return useQuery({
     queryKey: inboundCloseKeys.closable(plantId),
     enabled: plantId !== null,
+    /* 들어올 때마다 다시 읽는다 — 다른 기기 · 날짜 자동 마감으로 바뀐 건이 「입하 중」에 남지 않게(G1). */
+    refetchOnMount: 'always',
     queryFn: () => listOf(client, plantId ?? 0, { closable: true }),
   });
 };
@@ -53,6 +55,8 @@ export const useReopenableLots = (plantId: number | null): UseQueryResult<Inboun
   return useQuery({
     queryKey: inboundCloseKeys.reopenable(plantId),
     enabled: plantId !== null,
+    /* 들어올 때마다 다시 읽는다 — 다른 기기 · 날짜 자동 마감으로 바뀐 건이 「입하 중」에 남지 않게(G1). */
+    refetchOnMount: 'always',
     queryFn: () => listOf(client, plantId ?? 0, { reopenable: true }),
   });
 };
@@ -66,6 +70,7 @@ export const useInboundLotDetail = (
   return useQuery({
     queryKey: inboundCloseKeys.detail(inboundLotId),
     enabled: inboundLotId !== null,
+    refetchOnMount: 'always',
     queryFn: () =>
       runRequest(() =>
         client.GET('/logistics/inbound-lots/{inboundLotId}', {

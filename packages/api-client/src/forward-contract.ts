@@ -1111,6 +1111,13 @@ export interface InboundLot {
   reopenable: boolean;
   /** 마감 취소 가능 건의 까닭 — 아니면 null(C2 정함). */
   reopenReasonCode: InboundLotReopenReasonCode | null;
+  /**
+   * 마감 취소를 막는 것이 같은 공장·공급사·품목의 입하 중 입하 LOT 하나뿐이면 `OPEN_RECEIPT_EXISTS`(G1 서버 s7f).
+   * `reopenable=true` 목록에도 이 건이 실린다 — M-01-03 막힘 줄. 이 값이면 `reopenable` 은 false.
+   */
+  reopenBlockerCode: 'OPEN_RECEIPT_EXISTS' | null;
+  /** `reopenBlockerCode` 가 `OPEN_RECEIPT_EXISTS` 일 때 막는 입하 중 입하 LOT 번호, 그 밖 null(G1 서버 s7f). */
+  openInboundLotNo: string | null;
   /** 마감 취소로 다시 연 건인가(C2 정함 — 「마감 취소됨」 칩). */
   reopened: boolean;
   finalizable: boolean;
@@ -1187,6 +1194,9 @@ export interface InboundLotReceiveResult {
     }[];
   }[];
 }
+
+/** 받기 거부(409) 줄의 까닭(계약 §3 `InboundLotReceiveRejection.rejectedLots[].reasonCode`). */
+export type InboundLotReceiveRejectionCode = 'ALREADY_RECEIVED' | 'VOIDED' | 'NOT_MATERIAL_LOT';
 
 export interface InboundLotClosed extends InboundLot {
   iqcRequestId?: number | null;

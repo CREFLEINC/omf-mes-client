@@ -57,7 +57,9 @@ export const supplierItemDefault: Translated<typeof ko.supplierItemDefault> = {
     noPackage: 'Không có',
     qtyPerPackage: 'Số lượng mỗi kiện đóng gói',
     qtyPerPackageHelp: (baseUomCode: string) =>
-      `Số lượng theo đơn vị cơ sở (${baseUomCode}) trong 1 kiện đóng gói`,
+      baseUomCode === ''
+        ? 'Số lượng theo đơn vị cơ sở trong 1 kiện đóng gói'
+        : `Số lượng theo đơn vị cơ sở (${baseUomCode}) trong 1 kiện đóng gói`,
     lotQty: 'Số lượng tồn kho mỗi LOT quản lý vật tư',
     countOf: (uomCode: string, count: string) => `= ${count} ${uomCode}`,
     remarks: 'Ghi chú (tùy chọn)',

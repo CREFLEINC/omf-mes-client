@@ -120,6 +120,29 @@ describe('normalizeApiError', () => {
     }
   });
 
+  it('입하 받기 거부(005)는 rejectedLots 의 줄별 까닭을 함께 싣는다 — 다른 잠김에는 칸이 없다', () => {
+    const result = normalizeApiError(409, {
+      errors: [
+        { scope: 'field', field: 'lots.0', code: 'STATE_LOCKED', message: '폐기된 LOT 입니다.' },
+      ],
+      rejectedLots: [{ index: 0, lotId: 9, lotNo: 'A|1|0009', reasonCode: 'VOIDED' }],
+    });
+
+    expect(result).toEqual({
+      kind: 'stateLocked',
+      status: 409,
+      errors: [
+        { scope: 'field', field: 'lots.0', code: 'STATE_LOCKED', message: '폐기된 LOT 입니다.' },
+      ],
+      rejectedLots: [{ index: 0, lotId: 9, lotNo: 'A|1|0009', reasonCode: 'VOIDED' }],
+    });
+    expect(
+      normalizeApiError(409, {
+        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '잠김' }],
+      }),
+    ).not.toHaveProperty('rejectedLots');
+  });
+
   /*
    * 상태를 여기서 버리면 화면이 다시 얻을 자리가 없다. 되돌아온 기록의 상세가 응답 코드를
    * 빈 칸으로 내던 것이 그 결과였다 - 서버는 400 을 주었는데 목록에는 남지 않았다.

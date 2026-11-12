@@ -43,6 +43,10 @@ interface ServerOptions {
   autoClose?: string;
   /** 공급사 LOT 저장을 409(그사이 마감)로. */
   supplierLotLocked?: boolean;
+  /** 이 번호는 자재 관리 LOT 이 아님(409 NOT_MATERIAL_LOT). */
+  notMaterial?: string[];
+  /** 새 입하 LOT 의 검사 필요 여부(기본 참). */
+  inspectionRequired?: boolean;
 }
 
 /** 흉내 서버 — 공장 · 공급사 · 품목마다 「입하 중」 입하 LOT 하나. */
@@ -76,6 +80,16 @@ const createServer = (options: ServerOptions = {}) => {
   const lock = (message: string) =>
     jsonResponse({ errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] }, { status: 409 });
 
+  /** 받기 거부 — 서버처럼 줄마다 `errors[]` 하나와 `rejectedLots[].reasonCode`(계약 §3). */
+  const rejectReceive = (lotNo: string, reasonCode: string, message: string) =>
+    jsonResponse(
+      {
+        errors: [{ scope: 'field', field: 'lots.0', code: 'STATE_LOCKED', message }],
+        rejectedLots: [{ index: 0, lotId: 8800, lotNo, reasonCode }],
+      },
+      { status: 409 },
+    );
+
   const routes = createStubFetch([
     {
       match: (request) => new URL(request.url).pathname === '/logistics/inbound-lots:receive',
@@ -86,10 +100,13 @@ const createServer = (options: ServerOptions = {}) => {
         const lotNo = first !== undefined && 'lotNo' in first ? first.lotNo : '';
 
         if (options.voided?.includes(lotNo) === true) {
-          return lock('발행 뒤 폐기된 라벨입니다. 재발행 라벨을 스캔하세요');
+          return rejectReceive(lotNo, 'VOIDED', '폐기된 LOT 입니다.');
+        }
+        if (options.notMaterial?.includes(lotNo) === true) {
+          return rejectReceive(lotNo, 'NOT_MATERIAL_LOT', '자재 관리 LOT 이 아닙니다.');
         }
         if (registered.has(lotNo)) {
-          return lock('이미 입하 LOT 에 등록된 자재 관리 LOT입니다');
+          return rejectReceive(lotNo, 'ALREADY_RECEIVED', '이미 입하된 LOT 입니다.');
         }
 
         const { item, supplier } = pairOf(lotNo);
@@ -130,13 +147,15 @@ const createServer = (options: ServerOptions = {}) => {
             goodsReceivedQty: 0,
             unallocatedQty: 0,
             iqc: null,
-            inspectionRequired: true,
+            inspectionRequired: options.inspectionRequired ?? true,
             firstRegisteredAt: '2026-11-11T01:00:00Z',
             receivedClosedAt: null,
             closedAutomatically: false,
             finalizedAt: null,
             reopenable: false,
             reopenReasonCode: null,
+            reopenBlockerCode: null,
+            openInboundLotNo: null,
             reopened: false,
             finalizable: false,
             erpSendModeCode: 'ON_FINALIZE',
@@ -384,21 +403,46 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(screen.getByText(t.cards.title(2))).toBeInTheDocument();
   });
 
-  it('US2-5 폐기 · 이미 등록된 라벨은 거부 줄로 쌓이고 등록되지 않는다', async () => {
+  it('US2-5 폐기 · 이미 등록된 라벨은 거부 줄로 쌓이고 등록되지 않는다 — 까닭은 서버 reasonCode 로 가른다(G1)', async () => {
     mount(createServer({ voided: [A(9)] }));
 
     await scan(A(9));
     expect(
-      await screen.findByText('발행 뒤 폐기된 라벨입니다. 재발행 라벨을 스캔하세요'),
+      await screen.findByText(t.reject.title(t.reject.voided, '…|SYN01|0009')),
     ).toBeInTheDocument();
+    expect(screen.getByText(t.reject.voidedBody)).toBeInTheDocument();
     await scan(A(1));
     await screen.findByRole('group', { name: 'SYN-IL-6001' });
+    await waitFor(() => expect(within(card('SYN-IL-6001')).getByText(A(1))).toBeInTheDocument());
     await scan(A(1));
 
     expect(
-      await screen.findByText('이미 입하 LOT 에 등록된 자재 관리 LOT입니다'),
+      await screen.findByText(t.reject.alreadyReceivedIn('SYN-IL-6001', true)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(t.reject.title(t.reject.alreadyReceived, '…|SYN01|0001')),
     ).toBeInTheDocument();
     expect(screen.getAllByText(new RegExp('등록 안 됨', 'u'))).toHaveLength(2);
+  });
+
+  it('G1 이 화면 카드에 없는 이미 입하된 라벨 · 자재 관리 LOT 이 아닌 라벨도 까닭별 문구로 거부한다', async () => {
+    const server = createServer({ notMaterial: [B(5)] });
+    mount(server);
+
+    await scan(B(5));
+    expect(await screen.findByText(t.reject.notMaterialLotBody)).toBeInTheDocument();
+    expect(
+      screen.getByText(t.reject.title(t.reject.notMaterialLot, '…|SYN02|0005')),
+    ).toBeInTheDocument();
+  });
+
+  it('G1 성공은 결과 줄 한 번만 — 알림 줄에 같은 문구를 또 띄우지 않는다', async () => {
+    mount(createServer());
+
+    await scan(A(1));
+    await screen.findByRole('group', { name: 'SYN-IL-6001' });
+
+    expect(screen.getAllByText(new RegExp(t.result.created('SYN-IL-6001'), 'u'))).toHaveLength(1);
   });
 
   it('날짜가 바뀌어 자동 마감된 입하 LOT 이 있으면 띠로 알린다', async () => {
@@ -439,6 +483,19 @@ describe('US2-2 입하 마감', () => {
     expect(server.sent.find((each) => each.path.endsWith(':close-receipt'))?.body).toMatchObject({
       versionNo: 2,
     });
+  });
+
+  it('G1 검사 불필요 품목의 마감 확인 창은 「검사 생략」 문구 — IQC 요청이 생긴다고 하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(createServer({ inspectionRequired: false }));
+
+    await scan(A(1));
+    const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
+    await user.click(await within(lotCard).findByRole('button', { name: t.card.close }));
+    const dialog = await screen.findByRole('dialog', { name: t.closeDialog.title('SYN-IL-6001') });
+
+    expect(dialog).toHaveTextContent(t.closeDialog.bodyNoInspection);
+    expect(dialog).not.toHaveTextContent(t.closeDialog.body);
   });
 
   it('US2-3 마감 뒤 같은 공급사·품목을 스캔하면 새 입하 LOT 카드가 생긴다', async () => {
@@ -581,6 +638,10 @@ describe('US2-14 오프라인', () => {
     expect(within(card('SYN-IL-6001')).getByRole('button', { name: t.card.close })).toBeDisabled();
     expect(within(card('SYN-IL-6001')).getByText(t.card.blockedOffline)).toBeInTheDocument();
 
+    expect(
+      within(card('SYN-IL-6001')).getByRole('button', { name: t.card.close }),
+    ).toHaveAccessibleDescription(t.card.blockedOffline);
+
     /* 같은 라벨을 또 찍으면 「이미 전송 대기」. */
     await scan(A(2));
     expect(await screen.findByText(t.reject.alreadyQueuedBody)).toBeInTheDocument();
@@ -598,6 +659,9 @@ describe('US2-14 오프라인', () => {
       ).toBeInTheDocument(),
     );
     expect(screen.queryByText(t.offline.title(1))).toBeNull();
+    /* 보낸 라벨의 「오프라인」 · 「이미 전송 대기」 줄은 내린다(G1). */
+    expect(screen.queryByText(t.reject.alreadyQueuedBody)).toBeNull();
+    expect(screen.queryByText(t.offline.scanned)).toBeNull();
     /* 화면이 직접 보낸 1건 + 아웃박스가 보낸 1건 — 오프라인 때 실패한 시도는 서버에 닿지 않았다. */
     expect(receives(server.sent)).toHaveLength(2);
     await user.click(within(card('SYN-IL-6001')).getByRole('button', { name: t.card.close }));

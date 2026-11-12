@@ -10,6 +10,7 @@ export {
   type ApiError,
   type ConflictCause,
   type ErrorItem,
+  type RejectedLot,
   STATE_LOCKED_CODE,
 } from './errors';
 export type { components, paths } from './generated/api';
@@ -103,6 +104,7 @@ export type {
   SupplierItemDefaultUpdate,
   InboundLotStatusCode,
   InboundLotReopenReasonCode,
+  InboundLotReceiveRejectionCode,
   InboundLotIqcSummary,
   InboundLot,
   InboundLotMaterialLot,

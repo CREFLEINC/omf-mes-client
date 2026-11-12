@@ -5009,7 +5009,6 @@
 }
 
 .pop-ui .pop-mlot-uom {
-  margin-inline-start: var(--space-1);
   color: var(--on-surface-muted);
   font: var(--type-label-sm);
 }

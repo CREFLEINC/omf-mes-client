@@ -70,7 +70,7 @@ export const inboundClose = {
   },
   unregisterDialog: {
     title: '자재 관리 LOT 등록을 풀까요?',
-    body: (qty: string) => `대기로 돌아가고 입하 수량에서 ${qty} 이 빠집니다.`,
+    body: (qty: string) => `대기로 돌아가고 입하 수량에서 ${qty}만큼 빠집니다.`,
     last: '마지막 자재 관리 LOT입니다. 풀면 입하 LOT가 없어지고(입하 취소) 이 목록에서 빠집니다.',
     cancel: '취소',
     proceed: '등록 풀기',

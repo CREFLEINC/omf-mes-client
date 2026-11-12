@@ -1,12 +1,14 @@
 import type {
   ApiError,
   InboundLotDetail,
+  InboundLotReceiveRejectionCode,
   InboundLotReceive,
   InboundLotReceiveResult,
 } from '@omf-mes/api-client';
 
 import { parseMaterialLotNo } from '../../patterns/material-lot-no';
 import type { OutboxDraft, OutboxEntry } from '../../patterns/outbox';
+import { plantToday } from '../../patterns/plant-time';
 
 /**
  * M-01-01 입하 등록의 **판정 · 본문 · 카드 상태**(005 · omf-all-around#254 · screens/M-01-01.md).
@@ -23,14 +25,10 @@ export const RECEIVE_PATH = '/logistics/inbound-lots:receive';
  * 아웃박스에서 이 화면의 건을 가르는 이름 — 전송 기록 화면에 사람이 읽는 이름으로도 선다.
  * ⛔ 옛 입하(`inbound-receipts`) 건과 같은 이름을 쓰지 않는다 — 배포 전 대기 전송은 비운다(T010 공지).
  */
-export const RECEIVE_LABEL = '입하 등록 · 자재 관리 LOT 받기';
+export const RECEIVE_LABEL = '입하 등록(자재 관리 LOT 받기)';
 
-/** 로컬 날짜(YYYY-MM-DD) — 서버가 공장 날짜로 다시 판정한다(지난 날짜 자동 마감). */
-export const businessDateOf = (now: Date): string => {
-  const offset = now.getTimezoneOffset() * 60_000;
-
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-};
+/** 공장 날짜(YYYY-MM-DD) — 서버가 공장 날짜로 다시 판정한다(지난 날짜 자동 마감). */
+export const businessDateOf = (now: Date): string => plantToday(now);
 
 /** 받기 본문 — 스캔 하나(원소 하나). */
 export const toReceiveBody = (lotNo: string, now: Date): InboundLotReceive => ({
@@ -181,3 +179,37 @@ export const serverMessageOf = (error: ApiError): string | null => {
 export const hasErrorCode = (error: ApiError, code: string): boolean =>
   (error.kind === 'validation' || error.kind === 'stateLocked') &&
   error.errors.some((item) => item.code === code);
+
+const REJECTION_CODES: readonly InboundLotReceiveRejectionCode[] = [
+  'ALREADY_RECEIVED',
+  'VOIDED',
+  'NOT_MATERIAL_LOT',
+];
+
+/**
+ * 받기 거부(409)의 까닭 — 서버 `rejectedLots[].reasonCode`(G1). 스캔 하나 = 원소 하나라 첫 줄을 본다.
+ * 그 칸이 없는 거부(검증 · 다른 잠김)는 null — 화면은 서버 문구를 그대로 쓴다.
+ */
+export const rejectionCodeOf = (error: ApiError): InboundLotReceiveRejectionCode | null => {
+  const code = error.kind === 'stateLocked' ? error.rejectedLots?.[0]?.reasonCode : undefined;
+
+  return REJECTION_CODES.find((each) => each === code) ?? null;
+};
+
+/**
+ * 이미 입하된 라벨이 이 화면의 어느 카드에 있는가 — 거부 줄 「{IL}(입하 중|입하 완료)에 이미 등록된…」.
+ * 서버 거부 응답에는 입하 LOT 번호가 없어, 화면이 불러 둔 카드에서만 찾는다(없으면 null).
+ */
+export const registeredInOf = (
+  details: readonly (InboundLotDetail | undefined)[],
+  lotNo: string,
+): { inboundLotNo: string; receiving: boolean } | null => {
+  for (const detail of details) {
+    if (detail === undefined) continue;
+    if (detail.lots.some((lot) => lot.lotNo === lotNo && lot.lifecycleStatusCode !== 'WAITING')) {
+      return { inboundLotNo: detail.inboundLotNo, receiving: isReceiving(detail) };
+    }
+  }
+
+  return null;
+};

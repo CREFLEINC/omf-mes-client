@@ -15,13 +15,19 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     created: (inboundLotNo: string) => `Tạo LOT nhập hàng mới ${inboundLotNo}`,
     added: (inboundLotNo: string, count: number) => `Thêm vào ${inboundLotNo} (thứ ${count})`,
     supplierLabel: 'Nhãn nhà cung cấp — đã tạo LOT quản lý vật tư tại chỗ',
-    toast: (message: string) => `Đăng ký · ${message}`,
-    toastSupplierLabel: (message: string) =>
-      `Tạo LOT quản lý vật tư từ nhãn nhà cung cấp và đăng ký · ${message}`,
   },
   reject: {
     title: (reason: string, lotTail: string) => `${reason} — chưa đăng ký · ${lotTail}`,
     refused: 'Bị từ chối',
+    voided: 'Đã hủy',
+    voidedBody: 'Nhãn đã bị hủy sau khi in. Hãy quét nhãn in lại',
+    alreadyReceived: 'Đã nhập hàng',
+    alreadyReceivedIn: (inboundLotNo: string, receiving: boolean) =>
+      `LOT quản lý vật tư đã được đăng ký vào ${inboundLotNo} (${receiving ? 'đang nhập hàng' : 'đã nhập hàng xong'})`,
+    alreadyReceivedBody: 'LOT quản lý vật tư đã được đăng ký nhập hàng',
+    notMaterialLot: 'Không phải LOT quản lý vật tư',
+    notMaterialLotBody:
+      'Không phải nhãn LOT quản lý vật tư (LOT sản xuất, v.v.). Hãy quét nhãn LOT quản lý vật tư',
     alreadyQueued: 'Đã chờ gửi',
     alreadyQueuedBody: 'Nhãn này đã có trong danh sách chờ gửi',
     failed: 'Không đăng ký được. Lát nữa hãy quét lại.',
@@ -67,6 +73,7 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     justNow: 'Vừa đăng ký',
     thisVisit: 'Đăng ký lần này',
     earlier: (time: string) => `Đăng ký trước ${time}`,
+    package: (uomCode: string, count: number) => ` · ${uomCode} ${String(count)}`,
     supplierLabel: 'Nhãn nhà cung cấp',
     qualityPending: 'Chờ kiểm tra · Giữ lại',
     qualityNormal: 'Bình thường',
@@ -99,6 +106,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     summary: (supplier: string, item: string, count: number, total: string) =>
       `${supplier} · ${item} · ${count} LOT quản lý vật tư · ${total}`,
     body: 'Khi chốt sẽ tạo yêu cầu IQC và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
+    bodyNoInspection:
+      'Mặt hàng không cần kiểm tra nên khi chốt IQC sẽ ghi là 「bỏ qua kiểm tra」, và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
     cancel: 'Hủy',
     confirm: 'Chốt',
     toast: (inboundLotNo: string, iqcNo: string | null) =>

@@ -2,6 +2,14 @@ import type { components } from './generated/api';
 
 export type ErrorItem = components['schemas']['ErrorItem'];
 
+/** 입하 받기 거부의 한 줄(005 계약 §3 `InboundLotReceiveRejection.rejectedLots[]`). */
+export interface RejectedLot {
+  index: number;
+  lotId: number;
+  lotNo: string;
+  reasonCode: string;
+}
+
 /**
  * 다시 불러도 안 풀리는 잠김. 봉투를 이 코드로 가른다.
  *
@@ -46,7 +54,16 @@ export type ApiError =
    * 상태는 선택이다. 이 두 갈래는 서버 응답에서도 오고 화면이 스스로 만들기도 한다 - 저장을
    * 시작조차 못 한 것처럼 응답이 없는 오류에 상태를 요구하면 지어내야 한다.
    */
-  | { kind: 'stateLocked'; errors: ErrorItem[]; status?: number }
+  | {
+      kind: 'stateLocked';
+      errors: ErrorItem[];
+      status?: number;
+      /**
+       * 005 입하 받기 거부(`POST /logistics/inbound-lots:receive` 409 `InboundLotReceiveRejection`)의 줄별 까닭.
+       * 그 응답에만 있다 — 다른 잠김에는 칸 자체가 없다. 화면이 「폐기됨」·「이미 입하됨」을 가르는 길이다.
+       */
+      rejectedLots?: RejectedLot[];
+    }
   | { kind: 'validation'; errors: ErrorItem[]; status?: number }
   | { kind: 'http'; status: number; code?: string; message?: string; currentLotStatusCode?: string }
   | { kind: 'network' };
@@ -119,6 +136,13 @@ const isErrorItem = (value: unknown): value is ErrorItem =>
   typeof value.code === 'string' &&
   typeof value.message === 'string';
 
+const isRejectedLot = (value: unknown): value is RejectedLot =>
+  isRecord(value) &&
+  typeof value.index === 'number' &&
+  typeof value.lotId === 'number' &&
+  typeof value.lotNo === 'string' &&
+  typeof value.reasonCode === 'string';
+
 export const normalizeApiError = (status: number, body: unknown): ApiError => {
   const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined;
   const currentLotStatusCode =
@@ -190,9 +214,17 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
   ) {
     const errors = body.errors;
     if (errors.length > 0) {
-      return errors.some((error) => error.code === STATE_LOCKED_CODE)
+      if (!errors.some((error) => error.code === STATE_LOCKED_CODE)) {
+        return { kind: 'validation', status, errors };
+      }
+
+      const rejectedLots = Array.isArray(body.rejectedLots)
+        ? body.rejectedLots.filter(isRejectedLot)
+        : [];
+
+      return rejectedLots.length === 0
         ? { kind: 'stateLocked', status, errors }
-        : { kind: 'validation', status, errors };
+        : { kind: 'stateLocked', status, errors, rejectedLots };
     }
   }
 

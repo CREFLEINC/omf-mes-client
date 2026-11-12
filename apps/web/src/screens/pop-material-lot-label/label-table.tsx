@@ -120,8 +120,7 @@ const LabelCell = ({ lot }: { lot: LabelLot }) =>
 
 const Qty = ({ lot }: { lot: LabelLot }) => (
   <span className="pop-mlot-cell-qty">
-    {formatQty(lot.lotQty)}
-    <span className="pop-mlot-uom">{lot.uomCode}</span>
+    {formatQty(lot.lotQty)} <span className="pop-mlot-uom">{lot.uomCode}</span>
   </span>
 );
 

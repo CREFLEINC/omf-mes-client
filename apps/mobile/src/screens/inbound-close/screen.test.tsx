@@ -2,7 +2,7 @@ import type { InboundLot, InboundLotDetail } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -65,6 +65,8 @@ const inboundLot = (id: number, over: Partial<InboundLot> = {}): InboundLot => (
   finalizedAt: null,
   reopenable: false,
   reopenReasonCode: null,
+  reopenBlockerCode: null,
+  openInboundLotNo: null,
   reopened: false,
   finalizable: false,
   erpSendModeCode: 'ON_FINALIZE',
@@ -103,7 +105,23 @@ interface Options {
   reopenFail?: { status: number; body: unknown };
   closeResult?: Partial<InboundLot> & { iqc?: InboundLot['iqc'] };
   unregisterResult?: Partial<InboundLot>;
+  /** 화면을 나갔다 들어오는 단추를 둔다(같은 질의 저장소 그대로). */
+  withLeave?: boolean;
 }
+
+/** 화면을 내렸다 다시 올린다 — 질의 저장소는 그대로라 「들어올 때 다시 읽는가」를 본다. */
+const LeaveAndReturn = ({ children }: { children: ReactNode }) => {
+  const [shown, setShown] = useState(true);
+
+  return (
+    <>
+      <button type="button" onClick={() => setShown((value) => !value)}>
+        {shown ? '나가기' : '들어오기'}
+      </button>
+      {shown ? children : null}
+    </>
+  );
+};
 
 const mount = (options: Options = {}) => {
   const sent: Sent[] = [];
@@ -196,7 +214,13 @@ const mount = (options: Options = {}) => {
   renderWithProviders(
     <MemoryRouter>
       <SignedIn>
-        <InboundCloseScreen />
+        {options.withLeave === true ? (
+          <LeaveAndReturn>
+            <InboundCloseScreen />
+          </LeaveAndReturn>
+        ) : (
+          <InboundCloseScreen />
+        )}
       </SignedIn>
     </MemoryRouter>,
     { fetch },
@@ -356,9 +380,17 @@ describe('US2-12 마감 취소 가능 목록', () => {
 describe('US2-13 같은 공급사·품목 입하 중이면 마감 취소가 막힌다', () => {
   it('US2-13 카드에 미리 막힘을 보이고, 누르면 먼저 마감할 입하 LOT 번호와 [열기]를 준다', async () => {
     const user = userEvent.setup();
+    /* 서버가 「같은 공급사·품목 입하 중」 하나로만 막힌 건도 싣고 막힘 칸을 준다(G1). */
     const { sent } = mount({
       closable: [inboundLot(3)],
-      reopenable: [done(2)],
+      reopenable: [
+        done(2, {
+          reopenable: false,
+          reopenReasonCode: null,
+          reopenBlockerCode: 'OPEN_RECEIPT_EXISTS',
+          openInboundLotNo: 'SYN-IL-20261111-0003',
+        }),
+      ],
     });
 
     expect(await screen.findByText(t.done.blocked('SYN-IL-20261111-0003'))).toBeInTheDocument();
@@ -420,5 +452,54 @@ describe('US2-10 온라인에서만', () => {
 
     expect(await screen.findByText(t.noPlant)).toBeInTheDocument();
     expect(sent).toHaveLength(0);
+  });
+});
+
+describe('G1 입하 마감 목록', () => {
+  it('G1 막힘 줄은 서버 칸(reopenBlockerCode)만 읽는다 — 칸이 없으면 같은 공급사·품목 입하 중이 있어도 막지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ closable: [inboundLot(3)], reopenable: [done(2)] });
+
+    await user.click(await screen.findByRole('button', { name: t.done.reopen }));
+
+    expect(await screen.findByRole('dialog', { name: t.reopenDialog.title })).toBeInTheDocument();
+    expect(screen.queryByText(t.done.blocked('SYN-IL-20261111-0003'))).not.toBeInTheDocument();
+  });
+
+  it('G1 막는 입하 LOT 가 지금 목록에 없으면 막힘 창은 번호만 보이고 [열기]를 두지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      closable: [],
+      reopenable: [
+        done(2, {
+          reopenable: false,
+          reopenReasonCode: null,
+          reopenBlockerCode: 'OPEN_RECEIPT_EXISTS',
+          openInboundLotNo: 'SYN-IL-20261111-0009',
+        }),
+      ],
+    });
+
+    expect(await screen.findByText(t.done.blocked('SYN-IL-20261111-0009'))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.done.reopen }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.blockedDialog.title });
+    expect(dialog).toHaveTextContent('SYN-IL-20261111-0009');
+    expect(within(dialog).queryByRole('button', { name: t.card.open('0009') })).toBeNull();
+  });
+
+  it('G1 화면을 나갔다 다시 들어오면 목록을 새로 읽는다 — 다른 기기에서 마감한 건이 「입하 중」에 남지 않는다', async () => {
+    const user = userEvent.setup();
+    const closable = [inboundLot(3)];
+    mount({ closable, withLeave: true });
+
+    expect(await screen.findByText('SYN-IL-20261111-0003')).toBeInTheDocument();
+
+    closable.splice(0, closable.length);
+    await user.click(screen.getByRole('button', { name: '나가기' }));
+    await user.click(screen.getByRole('button', { name: '들어오기' }));
+
+    expect(await screen.findByText(t.open.empty)).toBeInTheDocument();
+    expect(screen.queryByText('SYN-IL-20261111-0003')).not.toBeInTheDocument();
   });
 });

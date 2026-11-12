@@ -2,9 +2,11 @@ import { Chip, Icon } from '@crefle/web-ui';
 import type { InboundLotDetail, InboundLotMaterialLot } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
+import { useId } from 'react';
 
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
+import { plantClock } from '../../patterns/plant-time';
 import { isReceiving, type CardLock, type CardState } from './receipt';
 
 const t = messages.inboundReceipt.card;
@@ -12,15 +14,6 @@ const t = messages.inboundReceipt.card;
 /** 수량 글 — 천 단위 쉼표, 소수는 여섯 자리까지. */
 export const qtyText = (qty: number, uomCode: string): string =>
   `${qty.toLocaleString('ko-KR', { maximumFractionDigits: 6 })} ${uomCode}`;
-
-/** 「앞서 등록 08:05」의 시각(단말 시각). */
-const clockOf = (value: string): string => {
-  const at = new Date(value);
-
-  return Number.isNaN(at.getTime())
-    ? ''
-    : `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
-};
 
 export interface InboundLotCardProps {
   card: CardState;
@@ -53,6 +46,7 @@ export const InboundLotCard = ({
   onClose,
 }: InboundLotCardProps) => {
   const data = detail?.data;
+  const lockNoteId = useId();
 
   if (data === undefined) {
     return (
@@ -115,7 +109,7 @@ export const InboundLotCard = ({
               ? t.justNow
               : mark === 'session'
                 ? t.thisVisit
-                : t.earlier(clockOf(lot.registeredAt));
+                : t.earlier(plantClock(lot.registeredAt));
 
           return (
             <li key={lot.lotId} className="receive-lot" data-latest={mark === 'latest'}>
@@ -124,9 +118,7 @@ export const InboundLotCard = ({
                 <span className="receive-lot__no">{lot.lotNo}</span>
                 <span className="receive-lot__qty">
                   {qtyText(lot.lotQty, data.uomCode)}
-                  {lot.package === null
-                    ? ''
-                    : ` · ${lot.package.uomCode} ${String(lot.package.count)}`}
+                  {lot.package === null ? '' : t.package(lot.package.uomCode, lot.package.count)}
                 </span>
                 <span className="receive-lot__chips">
                   <Chip size="sm" status={mark === 'latest' ? 'info' : 'idle'}>
@@ -141,32 +133,36 @@ export const InboundLotCard = ({
                     {lot.statusCode === 'NORMAL' ? t.qualityNormal : t.qualityPending}
                   </Chip>
                 </span>
-                <button
-                  type="button"
-                  className="receive-lot__supplier"
-                  aria-label={t.editSupplierLot(lot.lotNo)}
-                  disabled={!editable || busy}
-                  onClick={() => {
-                    onEditSupplierLot(lot);
-                  }}
-                >
-                  <Icon name="sell" size={16} />
-                  {lot.supplierLotNo === null ? t.noSupplierLot : t.supplierLot(lot.supplierLotNo)}
-                  <Icon name={editable ? 'edit' : 'lock'} size={16} />
-                </button>
+                <span className="receive-lot__foot">
+                  <button
+                    type="button"
+                    className="receive-lot__supplier"
+                    aria-label={t.editSupplierLot(lot.lotNo)}
+                    disabled={!editable || busy}
+                    onClick={() => {
+                      onEditSupplierLot(lot);
+                    }}
+                  >
+                    <Icon name="sell" size={16} />
+                    {lot.supplierLotNo === null
+                      ? t.noSupplierLot
+                      : t.supplierLot(lot.supplierLotNo)}
+                    <Icon name={editable ? 'edit' : 'lock'} size={16} />
+                  </button>
+                  {receiving ? (
+                    <Button
+                      variant="outlined"
+                      size="sm"
+                      disabled={lock !== null || busy}
+                      onClick={() => {
+                        onUnregister(lot);
+                      }}
+                    >
+                      {t.unregister}
+                    </Button>
+                  ) : null}
+                </span>
               </div>
-              {receiving ? (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  disabled={lock !== null || busy}
-                  onClick={() => {
-                    onUnregister(lot);
-                  }}
-                >
-                  {t.unregister}
-                </Button>
-              ) : null}
             </li>
           );
         })}
@@ -177,12 +173,13 @@ export const InboundLotCard = ({
           <Button
             className="receive-card__close"
             disabled={lock !== null || busy}
+            aria-describedby={lock === null ? undefined : lockNoteId}
             onClick={onClose}
           >
             {t.close}
           </Button>
           {lock === null ? null : (
-            <p className="receive-card__note">
+            <p id={lockNoteId} className="receive-card__note">
               {lock === 'offline' ? t.blockedOffline : t.blockedPending(pendingCount)}
             </p>
           )}
