@@ -171,6 +171,7 @@ export const InboundReceiptScreen = () => {
       const where = registeredInOf(
         [...details.values()].map((each) => each.data),
         lotNo,
+        error,
       );
 
       return {

@@ -47,6 +47,10 @@ interface ServerOptions {
   notMaterial?: string[];
   /** 새 입하 LOT 의 검사 필요 여부(기본 참). */
   inspectionRequired?: boolean;
+  /** 이미 입하된 번호 — 서버가 거부 줄에 그 입하 LOT 번호 · 상태를 싣는다(S8). */
+  /** 패키징 단위 이름(S8) — 없으면 칸을 싣지 않는다. */
+  packageUomName?: string;
+  receivedElsewhere?: Record<string, { inboundLotNo: string; statusCode: string }>;
 }
 
 /** 흉내 서버 — 공장 · 공급사 · 품목마다 「입하 중」 입하 LOT 하나. */
@@ -101,6 +105,32 @@ const createServer = (options: ServerOptions = {}) => {
 
         if (options.voided?.includes(lotNo) === true) {
           return rejectReceive(lotNo, 'VOIDED', '폐기된 LOT 입니다.');
+        }
+        const elsewhere = options.receivedElsewhere?.[lotNo];
+        if (elsewhere !== undefined) {
+          return jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'lots.0',
+                  code: 'STATE_LOCKED',
+                  message: '이미 입하된 LOT 입니다.',
+                },
+              ],
+              rejectedLots: [
+                {
+                  index: 0,
+                  lotId: 8801,
+                  lotNo,
+                  reasonCode: 'ALREADY_RECEIVED',
+                  inboundLotNo: elsewhere.inboundLotNo,
+                  inboundLotStatusCode: elsewhere.statusCode,
+                },
+              ],
+            },
+            { status: 409 },
+          );
         }
         if (options.notMaterial?.includes(lotNo) === true) {
           return rejectReceive(lotNo, 'NOT_MATERIAL_LOT', '자재 관리 LOT 이 아닙니다.');
@@ -171,7 +201,13 @@ const createServer = (options: ServerOptions = {}) => {
           lotId: nextMaterial,
           lotNo,
           lotQty: 1000,
-          package: { uomId: 2, uomCode: '봉지', count: 10, qtyPerPackage: 100 },
+          package: {
+            uomId: 2,
+            uomCode: '봉지',
+            count: 10,
+            qtyPerPackage: 100,
+            ...(options.packageUomName === undefined ? {} : { uomName: options.packageUomName }),
+          },
           supplierLotNo: null,
           lifecycleStatusCode: 'ACTIVE',
           statusCode: 'INSPECTION_PENDING',
@@ -434,6 +470,32 @@ describe('US2-1 스캔마다 바로 등록', () => {
     expect(
       screen.getByText(t.reject.title(t.reject.notMaterialLot, '…|SYN02|0005')),
     ).toBeInTheDocument();
+  });
+
+  it('G1 이미 입하된 라벨 — 서버가 입하 LOT 번호 · 상태를 주면 카드에 없어도 「{IL}(입하 완료)에 이미 등록된…」', async () => {
+    mount(
+      createServer({
+        receivedElsewhere: { [B(7)]: { inboundLotNo: 'SYN-IL-5000', statusCode: 'RECEIVED' } },
+      }),
+    );
+
+    await scan(B(7));
+
+    expect(
+      await screen.findByText(t.reject.alreadyReceivedIn('SYN-IL-5000', false)),
+    ).toBeInTheDocument();
+  });
+
+  it('G1 패키징은 단위 이름으로, 카드 부제는 낱말 조각으로 그린다', async () => {
+    mount(createServer({ packageUomName: '봉지 포장' }));
+
+    await scan(A(1));
+    const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
+
+    expect(await within(lotCard).findByText(/봉지 포장 10/u)).toBeInTheDocument();
+    const pair = lotCard.querySelector('.receive-card__pair');
+    expect(pair?.querySelectorAll('.receive-card__word').length).toBeGreaterThan(1);
+    expect(pair).toHaveTextContent(t.card.pair('합성 공급사 SYN01', 'SYN-CAP', '합성 자재'));
   });
 
   it('G1 성공은 결과 줄 한 번만 — 알림 줄에 같은 문구를 또 띄우지 않는다', async () => {

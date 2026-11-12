@@ -2,7 +2,7 @@ import { Chip, Icon } from '@crefle/web-ui';
 import type { InboundLotDetail, InboundLotMaterialLot } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
-import { useId } from 'react';
+import { Fragment, useId } from 'react';
 
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
@@ -10,6 +10,31 @@ import { plantClock } from '../../patterns/plant-time';
 import { isReceiving, type CardLock, type CardState } from './receipt';
 
 const t = messages.inboundReceipt.card;
+
+/** 패키징 단위 — 이름이 있으면 이름(「봉지」), 없으면 코드(G1 잔여). */
+const packageUnitOf = (pkg: { uomCode: string; uomName?: string | null }): string => {
+  const name = pkg.uomName?.trim() ?? '';
+
+  return name === '' ? pkg.uomCode : name;
+};
+
+/**
+ * 공급사 · 품목 줄 — 낱말마다 꺾이지 않는 조각으로 그린다. 한글은 음절 사이에서도 꺾여 「검사불 / 필요」가 되는데,
+ * 모바일 규칙(`code-wrapping`)이 `word-break: keep-all` 을 막아 조각(inline-block)으로 낱말 단위 꺾기를 만든다(G1 잔여).
+ */
+const Words = ({ text }: { text: string }) => (
+  <>
+    {text
+      .split(' ')
+      .filter((word) => word !== '')
+      .map((word, index) => (
+        <Fragment key={`${String(index)}-${word}`}>
+          {index === 0 ? null : ' '}
+          <span className="receive-card__word">{word}</span>
+        </Fragment>
+      ))}
+  </>
+);
 
 /** 수량 글 — 천 단위 쉼표, 소수는 여섯 자리까지. */
 export const qtyText = (qty: number, uomCode: string): string =>
@@ -95,7 +120,7 @@ export const InboundLotCard = ({
         </Chip>
       </div>
       <p className="receive-card__pair">
-        {t.pair(data.supplierName, data.itemCode, data.itemName)}
+        <Words text={t.pair(data.supplierName, data.itemCode, data.itemName)} />
       </p>
       <p className="receive-card__sum">
         {t.summary(data.lotCount, qtyText(data.receivedQty, data.uomCode))}
@@ -118,7 +143,9 @@ export const InboundLotCard = ({
                 <span className="receive-lot__no">{lot.lotNo}</span>
                 <span className="receive-lot__qty">
                   {qtyText(lot.lotQty, data.uomCode)}
-                  {lot.package === null ? '' : t.package(lot.package.uomCode, lot.package.count)}
+                  {lot.package === null
+                    ? ''
+                    : t.package(packageUnitOf(lot.package), lot.package.count)}
                 </span>
                 <span className="receive-lot__chips">
                   <Chip size="sm" status={mark === 'latest' ? 'info' : 'idle'}>

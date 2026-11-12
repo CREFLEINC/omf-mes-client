@@ -8,6 +8,10 @@ export interface RejectedLot {
   lotId: number;
   lotNo: string;
   reasonCode: string;
+  /** `ALREADY_RECEIVED` 일 때 그 LOT 이 들어간 입하 LOT 번호(G1 잔여 · 서버 S8 덧댐), 그 밖 null. */
+  inboundLotNo?: string | null;
+  /** 그 입하 LOT 의 상태(`RECEIVING` · `RECEIVED` …) — 「입하 중 | 입하 완료」(서버 S8 덧댐). */
+  inboundLotStatusCode?: string | null;
 }
 
 /**

@@ -156,7 +156,8 @@ const buildLabel = (
     uomCode: lot.uomCode,
     issueSeq: issue.issueSeq,
     supplier: `${lot.supplierName} (${lot.supplierCode})`,
-    receipt: formatPackage(lot.package),
+    /* 라벨 인쇄는 코드 그대로 — 프린터 글꼴 · 칸 폭이 정해져 있다(화면 표기만 이름, G1 잔여). */
+    receipt: formatPackage(lot.package === null ? null : { ...lot.package, uomName: null }),
     kind,
   });
 };

@@ -842,6 +842,8 @@ type PlanVersionPath = paths['/quality/inspection-plan-versions/{inspectionPlanV
 export interface MaterialPackage {
   uomId: number;
   uomCode: string;
+  /** 패키징 단위 이름(「봉지」) — 화면은 이름, 없으면 코드(G1 잔여 · 서버 S8 덧댐). */
+  uomName?: string | null;
   count: number;
   qtyPerPackage: number;
 }
