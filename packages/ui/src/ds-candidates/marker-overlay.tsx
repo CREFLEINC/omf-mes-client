@@ -130,8 +130,7 @@ const breakableLabel = (label: string): ReactNode =>
 const LABEL_RECHECK_ROUNDS = 2;
 
 /** 0.5px 눈금으로 내린다. 나눗셈 끝자리(9.4999…)가 한 눈금을 잃지 않게 아주 작은 값을 더한다. */
-const floorToStep = (px: number): number =>
-  Math.floor(px / LABEL_STEP_PX + 1e-9) * LABEL_STEP_PX;
+const floorToStep = (px: number): number => Math.floor(px / LABEL_STEP_PX + 1e-9) * LABEL_STEP_PX;
 
 interface LabelFit {
   box: HTMLElement;
@@ -190,10 +189,7 @@ const fitBoxLabels = (boxes: readonly HTMLElement[]): void => {
 
     if (width <= fit.room && height <= roomHeight) return 1;
 
-    return Math.min(
-      width > 0 ? fit.room / width : 1,
-      height > 0 ? roomHeight / height : 1,
-    );
+    return Math.min(width > 0 ? fit.room / width : 1, height > 0 ? roomHeight / height : 1);
   });
 
   /* ② 쓰기 — 비율로 정한 크기를 한꺼번에. */

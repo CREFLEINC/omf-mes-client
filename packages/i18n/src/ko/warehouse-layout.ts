@@ -116,11 +116,11 @@ export const warehouseLayout = {
      * 도면에는 구역 · 랙만 둔다(2차 · FR-016). 이미 저장된 층 · 셀 표식은 그리지 않고 다음 저장 때 빠진다 — 그 수를 알린다.
      * 이 알림만으로는 저장할 변경이 아니다(닫을 때 묻지 않는다).
      */
-    legacyMarkers: (count: number): string => `층·셀 표식 ${String(count)}개는 저장하면 빠집니다.`,
+    legacyMarkers: (count: number): string => `층·셀 표식 ${String(count)}개는 저장하면 빠집니다.`, // ui-check-ignore: C-13 승인 시안 W-CO-08-r2 문구(#266)
     /** 창을 먼저 띄우고 판은 다음에 그린다(2차 · FR-017) — 표식 그리기 · 글자 맞추기가 끝날 때까지 판 위에 선다. */
     drawingBoard: '배치를 그리는 중',
     /** 편집 창 목록은 배치 대상(구역 · 랙)만이다 — 그것이 없을 때. */
-    emptyPlaceable: '도면에 둘 구역·랙이 없습니다',
+    emptyPlaceable: '도면에 둘 구역·랙이 없습니다', // ui-check-ignore: C-13 승인 tasks T037 문구(#266)
   },
 
   /**

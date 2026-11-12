@@ -892,9 +892,18 @@ describe('사각형 표식 — 이름 줄바꿈 · 글자 맞추기', () => {
       'scrollWidth',
       measured((el) => (isLabel(el) ? fontPx(el) * PX_PER_FONT_PX + layout.extraWidth : 0)),
     );
-    stubLayout('offsetHeight', measured((el) => (isLabel(el) ? fontPx(el) : 0)));
-    stubLayout('clientWidth', measured((el) => (isBoxPin(el) ? boxWidthOf(el) : 0)));
-    stubLayout('clientHeight', measured((el) => (isBoxPin(el) ? layout.boxHeight : 0)));
+    stubLayout(
+      'offsetHeight',
+      measured((el) => (isLabel(el) ? fontPx(el) : 0)),
+    );
+    stubLayout(
+      'clientWidth',
+      measured((el) => (isBoxPin(el) ? boxWidthOf(el) : 0)),
+    );
+    stubLayout(
+      'clientHeight',
+      measured((el) => (isBoxPin(el) ? layout.boxHeight : 0)),
+    );
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -1043,10 +1052,11 @@ describe('사각형 표식 — 이름 줄바꿈 · 글자 맞추기', () => {
 
   it('US1-7 ⭐ 표식 200개도 재배치는 표식 수와 무관하게 몇 번이다', () => {
     layout.boxWidth = 50;
-    const many = Array.from(
-      { length: 200 },
-      (_, index): OverlayMarker => ({ ...CELL, id: String(index), label: `C-${String(index)}` }),
-    );
+    const many = Array.from({ length: 200 }, (_, index): OverlayMarker => ({
+      ...CELL,
+      id: String(index),
+      label: `C-${String(index)}`,
+    }));
     const { pin } = setup({ markers: many });
 
     expect(labelOf(pin('C-0')).style.fontSize).toBe('8px');
