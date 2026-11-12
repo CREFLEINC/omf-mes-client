@@ -36749,8 +36749,19 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-distribution-period { min-width:0; }
 .erp-wo-distribution-period button[aria-haspopup='dialog'] { min-width:min(20rem,100%); width:100%; white-space:normal; }
-/* 오늘은 밑줄로, 선택 기간 양끝은 채운 원으로 구분한다. */
-:is(.erp-wo-plan-workspace, .erp-wo-multi-page) [role='grid'] [aria-current='date']:not([aria-selected='true']) { box-shadow:none; text-decoration:underline; text-underline-offset:.2em; }
 
 .erp-wo-distribution-settings tr[tabindex='0'] { cursor:pointer; }
 .erp-wo-distribution-settings tr[tabindex='0']:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
+
+.erp-wo-period-calendar { width:min(24rem,calc(100vw - 2rem)); }
+.erp-wo-period-month { display:flex; align-items:center; justify-content:space-between; }
+.erp-wo-period-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:0; }
+.erp-wo-period-weekday { text-align:center; font:var(--type-label-sm); color:var(--on-surface-muted); padding-block:var(--space-2); }
+.erp-wo-period-day { display:grid; place-items:center; min-width:0; margin-block:var(--space-1); }
+.erp-wo-period-day[data-between] { background:var(--primary-container); }
+.erp-wo-period-day[data-start]:not([data-single]) { background:linear-gradient(to right,transparent 50%,var(--primary-container) 50%); }
+.erp-wo-period-day[data-end]:not([data-single]) { background:linear-gradient(to left,transparent 50%,var(--primary-container) 50%); }
+.erp-wo-period-day button { width:100%; max-width:var(--control-height-md); aspect-ratio:1; display:grid; place-items:center; padding:0; border:0; border-radius:var(--radius-full); background:transparent; color:var(--on-surface); font:var(--type-body-sm); cursor:pointer; }
+.erp-wo-period-day[data-start] button,.erp-wo-period-day[data-end] button { background:var(--primary); color:var(--on-primary); }
+.erp-wo-period-day button:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+.erp-wo-period-day button:hover { box-shadow:inset 0 0 0 1px var(--primary); }

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { AlertBanner, Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { DistributionPeriodPicker } from './distribution-period-picker';
 import { PageNav } from '../../../patterns/page-nav';
 import { Select } from '../../../patterns/select';
 import { DistributionHelp } from './distribution-help';
@@ -222,10 +223,8 @@ export const DistributionControls = ({
                   <div className="erp-wo-distribution-fields">
                     <div className="field-cell erp-wo-distribution-period">
                       <span className="field-label">공통 분배 기간</span>
-                      <DatePicker
-                        size="sm"
-                        mode="range"
-                        aria-label="공통 분배 기간"
+                      <DistributionPeriodPicker
+                        label="공통 분배 기간"
                         value={[commonStart, commonEnd]}
                         disabled={disabled}
                         onChange={([start, end]) => {
@@ -441,10 +440,8 @@ export const DistributionControls = ({
                           <div className="erp-wo-segment-fields">
                             <div className="field-cell erp-wo-segment-date erp-wo-distribution-period">
                               <span className="field-label">분배 기간</span>
-                              <DatePicker
-                                size="sm"
-                                mode="range"
-                                aria-label={`조건 ${index + 1} 분배 기간`}
+                              <DistributionPeriodPicker
+                                label={`조건 ${index + 1} 분배 기간`}
                                 value={[row.start, row.end]}
                                 disabled={disabled}
                                 onChange={([start, end]) => change(row.id, { start, end })}
