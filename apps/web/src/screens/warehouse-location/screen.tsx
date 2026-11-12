@@ -58,6 +58,7 @@ import {
   useLocationDetail,
   useLocationItems,
   useLocationList,
+  useCanWriteLocations,
   useLookupOptions,
   useWarehouseDetail,
   useWarehouseList,
@@ -130,6 +131,7 @@ export const WarehouseLocationScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client, etags, baseUrl } = useApiClient();
+  const canWriteLocations = useCanWriteLocations();
 
   const tabParam = searchParams.get('tab');
   /* 옛 `tab=putaway`(없어진 적치 규칙 탭)는 기본 탭으로 연다. */
@@ -1206,6 +1208,7 @@ export const WarehouseLocationScreen = () => {
                     labelSummary.mutate(labelTargetIds);
                   }}
                   onEdit={handleEditLocation}
+                  canEditAlias={canWriteLocations}
                   actionBanner={
                     <>
                       {locations.data !== undefined &&

@@ -14,7 +14,11 @@ type Location = components['schemas']['Location'];
 export const compareLocationCodes = (a: string, b: string): number =>
   a.localeCompare(b, 'en', { numeric: true });
 
-/** 위치를 사람에게 부르는 이름 — 별칭이 이름이다(사용자 지시 2026-10-29). 별칭이 없으면 저장된 위치명. */
+/**
+ * 위치를 사람에게 부르는 이름 — 별칭이 이름이다(사용자 지시 2026-10-29). 별칭이 없으면 저장된 위치명.
+ *
+ * ⚠ 코드 칸 옆 「별칭」 칸 하나의 값이라 코드를 붙이지 않는다 — 표식 · 선택 칸의 `location-label.ts` 와 뜻이 달라 따로 둔다(#267 T004).
+ */
 export const locationShownName = (location: Pick<Location, 'locationName' | 'aliasName'>): string =>
   location.aliasName?.trim() || location.locationName;
 
