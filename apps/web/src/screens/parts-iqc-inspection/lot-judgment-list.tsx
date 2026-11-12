@@ -22,15 +22,15 @@ const reasonOf = (
   judgment: InspectionLotJudgmentForward,
   results: readonly InspectionResultSummaryForward[],
 ): string | null => {
+  /*
+   * 서버는 그 LOT 의 판정을 불합격 · 보류에서 바꾼 경우에만 값을 싣고 그 밖에는 null 이다(S12 · G2) — 칸이 있으면 그것만 쓴다.
+   * 결과의 사유는 다른 LOT 을 덮은 것일 수 있어 칸이 없을 때(서버 T134 전)만 읽는다.
+   */
+  if ('reinspectionReasonCode' in judgment || 'reinspectionReasonName' in judgment) {
+    return judgment.reinspectionReasonName ?? judgment.reinspectionReasonCode ?? null;
+  }
   const result = results.find((each) => each.inspectionResultId === judgment.resultId);
-
-  return (
-    judgment.reinspectionReasonName ??
-    result?.reinspectionReasonName ??
-    judgment.reinspectionReasonCode ??
-    result?.reinspectionReasonCode ??
-    null
-  );
+  return result?.reinspectionReasonName ?? result?.reinspectionReasonCode ?? null;
 };
 
 /**

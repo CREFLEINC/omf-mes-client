@@ -29,6 +29,8 @@ export const KNOWN_BLOCK_REASON_CODES: readonly string[] = [
   'CANCEL_IN_PROGRESS',
   'STATE_LOCKED',
   'TYPE_NOT_CANCELABLE',
+  /** 005 — 최종 마감된 입하 LOT 의 입고 · 입하는 취소할 수 없다(서버 S12 · G2). */
+  'INBOUND_LOT_FINALIZED',
 ];
 
 /**
@@ -64,6 +66,7 @@ const BLOCK_REASON_TEXTS: Readonly<Record<string, string>> = {
   CANCEL_IN_PROGRESS: t.blockReasons.CANCEL_IN_PROGRESS,
   STATE_LOCKED: t.blockReasons.STATE_LOCKED,
   TYPE_NOT_CANCELABLE: t.blockReasons.TYPE_NOT_CANCELABLE,
+  INBOUND_LOT_FINALIZED: t.blockReasons.INBOUND_LOT_FINALIZED,
 };
 
 /**

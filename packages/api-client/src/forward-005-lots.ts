@@ -48,9 +48,9 @@ type ApprovalDetailGet = ApprovalDetailPath['get'];
 export type ApprovalTargetForward = components['schemas']['ApprovalTarget'] & {
   targetLotId?: number | null;
   /**
-   * 입하 마감 취소로 이 생략이 무효가 됐는가(G2 L11 대비 — 칸 이름은 서버 보고 뒤 맞춘다, 지금은 C7 가정). 참이면 실행을 잠근다.
+   * 입하 마감 취소로 이 생략이 무효가 됐는가(서버 S12 · G2 L11 — `IQC_SKIP` 결재에만). 참이면 실행을 잠근다.
    */
-  skipVoided?: boolean | null;
+  targetVoided?: boolean | null;
 };
 
 export type ApprovalRequestForward = Omit<components['schemas']['ApprovalRequest'], 'target'> & {

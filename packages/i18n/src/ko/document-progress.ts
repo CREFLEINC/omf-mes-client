@@ -115,6 +115,8 @@ export const documentProgress = {
     CANCEL_IN_PROGRESS: '취소 요청이 진행 중입니다',
     STATE_LOCKED: '지금 상태에서는 취소할 수 없습니다',
     TYPE_NOT_CANCELABLE: '이 문서 유형은 취소할 수 없습니다',
+    /** 005 — 최종 마감된 입하 LOT(W-01-16, G2). */
+    INBOUND_LOT_FINALIZED: '최종 마감된 입하 LOT 입니다',
   },
   /**
    * 고른 문서의 상세 — **목록 아래 구획**의 문구다.

@@ -77,6 +77,7 @@ export const documentProgress: Translated<typeof ko.documentProgress> = {
     CANCEL_IN_PROGRESS: 'Yêu cầu hủy đang được xử lý',
     STATE_LOCKED: 'Ở trạng thái hiện tại thì không hủy được',
     TYPE_NOT_CANCELABLE: 'Loại chứng từ này không hủy được',
+    INBOUND_LOT_FINALIZED: 'LOT nhập hàng đã chốt cuối cùng',
   },
   detail: {
     summary: (documentNo: string): string => `Tóm tắt ${documentNo}`,

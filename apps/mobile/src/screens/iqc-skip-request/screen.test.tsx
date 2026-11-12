@@ -606,7 +606,8 @@ describe('IQC 생략은 입하 LOT 단위(005 FR-032)', () => {
       [
         createRoute(() =>
           jsonResponse(
-            { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '입하 중' }] },
+            /* 서버 코드 INBOUND_LOT_RECEIVING(S12 · G2). */
+            { errors: [{ scope: 'screen', code: 'INBOUND_LOT_RECEIVING', message: '입하 중' }] },
             { status: 409 },
           ),
         ),
