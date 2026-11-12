@@ -19,13 +19,14 @@ type TreeLocation = Pick<LocationView, 'locationId' | 'parentLocationId'>;
 /** 도면에 둘 수 있는 위치 단계. 서버가 만든 자리(적치 대기 · 창고 전체)도 구역 단계라 여기 든다. */
 const PLACEABLE_LEVELS: ReadonlySet<string> = new Set(['ZONE', 'RACK']);
 
+/** 단계를 모르는 위치(`null`)는 대상이 아니다 — 목록에 내지 않는다. */
 export const isPlaceable = (location: Pick<LocationView, 'locationLevelCode'>): boolean =>
-  PLACEABLE_LEVELS.has(location.locationLevelCode);
+  location.locationLevelCode !== null && PLACEABLE_LEVELS.has(location.locationLevelCode);
 
 /**
  * 배치에서 층 · 셀 표식을 걷어 낸다.
  *
- * ⚠ **목록에 없는 위치 id 는 남긴다** — 중지 · 삭제된 위치는 단계를 모른다. 모르는 것을 셀로 쳐서 지우면 「중지된 위치도
+ * ⚠ **목록에 없는 위치 id(단계가 비어 있는 위치 포함)는 남긴다** — 중지 · 삭제된 위치는 단계를 모른다. 모르는 것을 셀로 쳐서 지우면 「중지된 위치도
  * 보기」를 끈 채 저장할 때 남의 표식이 말없이 사라진다.
  * ⭐ 빠질 것이 없으면 **받은 배열을 그대로** 돌려준다 — 편집 창은 배열이 바뀌면 「서버 배치가 새로 왔다」로 읽는다.
  */
@@ -37,7 +38,8 @@ export const splitPlaceable = (
   const kept = markers.filter((marker) => {
     const level = levelOf.get(marker.locationId);
 
-    return level === undefined || PLACEABLE_LEVELS.has(level);
+    /* 단계를 아는 층 · 셀만 뺀다 — 목록에 없거나 단계가 비어 있으면 모르는 것이다. */
+    return level === undefined || level === null || PLACEABLE_LEVELS.has(level);
   });
 
   return kept.length === markers.length
