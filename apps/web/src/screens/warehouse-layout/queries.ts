@@ -44,12 +44,20 @@ export const layoutKeys = {
 export const layoutPath = (warehouseId: number): string =>
   `/mdm/warehouses/${String(warehouseId)}/layout`;
 
-export const useLayout = (warehouseId: number | null): UseQueryResult<LayoutView> => {
+export const useLayout = (
+  warehouseId: number | null,
+  /**
+   * 편집 창은 `false` — 열 때 다시 읽지 않고 조회 화면이 받아 둔 배치(와 그 잠금 토큰)로 시작한다(피처 006 R-4). 열자마자
+   * 다시 읽은 응답이 손댄 뒤에 도착하면, 보이는 배치와 잠금 토큰이 어긋나 남의 저장을 충돌 없이 덮을 수 있다.
+   */
+  refetchOnMount = true,
+): UseQueryResult<LayoutView> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: layoutKeys.layout(warehouseId),
     enabled: warehouseId !== null,
+    refetchOnMount,
     queryFn: () => {
       if (warehouseId === null) throw new Error('창고를 고르기 전에는 배치도를 조회하지 않습니다.');
 

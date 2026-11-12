@@ -35,6 +35,8 @@
  * .drawing-stage 창고 배치도의 표식 판을 감싸, 그 위에 진행 가림막을 덮을 자리를 만든다
  * .drawing-busy  도면을 올리는 동안 판을 덮는 가림막 — 결과가 나타날 자리에서 단계를 알린다
  * .drawing-busy-note  그 가림막 안에 서는 표면 판 — 스크림 위에서도 단계 문구가 읽히게 한다
+ * .layout-editor-dialog  창고 배치도 편집 창 — DS 창의 폭 프리셋을 풀어 브라우저 창을 채운다(피처 006)
+ * .layout-editor-body    그 창의 본문 — 왼쪽 위치 목록 | 오른쪽 판, 남은 높이를 쓴다
  * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  *               + DS 배너의 box-sizing 정규화(임시 우회 — design-system-v2-webui#60)
  * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
@@ -13473,6 +13475,88 @@ button.app-button-neutral {
   color: var(--on-surface);
   box-shadow: var(--elevation-2);
   text-align: center;
+}
+
+/*
+ * W-CO-08 배치도 편집 창 — 브라우저 창을 채우는 대화창(피처 006 FR-004 · FR-005 · R-2).
+ *
+ * ⭐ **DS `Dialog` 를 그대로 쓰고 폭 프리셋만 푼다.** DS 창은 `width: calc(100vw - var(--space-8))` 에 크기 프리셋(lg 720px)을
+ * `max-width` 로 거는데, 요소 + 클래스(`dialog.layout-editor-dialog`)가 DS 의 해시 클래스 하나보다 무거워 그 상한만 걷힌다
+ * (변경 이력 창 `dialog.routing-history-dialog` 와 같은 방식). 포커스 가두기 · ESC · 스크롤 잠금 · 스크림은 DS 가 그대로 한다.
+ * ⛔ DS 안쪽 해시 클래스(`._panel_…`)는 붙잡지 않는다 — DS 를 갈 때마다 이름이 바뀐다.
+ *
+ * ⭐ **높이는 본문 래퍼가 정한다** — DS 창에 높이 프리셋이 없어 화면이 본문에 `block-size` 를 준다(품목 선택 창과 같은 관례).
+ * 창 머리 · 발 높이(`--layout-editor-chrome`)를 뺀 나머지를 본문이 쓰고, 왼쪽 위치 목록과 오른쪽 판이 각자 그 안에서 맞춘다.
+ */
+dialog.layout-editor-dialog {
+  /* 화면 가장자리에서 16px 씩 띄운다(시안) — DS 기본(40px 의 절반씩)보다 판이 넓다. */
+  --dialog-max-h: calc(100dvh - var(--space-7));
+  /* 창 머리(제목 · X) + 발(단추 줄) + 본문 아래 여백. */
+  --layout-editor-chrome: 10rem;
+  width: calc(100vw - var(--space-7));
+  max-width: none;
+}
+
+.layout-editor-body {
+  display: grid;
+  /* 목록 34rem(540px) — 시안의 480px 에서 넓혔다. 셀 4단계 들여쓰기에서 코드 「Z01-R001-L01-C01」이 잘리지 않으려면 코드 칸이 280px 는
+     돼야 하고(실측, 셀 200개 창고), 이름 칸도 남겨야 해서다. */
+  grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
+  gap: var(--space-4);
+  block-size: calc(var(--dialog-max-h) - var(--layout-editor-chrome));
+  min-block-size: 20rem;
+}
+
+/* 왼쪽 — 위치 목록은 칸 안에서 스크롤한다(셀 200개 창고 · 명세 예외). */
+.layout-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-block-size: 0;
+  overflow: auto;
+}
+
+/* 오른쪽 — 띠 · 판 · 크기 칸 · 사유. 판이 남은 높이를 다 쓴다. */
+.layout-editor-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+
+/* 판이 설 자리 — 크기를 재는 그릇이라 판이 높이(cqh)를 기준으로 폭을 정할 수 있다. */
+.layout-editor-stage {
+  flex: 1 1 auto;
+  min-block-size: 16rem;
+  container-type: size;
+}
+
+/*
+ * ⭐ **판은 도면 비율을 지키며 남은 칸에 맞춘다.** 폭을 다 쓰면 넓은 창에서 도면 아래가 창 밖으로 나간다 — 남은 높이 ×
+ * 도면 비율(`--drawing-aspect`, 화면이 그림을 읽어 준다)과 폭 가운데 작은 쪽을 쓴다. 비율을 모르면(도면 없음) 폭 전체.
+ */
+.layout-editor-board {
+  inline-size: min(100%, calc(100cqh * var(--drawing-aspect, 100)));
+  margin-inline: auto;
+}
+
+/* 발 — [도면 올리기] [지도에서 빼기] [되돌리기] · (저장 중 안내) · [취소] [배치도 저장]. */
+.layout-editor-footer-gap {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+/* 조회 화면 판 아래 — 고른 위치 코드와 「도면에 없음」(FR-002). */
+.layout-selection-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  font: var(--type-title-sm);
 }
 
 /*

@@ -90,6 +90,16 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     cancel: 'Hủy',
   },
 
+  editor: {
+    open: 'Sửa',
+    title: (warehouse: string): string => `Sửa sơ đồ bố trí — ${warehouse}`,
+    cancel: 'Hủy',
+    discardTitle: 'Bỏ thay đổi và đóng?',
+    discardBody: 'Các thay đổi điểm đánh dấu chưa lưu sẽ mất.',
+    keepEditing: 'Tiếp tục sửa',
+    discard: 'Bỏ và đóng',
+  },
+
   locations: {
     code: 'Mã vị trí',
     name: 'Tên',
@@ -98,6 +108,8 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     onMap: 'Đã đánh dấu',
     notOnMap: 'Chưa',
     emptyTitle: 'Không có vị trí',
+    emptyGuide: (screenName: string): string => `Hãy đăng ký vị trí trong màn hình ${screenName}.`,
+    notOnDrawing: 'Chưa có trên bản vẽ',
     includeInactive: 'Xem cả vị trí đã ngừng',
     unknown: (locationId: number): string => `Vị trí ${String(locationId)}`,
   },
