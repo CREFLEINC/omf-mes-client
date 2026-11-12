@@ -998,7 +998,9 @@ const InspectionForm = (props: FormProps) => {
                 </div>
               )}
               <div className="parts-iqc-fact">
-                <dt className="field-label">{t.target.sample}</dt>
+                <dt className="field-label">
+                  {aqlPlan === null ? t.target.sample : t.target.sampleDimension}
+                </dt>
                 <dd>{t.target.sampleValue(maxN, versionAcceptance ?? 0)}</dd>
               </div>
             </>
