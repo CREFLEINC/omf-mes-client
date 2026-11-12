@@ -134,6 +134,18 @@ export const PlanStep = ({
   onRemove,
 }: PlanStepProps) => {
   const [localView, setView] = useState('week');
+  const boardRef = useRef<HTMLElement>(null);
+  const [compactCalendar, setCompactCalendar] = useState(false);
+  const [dayOffset, setDayOffset] = useState(0);
+  useEffect(() => {
+    if (!boardRef.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) setCompactCalendar(entries[0].contentRect.width < 760);
+    });
+    observer.observe(boardRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const view = viewMode ?? localView;
   const [showAll, setShowAll] = useState(false);
@@ -195,6 +207,18 @@ export const PlanStep = ({
           : ui.unassigned;
   };
   const week = planWeek(anchor ?? (selected?.draft.planDate || plantToday()));
+  const visibleWeek = compactCalendar ? week.slice(dayOffset, dayOffset + 3) : week;
+  const selectedDate = selected?.draft.planDate;
+  const weekStart = week[0];
+  useEffect(() => {
+    if (!compactCalendar || !selectedDate) return;
+    const index = planWeek(weekStart ?? plantToday()).indexOf(selectedDate);
+    if (index >= 0)
+      setDayOffset((offset) =>
+        index < offset || index > offset + 2 ? Math.min(4, Math.max(0, index - 1)) : offset,
+      );
+  }, [compactCalendar, selectedDate, selectedRowKey, weekStart]);
+
   const context = useWeeklyPlanContext(
     plantId,
     week[0]!,
@@ -368,6 +392,7 @@ export const PlanStep = ({
       >
         <section
           className="pane erp-wo-plan-board"
+          ref={boardRef}
           aria-label={view === 'week' ? ui.week : ui.grid}
         >
           <h2 className="section-title erp-wo-plan-board-title">
@@ -478,7 +503,11 @@ export const PlanStep = ({
                     size="sm"
                     variant="outlined"
                     aria-label={ui.previousWeek}
-                    onClick={() => setAnchor(shiftPlanDate(week[0] ?? plantToday(), -7))}
+                    onClick={() => {
+                      setAnchor(shiftPlanDate(week[0] ?? plantToday(), -7));
+                      setDayOffset(0);
+                      setContextSelection(null);
+                    }}
                   >
                     ‹
                   </Button>
@@ -486,12 +515,41 @@ export const PlanStep = ({
                     size="sm"
                     variant="outlined"
                     aria-label={ui.nextWeek}
-                    onClick={() => setAnchor(shiftPlanDate(week[0] ?? plantToday(), 7))}
+                    onClick={() => {
+                      setAnchor(shiftPlanDate(week[0] ?? plantToday(), 7));
+                      setDayOffset(0);
+                      setContextSelection(null);
+                    }}
                   >
                     ›
                   </Button>
                 </div>
               </div>
+              {compactCalendar && (
+                <div className="erp-wo-week-day-navigation">
+                  <Button
+                    size="sm"
+                    variant="text"
+                    aria-label="이전 날짜"
+                    disabled={dayOffset === 0}
+                    onClick={() => setDayOffset((offset) => Math.max(0, offset - 2))}
+                  >
+                    ‹
+                  </Button>
+                  <span>
+                    {visibleWeek[0]?.slice(5)} — {visibleWeek.at(-1)?.slice(5)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="text"
+                    aria-label="다음 날짜"
+                    disabled={dayOffset === 4}
+                    onClick={() => setDayOffset((offset) => Math.min(4, offset + 2))}
+                  >
+                    ›
+                  </Button>
+                </div>
+              )}
               {showAll && (
                 <div className="erp-wo-week-legend">
                   <span>현재 편성</span>
@@ -516,17 +574,21 @@ export const PlanStep = ({
                   현재 편성은 계속 편집할 수 있습니다.
                 </AlertBanner>
               )}
-              <div className="erp-wo-week-scroll">
+              <div className={`erp-wo-week-scroll${compactCalendar ? ' is-compact' : ''}`}>
                 <AdjustableNativeTable
-                  storageKey="omf-mes:work-planning:week-columns:v3"
+                  storageKey={`omf-mes:work-planning:week-columns:v4:${compactCalendar ? 'compact' : 'wide'}`}
                   className="erp-wo-week-table"
-                  widths={[160, 224, 224, 224, 224, 224, 224, 224]}
+                  widths={
+                    compactCalendar
+                      ? [120, 144, 144, 144]
+                      : [160, 160, 160, 160, 160, 160, 160, 160]
+                  }
                   labels={[
                     t.columns.line,
-                    ...week.map((date, index) => (
+                    ...visibleWeek.map((date) => (
                       <span key={date}>
                         {date.slice(5)}
-                        <span>{ui.weekdays[index]}</span>
+                        <span>{ui.weekdays[week.indexOf(date)]}</span>
                       </span>
                     )),
                   ]}
@@ -537,7 +599,7 @@ export const PlanStep = ({
                         <th>
                           <span title={lineName(group)}>{lineName(group)}</span>
                         </th>
-                        {week.map((date) => (
+                        {visibleWeek.map((date) => (
                           <td key={date}>
                             {rows
                               .filter(
@@ -678,11 +740,26 @@ export const PlanStep = ({
             <p className="empty-line">{ui.selectPrompt}</p>
           ) : (
             <>
-              {orderContextOf
-                ? orderContextOf(selected)
-                : orderNameOf && (
-                    <p className="field-note erp-wo-plan-order">{orderNameOf(selected)}</p>
-                  )}
+              {orderContextOf ? (
+                orderContextOf(selected)
+              ) : rowIdentityOf ? (
+                <dl className="erp-wo-context-plan-facts">
+                  {[
+                    ['ERP W/O', rowIdentityOf(selected).orderNo],
+                    ['품목 코드', rowIdentityOf(selected).itemCode],
+                    ['품목명', rowIdentityOf(selected).itemName],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                orderNameOf && (
+                  <p className="field-note erp-wo-plan-order">{orderNameOf(selected)}</p>
+                )
+              )}
               <div className="erp-wo-plan-editor-title">
                 <span className="mono-cell">{nameOf(selected)}</span>
                 <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>

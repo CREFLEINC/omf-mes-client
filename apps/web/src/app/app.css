@@ -36815,3 +36815,17 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-week-plan:not(.erp-wo-week-plan-other) { background:var(--primary-container); border-left:3px solid var(--primary); }
 .erp-wo-week-table thead th:first-child, .erp-wo-week-table tbody th { position:sticky; left:0; z-index:1; background:var(--surface); }
+
+/* 선택 강조는 상태 색과 분리한 청록색을 사용한다. */
+.erp-wo-plan-workspace { --planning-accent:var(--semantic-info); --planning-current:var(--semantic-info-container); }
+.erp-wo-plan-workspace .erp-wo-week-plan:not(.erp-wo-week-plan-other) { background:var(--planning-current); border-left-color:var(--planning-accent); }
+.erp-wo-plan-workspace .erp-wo-week-plan[aria-pressed='true'] { background:var(--planning-current); border-color:var(--planning-accent); box-shadow:inset 0 0 0 1px var(--planning-accent); }
+.erp-wo-plan-workspace .erp-wo-week-plan-other[aria-pressed='true'] { background:var(--surface-container-high); }
+.erp-wo-plan-workspace .erp-wo-week-legend > span:not(.is-other) { border-color:var(--planning-accent); }
+.erp-wo-week-card-item { display:block; font:var(--type-body-sm); font-weight:500; color:var(--on-surface); overflow-wrap:anywhere; }
+.erp-wo-week-card-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-2); }
+.erp-wo-week-card-quantity { font:var(--type-body-sm); color:var(--on-surface); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.erp-wo-week-day-navigation { display:flex; align-items:center; justify-content:flex-end; gap:var(--space-2); margin-block:var(--space-2); }
+.erp-wo-week-scroll.is-compact .erp-wo-week-table { min-width:max(34rem,var(--col-floor,0px)); }
+
+.erp-wo-plan-workspace .erp-wo-week-actions button[aria-pressed='true'] { background:var(--planning-current); border-color:var(--planning-accent); color:var(--planning-accent); }
