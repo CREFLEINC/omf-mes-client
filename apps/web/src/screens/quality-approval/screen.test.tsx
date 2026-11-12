@@ -1023,6 +1023,28 @@ describe('QualityApprovalScreen conditions', () => {
     expect(recorded.urls.some((url) => url.pathname === '/trace/lots/91')).toBe(false);
   });
 
+  it('G2 L-a 입하 마감 취소로 무효가 된 IQC 생략(targetVoided)은 [실행]을 잠그고 무효 안내를 보이며 실행을 보내지 않는다', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+      target: { ...requests[0]!.target, targetLotId: 91, targetVoided: true },
+    } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const s = messages.iqcSkipApproval.skipExecute;
+
+    const pane = await screen.findByRole('region', { name: s.heading });
+    expect(within(pane).getByText(s.voided)).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: s.compact.action })).toBeDisabled();
+    expect(recorded.urls.some((url) => url.pathname.endsWith(':skip-iqc'))).toBe(false);
+  });
+
   it('승인된 IQC 생략은 대상 LOT 이 검사 대기면 확인 뒤 생략 실행을 한 번 보낸다', async () => {
     const approved = {
       ...requests[0]!,
