@@ -122,6 +122,8 @@ const request = (targetTypeCode: string) => ({
   requestedAt: '2099-11-11T01:00:00Z',
   fourMChange: null,
   skipBasisCode: null,
+  /* main #264 — AQL 시료 계획(없으면 null). */
+  aqlPlan: null,
   targetTypeCode,
 });
 
