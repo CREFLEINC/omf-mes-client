@@ -1,3 +1,6 @@
+import { WeeklyPlanCard } from './weekly-plan-card';
+import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
+import { useWeeklyPlanContext, type WeeklyContextPlan } from './weekly-plan-context';
 import { PlanViewSwitch } from './plan-view-switch';
 import { planQuantities } from './plan-quantities';
 import { PlanCreationTools } from './plan-creation-tools';
@@ -41,6 +44,13 @@ export interface PlanOrderGroup {
 }
 export interface PlanStepProps {
   planningTools?: ReactNode;
+  currentOrderIds?: readonly number[];
+  contextUnitLabelOf?: (uomId: number) => string;
+  rowIdentityOf?: (row: ProductionPlanEditorStateRow) => {
+    orderNo: string;
+    itemCode: string;
+    itemName: string;
+  };
   planGroups?: readonly PlanOrderGroup[];
   rows: ProductionPlanEditorStateRow[];
   orderQty: number;
@@ -99,6 +109,9 @@ export const PlanStep = ({
   addDisabled = false,
   onAppend,
   planningTools,
+  currentOrderIds = [],
+  contextUnitLabelOf,
+  rowIdentityOf,
   planGroups,
   distributionOrderLabel,
   distributionStartDate,
@@ -123,6 +136,8 @@ export const PlanStep = ({
   const [localView, setView] = useState('week');
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const view = viewMode ?? localView;
+  const [showAll, setShowAll] = useState(false);
+  const [contextSelection, setContextSelection] = useState<number | null>(null);
   const [splitQty, setSplitQty] = useState('');
   const [splitError, setSplitError] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -132,6 +147,7 @@ export const PlanStep = ({
   const [anchor, setAnchor] = useState<string | null>(null);
   const editorId = useId();
   const lineSource = useLineSource(plantId);
+  const displayLines = useProductionLineReferenceQuery(plantId);
   function revealEditor() {
     const editor = document.getElementById(editorId);
     const board = editor?.closest('.erp-wo-plan-layout')?.querySelector('.erp-wo-plan-board');
@@ -158,6 +174,7 @@ export const PlanStep = ({
     if (!selectAdded || beforeAdded.current === null) return;
     const added = rows.find((row) => !beforeAdded.current?.has(row.key));
     if (!added) return;
+    setContextSelection(null);
     setSelectedKey(added.key);
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
     setSelectAdded(false);
@@ -168,9 +185,39 @@ export const PlanStep = ({
   const nameOf = (row: ProductionPlanEditorStateRow) => row.planNo ?? t.newRow(row.displayNo);
   const lineName = (value: string) => {
     const line = lines.find((line) => String(line.id) === value);
-    return line === undefined ? ui.unassigned : named(line.name, line.code);
+    const known = displayLines.data?.items.find((line) => String(line.productionLineId) === value);
+    return line
+      ? named(line.name, line.code)
+      : known
+        ? named(known.lineName, known.lineCode)
+        : value
+          ? `생산 라인 ID ${value}`
+          : ui.unassigned;
   };
   const week = planWeek(anchor ?? (selected?.draft.planDate || plantToday()));
+  const context = useWeeklyPlanContext(
+    plantId,
+    week[0]!,
+    week[6]!,
+    showAll && view === 'week',
+    currentOrderIds,
+  );
+  const contextRows =
+    showAll && view === 'week'
+      ? (context.data ?? []).filter(
+          (plan) => !rows.some((row) => row.productionPlanId === plan.productionPlanId),
+        )
+      : [];
+  const contextPlan = contextRows.find((plan) => plan.productionPlanId === contextSelection);
+  const contextUnit = (plan: WeeklyContextPlan) =>
+    contextUnitLabelOf?.(plan.uomId) || `단위 ${plan.uomId}`;
+  const groups = [
+    ...new Set([
+      ...rows.map((row) => row.draft.plannedLineId),
+      ...contextRows.map((row) => (row.plannedLineId === null ? '' : String(row.plannedLineId))),
+    ]),
+  ];
+
   const quantities = planQuantities(orderQty, confirmedQty, rows);
   const total = quantities.confirmed + quantities.draft;
   const draftQty = quantities.draft;
@@ -178,6 +225,7 @@ export const PlanStep = ({
   const displayQty = (qty: number | null | undefined) =>
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
   const choose = (row: ProductionPlanEditorStateRow) => {
+    setContextSelection(null);
     setSelectedKey(row.key);
     onSelectedKeyChange?.(row.key);
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
@@ -237,7 +285,7 @@ export const PlanStep = ({
       ),
     },
   ];
-  const groups = [...new Set(rows.map((row) => row.draft.plannedLineId))];
+
   const outsideWeek = rows.filter((row) => !week.includes(row.draft.planDate));
   const editDisabled = disabled || selected?.confirmed === true;
 
@@ -416,6 +464,19 @@ export const PlanStep = ({
                   <Button
                     size="sm"
                     variant="outlined"
+                    aria-pressed={showAll}
+                    disabled={plantId === null}
+                    onClick={() => {
+                      setShowAll((value) => !value);
+                      setContextSelection(null);
+                    }}
+                  >
+                    전체 편성 보기
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outlined"
                     aria-label={ui.previousWeek}
                     onClick={() => setAnchor(shiftPlanDate(week[0] ?? plantToday(), -7))}
                   >
@@ -431,11 +492,35 @@ export const PlanStep = ({
                   </Button>
                 </div>
               </div>
+              {showAll && (
+                <div className="erp-wo-week-legend">
+                  <span>현재 편성</span>
+                  <span className="is-other">다른 ERP W/O</span>
+                </div>
+              )}
+              {showAll && context.isPending && (
+                <p role="status" className="field-note">
+                  전체 편성 조회 중
+                </p>
+              )}
+              {showAll && context.isError && (
+                <AlertBanner
+                  variant="error"
+                  title="전체 편성을 조회하지 못했습니다"
+                  action={
+                    <Button size="sm" variant="outlined" onClick={() => void context.refetch()}>
+                      다시 조회
+                    </Button>
+                  }
+                >
+                  현재 편성은 계속 편집할 수 있습니다.
+                </AlertBanner>
+              )}
               <div className="erp-wo-week-scroll">
                 <AdjustableNativeTable
-                  storageKey="omf-mes:work-planning:week-columns"
+                  storageKey="omf-mes:work-planning:week-columns:v3"
                   className="erp-wo-week-table"
-                  widths={[144, 112, 112, 112, 112, 112, 112, 112]}
+                  widths={[160, 224, 224, 224, 224, 224, 224, 224]}
                   labels={[
                     t.columns.line,
                     ...week.map((date, index) => (
@@ -460,24 +545,58 @@ export const PlanStep = ({
                                   row.draft.plannedLineId === group && row.draft.planDate === date,
                               )
                               .map((row) => (
-                                <button
+                                <WeeklyPlanCard
                                   key={row.key}
-                                  className="erp-wo-week-plan"
-                                  title={`${nameOf(row)} / ${row.draft.plannedQty} ${unitOf(row)}`}
-                                  aria-label={ui.selectPlan(nameOf(row))}
-                                  aria-pressed={selected?.key === row.key}
-                                  aria-controls={editorId}
-                                  onClick={() => choose(row)}
-                                >
-                                  <span>{nameOf(row)}</span>
-                                  <strong>
-                                    {orderNameOf && <small>{orderNameOf(row)}</small>}
-                                    {formatQty(Number(row.draft.plannedQty) || 0)} {unitOf(row)}
-                                  </strong>
-                                  <small>
-                                    {row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed}
-                                  </small>
-                                </button>
+                                  planNo={nameOf(row)}
+                                  orderNo={rowIdentityOf?.(row).orderNo ?? orderNameOf?.(row)}
+                                  itemCode={rowIdentityOf?.(row).itemCode}
+                                  itemName={rowIdentityOf?.(row).itemName}
+                                  quantity={`${formatQty(Number(row.draft.plannedQty) || 0)} ${unitOf(row)}`}
+                                  status={
+                                    row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed
+                                  }
+                                  confirmed={row.confirmed}
+                                  selected={!contextPlan && selected?.key === row.key}
+                                  label={ui.selectPlan(nameOf(row))}
+                                  controls={editorId}
+                                  onSelect={() => choose(row)}
+                                />
+                              ))}
+                            {contextRows
+                              .filter(
+                                (plan) =>
+                                  (plan.plannedLineId === null
+                                    ? ''
+                                    : String(plan.plannedLineId)) === group &&
+                                  plan.planDate === date,
+                              )
+                              .map((plan) => (
+                                <WeeklyPlanCard
+                                  key={`context-${plan.productionPlanId}`}
+                                  planNo={plan.planNo}
+                                  orderNo={plan.orderNo}
+                                  itemCode={plan.itemCode}
+                                  itemName={plan.itemName}
+                                  quantity={`${formatQty(plan.plannedQty)} ${contextUnit(plan)}`}
+                                  status={
+                                    plan.confirmedAt
+                                      ? statusNameOf(plan.statusCode)
+                                      : ui.unconfirmed
+                                  }
+                                  confirmed={!!plan.confirmedAt}
+                                  other
+                                  selected={contextPlan?.productionPlanId === plan.productionPlanId}
+                                  label={`${plan.planNo} 상세 확인`}
+                                  controls={editorId}
+                                  onSelect={() => {
+                                    setContextSelection(plan.productionPlanId);
+                                    requestAnimationFrame(() =>
+                                      document
+                                        .getElementById(editorId)
+                                        ?.scrollIntoView({ block: 'nearest' }),
+                                    );
+                                  }}
+                                />
                               ))}
                           </td>
                         ))}
@@ -486,7 +605,9 @@ export const PlanStep = ({
                   </tbody>
                 </AdjustableNativeTable>
               </div>
-              {rows.length === 0 && <p className="empty-line">{t.empty}</p>}
+              {rows.length === 0 && contextRows.length === 0 && !context.isFetching && (
+                <p className="empty-line">{t.empty}</p>
+              )}
               {outsideWeek.length > 0 && (
                 <div className="erp-wo-plan-outside">
                   <span>{ui.outsideWeek}</span>
@@ -513,9 +634,47 @@ export const PlanStep = ({
             </p>
           )}
         </section>
-        <section className="pane erp-wo-plan-editor" id={editorId} aria-label={ui.editor}>
-          <h2 className="section-title">{ui.editor}</h2>
-          {selected === undefined ? (
+        <section
+          className="pane erp-wo-plan-editor"
+          id={editorId}
+          aria-label={contextPlan ? '생산계획 상세' : ui.editor}
+        >
+          <h2 className="section-title">{contextPlan ? '생산계획 상세' : ui.editor}</h2>
+          {contextPlan ? (
+            <>
+              <div className="erp-wo-plan-editor-title">
+                <span>{contextPlan.planNo}</span>
+                <Chip
+                  size="sm"
+                  variant="status"
+                  status={contextPlan.confirmedAt ? 'success' : 'idle'}
+                >
+                  {contextPlan.confirmedAt ? statusNameOf(contextPlan.statusCode) : ui.unconfirmed}
+                </Chip>
+                <span className="field-note">다른 ERP W/O</span>
+              </div>
+              <dl className="erp-wo-context-plan-facts">
+                {[
+                  ['ERP W/O', contextPlan.orderNo],
+                  ['품목 코드', contextPlan.itemCode],
+                  ['품목명', contextPlan.itemName],
+                  ['계획일', contextPlan.planDate],
+                  [
+                    '생산 라인',
+                    lineName(
+                      contextPlan.plannedLineId === null ? '' : String(contextPlan.plannedLineId),
+                    ),
+                  ],
+                  ['생산량', `${formatQty(contextPlan.plannedQty)} ${contextUnit(contextPlan)}`],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          ) : selected === undefined ? (
             <p className="empty-line">{ui.selectPrompt}</p>
           ) : (
             <>
@@ -531,47 +690,50 @@ export const PlanStep = ({
                 </Chip>
               </div>
               {selected.confirmed && <p className="field-note">{ui.readonly}</p>}
-              <div className="field-cell">
-                <label className="field-label">{t.columns.planDate}</label>
-                <DatePicker
+              <div className="erp-wo-plan-edit-fields">
+                {' '}
+                <div className="field-cell">
+                  <label className="field-label">{t.columns.planDate}</label>
+                  <DatePicker
+                    size="sm"
+                    aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
+                    value={selected.draft.planDate || null}
+                    invalid={errorText(selected.errors, 'planDate') !== undefined}
+                    disabled={editDisabled}
+                    onChange={(value) => onChange(selected.key, 'planDate', value)}
+                  />
+                </div>
+                <div className="field-cell">
+                  <span className="field-label">{t.columns.line}</span>
+                  <ReferenceField
+                    wrapValue
+                    hideLabel
+                    size="sm"
+                    label={t.fieldLabel(nameOf(selected), t.columns.line)}
+                    valueLabel={
+                      selected.draft.plannedLineId === ''
+                        ? ''
+                        : lineName(selected.draft.plannedLineId)
+                    }
+                    source={lineSource}
+                    disabled={editDisabled}
+                    invalid={errorText(selected.errors, 'plannedLineId') !== undefined}
+                    onPick={(line) => onChange(selected.key, 'plannedLineId', String(line.id))}
+                    onClear={() => onChange(selected.key, 'plannedLineId', '')}
+                  />
+                </div>
+                <TextField
                   size="sm"
-                  aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
-                  value={selected.draft.planDate || null}
-                  invalid={errorText(selected.errors, 'planDate') !== undefined}
+                  label={t.columns.plannedQty}
+                  aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
+                  inputMode="decimal"
+                  helperText={rowUomLabelOf ? `단위 ${unitOf(selected)}` : undefined}
+                  value={selected.draft.plannedQty}
+                  error={errorText(selected.errors, 'plannedQty')}
                   disabled={editDisabled}
-                  onChange={(value) => onChange(selected.key, 'planDate', value)}
+                  onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
                 />
               </div>
-              <div className="field-cell">
-                <span className="field-label">{t.columns.line}</span>
-                <ReferenceField
-                  wrapValue
-                  hideLabel
-                  size="sm"
-                  label={t.fieldLabel(nameOf(selected), t.columns.line)}
-                  valueLabel={
-                    selected.draft.plannedLineId === ''
-                      ? ''
-                      : lineName(selected.draft.plannedLineId)
-                  }
-                  source={lineSource}
-                  disabled={editDisabled}
-                  invalid={errorText(selected.errors, 'plannedLineId') !== undefined}
-                  onPick={(line) => onChange(selected.key, 'plannedLineId', String(line.id))}
-                  onClear={() => onChange(selected.key, 'plannedLineId', '')}
-                />
-              </div>
-              <TextField
-                size="sm"
-                label={t.columns.plannedQty}
-                aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
-                inputMode="decimal"
-                helperText={rowUomLabelOf ? `단위 ${unitOf(selected)}` : undefined}
-                value={selected.draft.plannedQty}
-                error={errorText(selected.errors, 'plannedQty')}
-                disabled={editDisabled}
-                onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
-              />
               {onSplit && !selected.confirmed && (
                 <details className="erp-wo-plan-split" key={selected.key}>
                   <summary>계획 분할</summary>

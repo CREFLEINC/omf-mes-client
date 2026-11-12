@@ -36789,3 +36789,29 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-view-buttons { display:inline-flex; padding:var(--space-1); gap:var(--space-1); border:1px solid var(--outline-variant); border-radius:var(--radius-md); background:var(--surface-container-low); }
 .erp-wo-plan-view-buttons button[aria-pressed='true'] { color:var(--on-secondary-container); background:var(--secondary-container); }
 .erp-wo-plan-view-buttons button { white-space:nowrap; }
+
+.erp-wo-week-legend { display:flex; gap:var(--space-4); margin-block:var(--space-2); font:var(--type-label-sm); }
+.erp-wo-week-legend > span { border-left:3px solid var(--primary); padding-left:var(--space-2); }
+.erp-wo-week-legend > .is-other { border-color:var(--outline); }
+.erp-wo-week-plan.erp-wo-week-plan-other { background:var(--surface-container-high); color:var(--on-surface); border-left:3px solid var(--outline); opacity:1; }
+.erp-wo-context-plan-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(12rem,100%),1fr)); gap:var(--space-3); }
+.erp-wo-context-plan-facts dt { font:var(--type-label-sm); color:var(--on-surface-variant); }
+.erp-wo-context-plan-facts dd { margin:var(--space-1) 0 0; overflow-wrap:anywhere; }
+.erp-wo-plan-editor { container-type:inline-size; container-name:plan-editor; }
+.erp-wo-plan-edit-fields { display:grid; grid-template-columns:minmax(0,12rem) minmax(0,18rem) minmax(0,10rem); gap:var(--space-3); align-items:start; }
+.erp-wo-plan-edit-fields > * { min-width:0; }
+.erp-wo-plan-edit-fields .field-cell { display:grid; grid-template-columns:minmax(0,1fr); justify-content:stretch; }
+.erp-wo-plan-edit-fields button[aria-haspopup='dialog'] { max-width:100%; }
+@container plan-editor (max-width:42rem) { .erp-wo-plan-edit-fields { grid-template-columns:minmax(0,12rem) minmax(0,10rem); } .erp-wo-plan-edit-fields > :nth-child(2) { grid-column:1/-1; grid-row:2; max-width:24rem; } }
+@container plan-editor (max-width:23rem) { .erp-wo-plan-edit-fields { grid-template-columns:minmax(0,1fr); } .erp-wo-plan-edit-fields > * { max-width:18rem; } .erp-wo-plan-edit-fields > :nth-child(2) { grid-column:auto; grid-row:auto; } }
+
+.erp-wo-week-table { min-width:max(80rem,var(--col-floor,0px)); }
+
+.erp-wo-week-plan .erp-wo-week-card-field { display:grid; grid-template-columns:4.5rem minmax(0,1fr); align-items:start; gap:var(--space-2); font:var(--type-body-sm); }
+.erp-wo-week-card-field + .erp-wo-week-card-field { margin-top:var(--space-2); }
+.erp-wo-week-card-label { color:var(--on-surface-variant); white-space:nowrap; }
+.erp-wo-week-card-value { color:var(--on-surface); font:inherit; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.erp-wo-week-plan .erp-wo-week-card-status { font:var(--type-body-sm); }
+
+.erp-wo-week-plan:not(.erp-wo-week-plan-other) { background:var(--primary-container); border-left:3px solid var(--primary); }
+.erp-wo-week-table thead th:first-child, .erp-wo-week-table tbody th { position:sticky; left:0; z-index:1; background:var(--surface); }

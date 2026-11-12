@@ -385,6 +385,7 @@ const ReadyOrderSession = ({
 export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] }) => {
   const { client } = useApiClient();
   const codeNames = useProductionOrderCodeNames();
+  const contextUnits = useUomReferenceLookup();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const remainingId = useId();
@@ -858,6 +859,18 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {stage === 'plan' && target && (
           <div className="erp-wo-multi-plan-week">
             <PlanStep
+              currentOrderIds={entries.map((entry) => entry.order.productionOrderId)}
+              contextUnitLabelOf={(id) =>
+                contextUnits.entries.find((unit) => unit.value === String(id))?.label ?? ''
+              }
+              rowIdentityOf={(row) => {
+                const entry = ownerOf(row.key);
+                return {
+                  orderNo: entry?.order.productionOrderNo ?? '—',
+                  itemCode: entry?.itemCode ?? '—',
+                  itemName: entry?.itemName ?? '—',
+                };
+              }}
               hideTools
               hideHeading
               addRequest={addRequest}

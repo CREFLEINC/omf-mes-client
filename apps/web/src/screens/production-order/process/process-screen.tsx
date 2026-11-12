@@ -574,6 +574,13 @@ export const ProcessWorkspace = ({
               }}
             />
             <PlanStep
+              currentOrderIds={[order.productionOrderId]}
+              contextUnitLabelOf={uomLabelOf}
+              rowIdentityOf={() => ({
+                orderNo: order.productionOrderNo,
+                itemCode: item?.itemCode ?? '—',
+                itemName: item?.itemName ?? '—',
+              })}
               rows={editor.rows}
               orderQty={order.orderQty}
               confirmedQty={order.confirmedPlanQty}
