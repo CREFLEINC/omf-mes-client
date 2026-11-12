@@ -1003,7 +1003,219 @@ export interface SupplierItemDefaultUpdate {
 type SupplierItemDefaultId = { supplierItemDefaultId: number };
 type IdemOnly = { 'Idempotency-Key': string; 'X-Worker-No'?: string };
 
+/*
+ * ── 005 입하 LOT 조회 · PDA 받기 · 해제 · 공급사 LOT · 입하 마감 · 마감 취소(계약 §2·§3) ──
+ * 서버 S4·S5 병합 뒤 `gen:api` 로 다시 만들고 이 덧댐을 걷는다(D-22, T111). 계약에 적히지 않아 화면이 정한 칸은
+ * 주석에 「(C2 정함)」을 붙였다 — 서버가 다르게 내면 여기를 맞춘다.
+ */
+
+export type InboundLotStatusCode = 'RECEIVING' | 'RECEIVED' | 'FINALIZED' | 'VOIDED';
+
+/** 마감 취소 가능 건의 까닭(C2 정함 — M-01-03 「입하 완료 · 마감 취소 가능」 칩). */
+export type InboundLotReopenReasonCode =
+  'NO_IQC_RESULT' | 'INSPECTION_NOT_REQUIRED' | 'IQC_SKIPPED';
+
+export interface InboundLotIqcSummary {
+  requestId: number;
+  /** IQC 요청 번호(C2 정함 — 마감 결과 「IQC 요청 {번호}」). */
+  requestNo: string | null;
+  statusCode: string;
+  overallJudgmentCode: string | null;
+}
+
+/** `GET /logistics/inbound-lots` 한 행(계약 §2). P/O 배정 칸은 PDA 가 그리지 않는다. */
+export interface InboundLot {
+  inboundLotId: number;
+  inboundLotNo: string;
+  plantId: number;
+  supplierId: number;
+  supplierCode: string;
+  supplierName: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  /** 품목 기본 단위 코드. */
+  uomCode: string;
+  statusCode: InboundLotStatusCode;
+  receivingDate: string;
+  /** 입하 번호(C2 정함 — M-01-03 상세 「입하 번호」). */
+  inboundReceiptNo: string | null;
+  lotCount: number;
+  receivedQty: number;
+  goodsReceivedQty: number;
+  unallocatedQty: number;
+  iqc: InboundLotIqcSummary | null;
+  /** 검사 필요 품목인가(C2 정함 — 「검사 대기 · 보류」/「정상」, 검사 불필요 마감 문구). */
+  inspectionRequired: boolean;
+  firstRegisteredAt: string | null;
+  receivedClosedAt: string | null;
+  closedAutomatically: boolean;
+  finalizedAt: string | null;
+  reopenable: boolean;
+  /** 마감 취소 가능 건의 까닭 — 아니면 null(C2 정함). */
+  reopenReasonCode: InboundLotReopenReasonCode | null;
+  /** 마감 취소로 다시 연 건인가(C2 정함 — 「마감 취소됨」 칩). */
+  reopened: boolean;
+  finalizable: boolean;
+  erpSendModeCode: 'PER_RECEIPT' | 'ON_FINALIZE';
+  versionNo: number;
+}
+
+/** 입하 LOT 상세의 자재 관리 LOT 한 개(계약 §2 `lots[]`). */
+export interface InboundLotMaterialLot {
+  lotId: number;
+  lotNo: string;
+  lotQty: number;
+  package: MaterialPackage | null;
+  supplierLotNo: string | null;
+  lifecycleStatusCode: MaterialLotLifecycleCode;
+  statusCode: string;
+  /** 이 입하 LOT 에 등록된 시각(C2 정함 — 「앞서 등록 HH:mm」). */
+  registeredAt: string;
+  /** 공급사 사전부착 라벨로 받기 때 만든 LOT 인가(C2 정함 — 「공급사 라벨」 칩). */
+  fromSupplierLabel: boolean;
+}
+
+export interface InboundLotEvent {
+  eventCode: string;
+  occurredAt: string;
+  actorName: string | null;
+}
+
+export interface InboundLotDetail extends InboundLot {
+  lots: InboundLotMaterialLot[];
+  events: InboundLotEvent[];
+}
+
+export interface InboundLotListQuery {
+  plantId: number;
+  supplierId?: number;
+  itemId?: number;
+  statusCode?: InboundLotStatusCode[];
+  closable?: boolean;
+  reopenable?: boolean;
+  closedAutomatically?: boolean;
+  finalizable?: boolean;
+  q?: string;
+  page?: number;
+  size?: number;
+}
+
+/** `POST /logistics/inbound-lots:receive` 본문(계약 §3) — PDA 는 원소 하나만 담는다. */
+export interface InboundLotReceive {
+  receiptDatetime: string;
+  businessDate: string;
+  occurredAt: string;
+  deliveryNoteNo?: string | null;
+  lots: ({ lotId: number } | { lotNo: string; supplierLotNo?: string | null })[];
+}
+
+export interface InboundLotReceiveResult {
+  inboundLots: {
+    inboundLotId: number;
+    inboundLotNo: string;
+    created: boolean;
+    autoClosedInboundLotNo: string | null;
+    inboundReceiptNo: string;
+    receivedQty: number;
+    /** 이 받기 뒤 그 입하 LOT 의 자재 관리 LOT 수(C2 정함 — 「IL-… 에 추가 (n개째)」). */
+    lotCount: number;
+    lots: {
+      lotId: number;
+      lotNo: string;
+      lotQty: number;
+      statusCode: string;
+      /** C2 정함 — 공급사 사전부착 라벨로 이 자리에서 만들었는가. */
+      fromSupplierLabel: boolean;
+    }[];
+  }[];
+}
+
+export interface InboundLotClosed extends InboundLot {
+  iqcRequestId?: number | null;
+}
+
+type InboundLotId = { inboundLotId: number };
+
 export interface ForwardPaths {
+  /** 005 — 입하 LOT 목록(계약 §2). 권한 M-01-01·M-01-03·W-01-16·W-01-01. */
+  '/logistics/inbound-lots': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: InboundLotListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<{ items: InboundLot[]; page: PageMeta }> }
+    >;
+  };
+  /** 005 — 입하 LOT 상세(계약 §2). */
+  '/logistics/inbound-lots/{inboundLotId}': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query?: never; header?: never; path: InboundLotId; cookie?: never },
+      never,
+      { 200: Json<InboundLotDetail> }
+    >;
+  };
+  /** 005 — PDA 받기(계약 §3). 스캔마다 한 번, 멱등 키 하나. 권한 M-01-01. */
+  '/logistics/inbound-lots:receive': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': InboundLotReceive } },
+      { 201: Json<InboundLotReceiveResult> }
+    >;
+  };
+  /** 005 — 등록 해제(계약 §3). 권한 M-01-01·M-01-03. 마지막 LOT 면 입하 LOT VOIDED. */
+  '/logistics/inbound-lots/{inboundLotId}:unregister-lots': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, InboundLotId>,
+      { content: { 'application/json': { lotIds: number[]; versionNo: number } } },
+      { 200: Json<InboundLot> }
+    >;
+  };
+  /** 005 — 공급사 LOT 번호 넣기·바꾸기·지우기(계약 §3). 권한 M-01-01, 온라인만. */
+  '/logistics/inbound-lots/{inboundLotId}/lots/supplier-lot-no': Omit<Unused, 'patch'> & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post?: never;
+    patch: Op<
+      Params<never, IdemOnly, InboundLotId>,
+      { content: { 'application/json': { lotIds: number[]; supplierLotNo: string | null } } },
+      { 200: Json<{ lots: { lotId: number; lotNo: string; supplierLotNo: string | null }[] }> }
+    >;
+  };
+  /** 005 — 입하 마감(계약 §3). 권한 M-01-01·M-01-03. */
+  '/logistics/inbound-lots/{inboundLotId}:close-receipt': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, InboundLotId>,
+      { content: { 'application/json': { versionNo: number; occurredAt: string } } },
+      { 200: Json<InboundLotClosed> }
+    >;
+  };
+  /** 005 — 마감 취소(계약 §3). 409 이면 `errors[].code` 가 막힘 코드다. 권한 M-01-03. */
+  '/logistics/inbound-lots/{inboundLotId}:reopen-receipt': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, InboundLotId>,
+      { content: { 'application/json': { versionNo: number; reason?: string | null } } },
+      { 200: Json<InboundLot> }
+    >;
+  };
   /** 005 — 공급사·품목별 대기 자재 관리 LOT(계약 §1). 권한 P-01-01·W-01-14. */
   '/logistics/waiting-material-lots': Unused & {
     parameters: NoParameters;
