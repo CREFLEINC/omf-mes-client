@@ -4,7 +4,26 @@ import type { ReactNode } from 'react';
 
 const t = messages.inspectionStandard;
 
-export type PlanActionKind = 'deactivate' | 'activate';
+export type PlanActionKind = 'deactivate' | 'activate' | 'approve';
+
+const TEXT: Record<PlanActionKind, { title: string; action: string; description: string }> = {
+  deactivate: {
+    title: t.dialog.deactivateTitle,
+    action: messages.common.deactivate,
+    description: t.dialog.deactivateDescription,
+  },
+  activate: {
+    title: t.dialog.activateTitle,
+    action: t.actions.reactivate,
+    description: t.dialog.activateDescription,
+  },
+  /* 승인(사용자 지시 · omf-all-around#258) — 계약에 승인 해제가 없어 되돌릴 수 없다. */
+  approve: {
+    title: t.dialog.approveTitle,
+    action: t.actions.approve,
+    description: t.dialog.approveDescription,
+  },
+};
 
 export interface PlanActionDialogProps {
   open: boolean;
@@ -17,7 +36,7 @@ export interface PlanActionDialogProps {
 }
 
 /**
- * 사용 중지 · 다시 사용(사용자 지시 2026-11-04) 확인. 승인 단추는 걷었다 — 승인이 현장 검사에 효력이 없는 기록뿐이라(사용자 지시 · #208).
+ * 사용 중지 · 다시 사용(사용자 지시 2026-11-04) · 승인(#208 에서 걷었다가 되살림 · 사용자 지시 omf-all-around#258) 확인.
  *
  * **되돌릴 수 없다** — 물리 삭제가 없어 사용 중지가 마지막 상태다.
  * 그래서 확인을 한 단계 두고 **무엇이 일어나는지 먼저 밝힌다.**
@@ -36,8 +55,9 @@ export const PlanActionDialog = ({
   <Dialog
     open={open}
     onClose={onClose}
-    size="sm"
-    title={kind === 'activate' ? t.dialog.activateTitle : t.dialog.deactivateTitle}
+    /* 사용 중지 · 승인 창은 넓힌다(사용자 시안 · #258). */
+    size={kind === 'activate' ? 'sm' : 'md'}
+    title={TEXT[kind].title}
     closeOnBackdropClick={false}
     showCloseButton={false}
     footer={
@@ -46,12 +66,12 @@ export const PlanActionDialog = ({
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {kind === 'activate' ? t.actions.reactivate : messages.common.deactivate}
+          {TEXT[kind].action}
         </Button>
       </>
     }
   >
     {banner}
-    <p>{kind === 'activate' ? t.dialog.activateDescription : t.dialog.deactivateDescription}</p>
+    <p>{TEXT[kind].description}</p>
   </Dialog>
 );

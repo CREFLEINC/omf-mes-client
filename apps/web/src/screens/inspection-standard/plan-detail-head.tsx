@@ -16,6 +16,9 @@ export interface PlanDetailHeadProps {
   /** 기준의 라우팅 Rev. 없거나 아직 받지 못했으면 undefined — 「없음」 */
   routingRevision: RoutingRevision | undefined;
   onEdit: () => void;
+  /** 미승인 기준에만 — 「승인」(사용자 지시 · omf-all-around#258). 승인 해제는 없다. */
+  onApprove?: () => void;
+  isApproving?: boolean;
   /** 품목이 있는 기준에만 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
   onOpenRouting?: () => void;
   /** 사용 중인 기준에만 — 「기본 정보 수정」 옆 「사용 중지」(#208) */
@@ -37,6 +40,8 @@ export const PlanDetailHead = ({
   itemLabel,
   routingRevision,
   onEdit,
+  onApprove,
+  isApproving = false,
   onOpenRouting,
   onDeactivate,
   isDeactivating = false,
@@ -55,18 +60,16 @@ export const PlanDetailHead = ({
       <div className="inspection-standard-plan-head">
         <div className="inspection-standard-plan-chips">
           <h2 className="pane-title">{t.detail.title}</h2>
-          {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. */}
-          <Chip variant="status" status={approvedAt === null ? 'warning' : 'success'}>
-            {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
-          </Chip>
-          <Chip variant="status" status={plan.isActive ? 'success' : 'idle'}>
-            {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
-          </Chip>
         </div>
         <div className="inspection-standard-plan-head-actions">
           {onOpenRouting !== undefined && (
             <Button variant="outlined" onClick={onOpenRouting}>
               {t.actions.openRouting}
+            </Button>
+          )}
+          {onApprove !== undefined && (
+            <Button variant="outlined" disabled={isApproving} onClick={onApprove}>
+              {t.actions.approve}
             </Button>
           )}
           {onDeactivate !== undefined && (
@@ -98,11 +101,12 @@ export const PlanDetailHead = ({
        * 모양은 버전 요약 상자와 같다: 테두리 상자 · 칸마다 이름표 위 · 값 아래 · 칸 사이 세로선(사용자 시안).
        */}
       <dl className="inspection-standard-facts-line inspection-standard-plan-facts">
+        {/* 순서 — 어떤 기준인지(유형 · 품목)를 먼저, 이름 · 코드는 뒤(omf-all-around#256). */}
         {[
-          { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
-          { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
           { label: t.fields.inspectionType, value: inspectionTypeLabel(plan.inspectionTypeCode) },
           { label: t.fields.item, value: itemLabel ?? t.detail.itemUnset },
+          { label: t.fields.inspectionPlanName, value: plan.inspectionPlanName },
+          { label: t.fields.inspectionPlanCode, value: plan.inspectionPlanCode },
         ].map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>
@@ -111,7 +115,7 @@ export const PlanDetailHead = ({
         ))}
         {/* 기본 생략(omf-all-around#212) — 켜진 기준이 걸리는 건은 검사 의뢰 없이 넘어간다. */}
         <div>
-          <dt className="field-label">{t.fields.defaultSkip}</dt>
+          <dt className="field-label">{t.detail.defaultSkipLabel}</dt>
           <dd>
             {(plan.defaultSkip ?? plan.pqcSkipAllowed) === true ? (
               <Chip variant="status" size="sm" status="info">
@@ -123,6 +127,23 @@ export const PlanDetailHead = ({
                 {t.detail.pqcSkipOff}
               </Chip>
             )}
+          </dd>
+        </div>
+        {/* 승인 · 사용은 전용 액션으로만 바뀐다 — 값 표기로만 낸다. 제목 옆 칩을 이 상자로 옮겼다(사용자 지시 · #258). */}
+        <div>
+          <dt className="field-label">{t.detail.approvalLabel}</dt>
+          <dd>
+            <Chip variant="status" size="sm" status={approvedAt === null ? 'warning' : 'success'}>
+              {approvedAt === null ? t.detail.chipNotApproved : t.values.approvedAt(approvedAt)}
+            </Chip>
+          </dd>
+        </div>
+        <div>
+          <dt className="field-label">{t.detail.activeLabel}</dt>
+          <dd>
+            <Chip variant="status" size="sm" status={plan.isActive ? 'success' : 'idle'}>
+              {plan.isActive ? t.detail.chipActive : t.detail.chipInactive}
+            </Chip>
           </dd>
         </div>
         {/* 라우팅이 없으면 칸을 두지 않는다(사용자 지시 2026-11-05). */}

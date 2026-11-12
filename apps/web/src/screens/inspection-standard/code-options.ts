@@ -38,8 +38,11 @@ export const INSPECTION_TYPE_OPTIONS: SelectOption[] = [
 /** 전수검사 — 샘플 비율을 받지 않는다(검사 수량 = 의뢰 수량). */
 export const FULL_INSPECTION = 'FULL_INSPECTION';
 
+/** AQL 샘플링 — 시료 수 · 판정 수를 검사할 때 LOT 수량으로 AQL 표에서 정한다(omf-all-around#264). */
+export const AQL_SAMPLING = 'AQL';
+
 /**
- * 샘플링 방법 — 시드 공통코드 `INSPECTION_SAMPLING_METHOD` 3값(omf-all-around#103).
+ * 샘플링 방법 — 시드 공통코드 `INSPECTION_SAMPLING_METHOD` 4값(omf-all-around#103 · AQL #264).
  * 서버가 `FULL_INSPECTION` 을 값으로 분기하므로(PQC 검사 수량) 화면도 같은 값을 쓴다.
  */
 export const SAMPLING_METHOD_OPTIONS: SelectOption[] = [
@@ -52,7 +55,40 @@ export const SAMPLING_METHOD_OPTIONS: SelectOption[] = [
     label: messages.inspectionStandard.values.samplingMethods.sampleByUnit,
   },
   { value: 'SAMPLE_BY_LOT', label: messages.inspectionStandard.values.samplingMethods.sampleByLot },
+  { value: AQL_SAMPLING, label: messages.inspectionStandard.values.samplingMethods.aql },
 ];
+
+/** AQL 값 — KS Q ISO 2859-1 표 2-A 의 불량률(%) 열(서버 `AQL_VALUES` 와 같다 · omf-all-around#264). */
+export const AQL_VALUE_OPTIONS: SelectOption[] = [
+  '0.01',
+  '0.015',
+  '0.025',
+  '0.04',
+  '0.065',
+  '0.1',
+  '0.15',
+  '0.25',
+  '0.4',
+  '0.65',
+  '1',
+  '1.5',
+  '2.5',
+  '4',
+  '6.5',
+  '10',
+].map((value) => ({ value, label: value }));
+
+/** AQL 검사 수준 — 고객사 부품 기준서가 쓰는 일반 G-II 로 시작한다. */
+export const DEFAULT_AQL_LEVEL = 'G-II';
+export const AQL_LEVEL_OPTIONS: SelectOption[] = [
+  'G-I',
+  'G-II',
+  'G-III',
+  'S-1',
+  'S-2',
+  'S-3',
+  'S-4',
+].map((value) => ({ value, label: messages.inspectionStandard.values.aqlLevels[value] ?? value }));
 
 /**
  * 아래 넷은 값 목록을 화면에 적지 않고 `GET /mdm/code-values?codeGroupCode=` 로 받는다

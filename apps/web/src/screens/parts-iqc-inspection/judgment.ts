@@ -62,7 +62,20 @@ export interface JudgmentInput {
   /** 필수 항목 표시 — `dimensions` · `checks` 와 같은 차례. 주지 않으면 모두 필수로 본다. */
   requiredDimensions?: boolean[];
   requiredChecks?: boolean[];
+  /**
+   * AQL 샘플링의 합격 판정 수(Ac · omf-all-around#264). 주면 기타 항목(외관 등)의 불량 수 합이 Ac 이하이면 합격이다.
+   * 치수 항목은 AQL 과 상관없이 하나라도 불합격이면 불합격이다(사용자 결정 2026-11-12) — 서버 자동 판정과 같은 기준이다.
+   */
+  aqlAcceptance?: number | null;
+  /** AQL 일 때 NG 인 기타 항목에서 찾은 불량 수 — `checks` 와 같은 차례. 아직 적지 않았으면 `null`. */
+  checkDefects?: (number | null)[];
 }
+
+/** 기타 항목 하나의 불량 수 — AQL 이면 적은 불량 수, 아니면 NG 하나가 1. */
+const checkDefectOf = (input: JudgmentInput, judgment: ItemJudgment, index: number): number => {
+  if (judgment !== REJECTED) return 0;
+  return (input.aqlAcceptance ?? null) === null ? 1 : (input.checkDefects?.[index] ?? 0);
+};
 
 /**
  * 불합격 수량 — 불합격 치수 항목의 벗어난 시료 수 + NG 인 기타 항목(항목당 1).
@@ -72,7 +85,8 @@ export const rejectedQtyOf = (input: JudgmentInput): number => {
   const dimension = input.dimensions
     .filter((d) => d.judgment === REJECTED)
     .reduce((sum, d) => sum + d.outCount, 0);
-  const total = dimension + input.checks.filter((j) => j === REJECTED).length;
+  const total =
+    dimension + input.checks.reduce((sum, j, index) => sum + checkDefectOf(input, j, index), 0);
   return input.inspectedQty === null ? total : Math.min(total, input.inspectedQty);
 };
 
@@ -83,7 +97,20 @@ export const rejectedQtyOf = (input: JudgmentInput): number => {
 export const suggestedJudgmentOf = (input: JudgmentInput): 'ACCEPTED' | 'REJECTED' | null => {
   if (input.inspectedQty === null || input.inspectedQty <= 0) return null;
   const parts: ItemJudgment[] = [...input.dimensions.map((d) => d.judgment), ...input.checks];
-  if (parts.some((p) => p === REJECTED)) return REJECTED;
+  const aql = input.aqlAcceptance ?? null;
+  if (aql === null && parts.some((p) => p === REJECTED)) return REJECTED;
+  if (aql !== null) {
+    if (input.dimensions.some((d) => d.judgment === REJECTED)) return REJECTED;
+    const visual = input.checks.reduce((sum, j, index) => sum + checkDefectOf(input, j, index), 0);
+    if (visual > aql) return REJECTED;
+    /* NG 를 골랐는데 불량 수를 아직 적지 않았으면 판정을 내지 않는다. */
+    if (
+      input.checks.some(
+        (j, index) => j === REJECTED && (input.checkDefects?.[index] ?? null) === null,
+      )
+    )
+      return null;
+  }
   const required = [
     ...input.dimensions.map((_, i) => input.requiredDimensions?.[i] ?? true),
     ...input.checks.map((_, i) => input.requiredChecks?.[i] ?? true),
@@ -102,8 +129,10 @@ export const serverExpectedOf = (
   versionAcceptance: number | null,
   /** 보류로 확정하면 불량이 아닌 수량이 보류 수량으로 나간다 — 서버는 보류 수량이 있으면 보류를 기대한다(#247 클릭 점검). */
   heldQty = 0,
+  /** AQL 기준에서 치수 항목이 불합격이면 서버도 불합격을 기대한다(omf-all-around#264 · 사용자 결정 2026-11-12). */
+  dimensionRejected = false,
 ): 'ACCEPTED' | 'REJECTED' | 'HELD' | null => {
   if (versionAcceptance === null) return null;
-  if (rejectedQty > versionAcceptance) return REJECTED;
+  if (dimensionRejected || rejectedQty > versionAcceptance) return REJECTED;
   return heldQty > 0 ? HELD : ACCEPTED;
 };

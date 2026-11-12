@@ -8,7 +8,6 @@ import {
   Icon,
   PageHeader,
   SkeletonText,
-  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import {
@@ -77,10 +76,13 @@ import {
 } from './import-dialog';
 import { PlanDetailHead } from './plan-detail-head';
 import { PlanFilterBar } from './plan-filter-bar';
+import type { TemplateBasics } from '../inspection-sheet-template/basic-dialog';
+import { SheetBasicsFields } from './sheet-basics-fields';
 import { SHEET_TYPE, useSheetForPqc } from './type-options';
 import { PlanListPane } from './plan-list-pane';
 import {
   emptyPlanFormValues,
+  formatApprovedAt,
   isSamePlanValues,
   planToFormValues,
   toPlanCreate,
@@ -107,7 +109,6 @@ import {
   useItemOptions,
   useRoutingOptions,
   useUomOptions,
-  useVersionHistory,
   versionDetailPath,
   versionKeys,
   type InspectionItemSpecListResponse,
@@ -136,6 +137,7 @@ import { useVersionDrawingDraft, VersionDrawings } from './version-drawings';
 import { VersionHistoryTable } from './version-history-table';
 import { VersionBar } from './version-bar';
 import { VersionGuideDialog } from './version-guide-dialog';
+import { VersionGuideRow, VersionSettingRow } from './version-setting-row';
 import { type GuideTextField, VersionSummary } from './version-summary';
 import { VersionTransitionDialog, type VersionTransitionKind } from './version-transition-dialog';
 import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
@@ -146,7 +148,7 @@ type InspectionPlanVersionDetailResponse =
 
 const t = messages.inspectionStandard;
 
-/** 라우팅 화면 — 상세 머리의 「라우팅 보기」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
+/** 라우팅 화면 — 상세 머리의 「라우팅 조회」가 이 주소로 그 품목 · Rev 를 연다(`item` · `rev` 는 그 화면의 주소 칸이다). */
 const ROUTING_PATH = '/master-data/routing';
 
 /** 바뀌면 편집 대상(기준 · 버전)이 바뀌는 질의 — 「뒤로」로 이 값만 바뀌어도 편집이 사라져 묻는다. */
@@ -187,7 +189,8 @@ interface ItemDialogState {
 /** 계약이 정한 버전 상태 전이 경로. 본문이 없고 멱등 키만 싣는다. */
 type VersionTransitionPath =
   | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm'
-  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete';
+  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete'
+  | '/quality/inspection-plan-versions/{inspectionPlanVersionId}:reactivate';
 
 interface VersionTransitionOptions {
   /** 계약 클라이언트. 훅이 화면 상태를 알 필요가 없도록 필요한 것만 받는다 */
@@ -235,7 +238,6 @@ const useVersionTransition = ({
  */
 const PAIRED_FIELDS: readonly (readonly [string, string])[] = [
   ['effectiveFrom', 'effectiveTo'],
-  ['frequencyIntervalValue', 'frequencyIntervalUomCode'],
   ['lowerLimit', 'upperLimit'],
 ];
 
@@ -267,6 +269,12 @@ export const InspectionStandardScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { session } = useSession();
+  /*
+   * 등록 창에서 PQC 를 고른 OA 계정의 검사표 기준 칸 값 — 사업부 · 출력 양식 · 고른 품목 이름(omf-all-around#260).
+   * 기준코드 · 기준명 · 품목 번호는 등록 폼 값을 쓴다. null 이면 검사 기준 등록이다.
+   */
+  const [sheetBasics, setSheetBasics] = useState<TemplateBasics | null>(null);
+  const sheetScopeIds = (session?.scopes ?? []).map((scope) => scope.businessUnitId);
   const hub = usePageHub();
   /* 목록 · 상세 배치 — 검사 조회·판정과 같은 좌우 분할, 가운데 막대로 폭을 나눈다(비율은 브라우저에 남는다). */
   const { splitRef, aboveRef } = useFitToViewport();
@@ -288,7 +296,7 @@ export const InspectionStandardScreen = () => {
   /* 「변경 이력」 창(#196) */
   /* 「버전 설정 수정」 창 — 작성중 버전의 설정을 고친다(버전 설정 탭을 걷었다 · #196). */
   const [isVersionEditOpen, setIsVersionEditOpen] = useState(false);
-  const [versionTab, setVersionTab] = useState('items');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const toast = useToast();
   const { client } = useApiClient();
   const sheetForPqc = useSheetForPqc();
@@ -568,14 +576,38 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /*
+   * 승인(사용자 지시 · omf-all-around#258) — **`If-Match`를 싣지 않고 본문도 없다**(계약). 승인자 · 시각은 서버가 기록한다.
+   * 확정 버전이 없으면 서버가 거부하고 그 까닭은 확인 창 배너에 낸다.
+   */
+  const approveWrite = useMasterWrite<void, InspectionPlan>({
+    request: (_variables, headers) =>
+      client.POST('/quality/inspection-plans/{inspectionPlanId}:approve', {
+        params: {
+          path: { inspectionPlanId: selectedPlanId ?? 0 },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+      }),
+    etagPath: null,
+    invalidateKeys: [planKeys.all],
+    knownFields: [],
+    onSuccess: () => {
+      setPlanAction(null);
+      toast.show({ variant: 'success', description: t.result.approved });
+    },
+  });
+
   const [planAction, setPlanAction] = useState<PlanActionKind | null>(null);
-  const planActionWrite = planAction === 'activate' ? activateWrite : deactivateWrite;
+  const planActionWrite =
+    planAction === 'activate'
+      ? activateWrite
+      : planAction === 'approve'
+        ? approveWrite
+        : deactivateWrite;
 
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
   const selectedVersionId = Number(searchParams.get('ver') ?? '') || null;
-  /* 고른 버전의 변경 이력 — 「변경 이력」 단추를 이력이 있을 때만 세운다(#208). 창 · 탭과 같은 조회라 한 번만 나간다. */
-  const versionHistory = useVersionHistory(selectedVersionId);
   /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
   const versionDrawings = useInspectionDrawings(selectedVersionId);
   /* 도면 탭의 저장 전 변경(#227) — 확정 · 신규 버전 발행을 막는 「저장하지 않은 변경」에 들어간다. */
@@ -655,6 +687,12 @@ export const InspectionStandardScreen = () => {
   const [versionFieldErrors, setVersionFieldErrors] = useState<Record<string, string>>({});
   /** 언어별 안내 문구 수정 창(#252) — 연 언어. */
   const [guideEditField, setGuideEditField] = useState<GuideTextField | null>(null);
+  /*
+   * 지시문 창의 「확인」은 화면에만 담는다 — 바닥 줄 「임시 저장」 · 「확정」이 저장한다(사용자 지시).
+   * null 이면 고친 것이 없다. 저장이 끝나면 이어서 할 일(항목 · 도면 저장 또는 확정)을 적어 둔다.
+   */
+  const [guideDraft, setGuideDraft] = useState<string | null>(null);
+  const afterGuideSave = useRef<{ then: () => void; announce: boolean } | null>(null);
 
   /*
    * 폼의 기준값은 상세 응답에서 온다. 응답 객체가 바뀔 때만 다시 세워
@@ -706,10 +744,45 @@ export const InspectionStandardScreen = () => {
     },
   });
 
+  /*
+   * 담아 둔 지시문 저장 — 버전 수정과 같은 요청이지만 통로를 따로 둔다. 같은 통로면 지시문 저장이 실패한 뒤
+   * 「버전 설정 수정」 저장이 성공할 때 남아 있던 「이어서 할 일」(확정 등)이 실행된다(PR #1601 리뷰).
+   */
+  const guideWrite = useMasterWrite<VersionFormValues, InspectionPlanVersion>({
+    request: (values, headers) =>
+      client.PUT('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+        params: {
+          path: { inspectionPlanVersionId: selectedVersionId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toVersionUpdate(values),
+      }),
+    etagPath: selectedVersionId === null ? null : versionDetailPath(selectedVersionId),
+    invalidateKeys: [versionKeys.all],
+    knownFields: VERSION_FORM_FIELDS,
+    onSuccess: (saved) => {
+      const next = versionToFormValues(saved);
+      setVersionFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next },
+      );
+      setGuideDraft(null);
+      const after = afterGuideSave.current;
+      afterGuideSave.current = null;
+      /* 확정이 이어지면 확정 알림 하나만 낸다. */
+      if (after === null || after.announce) {
+        toast.show({ variant: 'success', description: messages.common.saved });
+      }
+      after?.then();
+    },
+  });
+
   const [versionTransition, setVersionTransition] = useState<VersionTransitionKind | null>(null);
 
   /*
-   * 전이 두 갈래의 훅을 나눈다 — 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
+   * 전이 갈래마다 훅을 나눈다 — 하나로 묶으면 확정 실패 문구가 사용 중지 창에 남는다.
    */
   const finishVersionTransition = (description: string) => {
     setVersionTransition(null);
@@ -728,6 +801,14 @@ export const InspectionStandardScreen = () => {
     inspectionPlanVersionId: selectedVersionId,
     path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete',
     onDone: () => finishVersionTransition(t.result.obsoleted),
+  });
+
+  /* 사용 중지된 버전을 다시 확정으로(재사용 · omf-all-around#258). */
+  const reactivateWrite = useVersionTransition({
+    client,
+    inspectionPlanVersionId: selectedVersionId,
+    path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:reactivate',
+    onDone: () => finishVersionTransition(t.result.reactivated),
   });
 
   /*
@@ -765,9 +846,11 @@ export const InspectionStandardScreen = () => {
   const versionTransitionWrite =
     versionTransition === 'obsolete'
       ? obsoleteWrite
-      : versionTransition === 'discard'
-        ? discardWrite
-        : confirmWrite;
+      : versionTransition === 'reactivate'
+        ? reactivateWrite
+        : versionTransition === 'discard'
+          ? discardWrite
+          : confirmWrite;
 
   /*
    * 검사 항목은 화면의 로컬 초안 목록으로 다룬다 — 순서 컬럼에 유일 제약이 있어
@@ -846,6 +929,7 @@ export const InspectionStandardScreen = () => {
     versionWrite.reset();
     confirmWrite.reset();
     obsoleteWrite.reset();
+    reactivateWrite.reset();
     discardWrite.reset();
     itemsWrite.reset();
     setVersionTransition(null);
@@ -853,6 +937,9 @@ export const InspectionStandardScreen = () => {
     setVersionCreateFieldErrors({});
     setVersionFormState(null);
     setVersionFieldErrors({});
+    setGuideDraft(null);
+    afterGuideSave.current = null;
+    guideWrite.reset();
     setItemDraftState(null);
     drawingDraft.reset();
     setItemDialog(null);
@@ -898,6 +985,28 @@ export const InspectionStandardScreen = () => {
     if (itemDraftState === null) return;
 
     itemsWrite.write(itemDraftState.drafts);
+  };
+
+  /**
+   * 담아 둔 지시문을 저장하고 이어서 `after` 를 한다. 저장이 실패하면 이어서 하지 않는다.
+   * 지시문은 버전 수정(If-Match)으로 보내므로 다른 저장과 겹치지 않게 먼저 끝낸다.
+   */
+  const saveGuideThen = (after: () => void, announce: boolean) => {
+    if (guideDraft === null || versionFormState === null) {
+      after();
+      return;
+    }
+    afterGuideSave.current = { then: after, announce };
+    guideWrite.write({ ...versionFormState.baseline, guideText: guideDraft });
+  };
+
+  /** 바닥 줄 「임시 저장」 — 바뀐 쪽만 보낸다(사용자 지시 · #258). 지시문을 먼저 저장한다. */
+  const handleTempSave = () => {
+    saveGuideThen(() => {
+      if (isItemsDirty) handleSaveItems();
+      if (drawingDraft.isDirty) void drawingDraft.save();
+      /* 항목 · 도면 저장이 이어지면 그쪽 알림 하나만 낸다. */
+    }, !isItemsDirty && !drawingDraft.isDirty);
   };
 
   /**
@@ -1229,13 +1338,23 @@ export const InspectionStandardScreen = () => {
   };
 
   const changeCreateValues = (rawPatch: Partial<PlanFormValues>) => {
-    /* OA 공장 계정의 「기준 추가」에서 PQC 를 고르면 검사표 기준 등록 창으로 넘어간다(#255 사용자 지시). */
-    if (sheetForPqc && copySource === null && rawPatch.inspectionTypeCode === SHEET_TYPE) {
-      createWrite.reset();
-      setCreateValues(null);
-      setCreateFieldErrors({});
-      setSearchParams(new URLSearchParams({ type: SHEET_TYPE, new: '1' }));
-      return;
+    /*
+     * OA 공장 계정의 등록 창에서 PQC 를 고르면 같은 창에 사업부 · 출력 양식 칸을 더 보인다(사용자 결정 · #260).
+     * 다른 유형으로 돌리면 검사 기준 등록으로 돌아간다.
+     */
+    if (sheetForPqc && copySource === null && rawPatch.inspectionTypeCode !== undefined) {
+      setSheetBasics((prev) =>
+        rawPatch.inspectionTypeCode === SHEET_TYPE
+          ? (prev ?? {
+              templateCode: '',
+              templateName: '',
+              itemId: null,
+              itemLabel: '',
+              businessUnitId: sheetScopeIds[0] ?? null,
+              formLayoutCode: 'OP',
+            })
+          : null,
+      );
     }
     const patch = withItemChangeRule(rawPatch);
 
@@ -1262,7 +1381,7 @@ export const InspectionStandardScreen = () => {
   const handleSaveCreate = () => {
     if (createValues === null) return;
 
-    const errors = validatePlanForm(createValues);
+    const errors = validatePlanForm(createValues, true);
     setCreateFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) return;
@@ -1295,7 +1414,9 @@ export const InspectionStandardScreen = () => {
    * 발행하면 새 버전이 선택돼 지금 버전을 떠난다 — 저장하지 않은 편집은 그때 사라진다.
    * 잃기 전에 먼저 막고 무엇을 하면 풀리는지 알린다.
    */
-  const isAnythingDirty = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
+  /* 담아 둔 지시문은 「확정」이 저장하고 확정한다 — 확정을 막는 저장 전 편집에서는 뺀다. */
+  const isDirtyExceptGuide = isPlanDirty || isVersionDirty || isItemsDirty || drawingDraft.isDirty;
+  const isAnythingDirty = isDirtyExceptGuide || guideDraft !== null;
 
   /* 작성중 버전이 이미 있으면 새로 발행하지 않는다 — 서버는 막지 않아 화면이 먼저 막는다(사용자 지시 · #196). */
   const draftVersion = versions.find((version) => {
@@ -1332,19 +1453,19 @@ export const InspectionStandardScreen = () => {
      */
     if (savedItemCount === 0) return t.actionReasons.confirmNeedsItems;
     // 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다.
-    if (isAnythingDirty) return t.actionReasons.confirmBlockedByUnsaved;
+    if (isDirtyExceptGuide) return t.actionReasons.confirmBlockedByUnsaved;
 
     return null;
   })();
 
-  /** 폐기는 확정된 버전에만 성립한다 — 계약이 그렇게 정했다. */
+  /** 사용 중지는 확정된 버전에만 성립한다 — 계약이 그렇게 정했다. */
   const obsoleteDisabledReason = ((): string | null => {
     if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
 
     return versionStatus.status === 'confirmed' ? null : t.actionReasons.obsoleteNeedsConfirmed;
   })();
 
-  /** 작성 취소는 작성중 버전에만 성립한다 — 확정된 버전은 폐기가 그 길이다. */
+  /** 작성 취소는 작성중 버전에만 성립한다 — 확정된 버전은 사용 중지가 그 길이다. */
   const discardDisabledReason = ((): string | null => {
     if (versionStatus === null) return t.actionReasons.transitionNeedsVersion;
 
@@ -1352,7 +1473,32 @@ export const InspectionStandardScreen = () => {
   })();
 
   const isVersionTransitionRunning =
-    confirmWrite.isSaving || obsoleteWrite.isSaving || discardWrite.isSaving;
+    confirmWrite.isSaving ||
+    obsoleteWrite.isSaving ||
+    reactivateWrite.isSaving ||
+    discardWrite.isSaving;
+
+  const renderTempSave = (): ReactNode => {
+    /* 항목을 저장할 수 없는 사유는 종전처럼 늘 보인다 — 도면만 바뀌었을 때만 그 사유로 막지 않는다. */
+    const isGuideDirty = guideDraft !== null;
+    const reason =
+      isItemsDirty || (!drawingDraft.isDirty && !isGuideDirty) ? itemsSaveBlockedReason : null;
+    if (reason !== null) return <DisabledAction label={t.actions.tempSave} reason={reason} />;
+    const isSaving = itemsWrite.isSaving || drawingDraft.isSaving || guideWrite.isSaving;
+
+    return (
+      <div className="field-cell">
+        <Button
+          variant="outlined"
+          disabled={(!isItemsDirty && !drawingDraft.isDirty && !isGuideDirty) || isSaving}
+          loading={isSaving}
+          onClick={handleTempSave}
+        >
+          {t.actions.tempSave}
+        </Button>
+      </div>
+    );
+  };
 
   const renderVersionTransitionActions = (): ReactNode => (
     <>
@@ -1377,6 +1523,12 @@ export const InspectionStandardScreen = () => {
         <DisabledAction label={t.actions.discard} reason={discardDisabledReason} />
       )}
 
+      {/*
+       * 「임시 저장」 하나로 검사 항목 · 도면 중 바뀐 쪽을 함께 저장한다 — 「확정」 왼쪽(사용자 지시 · #258).
+       * 요청은 종전과 같다(항목 전체 치환 · 도면 추가/수정/제거). 항목을 저장할 수 없는 사유가 있으면 막고 그 사유를 보인다.
+       */}
+      {versionStatus !== null && versionStatus.isEditable && renderTempSave()}
+
       {/* 고칠 수 없는 버전(확정 · 폐기)에는 확정을 두지 않는다 — 다시 확정할 일이 없다(사용자 지시 · #196). */}
       {versionStatus !== null && !versionStatus.isEditable ? null : confirmDisabledReason ===
         null ? (
@@ -1397,12 +1549,28 @@ export const InspectionStandardScreen = () => {
         <DisabledAction label={t.actions.confirm} reason={confirmDisabledReason} />
       )}
 
-      {/* 작성중 버전에는 폐기를 두지 않는다 — 작성중은 「작성 취소」가 그 길이다(사용자 지시 · #196). */}
-      {versionStatus !== null && versionStatus.isEditable ? null : obsoleteDisabledReason ===
-        null ? (
+      {/* 작성중 버전에는 사용 중지를 두지 않는다 — 작성중은 「작성 취소」가 그 길이다(사용자 지시 · #196).
+       * 사용 중지된 버전은 그 자리에 「재사용」을 둔다(omf-all-around#258). */}
+      {versionStatus !== null && versionStatus.isEditable ? null : versionStatus?.status ===
+        'obsolete' ? (
         <div className="field-cell">
           <Button
             variant="outlined"
+            aria-label={t.actions.reactivateVersion}
+            disabled={isVersionTransitionRunning}
+            onClick={() => {
+              reactivateWrite.reset();
+              setVersionTransition('reactivate');
+            }}
+          >
+            {t.actions.reactivate}
+          </Button>
+        </div>
+      ) : obsoleteDisabledReason === null ? (
+        <div className="field-cell">
+          <Button
+            variant="outlined"
+            aria-label={t.actions.obsoleteVersion}
             disabled={isVersionTransitionRunning}
             onClick={() => {
               obsoleteWrite.reset();
@@ -1426,21 +1594,22 @@ export const InspectionStandardScreen = () => {
       onCompare={versions.length >= 2 ? () => setIsCompareOpen(true) : undefined}
       isListOpen={isVersionListOpen}
       onListOpenChange={setIsVersionListOpen}
+      /* 「버전 설정 수정」은 「버전 이력」 오른쪽(사용자 지시 · #258) — 작성중 버전에서만. */
       versionActions={
-        selectedVersionId !== null && versionStatus !== null ? (
-          <>
-            {versionStatus.isEditable && (
-              <Button
-                variant="outlined"
-                leadingIcon={<Icon name="edit" size={18} />}
-                onClick={() => setIsVersionEditOpen(true)}
-              >
-                {t.versionSection.editSettings}
-              </Button>
-            )}
-            {renderVersionTransitionActions()}
-          </>
+        versionStatus?.isEditable === true && versionCreateValues === null ? (
+          <Button
+            variant="outlined"
+            leadingIcon={<Icon name="edit" size={18} />}
+            onClick={() => setIsVersionEditOpen(true)}
+          >
+            {t.versionSection.editSettings}
+          </Button>
         ) : undefined
+      }
+      onHistory={
+        selectedVersionId !== null && versionStatus !== null
+          ? () => setIsHistoryOpen(true)
+          : undefined
       }
       versions={versions}
       isLoading={versionList.isPending}
@@ -1489,7 +1658,28 @@ export const InspectionStandardScreen = () => {
       setCreateValues(null);
       setCreateFieldErrors({});
       setCopySource(null);
+      setSheetBasics(null);
     };
+
+    /*
+     * PQC 를 고른 OA 계정 — 「기준 추가」는 검사 기준을 짓지 않고 검사표 기준 화면으로 넘어가 이 값으로 새 편집을 연다.
+     * 검사표 기준은 그 화면의 「저장」에서 등록된다(#260).
+     */
+    const sheet = sheetBasics;
+    const startSheet = () => {
+      if (sheet === null || createValues.itemId === '') return;
+      const basics: TemplateBasics = {
+        ...sheet,
+        templateCode: createValues.inspectionPlanCode.trim(),
+        templateName: createValues.inspectionPlanName.trim(),
+        itemId: Number(createValues.itemId),
+      };
+      closeCreate();
+      setSearchParams(new URLSearchParams({ type: SHEET_TYPE }), {
+        state: { sheetBasics: basics },
+      });
+    };
+
     /* 복사 창은 같은 등록 폼을 쓰고 저장만 복사 경로로 보낸다(omf-all-around#255). */
     const write = copySource === null ? createWrite : copyWrite;
 
@@ -1528,13 +1718,32 @@ export const InspectionStandardScreen = () => {
           codeLockReason={null}
           isDirty={copySource !== null || !isSamePlanValues(createValues, emptyPlanFormValues())}
           canSave={
-            createValues.inspectionPlanCode.trim() !== '' &&
             createValues.inspectionPlanName.trim() !== '' &&
-            createValues.inspectionTypeCode !== ''
+            createValues.inspectionTypeCode !== '' &&
+            (sheet === null || (createValues.itemId !== '' && sheetScopeIds.length > 0))
           }
           isSaving={write.isSaving}
-          onSave={handleSaveCreate}
+          onSave={sheet === null ? handleSaveCreate : startSheet}
           onCancel={closeCreate}
+          {...(sheet === null
+            ? {}
+            : {
+                sheetFields: (
+                  <SheetBasicsFields
+                    values={sheet}
+                    onChange={(patch) =>
+                      setSheetBasics((prev) => (prev === null ? prev : { ...prev, ...patch }))
+                    }
+                    businessUnitIds={sheetScopeIds}
+                  />
+                ),
+                onItemChange: (item: { itemCode: string; itemName: string }) =>
+                  setSheetBasics((prev) =>
+                    prev === null
+                      ? prev
+                      : { ...prev, itemLabel: `${item.itemName} (${item.itemCode})` },
+                  ),
+              })}
         />
       </Dialog>
     );
@@ -1624,6 +1833,16 @@ export const InspectionStandardScreen = () => {
             void queryClient.invalidateQueries({ queryKey: lookupKeys.routingsAll });
             setIsPlanEditOpen(true);
           }}
+          /* 미승인 기준에만 「승인」 — 승인 해제가 없어 승인된 기준에는 두지 않는다(사용자 지시 · #258). */
+          onApprove={
+            formatApprovedAt(planDetail.data.inspectionPlan.approvedAt) === null
+              ? () => {
+                  approveWrite.reset();
+                  setPlanAction('approve');
+                }
+              : undefined
+          }
+          isApproving={approveWrite.isSaving}
           /* 사용 중지는 상세 상자의 「기본 정보 수정」 옆(사용자 지시 · #208). 이미 미사용이면 걸 대상이 없어 두지 않는다. */
           onDeactivate={
             planDetail.data.inspectionPlan.isActive
@@ -1676,9 +1895,12 @@ export const InspectionStandardScreen = () => {
           })()}
         />
 
-        {renderVersionBar()}
+        {/* 버전 카드(사용자 시안 · omf-all-around#258) — 머리 줄 · 요약 · 버전별 설정 · 바닥 줄(확정 등). */}
+        <div className="inspection-standard-version-card">
+          {renderVersionBar()}
 
-        {renderVersionBody()}
+          {renderVersionBody()}
+        </div>
 
         {isPlanEditOpen && (
           <Dialog
@@ -1764,86 +1986,62 @@ export const InspectionStandardScreen = () => {
       <>
         <VersionSummary
           values={versionFormState.baseline}
-          inspectionFrequencyOptions={optionsFor(
-            inspectionFrequencyOptions,
-            versionFormState.baseline.inspectionFrequencyCode,
-          )}
-          frequencyIntervalUomOptions={optionsFor(
-            frequencyIntervalUomOptions,
-            versionFormState.baseline.frequencyIntervalUomCode,
-          )}
-          onEditGuide={versionStatus.isEditable ? setGuideEditField : undefined}
+          showAql={planDetail.data?.inspectionPlan.inspectionTypeCode === 'IQC'}
         />
-        <Tabs
-          aria-label={t.versionSection.tabsLabel}
-          value={versionTab}
-          onChange={setVersionTab}
-          items={[
-            {
-              value: 'items',
-              /* 탭마다 건수를 붙인다 — 검사 조회·판정과 같다(#196). */
-              label: t.versionSection.tabItemsCount(itemDrafts.length),
-              content: renderItemPane(),
-            },
-            {
-              value: 'drawings',
-              /* 기준서 도면(#208) — 건수는 받은 뒤에만 붙인다(이력 탭과 같다). 건수는 검사 항목처럼 저장 전 초안으로 센다(#227). 탭 순서는 검사 항목 · 도면 · 이력(사용자 지시 · #227). */
-              label:
-                versionDrawings.data === undefined
-                  ? t.versionSection.tabDrawings
-                  : t.versionSection.tabDrawingsCount(drawingDraft.list.length),
-              content:
-                selectedVersionId === null ? null : (
-                  /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
-                  <VersionDrawings
-                    key={selectedVersionId}
-                    drawings={versionDrawings}
-                    draft={drawingDraft}
-                    isEditable={versionStatus?.isEditable === true}
-                  />
-                ),
-            },
-            {
-              value: 'history',
-              /* 건수는 검사 항목 탭과 같이 붙인다(#208). 받기 전에는 이름만 낸다 — 0건을 지어내지 않는다. */
-              label:
-                versionHistory.data === undefined
-                  ? t.versionSection.tabHistory
-                  : t.versionSection.tabHistoryCount(versionHistory.data.items.length),
-              /* 고른 버전의 변경 이력(#196) — 「변경 이력」 단추 · 창은 이 탭과 같아 없앴다(#255 사용자 지시). */
-              content:
-                selectedVersionId === null ? null : (
-                  <VersionHistoryTable
-                    inspectionPlanVersionId={selectedVersionId}
-                    labels={compareLabels}
-                    showRange
-                  />
-                ),
-            },
-          ]}
-        />
+        {renderVersionSettings()}
+
+        {/* 바닥 줄 오른쪽 — 작성 취소 · 확정 / 사용 중지 / 재사용(사용자 시안 · #258). */}
+        <div className="inspection-standard-version-actions inspection-standard-version-footer">
+          {renderVersionTransitionActions()}
+        </div>
 
         {isCompareOpen && renderCompareDialog()}
+
+        {isHistoryOpen && selectedVersionId !== null && (
+          /* 종전 「이력」 탭 내용을 창으로(사용자 지시 · #258). */
+          <Dialog
+            open
+            size="lg"
+            /* 「최근 1년」 라벨은 제목 줄에(사용자 지시 · #258). */
+            title={
+              <span className="inspection-standard-dialog-title">
+                {t.versionSection.history}
+                <span className="inspection-standard-dialog-title-chips">
+                  <Chip variant="status" size="sm" status="idle">
+                    {t.history.range}
+                  </Chip>
+                </span>
+              </span>
+            }
+            showCloseButton={false}
+            onClose={() => setIsHistoryOpen(false)}
+            footer={
+              <Button variant="outlined" onClick={() => setIsHistoryOpen(false)}>
+                {messages.common.close}
+              </Button>
+            }
+          >
+            <VersionHistoryTable
+              inspectionPlanVersionId={selectedVersionId}
+              labels={compareLabels}
+            />
+          </Dialog>
+        )}
 
         {guideEditField !== null && versionStatus.isEditable && (
           <VersionGuideDialog
             /* 다른 언어 · 다른 버전으로 열면 그 저장값에서 새로 시작한다. */
             key={`${String(selectedVersionId)}-${guideEditField}`}
             field={guideEditField}
-            initialText={versionFormState.baseline[guideEditField]}
-            isSaving={versionWrite.isSaving}
-            banner={
-              <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
-            }
-            error={versionWrite.fieldErrors[guideEditField]}
-            /* 저장된 다른 칸은 그대로 두고 이 언어 문구만 바꿔 보낸다. */
-            onSave={(text) =>
-              versionWrite.write({ ...versionFormState.baseline, [guideEditField]: text })
-            }
-            onClose={() => {
-              versionWrite.reset();
+            initialText={guideDraft ?? versionFormState.baseline[guideEditField]}
+            /* 화면에만 담는다 — 저장된 글과 같아지면 고친 것이 없다. */
+            onSave={(text) => {
+              setGuideDraft(
+                text.trim() === versionFormState.baseline[guideEditField].trim() ? null : text,
+              );
               setGuideEditField(null);
             }}
+            onClose={() => setGuideEditField(null)}
           />
         )}
 
@@ -1881,6 +2079,68 @@ export const InspectionStandardScreen = () => {
     );
   };
 
+  /**
+   * 「버전별 설정」(사용자 시안 · omf-all-around#258) — 검사 항목 · 검사 도면 · 검사 지시문 세 줄.
+   * 항목 · 도면은 줄을 펼쳐 종전 탭 내용을 보이고, 지시문은 화면 언어의 문구 한 칸만 보이고 고친다(#252).
+   */
+  const renderVersionSettings = (): ReactNode => {
+    if (versionStatus === null || versionFormState === null) return null;
+    const isEditable = versionStatus.isEditable;
+
+    return (
+      /* 「버전별 설정」 제목 글은 두지 않는다(사용자 지시 · #258) — 구획 이름은 화면 낭독기에만. */
+      <section
+        className="inspection-standard-version-settings"
+        aria-label={t.versionSection.settingsTitle}
+      >
+        <div className="inspection-standard-setting-list">
+          {/* 검사 항목은 한 줄 전체, 그 아래 검사 지시문 · 검사 도면을 한 줄에 둔다 — 좁으면 한 열로 쌓는다(사용자 지시 · #258). */}
+          <VersionSettingRow
+            title={t.versionSection.tabItems}
+            summary={t.versionSection.rowItemsCount(itemDrafts.length)}
+            action={
+              isEditable ? (
+                <Button
+                  variant="outlined"
+                  leadingIcon={<Icon name="add" size={18} />}
+                  onClick={handleAddItem}
+                >
+                  {t.actions.addItem}
+                </Button>
+              ) : undefined
+            }
+          >
+            {renderItemPane()}
+          </VersionSettingRow>
+          <div className="inspection-standard-setting-pair">
+            <VersionGuideRow
+              values={
+                guideDraft === null
+                  ? versionFormState.baseline
+                  : { ...versionFormState.baseline, guideText: guideDraft }
+              }
+              onEditGuide={isEditable ? setGuideEditField : undefined}
+              banner={
+                guideDraft === null ? undefined : (
+                  <PlanActionBanner error={guideWrite.error} onReload={handleReloadVersionDetail} />
+                )
+              }
+            />
+            {selectedVersionId !== null && (
+              /* 버전을 옮기면 보던 자리 · 파일 오류를 새로 시작한다. */
+              <VersionDrawings
+                key={selectedVersionId}
+                drawings={versionDrawings}
+                draft={drawingDraft}
+                isEditable={isEditable}
+              />
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   /* 창을 닫으면 고친 값을 버린다 — 보이지 않는 미저장 편집이 남으면 항목 저장 · 확정이 이유 모르게 막힌다. */
   const cancelVersionEdit = (): void => {
     versionWrite.reset();
@@ -1892,12 +2152,6 @@ export const InspectionStandardScreen = () => {
    * 우 중단 편집 칸. 상세를 받지 못한 상태에서 빈 폼을 보이면 사용자가 그것을 자료로 읽는다 —
    * 선택 전·불러오는 중·실패를 각각 다른 화면으로 낸다.
    */
-  /** 버전 폼의 공통코드 선택지를 받지 못했으면 선택칸 아래에 알린다 — 감추면 선택칸이 이유 없이 빈다. */
-  const versionCodeOptionsNote =
-    inspectionFrequencyOptions.isError || frequencyIntervalUomOptions.isError
-      ? t.optionsLoadFailed
-      : undefined;
-
   const renderVersionFormPane = (onEditCancel?: () => void): ReactNode => {
     if (versionCreateValues !== null) {
       return (
@@ -1909,21 +2163,13 @@ export const InspectionStandardScreen = () => {
           values={versionCreateValues}
           onChange={handleChangeVersionCreateValues}
           fieldErrors={{ ...versionCreateWrite.fieldErrors, ...versionCreateFieldErrors }}
-          inspectionFrequencyOptions={optionsFor(
-            inspectionFrequencyOptions,
-            versionCreateValues.inspectionFrequencyCode,
-          )}
-          frequencyIntervalUomOptions={optionsFor(
-            frequencyIntervalUomOptions,
-            versionCreateValues.frequencyIntervalUomCode,
-          )}
-          codeOptionsNote={versionCodeOptionsNote}
           /* 첫 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<PlanActionBanner error={versionCreateWrite.error} />}
           isDirty={!isSameVersionValues(versionCreateValues, emptyVersionFormValues())}
           isSaving={versionCreateWrite.isSaving}
           onSave={handleSaveVersionCreate}
           onCancel={resetVersionEditing}
+          showAql={planDetail.data?.inspectionPlan.inspectionTypeCode === 'IQC'}
           /* 아직 없는 버전에는 전이할 대상이 없다 — 쓸 수 없는 단추는 두지 않는다(사용자 지시 · #208). */
         />
       );
@@ -1979,15 +2225,6 @@ export const InspectionStandardScreen = () => {
         onChange={handleChangeVersionValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...versionWrite.fieldErrors, ...versionFieldErrors }}
-        inspectionFrequencyOptions={optionsFor(
-          inspectionFrequencyOptions,
-          versionFormState.values.inspectionFrequencyCode,
-        )}
-        frequencyIntervalUomOptions={optionsFor(
-          frequencyIntervalUomOptions,
-          versionFormState.values.frequencyIntervalUomCode,
-        )}
-        codeOptionsNote={versionCodeOptionsNote}
         banner={
           <PlanActionBanner error={versionWrite.error} onReload={handleReloadVersionDetail} />
         }
@@ -1997,6 +2234,7 @@ export const InspectionStandardScreen = () => {
         /* 「버전 설정 수정」 창 안이다 — 취소는 고친 값을 버리고 창을 닫는다. 확정 · 폐기는 버전 줄에 있다. */
         onCancel={onEditCancel ?? cancelVersionEdit}
         inDialog={onEditCancel !== undefined}
+        showAql={planDetail.data?.inspectionPlan.inspectionTypeCode === 'IQC'}
       />
     );
   };
@@ -2116,13 +2354,8 @@ export const InspectionStandardScreen = () => {
         }
         optionsNotice={itemOptionsNotice}
         isEditable={versionStatus?.isEditable === true}
-        lockReason={t.actionReasons.versionLocked}
-        isDirty={isItemsDirty}
-        isSaving={itemsWrite.isSaving}
-        saveBlockedReason={itemsSaveBlockedReason}
         /* 전체 치환에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
         banner={<PlanActionBanner error={itemsWrite.error} />}
-        onAdd={handleAddItem}
         onEdit={handleEditItem}
         onRemove={(draftId) => {
           changeItemDrafts((drafts) => removeItemDraft(drafts, draftId));
@@ -2131,7 +2364,6 @@ export const InspectionStandardScreen = () => {
         onReorder={(from, to) => {
           changeItemDrafts((drafts) => moveItemDraft(drafts, from, to));
         }}
-        onSave={handleSaveItems}
       />
     );
   };
@@ -2281,7 +2513,7 @@ export const InspectionStandardScreen = () => {
           kind={planAction}
           onClose={() => {
             setPlanAction(null);
-            deactivateWrite.reset();
+            planActionWrite.reset();
           }}
           onConfirm={() => {
             planActionWrite.write();
@@ -2361,16 +2593,35 @@ export const InspectionStandardScreen = () => {
           kind={versionTransition}
           onClose={() => {
             setVersionTransition(null);
+            /* 실패한 지시문 저장의 「이어서 할 일」을 남기지 않는다. 담아 둔 지시문은 그대로 둔다. */
+            afterGuideSave.current = null;
+            guideWrite.reset();
             confirmWrite.reset();
             obsoleteWrite.reset();
             discardWrite.reset();
           }}
           onConfirm={() => {
-            versionTransitionWrite.write();
+            /* 확정은 담아 둔 지시문을 먼저 저장한다(사용자 지시). */
+            if (versionTransition === 'confirm') saveGuideThen(() => confirmWrite.write(), false);
+            else versionTransitionWrite.write();
           }}
-          isSaving={versionTransitionWrite.isSaving}
+          isSaving={versionTransitionWrite.isSaving || guideWrite.isSaving}
           /* 전이에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
-          banner={<PlanActionBanner error={versionTransitionWrite.error} />}
+          banner={
+            <PlanActionBanner
+              error={
+                versionTransitionWrite.error ??
+                (versionTransition === 'confirm' ? guideWrite.error : null)
+              }
+            />
+          }
+          /* 전이는 고른 버전에만 열린다 — 상세를 받기 전이면 목록의 번호로. */
+          planVersion={
+            versionDetail.data?.inspectionPlanVersion.planVersion ??
+            versions.find((version) => version.inspectionPlanVersionId === selectedVersionId)
+              ?.planVersion ??
+            0
+          }
         />
       )}
     </>

@@ -128,12 +128,13 @@ describe('자리표시 상수', () => {
    * 계약의 `inspectionTypeCode`는 enum이 아니다. 그런데도 3값을 둔 근거는
    * 화면 제목·계약 설명·계약 예시 셋의 일치이며, 그 셋이 가리키는 값은 IQC·PQC·OQC다.
    */
-  /* omf-all-around#103 — 시드 `INSPECTION_SAMPLING_METHOD` 3값. */
-  it('샘플링 방법은 시드 세 값이다', () => {
+  /* omf-all-around#103 — 시드 `INSPECTION_SAMPLING_METHOD` 3값 + AQL(#264). */
+  it('샘플링 방법은 시드 네 값이다', () => {
     expect(values(SAMPLING_METHOD_OPTIONS)).toEqual([
       'FULL_INSPECTION',
       'SAMPLE_BY_UNIT',
       'SAMPLE_BY_LOT',
+      'AQL',
     ]);
   });
 

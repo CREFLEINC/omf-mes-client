@@ -90,6 +90,41 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     cancel: 'Hủy',
   },
 
+  aliasPopover: {
+    title: (code: string): string => `Tên gọi khác của ${code}`,
+    note: 'Lưu ngay. Tách riêng với việc lưu sơ đồ.',
+  },
+  editor: {
+    open: 'Sửa',
+    title: (warehouse: string): string => `Sửa sơ đồ bố trí — ${warehouse}`,
+    cancel: 'Hủy',
+    discardTitle: 'Bỏ thay đổi và đóng?',
+    discardBody: 'Các thay đổi điểm đánh dấu chưa lưu sẽ mất.',
+    keepEditing: 'Tiếp tục sửa',
+    discard: 'Bỏ và đóng',
+    legacyMarkers: (count: number): string =>
+      `${String(count)} điểm đánh dấu tầng·ô sẽ bị bỏ khi lưu.`,
+    drawingBoard: 'Đang vẽ bố trí',
+    emptyPlaceable: 'Không có khu·kệ để đặt lên bản vẽ',
+  },
+
+  stock: {
+    legendStocked: 'Có tồn kho',
+    legendEmpty: 'Trống',
+    legendNote: 'Vị trí chưa có trên bản vẽ hiện «Chưa» trong danh sách',
+    title: (locationCode: string): string => `Tồn kho tại ${locationCode}`,
+    location: 'Vị trí',
+    item: 'Mặt hàng',
+    lot: 'LOT',
+    onHand: 'Hiện có',
+    qualityStatus: 'Trạng thái chất lượng',
+    pickHint: 'Chọn một vị trí để xem tồn kho',
+    empty: 'Không có tồn kho',
+    loadFailed: 'Không tải được tồn kho.',
+    retry: 'Thử lại',
+    truncated: 'Chỉ hiển thị một phần tồn kho.',
+  },
+
   locations: {
     code: 'Mã vị trí',
     name: 'Tên',
@@ -98,6 +133,9 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     onMap: 'Đã đánh dấu',
     notOnMap: 'Chưa',
     emptyTitle: 'Không có vị trí',
+    emptyGuide: (screenName: string): string => `Hãy đăng ký vị trí trong màn hình ${screenName}.`,
+    notOnDrawing: 'Chưa có trên bản vẽ',
+    insideOnDrawing: (locationCode: string): string => `Trên bản vẽ: trong ${locationCode}`,
     includeInactive: 'Xem cả vị trí đã ngừng',
     unknown: (locationId: number): string => `Vị trí ${String(locationId)}`,
   },

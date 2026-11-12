@@ -16,6 +16,7 @@ import {
   isInboundLotInspection,
   type components,
   type FourMChangeForward,
+  type InspectionAqlPlanForward,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import {
@@ -81,7 +82,9 @@ import { useInboundInspection } from './inbound-queries';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
+  checkRowCount,
   countOf,
+  defectsFromMeasured,
   emptyForm,
   historyReducer,
   numberOf,
@@ -649,6 +652,8 @@ interface FormProps {
     lotId: number | null;
     targetQty: number;
     uomId: number;
+    /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). */
+    aqlPlan: InspectionAqlPlanForward | null;
   };
   version: components['schemas']['InspectionPlanVersion'];
   specs: ItemSpec[];
@@ -720,14 +725,18 @@ const DrawingImages = ({ drawings }: { drawings: { attachmentId: number; blob: B
 const InspectionForm = (props: FormProps) => {
   const { request, version, specs, draft } = props;
   const versionAcceptance = version.acceptanceNumber ?? null;
+  /* AQL 샘플링이면 시료 수 · 합격 판정 수(Ac)를 표에서 낸 값으로 쓴다 — 서버 자동 판정도 같은 값이다(omf-all-around#264). */
+  const { aqlPlan } = request;
+  const judgmentAcceptance = aqlPlan?.acceptanceNumber ?? versionAcceptance;
   const dimensions = specs.filter((s) => kindOf(s) === 'dimension');
   const checkItems = specs.filter((s) => kindOf(s) === 'check');
   const defaultQty = String(
-    sampleQtyOf(request.targetQty, {
-      samplingMethodCode: version.samplingMethodCode,
-      samplingRatio: version.samplingRatio ?? null,
-      samplingQty: version.samplingQty ?? null,
-    }),
+    aqlPlan?.sampleSize ??
+      sampleQtyOf(request.targetQty, {
+        samplingMethodCode: version.samplingMethodCode,
+        samplingRatio: version.samplingRatio ?? null,
+        samplingQty: version.samplingQty ?? null,
+      }),
   );
 
   const initial = useMemo((): PartsIqcForm => {
@@ -756,10 +765,16 @@ const InspectionForm = (props: FormProps) => {
           form.checks[spec.inspectionItemSpecId] = m.booleanValue ? 'ACCEPTED' : 'REJECTED';
         else if (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
           form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
+        /* AQL 은 찾은 불량 수만큼 불량 시료 줄로 남는다 — 줄 수가 불량 수다(omf-all-around#264). */
+        const defects =
+          aqlPlan === null
+            ? undefined
+            : defectsFromMeasured(draft?.measured ?? [], spec.inspectionItemSpecId);
+        if (defects !== undefined) form.defects[spec.inspectionItemSpecId] = defects;
       }
     }
     return form;
-  }, [draft, specs, defaultQty]);
+  }, [draft, specs, defaultQty, aqlPlan]);
 
   const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
   const form = history.present;
@@ -778,6 +793,15 @@ const InspectionForm = (props: FormProps) => {
   /* 텍스트 항목은 글만 남긴다 — 판정은 검사자가 OK/NG 를 직접 고른다(#247 · 사용자 지시 2026-11-10). */
   const changeText = (item: ItemSpec, text: string) =>
     change({ ...form, texts: { ...form.texts, [item.inspectionItemSpecId]: text } });
+  /**
+   * AQL 기준에서 NG 인 기타 항목에 적은 불량 수 — 1 ~ 검사 수량 정수가 아니면 아직 없다(omf-all-around#264).
+   * 불량 수만큼 불량 시료 줄을 보내므로 검사 수량을 넘지 않게 막는다.
+   */
+  const defectsOf = (f: PartsIqcForm, item: ItemSpec): number | null => {
+    const n = countOf(f.defects[item.inspectionItemSpecId] ?? '');
+    const qty = countOf(f.visualInspectedQty);
+    return n === null || n < 1 || (qty !== null && n > qty) ? null : n;
+  };
   const inspectedAtId = useId();
   const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
   const inspectedTime = inspectedTimeRaw.slice(0, 5);
@@ -802,9 +826,11 @@ const InspectionForm = (props: FormProps) => {
       inspectedQty: countOf(f.visualInspectedQty),
       dimensions: dims,
       checks: checkItems.map((item): ItemJudgment => f.checks[item.inspectionItemSpecId] ?? null),
+      checkDefects: checkItems.map((item) => defectsOf(f, item)),
       /* 필수 항목만 다 적으면 자동 판정 · 종합 판정이 채워진다(#247 · 사용자 지시 2026-11-10). */
       requiredDimensions: dimensions.map((item) => item.requiredFlag),
       requiredChecks: checkItems.map((item) => item.requiredFlag),
+      aqlAcceptance: aqlPlan?.acceptanceNumber ?? null,
     };
   };
   /* 임시 저장 때 자동 판정과 다르게 고른 판정이면 그대로 되살린다(#247). */
@@ -870,10 +896,35 @@ const InspectionForm = (props: FormProps) => {
       (form.checks[item.inspectionItemSpecId] ?? null) === null &&
       (form.values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
   );
+  /*
+   * 서버(AQL 자동 판정)와 같은 기준 — 항목마다 불합격 시료 줄 수가 항목 허용 수를 넘는가. 수동 판정 항목은 값을 적은
+   * 시료마다 고른 판정을 싣는다(`measurementsOf`).
+   */
+  const dimensionRejectedForServer = dimensions.some((item, index) => {
+    const rejectedRows = isManualDimension(item)
+      ? form.checks[item.inspectionItemSpecId] === 'REJECTED'
+        ? (form.values[item.inspectionItemSpecId] ?? []).filter((text) => numberOf(text) !== null)
+            .length
+        : 0
+      : (dimensionResults[index]?.outCount ?? 0);
+    return rejectedRows > acceptanceOf(item, versionAcceptance);
+  });
   const overall = chosen ?? suggested;
   const heldQtyOf = (judgment: string | null): number =>
     judgment === 'HELD' && inspectedQty !== null ? Math.max(0, inspectedQty - rejectedQty) : 0;
-  const expected = serverExpectedOf(rejectedQty, versionAcceptance, heldQtyOf(overall));
+  const expected = serverExpectedOf(
+    rejectedQty,
+    judgmentAcceptance,
+    heldQtyOf(overall),
+    aqlPlan !== null && dimensionRejectedForServer,
+  );
+  /* AQL 기준에서 NG 를 골랐는데 불량 수를 적지 않은 항목 — 저장 · 제출을 막는다. */
+  const defectsMissing =
+    aqlPlan !== null &&
+    checkItems.some(
+      (item) =>
+        form.checks[item.inspectionItemSpecId] === 'REJECTED' && defectsOf(form, item) === null,
+    );
   const needsReason = overall !== null && expected !== null && overall !== expected;
   const maxN = Math.max(0, ...dimensions.map((d) => d.measurementCount));
 
@@ -899,10 +950,10 @@ const InspectionForm = (props: FormProps) => {
         });
       }
     });
-    const bool = (item: ItemSpec, ok: boolean) =>
+    const bool = (item: ItemSpec, ok: boolean, sampleNo: number) =>
       out.push({
         inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo: 1,
+        sampleNo,
         booleanValue: ok,
         judgmentCode: ok ? 'ACCEPTED' : 'REJECTED',
         measuredAt,
@@ -910,19 +961,23 @@ const InspectionForm = (props: FormProps) => {
     checkItems.forEach((item) => {
       const j = form.checks[item.inspectionItemSpecId];
       if (j == null) return;
-      if (item.dataTypeCode !== 'TEXT') {
-        bool(item, j === 'ACCEPTED');
-        return;
+      /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
+      const rows = checkRowCount(j, defectsOf(form, item), aqlPlan !== null);
+      for (let sampleNo = 1; sampleNo <= rows; sampleNo += 1) {
+        if (item.dataTypeCode !== 'TEXT') {
+          bool(item, j === 'ACCEPTED', sampleNo);
+          continue;
+        }
+        /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
+        const text = sampleNo === 1 ? (form.texts[item.inspectionItemSpecId] ?? '').trim() : '';
+        out.push({
+          inspectionItemSpecId: item.inspectionItemSpecId,
+          sampleNo,
+          ...(text === '' ? {} : { textValue: text }),
+          judgmentCode: j,
+          measuredAt,
+        });
       }
-      /* 텍스트 항목은 적은 글을 싣는다 — 글이 없으면 판정만(#247 · 사용자 지시 2026-11-10). */
-      const text = (form.texts[item.inspectionItemSpecId] ?? '').trim();
-      out.push({
-        inspectionItemSpecId: item.inspectionItemSpecId,
-        sampleNo: 1,
-        ...(text === '' ? {} : { textValue: text }),
-        judgmentCode: j,
-        measuredAt,
-      });
     });
     return out;
   };
@@ -934,6 +989,7 @@ const InspectionForm = (props: FormProps) => {
     inspectedQty <= 0 ||
     fourMBlocked ||
     manualUnjudged.length > 0 ||
+    defectsMissing ||
     (needsReason && reason.trim() === '');
 
   const variablesOf = (judgment: string, qty: number): SubmitVariables => ({
@@ -975,6 +1031,7 @@ const InspectionForm = (props: FormProps) => {
     form.inspectedAt === '' ||
     fourMBlocked ||
     manualUnjudged.length > 0 ||
+    defectsMissing ||
     submit.isSaving;
   const onSaveDraft = () => {
     if (draftBlocked || inspectedQty === null) return;
@@ -1070,18 +1127,37 @@ const InspectionForm = (props: FormProps) => {
             <dt className="field-label">{t.target.planName}</dt>
             <dd>{props.planName}</dd>
           </div>
+          {aqlPlan !== null && (
+            <div className="parts-iqc-fact">
+              <dt className="field-label">{t.target.condition}</dt>
+              <dd>
+                {t.target.conditionAqlPlan(
+                  aqlPlan.aqlValue,
+                  messages.inspectionStandard.values.aqlLevels[aqlPlan.aqlInspectionLevelCode] ??
+                    aqlPlan.aqlInspectionLevelCode,
+                  aqlPlan.sampleSize,
+                  aqlPlan.acceptanceNumber,
+                  aqlPlan.rejectionNumber,
+                )}
+              </dd>
+            </div>
+          )}
           {dimensions.length > 0 && (
             <>
+              {aqlPlan === null && (
+                <div className="parts-iqc-fact">
+                  <dt className="field-label">{t.target.condition}</dt>
+                  <dd>
+                    {version.aqlValue == null
+                      ? t.target.conditionNone
+                      : t.target.conditionAql(version.aqlValue)}
+                  </dd>
+                </div>
+              )}
               <div className="parts-iqc-fact">
-                <dt className="field-label">{t.target.condition}</dt>
-                <dd>
-                  {version.aqlValue == null
-                    ? t.target.conditionNone
-                    : t.target.conditionAql(version.aqlValue)}
-                </dd>
-              </div>
-              <div className="parts-iqc-fact">
-                <dt className="field-label">{t.target.sample}</dt>
+                <dt className="field-label">
+                  {aqlPlan === null ? t.target.sample : t.target.sampleDimension}
+                </dt>
                 <dd>{t.target.sampleValue(maxN, versionAcceptance ?? 0)}</dd>
               </div>
             </>
@@ -1185,11 +1261,22 @@ const InspectionForm = (props: FormProps) => {
           change({ ...form, checks: { ...form.checks, [itemId]: judgment } })
         }
         blockedNote={
-          manualUnjudged.length > 0 ? messages.iqcInspection.measurements.blockedIncomplete : null
+          manualUnjudged.length > 0
+            ? messages.iqcInspection.measurements.blockedIncomplete
+            : defectsMissing
+              ? t.visual.defectsRequired
+              : null
         }
         checkItems={checkItems}
         texts={form.texts}
         onText={changeText}
+        {...(aqlPlan === null
+          ? {}
+          : {
+              defects: form.defects,
+              onDefects: (itemId: number, text: string) =>
+                change({ ...form, defects: { ...form.defects, [itemId]: text } }),
+            })}
       />
 
       {/* 종합 판정 — 검사 항목 아래(#247 · 사용자 지시 2026-11-10). 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기(사용자 시안 2026-10-29) */}

@@ -1,8 +1,13 @@
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, renderHookWithProviders, type StubRoute } from '../../test/api-harness';
-import { layoutKeys, useDrawingContent } from './queries';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderHookWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
+import { layoutKeys, useDrawingContent, useLocationStock } from './queries';
 
 /**
  * 도면 그림 받기 — **그림은 `<img src>` 가 아니라 계약 클라이언트로 온다.**
@@ -79,5 +84,72 @@ describe('useDrawingContent', () => {
 
     expect(result.current.data).toBe(file);
     expect(calls).toHaveLength(0);
+  });
+});
+
+/*
+ * 창고 재고 — 조회 화면의 재고 모양 · 재고 표(피처 006 FR-011 · FR-013 · R-7). 창고 단위로 한 번, 위치별로 끝까지 받는다.
+ */
+describe('useLocationStock', () => {
+  const BALANCES_PATH = '/inventory/balances';
+
+  const balanceRow = (locationId: number) => ({
+    groupBy: 'LOCATION',
+    locationId,
+    itemId: 1,
+    ownershipTypeCode: 'OWNED',
+    onHandQty: 1,
+    reservedQty: 0,
+    pickedQty: 0,
+    blockedQty: 0,
+    availableQty: 1,
+    uomId: 7,
+  });
+
+  it('US2-4 ⭐ 창고 · 위치 묶음 · 200줄 쪽으로 끝 쪽까지 받는다 — 0 재고 줄은 달라고 하지 않는다', async () => {
+    const calls: URL[] = [];
+    const { result } = renderHookWithProviders(() => useLocationStock(12), {
+      fetch: createStubFetch([
+        {
+          match: (request) => new URL(request.url).pathname === BALANCES_PATH,
+          respond: (request) => {
+            const url = new URL(request.url);
+            const page = Number(url.searchParams.get('page'));
+
+            calls.push(url);
+
+            return jsonResponse({
+              items: page === 1 ? [balanceRow(4), balanceRow(5)] : [balanceRow(6)],
+              page: { page, size: 200, total: 3 },
+            });
+          },
+        },
+      ]),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data?.items.map((row) => row.locationId)).toEqual([4, 5, 6]);
+    expect(result.current.data?.truncated).toBe(false);
+    expect(calls.map((url) => url.searchParams.get('page'))).toEqual(['1', '2']);
+    for (const url of calls) {
+      expect(url.searchParams.get('warehouseId')).toBe('12');
+      expect(url.searchParams.get('groupBy')).toBe('LOCATION');
+      expect(url.searchParams.get('size')).toBe('200');
+      expect(url.searchParams.has('includeZero')).toBe(false);
+    }
+  });
+
+  it('⛔ 창고를 고르기 전에는 부르지 않는다', async () => {
+    const { result } = renderHookWithProviders(() => useLocationStock(null), {
+      fetch: createStubFetch([]),
+    });
+
+    await waitFor(() => {
+      expect(result.current.fetchStatus).toBe('idle');
+    });
+    expect(result.current.isPending).toBe(true);
   });
 });

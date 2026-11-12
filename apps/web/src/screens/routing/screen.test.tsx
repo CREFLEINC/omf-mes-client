@@ -98,7 +98,7 @@ const renderScreen = (routes: StubRoute[], search = '') => {
   const { fetch, requests } = createRecordingFetch(routes);
   /* 앱처럼 데이터 라우터로 감싼다 — 저장하지 않은 편집의 이동 확인이 그 위에서만 선다. */
   const { router } = renderWithProviders(
-    /* 「검사 기준 수정」 · 「라우팅 보기」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
+    /* 「검사 기준 수정」 · 「라우팅 조회」가 권한을 본다 — 권한 목록이 없는 세션이라 다 열린다. */
     <SessionProvider>
       <RoutingScreen />
     </SessionProvider>,
