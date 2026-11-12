@@ -2,6 +2,7 @@ import { Button, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { dispositionTypeLabel } from './disposition-codes';
+import { formatQty } from './types';
 
 /** 저장 뒤 결과 카드에 쓰는 값 — 저장 순간의 폼 · LOT 과 서버 응답을 묶는다. */
 export type DecisionResult =
@@ -29,6 +30,13 @@ export interface DecisionResultCardProps {
   result: DecisionResult;
   onOpenNonconformance: (nonconformanceId: number) => void;
 }
+
+/** 입력한 정보 수량을 천 단위 쉼표로(「1,950」 · G2 L6). 비었으면 「알 수 없음」, 숫자가 아니면 입력 그대로. */
+const qtyText = (value: string, unknown: string): string => {
+  if (value === '') return unknown;
+  const parsed = Number(value.replaceAll(',', ''));
+  return Number.isFinite(parsed) ? formatQty(parsed) : value;
+};
 
 /**
  * 판정 저장 결과(005 · mockups/W0310-After.html) — 판정 하나가 자재 관리 LOT 전부에 미친 일을 한 상자로 말한다.
@@ -97,10 +105,7 @@ export const DecisionResultCard = ({ result, onOpenNonconformance }: DecisionRes
       </p>
       {(result.goodQty !== '' || result.defectQty !== '') && (
         <p className="field-note">
-          {t.sort.resultInfo(
-            result.goodQty === '' ? unknown : result.goodQty,
-            result.defectQty === '' ? unknown : result.defectQty,
-          )}
+          {t.sort.resultInfo(qtyText(result.goodQty, unknown), qtyText(result.defectQty, unknown))}
         </p>
       )}
     </div>
