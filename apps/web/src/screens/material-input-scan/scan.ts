@@ -45,6 +45,20 @@ const INPUT_ALLOWED_STATUS = 'NORMAL';
 export const isInputAllowedStatus = (statusCode: string): boolean =>
   statusCode.trim() === INPUT_ALLOWED_STATUS;
 
+/**
+ * 아직 쓸 수 없는 자재 관리 LOT 의 생애 — 미리 만든 대기(`WAITING`) · 폐기(`VOIDED`)(005 US1-6).
+ * 생애가 없거나(이전 LOT · 제품 LOT) 입하(`ACTIVE`)면 지금 그대로다.
+ */
+export type LotLifecycleBlock = 'WAITING' | 'VOIDED';
+
+export const lifecycleBlockOf = (
+  lot: Pick<LotResponse, 'lifecycleStatusCode'>,
+): LotLifecycleBlock | null => {
+  const code = lot.lifecycleStatusCode;
+
+  return code === 'WAITING' || code === 'VOIDED' ? code : null;
+};
+
 /** 담긴 자재LOT 한 줄. */
 export interface ScannedMaterial {
   lotId: number;
@@ -120,6 +134,11 @@ export type ScanOutcome =
    * 상태 코드를 함께 들고 다닌다 — 화면이 그 상태의 «표시명»으로 사유를 말한다.
    */
   | { kind: 'blocked-status'; code: string; lotNo: string; statusCode: string }
+  /**
+   * 대기 · 폐기 자재 관리 LOT 이다(005 US1-6). **담지 않는다** — 대기 LOT 은 품질 상태도 검사 대기라
+   * 상태 사유로 막히지만, 작업자가 할 일은 「검사」가 아니라 「입하」다. 그래서 생애를 먼저 본다.
+   */
+  | { kind: 'blocked-lifecycle'; code: string; lotNo: string; lifecycle: LotLifecycleBlock }
   | { kind: 'ambiguous'; count: number }
   | { kind: 'not-found'; code: string };
 
@@ -145,6 +164,7 @@ export const applyScan = (draft: ScanDraft, outcome: ScanOutcome): ScanDraft => 
       return { ...draft, mold: outcome.mold };
     case 'duplicate':
     case 'blocked-status':
+    case 'blocked-lifecycle':
     case 'ambiguous':
     case 'not-found':
       return draft;

@@ -70,6 +70,7 @@ const renderDialog = () => {
     <ConcessionRequestDialog
       nonconformanceId={41}
       lots={[LOT]}
+      remainingQty={30}
       today={new Date(2026, 9, 16)}
       onClose={onClose}
     />,
@@ -96,7 +97,8 @@ describe('ConcessionRequestDialog', () => {
     const { writes, onClose, user } = renderDialog();
 
     expect(screen.getByRole('dialog', { name: t.requestHeading })).toBeInTheDocument();
-    await user.type(screen.getByLabelText(t.qty, { exact: false }), '30');
+    // 005 FR-038 — 사용 가능 수량은 남은 수량 전부로 고정한다(입력 없음).
+    expect(screen.getByLabelText(t.qty, { exact: false })).toHaveAttribute('readonly');
     await user.type(screen.getByLabelText(t.reason, { exact: false }), '외관 경미 — 조건부 사용');
     await user.click(screen.getByRole('button', { name: t.request }));
 
@@ -114,9 +116,7 @@ describe('ConcessionRequestDialog', () => {
   });
 
   it('사유가 없으면 요청할 수 없다 — 칸별 안내 문구 없이 필수 표시로 알린다', async () => {
-    const { user } = renderDialog();
-
-    await user.type(screen.getByLabelText(t.qty, { exact: false }), '30');
+    renderDialog();
 
     expect(screen.getByRole('button', { name: t.request })).toBeDisabled();
     expect(screen.queryByText(t.blocked.reason)).toBeNull();

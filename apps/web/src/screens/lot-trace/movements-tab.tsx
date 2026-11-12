@@ -1,4 +1,4 @@
-import { AlertBanner, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Chip, EmptyState, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
@@ -25,6 +25,8 @@ import {
   hasNumberCondition,
   periodReasonOf,
   readFilters,
+  toInboundLotParam,
+  toInboundLotRef,
   toSearchParams,
   withKind,
   type KindFilter,
@@ -134,6 +136,8 @@ export const LotHistory = () => {
   };
 
   const rows = list.data?.rows ?? [];
+  /* 005 FR-035 — 행에서 고른 입하 LOT(거르기 표시 · 지우기). */
+  const inboundLot = toInboundLotRef(filters.inboundLot);
   const chosenRow = rows.find((row) => rowKeyOf(row) === line);
   const total = list.data?.page.total ?? 0;
 
@@ -166,6 +170,8 @@ export const LotHistory = () => {
     ...(filters.materialLot === '' ? [] : [`${t.filters.materialLot} ${filters.materialLot}`]),
     ...(filters.productLot === '' ? [] : [`${t.filters.productLot} ${filters.productLot}`]),
     ...(filters.inbound === '' ? [] : [`${t.filters.inboundNo} ${filters.inbound}`]),
+    ...(filters.inboundLotNo === '' ? [] : [`${t.filters.inboundLotNo} ${filters.inboundLotNo}`]),
+    ...(inboundLot === null ? [] : [t.filters.inboundLotChip(inboundLot.inboundLotNo)]),
     ...(filters.workOrder === '' ? [] : [`${t.filters.workOrderNo} ${filters.workOrder}`]),
     ...(filters.shipment === '' ? [] : [`${t.filters.shipmentNo} ${filters.shipment}`]),
     ...(filters.supplier === '' ? [] : [`${t.filters.supplier} ${supplierLabel}`]),
@@ -220,6 +226,16 @@ export const LotHistory = () => {
         )}
         <MovementTable
           showKind={filters.kind === 'ALL'}
+          showInboundLot={
+            filters.kind === 'ALL' || filters.kind === 'MATERIAL' || filters.kind === 'CONSUMED'
+          }
+          /*
+           * 005 FR-035 — 그 입하 LOT 으로 거른다. 번호 조건이라 기간을 비운다(전체 기간 · 요청에 기간 없음 — 자재 LOT 번호 ·
+           * 입하번호와 같은 규칙). 쪽은 1로, 고른 줄은 푼다.
+           */
+          onFilterInboundLot={(ref) =>
+            apply({ ...filters, inboundLot: toInboundLotParam(ref), from: '', to: '', page: 1 })
+          }
           rows={rows}
           activeKey={line}
           onOpen={(row) => {
@@ -288,6 +304,18 @@ export const LotHistory = () => {
             apply({ ...EMPTY_FILTERS, ...defaultPeriod(plantToday()), size: DEFAULT_SIZE })
           }
         />
+        {/* 005 FR-035 — 행의 입하 LOT 으로 건 거르기 표시와 지우기(✕ — 기본 기간이 다시 채워진다). */}
+        {inboundLot !== null && (
+          <div className="filter-bar">
+            <Chip
+              variant="status"
+              removeLabel={t.filters.inboundLotChipRemove}
+              onRemove={() => apply({ ...filters, inboundLot: '', page: 1 })}
+            >
+              {t.filters.inboundLotChip(inboundLot.inboundLotNo)}
+            </Chip>
+          </div>
+        )}
       </section>
       <div
         ref={splitRef}

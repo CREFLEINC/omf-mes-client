@@ -58,7 +58,9 @@ describe('DispositionDecisionScreen 조회', () => {
     const { user } = renderScreen();
     await selectRow(user);
     /* 고르면 상세 칸 제목이 선다(omf-all-around#228). */
-    expect(await screen.findByRole('heading', { name: t.panes.detailDecision })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: t.panes.detailDecision }),
+    ).toBeInTheDocument();
 
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
@@ -85,8 +87,10 @@ describe('DispositionDecisionScreen 조회', () => {
     const { user } = renderScreen({ decidedQty: 200 });
     await selectRow(user);
 
-    /* 머리의 남은 수량은 걷고, 처분 수량 오른쪽에 「입력 / 미입력」(#223). */
-    expect(await screen.findByLabelText(t.form.qtyProgress(0, 120, 'EA'))).toBeInTheDocument();
+    /* 005 FR-038 — 「입력 / 미입력」은 수량 입력과 함께 없어졌다. 처분 수량 칸이 남은 수량 전부를 잠가 보인다. */
+    await waitFor(() =>
+      expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveValue('120 EA'),
+    );
   });
 
   /*
@@ -161,9 +165,12 @@ describe('DispositionDecisionScreen 조회', () => {
       expect(save).toBeEnabled();
     });
     const group = screen.getByRole('radiogroup', { name: t.form.dispositionLabel });
-    // 고정 셋 + 서버 선행 선별(SORT · P-53).
+    // 고정 셋 + 선별(SORT). 005 FR-041 — 선별은 자재 입하 IQC 부적합(입하 LOT 있음)만이라 이 부적합(입하 LOT 없음)에서는 잠긴다.
     expect(within(group).getAllByRole('radio')).toHaveLength(4);
-    expect(within(group).getByRole('radio', { name: '선별' })).toBeEnabled();
+    expect(within(group).getByRole('radio', { name: '선별' })).toBeDisabled();
+    expect(within(group).getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
+      t.form.typeLock.sortNoInboundLot,
+    );
     expect(within(group).getByRole('radio', { name: '재작업' })).toBeEnabled();
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });

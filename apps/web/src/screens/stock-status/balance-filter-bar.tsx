@@ -1,8 +1,13 @@
-import { Button, Checkbox, Chip } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, SearchInput } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { toFilterChips, type BalanceFilters, type FilterChipNames } from './filters';
+import {
+  hasScopeCondition,
+  toFilterChips,
+  type BalanceFilters,
+  type FilterChipNames,
+} from './filters';
 import { ItemSelectField, SelectField } from './select-field';
 import type { SelectOption } from './types';
 
@@ -90,6 +95,8 @@ export const BalanceFilterBar = ({
     inventoryStatus: appliedInventoryStatus,
     ownership: appliedOwnership,
     includeZero: appliedIncludeZero,
+    inboundLotNo: appliedInboundLotNo,
+    inboundLot: appliedInboundLot,
   } = appliedFilters;
 
   useEffect(() => {
@@ -102,6 +109,8 @@ export const BalanceFilterBar = ({
       inventoryStatus: appliedInventoryStatus,
       ownership: appliedOwnership,
       includeZero: appliedIncludeZero,
+      inboundLotNo: appliedInboundLotNo,
+      inboundLot: appliedInboundLot,
     });
   }, [
     appliedWarehouse,
@@ -112,14 +121,17 @@ export const BalanceFilterBar = ({
     appliedInventoryStatus,
     appliedOwnership,
     appliedIncludeZero,
+    appliedInboundLotNo,
+    appliedInboundLot,
   ]);
 
   /**
    * 조회를 잠그는 사유. `null`이면 조회할 수 있다.
    *
    * **막는 것은 창고 하나뿐이다.** 나머지 조건은 전부 선택이라 비어 있는 것이 잘못이 아니다.
+   * 005 FR-035 — 입하 LOT 조건(번호 칸 · 행에서 고른 입하 LOT)이 있으면 창고 없이 조회된다(범위 안내 없음).
    */
-  const searchReason = filters.warehouse === '' ? t.reasons.warehouseRequired : null;
+  const searchReason = hasScopeCondition(filters) ? null : t.reasons.warehouseRequired;
 
   const search = (): void => {
     if (searchReason !== null) return;
@@ -221,6 +233,24 @@ export const BalanceFilterBar = ({
             setFilters((prev) => ({ ...prev, ownership: value }));
           }}
         />
+
+        {/* 005 FR-035 — 입하 LOT 번호(정확 일치). Enter 로 조회한다. */}
+        <div className="field-cell">
+          <SearchInput
+            label={t.fields.inboundLotNo}
+            placeholder={t.fields.inboundLotNoPlaceholder}
+            value={filters.inboundLotNo}
+            clearLabel={messages.common.clear}
+            onChange={(event) => {
+              const inboundLotNo = event.target.value;
+              setFilters((prev) => ({ ...prev, inboundLotNo }));
+            }}
+            onSearch={search}
+            onClear={() => {
+              setFilters((prev) => ({ ...prev, inboundLotNo: '' }));
+            }}
+          />
+        </div>
 
         {/* 확인칸은 라벨이 오른쪽에 붙어 라벨 층이 없다 — 윗선을 맞추려 라벨 없는 셀에 담는다. */}
         <div className="field-cell field-cell-unlabeled">

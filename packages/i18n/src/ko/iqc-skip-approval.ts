@@ -64,6 +64,9 @@ export const iqcSkipApproval = {
     target: '대상',
     /** 상세의 대상 칸 이름(#186) — 이 화면의 대상은 LOT 이다. 목록 머리글은 「대상」 그대로다. */
     targetLot: '대상 LOT',
+    /** 005 — 생략은 대상 LOT 의 입하 LOT 단위다(FR-032). 실행 응답이 LOT 수를 준다(계약 §11). */
+    inboundLot: '입하 LOT',
+    lotCount: '자재 관리 LOT 수',
     reason: '사유',
     requestedByName: '상신자',
     /**
@@ -292,10 +295,20 @@ export const iqcSkipApproval = {
     notPending: (status: string) =>
       `LOT 이 수입검사 대기가 아니라(상태 ${status}) 생략을 실행할 수 없습니다.`,
     checking: 'LOT 상태를 확인하는 중입니다.',
+    /** 005 — 실행 결과의 입하 LOT(계약 §11 응답). */
+    doneInbound: (inboundLotNo: string, lotCount: string) =>
+      `IQC 생략을 실행했습니다. 입하 LOT ${inboundLotNo}의 자재 관리 LOT ${lotCount}개가 정상이 되었습니다.`,
+    lotCountValue: (lotCount: string) => `${lotCount}개`,
+    /** 005 — 입하 중(마감 전) 입하 LOT 은 생략할 수 없다(FR-032 · 409). 무엇을 하면 풀리는지 함께. */
+    /** 005 — 실행할 대표 자재 관리 LOT(`targetLotId`)이 오지 않았다. 무엇이 막혔고 누구에게 물을지. */
+    noTargetLot:
+      '실행: 이 입하 LOT 의 자재 관리 LOT 을 확인하지 못해 실행할 수 없습니다. 화면을 새로 고쳐도 같으면 전산담당에게 문의하세요.',
+    receivingTitle: '아직 입하 중인 입하 LOT 입니다',
+    receiving: 'PDA 입하 마감에서 이 입하 LOT 을 먼저 마감한 뒤 다시 실행하세요.',
     /** 한 줄 압축형(#193) — OQC 생략 실행과 같은 짜임이다. */
     compact: {
       title: 'IQC 생략',
-      summary: '수입검사 의뢰 생략 · 검사 대기 보류 해제 · LOT 정상',
+      summary: '수입검사 의뢰 생략 · 검사 대기 보류 해제 · LOT 정상', // ui-check-ignore: C-13 사용자 지시 한 줄 압축형 요약(#193)
       action: '실행',
       done: '실행 완료',
     },

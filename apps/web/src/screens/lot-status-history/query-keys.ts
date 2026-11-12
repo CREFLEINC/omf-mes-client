@@ -13,6 +13,9 @@ const copyLotScope = (filters: LotFilters): LotScopeFilters => ({
   status: filters.status,
   warehouse: filters.warehouse,
   location: filters.location,
+  /* 005 FR-035 — 입하 LOT 조건은 걸렸을 때만 열쇠에 싣는다(걸리지 않은 열쇠 모양은 그대로). */
+  ...((filters.inboundLotNo ?? '') === '' ? {} : { inboundLotNo: filters.inboundLotNo }),
+  ...((filters.inboundLot ?? '') === '' ? {} : { inboundLot: filters.inboundLot }),
 });
 
 const copyLotListFilters = (filters: LotFilters): LotFilters => ({

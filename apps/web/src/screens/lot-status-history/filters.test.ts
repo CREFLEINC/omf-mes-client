@@ -40,6 +40,9 @@ describe('readLotFilters', () => {
         warehouse: '202',
         location: '303',
         sort: 'latestTransitionDesc',
+        /* FR-035 — 입하 LOT 조건 둘(이 주소에는 없어 빈 값). */
+        inboundLotNo: '',
+        inboundLot: '',
       },
     ],
     ['', EMPTY_LOT_FILTERS],

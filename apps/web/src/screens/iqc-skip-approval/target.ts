@@ -1,3 +1,4 @@
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { screenPathOf, type ScreenRouteTable } from './screen-routes';
@@ -139,4 +140,76 @@ export const judgeSkipExecute = (lot: {
   if (lot.statusCode === NORMAL_LOT_STATUS) return { kind: 'executed' };
 
   return { kind: 'notPending', statusCode: lot.statusCode };
+};
+
+/**
+ * 대상의 입하 LOT(005 FR-032) — 번호는 대상 LOT 조회(계약 §1 `Lot.inboundLotNo`), LOT 수는 실행 응답(계약 §11)에서 온다.
+ * 실행 전에는 LOT 수를 모른다 — 지어내지 않고 비워 둔다.
+ */
+export interface TargetInboundLot {
+  inboundLotNo: string;
+  lotCount: number | null;
+}
+
+/** 대상 LOT 의 입하 LOT 과 실행 응답을 합친다 — 응답이 오면 그것이 이긴다. 번호가 없으면 null. */
+export const targetInboundLotOf = (
+  lotInboundLotNo: string | null,
+  executed: { inboundLotNo?: string | null; lotCount?: number | null } | null,
+): TargetInboundLot | null => {
+  const no = executed?.inboundLotNo ?? lotInboundLotNo;
+
+  return no === null || no === undefined || no.trim() === ''
+    ? null
+    : { inboundLotNo: no, lotCount: executed?.lotCount ?? null };
+};
+
+/** 409 — 업무 사유로 막혔다. */
+const CONFLICT_STATUS = 409;
+
+/**
+ * 생략 실행이 「입하 LOT 이 아직 입하 중」으로 막혔는가(005 FR-032 — 마감된 입하 LOT 만).
+ *
+ * 계약은 「그 밖 409」로만 적고 코드를 정하지 않았다 — 상태 코드로 가른다(C5 정함). 업무 코드 없이 원인만
+ * 실린 409(다른 사용자가 먼저 고침)는 이 안내가 아니다.
+ */
+export const isInboundLotReceiving = (error: ApiError | null): boolean =>
+  error !== null &&
+  error.kind !== 'network' &&
+  error.status === CONFLICT_STATUS &&
+  !(error.kind === 'conflict' && error.code === undefined);
+
+/**
+ * W-01-02 생략 실행 대상(005 FR-032 · 총괄 결정 2026-11-12).
+ *
+ * IQC 생략 결재는 입하 LOT 단위다 — `targetId` 는 입하 LOT id 라 LOT 경로에 쓰지 않는다. 실행 · 상태 조회는
+ * 서버가 채운 대표 자재 관리 LOT(`targetLotId`)로만 한다(`:skip-iqc` 는 그 LOT 의 입하 LOT 전부에 걸린다).
+ * 대상 유형 코드로 가르지 않는다 — 옛 결재도 같은 `INBOUND_LOT` 이다.
+ *
+ * | 결과 | 뜻 |
+ * | --- | --- |
+ * | `null` | 승인된 IQC 생략이 아니다 — 실행 구획이 없다 |
+ * | `lot` | 이 LOT 으로 상태를 읽고 실행한다 |
+ * | `noLot` | 대표 LOT 이 오지 않았다 — 실행을 까닭과 함께 잠근다 |
+ */
+export type SkipExecuteTarget = { kind: 'lot'; lotId: number } | { kind: 'noLot' };
+
+export const skipExecuteTargetOf = (
+  request: {
+    approvalTypeCode: string;
+    statusCode: string;
+    target: { targetLotId?: number | null };
+  },
+  iqcSkipTypeCode: string | null,
+): SkipExecuteTarget | null => {
+  if (
+    iqcSkipTypeCode === null ||
+    request.approvalTypeCode !== iqcSkipTypeCode ||
+    request.statusCode !== APPROVED_STATUS
+  ) {
+    return null;
+  }
+
+  const lotId = request.target.targetLotId;
+
+  return lotId === null || lotId === undefined ? { kind: 'noLot' } : { kind: 'lot', lotId };
 };

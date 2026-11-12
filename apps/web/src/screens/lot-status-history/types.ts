@@ -1,8 +1,10 @@
-import type { components, FourMChangeForward } from '@omf-mes/api-client';
+import type { components, FourMChangeForward, InboundLotColumns } from '@omf-mes/api-client';
 
 type Lot = components['schemas']['Lot'];
 
-type LotQualityStatusResponse = components['schemas']['LotQualityStatus'];
+/** 005 FR-035 — 입하 LOT 칸을 더한 모양(api-client 덧댐). 칸이 없는 응답도 받도록 선택으로 둔다 — 없으면 null. */
+type LotQualityStatusResponse = components['schemas']['LotQualityStatus'] &
+  Partial<InboundLotColumns>;
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
 type LotStatusSummaryResponse = components['schemas']['LotStatusSummary'];
 type LotHoldResponse = components['schemas']['LotHold'];
@@ -25,6 +27,9 @@ export interface LotStatusRow {
   fullyHeld: boolean;
   latestTransitionAt: string | null;
   latestReasonCode: string | null;
+  /** 005 FR-035 — 자재 관리 LOT 의 입하 LOT. 입하 LOT 이 없는 LOT(생산 · 재생)은 null — 표는 빈칸. */
+  inboundLotId: number | null;
+  inboundLotNo: string | null;
 }
 
 export const toLotStatusRow = (value: LotQualityStatusResponse): LotStatusRow => ({
@@ -43,6 +48,8 @@ export const toLotStatusRow = (value: LotQualityStatusResponse): LotStatusRow =>
   fullyHeld: value.fullyHeld,
   latestTransitionAt: value.latestTransitionAt ?? null,
   latestReasonCode: value.latestReasonCode ?? null,
+  inboundLotId: value.inboundLotId ?? null,
+  inboundLotNo: value.inboundLotNo ?? null,
 });
 
 const toIdentityKey = (value: number | null): string => (value === null ? '-' : String(value));

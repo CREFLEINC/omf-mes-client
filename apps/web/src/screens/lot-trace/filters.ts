@@ -41,6 +41,13 @@ export interface LotTraceFilters extends Period {
   productLot: string;
   /** 입하번호 전체 */
   inbound: string;
+  /** 005 FR-035 — 입하 LOT 번호 전체(요청 `inboundLotNo`). 번호 조건이다. */
+  inboundLotNo: string;
+  /**
+   * 005 FR-035 — 행의 입하 LOT 번호를 눌러 건 거르기(요청 `inboundLotId`). 주소 값은 `번호:입하 LOT 번호` — 거르기 표시가
+   * 번호를 다시 부르지 않게 둘을 함께 싣는다. 번호 조건이다.
+   */
+  inboundLot: string;
   /** W/O 번호 전체 */
   workOrder: string;
   /** 출하번호 전체 */
@@ -61,6 +68,8 @@ export const EMPTY_FILTERS: LotTraceFilters = {
   materialLot: '',
   productLot: '',
   inbound: '',
+  inboundLotNo: '',
+  inboundLot: '',
   workOrder: '',
   shipment: '',
   supplier: '',
@@ -80,11 +89,37 @@ const KEYS = {
   materialLot: 'mlot',
   productLot: 'plot',
   inbound: 'ir',
+  inboundLotNo: 'ilno',
+  inboundLot: 'il',
   workOrder: 'wo',
   shipment: 'sh',
   supplier: 'sup',
   customer: 'cus',
 } as const;
+
+/** 행에서 고른 입하 LOT. */
+export interface InboundLotRef {
+  inboundLotId: number;
+  inboundLotNo: string;
+}
+
+/** 고른 입하 LOT 을 주소 값으로 옮긴다(`toInboundLotRef` 와 짝). */
+export const toInboundLotParam = (ref: InboundLotRef): string =>
+  `${String(ref.inboundLotId)}:${ref.inboundLotNo}`;
+
+/** 주소 값 `번호:입하 LOT 번호` 를 읽는다. 번호가 1 이상 정수가 아니거나 입하 LOT 번호가 비면 `null`. */
+export const toInboundLotRef = (raw: string): InboundLotRef | null => {
+  const separator = raw.indexOf(':');
+  if (separator < 0) return null;
+  const id = raw.slice(0, separator);
+  const no = raw.slice(separator + 1).trim();
+  return POSITIVE.test(id) && no !== '' ? { inboundLotId: Number(id), inboundLotNo: no } : null;
+};
+
+const inboundLotParam = (raw: string | null): string => {
+  const ref = toInboundLotRef(raw ?? '');
+  return ref === null ? '' : toInboundLotParam(ref);
+};
 
 export const readFilters = (params: URLSearchParams): LotTraceFilters => {
   const rawKind = params.get(KEYS.kind);
@@ -97,6 +132,8 @@ export const readFilters = (params: URLSearchParams): LotTraceFilters => {
     materialLot: text(params.get(KEYS.materialLot)),
     productLot: text(params.get(KEYS.productLot)),
     inbound: text(params.get(KEYS.inbound)),
+    inboundLotNo: text(params.get(KEYS.inboundLotNo)),
+    inboundLot: inboundLotParam(params.get(KEYS.inboundLot)),
     workOrder: text(params.get(KEYS.workOrder)),
     shipment: text(params.get(KEYS.shipment)),
     supplier: positive(params.get(KEYS.supplier)),
@@ -116,6 +153,8 @@ export const toSearchParams = (filters: LotTraceFilters): URLSearchParams => {
     'materialLot',
     'productLot',
     'inbound',
+    'inboundLotNo',
+    'inboundLot',
     'workOrder',
     'shipment',
     'supplier',
@@ -171,12 +210,14 @@ export const migrateLegacyParams = (params: URLSearchParams): URLSearchParams | 
   return next;
 };
 
-/** 번호로 하나를 집는 조건(LOT 번호, 입하번호, W/O 번호, 출하번호)이 있는가. */
+/** 번호로 하나를 집는 조건(LOT 번호, 입하번호, 입하 LOT(005 FR-035), W/O 번호, 출하번호)이 있는가. */
 export const hasNumberCondition = (filters: LotTraceFilters): boolean =>
   [
     filters.materialLot,
     filters.productLot,
     filters.inbound,
+    filters.inboundLotNo,
+    filters.inboundLot,
     filters.workOrder,
     filters.shipment,
   ].some((value) => value !== '');
@@ -189,6 +230,9 @@ export const withKind = (filters: LotTraceFilters, kind: KindFilter): LotTraceFi
 export interface SourcePart {
   lotNo?: string;
   inboundReceiptNo?: string;
+  /** 005 FR-035 — 자재 입고 · 투입만. */
+  inboundLotId?: number;
+  inboundLotNo?: string;
   workOrderNo?: string;
   shipmentNo?: string;
   supplierId?: number;
@@ -199,23 +243,36 @@ export interface SourcePart {
  * 한 구분의 줄 목록이 이 조건을 다 걸 수 있는가, 걸 수 있으면 그 질의 일부. 걸 수 없는 조건이 있으면 그 구분은 뺀다
  * (빼지 않으면 조건과 관계없는 줄이 섞인다). 자재 LOT 번호는 자재 입고와 투입, 제품 LOT 번호는 제품입고, 포장, 출하에
  * 건다. W/O 번호는 투입, 제품입고, 포장, 출하에 건다(자재 입고는 W/O와 이어지지 않는다).
+ * 입하 LOT(005 FR-035)은 자재 LOT 번호 · 입하번호와 같다 — 자재 입고와 투입에만 걸고, 있으면 제품 쪽 구분은 부르지 않는다.
  */
 export const sourceQuery = (kind: MovementKind, filters: LotTraceFilters): SourcePart | null => {
   if (!AVAILABLE[kind]) return null;
   const { materialLot, productLot, inbound, workOrder, shipment, supplier, customer } = filters;
   const material = kind === 'MATERIAL' || kind === 'CONSUMED';
   const id = (value: string) => Number(value);
+  const inboundLot = toInboundLotRef(filters.inboundLot);
+  const inboundLotNo = filters.inboundLotNo;
   if (material) {
     if (productLot !== '' || shipment !== '' || customer !== '') return null;
     if (kind === 'MATERIAL' && workOrder !== '') return null;
     return {
       ...(materialLot === '' ? {} : { lotNo: materialLot }),
       ...(inbound === '' ? {} : { inboundReceiptNo: inbound }),
+      ...(inboundLot === null ? {} : { inboundLotId: inboundLot.inboundLotId }),
+      ...(inboundLotNo === '' ? {} : { inboundLotNo }),
       ...(kind === 'CONSUMED' && workOrder !== '' ? { workOrderNo: workOrder } : {}),
       ...(supplier === '' ? {} : { supplierId: id(supplier) }),
     };
   }
-  if (materialLot !== '' || inbound !== '' || supplier !== '') return null;
+  if (
+    materialLot !== '' ||
+    inbound !== '' ||
+    inboundLot !== null ||
+    inboundLotNo !== '' ||
+    supplier !== ''
+  ) {
+    return null;
+  }
   if (kind === 'PRODUCT' && (shipment !== '' || customer !== '')) return null;
   return {
     ...(productLot === '' ? {} : { lotNo: productLot }),

@@ -47,7 +47,11 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       item: 'Tìm mặt hàng',
       warehouse: 'Tìm kho',
       location: 'Tìm vị trí',
+      inboundLotNo: 'Số LOT nhập hàng',
     },
+    inboundLotNoPlaceholder: 'IL-YYYYMMDD-NNNN',
+    inboundLotChip: (inboundLotNo: string): string => `LOT nhập hàng ${inboundLotNo}`,
+    inboundLotChipRemove: 'Bỏ lọc LOT nhập hàng',
     /** LOT 상태 묶음 네 탭의 LOT 조회 칸 이름(사용자 2026-11-02). */
     lotScanLabel: 'Quét LOT',
     lotNoScanPlaceholder: 'Quét mã vạch LOT hoặc nhập số',
@@ -104,7 +108,9 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
       onHand: 'Số lượng đang giữ',
       latestTransition: 'Ngày thay đổi cuối',
       reason: 'Lý do trạng thái',
+      inboundLot: 'LOT nhập hàng',
     },
+    filterInboundLot: (inboundLotNo: string): string => `Lọc theo LOT nhập hàng ${inboundLotNo}`,
     itemLabel: {
       loading: 'Đang tải…',
       failed: 'Tra cứu danh sách mặt hàng thất bại',

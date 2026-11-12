@@ -7,6 +7,7 @@ import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { plantToday } from '../../patterns/plant-time';
 import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
 import { useSession } from '../../patterns/session';
+import { toWebAccess } from '../../patterns/web-access';
 import { GoodsReceiptBatchPostPanel, type BatchPostLot } from '../goods-receipt/batch-post-panel';
 import { GoodsReceiptPostPanel } from '../goods-receipt/post-panel';
 import { excessTabHref, readLegacyExcessEntry, type ExcessEntry } from './excess-entry';
@@ -28,7 +29,7 @@ import {
   type ScheduleFilters,
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
-import { lotEvidence } from './lot-row';
+import { lotEvidence, WORK_RECORD_PATH } from './lot-row';
 import {
   describeReference,
   lookupNote,
@@ -514,6 +515,7 @@ export const InboundScheduleScreen = () => {
               progressFailed={progress.isError && !progressUnavailable}
               notice={linesNotice}
               {...(canPost ? { onPostReceipt: openPost } : {})}
+              canOpenWorkRecord={toWebAccess(session?.permissions).allows(WORK_RECORD_PATH)}
               {...(canPost
                 ? {
                     lotPick: {

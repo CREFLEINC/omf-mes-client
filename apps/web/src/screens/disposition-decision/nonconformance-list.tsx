@@ -62,13 +62,21 @@ export const NonconformanceList = ({
       header: t.fields.nonconformanceNo,
       /* 번호는 글자다 — 고르기는 줄 누르기가 맡는다(사용자 지시 · #223). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
-        <span
-          className="disposition-nc-no"
-          data-nc-id={row.nonconformanceId}
-          data-selected={row.nonconformanceId === selectedId ? 'true' : undefined}
-        >
-          {row.nonconformanceNo}
-        </span>
+        <>
+          <span
+            className="disposition-nc-no"
+            data-nc-id={row.nonconformanceId}
+            data-selected={row.nonconformanceId === selectedId ? 'true' : undefined}
+          >
+            {row.nonconformanceNo}
+          </span>
+          {/* 005 — 자재 입하 IQC 부적합은 번호 아래 줄에 입하 LOT(screens/W-03-10.md 목록 행). */}
+          {row.inboundLotNo !== undefined && (
+            <span className="disposition-nc-inbound">
+              {t.inboundLot.listLine(row.inboundLotNo)}
+            </span>
+          )}
+        </>
       ),
     },
     {

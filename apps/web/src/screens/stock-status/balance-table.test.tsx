@@ -116,10 +116,11 @@ describe('buildBalanceColumns — 보기마다의 열 구성', () => {
    * 축 열만 보기마다 다르고 나머지 여덟은 세 보기가 공유한다. **LOT별에만 상세 열이 하나 더
    * 붙는다** — 다른 두 보기의 줄은 LOT을 가리키지 않아 고를 대상이 없다.
    */
-  it('품목별은 아홉 열, 위치별은 열 열, LOT별은 열한 열이다', () => {
+  /* FR-035 — LOT별 보기에 「입하 LOT」 열이 더해져 열한 열에서 열두 열이 됐다. */
+  it('품목별은 아홉 열, 위치별은 열 열, LOT별은 열두 열이다', () => {
     expect(buildBalanceColumns({ view: 'item', ...LOOKUPS, ...SELECTION })).toHaveLength(9);
     expect(buildBalanceColumns({ view: 'location', ...LOOKUPS, ...SELECTION })).toHaveLength(10);
-    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(11);
+    expect(buildBalanceColumns({ view: 'lot', ...LOOKUPS, ...SELECTION })).toHaveLength(12);
   });
 
   /*

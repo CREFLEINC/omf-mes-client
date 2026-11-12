@@ -18,6 +18,7 @@ import {
   remainingQtyOf,
   toIssueDraft,
   toPickDraft,
+  pickQtyText,
   unpickedLineCount,
   type PickingLine,
   type PickingOrder,
@@ -477,5 +478,35 @@ describe('부분 출고 뒤의 안내 판정', () => {
     ];
 
     expect(unpickedLineCount(lines)).toBe(2);
+  });
+});
+
+describe('패키징으로 넣은 피킹의 보내는 값(005 US6)', () => {
+  const BAG = { unitName: '봉지', qtyPerPackage: 100 };
+  const now = new Date('2026-11-12T09:00:00+09:00');
+
+  it('SC-007 보내는 값 = 패키징 수 × 패키징당 수량 — 봉지 3 이면 본문 300', () => {
+    const sent = pickQtyText('3', 'package', BAG);
+    const draft = toPickDraft(order(), line({ plannedQty: 400 }), sent, 'batch-1', now, '100027');
+
+    expect(sent).toBe('300');
+    expect((draft.body as { pickedQty: number }).pickedQty).toBe(300);
+  });
+
+  it('US6-2 기본 단위로 넣으면 넣은 값 그대로 — EA 50 이면 본문 50', () => {
+    expect(pickQtyText('50', 'base', BAG)).toBe('50');
+  });
+
+  it('US6-3 패키징이 없는 LOT 은 입력 단위와 무관하게 넣은 값 그대로', () => {
+    expect(pickQtyText('20', 'package', null)).toBe('20');
+  });
+
+  it('US6-1 봉지 3 은 남은 요청 400 안에 든다 — 환산한 값으로 막힘을 판정한다', () => {
+    const sent = pickQtyText('3', 'package', BAG);
+
+    expect(qtyProblemOf(sent, line({ plannedQty: 400 }))).toBeNull();
+    expect(qtyProblemOf(pickQtyText('5', 'package', BAG), line({ plannedQty: 400 }))).toBe(
+      'overPlanned',
+    );
   });
 });

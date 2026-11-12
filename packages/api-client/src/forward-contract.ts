@@ -1,4 +1,8 @@
 import type { components, paths } from './generated/api';
+import type { ForwardPaths005Inventory } from './forward-005-inventory';
+import type { ForwardPaths005Lots } from './forward-005-lots';
+import type { ForwardPaths005Quality, InspectionResultListForward005 } from './forward-005-quality';
+import type { ForwardPaths005WorkRecord } from './forward-005-work-record';
 
 /** P-7/P-10 선행 계약: 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다. */
 export type TerminalRegistrationStatusCode = 'UNREGISTERED' | 'REGISTERED';
@@ -485,14 +489,14 @@ export interface ItemResourceMapListQuery {
   includeInactive?: boolean;
 }
 
-interface NoParameters {
+export interface NoParameters {
   query?: never;
   header?: never;
   path?: never;
   cookie?: never;
 }
 
-interface Unused {
+export interface Unused {
   delete?: never;
   options?: never;
   head?: never;
@@ -500,7 +504,7 @@ interface Unused {
   trace?: never;
 }
 
-type PageMeta = components['schemas']['PageMeta'];
+export type PageMeta = components['schemas']['PageMeta'];
 
 /** 서버 선행 P-102(omf-all-around#89) — OA 제품 검사표. 출력 양식 · 단계 · 판정. */
 export type InspectionSheetLayoutCode = 'OP' | 'PP';
@@ -753,11 +757,11 @@ export interface InspectionSheetStepWrite {
   items: { inspectionSheetTemplateItemId: number; judgmentCode: InspectionSheetJudgment }[];
 }
 
-type Json<T> = { headers: { [name: string]: unknown }; content: { 'application/json': T } };
-type Op<P, B, R> = { parameters: P; responses: R } & ([B] extends [never]
+export type Json<T> = { headers: { [name: string]: unknown }; content: { 'application/json': T } };
+export type Op<P, B, R> = { parameters: P; responses: R } & ([B] extends [never]
   ? { requestBody?: never }
   : { requestBody: B });
-interface Params<Q, H, Path> {
+export interface Params<Q, H, Path> {
   query?: Q;
   header: H;
   path: Path;
@@ -1064,7 +1068,7 @@ export interface SupplierItemDefaultUpdate {
 }
 
 type SupplierItemDefaultId = { supplierItemDefaultId: number };
-type IdemOnly = { 'Idempotency-Key': string; 'X-Worker-No'?: string };
+export type IdemOnly = { 'Idempotency-Key': string; 'X-Worker-No'?: string };
 
 /*
  * ── 005 입하 LOT 조회 · PDA 받기 · 해제 · 공급사 LOT · 입하 마감 · 마감 취소(계약 §2·§3) ──
@@ -1208,7 +1212,7 @@ export interface InboundLotClosed extends InboundLot {
   iqcRequestId?: number | null;
 }
 
-type InboundLotId = { inboundLotId: number };
+export type InboundLotId = { inboundLotId: number };
 
 /*
  * ── 005 IQC 입하 LOT 단위(계약 §8 · §3 분리, W-01-01 · 확정 권한 W-01-15) ──
@@ -1287,6 +1291,8 @@ export interface InspectionResultSummaryForward {
 
 /** 입하 LOT 단위 IQC 상세(계약 §8 상세 추가). */
 export interface InspectionRequestInboundDetailForward {
+  /** 다음 결과 순번 — 지운 순번을 다시 쓰지 않으므로 서버가 준다(총괄 요청 · 서버 S8). 드로어 「결과 N 추가」. */
+  nextResultSeqNo?: number | null;
   /** 입하 LOT 의 판 번호 — 분리(`:split-lots`)의 `versionNo`(C3 정함). */
   inboundLotVersionNo?: number | null;
   lots?: InspectionLotForward[];
@@ -1310,10 +1316,27 @@ export interface InboundLotPoAllocation {
   qty: number;
 }
 
+/** 검사 의뢰 이벤트 유형 — 공통코드 `INSPECTION_REQUEST_EVENT_TYPE`(data-model). */
+export type InspectionRequestEventCode =
+  | 'RESULT_ADDED'
+  | 'RESULT_UPDATED'
+  | 'RESULT_DELETED'
+  | 'CONFIRMED'
+  | 'CONFIRM_CANCELLED'
+  | 'REOPENED_BY_REWORK'
+  | 'SKIPPED'
+  | 'SKIP_VOIDED'
+  | 'SPLIT_OUT'
+  | 'SPLIT_IN'
+  | 'CANCELLED_BY_REOPEN';
+
 /** 검사 의뢰 이벤트(계약 §8 「이벤트를 함께」 — 칸 이름 C3 정함). */
 export interface InspectionRequestEventForward {
   occurredAt: string;
-  /** REQUESTED · RESULT_CREATED · RESULT_UPDATED · RESULT_DELETED · CONFIRMED · CONFIRM_CANCELLED · LOTS_SPLIT · SPLIT_CREATED. */
+  /**
+   * 공통코드 `INSPECTION_REQUEST_EVENT_TYPE` 값 그대로(data-model · R-11 정본): RESULT_ADDED · RESULT_UPDATED · RESULT_DELETED ·
+   * CONFIRMED · CONFIRM_CANCELLED · REOPENED_BY_REWORK · SKIPPED · SKIP_VOIDED · SPLIT_OUT · SPLIT_IN · CANCELLED_BY_REOPEN.
+   */
   eventCode: string;
   actorName: string | null;
   /** 서버가 만든 한 줄 내용(「결과 1 기록 — 합격 · 검사 200 · 매칭 0001, 0002」). */
@@ -1372,7 +1395,16 @@ type InspectionRequestListPath = paths['/quality/inspection-requests'];
 type InspectionHistoryPath = paths['/quality/inspection-requests/{inspectionRequestId}/history'];
 type InspectionId = { inspectionRequestId: number };
 
-export interface ForwardPaths {
+/*
+ * 005 C-K4(C5 · C6) 덧댐은 화면 갈래마다 따로 둔 파일에 쓴다 — 같은 파일을 여럿이 고치지 않게(T111 에서 함께 걷는다).
+ * 이미 아래 `ForwardPaths` 에 있는 경로를 고칠 때만 이 파일의 그 자리를 고친다(같은 열쇠를 두 곳에 두지 않는다).
+ */
+export interface ForwardPaths
+  extends
+    ForwardPaths005Quality,
+    ForwardPaths005Lots,
+    ForwardPaths005Inventory,
+    ForwardPaths005WorkRecord {
   /** 005 — 입하 LOT 목록(계약 §2). 권한 M-01-01·M-01-03·W-01-16·W-01-01. */
   '/logistics/inbound-lots': Unused & {
     parameters: NoParameters;
@@ -1766,7 +1798,13 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': InspectionResultConfirmForward } };
     };
   };
-  '/quality/inspection-results': Omit<InspectionResultsPath, 'post'> & {
+  '/quality/inspection-results': Omit<InspectionResultsPath, 'post' | 'get'> & {
+    /** 005 — 행에 `confirmCycle`(계약 §8 · D-18). 모양은 `forward-005-quality.ts`. */
+    get: Omit<InspectionResultsPath['get'], 'responses'> & {
+      responses: Omit<InspectionResultsPath['get']['responses'], 200> & {
+        200: Json<InspectionResultListForward005>;
+      };
+    };
     post: Omit<InspectionResultsPath['post'], 'requestBody'> & {
       requestBody: { content: { 'application/json': InspectionResultCreateForward } };
     };

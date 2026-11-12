@@ -72,6 +72,14 @@ export const materialPicking = {
     mismatch: (expected: string) => `이 라인의 LOT 이 아닙니다. ${expected} 을(를) 스캔하세요.`,
     matched: '라인의 LOT 과 같습니다',
   },
+  /**
+   * 005 — 스캔한 LOT 의 생애(US1-6). 미리 만든 대기 LOT 은 아직 입하되지 않았고 폐기 LOT 은 더는 쓰지 못한다.
+   * 모바일 공용 LOT 조회 도우미(`patterns/lots.ts`)가 이 말을 쓴다 — POP 투입(P-02-03)과 같은 말이다.
+   */
+  lot: {
+    waiting: '아직 입하되지 않은 LOT',
+    voided: '폐기된 LOT',
+  },
   qty: {
     label: '출고 수량',
     problem: {
@@ -81,6 +89,37 @@ export const materialPicking = {
     },
   },
   /** 선출은 권고다. 강제 옵션은 서버가 갖고 있어 화면이 막지 않는다. */
+  /**
+   * 005 — 패키징 입력(US6 · FR-033·034). 화면은 늘 기본 단위로 열리고 보내는 값도 기본 단위다(SC-007).
+   * 패키징 단위 이름(봉지 등)은 받은 이름, 없으면 단위 코드다.
+   */
+  pack: {
+    /** 「봉지 100 EA」 — 패키징 단위 · 패키징 하나의 수량. */
+    chip: (unit: string, per: string, uom: string) => `${unit} ${per} ${uom}`,
+    count: (count: string, unit: string) => `${count}${unit}`,
+    countWithLoose: (count: string, unit: string, loose: string) => `${count}${unit} + ${loose}`,
+    /** 온전한 패키징이 하나도 없을 때. */
+    looseOnly: (loose: string) => `낱개 ${loose}`,
+    qty: (qty: string, uom: string) => `${qty} ${uom}`,
+    /** 「700 EA (7봉지)」 */
+    qtyWithPackages: (qty: string, uom: string, packages: string) => `${qty} ${uom} (${packages})`,
+    stockLabel: 'LOT 재고',
+    unitLegend: '입력 단위',
+    /** 「봉지 (100 EA)」 */
+    unitPackage: (unit: string, per: string, uom: string) => `${unit} (${per} ${uom})`,
+    /** 확정 전 환산 「3봉지 = 300 EA」. */
+    conversion: (packages: string, qty: string, uom: string) => `${packages} = ${qty} ${uom}`,
+    after: (stock: string) => `피킹하면 남는 재고 ${stock}`,
+    log: (entered: string, stock: string) => `피킹 ${entered} → 남은 재고 ${stock}`,
+    problem: {
+      notInteger: (unit: string) => `${unit} 수는 정수로 넣으세요`,
+      overPackages: (unit: string, count: string) => `남은 ${unit} ${count}을(를) 넘을 수 없습니다`,
+      overPlanned: (limit: string) => `남은 요청 ${limit} 을(를) 넘을 수 없습니다`,
+    },
+    issuedLabel: '출고',
+    issuedTotal: '합계',
+    lotLeft: 'LOT 남은 재고',
+  },
   outOfSequence: '선출 순서가 앞선 LOT 이 남아 있습니다. 피킹할 수는 있습니다.',
   pick: '피킹 기록',
   submit: '출고 확정',

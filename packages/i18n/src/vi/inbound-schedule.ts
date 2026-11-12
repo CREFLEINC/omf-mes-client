@@ -148,6 +148,9 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     listCollapse: 'Thu gọn danh sách phần vượt',
     listExpand: 'Mở rộng danh sách phần vượt',
     listTitle: 'Phần vượt chưa liên kết',
+    newFlowNotice:
+      'Phần không có P/O của luồng nhập hàng mới được khớp tại Nhật ký công việc nhập hàng / nhập kho (W-01-16).',
+    newFlowLink: 'Nhật ký công việc nhập hàng / nhập kho',
     table: {
       receiptNo: 'Số nhập hàng',
       receiptDate: 'Ngày nhập hàng',
@@ -256,5 +259,14 @@ export const inboundSchedule: Translated<typeof ko.inboundSchedule> = {
     },
     loading: 'Đang tải tiến độ nhập kho',
     loadFailed: 'Không tải được tiến độ nhập kho. Các dòng vẫn hiển thị như cũ.',
+    inboundLot: (inboundLotNo: string): string => `LOT nhập hàng ${inboundLotNo}`,
+    package: (uom: string, count: string, qtyPerPackage: string): string =>
+      `${uom} ${count} × ${qtyPerPackage}`,
+    workRecordLink: 'Điều chỉnh khớp tại Nhật ký công việc nhập hàng / nhập kho',
+    shareAllocated: (inboundLotNo: string, qty: string, uom: string): string =>
+      `${inboundLotNo} · khớp ${qty} ${uom}`,
+    shareReceiving: (inboundLotNo: string): string => `${inboundLotNo} · Đang nhập hàng`,
+    receiving: 'Đang nhập hàng',
+    shareSeparator: ', ',
   },
 };

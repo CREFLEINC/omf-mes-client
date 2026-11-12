@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InventoryBalanceForward } from '@omf-mes/api-client';
 
 /**
  * W-01-07 화면 슬라이스의 계약.
@@ -12,7 +12,8 @@ import type { components } from '@omf-mes/api-client';
  * 형태가 같아도 리소스 이름이 박힌 타입을 공유하면 한 화면의 계약 변화가 다른 화면을 끌고 간다.
  */
 
-type InventoryBalanceResponse = components['schemas']['InventoryBalance'];
+/** 005 FR-035 — `groupBy=LOT` 줄에 입하 LOT 칸이 더해진 모양(api-client 덧댐). */
+type InventoryBalanceResponse = InventoryBalanceForward;
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
 type InventoryTransactionResponse = components['schemas']['InventoryTransaction'];
 type InventoryTransactionDetailResponse =
@@ -70,6 +71,12 @@ export interface BalanceView {
   /** 이 줄에 포함된 보류 LOT 수. 계약이 세어 주므로 화면이 따로 세지 않는다. */
   heldLotCount: number | null;
   lastTransactionAt: string | null;
+  /**
+   * 005 FR-035 — 이 자재 관리 LOT 의 입하 LOT. `groupBy=LOT` 줄에만 오고, 입하 LOT 이 없는 LOT(생산 · 재생)은 null —
+   * 표는 빈칸으로 둔다. 이전 데이터는 `IL-MIG-…`.
+   */
+  inboundLotId: number | null;
+  inboundLotNo: string | null;
 }
 
 /** 응답 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -94,6 +101,8 @@ export const toBalanceView = (data: InventoryBalanceResponse): BalanceView => ({
   /* 0과 「없음」을 가른다 — 0은 서버가 세어 본 결과이고 없음은 세어 주지 않은 것이다. */
   heldLotCount: data.heldLotCount ?? null,
   lastTransactionAt: data.lastTransactionAt ?? null,
+  inboundLotId: data.inboundLotId ?? null,
+  inboundLotNo: data.inboundLotNo ?? null,
 });
 
 /**

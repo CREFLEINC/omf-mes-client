@@ -1003,6 +1003,8 @@ describe('QualityApprovalScreen conditions', () => {
       statusCode: 'APPROVED',
       isMyTurn: false,
       currentStepNo: null,
+      /* 005 S10 — 생략 결재의 대상은 입하 LOT, 실행은 대표 자재 관리 LOT(`targetLotId`)로(계약 §11 · 응답의 새 칸). */
+      target: { ...requests[0]!.target, targetLotId: 91 },
     } as unknown as ApprovalRequest;
     const recorded = recordingFetch(
       listRoute(),
@@ -1027,6 +1029,8 @@ describe('QualityApprovalScreen conditions', () => {
       statusCode: 'APPROVED',
       isMyTurn: false,
       currentStepNo: null,
+      /* 005 S10 — 생략 결재의 대상은 입하 LOT, 실행은 대표 자재 관리 LOT(`targetLotId`)로(계약 §11 · 응답의 새 칸). */
+      target: { ...requests[0]!.target, targetLotId: 91 },
     } as unknown as ApprovalRequest;
     const skipPath = '/trace/lots/91:skip-iqc';
     const recorded = recordingFetch(

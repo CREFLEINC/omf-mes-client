@@ -44,6 +44,9 @@ export const stockStatus = {
     inventoryStatus: '재고 상태',
     ownership: '소유 구분',
     includeZero: '잔액 0 포함',
+    /** 005 FR-035 — 입하 LOT 번호 정확 일치. 창고 대신 이것만으로도 조회된다. */
+    inboundLotNo: '입하 LOT 번호',
+    inboundLotNoPlaceholder: 'IL-YYYYMMDD-NNNN',
   },
   actions: {
     prevPage: '이전',
@@ -59,6 +62,8 @@ export const stockStatus = {
      */
     selectRow: (lotName: string): string => `${lotName} 선택`,
     deselectRow: (lotName: string): string => `${lotName} 선택 해제`,
+    /** 005 FR-035 — 행의 입하 LOT 번호를 눌러 그 입하 LOT 으로 거른다. */
+    filterInboundLot: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}로 거르기`,
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다(배치 규범 4). */
   reasons: {
@@ -107,6 +112,8 @@ export const stockStatus = {
     inventoryStatus: '재고 상태',
     ownership: '소유',
     lastTransactionAt: '최근 거래',
+    /** 005 FR-035 — LOT별 보기에만 있는 열. 입하 LOT 이 없는 LOT(생산 · 재생)은 빈칸. */
+    inboundLot: '입하 LOT',
     /** LOT별 보기에만 있는 열. 다른 보기의 줄은 LOT을 가리키지 않아 고를 대상이 없다. */
     select: '상세',
   },
@@ -144,6 +151,11 @@ export const stockStatus = {
     chipRemoveInventoryStatus: '재고 상태 조건 제거',
     chipRemoveOwnership: '소유 구분 조건 제거',
     chipRemoveIncludeZero: '잔액 0 포함 해제',
+    chipInboundLotNo: (value: string): string => `입하 LOT 번호: ${value}`,
+    chipRemoveInboundLotNo: '입하 LOT 번호 조건 제거',
+    /** 행의 입하 LOT 을 눌러 건 거르기 — 「입하 LOT {번호}」(screens/W-01-07.md). */
+    chipInboundLot: (value: string): string => `입하 LOT ${value}`,
+    chipRemoveInboundLot: '입하 LOT 거르기 제거',
   },
   /** 쪽 이동. 번호 목록을 두지 않는 근거는 screens/stock-status/page-nav.tsx에 있다. */
   pageNav: {

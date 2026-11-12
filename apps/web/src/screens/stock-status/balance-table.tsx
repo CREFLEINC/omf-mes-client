@@ -11,6 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { formatTransactionAt } from './as-of';
+import type { InboundLotRef } from './filters';
 import { describeReference, toReference, type ReferenceSource } from './lookups';
 import { sortableKeysOf, toSortState, type SortKey } from './sort';
 import { toGroupKey, toRowKey, type BalanceView } from './types';
@@ -50,11 +51,12 @@ const t = messages.stockStatus;
  * | 소유 | 128px | 「(자사 소유)」 또는 거래처명 아래에 소유 구분 코드 배지가 쌓인다 |
  * | 최근 거래 | 168px | **`yyyy-MM-dd HH:mm`** 16자 120 + 32(`as-of.ts`가 그 형태로 줄인다 · 사용자 지시 2026-10-19) |
  * | 상세(LOT별만) | 88px | 「선택 해제」 버튼 하나 |
+ * | 입하 LOT(LOT별만 · 005 FR-035) | 168px | `IL-20261112-0001` 16자 120 + 글자 단추 여백 16 + 32 |
  *
  * | 보기 | 축 열 | 합 |
  * | --- | --- | ---: |
  * | 품목별 | 품목 | **1,176px** |
- * | LOT별 | 품목 · LOT | **1,408px**(상세 열 포함) |
+ * | LOT별 | 품목 · LOT · 입하 LOT | **1,576px**(상세 · 입하 LOT 열 포함) |
  * | 위치별 | 위치 · 품목 | **1,376px** |
  *
  * **세 합이 모두 928px을 넘는다.** 열이 9~10개인 표를 928px에 넣으려면 열마다 66~91px이라
@@ -74,6 +76,7 @@ const WIDTH = {
   ownership: '128px',
   lastTransactionAt: '168px',
   select: '88px',
+  inboundLot: '168px',
 } as const;
 
 export interface BalanceColumnDeps {
@@ -92,6 +95,8 @@ export interface BalanceColumnDeps {
   /** 지금 상세를 보고 있는 LOT. 주소가 소유하므로 표는 받아 쓰기만 한다. */
   selectedLotId: number | null;
   onToggleSelect: (lotId: number) => void;
+  /** 005 FR-035 — 행의 입하 LOT 번호를 눌러 그 입하 LOT 으로 거른다. 없으면 번호를 글로만 보인다. */
+  onFilterInboundLot?: (ref: InboundLotRef) => void;
 }
 
 /** 값이 없는 칸은 비워 두지 않는다 — 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -132,6 +137,7 @@ export const buildBalanceColumns = ({
   partnerLookup,
   selectedLotId,
   onToggleSelect,
+  onFilterInboundLot,
 }: BalanceColumnDeps): Column<BalanceView>[] => {
   /*
    * **번호를 문자열로 바꾸는 자리가 없다**(#44). 이름으로 풀 수 없는 세 갈래(미도착·목록에
@@ -211,10 +217,40 @@ export const buildBalanceColumns = ({
     },
   };
 
+  /**
+   * 입하 LOT 열 — **LOT별 보기에만**(계약 §13 — 다른 묶음 방식에는 칸이 없다 · 005 FR-035). 입하 LOT 이 없는 LOT(생산 ·
+   * 재생)은 빈칸이다 — 대시로 두면 자료가 빠진 것으로 읽힌다(screens/W-01-07.md 「없으면 빈칸」). 번호를 누르면 그 입하 LOT
+   * 으로 거른다(`inboundLotId`).
+   */
+  const inboundLotColumn: Column<BalanceView> = {
+    key: 'inboundLot',
+    header: t.table.inboundLot,
+    width: WIDTH.inboundLot,
+    render: (row) => {
+      const { inboundLotId, inboundLotNo } = row;
+
+      if (inboundLotId === null || inboundLotNo === null) return '';
+      if (onFilterInboundLot === undefined) return inboundLotNo;
+
+      return (
+        <Button
+          variant="text"
+          size="sm"
+          aria-label={t.actions.filterInboundLot(inboundLotNo)}
+          onClick={() => {
+            onFilterInboundLot({ inboundLotId, inboundLotNo });
+          }}
+        >
+          {inboundLotNo}
+        </Button>
+      );
+    },
+  };
+
   /** 축 열 — 보기가 정한다. 「코드 · 이름」이 한 줄에 들어가는 폭을 **지정한다**(위 표). */
   const axisColumns: Column<BalanceView>[] = {
     item: [itemColumn],
-    lot: [itemColumn, lotColumn],
+    lot: [itemColumn, lotColumn, inboundLotColumn],
     location: [locationColumn, itemColumn],
   }[view];
 
@@ -375,6 +411,7 @@ export const BalanceTable = ({
   onSortChange,
   onFirstPage,
   onToggleSelect,
+  onFilterInboundLot,
   onRetryReferences,
   itemLookup,
   itemNames,
@@ -384,7 +421,13 @@ export const BalanceTable = ({
   partnerLookup,
 }: BalanceTableProps) => {
   const lookups = { itemLookup, itemNames, lotLookup, locationLookup, uomLookup, partnerLookup };
-  const columns = buildBalanceColumns({ view, ...lookups, selectedLotId, onToggleSelect });
+  const columns = buildBalanceColumns({
+    view,
+    ...lookups,
+    selectedLotId,
+    onToggleSelect,
+    ...(onFilterInboundLot === undefined ? {} : { onFilterInboundLot }),
+  });
   const groupAxis = groupAxisOf(view);
 
   if (isLoading) {

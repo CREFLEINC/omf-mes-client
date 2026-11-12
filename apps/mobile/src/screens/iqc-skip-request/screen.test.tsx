@@ -512,3 +512,90 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(screen.getByLabelText(/사유/)).toHaveValue('');
   });
 });
+
+describe('IQC 생략은 입하 LOT 단위(005 FR-032)', () => {
+  /* 가상 입하 LOT — 상자 라벨(자재 관리 LOT) 하나를 스캔한다. */
+  const INBOUND_LOT_NO = 'IL-261112-0007';
+  const boxLot = () => Object.assign(lot(), { inboundLotId: 61, inboundLotNo: INBOUND_LOT_NO });
+
+  const fillAndSend = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByLabelText('입하 LOT 스캔');
+    scan(LOT_NO);
+    await screen.findByText('수입검사 대기 중');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
+    await user.click(screen.getByRole('button', { name: '요청' }));
+  };
+
+  it('R16-1 상자 라벨 스캔은 그대로 — 그 LOT 의 입하 LOT 번호와 요청 범위를 함께 보인다', async () => {
+    mount([], { lots: [boxLot()] });
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText(`입하 LOT ${INBOUND_LOT_NO}`)).toBeInTheDocument();
+    expect(
+      screen.getByText('요청은 이 입하 LOT 의 자재 관리 LOT 전부에 걸립니다.'),
+    ).toBeInTheDocument();
+  });
+
+  it('R16-1 대기 요청은 입하 LOT 을 대상으로 묻는다', async () => {
+    const seen: URL[] = [];
+    mount([], { lots: [boxLot()], seen });
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText(`입하 LOT ${INBOUND_LOT_NO}`);
+
+    await waitFor(() => {
+      expect(
+        seen
+          .find((url) => url.searchParams.get('pendingOnly') === 'true')
+          ?.searchParams.get('targetId'),
+      ).toBe('61');
+    });
+  });
+
+  it('R16-1 보낸 뒤 응답의 입하 LOT 번호와 LOT 수를 보인다', async () => {
+    const user = userEvent.setup();
+    mount(
+      [
+        createRoute(() =>
+          jsonResponse(
+            { approvalRequestId: 92, inboundLotNo: INBOUND_LOT_NO, lotCount: 6 },
+            { status: 202 },
+          ),
+        ),
+      ],
+      { lots: [boxLot()] },
+    );
+
+    await fillAndSend(user);
+
+    expect(await screen.findByText('요청했습니다')).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`입하 LOT ${INBOUND_LOT_NO} \\(자재 관리 LOT 6개\\)`)),
+    ).toBeInTheDocument();
+  });
+
+  it('R16-1 입하 중인 입하 LOT 이면(409) 입하 마감을 먼저 하라고 안내한다', async () => {
+    const user = userEvent.setup();
+    mount(
+      [
+        createRoute(() =>
+          jsonResponse(
+            { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '입하 중' }] },
+            { status: 409 },
+          ),
+        ),
+      ],
+      { lots: [boxLot()] },
+    );
+
+    await fillAndSend(user);
+
+    expect(await screen.findByText('요청을 전송하지 못했습니다')).toBeInTheDocument();
+    expect(
+      screen.getByText(/아직 입하 중인 입하 LOT 이라 요청할 수 없습니다. 입하 마감을 먼저 하세요./),
+    ).toBeInTheDocument();
+  });
+});

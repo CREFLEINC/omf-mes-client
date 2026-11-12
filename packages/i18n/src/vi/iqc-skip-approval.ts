@@ -27,6 +27,8 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     approvalTypeCode: 'Loại phê duyệt',
     target: 'Đối tượng',
     targetLot: 'LOT đối tượng',
+    inboundLot: 'LOT nhập hàng',
+    lotCount: 'Số LOT quản lý vật tư',
     reason: 'Lý do',
     requestedByName: 'Người trình',
     requestedAt: 'Thời điểm trình',
@@ -135,6 +137,13 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     notPending: (status: string) =>
       `LOT không ở trạng thái chờ kiểm tra đầu vào (trạng thái ${status}) nên không thể thực hiện bỏ qua.`,
     checking: 'Đang kiểm tra trạng thái LOT.',
+    doneInbound: (inboundLotNo: string, lotCount: string) =>
+      `Đã thực hiện bỏ qua IQC. ${lotCount} LOT quản lý vật tư của LOT nhập hàng ${inboundLotNo} đã trở thành bình thường.`,
+    lotCountValue: (lotCount: string) => `${lotCount} LOT`,
+    noTargetLot:
+      'Thực hiện: không xác định được LOT quản lý vật tư của LOT nhập hàng này nên không thể thực hiện. Nếu tải lại vẫn vậy, hãy hỏi bộ phận tin học.',
+    receivingTitle: 'LOT nhập hàng vẫn đang nhập',
+    receiving: 'Hãy chốt nhập hàng cho LOT nhập hàng này trên PDA trước rồi thực hiện lại.',
     compact: {
       title: 'Bỏ qua IQC',
       summary: 'Bỏ qua yêu cầu kiểm tra đầu vào · gỡ giữ chờ kiểm tra · LOT bình thường',

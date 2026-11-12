@@ -79,6 +79,11 @@ export const inspectionResultInsights = {
     lotFailed: 'LOT 번호를 확인하지 못했습니다.',
     inspectedAtWithRound: (inspectedAt: string, round: number): string =>
       `${inspectedAt} / ${String(round)}회`,
+    /** 005 D-18 — 입하 LOT IQC 결과(`confirmCycle` 있음)는 확정 주기로 「처음」·「재검 n차」. */
+    firstCycle: '처음',
+    reinspectionCycle: (n: number): string => `재검 ${String(n)}차`,
+    inspectedAtWithCycle: (inspectedAt: string, cycleLabel: string): string =>
+      `${inspectedAt} / ${cycleLabel}`,
     loading: '검사 결과 페이지를 불러오는 중',
     failed: '검사 결과를 불러오지 못했습니다.',
     retry: '다시 시도',

@@ -52,3 +52,41 @@ const ROUTE_NOT_FOUND = 'ROUTE_NOT_FOUND';
 export const isRouteMissing = (error: ApiError): boolean =>
   (error.kind === 'validation' || error.kind === 'stateLocked') &&
   error.errors.some((item) => item.code === ROUTE_NOT_FOUND);
+
+/** 409 — 서버가 「먼저 다시 읽어 오라」가 아니라 업무 사유로 막았다는 상태 코드. */
+const CONFLICT_STATUS = 409;
+
+/**
+ * 되돌아온 이유가 「입하 LOT 이 아직 입하 중」인가(005 FR-032 — 마감된 입하 LOT 만 요청할 수 있다).
+ *
+ * 계약은 「그 밖 409」로만 적고 코드를 정하지 않았다 — 상태 코드로 가른다(C5 정함). 다른 사용자가 먼저
+ * 고친 충돌(원인만 있고 업무 코드가 없는 409)은 이 안내가 아니다.
+ */
+export const isInboundLotReceiving = (error: ApiError): boolean =>
+  error.kind !== 'network' &&
+  error.status === CONFLICT_STATUS &&
+  !(error.kind === 'conflict' && error.code === undefined);
+
+/** 요청 응답의 입하 LOT(계약 §11 「응답에 `inboundLotNo`·`lotCount` 추가」). 없으면 null. */
+export const inboundLotOfResponse = (
+  response: unknown,
+): { inboundLotNo: string; lotCount: number } | null => {
+  if (typeof response !== 'object' || response === null) {
+    return null;
+  }
+
+  const { inboundLotNo, lotCount } = response as { inboundLotNo?: unknown; lotCount?: unknown };
+
+  return typeof inboundLotNo === 'string' &&
+    inboundLotNo.trim() !== '' &&
+    typeof lotCount === 'number'
+    ? { inboundLotNo, lotCount }
+    : null;
+};
+
+/**
+ * 대기 요청을 물을 대상 — 결재 대상이 입하 LOT 이다(005 FR-032 · 계약 §11 「결재 `target_id` = 입하 LOT id」).
+ * 입하 LOT 을 모르는 LOT(이전 데이터)은 지금처럼 LOT 으로 묻는다.
+ */
+export const approvalTargetIdOf = (lot: Lot | null | undefined): number | null =>
+  lot === null || lot === undefined ? null : (lot.inboundLotId ?? lot.lotId);

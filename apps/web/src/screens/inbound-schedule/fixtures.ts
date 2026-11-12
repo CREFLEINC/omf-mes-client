@@ -58,6 +58,7 @@ const BASE_LINE: InboundScheduleLine = {
   erpCustomsClearanceSeq: null,
   erpCustomsClearanceFetchedAt: null,
   receiptStatusCode: 'NOT_STARTED',
+  receivingInboundLots: [],
 };
 
 /** 한 항목만 다른 줄을 만든다. 무엇을 검사하는 테스트인지 그 인자만 보고 읽히게 한다. */
@@ -317,6 +318,9 @@ const BASE_LOT: InboundLotProgress = {
   },
   goodsReceipt: null,
   putaway: null,
+  inboundLotId: null,
+  inboundLotNo: null,
+  package: null,
 };
 
 /** 이 발주 몫(`allocatedQty`)은 따로 주지 않으면 줄 전체(`receivedQty`)와 같다 — 초과분 연결이 없는 보통 줄이다. */

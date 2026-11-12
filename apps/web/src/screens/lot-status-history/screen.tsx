@@ -25,6 +25,8 @@ import {
   readSelectedLotId,
   toAppliedHistorySearchParams,
   toAppliedLotSearchParams,
+  toInboundLotParam,
+  toInboundLotRef,
   toModeSearchParams,
   withLotPageSize,
   withSelectedLot,
@@ -229,6 +231,7 @@ const LotMode = ({
     return counts;
   }, [chipSummary.data]);
   const hubTarget = useHubActionsTarget();
+  const inboundLot = toInboundLotRef(filters.inboundLot ?? '');
   const statusChips = (
     <StatusChips
       options={toCodeOptions(lotStatuses.data?.items)}
@@ -277,6 +280,18 @@ const LotMode = ({
           onSearch={onSearch}
           onReset={onReset}
         />
+        {/* 005 FR-035 — 행의 입하 LOT 으로 건 거르기 표시와 지우기. */}
+        {inboundLot !== null && (
+          <div className="filter-bar">
+            <Chip
+              variant="status"
+              removeLabel={t.lotFilter.inboundLotChipRemove}
+              onRemove={() => onSearch({ ...filters, inboundLot: '' })}
+            >
+              {t.lotFilter.inboundLotChip(inboundLot.inboundLotNo)}
+            </Chip>
+          </div>
+        )}
       </section>
       {/* 목록과 LOT 상세를 나란히(상하 배치면 위아래로) 둔다 — 종전에는 상세가 창으로 떴다(사용자 2026-10-30). */}
       <div
@@ -295,6 +310,14 @@ const LotMode = ({
           onPageSizeChange={onPageSizeChange}
           onSelectLot={onSelectLot}
           selectedLotId={selectedLotId}
+          /* 005 FR-035 — 그 입하 LOT 으로 거른다. 다른 조건은 그대로, 쪽은 1로(조회 단추와 같은 길). */
+          onFilterInboundLot={(ref) =>
+            onSearch({
+              ...filters,
+              inboundLot: toInboundLotParam(ref),
+              lotType: filters.lotType === '' ? ALL_LOT_TYPES : filters.lotType,
+            })
+          }
         />
         <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
         {layout.orientation === 'column' && (

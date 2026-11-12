@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
+import { packagesToBase, type EntryUnit, type PackageUnit } from '../../patterns/package-qty';
 
 export type PickingOrder = components['schemas']['PickingOrder'];
 export type PickingLine = components['schemas']['PickingLine'];
@@ -286,6 +287,26 @@ const pad = (value: number): string => String(value).padStart(2, '0');
 
 export const businessDateOf = (now: Date): string =>
   `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+/**
+ * 피킹 본문에 싣는 수량(기본 단위 글자) — 패키징으로 넣었으면 「패키징 수 × 패키징당 수량」(SC-007).
+ *
+ * ⛔ 서버 본문은 바뀌지 않는다 — 패키징 수를 그대로 실으면 3봉지가 3 EA 로 나간다.
+ * 패키징이 없는 LOT 은 입력 단위가 무엇이든 넣은 값 그대로다(US6-3).
+ */
+export const pickQtyText = (
+  text: string,
+  entryUnit: EntryUnit,
+  unit: PackageUnit | null,
+): string => {
+  if (entryUnit !== 'package' || unit === null) {
+    return text;
+  }
+
+  const count = Number(text.trim());
+
+  return text.trim() === '' || !Number.isFinite(count) ? text : String(packagesToBase(count, unit));
+};
 
 export const toPickDraft = (
   order: PickingOrder,

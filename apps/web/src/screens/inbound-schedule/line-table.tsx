@@ -14,6 +14,7 @@ import type { ExcessEntry } from './excess-entry';
 import { lineExcessesOf } from './excess-match';
 import type { UnallocatedLine } from './excess-types';
 import {
+  inboundLotShareText,
   LotActionCell,
   LotMainCell,
   lotLocation,
@@ -25,6 +26,7 @@ import {
 import { formatDate } from './period';
 import { formatQty, OneLine, orEmpty, ReceiptStatusCell } from './receipt-status';
 import {
+  inboundLotShares,
   isReceiptReady,
   lineTableRowId,
   linesWithLots,
@@ -68,6 +70,8 @@ export interface LineTableProps {
   notice?: ReactNode;
   /** LOT 줄의 「입고 처리」 — 없으면(권한 없음) 세우지 않는다. */
   onPostReceipt?: (lot: IssuedLotProgress) => void;
+  /** W-01-16 입하/입고 작업 기록을 열 수 있는가 — 거짓이면 LOT 줄의 매칭 조정 안내가 글만 된다(005). */
+  canOpenWorkRecord?: boolean;
   /**
    * 「입고 대기」 LOT 을 체크해 한 번에 입고(사용자 지시 2026-10-28). 없으면(입고 권한 없음) LOT 줄에 체크가 서지 않는다.
    */
@@ -253,6 +257,7 @@ export const LineTable = ({
   notice,
   onPostReceipt,
   lotPick,
+  canOpenWorkRecord = false,
 }: LineTableProps) => {
   const isTree = lots !== undefined;
 
@@ -398,7 +403,12 @@ export const LineTable = ({
       width: '48px',
       align: 'end',
       /* LOT 줄은 이 칸에서 발주 수량 칸까지 합쳐(`useMergedLotCells`) LOT 번호와 근거를 낸다. */
-      render: (row) => (row.kind === 'line' ? row.line.lineNo : <LotMainCell lot={row.lot} />),
+      render: (row) =>
+        row.kind === 'line' ? (
+          row.line.lineNo
+        ) : (
+          <LotMainCell lot={row.lot} canOpenWorkRecord={canOpenWorkRecord} />
+        ),
     },
     {
       key: 'itemCode',
@@ -411,7 +421,27 @@ export const LineTable = ({
       key: 'itemName',
       sortable: true,
       header: t.table.itemName,
-      render: (row) => (row.kind === 'line' ? <OneLine text={orEmpty(row.line.itemName)} /> : ''),
+      /*
+       * 005 FR-035 — 라인에 입하 LOT 마다 몫 「{IL} · 매칭 {수량} {단위}」(마감한 입하 LOT) · 「{IL} · 입하 중」(마감 전 —
+       * 배정이 없어 LOT 줄이 없다)을 품목명 아래 한 줄로 낸다.
+       */
+      render: (row) => {
+        if (row.kind !== 'line') return '';
+
+        const shares = inboundLotShares(row.line, row.lots);
+        const sharesText = shares.map(inboundLotShareText).join(t.lot.shareSeparator);
+
+        return (
+          <>
+            <OneLine text={orEmpty(row.line.itemName)} />
+            {shares.length > 0 && (
+              <span className="po-board-one-line po-board-lot-meta" title={sharesText}>
+                {sharesText}
+              </span>
+            )}
+          </>
+        );
+      },
     },
     {
       key: 'orderedQty',

@@ -14,6 +14,7 @@ export const pickingKeys = {
   order: (pickingOrderId: number | null) => ['picking-order', pickingOrderId] as const,
   request: (materialIssueRequestId: number | null) =>
     ['picking-issue-request', materialIssueRequestId] as const,
+  stock: (lotId: number | null) => ['picking-lot-stock', lotId] as const,
 };
 
 /** 피킹 지시의 원천이 자재 출고 요청일 때만 도착 위치가 있다. 출하 요청은 다른 화면 몫이다. */
@@ -138,6 +139,40 @@ export const useIssueRequest = (
       );
 
       return data.materialIssueRequest;
+    },
+  });
+};
+
+/**
+ * 스캔한 LOT 의 지금 재고(기본 단위) — 「LOT 재고 700 EA (7봉지)」와 남은 봉지 검사가 쓴다(005 US6 · FR-034).
+ *
+ * 재고 줄의 현재고(`onHandQty`)를 더한다. 피킹만으로는 현재고가 줄지 않으므로 화면이 집어 둔 양을
+ * 빼서 보인다(`screen.tsx`). 받지 못하면 재고 줄을 세우지 않을 뿐 피킹은 막지 않는다 — 판정은 서버다.
+ * 열 때마다 다시 묻는다 — 출고 뒤의 값이 앞 응답에 남으면 남은 봉지를 많게 보인다.
+ */
+export const useLotStock = (lotId: number | null): UseQueryResult<number | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: pickingKeys.stock(lotId),
+    enabled: lotId !== null,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      if (lotId === null) {
+        throw new Error('LOT 을 확인하기 전에는 재고를 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/inventory/balances', {
+          params: { query: { lotId, groupBy: 'LOT', size: PAGE_SIZE } },
+        }),
+      );
+
+      const rows = data.items.filter((balance) => balance.lotId === lotId);
+
+      /* 줄이 없는 것을 0 으로 읽으면 남은 봉지가 0 이 되어 피킹이 막힌다. 모르는 것으로 둔다. */
+      return rows.length === 0 ? null : rows.reduce((total, row) => total + row.onHandQty, 0);
     },
   });
 };

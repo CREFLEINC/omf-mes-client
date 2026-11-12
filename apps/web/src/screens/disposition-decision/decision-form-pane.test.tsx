@@ -21,7 +21,6 @@ const lookup = (): DispositionLookup => ({
 const baseProps = (): DecisionFormPaneProps => ({
   value: EMPTY_DECISION_FORM,
   errors: {},
-  qtyNotice: undefined,
   lockReason: undefined,
   isUncertain: false,
   onCheckOutcome: vi.fn(),
@@ -83,19 +82,12 @@ describe('DecisionFormPane', () => {
     expect(saveButton()).toHaveAccessibleDescription(reason);
   });
 
-  it('남은 수량 초과는 예고할 뿐 저장을 막지 않는다 — 잔량 판정은 서버 몫이다', () => {
-    const notice = t.form.qtyOverRemaining('120');
-    renderPane({ qtyNotice: notice });
+  /* 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음). 옛 「남은 수량 초과 예고」 두 시험은 칸과 함께 없어졌다. */
+  it('처분 수량은 남은 수량 전부를 읽기 전용으로 보인다 — 입력하지 않는다', () => {
+    renderPane({ remainingQty: 320 });
 
-    expect(saveButton()).toBeEnabled();
-    expect(screen.getByText(notice)).toBeInTheDocument();
-  });
-
-  it('⭐ 남은 수량이 0이라는 예고도 저장을 막지 않는다', () => {
-    renderPane({ qtyNotice: t.form.qtySettledNotice });
-
-    expect(saveButton()).toBeEnabled();
-    expect(screen.getByText(t.form.qtySettledNotice)).toBeInTheDocument();
+    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveValue('320 EA');
+    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveAttribute('readonly');
   });
 
   it('저장 중에는 저장·취소를 함께 잠근다 — 두 번 보내지 않게 한다', () => {
@@ -140,9 +132,11 @@ describe('DecisionFormPane', () => {
   });
 
   it('오류 문구를 입력칸에 붙인다', () => {
-    renderPane({ errors: { reason: t.form.reasonRequired, decisionQty: t.form.qtyRequired } });
+    renderPane({
+      errors: { reason: t.form.reasonRequired, decisionQty: t.form.remainingUnknown },
+    });
 
     expect(screen.getByText(t.form.reasonRequired)).toBeInTheDocument();
-    expect(screen.getByText(t.form.qtyRequired)).toBeInTheDocument();
+    expect(screen.getByText(t.form.remainingUnknown)).toBeInTheDocument();
   });
 });

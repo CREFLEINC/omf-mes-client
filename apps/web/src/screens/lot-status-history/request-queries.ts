@@ -1,14 +1,17 @@
-import type { paths } from '@omf-mes/api-client';
+import type { InboundLotFilterQuery, paths } from '@omf-mes/api-client';
 
-import { ALL_LOT_TYPES, type HistoryFilters, type LotFilters } from './filters';
+import { ALL_LOT_TYPES, toInboundLotRef, type HistoryFilters, type LotFilters } from './filters';
 import { toHistoryPeriodBounds, validateHistoryPeriod } from './period';
 
+/** 005 FR-035 — 입하 LOT 조건 둘(`inboundLotId` · `inboundLotNo`)을 더한다(api-client 덧댐). */
 export type LotStatusListQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
->;
+> &
+  InboundLotFilterQuery;
 export type LotStatusSummaryQuery = NonNullable<
   NonNullable<paths['/quality/lot-status-summary']['get']>['parameters']['query']
->;
+> &
+  InboundLotFilterQuery;
 export type LotHoldEventQuery = NonNullable<
   paths['/quality/lot-hold-events']['get']
 >['parameters']['query'];
@@ -46,6 +49,11 @@ export const toLotStatusSummaryQuery = (filters: LotFilters): LotStatusSummaryQu
   if (filters.status !== '') query.lotStatusCode = filters.status;
   if (warehouseId !== undefined) query.warehouseId = warehouseId;
   if (locationId !== undefined) query.locationId = locationId;
+  /* 005 FR-035 — 목록 · 요약이 같은 WHERE 로 입하 LOT 을 거른다. */
+  const inboundLot = toInboundLotRef(filters.inboundLot ?? '');
+  const inboundLotNo = (filters.inboundLotNo ?? '').trim();
+  if (inboundLot !== null) query.inboundLotId = inboundLot.inboundLotId;
+  if (inboundLotNo !== '') query.inboundLotNo = inboundLotNo;
 
   return query;
 };

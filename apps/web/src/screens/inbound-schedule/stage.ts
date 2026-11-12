@@ -199,3 +199,59 @@ export const linesWithLots = (
   lines
     .filter((line) => (lots?.get(line.purchaseOrderLineId)?.length ?? 0) > 0)
     .map((line) => line.purchaseOrderLineId);
+
+/**
+ * 라인의 입하 LOT 몫 하나(005 FR-035 · 계약 §12). 마감한 입하 LOT 은 P/O 매칭 몫(`allocatedQty` — 입하 LOT 단위 몫이라
+ * 그 입하 LOT 의 자재 관리 LOT 줄마다 같은 값이다), 마감 전 입하 LOT 은 배정이 없어 「입하 중」(`receivingInboundLots`).
+ */
+export type InboundLotShare =
+  | {
+      kind: 'allocated';
+      inboundLotId: number;
+      inboundLotNo: string;
+      allocatedQty: number;
+      uomCode: string;
+    }
+  | { kind: 'receiving'; inboundLotId: number; inboundLotNo: string };
+
+/**
+ * 라인 아래 LOT 줄에서 입하 LOT 마다 몫 하나를 모으고, 입하 중 입하 LOT 을 그 뒤에 붙인다. 순서는 LOT 줄 순서(입하 일시)다.
+ * 입하 LOT 이 없는 줄(라벨 대기)은 세지 않는다. 같은 입하 LOT 이 두 갈래에 다 오면(마감 직후 엇갈림) 매칭 몫만 남긴다.
+ */
+export const inboundLotShares = (
+  line: InboundScheduleLine,
+  lots: readonly InboundLotProgress[],
+): InboundLotShare[] => {
+  const shares: InboundLotShare[] = [];
+  const seen = new Set<number>();
+
+  for (const lot of lots) {
+    if (lot.inboundLotId === null || lot.inboundLotNo === null || seen.has(lot.inboundLotId)) {
+      continue;
+    }
+    seen.add(lot.inboundLotId);
+    shares.push({
+      kind: 'allocated',
+      inboundLotId: lot.inboundLotId,
+      inboundLotNo: lot.inboundLotNo,
+      allocatedQty: lot.allocatedQty,
+      uomCode: lot.uomCode,
+    });
+  }
+
+  for (const receiving of line.receivingInboundLots) {
+    if (seen.has(receiving.inboundLotId)) continue;
+    seen.add(receiving.inboundLotId);
+    shares.push({
+      kind: 'receiving',
+      inboundLotId: receiving.inboundLotId,
+      inboundLotNo: receiving.inboundLotNo,
+    });
+  }
+
+  return shares;
+};
+
+/** 이전 데이터 입하 LOT(`IL-MIG-…`)인가 — 새 흐름(`ON_FINALIZE`)의 매칭 조정 링크는 그 밖의 입하 LOT 에만 건다(C5 정함). */
+export const isMigratedInboundLot = (inboundLotNo: string): boolean =>
+  inboundLotNo.startsWith('IL-MIG-');

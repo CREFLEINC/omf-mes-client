@@ -8,6 +8,12 @@ export interface CodeOption {
   label: string;
 }
 
+/** 처분 유형 칸 하나 — 한 줄 설명과, 막혔으면 그 이유(단추는 잠그고 이유를 단다 · G-2). */
+export interface DispositionOption extends CodeOption {
+  hint?: string;
+  lockReason?: string;
+}
+
 /** 고정 OpenAPI가 닫은 처분 유형 셋에 선별(`SORT`)을 더한다 — 선별은 서버 선행이다(omf-all-around#108 · P-53). */
 export const DISPOSITION_TYPE_CODES = ['REWORK', 'SCRAP', 'NORMAL', 'SORT'] as const;
 export type DispositionTypeCode = (typeof DISPOSITION_TYPE_CODES)[number];
@@ -94,3 +100,45 @@ export const sourceCodeOptions = (): CodeOption[] =>
 /** 처분 선택지가 비었을 때 판정 컨트롤에 붙일 잠금 사유(방어). 있으면 잠그지 않는다. */
 export const dispositionLockReason = (codes: readonly string[]): string | undefined =>
   codes.length === 0 ? messages.dispositionDecision.dispositionPending : undefined;
+
+/** 종결로 보는 부적합 상태 — 더 판정하지 않는다(상세 머리 배지의 `DECIDED` 와 계약 §10 의 `CANCELLED`). */
+const CLOSED_STATUS_CODES: readonly string[] = ['DECIDED', 'CLOSED', 'CANCELLED'];
+
+export const isClosedNonconformance = (statusCode: string, isSettled: boolean): boolean =>
+  isSettled || CLOSED_STATUS_CODES.includes(statusCode);
+
+export interface DispositionOptionContext {
+  isClosed: boolean;
+  /** 결재 대기 특채가 있다 — 특채 밖 유형은 막는다. */
+  hasPendingConcession: boolean;
+  /** 입하 LOT — 자재 입하 IQC 부적합만 있다. 반품 · OQC 는 없다(선별 없음). */
+  inboundLotNo: string | null | undefined;
+  lotCount: number;
+  /** 이미 내려진 판정 수 — 선별은 첫 판정일 때만. */
+  decisionCount: number;
+  /** 선별로 떼어 낸 불량에서 생긴 부적합 — 정상 처분 없음. */
+  isSortedOff: boolean;
+}
+
+/**
+ * 처분 유형을 막는 이유(005 · screens/W-03-10.md 「막힌 유형」). 없으면 고를 수 있다.
+ * 차례: 종결 → 특채 결재 대기 → 선별 규칙(입하 LOT 없음 · LOT 1개 · 첫 판정 아님) → 선별로 생긴 부적합의 정상.
+ */
+export const dispositionOptionLock = (
+  code: string,
+  context: DispositionOptionContext,
+): string | undefined => {
+  const t = messages.dispositionDecision.form.typeLock;
+
+  if (context.isClosed) return t.closed;
+  if (context.hasPendingConcession) return t.concessionPending;
+  if (code === 'SORT') {
+    if (context.inboundLotNo === null || context.inboundLotNo === undefined) {
+      return t.sortNoInboundLot;
+    }
+    if (context.lotCount < 2) return t.sortSingleLot;
+    if (context.decisionCount > 0) return t.sortNotFirst;
+  }
+  if (code === 'NORMAL' && context.isSortedOff) return t.normalSorted;
+  return undefined;
+};

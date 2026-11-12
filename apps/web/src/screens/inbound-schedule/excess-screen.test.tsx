@@ -255,3 +255,43 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('FR-035 InboundExcessScreen — 초과분 탭은 이전 데이터만, 새 흐름은 W-01-16', () => {
+  it('FR-035 목록 위에 새 흐름 안내와 입하/입고 작업 기록(W-01-16) 링크를 보인다', async () => {
+    renderTab([excessListRoute([excessFixture()]), candidatesRoute([])]);
+
+    expect(await within(listPane()).findByText(te.newFlowNotice)).toBeInTheDocument();
+    expect(within(listPane()).getByRole('link', { name: te.newFlowLink })).toHaveAttribute(
+      'href',
+      '/logistics/inbound-work-record',
+    );
+  });
+
+  it('FR-035 새 흐름 줄을 연결하려다 서버가 409 로 막으면 그 사유를 그대로 보인다', async () => {
+    const user = renderTab([
+      excessListRoute([excessFixture()]),
+      candidatesRoute([candidateFixture()]),
+      allocationWriteRoute([], [], () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '합성 사유 — W-01-16 에서 조정하세요',
+              },
+            ],
+          },
+          { status: 409 },
+        ),
+      ),
+    ]);
+
+    await within(detailPane()).findByText(te.confirmLink(QTY, ORDER_LINE));
+    await user.click(within(detailPane()).getByRole('button', { name: te.actions.link }));
+
+    expect(
+      await within(detailPane()).findByText('합성 사유 — W-01-16 에서 조정하세요'),
+    ).toBeInTheDocument();
+  });
+});

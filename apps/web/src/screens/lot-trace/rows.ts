@@ -38,7 +38,18 @@ export interface MovementRow {
   /** 출하 줄은 LOT 번호순 앞 5개다. */
   lots: MovementLot[];
   lotCount: number;
+  /** 005 FR-035 — 자재 입고 · 투입 줄의 입하 LOT. 다른 구분과 입하 LOT 이 없는 LOT 은 null(표는 빈칸). */
+  inboundLot?: { inboundLotId: number; inboundLotNo: string } | null;
 }
+
+const inboundLotOf = (line: {
+  inboundLotId?: number | null;
+  inboundLotNo?: string | null;
+}): MovementRow['inboundLot'] => {
+  const inboundLotId = line.inboundLotId ?? null;
+  const inboundLotNo = line.inboundLotNo ?? null;
+  return inboundLotId === null || inboundLotNo === null ? null : { inboundLotId, inboundLotNo };
+};
 
 /** 공장 시각으로 바꾸지 못한 값은 받은 글자 그대로 보인다. 앞 10자를 자르면 UTC 날짜가 공장 날짜처럼 보인다. */
 const plantParts = (value: string): { date: string; time: string } =>
@@ -59,6 +70,8 @@ export const fromReceiptLine = (line: ReceiptLine): MovementRow => ({
   statusCode: line.statusCode,
   lots: [{ lotId: line.lotId, lotNo: line.lotNo, qty: line.receiptQty }],
   lotCount: 1,
+  /* 제품입고 줄은 입하 LOT 이 없다(자재 입고만). */
+  inboundLot: line.receiptTypeCode === 'PRODUCT' ? null : inboundLotOf(line),
 });
 
 export const fromShipmentLine = (line: ShipmentLine): MovementRow => ({
@@ -76,6 +89,7 @@ export const fromShipmentLine = (line: ShipmentLine): MovementRow => ({
   statusCode: line.statusCode,
   lots: line.lots,
   lotCount: line.lotCount,
+  inboundLot: null,
 });
 
 /** 투입 줄 — 문서번호는 투입 번호, 상대 대신 W/O 번호. */
@@ -94,6 +108,7 @@ export const fromInputLine = (line: InputLine): MovementRow => ({
   statusCode: line.statusCode,
   lots: [{ lotId: line.lotId, lotNo: line.lotNo, qty: line.inputQty }],
   lotCount: 1,
+  inboundLot: inboundLotOf(line),
 });
 
 /** 포장 줄 — 한 줄이 상자 하나에 담긴 LOT 하나다. 문서번호는 포장 번호(취급 단위 번호). */
@@ -112,6 +127,7 @@ export const fromPackingLine = (line: PackingLine): MovementRow => ({
   statusCode: line.handlingUnitStatusCode,
   lots: [{ lotId: line.lotId, lotNo: line.lotNo, qty: line.qty }],
   lotCount: 1,
+  inboundLot: null,
 });
 
 /** 화면 언어의 자리 구분을 따른다(베트남어는 `1.234,5`). */

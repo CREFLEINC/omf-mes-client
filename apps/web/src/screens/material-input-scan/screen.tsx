@@ -111,6 +111,13 @@ const describeOutcome = (
             : t.scan.outcomes.blockedStatus(josa(itemOfLotNo(outcome.lotNo), '은/는'), statusName),
       };
     }
+    /* 대기 · 폐기 자재 관리 LOT — 담지 않고 투입도 요청하지 않는다(005 US1-6). 모바일과 같은 말이다. */
+    case 'blocked-lifecycle':
+      return {
+        tone: 'error',
+        text:
+          outcome.lifecycle === 'WAITING' ? t.scan.outcomes.waitingLot : t.scan.outcomes.voidedLot,
+      };
     case 'ambiguous':
       return { tone: 'warning', text: t.scan.outcomes.ambiguous(outcome.count) };
     case 'not-found':

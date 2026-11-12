@@ -1,5 +1,5 @@
-import { EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
-import { isForbidden } from '@omf-mes/api-client';
+import { AlertBanner, EmptyState, SkeletonText, useToast } from '@crefle/web-ui';
+import { isForbidden, type IqcSkipInboundLotForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -76,9 +76,11 @@ import { SCREEN_ROUTES } from './screen-routes';
 import { SkipExecutePane } from './skip-execute-pane';
 import {
   describeTargetName,
+  isInboundLotReceiving,
   judgeSkipExecute,
+  targetInboundLotOf,
   judgeTargetOpen,
-  skipExecuteLotIdOf,
+  skipExecuteTargetOf,
 } from './target';
 import { TargetPane } from './target-pane';
 import {
@@ -294,11 +296,21 @@ export const IqcSkipApprovalScreen = () => {
    */
   const detail = useRequestDetail(selectedRequestId);
   /* 승인된 IQC 생략이면 그 LOT 을 읽어 실행 구획의 모양을 정한다(#105 리뷰). */
-  const skipLotId =
+  /*
+   * 005 — 생략 실행 · 상태 조회는 서버가 채운 대표 자재 관리 LOT(`targetLotId`)로만 한다. `targetId` 는 입하 LOT
+   * id 라 LOT 경로에 쓰지 않는다(FR-032 · 총괄 결정 2026-11-12). 대표 LOT 이 없으면 실행을 잠근다.
+   */
+  const skipTarget =
     detail.data === undefined
       ? null
-      : skipExecuteLotIdOf(detail.data.request, IQC_SKIP_APPROVAL_TYPE_CODE);
+      : skipExecuteTargetOf(detail.data.request, IQC_SKIP_APPROVAL_TYPE_CODE);
+  const skipLotId = skipTarget?.kind === 'lot' ? skipTarget.lotId : null;
   const skipLot = useSkipTargetLot(skipLotId);
+  /* 005 — 생략 실행 응답의 입하 LOT 번호 · LOT 수(계약 §11). 요청을 바꾸면 비운다. */
+  const [skipExecuted, setSkipExecuted] = useState<{
+    lotId: number;
+    result: IqcSkipInboundLotForward;
+  } | null>(null);
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isRequestNotFound =
     detailError !== null && detailError.kind === 'http' && detailError.status === 404;
@@ -452,7 +464,7 @@ export const IqcSkipApprovalScreen = () => {
    * 승인된 생략의 실행(omf-all-around#105 · 서버 선행 P-36). 승인과 별개의 쓰기다 — 승인은 LOT 을
    * 옮기지 않는다. 대상 LOT 이 바뀌므로 잠금 토큰이 없고, 성공하면 요청 목록·상세를 다시 부른다.
    */
-  const skipExecuteWrite = useMasterWrite<number, unknown>({
+  const skipExecuteWrite = useMasterWrite<number, IqcSkipInboundLotForward>({
     request: (lotId, headers) =>
       client.POST('/trace/lots/{lotId}:skip-iqc', {
         params: { path: { lotId }, header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
@@ -460,8 +472,17 @@ export const IqcSkipApprovalScreen = () => {
     etagPath: null,
     invalidateKeys: [iqcSkipApprovalKeys.all],
     knownFields: [],
-    onSuccess: () => {
-      toast.show({ variant: 'success', description: t.skipExecute.done });
+    onSuccess: (saved) => {
+      const inbound = targetInboundLotOf(null, saved);
+
+      if (skipLotId !== null) setSkipExecuted({ lotId: skipLotId, result: saved });
+      toast.show({
+        variant: 'success',
+        description:
+          inbound === null || inbound.lotCount === null
+            ? t.skipExecute.done
+            : t.skipExecute.doneInbound(inbound.inboundLotNo, String(inbound.lotCount)),
+      });
     },
   });
 
@@ -836,6 +857,16 @@ export const IqcSkipApprovalScreen = () => {
           onOpen={(path) => {
             void navigate(path);
           }}
+          inboundLot={
+            skipLotId === null
+              ? null
+              : targetInboundLotOf(
+                  skipLot.inboundLotNo,
+                  skipExecuted !== null && skipExecuted.lotId === skipLotId
+                    ? skipExecuted.result
+                    : null,
+                )
+          }
         />
         <ProgressPane view={toRequestProgressView(detail.data, REJECTION_DECISION_CODES)} />
         {/*
@@ -867,6 +898,16 @@ export const IqcSkipApprovalScreen = () => {
           />
         )}
         {/* 승인된 IQC 생략만 실행 구획이 선다 — 판정은 `target.ts` 한 곳이 한다(대상 유형 코드로 가르지 않는다). */}
+        {skipTarget?.kind === 'noLot' && (
+          <SkipExecutePane
+            compact={messages.iqcSkipApproval.skipExecute.compact}
+            state={{ kind: 'checking' }}
+            isSaving={false}
+            onExecute={() => undefined}
+            banner={null}
+            lockedReason={t.skipExecute.noTargetLot}
+          />
+        )}
         {skipLotId !== null && (
           <SkipExecutePane
             compact={messages.iqcSkipApproval.skipExecute.compact}
@@ -875,7 +916,16 @@ export const IqcSkipApprovalScreen = () => {
             onExecute={() => {
               skipExecuteWrite.write(skipLotId);
             }}
-            banner={<SaveErrorBanner error={skipExecuteWrite.error} />}
+            banner={
+              /* 005 — 입하 중(마감 전) 입하 LOT 이면 무엇을 먼저 할지 말한다(FR-032 · 409). */
+              isInboundLotReceiving(skipExecuteWrite.error) ? (
+                <AlertBanner variant="warning" title={t.skipExecute.receivingTitle}>
+                  {t.skipExecute.receiving}
+                </AlertBanner>
+              ) : (
+                <SaveErrorBanner error={skipExecuteWrite.error} />
+              )
+            }
           />
         )}
         {/*

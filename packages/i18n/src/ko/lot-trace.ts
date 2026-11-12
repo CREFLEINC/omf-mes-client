@@ -27,6 +27,11 @@ export const lotTrace = {
     materialLot: '자재 LOT 번호',
     productLot: '제품 LOT 번호',
     inboundNo: '입하번호',
+    /** 005 FR-035 — 입하 LOT 번호. LOT 번호 · 입하번호와 같은 번호 조건(기간 선택 · 자재 입고 · 투입만). */
+    inboundLotNo: '입하 LOT 번호',
+    /** 행의 입하 LOT 번호를 눌러 건 거르기 표시(screens/W-02-09.md). */
+    inboundLotChip: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
+    inboundLotChipRemove: '입하 LOT 거르기 제거',
     workOrderNo: 'W/O 번호',
     shipmentNo: '출하번호',
     exactPlaceholder: '번호 전체',
@@ -100,7 +105,11 @@ export const lotTrace = {
       workOrder: 'W/O 번호',
       customer: '고객명',
       status: '상태',
+      /** 005 FR-035 — 자재 입고 · 투입 줄의 입하 LOT(없으면 빈칸). */
+      inboundLot: '입하 LOT',
     },
+    /** 행의 입하 LOT 번호 단추 — 누르면 그 입하 LOT 으로 거른다. */
+    filterInboundLot: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}로 거르기`,
   },
   detail: {
     lineNo: '줄 번호',

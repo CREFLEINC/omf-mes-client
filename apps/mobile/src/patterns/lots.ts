@@ -1,4 +1,5 @@
-import type { components } from '@omf-mes/api-client';
+import type { LotForward } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
@@ -6,7 +7,39 @@ import { runRequest } from './request';
 
 type Client = ReturnType<typeof useApiClient>['client'];
 
-export type Lot = components['schemas']['Lot'];
+/** 005 — 입하 LOT · 패키징 칸이 더해진 LOT(계약 §1). 서버 병합 뒤 생성 타입으로 돌아간다(T111). */
+export type Lot = LotForward;
+
+/**
+ * 아직 쓸 수 없는 자재 관리 LOT 의 생애 — 미리 만들어 라벨만 붙은 대기(`WAITING`)와 폐기(`VOIDED`).
+ * 입하(`ACTIVE`)·생애 없음(이전 LOT · 제품 LOT)은 지금 그대로 둔다(US1-6).
+ */
+export type LotLifecycleBlock = 'WAITING' | 'VOIDED';
+
+/** 스캔한 LOT 이 대기 · 폐기 LOT 인가. 아니면 null — 그 밖의 판정은 화면 · 서버 몫이다. */
+export const lifecycleBlockOf = (
+  lot: Pick<Lot, 'lifecycleStatusCode'> | null | undefined,
+): LotLifecycleBlock | null => {
+  const code = lot?.lifecycleStatusCode;
+
+  return code === 'WAITING' || code === 'VOIDED' ? code : null;
+};
+
+/**
+ * 대기 · 폐기 LOT 을 사람의 말로 — 「아직 입하되지 않은 LOT」 · 「폐기된 LOT」(US1-6).
+ * 서버 거절 문구를 그대로 쓰는 화면은 이 말을 쓰지 않는다.
+ */
+export const lifecycleBlockText = (block: LotLifecycleBlock): string =>
+  block === 'WAITING' ? messages.materialPicking.lot.waiting : messages.materialPicking.lot.voided;
+
+/** 스캔한 LOT 이 대기 · 폐기면 그 안내, 아니면 null. */
+export const lifecycleNoticeOf = (
+  lot: Pick<Lot, 'lifecycleStatusCode'> | null | undefined,
+): string | null => {
+  const block = lifecycleBlockOf(lot);
+
+  return block === null ? null : lifecycleBlockText(block);
+};
 
 /** 스캔값이 가리키는 LOT. 찾지 못하면 null이며, 조회 실패와는 다른 결과다. */
 export type ScannedLot = Lot | null;

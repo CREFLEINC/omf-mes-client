@@ -177,6 +177,14 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(within(drawer).getByRole('checkbox', { name: lot(2).lotNo })).not.toBeDisabled();
   });
 
+  it('결과 드로어 제목의 순번은 서버의 다음 순번을 쓴다 — 지운 순번은 다시 쓰지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(inspection({ nextResultSeqNo: 5 }));
+
+    await user.click(await screen.findByRole('button', { name: t.results.add }));
+    expect(await screen.findByRole('dialog', { name: t.drawer.addTitle(5) })).toBeInTheDocument();
+  });
+
   it('US3-5 종합 판정 미리 보기는 불합격 > 보류 > 합격이고, 자재 관리 LOT 상태는 검사 대기 그대로다', async () => {
     mount(inspection());
 
@@ -228,6 +236,25 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(await within(history).findByText('결과 2 수정 — 합격 → 불합격')).toBeInTheDocument();
     expect(within(history).getByText(t.history.events.RESULT_UPDATED ?? '')).toBeInTheDocument();
     expect(within(history).getByText('2099-11-11 09:00')).toBeInTheDocument();
+  });
+
+  it('US3-6 이력 유형은 공통코드 INSPECTION_REQUEST_EVENT_TYPE 값 그대로 — 열한 값 모두 이름이 있다', () => {
+    const codes = [
+      'RESULT_ADDED',
+      'RESULT_UPDATED',
+      'RESULT_DELETED',
+      'CONFIRMED',
+      'CONFIRM_CANCELLED',
+      'REOPENED_BY_REWORK',
+      'SKIPPED',
+      'SKIP_VOIDED',
+      'SPLIT_OUT',
+      'SPLIT_IN',
+      'CANCELLED_BY_REOPEN',
+    ];
+
+    expect(codes.filter((code) => t.history.events[code] === undefined)).toEqual([]);
+    expect(Object.keys(t.history.events).sort()).toEqual([...codes].sort());
   });
 
   it('판정 확정 뒤에는 결과를 고치거나 지울 수 없고 「확정됨」, 분리 단추는 까닭과 함께 잠긴다', async () => {

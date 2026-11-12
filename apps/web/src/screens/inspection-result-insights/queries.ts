@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, InspectionResultForward005 } from '@omf-mes/api-client';
 import { keepPreviousData, useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -17,8 +17,11 @@ import {
 } from './request-queries';
 
 type Client = ApiClient['client'];
-/** 서버 선행 P-76 — 검사자 이름(`inspectorName`)을 함께 받는다(omf-all-around#85). */
-export type InspectionResult = components['schemas']['InspectionResult'];
+/**
+ * 서버 선행 P-76 — 검사자 이름(`inspectorName`)을 함께 받는다(omf-all-around#85).
+ * 005 D-18 — 입하 LOT IQC 결과는 확정 주기(`confirmCycle`)를 함께 받는다(계약 §8).
+ */
+export type InspectionResult = InspectionResultForward005;
 export type InspectionRequest = components['schemas']['InspectionRequest'];
 export type InspectionSummary = components['schemas']['InspectionSummary'];
 export type DefectRateTrend = components['schemas']['DefectRateTrend'];

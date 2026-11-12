@@ -17,6 +17,7 @@ export type FilterDraft = Pick<
   | 'materialLot'
   | 'productLot'
   | 'inbound'
+  | 'inboundLotNo'
   | 'workOrder'
   | 'shipment'
   | 'supplier'
@@ -39,19 +40,20 @@ const draftOf = (filters: LotTraceFilters): FilterDraft => ({
   materialLot: filters.materialLot,
   productLot: filters.productLot,
   inbound: filters.inbound,
+  inboundLotNo: filters.inboundLotNo,
   workOrder: filters.workOrder,
   shipment: filters.shipment,
   supplier: filters.supplier,
   customer: filters.customer,
 });
 
-type TextKey = 'materialLot' | 'productLot' | 'inbound' | 'workOrder' | 'shipment';
+type TextKey = 'materialLot' | 'productLot' | 'inbound' | 'inboundLotNo' | 'workOrder' | 'shipment';
 type PickKey = 'item' | 'supplier' | 'customer';
 type Picked = Partial<Record<PickKey, { id: string; label: string }>>;
 
 /**
  * C-6 조회 조건. 기본 줄: 기간(넓음, 필수, 늘 보임), 품목(보통), [상세 조건 펼치기], [초기화], [조회].
- * 상세 조건(처음엔 접힘): 자재 LOT 번호, 제품 LOT 번호, 입하번호, W/O 번호, 출하번호, 공급사, 고객.
+ * 상세 조건(처음엔 접힘): 자재 LOT 번호, 제품 LOT 번호, 입하번호, 입하 LOT 번호(005 FR-035), W/O 번호, 출하번호, 공급사, 고객.
  * 접혀 있는데 그 안의 조건이 걸려 있으면 버튼 옆 한 줄로 알린다.
  * 고르면 끝나는 조건(기간, 품목, 공급사, 고객)은 바로 반영한다. 글자 칸은 Enter나 칸을 떠날 때, 지우기(×)는 바로
  * 반영한다. 기간이 맞지 않으면 반영하지 않고 기간 칸 아래 사유를 보인다(C-7). [조회]는 다시 조회하는 자리로 남는다.
@@ -85,6 +87,7 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
     applied.materialLot === '' ? '' : `${t.materialLot} ${applied.materialLot}`,
     applied.productLot === '' ? '' : `${t.productLot} ${applied.productLot}`,
     applied.inbound === '' ? '' : `${t.inboundNo} ${applied.inbound}`,
+    applied.inboundLotNo === '' ? '' : `${t.inboundLotNo} ${applied.inboundLotNo}`,
     applied.workOrder === '' ? '' : `${t.workOrderNo} ${applied.workOrder}`,
     applied.shipment === '' ? '' : `${t.shipmentNo} ${applied.shipment}`,
     applied.supplier === ''
@@ -209,6 +212,8 @@ export const FilterBar = ({ applied, onSearch, onReset }: FilterBarProps) => {
           {textField('materialLot', t.materialLot, t.exactPlaceholder)}
           {textField('productLot', t.productLot, t.exactPlaceholder)}
           {textField('inbound', t.inboundNo, t.exactPlaceholder)}
+          {/* 005 FR-035 — 입하 LOT 번호(번호 조건 · 자재 입고 · 투입만). */}
+          {textField('inboundLotNo', t.inboundLotNo, t.exactPlaceholder)}
           {textField('workOrder', t.workOrderNo, t.exactPlaceholder)}
           {textField('shipment', t.shipmentNo, t.exactPlaceholder)}
           <div className="filter-field-md">

@@ -117,7 +117,10 @@ export const InboundDetail = ({
   const results = inspection.results ?? [];
   const inboundLotNo = inspection.inboundLotNo ?? inspection.inspectionRequestNo;
   const qty = (value: number): string => `${formatQty(value)} ${uomCode}`;
-  const nextSeq = results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
+  /* 다음 순번은 서버가 주면 그것(지운 순번은 다시 쓰지 않는다), 없으면 지금 결과의 가장 큰 순번 + 1. */
+  const nextSeq =
+    inspection.nextResultSeqNo ??
+    results.reduce((max, result) => Math.max(max, result.seqNo), 0) + 1;
   const statusKey = confirmed
     ? 'CONFIRMED'
     : inspection.statusCode === 'IN_PROGRESS'

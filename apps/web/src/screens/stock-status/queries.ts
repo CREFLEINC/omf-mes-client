@@ -48,8 +48,16 @@ type Client = ApiClient['client'];
  */
 export type BalanceListQuery = GroupByQuery &
   Omit<BalanceFilterQuery, 'warehouseId'> &
-  SortQuery & {
-    warehouseId: number;
+  SortQuery &
+  /*
+   * 005 FR-035 — 입하 LOT 조건(`inboundLotId` · `inboundLotNo`)은 계약이 범위 조건으로 인정해 창고 없이 조회된다.
+   * 그래서 「창고 또는 입하 LOT 조건」 둘 중 하나가 있어야 만들 수 있는 모양이다.
+   */
+  (
+    | { warehouseId: number }
+    | { warehouseId?: number; inboundLotId: number }
+    | { warehouseId?: number; inboundLotNo: string }
+  ) & {
     /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
     page?: number;
   };

@@ -38,6 +38,7 @@ import {
   readViewParam,
   SELECTION_KEYS,
   toBalanceFilterQuery,
+  toInboundLotParam,
   toSearchParams,
   toTransactionParam,
   type BalanceFilters,
@@ -227,14 +228,27 @@ export const StockStatusScreen = () => {
    * **창고 필수는 이 화면의 규칙이지 계약의 규칙이 아니다.** 현장 단말(M-01-04)은 LOT만 들고
    * 같은 API로 들어오므로, 다음 화면이 이 코드를 보고 계약을 잘못 읽지 않게 여기에 적어 둔다.
    */
+  /*
+   * 005 FR-035 — **입하 LOT 조건도 범위다.** 계약이 입하 LOT(`inboundLotId` · `inboundLotNo`)을 창고 · 품목 · LOT 과 같은
+   * 범위 조건으로 인정해, 창고 없이 그것만으로 조회한다(범위 안내 없음 — screens/W-01-07.md).
+   */
+  const filterQuery = toBalanceFilterQuery(filters);
+  const scopeQuery =
+    warehouseId !== null
+      ? { warehouseId }
+      : filterQuery.inboundLotId !== undefined
+        ? { inboundLotId: filterQuery.inboundLotId }
+        : filterQuery.inboundLotNo !== undefined
+          ? { inboundLotNo: filterQuery.inboundLotNo }
+          : null;
   const listQuery: BalanceListQuery | null =
-    warehouseId === null
+    scopeQuery === null
       ? null
       : {
           ...toGroupByQuery(view),
-          ...toBalanceFilterQuery(filters),
+          ...filterQuery,
           ...toSortQuery(sortKey),
-          warehouseId,
+          ...scopeQuery,
           ...(page > 1 ? { page } : {}),
         };
 
@@ -586,6 +600,10 @@ export const StockStatusScreen = () => {
           apply(view, filters, sortKey);
         }}
         onToggleSelect={toggleSelectLot}
+        /* 005 FR-035 — 행의 입하 LOT 번호를 누르면 그 입하 LOT 으로 거른다. 다른 조건 · 보기 · 정렬은 그대로다. */
+        onFilterInboundLot={(ref) => {
+          apply(view, { ...filters, inboundLot: toInboundLotParam(ref) }, sortKey);
+        }}
         itemLookup={items}
         itemNames={itemNames}
         lotLookup={lots}
