@@ -36664,3 +36664,33 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-distribution-settings .erp-wo-distribution-actions, .erp-wo-distribution-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-3); }
 .erp-wo-distribution-footer { padding-top: var(--space-3); border-top: 1px solid var(--outline-variant); }
 .erp-wo-distribution-segment > .section-title { margin: 0 0 var(--space-3); }
+
+/* 보기 전환은 제목 아래 왼쪽, 편성 동작은 한 줄의 기준선에 맞춘다. */
+.erp-wo-plan-toolbar { flex-direction: column; align-items: stretch; justify-content: flex-start; min-width: 0; }
+.erp-wo-plan-toolbar > :has([role='tablist']) { width: 100%; min-width: 0; }
+.erp-wo-plan-toolbar [role='tablist'], .erp-wo-multi-view-tabs [role='tablist'] { justify-content: flex-start; flex-wrap: wrap; max-width: 100%; overflow: visible; }
+.erp-wo-multi-view-tabs { align-self: flex-start; max-width: 100%; min-width: 0; }
+.erp-wo-plan-create { grid-template-columns: max-content minmax(0, 1fr); min-width: 0; max-width: 100%; }
+.erp-wo-distribution > .erp-wo-distribution-actions { padding: 0; margin: 0; border: 0; justify-content: flex-start; align-self: center; }
+.erp-wo-plan-create > .erp-wo-distribution > .erp-wo-distribution-actions { min-width: 0; }
+.erp-wo-plan-create .erp-wo-distribution-settings { min-width: 0; box-sizing: border-box; }
+/* 번호·품목·생산 정보를 분리하고 모든 값은 생략 없이 표시한다. */
+.erp-wo-order-overview { display: grid; grid-template-columns: minmax(12rem, .8fr) minmax(0, 1.4fr) minmax(17rem, 1fr); align-items: start; gap: var(--space-4); padding-block: var(--space-3); }
+.erp-wo-order-overview > section { min-width: 0; }
+.erp-wo-order-overview > section + section { padding-left: var(--space-4); border-left: 1px solid var(--outline-variant); }
+.erp-wo-order-overview dl { display: grid; gap: var(--space-2); margin: 0; }
+.erp-wo-order-overview dl > div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; gap: var(--space-2); min-width: 0; }
+.erp-wo-order-overview dt { font: var(--type-label-sm); white-space: normal; }
+.erp-wo-order-overview dd { margin: 0; min-width: 0; font: var(--type-body-sm); color: var(--on-surface); white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+.erp-wo-order-overview .is-order { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+.erp-wo-order-overview .is-order dd, .erp-wo-order-overview .is-item-name dd, .erp-wo-order-overview .is-order-quantity dd { font: var(--type-title-sm); color: var(--on-surface); }
+@container erp-wo-page (max-width: 60rem) {
+  .erp-wo-order-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+  .erp-wo-order-overview .erp-wo-overview-production { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--outline-variant); padding: var(--space-3) 0 0; }
+  .erp-wo-order-overview .erp-wo-overview-production dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); }
+}
+@container erp-wo-page (max-width: 28rem) {
+  .erp-wo-order-overview { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .erp-wo-order-overview > section + section { border-left: 0; padding-left: 0; }
+  .erp-wo-order-overview .erp-wo-overview-production dl { grid-template-columns: minmax(0, 1fr); }
+}

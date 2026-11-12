@@ -70,7 +70,7 @@ describe('분배 조건과 미리보기 적용', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getAllByRole('group', { name: /^분배 조건 \d+$/ })).toHaveLength(1);
-    await user.click(screen.getByRole('button', { name: '조건 2', exact: true }));
+    await user.click(screen.getByRole('button', { name: '조건 2' }));
     expect(screen.queryByLabelText('조건 1 수량')).toBeNull();
     const quantity = screen.getByRole('textbox', { name: '조건 2 수량' });
     await user.clear(quantity);
@@ -96,13 +96,13 @@ describe('분배 조건과 미리보기 적용', () => {
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    expect(screen.queryByRole('button', { name: '조건 6', exact: true })).toBeNull();
-    await user.click(screen.getByRole('button', { name: '다음', exact: true }));
+    expect(screen.queryByRole('button', { name: '조건 6' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '다음' }));
     expect(screen.getByRole('textbox', { name: '조건 6 수량' })).toHaveValue('3');
     await user.click(screen.getByRole('button', { name: '분배 미리보기' }));
     const table = screen.getByRole('table', { name: '날짜와 라인별 결과' });
     expect(within(table).getAllByRole('row')).toHaveLength(11);
-    await user.click(screen.getByRole('button', { name: '다음', exact: true }));
+    await user.click(screen.getByRole('button', { name: '다음' }));
     expect(within(table).getAllByRole('row')).toHaveLength(9);
     await user.click(screen.getByRole('button', { name: '분배안 적용' }));
     expect(apply).toHaveBeenCalledTimes(1);
@@ -247,7 +247,7 @@ describe('분배 조건과 미리보기 적용', () => {
         .getByRole('button', { name: '조건 1 생산 라인 선택' })
         .closest('.erp-wo-distribution-line-field'),
     ).toHaveTextContent('라인 1');
-    await user.click(screen.getByRole('button', { name: '조건 2', exact: true }));
+    await user.click(screen.getByRole('button', { name: '조건 2' }));
     expect(
       screen
         .getByRole('button', { name: '조건 2 생산 라인 선택' })
