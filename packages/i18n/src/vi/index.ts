@@ -46,6 +46,7 @@ import { goodsIssueQr } from './goods-issue-qr';
 import { goodsReceipt } from './goods-receipt';
 import { httpError } from './http-error';
 import { inboundReceipt } from './inbound-receipt';
+import { inboundClose } from './inbound-close';
 import { inboundSchedule } from './inbound-schedule';
 import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
@@ -74,7 +75,6 @@ import { masterChange } from './master-change';
 import { materialInputScan } from './material-input-scan';
 import { materialIssueRequest } from './material-issue-request';
 import { materialLocation } from './material-location';
-import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
 import { notice } from './notice';
 import { notificationCenter } from './notification-center';
@@ -215,6 +215,7 @@ export const vi: Translated<Messages> = {
   goodsReceipt,
   httpError,
   inboundReceipt,
+  inboundClose,
   inboundSchedule,
   inboundVariance,
   inspectionResultInsights,
@@ -243,7 +244,6 @@ export const vi: Translated<Messages> = {
   materialInputScan,
   materialIssueRequest,
   materialLocation,
-  materialLotScan,
   materialPicking,
   notice,
   notificationCenter,

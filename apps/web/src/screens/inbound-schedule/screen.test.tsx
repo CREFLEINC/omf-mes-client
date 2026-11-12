@@ -566,292 +566,26 @@ describe('InboundScheduleScreen — 표의 칸', () => {
   /* 품목은 번호로 하나씩 푼다 — 같은 품목이면 요청도 하나다. */
 });
 
-/** 「입하 등록」 창이 읽는 발주 상세 — 머리와 라인을 함께 준다(창은 발주 번호 하나로 선다). */
-const PER_LINE_PATH = '/logistics/inbound-receipts:per-line';
-
-/** 라벨 미부착 사유 코드 — 「라벨 없음」 하나. */
-const lotReasonRoute = (): StubRoute => ({
-  match: (request) =>
-    isGet(request, CODE_VALUES_PATH) &&
-    new URL(request.url).searchParams.get('codeGroupCode') === 'SUBSTITUTE_LOT_REASON',
-  respond: () => jsonResponse(listBody([{ code: 'NO_LABEL', name: '라벨 없음' }])),
-});
-
-/** 품목마다 입하 한 건 — 보낸 본문을 담고, 줄 수만큼 입하번호를 돌려준다. */
-const perLineRoute = (bodies: unknown[]): StubRoute => ({
-  match: (request) => request.method === 'POST' && new URL(request.url).pathname === PER_LINE_PATH,
-  respond: async (request) => {
-    const body = JSON.parse(await request.clone().text()) as { lines: unknown[] };
-    bodies.push(body);
-
-    return jsonResponse(
-      {
-        created: body.lines.map((_, index) => ({
-          inboundReceipt: {
-            inboundReceiptId: 7590 + index,
-            inboundReceiptNo: `SAMPLE-IR-009${String(index)}`,
-            statusCode: 'REGISTERED',
-          },
-          lines: [{ inboundReceiptLineId: 9490 + index, lineNo: 1 }],
-        })),
-      },
-      { status: 201 },
-    );
-  },
-});
-
-/** 첫 번째는 응답을 잃은 것처럼 실패(503)하고 그다음부터 받는다 — 보낸 멱등 키와 본문을 담는다. */
-const flakyPerLineRoute = (calls: { key: string | null; body: unknown }[]): StubRoute => ({
-  match: (request) => request.method === 'POST' && new URL(request.url).pathname === PER_LINE_PATH,
-  respond: async (request) => {
-    const body = JSON.parse(await request.clone().text()) as { lines: unknown[] };
-    calls.push({ key: request.headers.get('Idempotency-Key'), body });
-    if (calls.length === 1) return jsonResponse({ message: '' }, { status: 503 });
-
-    return jsonResponse(
-      {
-        created: body.lines.map((_, index) => ({
-          inboundReceipt: {
-            inboundReceiptId: 7590 + index,
-            inboundReceiptNo: `SAMPLE-IR-009${String(index)}`,
-            statusCode: 'REGISTERED',
-          },
-          lines: [{ inboundReceiptLineId: 9490 + index, lineNo: 1 }],
-        })),
-      },
-      { status: 201 },
-    );
-  },
-});
-
-/** 발주 7101 의 라인 셋 — 미착수 100 · 부분 입하 50 중 20 · 다 받음 10. */
-const RECEIVE_LINES = [
-  scheduleLine({ expectedReceiptDate: TODAY }),
-  scheduleLine({
-    expectedReceiptDate: TODAY,
-    purchaseOrderLineId: 7306,
-    lineNo: 2,
-    itemId: 8302,
-    itemCode: 'SAMPLE-ITEM-02',
-    itemName: '합성 품목 나',
-    orderedQty: 50,
-    receivedQty: 20,
-    remainingQty: 30,
-    receiptStatusCode: 'PARTIAL',
-  }),
-  scheduleLine({
-    expectedReceiptDate: TODAY,
-    purchaseOrderLineId: 7307,
-    lineNo: 3,
-    itemId: 8303,
-    itemCode: 'SAMPLE-ITEM-03',
-    itemName: '합성 품목 다',
-    orderedQty: 10,
-    receivedQty: 10,
-    remainingQty: 0,
-    receiptStatusCode: 'COMPLETED',
-  }),
-];
+/** 발주 7101 의 라인 — 미착수 100 하나. */
+const RECEIVE_LINES = [scheduleLine({ expectedReceiptDate: TODAY })];
 
 /*
- * 입하 등록 — **라인 표에서 바로 받는다**(사용자 지시 2026-10-24 · PDA 「라벨 미부착 일괄 입하」와 같은 길). 옛 「입하 등록」
- * 창은 걷었다. 체크한 품목은 남은 수량 그대로 한꺼번에, 행을 누르면 그 품목만 수량을 정해 받는다. 확인 창을 한 번 거치고
- * `:per-line` 으로 보낸다(입하번호는 품목마다 하나).
+ * 입하 등록 — **005 부터 웹에서 받지 않는다**(FR-036 · T059 · screens/W-01-09.md). 옛 라인 표 입하 등록(체크 일괄 · 행 수량
+ * 입력 · 확인 창 · `:per-line`)을 걷고, 그 자리에 「입하는 PDA 에서」 안내 한 줄만 선다.
  */
 describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
-  const routes = (bodies: unknown[] = []): StubRoute[] => [
-    linesRoute(RECEIVE_LINES),
-    lotReasonRoute(),
-    perLineRoute(bodies),
-    listRoute(),
-    ...lookupRoutes(),
-  ];
-  const lineRow = (code: string): HTMLElement => {
-    const row = within(linesPane()).getByText(code).closest('tr');
-    if (row === null) throw new Error(`${code} 줄이 없습니다`);
-
-    return row;
-  };
-
-  it('체크하면 입하 수량이 받은 뒤의 수로 파랗게 미리 보이고, 다 받은 줄은 체크할 수 없다', async () => {
-    const { user } = renderScreen(routes(), '?po=7101');
-
-    await within(linesPane()).findByText('SAMPLE-ITEM-01');
-    const submit = within(linesPane()).getByRole('button', { name: t.receive.submit });
-    expect(submit).toBeDisabled();
-    expect(
-      within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(3) }),
-    ).toBeDisabled();
-
-    await user.click(within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(1) }));
-
-    const filled = lineRow('SAMPLE-ITEM-01').querySelectorAll('.po-board-filled');
-    expect(Array.from(filled).map((node) => node.textContent)).toEqual(['100', '0']);
-    expect(within(linesPane()).getByText(t.receive.checkedCount(1))).toBeInTheDocument();
-    expect(submit).toBeEnabled();
-  });
-
-  it('「모두 선택」은 부분 입하 줄을 빼고 고르고 그 수를 알린다', async () => {
-    const { user } = renderScreen(routes(), '?po=7101');
-
-    await within(linesPane()).findByText('SAMPLE-ITEM-01');
-    await user.click(within(linesPane()).getByRole('checkbox', { name: t.receive.selectAll }));
-
-    expect(
-      within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(1) }),
-    ).toBeChecked();
-    expect(
-      within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(2) }),
-    ).not.toBeChecked();
-    expect(within(linesPane()).getByText(t.receive.partialSkipped(1))).toBeInTheDocument();
-  });
-
-  it('체크한 품목 입하 등록 → 확인 창 → 등록하면 품목마다 입하 한 건으로(:per-line) 라벨 미부착 · 남은 수량 그대로 보낸다', async () => {
-    const bodies: unknown[] = [];
-    const { user } = renderScreen(routes(bodies), '?po=7101');
-
-    await within(linesPane()).findByText('SAMPLE-ITEM-01');
-    await user.click(within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(1) }));
-    await user.click(within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(2) }));
-    await user.click(within(linesPane()).getByRole('button', { name: t.receive.submit }));
-
-    const dialog = await screen.findByRole('dialog', { name: t.receive.confirm.title });
-    expect(within(dialog).getByText(t.receive.confirm.lead(2))).toBeInTheDocument();
-    expect(within(dialog).getByText(t.receive.confirm.labelNote)).toBeInTheDocument();
-
-    await user.click(within(dialog).getByRole('button', { name: t.receive.confirm.register }));
-
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-    const body = bodies[0] as { lines: Record<string, unknown>[]; supplierId: number };
-    expect(body.supplierId).toBe(8101);
-    expect(body.lines).toEqual([
-      expect.objectContaining({
-        purchaseOrderLineId: 7301,
-        receivedQty: 100,
-        supplierLotNo: null,
-        supplierLotMissing: true,
-        supplierLotLabelAttached: false,
-        substituteLotReasonCode: 'NO_LABEL',
-      }),
-      expect.objectContaining({ purchaseOrderLineId: 7306, receivedQty: 30 }),
-    ]);
-    expect(body.lines.some((line) => 'excessQty' in line)).toBe(false);
-    expect(
-      await within(linesPane()).findByText(t.receive.done(2, 'SAMPLE-IR-0090')),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: t.receive.confirm.title })).toBeNull();
-  });
-
-  it('응답을 잃고 다시 「등록」을 누르면 같은 멱등 키 · 같은 입하 일시로 보낸다(입하가 두 번 서지 않는다)', async () => {
-    const calls: { key: string | null; body: unknown }[] = [];
-    const { user } = renderScreen(
-      [
-        linesRoute(RECEIVE_LINES),
-        lotReasonRoute(),
-        flakyPerLineRoute(calls),
-        listRoute(),
-        ...lookupRoutes(),
-      ],
+  it('FR-036 라인 표에 입하 등록(체크 · 행 수량 입력 · 등록 단추)이 없고 PDA 입하 안내가 선다', async () => {
+    const { requests } = renderScreen(
+      [linesRoute(RECEIVE_LINES), listRoute(), ...lookupRoutes()],
       '?po=7101',
     );
 
     await within(linesPane()).findByText('SAMPLE-ITEM-01');
-    await user.click(within(linesPane()).getByRole('checkbox', { name: t.receive.selectRow(1) }));
-    await user.click(within(linesPane()).getByRole('button', { name: t.receive.submit }));
-    const dialog = await screen.findByRole('dialog', { name: t.receive.confirm.title });
 
-    await user.click(within(dialog).getByRole('button', { name: t.receive.confirm.register }));
-    await waitFor(() => {
-      expect(calls).toHaveLength(1);
-    });
-    await waitFor(() => {
-      expect(
-        within(dialog).getByRole('button', { name: t.receive.confirm.register }),
-      ).toBeEnabled();
-    });
-    await user.click(within(dialog).getByRole('button', { name: t.receive.confirm.register }));
-
-    await waitFor(() => {
-      expect(calls).toHaveLength(2);
-    });
-    const [first, second] = calls;
-    expect(second?.key).toBe(first?.key);
-    expect((second?.body as { receiptDatetime: string }).receiptDatetime).toBe(
-      (first?.body as { receiptDatetime: string }).receiptDatetime,
-    );
-    expect(
-      await within(linesPane()).findByText(t.receive.done(1, 'SAMPLE-IR-0090')),
-    ).toBeInTheDocument();
-  });
-
-  it('행을 누르면 그 품목만 수량을 정해 받고, 정량 한도를 넘는 몫은 초과분으로 미리 보이고 실린다', async () => {
-    const bodies: unknown[] = [];
-    const { user } = renderScreen(routes(bodies), '?po=7101');
-
-    await within(linesPane()).findByText('SAMPLE-ITEM-01');
-    await user.click(within(lineRow('SAMPLE-ITEM-01')).getByText('합성 품목 가'));
-
-    const input = within(linesPane()).getByRole('textbox', { name: t.receive.qtyLabel(1) });
-    expect(input).toHaveValue('100');
-
-    await user.clear(input);
-    await user.type(input, '120');
-    expect(lineRow('SAMPLE-ITEM-01')).toHaveTextContent(t.receive.excessTag('20'));
-
-    await user.click(within(linesPane()).getByRole('button', { name: t.receive.submitRow }));
-    const dialog = await screen.findByRole('dialog', { name: t.receive.confirm.title });
-    expect(within(dialog).getByText(t.receive.confirm.excess('20'))).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: t.receive.confirm.register }));
-
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-    expect((bodies[0] as { lines: unknown[] }).lines).toEqual([
-      expect.objectContaining({ purchaseOrderLineId: 7301, receivedQty: 120, excessQty: 20 }),
-    ]);
-    expect(
-      await within(linesPane()).findByText(t.receive.done(1, 'SAMPLE-IR-0090'), { exact: false }),
-    ).toBeInTheDocument();
-
-    await user.click(within(linesPane()).getByRole('button', { name: t.receive.goExcess }));
-    expect(currentLocation()).toBe(
-      '/logistics/inbound-excess?receipt=SAMPLE-IR-0090&receiptLine=9490&po=7101',
-    );
-  });
-
-  it('다 받은 줄도 행을 눌러 받으면 전부 초과분이다', async () => {
-    const { user } = renderScreen(routes(), '?po=7101');
-
-    await within(linesPane()).findByText('SAMPLE-ITEM-03');
-    await user.click(
-      within(linesPane()).getByRole('button', { name: t.receive.editRow('SAMPLE-ITEM-03') }),
-    );
-
-    const input = within(linesPane()).getByRole('textbox', { name: t.receive.qtyLabel(3) });
-    expect(input).toHaveValue('');
-    await user.type(input, '5');
-    expect(lineRow('SAMPLE-ITEM-03')).toHaveTextContent(t.receive.excessTag('5'));
-  });
-
-  it('취소된 발주에는 등록 단추가 없다', async () => {
-    renderScreen([listRoute(), ...lookupRoutes()], '?po=7103');
-
-    await within(linesPane()).findByRole('table');
-    expect(within(linesPane()).queryByRole('button', { name: t.receive.submit })).toBeNull();
-  });
-
-  it('입하 등록 권한(W-01-03)이 없으면 체크 열 · 행 편집 · 등록 단추가 없다', async () => {
-    renderScreen(routes(), '?po=7101', { ...SYNTHETIC_SESSION, permissions: ['W-01-09'] });
-
-    await within(linesPane()).findByText('SAMPLE-ITEM-01');
-
+    expect(within(linesPane()).getByText(t.receive.pdaOnly)).toBeInTheDocument();
     expect(within(linesPane()).queryByRole('checkbox')).toBeNull();
-    expect(within(linesPane()).queryByRole('button', { name: t.receive.submit })).toBeNull();
-    expect(
-      within(linesPane()).queryByRole('button', { name: t.receive.editRow('SAMPLE-ITEM-01') }),
-    ).toBeNull();
+    expect(within(linesPane()).queryByRole('textbox')).toBeNull();
+    expect(requests.every((request) => request.method === 'GET')).toBe(true);
   });
 
   /* 「자재 입고 처리」는 발주를 주소로 받지 않는다 — 열어도 그 발주가 서지 않아 바로가기를 두지 않는다. */
@@ -1010,8 +744,7 @@ describe('InboundScheduleScreen — 두 표', () => {
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
     ).toEqual([
-      /* 체크 열 — 머리칸은 「모두 선택」 체크(글자 없음). */
-      '',
+      /* 체크 열은 없다 — 005 부터 웹에서 입하를 받지 않는다(FR-036). */
       t.table.receiptStatus,
       t.table.lineNo,
       t.table.itemCode,
@@ -1024,7 +757,6 @@ describe('InboundScheduleScreen — 두 표', () => {
     ]);
     // 7302 — 부분 입하 · 창고 없음. 이름 칸은 라인 응답에서 온다(품목을 따로 부르지 않는다).
     expect(cellsOf(within(lineTable).getAllByRole('row')[1] as HTMLElement)).toEqual([
-      '',
       t.receiptStatus.PARTIAL,
       '2',
       'SAMPLE-ITEM-01',
@@ -1430,23 +1162,6 @@ describe('InboundScheduleScreen — 입고 진행(LOT 줄 · 단계 칩 · 진�
     expect(screen.queryByRole('group', { name: t.stage.label })).toBeNull();
     expect(within(linesPane()).queryByRole('button', { name: /LOT/ })).toBeNull();
     expect(screen.queryByText(t.lot.loadFailed)).toBeNull();
-  });
-
-  it('라벨이 발행된(LOT 이 붙은) 라인은 행을 눌러 수량을 넣지 못한다 — LOT 없는 라인은 그대로다', async () => {
-    const progressWithoutLine2 = progressFixtures.filter((lot) => lot.purchaseOrderLineId !== 7302);
-    renderScreen(progressRoutes(ROWS_WITH_STAGES, progressWithoutLine2), '?po=7101');
-
-    await within(linesPane()).findByText('SAMPLE|LOT|0003');
-
-    expect(
-      within(linesPane()).queryByRole('button', { name: t.receive.editRow('SAMPLE-ITEM-01') }),
-    ).toBeNull();
-    expect(within(linesPane()).getByTitle(t.receive.labeledLocked)).toHaveTextContent(
-      'SAMPLE-ITEM-01',
-    );
-    expect(
-      within(linesPane()).getByRole('button', { name: t.receive.editRow('SAMPLE-ITEM-02') }),
-    ).toBeInTheDocument();
   });
 
   it('「입고 대기」 LOT 줄만 체크가 서고, 체크하면 일괄 입고 창이 그 LOT 으로 열린다', async () => {

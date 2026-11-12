@@ -32,7 +32,6 @@ import {
   toLineTableRows,
   type LineTableRow,
 } from './stage';
-import { checkQty, isCheckable, isEditable, splitReceiveQty } from './receive-entry';
 import { sortRows, type SortAccessors } from './table-sort';
 import type {
   InboundLotProgress,
@@ -40,7 +39,6 @@ import type {
   IssuedLotProgress,
   PurchaseOrderSummary,
 } from './types';
-import type { ReceiveDraft } from './use-receive-draft';
 
 const t = messages.inboundSchedule;
 
@@ -59,21 +57,6 @@ export interface LineTableProps {
   lineExcesses?: ReadonlyMap<number, readonly UnallocatedLine[]>;
   /** 초과분 연결 창을 그 초과분·라인을 고른 채로 연다. */
   onOpenExcess?: (entry: Partial<ExcessEntry>) => void;
-  /**
-   * 라인 표에서 바로 받는 입하(사용자 지시 2026-10-24 · PDA 「라벨 미부착 일괄 입하」와 같은 길). 없으면(등록 권한 없음)
-   * 체크 열 · 행 편집 · 등록 단추가 서지 않는다.
-   */
-  receive?: {
-    draft: ReceiveDraft;
-    /** 보내는 중 — 단추 · 체크를 잠근다. */
-    isSaving: boolean;
-    /** 보내는 것이 어느 단추에서 왔나 — 그 단추만 돈다(체크 일괄 · 편집 줄). */
-    savingFrom: 'checked' | 'edit' | null;
-    /** 체크한 줄을 확인 창으로. */
-    onSubmitChecked: () => void;
-    /** 편집 중인 줄을 확인 창으로. */
-    onSubmitEdit: () => void;
-  };
   /**
    * 라인별 LOT 진행(`stage.ts` `progressByLine`). **`undefined` 면 앞선 서버거나 조회 전**이라
    * 라인만 선다 — 접기 손잡이·「다음 할 일」 열도 없다. 빈 Map 은 「LOT 이 없다」다.
@@ -265,7 +248,6 @@ export const LineTable = ({
   matchedItemId,
   lineExcesses = NO_LINE_EXCESSES,
   onOpenExcess,
-  receive,
   lots,
   progressFailed = false,
   notice,
@@ -308,48 +290,20 @@ export const LineTable = ({
   const sortedLines = sortRows(rows, sort, lineSortAccessors(storageLocationNameOf));
   const tableRows = toLineTableRows(sortedLines, lots, collapsed);
 
-  const draft = receive?.draft;
-  const editingId = draft?.editing?.purchaseOrderLineId ?? null;
-  const isChecked = (line: InboundScheduleLine): boolean =>
-    draft !== undefined && draft.checked.has(line.purchaseOrderLineId);
-  /** 편집 중인 줄의 이번 수량 — 맞지 않으면 `null`(미리 보기를 내지 않는다). */
-  const editingQty =
-    draft?.editing == null
-      ? null
-      : (() => {
-          const qty = checkQty(draft.editing.qtyText);
-
-          return qty.kind === 'qty' ? qty.value : null;
-        })();
-
   /* 「입고 대기」 LOT — 체크해 한 번에 입고한다. */
   const hasReceiptReady =
     lots !== undefined && [...lots.values()].some((own) => own.some(isReceiptReady));
 
   const columns: Column<LineTableRow>[] = [
     /*
-     * 체크 열 — 체크한 품목은 남은 수량 그대로 한꺼번에 받는다(PDA 와 같다). 받을 것이 남은 줄만 체크할 수 있고, 머리칸의
-     * 「모두 선택」은 부분 입하 줄을 뺀다. 「입고 대기」 LOT 줄도 여기서 체크해 한 번에 입고한다(`lotPick`).
-     * 두 권한이 다 없으면 이 열이 없다.
+     * 체크 열 — 「입고 대기」 LOT 줄을 체크해 한 번에 입고한다(`lotPick`). 005 부터 웹에서 입하를 받지 않으므로(FR-036)
+     * 라인 줄의 체크는 없다. 입고 권한이 없거나 입고 대기 LOT 이 없으면 이 열이 없다.
      */
-    ...(draft !== undefined || (lotPick !== undefined && hasReceiptReady)
+    ...(lotPick !== undefined && hasReceiptReady
       ? [
           {
             key: 'check',
-            header:
-              draft === undefined ? null : (
-                <input
-                  type="checkbox"
-                  className="po-board-check"
-                  aria-label={t.receive.selectAll}
-                  checked={draft.allChecked}
-                  ref={(node) => {
-                    if (node !== null) node.indeterminate = draft.someChecked && !draft.allChecked;
-                  }}
-                  disabled={receive?.isSaving === true || !rows.some(isCheckable)}
-                  onChange={draft.toggleAll}
-                />
-              ),
+            header: null,
             width: '40px',
             render: (row: LineTableRow) => {
               if (row.kind === 'lot') {
@@ -368,20 +322,8 @@ export const LineTable = ({
                   />
                 );
               }
-              if (draft === undefined) return null;
 
-              return (
-                <input
-                  type="checkbox"
-                  className="po-board-check"
-                  aria-label={t.receive.selectRow(row.line.lineNo)}
-                  checked={isChecked(row.line)}
-                  disabled={receive?.isSaving === true || !isCheckable(row.line)}
-                  onChange={() => {
-                    draft.toggle(row.line.purchaseOrderLineId);
-                  }}
-                />
-              );
+              return null;
             },
           } satisfies Column<LineTableRow>,
         ]
@@ -463,40 +405,7 @@ export const LineTable = ({
       sortable: true,
       header: t.table.itemCode,
       width: '120px',
-      /*
-       * 행을 눌러 그 품목만 받는다(PDA 의 품목 누름과 같다) — 키보드는 이 단추가 받는다. 행 어디를 눌러도 같다(표 상자가
-       * 받는다). 편집 중인 줄은 `data-receive-editing` 으로 알려 줄 바탕이 바뀐다.
-       */
-      render: (row) => {
-        if (row.kind !== 'line') return '';
-        if (draft === undefined) return orEmpty(row.line.itemCode);
-        if (!isEditable(row.line, draft.isLabeled(row.line.purchaseOrderLineId))) {
-          /* 라벨이 발행된 줄은 수량을 정해 받지 못한다 — 눌러도 아무 일이 없는 까닭을 마우스를 올리면 알린다. */
-          return draft.isLabeled(row.line.purchaseOrderLineId) ? (
-            <span title={t.receive.labeledLocked}>{orEmpty(row.line.itemCode)}</span>
-          ) : (
-            orEmpty(row.line.itemCode)
-          );
-        }
-
-        return (
-          <button
-            type="button"
-            className="link-cell"
-            aria-label={t.receive.editRow(orEmpty(row.line.itemCode))}
-            aria-pressed={editingId === row.line.purchaseOrderLineId}
-            data-receive-line={row.line.purchaseOrderLineId}
-            {...(editingId === row.line.purchaseOrderLineId
-              ? { 'data-receive-editing': 'true' }
-              : {})}
-            onClick={() => {
-              draft.startEdit(row.line);
-            }}
-          >
-            {orEmpty(row.line.itemCode)}
-          </button>
-        );
-      },
+      render: (row) => (row.kind === 'line' ? orEmpty(row.line.itemCode) : ''),
     },
     {
       key: 'itemName',
@@ -518,46 +427,9 @@ export const LineTable = ({
       header: t.table.receivedQty,
       width: '88px',
       align: 'end',
-      /*
-       * 체크한 줄은 **등록하면 될 수**(누적 + 남은 수량)를 파랗게 미리 보인다(PDA 와 같다). 편집 중인 줄은 이번 수량 입력칸이다.
-       */
-      render: (row) => {
-        /* LOT 줄은 이 발주로 온 몫이다 — 라인의 입하 수량과 맞는다. 줄 전체는 근거 칸에 따로 적는다. */
-        if (row.kind === 'lot') return formatQty(row.lot.allocatedQty);
-        if (draft?.editing != null && editingId === row.line.purchaseOrderLineId) {
-          const qty = checkQty(draft.editing.qtyText);
-
-          return (
-            <input
-              type="text"
-              inputMode="decimal"
-              className="po-board-receive-qty"
-              aria-label={t.receive.qtyLabel(row.line.lineNo)}
-              aria-invalid={qty.kind !== 'qty'}
-              value={draft.editing.qtyText}
-              disabled={receive?.isSaving === true}
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- 행을 눌러 연 입력칸이라 바로 친다
-              autoFocus
-              onChange={(event) => {
-                draft.changeQty(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') receive?.onSubmitEdit();
-                if (event.key === 'Escape') draft.cancelEdit();
-              }}
-            />
-          );
-        }
-        if (isChecked(row.line)) {
-          return (
-            <span className="po-board-filled">
-              {formatQty(row.line.receivedQty + row.line.remainingQty)}
-            </span>
-          );
-        }
-
-        return formatQty(row.line.receivedQty);
-      },
+      /* LOT 줄은 이 발주로 온 몫이다 — 라인의 입하 수량과 맞는다. 줄 전체는 근거 칸에 따로 적는다. */
+      render: (row) =>
+        row.kind === 'lot' ? formatQty(row.lot.allocatedQty) : formatQty(row.line.receivedQty),
     },
     {
       key: 'remainingQty',
@@ -565,28 +437,7 @@ export const LineTable = ({
       header: t.table.remainingQty,
       width: '88px',
       align: 'end',
-      /* 체크한 줄은 0, 편집 중인 줄은 이번 수량을 받은 뒤의 남은 수량과 초과분을 파랗게 미리 보인다. */
-      render: (row) => {
-        if (row.kind !== 'line') return '';
-        if (editingId === row.line.purchaseOrderLineId) {
-          if (editingQty === null) return formatQty(row.line.remainingQty);
-          const { normalQty, excessQty } = splitReceiveQty(row.line, editingQty);
-
-          return (
-            <span className="po-board-filled">
-              {formatQty(Math.max(row.line.remainingQty - normalQty, 0))}
-              {excessQty > 0 && (
-                <span className="po-board-excess-tag">
-                  {t.receive.excessTag(formatQty(excessQty))}
-                </span>
-              )}
-            </span>
-          );
-        }
-        if (isChecked(row.line)) return <span className="po-board-filled">{formatQty(0)}</span>;
-
-        return formatQty(row.line.remainingQty);
-      },
+      render: (row) => (row.kind === 'line' ? formatQty(row.line.remainingQty) : ''),
     },
     /* 「초과분」은 수량 바로 뒤 — 표가 넓어 끝에 두면 가로 스크롤 밖으로 밀린다. */
     ...(lineExcesses.size > 0 && onOpenExcess !== undefined
@@ -621,32 +472,6 @@ export const LineTable = ({
       /* LOT 줄 — 이미 자리가 있으면(적치·임시 적치) 그 위치, 아직 없으면 다음 할 일(서버가 정한 것만 · C-17). */
       render: (row) => {
         if (row.kind === 'line') {
-          /* 편집 중인 줄은 이 칸에 등록 · 취소가 선다 — 같은 줄 끝이라 눈이 따라간다. */
-          if (draft !== undefined && editingId === row.line.purchaseOrderLineId) {
-            return (
-              <span className="po-board-receive-actions">
-                <Button
-                  size="sm"
-                  disabled={editingQty === null}
-                  loading={receive?.isSaving === true && receive.savingFrom === 'edit'}
-                  onClick={() => {
-                    receive?.onSubmitEdit();
-                  }}
-                >
-                  {t.receive.submitRow}
-                </Button>
-                <Button
-                  variant="text"
-                  size="sm"
-                  disabled={receive?.isSaving === true}
-                  onClick={draft.cancelEdit}
-                >
-                  {t.receive.cancelRow}
-                </Button>
-              </span>
-            );
-          }
-
           return <OneLine text={storageLocationNameOf(row.line.erpStorageLocationCode)} />;
         }
 
@@ -748,25 +573,6 @@ export const LineTable = ({
             </Button>
           </div>
         )}
-        {/*
-         * 체크한 품목을 한꺼번에 받는다 — 옛 「입하 등록」 창을 걷고 이 자리에 섰다(사용자 지시 2026-10-24). 체크한 수는 옆
-         * 글자가 말하고, 체크가 없으면 잠긴다. 취소된 발주는 더 받을 것이 없어 세우지 않는다.
-         */}
-        {receive !== undefined && order.receiptStatusCode !== 'CANCELLED' && (
-          <div className="po-board-order-actions">
-            <span className="po-board-checked-count" aria-live="polite">
-              {t.receive.checkedCount(receive.draft.checked.size)}
-            </span>
-            <Button
-              size="sm"
-              disabled={receive.draft.checked.size === 0}
-              loading={receive.isSaving && receive.savingFrom === 'checked'}
-              onClick={receive.onSubmitChecked}
-            >
-              {t.receive.submit}
-            </Button>
-          </div>
-        )}
       </header>
 
       {isLoading ? (
@@ -776,20 +582,11 @@ export const LineTable = ({
       ) : (
         <>
           {notice}
-          {draft?.note != null && (
-            <p className="field-note" role="status">
-              {draft.note}
-            </p>
-          )}
           {progressFailed && (
             <p className="field-note" role="status">
               {t.lot.loadFailed}
             </p>
           )}
-          {/*
-           * **행 어디를 눌러도 그 품목을 받기 시작한다**(PDA 의 품목 누름과 같다). 표 부품에 줄 클릭이 없어 감싼 상자가 받는다 —
-           * 누른 줄의 품목코드 단추(`data-receive-line`)로 어느 줄인지 안다. 단추 · 입력칸 · 체크를 누른 것은 그쪽이 받는다.
-           */}
           <BoardTable
             label={t.panes.lines}
             className="po-board-lines"
@@ -798,16 +595,6 @@ export const LineTable = ({
             columns={columns}
             rows={tableRows}
             getRowId={lineTableRowId}
-            onBoxClick={(event) => {
-              const target = event.target as HTMLElement;
-              if (target.closest('button, input, a, label, select, textarea') !== null) return;
-              const marker = target
-                .closest('tbody tr')
-                ?.querySelector<HTMLElement>('[data-receive-line]');
-              const id = Number(marker?.dataset.receiveLine);
-              const line = rows.find((each) => each.purchaseOrderLineId === id);
-              if (line !== undefined) draft?.startEdit(line);
-            }}
             /* 제어 정렬 — 부품은 받은 순서대로 그린다. 정렬은 위에서 라인 단위로 마쳤다(LOT 줄이 제 라인을 따라간다). */
             sort={sort}
             onSortChange={setSort}

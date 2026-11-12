@@ -26,8 +26,8 @@ export const shellHome = {
    * 이름만으로 고르면 끝까지 읽어야 갈린다.
    */
   screens: {
-    inboundReceipt: '공급사 도착을 기록 · 라벨 스캔으로 시작',
-    materialLotScan: '도착 때 못 스캔한 LOT 을 나중에 등록',
+    inboundReceipt: '자재 관리 LOT 라벨을 스캔하면 바로 등록',
+    inboundClose: '입하 중인 입하 LOT를 마감하거나 마감 취소',
     inboundVariance: '예정과 다른 입하를 남김 · 등록 뒤 수정 불가',
     recycleEntry: '재생재를 자재 묶음으로 등록',
     iqcSkipRequest: '요청만 올림 · 승인은 관리웹',

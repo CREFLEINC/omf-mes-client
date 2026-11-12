@@ -8,9 +8,9 @@ import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
 import { EquipmentInspectionScreen } from '../screens/equipment-inspection/screen';
 import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
+import { InboundCloseScreen } from '../screens/inbound-close/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
-import { MaterialLotScanScreen } from '../screens/material-lot-scan/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxPendingScreen } from '../screens/outbox-pending/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
@@ -42,12 +42,13 @@ export const appRoutes: RouteObject[] = [
       { path: 'screens', element: <ShellHome /> },
       { path: 'screens/:area', element: <HomeAreaScreen /> },
       { path: 'inbound-receipt', element: <InboundReceiptScreen /> },
+      /* M-01-03 입하 마감(005 · omf-all-around#254) — 입하 중 입하 LOT 마감 · 마감 취소. */
+      { path: 'inbound-close', element: <InboundCloseScreen /> },
       { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
       { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
-      { path: 'material-lot-scan', element: <MaterialLotScanScreen /> },
       { path: 'material-picking', element: <MaterialPickingScreen /> },
       { path: 'shopfloor-receipt', element: <ShopfloorReceiptScreen /> },
       { path: 'stock-transfer', element: <StockTransferScreen /> },

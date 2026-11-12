@@ -14,7 +14,7 @@ import type {
  * - 왼쪽: `GET /logistics/purchase-orders` — P/O 묶음. 묶음 값(라인 수·합계·진행)과 납기·지연·공급사 검색 조건
  * - 오른쪽: `GET /logistics/purchase-order-lines?purchaseOrderId=` — 고른 P/O 의 라인. 이름 칸이 함께 온다
  *
- * **쓰기 오퍼레이션이 없다.** 입하 등록은 `receive-queries.ts`(라인 표에서 바로 받는 입하)가 한다.
+ * **쓰기 오퍼레이션이 없다.** 005 부터 웹에서 입하를 받지 않는다(FR-036 — 입하는 PDA M-01-01 스캔으로만).
  */
 
 /** 한 P/O 의 라인을 한 번에 받는다 — 서버 상한. 이보다 많은 라인의 발주는 아직 보지 못했다. */
