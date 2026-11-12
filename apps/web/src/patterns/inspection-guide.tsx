@@ -1,26 +1,18 @@
 import { Button, Icon } from '@crefle/web-ui';
-import type {
-  InspectionGuideForward,
-  InspectionPlanVersionGuideForward,
-} from '@omf-mes/api-client';
-import { activeLocale, messages, type Locale } from '@omf-mes/i18n';
+import type { InspectionGuideForward } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useLayoutEffect, useRef, useState } from 'react';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
 
-/**
- * 화면 언어의 안내 문구 — 그 언어 칸이 비면 다른 언어 문구다. 둘 다 비면 `null`(omf-all-around#252).
- */
+/** 안내 문구 — 한 칸이다(언어별로 나누지 않는다 · #261). 비면 `null`(omf-all-around#252). */
 export const guideTextOf = (
-  guide: InspectionPlanVersionGuideForward | null | undefined,
-  locale: Locale = activeLocale(),
+  guide: { guideText?: string | null } | null | undefined,
 ): string | null => {
-  const ko = guide?.guideTextKo?.trim() ?? '';
-  const vi = guide?.guideTextVi?.trim() ?? '';
-  const [first, second] = locale === 'vi' ? [vi, ko] : [ko, vi];
-  return first !== '' ? first : second !== '' ? second : null;
+  const text = guide?.guideText?.trim() ?? '';
+  return text === '' ? null : text;
 };
 
 export interface GuideBlock {
@@ -28,7 +20,7 @@ export interface GuideBlock {
   text: string;
 }
 
-/** 의뢰의 검사 안내 — 공통 기준 · 품목 기준 순서로, 화면 언어 문구만 남긴다(빈 것은 뺀다). */
+/** 의뢰의 검사 안내 — 공통 기준 · 품목 기준 순서로(빈 것은 뺀다). */
 export const useInspectionGuide = (inspectionRequestId: number | null) => {
   const { client } = useApiClient();
   return useQuery({
@@ -84,9 +76,7 @@ export const InspectionGuideNotice = ({
   if (blocks.length === 0) return null;
   const t = messages.common.inspectionHub;
   return (
-    <div className="inspection-guide-note" role="note"
-      aria-label={t.guide}
-    >
+    <div className="inspection-guide-note" role="note" aria-label={t.guide}>
       <div className="inspection-guide-head">
         <Icon name="info" size={18} aria-hidden />
         <strong className="inspection-guide-title">{t.guide}</strong>

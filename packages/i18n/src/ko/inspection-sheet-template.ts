@@ -116,6 +116,12 @@ export const inspectionSheetTemplate = {
     pickConfirm: '선택',
     pickLotConfirm: '이 자재로',
     noModel: '품목을 선택하세요.',
+    templateCode: '기준코드',
+    templateName: '기준명',
+    /* 비우면 그 품목이 쓰던 코드, 없으면 서버가 QS-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
+    templateCodePlaceholder: '비우면 자동으로 등록됩니다',
+    noTemplateName: '기준명을 입력하세요.',
+    codeHeading: '기준코드 · 기준명',
     businessUnit: '사업부',
     noBusinessUnit: '로그인 계정에 사업부 범위가 없어 기준을 만들 수 없습니다.',
     layout: '출력 양식',
@@ -144,7 +150,13 @@ export const inspectionSheetTemplate = {
     stepList: '검사 단계 목록',
     stepUse: (name: string) => `${name} 사용`,
     stepUnused: '사용 안 함',
-    stepOff: '사용하지 않는 검사 단계입니다.',
+    /** 단계 단추 둘째 줄 — 「● 사용 · 3개」(사용자 지시 · 검사 단계 UI/UX) */
+    stepOnShort: '사용',
+    stepOffShort: '미사용',
+    itemCountShort: (count: number) => `${count}개`,
+    /** 고른 단계 머리 줄 왼쪽 — 단계 이름 아래 항목 수 */
+    itemsRegistered: (count: number) => `등록된 항목 ${count}개`,
+    itemsTitle: '검사 항목',
     itemCount: (count: number) => `항목 ${count}개`,
     noItemsShort: '항목 없음',
     signShort: '서명 필요',

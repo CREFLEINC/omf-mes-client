@@ -1,7 +1,9 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { skipToken, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { type Session, sessionKeys } from '../../patterns/session';
 import { warehouseListQuery } from '../../patterns/warehouse-filter-bar';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
@@ -93,6 +95,45 @@ export const locationKeys = {
 /** 창고를 끄기 전 남은 재고 — 다른 화면의 재고 조회와 열쇠가 겹치지 않게 이 화면 이름을 앞에 둔다. */
 export const warehouseStockKeys = {
   summary: (warehouseId: number) => ['warehouse-location', 'stock-summary', warehouseId] as const,
+  byLocation: (warehouseId: number) =>
+    ['warehouse-location', 'stock-by-location', warehouseId] as const,
+};
+
+/** 재고가 있는 위치 — 알면 그 id 들, 권한이 없거나 실패했으면 「모름」. */
+export type StockLocations = { known: true; locationIds: ReadonlySet<number> } | { known: false };
+
+const UNKNOWN_STOCK: StockLocations = { known: false };
+
+/**
+ * 일괄 생성 창이 구역 자체 재고를 미리 막을 때 쓴다(#267 · research R-1). 창을 열 때만 위치별(`groupBy=LOCATION`)로 한 번
+ * 묻는다 — 0 재고 줄은 서버가 빼고 준다. W-06-07 에는 이 조회 권한이 없어 403 이 올 수 있다: 그때와 실패는 「모름」으로
+ * 미리 막지 않고, 서버 거부(`STATE_LOCKED`)를 그 구역의 실패로 보인다(창고 사용 중지 확인 창과 같은 방식).
+ */
+export const useZoneStockLocations = (warehouseId: number, enabled: boolean): StockLocations => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: warehouseStockKeys.byLocation(warehouseId),
+    enabled,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      const result = await fetchAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/inventory/balances', {
+            params: { query: { warehouseId, groupBy: 'LOCATION', page, size } },
+          }),
+        ),
+      );
+      return new Set(
+        result.items.flatMap((row) =>
+          row.locationId === null || row.locationId === undefined ? [] : [row.locationId],
+        ),
+      );
+    },
+  });
+
+  return query.data === undefined ? UNKNOWN_STOCK : { known: true, locationIds: query.data };
 };
 
 /**
@@ -406,4 +447,17 @@ export const useLatestLocationLabel = (
       );
     },
   });
+};
+
+/** 위치 만들기 · 고치기 화면 권한(#267) — 일괄 생성 단추 · 별칭 연필을 세운다. */
+const LOCATION_WRITE_PERMISSION = 'W-06-07';
+
+/**
+ * 세션 권한에 W-06-07 이 있는가. 세션 칸을 읽기만 한다(`skipToken` — 묻는 일은 `SessionProvider` 가 맡는다). 세션이나
+ * 권한 목록을 아직 모르면 세운다 — 막는 것은 서버다(창고 배치도 · 입고 일정 화면과 같은 관용구).
+ */
+export const useCanWriteLocations = (): boolean => {
+  const session = useQuery<Session | null>({ queryKey: sessionKeys.current, queryFn: skipToken });
+  const permissions = session.data?.permissions;
+  return permissions === undefined || permissions.includes(LOCATION_WRITE_PERMISSION);
 };

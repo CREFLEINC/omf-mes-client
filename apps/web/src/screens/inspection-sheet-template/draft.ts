@@ -43,6 +43,9 @@ export interface LotSourceDraft {
 }
 
 export interface TemplateDraft {
+  /** 관리용 기준코드 · 기준명(omf-all-around#260) — 등록 전 기준은 빈 글자다. */
+  templateCode: string;
+  templateName: string;
   itemId: number | null;
   itemLabel: string;
   businessUnitId: number | null;
@@ -86,6 +89,8 @@ export const DEFAULT_MATERIAL_TEXT =
   '프레임 및 기타 금속 부품은 통상 상태에서 위험하지 않은 재료를 사용하고 방청 처리함';
 
 export const emptyDraft = (businessUnitId: number | null): TemplateDraft => ({
+  templateCode: '',
+  templateName: '',
   itemId: null,
   itemLabel: '',
   businessUnitId,
@@ -120,6 +125,8 @@ export const toDraft = (template: InspectionSheetTemplate): TemplateDraft => {
     })),
   }));
   return {
+    templateCode: template.templateCode ?? '',
+    templateName: template.templateName ?? '',
     itemId: template.itemId,
     itemLabel: `${template.itemName} (${template.itemCode})`,
     businessUnitId: template.businessUnitId,
@@ -142,10 +149,17 @@ export const toDraft = (template: InspectionSheetTemplate): TemplateDraft => {
 
 const text = (value: string): string | null => (value.trim() === '' ? null : value.trim());
 
-/** 켠 단계만 양식 순서대로 보낸다. PP 전용 칸은 OP 양식이면 비운다. */
+/**
+ * 켠 단계만 양식 순서대로 보낸다. PP 전용 칸은 OP 양식이면 비운다.
+ * 기준코드 · 기준명은 비었으면 싣지 않는다 — 서버는 빠진 값을 그대로 둔다(옛 기준 · #260).
+ */
 export const toBody = (draft: TemplateDraft): InspectionSheetTemplateUpdate => {
   const pp = draft.formLayoutCode === 'PP';
+  const templateCode = text(draft.templateCode);
+  const templateName = text(draft.templateName);
   return {
+    ...(templateCode === null ? {} : { templateCode }),
+    ...(templateName === null ? {} : { templateName }),
     materialText: text(draft.materialText),
     structureText: text(draft.structureText),
     rohsFlag: draft.rohsFlag,

@@ -30,10 +30,11 @@ describe('validateItemDraft — 필수', () => {
     expect(validateItemDraft(draft(), [])).toEqual({});
   });
 
-  it('항목코드·항목명이 비면 필수 오류를 낸다', () => {
+  /* omf-all-around#262 — 항목코드는 비우면 서버가 자동 등록한다. 항목명만 필수다. */
+  it('항목명이 비면 필수 오류를 내고, 항목코드는 비어도 막지 않는다', () => {
     const errors = validateItemDraft(draft({ inspectionItemCode: '', inspectionItemName: '' }), []);
 
-    expect(errors.inspectionItemCode).toBe('필수 입력 항목입니다.');
+    expect(errors.inspectionItemCode).toBeUndefined();
     expect(errors.inspectionItemName).toBe('필수 입력 항목입니다.');
   });
   /* omf-all-around#194 — 서버가 필수로 검사한다. 비우면 저장이 거절된다. */
@@ -187,7 +188,7 @@ describe('hasInvalidItemDraft', () => {
   });
 
   it('값이 어긋난 행이 섞여 있으면 참이다', () => {
-    expect(hasInvalidItemDraft([...saved(), draft({ inspectionItemCode: '' })])).toBe(true);
+    expect(hasInvalidItemDraft([...saved(), draft({ inspectionItemName: '' })])).toBe(true);
   });
 
   /* 경고는 저장을 막지 않는다. */

@@ -12,13 +12,10 @@ const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues =
   samplingRatio: '',
   samplingQty: '',
   aqlValue: '',
+  aqlInspectionLevelCode: '',
   acceptanceNumber: '',
   rejectionNumber: '',
-  inspectionFrequencyCode: 'PENDING',
-  frequencyIntervalValue: '',
-  frequencyIntervalUomCode: '',
-  guideTextKo: '',
-  guideTextVi: '',
+  guideText: '',
   ...overrides,
 });
 
@@ -42,14 +39,11 @@ describe('validateVersionForm — 필수', () => {
     expect(validateVersionForm(values())).toEqual({});
   });
 
-  it('유효시작·샘플링 방법·검사 주기가 비면 각각 필수 오류를 낸다', () => {
-    const errors = validateVersionForm(
-      values({ effectiveFrom: '', samplingMethodCode: '', inspectionFrequencyCode: '' }),
-    );
+  it('유효시작·샘플링 방법이 비면 각각 필수 오류를 낸다', () => {
+    const errors = validateVersionForm(values({ effectiveFrom: '', samplingMethodCode: '' }));
 
     expect(errors.effectiveFrom).toBe('필수 입력 항목입니다.');
     expect(errors.samplingMethodCode).toBe('필수 입력 항목입니다.');
-    expect(errors.inspectionFrequencyCode).toBe('필수 입력 항목입니다.');
   });
 });
 
@@ -76,41 +70,6 @@ describe('validateVersionForm — 유효기간', () => {
 
     expect(errors.effectiveFrom).toBe('필수 입력 항목입니다.');
     expect(errors.effectiveTo).toBeUndefined();
-  });
-});
-
-describe('validateVersionForm — 주기 짝', () => {
-  it('둘 다 비어 있으면 통과한다', () => {
-    expect(
-      validateVersionForm(values({ frequencyIntervalValue: '', frequencyIntervalUomCode: '' })),
-    ).toEqual({});
-  });
-
-  it('둘 다 채우면 통과한다', () => {
-    expect(
-      validateVersionForm(
-        values({ frequencyIntervalValue: '4', frequencyIntervalUomCode: 'PENDING' }),
-      ),
-    ).toEqual({});
-  });
-
-  /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-  it('주기 값만 채우면 두 칸 모두에 오류를 낸다', () => {
-    const errors = validateVersionForm(values({ frequencyIntervalValue: '4' }));
-
-    expect(errors.frequencyIntervalValue).toBe(
-      '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
-    );
-    expect(errors.frequencyIntervalUomCode).toBe(
-      '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
-    );
-  });
-
-  it('주기 단위만 채워도 두 칸 모두에 오류를 낸다', () => {
-    const errors = validateVersionForm(values({ frequencyIntervalUomCode: 'PENDING' }));
-
-    expect(errors.frequencyIntervalValue).toBeDefined();
-    expect(errors.frequencyIntervalUomCode).toBeDefined();
   });
 });
 
@@ -218,5 +177,24 @@ describe('validateVersionForm — 샘플 비율', () => {
     expect(message).toMatch(/비율/);
     expect(message).toMatch(/%/);
     expect(message).not.toMatch(/수량|개수/);
+  });
+});
+
+/* omf-all-around#264 — AQL 샘플링은 AQL 값 · 검사 수준만 받는다. */
+describe('validateVersionForm — AQL 샘플링', () => {
+  it('AQL 값 · 검사 수준이 비면 각각 필수 오류를 낸다', () => {
+    const errors = validateVersionForm(values({ samplingMethodCode: 'AQL' }));
+
+    expect(errors.aqlValue).toBe('필수 입력 항목입니다.');
+    expect(errors.aqlInspectionLevelCode).toBe('필수 입력 항목입니다.');
+    expect(errors.samplingRatio).toBeUndefined();
+  });
+
+  it('둘 다 고르면 샘플 비율 · 개수 없이 통과한다', () => {
+    expect(
+      validateVersionForm(
+        values({ samplingMethodCode: 'AQL', aqlValue: '0.4', aqlInspectionLevelCode: 'G-II' }),
+      ),
+    ).toEqual({});
   });
 });

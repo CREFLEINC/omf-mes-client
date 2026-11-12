@@ -151,14 +151,13 @@ export const ItemFormDialog = ({
         </Checkbox>
 
         <div className="field-cell">
-          <FieldLabel htmlFor={codeId} label={t.fields.inspectionItemCode} required />
+          <FieldLabel htmlFor={codeId} label={t.fields.inspectionItemCode} />
           <TextField
             id={codeId}
             value={values.inspectionItemCode}
             placeholder={ph.inspectionItemCode}
             onChange={(event) => onChange({ inspectionItemCode: event.target.value })}
-            {...requiredText('inspectionItemCode', values.inspectionItemCode)}
-            aria-required
+            error={shownError('inspectionItemCode')}
           />
         </div>
 
