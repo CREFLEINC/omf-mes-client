@@ -83,6 +83,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>
       `AQL ${String(aql)} · ${level} → mẫu ${String(n)}, lỗi ≤ ${String(ac)} đạt · ≥ ${String(re)} không đạt`,
     sample: 'Số mẫu',
+    sampleDimension: 'Số mẫu kích thước',
     sampleValue: (n: number, c: number) => `Mẫu n=${String(n)}, C=${String(c)}`,
     dimensionCount: 'Hạng mục kích thước',
     inspector: 'Người kiểm tra',
