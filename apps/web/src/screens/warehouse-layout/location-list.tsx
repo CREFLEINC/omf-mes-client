@@ -1,4 +1,4 @@
-import { Chip, EmptyState, type Column } from '@crefle/web-ui';
+import { Chip, EmptyState, IconButton, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, type ReactNode } from 'react';
 
@@ -36,6 +36,8 @@ export interface LocationListProps {
    * 말줄임, 도면 칩 칸은 칩 폭만큼(시안 W-CO-08 편집 창 목록). 폭 기억 열쇠도 따로 둔다.
    */
   compact?: boolean;
+  /** 이름 칸 연필(#267 FR-007a) — 주면 줄마다 별칭 고치기 단추를 둔다. 권한은 쓰는 쪽이 판정한다. */
+  onEditAlias?: (location: LocationView) => void;
 }
 
 /** 열 폭 — 보통(조회 화면) / 좁은 칸(편집 창). */
@@ -65,6 +67,7 @@ export const LocationList = ({
   onExpandedChange,
   empty,
   compact = false,
+  onEditAlias,
 }: LocationListProps) => {
   const widths = compact ? WIDTHS.compact : WIDTHS.regular;
   const treeRows = useMemo(
@@ -119,7 +122,22 @@ export const LocationList = ({
     {
       key: 'name',
       header: t.locations.name,
-      render: (row) => <OneLine text={locationShownName(row.location)} />,
+      render: (row) =>
+        onEditAlias === undefined ? (
+          <OneLine text={locationShownName(row.location)} />
+        ) : (
+          <div className="layout-alias-cell">
+            <OneLine text={locationShownName(row.location)} />
+            <IconButton
+              size="sm"
+              icon="edit"
+              aria-label={messages.warehouseLocation.aliasEdit.edit(row.location.locationCode)}
+              onClick={() => {
+                onEditAlias(row.location);
+              }}
+            />
+          </div>
+        ),
     },
     {
       key: 'level',

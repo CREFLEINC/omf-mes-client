@@ -12,7 +12,8 @@ import type { Location } from './types';
 type LocationDetailResponse = components['schemas']['LocationDetailResponse'];
 
 export type AliasSaveResult =
-  | { kind: 'saved' }
+  /** 저장한 위치 — 서버가 돌려준 값(별칭 · 이름이 바뀐 뒤). */
+  | { kind: 'saved'; location: Location }
   /** 남이 먼저 고쳤다(409 · 412) — 최신 별칭과 잠금 값을 다시 읽었다. */
   | { kind: 'conflict'; latestAlias: string }
   | { kind: 'failed'; message: string };
@@ -70,7 +71,7 @@ export const useAliasSave = () => {
         const stored =
           queryClient.getQueryData<LocationDetailResponse>(locationKeys.detail(location.locationId))
             ?.location ?? (await load(location.locationId)).location;
-        await runRequest(() =>
+        const saved = await runRequest(() =>
           client.PUT('/mdm/locations/{locationId}', {
             params: {
               path: { locationId: stored.locationId },
@@ -86,7 +87,7 @@ export const useAliasSave = () => {
             ),
           }),
         );
-        return { kind: 'saved' };
+        return { kind: 'saved', location: saved };
       } catch (error) {
         const status = statusOf(error);
         if (status !== undefined && CONFLICT_STATUSES.has(status)) {

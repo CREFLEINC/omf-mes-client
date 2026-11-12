@@ -13549,6 +13549,47 @@ dialog.layout-editor-dialog {
   overflow: auto;
 }
 
+/* 편집 창 목록의 별칭 연필 · 팝오버(#267 FR-007a). 팝오버는 목록 구획 위에 떠 있다. */
+.layout-editor-list {
+  position: relative;
+}
+
+.layout-alias-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.layout-alias-cell > :first-child {
+  min-width: 0;
+}
+
+.layout-alias-popover {
+  position: absolute;
+  z-index: 5;
+  inset-inline: var(--space-2);
+  top: var(--space-6);
+  max-width: 300px;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--elevation-2);
+}
+
+.layout-alias-popover .field-error,
+.layout-alias-popover .field-note {
+  white-space: normal;
+}
+
+.layout-alias-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
 /* 오른쪽 — 띠 · 판 · 크기 칸 · 사유. 판이 남은 높이를 다 쓴다. */
 .layout-editor-map {
   display: flex;

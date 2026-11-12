@@ -90,6 +90,10 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     cancel: 'Hủy',
   },
 
+  aliasPopover: {
+    title: (code: string): string => `Tên gọi khác của ${code}`,
+    note: 'Lưu ngay. Tách riêng với việc lưu sơ đồ.',
+  },
   editor: {
     open: 'Sửa',
     title: (warehouse: string): string => `Sửa sơ đồ bố trí — ${warehouse}`,
