@@ -18,6 +18,7 @@ import { ApiRequestError, runRequest } from '../../patterns/request';
 import { isPutawayStaging, isSystemLocation } from '../../patterns/system-location';
 import { visibleWarehouses, WarehouseFilterBar } from '../../patterns/warehouse-filter-bar';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
+import { BulkCreateDialog } from './bulk-create-dialog';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { issueLocationCode } from './location-code';
@@ -305,6 +306,8 @@ export const WarehouseLocationScreen = () => {
     ids: ReadonlySet<number>;
   } | null>(null);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  /** 일괄 생성 창 — 열 때만 그려 닫으면 입력 · 계획이 함께 사라진다(#267 R-3). */
+  const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
   const [dialogState, setDialogState] = useState<LocationDialogState>(CLOSED_LOCATION_DIALOG);
   const [locationValues, setLocationValues] = useState<LocationFormValues>(emptyLocationFormValues);
   const [locationFieldErrors, setLocationFieldErrors] = useState<Record<string, string>>({});
@@ -1209,6 +1212,8 @@ export const WarehouseLocationScreen = () => {
                   }}
                   onEdit={handleEditLocation}
                   canEditAlias={canWriteLocations}
+                  canBulkCreate={canWriteLocations}
+                  onBulkCreate={() => setBulkCreateOpen(true)}
                   actionBanner={
                     <>
                       {locations.data !== undefined &&
@@ -1336,6 +1341,16 @@ export const WarehouseLocationScreen = () => {
           setSelectedLocationIds([]);
         }}
       />
+
+      {bulkCreateOpen && selectedWarehouseId !== null && (
+        <BulkCreateDialog
+          open
+          warehouseId={selectedWarehouseId}
+          warehouseLabel={warehouseLabel}
+          items={hierarchyItems}
+          onClose={() => setBulkCreateOpen(false)}
+        />
+      )}
 
       <RackCreateDialog
         zone={rackDialog?.zone ?? null}

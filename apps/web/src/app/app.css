@@ -31880,6 +31880,91 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* 위치 일괄 생성 창(#267 · 시안 W-06-07-bulk) — 방식 · 수 · 구역 목록 · 합계 · 진행. */
+.bulk-create {
+  min-width: 0;
+}
+
+.bulk-create-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.bulk-create-counts.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bulk-create-zones {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.bulk-create-zones > legend {
+  float: left;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+}
+
+.bulk-create-zone {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.bulk-create-summary {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.bulk-create-summary-label {
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+}
+
+.bulk-create-summary-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.bulk-create-summary-total > strong {
+  font: var(--type-title-lg);
+}
+
+.bulk-create-summary-codes {
+  display: grid;
+  gap: 2px;
+  color: var(--on-surface-variant);
+}
+
+.bulk-create-summary-codes code {
+  color: var(--on-surface);
+}
+
+.bulk-create-progress {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.bulk-create-failures {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
 /* 랙의 층 · 셀 표 — 행이 층(위층이 위), 열이 셀. 머리는 옅은 글자, 칸은 같은 크기. */
 .rack-layout-grid-wrap {
   max-height: 22rem;

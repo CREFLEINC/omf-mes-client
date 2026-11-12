@@ -125,6 +125,57 @@ export const warehouseLocation = {
     sections: { basic: '기본 정보', layout: '층·셀 구성' },
   },
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 위치 일괄 생성 창(#267 · 시안 W-06-07-bulk). 가운뎃점 문구는 승인 시안 문구다. */
+  bulkCreate: {
+    open: '일괄 생성',
+    title: (warehouse: string): string =>
+      warehouse === '' ? '위치 일괄 생성' : `위치 일괄 생성 — ${warehouse}`,
+    modeLabel: '만드는 방식',
+    modeNew: '새 구역 만들기',
+    modeExisting: '기존 구역에 랙 추가',
+    zoneCount: '구역 수',
+    racksPerZone: '구역마다 랙 수',
+    levelsPerRack: '랙마다 층 수',
+    cellsPerLevel: '층마다 셀 수',
+    levelHint: '0 이면 랙까지만',
+    cellHint: '0 이면 층까지만',
+    pickZones: '랙을 더할 구역',
+    noZones: '랙을 더할 구역이 없습니다.',
+    zoneName: (code: string, alias: string): string => `${code} · ${alias}`, // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
+    zoneInfo: (racks: number, cells: number): string =>
+      `랙 ${String(racks)}개 · 셀 ${String(cells)}개`, // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
+    stockBlocked: '구역에 재고가 있어 랙을 둘 수 없습니다 — 재고를 먼저 옮깁니다.',
+    pickRequired: '랙을 더할 구역을 하나 이상 고르세요.',
+    rackNoLeft: '랙 번호(R999)를 넘습니다. 랙 수를 줄이세요.',
+    total: '만들 위치',
+    count: (count: number): string => `위치 ${count.toLocaleString('ko-KR')}개`,
+    parts: (zones: number | null, racks: number, levels: number, cells: number): string =>
+      [
+        zones === null ? null : `구역 ${String(zones)}`,
+        `랙 ${String(racks)}`,
+        `층 ${String(levels)}`,
+        `셀 ${String(cells)}`,
+      ]
+        .filter((part) => part !== null)
+        .join(' · '), // ui-check-ignore: C-13 승인 시안 W-06-07-bulk 문구(#267)
+    firstCode: '첫 코드',
+    lastCode: '마지막 코드',
+    overCells: (count: number): string =>
+      `한 번에 셀 1,000개까지 만들 수 있습니다(지금 ${count.toLocaleString('ko-KR')}개). 수를 줄이세요.`,
+    overAll: (count: number): string =>
+      `한 번에 위치 1,200개까지 만들 수 있습니다(지금 ${count.toLocaleString('ko-KR')}개). 수를 줄이세요.`,
+    make: '만들기',
+    making: (done: number, total: number): string => `만드는 중 ${String(done)}/${String(total)}`,
+    done: (count: number): string => `위치 ${count.toLocaleString('ko-KR')}개를 만들었습니다.`,
+    partial: (created: number, failedRacks: number): string =>
+      `${created.toLocaleString('ko-KR')}개를 만들었고 랙 ${String(failedRacks)}개는 만들지 못했습니다.`,
+    partialNames: (created: number): string =>
+      `${created.toLocaleString('ko-KR')}개를 만들었고 이름 일부를 맞추지 못했습니다.`,
+    failure: (code: string, reason: string): string => `${code} — ${reason}`,
+    retryRest: '남은 것 다시 만들기',
+    renameFailed: (reason: string): string => `만들었지만 이름 맞추기 실패 — ${reason}`,
+    netFail: '서버에 닿지 못해 멈췄습니다.',
+  },
   /** 목록 별칭 칸에서 바로 고치기(#267 FR-007) — 이름은 그대로, 별칭만 바로 저장한다. */
   aliasEdit: {
     edit: (locationCode: string): string => `${locationCode} 별칭 수정`,
