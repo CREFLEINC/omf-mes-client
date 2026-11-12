@@ -208,18 +208,7 @@ export const DistributionControls = ({
                 </div>
                 <details className="erp-wo-common-conditions">
                   <summary>선택 조건에 공통 기간과 라인 입력</summary>
-                  <label className="erp-wo-checkbox">
-                    <input
-                      type="checkbox"
-                      aria-label="분배 조건 전체 선택"
-                      checked={rows.length > 0 && rows.every((row) => selected.includes(row.id))}
-                      onChange={(event) =>
-                        setSelected(event.target.checked ? rows.map((row) => row.id) : [])
-                      }
-                      disabled={disabled}
-                    />
-                    전체 선택 ({selected.length}건)
-                  </label>
+                  <p className="field-note">선택 {selected.length}건</p>
                   <div className="erp-wo-distribution-fields">
                     <div className="field-cell erp-wo-distribution-period">
                       <span className="field-label">공통 분배 기간</span>
@@ -290,7 +279,25 @@ export const DistributionControls = ({
                       <caption className="visually-hidden">분배 조건 목록</caption>
                       <thead>
                         <tr>
-                          <th>선택</th>
+                          <th scope="col">
+                            <input
+                              type="checkbox"
+                              aria-label="분배 조건 전체 선택"
+                              checked={
+                                rows.length > 0 && rows.every((row) => selected.includes(row.id))
+                              }
+                              ref={(input) => {
+                                if (input)
+                                  input.indeterminate =
+                                    rows.some((row) => selected.includes(row.id)) &&
+                                    !rows.every((row) => selected.includes(row.id));
+                              }}
+                              disabled={disabled || rows.length === 0}
+                              onChange={(event) =>
+                                setSelected(event.target.checked ? rows.map((row) => row.id) : [])
+                              }
+                            />
+                          </th>
                           <th>분배 조건</th>
                           <th>ERP W/O / 품목</th>
                           <th>기간</th>

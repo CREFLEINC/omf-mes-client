@@ -30,6 +30,31 @@ const configure = async () => {
   return user;
 };
 describe('분배 조건과 미리보기 적용', () => {
+  it('표 머리글에서 전체 선택·해제하고 일부 선택 상태를 표시한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <DistributionControls
+        orders={[...orders, { ...orders[0]!, id: 'B', label: 'ERP W/O B' }]}
+        existing={[]}
+        disabled={false}
+        onApply={() => {}}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    const all = screen.getByRole('checkbox', { name: '분배 조건 전체 선택' });
+    expect(all.closest('thead')).not.toBeNull();
+    await user.click(all);
+    expect(screen.getByRole('checkbox', { name: '분배 조건 1 선택' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '분배 조건 2 선택' })).toBeChecked();
+    await user.click(screen.getByRole('checkbox', { name: '분배 조건 2 선택' }));
+    expect(all).toBePartiallyChecked();
+    await user.click(all);
+    expect(all).toBeChecked();
+    await user.click(all);
+    expect(screen.getByRole('checkbox', { name: '분배 조건 1 선택' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '분배 조건 2 선택' })).not.toBeChecked();
+    expect(screen.getByRole('heading', { name: '조건 1 편집' })).toBeVisible();
+  });
   it('ERP 시작일과 추천 라인을 채우고 사용자의 조건 변경은 다시 열어도 유지한다', async () => {
     const user = userEvent.setup();
     const apply = vi.fn();
