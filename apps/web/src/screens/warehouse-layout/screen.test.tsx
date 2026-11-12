@@ -10,7 +10,9 @@ import {
   contentPath,
   loaded,
   locationButton,
+  locationSeed,
   locationTable,
+  type LocationSeed,
   OLD_ATTACHMENT_ID,
   pathOf,
   renderScreen,
@@ -288,9 +290,11 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
         'marker-overlay-pin-muted',
       );
     });
-    expect(within(board()).getByRole('button', { name: 'Z01-R001-L01' })).not.toHaveClass(
-      'marker-overlay-pin-muted',
-    );
+    /*
+     * 2차(FR-016)로 고쳤다 — 옛 시험은 층(Z01-R001-L01) 표식이 기본 모양으로 그려진다고 기대했다. 층 · 셀 표식은 이제 판에
+     * 그리지 않는다. 재고가 조상으로 올라가는 것은 아래 랙 줄이 그대로 잰다.
+     */
+    expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01' })).toBeNull();
     /* 랙은 아래 층에 재고가 있어 「있음」이다. */
     expect(within(board()).getByRole('button', { name: 'Z01-R001' })).not.toHaveClass(
       'marker-overlay-pin-muted',
@@ -437,5 +441,71 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     await waitFor(() => {
       expect(stockGets).toHaveLength(2);
     });
+  });
+});
+
+/*
+ * 2차 변경(FR-015 · FR-016 · R2-3 · R2-7) — 도면에는 구역 · 랙만. 층 · 셀을 고르면 그 위치가 든 랙(없으면 구역) 표식을 강조하고,
+ * 목록 「도면」 칸은 구역 · 랙 줄에만 찍음/아직을 보인다.
+ */
+describe('W-CO-08 조회 화면 — 구역 · 랙만 배치 (2차)', () => {
+  /** 구역 Z01(1) › 랙 Z01-R001(7) › 층 Z01-R001-L01(9) › 셀 Z01-R001-L01-C01(10), 적치 대기(3). */
+  const ROWS_WITH_CELL: LocationSeed[] = [
+    ...TREE_ROWS,
+    locationSeed(10, 'Z01-R001-L01-C01', { parentLocationId: 9, locationLevelCode: 'CELL' }),
+  ];
+  /** 랙 표식과, 2차 전에 저장된 셀 표식. */
+  const MARKERS = [
+    { locationId: 7, x: 0.2, y: 0.2 },
+    { locationId: 10, x: 0.6, y: 0.6 },
+  ];
+
+  it('US2-2 ⭐ 셀을 고르면 랙 표식이 강조되고 재고 머리에 「도면에서 Z01-R001 안」, 셀 표식은 판에 없다', async () => {
+    const { user } = renderScreen({
+      layouts: [withDrawing(MARKERS)],
+      locations: ROWS_WITH_CELL,
+      balances: [stockRow(10, 'ITEM-A', 'LOT-1', 5)],
+    });
+
+    await loaded();
+    await waitFor(() => locationButton('Z01-R001'));
+    expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01-C01' })).toBeNull();
+
+    await user.click(
+      within(rowOf('Z01-R001')).getByRole('button', { name: wl.locationTable.expand }),
+    );
+    await user.click(
+      within(rowOf('Z01-R001-L01')).getByRole('button', { name: wl.locationTable.expand }),
+    );
+    await user.click(locationButton('Z01-R001-L01-C01'));
+
+    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const heading = screen.getByRole('heading', { name: /Z01-R001-L01-C01/ });
+    expect(heading).toHaveTextContent(t.locations.insideOnDrawing('Z01-R001'));
+    expect(heading).not.toHaveTextContent(t.locations.notOnDrawing);
+    /* 재고 표는 고른 셀 기준 그대로다. */
+    expect(
+      await screen.findByRole('table', { name: t.stock.title('Z01-R001-L01-C01') }),
+    ).toBeInTheDocument();
+  });
+
+  it('US2-2 R2-7 ⭐ 목록 「도면」 칸은 구역 · 랙 줄에만 찍음/아직이고, 층 · 셀 줄은 비어 있다', async () => {
+    const { user } = renderScreen({ layouts: [withDrawing(MARKERS)], locations: ROWS_WITH_CELL });
+
+    await loaded();
+    await waitFor(() => locationButton('Z01-R001'));
+    await user.click(screen.getByRole('button', { name: wl.locationTable.collapseAll }));
+    await user.click(screen.getByRole('button', { name: wl.locationTable.expandAll }));
+
+    expect(within(rowOf('Z01-R001')).getByText(t.locations.onMap)).toBeInTheDocument();
+    expect(within(rowOf('Z01')).getByText(t.locations.notOnMap)).toBeInTheDocument();
+    for (const code of ['Z01-R001-L01', 'Z01-R001-L01-C01']) {
+      /* 저장된 셀 표식이 있어도 「찍음」이 아니다 — 그리지 않는 표식이다. */
+      expect(within(rowOf(code)).queryByText(t.locations.onMap)).toBeNull();
+      expect(within(rowOf(code)).queryByText(t.locations.notOnMap)).toBeNull();
+    }
   });
 });

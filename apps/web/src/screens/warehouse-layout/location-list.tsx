@@ -15,13 +15,14 @@ import {
   levelNameOf,
 } from '../../patterns/location-tree-cell';
 import { OneLine } from '../../patterns/po-board';
+import { isPlaceable } from './placeable';
 import type { LocationView } from './types';
 
 const t = messages.warehouseLayout;
 
 export interface LocationListProps {
   locations: LocationView[];
-  /** 그 위치의 표식이 도면에 있는가 — 「도면」 열의 찍음/아직. */
+  /** 그 위치의 표식이 도면에 있는가 — 「도면」 열의 찍음/아직. 배치 대상(구역 · 랙)에만 묻는다(2차 · R2-7). */
   isPlaced: (locationId: number) => boolean;
   selectedLocationId: number | null;
   onPick: (locationId: number) => void;
@@ -138,8 +139,9 @@ export const LocationList = ({
       header: t.locations.placed,
       align: 'center',
       width: widths.placed,
+      /* ⭐ 층 · 셀은 도면에 두지 않는다 — 「아직」을 보이면 찍어야 할 것처럼 읽힌다. 칸을 비운다(2차 · R2-7). */
       render: (row) =>
-        isPlaced(row.location.locationId) ? (
+        !isPlaceable(row.location) ? null : isPlaced(row.location.locationId) ? (
           <Chip size="sm" status="success">
             {t.locations.onMap}
           </Chip>
