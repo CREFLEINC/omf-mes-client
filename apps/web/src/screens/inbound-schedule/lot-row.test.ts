@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { lotProgress, scheduleLine } from './fixtures';
 import { inboundLotShareText, lotEvidence, LotMainCell, packageText } from './lot-row';
-import { inboundLotShares } from './stage';
+import { inboundLotShares, lotRowQtyOf } from './stage';
 import type { InboundLotProgress } from './types';
 
 const t = messages.inboundSchedule;
@@ -52,6 +52,31 @@ describe('lotEvidence — 줄의 일부만 이 발주로 온 LOT 줄(초과분 �
     expect(lotEvidence(lotProgress({ receivedQty: 60, allocatedQty: 60 }))).not.toContain(
       t.lot.evidence.wholeQty('60', 'SAMPLE-EA'),
     );
+  });
+});
+
+describe('G2 M2 W-01-09 LOT 줄 「입하 수량」', () => {
+  it('새 흐름 LOT 줄은 그 자재 관리 LOT 수량 — 입하 LOT 전체 배정 몫을 되풀이하지 않는다', () => {
+    const lot = lotProgress({
+      inboundLotId: 9901,
+      inboundLotNo: 'IL-20261112-0001',
+      receivedQty: 1000,
+      allocatedQty: 2600,
+    });
+
+    expect(lotRowQtyOf(lot)).toBe(1000);
+    expect(lotEvidence(lot)).not.toContain(t.lot.evidence.wholeQty('1,000', lot.uomCode));
+  });
+
+  it('이전 데이터 · 입하 LOT 없는 줄은 지금처럼 이 발주로 온 몫', () => {
+    expect(
+      lotRowQtyOf(
+        lotProgress({ inboundLotNo: 'IL-MIG-SAMPLE-0001', receivedQty: 50, allocatedQty: 30 }),
+      ),
+    ).toBe(30);
+    expect(
+      lotRowQtyOf(lotProgress({ inboundLotNo: null, receivedQty: 50, allocatedQty: 30 })),
+    ).toBe(30);
   });
 });
 

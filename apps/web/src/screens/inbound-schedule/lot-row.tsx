@@ -9,6 +9,7 @@ import { formatQty, OneLine } from './receipt-status';
 import {
   hasLot,
   isMigratedInboundLot,
+  lotRowQtyOf,
   stageGroupTone,
   stageTone,
   type InboundLotShare,
@@ -97,7 +98,8 @@ export const lotEvidence = (lot: InboundLotProgress): string => {
   const parts: string[] = [t.lot.receivedOn(dateOf(lot.receiptDatetime))];
 
   if (!hasLot(lot)) parts.push(t.lot.evidence.receiptNo(lot.inboundReceiptNo));
-  if (lot.allocatedQty !== lot.receivedQty) {
+  /* 새 흐름 줄은 수량 칸이 이미 LOT 수량이다 — 「줄 전체」를 덧붙이지 않는다(G2 M2). */
+  if (lotRowQtyOf(lot) === lot.allocatedQty && lot.allocatedQty !== lot.receivedQty) {
     parts.push(t.lot.evidence.wholeQty(formatQty(lot.receivedQty), lot.uomCode));
   }
 
