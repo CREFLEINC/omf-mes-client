@@ -88,6 +88,7 @@ export const NonconformanceList = ({
           {
             key: 'source',
             align: 'center',
+            width: '150px',
             header: t.inboundLot.sourceColumn,
             render: (row: NonconformanceRow) => sourceTexts.get(row.nonconformanceId) ?? '—',
           } satisfies Column<NonconformanceRow>,
@@ -135,7 +136,11 @@ export const NonconformanceList = ({
    */
   const ordered = useColumnOrder('omf-mes:dispositions:columns:pending:order', columns);
   const resizable = useColumnWidths('omf-mes:dispositions:columns:pending', ordered);
-  const fit = useFitColumns(resizable.columns, {});
+  /*
+   * 좌우 배치에서 목록이 좁으면(1440 · 표 494px) 칸을 줄이지 않고 표 안에서 가로로 구른다 — 줄이면 여덟 칸이 46px 씩이 되어
+   * 모두 「…」로 잘렸다(G2 M-b). 검사 수준 · IQC 이력 표와 같은 방식이다.
+   */
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   if (error !== null && error !== undefined) return error;
 

@@ -2,6 +2,7 @@ import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
+import { keepDocumentScroll } from './concession-pane';
 import { useItemLookupFor } from './lookups';
 
 /** W-03-10 품목 이름(G2 L-c) — 첫 쪽 목록 밖 품목은 단건으로 받는다. 값은 지어낸 것이다. */
@@ -44,3 +45,16 @@ describe('W-03-10 품목 이름', () => {
     expect(singles).toEqual(['/mdm/items/777']);
   });
 });
+
+describe('G2 L14-1 특채 요청 창이 열릴 때 문서가 밀리지 않게', () => {
+  it('누른 순간의 문서 스크롤 자리로 다음 틀에서 되돌린다', async () => {
+    const root = document.scrollingElement ?? document.documentElement;
+    root.scrollTop = 0;
+    keepDocumentScroll();
+    /* 창이 열리며 포커스 이동으로 문서가 밀린 것을 흉내 낸다. */
+    root.scrollTop = 152;
+
+    await waitFor(() => expect(root.scrollTop).toBe(0));
+  });
+});
+

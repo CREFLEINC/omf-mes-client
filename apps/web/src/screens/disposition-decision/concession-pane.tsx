@@ -106,6 +106,30 @@ export const useConcessions = (nonconformanceId: number | null) => {
 };
 
 /**
+ * 문서 스크롤을 지금 자리에 붙든다 — 다음 두 틀에서 밀렸으면 되돌린다. 정리 함수를 돌려준다.
+ * 특채 요청 창이 열리며 포커스가 옮겨갈 때 문서 전체가 위로 밀렸다(G2 L14-1 — html scrollTop 152, 앱 머리 −152, 아래 검은 띠).
+ * 셸은 문서를 굴리지 않으므로 창을 여는 순간(누른 때)의 자리를 기억해 되돌린다 — 창이 그려진 뒤 기억하면 이미 밀린 자리다.
+ */
+export const keepDocumentScroll = (): (() => void) => {
+  const root = document.scrollingElement ?? document.documentElement;
+  const top = root.scrollTop;
+  const left = root.scrollLeft;
+  const restore = (): void => {
+    if (root.scrollTop !== top) root.scrollTop = top;
+    if (root.scrollLeft !== left) root.scrollLeft = left;
+  };
+  let second = 0;
+  const first = requestAnimationFrame(() => {
+    restore();
+    second = requestAnimationFrame(restore);
+  });
+  return () => {
+    cancelAnimationFrame(first);
+    cancelAnimationFrame(second);
+  };
+};
+
+/**
  * 특채 요청 팝업(사용자 지시 · #223) — 처분 판정의 「특채」 칸으로 연다.
  * 대상은 자재 관리 LOT 전부, 사용 가능 수량은 남은 수량 고정(005 · mockups/W0310-After.html).
  */

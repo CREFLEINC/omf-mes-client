@@ -30,6 +30,7 @@ import {
   ConcessionHistory,
   ConcessionRequestDialog,
   groupConcessions,
+  keepDocumentScroll,
   PendingConcessionBox,
   useConcessionApprovalStatus,
   useConcessions,
@@ -854,7 +855,11 @@ export const DispositionDecisionScreen = ({
                   concession={{
                     hint: t.form.typeHint.CONCESSION ?? '',
                     lockReason: concessionLock,
-                    onRequest: () => setIsConcessionOpen(true),
+                    onRequest: () => {
+                      /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
+                      keepDocumentScroll();
+                      setIsConcessionOpen(true);
+                    },
                   }}
                   lots={lotRows}
                   inboundLotNo={detailView?.inboundLotNo}
