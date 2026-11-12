@@ -133,6 +133,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     request: 'Yêu cầu đặc cách',
     requesting: 'Đang yêu cầu…',
     apply: 'Áp dụng đặc cách',
+    applyWaiting: 'Phải phê duyệt xong (W-03-09) mới áp dụng được',
     applying: 'Đang áp dụng…',
     qty: 'Số lượng được dùng',
     validFrom: 'Ngày bắt đầu',

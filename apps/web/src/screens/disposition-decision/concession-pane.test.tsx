@@ -60,6 +60,10 @@ const stub =
       if (applyFailure !== undefined) return jsonResponse(applyFailure, { status: 400 });
       return jsonResponse({ ...concession('APPROVED'), splitResult: split ? SPLIT : null });
     }
+    /* 005 G2 5차 — [특채 적용]은 결재가 승인 · 반려된 때만 열린다. 이 받침의 결재는 승인됨이다. */
+    if (/^\/app\/approval-requests\/\d+$/u.test(url.pathname)) {
+      return jsonResponse({ request: { statusCode: 'APPROVED' }, steps: [] });
+    }
     throw new Error(`스텁에 없는 요청입니다: ${request.method} ${request.url}`);
   };
 

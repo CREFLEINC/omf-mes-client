@@ -7,7 +7,7 @@ import type {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { useApiClient } from '../../patterns/api-context';
@@ -304,6 +304,36 @@ export const groupConcessions = (rows: readonly Concession[]): ConcessionGroup[]
 };
 
 /**
+ * 이력 표의 [특채 적용] — 위 상자와 같은 기준으로 결재가 승인 · 반려된 때만 연다(G2 5차). 결재 대기 중이면 잠그고 까닭을 단다.
+ */
+const ApplyButton = ({
+  approvalRequestId,
+  disabled,
+  onClick,
+  children,
+}: {
+  approvalRequestId: number;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) => {
+  const approval = useConcessionApprovalStatus(approvalRequestId);
+  const decided = approval.data === 'APPROVED' || approval.data === 'REJECTED';
+
+  return (
+    <Button
+      variant="outlined"
+      size="sm"
+      disabled={disabled || !decided}
+      title={decided ? undefined : t.applyWaiting}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+};
+
+/**
  * 특채 요청 이력 — 상세 아래 「특채 요청 이력」 탭의 내용(#223). 결재 대기 특채는 처분 대기 탭에서만 적용한다.
  */
 export const ConcessionHistory = ({
@@ -402,9 +432,8 @@ export const ConcessionHistory = ({
       header: t.columns.status,
       render: (group) =>
         group.first.statusCode === PENDING && !readOnly ? (
-          <Button
-            variant="outlined"
-            size="sm"
+          <ApplyButton
+            approvalRequestId={group.first.approvalRequestId}
             disabled={applyWrite.isSaving}
             onClick={() => {
               setNotice(null);
@@ -414,7 +443,7 @@ export const ConcessionHistory = ({
             }}
           >
             {applyWrite.isSaving ? t.applying : t.apply}
-          </Button>
+          </ApplyButton>
         ) : (
           statusChip(group.first)
         ),

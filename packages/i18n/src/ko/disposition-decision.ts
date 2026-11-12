@@ -144,6 +144,8 @@ export const dispositionDecision = {
     request: '특채 요청',
     requesting: '요청하는 중…',
     apply: '특채 적용',
+    /** 결재 대기 중에는 적용할 수 없다(G2 5차). */
+    applyWaiting: '결재가 끝나야 적용할 수 있습니다(W-03-09)',
     applying: '적용하는 중…',
     qty: '사용 가능 수량',
     validFrom: '시작일',
