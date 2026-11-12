@@ -1,4 +1,4 @@
-import type { components, FourMChangeForward } from '@omf-mes/api-client';
+import type { components, FourMChangeForward, InspectionAqlPlanForward } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type InspectionRequestForward = components['schemas']['InspectionRequest'];
@@ -123,10 +123,12 @@ export interface InspectionRequestDetail {
   fourMChange: FourMChangeForward | null;
   /** 생략 근거(omf-all-around#212) — 생략 구획이 「기본 설정」인지 「결재 승인」인지 가른다. */
   skipBasisCode: SkipBasisCode | null;
+  /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). 아니면 `null`. */
+  aqlPlan: InspectionAqlPlanForward | null;
 }
 
 export const toInspectionRequestDetail = (
-  item: InspectionRequestResponse,
+  item: InspectionRequestResponse & { aqlPlan?: InspectionAqlPlanForward },
 ): InspectionRequestDetail => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
@@ -140,6 +142,7 @@ export const toInspectionRequestDetail = (
   requestedAt: item.requestedAt,
   fourMChange: item.fourMChange ?? null,
   skipBasisCode: item.skipBasisCode ?? null,
+  aqlPlan: item.aqlPlan ?? null,
 });
 
 /**
