@@ -220,24 +220,18 @@ export const DistributionControls = ({
                     전체 선택 ({selected.length}건)
                   </label>
                   <div className="erp-wo-distribution-fields">
-                    <div className="field-cell">
-                      <span className="field-label">공통 시작일</span>
+                    <div className="field-cell erp-wo-distribution-period">
+                      <span className="field-label">공통 분배 기간</span>
                       <DatePicker
                         size="sm"
-                        aria-label="공통 시작일"
-                        value={commonStart}
+                        mode="range"
+                        aria-label="공통 분배 기간"
+                        value={[commonStart, commonEnd]}
                         disabled={disabled}
-                        onChange={setCommonStart}
-                      />
-                    </div>
-                    <div className="field-cell">
-                      <span className="field-label">공통 종료일</span>
-                      <DatePicker
-                        size="sm"
-                        aria-label="공통 종료일"
-                        value={commonEnd}
-                        disabled={disabled}
-                        onChange={setCommonEnd}
+                        onChange={([start, end]) => {
+                          setCommonStart(start);
+                          setCommonEnd(end);
+                        }}
                       />
                     </div>
                     <div className="field-cell">
@@ -319,6 +313,22 @@ export const DistributionControls = ({
                             return (
                               <tr
                                 key={row.id}
+                                aria-label={`분배 조건 ${index + 1}`}
+                                tabIndex={disabled ? -1 : 0}
+                                onClick={(event) => {
+                                  if (disabled || (event.target as HTMLElement).closest('input'))
+                                    return;
+                                  setActiveId(row.id);
+                                  setDailyPage(1);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (disabled || event.target !== event.currentTarget) return;
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    setActiveId(row.id);
+                                    setDailyPage(1);
+                                  }
+                                }}
                                 data-active={row.id === activeRow?.id ? 'true' : undefined}
                               >
                                 <td>
@@ -337,17 +347,7 @@ export const DistributionControls = ({
                                   />
                                 </td>
                                 <td>
-                                  <Button
-                                    size="sm"
-                                    variant="text"
-                                    aria-pressed={row.id === activeRow?.id}
-                                    onClick={() => {
-                                      setActiveId(row.id);
-                                      setDailyPage(1);
-                                    }}
-                                  >
-                                    조건 {index + 1}
-                                  </Button>
+                                  조건 {index + 1}
                                   {row.applied && <span className="field-note">편성안 반영됨</span>}
                                 </td>
                                 <td>{target?.label ?? 'ERP W/O 선택 필요'}</td>
@@ -439,24 +439,15 @@ export const DistributionControls = ({
                             </Button>
                           </div>
                           <div className="erp-wo-segment-fields">
-                            <div className="field-cell erp-wo-segment-date">
-                              <span className="field-label">시작일</span>
+                            <div className="field-cell erp-wo-segment-date erp-wo-distribution-period">
+                              <span className="field-label">분배 기간</span>
                               <DatePicker
                                 size="sm"
-                                aria-label={`조건 ${index + 1} 시작일`}
-                                value={row.start}
+                                mode="range"
+                                aria-label={`조건 ${index + 1} 분배 기간`}
+                                value={[row.start, row.end]}
                                 disabled={disabled}
-                                onChange={(start) => change(row.id, { start })}
-                              />
-                            </div>
-                            <div className="field-cell erp-wo-segment-date">
-                              <span className="field-label">종료일</span>
-                              <DatePicker
-                                size="sm"
-                                aria-label={`조건 ${index + 1} 종료일`}
-                                value={row.end}
-                                disabled={disabled}
-                                onChange={(end) => change(row.id, { end })}
+                                onChange={([start, end]) => change(row.id, { start, end })}
                               />
                             </div>
                             <div className="field-cell erp-wo-segment-line">

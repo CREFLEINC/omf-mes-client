@@ -36746,3 +36746,11 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-add-fields { grid-template-columns:12rem minmax(0,1fr); }
 .erp-wo-plan-add-fields > [data-disabled], .erp-wo-plan-add-fields > [class*="_field_"] { max-width:12rem; }
 @media(max-width:32rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-distribution-period { min-width:0; }
+.erp-wo-distribution-period button[aria-haspopup='dialog'] { min-width:min(20rem,100%); width:100%; white-space:normal; }
+/* 오늘은 밑줄로, 선택 기간 양끝은 채운 원으로 구분한다. */
+:is(.erp-wo-plan-workspace, .erp-wo-multi-page) [role='grid'] [aria-current='date']:not([aria-selected='true']) { box-shadow:none; text-decoration:underline; text-underline-offset:.2em; }
+
+.erp-wo-distribution-settings tr[tabindex='0'] { cursor:pointer; }
+.erp-wo-distribution-settings tr[tabindex='0']:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }

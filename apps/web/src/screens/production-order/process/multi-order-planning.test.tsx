@@ -208,7 +208,7 @@ const distribute = async (targets: Record<string, string> = {}) => {
   }
   await user.click(screen.getByRole('tab', { name: '주간 편성' }));
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  const conditionButtons = screen.getAllByRole('button', { name: /^조건 \d+$/ });
+  const conditionButtons = screen.getAllByRole('row', { name: /^분배 조건 \d+$/ });
   for (const [index, button] of conditionButtons.entries()) {
     await user.click(button);
     const group = screen.getByRole('group', { name: `분배 조건 ${index + 1}` });
@@ -258,7 +258,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
     expect(screen.getByRole('button', { name: '자동 분배' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    expect(screen.getByRole('button', { name: '조건 2' })).toBeVisible();
+    expect(screen.getByRole('row', { name: '분배 조건 2' })).toBeVisible();
     const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
     await user.clear(quantity);
     await user.type(quantity, '20');
