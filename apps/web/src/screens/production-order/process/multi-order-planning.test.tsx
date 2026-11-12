@@ -243,7 +243,7 @@ const distribute = async (targets: Record<string, string> = {}) => {
   return user;
 };
 describe('복수 ERP W/O 편성 저장 연결', () => {
-  it('단건과 같은 정보 순서를 유지하고 두 보기에서 편성 도구와 분배 조건을 유지한다', async () => {
+  it('복수 상단은 선택 건수만 표시하고 두 보기에서 편성 도구와 팝업 조건을 유지한다', async () => {
     const { writes } = mount();
     const user = userEvent.setup();
     await waitFor(() =>
@@ -251,24 +251,8 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     );
     await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
     const header = document.querySelector('.erp-wo-multi-header')! as HTMLElement;
-    const overview = header.querySelector('.erp-wo-order-overview')!;
-    expect(Array.from(overview.querySelectorAll('dt'), (term) => term.textContent)).toEqual([
-      'ERP W/O',
-      '품목 코드',
-      '품목명',
-      '품목그룹',
-      'ERP W/O 수량',
-      '생산품 입고 창고',
-      '납기일',
-    ]);
     expect(within(header).getByText('선택 ERP W/O')).toBeVisible();
-    await user.click(screen.getByRole('combobox', { name: '정보를 확인할 ERP W/O' }));
-    await user.click(screen.getByRole('option', { name: 'B' }));
-    expect(
-      within(within(header).getByRole('region', { name: '생산 정보' })).getByText('80 EA', {
-        exact: true,
-      }),
-    ).toBeVisible();
+    expect(within(header).queryByRole('combobox')).toBeNull();
     expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
     await user.click(screen.getByRole('tab', { name: '계획 목록' }));
     expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
@@ -278,7 +262,13 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
     await user.clear(quantity);
     await user.type(quantity, '20');
+    await user.click(
+      within(screen.getByRole('dialog', { name: '자동 분배' })).getByRole('button', {
+        name: '닫기',
+      }),
+    );
     await user.click(screen.getByRole('tab', { name: '주간 편성' }));
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('20');
     expect(screen.getAllByRole('button', { name: '계획 추가' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: '자동 분배' })).toHaveLength(1);
@@ -322,12 +312,12 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(detail).queryByText('A', { exact: true })).toBeNull();
     expect(within(detail).getByRole('region', { name: 'BOM 상세 정보' })).toBeVisible();
     expect(within(detail).getByRole('region', { name: 'Routing 상세 정보' })).toBeVisible();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: '미저장 변경사항' })).toBeNull();
   });
   it('분배한 계획을 ERP W/O별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
     const user = await distribute();
-    expect(screen.getByRole('button', { name: '분배 미리보기' })).toBeDisabled();
+    expect(screen.queryByRole('dialog', { name: '자동 분배' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '계획 저장' }));
     await waitFor(() => expect(server.plans).toHaveLength(3));
     expect(
@@ -436,7 +426,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       }),
     );
     await waitFor(() => expect(within(selectedPlan).getByText('A', { exact: true })).toBeVisible());
-    expect(screen.getByRole('combobox', { name: '정보를 확인할 ERP W/O' })).toHaveTextContent('A');
+    expect(screen.queryByRole('combobox', { name: '정보를 확인할 ERP W/O' })).toBeNull();
     expect(screen.getByRole('tab', { name: '계획 목록' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('region', { name: 'A 생산계획' })).toBeVisible();
     expect(screen.getByRole('region', { name: 'B 생산계획' })).toBeVisible();
@@ -500,6 +490,11 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       }),
     );
     await user.click(screen.getByRole('button', { name: '선택' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '자동 분배' })).getByRole('button', {
+        name: '닫기',
+      }),
+    );
     await user.click(screen.getByRole('tab', { name: '1. BOM·Routing' }));
     expect(screen.getByRole('dialog')).toBeVisible();
   });

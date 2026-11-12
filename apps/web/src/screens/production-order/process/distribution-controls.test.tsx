@@ -52,7 +52,9 @@ describe('분배 조건과 미리보기 적용', () => {
     const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
     await user.clear(quantity);
     await user.type(quantity, '2');
-    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.getByRole('dialog', { name: '자동 분배' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '편성 화면으로' }));
+    expect(screen.queryByRole('dialog', { name: '자동 분배' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('2');
     expect(apply).not.toHaveBeenCalled();
@@ -151,6 +153,8 @@ describe('분배 조건과 미리보기 적용', () => {
     await user.click(screen.getByRole('button', { name: '분배안 적용' }));
     expect(apply).toHaveBeenCalledTimes(1);
     expect(apply.mock.calls[0]?.[0]).toHaveLength(3);
+    expect(screen.queryByRole('dialog', { name: '자동 분배' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
     expect(screen.getByRole('button', { name: '분배 미리보기' })).toBeDisabled();
   });
   it('기존 계획과 겹치면 확인하기 전 적용하지 않는다', async () => {

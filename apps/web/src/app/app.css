@@ -36716,3 +36716,32 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-add-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 .erp-wo-plan-add-fields > * { min-width:0; }
 @media(max-width:42rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
+
+/* 편성 도구는 보기와 무관한 공통 동작이며 분배 입력은 별도 창에서 처리한다. */
+.erp-wo-plan-create { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); padding:0; border:0; border-radius:0; background:transparent; }
+.erp-wo-plan-create > .erp-wo-distribution { display:contents; }
+.erp-wo-distribution-dialog { width:min(72rem,calc(100vw - 2rem)); max-width:72rem; }
+.erp-wo-distribution-dialog .erp-wo-distribution-settings { min-width:0; padding:0; border:0; }
+.erp-wo-plan-add-dialog { width:min(36rem,calc(100vw - 2rem)); max-width:36rem; }
+.erp-wo-plan-add-form > .field-cell { display:grid; grid-template-columns:minmax(0,1fr); }
+.erp-wo-plan-add-fields { grid-template-columns:minmax(0,12rem) minmax(0,12rem); align-items:start; }
+.erp-wo-plan-add-fields > .field-cell { display:grid; gap:var(--space-2); }
+.erp-wo-plan-add-fields button[aria-label="추가할 계획일"] { width:100%; min-width:11rem; justify-content:space-between; }
+.erp-wo-plan-add-line { grid-column:1/-1; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-buttons, .erp-wo-plan-add-line .erp-wo-distribution-line-buttons > button { width:100%; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-buttons > button { height:auto; min-height:var(--control-height-md); white-space:normal; overflow-wrap:anywhere; text-align:left; justify-content:flex-start; }
+.erp-wo-plan-add-summary { display:flex; flex-wrap:wrap; gap:var(--space-3) var(--space-5); margin:0; }
+.erp-wo-plan-add-summary > div { display:grid; gap:var(--space-1); }
+.erp-wo-plan-add-summary dt { color:var(--on-surface-muted); font:var(--type-label-sm); }
+.erp-wo-plan-add-summary dd { margin:0; font-variant-numeric:tabular-nums; }
+@media(max-width:32rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-plan-add-fields > .field-cell { grid-template-columns:minmax(0,1fr); justify-content:stretch; }
+.erp-wo-plan-add-fields .field-label { margin:0; }
+.erp-wo-plan-add-line { width:100%; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-field { width:100%; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-buttons > button { border-radius:var(--radius-sm); }
+
+.erp-wo-plan-add-fields { grid-template-columns:12rem minmax(0,1fr); }
+.erp-wo-plan-add-fields > [data-disabled], .erp-wo-plan-add-fields > [class*="_field_"] { max-width:12rem; }
+@media(max-width:32rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }

@@ -14,6 +14,7 @@ export const DistributionLinePicker = ({
   value,
   disabled,
   optional = false,
+  combined = false,
   onChange,
 }: {
   label: string;
@@ -21,6 +22,7 @@ export const DistributionLinePicker = ({
   value: string;
   disabled: boolean;
   optional?: boolean;
+  combined?: boolean;
   onChange: (value: string) => void;
 }) => {
   const [open, setOpen] = useState(false);
@@ -47,13 +49,15 @@ export const DistributionLinePicker = ({
   );
   return (
     <div className="erp-wo-distribution-line-field">
-      <div className="erp-wo-distribution-line-value">
-        {selected
-          ? `${selected.name} (${selected.code})`
-          : optional
-            ? '각 조건의 생산 라인 유지'
-            : '생산 라인을 선택하세요.'}
-      </div>
+      {!combined && (
+        <div className="erp-wo-distribution-line-value">
+          {selected
+            ? `${selected.name} (${selected.code})`
+            : optional
+              ? '각 조건의 생산 라인 유지'
+              : '생산 라인을 선택하세요.'}
+        </div>
+      )}
       <div className="erp-wo-distribution-line-buttons">
         <Button
           size="sm"
@@ -64,7 +68,13 @@ export const DistributionLinePicker = ({
           disabled={disabled}
           onClick={() => setOpen(true)}
         >
-          {selected ? '라인 변경' : '라인 선택'}
+          {combined
+            ? selected
+              ? `${selected.name} (${selected.code})`
+              : '생산 라인 선택'
+            : selected
+              ? '라인 변경'
+              : '라인 선택'}
         </Button>
         {optional && value && (
           <Button

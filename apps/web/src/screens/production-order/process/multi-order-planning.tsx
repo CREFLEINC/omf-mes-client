@@ -385,7 +385,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   const plants = new Set(entries.map((entry) => entry.order.plantId));
   const units = new Set(entries.map((entry) => entry.order.uomId));
   const target = controllers[focus];
-  const informationEntry = target ?? entries[0];
   const combined = entries.flatMap((entry) =>
     entry.editor.rows.map((row) => ({
       ...row,
@@ -580,30 +579,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             선택 ERP W/O <strong>{orderNumbers.length}건</strong>
           </p>
         </div>
-        {stage === 'plan' && informationEntry && (
-          <WorkOrderOverview
-            order={informationEntry.order}
-            item={{
-              itemCode: informationEntry.itemCode,
-              itemName: informationEntry.itemName,
-              erpItemGroupCode: informationEntry.itemGroupCode,
-            }}
-            unitLabel={informationEntry.unit}
-            numberControl={
-              <Select
-                size="sm"
-                aria-label="정보를 확인할 ERP W/O"
-                value={informationEntry.order.productionOrderNo}
-                disabled={busy}
-                options={entries.map((entry) => ({
-                  value: entry.order.productionOrderNo,
-                  label: entry.order.productionOrderNo,
-                }))}
-                onChange={setFocus}
-              />
-            }
-          />
-        )}
       </header>
       <Tabs
         className="erp-wo-stage-tabs"
@@ -1111,6 +1086,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         <Dialog
           open
           title="계획 추가"
+          className="erp-wo-plan-add-dialog"
           closeOnBackdropClick={false}
           onClose={() => setAddOpen(false)}
           footer={
@@ -1161,28 +1137,35 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               />
             </div>
             {addTarget && (
-              <p className="field-note">
-                이번 계획 {targetOf(addTarget)}, 편성 {draftOf(addTarget)}, 추가 편성 가능{' '}
-                {getRemaining(addTarget)} {addTarget.unit}
-              </p>
+              <dl className="erp-wo-plan-add-summary">
+                <div>
+                  <dt>이번 계획 수량</dt>
+                  <dd>
+                    {formatQty(targetOf(addTarget))} {addTarget.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>편성 수량</dt>
+                  <dd>
+                    {formatQty(draftOf(addTarget))} {addTarget.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>추가 편성 가능</dt>
+                  <dd>
+                    {formatQty(getRemaining(addTarget))} {addTarget.unit}
+                  </dd>
+                </div>
+              </dl>
             )}
             <div className="erp-wo-plan-add-fields">
               <div className="field-cell">
                 <span className="field-label">계획일</span>
                 <DatePicker
+                  placeholder="계획일 선택"
                   aria-label="추가할 계획일"
                   value={addDate}
                   onChange={setAddDate}
-                  disabled={!addTarget}
-                />
-              </div>
-              <div className="field-cell">
-                <span className="field-label">생산 라인</span>
-                <DistributionLinePicker
-                  label="추가할 계획 생산 라인"
-                  lines={addTarget?.lines ?? []}
-                  value={addLine}
-                  onChange={setAddLine}
                   disabled={!addTarget}
                 />
               </div>
@@ -1193,6 +1176,17 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 value={addQuantity}
                 onChange={(event) => setAddQuantity(event.target.value)}
               />
+              <div className="field-cell erp-wo-plan-add-line">
+                <span className="field-label">생산 라인</span>
+                <DistributionLinePicker
+                  combined
+                  label="추가할 계획 생산 라인"
+                  lines={addTarget?.lines ?? []}
+                  value={addLine}
+                  onChange={setAddLine}
+                  disabled={!addTarget}
+                />
+              </div>
             </div>
             <p className="field-note" id={`${remainingId}-add`}>
               추가 수량은 편성 가능한 수량 이내에서 단위 소수 자릿수에 맞게 입력하세요.
