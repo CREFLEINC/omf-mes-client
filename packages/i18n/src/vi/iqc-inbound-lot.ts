@@ -181,6 +181,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     help: 'Lưu ai · lúc nào · làm gì khi ghi · sửa · xóa kết quả, xác nhận · hủy đánh giá, tách LOT quản lý vật tư.',
     columns: { when: 'Thời điểm', who: 'Ai', what: 'Việc gì', detail: 'Nội dung' },
     events: {
+      REQUESTED: 'Tạo yêu cầu kiểm tra',
       RESULT_ADDED: 'Ghi kết quả',
       RESULT_UPDATED: 'Sửa kết quả',
       RESULT_DELETED: 'Xóa kết quả',
@@ -244,6 +245,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   confirm: {
     open: 'Xác nhận đánh giá',
     lockedNoResults: 'Cần ít nhất 1 kết quả',
+    lockedNoNewResult: 'Kiểm tra đã được mở lại. Hãy ghi ít nhất 1 kết quả mới',
     lockedNoJudgment: 'Có kết quả chưa đánh giá',
     title: (inboundLotNo: string) => `Xác nhận đánh giá ${inboundLotNo}`,
     counts: (total: number, accepted: number, rejected: number, held: number) =>

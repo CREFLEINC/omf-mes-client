@@ -157,6 +157,42 @@ describe('W-01-01 판정 확정', () => {
     );
   });
 
+  it('G2 L2 재작업으로 다시 연 뒤 새 결과(DRAFT)가 없으면 [판정 확정]을 까닭과 함께 잠근다', async () => {
+    mount(
+      base({
+        results: [
+          { ...result(1, 'REJECTED'), statusCode: 'CONFIRMED' },
+          { ...result(2, 'REJECTED'), statusCode: 'CONFIRMED' },
+        ],
+      }),
+    );
+
+    const button = await screen.findByRole('button', { name: t.confirm.open });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(t.confirm.lockedNoNewResult);
+  });
+
+  it('G2 L2 확정 400 은 일반 실패 문구에 서버 문구를 덧붙인다', async () => {
+    const user = userEvent.setup();
+    mount(base(), {
+      confirm: {
+        status: 400,
+        body: { errors: [{ scope: 'screen', code: 'NO_NEW_RESULT', message: '합성 서버 문구' }] },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.confirm.open }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.confirm.proceed('합격'),
+      }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: `${t.confirm.failed} 합성 서버 문구` }),
+    ).toBeInTheDocument();
+  });
+
   it('US4-5 확정 창(종합 판정 · 건수 · 적용) → `:confirm` 에 판 번호, 확정 뒤 결과는 「확정됨」으로 잠긴다', async () => {
     const user = userEvent.setup();
     const { sent } = mount(base());

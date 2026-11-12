@@ -238,8 +238,9 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(within(history).getByText('2099-11-11 09:00')).toBeInTheDocument();
   });
 
-  it('US3-6 이력 유형은 공통코드 INSPECTION_REQUEST_EVENT_TYPE 값 그대로 — 열한 값 모두 이름이 있다', () => {
+  it('US3-6 이력 유형은 공통코드 INSPECTION_REQUEST_EVENT_TYPE 값 그대로 — 열한 값과 서버가 첫 줄로 싣는 REQUESTED(G2 L1) 모두 이름이 있다', () => {
     const codes = [
+      'REQUESTED',
       'RESULT_ADDED',
       'RESULT_UPDATED',
       'RESULT_DELETED',

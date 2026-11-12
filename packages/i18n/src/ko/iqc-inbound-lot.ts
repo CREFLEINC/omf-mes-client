@@ -201,6 +201,8 @@ export const iqcInboundLot = {
     help: '결과 기록·수정·삭제, 판정 확정·취소, 자재 관리 LOT 분리를 누가·언제·무엇을 했는지 남깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     columns: { when: '시각', who: '누구', what: '무엇', detail: '내용' },
     events: {
+      /** 의뢰가 생김(입하 마감) — 서버가 이력 첫 줄로 싣는다(G2 L1). */
+      REQUESTED: '검사 의뢰 생성',
       RESULT_ADDED: '결과 기록',
       RESULT_UPDATED: '결과 수정',
       RESULT_DELETED: '결과 삭제',
@@ -266,6 +268,8 @@ export const iqcInboundLot = {
   confirm: {
     open: '판정 확정',
     lockedNoResults: '결과가 1건 이상이어야 합니다',
+    /** 재작업으로 다시 연 뒤 새 결과가 없다(G2 L2). */
+    lockedNoNewResult: '다시 열린 검사입니다. 새 결과를 1건 이상 기록하세요',
     lockedNoJudgment: '판정이 없는 결과가 있습니다',
     title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정`,
     counts: (total: number, accepted: number, rejected: number, held: number) =>

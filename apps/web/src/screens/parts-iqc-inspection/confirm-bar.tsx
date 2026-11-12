@@ -38,6 +38,8 @@ export const confirmLockOf = (inspection: InboundInspection): string | null => {
   const results = inspection.results ?? [];
 
   if (results.length === 0) return t.lockedNoResults;
+  /* 재작업으로 다시 연 뒤 앞 확정 결과(CONFIRMED)만 남았으면 새 결과가 없다 — 서버도 400(G2 L2). */
+  if (!results.some((result) => result.statusCode === 'DRAFT')) return t.lockedNoNewResult;
   if (results.some((result) => result.overallJudgmentCode == null)) return t.lockedNoJudgment;
 
   return null;
@@ -97,7 +99,17 @@ export const ConfirmActions = ({
       ((apiError.kind === 'validation' || apiError.kind === 'stateLocked') &&
         apiError.errors.some((item) => item.code === 'VERSION_CONFLICT'));
 
-    return conflict ? { text: t.conflict, reload: true } : { text: fallback, reload: false };
+    if (conflict) return { text: t.conflict, reload: true };
+    /* 400 등은 서버 문구를 덧붙인다 — 일반 실패 문구만으로는 다음에 할 일을 모른다(G2 L2). */
+    const serverLines =
+      apiError.kind === 'validation' || apiError.kind === 'stateLocked'
+        ? apiError.errors.map((item) => item.message)
+        : apiError.kind === 'http' && apiError.message !== undefined
+          ? [apiError.message]
+          : [];
+    const text = [fallback, ...serverLines.filter((line) => line !== '')].join(' ');
+
+    return { text, reload: false };
   };
 
   const confirm = async (): Promise<void> => {
