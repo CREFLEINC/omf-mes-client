@@ -7,11 +7,9 @@ import { toItemDrafts } from './item-order';
 import { ItemPane } from './item-pane';
 
 const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => {
-  const onAdd = vi.fn<() => void>();
   const onEdit = vi.fn<(draftId: string) => void>();
   const onRemove = vi.fn<(draftId: string) => void>();
   const onReorder = vi.fn<(from: number, to: number) => void>();
-  const onSave = vi.fn<() => void>();
 
   render(
     <ItemPane
@@ -23,21 +21,15 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemPane>[0]> = {}) => 
       loadError={null}
       optionsNotice={null}
       isEditable
-      lockReason="검사 항목은 작성중 버전에서만 편집할 수 있습니다."
-      isDirty={false}
-      isSaving={false}
-      saveBlockedReason={null}
       banner={null}
-      onAdd={onAdd}
       onEdit={onEdit}
       onRemove={onRemove}
       onReorder={onReorder}
-      onSave={onSave}
       {...overrides}
     />,
   );
 
-  return { onAdd, onEdit, onRemove, onReorder, onSave, user: userEvent.setup() };
+  return { onEdit, onRemove, onReorder, user: userEvent.setup() };
 };
 
 const itemRows = (): HTMLElement[] =>
@@ -136,14 +128,6 @@ describe('ItemPane — 표', () => {
 });
 
 describe('ItemPane — 편집', () => {
-  it('「항목 추가」를 누르면 상위에 알린다', async () => {
-    const { onAdd, user } = renderPane();
-
-    await user.click(screen.getByRole('button', { name: '항목 추가' }));
-
-    expect(onAdd).toHaveBeenCalled();
-  });
-
   it('행의 삭제를 누르면 그 초안 키를 알린다', async () => {
     const { onRemove, user } = renderPane();
 
@@ -177,7 +161,7 @@ describe('ItemPane — 편집', () => {
 
   /* 잠긴 버전에서는 누를 수 없는 추가 · 수정 · 삭제 · 저장 단추를 두지 않고, 표 위 안내 줄도 두지 않는다(#196). */
   it('잠긴 버전에서는 추가·수정·삭제·저장 단추와 표 위 안내 줄이 없다', () => {
-    renderPane({ isEditable: false, isDirty: true });
+    renderPane({ isEditable: false });
 
     expect(screen.queryByRole('button', { name: '항목 추가' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '1번 항목 수정' })).not.toBeInTheDocument();
@@ -186,20 +170,5 @@ describe('ItemPane — 편집', () => {
     expect(
       screen.queryByText('검사 항목을 추가하려면 신규 버전을 발행하세요.'),
     ).not.toBeInTheDocument();
-  });
-
-  it('저장을 막는 사유가 있으면 비활성이고 사유가 보인다', () => {
-    renderPane({ isDirty: true, saveBlockedReason: '먼저 버전을 저장하세요.' });
-
-    expect(screen.getByRole('button', { name: '임시 저장' })).toBeDisabled();
-    expect(screen.getByText('먼저 버전을 저장하세요.')).toBeInTheDocument();
-  });
-
-  it('고친 것이 있으면 저장을 누를 수 있다', async () => {
-    const { onSave, user } = renderPane({ isDirty: true });
-
-    await user.click(screen.getByRole('button', { name: '임시 저장' }));
-
-    expect(onSave).toHaveBeenCalled();
   });
 });

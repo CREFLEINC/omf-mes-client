@@ -105,10 +105,18 @@ describe('ItemFormDialog — 표시', () => {
 describe('ItemFormDialog — 차단과 경고', () => {
   /* 비어 있는 필수 칸은 처음부터 테두리만 빨갛다 — 글은 화면 읽기로만 남긴다(검사 조회·판정과 같다 · #196). */
   it('비어 있는 필수 칸은 확인 전에도 오류 상태다', () => {
+    renderDialog({ values: { ...savedDrafts()[0]!, inspectionItemName: '' } });
+
+    expect(screen.getByLabelText('항목명')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /* omf-all-around#262 — 항목코드는 비우면 서버가 자동 등록한다. */
+  it('항목코드는 비어도 오류 상태가 아니고 자동 등록을 안내한다', () => {
     renderDialog({ values: { ...savedDrafts()[0]!, inspectionItemCode: '' } });
 
-    expect(screen.getByLabelText('항목코드')).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByLabelText('항목명')).not.toHaveAttribute('aria-invalid', 'true');
+    const code = screen.getByLabelText('항목코드');
+    expect(code).not.toHaveAttribute('aria-invalid', 'true');
+    expect(code).toHaveAttribute('placeholder', '비우면 자동으로 등록됩니다');
   });
 
   /* 사용자 결정 2026-11-10 — 수치 항목만 단위가 필수다. */
