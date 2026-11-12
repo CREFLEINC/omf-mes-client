@@ -17,8 +17,8 @@ export const shellHome: Translated<typeof ko.shellHome> = {
     open: (label: string) => `Xem công việc ${label}`,
   },
   screens: {
-    inboundReceipt: 'Ghi nhận hàng NCC đến · Bắt đầu bằng quét nhãn',
-    materialLotScan: 'Đăng ký sau LOT chưa quét khi hàng đến',
+    inboundReceipt: 'Quét nhãn LOT quản lý vật tư là đăng ký ngay',
+    inboundClose: 'Chốt hoặc hủy chốt LOT nhập hàng đang nhập',
     inboundVariance: 'Ghi nhận nhập hàng khác dự kiến · Không sửa sau khi đăng ký',
     recycleEntry: 'Đăng ký vật liệu tái chế thành lô vật tư',
     iqcSkipRequest: 'Chỉ gửi yêu cầu · Phê duyệt trên web quản trị',

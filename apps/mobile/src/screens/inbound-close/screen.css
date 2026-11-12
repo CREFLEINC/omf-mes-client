@@ -1,0 +1,170 @@
+/*
+ * M-01-03 입하 마감(005 · screens/M-01-03.md). 목록 카드는 M-01-01 입하 LOT 카드와 같은 모양이다.
+ * 하단 고정 단추 아래로 목록이 흐르므로 바닥을 비운다.
+ */
+.inbound-close {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+  padding-bottom: 96px;
+}
+
+.inbound-close > * {
+  flex: none;
+}
+
+.inbound-close p {
+  margin: 0;
+}
+
+.inbound-close__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.inbound-close__heading {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.inbound-close__cards,
+.inbound-close__lots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 카드 전체가 누르는 곳이다(입하 중). 마감 취소 가능 카드는 단추만 누른다. */
+.inbound-close__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--type-body-sm);
+  text-align: start;
+  white-space: normal;
+}
+
+button.inbound-close__card:active {
+  background: var(--surface-container-low);
+}
+
+button.inbound-close__card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.inbound-close__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.inbound-close__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* 번호는 고정폭으로, 자르지 않고 접는다. */
+.inbound-close__mono {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.inbound-close__dim {
+  color: var(--on-surface-muted);
+}
+
+.inbound-close__text {
+  color: var(--on-surface-variant);
+}
+
+.inbound-close__blocked {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
+
+.inbound-close__hidden {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+}
+
+.inbound-close__hidden ul {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+
+.inbound-close__facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+.inbound-close__facts dt {
+  color: var(--on-surface-muted);
+}
+
+.inbound-close__facts dd {
+  margin: 0;
+}
+
+.inbound-close__lot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.inbound-close__index {
+  flex: none;
+  min-width: 24px;
+  color: var(--on-surface-muted);
+  font-weight: 700;
+}
+
+.inbound-close__lot-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.inbound-close__result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--semantic-success-text);
+  font: var(--type-title-sm);
+}

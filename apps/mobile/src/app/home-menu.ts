@@ -51,11 +51,12 @@ export const homeAreas: HomeArea[] = [
         icon: 'local_shipping',
         description: t.screens.inboundReceipt,
       },
+      /* M-01-03 입하 마감(005) — 입하 등록 다음(screens/M-01-03.md). */
       {
-        to: '/material-lot-scan',
-        label: messages.materialLotScan.title,
-        icon: 'qr_code_scanner',
-        description: t.screens.materialLotScan,
+        to: '/inbound-close',
+        label: messages.inboundClose.title,
+        icon: 'inventory',
+        description: t.screens.inboundClose,
       },
       {
         to: '/inbound-variance',

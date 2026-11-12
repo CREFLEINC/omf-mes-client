@@ -101,7 +101,6 @@ import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
 import { lotTrace } from './lot-trace';
 import { materialLocation } from './material-location';
-import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
 import { productStockStatus } from './product-stock-status';
@@ -135,6 +134,7 @@ import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { inboundReceipt } from './inbound-receipt';
+import { inboundClose } from './inbound-close';
 import { packingRepack } from './packing-repack';
 import { packingWork } from './packing-work';
 import { putaway } from './putaway';
@@ -263,7 +263,6 @@ export const ko = {
   workOrderProgress,
   lotTrace,
   materialLocation,
-  materialLotScan,
   materialPicking,
   productStockStatus,
   shipmentRequestCreate,
@@ -295,6 +294,7 @@ export const ko = {
   productPicking,
   productReceipt,
   inboundReceipt,
+  inboundClose,
   packingRepack,
   packingWork,
   putaway,
