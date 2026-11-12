@@ -4900,8 +4900,9 @@
 /*
  * ⚠ 표가 좁으면(1024×768 에서 692 · 시안 「좁은 폭」) 틈과 고정 열을 줄여 가로 스크롤 없이 넣는다 — LOT 번호는
  *   자르지 않고 13px, 공급사 LOT 은 말줄임, 나머지는 두 줄까지 줄바꿈(시안 README 「좁은 폭 상태」).
+ *   넓은 열의 최소 합이 약 1,030px 이라 그보다 좁으면 이 배치를 쓴다 — 1280 에서도 표가 가로로 밀려 라벨 칸이 잘렸다(G2 H4).
  */
-@container mlot-table (max-width: 760px) {
+@container mlot-table (max-width: 1040px) {
   .pop-ui .pop-mlot-table-head,
   .pop-ui .pop-mlot-row {
     column-gap: var(--space-2);
@@ -5596,19 +5597,25 @@
 .pop-ui > .pop-mlot-action-bar {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-2) var(--space-4);
   padding-block: var(--space-3);
   background: var(--surface);
 }
 
+/*
+ * 안내 글은 폭 0 으로 접히지 않는다 — 단추 줄이 넓으면(1024 · 발행 단위 + 단추 4개) 막대가 두 줄로 접혀 단추 줄이 아래로 간다.
+ * 전에는 글 폭이 0 이 되어 한 글자씩 세로로 쌓이고 [라벨 발행]이 잘렸다(G2 H4).
+ */
 .pop-ui .pop-mlot-bar-text {
   display: grid;
+  flex: 1 1 280px;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   column-gap: var(--space-3);
-  min-width: 0;
+  min-width: 280px;
 }
 
 .pop-ui .pop-mlot-bar-text > :not(.pop-mlot-bar-icon) {
@@ -5655,9 +5662,13 @@
 
 .pop-ui .pop-mlot-bar-actions {
   display: flex;
-  flex: none;
-  gap: var(--space-3);
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin-inline-start: auto;
 }
+
 
 .pop-ui .pop-mlot-bar-button,
 .pop-ui .pop-mlot-bar-primary {
@@ -5685,6 +5696,22 @@
   border: 0;
   background: var(--primary);
   color: var(--on-primary);
+}
+
+/* 1024 폭 — 단추 안쪽 여백 · 틈을 줄여 단추 줄(발행 단위 + 단추 4개)이 한 줄에 들어가게 한다(G2 H4). */
+@media (max-width: 1279px) {
+  .pop-ui .pop-mlot-bar-button,
+  .pop-ui .pop-mlot-bar-primary {
+    padding: 0 var(--space-4);
+  }
+
+  .pop-ui .pop-mlot-bar-actions {
+    column-gap: var(--space-2);
+  }
+
+  .pop-ui .pop-mlot-units {
+    margin-inline-end: 0;
+  }
 }
 
 .pop-ui .pop-mlot-bar-primary:disabled,
