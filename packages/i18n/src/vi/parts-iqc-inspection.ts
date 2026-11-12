@@ -135,7 +135,7 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     checkValueLabel: (name: string) => `Kết quả đo ${name}`,
     defects: 'Số lỗi',
     defectsLabel: (name: string) => `Số lỗi ${name}`,
-    defectsRequired: 'Hãy nhập số lỗi tìm thấy cho hạng mục đã chọn NG.',
+    defectsRequired: 'Hãy nhập số lỗi tìm thấy (1 ~ số lượng kiểm tra) cho hạng mục đã chọn NG.',
     remarks: 'Ghi chú',
     remarksPlaceholder: 'Nhập ghi chú',
   },

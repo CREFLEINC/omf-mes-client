@@ -2650,6 +2650,37 @@ describe('InspectionStandardScreen — 지시문 저장', () => {
       .map((request) => request.url.pathname);
     expect(order).toEqual([VERSION_DETAIL_PATH, `${VERSIONS_PATH}/4002:confirm`]);
   });
+
+  /* PR #1601 리뷰 — 실패한 지시문 저장의 「이어서 할 일」이 뒤의 다른 저장 성공에 실려 나가면 안 된다. */
+  it('지시문 저장이 실패하면 확정하지 않고, 뒤의 버전 설정 저장도 확정을 부르지 않는다', async () => {
+    let fail = true;
+    const { requests, user } = renderSelectedVersion([
+      versionSaveRoute(() =>
+        fail
+          ? jsonResponse({ message: '' }, { status: 500 })
+          : jsonResponse(inspectionPlanVersionFixtures[0]),
+      ),
+      versionTransitionRoute('confirm'),
+    ]);
+
+    await editGuide(user, '장갑 착용');
+    await user.click(screen.getByRole('button', { name: '확정' }));
+    await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
+    await waitFor(() => expect(guidePuts(requests)).toHaveLength(1));
+    await user.click(within(await dialog()).getByRole('button', { name: '취소' }));
+    /* 담아 둔 지시문은 남는다. */
+    expect(screen.getByText('장갑 착용')).toBeInTheDocument();
+
+    fail = false;
+    const form = await awaitVersionForm();
+    await user.clear(within(form).getByLabelText('샘플 비율(%)'));
+    await user.type(within(form).getByLabelText('샘플 비율(%)'), '5');
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(guidePuts(requests)).toHaveLength(2));
+
+    expect(requestsTo(requests, `${VERSIONS_PATH}/4002:confirm`)).toHaveLength(0);
+    expect(screen.getByText('장갑 착용')).toBeInTheDocument();
+  });
 });
 
 describe('InspectionStandardScreen — 확정과 폐기', () => {

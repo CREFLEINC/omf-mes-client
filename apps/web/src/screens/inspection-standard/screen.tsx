@@ -608,7 +608,6 @@ export const InspectionStandardScreen = () => {
   const versionList = useInspectionPlanVersionList(selectedPlanId);
   const versions = versionList.data?.items ?? [];
   const selectedVersionId = Number(searchParams.get('ver') ?? '') || null;
-  /* 고른 버전의 변경 이력 — 「변경 이력」 단추를 이력이 있을 때만 세운다(#208). 창 · 탭과 같은 조회라 한 번만 나간다. */
   /* 고른 버전의 기준서 도면(#208) — 「도면」 탭의 건수와 내용이 같은 조회다. */
   const versionDrawings = useInspectionDrawings(selectedVersionId);
   /* 도면 탭의 저장 전 변경(#227) — 확정 · 신규 버전 발행을 막는 「저장하지 않은 변경」에 들어간다. */
@@ -741,9 +740,37 @@ export const InspectionStandardScreen = () => {
       /* 「버전 설정 수정」 · 안내 문구 창은 저장으로 할 일이 끝난다 — 열어 두면 저장이 된 건지 헷갈린다. */
       setIsVersionEditOpen(false);
       setGuideEditField(null);
+      toast.show({ variant: 'success', description: messages.common.saved });
+    },
+  });
+
+  /*
+   * 담아 둔 지시문 저장 — 버전 수정과 같은 요청이지만 통로를 따로 둔다. 같은 통로면 지시문 저장이 실패한 뒤
+   * 「버전 설정 수정」 저장이 성공할 때 남아 있던 「이어서 할 일」(확정 등)이 실행된다(PR #1601 리뷰).
+   */
+  const guideWrite = useMasterWrite<VersionFormValues, InspectionPlanVersion>({
+    request: (values, headers) =>
+      client.PUT('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+        params: {
+          path: { inspectionPlanVersionId: selectedVersionId ?? 0 },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': headers['If-Match'] ?? '',
+          },
+        },
+        body: toVersionUpdate(values),
+      }),
+    etagPath: selectedVersionId === null ? null : versionDetailPath(selectedVersionId),
+    invalidateKeys: [versionKeys.all],
+    knownFields: VERSION_FORM_FIELDS,
+    onSuccess: (saved) => {
+      const next = versionToFormValues(saved);
+      setVersionFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next },
+      );
+      setGuideDraft(null);
       const after = afterGuideSave.current;
       afterGuideSave.current = null;
-      if (after !== null) setGuideDraft(null);
       /* 확정이 이어지면 확정 알림 하나만 낸다. */
       if (after === null || after.announce) {
         toast.show({ variant: 'success', description: messages.common.saved });
@@ -912,6 +939,7 @@ export const InspectionStandardScreen = () => {
     setVersionFieldErrors({});
     setGuideDraft(null);
     afterGuideSave.current = null;
+    guideWrite.reset();
     setItemDraftState(null);
     drawingDraft.reset();
     setItemDialog(null);
@@ -969,7 +997,7 @@ export const InspectionStandardScreen = () => {
       return;
     }
     afterGuideSave.current = { then: after, announce };
-    versionWrite.write({ ...versionFormState.baseline, guideText: guideDraft });
+    guideWrite.write({ ...versionFormState.baseline, guideText: guideDraft });
   };
 
   /** 바닥 줄 「임시 저장」 — 바뀐 쪽만 보낸다(사용자 지시 · #258). 지시문을 먼저 저장한다. */
@@ -1456,7 +1484,7 @@ export const InspectionStandardScreen = () => {
     const reason =
       isItemsDirty || (!drawingDraft.isDirty && !isGuideDirty) ? itemsSaveBlockedReason : null;
     if (reason !== null) return <DisabledAction label={t.actions.tempSave} reason={reason} />;
-    const isSaving = itemsWrite.isSaving || drawingDraft.isSaving || versionWrite.isSaving;
+    const isSaving = itemsWrite.isSaving || drawingDraft.isSaving || guideWrite.isSaving;
 
     return (
       <div className="field-cell">
@@ -2094,10 +2122,7 @@ export const InspectionStandardScreen = () => {
               onEditGuide={isEditable ? setGuideEditField : undefined}
               banner={
                 guideDraft === null ? undefined : (
-                  <PlanActionBanner
-                    error={versionWrite.error}
-                    onReload={handleReloadVersionDetail}
-                  />
+                  <PlanActionBanner error={guideWrite.error} onReload={handleReloadVersionDetail} />
                 )
               }
             />
@@ -2568,6 +2593,9 @@ export const InspectionStandardScreen = () => {
           kind={versionTransition}
           onClose={() => {
             setVersionTransition(null);
+            /* 실패한 지시문 저장의 「이어서 할 일」을 남기지 않는다. 담아 둔 지시문은 그대로 둔다. */
+            afterGuideSave.current = null;
+            guideWrite.reset();
             confirmWrite.reset();
             obsoleteWrite.reset();
             discardWrite.reset();
@@ -2577,13 +2605,13 @@ export const InspectionStandardScreen = () => {
             if (versionTransition === 'confirm') saveGuideThen(() => confirmWrite.write(), false);
             else versionTransitionWrite.write();
           }}
-          isSaving={versionTransitionWrite.isSaving || versionWrite.isSaving}
+          isSaving={versionTransitionWrite.isSaving || guideWrite.isSaving}
           /* 전이에는 409가 없다(계약 실측) — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={
             <PlanActionBanner
               error={
                 versionTransitionWrite.error ??
-                (versionTransition === 'confirm' ? versionWrite.error : null)
+                (versionTransition === 'confirm' ? guideWrite.error : null)
               }
             />
           }

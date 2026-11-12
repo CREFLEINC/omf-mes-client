@@ -132,3 +132,24 @@ export const sameForm = (a: PartsIqcForm, b: PartsIqcForm): boolean => {
     });
   return key(a) === key(b);
 };
+
+/**
+ * 기타 항목 하나가 싣는 측정 줄 수 — AQL 기준에서 NG 면 찾은 불량 수만큼 불량 시료 줄을 싣는다(omf-all-around#264).
+ * 불량 수를 아직 적지 않았으면 한 줄(저장 · 제출은 따로 막는다).
+ */
+export const checkRowCount = (
+  judgment: ItemJudgment,
+  defects: number | null,
+  isAql: boolean,
+): number => (judgment === 'REJECTED' && isAql ? (defects ?? 1) : 1);
+
+/** 임시 저장한 회차를 다시 열 때 — AQL 기준이면 그 항목의 불량 시료 줄 수가 불량 수다. 없으면 `undefined`. */
+export const defectsFromMeasured = (
+  measured: readonly { inspectionItemSpecId: number; judgmentCode?: string | null }[],
+  itemId: number,
+): string | undefined => {
+  const rows = measured.filter(
+    (m) => m.inspectionItemSpecId === itemId && m.judgmentCode === 'REJECTED',
+  ).length;
+  return rows === 0 ? undefined : String(rows);
+};

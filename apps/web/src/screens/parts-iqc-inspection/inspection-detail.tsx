@@ -66,7 +66,9 @@ import { InspectionHistory } from './history';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
+  checkRowCount,
   countOf,
+  defectsFromMeasured,
   emptyForm,
   historyReducer,
   numberOf,
@@ -639,14 +641,15 @@ const InspectionForm = (props: FormProps) => {
         else if (m.judgmentCode === 'ACCEPTED' || m.judgmentCode === 'REJECTED')
           form.checks[spec.inspectionItemSpecId] = m.judgmentCode;
         /* AQL 은 찾은 불량 수만큼 불량 시료 줄로 남는다 — 줄 수가 불량 수다(omf-all-around#264). */
-        if (aqlPlan !== null && m.judgmentCode === 'REJECTED')
-          form.defects[spec.inspectionItemSpecId] = String(
-            Number(form.defects[spec.inspectionItemSpecId] ?? '0') + 1,
-          );
+        const defects =
+          aqlPlan === null
+            ? undefined
+            : defectsFromMeasured(draft?.measured ?? [], spec.inspectionItemSpecId);
+        if (defects !== undefined) form.defects[spec.inspectionItemSpecId] = defects;
       }
     }
     return form;
-  }, [draft, specs, defaultQty]);
+  }, [draft, specs, defaultQty, aqlPlan]);
 
   const [history, dispatch] = useReducer(historyReducer, initial, startHistory);
   const form = history.present;
@@ -665,10 +668,14 @@ const InspectionForm = (props: FormProps) => {
   /* 텍스트 항목은 글만 남긴다 — 판정은 검사자가 OK/NG 를 직접 고른다(#247 · 사용자 지시 2026-11-10). */
   const changeText = (item: ItemSpec, text: string) =>
     change({ ...form, texts: { ...form.texts, [item.inspectionItemSpecId]: text } });
-  /** AQL 기준에서 NG 인 기타 항목에 적은 불량 수 — 1 이상 정수가 아니면 아직 없다(omf-all-around#264). */
+  /**
+   * AQL 기준에서 NG 인 기타 항목에 적은 불량 수 — 1 ~ 검사 수량 정수가 아니면 아직 없다(omf-all-around#264).
+   * 불량 수만큼 불량 시료 줄을 보내므로 검사 수량을 넘지 않게 막는다.
+   */
   const defectsOf = (f: PartsIqcForm, item: ItemSpec): number | null => {
     const n = countOf(f.defects[item.inspectionItemSpecId] ?? '');
-    return n === null || n < 1 ? null : n;
+    const qty = countOf(f.visualInspectedQty);
+    return n === null || n < 1 || (qty !== null && n > qty) ? null : n;
   };
   const inspectedAtId = useId();
   const [inspectedDate = '', inspectedTimeRaw = ''] = form.inspectedAt.split('T');
@@ -760,6 +767,19 @@ const InspectionForm = (props: FormProps) => {
       (form.checks[item.inspectionItemSpecId] ?? null) === null &&
       (form.values[item.inspectionItemSpecId] ?? []).some((text) => numberOf(text) !== null),
   );
+  /*
+   * 서버(AQL 자동 판정)와 같은 기준 — 항목마다 불합격 시료 줄 수가 항목 허용 수를 넘는가. 수동 판정 항목은 값을 적은
+   * 시료마다 고른 판정을 싣는다(`measurementsOf`).
+   */
+  const dimensionRejectedForServer = dimensions.some((item, index) => {
+    const rejectedRows = isManualDimension(item)
+      ? form.checks[item.inspectionItemSpecId] === 'REJECTED'
+        ? (form.values[item.inspectionItemSpecId] ?? []).filter((text) => numberOf(text) !== null)
+            .length
+        : 0
+      : (dimensionResults[index]?.outCount ?? 0);
+    return rejectedRows > acceptanceOf(item, versionAcceptance);
+  });
   const overall = chosen ?? suggested;
   const heldQtyOf = (judgment: string | null): number =>
     judgment === 'HELD' && inspectedQty !== null ? Math.max(0, inspectedQty - rejectedQty) : 0;
@@ -767,7 +787,7 @@ const InspectionForm = (props: FormProps) => {
     rejectedQty,
     judgmentAcceptance,
     heldQtyOf(overall),
-    aqlPlan !== null && dimensionResults.some((d) => d.judgment === 'REJECTED'),
+    aqlPlan !== null && dimensionRejectedForServer,
   );
   /* AQL 기준에서 NG 를 골랐는데 불량 수를 적지 않은 항목 — 저장 · 제출을 막는다. */
   const defectsMissing =
@@ -813,7 +833,7 @@ const InspectionForm = (props: FormProps) => {
       const j = form.checks[item.inspectionItemSpecId];
       if (j == null) return;
       /* AQL 은 찾은 불량 수만큼 불량 시료 줄을 싣는다 — 다시 열 때 줄 수로 불량 수를 되살린다(omf-all-around#264). */
-      const rows = j === 'REJECTED' && aqlPlan !== null ? (defectsOf(form, item) ?? 1) : 1;
+      const rows = checkRowCount(j, defectsOf(form, item), aqlPlan !== null);
       for (let sampleNo = 1; sampleNo <= rows; sampleNo += 1) {
         if (item.dataTypeCode !== 'TEXT') {
           bool(item, j === 'ACCEPTED', sampleNo);

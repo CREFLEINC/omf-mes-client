@@ -139,7 +139,7 @@ export const partsIqcInspection = {
     /** AQL 기준에서 NG 인 항목의 찾은 불량 수(omf-all-around#264) */
     defects: '불량 수',
     defectsLabel: (name: string) => `${name} 불량 수`,
-    defectsRequired: 'NG 를 고른 항목에 찾은 불량 수를 적어 주세요.',
+    defectsRequired: 'NG 를 고른 항목에 찾은 불량 수(1 ~ 검사 수량)를 적어 주세요.',
     remarks: '비고',
     remarksPlaceholder: '비고를 입력하세요',
   },

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { historyReducer, numberOf, startHistory, emptyForm, withValue } from './form-state';
+import {
+  checkRowCount,
+  defectsFromMeasured,
+  emptyForm,
+  historyReducer,
+  numberOf,
+  startHistory,
+  withValue,
+} from './form-state';
 import {
   judgeDimension,
   judgeValue,
@@ -196,5 +204,26 @@ describe('치수 줄의 형편 (참고: omf-dx-vina 수입검사)', () => {
     expect(rowStateOf(2, 5, 1, 1)).toBe('wait');
     expect(rowStateOf(0, 5, 0, 0)).toBe('empty');
     expect(rowStateOf(5, 5, 1, 1)).toBe('done');
+  });
+});
+
+/* omf-all-around#264 — AQL 의 NG 항목은 찾은 불량 수만큼 불량 시료 줄로 저장하고, 다시 열 때 줄 수로 되살린다. */
+describe('AQL 불량 수 ↔ 측정 줄', () => {
+  it('AQL 에서 NG 면 불량 수만큼 줄을 싣고, 아니면 한 줄이다', () => {
+    expect(checkRowCount('REJECTED', 3, true)).toBe(3);
+    expect(checkRowCount('REJECTED', 3, false)).toBe(1);
+    expect(checkRowCount('ACCEPTED', 3, true)).toBe(1);
+    expect(checkRowCount('REJECTED', null, true)).toBe(1);
+  });
+
+  it('저장된 불량 시료 줄 수가 불량 수다 — 다른 항목 · 합격 줄은 세지 않는다', () => {
+    const measured = [
+      { inspectionItemSpecId: 48, judgmentCode: 'REJECTED' },
+      { inspectionItemSpecId: 48, judgmentCode: 'REJECTED' },
+      { inspectionItemSpecId: 49, judgmentCode: 'REJECTED' },
+      { inspectionItemSpecId: 50, judgmentCode: 'ACCEPTED' },
+    ];
+    expect(defectsFromMeasured(measured, 48)).toBe('2');
+    expect(defectsFromMeasured(measured, 50)).toBeUndefined();
   });
 });
