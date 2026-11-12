@@ -162,6 +162,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             label: '초과분 발주 연결',
             labelVi: 'Liên kết phần vượt với P/O',
           },
+          /*
+           * W-01-14 — 공급사·품목으로 자재 관리 LOT 을 미리 만들고 대기 LOT 을 보고 폐기한다(005 · omf-all-around#254).
+           * 라벨은 POP P-01-01 에서만 찍는다.
+           */
+          {
+            to: '/logistics/material-lot-issue',
+            label: '자재 관리 LOT 발행',
+            labelVi: 'Phát hành LOT quản lý vật tư',
+          },
         ],
       },
       /*
@@ -713,6 +722,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             labelVi: 'Lịch sử hiệu chuẩn thiết bị đo',
           },
         ],
+      },
+      /*
+       * W-06-25 공급사·품목 기본 정보 — 자재 관리 LOT 발행(POP P-01-01 · 관리웹 W-01-14)이 미리 채울 패키징과
+       * 자재 관리 LOT당 재고 수량(005 · omf-all-around#254). 품목 다음, 창고·위치 앞이다(screens/W-06-25.md).
+       */
+      {
+        to: '/master-data/supplier-item-defaults',
+        icon: 'package_2',
+        label: '공급사·품목 기본 정보', // ui-check-ignore: C-13 설계 확정 화면 이름 「공급사·품목 기본 정보」(screens/W-06-25.md)
+        labelVi: 'Thông tin mặc định nhà cung cấp · mặt hàng', // ui-check-ignore: C-13 설계 확정 화면 이름 「공급사·품목 기본 정보」(screens/W-06-25.md)
       },
       /*
        * 창고·위치 — 창고·Location → 창고 배치도(위치를 도면에 얹음).

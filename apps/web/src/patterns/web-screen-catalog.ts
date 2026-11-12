@@ -69,6 +69,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * ⚠ **이 섹션은 코드가 `W-06` 으로 고르지 않다.** 메뉴 분류(기준정보)와 설계 도메인(06 기준정보)이
    * 대체로 겹치지만 창고 계열 둘은 아니다 — 아래 두 자리에 근거를 적었다.
    */
+  /* 005(omf-all-around#254) — 공급사·품목 기본 정보. 사이드바는 창고·위치 앞이다. */
+  { path: '/master-data/supplier-item-defaults', code: 'W-06-25', name: '공급사·품목 기본 정보' }, // ui-check-ignore: C-13 설계 확정 화면 이름 「공급사·품목 기본 정보」(screens/W-06-25.md)
   { path: '/master-data/warehouse-location', code: 'W-06-07', name: '창고·Location 마스터' },
   /*
    * ⚠ **06 이 아니라 공통(CO)이다.** IA §3-1 은 이 화면을 「시스템/공통 > 설정」에 두었는데
@@ -136,6 +138,8 @@ export const WEB_SCREENS: readonly WebScreen[] = [
    * 번호(`W-01-01`)는 IQC 수입검사이고, 예정 조회는 나중에 도출돼 09 를 받았다(IA §3-2).
    */
   { path: '/logistics/inbound-schedule', code: 'W-01-09', name: '입하 예정 조회' },
+  /* 005(omf-all-around#254) — 입고 관리 탭 묶음의 한 탭이지만 설계 화면 코드가 따로 있다(권한 W-01-14). */
+  { path: '/logistics/material-lot-issue', code: 'W-01-14', name: '자재 관리 LOT 발행' },
   /* W-01-03 은 화면이 아니라 입고 관리 라인 표의 「입하 등록」이다 — 옛 주소는 입고 관리로 옮겨 준다. */
   { path: '/logistics/over-receipt-split', code: 'W-01-03', name: '입하 등록' },
   { path: '/logistics/iqc-inspection', code: 'W-01-01', name: 'IQC 수입검사·판정' },
