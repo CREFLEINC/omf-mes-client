@@ -42,7 +42,7 @@ describe('W-03-10 목록 「원천」', () => {
 
 describe('G2 L13 시안 문구', () => {
   it('특채 팝업 대상은 「자재 관리 LOT n개 전부」가 앞에 선다(좁은 칸에서 잘리지 않게)', () => {
-    expect(t.inboundLot.sortedFromTail('0004')).toContain('0004');
+    expect(t.sortedFromTail('0004')).toContain('0004');
     expect(messages.dispositionDecision.concession.targetAll('IL-20991111-0001', 3)).toMatch(
       /^자재 관리 LOT 3개 전부/u,
     );
