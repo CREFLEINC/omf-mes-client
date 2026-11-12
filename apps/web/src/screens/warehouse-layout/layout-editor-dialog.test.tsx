@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { jsonResponse } from '../../test/api-harness';
 import { DEFAULT_MARKER_SHAPE } from './layout-draft';
@@ -17,6 +17,8 @@ import {
   hugePngFile,
   layoutResponse,
   loaded,
+  locationSeed,
+  type LocationSeed,
   locationButton,
   locationTable,
   NEW_ATTACHMENT_ID,
@@ -49,24 +51,28 @@ import {
 stubObjectUrls();
 
 describe('W-CO-08 창고 배치도 — 위치 계층', () => {
+  /*
+   * 2차(FR-015)로 고쳤다 — 옛 시험은 랙을 펼쳐 층(Z01-R001-L01)을 찍었다. 편집 창 목록은 이제 구역 · 랙만이라 층이 없다.
+   * 재는 것(펼치기 단추는 고르지 않고, 펼친 하위를 고르면 찍을 대상이 된다)은 그대로 두고 구역을 접었다 펼쳐 랙을 찍는다.
+   */
   it('⭐ 펼친 하위를 고르면 도면에 찍을 대상이 된다 — 펼치기 단추는 고르지 않는다', async () => {
     const { user, puts } = renderEditor({ layouts: [withDrawing([])], locations: TREE_ROWS });
 
     await loaded();
     await screen.findByText('Z01-R001');
 
-    await user.click(
-      within(rowOf('Z01-R001')).getByRole('button', { name: wl.locationTable.expand }),
-    );
-    expect(locationButton('Z01-R001')).not.toHaveAttribute('aria-current');
+    await user.click(within(rowOf('Z01')).getByRole('button', { name: wl.locationTable.collapse }));
+    expect(within(locationTable()).queryByText('Z01-R001')).toBeNull();
+    await user.click(within(rowOf('Z01')).getByRole('button', { name: wl.locationTable.expand }));
+    expect(locationButton('Z01')).not.toHaveAttribute('aria-current');
 
-    await user.click(locationButton('Z01-R001-L01'));
-    expect(locationButton('Z01-R001-L01')).toHaveAttribute('aria-current', 'true');
+    await user.click(locationButton('Z01-R001'));
+    expect(locationButton('Z01-R001')).toHaveAttribute('aria-current', 'true');
 
     stubBoardRect(board());
     fireEvent.click(board(), { clientX: 140, clientY: 80 });
 
-    expect(within(rowOf('Z01-R001-L01')).getByText(t.locations.onMap)).toBeInTheDocument();
+    expect(within(rowOf('Z01-R001')).getByText(t.locations.onMap)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.map.save }));
     await waitFor(() => {
@@ -74,7 +80,7 @@ describe('W-CO-08 창고 배치도 — 위치 계층', () => {
     });
     /* 새로 찍은 표식은 기본 모양으로 실린다. */
     expect(puts[0]?.body.markers).toEqual([
-      { locationId: 9, x: 0.5, y: 0.5, ...DEFAULT_MARKER_SHAPE },
+      { locationId: 7, x: 0.5, y: 0.5, ...DEFAULT_MARKER_SHAPE },
     ]);
   });
 });
@@ -1004,5 +1010,127 @@ describe('W-CO-08 편집 창 — 닫기 보호 · 충돌 (US3)', () => {
 
     expect(onClose).not.toHaveBeenCalled();
     expect(editorDialog()).toBeInTheDocument();
+  });
+});
+
+/*
+ * 2차 변경(FR-015 · FR-016 · FR-017) — 도면에는 구역 · 랙만, 이미 저장된 층 · 셀 표식은 그리지 않고 다음 저장 때 뺀다. [수정]을
+ * 누르면 창부터 뜨고, 판은 다음 프레임에 그린다.
+ */
+describe('W-CO-08 편집 창 — 구역 · 랙만 배치 (2차)', () => {
+  /** 구역 Z01(1) › 랙 Z01-R001(7) › 층 Z01-R001-L01(9) › 셀 Z01-R001-L01-C01(10), 적치 대기(3). */
+  const ROWS_WITH_CELL: LocationSeed[] = [
+    ...TREE_ROWS,
+    locationSeed(10, 'Z01-R001-L01-C01', { parentLocationId: 9, locationLevelCode: 'CELL' }),
+  ];
+  /** 저장된 배치 — 랙 하나, 층 하나, 셀 하나, 목록에 없는 위치(중지 · 삭제) 하나. */
+  const LEGACY_LAYOUT = withDrawing([
+    { locationId: 7, x: 0.2, y: 0.2 },
+    { locationId: 9, x: 0.4, y: 0.4 },
+    { locationId: 10, x: 0.6, y: 0.6 },
+    { locationId: 77, x: 0.8, y: 0.8 },
+  ]);
+
+  it('US1-2 ⭐ 목록에 층 · 셀 행이 없다 — 구역 · 랙 · 서버가 만든 자리만 보이고 랙에는 펼칠 하위가 없다', async () => {
+    const { user } = renderEditor({ layouts: [withDrawing([])], locations: ROWS_WITH_CELL });
+
+    await loaded();
+    await screen.findByText('Z01-R001');
+    /* 처음엔 구역이 펼쳐져 있어 머리 단추가 「전체 접기」다 — 접었다가 전체를 펼친다. */
+    await user.click(
+      within(locationTable()).getByRole('button', { name: wl.locationTable.collapseAll }),
+    );
+    await user.click(
+      within(locationTable()).getByRole('button', { name: wl.locationTable.expandAll }),
+    );
+
+    expect(locationButton('Z01')).toBeInTheDocument();
+    expect(locationButton('SYS-STAGING')).toBeInTheDocument();
+    expect(within(locationTable()).queryByText('Z01-R001-L01')).toBeNull();
+    expect(within(locationTable()).queryByText('Z01-R001-L01-C01')).toBeNull();
+    expect(
+      within(rowOf('Z01-R001')).queryByRole('button', { name: wl.locationTable.expand }),
+    ).toBeNull();
+  });
+
+  it('US1-6 ⭐ 층 · 셀 표식은 그리지 않고 수를 알리며, 바로 [취소]하면 묻지 않고 닫힌다(변경 아님)', async () => {
+    const { user, onClose, puts } = renderEditor({
+      layouts: [LEGACY_LAYOUT],
+      locations: ROWS_WITH_CELL,
+    });
+
+    await loaded();
+    expect(await screen.findByText(t.editor.legacyMarkers(2))).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01' })).toBeNull();
+    });
+    expect(within(board()).queryByRole('button', { name: 'Z01-R001-L01-C01' })).toBeNull();
+    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).toBeInTheDocument();
+    /* 목록에 없는 위치는 단계를 모른다 — 남긴다. */
+    expect(
+      within(board()).getByRole('button', { name: t.locations.unknown(77) }),
+    ).toBeInTheDocument();
+    /* 알림만으로는 저장할 변경이 아니다. */
+    expect(screen.getByRole('button', { name: t.map.save })).toBeDisabled();
+
+    await user.click(within(editorDialog()).getByRole('button', { name: t.editor.cancel }));
+
+    expect(discardDialog()).toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(puts).toHaveLength(0);
+  });
+
+  it('US1-6 SC-009 ⭐ 랙 표식 하나를 고쳐 저장하면 본문에 층 · 셀 id 가 없다', async () => {
+    const { user, puts } = renderEditor({ layouts: [LEGACY_LAYOUT], locations: ROWS_WITH_CELL });
+
+    await loaded();
+    await screen.findByText(t.editor.legacyMarkers(2));
+    await user.click(locationButton('Z01-R001'));
+
+    const width = within(screen.getByRole('group', { name: t.map.shape })).getByLabelText(
+      t.map.width,
+    );
+    await user.clear(width);
+    await user.type(width, '20');
+    await user.click(screen.getByRole('button', { name: t.map.save }));
+
+    await waitFor(() => {
+      expect(puts).toHaveLength(1);
+    });
+    expect(puts[0]?.body.markers.map((marker) => marker.locationId)).toEqual([7, 77]);
+    expect(puts[0]?.body.markers[0]?.width).toBe(0.2);
+  });
+});
+
+describe('W-CO-08 편집 창 — 반응 (2차 · FR-017)', () => {
+  it('US1-7 ⭐ 열자마자 창 제목 · 목록이 보이고 판 자리에 「배치를 그리는 중」이 섰다가, 판을 그리고 맞추면 걷힌다', async () => {
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
+
+    try {
+      renderEditor({ layouts: [withDrawing()] });
+
+      expect(
+        await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText(t.editor.drawingBoard)).toBeInTheDocument();
+      expect(await screen.findByText('SYN-LOC-08')).toBeInTheDocument();
+      /* 판은 아직 붙지 않았다 — 창 틀 · 목록을 먼저 그린다. */
+      expect(screen.queryByRole('group', { name: t.map.imageLabel })).toBeNull();
+
+      act(() => {
+        for (const frame of frames.splice(0)) frame(0);
+      });
+
+      expect(board()).toBeInTheDocument();
+      expect(screen.queryByText(t.editor.drawingBoard)).toBeNull();
+    } finally {
+      raf.mockRestore();
+      caf.mockRestore();
+    }
   });
 });

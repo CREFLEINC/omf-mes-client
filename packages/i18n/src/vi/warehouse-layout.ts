@@ -98,6 +98,10 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     discardBody: 'Các thay đổi điểm đánh dấu chưa lưu sẽ mất.',
     keepEditing: 'Tiếp tục sửa',
     discard: 'Bỏ và đóng',
+    legacyMarkers: (count: number): string =>
+      `${String(count)} điểm đánh dấu tầng·ô sẽ bị bỏ khi lưu.`,
+    drawingBoard: 'Đang vẽ bố trí',
+    emptyPlaceable: 'Không có khu·kệ để đặt lên bản vẽ',
   },
 
   stock: {
@@ -127,6 +131,7 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     emptyTitle: 'Không có vị trí',
     emptyGuide: (screenName: string): string => `Hãy đăng ký vị trí trong màn hình ${screenName}.`,
     notOnDrawing: 'Chưa có trên bản vẽ',
+    insideOnDrawing: (locationCode: string): string => `Trên bản vẽ: trong ${locationCode}`,
     includeInactive: 'Xem cả vị trí đã ngừng',
     unknown: (locationId: number): string => `Vị trí ${String(locationId)}`,
   },

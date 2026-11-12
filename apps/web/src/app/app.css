@@ -37,6 +37,7 @@
  * .drawing-busy-note  그 가림막 안에 서는 표면 판 — 스크림 위에서도 단계 문구가 읽히게 한다
  * .layout-editor-dialog  창고 배치도 편집 창 — DS 창의 폭 프리셋을 풀어 브라우저 창을 채운다(피처 006)
  * .layout-editor-body    그 창의 본문 — 왼쪽 위치 목록 | 오른쪽 판, 남은 높이를 쓴다
+ * .layout-editor-drawing 그 창의 판 자리에 서는 「배치를 그리는 중」 — 판을 붙이고 이름을 맞출 때까지(2차 · FR-017)
  * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  *               + DS 배너의 box-sizing 정규화(임시 우회 — design-system-v2-webui#60)
  * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
@@ -13442,7 +13443,9 @@ button.app-button-neutral {
  * 색은 DS 의 스크림 토큰을 그대로 쓴다 — 창의 배경과 같은 어둡기라 「지금은 못 만지는 면」이
  * 화면 전체에서 같은 뜻으로 읽힌다. 글자는 그 위에 표면 카드를 얹어 대비를 잃지 않게 한다.
  */
-.drawing-busy {
+/* 편집 창의 「배치를 그리는 중」도 같은 모양이다 — 클래스를 나눠 올리기 가림막을 찾는 쪽과 섞이지 않게 한다. */
+.drawing-busy,
+.layout-editor-drawing {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -13499,9 +13502,8 @@ dialog.layout-editor-dialog {
 
 .layout-editor-body {
   display: grid;
-  /* 목록 34rem(540px) — 시안의 480px 에서 넓혔다. 셀 4단계 들여쓰기에서 코드 「Z01-R001-L01-C01」이 잘리지 않으려면 코드 칸이 280px 는
-     돼야 하고(실측, 셀 200개 창고), 이름 칸도 남겨야 해서다. */
-  grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
+  /* 목록 30rem(480px, 시안). 2차(FR-015)로 편집 창 목록이 구역 · 랙만이라 셀 4단계 들여쓰기 때문에 넓혔던 540px 를 되돌렸다. */
+  grid-template-columns: minmax(0, 30rem) minmax(0, 1fr);
   gap: var(--space-4);
   block-size: calc(var(--dialog-max-h) - var(--layout-editor-chrome));
   min-block-size: 20rem;
@@ -13538,6 +13540,8 @@ dialog.layout-editor-dialog {
  */
 .layout-editor-board {
   inline-size: min(100%, calc(100cqh * var(--drawing-aspect, 100)));
+  /* 판을 붙이기 전(다음 프레임)에도 「배치를 그리는 중」이 설 높이 — 판의 최소 높이와 같다. */
+  min-block-size: 16rem;
   margin-inline: auto;
 }
 

@@ -21,6 +21,7 @@ import { LocationList } from './location-list';
 import { useUomOptions } from '../stock-status/lookups';
 import { lookupNote, useWarehouseOptions } from './lookups';
 import { buildLocationStock } from './location-stock';
+import { highlightTarget, splitPlaceable, useKnownLocations } from './placeable';
 import {
   useDrawingContent,
   useLayout,
@@ -51,6 +52,9 @@ const isPositiveInteger = (value: string): boolean => /^\d+$/.test(value) && Num
  * 보다가 실수로 배치를 바꾸지 않게(R-1).
  *
  * ⭐ **좌표는 픽셀이 아니라 «비율»이다.** 도면을 갈거나 창을 줄여도 같은 상대 위치를 가리킨다.
+ *
+ * ⭐ **도면에는 구역 · 랙만 그린다**(2차 · FR-015 · FR-016). 층 · 셀을 고르면 그 위치가 든 랙(없으면 구역) 표식을 강조하고,
+ * 재고 표는 고른 위치 기준 그대로다. 목록 「도면」 칸은 구역 · 랙 줄에만 찍음/아직을 보인다.
  *
  * ⭐ **편집 창이 열린 동안 창고 선택은 바뀌지 않는다**(명세 예외 6) — 창고 칸 · 「중지된 위치도 보기」를 잠근다.
  *
@@ -85,8 +89,19 @@ export const WarehouseLayoutScreen = () => {
   const layout = useLayout(warehouseId);
   const locations = useLocations(warehouseId, includeInactive);
 
-  const markers = layout.data?.markers ?? EMPTY_MARKERS;
+  const serverMarkers = layout.data?.markers ?? EMPTY_MARKERS;
   const rows = locations.data ?? EMPTY_LOCATIONS;
+  /*
+   * ⭐ 도면에는 구역 · 랙만 그린다(2차 · FR-016). 이미 저장된 층 · 셀 표식은 그리지 않는다 — 편집 창의 다음 저장 때 빠진다.
+   * 단계는 지금까지 본 위치로 판정한다(「중지된 위치도 보기」를 바꿔 다시 받는 동안에도 잊지 않게).
+   */
+  const knownLocations = useKnownLocations(warehouseId, rows);
+  const markers = useMemo(
+    () => splitPlaceable(serverMarkers, knownLocations).kept,
+    [serverMarkers, knownLocations],
+  );
+  /** 판에서 강조할 표식 — 고른 위치가 배치돼 있지 않으면(층 · 셀) 가장 가까운 배치된 조상(R2-3). */
+  const highlighted = highlightTarget(selectedLocation, markers, knownLocations);
 
   /*
    * 재고 — 창고 단위로 한 번 받아 위치별로 나눈다(피처 006 R-7). ⛔ 못 받았으면 표식 모양을 나누지 않는다 — 「비어 있음」으로
@@ -153,7 +168,7 @@ export const WarehouseLayoutScreen = () => {
     x: marker.x,
     y: marker.y,
     label: nameOf(marker.locationId),
-    selected: marker.locationId === selectedLocation,
+    selected: marker.locationId === highlighted,
     width: marker.width,
     height: marker.height,
     rotation: marker.rotation,
@@ -400,8 +415,13 @@ export const WarehouseLayoutScreen = () => {
                   <>
                     <h3 className="layout-selection-title">
                       {t.stock.title(nameOf(selectedLocation))}
+                      {/* 층 · 셀이면 그 위치가 든 표식을 말한다(R2-3). 그것도 없으면 「도면에 없음」. */}
                       {!hasMarker(markers, selectedLocation) && (
-                        <Chip size="sm">{t.locations.notOnDrawing}</Chip>
+                        <Chip size="sm">
+                          {highlighted === null
+                            ? t.locations.notOnDrawing
+                            : t.locations.insideOnDrawing(nameOf(highlighted))}
+                        </Chip>
                       )}
                     </h3>
                     {shownStock !== null &&

@@ -112,6 +112,15 @@ export const warehouseLayout = {
     discardBody: '저장하지 않은 표식 변경이 사라집니다.',
     keepEditing: '계속 편집',
     discard: '버리고 닫기',
+    /**
+     * 도면에는 구역 · 랙만 둔다(2차 · FR-016). 이미 저장된 층 · 셀 표식은 그리지 않고 다음 저장 때 빠진다 — 그 수를 알린다.
+     * 이 알림만으로는 저장할 변경이 아니다(닫을 때 묻지 않는다).
+     */
+    legacyMarkers: (count: number): string => `층·셀 표식 ${String(count)}개는 저장하면 빠집니다.`, // ui-check-ignore: C-13 승인 시안 W-CO-08-r2 문구(#266)
+    /** 창을 먼저 띄우고 판은 다음에 그린다(2차 · FR-017) — 표식 그리기 · 글자 맞추기가 끝날 때까지 판 위에 선다. */
+    drawingBoard: '배치를 그리는 중',
+    /** 편집 창 목록은 배치 대상(구역 · 랙)만이다 — 그것이 없을 때. */
+    emptyPlaceable: '도면에 둘 구역·랙이 없습니다', // ui-check-ignore: C-13 승인 tasks T037 문구(#266)
   },
 
   /**
@@ -149,6 +158,8 @@ export const warehouseLayout = {
     emptyGuide: (screenName: string): string => `${screenName} 화면에서 위치를 등록하세요.`,
     /** 고른 위치에 표식이 없다(FR-002). */
     notOnDrawing: '도면에 없음',
+    /** 층 · 셀은 도면에 두지 않는다 — 고르면 그 위치가 든 랙(없으면 구역) 표식을 강조하고 이 말을 붙인다(2차 · FR-015). */
+    insideOnDrawing: (locationCode: string): string => `도면에서 ${locationCode} 안`,
     includeInactive: '중지된 위치도 보기',
     /** ⚠ 목록에 없는 위치(중지 · 삭제)가 지도에 남아 있을 수 있다 — 그 표식의 이름. */
     unknown: (locationId: number): string => `위치 ${String(locationId)}`,
