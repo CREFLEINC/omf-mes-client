@@ -96,11 +96,13 @@ export const NonconformanceList = ({
     {
       key: 'item',
       align: 'center',
+      width: '220px',
       header: t.fields.item,
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },
     {
       key: 'qty',
+      width: '110px',
       header: t.detail.affectedQty,
       align: 'center',
       render: (row) => row.affectedQtyText,
@@ -108,24 +110,28 @@ export const NonconformanceList = ({
     {
       key: 'dispositionProgress',
       align: 'center',
+      width: '110px',
       header: t.fields.dispositionProgressCode,
       render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
     },
     {
       key: 'severity',
       align: 'center',
+      width: '100px',
       header: t.fields.severityCode,
       render: (row) => <SeverityBadge severity={severity} code={row.severityCode} />,
     },
     {
       key: 'openedAt',
       align: 'center',
+      width: '110px',
       header: t.fields.openedAt,
       render: (row) => row.openedAtText,
     },
     {
       key: 'status',
       align: 'center',
+      width: '120px',
       header: t.fields.statusCode,
       render: (row) => codeValueLabel(status, row.statusCode),
     },
@@ -138,7 +144,7 @@ export const NonconformanceList = ({
   const resizable = useColumnWidths('omf-mes:dispositions:columns:pending', ordered);
   /*
    * 좌우 배치에서 목록이 좁으면(1440 · 표 494px) 칸을 줄이지 않고 표 안에서 가로로 구른다 — 줄이면 여덟 칸이 46px 씩이 되어
-   * 모두 「…」로 잘렸다(G2 M-b). 검사 수준 · IQC 이력 표와 같은 방식이다.
+   * 모두 「…」로 잘렸다(G2 M-b). 칸마다 폭을 두고(정한 폭의 합 `--col-fixed` 가 표 최소 폭이 된다 — app.css), 넓으면 비율대로 늘린다.
    */
   const fit = useFitColumns(resizable.columns, { scrollX: true });
 

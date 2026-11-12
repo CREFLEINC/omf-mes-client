@@ -28783,6 +28783,14 @@ body:has(.page-nav-size [aria-expanded='true']) [role='listbox'] > [role='option
   min-width: 0;
 }
 
+/*
+ * W-03-10 처분 대기 목록은 좁으면 칸을 줄이지 않고 상자 안에서 가로로 구른다(G2 M-b) — 위 공용 규칙(min-width 0)보다 무겁게,
+ * 정한 칸 폭의 합(`--col-fixed`, patterns/column-resize.tsx)을 최소 폭으로 둔다.
+ */
+.inspection-queue-table.disposition-pending-table table {
+  min-width: max(var(--col-fixed, 0px), 58rem);
+}
+
 .inspection-queue-table thead th,
 .inspection-queue-table td {
   overflow: hidden;
