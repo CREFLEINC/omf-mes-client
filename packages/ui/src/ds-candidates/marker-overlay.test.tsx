@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MarkerOverlay, type OverlayMarker } from './marker-overlay';
 
@@ -804,5 +804,203 @@ describe('사각형 표식 — 크기 · 회전 손잡이', () => {
 
     update({ markers: [BOX], readOnly: true });
     expect(document.querySelector('[data-shape-handle]')).toBeNull();
+  });
+});
+
+/*
+ * 표식 이름 — 말줄임 없이 다 보인다(FR-010 · 피처 006 R-5).
+ *
+ * ⚠ jsdom 은 크기를 재지 못한다 — 글자 폭 · 높이는 이름 칸의 글자 크기(px)에 비례하게, 상자 크기는 시험이 정한 값으로
+ * 흉내 낸다. `ResizeObserver` 도 jsdom 에 없어 콜백을 붙잡아 손으로 부른다.
+ */
+describe('사각형 표식 — 이름 줄바꿈 · 글자 맞추기', () => {
+  const CELL: OverlayMarker = {
+    id: '9',
+    x: 0.5,
+    y: 0.5,
+    label: 'Z01-R001-L02-C03',
+    width: 0.2,
+    height: 0.2,
+  };
+
+  /** 글자 크기 1px 당 이름 칸의 폭(px). 12px 이면 120px, 8px 이면 80px. */
+  const PX_PER_FONT_PX = 10;
+  const layout = { boxWidth: 200, boxHeight: 100 };
+  const observed: { callback: ResizeObserverCallback | null; targets: Element[] } = {
+    callback: null,
+    targets: [],
+  };
+  const originals = new Map<string, PropertyDescriptor | undefined>();
+
+  const fontPx = (element: HTMLElement): number =>
+    Number.parseFloat(element.style.fontSize || '12');
+  const isLabel = (element: HTMLElement): boolean =>
+    element.classList.contains('marker-overlay-pin-label');
+  const isBoxPin = (element: HTMLElement): boolean =>
+    element.classList.contains('marker-overlay-box');
+
+  const stubLayout = (name: string, read: (element: HTMLElement) => number): void => {
+    originals.set(name, Object.getOwnPropertyDescriptor(HTMLElement.prototype, name));
+    Object.defineProperty(HTMLElement.prototype, name, {
+      configurable: true,
+      get(this: HTMLElement) {
+        return read(this);
+      },
+    });
+  };
+
+  beforeEach(() => {
+    layout.boxWidth = 200;
+    layout.boxHeight = 100;
+    observed.callback = null;
+    observed.targets = [];
+    stubLayout('scrollWidth', (el) => (isLabel(el) ? fontPx(el) * PX_PER_FONT_PX : 0));
+    stubLayout('offsetHeight', (el) => (isLabel(el) ? fontPx(el) : 0));
+    stubLayout('clientWidth', (el) => (isBoxPin(el) ? layout.boxWidth : 0));
+    stubLayout('clientHeight', (el) => (isBoxPin(el) ? layout.boxHeight : 0));
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          observed.callback = callback;
+        }
+        observe(target: Element) {
+          observed.targets.push(target);
+        }
+        unobserve(target: Element) {
+          observed.targets = observed.targets.filter((item) => item !== target);
+        }
+        disconnect() {
+          observed.targets = [];
+        }
+      },
+    );
+  });
+
+  afterEach(() => {
+    for (const [name, descriptor] of originals) {
+      if (descriptor === undefined) {
+        Reflect.deleteProperty(HTMLElement.prototype, name);
+      } else {
+        Object.defineProperty(HTMLElement.prototype, name, descriptor);
+      }
+    }
+    originals.clear();
+    vi.unstubAllGlobals();
+  });
+
+  const labelOf = (pin: HTMLElement): HTMLElement => {
+    const found = pin.querySelector<HTMLElement>('.marker-overlay-pin-label');
+    if (found === null) throw new Error('이름 칸이 없습니다.');
+    return found;
+  };
+
+  it('US2-6 ⭐ 이름은 `-` 뒤마다 줄바꿈 지점을 갖고, 접근 이름은 전체 코드 그대로다', () => {
+    const { pin } = setup({ markers: [CELL] });
+    const label = labelOf(pin('Z01-R001-L02-C03'));
+
+    expect(label.innerHTML).toBe('Z01-<wbr>R001-<wbr>L02-<wbr>C03');
+    expect(label.textContent).toBe('Z01-R001-L02-C03');
+    expect(pin('Z01-R001-L02-C03')).toHaveAttribute('aria-label', 'Z01-R001-L02-C03');
+  });
+
+  /*
+   * ⚠ 스타일 규칙(`marker-overlay.css` 의 말줄임 제거)은 시험 환경이 싣지 않는다(`css: false`) — 여기서는 부품이 잘라 내는
+   * 모양을 스스로 붙이지 않는지만 잰다. 규칙 자체는 실제 앱 확인(SC-001)이 본다.
+   */
+  it('US2-6 ⛔ 말줄임 규칙이 없다 — 이름 칸에 잘라 내는 모양이 붙지 않는다', () => {
+    const { pin } = setup({ markers: [CELL] });
+    const label = labelOf(pin('Z01-R001-L02-C03'));
+
+    expect(label.style.textOverflow).toBe('');
+    expect(label.style.overflow).toBe('');
+  });
+
+  it('US2-6 넘치지 않으면 12px 그대로다', () => {
+    const { pin } = setup({ markers: [CELL] });
+    const label = labelOf(pin('Z01-R001-L02-C03'));
+
+    expect(label.style.fontSize).toBe('12px');
+    expect(label).not.toHaveClass('marker-overlay-pin-label-overflow');
+  });
+
+  it('US2-6 ⭐ 넘치면 0.5px 씩 줄여 들어가는 크기에서 멈춘다', () => {
+    layout.boxWidth = 95;
+    const { pin } = setup({ markers: [CELL] });
+    const label = labelOf(pin('Z01-R001-L02-C03'));
+
+    /* 9.5px × 10 = 95 — 상자 폭과 같으면 넘친 것이 아니다. */
+    expect(label.style.fontSize).toBe('9.5px');
+    expect(label).not.toHaveClass('marker-overlay-pin-label-overflow');
+  });
+
+  it('US2-6 ⭐ 높이가 넘쳐도 줄인다', () => {
+    layout.boxHeight = 10;
+    const { pin } = setup({ markers: [CELL] });
+
+    expect(labelOf(pin('Z01-R001-L02-C03')).style.fontSize).toBe('10px');
+  });
+
+  it('US2-6 ⭐ 최소 8px 에서 멈추고, 그래도 넘치면 자르지 않고 넘침 표시를 단다', () => {
+    layout.boxWidth = 50;
+    const { pin } = setup({ markers: [CELL] });
+    const label = labelOf(pin('Z01-R001-L02-C03'));
+
+    expect(label.style.fontSize).toBe('8px');
+    expect(label).toHaveClass('marker-overlay-pin-label-overflow');
+  });
+
+  it('US2-6 ⭐ 상자가 커지면 다시 잰다 — 판이 커진 편집 창에서는 글자가 커진다', () => {
+    layout.boxWidth = 50;
+    const { pin } = setup({ markers: [CELL] });
+    const box = pin('Z01-R001-L02-C03');
+
+    expect(observed.targets).toContain(box);
+
+    layout.boxWidth = 200;
+    act(() => {
+      observed.callback?.(
+        [{ target: box } as unknown as ResizeObserverEntry],
+        {} as ResizeObserver,
+      );
+    });
+
+    expect(labelOf(box).style.fontSize).toBe('12px');
+    expect(labelOf(box)).not.toHaveClass('marker-overlay-pin-label-overflow');
+  });
+
+  it('US2-6 알약 표식(크기 없음)은 줄바꿈도 글자 맞추기도 하지 않는다', () => {
+    const { pin } = setup({ markers: [{ id: '7', x: 0.1, y: 0.2, label: 'A-01' }] });
+    const label = labelOf(pin());
+
+    expect(label.innerHTML).toBe('A-01');
+    expect(label.style.fontSize).toBe('');
+    expect(observed.targets).not.toContain(pin());
+  });
+});
+
+describe('표식의 강약 — tone', () => {
+  it("⭐ `tone: 'muted'` 면 옅은 모양이다", () => {
+    const { pin } = setup({ markers: [{ id: '7', x: 0.1, y: 0.2, label: 'A-01', tone: 'muted' }] });
+
+    expect(pin()).toHaveClass('marker-overlay-pin-muted');
+  });
+
+  it("`tone` 이 없거나 `'default'` 면 지금 모양이다", () => {
+    const { pin } = setup({
+      markers: TWO_MARKERS.map((m, i) => (i === 0 ? m : { ...m, tone: 'default' })),
+    });
+
+    expect(pin('A-01')).not.toHaveClass('marker-overlay-pin-muted');
+    expect(pin('A-02')).not.toHaveClass('marker-overlay-pin-muted');
+  });
+
+  it('⭐ 고른 표식은 tone 과 상관없이 채운 모양이다', () => {
+    const { pin } = setup({
+      markers: [{ id: '7', x: 0.1, y: 0.2, label: 'A-01', tone: 'muted', selected: true }],
+    });
+
+    expect(pin()).toHaveClass('marker-overlay-pin-selected');
+    expect(pin()).not.toHaveClass('marker-overlay-pin-muted');
   });
 });
