@@ -13,7 +13,7 @@ import {
 } from '@crefle/web-ui';
 import type { InspectionSheetLayoutCode, InspectionSheetTemplate } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { useFitColumns } from '../../patterns/column-fit';
 import { ItemSelect } from '../../patterns/item-select';
@@ -83,22 +83,25 @@ type Opened =
 interface InspectionSheetTemplateScreenProps {
   /** 검사 기준 탭이 조회 줄 맨 앞에 세우는 검사 유형 칸(omf-all-around#255). */
   typeSelect?: ReactNode;
-  /** 등록 창을 연 채 시작한다 — 검사 기준 「기준 추가」에서 PQC 를 고른 OA 계정이 넘어온다(#255). */
-  startCreating?: boolean;
+  /**
+   * 새 기준 편집을 이 기본 정보로 바로 연다 — 검사 기준 「기준 추가」 창에서 PQC 를 고르고 품목 · 사업부 · 출력 양식을
+   * 채워 「확인」한 OA 계정이 넘어온다(사용자 지시 · #255 · #258). 이 화면의 「새 검사표 기준」 창 「확인」과 같다.
+   */
+  startBasics?: TemplateBasics;
 }
 
 export const InspectionSheetTemplateScreen = ({
   typeSelect,
-  startCreating = false,
+  startBasics,
 }: InspectionSheetTemplateScreenProps) => (
   <OaOnlyGate title={t.title} breadcrumbRoot={t.breadcrumbRoot}>
-    <InspectionSheetTemplateScreenBody typeSelect={typeSelect} startCreating={startCreating} />
+    <InspectionSheetTemplateScreenBody typeSelect={typeSelect} startBasics={startBasics} />
   </OaOnlyGate>
 );
 
 const InspectionSheetTemplateScreenBody = ({
   typeSelect,
-  startCreating = false,
+  startBasics,
 }: InspectionSheetTemplateScreenProps) => {
   const hub = usePageHub();
   /* 좌우 · 상하 배치 · 폭/높이 손잡이 · 창 높이 맞춤 — 검사 기준 탭과 같다(사용자 지시 · #208). 배치는 탭 묶음이 함께 쓴다. */
@@ -141,15 +144,24 @@ const InspectionSheetTemplateScreenBody = ({
     }, 300);
     return () => window.clearTimeout(timer);
   }, [materialInput]);
-  const [opened, setOpened] = useState<Opened>(null);
+  const [opened, setOpened] = useState<Opened>(() =>
+    startBasics === undefined ? null : { kind: 'new', basics: startBasics, seq: Date.now() },
+  );
+  /* 넘어온 기본 정보로 새 편집을 열었으면 첫 그리기에 목록을 펴지 않고 접는다 — 「확인」과 같다. */
+  const startsEditing = useRef(startBasics !== undefined);
   /*
    * 조회 조건을 바꾸면 접어 둔 목록을 다시 펼친다 — 거른 결과를 봐야 한다(#255 사용자 지시). 처음 열 때도 고른 기준이
    * 없으니 접힌 채 저장된 목록을 펼친다(검사 유형을 바꿔 넘어온 때 포함). 쪽 · 쪽 크기는 목록이 펼쳐진 때만 바뀐다.
    */
   useEffect(() => {
+    if (startsEditing.current) {
+      startsEditing.current = false;
+      if (!split.collapsed) split.toggleCollapsed();
+      return;
+    }
     if (split.collapsed) split.toggleCollapsed();
   }, [filter.status, filter.itemId, filter.layout, filter.material, filter.usage]);
-  const [isCreating, setIsCreating] = useState(startCreating);
+  const [isCreating, setIsCreating] = useState(false);
   const [stepCode, setStepCode] = useState<StepDraft['stepCode'] | null>(null);
   /** 다른 기준을 열면 단계 고름을 처음으로 돌린다. */
   const open = (next: Opened) => {
@@ -618,6 +630,8 @@ const InspectionSheetTemplateScreenBody = ({
       {isCreating && (
         <TemplateBasicDialog
           initial={{
+            templateCode: '',
+            templateName: '',
             itemId: null,
             itemLabel: '',
             businessUnitId: scopeIds[0] ?? null,

@@ -26,10 +26,16 @@ export const PLAN_FORM_FIELDS: readonly string[] = [
  * 품목을 비운 것은 「전 품목 공통 기준」이고 IQC 에는 공정이 없다.
  * 공정은 PQC 기준에서만 필수다(사용자 결정 2026-11-04 · 서버도 400 으로 막는다).
  */
-export const validatePlanForm = (values: PlanFormValues): Record<string, string> => {
+export const validatePlanForm = (
+  values: PlanFormValues,
+  /** 등록 · 복사는 기준코드를 비우면 서버가 자동 등록한다(omf-all-around#262). */
+  codeOptional = false,
+): Record<string, string> => {
   const errors: Record<string, string> = {};
 
-  if (values.inspectionPlanCode === '') {
+  if (codeOptional) {
+    // 비우거나 공백만이면 자동 등록 — 막지 않는다.
+  } else if (values.inspectionPlanCode === '') {
     errors.inspectionPlanCode = t.required;
   } else if (values.inspectionPlanCode.trim() === '') {
     errors.inspectionPlanCode = t.planCodeBlank;

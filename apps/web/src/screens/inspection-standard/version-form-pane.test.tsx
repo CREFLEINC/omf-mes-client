@@ -22,13 +22,12 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
       values={versionToFormValues(inspectionPlanVersionFixtures[0]!)}
       onChange={onChange}
       fieldErrors={{}}
-      inspectionFrequencyOptions={[{ value: 'PRODUCTION_LOT', label: '생산 LOT' }]}
-      frequencyIntervalUomOptions={[{ value: 'HOUR', label: '시간' }]}
       banner={null}
       isDirty={false}
       isSaving={false}
       onSave={onSave}
       onCancel={onCancel}
+      showAql
       {...overrides}
     />,
   );
@@ -127,6 +126,50 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
     expect(screen.getByLabelText(/샘플 비율/)).toBeEnabled();
   });
 
+  /* omf-all-around#264 — AQL 샘플링은 판정 수를 표로 정한다. */
+  it('AQL 샘플링으로 바꾸면 검사 수준을 G-II 로 채우고 비율 · 판정 수를 비운다', async () => {
+    const { onChange, user } = renderPane();
+
+    await user.click(screen.getByRole('combobox', { name: '검사 방식' }));
+    await user.click(screen.getByRole('option', { name: 'AQL 샘플링' }));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        samplingMethodCode: 'AQL',
+        aqlInspectionLevelCode: 'G-II',
+        samplingRatio: '',
+        acceptanceNumber: '',
+        rejectionNumber: '',
+      }),
+    );
+  });
+
+  it('AQL 샘플링이면 AQL · 검사 수준을 고르고 판정 수 칸은 잠긴다', () => {
+    renderPane({
+      values: {
+        ...versionToFormValues(inspectionPlanVersionFixtures[0]!),
+        samplingMethodCode: 'AQL',
+        aqlValue: '0.4',
+        aqlInspectionLevelCode: 'G-II',
+      },
+    });
+
+    expect(screen.getByRole('combobox', { name: /AQL 검사 수준/ })).toBeEnabled();
+    expect(screen.getByLabelText('합격 허용 불량 수')).toBeDisabled();
+    expect(screen.getByLabelText('불합격 판정 불량 수')).toBeDisabled();
+    expect(screen.queryByLabelText(/샘플 비율/)).not.toBeInTheDocument();
+  });
+
+  /* AQL 은 IQC 기준에서만 쓴다(사용자 지시 · omf-all-around#264). */
+  it('IQC 기준이 아니면 AQL 샘플링 선택지와 AQL 칸이 없다', async () => {
+    const { user } = renderPane({ showAql: false });
+
+    expect(screen.queryByLabelText('AQL')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: '검사 방식' }));
+    expect(screen.queryByRole('option', { name: 'AQL 샘플링' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '전수검사' })).toBeInTheDocument();
+  });
+
   it('전수검사로 바꾸면 비율을 함께 비운다', async () => {
     const { onChange, user } = renderPane();
 
@@ -135,6 +178,7 @@ describe('VersionFormPane — 샘플링 방법 (omf-all-around#103)', () => {
 
     expect(onChange).toHaveBeenCalledWith({
       samplingMethodCode: 'FULL_INSPECTION',
+      aqlInspectionLevelCode: '',
       samplingRatio: '',
       samplingQty: '',
     });
@@ -171,17 +215,16 @@ describe('VersionFormPane — 상태 잠금', () => {
     expect(screen.getByLabelText('샘플 비율(%)')).toBeDisabled();
     expect(screen.getByLabelText('적용 시작일')).toBeDisabled();
     expect(screen.getByLabelText('AQL')).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: '검사 주기' })).toBeDisabled();
     expect(
       screen.getByText('확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
     ).toBeInTheDocument();
   });
 
-  it('폐기 버전은 다른 문구로 안내한다', () => {
+  it('사용 중지 버전은 다른 문구로 안내한다', () => {
     renderPane({ status: resolveVersionStatus('OBSOLETE') });
 
     expect(
-      screen.getByText('폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
+      screen.getByText('사용 중지된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.'),
     ).toBeInTheDocument();
   });
 
@@ -224,12 +267,13 @@ describe('VersionFormPane — 편집', () => {
     expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
   });
 
-  /* 선택지를 받지 못했다는 사실을 감추지 않는다 — 감추면 선택칸이 이유 없이 빈다. */
-  it('공통코드 선택지를 받지 못했으면 선택칸에 안내가 붙는다', () => {
-    renderPane({ codeOptionsNote: messages.inspectionStandard.optionsLoadFailed });
+  /* 검사 주기 · 주기 값 · 주기 단위는 기록용이라 입력을 걷었다(omf-all-around#263). */
+  it('검사 주기 · 주기 값 · 주기 단위 칸이 없다', () => {
+    renderPane();
 
-    expect(
-      screen.getAllByText(messages.inspectionStandard.optionsLoadFailed).length,
-    ).toBeGreaterThan(0);
+    const t = messages.inspectionStandard.fields;
+    expect(screen.queryByText(t.inspectionFrequency)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.frequencyIntervalValue)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.frequencyIntervalUom)).not.toBeInTheDocument();
   });
 });

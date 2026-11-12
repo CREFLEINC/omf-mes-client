@@ -1,6 +1,6 @@
 import { Button, Dialog, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 
 import type { GuideTextField } from './version-summary';
 
@@ -10,26 +10,20 @@ const GUIDE_TEXT_MAX = 3000;
 
 export interface VersionGuideDialogProps {
   field: GuideTextField;
-  /** 저장된 문구 — 창은 이 값에서 시작한다. */
+  /** 지금 보이는 문구(담아 둔 글이 있으면 그 글) — 창은 이 값에서 시작한다. */
   initialText: string;
-  isSaving: boolean;
-  /** 저장 실패 알림(버전 저장과 같은 띠). */
-  banner: ReactNode;
-  error?: string;
+  /** 「확인」 — 화면에만 담는다. 저장은 바닥 줄 「임시 저장」 · 「확정」이 한다(사용자 지시). */
   onSave: (text: string) => void;
   onClose: () => void;
 }
 
 /**
  * 안내 문구 한 언어를 고치는 창(omf-all-around#252) — 안내가 매우 길 수 있어 버전 설정 창에서 빼고 언어별로 넓게 연다
- * (사용자 지시). 바꾼 것이 없으면 저장을 막는다. 닫으면 고친 글을 버린다.
+ * (사용자 지시). 바꾼 것이 없으면 「확인」을 막는다. 닫으면 고친 글을 버린다.
  */
 export const VersionGuideDialog = ({
   field,
   initialText,
-  isSaving,
-  banner,
-  error,
   onSave,
   onClose,
 }: VersionGuideDialogProps) => {
@@ -47,16 +41,15 @@ export const VersionGuideDialog = ({
       onClose={onClose}
       footer={
         <>
-          <Button variant="outlined" disabled={isSaving} onClick={onClose}>
+          <Button variant="outlined" onClick={onClose}>
             {messages.common.cancel}
           </Button>
-          <Button loading={isSaving} disabled={isSaving || !isDirty || isTooLong} onClick={() => onSave(text)}>
-            {messages.common.save}
+          <Button disabled={!isDirty || isTooLong} onClick={() => onSave(text)}>
+            {messages.common.confirm}
           </Button>
         </>
       }
     >
-      {banner}
       <TextArea
         fullWidth
         label={t.fields[field]}
@@ -65,7 +58,7 @@ export const VersionGuideDialog = ({
         maxLength={GUIDE_TEXT_MAX}
         showCount
         onChange={(event) => setText(event.target.value)}
-        error={isTooLong ? t.versionSection.guideTooLong(GUIDE_TEXT_MAX) : error}
+        error={isTooLong ? t.versionSection.guideTooLong(GUIDE_TEXT_MAX) : undefined}
       />
     </Dialog>
   );

@@ -556,6 +556,9 @@ export interface InspectionSheetTemplate extends Required<InspectionSheetTemplat
   itemCode: string;
   itemName: string;
   templateVersion: number;
+  /** 관리용 기준코드 · 기준명(omf-all-around#260) — 그 전에 등록한 기준은 null. */
+  templateCode: string | null;
+  templateName: string | null;
   businessUnitId: number;
   formLayoutCode: InspectionSheetLayoutCode;
   statusCode: 'DRAFT' | 'CONFIRMED' | 'OBSOLETE';
@@ -572,6 +575,9 @@ export interface InspectionSheetTemplate extends Required<InspectionSheetTemplat
 
 /** 작성중 판만 고친다. 단계·항목·LOT 칸은 통째로 갈아 끼운다 — 배열 순서가 순번이다. */
 export interface InspectionSheetTemplateUpdate extends InspectionSheetTemplateContent {
+  /** 관리용 기준코드 · 기준명(omf-all-around#260). 빼면 그대로 둔다. */
+  templateCode?: string;
+  templateName?: string;
   lotSources: { slotCode: InspectionSheetLotSlot; itemId: number }[];
   steps: {
     stepCode: InspectionSheetStepCode;
@@ -588,6 +594,9 @@ export interface InspectionSheetTemplateUpdate extends InspectionSheetTemplateCo
 }
 
 export interface InspectionSheetTemplateCreate extends InspectionSheetTemplateUpdate {
+  /** 비우면 그 품목이 쓰던 코드, 없으면 QS-{YYYYMMDD}-{SEQ4}(서버 선행 omf-all-around#262). */
+  templateCode?: string;
+  templateName: string;
   itemId: number;
   businessUnitId: number;
   formLayoutCode: InspectionSheetLayoutCode;
@@ -718,7 +727,21 @@ export interface InspectionSheet extends Required<InspectionSheetHeaderUpdate> {
 }
 
 /** 서버 선행 omf-all-around#255 — 검사기준 복사 요청: 새 기준 머리(등록과 같은 칸) + 내용을 가져올 원본 버전. */
-export type InspectionPlanCopy = components['schemas']['InspectionPlanCreate'] & {
+/**
+ * 서버 선행(omf-all-around#262) — 기준코드 · 항목코드를 비우면 서버가 자동 등록한다(기준 QP-{YYYYMMDD}-{SEQ4} · 항목 ITEM-{순서}).
+ * 서버가 main 에 병합되면 `gen:api` 로 다시 만들고 이 덮개를 걷는다.
+ */
+export type InspectionPlanCreateForward = Omit<
+  components['schemas']['InspectionPlanCreate'],
+  'inspectionPlanCode'
+> & { inspectionPlanCode?: string };
+
+export type InspectionItemSpecUpsertForward = Omit<
+  components['schemas']['InspectionItemSpecUpsert'],
+  'inspectionItemCode'
+> & { inspectionItemCode?: string };
+
+export type InspectionPlanCopy = InspectionPlanCreateForward & {
   sourceVersionId: number;
 };
 
@@ -815,14 +838,47 @@ export type StockReinstatementResponseForward = Omit<
 type StockReinstatementsPath = paths['/logistics/stock-reinstatements'];
 
 /**
- * 서버 선행(omf-all-around#252) — 검사 기준 버전별 안내 문구(한국어 · 베트남어). 검사 화면이 기준 정보 바로 아래에 보인다.
- * 작성중 버전에서만 고치고, 개정하면 새 버전에 복사된다. 쓰기 본문에서 생략하면 그대로, 공백만이면 서버가 비운다.
+ * 서버 선행(omf-all-around#252 · 한 칸 #261) — 검사 기준 버전별 검사 지시문 한 칸(한/베 두 칸을 걷었다). 검사 화면이 기준 정보
+ * 바로 아래에 보인다. 작성중 버전에서만 고치고, 개정하면 새 버전에 복사된다. 쓰기 본문에서 생략하면 그대로, 공백만이면 서버가 비운다.
  * 서버가 main 에 병합되면 `gen:api` 로 다시 만들고 이 덮개를 걷는다.
  */
 export interface InspectionPlanVersionGuideForward {
-  guideTextKo?: string | null;
-  guideTextVi?: string | null;
+  guideText?: string | null;
+  /**
+   * 서버 선행(omf-all-around#264) — AQL 검사 수준(G-I~G-III · S-1~S-4). 검사 방식이 AQL 이면 필수다.
+   * 품목별 IQC 검사 수준(무검사 · 수월 · 보통 · 엄격)과 다른 축이다.
+   */
+  aqlInspectionLevelCode?: string | null;
 }
+
+/** 서버 선행(omf-all-around#264) — 의뢰 수량(LOT 크기)으로 KS Q ISO 2859-1 표에서 낸 AQL 시료 계획. 상세 조회만 싣는다. */
+export interface InspectionAqlPlanForward {
+  aqlValue: number;
+  aqlInspectionLevelCode: string;
+  codeLetter: string;
+  /** 검사할 수 — 표의 시료 수가 의뢰 수량 이상이면 의뢰 수량(전수). */
+  sampleSize: number;
+  acceptanceNumber: number;
+  rejectionNumber: number;
+}
+
+/**
+ * 서버 선행(omf-all-around#263) — 검사 주기는 기록용이라 화면이 받지 않는다. 쓰기 본문에서 빼면 그대로(새 버전은 비운다).
+ * 읽은 값은 비어 있을 수 있으나 화면이 읽지 않는다. 서버가 main 에 병합되면 `gen:api` 로 다시 만들고 이 덮개를 걷는다.
+ */
+type FrequencyOptional<T> = Omit<T, 'inspectionFrequencyCode'> & {
+  inspectionFrequencyCode?: string | null;
+};
+
+export type InspectionPlanVersionCreateForward = FrequencyOptional<
+  components['schemas']['InspectionPlanVersionCreate']
+> &
+  InspectionPlanVersionGuideForward;
+
+export type InspectionPlanVersionUpdateForward = FrequencyOptional<
+  components['schemas']['InspectionPlanVersionUpdate']
+> &
+  InspectionPlanVersionGuideForward;
 
 export type InspectionPlanVersionForward = components['schemas']['InspectionPlanVersion'] &
   InspectionPlanVersionGuideForward;
@@ -830,13 +886,14 @@ export type InspectionPlanVersionForward = components['schemas']['InspectionPlan
 /** 의뢰 상세의 검사 안내 한 벌(#252) — 공통 기준(COMMON) · 품목 기준(ITEM). 상세 조회만 싣는다. */
 export interface InspectionGuideForward {
   scopeCode: 'COMMON' | 'ITEM';
-  guideTextKo: string | null;
-  guideTextVi: string | null;
+  guideText: string;
 }
 
 type InspectionRequestDetailPath = paths['/quality/inspection-requests/{inspectionRequestId}'];
 
 type PlanVersionsPath = paths['/quality/inspection-plan-versions'];
+type PlansPath = paths['/quality/inspection-plans'];
+type PlanItemsPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}/items'];
 type PlanVersionPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}'];
 
 /*
@@ -1529,8 +1586,26 @@ export interface ForwardPaths
           InspectionRequestForward &
             InspectionRequestInboundDetailForward & {
               inspectionGuides?: InspectionGuideForward[];
+              aqlPlan?: InspectionAqlPlanForward;
             }
         >;
+      };
+    };
+  };
+  /** 기준 등록 — 기준코드를 비우면 자동 등록(#262). */
+  '/quality/inspection-plans': Omit<PlansPath, 'post'> & {
+    post: Omit<PlansPath['post'], 'requestBody'> & {
+      requestBody: { content: { 'application/json': InspectionPlanCreateForward } };
+    };
+  };
+  /** 검사 항목 저장 — 항목코드를 비우면 자동 등록(#262). */
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}/items': Omit<
+    PlanItemsPath,
+    'put'
+  > & {
+    put: Omit<PlanItemsPath['put'], 'requestBody'> & {
+      requestBody: {
+        content: { 'application/json': { items: InspectionItemSpecUpsertForward[] } };
       };
     };
   };
@@ -1544,8 +1619,7 @@ export interface ForwardPaths
     post: Omit<PlanVersionsPath['post'], 'requestBody' | 'responses'> & {
       requestBody: {
         content: {
-          'application/json': components['schemas']['InspectionPlanVersionCreate'] &
-            InspectionPlanVersionGuideForward;
+          'application/json': InspectionPlanVersionCreateForward;
         };
       };
       responses: Omit<PlanVersionsPath['post']['responses'], 201> & {
@@ -1573,8 +1647,7 @@ export interface ForwardPaths
     put: Omit<PlanVersionPath['put'], 'requestBody' | 'responses'> & {
       requestBody: {
         content: {
-          'application/json': components['schemas']['InspectionPlanVersionUpdate'] &
-            InspectionPlanVersionGuideForward;
+          'application/json': InspectionPlanVersionUpdateForward;
         };
       };
       responses: Omit<PlanVersionPath['put']['responses'], 200> & {
@@ -2056,6 +2129,17 @@ export interface ForwardPaths
       Params<never, IdemHeader, { inspectionPlanId: number }>,
       { content: { 'application/json': InspectionPlanCopy } },
       { 201: Json<InspectionPlanCopyResult> }
+    >;
+  };
+  /** 서버 선행 omf-all-around#258 — 검사기준 버전 재사용(사용 중지 → 확정 · 다른 확정 버전은 그대로). */
+  '/quality/inspection-plan-versions/{inspectionPlanVersionId}:reactivate': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemHeader, { inspectionPlanVersionId: number }>,
+      never,
+      { 200: Json<components['schemas']['InspectionPlanVersion']> }
     >;
   };
   /** 서버 선행 P-102 — 시리얼로 검사표 열기(없으면 만든다). */

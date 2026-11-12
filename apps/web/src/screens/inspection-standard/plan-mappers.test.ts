@@ -113,6 +113,13 @@ describe('toPlanCreate', () => {
   it('등록 본문은 수정 본문과 같은 항목을 싣는다', () => {
     expect(toPlanCreate(filled)).toEqual(toPlanUpdate(filled));
   });
+
+  /* omf-all-around#262 — 비우면 서버가 기준코드를 자동 등록한다. */
+  it('기준코드를 비우면(공백만이어도) 키를 싣지 않는다', () => {
+    expect(toPlanCreate({ ...filled, inspectionPlanCode: '  ' })).not.toHaveProperty(
+      'inspectionPlanCode',
+    );
+  });
 });
 
 describe('isSamePlanValues', () => {

@@ -18,8 +18,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     listExpand: 'Mở rộng danh sách',
   },
   actions: {
-    openRouting: 'Xem routing',
+    openRouting: 'Tra cứu routing',
     reactivate: 'Sử dụng lại',
+    approve: 'Phê duyệt',
     copy: 'Sao chép',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
     tempSave: 'Lưu tạm',
@@ -31,7 +32,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     createVersion: 'Đăng ký phiên bản',
     newRevision: 'Phát hành phiên bản mới',
     confirm: 'Xác nhận',
-    obsolete: 'Hủy bỏ',
+    obsolete: 'Ngừng dùng',
+    obsoleteVersion: 'Ngừng dùng phiên bản',
+    reactivateVersion: 'Sử dụng lại phiên bản',
     discard: 'Hủy bản nháp',
     compareVersions: 'So sánh phiên bản',
     addItem: 'Thêm hạng mục',
@@ -56,14 +59,14 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     confirmBlockedByUnsaved:
       'Việc xác nhận không thực hiện được khi còn thay đổi chưa lưu. Hãy lưu hoặc hủy trước.',
     obsoleteNeedsConfirmed:
-      'Việc hủy bỏ chỉ thực hiện được với phiên bản đã xác nhận. Hãy xác nhận trước.',
+      'Việc ngừng dùng chỉ thực hiện được với phiên bản đã xác nhận. Hãy xác nhận trước.',
     discardNeedsDraft:
-      'Chỉ hủy bản nháp được với phiên bản đang soạn. Phiên bản đã xác nhận thì hãy hủy bỏ.',
+      'Chỉ hủy bản nháp được với phiên bản đang soạn. Phiên bản đã xác nhận thì hãy ngừng dùng.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
     transitionNeedsVersion:
-      'Việc xác nhận · hủy bỏ chỉ thực hiện được sau khi đã đăng ký phiên bản.',
+      'Việc xác nhận · ngừng dùng chỉ thực hiện được sau khi đã đăng ký phiên bản.',
     /*
-     * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤이 공유하는 안내라
+     * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤이 공유하는 안내라
      * 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다.
      */
     versionLocked:
@@ -83,26 +86,31 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       'Việc phê duyệt chỉ thực hiện được khi có phiên bản đã xác nhận. Hãy xác nhận phiên bản trước.',
     lineRequired: 'Việc xác nhận chỉ thực hiện được sau khi đã lưu ít nhất 1 hạng mục kiểm tra.',
   },
-  /** 확정·폐기 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
+  /** 확정·사용 중지 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
     title: 'Đây là phiên bản hiện không sửa được',
     confirmed:
       'Phiên bản đã xác nhận thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
     obsolete:
-      'Phiên bản đã hủy bỏ thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
+      'Phiên bản đã ngừng dùng thì không sửa được. Muốn thay đổi thì hãy phát hành phiên bản mới.',
   },
   dialog: {
     deactivateTitle: 'Bạn có muốn ngừng sử dụng tiêu chuẩn kiểm tra không?',
     activateTitle: 'Bạn có muốn sử dụng lại tiêu chuẩn kiểm tra không?',
+    approveTitle: 'Phê duyệt tiêu chuẩn kiểm tra?',
+    approveDescription: 'Sau khi phê duyệt thì không thể hủy.',
     activateDescription: 'Sử dụng lại thì có thể áp dụng tiêu chuẩn này cho lần kiểm tra mới.',
     deactivateDescription:
-      'Tiêu chuẩn không bị xóa, nhưng sẽ không áp dụng được cho lần kiểm tra mới.',
+      'Khi ngừng dùng, tiêu chuẩn sẽ không áp dụng được cho lần kiểm tra mới. Thông tin tiêu chuẩn kiểm tra không bị xóa.',
     confirmTitle: 'Xác nhận phiên bản này?',
     confirmDescription:
       'Đã xác nhận thì phiên bản này không sửa được nữa. Muốn thay đổi thì phải phát hành phiên bản mới.',
-    obsoleteTitle: 'Hủy bỏ phiên bản này?',
+    obsoleteTitle: (version: number): string => `Ngừng dùng phiên bản ${String(version)}?`,
     obsoleteDescription:
-      'Phiên bản đã hủy bỏ không dùng được cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ.',
+      'Khi ngừng dùng, phiên bản sẽ không áp dụng cho lần kiểm tra mới. Dữ liệu hiện có vẫn được giữ, và có thể dùng lại khi cần.',
+    reactivateVersionTitle: 'Sử dụng lại phiên bản này?',
+    reactivateVersionDescription:
+      'Sử dụng lại thì phiên bản này trở lại là phiên bản xác nhận và được áp dụng cho lần kiểm tra mới.',
     discardTitle: 'Hủy phiên bản đang soạn này?',
     discardDescription:
       'Phiên bản này và các hạng mục kiểm tra sẽ bị xóa, không khôi phục được. Thay đổi chưa lưu cũng mất.',
@@ -114,8 +122,9 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
      * 이 창의 확인은 표에만 반영된다는 사실을 감추지 않는다.
      */
     itemLocalNote: 'Bấm Xác nhận thì thêm vào danh sách, bấm Lưu thì mới áp dụng chính thức.',
+    planCodePlaceholder: 'Để trống để tự động cấp mã',
     itemPlaceholders: {
-      inspectionItemCode: 'Nhập mã hạng mục',
+      inspectionItemCode: 'Để trống để tự động cấp mã',
       inspectionItemName: 'Nhập tên hạng mục',
       dataType: 'Chọn kiểu dữ liệu',
       uom: 'Chọn đơn vị',
@@ -132,10 +141,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   result: {
     deactivated: 'Đã ngừng sử dụng tiêu chuẩn kiểm tra.',
     activated: 'Đã sử dụng lại tiêu chuẩn kiểm tra.',
+    approved: 'Đã phê duyệt tiêu chuẩn kiểm tra.',
     copied:
       'Đã tạo bản sao tiêu chuẩn kiểm tra. Phiên bản đang soạn — hãy kiểm tra nội dung rồi xác nhận.',
     confirmed: 'Đã xác nhận phiên bản.',
-    obsoleted: 'Đã hủy bỏ phiên bản.',
+    obsoleted: 'Đã ngừng dùng phiên bản.',
+    reactivated: 'Đã sử dụng lại phiên bản.',
     discarded: 'Đã hủy phiên bản đang soạn.',
   },
   import: {
@@ -182,7 +193,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
   filters: {
     versionStatus: 'Chọn trạng thái',
     versionStatusAll: 'Tất cả',
-    versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Đã hủy bỏ' },
+    versionStatuses: { draft: 'Đang soạn', confirmed: 'Đã xác nhận', obsolete: 'Ngừng dùng' },
     chipVersionStatus: (label: string): string => `Trạng thái: ${label}`,
     chipRemoveVersionStatus: 'Bỏ điều kiện trạng thái',
     searchLabel: 'Tìm tiêu chuẩn kiểm tra',
@@ -222,11 +233,13 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     pqcSkipOn: 'Áp dụng',
     pqcSkipOff: 'Không áp dụng',
     close: 'Đóng',
+    defaultSkipLabel: 'Có bỏ qua mặc định',
+    approvalLabel: 'Trạng thái phê duyệt',
+    activeLabel: 'Trạng thái sử dụng',
   },
   versionSection: {
     /* 검사 안내 문구(#252). */
     guideText: 'Hướng dẫn',
-    guideEdit: 'Sửa',
     editGuide: (label: string): string => `Sửa ${label.toLowerCase()}`,
     guideTooLong: (max: number): string => `Tối đa ${max.toLocaleString()} ký tự.`,
     samplingByRatio: 'Tỷ lệ (%)',
@@ -235,20 +248,25 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingBasisLocked:
       'Kiểm tra toàn bộ không nhập mẫu. Đổi phương thức sang lấy mẫu thì mới chọn được.',
     samplingQtyValue: (qty: string): string => `${qty} cái`,
+    aqlByLot: 'Tính theo bảng AQL dựa trên số lượng LOT',
     title: 'Phiên bản tiêu chuẩn kiểm tra',
     sampling: 'Lấy mẫu',
     effectivePeriod: 'Thời hạn hiệu lực',
     noEnd: 'Chưa chỉ định ngày kết thúc',
     itemsTitle: (count: number): string => `Hạng mục kiểm tra (${String(count)})`,
-    lockedHint: 'Để thêm hạng mục kiểm tra, hãy phát hành phiên bản mới.',
-    tabsLabel: 'Nội dung phiên bản',
     tabItems: 'Hạng mục kiểm tra',
     editSettings: 'Sửa cài đặt phiên bản',
-    tabItemsCount: (count: number): string => `Hạng mục kiểm tra ${String(count)}`,
-    tabHistory: 'Lịch sử',
-    tabHistoryCount: (count: number): string => `Lịch sử ${String(count)}`,
-    tabDrawings: 'Bản vẽ',
-    tabDrawingsCount: (count: number): string => `Bản vẽ ${String(count)}`,
+    settingsTitle: 'Thiết lập theo phiên bản',
+    settingsBlockTitle: 'Cài đặt phiên bản',
+    rowItemsCount: (count: number): string => `Đã đăng ký ${String(count)} hạng mục`,
+    rowDrawings: 'Bản vẽ kiểm tra',
+    rowDrawingsCount: (count: number): string => `Đã đăng ký ${String(count)} bản vẽ`,
+    rowGuide: 'Chỉ thị kiểm tra',
+    guideNoneTitle: 'Chưa có chỉ thị',
+    guideNoneDescription: 'Hãy đăng ký chỉ thị.',
+    drawingsNoneDescription: 'Hãy đăng ký bản vẽ.',
+    guideEditAction: 'Sửa chỉ thị',
+    history: 'Lịch sử phiên bản',
     drawingsLoading: 'Đang tải bản vẽ',
     drawingsNone: 'Chưa có bản vẽ',
     drawingAlt: (index: number): string => `Bản vẽ ${String(index)}`,
@@ -318,7 +336,8 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     settingsSaved: 'Thiết lập phiên bản',
     itemsSaved: 'Hạng mục kiểm tra',
     confirmed: 'Xác nhận',
-    obsoleted: 'Hủy bỏ',
+    obsoleted: 'Ngừng dùng',
+    reactivated: 'Sử dụng lại',
     discarded: 'Hủy soạn',
     updated: 'Sửa',
     unknownUser: (userId: number): string => `Người dùng #${String(userId)}`,
@@ -327,13 +346,12 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     itemRemoved: 'Xóa hạng mục',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: 'Chưa có lịch sử thay đổi',
-    noneDescription: 'Được ghi lại khi lưu · xác nhận · hủy bỏ phiên bản.',
+    noneDescription: 'Được ghi lại khi lưu · xác nhận · ngừng dùng · sử dụng lại phiên bản.',
     loading: 'Đang tải lịch sử thay đổi',
     range: '1 năm gần nhất',
   },
   versionBar: {
     label: 'Phiên bản',
-    placeholder: 'Hãy chọn phiên bản',
     openList: 'Danh sách phiên bản',
     close: 'Đóng',
   },
@@ -407,14 +425,14 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     samplingRatio: 'Tỷ lệ lấy mẫu (%)',
     samplingQty: 'Số lượng mẫu',
     aqlValue: 'AQL',
+    aqlInspectionLevel: 'Mức kiểm tra AQL',
     /** 합격·불합격 판정 개수는 AQL 표의 Ac·Re 다 — 검사 결과 건수가 아니다. */
     acceptanceNumber: 'Số chấp nhận',
     rejectionNumber: 'Số bác bỏ',
     inspectionFrequency: 'Chu kỳ kiểm tra',
     frequencyIntervalValue: 'Giá trị chu kỳ',
     frequencyIntervalUom: 'Đơn vị chu kỳ',
-    guideTextKo: 'Hướng dẫn (tiếng Hàn)',
-    guideTextVi: 'Hướng dẫn (tiếng Việt)',
+    guideText: 'Hướng dẫn',
     sequence: 'Thứ tự',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: 'Hạng mục',
@@ -445,6 +463,7 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     inactiveSuffix: ' (ngừng dùng)',
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: 'Chung mọi mặt hàng',
+    pickItem: 'Hãy chọn mặt hàng',
     /* 승인자 이름을 만들지 않는다 — 계약이 주는 것은 사용자 번호뿐이라 시각만 낸다. */
     approvedAt: (at: string): string => `Đã phê duyệt · ${at}`,
     notApproved: 'Chưa phê duyệt',
@@ -463,14 +482,24 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
       fullInspection: 'Kiểm tra toàn bộ',
       sampleByUnit: 'Lấy mẫu (theo sản phẩm)',
       sampleByLot: 'Lấy mẫu (theo LOT)',
+      aql: 'Lấy mẫu AQL',
     },
+    aqlLevels: {
+      'G-I': 'Thông thường G-I',
+      'G-II': 'Thông thường G-II',
+      'G-III': 'Thông thường G-III',
+      'S-1': 'Đặc biệt S-1',
+      'S-2': 'Đặc biệt S-2',
+      'S-3': 'Đặc biệt S-3',
+      'S-4': 'Đặc biệt S-4',
+    } as Record<string, string>,
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     routingSummary: (code: string, version: number): string =>
       `Mã ${code} · Phiên bản Rev ${String(version)}`,
     version: (planVersion: number): string => `Phiên bản ${String(planVersion)}`,
     draft: 'Đang soạn',
     confirmed: 'Đã xác nhận',
-    obsolete: 'Đã hủy bỏ',
+    obsolete: 'Ngừng dùng',
     none: 'Không có',
     /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
     itemLabel: (code: string, name: string): string => `${code} · ${name}`,
@@ -482,8 +511,6 @@ export const inspectionStandard: Translated<typeof ko.inspectionStandard> = {
     planCodeBlank: 'Mã tiêu chuẩn không được chỉ gồm khoảng trắng.',
     planNameBlank: 'Tên tiêu chuẩn không được chỉ gồm khoảng trắng.',
     effectiveRangeReversed: 'Hiệu lực đến phải bằng hoặc sau Hiệu lực từ.',
-    /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-    frequencyPairRequired: 'Giá trị chu kỳ và đơn vị chu kỳ phải cùng điền hoặc cùng để trống.',
     /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
     rejectionNumberInvalid: 'Số bác bỏ phải là số lớn hơn 0.',
     /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */

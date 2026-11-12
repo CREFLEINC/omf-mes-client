@@ -33,6 +33,7 @@ const renderVersionTransition = (overrides: Partial<VersionTransitionDialogProps
     onConfirm: vi.fn(),
     isSaving: false,
     banner: null,
+    planVersion: 1,
     ...overrides,
   };
 
@@ -48,9 +49,8 @@ describe('PlanActionDialog — 문면 잣대', () => {
 
     expect(screen.getByRole('dialog', { name: t.dialog.deactivateTitle })).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();
-    expect(description).toContain('삭제되지 않으며');
-    expect(description).toContain('새 검사');
-    expect(description).toContain('적용할 수 없게 됩니다');
+    expect(description).toContain('새 검사에 적용할 수 없습니다');
+    expect(description).toContain('삭제되지 않습니다');
     expect(screen.getByRole('button', { name: messages.common.deactivate })).toBeInTheDocument();
   });
 });
@@ -77,11 +77,14 @@ describe('VersionTransitionDialog — 문면 잣대', () => {
 
     const description = t.dialog.obsoleteDescription;
 
-    expect(screen.getByRole('dialog', { name: t.dialog.obsoleteTitle })).toBeInTheDocument();
+    /* 제목에 버전 번호를 넣는다(사용자 시안 · #258). */
+    expect(
+      screen.getByRole('dialog', { name: '버전 1을 사용 중지하시겠습니까?' }),
+    ).toBeInTheDocument();
+    expect(t.dialog.obsoleteTitle(2)).toBe('버전 2를 사용 중지하시겠습니까?');
     expect(screen.getByText(description)).toBeInTheDocument();
-    expect(description).toContain('새 검사');
-    expect(description).toContain('사용할 수 없습니다');
-    expect(description).toContain('기존 데이터는 유지됩니다');
+    expect(description).toContain('새 검사에 적용되지 않습니다');
+    expect(description).toContain('기존 데이터는 유지되며');
     expect(screen.getByRole('button', { name: t.actions.obsolete })).toBeInTheDocument();
   });
 
@@ -160,7 +163,8 @@ describe('검사기준 상태 변경 — 결과 문면 잣대', () => {
   it.each([
     ['사용 중지', t.result.deactivated, '검사기준', '중지'],
     ['확정', t.result.confirmed, '버전', '확정'],
-    ['폐기', t.result.obsoleted, '버전', '폐기'],
+    ['사용 중지', t.result.obsoleted, '버전', '사용 중지'],
+    ['재사용', t.result.reactivated, '버전', '재사용'],
     ['작성 취소', t.result.discarded, '버전', '취소'],
   ])('%s 결과가 대상·행위·완료를 말한다', (_name, result, target, action) => {
     expect(result).toContain(target);

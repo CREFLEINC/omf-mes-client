@@ -1,8 +1,8 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InspectionItemSpecUpsertForward } from '@omf-mes/api-client';
 
 import type { InspectionItemSpec, ItemDraft } from './types';
 
-type InspectionItemSpecUpsert = components['schemas']['InspectionItemSpecUpsert'];
+type InspectionItemSpecUpsert = InspectionItemSpecUpsertForward;
 
 /**
  * 검사 항목 초안을 다루는 순수 함수들.
@@ -136,8 +136,10 @@ export const toItemsPayload = (
       : { inspectionItemSpecId: draft.inspectionItemSpecId }),
     inspectionPlanVersionId,
     sequenceNo: index + 1,
-    // 앞뒤 공백이 붙은 코드·이름은 눈으로 구분되지 않는 다른 값이 된다.
-    inspectionItemCode: draft.inspectionItemCode.trim(),
+    // 앞뒤 공백이 붙은 코드·이름은 눈으로 구분되지 않는 다른 값이 된다. 코드를 비우면 서버가 자동 등록한다(#262).
+    ...(draft.inspectionItemCode.trim() === ''
+      ? {}
+      : { inspectionItemCode: draft.inspectionItemCode.trim() }),
     inspectionItemName: draft.inspectionItemName.trim(),
     dataTypeCode: draft.dataTypeCode,
     uomId: textToOptionalNumber(draft.uomId),

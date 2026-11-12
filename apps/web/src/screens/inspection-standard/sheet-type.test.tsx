@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
@@ -11,13 +11,15 @@ vi.mock('./type-options', async (importOriginal) => ({
   useSheetForPqc: () => oaSheet.on,
 }));
 vi.mock('./screen', () => ({ InspectionStandardScreen: () => <p>검사 기준 화면</p> }));
-/* 실제 화면처럼 붙을 때의 값만 기억한다 — 주소에서 `new` 를 지운 뒤에도 등록 창은 열린 채다. */
+/* 실제 화면처럼 붙을 때의 값만 기억한다 — 이동 기록에서 값을 지운 뒤에도 새 편집은 열린 채다. */
 vi.mock('../inspection-sheet-template/screen', async () => {
   const { useState } = await import('react');
   return {
-    InspectionSheetTemplateScreen: ({ startCreating }: { startCreating?: boolean }) => {
-      const [creating] = useState(startCreating === true);
-      return <p>{creating ? '검사표 기준 화면 · 등록 창' : '검사표 기준 화면'}</p>;
+    InspectionSheetTemplateScreen: ({ startBasics }: { startBasics?: { itemLabel: string } }) => {
+      const [label] = useState(startBasics?.itemLabel);
+      return (
+        <p>{label === undefined ? '검사표 기준 화면' : `검사표 기준 화면 · 새 편집 ${label}`}</p>
+      );
     },
   };
 });
@@ -46,13 +48,29 @@ describe('InspectionStandardRoute — OA 공장 계정의 PQC(#255)', () => {
     expect(screen.getByText('검사 기준 화면')).toBeInTheDocument();
   });
 
-  it('`new=1` 로 넘어오면 등록 창을 연 채 붙이고 주소에서 지운다', async () => {
+  it('「기준 추가」 창에서 채운 검사표 기본 정보를 들고 넘어오면 새 편집을 열고 이동 기록에서 지운다', async () => {
     oaSheet.on = true;
-    const { router } = render('?type=PQC&new=1');
+    const { router } = render('');
 
-    expect(screen.getByText('검사표 기준 화면 · 등록 창')).toBeInTheDocument();
+    await act(() =>
+      router?.navigate('/master-data/inspection-standard?type=PQC', {
+        state: {
+          sheetBasics: {
+            templateCode: 'SYN-SHEET-01',
+            templateName: '합성 검사표',
+            itemId: 7,
+            itemLabel: '모델 A',
+            businessUnitId: 1,
+            formLayoutCode: 'OP',
+          },
+        },
+      }),
+    );
+
+    expect(screen.getByText('검사표 기준 화면 · 새 편집 모델 A')).toBeInTheDocument();
     await waitFor(() => {
-      expect(router?.state.location.search).toBe('?type=PQC');
+      expect(router?.state.location.state).toBeNull();
     });
+    expect(router?.state.location.search).toBe('?type=PQC');
   });
 });
