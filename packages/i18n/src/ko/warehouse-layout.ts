@@ -114,6 +114,27 @@ export const warehouseLayout = {
     discard: '버리고 닫기',
   },
 
+  /**
+   * 조회 화면의 재고(피처 006). 표식은 재고 있음(지금 모양) / 비어 있음(회색) 두 모양이고, 위치를 고르면 판 아래에 그 위치와
+   * 하위 위치의 재고 표가 선다. 같은 품목 · LOT 이라도 위치가 다르면 줄을 나눈다(수량을 더하지 않는다).
+   */
+  stock: {
+    legendStocked: '재고 있음',
+    legendEmpty: '비어 있음',
+    legendNote: '도면에 없는 위치는 목록의 「아직」',
+    title: (locationCode: string): string => `${locationCode} 재고`,
+    location: '위치',
+    item: '품목',
+    lot: 'LOT',
+    onHand: '현재고',
+    qualityStatus: '품질 상태',
+    pickHint: '위치를 고르면 재고가 보입니다',
+    empty: '재고 없음',
+    loadFailed: '재고를 불러오지 못했습니다.',
+    retry: '다시 시도',
+    truncated: '재고 일부만 보입니다.',
+  },
+
   locations: {
     code: '위치 코드',
     name: '이름',

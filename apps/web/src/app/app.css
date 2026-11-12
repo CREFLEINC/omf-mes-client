@@ -13558,6 +13558,49 @@ dialog.layout-editor-dialog {
 }
 
 /*
+ * 조회 화면 판 아래 범례 — 표식의 두 모양(재고 있음 · 비어 있음, 피처 006 FR-011). 견본은 표식 판(`MarkerOverlay`)의 사각형
+ * 표식과 같은 테두리 · 바탕 토큰을 쓴다(기본 / `tone: 'muted'`).
+ */
+.layout-stock-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-variant);
+}
+
+.layout-stock-legend-stocked::before,
+.layout-stock-legend-empty::before {
+  content: '';
+  display: inline-block;
+  inline-size: 1.125rem;
+  block-size: 0.75rem;
+  margin-inline-end: var(--space-2);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  vertical-align: -0.0625rem;
+}
+
+.layout-stock-legend-empty::before {
+  border-color: var(--outline);
+  background: var(--surface-container-high);
+}
+
+/* 재고 표의 품목 칸 — 코드 위, 이름 아래. */
+.layout-stock-item {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.layout-stock-table {
+  margin-block-start: var(--space-2);
+}
+
+/*
  * 달력 그리드의 칸 하나 — 날짜 숫자 · 상태 배지 · 부분 가동 시각이 세로로 쌓인다.
  *
  * 한 칸에 셋을 그냥 두면 인라인으로 이어져 날짜와 상태가 한 줄에 붙는다. 칸마다 높이를

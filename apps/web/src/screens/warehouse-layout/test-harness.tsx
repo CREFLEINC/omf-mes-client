@@ -13,6 +13,7 @@ import {
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { SessionProvider, type Session } from '../../patterns/session';
 import { DRAWING_MAX_BYTES } from './layout-draft';
+import type { StockBalance } from './location-stock';
 import { LayoutEditorDialog } from './layout-editor-dialog';
 import { WarehouseLayoutScreen } from './screen';
 
@@ -32,6 +33,35 @@ export const LAYOUT_PATH = `/mdm/warehouses/${String(WAREHOUSE_ID)}/layout`;
 export const WAREHOUSES_PATH = '/mdm/warehouses';
 export const LOCATIONS_PATH = '/mdm/locations';
 export const UPLOAD_PATH = '/app/attachments';
+const BALANCES_PATH = '/inventory/balances';
+const UOMS_PATH = '/mdm/uoms';
+const CODE_VALUES_PATH = '/mdm/code-values';
+/** 재고 줄의 단위 — 단위 목록이 「EA」로 푼다. */
+export const UOM_ID = 70;
+
+/** 재고 줄 하나(`groupBy=LOCATION`). 품질 상태는 「정상」(코드 목록이 이름으로 푼다). */
+export const stockRow = (
+  locationId: number,
+  itemCode: string,
+  lotNo: string | null,
+  onHandQty: number,
+): StockBalance => ({
+  groupBy: 'LOCATION',
+  warehouseId: WAREHOUSE_ID,
+  locationId,
+  itemId: 1,
+  itemCode,
+  itemName: `${itemCode} 합성 품목`,
+  lotNo,
+  ownershipTypeCode: 'OWNED',
+  onHandQty,
+  reservedQty: 0,
+  pickedQty: 0,
+  blockedQty: 0,
+  availableQty: onHandQty,
+  uomId: UOM_ID,
+  qualityStatusCode: 'NORMAL',
+});
 export const OLD_ATTACHMENT_ID = 100;
 export const NEW_ATTACHMENT_ID = 5001;
 export const ROUTE = `/?warehouse=${String(WAREHOUSE_ID)}`;
@@ -168,6 +198,10 @@ export interface Script {
   upload?: () => Response | Promise<Response>;
   /** 저장 응답 — 부른 차례대로. 모자라면 마지막 것을 되풀이한다. */
   puts?: (() => Response | Promise<Response>)[];
+  /** 이 창고의 재고 줄(`groupBy=LOCATION`). 주지 않으면 0줄 — 모든 위치가 비어 있다. */
+  balances?: StockBalance[];
+  /** 재고 응답을 통째로 바꾼다(실패 · 잘림). 부른 차례대로, 모자라면 마지막 것을 되풀이한다. */
+  stock?: (() => Response | Promise<Response>)[];
 }
 
 /** 그릴 것 — 조회 화면 전체, 또는 편집 창 하나(옮긴 편집 시나리오). */
@@ -183,7 +217,34 @@ const renderSubject = (subject: Subject, script: Script, options: RenderOptions 
 
   const at = <T,>(list: T[], index: number): T => list[Math.min(index, list.length - 1)] as T;
 
+  const stockGets: Request[] = [];
   const routes: StubRoute[] = [
+    {
+      match: (request) => request.method === 'GET' && pathOf(request) === BALANCES_PATH,
+      respond: (request) => {
+        const index = stockGets.length;
+
+        stockGets.push(request);
+
+        return script.stock === undefined
+          ? jsonResponse(listBody(script.balances ?? []))
+          : at(script.stock, index)();
+      },
+    },
+    {
+      match: (request) => request.method === 'GET' && pathOf(request) === UOMS_PATH,
+      respond: () => jsonResponse(listBody([{ uomId: UOM_ID, uomCode: 'EA', isActive: true }])),
+    },
+    {
+      match: (request) =>
+        request.method === 'GET' &&
+        pathOf(request) === CODE_VALUES_PATH &&
+        new URL(request.url).searchParams.get('codeGroupCode') === 'LOT_STATUS',
+      respond: () =>
+        jsonResponse(
+          listBody([{ code: 'NORMAL', codeName: '정상', nameKo: '정상', isActive: true }]),
+        ),
+    },
     {
       match: (request) => request.method === 'GET' && pathOf(request) === WAREHOUSES_PATH,
       respond: (request) => {
@@ -287,6 +348,7 @@ const renderSubject = (subject: Subject, script: Script, options: RenderOptions 
     puts,
     contentGets,
     warehouseGets,
+    stockGets,
     onClose,
     onSaved,
   };

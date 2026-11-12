@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Checkbox, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
@@ -18,8 +18,17 @@ import { hasMarker, type LayoutDraft } from './layout-draft';
 import { LayoutEditorDialog } from './layout-editor-dialog';
 import { LoadErrorBanner } from './load-error-banner';
 import { LocationList } from './location-list';
+import { useUomOptions } from '../stock-status/lookups';
 import { lookupNote, useWarehouseOptions } from './lookups';
-import { useDrawingContent, useLayout, useLocations } from './queries';
+import { buildLocationStock } from './location-stock';
+import {
+  useDrawingContent,
+  useLayout,
+  useLocations,
+  useLocationStock,
+  useQualityStatusNames,
+} from './queries';
+import { StockTable } from './stock-table';
 import type { LocationView, SelectOption } from './types';
 import { useObjectUrl } from './use-object-url';
 
@@ -80,6 +89,23 @@ export const WarehouseLayoutScreen = () => {
   const rows = locations.data ?? EMPTY_LOCATIONS;
 
   /*
+   * 재고 — 창고 단위로 한 번 받아 위치별로 나눈다(피처 006 R-7). ⛔ 못 받았으면 표식 모양을 나누지 않는다 — 「비어 있음」으로
+   * 그리면 모르는 것을 없다고 말하게 된다(명세 가정).
+   */
+  const stock = useLocationStock(warehouseId);
+  const uomLookup = useUomOptions();
+  const qualityStatusName = useQualityStatusNames();
+  const stockData = stock.data;
+  const locationStock = useMemo(
+    () =>
+      stockData === undefined
+        ? null
+        : buildLocationStock(stockData.items, rows, stockData.truncated),
+    [stockData, rows],
+  );
+  const shownStock = stock.isError ? null : locationStock;
+
+  /*
    * 위치 목록은 창고·Location 의 Location 목록과 같은 계층이다(사용자 지시 2026-10-30) — 처음엔 구역만 펼쳐 랙까지
    * 보이고, 창고가 바뀌면 다시 정한다. 「중지된 위치도 보기」를 켜고 꺼도 사용자가 펼친 것은 지킨다.
    */
@@ -131,6 +157,14 @@ export const WarehouseLayoutScreen = () => {
     width: marker.width,
     height: marker.height,
     rotation: marker.rotation,
+    /* 재고 있음 = 지금 모양, 비어 있음 = 옅은 모양(FR-011 · R-6). */
+    ...(shownStock === null
+      ? {}
+      : {
+          tone: shownStock.stockedLocationIds.has(marker.locationId)
+            ? ('default' as const)
+            : ('muted' as const),
+        }),
   }));
 
   const pickLocation = (locationId: number): void => {
@@ -326,14 +360,62 @@ export const WarehouseLayoutScreen = () => {
                   </div>
                 )}
 
-                {/* 고른 위치 — 안 찍은 위치면 「도면에 없음」(FR-002). */}
-                {selectedLocation !== null && (
-                  <h3 className="layout-selection-title">
-                    {nameOf(selectedLocation)}
-                    {!hasMarker(markers, selectedLocation) && (
-                      <Chip size="sm">{t.locations.notOnDrawing}</Chip>
-                    )}
-                  </h3>
+                {/* 판 아래 — 범례, 재고 받기 실패 · 잘림(FR-011). */}
+                {stock.isError ? (
+                  <div className="banner-slot">
+                    <AlertBanner
+                      variant="error"
+                      action={
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          onClick={() => {
+                            void stock.refetch();
+                          }}
+                        >
+                          {t.stock.retry}
+                        </Button>
+                      }
+                    >
+                      {t.stock.loadFailed}
+                    </AlertBanner>
+                  </div>
+                ) : (
+                  shownStock !== null && (
+                    <p className="layout-stock-legend">
+                      <span className="layout-stock-legend-stocked">{t.stock.legendStocked}</span>
+                      <span className="layout-stock-legend-empty">{t.stock.legendEmpty}</span>
+                      <span className="field-note">{t.stock.legendNote}</span>
+                    </p>
+                  )
+                )}
+                {shownStock?.truncated === true && (
+                  <p className="field-note">{t.stock.truncated}</p>
+                )}
+
+                {/* 고른 위치의 재고 — 하위 위치는 위치별 줄(FR-013). 안 찍은 위치면 「도면에 없음」(FR-002). */}
+                {selectedLocation === null ? (
+                  shownStock !== null && <p className="field-note">{t.stock.pickHint}</p>
+                ) : (
+                  <>
+                    <h3 className="layout-selection-title">
+                      {t.stock.title(nameOf(selectedLocation))}
+                      {!hasMarker(markers, selectedLocation) && (
+                        <Chip size="sm">{t.locations.notOnDrawing}</Chip>
+                      )}
+                    </h3>
+                    {shownStock !== null &&
+                      (shownStock.rowsFor(selectedLocation).length === 0 ? (
+                        <EmptyState size="sm" title={t.stock.empty} />
+                      ) : (
+                        <StockTable
+                          label={t.stock.title(nameOf(selectedLocation))}
+                          rows={shownStock.rowsFor(selectedLocation)}
+                          uomLookup={uomLookup}
+                          qualityStatusName={qualityStatusName}
+                        />
+                      ))}
+                  </>
                 )}
               </>
             ),
@@ -352,6 +434,8 @@ export const WarehouseLayoutScreen = () => {
           onSaved={() => {
             setEditing(false);
             setFlash(t.map.saved);
+            /* 배치는 편집 창이 다시 읽는다 — 재고도 다시 읽는다(명세 가정: 저장한 시점의 값). */
+            void stock.refetch();
           }}
         />
       )}
