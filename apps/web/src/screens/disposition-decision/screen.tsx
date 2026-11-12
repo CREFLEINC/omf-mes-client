@@ -105,6 +105,8 @@ import {
   type Nonconformance,
 } from './types';
 
+/** 취소된 부적합 — 처분 대기 목록에 두지 않는다(G2 L10). */
+const CANCELLED_NONCONFORMANCE = 'CANCELLED';
 const EMPTY_NONCONFORMANCES: Nonconformance[] = [];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -248,7 +250,10 @@ export const DispositionDecisionScreen = ({
     useMemo(() => toPendingListQuery(filters, 1, zone, size), [filters, size, zone]),
   ).data?.page.total;
   /* 상태 칩 — 공통코드 상태마다 지금 조건(상태는 빼고)의 건수. */
-  const statusOptions = codeOptionsOf(status);
+  /* 취소된 부적합(IQC 확정 취소로 생긴 `CANCELLED`)은 처분할 것이 아니다 — 처분 대기에서 뺀다(G2 L10). */
+  const statusOptions = codeOptionsOf(status).filter(
+    (option) => option.value !== CANCELLED_NONCONFORMANCE,
+  );
   const statusTotals = usePendingTotals(
     useMemo(
       () =>
@@ -292,7 +297,10 @@ export const DispositionDecisionScreen = ({
   const uoms = useUomLookup();
 
   const rows = useMemo(
-    () => (list.data?.items ?? EMPTY_NONCONFORMANCES).map(toNonconformanceRow),
+    () =>
+      (list.data?.items ?? EMPTY_NONCONFORMANCES)
+        .filter((item) => item.statusCode !== CANCELLED_NONCONFORMANCE)
+        .map(toNonconformanceRow),
     [list.data],
   );
   /* 005 목록 「원천」 칸(G2 L8) — 행 모양은 그대로 두고 따로 넘긴다. */

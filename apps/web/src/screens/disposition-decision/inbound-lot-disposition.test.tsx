@@ -252,6 +252,20 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
   });
 
+  it('G2 L10 취소된 부적합(CANCELLED · IQC 확정 취소로 생김)은 처분 대기 목록에 나오지 않는다', async () => {
+    renderInbound({ nonconformance: { ...INBOUND_NONCONFORMANCE, statusCode: 'CANCELLED' } });
+
+    await waitFor(() =>
+      expect(
+        requestsSent().some(
+          (request) => new URL(request.url).pathname === '/quality/nonconformances',
+        ),
+      ).toBe(true),
+    );
+    expect(await screen.findByText(t.empty.title)).toBeInTheDocument();
+    expect(document.querySelector('[data-nc-id="41"]')).toBeNull();
+  });
+
   it('「지금」 띠는 접힌 채로 시작하고, 펼치면 바뀌기 전 방식을 보인다', async () => {
     const { user } = renderInbound();
     await screen.findByText('SAMPLE-ML|0003');
