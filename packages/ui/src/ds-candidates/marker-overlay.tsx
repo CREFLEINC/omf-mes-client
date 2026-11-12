@@ -1,6 +1,8 @@
 import {
+  Fragment,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -19,6 +21,11 @@ export interface OverlayMarker {
   /** 0~1. 판 위쪽에서의 비율. */
   y: number;
   label: string;
+  /**
+   * 접근 이름(버튼 `aria-label`) — 보이는 이름과 다를 때만 준다. 창고 배치도는 별칭만 보이고 「코드 별칭」으로 읽힌다
+   * (피처 007 FR-008). 없으면 `label`.
+   */
+  ariaLabel?: string;
   selected?: boolean;
   /**
    * 크기를 가진 사각형 표식 — 판 폭 · 높이에 대한 비율(0~1). 둘 다 있으면 `x` · `y` 는 사각형의 중심이고, 없으면 글자 크기의
@@ -28,6 +35,11 @@ export interface OverlayMarker {
   height?: number;
   /** 도, 시계 방향. 사각형 표식에만 쓴다. */
   rotation?: number;
+  /**
+   * 표식의 강약. `'muted'` 는 회색으로 옅게 그린다(창고 배치도 조회의 「비어 있음」, 피처 006 FR-011 · R-6). 고른 표식은
+   * 이 값과 상관없이 채운다. 기본 `'default'` — 지금 모양.
+   */
+  tone?: 'default' | 'muted';
 }
 
 /** 사각형 표식의 크기 · 회전 — 비율과 도. */
@@ -81,6 +93,11 @@ export interface MarkerOverlayProps {
    * 스스로 말을 만들지 않는다.
    */
   describeReadOnly?: string;
+  /**
+   * 이름 글자 맞추기가 끝났다 — 처음 그린 뒤, 그리고 표식(이름 · 크기)이 바뀌어 다시 맞춘 뒤 한 번씩 부른다. 사각형 표식이
+   * 없어도 처음 한 번은 부른다. 편집 창이 판 위의 「배치를 그리는 중」을 걷는 데 쓴다(피처 006 2차 · FR-017 · R2-5).
+   */
+  onLabelsFitted?: () => void;
 }
 
 const clamp = (value: number): number => Math.min(1, Math.max(0, value));
@@ -93,7 +110,120 @@ const ROTATION_SNAP_DEG = 15;
 
 const CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
 
-/** 손잡이로 크기 · 회전을 바꾸는 중. 표식 옮기기(`DragState`)와 따로 논다. */
+/** 사각형 표식 이름의 글자 크기(px) — 처음 12px, 넘치면 0.5px 씩 줄여 최소 8px(피처 006 FR-010 · R-5). */
+const LABEL_MAX_PX = 12;
+const LABEL_MIN_PX = 8;
+const LABEL_STEP_PX = 0.5;
+const LABEL_CLASS = 'marker-overlay-pin-label';
+/** 최소 글자로도 넘친다 — 자르지 않고 상자 밖으로 보인다. 표식을 키우라는 뜻이 화면에서 바로 보인다. */
+const LABEL_OVERFLOW_CLASS = 'marker-overlay-pin-label-overflow';
+
+/**
+ * 사각형 표식 이름을 `-` 뒤에서 끊을 수 있게 그린다(`<wbr>`). 위치 코드는 단계마다 `-` 로 이어지므로(`Z01-R001-L02-C03`)
+ * 단계 경계에서 줄이 바뀐다. 접근 이름은 버튼의 `aria-label` 이 따로 지켜 `<wbr>` 이 끼어들지 않는다.
+ */
+const breakableLabel = (label: string): ReactNode =>
+  label.split(/(?<=-)/).map((part, index) => (
+    /* 같은 이름 안의 조각 순서는 바뀌지 않는다 — 순번이 열쇠다. */
+    <Fragment key={index}>
+      {index > 0 && <wbr />}
+      {part}
+    </Fragment>
+  ));
+
+/** 비율로 정한 뒤 다시 재서 넘친 것만 0.5px 내리는 횟수 — 줄바꿈 때문에 비율이 딱 맞지 않을 때를 덮는다(R2-4). */
+const LABEL_RECHECK_ROUNDS = 2;
+
+/** 0.5px 눈금으로 내린다. 나눗셈 끝자리(9.4999…)가 한 눈금을 잃지 않게 아주 작은 값을 더한다. */
+const floorToStep = (px: number): number => Math.floor(px / LABEL_STEP_PX + 1e-9) * LABEL_STEP_PX;
+
+interface LabelFit {
+  box: HTMLElement;
+  label: HTMLElement;
+  /** 이름 칸이 쓸 수 있는 폭(상자 안쪽 폭 − 좌우 여백). */
+  room: number;
+  size: number;
+}
+
+const overflowsBox = (fit: LabelFit): boolean =>
+  fit.label.scrollWidth > fit.room || fit.label.offsetHeight > fit.box.clientHeight;
+
+const setLabelSize = (fit: LabelFit, size: number): void => {
+  fit.size = size;
+  fit.label.style.fontSize = `${String(size)}px`;
+};
+
+/**
+ * 이름 칸이 상자 안에 들어가게 글자 크기를 맞춘다. 들어가면 12px, 아니면 줄이되 0.5px 눈금 · 최소 8px, 8px 에서도 넘치면 넘침
+ * 표시를 단다(FR-010 · R-5).
+ *
+ * ⭐ **모아서 쓰고 모아서 읽는다**(피처 006 2차 · R2-4). 표식마다 「0.5px 줄이고 → 재고」를 되풀이하면 읽을 때마다 브라우저가
+ * 배치를 다시 잰다 — 표식 202개에서 강제 재배치 수백 번, [수정] 반응 약 1.1초였다(plan 「원인 실측」). 이제는
+ * ① 모든 이름 칸을 12px 로 두고 한 번에 재고 ② 비율(`12 × min(폭 여유/글 폭, 높이 여유/글 높이)`)로 크기를 정해 한꺼번에
+ * 쓰고 ③ 다시 한 번에 재서 넘친 것만 0.5px 내리기를 최대 2번 한다. 표식 수와 무관하게 재배치 3~4번이다.
+ *
+ * ⭐ **DOM 에 바로 쓴다.** 재는 일이라 React 상태로 두면 표식 수백 개가 한 번씩 더 그려진다. 이름 칸의
+ * `className` · `style` 은 React 가 건드리지 않는 값이라 다시 그려도 지워지지 않는다.
+ */
+const fitBoxLabels = (boxes: readonly HTMLElement[]): void => {
+  const fits: LabelFit[] = [];
+
+  /* ① 쓰기 — 모두 12px, 넘침 표시를 걷는다. */
+  for (const box of boxes) {
+    const label = box.querySelector<HTMLElement>(`.${LABEL_CLASS}`);
+
+    if (label === null) continue;
+    label.style.fontSize = `${String(LABEL_MAX_PX)}px`;
+    label.classList.remove(LABEL_OVERFLOW_CLASS);
+    fits.push({ box, label, room: 0, size: LABEL_MAX_PX });
+  }
+
+  if (fits.length === 0) return;
+
+  /* ① 읽기 — 한 번의 배치로 모두 잰다. */
+  const ratios = fits.map((fit) => {
+    const style = getComputedStyle(fit.box);
+    const padding =
+      (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
+
+    fit.room = fit.box.clientWidth - padding;
+
+    const width = fit.label.scrollWidth;
+    const height = fit.label.offsetHeight;
+    const roomHeight = fit.box.clientHeight;
+
+    if (width <= fit.room && height <= roomHeight) return 1;
+
+    return Math.min(width > 0 ? fit.room / width : 1, height > 0 ? roomHeight / height : 1);
+  });
+
+  /* ② 쓰기 — 비율로 정한 크기를 한꺼번에. */
+  fits.forEach((fit, index) => {
+    const ratio = ratios[index] ?? 1;
+
+    if (ratio >= 1) return;
+    setLabelSize(
+      fit,
+      Math.min(LABEL_MAX_PX, Math.max(LABEL_MIN_PX, floorToStep(LABEL_MAX_PX * ratio))),
+    );
+  });
+
+  /* ③ 다시 재서 넘친 것만 0.5px 내린다(최대 2번). 그래도 넘치면 넘침 표시. */
+  for (let round = 0; ; round += 1) {
+    const over = fits.map(overflowsBox);
+    const shrinkable = fits.filter((fit, index) => over[index] === true && fit.size > LABEL_MIN_PX);
+
+    if (round >= LABEL_RECHECK_ROUNDS || shrinkable.length === 0) {
+      fits.forEach((fit, index) => {
+        if (over[index] === true) fit.label.classList.add(LABEL_OVERFLOW_CLASS);
+      });
+      return;
+    }
+
+    for (const fit of shrinkable) setLabelSize(fit, fit.size - LABEL_STEP_PX);
+  }
+};
+
 interface ShapeDragState {
   id: string;
   pointerId: number;
@@ -170,6 +300,13 @@ interface DragState {
  * 가지 않아(`tabIndex` 없음) 자판만으로 새 점을 찍는 길은 없다. 필요하면 쓰는 화면이 따로
  * 마련한다.
  *
+ * ⭐ **사각형 표식 이름은 말줄임하지 않는다**(피처 006 FR-010 · R-5). 위치 코드를 `-` 에서 줄바꿈하고, 넘치면 글자를
+ * 12px → 최소 8px 로 줄이며, 그래도 넘치면 상자 밖으로 보인다 — 「Z01-R0…」로 잘리면 셀끼리 가릴 수 없다. 크기는
+ * `ResizeObserver` 하나로 모든 사각형 표식을 보고 바뀐 것만 다시 잰다. 알약 표식은 글자만큼 늘어나므로 그대로다.
+ *
+ * ⭐ **표식의 강약은 `tone` 하나다**(R-6). `'muted'` 는 옅게 그리고, 고른 표식은 늘 채운다. 무엇을 옅게 그릴지(재고
+ * 유무 등)와 범례는 쓰는 화면의 일이다.
+ *
  * ⛔ **그림을 스스로 고르지 않는다.** 어떤 그림을 어디서 받아 오는지는 쓰는 쪽의 일이다 —
  * 이 부품은 넘겨받은 것을 그릴 뿐이다.
  *
@@ -190,6 +327,7 @@ export const MarkerOverlay = ({
   describePosition,
   describeMove,
   describeReadOnly,
+  onLabelsFitted,
 }: MarkerOverlayProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -212,6 +350,79 @@ export const MarkerOverlay = ({
    * 자리가 바뀌지 않았는데 같은 말을 되풀이하면 듣는 쪽은 점이 «움직였다»고 여긴다.
    */
   const [notice, setNotice] = useState('');
+
+  /**
+   * 이름 글자 맞추기(FR-010). ⭐ **관찰자는 하나다** — 사각형 표식을 모두 그 하나가 보고, 크기가 바뀐 표식만 다시 잰다.
+   * 판이 커지거나(편집 창 · 창 크기) 표식 크기를 바꾸면 관찰 콜백이 온다. 이름이 바뀐 표식은 그리기 뒤에 잰다.
+   * ⚠ `ResizeObserver` 가 없는 환경(jsdom)에서는 그리기 뒤 재기만 한다.
+   */
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const observedBoxesRef = useRef(new Map<Element, string>());
+  /** 처음 맞추기를 알렸는가 — 사각형 표식이 없어도 처음 한 번은 알린다. */
+  const fittedOnceRef = useRef(false);
+  /** 맞추기 끝 알림 — 그리기마다 바뀌는 함수라도 맞추기를 다시 돌리지 않게 참조로 든다. */
+  const onLabelsFittedRef = useRef(onLabelsFitted);
+
+  useLayoutEffect(() => {
+    onLabelsFittedRef.current = onLabelsFitted;
+  });
+
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return undefined;
+
+    const observer = new ResizeObserver((entries) => {
+      fitBoxLabels(
+        entries
+          .map((entry) => entry.target)
+          .filter((target): target is HTMLElement => target instanceof HTMLElement),
+      );
+    });
+    const observed = observedBoxesRef.current;
+
+    resizeObserverRef.current = observer;
+    for (const box of observed.keys()) observer.observe(box);
+
+    return () => {
+      observer.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const board = boardRef.current;
+
+    if (board === null) return;
+
+    const observed = observedBoxesRef.current;
+    const present = new Set<Element>();
+    const changed: HTMLElement[] = [];
+    let removed = false;
+
+    for (const box of Array.from(board.querySelectorAll<HTMLElement>('.marker-overlay-box'))) {
+      present.add(box);
+      const signature = `${box.getAttribute('aria-label') ?? ''}|${box.style.width}|${box.style.height}`;
+
+      if (observed.get(box) === signature) continue;
+      if (!observed.has(box)) resizeObserverRef.current?.observe(box);
+      observed.set(box, signature);
+      changed.push(box);
+    }
+
+    /* ⭐ 바뀐 표식을 모아 한 번에 맞춘다(R2-4) — 하나씩 맞추면 표식 수만큼 배치를 다시 잰다. */
+    fitBoxLabels(changed);
+
+    for (const box of [...observed.keys()]) {
+      if (present.has(box)) continue;
+      resizeObserverRef.current?.unobserve(box);
+      observed.delete(box);
+      removed = true;
+    }
+
+    if (!fittedOnceRef.current || changed.length > 0 || removed) {
+      fittedOnceRef.current = true;
+      onLabelsFittedRef.current?.();
+    }
+  });
 
   /**
    * ⛔ **끌던 표식이 사라지면 드래그도 사라진다.** 지워지거나 걸러져 나간 표식은 pointerup 을
@@ -660,6 +871,10 @@ export const MarkerOverlay = ({
                 'marker-overlay-pin',
                 isBox(marker) ? 'marker-overlay-box' : '',
                 marker.selected === true ? 'marker-overlay-pin-selected' : '',
+                /* 고른 표식은 늘 채운다 — 옅은 모양이 고른 모양을 가리지 않는다(R-6). */
+                marker.tone === 'muted' && marker.selected !== true
+                  ? 'marker-overlay-pin-muted'
+                  : '',
               ]
                 .filter((name) => name !== '')
                 .join(' ')}
@@ -680,7 +895,7 @@ export const MarkerOverlay = ({
                * 표식의 이름이 「A-01 가로 10%, 세로 20%」로 불어난다. 이름은 보이는 말과
                * 같아야 한다.
                */
-              aria-label={marker.label}
+              aria-label={marker.ariaLabel ?? marker.label}
               aria-pressed={marker.selected === true}
               aria-describedby={positionId}
               onClick={(event) => {
@@ -703,7 +918,9 @@ export const MarkerOverlay = ({
                 handleMarkerKeyDown(event, marker);
               }}
             >
-              <span className="marker-overlay-pin-label">{marker.label}</span>
+              <span className={LABEL_CLASS}>
+                {isBox(marker) ? breakableLabel(marker.label) : marker.label}
+              </span>
               {shapeHandles(marker)}
               {/* 눈으로는 자리를 보지만, 듣는 사람에게는 이 글이 자리 그 자체다. */}
               <span className="marker-overlay-sr-only" id={positionId}>

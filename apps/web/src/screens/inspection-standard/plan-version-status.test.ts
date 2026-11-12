@@ -12,11 +12,11 @@ describe('resolveVersionStatus', () => {
     expect(view.isRecognized).toBe(true);
   });
 
-  it('폐기 코드는 폐기로 읽고 편집을 닫는다', () => {
+  it('폐기 코드는 사용 중지로 읽고 편집을 닫는다(omf-all-around#258)', () => {
     const view = resolveVersionStatus('OBSOLETE');
 
     expect(view.status).toBe('obsolete');
-    expect(view.label).toBe('폐기');
+    expect(view.label).toBe('사용 중지');
     expect(view.isEditable).toBe(false);
   });
 

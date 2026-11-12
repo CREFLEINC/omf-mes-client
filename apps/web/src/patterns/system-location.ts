@@ -22,7 +22,11 @@ export const isSystemLocation = (location: Pick<Location, 'systemRoleCode'>): bo
 export const isPutawayStaging = (location: Pick<Location, 'systemRoleCode'>): boolean =>
   location.systemRoleCode === SYSTEM_LOCATION_ROLE.putawayStaging;
 
-/** 위치 이름 — 별칭이 있으면 뒤에 괄호로 함께 보인다. */
+/**
+ * 위치 이름 — 별칭이 있으면 뒤에 괄호로 함께 보인다.
+ *
+ * ⚠ 입고 화면의 「이름 (별칭)」 표기다. 목록 · 선택 칸 통일(`locationOptionLabel`)은 그 화면을 고칠 때(#267 K4) 옮긴다 — 지금은 뜻이 달라 그대로 둔다.
+ */
 export const locationDisplayName = (
   name: string,
   location: Pick<Location, 'aliasName'>,

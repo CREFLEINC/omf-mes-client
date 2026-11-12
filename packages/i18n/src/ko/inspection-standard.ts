@@ -20,9 +20,11 @@ export const inspectionStandard = {
   },
   actions: {
     /* 상세 머리 — 그 품목의 라우팅 화면으로 옮긴다(사용자 지시 2026-11-05). */
-    openRouting: '라우팅 보기',
+    openRouting: '라우팅 조회',
     /* 미사용 기준을 다시 켜는 단추 — 「사용 중지」 자리(사용자 지시 2026-11-04). */
     reactivate: '재사용',
+    /* 상세 머리의 승인 — 미승인 기준에만(사용자 지시 · omf-all-around#258). */
+    approve: '승인',
     /* 다른 품목으로 복사(omf-all-around#255). */
     copy: '복사',
     /* 검사 항목 · 도면 탭의 바닥 단추 — 작성 중 버전에 담을 뿐이고 확정해야 반영된다(사용자 지시 · #227). */
@@ -35,7 +37,10 @@ export const inspectionStandard = {
     createVersion: '버전 등록',
     newRevision: '신규 버전 발행',
     confirm: '확정',
-    obsolete: '폐기',
+    obsolete: '사용 중지',
+    /* 기준의 「사용 중지」 · 「재사용」과 이름이 겹친다 — 버전 단추는 접근 이름에 「버전」을 붙인다(omf-all-around#258). */
+    obsoleteVersion: '버전 사용 중지',
+    reactivateVersion: '버전 재사용',
     discard: '작성 취소',
     compareVersions: '버전 비교',
     addItem: '항목 추가',
@@ -71,12 +76,12 @@ export const inspectionStandard = {
      */
     confirmBlockedByUnsaved:
       '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
-    obsoleteNeedsConfirmed: '폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.',
-    discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 폐기하세요.',
+    obsoleteNeedsConfirmed: '사용 중지는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.',
+    discardNeedsDraft: '작성 취소는 작성중 버전에만 할 수 있습니다. 확정된 버전은 사용 중지하세요.',
     /** 여러 컨트롤이 공유하는 안내라 무엇에 대한 안내인지로 시작한다. */
-    transitionNeedsVersion: '확정·폐기는 버전을 먼저 등록해야 할 수 있습니다.',
+    transitionNeedsVersion: '확정·사용 중지는 버전을 먼저 등록해야 할 수 있습니다.',
     /*
-     * 확정·폐기 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
+     * 확정·사용 중지 버전에서는 검사 항목도 잠긴다. 여러 컨트롤(추가·수정·삭제·순서 이동·저장)이
      * 공유하는 안내라 컨트롤 이름이 아니라 무엇에 대한 안내인지로 시작한다(배치 규범 4의 이탈 조건).
      */
     versionLocked:
@@ -98,23 +103,34 @@ export const inspectionStandard = {
     confirmedVersionRequired: '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
     lineRequired: '확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.',
   },
-  /** 확정·폐기 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
+  /** 확정·사용 중지 버전의 편집 잠금 안내. 「어떻게 풀 것인가」를 함께 담는다. */
   stateLock: {
     title: '지금은 수정할 수 없는 버전입니다',
     confirmed: '확정된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
-    obsolete: '폐기된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
+    obsolete: '사용 중지된 버전은 수정할 수 없습니다. 변경하려면 신규 버전을 발행하세요.',
   },
   dialog: {
     deactivateTitle: '검사 기준을 사용 중지하시겠습니까?',
     /* 사용 중지한 기준을 다시 켠다(사용자 지시 2026-11-04). */
     activateTitle: '검사 기준을 다시 사용하시겠습니까?',
+    approveTitle: '검사 기준을 승인하시겠습니까?',
+    /* 계약이 승인 해제를 제공하지 않는다 — 되돌릴 수 없다는 사실만 짧게(사용자 시안 · #258). */
+    approveDescription: '승인 후에는 취소할 수 없습니다.',
     activateDescription: '재사용하면 새 검사에 이 기준을 적용할 수 있습니다.',
-    deactivateDescription: '기준은 삭제되지 않으며, 새 검사에 적용할 수 없게 됩니다.',
+    deactivateDescription:
+      '사용 중지하면 새 검사에 적용할 수 없습니다. 검사 기준 정보는 삭제되지 않습니다.',
     confirmTitle: '이 버전을 확정할까요?',
     confirmDescription:
       '확정하면 이 버전은 더 이상 수정할 수 없습니다. 변경하려면 신규 버전을 발행해야 합니다.',
-    obsoleteTitle: '이 버전을 폐기할까요?',
-    obsoleteDescription: '폐기한 버전은 새 검사에서 사용할 수 없습니다. 기존 데이터는 유지됩니다.',
+    /** 「버전 1을 …」 — 숫자 끝소리에 맞춰 을/를(2·4·5·9 는 「를」 · 사용자 시안 #258). */
+    obsoleteTitle: (version: number): string =>
+      `버전 ${String(version)}${[2, 4, 5, 9].includes(version % 10) ? '를' : '을'} 사용 중지하시겠습니까?`,
+    obsoleteDescription:
+      '사용 중지하면 새 검사에 적용되지 않습니다. 기존 데이터는 유지되며, 필요하면 다시 사용할 수 있습니다.',
+    /* 사용 중지한 버전을 다시 확정으로(omf-all-around#258). */
+    reactivateVersionTitle: '이 버전을 다시 사용할까요?',
+    reactivateVersionDescription:
+      '재사용하면 이 버전이 다시 확정 버전이 되어 새 검사에 적용됩니다.',
     discardTitle: '이 작성중 버전을 취소할까요?',
     discardDescription:
       '이 버전과 검사 항목이 삭제되며 되돌릴 수 없습니다. 저장하지 않은 변경도 함께 사라집니다.',
@@ -128,8 +144,11 @@ export const inspectionStandard = {
      */
     itemLocalNote: '확인 시 목록에 추가되며, 저장 후 최종 반영됩니다.',
     /* 칸마다 무엇을 넣을지 알린다(사용자 시안 · #196). */
+    /* 등록 · 복사 창의 기준코드 — 비우면 서버가 QP-{YYYYMMDD}-{SEQ4}로 등록한다(omf-all-around#262). */
+    planCodePlaceholder: '비우면 자동으로 등록됩니다',
     itemPlaceholders: {
-      inspectionItemCode: '항목코드를 입력하세요',
+      /* 비우면 서버가 ITEM-{순서}로 등록한다(omf-all-around#262). */
+      inspectionItemCode: '비우면 자동으로 등록됩니다',
       inspectionItemName: '항목명을 입력하세요',
       dataType: '검사값 유형을 선택하세요',
       uom: '검사 단위를 선택하세요',
@@ -147,9 +166,11 @@ export const inspectionStandard = {
   result: {
     deactivated: '검사기준 사용을 중지했습니다.',
     activated: '검사기준을 다시 사용합니다.',
+    approved: '검사기준을 승인했습니다.',
     copied: '복사한 검사 기준을 만들었습니다. 버전은 작성중이니 내용을 확인한 뒤 확정하세요.',
     confirmed: '버전을 확정했습니다.',
-    obsoleted: '버전을 폐기했습니다.',
+    obsoleted: '버전을 사용 중지했습니다.',
+    reactivated: '버전을 재사용했습니다.',
     discarded: '작성중 버전을 취소했습니다.',
   },
   /** 엑셀 올리기 창(#199). 툴 엑셀 올리기와 같이 «올리기 전에» 되돌리지 않음을 말한다. */
@@ -201,7 +222,7 @@ export const inspectionStandard = {
   filters: {
     versionStatus: '상태 선택',
     versionStatusAll: '전체',
-    versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '폐기' },
+    versionStatuses: { draft: '작성중', confirmed: '확정', obsolete: '사용 중지' },
     chipVersionStatus: (label: string): string => `상태: ${label}`,
     chipRemoveVersionStatus: '상태 조건 제거',
     searchLabel: '검사 기준 검색',
@@ -249,13 +270,16 @@ export const inspectionStandard = {
     pqcSkipOn: '적용',
     pqcSkipOff: '미적용',
     close: '닫기',
+    /* 상세 정보 상자의 칸 이름 — 여부를 묻는 값임을 밝힌다(사용자 지시 · #258). 등록 · 수정 창의 이름은 그대로. */
+    defaultSkipLabel: '기본 생략 여부',
+    approvalLabel: '승인 여부',
+    activeLabel: '사용 여부',
   },
   /* 상세 카드의 버전 구획(omf-all-around#196) — 버전 고르기 · 요약 · 탭(검사 항목 / 버전 설정 / 이력). */
   versionSection: {
     /* 검사 안내 문구(#252). */
     guideText: '지시문',
-    /** 버전 요약의 언어별 안내 문구 수정 단추 · 그 창 제목(#252). */
-    guideEdit: '수정',
+    /** 「검사 지시문」 줄의 수정 단추 접근 이름 · 그 창 제목(#252). */
     editGuide: (label: string): string => `${label} 수정`,
     guideTooLong: (max: number): string => `${max.toLocaleString()}자까지 적을 수 있습니다.`,
     /* 샘플을 비율 · 개수 중 무엇으로 받을지 고르는 칩(#196). */
@@ -266,21 +290,29 @@ export const inspectionStandard = {
       '전수검사는 샘플을 입력하지 않습니다. 검사 방식을 샘플링으로 바꾸면 고를 수 있습니다.',
     /* 요약 줄의 샘플 개수 표기(#201 · #196). */
     samplingQtyValue: (qty: string): string => `${qty}개`,
+    /* AQL 샘플링(omf-all-around#264) — 시료 수 · 판정 수는 검사할 때 LOT 수량으로 표에서 정한다. */
+    aqlByLot: 'LOT 수량에 따라 AQL 표로 계산',
     title: '검사 기준 버전',
     sampling: '검사 방식',
     effectivePeriod: '적용 기간',
     noEnd: '종료일 미설정',
     itemsTitle: (count: number): string => `검사 항목 (${String(count)})`,
-    lockedHint: '검사 항목을 추가하려면 신규 버전을 발행하세요.',
-    tabsLabel: '버전 내용',
     tabItems: '검사 항목',
     editSettings: '버전 설정 수정',
-    tabItemsCount: (count: number): string => `검사 항목 ${String(count)}건`,
-    tabHistory: '이력',
-    tabHistoryCount: (count: number): string => `이력 ${String(count)}건`,
-    /* 기준서 도면 탭(omf-all-around#208). */
-    tabDrawings: '도면',
-    tabDrawingsCount: (count: number): string => `도면 ${String(count)}건`,
+    /* 버전 카드의 「버전별 설정」 세 줄 · 「버전 이력」 창(사용자 시안 · omf-all-around#258). */
+    settingsTitle: '버전별 설정',
+    /** 버전 카드의 「버전 설정」 묶음 제목 — 검사 방식 · 주기 · AQL 등(사용자 시안 · omf-all-around#258). */
+    settingsBlockTitle: '버전 설정',
+    rowItemsCount: (count: number): string => `등록된 항목 ${String(count)}건`,
+    rowDrawings: '검사 도면',
+    rowDrawingsCount: (count: number): string => `등록된 도면 ${String(count)}건`,
+    rowGuide: '검사 지시문',
+    /* 지시문 · 도면 빈 상태 — 검사 항목 빈 상태와 같은 모양(사용자 지시 · #258). */
+    guideNoneTitle: '등록된 지시문이 없습니다',
+    guideNoneDescription: '지시문을 등록하세요.',
+    drawingsNoneDescription: '도면을 등록하세요.',
+    guideEditAction: '지시문 수정',
+    history: '버전 이력',
     drawingsLoading: '도면을 불러오는 중',
     drawingsNone: '등록된 도면이 없습니다',
     drawingAlt: (index: number): string => `도면 ${String(index)}`,
@@ -354,7 +386,8 @@ export const inspectionStandard = {
     settingsSaved: '버전 설정',
     itemsSaved: '검사 항목',
     confirmed: '확정',
-    obsoleted: '폐기',
+    obsoleted: '사용 중지',
+    reactivated: '재사용',
     discarded: '작성 취소',
     updated: '수정',
     unknownUser: (userId: number): string => `사용자 #${String(userId)}`,
@@ -363,13 +396,12 @@ export const inspectionStandard = {
     itemRemoved: '항목 삭제',
     itemField: (code: string, label: string): string => `${code} · ${label}`,
     none: '변경 이력이 없습니다',
-    noneDescription: '버전 저장 · 확정 · 폐기 시 기록됩니다.',
+    noneDescription: '버전 저장 · 확정 · 사용 중지 · 재사용 시 기록됩니다.',
     loading: '변경 이력을 불러오는 중',
     range: '최근 1년',
   },
   versionBar: {
     label: '버전',
-    placeholder: '버전을 선택하세요',
     openList: '버전 목록',
     close: '닫기',
   },
@@ -450,13 +482,13 @@ export const inspectionStandard = {
     samplingRatio: '샘플 비율(%)',
     samplingQty: '샘플 수량',
     aqlValue: 'AQL',
+    aqlInspectionLevel: 'AQL 검사 수준',
     acceptanceNumber: '합격 허용 불량 수',
     rejectionNumber: '불합격 판정 불량 수',
     inspectionFrequency: '검사 주기',
     frequencyIntervalValue: '검사 주기 값',
     frequencyIntervalUom: '주기 단위',
-    guideTextKo: '지시문(한국어)',
-    guideTextVi: '지시문(베트남어)',
+    guideText: '지시문',
     sequence: '순서',
     /** 표의 「항목」 열 — 코드와 이름을 한 칸에 담는다. `item`(품목)과 다른 것이다. */
     itemSpec: '항목',
@@ -487,6 +519,7 @@ export const inspectionStandard = {
     inactiveSuffix: ' (미사용)',
     /** 「전 품목 공통 기준」. 계약이 품목 널을 허용한다 — 빈 칸으로 두면 빠뜨린 것처럼 보인다. */
     allItems: '전 품목 공통',
+    pickItem: '품목을 선택하세요',
     /*
      * 승인자 **이름을 만들지 않는다.** 계약이 주는 것은 사용자 번호이고
      * 이름을 만들려면 이 화면의 관심사가 아닌 사용자 조회가 필요하다 — 시각만 낸다.
@@ -508,7 +541,18 @@ export const inspectionStandard = {
       fullInspection: '전수검사',
       sampleByUnit: '샘플링(제품 단위)',
       sampleByLot: '샘플링(LOT 단위)',
+      aql: 'AQL 샘플링',
     },
+    /* KS Q ISO 2859-1 검사 수준 — 일반 I~III · 특별 S-1~S-4(omf-all-around#264). */
+    aqlLevels: {
+      'G-I': '일반 G-I',
+      'G-II': '일반 G-II',
+      'G-III': '일반 G-III',
+      'S-1': '특별 S-1',
+      'S-2': '특별 S-2',
+      'S-3': '특별 S-3',
+      'S-4': '특별 S-4',
+    } as Record<string, string>,
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     /** 기준 수정 창의 라우팅 — 코드 · 버전임을 밝힌다(사용자 지시 2026-11-04). 상태는 옆 칩이 맡는다. */
     routingSummary: (code: string, version: number): string =>
@@ -516,7 +560,7 @@ export const inspectionStandard = {
     version: (planVersion: number): string => `버전 ${String(planVersion)}`,
     draft: '작성중',
     confirmed: '확정',
-    obsolete: '폐기',
+    obsolete: '사용 중지',
     none: '없음',
     /** 「코드 · 이름」. 코드가 앞에 온다 — 중복 검증의 대상이라 훑을 수 있어야 한다. */
     itemLabel: (code: string, name: string): string => `${code} · ${name}`,
@@ -528,8 +572,6 @@ export const inspectionStandard = {
     planCodeBlank: '기준코드는 공백만으로 지정할 수 없습니다.',
     planNameBlank: '기준명은 공백만으로 지정할 수 없습니다.',
     effectiveRangeReversed: '적용 종료일은 적용 시작일과 같거나 그 뒤여야 합니다.',
-    /* 계약이 짝을 요구하나 데이터베이스 CHECK 가 없다 — 화면이 먼저 막는다. */
-    frequencyPairRequired: '검사 주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     /* 계약 CHECK > 0 — 0 은 「없음」이 아니라 위반이다. */
     rejectionNumberInvalid: '불합격 판정 불량 수는 0보다 큰 숫자여야 합니다.',
     /* 계약 CHECK ≥ 0 — 0 은 허용된다. 불합격판정개수와 규칙이 다르다. */

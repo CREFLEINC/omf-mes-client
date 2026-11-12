@@ -1,11 +1,11 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, InspectionPlanCreateForward } from '@omf-mes/api-client';
 
 import type { InspectionPlan, PlanFormValues } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type InspectionPlanUpdateForward = components['schemas']['InspectionPlanUpdate'];
 
-type InspectionPlanCreate = components['schemas']['InspectionPlanCreate'] & {
+type InspectionPlanCreate = InspectionPlanCreateForward & {
   defaultSkip?: boolean;
 };
 type InspectionPlanUpdate = InspectionPlanUpdateForward;
@@ -66,7 +66,11 @@ export const toPlanUpdate = (values: PlanFormValues): InspectionPlanUpdate => ({
  * 기준 등록 요청 본문. 계약이 수정 본문과 같은 항목을 받는다 —
  * 승인 정보와 사용 여부는 등록에서도 받지 않는다.
  */
-export const toPlanCreate = (values: PlanFormValues): InspectionPlanCreate => toPlanUpdate(values);
+export const toPlanCreate = (values: PlanFormValues): InspectionPlanCreate => {
+  const { inspectionPlanCode, ...rest } = toPlanUpdate(values);
+  /* 비우면 키를 빼 서버가 자동 등록한다(omf-all-around#262). */
+  return inspectionPlanCode === '' ? rest : { ...rest, inspectionPlanCode };
+};
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */
 export const isSamePlanValues = (a: PlanFormValues, b: PlanFormValues): boolean =>

@@ -7,6 +7,7 @@ const t = messages.inspectionStandard;
 /** 코드 · id 를 사람이 읽는 이름으로 — 화면이 가진 선택 목록에서 찾는다. */
 export interface CompareLabels {
   samplingMethod: (code: string) => string;
+  /** 검사 주기 · 주기 단위 — 비교 줄은 걷었고(#263) 변경 이력이 예전 기록을 풀 때 쓴다. */
   inspectionFrequency: (code: string) => string;
   frequencyIntervalUom: (code: string) => string;
   dataType: (code: string) => string;
@@ -63,21 +64,14 @@ export const compareSettings = (
     { key: 'samplingRatio', label: t.fields.samplingRatio, format: text },
     { key: 'samplingQty', label: t.fields.samplingQty, format: text },
     { key: 'aqlValue', label: t.fields.aqlValue, format: text },
+    {
+      key: 'aqlInspectionLevelCode',
+      label: t.fields.aqlInspectionLevel,
+      format: (value) => labelOrEmpty(value, (code) => t.values.aqlLevels[code] ?? code),
+    },
     { key: 'acceptanceNumber', label: t.fields.acceptanceNumber, format: text },
     { key: 'rejectionNumber', label: t.fields.rejectionNumber, format: text },
-    {
-      key: 'inspectionFrequencyCode',
-      label: t.fields.inspectionFrequency,
-      format: (value) => labelOrEmpty(value, labels.inspectionFrequency),
-    },
-    { key: 'frequencyIntervalValue', label: t.fields.frequencyIntervalValue, format: text },
-    {
-      key: 'frequencyIntervalUomCode',
-      label: t.fields.frequencyIntervalUom,
-      format: (value) => labelOrEmpty(value, labels.frequencyIntervalUom),
-    },
-    { key: 'guideTextKo', label: t.fields.guideTextKo, format: text },
-    { key: 'guideTextVi', label: t.fields.guideTextVi, format: text },
+    { key: 'guideText', label: t.fields.guideText, format: text },
   ];
 
   return fields.map(({ key, label, format }) => ({

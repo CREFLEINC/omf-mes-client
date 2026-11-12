@@ -126,6 +126,59 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
   /** 정보 판에서 연필로 고치는 값(별칭). */
+  bulkCreate: {
+    open: 'Tạo hàng loạt',
+    title: (warehouse: string): string =>
+      warehouse === '' ? 'Tạo vị trí hàng loạt' : `Tạo vị trí hàng loạt — ${warehouse}`,
+    modeLabel: 'Cách tạo',
+    modeNew: 'Tạo khu mới',
+    modeExisting: 'Thêm kệ vào khu có sẵn',
+    zoneCount: 'Số khu',
+    racksPerZone: 'Số kệ mỗi khu',
+    levelsPerRack: 'Số tầng mỗi kệ',
+    cellsPerLevel: 'Số ô mỗi tầng',
+    levelHint: '0 = chỉ tạo kệ',
+    cellHint: '0 = chỉ tới tầng',
+    pickZones: 'Khu sẽ thêm kệ',
+    noZones: 'Không có khu để thêm kệ.',
+    zoneName: (code: string, alias: string): string => `${code} · ${alias}`,
+    zoneInfo: (racks: number, cells: number): string => `${String(racks)} kệ · ${String(cells)} ô`,
+    stockBlocked: 'Khu đang có tồn kho nên không thể đặt kệ — hãy chuyển tồn kho trước.',
+    pickRequired: 'Hãy chọn ít nhất một khu để thêm kệ.',
+    rackNoLeft: 'Vượt quá số kệ R999. Hãy giảm số kệ.',
+    total: 'Vị trí sẽ tạo',
+    count: (count: number): string => `${count.toLocaleString('vi-VN')} vị trí`,
+    parts: (zones: number | null, racks: number, levels: number, cells: number): string =>
+      [
+        zones === null ? null : `Khu ${String(zones)}`,
+        `Kệ ${String(racks)}`,
+        `Tầng ${String(levels)}`,
+        `Ô ${String(cells)}`,
+      ]
+        .filter((part) => part !== null)
+        .join(' · '),
+    firstCode: 'Mã đầu',
+    lastCode: 'Mã cuối',
+    overCells: (count: number): string =>
+      `Mỗi lần tạo tối đa 1.000 ô (hiện ${count.toLocaleString('vi-VN')}). Hãy giảm số lượng.`,
+    overAll: (count: number): string =>
+      `Mỗi lần tạo tối đa 1.200 vị trí (hiện ${count.toLocaleString('vi-VN')}). Hãy giảm số lượng.`,
+    make: 'Tạo',
+    making: (done: number, total: number): string => `Đang tạo ${String(done)}/${String(total)}`,
+    done: (count: number): string => `Đã tạo ${count.toLocaleString('vi-VN')} vị trí.`,
+    partial: (created: number, failedRacks: number): string =>
+      `Đã tạo ${created.toLocaleString('vi-VN')}, chưa tạo được ${String(failedRacks)} kệ.`,
+    partialNames: (created: number): string =>
+      `Đã tạo ${created.toLocaleString('vi-VN')}, một số tên chưa được đặt.`,
+    failure: (code: string, reason: string): string => `${code} — ${reason}`,
+    retryRest: 'Tạo lại phần còn lại',
+    renameFailed: (reason: string): string => `Đã tạo nhưng chưa đặt được tên — ${reason}`,
+    netFail: 'Không kết nối được máy chủ nên đã dừng.',
+  },
+  aliasEdit: {
+    edit: (locationCode: string): string => `Sửa tên gọi khác ${locationCode}`,
+    conflict: 'Người khác đã sửa trước — đã tải tên gọi khác mới nhất.',
+  },
   factEdit: {
     start: (label: string): string => `Sửa ${label}`,
     done: (label: string): string => `Xong sửa ${label}`,

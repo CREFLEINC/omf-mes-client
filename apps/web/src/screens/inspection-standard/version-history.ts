@@ -54,6 +54,10 @@ const versionFields = (
     samplingRatio: { label: t.fields.samplingRatio, format: raw },
     samplingQty: { label: t.fields.samplingQty, format: raw },
     aqlValue: { label: t.fields.aqlValue, format: raw },
+    aqlInspectionLevelCode: {
+      label: t.fields.aqlInspectionLevel,
+      format: code((value) => t.values.aqlLevels[value] ?? value),
+    },
     acceptanceNumber: { label: t.fields.acceptanceNumber, format: raw },
     rejectionNumber: { label: t.fields.rejectionNumber, format: raw },
     inspectionFrequencyCode: {
@@ -65,8 +69,10 @@ const versionFields = (
       label: t.fields.frequencyIntervalUom,
       format: code(labels.frequencyIntervalUom),
     },
-    guideTextKo: { label: t.fields.guideTextKo, format: raw },
-    guideTextVi: { label: t.fields.guideTextVi, format: raw },
+    guideText: { label: t.fields.guideText, format: raw },
+    /* 한 칸이 되기 전(#261) 이력의 옛 열쇠 — 같은 이름으로 보인다. */
+    guideTextKo: { label: t.fields.guideText, format: raw },
+    guideTextVi: { label: t.fields.guideText, format: raw },
     planVersion: { label: t.fields.planVersion, format: raw },
     statusCode: { label: t.fields.status, format: raw },
   };
@@ -110,6 +116,9 @@ const actionOf = (event: VersionAuditEvent): string => {
       : t.history.created;
   }
   if ('items' in before || 'items' in after) return t.history.itemsSaved;
+  /* 사용 중지 → 확정은 재사용이다(omf-all-around#258). */
+  if (after.statusCode === 'CONFIRMED' && before.statusCode === 'OBSOLETE')
+    return t.history.reactivated;
   if (after.statusCode === 'CONFIRMED') return t.history.confirmed;
   if (after.statusCode === 'OBSOLETE') return t.history.obsoleted;
   if (Object.keys(after).length > 0 || Object.keys(before).length > 0)
