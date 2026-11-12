@@ -21,7 +21,9 @@ export const judgmentRank = (code: string | null | undefined): number =>
 
 /** 앞 판정을 더 나은 판정으로 덮는가 — 불합격 → 보류 · 합격, 보류 → 합격. */
 export const isOverride = (before: string | null | undefined, after: string | null): boolean =>
-  judgmentRank(before) >= 1 && judgmentRank(after) >= 0 && judgmentRank(after) < judgmentRank(before);
+  judgmentRank(before) >= 1 &&
+  judgmentRank(after) >= 0 &&
+  judgmentRank(after) < judgmentRank(before);
 
 /** 재검 사유가 필요한 LOT 하나 — 「LOT 0001: 결과 1 불합격 → 이 결과 합격」. */
 export interface OverriddenLot {
@@ -143,7 +145,9 @@ export const splitRuleErrors = (
 ): { codes: JudgmentRuleCode[]; rest: ApiError | null } => {
   if (error === null) return { codes: [], rest: null };
   if (error.kind === 'http') {
-    return isRuleCode(error.code) ? { codes: [error.code], rest: null } : { codes: [], rest: error };
+    return isRuleCode(error.code)
+      ? { codes: [error.code], rest: null }
+      : { codes: [], rest: error };
   }
   if (error.kind !== 'validation') return { codes: [], rest: error };
 

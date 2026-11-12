@@ -804,10 +804,7 @@ export const DispositionDecisionScreen = ({
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
-                  <PendingConcessionBox
-                    concession={pendingConcession}
-                    lotCount={lotRows.length}
-                  />
+                  <PendingConcessionBox concession={pendingConcession} lotCount={lotRows.length} />
                 )}
                 <DecisionFormPane
                   value={form}

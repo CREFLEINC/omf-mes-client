@@ -129,7 +129,10 @@ export const FINAL = lotRow(9004, {
   ],
 });
 
-export const materialLot = (lotId: number, over: Partial<WorkRecordDetail['lots'][number]> = {}) => ({
+export const materialLot = (
+  lotId: number,
+  over: Partial<WorkRecordDetail['lots'][number]> = {},
+) => ({
   lotId,
   lotNo: `SYN-CAP|1000|261110|SYN-S1|${String(lotId).padStart(4, '0')}`,
   lotQty: 1000,

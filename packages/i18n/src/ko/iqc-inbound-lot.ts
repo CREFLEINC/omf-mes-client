@@ -152,7 +152,8 @@ export const iqcInboundLot = {
         reason: string | null,
       ) =>
         `LOT ${lotTail}: 결과 ${beforeSeq} ${before} → 결과 ${afterSeq} ${after}${reason === null ? '' : `(${reason})`}`,
-      unmatched: (count: number) => `매칭한 결과가 없는 자재 관리 LOT ${count}개는 판정에서 빠집니다`,
+      unmatched: (count: number) =>
+        `매칭한 결과가 없는 자재 관리 LOT ${count}개는 판정에서 빠집니다`,
     },
     /** 결과 행의 재검 사유. */
     reason: (name: string) => `재검 사유: ${name}`,

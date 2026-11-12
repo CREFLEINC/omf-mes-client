@@ -18,7 +18,7 @@ export const eventDetailOf = (row: InspectionRequestEventForward): string => {
     row.reason == null || row.reason.trim() === '' ? null : row.reason,
     row.reinspectionReasonName == null ? null : t.reinspectionReason(row.reinspectionReasonName),
   ].filter((part): part is string => part !== null);
-  return parts.length === 0 ? '—' : parts.join(' · ');
+  return parts.length === 0 ? '—' : parts.join(' · '); // ui-check-ignore: C-13 서버 이력 「내용」과 같은 「·」 잇기(G2 M4)
 };
 
 /**

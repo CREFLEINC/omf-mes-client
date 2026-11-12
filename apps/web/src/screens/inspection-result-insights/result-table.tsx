@@ -14,8 +14,10 @@ const t = messages.inspectionResultInsights.overview;
 const EMPTY = t.unknown;
 
 /** 「LOT 번호」 칸 — LOT 번호, 없으면(새 흐름 IQC 결과) 입하 LOT 번호, 그도 없으면 「미확인」(G2 L9). */
-export const lotCellOf = (result: { lotNo?: string | null; inboundLotNo?: string | null }): string =>
-  result.lotNo ?? result.inboundLotNo ?? EMPTY;
+export const lotCellOf = (result: {
+  lotNo?: string | null;
+  inboundLotNo?: string | null;
+}): string => result.lotNo ?? result.inboundLotNo ?? EMPTY;
 /* 목록의 유형 열은 요약·추이의 모집단 이름과 같은 말을 쓴다. */
 const TYPE_LABELS = new Map<string, string>(
   Object.entries(messages.inspectionResultInsights.inspectionTypes),

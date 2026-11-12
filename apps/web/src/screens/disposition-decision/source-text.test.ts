@@ -53,4 +53,3 @@ describe('G2 L13 시안 문구', () => {
     expect(messages.partsIqcInspection.target.conditionAql(0.65)).toMatch(/^AQL 0\.65 /u);
   });
 });
-

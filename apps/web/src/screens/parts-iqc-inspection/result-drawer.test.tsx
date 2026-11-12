@@ -313,9 +313,7 @@ const mountDrawer = (data: InboundInspection) => {
 
 const openAdd = async (seqNo: number) => {
   const user = userEvent.setup();
-  await user.click(
-    await screen.findByRole('button', { name: messages.iqcInboundLot.results.add }),
-  );
+  await user.click(await screen.findByRole('button', { name: messages.iqcInboundLot.results.add }));
   const drawer = await screen.findByRole('dialog', { name: t.addTitle(seqNo) });
   return { user, drawer };
 };
