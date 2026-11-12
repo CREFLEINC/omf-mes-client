@@ -30,7 +30,18 @@ export interface LocationListProps {
   onExpandedChange: (ids: ReadonlySet<number>) => void;
   /** 목록이 비었을 때 설 안내. 주지 않으면 「위치가 없습니다」. */
   empty?: ReactNode;
+  /**
+   * 좁은 칸(편집 창 왼쪽, 약 480px)에 맞춘 폭 — 네 칸이 가로 스크롤 없이 든다. 코드 칸이 가장 넓고 이름 · 구분은 줄여
+   * 말줄임, 도면 칩 칸은 칩 폭만큼(시안 W-CO-08 편집 창 목록). 폭 기억 열쇠도 따로 둔다.
+   */
+  compact?: boolean;
 }
+
+/** 열 폭 — 보통(조회 화면) / 좁은 칸(편집 창). */
+const WIDTHS = {
+  regular: { code: '280px', level: '88px', placed: '80px', min: '540px' },
+  compact: { code: '11rem', level: '4.5rem', placed: '7rem', min: '0px' },
+} as const;
 
 /**
  * W-CO-08 위치 계층 표 — 코드 · 이름 · 구분 · 도면(찍음/아직).
@@ -47,7 +58,9 @@ export const LocationList = ({
   expandedIds,
   onExpandedChange,
   empty,
+  compact = false,
 }: LocationListProps) => {
+  const widths = compact ? WIDTHS.compact : WIDTHS.regular;
   const treeRows = useMemo(
     () => buildLocationRows(locations, expandedIds),
     [locations, expandedIds],
@@ -80,7 +93,7 @@ export const LocationList = ({
           {t.locations.code}
         </LocationTreeHeader>
       ),
-      width: '280px',
+      width: widths.code,
       render: (row) => (
         <LocationTreeCell
           row={row}
@@ -107,14 +120,19 @@ export const LocationList = ({
       header: t.locations.level,
       /* 서버가 만든 위치는 역할 이름(창고 전체 · 적치 대기) — Location 목록의 「구분」과 같다. */
       align: 'center',
-      width: '88px',
-      render: (row) => levelNameOf(row.location) ?? messages.common.reference.empty,
+      width: widths.level,
+      render: (row) => {
+        const level = levelNameOf(row.location) ?? messages.common.reference.empty;
+
+        /* 좁은 칸에서는 한 줄 말줄임(베트남어 「Chờ cất hàng」 등) — 전체는 머금은 이름으로 보인다. */
+        return compact ? <OneLine text={level} /> : level;
+      },
     },
     {
       key: 'placed',
       header: t.locations.placed,
       align: 'center',
-      width: '80px',
+      width: widths.placed,
       render: (row) =>
         isPlaced(row.location.locationId) ? (
           <Chip size="sm" status="success">
@@ -133,8 +151,12 @@ export const LocationList = ({
       columns={columns}
       rows={treeRows}
       getRowId={(row) => String(row.location.locationId)}
-      widthKey="omf-mes:warehouse-layout:location-tree-widths"
-      minWidth="540px"
+      widthKey={
+        compact
+          ? 'omf-mes:warehouse-layout:editor-location-tree-widths'
+          : 'omf-mes:warehouse-layout:location-tree-widths'
+      }
+      minWidth={widths.min}
       pick={{
         label: (row) => row.location.locationCode,
         currentId: selectedLocationId === null ? null : String(selectedLocationId),

@@ -388,6 +388,7 @@ export const LayoutEditorDialog = ({
                 onPick={pickLocation}
                 expandedIds={expandedIds ?? new Set()}
                 onExpandedChange={setExpandedIds}
+                compact
               />
             )}
           </section>
