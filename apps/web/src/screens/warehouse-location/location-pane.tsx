@@ -55,6 +55,9 @@ export interface LocationPaneProps {
   loadError: ReactNode;
   /** 별칭 칸 연필(#267 FR-007) — 위치 수정 권한(W-06-07)이 있을 때만. 서버가 만든 자리도 별칭은 고친다. */
   canEditAlias?: boolean;
+  /** [일괄 생성](#267 FR-001) — 위치 쓰기 권한(W-06-07)이 있을 때만 단추를 둔다. 누를 수 있는지는 구역 추가와 같다. */
+  canBulkCreate?: boolean;
+  onBulkCreate?: () => void;
 }
 
 const t = messages.warehouseLocation;
@@ -85,6 +88,8 @@ export const LocationPane = ({
   actionBanner,
   loadError,
   canEditAlias = false,
+  canBulkCreate = false,
+  onBulkCreate,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
   /** 별칭을 고치는 줄 — 한 번에 하나. */
@@ -259,6 +264,16 @@ export const LocationPane = ({
             >
               {t.actions.addZone}
             </Button>
+            {canBulkCreate && (
+              <Button
+                leadingIcon={<Icon name="library_add" size={18} />}
+                disabled={!canAddRoot}
+                aria-describedby={canAddRoot ? undefined : addRootNoteId}
+                onClick={onBulkCreate}
+              >
+                {t.bulkCreate.open}
+              </Button>
+            )}
             <Button variant="outlined" disabled={!canAddChild} onClick={onAddChild}>
               {t.actions.addRack}
             </Button>
