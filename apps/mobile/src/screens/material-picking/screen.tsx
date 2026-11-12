@@ -428,6 +428,8 @@ export const MaterialPickingScreen = () => {
         batchIdOf(order.pickingOrderId),
         new Date(),
         worker.workerNo,
+        /* 서버가 대체하므로 누적을 보낸다(G2 H3). */
+        pickedQtyOf(line, queued),
       );
 
       /* 담기지 못하면 집은 것이 어디에도 없다. 말하지 않으면 사람은 집힌 줄 안다. */

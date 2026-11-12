@@ -168,7 +168,8 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
         pickingOrder: options.order ?? order(),
         lines: (options.lines ?? [line()]).map((each) => ({
           ...each,
-          pickedQty: each.pickedQty + (serverPicked.get(each.pickingLineId) ?? 0),
+          /* 서버 `:pick` 은 집은 양을 대체한다(G2 H3 · picking-pick.service). */
+          pickedQty: serverPicked.get(each.pickingLineId) ?? each.pickedQty,
         })),
       }),
   },
@@ -325,7 +326,7 @@ const mount = (options: Options = {}): Mounted => {
     }
 
     if (behaviour === 'ok') {
-      serverPicked.set(lineId, (serverPicked.get(lineId) ?? 0) + body.pickedQty);
+      serverPicked.set(lineId, body.pickedQty);
     }
 
     return respondWith(behaviour, line({ pickingLineId: lineId }), picks, req);
@@ -1627,7 +1628,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
           const lineId = Number(PICK_LINE.exec(new URL(req.url).pathname)?.[1] ?? Number.NaN);
           const body = (await req.clone().json()) as { pickedQty: number };
 
-          serverPicked.set(lineId, (serverPicked.get(lineId) ?? 0) + body.pickedQty);
+          serverPicked.set(lineId, body.pickedQty);
 
           return respondWith('ok', line({ pickingLineId: lineId }), picks, req);
         },
