@@ -2,31 +2,26 @@ import { describe, expect, it } from 'vitest';
 
 import { retryCommands, rowStatusOf, summarize, type BatchSnapshot } from './batch-view';
 import type { IssueRunResult } from './mutations';
-import type { TargetRow } from './types';
+import { labelLot } from './test-lots';
 
 /** 합성값이다 — 실 운영 값을 쓰지 않는다(공개 저장소 경계). */
 const result = (over: Partial<IssueRunResult>): IssueRunResult => ({
-  lineId: 1,
+  lotId: 1,
   isPrinted: false,
   failedAt: null,
-  hasCreatedLot: false,
   hasPrintedLabel: false,
   issue: null,
-  lotId: null,
   error: null,
   iqcLabel: null,
   ...over,
 });
 
-const printed = (lineId: number): IssueRunResult =>
-  result({ lineId, isPrinted: true, lotId: 9000 + lineId });
+const printed = (lotId: number): IssueRunResult => result({ lotId, isPrinted: true });
 
-const printFailed = (lineId: number): IssueRunResult =>
+const printFailed = (lotId: number): IssueRunResult =>
   result({
-    lineId,
+    lotId,
     failedAt: 'print',
-    hasCreatedLot: true,
-    lotId: 9000 + lineId,
     issue: { documentIssueLogId: 1, issueSeq: 1, lotNo: null, printOutcome: 'PENDING' },
   });
 
@@ -35,33 +30,15 @@ const snapshot = (over: Partial<BatchSnapshot>): BatchSnapshot => ({
   results: new Map(),
   skipped: new Set(),
   notRun: new Set(),
-  currentLineId: null,
+  currentLotId: null,
   ...over,
-});
-
-const row = (id: number): TargetRow => ({
-  inboundReceiptLineId: id,
-  lineNo: 1,
-  inboundReceiptId: id,
-  inboundReceiptNo: `SYN-IB-${String(id)}`,
-  supplierId: 8201,
-  plantId: 8301,
-  receiptDatetime: '2026-08-27T02:00:00Z',
-  itemId: 8601,
-  receivedQty: 1,
-  uomId: 8401,
-  lotId: null,
-  inspectionRequired: false,
-  lotNo: null,
-  lotStatusCode: null,
-  lastIssue: null,
 });
 
 describe('rowStatusOf', () => {
   it('보내지 않은 줄 · 보내는 줄 · 기다리는 줄 · 끝난 줄을 가른다', () => {
     const batch = snapshot({
       order: [1, 2, 3, 4, 5],
-      currentLineId: 2,
+      currentLotId: 2,
       results: new Map([[1, printed(1)]]),
       skipped: new Set([4]),
       notRun: new Set([5]),
@@ -124,35 +101,38 @@ describe('summarize', () => {
 });
 
 describe('retryCommands', () => {
-  const base = { printerName: null, shellPrinterName: null };
-  const describeRow = () => ({ uomCode: 'EA', supplierText: null });
-  const rows = new Map([1, 2].map((id) => [id, row(id)] as const));
+  const base = { printerName: null, shellPrinterName: null, plantId: 8301 };
+  const lots = new Map([1, 2].map((id) => [id, labelLot(id)] as const));
 
   it('발행 기록이 남은 장은 같은 LOT 에 「인쇄 실패」 사유로, 기록 전 장은 사유 없이 확인을 달아 보낸다', () => {
     const results = new Map([[1, printFailed(1)]]);
-    const { commands, needsReason } = retryCommands(
-      [1, 2],
-      rows,
-      results,
-      base,
-      describeRow,
-      'PRINT_FAILURE',
-    );
+    const { commands, needsReason } = retryCommands([1, 2], lots, results, base, 'PRINT_FAILURE');
 
     expect(needsReason).toEqual([]);
-    expect(commands[0]).toMatchObject({
-      row: { inboundReceiptLineId: 1, lotId: 9001 },
-      reissueReasonCode: 'PRINT_FAILURE',
+    expect(commands[0]).toMatchObject({ lot: { lotId: 1 }, reissueReasonCode: 'PRINT_FAILURE' });
+    expect(commands[0]?.verifyUnissued).toBeUndefined();
+    expect(commands[1]).toMatchObject({
+      lot: { lotId: 2 },
+      reissueReasonCode: null,
+      verifyUnissued: true,
+      plantId: 8301,
     });
-    expect(commands[0]?.verify).toBeUndefined();
-    expect(commands[1]).toMatchObject({ reissueReasonCode: null, verify: 'unissued' });
   });
 
   it('사유 목록에 「인쇄 실패」가 없으면 기록이 남은 장은 보내지 않고 따로 센다', () => {
     const results = new Map([[1, printFailed(1)]]);
-    const { commands, needsReason } = retryCommands([1, 2], rows, results, base, describeRow, null);
+    const { commands, needsReason } = retryCommands([1, 2], lots, results, base, null);
 
-    expect(commands.map((command) => command.row.inboundReceiptLineId)).toEqual([2]);
+    expect(commands.map((command) => command.lot.lotId)).toEqual([2]);
     expect(needsReason).toEqual([1]);
+  });
+
+  it('이미 출력한 적이 있는 LOT(다시 인쇄)은 첫 발행으로 보내지 않는다', () => {
+    const reprinted = new Map([
+      [3, labelLot(3, { lastIssue: { issueSeq: 1, issuedAt: '2026-11-11T01:12:00Z' } })],
+    ]);
+    const { commands } = retryCommands([3], reprinted, new Map(), base, 'PRINT_FAILURE');
+
+    expect(commands[0]).toMatchObject({ reissueReasonCode: 'PRINT_FAILURE' });
   });
 });

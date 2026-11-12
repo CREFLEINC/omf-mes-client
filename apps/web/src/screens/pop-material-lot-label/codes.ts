@@ -4,37 +4,14 @@
  * 값을 화면 곳곳에 흩어 두면 확정 통지가 왔을 때 무엇을 고쳐야 하는지 셀 수 없다. 그래서
  * 보내는 코드는 전부 여기 모으고, **자리표시인 것에는 그 사실을 붙인다.**
  *
+ * ⭐ 005 — 옛 「LOT 등록」(입하 원천 `POST /trace/lots`)의 원천 · 번호 · LOT 유형 코드는 걷었다. LOT 은 발행 묶음이
+ *    만든다(계약 §1).
+ *
  * | 값 | 상태 | 근거 |
  * | --- | :-: | --- |
- * | `LOT_SOURCE_TYPE_CODE` | 확정 | 변경 통지 #664 (`omf-mes#326` 회신) |
- * | `LOT_NUMBER_SOURCE_CODE` | 확정 | 계약 `LotCreate.numberSourceCode` enum |
- * | `LOT_TYPE_CODE` | 확정 | 계약 `GET /trace/lots` 의 `lotTypeCode` 값 목록 |
  * | `DOCUMENT_TYPE_CODE` | ⚠ **자리표시** | 착수 이슈 #139 §4 · `omf-mes#145` |
  * | `DOCUMENT_TARGET_TYPE_CODE` | ⚠ **자리표시** | 계약 `DocumentTarget.targetTypeCode` · `omf-mes#145` |
  */
-
-/**
- * 자재LOT 의 원천은 **입하 «라인»**이다 — 입하 «건»이 아니다.
- *
- * ⛔ `INBOUND_RECEIPT` 를 쓰지 않는다. 그 값은 입하 건을 뜻하고, 계약이 예시값 자리에 그것을
- * 적어 두었던 것은 설계팀 오기였다(변경 통지 #664 가 정정했다).
- *
- * ⭐ 값 규약 — **값은 언제나 `sourceId` 가 «가리키는 것»을 이름한다.** 계보의 정방향이
- * `InboundReceiptLine.lotId` 로 라인에 붙으므로 역방향도 라인이어야 짝이 맞는다.
- */
-export const LOT_SOURCE_TYPE_CODE = 'INBOUND_RECEIPT_LINE';
-
-/**
- * 번호를 **서버가 매긴다.**
- *
- * 이 화면은 실물 라벨이 붙어 오지 않은 자재만 다루므로(`supplierLotLabelAttached=false`) 발번
- * 경로가 하나로 정해져 있다. ⛔ `lotNo` 를 함께 보내면 400 이다 — 계약이 「안 준 것」과
- * 「못 정한 것」을 가르지 않으려고 **누가 매기는가**를 직접 받는다.
- */
-export const LOT_NUMBER_SOURCE_CODE = 'MES';
-
-/** 자재 LOT. 계약이 `MATERIAL`·`PRODUCTION`·`PRODUCT` 세 값을 적어 두었다. */
-export const LOT_TYPE_CODE = 'MATERIAL';
 
 /**
  * ⚠ **자리표시다.** 「자재LOT 라벨」을 뜻하는 문서 유형 코드 문자열이 아직 정해지지 않았다

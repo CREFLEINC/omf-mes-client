@@ -1,6 +1,6 @@
 import { toIssueFailure, type IssueFailure } from './failure';
 import type { BatchIssueHandle, IssueCommand, IssueRunResult } from './mutations';
-import type { TargetRow } from './types';
+import type { LabelLot } from './types';
 
 /**
  * 일괄 발행이 남긴 것을 **줄마다 · 동작 바 한 줄로** 읽는다 — 화면이 그리기만 하게 판정을 여기 모은다.
@@ -16,16 +16,16 @@ export type RowStatus =
 
 export type BatchSnapshot = Pick<
   BatchIssueHandle,
-  'order' | 'results' | 'skipped' | 'notRun' | 'currentLineId'
+  'order' | 'results' | 'skipped' | 'notRun' | 'currentLotId'
 >;
 
-export const rowStatusOf = (lineId: number, batch: BatchSnapshot): RowStatus => {
-  if (!batch.order.includes(lineId)) return { kind: 'notSelected' };
-  if (batch.currentLineId === lineId) return { kind: 'running' };
-  if (batch.skipped.has(lineId)) return { kind: 'alreadyIssued' };
-  if (batch.notRun.has(lineId)) return { kind: 'stopped' };
+export const rowStatusOf = (lotId: number, batch: BatchSnapshot): RowStatus => {
+  if (!batch.order.includes(lotId)) return { kind: 'notSelected' };
+  if (batch.currentLotId === lotId) return { kind: 'running' };
+  if (batch.skipped.has(lotId)) return { kind: 'alreadyIssued' };
+  if (batch.notRun.has(lotId)) return { kind: 'stopped' };
 
-  const result = batch.results.get(lineId);
+  const result = batch.results.get(lotId);
 
   if (result === undefined) return { kind: 'waiting' };
   if (result.isPrinted) {
@@ -39,10 +39,10 @@ export const rowStatusOf = (lineId: number, batch: BatchSnapshot): RowStatus => 
 /**
  * 다시 보내서 풀릴 수 있는 실패인가.
  *
- * ⛔ 권한 없음 · 검사기준 없음 · 발행할 수 없는 LOT 은 다시 보내도 같은 답이다. 「인쇄됐는데 기록만 못
+ * ⛔ 권한 없음 · 발행할 수 없는 LOT 은 다시 보내도 같은 답이다. 「인쇄됐는데 기록만 못
  *    남김」은 종이가 이미 나왔다 — 다시 찍으면 같은 LOT 의 라벨이 두 장 돈다.
  */
-const RETRYABLE: ReadonlySet<IssueFailure> = new Set(['printFailed', 'registerConflict', 'other']);
+const RETRYABLE: ReadonlySet<IssueFailure> = new Set(['printFailed', 'other']);
 
 export interface BatchSummary {
   /** 이번 묶음에 넣은 장수. */
@@ -62,18 +62,18 @@ export const summarize = (batch: BatchSnapshot): BatchSummary => {
   let printed = 0;
   let headline: BatchSummary['headline'] = null;
 
-  for (const lineId of batch.order) {
-    const status = rowStatusOf(lineId, batch);
+  for (const lotId of batch.order) {
+    const status = rowStatusOf(lotId, batch);
 
     if (status.kind === 'printed') {
       printed += 1;
     } else if (status.kind === 'failed') {
-      unfinished.push(lineId);
-      if (RETRYABLE.has(status.failure)) retryable.push(lineId);
+      unfinished.push(lotId);
+      if (RETRYABLE.has(status.failure)) retryable.push(lotId);
       headline ??= status.failure;
     } else if (status.kind === 'stopped') {
-      unfinished.push(lineId);
-      retryable.push(lineId);
+      unfinished.push(lotId);
+      retryable.push(lotId);
     }
   }
 
@@ -87,44 +87,38 @@ export const summarize = (batch: BatchSnapshot): BatchSummary => {
  *
  * ⭐ **발행 기록이 이미 남은 장**(인쇄만 실패)은 2회차라 사유가 필수다 — 「인쇄 실패」를 싣는다. 받은 사유
  *    목록에 그 값이 없으면(`printFailureCode` 가 `null`) 그 장은 여기서 보내지 않고 다시 인쇄 보기로 넘긴다.
- * ⭐ 기록 전에 멈춘 장은 첫 발행이다 — 사유 없이, 보내기 직전 확인(`verify`)을 단다.
- * ⛔ 이번 실행이 만든 LOT 을 줄에 싣는다 — 표의 줄은 시작할 때 찍어 둔 것이라 `lotId` 가 비어 있다.
+ * ⭐ 기록 전에 멈춘 장은 첫 발행이다 — 사유 없이, 보내기 직전 확인(`verifyUnissued`)을 단다.
  */
 export const retryCommands = (
-  lineIds: readonly number[],
-  rows: ReadonlyMap<number, TargetRow>,
+  lotIds: readonly number[],
+  lots: ReadonlyMap<number, LabelLot>,
   results: ReadonlyMap<number, IssueRunResult>,
-  base: Omit<
-    IssueCommand,
-    'row' | 'reissueReasonCode' | 'lotStatusCode' | 'verify' | 'uomCode' | 'supplierText'
-  >,
-  describe: (row: TargetRow) => Pick<IssueCommand, 'uomCode' | 'supplierText'>,
+  base: Pick<IssueCommand, 'printerName' | 'shellPrinterName' | 'plantId'>,
   printFailureCode: string | null,
 ): { commands: IssueCommand[]; needsReason: number[] } => {
   const commands: IssueCommand[] = [];
   const needsReason: number[] = [];
 
-  for (const lineId of lineIds) {
-    const row = rows.get(lineId);
+  for (const lotId of lotIds) {
+    const lot = lots.get(lotId);
 
-    if (row === undefined) continue;
+    if (lot === undefined) continue;
 
-    const previous = results.get(lineId);
-    const lotId = previous?.lotId ?? row.lotId;
-    const isReissue = previous?.issue !== null && previous?.issue !== undefined;
+    const previous = results.get(lotId);
+    const isReissue =
+      (previous?.issue !== null && previous?.issue !== undefined) || lot.lastIssue !== null;
 
     if (isReissue && printFailureCode === null) {
-      needsReason.push(lineId);
+      needsReason.push(lotId);
       continue;
     }
 
     commands.push({
       ...base,
-      ...describe(row),
-      row: { ...row, lotId },
+      lot,
       reissueReasonCode: isReissue ? printFailureCode : null,
       lotStatusCode: null,
-      ...(isReissue ? {} : { verify: 'unissued' as const }),
+      ...(isReissue ? {} : { verifyUnissued: true }),
     });
   }
 

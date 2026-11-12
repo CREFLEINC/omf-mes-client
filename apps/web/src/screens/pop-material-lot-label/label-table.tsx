@@ -1,47 +1,39 @@
 import { messages } from '@omf-mes/i18n';
-import type { UseQueryResult } from '@tanstack/react-query';
-import type { RefObject } from 'react';
 
-import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
-import { plantToday } from '../../patterns/plant-time';
+import { formatPackage, formatQty } from '../../patterns/package-qty';
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { rowStatusOf, type BatchSnapshot, type RowStatus } from './batch-view';
-import { nameSource, type ItemNameSource } from './lookups';
-import { formatQty, receiptWhen } from './pending';
-import type { RegisteredLot } from './queries';
-import type { TargetRow } from './types';
+import { isVoided, isWaiting, type LabelLot } from './types';
 
 const t = messages.popMaterialLotLabel.table;
+const tState = messages.popMaterialLotLabel.lotState;
 const tStatus = messages.popMaterialLotLabel.status;
 
 /**
- * 표가 무엇을 보이는가.
+ * 표가 무엇을 보이는가(screens/P-01-01.md).
  *
- * - `pending` 발행 대기 — 체크 · 품목코드 · 품목명 · 수량 · 입하 시각 · IQC
- * - `result` 발행 결과 — 결과 표식 · 품목코드 · 품목명 · 수량 · 결과 · IQC(체크 대신 결과가 제자리에 붙는다)
- * - `reprint` 다시 인쇄 — 체크 · LOT 번호 · 품목명 · 수량 · 마지막 발행 · IQC
+ * - `waiting` 공급사·품목의 대기(+ 아래에 폐기) — 체크 · 번호 · 재고 수량 · 패키징 · 공급사 LOT · 상태 · 라벨
+ * - `received` 최근 입하된 LOT — 같은 칸, 고를 수 없다(번호 아래 「입하 LOT IL-…」)
+ * - `reprint` 다시 인쇄 — 체크 · 번호 · 품목 · 재고 수량 · 패키징 · 상태 · 출력
  *
- * IQC 는 어느 보기에서나 마지막 열이다(사용자 지시 2026-10-26) — 발행 대기에서 결과로 바뀌어도 자리가 같다.
+ * ⭐ 발행 중 · 결과 확인 전에는 마지막 칸이 그 LOT 의 결과다(체크 대신 결과 표식이 제자리에 붙는다).
  */
-export type LabelTableMode = 'pending' | 'result' | 'reprint';
+export type LabelTableMode = 'waiting' | 'received' | 'reprint';
 
 export interface LabelTableProps {
   mode: LabelTableMode;
-  /** 이 쪽에 세울 줄. */
-  rows: readonly TargetRow[];
+  lots: readonly LabelLot[];
   checked: ReadonlySet<number>;
-  onToggle: (lineId: number) => void;
+  onToggle: (lotId: number) => void;
   /** 발행 중에는 줄을 바꾸지 못한다. */
   isLocked: boolean;
-  itemNames: ReadonlyMap<number, ItemNameSource>;
-  uomLookup: LookupSource;
-  /** `result` 에서 줄마다 결과를 읽는다. */
+  /** 결과를 그리는가 — 그리면 `batch` 에서 LOT 마다 결과를 읽는다. */
+  showResults: boolean;
   batch: BatchSnapshot;
-  /** 줄 목록 경로가 없을 때(입하 건 → 줄 모으기) 다시 인쇄 줄의 LOT 번호를 따로 물은 결과. */
-  lots: ReadonlyMap<number, UseQueryResult<RegisteredLot>>;
-  /** 줄 칸 — 화면이 높이를 재서 쪽 크기를 정한다(`row-fit`). */
-  rowsRef: RefObject<HTMLDivElement | null>;
-  /** 줄이 없을 때 그 자리에 보일 말. */
-  empty: string;
+  /** 줄이 없을 때 그 자리에 보일 말(없으면 표를 그리지 않는다). */
+  empty: string | null;
+  /** 표 이름(읽어 주는 도구). */
+  label: string;
 }
 
 const CheckMark = () => (
@@ -56,25 +48,11 @@ const CrossMark = () => (
   </svg>
 );
 
-/**
- * 입하 일시 — **`yy.mm.dd hh:mm`**(사용자 지시 2026-10-27). 오늘 들어온 줄도 날짜를 빼지 않는다 —
- * 기간을 넘겨 보는 목록이라 날짜가 빠지면 어느 날 것인지 다시 따져야 한다.
- */
-const receivedText = (value: string): string => {
-  const when = receiptWhen(value);
+/** 마지막 발행 — 「11-11 08:12」(공장 시각). */
+export const issuedWhen = (value: string): string => {
+  const parts = toPlantDateTimeParts(value);
 
-  return when === null
-    ? ''
-    : `${when.date.slice(2, 4)}.${when.date.slice(5, 7)}.${when.date.slice(8, 10)} ${when.time}`;
-};
-
-/** 다시 인쇄의 마지막 발행 — 오늘이면 시각만, 아니면 날짜를 앞에 붙인다. */
-const issuedText = (value: string): string => {
-  const when = receiptWhen(value);
-
-  if (when === null) return '';
-
-  return when.date === plantToday() ? when.time : `${when.day} ${when.time}`;
+  return parts === null ? '' : `${parts.date.slice(5)} ${parts.time}`;
 };
 
 const statusText = (status: RowStatus): string => {
@@ -105,147 +83,174 @@ const statusTone = (status: RowStatus): string => {
   return status.kind === 'running' ? 'running' : 'idle';
 };
 
+/** 상태 칩 — 「대기」 / 「폐기」 / 「입하됨 · 정상」(screens/P-01-01.md). */
+export const LotStateChip = ({ lot }: { lot: LabelLot }) => {
+  if (isWaiting(lot)) {
+    return (
+      <span className="pop-mlot-state" data-tone="warning">
+        {tState.waiting}
+      </span>
+    );
+  }
+
+  if (isVoided(lot)) {
+    return (
+      <span className="pop-mlot-state" data-tone="error">
+        {tState.voided}
+      </span>
+    );
+  }
+
+  return (
+    <span className="pop-mlot-state" data-tone={lot.statusCode === 'NORMAL' ? 'ok' : 'info'}>
+      {tState.received(tState.quality[lot.statusCode] ?? lot.statusCode)}
+    </span>
+  );
+};
+
+const LabelCell = ({ lot }: { lot: LabelLot }) =>
+  lot.lastIssue === null ? (
+    <span className="pop-mlot-dim">{t.unprinted}</span>
+  ) : (
+    <>
+      {`${String(lot.lastIssue.issueSeq)}회 `}
+      <span className="pop-mlot-dim">{issuedWhen(lot.lastIssue.issuedAt)}</span>
+    </>
+  );
+
+const Qty = ({ lot }: { lot: LabelLot }) => (
+  <span className="pop-mlot-cell-qty">
+    {formatQty(lot.lotQty)}
+    <span className="pop-mlot-uom">{lot.uomCode}</span>
+  </span>
+);
+
 /**
- * 발행 대기 · 결과 · 다시 인쇄 표 — **열 머리를 한 번만 두고 줄은 한 줄**로 적는다.
+ * 자재 관리 LOT 표 — **열 머리를 한 번만 두고 줄은 한 줄**로 적는다.
  *
- * ⭐ 옛 목록은 값마다 이름표를 붙여 한 쪽에 이름표가 40개였다. 머리를 한 번 두면 줄은 값만 남는다.
  * ⭐ 줄 전체가 체크 칸이다(규범 C-1) — 어디를 눌러도 체크된다. 장갑 낀 손으로 작은 네모를 겨누지 않는다.
+ * ⭐ LOT 번호는 저장된 그대로, 고정폭으로, 자르지 않는다(규범 C-10). 공급사 LOT 은 말줄임.
  */
 export const LabelTable = ({
   mode,
-  rows,
+  lots,
   checked,
   onToggle,
   isLocked,
-  itemNames,
-  uomLookup,
+  showResults,
   batch,
-  lots,
-  rowsRef,
   empty,
+  label,
 }: LabelTableProps) => {
-  const columns =
-    mode === 'reprint'
-      ? [t.columns.lotNo, t.columns.itemName, t.columns.qty, t.columns.issued, t.columns.iqc]
-      : [
-          t.columns.itemCode,
-          t.columns.itemName,
-          t.columns.qty,
-          mode === 'result' ? t.columns.result : t.columns.receivedAt,
-          t.columns.iqc,
-        ];
+  if (lots.length === 0) {
+    return empty === null ? null : <p className="pop-mlot-empty">{empty}</p>;
+  }
+
+  const isReprint = mode === 'reprint';
 
   return (
-    <div className="pop-mlot-table" data-mode={mode}>
+    <div
+      className="pop-mlot-table"
+      data-mode={isReprint ? 'reprint' : 'lots'}
+      role="group"
+      aria-label={label}
+    >
       <div className="pop-mlot-table-head" aria-hidden="true">
-        <span>{mode === 'result' ? '' : t.columns.check}</span>
-        {columns.map((column) => (
-          <span key={column}>{column}</span>
-        ))}
+        <span>{t.columns.check}</span>
+        <span>{t.columns.lotNo}</span>
+        {isReprint ? <span>{t.columns.item}</span> : null}
+        <span>{t.columns.qty}</span>
+        <span>{t.columns.package}</span>
+        {isReprint ? null : <span>{t.columns.supplierLot}</span>}
+        <span>{t.columns.status}</span>
+        <span>
+          {showResults ? t.columns.result : isReprint ? t.columns.printed : t.columns.label}
+        </span>
       </div>
-      <div className="pop-mlot-rows" ref={rowsRef}>
-        {rows.length === 0 ? <p className="pop-mlot-empty">{empty}</p> : null}
-        {rows.map((row) => {
-          const source = nameSource(itemNames, row.itemId);
-          const itemCode = source.item?.code ?? lookupDisplayLabel(source, row.itemId);
-          const itemName = source.item?.name ?? lookupDisplayLabel(source, row.itemId);
-          const uom = lookupDisplayLabel(uomLookup, row.uomId);
-          const qty = (
-            <span className="pop-mlot-cell-qty">
-              {formatQty(row.receivedQty)}
-              <span className="pop-mlot-uom">{uom}</span>
-            </span>
-          );
-          const name = (
-            <span className="pop-mlot-cell-name">
-              <span className="pop-mlot-name-text">{itemName}</span>
-            </span>
-          );
-          /* 마지막 열 — 검사 대상 줄에만 적는다. 아니면 빈칸이라 「필수」만 눈에 걸린다. */
-          const iqc = (
-            <span className="pop-mlot-cell-iqc">
-              {row.inspectionRequired ? (
-                <span className="pop-mlot-iqc">{t.iqcRequired}</span>
-              ) : null}
-            </span>
-          );
-
-          if (mode === 'result') {
-            const status = rowStatusOf(row.inboundReceiptLineId, batch);
-            const tone = statusTone(status);
-
-            return (
-              <div
-                key={row.inboundReceiptLineId}
-                className="pop-mlot-row"
-                data-status={tone}
-                data-selected={status.kind !== 'notSelected'}
-              >
-                <span className="pop-mlot-cell-mark">
-                  <span className="pop-mlot-mark" data-status={tone}>
-                    {tone === 'ok' ? <CheckMark /> : tone === 'error' ? <CrossMark /> : null}
-                  </span>
+      {lots.map((lot) => {
+        const status = showResults ? rowStatusOf(lot.lotId, batch) : null;
+        const selectable =
+          mode !== 'received' && !showResults && (isReprint ? !isVoided(lot) : isWaiting(lot));
+        const isChecked = checked.has(lot.lotId);
+        const cells = (
+          <>
+            <span className="pop-mlot-cell-mark">
+              {status !== null && status.kind !== 'notSelected' ? (
+                <span className="pop-mlot-mark" data-status={statusTone(status)}>
+                  {status.kind === 'printed' ? <CheckMark /> : null}
+                  {status.kind === 'failed' ? <CrossMark /> : null}
                 </span>
-                <span className="pop-mlot-cell-code">{itemCode}</span>
-                {name}
-                {qty}
-                <span className="pop-mlot-cell-result" data-status={tone}>
-                  {statusText(status)}
-                </span>
-                {iqc}
-              </div>
-            );
-          }
-
-          const isChecked = checked.has(row.inboundReceiptLineId);
-          const lot = row.lotId === null ? undefined : lots.get(row.lotId);
-          const lotNo = row.lotNo ?? lot?.data?.lotNo ?? null;
-          const received = receivedText(row.receiptDatetime);
-
-          return (
-            <button
-              key={row.inboundReceiptLineId}
-              type="button"
-              role="checkbox"
-              aria-checked={isChecked}
-              aria-label={t.rowName(
-                itemCode,
-                itemName,
-                `${formatQty(row.receivedQty)} ${uom}`,
-                received,
-              )}
-              className="pop-mlot-row"
-              disabled={isLocked}
-              onClick={() => {
-                onToggle(row.inboundReceiptLineId);
-              }}
-            >
-              <span className="pop-mlot-cell-mark">
-                <span className="pop-mlot-checkbox" data-checked={isChecked}>
+              ) : (
+                <span
+                  className="pop-mlot-checkbox"
+                  data-checked={isChecked}
+                  data-disabled={!selectable}
+                >
                   {isChecked ? <CheckMark /> : null}
                 </span>
+              )}
+            </span>
+            <span className="pop-mlot-cell-lotno">
+              <span className="pop-mlot-cell-lot">{lot.lotNo}</span>
+              {lot.inboundLotNo === null ? null : (
+                <span className="pop-mlot-sub">{t.inboundLot(lot.inboundLotNo)}</span>
+              )}
+            </span>
+            {isReprint ? (
+              <span className="pop-mlot-cell-name">
+                <span className="pop-mlot-cell-code">{lot.itemCode}</span>
+                <span className="pop-mlot-name-text pop-mlot-dim">{lot.itemName}</span>
               </span>
-              {mode === 'reprint' ? (
-                <span className="pop-mlot-cell-lot">{lotNo ?? t.lotLoading}</span>
-              ) : (
-                <span className="pop-mlot-cell-code">{itemCode}</span>
-              )}
-              {name}
-              {qty}
-              {mode === 'reprint' ? (
-                <span className="pop-mlot-cell-when">
-                  {row.lastIssue === null
-                    ? ''
-                    : t.issuedAt(row.lastIssue.issueSeq, issuedText(row.lastIssue.issuedAt))}
-                </span>
-              ) : (
-                <span className="pop-mlot-cell-when">{received}</span>
-              )}
-              {iqc}
-            </button>
-          );
-        })}
-      </div>
+            ) : null}
+            <span>
+              <Qty lot={lot} />
+            </span>
+            <span className="pop-mlot-cell-wrap">
+              {formatPackage(lot.package) ?? <span className="pop-mlot-dim">{t.none}</span>}
+            </span>
+            {isReprint ? null : (
+              <span className="pop-mlot-cell-ellipsis">
+                {lot.supplierLotNo ?? <span className="pop-mlot-dim">{t.none}</span>}
+              </span>
+            )}
+            <span>
+              <LotStateChip lot={lot} />
+            </span>
+            <span
+              className={status === null ? 'pop-mlot-cell-wrap' : 'pop-mlot-cell-result'}
+              data-status={status === null ? undefined : statusTone(status)}
+            >
+              {status === null ? <LabelCell lot={lot} /> : statusText(status)}
+            </span>
+          </>
+        );
+
+        return selectable ? (
+          <button
+            key={lot.lotId}
+            type="button"
+            role="checkbox"
+            className="pop-mlot-row"
+            aria-checked={isChecked}
+            aria-label={t.rowName(lot.lotNo, `${formatQty(lot.lotQty)} ${lot.uomCode}`)}
+            disabled={isLocked}
+            onClick={() => {
+              onToggle(lot.lotId);
+            }}
+          >
+            {cells}
+          </button>
+        ) : (
+          <div
+            key={lot.lotId}
+            className="pop-mlot-row"
+            data-voided={isVoided(lot)}
+            data-status={status?.kind === 'failed' ? 'error' : undefined}
+          >
+            {cells}
+          </div>
+        );
+      })}
     </div>
   );
 };

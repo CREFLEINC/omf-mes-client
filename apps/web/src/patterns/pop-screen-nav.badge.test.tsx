@@ -114,7 +114,7 @@ describe('PopScreenNavButton — 남은 작업 배지(피처 002)', () => {
     const dialog = within(await openNav(user));
     const start = dialog.getByRole('option', { name: `작업 지시 목록${work.suffix(3)}` });
     expect(within(start).getByText('3')).toBeInTheDocument();
-    expect(dialog.getByRole('option', { name: '자재 LOT 라벨 발행' })).toBeInTheDocument();
+    expect(dialog.getByRole('option', { name: '자재 관리 LOT 라벨' })).toBeInTheDocument();
   });
 
   it('묶음의 화면을 누르면 그 화면으로 바로 간다', async () => {

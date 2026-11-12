@@ -12,13 +12,11 @@ import type { IssueRunResult } from './mutations';
  * 갈래별로 직접 잰다.
  */
 const resultOf = (over: Partial<IssueRunResult>): IssueRunResult => ({
-  lineId: 1,
+  lotId: 1,
   isPrinted: false,
   failedAt: null,
-  hasCreatedLot: false,
   hasPrintedLabel: false,
   issue: null,
-  lotId: null,
   error: null,
   iqcLabel: null,
   ...over,
@@ -39,22 +37,12 @@ describe('toIssueFailure', () => {
     expect(toIssueFailure(resultOf({ failedAt: 'print' }))).toBe('printFailed');
   });
 
-  it('채번 충돌은 봉투로 와도 상태 코드로 와도 재시도 가능이다', () => {
+  it('⛔ 005 — LOT 등록 걸음이 없다: 발행 걸음의 409 · 400 은 그 밖의 실패다', () => {
     const conflict: ApiError = { kind: 'conflict', cause: 'user', message: '충돌' };
-    const bare: ApiError = { kind: 'http', status: 409 };
+    const bare: ApiError = { kind: 'http', status: 400 };
 
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error: conflict }))).toBe(
-      'registerConflict',
-    );
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error: bare }))).toBe(
-      'registerConflict',
-    );
-  });
-
-  it('⛔ 400 을 채번 충돌로 읽지 않는다', () => {
-    const error: ApiError = { kind: 'http', status: 400 };
-
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error }))).toBe('other');
+    expect(toIssueFailure(resultOf({ failedAt: 'issue', error: conflict }))).toBe('other');
+    expect(toIssueFailure(resultOf({ failedAt: 'issue', error: bare }))).toBe('other');
   });
 
   /**
@@ -83,26 +71,6 @@ describe('toIssueFailure', () => {
     expect(toIssueFailure(resultOf({ failedAt: 'issue', error }))).toBe('other');
   });
 
-  it('등록에서 IQC 검사기준이 없다는 잠김은 그 사유로 말한다', () => {
-    const missing: ApiError = {
-      kind: 'stateLocked',
-      errors: [
-        { scope: 'screen', code: 'STATE_LOCKED', message: '유효한 IQC 검사기준이 없습니다.' },
-      ],
-    };
-    const duplicated: ApiError = {
-      kind: 'stateLocked',
-      errors: [
-        { scope: 'screen', code: 'STATE_LOCKED', message: '유효한 IQC 검사기준이 여러 개입니다.' },
-      ],
-    };
-
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error: missing }))).toBe(
-      'iqcPlanMissing',
-    );
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error: duplicated }))).toBe('other');
-  });
-
   it('발행에서 LOT 상태 잠김(불량·폐기)은 그 사유로 말한다 — 뭉뚱그린 실패로 접지 않는다', () => {
     const locked: ApiError = {
       kind: 'stateLocked',
@@ -116,10 +84,10 @@ describe('toIssueFailure', () => {
     };
 
     expect(toIssueFailure(resultOf({ failedAt: 'issue', error: locked }))).toBe('labelStateLocked');
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error: locked }))).toBe('other');
+    expect(toIssueFailure(resultOf({ failedAt: 'render', error: locked }))).toBe('other');
   });
 
   it('갈래를 가릴 오류가 없으면 그 밖의 실패다', () => {
-    expect(toIssueFailure(resultOf({ failedAt: 'register', error: null }))).toBe('other');
+    expect(toIssueFailure(resultOf({ failedAt: 'issue', error: null }))).toBe('other');
   });
 });

@@ -1,15 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 
-import {
-  DOCUMENT_TARGET_TYPE_CODE,
-  DOCUMENT_TYPE_CODE,
-  LOT_NUMBER_SOURCE_CODE,
-  LOT_SOURCE_TYPE_CODE,
-  LOT_TYPE_CODE,
-} from './codes';
-import type { TargetRow } from './types';
+import { DOCUMENT_TARGET_TYPE_CODE, DOCUMENT_TYPE_CODE } from './codes';
 
-export type LotCreateBody = components['schemas']['LotCreate'];
 export type DocumentIssueCreateBody = components['schemas']['DocumentIssueCreate'];
 export type PrintOutcomeReportBody = components['schemas']['PrintOutcomeReport'];
 
@@ -19,36 +11,6 @@ export type PrintOutcomeReportBody = components['schemas']['PrintOutcomeReport']
  * 화면 컴포넌트 안에서 본문을 조립하면 무엇을 보내는지 렌더 코드에 묻혀 보이지 않고,
  * 값 하나가 빠져도 테스트로 잡을 자리가 없다. 여기 있는 것은 전부 순수 함수다.
  */
-
-/** 계약의 `date-time` 에서 날짜 조각만 뗀다. 이 화면이 소유한다. */
-const toDateOnly = (occurredAt: string): string => occurredAt.slice(0, 10);
-
-/**
- * LOT 등록 본문.
- *
- * ⭐ **원천 짝이 이 본문의 핵심이다** — `sourceTypeCode` 는 「입하 라인」을 뜻하는 값이고
- * `sourceId` 는 그 **라인** 식별자다(변경 통지 #664). 건 식별자를 넣으면 계보가 「이 전표
- * 어딘가에서 왔다」까지만 거슬러 가고, 한번 그렇게 쌓인 LOT 은 나중에 고치기 어렵다.
- *
- * ⛔ **`lotNo` 를 싣지 않는다.** 번호는 서버가 매긴다(`numberSourceCode = MES`) — 보내면 400 이다.
- *
- * ⛔ **보류를 화면이 걸지 않는다.** 자재 LOT 은 등록 즉시 검사 대기로 서버가 잡는다(MLOT #5).
- *
- * ⚠ **업무일자는 발생 시각에서 뗀다.** 야간조 경계 같은 산출 규칙이 정의돼 있지 않아 실행
- * 시각의 날짜를 그대로 쓰지 않고, **이 등록이 일어난 시각**의 날짜를 쓴다.
- */
-export const toLotCreateBody = (row: TargetRow, occurredAt: string): LotCreateBody => ({
-  numberSourceCode: LOT_NUMBER_SOURCE_CODE,
-  itemId: row.itemId,
-  lotTypeCode: LOT_TYPE_CODE,
-  plantId: row.plantId,
-  initialQty: row.receivedQty,
-  uomId: row.uomId,
-  sourceTypeCode: LOT_SOURCE_TYPE_CODE,
-  sourceId: row.inboundReceiptLineId,
-  businessDate: toDateOnly(occurredAt),
-  occurredAt,
-});
 
 export interface DocumentIssueInput {
   lotId: number;
