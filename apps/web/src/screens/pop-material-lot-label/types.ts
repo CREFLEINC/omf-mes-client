@@ -1,73 +1,9 @@
-import type { components } from '@omf-mes/api-client';
-
-type InboundReceiptResponse = components['schemas']['InboundReceipt'];
-
-export type PageMeta = components['schemas']['PageMeta'];
-
-/**
- * 화면이 다루는 입하 건 한 줄.
- *
- * **계약 응답을 통째로 넓히지 않고 쓰는 값만 옮긴다.** 응답에는 차량 번호·입하장·예외 유형·
- * 승인 요청·접수자가 함께 오는데 이 화면이 그리지도 보내지도 않는 값이다 — 타입에 자리를
- * 두지 않으면 그 값이 화면으로 샐 경로도 없다.
- */
-export interface ReceiptView {
-  inboundReceiptId: number;
-  inboundReceiptNo: string;
-  supplierId: number;
-  /** LOT 등록 본문이 요구한다 — 입하 건이 어느 공장으로 들어왔는가가 그대로 LOT 의 공장이다. */
-  plantId: number;
-  receiptDatetime: string;
-  /** 취소된 입하에는 라벨을 내지 않는다 — 발행 대기에서 뺀다(`pending-source`). */
-  statusCode: string;
-}
-
-/** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
-export const toReceiptView = (data: InboundReceiptResponse): ReceiptView => ({
-  inboundReceiptId: data.inboundReceiptId,
-  inboundReceiptNo: data.inboundReceiptNo,
-  supplierId: data.supplierId,
-  plantId: data.plantId,
-  receiptDatetime: data.receiptDatetime,
-  statusCode: data.statusCode,
-});
-
-type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
-
-/**
- * 화면이 다루는 입하 라인 한 줄.
- *
- * ⛔ **`supplierLotMissing`을 옮기지 않는다.** 공급사가 LOT 을 붙여 온 라인은 이 화면의 대상이
- * 아니지만(사전부착 경로가 따로 있다) 그 판정은 **서버가 질의로 끝낸다**(스펙 §3-6). 화면 타입에
- * 자리를 두면 「화면도 판정한다」는 오해가 생기고, 실제로 한 번 더 거르는 코드가 붙었던 자리다.
- */
-export interface LineView {
-  inboundReceiptLineId: number;
-  lineNo: number;
-  itemId: number;
-  receivedQty: number;
-  uomId: number;
-  /**
-   * 이 라인으로 만들어진 자재LOT. **없을 수 있다** — 아직 등록하지 않은 라인이다.
-   *
-   * 등록과 발행 기록은 한 트랜잭션이 아니라, 「LOT 은 생겼는데 라벨 기록이 없는」 상태가
-   * 정상적으로 생긴다. 그 상태를 이 값으로 가른다(변경 통지 #534 §3).
-   */
-  lotId: number | null;
-  /** IQC 대상 품목의 라인인가(서버가 품목 마스터에서 읽어 둔 값) — IQC 라벨을 함께 찍는다(omf-all-around#110). */
-  inspectionRequired: boolean;
-}
-
-/** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
-export const toLineView = (data: InboundReceiptLineResponse): LineView => ({
-  inboundReceiptLineId: data.inboundReceiptLineId,
-  lineNo: data.lineNo,
-  itemId: data.itemId,
-  receivedQty: data.receivedQty,
-  uomId: data.uomId,
-  lotId: data.lotId ?? null,
-  inspectionRequired: data.inspectionRequired === true,
-});
+import type {
+  components,
+  MaterialLotSummary,
+  MaterialPackage,
+  WaitingMaterialLotGroup,
+} from '@omf-mes/api-client';
 
 type PrinterResponse = components['schemas']['Printer'];
 
@@ -108,126 +44,65 @@ export const toHeadPrinter = (printers: PrinterView[]): PrinterView | null =>
   printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
 
 /**
- * 목록에 놓이는 **발번 대상 한 줄** — 입하 건과 그 라인을 합친 것이다.
+ * 목록에 놓이는 **자재 관리 LOT 한 개**(005 · omf-all-around#254) — 공급사·품목 묶음의 값과 LOT 값을 합친 것.
  *
- * 스펙 §3 은 목록 한 줄에 입하번호·품목·수량·공급사·입하일을 함께 그린다. 계약은 그것을
- * 두 경로로 나눠 주므로(건 목록 · 건마다의 라인) **화면이 합친다.**
+ * ⭐ 005 부터 라벨은 입하 전 **대기** 자재 관리 LOT 에 찍는다(FR-007). 옛 화면의 「입하 줄 → LOT 등록 → 발행」은
+ *    없다 — LOT 은 「자재 관리 LOT 만들기」(발행 묶음)가 이미 만들었다. 그래서 이 줄에는 LOT 이 늘 있다.
  */
-export interface TargetRow {
-  inboundReceiptLineId: number;
-  /** 같은 입하 건 안의 차례 — 같은 시각에 들어온 줄을 늘 같은 차례로 세운다. */
-  lineNo: number;
-  inboundReceiptId: number;
-  inboundReceiptNo: string;
+export interface LabelLot {
+  lotId: number;
+  lotNo: string;
   supplierId: number;
-  plantId: number;
-  receiptDatetime: string;
+  supplierCode: string;
+  supplierName: string;
   itemId: number;
-  receivedQty: number;
-  uomId: number;
-  /** 이 라인으로 만들어진 자재LOT. 없으면 아직 등록하지 않은 것이다. */
-  lotId: number | null;
-  /** IQC 대상이면 자재 라벨 뒤에 IQC 라벨을 한 장 더 찍는다(omf-all-around#110). */
+  itemCode: string;
+  itemName: string;
+  /** 품목 기본 단위. */
+  uomCode: string;
+  lotQty: number;
+  package: MaterialPackage | null;
+  supplierLotNo: string | null;
+  lifecycleStatusCode: MaterialLotSummary['lifecycleStatusCode'];
+  /** 품질 상태 — 대기 LOT 는 검사 대기. 다시 인쇄의 IQC 라벨 · 막힘 판정에 쓴다. */
+  statusCode: string;
+  inboundLotNo: string | null;
+  /** IQC 대상 품목 — 자재 관리 LOT 라벨 뒤에 IQC 라벨을 함께 찍는다(omf-all-around#110). */
   inspectionRequired: boolean;
-  /**
-   * LOT 번호·품질 상태·마지막 발행 — 줄 목록 경로(장부 P-118)가 함께 싣는다. 입하 건 → 줄 모으기로
-   * 받았으면 모두 `null` 이고, 다시 인쇄 표가 LOT 상세로 따로 묻는다(`useLotDetails`).
-   */
-  lotNo: string | null;
-  lotStatusCode: string | null;
   lastIssue: { issueSeq: number; issuedAt: string } | null;
 }
 
-/**
- * 줄 목록 경로(`GET /logistics/inbound-receipt-lines` · 장부 P-118)의 한 줄 — **계약 대기**다.
- *
- * ⚠ 생성 타입에 아직 없어 서버 PR(omf-mes-server#826)의 모양을 손으로 옮겼다. 계약 사본에 실리면 지운다.
- */
-export interface LabelLineResponse {
-  inboundReceiptLineId: number;
-  inboundReceiptId: number;
-  inboundReceiptNo: string;
-  receiptDatetime: string;
-  lineNo: number;
-  supplierId: number;
-  plantId: number;
-  itemId: number;
-  receivedQty: number;
-  uomId: number;
-  inspectionRequired: boolean;
-  supplierLotLabelAttached: boolean;
-  lotId?: number | null;
-  lotNo?: string | null;
-  lotStatusCode?: string | null;
-  lastLabelIssue?: { issueSeq: number; issuedAt: string } | null;
-}
+/** 공급사·품목 묶음의 열쇠 — 왼쪽 목록의 한 줄. */
+export const pairKeyOf = (supplierId: number, itemId: number): string =>
+  `${String(supplierId)}:${String(itemId)}`;
 
-/** 줄 목록 응답 한 줄을 화면 줄로 옮기는 **유일한 지점**이다. */
-export const toTargetRow = (line: LabelLineResponse): TargetRow => ({
-  inboundReceiptLineId: line.inboundReceiptLineId,
-  lineNo: line.lineNo,
-  inboundReceiptId: line.inboundReceiptId,
-  inboundReceiptNo: line.inboundReceiptNo,
-  supplierId: line.supplierId,
-  plantId: line.plantId,
-  receiptDatetime: line.receiptDatetime,
-  itemId: line.itemId,
-  receivedQty: line.receivedQty,
-  uomId: line.uomId,
-  lotId: line.lotId ?? null,
-  inspectionRequired: line.inspectionRequired,
-  lotNo: line.lotNo ?? null,
-  lotStatusCode: line.lotStatusCode ?? null,
-  lastIssue: line.lastLabelIssue ?? null,
-});
-
-/**
- * 등록·인쇄가 어디까지 갔는가 — **변경 통지 #534 §3 의 세 상태다.**
- *
- * 등록(`POST /trace/lots`)과 발행 기록(`POST /app/document-issues`)은 한 트랜잭션이 아니라,
- * 앞이 됐는데 뒤가 안 된 상태가 **오류가 아니라 정상 상태로** 들어온다.
- *
- * | 상태 | 판정 | 다음에 할 일 |
- * | --- | --- | --- |
- * | `unregistered` | `lotId`가 없다 | 등록·인쇄 |
- * | `registered` | `lotId`가 있다 | **인쇄만** — 등록을 다시 부르면 LOT 이 둘 생긴다 |
- *
- * 완료(`labelIssued`가 참)는 서버가 목록에서 빼므로 화면에 오지 않는다.
- */
-export type IssueStage = 'unregistered' | 'registered';
-
-/**
- * ⛔ **`lotId`가 있으면 등록을 다시 부르지 않는다.** 부르면 같은 자재에 LOT 이 둘 생기고,
- * 그것을 되돌릴 화면이 없다(변경 통지 #534 §3).
- */
-export const toIssueStage = (row: TargetRow): IssueStage =>
-  row.lotId === null ? 'unregistered' : 'registered';
-
-/**
- * 입하 건과 그 라인을 목록 줄로 편다.
- *
- * ⛔ **화면이 거르지 않는다.** 사전부착 라인을 빼는 것은 스펙 §6 이 요구하지만, 그 조건은
- * `supplierLotMissing` 질의로 **서버가 거른다**(스펙 §3-6 · 변경 통지 #534). 화면이 한 번 더
- * 거르면 서버가 이미 좁힌 쪽을 다시 깎아 쪽 크기와 어긋난다.
- */
-export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow[] =>
-  lines.map((line) => ({
-    inboundReceiptLineId: line.inboundReceiptLineId,
-    lineNo: line.lineNo,
-    inboundReceiptId: receipt.inboundReceiptId,
-    inboundReceiptNo: receipt.inboundReceiptNo,
-    supplierId: receipt.supplierId,
-    plantId: receipt.plantId,
-    receiptDatetime: receipt.receiptDatetime,
-    itemId: line.itemId,
-    receivedQty: line.receivedQty,
-    uomId: line.uomId,
-    lotId: line.lotId,
-    inspectionRequired: line.inspectionRequired,
-    lotNo: null,
-    lotStatusCode: null,
-    lastIssue: null,
+/** 응답 한 묶음의 LOT 을 화면 줄로 옮기는 **유일한 지점**이다. */
+export const toLabelLots = (group: WaitingMaterialLotGroup): LabelLot[] =>
+  group.lots.map((lot) => ({
+    lotId: lot.lotId,
+    lotNo: lot.lotNo,
+    supplierId: group.supplierId,
+    supplierCode: group.supplierCode,
+    supplierName: group.supplierName,
+    itemId: group.itemId,
+    itemCode: group.itemCode,
+    itemName: group.itemName,
+    uomCode: group.uomCode,
+    lotQty: lot.lotQty,
+    package: lot.package,
+    supplierLotNo: lot.supplierLotNo,
+    lifecycleStatusCode: lot.lifecycleStatusCode,
+    statusCode: lot.statusCode,
+    inboundLotNo: lot.inboundLotNo,
+    inspectionRequired: group.inspectionRequired,
+    lastIssue: lot.lastLabelIssue,
   }));
+
+/** 대기(입하 전) 자재 관리 LOT 인가 — 고르기 · 폐기 · 첫 발행의 대상. */
+export const isWaiting = (lot: LabelLot): boolean => lot.lifecycleStatusCode === 'WAITING';
+
+/** 폐기된 LOT 은 라벨을 찍지 않는다(발행 조건 「생애 `VOIDED` 거절」 · 계약 §1). */
+export const isVoided = (lot: LabelLot): boolean => lot.lifecycleStatusCode === 'VOIDED';
 
 type DocumentIssueResponse = components['schemas']['DocumentIssue'];
 

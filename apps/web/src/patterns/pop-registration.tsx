@@ -577,6 +577,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
                 }
               : null,
           workerNo: session?.worker.workerNo ?? null,
+          plantId: state.phase === 'ready' ? (state.terminal?.plantId ?? null) : null,
         }}
       >
         {children}

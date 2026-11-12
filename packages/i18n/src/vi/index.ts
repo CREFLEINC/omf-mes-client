@@ -174,6 +174,8 @@ import { handoverAlertSettings } from './handover-alert-settings';
 import { plantWorkingDays } from './plant-working-days';
 import { materialIssueStatus } from './material-issue-status';
 import { productionWarehouseReplenishment } from './production-warehouse-replenishment';
+import { materialLotIssue } from './material-lot-issue';
+import { supplierItemDefault } from './supplier-item-default';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -182,6 +184,8 @@ export const vi: Translated<Messages> = {
   plantWorkingDays,
   materialIssueStatus,
   productionWarehouseReplenishment,
+  materialLotIssue,
+  supplierItemDefault,
   approvalInbox,
   approvalRoute,
   collectionChannel,

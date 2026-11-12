@@ -63,6 +63,8 @@ import { handoverAlertSettings } from './handover-alert-settings';
 import { plantWorkingDays } from './plant-working-days';
 import { materialIssueStatus } from './material-issue-status';
 import { productionWarehouseReplenishment } from './production-warehouse-replenishment';
+import { materialLotIssue } from './material-lot-issue';
+import { supplierItemDefault } from './supplier-item-default';
 import { zaloConnection } from './zalo-connection';
 import { dispatchHistory } from './dispatch-history';
 import { iqcInspection } from './iqc-inspection';
@@ -225,6 +227,8 @@ export const ko = {
   plantWorkingDays,
   materialIssueStatus,
   productionWarehouseReplenishment,
+  materialLotIssue,
+  supplierItemDefault,
   zaloConnection,
   dispatchHistory,
   iqcInspection,

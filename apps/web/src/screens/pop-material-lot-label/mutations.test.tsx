@@ -3,34 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { jsonResponse, renderHookWithProviders } from '../../test/api-harness';
 import { useBatchIssue, type IssueCommand } from './mutations';
-import type { TargetRow } from './types';
+import { labelLot } from './test-lots';
 
 /** 합성값이다 — 계약의 예시값도 실 운영 값도 쓰지 않는다(공개 저장소 경계). */
-const row: TargetRow = {
-  inboundReceiptLineId: 8501,
-  lineNo: 1,
-  inboundReceiptId: 8101,
-  inboundReceiptNo: 'SYN-IB-0001',
-  supplierId: 8201,
-  plantId: 8301,
-  receiptDatetime: '2026-08-27T09:12:30Z',
-  itemId: 8601,
-  receivedQty: 500,
-  uomId: 8401,
-  lotId: null,
-  inspectionRequired: false,
-  lotNo: null,
-  lotStatusCode: null,
-  lastIssue: null,
-};
-
 const command: IssueCommand = {
-  row,
+  lot: labelLot(9001),
   printerName: null,
   reissueReasonCode: null,
-  uomCode: null,
   lotStatusCode: null,
-  supplierText: null,
 };
 
 describe('useBatchIssue — 사번을 모를 때', () => {
@@ -63,9 +43,9 @@ describe('useBatchIssue — 두 번 눌렸을 때', () => {
    * 장갑 낀 손은 한 번 누를 것을 두 번 누른다. **단추의 비활성만으로는 못 막는다** —
    * 그 값은 다음 렌더에서야 반영되므로, 두 번째 누름이 «같은 렌더에서» 들어온다.
    *
-   * ⛔ 등록이 두 번 나가면 같은 자재에 LOT 이 둘 생기고, 그것을 되돌릴 화면이 없다.
+   * ⛔ 발행 기록이 두 번 나가면 같은 LOT 의 라벨이 두 장 돈다(2회차는 사유 없는 재발행이 된다).
    */
-  it('⛔ 같은 렌더에서 두 번 들어와도 등록은 한 번만 나간다', async () => {
+  it('⛔ 같은 렌더에서 두 번 들어와도 발행 기록은 한 번만 나간다', async () => {
     const posts: string[] = [];
 
     const { result } = renderHookWithProviders(() => useBatchIssue({ workerNo: '900028' }), {
@@ -74,8 +54,8 @@ describe('useBatchIssue — 두 번 눌렸을 때', () => {
 
         if (request.method === 'POST') posts.push(pathname);
 
-        // 등록 뒤는 무엇이 오든 상관없다 — 여기서 보는 것은 「몇 번 나갔는가」뿐이다.
-        return jsonResponse({ lot: { lotId: 9001 } }, { status: 201 });
+        // 발행 뒤는 무엇이 오든 상관없다 — 여기서 보는 것은 「몇 번 나갔는가」뿐이다.
+        return jsonResponse({ items: [] }, { status: 201 });
       },
     });
 
@@ -89,6 +69,6 @@ describe('useBatchIssue — 두 번 눌렸을 때', () => {
       expect(result.current.isRunning).toBe(false);
     });
 
-    expect(posts.filter((path) => path === '/trace/lots')).toHaveLength(1);
+    expect(posts.filter((path) => path === '/app/document-issues')).toHaveLength(1);
   });
 });

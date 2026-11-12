@@ -1,83 +1,89 @@
+import type { SupplierItemDefault, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { lookupDisplayLabel } from '../../patterns/lookup-display';
-import type { SupplierLookup } from './lookups';
-import { receiptWhen, type SupplierGroup } from './pending';
+import { formatBaseQty, formatPackageQty } from '../../patterns/package-qty';
+import { pairKeyOf } from './types';
 
-const t = messages.popMaterialLotLabel.suppliers;
+const t = messages.popMaterialLotLabel.pairs;
 
-/** 공급사 이름 — 거래처 목록에서 푼다. 못 풀었으면 그 사유(불러오는 중 · 알 수 없음)를 적는다. */
-export const supplierNameOf = (lookup: SupplierLookup, supplierId: number): string =>
-  lookup.byId.get(supplierId)?.name ?? lookupDisplayLabel(lookup, supplierId);
+/**
+ * 기본 정보 한 줄(screens/P-01-01.md 「왼쪽 행」) — 패키징이 있으면 「기본 봉지 10 × 100 = 1,000 EA」, 패키징 없음이면
+ * 「기본 1 TON · 패키징 없음」, 기본 정보가 없으면 「기본 정보 없음」.
+ */
+export const defaultLineOf = (defaults: SupplierItemDefault | undefined): string => {
+  if (defaults === undefined) return t.noDefault;
 
-/** 라벨의 공급사 줄 — 「이름 (코드)」. 못 풀었으면 `null` 이고 라벨은 그 줄을 비운다. */
-export const supplierLabelOf = (lookup: SupplierLookup, supplierId: number): string | null => {
-  const supplier = lookup.byId.get(supplierId);
-
-  return supplier === undefined ? null : `${supplier.name} (${supplier.code})`;
-};
-
-const whenText = (value: string | undefined): string => {
-  const when = value === undefined ? null : receiptWhen(value);
-
-  return when === null ? '' : `${when.day} ${when.time}`;
+  return defaults.package === null
+    ? t.defaultUnpackaged(formatBaseQty(defaults.lotQty, defaults.uomCode))
+    : t.defaultPackaged(formatPackageQty(defaults.lotQty, defaults.uomCode, defaults.package));
 };
 
 export interface SupplierListProps {
-  groups: readonly SupplierGroup[];
-  selectedId: number | null;
-  supplierLookup: SupplierLookup;
-  /** 발행 대기는 가장 이른 입하, 다시 인쇄는 가장 최근 입하를 적는다. */
-  mode: 'pending' | 'reprint';
-  /** 발행 중에는 공급사를 바꾸지 못한다 — 결과가 다른 공급사 표 밑에 서게 된다. */
+  groups: readonly WaitingMaterialLotGroup[];
+  defaults: ReadonlyMap<string, SupplierItemDefault>;
+  selectedKey: string | null;
   isLocked: boolean;
-  onSelect: (supplierId: number) => void;
+  /** 찾기 칸에 값이 있는데 맞는 것이 없다 — 「찾는 공급사·품목이 없습니다.」 */
+  isFiltered: boolean;
+  onSelect: (key: string) => void;
 }
 
 /**
- * 왼쪽 공급사 목록 — **타일 전체가 누르는 자리**다(규범 C-1). 큰 숫자가 남은 장수다.
+ * 왼쪽 **공급사·품목** 목록(005 · screens/P-01-01.md). 옛 「공급사 → 라벨 대기 입하 줄」 목록을 바꿨다.
  *
- * ⭐ 고른 타일은 차콜로 채운다 — 빨강은 주 동작과 진짜 오류에만 쓴다(개편안 2026-10-24).
+ * ⭐ 타일 전체가 누르는 자리다(규범 C-1). 칩은 대기 자재 관리 LOT 수 — 0 이면 회색 「대기 0」.
  */
 export const SupplierList = ({
   groups,
-  selectedId,
-  supplierLookup,
-  mode,
+  defaults,
+  selectedKey,
   isLocked,
+  isFiltered,
   onSelect,
-}: SupplierListProps) => (
-  <ul className="pop-mlot-suppliers" aria-label={t.label}>
-    {groups.map((group) => {
-      const sub =
-        mode === 'reprint'
-          ? t.latest(whenText(group.rows.at(-1)?.receiptDatetime))
-          : group.receiptCount > 1
-            ? t.since(whenText(group.firstReceiptDatetime))
-            : t.at(whenText(group.firstReceiptDatetime));
+}: SupplierListProps) => {
+  if (groups.length === 0) {
+    return <p className="pop-mlot-empty">{isFiltered ? t.noMatch : t.empty}</p>;
+  }
 
-      return (
-        <li key={group.supplierId}>
-          <button
-            type="button"
-            className="pop-mlot-supplier"
-            aria-pressed={group.supplierId === selectedId}
-            disabled={isLocked}
-            onClick={() => {
-              onSelect(group.supplierId);
-            }}
-          >
-            <span className="pop-mlot-supplier-name">
-              {supplierNameOf(supplierLookup, group.supplierId)}
-            </span>
-            <span className="pop-mlot-supplier-count">
-              {group.rows.length}
-              <span className="pop-mlot-supplier-unit">{t.unit}</span>
-            </span>
-            <span className="pop-mlot-supplier-sub">{sub}</span>
-          </button>
-        </li>
-      );
-    })}
-  </ul>
-);
+  return (
+    <ul className="pop-mlot-suppliers" aria-label={t.label}>
+      {groups.map((group) => {
+        const key = pairKeyOf(group.supplierId, group.itemId);
+        const defaultLine = defaultLineOf(defaults.get(key));
+        const hasDefault = defaults.has(key);
+
+        return (
+          <li key={key}>
+            <button
+              type="button"
+              className="pop-mlot-supplier pop-mlot-pair"
+              aria-pressed={key === selectedKey}
+              disabled={isLocked}
+              onClick={() => {
+                onSelect(key);
+              }}
+            >
+              <span className="pop-mlot-supplier-name">
+                <span className="pop-mlot-pair-code">{group.itemCode}</span> {group.itemName}
+              </span>
+              <span
+                className="pop-mlot-pair-chip"
+                data-tone={group.waitingCount > 0 ? 'warning' : 'idle'}
+              >
+                {t.waiting(group.waitingCount)}
+              </span>
+              <span className="pop-mlot-supplier-sub">
+                {group.supplierName} <span className="pop-mlot-pair-dim">{group.supplierCode}</span>
+              </span>
+              <span className="pop-mlot-supplier-sub" data-missing={!hasDefault}>
+                {group.unprintedCount > 0
+                  ? t.withUnprinted(defaultLine, group.unprintedCount)
+                  : defaultLine}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+};

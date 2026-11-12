@@ -888,7 +888,243 @@ type PlansPath = paths['/quality/inspection-plans'];
 type PlanItemsPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}/items'];
 type PlanVersionPath = paths['/quality/inspection-plan-versions/{inspectionPlanVersionId}'];
 
+/*
+ * ── 005 자재 관리 LOT 발행 · 공급사·품목 기본 정보(omf-all-around#254 · 설계 계약 material-lot-api.md §1·§9) ──
+ * 서버 S3 병합 뒤 `gen:api` 로 다시 만들고 이 덧댐을 걷는다(D-22, T111).
+ * 계약이 「묶음 목록」·「건별 실패」로만 적은 응답 칸은 화면(P-01-01·W-01-14)이 그리는 값으로 채웠다 — 서버 S3 가
+ * 다르게 내면 여기를 그쪽에 맞춘다.
+ */
+
+/** 패키징(있으면) — `lotQty = count × qtyPerPackage`(FR-003). `uomCode` 는 응답에만. */
+export interface MaterialPackage {
+  uomId: number;
+  uomCode: string;
+  count: number;
+  qtyPerPackage: number;
+}
+
+/** 쓰기 본문의 패키징 — 단위 코드는 서버가 채운다. */
+export interface MaterialPackageInput {
+  uomId: number;
+  count: number;
+  qtyPerPackage: number;
+}
+
+/** 자재 관리 LOT 의 생애 축 — 미리 만든 대기(`WAITING`) · 입하됨(`ACTIVE`) · 폐기(`VOIDED`). */
+export type MaterialLotLifecycleCode = 'WAITING' | 'ACTIVE' | 'VOIDED';
+
+/** 만든 곳 — POP P-01-01 · 관리웹 W-01-14. */
+export type MaterialLotChannelCode = 'POP' | 'WEB';
+
+/** 자재 관리 LOT 한 개(발행 화면이 그리는 값). */
+export interface MaterialLotSummary {
+  lotId: number;
+  lotNo: string;
+  /** 자재 관리 LOT 당 재고 수량(품목 기본 단위). */
+  lotQty: number;
+  package: MaterialPackage | null;
+  supplierLotNo: string | null;
+  lifecycleStatusCode: MaterialLotLifecycleCode;
+  /** 품질 상태(`LOT_STATUS`) — 대기 LOT 는 `INSPECTION_PENDING`. */
+  statusCode: string;
+  inboundLotId: number | null;
+  inboundLotNo: string | null;
+  /** 마지막 자재 관리 LOT 라벨 발행 — 없으면 미출력. */
+  lastLabelIssue: { issueSeq: number; issuedAt: string } | null;
+  createdChannelCode: MaterialLotChannelCode;
+  createdAt: string;
+}
+
+/** 발행 묶음 한 건(공급사·품목으로 한 번에 만든 N개). */
+export interface MaterialLotBatchSummary {
+  batchId: number;
+  createdAt: string;
+  createdChannelCode: MaterialLotChannelCode;
+  lotCount: number;
+  waitingCount: number;
+}
+
+/**
+ * `GET /logistics/waiting-material-lots` 한 행 — 공급사·품목별 대기 자재 관리 LOT(계약 §1).
+ * 목록에 서는 조합은 서버가 정한다(기본 정보가 있거나 발행 이력이 있는 것). `lots` 는 대기 전부 + 최근 폐기 +
+ * 최근 입하된 것(라벨 다시 인쇄 대상 — 입하 LOT 번호와 함께).
+ */
+export interface WaitingMaterialLotGroup {
+  supplierId: number;
+  supplierCode: string;
+  supplierName: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  /** 품목 기본 단위. */
+  uomId: number;
+  uomCode: string;
+  /** IQC 대상 품목 — 자재 관리 LOT 라벨 뒤에 IQC 라벨을 함께 찍는다(omf-all-around#110). */
+  inspectionRequired: boolean;
+  waitingCount: number;
+  waitingQty: number;
+  /** 대기 중 라벨을 한 번도 찍지 않은 수. */
+  unprintedCount: number;
+  /** 마지막 발행(묶음 만든) 시각. */
+  lastIssuedAt: string | null;
+  batches: MaterialLotBatchSummary[];
+  lots: MaterialLotSummary[];
+}
+
+export interface WaitingMaterialLotListQuery {
+  plantId: number;
+  supplierId?: number;
+  itemId?: number;
+  /** 공급사·품목 코드·이름. */
+  q?: string;
+  /** 대기 있는 것만. */
+  hasWaiting?: boolean;
+}
+
+/** `POST /logistics/material-lot-batches` 본문(계약 §1). 입하 LOT 를 받지 않는다. */
+export interface MaterialLotBatchCreate {
+  plantId: number;
+  supplierId: number;
+  itemId: number;
+  lotQty: number;
+  package?: MaterialPackageInput | null;
+  supplierLotNo?: string | null;
+  /** 1~200. */
+  lotCount: number;
+  businessDate: string;
+  occurredAt: string;
+}
+
+export interface MaterialLotBatchCreated {
+  batchId: number;
+  lots: MaterialLotSummary[];
+}
+
+/** `POST /trace/lots:void` 결과 — 대기(`WAITING`)만 폐기하고 나머지는 건별 실패(계약 §1). */
+export interface MaterialLotVoidResult {
+  items: {
+    lotId: number;
+    lotNo: string;
+    voided: boolean;
+    /** 실패 까닭(`STATE_LOCKED` 등). 폐기됐으면 null. */
+    errorCode: string | null;
+  }[];
+}
+
+/** 공급사·품목 기본 정보(계약 §9) — 공장 단위(`uq(plant, supplier, item)`). */
+export interface SupplierItemDefault {
+  supplierItemDefaultId: number;
+  plantId: number;
+  supplierId: number;
+  supplierCode: string;
+  supplierName: string;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  uomId: number;
+  uomCode: string;
+  lotQty: number;
+  package: MaterialPackage | null;
+  remarks: string | null;
+  versionNo: number;
+  updatedAt: string;
+  /** 바꾼 사람 이름(없으면 null). */
+  updatedByName: string | null;
+}
+
+export interface SupplierItemDefaultListQuery {
+  plantId: number;
+  supplierId?: number;
+  itemId?: number;
+  q?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface SupplierItemDefaultCreate {
+  plantId: number;
+  supplierId: number;
+  itemId: number;
+  lotQty: number;
+  package?: MaterialPackageInput | null;
+  remarks?: string | null;
+}
+
+export interface SupplierItemDefaultUpdate {
+  versionNo: number;
+  lotQty: number;
+  package?: MaterialPackageInput | null;
+  remarks?: string | null;
+}
+
+type SupplierItemDefaultId = { supplierItemDefaultId: number };
+type IdemOnly = { 'Idempotency-Key': string; 'X-Worker-No'?: string };
+
 export interface ForwardPaths {
+  /** 005 — 공급사·품목별 대기 자재 관리 LOT(계약 §1). 권한 P-01-01·W-01-14. */
+  '/logistics/waiting-material-lots': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: WaitingMaterialLotListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<{ items: WaitingMaterialLotGroup[] }> }
+    >;
+  };
+  /** 005 — 자재 관리 LOT 발행 묶음(계약 §1). 권한 P-01-01·W-01-14. */
+  '/logistics/material-lot-batches': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': MaterialLotBatchCreate } },
+      { 201: Json<MaterialLotBatchCreated> }
+    >;
+  };
+  /** 005 — 대기 자재 관리 LOT 폐기(계약 §1). 권한 P-01-01·W-01-14. */
+  '/trace/lots:void': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': { lotIds: number[] } } },
+      { 200: Json<MaterialLotVoidResult> }
+    >;
+  };
+  /** 005 — 공급사·품목 기본 정보 목록 · 추가(계약 §9). 읽기 W-06-25·P-01-01·W-01-14, 쓰기 W-06-25. */
+  '/mdm/supplier-item-defaults': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    get: Op<
+      { query: SupplierItemDefaultListQuery; header?: never; path?: never; cookie?: never },
+      never,
+      { 200: Json<{ items: SupplierItemDefault[]; page: PageMeta }> }
+    >;
+    post: Op<
+      { query?: never; header: IdemOnly; path?: never; cookie?: never },
+      { content: { 'application/json': SupplierItemDefaultCreate } },
+      { 201: Json<SupplierItemDefault> }
+    >;
+  };
+  /** 005 — 공급사·품목 기본 정보 수정 · 삭제(계약 §9). 권한 W-06-25. */
+  '/mdm/supplier-item-defaults/{supplierItemDefaultId}': Omit<Unused, 'delete'> & {
+    parameters: NoParameters;
+    get?: never;
+    post?: never;
+    put: Op<
+      Params<never, IdemOnly, SupplierItemDefaultId>,
+      { content: { 'application/json': SupplierItemDefaultUpdate } },
+      { 200: Json<SupplierItemDefault> }
+    >;
+    delete: Op<
+      Params<never, IdemOnly, SupplierItemDefaultId>,
+      never,
+      { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
+  };
   /** 의뢰 상세 — 검사 안내(공통 · 품목, #252). */
   '/quality/inspection-requests/{inspectionRequestId}': Omit<InspectionRequestDetailPath, 'get'> & {
     get: Omit<InspectionRequestDetailPath['get'], 'responses'> & {

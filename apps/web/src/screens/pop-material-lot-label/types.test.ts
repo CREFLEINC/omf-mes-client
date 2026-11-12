@@ -1,60 +1,58 @@
 import { describe, expect, it } from 'vitest';
 
-import { toIssueStage, toReceiptView, type TargetRow } from './types';
+import { isVoided, isWaiting, pairKeyOf, toLabelLots } from './types';
 
-describe('toReceiptView', () => {
-  it('화면이 쓰는 값만 옮긴다 — 나머지는 타입에 자리가 없다', () => {
-    const view = toReceiptView({
-      inboundReceiptId: 8101,
-      inboundReceiptNo: 'SYN-IB-0001',
+/** 합성값이다 — 실 운영 값을 쓰지 않는다(공개 저장소 경계). */
+describe('toLabelLots — 공급사·품목 묶음의 LOT 을 화면 줄로', () => {
+  it('묶음의 공급사·품목·기본 단위·IQC 대상을 LOT 마다 싣는다', () => {
+    const [lot] = toLabelLots({
       supplierId: 8201,
-      plantId: 8301,
-      receiptDatetime: '2026-08-27T09:12:30Z',
-      vehicleNo: 'SYN-VEHICLE-01',
-      statusCode: 'SYN_STATUS',
-    } as Parameters<typeof toReceiptView>[0]);
-
-    expect(view).toEqual({
-      inboundReceiptId: 8101,
-      inboundReceiptNo: 'SYN-IB-0001',
-      supplierId: 8201,
-      // LOT 등록 본문이 요구한다 — 이 값은 화면이 쓰는 값이다.
-      plantId: 8301,
-      receiptDatetime: '2026-08-27T09:12:30Z',
-      // 취소된 입하를 발행 대기에서 빼는 데 쓴다.
-      statusCode: 'SYN_STATUS',
+      supplierCode: 'SYN-P-01',
+      supplierName: '합성 공급사 가',
+      itemId: 8601,
+      itemCode: 'SYN-ITEM-01',
+      itemName: '합성 품목 가',
+      uomId: 8401,
+      uomCode: 'EA',
+      inspectionRequired: true,
+      waitingCount: 1,
+      waitingQty: 1000,
+      unprintedCount: 1,
+      lastIssuedAt: null,
+      batches: [],
+      lots: [
+        {
+          lotId: 9001,
+          lotNo: 'SYN-ITEM-01|1000|261111|SYN-P-01|0001',
+          lotQty: 1000,
+          package: { uomId: 8402, uomCode: '봉지', count: 10, qtyPerPackage: 100 },
+          supplierLotNo: 'SYN-SL-1',
+          lifecycleStatusCode: 'WAITING',
+          statusCode: 'INSPECTION_PENDING',
+          inboundLotId: null,
+          inboundLotNo: null,
+          lastLabelIssue: null,
+          createdChannelCode: 'POP',
+          createdAt: '2026-11-11T01:00:00Z',
+        },
+      ],
     });
-  });
-});
 
-const targetRow = (lotId: number | null): TargetRow => ({
-  inboundReceiptLineId: 8501,
-  lineNo: 1,
-  inboundReceiptId: 8101,
-  inboundReceiptNo: 'SYN-IB-0001',
-  supplierId: 8201,
-  plantId: 8301,
-  receiptDatetime: '2026-08-27T09:12:30Z',
-  itemId: 8601,
-  receivedQty: 500,
-  uomId: 8401,
-  lotId,
-  inspectionRequired: false,
-  lotNo: null,
-  lotStatusCode: null,
-  lastIssue: null,
-});
-
-describe('toIssueStage', () => {
-  it('LOT 이 없으면 아직 등록하지 않은 것이다', () => {
-    expect(toIssueStage(targetRow(null))).toBe('unregistered');
+    expect(lot).toMatchObject({
+      lotId: 9001,
+      supplierCode: 'SYN-P-01',
+      itemCode: 'SYN-ITEM-01',
+      uomCode: 'EA',
+      inspectionRequired: true,
+      supplierLotNo: 'SYN-SL-1',
+      lastIssue: null,
+    });
+    expect(lot !== undefined && isWaiting(lot)).toBe(true);
+    expect(lot !== undefined && isVoided(lot)).toBe(false);
   });
 
-  /**
-   * ⛔ LOT 이 이미 있으면 등록을 다시 부르지 않는다 — 부르면 같은 자재에 LOT 이 둘 생기고
-   * 되돌릴 화면이 없다(변경 통지 #534 §3).
-   */
-  it('LOT 이 있으면 등록이 끝난 것이다 — 인쇄만 남는다', () => {
-    expect(toIssueStage(targetRow(9001))).toBe('registered');
+  it('공급사·품목 열쇠는 둘을 함께 쓴다', () => {
+    expect(pairKeyOf(8201, 8601)).toBe('8201:8601');
+    expect(pairKeyOf(8201, 8601)).not.toBe(pairKeyOf(8601, 8201));
   });
 });

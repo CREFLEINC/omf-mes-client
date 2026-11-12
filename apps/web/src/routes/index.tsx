@@ -29,6 +29,8 @@ import { LotTraceScreen } from '../screens/lot-trace/screen';
 import { OverReceiptSplitRedirect } from '../screens/inbound-schedule/register-redirect';
 import { InboundExcessScreen } from '../screens/inbound-schedule/excess-screen';
 import { InboundScheduleScreen } from '../screens/inbound-schedule/screen';
+import { MaterialLotIssueScreen } from '../screens/material-lot-issue/screen';
+import { SupplierItemDefaultScreen } from '../screens/supplier-item-default/screen';
 import { InspectionSheetScreen } from '../screens/inspection-sheet/screen';
 import { InspectionStandardRoute } from '../screens/inspection-standard/sheet-type';
 import { ErpInboundScreen } from '../screens/erp-inbound/screen';
@@ -139,6 +141,8 @@ export const appRouter = createBrowserRouter([
        */
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardScreen /> },
+      /* W-06-25 공급사·품목 기본 정보(005 · omf-all-around#254). */
+      { path: 'master-data/supplier-item-defaults', element: <SupplierItemDefaultScreen /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
       /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
       { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },
@@ -219,6 +223,8 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/inbound-schedule', element: <InboundScheduleScreen /> },
       /* 입고 관리 묶음의 둘째 탭 — 초과분 발주 연결(오른쪽 창이던 것 · 사용자 지시 2026-10-28). 코드는 W-01-09 를 따른다. */
       { path: 'logistics/inbound-excess', element: <InboundExcessScreen /> },
+      /* 입고 관리 묶음의 셋째 탭 — W-01-14 자재 관리 LOT 발행(005 · omf-all-around#254). */
+      { path: 'logistics/material-lot-issue', element: <MaterialLotIssueScreen /> },
       /*
        * W-01-03 「입하 등록」 — **화면이 아니라 입고 관리의 라인 표에서 바로 한다**(사용자 지시 2026-10-24 · 옛 창은
        * 걷었다). 옛 「초과 입하 분리」 주소는 즐겨찾기가 죽지 않게 입고 관리로 옮겨 준다(고른 발주 `po` 는 그대로).

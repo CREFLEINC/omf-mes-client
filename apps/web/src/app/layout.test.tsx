@@ -180,13 +180,19 @@ describe('AppLayout', () => {
       links.indexOf('/master-data/item-extended-attrs') + 1,
     );
     expect(links.indexOf('/equipment/master')).toBe(links.indexOf('/master-data/routing') + 1);
-    /* 설비 → 툴·금형 → 계측기 묶음이 차례로 서고, 창고·위치 묶음이 바로 뒤에 선다. */
+    /*
+     * 설비 → 툴·금형 → 계측기 묶음이 차례로 서고, 공급사·품목 기본 정보(W-06-25 · 005)와 창고·위치 묶음이
+     * 뒤따른다(screens/W-06-25.md — 창고·위치 앞).
+     */
     expect(links.indexOf('/equipment/tool-master')).toBe(links.indexOf('/equipment/master') + 1);
     expect(links.indexOf('/equipment/gauge-master')).toBe(
       links.indexOf('/equipment/tool-master') + 1,
     );
-    expect(links.indexOf('/master-data/warehouse-location')).toBe(
+    expect(links.indexOf('/master-data/supplier-item-defaults')).toBe(
       links.indexOf('/equipment/gauge-master') + 1,
+    );
+    expect(links.indexOf('/master-data/warehouse-location')).toBe(
+      links.indexOf('/master-data/supplier-item-defaults') + 1,
     );
     /* 횡단 조회라 마스터 항목들 뒤 — 섹션 끝이다. */
     expect(links.indexOf('/master-data/master-change')).toBe(
@@ -324,7 +330,7 @@ describe('AppLayout', () => {
    * ⚠ 옛 이름 「정상품 입하 처리」는 입고 화면을 입하라 불렀다 — 입하는 «도착»이고 입고는
    * «창고로 받아들임»이다(`nav-tree.ts`).
    */
-  it('입고 관리 탭 막대가 입고 관리 → 초과분 발주 연결 차례고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
+  it('입고 관리 탭 막대가 입고 관리 → 초과분 발주 연결 → 자재 관리 LOT 발행 차례고, 옛 자재 입고 처리 · 초과 입하 분리 탭이 없다', () => {
     renderLayout('본문 내용', { route: '/logistics/inbound-excess' });
 
     const sidebar = navSidebar();
@@ -338,7 +344,7 @@ describe('AppLayout', () => {
       within(tabs)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['입고 관리', '초과분 발주 연결']);
+    ).toEqual(['입고 관리', '초과분 발주 연결', '자재 관리 LOT 발행']);
     expect(within(tabs).getByRole('link', { name: '초과분 발주 연결' })).toHaveAttribute(
       'aria-current',
       'page',
@@ -1023,6 +1029,7 @@ describe('AppLayout', () => {
       '/equipment/master' /* ← 설비 */,
       '/equipment/tool-master' /* ← 툴·금형 */,
       '/equipment/gauge-master' /* ← 계측기 */,
+      '/master-data/supplier-item-defaults' /* ← 공급사·품목 기본 정보(005) */,
       '/master-data/warehouse-location' /* ← 창고·위치 */,
       '/master-data/master-change',
       /* 설비 보전 관리 — 일하는 화면만: 설비 보전 → 툴 보전 → 비가동. */
@@ -1469,10 +1476,10 @@ describe('AppLayout — 묶음 접기', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
     /*
-     * 「기준정보 관리」는 사이드바 줄 7개에 **화면 14개**다 — 손잡이는 「화면」을 세므로 탭 묶음은
-     * 탭 수만큼 센다(공정 경로 관리 두 탭 · #231 포함). `nav-tree.ts` 가 정본이다.
+     * 「기준정보 관리」는 사이드바 줄 8개에 **화면 15개**다(005 공급사·품목 기본 정보 포함) — 손잡이는
+     * 「화면」을 세므로 탭 묶음은 탭 수만큼 센다(공정 경로 관리 두 탭 · #231 포함). `nav-tree.ts` 가 정본이다.
      */
-    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 14개)');
+    expect(groupToggle('기준정보 관리')).toHaveAccessibleName('기준정보 관리 (화면 15개)');
   });
 
   /*
@@ -1667,7 +1674,7 @@ describe('AppLayout — 레일', () => {
 
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /*
@@ -1717,7 +1724,7 @@ describe('AppLayout — 레일과 검색', () => {
     await typeQuery(user, '실사');
     await collapseRail(user);
 
-    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(45);
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(46);
   });
 
   /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */

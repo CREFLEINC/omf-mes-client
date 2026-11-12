@@ -1,66 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toDocumentIssueBody, toLotCreateBody, toPrintReportBody } from './issue-request';
-import type { TargetRow } from './types';
-
-/** 합성값이다 — 계약의 예시값을 쓰지 않는다(공개 저장소 경계). */
-const row: TargetRow = {
-  inboundReceiptLineId: 8501,
-  lineNo: 1,
-  inboundReceiptId: 8101,
-  inboundReceiptNo: 'SYN-IB-0001',
-  supplierId: 8201,
-  plantId: 8301,
-  receiptDatetime: '2026-08-27T09:12:30Z',
-  itemId: 8601,
-  receivedQty: 500,
-  uomId: 8401,
-  lotId: null,
-  inspectionRequired: false,
-  lotNo: null,
-  lotStatusCode: null,
-  lastIssue: null,
-};
-
-describe('toLotCreateBody — 원천 짝', () => {
-  it('원천 유형이 「입하 라인」이고 원천 식별자가 «라인» 번호다', () => {
-    const body = toLotCreateBody(row, '2026-08-27T09:12:30+09:00');
-
-    expect(body.sourceTypeCode).toBe('INBOUND_RECEIPT_LINE');
-    expect(body.sourceId).toBe(row.inboundReceiptLineId);
-  });
-
-  it('⛔ 입하 «건» 번호를 원천 식별자로 싣지 않는다 — 계보의 출발점이 갈린다', () => {
-    const body = toLotCreateBody(row, '2026-08-27T09:12:30+09:00');
-
-    expect(body.sourceId).not.toBe(row.inboundReceiptId);
-  });
-
-  it('⛔ 번호를 화면이 싣지 않는다 — 서버가 매기고, 보내면 400이다', () => {
-    const body = toLotCreateBody(row, '2026-08-27T09:12:30+09:00');
-
-    expect(body.numberSourceCode).toBe('MES');
-    expect(body.lotNo).toBeUndefined();
-  });
-
-  it('품목·수량·단위·공장을 입하 라인에서 그대로 승계한다', () => {
-    const body = toLotCreateBody(row, '2026-08-27T09:12:30+09:00');
-
-    expect(body).toMatchObject({
-      itemId: row.itemId,
-      initialQty: row.receivedQty,
-      uomId: row.uomId,
-      plantId: row.plantId,
-    });
-  });
-
-  it('업무일자는 발생 시각에서 뗀다 — 실행 시각의 날짜를 따로 만들지 않는다', () => {
-    const body = toLotCreateBody(row, '2026-08-27T23:40:00+09:00');
-
-    expect(body.occurredAt).toBe('2026-08-27T23:40:00+09:00');
-    expect(body.businessDate).toBe('2026-08-27');
-  });
-});
+import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
 
 describe('toDocumentIssueBody — 발행 기록', () => {
   it('대상은 고른 LOT 하나이고 대상 식별자와 LOT 식별자가 같다', () => {

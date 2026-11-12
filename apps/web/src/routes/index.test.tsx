@@ -2136,8 +2136,8 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
   });
 
   /**
-   * ⭐ 기준정보 관리의 설비·툴·금형 묶음 뒤 — 공정을 도는 설비·툴·계측기 차례의 끝이고, 창고·위치
-   * 묶음이 바로 뒤에 선다.
+   * ⭐ 기준정보 관리의 설비·툴·금형 묶음 뒤 — 공정을 도는 설비·툴·계측기 차례의 끝이고, 공급사·품목 기본
+   * 정보(005)와 창고·위치 묶음이 뒤따른다.
    */
   it('기준정보 관리에서 툴·금형 묶음 바로 뒤에 선다', () => {
     const hrefs = sidebarHrefs();
@@ -2145,8 +2145,12 @@ describe('appRouter — 계측기 마스터의 진입 경로', () => {
     expect(hrefs.indexOf('/equipment/gauge-master')).toBe(
       hrefs.indexOf('/equipment/tool-master') + 1,
     );
-    expect(hrefs.indexOf('/master-data/warehouse-location')).toBe(
+    /* 005 — 계측기 뒤에 공급사·품목 기본 정보(W-06-25)가 서고 창고·위치가 뒤따른다. */
+    expect(hrefs.indexOf('/master-data/supplier-item-defaults')).toBe(
       hrefs.indexOf('/equipment/gauge-master') + 1,
+    );
+    expect(hrefs.indexOf('/master-data/warehouse-location')).toBe(
+      hrefs.indexOf('/master-data/supplier-item-defaults') + 1,
     );
   });
 

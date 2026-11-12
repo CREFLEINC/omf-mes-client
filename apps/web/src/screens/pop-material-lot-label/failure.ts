@@ -3,15 +3,13 @@ import type { ApiError } from '@omf-mes/api-client';
 import type { IssueRunResult } from './mutations';
 
 /**
- * 등록·인쇄가 멈춘 자리에서 **사용자가 무엇을 할 수 있는가.**
+ * 인쇄가 멈춘 자리에서 **사용자가 무엇을 할 수 있는가.**
  *
  * ⛔ **「실패」 한 갈래로 뭉뚱그리지 않는다.** 다시 눌러 풀리는 것과 이 단말에서는 영영 안 되는
  * 것을 같은 문구로 내면, 앞엣것에서는 사람이 포기하고 뒤엣것에서는 계속 누른다
  * (변경 통지 #534 · 스펙 `P-01-01` v0.2 §5-2 · §6).
  */
 export type IssueFailure =
-  /** 채번 충돌(409). 서버가 스스로 재시도한 끝의 실패라 **다시 부르면 풀린다.** */
-  | 'registerConflict'
   /** 이 단말에 출력 권한이 없다(403). 다시 눌러도 같은 답이 온다. */
   | 'issueForbidden'
   /** 기록은 남았고 종이만 안 나왔다. */
@@ -22,27 +20,12 @@ export type IssueFailure =
    */
   | 'reportFailedAfterPrint'
   /**
-   * 품목에 쓸 수 있는 IQC 검사기준이 없어 서버가 LOT 등록을 거절했다. 관리웹에서 기준을 세우기
-   * 전에는 다시 눌러도 같은 답이 온다(사용자 지시 2026-09-14 · 실기 확인).
-   */
-  | 'iqcPlanMissing'
-  /**
-   * 서버가 LOT 상태로 자재 라벨 발행을 막았다(검사 대기·정상만 발행 — 불량·폐기는 막는다).
-   * 처분 판정이 LOT 을 되돌리기 전에는 다시 눌러도 같은 답이 온다.
+   * 서버가 LOT 상태로 자재 라벨 발행을 막았다(검사 대기·정상만 발행 — 불량·폐기는 막는다, 005 부터 폐기된
+   * 자재 관리 LOT(`VOIDED`)도 막는다). 다시 눌러도 같은 답이 온다.
    */
   | 'labelStateLocked'
   /** 그 밖의 실패 — 값이 틀렸거나(400) 서버가 거부했다. */
   | 'other';
-
-/**
- * ⚠ **409 를 400 과 같이 다루지 않는다**(변경 통지 #534 §1). 채번 중복은 서버가 스스로 다시
- * 시도하며, 거듭 실패했을 때만 409 로 올라온다 — **사용자가 고칠 수 있는 값이 아니다.**
- *
- * 계약의 `ConflictResponse` 봉투로 오면 `conflict` 로, 봉투 없이 오면 `http` 409 로 정규화된다.
- * 채번 충돌의 원인 값이 그 enum(`user`·`erpSync`·`workerLease`)에 없으므로 둘 다 받는다.
- */
-const isRetryableConflict = (error: ApiError): boolean =>
-  error.kind === 'conflict' || (error.kind === 'http' && error.status === 409);
 
 /**
  * 계약이 권한 거부에 붙이는 코드. 계약이 `ErrorItem.code` 설명에 이름째 적어 둔 값이고,
@@ -67,18 +50,8 @@ const isForbidden = (error: ApiError): boolean => {
 };
 
 /**
- * 검사 필요 품목의 입하 라인은 LOT 등록이 IQC 의뢰를 함께 세우는데, 확정·유효한 IQC 검사기준이
- * 없으면 서버가 `STATE_LOCKED` 로 거절한다.
- *
- * ⚠ **문구로 가른다.** 서버가 이 거절에 따로 코드를 주지 않고(`scope: 'screen'` ·
- *   `STATE_LOCKED` · 문구뿐), 같은 코드가 다른 잠김에도 온다. 서버 문구가 바뀌면 이 판정이
- *   조용히 「그 밖의 실패」로 돌아간다 — 코드가 생기면 그쪽으로 갈아탄다.
- * ⛔ 「여러 개입니다」(기준 중복)는 여기 넣지 않는다. 「없다」고 말하면 틀린 안내가 된다.
- */
-const IQC_PLAN_MISSING_MESSAGE = '유효한 IQC 검사기준이 없습니다';
-
-/**
- * 서버 `MATERIAL_LABEL_UNRESOLVED_STATE_POLICY` 의 문구. ⚠ 이것도 코드 없이 문구로만 가른다 — 위와 같은 사정이다.
+ * 서버 `MATERIAL_LABEL_UNRESOLVED_STATE_POLICY` 의 문구. ⚠ 서버가 이 거절에 따로 코드를 주지 않아(`STATE_LOCKED` ·
+ * 문구뿐) 문구로 가른다. 서버 문구가 바뀌면 이 판정이 조용히 「그 밖의 실패」로 돌아간다.
  */
 const LABEL_STATE_LOCKED_MESSAGE = '자재 LOT 라벨을 발행할 수 없는 상태입니다';
 
@@ -86,12 +59,8 @@ const isLabelStateLocked = (error: ApiError): boolean =>
   error.kind === 'stateLocked' &&
   error.errors.some((item) => item.message.startsWith(LABEL_STATE_LOCKED_MESSAGE));
 
-const isIqcPlanMissing = (error: ApiError): boolean =>
-  error.kind === 'stateLocked' &&
-  error.errors.some((item) => item.message.startsWith(IQC_PLAN_MISSING_MESSAGE));
-
 /**
- * 한 번의 등록·인쇄가 어떤 실패로 끝났는가. 끝까지 갔거나 아직 아무것도 하지 않았으면 `null`.
+ * 한 번의 인쇄가 어떤 실패로 끝났는가. 끝까지 갔거나 아직 아무것도 하지 않았으면 `null`.
  */
 export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
   const { isPrinted, failedAt, error } = result;
@@ -105,11 +74,9 @@ export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
   if (failedAt === 'report')
     return result.hasPrintedLabel ? 'reportFailedAfterPrint' : 'printFailed';
   if (error === null) return 'other';
-  if (failedAt === 'register' && isRetryableConflict(error)) return 'registerConflict';
-  if (failedAt === 'register' && isIqcPlanMissing(error)) return 'iqcPlanMissing';
   if (failedAt === 'issue' && isLabelStateLocked(error)) return 'labelStateLocked';
   /*
-   * ⚠ **권한 거부는 걸음을 가리지 않는다.** 라벨을 받는 걸음이나 등록에서 나와도 이 단말에
+   * ⚠ **권한 거부는 걸음을 가리지 않는다.** 어느 걸음에서 나와도 이 단말에
    * 권한이 없다는 뜻은 같다 — 갈래를 발행 걸음으로 좁히면 나머지가 「그 밖의 실패」로 접혀
    * 서버가 영영 허락하지 않을 일에 재시도 단추가 열린다.
    */

@@ -1,106 +1,107 @@
 export const popMaterialLotLabel = {
   /**
-   * 화면 이름 — 가운뎃점으로 두 일을 잇지 않는다(규범 C-13 · 개편안 승인 2026-10-24 · omf-all-around#184).
+   * 화면 이름 — 005 부터 「자재 관리 LOT 라벨」(omf-all-around#254 · screens/P-01-01.md).
    * ⚠ 화면 목록(`patterns/pop-screen-catalog.ts`)의 이름과 같아야 한다 — 고치면 함께 고친다.
    */
-  title: '자재 LOT 라벨 발행',
+  title: '자재 관리 LOT 라벨',
   /**
-   * 왼쪽 위 두 보기. 발행 대기는 아직 라벨이 없는 입하 줄, 다시 인쇄는 이미 발행한 줄이다.
-   * ⭐ 「발행 완료」 대신 할 일을 이름으로 쓴다 — 그 보기에서 하는 일이 다시 인쇄뿐이다.
+   * 왼쪽 위 두 보기. 공급사·품목은 대기 자재 관리 LOT 을 만들고 라벨을 처음 찍는 곳, 다시 인쇄는 이미 찍은 라벨.
+   * ⛔ 「입하 LOT」 탭 · 「라벨 대기 입하 줄」은 없다(FR-036 · D-19·D-25).
    */
   tabs: {
     label: '보기',
-    pending: '발행 대기',
+    pairs: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     reprint: '다시 인쇄',
   },
-  /**
-   * 찾기 칸 — 스캐너 입력도 받는다. 칸 이름은 하나로 두고 대상은 안내 문구에 적는다(규범 C-13).
-   */
+  /** 찾기 칸 — 다시 인쇄에서는 스캐너 입력도 받는다(Enter = 그 LOT 고르기). */
   search: {
     label: '찾기',
-    pendingPlaceholder: '품목코드 또는 입하번호',
-    reprintPlaceholder: 'LOT 번호 또는 품목코드',
+    pairsPlaceholder: '공급사 또는 품목(코드·이름)', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    reprintPlaceholder: '자재 관리 LOT 번호 스캔 또는 품목코드',
     clear: '지우기',
   },
-  /** 왼쪽 공급사 목록. 큰 숫자는 남은 장수다(LOT 하나에 한 장 — 사용자 결정 2026-10-24). */
-  suppliers: {
-    label: '공급사',
-    unit: '장',
-    /** 대기 줄이 한 건의 입하에서만 왔으면 그 시각, 여러 건이면 가장 이른 시각부터. */
-    at: (when: string) => `${when} 입하`,
-    since: (when: string) => `${when} 입하부터`,
-    /** 다시 인쇄 보기 — 그 공급사에서 가장 최근 입하. */
-    latest: (when: string) => `최근 입하 ${when}`,
-    pendingEmpty: '발행할 자재가 없습니다.',
-    reprintEmpty: '최근 2주 안에 발행한 라벨이 없습니다.',
+  /** 왼쪽 공급사·품목 목록. 칩은 대기 자재 관리 LOT 수다. */
+  pairs: {
+    label: '공급사·품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    waiting: (count: number) => `대기 ${count}`,
+    unprinted: (count: number) => `라벨 미출력 ${count}`,
+    /** 기본 정보 줄 뒤에 라벨 미출력 수(시안 「· 라벨 미출력 N」). */
+    withUnprinted: (line: string, count: number) => `${line} · 라벨 미출력 ${count}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 기본 정보 한 줄 — 패키징이 있으면 「기본 봉지 10 × 100 = 1,000 EA」. */
+    defaultPackaged: (text: string) => `기본 ${text}`,
+    defaultUnpackaged: (text: string) => `기본 ${text} · 패키징 없음`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    noDefault: '기본 정보 없음',
+    hint: '기본 정보는 관리웹 「공급사·품목 기본 정보」에서 정합니다. 입하 LOT는 여기서 만들지 않습니다 — PDA 입하 스캔 때 저절로 생깁니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    empty: '공급사·품목이 없습니다. 관리웹 「공급사·품목 기본 정보」에 먼저 등록하세요.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    noMatch: '찾는 공급사·품목이 없습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
   },
-  /**
-   * 발행 대기의 입하 기간(사용자 지시 2026-10-27) — 기본은 이번 주, 주는 월요일부터다.
-   * ⭐ 기간보다 먼저 입하됐는데 아직 남은 줄은 띠로 알린다 — 그냥 지나가지 않게. 「보기」로 그 줄만 모아 본다.
-   */
-  period: {
-    label: '입하 기간',
-    today: '오늘',
-    week: '이번 주',
-    month: '이번 달',
-    all: '전체',
-    pastTitle: (count: number) => `지난 입하 미발행 ${count}장`,
-    pastRange: (from: string, to: string) =>
-      from === to ? `${from} 입하` : `${from} ~ ${to} 입하`,
-    showPast: '보기',
-    /** 지난 줄을 보는 중 — 고른 기간으로 돌아가는 단추. */
-    backTo: (period: string) => `${period} 보기`,
-    empty: (period: string) => `${period} 입하분 중 발행할 자재가 없습니다.`,
+  /** 다시 인쇄 보기의 왼쪽 안내. */
+  reprintInfo:
+    '최근 2주 안에 라벨을 출력한 자재 관리 LOT입니다. 다시 인쇄하면 출력 차수가 오르고 사유가 남습니다. 폐기된 LOT는 라벨을 찍지 않습니다.',
+  /** 오른쪽 작업 칸. */
+  work: {
+    meta: (supplier: string, supplierCode: string, uomCode: string, defaults: string) =>
+      `${supplier} ${supplierCode} · 기본 단위 ${uomCode} · ${defaults}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    create: '자재 관리 LOT 만들기',
+    info: '자재 관리 LOT는 공급사·품목으로 미리 만들고 라벨을 붙여 둡니다. 물건이 오면 PDA 입하(M-01-01)에서 스캔만 하면 같은 공급사·품목의 「입하 중」 입하 LOT에 들어가거나 새 입하 LOT가 저절로 생깁니다. 대기 LOT는 재고가 없어 출고·투입 스캔에서 거부됩니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    waitingTitle: '대기 자재 관리 LOT',
+    waitingSub: (itemCode: string, supplier: string) =>
+      `${itemCode} · ${supplier} — 아직 입하되지 않음`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    waitingEmpty:
+      '대기 중인 자재 관리 LOT가 없습니다. 「자재 관리 LOT 만들기」로 만드세요. 패키징·수량은 기본 정보로 채워집니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    receivedTitle: (count: number) => `최근 입하된 자재 관리 LOT ${count}개`,
+    receivedSub: '라벨만 다시 찍을 수 있습니다(「다시 인쇄」 탭)',
+    pickPair: '왼쪽에서 공급사·품목을 고르세요.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    reprintTitle: '다시 인쇄',
+    reprintCount: (count: number) => `출력한 자재 관리 LOT ${count}개`,
+    reprintEmpty: '최근 2주 안에 출력한 라벨이 없습니다.',
+    /** 결과 표 머리 오른쪽 — 몇 장이 나왔고 몇 장이 안 나왔는가. */
+    resultSummary: (printed: number, unfinished: number) =>
+      unfinished === 0 ? `${printed}장 인쇄` : `${printed}장 인쇄, ${unfinished}장 남음`,
+    /**
+     * 20초마다 스스로 다시 받지만, 기다리지 않고 바로 볼 수단으로 남긴다(omf-all-around#29).
+     * 관리웹(W-01-14)에서 만든 LOT · PDA 가 입하한 LOT 이 바로 서야 한다.
+     */
+    refresh: '새로 고침',
+    refreshedAt: (time: string) => `${time} 받음`,
+    loadFailed: '자재 관리 LOT 목록을 불러오지 못했습니다.',
+    retry: '다시 불러오기',
+    /** 단말의 공장을 아직 모른다(등록 전) — 목록을 부르지 않는다. */
+    noPlant: '단말의 공장을 확인하는 중입니다.',
   },
   table: {
     columns: {
       check: '선택',
-      itemCode: '품목코드',
-      itemName: '품목명',
-      qty: '수량',
-      receivedAt: '입하',
+      lotNo: '자재 관리 LOT 번호',
+      item: '품목',
+      qty: '재고 수량',
+      package: '패키징',
+      supplierLot: '공급사 LOT',
+      status: '상태',
+      label: '라벨',
+      printed: '출력',
       result: '결과',
-      lotNo: 'LOT 번호',
-      issued: '발행',
-      /** 마지막 열 — 수입검사 대상인가(사용자 지시 2026-10-26). */
-      iqc: 'IQC',
     },
-    selectAll: '전체 선택',
-    /**
-     * 상세 목록 머리의 품목코드 칸 — **고른 공급사의 줄 안에서만** 거른다(사용자 지시 2026-10-27).
-     * 왼쪽 찾기 칸(모든 공급사 · 품목코드 또는 입하번호)과 따로 둔다. 한 공급사에 줄이 수백 개일 수 있다.
-     */
-    itemFilter: {
-      label: '목록에서 품목코드 찾기',
-      placeholder: '품목코드',
-      clear: '품목코드 지우기',
-    },
-    /** IQC 열의 값 — 검사 대상 줄에만 적는다. 그 줄은 IQC 라벨이 한 장 더 나간다(omf-all-around#110). */
-    iqcRequired: '필수',
-    /** 줄 전체가 체크 칸이다 — 읽어 주는 도구가 줄을 가를 수 있게 품목·수량·입하 시각을 이름에 싣는다. */
-    rowName: (itemCode: string, itemName: string, qty: string, receivedAt: string) =>
-      `${itemCode} ${itemName} ${qty} ${receivedAt} 입하`,
-    range: (from: number, to: number, total: number) => `${from}–${to} / ${total}줄`,
-    pageNav: '쪽 이동',
-    prev: '◀ 이전',
-    next: '다음 ▶',
-    /**
-     * 20초마다 스스로 다시 받지만, 기다리지 않고 바로 볼 수단으로 남긴다(omf-all-around#29).
-     * 왼쪽 기간 아래에 둔다 — 표 아래 구석에서는 보이지 않았다(사용자 지시 2026-10-27).
-     */
-    refresh: '새로 고침',
-    /** 새로 고침 옆 — 서버에서 마지막으로 받은 시각(초까지). 눌렀는데 받았는지 알 수 있게 한다. */
-    refreshedAt: (time: string) => `${time} 받음`,
-    loadFailed: '입하 목록을 불러오지 못했습니다.',
-    retry: '다시 불러오기',
-    noMatch: '찾는 품목이 없습니다.',
-    pickSupplier: '왼쪽에서 공급사를 고르세요.',
-    /** 다시 인쇄 표의 「발행」 칸 — 마지막 회차와 시각. */
+    /** 최근 입하된 LOT 번호 아래 줄. */
+    inboundLot: (no: string) => `입하 LOT ${no}`,
+    none: '—',
+    unprinted: '미출력',
+    /** 라벨 칸 — 마지막 회차와 시각. */
     issuedAt: (seq: number, when: string) => `${seq}회 ${when}`,
-    lotLoading: 'LOT 번호 확인 중',
-    /** 결과 표 머리 오른쪽 — 몇 장이 나왔고 몇 장이 안 나왔는가. */
-    resultSummary: (printed: number, unfinished: number) =>
-      unfinished === 0 ? `${printed}장 인쇄` : `${printed}장 인쇄, ${unfinished}장 남음`,
+    /** 줄 전체가 체크 칸이다 — 읽어 주는 도구가 줄을 가를 수 있게 번호·수량을 이름에 싣는다. */
+    rowName: (lotNo: string, qty: string) => `${lotNo} ${qty}`,
+  },
+  /** 상태 칩 — 생애 축(대기·폐기·입하됨)과 입하됨의 품질 상태. */
+  lotState: {
+    waiting: '대기',
+    voided: '폐기',
+    received: (quality: string) => `입하됨 · ${quality}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    quality: {
+      NORMAL: '정상',
+      INSPECTION_PENDING: '검사 대기',
+      DEFECTIVE: '불량',
+      SCRAPPED: '폐기',
+    } as Record<string, string | undefined>,
   },
   /** 줄마다 제자리에 붙는 결과. 길게 쓰지 않는다 — 다음 할 일은 아래 동작 바가 말한다. */
   status: {
@@ -117,16 +118,20 @@ export const popMaterialLotLabel = {
       printFailed: '인쇄 안 됨',
       reportFailedAfterPrint: '인쇄됨, 기록 안 됨',
       issueForbidden: '이 단말은 발행 불가',
-      registerConflict: '등록 지연',
-      iqcPlanMissing: 'IQC 검사기준 없음',
       labelStateLocked: '발행할 수 없는 LOT',
       other: '발행 안 됨',
     },
   },
   /** 하단 동작 바 — 왼쪽은 지금 상태 한 줄, 오른쪽은 주 동작. */
   bar: {
-    empty: '발행할 품목을 고르세요',
-    selected: (count: number) => `${count}장 선택`,
+    empty: '라벨을 찍거나 폐기할 대기 자재 관리 LOT를 고르세요',
+    selected: (count: number, unprinted: number) => `${count}개 선택 · 라벨 미출력 ${unprinted}개`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 이미 출력한 LOT 을 골랐다 — 첫 발행은 미출력만 찍는다. */
+    printedNote: (count: number) =>
+      `이미 출력한 ${count}장은 「다시 인쇄」에서 사유를 골라 찍으세요`,
+    selectAllWaiting: '대기 전체 선택',
+    voidIdle: '폐기',
+    void: (count: number) => `대기 ${count}개 폐기`,
     clear: '선택 해제',
     issue: (count: number) => `라벨 ${count}장 발행`,
     issueIdle: '라벨 발행',
@@ -134,7 +139,8 @@ export const popMaterialLotLabel = {
     progress: (done: number, total: number) => `${total}장 중 ${done}장`,
     stop: '멈춤',
     stopping: '이번 장까지 찍고 멈춥니다',
-    done: (count: number) => `${count}장 인쇄했습니다`,
+    done: (count: number) => `${count}장 인쇄했습니다 — 상자에 붙여 두세요`,
+    reprinted: (count: number) => `${count}장 다시 인쇄했습니다 — 출력 차수가 올랐습니다`,
     confirm: '확인',
     failed: (count: number) => `${count}장이 나오지 않았습니다`,
     stopped: (count: number) => `${count}장이 남았습니다`,
@@ -152,15 +158,13 @@ export const popMaterialLotLabel = {
     },
     /** 한 단위를 다 찍고 쉬는 중. */
     paused: (done: number, total: number) => `${total}장 중 ${done}장 발행`,
-    pausedNote: (remaining: number) => `라벨을 붙인 뒤 이어서 발행하세요 · 남은 ${remaining}장`,
+    pausedNote: (remaining: number) => `라벨을 붙인 뒤 이어서 발행하세요 · 남은 ${remaining}장`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
     resume: (count: number) => `다음 ${count}장 발행`,
     /** 실패한 까닭마다 할 일. 다시 눌러도 같은 답이 오는 것은 다시 하라고 하지 않는다. */
     next: {
       printFailed: '프린터 연결과 용지를 확인하세요',
       reportFailedAfterPrint: '라벨은 나왔습니다. 다시 찍지 마세요',
       issueForbidden: '라벨 프린터가 있는 단말에서 발행하세요',
-      registerConflict: '잠시 뒤 다시 발행하세요',
-      iqcPlanMissing: '품질팀에 IQC 검사기준 등록을 요청하세요',
       labelStateLocked: '불량이나 폐기 LOT 은 라벨을 발행하지 않습니다',
       other: '잠시 뒤 다시 발행하세요',
       stopped: '남은 장을 이어서 발행할 수 있습니다',
@@ -202,19 +206,109 @@ export const popMaterialLotLabel = {
     action: (count: number) => `${count}장 다시 인쇄`,
     actionIdle: '다시 인쇄',
     empty: '다시 찍을 라벨을 고르거나 스캔하세요',
+    selected: (count: number) => `${count}장 선택`,
     summary: (reason: string) => `사유 ${reason}`,
-    scanned: (count: number) => `스캔한 LOT ${count}장`,
-    /** 스캔한 번호가 최근 2주 발행분에 없다 — 찾는 범위를 말한다. */
-    notFound: '최근 2주 안에 발행한 라벨에서 찾지 못했습니다.',
-    lookupFailed: 'LOT 을 찾지 못했습니다. 다시 스캔하세요.',
+    /** 사유 없이 골랐다 — 막대에 말하고 단추를 잠근다. */
+    needsReason: '사유를 골라야 다시 인쇄할 수 있습니다',
+    /** 스캔한 번호가 최근 2주 출력분에 없다 — 찾는 범위를 말한다. */
+    notFound: '최근 2주 안에 출력한 자재 관리 LOT에서 찾지 못했습니다.',
     /** 고른 LOT 이 라벨을 낼 수 없는 상태 — 누르기 «전»에 막고 까닭을 말한다. */
     lotBlocked: (status: string) => `「${status}」 LOT 은 라벨을 다시 찍을 수 없습니다`,
     lotStatus: { DEFECTIVE: '불량', SCRAPPED: '폐기' } as Record<string, string | undefined>,
   },
-  /**
-   * 라벨에 찍히는 말 — 수량 줄 오른쪽의 입하일. 라벨은 그림으로 찍으므로 화면 언어를 그대로 쓴다.
-   */
-  label: {
-    received: (date: string) => `입하 ${date}`,
+  /** 자재 관리 LOT 만들기 창(screens/P-01-01.md 「창」 · FR-002·003). */
+  batch: {
+    title: '자재 관리 LOT 만들기',
+    close: '닫기',
+    pair: '공급사 · 품목', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    /** 기본값을 어디서 채웠나(US1-1 · US1-3). */
+    source: {
+      default: '기본 정보에서 가져옴',
+      itemStorage: '공급사·품목 기본 정보 없음 — 품목 기본 보관 단위로 채움', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+      none: '기본 정보 없음 — 직접 입력',
+    },
+    sourceNote: {
+      defaultWithoutPackage: '기본 정보가 「패키징 없음」입니다. 필요하면 넣을 수 있습니다.',
+      itemStorage: '패키징 없이 만들면 기본 단위 수량만 남습니다(낱개가 섞인 상자 등).',
+      none: '이 공급사·품목은 기본 정보도, 품목 기본 보관 단위도 없어 패키징 없이 시작합니다. 필요하면 넣을 수 있습니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    },
+    loading: '기본 정보를 불러오는 중입니다.',
+    defaultsFailed: '기본 정보를 불러오지 못했습니다 — 값을 직접 넣으세요.',
+    package: '패키징',
+    optional: '(선택)',
+    packageOn: '패키징 넣기',
+    packageOff: '패키징 없음',
+    packageUom: '패키징 단위',
+    packageUomPlaceholder: '고르세요',
+    packageCount: '패키징 수',
+    qtyPerPackage: (uomCode: string) => `패키징당 수량 (${uomCode})`,
+    lotQty: '자재 관리 LOT당 재고 수량',
+    lotQtyPlaceholder: '자재 관리 LOT 1개의 수량',
+    lotQtyHelpPackaged: (uomCode: string) =>
+      `「패키징 수 × 패키징당 수량」으로 채워집니다. 직접 고치면 곱과 같아야 합니다. 단위는 ${uomCode} 고정.`,
+    lotQtyHelp: (uomCode: string) =>
+      `단위는 품목 기본 단위(${uomCode})로 정해져 있고 고르지 않습니다.`,
+    unitLocked: '품목 기본 단위로 고정',
+    supplierLot: '공급사 LOT 번호',
+    supplierLotPlaceholder: '예: SL-77',
+    supplierLotHelp: '만드는 자재 관리 LOT 모두에 같은 값이 들어갑니다.',
+    lotCount: '개수',
+    lotCountUnit: '개',
+    lotCountHelp: '한 번에 1~200개까지 만듭니다.',
+    errors: {
+      packageCount: '패키징 수는 1 이상 정수입니다',
+      qtyPerPackage: '패키징당 수량은 0보다 커야 합니다',
+      packageUom: '패키징 단위를 고르세요',
+      lotQty: '재고 수량을 넣으세요(0보다 큰 수)',
+      integer: (uomCode: string) => `${uomCode}는 정수로 넣습니다`,
+      lotCount: '개수는 1~200 사이 정수입니다',
+      mismatch: (qty: string, product: string) =>
+        `재고 수량 ${qty} ≠ ${product} — 맞춰야 만들 수 있습니다`,
+    },
+    summary: (count: number, each: string, total: string) =>
+      `자재 관리 LOT ${count}개 · 각 ${each} · 합계 ${total}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    summarySupplierLot: (no: string) => ` · 공급사 LOT ${no}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    summaryNote: (pattern: string) =>
+      `번호 예: ${pattern} … · 대기 상태로 만들어지며 재고는 늘지 않습니다. 입하 LOT는 PDA 스캔 때 정해집니다.`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    summaryEmpty: '개수를 넣으면 만들어질 자재 관리 LOT가 여기 보입니다.',
+    cancel: '취소',
+    submit: (count: number) => `${count}개 만들기`,
+    submitIdle: '만들기',
+    created: (count: number) =>
+      `자재 관리 LOT ${count}개를 대기 상태로 만들었습니다 — 고른 채로 두었으니 라벨을 발행하세요`,
+    failed: '자재 관리 LOT를 만들지 못했습니다.',
+  },
+  /** 대기 LOT 폐기 확인(US1-7 · FR-005). */
+  voidDialog: {
+    title: (count: number) => `대기 자재 관리 LOT ${count}개를 폐기할까요?`,
+    body: '폐기하면 PDA 입하 스캔에서 거부되고, 번호는 다시 매기지 않습니다.',
+    printed: (count: number) => `라벨을 이미 출력한 ${count}개는 라벨을 떼어 버리세요.`,
+    cancel: '취소',
+    confirm: (count: number) => `${count}개 폐기`,
+    done: (count: number) => `자재 관리 LOT ${count}개를 폐기했습니다`,
+    partial: (count: number, failed: number) => `자재 관리 LOT ${count}개 폐기 · 실패 ${failed}`, // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    failed: '폐기하지 못했습니다.',
+  },
+  /** 라벨 미리 보기(발행 · 다시 인쇄). */
+  preview: {
+    title: '라벨 발행 미리 보기',
+    reprintTitle: '다시 인쇄 미리 보기',
+    note: 'QR에는 자재 관리 LOT 번호만 실립니다. 라벨에는 품목·재고 수량·단위·패키징(있으면)·공급사가 보입니다.', // ui-check-ignore: C-13 설계 확정 문구·용어 「공급사·품목」(screens/P-01-01.md · mockups/P0101-After)
+    reprintNote: (reason: string) => ` 사유 「${reason}」, 출력 차수가 하나 오릅니다.`,
+    kind: '자재 관리 LOT',
+    item: '품목',
+    qty: '수량',
+    package: '패키징',
+    supplier: '공급사',
+    reissue: (seq: number) => `재발행 ${seq}회`,
+    prev: '◀ 이전',
+    next: '다음 ▶',
+    page: (index: number, total: number) => `${index} / ${total}장`,
+    printer: (name: string) => `프린터 ${name}`,
+    printerDefault: '프린터 기본값',
+    cancel: '취소',
+    close: '닫기',
+    print: (count: number) => `${count}장 인쇄`,
+    reprint: (count: number) => `${count}장 다시 인쇄`,
   },
 } as const;
