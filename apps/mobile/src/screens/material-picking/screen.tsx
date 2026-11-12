@@ -606,6 +606,8 @@ export const MaterialPickingScreen = () => {
         await queryClient.invalidateQueries({
           queryKey: pickingKeys.order(order.pickingOrderId),
         });
+        /* 출고로 위치 재고가 줄었다 — 다시 스캔했을 때 옛 재고가 잠깐 보이지 않게 지운다(G2 5차). */
+        await queryClient.resetQueries({ queryKey: pickingKeys.stocks() });
       }
 
       setOutcome(settled);
@@ -1079,7 +1081,12 @@ export const MaterialPickingScreen = () => {
         )}
         {defaultIssueType !== null ? null : <p className="picking-out__note">{t.issueTypeNote}</p>}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
-        {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
+        {/*
+         * 이 화면이 지금 보내는 중이면 큐에 잠깐 실린 그 출고다 — 「이미 전송 대기 중」이라 하지 않는다(G2 5차 · 요청은 한 번).
+         */}
+        {queuedIssues === 0 || busy ? null : (
+          <AlertBanner variant="warning" title={t.issueQueued} />
+        )}
         {/*
           ⛔ **「집어 둔 것을 다 내보냈다」와 「지시가 끝났다」를 가른다.** 부분 출고 직후에는
           앞의 것이 참인데 계획에는 아직 남은 수량이 있다 — 한 문구로 합치면 작업자가 끝난

@@ -14,6 +14,8 @@ export const pickingKeys = {
   order: (pickingOrderId: number | null) => ['picking-order', pickingOrderId] as const,
   request: (materialIssueRequestId: number | null) =>
     ['picking-issue-request', materialIssueRequestId] as const,
+  /** LOT 재고 전부(출고 확정 뒤 무효로 — G2 5차). */
+  stocks: () => ['picking-lot-stock'] as const,
   stock: (lotId: number | null, warehouseId: number | null, locationId: number | null) =>
     ['picking-lot-stock', lotId, warehouseId, locationId] as const,
 };

@@ -1390,6 +1390,23 @@ describe('자재 출고·피킹 화면', () => {
     expect(await sent.issues[1]?.json()).toMatchObject({ lines: [{ issueQty: 70 }] });
   });
 
+  it('G2 5차 보내는 동안에는 「이미 전송 대기 중」을 띄우지 않는다 — 큐에 잠깐 실린 것은 지금 보내는 그 출고다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    sent.holdNextIssue();
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    /* 출고가 큐에 실려 서버 응답을 기다리는 동안. */
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(
+      screen.queryByText('이 지시의 출고가 이미 전송 대기 중입니다. 연결되면 보냅니다.'),
+    ).toBeNull();
+
+    sent.releaseIssue();
+    await screen.findByText('출고를 확정했습니다');
+  });
+
   it('보내는 동안 확정을 다시 눌러도 한 건만 나간다', async () => {
     const user = userEvent.setup();
     const sent = mount({ lines: [line({ pickedQty: 120 })] });
