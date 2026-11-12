@@ -111,7 +111,8 @@ export const useConcessionCandidates = (
 
       return runRequest(() =>
         client.GET('/quality/concessions', {
-          params: { query: { approvalRequestId, page: 1, size: 2 } },
+          /* 다LOT 특채 묶음은 LOT 마다 한 행 — 한 쪽에 다 받는다(G2 H2). */
+          params: { query: { approvalRequestId, page: 1, size: 100 } },
         }),
       );
     },

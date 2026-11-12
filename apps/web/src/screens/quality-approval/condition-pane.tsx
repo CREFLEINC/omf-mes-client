@@ -148,7 +148,13 @@ export const ConditionPane = ({
   }
   if (detail.data === undefined) return <>{requestInfo()}</>;
 
-  const view = toConcessionCardView(detail.data, {
+  const bundle = cardinality?.kind === 'one' ? cardinality.bundle : undefined;
+  /* 다LOT 묶음은 수량을 묶음 합으로, 대상 LOT 은 「자재 관리 LOT n개 전부」로(G2 H2). */
+  const shown =
+    bundle === undefined
+      ? detail.data
+      : { ...detail.data, approvedQty: bundle.approvedQty, consumedQty: bundle.consumedQty };
+  const view = toConcessionCardView(shown, {
     ...UNKNOWN_CONDITION_REFERENCES,
     uom: toListReference(
       {
@@ -235,13 +241,23 @@ export const ConditionPane = ({
         ))}
       </dl>
       {requestInfo({
-        targetLot: access.allows(LOT_STATUS_SCREEN_PATH)
-          ? {
-              to: lotStatusEntryPath(detail.data.lotId),
-              label: t.openLot,
-              name: detail.data.lotNo?.trim() || t.lotNoUnknown,
-            }
-          : undefined,
+        /* 다LOT 묶음은 LOT 하나를 열 수 없다 — 부적합(그 LOT 전부가 보인다)을 연다(G2 H2). */
+        targetLot:
+          bundle !== undefined
+            ? access.allows(DISPOSITION_SCREEN_PATH)
+              ? {
+                  to: dispositionEntryPath(detail.data.nonconformanceId),
+                  label: t.openNonconformance,
+                  name: t.lotBundle(bundle.lotCount),
+                }
+              : undefined
+            : access.allows(LOT_STATUS_SCREEN_PATH)
+              ? {
+                  to: lotStatusEntryPath(detail.data.lotId),
+                  label: t.openLot,
+                  name: detail.data.lotNo?.trim() || t.lotNoUnknown,
+                }
+              : undefined,
         nonconformance: {
           name: view.nonconformanceNo,
           link: access.allows(DISPOSITION_SCREEN_PATH)

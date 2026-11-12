@@ -230,6 +230,8 @@ export const qualityApproval = {
     /** 다른 화면으로 여는 줄(#193) — 대상 LOT 은 LOT 상태, 허용 작업지시는 W/O 진행현황에서 연다. */
     lotHeading: '대상 LOT',
     lotNoUnknown: 'LOT 번호 미제공',
+    /** 005 다LOT 전량 특채 묶음(G2 H2). */
+    lotBundle: (count: number) => `자재 관리 LOT ${count}개 전부`,
     openLot: 'LOT 열기',
     /** 소제목 옆 작은 보조 단추의 글 — 무엇을 여는지는 소제목이 말하고, 읽기 이름은 「LOT 열기」 등 전체다. */
     open: '열기',

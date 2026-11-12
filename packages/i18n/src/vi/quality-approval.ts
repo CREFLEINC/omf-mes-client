@@ -206,6 +206,7 @@ export const qualityApproval: Translated<typeof ko.qualityApproval> = {
     nonconformanceHeading: 'Không phù hợp liên quan',
     lotHeading: 'LOT đối tượng',
     lotNoUnknown: 'Không có số LOT',
+    lotBundle: (count: number) => `Toàn bộ ${count} LOT quản lý vật tư`,
     openLot: 'Mở LOT',
     open: 'Mở',
     workOrderHeading: 'Lệnh sản xuất được phép',
