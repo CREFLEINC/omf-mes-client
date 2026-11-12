@@ -14,7 +14,7 @@ import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/a
  * 값은 전부 지어낸 것이다.
  */
 
-const detailOf = vi.hoisted(() => ({ value: null as unknown }));
+const detailOf = vi.hoisted(() => ({ value: null as unknown, slow: false }));
 
 const done = <T,>(data: T) => ({
   data,
@@ -25,15 +25,37 @@ const done = <T,>(data: T) => ({
   refetch: () => Promise.resolve({ data }),
 });
 
-vi.mock('../iqc-inspection/queries', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../iqc-inspection/queries')>()),
-  useInspectionRequestDetail: () => done(detailOf.value),
-  useInspectionRounds: () => done([]),
-  useInspectionItemSpecs: () => done([]),
-  useDefectCodes: () => done([]),
-  useRejectedLotFollowUp: () => done(undefined),
-  useMeasurements: () => done([]),
-}));
+vi.mock('../iqc-inspection/queries', async (importOriginal) => {
+  const { useEffect, useState } = await import('react');
+
+  return {
+    ...(await importOriginal<typeof import('../iqc-inspection/queries')>()),
+    /* `slow` 면 처음엔 불러오는 중, 다음 틀에 도착 — 실제 앱처럼 로딩 → 데이터 순서(G2 H1). */
+    useInspectionRequestDetail: () => {
+      const [ready, setReady] = useState(!detailOf.slow);
+      useEffect(() => {
+        if (ready) return undefined;
+        const id = setTimeout(() => setReady(true), 0);
+        return () => clearTimeout(id);
+      }, [ready]);
+      return ready
+        ? done(detailOf.value)
+        : {
+            data: undefined,
+            isPending: true,
+            isError: false,
+            isSuccess: false,
+            error: null,
+            refetch: () => Promise.resolve({ data: undefined }),
+          };
+    },
+    useInspectionRounds: () => done([]),
+    useInspectionItemSpecs: () => done([]),
+    useDefectCodes: () => done([]),
+    useRejectedLotFollowUp: () => done(undefined),
+    useMeasurements: () => done([]),
+  };
+});
 
 vi.mock('./queries', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./queries')>()),
@@ -157,6 +179,19 @@ describe('W-01-01 상세의 갈림길 — 이전 데이터 IQC 와 새 흐름', 
     expect(await screen.findByRole('button', { name: tp.footer.submit })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.confirm.open })).toBeNull();
     expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
+  });
+
+  it('G2 H1 새 흐름 의뢰를 불러오는 중 → 도착해도 화면이 깨지지 않는다(훅 개수가 같다)', async () => {
+    detailOf.value = request('INBOUND_LOT');
+    detailOf.slow = true;
+    try {
+      mount();
+
+      expect(await screen.findByRole('button', { name: t.confirm.open })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.results.add })).toBeInTheDocument();
+    } finally {
+      detailOf.slow = false;
+    }
   });
 
   it('새 흐름(대상 = 입하 LOT)은 결과 목록 상세 — 검사 단위 [판정 확정], 결과 단위 [제출]은 없다', async () => {

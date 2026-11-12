@@ -396,6 +396,12 @@ export const InspectionDetail = ({
     );
   };
 
+  /*
+   * ⚠ 훅은 새 흐름 조기 반환보다 앞에 둔다 — 로딩 중(옛 상세 길)과 데이터 도착 뒤(새 흐름 길)의 훅 개수가 같아야 한다(G2 H1).
+   * 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04).
+   */
+  const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
+
   if (inboundFlow && detail.data !== undefined) {
     const aql = version.data?.aqlValue;
     const planText = [
@@ -418,8 +424,6 @@ export const InspectionDetail = ({
     );
   }
 
-  /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
-  const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
   /* 확정된 의뢰는 이력에서 시작하고, 첨부 파일 탭은 고를 수 있다(#247). */
   const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
   const tab = confirmed
