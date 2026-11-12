@@ -202,6 +202,8 @@ export interface Script {
   balances?: StockBalance[];
   /** 재고 응답을 통째로 바꾼다(실패 · 잘림). 부른 차례대로, 모자라면 마지막 것을 되풀이한다. */
   stock?: (() => Response | Promise<Response>)[];
+  /** 위 규칙보다 먼저 볼 응답 — 위치 상세 · 수정처럼 이 묶음이 모르는 요청(#267 별칭 고치기). */
+  extraRoutes?: StubRoute[];
 }
 
 /** 그릴 것 — 조회 화면 전체, 또는 편집 창 하나(옮긴 편집 시나리오). */
@@ -219,6 +221,7 @@ const renderSubject = (subject: Subject, script: Script, options: RenderOptions 
 
   const stockGets: Request[] = [];
   const routes: StubRoute[] = [
+    ...(script.extraRoutes ?? []),
     {
       match: (request) => request.method === 'GET' && pathOf(request) === BALANCES_PATH,
       respond: (request) => {
@@ -367,7 +370,8 @@ export const renderScreen = (script: Script, options?: RenderOptions) =>
  * 편집 창 하나만 그린다 — 조회 화면의 [수정]을 누른 것과 같다(창고 `WAREHOUSE_ID`). 조회 화면과 같은 판 · 목록 이름이
  * 겹치지 않아, 옮긴 편집 시나리오가 손잡이를 그대로 쓴다.
  */
-export const renderEditor = (script: Script) => renderSubject('editor', script);
+export const renderEditor = (script: Script, options?: RenderOptions) =>
+  renderSubject('editor', script, options);
 
 /**
  * 배치도가 도착할 때까지 — 도착해야 판이 선다. 조회 화면 · 편집 창 모두 판은 배치도를 받은 뒤에 선다(편집 창의 저장

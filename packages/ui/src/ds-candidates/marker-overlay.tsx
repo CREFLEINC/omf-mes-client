@@ -21,6 +21,11 @@ export interface OverlayMarker {
   /** 0~1. 판 위쪽에서의 비율. */
   y: number;
   label: string;
+  /**
+   * 접근 이름(버튼 `aria-label`) — 보이는 이름과 다를 때만 준다. 창고 배치도는 별칭만 보이고 「코드 별칭」으로 읽힌다
+   * (피처 007 FR-008). 없으면 `label`.
+   */
+  ariaLabel?: string;
   selected?: boolean;
   /**
    * 크기를 가진 사각형 표식 — 판 폭 · 높이에 대한 비율(0~1). 둘 다 있으면 `x` · `y` 는 사각형의 중심이고, 없으면 글자 크기의
@@ -890,7 +895,7 @@ export const MarkerOverlay = ({
                * 표식의 이름이 「A-01 가로 10%, 세로 20%」로 불어난다. 이름은 보이는 말과
                * 같아야 한다.
                */
-              aria-label={marker.label}
+              aria-label={marker.ariaLabel ?? marker.label}
               aria-pressed={marker.selected === true}
               aria-describedby={positionId}
               onClick={(event) => {

@@ -9,8 +9,10 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
+import { locationMarkerLabel } from '../../patterns/location-label';
 import { initialExpandedLocationIds } from '../../patterns/location-tree';
 import { SaveErrorBanner } from '../../patterns/master';
 import {
@@ -24,6 +26,8 @@ import {
   toReplaceBody,
   type LayoutDraft,
 } from './layout-draft';
+import { useCanWriteLocations } from '../warehouse-location/queries';
+import { AliasPopover } from './alias-popover';
 import { LoadErrorBanner } from './load-error-banner';
 import { LocationList } from './location-list';
 import { MarkerShapeFields } from './marker-shape-fields';
@@ -99,6 +103,27 @@ export const LayoutEditorDialog = ({
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
+
+  /*
+   * 별칭 고치기(#267 FR-007a · R-5b) — 편집 창(W-CO-08)을 연 사람 가운데 위치 수정 권한(W-06-07)도 있는 사람에게만 연필.
+   * 별칭은 위치마다 바로 저장되고 `draft` · `base` 에 들지 않는다 — 배치도 저장 · 되돌리기 · 닫기 확인과 상관없다.
+   */
+  const canEditAlias = useCanWriteLocations();
+  const [aliasTarget, setAliasTarget] = useState<LocationView | null>(null);
+  const queryClient = useQueryClient();
+  /** 저장한 별칭을 위치 목록 캐시에 바로 얹는다 — 표식 이름이 다시 받기 전에 바뀐다. 그 뒤 다시 받아 맞춘다. */
+  const applySavedAlias = (saved: LocationView): void => {
+    /* 「중지된 위치도 보기」 두 갈래(`layoutKeys.locations`)를 함께 — 조회 화면도 같은 키를 쓴다. */
+    const scope = ['warehouse-layout', 'locations', warehouseId] as const;
+    queryClient.setQueriesData<LocationView[]>({ queryKey: scope }, (list) =>
+      list?.map((row) =>
+        row.locationId === saved.locationId
+          ? { ...row, aliasName: saved.aliasName, locationName: saved.locationName }
+          : row,
+      ),
+    );
+    void queryClient.invalidateQueries({ queryKey: scope });
+  };
 
   /* 질의는 조회 화면과 같은 키다 — 이미 받은 배치 · 위치 · 그림을 다시 받지 않는다(R-1). */
   const layout = useLayout(warehouseId, false);
@@ -213,17 +238,22 @@ export const LayoutEditorDialog = ({
     onClose();
   };
 
-  const nameOf = (locationId: number): string => {
+  /** 표식의 보이는 이름(별칭 또는 코드)과 접근 이름(「코드 별칭」) — #267 FR-008 · 계약 §5. */
+  const markerNames = (locationId: number): { label: string; ariaLabel?: string } => {
     const found = rows.find((row) => row.locationId === locationId);
+    if (found === undefined) return { label: t.locations.unknown(locationId) };
+    const label = locationMarkerLabel(found);
 
-    return found === undefined ? t.locations.unknown(locationId) : found.locationCode;
+    return label === found.locationCode
+      ? { label }
+      : { label, ariaLabel: `${found.locationCode} ${label}` };
   };
 
   const overlayMarkers: OverlayMarker[] = draft.map((marker) => ({
     id: String(marker.locationId),
     x: marker.x,
     y: marker.y,
-    label: nameOf(marker.locationId),
+    ...markerNames(marker.locationId),
     selected: marker.locationId === selectedLocation,
     width: marker.width,
     height: marker.height,
@@ -433,11 +463,22 @@ export const LayoutEditorDialog = ({
                 expandedIds={expandedIds ?? new Set()}
                 onExpandedChange={setExpandedIds}
                 compact
+                {...(canEditAlias ? { onEditAlias: setAliasTarget } : {})}
                 empty={
                   rows.length === 0 ? undefined : (
                     <EmptyState size="sm" live title={t.editor.emptyPlaceable} />
                   )
                 }
+              />
+            )}
+            {aliasTarget !== null && (
+              <AliasPopover
+                key={aliasTarget.locationId}
+                location={aliasTarget}
+                onClose={() => {
+                  setAliasTarget(null);
+                }}
+                onSaved={applySavedAlias}
               />
             )}
           </section>

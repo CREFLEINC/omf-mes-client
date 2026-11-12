@@ -104,6 +104,11 @@ export const warehouseLayout = {
    * 편집 창(피처 006) — 조회 화면의 [수정]이 브라우저 창을 채우는 편집 창을 연다. 편집 규칙(찍기 · 옮기기 · 크기 · 빼기 ·
    * 되돌리기 · 도면 올리기 · 저장)은 `map` 문구를 그대로 쓴다. 저장하지 않은 변경이 있으면 닫을 때 버릴지 묻는다.
    */
+  /** 편집 창 목록의 별칭 고치기(#267 FR-007a) — 위치마다 바로 저장, 배치도 저장과 따로. */
+  aliasPopover: {
+    title: (code: string): string => `${code} 별칭`,
+    note: '바로 저장됩니다. 배치도 저장과는 따로입니다.',
+  },
   editor: {
     open: '수정',
     title: (warehouse: string): string => `배치도 수정 — ${warehouse}`,
