@@ -2,32 +2,18 @@ import {
   AlertBanner,
   Button,
   Checkbox,
-  Chip,
   Dialog,
   EmptyState,
   Progress,
   Skeleton,
-  type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { MarkerOverlay, type OverlayMarker } from '@omf-mes/ui';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardFrame } from '../../patterns/board-frame';
-import { BoardTable, BoardTablePickButton } from '../../patterns/board-table';
-import {
-  buildLocationRows,
-  initialExpandedLocationIds,
-  locationShownName,
-  parentLocationIds,
-  type LocationTreeRow,
-} from '../../patterns/location-tree';
-import {
-  LocationTreeCell,
-  LocationTreeHeader,
-  levelNameOf,
-} from '../../patterns/location-tree-cell';
+import { initialExpandedLocationIds } from '../../patterns/location-tree';
 import { SaveErrorBanner } from '../../patterns/master';
 import { Select } from '../../patterns/select';
 import {
@@ -36,7 +22,6 @@ import {
   WarehouseFilterBar,
   type WarehouseFilters,
 } from '../../patterns/warehouse-filter-bar';
-import { OneLine } from '../../patterns/po-board';
 import {
   checkDrawingFile,
   DRAWING_MIME_TYPES,
@@ -49,6 +34,7 @@ import {
   type LayoutDraft,
 } from './layout-draft';
 import { LoadErrorBanner } from './load-error-banner';
+import { LocationList } from './location-list';
 import { MarkerShapeFields } from './marker-shape-fields';
 import { lookupNote, useWarehouseOptions } from './lookups';
 import { useDrawingContent, useLayout, useLayoutReplace, useLocations } from './queries';
@@ -140,20 +126,6 @@ export const WarehouseLayoutScreen = () => {
   }
 
   const expandedIds = expansion?.ids ?? NO_EXPANDED_IDS;
-  const treeRows = useMemo(() => buildLocationRows(rows, expandedIds), [rows, expandedIds]);
-
-  const toggleExpand = (locationId: number): void => {
-    setExpansion((prev) => {
-      if (prev === null) return prev;
-      const next = new Set(prev.ids);
-      if (next.has(locationId)) {
-        next.delete(locationId);
-      } else {
-        next.add(locationId);
-      }
-      return { ...prev, ids: next };
-    });
-  };
   const drawingAttachmentId = layout.data?.drawingAttachmentId ?? null;
 
   /*
@@ -294,75 +266,6 @@ export const WarehouseLayoutScreen = () => {
     setHint(null);
   };
 
-  /**
-   * 계층 칸 · 머리는 창고·Location 과 같은 부품이다(`patterns/location-tree-cell`). 코드 칸에 펼치기 단추가 있어
-   * 칸을 통째로 고르는 단추로 감쌀 수 없다 — 고르는 단추는 코드 글자만 감싼다(`BoardTablePickButton`).
-   */
-  const columns: Column<LocationTreeRow>[] = [
-    {
-      key: 'code',
-      header: (
-        <LocationTreeHeader
-          rows={treeRows}
-          expandedIds={expandedIds}
-          onCollapseAll={() => {
-            setExpansion((prev) => (prev === null ? prev : { ...prev, ids: new Set() }));
-          }}
-          onExpandAll={() => {
-            setExpansion((prev) =>
-              prev === null ? prev : { ...prev, ids: parentLocationIds(rows) },
-            );
-          }}
-        >
-          {t.locations.code}
-        </LocationTreeHeader>
-      ),
-      width: '280px',
-      render: (row) => (
-        <LocationTreeCell
-          row={row}
-          expanded={expandedIds.has(row.location.locationId)}
-          onToggle={toggleExpand}
-        >
-          <BoardTablePickButton
-            id={String(row.location.locationId)}
-            label={row.location.locationCode}
-            current={selectedLocation === row.location.locationId}
-          >
-            {row.location.locationCode}
-          </BoardTablePickButton>
-        </LocationTreeCell>
-      ),
-    },
-    {
-      key: 'name',
-      header: t.locations.name,
-      render: (row) => <OneLine text={locationShownName(row.location)} />,
-    },
-    {
-      key: 'level',
-      header: t.locations.level,
-      /* 서버가 만든 위치는 역할 이름(창고 전체 · 적치 대기) — Location 목록의 「구분」과 같다. */
-      align: 'center',
-      width: '88px',
-      render: (row) => levelNameOf(row.location) ?? messages.common.reference.empty,
-    },
-    {
-      key: 'placed',
-      header: t.locations.placed,
-      align: 'center',
-      width: '80px',
-      render: (row) =>
-        hasMarker(draft, row.location.locationId) ? (
-          <Chip size="sm" status="success">
-            {t.locations.onMap}
-          </Chip>
-        ) : (
-          <Chip size="sm">{t.locations.notOnMap}</Chip>
-        ),
-    },
-  ];
-
   /** 창고 칸 밑의 한 줄 — 도는 동안 잠근 사유, 아니면 목록의 한계(불러오기 실패 · 잘림). */
   const warehouseNote = drawing.isBusy
     ? busyLabel
@@ -471,22 +374,15 @@ export const WarehouseLayoutScreen = () => {
                 ) : locations.isPending ? (
                   <Skeleton variant="rect" height="12rem" />
                 ) : (
-                  <BoardTable
-                    label={t.panes.locations}
-                    className="location-tree-table"
-                    columns={columns}
-                    rows={treeRows}
-                    getRowId={(row) => String(row.location.locationId)}
-                    widthKey="omf-mes:warehouse-layout:location-tree-widths"
-                    minWidth="540px"
-                    pick={{
-                      label: (row) => row.location.locationCode,
-                      currentId: selectedLocation === null ? null : String(selectedLocation),
-                      onPick: (row) => {
-                        pickLocation(row.location.locationId);
-                      },
+                  <LocationList
+                    locations={rows}
+                    isPlaced={(locationId) => hasMarker(draft, locationId)}
+                    selectedLocationId={selectedLocation}
+                    onPick={pickLocation}
+                    expandedIds={expandedIds}
+                    onExpandedChange={(ids) => {
+                      setExpansion((prev) => (prev === null ? prev : { ...prev, ids }));
                     }}
-                    empty={<EmptyState size="sm" live title={t.locations.emptyTitle} />}
                   />
                 )}
               </>
