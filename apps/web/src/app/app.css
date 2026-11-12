@@ -35859,9 +35859,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-adjustable-grid.is-stacked > .inspection-height-splitter { display: block; }
 .erp-wo-adjustable-grid .erp-wo-plan-editor { position: static; width: 100%; }
 .erp-wo-adjustable-grid .erp-wo-assign-editor { width: 100%; }
-.erp-wo-dense-table th, .erp-wo-dense-table td, .erp-wo-dense-table .numeric,
-.erp-wo-plan-workspace th, .erp-wo-plan-workspace td, .erp-wo-assign-list th, .erp-wo-assign-list td,
-.erp-wo-release-workspace th, .erp-wo-release-workspace td, .erp-wo-master-table th, .erp-wo-master-table td,
+/* 날짜 선택 달력의 숫자와 선택 원은 컴포넌트 기본 가운데 정렬을 유지한다. */
+.erp-wo-dense-table th:not(:where([role='grid'] *)), .erp-wo-dense-table td:not(:where([role='grid'] *)), .erp-wo-dense-table .numeric,
+.erp-wo-plan-workspace th:not(:where([role='grid'] *)), .erp-wo-plan-workspace td:not(:where([role='grid'] *)), .erp-wo-assign-list th:not(:where([role='grid'] *)), .erp-wo-assign-list td:not(:where([role='grid'] *)),
+.erp-wo-release-workspace th:not(:where([role='grid'] *)), .erp-wo-release-workspace td:not(:where([role='grid'] *)), .erp-wo-master-table th:not(:where([role='grid'] *)), .erp-wo-master-table td:not(:where([role='grid'] *)),
 .erp-wo-plan-workspace td input, .erp-wo-release-workspace td input, .erp-wo-master-table td input { text-align: left; }
 .erp-wo-dense-table th { position: relative; }
 .erp-wo-dense-table th.fixed-code, .erp-wo-dense-table th.fixed-name { position: sticky; }
