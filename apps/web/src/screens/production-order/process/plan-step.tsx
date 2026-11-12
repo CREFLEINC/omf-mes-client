@@ -35,8 +35,19 @@ export interface PlanLine {
   code: string;
   name: string;
 }
+export interface PlanOrderGroup {
+  id: string;
+  orderNo: string;
+  itemCode: string;
+  itemName: string;
+  rowKeys: readonly string[];
+  summary: ReactNode;
+  addDisabled: boolean;
+  onAdd: () => void;
+}
 export interface PlanStepProps {
   planningTools?: ReactNode;
+  planGroups?: readonly PlanOrderGroup[];
   rows: ProductionPlanEditorStateRow[];
   orderQty: number;
   confirmedQty?: number | null;
@@ -93,6 +104,7 @@ export const PlanStep = ({
   addDisabled = false,
   onAppend,
   planningTools,
+  planGroups,
   distributionOrderLabel,
   distributionStartDate,
   distributionLines,
@@ -113,6 +125,7 @@ export const PlanStep = ({
   onRemove,
 }: PlanStepProps) => {
   const [localView, setView] = useState('week');
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const view = viewMode ?? localView;
   const [splitQty, setSplitQty] = useState('');
   const [splitError, setSplitError] = useState('');
@@ -180,7 +193,7 @@ export const PlanStep = ({
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
   };
   const columns: Column<ProductionPlanEditorStateRow>[] = [
-    ...(orderNameOf
+    ...(orderNameOf && !planGroups
       ? [
           {
             key: 'order',
@@ -243,18 +256,6 @@ export const PlanStep = ({
       {!hideHeading && (
         <div className="erp-wo-plan-toolbar">
           <h2 className="section-title">{t.heading}</h2>
-          {!viewMode && (
-            <Tabs
-              size="sm"
-              aria-label={ui.views}
-              value={view}
-              onChange={setView}
-              items={[
-                { value: 'week', label: ui.week, content: null },
-                { value: 'grid', label: ui.grid, content: null },
-              ]}
-            />
-          )}
         </div>
       )}
       {!hideTotals && (
@@ -317,6 +318,19 @@ export const PlanStep = ({
           </ul>
         </AlertBanner>
       )}
+      {!viewMode && (
+        <Tabs
+          size="sm"
+          className="erp-wo-plan-view-tabs"
+          aria-label={ui.views}
+          value={view}
+          onChange={setView}
+          items={[
+            { value: 'week', label: ui.week, content: null },
+            { value: 'grid', label: ui.grid, content: null },
+          ]}
+        />
+      )}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:plan-layout"
         label="생산계획"
@@ -331,17 +345,86 @@ export const PlanStep = ({
             {view === 'week' ? ui.weekHeading : ui.gridHeading}
           </h2>
           {view === 'grid' ? (
-            <AdjustableTable
-              storageKey="omf-mes:work-planning:plan-columns"
-              className="erp-wo-plan-grid"
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => row.key}
-              activeId={selected?.key}
-              rowLabel={(row) => nameOf(row)}
-              onActivate={choose}
-              empty={<p className="empty-line">{t.empty}</p>}
-            />
+            planGroups ? (
+              <div className="erp-wo-grouped-plans">
+                {planGroups.map((group) => {
+                  const groupRows = rows.filter((row) => group.rowKeys.includes(row.key));
+                  const expanded = !collapsedGroups.has(group.id);
+                  return (
+                    <section
+                      key={group.id}
+                      className="erp-wo-plan-order-group"
+                      aria-label={`${group.orderNo} 생산계획`}
+                    >
+                      <div className="erp-wo-plan-group-heading">
+                        <Button
+                          size="sm"
+                          variant="text"
+                          aria-expanded={expanded}
+                          aria-label={`${group.orderNo} 계획 ${expanded ? '접기' : '펼치기'}`}
+                          onClick={() =>
+                            setCollapsedGroups((current) => {
+                              const next = new Set(current);
+                              if (next.has(group.id)) next.delete(group.id);
+                              else next.add(group.id);
+                              return next;
+                            })
+                          }
+                        >
+                          {expanded ? '▾' : '▸'} {group.orderNo}
+                        </Button>
+                        <span className="field-note">계획 {groupRows.length}건</span>
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          aria-label={`${group.orderNo} 계획 추가`}
+                          disabled={disabled || group.addDisabled}
+                          onClick={group.onAdd}
+                        >
+                          계획 추가
+                        </Button>
+                      </div>
+                      <dl className="erp-wo-selected-item-fields">
+                        <div>
+                          <dt>품목 코드</dt>
+                          <dd>{group.itemCode}</dd>
+                        </div>
+                        <div>
+                          <dt>품목명</dt>
+                          <dd>{group.itemName}</dd>
+                        </div>
+                      </dl>
+                      {group.summary}
+                      {expanded && (
+                        <AdjustableTable
+                          storageKey="omf-mes:work-planning:group-plan-columns:v1"
+                          className="erp-wo-plan-grid"
+                          columns={columns}
+                          rows={groupRows}
+                          getRowId={(row) => row.key}
+                          activeId={selected?.key}
+                          rowLabel={(row) => nameOf(row)}
+                          onActivate={choose}
+                          empty={<p className="empty-line">{t.empty}</p>}
+                        />
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
+              <AdjustableTable
+                storageKey="omf-mes:work-planning:plan-columns"
+                className="erp-wo-plan-grid"
+                columns={columns}
+                rows={rows}
+                getRowId={(row) => row.key}
+                activeId={selected?.key}
+                rowLabel={(row) => nameOf(row)}
+                onActivate={choose}
+                empty={<p className="empty-line">{t.empty}</p>}
+              />
+            )
           ) : (
             <>
               <div className="erp-wo-week-heading">

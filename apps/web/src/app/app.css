@@ -36702,3 +36702,17 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-readiness > div { display: flex; gap: var(--space-3); }
 .erp-wo-readiness dd { margin: 0; }
 .erp-wo-overview-container [role='combobox'] { max-width: 100%; min-width: 0; text-align: left; }
+
+/* 계획 편성: 공통 도구 다음 보기 전환, ERP W/O별 계획 목록 */
+.erp-wo-plan-view-tabs { max-width:100%; }
+.erp-wo-plan-view-tabs [role="tabpanel"] { display:none; }
+.erp-wo-plan-view-tabs [role="tablist"] { justify-content:flex-start; flex-wrap:wrap; }
+.erp-wo-plan-order-group { min-width:0; padding:1rem 0; border-bottom:1px solid var(--color-outline, #ddd); }
+.erp-wo-plan-group-heading { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.erp-wo-plan-group-heading > button:last-child { margin-left:auto; }
+.erp-wo-plan-group-totals { padding:.5rem 0; }
+.erp-wo-plan-quantity-settings { min-width:0; }
+.erp-wo-plan-quantity-settings > summary { cursor:pointer; padding:.5rem 0; font-weight:600; }
+.erp-wo-plan-add-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.erp-wo-plan-add-fields > * { min-width:0; }
+@media(max-width:42rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
