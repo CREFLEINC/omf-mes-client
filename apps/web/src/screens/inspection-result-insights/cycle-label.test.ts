@@ -82,3 +82,15 @@ describe('W-03-05 확정 주기 표시(D18-1)', () => {
     ).toBe(false);
   });
 });
+
+describe('W-03-05 「LOT 번호」 칸(G2 L9)', () => {
+  it('LOT 번호가 없는 새 흐름 IQC 결과는 입하 LOT 번호, 둘 다 없으면 「미확인」', async () => {
+    const { lotCellOf } = await import('./result-table');
+
+    expect(lotCellOf({ lotNo: 'SAMPLE-LOT-1', inboundLotNo: 'IL-20991111-0001' })).toBe(
+      'SAMPLE-LOT-1',
+    );
+    expect(lotCellOf({ lotNo: null, inboundLotNo: 'IL-20991111-0001' })).toBe('IL-20991111-0001');
+    expect(lotCellOf({})).toBe('미확인');
+  });
+});

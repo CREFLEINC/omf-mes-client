@@ -15,6 +15,11 @@ type PageMeta = components['schemas']['PageMeta'];
  */
 export type InspectionResultForward005 = components['schemas']['InspectionResult'] & {
   confirmCycle?: number | null;
+  /**
+   * 새 흐름 IQC 결과의 입하 LOT 번호(G2 L9 대비 — 칸 이름은 서버 보고 뒤 맞춘다, 지금은 C7 가정). 결과가 LOT 하나에 붙지 않아
+   * `lotNo` 가 비므로 W-03-05 「LOT 번호」 칸이 이것을 보인다.
+   */
+  inboundLotNo?: string | null;
 };
 
 /** `GET /quality/inspection-results` 의 200 몸통 — 행만 위 모양으로 바꾼다. 덮는 자리는 `forward-contract.ts` 의 그 경로. */
