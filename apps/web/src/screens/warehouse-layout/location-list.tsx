@@ -40,7 +40,8 @@ export interface LocationListProps {
 /** 열 폭 — 보통(조회 화면) / 좁은 칸(편집 창). */
 const WIDTHS = {
   regular: { code: '280px', level: '88px', placed: '80px', min: '540px' },
-  compact: { code: '11rem', level: '4.5rem', placed: '7rem', min: '0px' },
+  /* 시안 편집 창 목록 비율(코드 2.4 : 이름 1 : 구분 64px : 도면 92px)을 480px 에 풀어 쓴 값. 도면 칸은 베트남어 「Đã đánh dấu」 칩이 들도록 104px. ⚠ 열 폭은 px 만 받는다(`column-resize` 의 `pxOf` — 그 밖은 남은 폭 나눔). */
+  compact: { code: '220px', level: '64px', placed: '104px', min: '0px' },
 } as const;
 
 /**
