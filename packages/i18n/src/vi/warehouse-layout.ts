@@ -100,6 +100,23 @@ export const warehouseLayout: Translated<typeof ko.warehouseLayout> = {
     discard: 'Bỏ và đóng',
   },
 
+  stock: {
+    legendStocked: 'Có tồn kho',
+    legendEmpty: 'Trống',
+    legendNote: 'Vị trí chưa có trên bản vẽ hiện «Chưa» trong danh sách',
+    title: (locationCode: string): string => `Tồn kho tại ${locationCode}`,
+    location: 'Vị trí',
+    item: 'Mặt hàng',
+    lot: 'LOT',
+    onHand: 'Hiện có',
+    qualityStatus: 'Trạng thái chất lượng',
+    pickHint: 'Chọn một vị trí để xem tồn kho',
+    empty: 'Không có tồn kho',
+    loadFailed: 'Không tải được tồn kho.',
+    retry: 'Thử lại',
+    truncated: 'Chỉ hiển thị một phần tồn kho.',
+  },
+
   locations: {
     code: 'Mã vị trí',
     name: 'Tên',

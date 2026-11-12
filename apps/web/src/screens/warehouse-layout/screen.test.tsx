@@ -15,6 +15,7 @@ import {
   pathOf,
   renderScreen,
   rowOf,
+  stockRow,
   stubBoardRect,
   stubObjectUrls,
   t,
@@ -256,5 +257,185 @@ describe('W-CO-08 조회 화면 — 읽기 전용 · [수정] (US2)', () => {
     for (const name of [wl.actions.addZone, wl.actions.addRack, wl.actions.addWarehouse]) {
       expect(screen.queryByRole('button', { name })).toBeNull();
     }
+  });
+});
+
+/*
+ * 피처 006 — 조회 화면의 재고(FR-011 · FR-013 · FR-014). 계층: 구역 Z01(1) › 랙 Z01-R001(7) › 층 Z01-R001-L01(9),
+ * 서버 위치 SYS-STAGING(3). 표식은 랙 7 · 층 9 · 적치 대기 3.
+ */
+describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
+  const STOCK_MARKERS = [
+    { locationId: 7, x: 0.2, y: 0.2 },
+    { locationId: 9, x: 0.4, y: 0.4 },
+    { locationId: 3, x: 0.6, y: 0.6 },
+  ];
+  const BALANCES = [stockRow(9, 'ITEM-A', 'LOT-1', 12), stockRow(9, 'ITEM-B', null, 3)];
+
+  const stockTable = (): HTMLElement => screen.getByRole('table', { name: /재고$/ });
+
+  it('US2-4 SC-007 ⭐ 재고 있는 위치(와 그 위 랙)는 기본 모양, 빈 위치는 옅은 모양이고 범례가 선다', async () => {
+    renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      balances: BALANCES,
+    });
+
+    await loaded();
+
+    await waitFor(() => {
+      expect(within(board()).getByRole('button', { name: 'SYS-STAGING' })).toHaveClass(
+        'marker-overlay-pin-muted',
+      );
+    });
+    expect(within(board()).getByRole('button', { name: 'Z01-R001-L01' })).not.toHaveClass(
+      'marker-overlay-pin-muted',
+    );
+    /* 랙은 아래 층에 재고가 있어 「있음」이다. */
+    expect(within(board()).getByRole('button', { name: 'Z01-R001' })).not.toHaveClass(
+      'marker-overlay-pin-muted',
+    );
+    expect(screen.getByText(t.stock.legendStocked)).toBeInTheDocument();
+    expect(screen.getByText(t.stock.legendEmpty)).toBeInTheDocument();
+  });
+
+  it('US2-5 ⭐ 재고 있는 위치를 고르면 위치 · 품목 · LOT · 현재고 · 단위 · 품질 상태 이름이 보인다', async () => {
+    const { user } = renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      balances: BALANCES,
+    });
+
+    await loaded();
+    expect(await screen.findByText(t.stock.pickHint)).toBeInTheDocument();
+
+    await user.click(locationButton('Z01-R001'));
+    await user.click(
+      within(rowOf('Z01-R001')).getByRole('button', { name: wl.locationTable.expand }),
+    );
+    await user.click(locationButton('Z01-R001-L01'));
+
+    const table = await screen.findByRole('table', { name: t.stock.title('Z01-R001-L01') });
+    /* 좁은 구획에서 칸을 깨지 않고 옆으로 미는 감싸개 안에 선다. */
+    expect(table.closest('.layout-stock-scroll')).not.toBeNull();
+    const rows = within(table).getAllByRole('row').slice(1);
+
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0] as HTMLElement).getByText('Z01-R001-L01')).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('ITEM-A')).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('ITEM-A 합성 품목')).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('LOT-1')).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('12 EA')).toBeInTheDocument();
+    expect(await within(rows[0] as HTMLElement).findByText('정상')).toBeInTheDocument();
+  });
+
+  it('US2-5 ⭐ 랙을 고르면 하위 위치의 줄이 위치 칸과 함께 보이고, 빈 위치는 「재고 없음」이다', async () => {
+    const { user } = renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      balances: BALANCES,
+    });
+
+    await loaded();
+    await user.click(await waitFor(() => locationButton('Z01-R001')));
+
+    const rack = await screen.findByRole('table', { name: t.stock.title('Z01-R001') });
+    expect(within(rack).getAllByText('Z01-R001-L01')).toHaveLength(2);
+
+    await user.click(locationButton('SYS-STAGING'));
+    expect(await screen.findByText(t.stock.empty)).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: /재고$/ })).toBeNull();
+  });
+
+  it('EC-7 ⭐ 재고를 못 받으면 배치는 보이고 표식은 모두 기본 모양이며 「다시 시도」가 선다', async () => {
+    const { user, stockGets } = renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      stock: [
+        () => jsonResponse({ message: '서버에 문제가 있습니다.' }, { status: 500 }),
+        () => jsonResponse({ items: BALANCES, page: { page: 1, size: 200, total: 2 } }),
+      ],
+    });
+
+    await loaded();
+
+    expect(await screen.findByText(t.stock.loadFailed)).toBeInTheDocument();
+    for (const pin of within(board()).getAllByRole('button')) {
+      expect(pin).not.toHaveClass('marker-overlay-pin-muted');
+    }
+    expect(screen.queryByText(t.stock.legendStocked)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: t.stock.retry }));
+
+    await waitFor(() => {
+      expect(within(board()).getByRole('button', { name: 'SYS-STAGING' })).toHaveClass(
+        'marker-overlay-pin-muted',
+      );
+    });
+    expect(stockGets).toHaveLength(2);
+  });
+
+  it('⭐ 재고가 잘렸으면 「재고 일부만 보입니다」가 선다', async () => {
+    renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      stock: [() => jsonResponse({ items: BALANCES, page: { page: 1, size: 200, total: 9999 } })],
+    });
+
+    await loaded();
+    expect(await screen.findByText(t.stock.truncated)).toBeInTheDocument();
+  });
+
+  it('EC-8 FR-014 ⛔ 편집 창에는 재고 모양 · 범례 · 재고 표가 없다', async () => {
+    const { user } = renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      balances: BALANCES,
+    });
+
+    await loaded();
+    await waitFor(() => {
+      expect(within(board()).getByRole('button', { name: 'SYS-STAGING' })).toHaveClass(
+        'marker-overlay-pin-muted',
+      );
+    });
+    await user.click(screen.getByRole('button', { name: t.editor.open }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) });
+    const editorBoard = await within(dialog).findByRole('group', { name: t.map.imageLabel });
+
+    for (const pin of within(editorBoard).getAllByRole('button')) {
+      expect(pin).not.toHaveClass('marker-overlay-pin-muted');
+    }
+    expect(within(dialog).queryByText(t.stock.legendStocked)).toBeNull();
+    expect(within(dialog).queryByText(t.stock.pickHint)).toBeNull();
+  });
+
+  it('⭐ 저장한 뒤 재고를 다시 읽는다', async () => {
+    const { user, stockGets } = renderScreen({
+      layouts: [withDrawing(STOCK_MARKERS)],
+      locations: TREE_ROWS,
+      balances: BALANCES,
+    });
+
+    await loaded();
+    await waitFor(() => {
+      expect(stockGets).toHaveLength(1);
+    });
+    await user.click(screen.getByRole('button', { name: t.editor.open }));
+
+    const dialog = await screen.findByRole('dialog', { name: t.editor.title(WAREHOUSE_LABEL) });
+    await user.click(
+      within(within(dialog).getByRole('region', { name: t.panes.locations })).getByRole('button', {
+        name: 'SYS-STAGING',
+      }),
+    );
+    await user.click(within(dialog).getByRole('button', { name: t.map.remove }));
+    await user.click(within(dialog).getByRole('button', { name: t.map.save }));
+
+    expect(await screen.findByText(t.map.saved)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(stockGets).toHaveLength(2);
+    });
   });
 });

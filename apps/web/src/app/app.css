@@ -13560,6 +13560,70 @@ dialog.layout-editor-dialog {
 }
 
 /*
+ * 조회 화면 판 아래 범례 — 표식의 두 모양(재고 있음 · 비어 있음, 피처 006 FR-011). 견본은 표식 판(`MarkerOverlay`)의 사각형
+ * 표식과 같은 테두리 · 바탕 토큰을 쓴다(기본 / `tone: 'muted'`).
+ */
+.layout-stock-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-variant);
+}
+
+.layout-stock-legend-stocked::before,
+.layout-stock-legend-empty::before {
+  content: '';
+  display: inline-block;
+  inline-size: 1.125rem;
+  block-size: 0.75rem;
+  margin-inline-end: var(--space-2);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  vertical-align: -0.0625rem;
+}
+
+.layout-stock-legend-empty::before {
+  border-color: var(--outline);
+  background: var(--surface-container-high);
+}
+
+/*
+ * 재고 표 감싸개 — 조회 화면 오른쪽 구획(1280 폭 · 위치 목록 펼침이면 약 470px)보다 표가 넓으면 표만 옆으로 민다.
+ * ⭐ 줄어들지 않는다(`flex: none`) — 구획은 세로 flex 라, 넘침을 가진 자식은 높이가 0 까지 눌려 표가 아래에서 잘린다.
+ * 높이는 구획 스크롤(≥1440 · `.po-board-scroll`) 또는 문서 스크롤(좁은 화면)이 맡는다.
+ */
+.layout-stock-scroll {
+  flex: none;
+  max-inline-size: 100%;
+  margin-block-start: var(--space-2);
+  overflow-x: auto;
+}
+
+/* 칸은 줄바꿈하지 않는다 — 위치 · 품목 코드 · LOT · 현재고 · 단위가 한 글자씩 깨지면 읽을 수 없다(시안). */
+.layout-stock-table {
+  min-inline-size: 40rem;
+}
+
+.layout-stock-table :is(th, td) {
+  white-space: nowrap;
+}
+
+/* 품목 칸 — 코드 위(줄바꿈 없음), 이름 아래(이름만 낱말 단위로 줄바꿈). */
+.layout-stock-item {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.layout-stock-table .layout-stock-item-name {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/*
  * 달력 그리드의 칸 하나 — 날짜 숫자 · 상태 배지 · 부분 가동 시각이 세로로 쌓인다.
  *
  * 한 칸에 셋을 그냥 두면 인라인으로 이어져 날짜와 상태가 한 줄에 붙는다. 칸마다 높이를

@@ -2,9 +2,11 @@ import type { components, paths } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { fetchAllPages, type AllPagesResult } from '../../patterns/fetch-all-pages';
+import { masterName } from '../../patterns/master-name';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
+import type { StockBalance } from './location-stock';
 import type { LayoutView, LocationView } from './types';
 import { toLayoutView } from './types';
 
@@ -38,6 +40,8 @@ export const layoutKeys = {
     ['warehouse-layout', 'locations', warehouseId ?? 0, includeInactive] as const,
   /** ⭐ **창고가 아니라 첨부로 잡는다** — 같은 그림을 두 창고가 가리켜도 한 벌만 받는다. */
   drawing: (attachmentId: number | null) => ['warehouse-layout', 'drawing', attachmentId] as const,
+  stock: (warehouseId: number | null) => ['warehouse-layout', 'stock', warehouseId ?? 0] as const,
+  qualityStatuses: ['warehouse-layout', 'quality-statuses'] as const,
 };
 
 /** 배치도 경로 — **저장의 잠금 토큰이 여기 보관된다.** */
@@ -249,4 +253,62 @@ export const useLayoutReplace = (
     keyLifetime: 'until-applied',
     onSuccess,
   });
+};
+
+/** 재고를 한 쪽에 받는 줄 수 — 서버 쪽 상한(200)이다. */
+const STOCK_PAGE_SIZE = 200;
+
+/**
+ * 창고 하나의 위치별 재고 — 조회 화면의 표식 모양과 재고 표가 쓴다(피처 006 R-7).
+ *
+ * ⭐ **창고 단위로 한 번, 끝 쪽까지 받는다.** 표식 모양을 그리려면 어차피 창고 전체 재고가 필요하고, 위치를 고를 때마다
+ * 부르면 하위 위치를 모으려고 여러 번 불러야 한다. 줄은 (품목 · 소유 · LOT · 위치) 하나씩이고, 쪽 상한(25쪽 · 5,000줄)에
+ * 걸리면 `truncated` 로 알린다.
+ * ⛔ **`includeZero` 를 보내지 않는다** — 0 재고 줄은 「있음」 판정에도 표에도 쓸모가 없다.
+ * 갱신은 화면을 열 때 · 창고를 바꿀 때 · 배치를 저장한 뒤뿐이다(자동 갱신 없음, 명세 가정).
+ */
+export const useLocationStock = (
+  warehouseId: number | null,
+): UseQueryResult<AllPagesResult<StockBalance>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: layoutKeys.stock(warehouseId),
+    enabled: warehouseId !== null,
+    queryFn: () => {
+      if (warehouseId === null) throw new Error('창고를 고르기 전에는 재고를 조회하지 않습니다.');
+
+      return fetchAllPages(
+        (page, size) =>
+          runRequest(() =>
+            client.GET('/inventory/balances', {
+              params: { query: { warehouseId, groupBy: 'LOCATION', page, size } },
+            }),
+          ),
+        { size: STOCK_PAGE_SIZE },
+      );
+    },
+  });
+};
+
+/**
+ * 품질 상태 이름(`LOT_STATUS` 코드) — 재고 표의 「품질 상태」 칸. 사용 중지된 코드로 남은 재고도 있어 중지까지 받는다.
+ * 이름을 못 찾거나 못 받으면 코드를 그대로 보인다.
+ */
+export const useQualityStatusNames = (): ((code: string) => string) => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: layoutKeys.qualityStatuses,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: 'LOT_STATUS', includeInactive: true, size: 100 } },
+        }),
+      ),
+  });
+  const names = new Map(
+    (query.data?.items ?? []).map((value) => [value.code, masterName(value, value.codeName)]),
+  );
+
+  return (code) => names.get(code) ?? code;
 };
