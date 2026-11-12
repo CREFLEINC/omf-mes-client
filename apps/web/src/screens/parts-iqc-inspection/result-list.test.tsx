@@ -177,6 +177,14 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(within(drawer).getByRole('checkbox', { name: lot(2).lotNo })).not.toBeDisabled();
   });
 
+  it('결과 드로어 제목의 순번은 서버의 다음 순번을 쓴다 — 지운 순번은 다시 쓰지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(inspection({ nextResultSeqNo: 5 }));
+
+    await user.click(await screen.findByRole('button', { name: t.results.add }));
+    expect(await screen.findByRole('dialog', { name: t.drawer.addTitle(5) })).toBeInTheDocument();
+  });
+
   it('US3-5 종합 판정 미리 보기는 불합격 > 보류 > 합격이고, 자재 관리 LOT 상태는 검사 대기 그대로다', async () => {
     mount(inspection());
 

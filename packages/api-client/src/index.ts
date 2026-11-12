@@ -15,6 +15,10 @@ export {
 } from './errors';
 export type { components, paths } from './generated/api';
 export { isInboundLotInspection } from './forward-contract';
+export type * from './forward-005-quality';
+export type * from './forward-005-lots';
+export type * from './forward-005-inventory';
+export type * from './forward-005-work-record';
 export type {
   FourMChangeForward,
   InspectionResultConfirmForward,
