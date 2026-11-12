@@ -49,6 +49,10 @@ interface Options {
   stock?: number[] | number;
   /** 랙 호출 응답 — 순번별(없으면 성공). 'hang' 이면 응답하지 않는다. */
   rack?: (call: number) => Response | 'hang' | undefined;
+  /** 구역 POST 응답 코드를 바꾼다(동시 생성 흉내) */
+  renameTo?: Record<string, string>;
+  /** 이름 고치기 PUT 이 실패한다 */
+  failPut?: boolean;
 }
 
 const setup = (options: Options = {}) => {
@@ -74,7 +78,19 @@ const setup = (options: Options = {}) => {
         if (answer !== undefined) return answer;
       }
       const name = String(body.locationName ?? 'R');
-      return jsonResponse(loc(nextId++, name, null), { status: 201 });
+      const code = options.renameTo?.[name] ?? name;
+      return jsonResponse(loc(nextId++, code, null, { locationName: name }), { status: 201 });
+    }
+    if (request.method === 'GET' && /^\/mdm\/locations\/\d+$/.test(path)) {
+      return jsonResponse(
+        { location: loc(1, 'X', null), editability: { codeEditable: false, reason: 'EDITABLE' } },
+        { headers: { ETag: '"1"' } },
+      );
+    }
+    if (request.method === 'PUT') {
+      return options.failPut === true
+        ? jsonResponse({ message: '' }, { status: 503 })
+        : jsonResponse({ location: loc(1, 'X', null) });
     }
     throw new Error(`스텁에 없는 요청: ${request.method} ${path}`);
   };
@@ -256,6 +272,17 @@ describe('BulkCreateDialog', () => {
     expect(posts.map((post) => [post.path, post.body.parentLocationId])).toEqual([
       ['/mdm/locations:rack', 500],
     ]);
+  });
+
+  it('US1-7 만들기는 됐고 이름 맞추기만 실패하면 그 안내와 [남은 것 다시 만들기]', async () => {
+    const { user } = setup({ renameTo: { Z01: 'Z02' }, failPut: true });
+
+    await fillAll(user, { zones: '1', racks: '1', levels: '1', cells: '1' });
+    await user.click(within(dialog()).getByRole('button', { name: b.make }));
+
+    expect(await within(dialog()).findByText(b.partialNames(4))).toBeInTheDocument();
+    expect(within(dialog()).getByText(/Z02/)).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: b.retryRest })).toBeEnabled();
   });
 
   it('EC-limit 셀 1,001 이면 [만들기]가 막히고 상한 안내가 이어진다', async () => {

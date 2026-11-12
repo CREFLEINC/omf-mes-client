@@ -168,6 +168,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
     done: (count: number): string => `Đã tạo ${count.toLocaleString('vi-VN')} vị trí.`,
     partial: (created: number, failedRacks: number): string =>
       `Đã tạo ${created.toLocaleString('vi-VN')}, chưa tạo được ${String(failedRacks)} kệ.`,
+    partialNames: (created: number): string =>
+      `Đã tạo ${created.toLocaleString('vi-VN')}, một số tên chưa được đặt.`,
     failure: (code: string, reason: string): string => `${code} — ${reason}`,
     retryRest: 'Tạo lại phần còn lại',
     renameFailed: (reason: string): string => `Đã tạo nhưng chưa đặt được tên — ${reason}`,

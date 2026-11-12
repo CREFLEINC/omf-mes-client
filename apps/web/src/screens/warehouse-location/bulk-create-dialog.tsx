@@ -306,7 +306,14 @@ export const BulkCreateDialog = ({
         )}
 
         {state.status === 'partial' && (
-          <AlertBanner variant="error" title={b.partial(state.created, state.failedRacks)}>
+          <AlertBanner
+            variant="error"
+            title={
+              state.failedRacks > 0
+                ? b.partial(state.created, state.failedRacks)
+                : b.partialNames(state.created)
+            }
+          >
             <ul className="bulk-create-failures">
               {state.failures.map((failure) => (
                 <li key={failure.code}>{b.failure(failure.code, failure.reason)}</li>

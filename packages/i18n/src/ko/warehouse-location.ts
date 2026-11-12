@@ -169,6 +169,8 @@ export const warehouseLocation = {
     done: (count: number): string => `위치 ${count.toLocaleString('ko-KR')}개를 만들었습니다.`,
     partial: (created: number, failedRacks: number): string =>
       `${created.toLocaleString('ko-KR')}개를 만들었고 랙 ${String(failedRacks)}개는 만들지 못했습니다.`,
+    partialNames: (created: number): string =>
+      `${created.toLocaleString('ko-KR')}개를 만들었고 이름 일부를 맞추지 못했습니다.`,
     failure: (code: string, reason: string): string => `${code} — ${reason}`,
     retryRest: '남은 것 다시 만들기',
     renameFailed: (reason: string): string => `만들었지만 이름 맞추기 실패 — ${reason}`,
