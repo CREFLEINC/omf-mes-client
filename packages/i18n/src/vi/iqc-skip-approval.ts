@@ -126,12 +126,14 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
   },
   skipExecute: {
     heading: 'Thực hiện bỏ qua IQC',
-    note: 'Yêu cầu đã được phê duyệt. Khi thực hiện, yêu cầu kiểm tra đầu vào của LOT này sẽ được bỏ qua, lệnh giữ chờ kiểm tra được gỡ và LOT chuyển sang bình thường.',
+    note: 'Yêu cầu đã được phê duyệt. Khi thực hiện, yêu cầu kiểm tra đầu vào của LOT nhập hàng này sẽ được bỏ qua, lệnh giữ chờ kiểm tra được gỡ và toàn bộ LOT quản lý vật tư của LOT nhập hàng chuyển sang bình thường.',
     action: 'Thực hiện bỏ qua IQC',
     dialogTitle: 'Thực hiện bỏ qua IQC?',
     dialogBody:
-      'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và LOT trở về bình thường để có thể nhập kho. Nếu còn lệnh giữ khác thì không thực hiện được — hãy gỡ lệnh giữ đó trước.',
-    irreversible: 'Không thể hoàn tác sau khi thực hiện.',
+      'Yêu cầu kiểm tra đầu vào sẽ được bỏ qua và toàn bộ LOT quản lý vật tư của LOT nhập hàng trở về bình thường để có thể nhập kho. Nếu còn lệnh giữ khác thì không thực hiện được — hãy gỡ lệnh giữ đó trước.',
+    irreversible: 'Không có nút hoàn tác việc thực hiện. Nếu hủy chốt nhập hàng, việc bỏ qua này sẽ vô hiệu.',
+    voided:
+      'Việc bỏ qua này đã vô hiệu do hủy chốt nhập hàng. Khi chốt lại, hãy yêu cầu bỏ qua lại ở yêu cầu IQC mới.',
     done: 'Đã thực hiện bỏ qua IQC',
     executed: 'Đã bỏ qua IQC — LOT đã bình thường và có thể nhập kho.',
     notPending: (status: string) =>
@@ -146,7 +148,7 @@ export const iqcSkipApproval: Translated<typeof ko.iqcSkipApproval> = {
     receiving: 'Hãy chốt nhập hàng cho LOT nhập hàng này trên PDA trước rồi thực hiện lại.',
     compact: {
       title: 'Bỏ qua IQC',
-      summary: 'Bỏ qua yêu cầu kiểm tra đầu vào · gỡ giữ chờ kiểm tra · LOT bình thường',
+      summary: 'Bỏ qua yêu cầu kiểm tra đầu vào · gỡ giữ chờ kiểm tra · toàn bộ LOT quản lý vật tư của LOT nhập hàng bình thường',
       action: 'Thực hiện',
       done: 'Đã thực hiện',
     },

@@ -191,13 +191,17 @@ export const isInboundLotReceiving = (error: ApiError | null): boolean =>
  * | `lot` | 이 LOT 으로 상태를 읽고 실행한다 |
  * | `noLot` | 대표 LOT 이 오지 않았다 — 실행을 까닭과 함께 잠근다 |
  */
-export type SkipExecuteTarget = { kind: 'lot'; lotId: number } | { kind: 'noLot' };
+export type SkipExecuteTarget =
+  | { kind: 'lot'; lotId: number }
+  | { kind: 'noLot' }
+  /** 입하 마감 취소로 생략이 무효가 됐다 — 실행을 잠그고 까닭을 보인다(G2 L11). */
+  | { kind: 'voided' };
 
 export const skipExecuteTargetOf = (
   request: {
     approvalTypeCode: string;
     statusCode: string;
-    target: { targetLotId?: number | null };
+    target: { targetLotId?: number | null; skipVoided?: boolean | null };
   },
   iqcSkipTypeCode: string | null,
 ): SkipExecuteTarget | null => {
@@ -209,6 +213,7 @@ export const skipExecuteTargetOf = (
     return null;
   }
 
+  if (request.target.skipVoided === true) return { kind: 'voided' };
   const lotId = request.target.targetLotId;
 
   return lotId === null || lotId === undefined ? { kind: 'noLot' } : { kind: 'lot', lotId };

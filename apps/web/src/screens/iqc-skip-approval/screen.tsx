@@ -898,14 +898,16 @@ export const IqcSkipApprovalScreen = () => {
           />
         )}
         {/* 승인된 IQC 생략만 실행 구획이 선다 — 판정은 `target.ts` 한 곳이 한다(대상 유형 코드로 가르지 않는다). */}
-        {skipTarget?.kind === 'noLot' && (
+        {(skipTarget?.kind === 'noLot' || skipTarget?.kind === 'voided') && (
           <SkipExecutePane
             compact={messages.iqcSkipApproval.skipExecute.compact}
             state={{ kind: 'checking' }}
             isSaving={false}
             onExecute={() => undefined}
             banner={null}
-            lockedReason={t.skipExecute.noTargetLot}
+            lockedReason={
+              skipTarget.kind === 'voided' ? t.skipExecute.voided : t.skipExecute.noTargetLot
+            }
           />
         )}
         {skipLotId !== null && (

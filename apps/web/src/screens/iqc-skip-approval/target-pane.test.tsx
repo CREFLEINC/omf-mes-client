@@ -185,6 +185,14 @@ describe('생략 실행 대상(005 FR-032 · targetLotId)', () => {
     expect(skipExecuteTargetOf(approved(9411), 'IQC_SKIP')).toEqual({ kind: 'lot', lotId: 9411 });
   });
 
+  it('G2 L11 입하 마감 취소로 무효가 된 생략(skipVoided)은 실행하지 않는다', () => {
+    const voided = {
+      ...approved(9411),
+      target: { targetId: 7301, targetLotId: 9411, skipVoided: true },
+    };
+    expect(skipExecuteTargetOf(voided, 'IQC_SKIP')).toEqual({ kind: 'voided' });
+  });
+
   it('R16-1 targetLotId 가 없으면 잠김', () => {
     expect(skipExecuteTargetOf(approved(null), 'IQC_SKIP')).toEqual({ kind: 'noLot' });
     expect(skipExecuteTargetOf(approved(), 'IQC_SKIP')).toEqual({ kind: 'noLot' });
