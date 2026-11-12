@@ -5,6 +5,14 @@
  * 구획: queue(대기열 행) · detail(머리 · LOT 표 · 배너) · results(결과 표) · drawer(결과 드로어) · history(변경 이력)
  * · split(분리 창) · confirm(판정 확정 · C4) · cancel(확정 취소 · C4).
  */
+/** 「으로/로」 — 받침이 없거나 ㄹ 받침이면 「로」(보류로 · 합격으로). */
+const ro = (word: string): string => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  const final = code >= 0 && code < 11172 ? code % 28 : 0;
+
+  return final === 0 || final === 8 ? '로' : '으로';
+};
+
 export const iqcInboundLot = {
   queue: {
     /** 대기열 위 안내(screens/W-01-01.md 「화면 구조」). */
@@ -217,6 +225,57 @@ export const iqcInboundLot = {
     conflict: '다른 사용자가 먼저 바꿨습니다. 창을 닫고 다시 불러온 뒤 분리하세요.',
     failed: '분리하지 못했습니다. 창을 닫고 다시 불러온 뒤 다시 시도하세요.',
   },
-  confirm: {},
-  cancel: {},
+  confirm: {
+    open: '판정 확정',
+    lockedNoResults: '결과가 1건 이상이어야 합니다',
+    lockedNoJudgment: '판정이 없는 결과가 있습니다',
+    title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정`,
+    counts: (total: number, accepted: number, rejected: number, held: number) =>
+      `결과 ${total}건 — 합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    applyHeading: '적용',
+    apply: {
+      ACCEPTED: (count: number) =>
+        `자재 관리 LOT ${count}개 전부 → 정상 (검사 대기 보류 해제, 입고 가능)`,
+      REJECTED: (count: number) =>
+        `자재 관리 LOT ${count}개 전부 → 불량 부적합 1건(판정 대기)에 자재 관리 LOT 전부를 담고, 불합격 알림을 보냅니다.`,
+      HELD: (count: number) => `자재 관리 LOT ${count}개 → 검사 대기 유지(보류)`,
+    },
+    note: '확정하면 결과를 고치거나 더하거나 지울 수 없습니다. 잘못 확정했으면 [확정 취소]로 되돌립니다(입고·처분 전까지).', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    back: '돌아가기',
+    proceed: (judgment: string) => `${judgment}${ro(judgment)} 판정 확정`,
+    doneRejected: (ncNo: string | null) =>
+      ncNo === null
+        ? '불합격으로 확정했습니다. 부적합이 생겼습니다.'
+        : `불합격으로 확정했습니다. 부적합 ${ncNo} 이 생겼습니다.`,
+    done: (judgment: string) => `${judgment}${ro(judgment)} 확정했습니다.`,
+    conflict: '이미 바뀌었습니다',
+    reload: '다시 불러오기',
+    failed: '판정을 확정하지 못했습니다.',
+    noPermission: '판정 확정·확정 취소는 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+  },
+  cancel: {
+    open: '확정 취소',
+    title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정 취소`,
+    lots: (count: number) => `자재 관리 LOT ${count}개 → 검사 대기 · 보류 로 돌아갑니다`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    nonconformance: (ncNo: string) => `부적합 ${ncNo} 은 취소 상태가 됩니다`,
+    results: '결과를 다시 고치고 더할 수 있습니다. 이전 확정 내용은 변경 이력에 남습니다',
+    alerts: '이미 보낸 알림은 되돌리지 않습니다',
+    reason: '사유 (선택)',
+    back: '돌아가기',
+    proceed: '확정 취소',
+    done: '판정 확정을 취소했습니다. 결과를 다시 고칠 수 있습니다.',
+    blockedTitle: '확정을 취소할 수 없습니다',
+    blockedLead: '아래 일이 이미 진행되어 판정 확정을 되돌릴 수 없습니다.',
+    blockedTail:
+      '입고를 취소하거나 상태 변경을 되돌린 뒤 다시 시도하세요. 불합격 건의 처분·특채가 시작됐으면 W-03-10 에서 처리합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    blockedOk: '확인',
+    blockers: {
+      GOODS_RECEIVED: '입고된 자재 관리 LOT 가 있습니다',
+      LOT_STATUS_CHANGED: 'IQC 밖에서 상태가 바뀐 자재 관리 LOT 가 있습니다 (의심 보류 등)',
+      DISPOSITION_STARTED: '부적합 처분이 시작됐습니다',
+      CONCESSION_EXISTS: '특채 요청이 있습니다',
+      INBOUND_LOT_FINALIZED: '최종 마감된 입하 LOT 입니다(W-01-16)',
+    } as Record<string, string>,
+    failed: '확정을 취소하지 못했습니다.',
+  },
 } as const;

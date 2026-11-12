@@ -206,6 +206,59 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     conflict: 'Người khác đã thay đổi trước. Hãy đóng cửa sổ, tải lại rồi tách.',
     failed: 'Không tách được. Hãy đóng cửa sổ, tải lại rồi thử lại.',
   },
-  confirm: {},
-  cancel: {},
+  confirm: {
+    open: 'Xác nhận đánh giá',
+    lockedNoResults: 'Cần ít nhất 1 kết quả',
+    lockedNoJudgment: 'Có kết quả chưa đánh giá',
+    title: (inboundLotNo: string) => `Xác nhận đánh giá ${inboundLotNo}`,
+    counts: (total: number, accepted: number, rejected: number, held: number) =>
+      `${total} kết quả — đạt ${accepted} · không đạt ${rejected} · tạm giữ ${held}`,
+    applyHeading: 'Áp dụng',
+    apply: {
+      ACCEPTED: (count: number) =>
+        `Toàn bộ ${count} LOT quản lý vật tư → bình thường (gỡ tạm giữ chờ kiểm tra, có thể nhập kho)`,
+      REJECTED: (count: number) =>
+        `Toàn bộ ${count} LOT quản lý vật tư → lỗi, đưa toàn bộ vào 1 phiếu không phù hợp (chờ đánh giá) và gửi thông báo không đạt.`,
+      HELD: (count: number) => `${count} LOT quản lý vật tư → giữ chờ kiểm tra (tạm giữ)`,
+    },
+    note: 'Sau khi xác nhận không thể sửa, thêm hay xóa kết quả. Nếu xác nhận nhầm, dùng [Hủy xác nhận] (trước khi nhập kho · xử lý).',
+    back: 'Quay lại',
+    proceed: (judgment: string) => `Xác nhận đánh giá: ${judgment}`,
+    doneRejected: (ncNo: string | null) =>
+      ncNo === null
+        ? 'Đã xác nhận không đạt. Đã tạo phiếu không phù hợp.'
+        : `Đã xác nhận không đạt. Đã tạo phiếu không phù hợp ${ncNo}.`,
+    done: (judgment: string) => `Đã xác nhận: ${judgment}.`,
+    conflict: 'Dữ liệu đã thay đổi',
+    reload: 'Tải lại',
+    failed: 'Không xác nhận được đánh giá.',
+    noPermission: 'Người có quyền xác nhận (W-01-15) mới xác nhận đánh giá · hủy xác nhận',
+  },
+  cancel: {
+    open: 'Hủy xác nhận',
+    title: (inboundLotNo: string) => `Hủy xác nhận đánh giá ${inboundLotNo}`,
+    lots: (count: number) => `${count} LOT quản lý vật tư → trở về chờ kiểm tra · tạm giữ`,
+    nonconformance: (ncNo: string) => `Phiếu không phù hợp ${ncNo} sẽ ở trạng thái hủy`,
+    results:
+      'Có thể sửa và thêm kết quả lại. Nội dung xác nhận trước được lưu trong lịch sử thay đổi',
+    alerts: 'Thông báo đã gửi sẽ không thu hồi',
+    reason: 'Lý do (tùy chọn)',
+    back: 'Quay lại',
+    proceed: 'Hủy xác nhận',
+    done: 'Đã hủy xác nhận đánh giá. Có thể sửa kết quả lại.',
+    blockedTitle: 'Không thể hủy xác nhận',
+    blockedLead: 'Các việc dưới đây đã diễn ra nên không thể hoàn tác xác nhận đánh giá.',
+    blockedTail:
+      'Hãy hủy nhập kho hoặc hoàn tác thay đổi trạng thái rồi thử lại. Nếu xử lý · chấp nhận đặc biệt cho hàng không đạt đã bắt đầu, hãy xử lý ở W-03-10.',
+    blockedOk: 'Xác nhận',
+    blockers: {
+      GOODS_RECEIVED: 'Có LOT quản lý vật tư đã nhập kho',
+      LOT_STATUS_CHANGED:
+        'Có LOT quản lý vật tư đổi trạng thái ngoài IQC (nghi ngờ · tạm giữ, v.v.)',
+      DISPOSITION_STARTED: 'Đã bắt đầu xử lý không phù hợp',
+      CONCESSION_EXISTS: 'Có yêu cầu chấp nhận đặc biệt',
+      INBOUND_LOT_FINALIZED: 'LOT nhập hàng đã chốt cuối cùng (W-01-16)',
+    } as Record<string, string>,
+    failed: 'Không hủy được xác nhận.',
+  },
 };
