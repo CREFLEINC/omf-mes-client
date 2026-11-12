@@ -83,6 +83,13 @@ export interface Outbox {
    * 다른 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
    */
   isRejected: (idempotencyKey: string) => boolean;
+  /**
+   * 보낸 건의 서버 응답 — 멱등 키로 찾는다. 이 단말이 켜진 뒤 보낸 것만, 최근 것부터 `RECENT_RESPONSES` 개까지.
+   *
+   * ⭐ 연결이 돌아와 저절로 보낸 건(창 · 연결 이벤트)의 결과를 화면이 읽는 길이다 — 응답이 화면의 다음 그림을
+   *    정하는 쓰기(005 M-01-01 입하 받기: 어느 입하 LOT 에 들어갔는가)가 쓴다. 없으면 `undefined`.
+   */
+  responseOf: (idempotencyKey: string) => unknown;
   /** 되돌아온 건 하나를 목록에서 내린다. 사람이 보고 정리한 뒤다. */
   dismissRejected: (id: string) => Promise<void>;
   /** 등록을 풀 때 담긴 것과 되돌아온 것을 모두 버린다. */
@@ -94,6 +101,9 @@ const OutboxContext = createContext<Outbox | null>(null);
 /* 읽기 전에 돌려줄 빈 목록. 매번 새 배열을 만들면 받는 쪽의 의존 비교가 늘 바뀐 것으로 본다. */
 const EMPTY_ENTRIES: OutboxEntry[] = [];
 
+/** 기억해 둘 최근 응답 수 — 오래된 것부터 버린다. */
+export const RECENT_RESPONSES = 200;
+
 export interface OutboxProviderProps {
   send: OutboxTransport;
   children: ReactNode;
@@ -103,6 +113,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
   const [rejected, setRejected] = useState<RejectedRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [responses, setResponses] = useState<ReadonlyMap<string, unknown>>(new Map());
   /* 버린 횟수. 보내는 중에 버려졌는지를 회차가 알아보는 표식이다. */
   const discarded = useRef(0);
 
@@ -185,6 +196,14 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
      * 그 사이에 한 일이 어디에도 남지 않는다.
      */
     const result = await flushQueue(stored, send);
+
+    if (result.responses.size > 0) {
+      setResponses((previous) => {
+        const merged = [...previous, ...result.responses];
+
+        return new Map(merged.slice(Math.max(0, merged.length - RECENT_RESPONSES)));
+      });
+    }
 
     await inTurn(async () => {
       /* 버린 뒤에 끝난 회차다. 결과를 쓰면 작업자가 사라졌다고 들은 것이 되돌아온다. */
@@ -357,9 +376,15 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     [entries, loaded],
   );
 
+  const responseOf = useCallback(
+    (idempotencyKey: string) => responses.get(idempotencyKey),
+    [responses],
+  );
+
   const value = useMemo(
     () => ({
       loaded,
+      responseOf,
       pending: loaded ? entries.length : 0,
       pendingBytes,
       countPending,
@@ -373,6 +398,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       discardAll,
     }),
     [
+      responseOf,
       countPending,
       pendingOf,
       discardAll,

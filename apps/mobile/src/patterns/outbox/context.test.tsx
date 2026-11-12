@@ -225,6 +225,21 @@ describe('outbox', () => {
     expect(store.get('outbox')).toBe('[]');
   });
 
+  /* 005 M-01-01 — 연결이 돌아와 저절로 보낸 건의 응답을 화면이 멱등 키로 읽는다. */
+  it('보낸 건의 응답을 멱등 키로 읽는다 — 보내지 않은 키는 없다', async () => {
+    const { result } = mount((entry) => Promise.resolve({ echoed: entry.idempotencyKey }));
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(result.current.responseOf('k-1')).toEqual({ echoed: 'k-1' });
+    expect(result.current.responseOf('k-2')).toBeUndefined();
+  });
+
   /* 닿지 못한 것을 지우면 되찾을 자리가 없다. */
   it('닿지 못하면 담긴 채로 남는다', async () => {
     const send: OutboxTransport = () => Promise.reject(new ApiRequestError({ kind: 'network' }));
