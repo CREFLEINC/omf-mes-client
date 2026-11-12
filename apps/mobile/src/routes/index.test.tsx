@@ -77,7 +77,7 @@ describe('모바일 라우트', () => {
     await user.click(await screen.findByRole('link', { name: /^입고/ }));
     await user.click(await screen.findByRole('link', { name: '긴급 IQC 생략 요청' }));
 
-    expect(await screen.findByLabelText('입하 LOT 스캔')).toBeInTheDocument();
+    expect(await screen.findByLabelText('자재 관리 LOT 스캔')).toBeInTheDocument();
   });
 
   it('경로로 바로 들어와도 화면이 선다', async () => {
