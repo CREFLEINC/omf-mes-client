@@ -26,7 +26,15 @@ import {
   type DecisionFormValue,
 } from './decision-form';
 import { DecisionResultCard, type DecisionResult } from './decision-result';
-import { ConcessionHistory, ConcessionRequestDialog, useConcessions } from './concession-pane';
+import {
+  ConcessionHistory,
+  ConcessionRequestDialog,
+  groupConcessions,
+  keepDocumentScroll,
+  PendingConcessionBox,
+  useConcessionApprovalStatus,
+  useConcessions,
+} from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
@@ -67,7 +75,7 @@ import { HistoryFilterBar, HistoryList } from './history-tab';
 import { LoadErrorBanner } from './load-error';
 import {
   type DispositionLookup,
-  useItemLookup,
+  useItemLookupFor,
   useNonconformanceStatusLookup,
   useSeverityLookup,
   useUomLookup,
@@ -95,10 +103,13 @@ import {
   toDecisionRow,
   toDetailView,
   toHistoryRow,
+  sourceTextOf,
   toNonconformanceRow,
   type Nonconformance,
 } from './types';
 
+/** 취소된 부적합 — 처분 대기 목록에 두지 않는다(G2 L10). */
+const CANCELLED_NONCONFORMANCE = 'CANCELLED';
 const EMPTY_NONCONFORMANCES: Nonconformance[] = [];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -238,11 +249,24 @@ export const DispositionDecisionScreen = ({
    * 탭 줄 칩의 건수(사용자 지시 · #223) — 지금 조건의 첫 쪽 조회 총수. 보고 있는 쪽이 첫 쪽이면 위 목록과 같은
    * 조회라 다시 나가지 않는다. 보지 않는 쪽은 첫 쪽 하나만 부른다.
    */
-  const pendingCount = usePendingNonconformances(
+  const pendingFirst = usePendingNonconformances(
     useMemo(() => toPendingListQuery(filters, 1, zone, size), [filters, size, zone]),
-  ).data?.page.total;
+  ).data;
+  /*
+   * 취소된 부적합(CANCELLED)은 목록에서 뺀다(G2 L10) — 숫자도 그만큼 덜어 행 수와 맞춘다(G2 L-b). 서버가 상태 조건으로 빼기 전까지는
+   * 받은 쪽 안의 취소 건만 덜 수 있다(한 쪽 안이면 정확하다).
+   */
+  const cancelledIn = (items: readonly Nonconformance[] | undefined): number =>
+    (items ?? []).filter((item) => item.statusCode === CANCELLED_NONCONFORMANCE).length;
+  const pendingCount =
+    pendingFirst === undefined
+      ? undefined
+      : Math.max(0, pendingFirst.page.total - cancelledIn(pendingFirst.items));
   /* 상태 칩 — 공통코드 상태마다 지금 조건(상태는 빼고)의 건수. */
-  const statusOptions = codeOptionsOf(status);
+  /* 취소된 부적합(IQC 확정 취소로 생긴 `CANCELLED`)은 처분할 것이 아니다 — 처분 대기에서 뺀다(G2 L10). */
+  const statusOptions = codeOptionsOf(status).filter(
+    (option) => option.value !== CANCELLED_NONCONFORMANCE,
+  );
   const statusTotals = usePendingTotals(
     useMemo(
       () =>
@@ -282,14 +306,42 @@ export const DispositionDecisionScreen = ({
   /* 특채 요청 팝업 — 처분 대기에서 고른 부적합에 대해 연다(사용자 지시 · #223). */
   const [isConcessionOpen, setIsConcessionOpen] = useState(false);
   const decisions = useDispositionDecisions(selectedId);
-  const items = useItemLookup();
+  /* 줄 · 상세에 보이는 품목은 첫 쪽 밖이어도 이름으로(G2 L-c). */
+  const items = useItemLookupFor([
+    ...(list.data?.items ?? []).map((item) => item.itemId),
+    ...(history.data?.items ?? []).map((item) =>
+      'itemId' in item && typeof item.itemId === 'number' ? item.itemId : null,
+    ),
+    detail.data?.itemId,
+  ]);
   const uoms = useUomLookup();
 
   const rows = useMemo(
-    () => (list.data?.items ?? EMPTY_NONCONFORMANCES).map(toNonconformanceRow),
+    () =>
+      (list.data?.items ?? EMPTY_NONCONFORMANCES)
+        .filter((item) => item.statusCode !== CANCELLED_NONCONFORMANCE)
+        .map(toNonconformanceRow),
     [list.data],
   );
-  const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
+  /* 005 목록 「원천」 칸(G2 L8) — 행 모양은 그대로 두고 따로 넘긴다. */
+  const sourceTexts = useMemo(
+    () =>
+      new Map(
+        (list.data?.items ?? EMPTY_NONCONFORMANCES).map(
+          (item) => [item.nonconformanceId, sourceTextOf(item)] as const,
+        ),
+      ),
+    [list.data],
+  );
+  const pageView = toPageView(
+    list.data === undefined
+      ? { page, size: 0, total: 0 }
+      : {
+          ...list.data.page,
+          total: Math.max(0, list.data.page.total - cancelledIn(list.data.items)),
+        },
+    rows.length,
+  );
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const remaining = toRemainingQty(decisions.data?.summary);
@@ -424,11 +476,14 @@ export const DispositionDecisionScreen = ({
   const errors = { ...validateDecisionForm(form, formContext), ...write.fieldErrors };
   /* 005 — 처분 유형마다 막힘(종결 · 특채 결재 대기 · 선별 규칙 · 선별로 생긴 부적합의 정상). */
   const pendingConcession = concessions.data?.find((row) => row.statusCode === 'PENDING');
+  /* 그 특채 결재의 상태 — 위 상자와 처분 유형 막힘 문구가 같은 말을 하게(G2 L-d). 같은 열쇠라 한 번만 나간다. */
+  const pendingApproval = useConcessionApprovalStatus(pendingConcession?.approvalRequestId ?? null);
   const optionContext: DispositionOptionContext = {
     isClosed:
       detail.data !== undefined &&
       isClosedNonconformance(detail.data.statusCode, remaining.isSettled),
     hasPendingConcession: pendingConcession !== undefined,
+    isConcessionApproved: pendingApproval.data === 'APPROVED',
     inboundLotNo: detailView?.inboundLotNo,
     lotCount: lotRows.length,
     decisionCount: decisions.data?.items.length ?? 0,
@@ -660,6 +715,7 @@ export const DispositionDecisionScreen = ({
           {tab === 'pending' ? (
             <NonconformanceList
               rows={rows}
+              sourceTexts={sourceTexts}
               items={items}
               severity={severity}
               status={status}
@@ -670,7 +726,14 @@ export const DispositionDecisionScreen = ({
                 ) : null
               }
               page={pageView}
-              meta={list.data?.page ?? { page, size: 0, total: 0 }}
+              meta={
+                list.data === undefined
+                  ? { page, size: 0, total: 0 }
+                  : {
+                      ...list.data.page,
+                      total: Math.max(0, list.data.page.total - cancelledIn(list.data.items)),
+                    }
+              }
               selectedId={selectedId}
               onSelect={(id) =>
                 setSearchParams((current) =>
@@ -777,11 +840,9 @@ export const DispositionDecisionScreen = ({
                 <div className="disposition-side-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
                 </div>
-                {/* 결재 대기 특채 — 처분은 결재 뒤 [특채 적용](아래 특채 요청 이력)으로 끝난다. */}
+                {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
-                  <p className="iqc-inspection-action-note" data-tone="warning" role="status">
-                    {t.concession.pendingBanner(pendingConcession.concessionNo, lotRows.length)}
-                  </p>
+                  <PendingConcessionBox concession={pendingConcession} lotCount={lotRows.length} />
                 )}
                 <DecisionFormPane
                   value={form}
@@ -794,7 +855,11 @@ export const DispositionDecisionScreen = ({
                   concession={{
                     hint: t.form.typeHint.CONCESSION ?? '',
                     lockReason: concessionLock,
-                    onRequest: () => setIsConcessionOpen(true),
+                    onRequest: () => {
+                      /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
+                      keepDocumentScroll();
+                      setIsConcessionOpen(true);
+                    },
                   }}
                   lots={lotRows}
                   inboundLotNo={detailView?.inboundLotNo}
@@ -860,7 +925,8 @@ export const DispositionDecisionScreen = ({
                 {
                   value: 'concessions',
                   label:
-                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(concessions.data.length)}`.trim(),
+                    /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
+                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(groupConcessions(concessions.data).length)}`.trim(),
                   content: (
                     <ConcessionHistory nonconformanceId={selectedId} readOnly={tab === 'history'} />
                   ),

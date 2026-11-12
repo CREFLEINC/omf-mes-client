@@ -111,6 +111,8 @@ export interface DispositionOptionContext {
   isClosed: boolean;
   /** 결재 대기 특채가 있다 — 특채 밖 유형은 막는다. */
   hasPendingConcession: boolean;
+  /** 그 특채의 결재가 승인됐다(적용 전) — 막는 까닭을 「승인됨 — 적용 대기」로(G2 L-d). */
+  isConcessionApproved?: boolean;
   /** 입하 LOT — 자재 입하 IQC 부적합만 있다. 반품 · OQC 는 없다(선별 없음). */
   inboundLotNo: string | null | undefined;
   lotCount: number;
@@ -131,7 +133,9 @@ export const dispositionOptionLock = (
   const t = messages.dispositionDecision.form.typeLock;
 
   if (context.isClosed) return t.closed;
-  if (context.hasPendingConcession) return t.concessionPending;
+  if (context.hasPendingConcession) {
+    return context.isConcessionApproved === true ? t.concessionApproved : t.concessionPending;
+  }
   if (code === 'SORT') {
     if (context.inboundLotNo === null || context.inboundLotNo === undefined) {
       return t.sortNoInboundLot;

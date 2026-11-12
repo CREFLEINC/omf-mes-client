@@ -17,6 +17,8 @@ import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
+  /** 005 「원천」 칸 글(부적합 id → 글 · G2 L8). 없으면 칸을 두지 않는다. */
+  sourceTexts?: ReadonlyMap<number, string>;
   items: DispositionLookup;
   /** 심각도·상태 열의 표시명(G-32). 모르는 코드는 코드 그대로 보인다(G-9). */
   severity: DispositionLookup;
@@ -40,6 +42,7 @@ export interface NonconformanceListProps {
  */
 export const NonconformanceList = ({
   rows,
+  sourceTexts,
   items,
   severity,
   status,
@@ -79,14 +82,27 @@ export const NonconformanceList = ({
         </>
       ),
     },
+    ...(sourceTexts === undefined
+      ? []
+      : [
+          {
+            key: 'source',
+            align: 'center',
+            width: '150px',
+            header: t.inboundLot.sourceColumn,
+            render: (row: NonconformanceRow) => sourceTexts.get(row.nonconformanceId) ?? '—',
+          } satisfies Column<NonconformanceRow>,
+        ]),
     {
       key: 'item',
       align: 'center',
+      width: '220px',
       header: t.fields.item,
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },
     {
       key: 'qty',
+      width: '110px',
       header: t.detail.affectedQty,
       align: 'center',
       render: (row) => row.affectedQtyText,
@@ -94,24 +110,28 @@ export const NonconformanceList = ({
     {
       key: 'dispositionProgress',
       align: 'center',
+      width: '110px',
       header: t.fields.dispositionProgressCode,
       render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
     },
     {
       key: 'severity',
       align: 'center',
+      width: '100px',
       header: t.fields.severityCode,
       render: (row) => <SeverityBadge severity={severity} code={row.severityCode} />,
     },
     {
       key: 'openedAt',
       align: 'center',
+      width: '110px',
       header: t.fields.openedAt,
       render: (row) => row.openedAtText,
     },
     {
       key: 'status',
       align: 'center',
+      width: '120px',
       header: t.fields.statusCode,
       render: (row) => codeValueLabel(status, row.statusCode),
     },
@@ -122,7 +142,11 @@ export const NonconformanceList = ({
    */
   const ordered = useColumnOrder('omf-mes:dispositions:columns:pending:order', columns);
   const resizable = useColumnWidths('omf-mes:dispositions:columns:pending', ordered);
-  const fit = useFitColumns(resizable.columns, {});
+  /*
+   * 좌우 배치에서 목록이 좁으면(1440 · 표 494px) 칸을 줄이지 않고 표 안에서 가로로 구른다 — 줄이면 여덟 칸이 46px 씩이 되어
+   * 모두 「…」로 잘렸다(G2 M-b). 칸마다 폭을 두고(정한 폭의 합 `--col-fixed` 가 표 최소 폭이 된다 — app.css), 넓으면 비율대로 늘린다.
+   */
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
 
   if (error !== null && error !== undefined) return error;
 

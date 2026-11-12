@@ -137,15 +137,51 @@ export const iqcInboundLot = {
     conflict: '이미 바뀌었습니다',
     reload: '다시 불러오기',
     lockedWrite: '판정 확정됨 — 결과를 고칠 수 없습니다',
+    /** 자재 관리 LOT 별 판정(FR-023 · 2026-11-12). */
+    lotJudgments: {
+      heading: '자재 관리 LOT 별 판정',
+      help: '자재 관리 LOT 마다 그 LOT 를 매칭한 마지막 결과(순번이 가장 큰 결과)로 판정하고, 종합 판정은 그중 가장 나쁜 것입니다(불합격 > 보류 > 합격).',
+      byResult: (seqNo: number) => `결과 ${seqNo}`,
+      /** 「LOT 0001: 결과 1 불합격 → 결과 2 합격(사유)」 */
+      superseded: (
+        lotTail: string,
+        beforeSeq: number,
+        before: string,
+        afterSeq: number,
+        after: string,
+        reason: string | null,
+      ) =>
+        `LOT ${lotTail}: 결과 ${beforeSeq} ${before} → 결과 ${afterSeq} ${after}${reason === null ? '' : `(${reason})`}`,
+      unmatched: (count: number) =>
+        `매칭한 결과가 없는 자재 관리 LOT ${count}개는 판정에서 빠집니다`,
+    },
+    /** 결과 행의 재검 사유. */
+    reason: (name: string) => `재검 사유: ${name}`,
   },
   drawer: {
     addTitle: (seqNo: number) => `결과 ${seqNo} 추가`,
     editTitle: (seqNo: number) => `결과 ${seqNo} 수정`,
     matchHeading: '자재 관리 LOT 매칭',
     matchHelp:
-      '이 결과가 어느 자재 관리 LOT 를 보고 기록됐는지(선택). 이 입하 LOT 의 자재 관리 LOT 만 보입니다.',
+      '이 결과가 어느 자재 관리 LOT 를 보고 기록됐는지 1개 이상 고르세요. 이 입하 LOT 의 자재 관리 LOT 만 보입니다.',
     matchNote:
-      '고르지 않아도 저장됩니다. 같은 자재 관리 LOT 를 여러 결과에 매칭할 수 있습니다. 매칭은 처분 때 참고로 보이고, 자재 관리 LOT 분리 때 어느 결과가 옮겨질지 정합니다.',
+      '표본을 섞어 검사했으면 [전부 선택]을 누르세요. 같은 자재 관리 LOT 를 여러 결과에 매칭할 수 있습니다. 자재 관리 LOT 마다 그 LOT 를 매칭한 마지막 결과(순번이 가장 큰 결과)로 판정합니다.',
+    selectAll: '전부 선택',
+    matchRequired: '자재 관리 LOT를 1개 이상 고르세요',
+    reasonHeading: '재검 사유',
+    reasonPlaceholder: '재검 사유 선택',
+    /** 사유가 필요한 까닭 — 「LOT 0001: 결과 1 불합격 → 합격」을 줄마다. */
+    reasonHelp: '이 결과가 아래 자재 관리 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
+    reasonLine: (lotTail: string, seqNo: number, before: string, after: string) =>
+      `LOT ${lotTail}: 결과 ${seqNo} ${before} → 이 결과 ${after}`,
+    reasonRequired: '재검 사유를 고르세요',
+    reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
+    /** 서버 400 — 판정 규칙(2026-11-12). */
+    ruleErrors: {
+      MATCHED_LOT_REQUIRED: '자재 관리 LOT를 1개 이상 고르세요',
+      REINSPECTION_REASON_REQUIRED:
+        '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요',
+    },
     alsoMatched: (seqNos: string) => `결과 ${seqNos}에도 매칭됨`,
     inputNote: '지금 IQC 양식 그대로 · 회차 없음', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     saveNote: '저장하면 결과 목록과 종합 판정 미리 보기가 바뀝니다',
@@ -166,6 +202,8 @@ export const iqcInboundLot = {
     help: '결과 기록·수정·삭제, 판정 확정·취소, 자재 관리 LOT 분리를 누가·언제·무엇을 했는지 남깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     columns: { when: '시각', who: '누구', what: '무엇', detail: '내용' },
     events: {
+      /** 의뢰가 생김(입하 마감) — 서버가 이력 첫 줄로 싣는다(G2 L1). */
+      REQUESTED: '검사 의뢰 생성',
       RESULT_ADDED: '결과 기록',
       RESULT_UPDATED: '결과 수정',
       RESULT_DELETED: '결과 삭제',
@@ -179,6 +217,8 @@ export const iqcInboundLot = {
       CANCELLED_BY_REOPEN: '마감 취소로 의뢰 취소',
     } as Record<string, string>,
     empty: '남은 이력이 없습니다.',
+    /** 「내용」의 재검 사유(G2 M4). */
+    reinspectionReason: (name: string) => `재검 사유: ${name}`,
     loadFailed: '변경 이력을 불러오지 못했습니다.',
     close: '닫기',
   },
@@ -231,6 +271,8 @@ export const iqcInboundLot = {
   confirm: {
     open: '판정 확정',
     lockedNoResults: '결과가 1건 이상이어야 합니다',
+    /** 재작업으로 다시 연 뒤 새 결과가 없다(G2 L2). */
+    lockedNoNewResult: '다시 열린 검사입니다. 새 결과를 1건 이상 기록하세요',
     lockedNoJudgment: '판정이 없는 결과가 있습니다',
     title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정`,
     counts: (total: number, accepted: number, rejected: number, held: number) =>

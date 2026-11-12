@@ -113,6 +113,9 @@ export const inboundReceipt = {
     /** 검사 불필요 품목 — M-01-03 확인 창 문구를 빌린다(screens/M-01-01.md 「시안과 다른 점」). */
     bodyNoInspection:
       '마감하면 검사 불필요 품목이라 IQC는 「검사 생략」으로 남고, 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
+    /** 검사 불필요이고 IQC 기본 생략 기준이 없는 품목 — IQC 기록이 생기지 않는다(G2 L15 · US2-7). */
+    bodyNoIqcRecord:
+      '마감하면 검사 불필요 품목이라 IQC 기록이 생기지 않고, 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
     cancel: '취소',
     confirm: '마감',
     toast: (inboundLotNo: string, iqcNo: string | null) =>

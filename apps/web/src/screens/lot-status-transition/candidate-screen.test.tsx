@@ -22,6 +22,8 @@ const LOT_PATH = '/quality/lot-statuses';
 const lot: components['schemas']['LotQualityStatus'] = {
   lotId: 701,
   lotNo: 'SYN-LOT-ALPHA',
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 801,
   lotTypeCode: 'MATERIAL',
   lotStatusCode: 'NORMAL',

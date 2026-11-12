@@ -233,7 +233,11 @@ const BatchForm = ({
               value={draft.packageUomId === null ? null : String(draft.packageUomId)}
               options={uoms
                 .filter((row) => row.uomCode !== uomCode)
-                .map((row) => ({ value: String(row.uomId), label: row.uomCode }))}
+                /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
+                .map((row) => ({
+                  value: String(row.uomId),
+                  label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
+                }))}
               onChange={(value) => {
                 update({ packageUomId: Number(value) });
               }}

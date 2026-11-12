@@ -7,17 +7,19 @@ import type { Defaults, Group } from './types';
 
 const t = messages.materialLotIssue;
 
-/** 품목 기본 보관 단위 글 — 「봉지 100 EA」(환산이 없으면 단위만). 없으면 null. */
+/** 품목 기본 보관 단위 글 — 「봉지 100 EA」(환산이 없으면 단위만). 없으면 null. 단위는 이름, 이름이 비면 코드(G2 L17). */
 export const storageText = (
   storage: { uomId: number; qtyPerPackage: number | null } | null | undefined,
   uoms: readonly UomOption[] | undefined,
   baseUomCode: string,
 ): string | null => {
   if (storage === null || storage === undefined) return null;
-  const code = uoms?.find((row) => row.uomId === storage.uomId)?.uomCode ?? '';
+  const found = uoms?.find((row) => row.uomId === storage.uomId);
+  const unit =
+    found === undefined ? '' : found.uomName.trim() === '' ? found.uomCode : found.uomName;
   return storage.qtyPerPackage === null
-    ? code
-    : `${code} ${formatBaseQty(storage.qtyPerPackage, baseUomCode)}`;
+    ? unit
+    : `${unit} ${formatBaseQty(storage.qtyPerPackage, baseUomCode)}`;
 };
 
 /** 기본 정보 한 줄(screens/W-01-14.md 「기본 정보 칸」). */

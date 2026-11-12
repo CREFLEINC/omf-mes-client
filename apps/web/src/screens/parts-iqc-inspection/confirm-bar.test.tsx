@@ -45,6 +45,12 @@ const result = (seqNo: number, judgment: string | null) => ({
   inspectorName: '합성 검사자',
   inspectedAt: '2099-11-11T01:00:00Z',
   statusCode: 'DRAFT',
+  confirmCycle: null,
+  acceptedQty: 0,
+  heldQty: 0,
+  matchedLotNos: [],
+  reinspectionReasonCode: null,
+  reinspectionReasonName: null,
   versionNo: 2,
 });
 
@@ -105,7 +111,7 @@ const mount = (initial: InboundInspection, options: Options = {}) => {
           return jsonResponse(options.confirm.body, { status: options.confirm.status });
         }
         current = confirmedOf({
-          overallJudgmentCode: current.previewJudgmentCode ?? null,
+          overallJudgmentCode: current.previewJudgmentCode ?? undefined,
           nonconformanceNo: current.previewJudgmentCode === 'REJECTED' ? 'TST-NC-0009' : null,
         });
         return jsonResponse(current);
@@ -155,6 +161,42 @@ describe('W-01-01 판정 확정', () => {
     expect(await screen.findByRole('button', { name: t.confirm.open })).toHaveAccessibleDescription(
       t.confirm.lockedNoJudgment,
     );
+  });
+
+  it('G2 L2 재작업으로 다시 연 뒤 새 결과(DRAFT)가 없으면 [판정 확정]을 까닭과 함께 잠근다', async () => {
+    mount(
+      base({
+        results: [
+          { ...result(1, 'REJECTED'), statusCode: 'CONFIRMED' },
+          { ...result(2, 'REJECTED'), statusCode: 'CONFIRMED' },
+        ],
+      }),
+    );
+
+    const button = await screen.findByRole('button', { name: t.confirm.open });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(t.confirm.lockedNoNewResult);
+  });
+
+  it('G2 L2 확정 400 은 일반 실패 문구에 서버 문구를 덧붙인다', async () => {
+    const user = userEvent.setup();
+    mount(base(), {
+      confirm: {
+        status: 400,
+        body: { errors: [{ scope: 'screen', code: 'NO_NEW_RESULT', message: '합성 서버 문구' }] },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.confirm.open }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.confirm.proceed('합격'),
+      }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: `${t.confirm.failed} 합성 서버 문구` }),
+    ).toBeInTheDocument();
   });
 
   it('US4-5 확정 창(종합 판정 · 건수 · 적용) → `:confirm` 에 판 번호, 확정 뒤 결과는 「확정됨」으로 잠긴다', async () => {
@@ -293,6 +335,39 @@ describe('W-01-01 확정 취소', () => {
     expect(blocked).toHaveTextContent(t.cancel.blockedTail);
   });
 
+  it('G2 L12 막힘 창은 서버 문장 대신 code · lotNos 로 만든다 — 한국어 문장이 베트남어 화면에 붙지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(confirmedOf(), {
+      cancel: {
+        status: 409,
+        body: {
+          errors: [
+            {
+              scope: 'screen',
+              code: 'GOODS_RECEIVED',
+              message: '입고된 자재 관리 LOT 가 있어 확정을 취소할 수 없습니다.',
+              lotNos: ['TST-ITEM|1000|991111|TS01|0001', 'TST-ITEM|1000|991111|TS01|0002'],
+            },
+            { scope: 'screen', code: 'DISPOSITION_STARTED', message: '처분이 시작되었습니다.' },
+          ],
+        },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.cancel.open }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: t.cancel.proceed }),
+    );
+
+    const blocked = await screen.findByRole('dialog', { name: t.cancel.blockedTitle });
+    expect(blocked).toHaveTextContent(
+      'TST-ITEM|1000|991111|TS01|0001, TST-ITEM|1000|991111|TS01|0002',
+    );
+    expect(blocked).not.toHaveTextContent('취소할 수 없습니다.');
+    expect(blocked).not.toHaveTextContent('처분이 시작되었습니다.');
+    expect(blocked).toHaveTextContent(t.cancel.blockers.DISPOSITION_STARTED ?? '');
+  });
+
   it('최종 마감된 입하 LOT 은 「최종 마감된 입하 LOT 입니다(W-01-16)」로 막는다', async () => {
     const user = userEvent.setup();
     mount(confirmedOf(), {
@@ -312,5 +387,25 @@ describe('W-01-01 확정 취소', () => {
     expect(
       await screen.findByText(t.cancel.blockers.INBOUND_LOT_FINALIZED ?? ''),
     ).toBeInTheDocument();
+  });
+});
+
+describe('W-01-01 상세 머리', () => {
+  it('L14-2 머리 단추(변경 이력 · 분리 · 판정 확정)는 한 묶음이다 — 좁으면 묶음째 다음 줄로 내려간다', async () => {
+    mount(base());
+
+    const confirm = await screen.findByRole('button', { name: t.confirm.open });
+    const group = confirm.closest('.iqc-inbound-head-actions');
+
+    expect(group).not.toBeNull();
+    expect(group?.parentElement).toHaveClass('parts-iqc-detail-head');
+    expect(
+      within(group as HTMLElement).getByRole('button', { name: t.history.open }),
+    ).toBeInTheDocument();
+    expect(
+      within(group as HTMLElement).getByRole('button', { name: t.split.open }),
+    ).toBeInTheDocument();
+    /* 제목은 묶음 밖 — 단추가 내려가도 제목 줄은 그대로다. */
+    expect(within(group as HTMLElement).queryByText('IL-20991111-0003')).toBeNull();
   });
 });

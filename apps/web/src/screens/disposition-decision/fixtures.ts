@@ -29,6 +29,8 @@ export interface DispositionStubOptions {
   concessions?: unknown[];
   /** 005 — 특채 요청 응답을 갈아 끼운다. */
   concessionResponse?: () => Response;
+  /** 005 — 특채 결재 요청의 상태(`GET /app/approval-requests/{id}`, G2 M3). 없으면 그 조회는 실패한다. */
+  approvalStatusCode?: string;
 }
 
 let sent: Request[] = [];
@@ -228,6 +230,23 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
               request.method === 'POST'
                 ? (options.concessionResponse?.() ?? jsonResponse({}, { status: 201 }))
                 : jsonResponse(listBody(options.concessions ?? [])),
+          },
+          {
+            match: (request: Request) =>
+              /^\/quality\/concessions\/\d+:apply$/.test(pathOf(request)),
+            respond: () => jsonResponse({ concessionId: 61, statusCode: 'APPLIED' }),
+          },
+        ]),
+    ...(options.approvalStatusCode === undefined
+      ? []
+      : [
+          {
+            match: (request: Request) => /^\/app\/approval-requests\/\d+$/.test(pathOf(request)),
+            respond: () =>
+              jsonResponse({
+                request: { approvalRequestId: 77, statusCode: options.approvalStatusCode },
+                steps: [],
+              }),
           },
         ]),
     {

@@ -157,14 +157,22 @@ describe('입하 LOT 판정(005 FR-032)', () => {
     expect(targetInboundLotOf(null, null)).toBeNull();
   });
 
-  it('R16-1 입하 중 409 는 안내 갈래로, 원인만 있는 충돌 409 · 다른 오류는 아니다', () => {
+  it('R16-1 입하 중 409(INBOUND_LOT_RECEIVING)는 안내 갈래로, 다른 409 · 다른 오류는 아니다', () => {
     expect(
       isInboundLotReceiving({
         kind: 'stateLocked',
         status: 409,
-        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '입하 중' }],
+        errors: [{ scope: 'screen', code: 'INBOUND_LOT_RECEIVING', message: '입하 중' }],
       }),
     ).toBe(true);
+    /* 서버가 코드를 정했다(S12 · G2) — 다른 업무 코드의 409 는 이 안내가 아니다. */
+    expect(
+      isInboundLotReceiving({
+        kind: 'stateLocked',
+        status: 409,
+        errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '다른 사유' }],
+      }),
+    ).toBe(false);
     expect(
       isInboundLotReceiving({ kind: 'conflict', status: 409, cause: 'user', message: '' }),
     ).toBe(false);
@@ -183,6 +191,14 @@ describe('생략 실행 대상(005 FR-032 · targetLotId)', () => {
 
   it('R16-1 targetLotId 로 실행한다 — targetId(입하 LOT id)는 쓰지 않는다', () => {
     expect(skipExecuteTargetOf(approved(9411), 'IQC_SKIP')).toEqual({ kind: 'lot', lotId: 9411 });
+  });
+
+  it('G2 L11 입하 마감 취소로 무효가 된 생략(targetVoided)은 실행하지 않는다', () => {
+    const voided = {
+      ...approved(9411),
+      target: { targetId: 7301, targetLotId: 9411, targetVoided: true },
+    };
+    expect(skipExecuteTargetOf(voided, 'IQC_SKIP')).toEqual({ kind: 'voided' });
   });
 
   it('R16-1 targetLotId 가 없으면 잠김', () => {

@@ -61,6 +61,7 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     pending: 'Chờ kiểm tra · tạm giữ',
     normal: 'Bình thường',
     unregister: 'Gỡ',
+    package: (unit: string, count: number) => ` · ${unit} ${String(count)}`, // ui-check-ignore: C-13 설계 확정 표기 「1,000 EA · 봉지 10」(screens/M-01-01.md)
     note: 'Các thùng còn lại, nếu quét ở M-01-01 Đăng ký nhập hàng, sẽ tiếp tục vào LOT nhập hàng này cho đến khi chốt. Khi ngày của nhà máy thay đổi sẽ tự động chốt.',
     close: 'Chốt',
     loading: 'Đang tải LOT nhập hàng',
@@ -80,6 +81,7 @@ export const inboundClose: Translated<typeof ko.inboundClose> = {
     total: (count: number, qty: string) => `${count} LOT quản lý vật tư · ${qty}.`,
     withIqc: 'yêu cầu IQC sẽ được tạo',
     withoutIqc: 'mặt hàng không cần kiểm tra nên IQC được ghi 「Bỏ qua kiểm tra」',
+    withoutIqcRecord: 'mặt hàng không cần kiểm tra nên không tạo bản ghi IQC',
     rest: ', và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
     cancel: 'Hủy',
     proceed: 'Chốt',

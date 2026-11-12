@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { lotProgress, scheduleLine } from './fixtures';
 import { inboundLotShareText, lotEvidence, LotMainCell, packageText } from './lot-row';
-import { inboundLotShares } from './stage';
+import { inboundLotShares, lotRowQtyOf } from './stage';
 import type { InboundLotProgress } from './types';
 
 const t = messages.inboundSchedule;
@@ -55,6 +55,31 @@ describe('lotEvidence — 줄의 일부만 이 발주로 온 LOT 줄(초과분 �
   });
 });
 
+describe('G2 M2 W-01-09 LOT 줄 「입하 수량」', () => {
+  it('새 흐름 LOT 줄은 그 자재 관리 LOT 수량 — 입하 LOT 전체 배정 몫을 되풀이하지 않는다', () => {
+    const lot = lotProgress({
+      inboundLotId: 9901,
+      inboundLotNo: 'IL-20261112-0001',
+      receivedQty: 1000,
+      allocatedQty: 2600,
+    });
+
+    expect(lotRowQtyOf(lot)).toBe(1000);
+    expect(lotEvidence(lot)).not.toContain(t.lot.evidence.wholeQty('1,000', lot.uomCode));
+  });
+
+  it('이전 데이터 · 입하 LOT 없는 줄은 지금처럼 이 발주로 온 몫', () => {
+    expect(
+      lotRowQtyOf(
+        lotProgress({ inboundLotNo: 'IL-MIG-SAMPLE-0001', receivedQty: 50, allocatedQty: 30 }),
+      ),
+    ).toBe(30);
+    expect(
+      lotRowQtyOf(lotProgress({ inboundLotNo: null, receivedQty: 50, allocatedQty: 30 })),
+    ).toBe(30);
+  });
+});
+
 describe('FR-035 W-01-09 LOT 줄 · 라인의 입하 LOT', () => {
   const renderCell = (lot: InboundLotProgress, canOpenWorkRecord: boolean) =>
     render(
@@ -83,10 +108,11 @@ describe('FR-035 W-01-09 LOT 줄 · 라인의 입하 LOT', () => {
 
   it('FR-035 패키징 단위 이름이 없으면 코드로 보인다', () => {
     expect(
+      /* 생성 계약은 이름을 늘 싣는다 — 이름이 빠진 응답(계약 밖)에도 코드로 보이는지 지킨다. */
       packageText({
         uomId: 8601,
         uomCode: 'SAMPLE-BAG',
-        uomName: null,
+        uomName: null as unknown as string,
         count: 2,
         qtyPerPackage: 50,
       }),

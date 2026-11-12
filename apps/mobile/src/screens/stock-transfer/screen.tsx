@@ -6,7 +6,7 @@ import { Link } from 'react-router';
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
 import { useLocationByCode } from '../../patterns/locations';
-import { useScannedLot } from '../../patterns/lots';
+import { lifecycleNoticeOf, useScannedLot } from '../../patterns/lots';
 import { uomLabelOf, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
@@ -68,6 +68,8 @@ export const StockTransferScreen = () => {
   const [duplicate, setDuplicate] = useState(false);
   const [noStock, setNoStock] = useState(false);
   const [unknownBusinessUnit, setUnknownBusinessUnit] = useState(false);
+  /** 스캔한 LOT 이 대기 · 폐기면 그 안내(US1-6). 재고 없음보다 먼저 말한다 — 까닭이 다르다. */
+  const [lifecycleNotice, setLifecycleNotice] = useState<string | null>(null);
   /** 반출이 선 뒤의 이동. 이것이 있으면 화면은 도착만 남았다. */
   const [shipped, setShipped] = useState<{
     transfer: StockTransfer;
@@ -133,6 +135,16 @@ export const StockTransferScreen = () => {
 
     setScannedLot(null);
 
+    const notice = lifecycleNoticeOf(lot);
+
+    setLifecycleNotice(notice);
+
+    if (notice !== null) {
+      setNoStock(false);
+      setUnknownBusinessUnit(false);
+      return;
+    }
+
     const pick = sourcePickOf(rows, warehouses.data ?? []);
 
     if (pick.kind !== 'row') {
@@ -177,6 +189,7 @@ export const StockTransferScreen = () => {
       setDuplicate(false);
       setNoStock(false);
       setUnknownBusinessUnit(false);
+      setLifecycleNotice(null);
       setScannedLot(value.trim());
     },
   });
@@ -244,6 +257,7 @@ export const StockTransferScreen = () => {
     setDuplicate(false);
     setNoStock(false);
     setUnknownBusinessUnit(false);
+    setLifecycleNotice(null);
     void unfinished.refetch();
   };
 
@@ -525,6 +539,9 @@ export const StockTransferScreen = () => {
               <AlertBanner variant="error" title={t.from.notFound(scannedLot)} />
             ) : null}
             {duplicate ? <AlertBanner variant="warning" title={t.from.already} /> : null}
+            {lifecycleNotice === null ? null : (
+              <AlertBanner variant="error" title={lifecycleNotice} />
+            )}
             {noStock ? <AlertBanner variant="error" title={t.from.noStock} /> : null}
             {unknownBusinessUnit ? (
               <AlertBanner variant="error" title={t.from.unknownBusinessUnit}>

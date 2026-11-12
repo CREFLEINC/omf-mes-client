@@ -8,9 +8,11 @@ import { useBackStep } from '../../patterns/back-step';
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
 import { displayNameOf, useCodeValues } from '../../patterns/code-values';
-import { useScannedLot } from '../../patterns/lots';
+import { lifecycleNoticeOf, useScannedLot } from '../../patterns/lots';
 import { uomLabelOf, useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { formatPackQty } from '../../patterns/package-qty';
+import { plantShortDateTime } from '../../patterns/plant-time';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -46,17 +48,11 @@ const RECORD_LABEL = t.record;
  */
 type Outcome = 'queued' | 'sent' | 'rejected';
 
-const when = (iso: string): string => {
-  const at = new Date(iso);
-
-  if (Number.isNaN(at.getTime())) {
-    return iso;
-  }
-
-  const pad = (value: number) => String(value).padStart(2, '0');
-
-  return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
-};
+/**
+ * 「11-12 20:59」 — **공장 시각**(M-01-03 · 관리웹과 같다). 기기 시간대로 그리면 기기 설정에 따라
+ * 시각이 달라진다(L-f — 공장 20:59 를 22:59 로 보였다).
+ */
+const when = (iso: string): string => plantShortDateTime(iso);
 
 const MyRequests = ({
   requests,
@@ -138,7 +134,17 @@ export const IqcSkipRequestScreen = () => {
   const statuses = useCodeValues(APPROVAL_REQUEST_STATUS);
 
   const inspectionPending = isInspectionPending(found);
-  const canSubmit = found !== null && inspectionPending && hasReason(reason) && worker !== null;
+  /*
+   * 대기 · 폐기 자재 관리 LOT 도 품질 축은 검사 대기다. 막지 않으면 아직 받지 않은 LOT 의 생략 요청이
+   * 서버까지 갔다가 되돌아온다 — 그 전에 까닭을 말한다(US1-6).
+   */
+  const lifecycleNotice = lifecycleNoticeOf(found);
+  const canSubmit =
+    found !== null &&
+    lifecycleNotice === null &&
+    inspectionPending &&
+    hasReason(reason) &&
+    worker !== null;
 
   /*
    * 아직 나가지 않은 요청. 이 화면은 이름에 긴급이 붙어 있어, 담긴 것을 요청된 것으로 읽으면
@@ -297,7 +303,7 @@ export const IqcSkipRequestScreen = () => {
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
               )}
-              <span>{t.lot.quantity(String(found.initialQty), uomOf(found.uomId))}</span>
+              <span>{t.lot.quantity(formatPackQty(found.initialQty), uomOf(found.uomId))}</span>
               {/* 005 — 상자 라벨 하나로 그 입하 LOT 전체를 요청한다(FR-032). */}
               {found.inboundLotNo === null || found.inboundLotNo === undefined ? null : (
                 <>
@@ -311,6 +317,7 @@ export const IqcSkipRequestScreen = () => {
             </Card.Body>
           </Card>
         )}
+        {lifecycleNotice === null ? null : <AlertBanner variant="error" title={lifecycleNotice} />}
         {/* 막지 않고 알린다. 취소가 없어 다시 올리는 것이 유일한 정정 경로다. */}
         {pending.data == null ? null : (
           <AlertBanner

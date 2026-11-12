@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
@@ -98,6 +98,46 @@ export const useItemLookup = (): DispositionLookup => {
   });
 
   return toLookup(query.data, query.isError, query.isPending);
+};
+
+/**
+ * 품목 이름 — 목록 첫 쪽(`/mdm/items` 50건)에 없는 품목은 번호마다 단건으로 받아 채운다(G2 L-c). 새 흐름 부적합의 품목이 첫 쪽
+ * 밖이면 「알 수 없음」으로 떴다. 조건 줄의 품목 고르기는 지금처럼 첫 쪽 목록을 쓴다.
+ */
+export const useItemLookupFor = (
+  itemIds: readonly (number | null | undefined)[],
+): DispositionLookup => {
+  const { client } = useApiClient();
+  const base = useItemLookup();
+  const known = new Set(base.entries.map((entry) => entry.value));
+  /* 첫 쪽을 받은 뒤에만 빠진 것을 센다 — 받기 전에는 모두 빠진 것으로 보여 전부 단건으로 부르게 된다. */
+  const missing = base.isLoading
+    ? []
+    : [...new Set(itemIds.filter((id): id is number => typeof id === 'number' && id > 0))].filter(
+        (id) => !known.has(String(id)),
+      );
+  const singles = useQueries({
+    queries: missing.map((itemId) => ({
+      queryKey: ['disposition-lookups', 'item', itemId] as const,
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+      staleTime: 5 * 60_000,
+    })),
+  });
+  const extra: LookupEntry[] = singles.flatMap((result) => {
+    const item = result.data?.item;
+    return item === undefined
+      ? []
+      : [
+          {
+            value: String(item.itemId),
+            label: `${item.itemCode} · ${nameOr(item.itemName)}`, // ui-check-ignore: C-13 위 첫 쪽 목록과 같은 「코드 · 이름」 표기
+            isActive: item.isActive,
+          },
+        ];
+  });
+
+  return extra.length === 0 ? base : { ...base, entries: [...base.entries, ...extra] };
 };
 
 /** 판정 수량의 단위를 이름으로 보이기 위한 것이다 — 단위 자체는 대상 LOT이 정한다. */

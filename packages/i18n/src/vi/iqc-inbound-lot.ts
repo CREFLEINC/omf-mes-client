@@ -120,15 +120,47 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     conflict: 'Dữ liệu đã thay đổi',
     reload: 'Tải lại',
     lockedWrite: 'Đã xác nhận đánh giá — không thể sửa kết quả',
+    lotJudgments: {
+      heading: 'Đánh giá theo LOT quản lý vật tư',
+      help: 'Mỗi LOT quản lý vật tư được đánh giá theo kết quả cuối cùng (số thứ tự lớn nhất) đã liên kết với LOT đó; đánh giá tổng hợp là đánh giá xấu nhất trong số đó (Không đạt > Giữ lại > Đạt).',
+      byResult: (seqNo: number) => `Kết quả ${seqNo}`,
+      superseded: (
+        lotTail: string,
+        beforeSeq: number,
+        before: string,
+        afterSeq: number,
+        after: string,
+        reason: string | null,
+      ) =>
+        `LOT ${lotTail}: kết quả ${beforeSeq} ${before} → kết quả ${afterSeq} ${after}${reason === null ? '' : ` (${reason})`}`,
+      unmatched: (count: number) =>
+        `${count} LOT quản lý vật tư chưa liên kết kết quả nào không được tính vào đánh giá`,
+    },
+    reason: (name: string) => `Lý do kiểm tra lại: ${name}`,
   },
   drawer: {
     addTitle: (seqNo: number) => `Thêm kết quả ${seqNo}`,
     editTitle: (seqNo: number) => `Sửa kết quả ${seqNo}`,
     matchHeading: 'Liên kết LOT quản lý vật tư',
     matchHelp:
-      'Kết quả này được ghi khi xem LOT quản lý vật tư nào (tùy chọn). Chỉ hiện LOT quản lý vật tư của LOT nhập hàng này.',
+      'Hãy chọn ít nhất 1 LOT quản lý vật tư mà kết quả này đã xem khi ghi. Chỉ hiện LOT quản lý vật tư của LOT nhập hàng này.',
     matchNote:
-      'Không chọn vẫn lưu được. Có thể liên kết cùng một LOT quản lý vật tư với nhiều kết quả. Liên kết được hiển thị để tham khảo khi xử lý, và quyết định kết quả nào được chuyển khi tách LOT quản lý vật tư.',
+      'Nếu đã kiểm tra mẫu trộn lẫn, hãy nhấn [Chọn tất cả]. Có thể liên kết cùng một LOT quản lý vật tư với nhiều kết quả. Mỗi LOT quản lý vật tư được đánh giá theo kết quả cuối cùng (số thứ tự lớn nhất) đã liên kết với LOT đó.',
+    selectAll: 'Chọn tất cả',
+    matchRequired: 'Hãy chọn ít nhất 1 LOT quản lý vật tư',
+    reasonHeading: 'Lý do kiểm tra lại',
+    reasonPlaceholder: 'Chọn lý do kiểm tra lại',
+    reasonHelp:
+      'Kết quả này thay đổi đánh giá của các LOT quản lý vật tư dưới đây. Hãy chọn lý do kiểm tra lại.',
+    reasonLine: (lotTail: string, seqNo: number, before: string, after: string) =>
+      `LOT ${lotTail}: kết quả ${seqNo} ${before} → kết quả này ${after}`,
+    reasonRequired: 'Hãy chọn lý do kiểm tra lại',
+    reasonLoadFailed: 'Không tải được danh sách lý do kiểm tra lại.',
+    ruleErrors: {
+      MATCHED_LOT_REQUIRED: 'Hãy chọn ít nhất 1 LOT quản lý vật tư',
+      REINSPECTION_REASON_REQUIRED:
+        'Kết quả này thay đổi đánh giá Không đạt hoặc Giữ lại. Hãy chọn lý do kiểm tra lại',
+    },
     alsoMatched: (seqNos: string) => `Cũng liên kết với kết quả ${seqNos}`,
     inputNote: 'Giữ nguyên biểu mẫu IQC hiện tại · không có lượt',
     saveNote: 'Khi lưu, danh sách kết quả và xem trước đánh giá tổng hợp sẽ thay đổi',
@@ -149,6 +181,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     help: 'Lưu ai · lúc nào · làm gì khi ghi · sửa · xóa kết quả, xác nhận · hủy đánh giá, tách LOT quản lý vật tư.',
     columns: { when: 'Thời điểm', who: 'Ai', what: 'Việc gì', detail: 'Nội dung' },
     events: {
+      REQUESTED: 'Tạo yêu cầu kiểm tra',
       RESULT_ADDED: 'Ghi kết quả',
       RESULT_UPDATED: 'Sửa kết quả',
       RESULT_DELETED: 'Xóa kết quả',
@@ -162,6 +195,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       CANCELLED_BY_REOPEN: 'Hủy yêu cầu do hủy chốt',
     } as Record<string, string>,
     empty: 'Không có lịch sử.',
+    reinspectionReason: (name: string) => `Lý do kiểm tra lại: ${name}`,
     loadFailed: 'Không tải được lịch sử thay đổi.',
     close: 'Đóng',
   },
@@ -212,6 +246,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   confirm: {
     open: 'Xác nhận đánh giá',
     lockedNoResults: 'Cần ít nhất 1 kết quả',
+    lockedNoNewResult: 'Kiểm tra đã được mở lại. Hãy ghi ít nhất 1 kết quả mới',
     lockedNoJudgment: 'Có kết quả chưa đánh giá',
     title: (inboundLotNo: string) => `Xác nhận đánh giá ${inboundLotNo}`,
     counts: (total: number, accepted: number, rejected: number, held: number) =>

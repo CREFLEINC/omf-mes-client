@@ -255,3 +255,17 @@ export const inboundLotShares = (
 /** 이전 데이터 입하 LOT(`IL-MIG-…`)인가 — 새 흐름(`ON_FINALIZE`)의 매칭 조정 링크는 그 밖의 입하 LOT 에만 건다(C5 정함). */
 export const isMigratedInboundLot = (inboundLotNo: string): boolean =>
   inboundLotNo.startsWith('IL-MIG-');
+
+/**
+ * LOT 줄 「입하 수량」 — 새 흐름(입하 LOT 이 있고 이전 데이터가 아님)은 그 자재 관리 LOT 의 수량(`receivedQty`)이다. 서버의 `allocatedQty`
+ * 는 입하 LOT 전체의 이 발주 배정 몫이라 LOT 마다 같은 값이 되풀이된다(G2 M2 — 1,000짜리 세 줄이 각각 2,600). 이전 데이터는
+ * 지금처럼 이 발주로 온 몫(`allocatedQty`)이다.
+ */
+export const lotRowQtyOf = (lot: {
+  inboundLotNo?: string | null;
+  allocatedQty: number;
+  receivedQty: number;
+}): number =>
+  lot.inboundLotNo != null && !isMigratedInboundLot(lot.inboundLotNo)
+    ? lot.receivedQty
+    : lot.allocatedQty;

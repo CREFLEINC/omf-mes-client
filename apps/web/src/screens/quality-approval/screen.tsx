@@ -20,6 +20,7 @@ import { toApiError } from '../../patterns/request';
 import { iqcSkipApprovalKeys, useSkipTargetLot } from '../iqc-skip-approval/queries';
 import { SkipExecutePane } from '../iqc-skip-approval/skip-execute-pane';
 import {
+  isInboundLotReceiving,
   judgeSkipExecute,
   skipExecuteTargetOf,
   type SkipExecuteState,
@@ -196,14 +197,8 @@ export const QualityApprovalScreen = ({
   const iqcSkipTarget =
     detail.data === undefined
       ? null
-      : skipExecuteTargetOf(
-          {
-            ...detail.data.request,
-            /* 결재 상세의 덧댄 칸(forward-005-lots `ApprovalTargetForward`) — 생성 타입에는 아직 없다(T111). */
-            target: detail.data.request.target as { targetLotId?: number | null },
-          },
-          IQC_SKIP_TYPE_CODE,
-        );
+      : /* 결재 대상의 `targetLotId` · `targetVoided`(입하 마감 취소로 무효가 된 생략 · 서버 S12 · G2 L11 · L-a)는 생성 타입에 있다. */
+        skipExecuteTargetOf(detail.data.request, IQC_SKIP_TYPE_CODE);
   const approvedIqcSkipLotId = iqcSkipTarget?.kind === 'lot' ? iqcSkipTarget.lotId : null;
   /* 생략 실행은 IQC 생략 화면 권한(W-01-02)이 있어야 한다 — 없으면 LOT 도 읽지 않고 안내만 선다(#186 리뷰). */
   const skipLotId = canOpenIqcSkip ? approvedIqcSkipLotId : null;
@@ -561,54 +556,80 @@ export const QualityApprovalScreen = ({
           />
         )}
         {/* OQC 생략(#119)은 연결 조건이 없다 — IQC 생략처럼 승인된 뒤에만 생략 실행 구획이 선다(#193). */}
-        {isOqcSkip
-          ? detail.data.request.statusCode === 'APPROVED' && (
+        {isOqcSkip ? (
+          detail.data.request.statusCode === 'APPROVED' && (
+            <SkipExecutePane
+              texts={t.oqcSkipExecute}
+              compact={t.oqcSkipExecute.compact}
+              state={oqcSkipState(detail.data.request.target.targetId)}
+              isSaving={
+                oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
+              }
+              onExecute={() => {
+                const shipmentRequestId = detail.data.request.target.targetId;
+                oqcSkipSentRef.current = shipmentRequestId;
+                setOqcSkipSentId(shipmentRequestId);
+                oqcSkipWrite.write(shipmentRequestId);
+              }}
+              banner={
+                <SaveErrorBanner
+                  error={
+                    oqcSkipSentId === detail.data.request.target.targetId
+                      ? oqcSkipWrite.error
+                      : null
+                  }
+                />
+              }
+            />
+          )
+        ) : isIqcSkip ? (
+          /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
+          iqcSkipTarget?.kind === 'voided' || iqcSkipTarget?.kind === 'noLot' ? (
+            /* 마감 취소로 무효가 된 생략 · 실행할 LOT 을 모름 — 단추를 잠그고 까닭을 보인다(G2 L-a · 실제 라우트). */
+            <SkipExecutePane
+              compact={messages.iqcSkipApproval.skipExecute.compact}
+              state={{ kind: 'checking' }}
+              isSaving={false}
+              onExecute={() => undefined}
+              banner={null}
+              lockedReason={
+                iqcSkipTarget.kind === 'voided'
+                  ? messages.iqcSkipApproval.skipExecute.voided
+                  : messages.iqcSkipApproval.skipExecute.noTargetLot
+              }
+            />
+          ) : (
+            approvedIqcSkipLotId !== null &&
+            (skipLotId === null ? (
+              <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
+            ) : (
               <SkipExecutePane
-                texts={t.oqcSkipExecute}
-                compact={t.oqcSkipExecute.compact}
-                state={oqcSkipState(detail.data.request.target.targetId)}
-                isSaving={
-                  oqcSkipSentId === detail.data.request.target.targetId && oqcSkipWrite.isSaving
-                }
+                compact={messages.iqcSkipApproval.skipExecute.compact}
+                state={judgeSkipExecute(skipLot)}
+                isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
                 onExecute={() => {
-                  const shipmentRequestId = detail.data.request.target.targetId;
-                  oqcSkipSentRef.current = shipmentRequestId;
-                  setOqcSkipSentId(shipmentRequestId);
-                  oqcSkipWrite.write(shipmentRequestId);
+                  setSkipSentLotId(skipLotId);
+                  skipExecuteWrite.write(skipLotId);
                 }}
                 banner={
-                  <SaveErrorBanner
-                    error={
-                      oqcSkipSentId === detail.data.request.target.targetId
-                        ? oqcSkipWrite.error
-                        : null
-                    }
-                  />
-                }
-              />
-            )
-          : isIqcSkip
-            ? /* IQC 생략(#186)은 연결 조건이 없다 — 승인된 뒤에만 생략 실행 구획이 선다. */
-              approvedIqcSkipLotId !== null &&
-              (skipLotId === null ? (
-                <p className="field-note">{t.detail.iqcSkipNoPermission}</p>
-              ) : (
-                <SkipExecutePane
-                  compact={messages.iqcSkipApproval.skipExecute.compact}
-                  state={judgeSkipExecute(skipLot)}
-                  isSaving={skipSentLotId === skipLotId && skipExecuteWrite.isSaving}
-                  onExecute={() => {
-                    setSkipSentLotId(skipLotId);
-                    skipExecuteWrite.write(skipLotId);
-                  }}
-                  banner={
+                  /* 입하 중(마감 전) 입하 LOT 이면 무엇을 먼저 할지 말한다(FR-032 · INBOUND_LOT_RECEIVING). */
+                  skipSentLotId === skipLotId && isInboundLotReceiving(skipExecuteWrite.error) ? (
+                    <AlertBanner
+                      variant="warning"
+                      title={messages.iqcSkipApproval.skipExecute.receivingTitle}
+                    >
+                      {messages.iqcSkipApproval.skipExecute.receiving}
+                    </AlertBanner>
+                  ) : (
                     <SaveErrorBanner
                       error={skipSentLotId === skipLotId ? skipExecuteWrite.error : null}
                     />
-                  }
-                />
-              ))
-            : null}
+                  )
+                }
+              />
+            ))
+          )
+        ) : null}
       </>
     );
   };

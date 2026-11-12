@@ -797,7 +797,8 @@ describe('QualityApprovalScreen conditions', () => {
     expect(Object.fromEntries(candidateUrl?.searchParams ?? [])).toEqual({
       approvalRequestId: '31',
       page: '1',
-      size: '2',
+      /* 다LOT 특채 묶음을 한 쪽에 다 받는다(G2 H2 — 전에는 2). */
+      size: '100',
     });
     expect(recorded.urls.filter((url) => url.pathname === CONCESSIONS_PATH)).toHaveLength(1);
     expect(recorded.urls.filter((url) => url.pathname === concessionDetailPath(501))).toHaveLength(
@@ -1020,6 +1021,28 @@ describe('QualityApprovalScreen conditions', () => {
       screen.queryByRole('region', { name: messages.iqcSkipApproval.skipExecute.heading }),
     ).not.toBeInTheDocument();
     expect(recorded.urls.some((url) => url.pathname === '/trace/lots/91')).toBe(false);
+  });
+
+  it('G2 L-a 입하 마감 취소로 무효가 된 IQC 생략(targetVoided)은 [실행]을 잠그고 무효 안내를 보이며 실행을 보내지 않는다', async () => {
+    const approved = {
+      ...requests[0]!,
+      approvalTypeCode: 'IQC_SKIP',
+      statusCode: 'APPROVED',
+      isMyTurn: false,
+      currentStepNo: null,
+      target: { ...requests[0]!.target, targetLotId: 91, targetVoided: true },
+    } as unknown as ApprovalRequest;
+    const recorded = recordingFetch(
+      listRoute(),
+      detailRoute(31, () => jsonResponse(detailBody(approved))),
+    );
+    renderScreen(recorded.fetch, '/quality/approvals?approvalRequestId=31');
+    const s = messages.iqcSkipApproval.skipExecute;
+
+    const pane = await screen.findByRole('region', { name: s.heading });
+    expect(within(pane).getByText(s.voided)).toBeInTheDocument();
+    expect(within(pane).getByRole('button', { name: s.compact.action })).toBeDisabled();
+    expect(recorded.urls.some((url) => url.pathname.endsWith(':skip-iqc'))).toBe(false);
   });
 
   it('승인된 IQC 생략은 대상 LOT 이 검사 대기면 확인 뒤 생략 실행을 한 번 보낸다', async () => {
@@ -1420,6 +1443,32 @@ describe('QualityApprovalScreen conditions', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: t.panes.reason })).toBeInTheDocument();
     expect(screen.getByText('합성 결재자')).toBeInTheDocument();
+  });
+
+  it('US4-4 G2 H2 다LOT 전량 특채 묶음(같은 결재 · 같은 부적합 · LOT 마다 한 행)은 조건 하나로 — 승인 · 반려를 할 수 있다', async () => {
+    const bundle = [801, 802, 803].map((lotId, index) => ({
+      ...concession,
+      concessionId: 501 + index,
+      concessionNo: `SYNTH-CN-${String(501 + index)}`,
+      lotId,
+    }));
+    renderScreen(
+      approvalFetch([
+        listRoute(),
+        candidateRoute(() => jsonResponse(candidateBody(bundle))),
+        concessionRoute(),
+      ]),
+      '/quality/approvals?approvalRequestId=31',
+    );
+    const pane = screen.getByRole('region', { name: t.panes.detail });
+
+    expect(await within(pane).findByText(t.condition.lotBundle(3))).toBeInTheDocument();
+    expect(screen.queryByText(t.condition.unsafe)).toBeNull();
+    /* 수량은 묶음 합(10 × 3 · 사용 2 × 3). */
+    expect(within(pane).getByText('30')).toBeInTheDocument();
+    expect(within(pane).getByText('6')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '승인' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '반려' })).toBeEnabled();
   });
 
   it('후보 네트워크 오류는 오프라인 안내 뒤 재시도로 정상 빈 상태가 된다', async () => {

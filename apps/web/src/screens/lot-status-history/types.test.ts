@@ -10,6 +10,8 @@ type LotHoldResponse = components['schemas']['LotHold'];
 const MINIMAL_LOT_STATUS: LotQualityStatusResponse = {
   lotId: 101,
   lotNo: 'SAMPLE-LOT-001',
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 202,
   lotStatusCode: 'SAMPLE_STATUS_A',
   fullyHeld: false,

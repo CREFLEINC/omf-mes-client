@@ -14,7 +14,10 @@ export const pickingKeys = {
   order: (pickingOrderId: number | null) => ['picking-order', pickingOrderId] as const,
   request: (materialIssueRequestId: number | null) =>
     ['picking-issue-request', materialIssueRequestId] as const,
-  stock: (lotId: number | null) => ['picking-lot-stock', lotId] as const,
+  /** LOT 재고 전부(출고 확정 뒤 무효로 — G2 5차). */
+  stocks: () => ['picking-lot-stock'] as const,
+  stock: (lotId: number | null, warehouseId: number | null, locationId: number | null) =>
+    ['picking-lot-stock', lotId, warehouseId, locationId] as const,
 };
 
 /** 피킹 지시의 원천이 자재 출고 요청일 때만 도착 위치가 있다. 출하 요청은 다른 화면 몫이다. */
@@ -150,11 +153,18 @@ export const useIssueRequest = (
  * 빼서 보인다(`screen.tsx`). 받지 못하면 재고 줄을 세우지 않을 뿐 피킹은 막지 않는다 — 판정은 서버다.
  * 열 때마다 다시 묻는다 — 출고 뒤의 값이 앞 응답에 남으면 남은 봉지를 많게 보인다.
  */
-export const useLotStock = (lotId: number | null): UseQueryResult<number | null> => {
+/**
+ * 피킹 위치의 LOT 재고 — 라인의 출발 창고 · 위치(`warehouseId` · `locationId`) 한 곳만 센다(G2 M-a). 모든 위치를 더하면 다른 위치나
+ * 이미 다른 라인으로 나간 양까지 피킹할 수 있는 재고로 보인다.
+ */
+export const useLotStock = (
+  lotId: number | null,
+  place: { warehouseId: number; locationId: number } | null = null,
+): UseQueryResult<number | null> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: pickingKeys.stock(lotId),
+    queryKey: pickingKeys.stock(lotId, place?.warehouseId ?? null, place?.locationId ?? null),
     enabled: lotId !== null,
     staleTime: 0,
     retry: false,
@@ -165,11 +175,30 @@ export const useLotStock = (lotId: number | null): UseQueryResult<number | null>
 
       const data = await runRequest(() =>
         client.GET('/inventory/balances', {
-          params: { query: { lotId, groupBy: 'LOT', size: PAGE_SIZE } },
+          params: {
+            query:
+              place === null
+                ? { lotId, groupBy: 'LOT', size: PAGE_SIZE }
+                : {
+                    lotId,
+                    groupBy: 'LOCATION',
+                    warehouseId: place.warehouseId,
+                    locationId: place.locationId,
+                    size: PAGE_SIZE,
+                  },
+          },
         }),
       );
 
-      const rows = data.items.filter((balance) => balance.lotId === lotId);
+      /* 위치를 주었으면 그 위치 줄만(위치 칸이 없는 줄은 서버가 이미 거른 것으로 본다). */
+      const rows = data.items.filter(
+        (balance) =>
+          balance.lotId === lotId &&
+          (place === null ||
+            balance.locationId === undefined ||
+            balance.locationId === null ||
+            balance.locationId === place.locationId),
+      );
 
       /* 줄이 없는 것을 0 으로 읽으면 남은 봉지가 0 이 되어 피킹이 막힌다. 모르는 것으로 둔다. */
       return rows.length === 0 ? null : rows.reduce((total, row) => total + row.onHandQty, 0);

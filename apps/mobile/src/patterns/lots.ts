@@ -7,7 +7,7 @@ import { runRequest } from './request';
 
 type Client = ReturnType<typeof useApiClient>['client'];
 
-/** 005 — 입하 LOT · 패키징 칸이 더해진 LOT(계약 §1). 서버 병합 뒤 생성 타입으로 돌아간다(T111). */
+/** 005 — 입하 LOT · 패키징 칸이 실린 LOT(계약 §1 · 생성 타입). */
 export type Lot = LotForward;
 
 /**

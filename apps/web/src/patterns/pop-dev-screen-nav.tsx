@@ -79,7 +79,7 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
-  { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
+  { path: '/pop/material-lot-label', label: 'P-01-01 자재 관리 LOT 라벨' },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {
     path: '/pop/tool-usage',

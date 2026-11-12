@@ -73,7 +73,8 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
     stockLabel: 'Tồn kho LOT',
     unitLegend: 'Đơn vị nhập',
     unitPackage: (unit: string, per: string, uom: string) => `${unit} (${per} ${uom})`,
-    conversion: (packages: string, qty: string, uom: string) => `${packages} = ${qty} ${uom}`,
+    /** 환산 줄 — 시안 「⇄ 3봉지 = 300 EA」(G2 L20). */
+    conversion: (packages: string, qty: string, uom: string) => `⇄ ${packages} = ${qty} ${uom}`,
     after: (stock: string) => `Tồn kho còn lại sau khi lấy hàng ${stock}`,
     log: (entered: string, stock: string) => `Lấy hàng ${entered} → tồn kho còn lại ${stock}`,
     problem: {

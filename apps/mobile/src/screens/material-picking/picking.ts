@@ -53,7 +53,10 @@ export const OPEN_ORDER_STATUS = 'REGISTERED';
  */
 export const isOpenOrder = (order: PickingOrder): boolean => order.statusCode === OPEN_ORDER_STATUS;
 
-/** 큐에 담긴 피킹 한 건. 경로와 본문에서 뽑아 낸다. */
+/**
+ * 큐에 담긴 피킹 한 건. 경로와 본문에서 뽑아 낸다. `pickedQty` 는 그 라인의 **누적** 집은 양이다 — 서버 `:pick` 이 값을
+ * 대체하므로(G2 H3 · Q23) 본문에 누적을 싣는다.
+ */
 export interface QueuedPick {
   pickingLineId: number;
   pickedQty: number;
@@ -124,19 +127,19 @@ export const queuedPicksOf = (entries: QueuedEntry[], pickingOrderId: number): Q
 export type LineProblem = 'held' | 'done';
 
 /**
- * 아직 서버에 닿지 않은 피킹.
+ * 집은 양 — 그 라인의 마지막으로 담은 피킹(누적)이 있으면 그것, 없으면 서버가 아는 양. 화면이 보이는 수는 이것이다.
  *
- * 큐에 담긴 건은 서버 응답에 없다. 그 만큼을 셈에 넣지 않으면 화면이 안 집은 것으로 보여
- * 같은 라인을 다시 집게 되고, 큐에 두 건이 쌓여 둘 다 나간다 - 되돌릴 수 없는 재고 차감이다.
+ * 큐에 담긴 건은 서버 응답에 없다. 셈에 넣지 않으면 화면이 안 집은 것으로 보여 같은 라인을 다시 집는다.
+ * ⚠ 서버 `:pick` 은 집은 양을 **대체**한다(G2 H3 · Q23) — 담긴 것을 더하지 않고 마지막 누적을 쓴다. 더하면 「봉지 3 → EA 50」에서
+ * 화면은 350 인데 서버는 50 이 된다.
  */
-export const queuedQtyOf = (line: PickingLine, queued: QueuedPick[]): number =>
-  queued
-    .filter((each) => each.pickingLineId === line.pickingLineId)
-    .reduce((total, each) => total + each.pickedQty, 0);
-
-/** 서버가 아는 만큼과 담아 둔 만큼을 합친 것. 화면이 보이는 수는 이것이다. */
 export const pickedQtyOf = (line: PickingLine, queued: QueuedPick[]): number =>
-  line.pickedQty + queuedQtyOf(line, queued);
+  queued.filter((each) => each.pickingLineId === line.pickingLineId).at(-1)?.pickedQty ??
+  line.pickedQty;
+
+/** 아직 서버에 닿지 않은 피킹의 몫(누적 − 서버가 아는 양). */
+export const queuedQtyOf = (line: PickingLine, queued: QueuedPick[]): number =>
+  pickedQtyOf(line, queued) - line.pickedQty;
 
 export const remainingQtyOf = (line: PickingLine, queued: QueuedPick[] = []): number =>
   line.plannedQty - pickedQtyOf(line, queued);
@@ -308,6 +311,10 @@ export const pickQtyText = (
   return text.trim() === '' || !Number.isFinite(count) ? text : String(packagesToBase(count, unit));
 };
 
+/**
+ * 피킹 한 번. `qty` 는 이번에 넣은 양(기본 단위)이고, 본문에는 **이미 집은 양 + 이번** 누적을 싣는다 — 서버 `:pick` 이 대체하기
+ * 때문이다(G2 H3 · Q23). `alreadyPickedQty` 는 `pickedQtyOf(line, queued)`(담긴 것 포함).
+ */
 export const toPickDraft = (
   order: PickingOrder,
   line: PickingLine,
@@ -315,10 +322,11 @@ export const toPickDraft = (
   batchId: string,
   now: Date,
   workerNo: string,
+  alreadyPickedQty = 0,
 ): OutboxDraft => {
   const occurredAt = now.toISOString();
   const body: PickingLinePick = {
-    pickedQty: Number(qty.trim()),
+    pickedQty: alreadyPickedQty + Number(qty.trim()),
     lotId: line.lotId,
     businessDate: businessDateOf(now),
     occurredAt,

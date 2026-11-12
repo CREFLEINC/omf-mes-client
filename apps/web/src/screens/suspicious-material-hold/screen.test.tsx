@@ -10,6 +10,8 @@ type Lot = components['schemas']['LotQualityStatus'];
 const lot = (id: number, overrides: Partial<Lot> = {}): Lot => ({
   lotId: id,
   lotNo: `SYN-LOT-${String(id)}`,
+  inboundLotId: null,
+  inboundLotNo: null,
   itemId: 801001,
   lotStatusCode: 'NORMAL',
   versionNo: id,

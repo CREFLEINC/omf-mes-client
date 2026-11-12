@@ -50,6 +50,25 @@ describe('toConcessionCardinality', () => {
   ])('불일치·중복·개수 모순은 안전하게 특정하지 않는다', (source) => {
     expect(toConcessionCardinality(31, source)).toEqual({ kind: 'unsafe' });
   });
+
+  it('US4-4 G2 H2 같은 결재 · 같은 부적합 · 서로 다른 LOT 의 묶음은 조건 하나 — 수량은 합', () => {
+    const bundle = [801, 802, 803].map((lotId, index) => ({
+      ...concession(31, 501 + index),
+      lotId,
+    }));
+
+    expect(toConcessionCardinality(31, response(bundle, 3))).toEqual({
+      kind: 'one',
+      concessionId: 501,
+      bundle: { lotCount: 3, approvedQty: 30, consumedQty: 6 },
+    });
+    expect(
+      toConcessionCardinality(
+        31,
+        response([bundle[0]!, { ...bundle[1]!, nonconformanceId: 9 }], 2),
+      ),
+    ).toEqual({ kind: 'unsafe' });
+  });
 });
 
 const references: ConditionReferenceStates = {

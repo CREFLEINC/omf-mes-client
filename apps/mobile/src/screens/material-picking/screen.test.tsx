@@ -168,7 +168,8 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
         pickingOrder: options.order ?? order(),
         lines: (options.lines ?? [line()]).map((each) => ({
           ...each,
-          pickedQty: each.pickedQty + (serverPicked.get(each.pickingLineId) ?? 0),
+          /* 서버 `:pick` 은 집은 양을 대체한다(G2 H3 · picking-pick.service). */
+          pickedQty: serverPicked.get(each.pickingLineId) ?? each.pickedQty,
         })),
       }),
   },
@@ -325,7 +326,7 @@ const mount = (options: Options = {}): Mounted => {
     }
 
     if (behaviour === 'ok') {
-      serverPicked.set(lineId, (serverPicked.get(lineId) ?? 0) + body.pickedQty);
+      serverPicked.set(lineId, body.pickedQty);
     }
 
     return respondWith(behaviour, line({ pickingLineId: lineId }), picks, req);
@@ -1389,6 +1390,23 @@ describe('자재 출고·피킹 화면', () => {
     expect(await sent.issues[1]?.json()).toMatchObject({ lines: [{ issueQty: 70 }] });
   });
 
+  it('G2 5차 보내는 동안에는 「이미 전송 대기 중」을 띄우지 않는다 — 큐에 잠깐 실린 것은 지금 보내는 그 출고다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+
+    sent.holdNextIssue();
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    /* 출고가 큐에 실려 서버 응답을 기다리는 동안. */
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(
+      screen.queryByText('이 지시의 출고가 이미 전송 대기 중입니다. 연결되면 보냅니다.'),
+    ).toBeNull();
+
+    sent.releaseIssue();
+    await screen.findByText('출고를 확정했습니다');
+  });
+
   it('보내는 동안 확정을 다시 눌러도 한 건만 나간다', async () => {
     const user = userEvent.setup();
     const sent = mount({ lines: [line({ pickedQty: 120 })] });
@@ -1619,6 +1637,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
 
   const mountPackaged = (lot: ReturnType<typeof scannedLot>, stock = 1000) => {
     const picks: Request[] = [];
+    const stockUrls: URL[] = [];
     const serverPicked = new Map<number, number>();
     const routes: StubRoute[] = [
       {
@@ -1627,7 +1646,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
           const lineId = Number(PICK_LINE.exec(new URL(req.url).pathname)?.[1] ?? Number.NaN);
           const body = (await req.clone().json()) as { pickedQty: number };
 
-          serverPicked.set(lineId, (serverPicked.get(lineId) ?? 0) + body.pickedQty);
+          serverPicked.set(lineId, body.pickedQty);
 
           return respondWith('ok', line({ pickingLineId: lineId }), picks, req);
         },
@@ -1661,8 +1680,9 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
       },
       {
         match: (req) => new URL(req.url).pathname === '/inventory/balances',
-        respond: () =>
-          jsonResponse({
+        respond: (req) => {
+          stockUrls.push(new URL(req.url));
+          return jsonResponse({
             items: [
               {
                 groupBy: 'LOT',
@@ -1678,7 +1698,8 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
               },
             ],
             page,
-          }),
+          });
+        },
       },
       {
         match: (req) => new URL(req.url).pathname === '/mdm/uoms',
@@ -1700,7 +1721,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
       { fetch: createStubFetch(routes) },
     );
 
-    return { picks };
+    return { picks, stockUrls };
   };
 
   const scanLot = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -1712,13 +1733,27 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
     await screen.findByText('라인의 LOT 과 같습니다');
   };
 
+  it('G2 M-a LOT 재고는 피킹 위치(지시의 출발 창고 · 라인의 위치)만 센다 — 모든 위치를 더하지 않는다', async () => {
+    const user = userEvent.setup();
+    const { stockUrls } = mountPackaged(scannedLot());
+    await scanLot(user);
+
+    await waitFor(() => expect(stockUrls.length).toBeGreaterThan(0));
+    expect(Object.fromEntries(stockUrls.at(-1)?.searchParams ?? [])).toMatchObject({
+      lotId: '4',
+      groupBy: 'LOCATION',
+      warehouseId: '11',
+      locationId: '21',
+    });
+  });
+
   it('US6-4 시작 단위 = 기본 단위 — 패키징 칩과 재고 「1000 EA (10봉지)」를 보이고 EA 로 열린다', async () => {
     const user = userEvent.setup();
     mountPackaged(scannedLot());
     await scanLot(user);
 
     expect(await screen.findByText('봉지 100 EA')).toBeTruthy();
-    expect(await screen.findByText('1000 EA (10봉지)')).toBeTruthy();
+    expect(await screen.findByText('1,000 EA (10봉지)')).toBeTruthy(); // 천 단위 쉼표(G2 L20)
     expect(screen.getByRole('button', { name: 'EA' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '봉지 (100 EA)' })).toHaveAttribute(
       'aria-pressed',
@@ -1734,7 +1769,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
     await user.click(await screen.findByRole('button', { name: '봉지 (100 EA)' }));
     await user.type(await screen.findByLabelText(/출고 수량/), '3');
 
-    expect(await screen.findByText('3봉지 = 300 EA')).toBeTruthy();
+    expect(await screen.findByText('⇄ 3봉지 = 300 EA')).toBeTruthy(); // 「⇄」 시안(G2 L20)
     expect(screen.getByText('피킹하면 남는 재고 700 EA (7봉지)')).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: '피킹 기록' }));

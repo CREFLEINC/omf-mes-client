@@ -63,6 +63,8 @@ export const inboundClose = {
     pending: '검사 대기 · 보류', // ui-check-ignore: C-13 설계 확정 상태 칩(screens/M-01-03.md)
     normal: '정상',
     unregister: '해제',
+    /** LOT 수량 뒤 패키징 — 「1,000 EA · 봉지 10」(M-01-01 과 같은 표기, G2 L20). */
+    package: (unit: string, count: number) => ` · ${unit} ${String(count)}`, // ui-check-ignore: C-13 설계 확정 표기 「1,000 EA · 봉지 10」(screens/M-01-01.md)
     note: '남은 상자는 M-01-01 입하 등록에서 스캔하면 마감 전까지 이 입하 LOT에 이어 들어갑니다. 공장 날짜가 바뀌면 자동 마감됩니다.',
     close: '마감',
     loading: '입하 LOT를 불러오는 중입니다',
@@ -82,6 +84,8 @@ export const inboundClose = {
     total: (count: number, qty: string) => `자재 관리 LOT ${count}개 · ${qty}.`, // ui-check-ignore: C-13 설계 확정 확인 문구(screens/M-01-03.md)
     withIqc: 'IQC 요청이 생기고',
     withoutIqc: '검사 불필요 품목이라 IQC는 「검사 생략」으로 남고',
+    /** IQC 기본 생략 기준이 없는 검사 불필요 품목(G2 L15 · US2-7). */
+    withoutIqcRecord: '검사 불필요 품목이라 IQC 기록이 생기지 않고',
     rest: ', 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 용어 「공급사·품목」(screens/M-01-03.md)
     cancel: '취소',
     proceed: '마감',

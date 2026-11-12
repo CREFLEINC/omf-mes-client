@@ -30,6 +30,7 @@ import {
   isReceiptReady,
   lineTableRowId,
   linesWithLots,
+  lotRowQtyOf,
   presentGroups,
   toLineTableRows,
   type LineTableRow,
@@ -457,9 +458,12 @@ export const LineTable = ({
       header: t.table.receivedQty,
       width: '88px',
       align: 'end',
-      /* LOT 줄은 이 발주로 온 몫이다 — 라인의 입하 수량과 맞는다. 줄 전체는 근거 칸에 따로 적는다. */
+      /*
+       * LOT 줄은 이전 데이터면 이 발주로 온 몫(줄 전체는 근거 칸에 따로), 새 흐름이면 그 자재 관리 LOT 수량이다 — 입하 LOT 배정 몫은
+       * 품목명 아래 줄이 보인다(G2 M2).
+       */
       render: (row) =>
-        row.kind === 'lot' ? formatQty(row.lot.allocatedQty) : formatQty(row.line.receivedQty),
+        row.kind === 'lot' ? formatQty(lotRowQtyOf(row.lot)) : formatQty(row.line.receivedQty),
     },
     {
       key: 'remainingQty',

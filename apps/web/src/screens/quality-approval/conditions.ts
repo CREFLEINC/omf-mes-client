@@ -2,8 +2,19 @@ import { messages } from '@omf-mes/i18n';
 
 import type { Concession, ConcessionListResponse } from './types';
 
+/**
+ * 결재 하나에 걸린 특채 조건. 005 다LOT 전량 특채(US4-4 · 계약 §10)는 같은 결재 · 같은 부적합의 자재 관리 LOT 마다 한 행이라,
+ * 그 묶음도 조건 하나로 본다(`bundle` — 행 2개 이상일 때만). 보이는 조건은 첫 행의 것이고(묶음은 같은 조건으로 만든다), 적용은
+ * 어느 행으로 불러도 묶음 전부가 적용된다(계약 `:apply`).
+ */
 export type ConcessionCardinality =
-  { kind: 'none' } | { kind: 'one'; concessionId: number } | { kind: 'unsafe' };
+  | { kind: 'none' }
+  | {
+      kind: 'one';
+      concessionId: number;
+      bundle?: { lotCount: number; approvedQty: number; consumedQty: number };
+    }
+  | { kind: 'unsafe' };
 
 export const toConcessionCardinality = (
   approvalRequestId: number,
@@ -11,16 +22,33 @@ export const toConcessionCardinality = (
 ): ConcessionCardinality => {
   if (response.page.total === 0 && response.items.length === 0) return { kind: 'none' };
 
-  const candidate = response.items[0];
+  const items = response.items;
+  const candidate = items[0];
   if (
-    response.page.total === 1 &&
-    response.items.length === 1 &&
-    candidate?.approvalRequestId === approvalRequestId
+    candidate === undefined ||
+    response.page.total !== items.length ||
+    items.some((item) => item.approvalRequestId !== approvalRequestId)
   ) {
-    return { kind: 'one', concessionId: candidate.concessionId };
+    return { kind: 'unsafe' };
   }
+  if (items.length === 1) return { kind: 'one', concessionId: candidate.concessionId };
 
-  return { kind: 'unsafe' };
+  /* 묶음 — 같은 부적합이고 LOT 이 서로 다를 때만(같은 LOT 이 두 번이면 중복이라 특정하지 않는다 · G2 H2). */
+  const sameNonconformance = items.every(
+    (item) => item.nonconformanceId === candidate.nonconformanceId,
+  );
+  const distinctLots = new Set(items.map((item) => item.lotId)).size === items.length;
+  if (!sameNonconformance || !distinctLots) return { kind: 'unsafe' };
+
+  return {
+    kind: 'one',
+    concessionId: candidate.concessionId,
+    bundle: {
+      lotCount: items.length,
+      approvedQty: items.reduce((sum, item) => sum + item.approvedQty, 0),
+      consumedQty: items.reduce((sum, item) => sum + item.consumedQty, 0),
+    },
+  };
 };
 
 export type ConditionReferenceState =

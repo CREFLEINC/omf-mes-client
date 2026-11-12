@@ -282,6 +282,34 @@ describe('보낼 것', () => {
  * 큐에 담긴 건은 서버 응답에 없다. 그 만큼을 셈에 넣지 않으면 화면이 안 집은 것으로 보여
  * 같은 라인을 다시 집게 되고, 큐에 두 건이 쌓여 둘 다 나간다 - 되돌릴 수 없는 재고 차감이다.
  */
+describe('G2 H3 같은 라인을 두 번 피킹 — 본문은 누적(서버가 대체한다 · Q23)', () => {
+  it('봉지 3(300) 뒤 EA 50 을 담으면 두 번째 본문은 350, 화면 셈도 350', () => {
+    const now = new Date('2026-11-12T10:00:00+07:00');
+    const first = toPickDraft(order(), line(), '300', 'b', now, '100027', 0);
+    const queued = queuedPicksOf([{ path: first.path, body: first.body }], 7);
+    const second = toPickDraft(
+      order(),
+      line(),
+      '50',
+      'b',
+      now,
+      '100027',
+      pickedQtyOf(line(), queued),
+    );
+    const both = queuedPicksOf(
+      [
+        { path: first.path, body: first.body },
+        { path: second.path, body: second.body },
+      ],
+      7,
+    );
+
+    expect(first.body).toMatchObject({ pickedQty: 300 });
+    expect(second.body).toMatchObject({ pickedQty: 350 });
+    expect(pickedQtyOf(line(), both)).toBe(350);
+  });
+});
+
 describe('담긴 피킹', () => {
   const entry = (pickingOrderId: number, pickingLineId: number, pickedQty: number) => ({
     path: `/logistics/picking-orders/${String(pickingOrderId)}/lines/${String(pickingLineId)}:pick`,
@@ -294,16 +322,17 @@ describe('담긴 피킹', () => {
     expect(picks).toEqual([{ pickingLineId: 41, pickedQty: 50 }]);
   });
 
-  it('같은 라인에 여러 번 담겼으면 더한다', () => {
-    expect(queuedQtyOf(line(), queuedPicksOf([entry(7, 41, 50), entry(7, 41, 30)], 7))).toBe(80);
+  /* 서버 `:pick` 이 대체하므로 담긴 본문은 누적이다 — 마지막 것이 그 라인의 집은 양(G2 H3). */
+  it('같은 라인에 여러 번 담겼으면 마지막 누적을 쓴다', () => {
+    expect(queuedQtyOf(line(), queuedPicksOf([entry(7, 41, 50), entry(7, 41, 80)], 7))).toBe(80);
   });
 
   it('피킹이 아닌 큐 항목은 세지 않는다', () => {
     expect(queuedPicksOf([{ path: '/logistics/goods-issues', body: {} }], 7)).toEqual([]);
   });
 
-  it('서버가 아는 것과 담아 둔 것을 합친다', () => {
-    const picks = queuedPicksOf([entry(7, 41, 50)], 7);
+  it('담아 둔 누적이 있으면 서버가 아는 양 대신 그것(G2 H3)', () => {
+    const picks = queuedPicksOf([entry(7, 41, 80)], 7);
 
     expect(pickedQtyOf(line({ pickedQty: 30 }), picks)).toBe(80);
     expect(remainingQtyOf(line({ pickedQty: 30 }), picks)).toBe(120);
@@ -324,8 +353,8 @@ describe('담긴 피킹', () => {
     expect(canConfirmIssue(order(), [line()], true, picks)).toBe(true);
   });
 
-  it('출고에 담아 둔 만큼을 합쳐 싣는다', () => {
-    const picks = queuedPicksOf([entry(7, 41, 50)], 7);
+  it('출고에 담아 둔 누적을 싣는다', () => {
+    const picks = queuedPicksOf([entry(7, 41, 80)], 7);
     const draft = toIssueDraft(
       order(),
       [line({ pickedQty: 30 })],

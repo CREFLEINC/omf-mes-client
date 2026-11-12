@@ -10,11 +10,12 @@ export const iqcSkipRequest = {
   record: '긴급 IQC 생략 요청',
   lot: {
     legend: '어느 자재인가',
-    scanLabel: '입하 LOT 스캔',
+    /** 자재 관리 LOT(상자 라벨)을 스캔하면 그 LOT 의 입하 LOT 전체가 대상이다(research R-16 · G2 5차). 입하 LOT 번호로는 찾지 않는다. */
+    scanLabel: '자재 관리 LOT 스캔',
     /* 스캔 칸은 스캐너 전용이라 손 입력을 여기서 받는다. */
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
-    scanPlaceholder: 'LOT 라벨을 스캔하세요',
+    scanPlaceholder: '상자 라벨을 스캔하세요 — 그 LOT 의 입하 LOT 전체가 대상', // ui-check-ignore: C-13 설계 확정 안내(research R-16)
     loading: 'LOT을 찾는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,

@@ -182,6 +182,8 @@ export interface SubmitVariables {
    * 새 흐름은 결과를 확정하지 않는다(검사 단위 판정 확정) — 부르는 쪽이 `draftOnly` 와 함께 준다. 옛 IQC · PQC · OQC 는 주지 않는다.
    */
   matchedLotIds?: number[];
+  /** 005 판정 규칙(2026-11-12) — 이 결과가 불합격 · 보류를 덮으면 재검 사유(`REINSPECTION_REASON`). 새 흐름만. */
+  reinspectionReasonCode?: string;
 }
 
 /**
@@ -268,6 +270,9 @@ export const useSubmitInspection = (
                 // 새 회차에 빈 배열은 실을 까닭이 없다 — 지울 기록이 없다.
                 ...(quantities.defects.length === 0 ? {} : { defects: quantities.defects }),
                 ...(v.matchedLotIds === undefined ? {} : { matchedLotIds: v.matchedLotIds }),
+                ...(v.reinspectionReasonCode === undefined
+                  ? {}
+                  : { reinspectionReasonCode: v.reinspectionReasonCode }),
               },
             })
           : await client.PUT('/quality/inspection-results/{inspectionResultId}', {
@@ -281,6 +286,9 @@ export const useSubmitInspection = (
               body: {
                 ...quantities,
                 ...(v.matchedLotIds === undefined ? {} : { matchedLotIds: v.matchedLotIds }),
+                ...(v.reinspectionReasonCode === undefined
+                  ? {}
+                  : { reinspectionReasonCode: v.reinspectionReasonCode }),
               },
             });
       if (draft.error !== undefined) return draft;

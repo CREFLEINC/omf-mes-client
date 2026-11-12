@@ -112,12 +112,17 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT nhập hàng không đạt — phê duyệt hạn mức cũng theo đường này',
     target: 'Đối tượng',
     targetAll: (inboundLotNo: string | null, count: number): string =>
-      `${inboundLotNo === null ? '' : `LOT nhập hàng ${inboundLotNo} · `}toàn bộ ${String(count)} LOT quản lý vật tư`,
+      `Toàn bộ ${String(count)} LOT quản lý vật tư${inboundLotNo === null ? '' : ` · LOT nhập hàng ${inboundLotNo}`}`,
     qtyLocked: 'Toàn bộ số lượng còn lại — không đổi được',
     wholeHint:
       'Đặc cách chỉ yêu cầu cho toàn bộ số lượng còn lại (không có đặc cách một phần). Nếu chỉ muốn dùng một phần, hãy dùng [Phân loại] để tách LOT quản lý vật tư lỗi trước, rồi đặc cách toàn bộ LOT nhập hàng đó.',
     pendingBanner: (concessionNo: string, count: number): string =>
       `Đặc cách ${concessionNo} đang chờ phê duyệt (W-03-09). Khi được duyệt, [Áp dụng đặc cách] sẽ giải phóng toàn bộ ${String(count)} LOT quản lý vật tư về bình thường.`,
+    approvedBanner: (concessionNo: string, count: number): string =>
+      `Đặc cách ${concessionNo} đã được duyệt — chờ áp dụng. [Áp dụng đặc cách] sẽ giải phóng toàn bộ ${String(count)} LOT quản lý vật tư về bình thường.`,
+    rejectedBanner: (concessionNo: string): string =>
+      `Phê duyệt đặc cách ${concessionNo} đã bị từ chối. Hãy đóng đặc cách này bằng [Đóng đặc cách].`,
+    close: 'Đóng đặc cách',
     targetGroup: (count: number): string => `Toàn bộ ${String(count)} LOT quản lý vật tư`,
     historyHeading: 'Lịch sử yêu cầu đặc cách',
     reasonPlaceholder: 'Nhập lý do đặc cách',
@@ -128,6 +133,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     request: 'Yêu cầu đặc cách',
     requesting: 'Đang yêu cầu…',
     apply: 'Áp dụng đặc cách',
+    applyWaiting: 'Phải phê duyệt xong (W-03-09) mới áp dụng được',
     applying: 'Đang áp dụng…',
     qty: 'Số lượng được dùng',
     validFrom: 'Ngày bắt đầu',
@@ -191,6 +197,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     typeLock: {
       closed: 'Mục không phù hợp đã kết thúc',
       concessionPending: 'Đặc cách đang chờ phê duyệt',
+      concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
       sortNoInboundLot: 'Không phù hợp trả hàng · OQC không có phân loại (không có LOT nhập hàng)',
       sortSingleLot: 'Chỉ có 1 LOT quản lý vật tư nên không phân loại được',
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',
@@ -228,6 +235,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     inspectionRequestNo: 'Kiểm tra IQC',
     supplier: 'Nhà cung cấp',
     listLine: (inboundLotNo: string): string => `LOT nhập hàng ${inboundLotNo}`,
+    sourceColumn: 'Nguồn',
+    source: { IQC: 'IQC · nhập hàng vật tư', RETURN: 'Trả hàng', PRODUCT: 'OQC · thành phẩm' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    sortedFromTail: (tail: string): string => ` · phân loại ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     bannerTitle: 'Xử lý theo đơn vị LOT nhập hàng.',
     bannerBody: (count: number): string =>
       `Một quyết định áp dụng chung cho toàn bộ ${String(count)} LOT quản lý vật tư. Không xử lý riêng từng LOT quản lý vật tư.`,
@@ -324,5 +334,30 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       PARTIAL: 'Đánh giá một phần',
       COMPLETED: 'Hoàn tất',
     },
+  },
+  /** 「지금(바뀌기 전)」 띠(005 · screens/W-03-10.md). */
+  nowBand: {
+    title: 'Trước đây (trước khi thay đổi)',
+    summary:
+      'Chia số lượng xử lý để đánh giá nhiều lần · Phân loại = tách LOT theo số lượng đạt/lỗi (LOT con) · Đặc cách = chọn 1 LOT, có thể một phần số lượng', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    expand: 'Mở rộng',
+    collapse: 'Thu gọn',
+    items: [
+      {
+        label: 'Số lượng xử lý',
+        tag: 'Đã bỏ',
+        note: 'Trước đây có thể chia số lượng xử lý và chỉ đánh giá một phần (đã nhập / chưa nhập).',
+      },
+      {
+        label: 'Số lượng đạt · lỗi (phân loại)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+        tag: 'Đã thay đổi',
+        note: 'Số lượng lỗi được tách thành LOT mới (LOT con) và trở thành sự không phù hợp mới.',
+      },
+      {
+        label: 'Yêu cầu đặc cách',
+        tag: 'Bỏ đặc cách một phần',
+        note: 'Trước đây có thể chọn một LOT và chỉ duyệt một phần số lượng; phần còn lại được tách thành LOT mới và sự không phù hợp mới.',
+      },
+    ],
   },
 };

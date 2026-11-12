@@ -30,6 +30,7 @@ import {
   lotTail,
   openBlockerAfterConflict,
   openBlockerOf,
+  packageNameOf,
   reopenBlockersOf,
   type OpenBlocker,
   reopenReasonOf,
@@ -331,26 +332,36 @@ export const InboundCloseScreen = () => {
               {target.lots.map((lot, index) => (
                 <li key={lot.lotId} className="inbound-close__lot">
                   <span className="inbound-close__index">{index + 1}</span>
+                  {/*
+                   * LOT 번호는 줄 폭을 다 쓴다 — [해제] 옆에 끼우면 360 폭에서 세 줄로 접혔다(G2 L20).
+                   * [해제]는 수량 · 상태 줄 끝으로 내린다.
+                   */}
                   <span className="inbound-close__lot-body">
-                    <span className="inbound-close__mono">{lot.lotNo}</span>
-                    <span className="inbound-close__dim">
-                      {formatQty(lot.lotQty, target.uomCode)}
+                    <span className="inbound-close__mono inbound-close__lot-no">{lot.lotNo}</span>
+                    <span className="inbound-close__lot-meta">
+                      <span className="inbound-close__dim">
+                        {formatQty(lot.lotQty, target.uomCode)}
+                        {lot.package === null
+                          ? ''
+                          : t.detail.package(packageNameOf(lot.package), lot.package.count)}
+                      </span>
+                      <Chip status={lot.statusCode === 'NORMAL' ? 'success' : 'warning'}>
+                        {lot.statusCode === 'NORMAL' ? t.detail.normal : t.detail.pending}
+                      </Chip>
+                      <Button
+                        className="inbound-close__lot-action"
+                        variant="outlined"
+                        size="lg"
+                        disabled={lockReason !== null}
+                        onClick={() => {
+                          setActionError(null);
+                          setDialog({ kind: 'unregister', lot });
+                        }}
+                      >
+                        {t.detail.unregister}
+                      </Button>
                     </span>
-                    <Chip status={lot.statusCode === 'NORMAL' ? 'success' : 'warning'}>
-                      {lot.statusCode === 'NORMAL' ? t.detail.normal : t.detail.pending}
-                    </Chip>
                   </span>
-                  <Button
-                    variant="outlined"
-                    size="lg"
-                    disabled={lockReason !== null}
-                    onClick={() => {
-                      setActionError(null);
-                      setDialog({ kind: 'unregister', lot });
-                    }}
-                  >
-                    {t.detail.unregister}
-                  </Button>
                 </li>
               ))}
             </ul>
@@ -381,7 +392,12 @@ export const InboundCloseScreen = () => {
             >
               <p className="inbound-close__text">
                 {`${t.closeDialog.total(target.lots.length, formatQty(target.receivedQty, target.uomCode))} ${
-                  target.inspectionRequired ? t.closeDialog.withIqc : t.closeDialog.withoutIqc
+                  /* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15 · US2-7). */
+                  target.inspectionRequired
+                    ? t.closeDialog.withIqc
+                    : target.iqcDefaultSkipApplies === true
+                      ? t.closeDialog.withoutIqc
+                      : t.closeDialog.withoutIqcRecord
                 }${t.closeDialog.rest}`}
               </p>
             </ConfirmDialog>

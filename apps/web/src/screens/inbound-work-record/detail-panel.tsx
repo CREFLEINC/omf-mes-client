@@ -86,7 +86,7 @@ const LotsSection = ({ detail }: { detail: WorkRecordDetail }) => (
         </thead>
         <tbody>
           {detail.lots.map((lot) => {
-            const status = materialLotStatus(lot, detail.statusCode);
+            const status = materialLotStatus(lot, detail.statusCode, detail.finalizeBlockers ?? []);
             return (
               <tr key={lot.lotId}>
                 <td className="iwr-code">{lot.lotNo}</td>

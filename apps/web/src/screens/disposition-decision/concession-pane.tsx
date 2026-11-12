@@ -7,7 +7,7 @@ import type {
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
 import { useApiClient } from '../../patterns/api-context';
@@ -103,6 +103,30 @@ export const useConcessions = (nonconformanceId: number | null) => {
         }),
       ).then((response) => response.items),
   });
+};
+
+/**
+ * 문서 스크롤을 지금 자리에 붙든다 — 다음 두 틀에서 밀렸으면 되돌린다. 정리 함수를 돌려준다.
+ * 특채 요청 창이 열리며 포커스가 옮겨갈 때 문서 전체가 위로 밀렸다(G2 L14-1 — html scrollTop 152, 앱 머리 −152, 아래 검은 띠).
+ * 셸은 문서를 굴리지 않으므로 창을 여는 순간(누른 때)의 자리를 기억해 되돌린다 — 창이 그려진 뒤 기억하면 이미 밀린 자리다.
+ */
+export const keepDocumentScroll = (): (() => void) => {
+  const root = document.scrollingElement ?? document.documentElement;
+  const top = root.scrollTop;
+  const left = root.scrollLeft;
+  const restore = (): void => {
+    if (root.scrollTop !== top) root.scrollTop = top;
+    if (root.scrollLeft !== left) root.scrollLeft = left;
+  };
+  let second = 0;
+  const first = requestAnimationFrame(() => {
+    restore();
+    second = requestAnimationFrame(restore);
+  });
+  return () => {
+    cancelAnimationFrame(first);
+    cancelAnimationFrame(second);
+  };
 };
 
 /**
@@ -280,6 +304,36 @@ export const groupConcessions = (rows: readonly Concession[]): ConcessionGroup[]
 };
 
 /**
+ * 이력 표의 [특채 적용] — 위 상자와 같은 기준으로 결재가 승인 · 반려된 때만 연다(G2 5차). 결재 대기 중이면 잠그고 까닭을 단다.
+ */
+const ApplyButton = ({
+  approvalRequestId,
+  disabled,
+  onClick,
+  children,
+}: {
+  approvalRequestId: number;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) => {
+  const approval = useConcessionApprovalStatus(approvalRequestId);
+  const decided = approval.data === 'APPROVED' || approval.data === 'REJECTED';
+
+  return (
+    <Button
+      variant="outlined"
+      size="sm"
+      disabled={disabled || !decided}
+      title={decided ? undefined : t.applyWaiting}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+};
+
+/**
  * 특채 요청 이력 — 상세 아래 「특채 요청 이력」 탭의 내용(#223). 결재 대기 특채는 처분 대기 탭에서만 적용한다.
  */
 export const ConcessionHistory = ({
@@ -378,9 +432,8 @@ export const ConcessionHistory = ({
       header: t.columns.status,
       render: (group) =>
         group.first.statusCode === PENDING && !readOnly ? (
-          <Button
-            variant="outlined"
-            size="sm"
+          <ApplyButton
+            approvalRequestId={group.first.approvalRequestId}
             disabled={applyWrite.isSaving}
             onClick={() => {
               setNotice(null);
@@ -390,7 +443,7 @@ export const ConcessionHistory = ({
             }}
           >
             {applyWrite.isSaving ? t.applying : t.apply}
-          </Button>
+          </ApplyButton>
         ) : (
           statusChip(group.first)
         ),
@@ -418,6 +471,93 @@ export const ConcessionHistory = ({
           }
         />
       </div>
+    </div>
+  );
+};
+
+/** 특채 결재 요청의 상태(W-03-09) — 특채는 적용 전까지 PENDING 이라 결재가 끝났는지는 결재 요청이 말한다(G2 M3). */
+export const useConcessionApprovalStatus = (approvalRequestId: number | null) => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: [...dispositionKeys.all, 'concession-approval', approvalRequestId ?? 0] as const,
+    enabled: approvalRequestId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-requests/{approvalRequestId}', {
+          params: { path: { approvalRequestId: approvalRequestId as number } },
+        }),
+      ).then((detail) => detail.request.statusCode),
+  });
+};
+
+export interface PendingConcessionBoxProps {
+  concession: Concession;
+  /** 이 결재로 묶인 자재 관리 LOT 수. */
+  lotCount: number;
+}
+
+/**
+ * 처분 판정 상자의 「적용 전 특채」 줄(screens/W-03-10.md · 시안 W0310-After — 같은 상자에 [특채 적용]). 결재 대기면 「결재 대기 중」,
+ * 승인이면 「승인됨 — 적용 대기」와 [특채 적용], 반려면 [특채 닫기](적용 경로가 반려를 닫는다)(G2 M3).
+ */
+export const PendingConcessionBox = ({ concession, lotCount }: PendingConcessionBoxProps) => {
+  const { client } = useApiClient();
+  const approval = useConcessionApprovalStatus(concession.approvalRequestId);
+  const [notice, setNotice] = useState<string | null>(null);
+  const applyWrite = useMasterWrite<{ concessionId: number }, ConcessionAppliedForward>({
+    request: ({ concessionId }, headers) =>
+      client.POST('/quality/concessions/{concessionId}:apply', {
+        params: {
+          path: { concessionId },
+          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+        },
+        body: { businessDate: toBusinessDate(new Date()) },
+      }),
+    etagPath: null,
+    invalidateKeys: [dispositionKeys.all],
+    knownFields: [],
+    keyLifetime: 'until-applied',
+    onSuccess: (data) =>
+      setNotice(
+        data.statusCode === 'REJECTED'
+          ? t.rejected
+          : lotCount > 1
+            ? t.appliedLots(lotCount)
+            : t.applied,
+      ),
+  });
+  const status = approval.data;
+  const decided = status === 'APPROVED' || status === 'REJECTED';
+
+  return (
+    <div
+      className="iqc-inspection-action-note disposition-pending-concession"
+      data-tone={status === 'APPROVED' ? 'success' : 'warning'}
+      role="status"
+    >
+      <span>
+        {status === 'APPROVED'
+          ? t.approvedBanner(concession.concessionNo, lotCount)
+          : status === 'REJECTED'
+            ? t.rejectedBanner(concession.concessionNo)
+            : t.pendingBanner(concession.concessionNo, lotCount)}
+      </span>
+      {decided ? (
+        <Button
+          size="sm"
+          variant={status === 'APPROVED' ? 'filled' : 'outlined'}
+          loading={applyWrite.isSaving}
+          onClick={() => {
+            setNotice(null);
+            /* 묶음 중 어느 행으로 불러도 같은 결재의 대기 행 전부가 함께 적용된다(계약 §10). */
+            applyWrite.write({ concessionId: concession.concessionId });
+          }}
+        >
+          {status === 'APPROVED' ? t.apply : t.close}
+        </Button>
+      ) : null}
+      <SaveErrorBanner error={applyWrite.error} />
+      {notice !== null && <span className="field-note">{notice}</span>}
     </div>
   );
 };

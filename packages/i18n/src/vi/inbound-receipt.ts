@@ -108,6 +108,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     body: 'Khi chốt sẽ tạo yêu cầu IQC và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
     bodyNoInspection:
       'Mặt hàng không cần kiểm tra nên khi chốt IQC sẽ ghi là 「bỏ qua kiểm tra」, và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
+    bodyNoIqcRecord:
+      'Mặt hàng không cần kiểm tra nên khi chốt sẽ không tạo bản ghi IQC, và LOT nhập hàng này không nhận thêm hay gỡ được nữa. Quét lại cùng nhà cung cấp · mặt hàng sẽ tạo LOT nhập hàng mới.',
     cancel: 'Hủy',
     confirm: 'Chốt',
     toast: (inboundLotNo: string, iqcNo: string | null) =>

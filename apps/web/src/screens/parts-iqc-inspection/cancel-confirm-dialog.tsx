@@ -10,7 +10,21 @@ const t = messages.iqcInboundLot.cancel;
 export interface ConfirmBlocker {
   code: string;
   message: string;
+  /** 막은 자재 관리 LOT 번호(서버 `lotNos` · G2 L12). 있으면 서버 문구 대신 이것을 보인다. */
+  lotNos?: readonly string[];
 }
+
+const HANGUL = /[\u3131-\uD79D]/u;
+
+/**
+ * 막힘 한 줄의 덧붙임 — LOT 번호가 있으면 그것, 없으면 서버 문구가 LOT 번호 같은 값일 때만(한국어 문장이면 빼서 베트남어 화면에
+ * 한국어가 붙지 않게 · G2 L12).
+ */
+export const blockerDetailOf = (blocker: ConfirmBlocker, label: string): string | null => {
+  if (blocker.lotNos !== undefined && blocker.lotNos.length > 0) return blocker.lotNos.join(', ');
+  const message = blocker.message.trim();
+  return message === '' || message === label || HANGUL.test(message) ? null : message;
+};
 
 /**
  * 판정 확정 취소 확인 창(권한 W-01-15 · screens/W-01-01.md 「확정 취소」 · US5-1). 사유는 선택.
@@ -92,13 +106,12 @@ export const CancelBlockedDialog = ({
     <ul className="iqc-inbound-confirm-lines">
       {blockers.map((blocker) => {
         const text = t.blockers[blocker.code] ?? blocker.code;
+        const detail = blockerDetailOf(blocker, text);
 
         return (
           <li key={`${blocker.code}-${blocker.message}`}>
             <strong>{text}</strong>
-            {blocker.message.trim() === '' || blocker.message === text ? null : (
-              <span className="parts-iqc-muted"> {blocker.message}</span>
-            )}
+            {detail === null ? null : <span className="parts-iqc-muted"> {detail}</span>}
           </li>
         );
       })}

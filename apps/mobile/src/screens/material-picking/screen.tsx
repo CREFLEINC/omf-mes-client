@@ -19,6 +19,7 @@ import {
   checkEntry,
   conversionText,
   enteredText,
+  formatPackQty,
   packageUnitOf,
   qtyText,
   wholePackagesOf,
@@ -275,7 +276,13 @@ export const MaterialPickingScreen = () => {
   const byPackage = packageUnit !== null && entryUnit === PACKAGE_UNIT;
   const uoms = useUomCodes(foundLot !== null);
   const baseUom = uomLabelOf(uoms.data, line?.uomId);
-  const lotStock = useLotStock(lotMatched ? line.lotId : null);
+  /* 피킹 위치(라인의 출발 창고 · 위치) 재고만 센다(G2 M-a). */
+  const lotStock = useLotStock(
+    lotMatched ? line.lotId : null,
+    lotMatched && order !== null
+      ? { warehouseId: order.warehouseId, locationId: line.locationId }
+      : null,
+  );
   /* 피킹만으로는 현재고가 줄지 않는다. 집어 두고 아직 내보내지 않은 양을 빼서 보인다. */
   const stockNow =
     line === null || lotStock.data === null || lotStock.data === undefined
@@ -428,6 +435,8 @@ export const MaterialPickingScreen = () => {
         batchIdOf(order.pickingOrderId),
         new Date(),
         worker.workerNo,
+        /* 서버가 대체하므로 누적을 보낸다(G2 H3). */
+        pickedQtyOf(line, queued),
       );
 
       /* 담기지 못하면 집은 것이 어디에도 없다. 말하지 않으면 사람은 집힌 줄 안다. */
@@ -571,7 +580,7 @@ export const MaterialPickingScreen = () => {
                 {
                   pickingLineId: each.pickingLineId ?? 0,
                   label: picked.entered.join(' + '),
-                  qty: t.pack.qty(String(each.issueQty), uomLabelOf(uoms.data, each.uomId)),
+                  qty: t.pack.qty(formatPackQty(each.issueQty), uomLabelOf(uoms.data, each.uomId)),
                   left: picked.left,
                 },
               ];
@@ -597,6 +606,8 @@ export const MaterialPickingScreen = () => {
         await queryClient.invalidateQueries({
           queryKey: pickingKeys.order(order.pickingOrderId),
         });
+        /* 출고로 위치 재고가 줄었다 — 다시 스캔했을 때 옛 재고가 잠깐 보이지 않게 지운다(G2 5차). */
+        await queryClient.resetQueries({ queryKey: pickingKeys.stocks() });
       }
 
       setOutcome(settled);
@@ -693,7 +704,7 @@ export const MaterialPickingScreen = () => {
         case 'overPackages':
           return t.pack.problem.overPackages(
             packageUnit.unitName,
-            String(stockNow === null ? 0 : wholePackagesOf(stockNow, packageUnit)),
+            formatPackQty(stockNow === null ? 0 : wholePackagesOf(stockNow, packageUnit)),
           );
         case 'overPlanned':
           return t.pack.problem.overPlanned(
@@ -709,7 +720,7 @@ export const MaterialPickingScreen = () => {
     }
 
     return trouble === 'overPlanned'
-      ? t.qty.problem.overPlanned(String(remainingQtyOf(line, queued)))
+      ? t.qty.problem.overPlanned(formatPackQty(remainingQtyOf(line, queued)))
       : t.qty.problem[trouble];
   };
 
@@ -860,11 +871,14 @@ export const MaterialPickingScreen = () => {
                     )}
                   </span>
                   <span className="picking-out__line-qty">
-                    {t.lines.planned(String(each.plannedQty), String(pickedQtyOf(each, queued)))}
+                    {t.lines.planned(
+                      formatPackQty(each.plannedQty),
+                      formatPackQty(pickedQtyOf(each, queued)),
+                    )}
                   </span>
                   {queuedQtyOf(each, queued) === 0 ? null : (
                     <span className="picking-out__line-note">
-                      {t.lines.queued(String(queuedQtyOf(each, queued)))}
+                      {t.lines.queued(formatPackQty(queuedQtyOf(each, queued)))}
                     </span>
                   )}
                   {each.lotNo === null || each.lotNo === undefined ? null : (
@@ -921,7 +935,11 @@ export const MaterialPickingScreen = () => {
                 <Chip status="success">{t.scan.matched}</Chip>
                 {packageUnit === null ? null : (
                   <Chip status="info">
-                    {t.pack.chip(packageUnit.unitName, String(packageUnit.qtyPerPackage), baseUom)}
+                    {t.pack.chip(
+                      packageUnit.unitName,
+                      formatPackQty(packageUnit.qtyPerPackage),
+                      baseUom,
+                    )}
                   </Chip>
                 )}
               </div>
@@ -962,7 +980,7 @@ export const MaterialPickingScreen = () => {
                         PACKAGE_UNIT,
                         t.pack.unitPackage(
                           packageUnit.unitName,
-                          String(packageUnit.qtyPerPackage),
+                          formatPackQty(packageUnit.qtyPerPackage),
                           baseUom,
                         ),
                       ],
@@ -1063,7 +1081,12 @@ export const MaterialPickingScreen = () => {
         )}
         {defaultIssueType !== null ? null : <p className="picking-out__note">{t.issueTypeNote}</p>}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
-        {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
+        {/*
+         * 이 화면이 지금 보내는 중이면 큐에 잠깐 실린 그 출고다 — 「이미 전송 대기 중」이라 하지 않는다(G2 5차 · 요청은 한 번).
+         */}
+        {queuedIssues === 0 || busy ? null : (
+          <AlertBanner variant="warning" title={t.issueQueued} />
+        )}
         {/*
           ⛔ **「집어 둔 것을 다 내보냈다」와 「지시가 끝났다」를 가른다.** 부분 출고 직후에는
           앞의 것이 참인데 계획에는 아직 남은 수량이 있다 — 한 문구로 합치면 작업자가 끝난

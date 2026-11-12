@@ -10,8 +10,7 @@ import { formatPlantDateTime } from '../../patterns/plant-time';
 import { packageCountOf, parseQtyInput } from '../../patterns/package-qty';
 
 /**
- * W-06-25 공급사·품목 기본 정보가 읽고 쓰는 모양 — 선행 계약(`forward-contract.ts`, 설계 계약 §9)의 별칭.
- * 서버 S3 병합 뒤 `gen:api` 생성 타입으로 바꾼다(T111).
+ * W-06-25 공급사·품목 기본 정보가 읽고 쓰는 모양 — 생성 타입(설계 계약 §9)의 별칭.
  */
 export type { SupplierItemDefault, SupplierItemDefaultCreate, SupplierItemDefaultUpdate };
 

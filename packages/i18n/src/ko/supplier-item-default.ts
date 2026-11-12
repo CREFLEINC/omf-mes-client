@@ -97,7 +97,7 @@ export const supplierItemDefault = {
     confirm: '지우기',
   },
   toast: {
-    saved: (supplier: string, item: string) => `${supplier}, ${item} 기본 정보를 저장했습니다`,
+    saved: (supplier: string, item: string) => `${supplier} · ${item} 기본 정보를 저장했습니다`, // ui-check-ignore: C-13 설계 확정 저장 알림(screens/W-06-25.md · G2 L18)
     deleted: '지웠습니다',
   },
 } as const;

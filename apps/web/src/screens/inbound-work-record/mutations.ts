@@ -48,6 +48,10 @@ const readDetails = (body: unknown): ErrorDetails | null => {
     const lineId = numberOrUndefined(source.purchaseOrderLineId);
     const maxQty = numberOrUndefined(source.maxQty);
     const unallocatedQty = numberOrUndefined(source.unallocatedQty);
+    const receivedQty = numberOrUndefined(source.receivedQty);
+    const allocatedQty = numberOrUndefined(source.allocatedQty);
+    if (receivedQty !== undefined) details.receivedQty = receivedQty;
+    if (allocatedQty !== undefined) details.allocatedQty = allocatedQty;
     if (lineId !== undefined) details.purchaseOrderLineId = lineId;
     if (maxQty !== undefined) details.maxQty = maxQty;
     if (unallocatedQty !== undefined) details.unallocatedQty = unallocatedQty;

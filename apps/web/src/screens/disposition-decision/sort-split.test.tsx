@@ -80,7 +80,7 @@ describe('W-03-10 선별', () => {
     // 저장하면 무엇이 일어나는지 미리 보인다 — 번호는 실행 응답으로만 안다.
     expect(screen.getByText(t.sort.previewRest('0001, 0002', '2,000 EA'))).toBeInTheDocument();
     expect(screen.getByText(t.sort.previewMoved('0003', '1,000 EA'))).toBeInTheDocument();
-    await user.type(screen.getByLabelText(t.sort.defectQty), '12');
+    await user.type(screen.getByLabelText(t.sort.defectQty), '1050');
     await user.type(screen.getByLabelText(t.form.reasonLabel), '합성 선별 사유');
     await user.click(screen.getByRole('button', { name: t.sort.save }));
 
@@ -89,7 +89,7 @@ describe('W-03-10 선별', () => {
     await expect(sortPost()?.json()).resolves.toEqual({
       dispositionTypeCode: 'SORT',
       lotIds: [8203],
-      defectQty: 12,
+      defectQty: 1050,
       reason: '합성 선별 사유',
     });
     expect(await screen.findByText(t.sort.resultTitle)).toBeInTheDocument();
@@ -100,7 +100,8 @@ describe('W-03-10 선별', () => {
     expect(
       screen.getByText(t.sort.toast('0003', 'SAMPLE-IL-0502', 'SAMPLE-NC-0052')),
     ).toBeInTheDocument();
-    expect(screen.getByText(t.sort.resultInfo(t.values.unknownQty, '12'))).toBeInTheDocument();
+    // 정보 수량은 천 단위 쉼표(G2 L6).
+    expect(screen.getByText(t.sort.resultInfo(t.values.unknownQty, '1,050'))).toBeInTheDocument();
 
     // 새 부적합은 링크 — 누르면 그 부적합을 연다.
     await user.click(screen.getByRole('button', { name: 'SAMPLE-NC-0052' }));

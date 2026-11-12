@@ -1,10 +1,9 @@
-import type { components, FourMChangeForward, InboundLotColumns } from '@omf-mes/api-client';
+import type { components, FourMChangeForward } from '@omf-mes/api-client';
 
 type Lot = components['schemas']['Lot'];
 
-/** 005 FR-035 — 입하 LOT 칸을 더한 모양(api-client 덧댐). 칸이 없는 응답도 받도록 선택으로 둔다 — 없으면 null. */
-type LotQualityStatusResponse = components['schemas']['LotQualityStatus'] &
-  Partial<InboundLotColumns>;
+/** 005 FR-035 — 입하 LOT 칸(`inboundLotId` · `inboundLotNo`)이 실린 모양. */
+type LotQualityStatusResponse = components['schemas']['LotQualityStatus'];
 type LotDetailResponse = components['schemas']['LotDetailResponse'];
 type LotStatusSummaryResponse = components['schemas']['LotStatusSummary'];
 type LotHoldResponse = components['schemas']['LotHold'];

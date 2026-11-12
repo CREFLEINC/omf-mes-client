@@ -81,7 +81,7 @@ const defaultRow = (
   uomId: 1,
   uomCode: 'EA',
   lotQty: 1000,
-  package: { uomId: 11, uomCode: '봉지', count: 10, qtyPerPackage: 100 },
+  package: { uomId: 11, uomCode: '봉지', uomName: '봉지', count: 10, qtyPerPackage: 100 },
   remarks: null,
   versionNo: 3,
   updatedAt: '2026-11-11T02:02:00Z',
@@ -112,7 +112,10 @@ interface Write {
   body: unknown;
 }
 
-const setup = (respondWrite?: (method: string, path: string) => Response | undefined) => {
+const setup = (
+  respondWrite?: (method: string, path: string) => Response | undefined,
+  options: { uoms?: readonly (typeof UOMS)[number][] } = {},
+) => {
   const writes: Write[] = [];
   const gets: URL[] = [];
   const pathOf = (request: Request) => new URL(request.url).pathname;
@@ -122,7 +125,10 @@ const setup = (respondWrite?: (method: string, path: string) => Response | undef
 
   const routes: StubRoute[] = [
     { match: (r) => isGet(r, '/mdm/plants'), respond: () => jsonResponse(page([PLANT])) },
-    { match: (r) => isGet(r, '/mdm/uoms'), respond: () => jsonResponse({ items: UOMS }) },
+    {
+      match: (r) => isGet(r, '/mdm/uoms'),
+      respond: () => jsonResponse({ items: options.uoms ?? UOMS }),
+    },
     { match: (r) => isGet(r, '/mdm/partners'), respond: () => jsonResponse(page(PARTNERS)) },
     {
       match: (r) => r.method === 'GET' && pathOf(r).startsWith('/mdm/partners/'),
@@ -303,6 +309,68 @@ describe('W-06-25 공급사·품목 기본 정보', () => {
       },
     });
     expect(await screen.findByText(t.toast.saved('합성 공급사 가', 'SYN-CAP'))).toBeInTheDocument();
+  });
+
+  /* 실기 접근성 트리에서 이름 없는 단추로 보고됐다 — 역할 · 이름으로 찾혀야 한다(G2 L22). */
+  it('G2 L22 조건 줄의 [초기화] · 목록 머리의 [추가]는 이름 있는 단추다', async () => {
+    setup();
+    await table();
+
+    expect(screen.getByRole('button', { name: t.filters.reset })).toHaveAccessibleName('초기화');
+    expect(screen.getByRole('button', { name: t.add })).toHaveAccessibleName('추가');
+  });
+
+  it('G2 L17 패키징 단위는 코드가 아니라 이름(봉지)으로 — 보관 단위 안내 · 고르는 칸 · 「= 봉지 10개」', async () => {
+    const { user } = setup(undefined, {
+      uoms: UOMS.map((uom) => (uom.uomId === 11 ? { ...uom, uomCode: 'SYN-BAG' } : uom)),
+    });
+    const dialog = await openAdd(user);
+
+    await pick(user, dialog, td.supplier, 'SYN-S2 · 합성 공급사 나');
+    await pick(user, dialog, td.item, 'SYN-CAP · 합성 캡');
+
+    expect(await dialog.findByText('품목 기본 보관 단위: 봉지 100 EA')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(dialog.getByRole('combobox', { name: td.packageUom })).toHaveTextContent('봉지'),
+    );
+    await user.type(dialog.getByLabelText(new RegExp(td.lotQty)), '1000');
+    expect(dialog.getByText('= 봉지 10개')).toBeInTheDocument();
+    expect(dialog.queryByText(/SYN-BAG/)).toBeNull();
+  });
+
+  it('G2 L18 재고 수량 칸 옆 한 줄에 「EA」 · 「= 봉지 10개」, 오류 줄 자리는 늘 있고, 저장 알림은 「·」로 잇는다', async () => {
+    const { user } = setup();
+    await user.click(
+      (await rowOf('SYN-CAP')).getByRole('button', {
+        name: t.editRow('합성 공급사 가', 'SYN-CAP'),
+      }),
+    );
+    const dialog = within(await screen.findByRole('dialog', { name: td.editTitle }));
+    const lot = dialog.getByLabelText(new RegExp(td.lotQty));
+
+    /* 단위와 패키징 수는 칸의 도움말(칸 아래)이 아니라 칸과 같은 줄에 선다. */
+    const count = await dialog.findByText('= 봉지 10개');
+    const row = count.closest('.supplier-item-default-qty-row');
+    expect(row).not.toBeNull();
+    expect(row).toContainElement(lot);
+    expect(row).toHaveTextContent('EA= 봉지 10개');
+
+    /* 오류가 없어도 오류 줄 자리는 남아 있다 — 생기고 사라질 때 창 높이가 흔들리지 않는다. */
+    const errorLine = dialog.getByRole('alert');
+    expect(errorLine).toHaveTextContent('');
+    await user.clear(lot);
+    await user.type(lot, '1050');
+    expect(dialog.getByRole('alert')).toBe(errorLine);
+    expect(errorLine).toHaveTextContent('정수배여야 합니다');
+    await user.clear(lot);
+    await user.type(lot, '2000');
+    expect(dialog.getByRole('alert')).toBe(errorLine);
+    expect(errorLine).toHaveTextContent('');
+
+    await user.click(dialog.getByRole('button', { name: td.save }));
+    expect(
+      await screen.findByText('합성 공급사 가 · SYN-CAP 기본 정보를 저장했습니다'),
+    ).toBeInTheDocument();
   });
 
   it('US1-9 추가 — 이미 있는 공급사 · 품목은 화면이 막고, 서버 409 DUPLICATE 도 안내한다', async () => {

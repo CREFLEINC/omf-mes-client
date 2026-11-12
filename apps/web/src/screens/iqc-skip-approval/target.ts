@@ -163,20 +163,20 @@ export const targetInboundLotOf = (
     : { inboundLotNo: no, lotCount: executed?.lotCount ?? null };
 };
 
-/** 409 — 업무 사유로 막혔다. */
-const CONFLICT_STATUS = 409;
+/** 입하 중(마감 전) 입하 LOT 이라 막혔다는 업무 코드(서버 S12 · G2 — `errors[].code`). */
+const INBOUND_LOT_RECEIVING = 'INBOUND_LOT_RECEIVING';
 
 /**
- * 생략 실행이 「입하 LOT 이 아직 입하 중」으로 막혔는가(005 FR-032 — 마감된 입하 LOT 만).
- *
- * 계약은 「그 밖 409」로만 적고 코드를 정하지 않았다 — 상태 코드로 가른다(C5 정함). 업무 코드 없이 원인만
- * 실린 409(다른 사용자가 먼저 고침)는 이 안내가 아니다.
+ * 되돌아온 이유가 「입하 LOT 이 아직 입하 중」인가(005 FR-032 — 마감된 입하 LOT 만). 서버가 `errors[].code`
+ * `INBOUND_LOT_RECEIVING` 으로 준다(G2 — 전에는 409 상태로만 갈랐다). 맨 위 `code` 도 읽는다.
  */
-export const isInboundLotReceiving = (error: ApiError | null): boolean =>
-  error !== null &&
-  error.kind !== 'network' &&
-  error.status === CONFLICT_STATUS &&
-  !(error.kind === 'conflict' && error.code === undefined);
+export const isInboundLotReceiving = (error: ApiError | null): boolean => {
+  if (error === null || error.kind === 'network') return false;
+  if ('errors' in error && error.errors.some((item) => item.code === INBOUND_LOT_RECEIVING)) {
+    return true;
+  }
+  return 'code' in error && error.code === INBOUND_LOT_RECEIVING;
+};
 
 /**
  * W-01-02 생략 실행 대상(005 FR-032 · 총괄 결정 2026-11-12).
@@ -191,13 +191,17 @@ export const isInboundLotReceiving = (error: ApiError | null): boolean =>
  * | `lot` | 이 LOT 으로 상태를 읽고 실행한다 |
  * | `noLot` | 대표 LOT 이 오지 않았다 — 실행을 까닭과 함께 잠근다 |
  */
-export type SkipExecuteTarget = { kind: 'lot'; lotId: number } | { kind: 'noLot' };
+export type SkipExecuteTarget =
+  | { kind: 'lot'; lotId: number }
+  | { kind: 'noLot' }
+  /** 입하 마감 취소로 생략이 무효가 됐다 — 실행을 잠그고 까닭을 보인다(G2 L11). */
+  | { kind: 'voided' };
 
 export const skipExecuteTargetOf = (
   request: {
     approvalTypeCode: string;
     statusCode: string;
-    target: { targetLotId?: number | null };
+    target: { targetLotId?: number | null; targetVoided?: boolean | null };
   },
   iqcSkipTypeCode: string | null,
 ): SkipExecuteTarget | null => {
@@ -209,6 +213,7 @@ export const skipExecuteTargetOf = (
     return null;
   }
 
+  if (request.target.targetVoided === true) return { kind: 'voided' };
   const lotId = request.target.targetLotId;
 
   return lotId === null || lotId === undefined ? { kind: 'noLot' } : { kind: 'lot', lotId };

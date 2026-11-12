@@ -225,6 +225,82 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
       t.form.typeLock.concessionPending,
     );
+    /* 다LOT 묶음(행 둘 · 결재 하나)은 이력 탭에서 1건으로 센다(G2 L-d). */
+    expect(
+      screen.getByRole('tab', {
+        name: `${t.concession.foldTitle} ${t.concession.count(1)}`.trim(),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('US4-4 G2 M3 결재가 승인된 특채는 「승인됨 — 적용 대기」이고 [특채 적용]이 처분 판정 상자 안에 있다', async () => {
+    const pending = {
+      concessionId: 61,
+      concessionNo: 'SAMPLE-CN-0061',
+      nonconformanceId: 41,
+      lotId: 8101,
+      approvedQty: 1000,
+      consumedQty: 0,
+      uomId: 7001,
+      validFrom: '2026-11-11',
+      approvalRequestId: 77,
+      statusCode: 'PENDING',
+    };
+    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'APPROVED' });
+
+    const banner = await screen.findByText(t.concession.approvedBanner('SAMPLE-CN-0061', 3));
+    const box = banner.closest('.disposition-pending-concession') as HTMLElement;
+    /* 처분 판정 상자 안 — 「특채 요청 이력」 탭에만 있지 않다. */
+    expect(box.closest('.disposition-decision-card')).not.toBeNull();
+    expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061', 3))).toBeNull();
+
+    /* 처분 유형 막힘 문구도 같은 상태로(G2 L-d). */
+    expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
+      t.form.typeLock.concessionApproved,
+    );
+
+    await user.click(within(box).getByRole('button', { name: t.concession.apply }));
+    await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
+  });
+
+  it('G2 L10 취소된 부적합(CANCELLED · IQC 확정 취소로 생김)은 처분 대기 목록에 나오지 않는다', async () => {
+    renderInbound({ nonconformance: { ...INBOUND_NONCONFORMANCE, statusCode: 'CANCELLED' } });
+
+    await waitFor(() =>
+      expect(
+        requestsSent().some(
+          (request) => new URL(request.url).pathname === '/quality/nonconformances',
+        ),
+      ).toBe(true),
+    );
+    expect(await screen.findByText(t.empty.title)).toBeInTheDocument();
+    expect(document.querySelector('[data-nc-id="41"]')).toBeNull();
+    /* 탭 숫자도 행 수와 같다 — 취소 건을 덜어 0 이 되어 배지가 없다(G2 L-b · 서버 total 은 1). */
+    expect(screen.queryByLabelText(t.tabs.pendingCount(1))).toBeNull();
+  });
+
+  it('G2 5차 결재 대기 중(승인 전)에는 특채 이력 표의 [특채 적용]이 잠긴다 — 위 상자와 같은 기준', async () => {
+    const pending = {
+      concessionId: 61,
+      concessionNo: 'SAMPLE-CN-0061',
+      nonconformanceId: 41,
+      lotId: 8101,
+      approvedQty: 1000,
+      consumedQty: 0,
+      uomId: 7001,
+      validFrom: '2026-11-11',
+      approvalRequestId: 77,
+      statusCode: 'PENDING',
+    };
+    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'PENDING' });
+
+    await user.click(
+      await screen.findByRole('tab', {
+        name: `${t.concession.foldTitle} ${t.concession.count(1)}`.trim(),
+      }),
+    );
+    const history = await screen.findByRole('group', { name: t.concession.historyHeading });
+    expect(await within(history).findByRole('button', { name: t.concession.apply })).toBeDisabled();
   });
 
   it('「지금」 띠는 접힌 채로 시작하고, 펼치면 바뀌기 전 방식을 보인다', async () => {

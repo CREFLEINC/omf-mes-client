@@ -10,6 +10,12 @@ import { plantDateTime, plantShortDateTime } from '../../patterns/plant-time';
 export const formatQty = (qty: number, uomCode: string): string =>
   `${qty.toLocaleString('ko-KR', { maximumFractionDigits: 6 })} ${uomCode}`;
 
+/** 패키징 단위 이름(「봉지」) — 이름이 비면 코드(G2 L20 · M-01-01 과 같게). */
+export const packageNameOf = (pkg: { uomCode: string; uomName?: string | null }): string => {
+  const name = pkg.uomName?.trim() ?? '';
+  return name === '' ? pkg.uomCode : name;
+};
+
 /** 「11-11 08:05」 — 공장 시각(G1). 읽지 못하면 받은 그대로. */
 export const shortWhen = (iso: string | null): string =>
   iso === null ? '' : plantShortDateTime(iso);

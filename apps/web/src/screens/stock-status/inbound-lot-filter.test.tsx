@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -112,6 +112,32 @@ describe('FR-035 W-01-07 재고 현황 — 입하 LOT 칸 · 거르기', () => {
     ).toHaveTextContent(IL_NO);
     /* 둘째 줄(입하 LOT 없음)에는 번호도 대시도 없다 — 단추는 하나뿐이다. */
     expect(screen.getAllByRole('button', { name: /^입하 LOT .+로 거르기$/ })).toHaveLength(1);
+  });
+
+  it('G2 L21 입하 LOT 칸에 번호를 넣고 Enter 를 누르면 그 번호로 조회한다', async () => {
+    const { balanceRequests, user } = renderScreen('');
+
+    const field = await screen.findByRole('searchbox', { name: t.fields.inboundLotNo });
+    await user.type(field, `${IL_NO}{Enter}`);
+
+    await waitFor(() =>
+      expect(lastRequest(balanceRequests).searchParams.get('inboundLotNo')).toBe(IL_NO),
+    );
+  });
+
+  it('G2 L21 번호와 Enter 가 한꺼번에 와도(스캐너 · 붙여 넣기) 칸에 든 번호로 조회한다', async () => {
+    const { balanceRequests } = renderScreen('');
+
+    const field = (await screen.findByRole('searchbox', {
+      name: t.fields.inboundLotNo,
+    })) as HTMLInputElement;
+    /* 화면 상태가 따라오기 전에 Enter 가 닿은 셈 — 칸의 글자만 바뀌어 있다. */
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, IL_NO);
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(lastRequest(balanceRequests).searchParams.get('inboundLotNo')).toBe(IL_NO),
+    );
   });
 
   it('FR-035 품목별 보기에는 「입하 LOT」 칸이 없다', async () => {

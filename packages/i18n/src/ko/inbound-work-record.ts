@@ -114,6 +114,8 @@ export const inboundWorkRecord = {
     },
     lotStatus: {
       received: '입고됨',
+      /** 입고 뒤 입고 취소를 요청한 LOT(G2 L5). */
+      receiptCancelPending: '입고 취소 요청 중',
       returned: '반품 처분 끝',
       disposed: '폐기 처분 끝',
       dispositionInProgress: '처분 진행 중',

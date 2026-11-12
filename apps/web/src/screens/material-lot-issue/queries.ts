@@ -4,9 +4,11 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { runRequest } from '../../patterns/request';
+import { inDataScope } from '../supplier-item-default/queries';
 import type { Defaults, Group } from './types';
 
 type Plant = components['schemas']['Plant'];
+type SessionScope = components['schemas']['SessionScope'];
 
 export const materialLotIssueKeys = {
   all: ['material-lot-issue'] as const,
@@ -15,8 +17,11 @@ export const materialLotIssueKeys = {
   defaults: (plantId: number) => ['material-lot-issue', 'defaults', plantId] as const,
 };
 
-/** 공장 목록 — 쓰는 공장만, 코드 순. */
-export const usePlants = (): UseQueryResult<Plant[]> => {
+/**
+ * 공장 목록 — 쓰는 공장 중 세션 데이터 범위 안의 것만, 코드 순. 첫 공장이 기본이라 범위로 거르지 않으면
+ * 사용자의 공장이 아닌 공장(코드가 앞선 공장)으로 열린다 — W-06-25 와 같게 거른다(G2 L21).
+ */
+export const usePlants = (scopes: readonly SessionScope[]): UseQueryResult<Plant[]> => {
   const { client } = useApiClient();
   return useQuery({
     queryKey: materialLotIssueKeys.plants,
@@ -28,7 +33,7 @@ export const usePlants = (): UseQueryResult<Plant[]> => {
       ).items,
     select: (plants) =>
       plants
-        .filter((plant) => plant.isActive)
+        .filter((plant) => plant.isActive && inDataScope(plant, scopes))
         .sort((left, right) => left.plantCode.localeCompare(right.plantCode)),
   });
 };

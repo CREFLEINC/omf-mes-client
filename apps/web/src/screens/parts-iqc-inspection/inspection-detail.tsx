@@ -78,6 +78,7 @@ import { latestRound } from '../iqc-inspection/types';
 import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
+import { splitRuleErrors } from './lot-judgment';
 import { useInboundInspection } from './inbound-queries';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
@@ -398,6 +399,12 @@ export const InspectionDetail = ({
     );
   };
 
+  /*
+   * ⚠ 훅은 새 흐름 조기 반환보다 앞에 둔다 — 로딩 중(옛 상세 길)과 데이터 도착 뒤(새 흐름 길)의 훅 개수가 같아야 한다(G2 H1).
+   * 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04).
+   */
+  const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
+
   if (inboundFlow && detail.data !== undefined) {
     const aql = version.data?.aqlValue;
     const planText = [
@@ -420,8 +427,6 @@ export const InspectionDetail = ({
     );
   }
 
-  /* 고른 탭은 의뢰마다 처음부터. 확정이 끝난 의뢰는 「검사 진행」 탭을 두지 않고 이력만 보인다(사용자 지시 2026-11-04). */
-  const [picked, setPicked] = useState<{ requestId: number; tab: string } | null>(null);
   /* 확정된 의뢰는 이력에서 시작하고, 첨부 파일 탭은 고를 수 있다(#247). */
   const pickedTab = picked?.requestId === inspectionRequestId ? picked.tab : null;
   const tab = confirmed
@@ -639,8 +644,14 @@ const SkippedSummary = (props: {
 export interface InspectionFormDrawer {
   /** 고른 자재 관리 LOT — 저장 때 `matchedLotIds` 로 싣는다. */
   matchedLotIds: number[];
-  /** 매칭 칸(드로어가 그린다). */
+  /** 매칭 칸 · 재검 사유 칸(드로어가 그린다). */
   matchField: ReactNode;
+  /** 판정이 바뀔 때마다 알린다 — 드로어가 재검 사유가 필요한지 계산한다(FR-023a · 2026-11-12). 같은 함수를 계속 준다. */
+  onJudgmentChange: (judgmentCode: string | null) => void;
+  /** [저장] 직전 드로어 칸 검사 — 매칭 0개 · 재검 사유 빠짐이면 칸에 오류를 띄우고 `false`(FR-021 · FR-023a). */
+  validate: () => boolean;
+  /** 재검 사유 — 필요할 때만 싣는다(`null` 이면 싣지 않는다). */
+  reinspectionReasonCode: string | null;
   onCancel: () => void;
   onSaved: () => void;
 }
@@ -1060,12 +1071,19 @@ const InspectionForm = (props: FormProps) => {
       return;
     }
     setJudgmentMissing(false);
+    if (!props.drawer.validate()) return;
+    const reasonCode = props.drawer.reinspectionReasonCode;
     submit.write({
       ...variablesOf(overall, inspectedQty),
       draftOnly: true,
       matchedLotIds: props.drawer.matchedLotIds,
+      ...(reasonCode === null ? {} : { reinspectionReasonCode: reasonCode }),
     });
   };
+  /* 판정 규칙의 서버 400(2026-11-12)은 드로어 문구로 — 나머지만 저장 오류 띠로 간다. */
+  const ruleErrors = props.drawer == null ? null : splitRuleErrors(submit.error);
+  const onDrawerJudgment = props.drawer?.onJudgmentChange;
+  useEffect(() => onDrawerJudgment?.(overall), [overall, onDrawerJudgment]);
 
   const { onDirtyChange } = props;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
@@ -1440,7 +1458,7 @@ const InspectionForm = (props: FormProps) => {
             </Dialog>
           );
         })()}
-      <SaveErrorBanner error={submit.error} />
+      <SaveErrorBanner error={ruleErrors === null ? submit.error : ruleErrors.rest} />
 
       {props.drawer != null ? (
         <div className="parts-iqc-footer parts-iqc-drawer-footer">
@@ -1449,6 +1467,11 @@ const InspectionForm = (props: FormProps) => {
               {messages.iqcInboundLot.drawer.judgmentRequired}
             </p>
           )}
+          {(ruleErrors?.codes ?? []).map((code) => (
+            <p key={code} className="field-error" role="alert">
+              {messages.iqcInboundLot.drawer.ruleErrors[code]}
+            </p>
+          ))}
           <span className="field-note">{messages.iqcInboundLot.drawer.saveNote}</span>
           <span className="parts-iqc-footer-gap" />
           <Button variant="outlined" disabled={submit.isSaving} onClick={props.drawer.onCancel}>

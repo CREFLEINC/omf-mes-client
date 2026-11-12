@@ -21,6 +21,8 @@ describe('KNOWN_BLOCK_REASON_CODES', () => {
       'CANCEL_IN_PROGRESS',
       'STATE_LOCKED',
       'TYPE_NOT_CANCELABLE',
+      /* 005 서버 S12(G2)가 계약에 더한 값. */
+      'INBOUND_LOT_FINALIZED',
     ]);
   });
 });
@@ -73,9 +75,10 @@ describe('describeCancelBlockReason', () => {
       t.blockReasons.CANCEL_IN_PROGRESS,
       t.blockReasons.STATE_LOCKED,
       t.blockReasons.TYPE_NOT_CANCELABLE,
+      t.blockReasons.INBOUND_LOT_FINALIZED,
     ]);
-    /* 다섯 값이 서로 다른 문면이어야 사용자가 무엇을 해야 하는지 갈린다. */
-    expect(new Set(texts).size).toBe(5);
+    /* 값마다 서로 다른 문면이어야 사용자가 무엇을 해야 하는지 갈린다(005 G2 로 여섯). */
+    expect(new Set(texts).size).toBe(6);
   });
 
   /*

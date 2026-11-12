@@ -7,10 +7,10 @@ export const iqcSkipRequest: Translated<typeof ko.iqcSkipRequest> = {
   record: 'Yêu cầu bỏ kiểm tra đầu vào khẩn',
   lot: {
     legend: 'Vật tư nào',
-    scanLabel: 'Quét LOT nhập hàng',
+    scanLabel: 'Quét LOT quản lý vật tư',
     manualLabel: 'Nhập tay',
     manualSubmit: 'Đưa vào',
-    scanPlaceholder: 'Hãy quét nhãn LOT',
+    scanPlaceholder: 'Hãy quét nhãn thùng — đối tượng là toàn bộ LOT nhập hàng của LOT đó',
     loading: 'Đang tìm LOT',
     loadFailed: 'Không xác nhận được LOT',
     notFound: (code: string) => `Không tìm thấy LOT ${code}`,

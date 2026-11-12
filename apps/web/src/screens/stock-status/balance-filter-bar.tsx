@@ -139,6 +139,19 @@ export const BalanceFilterBar = ({
     onSearch(filters);
   };
 
+  /*
+   * 입하 LOT 칸의 Enter 는 칸이 넘겨 준 값으로 조회한다(G2 L21). 붙여 넣기 · 스캐너처럼 글자와 Enter 가 한꺼번에
+   * 오면 상태가 아직 따라오지 않아 빈 칸으로 읽혀 조회가 잠긴 채 아무 일도 없었다.
+   */
+  const searchInboundLotNo = (value: string): void => {
+    const next = { ...filters, inboundLotNo: value };
+
+    setFilters(next);
+    if (!hasScopeCondition(next)) return;
+
+    onSearch(next);
+  };
+
   const chips = toFilterChips(appliedFilters, chipNames);
 
   /* 「전체」를 값이 빈 선택지로 둔다 — 두지 않으면 한 번 고른 뒤에 해제할 방법이 칸 안에 없어진다. */
@@ -245,7 +258,7 @@ export const BalanceFilterBar = ({
               const inboundLotNo = event.target.value;
               setFilters((prev) => ({ ...prev, inboundLotNo }));
             }}
-            onSearch={search}
+            onSearch={searchInboundLotNo}
             onClear={() => {
               setFilters((prev) => ({ ...prev, inboundLotNo: '' }));
             }}

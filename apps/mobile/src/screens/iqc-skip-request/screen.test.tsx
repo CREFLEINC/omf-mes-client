@@ -66,7 +66,7 @@ const approval = (overrides: Record<string, unknown> = {}) => ({
 });
 
 interface RouteOptions {
-  lots?: ReturnType<typeof lot>[];
+  lots?: (ReturnType<typeof lot> & { lifecycleStatusCode?: string })[];
   pending?: ReturnType<typeof approval>[];
   mine?: ReturnType<typeof approval>[];
   seen?: URL[];
@@ -146,7 +146,7 @@ const mount = (extra: ReturnType<typeof routes> = [], options: RouteOptions = {}
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('입하 LOT 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText('자재 관리 LOT 스캔') as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -177,7 +177,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
   it('스캔한 LOT의 품목과 수량을 되보인다', async () => {
     mount();
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
 
@@ -188,7 +188,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
   it('사유를 적기 전에는 요청할 수 없다', async () => {
     mount();
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -200,7 +200,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
   it('검사 대기가 아닌 LOT은 사유를 적어도 요청할 수 없다', async () => {
     const user = userEvent.setup();
     mount([], { lots: [lot('NORMAL')] });
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     expect(await screen.findByText('이미 검사가 끝난 자재입니다')).toBeInTheDocument();
@@ -210,9 +210,32 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
   });
 
+  /* 대기 LOT 도 품질 축은 검사 대기라, 막지 않으면 받지 않은 LOT 의 생략 요청이 올라간다. */
+  it('G2 L16 대기 자재 관리 LOT 은 「아직 입하되지 않은 LOT」로 알리고 요청할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount([], { lots: [{ ...lot(), lifecycleStatusCode: 'WAITING' }] });
+    await screen.findByLabelText('자재 관리 LOT 스캔');
+
+    scan(LOT_NO);
+    expect(await screen.findByText('아직 입하되지 않은 LOT')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
+
+    expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
+  });
+
+  it('G2 L16 폐기 자재 관리 LOT 은 「폐기된 LOT」로 알린다', async () => {
+    mount([], { lots: [{ ...lot(), lifecycleStatusCode: 'VOIDED' }] });
+    await screen.findByLabelText('자재 관리 LOT 스캔');
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText('폐기된 LOT')).toBeInTheDocument();
+  });
+
   it('LOT을 찾지 못하면 그렇게 말한다', async () => {
     mount([], { lots: [] });
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
 
@@ -223,7 +246,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
   it('이미 올라간 요청이 있으면 알리되 막지 않는다', async () => {
     const user = userEvent.setup();
     mount([], { pending: [approval()] });
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -247,7 +270,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
       ],
       {},
     );
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -270,7 +293,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
         throw new TypeError('Failed to fetch');
       }),
     ]);
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -295,7 +318,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
         ),
       ),
     ]);
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -319,7 +342,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
       </MemoryRouter>,
       { fetch: createStubFetch(routes()) },
     );
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -332,7 +355,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
   it('대기 요청을 대상 유형과 함께 묻는다', async () => {
     const seen: URL[] = [];
     mount([], { seen });
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -354,7 +377,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     const asked: Request[] = [];
     mount([], { mine: [approval()], asked });
 
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     await waitFor(() => {
       expect(
@@ -376,6 +399,21 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(await screen.findByText('대기')).toBeInTheDocument();
   });
 
+  it('L-f 내가 올린 요청 시각은 기기 시간대가 아니라 공장 시각(UTC+7)이다', async () => {
+    mount([], { mine: [approval({ requestedAt: '2026-11-12T13:59:00.000Z' })] });
+
+    expect(await screen.findByText('11-12 20:59 요청')).toBeInTheDocument();
+  });
+
+  it('L-f 대상 카드 수량에 천 단위 쉼표를 붙인다', async () => {
+    mount([], { lots: [{ ...lot(), initialQty: 1000 }] });
+    await screen.findByLabelText('자재 관리 LOT 스캔');
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText('1,000 kg')).toBeInTheDocument();
+  });
+
   it('올린 요청이 없으면 없다고 말한다', async () => {
     mount([], { mine: [] });
 
@@ -394,7 +432,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
         return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
       }),
     ]);
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -420,7 +458,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
         return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
       }),
     ]);
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -450,7 +488,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
         throw new TypeError('Failed to fetch');
       }),
     ]);
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
@@ -468,7 +506,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
    */
   it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
     mount();
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
     scan(LOT_NO);
     await screen.findByText('ABC-100 PP 수지');
 
@@ -482,7 +520,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
   it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
     scan(LOT_NO);
     await screen.findByText('ABC-100 PP 수지');
     scan(OTHER_LOT_NO);
@@ -499,7 +537,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
   it('새 LOT 을 받으면 적어 둔 사유가 비워진다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText('ABC-100 PP 수지');
@@ -519,7 +557,7 @@ describe('IQC 생략은 입하 LOT 단위(005 FR-032)', () => {
   const boxLot = () => Object.assign(lot(), { inboundLotId: 61, inboundLotNo: INBOUND_LOT_NO });
 
   const fillAndSend = async (user: ReturnType<typeof userEvent.setup>) => {
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
     await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
@@ -528,7 +566,7 @@ describe('IQC 생략은 입하 LOT 단위(005 FR-032)', () => {
 
   it('R16-1 상자 라벨 스캔은 그대로 — 그 LOT 의 입하 LOT 번호와 요청 범위를 함께 보인다', async () => {
     mount([], { lots: [boxLot()] });
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
 
@@ -541,7 +579,7 @@ describe('IQC 생략은 입하 LOT 단위(005 FR-032)', () => {
   it('R16-1 대기 요청은 입하 LOT 을 대상으로 묻는다', async () => {
     const seen: URL[] = [];
     mount([], { lots: [boxLot()], seen });
-    await screen.findByLabelText('입하 LOT 스캔');
+    await screen.findByLabelText('자재 관리 LOT 스캔');
 
     scan(LOT_NO);
     await screen.findByText(`입하 LOT ${INBOUND_LOT_NO}`);
@@ -583,7 +621,8 @@ describe('IQC 생략은 입하 LOT 단위(005 FR-032)', () => {
       [
         createRoute(() =>
           jsonResponse(
-            { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '입하 중' }] },
+            /* 서버 코드 INBOUND_LOT_RECEIVING(S12 · G2). */
+            { errors: [{ scope: 'screen', code: 'INBOUND_LOT_RECEIVING', message: '입하 중' }] },
             { status: 409 },
           ),
         ),

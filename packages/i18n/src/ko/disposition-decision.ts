@@ -118,14 +118,21 @@ export const dispositionDecision = {
     requestNote: '불합격 입하 LOT 의 조건부 사용 승인을 요청합니다 — 한도 승인도 이 길로',
     /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
     target: '대상',
+    /** 「자재 관리 LOT n개 전부」를 앞에 — 읽기 전용 칸이 좁아 뒤가 잘려 보이지 않았다(G2 L13). */
     targetAll: (inboundLotNo: string | null, count: number): string =>
-      `${inboundLotNo === null ? '' : `입하 LOT ${inboundLotNo} · `}자재 관리 LOT ${String(count)}개 전부`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+      `자재 관리 LOT ${String(count)}개 전부${inboundLotNo === null ? '' : ` · 입하 LOT ${inboundLotNo}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     qtyLocked: '남은 수량 전부 — 바꿀 수 없음',
     wholeHint:
       '특채는 남은 수량 전부만 요청합니다(일부 특채 없음). 일부만 쓰려면 먼저 [선별]로 불량 자재 관리 LOT 를 떼어 낸 뒤, 그 입하 LOT 를 전량 특채하세요.',
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
     pendingBanner: (concessionNo: string, count: number): string =>
       `특채 ${concessionNo} 결재 대기 중(W-03-09). 승인되면 [특채 적용]으로 자재 관리 LOT ${String(count)}개 전부를 정상으로 풉니다.`,
+    /** 결재가 승인됐고 적용 전(G2 M3). */
+    approvedBanner: (concessionNo: string, count: number): string =>
+      `특채 ${concessionNo} 승인됨 — 적용 대기. [특채 적용]으로 자재 관리 LOT ${String(count)}개 전부를 정상으로 풉니다.`,
+    rejectedBanner: (concessionNo: string): string =>
+      `특채 ${concessionNo} 결재가 반려됐습니다. [특채 닫기]로 이 특채를 닫으세요.`,
+    close: '특채 닫기',
     /** 이력 표의 묶음 한 줄 — 같은 결재의 행(자재 관리 LOT 마다 한 행)을 한 줄로. */
     targetGroup: (count: number): string => `자재 관리 LOT ${String(count)}개 전부`,
     historyHeading: '특채 요청 이력',
@@ -137,6 +144,8 @@ export const dispositionDecision = {
     request: '특채 요청',
     requesting: '요청하는 중…',
     apply: '특채 적용',
+    /** 결재 대기 중에는 적용할 수 없다(G2 5차). */
+    applyWaiting: '결재가 끝나야 적용할 수 있습니다(W-03-09)',
     applying: '적용하는 중…',
     qty: '사용 가능 수량',
     validFrom: '시작일',
@@ -203,6 +212,8 @@ export const dispositionDecision = {
     typeLock: {
       closed: '종결된 부적합입니다',
       concessionPending: '특채 결재 대기 중',
+      /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
+      concessionApproved: '특채 승인됨 — 적용 대기',
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
       sortSingleLot: '자재 관리 LOT 가 1개라 선별할 수 없습니다',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
@@ -254,6 +265,11 @@ export const dispositionDecision = {
     inspectionRequestNo: 'IQC 검사',
     supplier: '공급사',
     listLine: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
+    /** 목록 「원천」 칸(screens/W-03-10.md 목록 행 · G2 L8). */
+    sourceColumn: '원천',
+    source: { IQC: 'IQC · 자재 입하', RETURN: '반품', PRODUCT: 'OQC · 제품' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    /** 선별 건 — 「· 선별 ← 0004」(원래 부적합 번호 끝 4자리). */
+    sortedFromTail: (tail: string): string => ` · 선별 ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     bannerTitle: '처분은 입하 LOT 단위입니다.',
     bannerBody: (count: number): string =>
       `판정 하나가 자재 관리 LOT ${String(count)}개 전부에 함께 적용됩니다. 자재 관리 LOT 별로 따로 처분하지 않습니다.`,
@@ -361,5 +377,33 @@ export const dispositionDecision = {
       PARTIAL: '일부 판정',
       COMPLETED: '완료',
     },
+  },
+  /**
+   * 「지금(바뀌기 전)」 띠(005 · screens/W-03-10.md · mockups/W0310-After.html) — 처분 방식이 바뀐 점을 알린다.
+   * C5 에서는 한국어 상수였고 C7 에서 언어별 문구로 옮겼다(총괄 지시 2026-11-12).
+   */
+  nowBand: {
+    title: '지금(바뀌기 전)',
+    summary:
+      '처분 수량을 나눠 여러 번 판정 · 선별 = 양품/불량 수량으로 LOT 를 쪼갬(자식 LOT) · 특채 = LOT 1개 고르고 일부 수량도 가능', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    expand: '펼치기',
+    collapse: '접기',
+    items: [
+      {
+        label: '처분 수량',
+        tag: '없어짐',
+        note: '처분 수량을 나눠 일부만 판정할 수 있었습니다(입력 / 미입력).',
+      },
+      {
+        label: '양품 · 불량 수량 (선별)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+        tag: '바뀜',
+        note: '불량 수량은 새 LOT 으로 나뉘어(자식 LOT) 새 부적합이 됐습니다.',
+      },
+      {
+        label: '특채 요청',
+        tag: '일부 특채 없어짐',
+        note: 'LOT 하나를 고르고 일부 수량만 승인할 수 있었고, 나머지는 새 LOT 과 부적합으로 나뉘었습니다.',
+      },
+    ],
   },
 } as const;

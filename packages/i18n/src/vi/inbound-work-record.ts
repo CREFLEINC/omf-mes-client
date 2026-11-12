@@ -114,6 +114,7 @@ export const inboundWorkRecord: Translated<typeof ko.inboundWorkRecord> = {
     },
     lotStatus: {
       received: 'Đã nhập kho',
+      receiptCancelPending: 'Đang yêu cầu hủy nhập kho',
       returned: 'Đã xử lý trả hàng',
       disposed: 'Đã xử lý hủy',
       dispositionInProgress: 'Đang xử lý',

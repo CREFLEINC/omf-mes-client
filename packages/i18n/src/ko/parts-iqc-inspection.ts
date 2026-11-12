@@ -77,7 +77,9 @@ export const partsIqcInspection = {
     plan: '검사 기준서',
     planName: '모델',
     condition: '검사 조건',
-    conditionAql: (aql: number) => `AQL ${String(aql)} · 육안 검사`,
+    /** 「AQL 1.0」 — 정수도 소수 한 자리로(G2 L13). */
+    conditionAql: (aql: number) =>
+      `AQL ${Number.isInteger(aql) ? aql.toFixed(1) : String(aql)} · 육안 검사`, // ui-check-ignore: C-13 설계 확정 표기 「AQL 1.0 · 육안 검사」(screens/W-01-01.md)
     conditionNone: '미지정',
     /* AQL 샘플링 기준 — LOT 수량으로 표에서 낸 시료 수 · 합격/불합격 판정 수(omf-all-around#264). */
     conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>

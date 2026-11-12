@@ -1,4 +1,4 @@
-import { Checkbox } from '@crefle/web-ui';
+import { Button, Checkbox } from '@crefle/web-ui';
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
@@ -14,6 +14,8 @@ export interface LotMatchFieldProps {
   uomCode: string;
   value: readonly number[];
   disabled?: boolean;
+  /** 「자재 관리 LOT를 1개 이상 고르세요」 — [저장]을 눌렀는데 비었을 때. */
+  error?: string | null;
   onChange: (next: number[]) => void;
 }
 
@@ -32,7 +34,8 @@ export const LotNo = ({ lotNo }: { lotNo: string }) => {
 };
 
 /**
- * 결과 드로어의 「자재 관리 LOT 매칭」(screens/W-01-01.md) — 선택, 여러 결과에 같은 LOT 을 매칭해도 된다(US3-3).
+ * 결과 드로어의 「자재 관리 LOT 매칭」(screens/W-01-01.md) — 1개 이상 필수(FR-021 · 2026-11-12), 여러 결과에 같은 LOT 을 매칭해도
+ * 된다(US3-3). [전부 선택]은 LOT 마다 매칭으로 저장한다(「전체」라는 따로 된 표시는 없다).
  */
 export const LotMatchField = ({
   lots,
@@ -40,12 +43,27 @@ export const LotMatchField = ({
   uomCode,
   value,
   disabled = false,
+  error = null,
   onChange,
 }: LotMatchFieldProps) => (
   <section className="parts-iqc-card iqc-inbound-match" aria-labelledby="iqc-inbound-match-head">
-    <h3 id="iqc-inbound-match-head" className="parts-iqc-sub-title">
-      {t.matchHeading}
-    </h3>
+    <div className="parts-iqc-block-head">
+      <h3 id="iqc-inbound-match-head" className="parts-iqc-sub-title">
+        {t.matchHeading}{' '}
+        <span className="required-mark" aria-hidden="true">
+          *
+        </span>
+      </h3>
+      <span className="parts-iqc-footer-gap" />
+      <Button
+        variant="outlined"
+        size="sm"
+        disabled={disabled || lots.length === 0 || value.length === lots.length}
+        onClick={() => onChange(lots.map((lot) => lot.lotId))}
+      >
+        {t.selectAll}
+      </Button>
+    </div>
     <p className="field-note">{t.matchHelp}</p>
     <ul className="iqc-inbound-match-list">
       {lots.map((lot) => {
@@ -82,6 +100,11 @@ export const LotMatchField = ({
         );
       })}
     </ul>
+    {error === null ? null : (
+      <p className="field-error" role="alert">
+        {error}
+      </p>
+    )}
     <p className="field-note">{t.matchNote}</p>
   </section>
 );

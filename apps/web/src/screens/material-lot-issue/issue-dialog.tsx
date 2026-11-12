@@ -266,7 +266,8 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
                       value={draft.packageUomId === null ? null : String(draft.packageUomId)}
                       options={packageUoms.map((row) => ({
                         value: String(row.uomId),
-                        label: row.uomCode,
+                        /* 패키징 단위는 이름(「봉지」)으로 — 이름이 비면 코드(G2 L17). */
+                        label: row.uomName.trim() === '' ? row.uomCode : row.uomName,
                       }))}
                       onChange={(value) => edit({ packageUomId: Number(value) })}
                     />

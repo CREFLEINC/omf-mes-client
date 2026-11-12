@@ -47,6 +47,8 @@ interface ServerOptions {
   notMaterial?: string[];
   /** 새 입하 LOT 의 검사 필요 여부(기본 참). */
   inspectionRequired?: boolean;
+  /** IQC 기본 생략 기준이 걸리는가(서버 S12 · G2 L15). 주지 않으면 칸을 싣지 않는다. */
+  iqcDefaultSkipApplies?: boolean;
   /** 이미 입하된 번호 — 서버가 거부 줄에 그 입하 LOT 번호 · 상태를 싣는다(S8). */
   /** 패키징 단위 이름(S8) — 없으면 칸을 싣지 않는다. */
   packageUomName?: string;
@@ -178,6 +180,7 @@ const createServer = (options: ServerOptions = {}) => {
             unallocatedQty: 0,
             iqc: null,
             inspectionRequired: options.inspectionRequired ?? true,
+            iqcDefaultSkipApplies: options.iqcDefaultSkipApplies ?? false,
             firstRegisteredAt: '2026-11-11T01:00:00Z',
             receivedClosedAt: null,
             closedAutomatically: false,
@@ -190,6 +193,10 @@ const createServer = (options: ServerOptions = {}) => {
             finalizable: false,
             erpSendModeCode: 'ON_FINALIZE',
             versionNo: 1,
+            poAllocations: [],
+            finalizedByName: null,
+            finalizeBlockers: [],
+            lotProgress: { received: 0, inIqc: 0, inDisposition: 0, disposed: 0, returned: 0 },
             lots: [],
             events: [],
           };
@@ -204,15 +211,18 @@ const createServer = (options: ServerOptions = {}) => {
           package: {
             uomId: 2,
             uomCode: '봉지',
+            /* 이름이 없으면 화면은 코드를 쓴다 — 코드와 같은 값을 실어 그 모양을 지킨다. */
+            uomName: options.packageUomName ?? '봉지',
             count: 10,
             qtyPerPackage: 100,
-            ...(options.packageUomName === undefined ? {} : { uomName: options.packageUomName }),
           },
           supplierLotNo: null,
           lifecycleStatusCode: 'ACTIVE',
           statusCode: 'INSPECTION_PENDING',
           registeredAt: '2026-11-11T01:05:00Z',
           fromSupplierLabel: false,
+          goodsReceived: false,
+          dispositionStatusCode: null,
         };
         open.lots.push(material);
         open.lotCount = open.lots.length;
@@ -228,7 +238,8 @@ const createServer = (options: ServerOptions = {}) => {
                 inboundLotNo: open.inboundLotNo,
                 created,
                 autoClosedInboundLotNo: autoClosed,
-                inboundReceiptNo: open.inboundReceiptNo,
+                iqcDefaultSkipApplies: open.iqcDefaultSkipApplies,
+                inboundReceiptNo: open.inboundReceiptNo ?? '',
                 receivedQty: open.receivedQty,
                 lotCount: open.lotCount,
                 lots: [
@@ -547,9 +558,23 @@ describe('US2-2 입하 마감', () => {
     });
   });
 
+  it('G2 L15 · US2-7 기본 생략 기준이 없는 검사 불필요 품목은 「IQC 기록이 생기지 않고」 — 「검사 생략」이라 하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount(createServer({ inspectionRequired: false, iqcDefaultSkipApplies: false }));
+
+    await scan(A(1));
+    const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
+    await user.click(await within(lotCard).findByRole('button', { name: t.card.close }));
+    const dialog = await screen.findByRole('dialog', { name: t.closeDialog.title('SYN-IL-6001') });
+
+    expect(dialog).toHaveTextContent(t.closeDialog.bodyNoIqcRecord);
+    expect(dialog).not.toHaveTextContent('검사 생략');
+  });
+
   it('G1 검사 불필요 품목의 마감 확인 창은 「검사 생략」 문구 — IQC 요청이 생긴다고 하지 않는다', async () => {
     const user = userEvent.setup();
-    mount(createServer({ inspectionRequired: false }));
+    /* 「검사 생략」으로 남는 것은 기본 생략 기준이 걸릴 때만(G2 L15). */
+    mount(createServer({ inspectionRequired: false, iqcDefaultSkipApplies: true }));
 
     await scan(A(1));
     const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
@@ -578,6 +603,22 @@ describe('US2-2 입하 마감', () => {
     await scan(A(2));
 
     expect(await screen.findByRole('group', { name: 'SYN-IL-6002' })).toBeInTheDocument();
+  });
+
+  /* 실기 접근성 트리에서 이름 없는 단추로 보고됐다 — 역할 · 이름으로 찾혀야 한다(G2 L22). */
+  it('G2 L22 카드의 [해제] · [입하 마감]은 이름 있는 단추다', async () => {
+    const server = createServer();
+    mount(server);
+
+    await scan(A(1));
+    const lotCard = await screen.findByRole('group', { name: 'SYN-IL-6001' });
+
+    expect(
+      await within(lotCard).findByRole('button', { name: t.card.unregister }),
+    ).toHaveAccessibleName('해제');
+    expect(within(lotCard).getByRole('button', { name: t.card.close })).toHaveAccessibleName(
+      '입하 마감',
+    );
   });
 
   it('US2-9 [해제]는 확인 없이 바로 — 마지막 LOT 을 풀면 카드가 사라진다', async () => {

@@ -33,7 +33,7 @@ export const UOMS = [
   { uomId: 8404, uomCode: 'TON', uomName: '톤', decimalScale: 3, isActive: true },
 ];
 
-const BAG = { uomId: 8402, uomCode: '봉지', count: 10, qtyPerPackage: 100 };
+const BAG = { uomId: 8402, uomCode: '봉지', uomName: '봉지', count: 10, qtyPerPackage: 100 };
 
 /** 자재 관리 LOT 한 개 — 기본은 대기 · 봉지 10 × 100 · 미출력. */
 export const lot = (lotId: number, over: Partial<MaterialLotSummary> = {}): MaterialLotSummary => ({
@@ -145,6 +145,8 @@ export interface ItemFixture {
 
 export interface HarnessOptions {
   groups?: WaitingMaterialLotGroup[];
+  /** 단위 목록 — 없으면 `UOMS`(G2 L17: 코드와 이름이 다른 단위를 흉내 낸다). */
+  uoms?: readonly (typeof UOMS)[number][];
   defaults?: SupplierItemDefault[];
   items?: ItemFixture[];
   identity?: Partial<PopIdentity>;
@@ -297,7 +299,11 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
     },
     {
       match: (request) => path(request) === '/mdm/uoms',
-      respond: () => jsonResponse({ items: UOMS, page: page(UOMS.length) }),
+      respond: () => {
+        const uoms = options.uoms ?? UOMS;
+
+        return jsonResponse({ items: uoms, page: page(uoms.length) });
+      },
     },
     {
       match: (request) =>
@@ -331,7 +337,11 @@ export const renderLabelScreen = (options: HarnessOptions = {}) => {
             package:
               body.package == null
                 ? null
-                : { ...body.package, uomCode: uomCode(body.package.uomId) },
+                : {
+                    ...body.package,
+                    uomCode: uomCode(body.package.uomId),
+                    uomName: uomCode(body.package.uomId),
+                  },
             supplierLotNo: body.supplierLotNo ?? null,
           });
         });

@@ -3,7 +3,6 @@ import {
   type components,
   type FourMChangeForward,
   type InspectionAqlPlanForward,
-  type InspectionRequestInboundFields,
 } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
@@ -83,9 +82,7 @@ export interface InspectionQueueResult {
  * **선택 필드는 `null` 로 모은다.** 계약에서 `lotId` 는 없을 수 있고(작업지시 대상 검사 등),
  * `undefined` 와 `null` 이 섞이면 그리는 쪽이 두 가지를 다 다뤄야 한다.
  */
-export const toInspectionQueueRow = (
-  item: InspectionRequestResponse & InspectionRequestInboundFields,
-): InspectionQueueRow => ({
+export const toInspectionQueueRow = (item: InspectionRequestResponse): InspectionQueueRow => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
   inspectionTypeCode: item.inspectionTypeCode,
@@ -113,7 +110,7 @@ export const toInspectionQueueRow = (
 });
 
 export const toInspectionQueueResult = (response: {
-  items: (InspectionRequestResponse & InspectionRequestInboundFields)[];
+  items: InspectionRequestResponse[];
   page: PageMetaResponse;
 }): InspectionQueueResult => ({
   rows: response.items.map(toInspectionQueueRow),
