@@ -1,22 +1,25 @@
-import { Button } from '@crefle/web-ui';
-import { activeLocale, messages } from '@omf-mes/i18n';
+import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
 
-import { FULL_INSPECTION, SAMPLING_METHOD_OPTIONS, ensureOption } from './code-options';
-import type { SelectOption, VersionFormValues } from './types';
+import {
+  AQL_SAMPLING,
+  FULL_INSPECTION,
+  SAMPLING_METHOD_OPTIONS,
+  ensureOption,
+} from './code-options';
+import type { VersionFormValues } from './types';
 
 const t = messages.inspectionStandard;
 
 export interface VersionSummaryProps {
   /** 저장된 값(편집 중인 초안이 아니다) — 요약은 서버에 있는 사실을 말한다. */
   values: VersionFormValues;
-  /** 검사 주기 · 주기 단위 선택지 — 공통코드에서 받은 것(버전 폼과 같은 출처 · #194). */
-  inspectionFrequencyOptions: SelectOption[];
-  frequencyIntervalUomOptions: SelectOption[];
-  /** 화면 언어 지시문의 「수정」 — 작성중 버전에서만 넘긴다(확정 버전은 잠긴다 · #252). */
-  onEditGuide?: (field: GuideTextField) => void;
+  /** AQL 은 IQC 기준에서만 쓴다 — 아니면 AQL 칸을 내지 않는다(사용자 지시 · omf-all-around#264). */
+  showAql: boolean;
 }
 
-export type GuideTextField = 'guideTextKo' | 'guideTextVi';
+/** 검사 지시문 칸 — 한 칸이다(#261). */
+export type GuideTextField = 'guideText';
 
 const labelOf = (options: { value: string; label: string }[], value: string): string =>
   value === ''
@@ -26,69 +29,57 @@ const labelOf = (options: { value: string; label: string }[], value: string): st
 const orNotSet = (value: string): string => (value === '' ? t.versionSection.notSet : value);
 
 /**
- * 고른 버전의 요약 한 줄 — 유효기간 · 샘플링(샘플링 검사면 비율을 함께) · 검사 주기(사용자 시안 · omf-all-around#196).
- * 버전 번호 · 상태는 위 선택칸이 말한다. 고칠 수 없는 버전의 「버전 설정」 탭은 이 값들을 되풀이하지 않는다.
+ * 고른 버전의 요약 한 줄 — 샘플링(샘플링 검사면 비율을 함께) · 판정 수 · AQL · 유효기간(사용자 시안 · omf-all-around#196 · #256 순서).
+ * 검사 주기는 기록용이라 걷었다(#263). 「버전 설정」 제목 · 수정 단추 아래 값 칸은 폭에 맞춰 한 줄에 들어가는 만큼 둔다. 버전 번호 · 상태는 카드 머리 줄이 말한다(사용자 시안 · #258).
  */
-export const VersionSummary = ({
-  values,
-  inspectionFrequencyOptions,
-  frequencyIntervalUomOptions,
-  onEditGuide,
-}: VersionSummaryProps) => {
+export const VersionSummary = ({ values, showAql }: VersionSummaryProps) => {
   const sampling = labelOf(SAMPLING_METHOD_OPTIONS, values.samplingMethodCode);
   /* 샘플링 검사면 비율(%) 또는 개수 중 들어 있는 쪽을 함께 낸다(#201). */
   const isSampling =
     values.samplingMethodCode !== FULL_INSPECTION && values.samplingMethodCode !== '';
+  /* AQL 샘플링이면 검사 수준을 함께 — 판정 수 칸은 검사할 때 LOT 수량으로 정한다고 적는다(omf-all-around#264). */
+  const isAql = values.samplingMethodCode === AQL_SAMPLING;
+  const level = t.values.aqlLevels[values.aqlInspectionLevelCode] ?? values.aqlInspectionLevelCode;
   const withRatio = !isSampling
     ? sampling
-    : values.samplingRatio !== ''
-      ? `${sampling} · ${values.samplingRatio}%`
-      : values.samplingQty !== ''
-        ? `${sampling} · ${t.versionSection.samplingQtyValue(values.samplingQty)}`
-        : sampling;
+    : isAql
+      ? `${sampling} · ${level === '' ? t.versionSection.notSet : level}`
+      : values.samplingRatio !== ''
+        ? `${sampling} · ${values.samplingRatio}%`
+        : values.samplingQty !== ''
+          ? `${sampling} · ${t.versionSection.samplingQtyValue(values.samplingQty)}`
+          : sampling;
 
-  const facts: { label: string; value: string }[] = [
+  /* 순서 — 어떻게 검사하는지(방식)를 먼저, 판정 수 · AQL, 적용 기간은 끝(omf-all-around#256). */
+  const facts: { label: string; value: ReactNode }[] = [
+    { label: t.versionSection.sampling, value: withRatio },
+    /* 「버전 설정」 탭을 걷고 그 값도 이 줄에 싣는다 — 비었으면 「미설정」(사용자 지시 · #196). */
+    {
+      label: t.fields.acceptanceNumber,
+      value: isAql ? t.versionSection.aqlByLot : orNotSet(values.acceptanceNumber),
+    },
+    {
+      label: t.fields.rejectionNumber,
+      value: isAql ? t.versionSection.aqlByLot : orNotSet(values.rejectionNumber),
+    },
+    /* 이미 AQL 샘플링으로 저장된 버전은 입력 칸처럼 그대로 보인다. */
+    ...(showAql || isAql ? [{ label: t.fields.aqlValue, value: orNotSet(values.aqlValue) }] : []),
     {
       label: t.versionSection.effectivePeriod,
       value: `${values.effectiveFrom === '' ? messages.common.reference.empty : values.effectiveFrom} ~ ${
         values.effectiveTo === '' ? t.versionSection.noEnd : values.effectiveTo
       }`,
     },
-    { label: t.versionSection.sampling, value: withRatio },
-    {
-      label: t.fields.inspectionFrequency,
-      value: labelOf(inspectionFrequencyOptions, values.inspectionFrequencyCode),
-    },
-    /* 「버전 설정」 탭을 걷고 그 값도 이 줄에 싣는다 — 비었으면 「미설정」(사용자 지시 · #196). */
-    { label: t.fields.aqlValue, value: orNotSet(values.aqlValue) },
-    { label: t.fields.acceptanceNumber, value: orNotSet(values.acceptanceNumber) },
-    { label: t.fields.rejectionNumber, value: orNotSet(values.rejectionNumber) },
-    {
-      label: t.fields.frequencyIntervalValue,
-      value:
-        values.frequencyIntervalValue === ''
-          ? t.versionSection.notSet
-          : [
-              values.frequencyIntervalValue,
-              values.frequencyIntervalUomCode === ''
-                ? ''
-                : labelOf(frequencyIntervalUomOptions, values.frequencyIntervalUomCode),
-            ]
-              .filter((part) => part !== '')
-              .join(' '),
-    },
   ];
 
-  /*
-   * 지시문(#252)은 길 수 있어 요약 줄 아래에 따로 보인다. 화면 언어의 칸 하나만 보이고 고친다(사용자 지시) —
-   * 고칠 수 있는 버전이면 비어도 두고 「수정」, 잠긴 버전은 문구가 있을 때만 둔다.
-   */
-  const field: GuideTextField = activeLocale() === 'vi' ? 'guideTextVi' : 'guideTextKo';
-  const guides = onEditGuide !== undefined || values[field].trim() !== '' ? [field] : [];
-
+  /* 지시문(#252)은 「버전별 설정」의 「검사 지시문」 줄로 옮겼다(사용자 시안 · omf-all-around#258). */
   return (
-    <>
-      <dl className="inspection-standard-facts-line">
+    /* 「버전 설정」 제목 글은 두지 않는다(사용자 지시 · #258) — 구획 이름은 화면 낭독기에만. 「버전 설정 수정」은 머리 줄 「버전 이력」 오른쪽. */
+    <section
+      className="inspection-standard-version-settings-block"
+      aria-label={t.versionSection.settingsBlockTitle}
+    >
+      <dl className="inspection-standard-facts-grid">
         {facts.map((fact) => (
           <div key={fact.label}>
             <dt className="field-label">{fact.label}</dt>
@@ -96,27 +87,6 @@ export const VersionSummary = ({
           </div>
         ))}
       </dl>
-      {guides.length > 0 && (
-        <dl className="inspection-standard-guide-line">
-          {guides.map((field) => (
-            <div key={field}>
-              <dt className="field-label">{t.fields[field]}</dt>
-              <dd>{values[field].trim() === '' ? t.versionSection.notSet : values[field]}</dd>
-              {/* 「수정」은 문구 첫 줄 오른쪽에 둔다(사용자 지시). */}
-              {onEditGuide !== undefined && (
-                <Button
-                  variant="outlined"
-                  size="md"
-                  aria-label={t.versionSection.editGuide(t.fields[field])}
-                  onClick={() => onEditGuide(field)}
-                >
-                  {t.versionSection.guideEdit}
-                </Button>
-              )}
-            </div>
-          ))}
-        </dl>
-      )}
-    </>
+    </section>
   );
 };

@@ -100,6 +100,55 @@ export const warehouseLayout = {
     cancel: '취소',
   },
 
+  /**
+   * 편집 창(피처 006) — 조회 화면의 [수정]이 브라우저 창을 채우는 편집 창을 연다. 편집 규칙(찍기 · 옮기기 · 크기 · 빼기 ·
+   * 되돌리기 · 도면 올리기 · 저장)은 `map` 문구를 그대로 쓴다. 저장하지 않은 변경이 있으면 닫을 때 버릴지 묻는다.
+   */
+  /** 편집 창 목록의 별칭 고치기(#267 FR-007a) — 위치마다 바로 저장, 배치도 저장과 따로. */
+  aliasPopover: {
+    title: (code: string): string => `${code} 별칭`,
+    note: '바로 저장됩니다. 배치도 저장과는 따로입니다.',
+  },
+  editor: {
+    open: '수정',
+    title: (warehouse: string): string => `배치도 수정 — ${warehouse}`,
+    cancel: '취소',
+    discardTitle: '변경을 버리고 닫을까요?',
+    discardBody: '저장하지 않은 표식 변경이 사라집니다.',
+    keepEditing: '계속 편집',
+    discard: '버리고 닫기',
+    /**
+     * 도면에는 구역 · 랙만 둔다(2차 · FR-016). 이미 저장된 층 · 셀 표식은 그리지 않고 다음 저장 때 빠진다 — 그 수를 알린다.
+     * 이 알림만으로는 저장할 변경이 아니다(닫을 때 묻지 않는다).
+     */
+    legacyMarkers: (count: number): string => `층·셀 표식 ${String(count)}개는 저장하면 빠집니다.`, // ui-check-ignore: C-13 승인 시안 W-CO-08-r2 문구(#266)
+    /** 창을 먼저 띄우고 판은 다음에 그린다(2차 · FR-017) — 표식 그리기 · 글자 맞추기가 끝날 때까지 판 위에 선다. */
+    drawingBoard: '배치를 그리는 중',
+    /** 편집 창 목록은 배치 대상(구역 · 랙)만이다 — 그것이 없을 때. */
+    emptyPlaceable: '도면에 둘 구역·랙이 없습니다', // ui-check-ignore: C-13 승인 tasks T037 문구(#266)
+  },
+
+  /**
+   * 조회 화면의 재고(피처 006). 표식은 재고 있음(지금 모양) / 비어 있음(회색) 두 모양이고, 위치를 고르면 판 아래에 그 위치와
+   * 하위 위치의 재고 표가 선다. 같은 품목 · LOT 이라도 위치가 다르면 줄을 나눈다(수량을 더하지 않는다).
+   */
+  stock: {
+    legendStocked: '재고 있음',
+    legendEmpty: '비어 있음',
+    legendNote: '도면에 없는 위치는 목록의 「아직」',
+    title: (locationCode: string): string => `${locationCode} 재고`,
+    location: '위치',
+    item: '품목',
+    lot: 'LOT',
+    onHand: '현재고',
+    qualityStatus: '품질 상태',
+    pickHint: '위치를 고르면 재고가 보입니다',
+    empty: '재고 없음',
+    loadFailed: '재고를 불러오지 못했습니다.',
+    retry: '다시 시도',
+    truncated: '재고 일부만 보입니다.',
+  },
+
   locations: {
     code: '위치 코드',
     name: '이름',
@@ -110,6 +159,12 @@ export const warehouseLayout = {
     notOnMap: '아직',
     /** 위치는 창고·Location 화면에서 등록한다. */
     emptyTitle: '위치가 없습니다',
+    /** 위치가 없는 창고 — 이 화면은 위치를 만들지 않는다(FR-012). 받는 것은 등록하는 화면의 이름이다. */
+    emptyGuide: (screenName: string): string => `${screenName} 화면에서 위치를 등록하세요.`,
+    /** 고른 위치에 표식이 없다(FR-002). */
+    notOnDrawing: '도면에 없음',
+    /** 층 · 셀은 도면에 두지 않는다 — 고르면 그 위치가 든 랙(없으면 구역) 표식을 강조하고 이 말을 붙인다(2차 · FR-015). */
+    insideOnDrawing: (locationCode: string): string => `도면에서 ${locationCode} 안`,
     includeInactive: '중지된 위치도 보기',
     /** ⚠ 목록에 없는 위치(중지 · 삭제)가 지도에 남아 있을 수 있다 — 그 표식의 이름. */
     unknown: (locationId: number): string => `위치 ${String(locationId)}`,

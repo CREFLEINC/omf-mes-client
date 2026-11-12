@@ -1,5 +1,4 @@
 import {
-  Button,
   Chip,
   type Column,
   EmptyState,
@@ -15,7 +14,6 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 
-import { DisabledAction } from './disabled-action';
 import type { ItemDraft } from './types';
 
 const t = messages.inspectionStandard;
@@ -36,20 +34,12 @@ export interface ItemPaneProps {
   optionsNotice: ReactNode;
   /** 편집할 수 있는 상태인가. 확정·폐기 버전은 항목도 잠긴다. */
   isEditable: boolean;
-  /** 잠겼을 때 보일 사유. 여러 컨트롤이 공유하므로 한 문구를 돌려 쓴다 */
-  lockReason: string;
-  isDirty: boolean;
-  isSaving: boolean;
-  /** 잠금 말고 저장만 막는 이유(버전 미저장·입력 미완성). 없으면 null */
-  saveBlockedReason: string | null;
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
-  onAdd: () => void;
   onEdit: (draftId: string) => void;
   onRemove: (draftId: string) => void;
   /** 초안 배열의 위치 기준 이동. **여기서 서버를 부르지 않는다** */
   onReorder: (from: number, to: number) => void;
-  onSave: () => void;
 }
 
 /** 값이 없다는 것과 0이라는 것은 다르다 — 빈 값을 빈 칸으로 두면 둘이 같아 보인다. */
@@ -98,16 +88,10 @@ export const ItemPane = ({
   loadError,
   optionsNotice,
   isEditable,
-  lockReason,
-  isDirty,
-  isSaving,
-  saveBlockedReason,
   banner,
-  onAdd,
   onEdit,
   onRemove,
   onReorder,
-  onSave,
 }: ItemPaneProps) => {
   /*
    * 지정 폭의 합은 656px이고 디자인 시스템이 렌더하는 순서 이동 열(96px)을 더해도
@@ -268,7 +252,8 @@ export const ItemPane = ({
               live
               icon={<Icon name="content_paste_off" size={32} />}
               title={t.empty.itemNoneTitle}
-              description={isEditable ? t.empty.itemNoneDescription : t.versionSection.lockedHint}
+              /* 고칠 수 없는 버전에는 설명을 두지 않는다 — 안내는 상태 표시 오른쪽 한 줄(사용자 지시 · #258). */
+              description={isEditable ? t.empty.itemNoneDescription : undefined}
             />
           }
         />
@@ -276,44 +261,23 @@ export const ItemPane = ({
     );
   };
 
-  /** 잠금이 먼저다 — 잠긴 상태에서는 버전 편집 여부가 사용자에게 아무 도움이 되지 않는다. */
-  const saveReason = isEditable ? saveBlockedReason : lockReason;
-
   return (
     <section className="pane" aria-label={t.panes.items}>
       {optionsNotice}
       {banner}
 
       {/*
-       * 머리 — 제목은 탭 이름(「검사 항목 N건」)이 말하므로 화면에서는 감추고 접근 이름으로만 남긴다(검사 조회·판정과 같다).
-       * 오른쪽에 고칠 수 있으면 「+ 항목 추가」. 고칠 수 없는 버전은 표 위 안내 줄 없이 표만 둔다(사용자 지시 · #196).
+       * 머리 — 제목은 「버전별 설정」 줄(「검사 항목」 · 건수)이 말하므로 화면에서는 감추고 접근 이름으로만 남긴다.
+       * 「+ 항목 추가」는 그 줄 오른쪽 끝에 있다(사용자 시안 · omf-all-around#258).
        */}
       {isVersionSelected && (
         <h4 className="inspection-standard-visually-hidden">
           {t.versionSection.itemsTitle(drafts.length)}
         </h4>
       )}
-      {isVersionSelected && isEditable && (
-        <div className="inspection-standard-section-head inspection-standard-tab-toolbar">
-          <Button variant="outlined" leadingIcon={<Icon name="add" size={18} />} onClick={onAdd}>
-            {t.actions.addItem}
-          </Button>
-        </div>
-      )}
 
+      {/* 「임시 저장」은 카드 바닥 줄 「확정」 왼쪽 하나로 모았다 — 항목 · 도면을 한 번에(사용자 지시 · #258). */}
       {listSlot()}
-
-      {isVersionSelected && isEditable && (
-        <div className="form-actions">
-          {saveReason === null ? (
-            <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={onSave}>
-              {t.actions.tempSave}
-            </Button>
-          ) : (
-            <DisabledAction label={t.actions.tempSave} reason={saveReason} />
-          )}
-        </div>
-      )}
     </section>
   );
 };
