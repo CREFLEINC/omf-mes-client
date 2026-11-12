@@ -93,6 +93,8 @@ export const DetailPane = ({
   ];
   const inboundFacts: [string, ReactNode][] = isInbound
     ? [
+        /* 원천(시안 「IQC · 자재 입하」 · G2 L13). */
+        [t.inboundLot.sourceColumn, t.inboundLot.source.IQC],
         [t.inboundLot.inboundLotNo, inboundLotNo],
         [
           t.inboundLot.inspectionRequestNo,

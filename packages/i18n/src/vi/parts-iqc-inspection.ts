@@ -77,7 +77,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     plan: 'Tiêu chuẩn kiểm tra',
     planName: 'Model',
     condition: 'Điều kiện kiểm tra',
-    conditionAql: (aql: number) => `AQL ${String(aql)} · kiểm tra bằng mắt`,
+    conditionAql: (aql: number) =>
+      `AQL ${Number.isInteger(aql) ? aql.toFixed(1) : String(aql)} · kiểm tra bằng mắt`,
     conditionNone: 'Chưa chỉ định',
     sample: 'Số mẫu',
     sampleValue: (n: number, c: number) => `Mẫu n=${String(n)}, C=${String(c)}`,

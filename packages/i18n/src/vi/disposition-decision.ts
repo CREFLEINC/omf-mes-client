@@ -112,7 +112,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT nhập hàng không đạt — phê duyệt hạn mức cũng theo đường này',
     target: 'Đối tượng',
     targetAll: (inboundLotNo: string | null, count: number): string =>
-      `${inboundLotNo === null ? '' : `LOT nhập hàng ${inboundLotNo} · `}toàn bộ ${String(count)} LOT quản lý vật tư`,
+      `Toàn bộ ${String(count)} LOT quản lý vật tư${inboundLotNo === null ? '' : ` · LOT nhập hàng ${inboundLotNo}`}`,
     qtyLocked: 'Toàn bộ số lượng còn lại — không đổi được',
     wholeHint:
       'Đặc cách chỉ yêu cầu cho toàn bộ số lượng còn lại (không có đặc cách một phần). Nếu chỉ muốn dùng một phần, hãy dùng [Phân loại] để tách LOT quản lý vật tư lỗi trước, rồi đặc cách toàn bộ LOT nhập hàng đó.',

@@ -118,8 +118,9 @@ export const dispositionDecision = {
     requestNote: '불합격 입하 LOT 의 조건부 사용 승인을 요청합니다 — 한도 승인도 이 길로',
     /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
     target: '대상',
+    /** 「자재 관리 LOT n개 전부」를 앞에 — 읽기 전용 칸이 좁아 뒤가 잘려 보이지 않았다(G2 L13). */
     targetAll: (inboundLotNo: string | null, count: number): string =>
-      `${inboundLotNo === null ? '' : `입하 LOT ${inboundLotNo} · `}자재 관리 LOT ${String(count)}개 전부`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+      `자재 관리 LOT ${String(count)}개 전부${inboundLotNo === null ? '' : ` · 입하 LOT ${inboundLotNo}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     qtyLocked: '남은 수량 전부 — 바꿀 수 없음',
     wholeHint:
       '특채는 남은 수량 전부만 요청합니다(일부 특채 없음). 일부만 쓰려면 먼저 [선별]로 불량 자재 관리 LOT 를 떼어 낸 뒤, 그 입하 LOT 를 전량 특채하세요.',

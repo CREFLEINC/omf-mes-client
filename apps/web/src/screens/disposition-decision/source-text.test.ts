@@ -39,3 +39,18 @@ describe('W-03-10 목록 「원천」', () => {
     ).toBe(`${t.source.IQC}${t.sortedFromTail('0004')}`);
   });
 });
+
+describe('G2 L13 시안 문구', () => {
+  it('특채 팝업 대상은 「자재 관리 LOT n개 전부」가 앞에 선다(좁은 칸에서 잘리지 않게)', () => {
+    expect(t.inboundLot.sortedFromTail('0004')).toContain('0004');
+    expect(messages.dispositionDecision.concession.targetAll('IL-20991111-0001', 3)).toMatch(
+      /^자재 관리 LOT 3개 전부/u,
+    );
+  });
+
+  it('W-01-01 검사 조건은 「AQL 1.0」 — 정수도 소수 한 자리', () => {
+    expect(messages.partsIqcInspection.target.conditionAql(1)).toMatch(/^AQL 1\.0 /u);
+    expect(messages.partsIqcInspection.target.conditionAql(0.65)).toMatch(/^AQL 0\.65 /u);
+  });
+});
+
