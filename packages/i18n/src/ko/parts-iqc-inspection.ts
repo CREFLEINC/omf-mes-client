@@ -83,6 +83,8 @@ export const partsIqcInspection = {
     conditionAqlPlan: (aql: number, level: string, n: number, ac: number, re: number) =>
       `AQL ${String(aql)} · ${level} → 시료 ${String(n)}개, 불량 ${String(ac)}개 이하 합격 · ${String(re)}개 이상 불합격`,
     sample: '시료 수',
+    /** AQL 기준이면 위 「검사 조건」이 외관 시료를 말한다 — 이 줄은 치수 항목의 시료 · 허용 수다(omf-all-around#264). */
+    sampleDimension: '치수 시료 수',
     sampleValue: (n: number, c: number) => `시료 n=${String(n)}, C=${String(c)}`,
     dimensionCount: '치수 항목',
     inspector: '검사자',
