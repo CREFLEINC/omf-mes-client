@@ -1,4 +1,10 @@
-import type { components, FourMChangeForward, InspectionAqlPlanForward } from '@omf-mes/api-client';
+import {
+  isInboundLotInspection,
+  type components,
+  type FourMChangeForward,
+  type InspectionAqlPlanForward,
+  type InspectionRequestInboundFields,
+} from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 
 type InspectionRequestForward = components['schemas']['InspectionRequest'];
@@ -43,6 +49,27 @@ export interface InspectionQueueRow {
   isFourMChange: boolean;
   /** 생략 근거 — 기본 생략(DEFAULT)·결재 승인(APPROVAL). 생략이 아니면 `null`(omf-all-around#212). */
   skipBasisCode: SkipBasisCode | null;
+  /** 수량 단위 — 입하 LOT 행의 「3,000 EA」(005). */
+  uomId: number;
+  /**
+   * 새 흐름(대상 = 입하 LOT) 의뢰의 대기열 값(005 · screens/W-01-01.md). 이전 데이터(대상 LOT)·PQC·OQC 는 `null` —
+   * 표가 그 줄을 지금처럼 그린다.
+   */
+  inbound: InspectionQueueInbound | null;
+}
+
+/** 입하 LOT 행의 값. 계약이 비워 보낸 칸은 `null` 로 모은다. */
+export interface InspectionQueueInbound {
+  inboundLotId: number | null;
+  inboundLotNo: string | null;
+  lotCount: number | null;
+  overallJudgmentCode: string | null;
+  confirmedAt: string | null;
+  previewJudgmentCode: string | null;
+  splitFromInboundLotNo: string | null;
+  receivedAt: string | null;
+  /** 공급사 이름(C3 정함) — 새 흐름 의뢰는 LOT 이 없어 LOT 으로 공급사를 풀 수 없다. */
+  supplierName: string | null;
 }
 
 export interface InspectionQueueResult {
@@ -56,7 +83,9 @@ export interface InspectionQueueResult {
  * **선택 필드는 `null` 로 모은다.** 계약에서 `lotId` 는 없을 수 있고(작업지시 대상 검사 등),
  * `undefined` 와 `null` 이 섞이면 그리는 쪽이 두 가지를 다 다뤄야 한다.
  */
-export const toInspectionQueueRow = (item: InspectionRequestResponse): InspectionQueueRow => ({
+export const toInspectionQueueRow = (
+  item: InspectionRequestResponse & InspectionRequestInboundFields,
+): InspectionQueueRow => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
   inspectionTypeCode: item.inspectionTypeCode,
@@ -67,10 +96,24 @@ export const toInspectionQueueRow = (item: InspectionRequestResponse): Inspectio
   requestedAt: item.requestedAt,
   isFourMChange: item.fourMChange !== undefined,
   skipBasisCode: item.skipBasisCode ?? null,
+  uomId: item.uomId,
+  inbound: isInboundLotInspection(item)
+    ? {
+        inboundLotId: item.inboundLotId ?? null,
+        inboundLotNo: item.inboundLotNo ?? null,
+        lotCount: item.lotCount ?? null,
+        overallJudgmentCode: item.overallJudgmentCode ?? null,
+        confirmedAt: item.confirmedAt ?? null,
+        previewJudgmentCode: item.previewJudgmentCode ?? null,
+        splitFromInboundLotNo: item.splitFromInboundLotNo ?? null,
+        receivedAt: item.receivedAt ?? null,
+        supplierName: item.supplierName ?? null,
+      }
+    : null,
 });
 
 export const toInspectionQueueResult = (response: {
-  items: InspectionRequestResponse[];
+  items: (InspectionRequestResponse & InspectionRequestInboundFields)[];
   page: PageMetaResponse;
 }): InspectionQueueResult => ({
   rows: response.items.map(toInspectionQueueRow),
@@ -123,6 +166,8 @@ export interface InspectionRequestDetail {
   fourMChange: FourMChangeForward | null;
   /** 생략 근거(omf-all-around#212) — 생략 구획이 「기본 설정」인지 「결재 승인」인지 가른다. */
   skipBasisCode: SkipBasisCode | null;
+  /** 의뢰 대상 — 005 새 흐름은 `INBOUND_LOT`(입하 LOT 단위 상세로 연다). */
+  targetTypeCode: string;
   /** AQL 샘플링 기준이면 의뢰 수량으로 표에서 낸 시료 계획(omf-all-around#264). 아니면 `null`. */
   aqlPlan: InspectionAqlPlanForward | null;
 }
@@ -142,6 +187,7 @@ export const toInspectionRequestDetail = (
   requestedAt: item.requestedAt,
   fourMChange: item.fourMChange ?? null,
   skipBasisCode: item.skipBasisCode ?? null,
+  targetTypeCode: item.targetTypeCode,
   aqlPlan: item.aqlPlan ?? null,
 });
 

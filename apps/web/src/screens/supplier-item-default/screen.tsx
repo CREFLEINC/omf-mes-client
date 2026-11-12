@@ -19,7 +19,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import { LoadErrorAlert } from '../../patterns/load-error-banner';
 import { SaveErrorBanner } from '../../patterns/master';
-import { formatPackageQty, formatQty } from '../../patterns/package-qty';
+import { formatPackageQty, formatQty, packageUnitName } from '../../patterns/package-qty';
 import { useSession } from '../../patterns/session';
 import { Select } from '../../patterns/select';
 import { EditDialog } from './edit-dialog';
@@ -101,7 +101,7 @@ export const SupplierItemDefaultScreen = () => {
     {
       key: 'package',
       header: t.columns.packageUom,
-      render: (row) => row.package?.uomCode ?? t.values.noPackage,
+      render: (row) => (row.package === null ? t.values.noPackage : packageUnitName(row.package)),
     },
     {
       key: 'perPackage',
@@ -129,6 +129,7 @@ export const SupplierItemDefaultScreen = () => {
             ? null
             : {
                 uomCode: row.package.uomCode,
+                uomName: row.package.uomName ?? null,
                 count: row.package.count,
                 qtyPerPackage: row.package.qtyPerPackage,
               },

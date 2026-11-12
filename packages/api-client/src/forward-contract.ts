@@ -45,6 +45,8 @@ export type InspectionResultCreateForward = Omit<
   'fourMChange'
 > & {
   fourMChange?: FourMChangeForward | null;
+  /** 005 새 흐름 IQC — 이 결과가 본 자재 관리 LOT(계약 §8). */
+  matchedLotIds?: number[];
 };
 
 export type InspectionResultUpdateForward = Omit<
@@ -52,6 +54,8 @@ export type InspectionResultUpdateForward = Omit<
   'fourMChange'
 > & {
   fourMChange?: FourMChangeForward | null;
+  /** 005 새 흐름 IQC — 매칭을 통째로 바꾼다(계약 §8). */
+  matchedLotIds?: number[];
 };
 
 type InspectionResultsPath = paths['/quality/inspection-results'];
@@ -899,6 +903,8 @@ type PlanVersionPath = paths['/quality/inspection-plan-versions/{inspectionPlanV
 export interface MaterialPackage {
   uomId: number;
   uomCode: string;
+  /** 패키징 단위 이름(「봉지」) — 화면은 이름, 없으면 코드(G1 잔여 · 서버 S8 덧댐). */
+  uomName?: string | null;
   count: number;
   qtyPerPackage: number;
 }
@@ -1204,6 +1210,168 @@ export interface InboundLotClosed extends InboundLot {
 
 type InboundLotId = { inboundLotId: number };
 
+/*
+ * ── 005 IQC 입하 LOT 단위(계약 §8 · §3 분리, W-01-01 · 확정 권한 W-01-15) ──
+ * 서버 S8 · S9 · S11 병합 뒤 `gen:api` 로 다시 만들고 걷는다(T111). 계약이 칸 이름을 적지 않은 것은 「(C3 정함)」 —
+ * 서버가 다르게 내면 여기를 맞춘다. 새 흐름은 `targetTypeCode === 'INBOUND_LOT'` 이고, 이전된 옛 요청(대상 LOT)은
+ * 아래 칸이 없거나 null 이다(지금 화면 경로 그대로).
+ */
+
+/** 검사 의뢰 대상 — 새 흐름은 입하 LOT(G1 반영 — S5 부터). */
+export type InspectionTargetTypeForward =
+  components['schemas']['InspectionRequest']['targetTypeCode'] | 'INBOUND_LOT';
+
+/** 대기열 · 상세가 함께 쓰는 입하 LOT 칸(계약 §8 목록 행 추가). 옛 요청 · PQC · OQC 는 없거나 null. */
+export interface InspectionRequestInboundFields {
+  inboundLotId?: number | null;
+  inboundLotNo?: string | null;
+  /** 자재 관리 LOT 수. */
+  lotCount?: number | null;
+  /** 확정된 종합 판정 — 확정 전이면 null. */
+  overallJudgmentCode?: string | null;
+  confirmedAt?: string | null;
+  /** 확정 전 종합 판정 미리 보기(불합격 > 보류 > 합격) — 결과가 없으면 null. 목록 행에도 싣는다(C3 정함 — 대기열 「{판정} (미리 보기)」). */
+  previewJudgmentCode?: string | null;
+  /** 분리로 생긴 입하 LOT 이면 원천 입하 LOT 번호(C3 정함 — 대기열 「분리 ← {끝 4자리}」 · 상세 「분리 원천」). */
+  splitFromInboundLotNo?: string | null;
+  /** 첫 등록(입하) 시각(C3 정함 — 대기열 아래 줄 · 상세 「입하」). */
+  receivedAt?: string | null;
+  /** 입하 채널(C3 정함 — 「(PDA)」). */
+  receivedChannelCode?: 'PDA' | 'WEB' | null;
+  /** 공급사(C3 정함 — 대기열 「품목·공급사」 · 상세 「공급사」). 의뢰 응답에 공급사가 없어 입하 LOT 의 것을 싣는다. */
+  supplierName?: string | null;
+}
+
+/**
+ * 대기열 · 상세 행. ⚠ `targetTypeCode` 는 생성 타입 그대로 둔다 — 넓히면 같은 응답을 쓰는 PQC · OQC · 대시보드 화면이
+ * 모두 흔들린다. 새 흐름 판정은 `isInboundLotInspection` 하나로 한다(값 `INBOUND_LOT` 은 T111 `gen:api` 에서 enum 에 들어온다).
+ */
+export type InspectionRequestForward = components['schemas']['InspectionRequest'] &
+  InspectionRequestInboundFields;
+
+/** 새 흐름(대상 = 입하 LOT) IQC 의뢰인가 — 이전된 옛 요청(대상 LOT)은 지금 화면 경로 그대로(FR-051 · R18-1). */
+export const isInboundLotInspection = (request: {
+  targetTypeCode: string;
+  inboundLotId?: number | null;
+}): boolean => (request.targetTypeCode as InspectionTargetTypeForward) === 'INBOUND_LOT';
+
+/** 상세의 자재 관리 LOT 한 개(계약 §8 `lots[]`). */
+export interface InspectionLotForward {
+  lotId: number;
+  lotNo: string;
+  lotQty: number;
+  package: MaterialPackage | null;
+  /** 품질 상태 — INSPECTION_PENDING · NORMAL · DEFECTIVE · SUSPECT_HOLD 등. */
+  statusCode: string;
+  /** 입고됐는가(C3 정함 — 「입고됨」 칩). */
+  goodsReceived: boolean;
+}
+
+/** 상세의 결과 한 건(계약 §8 `results[]` 요약). */
+export interface InspectionResultSummaryForward {
+  inspectionResultId: number;
+  inspectionResultNo: string;
+  /** 순번 — 지운 순번은 다시 쓰지 않는다(C3 정함 — 「결과 n」). */
+  seqNo: number;
+  overallJudgmentCode: string | null;
+  inspectedQty: number;
+  rejectedQty: number;
+  /** 불량 유형 이름들(C3 정함 — 결과 표 「불량 · 유형」). */
+  defectNames: string[];
+  matchedLotIds: number[];
+  inspectorName: string | null;
+  inspectedAt: string;
+  statusCode: string;
+  versionNo: number;
+}
+
+/** 입하 LOT 단위 IQC 상세(계약 §8 상세 추가). */
+export interface InspectionRequestInboundDetailForward {
+  /** 입하 LOT 의 판 번호 — 분리(`:split-lots`)의 `versionNo`(C3 정함). */
+  inboundLotVersionNo?: number | null;
+  lots?: InspectionLotForward[];
+  poAllocations?: InboundLotPoAllocation[];
+  unallocatedQty?: number | null;
+  results?: InspectionResultSummaryForward[];
+  /** 확정한 사람(C3 정함 — 확정 배너 「{확정자} · {시각}」). */
+  confirmedByName?: string | null;
+  /** 불합격 확정으로 생긴 부적합(C3 정함 — 배너 링크 W-03-10). */
+  nonconformanceId?: number | null;
+  nonconformanceNo?: string | null;
+}
+
+/** 입하 LOT 의 P/O 배정 한 행(서버 계약 `InboundLotPoAllocation`). */
+export interface InboundLotPoAllocation {
+  purchaseOrderLineId: number;
+  purchaseOrderNo: string;
+  lineNo: number;
+  orderDate: string;
+  erpPurchaseOrderNo: string | null;
+  qty: number;
+}
+
+/** 검사 의뢰 이벤트(계약 §8 「이벤트를 함께」 — 칸 이름 C3 정함). */
+export interface InspectionRequestEventForward {
+  occurredAt: string;
+  /** REQUESTED · RESULT_CREATED · RESULT_UPDATED · RESULT_DELETED · CONFIRMED · CONFIRM_CANCELLED · LOTS_SPLIT · SPLIT_CREATED. */
+  eventCode: string;
+  actorName: string | null;
+  /** 서버가 만든 한 줄 내용(「결과 1 기록 — 합격 · 검사 200 · 매칭 0001, 0002」). */
+  detail: string | null;
+}
+
+/** 결과 쓰기에 매칭을 더한다(계약 §8). 새 흐름 요청만 — 옛 요청 · PQC · OQC 는 싣지 않는다. */
+export interface InspectionResultMatchForward {
+  matchedLotIds?: number[];
+}
+
+/** 확정 취소 막힘 코드(계약 §8). */
+export type InspectionConfirmBlockerCode =
+  | 'INBOUND_LOT_FINALIZED'
+  | 'GOODS_RECEIVED'
+  | 'DISPOSITION_STARTED'
+  | 'CONCESSION_EXISTS'
+  | 'LOT_STATUS_CHANGED';
+
+/** 분리 미리 보기(계약 §3 `split-preview` — 칸 이름 C3 정함). */
+export interface InboundLotSplitPreview {
+  /** 새 입하 LOT 로 옮길 자재 관리 LOT 수 · 수량. */
+  movedLotCount: number;
+  movedQty: number;
+  /** 원래 입하 LOT 에 남는 수 · 수량. */
+  remainingLotCount: number;
+  remainingQty: number;
+  /** 새 검사가 「검사 진행 중」으로 생기는가(옮길 결과가 있으면 참). */
+  newInspectionInProgress: boolean;
+  /** 옮긴 LOT 에만 매칭된 결과 — 새 검사로 옮겨지고 순번을 1부터 다시 매긴다. */
+  movedResults: { inspectionResultId: number; seqNo: number; overallJudgmentCode: string | null }[];
+  /** 다른 LOT 와 함께 매칭돼 남고 매칭만 빠지는 결과. */
+  unmatchedResults: { inspectionResultId: number; seqNo: number; removedLotIds: number[] }[];
+  /** 그대로 남는 결과. */
+  keptResults: { inspectionResultId: number; seqNo: number }[];
+  /** 옮겨지는 P/O 매칭 — `purchaseOrderLineId` null 은 「P/O 없음」. */
+  movedAllocations: {
+    purchaseOrderLineId: number | null;
+    purchaseOrderNo: string | null;
+    lineNo: number | null;
+    qty: number;
+  }[];
+}
+
+/** 분리 실행 결과(계약 §3 「201 새 입하 LOT + 옮긴 결과 목록 + 옮긴 배정」 — 칸 이름 C3 정함). */
+export interface InboundLotSplitResult {
+  inboundLot: InboundLot;
+  /** 새 입하 LOT 의 IQC 의뢰(C3 정함 — 대기열에서 바로 고르기). */
+  inspectionRequestId: number | null;
+  movedLotIds: number[];
+  movedResultIds: number[];
+  movedAllocations: InboundLotSplitPreview['movedAllocations'];
+}
+
+type InspectionRequestListPath = paths['/quality/inspection-requests'];
+type InspectionHistoryPath = paths['/quality/inspection-requests/{inspectionRequestId}/history'];
+type InspectionId = { inspectionRequestId: number };
+
 export interface ForwardPaths {
   /** 005 — 입하 LOT 목록(계약 §2). 권한 M-01-01·M-01-03·W-01-16·W-01-01. */
   '/logistics/inbound-lots': Unused & {
@@ -1352,10 +1520,11 @@ export interface ForwardPaths {
     get: Omit<InspectionRequestDetailPath['get'], 'responses'> & {
       responses: Omit<InspectionRequestDetailPath['get']['responses'], 200> & {
         200: Json<
-          components['schemas']['InspectionRequest'] & {
-            inspectionGuides?: InspectionGuideForward[];
-            aqlPlan?: InspectionAqlPlanForward;
-          }
+          InspectionRequestForward &
+            InspectionRequestInboundDetailForward & {
+              inspectionGuides?: InspectionGuideForward[];
+              aqlPlan?: InspectionAqlPlanForward;
+            }
         >;
       };
     };
@@ -1602,10 +1771,104 @@ export interface ForwardPaths {
       requestBody: { content: { 'application/json': InspectionResultCreateForward } };
     };
   };
-  '/quality/inspection-results/{inspectionResultId}': Omit<InspectionResultPath, 'put'> & {
+  '/quality/inspection-results/{inspectionResultId}': Omit<
+    InspectionResultPath,
+    'put' | 'delete'
+  > & {
     put: Omit<InspectionResultPath['put'], 'requestBody'> & {
       requestBody: { content: { 'application/json': InspectionResultUpdateForward } };
     };
+    /** 005 — 새 흐름 IQC 결과 지우기(계약 §8). 확정 전 · DRAFT 만, 권한 W-01-01. */
+    delete: Op<
+      Params<
+        never,
+        { 'If-Match': string; 'Idempotency-Key': string },
+        { inspectionResultId: number }
+      >,
+      never,
+      { 204: { headers: { [name: string]: unknown }; content?: never } }
+    >;
+  };
+  /** 005 — 대기열 행에 입하 LOT 칸 · 조건 `inboundLotId`(계약 §8). */
+  '/quality/inspection-requests': Omit<InspectionRequestListPath, 'get'> & {
+    get: Omit<InspectionRequestListPath['get'], 'parameters' | 'responses'> & {
+      parameters: Omit<InspectionRequestListPath['get']['parameters'], 'query'> & {
+        query?: NonNullable<InspectionRequestListPath['get']['parameters']['query']> & {
+          inboundLotId?: number;
+        };
+      };
+      responses: Omit<InspectionRequestListPath['get']['responses'], 200> & {
+        200: Json<{ items: InspectionRequestForward[]; page: PageMeta }>;
+      };
+    };
+  };
+  /** 005 — 이력에 의뢰 이벤트를 함께(계약 §8). */
+  '/quality/inspection-requests/{inspectionRequestId}/history': Omit<
+    InspectionHistoryPath,
+    'get'
+  > & {
+    get: Omit<InspectionHistoryPath['get'], 'responses'> & {
+      responses: Omit<InspectionHistoryPath['get']['responses'], 200> & {
+        200: Json<
+          components['schemas']['InspectionHistory'] & {
+            requestEvents?: InspectionRequestEventForward[];
+          }
+        >;
+      };
+    };
+  };
+  /** 005 — 검사 단위 판정 확정(계약 §8). 권한 W-01-15. 새 흐름 요청만. */
+  '/quality/inspection-requests/{inspectionRequestId}:confirm': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, InspectionId>,
+      { content: { 'application/json': { versionNo: number } } },
+      {
+        200: Json<
+          InspectionRequestForward &
+            InspectionRequestInboundDetailForward & { nonconformanceId?: number | null }
+        >;
+      }
+    >;
+  };
+  /** 005 — 판정 확정 취소(계약 §8). 권한 W-01-15. 409 면 `errors[].code` 가 막힘 코드(C4 정함 — reopen 과 같은 모양). */
+  '/quality/inspection-requests/{inspectionRequestId}:cancel-confirm': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, InspectionId>,
+      { content: { 'application/json': { versionNo: number; reason?: string | null } } },
+      { 200: Json<InspectionRequestForward & InspectionRequestInboundDetailForward> }
+    >;
+  };
+  /** 005 — 자재 관리 LOT 분리(계약 §3). 권한 W-01-01. IQC 확정 전만. */
+  '/logistics/inbound-lots/{inboundLotId}:split-lots': Unused & {
+    parameters: NoParameters;
+    get?: never;
+    put?: never;
+    post: Op<
+      Params<never, IdemOnly, InboundLotId>,
+      {
+        content: {
+          'application/json': { lotIds: number[]; versionNo: number; reason?: string | null };
+        };
+      },
+      { 201: Json<InboundLotSplitResult> }
+    >;
+  };
+  /** 005 — 분리 미리 보기(계약 §3). 권한 W-01-01. */
+  '/logistics/inbound-lots/{inboundLotId}/split-preview': Unused & {
+    parameters: NoParameters;
+    put?: never;
+    post?: never;
+    get: Op<
+      { query: { lotIds: number[] }; header?: never; path: InboundLotId; cookie?: never },
+      never,
+      { 200: Json<InboundLotSplitPreview> }
+    >;
   };
   /** 조회에 `inspectionResultId` 질의를 더하고 그때 기간을 생략할 수 있게 한다 — 서버 선행 P-42. */
   '/quality/defect-records': Omit<paths['/quality/defect-records'], 'get'> & {

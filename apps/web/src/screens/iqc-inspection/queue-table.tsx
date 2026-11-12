@@ -1,14 +1,17 @@
-import { Chip, Table, type Column } from '@crefle/web-ui';
+import { Chip, Icon, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
+import { formatQty } from '../../patterns/package-qty';
+import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 /* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
 import { toStatusBadge } from '../oqc-inspection/status-badge';
 import { QueueSkipCell, QueueStatusCell } from './queue-skip-cell';
-import { formatDateTime, type InspectionQueueRow } from './types';
+import { formatDateTime, type InspectionQueueInbound, type InspectionQueueRow } from './types';
+import { useUomLookup, withUom } from './uom-lookup';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
 
 /**
@@ -27,6 +30,139 @@ import type { ItemNameLookup, NameLookup } from './reference-lookup';
  */
 
 const t = messages.iqcInspection.queue;
+const ti = messages.iqcInboundLot.queue;
+const judgmentLabels = messages.partsIqcInspection.judgment;
+
+/* ---------------------------------------------------------------------------------------------- */
+/* 입하 LOT 행(005 · screens/W-01-01.md 「대기열 행 = 입하 LOT」) — 이전 데이터(대상 LOT) 줄은 아래를 거치지 않는다. */
+
+/** 판정 칩 색 — 합격 성공 · 불합격 오류 · 보류 주의, 모르는 코드는 중립. */
+const JUDGMENT_TONE: Record<string, 'success' | 'error' | 'warning'> = {
+  ACCEPTED: 'success',
+  REJECTED: 'error',
+  HELD: 'warning',
+};
+
+const judgmentLabel = (code: string): string => judgmentLabels[code] ?? code;
+
+/** 판정 확정 = 확정 시각이 있거나 의뢰가 끝났다(COMPLETED). */
+const isConfirmed = (row: InspectionQueueRow, inbound: InspectionQueueInbound): boolean =>
+  inbound.confirmedAt !== null || row.statusCode === 'COMPLETED';
+
+type InboundStatus = 'REQUESTED' | 'IN_PROGRESS' | 'CONFIRMED';
+
+/** 대기 · 진행 · 확정 셋으로 가른다. 생략 · 취소 같은 다른 값은 `null` — 지금 배지 그대로 그린다. */
+const inboundStatusOf = (
+  row: InspectionQueueRow,
+  inbound: InspectionQueueInbound,
+): InboundStatus | null => {
+  if (isConfirmed(row, inbound)) return 'CONFIRMED';
+  if (row.statusCode === 'REQUESTED' || row.statusCode === 'IN_PROGRESS') return row.statusCode;
+  return null;
+};
+
+const INBOUND_STATUS_TONE: Record<InboundStatus, 'idle' | 'warning' | 'info'> = {
+  REQUESTED: 'idle',
+  IN_PROGRESS: 'warning',
+  CONFIRMED: 'info',
+};
+
+/** 끝 마디(일련번호)를 굵게 — 구분자가 `|` 면 마지막 마디, `-` 면 마지막 마디. */
+const LotNoText = ({ value }: { value: string }) => {
+  const cut = Math.max(value.lastIndexOf('|'), value.lastIndexOf('-')) + 1;
+  return (
+    <span className="iqc-inspection-lot" title={value}>
+      {cut > 0 && cut < value.length ? (
+        <>
+          <span className="iqc-inspection-lot-head">{value.slice(0, cut)}</span>
+          <span className="iqc-inspection-lot-tail">{value.slice(cut)}</span>
+        </>
+      ) : (
+        value
+      )}
+    </span>
+  );
+};
+
+/** 첫 칸 아래 줄 — 분리로 생겼으면 「분리 ← 끝 4자리」, 아니면 입하 시각(공장 시각 `MM-DD HH:mm`). */
+const inboundSubline = (inbound: InspectionQueueInbound): string | null => {
+  if (inbound.splitFromInboundLotNo !== null) {
+    return ti.splitFrom(inbound.splitFromInboundLotNo.slice(-4));
+  }
+  if (inbound.receivedAt === null) return null;
+  const parts = toPlantDateTimeParts(inbound.receivedAt);
+  return parts === null ? inbound.receivedAt : `${parts.date.slice(5)} ${parts.time}`;
+};
+
+/** 자재 관리 LOT 칸 — 「3개」 아래 「3,000 EA」. 단위 조회는 입하 LOT 줄이 있을 때만 부른다. */
+const InboundLotCountCell = ({
+  row,
+  lotCount,
+}: {
+  row: InspectionQueueRow;
+  lotCount: number | null;
+}) => {
+  const uoms = useUomLookup();
+  return (
+    <span className="iqc-inbound-queue-two">
+      <span>{lotCount === null ? '—' : ti.lotCount(lotCount)}</span>
+      <span className="iqc-inbound-queue-sub">
+        {withUom(formatQty(row.targetQty), uoms.codeOf(row.uomId))}
+      </span>
+    </span>
+  );
+};
+
+const InboundJudgmentCell = ({
+  row,
+  inbound,
+}: {
+  row: InspectionQueueRow;
+  inbound: InspectionQueueInbound;
+}) => {
+  if (isConfirmed(row, inbound) && inbound.overallJudgmentCode !== null) {
+    const code = inbound.overallJudgmentCode;
+    return (
+      <Chip variant="status" size="sm" status={JUDGMENT_TONE[code] ?? 'idle'}>
+        {judgmentLabel(code)}
+      </Chip>
+    );
+  }
+  if (!isConfirmed(row, inbound) && inbound.previewJudgmentCode !== null) {
+    const code = inbound.previewJudgmentCode;
+    return (
+      <Chip
+        variant="status"
+        size="sm"
+        status={JUDGMENT_TONE[code] ?? 'idle'}
+        className="iqc-inbound-queue-preview"
+        title={ti.previewTitle}
+      >
+        {ti.preview(judgmentLabel(code))}
+      </Chip>
+    );
+  }
+  return <span className="iqc-inbound-queue-none">—</span>;
+};
+
+/** 표 아래 건수 — 지금 쪽의 줄로 센다(입하 LOT 줄이 하나라도 있을 때만). */
+const countsOf = (rows: readonly InspectionQueueRow[]) => {
+  let requested = 0;
+  let inProgress = 0;
+  let confirmed = 0;
+  for (const row of rows) {
+    const status =
+      row.inbound === null
+        ? row.statusCode === 'COMPLETED'
+          ? 'CONFIRMED'
+          : row.statusCode
+        : inboundStatusOf(row, row.inbound);
+    if (status === 'REQUESTED') requested += 1;
+    else if (status === 'IN_PROGRESS') inProgress += 1;
+    else if (status === 'CONFIRMED') confirmed += 1;
+  }
+  return ti.counts(rows.length, requested, inProgress, confirmed);
+};
 
 const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
 
@@ -69,12 +205,14 @@ const columnsOf = (
   suppliers: NameLookup,
   skipWorkerNo: string | null | undefined,
   skipAlsoInvalidate: readonly (readonly unknown[])[] | undefined,
+  hasInbound: boolean,
 ): Column<InspectionQueueRow>[] => [
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
     key: 'lotId',
     align: 'start',
-    header: t.columns.lotId,
+    /* 입하 LOT 줄이 있으면 머리를 「입하 LOT」로 — 이전 데이터 줄만 있으면 지금 그대로(005). */
+    header: hasInbound ? ti.columns.inboundLotNo : t.columns.lotId,
     width: '260px',
     /*
      * 열 폭은 품목 40 · LOT 35 · 상태 10 · 일시 15(%)로 고정한다(#133) — 값 길이로 폭이 흔들리지 않는다.
@@ -84,6 +222,15 @@ const columnsOf = (
      * 풀이가 네 갈래를 서로 다른 글자로 낸다.
      */
     render: (row) => {
+      if (row.inbound !== null) {
+        const sub = inboundSubline(row.inbound);
+        return (
+          <span className="iqc-inbound-queue-two">
+            <LotNoText value={row.inbound.inboundLotNo ?? '—'} />
+            {sub !== null && <span className="iqc-inbound-queue-sub">{sub}</span>}
+          </span>
+        );
+      }
       const lotNo = lotNumbers.labelOf(row.lotId);
       /* 줄을 바꾸지 않고 말줄임 — 전체 번호는 마우스를 올리면 보인다. */
       /*
@@ -162,7 +309,8 @@ const columnsOf = (
     header: t.columns.supplier,
     width: '180px',
     render: (row) => {
-      const name = suppliers.labelOf(row.lotId);
+      /* 새 흐름 의뢰는 LOT 이 아니라 입하 LOT 이 대상이다 — 응답의 공급사 이름을 쓴다(C3 정함). */
+      const name = row.inbound?.supplierName ?? suppliers.labelOf(row.lotId);
       return (
         <span className="iqc-inspection-queue-supplier" title={name}>
           {name}
@@ -170,12 +318,37 @@ const columnsOf = (
       );
     },
   },
+  ...(hasInbound
+    ? [
+        {
+          /* 자재 관리 LOT 「N개 / 합계」(005) — 이전 데이터 줄은 「—」. */
+          key: 'lotCount',
+          align: 'center',
+          header: ti.columns.lotCount,
+          width: '120px',
+          render: (row) =>
+            row.inbound === null ? (
+              <span className="iqc-inbound-queue-none">—</span>
+            ) : (
+              <InboundLotCountCell row={row} lotCount={row.inbound.lotCount} />
+            ),
+        } satisfies Column<InspectionQueueRow>,
+      ]
+    : []),
   {
     key: 'statusCode',
     align: 'center',
     header: t.columns.statusCode,
     width: '88px',
     render: (row) => {
+      const inboundStatus = row.inbound === null ? null : inboundStatusOf(row, row.inbound);
+      if (inboundStatus !== null) {
+        return (
+          <Chip variant="status" size="sm" status={INBOUND_STATUS_TONE[inboundStatus]}>
+            {ti.status[inboundStatus]}
+          </Chip>
+        );
+      }
       const basic = toStatusBadge(row.statusCode, row.skipBasisCode);
       /* 결재로 생략된 의뢰는 「생략」 하나로(사용자 지시 2026-11-02 · #225) — 기본 설정 생략은 그대로 가른다. */
       const badge =
@@ -183,7 +356,12 @@ const columnsOf = (
           ? { ...basic, label: t.skipStatus.SKIPPED ?? basic.label }
           : basic;
       /* 생략 칸이 서는 줄은 생략 결재 단계를 상태로 보인다(#225). */
-      if (skipWorkerNo !== undefined && row.lotId !== null && SKIPPABLE.includes(row.statusCode)) {
+      if (
+        skipWorkerNo !== undefined &&
+        row.inbound === null &&
+        row.lotId !== null &&
+        SKIPPABLE.includes(row.statusCode)
+      ) {
         return <QueueStatusCell lotId={row.lotId} fallback={badge} />;
       }
 
@@ -194,6 +372,23 @@ const columnsOf = (
       );
     },
   },
+  ...(hasInbound
+    ? [
+        {
+          /* 종합 판정(005) — 확정이면 칩, 확정 전이면 「{판정} (미리 보기)」, 결과가 없으면 「—」. */
+          key: 'overallJudgment',
+          align: 'center',
+          header: ti.columns.overallJudgment,
+          width: '140px',
+          render: (row) =>
+            row.inbound === null ? (
+              <span className="iqc-inbound-queue-none">—</span>
+            ) : (
+              <InboundJudgmentCell row={row} inbound={row.inbound} />
+            ),
+        } satisfies Column<InspectionQueueRow>,
+      ]
+    : []),
   {
     /* 의뢰번호(사용자 지시 2026-10-27 · #185) — 검색 칸으로 찾은 번호를 줄에서도 맞춰 본다. */
     key: 'inspectionRequestNo',
@@ -224,8 +419,9 @@ const columnsOf = (
           header: t.columns.skip,
           width: '120px',
           /* 대기·진행 중이고 LOT 이 있는 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(생략됨은 상태 칸이 말한다). */
+          /* 입하 LOT 줄(005)에는 두지 않는다. */
           render: (row) =>
-            row.lotId !== null && SKIPPABLE.includes(row.statusCode) ? (
+            row.inbound === null && row.lotId !== null && SKIPPABLE.includes(row.statusCode) ? (
               <QueueSkipCell
                 lotId={row.lotId}
                 workerNo={skipWorkerNo}
@@ -248,6 +444,8 @@ export const QueueTable = ({
   empty,
   scrollX = false,
 }: QueueTableProps) => {
+  /* 입하 LOT 줄(005)이 하나라도 있으면 그 칸들과 건수를 더한다 — 이전 데이터 줄만 있으면 지금 그대로다. */
+  const hasInbound = rows.some((row) => row.inbound !== null);
   /* 열 순서·폭은 사용자가 바꾸고 브라우저에 남는다(#185) — 순서를 먼저 정하고 그 위에 폭 손잡이를 단다. */
   const ordered = useColumnOrder(
     'omf-mes:iqc-inspection:columns:queue:order',
@@ -259,6 +457,7 @@ export const QueueTable = ({
       suppliers,
       skipWorkerNo,
       skipAlsoInvalidate,
+      hasInbound,
     ),
   );
   const resizable = useColumnWidths('omf-mes:iqc-inspection:columns:queue', ordered, {
@@ -269,32 +468,40 @@ export const QueueTable = ({
   const fit = useFitColumns(resizable.columns, { scrollX });
 
   return (
-    /*
-     * 줄 아무 곳이나 눌러도 고른다(omf-all-around#133) — DS 표에 줄 클릭이 없어 눌린 줄의 품목 단추로 넘긴다.
-     * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
-     */
-    <div
-      ref={fit.ref}
-      className="iqc-inspection-queue-rows inspection-queue-table"
-      style={resizable.style}
-      onClick={(event) => {
-        const target = event.target as Element;
-        if (target.closest('button, a, input, select, textarea') !== null) return;
-        target
-          .closest('tbody tr')
-          ?.querySelector<HTMLButtonElement>('.iqc-inspection-queue-item')
-          ?.click();
-      }}
-    >
-      <Table
-        /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
-        caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
-        density="compact"
-        columns={fit.columns}
-        rows={rows}
-        getRowId={(row) => String(row.inspectionRequestId)}
-        empty={empty}
-      />
-    </div>
+    <>
+      {/* 새 흐름 안내(005) — 입하 마감 전 입하 LOT 는 의뢰가 없어 대기열에 없다. */}
+      <p className="iqc-inbound-queue-hint">
+        <Icon name="info" size={16} aria-hidden="true" />
+        <span>{ti.closingHint}</span>
+      </p>
+      {/*
+       * 줄 아무 곳이나 눌러도 고른다(omf-all-around#133) — DS 표에 줄 클릭이 없어 눌린 줄의 품목 단추로 넘긴다.
+       * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
+       */}
+      <div
+        ref={fit.ref}
+        className="iqc-inspection-queue-rows inspection-queue-table"
+        style={resizable.style}
+        onClick={(event) => {
+          const target = event.target as Element;
+          if (target.closest('button, a, input, select, textarea') !== null) return;
+          target
+            .closest('tbody tr')
+            ?.querySelector<HTMLButtonElement>('.iqc-inspection-queue-item')
+            ?.click();
+        }}
+      >
+        <Table
+          /* 제목은 화면에서 감추고 표의 접근 이름으로만 남긴다. */
+          caption={<span className="iqc-inspection-table-caption">{t.caption}</span>}
+          density="compact"
+          columns={fit.columns}
+          rows={rows}
+          getRowId={(row) => String(row.inspectionRequestId)}
+          empty={empty}
+        />
+      </div>
+      {hasInbound && <p className="iqc-inbound-queue-counts">{countsOf(rows)}</p>}
+    </>
   );
 };

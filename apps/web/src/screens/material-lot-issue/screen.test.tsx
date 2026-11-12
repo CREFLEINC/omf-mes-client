@@ -332,7 +332,7 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     await user.type(dialog.getByLabelText(t.dialog.lotCount), '2');
 
     expect(
-      dialog.getByText(t.dialog.errors.mismatch('950 EA', 'BAG 10 × 100', '1,000 EA')),
+      dialog.getByText(t.dialog.errors.mismatch('950 EA', '봉지 10 × 100', '1,000 EA')),
     ).toBeInTheDocument();
     expect(dialog.getByRole('button', { name: t.dialog.submit(null) })).toBeDisabled();
   });

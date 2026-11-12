@@ -109,7 +109,7 @@ export const inboundReceipt = {
     title: (inboundLotNo: string) => `${inboundLotNo} 를 마감할까요?`,
     summary: (supplier: string, item: string, count: number, total: string) =>
       `${supplier} · ${item} · 자재 관리 LOT ${count}개 · ${total}`, // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
-    body: '마감하면 IQC 요청이 생기고, 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT 가 생깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
+    body: '마감하면 IQC 요청이 생기고, 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)
     /** 검사 불필요 품목 — M-01-03 확인 창 문구를 빌린다(screens/M-01-01.md 「시안과 다른 점」). */
     bodyNoInspection:
       '마감하면 검사 불필요 품목이라 IQC는 「검사 생략」으로 남고, 이 입하 LOT에는 더 받거나 해제할 수 없습니다. 같은 공급사·품목을 다시 스캔하면 새 입하 LOT가 생깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/M-01-01.md)

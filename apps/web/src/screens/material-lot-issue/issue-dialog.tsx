@@ -90,12 +90,15 @@ export const IssueDialog = ({ plantId, groups, fixed, onClose, onIssued }: Issue
   const packageUoms = (uoms.data ?? []).filter((row) => row.uomCode !== uomCode);
   const packageUomCode = (uomId: number | null): string =>
     uoms.data?.find((row) => row.uomId === uomId)?.uomCode ?? '';
+  const packageUomName = (uomId: number | null): string | null =>
+    uoms.data?.find((row) => row.uomId === uomId)?.uomName ?? null;
 
   const pkgText =
     check?.package === null || check?.package === undefined
       ? null
       : formatPackage({
           uomCode: packageUomCode(check.package.uomId),
+          uomName: packageUomName(check.package.uomId),
           count: check.package.count,
           qtyPerPackage: check.package.qtyPerPackage,
         });

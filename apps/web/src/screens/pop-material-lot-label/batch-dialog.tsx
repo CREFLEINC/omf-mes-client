@@ -105,7 +105,8 @@ const BatchForm = ({
     draft.packageOn && !draft.lotQtyEdited && check.product !== null
       ? String(check.product)
       : draft.lotQty;
-  const packageUomCode = uoms.find((row) => row.uomId === draft.packageUomId)?.uomCode ?? '';
+  const packageUom = uoms.find((row) => row.uomId === draft.packageUomId);
+  const packageUomCode = packageUom?.uomCode ?? '';
   const update = (patch: Partial<BatchDraft>): void => {
     setDraft((previous) => ({ ...previous, ...patch }));
     setError(null);
@@ -152,6 +153,7 @@ const BatchForm = ({
       ? null
       : formatPackage({
           uomCode: packageUomCode,
+          uomName: packageUom?.uomName ?? null,
           count: check.package.count,
           qtyPerPackage: check.package.qtyPerPackage,
         });

@@ -203,7 +203,18 @@ export const rejectionCodeOf = (error: ApiError): InboundLotReceiveRejectionCode
 export const registeredInOf = (
   details: readonly (InboundLotDetail | undefined)[],
   lotNo: string,
+  error?: ApiError,
 ): { inboundLotNo: string; receiving: boolean } | null => {
+  /* 서버가 거부 줄에 그 입하 LOT 번호 · 상태를 실어 주면 그것이 먼저다(G1 잔여 · S8) — 카드에 없어도 보인다. */
+  const rejected = error?.kind === 'stateLocked' ? error.rejectedLots?.[0] : undefined;
+
+  if (rejected?.inboundLotNo != null) {
+    return {
+      inboundLotNo: rejected.inboundLotNo,
+      receiving: rejected.inboundLotStatusCode === 'RECEIVING',
+    };
+  }
+
   for (const detail of details) {
     if (detail === undefined) continue;
     if (detail.lots.some((lot) => lot.lotNo === lotNo && lot.lifecycleStatusCode !== 'WAITING')) {

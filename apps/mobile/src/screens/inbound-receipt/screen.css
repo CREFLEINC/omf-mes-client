@@ -141,6 +141,12 @@
   text-overflow: ellipsis;
 }
 
+/* 낱말 조각 — 조각 사이(빈칸)에서만 꺾인다. 한 낱말이 줄보다 길면 셸의 overflow-wrap 으로 안에서 꺾인다. */
+.receive-card__word {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .receive-card__sum {
   font-weight: 700;
 }

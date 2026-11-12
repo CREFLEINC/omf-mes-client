@@ -47,6 +47,7 @@ import { goodsReceipt } from './goods-receipt';
 import { httpError } from './http-error';
 import { inboundReceipt } from './inbound-receipt';
 import { inboundClose } from './inbound-close';
+import { iqcInboundLot } from './iqc-inbound-lot';
 import { inboundSchedule } from './inbound-schedule';
 import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
@@ -216,6 +217,7 @@ export const vi: Translated<Messages> = {
   httpError,
   inboundReceipt,
   inboundClose,
+  iqcInboundLot,
   inboundSchedule,
   inboundVariance,
   inspectionResultInsights,

@@ -17,6 +17,16 @@ describe('package-qty — 자재 관리 LOT 재고 수량 · 패키징 표기(T0
     expect(formatPackage(BAG)).toBe('봉지 10 × 100');
   });
 
+  it('G1 패키징 단위는 이름이 있으면 이름, 없거나 비면 코드', () => {
+    expect(formatPackage({ uomCode: 'BAG', uomName: '봉지', count: 10, qtyPerPackage: 100 })).toBe(
+      '봉지 10 × 100',
+    );
+    expect(formatPackage({ uomCode: 'BAG', uomName: ' ', count: 10, qtyPerPackage: 100 })).toBe(
+      'BAG 10 × 100',
+    );
+    expect(formatPackage({ uomCode: 'BAG', count: 10, qtyPerPackage: 100 })).toBe('BAG 10 × 100');
+  });
+
   it('US1-3 패키징이 없으면 기본 단위 수량만', () => {
     expect(formatPackageQty(1, 'TON', null)).toBe('1 TON');
     expect(formatPackage(null)).toBeNull();

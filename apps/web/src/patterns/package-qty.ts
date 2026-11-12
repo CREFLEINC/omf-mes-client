@@ -10,6 +10,8 @@
 /** 표기에 필요한 패키징 값 — 계약 `package{uomCode, count, qtyPerPackage}` 그대로. */
 export interface PackageQty {
   uomCode: string;
+  /** 패키징 단위 이름 — 있으면 표기에 이름을 쓴다(G1 잔여: 「봉지 10 × 100」). */
+  uomName?: string | null;
   count: number;
   qtyPerPackage: number;
 }
@@ -30,9 +32,18 @@ export const matchesPackage = (lotQty: number, pkg: PackageQty | null): boolean 
   pkg === null ||
   Math.round(lotQty * PRECISION) / PRECISION === packageProduct(pkg.count, pkg.qtyPerPackage);
 
-/** 「봉지 10 × 100」 — 패키징이 없으면 null. */
+/** 패키징 단위의 보이는 이름 — 이름이 있으면 이름, 없으면 코드. */
+export const packageUnitName = (pkg: Pick<PackageQty, 'uomCode' | 'uomName'>): string => {
+  const name = pkg.uomName?.trim() ?? '';
+
+  return name === '' ? pkg.uomCode : name;
+};
+
+/** 「봉지 10 × 100」 — 패키징이 없으면 null. 단위는 이름(없으면 코드). */
 export const formatPackage = (pkg: PackageQty | null): string | null =>
-  pkg === null ? null : `${pkg.uomCode} ${formatQty(pkg.count)} × ${formatQty(pkg.qtyPerPackage)}`;
+  pkg === null
+    ? null
+    : `${packageUnitName(pkg)} ${formatQty(pkg.count)} × ${formatQty(pkg.qtyPerPackage)}`;
 
 /** 「1,000 EA」 — 단위를 모르면 수량만. */
 export const formatBaseQty = (qty: number, uomCode: string | null): string =>
