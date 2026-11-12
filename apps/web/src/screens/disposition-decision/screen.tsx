@@ -29,7 +29,9 @@ import { DecisionResultCard, type DecisionResult } from './decision-result';
 import {
   ConcessionHistory,
   ConcessionRequestDialog,
+  groupConcessions,
   PendingConcessionBox,
+  useConcessionApprovalStatus,
   useConcessions,
 } from './concession-pane';
 import { DecisionFormPane } from './decision-form-pane';
@@ -473,11 +475,14 @@ export const DispositionDecisionScreen = ({
   const errors = { ...validateDecisionForm(form, formContext), ...write.fieldErrors };
   /* 005 — 처분 유형마다 막힘(종결 · 특채 결재 대기 · 선별 규칙 · 선별로 생긴 부적합의 정상). */
   const pendingConcession = concessions.data?.find((row) => row.statusCode === 'PENDING');
+  /* 그 특채 결재의 상태 — 위 상자와 처분 유형 막힘 문구가 같은 말을 하게(G2 L-d). 같은 열쇠라 한 번만 나간다. */
+  const pendingApproval = useConcessionApprovalStatus(pendingConcession?.approvalRequestId ?? null);
   const optionContext: DispositionOptionContext = {
     isClosed:
       detail.data !== undefined &&
       isClosedNonconformance(detail.data.statusCode, remaining.isSettled),
     hasPendingConcession: pendingConcession !== undefined,
+    isConcessionApproved: pendingApproval.data === 'APPROVED',
     inboundLotNo: detailView?.inboundLotNo,
     lotCount: lotRows.length,
     decisionCount: decisions.data?.items.length ?? 0,
@@ -915,7 +920,8 @@ export const DispositionDecisionScreen = ({
                 {
                   value: 'concessions',
                   label:
-                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(concessions.data.length)}`.trim(),
+                    /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
+                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(groupConcessions(concessions.data).length)}`.trim(),
                   content: (
                     <ConcessionHistory nonconformanceId={selectedId} readOnly={tab === 'history'} />
                   ),

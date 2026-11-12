@@ -196,6 +196,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     typeLock: {
       closed: 'Mục không phù hợp đã kết thúc',
       concessionPending: 'Đặc cách đang chờ phê duyệt',
+      concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
       sortNoInboundLot: 'Không phù hợp trả hàng · OQC không có phân loại (không có LOT nhập hàng)',
       sortSingleLot: 'Chỉ có 1 LOT quản lý vật tư nên không phân loại được',
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',

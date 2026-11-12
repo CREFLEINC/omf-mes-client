@@ -210,6 +210,8 @@ export const dispositionDecision = {
     typeLock: {
       closed: '종결된 부적합입니다',
       concessionPending: '특채 결재 대기 중',
+      /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
+      concessionApproved: '특채 승인됨 — 적용 대기',
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
       sortSingleLot: '자재 관리 LOT 가 1개라 선별할 수 없습니다',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',

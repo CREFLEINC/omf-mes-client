@@ -225,6 +225,12 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
       t.form.typeLock.concessionPending,
     );
+    /* 다LOT 묶음(행 둘 · 결재 하나)은 이력 탭에서 1건으로 센다(G2 L-d). */
+    expect(
+      screen.getByRole('tab', {
+        name: `${t.concession.foldTitle} ${t.concession.count(1)}`.trim(),
+      }),
+    ).toBeInTheDocument();
   });
 
   it('US4-4 G2 M3 결재가 승인된 특채는 「승인됨 — 적용 대기」이고 [특채 적용]이 처분 판정 상자 안에 있다', async () => {
@@ -247,6 +253,11 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     /* 처분 판정 상자 안 — 「특채 요청 이력」 탭에만 있지 않다. */
     expect(box.closest('.disposition-decision-card')).not.toBeNull();
     expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061', 3))).toBeNull();
+
+    /* 처분 유형 막힘 문구도 같은 상태로(G2 L-d). */
+    expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
+      t.form.typeLock.concessionApproved,
+    );
 
     await user.click(within(box).getByRole('button', { name: t.concession.apply }));
     await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
