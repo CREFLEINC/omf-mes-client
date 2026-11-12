@@ -24,6 +24,10 @@ const fixtures = vi.hoisted(() => {
         uomId: 1,
         orderQty: qty,
         confirmedPlanQty: 0,
+        erpOrderNo: null,
+        dueDate: '2026-11-30',
+        erpStorageLocationCode: 'SYN-WH',
+        erpStorageWarehouse: { id: 41, code: 'SYN-WH', name: '합성 입고 창고' },
       },
     ]),
   );
@@ -56,7 +60,9 @@ const fixtures = vi.hoisted(() => {
     isError: false,
   };
   const units = { entries: [{ value: '1', label: 'EA' }] };
-  const items = new Map([[1, { itemCode: 'ITEM1', itemName: '시험 품목' }]]);
+  const items = new Map([
+    [1, { itemCode: 'ITEM1', itemName: '시험 품목', erpItemGroupCode: 'SYN-GROUP' }],
+  ]);
   return { orders, boms, routings, lines, units, items };
 });
 vi.mock('../worklist-queries', () => ({
@@ -237,6 +243,48 @@ const distribute = async (targets: Record<string, string> = {}) => {
   return user;
 };
 describe('복수 ERP W/O 편성 저장 연결', () => {
+  it('단건과 같은 정보 순서를 유지하고 두 보기에서 편성 도구와 분배 조건을 유지한다', async () => {
+    const { writes } = mount();
+    const user = userEvent.setup();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
+    const header = document.querySelector('.erp-wo-multi-header')! as HTMLElement;
+    const overview = header.querySelector('.erp-wo-order-overview')!;
+    expect(Array.from(overview.querySelectorAll('dt'), (term) => term.textContent)).toEqual([
+      'ERP W/O',
+      '품목 코드',
+      '품목명',
+      '품목그룹',
+      'ERP W/O 수량',
+      '생산품 입고 창고',
+      '납기일',
+    ]);
+    expect(within(header).getByText('선택 ERP W/O')).toBeVisible();
+    await user.click(screen.getByRole('combobox', { name: '정보를 확인할 ERP W/O' }));
+    await user.click(screen.getByRole('option', { name: 'B' }));
+    expect(
+      within(within(header).getByRole('region', { name: '생산 정보' })).getByText('80 EA', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: 'ERP W/O별 계획 수량' }));
+    expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '자동 분배' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.getByRole('button', { name: '조건 2' })).toBeVisible();
+    const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
+    await user.clear(quantity);
+    await user.type(quantity, '20');
+    await user.click(screen.getByRole('tab', { name: '주간 편성' }));
+    expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('20');
+    expect(screen.getAllByRole('button', { name: '계획 추가' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '자동 분배' })).toHaveLength(1);
+    expect(writes).toHaveLength(0);
+  });
+
   it('복수 목록과 선택 상세에서 품목코드·품목명을 구분하며 괄호 표기를 보존한다', async () => {
     const original = fixtures.items.get(1)!;
     fixtures.items.set(1, { ...original, itemName: '시험 품목 【 TEST-100 】' });
@@ -245,13 +293,13 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
       await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
       const first = within(list).getAllByRole('button')[0]!;
-      expect(within(list).queryByRole('columnheader', { name: '품목코드' })).toBeNull();
+      expect(within(list).queryByRole('columnheader', { name: '품목 코드' })).toBeNull();
       const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       const user = userEvent.setup();
       const layout = screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' });
       await user.click(within(layout).getByRole('button', { name: '상하 배치' }));
-      expect(within(list).getByRole('columnheader', { name: '품목코드' })).toBeVisible();
+      expect(within(list).getByRole('columnheader', { name: '품목 코드' })).toBeVisible();
       const row = within(list).getAllByRole('button')[0]!.closest('tr')!;
       expect(within(row).getByText('ITEM1', { exact: true })).toBeVisible();
       expect(within(row).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
@@ -357,7 +405,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       'true',
     );
   });
-  it('ERP W/O 선택은 계획 추가 때만 표시하고 새 계획의 편집 대상과 연결한다', async () => {
+  it('계획 추가의 ERP W/O 선택은 기존 계획이 있어도 새 계획의 편집 대상과 연결한다', async () => {
     mount();
     const user = userEvent.setup();
     await waitFor(() =>
@@ -379,6 +427,16 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(selectedPlan).getByText('시험 품목', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: 'ERP W/O별 계획 수량' }));
+    await user.click(screen.getByRole('button', { name: '계획 추가' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
+        name: '추가',
+      }),
+    );
+    await waitFor(() => expect(within(selectedPlan).getByText('A', { exact: true })).toBeVisible());
+    expect(screen.getByRole('combobox', { name: '정보를 확인할 ERP W/O' })).toHaveTextContent('A');
+    expect(screen.getByRole('tab', { name: '주간 편성' })).toHaveAttribute('aria-selected', 'true');
   });
   it.each([
     [60, 80],

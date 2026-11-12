@@ -1,3 +1,4 @@
+import { PlanCreationTools } from './plan-creation-tools';
 import { splitPlanQuantity } from '../../production-plan/quantity-split';
 import {
   AlertBanner,
@@ -49,6 +50,10 @@ export interface PlanStepProps {
   addDisabled?: boolean;
   viewMode?: 'grid' | 'week';
   hideTotals?: boolean;
+  hideTools?: boolean;
+  hideHeading?: boolean;
+  addRequest?: number;
+  onSelectedKeyChange?: (key: string) => void;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
   orderContextOf?: (row: ProductionPlanEditorStateRow) => ReactNode;
   rowDecimalScaleOf?: (row: ProductionPlanEditorStateRow) => number | undefined;
@@ -95,6 +100,10 @@ export const PlanStep = ({
   onDistributionDirtyChange,
   onSplit,
   hideTotals = false,
+  hideTools = false,
+  hideHeading = false,
+  addRequest = 0,
+  onSelectedKeyChange,
   viewMode,
   orderNameOf,
   orderContextOf,
@@ -110,6 +119,7 @@ export const PlanStep = ({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectAdded, setSelectAdded] = useState(false);
   const beforeAdded = useRef<ReadonlySet<string> | null>(null);
+  const previousAddRequest = useRef(addRequest);
   const [anchor, setAnchor] = useState<string | null>(null);
   const editorId = useId();
   const lineSource = useLineSource(plantId);
@@ -125,6 +135,16 @@ export const PlanStep = ({
 
   const selected =
     rows.find((row) => row.key === selectedKey) ?? rows.find((row) => !row.confirmed) ?? rows[0];
+  const selectedRowKey = selected?.key;
+  useEffect(() => {
+    if (selectedRowKey) onSelectedKeyChange?.(selectedRowKey);
+  }, [selectedRowKey, onSelectedKeyChange]);
+  useEffect(() => {
+    if (previousAddRequest.current === addRequest) return;
+    previousAddRequest.current = addRequest;
+    beforeAdded.current = new Set(rows.map((row) => row.key));
+    setSelectAdded(true);
+  }, [addRequest, rows]);
   useEffect(() => {
     if (!selectAdded || beforeAdded.current === null) return;
     const added = rows.find((row) => !beforeAdded.current?.has(row.key));
@@ -156,6 +176,7 @@ export const PlanStep = ({
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
   const choose = (row: ProductionPlanEditorStateRow) => {
     setSelectedKey(row.key);
+    onSelectedKeyChange?.(row.key);
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
   };
   const columns: Column<ProductionPlanEditorStateRow>[] = [
@@ -219,21 +240,23 @@ export const PlanStep = ({
 
   return (
     <section className="erp-wo-plan-workspace" aria-label={t.heading}>
-      <div className="erp-wo-plan-toolbar">
-        <h2 className="section-title">{t.heading}</h2>
-        {!viewMode && (
-          <Tabs
-            size="sm"
-            aria-label={ui.views}
-            value={view}
-            onChange={setView}
-            items={[
-              { value: 'week', label: ui.week, content: null },
-              { value: 'grid', label: ui.grid, content: null },
-            ]}
-          />
-        )}
-      </div>
+      {!hideHeading && (
+        <div className="erp-wo-plan-toolbar">
+          <h2 className="section-title">{t.heading}</h2>
+          {!viewMode && (
+            <Tabs
+              size="sm"
+              aria-label={ui.views}
+              value={view}
+              onChange={setView}
+              items={[
+                { value: 'week', label: ui.week, content: null },
+                { value: 'grid', label: ui.grid, content: null },
+              ]}
+            />
+          )}
+        </div>
+      )}
       {!hideTotals && (
         <dl className="erp-wo-plan-totals">
           {[
@@ -249,44 +272,39 @@ export const PlanStep = ({
           ))}
         </dl>
       )}
-      <section className="erp-wo-plan-create" aria-label="계획 편성 도구">
-        <div className="erp-wo-plan-create-label">
-          <strong>계획 추가·자동 분배</strong>
-          <span className="field-note">직접 추가하거나 조건에 따라 자동 분배하세요.</span>
-        </div>
-        <Button
-          variant="outlined"
-          disabled={disabled || addDisabled}
-          onClick={() => {
+      {!hideTools && (
+        <PlanCreationTools
+          disabled={disabled}
+          addDisabled={addDisabled}
+          onAdd={() => {
             beforeAdded.current = new Set(rows.map((row) => row.key));
             onAdd();
             setSelectAdded(true);
           }}
         >
-          {t.add}
-        </Button>
-        {planningTools ??
-          (onAppend && (
-            <DistributionControls
-              orders={[
-                {
-                  id: 'single',
-                  label: distributionOrderLabel ?? '현재 ERP W/O',
-                  unit: uomLabel,
-                  decimalScale: distributionDecimalScale,
-                  pending: Math.max(0, remaining ?? orderQty - total),
-                  lines: distributionLines ?? lines,
-                  startDate: distributionStartDate,
-                  lineId: rows.at(-1)?.draft.plannedLineId,
-                },
-              ]}
-              existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
-              disabled={disabled}
-              onDirtyChange={onDistributionDirtyChange}
-              onApply={(drafts) => onAppend(drafts)}
-            />
-          ))}
-      </section>
+          {planningTools ??
+            (onAppend && (
+              <DistributionControls
+                orders={[
+                  {
+                    id: 'single',
+                    label: distributionOrderLabel ?? '현재 ERP W/O',
+                    unit: uomLabel,
+                    decimalScale: distributionDecimalScale,
+                    pending: Math.max(0, remaining ?? orderQty - total),
+                    lines: distributionLines ?? lines,
+                    startDate: distributionStartDate,
+                    lineId: rows.at(-1)?.draft.plannedLineId,
+                  },
+                ]}
+                existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
+                disabled={disabled}
+                onDirtyChange={onDistributionDirtyChange}
+                onApply={(drafts) => onAppend(drafts)}
+              />
+            ))}
+        </PlanCreationTools>
+      )}
       {!viewMode && rows.some((row) => row.isDirty) && (
         <p className="field-note erp-wo-plan-note">{ui.unsavedSummary}</p>
       )}
