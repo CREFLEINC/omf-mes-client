@@ -246,9 +246,19 @@ export const DispositionDecisionScreen = ({
    * 탭 줄 칩의 건수(사용자 지시 · #223) — 지금 조건의 첫 쪽 조회 총수. 보고 있는 쪽이 첫 쪽이면 위 목록과 같은
    * 조회라 다시 나가지 않는다. 보지 않는 쪽은 첫 쪽 하나만 부른다.
    */
-  const pendingCount = usePendingNonconformances(
+  const pendingFirst = usePendingNonconformances(
     useMemo(() => toPendingListQuery(filters, 1, zone, size), [filters, size, zone]),
-  ).data?.page.total;
+  ).data;
+  /*
+   * 취소된 부적합(CANCELLED)은 목록에서 뺀다(G2 L10) — 숫자도 그만큼 덜어 행 수와 맞춘다(G2 L-b). 서버가 상태 조건으로 빼기 전까지는
+   * 받은 쪽 안의 취소 건만 덜 수 있다(한 쪽 안이면 정확하다).
+   */
+  const cancelledIn = (items: readonly Nonconformance[] | undefined): number =>
+    (items ?? []).filter((item) => item.statusCode === CANCELLED_NONCONFORMANCE).length;
+  const pendingCount =
+    pendingFirst === undefined
+      ? undefined
+      : Math.max(0, pendingFirst.page.total - cancelledIn(pendingFirst.items));
   /* 상태 칩 — 공통코드 상태마다 지금 조건(상태는 빼고)의 건수. */
   /* 취소된 부적합(IQC 확정 취소로 생긴 `CANCELLED`)은 처분할 것이 아니다 — 처분 대기에서 뺀다(G2 L10). */
   const statusOptions = codeOptionsOf(status).filter(
@@ -320,7 +330,15 @@ export const DispositionDecisionScreen = ({
       ),
     [list.data],
   );
-  const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
+  const pageView = toPageView(
+    list.data === undefined
+      ? { page, size: 0, total: 0 }
+      : {
+          ...list.data.page,
+          total: Math.max(0, list.data.page.total - cancelledIn(list.data.items)),
+        },
+    rows.length,
+  );
   const detailError = detail.isError ? toApiError(detail.error) : null;
   const isDetailNotFound = detailError?.kind === 'http' && detailError.status === 404;
   const remaining = toRemainingQty(decisions.data?.summary);
@@ -702,7 +720,14 @@ export const DispositionDecisionScreen = ({
                 ) : null
               }
               page={pageView}
-              meta={list.data?.page ?? { page, size: 0, total: 0 }}
+              meta={
+                list.data === undefined
+                  ? { page, size: 0, total: 0 }
+                  : {
+                      ...list.data.page,
+                      total: Math.max(0, list.data.page.total - cancelledIn(list.data.items)),
+                    }
+              }
               selectedId={selectedId}
               onSelect={(id) =>
                 setSearchParams((current) =>
