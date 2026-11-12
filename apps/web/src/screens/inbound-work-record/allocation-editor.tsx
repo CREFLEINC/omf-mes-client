@@ -116,7 +116,22 @@ export const AllocationSection = ({
         const line = lines.find(
           (candidate) => candidate.purchaseOrderLineId === failure.details?.purchaseOrderLineId,
         );
-        if (line === undefined) setBanner({ text: te.saveFailed, reload: false });
+        const received = failure.details?.receivedQty;
+        const allocated = failure.details?.allocatedQty;
+        if (line === undefined && received !== undefined && allocated !== undefined)
+          /* 합계가 입하 수량을 넘음 — 라인 없이 `{receivedQty, allocatedQty}`(G2 L3). */
+          setServerErrors([
+            {
+              purchaseOrderLineId: null,
+              text: te.overTotal(
+                formatQty(allocated),
+                formatQty(received),
+                uom,
+                formatQty(allocated - received),
+              ),
+            },
+          ]);
+        else if (line === undefined) setBanner({ text: te.saveFailed, reload: false });
         else
           setServerErrors([
             {

@@ -179,6 +179,28 @@ describe('W-01-16 매칭 수정', () => {
     expect(screen.queryByText(te.saved(READY.inboundLotNo))).toBeNull();
   });
 
+  it('G2 L3 서버 400 RANGE 가 합계 넘침(details {receivedQty, allocatedQty})이면 합계 문구를 띄운다', async () => {
+    const { user } = setup({
+      put: () =>
+        jsonResponse(
+          {
+            errors: [{ scope: 'field', code: 'RANGE', message: '합성 합계 넘음' }],
+            details: { receivedQty: 2050, allocatedQty: 2100 },
+          },
+          { status: 400 },
+        ),
+    });
+
+    const dialog = await startEdit(user);
+    await typeQty(user, dialog, '0077/10', '175');
+    await user.click(within(dialog).getByRole('button', { name: te.save }));
+
+    expect(
+      await within(dialog).findByText(te.overTotal('2,100', '2,050', 'EA', '50')),
+    ).toBeVisible();
+    expect(within(dialog).queryByText(te.saveFailed)).toBeNull();
+  });
+
   it('US8-3 다른 사람이 먼저 바꿨으면(409) 안내와 [다시 불러오기]', async () => {
     const { user } = setup({
       put: () =>

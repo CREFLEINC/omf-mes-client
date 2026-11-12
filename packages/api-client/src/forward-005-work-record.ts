@@ -63,6 +63,9 @@ export interface InboundLotWorkRecordErrorDetails {
   purchaseOrderLineId?: number;
   maxQty?: number;
   unallocatedQty?: number;
+  /** 400 `RANGE` 합계 넘침 — 입하 수량과 보낸 매칭 합(서버 S12 · G2 L3). 라인 칸 없이 온다. */
+  receivedQty?: number;
+  allocatedQty?: number;
 }
 
 export interface ForwardPaths005WorkRecord {
