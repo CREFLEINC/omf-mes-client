@@ -28,6 +28,7 @@ import { LotNo } from './lot-match-field';
 import { ResultDrawer, type ResultDrawerProps } from './result-drawer';
 import { ResultList, judgmentStatus, judgmentText } from './result-list';
 import { SplitLotsDialog } from './split-lots-dialog';
+import { ConfirmActions, ConfirmPermissionNote } from './confirm-bar';
 
 const t = messages.iqcInboundLot.detail;
 const tr = messages.iqcInboundLot.results;
@@ -288,8 +289,11 @@ export const InboundDetail = ({
         >
           {ts.open}
         </Button>
+        {/* 판정 확정 · 확정 취소 — W-01-15 가 있을 때만(US4-7, C4). */}
+        <ConfirmActions inspection={inspection} confirmed={confirmed} />
         {headActions?.(inspection)}
       </div>
+      <ConfirmPermissionNote />
       {splitLock === null ? null : (
         <span id={splitLockId} className="visually-hidden">
           {splitLock}

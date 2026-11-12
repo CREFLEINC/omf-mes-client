@@ -34432,6 +34432,22 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   font: var(--type-body-sm);
 }
 
+/* 판정 확정 · 확정 취소 창(C4). */
+.iqc-inbound-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.iqc-inbound-confirm-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding-inline-start: var(--space-4);
+}
+
 /* 변경 이력 — 오른쪽 덮개 520. */
 .iqc-inbound-history {
   width: min(520px, 100vw);

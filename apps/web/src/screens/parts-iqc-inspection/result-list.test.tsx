@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import { SessionProvider } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { InboundDetail } from './inbound-detail';
 import type { InboundInspection } from './inbound-queries';
@@ -113,19 +114,33 @@ const mount = (data: InboundInspection, events: unknown[] = []) => {
   ]);
 
   renderWithProviders(
-    <InboundDetail
-      inspectionRequestId={501}
-      itemParts={{ code: 'TST-ITEM', name: '합성 자재' }}
-      planText="AQL 1.0"
-      uomCode="EA"
-      renderForm={({ drawer }) => (
-        <div>
-          {drawer.matchField}
-          <p>양식 자리</p>
-        </div>
-      )}
-    />,
-    { fetch },
+    <SessionProvider>
+      <InboundDetail
+        inspectionRequestId={501}
+        itemParts={{ code: 'TST-ITEM', name: '합성 자재' }}
+        planText="AQL 1.0"
+        uomCode="EA"
+        renderForm={({ drawer }) => (
+          <div>
+            {drawer.matchField}
+            <p>양식 자리</p>
+          </div>
+        )}
+      />
+    </SessionProvider>,
+    {
+      fetch,
+      /* 결과 기록만 하는 계정(W-01-01) — 확정 바는 C4 의 confirm-bar.test.tsx 가 본다. */
+      session: {
+        userId: 8101,
+        loginId: 'TST-LOGIN-01',
+        userName: '합성 사용자',
+        scopes: [{ businessUnitId: 8301 }],
+        mustChangePassword: false,
+        roles: [],
+        permissions: ['W-01-01'],
+      },
+    },
   );
 
   return { sent };
