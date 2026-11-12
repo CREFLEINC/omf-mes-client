@@ -72,7 +72,7 @@ import { HistoryFilterBar, HistoryList } from './history-tab';
 import { LoadErrorBanner } from './load-error';
 import {
   type DispositionLookup,
-  useItemLookup,
+  useItemLookupFor,
   useNonconformanceStatusLookup,
   useSeverityLookup,
   useUomLookup,
@@ -293,7 +293,14 @@ export const DispositionDecisionScreen = ({
   /* 특채 요청 팝업 — 처분 대기에서 고른 부적합에 대해 연다(사용자 지시 · #223). */
   const [isConcessionOpen, setIsConcessionOpen] = useState(false);
   const decisions = useDispositionDecisions(selectedId);
-  const items = useItemLookup();
+  /* 줄 · 상세에 보이는 품목은 첫 쪽 밖이어도 이름으로(G2 L-c). */
+  const items = useItemLookupFor([
+    ...(list.data?.items ?? []).map((item) => item.itemId),
+    ...(history.data?.items ?? []).map((item) =>
+      'itemId' in item && typeof item.itemId === 'number' ? item.itemId : null,
+    ),
+    detail.data?.itemId,
+  ]);
   const uoms = useUomLookup();
 
   const rows = useMemo(
