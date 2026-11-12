@@ -88,6 +88,11 @@ export interface MarkerOverlayProps {
    * 스스로 말을 만들지 않는다.
    */
   describeReadOnly?: string;
+  /**
+   * 이름 글자 맞추기가 끝났다 — 처음 그린 뒤, 그리고 표식(이름 · 크기)이 바뀌어 다시 맞춘 뒤 한 번씩 부른다. 사각형 표식이
+   * 없어도 처음 한 번은 부른다. 편집 창이 판 위의 「배치를 그리는 중」을 걷는 데 쓴다(피처 006 2차 · FR-017 · R2-5).
+   */
+  onLabelsFitted?: () => void;
 }
 
 const clamp = (value: number): number => Math.min(1, Math.max(0, value));
@@ -121,34 +126,103 @@ const breakableLabel = (label: string): ReactNode =>
     </Fragment>
   ));
 
+/** 비율로 정한 뒤 다시 재서 넘친 것만 0.5px 내리는 횟수 — 줄바꿈 때문에 비율이 딱 맞지 않을 때를 덮는다(R2-4). */
+const LABEL_RECHECK_ROUNDS = 2;
+
+/** 0.5px 눈금으로 내린다. 나눗셈 끝자리(9.4999…)가 한 눈금을 잃지 않게 아주 작은 값을 더한다. */
+const floorToStep = (px: number): number =>
+  Math.floor(px / LABEL_STEP_PX + 1e-9) * LABEL_STEP_PX;
+
+interface LabelFit {
+  box: HTMLElement;
+  label: HTMLElement;
+  /** 이름 칸이 쓸 수 있는 폭(상자 안쪽 폭 − 좌우 여백). */
+  room: number;
+  size: number;
+}
+
+const overflowsBox = (fit: LabelFit): boolean =>
+  fit.label.scrollWidth > fit.room || fit.label.offsetHeight > fit.box.clientHeight;
+
+const setLabelSize = (fit: LabelFit, size: number): void => {
+  fit.size = size;
+  fit.label.style.fontSize = `${String(size)}px`;
+};
+
 /**
- * 이름 칸이 상자 안에 들어가게 글자 크기를 맞춘다. 들어가면 12px, 아니면 0.5px 씩 줄이고, 8px 에서도 넘치면 넘침 표시를 단다.
+ * 이름 칸이 상자 안에 들어가게 글자 크기를 맞춘다. 들어가면 12px, 아니면 줄이되 0.5px 눈금 · 최소 8px, 8px 에서도 넘치면 넘침
+ * 표시를 단다(FR-010 · R-5).
+ *
+ * ⭐ **모아서 쓰고 모아서 읽는다**(피처 006 2차 · R2-4). 표식마다 「0.5px 줄이고 → 재고」를 되풀이하면 읽을 때마다 브라우저가
+ * 배치를 다시 잰다 — 표식 202개에서 강제 재배치 수백 번, [수정] 반응 약 1.1초였다(plan 「원인 실측」). 이제는
+ * ① 모든 이름 칸을 12px 로 두고 한 번에 재고 ② 비율(`12 × min(폭 여유/글 폭, 높이 여유/글 높이)`)로 크기를 정해 한꺼번에
+ * 쓰고 ③ 다시 한 번에 재서 넘친 것만 0.5px 내리기를 최대 2번 한다. 표식 수와 무관하게 재배치 3~4번이다.
  *
  * ⭐ **DOM 에 바로 쓴다.** 재는 일이라 React 상태로 두면 표식 수백 개가 한 번씩 더 그려진다. 이름 칸의
  * `className` · `style` 은 React 가 건드리지 않는 값이라 다시 그려도 지워지지 않는다.
  */
-const fitBoxLabel = (box: HTMLElement): void => {
-  const label = box.querySelector<HTMLElement>(`.${LABEL_CLASS}`);
+const fitBoxLabels = (boxes: readonly HTMLElement[]): void => {
+  const fits: LabelFit[] = [];
 
-  if (label === null) return;
+  /* ① 쓰기 — 모두 12px, 넘침 표시를 걷는다. */
+  for (const box of boxes) {
+    const label = box.querySelector<HTMLElement>(`.${LABEL_CLASS}`);
 
-  const style = getComputedStyle(box);
-  const padding =
-    (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
-  const overflows = (): boolean =>
-    label.scrollWidth > box.clientWidth - padding || label.offsetHeight > box.clientHeight;
-
-  let size = LABEL_MAX_PX;
-
-  label.style.fontSize = `${String(size)}px`;
-  while (size > LABEL_MIN_PX && overflows()) {
-    size -= LABEL_STEP_PX;
-    label.style.fontSize = `${String(size)}px`;
+    if (label === null) continue;
+    label.style.fontSize = `${String(LABEL_MAX_PX)}px`;
+    label.classList.remove(LABEL_OVERFLOW_CLASS);
+    fits.push({ box, label, room: 0, size: LABEL_MAX_PX });
   }
-  label.classList.toggle(LABEL_OVERFLOW_CLASS, overflows());
+
+  if (fits.length === 0) return;
+
+  /* ① 읽기 — 한 번의 배치로 모두 잰다. */
+  const ratios = fits.map((fit) => {
+    const style = getComputedStyle(fit.box);
+    const padding =
+      (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
+
+    fit.room = fit.box.clientWidth - padding;
+
+    const width = fit.label.scrollWidth;
+    const height = fit.label.offsetHeight;
+    const roomHeight = fit.box.clientHeight;
+
+    if (width <= fit.room && height <= roomHeight) return 1;
+
+    return Math.min(
+      width > 0 ? fit.room / width : 1,
+      height > 0 ? roomHeight / height : 1,
+    );
+  });
+
+  /* ② 쓰기 — 비율로 정한 크기를 한꺼번에. */
+  fits.forEach((fit, index) => {
+    const ratio = ratios[index] ?? 1;
+
+    if (ratio >= 1) return;
+    setLabelSize(
+      fit,
+      Math.min(LABEL_MAX_PX, Math.max(LABEL_MIN_PX, floorToStep(LABEL_MAX_PX * ratio))),
+    );
+  });
+
+  /* ③ 다시 재서 넘친 것만 0.5px 내린다(최대 2번). 그래도 넘치면 넘침 표시. */
+  for (let round = 0; ; round += 1) {
+    const over = fits.map(overflowsBox);
+    const shrinkable = fits.filter((fit, index) => over[index] === true && fit.size > LABEL_MIN_PX);
+
+    if (round >= LABEL_RECHECK_ROUNDS || shrinkable.length === 0) {
+      fits.forEach((fit, index) => {
+        if (over[index] === true) fit.label.classList.add(LABEL_OVERFLOW_CLASS);
+      });
+      return;
+    }
+
+    for (const fit of shrinkable) setLabelSize(fit, fit.size - LABEL_STEP_PX);
+  }
 };
 
-/** 손잡이로 크기 · 회전을 바꾸는 중. 표식 옮기기(`DragState`)와 따로 논다. */
 interface ShapeDragState {
   id: string;
   pointerId: number;
@@ -252,6 +326,7 @@ export const MarkerOverlay = ({
   describePosition,
   describeMove,
   describeReadOnly,
+  onLabelsFitted,
 }: MarkerOverlayProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -282,14 +357,24 @@ export const MarkerOverlay = ({
    */
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const observedBoxesRef = useRef(new Map<Element, string>());
+  /** 처음 맞추기를 알렸는가 — 사각형 표식이 없어도 처음 한 번은 알린다. */
+  const fittedOnceRef = useRef(false);
+  /** 맞추기 끝 알림 — 그리기마다 바뀌는 함수라도 맞추기를 다시 돌리지 않게 참조로 든다. */
+  const onLabelsFittedRef = useRef(onLabelsFitted);
+
+  useLayoutEffect(() => {
+    onLabelsFittedRef.current = onLabelsFitted;
+  });
 
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return undefined;
 
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target instanceof HTMLElement) fitBoxLabel(entry.target);
-      }
+      fitBoxLabels(
+        entries
+          .map((entry) => entry.target)
+          .filter((target): target is HTMLElement => target instanceof HTMLElement),
+      );
     });
     const observed = observedBoxesRef.current;
 
@@ -309,6 +394,8 @@ export const MarkerOverlay = ({
 
     const observed = observedBoxesRef.current;
     const present = new Set<Element>();
+    const changed: HTMLElement[] = [];
+    let removed = false;
 
     for (const box of Array.from(board.querySelectorAll<HTMLElement>('.marker-overlay-box'))) {
       present.add(box);
@@ -317,13 +404,22 @@ export const MarkerOverlay = ({
       if (observed.get(box) === signature) continue;
       if (!observed.has(box)) resizeObserverRef.current?.observe(box);
       observed.set(box, signature);
-      fitBoxLabel(box);
+      changed.push(box);
     }
+
+    /* ⭐ 바뀐 표식을 모아 한 번에 맞춘다(R2-4) — 하나씩 맞추면 표식 수만큼 배치를 다시 잰다. */
+    fitBoxLabels(changed);
 
     for (const box of [...observed.keys()]) {
       if (present.has(box)) continue;
       resizeObserverRef.current?.unobserve(box);
       observed.delete(box);
+      removed = true;
+    }
+
+    if (!fittedOnceRef.current || changed.length > 0 || removed) {
+      fittedOnceRef.current = true;
+      onLabelsFittedRef.current?.();
     }
   });
 
