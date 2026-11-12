@@ -33,7 +33,7 @@ const bag = (): PackageUnit => {
 describe('패키징 환산 · 표기(US6 · FR-033·034)', () => {
   it('SC-007 패키징 수 × 패키징당 수량 — 3봉지 = 300 EA', () => {
     expect(packagesToBase(3, bag())).toBe(300);
-    expect(conversionText(3, bag(), 'EA')).toBe('3봉지 = 300 EA');
+    expect(conversionText(3, bag(), 'EA')).toBe('⇄ 3봉지 = 300 EA'); // 「⇄」 시안(G2 L20)
   });
 
   it('SC-007 소수 패키징 수량도 곱한 값 그대로 보낸다(이진 소수 오차 없음)', () => {

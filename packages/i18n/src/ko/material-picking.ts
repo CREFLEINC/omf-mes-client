@@ -108,7 +108,8 @@ export const materialPicking = {
     /** 「봉지 (100 EA)」 */
     unitPackage: (unit: string, per: string, uom: string) => `${unit} (${per} ${uom})`,
     /** 확정 전 환산 「3봉지 = 300 EA」. */
-    conversion: (packages: string, qty: string, uom: string) => `${packages} = ${qty} ${uom}`,
+    /** 환산 줄 — 시안 「⇄ 3봉지 = 300 EA」(G2 L20). */
+    conversion: (packages: string, qty: string, uom: string) => `⇄ ${packages} = ${qty} ${uom}`,
     after: (stock: string) => `피킹하면 남는 재고 ${stock}`,
     log: (entered: string, stock: string) => `피킹 ${entered} → 남은 재고 ${stock}`,
     problem: {

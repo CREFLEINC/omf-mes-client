@@ -19,6 +19,7 @@ import {
   checkEntry,
   conversionText,
   enteredText,
+  formatPackQty,
   packageUnitOf,
   qtyText,
   wholePackagesOf,
@@ -573,7 +574,7 @@ export const MaterialPickingScreen = () => {
                 {
                   pickingLineId: each.pickingLineId ?? 0,
                   label: picked.entered.join(' + '),
-                  qty: t.pack.qty(String(each.issueQty), uomLabelOf(uoms.data, each.uomId)),
+                  qty: t.pack.qty(formatPackQty(each.issueQty), uomLabelOf(uoms.data, each.uomId)),
                   left: picked.left,
                 },
               ];
@@ -695,7 +696,7 @@ export const MaterialPickingScreen = () => {
         case 'overPackages':
           return t.pack.problem.overPackages(
             packageUnit.unitName,
-            String(stockNow === null ? 0 : wholePackagesOf(stockNow, packageUnit)),
+            formatPackQty(stockNow === null ? 0 : wholePackagesOf(stockNow, packageUnit)),
           );
         case 'overPlanned':
           return t.pack.problem.overPlanned(
@@ -711,7 +712,7 @@ export const MaterialPickingScreen = () => {
     }
 
     return trouble === 'overPlanned'
-      ? t.qty.problem.overPlanned(String(remainingQtyOf(line, queued)))
+      ? t.qty.problem.overPlanned(formatPackQty(remainingQtyOf(line, queued)))
       : t.qty.problem[trouble];
   };
 
@@ -862,11 +863,14 @@ export const MaterialPickingScreen = () => {
                     )}
                   </span>
                   <span className="picking-out__line-qty">
-                    {t.lines.planned(String(each.plannedQty), String(pickedQtyOf(each, queued)))}
+                    {t.lines.planned(
+                      formatPackQty(each.plannedQty),
+                      formatPackQty(pickedQtyOf(each, queued)),
+                    )}
                   </span>
                   {queuedQtyOf(each, queued) === 0 ? null : (
                     <span className="picking-out__line-note">
-                      {t.lines.queued(String(queuedQtyOf(each, queued)))}
+                      {t.lines.queued(formatPackQty(queuedQtyOf(each, queued)))}
                     </span>
                   )}
                   {each.lotNo === null || each.lotNo === undefined ? null : (
@@ -923,7 +927,11 @@ export const MaterialPickingScreen = () => {
                 <Chip status="success">{t.scan.matched}</Chip>
                 {packageUnit === null ? null : (
                   <Chip status="info">
-                    {t.pack.chip(packageUnit.unitName, String(packageUnit.qtyPerPackage), baseUom)}
+                    {t.pack.chip(
+                      packageUnit.unitName,
+                      formatPackQty(packageUnit.qtyPerPackage),
+                      baseUom,
+                    )}
                   </Chip>
                 )}
               </div>
@@ -964,7 +972,7 @@ export const MaterialPickingScreen = () => {
                         PACKAGE_UNIT,
                         t.pack.unitPackage(
                           packageUnit.unitName,
-                          String(packageUnit.qtyPerPackage),
+                          formatPackQty(packageUnit.qtyPerPackage),
                           baseUom,
                         ),
                       ],

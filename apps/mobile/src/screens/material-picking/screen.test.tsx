@@ -1719,7 +1719,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
     await scanLot(user);
 
     expect(await screen.findByText('봉지 100 EA')).toBeTruthy();
-    expect(await screen.findByText('1000 EA (10봉지)')).toBeTruthy();
+    expect(await screen.findByText('1,000 EA (10봉지)')).toBeTruthy(); // 천 단위 쉼표(G2 L20)
     expect(screen.getByRole('button', { name: 'EA' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '봉지 (100 EA)' })).toHaveAttribute(
       'aria-pressed',
@@ -1735,7 +1735,7 @@ describe('패키징 입력(005 US6 · M-01-08)', () => {
     await user.click(await screen.findByRole('button', { name: '봉지 (100 EA)' }));
     await user.type(await screen.findByLabelText(/출고 수량/), '3');
 
-    expect(await screen.findByText('3봉지 = 300 EA')).toBeTruthy();
+    expect(await screen.findByText('⇄ 3봉지 = 300 EA')).toBeTruthy(); // 「⇄」 시안(G2 L20)
     expect(screen.getByText('피킹하면 남는 재고 700 EA (7봉지)')).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: '피킹 기록' }));

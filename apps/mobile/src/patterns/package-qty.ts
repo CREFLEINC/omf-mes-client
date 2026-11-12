@@ -39,6 +39,10 @@ export const packageUnitOf = (pkg: MaterialPackage | null | undefined): PackageU
  */
 const tidy = (value: number): number => Math.round(value * 1e6) / 1e6;
 
+/** 수량 표기 — 천 단위 쉼표(「1,000」 · G2 L20). 소수는 여섯 자리까지. */
+export const formatPackQty = (value: number): string =>
+  value.toLocaleString('ko-KR', { maximumFractionDigits: 6 });
+
 /** 패키징 수 → 기본 단위 수량(SC-007). */
 export const packagesToBase = (count: number, unit: PackageUnit): number =>
   tidy(count * unit.qtyPerPackage);
@@ -53,19 +57,19 @@ export const packageText = (qty: number, unit: PackageUnit): string => {
   const loose = tidy(qty - whole * unit.qtyPerPackage);
 
   if (whole === 0) {
-    return t.looseOnly(String(loose));
+    return t.looseOnly(formatPackQty(loose));
   }
 
   return loose === 0
-    ? t.count(String(whole), unit.unitName)
-    : t.countWithLoose(String(whole), unit.unitName, String(loose));
+    ? t.count(formatPackQty(whole), unit.unitName)
+    : t.countWithLoose(formatPackQty(whole), unit.unitName, formatPackQty(loose));
 };
 
 /** 「700 EA (7봉지)」 — 패키징이 없으면 기본 단위만 「25 KG」. */
 export const qtyText = (qty: number, uom: string, unit: PackageUnit | null): string =>
   unit === null
-    ? t.qty(String(qty), uom)
-    : t.qtyWithPackages(String(qty), uom, packageText(qty, unit));
+    ? t.qty(formatPackQty(qty), uom)
+    : t.qtyWithPackages(formatPackQty(qty), uom, packageText(qty, unit));
 
 /** 넣은 값의 표기 — 패키징이면 「3봉지」, 기본 단위면 「50 EA」. */
 export const enteredText = (
@@ -75,12 +79,16 @@ export const enteredText = (
   unit: PackageUnit | null,
 ): string =>
   entryUnit === 'package' && unit !== null
-    ? t.count(String(entered), unit.unitName)
-    : t.qty(String(entered), uom);
+    ? t.count(formatPackQty(entered), unit.unitName)
+    : t.qty(formatPackQty(entered), uom);
 
 /** 확정 전 환산 「3봉지 = 300 EA」. */
 export const conversionText = (count: number, unit: PackageUnit, uom: string): string =>
-  t.conversion(t.count(String(count), unit.unitName), String(packagesToBase(count, unit)), uom);
+  t.conversion(
+    t.count(formatPackQty(count), unit.unitName),
+    formatPackQty(packagesToBase(count, unit)),
+    uom,
+  );
 
 export type PackageQtyProblem =
   'notNumber' | 'notPositive' | 'notInteger' | 'overPackages' | 'overPlanned';
