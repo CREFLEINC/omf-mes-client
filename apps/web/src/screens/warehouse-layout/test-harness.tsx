@@ -25,6 +25,8 @@ export const t = messages.warehouseLayout;
 export const wl = messages.warehouseLocation;
 
 export const WAREHOUSE_ID = 12;
+/** 편집 창 제목의 창고 이름 — 창고 선택지 표기(「코드 · 이름」)와 같다. */
+// ui-check-ignore: C-13 시험 자료 — 화면 문구가 아니라 창고 선택지 표기를 그대로 맞춘 값
 export const WAREHOUSE_LABEL = 'SYN-WH-12 · 합성 창고';
 export const LAYOUT_PATH = `/mdm/warehouses/${String(WAREHOUSE_ID)}/layout`;
 export const WAREHOUSES_PATH = '/mdm/warehouses';
