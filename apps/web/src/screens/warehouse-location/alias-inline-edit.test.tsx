@@ -47,7 +47,7 @@ const LOCATIONS: Location[] = [
     locationId: 11,
     parentLocationId: 10,
     locationCode: 'Z01-R001',
-    locationName: 'Z01-R001',
+    locationName: 'A열 1번 랙', // 옛 화면 — 별칭을 이름으로 넣어 만든 위치
     aliasName: 'A열 1번 랙',
     locationLevelCode: 'RACK',
   },
@@ -172,7 +172,7 @@ const renderPane = (
 const puts = (requests: Recorded[]) => requests.filter((request) => request.method === 'PUT');
 
 describe('별칭 바로 고치기 (목록)', () => {
-  it('US2-1 ⭐ 저장하면 이름은 그대로, 별칭만 If-Match 와 함께 PUT 하고 목록을 다시 읽는다', async () => {
+  it('US2-1 ⭐ 저장하면 If-Match 와 함께 PUT 하고(이름 = 새 별칭) 목록을 다시 읽는다', async () => {
     const { requests, invalidate, user } = renderPane();
 
     await user.click(screen.getByRole('button', { name: t.aliasEdit.edit('Z01-R001') }));
@@ -185,14 +185,14 @@ describe('별칭 바로 고치기 (목록)', () => {
     const put = puts(requests)[0]!;
     expect(put.path).toBe('/mdm/locations/11');
     expect(put.headers.get('If-Match')).toBe('"v1"');
-    expect(JSON.parse(put.body)).toEqual({ locationName: 'Z01-R001', aliasName: 'B열 2번 랙' });
+    expect(JSON.parse(put.body)).toEqual({ locationName: 'B열 2번 랙', aliasName: 'B열 2번 랙' });
     await waitFor(() =>
       expect(screen.queryByRole('textbox', { name: t.aliasEdit.edit('Z01-R001') })).toBeNull(),
     );
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['locations'] });
   });
 
-  it('US2-1 확인 단추로도 저장하고, 비우면 별칭을 지운다(null)', async () => {
+  it('US2-1 확인 단추로도 저장하고, 비우면 별칭을 지우고 이름은 코드로 돌아간다', async () => {
     const { requests, user } = renderPane();
 
     await user.click(screen.getByRole('button', { name: t.aliasEdit.edit('Z01-R001') }));
@@ -259,7 +259,7 @@ describe('별칭 바로 고치기 (목록)', () => {
     }
   });
 
-  it('US2-1 서버가 만든 자리도 이름(적치 대기)은 그대로 두고 별칭만 보낸다', async () => {
+  it('US2-1 서버가 만든 자리는 이름(적치 대기)을 그대로 두고 별칭만 바꾼다', async () => {
     const { requests, user } = renderPane();
 
     await user.click(screen.getByRole('button', { name: t.aliasEdit.edit('SYS-STAGING') }));
