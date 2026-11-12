@@ -13499,7 +13499,9 @@ dialog.layout-editor-dialog {
 
 .layout-editor-body {
   display: grid;
-  grid-template-columns: minmax(0, 30rem) minmax(0, 1fr);
+  /* 목록 34rem(540px) — 시안의 480px 에서 넓혔다. 셀 4단계 들여쓰기에서 코드 「Z01-R001-L01-C01」이 잘리지 않으려면 코드 칸이 280px 는
+     돼야 하고(실측, 셀 200개 창고), 이름 칸도 남겨야 해서다. */
+  grid-template-columns: minmax(0, 34rem) minmax(0, 1fr);
   gap: var(--space-4);
   block-size: calc(var(--dialog-max-h) - var(--layout-editor-chrome));
   min-block-size: 20rem;
