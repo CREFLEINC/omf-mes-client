@@ -36,8 +36,8 @@ export const StockTable = ({ label, rows, uomLookup, qualityStatusName }: StockT
       header: t.stock.item,
       render: (row) => (
         <div className="layout-stock-item">
-          <span>{row.itemCode}</span>
-          <span className="field-note">{row.itemName}</span>
+          <span className="layout-stock-code">{row.itemCode}</span>
+          <span className="field-note layout-stock-item-name">{row.itemName}</span>
         </div>
       ),
     },
@@ -66,15 +66,21 @@ export const StockTable = ({ label, rows, uomLookup, qualityStatusName }: StockT
     },
   ];
 
+  /*
+   * ⭐ 가로 스크롤 감싸개 안에 둔다 — 조회 화면 오른쪽 구획은 좁아(1280 폭 · 목록 펼침) 칸을 줄이면 코드가 한 글자씩 깨진다.
+   * 칸은 줄바꿈하지 않고, 넘치면 표만 옆으로 민다(시안 W-CO-08 재고 표와 같다).
+   */
   return (
-    <Table
-      aria-label={label}
-      className="layout-stock-table"
-      density="compact"
-      columns={columns}
-      rows={rows}
-      getRowId={(row) => row.key}
-      empty={<EmptyState size="sm" title={t.stock.empty} />}
-    />
+    <div className="layout-stock-scroll">
+      <Table
+        aria-label={label}
+        className="layout-stock-table"
+        density="compact"
+        columns={columns}
+        rows={rows}
+        getRowId={(row) => row.key}
+        empty={<EmptyState size="sm" title={t.stock.empty} />}
+      />
+    </div>
   );
 };

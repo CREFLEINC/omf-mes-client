@@ -13588,16 +13588,37 @@ dialog.layout-editor-dialog {
   background: var(--surface-container-high);
 }
 
-/* 재고 표의 품목 칸 — 코드 위, 이름 아래. */
+/*
+ * 재고 표 감싸개 — 조회 화면 오른쪽 구획(1280 폭 · 위치 목록 펼침이면 약 470px)보다 표가 넓으면 표만 옆으로 민다.
+ * ⭐ 줄어들지 않는다(`flex: none`) — 구획은 세로 flex 라, 넘침을 가진 자식은 높이가 0 까지 눌려 표가 아래에서 잘린다.
+ * 높이는 구획 스크롤(≥1440 · `.po-board-scroll`) 또는 문서 스크롤(좁은 화면)이 맡는다.
+ */
+.layout-stock-scroll {
+  flex: none;
+  max-inline-size: 100%;
+  margin-block-start: var(--space-2);
+  overflow-x: auto;
+}
+
+/* 칸은 줄바꿈하지 않는다 — 위치 · 품목 코드 · LOT · 현재고 · 단위가 한 글자씩 깨지면 읽을 수 없다(시안). */
+.layout-stock-table {
+  min-inline-size: 40rem;
+}
+
+.layout-stock-table :is(th, td) {
+  white-space: nowrap;
+}
+
+/* 품목 칸 — 코드 위(줄바꿈 없음), 이름 아래(이름만 낱말 단위로 줄바꿈). */
 .layout-stock-item {
   display: flex;
   flex-direction: column;
   min-inline-size: 0;
-  overflow-wrap: anywhere;
 }
 
-.layout-stock-table {
-  margin-block-start: var(--space-2);
+.layout-stock-table .layout-stock-item-name {
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 /*

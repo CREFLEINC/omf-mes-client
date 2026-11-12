@@ -316,6 +316,8 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     await user.click(locationButton('Z01-R001-L01'));
 
     const table = await screen.findByRole('table', { name: t.stock.title('Z01-R001-L01') });
+    /* 좁은 구획에서 칸을 깨지 않고 옆으로 미는 감싸개 안에 선다. */
+    expect(table.closest('.layout-stock-scroll')).not.toBeNull();
     const rows = within(table).getAllByRole('row').slice(1);
 
     expect(rows).toHaveLength(2);
