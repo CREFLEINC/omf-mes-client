@@ -228,6 +228,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     inspectionRequestNo: 'Kiểm tra IQC',
     supplier: 'Nhà cung cấp',
     listLine: (inboundLotNo: string): string => `LOT nhập hàng ${inboundLotNo}`,
+    sourceColumn: 'Nguồn',
+    source: { IQC: 'IQC · nhập hàng vật tư', RETURN: 'Trả hàng', PRODUCT: 'OQC · thành phẩm' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    sortedFromTail: (tail: string): string => ` · phân loại ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     bannerTitle: 'Xử lý theo đơn vị LOT nhập hàng.',
     bannerBody: (count: number): string =>
       `Một quyết định áp dụng chung cho toàn bộ ${String(count)} LOT quản lý vật tư. Không xử lý riêng từng LOT quản lý vật tư.`,

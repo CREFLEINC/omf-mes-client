@@ -95,6 +95,7 @@ import {
   toDecisionRow,
   toDetailView,
   toHistoryRow,
+  sourceTextOf,
   toNonconformanceRow,
   type Nonconformance,
 } from './types';
@@ -287,6 +288,16 @@ export const DispositionDecisionScreen = ({
 
   const rows = useMemo(
     () => (list.data?.items ?? EMPTY_NONCONFORMANCES).map(toNonconformanceRow),
+    [list.data],
+  );
+  /* 005 목록 「원천」 칸(G2 L8) — 행 모양은 그대로 두고 따로 넘긴다. */
+  const sourceTexts = useMemo(
+    () =>
+      new Map(
+        (list.data?.items ?? EMPTY_NONCONFORMANCES).map(
+          (item) => [item.nonconformanceId, sourceTextOf(item)] as const,
+        ),
+      ),
     [list.data],
   );
   const pageView = toPageView(list.data?.page ?? { page, size: 0, total: 0 }, rows.length);
@@ -660,6 +671,7 @@ export const DispositionDecisionScreen = ({
           {tab === 'pending' ? (
             <NonconformanceList
               rows={rows}
+              sourceTexts={sourceTexts}
               items={items}
               severity={severity}
               status={status}

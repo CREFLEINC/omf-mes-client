@@ -17,6 +17,8 @@ import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
+  /** 005 「원천」 칸 글(부적합 id → 글 · G2 L8). 없으면 칸을 두지 않는다. */
+  sourceTexts?: ReadonlyMap<number, string>;
   items: DispositionLookup;
   /** 심각도·상태 열의 표시명(G-32). 모르는 코드는 코드 그대로 보인다(G-9). */
   severity: DispositionLookup;
@@ -40,6 +42,7 @@ export interface NonconformanceListProps {
  */
 export const NonconformanceList = ({
   rows,
+  sourceTexts,
   items,
   severity,
   status,
@@ -79,6 +82,16 @@ export const NonconformanceList = ({
         </>
       ),
     },
+    ...(sourceTexts === undefined
+      ? []
+      : [
+          {
+            key: 'source',
+            align: 'center',
+            header: t.inboundLot.sourceColumn,
+            render: (row: NonconformanceRow) => sourceTexts.get(row.nonconformanceId) ?? '—',
+          } satisfies Column<NonconformanceRow>,
+        ]),
     {
       key: 'item',
       align: 'center',

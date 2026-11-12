@@ -82,6 +82,19 @@ export interface NonconformanceRow {
   inboundLotNo?: string;
 }
 
+/** 목록 「원천」 칸 글(screens/W-03-10.md 목록 행). 입하 LOT 이 있으면 자재 입하 IQC 부적합이다. */
+export const sourceTextOf = (nonconformance: Nonconformance): string => {
+  const t = messages.dispositionDecision.inboundLot;
+  const base =
+    nonconformance.inboundLotNo != null
+      ? t.source.IQC
+      : nonconformance.sourceCode === 'RETURN'
+        ? t.source.RETURN
+        : t.source.PRODUCT;
+  const from = nonconformance.sortedFromNonconformanceNo;
+  return from == null || from === '' ? base : `${base}${t.sortedFromTail(from.slice(-4))}`;
+};
+
 export const toNonconformanceRow = (nonconformance: Nonconformance): NonconformanceRow => ({
   nonconformanceId: nonconformance.nonconformanceId,
   nonconformanceNo: nonconformance.nonconformanceNo,

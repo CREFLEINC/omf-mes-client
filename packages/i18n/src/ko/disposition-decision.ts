@@ -254,6 +254,11 @@ export const dispositionDecision = {
     inspectionRequestNo: 'IQC 검사',
     supplier: '공급사',
     listLine: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
+    /** 목록 「원천」 칸(screens/W-03-10.md 목록 행 · G2 L8). */
+    sourceColumn: '원천',
+    source: { IQC: 'IQC · 자재 입하', RETURN: '반품', PRODUCT: 'OQC · 제품' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+    /** 선별 건 — 「· 선별 ← 0004」(원래 부적합 번호 끝 4자리). */
+    sortedFromTail: (tail: string): string => ` · 선별 ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     bannerTitle: '처분은 입하 LOT 단위입니다.',
     bannerBody: (count: number): string =>
       `판정 하나가 자재 관리 LOT ${String(count)}개 전부에 함께 적용됩니다. 자재 관리 LOT 별로 따로 처분하지 않습니다.`,
