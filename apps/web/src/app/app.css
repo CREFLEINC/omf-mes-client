@@ -12606,6 +12606,36 @@ a.erp-send-chips:focus-visible {
   text-align: center;
 }
 
+/* 별칭 칸 — 값 옆 연필, 누르면 줄 안 입력칸(#267 FR-007). */
+.location-alias-cell,
+.location-alias-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.location-alias-cell > :first-child {
+  min-width: 0;
+}
+
+.location-alias-edit {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.location-alias-edit .location-alias-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.location-alias-edit .field-error {
+  white-space: normal;
+  text-align: left;
+}
+
 /* 창고 배치도 — 고른 표식의 크기 · 회전 칸(사용자 지시 2026-10-30). 숫자 셋이 한 줄에 좁게. */
 .marker-shape-fields {
   display: flex;

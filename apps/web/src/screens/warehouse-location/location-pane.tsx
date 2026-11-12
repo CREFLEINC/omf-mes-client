@@ -4,11 +4,12 @@ import {
   type Column,
   EmptyState,
   Icon,
+  IconButton,
   SearchInput,
   SkeletonText,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { BoardTable } from '../../patterns/board-table';
 import { locationShownName, type LocationTreeRow } from '../../patterns/location-tree';
@@ -18,6 +19,7 @@ import {
   levelNameOf,
 } from '../../patterns/location-tree-cell';
 import { OneLine } from '../../patterns/po-board';
+import { AliasInlineEdit } from './alias-inline-edit';
 import type { Location } from './types';
 
 export interface LocationPaneProps {
@@ -51,6 +53,8 @@ export interface LocationPaneProps {
    * 실패를 「등록된 Location이 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  /** 별칭 칸 연필(#267 FR-007) — 위치 수정 권한(W-06-07)이 있을 때만. 서버가 만든 자리도 별칭은 고친다. */
+  canEditAlias?: boolean;
 }
 
 const t = messages.warehouseLocation;
@@ -77,8 +81,11 @@ export const LocationPane = ({
   onEdit,
   actionBanner,
   loadError,
+  canEditAlias = false,
 }: LocationPaneProps) => {
   const addRootNoteId = useId();
+  /** 별칭을 고치는 줄 — 한 번에 하나. */
+  const [aliasEditingId, setAliasEditingId] = useState<number | null>(null);
 
   /** 계층 칸 · 머리는 창고 배치도와 같은 부품이다(`patterns/location-tree-cell`). */
   const columns: Column<LocationTreeRow>[] = [
@@ -127,7 +134,22 @@ export const LocationPane = ({
       /* 별칭이 이름이다(사용자 지시 2026-10-29) — 없으면 저장된 위치명. 열 폭 저장 키는 그대로 둔다. */
       key: 'locationName',
       header: t.fields.aliasName,
-      render: (row) => <OneLine text={locationShownName(row.location)} />,
+      render: (row) =>
+        aliasEditingId === row.location.locationId ? (
+          <AliasInlineEdit location={row.location} onClose={() => setAliasEditingId(null)} />
+        ) : (
+          <div className="location-alias-cell">
+            <OneLine text={locationShownName(row.location)} />
+            {canEditAlias && (
+              <IconButton
+                size="sm"
+                icon="edit"
+                aria-label={t.aliasEdit.edit(row.location.locationCode)}
+                onClick={() => setAliasEditingId(row.location.locationId)}
+              />
+            )}
+          </div>
+        ),
     },
     {
       key: 'locationLevel',

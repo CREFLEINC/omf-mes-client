@@ -125,6 +125,11 @@ export const warehouseLocation = {
     sections: { basic: '기본 정보', layout: '층·셀 구성' },
   },
   /** 위치 수정 창 안의 보관 품목(사용자 지시 2026-10-29) — 품목 무관 · 지정 품목만 둘 중 하나. 안내문 없이. */
+  /** 목록 별칭 칸에서 바로 고치기(#267 FR-007) — 이름은 그대로, 별칭만 바로 저장한다. */
+  aliasEdit: {
+    edit: (locationCode: string): string => `${locationCode} 별칭 수정`,
+    conflict: '다른 사용자가 먼저 고쳤습니다 — 최신 별칭을 불러왔습니다.',
+  },
   /** 정보 판에서 연필로 고치는 값(별칭). */
   factEdit: {
     start: (label: string): string => `${label} 수정`,

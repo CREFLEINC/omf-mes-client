@@ -1,7 +1,8 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { skipToken, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { type Session, sessionKeys } from '../../patterns/session';
 import { warehouseListQuery } from '../../patterns/warehouse-filter-bar';
 import { runRequest } from '../../patterns/request';
 import { CODE_GROUPS } from './code-options';
@@ -406,4 +407,17 @@ export const useLatestLocationLabel = (
       );
     },
   });
+};
+
+/** 위치 만들기 · 고치기 화면 권한(#267) — 일괄 생성 단추 · 별칭 연필을 세운다. */
+const LOCATION_WRITE_PERMISSION = 'W-06-07';
+
+/**
+ * 세션 권한에 W-06-07 이 있는가. 세션 칸을 읽기만 한다(`skipToken` — 묻는 일은 `SessionProvider` 가 맡는다). 세션이나
+ * 권한 목록을 아직 모르면 세운다 — 막는 것은 서버다(창고 배치도 · 입고 일정 화면과 같은 관용구).
+ */
+export const useCanWriteLocations = (): boolean => {
+  const session = useQuery<Session | null>({ queryKey: sessionKeys.current, queryFn: skipToken });
+  const permissions = session.data?.permissions;
+  return permissions === undefined || permissions.includes(LOCATION_WRITE_PERMISSION);
 };
