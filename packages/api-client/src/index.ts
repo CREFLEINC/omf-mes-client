@@ -16,6 +16,10 @@ export {
 export type { components, paths } from './generated/api';
 export { isInboundLotInspection } from './schemas-005';
 export { GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE } from './forward-contract';
+export type {
+  InboundReceiptLineMaterialLotForward,
+  InboundReceiptLineMaterialLotsForward,
+} from './forward-contract';
 export type * from './schemas-005';
 export type {
   FourMChangeForward,

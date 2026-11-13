@@ -260,6 +260,34 @@ describe('W-01-01 변경 이력 「내용」(G2 M4 · T139)', () => {
     );
   });
 
+  it('T142 결과 요약에 합격 · 불합격 · 보류 수량이 있으면 「전 → 후」에 보인다(0 은 뺀다)', () => {
+    const row = event({
+      eventCode: 'RESULT_UPDATED',
+      summaryBefore: summary({ matchedLotNos: [], acceptedQty: 0, rejectedQty: 200, heldQty: 0 }),
+      summaryAfter: summary({
+        overallJudgmentCode: 'ACCEPTED',
+        matchedLotNos: [],
+        acceptedQty: 150,
+        rejectedQty: 50,
+        heldQty: 0,
+      }),
+    });
+
+    expect(eventDetailOf(row, context())).toBe(
+      h.resultUpdated(
+        2,
+        `불합격 · ${h.inspected('200')} · ${h.judgedQty('불합격', '200')}`,
+        `합격 · ${h.inspected('200')} · ${h.judgedQty('합격', '150')} · ${h.judgedQty('불합격', '50')}`,
+      ),
+    );
+  });
+
+  it('T142 「검사 의뢰 생김」 줄은 서버 한 줄을 그대로', () => {
+    expect(
+      eventDetailOf(event({ eventCode: 'REQUESTED', detail: '합성 입하 마감 한 줄' }), context()),
+    ).toBe('합성 입하 마감 한 줄');
+  });
+
   it('T139 분리는 떠난 쪽 「옮긴 LOT → 새 입하 LOT」, 생긴 쪽 「원래 입하 LOT 에서 n개」', () => {
     const refs = {
       7002: { no: 'IL-20991231-0004', lots: [[9003, 'SYN|0003']] as [number, string][] },

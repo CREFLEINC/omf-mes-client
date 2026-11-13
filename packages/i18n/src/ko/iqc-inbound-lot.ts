@@ -222,6 +222,8 @@ export const iqcInboundLot = {
     /** 결과 요약 — 「합격 · 검사 200 · 매칭 0001, 0002」(T139 · 서버 이력 한 줄과 같은 모양). */
     noJudgment: '판정 없음',
     inspected: (qty: string) => `검사 ${qty}`,
+    /** 판정 수량 — 「합격 150」(T142). */
+    judgedQty: (judgment: string, qty: string) => `${judgment} ${qty}`,
     matched: (lotTails: readonly string[]) => `매칭 ${lotTails.join(', ')}`,
     /** 결과 수정 — 「결과 2 수정 — {전} → {후}」(screens/W-01-01 「변경 이력」). */
     resultUpdated: (round: number | null, before: string, after: string) =>

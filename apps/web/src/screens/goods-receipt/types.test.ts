@@ -115,6 +115,7 @@ describe('toIrLineView', () => {
       statusCode: 'SAMPLE_IR_LINE_STATUS_A',
       receivableQty: null,
       splitLots: [],
+      materialLots: [],
     });
   });
 
@@ -169,6 +170,7 @@ describe('toIrLineView', () => {
       'itemId',
       'lineNo',
       'lotId',
+      'materialLots',
       'receivableQty',
       'receivedQty',
       'splitLots',

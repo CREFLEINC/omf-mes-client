@@ -198,6 +198,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     reinspectionReason: (name: string) => `Lý do kiểm tra lại: ${name}`,
     noJudgment: 'Chưa có phán định',
     inspected: (qty: string) => `Kiểm tra ${qty}`,
+    judgedQty: (judgment: string, qty: string) => `${judgment} ${qty}`,
     matched: (lotTails: readonly string[]) => `Khớp ${lotTails.join(', ')}`,
     resultUpdated: (round: number | null, before: string, after: string) =>
       `${round === null ? 'Kết quả' : `Kết quả ${String(round)}`} đã sửa — ${before} → ${after}`,

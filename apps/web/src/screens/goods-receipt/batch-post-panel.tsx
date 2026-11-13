@@ -115,10 +115,10 @@ export const GoodsReceiptBatchPostPanel = ({
     const line =
       detail?.lines.find((item) => item.inboundReceiptLineId === lot.inboundReceiptLineId) ?? null;
     if (detail === null || line === null) return null;
+    /* 005 T141 — 고른 LOT 이 이 줄의 입고 대상에 없으면 다른 LOT 으로 바꾸지 않고 「찾지 못한 LOT」으로 막는다. */
     const target = chooseReceiptTarget(receiptTargetsOf(line), lot.lotId);
-    const [input] = toReceiptLines([
-      { ...line, lotId: target?.lotId ?? lot.lotId, receivableQty: target?.qty ?? null },
-    ]);
+    if (target === null) return null;
+    const [input] = toReceiptLines([{ ...line, lotId: target.lotId, receivableQty: target.qty }]);
 
     return input === undefined ? null : { lot, receipt: detail.inboundReceipt, line, input };
   });

@@ -27,13 +27,26 @@ export interface EventDetailContext {
   inboundLotOf: (inboundLotId: number) => InboundLotRef | undefined;
 }
 
-/** 결과 요약 한 벌(서버 `resultSummaryWithin`) — 「합격 · 검사 200 · 매칭 0001, 0002 · 재검 사유: …」. */
+/** 판정 수량 칸 — 서버 요약의 합격 · 불합격 · 보류 수량(T142). 0 이거나 없으면 뺀다. */
+const JUDGED_QTY_FIELDS = [
+  ['acceptedQty', 'ACCEPTED'],
+  ['rejectedQty', 'REJECTED'],
+  ['heldQty', 'HELD'],
+] as const;
+
+/** 결과 요약 한 벌(서버 `resultSummaryWithin`) — 「합격 · 검사 200 · 합격 150 · 불합격 50 · 매칭 0001, 0002 · 재검 사유: …」. */
 const resultSummaryText = (summary: Summary, context: EventDetailContext): string => {
   const code = summary.overallJudgmentCode;
   const parts = [
     typeof code === 'string' ? (judgmentLabel[code] ?? code) : t.noJudgment,
     t.inspected(formatQty(typeof summary.inspectedQty === 'number' ? summary.inspectedQty : 0)),
   ];
+  for (const [field, judgment] of JUDGED_QTY_FIELDS) {
+    const qty = summary[field];
+    if (typeof qty === 'number' && qty > 0) {
+      parts.push(t.judgedQty(judgmentLabel[judgment] ?? judgment, formatQty(qty)));
+    }
+  }
   const lots = Array.isArray(summary.matchedLotNos)
     ? summary.matchedLotNos.map((lotNo) => tailOf(String(lotNo)))
     : [];

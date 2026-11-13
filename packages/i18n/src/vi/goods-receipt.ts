@@ -276,5 +276,7 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
       `${lot} · ${qty} → ${destination}`,
     loading: 'Đang tải phiếu nhập hàng',
     lineMissing: 'Không tìm thấy dòng nhập hàng của LOT này. Hãy đóng cửa sổ và tra cứu lại.',
+    lotTargetMissing:
+      'LOT này không nằm trong đối tượng nhập kho của dòng nhập hàng. Hãy kiểm tra đã nhập kho chưa, rồi đóng cửa sổ và tra cứu lại.',
   },
 };
