@@ -11,6 +11,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
+import { locationOptionLabel } from '../../patterns/location-label';
 import { CodeFields } from './code-fields';
 import {
   GOODS_RECEIPT_CODE_GROUPS,
@@ -330,7 +331,7 @@ export const GoodsReceiptPostPanel = ({
   const locationLabel = (locationId: string): string => {
     const found = locations.items.find((location) => String(location.locationId) === locationId);
 
-    return found === undefined ? '' : `${found.locationCode} · ${found.locationName}`;
+    return found === undefined ? '' : locationOptionLabel(found);
   };
   const warehousePlantName =
     selectedWarehouse === null

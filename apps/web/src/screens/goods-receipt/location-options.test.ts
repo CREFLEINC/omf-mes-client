@@ -109,3 +109,11 @@ describe('toLocationOptions — 상위 위치로 1단 그룹을 만든다', () =
     expect(toLocationOptions([])).toEqual([]);
   });
 });
+
+describe('toLocationOptions — 표기(피처 007 · #267)', () => {
+  it('US2-4 별칭이 있으면 위치를 「코드 · 별칭」으로 보인다', () => {
+    const items = toLocationOptions([location({ aliasName: '합성 별칭' })]);
+
+    expect(items).toEqual([{ value: '9801', label: 'SAMPLE-LOC-A · 합성 별칭' }]);
+  });
+});

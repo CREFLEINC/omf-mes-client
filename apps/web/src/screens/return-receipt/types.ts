@@ -163,6 +163,8 @@ export interface LocationView {
   locationId: number;
   locationCode: string;
   locationName: string;
+  /** MES 별칭 — 보일 때는 `locationOptionLabel` 이 「코드 · 별칭」으로 짓는다. */
+  aliasName?: string | null;
   parentLocationId: number | null;
   isActive: boolean;
 }
@@ -171,6 +173,7 @@ export const toLocationView = (data: LocationResponse): LocationView => ({
   locationId: data.locationId,
   locationCode: data.locationCode,
   locationName: data.locationName,
+  aliasName: data.aliasName,
   parentLocationId: data.parentLocationId ?? null,
   isActive: data.isActive,
 });
