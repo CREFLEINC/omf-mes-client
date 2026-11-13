@@ -55,5 +55,13 @@ export const inspectionDocuments = {
     notFound: '이 번호의 LOT 이 없습니다.',
     noRequest: '이 LOT 의 대기 중인 수입검사 의뢰가 없습니다.',
     failed: 'LOT 을 찾지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
+    /** 005 W-01-01 — 입하 LOT 번호로도 연다(screens/W-01-01 「화면 구조」). */
+    inbound: {
+      label: '자재 관리 LOT 또는 입하 LOT 스캔',
+      placeholder: '자재 관리 LOT 바코드 스캔 또는 입하 LOT 번호',
+      hint: '스캔한 자재 관리 LOT 의 입하 LOT 검사를 엽니다',
+      notFound: '이 번호의 입하 LOT 이 없습니다.',
+      noRequest: '이 입하 LOT 의 대기 또는 진행 중인 수입검사가 없습니다.',
+    },
   },
 };

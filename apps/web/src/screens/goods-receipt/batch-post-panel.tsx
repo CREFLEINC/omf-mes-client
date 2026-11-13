@@ -2,7 +2,6 @@ import { AlertBanner, Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui'
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
 import { CodeFields } from './code-fields';
 import {
@@ -25,6 +24,7 @@ import {
   type BatchPostJob,
 } from './queries';
 import { ReceiptHeaderForm } from './receipt-header-form';
+import { PostErrorBanner } from './receiving-gate';
 import { chooseReceiptTarget, receiptTargetsOf } from './receipt-target';
 import {
   EMPTY_RECEIPT_DRAFT,
@@ -462,7 +462,7 @@ export const GoodsReceiptBatchPostPanel = ({
       {firstFailure?.outcome?.kind === 'failed' && (
         <>
           <p className="field-error">{tb.failedLot(firstFailure.lot.lotNo)}</p>
-          <SaveErrorBanner error={firstFailure.outcome.error} />
+          <PostErrorBanner error={firstFailure.outcome.error} />
         </>
       )}
       <div className="register-footer-row">

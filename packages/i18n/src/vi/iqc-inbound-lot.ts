@@ -196,6 +196,15 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     } as Record<string, string>,
     empty: 'Không có lịch sử.',
     reinspectionReason: (name: string) => `Lý do kiểm tra lại: ${name}`,
+    noJudgment: 'Chưa có phán định',
+    inspected: (qty: string) => `Kiểm tra ${qty}`,
+    matched: (lotTails: readonly string[]) => `Khớp ${lotTails.join(', ')}`,
+    resultUpdated: (round: number | null, before: string, after: string) =>
+      `${round === null ? 'Kết quả' : `Kết quả ${String(round)}`} đã sửa — ${before} → ${after}`,
+    splitOut: (lotTails: readonly string[] | null, count: number, toInboundLotNo: string | null) =>
+      `${lotTails === null ? `${String(count)} LOT quản lý vật tư` : lotTails.join(', ')} → ${toInboundLotNo ?? 'LOT nhập hàng mới'}`,
+    splitIn: (fromInboundLotNo: string | null, count: number) =>
+      `${String(count)} LOT quản lý vật tư từ ${fromInboundLotNo ?? 'LOT nhập hàng gốc'}`,
     loadFailed: 'Không tải được lịch sử thay đổi.',
     close: 'Đóng',
   },

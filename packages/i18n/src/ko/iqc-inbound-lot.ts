@@ -219,6 +219,19 @@ export const iqcInboundLot = {
     empty: '남은 이력이 없습니다.',
     /** 「내용」의 재검 사유(G2 M4). */
     reinspectionReason: (name: string) => `재검 사유: ${name}`,
+    /** 결과 요약 — 「합격 · 검사 200 · 매칭 0001, 0002」(T139 · 서버 이력 한 줄과 같은 모양). */
+    noJudgment: '판정 없음',
+    inspected: (qty: string) => `검사 ${qty}`,
+    matched: (lotTails: readonly string[]) => `매칭 ${lotTails.join(', ')}`,
+    /** 결과 수정 — 「결과 2 수정 — {전} → {후}」(screens/W-01-01 「변경 이력」). */
+    resultUpdated: (round: number | null, before: string, after: string) =>
+      `${round === null ? '결과' : `결과 ${String(round)}`} 수정 — ${before} → ${after}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    /** 분리(떠난 쪽) — 「0003, 0004 → IL-…」. 번호를 못 읽으면 개수로. */
+    splitOut: (lotTails: readonly string[] | null, count: number, toInboundLotNo: string | null) =>
+      `${lotTails === null ? `자재 관리 LOT ${String(count)}개` : lotTails.join(', ')} → ${toInboundLotNo ?? '새 입하 LOT'}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    /** 분리(생긴 쪽) — 「IL-… 에서 자재 관리 LOT n개」. */
+    splitIn: (fromInboundLotNo: string | null, count: number) =>
+      `${fromInboundLotNo ?? '원래 입하 LOT'} 에서 자재 관리 LOT ${String(count)}개`,
     loadFailed: '변경 이력을 불러오지 못했습니다.',
     close: '닫기',
   },

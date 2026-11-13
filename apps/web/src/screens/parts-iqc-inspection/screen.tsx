@@ -258,7 +258,12 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
           </div>
         )}
         <div className="parts-iqc-scan-row">
-          <LotScan inspectionTypeCode="IQC" onFound={select} focusSignal={scanFocus} />
+          <LotScan
+            inspectionTypeCode="IQC"
+            onFound={select}
+            focusSignal={scanFocus}
+            inboundLotPlantIds={plantId > 0 ? [plantId] : []}
+          />
           {/* 켜지면 채운 단추 — 걸려 있는지 한눈에 */}
           <Button
             variant={todayOnly ? 'filled' : 'outlined'}

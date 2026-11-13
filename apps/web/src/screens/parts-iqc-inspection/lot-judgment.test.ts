@@ -1,4 +1,8 @@
-import type { ApiError, InspectionResultSummaryForward } from '@omf-mes/api-client';
+import type {
+  ApiError,
+  InspectionRequestEventForward,
+  InspectionResultSummaryForward,
+} from '@omf-mes/api-client';
 import { messages, vi as viMessages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
@@ -196,27 +200,83 @@ describe('판정 규칙의 서버 400 코드', () => {
   });
 });
 
-describe('W-01-01 변경 이력 「내용」(G2 M4)', () => {
-  const event = (over: Record<string, unknown>) => ({
-    occurredAt: '2099-11-11T01:00:00Z',
-    eventCode: 'CONFIRMED',
-    actorName: null,
-    detail: null,
-    inspectionResultId: null,
-    summaryBefore: null,
-    summaryAfter: null,
-    reason: null,
+describe('W-01-01 변경 이력 「내용」(G2 M4 · T139)', () => {
+  const h = messages.iqcInboundLot.history;
+  /* 요약 칸은 계약이 모양을 적지 않은 JSON 이라(생성 타입은 빈 객체) 서버 모양 그대로 싣고 줄 하나로 맞춘다. */
+  const event = (over: Record<string, unknown>): InspectionRequestEventForward =>
+    ({
+      occurredAt: '2099-11-11T01:00:00Z',
+      eventCode: 'CONFIRMED',
+      actorName: null,
+      detail: null,
+      inspectionResultId: null,
+      summaryBefore: null,
+      summaryAfter: null,
+      reason: null,
+      ...over,
+    }) as InspectionRequestEventForward;
+  const context = (refs: Record<number, { no: string; lots: [number, string][] }> = {}) => ({
+    reasonNameOf: (code: string) => (code === 'TST-REMEASURE' ? '합성 재측정' : code),
+    inboundLotOf: (id: number) => {
+      const ref = refs[id];
+      return ref === undefined ? undefined : { inboundLotNo: ref.no, lotNoOf: new Map(ref.lots) };
+    },
+  });
+  const summary = (over: Record<string, unknown>) => ({
+    inspectionRound: 2,
+    overallJudgmentCode: 'REJECTED',
+    inspectedQty: 200,
+    matchedLotNos: ['SYN|0001', 'SYN|0002'],
+    reinspectionReasonCode: null,
     ...over,
   });
 
-  it('서버 한 줄이 있으면 그대로, 없으면 판정 · 사유 · 재검 사유로 채우고 빈 칸을 두지 않는다', () => {
-    expect(eventDetailOf(event({ detail: '합성 한 줄' }))).toBe('합성 한 줄');
+  it('서버 한 줄이 있으면 그대로, 없으면 사유, 그것도 없으면 빈 칸 대신 「—」', () => {
+    expect(eventDetailOf(event({ detail: '합성 한 줄' }), context())).toBe('합성 한 줄');
     expect(
-      eventDetailOf(event({ judgmentCode: 'REJECTED', reinspectionReasonName: '합성 재측정' })),
-    ).toBe(`불합격 · ${messages.iqcInboundLot.history.reinspectionReason('합성 재측정')}`);
-    expect(eventDetailOf(event({ eventCode: 'CONFIRM_CANCELLED', reason: '합성 취소 사유' }))).toBe(
-      '합성 취소 사유',
+      eventDetailOf(event({ eventCode: 'CONFIRM_CANCELLED', reason: '합성 취소 사유' }), context()),
+    ).toBe('합성 취소 사유');
+    expect(eventDetailOf(event({}), context())).toBe('—');
+  });
+
+  it('T139 결과 수정은 「결과 N 수정 — {전} → {후}」(재검 사유는 이름으로)', () => {
+    const row = event({
+      eventCode: 'RESULT_UPDATED',
+      detail: '서버 한 줄',
+      summaryBefore: summary({}),
+      summaryAfter: summary({
+        overallJudgmentCode: 'ACCEPTED',
+        matchedLotNos: ['SYN|0001'],
+        reinspectionReasonCode: 'TST-REMEASURE',
+      }),
+    });
+
+    expect(eventDetailOf(row, context())).toBe(
+      h.resultUpdated(
+        2,
+        `불합격 · ${h.inspected('200')} · ${h.matched(['0001', '0002'])}`,
+        `합격 · ${h.inspected('200')} · ${h.matched(['0001'])} · ${h.reinspectionReason('합성 재측정')}`,
+      ),
     );
-    expect(eventDetailOf(event({}))).toBe('—');
+  });
+
+  it('T139 분리는 떠난 쪽 「옮긴 LOT → 새 입하 LOT」, 생긴 쪽 「원래 입하 LOT 에서 n개」', () => {
+    const refs = {
+      7002: { no: 'IL-20991231-0004', lots: [[9003, 'SYN|0003']] as [number, string][] },
+      7001: { no: 'IL-20991231-0003', lots: [] },
+    };
+    const out = event({
+      eventCode: 'SPLIT_OUT',
+      summaryAfter: { newInspectionRequestId: 502, newInboundLotId: 7002, movedLotIds: [9003] },
+    });
+    const into = event({
+      eventCode: 'SPLIT_IN',
+      summaryAfter: { fromInspectionRequestId: 501, fromInboundLotId: 7001, movedLotIds: [9003] },
+    });
+
+    expect(eventDetailOf(out, context(refs))).toBe(h.splitOut(['0003'], 1, 'IL-20991231-0004'));
+    expect(eventDetailOf(into, context(refs))).toBe(h.splitIn('IL-20991231-0003', 1));
+    /* 상대 입하 LOT 을 못 읽으면 개수로 보인다. */
+    expect(eventDetailOf(out, context())).toBe(h.splitOut(null, 1, null));
   });
 });

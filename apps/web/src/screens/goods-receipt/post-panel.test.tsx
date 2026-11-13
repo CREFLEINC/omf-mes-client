@@ -1,3 +1,4 @@
+import { GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -205,6 +206,46 @@ describe('GoodsReceiptPostPanel — 입고 처리 오른쪽 창', () => {
 
     expect(await screen.findByText('GR-2026-800001')).toBeInTheDocument();
     expect(screen.getByText(t.panel.guide.hint.done)).toBeInTheDocument();
+  });
+
+  it('T137 입하 마감 전 입고 409 는 「입하 마감 뒤 입고」로 말한다(FR-014a · 검사 불필요 품목 포함)', async () => {
+    const receiving: StubRoute = {
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === GOODS_RECEIPTS_PATH,
+      respond: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE,
+                message: '합성 서버 문구',
+              },
+            ],
+          },
+          { status: 409 },
+        ),
+    };
+    const { user } = renderPanel([receiving, ...baseRoutes()]);
+
+    await screen.findByText('IR-2026-900001');
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+    });
+    await chooseOption(user, t.fields.warehouse, 'SAMPLE-WH-01 · 합성 창고 가');
+    await chooseOption(user, t.fields.location, 'SAMPLE-LOC-A1 · 합성 열 가1');
+    await chooseOption(user, t.fields.receiptType, 'SAMPLE_RECEIPT_TYPE_A');
+    await chooseOption(user, t.fields.inventoryStatus, 'AVAILABLE');
+    const post = screen.getByRole('button', { name: t.actions.post });
+    await waitFor(() => {
+      expect(post).toBeEnabled();
+    });
+    await user.click(post);
+    const confirm = await screen.findByRole('dialog', { name: t.dialog.submitTitle });
+    await user.click(within(confirm).getByRole('button', { name: t.actions.confirmPost }));
+
+    expect(await screen.findByText(t.notes.inboundLotReceiving.title)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.inboundLotReceiving.body)).toBeInTheDocument();
   });
 
   it('창고 선택지는 입하 전표의 공장 창고로 부른다', async () => {

@@ -9,7 +9,6 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
 import { CodeFields } from './code-fields';
 import {
@@ -33,6 +32,7 @@ import {
   useWarehouseOptions,
 } from './queries';
 import { ReceiptHeaderForm } from './receipt-header-form';
+import { PostErrorBanner } from './receiving-gate';
 import { chooseReceiptTarget, receiptTargetsOf } from './receipt-target';
 import { ResultPane, type LotStatusState } from './result-pane';
 import { SubmitConfirmDialog } from './submit-confirm-dialog';
@@ -501,7 +501,7 @@ export const GoodsReceiptPostPanel = ({
   /** 아래 띠 — 오류 · 요약 · 단추. 창 몸이 길어도 늘 보인다. */
   const footer = (
     <div className="register-footer">
-      <SaveErrorBanner error={post.error} />
+      <PostErrorBanner error={post.error} />
       {post.error?.kind === 'network' && <p className="field-error">{t.notes.postRecheck}</p>}
       <div className="register-footer-row">
         <p className="ors-totals" aria-live="polite">

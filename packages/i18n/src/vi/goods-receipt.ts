@@ -160,6 +160,10 @@ export const goodsReceipt: Translated<typeof ko.goodsReceipt> = {
         `Đã phân loại: hàng đạt ${good} · hàng lỗi ${split}`,
       noteBody: 'Hãy chọn đối tượng nhập kho. Hàng lỗi được nhập vào kho hàng lỗi.',
     },
+    inboundLotReceiving: {
+      title: 'Chưa chốt nhập hàng nên không thể nhập kho.',
+      body: 'Chỉ nhập kho sau khi chốt nhập hàng (kể cả vật tư không cần kiểm tra). Hãy chốt LOT nhập hàng này trên PDA rồi nhập kho.',
+    },
     iqcGate: {
       pendingTitle: 'Chưa có kết quả kiểm tra đầu vào IQC nên không thể nhập kho.',
       pendingBody:

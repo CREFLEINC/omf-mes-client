@@ -24,7 +24,15 @@ export interface LotScanProps {
    * 처음 그릴 때(0)는 건드리지 않는다.
    */
   focusSignal?: number;
+  /**
+   * 입하 LOT 번호(`IL-…`)로도 검사를 연다(005 W-01-01 · T138) — 그 번호를 찾을 공장들. 주면 칸 문구가 「자재 관리 LOT
+   * 바코드 스캔 또는 입하 LOT 번호」로 바뀐다. 입하 LOT 조회는 공장이 필수라 화면이 고른 공장(또는 범위 공장)을 넘긴다.
+   */
+  inboundLotPlantIds?: readonly number[];
 }
+
+/** 입하 LOT 번호 머리 — `IL-YYYYMMDD-NNNN`(이전 데이터 `IL-MIG-…` 포함). 자재 관리 LOT 번호는 품목 코드로 시작한다. */
+const INBOUND_LOT_PREFIX = 'IL-';
 
 /** 생산 LOT 의 원천 유형 — 서버 `WORK_ORDER_LOT_SOURCE` 와 같은 값이다. */
 const WORK_ORDER_SOURCE = 'WORK_ORDER';
@@ -44,7 +52,10 @@ export const LotScan = ({
   matchBy = 'lot',
   noRequestMessage = t.noRequest,
   focusSignal = 0,
+  inboundLotPlantIds,
 }: LotScanProps) => {
+  const inboundMode = inboundLotPlantIds !== undefined;
+  const label = inboundMode ? t.inbound.label : t.label;
   const { client } = useApiClient();
   const [value, setValue] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -64,6 +75,43 @@ export const LotScan = ({
     inputRef.current?.select();
   };
 
+  /** 입하 LOT 번호 → id — 공장마다 번호로 찾고 정확히 같은 것만 받는다. */
+  const findInboundLotId = async (inboundLotNo: string): Promise<number | null> => {
+    for (const plantId of inboundLotPlantIds ?? []) {
+      const page = await runRequest(() =>
+        client.GET('/logistics/inbound-lots', {
+          params: { query: { plantId, q: inboundLotNo, page: 1, size: 5 } },
+        }),
+      );
+      const hit = page.items.find((item) => item.inboundLotNo === inboundLotNo);
+      if (hit !== undefined) return hit.inboundLotId;
+    }
+    return null;
+  };
+
+  /** 입하 LOT 의 대기·진행 IQC 의뢰를 연다(계약 §8 `inboundLotId` 조건). */
+  const openInboundLot = async (inboundLotNo: string): Promise<void> => {
+    const inboundLotId = await findInboundLotId(inboundLotNo);
+    if (inboundLotId === null) {
+      fail(t.inbound.notFound);
+      return;
+    }
+    const requests = await runRequest(() =>
+      client.GET('/quality/inspection-requests', {
+        params: {
+          query: { inspectionTypeCode, pendingOnly: true, inboundLotId, page: 1, size: 5 },
+        },
+      }),
+    );
+    const found = requests.items[0];
+    if (found === undefined) {
+      fail(t.inbound.noRequest);
+      return;
+    }
+    setValue('');
+    onFound(found.inspectionRequestId);
+  };
+
   const find = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const lotNo = value.trim();
@@ -71,6 +119,10 @@ export const LotScan = ({
     setMessage(null);
     setIsFinding(true);
     try {
+      if (inboundMode && lotNo.toUpperCase().startsWith(INBOUND_LOT_PREFIX)) {
+        await openInboundLot(lotNo);
+        return;
+      }
       const lots = await runRequest(() =>
         client.GET('/trace/lots', { params: { query: { lotNo, size: 5 } } }),
       );
@@ -106,11 +158,12 @@ export const LotScan = ({
   };
 
   return (
-    <form className="form-actions" aria-label={t.label} onSubmit={(event) => void find(event)}>
+    <form className="form-actions" aria-label={label} onSubmit={(event) => void find(event)}>
       <TextField
         ref={inputRef}
-        label={t.label}
-        placeholder={t.placeholder}
+        label={label}
+        placeholder={inboundMode ? t.inbound.placeholder : t.placeholder}
+        {...(inboundMode ? { helperText: t.inbound.hint } : {})}
         value={value}
         readOnly={isFinding}
         onChange={(event) => setValue(event.target.value)}

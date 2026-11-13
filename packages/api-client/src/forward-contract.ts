@@ -1319,3 +1319,9 @@ export interface ForwardPaths {
 
 /** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다. */
 export type ApiPaths = Omit<paths, keyof ForwardPaths> & ForwardPaths;
+
+/**
+ * 005 FR-014a(2026-11-13 · T137) — 입하 중(`RECEIVING`) 입하 LOT 의 자재 관리 LOT 입고를 막는 409 의 업무 코드(`errors[].code`).
+ * ⚠ 서버 이름은 서버 보고 뒤 확정한다 — 그때까지 같은 뜻의 기존 코드(IQC 생략 · FR-032)를 임시로 쓴다. 확정되면 이 값만 바꾼다.
+ */
+export const GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE = 'INBOUND_LOT_RECEIVING';
