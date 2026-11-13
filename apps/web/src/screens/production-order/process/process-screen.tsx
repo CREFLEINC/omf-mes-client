@@ -605,7 +605,9 @@ export const ProcessWorkspace = ({
               onAppend={(drafts) =>
                 editor.addMany(drafts.map((draft) => ({ ...draft, bomId: draftBomId, routingId })))
               }
-              onSplit={(row, qty) => editor.split(row.key, qty, uoms.decimalScaleOf?.(order.uomId))}
+              onSplit={(row, qty) =>
+                editor.splitMany(row.key, qty, uoms.decimalScaleOf?.(order.uomId))
+              }
               onChange={editor.change}
               onRemove={(row) => {
                 if (row.productionPlanId === null) {
