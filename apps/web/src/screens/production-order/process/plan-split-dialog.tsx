@@ -28,7 +28,7 @@ export const PlanSplitDialog = ({
   const validationId = useId();
   const total = Number(row.draft.plannedQty);
   const scale = 10 ** decimalScale;
-  const [count, setCount] = useState('3');
+  const [count, setCount] = useState('1');
   const [method, setMethod] = useState('equal');
   const [per, setPer] = useState('');
   const [dates, setDates] = useState('sequence');
@@ -44,7 +44,7 @@ export const PlanSplitDialog = ({
       planDate: dates === 'sequence' ? shiftPlanDate(start, i) : start,
     }));
   };
-  const [parts, setParts] = useState<PlanSplitPart[]>(() => generate(3));
+  const [parts, setParts] = useState<PlanSplitPart[]>(() => generate(1));
   const [error, setError] = useState('');
   const [conditionsDirty, setConditionsDirty] = useState(false);
   const sumUnits = parts.reduce(
@@ -115,8 +115,7 @@ export const PlanSplitDialog = ({
     >
       <div className="erp-wo-split-content">
         <p className="visually-hidden" id={validationId}>
-          분할 미리보기를 갱신하고 계획일과 단위 소수 자릿수를 확인한 뒤 분할 생산량 합계를
-          맞추세요.
+          분할 조건을 적용하고 계획일과 단위 소수 자릿수를 확인한 뒤 분할 생산량 합계를 맞추세요.
         </p>
         <dl className="erp-wo-split-facts">
           {facts.map(([label, value]) => (
@@ -200,8 +199,8 @@ export const PlanSplitDialog = ({
             </div>
           </div>
           <div>
-            <Button size="sm" variant="outlined" onClick={preview}>
-              {conditionsDirty ? '분할 미리보기 갱신' : '분할 미리보기'}
+            <Button className="erp-wo-split-action" size="md" variant="tonal" onClick={preview}>
+              분할 조건 적용
             </Button>
           </div>
           {error && <p role="alert">{error}</p>}
@@ -210,12 +209,14 @@ export const PlanSplitDialog = ({
           <div className="erp-wo-split-heading">
             <h3>분할 계획 {parts.length}건</h3>
             <Button
-              size="sm"
-              variant="outlined"
+              className="erp-wo-split-action"
+              size="md"
+              variant="tonal"
               disabled={parts.length >= 12}
-              onClick={() =>
-                setParts((current) => [...current, { plannedQty: '', planDate: start }])
-              }
+              onClick={() => {
+                setCount(String(parts.length + 1));
+                setParts((current) => [...current, { plannedQty: '', planDate: start }]);
+              }}
             >
               계획 추가
             </Button>
@@ -274,10 +275,11 @@ export const PlanSplitDialog = ({
                         size="sm"
                         variant="outlined"
                         aria-label={`계획 ${i + 1} 삭제`}
-                        disabled={parts.length <= 2}
-                        onClick={() =>
-                          setParts((current) => current.filter((_, index) => index !== i))
-                        }
+                        disabled={parts.length <= 1}
+                        onClick={() => {
+                          setCount(String(parts.length - 1));
+                          setParts((current) => current.filter((_, index) => index !== i));
+                        }}
                       >
                         −
                       </Button>
@@ -307,7 +309,7 @@ export const PlanSplitDialog = ({
               </dd>
             </div>
           </dl>
-          {!valid && (
+          {!valid && parts.length > 1 && (
             <p className="field-note" role="status">
               각 생산량과 계획일을 확인하고 합계를 {formatQty(total)} {unit}로 맞추세요.
             </p>

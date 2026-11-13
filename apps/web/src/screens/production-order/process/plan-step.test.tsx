@@ -174,7 +174,7 @@ describe('생산계획 보기와 선택 편집', () => {
     await user.click(screen.getByText('계획 분할', { exact: true }));
     await user.clear(screen.getByRole('textbox', { name: '분할 후 계획 건수' }));
     await user.type(screen.getByRole('textbox', { name: '분할 후 계획 건수' }), '2');
-    await user.click(screen.getByRole('button', { name: /분할 미리보기/ }));
+    await user.click(screen.getByRole('button', { name: '분할 조건 적용' }));
     await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
     await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '150');
     await user.clear(screen.getByRole('textbox', { name: '계획 2 생산량' }));
@@ -209,6 +209,9 @@ it('선택 계획의 단위 자릿수에 맞게 소수 분할을 허용한다', 
     />,
   );
   await user.click(screen.getByRole('button', { name: '계획 분할' }));
+  await user.clear(screen.getByRole('textbox', { name: '분할 후 계획 건수' }));
+  await user.type(screen.getByRole('textbox', { name: '분할 후 계획 건수' }), '3');
+  await user.click(screen.getByRole('button', { name: '분할 조건 적용' }));
   await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
   await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '0.001');
   expect(screen.getByRole('button', { name: '분할 적용' })).toBeDisabled();

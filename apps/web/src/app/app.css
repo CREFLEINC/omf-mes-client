@@ -36868,3 +36868,5 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-split-table td:nth-child(3) button { min-width:9rem; }
 
 @media(max-width:640px) { .erp-wo-plan-split-dialog { width:100%; max-width:100%; } }
+
+.erp-wo-split-action { min-width:8rem; font-weight:500; }
