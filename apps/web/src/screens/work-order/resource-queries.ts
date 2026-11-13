@@ -57,6 +57,8 @@ export interface WorkOrderLocationFact {
   warehouseName: string | null;
   locationCode: string;
   locationName: string;
+  /** MES 별칭 — 선택 칸은 `locationOptionLabel` 로 「코드 · 별칭」을 보인다(#267). */
+  aliasName: string | null;
   isActive: boolean;
 }
 
@@ -156,6 +158,7 @@ const toWorkOrderLocationFact = (
   warehouseName: warehouse?.warehouseName ?? null,
   locationCode: location.locationCode,
   locationName: location.locationName,
+  aliasName: location.aliasName,
   isActive: location.isActive,
 });
 

@@ -13,6 +13,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { DateTimeField } from '../../../patterns/date-time-field';
+import { locationOptionLabel } from '../../../patterns/location-label';
 import { ReferenceField, type ReferenceRow } from '../../../patterns/reference-picker';
 import { SaveErrorBanner } from '../../../patterns/master';
 import { Select } from '../../../patterns/select';
@@ -79,6 +80,8 @@ const LOCATION_FIELDS = [
   'defaultFgLocationId',
   'defaultScrapLocationId',
 ] as const;
+const isLocationField = (field: string): field is (typeof LOCATION_FIELDS)[number] =>
+  (LOCATION_FIELDS as readonly string[]).includes(field);
 const PLAN_FIELDS = ['plannedStartAtLocal', 'plannedEndAtLocal', 'priorityNo'] as const;
 /* 점검 지적의 칸 이름으로 접힌 묶음을 펼칠지 정한다. */
 const LOCATION_FINDING = /location/i;
@@ -310,7 +313,10 @@ const EditorSession = ({
   ) => {
     setLabels((current) => ({
       ...current,
-      [`${field}:${String(row.id)}`]: named(row.name, row.code),
+      /* 위치는 「코드 · 별칭」(#267) — 고르기 표의 이름 칸이 이미 별칭 → 이름이다(`reference-sources.ts`). */
+      [`${field}:${String(row.id)}`]: isLocationField(field)
+        ? locationOptionLabel({ locationCode: row.code, locationName: row.name })
+        : named(row.name, row.code),
     }));
     patch({ ...extra, [field]: String(row.id) });
   };
@@ -326,7 +332,7 @@ const EditorSession = ({
   };
   const locationLabel = (id: string) => {
     const item = locations.items.find((entry) => String(entry.locationId) === id);
-    return item === undefined ? '' : named(item.locationName, item.locationCode);
+    return item === undefined ? '' : locationOptionLabel(item);
   };
   const labelOf = (field: IdField): string => {
     const value = draft[field];

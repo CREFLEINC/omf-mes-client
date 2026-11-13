@@ -21,6 +21,7 @@ import {
   CODE_GROUPS,
   type CodeOption,
   groupDeactivateImpact,
+  lineLocationLabel,
   selectableOptions,
   toCodeLabels,
 } from './code-options';
@@ -396,7 +397,7 @@ export const EquipmentMasterScreen = () => {
       .filter((item) => item.warehouseTypeCode === LINE_LOCATION_WAREHOUSE_TYPES[field])
       .map((item) => ({
         value: String(item.locationId),
-        label: `[${item.warehouseCode ?? ''} ${item.warehouseName ?? ''}] ${item.locationCode} · ${item.locationName}`,
+        label: lineLocationLabel(item),
       })),
   ];
   const locationNote =

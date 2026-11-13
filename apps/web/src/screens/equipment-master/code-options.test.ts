@@ -8,6 +8,7 @@ import {
   ensureOption,
   groupDeactivateImpact,
   groupTypeLabel,
+  lineLocationLabel,
   lookupLabel,
   selectableOptions,
   statusLabel,
@@ -200,5 +201,26 @@ describe('statusLabel', () => {
   it('못 찾으면 코드를 그대로 보인다', () => {
     expect(statusLabel('DISPOSED', options)).toBe('DISPOSED');
     expect(statusLabel('DISPOSED', [])).toBe('DISPOSED');
+  });
+});
+
+describe('lineLocationLabel — 라인 기본 위치 선택지(피처 007 · #267)', () => {
+  const location = {
+    warehouseCode: 'WH20',
+    warehouseName: 'MFG WH',
+    locationCode: 'WH20-DEF',
+    locationName: 'MFG',
+  };
+
+  it('별칭이 없으면 「[창고] 코드 · 이름」이다', () => {
+    expect(lineLocationLabel({ ...location, aliasName: null })).toBe(
+      '[WH20 MFG WH] WH20-DEF · MFG',
+    );
+  });
+
+  it('US2-4 별칭이 있으면 위치를 「코드 · 별칭」으로 보인다', () => {
+    expect(lineLocationLabel({ ...location, aliasName: '합성 별칭' })).toBe(
+      '[WH20 MFG WH] WH20-DEF · 합성 별칭',
+    );
   });
 });

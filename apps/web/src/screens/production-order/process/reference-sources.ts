@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 
 import { useApiClient } from '../../../patterns/api-context';
+import { locationShownName } from '../../../patterns/location-tree';
 import { REFERENCE_PAGE_SIZE, type ReferenceSource } from '../../../patterns/reference-picker';
 import { runRequest } from '../../../patterns/request';
 import { useWorkOrderWarehouses } from '../../work-order/resource-queries';
@@ -213,7 +214,8 @@ export const useLocationSource = (
           items: data.items.map((item) => ({
             id: item.locationId,
             code: item.locationCode,
-            name: item.locationName,
+            /* 별칭이 있으면 별칭(창고·Location 의 별칭 칸과 같다) — 고른 뒤 칸에는 「코드 · 별칭」으로 보인다(#267). */
+            name: locationShownName(item),
             ...(group === undefined ? {} : { group }),
           })),
           total: data.page.total,

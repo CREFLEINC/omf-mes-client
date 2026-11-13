@@ -4,6 +4,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupSource } from '../../patterns/lookup-display';
 import { runRequest, toApiError } from '../../patterns/request';
+import { locationOptionLabel } from '../../patterns/location-label';
 
 export interface ReferenceOption {
   value: string;
@@ -151,7 +152,7 @@ const fetchLocationOptions = async (
 
   return toResult(data.items, data.page, (value) => ({
     value: String(value.locationId),
-    label: `${value.locationCode} · ${value.locationName}`,
+    label: locationOptionLabel(value),
     isActive: value.isActive,
   }));
 };
