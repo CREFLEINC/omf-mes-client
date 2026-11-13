@@ -15,6 +15,7 @@ import type {
   PlannedStockResponse,
 } from './api-types';
 import { toDetailView, toPlannedShortageView, toRequestView } from './api-types';
+import { locationOptionLabel } from '../../patterns/location-label';
 
 type Plant = components['schemas']['Plant'];
 type PageMeta = components['schemas']['PageMeta'];
@@ -199,7 +200,7 @@ export const useDestinationOptions = (locationId: number | null): UseQueryResult
       );
       return list.items.map((item) => ({
         value: String(item.locationId),
-        label: `${item.locationCode} ${item.locationName}`,
+        label: locationOptionLabel(item),
       }));
     },
   });
