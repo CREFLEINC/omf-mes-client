@@ -1,8 +1,4 @@
-import type {
-  components,
-  InboundReceiptLineMaterialLotForward,
-  InboundReceiptLineMaterialLotsForward,
-} from '@omf-mes/api-client';
+import type { components, InboundReceiptLineMaterialLot } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { locationDisplayName } from '../../patterns/system-location';
 
@@ -99,7 +95,7 @@ export interface IrLineView {
    * 005 T141 — 줄의 자재 관리 LOT 별 입고 대상(새 흐름 입하 LOT 은 줄 하나에 여럿). 서버가 싣지 않았으면 빈 배열이고,
    * 그때는 줄의 `lotId` · `receivableQty` 를 쓴다(지금까지의 동작).
    */
-  materialLots: InboundReceiptLineMaterialLotForward[];
+  materialLots: InboundReceiptLineMaterialLot[];
 }
 
 /** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -116,7 +112,7 @@ export const toIrLineView = (data: InboundReceiptLineResponse): IrLineView => ({
   statusCode: data.statusCode,
   receivableQty: data.receivableQty ?? null,
   splitLots: data.splitLots ?? [],
-  materialLots: (data as InboundReceiptLineMaterialLotsForward).materialLots ?? [],
+  materialLots: data.materialLots ?? [],
 });
 
 /** 목록 조회 결과. `page`는 쪽 이동과 위치 표시의 정본이다. */

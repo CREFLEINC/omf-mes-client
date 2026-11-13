@@ -18382,7 +18382,7 @@ export interface paths {
     put?: never;
     /**
      * 입고 처리
-     * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 ⭐ 적치 지시는 라인마다 서버가 함께 만들고, 응답의 GoodsReceiptLine.putawayTaskId 가 그 식별자를 싣는다 — 화면은 그 값으로 라인 수만큼 적치 완료를 부른다. ⛔ 입고와 적치 완료는 한 트랜잭션이 아니다 — 입고만 성공하고 적치가 남는 상태는 오류가 아니라 표현 가능한 상태이고, GET /logistics/putaway-tasks?goodsReceiptId= 로 되찾는다(공유계약 B-8 의 경계는 전표 안까지다). ⭐ ERP 구매입고(IF-GR-SEND, 입고번호 키)는 입고 줄의 LOT 이 모두 새 흐름(erp_send_mode_code=ON_FINALIZE) 입하 LOT 소속이면 적재하지 않는다 — 새 흐름은 입하 LOT 마다 최종 마감 때 한 번 간다(피처 005 §6 · R-25, 그 송신은 #265). 이전 데이터(PER_RECEIPT)와 섞이면 적재하고 보낼 때 새 흐름 줄을 뺀다.
+     * @description 입고 전표 생성과 전기가 한 번에 일어난다. LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 같은 트랜잭션이며 ERP 실제 전송만 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 ⭐ 적치 지시는 라인마다 서버가 함께 만들고, 응답의 GoodsReceiptLine.putawayTaskId 가 그 식별자를 싣는다 — 화면은 그 값으로 라인 수만큼 적치 완료를 부른다. ⛔ 입고와 적치 완료는 한 트랜잭션이 아니다 — 입고만 성공하고 적치가 남는 상태는 오류가 아니라 표현 가능한 상태이고, GET /logistics/putaway-tasks?goodsReceiptId= 로 되찾는다(공유계약 B-8 의 경계는 전표 안까지다). ⭐ ERP 구매입고(IF-GR-SEND, 입고번호 키)는 입고 줄의 LOT 이 모두 새 흐름(erp_send_mode_code=ON_FINALIZE) 입하 LOT 소속이면 적재하지 않는다 — 새 흐름은 입하 LOT 마다 최종 마감 때 한 번 간다(피처 005 §6 · R-25, 그 송신은 #265). 이전 데이터(PER_RECEIPT)와 섞이면 적재하고 보낼 때 새 흐름 줄을 뺀다. ⭐ 입고는 입하 마감 뒤에만 한다(피처 005 FR-014a · 2026-11-13, 검사 불필요 품목 포함): 줄의 자재 관리 LOT 이 입하 중(RECEIVING)인 새 흐름(ON_FINALIZE) 입하 LOT 소속이면 409 — errors[] 가 그 줄마다 scope=field · field=lines[i].lotId · code=INBOUND_LOT_RECEIVING(문구에 입하 LOT 번호). 이전 데이터(PER_RECEIPT)·입하 LOT 없는 LOT 은 지금 그대로.
      */
     post: {
       parameters: {
@@ -18434,6 +18434,15 @@ export interface paths {
         };
         /** @description 권한 없음 */
         403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 입하 마감 전 — 줄의 자재 관리 LOT 이 입하 중(RECEIVING)인 입하 LOT 소속이다(errors[].code = INBOUND_LOT_RECEIVING · field = lines[i].lotId). 입하 마감한 뒤 다시 보낸다 */
+        409: {
           headers: {
             [name: string]: unknown;
           };
@@ -18573,7 +18582,7 @@ export interface paths {
     };
     /**
      * 입고 기본값
-     * @description 입고 처리 화면(W-01-10·W-04-06)이 LOT 마다 입고 칸을 미리 채운다 — 입고는 사람이 한다. 창고는 LOT 이 걸린 발주 라인의 ERP 창고와 같은 코드의 활성 MES 창고(입하와 같은 공장 · ERP 구매입고 송신도 같은 값), 불량 LOT 은 입하 공장의 활성 불량창고다. 위치는 그 창고의 적치 대기 자리. 상태는 정상 → NORMAL·AVAILABLE, 불량 → DEFECTIVE·ON_HOLD. 못 채운 칸은 null 이고 issues 가 까닭이다. 영업일·입고 시각은 화면이 채운다(공유계약 C-8). 근거: 사용자 결정 2026-10-29 · 장부 P-150
+     * @description 입고 처리 화면(W-01-10·W-04-06)이 LOT 마다 입고 칸을 미리 채운다 — 입고는 사람이 한다. 창고는 LOT 이 걸린 발주 라인의 ERP 창고와 같은 코드의 활성 MES 창고(입하와 같은 공장 · ERP 구매입고 송신도 같은 값), 불량 LOT 은 입하 공장의 활성 불량창고다. 위치는 그 창고의 적치 대기 자리. 상태는 정상 → NORMAL·AVAILABLE, 불량 → DEFECTIVE·ON_HOLD. 못 채운 칸은 null 이고 issues 가 까닭이다. 영업일·입고 시각은 화면이 채운다(공유계약 C-8). 근거: 사용자 결정 2026-10-29 · 장부 P-150 피처 005 FR-014a: 입하 중(RECEIVING)인 새 흐름 입하 LOT 의 자재 관리 LOT 은 입고 대상이 아니다 — 칸을 비우고 issues 에 INBOUND_LOT_RECEIVING.
      */
     get: {
       parameters: {
@@ -26311,7 +26320,7 @@ export interface paths {
     put?: never;
     /**
      * 입하 마감 취소
-     * @description 피처 005 §3 · R-5a. 마감 취소 가능 조건(행 reopenable)일 때만 — 마감(RECEIVED)이 아니면 409 STATE_LOCKED, 조건을 못 채우면 409 InboundLotReopenBlocked(errors[].code 가 막힘 코드). 효과: P/O 배정 행 삭제·라인 received_qty 감소, RECEIVING·open_since_date = 공장 현지 오늘·마감 칸 비움·closed_automatically=false, IQC 요청 CANCELLED(행은 남기고 이벤트 CANCELLED_BY_REOPEN — 다시 마감하면 새 요청), 긴급 생략을 실행한 건은 자재 관리 LOT NORMAL → INSPECTION_PENDING(C30)·검사 대기 보류 다시·이벤트 SKIP_VOIDED·생략 결재 기록에 무효 표시, 이벤트 RECEIPT_REOPENED. 다시 마감하면 배정을 처음부터 계산한다. 판정 뒤 같은 조합의 첫 받기가 입하 LOT 을 먼저 열면 409 OPEN_RECEIPT_EXISTS(이때 openInboundLotNo 는 null — 다시 읽으면 목록이 번호를 준다). 근거: M-01-03
+     * @description 피처 005 §3 · R-5a. 마감 취소 가능 조건(행 reopenable)일 때만 — 마감(RECEIVED)이 아니면 409 STATE_LOCKED, 조건을 못 채우면 409 InboundLotReopenBlocked(errors[].code 가 막힘 코드). 효과: P/O 배정 행 삭제·라인 received_qty 감소, RECEIVING·open_since_date = 공장 현지 오늘·마감 칸 비움·closed_automatically=false, IQC 요청 CANCELLED(대기·결과 0건 진행 중·생략 — 요청을 잠근 뒤 결과가 생겼으면 409 IQC_RECORDED. 행은 남기고 이벤트 CANCELLED_BY_REOPEN — 다시 마감하면 새 요청), 긴급 생략을 실행한 건은 자재 관리 LOT NORMAL → INSPECTION_PENDING(C30)·검사 대기 보류 다시·이벤트 SKIP_VOIDED·생략 결재 기록에 무효 표시, 이벤트 RECEIPT_REOPENED. 다시 마감하면 배정을 처음부터 계산한다. 판정 뒤 같은 조합의 첫 받기가 입하 LOT 을 먼저 열면 409 OPEN_RECEIPT_EXISTS(이때 openInboundLotNo 는 null — 다시 읽으면 목록이 번호를 준다). 근거: M-01-03
      */
     post: {
       parameters: {
@@ -51452,6 +51461,7 @@ export interface components {
         code:
           | 'NOT_FOUND'
           | 'NOT_RECEIPT_READY'
+          | 'INBOUND_LOT_RECEIVING'
           | 'NO_ERP_WAREHOUSE'
           | 'MULTIPLE_ERP_WAREHOUSES'
           | 'NO_MES_WAREHOUSE'
@@ -52045,7 +52055,7 @@ export interface components {
        */
       supplierLotLabelAttached: boolean;
       /**
-       * @description 서버 선행 P-56 — 이 라인 LOT 의 입고 가능 수량(initial_qty − 선별로 떼어 낸 자식 LOT 수량 − 이미 전기된 입고 수량). 입고 화면의 기본 수량이고 서버 입고 상한이다. LOT 이 없으면 null. 라인 목록(GET …/lines)·상세만 싣는다.
+       * @description 서버 선행 P-56 — 이 라인 LOT 의 입고 가능 수량(initial_qty − 선별로 떼어 낸 자식 LOT 수량 − 이미 전기된 입고 수량). 입고 화면의 기본 수량이고 서버 입고 상한이다. LOT 이 없으면 null. 라인 목록(GET …/lines)·상세만 싣는다. 입하 중(RECEIVING)인 새 흐름 입하 LOT 의 LOT 은 0 이다 — 입고는 입하 마감 뒤에만(피처 005 FR-014a).
        * @example 35
        */
       receivableQty?: number | null;
@@ -52089,6 +52099,22 @@ export interface components {
         /** @example 15 */
         receivableQty: number;
       }[];
+      /** @description 피처 005 FR-016 — 새 흐름 줄(입하 LOT · 자재 관리 LOT 여럿, 줄 lotId 는 대표 LOT 하나)의 자재 관리 LOT 마다 입고 단위. 입고(POST /logistics/goods-receipts)는 이 LOT 하나씩 그 receivableQty 한도로 보낸다 — 줄 receivableQty 는 이 합계다. 입하 중(RECEIVING)이면 각 receivableQty 0(FR-014a). 옛 줄은 null(줄 lotId·receivableQty 그대로). 선별 자식 LOT 은 여기 없고 splitLots 에 있다. 라인 목록·상세만 싣는다. */
+      materialLots?:
+        | {
+            /**
+             * Format: int64
+             * @example 1002
+             */
+            lotId: number;
+            /** @example AD9001-00041|50|261016|100001|0001 */
+            lotNo: string;
+            /** @example NORMAL */
+            statusCode: string;
+            /** @example 100 */
+            receivableQty: number;
+          }[]
+        | null;
     };
     InboundReceiptLineListResponse: {
       items: components['schemas']['InboundReceiptLine'][];
@@ -56233,7 +56259,7 @@ export interface components {
       /** @description 마감 취소 가능(data-model) — RECEIVED·ON_FINALIZE 이고 다음 단계 전(검사 필요: IQC 결과 0건·요청 확정/진행 아님 · 생략 결재 대기 없음 / 검사 불필요·긴급 생략 실행: 자재 관리 LOT 입고 0건)이며 같은 공장·공급사·품목에 입하 중(RECEIVING)이 없을 때 true */
       reopenable: boolean;
       /**
-       * @description 마감 취소 가능 건의 까닭(C2 정함) — NO_IQC_RESULT(검사 필요·결과 없음) · INSPECTION_NOT_REQUIRED(검사 불필요·기본 생략, 입고 전) · IQC_SKIPPED(긴급 생략 실행, 입고 전). reopenable 이 false 면 null
+       * @description 마감 취소 가능 건의 까닭(C2 정함) — NO_IQC_RESULT(검사 필요·결과 0건 — 대기 또는 결과를 지워 0건이 된 진행 중 요청) · INSPECTION_NOT_REQUIRED(검사 불필요·기본 생략, 입고 전) · IQC_SKIPPED(긴급 생략 실행, 입고 전). reopenable 이 false 면 null
        * @enum {string|null}
        */
       reopenReasonCode: 'NO_IQC_RESULT' | 'INSPECTION_NOT_REQUIRED' | 'IQC_SKIPPED' | null;
@@ -56514,7 +56540,7 @@ export interface components {
       movedResultIds: number[];
       movedAllocations: components['schemas']['InboundLotSplitMovedAllocation'][];
     };
-    /** @description 마감 취소 막힘(409) — errors[].code 가 막힘 코드다(scope=screen, 여럿이면 모두): IQC_RECORDED(IQC 결과가 있거나 확정·진행) · GOODS_RECEIVED(자재 관리 LOT 입고 있음) · SKIP_PENDING(IQC 생략 결재 대기) · INBOUND_LOT_FINALIZED(최종 마감) · LEGACY_INBOUND_LOT(이전 데이터 PER_RECEIPT) · OPEN_RECEIPT_EXISTS(같은 공장·공급사·품목에 입하 중 — 메시지와 openInboundLotNo 에 그 번호) */
+    /** @description 마감 취소 막힘(409) — errors[].code 가 막힘 코드다(scope=screen, 여럿이면 모두): IQC_RECORDED(IQC 결과가 1건 이상이거나 판정 확정 — 요청 상태가 아니라 결과 수로 본다: 결과를 모두 지웠거나 확정 취소·분리로 0건이 된 진행 중 요청은 막지 않는다, 2026-11-13) · GOODS_RECEIVED(자재 관리 LOT 입고 있음) · SKIP_PENDING(IQC 생략 결재 대기) · INBOUND_LOT_FINALIZED(최종 마감) · LEGACY_INBOUND_LOT(이전 데이터 PER_RECEIPT) · OPEN_RECEIPT_EXISTS(같은 공장·공급사·품목에 입하 중 — 메시지와 openInboundLotNo 에 그 번호) */
     InboundLotReopenBlocked: {
       errors: components['schemas']['ErrorItem'][];
       /** @description OPEN_RECEIPT_EXISTS 일 때 같은 조합의 입하 중 입하 LOT 번호(먼저 마감할 것), 그 밖 null. 판정 뒤 동시 받기와 겹친 OPEN_RECEIPT_EXISTS 는 번호를 못 읽어 null */
@@ -64538,8 +64564,9 @@ export interface components {
       occurredAt: string;
       /** @description REQUESTED(요청 생성) 또는 INSPECTION_REQUEST_EVENT_TYPE 값 — RESULT_ADDED·RESULT_UPDATED·RESULT_DELETED·CONFIRMED·CONFIRM_CANCELLED·REOPENED_BY_REWORK·SKIPPED·SKIP_VOIDED·SPLIT_OUT·SPLIT_IN·CANCELLED_BY_REOPEN */
       eventCode: string;
+      /** @description 행위자 이름(작업자 우선, 없으면 계정). REQUESTED 는 그 요청을 만든 입하 마감의 행위자(날짜 자동 마감·분리·선별로 생긴 요청은 null). */
       actorName: string | null;
-      /** @description 서버가 만든 한 줄 — 결과 이벤트는 「결과 1 기록 — 합격 · 검사 200 · 매칭 0001, 0002」(매칭은 LOT 번호 끝 4자리), 그 밖은 사유 이벤트별 문구(피처 005 G2): RESULT_ADDED·RESULT_UPDATED·RESULT_DELETED 「결과 n 기록|수정|삭제 — 판정 · 검사 수량 · 매칭 LOT 끝 4자리 · 재검 사유 이름」, CONFIRMED 「합격|불합격|보류 — 자재 관리 LOT n개 정상|불량|보류 · 부적합 NC-…」, CONFIRM_CANCELLED 「이전 확정: 판정 · 부적합 n건 취소 (사유: …)」, 그 밖은 reason. */
+      /** @description 서버가 만든 한 줄 — 결과 이벤트는 「결과 1 수정 — 불합격 · 검사 200(합격 150 · 불합격 50) · 매칭 0001, 0002」(괄호는 0 이 아닌 합격·불합격·보류 수량 — 수량만 고친 수정도 전·후가 다르다, 매칭은 LOT 번호 끝 4자리), 그 밖은 사유 이벤트별 문구(피처 005 G2·T142): REQUESTED 「입하 마감|날짜 자동 마감|자재 관리 LOT 분리로 생김|선별로 생김 — 자재 관리 LOT n개 · 수량 단위」(입하 마감이 만든 요청은 마감 때의 LOT 수·수량), RESULT_ADDED·RESULT_UPDATED·RESULT_DELETED 「결과 n 기록|수정|삭제 — 판정 · 검사 수량(합격·불합격·보류) · 매칭 LOT 끝 4자리 · 재검 사유 이름」, CONFIRMED 「합격|불합격|보류 — 자재 관리 LOT n개 정상|불량|보류 · 부적합 NC-…」, CONFIRM_CANCELLED 「이전 확정: 판정 · 부적합 n건 취소 (사유: …)」, 그 밖은 reason. */
       detail: string | null;
       /**
        * Format: int64

@@ -40,8 +40,8 @@ describe('receiptTargetsOf — 자재 관리 LOT 별(005 T141)', () => {
       receivedQty: 200,
       receivableQty: 200,
       materialLots: [
-        { lotId: 9601, lotNo: 'SYN|0001', receivableQty: 100 },
-        { lotId: 9611, lotNo: 'SYN|0002', receivableQty: 100 },
+        { lotId: 9601, lotNo: 'SYN|0001', statusCode: 'NORMAL', receivableQty: 100 },
+        { lotId: 9611, lotNo: 'SYN|0002', statusCode: 'NORMAL', receivableQty: 100 },
       ],
     });
 

@@ -255,8 +255,8 @@ describe('GoodsReceiptPostPanel — 입고 처리 오른쪽 창', () => {
       receivedQty: 200,
       receivableQty: 200,
       materialLots: [
-        { lotId: 9601, lotNo: 'SAMPLE|LOT|0001', receivableQty: 100 },
-        { lotId: 9611, lotNo: 'SAMPLE|LOT|0002', receivableQty: 100 },
+        { lotId: 9601, lotNo: 'SAMPLE|LOT|0001', statusCode: 'NORMAL', receivableQty: 100 },
+        { lotId: 9611, lotNo: 'SAMPLE|LOT|0002', statusCode: 'NORMAL', receivableQty: 100 },
       ],
     });
     const renderLot = (lotId: number, routes: StubRoute[]) => {

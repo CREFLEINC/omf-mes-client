@@ -94,3 +94,17 @@ export type PurchaseOrderLineListItemForward = Schemas['PurchaseOrderLineListIte
 export type InboundLotProgressForward = Schemas['InboundLotProgress'];
 export type InventoryBalanceForward = Schemas['InventoryBalance'];
 export type LotQualityStatusForward = Schemas['LotQualityStatus'];
+
+/* ── 입고 처리 · 입하 줄의 자재 관리 LOT 별 입고 단위(계약 FR-016 · FR-014a, 서버 #1038) ── */
+
+/** 입하 줄의 자재 관리 LOT 하나 — 입고는 이 LOT 하나씩 그 `receivableQty` 로 한다. */
+export type InboundReceiptLineMaterialLot = NonNullable<
+  Schemas['InboundReceiptLine']['materialLots']
+>[number];
+type ReceiptDefaultIssueCode = Schemas['ReceiptDefaults']['issues'][number]['code'];
+/**
+ * 입하 중(`RECEIVING`) 입하 LOT 의 자재 관리 LOT 입고를 막는 409 의 업무 코드(`errors[].code`). 계약은 이 409 의 코드를 설명으로만
+ * 적고 열거로는 입고 기본값 `issues[].code` 에만 싣는다 — 그 생성 열거에 묶어 이름이 바뀌면 타입 검사가 잡게 한다.
+ */
+export const GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE =
+  'INBOUND_LOT_RECEIVING' satisfies ReceiptDefaultIssueCode;
