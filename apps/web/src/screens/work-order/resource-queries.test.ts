@@ -1,6 +1,7 @@
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { locationOptionLabel } from '../../patterns/location-label';
 import { toApiError } from '../../patterns/request';
 import {
   createStubFetch,
@@ -393,5 +394,24 @@ describe('work-order resource queries', () => {
       kind: 'http',
       status: 503,
     });
+  });
+});
+
+describe('useWorkOrderLocations — 별칭(피처 007 · #267)', () => {
+  it('US2-4 별칭을 버리지 않아 선택 칸이 「코드 · 별칭」을 보일 수 있다', async () => {
+    const { fetch } = recordingFetch([
+      getRoute(WAREHOUSES_PATH, { items: [warehouse(34)], page: { page: 1, size: 200, total: 1 } }),
+      getRoute(LOCATIONS_PATH, {
+        items: [{ ...location(601, 34), aliasName: '합성 별칭' }],
+        page: { page: 1, size: 200, total: 1 },
+      }),
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderLocations(501), { fetch });
+
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+
+    const [first] = result.current.items;
+    expect(first?.aliasName).toBe('합성 별칭');
+    expect(first === undefined ? '' : locationOptionLabel(first)).toBe('SYN-LOC-601 · 합성 별칭');
   });
 });

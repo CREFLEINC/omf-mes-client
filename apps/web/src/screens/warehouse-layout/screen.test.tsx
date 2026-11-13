@@ -319,7 +319,9 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     );
     await user.click(locationButton('Z01-R001-L01'));
 
-    const table = await screen.findByRole('table', { name: t.stock.title('Z01-R001-L01') });
+    const table = await screen.findByRole('table', {
+      name: t.stock.title('Z01-R001-L01 · Z01-R001-L01 위치'),
+    });
     /* 좁은 구획에서 칸을 깨지 않고 옆으로 미는 감싸개 안에 선다. */
     expect(table.closest('.layout-stock-scroll')).not.toBeNull();
     const rows = within(table).getAllByRole('row').slice(1);
@@ -343,7 +345,9 @@ describe('W-CO-08 조회 화면 — 재고 (US2)', () => {
     await loaded();
     await user.click(await waitFor(() => locationButton('Z01-R001')));
 
-    const rack = await screen.findByRole('table', { name: t.stock.title('Z01-R001') });
+    const rack = await screen.findByRole('table', {
+      name: t.stock.title('Z01-R001 · Z01-R001 위치'),
+    });
     expect(within(rack).getAllByText('Z01-R001-L01')).toHaveLength(2);
 
     await user.click(locationButton('SYS-STAGING'));
@@ -484,11 +488,13 @@ describe('W-CO-08 조회 화면 — 구역 · 랙만 배치 (2차)', () => {
       'true',
     );
     const heading = screen.getByRole('heading', { name: /Z01-R001-L01-C01/ });
-    expect(heading).toHaveTextContent(t.locations.insideOnDrawing('Z01-R001'));
+    expect(heading).toHaveTextContent(t.locations.insideOnDrawing('Z01-R001 · Z01-R001 위치'));
     expect(heading).not.toHaveTextContent(t.locations.notOnDrawing);
     /* 재고 표는 고른 셀 기준 그대로다. */
     expect(
-      await screen.findByRole('table', { name: t.stock.title('Z01-R001-L01-C01') }),
+      await screen.findByRole('table', {
+        name: t.stock.title('Z01-R001-L01-C01 · Z01-R001-L01-C01 위치'),
+      }),
     ).toBeInTheDocument();
   });
 
@@ -542,5 +548,21 @@ describe('W-CO-08 창고 배치도 — 표식 이름은 별칭(#267)', () => {
     await loaded();
     const rack = await within(board()).findByRole('button', { name: 'Z01-R002' });
     expect(rack.querySelector('.marker-overlay-pin-label')).toHaveTextContent(/^Z01-R002$/);
+  });
+  it('US2-4 별칭이 있으면 고른 위치 · 재고 머리에 「코드 · 별칭」이 보인다', async () => {
+    const { user } = renderScreen({
+      layouts: [withDrawing(ALIAS_MARKERS)],
+      locations: ALIAS_ROWS,
+      balances: [],
+    });
+
+    await loaded();
+    await user.click(locationButton('Z01-R001'));
+
+    expect(
+      await screen.findByRole('heading', {
+        name: new RegExp(t.stock.title('Z01-R001 · A열 1번 랙')),
+      }),
+    ).toBeInTheDocument();
   });
 });

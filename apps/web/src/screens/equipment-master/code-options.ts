@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 
 import type { components } from '@omf-mes/api-client';
 
+import { locationOptionLabel, type LocationLabelSource } from '../../patterns/location-label';
 import {
   lookupDisplayLabel,
   type LookupSource,
@@ -189,3 +190,9 @@ export const groupDeactivateImpact = (memberEquipmentCount: number): string =>
   memberEquipmentCount === 0
     ? messages.equipmentMaster.deactivate.membersNone
     : messages.equipmentMaster.deactivate.members(memberEquipmentCount);
+
+/** 라인 기본 위치 선택지 — 「[창고 코드 창고 이름] 코드 · 별칭」(별칭 없으면 「코드 · 이름」, #267). */
+export const lineLocationLabel = (
+  location: LocationLabelSource & { warehouseCode: string | null; warehouseName: string | null },
+): string =>
+  `[${location.warehouseCode ?? ''} ${location.warehouseName ?? ''}] ${locationOptionLabel(location)}`;

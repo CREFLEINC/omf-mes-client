@@ -1,6 +1,7 @@
 import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { locationOptionLabel } from '../../../patterns/location-label';
 import {
   createStubFetch,
   jsonResponse,
@@ -88,5 +89,45 @@ describe('useLocationSource', () => {
 
     expect(result.current).toBeNull();
     expect(requests).toHaveLength(0);
+  });
+});
+
+describe('useLocationSource — 별칭(피처 007 · #267)', () => {
+  it('US2-4 별칭이 있으면 이름 칸이 별칭이고, 고른 칸은 「코드 · 별칭」이다', async () => {
+    const { fetch } = recordingFetch([
+      warehousesRoute([warehouse(34, 'PRODUCT')]),
+      {
+        match: (request) =>
+          request.method === 'GET' && new URL(request.url).pathname === '/mdm/locations',
+        respond: () =>
+          jsonResponse({
+            items: [
+              {
+                locationId: 601,
+                warehouseId: 34,
+                locationCode: 'SYN-LOC-601',
+                locationName: 'Synthetic location 601',
+                aliasName: '합성 별칭',
+                isActive: true,
+              },
+            ],
+            page: { page: 1, size: 20, total: 1 },
+          }),
+      },
+    ]);
+    const { result } = renderHookWithProviders(() => useLocationSource(501, 'PRODUCT'), {
+      fetch,
+    });
+
+    await waitFor(() => expect(result.current).not.toBeNull());
+    const found = await result.current?.search('', 1, '34');
+    const [row] = found?.items ?? [];
+
+    expect(row?.name).toBe('합성 별칭');
+    expect(
+      row === undefined
+        ? ''
+        : locationOptionLabel({ locationCode: row.code, locationName: row.name }),
+    ).toBe('SYN-LOC-601 · 합성 별칭');
   });
 });
