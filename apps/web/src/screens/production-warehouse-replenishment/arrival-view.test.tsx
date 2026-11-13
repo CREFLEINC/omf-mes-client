@@ -45,7 +45,7 @@ describe('W-02-12 생산 창고 보충 — 도착 대기 보기', () => {
 
     const multi = await rowOf('SYN-GI-93');
     expect(multi.getByText(ta.itemCount(2))).toBeInTheDocument();
-    expect(await multi.findByText('합성 A열 1칸')).toBeInTheDocument();
+    expect(await multi.findByText('SYN-A-01 · 합성 A열 1칸')).toBeInTheDocument();
     await user.click(multi.getByRole('button', { name: ta.expand('SYN-GI-93') }));
     expect(multi.getByText('SYN-IT-2 합성 라벨지, SYN-L-932, 50 EA')).toBeInTheDocument();
 

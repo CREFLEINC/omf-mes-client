@@ -4,6 +4,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
+import { locationOptionLabel } from '../../patterns/location-label';
 import { runRequest } from '../../patterns/request';
 import { SYSTEM_LOCATION_ROLE } from '../../patterns/system-location';
 import type {
@@ -511,7 +512,7 @@ const SYSTEM_ROLE_NAMES = messages.warehouseLocation.values.systemRoles;
 
 /**
  * 도착 위치 표시 이름(G2 확인 2) — 서버가 창고마다 두는 위치(적치 대기 · 창고 전체)는 코드(`SYS-…`) 대신 역할 이름,
- * 사람이 만든 위치는 위치 이름. 위치를 아직 못 받았으면 코드로 보인다.
+ * 사람이 만든 위치는 「코드 · 별칭」 또는 「코드 · 이름」(`locationOptionLabel`, #267). 위치를 아직 못 받았으면 코드로 보인다.
  */
 export const useLocationNames = (
   locations: readonly { id: number; code: string }[],
@@ -541,7 +542,9 @@ export const useLocationNames = (
         ? SYSTEM_ROLE_NAMES.PUTAWAY_STAGING
         : role === SYSTEM_LOCATION_ROLE.warehouseWhole
           ? SYSTEM_ROLE_NAMES.WAREHOUSE_WHOLE
-          : (found?.locationName ?? each.code),
+          : found === undefined
+            ? each.code
+            : locationOptionLabel(found),
     );
   }
   return names;
