@@ -1,3 +1,4 @@
+import { planningDaysResponse } from '../../../test/planning-day-fixture';
 import { ToastProvider } from '@crefle/web-ui';
 import { createApiClient } from '@omf-mes/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -112,6 +113,7 @@ const mount = (initialPlans: Record<string, unknown>[] = []) => {
   const state = { rejectB: false };
   const fetch = async (request: Request) => {
     const url = new URL(request.url);
+    if (url.pathname === '/planning/working-days:resolve') return planningDaysResponse(request);
     const page = (items: unknown[]) =>
       jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
     if (url.pathname.endsWith('/components')) return jsonResponse({ items: [] });

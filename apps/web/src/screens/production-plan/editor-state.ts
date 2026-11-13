@@ -42,6 +42,7 @@ export interface ProductionPlanEditorStateRow extends ProductionPlanEditorRow {
 }
 
 export interface NewProductionPlanDefaults {
+  planDateSourceCode?: 'SYSTEM' | 'USER';
   planDate: string;
   plannedQty: string;
   bomId: string;
@@ -60,6 +61,7 @@ export type ProductionPlanRowPreparation =
 
 export const draftFromProductionPlan = (plan: ProductionPlanFact): ProductionPlanDraft => ({
   planDate: plan.planDate,
+  ...(plan.planDateSourceCode ? { planDateSourceCode: plan.planDateSourceCode } : {}),
   plannedQty: String(plan.plannedQty),
   bomId: String(plan.bomId),
   routingId: String(plan.routingId),
@@ -142,6 +144,7 @@ export const appendProductionPlanRow = (
     isDirty: true,
     draft: {
       planDate: defaults.planDate,
+      ...(defaults.planDateSourceCode ? { planDateSourceCode: defaults.planDateSourceCode } : {}),
       plannedQty: defaults.plannedQty,
       bomId: defaults.bomId,
       routingId: defaults.routingId,
@@ -164,7 +167,15 @@ export const changeProductionPlanRow = (
     if (row.key !== key) return row;
     const errors = { ...row.errors };
     delete errors[field];
-    const draft = { ...row.draft, [field]: value };
+    const draft = {
+      ...row.draft,
+      [field]: value,
+      ...(field === 'planDate' &&
+      value !== row.draft.planDate &&
+      row.draft.planDateSourceCode !== undefined
+        ? { planDateSourceCode: 'USER' as const }
+        : {}),
+    } as ProductionPlanDraft;
     const update = row.baseline === null ? null : buildProductionPlanUpdate(draft, row.baseline);
     const isDirty = update === null || !update.ok || Object.keys(update.body).length > 0;
     return { ...row, draft, errors, isDirty };

@@ -1,3 +1,4 @@
+import { planningDaysResponse } from '../../../test/planning-day-fixture';
 import { ToastProvider } from '@crefle/web-ui';
 import { createApiClient } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
@@ -161,6 +162,7 @@ const serve = (state: World) => {
   const writes: Call[] = [];
   const fetch = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
+    if (url.pathname === '/planning/working-days:resolve') return planningDaysResponse(request);
     const at = path(request);
     const method = request.method;
     if (method !== 'GET') {

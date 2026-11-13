@@ -915,6 +915,7 @@ export const ProcessWorkspace = ({
           targets={[
             {
               id: order.productionOrderNo,
+              plantId: order.plantId,
               label: `${order.productionOrderNo} / ${item ? named(item.itemName, item.itemCode) : ''}`,
               unit: uomLabelOf(order.uomId),
               remaining: planQuantities(order.orderQty, order.confirmedPlanQty, editor.rows)

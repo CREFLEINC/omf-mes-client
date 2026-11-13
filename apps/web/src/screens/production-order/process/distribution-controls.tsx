@@ -1,3 +1,10 @@
+import { useApiClient } from '../../../patterns/api-context';
+import {
+  resolvePlanningDays,
+  planningDayKey,
+  planningDayMessage,
+  type PlanningDay,
+} from './planning-working-days';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { DistributionPeriodPicker } from './distribution-period-picker';
@@ -46,10 +53,15 @@ export const DistributionControls = ({
   onDirtyChange,
 }: DistributionControlsProps) => {
   const id = useId();
+  const { client } = useApiClient();
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const [calendarNotes, setCalendarNotes] = useState<string[]>([]);
+  const latestSignature = useRef('');
   const sequence = useRef(0);
   const lock = useRef(false);
   const [open, setOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const previewEpoch = useRef(0);
   const [activeId, setActiveId] = useState('');
   const [conditionPage, setConditionPage] = useState(1);
   const [resultPage, setResultPage] = useState(1);
@@ -101,9 +113,11 @@ export const DistributionControls = ({
       unit: order.unit,
       lines: order.lines.map((line) => line.id),
       decimalScale: order.decimalScale,
+      plantId: order.plantId,
     })),
     existing,
   });
+  latestSignature.current = signature;
   const activeRow = rows.find((row) => row.id === activeId) ?? rows[0];
   const visibleConditionPage = Math.min(conditionPage, Math.max(1, Math.ceil(rows.length / 5)));
   const stale = preview !== null && preview.signature !== signature;
@@ -169,9 +183,19 @@ export const DistributionControls = ({
           title="자동 분배"
           className="erp-wo-distribution-dialog"
           closeOnBackdropClick={false}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            latestSignature.current = 'closed';
+            previewEpoch.current++;
+            setOpen(false);
+          }}
           footer={
-            <Button variant="outlined" onClick={() => setOpen(false)}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                previewEpoch.current++;
+                setOpen(false);
+              }}
+            >
               편성 화면으로
             </Button>
           }
@@ -570,10 +594,71 @@ export const DistributionControls = ({
                 <div className="erp-wo-distribution-actions">
                   <Button
                     aria-describedby={`${id}-note`}
-                    disabled={disabled || !rows.some((row) => !row.applied)}
-                    onClick={() => {
+                    disabled={disabled || calendarBusy || !rows.some((row) => !row.applied)}
+                    onClick={async () => {
+                      const requestedSignature = signature;
+                      const epoch = ++previewEpoch.current;
+                      setCalendarBusy(true);
                       try {
-                        const result = previewSegments(orders, rows, existing);
+                        const active = rows.filter((row) => !row.applied);
+                        const targets = active.flatMap((row) => {
+                          const order = orders.find((order) => order.id === row.owner);
+                          return order?.plantId
+                            ? [
+                                {
+                                  plantId: order.plantId,
+                                  productionLineId: row.lineId ? Number(row.lineId) : null,
+                                  from: row.start,
+                                  to: row.end,
+                                },
+                              ]
+                            : [];
+                        });
+                        const calendar = await resolvePlanningDays(client, targets);
+                        if (
+                          latestSignature.current !== requestedSignature ||
+                          previewEpoch.current !== epoch
+                        )
+                          return;
+                        const bySegment = new Map<string, PlanningDay[]>();
+                        const notes: string[] = [];
+                        for (const row of active) {
+                          const order = orders.find((order) => order.id === row.owner);
+                          if (!order?.plantId) {
+                            notes.push(`${order?.label ?? ''}: 근무일 판정 불가 (공장 미지정)`);
+                            continue;
+                          }
+                          const days = segmentDates(row.start, row.end).map((date) =>
+                            calendar.get(
+                              planningDayKey(
+                                order.plantId!,
+                                row.lineId ? Number(row.lineId) : null,
+                                date,
+                              ),
+                            )!,
+                          );
+                          bySegment.set(row.id, days);
+                          const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
+                          if (row.mode === 'equal' && holidays.length)
+                            notes.push(
+                              `${order.label}: 휴일 ${holidays.length}일 제외 (${holidays.map((day) => day.date).join(', ')})`,
+                            );
+                          if (row.mode === 'daily')
+                            holidays
+                              .filter((day) => Number(row.daily[day.date]) > 0)
+                              .forEach((day) =>
+                                notes.push(
+                                  `${order.label} / ${day.date}: ${planningDayMessage(day)}`,
+                                ),
+                              );
+                          const unknown = days.filter(
+                            (day) => day.statusCode === 'UNDETERMINED',
+                          ).length;
+                          if (unknown)
+                            notes.push(`${order.label}: 근무일 판정 불가 ${unknown}일 (미설정)`);
+                        }
+                        const result = previewSegments(orders, rows, existing, bySegment);
+                        setCalendarNotes(notes);
                         setPreview({ signature, result });
                         setAcknowledged(false);
                         setResultPage(1);
@@ -582,11 +667,17 @@ export const DistributionControls = ({
                         setMessage('');
                       } catch (error) {
                         setPreview(null);
-                        setMessage(error instanceof Error ? error.message : '조건을 확인하세요.');
+                        setMessage(
+                          error instanceof Error
+                            ? error.message
+                            : '휴일을 조회하지 못했습니다. 다시 확인하세요.',
+                        );
+                      } finally {
+                        setCalendarBusy(false);
                       }
                     }}
                   >
-                    분배 미리보기
+                    {calendarBusy ? '휴일 확인 중' : '분배 미리보기'}
                   </Button>
                   <Button
                     variant="outlined"
@@ -621,6 +712,13 @@ export const DistributionControls = ({
                     조건 수정
                   </Button>
                 </div>
+                {calendarNotes.length > 0 && (
+                  <div className="erp-wo-planning-day-notice" role="status">
+                    {calendarNotes.map((note) => (
+                      <p key={note}>{note}</p>
+                    ))}
+                  </div>
+                )}
                 {stale && (
                   <AlertBanner variant="warning">
                     계획이나 대상 수량이 바뀌었습니다. 미리보기를 다시 만드세요.

@@ -36893,3 +36893,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-edit-fields button[aria-haspopup="dialog"],
 .erp-wo-plan-edit-fields .field-label,
 .erp-wo-plan-quantity-field label { font:var(--type-body-sm); }
+
+.erp-wo-planning-day-notice { margin:0; padding:var(--space-2) var(--space-3); border-radius:var(--radius-sm); font:var(--type-body-sm); background:var(--surface-container-low); color:var(--on-surface-variant); overflow-wrap:anywhere; }
+.erp-wo-planning-day-notice.is-holiday { background:var(--semantic-warning-container); color:var(--on-semantic-warning-container,var(--on-surface)); }
+.erp-wo-week-table td.erp-wo-holiday-day { background:var(--surface-container-high); }
+.erp-wo-holiday-day-label { display:block; margin-bottom:var(--space-2); color:var(--on-surface-muted); font:var(--type-label-sm); }

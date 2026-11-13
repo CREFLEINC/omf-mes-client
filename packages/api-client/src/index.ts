@@ -90,3 +90,5 @@ export type {
   InspectionGuideForward,
 } from './forward-contract';
 export { createProposalReadClient, type PlanProposal } from './proposal-read';
+
+export type { components as PlanningComponents } from './generated/planning-calendar';

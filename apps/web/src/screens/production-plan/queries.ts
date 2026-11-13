@@ -9,7 +9,8 @@ import type {
   ProductionPlanListResponse,
 } from './types';
 
-type ProductionPlan = components['schemas']['ProductionPlan'];
+type ProductionPlan = components['schemas']['ProductionPlan'] &
+  Partial<import('@omf-mes/api-client').PlanningComponents['schemas']['ProductionPlan']>;
 type Client = ApiClient['client'];
 const EDITOR_PAGE_SIZE = 100;
 
@@ -31,6 +32,11 @@ export const toProductionPlanFact = (plan: ProductionPlan): ProductionPlanFact =
   productionOrderId: plan.productionOrderId,
   planNo: plan.planNo,
   planDate: plan.planDate,
+  ...(plan.planDateSourceCode ? { planDateSourceCode: plan.planDateSourceCode } : {}),
+  ...(plan.planDateCalendar ? { planDateCalendar: plan.planDateCalendar } : {}),
+  ...(plan.planDateReviewRequired !== undefined
+    ? { planDateReviewRequired: plan.planDateReviewRequired }
+    : {}),
   plannedQty: plan.plannedQty,
   uomId: plan.uomId,
   bomId: plan.bomId,

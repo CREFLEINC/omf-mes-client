@@ -29,6 +29,9 @@ export interface ReviewOperation {
 }
 export type PlanReviewField = 'date' | 'quantity' | 'line' | 'routing';
 export interface ReviewPlan {
+  planDateSourceCode?: 'SYSTEM' | 'USER';
+  planDateCalendar?: import('@omf-mes/api-client').PlanningComponents['schemas']['PlanningCalendarDay'];
+  planDateAdjustment?: import('@omf-mes/api-client').PlanProposal['plans'][number]['planDateAdjustment'];
   key: string;
   number?: string;
   source: '신규 제안' | '작성중 계획' | '기존 확정 계획';
@@ -45,6 +48,8 @@ export interface ReviewPlan {
   routingOptions?: { value: ReferenceRow; operations: ReviewOperation[] }[];
 }
 export interface ReviewProposal {
+  basis?: import('@omf-mes/api-client').PlanProposal['basis'];
+  serverWarnings?: string[];
   id: string;
   number: string;
   itemCode: string;

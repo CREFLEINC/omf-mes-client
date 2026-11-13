@@ -737,6 +737,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               <DistributionControls
                 orders={entries.map((entry) => ({
                   id: entry.order.productionOrderNo,
+                  plantId: entry.order.plantId,
                   label: `${entry.order.productionOrderNo} / ${entry.item}`,
                   unit: entry.unit,
                   decimalScale: entry.decimalScale,
@@ -969,6 +970,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               onChange={(key, field, value) =>
                 ownerOf(key)?.editor.change(originalKey(key), field, value)
               }
+              rowPlantIdOf={(row) => ownerOf(row.key)?.order.plantId ?? null}
               onSplit={(row, qty) =>
                 ownerOf(row.key)?.editor.splitMany(
                   originalKey(row.key),
@@ -1154,6 +1156,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           initialOrder={addInitialOrder}
           targets={entries.map((entry) => ({
             id: entry.order.productionOrderNo,
+            plantId: entry.order.plantId,
             label: `${entry.order.productionOrderNo} / ${entry.item}`,
             remaining: getRemaining(entry),
             unit: entry.unit,

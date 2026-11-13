@@ -614,6 +614,13 @@ export const ProposalReview = ({
                   </details>
                 ) : null}
               </section>
+              {selected.serverWarnings?.length ? (
+                <div className="erp-wo-planning-day-notice" role="status">
+                  {selected.serverWarnings.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </div>
+              ) : null}
               {selected.serverIssues?.length ? (
                 <details>
                   <summary>서버 조회 시 점검 내역</summary>

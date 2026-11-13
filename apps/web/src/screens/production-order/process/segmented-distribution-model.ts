@@ -2,12 +2,14 @@ import { shiftPlanDate } from './plan-view-model';
 import type { PlanLine } from './plan-step';
 
 export interface ScheduledDraft {
+  planDateSourceCode?: 'SYSTEM' | 'USER';
   planDate: string;
   plannedLineId: string;
   plannedQty: string;
 }
 
 export interface DistributionTarget {
+  plantId?: number | null;
   id: string;
   label: string;
   unit: string;
@@ -86,8 +88,13 @@ export const segmentDates = (start: string, end: string): string[] => {
 export const expandSegment = (
   segment: DistributionSegment,
   decimalScale?: number,
+  excludedDates: ReadonlySet<string> = new Set(),
 ): { date: string; quantity: string }[] => {
-  const dates = segmentDates(segment.start, segment.end);
+  const dates = segmentDates(segment.start, segment.end).filter(
+    (date) => segment.mode === 'daily' || !excludedDates.has(date),
+  );
+  if (dates.length === 0)
+    throw new Error('기간 안에 편성 가능한 날짜가 없습니다. 분배 기간을 변경하세요.');
   if (segment.mode === 'daily')
     return dates.map((date) => ({
       date,
@@ -115,6 +122,7 @@ export const previewSegments = (
   targets: readonly DistributionTarget[],
   segments: readonly DistributionSegment[],
   existing: readonly OwnedDraft[],
+  calendarBySegment?: ReadonlyMap<string, readonly { date: string; statusCode: string }[]>,
 ): SegmentPreview => {
   const result: SegmentPreview = { drafts: [], orders: [], totals: [], warnings: [] };
   const lookup = new Map(targets.map((target) => [target.id, target]));
@@ -122,7 +130,7 @@ export const previewSegments = (
   if (!active.length) throw new Error('새 분배 조건을 추가하거나 적용 전 조건을 입력하세요.');
   const generated = new Map<
     string,
-    { owner: string; date: string; lineId: string; quantity: number }
+    { owner: string; date: string; lineId: string; quantity: number; source?: 'SYSTEM' | 'USER' }
   >();
   const allocated = new Map<string, number>();
   for (const [index, segment] of active.entries()) {
@@ -137,7 +145,16 @@ export const previewSegments = (
       throw new Error(`${target.label}: 단위 소수 자릿수를 확인하세요.`);
     let pieces: ReturnType<typeof expandSegment>;
     try {
-      pieces = expandSegment(segment, target.decimalScale);
+      pieces = expandSegment(
+        segment,
+        target.decimalScale,
+        new Set(
+          calendarBySegment
+            ?.get(segment.id)
+            ?.filter((day) => day.statusCode === 'HOLIDAY')
+            .map((day) => day.date) ?? [],
+        ),
+      );
     } catch (error) {
       throw new Error(
         `${target.label}: ${error instanceof Error ? error.message : '기간과 수량을 확인하세요.'}`,
@@ -172,6 +189,14 @@ export const previewSegments = (
         date: piece.date,
         lineId: segment.lineId,
         quantity: add(row?.quantity ?? 0, qty),
+        ...(calendarBySegment
+          ? {
+              source:
+                segment.mode === 'daily' || row?.source === 'USER'
+                  ? ('USER' as const)
+                  : ('SYSTEM' as const),
+            }
+          : {}),
       });
     }
   }
@@ -202,6 +227,7 @@ export const previewSegments = (
       planDate: row.date,
       plannedLineId: row.lineId,
       plannedQty: String(row.quantity / SCALE),
+      ...(row.source ? { planDateSourceCode: row.source } : {}),
     });
     const totalKey = JSON.stringify([row.date, row.lineId, target.unit]);
     const cell = totals.get(totalKey) ?? {

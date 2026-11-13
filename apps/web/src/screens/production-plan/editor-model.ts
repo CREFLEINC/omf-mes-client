@@ -1,13 +1,14 @@
-import type { components } from '@omf-mes/api-client';
-
-type ProductionPlanCreate = components['schemas']['ProductionPlanCreate'];
-type ProductionPlanUpdate = components['schemas']['ProductionPlanUpdate'];
+type ProductionPlanCreate =
+  import('@omf-mes/api-client').PlanningComponents['schemas']['ProductionPlanCreate'];
+type ProductionPlanUpdate =
+  import('@omf-mes/api-client').PlanningComponents['schemas']['ProductionPlanUpdate'];
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MACHINE_PRECISION_MULTIPLIER = 8;
 
 export interface ProductionPlanDraft {
   planDate: string;
+  planDateSourceCode?: 'SYSTEM' | 'USER';
   plannedQty: string;
   bomId: string;
   routingId: string;
@@ -139,6 +140,7 @@ export const buildProductionPlanCreate = (
     body: {
       productionOrderId: context.productionOrderId,
       planDate: draft.planDate.trim(),
+      ...(draft.planDateSourceCode ? { planDateSourceCode: draft.planDateSourceCode } : {}),
       plannedQty: Number(draft.plannedQty.trim()),
       uomId: context.uomId,
       bomId: Number(draft.bomId.trim()),
@@ -166,7 +168,10 @@ export const buildProductionPlanUpdate = (
   };
   const body: ProductionPlanUpdate = {};
 
-  if (next.planDate !== baseline.planDate) body.planDate = next.planDate;
+  if (next.planDate !== baseline.planDate) {
+    body.planDate = next.planDate;
+    if (draft.planDateSourceCode) body.planDateSourceCode = draft.planDateSourceCode;
+  }
   if (next.plannedQty !== baseline.plannedQty) body.plannedQty = next.plannedQty;
   if (next.bomId !== baseline.bomId) body.bomId = next.bomId;
   if (next.routingId !== baseline.routingId) body.routingId = next.routingId;

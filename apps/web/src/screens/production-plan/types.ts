@@ -9,6 +9,9 @@ export interface ProductionPlanFact {
   productionOrderId: number;
   planNo: string;
   planDate: string;
+  planDateSourceCode?: 'SYSTEM' | 'USER';
+  planDateCalendar?: import('@omf-mes/api-client').PlanningComponents['schemas']['PlanningCalendarDay'];
+  planDateReviewRequired?: boolean;
   plannedQty: number;
   uomId: number;
   bomId: number;

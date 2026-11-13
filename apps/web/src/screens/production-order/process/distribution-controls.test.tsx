@@ -154,7 +154,9 @@ describe('분배 조건과 미리보기 적용', () => {
     expect(within(dialog).getByRole('heading', { name: '균등 배분' })).toBeVisible();
     expect(within(dialog).getByRole('heading', { name: '날짜별 수량' })).toBeVisible();
     expect(within(dialog).getByText('34 EA')).toBeVisible();
-    expect(within(dialog).getByText(/주말과 공휴일도 포함/)).toBeVisible();
+    expect(
+      within(dialog).getByText(/균등 배분은 기존 휴일 설정을 적용해 휴일을 제외/),
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: '자동 분배' })).toHaveAttribute(
       'aria-expanded',
       'false',

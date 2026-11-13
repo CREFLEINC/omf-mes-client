@@ -1,3 +1,10 @@
+import { useApiClient } from '../../../patterns/api-context';
+import {
+  resolvePlanningDays,
+  usePlanningDays,
+  planningDayKey,
+  PlanningDayNotice,
+} from './planning-working-days';
 import { useId, useState } from 'react';
 import { Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
 import { Select } from '../../../patterns/select';
@@ -8,6 +15,7 @@ import { formatQty } from './process-model';
 
 export const PlanSplitDialog = ({
   row,
+  plantId = null,
   planName,
   identity,
   lineName,
@@ -17,6 +25,7 @@ export const PlanSplitDialog = ({
   onApply,
 }: {
   row: ProductionPlanEditorStateRow;
+  plantId?: number | null;
   planName: string;
   identity?: { orderNo: string; itemCode: string; itemName: string };
   lineName: string;
@@ -26,6 +35,8 @@ export const PlanSplitDialog = ({
   onApply: (parts: PlanSplitPart[]) => void;
 }) => {
   const validationId = useId();
+  const { client } = useApiClient();
+  const [calendarBusy, setCalendarBusy] = useState(false);
   const total = Number(row.draft.plannedQty);
   const scale = 10 ** decimalScale;
   const [count, setCount] = useState('1');
@@ -33,7 +44,7 @@ export const PlanSplitDialog = ({
   const [per, setPer] = useState('');
   const [dates, setDates] = useState('sequence');
   const [start, setStart] = useState(row.draft.planDate);
-  const generate = (number: number, fixed?: number): PlanSplitPart[] => {
+  const generate = (number: number, fixed?: number, planDates?: string[]): PlanSplitPart[] => {
     const whole = Math.round(total * scale);
     return Array.from({ length: number }, (_, i) => ({
       plannedQty: String(
@@ -41,10 +52,18 @@ export const PlanSplitDialog = ({
           ? Math.floor(whole / number) + (i < whole % number ? 1 : 0)
           : Math.min(fixed, whole - i * fixed)) / scale,
       ),
-      planDate: dates === 'sequence' ? shiftPlanDate(start, i) : start,
+      planDate: planDates?.[i] ?? (dates === 'sequence' ? shiftPlanDate(start, i) : start),
+      ...(plantId
+        ? { planDateSourceCode: dates === 'sequence' ? ('SYSTEM' as const) : ('USER' as const) }
+        : {}),
     }));
   };
-  const [parts, setParts] = useState<PlanSplitPart[]>(() => generate(1));
+  const [parts, setParts] = useState<PlanSplitPart[]>(() =>
+    generate(1).map((part) => ({
+      ...part,
+      ...(plantId ? { planDateSourceCode: row.draft.planDateSourceCode ?? 'USER' } : {}),
+    })),
+  );
   const [error, setError] = useState('');
   const [conditionsDirty, setConditionsDirty] = useState(false);
   const sumUnits = parts.reduce(
@@ -53,7 +72,7 @@ export const PlanSplitDialog = ({
   );
   const difference = (Math.round(total * scale) - sumUnits) / scale;
   const valid = validPlanSplit(total, parts, decimalScale);
-  const preview = () => {
+  const preview = async () => {
     const fixed = Math.round(Number(per) * scale);
     const number =
       method === 'fixed' ? Math.ceil(Math.round(total * scale) / fixed) : Number(count);
@@ -70,16 +89,74 @@ export const PlanSplitDialog = ({
       setError('분할 후 계획은 2~12건으로 지정하고 생산량과 편성 시작일을 확인하세요.');
       return;
     }
-    const next = generate(number, method === 'fixed' ? fixed : undefined);
-    setParts(
-      method === 'manual'
-        ? next.map((part, i) => ({ ...part, plannedQty: parts[i]?.plannedQty ?? '' }))
-        : next,
-    );
-    setConditionsDirty(false);
-    setCount(String(number));
-    setError('');
+    setCalendarBusy(true);
+    setConditionsDirty(true);
+    try {
+      let planDates: string[] | undefined;
+      if (plantId && dates === 'sequence') {
+        const calendar = await resolvePlanningDays(client, [
+          {
+            plantId,
+            productionLineId: row.draft.plannedLineId ? Number(row.draft.plannedLineId) : null,
+            from: start,
+            to: shiftPlanDate(start, 365),
+          },
+        ]);
+        planDates = [];
+        for (
+          let date = start;
+          date <= shiftPlanDate(start, 365) && planDates.length < number;
+          date = shiftPlanDate(date, 1)
+        ) {
+          const day = calendar.get(
+            planningDayKey(
+              plantId,
+              row.draft.plannedLineId ? Number(row.draft.plannedLineId) : null,
+              date,
+            ),
+          );
+          if (day?.statusCode !== 'HOLIDAY') planDates.push(date);
+        }
+        if (planDates.length < number)
+          throw new Error('편성 가능한 날짜가 부족합니다. 편성 시작일을 변경하세요.');
+      }
+      const next = generate(number, method === 'fixed' ? fixed : undefined, planDates);
+      setParts(
+        method === 'manual'
+          ? next.map((part, i) => ({ ...part, plannedQty: parts[i]?.plannedQty ?? '' }))
+          : next,
+      );
+      setConditionsDirty(false);
+      setCount(String(number));
+      setError('');
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : '휴일을 조회하지 못했습니다. 다시 확인하세요.',
+      );
+    } finally {
+      setCalendarBusy(false);
+    }
   };
+  const calendar = usePlanningDays(
+    plantId
+      ? parts.map((part) => ({
+          plantId,
+          productionLineId: row.draft.plannedLineId ? Number(row.draft.plannedLineId) : null,
+          from: part.planDate,
+          to: part.planDate,
+        }))
+      : [],
+  );
+  const dayOf = (date: string) =>
+    plantId
+      ? calendar.data?.get(
+          planningDayKey(
+            plantId,
+            row.draft.plannedLineId ? Number(row.draft.plannedLineId) : null,
+            date,
+          ),
+        )
+      : undefined;
   const facts = [
     ['분할 계획', planName],
     ['품목명', identity?.itemName ?? '—'],
@@ -103,7 +180,7 @@ export const PlanSplitDialog = ({
           </Button>
           <Button
             aria-describedby={!valid || conditionsDirty ? validationId : undefined}
-            disabled={!valid || conditionsDirty}
+            disabled={!valid || conditionsDirty || calendarBusy}
             onClick={() => {
               if (valid && !conditionsDirty) onApply(parts);
             }}
@@ -113,7 +190,12 @@ export const PlanSplitDialog = ({
         </>
       }
     >
-      <div className="erp-wo-split-content">
+      <div className="erp-wo-split-content" aria-busy={calendarBusy}>
+        {calendar.isError && (
+          <p className="erp-wo-planning-day-notice" role="status">
+            근무일 정보를 조회하지 못했습니다.
+          </p>
+        )}
         <p className="visually-hidden" id={validationId}>
           분할 조건을 적용하고 계획일과 단위 소수 자릿수를 확인한 뒤 분할 생산량 합계를 맞추세요.
         </p>
@@ -135,7 +217,7 @@ export const PlanSplitDialog = ({
               aria-label="분할 후 계획 건수"
               inputMode="numeric"
               value={count}
-              disabled={method === 'fixed'}
+              disabled={calendarBusy || method === 'fixed'}
               onChange={(event) => {
                 setCount(event.target.value);
                 setConditionsDirty(true);
@@ -144,6 +226,7 @@ export const PlanSplitDialog = ({
             <div className="field-cell">
               <span className="field-label">분할 방식</span>
               <Select
+                disabled={calendarBusy}
                 aria-label="분할 방식"
                 value={method}
                 onChange={(value) => {
@@ -160,6 +243,7 @@ export const PlanSplitDialog = ({
             {method === 'fixed' && (
               <TextField
                 containerClassName="erp-wo-split-input"
+                disabled={calendarBusy}
                 size="md"
                 label={`계획당 생산량 (${unit})`}
                 aria-label="계획당 생산량"
@@ -174,6 +258,7 @@ export const PlanSplitDialog = ({
             <div className="field-cell">
               <span className="field-label">계획일 설정</span>
               <Select
+                disabled={calendarBusy}
                 aria-label="계획일 설정"
                 value={dates}
                 onChange={(value) => {
@@ -190,6 +275,7 @@ export const PlanSplitDialog = ({
             <div className="field-cell">
               <span className="field-label">편성 시작일</span>
               <DatePicker
+                disabled={calendarBusy}
                 size="md"
                 aria-label="편성 시작일"
                 value={start}
@@ -201,8 +287,14 @@ export const PlanSplitDialog = ({
             </div>
           </div>
           <div>
-            <Button className="erp-wo-split-action" size="md" variant="tonal" onClick={preview}>
-              분할 조건 적용
+            <Button
+              className="erp-wo-split-action"
+              size="md"
+              variant="tonal"
+              disabled={calendarBusy}
+              onClick={preview}
+            >
+              {calendarBusy ? '휴일 확인 중' : '분할 조건 적용'}
             </Button>
           </div>
           {error && <p role="alert">{error}</p>}
@@ -214,10 +306,17 @@ export const PlanSplitDialog = ({
               className="erp-wo-split-action"
               size="md"
               variant="tonal"
-              disabled={parts.length >= 12}
+              disabled={calendarBusy || parts.length >= 12}
               onClick={() => {
                 setCount(String(parts.length + 1));
-                setParts((current) => [...current, { plannedQty: '', planDate: start }]);
+                setParts((current) => [
+                  ...current,
+                  {
+                    plannedQty: '',
+                    planDate: start,
+                    ...(plantId ? { planDateSourceCode: 'USER' as const } : {}),
+                  },
+                ]);
               }}
             >
               계획 추가
@@ -248,6 +347,7 @@ export const PlanSplitDialog = ({
                     <td>
                       <TextField
                         containerClassName="erp-wo-split-input"
+                        disabled={calendarBusy}
                         size="md"
                         aria-label={`계획 ${i + 1} 생산량`}
                         inputMode="decimal"
@@ -263,22 +363,32 @@ export const PlanSplitDialog = ({
                     </td>
                     <td>
                       <DatePicker
+                        disabled={calendarBusy}
                         size="md"
                         aria-label={`계획 ${i + 1} 계획일`}
                         value={part.planDate}
                         onChange={(planDate) =>
                           setParts((current) =>
-                            current.map((p, index) => (index === i ? { ...p, planDate } : p)),
+                            current.map((p, index) =>
+                              index === i
+                                ? {
+                                    ...p,
+                                    planDate,
+                                    ...(plantId ? { planDateSourceCode: 'USER' as const } : {}),
+                                  }
+                                : p,
+                            ),
                           )
                         }
                       />
+                      <PlanningDayNotice day={dayOf(part.planDate)} />
                     </td>
                     <td>
                       <Button
                         size="md"
                         variant="outlined"
                         aria-label={`계획 ${i + 1} 삭제`}
-                        disabled={parts.length <= 1}
+                        disabled={calendarBusy || parts.length <= 1}
                         onClick={() => {
                           setCount(String(parts.length - 1));
                           setParts((current) => current.filter((_, index) => index !== i));
