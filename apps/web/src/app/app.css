@@ -36881,3 +36881,15 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-editor-actions { display:flex; align-items:center; justify-content:flex-start; gap:var(--space-2); flex-wrap:wrap; margin-top:var(--space-3); }
 .erp-wo-plan-editor-actions > button { flex:0 0 auto; width:auto; min-width:7rem; border-radius:var(--radius-sm); font:var(--type-body-sm); }
 .erp-wo-plan-split-dialog .erp-wo-split-content [role="combobox"] { height:var(--control-height-md); min-height:var(--control-height-md); }
+
+/* 단건·복수 ERP W/O 공통 선택 계획 폼. 긴 생산 라인명은 잘리지 않게 펼친다. */
+.erp-wo-plan-edit-fields .erp-wo-plan-quantity-field > div:has(> input),
+.erp-wo-plan-edit-fields .reference-field-full-value,
+.erp-wo-plan-edit-fields .reference-field-full-value > button:first-child,
+.erp-wo-plan-edit-fields button[aria-haspopup="dialog"] { border-radius:var(--radius-sm); }
+.erp-wo-plan-edit-fields .reference-field-full-value,
+.erp-wo-plan-edit-fields .reference-field-full-value > button:first-child { min-height:var(--control-height-md); }
+.erp-wo-plan-edit-fields input,
+.erp-wo-plan-edit-fields button[aria-haspopup="dialog"],
+.erp-wo-plan-edit-fields .field-label,
+.erp-wo-plan-quantity-field label { font:var(--type-body-sm); }

@@ -799,7 +799,7 @@ export const PlanStep = ({
                 <div className="field-cell">
                   <label className="field-label">{t.columns.planDate}</label>
                   <DatePicker
-                    size="sm"
+                    size="md"
                     aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
                     value={selected.draft.planDate || null}
                     invalid={errorText(selected.errors, 'planDate') !== undefined}
@@ -812,7 +812,7 @@ export const PlanStep = ({
                   <ReferenceField
                     wrapValue
                     hideLabel
-                    size="sm"
+                    size="md"
                     label={t.fieldLabel(nameOf(selected), t.columns.line)}
                     valueLabel={
                       selected.draft.plannedLineId === ''
@@ -827,7 +827,8 @@ export const PlanStep = ({
                   />
                 </div>
                 <TextField
-                  size="sm"
+                  containerClassName="erp-wo-plan-quantity-field"
+                  size="md"
                   label={t.columns.plannedQty}
                   aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
                   inputMode="decimal"
