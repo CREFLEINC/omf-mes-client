@@ -129,7 +129,8 @@ export const PlanSplitDialog = ({
           <h3>분할 조건</h3>
           <div className="erp-wo-split-conditions">
             <TextField
-              size="sm"
+              containerClassName="erp-wo-split-input"
+              size="md"
               label="분할 후 계획 건수"
               aria-label="분할 후 계획 건수"
               inputMode="numeric"
@@ -158,7 +159,8 @@ export const PlanSplitDialog = ({
             </div>
             {method === 'fixed' && (
               <TextField
-                size="sm"
+                containerClassName="erp-wo-split-input"
+                size="md"
                 label={`계획당 생산량 (${unit})`}
                 aria-label="계획당 생산량"
                 inputMode="decimal"
@@ -188,7 +190,7 @@ export const PlanSplitDialog = ({
             <div className="field-cell">
               <span className="field-label">편성 시작일</span>
               <DatePicker
-                size="sm"
+                size="md"
                 aria-label="편성 시작일"
                 value={start}
                 onChange={(value) => {
@@ -245,7 +247,8 @@ export const PlanSplitDialog = ({
                     <td>{i + 1}</td>
                     <td>
                       <TextField
-                        size="sm"
+                        containerClassName="erp-wo-split-input"
+                        size="md"
                         aria-label={`계획 ${i + 1} 생산량`}
                         inputMode="decimal"
                         value={part.plannedQty}
@@ -260,7 +263,7 @@ export const PlanSplitDialog = ({
                     </td>
                     <td>
                       <DatePicker
-                        size="sm"
+                        size="md"
                         aria-label={`계획 ${i + 1} 계획일`}
                         value={part.planDate}
                         onChange={(planDate) =>
@@ -272,7 +275,7 @@ export const PlanSplitDialog = ({
                     </td>
                     <td>
                       <Button
-                        size="sm"
+                        size="md"
                         variant="outlined"
                         aria-label={`계획 ${i + 1} 삭제`}
                         disabled={parts.length <= 1}

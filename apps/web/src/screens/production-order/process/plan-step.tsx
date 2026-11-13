@@ -838,16 +838,31 @@ export const PlanStep = ({
                   onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
                 />
               </div>
+              {!selected.confirmed && (
+                <div className="erp-wo-plan-editor-actions">
+                  {onSplit && (
+                    <Button
+                      size="md"
+                      variant="tonal"
+                      disabled={editDisabled || selected.isPending}
+                      onClick={() => setSplitOpen(true)}
+                    >
+                      계획 분할
+                    </Button>
+                  )}
+                  <Button
+                    variant="outlined"
+                    size="md"
+                    aria-label={t.remove(nameOf(selected))}
+                    disabled={disabled || selected.isPending}
+                    onClick={() => onRemove(selected)}
+                  >
+                    {t.removeShort}
+                  </Button>
+                </div>
+              )}
               {onSplit && !selected.confirmed && (
                 <>
-                  <Button
-                    size="sm"
-                    variant="outlined"
-                    disabled={editDisabled || selected.isPending}
-                    onClick={() => setSplitOpen(true)}
-                  >
-                    계획 분할
-                  </Button>
                   {splitOpen && (
                     <PlanSplitDialog
                       key={selected.key}
@@ -867,27 +882,6 @@ export const PlanStep = ({
                     />
                   )}
                 </>
-              )}
-              <details className="erp-wo-plan-remarks">
-                <summary>{t.columns.remarks}</summary>
-                <TextField
-                  size="sm"
-                  aria-label={t.fieldLabel(nameOf(selected), t.columns.remarks)}
-                  value={selected.draft.remarks}
-                  disabled={editDisabled}
-                  onChange={(event) => onChange(selected.key, 'remarks', event.target.value)}
-                />
-              </details>
-              {!selected.confirmed && (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  aria-label={t.remove(nameOf(selected))}
-                  disabled={disabled}
-                  onClick={() => onRemove(selected)}
-                >
-                  {t.removeShort}
-                </Button>
               )}
             </>
           )}
