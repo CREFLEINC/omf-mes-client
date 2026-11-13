@@ -54,6 +54,7 @@ import {
   type SelectOption,
 } from './types';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { locationOptionLabel } from '../../patterns/location-label';
 
 const t = messages.stockReinstatement;
 const PAGE_SIZE = 50;
@@ -358,7 +359,7 @@ export const StockReinstatementScreen = () => {
     }));
   const locationOptions = stockableLocations.map((location) => ({
     value: String(location.locationId),
-    label: `${location.locationCode} · ${location.locationName}`,
+    label: locationOptionLabel(location),
   }));
   const holdOptions = (holds.data ?? []).map((hold) => ({
     value: String(hold.lotHoldId),
@@ -439,6 +440,11 @@ export const StockReinstatementScreen = () => {
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const end = Math.min(total, start + (candidates.data?.items.length ?? 0) - 1);
 
+  // 위치가 하나뿐이면 본문에 싣지 않아도 서버가 그 위치로 넣으므로, 확인 창에는 그 위치를 보여 준다.
+  const toLocation =
+    stockableLocationCount === 1
+      ? stockableLocations[0]
+      : stockableLocations.find((location) => String(location.locationId) === draft.toLocationId);
   const summary: ReinstatementSummary = {
     lotNo: selected?.lotNo ?? t.values.empty,
     qty: Number(draft.qty),
@@ -451,12 +457,7 @@ export const StockReinstatementScreen = () => {
       selectedWarehouse === undefined
         ? t.values.empty
         : warehouseLabel(selectedWarehouse.warehouseCode, selectedWarehouse.warehouseName),
-    // 위치가 하나뿐이면 본문에 싣지 않아도 서버가 그 위치로 넣으므로, 확인 창에는 그 위치를 보여 준다.
-    toLocation:
-      (stockableLocationCount === 1
-        ? stockableLocations[0]
-        : stockableLocations.find((location) => String(location.locationId) === draft.toLocationId)
-      )?.locationName ?? null,
+    toLocation: toLocation === undefined ? null : locationOptionLabel(toLocation),
   };
 
   return (

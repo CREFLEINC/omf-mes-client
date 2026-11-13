@@ -5,6 +5,7 @@ import { useApiClient } from '../../patterns/api-context';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, PageMeta } from './types';
+import { locationOptionLabel } from '../../patterns/location-label';
 
 /**
  * 내부 번호(FK)로 이어진 값을 이름으로 푸는 참조.
@@ -227,7 +228,7 @@ export const useLocationLookup = (warehouseId: number | null): LookupResult => {
     entries:
       data?.items.map((item) => ({
         value: String(item.locationId),
-        label: `${item.locationCode} · ${item.locationName}`,
+        label: locationOptionLabel(item),
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),
