@@ -36878,6 +36878,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-split-content button[aria-haspopup="dialog"],
 .erp-wo-split-content .field-label,
 .erp-wo-split-input label { font:var(--type-body-sm); }
-.erp-wo-plan-editor-actions { display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; }
+.erp-wo-plan-editor-actions { display:flex; align-items:center; justify-content:flex-start; gap:var(--space-2); flex-wrap:wrap; margin-top:var(--space-3); }
 .erp-wo-plan-editor-actions > button { flex:0 0 auto; width:auto; min-width:7rem; border-radius:var(--radius-sm); font:var(--type-body-sm); }
 .erp-wo-plan-split-dialog .erp-wo-split-content [role="combobox"] { height:var(--control-height-md); min-height:var(--control-height-md); }
