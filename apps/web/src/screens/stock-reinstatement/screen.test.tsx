@@ -230,6 +230,26 @@ describe('StockReinstatementScreen', () => {
     expect(screen.queryByRole('option', { name: /^FG-A ·/ })).not.toBeInTheDocument();
   });
 
+  it('US2-4 별칭이 있으면 도착 위치 선택지를 「코드 · 별칭」으로 보인다', async () => {
+    const user = userEvent.setup();
+    const [first, second] = stockableLocations;
+    renderWithProviders(<StockReinstatementScreen />, {
+      fetch: reinstatementStub({
+        locations: [
+          { ...first, aliasName: '합성 별칭' },
+          ...(second === undefined ? [] : [second]),
+        ],
+      }),
+      route: '/shipment/stock-reinstatements',
+    });
+    await chooseTarget(user);
+    await user.click(screen.getByLabelText(t.fields.targetWarehouse));
+    await user.click(await screen.findByRole('option', { name: /WH-FG/ }));
+    await user.click(await screen.findByLabelText(t.fields.targetLocation));
+
+    expect(await screen.findByRole('option', { name: 'FG-A-01 · 합성 별칭' })).toBeInTheDocument();
+  });
+
   it('재고를 둘 위치가 하나면 위치를 묻지 않고 본문에도 싣지 않는다', async () => {
     const user = userEvent.setup();
     renderWithProviders(<StockReinstatementScreen />, {
@@ -250,7 +270,7 @@ describe('StockReinstatementScreen', () => {
     await user.click(screen.getByRole('button', { name: t.actions.confirm }));
 
     const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
-    expect(within(dialog).getByText('합성 완제품 셀')).toBeInTheDocument();
+    expect(within(dialog).getByText('FG-A-01 · 합성 완제품 셀')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: t.actions.submit }));
     await waitFor(() => {
       expect(screen.getByText(t.success(200))).toBeInTheDocument();

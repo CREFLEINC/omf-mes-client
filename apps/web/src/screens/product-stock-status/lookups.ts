@@ -4,6 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
+import { locationOptionLabel } from '../../patterns/location-label';
 
 /**
  * 내부 번호(FK)로 이어진 값을 이름으로 푸는 선택 목록.
@@ -142,7 +143,7 @@ const fetchLocationOptions = async (
   return toResult(
     data.items.map((item) => ({
       value: String(item.locationId),
-      label: `${item.locationCode} · ${item.locationName}`,
+      label: locationOptionLabel(item),
       isActive: item.isActive,
     })),
     data.page,
