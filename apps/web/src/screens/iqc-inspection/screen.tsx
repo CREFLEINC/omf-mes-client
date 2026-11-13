@@ -18,6 +18,7 @@ import {
   InspectionHubCounts,
   type InspectionHubStatus,
 } from '../../patterns/inspection-hub-counts';
+import { useScopedPlants } from '../../patterns/oa-access';
 import { OaOnlyGate } from '../../patterns/oa-only-gate';
 import { PageNav } from '../../patterns/page-nav';
 import { usePageHub } from '../../patterns/page-hub';
@@ -75,6 +76,10 @@ const IqcInspectionScreenBody = () => {
   const { session } = useSession();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  /* 입하 LOT 번호 스캔(T138)은 공장으로 찾는다 — OA 화면은 범위의 OA 공장들에서 찾는다. */
+  const scopedPlants = useScopedPlants();
+  const oaPlantIds =
+    scopedPlants.status === 'ready' ? scopedPlants.oa.map((plant) => plant.plantId) : [];
 
   /*
    * 들어올 때 세션을 다시 읽는다(omf-all-around#104) — 다른 관리자가 이 계정의 작업자 지정을 해제·변경했어도
@@ -234,7 +239,12 @@ const IqcInspectionScreenBody = () => {
       >
         <div className="parts-iqc-scan-row">
           {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
-          <LotScan inspectionTypeCode="IQC" onFound={select} focusSignal={scanFocus} />
+          <LotScan
+            inspectionTypeCode="IQC"
+            onFound={select}
+            focusSignal={scanFocus}
+            inboundLotPlantIds={oaPlantIds}
+          />
           {/* 켜지면 채운 단추 — 걸려 있는지 한눈에 */}
           <Button
             variant={todayOnly ? 'filled' : 'outlined'}

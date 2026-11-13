@@ -14,7 +14,7 @@ export {
   STATE_LOCKED_CODE,
 } from './errors';
 export type { components, paths } from './generated/api';
-export { isInboundLotInspection } from './schemas-005';
+export { GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE, isInboundLotInspection } from './schemas-005';
 export type * from './schemas-005';
 export type {
   FourMChangeForward,

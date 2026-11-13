@@ -5,7 +5,7 @@ import {
   type InspectionRequestEventForward,
   type InspectionRequestForward,
 } from '@omf-mes/api-client';
-import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
@@ -69,6 +69,45 @@ export const useInboundInspection = (
 };
 
 /** 변경 이력 — 의뢰 이벤트(계약 §8 「이벤트를 함께」). */
+/** 변경 이력의 분리 줄이 가리키는 입하 LOT — 번호와 자재 관리 LOT 번호(T139). */
+export interface InboundLotRef {
+  inboundLotNo: string;
+  lotNoOf: ReadonlyMap<number, string>;
+}
+
+/**
+ * 분리 이벤트 요약(`summaryAfter`)은 상대 입하 LOT 을 id 로만 싣는다 — 번호 · 옮긴 자재 관리 LOT 번호를 보이려고 상세를 읽는다.
+ * 못 읽은 id 는 맵에 없다(줄은 개수로 보인다).
+ */
+export const useInboundLotRefs = (
+  inboundLotIds: readonly number[],
+): ReadonlyMap<number, InboundLotRef> => {
+  const { client } = useApiClient();
+  const ids = [...new Set(inboundLotIds)];
+  const results = useQueries({
+    queries: ids.map((inboundLotId) => ({
+      queryKey: [...ROOT, 'inbound-lot-ref', inboundLotId] as const,
+      staleTime: 60_000,
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/logistics/inbound-lots/{inboundLotId}', {
+            params: { path: { inboundLotId } },
+          }),
+        ),
+    })),
+  });
+  const refs = new Map<number, InboundLotRef>();
+  results.forEach((result, index) => {
+    const id = ids[index];
+    if (result.data === undefined || id === undefined) return;
+    refs.set(id, {
+      inboundLotNo: result.data.inboundLotNo,
+      lotNoOf: new Map(result.data.lots.map((lot) => [lot.lotId, lot.lotNo])),
+    });
+  });
+  return refs;
+};
+
 export const useInspectionEvents = (
   inspectionRequestId: number | null,
 ): UseQueryResult<InspectionRequestEventForward[]> => {

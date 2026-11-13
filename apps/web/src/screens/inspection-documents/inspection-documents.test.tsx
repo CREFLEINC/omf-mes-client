@@ -71,6 +71,67 @@ describe('LotScan', () => {
   });
 });
 
+describe('LotScan — 입하 LOT 번호(005 T138)', () => {
+  /** 공장 8301 에 입하 LOT `IL-20991231-0003`(id 7001)이 있고, 그 대기 IQC 의뢰는 `requests` 다. */
+  const inboundStub =
+    (requests: unknown[], seen: string[] = []): StubFetch =>
+    async (request) => {
+      const url = new URL(request.url);
+      seen.push(url.pathname);
+      if (url.pathname === '/logistics/inbound-lots') {
+        expect(url.searchParams.get('plantId')).toBe('8301');
+        const q = url.searchParams.get('q');
+        const items =
+          q === 'IL-20991231-0003'
+            ? [{ inboundLotId: 7001, inboundLotNo: 'IL-20991231-0003' }]
+            : [];
+        return jsonResponse({ items, page: { page: 1, size: 5, total: items.length } });
+      }
+      if (url.pathname === '/quality/inspection-requests') {
+        expect(url.searchParams.get('inboundLotId')).toBe('7001');
+        expect(url.searchParams.get('lotId')).toBeNull();
+        expect(url.searchParams.get('pendingOnly')).toBe('true');
+        return jsonResponse({
+          items: requests,
+          page: { page: 1, size: 5, total: requests.length },
+        });
+      }
+      throw new Error(`스텁에 없는 요청입니다: ${request.url}`);
+    };
+
+  it('T138 입하 LOT 번호를 넣으면 그 입하 LOT 의 IQC 검사를 연다 — 칸 문구도 W-01-01 노트대로', async () => {
+    const onFound = vi.fn();
+    const seen: string[] = [];
+    renderWithProviders(
+      <LotScan inspectionTypeCode="IQC" onFound={onFound} inboundLotPlantIds={[8301]} />,
+      { fetch: inboundStub([{ inspectionRequestId: 2001 }], seen) },
+    );
+    const box = screen.getByRole('textbox', { name: t.scan.inbound.label });
+    expect(box).toHaveAttribute('placeholder', t.scan.inbound.placeholder);
+    expect(screen.getByText(t.scan.inbound.hint)).toBeInTheDocument();
+
+    await userEvent.type(box, 'IL-20991231-0003{Enter}');
+
+    await waitFor(() => expect(onFound).toHaveBeenCalledWith(2001));
+    expect(seen).not.toContain('/trace/lots');
+  });
+
+  it('T138 없는 입하 LOT 번호 · 대기 검사가 없는 입하 LOT 은 그렇다고 말한다', async () => {
+    const onFound = vi.fn();
+    renderWithProviders(
+      <LotScan inspectionTypeCode="IQC" onFound={onFound} inboundLotPlantIds={[8301]} />,
+      { fetch: inboundStub([]) },
+    );
+    const box = screen.getByRole('textbox', { name: t.scan.inbound.label });
+    await userEvent.type(box, 'IL-20991231-0009{Enter}');
+    expect(await screen.findByText(t.scan.inbound.notFound)).toBeInTheDocument();
+
+    await userEvent.keyboard('IL-20991231-0003{Enter}');
+    expect(await screen.findByText(t.scan.inbound.noRequest)).toBeInTheDocument();
+    expect(onFound).not.toHaveBeenCalled();
+  });
+});
+
 describe('AttachmentPanel', () => {
   /** `failAt` 번째(1부터) 업로드를 서버가 거절한다. */
   const renderPanel = (failAt?: number) => {

@@ -33,6 +33,30 @@ describe('receiptTargetsOf', () => {
   });
 });
 
+describe('receiptTargetsOf — 자재 관리 LOT 별(005 T141)', () => {
+  it('T141 줄에 자재 관리 LOT 별 대상이 있으면 LOT 마다 그 수량으로 선다(줄의 lotId · 합계를 쓰지 않는다)', () => {
+    const line = inboundReceiptLine({
+      lotId: 9601,
+      receivedQty: 200,
+      receivableQty: 200,
+      materialLots: [
+        { lotId: 9601, lotNo: 'SYN|0001', statusCode: 'NORMAL', receivableQty: 100 },
+        { lotId: 9611, lotNo: 'SYN|0002', statusCode: 'NORMAL', receivableQty: 100 },
+      ],
+    });
+
+    expect(receiptTargetsOf(line)).toEqual([
+      { lotId: 9601, splitLotNo: null, qty: 100 },
+      { lotId: 9611, splitLotNo: null, qty: 100 },
+    ]);
+    expect(chooseReceiptTarget(receiptTargetsOf(line), 9611)).toEqual({
+      lotId: 9611,
+      splitLotNo: null,
+      qty: 100,
+    });
+  });
+});
+
 describe('chooseReceiptTarget', () => {
   const targets = [
     { lotId: 1, splitLotNo: null, qty: 0 },
@@ -43,5 +67,9 @@ describe('chooseReceiptTarget', () => {
     expect(chooseReceiptTarget(targets, 1)?.lotId).toBe(1);
     expect(chooseReceiptTarget(targets, null)?.lotId).toBe(2);
     expect(chooseReceiptTarget([], null)).toBeNull();
+  });
+
+  it('T141 고른 LOT 이 대상에 없으면 다른 LOT 으로 바꾸지 않고 null(막는다)', () => {
+    expect(chooseReceiptTarget(targets, 3)).toBeNull();
   });
 });

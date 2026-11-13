@@ -9,7 +9,6 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
 import { locationOptionLabel } from '../../patterns/location-label';
 import { CodeFields } from './code-fields';
@@ -34,6 +33,7 @@ import {
   useWarehouseOptions,
 } from './queries';
 import { ReceiptHeaderForm } from './receipt-header-form';
+import { PostErrorBanner } from './receiving-gate';
 import { chooseReceiptTarget, receiptTargetsOf } from './receipt-target';
 import { ResultPane, type LotStatusState } from './result-pane';
 import { SubmitConfirmDialog } from './submit-confirm-dialog';
@@ -131,6 +131,8 @@ export const GoodsReceiptPostPanel = ({
   const receiptTargets = line === null ? [] : receiptTargetsOf(line);
   const receiptTarget = chooseReceiptTarget(receiptTargets, target.lotId);
   const receiptLotId = receiptTarget?.lotId ?? target.lotId;
+  /** 005 T141 — 고른 LOT 이 이 줄의 입고 대상에 없다. 다른 LOT 으로 바꾸지 않고 막는다. */
+  const targetMissing = line !== null && receiptTarget === null;
 
   const [baseline, setBaseline] = useState<ReceiptDraft>(freshDraft);
   const [draft, setDraft] = useState<ReceiptDraft>(baseline);
@@ -294,7 +296,7 @@ export const GoodsReceiptPostPanel = ({
   const submit = (): void => {
     setConfirmOpen(false);
 
-    if (inboundReceipt === null || line === null) return;
+    if (inboundReceipt === null || line === null || receiptTarget === null) return;
 
     const blocked = findBlocked();
 
@@ -409,10 +411,12 @@ export const GoodsReceiptPostPanel = ({
         </div>
       );
     }
-    if (line === null) {
+    if (line === null || targetMissing) {
       return (
         <div className="banner-slot">
-          <AlertBanner variant="warning">{t.panel.lineMissing}</AlertBanner>
+          <AlertBanner variant="warning">
+            {line === null ? t.panel.lineMissing : t.panel.lotTargetMissing}
+          </AlertBanner>
         </div>
       );
     }
@@ -502,7 +506,7 @@ export const GoodsReceiptPostPanel = ({
   /** 아래 띠 — 오류 · 요약 · 단추. 창 몸이 길어도 늘 보인다. */
   const footer = (
     <div className="register-footer">
-      <SaveErrorBanner error={post.error} />
+      <PostErrorBanner error={post.error} />
       {post.error?.kind === 'network' && <p className="field-error">{t.notes.postRecheck}</p>}
       <div className="register-footer-row">
         <p className="ors-totals" aria-live="polite">
@@ -515,7 +519,13 @@ export const GoodsReceiptPostPanel = ({
           </Button>
           <Button
             variant="filled"
-            disabled={line === null || blockReason !== null || isEntryLocked || result !== null}
+            disabled={
+              line === null ||
+              targetMissing ||
+              blockReason !== null ||
+              isEntryLocked ||
+              result !== null
+            }
             loading={isLocked}
             onClick={openConfirm}
           >

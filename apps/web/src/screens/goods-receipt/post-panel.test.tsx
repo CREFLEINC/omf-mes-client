@@ -1,3 +1,4 @@
+import { GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -205,6 +206,120 @@ describe('GoodsReceiptPostPanel — 입고 처리 오른쪽 창', () => {
 
     expect(await screen.findByText('GR-2026-800001')).toBeInTheDocument();
     expect(screen.getByText(t.panel.guide.hint.done)).toBeInTheDocument();
+  });
+
+  it('T137 입하 마감 전 입고 409 는 「입하 마감 뒤 입고」로 말한다(FR-014a · 검사 불필요 품목 포함)', async () => {
+    const receiving: StubRoute = {
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === GOODS_RECEIPTS_PATH,
+      respond: () =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'screen',
+                code: GOODS_RECEIPT_INBOUND_LOT_RECEIVING_CODE,
+                message: '합성 서버 문구',
+              },
+            ],
+          },
+          { status: 409 },
+        ),
+    };
+    const { user } = renderPanel([receiving, ...baseRoutes()]);
+
+    await screen.findByText('IR-2026-900001');
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+    });
+    await chooseOption(user, t.fields.warehouse, 'SAMPLE-WH-01 · 합성 창고 가');
+    await chooseOption(user, t.fields.location, 'SAMPLE-LOC-A1 · 합성 열 가1');
+    await chooseOption(user, t.fields.receiptType, 'SAMPLE_RECEIPT_TYPE_A');
+    await chooseOption(user, t.fields.inventoryStatus, 'AVAILABLE');
+    const post = screen.getByRole('button', { name: t.actions.post });
+    await waitFor(() => {
+      expect(post).toBeEnabled();
+    });
+    await user.click(post);
+    const confirm = await screen.findByRole('dialog', { name: t.dialog.submitTitle });
+    await user.click(within(confirm).getByRole('button', { name: t.actions.confirmPost }));
+
+    expect(await screen.findByText(t.notes.inboundLotReceiving.title)).toBeInTheDocument();
+    expect(screen.getByText(t.notes.inboundLotReceiving.body)).toBeInTheDocument();
+  });
+
+  describe('자재 관리 LOT 이 여럿인 입하 줄(005 T141)', () => {
+    /** 새 흐름 입하 LOT — 줄 하나에 자재 관리 LOT 둘(각 100). 줄의 lotId 는 첫 LOT, 입고 가능 수량은 합계다. */
+    const multiLotLine = inboundReceiptLine({
+      lotId: 9601,
+      receivedQty: 200,
+      receivableQty: 200,
+      materialLots: [
+        { lotId: 9601, lotNo: 'SAMPLE|LOT|0001', statusCode: 'NORMAL', receivableQty: 100 },
+        { lotId: 9611, lotNo: 'SAMPLE|LOT|0002', statusCode: 'NORMAL', receivableQty: 100 },
+      ],
+    });
+    const renderLot = (lotId: number, routes: StubRoute[]) => {
+      renderWithProviders(
+        <GoodsReceiptPostPanel
+          target={{ inboundReceiptId: 9001, inboundReceiptLineId: 9401, lotId }}
+          context={CONTEXT}
+          onClose={vi.fn()}
+        />,
+        {
+          fetch: createStubFetch([
+            ...routes,
+            detailRoute([multiLotLine]),
+            {
+              match: (request) =>
+                request.method === 'GET' &&
+                /^\/trace\/lots\/\d+$/.test(new URL(request.url).pathname),
+              respond: () => jsonResponse(lotDetailResponse('NORMAL')),
+            },
+            codeValuesRoute(),
+            listRoute('/mdm/warehouses', warehouseFixtures),
+            listRoute('/mdm/locations', locationFixtures),
+            listRoute('/mdm/plants', plantFixtures),
+          ]),
+          route: '/logistics/inbound-schedule',
+          session: SYNTHETIC_SESSION,
+        },
+      );
+      return userEvent.setup();
+    };
+
+    it('T141 둘째 LOT 을 고르면 그 LOT · 그 LOT 의 수량(100)으로 입고한다 — 줄 합계 · 첫 LOT 으로 나가지 않는다', async () => {
+      const bodies: unknown[] = [];
+      const user = renderLot(9611, [goodsReceiptRoute(bodies)]);
+
+      await screen.findByText('IR-2026-900001');
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+      });
+      await chooseOption(user, t.fields.warehouse, 'SAMPLE-WH-01 · 합성 창고 가');
+      await chooseOption(user, t.fields.location, 'SAMPLE-LOC-A1 · 합성 열 가1');
+      await chooseOption(user, t.fields.receiptType, 'SAMPLE_RECEIPT_TYPE_A');
+      await chooseOption(user, t.fields.inventoryStatus, 'AVAILABLE');
+      const post = screen.getByRole('button', { name: t.actions.post });
+      await waitFor(() => {
+        expect(post).toBeEnabled();
+      });
+      await user.click(post);
+      const confirm = await screen.findByRole('dialog', { name: t.dialog.submitTitle });
+      await user.click(within(confirm).getByRole('button', { name: t.actions.confirmPost }));
+
+      await waitFor(() => {
+        expect(bodies).toHaveLength(1);
+      });
+      expect(bodies[0]).toMatchObject({ lines: [{ lotId: 9611, receiptQty: 100 }] });
+    });
+
+    it('T141 고른 LOT 이 줄의 입고 대상에 없으면 다른 LOT 으로 바꾸지 않고 막는다', async () => {
+      renderLot(9699, []);
+
+      expect(await screen.findByText(t.panel.lotTargetMissing)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.actions.post })).toBeDisabled();
+    });
   });
 
   it('창고 선택지는 입하 전표의 공장 창고로 부른다', async () => {

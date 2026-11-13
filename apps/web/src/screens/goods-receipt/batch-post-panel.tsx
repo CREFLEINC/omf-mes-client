@@ -2,7 +2,6 @@ import { AlertBanner, Button, Chip, Dialog, SkeletonText } from '@crefle/web-ui'
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { SaveErrorBanner } from '../../patterns/master';
 import { plantNowLocal } from '../../patterns/plant-time';
 import { locationOptionLabel } from '../../patterns/location-label';
 import { CodeFields } from './code-fields';
@@ -26,6 +25,7 @@ import {
   type BatchPostJob,
 } from './queries';
 import { ReceiptHeaderForm } from './receipt-header-form';
+import { PostErrorBanner } from './receiving-gate';
 import { chooseReceiptTarget, receiptTargetsOf } from './receipt-target';
 import {
   EMPTY_RECEIPT_DRAFT,
@@ -116,10 +116,10 @@ export const GoodsReceiptBatchPostPanel = ({
     const line =
       detail?.lines.find((item) => item.inboundReceiptLineId === lot.inboundReceiptLineId) ?? null;
     if (detail === null || line === null) return null;
+    /* 005 T141 — 고른 LOT 이 이 줄의 입고 대상에 없으면 다른 LOT 으로 바꾸지 않고 「찾지 못한 LOT」으로 막는다. */
     const target = chooseReceiptTarget(receiptTargetsOf(line), lot.lotId);
-    const [input] = toReceiptLines([
-      { ...line, lotId: target?.lotId ?? lot.lotId, receivableQty: target?.qty ?? null },
-    ]);
+    if (target === null) return null;
+    const [input] = toReceiptLines([{ ...line, lotId: target.lotId, receivableQty: target.qty }]);
 
     return input === undefined ? null : { lot, receipt: detail.inboundReceipt, line, input };
   });
@@ -463,7 +463,7 @@ export const GoodsReceiptBatchPostPanel = ({
       {firstFailure?.outcome?.kind === 'failed' && (
         <>
           <p className="field-error">{tb.failedLot(firstFailure.lot.lotNo)}</p>
-          <SaveErrorBanner error={firstFailure.outcome.error} />
+          <PostErrorBanner error={firstFailure.outcome.error} />
         </>
       )}
       <div className="register-footer-row">

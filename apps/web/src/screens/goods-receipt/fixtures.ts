@@ -72,6 +72,7 @@ const BASE_LINE: IrLineView = {
   statusCode: 'SAMPLE_IR_LINE_STATUS_A',
   receivableQty: null,
   splitLots: [],
+  materialLots: [],
 };
 
 export const inboundReceiptLine = (overrides: Partial<IrLineView> = {}): IrLineView => ({

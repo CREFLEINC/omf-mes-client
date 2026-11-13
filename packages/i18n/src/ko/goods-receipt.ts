@@ -251,6 +251,11 @@ export const goodsReceipt = {
       /** 안내 띠 본문 — 다음 할 일. */
       noteBody: '입고할 대상을 선택하세요. 불량품은 불량창고에 입고됩니다.',
     },
+    /** 005 FR-014a(T137) — 입하 마감 전 입고 막힘(409). 검사 불필요 품목도 같다. */
+    inboundLotReceiving: {
+      title: '입하 마감 전이라 입고할 수 없습니다.',
+      body: '입고는 입하 마감 뒤에만 합니다(검사 불필요 품목도 같습니다). PDA 입하 마감에서 이 입하 LOT 을 마감한 뒤 입고하세요.',
+    },
     iqcGate: {
       pendingTitle: 'IQC 수입검사 판정 전이라 입고할 수 없습니다.',
       pendingBody:
@@ -414,5 +419,8 @@ export const goodsReceipt = {
     loading: '입하 전표를 불러오는 중',
     /** 진행 자료의 LOT 이 입하 전표에서 안 보인다 — 자료가 바뀌었다. */
     lineMissing: '이 LOT 의 입하 라인을 찾지 못했습니다. 창을 닫고 다시 조회하세요.',
+    /** 005 T141 — 고른 자재 관리 LOT 이 입하 라인의 입고 대상에 없다(이미 입고했거나 자료가 바뀌었다). */
+    lotTargetMissing:
+      '이 LOT 은 입하 라인의 입고 대상에 없습니다. 이미 입고했는지 확인하고, 창을 닫고 다시 조회하세요.',
   },
 } as const;
