@@ -1,6 +1,5 @@
 import type { components } from '@omf-mes/api-client';
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { locationDisplayName } from '../../patterns/system-location';
 
 /**
  * W-01-10 화면 슬라이스의 계약.
@@ -173,14 +172,16 @@ export interface LocationView {
   parentLocationId: number | null;
   locationCode: string;
   locationName: string;
+  /** MES 별칭 — 보일 때는 `locationOptionLabel` 이 「코드 · 별칭」으로 짓는다. */
+  aliasName?: string | null;
 }
 
-/** 이름에 MES 별칭을 함께 싣는다(`patterns/system-location.ts`). */
 export const toLocationView = (data: LocationResponse): LocationView => ({
   locationId: data.locationId,
   parentLocationId: data.parentLocationId ?? null,
   locationCode: data.locationCode,
-  locationName: locationDisplayName(data.locationName, data),
+  locationName: data.locationName,
+  aliasName: data.aliasName,
 });
 
 /** 값 목록이 확정되지 않은 코드 다섯. 선택지와 자리표시는 `code-options.ts`가 소유한다. */

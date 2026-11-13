@@ -6,6 +6,7 @@ import { fetchAllPages } from '../../patterns/fetch-all-pages';
 import { masterName } from '../../patterns/master-name';
 import { runRequest, toApiError } from '../../patterns/request';
 import type { LookupEntry, LotEntry, PageMeta } from './types';
+import { locationOptionLabel } from '../../patterns/location-label';
 
 /**
  * 내부 번호(FK)로 이어진 값을 이름으로 푸는 참조 **다섯** — 창고·품목·단위·자재 LOT·위치.
@@ -454,7 +455,7 @@ export const useLocationOptions = (warehouseId: number | null): LookupResult => 
     entries:
       data?.items.map((item) => ({
         value: String(item.locationId),
-        label: `${item.locationCode} · ${item.locationName}`,
+        label: locationOptionLabel(item),
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

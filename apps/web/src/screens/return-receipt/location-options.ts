@@ -1,5 +1,6 @@
 import type { SelectOption, SelectOptionGroup } from '@crefle/web-ui';
 
+import { locationOptionLabel } from '../../patterns/location-label';
 import type { LocationView } from './types';
 
 /**
@@ -29,9 +30,8 @@ export type LocationSelectItem = SelectOption | SelectOptionGroup;
 export const isLocationGroup = (item: LocationSelectItem | undefined): item is SelectOptionGroup =>
   item !== undefined && 'options' in item;
 
-/** 「코드 · 이름」. 위치 이름만으로는 같은 이름이 창고마다 있을 수 있어 코드를 앞세운다. */
-const labelOf = (location: LocationView): string =>
-  `${location.locationCode} · ${location.locationName}`;
+/** 「코드 · 별칭」 또는 「코드 · 이름」(`locationOptionLabel`). 이름만으로는 같은 이름이 창고마다 있을 수 있어 코드를 앞세운다. */
+const labelOf = (location: LocationView): string => locationOptionLabel(location);
 
 /**
  * 이 위치를 묶을 상위. **묶을 수 없으면 `null`이다.**

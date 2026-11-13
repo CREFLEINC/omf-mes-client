@@ -295,10 +295,7 @@ describe('useItemNames · useUomOptions', () => {
   });
 
   it('「코드 · 이름」으로 풀고 번호마다 한 번씩만 부른다', async () => {
-    const { fetch, urls } = recording([
-      ...itemDetailRoutes(),
-      route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures))),
-    ]);
+    const { fetch, urls } = recording([...itemDetailRoutes(), route(UOMS_PATH, () => jsonResponse(listBody(uomFixtures)))]);
     const { result } = renderHookWithProviders(
       /* 같은 품목을 실은 줄이 셋이어도 요청은 품목 수만큼이다. */
       () => ({ items: useItemNames([...ITEM_IDS, 9301, 9301], true), uoms: useUomOptions(true) }),
@@ -746,5 +743,40 @@ describe('usePartnerNames — 좁히지 않는다', () => {
     expect(urls.filter((url) => url.searchParams.has('roleTypeCode'))).toHaveLength(1);
     expect(result.current.options.entries).toHaveLength(1);
     expect(result.current.names.entries).toHaveLength(partnerFixtures.length);
+  });
+});
+
+/** 별칭이 있는 위치 하나만 주는 스텁(피처 007 · #267). */
+const aliasedLocationFetch = () =>
+  createStubFetch([
+    {
+      match: (request) =>
+        request.method === 'GET' && new URL(request.url).pathname === '/mdm/locations',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              locationId: 9291,
+              warehouseId: 9101,
+              locationCode: 'SAMPLE-LOC-91',
+              locationName: '합성 위치 별',
+              aliasName: '합성 별칭',
+              isActive: true,
+            },
+          ],
+          page: { page: 1, size: 50, total: 1 },
+        }),
+    },
+  ]);
+
+describe('useLocationOptions — 위치 이름', () => {
+  it('US2-4 별칭이 있으면 위치를 「코드 · 별칭」으로 보인다', async () => {
+    const { result } = renderHookWithProviders(() => useLocationOptions(9101), {
+      fetch: aliasedLocationFetch(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries[0]?.label).toBe('SAMPLE-LOC-91 · 합성 별칭');
+    });
   });
 });

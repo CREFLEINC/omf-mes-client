@@ -6,9 +6,8 @@
  *
  * 빈 글 · 공백뿐인 별칭은 없는 것으로 본다.
  *
- * ⚠ 이름표 하나를 보이는 다른 함수와 뜻이 다르다 — `locationShownName`(`location-tree.ts`)은 코드 칸 옆 「별칭」 칸의 값
- * (별칭 → 이름)이고, `locationDisplayName`(`system-location.ts`)은 입고 화면의 「이름 (별칭)」이다. 그 화면들은 K4 에서
- * 이 함수로 옮긴다.
+ * ⚠ `locationShownName`(`location-tree.ts`)과 뜻이 다르다 — 그것은 코드 칸이 따로 있는 표(창고·Location, 배치도 목록)의
+ * 「별칭」 칸 값(별칭 → 이름)이다. 입고 화면의 옛 「이름 (별칭)」 표기는 K4 에서 이 함수로 옮겼다.
  */
 export interface LocationLabelSource {
   locationCode: string;
