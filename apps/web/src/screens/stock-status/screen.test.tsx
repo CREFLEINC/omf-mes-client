@@ -2962,3 +2962,23 @@ describe('StockStatusScreen — 이력과 다른 구획의 관계', () => {
     }
   });
 });
+
+/* omf-all-around#270 — 안내 「창고를 고르면 위치 선택지가 채워집니다」대로, [조회] 전에도 위치를 고를 수 있다. */
+describe('StockStatusScreen — 고르는 중인 창고의 위치 선택지', () => {
+  it('창고만 고르면 조회 없이 그 창고의 위치 선택지가 채워진다', async () => {
+    const { requests, user } = renderScreen([balanceRoute(), ...lookupRoutes()]);
+
+    await user.click(await screen.findByLabelText(t.fields.warehouse));
+    await user.click(await screen.findByRole('option', { name: /SAMPLE-WH-01/ }));
+
+    await waitFor(() => {
+      expect(lastQuery(requests, LOCATIONS_PATH)?.get('warehouseId')).toBe('9101');
+    });
+    await user.click(screen.getByLabelText(t.fields.location));
+
+    expect(
+      await screen.findByRole('option', { name: 'SAMPLE-LOC-01 · 합성 위치 가' }),
+    ).toBeInTheDocument();
+    expect(requestsTo(requests, BALANCES_PATH)).toHaveLength(0);
+  });
+});

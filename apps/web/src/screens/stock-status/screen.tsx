@@ -8,7 +8,7 @@ import {
   type TabItem,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { formatAsOf } from './as-of';
@@ -346,6 +346,17 @@ export const StockStatusScreen = () => {
   const warehouses = useWarehouseOptions();
   /* 매달림은 `enabled`로만 표현한다 — 화면이 조건을 다시 계산하면 두 곳이 어긋난다. */
   const locations = useLocationOptions(warehouseId);
+  /*
+   * 조건 줄에서 **고르는 중인** 창고(omf-all-around#270). 위치 선택지는 이 창고로 채운다 — 안내가
+   * 「창고를 고르면 위치 선택지가 채워집니다」인데 [조회]를 눌러야 채워지면 위치가 없는 것으로 읽힌다.
+   * 조회 결과·칩 이름은 지금처럼 주소에 적용된 창고(`locations`)를 쓴다. 주소가 바뀌면 그 값으로 되돌린다.
+   */
+  const [draftWarehouse, setDraftWarehouse] = useState(filters.warehouse);
+  useEffect(() => {
+    setDraftWarehouse(filters.warehouse);
+  }, [filters.warehouse]);
+  const draftWarehouseId = toLookupId(draftWarehouse);
+  const draftLocations = useLocationOptions(draftWarehouseId);
   const items = useItemOptions();
   /*
    * 표에 선 품목의 이름은 **번호마다 상세로 푼다.** 선택칸 목록은 한 쪽만 받아, 품목이 많은
@@ -559,7 +570,7 @@ export const StockStatusScreen = () => {
    *
    * **일곱째 참조가 생기면 이 표에 먼저 줄을 더한다.**
    */
-  const filterReferences = [warehouses, locations, items, lots];
+  const filterReferences = [warehouses, locations, draftLocations, items, lots];
   const listReferences = [uoms, partners];
   const lineReferences = [items, lots, warehouses, locations, uoms];
 
@@ -822,7 +833,7 @@ export const StockStatusScreen = () => {
           appliedFilters={filters}
           warehouseOptions={toSelectOptions(warehouses)}
           lotOptions={toSelectOptions(lots)}
-          locationOptions={toSelectOptions(locations)}
+          locationOptions={toSelectOptions(draftLocations)}
           qualityStatusOptions={toCodeOptions(
             PLACEHOLDER_QUALITY_STATUS_CODES,
             rows,
@@ -853,8 +864,11 @@ export const StockStatusScreen = () => {
           /* 매달린 조건이 비어 선택지가 없는 것을 「그런 값이 없다」로 읽지 않게 한다. */
           lotNote={lotNote}
           locationNote={
-            warehouseId === null ? t.filters.locationNeedsWarehouse : lookupNote(locations)
+            draftWarehouseId === null
+              ? t.filters.locationNeedsWarehouse
+              : lookupNote(draftLocations)
           }
+          onWarehouseChange={setDraftWarehouse}
           referencesFailed={filterReferences.some((reference) => reference.isError)}
           onRetryReferences={retryFilterReferences}
           onSearch={(nextFilters) => {

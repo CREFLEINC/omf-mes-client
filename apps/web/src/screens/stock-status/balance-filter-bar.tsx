@@ -33,6 +33,11 @@ export interface BalanceFilterBarProps {
   /** 이 구획이 이름을 내는 참조 넷(창고·위치·품목·LOT) 중 하나라도 실패했는가. */
   referencesFailed: boolean;
   onRetryReferences: () => void;
+  /**
+   * 고르는 중인 창고가 바뀌었다(omf-all-around#270). 화면이 그 창고로 위치 선택지를 채운다 —
+   * [조회] 전에도 위치를 고를 수 있어야 안내 문구와 맞는다.
+   */
+  onWarehouseChange?: (warehouse: string) => void;
   onSearch: (filters: BalanceFilters) => void;
   /** 조건 칩의 ×. 그 조건 하나만 풀고 곧바로 다시 조회한다. */
   onRemoveFilter: (key: keyof BalanceFilters) => void;
@@ -68,6 +73,7 @@ export const BalanceFilterBar = ({
   locationNote,
   referencesFailed,
   onRetryReferences,
+  onWarehouseChange,
   onSearch,
   onRemoveFilter,
   onReset,
@@ -184,7 +190,13 @@ export const BalanceFilterBar = ({
           value={filters.warehouse}
           note={warehouseNote}
           onChange={(value) => {
-            setFilters((prev) => ({ ...prev, warehouse: value }));
+            /* 창고를 바꾸면 고른 위치를 비운다 — 다른 창고의 위치가 조건에 남지 않게. */
+            setFilters((prev) => ({
+              ...prev,
+              warehouse: value,
+              location: prev.warehouse === value ? prev.location : '',
+            }));
+            onWarehouseChange?.(value);
           }}
         />
         <SelectField
