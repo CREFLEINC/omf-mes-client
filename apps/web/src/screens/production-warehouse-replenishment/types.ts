@@ -2,6 +2,7 @@ import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
+import { destinationLocationLabel } from '../../patterns/system-location';
 import type {
   MaterialIssueRequest,
   MaterialIssueRequestDetail,
@@ -126,7 +127,7 @@ export const toRequestView = (raw: MaterialIssueRequest): ReplenishmentRequestVi
     productionWarehouseName:
       raw.destinationWarehouseName ?? String(raw.destinationWarehouseId ?? ''),
     sourceWarehouseName: raw.sourceWarehouseName ?? String(raw.sourceWarehouseId ?? ''),
-    destinationName: raw.destinationLocationName ?? String(raw.destinationLocationId),
+    destinationName: destinationLocationLabel(raw),
     lineCount: raw.lineCount ?? 0,
     shortage: (raw.shortageQtyTotal ?? 0) + (raw.dynamicShortageQtyTotal ?? 0),
     status,

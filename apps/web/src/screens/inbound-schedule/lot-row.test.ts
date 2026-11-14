@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { lotProgress, scheduleLine } from './fixtures';
-import { inboundLotShareText, lotEvidence, LotMainCell, packageText } from './lot-row';
+import { inboundLotShareText, lotEvidence, lotLocation, LotMainCell, packageText } from './lot-row';
 import { inboundLotShares, lotRowQtyOf } from './stage';
 import type { InboundLotProgress } from './types';
 
@@ -190,5 +190,38 @@ describe('FR-035 W-01-09 LOT 줄 · 라인의 입하 LOT', () => {
 
     expect(inboundLotShares(line, lots)).toHaveLength(1);
     expect(inboundLotShares(line, lots)[0]?.kind).toBe('allocated');
+  });
+});
+
+/* omf-all-around#268 — 적치 위치도 다른 화면과 같은 「코드 · 별칭」 표기. */
+describe('lotLocation — 적치 위치 표기', () => {
+  const putaway = (location: { code: string | null; name: string | null; alias: string | null }) =>
+    lotProgress({
+      putaway: {
+        putawayTaskId: 1,
+        putawayTaskNo: 'SAMPLE-PT-0009',
+        statusCode: 'COMPLETED',
+        locationCode: location.code,
+        locationName: location.name,
+        locationAliasName: location.alias,
+        completedAt: '2026-10-19T13:00:00+09:00',
+      },
+    });
+
+  it('별칭이 있으면 「코드 · 별칭」', () => {
+    expect(lotLocation(putaway({ code: 'Z01-R001', name: 'R001', alias: 'A열 1번 랙' }))).toBe(
+      'Z01-R001 · A열 1번 랙',
+    );
+  });
+
+  it('별칭이 없으면 「코드 · 이름」, 이름이 코드와 같으면 코드만', () => {
+    expect(lotLocation(putaway({ code: 'SAMPLE-A-01', name: '합성 위치 가', alias: null }))).toBe(
+      'SAMPLE-A-01 · 합성 위치 가',
+    );
+    expect(lotLocation(putaway({ code: 'Z01', name: 'Z01', alias: null }))).toBe('Z01');
+  });
+
+  it('아직 적치 전이면 빈 칸', () => {
+    expect(lotLocation(putaway({ code: null, name: null, alias: null }))).toBe('');
   });
 });

@@ -3,6 +3,7 @@ import type { MaterialPackage } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { Link } from 'react-router';
 
+import { locationOptionLabel } from '../../patterns/location-label';
 import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { formatDate } from './period';
 import { formatQty, OneLine } from './receipt-status';
@@ -202,15 +203,20 @@ export const LotMainCell = ({
   );
 };
 
-/** 창고 칸의 LOT 줄 — 적치된(또는 임시 적치된) 위치 「코드 · 이름」. 아직 자리가 없으면 빈 칸. */
+/**
+ * 창고 칸의 LOT 줄 — 적치된(또는 임시 적치된) 위치. 다른 화면과 같은 「코드 · 별칭」 표기(omf-all-around#268 ·
+ * `locationOptionLabel`). 아직 자리가 없으면 빈 칸.
+ */
 export const lotLocation = (lot: InboundLotProgress): string => {
   const putaway = lot.putaway;
 
   if (putaway === null || putaway.locationCode === null) return '';
 
-  return putaway.locationName === null
-    ? putaway.locationCode
-    : `${putaway.locationCode} · ${putaway.locationName}`;
+  return locationOptionLabel({
+    locationCode: putaway.locationCode,
+    locationName: putaway.locationName,
+    aliasName: putaway.locationAliasName,
+  });
 };
 
 export interface LotActionProps {

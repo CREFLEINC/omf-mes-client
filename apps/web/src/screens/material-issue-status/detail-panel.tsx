@@ -346,12 +346,12 @@ export const DetailPanel = ({ requestId, onClose }: DetailPanelProps) => {
                 options={withCurrent(
                   destinations.data ?? [],
                   destination,
-                  request.destinationLocationName,
+                  request.destinationLabel,
                 )}
                 onChange={setDestination}
               />
             ) : (
-              request.destinationLocationName
+              request.destinationLabel
             )}
           </dd>
         </dl>
