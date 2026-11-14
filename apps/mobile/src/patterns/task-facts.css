@@ -40,12 +40,26 @@
   color: var(--on-surface-variant);
 }
 
-/* 실물과 대조하는 품목. 카드에서 가장 굵다. */
+/*
+ * 실물과 대조하는 품목. 카드에서 가장 굵다.
+ *
+ * 긴 품목은 왼쪽 칸 안에서 줄을 바꾸고, 두 줄을 넘으면 말줄임한다(omf-all-around#271). 공백이 적은 코드
+ * (「RAIL:ZU DUMMY PK:FEED(F537229401)」)는 끊을 자리가 없어 칸을 넘어 오른쪽 수량 위로 그려졌다 -
+ * 수량은 손에 든 양과 견주는 값이라 가려지면 안 된다. 전체 이름은 지시를 연 화면 머리에 보인다.
+ */
 .task-facts strong {
   font: var(--type-title-sm);
   letter-spacing: var(--type-title-sm-tracking);
   font-weight: 700;
   color: var(--on-surface);
+  /* 카드가 단추 안에 있어 단추의 한 줄 고정(`nowrap`)을 물려받는다 - 품목만 풀어 준다. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 /* 수량은 두 번째로 크다 - 손에 든 양과 견준다. */
