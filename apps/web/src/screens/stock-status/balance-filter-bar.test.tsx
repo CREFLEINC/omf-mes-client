@@ -110,6 +110,48 @@ describe('BalanceFilterBar — 창고가 조회를 연다', () => {
   });
 });
 
+/* omf-all-around#270 — 위치 선택지는 고르는 중인 창고로 채운다. 조회 전에도 위치를 고를 수 있어야 한다. */
+describe('BalanceFilterBar — 고르는 중인 창고가 위치 선택지를 정한다', () => {
+  it('창고를 고르면 조회 전에 상위에 알린다', async () => {
+    const onWarehouseChange = vi.fn();
+    const { onSearch, user } = renderBar({ onWarehouseChange });
+
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+    await user.click(screen.getByRole('option', { name: WAREHOUSES[0]?.label ?? '' }));
+
+    expect(onWarehouseChange).toHaveBeenCalledWith('9101');
+    expect(onSearch).not.toHaveBeenCalled();
+  });
+
+  it('창고를 고른 뒤 조회 전에 위치를 고를 수 있다', async () => {
+    const { onSearch, user } = renderBar();
+
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+    await user.click(screen.getByRole('option', { name: WAREHOUSES[0]?.label ?? '' }));
+    await user.click(screen.getByLabelText(t.fields.location));
+    await user.click(screen.getByRole('option', { name: LOCATIONS[0]?.label ?? '' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(onSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouse: '9101', location: '9201' }),
+    );
+  });
+
+  it('창고를 바꾸면 고른 위치를 비운다', async () => {
+    const { onSearch, user } = renderBar({
+      appliedFilters: filters({ warehouse: '9101', location: '9201' }),
+    });
+
+    await user.click(screen.getByLabelText(t.fields.warehouse));
+    await user.click(screen.getByRole('option', { name: WAREHOUSES[1]?.label ?? '' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(onSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouse: '9102', location: '' }),
+    );
+  });
+});
+
 describe('BalanceFilterBar — 조건 초안의 수명', () => {
   /*
    * **#43이 되살아나는 자리다.** 부모는 렌더할 때마다 주소에서 조건을 새로 읽으므로
