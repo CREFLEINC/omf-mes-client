@@ -36900,10 +36900,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-holiday-day-label { display:block; margin-bottom:var(--space-2); color:var(--on-surface-muted); font:var(--type-label-sm); }
 
 /* 편성 작업과 보기 전환을 구분하고 정보는 라벨·값 표로 정렬한다. */
-.erp-wo-plan-create { display:flex; flex-direction:column; align-items:stretch; gap:var(--space-3); margin-block:var(--space-3); }
+.erp-wo-plan-create { display:flex; flex-direction:row; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--space-2) var(--space-4); margin-block:var(--space-3); }
 .erp-wo-plan-create-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
 .erp-wo-plan-create-actions > .erp-wo-distribution { display:contents; }
-.erp-wo-plan-create .erp-wo-plan-view-switch { margin:0; padding-top:var(--space-3); border-top:1px solid var(--outline-variant); }
+.erp-wo-plan-create .erp-wo-plan-view-switch { margin:0; padding:0; border:0; flex:none; }
 .erp-wo-plan-view-buttons { display:flex; flex-wrap:wrap; gap:var(--space-1); }
 .erp-wo-order-overview { gap:0; padding:0; border:1px solid var(--outline-variant); }
 .erp-wo-order-overview > section + section { padding:0; }
