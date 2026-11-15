@@ -21,7 +21,7 @@ const workOrders: OrderWorkOrder[] = [1, 2].map((id) => ({
 }));
 
 describe('배포 대상 상세', () => {
-  it('상세 대상을 바꿔도 각 작업지시의 LOT 입력을 유지하며 전체 배포 범위를 명시한다', async () => {
+  it('LOT 입력 없이 품목 기본값의 생성 수와 전체 배포 범위를 유지한다', async () => {
     const user = userEvent.setup();
     const Harness = () => {
       const [sizes, setSizes] = useState<Record<number, string>>({});
@@ -45,15 +45,18 @@ describe('배포 대상 상세', () => {
     renderWithProviders(<Harness />);
     expect(screen.getByText(t.scope(2))).toBeVisible();
     expect(screen.getByText(t.scopeHelp)).toBeVisible();
-    expect(screen.getByRole('region', { name: '배포 대상 및 LOT 설정' })).toBeVisible();
-    expect(screen.getAllByRole('textbox')).toHaveLength(2);
+    expect(screen.getByRole('region', { name: '배포 작업지시' })).toBeVisible();
+    expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
-    await user.clear(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-1') }));
-    await user.type(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-1') }), '10');
+    expect(screen.getByText(t.effects.lots(6))).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'WO-2 상세 확인' }));
-    expect(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-2') })).toHaveValue('50');
+    expect(screen.getByRole('button', { name: 'WO-2 상세 확인' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText(t.effects.lots(6))).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'WO-1 상세 확인' }));
-    expect(screen.getByRole('textbox', { name: t.lotSizeLabel('WO-1') })).toHaveValue('10');
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 
   it('LOT 크기가 정해지지 않았을 때 생성 LOT 수를 0으로 단정하지 않는다', () => {

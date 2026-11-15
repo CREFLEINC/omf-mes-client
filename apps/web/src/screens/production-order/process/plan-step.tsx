@@ -407,6 +407,7 @@ export const PlanStep = ({
       )}
       {!hideTools && (
         <PlanCreationTools
+          viewControl={!viewMode ? <PlanViewSwitch value={view} onChange={setView} /> : undefined}
           disabled={disabled}
           addDisabled={addDisabled || (!hideTotals && remaining <= 0)}
           onAdd={() => {
@@ -451,7 +452,7 @@ export const PlanStep = ({
           </ul>
         </AlertBanner>
       )}
-      {!viewMode && <PlanViewSwitch value={view} onChange={setView} />}
+      {hideTools && !viewMode && <PlanViewSwitch value={view} onChange={setView} />}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:plan-layout"
         label="생산계획"

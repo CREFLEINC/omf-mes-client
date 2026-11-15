@@ -332,7 +332,8 @@ export const erpWorkOrderFlow = {
         `${operation} 공정의 ${fieldWithJosa} 고르세요`,
       resolve: (findingWithJosa: string): string => `${findingWithJosa} 해결하세요`,
       releaseFinal: '배포 후 수정 불가',
-      enterLot: (workOrderNo: string): string => `${workOrderNo}의 LOT당 수량을 입력하세요`,
+      enterLot: (workOrderNo: string): string =>
+        `${workOrderNo}의 품목 기본 LOT 크기 설정이 필요합니다`,
       remainingOrders: (count: number): string => `남은 ERP W/O ${String(count)}건`,
     },
     links: {
@@ -522,7 +523,7 @@ export const erpWorkOrderFlow = {
       loadFailed: 'W/O를 불러오지 못했습니다',
     },
     release: {
-      lotsPending: '생성 예정 LOT 수: LOT당 수량 입력 후 확인',
+      lotsPending: '생성 예정 LOT 수: 품목 기본 LOT 크기 설정 후 확인',
       selectedTarget: '선택 작업지시 정보',
       orderNo: 'ERP W/O',
       item: '품목',
@@ -530,7 +531,7 @@ export const erpWorkOrderFlow = {
       line: '생산 라인',
       empty: '배포할 작업지시가 없습니다.',
       scope: (count: number): string => `전체 배포 대상 ${String(count)}건`,
-      scopeHelp: 'LOT당 수량은 작업지시별로 설정합니다. 하단 배포 버튼은 대상 전체를 처리합니다.',
+      scopeHelp: '하단 배포 버튼은 대상 전체를 처리합니다.',
       heading: '배포 확인',
       columns: {
         workOrderNo: 'W/O 번호',

@@ -36898,3 +36898,32 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-planning-day-notice.is-holiday { background:var(--semantic-warning-container); color:var(--on-semantic-warning-container,var(--on-surface)); }
 .erp-wo-week-table td.erp-wo-holiday-day { background:var(--surface-container-high); }
 .erp-wo-holiday-day-label { display:block; margin-bottom:var(--space-2); color:var(--on-surface-muted); font:var(--type-label-sm); }
+
+/* 편성 작업과 보기 전환을 구분하고 정보는 라벨·값 표로 정렬한다. */
+.erp-wo-plan-create { display:flex; flex-direction:column; align-items:stretch; gap:var(--space-3); margin-block:var(--space-3); }
+.erp-wo-plan-create-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.erp-wo-plan-create-actions > .erp-wo-distribution { display:contents; }
+.erp-wo-plan-create .erp-wo-plan-view-switch { margin:0; padding-top:var(--space-3); border-top:1px solid var(--outline-variant); }
+.erp-wo-plan-view-buttons { display:flex; flex-wrap:wrap; gap:var(--space-1); }
+.erp-wo-order-overview { gap:0; padding:0; border:1px solid var(--outline-variant); }
+.erp-wo-order-overview > section + section { padding:0; }
+.erp-wo-order-overview dl { gap:0; }
+.erp-wo-order-overview dl > div, .erp-wo-order-overview .is-order { display:grid; grid-template-columns:7rem minmax(0,1fr); gap:0; border-bottom:1px solid var(--outline-variant); align-items:stretch; }
+.erp-wo-order-overview dl > div:last-child { border-bottom:0; }
+.erp-wo-order-overview dt, .erp-wo-order-overview dd { padding:var(--space-2) var(--space-3); margin:0; font:var(--type-body-sm); }
+.erp-wo-order-overview dt { background:var(--surface-container); color:var(--on-surface-variant); }
+.erp-wo-order-overview .is-order dd, .erp-wo-order-overview .is-item-name dd, .erp-wo-order-overview .is-order-quantity dd { font:var(--type-body-sm); font-weight:600; }
+.erp-wo-plan-totals { gap:0; border:1px solid var(--outline-variant); padding:0; }
+.erp-wo-plan-totals > div { padding:0; min-width:0; border-right:1px solid var(--outline-variant); }
+.erp-wo-plan-totals > div:last-child { border-right:0; }
+.erp-wo-plan-totals dt { padding:var(--space-2) var(--space-3); background:var(--surface-container); font:var(--type-body-sm); }
+.erp-wo-plan-totals dd { padding:var(--space-2) var(--space-3); margin:0; font:var(--type-body-sm); font-weight:600; overflow-wrap:anywhere; }
+@media (max-width:720px) { .erp-wo-order-overview { grid-template-columns:minmax(0,1fr); } .erp-wo-order-overview > section + section { border-left:0; border-top:1px solid var(--outline-variant); } .erp-wo-plan-totals { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.erp-wo-order-overview, .erp-wo-order-overview.is-identity-only { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.erp-wo-order-overview > section, .erp-wo-order-overview > section + section, .erp-wo-order-overview dl, .erp-wo-order-overview .erp-wo-overview-production dl { display:contents; }
+.erp-wo-order-overview dl > div, .erp-wo-order-overview dl > div:last-child { border-bottom:1px solid var(--outline-variant); }
+.erp-wo-order-overview .is-item-name { grid-column:1/-1; }
+.erp-wo-plan-totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(10rem,100%),1fr)); border-radius:0; }
+.erp-wo-plan-totals > div { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+@media (max-width:720px) { .erp-wo-order-overview, .erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(0,1fr); } .erp-wo-plan-totals { grid-template-columns:repeat(2,minmax(0,1fr)); } }

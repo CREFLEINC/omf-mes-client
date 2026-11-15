@@ -730,6 +730,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               </div>
             </div>
             <PlanCreationTools
+              viewControl={<PlanViewSwitch value={planView} onChange={setPlanView} />}
               disabled={busy || !allReady || !validTargets}
               addDisabled={entries.every((entry) => getRemaining(entry) <= 0)}
               onAdd={() => openPlanAdd()}
@@ -856,7 +857,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {orderNumbers.map((number) => (
           <OrderSession key={number} number={number} publish={publish} />
         ))}
-        {stage === 'plan' && <PlanViewSwitch value={planView} onChange={setPlanView} />}
+
         {stage === 'plan' && target && (
           <div className="erp-wo-multi-plan-week">
             <PlanStep
