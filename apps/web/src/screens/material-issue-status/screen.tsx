@@ -254,7 +254,7 @@ export const MaterialIssueStatusScreen = () => {
       <td>{formatDay(request.productionDate)}</td>
       <td>{formatDay(request.issueWorkDate)}</td>
       <td>{request.sourceWarehouseName ?? '—'}</td>
-      <td>{request.destinationLocationName}</td>
+      <td>{request.destinationLabel}</td>
       <td>{String(request.lineCount)}</td>
       <td>
         <span className="material-issue-status-chips">

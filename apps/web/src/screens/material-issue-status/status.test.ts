@@ -23,6 +23,7 @@ const request = (overrides: Partial<MaterialIssueRequestView> = {}): MaterialIss
   workOrderNo: 'SYN-WO-1',
   destinationLocationId: 21,
   destinationLocationName: '합성 현장',
+  destinationLabel: '합성 현장',
   statusCode: 'WAITING',
   displayStatus: 'WAITING',
   sourceWarehouseId: 31,

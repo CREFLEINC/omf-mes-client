@@ -390,6 +390,7 @@ export const progressFixtures: InboundLotProgress[] = [
       statusCode: 'COMPLETED',
       locationCode: 'SAMPLE-A-01',
       locationName: '합성 위치 가',
+      locationAliasName: null,
       completedAt: '2026-10-19T13:00:00+09:00',
     },
   }),

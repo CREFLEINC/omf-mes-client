@@ -40,6 +40,7 @@ const request = (
   workOrderNo: `SYN-WO-${String(id)}`,
   destinationLocationId: 501,
   destinationLocationName: '합성 조립 현장',
+  destinationLabel: '합성 조립 현장',
   statusCode: 'WAITING',
   displayStatus: 'WAITING',
   sourceWarehouseId: 7001,

@@ -1,5 +1,7 @@
 import type { components, paths } from '@omf-mes/api-client';
 
+import { destinationLocationLabel } from '../../patterns/system-location';
+
 /**
  * W-02-11 이 쓰는 계약 타입(생성 타입, 서버 main 7cf18d3e 전달본)과 화면용 모양.
  *
@@ -26,7 +28,11 @@ export type MaterialIssueRequestView = MaterialIssueRequest &
       | 'shortageQtyTotal'
       | 'dynamicShortageQtyTotal'
     >
-  > & { productionPlanNo: string | null };
+  > & {
+    productionPlanNo: string | null;
+    /** 입고지 글 — 「코드 · 별칭」, 서버가 둔 위치는 역할 이름(omf-all-around#268). */
+    destinationLabel: string;
+  };
 
 export type MaterialIssueRequestLineView = MaterialIssueRequestLine &
   Required<Pick<MaterialIssueRequestLine, 'itemCode' | 'itemName' | 'uomCode'>>;
@@ -46,6 +52,7 @@ export const toRequestView = (raw: MaterialIssueRequest): MaterialIssueRequestVi
   shortageQtyTotal: raw.shortageQtyTotal ?? 0,
   dynamicShortageQtyTotal: raw.dynamicShortageQtyTotal ?? 0,
   productionPlanNo: raw.productionPlanNo ?? null,
+  destinationLabel: destinationLocationLabel(raw),
 });
 
 export const toLineView = (raw: MaterialIssueRequestLine): MaterialIssueRequestLineView => ({

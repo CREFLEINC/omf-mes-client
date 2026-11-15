@@ -53848,6 +53848,12 @@ export interface components {
       productionPlanNo?: string | null;
       /** @description 입고지 이름. 근거: 피처 003 계획 기반 출고 요청 · omf-all-around#66 */
       destinationLocationName?: string;
+      /** @description 입고지 위치 코드. 관리웹이 「코드 · 별칭」으로 보인다. 근거: omf-all-around#268 */
+      destinationLocationCode?: string;
+      /** @description 입고지 위치 별칭 — 없으면 null. 근거: omf-all-around#268 */
+      destinationLocationAliasName?: string | null;
+      /** @description 서버가 창고마다 둔 위치의 역할(PUTAWAY_STAGING · WAREHOUSE_WHOLE) — 사람이 만든 위치는 null. 관리웹이 이때 역할 이름으로 보인다. 근거: omf-all-around#268 */
+      destinationLocationSystemRoleCode?: string | null;
       /**
        * Format: int64
        * @description 입고지(도착 위치)의 창고 — 창고 보충 요청에서는 보충받는 생산 창고(목록·상세 표기용 · 파생). 근거: 피처 004 생산 창고 보충 · omf-all-around#230
@@ -55491,6 +55497,8 @@ export interface components {
         /** @description 적치한 위치 — 대기면 null */
         locationCode: string | null;
         locationName: string | null;
+        /** @description 적치한 위치의 별칭 — 대기이거나 별칭이 없으면 null. 근거: omf-all-around#268 */
+        locationAliasName: string | null;
         /** Format: date-time */
         completedAt: string | null;
       } | null;
