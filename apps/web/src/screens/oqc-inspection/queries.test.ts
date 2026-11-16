@@ -39,8 +39,22 @@ describe('toResultCreateBody', () => {
    *    보내면 **400 INVALID 로 저장 자체가 막힌다**(SHIP-FINAL-01 D1 실측 2026-09-17).
    * ⛔ 문자열을 이 자리에 다시 적지 않는다 — 상수를 부르면 상수를 고쳐도 시험이 안 문다.
    */
-  it('언제나 확정으로 보낸다 — 이 화면에는 임시 저장이 없다', () => {
+  it('상태를 고르지 않으면 확정, 임시 저장이면 DRAFT 로 보낸다(#284)', () => {
     expect(toResultCreateBody(VARIABLES).statusCode).toBe('CONFIRMED');
+    expect(toResultCreateBody({ ...VARIABLES, statusCode: 'DRAFT' }).statusCode).toBe('DRAFT');
+  });
+
+  it('판정한 측정치가 있을 때만 싣는다(#284)', () => {
+    const measurement = {
+      inspectionItemSpecId: 14,
+      sampleNo: 1,
+      judgmentCode: 'ACCEPTED',
+      measuredAt: VARIABLES.inspectedAt,
+    };
+    expect('measurements' in toResultCreateBody({ ...VARIABLES, measurements: [] })).toBe(false);
+    expect(toResultCreateBody({ ...VARIABLES, measurements: [measurement] }).measurements).toEqual([
+      measurement,
+    ]);
   });
 
   it('불합격 사유는 비고로 — 쓴 경우에만 싣는다(#136)', () => {
@@ -202,5 +216,70 @@ describe('useSaveInspectionResult — 409 되말하기(V5)', () => {
     expect(result.current.error).toMatchObject({ kind: 'conflict', cause: 'user' });
     expect(JSON.stringify(result.current.error)).not.toContain(t.save.duplicateRound);
     expect(JSON.stringify(result.current.error)).not.toContain(t.save.invalidState);
+  });
+});
+
+/**
+ * 작성중 회차 이어 쓰기(omf-all-around#284) — 고침은 `PUT`(If-Match = 회차 판 번호), 확정이면 이어서 `:confirm`
+ * (If-Match = 고친 뒤 판 번호). 임시 저장이면 `:confirm` 을 부르지 않는다.
+ */
+describe('useSaveInspectionResult — 작성중 회차(#284)', () => {
+  const draftStub = (sink: Request[]) =>
+    createStubFetch([
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-results/') &&
+          request.method !== 'GET',
+        respond: (request) => {
+          sink.push(request);
+          return jsonResponse({ ...confirmedRound, inspectionResultId: 77, versionNo: 4 });
+        },
+      },
+    ]);
+  const DRAFT_ROUND = { inspectionResultId: 77, versionNo: 3 };
+
+  it('임시 저장은 PUT 하나 — If-Match 는 회차의 판 번호, 측정치는 빈 배열이어도 싣는다', async () => {
+    const sent: Request[] = [];
+    const { result } = renderHookWithProviders(
+      () => useSaveInspectionResult(waitingRequest.inspectionRequestId, () => undefined),
+      { fetch: draftStub(sent) },
+    );
+
+    act(() => {
+      result.current.write({ ...VARIABLES, statusCode: 'DRAFT', draftRound: DRAFT_ROUND });
+    });
+
+    await waitFor(() => expect(result.current.isSaving).toBe(false));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]?.method).toBe('PUT');
+    expect(new URL(sent[0]?.url ?? '').pathname).toBe('/quality/inspection-results/77');
+    expect(sent[0]?.headers.get('If-Match')).toBe('3');
+    await expect(sent[0]?.clone().json()).resolves.toMatchObject({ measurements: [] });
+  });
+
+  it('확정은 PUT 뒤 :confirm — 고친 뒤 판 번호로 확정한다', async () => {
+    const sent: Request[] = [];
+    const { result } = renderHookWithProviders(
+      () => useSaveInspectionResult(waitingRequest.inspectionRequestId, () => undefined),
+      { fetch: draftStub(sent) },
+    );
+
+    act(() => {
+      result.current.write({
+        ...VARIABLES,
+        statusCode: 'CONFIRMED',
+        draftRound: DRAFT_ROUND,
+        judgmentChangeReason: '육안 재확인',
+      });
+    });
+
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[0]?.method).toBe('PUT');
+    expect(new URL(sent[1]?.url ?? '').pathname).toBe('/quality/inspection-results/77:confirm');
+    expect(sent[1]?.headers.get('If-Match')).toBe('4');
+    await expect(sent[1]?.clone().json()).resolves.toEqual({
+      overallJudgmentCode: 'ACCEPTED',
+      judgmentChangeReason: '육안 재확인',
+    });
   });
 });
