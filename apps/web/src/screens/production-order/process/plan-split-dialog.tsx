@@ -67,6 +67,7 @@ export const PlanSplitDialog = ({
     })),
   );
   const [holidayDays, setHolidayDays] = useState<PlanningDay[]>([]);
+  const [holidayDates, setHolidayDates] = useState<Record<string, string>>({});
   const [holidayQuantities, setHolidayQuantities] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [conditionsDirty, setConditionsDirty] = useState(false);
@@ -87,7 +88,7 @@ export const PlanSplitDialog = ({
     ...visibleHolidays
       .filter((day) => Number(holidayQuantities[day.date] || '0') !== 0)
       .map((day) => ({
-        planDate: day.date,
+        planDate: holidayDates[day.date] ?? day.date,
         plannedQty: holidayQuantities[day.date]!,
         planDateSourceCode: 'USER' as const,
       })),
@@ -156,6 +157,7 @@ export const PlanSplitDialog = ({
       );
       setHolidayDays(holidays);
       setHolidayQuantities({});
+      setHolidayDates({});
       setConditionsDirty(false);
       setCount(String(number));
       setError('');
@@ -169,7 +171,10 @@ export const PlanSplitDialog = ({
   };
   const calendar = usePlanningDays(
     plantId
-      ? parts.map((part) => ({
+      ? [
+          ...parts,
+          ...visibleHolidays.map((day) => ({ planDate: holidayDates[day.date] ?? day.date })),
+        ].map((part) => ({
           plantId,
           productionLineId: row.draft.plannedLineId ? Number(row.draft.plannedLineId) : null,
           from: part.planDate,
@@ -202,8 +207,20 @@ export const PlanSplitDialog = ({
           day.date <= lastDate &&
           !parts.some((part) => part.planDate === day.date),
       )
-      .map((day) => ({ part: { planDate: day.date, plannedQty: '0' }, index: -1, day })),
+      .map((day) => ({
+        part: {
+          planDate: holidayDates[day.date] ?? day.date,
+          plannedQty: holidayQuantities[day.date] ?? '0',
+        },
+        index: -1,
+        day,
+      })),
   ].sort((a, b) => a.part.planDate.localeCompare(b.part.planDate) || a.index - b.index);
+  let sequence = 0;
+  const numberedRows = displayRows.map((item) => ({
+    ...item,
+    sequence: Number(item.part.plannedQty) > 0 ? ++sequence : null,
+  }));
   const facts = [
     ['분할 계획', planName],
     ['품목명', identity?.itemName ?? '—'],
@@ -390,10 +407,10 @@ export const PlanSplitDialog = ({
                 </tr>
               </thead>
               <tbody>
-                {displayRows.map(({ part, index: i, day }) =>
+                {numberedRows.map(({ part, index: i, day, sequence }) =>
                   day ? (
                     <tr key={`holiday-${day.date}`} className="erp-wo-holiday-preview-row">
-                      <td>—</td>
+                      <td>{sequence ?? '—'}</td>
                       <td>
                         <TextField
                           size="md"
@@ -410,16 +427,27 @@ export const PlanSplitDialog = ({
                         />
                       </td>
                       <td>
-                        {day.date}
-                        <span className="erp-wo-holiday-day-label">
-                          {planningHolidayLabel(day)}
-                        </span>
+                        <DatePicker
+                          size="md"
+                          disabled={calendarBusy}
+                          aria-label={`${day.date} 휴일 계획일`}
+                          value={part.planDate}
+                          onChange={(date) =>
+                            setHolidayDates((current) => ({ ...current, [day.date]: date }))
+                          }
+                        />
+                        {(dayOf(part.planDate) ?? (part.planDate === day.date ? day : undefined))
+                          ?.statusCode === 'HOLIDAY' && (
+                          <span className="erp-wo-holiday-day-label">
+                            {planningHolidayLabel(dayOf(part.planDate) ?? day)}
+                          </span>
+                        )}
                       </td>
                       <td />
                     </tr>
                   ) : (
                     <tr key={i}>
-                      <td>{i + 1}</td>
+                      <td>{sequence ?? '—'}</td>
                       <td>
                         <TextField
                           containerClassName="erp-wo-split-input"

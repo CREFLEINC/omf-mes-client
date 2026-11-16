@@ -146,6 +146,18 @@ it('분할 순차 날짜는 기존 휴일을 제외하고 SYSTEM 출처와 총�
   await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
   await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '3');
   await user.click(screen.getByRole('button', { name: '분할 적용' }));
+  expect(screen.getByRole('button', { name: '2026-11-14 휴일 계획일' })).toHaveTextContent(
+    '2026-11-14',
+  );
+  expect(
+    screen
+      .getByRole('textbox', { name: '2026-11-14 휴일 생산량' })
+      .closest('tr')
+      ?.querySelector('td'),
+  ).toHaveTextContent('2');
+  expect(
+    screen.getByRole('button', { name: '계획 2 계획일' }).closest('tr')?.querySelector('td'),
+  ).toHaveTextContent('3');
   expect(onApply).toHaveBeenLastCalledWith([
     { plannedQty: '3', planDate: '2026-11-13', planDateSourceCode: 'SYSTEM' },
     { plannedQty: '1', planDate: '2026-11-14', planDateSourceCode: 'USER' },
