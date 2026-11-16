@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { messages } from '@omf-mes/i18n';
 import { ReviewHelp as Help } from './review-help';
 import {
   AlertBanner,
@@ -283,6 +284,7 @@ export const ProposalReview = ({
         actions={<Chip status="idle">검토 중 / 미반영</Chip>}
         breadcrumb={
           <Breadcrumb
+            aria-label={messages.common.shell.breadcrumb}
             items={[
               { label: '작업계획', href: '/production/production-orders' },
               { label: '생산계획 자동 전개 제안' },
