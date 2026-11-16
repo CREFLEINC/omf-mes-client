@@ -1328,18 +1328,22 @@ export const ProductionFlowScreen = () => {
     }
   };
 
-  /** 불량 줄의 첫 할 일. */
-  const defectTodo = ((): string | null => {
+  /**
+   * 불량 줄의 첫 할 일. 덜 채운 줄이 없으면 `undefined`.
+   * 수량만 비었으면 `null` — 하단 바에 「불량 수량을 입력해 주세요」를 두지 않는다(사용자 지시 2026-11-16).
+   * 빈 칸은 칸 테두리와 목록 아래 한 줄이 말한다. 저장이 잠기는 기준은 그대로다.
+   */
+  const defectTodo = ((): string | null | undefined => {
     for (const row of defectRows) {
       const check = defectChecks.get(row.key);
       if (check === undefined || check.complete) continue;
       if (check.typeMissing) return t.flow.next.defectType;
       if (check.duplicate) return t.flow.next.defectDuplicate;
 
-      return t.flow.next.defectQty;
+      return null;
     }
 
-    return null;
+    return undefined;
   })();
 
   /**
@@ -1380,9 +1384,9 @@ export const ProductionFlowScreen = () => {
       gateText(gates.input, t.gate.denied) ??
       (isDefectOnly ? null : gateText(gates.print, t.flow.gate.print));
     if (gate !== null) return gate;
-    if (isDefectOnly) return defectTodo ?? next.defectOnly;
+    if (isDefectOnly) return defectTodo === undefined ? next.defectOnly : defectTodo;
     if (parsedQty === null || parsedQty <= 0) return next.qty;
-    if (defectTodo !== null) return defectTodo;
+    if (defectTodo !== undefined) return defectTodo;
     if (lotPrinters.isPending) return null;
     /* 프린터가 없으면 머리줄 칩이 「프린터 없음」으로 말한다 — 하단에 같은 말을 또 두지 않는다(사용자 지시 2026-11-16). */
     if (lotPrinter === null) return null;
@@ -1593,7 +1597,10 @@ export const ProductionFlowScreen = () => {
            */}
           {firstDefectIssue !== null && (
             <p id={defectIssueId} className="field-error">
-              {t.flow.defects.rowIssue(firstDefectIssue.rowName, firstDefectIssue.text)}
+              {/* 수량이 빈 줄은 「불량 1:」 없이 문장만 보인다(사용자 지시 2026-11-16). */}
+              {firstDefectIssue.text === t.flow.defects.qtyMissing
+                ? firstDefectIssue.text
+                : t.flow.defects.rowIssue(firstDefectIssue.rowName, firstDefectIssue.text)}
             </p>
           )}
         </>
@@ -2092,6 +2099,7 @@ export const ProductionFlowScreen = () => {
                       clearLabel={t.quantity.clearGlyph}
                       maxLength={GOOD_QTY_MAX_LENGTH}
                       allowDecimal={uom.decimalScaleOf(workOrder.data?.uomId) > 0}
+                      keepDecimalKey
                       decimalLabel={t.quantity.decimalKey}
                       onChange={(value) => updateDefectRow(activeDefectRow.key, { qty: value })}
                     />
@@ -2164,6 +2172,7 @@ export const ProductionFlowScreen = () => {
                    *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다.
                    */
                   allowDecimal={uom.decimalScaleOf(lot.uomId ?? workOrder.data?.uomId) > 0}
+                  keepDecimalKey
                   decimalLabel={t.quantity.decimalKey}
                   onChange={(value) => {
                     if (activeDefectRow === null) setActualQty(value);

@@ -2139,6 +2139,8 @@ describe('ProductionFlowScreen 불량', () => {
 
     await user.click(good);
     expect(screen.getByRole('group', { name: t.flow.defects.keypadGood })).toBeInTheDocument();
+    /* 「.」 키 자리는 늘 있고, 정수 단위(EA)에서는 눌리지 않는다(사용자 지시 2026-11-16). */
+    expect(screen.getByRole('button', { name: t.quantity.decimalKey })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: '1' }));
     expect(good).toHaveValue('121');
     expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
@@ -2163,17 +2165,15 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await pickDefect(user, '긁힘');
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
-    const rowName = t.flow.defects.row(1);
-    expect(screen.getByText(t.flow.next.defectQty)).toBeInTheDocument();
-    expect(
-      screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
-    ).not.toBeInTheDocument();
+    /* 하단 바에 「불량 수량을 입력해 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
+    expect(screen.queryByText(t.flow.next.defectQty)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.flow.defects.qtyMissing)).not.toBeInTheDocument();
 
     await user.click(within(row).getByLabelText(t.flow.defects.qty));
     await user.tab();
-    expect(
-      screen.getByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
-    ).toBeInTheDocument();
+    /* 칸을 떠나면 목록 아래에 「불량 1:」 없이 「수량을 입력해 주세요」만 선다. */
+    expect(screen.getByText(t.flow.defects.qtyMissing)).toBeInTheDocument();
+    expect(screen.queryByText(/불량 1:/u)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
   });
 
