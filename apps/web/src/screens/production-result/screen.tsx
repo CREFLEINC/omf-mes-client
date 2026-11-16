@@ -11,8 +11,8 @@ import {
   Checkbox,
   Chip,
   Dialog,
+  Icon,
   IconButton,
-  Stepper,
   TextField,
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
@@ -1612,22 +1612,30 @@ export const ProductionFlowScreen = () => {
    * 단계 표시(C-5). 오른쪽 구획 제목 자리에 한 번만 둔다(개선 명세 §1 「단계 표시」) — 왼쪽 정보 아래에
    * 두면 오른쪽 제목과 같은 말을 두 번 한다.
    */
+  const stepItems = [
+    { label: t.flow.work.steps.input, status: isScanStep ? 'complete' : 'current' },
+    {
+      label: t.flow.work.steps.scan,
+      status: outputPhase === 'completed' ? 'complete' : isScanStep ? 'current' : 'pending',
+    },
+  ] as const;
+  /* 번호 원 옆에 단계 이름을 한 줄로 둔다(개선 명세 ② 시안 「① 실적 입력 ── ② 라벨 스캔」). */
   const stepper = (
-    <Stepper
-      className="production-work-steps"
-      size="md"
-      aria-label={t.flow.work.stepsLabel}
-      steps={[
-        {
-          label: t.flow.work.steps.input,
-          status: isScanStep ? 'complete' : 'current',
-        },
-        {
-          label: t.flow.work.steps.scan,
-          status: outputPhase === 'completed' ? 'complete' : isScanStep ? 'current' : 'pending',
-        },
-      ]}
-    />
+    <ol className="production-work-steps" aria-label={t.flow.work.stepsLabel}>
+      {stepItems.map((item, index) => (
+        <li
+          key={item.label}
+          className="production-work-step-item"
+          data-status={item.status}
+          aria-current={item.status === 'current' ? 'step' : undefined}
+        >
+          <span className="production-work-step-node" aria-hidden>
+            {item.status === 'complete' ? <Icon name="check" size={16} /> : index + 1}
+          </span>
+          <span className="production-work-step-label">{item.label}</span>
+        </li>
+      ))}
+    </ol>
   );
   /** 오른쪽 위 파란 안내 줄(개선 명세 §1). 작업자가 할 수 있는 일을 알린다 — 막힌 이유는 하단 바가 말한다. */
   const infoLine = (text: string) => (
@@ -2065,6 +2073,8 @@ export const ProductionFlowScreen = () => {
                         defectLabelOf(defectMajors, activeDefectRow.defectCodeId) ??
                           t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
                       )}
+                      className="production-work-pad"
+                      backspaceGlyph="⌫"
                       backspaceLabel={t.quantity.backspace}
                       clearLabel={t.quantity.clearGlyph}
                       maxLength={GOOD_QTY_MAX_LENGTH}
@@ -2131,6 +2141,8 @@ export const ProductionFlowScreen = () => {
                             t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
                         )
                   }
+                  className="production-work-pad"
+                  backspaceGlyph="⌫"
                   backspaceLabel={t.quantity.backspace}
                   clearLabel={t.quantity.clearGlyph}
                   maxLength={GOOD_QTY_MAX_LENGTH}

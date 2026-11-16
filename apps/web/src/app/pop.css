@@ -9705,13 +9705,219 @@
 }
 
 /*
- * 오른쪽 제목 자리의 단계 표시(개선 명세 ②) — 좁게 눌려 단계 이름이 붙지 않도록 제 폭을 지키고,
- * W/O 잔량은 오른쪽 끝으로 민다.
+ * 오른쪽 제목 자리의 단계 표시(개선 명세 ② 시안) — 번호 원 옆에 단계 이름을 한 줄로 두고 사이를 선으로 잇는다.
+ * W/O 잔량은 같은 줄 오른쪽 끝에 선다.
  */
-.pop-ui .production-work-head > .production-work-steps {
-  flex: 0 1 15rem;
-  min-width: 12rem;
+.pop-ui .production-work-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
   margin-inline-end: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-work-step-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-title-sm);
+  font-size: 1.0625rem;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-work-step-item + .production-work-step-item::before {
+  content: '';
+  inline-size: 2.5rem;
+  block-size: 2px;
+  margin-inline-end: var(--space-2);
+  background: var(--outline-variant);
+}
+
+.pop-ui .production-work-step-node {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 2px solid var(--outline);
+  border-radius: 50%;
+  font: var(--type-label-lg);
+}
+
+.pop-ui .production-work-step-item[data-status='current'] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pop-ui .production-work-step-item[data-status='current'] .production-work-step-node,
+.pop-ui .production-work-step-item[data-status='complete'] .production-work-step-node {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-ui .production-work-step-item[data-status='complete'] {
+  color: var(--on-surface);
+}
+
+/* 부품 교체 · 작업지시 마감은 왼쪽 구획 맨 아래에 선다(개선 명세 ② 시안 3·4). */
+.pop-ui .production-work-lot > .production-work-wo {
+  margin-block-start: auto;
+}
+
+/* [불량 추가]는 불량 제목 줄 오른쪽 끝에 선다(개선 명세 ② 시안 6). */
+.pop-ui .production-flow-defects > .production-work-head {
+  justify-content: space-between;
+}
+
+/*
+ * 실적 숫자판 — 구획 맨 아래에 4열로 선다(개선 명세 ② 시안 9). 숫자는 1 2 3 순(사용자 지시 2026-11-16),
+ * 오른쪽 열에 ⌫ · 전체 지움, 마지막 줄에 소수점(소수 단위일 때만) · 0.
+ * ⛔ 공용 부품의 마크업은 바꾸지 않고 자리만 잡는다(재작업 실적 키패드와 같은 방식).
+ */
+.pop-ui .omf-numeric-keypad.production-work-pad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-block-start: auto;
+}
+
+.pop-ui .production-work-pad > button {
+  min-block-size: 3.25rem;
+}
+
+.pop-ui .production-work-pad > button:nth-child(-n + 3) {
+  grid-row: 1;
+}
+
+.pop-ui .production-work-pad > button:nth-child(n + 4):nth-child(-n + 6) {
+  grid-row: 2;
+}
+
+.pop-ui .production-work-pad > button:nth-child(n + 7):nth-child(-n + 9) {
+  grid-row: 3;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__backspace {
+  grid-row: 1;
+  grid-column: 4;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__clear {
+  grid-row: 2;
+  grid-column: 4;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__decimal {
+  grid-row: 4;
+  grid-column: 1;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__zero {
+  grid-row: 4;
+  grid-column: 2;
+}
+
+/*
+ * 생산 작업 크기(사용자 지시 2026-11-16 「명세 참고해 글자·컴포넌트 크기를 키운다」) — 개선 명세 시안의 1024 화면
+ * 비율을 따른다: 정보 줄은 이름·값을 한 단계 키우고 줄 사이를 벌리며 진행 막대는 값 아래 전체 폭에 둔다.
+ */
+.pop-ui.production-work-screen .production-work-info {
+  row-gap: var(--space-4);
+}
+
+.pop-ui.production-work-screen .production-work-info .pop-row-info-label {
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui.production-work-screen .production-work-info .pop-row-info-value {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.pop-ui.production-work-screen .production-work-info .pop-qty-progress {
+  display: grid;
+  gap: var(--space-2);
+  inline-size: 100%;
+}
+
+.pop-ui.production-work-screen .production-work-info .pop-qty-progress-bar {
+  inline-size: 100%;
+}
+
+.pop-ui.production-work-screen .production-work-remaining {
+  font-size: 1.125rem;
+  color: var(--primary);
+}
+
+/*
+ * 숫자판이 치는 칸 표시 — 안쪽 글자 영역이 아니라 칸 테두리 전체를 강조색으로 바꾼다(개선 명세 ② 5
+ * 「칸이 테두리로 바뀐다」). 글자 영역에만 그리면 칸을 키웠을 때 테두리와 어긋나 두 겹으로 보였다.
+ */
+.pop-ui.production-work-screen .production-flow-qty.is-active input {
+  outline: none;
+}
+
+.pop-ui.production-work-screen .production-flow-qty.is-active :has(> input) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+/* 양품 칸 — 시안처럼 높게, 숫자를 크게. 높이는 입력 틀(입력칸을 품은 상자)에 준다. */
+.pop-ui.production-work-screen .production-flow-qty :has(> input) {
+  block-size: auto;
+  min-block-size: 3.5rem;
+}
+
+.pop-ui.production-work-screen .production-flow-qty input {
+  font-size: 1.625rem;
+  font-weight: 600;
+}
+
+/* LOT 번호는 고정폭이라 길다 — 칸 밖으로 넘치지 않게 줄을 바꾼다. */
+.pop-ui.production-work-screen .production-work-info .production-work-lot-no {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.pop-ui.production-work-screen .production-flow-defects .production-work-subtitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.pop-ui.production-work-screen .production-work-pad > button {
+  min-block-size: 3.75rem;
+  font-size: 1.375rem;
+  white-space: nowrap;
+}
+
+.pop-ui.production-work-screen .production-work-pad > .omf-numeric-keypad__clear {
+  font-size: 1.0625rem;
+}
+
+.pop-ui.production-work-screen .production-work-wo > button {
+  min-block-size: 3rem;
+  font-size: 1.0625rem;
+}
+
+/* 하단 주 버튼 — 시안의 [LOT 라벨 출력]처럼 넓고 크게. */
+.pop-ui.production-work-screen .pop-action-bar button {
+  min-block-size: 3.5rem;
+  min-inline-size: 11rem;
+  font-size: 1.1875rem;
+}
+
+/* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */
+.pop-ui.production-work-screen .pop-context-right > :first-child {
+  max-inline-size: 8.5rem;
+  min-inline-size: 0;
+}
+
+.pop-ui.production-work-screen .pop-context-right > :first-child * {
+  overflow: hidden;
+  max-inline-size: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 미달 사유 창의 첫 포커스 자리 — 스캔 Enter 가 단추를 누르지 않게 두는 자리라 테두리를 그리지 않는다. */
