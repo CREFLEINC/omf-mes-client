@@ -7,7 +7,13 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { useDisposalRequestMutation, type DisposalRequestPayload } from './mutations';
+import {
+  approvalKeyOf,
+  useDisposalRequestMutation,
+  type DisposalRequestPayload,
+} from './mutations';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
  * 「승인 요청」 한 번이 보내는 **두 호출**의 시험.
@@ -156,6 +162,19 @@ describe('useDisposalRequestMutation — 승인 요청의 두 호출', () => {
     expect(createKey).toBeTruthy();
     expect(submitKey).toBeTruthy();
     expect(submitKey).not.toBe(createKey);
+    /* omf-all-around#281 — 서버는 uuid 꼴만 받는다. 접미사를 붙인 키는 상신이 막힌다. */
+    expect(submitKey).toMatch(UUID);
+  });
+
+  it('#281 상신 키는 첫 키에서 파생한 uuid 다 — 같은 첫 키면 같고, 첫 키와는 다르다', () => {
+    const issueKey = '3f2a9c10-7b4e-4d21-9a6f-0c5e8b7d1e42';
+
+    expect(approvalKeyOf(issueKey)).toMatch(UUID);
+    expect(approvalKeyOf(issueKey)).toBe(approvalKeyOf(issueKey));
+    expect(approvalKeyOf(issueKey)).not.toBe(issueKey);
+    /* 판 · 변형 자리는 그대로다. */
+    expect(approvalKeyOf(issueKey)[14]).toBe('4');
+    expect(approvalKeyOf(issueKey)[19]).toBe('9');
   });
 
   /**
