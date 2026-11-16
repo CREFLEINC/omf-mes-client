@@ -23,6 +23,8 @@ export interface DetailPaneProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ← NC-…」 의 원래 부적합으로 간다. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
+  /** 기본 정보 상자 맨 위 머리(제목 · 상태) — 상자 안에 둔다(사용자 시안 · omf-all-around#275). */
+  heading?: ReactNode;
 }
 
 /**
@@ -38,6 +40,7 @@ export const DetailPane = ({
   lotStatuses = {},
   remainingText,
   onOpenNonconformance,
+  heading,
 }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
   const unitOf = (uomId: number | undefined): string =>
@@ -129,26 +132,30 @@ export const DetailPane = ({
         ],
       ]
     : [];
-  /* 관련 칸끼리 — 무엇(번호 · 품목 · 공급사 · 심각도 · 접수일), 어디서(입하 LOT · IQC 검사), 얼마나(수량 둘), 왜(사유). */
+  /*
+   * 윗줄은 판정에 바로 쓰는 것(번호 · 품목 · 사유 · 수량 둘), 아랫줄은 출처(공급사 · 접수일 · 입하 LOT · IQC 검사 · 심각도)를
+   * 작은 글 한 줄로(사용자 시안 · omf-all-around#275).
+   */
   const facts: [string, ReactNode, ('strong' | 'reason')?][] = [
     [t.fields.nonconformanceNo, view.nonconformanceNo, 'strong'],
-    [t.fields.item, lookupDisplayLabel(items, view.itemId)],
-    ...(view.supplierName === null || view.supplierName === undefined
-      ? []
-      : [[t.inboundLot.supplier, view.supplierName] as [string, ReactNode]]),
-    [t.fields.severityCode, <SeverityBadge severity={severity} code={view.severityCode} />],
-    [t.fields.openedAt, view.openedAtText],
-    ...inboundFacts,
-    [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, 'strong'],
-    ...(isInbound && remainingText !== undefined
-      ? [[t.fields.remainingQty, remainingText] as [string, ReactNode]]
-      : []),
-    /* 사유는 큰 칸을 따로 두지 않고 한 칸으로(omf-all-around#275). */
+    [t.fields.item, lookupDisplayLabel(items, view.itemId), 'reason'],
     [
       t.fields.reasonText,
       view.description === '' ? messages.common.reference.empty : view.description,
       'reason',
     ],
+    [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, 'strong'],
+    ...(isInbound && remainingText !== undefined
+      ? [[t.fields.remainingQty, remainingText, 'strong'] as [string, ReactNode, 'strong']]
+      : []),
+  ];
+  const meta: [string, ReactNode][] = [
+    ...(view.supplierName === null || view.supplierName === undefined
+      ? []
+      : [[t.inboundLot.supplier, view.supplierName] as [string, ReactNode]]),
+    [t.fields.openedAt, view.openedAtText],
+    ...inboundFacts,
+    [t.fields.severityCode, <SeverityBadge severity={severity} code={view.severityCode} />],
   ];
 
   return (
@@ -157,6 +164,7 @@ export const DetailPane = ({
        * 기본 정보 한 상자 — 칸을 흘려 놓고, 사유도 그 안의 한 칸(omf-all-around#275). 상태는 구획 머리의 배지가 말한다.
        */}
       <div className="disposition-detail-box">
+        {heading}
         <dl className="disposition-detail-facts">
           {facts.map(([label, value, tone]) => (
             /* 부적합번호 · 부적합 수량은 굵게(사용자 시안 · #223). 사유는 길면 줄을 바꾼다. */
@@ -165,6 +173,14 @@ export const DetailPane = ({
               key={label}
             >
               <dt className="field-label">{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <dl className="disposition-detail-meta">
+          {meta.map(([label, value]) => (
+            <div className="disposition-detail-meta-cell" key={label}>
+              <dt>{label}</dt>
               <dd>{value}</dd>
             </div>
           ))}

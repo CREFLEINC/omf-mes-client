@@ -31,6 +31,8 @@ export interface DetailSlotProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ←」 원래 부적합 열기. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
+  /** 상세 상자 안 머리(제목 · 상태). */
+  heading?: ReactNode;
 }
 
 /**
@@ -57,6 +59,7 @@ export const DetailSlot = ({
   lotStatuses,
   remainingText,
   onOpenNonconformance,
+  heading,
 }: DetailSlotProps): ReactNode => {
   const t = messages.dispositionDecision;
 
@@ -106,6 +109,7 @@ export const DetailSlot = ({
       lotStatuses={lotStatuses}
       remainingText={remainingText}
       onOpenNonconformance={onOpenNonconformance}
+      heading={heading}
     />
   );
 };

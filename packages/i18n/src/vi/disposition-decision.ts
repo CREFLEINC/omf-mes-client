@@ -30,7 +30,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     filter: 'Điều kiện tra cứu',
     list: 'Danh sách chờ đánh giá',
     detail: 'Mục không phù hợp đã chọn',
-    detailDecision: 'Chi tiết và quyết định',
+    detailDecision: 'Chi tiết không phù hợp',
     historyDetail: 'Chi tiết không phù hợp',
     decision: 'Đánh giá',
     history: 'Lịch sử đánh giá quyết định xử lý',
@@ -100,7 +100,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   },
   decisions: {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
-    count: (count: number): string => `${String(count)}`,
+    count: (count: number): string => `(${String(count)})`,
     loading: 'Đang tải lịch sử đánh giá',
     empty: 'Chưa có lịch sử xử lý.',
     unavailable: 'Không hiển thị được lịch sử đánh giá',
@@ -108,7 +108,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   concession: {
     /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
     foldTitle: 'Lịch sử yêu cầu đặc cách',
-    count: (count: number): string => `${String(count)}`,
+    count: (count: number): string => `(${String(count)})`,
     requestHeading: 'Yêu cầu đặc cách',
     requestNote:
       'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT nhập hàng không đạt — phê duyệt hạn mức cũng theo đường này',
@@ -174,6 +174,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     heading: 'Quyết định xử lý',
     reasonPlaceholder: 'Nhập lý do quyết định',
     dispositionLabel: 'Loại xử lý',
+    targetLots: (count: number): string => `${String(count)} LOT mục tiêu`,
+    qtyAllLots: (count: number): string => `Áp dụng cho toàn bộ ${String(count)} LOT`,
     qtyLabel: 'Số lượng',
     reasonLabel: 'Lý do',
     wholeEffect: (count: number, effect: string): string =>

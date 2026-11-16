@@ -123,103 +123,145 @@ export const DecisionFormPane = ({
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
-      <div className="field-cell disposition-type-cell">
-        <span className="field-label" id={groupLabelId}>
-          {t.form.dispositionLabel}
-          <span className="required-mark" aria-hidden="true">
-            {' *'}
-          </span>
-        </span>
-        {/*
-         * 유형은 글 폭만 한 칸들을 한 줄에 — 고른 칸만 강조하고, 동그라미(라디오 표시)는 눈에서 감춘다(omf-all-around#275).
-         * 막힌 유형은 잠그고 그 이유를 칸 줄 아래에 단다(G-2 · 감추지 않는다).
-         * 특채는 라디오가 아니라 요청 팝업을 여는 단추다(결재가 붙는 별도 길).
-         */}
-        <RadioGroup
-          name="disposition-type"
-          orientation="horizontal"
-          className="disposition-type-options"
-          value={value.dispositionTypeCode}
-          disabled={isLocked || dispositionOptions.length === 0}
-          aria-labelledby={groupLabelId}
-          aria-describedby={isLocked ? lockReasonId : undefined}
-          onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
-        >
-          {dispositionOptions.map((option) => {
-            const hintId = `${optionHintId}-${option.value}`;
-            const note = option.lockReason;
-            return (
-              <div
-                key={option.value}
-                className="disposition-type-option"
-                data-selected={value.dispositionTypeCode === option.value ? 'true' : undefined}
-                data-locked={option.lockReason === undefined ? undefined : 'true'}
-              >
-                <Radio
-                  value={option.value}
-                  disabled={option.lockReason !== undefined}
-                  aria-describedby={note === undefined ? undefined : hintId}
-                >
-                  {option.label}
-                </Radio>
-              </div>
-            );
-          })}
-          {concession !== undefined && (
-            <div
-              className="disposition-type-option"
-              data-locked={concession.lockReason === undefined ? undefined : 'true'}
-            >
-              <Button
-                variant="text"
-                size="sm"
-                className="disposition-type-concession"
-                aria-label={t.concession.request}
-                aria-describedby={
-                  concession.lockReason === undefined ? undefined : `${optionHintId}-CONCESSION`
-                }
-                disabled={isLocked || concession.lockReason !== undefined}
-                onClick={concession.onRequest}
-              >
-                {t.values.dispositionType.CONCESSION}
-              </Button>
-            </div>
-          )}
-        </RadioGroup>
-        {/* 막힌 이유 — 위 특채 상자가 이미 말한 이유는 눈에서 감추고 낭독기만 읽는다(omf-all-around#275). */}
-        {[
-          ...dispositionOptions.map((option) => ({
-            id: `${optionHintId}-${option.value}`,
-            label: option.label,
-            reason: option.lockReason,
-          })),
-          ...(concession === undefined
-            ? []
-            : [
-                {
-                  id: `${optionHintId}-CONCESSION`,
-                  label: t.values.dispositionType.CONCESSION,
-                  reason: concession.lockReason,
-                },
-              ]),
-        ].map(({ id, label, reason }) =>
-          reason === undefined ? null : (
-            <span
-              key={id}
-              className={reason === sharedLockReason ? 'visually-hidden' : 'disposition-type-hint'}
-            >
-              {/* 유형 이름은 눈으로만 — 칸이 읽는 이유(`aria-describedby`)는 이유 글만이다. */}
-              <span aria-hidden="true">{`${label}: `}</span>
-              <span id={id}>{reason}</span>
+      {/* 처분 유형 왼쪽 | 처분 수량 오른쪽 한 줄(사용자 시안 · omf-all-around#275). 선별이면 수량 대신 아래에 고르기 칸. */}
+      <div className="disposition-decision-top">
+        <div className="field-cell disposition-type-cell">
+          <span className="field-label" id={groupLabelId}>
+            {t.form.dispositionLabel}
+            <span className="required-mark" aria-hidden="true">
+              {' *'}
             </span>
-          ),
-        )}
-        {errors.dispositionTypeCode !== undefined && (
-          <span className="field-error">{errors.dispositionTypeCode}</span>
+          </span>
+          {/*
+           * 유형은 글 폭만 한 칸들을 한 줄에 — 고른 칸만 강조하고, 동그라미(라디오 표시)는 눈에서 감춘다(omf-all-around#275).
+           * 막힌 유형은 잠그고 그 이유를 칸 줄 아래에 단다(G-2 · 감추지 않는다).
+           * 특채는 라디오가 아니라 요청 팝업을 여는 단추다(결재가 붙는 별도 길).
+           */}
+          <RadioGroup
+            name="disposition-type"
+            orientation="horizontal"
+            className="disposition-type-options"
+            value={value.dispositionTypeCode}
+            disabled={isLocked || dispositionOptions.length === 0}
+            aria-labelledby={groupLabelId}
+            aria-describedby={isLocked ? lockReasonId : undefined}
+            onChange={(next) => onChange({ ...value, dispositionTypeCode: next })}
+          >
+            {dispositionOptions.map((option) => {
+              const hintId = `${optionHintId}-${option.value}`;
+              const note = option.lockReason;
+              return (
+                <div
+                  key={option.value}
+                  className="disposition-type-option"
+                  data-selected={value.dispositionTypeCode === option.value ? 'true' : undefined}
+                  data-locked={option.lockReason === undefined ? undefined : 'true'}
+                >
+                  <Radio
+                    value={option.value}
+                    disabled={option.lockReason !== undefined}
+                    aria-describedby={note === undefined ? undefined : hintId}
+                  >
+                    {option.label}
+                  </Radio>
+                </div>
+              );
+            })}
+            {concession !== undefined && (
+              <div
+                className="disposition-type-option"
+                data-locked={concession.lockReason === undefined ? undefined : 'true'}
+              >
+                <Button
+                  variant="text"
+                  size="sm"
+                  className="disposition-type-concession"
+                  aria-label={t.concession.request}
+                  aria-describedby={
+                    concession.lockReason === undefined ? undefined : `${optionHintId}-CONCESSION`
+                  }
+                  disabled={isLocked || concession.lockReason !== undefined}
+                  onClick={concession.onRequest}
+                >
+                  {/* 다른 칸의 라디오 동그라미와 줄을 맞추는 빈 동그라미(모양만). */}
+                  <span className="disposition-type-concession-mark" aria-hidden="true" />
+                  {t.values.dispositionType.CONCESSION}
+                </Button>
+              </div>
+            )}
+          </RadioGroup>
+          {/* 막힌 이유 — 위 특채 상자가 이미 말한 이유는 눈에서 감추고 낭독기만 읽는다(omf-all-around#275). */}
+          {[
+            ...dispositionOptions.map((option) => ({
+              id: `${optionHintId}-${option.value}`,
+              label: option.label,
+              reason: option.lockReason,
+            })),
+            ...(concession === undefined
+              ? []
+              : [
+                  {
+                    id: `${optionHintId}-CONCESSION`,
+                    label: t.values.dispositionType.CONCESSION,
+                    reason: concession.lockReason,
+                  },
+                ]),
+          ].map(({ id, label, reason }) =>
+            reason === undefined ? null : (
+              <span
+                key={id}
+                className={
+                  reason === sharedLockReason ? 'visually-hidden' : 'disposition-type-hint'
+                }
+              >
+                {/* 유형 이름은 눈으로만 — 칸이 읽는 이유(`aria-describedby`)는 이유 글만이다. */}
+                <span aria-hidden="true">{`${label}: `}</span>
+                <span id={id}>{reason}</span>
+              </span>
+            ),
+          )}
+          {errors.dispositionTypeCode !== undefined && (
+            <span className="field-error">{errors.dispositionTypeCode}</span>
+          )}
+        </div>
+
+        {!isSort && (
+          /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). 바꿀 수 없는 값이라 글로 보인다. */
+          <div className="disposition-qty-card">
+            <label className="field-label" htmlFor={qtyId}>
+              {t.form.qtyLabel}
+            </label>
+            <div className="disposition-qty-line">
+              <output
+                id={qtyId}
+                className="disposition-qty-value"
+                aria-describedby={[
+                  isLocked ? lockReasonId : '',
+                  effect === undefined ? '' : qtyNoteId,
+                ]
+                  .filter((id) => id !== '')
+                  .join(' ')}
+              >
+                {remainingText}
+              </output>
+              {lots.length > 0 && (
+                <span className="disposition-qty-scope">{t.form.qtyAllLots(lots.length)}</span>
+              )}
+            </div>
+            {/* 고른 유형으로 저장하면 생기는 일 한 줄(omf-all-around#275). */}
+            {effect !== undefined && (
+              <span id={qtyNoteId} className="field-note disposition-qty-note">
+                {t.form.wholeEffect(lots.length, effect)}
+              </span>
+            )}
+            {errors.decisionQty !== undefined && (
+              <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
+            )}
+          </div>
         )}
       </div>
 
-      {isSort ? (
+      {isSort && (
         <SortSplitPane
           lots={lots}
           value={value}
@@ -231,33 +273,6 @@ export const DecisionFormPane = ({
           inspectionRequestNo={inspectionRequestNo}
           onChange={onChange}
         />
-      ) : (
-        /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). */
-        /* 바꿀 수 없는 값이라 입력칸이 아니라 글로 보인다(omf-all-around#275). */
-        /* 단위는 값에 붙어 있어 이름에는 다시 적지 않는다(omf-all-around#275). */
-        <div className="disposition-qty-card">
-          <label className="field-label" htmlFor={qtyId}>
-            {t.form.qtyLabel}
-          </label>
-          <output
-            id={qtyId}
-            className="disposition-qty-value"
-            aria-describedby={[isLocked ? lockReasonId : '', effect === undefined ? '' : qtyNoteId]
-              .filter((id) => id !== '')
-              .join(' ')}
-          >
-            {remainingText}
-          </output>
-          {/* 상시 안내는 걷고, 유형을 고르면 무엇이 바뀌는지만 한 줄로(omf-all-around#275). */}
-          {effect !== undefined && (
-            <span id={qtyNoteId} className="field-note disposition-qty-note">
-              {t.form.wholeEffect(lots.length, effect)}
-            </span>
-          )}
-          {errors.decisionQty !== undefined && (
-            <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
-          )}
-        </div>
       )}
 
       {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
