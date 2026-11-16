@@ -66,7 +66,7 @@ export interface EndDecision {
    * 조회가 성공했고 열린 세션이 단말·상태와 상관없이 하나도 없다. 조회 실패, 옆 단말 세션이나 중단(`STOPPED`)
    * 세션만 있는 경우는 해당하지 않는다 — 그때는 종전처럼 「못 닫았다」다.
    */
-  isSessionAbsent?: boolean;
+  isSessionAbsent: boolean;
   /** 세션 조회가 아직 답을 주지 않았는가. **모르는 것과 없는 것을 가른다.** */
   isSessionPending: boolean;
   hasWorkerNo: boolean;
@@ -95,7 +95,7 @@ export const judgeSessionEnd = (decision: EndDecision): EndVerdict => {
    */
   if (decision.isSessionPending) return 'wait';
 
-  if (!decision.hasSession && decision.isSessionAbsent === true) return 'none';
+  if (!decision.hasSession && decision.isSessionAbsent) return 'none';
 
   return decision.hasSession && decision.hasWorkerNo ? 'send' : 'unknown';
 };
@@ -132,8 +132,8 @@ const isRunning = (session: WorkSession): boolean => session.statusCode === RUNN
  *    돌리고 있는 구간을 끊는다.** 되돌릴 수 없고, 내 세션은 열린 채 남아 W/O 마감도 여전히
  *    막힌다(독립 검증 2026-09-16 실측).
  *
- * ⚠ **질의 축만 믿지 않는다.** 배포본 서버는 모르는 질의 축을 조용히 무시한다(#1095 실측) —
- *   `terminalId` 를 보내도 전체가 올 수 있으므로 여기서 한 번 더 거른다.
+ * ⚠ **단말은 여기서 거른다.** 조회는 작업지시 전체의 열린 세션을 받는다(`fetchOpenSession`) — 옆 단말
+ *   세션이 있는지도 알아야 하기 때문이다.
  *
  * ⚠ **닫힌 것도 거른다.** 「열린 것만」으로 물었어도 섞여 오면 이미 닫힌 구간에 종료를 보낸다.
  *
@@ -162,15 +162,19 @@ interface OpenSessionAnswer {
   isAbsent: boolean;
 }
 
-const fetchOpenSession = async (
+export const fetchOpenSession = async (
   client: Client,
   workOrderId: number,
   terminalId: number,
 ): Promise<OpenSessionAnswer> => {
   const data = await runRequest(() =>
     client.GET('/production/work-sessions', {
-      /* 기본이 열린 세션이지만 명시한다 — 기본값이 바뀌면 닫힌 세션을 또 닫으려 든다. */
-      params: { query: { workOrderId, terminalId, open: true } },
+      /*
+       * 기본이 열린 세션이지만 명시한다 — 기본값이 바뀌면 닫힌 세션을 또 닫으려 든다.
+       * ⚠ 단말로 좁혀 묻지 않는다(리뷰 지적 2026-11-16) — 서버가 `terminalId` 로 거르면 옆 단말의 열린 세션을
+       *   모르고 「닫을 것이 없다」로 잘못 판정한다. 이 단말의 세션은 `pickOwnOpenSession` 이 고른다.
+       */
+      params: { query: { workOrderId, open: true, size: 100 } },
     }),
   );
 

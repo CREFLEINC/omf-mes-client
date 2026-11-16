@@ -697,7 +697,10 @@ export const ProductionFlowScreen = () => {
       setSessionPhase('denied');
       return;
     }
-    /* 닫을 세션이 없다고 확인됐다 — 할 일이 없으므로 말하지 않는다(사용자 지시 2026-11-16). */
+    /*
+     * 닫을 세션이 없다고 확인됐다 — 할 일이 없으므로 말하지 않는다(사용자 지시 2026-11-16). 「이미 닫힘」과 같은
+     * 상태로 둔다 — 둘 다 작업자가 할 일이 없고 배너도 없다.
+     */
     if (verdict === 'none') {
       setSessionPhase('alreadyEnded');
       return;
@@ -865,8 +868,14 @@ export const ProductionFlowScreen = () => {
   }, [complete.error]);
 
   useEffect(() => {
-    if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
-  }, [outbox.rejection, outputPhase]);
+    if (outbox.rejection === null || outputPhase !== 'queued') return;
+    setOutputPhase('idle');
+    /* 거부된 불량 줄은 서버에 없다 — 기억해 둔 것을 지운다(리뷰 지적 2026-11-16). */
+    if (currentLot.data !== null && currentLot.data !== undefined) {
+      forgetSentDefects(currentLot.data.lotId);
+    }
+    setSentDefects(null);
+  }, [outbox.rejection, outputPhase, currentLot.data]);
 
   /* 서버가 거부하면 넣자마자 낸 「기록했습니다」는 사실이 아니다 — 거부 띠만 남긴다. */
   useEffect(() => {

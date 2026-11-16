@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildSessionEnd,
+  fetchOpenSession,
   isRetryableEndFailure,
   judgeSessionEnd,
   pickOwnOpenSession,
@@ -23,6 +24,7 @@ const base: EndDecision = {
   hasLot: false,
   gate: 'allowed',
   hasSession: true,
+  isSessionAbsent: false,
   isSessionPending: false,
   hasWorkerNo: true,
 };
@@ -244,5 +246,60 @@ describe('isRetryableEndFailure', () => {
 
   it('오류가 없으면 재시도 대상도 아니다', () => {
     expect(isRetryableEndFailure(null)).toBe(false);
+  });
+});
+
+describe('fetchOpenSession', () => {
+  const row = (terminalId: number, statusCode: string) => ({
+    workSessionId: terminalId * 10,
+    workOrderId: 701,
+    sessionNo: 1,
+    terminalId,
+    startedAt: '2026-11-16T09:00:00+09:00',
+    statusCode,
+  });
+  const clientWith = (items: unknown[] | null) => {
+    const queries: unknown[] = [];
+    const client = {
+      GET: (_path: string, init: { params: { query: unknown } }) => {
+        queries.push(init.params.query);
+        if (items === null) return Promise.reject(new TypeError('offline'));
+
+        return Promise.resolve({
+          data: { items, page: { page: 1, size: 100, total: items.length } },
+          response: new Response(null, { status: 200 }),
+        });
+      },
+    };
+
+    return { client: client as unknown as Parameters<typeof fetchOpenSession>[0], queries };
+  };
+
+  /* 리뷰 지적 2026-11-16 — 서버가 단말로 거르면 옆 단말 세션을 모른다. 작업지시 전체를 묻는다. */
+  it('단말로 좁혀 묻지 않는다', async () => {
+    const { client, queries } = clientWith([]);
+    await fetchOpenSession(client, 701, 10);
+    expect(queries[0]).toEqual({ workOrderId: 701, open: true, size: 100 });
+  });
+
+  it('열린 세션이 하나도 없을 때만 «없다»다', async () => {
+    expect(await fetchOpenSession(clientWith([]).client, 701, 10)).toEqual({
+      session: null,
+      isAbsent: true,
+    });
+  });
+
+  it('옆 단말 세션이 열려 있으면 «없다»가 아니다', async () => {
+    const answer = await fetchOpenSession(clientWith([row(99, 'RUNNING')]).client, 701, 10);
+    expect(answer).toEqual({ session: null, isAbsent: false });
+  });
+
+  it('이 단말 세션이 중단 중이면 닫지 않고 «없다»도 아니다', async () => {
+    const answer = await fetchOpenSession(clientWith([row(10, 'STOPPED')]).client, 701, 10);
+    expect(answer).toEqual({ session: null, isAbsent: false });
+  });
+
+  it('조회가 실패하면 답을 주지 않는다(던진다)', async () => {
+    await expect(fetchOpenSession(clientWith(null).client, 701, 10)).rejects.toThrow();
   });
 });
