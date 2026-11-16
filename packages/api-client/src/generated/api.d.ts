@@ -38898,6 +38898,76 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/quality/oqc-lots/{lotNo}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        lotNo: string;
+      };
+      cookie?: never;
+    };
+    /**
+     * 제품 LOT OQC 스캔 조회
+     * @description 스캔한 제품 LOT 번호로 그 LOT 을 피킹한 OQC 의뢰를 낸다 — 시리얼 스캔(`/quality/oqc-serials/{serialNo}`)과 같은 피킹 판단이다. LOT 번호는 공장마다 따로 매겨져 같은 번호의 LOT 이 여럿이면 모두의 의뢰를 합친다. 관리웹 OQC 판정 화면 전용.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          lotNo: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 스캔 결과 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['OqcLotScan'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음(W-04-03) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 없는 LOT */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/quality/inspection-requests/{inspectionRequestId}/oqc-serials': {
     parameters: {
       query?: never;
@@ -64212,6 +64282,20 @@ export interface components {
       workOrderId?: number;
       shipmentStep?: components['schemas']['OqcSerialStep'];
       /** @description 이 시리얼의 LOT 을 피킹한 검사 대상 라인의 OQC 의뢰 — 대기·진행·완료(생략은 뺀다). 완료된 의뢰도 담는다: 재검 회차에서 같은 시리얼을 다시 찍는다. 시리얼로 의뢰를 열 때는 화면이 대기·진행만 고른다. POP 은 단말 공장 것만. */
+      pickedRequests: {
+        /** Format: int64 */
+        inspectionRequestId: number;
+        inspectionRequestNo: string;
+        /** Format: int64 */
+        shipmentRequestId: number;
+        /** @description REQUESTED · IN_PROGRESS · COMPLETED */
+        statusCode: string;
+      }[];
+    };
+    /** @description 제품 LOT OQC 스캔 한 번의 답. */
+    OqcLotScan: {
+      lotNo: string;
+      /** @description 이 LOT 을 피킹한 검사 대상 라인의 OQC 의뢰 — 대기·진행·완료(생략은 뺀다). 의뢰를 열 때는 화면이 대기·진행만 고른다(없으면 완료). */
       pickedRequests: {
         /** Format: int64 */
         inspectionRequestId: number;

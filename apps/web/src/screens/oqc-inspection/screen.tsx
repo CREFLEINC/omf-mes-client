@@ -366,6 +366,11 @@ export const OqcInspectionScreen = () => {
     });
   };
 
+  /** LOT 번호로 연 의뢰 — 시리얼이 없으니 「검사한 시리얼」에 줄을 넣지 않고, 목록의 시리얼 번호 칸 표시도 지운다. */
+  const openByLot = (inspectionRequestId: number): void => {
+    moveTo(inspectionRequestId, () => setScannedSerial(null));
+  };
+
   /* 고른 의뢰를 주소에 싣거나(`null` 이면) 뺀다 — 검색 조건 · 쪽은 그대로. */
   const openRequest = (inspectionRequestId: number | null): void => {
     const next = new URLSearchParams(searchParams);
@@ -879,6 +884,7 @@ export const OqcInspectionScreen = () => {
       <section ref={aboveRef} className="pane oqc-inspection-panes oqc-inspection-search">
         <SerialOpenByScan
           onOpen={openBySerial}
+          onOpenByLot={openByLot}
           onFound={(scan) =>
             setScannedSerial({
               serialNo: scan.serialNo,

@@ -21,6 +21,7 @@ import {
 type InspectionSerialJudgmentInput = components['schemas']['InspectionSerialJudgmentInput'];
 type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
 type OqcSerialScan = components['schemas']['OqcSerialScan'];
+type OqcLotScan = components['schemas']['OqcLotScan'];
 
 /**
  * 이 화면의 요청 — **조회 넷과 쓰기 하나다.**
@@ -429,6 +430,31 @@ export const useSerialLookup = (): ((serialNo: string) => Promise<SerialLookup>)
     try {
       const scan = await runRequest(() =>
         client.GET('/quality/oqc-serials/{serialNo}', { params: { path: { serialNo } } }),
+      );
+      return { kind: 'found', scan };
+    } catch (error) {
+      const apiError = toApiError(error);
+      return 'status' in apiError && apiError.status === NOT_FOUND
+        ? { kind: 'notFound' }
+        : { kind: 'failed' };
+    }
+  };
+};
+
+/** LOT 스캔 한 번의 결과 — 없는 LOT(404)은 실패와 갈라 말한다. */
+export type LotLookup =
+  { kind: 'found'; scan: OqcLotScan } | { kind: 'notFound' } | { kind: 'failed' };
+
+/**
+ * 제품 LOT 번호로 그 LOT 을 피킹한 OQC 의뢰를 찾는다 — 「LOT 스캔」 칸이 시리얼을 못 찾았을 때 부른다. 캐시에 두지 않는다.
+ */
+export const useLotLookup = (): ((lotNo: string) => Promise<LotLookup>) => {
+  const { client } = useApiClient();
+
+  return async (lotNo) => {
+    try {
+      const scan = await runRequest(() =>
+        client.GET('/quality/oqc-lots/{lotNo}', { params: { path: { lotNo } } }),
       );
       return { kind: 'found', scan };
     } catch (error) {
