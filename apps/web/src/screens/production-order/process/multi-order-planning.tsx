@@ -970,7 +970,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 ownerOf(key)?.editor.change(originalKey(key), field, value)
               }
               onSplit={(row, qty) =>
-                ownerOf(row.key)?.editor.split(
+                ownerOf(row.key)?.editor.splitMany(
                   originalKey(row.key),
                   qty,
                   ownerOf(row.key)?.decimalScale,

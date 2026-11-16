@@ -16,7 +16,7 @@ import {
   automaticRoutingId,
 } from '../screens/production-order/process/master-step';
 import { shiftPlanDate } from '../screens/production-order/process/plan-view-model';
-import { splitPlanQuantity } from '../screens/production-plan/quantity-split';
+import { validPlanSplit } from '../screens/production-plan/quantity-split';
 import {
   appendProductionPlanRow,
   changeProductionPlanRow,
@@ -167,16 +167,21 @@ function ManualPlanningPreview() {
           setRows((current) => changeProductionPlanRow(current, key, field, value))
         }
         onRemove={(row) => setRows((current) => current.filter((entry) => entry.key !== row.key))}
-        onSplit={(row, quantity) =>
+        onSplit={(row, parts) =>
           setRows((current) => {
-            const result = splitPlanQuantity(Number(row.draft.plannedQty), quantity, 0);
-            return result
-              ? appendProductionPlanRow(
-                  changeProductionPlanRow(current, row.key, 'plannedQty', String(result.remaining)),
-                  nextKey(),
-                  { ...row.draft, plannedQty: String(result.split) },
-                )
-              : current;
+            if (!validPlanSplit(Number(row.draft.plannedQty), parts, 0)) return current;
+            const changed = changeProductionPlanRow(
+              changeProductionPlanRow(current, row.key, 'plannedQty', parts[0]!.plannedQty),
+              row.key,
+              'planDate',
+              parts[0]!.planDate,
+            );
+            return parts
+              .slice(1)
+              .reduce(
+                (all, part) => appendProductionPlanRow(all, nextKey(), { ...row.draft, ...part }),
+                changed,
+              );
           })
         }
       />

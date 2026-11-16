@@ -22,3 +22,37 @@ export const splitPlanQuantity = (
   if (whole === null || part === null || part <= 0 || part >= whole) return null;
   return { remaining: (whole - part) / scale, split: part / scale };
 };
+
+export interface PlanSplitPart {
+  plannedQty: string;
+  planDate: string;
+}
+export const validPlanSplit = (
+  total: number,
+  parts: readonly PlanSplitPart[],
+  decimalScale = 6,
+): boolean => {
+  const scale = 10 ** decimalScale;
+  const units = (value: number) =>
+    Number.isFinite(value) &&
+    value > 0 &&
+    Number.isSafeInteger(Math.round(value * scale)) &&
+    Number(value.toFixed(decimalScale)) === value;
+  return (
+    Number.isInteger(decimalScale) &&
+    decimalScale >= 0 &&
+    decimalScale <= 6 &&
+    units(total) &&
+    parts.length >= 2 &&
+    parts.length <= 12 &&
+    parts.every(
+      (part) =>
+        units(Number(part.plannedQty)) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(part.planDate) &&
+        Number.isFinite(Date.parse(part.planDate)) &&
+        new Date(part.planDate).toISOString().slice(0, 10) === part.planDate,
+    ) &&
+    parts.reduce((sum, part) => sum + Math.round(Number(part.plannedQty) * scale), 0) ===
+      Math.round(total * scale)
+  );
+};

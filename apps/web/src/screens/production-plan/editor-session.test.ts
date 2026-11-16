@@ -330,3 +330,35 @@ it('단위 소수 자릿수를 지키며 분할 전후 수량을 보존한다', 
   expect(result.current.rows.map((row) => row.draft.plannedQty)).toEqual(['0.2', '0.1']);
   expect(result.current.rows[1]?.splitSourceKey).toBe('plan-501');
 });
+
+it('분할 계획 전체를 원자적으로 적용하고 저장 의존성과 기준정보를 보존한다', async () => {
+  const fetch: StubFetch = async () =>
+    jsonResponse({ items: [productionPlan(501)], page: { page: 1, size: 100, total: 1 } });
+  const { result } = renderHookWithProviders(() => useProductionPlanEditorSession(701), { fetch });
+  await waitFor(() => expect(result.current.rows).toHaveLength(1));
+  act(() =>
+    result.current.splitMany('plan-501', [
+      { plannedQty: '20', planDate: '2026-11-13' },
+      { plannedQty: '20', planDate: '2026-11-14' },
+    ]),
+  );
+  expect(result.current.rows).toHaveLength(1);
+  act(() =>
+    result.current.splitMany('plan-501', [
+      { plannedQty: '20', planDate: '2026-11-13' },
+      { plannedQty: '20', planDate: '2026-11-14' },
+      { plannedQty: '10', planDate: '2026-11-15' },
+    ]),
+  );
+  expect(result.current.rows.map((row) => row.draft.plannedQty)).toEqual(['20', '20', '10']);
+  expect(result.current.rows.map((row) => row.draft.planDate)).toEqual([
+    '2026-11-13',
+    '2026-11-14',
+    '2026-11-15',
+  ]);
+  expect(
+    result.current.rows
+      .slice(1)
+      .every((row) => row.splitSourceKey === 'plan-501' && row.draft.bomId === '8201'),
+  ).toBe(true);
+});

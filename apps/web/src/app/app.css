@@ -36819,3 +36819,63 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 /* 좌우 배치는 목록과 페이지 위치를 유지한 채 편집 영역만 화면을 따라온다. */
 .erp-wo-plan-layout.is-side > .erp-wo-adjustable-second { position:sticky; top:var(--plan-sticky-top,var(--space-3)); align-self:start; max-height:var(--plan-sticky-height,calc(100dvh - 20rem)); overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 .erp-wo-plan-layout.is-side > .erp-wo-adjustable-second > .erp-wo-plan-editor { min-height:0; }
+
+/* 계획 분할: 조건과 계획별 검토를 한 팝업에서 확인한다. */
+.erp-wo-plan-split-dialog { width:min(790px,calc(100vw - 2rem)); max-width:790px; }
+.erp-wo-split-content { display:grid; gap:18px; min-width:0; font:var(--type-body-sm); }
+.erp-wo-split-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px 18px; margin:0; }
+.erp-wo-split-facts div { min-width:0; }
+.erp-wo-split-facts dt { color:var(--on-surface-muted); margin-bottom:4px; }
+.erp-wo-split-facts dd { margin:0; font-weight:500; overflow-wrap:anywhere; }
+.erp-wo-split-section { display:grid; gap:12px; padding-top:16px; border-top:1px solid var(--outline-variant); min-width:0; }
+.erp-wo-split-section h3 { margin:0; font:var(--type-body-sm); font-weight:500; }
+.erp-wo-split-conditions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; align-items:start; }
+.erp-wo-split-conditions > * { min-width:0; }
+.erp-wo-split-conditions input { max-width:10rem; }
+.erp-wo-split-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.erp-wo-split-table-scroll { overflow-x:auto; }
+.erp-wo-split-table { width:100%; min-width:440px; border-collapse:collapse; table-layout:fixed; }
+.erp-wo-split-table th,.erp-wo-split-table td { text-align:left; padding:8px; border-bottom:1px solid var(--outline-variant); vertical-align:middle; }
+.erp-wo-split-table th { font-weight:400; color:var(--on-surface-muted); }
+.erp-wo-split-table td input { width:100%; max-width:10rem; }
+.erp-wo-split-table td > * { min-width:0; }
+.erp-wo-split-totals { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:11px 12px; margin:0; background:var(--surface-container-low); border-radius:6px; }
+.erp-wo-split-totals div { display:flex; align-items:center; gap:6px; }
+.erp-wo-split-totals dt { color:var(--on-surface-muted); }
+.erp-wo-split-totals dd { margin:0; font-weight:500; font-variant-numeric:tabular-nums; }
+.erp-wo-split-footer-count { margin-right:auto; color:var(--on-surface-muted); font:var(--type-body-sm); }
+@media(max-width:620px) { .erp-wo-split-facts,.erp-wo-split-conditions { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.erp-wo-split-conditions > .field-cell { display:grid; gap:5px; grid-template-columns:minmax(0,1fr); }
+.erp-wo-split-conditions > :first-child { width:100%; max-width:10rem; }
+.erp-wo-split-conditions .field-label { margin:0; }
+.erp-wo-split-conditions select,.erp-wo-split-conditions [role="combobox"] { width:100%; }
+.erp-wo-split-table td:nth-child(2) > * { width:100%; max-width:10rem; }
+.erp-wo-split-table td:nth-child(3) button { min-width:9rem; }
+
+@media(max-width:640px) { .erp-wo-plan-split-dialog { width:100%; max-width:100%; } }
+
+.erp-wo-split-action { min-width:8rem; font-weight:500; }
+
+/* 분할 폼은 선택 칸과 같은 높이·모서리로 맞추고 기존 본문 글자 크기를 유지한다. */
+.erp-wo-split-input > div:has(> input) { border-radius:var(--radius-sm); }
+.erp-wo-split-content input,
+.erp-wo-split-content [role="combobox"],
+.erp-wo-split-content button[aria-haspopup="dialog"],
+.erp-wo-split-content .field-label,
+.erp-wo-split-input label { font:var(--type-body-sm); }
+.erp-wo-plan-editor-actions { display:flex; align-items:center; justify-content:flex-start; gap:var(--space-2); flex-wrap:wrap; margin-top:var(--space-3); }
+.erp-wo-plan-editor-actions > button { flex:0 0 auto; width:auto; min-width:7rem; border-radius:var(--radius-sm); font:var(--type-body-sm); }
+.erp-wo-plan-split-dialog .erp-wo-split-content [role="combobox"] { height:var(--control-height-md); min-height:var(--control-height-md); }
+
+/* 단건·복수 ERP W/O 공통 선택 계획 폼. 긴 생산 라인명은 잘리지 않게 펼친다. */
+.erp-wo-plan-edit-fields .erp-wo-plan-quantity-field > div:has(> input),
+.erp-wo-plan-edit-fields .reference-field-full-value,
+.erp-wo-plan-edit-fields .reference-field-full-value > button:first-child,
+.erp-wo-plan-edit-fields button[aria-haspopup="dialog"] { border-radius:var(--radius-sm); }
+.erp-wo-plan-edit-fields .reference-field-full-value,
+.erp-wo-plan-edit-fields .reference-field-full-value > button:first-child { min-height:var(--control-height-md); }
+.erp-wo-plan-edit-fields input,
+.erp-wo-plan-edit-fields button[aria-haspopup="dialog"],
+.erp-wo-plan-edit-fields .field-label,
+.erp-wo-plan-quantity-field label { font:var(--type-body-sm); }

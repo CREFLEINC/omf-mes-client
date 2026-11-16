@@ -4,7 +4,8 @@ import { useWeeklyPlanContext, type WeeklyContextPlan } from './weekly-plan-cont
 import { PlanViewSwitch } from './plan-view-switch';
 import { planQuantities } from './plan-quantities';
 import { PlanCreationTools } from './plan-creation-tools';
-import { splitPlanQuantity } from '../../production-plan/quantity-split';
+import type { PlanSplitPart } from '../../production-plan/quantity-split';
+import { PlanSplitDialog } from './plan-split-dialog';
 import { AlertBanner, Button, Chip, DatePicker, TextField, type Column } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -80,7 +81,7 @@ export interface PlanStepProps {
   distributionLines?: readonly PlanLine[];
   distributionDecimalScale?: number;
   onDistributionDirtyChange?: (dirty: boolean) => void;
-  onSplit?: (row: ProductionPlanEditorStateRow, quantity: number) => void;
+  onSplit?: (row: ProductionPlanEditorStateRow, parts: PlanSplitPart[]) => void;
   onChange: (key: string, field: ProductionPlanDraftField, value: string) => void;
   onRemove: (row: ProductionPlanEditorStateRow) => void;
 }
@@ -181,8 +182,7 @@ export const PlanStep = ({
   const view = viewMode ?? localView;
   const [showAll, setShowAll] = useState(false);
   const [contextSelection, setContextSelection] = useState<number | null>(null);
-  const [splitQty, setSplitQty] = useState('');
-  const [splitError, setSplitError] = useState('');
+  const [splitOpen, setSplitOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectAdded, setSelectAdded] = useState(false);
   const beforeAdded = useRef<ReadonlySet<string> | null>(null);
@@ -799,7 +799,7 @@ export const PlanStep = ({
                 <div className="field-cell">
                   <label className="field-label">{t.columns.planDate}</label>
                   <DatePicker
-                    size="sm"
+                    size="md"
                     aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
                     value={selected.draft.planDate || null}
                     invalid={errorText(selected.errors, 'planDate') !== undefined}
@@ -812,7 +812,7 @@ export const PlanStep = ({
                   <ReferenceField
                     wrapValue
                     hideLabel
-                    size="sm"
+                    size="md"
                     label={t.fieldLabel(nameOf(selected), t.columns.line)}
                     valueLabel={
                       selected.draft.plannedLineId === ''
@@ -827,7 +827,8 @@ export const PlanStep = ({
                   />
                 </div>
                 <TextField
-                  size="sm"
+                  containerClassName="erp-wo-plan-quantity-field"
+                  size="md"
                   label={t.columns.plannedQty}
                   aria-label={t.fieldLabel(nameOf(selected), t.columns.plannedQty)}
                   inputMode="decimal"
@@ -838,75 +839,50 @@ export const PlanStep = ({
                   onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
                 />
               </div>
-              {onSplit && !selected.confirmed && (
-                <details className="erp-wo-plan-split" key={selected.key}>
-                  <summary>계획 분할</summary>
-                  <TextField
-                    size="sm"
-                    label="분할 수량"
-                    aria-label="분할 수량"
-                    value={splitQty}
-                    inputMode="decimal"
-                    disabled={disabled}
-                    onChange={(event) => {
-                      setSplitQty(event.target.value);
-                      setSplitError('');
-                    }}
-                  />
-                  <p className="field-note">
-                    입력 수량을 새 계획으로 나누며 총수량은 유지합니다. 새 계획의 날짜와 라인은 추가
-                    후 수정하세요.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outlined"
-                    disabled={disabled}
-                    onClick={() => {
-                      const quantity = Number(splitQty);
-                      if (
-                        splitPlanQuantity(
-                          Number(selected.draft.plannedQty),
-                          quantity,
-                          rowDecimalScaleOf?.(selected) ?? distributionDecimalScale ?? 6,
-                        ) === null
-                      ) {
-                        setSplitError(
-                          '원래 계획보다 작은 수량을 단위 소수 자릿수에 맞게 입력하세요.',
-                        );
-                        return;
-                      }
-                      beforeAdded.current = new Set(rows.map((row) => row.key));
-                      onSplit(selected, quantity);
-                      setSplitQty('');
-                      setSplitError('');
-                      setSelectAdded(true);
-                    }}
-                  >
-                    분할 적용
-                  </Button>
-                  {splitError && <p role="alert">{splitError}</p>}
-                </details>
-              )}
-              <details className="erp-wo-plan-remarks">
-                <summary>{t.columns.remarks}</summary>
-                <TextField
-                  size="sm"
-                  aria-label={t.fieldLabel(nameOf(selected), t.columns.remarks)}
-                  value={selected.draft.remarks}
-                  disabled={editDisabled}
-                  onChange={(event) => onChange(selected.key, 'remarks', event.target.value)}
-                />
-              </details>
               {!selected.confirmed && (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  aria-label={t.remove(nameOf(selected))}
-                  disabled={disabled}
-                  onClick={() => onRemove(selected)}
-                >
-                  {t.removeShort}
-                </Button>
+                <div className="erp-wo-plan-editor-actions">
+                  {onSplit && (
+                    <Button
+                      size="md"
+                      variant="tonal"
+                      disabled={editDisabled || selected.isPending}
+                      onClick={() => setSplitOpen(true)}
+                    >
+                      계획 분할
+                    </Button>
+                  )}
+                  <Button
+                    variant="outlined"
+                    size="md"
+                    aria-label={t.remove(nameOf(selected))}
+                    disabled={disabled || selected.isPending}
+                    onClick={() => onRemove(selected)}
+                  >
+                    {t.removeShort}
+                  </Button>
+                </div>
+              )}
+              {onSplit && !selected.confirmed && (
+                <>
+                  {splitOpen && (
+                    <PlanSplitDialog
+                      key={selected.key}
+                      row={selected}
+                      planName={nameOf(selected)}
+                      identity={rowIdentityOf?.(selected)}
+                      lineName={lineName(selected.draft.plannedLineId)}
+                      unit={unitOf(selected)}
+                      decimalScale={rowDecimalScaleOf?.(selected) ?? distributionDecimalScale ?? 6}
+                      onClose={() => setSplitOpen(false)}
+                      onApply={(parts) => {
+                        beforeAdded.current = new Set(rows.map((row) => row.key));
+                        onSplit(selected, parts);
+                        setSplitOpen(false);
+                        setSelectAdded(true);
+                      }}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

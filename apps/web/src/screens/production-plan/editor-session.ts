@@ -1,4 +1,4 @@
-import { splitPlanQuantity } from './quantity-split';
+import { validPlanSplit, type PlanSplitPart, splitPlanQuantity } from './quantity-split';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ProductionPlanDraftErrors, ProductionPlanDraftField } from './editor-model';
@@ -126,6 +126,32 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
     },
     [updateRows],
   );
+  const splitMany = useCallback(
+    (key: string, parts: PlanSplitPart[], decimalScale = 6) => {
+      const keys = parts.slice(1).map(() => `new-plan-${++nextNewRow.current}`);
+      updateRows((rows) => {
+        const row = rows.find((item) => item.key === key);
+        if (
+          !row ||
+          row.confirmed ||
+          row.isPending ||
+          !validPlanSplit(Number(row.draft.plannedQty), parts, decimalScale)
+        )
+          return rows;
+        let next = changeProductionPlanRow(rows, key, 'plannedQty', parts[0]!.plannedQty);
+        next = changeProductionPlanRow(next, key, 'planDate', parts[0]!.planDate);
+        parts.slice(1).forEach((part, index) => {
+          const newKey = keys[index]!;
+          next = appendProductionPlanRow(next, newKey, { ...row.draft, ...part });
+          next = changeProductionPlanRow(next, newKey, 'remarks', row.draft.remarks).map((item) =>
+            item.key === newKey ? { ...item, splitSourceKey: row.key } : item,
+          );
+        });
+        return next;
+      });
+    },
+    [updateRows],
+  );
   const change = useCallback(
     (key: string, field: ProductionPlanDraftField, value: string) =>
       updateRows((rows) => changeProductionPlanRow(rows, key, field, value)),
@@ -168,6 +194,7 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
     add,
     addMany,
     split,
+    splitMany,
     change,
     markPending,
     setErrors,

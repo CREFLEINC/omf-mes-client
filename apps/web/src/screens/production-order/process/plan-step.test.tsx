@@ -152,17 +152,17 @@ describe('생산계획 보기와 선택 편집', () => {
           onAdd={() => {}}
           onChange={() => {}}
           onRemove={() => {}}
-          onSplit={(source, qty) =>
+          onSplit={(source, parts) =>
             setRows((current) => {
               const reduced = changeProductionPlanRow(
                 current,
                 source.key,
                 'plannedQty',
-                String(Number(source.draft.plannedQty) - qty),
+                parts[0]!.plannedQty,
               );
               const next = appendProductionPlanRow(reduced, 'split-middle', {
                 ...source.draft,
-                plannedQty: String(qty),
+                plannedQty: parts[1]!.plannedQty,
               });
               return [next[0]!, next[2]!, next[1]!];
             })
@@ -172,7 +172,13 @@ describe('생산계획 보기와 선택 편집', () => {
     };
     renderWithProviders(<Harness />);
     await user.click(screen.getByText('계획 분할', { exact: true }));
-    await user.type(screen.getByRole('textbox', { name: '분할 수량' }), '50');
+    await user.clear(screen.getByRole('textbox', { name: '분할 후 계획 건수' }));
+    await user.type(screen.getByRole('textbox', { name: '분할 후 계획 건수' }), '2');
+    await user.click(screen.getByRole('button', { name: '분할 조건 적용' }));
+    await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
+    await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '150');
+    await user.clear(screen.getByRole('textbox', { name: '계획 2 생산량' }));
+    await user.type(screen.getByRole('textbox', { name: '계획 2 생산량' }), '50');
     await user.click(screen.getByRole('button', { name: '분할 적용' }));
     expect(
       screen.getByRole('textbox', { name: t.fieldLabel(t.newRow(3), t.columns.plannedQty) }),
@@ -202,12 +208,20 @@ it('선택 계획의 단위 자릿수에 맞게 소수 분할을 허용한다', 
       rowDecimalScaleOf={() => 2}
     />,
   );
-  await user.click(screen.getByText('계획 분할', { selector: 'summary' }));
-  await user.type(screen.getByRole('textbox', { name: '분할 수량' }), '0.001');
-  await user.click(screen.getByRole('button', { name: '분할 적용' }));
+  await user.click(screen.getByRole('button', { name: '계획 분할' }));
+  await user.clear(screen.getByRole('textbox', { name: '분할 후 계획 건수' }));
+  await user.type(screen.getByRole('textbox', { name: '분할 후 계획 건수' }), '3');
+  await user.click(screen.getByRole('button', { name: '분할 조건 적용' }));
+  await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
+  await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '0.001');
+  expect(screen.getByRole('button', { name: '분할 적용' })).toBeDisabled();
   expect(onSplit).not.toHaveBeenCalled();
-  await user.clear(screen.getByRole('textbox', { name: '분할 수량' }));
-  await user.type(screen.getByRole('textbox', { name: '분할 수량' }), '0.25');
+  await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
+  await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '0.25');
   await user.click(screen.getByRole('button', { name: '분할 적용' }));
-  expect(onSplit).toHaveBeenCalledWith(expect.objectContaining({ key: 'new-1' }), 0.25);
+  expect(onSplit).toHaveBeenCalledWith(expect.objectContaining({ key: 'new-1' }), [
+    { plannedQty: '0.25', planDate: '2026-11-02' },
+    { plannedQty: '0.25', planDate: '2026-11-03' },
+    { plannedQty: '0.25', planDate: '2026-11-04' },
+  ]);
 });
