@@ -36957,3 +36957,17 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-split-holiday-option { display:inline-flex; align-items:center; gap:var(--space-2); min-height:var(--control-height-md); font:var(--type-body-sm); white-space:nowrap; }
 .erp-wo-split-conditions .erp-wo-split-holiday-option input { width:1rem; height:1rem; margin:0; }
+
+/* 분할 팝업의 정보·조건·수량 요약은 같은 3열과 간격을 사용한다. */
+.erp-wo-split-facts, .erp-wo-split-conditions { column-gap:var(--space-3); row-gap:var(--space-3); }
+.erp-wo-split-facts dt, .erp-wo-split-totals dt { font:var(--type-body-sm); margin:0 0 var(--space-1); }
+.erp-wo-split-facts dd, .erp-wo-split-totals dd { font:var(--type-body-sm); font-weight:500; margin:0; }
+.erp-wo-split-conditions > :first-child, .erp-wo-split-conditions input { max-width:none; width:100%; }
+.erp-wo-split-period-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end; gap:var(--space-3); }
+.erp-wo-split-period-actions > .field-cell { width:100%; }
+.erp-wo-split-period-actions > .erp-wo-split-action { justify-self:end; }
+.erp-wo-split-table td:nth-child(2) > *, .erp-wo-split-table td:nth-child(3) > * { width:100%; max-width:none; }
+.erp-wo-split-table td:nth-child(2) input, .erp-wo-split-table td:nth-child(3) button { width:100%; max-width:none; }
+.erp-wo-split-totals { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-3); padding:var(--space-3); border-radius:var(--radius-sm); }
+.erp-wo-split-totals > div { display:block; min-width:0; }
+@media(max-width:620px) { .erp-wo-split-period-actions { grid-template-columns:repeat(2,minmax(0,1fr)); } .erp-wo-split-period-actions > .erp-wo-split-action { grid-column:2; } .erp-wo-split-totals { grid-template-columns:repeat(auto-fit,minmax(min(9rem,100%),1fr)); } }
