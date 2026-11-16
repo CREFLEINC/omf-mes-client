@@ -6,6 +6,9 @@ import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { CONTRACT_BATCH_SIZE, chunkTargets } from './flow-state';
 
+/** 마감된 LOT 창 한 쪽에 보이는 건수. */
+export const COMPLETED_LOT_PAGE_SIZE = 5;
+
 export type Lot = components['schemas']['Lot'];
 export type LotDetailResponse = components['schemas']['LotDetailResponse'];
 export type Item = components['schemas']['Item'];
@@ -133,7 +136,8 @@ export const useCompletedLots = (
 
       const data = await runRequest(() =>
         client.GET('/trace/lots', {
-          params: { query: { workOrderId, completed: true, page, size: 20 } },
+          /* 한 쪽 5건 — 5건이 넘을 때만 쪽 넘김이 선다(사용자 지시 2026-11-16). */
+          params: { query: { workOrderId, completed: true, page, size: COMPLETED_LOT_PAGE_SIZE } },
         }),
       );
 

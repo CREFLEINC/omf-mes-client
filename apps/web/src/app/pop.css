@@ -10001,11 +10001,16 @@
 }
 
 .pop-ui .production-flow-completed-dialog .production-flow-completed-pages {
-  justify-content: center;
+  justify-content: space-between;
   gap: var(--space-4);
 }
 
-.pop-ui .production-flow-completed-dialog .production-flow-completed-pages > button {
+.pop-ui .production-flow-completed-page-buttons {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-flow-completed-page-buttons > button {
   min-inline-size: 6rem;
 }
 
@@ -10047,6 +10052,42 @@
 
 .pop-ui .production-flow-defect-picker-back {
   margin-inline-end: auto;
+}
+
+/* [불량 등록] 확인 창 — 유형과 수량을 한 줄씩 보인다(사용자 지시 2026-11-16). */
+.pop-ui .production-flow-defect-confirm-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-flow-defect-confirm-lead {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-flow-defect-confirm-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.pop-ui .production-flow-defect-confirm-list > li > strong {
+  font-size: 1.25rem;
+}
+
+.pop-ui .production-flow-defect-confirm .iqc-inspection-action-note {
+  margin-block-start: var(--space-3);
+}
+
+.pop-ui .production-flow-defect-confirm footer {
+  border-block-start: none;
 }
 
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */

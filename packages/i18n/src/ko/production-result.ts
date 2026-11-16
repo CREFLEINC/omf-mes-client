@@ -122,6 +122,11 @@ export const productionResult = {
       loadFailed: '불량 유형을 불러오지 못했습니다.',
       empty: '이 공정에 정해진 불량 유형이 없습니다.',
       saveOnly: '불량 등록',
+      /** [불량 등록] 확인 창(사용자 지시 2026-11-16). */
+      confirmTitle: '불량 등록',
+      confirmLead: '다음 불량을 등록하시겠습니까?',
+      confirmNote: '불량 등록 시 LOT 라벨은 출력되지 않습니다.',
+      confirmSave: '등록',
       saved: '불량을 등록했습니다.',
       queued: '불량을 단말에 저장했습니다. 연결되면 보냅니다.',
     },

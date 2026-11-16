@@ -312,6 +312,8 @@ export const ProductionFlowScreen = () => {
   /** 미달 LOT 의 라벨을 맞게 읽었다 — 사유를 고르면 마감한다 */
   const [isUnderReasonOpen, setUnderReasonOpen] = useState(false);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+  /** [불량 등록] 확인 창(사용자 지시 2026-11-16) — 누르자마자 저장되지 않고 무엇을 등록할지 한 번 보인다. */
+  const [isDefectConfirmOpen, setIsDefectConfirmOpen] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
   const [confirmedResultLotId, setConfirmedResultLotId] = useState<number | null>(null);
@@ -1561,7 +1563,7 @@ export const ProductionFlowScreen = () => {
         size={POP_TOUCH_SIZE}
         disabled={!canSaveDefectsOnly}
         aria-describedby={remainingId}
-        onClick={queueDefectsOnly}
+        onClick={() => setIsDefectConfirmOpen(true)}
       >
         {t.flow.defects.saveOnly}
       </Button>
@@ -2355,6 +2357,51 @@ export const ProductionFlowScreen = () => {
         onCancel={cancelUnder}
       />
 
+      {/* 열 때만 그린다 — 닫힌 창이 다른 창 찾기를 가리지 않게. */}
+      {isDefectConfirmOpen && (
+        <Dialog
+          open
+          onClose={() => setIsDefectConfirmOpen(false)}
+          title={t.flow.defects.confirmTitle}
+          showCloseButton={false}
+          /* 팝업 바깥을 눌러 닫히지 않는다(#1005). */
+          closeOnBackdropClick={false}
+          className="production-flow-defect-confirm"
+          footer={
+            <>
+              <Button variant="outlined" size="xl" onClick={() => setIsDefectConfirmOpen(false)}>
+                {t.flow.defects.cancel}
+              </Button>
+              <Button
+                variant="filled"
+                size="xl"
+                disabled={!canSaveDefectsOnly}
+                onClick={() => {
+                  setIsDefectConfirmOpen(false);
+                  queueDefectsOnly();
+                }}
+              >
+                {t.flow.defects.confirmSave}
+              </Button>
+            </>
+          }
+        >
+          <p className="production-flow-defect-confirm-lead">{t.flow.defects.confirmLead}</p>
+          <ul className="production-flow-defect-confirm-list">
+            {defectRows.map((row) => (
+              <li key={row.key}>
+                <span>{defectLabelOf(defectMajors, row.defectCodeId) ?? ''}</span>
+                <strong>{`${row.qty} ${uomLabel}`.trim()}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.flow.defects.confirmNote}
+          </p>
+        </Dialog>
+      )}
+
       <Dialog
         open={isCompletedOpen}
         onClose={() => setIsCompletedOpen(false)}
@@ -2402,29 +2449,37 @@ export const ProductionFlowScreen = () => {
                 </li>
               ))}
             </ol>
-            {/* 쪽 넘김은 늘 선다 — 한 쪽이면 [이전]·[다음]이 잠긴다(사용자 지시 2026-11-16). */}
-            <nav className="production-flow-completed-pages" aria-label={t.flow.currentLot.pageNav}>
-              <Button
-                variant="outlined"
-                disabled={!completedBoundary.canPageUp}
-                onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
+            {/* 쪽 넘김은 한 쪽(5건)을 넘을 때만 선다. 쪽 위치는 왼쪽, [이전]·[다음]은 오른쪽(사용자 지시 2026-11-16). */}
+            {completedBoundary.totalPages > 1 && (
+              <nav
+                className="production-flow-completed-pages"
+                aria-label={t.flow.currentLot.pageNav}
               >
-                {t.flow.currentLot.prev}
-              </Button>
-              <p className="field-note">
-                {t.flow.currentLot.pagePosition(
-                  completedBoundary.page,
-                  completedBoundary.totalPages,
-                )}
-              </p>
-              <Button
-                variant="outlined"
-                disabled={!completedBoundary.canPageDown}
-                onClick={() => setCompletedPage(completedBoundary.page + 1)}
-              >
-                {t.flow.currentLot.next}
-              </Button>
-            </nav>
+                <p className="field-note">
+                  {t.flow.currentLot.pagePosition(
+                    completedBoundary.page,
+                    completedBoundary.totalPages,
+                  )}
+                </p>
+                <span className="production-flow-completed-page-buttons">
+                  <Button
+                    variant="outlined"
+                    disabled={!completedBoundary.canPageUp}
+                    onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
+                  >
+                    {t.flow.currentLot.prev}
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    disabled={!completedBoundary.canPageDown}
+                    onClick={() => setCompletedPage(completedBoundary.page + 1)}
+                  >
+                    {t.flow.currentLot.next}
+                  </Button>
+                </span>
+              </nav>
+            )}
           </>
         )}
       </Dialog>

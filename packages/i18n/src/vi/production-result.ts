@@ -96,6 +96,11 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       loadFailed: 'Không tải được loại lỗi.',
       empty: 'Công đoạn này chưa có loại lỗi.',
       saveOnly: 'Đăng ký lỗi',
+      /** [불량 등록] 확인 창(사용자 지시 2026-11-16). */
+      confirmTitle: 'Đăng ký lỗi',
+      confirmLead: 'Đăng ký các lỗi sau?',
+      confirmNote: 'Khi đăng ký lỗi, nhãn LOT sẽ không được in.',
+      confirmSave: 'Đăng ký',
       saved: 'Đã đăng ký lỗi.',
       queued: 'Đã lưu lỗi trên máy trạm. Sẽ gửi khi có kết nối.',
     },

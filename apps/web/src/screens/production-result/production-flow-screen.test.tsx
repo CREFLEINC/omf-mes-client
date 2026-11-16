@@ -2075,6 +2075,11 @@ describe('ProductionFlowScreen 불량', () => {
     ).toBeNull();
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.flow.defects.saved)).toBeInTheDocument();
     const body = await savedBody(writes);
@@ -2084,6 +2089,32 @@ describe('ProductionFlowScreen 불량', () => {
     expect(body).not.toHaveProperty('lotAllocations');
     expect(writes.some((write) => pathOf(write) === '/app/document-issues')).toBe(false);
     expect(within(defectSection()).queryByRole('listitem')).toBeNull();
+  });
+
+  /* [불량 등록]은 확인 창을 거친다 — 취소하면 저장하지 않고 줄도 그대로다(사용자 지시 2026-11-16). */
+  it('불량만 등록은 확인 창에서 [등록]을 눌러야 저장한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '찍힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(t.flow.defects.confirmLead)).toBeInTheDocument();
+    expect(within(dialog).getByText('2 EA')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.flow.defects.cancel }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(false);
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
   });
 
   /* 넣을 LOT이 없어도(마지막 LOT을 마감한 뒤 등) 불량만은 등록할 수 있다. */
@@ -2106,6 +2137,11 @@ describe('ProductionFlowScreen 불량', () => {
     const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.flow.defects.saved)).toBeInTheDocument();
     const body = await savedBody(writes);
@@ -2148,6 +2184,11 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
     await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.flow.defects.queued)).toBeInTheDocument();
     expect(within(defectSection()).queryByRole('listitem')).toBeNull();
@@ -2323,6 +2364,11 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
     await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
     expect(
@@ -2366,6 +2412,11 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
     await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(t.flow.defects.saved)).toBeNull());
@@ -2409,6 +2460,11 @@ describe('ProductionFlowScreen 불량', () => {
     const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     await waitFor(() =>
       expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
