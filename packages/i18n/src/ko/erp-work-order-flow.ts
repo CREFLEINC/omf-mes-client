@@ -45,8 +45,6 @@ const reasons = {
   ROUTING_AMBIGUOUS: '기본 공정(Routing) 지정 필요',
   LINE_UNKNOWN: '생산 라인 지정 필요',
   PLAN_NOT_CONFIRMED: '생산계획 확정 필요',
-  DRAFT_PLAN_PENDING: '작성중 계획 검토 필요',
-  PLAN_QTY_REMAINING: '남은 수량 계획 필요',
   QTY_REMAINING: '남은 수량 계획 필요',
   AUTO_PLAN_RERUN_NEEDED: '생산계획 자동 전개 다시 실행 필요',
   /** 목록 판정(worklistReasons)의 작성중 계획. 자동 계획 사유 PLAN_NOT_CONFIRMED 와 같은 일이다. */
@@ -124,10 +122,6 @@ export const erpWorkOrderFlow = {
     LINE_UNKNOWN: (): string =>
       // ui-check-ignore: C-13 메뉴 경로 「품목·BOM 정보 › 설비·금형」을 그대로 쓴다
       `생산계획에 생산 라인이 정해지지 않았습니다. ${steps.plan} 단계에서 생산 라인을 고르거나, 기준정보 관리 › 품목·BOM 정보 › 설비·금형 탭에서 라인에 속한 설비를 자동 배정 지정(★)한 뒤 생산계획 자동 전개를 다시 실행해야 합니다.`,
-    DRAFT_PLAN_PENDING: (): string =>
-      `작성중 생산계획이 있습니다. ${steps.plan} 단계에서 계획 내용을 검토하고 확정해야 합니다.`,
-    PLAN_QTY_REMAINING: (): string =>
-      `확정 계획량이 ERP W/O 수량보다 적습니다. ${steps.plan} 단계에서 기존 작성중 계획과 남은 수량을 확인해야 합니다.`,
     PLAN_NOT_CONFIRMED: (): string =>
       `작성 중인 생산계획이 있습니다. ${steps.plan} 단계에서 계획을 확정해야 합니다.`,
     QTY_REMAINING: (detail: ReasonDetail): string => qtyRemainingHelp(detail),
