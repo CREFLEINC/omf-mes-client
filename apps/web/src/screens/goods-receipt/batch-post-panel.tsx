@@ -111,7 +111,17 @@ export const GoodsReceiptBatchPostPanel = ({
   const detailsPending = details.some((detail) => detail.isPending);
   const detailFailed = details.find((detail) => detail.isError);
 
+  const batch = useGoodsReceiptBatchPost({ refreshKeys });
+  const outcomeOf = (lot: BatchPostLot) => batch.outcomes.get(lot.inboundReceiptId);
+  /*
+   * 보낸 줄 — omf-all-around#280. 입고가 끝나면 입하 상세를 다시 읽고(`refreshKeys`), 그 LOT 의 입고 가능 수량은 0 이 된다.
+   * 입고된 LOT 은 다시 계산하지 않고 보낸 그대로 둔다 — 표의 수량이 0 으로 바뀌거나 「찾지 못한 LOT」으로 막히지 않게.
+   */
+  const [sent, setSent] = useState<ReadonlyMap<number, ResolvedLot>>(() => new Map());
+
   const resolved: (ResolvedLot | null)[] = lots.map((lot) => {
+    const sentItem = sent.get(lot.lotId);
+    if (sentItem !== undefined && outcomeOf(lot)?.kind === 'done') return sentItem;
     const detail = detailOf(lot.inboundReceiptId);
     const line =
       detail?.lines.find((item) => item.inboundReceiptLineId === lot.inboundReceiptLineId) ?? null;
@@ -179,8 +189,6 @@ export const GoodsReceiptBatchPostPanel = ({
     setDraft(withStatus);
   }, [commonStatus, qualityStatusKnown]);
 
-  const batch = useGoodsReceiptBatchPost({ refreshKeys });
-  const outcomeOf = (lot: BatchPostLot) => batch.outcomes.get(lot.inboundReceiptId);
   const doneCount = lots.filter((lot) => outcomeOf(lot)?.kind === 'done').length;
   const isAllDone = doneCount === lots.length;
   const firstFailure = lots
@@ -295,6 +303,12 @@ export const GoodsReceiptBatchPostPanel = ({
     }
     const jobs = toJobs();
     if (jobs === null) return;
+    setSent((prev) => {
+      const next = new Map(prev);
+      for (const item of ready) next.set(item.lot.lotId, item);
+
+      return next;
+    });
     void batch.run(jobs);
   };
 

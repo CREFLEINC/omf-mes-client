@@ -314,6 +314,101 @@ describe('GoodsReceiptPostPanel — 입고 처리 오른쪽 창', () => {
       expect(bodies[0]).toMatchObject({ lines: [{ lotId: 9611, receiptQty: 100 }] });
     });
 
+    it('#280 입고 뒤 상세를 다시 읽어 입고 가능 수량이 0 이 돼도 보낸 수량(100)을 보인다', async () => {
+      const bodies: unknown[] = [];
+      const afterPost = inboundReceiptLine({
+        ...multiLotLine,
+        receivableQty: 100,
+        materialLots: [
+          { lotId: 9601, lotNo: 'SAMPLE|LOT|0001', statusCode: 'NORMAL', receivableQty: 100 },
+          { lotId: 9611, lotNo: 'SAMPLE|LOT|0002', statusCode: 'NORMAL', receivableQty: 0 },
+        ],
+      });
+      const user = renderLot(9611, [
+        goodsReceiptRoute(bodies),
+        {
+          match: (request) => isGet(request, DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              inboundReceipt: inboundReceiptFixtures[0],
+              lines: [bodies.length === 0 ? multiLotLine : afterPost],
+            }),
+        },
+      ]);
+
+      await screen.findByText('IR-2026-900001');
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+      });
+      await chooseOption(user, t.fields.warehouse, 'SAMPLE-WH-01 · 합성 창고 가');
+      await chooseOption(user, t.fields.location, 'SAMPLE-LOC-A1 · 합성 열 가1');
+      await chooseOption(user, t.fields.receiptType, 'SAMPLE_RECEIPT_TYPE_A');
+      await chooseOption(user, t.fields.inventoryStatus, 'AVAILABLE');
+      const post = screen.getByRole('button', { name: t.actions.post });
+      await waitFor(() => {
+        expect(post).toBeEnabled();
+      });
+      await user.click(post);
+      const confirm = await screen.findByRole('dialog', { name: t.dialog.submitTitle });
+      await user.click(within(confirm).getByRole('button', { name: t.actions.confirmPost }));
+
+      expect(await screen.findByText('GR-2026-800001')).toBeInTheDocument();
+      /* 다시 읽은 상세(입고 가능 0)가 들어온 뒤에도 수량은 보낸 값이다. */
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByText(t.lineTable.receivedQtyPair(0, CONTEXT.uomCode))).toBeNull();
+      expect(
+        screen.getAllByText(t.lineTable.receivedQtyPair(100, CONTEXT.uomCode)).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it('#280 선별 LOT 을 입고한 뒤 다시 읽은 상세에서 빠져도 결과가 남고 「찾지 못한 LOT」으로 바뀌지 않는다', async () => {
+      const bodies: unknown[] = [];
+      const split = {
+        lotId: 9621,
+        lotNo: 'SAMPLE-LOT-0001-S1',
+        statusCode: 'DEFECTIVE',
+        receivableQty: 15,
+      };
+      const line = (receivable: number) =>
+        inboundReceiptLine({
+          receivableQty: 85,
+          splitLots: [{ ...split, receivableQty: receivable }],
+        });
+      const user = renderLot(9621, [
+        goodsReceiptRoute(bodies),
+        {
+          match: (request) => isGet(request, DETAIL_PATH),
+          respond: () =>
+            jsonResponse({
+              inboundReceipt: inboundReceiptFixtures[0],
+              lines: [line(bodies.length === 0 ? 15 : 0)],
+            }),
+        },
+      ]);
+
+      await screen.findByText('IR-2026-900001');
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: t.fields.warehouse })).toBeEnabled();
+      });
+      await chooseOption(user, t.fields.warehouse, 'SAMPLE-WH-01 · 합성 창고 가');
+      await chooseOption(user, t.fields.location, 'SAMPLE-LOC-A1 · 합성 열 가1');
+      await chooseOption(user, t.fields.receiptType, 'SAMPLE_RECEIPT_TYPE_A');
+      await chooseOption(user, t.fields.inventoryStatus, 'AVAILABLE');
+      const post = screen.getByRole('button', { name: t.actions.post });
+      await waitFor(() => {
+        expect(post).toBeEnabled();
+      });
+      await user.click(post);
+      const confirm = await screen.findByRole('dialog', { name: t.dialog.submitTitle });
+      await user.click(within(confirm).getByRole('button', { name: t.actions.confirmPost }));
+
+      expect(await screen.findByText('GR-2026-800001')).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.getByText('GR-2026-800001')).toBeInTheDocument();
+      expect(screen.queryByText(t.panel.lotTargetMissing)).toBeNull();
+      expect(bodies[0]).toMatchObject({ lines: [{ lotId: 9621, receiptQty: 15 }] });
+    });
+
     it('T141 고른 LOT 이 줄의 입고 대상에 없으면 다른 LOT 으로 바꾸지 않고 막는다', async () => {
       renderLot(9699, []);
 

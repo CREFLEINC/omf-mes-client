@@ -233,6 +233,56 @@ describe('GoodsReceiptBatchPostPanel — 입고 대기 LOT 일괄 입고', () =>
     ]);
   });
 
+  it('#280 입고 뒤 상세를 다시 읽어 입고 가능 수량이 0 이 돼도 표의 수량은 보낸 값이다', async () => {
+    const sent: { body: { sourceDocumentId: number }; key: string | null }[] = [];
+    const lineOf = (id: number, lineId: number, lotId: number, qty: number, receivable: number) =>
+      inboundReceiptLine({
+        inboundReceiptId: id,
+        inboundReceiptLineId: lineId,
+        lotId,
+        receivedQty: qty,
+        receivableQty: receivable,
+        materialLots: [
+          {
+            lotId,
+            lotNo: `SAMPLE|LOT|${String(lotId)}`,
+            statusCode: 'NORMAL',
+            receivableQty: receivable,
+          },
+        ],
+      });
+    const posted = (id: number) => sent.some(({ body }) => body.sourceDocumentId === id);
+    const statefulDetail: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' && DETAIL_PATH.test(new URL(request.url).pathname),
+      respond: (request) => {
+        const id = Number(DETAIL_PATH.exec(new URL(request.url).pathname)?.[1]);
+        const [lineId, lotId, qty] = id === 9001 ? [9401, 9601, 100] : [9402, 9602, 40];
+
+        return jsonResponse({
+          inboundReceipt: id === 9001 ? inboundReceiptFixtures[0] : inboundReceiptFixtures[1],
+          lines: [lineOf(id, lineId, lotId, qty, posted(id) ? 0 : qty)],
+        });
+      },
+    };
+    const { user } = renderPanel([goodsReceiptRoute(sent), statefulDetail, ...baseRoutes()]);
+
+    const dialog = await screen.findByRole('dialog', { name: tb.title(2) });
+    await waitFor(() => {
+      expect(within(dialog).getByText('100 SAMPLE-EA')).toBeInTheDocument();
+    });
+    await fillForm(user);
+    await user.click(screen.getByRole('button', { name: tb.submit(2) }));
+    await confirmPost(user, 2);
+
+    expect(await screen.findByText(tb.allDone(2))).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(within(dialog).getByText('100 SAMPLE-EA')).toBeInTheDocument();
+    expect(within(dialog).getByText('40 SAMPLE-EA')).toBeInTheDocument();
+    expect(within(dialog).queryByText('0 SAMPLE-EA')).toBeNull();
+    expect(screen.queryByText(tb.blocked.missingLine)).toBeNull();
+  });
+
   it('한 건이 막혀도 나머지는 보내고, 다시 누르면 실패한 건만 같은 멱등 키로 보낸다', async () => {
     const sent: { body: { sourceDocumentId: number }; key: string | null }[] = [];
     const { user } = renderPanel([goodsReceiptRoute(sent, new Set([9001])), ...baseRoutes()]);
