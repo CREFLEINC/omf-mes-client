@@ -38,6 +38,8 @@ export interface PopHeaderProps {
   isConnected?: boolean;
   /** 아직 서버에 닿지 않은 기록 수. 0이거나 넘기지 않으면 칩을 두지 않는다. */
   unsentCount?: number;
+  /** 오른쪽 덩어리 맨 앞(작업자 앞)에 둘 프린터 칩. 넘기지 않으면 자리를 두지 않는다(생산 작업 · 개선 명세 ⑤). */
+  printer?: ReactNode;
   /**
    * 그 화면에서 언제든 쓸 수 있는 동작(예: 생산 작업의 [작업 중단]). 머리줄 오른쪽 끝, 셸의 [화면 이동] 바로
    * 앞에 선다. 테두리 버튼 하나를 넘기지 않는다(머리줄 폭).
@@ -73,9 +75,11 @@ export const PopHeader = ({
   isMoldMissing = false,
   isConnected,
   unsentCount = 0,
+  printer,
   actions,
 }: PopHeaderProps) => {
   const t = messages.popChrome.header;
+  const RightGroup = printer === undefined ? 'p' : 'div';
 
   return (
     <header className="pop-header">
@@ -116,7 +120,9 @@ export const PopHeader = ({
         </p>
       )}
 
-      <p className="pop-context pop-context-right">
+      {/* 프린터 칩은 창(선택)과 [다시 시도]를 품어 문단(p) 안에 둘 수 없다 — 그때만 div 로 세운다. */}
+      <RightGroup className="pop-context pop-context-right">
+        {printer}
         {terminalCode !== undefined && (
           <span>{hasText(terminalCode) ? t.terminalLabel(terminalCode) : t.terminalUnknown}</span>
         )}
@@ -140,7 +146,7 @@ export const PopHeader = ({
             {t.unsent(unsentCount)}
           </Chip>
         )}
-      </p>
+      </RightGroup>
 
       {actions !== undefined && actions !== null && (
         <span className="pop-header-tools">{actions}</span>
