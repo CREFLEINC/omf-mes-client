@@ -47,7 +47,6 @@ const t = messages.erpWorkOrderFlow;
 const NO_SCOPES: readonly DataScope[] = [];
 
 /** 공장 선택지 이름은 「코드 · 이름」이다(dashboard `usePlantOptions`). 표에는 앞의 코드만 쓴다. */
-const PLANT_LABEL_SEPARATOR = ' · ';
 
 /** 조회 조건 칸(번호, 납기, 품목, 고른 공장)에 값이 있는가. 처리 상태 칩과 정해진 공장은 조건으로 치지 않는다. */
 const hasSearchConditions = (filters: WorklistFilters): boolean =>
@@ -87,7 +86,7 @@ export const ProductionOrderScreen = ({
   const navigate = useNavigate();
   const filters = useMemo(() => readWorklistFilters(searchParams), [searchParams]);
   const { session } = useSession();
-  const plants = usePlantOptions(session?.scopes ?? NO_SCOPES);
+  const plants = usePlantOptions(session?.scopes ?? NO_SCOPES, true);
   /* 범위 안 공장이 하나뿐이면 그 공장으로 정해지고 바꿀 수 없다. 주소에는 남기지 않는다. 범위가 없거나 여럿이면 고른다. */
   const lockedPlant =
     (session?.scopes ?? NO_SCOPES).length > 0 && plants.entries.length === 1
@@ -188,7 +187,7 @@ export const ProductionOrderScreen = ({
                 '';
               return (
                 <span className="nowrap-cell" title={label}>
-                  {label.split(PLANT_LABEL_SEPARATOR)[0]}
+                  {label}
                 </span>
               );
             },
@@ -395,7 +394,13 @@ export const ProductionOrderScreen = ({
                 title={t.bulk.autoPlanHelp}
                 disabled={bulkReason !== null}
                 aria-describedby={bulkReason === null ? undefined : bulkReasonId}
-                onClick={() => setDialog({ kind: 'autoPlan', targets })}
+                onClick={() => {
+                  setChecked([]);
+                  rememberWorklistSearch(searchParams);
+                  void navigate(
+                    `${AUTO_PLAN_RESULT_PATH}?ids=${targets.map((target) => target.productionOrderId).join(',')}`,
+                  );
+                }}
               >
                 {t.bulk.autoPlan}
               </Button>

@@ -104,7 +104,22 @@ const AssignmentFacts = ({
         ]
       : []),
     ['WIP 위치', locationName(fact.defaultWipLocationId)],
-    ['완제품 위치', locationName(fact.defaultFgLocationId)],
+    [
+      '생산품 입고 창고',
+      name(
+        fact.defaultFgLocationId,
+        (() => {
+          const location = locations.items.find(
+            (row) => row.locationId === fact.defaultFgLocationId,
+          );
+          return location?.warehouseName
+            ? `${location.warehouseName}${location.warehouseCode ? ` (${location.warehouseCode})` : ''}`
+            : undefined;
+        })(),
+        locations.isPending,
+        locations.isError,
+      ),
+    ],
     ['스크랩 위치', locationName(fact.defaultScrapLocationId)],
   ];
   return (

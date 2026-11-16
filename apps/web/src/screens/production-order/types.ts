@@ -32,6 +32,9 @@ export interface ProductionOrderFact {
   remainingQty?: number | null;
   uomId: number;
   dueDate: string | null;
+  plannedStartDate?: string | null;
+  erpStorageLocationCode?: string;
+  erpStorageWarehouse?: { id: number; code: string; name: string };
   statusCode: string;
   remarks: string | null;
   expandedWorkOrderCount: number | null;

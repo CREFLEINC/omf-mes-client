@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { messages } from '@omf-mes/i18n';
 import { ReviewHelp as Help } from './review-help';
 import {
@@ -29,6 +30,8 @@ import {
   completionFields,
   proposedQuantity,
   resourceLabels,
+  applyReceiptStorage,
+  storageFailureLabels,
   reviewStatus,
   proposalAction,
   type ResourceField,
@@ -81,6 +84,7 @@ export interface ProposalReviewProps {
   onConfirm?: (rows: ReviewProposal[]) => Promise<void>;
   preview?: boolean;
   proposalTime?: string;
+  unavailableReason?: string;
 }
 
 /** W-C review: table/calendar selection opens one common detail panel below the entire list. */
@@ -91,9 +95,14 @@ export const ProposalReview = ({
   onConfirm,
   preview = false,
   proposalTime,
+  unavailableReason,
 }: ProposalReviewProps) => {
-  const [rows, setRows] = useState(() => structuredClone(initialProposals));
-  const [active, setActive] = useState(initialProposals[0]?.id ?? '');
+  const [rows, setRows] = useState(() =>
+    structuredClone(initialProposals).map(applyReceiptStorage),
+  );
+  const [active, setActive] = useState(
+    initialProposals.find((row) => row.plans.length > 0)?.id ?? initialProposals[0]?.id ?? '',
+  );
   const [checked, setChecked] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
@@ -118,7 +127,7 @@ export const ProposalReview = ({
       current.map((row) =>
         row.id !== selected.id
           ? row
-          : {
+          : applyReceiptStorage({
               ...row,
               changed: true,
               plans: row.plans.map((plan) =>
@@ -126,7 +135,7 @@ export const ProposalReview = ({
                   ? { ...update(plan), reviewFields: completionFields(row, plan) }
                   : plan,
               ),
-            },
+            }),
       ),
     );
     setChecked((current) => current.filter((id) => id !== selected.id));
@@ -196,20 +205,24 @@ export const ProposalReview = ({
         key: 'date',
         header: '계획일',
         width: '110px',
-        render: (row) => [...new Set(row.plans.map((plan) => plan.date))].join(' / ') || '—',
+        render: (row) =>
+          [...new Set(row.plans.map((plan) => plan.date))].join(' / ') ||
+          (row.serverKind === 'KEEP_CONFIRMED' ? '기존 계획 유지' : '—'),
       },
       {
         key: 'proposal',
         header: '생산량',
         width: '110px',
         render: (row) =>
-          `${quantity(row.plans.reduce((sum, plan) => sum + (Number(plan.quantity) || 0), 0))} ${row.uom}`,
+          `${quantity(row.serverKind === 'KEEP_CONFIRMED' && !row.plans.length ? row.confirmedQty : row.plans.reduce((sum, plan) => sum + (Number(plan.quantity) || 0), 0))} ${row.uom}`,
       },
       {
         key: 'line',
         header: '생산 라인',
         width: '200px',
-        render: (row) => [...new Set(row.plans.map(planLineLabel))].join(' / ') || '미지정',
+        render: (row) =>
+          [...new Set(row.plans.map(planLineLabel))].join(' / ') ||
+          (row.serverKind === 'KEEP_CONFIRMED' ? '기존 계획 유지' : '미지정'),
       },
       {
         key: 'status',
@@ -286,6 +299,11 @@ export const ProposalReview = ({
         </div>
       )}
       <main className="proposal-review-body">
+        {unavailableReason && (
+          <AlertBanner variant="warning" title="실제 제안 조회 · 선택 확정 준비 중">
+            {unavailableReason}
+          </AlertBanner>
+        )}
         {failure && <AlertBanner variant="error" title={failure} />}
         <section aria-label="제안 검토 조건">
           <section className="proposal-counts" aria-label="제안 요약">
@@ -537,7 +555,8 @@ export const ProposalReview = ({
                       .map((plan) =>
                         plan.number ? `${plan.number} / ${plan.source}` : plan.source,
                       )
-                      .join(', '),
+                      .join(', ') ||
+                      (selected.serverKind === 'KEEP_CONFIRMED' ? '기존 확정 계획' : '미작성'),
                   ],
                   ['이번 처리', proposalAction(selected)],
                 ].map(([label, value]) => (
@@ -570,6 +589,43 @@ export const ProposalReview = ({
                   </ul>
                 </AlertBanner>
               )}
+              <section className="proposal-receipt-warehouse" aria-label="생산품 입고 창고">
+                <dl className="proposal-plan-information">
+                  <div>
+                    <dt>생산품 입고 창고</dt>
+                    <dd>
+                      {selected.erpStorage?.erpStorageLocationCode
+                        ? selected.erpStorage.warehouse
+                          ? `${selected.erpStorage.warehouse.name} (${selected.erpStorage.warehouse.code})`
+                          : `${selected.erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
+                        : 'ERP 미지정'}
+                    </dd>
+                  </div>
+                </dl>
+                {selected.erpStorage?.reasonCode ? (
+                  <span role="alert">
+                    {storageFailureLabels[selected.erpStorage.reasonCode] ??
+                      '생산품 입고 창고 확인 필요'}
+                  </span>
+                ) : null}
+                {selected.erpStorage?.locationRole === 'PUTAWAY_STAGING' &&
+                selected.erpStorage.location ? (
+                  <details>
+                    <summary>입고 위치</summary>
+                    {selected.erpStorage.location.name}
+                  </details>
+                ) : null}
+              </section>
+              {selected.serverIssues?.length ? (
+                <details>
+                  <summary>서버 조회 시 점검 내역</summary>
+                  <ul>
+                    {selected.serverIssues.map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
               <Tabs
                 aria-label="제안 상세 보기"
                 value={detail}
@@ -578,7 +634,10 @@ export const ProposalReview = ({
                   { value: 'plan', label: '생산계획', content: null },
                   {
                     value: 'operations',
-                    label: `공정별 작업지시 ${selected.plans.reduce((sum, plan) => sum + plan.operations.length, 0)}건`,
+                    label:
+                      selected.serverKind === 'KEEP_CONFIRMED' && !selected.plans.length
+                        ? '공정별 작업지시'
+                        : `공정별 작업지시 ${selected.plans.reduce((sum, plan) => sum + plan.operations.length, 0)}건`,
                     content: null,
                   },
                   { value: 'resources', label: '4M 배정', content: null },
@@ -586,8 +645,21 @@ export const ProposalReview = ({
               />
               {!selected.plans.length && (
                 <EmptyState
-                  title="생산계획 제안이 없습니다"
+                  title={
+                    selected.serverKind === 'KEEP_CONFIRMED'
+                      ? '기존 확정 계획 유지'
+                      : '생산계획 제안이 없습니다'
+                  }
                   description={selected.issues.join(', ')}
+                  action={
+                    selected.serverKind === 'KEEP_CONFIRMED' ? (
+                      <Link
+                        to={`/production/production-orders/${encodeURIComponent(selected.number)}`}
+                      >
+                        기존 작업계획 보기
+                      </Link>
+                    ) : undefined
+                  }
                 />
               )}
               {selected.plans.map((plan) => (
@@ -797,31 +869,41 @@ export const ProposalReview = ({
                             </span>
                           </h4>
                           <div className="proposal-resource-fields">
-                            {op.required.map((field) => (
-                              <ReferenceField
-                                key={field}
-                                label={resourceLabels[field]}
-                                placeholder={`${resourceLabels[field]} 선택`}
-                                wrapValue
-                                valueLabel={
-                                  op.resources[field]
-                                    ? `${op.resources[field]!.name} (${op.resources[field]!.code})`
-                                    : ''
-                                }
-                                required={op.required.includes(field)}
-                                invalid={op.required.includes(field) && !op.resources[field]}
-                                disabled={pending || plan.source === '기존 확정 계획'}
-                                source={resourceSource(selected, op, field)}
-                                onPick={(value) => pick(plan, op, field, value)}
-                                onClear={() => pick(plan, op, field, null)}
-                              >
-                                {op.required.includes(field) && !op.resources[field] && (
-                                  <span className="field-error">
-                                    {resourceLabels[field]}을 지정하세요
-                                  </span>
-                                )}
-                              </ReferenceField>
-                            ))}
+                            {op.required
+                              .filter(
+                                (field) =>
+                                  field !== 'defaultFgLocationId' ||
+                                  !selected.erpStorage?.erpStorageLocationCode,
+                              )
+                              .map((field) => (
+                                <ReferenceField
+                                  key={field}
+                                  label={
+                                    field === 'defaultFgLocationId'
+                                      ? '입고 위치'
+                                      : resourceLabels[field]
+                                  }
+                                  placeholder={`${resourceLabels[field]} 선택`}
+                                  wrapValue
+                                  valueLabel={
+                                    op.resources[field]
+                                      ? `${op.resources[field]!.name} (${op.resources[field]!.code})`
+                                      : ''
+                                  }
+                                  required={op.required.includes(field)}
+                                  invalid={op.required.includes(field) && !op.resources[field]}
+                                  disabled={pending || plan.source === '기존 확정 계획'}
+                                  source={resourceSource(selected, op, field)}
+                                  onPick={(value) => pick(plan, op, field, value)}
+                                  onClear={() => pick(plan, op, field, null)}
+                                >
+                                  {op.required.includes(field) && !op.resources[field] && (
+                                    <span className="field-error">
+                                      {resourceLabels[field]}을 지정하세요
+                                    </span>
+                                  )}
+                                </ReferenceField>
+                              ))}
                           </div>
                         </section>
                       ))}
@@ -840,7 +922,7 @@ export const ProposalReview = ({
         remaining={`선택 ${checked.length}건${!onConfirm ? ' / 실제 확정 미연결' : ''}`}
       >
         <Button variant="outlined" disabled={pending} onClick={close}>
-          제안 닫기
+          {unavailableReason ? '작업계획 목록으로' : '제안 닫기'}
         </Button>
         <Button
           disabled={!ready || !onConfirm || pending}

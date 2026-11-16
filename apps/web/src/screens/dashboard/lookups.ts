@@ -70,7 +70,10 @@ export const lookupKeys = {
   plants: ['dashboard-lookups', 'plants'] as const,
 };
 
-export const usePlantOptions = (scopes: readonly DataScope[]): PlantLookupResult => {
+export const usePlantOptions = (
+  scopes: readonly DataScope[],
+  nameOnly = false,
+): PlantLookupResult => {
   const { client } = useApiClient();
 
   const query = useQuery({
@@ -86,7 +89,7 @@ export const usePlantOptions = (scopes: readonly DataScope[]): PlantLookupResult
         .filter((item) => inDataScope(item, scopes))
         .map((item) => ({
           value: String(item.plantId),
-          label: `${item.plantCode} · ${item.plantName}`,
+          label: nameOnly ? item.plantName : `${item.plantCode} · ${item.plantName}`,
           isActive: item.isActive,
         })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

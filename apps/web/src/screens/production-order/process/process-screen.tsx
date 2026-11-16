@@ -12,6 +12,7 @@ import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { manualPlanDefaults, recommendedPlanDate } from './manual-plan-defaults';
 import { MultiOrderPlanning } from './multi-order-planning';
 
 import { ActionBar } from '../../../patterns/action-bar';
@@ -37,11 +38,10 @@ import {
 import { useRoutingOperations } from '../../routing/queries';
 import { useProductionOrderCodeNames } from '../code-names';
 import { useItemCodeNames } from '../item-lookups';
-import { useAutoPlanMutation } from '../mutations';
 import { useUomReferenceLookup } from '../reference-lookups';
 import { apiErrorText, invalidateFlow, releaseWorkOrder } from '../release-runner';
 import { ForbiddenNotice, isForbidden } from '../forbidden-notice';
-import { ProcessStateChip, ReasonChips, reasonLabel } from '../worklist-chips';
+import { ProcessStateChip, ReasonChips } from '../worklist-chips';
 import {
   processPath,
   readWorklistFilters,
@@ -367,16 +367,6 @@ export const ProcessWorkspace = ({
     });
   }, [order.productionOrderNo, plansUpdatedAt, queryClient]);
 
-  const autoPlan = useAutoPlanMutation({
-    onSuccess: (result) => {
-      toast.show({
-        variant: result.outcome === 'CONFIRMED' ? 'success' : 'warning',
-        description: `${tp.autoPlanResult[result.outcome]}${result.reasons.length ? `: ${[...new Set(result.reasons.map(reasonLabel))].join(', ')}` : ''}`,
-      });
-      setStep(null);
-    },
-  });
-
   const derivedBase = deriveWorklistState(order);
   /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 생산 라인 없음)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
   const derived =
@@ -636,24 +626,25 @@ export const ProcessWorkspace = ({
               disabled={planBusy || !master.complete}
               failures={planFailures}
               onAdd={() =>
-                editor.add({
-                  planDate: plantToday(),
-                  // 남은 수량 = 주문 − 확정 계획량(서버 값) − 작성중 줄(omf-all-around#250)
-                  plannedQty: String(
-                    Math.max(
-                      0,
-                      order.orderQty -
-                        confirmedQty -
-                        editor.rows
-                          .filter((row) => !row.confirmed)
-                          .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
+                editor.add(
+                  manualPlanDefaults(
+                    order,
+                    editor.rows,
+                    planLines.filter(
+                      (line) =>
+                        lines.data?.items.find((item) => item.productionLineId === line.id)
+                          ?.isActive,
                     ),
+                    { bomId: draftBomId, routingId },
+                    plantToday(),
                   ),
-                  bomId: draftBomId,
-                  routingId,
-                  plannedLineId: editor.rows.at(-1)?.draft.plannedLineId ?? '',
-                })
+                )
               }
+              distributionStartDate={recommendedPlanDate(order.plannedStartDate, plantToday())}
+              distributionLines={planLines.filter(
+                (line) =>
+                  lines.data?.items.find((item) => item.productionLineId === line.id)?.isActive,
+              )}
               distributionDecimalScale={uoms.decimalScaleOf?.(order.uomId)}
               distributionOrderLabel={`${order.productionOrderNo} / ${item === undefined ? '' : named(item.itemName, item.itemCode)}`}
               onDistributionDirtyChange={setDistributionDirty}
@@ -683,6 +674,7 @@ export const ProcessWorkspace = ({
       case 'assign':
         return (
           <AssignStep
+            erpStorage={order}
             itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             actionTargetId={assignActionTargetId}
             workOrders={unreleased.data}
@@ -899,6 +891,14 @@ export const ProcessWorkspace = ({
             </div>
           )}
           <div className="is-key">
+            <dt>생산품 입고 창고</dt>
+            <dd>
+              {order.erpStorageLocationCode
+                ? order.erpStorageWarehouse
+                  ? `${order.erpStorageWarehouse.name} (${order.erpStorageWarehouse.code})`
+                  : `${order.erpStorageLocationCode} · 창고 연결 확인 필요`
+                : '미지정'}
+            </dd>
             <dt>{tp.summary.orderQty}</dt>
             <dd>{`${formatQty(order.orderQty)} ${uomLabelOf(order.uomId)}`}</dd>
           </div>
@@ -923,8 +923,11 @@ export const ProcessWorkspace = ({
         canRerun && step !== 'done' ? (
           <Button
             variant="outlined"
-            loading={autoPlan.isSaving}
-            onClick={() => autoPlan.write(order.productionOrderId)}
+            onClick={() =>
+              void navigate(
+                `/production/production-orders/auto-plan-results?ids=${order.productionOrderId}`,
+              )
+            }
           >
             {tp.rerunAutoPlan}
           </Button>
@@ -981,13 +984,6 @@ export const ProcessWorkspace = ({
         </ActionBar>
       }
     >
-      {autoPlan.error !== null && (
-        <AlertBanner variant="warning">
-          {autoPlan.error.kind === 'conflict'
-            ? tp.autoPlanResult.running
-            : messages.httpError.description}
-        </AlertBanner>
-      )}
       {body}
       <LeaveGuard when={planDirty || distributionDirty || assignDirty || lotDirty} />
       {pendingStep !== null && (

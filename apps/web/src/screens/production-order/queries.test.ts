@@ -41,6 +41,26 @@ const recordingFetch = (route: StubRoute): { fetch: StubFetch; urls: URL[] } => 
 };
 
 describe('toProductionOrderFact', () => {
+  it('ERP 입고 창고 정보는 응답 그대로 보존한다', () => {
+    const input = {
+      ...productionOrder(101),
+      erpStorageLocationCode: 'WH-A',
+      erpStorageWarehouse: { id: 35, code: 'WH-A', name: '입고 창고' },
+    };
+    expect(toProductionOrderFact(input)).toMatchObject({
+      erpStorageLocationCode: 'WH-A',
+      erpStorageWarehouse: input.erpStorageWarehouse,
+    });
+  });
+  it('ERP 계획 시작일을 납기와 구분하여 보존한다', () => {
+    expect(
+      toProductionOrderFact({
+        ...productionOrder(101),
+        plannedStartDate: '2026-11-10',
+        dueDate: '2026-11-20',
+      }),
+    ).toMatchObject({ plannedStartDate: '2026-11-10', dueDate: '2026-11-20' });
+  });
   it('목록과 상세가 공유하는 선택적 계약 필드의 안전한 fact를 만든다', () => {
     expect(toProductionOrderFact(productionOrder(101))).toMatchObject({
       erpOrderNo: null,
@@ -49,6 +69,7 @@ describe('toProductionOrderFact', () => {
       businessUnitId: null,
       plantId: null,
       dueDate: null,
+      plannedStartDate: null,
       remarks: null,
       expandedWorkOrderCount: 2,
       plannedWorkOrderCount: 3,
@@ -123,6 +144,7 @@ describe('useProductionOrderDetail', () => {
       orderQty: 12.5,
       uomId: 8001,
       dueDate: '2026-08-14',
+      plannedStartDate: null,
       remarks: 'Synthetic remarks',
       statusCode: 'RELEASED',
       expandedWorkOrderCount: 4,

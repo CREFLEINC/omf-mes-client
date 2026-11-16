@@ -7,9 +7,26 @@ import type { ProductionOrderFact } from './types';
 
 // 서버 집계 칸은 생성 타입 전달 전까지 읽기 전용으로 보존한다.
 type ProductionOrder = components['schemas']['ProductionOrder'] & {
+  plannedStartDate?: string;
   confirmedPlanQty?: number;
   draftPlanQty?: number;
   remainingQty?: number;
+};
+
+const readErpWarehouse = (order: object): Pick<ProductionOrderFact, 'erpStorageWarehouse'> => {
+  const value = 'erpStorageWarehouse' in order ? order.erpStorageWarehouse : undefined;
+  if (
+    value &&
+    typeof value === 'object' &&
+    'id' in value &&
+    typeof value.id === 'number' &&
+    'code' in value &&
+    typeof value.code === 'string' &&
+    'name' in value &&
+    typeof value.name === 'string'
+  )
+    return { erpStorageWarehouse: { id: value.id, code: value.code, name: value.name } };
+  return {};
 };
 
 export const productionOrderKeys = {
@@ -39,6 +56,11 @@ export const toProductionOrderFact = (order: ProductionOrder): ProductionOrderFa
     : {}),
   uomId: order.uomId,
   dueDate: order.dueDate ?? null,
+  plannedStartDate: order.plannedStartDate ?? null,
+  ...('erpStorageLocationCode' in order && typeof order.erpStorageLocationCode === 'string'
+    ? { erpStorageLocationCode: order.erpStorageLocationCode }
+    : {}),
+  ...readErpWarehouse(order),
   statusCode: order.statusCode,
   remarks: order.remarks ?? null,
   expandedWorkOrderCount: order.expandedWorkOrderCount ?? null,

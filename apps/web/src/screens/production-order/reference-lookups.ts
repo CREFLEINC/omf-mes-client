@@ -91,7 +91,7 @@ export const usePlantReferenceLookup = (): ReferenceLookupResult => {
 
   return toLookupResult(query, (plant) => ({
     value: String(plant.plantId),
-    label: named(plant.plantName, plant.plantCode),
+    label: plant.plantName,
   }));
 };
 

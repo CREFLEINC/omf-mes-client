@@ -12,6 +12,8 @@ export interface DistributionTarget {
   label: string;
   unit: string;
   pending: number;
+  startDate?: string;
+  lineId?: string;
   decimalScale?: number;
   lines: readonly PlanLine[];
 }

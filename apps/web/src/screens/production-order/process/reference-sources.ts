@@ -167,7 +167,7 @@ export const useWorkerSource = (plantId: number | null): ReferenceSource | null 
 };
 
 /**
- * 위치는 창고에 딸린다(C-12 의존 관계). 칸의 창고 유형(완제품은 제품창고, 그 밖은 일반 창고)의 창고를 분류 필터로 두고,
+ * 위치는 창고에 딸린다(C-12 의존 관계). 완제품은 ERP 입고 창고 또는 같은 공장의 적합 창고로 제한하고, 나머지는 칸의 창고 유형을 분류 필터로 두고,
  * 창고를 바꿔 가며 위치를 찾는다. 위치를 고르면 창고도 정해진다.
  *
  * 창고는 W/O 의 공장 창고만 받는다(`plantId` — 서버 선행 P-109). 기본 위치 칸과 같은 캐시를 쓴다.
@@ -175,6 +175,7 @@ export const useWorkerSource = (plantId: number | null): ReferenceSource | null 
 export const useLocationSource = (
   plantId: number | null,
   warehouseTypeCode: string,
+  fg?: { erpCode?: string; warehouseId?: number },
 ): ReferenceSource | null => {
   const { client } = useApiClient();
   const warehouses = useWorkOrderWarehouses(plantId);
@@ -182,14 +183,29 @@ export const useLocationSource = (
     const options = (warehouses.data?.items ?? [])
       .filter(
         (item) =>
-          item.isActive && item.plantId === plantId && item.warehouseTypeCode === warehouseTypeCode,
+          item.isActive &&
+          item.plantId === plantId &&
+          (fg
+            ? item.warehouseTypeCode !== 'MATERIAL' &&
+              !item.isExternal &&
+              !item.isDefect &&
+              (!fg.erpCode ||
+                (item.warehouseId === fg.warehouseId && item.warehouseCode === fg.erpCode))
+            : item.warehouseTypeCode === warehouseTypeCode),
       )
       .map((item) => ({ value: String(item.warehouseId), label: item.warehouseName }));
     const first = options[0];
     if (plantId === null || first === undefined) return null;
     return {
       title: t.location,
-      key: ['reference', 'location', plantId, warehouseTypeCode],
+      key: [
+        'reference',
+        'location',
+        plantId,
+        warehouseTypeCode,
+        fg?.erpCode ?? '',
+        fg?.warehouseId ?? '',
+      ],
       columns: {
         code: t.columns.locationCode,
         name: t.columns.locationName,
@@ -197,6 +213,7 @@ export const useLocationSource = (
       },
       filter: { label: t.columns.warehouse, value: first.value, options },
       search: async (term, page, warehouseId) => {
+        if (!options.some((option) => option.value === warehouseId)) return { items: [], total: 0 };
         const data = await runRequest(() =>
           client.GET('/mdm/locations', {
             params: {
@@ -211,16 +228,17 @@ export const useLocationSource = (
         );
         const group = options.find((option) => option.value === warehouseId)?.label;
         return {
-          items: data.items.map((item) => ({
-            id: item.locationId,
-            code: item.locationCode,
-            /* 별칭이 있으면 별칭(창고·Location 의 별칭 칸과 같다) — 고른 뒤 칸에는 「코드 · 별칭」으로 보인다(#267). */
-            name: locationShownName(item),
-            ...(group === undefined ? {} : { group }),
-          })),
+          items: data.items
+            .filter((item) => item.isActive && item.warehouseId === Number(warehouseId))
+            .map((item) => ({
+              id: item.locationId,
+              code: item.locationCode,
+              name: locationShownName(item),
+              ...(group === undefined ? {} : { group }),
+            })),
           total: data.page.total,
         };
       },
     };
-  }, [client, plantId, warehouseTypeCode, warehouses.data]);
+  }, [client, plantId, warehouseTypeCode, warehouses.data, fg?.erpCode, fg?.warehouseId]);
 };

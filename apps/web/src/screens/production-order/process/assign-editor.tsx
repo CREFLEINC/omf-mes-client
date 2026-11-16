@@ -1,3 +1,6 @@
+import { arrivalLocationNeedsCorrection, useWarehouseArrival } from './arrival-location';
+import { lineLocationDefaults } from './line-location-defaults';
+import type { ProductionOrderFact } from '../types';
 import {
   AlertBanner,
   Button,
@@ -173,6 +176,7 @@ interface EditorSessionProps {
   title: string;
   workOrder: WorkOrderFact;
   plantId: number | null;
+  erpStorage?: Pick<ProductionOrderFact, 'erpStorageLocationCode' | 'erpStorageWarehouse'>;
   planDate: string | null;
   onDirtyChange: (dirty: boolean) => void;
   /** 저장이 끝나고 점검을 다시 받은 뒤. `ready`는 배포 가능 판정(필수 칸과 점검 차단 없음)이다. */
@@ -185,6 +189,7 @@ const EditorSession = ({
   title,
   workOrder,
   plantId,
+  erpStorage,
   planDate,
   onDirtyChange,
   onSaved,
@@ -219,11 +224,32 @@ const EditorSession = ({
   const moldSource = useMoldSource(plantId);
   const workerSource = useWorkerSource(plantId);
   const wipSource = useLocationSource(plantId, LINE_LOCATION_WAREHOUSE_TYPES.defaultWipLocationId);
-  const fgSource = useLocationSource(plantId, LINE_LOCATION_WAREHOUSE_TYPES.defaultFgLocationId);
+  const fgSource = useLocationSource(plantId, '', {
+    erpCode: erpStorage?.erpStorageLocationCode,
+    warehouseId: erpStorage?.erpStorageWarehouse?.id,
+  });
   const scrapSource = useLocationSource(
     plantId,
     LINE_LOCATION_WAREHOUSE_TYPES.defaultScrapLocationId,
   );
+  const arrival = useWarehouseArrival(
+    erpStorage?.erpStorageLocationCode ? erpStorage.erpStorageWarehouse?.id : undefined,
+  );
+  useEffect(() => {
+    const location = arrival.data?.location;
+    if (!location || !erpStorage?.erpStorageLocationCode || baseline.defaultFgLocationId !== '')
+      return;
+    setDraft((current) =>
+      current.defaultFgLocationId === ''
+        ? { ...current, defaultFgLocationId: String(location.locationId) }
+        : current,
+    );
+  }, [
+    arrival.data,
+    erpStorage?.erpStorageLocationCode,
+    baseline.defaultFgLocationId,
+    draft.defaultFgLocationId,
+  ]);
   const dirty = !workOrderDraftEquals(baseline, draft);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
@@ -271,27 +297,30 @@ const EditorSession = ({
       (item) => String(item.productionLineId) === baseline.productionLineId,
     );
     if (line === undefined) return;
-    const filled = Object.fromEntries(
-      LOCATION_FIELDS.map((field) => [field, line[field] == null ? '' : String(line[field])]),
-    ) as Pick<WorkOrderAssignmentDraft, (typeof LOCATION_FIELDS)[number]>;
-    if (LOCATION_FIELDS.every((field) => filled[field] === '')) return;
+    const filled: Partial<WorkOrderAssignmentDraft> = {
+      ...lineLocationDefaults(line),
+      ...(!erpStorage?.erpStorageLocationCode
+        ? {
+            defaultFgLocationId:
+              line.defaultFgLocationId == null ? '' : String(line.defaultFgLocationId),
+          }
+        : {}),
+    };
+    if (Object.values(filled).every((value) => value === '')) return;
     setDraft((current) => ({ ...current, ...filled }));
-  }, [baseline, lines.data, linesLoaded, prefillSettled]);
+  }, [baseline, lines.data, linesLoaded, prefillSettled, erpStorage?.erpStorageLocationCode]);
   const patch = (next: Partial<WorkOrderAssignmentDraft>) => {
     update.reset();
     setDraft((current) => {
       const merged = { ...current, ...next };
-      /* 라인을 바꾸면 기본 위치 셋을 그 라인 기본값으로 바꾼다(기존 4M 규칙). 추천 설비가 라인을 함께 가져오면 설비는 둔다. */
+      /* 완제품 입고 목적지는 라인 변경으로 덮어쓰지 않는다. WIP·스크랩만 라인 기본값을 따른다. */
       if (
         next.productionLineId !== undefined &&
         next.productionLineId !== current.productionLineId
       ) {
         const line = lineOf(next.productionLineId);
-        const text = (id: number | null | undefined) => (id == null ? '' : String(id));
         merged.plannedEquipmentId = next.plannedEquipmentId ?? '';
-        merged.defaultWipLocationId = text(line?.defaultWipLocationId);
-        merged.defaultFgLocationId = text(line?.defaultFgLocationId);
-        merged.defaultScrapLocationId = text(line?.defaultScrapLocationId);
+        Object.assign(merged, lineLocationDefaults(line));
       }
       if (
         next.plannedShiftId !== undefined &&
@@ -484,7 +513,7 @@ const EditorSession = ({
     );
   const locationNames = {
     defaultWipLocationId: t.fold.wip,
-    defaultFgLocationId: t.fold.fg,
+    defaultFgLocationId: '생산품 입고 창고',
     defaultScrapLocationId: t.fold.scrap,
   };
   const locationPairs: FoldPair[] =
@@ -493,7 +522,17 @@ const EditorSession = ({
       : LOCATION_FIELDS.map((field) =>
           draft[field] === ''
             ? { label: locationNames[field], value: t.fold.unset, unset: true }
-            : { label: locationNames[field], value: labelOf(field) },
+            : {
+                label: locationNames[field],
+                value:
+                  field === 'defaultFgLocationId'
+                    ? erpStorage?.erpStorageWarehouse
+                      ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
+                      : (locations.items.find(
+                          (item) => String(item.locationId) === draft.defaultFgLocationId,
+                        )?.warehouseName ?? t.fold.unset)
+                    : labelOf(field),
+              },
         );
   const shiftWindow =
     draft.plannedShiftId === '' || planDate === null
@@ -638,7 +677,43 @@ const EditorSession = ({
           <>
             <h3 className="assign-group-title">{t.groups.location}</h3>
             {reference('defaultWipLocationId', t.fields.defaultWipLocationId, wipSource)}
-            {reference('defaultFgLocationId', t.fields.defaultFgLocationId, fgSource)}
+            <div className="field-cell">
+              <span className="field-label">생산품 입고 창고</span>
+              <span>
+                {erpStorage?.erpStorageLocationCode
+                  ? erpStorage.erpStorageWarehouse
+                    ? `${erpStorage.erpStorageWarehouse.name} (${erpStorage.erpStorageWarehouse.code})`
+                    : `${erpStorage.erpStorageLocationCode} · 창고 연결 확인 필요`
+                  : (locations.items.find(
+                      (item) => String(item.locationId) === draft.defaultFgLocationId,
+                    )?.warehouseName ?? '미지정')}
+              </span>
+              {erpStorage?.erpStorageWarehouse && arrival.isPending ? (
+                <span className="field-note">입고 위치 확인 중</span>
+              ) : null}
+              {erpStorage?.erpStorageWarehouse &&
+              (arrival.isError || (arrival.isSuccess && !arrival.data.location)) ? (
+                <span role="alert">입고 위치 기준정보 확인 필요</span>
+              ) : null}
+              {erpStorage?.erpStorageLocationCode &&
+              arrival.data &&
+              (arrival.data.divided ||
+                (draft.defaultFgLocationId !== '' &&
+                  draft.defaultFgLocationId !== String(arrival.data.location?.locationId))) ? (
+                <details>
+                  <summary>입고 위치</summary>
+                  <span>
+                    {labelOf('defaultFgLocationId') || draft.defaultFgLocationId || '미지정'}
+                  </span>
+                </details>
+              ) : null}
+            </div>
+            {!erpStorage?.erpStorageLocationCode ||
+            (erpStorage.erpStorageWarehouse &&
+              arrival.isSuccess &&
+              arrivalLocationNeedsCorrection(arrival.data.items, draft.defaultFgLocationId))
+              ? reference('defaultFgLocationId', '입고 위치', fgSource)
+              : null}
             {reference('defaultScrapLocationId', t.fields.defaultScrapLocationId, scrapSource)}
             <span className="assign-empty" aria-hidden="true" />
           </>
@@ -703,6 +778,7 @@ export interface AssignEditorProps {
   title: string;
   workOrderId: number;
   plantId: number | null;
+  erpStorage?: Pick<ProductionOrderFact, 'erpStorageLocationCode' | 'erpStorageWarehouse'>;
   planDate: string | null;
   onDirtyChange: (dirty: boolean) => void;
   onSaved: (ready: boolean) => void;
@@ -714,6 +790,7 @@ export const AssignEditor = ({
   title,
   workOrderId,
   plantId,
+  erpStorage,
   planDate,
   onDirtyChange,
   onSaved,
@@ -741,6 +818,7 @@ export const AssignEditor = ({
       key={`${String(workOrderId)}:${String(detail.dataUpdatedAt)}`}
       workOrder={detail.data}
       plantId={plantId}
+      erpStorage={erpStorage}
       planDate={planDate}
       onDirtyChange={onDirtyChange}
       onSaved={onSaved}

@@ -14,15 +14,15 @@ export const AutoPlanHelp = ({ onClose }: { onClose: () => void }) => (
   >
     <div className="erp-wo-distribution-help">
       <p>
-        선택한 ERP W/O를 기준으로 생산계획을 만들고, 생산 라인을 판단할 수 있으면 계획 확정까지
-        시도합니다.
+        선택한 ERP W/O의 생산계획·공정별 작업지시·4M 제안을 조회합니다. 조회만으로 저장하거나
+        확정하지 않습니다.
       </p>
       <section aria-labelledby="auto-plan-help-create">
         <h3 id="auto-plan-help-create">계획이 없을 때, 이렇게 생성합니다</h3>
         <dl className="form-grid erp-wo-auto-plan-help-facts">
           <div className="field-cell">
             <dt className="field-label">계획 수량과 단위</dt>
-            <dd>ERP W/O의 전체 수량과 단위를 그대로 사용합니다.</dd>
+            <dd>ERP W/O 수량에서 기존 확정 계획량을 제외한 수량과 ERP 단위를 사용합니다.</dd>
           </div>
           <div className="field-cell">
             <dt className="field-label">계획일</dt>
@@ -44,8 +44,8 @@ export const AutoPlanHelp = ({ onClose }: { onClose: () => void }) => (
           </div>
         </dl>
         <p className="erp-wo-distribution-help-note">
-          예: ERP W/O가 1,000 EA이고 계획 시작일이 미래이면, 그 날짜에 1,000 EA 계획 1건을 만듭니다.
-          여러 날짜나 생산 라인으로 나누려면 생산계획 편성의 자동 분배를 사용하세요.
+          예: ERP W/O가 1,000 EA이고 계획 시작일이 미래이면, 그 날짜에 1,000 EA 계획 1건을
+          제안합니다. 여러 날짜나 생산 라인으로 나누려면 생산계획 편성의 자동 분배를 사용하세요.
         </p>
       </section>
       <section aria-labelledby="auto-plan-help-data">
@@ -71,7 +71,7 @@ export const AutoPlanHelp = ({ onClose }: { onClose: () => void }) => (
                 <th scope="row">MES에 반영된 ERP BOM</th>
                 <td>
                   해당 품목의 기본 BOM 개정과 구성 자재, 소요량, 기준 수량 및 단위를 확인합니다.
-                  기본 개정을 하나로 결정하지 못하면 신규 계획을 만들지 않습니다.
+                  기본 개정을 하나로 결정하지 못하면 제안 불가 사유를 표시합니다.
                 </td>
               </tr>
               <tr>
@@ -98,16 +98,15 @@ export const AutoPlanHelp = ({ onClose }: { onClose: () => void }) => (
         <ul>
           <li>
             <strong>생산 라인을 판단할 수 있음:</strong> 계획에 지정된 생산 라인이 있거나, 기본 자원
-            매핑으로 배정될 설비에서 소속 생산 라인을 찾을 수 있으면 확정을 시도합니다. 확정 검증도
-            통과해야 계획 확정이 완료됩니다.
+            매핑으로 배정될 설비에서 소속 생산 라인을 찾을 수 있으면 제안에 반영합니다.
           </li>
           <li>
-            <strong>생산 라인을 판단할 수 없음:</strong> BOM과 Routing이 결정되면 신규 계획은
-            미확정으로 생성합니다. 생산계획 편성에서 생산 라인을 보완하고 확정하세요.
+            <strong>생산 라인을 판단할 수 없음:</strong> BOM과 Routing이 결정되면 제안을 표시하고
+            생산 라인 보완이 필요한 항목을 표시합니다.
           </li>
           <li>
-            <strong>BOM이나 Routing을 결정할 수 없음:</strong> 신규 계획을 만들지 않습니다. 결과의
-            확인 필요 사유를 보고 해당 기준정보를 보완하세요.
+            <strong>BOM이나 Routing을 결정할 수 없음:</strong> 계획을 저장하지 않고 제안 불가 사유를
+            표시합니다. 결과의 확인 필요 사유를 보고 해당 기준정보를 보완하세요.
           </li>
         </ul>
       </section>
@@ -119,21 +118,21 @@ export const AutoPlanHelp = ({ onClose }: { onClose: () => void }) => (
             기존 계획을 기준으로 결과를 표시합니다.
           </li>
           <li>
-            <strong>미확정 계획이 있음:</strong> 먼저 생성된 미확정 계획 1건의 생산 라인을 확인해
-            확정을 시도합니다. 라인을 판단할 수 없으면 미확정 상태로 유지합니다.
+            <strong>미확정 계획이 있음:</strong> 저장된 미확정 계획 전부를 검토 대상으로 조회합니다.
           </li>
           <li>
-            <strong>미확정 계획은 없고 확정량이 부족:</strong> 부족한 수량을 자동으로 추가하지
-            않습니다. 생산계획 편성에서 계획 추가로 보완하세요.
+            <strong>미확정 계획은 없고 확정량이 부족:</strong> 부족한 수량으로 신규 계획을
+            제안합니다.
           </li>
         </ul>
       </section>
       <section aria-labelledby="auto-plan-help-next">
         <h3 id="auto-plan-help-next">실행 후 확인할 것</h3>
         <p>
-          결과 화면에서 ERP W/O별 처리 결과와 사유를 확인하세요. 계획 확정은 배포 완료가 아닙니다.
-          4M 배정과 점검을 완료한 후 배포 확인으로 진행합니다. 작업자, 교대, 위치와 시간 등은 4M에서
-          확인하며, 최종 배포는 담당자가 실행합니다.
+          제안 화면에서 ERP W/O별 계획과 공정·4M을 확인하세요. 현재 선택 확정 기능은 연결 준비
+          중입니다. 계획 확정은 배포 완료가 아닙니다. 4M 배정과 점검을 완료한 후 배포 확인으로
+          진행합니다. 작업자, 교대, 위치와 시간 등은 4M에서 확인하며, 최종 배포는 담당자가
+          실행합니다.
         </p>
         <p className="field-note">
           생산능력, 재고와 납기를 비교해 최적의 일정이나 여러 생산 라인을 자동으로 편성하는 기능은
@@ -141,12 +140,10 @@ export const AutoPlanHelp = ({ onClose }: { onClose: () => void }) => (
         </p>
       </section>
       <details className="erp-wo-distribution-help-note">
-        <summary>ERP 수신 시 자동 실행과는 무엇이 다른가요?</summary>
+        <summary>ERP 수신과 제안 조회</summary>
         <p>
-          ERP 수신 시에는 수신 상태와 날짜 조건도 확인합니다. 받은 상태가 아니거나 기준 날짜가 공장
-          현지 오늘보다 과거이면 자동 전개를 건너뜁니다. 기준 날짜는 납기가 있으면 납기, 없으면 ERP
-          계획 시작일입니다. 이 도움말의 생성 기준은 작업계획 목록에서 직접 실행하는 생산계획 자동
-          전개를 설명합니다.
+          ERP 수신과 제안 조회는 계획을 저장·확정하지 않습니다. 제안 검토 후 담당자의 명시적인 확정
+          절차가 필요합니다.
         </p>
       </details>
     </div>
