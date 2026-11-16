@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { ReviewHelp as Help } from './review-help';
 import {
   AlertBanner,
