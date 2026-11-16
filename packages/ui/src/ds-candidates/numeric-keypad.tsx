@@ -43,6 +43,12 @@ export interface NumericKeypadProps {
    */
   allowDecimal?: boolean;
   /**
+   * 소수점을 받지 않을 때도 키 «자리»는 흐린(누를 수 없는) 키로 남긴다. 기본은 꺼짐(그리지 않음).
+   * 키 배치를 단위와 관계없이 같게 두려는 화면만 켠다(생산 작업, 사용자 지시 2026-11-16).
+   * ⛔ 켜도 정수 단위에서 점이 들어가지는 않는다 — 받는 값은 `allowDecimal` 만 정한다.
+   */
+  keepDecimalKey?: boolean;
+  /**
    * 앞자리 0 을 정리하는가. **수를 받는 칸에서만 켠다**(수량·타발수).
    *
    * ⛔ 사번·번호처럼 «글자»를 받는 칸에서는 켜지 않는다 — `0` 으로 시작하는 값을 칠 수 없게
@@ -81,6 +87,7 @@ export const NumericKeypad = ({
   max,
   disabled = false,
   allowDecimal = false,
+  keepDecimalKey = false,
   dropLeadingZero = false,
   decimalLabel,
   backspaceLabel,
@@ -158,13 +165,13 @@ export const NumericKeypad = ({
       >
         {clearLabel}
       </Button>
-      {allowDecimal ? (
+      {allowDecimal || keepDecimalKey ? (
         <Button
           type="button"
           variant="outlined"
           size={keySize}
           className="omf-numeric-keypad__decimal"
-          disabled={disabled || full || value.includes('.')}
+          disabled={!allowDecimal || disabled || full || value.includes('.')}
           aria-label={decimalLabel}
           onClick={() => {
             /* 빈 칸에서 누르면 `.5` 가 아니라 `0.5` 로 시작한다 — 계약에 보내는 값이 수다. */

@@ -61,9 +61,15 @@ export const useCloseTarget = (
 
 const OPEN_LOT_PAGE_SIZE = 100;
 
-/** 마감해도 그대로 남는 진행 중(ACTIVE·미완료) LOT 번호. 실적 없는 대기 슬롯은 폐번되므로 뺀다. */
+/** 마감하지 않은 LOT 을 마감 뒤 운명으로 가른다(P-02-04 개선 명세 ⑧ 「LOT 목록」). */
 export interface CloseOpenLots {
+  /** 마감해도 그대로 남는 진행 중(ACTIVE·미완료) LOT 번호. */
   lotNos: string[];
+  /**
+   * 실적 없는 대기 슬롯(WAITING) LOT 번호 — 마감과 함께 폐번된다. 받은 쪽 안에서만 센다.
+   * ⚠ 건수 문장은 서버의 `preIssuedLots.withoutResultCount` 를 쓴다. 이 목록은 번호를 보이는 데만 쓴다.
+   */
+  voidLotNos: string[];
   /** 받은 쪽 밖에 더 있을 수 있는 미완료 LOT 수. 진행 중인지는 모른다 */
   uncheckedCount: number;
 }
@@ -89,6 +95,9 @@ export const useCloseOpenLots = (
       return {
         lotNos: data.items
           .filter((lot) => lot.lifecycleStatusCode === 'ACTIVE')
+          .map((lot) => lot.lotNo),
+        voidLotNos: data.items
+          .filter((lot) => lot.lifecycleStatusCode === 'WAITING')
           .map((lot) => lot.lotNo),
         uncheckedCount: Math.max(0, data.page.total - data.items.length),
       };

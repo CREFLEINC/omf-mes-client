@@ -3995,83 +3995,10 @@
   gap: var(--space-3);
 }
 
-/*
- * 생산 실적 ↔ PQC 분할(omf-all-around#107) — 본문을 **반씩** 나눈다. 왼쪽은 현재 LOT과 단계 본문을 위아래로
- * 쌓고(`app.css` 의 P-02-04 절) 양쪽이 각자 굴린다. 1024 단말에서 한쪽이 약 500 이라 좌우 2단은 서지 않는다.
- *
- * ⚠ 나누지 않을 때는 이 틀이 아예 없다(`pqc-split.tsx`) — 본문 2단이 `.pop-ui` 바로 아래에 선다.
- */
-.pop-ui > .pop-fixed.production-flow-split {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-3);
-}
-
-.pop-ui .production-flow-split .production-flow-pqc {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--space-3);
-  overflow-y: auto;
-}
-
-/*
- * 「생산 작업」의 두 구획(사용자 지시 2026-10-19 · 예시 배치) — 구획 머리(이름 · 하는 일) 아래에 내용이 서고,
- * 내용만 각자 굴러간다. 검사 off 면 이 머리는 두지 않는다.
- */
-.pop-ui .production-flow-zone {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.pop-ui .production-flow-zone > .production-work-panes {
-  flex: 1 1 auto;
-}
-
-.pop-ui .production-flow-zone > .production-flow-pqc {
-  flex: 0 1 auto;
-}
-
-.pop-ui .production-flow-zone-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  padding-inline: var(--space-1);
-}
-
-.pop-ui .production-flow-zone-head > * {
-  margin: 0;
-}
-
-/*
- * 오른쪽 PQC — 상자 안 상자를 걷는다. 패널 구획은 테두리 없이 간격·구분선으로만 나눈다.
- * 저장·확정 줄은 열 아래에 붙어 굴려도 늘 보인다.
- */
-.pop-ui .production-flow-split .production-flow-pqc {
-  gap: var(--space-2);
-}
-
 .pop-ui .pqc-panel > .pane {
   padding: 0;
   border: 0;
   background: transparent;
-}
-
-.pop-ui .production-flow-pqc .pqc-panel > .pop-action-bar {
-  position: sticky;
-  inset-block-end: calc(-1 * var(--space-3));
-  margin: 0;
-  padding: var(--space-3) 0;
-  border: 0;
-  border-block-start: 1px solid var(--outline-variant);
-  border-radius: 0;
-  /* 굴러 올라오는 칸이 비쳐 보이지 않게 구획 바탕색을 칠한다(1024 실측 — 처분 안내와 겹쳤다). */
-  background: var(--surface-container-low);
 }
 
 .pop-ui .pqc-panel {
@@ -9726,16 +9653,703 @@
   gap: var(--space-3);
 }
 
+/*
+ * 작업지시 마감 창(P-02-04 개선 명세 ⑧). 판정·미달량·초과량은 색으로도 읽히게, 안내는 칸 이름 옆 파란 줄,
+ * 폐번될·그대로 남는 LOT 은 번호를 바로 늘어놓는다(많으면 줄을 바꿔 잇고 창 안에서 스크롤).
+ */
+.pop-figures dd[data-tone='error'] {
+  color: var(--semantic-error-text);
+  font-weight: 700;
+}
+
+.pop-figures dd[data-tone='success'] {
+  color: var(--semantic-success-text);
+  font-weight: 700;
+}
+
+.production-flow-wo-end-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+/*
+ * 오른쪽 제목 자리의 단계 표시(개선 명세 ② 시안) — 번호 원 옆에 단계 이름을 한 줄로 두고 사이를 선으로 잇는다.
+ * W/O 잔량은 같은 줄 오른쪽 끝에 선다.
+ */
+.pop-ui .production-work-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  margin-inline-end: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-work-step-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-title-sm);
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-work-step-item + .production-work-step-item::before {
+  content: '';
+  inline-size: 2.5rem;
+  block-size: 2px;
+  margin-inline-end: var(--space-2);
+  background: var(--outline-variant);
+}
+
+.pop-ui .production-work-step-node {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.625rem;
+  block-size: 1.625rem;
+  border: 2px solid var(--outline);
+  border-radius: 50%;
+  font: var(--type-label-lg);
+}
+
+.pop-ui .production-work-step-item[data-status='current'] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pop-ui .production-work-step-item[data-status='current'] .production-work-step-node,
+.pop-ui .production-work-step-item[data-status='complete'] .production-work-step-node {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-ui .production-work-step-item[data-status='complete'] {
+  color: var(--on-surface);
+}
+
+/* 부품 교체 · 작업지시 마감은 왼쪽 구획 맨 아래에 선다(개선 명세 ② 시안 3·4). */
+.pop-ui .production-work-lot > .production-work-wo {
+  margin-block-start: auto;
+}
+
+/* [불량 추가]는 불량 제목 줄 오른쪽 끝에 선다(개선 명세 ② 시안 6). */
+.pop-ui .production-flow-defects > .production-work-head {
+  justify-content: space-between;
+}
+
+/*
+ * 실적 숫자판 — 구획 맨 아래에 4열로 선다(개선 명세 ② 시안 9). 숫자는 1 2 3 순(사용자 지시 2026-11-16),
+ * 오른쪽 열에 ⌫ · 전체 지움, 마지막 줄에 소수점(소수 단위일 때만) · 0.
+ * ⛔ 공용 부품의 마크업은 바꾸지 않고 자리만 잡는다(재작업 실적 키패드와 같은 방식).
+ */
+.pop-ui .omf-numeric-keypad.production-work-pad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-block-start: auto;
+}
+
+.pop-ui .production-work-pad > button {
+  min-block-size: 3.25rem;
+}
+
+.pop-ui .production-work-pad > button:nth-child(-n + 3) {
+  grid-row: 1;
+}
+
+.pop-ui .production-work-pad > button:nth-child(n + 4):nth-child(-n + 6) {
+  grid-row: 2;
+}
+
+.pop-ui .production-work-pad > button:nth-child(n + 7):nth-child(-n + 9) {
+  grid-row: 3;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__backspace {
+  grid-row: 1;
+  grid-column: 4;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__clear {
+  grid-row: 2;
+  grid-column: 4;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__decimal {
+  grid-row: 4;
+  grid-column: 1;
+}
+
+.pop-ui .production-work-pad > .omf-numeric-keypad__zero {
+  grid-row: 4;
+  grid-column: 2;
+}
+
+/*
+ * 생산 작업 크기(사용자 지시 2026-11-16 「명세 참고해 글자·컴포넌트 크기를 키운다」) — 개선 명세 시안의 1024 화면
+ * 비율을 따른다: 정보 줄은 이름·값을 한 단계 키우고 줄 사이를 벌리며 진행 막대는 값 아래 전체 폭에 둔다.
+ */
+.pop-ui.production-work-screen .production-work-info {
+  row-gap: var(--space-4);
+}
+
+.pop-ui.production-work-screen .production-work-info .pop-row-info-label {
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui.production-work-screen .production-work-info .pop-row-info-value {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.pop-ui.production-work-screen .production-work-remaining {
+  font-size: 1.125rem;
+  color: var(--primary);
+}
+
+/*
+ * 숫자판이 치는 칸 표시 — 안쪽 글자 영역이 아니라 칸 테두리 전체를 강조색으로 바꾼다(개선 명세 ② 5
+ * 「칸이 테두리로 바뀐다」). 글자 영역에만 그리면 칸을 키웠을 때 테두리와 어긋나 두 겹으로 보였다.
+ */
+.pop-ui.production-work-screen .production-flow-qty.is-active input {
+  outline: none;
+}
+
+.pop-ui.production-work-screen .production-flow-qty.is-active :has(> input) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+/* 양품 칸 — 시안처럼 높게, 숫자를 크게. 높이는 입력 틀(입력칸을 품은 상자)에 준다. */
+.pop-ui.production-work-screen .production-flow-qty :has(> input) {
+  block-size: auto;
+  min-block-size: 3.5rem;
+}
+
+.pop-ui.production-work-screen .production-flow-qty input {
+  font-size: 1.625rem;
+  font-weight: 600;
+}
+
+.pop-ui.production-work-screen .production-flow-defects .production-work-subtitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.pop-ui.production-work-screen .production-work-pad > button {
+  min-block-size: 3rem;
+  font-size: 1.25rem;
+  white-space: nowrap;
+}
+
+.pop-ui.production-work-screen .production-work-pad > .omf-numeric-keypad__clear {
+  font-size: 1.0625rem;
+}
+
+/*
+ * [부품 교체] · [작업지시 마감]은 같은 크기로 선다(사용자 지시 2026-11-16). 마감 버튼은 마감 부품이 한 겹
+ * 감싸 내놓아(`.production-flow-wo-close`) 크기 등급이 달랐다 — 둘 다 같은 높이·최소 폭으로 맞춘다.
+ */
+.pop-ui.production-work-screen .production-work-wo > button,
+.pop-ui.production-work-screen .production-work-wo > .production-flow-wo-close > button {
+  block-size: 3rem;
+  min-block-size: 3rem;
+  min-inline-size: 8.5rem;
+  padding-inline: var(--space-5);
+  font-size: 1.0625rem;
+}
+
+/* 하단 주 버튼 — 시안의 [LOT 라벨 출력]처럼 넓고 크게. */
+.pop-ui.production-work-screen .action-bar-actions > button {
+  block-size: 3.25rem;
+  min-block-size: 3.25rem;
+  min-inline-size: 9.5rem;
+  font-size: 1.125rem;
+}
+
+/*
+ * 불량 줄 — 시안(② 7·8)처럼 유형 칸을 넓게, 불량 수량 칸은 좁게 두고 [✕]를 끝에 둔다. 유형 이름은 왼쪽 정렬,
+ * 높이는 양품 칸보다 낮게 한다.
+ */
+.pop-ui.production-work-screen .production-flow-defect-row,
+.pop-ui.production-work-screen .production-flow-defect-head {
+  grid-template-columns: minmax(0, 1fr) 8rem var(--control-height-md);
+}
+
+.pop-ui.production-work-screen .production-flow-defect-row > button:first-child {
+  justify-content: flex-start;
+  min-block-size: 2.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: start;
+}
+
+.pop-ui.production-work-screen .production-flow-defect-row .production-flow-qty :has(> input) {
+  min-block-size: 2.75rem;
+}
+
+.pop-ui.production-work-screen .production-flow-defect-row .production-flow-qty input {
+  font-size: 1.125rem;
+}
+
+/* 라벨을 낸 뒤 왼쪽 「입력한 실적」 — 양품·불량 합계 한 줄, 그 아래 불량 유형별 줄(사용자 지시 2026-11-16). */
+.pop-ui.production-work-screen .production-work-entered {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.pop-ui.production-work-screen .production-work-entered-defects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 마감된 LOT 창(사용자 지시 2026-11-16) — 제목 줄 오른쪽에 「총 N건」, LOT 은 번호 붙은 칸 목록, 바닥 구분선 없음.
+ */
+.pop-ui .production-flow-completed-total {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-work-completed .production-flow-completed-lots {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-work-completed .production-flow-completed-lots > li {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.pop-ui .production-work-completed .production-flow-completed-pages {
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.pop-ui .production-flow-completed-page-buttons {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-flow-completed-page-buttons > button {
+  min-inline-size: 6rem;
+}
+
+/*
+ * 불량 유형 창(사용자 지시 2026-11-16) — 타일 글자는 본문색, 지금 고른 유형은 강조 테두리·바탕에 ✓.
+ * 바닥은 구분선 없이 [대분류로 돌아가기] 왼쪽 · [취소] 오른쪽.
+ */
+.pop-ui .production-flow-defect-picker .production-flow-defect-tile {
+  min-block-size: 3.25rem;
+  color: var(--on-surface);
+  font-weight: 500;
+}
+
+.pop-ui .production-flow-defect-picker .production-flow-defect-tile[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--primary);
+  color: var(--primary);
+}
+
+.pop-ui .production-flow-defect-picker .production-flow-defect-check {
+  margin-inline-end: var(--space-2);
+}
+
+.pop-ui .production-flow-defect-picker footer {
+  border-block-start: none;
+}
+
+.pop-ui .production-flow-defect-picker-footer {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-flow-defect-picker-back {
+  margin-inline-end: auto;
+}
+
+/* [불량 등록] 확인 창 — 유형과 수량을 한 줄씩 보인다(사용자 지시 2026-11-16). */
+.pop-ui .production-flow-defect-confirm-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-flow-defect-confirm-lead {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-flow-defect-confirm-list > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.pop-ui .production-flow-defect-confirm-list > li > strong {
+  font-size: 1.25rem;
+}
+
+.pop-ui .production-flow-defect-confirm .iqc-inspection-action-note {
+  margin-block-start: var(--space-3);
+}
+
+.pop-ui .production-flow-defect-confirm footer {
+  border-block-start: none;
+}
+
+/* 왼쪽 구획의 마감된 LOT 목록(사용자 지시 2026-11-16) — 제목 줄에 「총 N건」, 줄마다 LOT 번호와 마감 일시. */
+.pop-ui .production-work-completed {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+
+.pop-ui .production-work-completed-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pop-ui .production-work-completed .production-flow-completed-lots > li {
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+}
+
+.pop-ui .production-flow-completed-lot-no {
+  min-inline-size: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875rem;
+}
+
+.pop-ui .production-flow-completed-at {
+  flex: none;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 왼쪽 W/O 전체 진행(사용자 지시 2026-11-16 시안) — 이름은 왼쪽, 「양품 / 작업 지시량」·잔량은 오른쪽 끝,
+ * 막대는 아래 한 줄 전체.
+ */
+.pop-ui .production-work-wo-progress {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-work-wo-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-work-wo-progress-label {
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-work-wo-progress-value {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: var(--space-3);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.pop-ui .production-work-wo-progress .production-work-remaining {
+  font-size: 1.0625rem;
+}
+
+/*
+ * ⚠ 클래스 이름에 「close」를 넣지 않는다 — 공용 규칙 `.pop-ui dialog [class*="close"]`(닫기 X 버튼)가 폭을 40px로
+ *   줄여 마감 창의 안내 줄이 글자마다 꺾였다.
+ *
+ * 작업지시 마감 창(사용자 지시 2026-11-16 시안) — 제목 왼쪽·W/O 번호 오른쪽, 숫자 넷은 바탕 깐 한 줄 4칸,
+ * 묶음 제목 옆에 「필수」(빨강) 또는 안내, 잔량 처리는 2열·마감 사유는 3열 넓은 버튼(흰 글자), LOT 은 번호 상자와
+ * 안내 한 줄, 경고는 아이콘 + 한 줄, 바닥 구분선 위에 둥근 [취소]·[마감].
+ */
+/* 제목(h2)이 내용 폭이라 W/O 번호가 제목 옆에 붙었다 — 머리줄 폭 전체를 쓰게 한다. */
+.production-flow-wo-end-dialog h2:has(> .production-flow-wo-end-title) {
+  flex: 1 1 auto;
+  inline-size: 100%;
+}
+
+.production-flow-wo-end-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  inline-size: 100%;
+}
+
+.production-flow-wo-end-no {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-flow-wo-end-dialog .pop-figures,
+.production-flow-wo-end-dialog .pop-figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.pop-ui .production-flow-wo-end-dialog .pop-figures > div,
+.production-flow-wo-end-dialog .pop-figures > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.production-flow-wo-end-dialog .pop-figures dd {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.production-flow-wo-end-dialog .production-flow-wo-end-group,
+.production-flow-wo-end-dialog .production-flow-wo-end-lots {
+  display: grid;
+  gap: var(--space-3);
+  margin-block-start: var(--space-5);
+}
+
+.production-flow-wo-end-dialog .production-flow-wo-end-legend {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.production-flow-wo-end-required {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--semantic-error-text);
+}
+
+.production-flow-wo-end-count {
+  margin-inline-start: auto;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-flow-wo-end-dialog .production-flow-reason-tiles,
+.production-flow-wo-end-dialog .production-flow-reason-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+/* 잔량 처리는 둘이라 2열(시안). */
+.production-flow-wo-end-dialog
+  [aria-labelledby]
+  > .production-flow-reason-tiles:has(> :nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.production-flow-wo-end-dialog .production-flow-reason-tiles > button {
+  min-block-size: 3.5rem;
+  font-weight: 500;
+}
+
+/* 고르지 않은 잔량 처리·마감 사유 버튼은 흰 글자(사용자 지시 2026-11-16). 고른 버튼은 채움 그대로. */
+.production-flow-wo-end-dialog .production-flow-reason-tiles > button[aria-pressed='false'] {
+  color: var(--on-surface);
+}
+
+.production-flow-wo-end-lot-box {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  list-style: none;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.production-flow-wo-end-dialog .iqc-inspection-action-note {
+  justify-self: start;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  font-weight: 400;
+}
+
+/* 제목 옆 안내 라벨은 제목 줄 높이에 맞춘다. */
+.production-flow-wo-end-dialog .production-flow-wo-end-legend {
+  align-items: center;
+}
+
+/* 경고 라벨은 마지막 묶음과 띄운다. */
+.production-flow-wo-end-dialog .iqc-inspection-action-note[data-tone='warning'] {
+  margin-block-start: var(--space-5);
+}
+
+/* [취소]는 흰 글자(시안). */
+.production-flow-wo-end-dialog footer > button:first-child {
+  color: var(--on-surface);
+}
+
+/* 이미 있는 유형을 골랐을 때 그 줄을 강조한다(사용자 지시 2026-11-16). */
+.pop-ui .production-flow-defect-row.is-duplicate > button:first-child {
+  border-color: var(--semantic-info);
+  box-shadow: 0 0 0 1px var(--semantic-info);
+}
+
+/* 방금 마감한 LOT — 흰 테두리와 흰 글자 「마감 완료」 표시(사용자 지시 2026-11-16). */
+.pop-ui .production-work-completed .production-flow-completed-lots > li.is-new {
+  outline: 2px solid var(--on-surface);
+  outline-offset: -2px;
+}
+
+.pop-ui .production-flow-completed-new {
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--on-surface);
+  background: transparent;
+  color: var(--on-surface);
+  font-family: var(--font-body, inherit);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */
+.pop-ui.production-work-screen .pop-context-right > :first-child {
+  max-inline-size: 9.5rem;
+  min-inline-size: 0;
+}
+
+/*
+ * 고를 수 있는 프린터 칩은 «누르는 단추»로 보이게 한다(사용자 지시 2026-11-16 · 개선 명세 ② 11 「프린터 TSC-POP-01 ▾」).
+ * 테두리 있는 알약 모양 + 오른쪽 ▾. 고를 수 없을 때(1대 · 설치본 아님)는 단추가 아니라 칩만 서므로 ▾ 가 없다.
+ */
+.pop-ui.production-work-screen .pop-mlot-printer-button {
+  gap: var(--space-1);
+  padding-block: 2px;
+  padding-inline: 2px var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.pop-ui.production-work-screen .pop-mlot-printer-button::after {
+  content: '▾';
+  flex: none;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--on-surface);
+}
+
+.pop-ui.production-work-screen .pop-mlot-printer-button:not(:disabled):active {
+  background: var(--surface-container-high);
+}
+
+/* 라벨을 내는 중에는 바꾸지 못한다 — ▾ 와 테두리를 흐리게 해 지금은 못 누른다는 것을 보인다. */
+.pop-ui.production-work-screen .pop-mlot-printer-button:disabled {
+  border-color: var(--outline-variant);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pop-ui.production-work-screen .pop-context-right > :first-child * {
+  overflow: hidden;
+  max-inline-size: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 미달 사유 창의 첫 포커스 자리 — 스캔 Enter 가 단추를 누르지 않게 두는 자리라 테두리를 그리지 않는다. */
 .production-flow-reason-body:focus {
   outline: none;
 }
 
-/* 미달 사유 창의 「목표 · 실적」 한 줄 — 사유를 왜 묻는지 숫자로 보인다. */
-.production-flow-reason-body .pop-figures-line {
-  margin: 0 0 var(--space-3);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+/*
+ * 미달 사유 창(사용자 지시 2026-11-16 시안) — 위에 「LOT 수량 10 EA | 생산 실적 1 EA」, 아래 구분선, 사유는
+ * 2열 큰 버튼(흰 글자), 바닥 구분선 없이 [취소] 오른쪽.
+ */
+.production-flow-reason-summary {
+  display: flex;
+  align-items: center;
+  margin: 0 0 var(--space-4);
+  padding-block-end: var(--space-4);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.production-flow-reason-summary > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-inline: var(--space-4);
+}
+
+.production-flow-reason-summary > div:first-child {
+  padding-inline-start: 0;
+}
+
+.production-flow-reason-summary > div + div {
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.production-flow-reason-summary dt {
+  color: var(--on-surface-variant);
+}
+
+.production-flow-reason-summary dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pop-ui .production-flow-reason-dialog .production-flow-reason-tiles,
+.production-flow-reason-dialog .production-flow-reason-tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.production-flow-reason-dialog .production-flow-reason-tiles > button,
+.production-flow-reason-dialog footer > button {
+  min-block-size: 3.5rem;
+  color: var(--on-surface);
+  font-weight: 500;
+}
+
+.production-flow-reason-dialog footer {
+  border-block-start: none;
 }
 
 /*
