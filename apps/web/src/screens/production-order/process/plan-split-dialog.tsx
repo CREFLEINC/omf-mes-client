@@ -261,12 +261,14 @@ export const PlanSplitDialog = ({
           분할 조건을 적용하고 계획일과 단위 소수 자릿수를 확인한 뒤 분할 생산량 합계를 맞추세요.
         </p>
         <dl className="erp-wo-split-facts">
-          {facts.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
+          {facts
+            .filter(([label, value]) => label !== '분할 계획' || !!value)
+            .map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
         </dl>
         <section className="erp-wo-split-section">
           <h3>분할 조건</h3>

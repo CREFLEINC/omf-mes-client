@@ -46,6 +46,7 @@ describe('생산계획 보기와 선택 편집', () => {
       );
     };
     renderWithProviders(<Harness />, { fetch });
+    expect(screen.queryByText(t.newRow(1), { exact: true })).toBeNull();
     const inputName = t.fieldLabel(t.newRow(1), t.columns.plannedQty);
     await user.clear(screen.getByRole('textbox', { name: inputName }));
     await user.type(screen.getByRole('textbox', { name: inputName }), '250');

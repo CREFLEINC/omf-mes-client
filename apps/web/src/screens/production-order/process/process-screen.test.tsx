@@ -587,7 +587,9 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
       within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }),
     ).toHaveTextContent(ORDER_NO);
     await user.click(within(dialog).getByRole('button', { name: '추가' }));
-    expect(screen.getByRole('region', { name: '선택 계획 편집' })).toHaveTextContent('신규 계획');
+    expect(screen.getByRole('region', { name: '선택 계획 편집' })).not.toHaveTextContent(
+      '신규 계획',
+    );
     expect(screen.getByRole('button', { name: '계획 추가' })).toBeDisabled();
     expect(server.writes).toHaveLength(0);
   });

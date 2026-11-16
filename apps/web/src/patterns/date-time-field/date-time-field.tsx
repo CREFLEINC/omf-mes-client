@@ -1,3 +1,4 @@
+import { TimeField } from '../time-field';
 import { DatePicker, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -5,13 +6,14 @@ import { useId } from 'react';
 /**
  * C-12 일시 입력. DS `DatePicker`(yyyy-MM-dd)와 시각 입력(HH:mm)의 조합이다.
  * 값은 `yyyy-MM-ddTHH:mm`(공장 시각) 문자열 하나로 주고받는다. 빈 값은 ''.
- * 시각은 24시간제 글자 칸(HH:mm)이다. 형식 검증은 부르는 쪽 모델이 한다.
+ * 시각은 필요에 따라 시·분 선택 팝업을 쓴다. 값은 공장 현지 시각 HH:mm을 유지한다.
  */
 export interface DateTimeFieldProps {
   label: string;
   value: string;
   /** 칸 높이(C-19). */
   size?: 'sm' | 'md';
+  timePicker?: boolean;
   disabled?: boolean;
   invalid?: boolean;
   'aria-describedby'?: string;
@@ -27,6 +29,7 @@ export const DateTimeField = ({
   label,
   value,
   size = 'md',
+  timePicker = false,
   disabled = false,
   invalid = false,
   'aria-describedby': describedBy,
@@ -52,19 +55,40 @@ export const DateTimeField = ({
           aria-describedby={describedBy}
           onChange={(next) => join(next, time)}
         />
-        {/* 시각은 24시간제 HH:mm 글자 칸이다. 브라우저 시각 입력은 언어 설정에 따라 「오전/AM」이 섞인다(C-12, C-13). */}
-        <TextField
-          containerClassName="date-time-field-time"
-          size={size}
-          inputMode="numeric"
-          maxLength={5}
-          placeholder={messages.screenPatterns.dateTimeField.timePlaceholder}
-          aria-label={messages.screenPatterns.dateTimeField.time(label)}
-          value={time}
-          disabled={disabled}
-          aria-invalid={invalid || undefined}
-          onChange={(event) => join(date, event.target.value)}
-        />
+
+        {timePicker ? (
+          <div className="date-time-field-time date-time-field-picker">
+            <TimeField
+              labels={{
+                field: messages.screenPatterns.dateTimeField.time(label),
+                hourList: messages.screenPatterns.dateTimeField.hour(label),
+                minuteList: messages.screenPatterns.dateTimeField.minute(label),
+                hourHead: messages.screenPatterns.dateTimeField.hourLabel,
+                minuteHead: messages.screenPatterns.dateTimeField.minuteLabel,
+                placeholder: messages.screenPatterns.dateTimeField.timePlaceholder,
+              }}
+              hour={time.split(':')[0] ?? ''}
+              minute={time.split(':')[1] ?? ''}
+              onChange={(hour, minute) => join(date, `${hour}:${minute}`)}
+              disabled={disabled}
+              invalid={invalid}
+              describedBy={describedBy}
+            />
+          </div>
+        ) : (
+          <TextField
+            containerClassName="date-time-field-time"
+            size={size}
+            inputMode="numeric"
+            maxLength={5}
+            placeholder={messages.screenPatterns.dateTimeField.timePlaceholder}
+            aria-label={messages.screenPatterns.dateTimeField.time(label)}
+            value={time}
+            disabled={disabled}
+            aria-invalid={invalid || undefined}
+            onChange={(event) => join(date, event.target.value)}
+          />
+        )}
       </div>
     </div>
   );

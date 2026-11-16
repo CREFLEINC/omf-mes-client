@@ -37040,3 +37040,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-distribution-dialog .erp-wo-common-conditions > h3 { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
 .erp-wo-distribution-dialog .erp-wo-common-conditions > h3 .field-note { display:inline; margin:0; }
+
+.date-time-field-picker { flex-basis:7.5rem; }
+.date-time-field-picker .time-picker-trigger { min-height:40px; border-radius:var(--radius-sm); font:var(--type-body-sm); }
+.erp-wo-assign-editor .date-time-field-controls:has(.date-time-field-picker) { grid-template-columns:minmax(0,1fr) 7.5rem; }
+@container erp-wo-assign (max-width:24rem) { .erp-wo-assign-editor .date-time-field-controls:has(.date-time-field-picker) { grid-template-columns:minmax(0,1fr); } }
+
+.date-time-field-picker .time-picker-popup { left: auto; right: 0; }
