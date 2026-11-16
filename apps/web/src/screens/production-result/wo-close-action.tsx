@@ -371,8 +371,13 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 </div>
                 <div>
                   <dt>{t.fields.judgment}</dt>
-                  {/* 판정은 기본 글자색, 미달량·초과량만 색으로(사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다. */}
-                  <dd>{judgment === null ? '—' : t.judgments[judgment]}</dd>
+                  {/*
+                   * 정상은 초록(개선 명세 ⑧-2). 미달·초과는 기본 글자색이고 미달량·초과량만 색으로 보인다
+                   * (사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다.
+                   */}
+                  <dd data-tone={judgment === 'NORMAL' ? 'success' : undefined}>
+                    {judgment === null ? '—' : t.judgments[judgment]}
+                  </dd>
                 </div>
                 {variance !== undefined && variance !== 0 && (
                   <div>

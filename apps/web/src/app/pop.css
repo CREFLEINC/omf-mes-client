@@ -9674,36 +9674,6 @@
   gap: var(--space-2) var(--space-3);
 }
 
-.production-flow-wo-end-lots {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--space-2) var(--space-4);
-  align-items: center;
-  margin: 0;
-}
-
-.production-flow-wo-end-lots > div {
-  display: contents;
-}
-
-.production-flow-wo-end-lots dt {
-  color: var(--on-surface-muted);
-}
-
-.production-flow-wo-end-lots dd {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.production-flow-wo-end-lot {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-}
-
 /*
  * 오른쪽 제목 자리의 단계 표시(개선 명세 ② 시안) — 번호 원 옆에 단계 이름을 한 줄로 두고 사이를 선으로 잇는다.
  * W/O 잔량은 같은 줄 오른쪽 끝에 선다.
@@ -10142,6 +10112,12 @@
  * 묶음 제목 옆에 「필수」(빨강) 또는 안내, 잔량 처리는 2열·마감 사유는 3열 넓은 버튼(흰 글자), LOT 은 번호 상자와
  * 안내 한 줄, 경고는 아이콘 + 한 줄, 바닥 구분선 위에 둥근 [취소]·[마감].
  */
+/* 제목(h2)이 내용 폭이라 W/O 번호가 제목 옆에 붙었다 — 머리줄 폭 전체를 쓰게 한다. */
+.production-flow-wo-end-dialog h2:has(> .production-flow-wo-end-title) {
+  flex: 1 1 auto;
+  inline-size: 100%;
+}
+
 .production-flow-wo-end-title {
   display: flex;
   align-items: baseline;
