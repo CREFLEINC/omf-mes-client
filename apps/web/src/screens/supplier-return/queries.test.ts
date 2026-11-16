@@ -207,7 +207,7 @@ describe('useOnHandBalances', () => {
     expect(Object.fromEntries(urls[0]?.searchParams ?? [])).toEqual({
       warehouseId: '9701',
       itemId: '9301',
-      groupBy: 'LOT',
+      groupBy: 'LOCATION',
       includeZero: 'true',
       size: String(BALANCE_PAGE_SIZE),
     });
@@ -242,6 +242,7 @@ describe('useOnHandBalances', () => {
         .filter((balance) => balance.itemId === 9301)
         .map((balance) => ({
           lotId: balance.lotId,
+          locationId: balance.locationId,
           onHandQty: balance.onHandQty,
           uomId: balance.uomId,
         })),

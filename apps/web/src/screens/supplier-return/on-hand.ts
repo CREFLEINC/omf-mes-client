@@ -140,3 +140,35 @@ export const describeOnHand = (onHand: OnHand, uomName: string): string => {
       return t.values.onHandUnknown;
   }
 };
+
+/** LOT 이 놓인 위치 하나와 그 자리의 보유 수량. */
+export interface SourceLocation {
+  locationId: number;
+  qty: number;
+}
+
+/**
+ * 그 줄의 LOT 이 **지금 놓인 위치들** — 보유가 0 보다 큰 자리만, 많은 순서로(omf-all-around#282).
+ *
+ * 반품의 출발 위치는 입고 때 위치(적치 대기)가 아니라 이 목록에서 정한다. 적치가 끝나면 재고는
+ * 보관 위치로 옮겨져 있어, 입고 위치에서 빼려 하면 「보유 수량보다 많이 낼 수 없습니다.」로 막힌다.
+ *
+ * 확인하지 못했으면(불러오는 중 · 실패 · 잘림 · 단위 다름) 빈 목록이다 — 그때는 예전처럼 입고 위치로 낸다.
+ */
+export const toSourceLocations = (
+  source: BalanceSource,
+  line: ReceiptLineView,
+): SourceLocation[] => {
+  if (toOnHand(source, line).kind !== 'known') return [];
+  const item = source.items.find((candidate) => candidate.itemId === line.itemId);
+  const byLocation = new Map<number, number>();
+  for (const entry of item?.entries ?? []) {
+    if (entry.lotId !== line.lotId || entry.locationId === null) continue;
+    byLocation.set(entry.locationId, (byLocation.get(entry.locationId) ?? 0) + entry.onHandQty);
+  }
+
+  return [...byLocation]
+    .map(([locationId, qty]) => ({ locationId, qty }))
+    .filter((location) => location.qty > 0)
+    .sort((left, right) => right.qty - left.qty || left.locationId - right.locationId);
+};

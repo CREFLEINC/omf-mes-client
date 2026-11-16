@@ -125,10 +125,11 @@ describe('toReceiptLineView', () => {
  * 되돌려 보내는 이 화면의 주 용도가 막힌다.
  */
 const balanceResponse: BalanceResponse = {
-  groupBy: 'LOT',
+  groupBy: 'LOCATION',
   warehouseId: 9701,
   itemId: 9301,
   lotId: 9601,
+  locationId: 9801,
   ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
   onHandQty: 80,
   reservedQty: 60,
@@ -139,9 +140,10 @@ const balanceResponse: BalanceResponse = {
 };
 
 describe('toBalanceView', () => {
-  it('보유 수량·자재 LOT·단위 셋만 옮긴다', () => {
+  it('보유 수량·자재 LOT·위치·단위만 옮긴다', () => {
     expect(toBalanceView(balanceResponse)).toEqual({
       lotId: 9601,
+      locationId: 9801,
       onHandQty: 80,
       uomId: 9501,
     });

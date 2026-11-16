@@ -20,6 +20,7 @@ const itemBalance = (overrides: Partial<ItemBalance> = {}): ItemBalance => ({
 
 const entry = (overrides: Partial<BalanceView> = {}): BalanceView => ({
   lotId: 9601,
+  locationId: 9801,
   onHandQty: 80,
   uomId: 9501,
   ...overrides,
