@@ -48,7 +48,7 @@ export const lotKeys = {
   scanned: (code: string | null) => ['scanned-lot', code] as const,
 };
 
-const findLot = async (client: Client, code: string): Promise<ScannedLot> => {
+export const findLot = async (client: Client, code: string): Promise<ScannedLot> => {
   /*
    * 정확 일치로 묻는다. 부분 검색은 LOT 번호와 외부 식별자를 함께 훑어 여러 줄이 오고,
    * 그러면 찾는 줄이 첫 페이지 밖으로 밀릴 수 있다. 밀린 것은 없는 것과 구별되지 않는다.

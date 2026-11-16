@@ -64,6 +64,23 @@ export const putaway: Translated<typeof ko.putaway> = {
     mismatch: 'Đây không phải LOT của lệnh này',
     rescan: 'Quét lại LOT',
   },
+  lotScan: {
+    label: 'Quét LOT vật tư',
+    prompt: 'Quét nhãn LOT vật tư để mở lệnh của LOT đó',
+    manual: 'Nhập tay',
+    manualSubmit: 'Dùng LOT đã nhập',
+    finding: 'Đang tìm lệnh cất hàng của LOT',
+    findFailed: 'Không xác nhận được lệnh cất hàng của LOT. Hãy kiểm tra kết nối.',
+    notLot: 'Không phải nhãn LOT hoặc LOT chưa được đăng ký',
+    none: 'LOT này không có lệnh cất hàng',
+    noneHint: 'Chưa nhập kho, đã cất rồi, hoặc là LOT của nhà máy khác',
+    many: (count: string) => `LOT này có ${count} lệnh cất hàng — hãy chọn một`,
+    showAll: 'Xem tất cả lệnh',
+    fromList: 'LOT đã quét từ danh sách',
+    legend: 'LOT vật tư',
+    auto: 'Quét đúng vị trí là ghi nhận ngay',
+    autoAnywhere: 'Ghi nhận ngay vào vị trí đã quét. Hãy kiểm tra chỗ cất trước khi quét',
+  },
   verdict: {
     /** 판정(보조 정보) — 제목의 위치 아래에 선다. */
     matched: 'Đây là vị trí bảo quản của mặt hàng này',
@@ -72,8 +89,9 @@ export const putaway: Translated<typeof ko.putaway> = {
     temporaryMove: 'Chuyển sang xếp tạm',
     notAllowed: (allowed: string) => `Không phải vị trí bảo quản của mặt hàng này (${allowed})`,
     anywhere: 'Mặt hàng chưa định vị trí bảo quản. Có thể cất ở bất kỳ đâu trong kho này',
+    notRecorded: 'Chưa ghi nhận',
   },
-  record1: 'Cất hàng theo lệnh này',
+  record1: 'Xong cất hàng',
   locked: {
     location: 'Quét nhãn vị trí để tiếp tục',
     lot: 'Quét nhãn LOT vật tư để tiếp tục',
@@ -84,8 +102,6 @@ export const putaway: Translated<typeof ko.putaway> = {
     movedPartial: (qty: string) =>
       `Chỉ chuyển ${qty} còn lại ở khu chờ cất (phần còn lại đã xuất trước)`,
     movedNone: 'Không còn tồn để chuyển nên đã đóng chỉ thị',
-    submit: 'Xong cất hàng',
-    locked: 'Cất ít nhất một lệnh thì mới hoàn tất được',
   },
   sent: {
     title: 'Đã ghi nhận cất hàng',
