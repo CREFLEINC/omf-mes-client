@@ -1,6 +1,6 @@
 import { useProductionPlanDetail } from '../../production-plan/queries';
 import { useRoutingOperations } from '../../routing/queries';
-import { arrivalLocationNeedsCorrection, useWarehouseArrival } from './arrival-location';
+import { useWarehouseArrival } from './arrival-location';
 import { lineLocationDefaults } from './line-location-defaults';
 import type { ProductionOrderFact } from '../types';
 import { AlertBanner, Button, Chip, SkeletonText, Tooltip, useToast } from '@crefle/web-ui';
@@ -676,25 +676,8 @@ const EditorSession = ({
               (arrival.isError || (arrival.isSuccess && !arrival.data.location)) ? (
                 <span role="alert">입고 위치 기준정보 확인 필요</span>
               ) : null}
-              {erpStorage?.erpStorageLocationCode &&
-              arrival.data &&
-              (arrival.data.divided ||
-                (draft.defaultFgLocationId !== '' &&
-                  draft.defaultFgLocationId !== String(arrival.data.location?.locationId))) ? (
-                <details>
-                  <summary>입고 위치</summary>
-                  <span>
-                    {labelOf('defaultFgLocationId') || draft.defaultFgLocationId || '미지정'}
-                  </span>
-                </details>
-              ) : null}
             </div>
-            {!erpStorage?.erpStorageLocationCode ||
-            (erpStorage.erpStorageWarehouse &&
-              arrival.isSuccess &&
-              arrivalLocationNeedsCorrection(arrival.data.items, draft.defaultFgLocationId))
-              ? reference('defaultFgLocationId', '입고 위치', fgSource)
-              : null}
+            {reference('defaultFgLocationId', '입고 위치', fgSource)}
             {reference('defaultScrapLocationId', t.fields.defaultScrapLocationId, scrapSource)}
             <span className="assign-empty" aria-hidden="true" />
           </>
