@@ -71,6 +71,7 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
   if (proposedQuantity(row) > row.orderQty - row.confirmedQty)
     errors.push('제안 수량이 미확정 잔량을 초과합니다');
   editable.forEach((plan) => {
+    if (plan.recalculationRequired) errors.push('공정 재검증 필요');
     if (!plan.bom) errors.push('ERP 기본 BOM을 확인하세요');
     if (!plan.routing) errors.push('Routing을 지정하세요');
     if (
