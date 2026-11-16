@@ -2181,23 +2181,25 @@ describe('ProductionFlowScreen 불량', () => {
     expect(body).not.toHaveProperty('lotAllocations');
   });
 
-  it('같은 불량 유형을 두 줄에 두면 그 줄을 짚고 저장을 막는다', async () => {
+  it('이미 있는 불량 유형을 고르면 줄을 만들지 않고 안내 라벨만 띄운다', async () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
     await openDefectStep();
 
-    for (const _ of [1, 2]) {
-      await user.click(addDefectButton());
-      await pickDefect(user, '긁힘');
-      await user.click(screen.getByRole('button', { name: '1' }));
-    }
+    await user.click(addDefectButton());
+    await pickDefect(user, '긁힘');
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
 
-    /* 줄의 문제는 목록 아래 한 줄이 줄 이름과 함께 말하고, 그 줄의 수량 칸이 그 문장을 가리킨다. */
-    const issue = t.flow.defects.rowIssue(t.flow.defects.row(2), t.flow.defects.duplicate);
-    expect(within(defectSection()).getByText(issue)).toBeInTheDocument();
-    const second = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(2) });
-    expect(within(second).getByLabelText(t.flow.defects.qty)).toHaveAccessibleDescription(issue);
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    /* 사용자 지시 2026-11-16 — 같은 유형의 두 번째 줄은 생기지 않고 안내만 선다. 넣은 줄은 그대로다. */
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
+    /* 그 유형이 있는 줄을 강조한다. */
+    expect(
+      within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) }),
+    ).toHaveClass('is-duplicate');
+    expect(within(defectSection()).getByRole('status')).toHaveTextContent(t.flow.defects.duplicate);
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled();
   });
 
   it('연결이 끊겨도 불량만 저장은 큐에 넣는 즉시 끝나고 다음 입력을 받는다', async () => {

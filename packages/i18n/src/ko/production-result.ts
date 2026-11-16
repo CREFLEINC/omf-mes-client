@@ -75,6 +75,8 @@ export const productionResult = {
     currentLot: {
       current: '현재 LOT',
       completed: '마감된 LOT',
+      /** 이 화면에서 방금 마감한 LOT 표시(사용자 지시 2026-11-16). */
+      justCompleted: '방금 마감',
       completedTotal: (count: number): string => `총 ${String(count)}건`,
       completedEmpty: '마감된 LOT이 없습니다.',
       pageNav: '마감된 LOT 페이지 이동',

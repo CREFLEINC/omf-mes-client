@@ -10264,6 +10264,30 @@
   color: var(--on-surface);
 }
 
+/* 이미 있는 유형을 골랐을 때 그 줄을 강조한다(사용자 지시 2026-11-16). */
+.pop-ui .production-flow-defect-row.is-duplicate > button:first-child {
+  border-color: var(--semantic-warning);
+  box-shadow: 0 0 0 1px var(--semantic-warning);
+}
+
+/* 방금 마감한 LOT — 테두리 강조와 「방금 마감」 표시(사용자 지시 2026-11-16). */
+.pop-ui .production-work-completed .production-flow-completed-lots > li.is-new {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.pop-ui .production-flow-completed-new {
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: var(--font-body, inherit);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */
 .pop-ui.production-work-screen .pop-context-right > :first-child {
   max-inline-size: 9.5rem;

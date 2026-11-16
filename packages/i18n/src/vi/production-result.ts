@@ -54,6 +54,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     currentLot: {
       current: 'LOT hiện tại',
       completed: 'LOT đã đóng',
+      /** 이 화면에서 방금 마감한 LOT 표시(사용자 지시 2026-11-16). */
+      justCompleted: 'Vừa đóng',
       completedTotal: (count: number): string => `Tổng ${String(count)}`,
       completedEmpty: 'Không có LOT đã đóng.',
       pageNav: 'Chuyển trang LOT đã đóng',

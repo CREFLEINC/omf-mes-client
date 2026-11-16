@@ -295,6 +295,11 @@ export const ProductionFlowScreen = () => {
   const defectIssueId = useId();
   /** 불량만 적은 저장의 결과 — 큐에 넣는 것이 곧 성공이라 넣자마자 알린다 */
   const [defectNotice, setDefectNotice] = useState<'saved' | 'queued' | null>(null);
+  /** 이미 있는 유형을 골랐다 — 줄을 만들거나 바꾸지 않고 안내 라벨만 띄운다(사용자 지시 2026-11-16). */
+  /** 그 유형이 이미 있는 줄 — 강조한다. 없으면 null. */
+  const [duplicateRowKey, setDuplicateRowKey] = useState<string | null>(null);
+  /** 이 화면에서 방금 마감한 LOT — 마감된 LOT 목록에서 강조한다(사용자 지시 2026-11-16). */
+  const [justCompletedLotId, setJustCompletedLotId] = useState<number | null>(null);
   const nextDefectKey = useRef(1);
   const noProcessId = useId();
   /** 라벨로 이어지는 저장에 실린 불량 줄 — 그 항목이 적용될 때 그 줄만 비운다(멱등 키 → 줄 키) */
@@ -519,8 +524,9 @@ export const ProductionFlowScreen = () => {
   const complete = useLotComplete({
     lotId: currentLot.data?.lotId ?? null,
     workerNo: entry.workerNo ?? '',
-    onSuccess: () => {
+    onSuccess: (completedLot) => {
       setOutputPhase('completed');
+      setJustCompletedLotId(completedLot.lotId);
       /* 방금 마감한 LOT 이 맨 위에 서게 첫 쪽으로 돌아가 다시 읽는다. */
       setCompletedPage(1);
       void completedLots.refetch();
@@ -1022,6 +1028,14 @@ export const ProductionFlowScreen = () => {
   };
 
   const pickDefectCode = (defectCodeId: number): void => {
+    const taken = defectRows.find(
+      (row) => row.key !== pickingRowKey && row.defectCodeId === defectCodeId,
+    );
+    setDuplicateRowKey(taken?.key ?? null);
+    if (taken !== undefined) {
+      setPickingRowKey(null);
+      return;
+    }
     if (pickingRowKey === NEW_DEFECT_ROW) {
       const key = `defect-${String(nextDefectKey.current)}`;
       nextDefectKey.current += 1;
@@ -1039,6 +1053,7 @@ export const ProductionFlowScreen = () => {
   };
 
   const removeDefectRow = (key: string): void => {
+    setDuplicateRowKey(null);
     setDefectRows((rows) => rows.filter((row) => row.key !== key));
     if (activeQty === key) setActiveQty('good');
   };
@@ -1678,7 +1693,15 @@ export const ProductionFlowScreen = () => {
               const rowName = t.flow.defects.row(index + 1);
               const issue = defectIssueOf(row.key);
               return (
-                <li key={row.key} className="production-flow-defect-row" aria-label={rowName}>
+                <li
+                  key={row.key}
+                  className={
+                    row.key === duplicateRowKey
+                      ? 'production-flow-defect-row is-duplicate'
+                      : 'production-flow-defect-row'
+                  }
+                  aria-label={rowName}
+                >
                   <Button
                     type="button"
                     variant="outlined"
@@ -1738,6 +1761,12 @@ export const ProductionFlowScreen = () => {
             </p>
           )}
         </>
+      )}
+      {duplicateRowKey !== null && (
+        <p className="iqc-inspection-action-note" data-tone="info" role="status">
+          <Icon name="info" size={14} aria-hidden />
+          {t.flow.defects.duplicate}
+        </p>
       )}
       {/* 양품이 없으면 라벨로 이어지지 않는다. 불량만 등록하는 버튼이 선다(테두리, C-3 채움은 하단 바 하나). */}
       {/* 「불량을 등록했습니다」는 정보 아이콘 + 파란 바탕 한 줄(사용자 지시 2026-11-16). */}
@@ -2006,8 +2035,18 @@ export const ProductionFlowScreen = () => {
                 {[...completedLots.data.items]
                   .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))
                   .map((completedLot) => (
-                    <li key={completedLot.lotId}>
-                      <span className="production-flow-completed-lot-no">{completedLot.lotNo}</span>
+                    <li
+                      key={completedLot.lotId}
+                      className={completedLot.lotId === justCompletedLotId ? 'is-new' : undefined}
+                    >
+                      <span className="production-flow-completed-lot-no">
+                        {completedLot.lotNo}
+                        {completedLot.lotId === justCompletedLotId && (
+                          <span className="production-flow-completed-new">
+                            {t.flow.currentLot.justCompleted}
+                          </span>
+                        )}
+                      </span>
                       <span className="production-flow-completed-at">
                         {formatPlantDateTime(completedLot.completedAt) ?? ''}
                       </span>
