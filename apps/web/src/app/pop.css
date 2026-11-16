@@ -9895,8 +9895,16 @@
   font-size: 1.0625rem;
 }
 
-.pop-ui.production-work-screen .production-work-wo > button {
+/*
+ * [부품 교체] · [작업지시 마감]은 같은 크기로 선다(사용자 지시 2026-11-16). 마감 버튼은 마감 부품이 한 겹
+ * 감싸 내놓아(`.production-flow-wo-close`) 크기 등급이 달랐다 — 둘 다 같은 높이·최소 폭으로 맞춘다.
+ */
+.pop-ui.production-work-screen .production-work-wo > button,
+.pop-ui.production-work-screen .production-work-wo > .production-flow-wo-close > button {
+  block-size: 3rem;
   min-block-size: 3rem;
+  min-inline-size: 8.5rem;
+  padding-inline: var(--space-5);
   font-size: 1.0625rem;
 }
 
