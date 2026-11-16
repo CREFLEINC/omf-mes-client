@@ -90,7 +90,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       keypadFor: (target: string): string => `Bàn phím số lượng lỗi ${target}`,
       pickerTitle: 'Loại lỗi',
       pickerTitleFor: (major: string): string => `Loại lỗi ${major}`,
-      back: '← Nhóm lớn',
+      back: '← Quay lại nhóm lớn',
       cancel: 'Hủy',
       loading: 'Đang tải loại lỗi.',
       loadFailed: 'Không tải được loại lỗi.',

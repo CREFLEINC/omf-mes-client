@@ -2331,6 +2331,7 @@ export const ProductionFlowScreen = () => {
       <DefectPicker
         open={pickingRowKey !== null}
         majors={defectMajors}
+        selectedId={defectRows.find((row) => row.key === pickingRowKey)?.defectCodeId ?? null}
         isLoading={defectCodes.isLoading}
         isError={defectCodes.isError}
         onPick={pickDefectCode}

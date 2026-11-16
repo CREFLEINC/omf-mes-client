@@ -116,7 +116,7 @@ export const productionResult = {
       pickerTitle: '불량 유형',
       /** 대분류를 고른 뒤의 창 제목(가운뎃점으로 잇지 않는다, C-13). */
       pickerTitleFor: (major: string): string => `${major} 불량 유형`,
-      back: '← 대분류',
+      back: '← 대분류로 돌아가기',
       cancel: '취소',
       loading: '불량 유형을 불러오는 중입니다.',
       loadFailed: '불량 유형을 불러오지 못했습니다.',
