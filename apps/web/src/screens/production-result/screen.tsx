@@ -84,6 +84,7 @@ import {
   useSerials,
   useTagIssueSummary,
 } from './flow-queries';
+import { forgetSentDefects, rememberSentDefects, storedSentDefects } from './sent-defects';
 import {
   buildLotComplete,
   buildLotIssue,
@@ -323,7 +324,8 @@ export const ProductionFlowScreen = () => {
   const [inputPage, setInputPage] = useState<'good' | 'defect'>('good');
   /**
    * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
-   * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 화면을 다시 열면 모른다(`null`).
+   * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 단말 저장소에도 남겨 화면을 다시
+   * 열어도 보인다(`sent-defects`). 기억이 없으면 모른다(`null`).
    */
   const [sentDefects, setSentDefects] = useState<{ label: string; qty: string }[] | null>(null);
   const [scanValue, setScanValue] = useState('');
@@ -533,6 +535,7 @@ export const ProductionFlowScreen = () => {
     workerNo: entry.workerNo ?? '',
     onSuccess: (completedLot) => {
       setOutputPhase('completed');
+      forgetSentDefects(completedLot.lotId);
       setJustCompletedLotId(completedLot.lotId);
       /* 방금 마감한 LOT 이 맨 위에 서게 첫 쪽으로 돌아가 다시 읽는다. */
       setCompletedPage(1);
@@ -676,6 +679,7 @@ export const ProductionFlowScreen = () => {
       hasLot: currentLot.data !== null,
       gate: gates.complete,
       hasSession: openSession.session !== null,
+      isSessionAbsent: openSession.isAbsent,
       isSessionPending: openSession.isPending,
       hasWorkerNo: entry.workerNo !== null,
     });
@@ -691,6 +695,14 @@ export const ProductionFlowScreen = () => {
 
     if (verdict === 'denied') {
       setSessionPhase('denied');
+      return;
+    }
+    /*
+     * 닫을 세션이 없다고 확인됐다 — 할 일이 없으므로 말하지 않는다(사용자 지시 2026-11-16). 「이미 닫힘」과 같은
+     * 상태로 둔다 — 둘 다 작업자가 할 일이 없고 배너도 없다.
+     */
+    if (verdict === 'none') {
+      setSessionPhase('alreadyEnded');
       return;
     }
     /* 닫아야 하는데 닫을 것을 모른다 — 「못 닫았다」로 말하고 다시 시도할 길을 남긴다. */
@@ -856,8 +868,14 @@ export const ProductionFlowScreen = () => {
   }, [complete.error]);
 
   useEffect(() => {
-    if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
-  }, [outbox.rejection, outputPhase]);
+    if (outbox.rejection === null || outputPhase !== 'queued') return;
+    setOutputPhase('idle');
+    /* 거부된 불량 줄은 서버에 없다 — 기억해 둔 것을 지운다(리뷰 지적 2026-11-16). */
+    if (currentLot.data !== null && currentLot.data !== undefined) {
+      forgetSentDefects(currentLot.data.lotId);
+    }
+    setSentDefects(null);
+  }, [outbox.rejection, outputPhase, currentLot.data]);
 
   /* 서버가 거부하면 넣자마자 낸 「기록했습니다」는 사실이 아니다 — 거부 띠만 남긴다. */
   useEffect(() => {
@@ -871,7 +889,7 @@ export const ProductionFlowScreen = () => {
     currentLotIdRef.current = nextLotId;
     setActualQty(lot === null || lot === undefined ? '' : String(lot.initialQty));
     setOutputPhase('idle');
-    setSentDefects(null);
+    setSentDefects(nextLotId === null ? null : storedSentDefects(nextLotId));
     setInputPage('good');
     isLotLabelPrinted.current = false;
     setIsLabelInHand(false);
@@ -1115,12 +1133,12 @@ export const ProductionFlowScreen = () => {
     if (entry.workerNo === null) return;
 
     setOutputPhase('queued');
-    setSentDefects(
-      defectRows.map((row) => ({
-        label: defectLabelOf(defectMajors, row.defectCodeId) ?? '',
-        qty: row.qty,
-      })),
-    );
+    const sentRows = defectRows.map((row) => ({
+      label: defectLabelOf(defectMajors, row.defectCodeId) ?? '',
+      qty: row.qty,
+    }));
+    setSentDefects(sentRows);
+    rememberSentDefects(lot.lotId, sentRows);
     const sentKey = outbox.enqueue(
       entry.workerNo,
       buildSaveBody({
@@ -2018,8 +2036,8 @@ export const ProductionFlowScreen = () => {
             {/* 현재 LOT · 현재 LOT 진행은 두지 않는다(사용자 지시 2026-11-16). */}
             {/*
              * 라벨을 낸 뒤(스캔 대기 등)에는 이 LOT 에 넣은 실적을 보인다(사용자 지시 2026-11-16). 입력 칸이
-             * 스캔 칸으로 바뀌어 무엇을 넣었는지 볼 곳이 없었다. 불량은 이 화면에서 보낸 것만 안다 — 다시 연
-             * 화면에서는 양품만 보인다(모르는 불량을 0 으로 말하지 않는다).
+             * 스캔 칸으로 바뀌어 무엇을 넣었는지 볼 곳이 없었다. 불량은 이 단말에서 보낸 것만 안다(단말 저장소) —
+             * 기억이 없으면 양품만 보인다(모르는 불량을 0 으로 말하지 않는다).
              */}
             <PopRowPair label={t.flow.work.enteredResult}>
               {lot === null || outputPhase === 'idle' || parsedQty === null ? null : (

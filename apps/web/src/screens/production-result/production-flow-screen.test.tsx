@@ -15,6 +15,7 @@ import {
 import { COMPLETED_LOT_PAGE_SIZE, productionFlowKeys } from './flow-queries';
 import { ProductionFlowScreen } from './screen';
 import { STORAGE_KEY } from './outbox';
+import { rememberSentDefects, storedSentDefects } from './sent-defects';
 
 const t = messages.productionResult;
 const LOT_ID = 90101;
@@ -633,6 +634,60 @@ describe('ProductionFlowScreen', () => {
     await waitFor(() => {
       expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     });
+  });
+
+  it('다시 연 화면에도 이 단말에서 라벨과 함께 보낸 불량을 「입력한 실적」에 보인다', async () => {
+    const writes: Request[] = [];
+    const appliedLot: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: (request) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('completed') === 'true') {
+          return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+        }
+
+        return jsonResponse({
+          items: [
+            {
+              lotId: LOT_ID,
+              lotNo: LOT_NO,
+              itemId: 101,
+              lotTypeCode: 'PRODUCTION',
+              plantId: 1,
+              initialQty: 12,
+              uomId: 1,
+              sourceTypeCode: 'WORK_ORDER',
+              sourceId: WORK_ORDER_ID,
+              statusCode: 'NORMAL',
+            },
+          ],
+          page: { page: 1, size: 20, total: 1 },
+        });
+      },
+    };
+    /* 양품 누계는 상세에만 실린다(#1095) — 목록에 얹으면 화면이 읽지 못한다. */
+    const appliedLotDetail: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+      respond: () =>
+        jsonResponse(
+          {
+            lot: { lotId: LOT_ID, lotNo: LOT_NO, progress: { goodQty: 8, varianceQty: -4 } },
+            externalReferences: [],
+          },
+          { headers: { ETag: LOT_ETAG } },
+        ),
+    };
+    /* 사용자 결정 2026-11-16 — 단말은 서버에서 불량 기록을 읽지 못하므로 보낸 줄을 단말에 기억한다. */
+    rememberSentDefects(LOT_ID, [{ label: '외관 › 찍힘', qty: '2' }]);
+    renderScreen(writes, [appliedLot, appliedLotDetail]);
+
+    expect(
+      await screen.findByText(t.flow.work.enteredGood('8', 'EA'), { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('외관 › 찍힘 2 EA')).toBeInTheDocument();
+    expect(
+      screen.getByText(t.flow.work.enteredDefect('2', 'EA'), { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
@@ -1645,6 +1700,42 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
     expect(writes.some((request) => pathOf(request).endsWith(':end'))).toBe(false);
   });
 
+  /* 작업 시작 없이 들어와 열린 세션이 아예 없으면 닫을 것이 없다 — 경고하지 않는다(사용자 지시 2026-11-16). */
+  it('LOT 을 마감하면 단말에 기억해 둔 불량 줄을 지운다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    rememberSentDefects(LOT_ID, [{ label: '외관 › 찍힘', qty: '2' }]);
+    const user = userEvent.setup();
+    renderScreen(writes, [completeDrains(state, writes), lotsDrainedAfterComplete(state)]);
+
+    await completeCurrentLot(user);
+
+    await waitFor(() => expect(storedSentDefects(LOT_ID)).toBeNull());
+  });
+
+  it('열린 세션이 아예 없으면 마지막 LOT 을 마감해도 「못 닫았다」를 내지 않는다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    const noSession: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/production/work-sessions',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      noSession,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    await screen.findByText(t.flow.work.noLot, { exact: false });
+    expect(screen.queryByText(t.flow.session.failed)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
+    expect(writes.some((request) => pathOf(request).endsWith(':end'))).toBe(false);
+  });
+
   it('작업 완료 권한이 없으면 마감도 세션 종료도 일어나지 않는다', async () => {
     const writes: Request[] = [];
     const deniedGate: StubRoute = {
@@ -2589,6 +2680,36 @@ describe('ProductionFlowScreen 불량', () => {
         '이 단말에는 이 W/O 공정의 실적 입력 권한이 없습니다. 관리웹 시스템 관리 › 단말기-공정 매핑에서 해당 공정의 「실적 입력」을 켜세요.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('라벨 출력 저장이 거부되면 단말에 기억한 불량 줄도 지운다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [
+        {
+          match: (request) =>
+            request.method === 'POST' && pathOf(request) === '/production/production-results',
+          respond: () =>
+            jsonResponse(
+              { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '거부' }] },
+              { status: 401 },
+            ),
+        },
+        ...defectRoutes,
+      ],
+    );
+    await openDefectStep();
+    await user.click(addDefectButton());
+    await pickDefect(user, '긁힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    const output = screen.getByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    /* 리뷰 지적 2026-11-16 — 거부된 불량은 서버에 없으므로 다시 연 화면에 보이면 안 된다. */
+    expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
+    await waitFor(() => expect(storedSentDefects(LOT_ID)).toBeNull());
   });
 
   it('불량만 저장이 서버에서 거부되면 「기록했습니다」를 지우고 거부 띠만 남긴다', async () => {
