@@ -624,6 +624,19 @@ export const ProductionFlowScreen = () => {
     },
   });
 
+  /* 「마감 완료」 강조는 다음 버튼을 누르면 사라진다(사용자 지시 2026-11-16). */
+  useEffect(() => {
+    if (justCompletedLotId === null) return undefined;
+    const clear = (event: PointerEvent): void => {
+      if (event.target instanceof Element && event.target.closest('button') !== null) {
+        setJustCompletedLotId(null);
+      }
+    };
+    document.addEventListener('pointerdown', clear, true);
+
+    return () => document.removeEventListener('pointerdown', clear, true);
+  }, [justCompletedLotId]);
+
   useEffect(() => {
     if (sessionEnd.error === null) return;
 
