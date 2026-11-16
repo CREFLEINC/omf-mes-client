@@ -95,6 +95,29 @@ describe('judgeSessionEnd', () => {
     expect(judgeSessionEnd({ ...base, hasSession: false })).toBe('unknown');
   });
 
+  /*
+   * 작업 시작 없이 들어와 이 단말에 세션이 아예 없으면, 보낼 것도 다시 시도할 것도 없다 — 「못 닫았다」는
+   * 거짓 경고다(사용자 지시 2026-11-16). 조회가 실패했으면(«없다»가 확인되지 않았으면) 종전처럼 말한다.
+   */
+  it('닫을 세션이 없다고 확인됐으면 보내지도 경고하지도 않는다', () => {
+    expect(judgeSessionEnd({ ...base, hasSession: false, isSessionAbsent: true })).toBe('none');
+    expect(judgeSessionEnd({ ...base, hasSession: false, isSessionAbsent: false })).toBe('unknown');
+  });
+
+  it('없다고 확인됐어도 권한이 거부되면 거부를 말하고, 조회 중이면 기다린다', () => {
+    expect(
+      judgeSessionEnd({ ...base, gate: 'denied', hasSession: false, isSessionAbsent: true }),
+    ).toBe('denied');
+    expect(
+      judgeSessionEnd({
+        ...base,
+        hasSession: false,
+        isSessionAbsent: true,
+        isSessionPending: true,
+      }),
+    ).toBe('wait');
+  });
+
   it('사번이 없으면 보내지 않는다 — 서버가 귀속 헤더 없이는 거부한다', () => {
     expect(judgeSessionEnd({ ...base, hasWorkerNo: false })).toBe('unknown');
   });

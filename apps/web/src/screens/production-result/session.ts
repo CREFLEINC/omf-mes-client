@@ -45,7 +45,12 @@ export type EndVerdict =
   /** 이 단말은 작업 완료 권한이 없다 — 닫지 않고, 왜 열린 채인지 말한다. */
   | 'denied'
   /** 닫아야 하는데 닫을 것을 모른다(세션 조회가 아직·실패, 사번 없음) — 다시 시도할 수 있다. */
-  | 'unknown';
+  | 'unknown'
+  /**
+   * 닫을 세션이 «없다고 확인됐다» — 이 작업지시에 열린 세션이 하나도 없다(작업 시작을 거치지 않고 들어온
+   * 경우). 보낼 것도, 다시 시도할 것도 없으므로 말하지 않는다(사용자 지시 2026-11-16).
+   */
+  | 'none';
 
 export interface EndDecision {
   /** 이 화면이 방금 LOT 을 마감했는가. ⛔ 이것이 없으면 «열어 보기만» 해도 세션이 닫힌다. */
@@ -57,6 +62,11 @@ export interface EndDecision {
   /** 단말·공정의 작업 완료 권한 판정. */
   gate: 'allowed' | 'denied' | 'unavailable' | 'unidentified' | 'checking';
   hasSession: boolean;
+  /**
+   * 조회가 성공했고 열린 세션이 단말·상태와 상관없이 하나도 없다. 조회 실패, 옆 단말 세션이나 중단(`STOPPED`)
+   * 세션만 있는 경우는 해당하지 않는다 — 그때는 종전처럼 「못 닫았다」다.
+   */
+  isSessionAbsent?: boolean;
   /** 세션 조회가 아직 답을 주지 않았는가. **모르는 것과 없는 것을 가른다.** */
   isSessionPending: boolean;
   hasWorkerNo: boolean;
@@ -84,6 +94,8 @@ export const judgeSessionEnd = (decision: EndDecision): EndVerdict => {
    *   위 ①의 갇힘이 그 혼동에서 나왔다(`useOpenWorkSession` 이 갈라 준다).
    */
   if (decision.isSessionPending) return 'wait';
+
+  if (!decision.hasSession && decision.isSessionAbsent === true) return 'none';
 
   return decision.hasSession && decision.hasWorkerNo ? 'send' : 'unknown';
 };
@@ -144,11 +156,17 @@ export const pickOwnOpenSession = (
   );
 };
 
+interface OpenSessionAnswer {
+  session: WorkSession | null;
+  /** 열린 세션이 단말·상태와 상관없이 하나도 없다. */
+  isAbsent: boolean;
+}
+
 const fetchOpenSession = async (
   client: Client,
   workOrderId: number,
   terminalId: number,
-): Promise<WorkSession | null> => {
+): Promise<OpenSessionAnswer> => {
   const data = await runRequest(() =>
     client.GET('/production/work-sessions', {
       /* 기본이 열린 세션이지만 명시한다 — 기본값이 바뀌면 닫힌 세션을 또 닫으려 든다. */
@@ -156,11 +174,20 @@ const fetchOpenSession = async (
     }),
   );
 
-  return pickOwnOpenSession(data.items, terminalId);
+  return {
+    session: pickOwnOpenSession(data.items, terminalId),
+    /*
+     * 열린 세션이 단말·상태와 상관없이 하나도 없을 때만 «없다»다. 옆 단말의 세션이 열려 있으면 종전처럼
+     * 「못 닫았다」로 말한다 — 관리웹 W/O 마감이 그 세션에 막히므로 작업자가 알아야 한다.
+     */
+    isAbsent: !data.items.some(isOpen),
+  };
 };
 
 export interface OpenWorkSession {
   session: WorkSession | null;
+  /** 조회가 성공했고 닫을 세션이 없다고 확인됐다(`EndDecision.isSessionAbsent`). */
+  isAbsent: boolean;
   /** 아직 답을 기다리는 중인가. 실패로 끝났으면 «기다리는 중»이 아니다. */
   isPending: boolean;
   refetch: () => void;
@@ -195,7 +222,8 @@ export const useOpenWorkSession = (
   });
 
   return {
-    session: query.data ?? null,
+    session: query.data?.session ?? null,
+    isAbsent: query.isSuccess && query.data.isAbsent,
     /*
      * 조회 중이거나 다시 읽는 중이면 아직 답이 아니다. 실패로 «끝난» 것은 답이다 — 「없다」다.
      *

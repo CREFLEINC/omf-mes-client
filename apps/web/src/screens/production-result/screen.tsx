@@ -679,6 +679,7 @@ export const ProductionFlowScreen = () => {
       hasLot: currentLot.data !== null,
       gate: gates.complete,
       hasSession: openSession.session !== null,
+      isSessionAbsent: openSession.isAbsent,
       isSessionPending: openSession.isPending,
       hasWorkerNo: entry.workerNo !== null,
     });
@@ -694,6 +695,11 @@ export const ProductionFlowScreen = () => {
 
     if (verdict === 'denied') {
       setSessionPhase('denied');
+      return;
+    }
+    /* 닫을 세션이 없다고 확인됐다 — 할 일이 없으므로 말하지 않는다(사용자 지시 2026-11-16). */
+    if (verdict === 'none') {
+      setSessionPhase('alreadyEnded');
       return;
     }
     /* 닫아야 하는데 닫을 것을 모른다 — 「못 닫았다」로 말하고 다시 시도할 길을 남긴다. */

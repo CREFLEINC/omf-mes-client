@@ -1700,6 +1700,30 @@ describe('ProductionFlowScreen · 작업 세션 자동 종료', () => {
     expect(writes.some((request) => pathOf(request).endsWith(':end'))).toBe(false);
   });
 
+  /* 작업 시작 없이 들어와 열린 세션이 아예 없으면 닫을 것이 없다 — 경고하지 않는다(사용자 지시 2026-11-16). */
+  it('열린 세션이 아예 없으면 마지막 LOT 을 마감해도 「못 닫았다」를 내지 않는다', async () => {
+    const writes: Request[] = [];
+    const state = { completed: false };
+    const noSession: StubRoute = {
+      match: (request) =>
+        request.method === 'GET' && pathOf(request) === '/production/work-sessions',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [
+      noSession,
+      completeDrains(state, writes),
+      lotsDrainedAfterComplete(state),
+    ]);
+
+    await completeCurrentLot(user);
+
+    await screen.findByText(t.flow.work.noLot, { exact: false });
+    expect(screen.queryByText(t.flow.session.failed)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.flow.session.retry })).not.toBeInTheDocument();
+    expect(writes.some((request) => pathOf(request).endsWith(':end'))).toBe(false);
+  });
+
   it('작업 완료 권한이 없으면 마감도 세션 종료도 일어나지 않는다', async () => {
     const writes: Request[] = [];
     const deniedGate: StubRoute = {
