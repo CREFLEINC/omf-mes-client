@@ -180,16 +180,20 @@ describe('WorkOrderCloseAction — 보내는 순서', () => {
       'aria-pressed',
       'true',
     );
-    /* 폐번·그대로 남는 LOT 은 한 줄 안내와 번호 목록으로 보인다(개선 명세 ⑧-1). */
-    expect(await within(dialog).findByText(t.lotNotice(2, 1))).toBeVisible();
-    expect(within(dialog).getByText(t.voidedList(1)).nextElementSibling).toHaveTextContent(
-      'LOT-SYN-WAITING',
-    );
-    expect(within(dialog).getByText(t.openList(1)).nextElementSibling).toHaveTextContent(
-      'LOT-SYN-ACTIVE',
-    );
-    /* 미달은 판정·미달량을 빨간 글자로 보인다. */
-    expect(within(dialog).getByText(t.judgments.UNDER)).toHaveAttribute('data-tone', 'error');
+    /*
+     * 폐번될·마감되지 않은 LOT 은 묶음마다 제목·건수·번호·안내로 보인다(사용자 지시 2026-11-16 시안).
+     * 폐번 건수는 서버가 센 값이다.
+     */
+    const voided = await within(dialog).findByRole('region', { name: t.voidedTitle });
+    expect(within(voided).getByText(t.lotCount(2))).toBeVisible();
+    expect(within(voided).getByText('LOT-SYN-WAITING')).toBeVisible();
+    expect(within(voided).getByText(t.voidedNote)).toBeVisible();
+    const open = within(dialog).getByRole('region', { name: t.openTitle });
+    expect(within(open).getByText(t.lotCount(1))).toBeVisible();
+    expect(within(open).getByText('LOT-SYN-ACTIVE')).toBeVisible();
+    expect(within(open).getByText(t.openNote)).toBeVisible();
+    /* 판정은 기본 글자색, 미달량만 빨강(시안). */
+    expect(within(dialog).getByText(t.judgments.UNDER)).not.toHaveAttribute('data-tone');
     expect(within(dialog).getByText(t.needRemainder)).toBeVisible();
     expect(confirmOf(dialog)).toBeDisabled();
 

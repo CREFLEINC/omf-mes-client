@@ -1788,13 +1788,22 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 
     await screen.findByText(NO_LOT_TEXT);
 
-    /* 받을 그릇이 없으면 칸과 숫자판을 두지 않는다. 늘 잠긴 칸을 두지 않는다(C-4). */
+    /* 받을 그릇이 없으면 양품 칸을 두지 않는다. 늘 잠긴 칸을 두지 않는다(C-4). */
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     expect(screen.queryByText(t.flow.quantity.invalid)).not.toBeInTheDocument();
-    for (const key of ['1', '0']) {
-      expect(screen.queryByRole('button', { name: key })).not.toBeInTheDocument();
-    }
     expect(screen.getByText(t.flow.work.noLot)).toBeInTheDocument();
+    /*
+     * 불량만 등록하는 화면이다 — 「실적 입력」 제목 없이 불량 줄 1개가 미리 서고, 숫자판은 그 줄 수량을 받는다
+     * (사용자 지시 2026-11-16, ② 불량 등록 단계와 같게).
+     */
+    expect(
+      screen.queryByRole('heading', { name: t.flow.work.steps.input }),
+    ).not.toBeInTheDocument();
+    const defects = screen.getByRole('region', { name: t.flow.defects.title });
+    expect(await within(defects).findAllByRole('listitem')).toHaveLength(1);
+    expect(
+      screen.queryByRole('group', { name: t.flow.defects.keypadGood }),
+    ).not.toBeInTheDocument();
     /* 생산할 LOT 이 없으면 하단 주 버튼은 [작업지시 마감] 하나다 — [LOT 라벨 출력]은 두지 않는다(개선 명세 ④-2). */
     expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
   });

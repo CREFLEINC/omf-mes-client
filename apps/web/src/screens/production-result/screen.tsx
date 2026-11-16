@@ -1795,6 +1795,20 @@ export const ProductionFlowScreen = () => {
   );
   /** 현재 LOT 을 아직 받지 못했다(조회 중). 실패와 다르다 — 실패는 하단 바가 말하고 [다시 시도]가 선다. */
   const isLotLoading = currentLot.data === undefined && !currentLot.isError;
+  /** 서버가 넣을 LOT 이 없다고 답했다 — 불량만 등록하는 화면이다. */
+  const isNoLotDefectMode =
+    entry.workOrderId !== null && !isWorkOrderClosed && currentLot.data === null;
+  /*
+   * 불량만 등록하는 화면에 들어오면 불량 줄 1개를 미리 둔다(사용자 지시 2026-11-16 — ② 불량 등록 단계와 같게).
+   * 들어올 때 한 번만이다. 저장한 뒤에는 「불량을 등록했습니다」만 남기고 줄을 다시 만들지 않는다.
+   */
+  useEffect(() => {
+    if (!isNoLotDefectMode) return;
+    const key = `defect-${String(nextDefectKey.current)}`;
+    nextDefectKey.current += 1;
+    setDefectRows((rows) => (rows.length > 0 ? rows : [{ key, defectCodeId: null, qty: '' }]));
+    setActiveQty((current) => (current === 'good' ? key : current));
+  }, [isNoLotDefectMode]);
   /* 라벨 출력 중에는 프린터를 바꾸지 못한다 — 나가는 도중에 대상이 바뀌면 어느 프린터로 갔는지 알 수 없다. */
   const isPrinterLocked =
     outputPhase === 'queued' ||
@@ -2249,13 +2263,16 @@ export const ProductionFlowScreen = () => {
              * 제목 줄: 단계 표시(LOT이 있을 때) 또는 단계 이름. W/O 잔량은 왼쪽 W/O 전체 진행 줄로 옮겼다
              * (사용자 지시 2026-11-16). 넣을 LOT이 없거나 마감했으면 단계가 없어 이름만 둔다(개선 명세 ④-2·⑨).
              */}
-            <div className="production-work-head">
-              {step !== null && !isWorkOrderClosed ? (
-                stepper
-              ) : (
-                <h2 className="pane-title">{t.flow.work.steps.input}</h2>
-              )}
-            </div>
+            {/* 넣을 LOT 이 없으면 불량만 등록한다 — 「실적 입력」 제목 줄을 두지 않는다(사용자 지시 2026-11-16). */}
+            {!isNoLotDefectMode && (
+              <div className="production-work-head">
+                {step !== null && !isWorkOrderClosed ? (
+                  stepper
+                ) : (
+                  <h2 className="pane-title">{t.flow.work.steps.input}</h2>
+                )}
+              </div>
+            )}
 
             {/* 실적 저장 거부(서버). 실적은 되돌아와 다시 입력한다. */}
             {outbox.rejection !== null && (

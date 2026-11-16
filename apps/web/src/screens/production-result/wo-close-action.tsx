@@ -228,14 +228,10 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
           ? t.endFailed
           : null;
   const variance = progress?.varianceQty;
-  const judgmentTone = judgment === null ? undefined : judgment === 'NORMAL' ? 'success' : 'error';
   const voided = workOrder?.preIssuedLots?.withoutResultCount ?? 0;
   /* 그대로 남는 LOT 은 조회를 못 했으면 모른다 — 세지 않는다(「확인하지 못했다」 안내가 따로 선다). */
   const openLotNos = openLots.isError ? [] : (openLots.data?.lotNos ?? []);
   const voidLotNos = openLots.isError ? [] : (openLots.data?.voidLotNos ?? []);
-  /* 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호 목록은 받은 쪽에서 보인다. */
-  const lotNotice =
-    voided > 0 || openLotNos.length > 0 ? t.lotNotice(voided, openLotNos.length) : null;
   /** 파란 안내 줄(정보 아이콘 + 한 줄). */
   const infoNote = (text: string) => (
     <p className="iqc-inspection-action-note" data-tone="info">
@@ -280,7 +276,13 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
           open
           size="lg"
           className="production-flow-wo-end-dialog"
-          title={t.title(workOrderNo)}
+          /* 제목 왼쪽, W/O 번호 오른쪽 끝(사용자 지시 2026-11-16 시안). 읽는 이름은 「작업지시 마감 WO-…」 그대로. */
+          title={
+            <span className="production-flow-wo-end-title" aria-label={t.title(workOrderNo)}>
+              <span>{t.titleLead}</span>
+              <span className="production-flow-wo-end-no">{workOrderNo}</span>
+            </span>
+          }
           showCloseButton={false}
           /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
           closeOnBackdropClick={false}
@@ -369,10 +371,8 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 </div>
                 <div>
                   <dt>{t.fields.judgment}</dt>
-                  {/* 미달·초과는 빨강, 정상은 초록(개선 명세 ⑧). 값은 서버 판정 그대로다. */}
-                  <dd data-tone={judgmentTone}>
-                    {judgment === null ? '—' : t.judgments[judgment]}
-                  </dd>
+                  {/* 판정은 기본 글자색, 미달량·초과량만 색으로(사용자 지시 2026-11-16 시안). 값은 서버 판정 그대로다. */}
+                  <dd>{judgment === null ? '—' : t.judgments[judgment]}</dd>
                 </div>
                 {variance !== undefined && variance !== 0 && (
                   <div>
@@ -408,7 +408,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 >
                   <div className="production-flow-wo-end-legend">
                     <span id={remainderTitleId}>{t.fields.remainder}</span>
-                    {infoNote(t.carryOverNote)}
+                    <span className="production-flow-wo-end-required">{t.required}</span>
                   </div>
                   <div className="production-flow-reason-tiles">
                     {(['CARRY_OVER', 'WRITE_OFF'] as const).map((code) => (
@@ -434,7 +434,12 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 >
                   <div className="production-flow-wo-end-legend">
                     <span id={reasonTitleId}>{t.fields.reason}</span>
-                    {lotNotice !== null && infoNote(lotNotice)}
+                    {/* LOT 마감 때 고른 사유를 가져왔으면 그 안내, 아니면 「필수」. */}
+                    {isPrefilled ? (
+                      infoNote(t.prefilled)
+                    ) : (
+                      <span className="production-flow-wo-end-required">{t.required}</span>
+                    )}
                   </div>
                   {reasons.isLoading ? (
                     <p role="status">{t.reasonsLoading}</p>
@@ -457,7 +462,6 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                       ))}
                     </div>
                   )}
-                  {isPrefilled && <p className="field-note">{t.prefilled}</p>}
                 </div>
               )}
 
@@ -469,42 +473,49 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 />
               )}
 
-              {/* 사유 칸이 없으면(정상) LOT 안내가 혼자 선다(⑧-2). */}
-              {!needsReason && lotNotice !== null && infoNote(lotNotice)}
-              {(voidLotNos.length > 0 || openLotNos.length > 0) && (
-                <dl className="production-flow-wo-end-lots">
+              {/*
+               * 폐번될·마감되지 않은 LOT — 제목 오른쪽에 건수, 번호 상자, 그 아래 안내 한 줄(사용자 지시 2026-11-16
+               * 시안). 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호는 받은 쪽에서 보인다.
+               */}
+              {voided > 0 && (
+                <section className="production-flow-wo-end-lots" aria-label={t.voidedTitle}>
+                  <div className="production-flow-wo-end-legend">
+                    <span>{t.voidedTitle}</span>
+                    <span className="production-flow-wo-end-count">{t.lotCount(voided)}</span>
+                  </div>
                   {voidLotNos.length > 0 && (
-                    <div>
-                      <dt>{t.voidedList(voidLotNos.length)}</dt>
-                      <dd>
-                        {voidLotNos.map((lotNo) => (
-                          <span key={lotNo} className="production-flow-wo-end-lot">
-                            {lotNo}
-                          </span>
-                        ))}
-                      </dd>
-                    </div>
+                    <ul className="production-flow-wo-end-lot-box">
+                      {voidLotNos.map((lotNo) => (
+                        <li key={lotNo}>{lotNo}</li>
+                      ))}
+                    </ul>
                   )}
-                  {openLotNos.length > 0 && (
-                    <div>
-                      <dt>{t.openList(openLotNos.length)}</dt>
-                      <dd>
-                        {openLotNos.map((lotNo) => (
-                          <span key={lotNo} className="production-flow-wo-end-lot">
-                            {lotNo}
-                          </span>
-                        ))}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
+                  {infoNote(t.voidedNote)}
+                </section>
+              )}
+              {openLotNos.length > 0 && (
+                <section className="production-flow-wo-end-lots" aria-label={t.openTitle}>
+                  <div className="production-flow-wo-end-legend">
+                    <span>{t.openTitle}</span>
+                    <span className="production-flow-wo-end-count">
+                      {t.lotCount(openLotNos.length)}
+                    </span>
+                  </div>
+                  <ul className="production-flow-wo-end-lot-box">
+                    {openLotNos.map((lotNo) => (
+                      <li key={lotNo}>{lotNo}</li>
+                    ))}
+                  </ul>
+                  {infoNote(t.openNote)}
+                </section>
               )}
               {openLots.isError && infoNote(t.openLotsUnknown)}
               {(openLots.data?.uncheckedCount ?? 0) > 0 &&
                 infoNote(t.uncheckedLots(openLots.data?.uncheckedCount ?? 0))}
+              {/* 안내 문구는 시연 문서의 라벨 모양(아이콘 + 바탕 한 줄) — 경고는 노랑(사용자 지시 2026-11-16). */}
               <p className="iqc-inspection-action-note" data-tone="warning">
                 <Icon name="warning" size={14} aria-hidden />
-                <strong>{t.irreversible.lead}</strong> {t.irreversible.rest}
+                {t.irreversible}
               </p>
             </>
           )}

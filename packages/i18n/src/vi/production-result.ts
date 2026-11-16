@@ -20,12 +20,12 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       toDefectWithCount: (count: number): string => `Đăng ký lỗi (${String(count)})`,
       toGood: 'Quay lại',
       remaining: (qty: string): string => `Còn lại ${qty}`,
-      noLot: 'Không còn LOT để sản xuất. Chỉ có thể đăng ký lỗi.',
+      noLot: 'Không có LOT có thể sản xuất nên chỉ có thể đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',
       printerNone: 'Không có máy in',
       printerUnknown: 'Không xác định máy in',
-      closed: 'Đã đóng lệnh sản xuất. Có thể chuyển sang đóng gói sản xuất.',
+      closed: 'Đã hoàn tất đóng lệnh sản xuất.',
       completedLots: 'LOT đã đóng',
     },
     actions: {
@@ -163,6 +163,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     woClose: {
       button: 'Đóng lệnh sản xuất',
       title: (workOrderNo: string): string => `Đóng lệnh sản xuất ${workOrderNo}`,
+      titleLead: 'Đóng lệnh sản xuất',
+      required: 'Bắt buộc',
       loading: 'Đang kiểm tra lệnh sản xuất cần đóng.',
       loadFailed: 'Không tải được lệnh sản xuất. Vui lòng kiểm tra kết nối rồi bấm «Thử lại».',
       fields: {
@@ -177,24 +179,16 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       },
       judgments: { UNDER: 'Thiếu', NORMAL: 'Bình thường', OVER: 'Vượt' },
       remainder: { CARRY_OVER: 'Chuyển sang kỳ sau', WRITE_OFF: 'Xóa bỏ' },
-      carryOverNote:
-        'W/O chuyển sang kỳ sau không được tạo tự động. Vui lòng lập mới ở kế hoạch sản xuất trên web quản lý',
-      prefilled: 'Đây là lý do đã chọn khi đóng LOT. Có thể đổi.',
+      prefilled: 'Đã lấy lý do đóng LOT. Có thể thay đổi.',
       reasonsLoading: 'Đang tải lý do.',
       reasonsFailed: 'Không tải được lý do. Vui lòng kiểm tra kết nối rồi mở lại cửa sổ.',
       reasonsEmpty: 'Không có lý do nào để chọn. Vui lòng nhờ quản trị viên đăng ký lý do.',
-      lotNotice: (voided: number, open: number): string =>
-        voided > 0 && open > 0
-          ? `${String(voided)} LOT chưa có kết quả sẽ bị hủy số cùng lúc đóng và ${String(open)} LOT chưa đóng sẽ giữ nguyên trạng thái.`
-          : voided > 0
-            ? `${String(voided)} LOT chưa có kết quả sẽ bị hủy số cùng lúc đóng.`
-            : `${String(open)} LOT chưa đóng sẽ giữ nguyên trạng thái.`,
-      voidedList: (count: number): string => `LOT sẽ bị hủy số (${String(count)})`,
-      openList: (count: number): string => `LOT giữ nguyên (${String(count)})`,
-      irreversible: {
-        lead: 'Đã đóng thì không hoàn tác được,',
-        rest: 'kết quả sản xuất sẽ vào hàng đợi gửi sang ERP cùng lúc đóng',
-      },
+      voidedTitle: 'LOT sẽ bị hủy số',
+      openTitle: 'LOT chưa đóng',
+      lotCount: (count: number): string => `${String(count)} mục`,
+      voidedNote: 'LOT chưa có kết quả sẽ bị hủy số khi đóng.',
+      openNote: 'LOT chưa đóng sẽ giữ nguyên trạng thái hiện tại.',
+      irreversible: 'Sau khi đóng không thể hủy. Kết quả ERP sẽ được đưa vào hàng đợi gửi.',
       needRemainder:
         'Vì thiếu nên phải chọn xử lý lượng còn lại (chuyển sang kỳ sau hoặc xóa bỏ) mới đóng được.',
       needReason: 'Vì thiếu hoặc vượt nên phải chọn lý do mới đóng được.',

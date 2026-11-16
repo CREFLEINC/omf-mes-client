@@ -32,13 +32,13 @@ export const productionResult = {
       /** 잔량은 지금 넣을 칸 곁에만 둔다(C-21). */
       remaining: (qty: string): string => `잔량 ${qty}`,
       /* 아래 셋은 오른쪽 위 파란 안내 줄이다(개선 명세 §1 「안내 문구」). 하단 바에는 두지 않는다. */
-      noLot: '생산할 LOT이 없습니다. 불량만 등록할 수 있습니다.',
+      noLot: '생산 가능한 LOT이 없어 불량 등록만 가능합니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
       planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
       /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
       printerNone: '프린터 없음',
       printerUnknown: '프린터 확인 불가',
-      closed: '작업지시를 마감했습니다. 생산 포장으로 이동할 수 있습니다.',
+      closed: '작업지시 마감이 완료되었습니다.',
       /** 왼쪽 구획의 마감된 LOT 목록 제목(2026-11-16). */
       completedLots: '마감된 LOT',
     },
@@ -194,6 +194,10 @@ export const productionResult = {
     woClose: {
       button: '작업지시 마감',
       title: (workOrderNo: string): string => `작업지시 마감 ${workOrderNo}`,
+      /** 창 제목 왼쪽 글자 — W/O 번호는 오른쪽 끝에 따로 선다(사용자 지시 2026-11-16 시안). */
+      titleLead: '작업지시 마감',
+      /** 고르지 않으면 마감할 수 없는 묶음 제목 옆 빨간 표시. */
+      required: '필수',
       loading: '마감할 작업지시를 확인하는 중입니다.',
       loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {
@@ -208,25 +212,18 @@ export const productionResult = {
       },
       judgments: { UNDER: '미달', NORMAL: '정상', OVER: '초과' },
       remainder: { CARRY_OVER: '이월', WRITE_OFF: '소멸' },
-      carryOverNote: '이월 W/O는 자동 생성되지 않습니다. 관리웹의 작업 계획에서 새로 편성하세요',
-      prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
+      prefilled: 'LOT 마감 사유를 가져왔습니다. 변경할 수 있습니다.',
       reasonsLoading: '사유를 불러오는 중입니다.',
       reasonsFailed: '사유를 불러오지 못했습니다. 연결을 확인하고 창을 다시 열어 주세요.',
       reasonsEmpty: '고를 수 있는 사유가 없습니다. 관리자에게 사유 등록을 요청해 주세요.',
-      /** 폐번·그대로 남는 LOT 안내 한 줄. 둘 다 있으면 한 문장으로 잇는다(개선 명세 §2). */
-      lotNotice: (voided: number, open: number): string =>
-        voided > 0 && open > 0
-          ? `실적이 없는 LOT ${String(voided)}건은 마감과 함께 폐번되며 마감되지 않은 LOT ${String(open)}건은 그 상태로 남습니다.`
-          : voided > 0
-            ? `실적이 없는 LOT ${String(voided)}건은 마감과 함께 폐번됩니다.`
-            : `마감되지 않은 LOT ${String(open)}건은 그 상태로 남습니다.`,
-      voidedList: (count: number): string => `폐번될 LOT (${String(count)})`,
-      openList: (count: number): string => `그대로 남는 LOT (${String(count)})`,
-      /** 주황 안내 줄. 앞 구절은 굵게 보인다(사용자 정정 문구 그대로). */
-      irreversible: {
-        lead: '마감시 되돌릴 수 없으며',
-        rest: 'ERP 실적 송신은 마감과 함께 대기열에 등록됩니다',
-      },
+      /** 폐번될·마감되지 않은 LOT 묶음 — 제목 오른쪽에 건수, 번호 상자 아래 안내 한 줄(사용자 지시 2026-11-16 시안). */
+      voidedTitle: '폐번될 LOT',
+      openTitle: '마감되지 않은 LOT',
+      lotCount: (count: number): string => `${String(count)}건`,
+      voidedNote: '실적이 없는 LOT는 마감과 함께 폐번됩니다.',
+      openNote: '마감되지 않은 LOT는 현재 상태로 유지됩니다.',
+      /** 경고 한 줄(사용자 지시 2026-11-16 시안 문구 그대로). */
+      irreversible: '마감 후에는 취소할 수 없습니다. ERP 실적은 전송 대기열에 등록됩니다.',
       needRemainder: '미달이라 잔량 처리(이월 또는 소멸)를 골라야 마감할 수 있습니다.',
       needReason: '미달이나 초과라 사유를 골라야 마감할 수 있습니다.',
       judgmentMissing:
