@@ -295,8 +295,10 @@ export const ProductionFlowScreen = () => {
   const defectIssueId = useId();
   /** 불량만 적은 저장의 결과 — 큐에 넣는 것이 곧 성공이라 넣자마자 알린다 */
   const [defectNotice, setDefectNotice] = useState<'saved' | 'queued' | null>(null);
-  /** 이미 있는 유형을 골랐다 — 줄을 만들거나 바꾸지 않고 안내 라벨만 띄운다(사용자 지시 2026-11-16). */
-  /** 그 유형이 이미 있는 줄 — 강조한다. 없으면 null. */
+  /**
+   * 이미 있는 유형을 골랐을 때 그 유형이 있는 줄 — 줄을 만들거나 바꾸지 않고 그 줄을 강조하고 안내 라벨을
+   * 띄운다(사용자 지시 2026-11-16). 없으면 null.
+   */
   const [duplicateRowKey, setDuplicateRowKey] = useState<string | null>(null);
   /** 이 화면에서 방금 마감한 LOT — 마감된 LOT 목록에서 강조한다(사용자 지시 2026-11-16). */
   const [justCompletedLotId, setJustCompletedLotId] = useState<number | null>(null);
@@ -310,14 +312,19 @@ export const ProductionFlowScreen = () => {
   /** 이 LOT 라벨이 인쇄에 성공해 서버에 보고됐는가. 그 뒤의 인쇄는 재출력(보고 없음)이다. */
   const isLotLabelPrinted = useRef(false);
   /**
-   * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
-   * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 화면을 다시 열면 모른다(`null`).
+   * 라벨이 이미 작업자 손에 있다(첫 인쇄 성공). 재출력이 실패해도 그 라벨로 스캔·마감할 수 있어야 한다 —
+   * 프린터가 고장 나면 빠져나올 길이 없다(리뷰 지적 2026-11-16).
    */
+  const [isLabelInHand, setIsLabelInHand] = useState(false);
   /*
    * 실적 입력 단계 안의 화면 쪽(사용자 지시 2026-11-16): ① 양품 → ② 불량. 화면 단계일 뿐이다 — 저장은 지금처럼
    * [LOT 라벨 출력]·[불량 등록] 때 양품·불량을 한 번에 보낸다. LOT 이 바뀌면 ① 로 돌아간다.
    */
   const [inputPage, setInputPage] = useState<'good' | 'defect'>('good');
+  /**
+   * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
+   * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 화면을 다시 열면 모른다(`null`).
+   */
   const [sentDefects, setSentDefects] = useState<{ label: string; qty: string }[] | null>(null);
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
@@ -867,6 +874,10 @@ export const ProductionFlowScreen = () => {
     setSentDefects(null);
     setInputPage('good');
     isLotLabelPrinted.current = false;
+    setIsLabelInHand(false);
+    setDuplicateRowKey(null);
+    /* 손대지 않은 빈 줄(LOT 없음 때 미리 넣은 줄)은 새 LOT 으로 넘기지 않는다 — [LOT 라벨 출력]을 막지 않게. */
+    setDefectRows((rows) => rows.filter((row) => row.defectCodeId !== null || row.qty !== ''));
     setScanValue('');
     setScanMismatch(false);
     setLotPrintTargets([]);
@@ -1229,10 +1240,15 @@ export const ProductionFlowScreen = () => {
     void lotPrint.run(targets);
   };
 
+  /** 스캔 칸이 열린다 — 스캔 대기, 또는 이미 손에 든 라벨의 재출력이 실패했을 때. */
+  const canScan =
+    outputPhase === 'scanReady' ||
+    (isLabelInHand && (outputPhase === 'printFailed' || outputPhase === 'renditionFailed'));
+
   const changeScan = (value: string): void => {
     setScanValue(value);
     setScanMismatch(false);
-    if (lot === null || outputPhase !== 'scanReady' || complete.isSaving) return;
+    if (lot === null || !canScan || complete.isSaving) return;
 
     const verdict = judgeLotScan(value, lot.lotNo);
     if (verdict === 'mismatch') {
@@ -1316,6 +1332,7 @@ export const ProductionFlowScreen = () => {
   useEffect(() => {
     if (outputPhase === 'scanReady') {
       isLotLabelPrinted.current = true;
+      setIsLabelInHand(true);
       scanInputRef.current?.focus();
     }
   }, [outputPhase]);
@@ -1581,7 +1598,7 @@ export const ProductionFlowScreen = () => {
   /**
    * 하단 [LOT 라벨 출력]. 라벨을 출력해 스캔을 기다리는 동안은 [LOT 라벨 재출력]으로 바뀐다(사용자 지시
    * 2026-11-16). 재출력은 이미 발행한 같은 라벨을 지금 고른 프린터로 다시 찍을 뿐이다 — 실적·발행 기록을
-   * 새로 만들지 않고, 인쇄 결과 보고도 같은 멱등 키로 다시 보내 서버 기록이 늘지 않는다([라벨 다시 인쇄]와 같은 길).
+   * 새로 만들지 않고, 인쇄 결과도 다시 보고하지 않는다(서버는 성공한 발행에 두 번째 보고를 거절한다).
    */
   const outputButton = (variant: 'filled' | 'outlined'): ReactNode =>
     /*
@@ -1622,10 +1639,6 @@ export const ProductionFlowScreen = () => {
       </Button>
     );
 
-  /*
-   * ① 양품 → ② 불량(사용자 지시 2026-11-16). 불량이 없으면 누르지 않고 [LOT 라벨 출력]으로 바로 ③ 라벨 스캔에
-   * 간다. 넣어 둔 불량이 있으면 건수를 붙여 빠뜨리지 않게 한다.
-   */
   /* ② 불량 → ① 양품. 넣은 불량 줄은 그대로 둔다. 다른 하단 버튼과 같은 자리·크기로 선다. */
   const toGoodButton: ReactNode =
     step === 'input' && inputPage === 'defect' && !isWorkOrderClosed ? (
@@ -1645,6 +1658,10 @@ export const ProductionFlowScreen = () => {
         {t.flow.work.toGood}
       </Button>
     ) : null;
+  /*
+   * ① 양품 → ② 불량(사용자 지시 2026-11-16). 불량이 없으면 누르지 않고 [LOT 라벨 출력]으로 바로 ③ 라벨 스캔에
+   * 간다. 넣어 둔 불량이 있으면 건수를 붙여 빠뜨리지 않게 한다.
+   */
   const toDefectButton: ReactNode =
     step === 'input' && inputPage === 'good' && !isWorkOrderClosed ? (
       <Button
@@ -1776,7 +1793,7 @@ export const ProductionFlowScreen = () => {
           )}
         </>
       )}
-      {duplicateRowKey !== null && (
+      {duplicateRowKey !== null && defectRows.some((row) => row.key === duplicateRowKey) && (
         <p className="iqc-inspection-action-note" data-tone="info" role="status">
           <Icon name="info" size={14} aria-hidden />
           {t.flow.defects.duplicate}
@@ -2297,7 +2314,7 @@ export const ProductionFlowScreen = () => {
               fullWidth
               autoComplete="off"
               value={scanValue}
-              disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
+              disabled={!canScan || gates.complete !== 'allowed'}
               error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
               onChange={(event) => changeScan(event.target.value)}
             />

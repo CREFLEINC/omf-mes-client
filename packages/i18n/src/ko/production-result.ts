@@ -71,8 +71,6 @@ export const productionResult = {
       shell: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다. 관리자에게 알려 주세요',
       tagUnknown: '인식표 대상인지 확인할 수 없습니다. 연결을 확인한 뒤 화면을 다시 열어 주세요',
       tag: '인식표를 모두 출력해야 LOT 라벨을 출력할 수 있습니다. 관리자에게 알려 주세요',
-      defectType: '불량 유형을 골라 주세요',
-      defectQty: '불량 수량을 입력해 주세요',
       defectDuplicate: '같은 불량 유형이 두 줄에 있습니다. 한 줄을 삭제해 주세요',
     },
     currentLot: {

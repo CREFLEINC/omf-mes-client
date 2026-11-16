@@ -12,7 +12,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { productionFlowKeys } from './flow-queries';
+import { COMPLETED_LOT_PAGE_SIZE, productionFlowKeys } from './flow-queries';
 import { ProductionFlowScreen } from './screen';
 import { STORAGE_KEY } from './outbox';
 
@@ -359,6 +359,107 @@ describe('ProductionFlowScreen', () => {
     expect(writes).toHaveLength(writesBefore);
     expect(screen.queryByText(t.flow.output.reportFailed)).not.toBeInTheDocument();
     expect(screen.getByText(t.flow.output.printed)).toBeInTheDocument();
+  });
+
+  it('재출력이 실패해도 이미 나온 라벨로 스캔해 LOT 을 마감할 수 있다', async () => {
+    const save = vi
+      .fn()
+      .mockResolvedValueOnce('/tmp/lot.prn')
+      .mockRejectedValueOnce(new Error('프린터 없음'));
+    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
+    const writes: Request[] = [];
+    let attempts = 0;
+    const completeRoute: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+      respond: () => {
+        attempts += 1;
+
+        return jsonResponse({
+          lotId: LOT_ID,
+          lotNo: LOT_NO,
+          completedAt: new Date().toISOString(),
+        });
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [completeRoute]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+
+    await user.click(screen.getByRole('button', { name: t.flow.output.reprint }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(t.flow.output.printFailed)).toBeVisible();
+
+    /* 리뷰 지적 2026-11-16 — 프린터가 고장 나도 손에 든 라벨로 빠져나올 수 있어야 한다. */
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+    await user.type(screen.getByLabelText(t.flow.scan.label), LOT_NO);
+    await waitFor(() => expect(attempts).toBe(1));
+  });
+
+  it('스캔으로 마감한 LOT 은 「마감 완료」로 강조하고, 다른 버튼을 누르면 강조를 거둔다', async () => {
+    let isCompleted = false;
+    const completeRoute: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+      respond: () => {
+        isCompleted = true;
+
+        return jsonResponse({
+          lotId: LOT_ID,
+          lotNo: LOT_NO,
+          completedAt: '2026-11-16T05:29:13.000Z',
+        });
+      },
+    };
+    const completedRoute: StubRoute = {
+      match: (request) =>
+        pathOf(request) === '/trace/lots' &&
+        new URL(request.url).searchParams.get('completed') === 'true',
+      respond: (request) => {
+        /* 한 쪽 5건씩 묻는다(사용자 지시 2026-11-16). */
+        expect(new URL(request.url).searchParams.get('size')).toBe(String(COMPLETED_LOT_PAGE_SIZE));
+
+        return jsonResponse({
+          items: isCompleted
+            ? [
+                {
+                  lotId: LOT_ID,
+                  lotNo: LOT_NO,
+                  itemId: 101,
+                  lotTypeCode: 'PRODUCTION',
+                  plantId: 1,
+                  initialQty: 12,
+                  uomId: 1,
+                  sourceTypeCode: 'WORK_ORDER',
+                  sourceId: WORK_ORDER_ID,
+                  statusCode: 'NORMAL',
+                  completedAt: '2026-11-16T05:29:13.000Z',
+                },
+              ]
+            : [],
+          page: { page: 1, size: COMPLETED_LOT_PAGE_SIZE, total: isCompleted ? 1 : 0 },
+        });
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen([], [completeRoute, completedRoute]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    await user.type(scan, LOT_NO);
+
+    const tag = await screen.findByText(t.flow.currentLot.justCompleted);
+    expect(tag.closest('li')).toHaveClass('is-new');
+
+    /* 아무 버튼이나 누르면(누르는 순간) 거둔다. */
+    fireEvent.pointerDown(screen.getAllByRole('button')[0]!);
+    expect(screen.queryByText(t.flow.currentLot.justCompleted)).not.toBeInTheDocument();
   });
 
   /*
@@ -2147,6 +2248,71 @@ describe('ProductionFlowScreen 불량', () => {
     expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
   });
 
+  it('불량을 등록하면 「이미 등록된 불량 유형」 안내도 거둔다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(addDefectButton());
+    await pickDefect(user, '찍힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '찍힘');
+    expect(within(defectSection()).getByRole('status')).toHaveTextContent(t.flow.defects.duplicate);
+
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
+
+    /* 리뷰 지적 2026-11-16 — 줄이 비면 안내도 근거가 없다. */
+    await waitFor(() =>
+      expect(screen.queryByText(t.flow.defects.duplicate)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('작업 지시량을 달성했고 LOT 이 없으면 두 안내를 한 줄로 말한다', async () => {
+    const emptyLots: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+    const achieved: StubRoute = {
+      match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+      respond: () =>
+        jsonResponse({
+          workOrderId: WORK_ORDER_ID,
+          workOrderNo: 'WO-SYN-001',
+          productionPlanId: 1,
+          routingOperationId: 1,
+          itemId: 101,
+          itemCode: 'ITEM-SYN-01',
+          orderQty: 12,
+          uomId: 1,
+          workOrderTypeCode: 'NORMAL',
+          statusCode: 'IN_PROGRESS',
+          priorityNo: 1,
+          progress: {
+            goodQty: 12,
+            varianceQty: 0,
+            achievementRate: 1,
+            completionJudgmentCode: 'NORMAL',
+          },
+        }),
+    };
+    renderScreen([], [emptyLots, achieved]);
+
+    expect(await screen.findByText(t.flow.work.planReachedNoLot)).toBeInTheDocument();
+    expect(screen.queryByText(t.flow.work.noLot)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.flow.work.planReached)).not.toBeInTheDocument();
+  });
+
   /* 넣을 LOT이 없어도(마지막 LOT을 마감한 뒤 등) 불량만은 등록할 수 있다. */
   it('생산할 LOT이 없어도 불량만 저장할 수 있다', async () => {
     const writes: Request[] = [];
@@ -2266,7 +2432,7 @@ describe('ProductionFlowScreen 불량', () => {
     /* ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 출력은 잠긴다. */
     expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
     /* 하단 바에 「불량 유형을 골라 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
-    expect(screen.queryByText(t.flow.next.defectType)).not.toBeInTheDocument();
+    expect(screen.queryByText('불량 유형을 골라 주세요')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
 
     /* [불량 추가]에서 유형을 고르지 않고 닫으면 줄을 더하지 않는다(명세 ②-6: 고르면 줄이 생긴다). */
@@ -2289,7 +2455,7 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '긁힘');
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
     /* 하단 바에 「불량 수량을 입력해 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
-    expect(screen.queryByText(t.flow.next.defectQty)).not.toBeInTheDocument();
+    expect(screen.queryByText('불량 수량을 입력해 주세요')).not.toBeInTheDocument();
     expect(screen.queryByText(t.flow.defects.qtyMissing)).not.toBeInTheDocument();
 
     await user.click(within(row).getByLabelText(t.flow.defects.qty));

@@ -9805,16 +9805,6 @@
   font-weight: 600;
 }
 
-.pop-ui.production-work-screen .production-work-info .pop-qty-progress {
-  display: grid;
-  gap: var(--space-2);
-  inline-size: 100%;
-}
-
-.pop-ui.production-work-screen .production-work-info .pop-qty-progress-bar {
-  inline-size: 100%;
-}
-
 .pop-ui.production-work-screen .production-work-remaining {
   font-size: 1.125rem;
   color: var(--primary);
@@ -9842,12 +9832,6 @@
 .pop-ui.production-work-screen .production-flow-qty input {
   font-size: 1.625rem;
   font-weight: 600;
-}
-
-/* LOT 번호는 고정폭이라 길다 — 칸 밖으로 넘치지 않게 줄을 바꾼다. */
-.pop-ui.production-work-screen .production-work-info .production-work-lot-no {
-  font-size: 1rem;
-  overflow-wrap: anywhere;
 }
 
 .pop-ui.production-work-screen .production-flow-defects .production-work-subtitle {
