@@ -1,3 +1,7 @@
+import { DistributionLinePicker } from './distribution-line-picker';
+import { formatQty } from './process-model';
+import { WorkOrderOverview, receiptWarehouseLabel } from './work-order-overview';
+import { PlanCreationTools } from './plan-creation-tools';
 import { BoardTable } from '../../../patterns/board-table';
 import { AdjustableNativeTable } from './adjustable-table';
 import { AdjustableLayout, useAdjustableOrientation } from './adjustable-layout';
@@ -7,6 +11,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
   AlertBanner,
   Button,
+  DatePicker,
   type Column,
   Dialog,
   Icon,
@@ -52,6 +57,7 @@ interface Controller {
   item: string;
   itemCode: string;
   itemName: string;
+  itemGroupCode: string | null;
   unit: string;
   decimalScale?: number;
   editor: Editor;
@@ -87,14 +93,52 @@ const ErpWorkOrderList = ({
       width: '168px',
       render: (entry) => entry.order.productionOrderNo,
     },
-    { key: 'itemCode', header: '품목코드', width: '136px', render: (entry) => entry.itemCode },
+    ...(entries.some(
+      (entry) => entry.order.erpOrderNo && entry.order.erpOrderNo !== entry.order.productionOrderNo,
+    )
+      ? [
+          {
+            key: 'erpNo',
+            header: 'ERP 원번호',
+            width: '168px',
+            render: (entry: Controller) => entry.order.erpOrderNo || '—',
+          },
+        ]
+      : []),
+    { key: 'itemCode', header: '품목 코드', width: '136px', render: (entry) => entry.itemCode },
     { key: 'itemName', header: '품목명', width: '220px', render: (entry) => entry.itemName },
+    ...(entries.some((entry) => entry.itemGroupCode)
+      ? [
+          {
+            key: 'itemGroup',
+            header: '품목그룹',
+            width: '112px',
+            render: (entry: Controller) => entry.itemGroupCode || '—',
+          },
+        ]
+      : []),
     {
       key: 'quantity',
       header: 'ERP W/O 수량',
       width: '112px',
       render: (entry) => `${entry.order.orderQty} ${entry.unit}`,
     },
+    {
+      key: 'receiptWarehouse',
+      header: '생산품 입고 창고',
+      width: '180px',
+      render: (entry) => receiptWarehouseLabel(entry.order),
+    },
+    ...(entries.some((entry) => entry.order.dueDate)
+      ? [
+          {
+            key: 'dueDate',
+            header: '납기일',
+            width: '112px',
+            render: (entry: Controller) => entry.order.dueDate || '—',
+          },
+        ]
+      : []),
     ...(showReadiness
       ? [
           {
@@ -116,8 +160,8 @@ const ErpWorkOrderList = ({
         columns={side ? columns.slice(0, 1) : columns}
         rows={entries}
         getRowId={(entry) => entry.order.productionOrderNo}
-        widthKey={`omf-mes:work-planning:erp-wo-list-columns:${side ? 'side' : 'stack'}`}
-        minWidth={side ? '10.5rem' : '46rem'}
+        widthKey={`omf-mes:work-planning:erp-wo-list-columns:v2:${side ? 'side' : 'stack'}`}
+        minWidth={side ? '10.5rem' : '72rem'}
         className="erp-wo-order-table"
         pick={{
           columnKey: 'number',
@@ -145,20 +189,23 @@ const ErpWorkOrderInformation = ({
   return (
     <section className="erp-wo-order-information" aria-label="현재 ERP W/O 정보">
       <h2 className="pane-title">ERP W/O 상세</h2>
-      <dl className="form-grid erp-wo-order-information-grid">
-        {[
-          ['ERP W/O', entry.order.productionOrderNo],
-          ['품목코드', entry.itemCode],
-          ['품목명', entry.itemName],
-          ['ERP W/O 수량', `${entry.order.orderQty} ${entry.unit}`],
-          ...(showReadiness ? [['기준 확인', entry.ready ? '완료' : '필요']] : []),
-        ].map(([label, value]) => (
-          <div className="field-cell" key={label}>
-            <dt className="field-label">{label}</dt>
-            <dd>{value}</dd>
+      <WorkOrderOverview
+        order={entry.order}
+        item={{
+          itemCode: entry.itemCode,
+          itemName: entry.itemName,
+          erpItemGroupCode: entry.itemGroupCode,
+        }}
+        unitLabel={entry.unit}
+      />
+      {showReadiness && (
+        <dl className="erp-wo-readiness">
+          <div>
+            <dt>기준 확인</dt>
+            <dd>{entry.ready ? '완료' : '필요'}</dd>
           </div>
-        ))}
-      </dl>
+        </dl>
+      )}
     </section>
   );
 };
@@ -245,6 +292,7 @@ const ReadyOrderSession = ({
       item: itemLabel,
       itemCode: item?.itemCode ?? '—',
       itemName: item?.itemName ?? '—',
+      itemGroupCode: item?.erpItemGroupCode ?? null,
       unit,
       decimalScale,
       editor,
@@ -278,6 +326,7 @@ const ReadyOrderSession = ({
     itemLabel,
     item?.itemCode,
     item?.itemName,
+    item?.erpItemGroupCode,
     unit,
     decimalScale,
     rows,
@@ -313,12 +362,20 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   const [planView, setPlanView] = useState('week');
   const [distributionDirty, setDistributionDirty] = useState(false);
   const [focus, setFocus] = useState(orderNumbers[0] ?? '');
+  const [addRequest, setAddRequest] = useState(0);
+  const inspectSelectedPlan = useCallback((key: string) => {
+    const number = key.split('::')[0];
+    if (number) setFocus(number);
+  }, []);
   const [requested, setRequested] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [hasConflict, setHasConflict] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addQuantity, setAddQuantity] = useState('');
+  const [addOrder, setAddOrder] = useState('');
+  const [addDate, setAddDate] = useState('');
+  const [addLine, setAddLine] = useState('');
   const [results, setResults] = useState<string[]>([]);
   const running = useRef(false);
   const entries = orderNumbers.flatMap((number) =>
@@ -471,6 +528,28 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     }
     owner.editor.remove(originalKey(row.key));
   };
+  const selectAddOrder = (number: string) => {
+    const entry = controllers[number];
+    setAddOrder(entry?.order.productionOrderNo ?? '');
+    setAddQuantity(entry ? String(Math.max(1, toSchedule(entry))) : '');
+    setAddDate(entry?.defaults.planDate ?? '');
+    setAddLine(entry?.defaults.plannedLineId ?? '');
+  };
+  const openPlanAdd = (number?: string) => {
+    selectAddOrder(number ?? '');
+    setAddRequest((current) => current + 1);
+    setAddOpen(true);
+  };
+  const addTarget = controllers[addOrder];
+  const addDraft = addTarget
+    ? {
+        ...addTarget.defaults,
+        planDate: addDate,
+        plannedLineId: addLine,
+        plannedQty: addQuantity,
+        remarks: '',
+      }
+    : null;
   const moveStage = (value: string) => {
     if (busy || value === stage) return;
     if ((value === 'assign' || value === 'release') && (!enough || dirty || distributionDirty))
@@ -583,79 +662,145 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           </section>
         )}
 
-        {stage === 'plan' && (
-          <Tabs
-            className="erp-wo-multi-view-tabs"
-            size="sm"
-            aria-label="생산계획 보기"
-            value={planView}
-            onChange={setPlanView}
-            items={[
-              { value: 'week', label: '주간 편성', content: null },
-              { value: 'grid', label: 'ERP W/O별 계획 수량', content: null },
-            ]}
-          />
-        )}
-        {stage === 'plan' && planView === 'grid' && (
-          <section aria-label="선택 ERP W/O" className="pane erp-wo-multi-orders">
-            <AdjustableNativeTable
-              storageKey="omf-mes:work-planning:erp-wo-quantity-columns:v2"
-              className="erp-wo-master-table"
-              widths={[168, 136, 240, 128, 128, 128, 128, 144]}
-              labels={[
-                'ERP W/O',
-                '품목코드',
-                '품목명',
-                'ERP W/O 수량',
-                '확정 계획량',
-                '미확정 계획량',
-                '미계획 수량',
-                '이번 계획 수량',
-              ]}
+        {stage === 'plan' && <h2 className="section-title">생산계획 편성</h2>}
+        {stage === 'plan' && target && (
+          <>
+            <div className="erp-wo-multi-quantity-summary">
+              <div className="erp-wo-multi-week-heading">
+                <dl className="erp-wo-plan-totals" aria-label="선택 ERP W/O 계획 수량 요약">
+                  <div>
+                    <dt>선택 ERP W/O</dt>
+                    <dd>{entries.length}건</dd>
+                  </div>
+                  {units.size === 1 ? (
+                    [
+                      [
+                        'ERP W/O 수량',
+                        entries.reduce((sum, entry) => sum + entry.order.orderQty, 0),
+                      ],
+                      ['확정 계획량', entries.reduce((sum, entry) => sum + confirmedOf(entry), 0)],
+                      ['미확정 계획량', entries.reduce((sum, entry) => sum + draftOf(entry), 0)],
+                      ['미계획 수량', entries.reduce((sum, entry) => sum + getRemaining(entry), 0)],
+                      ['이번 계획 수량', entries.reduce((sum, entry) => sum + targetOf(entry), 0)],
+                      ['편성 대기', entries.reduce((sum, entry) => sum + toSchedule(entry), 0)],
+                    ].map(([label, value]) => (
+                      <div key={String(label)}>
+                        <dt>{label}</dt>
+                        <dd>
+                          {formatQty(roundQty(Number(value)))} {target.unit}
+                        </dd>
+                      </div>
+                    ))
+                  ) : (
+                    <div>
+                      <dt>계획 수량</dt>
+                      <dd>단위가 달라 ERP W/O별로 표시</dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            </div>
+            <PlanCreationTools
+              disabled={busy || !allReady || !validTargets}
+              addDisabled={entries.every((entry) => getRemaining(entry) <= 0)}
+              onAdd={() => openPlanAdd()}
             >
-              <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.order.productionOrderNo}>
-                    <td>{entry.order.productionOrderNo}</td>
-                    <td>{entry.itemCode}</td>
-                    <td>{entry.itemName}</td>
-                    <td>
-                      {entry.order.orderQty} {entry.unit}
-                    </td>
-                    <td>
-                      {confirmedOf(entry)} {entry.unit}
-                    </td>
-                    <td>
-                      {draftOf(entry)} {entry.unit}
-                    </td>
-                    <td>
-                      {getRemaining(entry)} {entry.unit}
-                    </td>
-                    <td>
-                      <input
-                        className="erp-wo-batch-qty"
-                        aria-label={`${entry.order.productionOrderNo} 이번 계획 수량`}
-                        type="number"
-                        min="0"
-                        max={entry.order.orderQty - confirmedOf(entry)}
-                        value={
-                          requested[entry.order.productionOrderNo] ??
-                          entry.order.orderQty - confirmedOf(entry)
-                        }
-                        disabled={busy}
-                        onChange={(event) =>
-                          setRequested((current) => ({
-                            ...current,
-                            [entry.order.productionOrderNo]: event.target.value,
-                          }))
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </AdjustableNativeTable>
-          </section>
+              <DistributionControls
+                orders={entries.map((entry) => ({
+                  id: entry.order.productionOrderNo,
+                  label: `${entry.order.productionOrderNo} / ${entry.item}`,
+                  unit: entry.unit,
+                  decimalScale: entry.decimalScale,
+                  pending: toSchedule(entry),
+                  lines: entry.lines,
+                  startDate: entry.defaults.planDate,
+                  lineId: entry.defaults.plannedLineId,
+                }))}
+                existing={entries.flatMap((entry) =>
+                  entry.editor.rows.map((row) => ({
+                    ...row.draft,
+                    owner: entry.order.productionOrderNo,
+                  })),
+                )}
+                disabled={busy || !allReady || !validTargets}
+                onDirtyChange={setDistributionDirty}
+                onApply={(drafts) => {
+                  entries.forEach((entry) =>
+                    entry.editor.addMany(
+                      drafts
+                        .filter((row) => row.owner === entry.order.productionOrderNo)
+                        .map((row) => ({ ...entry.defaults, ...row })),
+                    ),
+                  );
+                  setPlanView('week');
+                }}
+              />
+            </PlanCreationTools>
+          </>
+        )}
+        {stage === 'plan' && (
+          <details className="erp-wo-plan-quantity-settings">
+            <summary>ERP W/O별 편성 수량 설정</summary>
+            <section aria-label="선택 ERP W/O" className="pane erp-wo-multi-orders">
+              <AdjustableNativeTable
+                storageKey="omf-mes:work-planning:erp-wo-quantity-columns:v2"
+                className="erp-wo-master-table"
+                widths={[168, 136, 240, 128, 128, 128, 128, 144]}
+                labels={[
+                  'ERP W/O',
+                  '품목 코드',
+                  '품목명',
+                  'ERP W/O 수량',
+                  '확정 계획량',
+                  '미확정 계획량',
+                  '미계획 수량',
+                  '이번 계획 수량',
+                ]}
+              >
+                <tbody>
+                  {entries.map((entry) => (
+                    <tr key={entry.order.productionOrderNo}>
+                      <td>{entry.order.productionOrderNo}</td>
+                      <td>{entry.itemCode}</td>
+                      <td>{entry.itemName}</td>
+                      <td>
+                        {formatQty(entry.order.orderQty)} {entry.unit}
+                      </td>
+                      <td>
+                        {formatQty(confirmedOf(entry))} {entry.unit}
+                      </td>
+                      <td>
+                        {formatQty(draftOf(entry))} {entry.unit}
+                      </td>
+                      <td>
+                        {formatQty(getRemaining(entry))} {entry.unit}
+                      </td>
+                      <td>
+                        <input
+                          className="erp-wo-batch-qty"
+                          aria-label={`${entry.order.productionOrderNo} 이번 계획 수량`}
+                          type="number"
+                          min="0"
+                          max={entry.order.orderQty - confirmedOf(entry)}
+                          value={
+                            requested[entry.order.productionOrderNo] ??
+                            entry.order.orderQty - confirmedOf(entry)
+                          }
+                          disabled={busy}
+                          onChange={(event) =>
+                            setRequested((current) => ({
+                              ...current,
+                              [entry.order.productionOrderNo]: event.target.value,
+                            }))
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </AdjustableNativeTable>
+            </section>
+          </details>
         )}
         {stage === 'plan' && !validTargets && (
           <AlertBanner variant="warning">
@@ -670,76 +815,56 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {orderNumbers.map((number) => (
           <OrderSession key={number} number={number} publish={publish} />
         ))}
+        {stage === 'plan' && (
+          <Tabs
+            className="erp-wo-multi-view-tabs"
+            size="sm"
+            aria-label="생산계획 보기"
+            value={planView}
+            onChange={setPlanView}
+            items={[
+              { value: 'week', label: '주간 편성', content: null },
+              { value: 'grid', label: '계획 목록', content: null },
+            ]}
+          />
+        )}
         {stage === 'plan' && target && (
-          <div className="erp-wo-multi-plan-week" hidden={planView !== 'week'}>
-            <div className="erp-wo-multi-week-tools">
-              <div className="erp-wo-multi-week-heading">
-                <dl className="erp-wo-plan-totals" aria-label="선택 ERP W/O 계획 수량 요약">
-                  <div>
-                    <dt>선택 ERP W/O</dt>
-                    <dd>{entries.length}건</dd>
-                  </div>
-                  {units.size === 1 ? (
-                    [
-                      [
-                        'ERP W/O 수량',
-                        entries.reduce((sum, entry) => sum + entry.order.orderQty, 0),
-                      ],
-                      ['확정 계획량', entries.reduce((sum, entry) => sum + confirmedOf(entry), 0)],
-                      ['이번 계획 수량', entries.reduce((sum, entry) => sum + targetOf(entry), 0)],
-                      ['미확정 계획량', entries.reduce((sum, entry) => sum + draftOf(entry), 0)],
-                      ['편성 대기', entries.reduce((sum, entry) => sum + toSchedule(entry), 0)],
+          <div className="erp-wo-multi-plan-week">
+            <PlanStep
+              hideTools
+              hideHeading
+              addRequest={addRequest}
+              onSelectedKeyChange={inspectSelectedPlan}
+              rows={combined}
+              planGroups={entries.map((entry) => ({
+                id: entry.order.productionOrderNo,
+                orderNo: entry.order.productionOrderNo,
+                itemCode: entry.itemCode,
+                itemName: entry.itemName,
+                rowKeys: entry.editor.rows.map(
+                  (row) => `${entry.order.productionOrderNo}::${row.key}`,
+                ),
+                addDisabled: getRemaining(entry) <= 0,
+                onAdd: () => openPlanAdd(entry.order.productionOrderNo),
+                summary: (
+                  <dl className="erp-wo-plan-totals erp-wo-plan-group-totals">
+                    {[
+                      ['ERP W/O 수량', entry.order.orderQty],
+                      ['확정 계획량', confirmedOf(entry)],
+                      ['미확정 계획량', draftOf(entry)],
+                      ['미계획 수량', getRemaining(entry)],
                     ].map(([label, value]) => (
                       <div key={String(label)}>
                         <dt>{label}</dt>
                         <dd>
-                          {roundQty(Number(value))} {target.unit}
+                          {formatQty(Number(value))} {entry.unit}
                         </dd>
                       </div>
-                    ))
-                  ) : (
-                    <div>
-                      <dt>계획 수량</dt>
-                      <dd>단위가 달라 ERP W/O별로 표시</dd>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            </div>
-            <PlanStep
-              planningTools={
-                <DistributionControls
-                  orders={entries.map((entry) => ({
-                    id: entry.order.productionOrderNo,
-                    label: `${entry.order.productionOrderNo} / ${entry.item}`,
-                    unit: entry.unit,
-                    decimalScale: entry.decimalScale,
-                    pending: toSchedule(entry),
-                    lines: entry.lines,
-                    startDate: entry.defaults.planDate,
-                    lineId: entry.defaults.plannedLineId,
-                  }))}
-                  existing={entries.flatMap((entry) =>
-                    entry.editor.rows.map((row) => ({
-                      ...row.draft,
-                      owner: entry.order.productionOrderNo,
-                    })),
-                  )}
-                  disabled={busy || !allReady || !validTargets}
-                  onDirtyChange={setDistributionDirty}
-                  onApply={(drafts) =>
-                    entries.forEach((entry) =>
-                      entry.editor.addMany(
-                        drafts
-                          .filter((row) => row.owner === entry.order.productionOrderNo)
-                          .map((row) => ({ ...entry.defaults, ...row })),
-                      ),
-                    )
-                  }
-                />
-              }
-              rows={combined}
-              viewMode="week"
+                    ))}
+                  </dl>
+                ),
+              }))}
+              viewMode={planView === 'week' ? 'week' : 'grid'}
               orderQty={0}
               hideTotals
               uomLabel={units.size === 1 ? target.unit : ''}
@@ -763,7 +888,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                       <dd>{entry.order.productionOrderNo}</dd>
                     </div>
                     <div>
-                      <dt>품목코드</dt>
+                      <dt>품목 코드</dt>
                       <dd>{entry.itemCode}</dd>
                     </div>
                     <div>
@@ -781,15 +906,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               disabled={busy}
               failures={[]}
               addDisabled={entries.every((entry) => getRemaining(entry) <= 0)}
-              onAdd={() => {
-                const next =
-                  entries.find((entry) => toSchedule(entry) > 0) ??
-                  entries.find((entry) => getRemaining(entry) > 0);
-                if (!next) return;
-                setFocus(next.order.productionOrderNo);
-                setAddQuantity(String(Math.max(1, toSchedule(next))));
-                setAddOpen(true);
-              }}
+              onAdd={() => openPlanAdd()}
               onChange={(key, field, value) =>
                 ownerOf(key)?.editor.change(originalKey(key), field, value)
               }
@@ -909,11 +1026,6 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           }
           leading={
             <>
-              {stage === 'plan' && planView === 'grid' && (
-                <Button variant="outlined" onClick={() => setPlanView('week')}>
-                  주간 편성으로 이동
-                </Button>
-              )}
               {stage === 'plan' && dirty ? (
                 <Button
                   variant="outlined"
@@ -970,10 +1082,11 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           }}
         />
       )}
-      {addOpen && target && (
+      {addOpen && (
         <Dialog
           open
           title="계획 추가"
+          className="erp-wo-plan-add-dialog"
           closeOnBackdropClick={false}
           onClose={() => setAddOpen(false)}
           footer={
@@ -985,16 +1098,21 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 aria-describedby={`${remainingId}-add`}
                 disabled={
                   busy ||
+                  !addTarget ||
+                  !addDraft ||
+                  Object.keys(validateProductionPlanDraft(addDraft)).length > 0 ||
                   !Number.isFinite(Number(addQuantity)) ||
                   Math.abs(
-                    Number(addQuantity) * 10 ** (target.decimalScale ?? 6) -
-                      Math.round(Number(addQuantity) * 10 ** (target.decimalScale ?? 6)),
+                    Number(addQuantity) * 10 ** (addTarget.decimalScale ?? 6) -
+                      Math.round(Number(addQuantity) * 10 ** (addTarget.decimalScale ?? 6)),
                   ) > 0.00001 ||
                   Number(addQuantity) <= 0 ||
-                  Number(addQuantity) > getRemaining(target)
+                  Number(addQuantity) > getRemaining(addTarget)
                 }
                 onClick={() => {
-                  target.editor.add({ ...target.defaults, plannedQty: addQuantity });
+                  if (!addTarget || !addDraft) return;
+                  addTarget.editor.add(addDraft);
+                  setFocus(addTarget.order.productionOrderNo);
                   setAddOpen(false);
                 }}
               >
@@ -1008,35 +1126,70 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               <span className="field-label">계획을 추가할 ERP W/O</span>
               <Select
                 aria-label="계획을 추가할 ERP W/O"
-                value={focus}
+                value={addOrder}
                 options={entries
                   .filter((entry) => getRemaining(entry) > 0)
                   .map((entry) => ({
                     value: entry.order.productionOrderNo,
                     label: `${entry.order.productionOrderNo} / ${entry.item}`,
                   }))}
-                onChange={(value) => {
-                  setFocus(value);
-                  const entry = controllers[value];
-                  if (entry) setAddQuantity(String(Math.max(1, toSchedule(entry))));
-                }}
+                onChange={selectAddOrder}
               />
             </div>
-            <p className="field-note">
-              이번 계획 {targetOf(target)}, 편성 {draftOf(target)}, 추가 편성 가능{' '}
-              {getRemaining(target)} {target.unit}
-            </p>
-            <TextField
-              label="추가할 계획 수량"
-              inputMode="numeric"
-              value={addQuantity}
-              onChange={(event) => setAddQuantity(event.target.value)}
-            />
+            {addTarget && (
+              <dl className="erp-wo-plan-add-summary">
+                <div>
+                  <dt>이번 계획 수량</dt>
+                  <dd>
+                    {formatQty(targetOf(addTarget))} {addTarget.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>편성 수량</dt>
+                  <dd>
+                    {formatQty(draftOf(addTarget))} {addTarget.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>추가 편성 가능</dt>
+                  <dd>
+                    {formatQty(getRemaining(addTarget))} {addTarget.unit}
+                  </dd>
+                </div>
+              </dl>
+            )}
+            <div className="erp-wo-plan-add-fields">
+              <div className="field-cell">
+                <span className="field-label">계획일</span>
+                <DatePicker
+                  placeholder="계획일 선택"
+                  aria-label="추가할 계획일"
+                  value={addDate}
+                  onChange={setAddDate}
+                  disabled={!addTarget}
+                />
+              </div>
+              <TextField
+                disabled={!addTarget}
+                label="추가할 계획 수량"
+                inputMode="numeric"
+                value={addQuantity}
+                onChange={(event) => setAddQuantity(event.target.value)}
+              />
+              <div className="field-cell erp-wo-plan-add-line">
+                <span className="field-label">생산 라인</span>
+                <DistributionLinePicker
+                  combined
+                  label="추가할 계획 생산 라인"
+                  lines={addTarget?.lines ?? []}
+                  value={addLine}
+                  onChange={setAddLine}
+                  disabled={!addTarget}
+                />
+              </div>
+            </div>
             <p className="field-note" id={`${remainingId}-add`}>
               추가 수량은 편성 가능한 수량 이내에서 단위 소수 자릿수에 맞게 입력하세요.
-            </p>
-            <p className="field-note">
-              추가한 계획이 오른쪽 편집 영역에서 선택됩니다. 날짜와 라인을 지정하세요.
             </p>
           </div>
         </Dialog>

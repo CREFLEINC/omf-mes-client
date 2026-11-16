@@ -24,6 +24,10 @@ const fixtures = vi.hoisted(() => {
         uomId: 1,
         orderQty: qty,
         confirmedPlanQty: 0,
+        erpOrderNo: null,
+        dueDate: '2026-11-30',
+        erpStorageLocationCode: 'SYN-WH',
+        erpStorageWarehouse: { id: 41, code: 'SYN-WH', name: '합성 입고 창고' },
       },
     ]),
   );
@@ -56,7 +60,9 @@ const fixtures = vi.hoisted(() => {
     isError: false,
   };
   const units = { entries: [{ value: '1', label: 'EA' }] };
-  const items = new Map([[1, { itemCode: 'ITEM1', itemName: '시험 품목' }]]);
+  const items = new Map([
+    [1, { itemCode: 'ITEM1', itemName: '시험 품목', erpItemGroupCode: 'SYN-GROUP' }],
+  ]);
   return { orders, boms, routings, lines, units, items };
 });
 vi.mock('../worklist-queries', () => ({
@@ -193,8 +199,8 @@ const distribute = async (targets: Record<string, string> = {}) => {
   await waitFor(() => expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled());
   await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
   expect(screen.getByRole('tab', { name: '주간 편성' })).toHaveAttribute('aria-selected', 'true');
-  if (Object.keys(targets).length)
-    await user.click(screen.getByRole('tab', { name: 'ERP W/O별 계획 수량' }));
+  if (Object.keys(targets).length) await user.click(screen.getByRole('tab', { name: '계획 목록' }));
+  if (Object.keys(targets).length) await user.click(screen.getByText('ERP W/O별 편성 수량 설정'));
   for (const [order, qty] of Object.entries(targets)) {
     const input = screen.getByRole('spinbutton', { name: `${order} 이번 계획 수량` });
     await user.clear(input);
@@ -202,21 +208,27 @@ const distribute = async (targets: Record<string, string> = {}) => {
   }
   await user.click(screen.getByRole('tab', { name: '주간 편성' }));
   await user.click(screen.getByRole('button', { name: '자동 분배' }));
-  const groups = screen.getAllByRole('group', { name: /^분배 구간 \d+$/ });
-  for (const [index, group] of groups.entries()) {
+  const conditionButtons = screen.getAllByRole('row', { name: /^분배 조건 \d+$/ });
+  for (const [index, button] of conditionButtons.entries()) {
+    await user.click(button);
+    const group = screen.getByRole('group', { name: `분배 조건 ${index + 1}` });
     const total = Number(
-      (within(group).getByRole('textbox', { name: `구간 ${index + 1} 수량` }) as HTMLInputElement)
+      (within(group).getByRole('textbox', { name: `조건 ${index + 1} 수량` }) as HTMLInputElement)
         .value,
     );
     await user.click(
-      within(group).getByRole('button', { name: `구간 ${index + 1} 생산 라인 선택` }),
+      within(group).getByRole('button', { name: `조건 ${index + 1} 생산 라인 선택` }),
     );
-    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
+        exact: true,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: '선택' }));
-    await user.click(within(group).getByRole('combobox', { name: `구간 ${index + 1} 배분 방식` }));
+    await user.click(within(group).getByRole('combobox', { name: `조건 ${index + 1} 배분 방식` }));
     await user.click(screen.getByRole('option', { name: '날짜별 직접 입력' }));
     const inputs = within(group).getAllByRole('textbox', {
-      name: new RegExp(`구간 ${index + 1} [0-9]{4}-`),
+      name: new RegExp(`조건 ${index + 1} [0-9]{4}-`),
     });
     for (const [day, input] of inputs.entries()) {
       const qty = index === 0 ? (day === 0 ? total : 0) : day < 2 ? total / 2 : 0;
@@ -231,6 +243,38 @@ const distribute = async (targets: Record<string, string> = {}) => {
   return user;
 };
 describe('복수 ERP W/O 편성 저장 연결', () => {
+  it('복수 상단은 선택 건수만 표시하고 두 보기에서 편성 도구와 팝업 조건을 유지한다', async () => {
+    const { writes } = mount();
+    const user = userEvent.setup();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '다음: 생산계획' })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
+    const header = document.querySelector('.erp-wo-multi-header')! as HTMLElement;
+    expect(within(header).getByText('선택 ERP W/O')).toBeVisible();
+    expect(within(header).queryByRole('combobox')).toBeNull();
+    expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: '계획 목록' }));
+    expect(screen.getByRole('button', { name: '계획 추가' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '자동 분배' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.getByRole('row', { name: '분배 조건 2' })).toBeVisible();
+    const quantity = screen.getByRole('textbox', { name: '조건 1 수량' });
+    await user.clear(quantity);
+    await user.type(quantity, '20');
+    await user.click(
+      within(screen.getByRole('dialog', { name: '자동 분배' })).getByRole('button', {
+        name: '닫기',
+      }),
+    );
+    await user.click(screen.getByRole('tab', { name: '주간 편성' }));
+    await user.click(screen.getByRole('button', { name: '자동 분배' }));
+    expect(screen.getByRole('textbox', { name: '조건 1 수량' })).toHaveValue('20');
+    expect(screen.getAllByRole('button', { name: '계획 추가' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '자동 분배' })).toHaveLength(1);
+    expect(writes).toHaveLength(0);
+  });
+
   it('복수 목록과 선택 상세에서 품목코드·품목명을 구분하며 괄호 표기를 보존한다', async () => {
     const original = fixtures.items.get(1)!;
     fixtures.items.set(1, { ...original, itemName: '시험 품목 【 TEST-100 】' });
@@ -239,13 +283,13 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       const list = await screen.findByRole('complementary', { name: 'ERP W/O 목록' });
       await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(2));
       const first = within(list).getAllByRole('button')[0]!;
-      expect(within(list).queryByRole('columnheader', { name: '품목코드' })).toBeNull();
+      expect(within(list).queryByRole('columnheader', { name: '품목 코드' })).toBeNull();
       const detail = screen.getByRole('region', { name: '선택 ERP W/O 상세' });
       expect(within(detail).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
       const user = userEvent.setup();
       const layout = screen.getByRole('group', { name: 'ERP W/O 목록과 상세 배치' });
       await user.click(within(layout).getByRole('button', { name: '상하 배치' }));
-      expect(within(list).getByRole('columnheader', { name: '품목코드' })).toBeVisible();
+      expect(within(list).getByRole('columnheader', { name: '품목 코드' })).toBeVisible();
       const row = within(list).getAllByRole('button')[0]!.closest('tr')!;
       expect(within(row).getByText('ITEM1', { exact: true })).toBeVisible();
       expect(within(row).getByText('시험 품목 【 TEST-100 】', { exact: true })).toBeVisible();
@@ -268,12 +312,12 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(detail).queryByText('A', { exact: true })).toBeNull();
     expect(within(detail).getByRole('region', { name: 'BOM 상세 정보' })).toBeVisible();
     expect(within(detail).getByRole('region', { name: 'Routing 상세 정보' })).toBeVisible();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: '미저장 변경사항' })).toBeNull();
   });
   it('분배한 계획을 ERP W/O별 저장하고 If-Match로 확정한 뒤 실행 단계로 이동한다', async () => {
     const server = mount();
     const user = await distribute();
-    expect(screen.getByRole('button', { name: '분배 미리보기' })).toBeDisabled();
+    expect(screen.queryByRole('dialog', { name: '자동 분배' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '계획 저장' }));
     await waitFor(() => expect(server.plans).toHaveLength(3));
     expect(
@@ -351,7 +395,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
       'true',
     );
   });
-  it('ERP W/O 선택은 계획 추가 때만 표시하고 새 계획의 편집 대상과 연결한다', async () => {
+  it('계획 추가의 ERP W/O 선택은 기존 계획이 있어도 새 계획의 편집 대상과 연결한다', async () => {
     mount();
     const user = userEvent.setup();
     await waitFor(() =>
@@ -364,6 +408,7 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(screen.queryByRole('combobox', { name: '계획 추가 대상' })).toBeNull();
     await user.click(screen.getByRole('button', { name: '계획 추가' }));
     const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    expect(within(dialog).getByRole('button', { name: '추가' })).toBeDisabled();
     await user.click(within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }));
     await user.click(screen.getByRole('option', { name: 'B / 시험 품목 (ITEM1)' }));
     await user.click(within(dialog).getByRole('button', { name: '추가' }));
@@ -373,6 +418,18 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(within(selectedPlan).getByText('시험 품목', { exact: true })).toBeVisible();
     expect(screen.getByRole('button', { name: '계획 확정 후 4M 배정' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: '4M 배정으로' })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: '계획 목록' }));
+    await user.click(screen.getByRole('button', { name: 'A 계획 추가' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
+        name: '추가',
+      }),
+    );
+    await waitFor(() => expect(within(selectedPlan).getByText('A', { exact: true })).toBeVisible());
+    expect(screen.queryByRole('combobox', { name: '정보를 확인할 ERP W/O' })).toBeNull();
+    expect(screen.getByRole('tab', { name: '계획 목록' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('region', { name: 'A 생산계획' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'B 생산계획' })).toBeVisible();
   });
   it.each([
     [60, 80],
@@ -426,9 +483,18 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     await user.click(screen.getByRole('button', { name: '다음: 생산계획' }));
     await user.click(screen.getByRole('tab', { name: '주간 편성' }));
     await user.click(screen.getByRole('button', { name: '자동 분배' }));
-    await user.click(screen.getByRole('button', { name: '구간 1 생산 라인 선택' }));
-    await user.click(await screen.findByText('라인 1', { exact: true }));
+    await user.click(screen.getByRole('button', { name: '조건 1 생산 라인 선택' }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '생산 라인 선택' })).getByText('라인 1', {
+        exact: true,
+      }),
+    );
     await user.click(screen.getByRole('button', { name: '선택' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '자동 분배' })).getByRole('button', {
+        name: '닫기',
+      }),
+    );
     await user.click(screen.getByRole('tab', { name: '1. BOM·Routing' }));
     expect(screen.getByRole('dialog')).toBeVisible();
   });

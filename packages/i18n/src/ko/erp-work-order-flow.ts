@@ -362,7 +362,7 @@ export const erpWorkOrderFlow = {
       saveDraft: '계획 저장',
       workspace: {
         views: '생산계획 보기',
-        grid: 'ERP W/O별 계획 수량',
+        grid: '계획 목록',
         week: '주간 편성',
         weekHeading: '생산 라인별 주간 편성',
         gridHeading: '계획 목록',

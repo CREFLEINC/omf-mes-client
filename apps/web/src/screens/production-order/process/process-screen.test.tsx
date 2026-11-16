@@ -517,6 +517,26 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(within(summary).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
     expect(within(summary).getByText('SYN-ITEM', { exact: true })).toBeVisible();
   });
+  it('ERP W/O·품목·생산 정보를 구분하고 수량과 입고 창고를 각각 표시한다', async () => {
+    renderAt(`${WORKLIST}/${ORDER_NO}`, world({ itemGroupCode: 'G100' }));
+    await currentStep(tp.steps.plan);
+    const identity = screen.getByRole('region', { name: 'ERP W/O 정보' });
+    const item = screen.getByRole('region', { name: '품목 정보' });
+    const production = screen.getByRole('region', { name: '생산 정보' });
+    expect(within(identity).getByText(ORDER_NO, { exact: true })).toBeVisible();
+    expect(within(identity).getByText('ERP-701', { exact: true })).toBeVisible();
+    expect(within(item).getByText('SYN-ITEM', { exact: true })).toBeVisible();
+    expect(within(item).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
+    expect(within(item).getByText('G100', { exact: true })).toBeVisible();
+    const quantity = within(production).getByText(tp.summary.orderQty, {
+      exact: true,
+    }).parentElement!;
+    expect(within(quantity).getByText('300 EA', { exact: true })).toBeVisible();
+    expect(within(quantity).queryByText('생산품 입고 창고', { exact: true })).toBeNull();
+    expect(within(production).getByText('생산품 입고 창고', { exact: true })).toBeVisible();
+    expect(within(production).getByText('2026-10-31', { exact: true })).toBeVisible();
+  });
+
   it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ boms: [], erpOrderNo: 'ERP-701' }));
     await currentStep(tp.steps.master);

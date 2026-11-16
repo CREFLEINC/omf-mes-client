@@ -1,3 +1,4 @@
+import { WorkOrderOverview } from './work-order-overview';
 /**
  * W-02-01 작업지시 목록 처리 화면 (W-02-02 W/O 전개와 편성, W-02-03 4M 자원배정, W-02-04 W/O 확정과 배포를 단계로 합침)
  * 유형: T-W-C 처리형 (작업함: ProductionOrderScreen, 처리 화면: ProductionOrderProcessScreen)
@@ -870,55 +871,7 @@ export const ProcessWorkspace = ({
           />
         </>
       }
-      summary={
-        <dl className="erp-wo-summary">
-          <div className="is-order">
-            <dt>{tp.orderNumber}</dt>
-            <dd>{order.productionOrderNo}</dd>
-          </div>
-          <div className="is-item-code">
-            <dt>{t.list.columns.itemCode}</dt>
-            <dd>{item?.itemCode ?? '—'}</dd>
-          </div>
-          <div className="is-key is-item-name">
-            <dt>{t.list.columns.itemName}</dt>
-            <dd>{item?.itemName ?? '—'}</dd>
-          </div>
-          {item?.erpItemGroupCode != null && item.erpItemGroupCode !== '' && (
-            <div>
-              <dt>{tp.summary.itemGroup}</dt>
-              <dd>{item.erpItemGroupCode}</dd>
-            </div>
-          )}
-          <div className="is-key">
-            <dt>생산품 입고 창고</dt>
-            <dd>
-              {order.erpStorageLocationCode
-                ? order.erpStorageWarehouse
-                  ? `${order.erpStorageWarehouse.name} (${order.erpStorageWarehouse.code})`
-                  : `${order.erpStorageLocationCode} · 창고 연결 확인 필요`
-                : '미지정'}
-            </dd>
-            <dt>{tp.summary.orderQty}</dt>
-            <dd>{`${formatQty(order.orderQty)} ${uomLabelOf(order.uomId)}`}</dd>
-          </div>
-          {order.dueDate !== null && (
-            <div>
-              <dt>{tp.summary.dueDate}</dt>
-              <dd>{order.dueDate}</dd>
-            </div>
-          )}
-          {/* 제목 번호와 같은 값은 되풀이일 뿐이다. 수기 등록 오더만 번호가 다를 수 있다. */}
-          {order.erpOrderNo !== null &&
-            order.erpOrderNo !== '' &&
-            order.erpOrderNo !== order.productionOrderNo && (
-              <div>
-                <dt>{tp.summary.erpNo}</dt>
-                <dd>{order.erpOrderNo}</dd>
-              </div>
-            )}
-        </dl>
-      }
+      summary={<WorkOrderOverview order={order} item={item} unitLabel={uomLabelOf(order.uomId)} />}
       headerActions={
         canRerun && step !== 'done' ? (
           <Button

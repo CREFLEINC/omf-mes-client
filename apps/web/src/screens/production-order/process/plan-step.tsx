@@ -1,3 +1,4 @@
+import { PlanCreationTools } from './plan-creation-tools';
 import { splitPlanQuantity } from '../../production-plan/quantity-split';
 import {
   AlertBanner,
@@ -34,8 +35,19 @@ export interface PlanLine {
   code: string;
   name: string;
 }
+export interface PlanOrderGroup {
+  id: string;
+  orderNo: string;
+  itemCode: string;
+  itemName: string;
+  rowKeys: readonly string[];
+  summary: ReactNode;
+  addDisabled: boolean;
+  onAdd: () => void;
+}
 export interface PlanStepProps {
   planningTools?: ReactNode;
+  planGroups?: readonly PlanOrderGroup[];
   rows: ProductionPlanEditorStateRow[];
   orderQty: number;
   confirmedQty?: number | null;
@@ -49,6 +61,10 @@ export interface PlanStepProps {
   addDisabled?: boolean;
   viewMode?: 'grid' | 'week';
   hideTotals?: boolean;
+  hideTools?: boolean;
+  hideHeading?: boolean;
+  addRequest?: number;
+  onSelectedKeyChange?: (key: string) => void;
   orderNameOf?: (row: ProductionPlanEditorStateRow) => string;
   orderContextOf?: (row: ProductionPlanEditorStateRow) => ReactNode;
   rowDecimalScaleOf?: (row: ProductionPlanEditorStateRow) => number | undefined;
@@ -88,6 +104,7 @@ export const PlanStep = ({
   addDisabled = false,
   onAppend,
   planningTools,
+  planGroups,
   distributionOrderLabel,
   distributionStartDate,
   distributionLines,
@@ -95,6 +112,10 @@ export const PlanStep = ({
   onDistributionDirtyChange,
   onSplit,
   hideTotals = false,
+  hideTools = false,
+  hideHeading = false,
+  addRequest = 0,
+  onSelectedKeyChange,
   viewMode,
   orderNameOf,
   orderContextOf,
@@ -104,12 +125,14 @@ export const PlanStep = ({
   onRemove,
 }: PlanStepProps) => {
   const [localView, setView] = useState('week');
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const view = viewMode ?? localView;
   const [splitQty, setSplitQty] = useState('');
   const [splitError, setSplitError] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectAdded, setSelectAdded] = useState(false);
   const beforeAdded = useRef<ReadonlySet<string> | null>(null);
+  const previousAddRequest = useRef(addRequest);
   const [anchor, setAnchor] = useState<string | null>(null);
   const editorId = useId();
   const lineSource = useLineSource(plantId);
@@ -125,6 +148,16 @@ export const PlanStep = ({
 
   const selected =
     rows.find((row) => row.key === selectedKey) ?? rows.find((row) => !row.confirmed) ?? rows[0];
+  const selectedRowKey = selected?.key;
+  useEffect(() => {
+    if (selectedRowKey) onSelectedKeyChange?.(selectedRowKey);
+  }, [selectedRowKey, onSelectedKeyChange]);
+  useEffect(() => {
+    if (previousAddRequest.current === addRequest) return;
+    previousAddRequest.current = addRequest;
+    beforeAdded.current = new Set(rows.map((row) => row.key));
+    setSelectAdded(true);
+  }, [addRequest, rows]);
   useEffect(() => {
     if (!selectAdded || beforeAdded.current === null) return;
     const added = rows.find((row) => !beforeAdded.current?.has(row.key));
@@ -156,10 +189,11 @@ export const PlanStep = ({
     qty == null ? '—' : `${formatQty(qty)} ${uomLabel}`;
   const choose = (row: ProductionPlanEditorStateRow) => {
     setSelectedKey(row.key);
+    onSelectedKeyChange?.(row.key);
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(revealEditor);
   };
   const columns: Column<ProductionPlanEditorStateRow>[] = [
-    ...(orderNameOf
+    ...(orderNameOf && !planGroups
       ? [
           {
             key: 'order',
@@ -219,21 +253,11 @@ export const PlanStep = ({
 
   return (
     <section className="erp-wo-plan-workspace" aria-label={t.heading}>
-      <div className="erp-wo-plan-toolbar">
-        <h2 className="section-title">{t.heading}</h2>
-        {!viewMode && (
-          <Tabs
-            size="sm"
-            aria-label={ui.views}
-            value={view}
-            onChange={setView}
-            items={[
-              { value: 'week', label: ui.week, content: null },
-              { value: 'grid', label: ui.grid, content: null },
-            ]}
-          />
-        )}
-      </div>
+      {!hideHeading && (
+        <div className="erp-wo-plan-toolbar">
+          <h2 className="section-title">{t.heading}</h2>
+        </div>
+      )}
       {!hideTotals && (
         <dl className="erp-wo-plan-totals">
           {[
@@ -249,44 +273,39 @@ export const PlanStep = ({
           ))}
         </dl>
       )}
-      <section className="erp-wo-plan-create" aria-label="계획 편성 도구">
-        <div className="erp-wo-plan-create-label">
-          <strong>계획 추가·자동 분배</strong>
-          <span className="field-note">직접 추가하거나 조건에 따라 자동 분배하세요.</span>
-        </div>
-        <Button
-          variant="outlined"
-          disabled={disabled || addDisabled}
-          onClick={() => {
+      {!hideTools && (
+        <PlanCreationTools
+          disabled={disabled}
+          addDisabled={addDisabled}
+          onAdd={() => {
             beforeAdded.current = new Set(rows.map((row) => row.key));
             onAdd();
             setSelectAdded(true);
           }}
         >
-          {t.add}
-        </Button>
-        {planningTools ??
-          (onAppend && (
-            <DistributionControls
-              orders={[
-                {
-                  id: 'single',
-                  label: distributionOrderLabel ?? '현재 ERP W/O',
-                  unit: uomLabel,
-                  decimalScale: distributionDecimalScale,
-                  pending: Math.max(0, remaining ?? orderQty - total),
-                  lines: distributionLines ?? lines,
-                  startDate: distributionStartDate,
-                  lineId: rows.at(-1)?.draft.plannedLineId,
-                },
-              ]}
-              existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
-              disabled={disabled}
-              onDirtyChange={onDistributionDirtyChange}
-              onApply={(drafts) => onAppend(drafts)}
-            />
-          ))}
-      </section>
+          {planningTools ??
+            (onAppend && (
+              <DistributionControls
+                orders={[
+                  {
+                    id: 'single',
+                    label: distributionOrderLabel ?? '현재 ERP W/O',
+                    unit: uomLabel,
+                    decimalScale: distributionDecimalScale,
+                    pending: Math.max(0, remaining ?? orderQty - total),
+                    lines: distributionLines ?? lines,
+                    startDate: distributionStartDate,
+                    lineId: rows.at(-1)?.draft.plannedLineId,
+                  },
+                ]}
+                existing={rows.map((row) => ({ ...row.draft, owner: 'single' }))}
+                disabled={disabled}
+                onDirtyChange={onDistributionDirtyChange}
+                onApply={(drafts) => onAppend(drafts)}
+              />
+            ))}
+        </PlanCreationTools>
+      )}
       {!viewMode && rows.some((row) => row.isDirty) && (
         <p className="field-note erp-wo-plan-note">{ui.unsavedSummary}</p>
       )}
@@ -298,6 +317,19 @@ export const PlanStep = ({
             ))}
           </ul>
         </AlertBanner>
+      )}
+      {!viewMode && (
+        <Tabs
+          size="sm"
+          className="erp-wo-plan-view-tabs"
+          aria-label={ui.views}
+          value={view}
+          onChange={setView}
+          items={[
+            { value: 'week', label: ui.week, content: null },
+            { value: 'grid', label: ui.grid, content: null },
+          ]}
+        />
       )}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:plan-layout"
@@ -313,17 +345,86 @@ export const PlanStep = ({
             {view === 'week' ? ui.weekHeading : ui.gridHeading}
           </h2>
           {view === 'grid' ? (
-            <AdjustableTable
-              storageKey="omf-mes:work-planning:plan-columns"
-              className="erp-wo-plan-grid"
-              columns={columns}
-              rows={rows}
-              getRowId={(row) => row.key}
-              activeId={selected?.key}
-              rowLabel={(row) => nameOf(row)}
-              onActivate={choose}
-              empty={<p className="empty-line">{t.empty}</p>}
-            />
+            planGroups ? (
+              <div className="erp-wo-grouped-plans">
+                {planGroups.map((group) => {
+                  const groupRows = rows.filter((row) => group.rowKeys.includes(row.key));
+                  const expanded = !collapsedGroups.has(group.id);
+                  return (
+                    <section
+                      key={group.id}
+                      className="erp-wo-plan-order-group"
+                      aria-label={`${group.orderNo} 생산계획`}
+                    >
+                      <div className="erp-wo-plan-group-heading">
+                        <Button
+                          size="sm"
+                          variant="text"
+                          aria-expanded={expanded}
+                          aria-label={`${group.orderNo} 계획 ${expanded ? '접기' : '펼치기'}`}
+                          onClick={() =>
+                            setCollapsedGroups((current) => {
+                              const next = new Set(current);
+                              if (next.has(group.id)) next.delete(group.id);
+                              else next.add(group.id);
+                              return next;
+                            })
+                          }
+                        >
+                          {expanded ? '▾' : '▸'} {group.orderNo}
+                        </Button>
+                        <span className="field-note">계획 {groupRows.length}건</span>
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          aria-label={`${group.orderNo} 계획 추가`}
+                          disabled={disabled || group.addDisabled}
+                          onClick={group.onAdd}
+                        >
+                          계획 추가
+                        </Button>
+                      </div>
+                      <dl className="erp-wo-selected-item-fields">
+                        <div>
+                          <dt>품목 코드</dt>
+                          <dd>{group.itemCode}</dd>
+                        </div>
+                        <div>
+                          <dt>품목명</dt>
+                          <dd>{group.itemName}</dd>
+                        </div>
+                      </dl>
+                      {group.summary}
+                      {expanded && (
+                        <AdjustableTable
+                          storageKey="omf-mes:work-planning:group-plan-columns:v1"
+                          className="erp-wo-plan-grid"
+                          columns={columns}
+                          rows={groupRows}
+                          getRowId={(row) => row.key}
+                          activeId={selected?.key}
+                          rowLabel={(row) => nameOf(row)}
+                          onActivate={choose}
+                          empty={<p className="empty-line">{t.empty}</p>}
+                        />
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
+              <AdjustableTable
+                storageKey="omf-mes:work-planning:plan-columns"
+                className="erp-wo-plan-grid"
+                columns={columns}
+                rows={rows}
+                getRowId={(row) => row.key}
+                activeId={selected?.key}
+                rowLabel={(row) => nameOf(row)}
+                onActivate={choose}
+                empty={<p className="empty-line">{t.empty}</p>}
+              />
+            )
           ) : (
             <>
               <div className="erp-wo-week-heading">

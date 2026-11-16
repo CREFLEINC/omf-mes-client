@@ -35491,7 +35491,7 @@ body:has(.erp-wo-master-revision [role='combobox'][aria-expanded='true']) [role=
 .erp-wo-distribution-heading, .erp-wo-distribution-row-head, .erp-wo-distribution-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .erp-wo-distribution-heading .section-title { margin: 0; }
 .erp-wo-distribution-row-head .field-cell { flex: 1; min-width: 12rem; }
-.erp-wo-distribution-segments { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,26rem),1fr)); align-items: start; gap: var(--space-3); }
+.erp-wo-distribution-segments { display: block; min-width: 0; }
 .erp-wo-distribution-segment { min-width: 0; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: var(--space-3); }
 .erp-wo-distribution-segment summary { padding-block: var(--space-2); cursor: pointer; font: var(--type-body-sm); overflow-wrap: anywhere; }
 .erp-wo-segment-fields { display: grid; grid-template-columns: minmax(0,14rem) minmax(0,12rem); gap: var(--space-3); margin-top: var(--space-3); }
@@ -35845,9 +35845,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-adjustable-grid.is-stacked > .inspection-height-splitter { display: block; }
 .erp-wo-adjustable-grid .erp-wo-plan-editor { position: static; width: 100%; }
 .erp-wo-adjustable-grid .erp-wo-assign-editor { width: 100%; }
-.erp-wo-dense-table th, .erp-wo-dense-table td, .erp-wo-dense-table .numeric,
-.erp-wo-plan-workspace th, .erp-wo-plan-workspace td, .erp-wo-assign-list th, .erp-wo-assign-list td,
-.erp-wo-release-workspace th, .erp-wo-release-workspace td, .erp-wo-master-table th, .erp-wo-master-table td,
+/* 날짜 선택 달력의 숫자와 선택 원은 컴포넌트 기본 가운데 정렬을 유지한다. */
+.erp-wo-dense-table th:not(:where([role='grid'] *)), .erp-wo-dense-table td:not(:where([role='grid'] *)), .erp-wo-dense-table .numeric,
+.erp-wo-plan-workspace th:not(:where([role='grid'] *)), .erp-wo-plan-workspace td:not(:where([role='grid'] *)), .erp-wo-assign-list th:not(:where([role='grid'] *)), .erp-wo-assign-list td:not(:where([role='grid'] *)),
+.erp-wo-release-workspace th:not(:where([role='grid'] *)), .erp-wo-release-workspace td:not(:where([role='grid'] *)), .erp-wo-master-table th:not(:where([role='grid'] *)), .erp-wo-master-table td:not(:where([role='grid'] *)),
 .erp-wo-plan-workspace td input, .erp-wo-release-workspace td input, .erp-wo-master-table td input { text-align: left; }
 .erp-wo-dense-table th { position: relative; }
 .erp-wo-dense-table th.fixed-code, .erp-wo-dense-table th.fixed-name { position: sticky; }
@@ -36640,3 +36641,128 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   display: block;
   margin-top: var(--space-1);
 }
+/* 분배 조건과 결과는 같은 영역에서 전환하고 선택한 조건만 편집한다. */
+.erp-wo-distribution-steps { display: flex; gap: var(--space-5); list-style: none; margin: 0; padding: 0 0 var(--space-3); border-bottom: 1px solid var(--outline-variant); font: var(--type-label-lg); color: var(--on-surface-variant); }
+.erp-wo-distribution-steps [aria-current='step'] { color: var(--primary); font-weight: 600; }
+.erp-wo-distribution-condition-list { min-width: 0; }
+.erp-wo-distribution-condition-list tr[data-active='true'] { background: var(--primary-container); color: var(--on-primary-container); }
+.erp-wo-distribution-condition-list td { overflow-wrap: anywhere; }
+.erp-wo-condition-period { min-width: 9rem; }
+.erp-wo-distribution-settings .erp-wo-distribution-actions, .erp-wo-distribution-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-3); }
+.erp-wo-distribution-footer { padding-top: var(--space-3); border-top: 1px solid var(--outline-variant); }
+.erp-wo-distribution-segment > .section-title { margin: 0 0 var(--space-3); }
+
+/* 보기 전환은 제목 아래 왼쪽, 편성 동작은 한 줄의 기준선에 맞춘다. */
+.erp-wo-plan-toolbar { flex-direction: column; align-items: stretch; justify-content: flex-start; min-width: 0; }
+.erp-wo-plan-toolbar > :has([role='tablist']) { width: 100%; min-width: 0; }
+.erp-wo-plan-toolbar [role='tablist'], .erp-wo-multi-view-tabs [role='tablist'] { justify-content: flex-start; flex-wrap: wrap; max-width: 100%; overflow: visible; }
+.erp-wo-multi-view-tabs { align-self: flex-start; max-width: 100%; min-width: 0; }
+.erp-wo-plan-create { grid-template-columns: max-content minmax(0, 1fr); min-width: 0; max-width: 100%; }
+.erp-wo-distribution > .erp-wo-distribution-actions { padding: 0; margin: 0; border: 0; justify-content: flex-start; align-self: center; }
+.erp-wo-plan-create > .erp-wo-distribution > .erp-wo-distribution-actions { min-width: 0; }
+.erp-wo-plan-create .erp-wo-distribution-settings { min-width: 0; box-sizing: border-box; }
+/* 번호·품목·생산 정보를 분리하고 모든 값은 생략 없이 표시한다. */
+.erp-wo-order-overview { display: grid; grid-template-columns: minmax(12rem, .8fr) minmax(0, 1.4fr) minmax(17rem, 1fr); align-items: start; gap: var(--space-4); padding-block: var(--space-3); }
+.erp-wo-order-overview > section { min-width: 0; }
+.erp-wo-order-overview > section + section { padding-left: var(--space-4); border-left: 1px solid var(--outline-variant); }
+.erp-wo-order-overview dl { display: grid; gap: var(--space-2); margin: 0; }
+.erp-wo-order-overview dl > div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; gap: var(--space-2); min-width: 0; }
+.erp-wo-order-overview dt { font: var(--type-label-sm); white-space: normal; }
+.erp-wo-order-overview dd { margin: 0; min-width: 0; font: var(--type-body-sm); color: var(--on-surface); white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; }
+.erp-wo-order-overview .is-order { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+.erp-wo-order-overview .is-order dd, .erp-wo-order-overview .is-item-name dd, .erp-wo-order-overview .is-order-quantity dd { font: var(--type-title-sm); color: var(--on-surface); }
+@container erp-wo-overview (max-width: 60rem) {
+  .erp-wo-order-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+  .erp-wo-order-overview .erp-wo-overview-production { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--outline-variant); padding: var(--space-3) 0 0; }
+  .erp-wo-order-overview .erp-wo-overview-production dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); }
+}
+@container erp-wo-overview (max-width: 28rem) {
+  .erp-wo-order-overview { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .erp-wo-order-overview > section + section { border-left: 0; padding-left: 0; }
+  .erp-wo-order-overview .erp-wo-overview-production dl { grid-template-columns: minmax(0, 1fr); }
+}
+
+.erp-wo-overview-container { container: erp-wo-overview / inline-size; min-width: 0; width: 100%; }
+.erp-wo-multi-header > .erp-wo-overview-container { width: 100%; }
+.erp-wo-multi-quantity-summary { min-width: 0; }
+.erp-wo-readiness { display: flex; margin: var(--space-2) 0 0; font: var(--type-body-sm); }
+.erp-wo-readiness > div { display: flex; gap: var(--space-3); }
+.erp-wo-readiness dd { margin: 0; }
+.erp-wo-overview-container [role='combobox'] { max-width: 100%; min-width: 0; text-align: left; }
+
+/* 계획 편성: 공통 도구 다음 보기 전환, ERP W/O별 계획 목록 */
+.erp-wo-plan-view-tabs { max-width:100%; }
+.erp-wo-plan-view-tabs [role="tabpanel"] { display:none; }
+.erp-wo-plan-view-tabs [role="tablist"] { justify-content:flex-start; flex-wrap:wrap; }
+.erp-wo-plan-order-group { min-width:0; padding:1rem 0; border-bottom:1px solid var(--color-outline, #ddd); }
+.erp-wo-plan-group-heading { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.erp-wo-plan-group-heading > button:last-child { margin-left:auto; }
+.erp-wo-plan-group-totals { padding:.5rem 0; }
+.erp-wo-plan-quantity-settings { min-width:0; }
+.erp-wo-plan-quantity-settings > summary { cursor:pointer; padding:.5rem 0; font-weight:600; }
+.erp-wo-plan-add-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.erp-wo-plan-add-fields > * { min-width:0; }
+@media(max-width:42rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
+
+/* 편성 도구는 보기와 무관한 공통 동작이며 분배 입력은 별도 창에서 처리한다. */
+.erp-wo-plan-create { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); padding:0; border:0; border-radius:0; background:transparent; }
+.erp-wo-plan-create > .erp-wo-distribution { display:contents; }
+.erp-wo-distribution-dialog { width:min(72rem,calc(100vw - 2rem)); max-width:72rem; }
+.erp-wo-distribution-dialog .erp-wo-distribution-settings { min-width:0; padding:0; border:0; }
+.erp-wo-plan-add-dialog { width:min(36rem,calc(100vw - 2rem)); max-width:36rem; }
+.erp-wo-plan-add-form > .field-cell { display:grid; grid-template-columns:minmax(0,1fr); }
+.erp-wo-plan-add-fields { grid-template-columns:minmax(0,12rem) minmax(0,12rem); align-items:start; }
+.erp-wo-plan-add-fields > .field-cell { display:grid; gap:var(--space-2); }
+.erp-wo-plan-add-fields button[aria-label="추가할 계획일"] { width:100%; min-width:11rem; justify-content:space-between; }
+.erp-wo-plan-add-line { grid-column:1/-1; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-buttons, .erp-wo-plan-add-line .erp-wo-distribution-line-buttons > button { width:100%; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-buttons > button { height:auto; min-height:var(--control-height-md); white-space:normal; overflow-wrap:anywhere; text-align:left; justify-content:flex-start; }
+.erp-wo-plan-add-summary { display:flex; flex-wrap:wrap; gap:var(--space-3) var(--space-5); margin:0; }
+.erp-wo-plan-add-summary > div { display:grid; gap:var(--space-1); }
+.erp-wo-plan-add-summary dt { color:var(--on-surface-muted); font:var(--type-label-sm); }
+.erp-wo-plan-add-summary dd { margin:0; font-variant-numeric:tabular-nums; }
+@media(max-width:32rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-plan-add-fields > .field-cell { grid-template-columns:minmax(0,1fr); justify-content:stretch; }
+.erp-wo-plan-add-fields .field-label { margin:0; }
+.erp-wo-plan-add-line { width:100%; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-field { width:100%; }
+.erp-wo-plan-add-line .erp-wo-distribution-line-buttons > button { border-radius:var(--radius-sm); }
+
+.erp-wo-plan-add-fields { grid-template-columns:12rem minmax(0,1fr); }
+.erp-wo-plan-add-fields > [data-disabled], .erp-wo-plan-add-fields > [class*="_field_"] { max-width:12rem; }
+@media(max-width:32rem) { .erp-wo-plan-add-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-distribution-period { min-width:0; }
+.erp-wo-distribution-period button[aria-haspopup='dialog'] { min-width:min(20rem,100%); width:100%; white-space:normal; }
+
+.erp-wo-distribution-settings tr[tabindex='0'] { cursor:pointer; }
+.erp-wo-distribution-settings tr[tabindex='0']:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
+
+.erp-wo-period-calendar { width:min(24rem,calc(100vw - 2rem)); }
+.erp-wo-period-month { display:flex; align-items:center; justify-content:space-between; }
+.erp-wo-period-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:0; }
+.erp-wo-period-weekday { text-align:center; font:var(--type-label-sm); color:var(--on-surface-muted); padding-block:var(--space-2); }
+.erp-wo-period-day { display:grid; place-items:center; min-width:0; margin-block:var(--space-1); }
+.erp-wo-period-day[data-between] { background:var(--primary-container); }
+.erp-wo-period-day[data-start]:not([data-single]) { background:linear-gradient(to right,transparent 50%,var(--primary-container) 50%); }
+.erp-wo-period-day[data-end]:not([data-single]) { background:linear-gradient(to left,transparent 50%,var(--primary-container) 50%); }
+.erp-wo-period-day button { width:100%; max-width:var(--control-height-md); aspect-ratio:1; display:grid; place-items:center; padding:0; border:0; border-radius:var(--radius-full); background:transparent; color:var(--on-surface); font:var(--type-body-sm); cursor:pointer; }
+.erp-wo-period-day[data-start] button,.erp-wo-period-day[data-end] button { background:var(--primary); color:var(--on-primary); }
+.erp-wo-period-day button:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+.erp-wo-period-day button:hover { box-shadow:inset 0 0 0 1px var(--primary); }
+
+.erp-wo-distribution-period .erp-wo-period-trigger { display:inline-flex; align-items:center; justify-content:space-between; gap:var(--space-2); width:100%; min-width:0; height:var(--control-height-sm); padding:0 var(--space-3); border:0; border-radius:var(--radius-sm); background:var(--surface); color:var(--on-surface); font:var(--type-body-sm); text-align:left; box-shadow:inset 0 0 0 1px var(--outline); cursor:pointer; }
+.erp-wo-period-trigger:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+.erp-wo-period-trigger:disabled { opacity:.38; cursor:default; }
+
+.erp-wo-period-calendar-actions { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); width:100%; }
+.erp-wo-period-trigger > span:first-child { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.erp-wo-period-trigger > span:last-child { flex-shrink:0; }
+
+/* 두 날짜와 달력 아이콘이 단일 날짜용 12rem 제한을 넘지 않게 기간 폭을 확보한다. */
+.erp-wo-segment-fields { grid-template-columns:minmax(0,18rem) minmax(0,12rem); }
+.erp-wo-segment-date.erp-wo-distribution-period { width:100%; max-width:18rem; }
+.erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,18rem) minmax(0,1fr); }
+.erp-wo-distribution-period .erp-wo-period-trigger { box-sizing:border-box; }
+@media(max-width:40rem) { .erp-wo-segment-fields, .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,1fr); } }

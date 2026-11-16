@@ -77,7 +77,7 @@ export const segmentDates = (start: string, end: string): string[] => {
     throw new Error('시작일과 종료일을 확인하세요.');
   const dates: string[] = [];
   for (let date = start; date <= end; date = shiftPlanDate(date, 1)) {
-    if (dates.length >= 366) throw new Error('한 구간은 최대 366일까지 편성할 수 있습니다.');
+    if (dates.length >= 366) throw new Error('한 분배 조건은 최대 366일까지 편성할 수 있습니다.');
     dates.push(date);
   }
   return dates;
@@ -94,7 +94,7 @@ export const expandSegment = (
       quantity: String(amount(segment.daily[date] || '0') / SCALE),
     }));
   const total = amount(segment.quantity);
-  if (total <= 0) throw new Error('구간 수량은 0보다 커야 합니다.');
+  if (total <= 0) throw new Error('분배 수량은 0보다 커야 합니다.');
   const trimmed = segment.quantity.trim().replace(/0+$/, '');
   const precision =
     decimalScale ?? (segment.quantity.includes('.') ? (trimmed.split('.')[1]?.length ?? 0) : 0);
@@ -119,7 +119,7 @@ export const previewSegments = (
   const result: SegmentPreview = { drafts: [], orders: [], totals: [], warnings: [] };
   const lookup = new Map(targets.map((target) => [target.id, target]));
   const active = segments.filter((segment) => !segment.applied);
-  if (!active.length) throw new Error('새 구간을 추가하거나 적용 전 조건을 입력하세요.');
+  if (!active.length) throw new Error('새 분배 조건을 추가하거나 적용 전 조건을 입력하세요.');
   const generated = new Map<
     string,
     { owner: string; date: string; lineId: string; quantity: number }
@@ -127,7 +127,7 @@ export const previewSegments = (
   const allocated = new Map<string, number>();
   for (const [index, segment] of active.entries()) {
     const target = lookup.get(segment.owner);
-    if (!target) throw new Error(`구간 ${index + 1}: ERP W/O를 선택하세요.`);
+    if (!target) throw new Error(`조건 ${index + 1}: ERP W/O를 선택하세요.`);
     if (!target.lines.some((line) => String(line.id) === segment.lineId))
       throw new Error(`${target.label}: 생산 라인을 선택하세요.`);
     if (
@@ -155,7 +155,7 @@ export const previewSegments = (
     const next = add(allocated.get(target.id) ?? 0, total);
     if (next > amount(target.pending))
       throw new Error(
-        `${target.label}: 구간 합계 ${next / SCALE} ${target.unit}가 편성 대기 ${target.pending} ${target.unit}를 초과합니다.`,
+        `${target.label}: 분배 수량 합계 ${next / SCALE} ${target.unit}가 편성 대기 ${target.pending} ${target.unit}를 초과합니다.`,
       );
     allocated.set(target.id, next);
     for (const piece of pieces) {
@@ -165,7 +165,7 @@ export const previewSegments = (
       const row = generated.get(key);
       if (row)
         result.warnings.push(
-          `${target.label} / ${piece.date}: 같은 날짜와 라인의 구간을 합산합니다.`,
+          `${target.label} / ${piece.date}: 같은 날짜와 라인의 분배 조건을 합산합니다.`,
         );
       generated.set(key, {
         owner: target.id,
