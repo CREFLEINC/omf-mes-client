@@ -1,12 +1,19 @@
-import { Button, Chip, type Column, EmptyState, Icon, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { useColumnOrder } from '../../patterns/column-grip-order';
+import { useFitColumns } from '../../patterns/column-fit';
+import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { iqcResultLabel, IqcMatchChips } from './iqc-match';
 import type { DispositionLookup } from './lookups';
 import { SeverityBadge } from './severity-badge';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
+
+/** 품목 표시명 「코드 · 이름」의 구분자(lookups.ts). */
+const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
 
 export interface DetailPaneProps {
   view: NonconformanceDetailView;
@@ -20,6 +27,8 @@ export interface DetailPaneProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ← NC-…」 의 원래 부적합으로 간다. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
+  /** 처리 상태 배지 — 부적합번호 옆에 둔다(omf-all-around#275). */
+  status?: ReactNode;
 }
 
 /**
@@ -35,6 +44,7 @@ export const DetailPane = ({
   lotStatuses = {},
   remainingText,
   onOpenNonconformance,
+  status,
 }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
   const unitOf = (uomId: number | undefined): string =>
@@ -44,16 +54,24 @@ export const DetailPane = ({
   const isInbound = inboundLotNo !== null;
   const unmatched = view.unmatchedResults ?? [];
   const columns: Column<NonconformanceLotRow>[] = [
-    { key: 'lotNo', align: 'center', header: t.fields.lotNo, render: (row) => row.lotNoText },
+    {
+      key: 'lotNo',
+      align: 'center',
+      width: '260px',
+      header: t.fields.lotNo,
+      render: (row) => row.lotNoText,
+    },
     {
       key: 'qty',
       align: 'center',
+      width: '110px',
       header: t.fields.qty,
       render: (row) => `${row.affectedQtyText}${unitOf(row.uomId)}`,
     },
     {
       key: 'qualityStatus',
       align: 'center',
+      width: '110px',
       header: t.fields.qualityStatus,
       /* 품질 상태는 배지로 — 불량 · 폐기는 붉게, 정상은 초록, 그 밖은 회색(사용자 시안 · #223). */
       render: (row) => {
@@ -79,6 +97,7 @@ export const DetailPane = ({
           {
             key: 'iqcMatch',
             align: 'center',
+            width: '180px',
             header: t.inboundLot.matching,
             render: (row) => (
               <IqcMatchChips
@@ -91,10 +110,18 @@ export const DetailPane = ({
         ]
       : []),
   ];
+  /*
+   * 표는 열 폭 · 순서를 바꿀 수 있다(목록 표와 같은 조합 · omf-all-around#275).
+   */
+  const ordered = useColumnOrder('omf-mes:dispositions:columns:lots:order', columns);
+  const resizable = useColumnWidths('omf-mes:dispositions:columns:lots', ordered, {
+    fitContent: true,
+  });
+  const fit = useFitColumns(resizable.columns, { scrollX: true });
+  const unit = unitOf(view.lots[0]?.uomId);
+  /* 원천 칸은 걷었다 — 목록 칸과 아래 입하 LOT · IQC 검사가 같은 것을 말한다(omf-all-around#275). */
   const inboundFacts: [string, ReactNode][] = isInbound
     ? [
-        /* 원천(시안 「IQC · 자재 입하」 · G2 L13). */
-        [t.inboundLot.sourceColumn, t.inboundLot.source.IQC],
         [t.inboundLot.inboundLotNo, inboundLotNo],
         [
           t.inboundLot.inspectionRequestNo,
@@ -107,46 +134,63 @@ export const DetailPane = ({
             )}
           </>,
         ],
-        ...(view.supplierName === null || view.supplierName === undefined
-          ? []
-          : [[t.inboundLot.supplier, view.supplierName] as [string, ReactNode]]),
-        ...(remainingText === undefined
-          ? []
-          : [[t.fields.remainingQty, remainingText] as [string, ReactNode]]),
       ]
     : [];
+  /*
+   * PQC 검사 기본 정보(W-03-11 · #135)와 같은 짜임 — 상자 하나에 칸을 흘려 놓고, 판정에 바로 쓰는 값(번호 · 품목 · 수량 둘)을
+   * 앞에 굵게, 나머지(사유 · 출처)는 보통 글씨로 잇는다(omf-all-around#275).
+   */
+  /* 품목 표시명 「코드 · 이름」을 PQC 처럼 이름 위 · 코드 아래로 나눠 보인다(글 내용은 그대로). */
+  const itemLabel = lookupDisplayLabel(items, view.itemId);
+  const [itemCode, ...itemNameParts] = itemLabel.split(ITEM_LABEL_SEPARATOR);
+  const itemValue: ReactNode =
+    itemNameParts.length === 0 ? (
+      itemLabel
+    ) : (
+      <span className="disposition-detail-item">
+        <span>{itemNameParts.join(ITEM_LABEL_SEPARATOR)}</span>
+        <span className="disposition-detail-item-code">{itemCode}</span>
+      </span>
+    );
+  const facts: [string, ReactNode, boolean?][] = [
+    [
+      t.fields.nonconformanceNo,
+      <span className="disposition-detail-no">
+        {view.nonconformanceNo}
+        {status}
+      </span>,
+      true,
+    ],
+    [t.fields.item, itemValue, true],
+    [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, true],
+    ...(isInbound && remainingText !== undefined
+      ? [[t.fields.remainingQty, remainingText, true] as [string, ReactNode, boolean]]
+      : []),
+    [
+      t.fields.reasonText,
+      view.description === '' ? messages.common.reference.empty : view.description,
+    ],
+    ...(view.supplierName === null || view.supplierName === undefined
+      ? []
+      : [[t.inboundLot.supplier, view.supplierName] as [string, ReactNode]]),
+    [t.fields.openedAt, view.openedAtText],
+    ...inboundFacts,
+    [t.fields.severityCode, <SeverityBadge severity={severity} code={view.severityCode} />],
+  ];
 
   return (
     <div className="disposition-detail">
       {/*
-       * 기본 정보 한 줄 다섯 칸, 구분선 아래 설명 — 한 상자(사용자 시안 · #223). 상태는 구획 머리의 배지가 말한다.
+       * 기본 정보 한 상자 — 칸을 흘려 놓고, 사유도 그 안의 한 칸(omf-all-around#275). 상태는 구획 머리의 배지가 말한다.
        */}
       <div className="disposition-detail-box">
         <dl className="disposition-detail-facts">
-          {(
-            [
-              [t.fields.nonconformanceNo, view.nonconformanceNo],
-              [t.fields.item, lookupDisplayLabel(items, view.itemId)],
-              [
-                t.fields.severityCode,
-                <SeverityBadge severity={severity} code={view.severityCode} />,
-              ],
-              [t.fields.openedAt, view.openedAtText],
-              [t.detail.affectedQty, `${view.affectedQtyText}${unitOf(view.lots[0]?.uomId)}`],
-              ...inboundFacts,
-            ] as [string, ReactNode][]
-          ).map(([label, value], index, all) => (
-            /* 부적합번호 · 대상 수량은 굵게(사용자 시안 · #223). */
-            <div
-              className={
-                index === 0 || index === all.length - 1 - inboundFacts.length
-                  ? 'field-cell is-strong'
-                  : 'field-cell'
-              }
-              key={label}
-            >
+          {facts.map(([label, value, isKey]) => (
+            <div className="disposition-detail-fact" key={label}>
               <dt className="field-label">{label}</dt>
-              <dd>{value}</dd>
+              <dd className={isKey === true ? 'disposition-detail-fact-key' : undefined}>
+                {value}
+              </dd>
             </div>
           ))}
         </dl>
@@ -168,37 +212,31 @@ export const DetailPane = ({
             )}
           </p>
         )}
-        <p className="disposition-detail-description" aria-label={t.fields.description}>
-          {view.description}
-        </p>
       </div>
-      {isInbound && (
-        <p className="disposition-inbound-banner" role="note">
-          <Icon name="inventory" size={18} aria-hidden />
-          <span>
-            <strong>{t.inboundLot.bannerTitle}</strong> {t.inboundLot.bannerBody(view.lots.length)}
-          </span>
-        </p>
-      )}
 
       <section className="disposition-subsection" aria-label={t.panes.lots}>
         <h3 className="disposition-subtitle">
           {t.panes.lots}
           <span className="disposition-count-badge">{t.decisions.count(view.lots.length)}</span>
-          {isInbound && (
-            <span className="field-note disposition-subtitle-note">
-              {t.inboundLot.matchingNote}
-            </span>
-          )}
         </h3>
-        <div className="disposition-table disposition-lot-table">
+        <div
+          ref={fit.ref}
+          className="disposition-table disposition-lot-table"
+          style={resizable.style}
+        >
           <Table
             density="compact"
             caption={<span className="disposition-table-caption">{t.panes.lots}</span>}
-            columns={columns}
+            columns={fit.columns}
             rows={view.lots}
             getRowId={(row) => String(row.nonconformanceLotId)}
-            empty={<EmptyState size="sm" title={t.detail.noLots} />}
+            empty={
+              <EmptyState
+                size="sm"
+                icon={<PaneEmptyIcon name="assignment" />}
+                title={t.detail.noLots}
+              />
+            }
           />
         </div>
         {isInbound && unmatched.length > 0 && (

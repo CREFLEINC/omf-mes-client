@@ -1,4 +1,3 @@
-import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { IqcResultRef } from './types';
@@ -28,36 +27,20 @@ export interface IqcMatchChipsProps {
 
 /**
  * 자재 관리 LOT 의 IQC 결과 매칭(005 · 참고용) — 처분은 입하 LOT 단위라 매칭은 판단을 돕는 표시일 뿐이다.
- * 불합격은 붉게, 합격은 초록, 그 밖은 회색.
+ * 표 안에서는 글로만 — 품질 상태 배지와 색이 겹치지 않게(사용자 시안 · omf-all-around#275).
  */
 export const IqcMatchChips = ({ results, rejectedCount, emptyText }: IqcMatchChipsProps) => {
   if (results !== undefined && results.length > 0) {
     return (
       <span className="disposition-iqc-matches">
         {results.map((result) => (
-          <Chip
-            key={result.inspectionResultId}
-            size="sm"
-            status={
-              result.overallJudgmentCode === 'REJECTED'
-                ? 'error'
-                : result.overallJudgmentCode === 'ACCEPTED'
-                  ? 'success'
-                  : 'idle'
-            }
-          >
-            {iqcResultLabel(result)}
-          </Chip>
+          <span key={result.inspectionResultId}>{iqcResultLabel(result)}</span>
         ))}
       </span>
     );
   }
   if (rejectedCount !== undefined && rejectedCount > 0) {
-    return (
-      <Chip size="sm" status="error">
-        {t.rejectedCount(rejectedCount)}
-      </Chip>
-    );
+    return <span>{t.rejectedCount(rejectedCount)}</span>;
   }
   return <span className="field-note">{emptyText}</span>;
 };

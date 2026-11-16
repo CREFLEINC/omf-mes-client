@@ -81,7 +81,6 @@ import {
   useUomLookup,
 } from './lookups';
 import { NonconformanceList } from './nonconformance-list';
-import { NowBand } from './now-band';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
 import {
@@ -221,6 +220,13 @@ export const DispositionDecisionScreen = ({
   const selectedId = readSelectedNonconformanceId(searchParams);
   /* 처분 이력 탭에서 고른 판정 한 건 — 고른 줄 표시용(#223). */
   const selectedDecisionId = readSelectedDecisionId(searchParams);
+  /*
+   * 항목을 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(부품 IQC #252 와 같은 동작 ·
+   * omf-all-around#275). 지금 탭에서 고른 것이 없으면 접힘은 뜻이 없어 늘 펼친다 — 목록이 숨은 채 빈 화면이 되지 않게.
+   */
+  const [isListFolded, setIsListFolded] = useState(false);
+  const activeSelectedId = tab === 'pending' ? selectedId : selectedDecisionId;
+  const isListCollapsed = isListFolded && activeSelectedId !== null;
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
    *
@@ -484,17 +490,17 @@ export const DispositionDecisionScreen = ({
       isClosedNonconformance(detail.data.statusCode, remaining.isSettled),
     hasPendingConcession: pendingConcession !== undefined,
     isConcessionApproved: pendingApproval.data === 'APPROVED',
+    isConcessionRejected: pendingApproval.data === 'REJECTED',
     inboundLotNo: detailView?.inboundLotNo,
     lotCount: lotRows.length,
     decisionCount: decisions.data?.items.length ?? 0,
     isSortedOff: detailView?.sortedFrom !== null && detailView?.sortedFrom !== undefined,
   };
   const dispositionOptions = dispositionTypeOptions(dispositionTypeCodes).map((option) => {
-    const hint = t.form.typeHint[option.value];
+    /* 유형마다 붙던 한 줄 설명은 걷었다 — 이름으로 알 수 있다(omf-all-around#275). 막힌 까닭만 남긴다. */
     const lockReason = dispositionOptionLock(option.value, optionContext);
     return {
       ...option,
-      ...(hint === undefined ? {} : { hint }),
       ...(lockReason === undefined ? {} : { lockReason }),
     };
   });
@@ -670,11 +676,17 @@ export const DispositionDecisionScreen = ({
     </div>
   );
 
+  /* 고른 부적합의 상태 — 「부적합 상세」 제목은 걷고 부적합번호 옆에 둔다(omf-all-around#275). */
+  const statusChip =
+    detail.data === undefined ? undefined : (
+      <Chip size="sm" status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}>
+        {codeValueLabel(status, detail.data.statusCode)}
+      </Chip>
+    );
+
   return (
     <>
       {topBar}
-      {/* 005 — 바뀌기 전 처분 방식을 알리는 띠(접힘으로 시작 · 처분 대기에서만). */}
-      {tab === 'pending' && <NowBand />}
       {/* 두 탭이 같은 짜임(사용자 지시 · #223) — 위 조회 조건, 아래 목록 | 오른쪽 상세. 처분 이력은 판정 입력 없이 보기만. */}
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         {tab === 'pending' ? (
@@ -706,6 +718,7 @@ export const DispositionDecisionScreen = ({
         ref={splitRef}
         className={`${paneLayout.className} disposition-split`}
         style={split.style}
+        data-left-collapsed={isListCollapsed ? 'true' : undefined}
       >
         <section
           className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
@@ -735,11 +748,11 @@ export const DispositionDecisionScreen = ({
                     }
               }
               selectedId={selectedId}
-              onSelect={(id) =>
-                setSearchParams((current) =>
-                  withSelectedNonconformance(current, selectedId === id ? null : id),
-                )
-              }
+              onSelect={(id) => {
+                const next = selectedId === id ? null : id;
+                setSearchParams((current) => withSelectedNonconformance(current, next));
+                setIsListFolded(next !== null);
+              }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => apply(filters, nextPage)}
             />
@@ -759,14 +772,11 @@ export const DispositionDecisionScreen = ({
                 ) : null
               }
               selectedId={selectedDecisionId}
-              onSelect={(row) =>
-                setSearchParams((current) =>
-                  withSelectedDecision(
-                    current,
-                    row.dispositionDecisionId === selectedDecisionId ? null : row,
-                  ),
-                )
-              }
+              onSelect={(row) => {
+                const isSame = row.dispositionDecisionId === selectedDecisionId;
+                setSearchParams((current) => withSelectedDecision(current, isSame ? null : row));
+                setIsListFolded(!isSame);
+              }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
             />
@@ -777,6 +787,16 @@ export const DispositionDecisionScreen = ({
           ratio={split.ratio}
           onChange={split.commit}
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+          {...(activeSelectedId === null
+            ? {}
+            : {
+                collapse: {
+                  collapsed: isListCollapsed,
+                  onToggle: () => setIsListFolded(!isListCollapsed),
+                  collapseLabel: t.listCollapse,
+                  expandLabel: t.listExpand,
+                },
+              })}
         />
         {/*
          * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).
@@ -789,21 +809,6 @@ export const DispositionDecisionScreen = ({
            * 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). 고르기 전에는 제목 없이 안내만 —
            * 목록에서 고르면 제목과 상세가 선다(omf-all-around#228).
            */}
-          {selectedId !== null && (
-            <div className="disposition-side-head">
-              <h2 className="pane-title">
-                {tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
-              </h2>
-              {detail.data !== undefined && (
-                <Chip
-                  size="sm"
-                  status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}
-                >
-                  {codeValueLabel(status, detail.data.statusCode)}
-                </Chip>
-              )}
-            </div>
-          )}
           <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
             <DetailSlot
               selectedId={selectedId}
@@ -826,6 +831,7 @@ export const DispositionDecisionScreen = ({
               onOpenNonconformance={(id) =>
                 setSearchParams((current) => withSelectedNonconformance(current, id))
               }
+              status={statusChip}
             />
           </div>
           {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}
@@ -839,6 +845,11 @@ export const DispositionDecisionScreen = ({
               >
                 <div className="disposition-side-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
+                  {lotRows.length > 0 && (
+                    <span className="disposition-count-badge">
+                      {t.form.targetLots(lotRows.length)}
+                    </span>
+                  )}
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
@@ -852,8 +863,9 @@ export const DispositionDecisionScreen = ({
                   isUncertain={lock.isUncertain}
                   onCheckOutcome={checkOutcome}
                   dispositionOptions={dispositionOptions}
+                  /* 특채가 걸려 있으면 막힘 이유는 위 특채 상자가 한 번만 말한다 — 유형마다 되풀이하지 않는다(omf-all-around#275). */
+                  sharedLockReason={pendingConcession === undefined ? undefined : concessionLock}
                   concession={{
-                    hint: t.form.typeHint.CONCESSION ?? '',
                     lockReason: concessionLock,
                     onRequest: () => {
                       /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */

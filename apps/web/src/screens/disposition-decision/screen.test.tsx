@@ -57,13 +57,24 @@ describe('DispositionDecisionScreen 조회', () => {
   it('행을 고르면 상세와 대상 LOT을 보인다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
-    /* 고르면 상세 칸 제목이 선다(omf-all-around#228). */
-    expect(
-      await screen.findByRole('heading', { name: t.panes.detailDecision }),
-    ).toBeInTheDocument();
+    /* 「부적합 상세」 제목은 두지 않는다(#275) — 상세는 바로 선다. */
+    expect(screen.queryByRole('heading', { name: t.panes.detailDecision })).toBeNull();
 
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
+  });
+
+  it('항목을 고르면 목록이 접히고, 막대의 단추로 다시 펼친다(omf-all-around#275)', async () => {
+    const { user } = renderScreen();
+    expect(screen.queryByRole('button', { name: t.listExpand })).toBeNull();
+    await selectRow(user);
+    const split = document.querySelector('.disposition-split');
+    await waitFor(() => expect(split).toHaveAttribute('data-left-collapsed', 'true'));
+
+    await user.click(screen.getByRole('button', { name: t.listExpand }));
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    await user.click(screen.getByRole('button', { name: t.listCollapse }));
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
   });
 
   /* 부적합에 남은 품질 상태는 등록 때 값 — 판정으로 바뀐 LOT 상태를 LOT 조회로 보인다(#223). */
@@ -88,9 +99,7 @@ describe('DispositionDecisionScreen 조회', () => {
     await selectRow(user);
 
     /* 005 FR-038 — 「입력 / 미입력」은 수량 입력과 함께 없어졌다. 처분 수량 칸이 남은 수량 전부를 잠가 보인다. */
-    await waitFor(() =>
-      expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveValue('120 EA'),
-    );
+    await waitFor(() => expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('120 EA'));
   });
 
   /*

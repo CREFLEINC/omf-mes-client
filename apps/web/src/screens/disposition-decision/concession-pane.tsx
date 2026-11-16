@@ -1,4 +1,13 @@
-import { Button, Chip, DatePicker, Dialog, Table, TextField, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  DatePicker,
+  Dialog,
+  EmptyState,
+  Table,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import type {
   ConcessionAppliedForward,
   ConcessionCreatedForward005,
@@ -10,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
@@ -463,11 +473,14 @@ export const ConcessionHistory = ({
           columns={columns}
           rows={groups}
           getRowId={(group) => String(group.first.concessionId)}
-          /* 판정 이력과 같이 — 없으면 표 안 행 자리 가운데 한 줄(사용자 지시 · #223). */
+          /* 처분 이력과 같이 — 없으면 표 안에 한 줄(사용자 지시 · #223 · omf-all-around#275). */
           empty={
-            <p className="field-note disposition-table-empty">
-              {list.isPending ? t.loading : t.none}
-            </p>
+            list.isPending ? (
+              <p className="field-note disposition-table-empty">{t.loading}</p>
+            ) : (
+              /* 다른 빈 목록과 같이 아이콘 + 문구(omf-all-around#275). */
+              <EmptyState size="sm" icon={<PaneEmptyIcon name="assignment" />} title={t.none} />
+            )
           }
         />
       </div>
@@ -537,10 +550,10 @@ export const PendingConcessionBox = ({ concession, lotCount }: PendingConcession
     >
       <span>
         {status === 'APPROVED'
-          ? t.approvedBanner(concession.concessionNo, lotCount)
+          ? t.approvedBanner(concession.concessionNo)
           : status === 'REJECTED'
             ? t.rejectedBanner(concession.concessionNo)
-            : t.pendingBanner(concession.concessionNo, lotCount)}
+            : t.pendingBanner(concession.concessionNo)}
       </span>
       {decided ? (
         <Button
