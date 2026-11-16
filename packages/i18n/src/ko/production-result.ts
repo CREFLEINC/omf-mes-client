@@ -24,7 +24,11 @@ export const productionResult = {
         `양품 ${good} / 작업 지시량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       /** 단계 표시(C-5). LOT마다 처음부터 반복한다. */
       stepsLabel: 'LOT 작업 단계',
-      steps: { input: '실적 입력', scan: '라벨 스캔' },
+      steps: { input: '실적 입력', defect: '불량 등록', scan: '라벨 스캔' },
+      /** ① 양품 ↔ ② 불량 이동(사용자 지시 2026-11-16). */
+      toDefect: '불량 등록',
+      toDefectWithCount: (count: number): string => `불량 등록 (${String(count)})`,
+      toGood: '이전',
       /** 잔량은 지금 넣을 칸 곁에만 둔다(C-21). */
       remaining: (qty: string): string => `W/O 잔량 ${qty}`,
       /* 아래 셋은 오른쪽 위 파란 안내 줄이다(개선 명세 §1 「안내 문구」). 하단 바에는 두지 않는다. */

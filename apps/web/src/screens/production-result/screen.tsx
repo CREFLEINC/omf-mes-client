@@ -307,6 +307,11 @@ export const ProductionFlowScreen = () => {
    * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
    * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 화면을 다시 열면 모른다(`null`).
    */
+  /*
+   * 실적 입력 단계 안의 화면 쪽(사용자 지시 2026-11-16): ① 양품 → ② 불량. 화면 단계일 뿐이다 — 저장은 지금처럼
+   * [LOT 라벨 출력]·[불량 등록] 때 양품·불량을 한 번에 보낸다. LOT 이 바뀌면 ① 로 돌아간다.
+   */
+  const [inputPage, setInputPage] = useState<'good' | 'defect'>('good');
   const [sentDefects, setSentDefects] = useState<{ label: string; qty: string }[] | null>(null);
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
@@ -840,6 +845,7 @@ export const ProductionFlowScreen = () => {
     setActualQty(lot === null || lot === undefined ? '' : String(lot.initialQty));
     setOutputPhase('idle');
     setSentDefects(null);
+    setInputPage('good');
     isLotLabelPrinted.current = false;
     setScanValue('');
     setScanMismatch(false);
@@ -1553,7 +1559,7 @@ export const ProductionFlowScreen = () => {
      * 양품 없이 불량만 넣었으면 라벨로 이어지지 않는다 — [LOT 라벨 출력] 자리에 [불량 등록]이 선다(사용자 지시
      * 2026-11-16, 종전에는 불량 목록 아래). 누르는 조건·보내는 값은 그대로다.
      */
-    isDefectOnly && outputPhase === 'idle' ? (
+    isDefectOnly && outputPhase === 'idle' && !(step === 'input' && inputPage === 'good') ? (
       <Button
         type="button"
         variant={variant}
@@ -1586,6 +1592,57 @@ export const ProductionFlowScreen = () => {
         {t.flow.output.issue}
       </Button>
     );
+
+  /*
+   * ① 양품 → ② 불량(사용자 지시 2026-11-16). 불량이 없으면 누르지 않고 [LOT 라벨 출력]으로 바로 ③ 라벨 스캔에
+   * 간다. 넣어 둔 불량이 있으면 건수를 붙여 빠뜨리지 않게 한다.
+   */
+  /* ② 불량 → ① 양품. 넣은 불량 줄은 그대로 둔다. 다른 하단 버튼과 같은 자리·크기로 선다. */
+  const toGoodButton: ReactNode =
+    step === 'input' && inputPage === 'defect' && !isWorkOrderClosed ? (
+      <Button
+        type="button"
+        variant="outlined"
+        size={POP_TOUCH_SIZE}
+        onClick={() => {
+          /* 손대지 않은 빈 줄(유형·수량 모두 없음)은 두고 가지 않는다 — ① 에서 [LOT 라벨 출력]을 막지 않게. */
+          setDefectRows((rows) =>
+            rows.filter((row) => row.defectCodeId !== null || row.qty !== ''),
+          );
+          setActiveQty('good');
+          setInputPage('good');
+        }}
+      >
+        {t.flow.work.toGood}
+      </Button>
+    ) : null;
+  const toDefectButton: ReactNode =
+    step === 'input' && inputPage === 'good' && !isWorkOrderClosed ? (
+      <Button
+        type="button"
+        variant="outlined"
+        size={POP_TOUCH_SIZE}
+        disabled={areDefectsLocked}
+        onClick={() => {
+          setInputPage('defect');
+          /* 넘어오면 불량 줄 1개를 미리 둔다(사용자 지시 2026-11-16). 이미 있으면 첫 줄을 고른다. */
+          const first = defectRows[0];
+          if (first !== undefined) {
+            setActiveQty(first.key);
+            return;
+          }
+          const key = `defect-${String(nextDefectKey.current)}`;
+          nextDefectKey.current += 1;
+          setDefectNotice(null);
+          setDefectRows([{ key, defectCodeId: null, qty: '' }]);
+          setActiveQty(key);
+        }}
+      >
+        {defectRows.length === 0
+          ? t.flow.work.toDefect
+          : t.flow.work.toDefectWithCount(defectRows.length)}
+      </Button>
+    ) : null;
 
   /** 불량 구획. LOT이 있으면 수량 칸 아래, 없으면 안내 아래에 선다(불량만 등록). */
   const defectSection = (
@@ -1694,8 +1751,16 @@ export const ProductionFlowScreen = () => {
    * 단계 표시(C-5). 오른쪽 구획 제목 자리에 한 번만 둔다(개선 명세 §1 「단계 표시」) — 왼쪽 정보 아래에
    * 두면 오른쪽 제목과 같은 말을 두 번 한다.
    */
+  const isDefectPage = step === 'input' && inputPage === 'defect';
   const stepItems = [
-    { label: t.flow.work.steps.input, status: isScanStep ? 'complete' : 'current' },
+    {
+      label: t.flow.work.steps.input,
+      status: isScanStep || isDefectPage ? 'complete' : 'current',
+    },
+    {
+      label: t.flow.work.steps.defect,
+      status: isScanStep ? 'complete' : isDefectPage ? 'current' : 'pending',
+    },
     {
       label: t.flow.work.steps.scan,
       status: outputPhase === 'completed' ? 'complete' : isScanStep ? 'current' : 'pending',
@@ -2222,78 +2287,96 @@ export const ProductionFlowScreen = () => {
               </>
             ) : (
               <>
-                {/* 작업 지시량을 채워도 남은 LOT에 더 만들 수 있다 — 마감할 수 있다는 것을 먼저 알린다(④-1). */}
-                {isPlanAchieved && infoLine(t.flow.work.planReached)}
-                {/*
-                 * 초과를 **친 자리에서 바로 말한다**(#1040). ⛔ 막지 않는다 — 초과 생산은 허용이다
-                 * (✓확정 QA #27). 막힌 상태가 아니므로 정보 색이다(C-7).
-                 */}
-                {isOverrun && !isQuantityLocked && parsedQty !== null && remaining !== null && (
-                  <div className="banner-slot">
-                    <AlertBanner
-                      variant="info"
-                      assertive={false}
-                      title={
-                        remaining > 0
-                          ? t.overrun.notice(withUnit(parsedQty - remaining), withUnit(remaining))
-                          : t.overrun.noticeNoRemaining
+                {inputPage === 'good' ? (
+                  <>
+                    {/* 작업 지시량을 채워도 남은 LOT에 더 만들 수 있다 — 마감할 수 있다는 것을 먼저 알린다(④-1). */}
+                    {isPlanAchieved && infoLine(t.flow.work.planReached)}
+                    {/*
+                     * 초과를 **친 자리에서 바로 말한다**(#1040). ⛔ 막지 않는다 — 초과 생산은 허용이다
+                     * (✓확정 QA #27). 막힌 상태가 아니므로 정보 색이다(C-7).
+                     */}
+                    {isOverrun && !isQuantityLocked && parsedQty !== null && remaining !== null && (
+                      <div className="banner-slot">
+                        <AlertBanner
+                          variant="info"
+                          assertive={false}
+                          title={
+                            remaining > 0
+                              ? t.overrun.notice(
+                                  withUnit(parsedQty - remaining),
+                                  withUnit(remaining),
+                                )
+                              : t.overrun.noticeNoRemaining
+                          }
+                        />
+                      </div>
+                    )}
+                    <TextField
+                      id={actualQtyId}
+                      size="xl"
+                      label={t.flow.quantity.actual}
+                      value={actualQty}
+                      disabled={isQuantityLocked}
+                      inputMode="decimal"
+                      autoComplete="off"
+                      fullWidth
+                      trailingIcon={uomLabel}
+                      containerClassName={
+                        activeQty === 'good'
+                          ? 'production-flow-qty is-active'
+                          : 'production-flow-qty'
                       }
+                      onFocus={() => setActiveQty('good')}
+                      error={
+                        !isDefectOnly && parsedQty !== null && parsedQty <= 0
+                          ? t.flow.quantity.invalid
+                          : undefined
+                      }
+                      onChange={(event) => setActualQty(quantityInput(event.target.value))}
                     />
-                  </div>
-                )}
-                <TextField
-                  id={actualQtyId}
-                  size="xl"
-                  label={t.flow.quantity.actual}
-                  value={actualQty}
-                  disabled={isQuantityLocked}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  fullWidth
-                  trailingIcon={uomLabel}
-                  containerClassName={
-                    activeQty === 'good' ? 'production-flow-qty is-active' : 'production-flow-qty'
-                  }
-                  onFocus={() => setActiveQty('good')}
-                  error={
-                    !isDefectOnly && parsedQty !== null && parsedQty <= 0
-                      ? t.flow.quantity.invalid
-                      : undefined
-                  }
-                  onChange={(event) => setActualQty(quantityInput(event.target.value))}
-                />
-                {defectSection}
-                <NumericKeypad
-                  value={activeDefectRow?.qty ?? actualQty}
-                  /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
-                  dropLeadingZero
-                  disabled={activeDefectRow === null ? isQuantityLocked : areDefectsLocked}
-                  /* 키패드가 어느 칸에 들어가는지 이름으로도 말한다 — 테두리만으로는 보조기술에 닿지 않는다. */
-                  label={
-                    activeDefectRow === null
-                      ? t.flow.defects.keypadGood
-                      : t.flow.defects.keypadFor(
+                    <NumericKeypad
+                      value={actualQty}
+                      dropLeadingZero
+                      disabled={isQuantityLocked}
+                      label={t.flow.defects.keypadGood}
+                      className="production-work-pad"
+                      backspaceGlyph="⌫"
+                      backspaceLabel={t.quantity.backspace}
+                      clearLabel={t.quantity.clearGlyph}
+                      maxLength={GOOD_QTY_MAX_LENGTH}
+                      /* ⛔ 정수 단위에는 소수점 키를 쓰지 못하게 한다(사용자 지시 2026-09-10). */
+                      allowDecimal={uom.decimalScaleOf(lot.uomId ?? workOrder.data?.uomId) > 0}
+                      keepDecimalKey
+                      decimalLabel={t.quantity.decimalKey}
+                      onChange={setActualQty}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {defectSection}
+                    {/* 불량 줄을 고르면 숫자판이 그 줄 수량을 받는다. */}
+                    {activeDefectRow !== null && (
+                      <NumericKeypad
+                        value={activeDefectRow.qty}
+                        dropLeadingZero
+                        disabled={areDefectsLocked}
+                        label={t.flow.defects.keypadFor(
                           defectLabelOf(defectMajors, activeDefectRow.defectCodeId) ??
                             t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
-                        )
-                  }
-                  className="production-work-pad"
-                  backspaceGlyph="⌫"
-                  backspaceLabel={t.quantity.backspace}
-                  clearLabel={t.quantity.clearGlyph}
-                  maxLength={GOOD_QTY_MAX_LENGTH}
-                  /*
-                   * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
-                   *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다.
-                   */
-                  allowDecimal={uom.decimalScaleOf(lot.uomId ?? workOrder.data?.uomId) > 0}
-                  keepDecimalKey
-                  decimalLabel={t.quantity.decimalKey}
-                  onChange={(value) => {
-                    if (activeDefectRow === null) setActualQty(value);
-                    else updateDefectRow(activeDefectRow.key, { qty: value });
-                  }}
-                />
+                        )}
+                        className="production-work-pad"
+                        backspaceGlyph="⌫"
+                        backspaceLabel={t.quantity.backspace}
+                        clearLabel={t.quantity.clearGlyph}
+                        maxLength={GOOD_QTY_MAX_LENGTH}
+                        allowDecimal={uom.decimalScaleOf(lot.uomId ?? workOrder.data?.uomId) > 0}
+                        keepDecimalKey
+                        decimalLabel={t.quantity.decimalKey}
+                        onChange={(value) => updateDefectRow(activeDefectRow.key, { qty: value })}
+                      />
+                    )}
+                  </>
+                )}
               </>
             )}
           </section>
@@ -2343,11 +2426,17 @@ export const ProductionFlowScreen = () => {
           </Button>
         ) : isCloseMode ? (
           <>
+            {toGoodButton}
+            {toDefectButton}
             {(lot !== null || isDefectOnly) && outputButton('outlined')}
             {closeAction('filled')}
           </>
         ) : (
-          outputButton('filled')
+          <>
+            {toGoodButton}
+            {toDefectButton}
+            {outputButton('filled')}
+          </>
         )}
       </ActionBar>
 

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -2016,7 +2016,26 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(await within(dialog).findByRole('button', { name: '외관' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: minor }));
   };
-  const defectSection = () => screen.getByRole('region', { name: t.flow.defects.title });
+  /* ② 로 넘어오면 빈 줄 1개가 미리 있다(2026-11-16) — 그 줄이 비어 있으면 그 줄의 유형을, 아니면 [불량 추가]를 누른다. */
+  const addDefectButton = () =>
+    within(defectSection()).queryByRole('button', {
+      name: `${t.flow.defects.type}: ${t.flow.defects.choose}`,
+    }) ?? within(defectSection()).getByRole('button', { name: t.flow.defects.add });
+  /* 넣어 둔 불량이 있으면 「불량 등록 (N)」이다. */
+  const toDefectName = new RegExp(`^${t.flow.work.toDefect}`);
+  const openDefectStep = async () => {
+    const go = await screen.findByRole('button', { name: toDefectName });
+    await waitFor(() => expect(go).toBeEnabled());
+    fireEvent.click(go);
+    await screen.findByRole('region', { name: t.flow.defects.title });
+  };
+  /* 불량은 ② 불량 등록 단계에 있다(2026-11-16) — ① 이면 [불량 등록]으로 넘어간 뒤 구획을 준다. */
+  const defectSection = () => {
+    const region = screen.queryByRole('region', { name: t.flow.defects.title });
+    if (region !== null) return region;
+    fireEvent.click(screen.getByRole('button', { name: toDefectName }));
+    return screen.getByRole('region', { name: t.flow.defects.title });
+  };
   const savedBody = async (writes: Request[]) => {
     const request = writes.find((write) => pathOf(write) === '/production/production-results');
     return (await request?.clone().json()) as Record<string, unknown>;
@@ -2026,9 +2045,9 @@ describe('ProductionFlowScreen 불량', () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes, defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
     expect(
@@ -2065,7 +2084,7 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '찍힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
 
@@ -2102,7 +2121,7 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '찍힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
 
@@ -2131,7 +2150,7 @@ describe('ProductionFlowScreen 불량', () => {
     await screen.findByText(NO_LOT_TEXT);
 
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '찍힘');
     /* 키보드 없는 단말도 화면 숫자판으로 불량 수량을 넣는다. */
     await user.click(screen.getByRole('button', { name: '2' }));
@@ -2156,10 +2175,10 @@ describe('ProductionFlowScreen 불량', () => {
   it('같은 불량 유형을 두 줄에 두면 그 줄을 짚고 저장을 막는다', async () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
 
     for (const _ of [1, 2]) {
-      await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+      await user.click(addDefectButton());
       await pickDefect(user, '긁힘');
       await user.click(screen.getByRole('button', { name: '1' }));
     }
@@ -2182,7 +2201,7 @@ describe('ProductionFlowScreen 불량', () => {
 
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
     await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
@@ -2207,7 +2226,7 @@ describe('ProductionFlowScreen 불량', () => {
     const good = await screen.findByLabelText(t.flow.quantity.actual);
     await waitFor(() => expect(good).toBeEnabled());
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     expect(
       screen.getByRole('group', { name: t.flow.defects.keypadFor('외관 › 긁힘') }),
@@ -2215,32 +2234,46 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(screen.getByRole('button', { name: '5' }));
     expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
 
-    await user.click(good);
+    /* [이전]으로 ① 양품에 돌아가면 숫자판은 양품 칸에 친다. 불량 줄은 남는다. */
+    await user.click(screen.getByRole('button', { name: t.flow.work.toGood }));
+    const goodAgain = screen.getByLabelText(t.flow.quantity.actual);
     expect(screen.getByRole('group', { name: t.flow.defects.keypadGood })).toBeInTheDocument();
     /* 「.」 키 자리는 늘 있고, 정수 단위(EA)에서는 눌리지 않는다(사용자 지시 2026-11-16). */
     expect(screen.getByRole('button', { name: t.quantity.decimalKey })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: '1' }));
-    expect(good).toHaveValue('121');
-    expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
+    expect(goodAgain).toHaveValue('121');
+    expect(
+      screen.getByRole('button', { name: t.flow.work.toDefectWithCount(1) }),
+    ).toBeInTheDocument();
   });
 
   /* 손대지 않은 칸은 나무라지 않는다(C-7). 할 일은 하단 바가 말하고, 칸을 떠나면 목록 아래 한 줄로 말한다. */
   it('덜 채운 불량 줄은 칸을 떠난 뒤에만 무엇이 빠졌는지 말한다', async () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
+    /* ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 하단 바는 할 일(유형 고르기)을 말한다. */
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText(t.flow.next.defectType)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
 
+    /* [불량 추가]에서 유형을 고르지 않고 닫으면 줄을 더하지 않는다(명세 ②-6: 고르면 줄이 생긴다). */
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
         name: t.flow.defects.cancel,
       }),
     );
-    /* 유형을 고르지 않고 닫으면 빈 줄을 남기지 않는다(명세 ②-6: 고르면 줄이 생긴다). */
-    expect(within(defectSection()).queryByRole('listitem')).toBeNull();
-    expect(screen.queryByText(t.flow.next.defectType)).not.toBeInTheDocument();
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    /* 빈 줄은 [이전]으로 ① 에 돌아가면 두고 가지 않는다 — ① 의 [LOT 라벨 출력]을 막지 않는다. */
+    await user.click(screen.getByRole('button', { name: t.flow.work.toGood }));
+    expect(screen.getByRole('button', { name: t.flow.work.toDefect })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled(),
+    );
+
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
     /* 하단 바에 「불량 수량을 입력해 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
@@ -2275,7 +2308,7 @@ describe('ProductionFlowScreen 불량', () => {
       ],
     );
 
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
     expect(await within(defectSection()).findByText(t.flow.defects.noProcess)).toBeInTheDocument();
     expect(
       within(defectSection()).getByRole('button', { name: t.flow.defects.add }),
@@ -2318,9 +2351,9 @@ describe('ProductionFlowScreen 불량', () => {
       },
       ...defectRoutes,
     ]);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     release();
 
@@ -2362,7 +2395,7 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
     await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
@@ -2410,7 +2443,7 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
     await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
@@ -2448,7 +2481,7 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
   };
@@ -3131,7 +3164,7 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
       within(bar())
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual([t.flow.output.issue]);
+    ).toEqual([t.flow.work.toDefect, t.flow.output.issue]);
     /* 입력이 다 되면 하단 바는 비운다 — 「~출력할 수 있습니다」 같은 문장을 두지 않는다(개선 명세 §1). */
     const output = within(bar()).getByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());

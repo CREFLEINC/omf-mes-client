@@ -15,7 +15,10 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       workOrderProgressText: (good: string, target: string, uom: string): string =>
         `Đạt ${good} / Số lượng lệnh ${target}${uom === '' ? '' : ` ${uom}`}`,
       stepsLabel: 'Các bước làm LOT',
-      steps: { input: 'Nhập kết quả', scan: 'Quét nhãn' },
+      steps: { input: 'Nhập kết quả', defect: 'Đăng ký lỗi', scan: 'Quét nhãn' },
+      toDefect: 'Đăng ký lỗi',
+      toDefectWithCount: (count: number): string => `Đăng ký lỗi (${String(count)})`,
+      toGood: 'Quay lại',
       remaining: (qty: string): string => `W/O còn lại ${qty}`,
       noLot: 'Không còn LOT để sản xuất. Chỉ có thể đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
