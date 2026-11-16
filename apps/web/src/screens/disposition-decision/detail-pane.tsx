@@ -23,8 +23,8 @@ export interface DetailPaneProps {
   remainingText?: string | undefined;
   /** 005 — 「선별로 생김 ← NC-…」 의 원래 부적합으로 간다. */
   onOpenNonconformance?: ((nonconformanceId: number) => void) | undefined;
-  /** 기본 정보 상자 맨 위 머리(제목 · 상태) — 상자 안에 둔다(사용자 시안 · omf-all-around#275). */
-  heading?: ReactNode;
+  /** 처리 상태 배지 — 부적합번호 옆에 둔다(omf-all-around#275). */
+  status?: ReactNode;
 }
 
 /**
@@ -40,7 +40,7 @@ export const DetailPane = ({
   lotStatuses = {},
   remainingText,
   onOpenNonconformance,
-  heading,
+  status,
 }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
   const unitOf = (uomId: number | undefined): string =>
@@ -137,7 +137,14 @@ export const DetailPane = ({
    * 작은 글 한 줄로(사용자 시안 · omf-all-around#275).
    */
   const facts: [string, ReactNode, ('strong' | 'reason')?][] = [
-    [t.fields.nonconformanceNo, view.nonconformanceNo, 'strong'],
+    [
+      t.fields.nonconformanceNo,
+      <span className="disposition-detail-no">
+        {view.nonconformanceNo}
+        {status}
+      </span>,
+      'strong',
+    ],
     [t.fields.item, lookupDisplayLabel(items, view.itemId), 'reason'],
     [
       t.fields.reasonText,
@@ -164,7 +171,6 @@ export const DetailPane = ({
        * 기본 정보 한 상자 — 칸을 흘려 놓고, 사유도 그 안의 한 칸(omf-all-around#275). 상태는 구획 머리의 배지가 말한다.
        */}
       <div className="disposition-detail-box">
-        {heading}
         <dl className="disposition-detail-facts">
           {facts.map(([label, value, tone]) => (
             /* 부적합번호 · 부적합 수량은 굵게(사용자 시안 · #223). 사유는 길면 줄을 바꾼다. */
@@ -177,10 +183,11 @@ export const DetailPane = ({
             </div>
           ))}
         </dl>
-        <dl className="disposition-detail-meta">
+        {/* 아랫줄도 윗줄과 같은 칸 모양(이름 위 · 값 아래 · 사이 세로선) — 값만 한 단계 작게(omf-all-around#275). */}
+        <dl className="disposition-detail-facts is-meta">
           {meta.map(([label, value]) => (
-            <div className="disposition-detail-meta-cell" key={label}>
-              <dt>{label}</dt>
+            <div className="field-cell" key={label}>
+              <dt className="field-label">{label}</dt>
               <dd>{value}</dd>
             </div>
           ))}

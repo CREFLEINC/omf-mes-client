@@ -676,19 +676,13 @@ export const DispositionDecisionScreen = ({
     </div>
   );
 
-  /* 오른쪽 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). */
-  const sideHead = (
-    <div className="disposition-side-head">
-      <h2 className="pane-title">
-        {tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
-      </h2>
-      {detail.data !== undefined && (
-        <Chip size="sm" status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}>
-          {codeValueLabel(status, detail.data.statusCode)}
-        </Chip>
-      )}
-    </div>
-  );
+  /* 고른 부적합의 상태 — 「부적합 상세」 제목은 걷고 부적합번호 옆에 둔다(omf-all-around#275). */
+  const statusChip =
+    detail.data === undefined ? undefined : (
+      <Chip size="sm" status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}>
+        {codeValueLabel(status, detail.data.statusCode)}
+      </Chip>
+    );
 
   return (
     <>
@@ -815,8 +809,6 @@ export const DispositionDecisionScreen = ({
            * 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). 고르기 전에는 제목 없이 안내만 —
            * 목록에서 고르면 제목과 상세가 선다(omf-all-around#228).
            */}
-          {/* 상세를 읽은 뒤에는 머리가 상세 상자 안에 선다(사용자 시안 · omf-all-around#275). */}
-          {selectedId !== null && detailView === null && sideHead}
           <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
             <DetailSlot
               selectedId={selectedId}
@@ -839,7 +831,7 @@ export const DispositionDecisionScreen = ({
               onOpenNonconformance={(id) =>
                 setSearchParams((current) => withSelectedNonconformance(current, id))
               }
-              heading={sideHead}
+              status={statusChip}
             />
           </div>
           {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}

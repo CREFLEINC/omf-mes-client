@@ -57,10 +57,8 @@ describe('DispositionDecisionScreen 조회', () => {
   it('행을 고르면 상세와 대상 LOT을 보인다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
-    /* 고르면 상세 칸 제목이 선다(omf-all-around#228). */
-    expect(
-      await screen.findByRole('heading', { name: t.panes.detailDecision }),
-    ).toBeInTheDocument();
+    /* 「부적합 상세」 제목은 두지 않는다(#275) — 상세는 바로 선다. */
+    expect(screen.queryByRole('heading', { name: t.panes.detailDecision })).toBeNull();
 
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
