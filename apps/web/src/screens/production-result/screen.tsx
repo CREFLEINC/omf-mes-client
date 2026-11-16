@@ -1725,8 +1725,9 @@ export const ProductionFlowScreen = () => {
                     inputMode="decimal"
                     autoComplete="off"
                     trailingIcon={uomLabel}
+                    /* 값이 들어간 칸은 빨간 테두리를 두지 않는다(사용자 지시 2026-11-16). */
                     containerClassName={
-                      activeQty === row.key
+                      activeQty === row.key && row.qty === ''
                         ? 'production-flow-qty is-active'
                         : 'production-flow-qty'
                     }
@@ -2403,7 +2404,7 @@ export const ProductionFlowScreen = () => {
                       fullWidth
                       trailingIcon={uomLabel}
                       containerClassName={
-                        activeQty === 'good'
+                        activeQty === 'good' && actualQty === ''
                           ? 'production-flow-qty is-active'
                           : 'production-flow-qty'
                       }
