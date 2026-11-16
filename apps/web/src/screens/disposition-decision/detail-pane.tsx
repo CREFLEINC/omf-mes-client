@@ -133,30 +133,27 @@ export const DetailPane = ({
       ]
     : [];
   /*
-   * 윗줄은 판정에 바로 쓰는 것(번호 · 품목 · 사유 · 수량 둘), 아랫줄은 출처(공급사 · 접수일 · 입하 LOT · IQC 검사 · 심각도)를
-   * 작은 글 한 줄로(사용자 시안 · omf-all-around#275).
+   * PQC 검사 기본 정보(W-03-11 · #135)와 같은 짜임 — 상자 하나에 칸을 흘려 놓고, 판정에 바로 쓰는 값(번호 · 품목 · 수량 둘)을
+   * 앞에 굵게, 나머지(사유 · 출처)는 보통 글씨로 잇는다(omf-all-around#275).
    */
-  const facts: [string, ReactNode, ('strong' | 'reason')?][] = [
+  const facts: [string, ReactNode, boolean?][] = [
     [
       t.fields.nonconformanceNo,
       <span className="disposition-detail-no">
         {view.nonconformanceNo}
         {status}
       </span>,
-      'strong',
+      true,
     ],
-    [t.fields.item, lookupDisplayLabel(items, view.itemId), 'reason'],
+    [t.fields.item, lookupDisplayLabel(items, view.itemId), true],
+    [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, true],
+    ...(isInbound && remainingText !== undefined
+      ? [[t.fields.remainingQty, remainingText, true] as [string, ReactNode, boolean]]
+      : []),
     [
       t.fields.reasonText,
       view.description === '' ? messages.common.reference.empty : view.description,
-      'reason',
     ],
-    [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, 'strong'],
-    ...(isInbound && remainingText !== undefined
-      ? [[t.fields.remainingQty, remainingText, 'strong'] as [string, ReactNode, 'strong']]
-      : []),
-  ];
-  const meta: [string, ReactNode][] = [
     ...(view.supplierName === null || view.supplierName === undefined
       ? []
       : [[t.inboundLot.supplier, view.supplierName] as [string, ReactNode]]),
@@ -172,23 +169,12 @@ export const DetailPane = ({
        */}
       <div className="disposition-detail-box">
         <dl className="disposition-detail-facts">
-          {facts.map(([label, value, tone]) => (
-            /* 부적합번호 · 부적합 수량은 굵게(사용자 시안 · #223). 사유는 길면 줄을 바꾼다. */
-            <div
-              className={tone === undefined ? 'field-cell' : `field-cell is-${tone}`}
-              key={label}
-            >
+          {facts.map(([label, value, isKey]) => (
+            <div className="disposition-detail-fact" key={label}>
               <dt className="field-label">{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-        {/* 아랫줄도 윗줄과 같은 칸 모양(이름 위 · 값 아래 · 사이 세로선) — 값만 한 단계 작게(omf-all-around#275). */}
-        <dl className="disposition-detail-facts is-meta">
-          {meta.map(([label, value]) => (
-            <div className="field-cell" key={label}>
-              <dt className="field-label">{label}</dt>
-              <dd>{value}</dd>
+              <dd className={isKey === true ? 'disposition-detail-fact-key' : undefined}>
+                {value}
+              </dd>
             </div>
           ))}
         </dl>
