@@ -180,7 +180,11 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
       return { text: t.loading, shownAbove: target.isPending };
     if (target.isError || etag === null) return { text: t.loadFailed, shownAbove: true };
     if (judgment === null) return { text: t.judgmentMissing, shownAbove: true };
-    if (missing !== null) return { text: missing, shownAbove: false };
+    /*
+     * 고를 것이 남은 까닭(잔량 처리·사유)은 화면에 적지 않는다(사용자 지시 2026-11-16) — 고를 칸이 바로 위에
+     * 있다. 단추에는 그대로 이어 화면 읽기 프로그램이 읽는다.
+     */
+    if (missing !== null) return { text: missing, shownAbove: true };
     if (openLots.isPending) return { text: t.openLotsChecking, shownAbove: false };
 
     return null;
@@ -504,7 +508,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               </p>
             </>
           )}
-          {/* 창 위에 이미 띠로 선 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}
+          {/* 창 위에 이미 띠로 선 까닭·고를 칸이 위에 있는 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}
           {submitBlocked !== null && (
             <p
               className={submitBlocked.shownAbove ? 'visually-hidden' : 'field-note'}

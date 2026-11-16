@@ -254,8 +254,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     underReason: {
       title: 'Lý do thiếu',
-      summary: (target: string, actual: string): string =>
-        `Số lượng LOT ${target}, thực tế ${actual}`,
+      lotQty: 'Số lượng LOT',
+      actualQty: 'Sản lượng thực tế',
       cancel: 'Hủy',
       loading: 'Đang tải lý do thiếu.',
       loadFailed: 'Không tải được lý do thiếu.',

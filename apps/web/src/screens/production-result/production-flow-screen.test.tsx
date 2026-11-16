@@ -2824,9 +2824,10 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     expect(
       within(dialog).getByText('계획 수량에 미달한 완료는 사유가 필요합니다.'),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(t.flow.underReason.summary('12 EA', '0 EA')),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(t.flow.underReason.lotQty)).toBeInTheDocument();
+    expect(within(dialog).getByText('12 EA')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.flow.underReason.actualQty)).toBeInTheDocument();
+    expect(within(dialog).getByText('0 EA')).toBeInTheDocument();
   });
 
   it('실적이 배분되지 않은 LOT 의 거부는 화면 문구로 다음 할 일을 말하고 스캔 칸을 잠그지 않는다', async () => {

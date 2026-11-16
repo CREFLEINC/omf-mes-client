@@ -2485,10 +2485,10 @@ export const ProductionFlowScreen = () => {
         summary={
           lot === null
             ? null
-            : t.flow.underReason.summary(
-                withUnit(lot.initialQty),
-                withUnit(lotDetail.data?.lot.progress?.goodQty ?? 0),
-              )
+            : {
+                target: withUnit(lot.initialQty),
+                actual: withUnit(lotDetail.data?.lot.progress?.goodQty ?? 0),
+              }
         }
         onPick={completeUnder}
         onCancel={cancelUnder}

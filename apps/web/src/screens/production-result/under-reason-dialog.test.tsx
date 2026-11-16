@@ -31,7 +31,7 @@ describe('UnderReasonDialog', () => {
         isLoading={false}
         isError={false}
         error={null}
-        summary="Mục tiêu 12 EA · Thực tế 7 EA"
+        summary={{ target: '12 EA', actual: '7 EA' }}
         onPick={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -40,6 +40,7 @@ describe('UnderReasonDialog', () => {
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByRole('button', { name: 'Thiếu vật tư' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: '기타' })).toBeInTheDocument();
-    expect(within(dialog).getByText('Mục tiêu 12 EA · Thực tế 7 EA')).toBeInTheDocument();
+    expect(within(dialog).getByText('12 EA')).toBeInTheDocument();
+    expect(within(dialog).getByText('7 EA')).toBeInTheDocument();
   });
 });

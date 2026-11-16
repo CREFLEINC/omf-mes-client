@@ -10165,14 +10165,14 @@
 
 .production-flow-wo-end-dialog .production-flow-wo-end-group {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 /* 묶음 사이를 띄운다 — 창 몸통은 블록이라 간격을 스스로 주지 않는다. */
 .production-flow-wo-end-dialog .production-flow-wo-end-group,
 .production-flow-wo-end-dialog .production-flow-wo-end-lots,
 .production-flow-wo-end-dialog .iqc-inspection-action-note[data-tone='warning'] {
-  margin-block-start: var(--space-5);
+  margin-block-start: var(--space-4);
 }
 
 .production-flow-wo-end-dialog .production-flow-wo-end-legend {
@@ -10196,6 +10196,11 @@
 
 .production-flow-wo-end-dialog .production-flow-reason-tiles > button {
   min-inline-size: 9rem;
+}
+
+/* 고르지 않은 잔량 처리·마감 사유 버튼은 흰 글자(사용자 지시 2026-11-16). 고른 버튼은 채움 그대로. */
+.production-flow-wo-end-dialog .production-flow-reason-tiles > button[aria-pressed='false'] {
+  color: var(--on-surface);
 }
 
 .production-flow-wo-end-dialog .iqc-inspection-action-note {
@@ -10258,11 +10263,57 @@
   outline: none;
 }
 
-/* 미달 사유 창의 「목표 · 실적」 한 줄 — 사유를 왜 묻는지 숫자로 보인다. */
-.production-flow-reason-body .pop-figures-line {
-  margin: 0 0 var(--space-3);
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
+/*
+ * 미달 사유 창(사용자 지시 2026-11-16 시안) — 위에 「LOT 수량 10 EA | 생산 실적 1 EA」, 아래 구분선, 사유는
+ * 2열 큰 버튼(흰 글자), 바닥 구분선 없이 [취소] 오른쪽.
+ */
+.production-flow-reason-summary {
+  display: flex;
+  align-items: center;
+  margin: 0 0 var(--space-4);
+  padding-block-end: var(--space-4);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.production-flow-reason-summary > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-inline: var(--space-4);
+}
+
+.production-flow-reason-summary > div:first-child {
+  padding-inline-start: 0;
+}
+
+.production-flow-reason-summary > div + div {
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.production-flow-reason-summary dt {
+  color: var(--on-surface-variant);
+}
+
+.production-flow-reason-summary dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pop-ui .production-flow-reason-dialog .production-flow-reason-tiles,
+.production-flow-reason-dialog .production-flow-reason-tiles {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.production-flow-reason-dialog .production-flow-reason-tiles > button,
+.production-flow-reason-dialog footer > button {
+  min-block-size: 3.5rem;
+  color: var(--on-surface);
+  font-weight: 500;
+}
+
+.production-flow-reason-dialog footer {
+  border-block-start: none;
 }
 
 /*

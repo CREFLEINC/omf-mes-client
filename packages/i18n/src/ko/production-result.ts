@@ -284,7 +284,9 @@ export const productionResult = {
     /** 목표에 못 미친 LOT 을 마감할 때 — 서버가 사유를 필수로 받는다. */
     underReason: {
       title: '미달 사유',
-      summary: (target: string, actual: string): string => `LOT 수량 ${target}, 실적 ${actual}`,
+      /** 창 위 숫자 두 칸(사용자 지시 2026-11-16 시안 「LOT 수량 10 EA | 생산 실적 1 EA」). */
+      lotQty: 'LOT 수량',
+      actualQty: '생산 실적',
       cancel: '취소',
       loading: '미달 사유를 불러오는 중입니다.',
       loadFailed: '미달 사유를 불러오지 못했습니다.',
