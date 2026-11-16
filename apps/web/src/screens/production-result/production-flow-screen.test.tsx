@@ -2067,8 +2067,12 @@ describe('ProductionFlowScreen 불량', () => {
     await pickDefect(user, '찍힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
 
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    /* 양품 없이 불량만이면 하단 [LOT 라벨 출력] 자리에 [불량 등록]이 선다(사용자 지시 2026-11-16). */
+    expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    expect(
+      within(defectSection()).queryByRole('button', { name: t.flow.defects.saveOnly }),
+    ).toBeNull();
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
 
@@ -2099,7 +2103,7 @@ describe('ProductionFlowScreen 불량', () => {
     /* 키보드 없는 단말도 화면 숫자판으로 불량 수량을 넣는다. */
     await user.click(screen.getByRole('button', { name: '2' }));
 
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
 
@@ -2143,9 +2147,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    await user.click(
-      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
-    );
+    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
 
     expect(await screen.findByText(t.flow.defects.queued)).toBeInTheDocument();
     expect(within(defectSection()).queryByRole('listitem')).toBeNull();
@@ -2320,9 +2322,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    await user.click(
-      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
-    );
+    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
     expect(
@@ -2365,9 +2365,7 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
-    await user.click(
-      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
-    );
+    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(t.flow.defects.saved)).toBeNull());
@@ -2408,7 +2406,7 @@ describe('ProductionFlowScreen 불량', () => {
     renderScreen(writes, [sessionWithResources, ...defectRoutes]);
 
     await enterDefectOnly(user);
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
 
@@ -2427,9 +2425,7 @@ describe('ProductionFlowScreen 불량', () => {
     await enterDefectOnly(user);
 
     await waitFor(() =>
-      expect(
-        within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: t.flow.defects.saveOnly })).toBeEnabled(),
     );
   });
 
@@ -2451,7 +2447,7 @@ describe('ProductionFlowScreen 불량', () => {
 
     await enterDefectOnly(user);
 
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     expect(saveOnly).toBeDisabled();
     await waitFor(() => expect(saveOnly).toHaveAccessibleDescription(t.gate.denied));
   });

@@ -72,7 +72,6 @@ export const productionResult = {
       tagUnknown: '인식표 대상인지 확인할 수 없습니다. 연결을 확인한 뒤 화면을 다시 열어 주세요',
       tag: '인식표를 모두 출력해야 LOT 라벨을 출력할 수 있습니다. 관리자에게 알려 주세요',
       qty: '양품을 입력해 주세요',
-      defectOnly: '불량만 등록하려면 불량 등록을 눌러 주세요',
       defectType: '불량 유형을 골라 주세요',
       defectQty: '불량 수량을 입력해 주세요',
       defectDuplicate: '같은 불량 유형이 두 줄에 있습니다. 한 줄을 삭제해 주세요',
@@ -81,6 +80,7 @@ export const productionResult = {
       current: '현재 LOT',
       completed: '마감된 LOT',
       completedTitle: '마감된 LOT',
+      completedTotal: (count: number): string => `총 ${String(count)}건`,
       completedEmpty: '마감된 LOT이 없습니다.',
       pageNav: '마감된 LOT 페이지 이동',
       /* 쪽 이동은 POP 공용과 같은 말이다(`popPageNav`, 화면 용어집). */

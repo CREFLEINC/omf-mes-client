@@ -9956,6 +9956,54 @@
   color: var(--on-surface-variant);
 }
 
+/*
+ * 마감된 LOT 창(사용자 지시 2026-11-16) — 제목 줄 오른쪽에 「총 N건」, LOT 은 번호 붙은 칸 목록, 바닥 구분선 없음.
+ */
+.pop-ui .production-flow-completed-dialog h2:has(> .production-flow-completed-title) {
+  flex: 1;
+}
+
+.pop-ui .production-flow-completed-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  inline-size: 100%;
+}
+
+.pop-ui .production-flow-completed-total {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-flow-completed-dialog .production-flow-completed-lots {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .production-flow-completed-dialog .production-flow-completed-lots > li {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.pop-ui .production-flow-completed-dialog .production-flow-completed-no {
+  flex: none;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-flow-completed-dialog footer {
+  border-block-start: none;
+}
+
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */
 .pop-ui.production-work-screen .pop-context-right > :first-child {
   max-inline-size: 9.5rem;

@@ -1409,7 +1409,8 @@ export const ProductionFlowScreen = () => {
       gateText(gates.input, t.gate.denied) ??
       (isDefectOnly ? null : gateText(gates.print, t.flow.gate.print));
     if (gate !== null) return gate;
-    if (isDefectOnly) return defectTodo === undefined ? next.defectOnly : defectTodo;
+    /* 불량만 등록할 때 [불량 등록]을 누르라는 문장은 두지 않는다 — 버튼이 불량 목록 아래에 바로 선다(사용자 지시 2026-11-16). */
+    if (isDefectOnly) return defectTodo ?? null;
     if (parsedQty === null || parsedQty <= 0) return next.qty;
     if (defectTodo !== undefined) return defectTodo;
     if (lotPrinters.isPending) return null;
@@ -1548,7 +1549,22 @@ export const ProductionFlowScreen = () => {
    * 새로 만들지 않고, 인쇄 결과 보고도 같은 멱등 키로 다시 보내 서버 기록이 늘지 않는다([라벨 다시 인쇄]와 같은 길).
    */
   const outputButton = (variant: 'filled' | 'outlined'): ReactNode =>
-    outputPhase === 'scanReady' ? (
+    /*
+     * 양품 없이 불량만 넣었으면 라벨로 이어지지 않는다 — [LOT 라벨 출력] 자리에 [불량 등록]이 선다(사용자 지시
+     * 2026-11-16, 종전에는 불량 목록 아래). 누르는 조건·보내는 값은 그대로다.
+     */
+    isDefectOnly && outputPhase === 'idle' ? (
+      <Button
+        type="button"
+        variant={variant}
+        size={POP_TOUCH_SIZE}
+        disabled={!canSaveDefectsOnly}
+        aria-describedby={remainingId}
+        onClick={queueDefectsOnly}
+      >
+        {t.flow.defects.saveOnly}
+      </Button>
+    ) : outputPhase === 'scanReady' ? (
       <Button
         type="button"
         variant={variant}
@@ -1666,18 +1682,6 @@ export const ProductionFlowScreen = () => {
         </>
       )}
       {/* 양품이 없으면 라벨로 이어지지 않는다. 불량만 등록하는 버튼이 선다(테두리, C-3 채움은 하단 바 하나). */}
-      {isDefectOnly && (
-        <Button
-          type="button"
-          variant="outlined"
-          size={POP_TOUCH_SIZE}
-          disabled={!canSaveDefectsOnly}
-          aria-describedby={remainingId}
-          onClick={queueDefectsOnly}
-        >
-          {t.flow.defects.saveOnly}
-        </Button>
-      )}
       {defectNotice !== null && (
         <p className="field-note" role="status">
           {defectNotice === 'saved' ? t.flow.defects.saved : t.flow.defects.queued}
@@ -2315,7 +2319,7 @@ export const ProductionFlowScreen = () => {
           </Button>
         ) : isCloseMode ? (
           <>
-            {lot !== null && outputButton('outlined')}
+            {(lot !== null || isDefectOnly) && outputButton('outlined')}
             {closeAction('filled')}
           </>
         ) : (
@@ -2352,7 +2356,18 @@ export const ProductionFlowScreen = () => {
       <Dialog
         open={isCompletedOpen}
         onClose={() => setIsCompletedOpen(false)}
-        title={t.flow.currentLot.completedTitle}
+        className="production-flow-completed-dialog"
+        /* 제목 줄 오른쪽 끝에 전체 건수를 둔다(사용자 지시 2026-11-16). */
+        title={
+          <span className="production-flow-completed-title">
+            <span>{t.flow.currentLot.completedTitle}</span>
+            {completedLots.data === undefined ? null : (
+              <span className="production-flow-completed-total">
+                {t.flow.currentLot.completedTotal(completedLots.data.page.total)}
+              </span>
+            )}
+          </span>
+        }
         /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
         showCloseButton={false}
         /*
@@ -2371,33 +2386,48 @@ export const ProductionFlowScreen = () => {
           <p>{t.flow.currentLot.completedEmpty}</p>
         ) : (
           <>
-            <ol className="production-flow-completed-lots">
-              {completedLots.data.items.map((completedLot) => (
-                <li key={completedLot.lotId}>{completedLot.lotNo}</li>
+            {/* 쪽을 넘겨도 번호가 이어진다(2쪽 첫 줄은 21.). */}
+            <ol
+              className="production-flow-completed-lots"
+              start={(completedBoundary.page - 1) * completedLots.data.page.size + 1}
+            >
+              {completedLots.data.items.map((completedLot, index) => (
+                <li key={completedLot.lotId}>
+                  <span className="production-flow-completed-no" aria-hidden="true">
+                    {`${String((completedBoundary.page - 1) * completedLots.data.page.size + index + 1)}.`}
+                  </span>
+                  {completedLot.lotNo}
+                </li>
               ))}
             </ol>
-            <nav className="production-flow-completed-pages" aria-label={t.flow.currentLot.pageNav}>
-              <Button
-                variant="outlined"
-                disabled={!completedBoundary.canPageUp}
-                onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
+            {/* 한 쪽에 다 들어가면 [이전]·[다음]을 두지 않는다(사용자 지시 2026-11-16). */}
+            {completedBoundary.totalPages > 1 && (
+              <nav
+                className="production-flow-completed-pages"
+                aria-label={t.flow.currentLot.pageNav}
               >
-                {t.flow.currentLot.prev}
-              </Button>
-              <p className="field-note">
-                {t.flow.currentLot.pagePosition(
-                  completedBoundary.page,
-                  completedBoundary.totalPages,
-                )}
-              </p>
-              <Button
-                variant="outlined"
-                disabled={!completedBoundary.canPageDown}
-                onClick={() => setCompletedPage(completedBoundary.page + 1)}
-              >
-                {t.flow.currentLot.next}
-              </Button>
-            </nav>
+                <Button
+                  variant="outlined"
+                  disabled={!completedBoundary.canPageUp}
+                  onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
+                >
+                  {t.flow.currentLot.prev}
+                </Button>
+                <p className="field-note">
+                  {t.flow.currentLot.pagePosition(
+                    completedBoundary.page,
+                    completedBoundary.totalPages,
+                  )}
+                </p>
+                <Button
+                  variant="outlined"
+                  disabled={!completedBoundary.canPageDown}
+                  onClick={() => setCompletedPage(completedBoundary.page + 1)}
+                >
+                  {t.flow.currentLot.next}
+                </Button>
+              </nav>
+            )}
           </>
         )}
       </Dialog>
