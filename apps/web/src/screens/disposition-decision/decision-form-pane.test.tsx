@@ -54,7 +54,7 @@ describe('DecisionFormPane', () => {
   it('단위를 수량 라벨에 담아 어떤 단위로 저장되는지 보인다', () => {
     renderPane();
 
-    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.form.qtyLabel)).toBeInTheDocument();
   });
 
   it('단위를 모르면 라벨에 괄호를 붙이지 않는다', () => {
@@ -78,7 +78,7 @@ describe('DecisionFormPane', () => {
 
     expect(screen.getByLabelText(t.form.reasonLabel)).toBeDisabled();
     expect(screen.getByLabelText(t.form.reasonLabel)).toHaveAccessibleDescription(reason);
-    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveAccessibleDescription(reason);
+    expect(screen.getByLabelText(t.form.qtyLabel)).toHaveAccessibleDescription(reason);
     expect(saveButton()).toHaveAccessibleDescription(reason);
   });
 
@@ -87,8 +87,8 @@ describe('DecisionFormPane', () => {
     renderPane({ remainingQty: 320 });
 
     /* 입력칸이 아니라 글이다(#275). */
-    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveTextContent('320 EA');
-    expect(screen.queryByRole('textbox', { name: `${t.form.qtyLabel} (EA)` })).toBeNull();
+    expect(screen.getByLabelText(t.form.qtyLabel)).toHaveTextContent('320 EA');
+    expect(screen.queryByRole('textbox', { name: t.form.qtyLabel })).toBeNull();
   });
 
   it('저장 중에는 저장·취소를 함께 잠근다 — 두 번 보내지 않게 한다', () => {

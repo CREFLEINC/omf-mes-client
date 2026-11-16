@@ -8913,23 +8913,50 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .disposition-type-options {
-  /* 유형 칸은 같은 크기로(omf-all-around#275) — 폭이 모자라면 같은 크기로 다음 줄에. */
-  display: grid;
-  align-self: stretch;
-  /* 화면 폭에 맞춰 — 넓으면 다섯 칸 한 줄, 좁으면 같은 크기로 줄을 바꾼다(omf-all-around#275). */
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  /*
+   * 처분 유형 — 글 폭만 한 칸들을 한 줄에(omf-all-around#275). 폭이 모자라면 다음 줄로 넘긴다. 높이 · 테두리 · 간격은 모두 같고,
+   * 고른 칸만 강조한다. 동그라미(라디오 표시)는 칸 강조와 같은 말이라 눈에서 감춘다 — 입력은 그대로 있어 키보드 · 낭독기가 쓴다.
+   */
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
 .disposition-type-option {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  min-width: 0;
-  padding: var(--space-2) var(--space-3);
+  position: relative;
+  display: inline-flex;
+  min-height: 2.5rem;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   background: var(--surface-container-high);
+}
+
+.disposition-type-option > label,
+.disposition-type-option > .disposition-type-concession {
+  display: inline-flex;
+  align-items: center;
+  min-height: 100%;
+  padding: 0 var(--space-5);
+  cursor: pointer;
+}
+
+.disposition-type-option > label > [class*='_control_'] {
+  display: none;
+}
+
+.disposition-type-option > label > [class*='_label_'],
+.disposition-type-option > .disposition-type-concession {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.disposition-type-option:hover:not([data-locked='true']) {
+  border-color: var(--outline);
+}
+
+.disposition-type-option:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
 }
 
 .disposition-type-option[data-selected='true'] {
@@ -8937,33 +8964,47 @@ main:has(.iqc-skip-approval-detail) {
   background: var(--primary-container);
 }
 
-.disposition-type-option[data-locked='true'] {
-  opacity: 0.72;
+.disposition-type-option[data-selected='true'] > label > [class*='_label_'] {
+  color: var(--primary-text);
+  font-weight: 600;
 }
 
-.disposition-type-concession {
-  justify-self: start;
-  /* 다른 유형(라디오)의 이름과 같은 글자 크기로(omf-all-around#275). */
-  font: var(--type-body-lg);
+.disposition-type-option[data-locked='true'] {
+  opacity: 0.6;
+}
+
+.disposition-type-option[data-locked='true'] > label,
+.disposition-type-option[data-locked='true'] > .disposition-type-concession {
+  cursor: not-allowed;
+}
+
+/* 막힌 칸의 글자는 라디오든 특채 단추든 같은 흐린 색. */
+.disposition-type-option[data-locked='true'] > label > [class*='_label_'],
+.disposition-type-option[data-locked='true'] > .disposition-type-concession {
+  color: var(--state-disabled-text);
+}
+
+/* 특채도 다른 유형과 같은 칸 모양 — 글자 단추의 둥근 모양 · 색을 걷는다(별도 절차는 누르면 열리는 팝업이 말한다). */
+.disposition-type-option > .disposition-type-concession {
+  height: auto;
+  border-radius: inherit;
+  background: transparent;
 }
 
 .disposition-type-hint {
+  display: block;
   color: var(--on-surface-variant);
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
-  overflow-wrap: anywhere;
 }
 
-.disposition-qty-note {
-  margin: 0;
-}
-
-/* 처분 수량 — 이름 · 값 · 한 줄 안내를 한 줄로(바꿀 수 없는 값 · omf-all-around#275). */
+/* 처분 수량 — 상자 없이 「처분 수량  100 KG」 한 줄, 고른 유형의 결과는 그 아래 작은 글 한 줄(omf-all-around#275). */
 .disposition-qty-card {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   column-gap: var(--space-3);
+  row-gap: var(--space-1);
 }
 
 .disposition-qty-value {
@@ -8973,8 +9014,31 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-title-md-tracking);
 }
 
+.disposition-qty-card > .disposition-qty-note,
 .disposition-qty-error {
   flex-basis: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+/* 판정 사유 — 상자 없이 일반 입력칸. 기본 두 줄, 길게 쓰면 필요한 만큼만(최대 여섯 줄쯤) 늘어난다. */
+.disposition-reason-field textarea {
+  min-height: calc(2lh + var(--space-4));
+  max-height: calc(6lh + var(--space-4));
+  field-sizing: content;
+  resize: none;
+}
+
+/* 오류 문구는 입력칸 바로 아래 — 공용 문단 여백을 걷는다(omf-all-around#275). */
+.disposition-reason-field [class*='_meta_'] > p {
+  margin: 0;
+}
+
+/* 이력이 없을 때 — 표 없이 한 줄(omf-all-around#275). */
+.disposition-history-empty {
+  max-width: none;
+  margin: 0;
+  padding: var(--space-2) 0;
 }
 
 .disposition-sort {

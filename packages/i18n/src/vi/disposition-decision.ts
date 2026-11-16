@@ -177,14 +177,14 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     qtyLabel: 'Số lượng',
     reasonLabel: 'Lý do',
     wholeEffect: (count: number, effect: string): string =>
-      `${String(count)} LOT quản lý vật tư: ${effect}`,
+      `Khi lưu, ${String(count)} LOT quản lý vật tư ${effect}`,
     effect: {
-      NORMAL: 'tất cả bình thường',
-      SCRAP: 'tất cả hủy',
-      REWORK: 'tất cả chờ kiểm tra + kiểm tra lại',
+      NORMAL: 'đều chuyển sang bình thường.',
+      SCRAP: 'đều chuyển sang hủy.',
+      REWORK: 'đều chuyển sang chờ kiểm tra và cần kiểm tra lại.',
     },
     reworkInboundEffect: (inboundLotNo: string): string =>
-      `tất cả chờ kiểm tra + mở lại IQC của LOT nhập hàng ${inboundLotNo} (thêm kết quả rồi xác nhận lại)`,
+      `đều chuyển sang chờ kiểm tra, IQC của LOT nhập hàng ${inboundLotNo} được mở lại để kiểm tra lại.`,
     remainingUnknown: 'Đang xác nhận số lượng còn lại. Hãy lưu lại sau giây lát',
     typeLock: {
       closed: 'Mục không phù hợp đã kết thúc',
@@ -209,7 +209,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     qtyExceededByServer: (remaining: string): string =>
       `Tổng số lượng quyết định xử lý vượt số lượng còn lại (${remaining}) nên chưa được lưu. Hãy tải lại mục không phù hợp rồi lưu`,
     alreadyClosed: 'Mục không phù hợp này đã kết thúc. Không lưu được đánh giá',
-    reasonRequired: 'Hãy nhập lý do',
+    reasonRequired: 'Bắt buộc nhập lý do quyết định.',
     dispositionRequired: 'Hãy chọn quyết định xử lý',
     savingReason: 'Đang lưu đánh giá',
     uncertainReason: 'Phải kiểm tra kết quả xử lý của đánh giá đã gửi trước đó',

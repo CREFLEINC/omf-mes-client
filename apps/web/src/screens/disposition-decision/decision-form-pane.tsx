@@ -131,7 +131,8 @@ export const DecisionFormPane = ({
           </span>
         </span>
         {/*
-         * 유형마다 한 줄 설명 — 막힌 유형은 잠그고 설명 자리에 그 이유를 단다(G-2 · 감추지 않는다).
+         * 유형은 글 폭만 한 칸들을 한 줄에 — 고른 칸만 강조하고, 동그라미(라디오 표시)는 눈에서 감춘다(omf-all-around#275).
+         * 막힌 유형은 잠그고 그 이유를 칸 줄 아래에 단다(G-2 · 감추지 않는다).
          * 특채는 라디오가 아니라 요청 팝업을 여는 단추다(결재가 붙는 별도 길).
          */}
         <RadioGroup
@@ -147,8 +148,6 @@ export const DecisionFormPane = ({
           {dispositionOptions.map((option) => {
             const hintId = `${optionHintId}-${option.value}`;
             const note = option.lockReason;
-            const isSharedLock =
-              option.lockReason !== undefined && option.lockReason === sharedLockReason;
             return (
               <div
                 key={option.value}
@@ -163,14 +162,6 @@ export const DecisionFormPane = ({
                 >
                   {option.label}
                 </Radio>
-                {note !== undefined && (
-                  <span
-                    id={hintId}
-                    className={isSharedLock ? 'visually-hidden' : 'disposition-type-hint'}
-                  >
-                    {note}
-                  </span>
-                )}
               </div>
             );
           })}
@@ -192,21 +183,37 @@ export const DecisionFormPane = ({
               >
                 {t.values.dispositionType.CONCESSION}
               </Button>
-              {concession.lockReason !== undefined && (
-                <span
-                  id={`${optionHintId}-CONCESSION`}
-                  className={
-                    concession.lockReason === sharedLockReason
-                      ? 'visually-hidden'
-                      : 'disposition-type-hint'
-                  }
-                >
-                  {concession.lockReason}
-                </span>
-              )}
             </div>
           )}
         </RadioGroup>
+        {/* 막힌 이유 — 위 특채 상자가 이미 말한 이유는 눈에서 감추고 낭독기만 읽는다(omf-all-around#275). */}
+        {[
+          ...dispositionOptions.map((option) => ({
+            id: `${optionHintId}-${option.value}`,
+            label: option.label,
+            reason: option.lockReason,
+          })),
+          ...(concession === undefined
+            ? []
+            : [
+                {
+                  id: `${optionHintId}-CONCESSION`,
+                  label: t.values.dispositionType.CONCESSION,
+                  reason: concession.lockReason,
+                },
+              ]),
+        ].map(({ id, label, reason }) =>
+          reason === undefined ? null : (
+            <span
+              key={id}
+              className={reason === sharedLockReason ? 'visually-hidden' : 'disposition-type-hint'}
+            >
+              {/* 유형 이름은 눈으로만 — 칸이 읽는 이유(`aria-describedby`)는 이유 글만이다. */}
+              <span aria-hidden="true">{`${label}: `}</span>
+              <span id={id}>{reason}</span>
+            </span>
+          ),
+        )}
         {errors.dispositionTypeCode !== undefined && (
           <span className="field-error">{errors.dispositionTypeCode}</span>
         )}
@@ -227,9 +234,10 @@ export const DecisionFormPane = ({
       ) : (
         /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). */
         /* 바꿀 수 없는 값이라 입력칸이 아니라 글로 보인다(omf-all-around#275). */
-        <div className="disposition-decision-subcard disposition-qty-card">
+        /* 단위는 값에 붙어 있어 이름에는 다시 적지 않는다(omf-all-around#275). */
+        <div className="disposition-qty-card">
           <label className="field-label" htmlFor={qtyId}>
-            {uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
+            {t.form.qtyLabel}
           </label>
           <output
             id={qtyId}
@@ -253,7 +261,7 @@ export const DecisionFormPane = ({
       )}
 
       {/* ⛔ 디자인 시스템에 여러 줄 입력이 없다 — 토큰을 입힌 후보 부품을 쓴다(DS #74). */}
-      <div className="disposition-decision-subcard disposition-reason-field">
+      <div className="disposition-reason-field">
         <TextArea
           label={t.form.reasonLabel}
           value={value.reason}

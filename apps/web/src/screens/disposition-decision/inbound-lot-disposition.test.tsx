@@ -107,7 +107,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     const { user } = renderInbound();
     await screen.findByText('SAMPLE-ML|0003');
 
-    const qty = screen.getByLabelText(`${t.form.qtyLabel} (EA)`);
+    const qty = screen.getByLabelText(t.form.qtyLabel);
     await waitFor(() => expect(qty).toHaveTextContent('3,000 EA'));
 
     await user.click(screen.getByRole('radio', { name: '재작업' }));
@@ -284,7 +284,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(scrap).toBeDisabled();
     expect(scrap).toHaveAccessibleDescription(t.form.typeLock.concessionRejected);
     for (const hint of screen.getAllByText(t.form.typeLock.concessionRejected)) {
-      expect(hint).toHaveClass('visually-hidden');
+      expect(hint.parentElement).toHaveClass('visually-hidden');
     }
 
     /* [반려 확인]은 예전 [특채 닫기]와 같은 적용 경로를 부른다. */

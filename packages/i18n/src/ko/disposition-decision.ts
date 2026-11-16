@@ -192,15 +192,16 @@ export const dispositionDecision = {
     /**
      * 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음 · 일부 판정 없음). 판정 하나가 자재 관리 LOT 전부를 옮긴다.
      */
+    /* 저장하면 생기는 일 — 유형마다 다르다(정상 · 폐기는 상태만, 재작업은 IQC 가 다시 열린다 · omf-all-around#275). */
     wholeEffect: (count: number, effect: string): string =>
-      `자재 관리 LOT ${String(count)}개 ${effect}`,
+      `저장하면 자재 관리 LOT ${String(count)}개가 ${effect}`,
     effect: {
-      NORMAL: '전부 정상',
-      SCRAP: '전부 폐기',
-      REWORK: '전부 검사 대기 + 재검사',
+      NORMAL: '모두 정상으로 바뀝니다.',
+      SCRAP: '모두 폐기로 바뀝니다.',
+      REWORK: '모두 검사 대기로 바뀌고, 다시 검사해야 합니다.',
     },
     reworkInboundEffect: (inboundLotNo: string): string =>
-      `전부 검사 대기 + 입하 LOT ${inboundLotNo} 의 IQC 를 다시 엶(결과 더한 뒤 다시 확정)`,
+      `모두 검사 대기로 바뀌고, 입하 LOT ${inboundLotNo} 의 IQC 가 다시 열려 재검사해야 합니다.`,
     remainingUnknown: '남은 수량을 확인하는 중입니다. 잠시 뒤 다시 저장하세요',
     /** 막힌 처분 유형의 이유 — 단추는 잠그고 이유를 단다. */
     typeLock: {
@@ -234,7 +235,8 @@ export const dispositionDecision = {
     qtyExceededByServer: (remaining: string): string =>
       `처분 결정 수량 합이 남은 수량(${remaining})을 넘어 저장되지 않았습니다. 부적합을 다시 불러온 뒤 저장하세요`,
     alreadyClosed: '이미 종결된 부적합입니다. 판정을 저장할 수 없습니다',
-    reasonRequired: '사유를 입력하세요',
+    /* 입력칸 안내(「판정 사유를 입력하세요」)와 같은 말을 되풀이하지 않는다(omf-all-around#275). */
+    reasonRequired: '판정 사유는 꼭 입력해야 합니다.',
     dispositionRequired: '처분을 선택하세요',
     savingReason: '판정을 저장하는 중입니다',
     uncertainReason: '앞서 보낸 판정의 처리 결과를 먼저 확인해야 합니다',

@@ -456,21 +456,22 @@ export const ConcessionHistory = ({
     <div className="disposition-concession" role="group" aria-label={t.historyHeading}>
       <SaveErrorBanner error={applyWrite.error} />
       {notice !== null && <p className="field-note">{notice}</p>}
-      <div className="disposition-table disposition-decision-table">
-        <Table
-          caption={<span className="disposition-table-caption">{t.caption}</span>}
-          density="compact"
-          columns={columns}
-          rows={groups}
-          getRowId={(group) => String(group.first.concessionId)}
-          /* 판정 이력과 같이 — 없으면 표 안 행 자리 가운데 한 줄(사용자 지시 · #223). */
-          empty={
-            <p className="field-note disposition-table-empty">
-              {list.isPending ? t.loading : t.none}
-            </p>
-          }
-        />
-      </div>
+      {/* 없으면 표 머리 없이 한 줄만 — 처분 이력과 같다(omf-all-around#275). */}
+      {groups.length === 0 ? (
+        <p className="field-note disposition-history-empty">
+          {list.isPending ? t.loading : t.none}
+        </p>
+      ) : (
+        <div className="disposition-table disposition-decision-table">
+          <Table
+            caption={<span className="disposition-table-caption">{t.caption}</span>}
+            density="compact"
+            columns={columns}
+            rows={groups}
+            getRowId={(group) => String(group.first.concessionId)}
+          />
+        </div>
+      )}
     </div>
   );
 };

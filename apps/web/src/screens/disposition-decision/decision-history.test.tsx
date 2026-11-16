@@ -49,6 +49,8 @@ describe('DecisionHistory', () => {
     renderHistory({ rows: [] });
 
     expect(screen.getByText(t.decisions.empty)).toBeInTheDocument();
+    /* 이력이 없으면 표 머리 없이 한 줄만(#275). */
+    expect(screen.queryByRole('table')).toBeNull();
   });
 
   it('불러오는 중에는 상태를 알린다', () => {
