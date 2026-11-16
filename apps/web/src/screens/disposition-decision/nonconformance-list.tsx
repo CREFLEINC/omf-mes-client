@@ -36,9 +36,9 @@ export interface NonconformanceListProps {
 }
 
 /**
- * ⭐ 「판정 진행」 열은 서버가 대상 수량 합과 결정 수량 합을 롤업해 낸 `dispositionProgressCode`를
- * 그대로 보인다 — `statusCode`의 「판정 대기」 한 값은 미판정·일부 판정을 가르지 못한다.
- * 근거: W-03-10 §4-A · omf-mes#253(회신 반영).
+ * ⭐ 「처리 상태」 칸은 `statusCode` 에 서버가 롤업한 `dispositionProgressCode` 의 «일부 판정»을 덧붙인다 —
+ * `statusCode`의 「판정 대기」 한 값은 미판정·일부 판정을 가르지 못한다.
+ * 근거: W-03-10 §4-A · omf-mes#253(회신 반영) · omf-all-around#275(두 열을 합침).
  */
 export const NonconformanceList = ({
   rows,
@@ -108,13 +108,6 @@ export const NonconformanceList = ({
       render: (row) => row.affectedQtyText,
     },
     {
-      key: 'dispositionProgress',
-      align: 'center',
-      width: '110px',
-      header: t.fields.dispositionProgressCode,
-      render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
-    },
-    {
       key: 'severity',
       align: 'center',
       width: '100px',
@@ -133,7 +126,17 @@ export const NonconformanceList = ({
       align: 'center',
       width: '120px',
       header: t.fields.statusCode,
-      render: (row) => codeValueLabel(status, row.statusCode),
+      /*
+       * 「판정 현황」 열을 합쳤다(omf-all-around#275) — 일부 처분이 없어져(FR-038) 미판정 · 완료는 상태와 같은 말이다.
+       * 상태 한 값이 가르지 못하는 «일부 판정»(예전 데이터)만 뒤에 덧붙인다.
+       */
+      render: (row) =>
+        row.dispositionProgressCode === 'PARTIAL'
+          ? t.values.statusWithProgress(
+              codeValueLabel(status, row.statusCode),
+              dispositionProgressLabel(row.dispositionProgressCode),
+            )
+          : codeValueLabel(status, row.statusCode),
     },
   ];
 

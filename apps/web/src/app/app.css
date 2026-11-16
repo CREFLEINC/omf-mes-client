@@ -8569,12 +8569,9 @@ main:has(.iqc-skip-approval-detail) {
   white-space: nowrap;
 }
 
-/* 설명 — 기본 정보 상자 안, 구분선 아래 한 줄(사용자 시안 · #223). */
-.disposition-detail-description {
-  margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--outline-variant);
-  color: var(--on-surface);
+/* 부적합 사유 — 기본 정보의 한 칸, 길면 줄을 바꾼다(omf-all-around#275). */
+.disposition-detail-facts > .is-reason dd {
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 
@@ -8818,68 +8815,13 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-body-sm-tracking);
 }
 
-.disposition-now-band {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--semantic-warning-container);
-  color: var(--on-semantic-warning-container);
-}
 
-.disposition-now-band-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
 
-.disposition-now-band-summary {
-  flex: 1 1 20rem;
-  min-width: 0;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
 
-.disposition-now-band-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-}
 
-.disposition-now-band-body[hidden] {
-  display: none;
-}
 
-.disposition-now-band-item dt {
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-}
 
-.disposition-now-band-item dd {
-  margin: var(--space-1) 0 0;
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
 
-.disposition-now-band-tag {
-  color: var(--semantic-error-text);
-  font: var(--type-label-sm);
-  letter-spacing: var(--type-label-sm-tracking);
-}
-
-.disposition-inbound-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--semantic-info-container);
-  color: var(--on-semantic-info-container);
-}
 
 .disposition-subtitle-note {
   margin-left: var(--space-2);
@@ -8898,14 +8840,14 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .disposition-type-options {
-  display: flex;
-  flex-wrap: wrap;
+  /* 유형 칸은 같은 크기로(omf-all-around#275) — 폭이 모자라면 같은 크기로 다음 줄에. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: var(--space-2);
 }
 
 .disposition-type-option {
   display: grid;
-  flex: 1 1 10rem;
   align-content: start;
   gap: var(--space-1);
   min-width: 0;

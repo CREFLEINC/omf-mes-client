@@ -7,7 +7,6 @@ import { SessionProvider } from '../../patterns/session';
 import { jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { SYNTHETIC_SESSION } from '../../test/session-harness';
 import { dispositionStub, lotFixture, requestsSent } from './fixtures';
-import { NOW_BAND } from './now-band';
 import { DispositionDecisionScreen } from './screen';
 
 /* 005 T077 — W-03-10 입하 LOT 단위 처분(US4-4 · R14a-1 · FR-031 · FR-038). 값은 전부 지어낸 합성값이다. */
@@ -93,9 +92,9 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(await screen.findByText('SAMPLE-ML|0003')).toBeInTheDocument();
     expect(screen.getAllByText('SAMPLE-IL-0501').length).toBeGreaterThan(0);
     expect(screen.getByText('SAMPLE-IR-0701')).toBeInTheDocument();
-    expect(screen.getByText(t.inboundLot.bannerTitle)).toBeInTheDocument();
     const lots = screen.getByRole('region', { name: t.panes.lots });
-    expect(within(lots).getByText(t.inboundLot.matchingNote)).toBeInTheDocument();
+    /* 처분 단위는 표 제목 옆 한 줄로(#275 — 파란 안내 상자를 줄임). */
+    expect(within(lots).getByText(t.inboundLot.unitNote)).toBeInTheDocument();
     expect(
       within(lots).getByText(t.inboundLot.resultChip(2, '불합격', '합성 외관 결함')),
     ).toBeInTheDocument();
@@ -185,7 +184,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(sort).toBeDisabled();
     expect(sort).toHaveAccessibleDescription(t.form.typeLock.sortNoInboundLot);
     expect(screen.getByRole('radio', { name: '재작업' })).toBeEnabled();
-    expect(screen.queryByText(t.inboundLot.bannerTitle)).toBeNull();
+    expect(screen.queryByText(t.inboundLot.unitNote)).toBeNull();
   });
 
   it('US4-4 결재 대기 특채가 있으면 그 번호로 알리고, 다른 처분을 잠근다', async () => {
@@ -263,6 +262,37 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
   });
 
+  it('#275 결재가 반려된 특채는 [반려 확인]이 있고, 처분 유형마다 막힘 이유를 되풀이해 보이지 않는다', async () => {
+    const pending = {
+      concessionId: 61,
+      concessionNo: 'SAMPLE-CN-0061',
+      nonconformanceId: 41,
+      lotId: 8101,
+      approvedQty: 1000,
+      consumedQty: 0,
+      uomId: 7001,
+      validFrom: '2026-11-11',
+      approvalRequestId: 77,
+      statusCode: 'PENDING',
+    };
+    const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'REJECTED' });
+
+    const banner = await screen.findByText(t.concession.rejectedBanner('SAMPLE-CN-0061'));
+    const box = banner.closest('.disposition-pending-concession') as HTMLElement;
+
+    /* 막힘 이유는 반려 상태로 읽히되(스크린리더), 칸마다 눈에 보이는 글로 되풀이하지 않는다. */
+    const scrap = screen.getByRole('radio', { name: '폐기' });
+    expect(scrap).toBeDisabled();
+    expect(scrap).toHaveAccessibleDescription(t.form.typeLock.concessionRejected);
+    for (const hint of screen.getAllByText(t.form.typeLock.concessionRejected)) {
+      expect(hint).toHaveClass('visually-hidden');
+    }
+
+    /* [반려 확인]은 예전 [특채 닫기]와 같은 적용 경로를 부른다. */
+    await user.click(within(box).getByRole('button', { name: t.concession.close }));
+    await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
+  });
+
   it('G2 L10 취소된 부적합(CANCELLED · IQC 확정 취소로 생김)은 처분 대기 목록에 나오지 않는다', async () => {
     renderInbound({ nonconformance: { ...INBOUND_NONCONFORMANCE, statusCode: 'CANCELLED' } });
 
@@ -303,21 +333,10 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(await within(history).findByRole('button', { name: t.concession.apply })).toBeDisabled();
   });
 
-  it('「지금」 띠는 접힌 채로 시작하고, 펼치면 바뀌기 전 방식을 보인다', async () => {
-    const { user } = renderInbound();
+  it('#275 「지금(바뀌기 전)」 안내 띠는 두지 않는다', async () => {
+    renderInbound();
     await screen.findByText('SAMPLE-ML|0003');
 
-    const band = screen.getByRole('region', { name: NOW_BAND.title });
-    const toggle = within(band).getByRole('button', { name: NOW_BAND.expand });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(within(band).queryByText(NOW_BAND.items[0].note)).not.toBeVisible();
-
-    await user.click(toggle);
-
-    expect(within(band).getByRole('button', { name: NOW_BAND.collapse })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-    expect(within(band).getByText(NOW_BAND.items[0].note)).toBeVisible();
+    expect(screen.queryByText('지금(바뀌기 전)')).toBeNull();
   });
 });

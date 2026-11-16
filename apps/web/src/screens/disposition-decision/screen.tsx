@@ -81,7 +81,6 @@ import {
   useUomLookup,
 } from './lookups';
 import { NonconformanceList } from './nonconformance-list';
-import { NowBand } from './now-band';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
 import {
@@ -484,6 +483,7 @@ export const DispositionDecisionScreen = ({
       isClosedNonconformance(detail.data.statusCode, remaining.isSettled),
     hasPendingConcession: pendingConcession !== undefined,
     isConcessionApproved: pendingApproval.data === 'APPROVED',
+    isConcessionRejected: pendingApproval.data === 'REJECTED',
     inboundLotNo: detailView?.inboundLotNo,
     lotCount: lotRows.length,
     decisionCount: decisions.data?.items.length ?? 0,
@@ -673,8 +673,6 @@ export const DispositionDecisionScreen = ({
   return (
     <>
       {topBar}
-      {/* 005 — 바뀌기 전 처분 방식을 알리는 띠(접힘으로 시작 · 처분 대기에서만). */}
-      {tab === 'pending' && <NowBand />}
       {/* 두 탭이 같은 짜임(사용자 지시 · #223) — 위 조회 조건, 아래 목록 | 오른쪽 상세. 처분 이력은 판정 입력 없이 보기만. */}
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         {tab === 'pending' ? (
@@ -852,6 +850,8 @@ export const DispositionDecisionScreen = ({
                   isUncertain={lock.isUncertain}
                   onCheckOutcome={checkOutcome}
                   dispositionOptions={dispositionOptions}
+                  /* 특채가 걸려 있으면 막힘 이유는 위 특채 상자가 한 번만 말한다 — 유형마다 되풀이하지 않는다(omf-all-around#275). */
+                  sharedLockReason={pendingConcession === undefined ? undefined : concessionLock}
                   concession={{
                     hint: t.form.typeHint.CONCESSION ?? '',
                     lockReason: concessionLock,

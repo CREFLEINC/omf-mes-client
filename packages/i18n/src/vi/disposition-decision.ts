@@ -64,8 +64,8 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reason: 'Lý do',
     decidedAt: 'Thời điểm đánh giá',
     decidedBy: 'Người đánh giá',
-    remainingQty: 'Số lượng còn lại',
-    dispositionProgressCode: 'Tình trạng đánh giá',
+    remainingQty: 'Số lượng chưa xử lý',
+    reasonText: 'Lý do không phù hợp',
   },
   all: 'Tất cả',
   codePending: 'Giá trị gốc để chọn vẫn chưa sẵn sàng',
@@ -94,7 +94,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     notFoundDescription: 'Hãy tra cứu lại danh sách rồi chọn mục không phù hợp khác.',
     emptyDescription: 'Chưa có mô tả nào được đăng ký',
     noLots: 'Không có LOT quản lý vật tư liên quan',
-    affectedQty: 'Số lượng đối tượng',
+    affectedQty: 'Số lượng không phù hợp',
   },
   decisions: {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
@@ -117,12 +117,12 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     wholeHint:
       'Đặc cách chỉ yêu cầu cho toàn bộ số lượng còn lại (không có đặc cách một phần). Nếu chỉ muốn dùng một phần, hãy dùng [Phân loại] để tách LOT quản lý vật tư lỗi trước, rồi đặc cách toàn bộ LOT nhập hàng đó.',
     pendingBanner: (concessionNo: string, count: number): string =>
-      `Đặc cách ${concessionNo} đang chờ phê duyệt (W-03-09). Khi được duyệt, [Áp dụng đặc cách] sẽ giải phóng toàn bộ ${String(count)} LOT quản lý vật tư về bình thường.`,
+      `Đặc cách ${concessionNo} đang chờ phê duyệt. Chưa thể chọn cách xử lý khác cho đến khi phê duyệt xong. Khi được duyệt, [Áp dụng đặc cách] sẽ đưa ${String(count)} LOT quản lý vật tư về bình thường.`,
     approvedBanner: (concessionNo: string, count: number): string =>
-      `Đặc cách ${concessionNo} đã được duyệt — chờ áp dụng. [Áp dụng đặc cách] sẽ giải phóng toàn bộ ${String(count)} LOT quản lý vật tư về bình thường.`,
+      `Đặc cách ${concessionNo} đã được duyệt. Nhấn [Áp dụng đặc cách] để đưa ${String(count)} LOT quản lý vật tư về bình thường.`,
     rejectedBanner: (concessionNo: string): string =>
-      `Phê duyệt đặc cách ${concessionNo} đã bị từ chối. Hãy đóng đặc cách này bằng [Đóng đặc cách].`,
-    close: 'Đóng đặc cách',
+      `Phê duyệt đặc cách ${concessionNo} đã bị từ chối. Nhấn [Xác nhận từ chối] để chọn cách xử lý khác.`,
+    close: 'Xác nhận từ chối',
     targetGroup: (count: number): string => `Toàn bộ ${String(count)} LOT quản lý vật tư`,
     historyHeading: 'Lịch sử yêu cầu đặc cách',
     reasonPlaceholder: 'Nhập lý do đặc cách',
@@ -178,7 +178,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     reasonLabel: 'Lý do',
     qtyLocked: 'Toàn bộ số lượng còn lại — không đổi được',
     wholeEffect: (count: number, effect: string): string =>
-      `= Toàn bộ số lượng còn lại. Một quyết định áp dụng cho ${String(count)} LOT quản lý vật tư: ${effect}`,
+      `${String(count)} LOT quản lý vật tư: ${effect}`,
     effect: {
       NORMAL: 'tất cả bình thường',
       SCRAP: 'tất cả hủy',
@@ -198,6 +198,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       closed: 'Mục không phù hợp đã kết thúc',
       concessionPending: 'Đặc cách đang chờ phê duyệt',
       concessionApproved: 'Đặc cách đã duyệt — chờ áp dụng',
+      concessionRejected: 'Đặc cách bị từ chối — chờ xác nhận',
       sortNoInboundLot: 'Không phù hợp trả hàng · OQC không có phân loại (không có LOT nhập hàng)',
       sortSingleLot: 'Chỉ có 1 LOT quản lý vật tư nên không phân loại được',
       sortNotFirst: 'Chỉ phân loại được ở lần quyết định đầu tiên',
@@ -238,11 +239,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     sourceColumn: 'Nguồn',
     source: { IQC: 'IQC · nhập hàng vật tư', RETURN: 'Trả hàng', PRODUCT: 'OQC · thành phẩm' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     sortedFromTail: (tail: string): string => ` · phân loại ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    bannerTitle: 'Xử lý theo đơn vị LOT nhập hàng.',
-    bannerBody: (count: number): string =>
-      `Một quyết định áp dụng chung cho toàn bộ ${String(count)} LOT quản lý vật tư. Không xử lý riêng từng LOT quản lý vật tư.`,
-    matching: 'Khớp kết quả IQC',
-    matchingNote: 'Khớp kết quả IQC — tham khảo',
+    unitNote: 'Kết quả xử lý áp dụng cho tất cả LOT quản lý vật tư trong LOT nhập hàng.',
+    lotSummary: (count: number, qty: string): string => `${String(count)} LOT · ${qty}`,
+    matching: 'Kết quả kiểm tra IQC',
     noMatch: 'Không khớp',
     resultChip: (seqNo: number, judgment: string, defect: string | null): string =>
       `Kết quả ${String(seqNo)} ${judgment}${defect === null ? '' : ` · ${defect}`}`,
@@ -334,30 +333,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
       PARTIAL: 'Đánh giá một phần',
       COMPLETED: 'Hoàn tất',
     },
-  },
-  /** 「지금(바뀌기 전)」 띠(005 · screens/W-03-10.md). */
-  nowBand: {
-    title: 'Trước đây (trước khi thay đổi)',
-    summary:
-      'Chia số lượng xử lý để đánh giá nhiều lần · Phân loại = tách LOT theo số lượng đạt/lỗi (LOT con) · Đặc cách = chọn 1 LOT, có thể một phần số lượng', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    expand: 'Mở rộng',
-    collapse: 'Thu gọn',
-    items: [
-      {
-        label: 'Số lượng xử lý',
-        tag: 'Đã bỏ',
-        note: 'Trước đây có thể chia số lượng xử lý và chỉ đánh giá một phần (đã nhập / chưa nhập).',
-      },
-      {
-        label: 'Số lượng đạt · lỗi (phân loại)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-        tag: 'Đã thay đổi',
-        note: 'Số lượng lỗi được tách thành LOT mới (LOT con) và trở thành sự không phù hợp mới.',
-      },
-      {
-        label: 'Yêu cầu đặc cách',
-        tag: 'Bỏ đặc cách một phần',
-        note: 'Trước đây có thể chọn một LOT và chỉ duyệt một phần số lượng; phần còn lại được tách thành LOT mới và sự không phù hợp mới.',
-      },
-    ],
+    statusWithProgress: (status: string, progress: string): string => `${status} (${progress})`,
   },
 };

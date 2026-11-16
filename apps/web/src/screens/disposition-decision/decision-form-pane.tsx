@@ -37,6 +37,11 @@ export interface DecisionFormPaneProps {
   isUncertain: boolean;
   onCheckOutcome: () => void;
   dispositionOptions: DispositionOption[];
+  /**
+   * 여러 유형을 함께 막는 이유를 위 상자(특채 상자)가 이미 말할 때 그 이유 — 유형 칸마다 되풀이하지 않는다.
+   * 칸은 그대로 잠기고, 읽는 이유(`aria-describedby`)도 그대로 남는다(omf-all-around#275).
+   */
+  sharedLockReason?: string | undefined;
   /** 특채 칸. 없으면 두지 않는다. */
   concession?: ConcessionOption | undefined;
   uomId: number | undefined;
@@ -72,6 +77,7 @@ export const DecisionFormPane = ({
   isUncertain,
   onCheckOutcome,
   dispositionOptions,
+  sharedLockReason,
   concession,
   uomId,
   uoms,
@@ -141,6 +147,8 @@ export const DecisionFormPane = ({
           {dispositionOptions.map((option) => {
             const hintId = `${optionHintId}-${option.value}`;
             const note = option.lockReason ?? option.hint;
+            const isSharedLock =
+              option.lockReason !== undefined && option.lockReason === sharedLockReason;
             return (
               <div
                 key={option.value}
@@ -156,7 +164,10 @@ export const DecisionFormPane = ({
                   {option.label}
                 </Radio>
                 {note !== undefined && (
-                  <span id={hintId} className="disposition-type-hint">
+                  <span
+                    id={hintId}
+                    className={isSharedLock ? 'visually-hidden' : 'disposition-type-hint'}
+                  >
                     {note}
                   </span>
                 )}
@@ -179,7 +190,14 @@ export const DecisionFormPane = ({
               >
                 {t.values.dispositionType.CONCESSION}
               </Button>
-              <span id={`${optionHintId}-CONCESSION`} className="disposition-type-hint">
+              <span
+                id={`${optionHintId}-CONCESSION`}
+                className={
+                  concession.lockReason !== undefined && concession.lockReason === sharedLockReason
+                    ? 'visually-hidden'
+                    : 'disposition-type-hint'
+                }
+              >
                 {concession.lockReason ?? concession.hint}
               </span>
             </div>

@@ -73,18 +73,18 @@ const renderList = (overrides: Partial<NonconformanceListProps> = {}) => {
 };
 
 describe('NonconformanceList', () => {
-  it('⭐ 「판정 진행」 열에 서버가 낸 값을 우리말로 보인다', () => {
+  it('⭐ 「처리 상태」 칸은 상태를 보이고, 일부 판정만 서버가 낸 진행을 덧붙인다(#275 판정 현황 열 합침)', () => {
     renderList();
 
+    expect(screen.getByRole('columnheader', { name: t.fields.statusCode })).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: t.fields.dispositionProgressCode }),
+      screen.getByText(
+        t.values.statusWithProgress('합성 상태 C', t.values.dispositionProgress.PARTIAL),
+      ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(messages.dispositionDecision.values.dispositionProgress.PARTIAL),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(messages.dispositionDecision.values.dispositionProgress.NOT_STARTED),
-    ).toBeInTheDocument();
+    /* 미판정은 상태(판정 대기)와 같은 말이라 덧붙이지 않는다. */
+    expect(screen.getByText('합성 상태 C')).toBeInTheDocument();
+    expect(screen.queryByText(t.values.dispositionProgress.NOT_STARTED)).toBeNull();
   });
 
   /*
