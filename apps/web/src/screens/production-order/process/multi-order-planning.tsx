@@ -498,7 +498,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           entry.editor.setErrors(row.key, errors);
           return Object.keys(errors).length
             ? [
-                `${entry.order.productionOrderNo} / ${row.planNo ?? `신규 계획 ${row.displayNo}`}: 날짜, 라인, 수량, 개정을 확인하세요.`,
+                `${entry.order.productionOrderNo} / ${row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`}: 날짜, 라인, 수량, 개정을 확인하세요.`,
               ]
             : [];
         }),
@@ -1192,14 +1192,14 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
             .filter((row) => !row.confirmed)
             .map(
               (row) =>
-                `${ownerOf(row.key)?.order.productionOrderNo} / ${row.planNo ?? `신규 계획 ${row.displayNo}`}`,
+                `${ownerOf(row.key)?.order.productionOrderNo} / ${row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`}`,
             )}
           operations={[]}
           groups={entries.map((entry) => ({
             orderNo: entry.order.productionOrderNo,
             plans: entry.editor.rows
               .filter((row) => !row.confirmed)
-              .map((row) => row.planNo ?? `신규 계획 ${row.displayNo}`),
+              .map((row) => row.planNo ?? `${row.draft.planDate} / ${row.draft.plannedQty}`),
             operations: entry.operations,
           }))}
           running={busy}

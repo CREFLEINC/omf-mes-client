@@ -533,6 +533,7 @@ export const ProposalPlanningWorkspace = ({
                     </section>
                     <div className="assign-plan-row">
                       <DateTimeField
+                        timePicker
                         label="계획 시작"
                         value={selected.op.start.replace(' ', 'T')}
                         disabled={pending || selected.plan.source === '기존 확정 계획'}
@@ -547,6 +548,7 @@ export const ProposalPlanningWorkspace = ({
                         }
                       />
                       <DateTimeField
+                        timePicker
                         label="계획 종료"
                         value={selected.op.end.replace(' ', 'T')}
                         disabled={pending || selected.plan.source === '기존 확정 계획'}

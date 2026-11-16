@@ -74,6 +74,10 @@ export const screenPatterns = {
   dateTimeField: {
     time: (label: string): string => `${label} 시각`,
     timePlaceholder: '00:00',
+    hour: (label: string): string => `${label} (시)`,
+    minute: (label: string): string => `${label} (분)`,
+    hourLabel: '시',
+    minuteLabel: '분',
   },
   /** C-17 자동으로 채운 값 */
   autoValue: {

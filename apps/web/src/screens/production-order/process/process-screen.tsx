@@ -193,7 +193,8 @@ export const ProcessWorkspace = ({
     });
   }, [draftBomId, change, editor.rows, routingId, boms.isPending, boms.isError]);
   const rowName = (row: (typeof editor.rows)[number]) =>
-    row.planNo ?? tp.plan.newRow(row.displayNo);
+    row.planNo ??
+    `${row.draft.planDate} / ${formatQty(Number(row.draft.plannedQty) || 0)} ${uomLabelOf(order.uomId)}`;
   const unconfirmedRows = editor.rows.filter((row) => !row.confirmed);
   const invalidRow = unconfirmedRows
     .map((row) => {

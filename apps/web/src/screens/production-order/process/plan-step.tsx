@@ -345,8 +345,8 @@ export const PlanStep = ({
       key: 'planNo',
       header: t.columns.planNo,
       render: (row) => (
-        <span className="erp-wo-complete-value" title={nameOf(row)}>
-          {nameOf(row)}
+        <span className="erp-wo-complete-value" title={row.planNo ?? undefined}>
+          {row.planNo}
         </span>
       ),
     },
@@ -770,7 +770,8 @@ export const PlanStep = ({
                         setAnchor(row.draft.planDate);
                       }}
                     >
-                      {nameOf(row)}
+                      {row.planNo ??
+                        `${row.draft.planDate} / ${formatQty(Number(row.draft.plannedQty) || 0)} ${unitOf(row)}`}
                     </Button>
                   ))}
                 </div>
@@ -848,7 +849,7 @@ export const PlanStep = ({
                 )
               )}
               <div className="erp-wo-plan-editor-title">
-                <span className="mono-cell">{nameOf(selected)}</span>
+                {selected.planNo && <span className="mono-cell">{selected.planNo}</span>}
                 <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>
                   {selected.confirmed ? statusNameOf(selected.statusCode) : unconfirmedLabel}
                 </Chip>
@@ -873,7 +874,11 @@ export const PlanStep = ({
                     wrapValue
                     hideLabel
                     size="md"
-                    label={t.fieldLabel(nameOf(selected), t.columns.line)}
+                    label={
+                      selected.planNo
+                        ? t.fieldLabel(selected.planNo, t.columns.line)
+                        : t.columns.line
+                    }
                     valueLabel={
                       selected.draft.plannedLineId === ''
                         ? ''
@@ -950,7 +955,7 @@ export const PlanStep = ({
                       key={selected.key}
                       row={selected}
                       plantId={plantOf(selected)}
-                      planName={nameOf(selected)}
+                      planName={selected.planNo ?? ''}
                       identity={rowIdentityOf?.(selected)}
                       lineName={lineName(selected.draft.plannedLineId)}
                       unit={unitOf(selected)}
