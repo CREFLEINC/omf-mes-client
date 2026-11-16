@@ -8406,6 +8406,11 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 .disposition-pane {
+  /*
+   * 숨긴 글(표 이름 · 화면 읽기용 이유 · 라디오 입력)은 `position: absolute` 라 기준 상자가 구획 밖이면 구획의 스크롤에
+   * 갇히지 않고 문서를 아래로 늘린다 — 문서가 내려가면 구획이 잘린 채 아래가 비었다(omf-all-around#275). 구획을 기준 상자로.
+   */
+  position: relative;
   display: grid;
   /* 칸 폭은 구획 폭까지만 — 처분 이력 표(최소 44rem)가 구획을 밀어 오른쪽이 잘리지 않게, 표는 제 상자 안에서 가로로 구른다(omf-all-around#241). */
   grid-template-columns: minmax(0, 1fr);
