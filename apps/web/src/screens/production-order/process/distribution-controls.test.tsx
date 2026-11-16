@@ -53,7 +53,7 @@ describe('분배 조건과 미리보기 적용', () => {
     await user.click(all);
     expect(screen.getByRole('checkbox', { name: '분배 조건 1 선택' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: '분배 조건 2 선택' })).not.toBeChecked();
-    expect(screen.getByRole('heading', { name: '조건 1 편집' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '분배 조건 편집' })).toBeVisible();
   });
   it('ERP 시작일과 추천 라인을 채우고 사용자의 조건 변경은 다시 열어도 유지한다', async () => {
     const user = userEvent.setup();
@@ -272,7 +272,7 @@ describe('분배 조건과 미리보기 적용', () => {
       }),
     );
     await user.click(screen.getByRole('button', { name: '선택' }));
-    await user.click(screen.getByRole('button', { name: '선택 조건에 입력' }));
+    await user.click(screen.getByRole('button', { name: '선택 항목에 적용' }));
     expect(
       screen
         .getByRole('button', { name: '조건 1 생산 라인 선택' })

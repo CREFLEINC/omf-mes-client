@@ -249,7 +249,7 @@ export const DistributionControls = ({
           자동 분배
         </Button>
         <Button
-          size="sm"
+          size="md"
           variant="text"
           className="erp-wo-distribution-help-trigger"
           aria-label="자동 분배 도움말"
@@ -311,11 +311,11 @@ export const DistributionControls = ({
                       }
                     }}
                   >
-                    조건 추가
+                    분배 조건 추가
                   </Button>
                 </div>
-                <details className="erp-wo-common-conditions">
-                  <summary>선택 조건에 공통 기간과 라인 입력</summary>
+                <section className="erp-wo-common-conditions" aria-label="선택 조건 공통 입력">
+                  <h3 className="section-title">선택 조건에 공통 기간과 라인 입력</h3>
                   <p className="field-note">선택 {selected.length}건</p>
                   <div className="erp-wo-distribution-fields">
                     <div className="field-cell erp-wo-distribution-period">
@@ -338,6 +338,7 @@ export const DistributionControls = ({
                         value={commonLine}
                         disabled={disabled}
                         optional
+                        combined
                         onChange={setCommonLine}
                       />
                     </div>
@@ -378,9 +379,9 @@ export const DistributionControls = ({
                       }
                     }}
                   >
-                    선택 조건에 입력
+                    선택 항목에 적용
                   </Button>
-                </details>
+                </section>
                 <div className="erp-wo-distribution-condition-list">
                   <div className="erp-wo-preview-scroll">
                     <table>
@@ -406,7 +407,6 @@ export const DistributionControls = ({
                               }
                             />
                           </th>
-                          <th>분배 조건</th>
                           <th>ERP W/O / 품목</th>
                           <th>기간</th>
                           <th>생산 라인</th>
@@ -461,10 +461,9 @@ export const DistributionControls = ({
                                   />
                                 </td>
                                 <td>
-                                  조건 {index + 1}
+                                  {target?.label ?? 'ERP W/O 선택 필요'}
                                   {row.applied && <span className="field-note">편성안 반영됨</span>}
                                 </td>
-                                <td>{target?.label ?? 'ERP W/O 선택 필요'}</td>
                                 <td className="erp-wo-condition-period">
                                   {row.start} ~ {row.end}
                                 </td>
@@ -507,13 +506,13 @@ export const DistributionControls = ({
                         role="group"
                         aria-label={`분배 조건 ${index + 1}`}
                       >
-                        <h3 className="section-title">조건 {index + 1} 편집</h3>
+                        <h3 className="section-title">분배 조건 편집</h3>
                         <div>
                           <div className="erp-wo-distribution-row-head">
                             <div className="field-cell">
                               <span className="field-label">ERP W/O / 품목</span>
                               <Select
-                                size="sm"
+                                size="md"
                                 aria-label={`조건 ${index + 1} ERP W/O`}
                                 value={row.owner}
                                 disabled={disabled}
@@ -534,8 +533,8 @@ export const DistributionControls = ({
                               />
                             </div>
                             <Button
-                              variant="text"
-                              size="sm"
+                              variant="outlined"
+                              size="md"
                               disabled={disabled}
                               aria-label={`조건 ${index + 1} 삭제`}
                               onClick={() => {
@@ -567,6 +566,7 @@ export const DistributionControls = ({
                               <DistributionLinePicker
                                 label={`조건 ${index + 1} 생산 라인`}
                                 lines={target?.lines ?? []}
+                                combined
                                 value={row.lineId}
                                 disabled={disabled}
                                 onChange={(lineId) => change(row.id, { lineId })}
@@ -575,7 +575,7 @@ export const DistributionControls = ({
                             <div className="field-cell erp-wo-segment-mode">
                               <span className="field-label">배분 방식</span>
                               <Select
-                                size="sm"
+                                size="md"
                                 aria-label={`조건 ${index + 1} 배분 방식`}
                                 value={row.mode}
                                 options={[
@@ -609,7 +609,7 @@ export const DistributionControls = ({
                             </div>
                             {row.mode === 'equal' ? (
                               <TextField
-                                size="sm"
+                                size="md"
                                 className="erp-wo-segment-quantity"
                                 label={`분배 수량 (${target?.unit ?? ''})`}
                                 aria-label={`조건 ${index + 1} 수량`}
@@ -634,7 +634,7 @@ export const DistributionControls = ({
                                   .map((date) => (
                                     <TextField
                                       key={date}
-                                      size="sm"
+                                      size="md"
                                       label={date}
                                       aria-label={`조건 ${index + 1} ${date} 수량`}
                                       inputMode="decimal"
@@ -912,8 +912,8 @@ export const DistributionControls = ({
                     onChangePage={setResultPage}
                   />
                 )}
-                <details>
-                  <summary>선택 ERP W/O의 날짜별 라인 합계</summary>
+                <section aria-label="선택 ERP W/O의 날짜별 라인 합계">
+                  <h3 className="section-title">선택 ERP W/O의 날짜별 라인 합계</h3>
                   <div className="erp-wo-preview-scroll">
                     <table>
                       <thead>
@@ -955,7 +955,7 @@ export const DistributionControls = ({
                   <p className="field-note">
                     선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.
                   </p>
-                </details>
+                </section>
                 {!!reviewResult!.warnings.length && (
                   <>
                     <AlertBanner variant="warning">

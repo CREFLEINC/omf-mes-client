@@ -60,7 +60,7 @@ export const DistributionLinePicker = ({
       )}
       <div className="erp-wo-distribution-line-buttons">
         <Button
-          size="sm"
+          size="md"
           variant="outlined"
           aria-label={`${label} 선택`}
           aria-haspopup="dialog"
@@ -78,7 +78,7 @@ export const DistributionLinePicker = ({
         </Button>
         {optional && value && (
           <Button
-            size="sm"
+            size="md"
             variant="text"
             aria-label={`${label} 해제`}
             disabled={disabled}
