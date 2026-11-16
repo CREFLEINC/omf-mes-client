@@ -66,6 +66,19 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(await screen.findByText('LOT-TEST-0088')).toBeInTheDocument();
   });
 
+  it('항목을 고르면 목록이 접히고, 막대의 단추로 다시 펼친다(omf-all-around#275)', async () => {
+    const { user } = renderScreen();
+    expect(screen.queryByRole('button', { name: t.listExpand })).toBeNull();
+    await selectRow(user);
+    const split = document.querySelector('.disposition-split');
+    await waitFor(() => expect(split).toHaveAttribute('data-left-collapsed', 'true'));
+
+    await user.click(screen.getByRole('button', { name: t.listExpand }));
+    expect(split).not.toHaveAttribute('data-left-collapsed');
+    await user.click(screen.getByRole('button', { name: t.listCollapse }));
+    expect(split).toHaveAttribute('data-left-collapsed', 'true');
+  });
+
   /* 부적합에 남은 품질 상태는 등록 때 값 — 판정으로 바뀐 LOT 상태를 LOT 조회로 보인다(#223). */
   it('대상 LOT 의 품질 상태는 LOT 의 지금 상태다', async () => {
     const { user } = renderScreen({ lotStatusCode: 'SCRAPPED' });

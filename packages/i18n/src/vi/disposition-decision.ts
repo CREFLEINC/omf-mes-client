@@ -9,6 +9,8 @@ import type { Translated } from './translated';
  */
 export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
   title: 'Ra quyết định xử lý',
+  listCollapse: 'Thu gọn danh sách',
+  listExpand: 'Mở rộng danh sách',
   breadcrumbRoot: 'Quản lý chất lượng',
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>

@@ -1,5 +1,8 @@
 export const dispositionDecision = {
   title: '부적합 처분 관리',
+  /** 목록과 상세 사이 막대의 단추 — 항목을 고르면 목록이 접힌다(omf-all-around#275). */
+  listCollapse: '목록 접기',
+  listExpand: '목록 펼치기',
   breadcrumbRoot: '품질 관리',
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
