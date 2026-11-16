@@ -8555,7 +8555,7 @@ main:has(.iqc-skip-approval-detail) {
  */
 .disposition-detail-facts > .field-cell {
   flex: 1 1 auto;
-  padding: 0 var(--space-5);
+  padding: 0 var(--space-4);
   border-left: 1px solid var(--outline-variant);
 }
 
@@ -8823,9 +8823,18 @@ main:has(.iqc-skip-approval-detail) {
 
 
 
-.disposition-subtitle-note {
+/* 공용 `.field-note` 의 폭 제한(20rem)보다 앞서도록 제목 안에서 고른다. */
+.disposition-subtitle .disposition-subtitle-note {
+  /* 처분 단위 한 줄 — 제목 바로 아래 한 줄로 읽히게 폭을 가두지 않는다(omf-all-around#275). */
+  max-width: none;
   margin-left: var(--space-2);
   font-weight: 400;
+}
+
+/* 특채 상자의 단추([특채 적용] · [반려 확인])는 글이 길어도 한 줄로(omf-all-around#275). */
+.disposition-pending-concession > button {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .disposition-sorted-from {
@@ -8842,6 +8851,7 @@ main:has(.iqc-skip-approval-detail) {
 .disposition-type-options {
   /* 유형 칸은 같은 크기로(omf-all-around#275) — 폭이 모자라면 같은 크기로 다음 줄에. */
   display: grid;
+  align-self: stretch;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: var(--space-2);
 }

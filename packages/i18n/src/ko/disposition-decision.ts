@@ -123,7 +123,7 @@ export const dispositionDecision = {
     /** 「자재 관리 LOT n개 전부」를 앞에 — 읽기 전용 칸이 좁아 뒤가 잘려 보이지 않았다(G2 L13). */
     targetAll: (inboundLotNo: string | null, count: number): string =>
       `자재 관리 LOT ${String(count)}개 전부${inboundLotNo === null ? '' : ` · 입하 LOT ${inboundLotNo}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    qtyLocked: '남은 수량 전부 — 바꿀 수 없음',
+    qtyLocked: '미처분 수량 전부 — 바꿀 수 없음',
     wholeHint:
       '특채는 남은 수량 전부만 요청합니다(일부 특채 없음). 일부만 쓰려면 먼저 [선별]로 불량 자재 관리 LOT 를 떼어 낸 뒤, 그 입하 LOT 를 전량 특채하세요.',
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
@@ -192,7 +192,7 @@ export const dispositionDecision = {
     /**
      * 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음 · 일부 판정 없음). 판정 하나가 자재 관리 LOT 전부를 옮긴다.
      */
-    qtyLocked: '남은 수량 전부 — 바꿀 수 없음',
+    qtyLocked: '미처분 수량 전부 — 바꿀 수 없음',
     wholeEffect: (count: number, effect: string): string =>
       `자재 관리 LOT ${String(count)}개 ${effect}`,
     effect: {
