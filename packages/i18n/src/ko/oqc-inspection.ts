@@ -423,7 +423,7 @@ export const oqcInspection = {
    * 시리얼 판정은 시리얼당 한 줄로 남는다. 재검 회차는 1차를 그대로 두고 최종만 바꾼다.
    */
   serials: {
-    openByScanNotFound: '등록되지 않은 시리얼 번호입니다.',
+    openByScanNotFound: '등록되지 않은 시리얼 또는 LOT 번호입니다.',
     /** 관리웹 판정 화면의 「시리얼별 검사 결과」 구획(#136). POP 는 위 공용 키를 그대로 쓴다. */
     judge: {
       heading: '시리얼별 검사 결과',
@@ -451,8 +451,10 @@ export const oqcInspection = {
     notFound: (serialNo: string): string => `없는 시리얼입니다: ${serialNo}`,
     noPickedRequest: (serialNo: string): string =>
       `시리얼 ${serialNo} 의 LOT 을 피킹한 OQC 의뢰가 없습니다.`,
+    noPickedLotRequest: (lotNo: string): string => `LOT ${lotNo} 을 피킹한 OQC 의뢰가 없습니다.`,
     completedRequest: (requestNo: string): string => `${requestNo} (완료, 재검사)`,
     pickRequest: '이 시리얼의 LOT 을 피킹한 OQC 의뢰가 여럿입니다. 열 의뢰를 고르세요.',
+    pickLotRequest: '이 LOT 을 피킹한 OQC 의뢰가 여럿입니다. 열 의뢰를 고르세요.',
     duplicate: (serialNo: string): string => `이미 목록에 있는 시리얼입니다: ${serialNo}`,
     otherItem: (serialNo: string): string => `시리얼 ${serialNo} 은 이 의뢰의 품목이 아닙니다.`,
     notPicked: (serialNo: string): string =>

@@ -253,7 +253,7 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     loadFailed: 'Không tải được trạng thái phê duyệt bỏ qua.',
   },
   serials: {
-    openByScanNotFound: 'Số serial chưa được đăng ký.',
+    openByScanNotFound: 'Số serial hoặc số LOT chưa được đăng ký.',
     judge: {
       heading: 'Kết quả kiểm tra theo serial',
       inspected: (count: number): string => `Đã kiểm ${String(count)}`,
@@ -280,8 +280,10 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     notFound: (serialNo: string): string => `Không có số serial: ${serialNo}`,
     noPickedRequest: (serialNo: string): string =>
       `Không có yêu cầu OQC đã lấy hàng LOT của serial ${serialNo}.`,
+    noPickedLotRequest: (lotNo: string): string => `Không có yêu cầu OQC đã lấy hàng LOT ${lotNo}.`,
     completedRequest: (requestNo: string): string => `${requestNo} (đã hoàn thành, kiểm tra lại)`,
     pickRequest: 'Có nhiều yêu cầu OQC đã lấy hàng LOT của serial này. Hãy chọn yêu cầu cần mở.',
+    pickLotRequest: 'Có nhiều yêu cầu OQC đã lấy hàng LOT này. Hãy chọn yêu cầu cần mở.',
     duplicate: (serialNo: string): string => `Serial đã có trong danh sách: ${serialNo}`,
     otherItem: (serialNo: string): string =>
       `Serial ${serialNo} không thuộc mã hàng của yêu cầu này.`,
