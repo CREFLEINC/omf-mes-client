@@ -329,6 +329,8 @@ describe('ProductionFlowScreen', () => {
 
   /* 라벨을 낸 뒤에는 [LOT 라벨 재출력]과 「입력한 실적」이 선다(사용자 지시 2026-11-16). */
   it('스캔 대기 중에는 같은 라벨을 재출력하고, 입력한 실적을 왼쪽에 보인다', async () => {
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes);
@@ -342,26 +344,20 @@ describe('ProductionFlowScreen', () => {
     expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
     expect(screen.getByText(t.flow.work.enteredResult)).toBeInTheDocument();
     expect(screen.getByText(t.flow.work.enteredGood('12', 'EA'))).toBeInTheDocument();
+    expect(save).toHaveBeenCalledTimes(1);
+    const writesBefore = writes.length;
 
-    const reportsBefore = writes.filter(
-      (request) => pathOf(request) === '/app/document-issues/44001:report-print',
-    );
     await user.click(screen.getByRole('button', { name: t.flow.output.reprint }));
-    await waitFor(() => {
-      expect(
-        writes.filter((request) => pathOf(request) === '/app/document-issues/44001:report-print'),
-      ).toHaveLength(reportsBefore.length + 1);
-    });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
 
-    /* 재출력은 실적·발행 기록을 새로 만들지 않고, 인쇄 결과 보고도 같은 멱등 키로 보낸다. */
-    const paths = writes.map(pathOf);
-    expect(paths.filter((path) => path === '/production/production-results')).toHaveLength(1);
-    expect(paths.filter((path) => path === '/app/document-issues')).toHaveLength(1);
-    const keys = writes
-      .filter((request) => pathOf(request) === '/app/document-issues/44001:report-print')
-      .map((request) => request.headers.get('Idempotency-Key'));
-    expect(new Set(keys).size).toBe(1);
+    /*
+     * 재출력은 찍기만 한다 — 실적·발행을 새로 만들지 않고 인쇄 결과도 다시 보고하지 않는다. 서버는 성공으로
+     * 잠긴 발행에 두 번째 보고를 거절해, 보고하면 「결과를 보내지 못했습니다」가 떴다(실측 2026-11-16).
+     */
+    expect(writes).toHaveLength(writesBefore);
+    expect(screen.queryByText(t.flow.output.reportFailed)).not.toBeInTheDocument();
+    expect(screen.getByText(t.flow.output.printed)).toBeInTheDocument();
   });
 
   /*

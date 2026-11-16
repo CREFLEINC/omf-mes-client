@@ -59,6 +59,8 @@ const IDLE: PrintState = { phase: 'idle', printed: 0, reason: null };
 export interface LabelPrintRunner {
   state: PrintState;
   run: (targets: readonly PrintTarget[]) => Promise<void>;
+  /** 성공·보고가 끝난 라벨을 보고 없이 다시 찍는다. */
+  reprint: (targets: readonly PrintTarget[]) => Promise<void>;
   retryReport: () => Promise<void>;
   reset: () => void;
   isShellAvailable: boolean;
@@ -148,7 +150,11 @@ export const useLabelPrintRunner = (
   );
 
   const continueRun = useCallback(
-    async (targets: readonly PrintTarget[], alreadyPrinted: number): Promise<void> => {
+    async (
+      targets: readonly PrintTarget[],
+      alreadyPrinted: number,
+      shouldReport = true,
+    ): Promise<void> => {
       if (targets.length === 0) {
         pendingSuccessReport.current = null;
         setState({ phase: 'succeeded', printed: alreadyPrinted, reason: null });
@@ -226,7 +232,8 @@ export const useLabelPrintRunner = (
         }
 
         try {
-          await report(target, failureReason);
+          /* 재출력은 보고하지 않는다 — 서버는 성공한 발행에 두 번째 보고를 받지 않는다(아래 `reprint`). */
+          if (shouldReport) await report(target, failureReason);
         } catch (error) {
           if (failurePhase === null) {
             pendingSuccessReport.current = {
@@ -261,6 +268,23 @@ export const useLabelPrintRunner = (
     [continueRun, executeOnce],
   );
 
+  /**
+   * 이미 인쇄에 성공해 보고까지 끝난 라벨을 **다시 찍기만** 한다(사용자 지시 2026-11-16 [LOT 라벨 재출력]).
+   *
+   * ⛔ 인쇄 결과를 보고하지 않는다. 서버는 `SUCCEEDED` 로 잠긴 발행에 새 보고를 거절한다 — 보고하면 화면을
+   *    다시 연 뒤(멱등 키가 새로 뽑힌 뒤) 재출력할 때마다 「결과를 보내지 못했습니다」가 떴다(실측 2026-11-16).
+   *    재출력이 실패해도 서버 기록(이미 나온 라벨)은 그대로 맞다.
+   */
+  const reprint = useCallback(
+    async (targets: readonly PrintTarget[]): Promise<void> => {
+      await executeOnce(async () => {
+        pendingSuccessReport.current = null;
+        await continueRun(targets, 0, false);
+      });
+    },
+    [continueRun, executeOnce],
+  );
+
   const retryReport = useCallback(async (): Promise<void> => {
     await executeOnce(async () => {
       const pending = pendingSuccessReport.current;
@@ -283,6 +307,7 @@ export const useLabelPrintRunner = (
   return {
     state,
     run,
+    reprint,
     retryReport,
     reset: () => {
       pendingSuccessReport.current = null;

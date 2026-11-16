@@ -23,7 +23,6 @@ import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'rea
 import { useNavigate } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
-import { josa } from '../../patterns/josa';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import type { SplitError } from '../../patterns/master';
 import { serverReasonOf } from '../../patterns/server-reason';
@@ -301,6 +300,8 @@ export const ProductionFlowScreen = () => {
   const defectCodes = useProcessDefectCodes(workOrder.data?.processId ?? null);
   const defectMajors = useMemo(() => groupDefectCodes(defectCodes.data ?? []), [defectCodes.data]);
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
+  /** 이 LOT 라벨이 인쇄에 성공해 서버에 보고됐는가. 그 뒤의 인쇄는 재출력(보고 없음)이다. */
+  const isLotLabelPrinted = useRef(false);
   /**
    * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
    * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 화면을 다시 열면 모른다(`null`).
@@ -836,6 +837,7 @@ export const ProductionFlowScreen = () => {
     setActualQty(lot === null || lot === undefined ? '' : String(lot.initialQty));
     setOutputPhase('idle');
     setSentDefects(null);
+    isLotLabelPrinted.current = false;
     setScanValue('');
     setScanMismatch(false);
     setLotPrintTargets([]);
@@ -1178,6 +1180,14 @@ export const ProductionFlowScreen = () => {
 
     if (targets.length === 0) return;
     setOutputPhase('printing');
+    /*
+     * 한 번 인쇄에 성공한 라벨(서버에 성공으로 보고됨)은 재출력 길로만 다시 찍는다 — 보고를 또 보내면 서버가
+     * 거절한다. 재출력이 실패해 [라벨 다시 인쇄]를 누를 때도 같다.
+     */
+    if (isLotLabelPrinted.current) {
+      void lotPrint.reprint(targets);
+      return;
+    }
     void lotPrint.run(targets);
   };
 
@@ -1266,7 +1276,10 @@ export const ProductionFlowScreen = () => {
    * 칸이 열리는 것은 이 상태뿐이다.
    */
   useEffect(() => {
-    if (outputPhase === 'scanReady') scanInputRef.current?.focus();
+    if (outputPhase === 'scanReady') {
+      isLotLabelPrinted.current = true;
+      scanInputRef.current?.focus();
+    }
   }, [outputPhase]);
 
   /** 실패를 고치는 다시 시도. 결과 줄 안의 테두리 버튼이고 「남은 일」이 그 이름을 말한다. */
@@ -1450,7 +1463,11 @@ export const ProductionFlowScreen = () => {
         case 'completed':
           return next.completed;
         default:
-          return retryAction === null ? next.saving : next.retry(josa(retryAction.label, '을/를'));
+          /*
+           * 실패는 결과 줄이 이유와 다시 시도 버튼으로 말한다 — 하단에 「○○을 눌러 주세요」를 또 두지 않는다
+           * (사용자 지시 2026-11-16).
+           */
+          return retryAction === null ? next.saving : null;
       }
     }
 

@@ -67,8 +67,6 @@ export const productionResult = {
       saving: '실적을 저장하고 있습니다',
       issuing: 'LOT 라벨을 발행하고 있습니다',
       printing: 'LOT 라벨을 인쇄하고 있습니다',
-      /** 〈다시 시도 버튼 이름〉+을/를. 조사는 화면이 붙인다(`patterns/josa`). */
-      retry: (buttonWithObject: string): string => `${buttonWithObject} 눌러 주세요`,
       legacyMismatch:
         '실적 없이 만든 이전 라벨 이력이 있어 LOT을 마감할 수 없습니다. 관리자에게 알려 주세요',
       completing: 'LOT을 마감하고 있습니다',
