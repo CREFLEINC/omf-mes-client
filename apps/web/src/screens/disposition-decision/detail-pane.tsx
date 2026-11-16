@@ -136,6 +136,19 @@ export const DetailPane = ({
    * PQC 검사 기본 정보(W-03-11 · #135)와 같은 짜임 — 상자 하나에 칸을 흘려 놓고, 판정에 바로 쓰는 값(번호 · 품목 · 수량 둘)을
    * 앞에 굵게, 나머지(사유 · 출처)는 보통 글씨로 잇는다(omf-all-around#275).
    */
+  /* 품목 표시명 「코드 · 이름」을 PQC 처럼 이름 위 · 코드 아래로 나눠 보인다(글 내용은 그대로). */
+  const itemLabel = lookupDisplayLabel(items, view.itemId);
+  const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
+  const [itemCode, ...itemNameParts] = itemLabel.split(ITEM_LABEL_SEPARATOR);
+  const itemValue: ReactNode =
+    itemNameParts.length === 0 ? (
+      itemLabel
+    ) : (
+      <span className="disposition-detail-item">
+        <span>{itemNameParts.join(ITEM_LABEL_SEPARATOR)}</span>
+        <span className="disposition-detail-item-code">{itemCode}</span>
+      </span>
+    );
   const facts: [string, ReactNode, boolean?][] = [
     [
       t.fields.nonconformanceNo,
@@ -145,7 +158,7 @@ export const DetailPane = ({
       </span>,
       true,
     ],
-    [t.fields.item, lookupDisplayLabel(items, view.itemId), true],
+    [t.fields.item, itemValue, true],
     [t.detail.affectedQty, `${view.affectedQtyText}${unit}`, true],
     ...(isInbound && remainingText !== undefined
       ? [[t.fields.remainingQty, remainingText, true] as [string, ReactNode, boolean]]

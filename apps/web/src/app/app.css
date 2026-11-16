@@ -8625,15 +8625,23 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /*
- * 기본 정보 — PQC 검사 기본 정보(.pqc-web-summary)와 같은 모양(omf-all-around#275). 칸을 한 줄에 흘려 놓고 칸 사이 세로선,
- * 이름은 위 · 값은 아래, 핵심 값은 굵게. 다 안 들어가면 줄을 바꾼다.
+ * 기본 정보 — PQC 검사 기본 정보(.pqc-web-summary)와 같은 모양(omf-all-around#275): 칸을 내용 폭으로 흘려 놓고 칸 사이 세로선,
+ * 이름은 위 · 값은 아래, 핵심 값은 굵게, 품목은 이름 아래 코드. 다 안 들어가면 다음 줄로 넘긴다.
+ * - 줄 첫 칸의 세로선은 상자 밖으로 밀려 잘린다 — 줄마다 왼쪽이 가지런하다.
+ * - 마지막 줄의 남는 폭은 보이지 않는 채움 칸이 가져간다 — 남은 칸 몇 개가 한 줄을 다 차지해 늘어나지 않는다.
  */
 .disposition-detail-facts {
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
   gap: var(--space-3) 0;
-  margin: 0;
+  margin: 0 0 0 calc(-1 * var(--space-4));
+  overflow: hidden;
+}
+
+.disposition-detail-facts::after {
+  content: '';
+  flex: 999 1 0;
 }
 
 .disposition-detail-fact {
@@ -8642,18 +8650,15 @@ main:has(.iqc-skip-approval-detail) {
   align-content: center;
   gap: var(--space-1);
   min-width: 0;
+  max-width: 100%;
+  margin-left: -1px;
   padding: 0 var(--space-4);
   border-left: 1px solid var(--outline-variant);
-  overflow-wrap: anywhere;
-}
-
-.disposition-detail-fact:first-child {
-  padding-left: 0;
-  border-left: 0;
 }
 
 .disposition-detail-fact > dd {
   margin: 0;
+  overflow-wrap: break-word;
 }
 
 .disposition-detail-fact-key {
@@ -8661,17 +8666,14 @@ main:has(.iqc-skip-approval-detail) {
   letter-spacing: var(--type-title-sm-tracking);
 }
 
-@container (min-width: 60rem) {
-  .disposition-detail-fact {
-    max-width: 100%;
-    overflow-wrap: normal;
-  }
+/* 품목 — 이름 굵게, 그 아래 코드 작게(PQC 와 같다). */
+.disposition-detail-item {
+  display: grid;
+}
 
-  .disposition-detail-fact > dd {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.disposition-detail-item-code {
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
 }
 
 .disposition-subtitle {
