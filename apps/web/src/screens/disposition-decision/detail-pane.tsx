@@ -6,6 +6,7 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { iqcResultLabel, IqcMatchChips } from './iqc-match';
 import type { DispositionLookup } from './lookups';
 import { SeverityBadge } from './severity-badge';
@@ -227,7 +228,13 @@ export const DetailPane = ({
             columns={fit.columns}
             rows={view.lots}
             getRowId={(row) => String(row.nonconformanceLotId)}
-            empty={<EmptyState size="sm" title={t.detail.noLots} />}
+            empty={
+              <EmptyState
+                size="sm"
+                icon={<PaneEmptyIcon name="assignment" />}
+                title={t.detail.noLots}
+              />
+            }
           />
         </div>
         {isInbound && unmatched.length > 0 && (

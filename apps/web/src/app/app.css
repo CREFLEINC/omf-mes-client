@@ -8834,17 +8834,12 @@ main:has(.iqc-skip-approval-detail) {
 
 /* 「대상 LOT 1건」 — 이름 옆 건수 배지(사용자 시안 · #223). */
 .disposition-count-badge {
-  display: inline-block;
+  /* 제목 옆 건수 — 다른 화면(공정 카드 · LOT 추적)과 같이 배지 없이 흐린 글(omf-all-around#275). */
   margin-left: var(--space-2);
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  background: var(--surface-container-high);
   color: var(--on-surface-variant);
-  /* 제목보다 한참 작게(사용자 지시 · #223). */
-  font: var(--type-label-sm);
-  font-weight: 500;
-  line-height: 1.5;
-  vertical-align: middle;
+  font: var(--type-body-md);
+  font-weight: 400;
+  letter-spacing: var(--type-body-md-tracking);
 }
 
 /* LOT 표 · 이력 표는 둥근 테두리 상자 안에. */
@@ -9115,12 +9110,6 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
-/* 이력이 없을 때 — 표 없이 한 줄(omf-all-around#275). */
-.disposition-history-empty {
-  max-width: none;
-  margin: 0;
-  padding: var(--space-2) 0;
-}
 
 .disposition-sort {
   display: grid;

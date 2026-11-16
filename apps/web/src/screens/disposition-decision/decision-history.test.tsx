@@ -49,8 +49,8 @@ describe('DecisionHistory', () => {
     renderHistory({ rows: [] });
 
     expect(screen.getByText(t.decisions.empty)).toBeInTheDocument();
-    /* 이력이 없으면 표 머리 없이 한 줄만(#275). */
-    expect(screen.queryByRole('table')).toBeNull();
+    /* 이력이 없어도 표 머리는 두고 표 안에 문구(#275). */
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
   it('불러오는 중에는 상태를 알린다', () => {

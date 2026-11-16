@@ -1,4 +1,13 @@
-import { Button, Chip, DatePicker, Dialog, Table, TextField, type Column } from '@crefle/web-ui';
+import {
+  Button,
+  Chip,
+  DatePicker,
+  Dialog,
+  EmptyState,
+  Table,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import type {
   ConcessionAppliedForward,
   ConcessionCreatedForward005,
@@ -10,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
 import { runRequest } from '../../patterns/request';
@@ -456,22 +466,24 @@ export const ConcessionHistory = ({
     <div className="disposition-concession" role="group" aria-label={t.historyHeading}>
       <SaveErrorBanner error={applyWrite.error} />
       {notice !== null && <p className="field-note">{notice}</p>}
-      {/* 없으면 표 머리 없이 한 줄만 — 처분 이력과 같다(omf-all-around#275). */}
-      {groups.length === 0 ? (
-        <p className="field-note disposition-history-empty">
-          {list.isPending ? t.loading : t.none}
-        </p>
-      ) : (
-        <div className="disposition-table disposition-decision-table">
-          <Table
-            caption={<span className="disposition-table-caption">{t.caption}</span>}
-            density="compact"
-            columns={columns}
-            rows={groups}
-            getRowId={(group) => String(group.first.concessionId)}
-          />
-        </div>
-      )}
+      <div className="disposition-table disposition-decision-table">
+        <Table
+          caption={<span className="disposition-table-caption">{t.caption}</span>}
+          density="compact"
+          columns={columns}
+          rows={groups}
+          getRowId={(group) => String(group.first.concessionId)}
+          /* 처분 이력과 같이 — 없으면 표 안에 한 줄(사용자 지시 · #223 · omf-all-around#275). */
+          empty={
+            list.isPending ? (
+              <p className="field-note disposition-table-empty">{t.loading}</p>
+            ) : (
+              /* 다른 빈 목록과 같이 아이콘 + 문구(omf-all-around#275). */
+              <EmptyState size="sm" icon={<PaneEmptyIcon name="assignment" />} title={t.none} />
+            )
+          }
+        />
+      </div>
     </div>
   );
 };

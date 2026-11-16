@@ -108,7 +108,7 @@ export const dispositionDecision = {
   },
   decisions: {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
-    count: (count: number): string => `(${String(count)}건)`,
+    count: (count: number): string => `${String(count)}건`,
     loading: '판정 이력 불러오는 중',
     empty: '처분 이력이 없습니다.',
     unavailable: '판정 이력을 표시할 수 없습니다',
@@ -117,7 +117,7 @@ export const dispositionDecision = {
   concession: {
     /** 접는 머리 — 「특채 요청 및 이력 0건」(사용자 시안 · #223). */
     foldTitle: '특채 요청 이력',
-    count: (count: number): string => `(${String(count)}건)`,
+    count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
     requestNote: '불합격 입하 LOT 의 조건부 사용 승인을 요청합니다 — 한도 승인도 이 길로',
