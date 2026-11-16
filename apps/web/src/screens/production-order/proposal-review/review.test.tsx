@@ -284,6 +284,11 @@ describe('제안 검토 화면', () => {
     await user.click(screen.getByRole('button', { name: '이전' }));
     expect(screen.getByRole('checkbox', { name: `${rows[0]!.number} 확정 선택` })).toBeChecked();
   });
+  it('공정 재검증이 필요한 제안은 확정할 수 없다', () => {
+    const row = structuredClone(previewProposals[0]!);
+    row.plans[0]!.recalculationRequired = true;
+    expect(proposalErrors(row)).toContain('공정 재검증 필요');
+  });
   it('초과 수량과 잘못된 수량을 확정 가능으로 표시하지 않는다', () => {
     const row = structuredClone(previewProposals[0]!);
     row.plans[0]!.quantity = '101';
