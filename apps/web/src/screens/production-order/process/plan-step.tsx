@@ -67,6 +67,7 @@ export interface PlanStepProps {
   onAdd: () => void;
   addDisabled?: boolean;
   viewMode?: 'grid' | 'week';
+  layoutToolsTargetId?: string;
   hideTotals?: boolean;
   hideBoardTotal?: boolean;
   hideTools?: boolean;
@@ -130,6 +131,7 @@ export const PlanStep = ({
   addRequest = 0,
   onSelectedKeyChange,
   viewMode,
+  layoutToolsTargetId,
   orderNameOf,
   orderContextOf,
   rowUomLabelOf,
@@ -192,6 +194,7 @@ export const PlanStep = ({
   const previousAddRequest = useRef(addRequest);
   const [anchor, setAnchor] = useState<string | null>(null);
   const editorId = useId();
+  const layoutToolsId = layoutToolsTargetId ?? `${editorId}-layout-tools`;
   const lineSource = useLineSource(plantId);
   const displayLines = useProductionLineReferenceQuery(plantId);
   function revealEditor() {
@@ -407,7 +410,11 @@ export const PlanStep = ({
       )}
       {!hideTools && (
         <PlanCreationTools
-          viewControl={!viewMode ? <PlanViewSwitch value={view} onChange={setView} /> : undefined}
+          viewControl={
+            !viewMode ? (
+              <PlanViewSwitch value={view} onChange={setView} layoutToolsId={layoutToolsId} />
+            ) : undefined
+          }
           disabled={disabled}
           addDisabled={addDisabled || (!hideTotals && remaining <= 0)}
           onAdd={() => {
@@ -452,10 +459,13 @@ export const PlanStep = ({
           </ul>
         </AlertBanner>
       )}
-      {hideTools && !viewMode && <PlanViewSwitch value={view} onChange={setView} />}
+      {hideTools && !viewMode && (
+        <PlanViewSwitch value={view} onChange={setView} layoutToolsId={layoutToolsId} />
+      )}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:plan-layout"
         label="생산계획"
+        toolsTargetId={layoutToolsId}
         ratio={0.65}
         className="erp-wo-plan-layout"
       >

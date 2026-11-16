@@ -711,7 +711,7 @@ const EditorSession = ({
             <h3 className="assign-group-title">{t.groups.plan}</h3>
             <div className="assign-plan-row">
               <DateTimeField
-                size="sm"
+                size="md"
                 label={t.fields.plannedStartAtLocal}
                 value={draft.plannedStartAtLocal}
                 disabled={saving}
@@ -719,7 +719,7 @@ const EditorSession = ({
                 onChange={(value) => patch({ plannedStartAtLocal: value })}
               />
               <DateTimeField
-                size="sm"
+                size="md"
                 label={t.fields.plannedEndAtLocal}
                 value={draft.plannedEndAtLocal}
                 disabled={saving}

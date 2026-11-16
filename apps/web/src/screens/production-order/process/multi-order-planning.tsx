@@ -730,7 +730,13 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               </div>
             </div>
             <PlanCreationTools
-              viewControl={<PlanViewSwitch value={planView} onChange={setPlanView} />}
+              viewControl={
+                <PlanViewSwitch
+                  value={planView}
+                  onChange={setPlanView}
+                  layoutToolsId={`${remainingId}-layout-tools`}
+                />
+              }
               disabled={busy || !allReady || !validTargets}
               addDisabled={entries.every((entry) => getRemaining(entry) <= 0)}
               onAdd={() => openPlanAdd()}
@@ -907,6 +913,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 ),
               }))}
               viewMode={planView === 'week' ? 'week' : 'grid'}
+              layoutToolsTargetId={`${remainingId}-layout-tools`}
               orderQty={
                 units.size === 1 ? entries.reduce((sum, entry) => sum + entry.order.orderQty, 0) : 0
               }

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import {
   Children,
   createContext,
@@ -26,6 +27,7 @@ export const AdjustableLayout = ({
   ratio = 0.5,
   className = '',
   collapsible = false,
+  toolsTargetId,
   children,
 }: {
   storageKey: string;
@@ -34,6 +36,7 @@ export const AdjustableLayout = ({
   ratio?: number;
   className?: string;
   collapsible?: boolean;
+  toolsTargetId?: string;
   children: ReactNode;
 }) => {
   const [layout, setLayout] = useState<PaneLayout>(() => {
@@ -44,6 +47,10 @@ export const AdjustableLayout = ({
       return initial;
     }
   });
+  const [toolsTarget, setToolsTarget] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setToolsTarget(toolsTargetId ? document.getElementById(toolsTargetId) : null);
+  }, [toolsTargetId]);
   const split = usePaneSplit(`${storageKey}:ratio`, ratio);
   const height = useSplitOrientation(`${storageKey}:height`);
   const ref = useRef<HTMLDivElement>(null);
@@ -59,22 +66,25 @@ export const AdjustableLayout = ({
   }, []);
   const side = layout === 'side' && fits;
   const panes = Children.toArray(children);
+  const layoutTools = (
+    <div className="erp-wo-layout-tools" hidden={!fits}>
+      <PaneLayoutToggle
+        layout={layout}
+        labels={{ group: `${label} 배치`, side: '좌우 배치', stack: '상하 배치' }}
+        onChange={(next) => {
+          setLayout(next);
+          try {
+            localStorage.setItem(storageKey, next);
+          } catch {
+            /* 이번 화면에서는 선택한 배치를 유지한다. */
+          }
+        }}
+      />
+    </div>
+  );
   return (
     <section className="erp-wo-adjustable" aria-label={label}>
-      <div className="erp-wo-layout-tools" hidden={!fits}>
-        <PaneLayoutToggle
-          layout={layout}
-          labels={{ group: `${label} 배치`, side: '좌우 배치', stack: '상하 배치' }}
-          onChange={(next) => {
-            setLayout(next);
-            try {
-              localStorage.setItem(storageKey, next);
-            } catch {
-              /* 이번 화면에서는 선택한 배치를 유지한다. */
-            }
-          }}
-        />
-      </div>
+      {toolsTarget ? createPortal(layoutTools, toolsTarget) : layoutTools}
       <LayoutOrientation.Provider value={side ? 'side' : 'stack'}>
         <div
           ref={ref}

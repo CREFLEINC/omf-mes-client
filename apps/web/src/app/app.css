@@ -36927,3 +36927,17 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-plan-totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(10rem,100%),1fr)); border-radius:0; }
 .erp-wo-plan-totals > div { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
 @media (max-width:720px) { .erp-wo-order-overview, .erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(0,1fr); } .erp-wo-plan-totals { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* 보기와 배치 전환은 한 묶음으로, 4M 입력은 생산계획 폼과 같은 규격으로 표시한다. */
+.erp-wo-plan-layout-slot { display:flex; align-items:center; }
+.erp-wo-plan-layout-slot .erp-wo-layout-tools { margin:0; padding:0; }
+.erp-wo-plan-create .erp-wo-plan-view-switch { flex-wrap:wrap; gap:var(--space-2); }
+.assign-editor .reference-field-full-value,
+.assign-editor .reference-field-full-value > button:first-child { min-height:var(--control-height-md); border-radius:var(--radius-sm); }
+.assign-editor input,
+.assign-editor button[aria-haspopup="dialog"],
+.assign-editor .field-label { font:var(--type-body-sm); }
+.assign-editor input,
+.assign-editor button[aria-haspopup="dialog"] { border-radius:var(--radius-sm); }
+
+.assign-editor .assign-plan-row div:has(> input) { border-radius:var(--radius-sm); }
