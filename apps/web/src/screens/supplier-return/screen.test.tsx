@@ -1769,7 +1769,7 @@ describe('SupplierReturnScreen — 보유 수량 조회', () => {
     expect(Object.fromEntries(balances[0]?.url.searchParams ?? [])).toEqual({
       warehouseId: '9701',
       itemId: '9301',
-      groupBy: 'LOT',
+      groupBy: 'LOCATION',
       includeZero: 'true',
       size: String(BALANCE_PAGE_SIZE),
     });

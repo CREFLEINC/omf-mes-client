@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
+import type { SourceLocation } from './on-hand';
 import type { ReturnLineRow } from './return-selection';
 import type { ReceiptView, ReturnDraft } from './types';
 
@@ -106,18 +107,50 @@ export interface ReturnLineInput {
 export const toReturnLines = (rows: readonly ReturnLineRow[]): ReturnLineInput[] =>
   rows.flatMap((row) =>
     row.qty.kind === 'qty'
-      ? [
-          {
+      ? splitBySource(row.qty.value, row.line.destinationLocationId, row.sources).map(
+          ({ locationId, qty }) => ({
             itemId: row.line.itemId,
             lotId: row.line.lotId,
-            issueQty: row.qty.value,
+            issueQty: qty,
             uomId: row.line.uomId,
-            /* 적치 목적지가 곧 반품의 출발 위치다(계획 결정 2). */
-            sourceLocationId: row.line.destinationLocationId,
-          },
-        ]
+            sourceLocationId: locationId,
+          }),
+        )
       : [],
   );
+
+/**
+ * 반품 수량을 LOT 이 **지금 놓인 위치**에 나눠 싣는다(omf-all-around#282).
+ *
+ * - 위치를 확인하지 못했으면(`sources` 가 빔) 예전처럼 입고 때 위치(적치 목적지) 한 줄이다.
+ * - 입고 위치에 아직 남아 있으면(적치 전) 거기서 먼저 뺀다 — 적치 전 반품은 지금과 같다.
+ * - 나머지는 보유가 많은 위치부터 뺀다. 한 위치로 모자라면 위치마다 한 줄씩 나눈다.
+ * - 보유를 다 써도 남으면(상한 확인이 막지 못한 경우) 첫 위치에 얹는다 — 서버가 수량 초과로 막는다.
+ */
+const splitBySource = (
+  qty: number,
+  receiptLocationId: number,
+  sources: readonly SourceLocation[],
+): SourceLocation[] => {
+  if (sources.length === 0) return [{ locationId: receiptLocationId, qty }];
+
+  const ordered = [
+    ...sources.filter((source) => source.locationId === receiptLocationId),
+    ...sources.filter((source) => source.locationId !== receiptLocationId),
+  ];
+  const parts: SourceLocation[] = [];
+  let left = qty;
+  for (const source of ordered) {
+    if (left <= 0) break;
+    const take = Math.min(left, source.qty);
+    parts.push({ locationId: source.locationId, qty: take });
+    left -= take;
+  }
+  const first = parts[0];
+  if (left > 0 && first !== undefined) parts[0] = { ...first, qty: first.qty + left };
+
+  return parts;
+};
 
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 

@@ -8,7 +8,14 @@ import {
   type QtyParse,
 } from './line-draft';
 import { describeLineSelect, type LineSelectState } from './line-select';
-import { checkQtyLimit, toOnHand, type BalanceSource, type OnHand } from './on-hand';
+import {
+  checkQtyLimit,
+  toOnHand,
+  toSourceLocations,
+  type BalanceSource,
+  type OnHand,
+  type SourceLocation,
+} from './on-hand';
 import type { ReceiptLineView } from './types';
 
 /**
@@ -45,6 +52,8 @@ export interface ReturnLineRow {
   qtyText: string;
   qty: QtyParse;
   onHand: OnHand;
+  /** LOT 이 지금 놓인 위치(보유가 있는 자리, 많은 순). 반품의 출발 위치를 여기서 고른다(#282). */
+  sources: SourceLocation[];
   /**
    * 그 칸 아래 서는 인라인 오류. **형식 오류가 상한 초과보다 앞선다** — 숫자가 아닌데
    * 「보유 수량보다 많다」를 내면 사용자가 수량을 줄여 보다가 왜 안 되는지 모른다.
@@ -82,6 +91,7 @@ export const toReturnLineRows = (
       qtyText,
       qty,
       onHand,
+      sources: toSourceLocations(balances, line),
       error: toLineError(qty, onHand),
     };
   });

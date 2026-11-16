@@ -427,3 +427,70 @@ describe('toGoodsIssueRequest — 도착지 유형 협착 가드', () => {
     }
   });
 });
+
+describe('toReturnLines — 출발 위치는 LOT 이 지금 놓인 위치다(omf-all-around#282)', () => {
+  const balancesAt = (entries: { locationId: number; onHandQty: number }[]): BalanceSource => ({
+    items: [
+      {
+        itemId: 9301,
+        entries: entries.map((entry) => ({ lotId: 9601, uomId: 9501, ...entry })),
+        isLoading: false,
+        isError: false,
+        truncated: false,
+      },
+    ],
+    isError: false,
+    truncated: false,
+  });
+  const linesWith = (balances: BalanceSource, qty: string) =>
+    toReturnLines(
+      describeReturnSelection(
+        toReturnLineRows([goodsReceiptLine()], pick(EMPTY_LINE_DRAFT, 9401, qty), balances),
+      ).selectedRows,
+    );
+
+  it('적치가 끝나 입고 위치(9801)가 비었으면 보관 위치(9811)에서 뺀다', () => {
+    expect(
+      linesWith(
+        balancesAt([
+          { locationId: 9801, onHandQty: 0 },
+          { locationId: 9811, onHandQty: 50 },
+        ]),
+        '50',
+      ),
+    ).toEqual([{ itemId: 9301, lotId: 9601, issueQty: 50, uomId: 9501, sourceLocationId: 9811 }]);
+  });
+
+  it('적치 전(입고 위치에 남아 있음)이면 입고 위치에서 뺀다 — 지금과 같다', () => {
+    expect(
+      linesWith(
+        balancesAt([
+          { locationId: 9801, onHandQty: 50 },
+          { locationId: 9811, onHandQty: 80 },
+        ]),
+        '30',
+      ),
+    ).toEqual([{ itemId: 9301, lotId: 9601, issueQty: 30, uomId: 9501, sourceLocationId: 9801 }]);
+  });
+
+  it('한 위치로 모자라면 보유가 많은 위치부터 위치마다 한 줄씩 나눈다', () => {
+    expect(
+      linesWith(
+        balancesAt([
+          { locationId: 9812, onHandQty: 20 },
+          { locationId: 9811, onHandQty: 30 },
+        ]),
+        '45',
+      ),
+    ).toEqual([
+      { itemId: 9301, lotId: 9601, issueQty: 30, uomId: 9501, sourceLocationId: 9811 },
+      { itemId: 9301, lotId: 9601, issueQty: 15, uomId: 9501, sourceLocationId: 9812 },
+    ]);
+  });
+
+  it('위치를 확인하지 못했으면 입고 위치 한 줄이다', () => {
+    expect(linesWith(NO_BALANCES, '30')).toEqual([
+      { itemId: 9301, lotId: 9601, issueQty: 30, uomId: 9501, sourceLocationId: 9801 },
+    ]);
+  });
+});
