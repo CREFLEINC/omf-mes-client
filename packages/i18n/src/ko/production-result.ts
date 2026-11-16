@@ -105,7 +105,7 @@ export const productionResult = {
       choose: '유형 선택',
       qty: '불량',
       remove: (label: string): string => `${label} 삭제`,
-      duplicate: '이미 있는 불량 유형입니다.',
+      duplicate: '이미 등록된 불량 유형입니다.',
       typeMissing: '유형을 골라 주세요',
       /** 불량 줄의 문제를 목록 아래 한 줄로 말한다. */
       rowIssue: (row: string, issue: string): string => `${row}: ${issue}`,
