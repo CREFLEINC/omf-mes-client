@@ -10246,9 +10246,9 @@
   box-shadow: 0 0 0 1px var(--semantic-info);
 }
 
-/* 방금 마감한 LOT — 파란 테두리와 「마감 완료」 표시(사용자 지시 2026-11-16). */
+/* 방금 마감한 LOT — 흰 테두리와 흰 글자 「마감 완료」 표시(사용자 지시 2026-11-16). */
 .pop-ui .production-work-completed .production-flow-completed-lots > li.is-new {
-  outline: 2px solid var(--semantic-info);
+  outline: 2px solid var(--on-surface);
   outline-offset: -2px;
 }
 
@@ -10256,8 +10256,9 @@
   margin-inline-start: var(--space-2);
   padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--semantic-info-container);
-  color: var(--semantic-info);
+  border: 1px solid var(--on-surface);
+  background: transparent;
+  color: var(--on-surface);
   font-family: var(--font-body, inherit);
   font-size: 0.75rem;
   font-weight: 700;
