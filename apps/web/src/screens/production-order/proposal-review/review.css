@@ -581,3 +581,46 @@
   font: var(--type-body-sm);
   box-shadow: var(--elevation-3);
 }
+
+.proposal-manual-workspace {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.proposal-manual-workspace .proposal-resource-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.proposal-workspace-navigation {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.proposal-manual-line {
+  max-width: 30rem;
+}
+@media (max-width: 700px) {
+  .proposal-manual-workspace .proposal-resource-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.proposal-review-page tr[aria-selected='true'],
+.proposal-review-page tr[aria-selected='true'] > td {
+  background: var(--surface-container);
+}
+.proposal-review-page tr[aria-selected='true'] {
+  box-shadow: inset 3px 0 0 var(--outline);
+}
+
+.proposal-review-page .page-nav {
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  min-width: 0;
+  max-width: 100%;
+}
+.proposal-review-page .page-nav-left,
+.proposal-review-page .page-nav-right {
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
+}

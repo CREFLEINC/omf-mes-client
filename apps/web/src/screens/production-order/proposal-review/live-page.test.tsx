@@ -1,3 +1,4 @@
+import { planningDaysResponse } from '../../../test/planning-day-fixture';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -106,6 +107,7 @@ describe('실제 결과 경로의 제안 조회', () => {
       const request = input instanceof Request ? input : new Request(input);
       requests.push(request);
       const url = new URL(request.url);
+      if (url.pathname === '/planning/working-days:resolve') return planningDaysResponse(request);
       if (request.method !== 'GET') throw new Error('No business writes allowed');
       if (url.pathname.endsWith(':plan-proposals'))
         return jsonResponse({ items: [proposal], notFoundProductionOrderIds: [] });
@@ -156,19 +158,22 @@ describe('실제 결과 경로의 제안 조회', () => {
     expect(await screen.findByRole('heading', { name: '생산계획 자동 전개 제안' })).toBeVisible();
     expect(screen.getAllByText('실제 응답 품목').length).toBeGreaterThan(0);
     expect(screen.getByText('OA Plant')).toBeVisible();
-    expect(screen.getByRole('region', { name: '생산품 입고 창고' })).toHaveTextContent(
-      '입고 창고 A (WH-A)',
-    );
+    const quantities = screen.getByRole('group', { name: 'ERP W/O 계획 수량' });
+    expect(within(quantities).getByText('미확정 계획량').parentElement).toHaveTextContent('0 EA');
     expect(screen.queryByText('화면 미리보기')).toBeNull();
     const user = userEvent.setup();
     await user.click(screen.getByRole('tab', { name: '4M 배정' }));
-    const operation = screen.getByRole('region', { name: '10 성형 배정' });
+    expect(screen.getByRole('region', { name: '생산품 입고 창고' })).toHaveTextContent(
+      '입고 창고 A (WH-A)',
+    );
+    const operation = screen.getByRole('region', { name: '4M 배정 입력' });
     await user.click(within(operation).getByRole('button', { name: '생산 라인' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(await within(dialog).findByText('생산 라인 A', { exact: true }));
     await user.click(within(dialog).getByRole('button', { name: '선택' }));
     expect(await screen.findByText('보완한 제안의 서버 재검증 필요')).toBeVisible();
-    await user.click(screen.getByRole('tab', { name: '주간 편성 보기' }));
+    await user.click(screen.getByRole('tab', { name: '생산계획' }));
+    expect(screen.getByRole('button', { name: '주간 편성' })).toBeVisible();
     expect(screen.getByRole('button', { name: '선택 제안 확정' })).toBeDisabled();
     await waitFor(() =>
       expect(
@@ -180,6 +185,13 @@ describe('실제 결과 경로의 제안 조회', () => {
         requests.find((request) => new URL(request.url).pathname.endsWith(':plan-proposals'))!.url,
       ).searchParams.get('productionOrderIds'),
     ).toBe('701');
-    expect(requests.every((request) => request.method === 'GET')).toBe(true);
+    expect(
+      requests.every(
+        (request) =>
+          request.method === 'GET' ||
+          (request.method === 'POST' &&
+            new URL(request.url).pathname === '/planning/working-days:resolve'),
+      ),
+    ).toBe(true);
   });
 });

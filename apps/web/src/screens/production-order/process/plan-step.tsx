@@ -63,6 +63,7 @@ export interface PlanStepProps {
   lines: readonly PlanLine[];
   statusNameOf: (code: string) => string;
   disabled: boolean;
+  unconfirmedLabel?: string;
   failures: string[];
   onAdd: () => void;
   addDisabled?: boolean;
@@ -108,6 +109,7 @@ export const PlanStep = ({
   plantId,
   lines,
   statusNameOf,
+  unconfirmedLabel = ui.unconfirmed,
   disabled,
   failures,
   onAdd,
@@ -376,7 +378,7 @@ export const PlanStep = ({
       width: '6rem',
       render: (row) => (
         <Chip variant="status" size="sm" status={row.confirmed ? 'success' : 'idle'}>
-          {row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed}
+          {row.confirmed ? statusNameOf(row.statusCode) : unconfirmedLabel}
         </Chip>
       ),
     },
@@ -704,7 +706,7 @@ export const PlanStep = ({
                                   itemName={rowIdentityOf?.(row).itemName}
                                   quantity={`${formatQty(Number(row.draft.plannedQty) || 0)} ${unitOf(row)}`}
                                   status={
-                                    row.confirmed ? statusNameOf(row.statusCode) : ui.unconfirmed
+                                    row.confirmed ? statusNameOf(row.statusCode) : unconfirmedLabel
                                   }
                                   confirmed={row.confirmed}
                                   selected={!contextPlan && selected?.key === row.key}
@@ -732,7 +734,7 @@ export const PlanStep = ({
                                   status={
                                     plan.confirmedAt
                                       ? statusNameOf(plan.statusCode)
-                                      : ui.unconfirmed
+                                      : unconfirmedLabel
                                   }
                                   confirmed={!!plan.confirmedAt}
                                   other
@@ -848,7 +850,7 @@ export const PlanStep = ({
               <div className="erp-wo-plan-editor-title">
                 <span className="mono-cell">{nameOf(selected)}</span>
                 <Chip size="sm" variant="status" status={selected.confirmed ? 'success' : 'idle'}>
-                  {selected.confirmed ? statusNameOf(selected.statusCode) : ui.unconfirmed}
+                  {selected.confirmed ? statusNameOf(selected.statusCode) : unconfirmedLabel}
                 </Chip>
               </div>
               {selected.confirmed && <p className="field-note">{ui.readonly}</p>}
