@@ -36947,3 +36947,10 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-assign-editor .assign-plan-row > * { min-width:0; max-width:100%; }
 .erp-wo-assign-editor .date-time-field-controls { grid-template-columns:minmax(0,1fr) 6rem; gap:var(--space-2); }
 .erp-wo-release-terminals > .section-title { margin-bottom:var(--space-3); }
+
+.erp-wo-split-period-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:var(--space-3); }
+.erp-wo-split-period-actions > .field-cell { display:grid; grid-template-columns:minmax(0,1fr); justify-content:stretch; gap:5px; width:14rem; max-width:100%; }
+.erp-wo-split-period-actions > .erp-wo-split-action { margin-left:auto; }
+.erp-wo-split-table { min-width:560px; }
+.erp-wo-split-table td:nth-child(4) { white-space:nowrap; }
+.erp-wo-split-table td:last-child button { min-width:40px; width:40px; padding-inline:0; }

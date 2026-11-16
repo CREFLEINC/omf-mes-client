@@ -3,12 +3,11 @@ import {
   resolvePlanningDays,
   usePlanningDays,
   planningDayKey,
-  PlanningDayNotice,
   planningHolidayLabel,
   type PlanningDay,
 } from './planning-working-days';
 import { useId, useState } from 'react';
-import { Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
+import { Button, Chip, DatePicker, Dialog, TextField } from '@crefle/web-ui';
 import { Select } from '../../../patterns/select';
 import type { ProductionPlanEditorStateRow } from '../../production-plan/editor-state';
 import { validPlanSplit, type PlanSplitPart } from '../../production-plan/quantity-split';
@@ -67,6 +66,7 @@ export const PlanSplitDialog = ({
     })),
   );
   const [holidayDays, setHolidayDays] = useState<PlanningDay[]>([]);
+  const [removedHolidays, setRemovedHolidays] = useState<string[]>([]);
   const [holidayDates, setHolidayDates] = useState<Record<string, string>>({});
   const [holidayQuantities, setHolidayQuantities] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
@@ -78,6 +78,7 @@ export const PlanSplitDialog = ({
       .at(-1) ?? start;
   const visibleHolidays = holidayDays.filter(
     (day) =>
+      !removedHolidays.includes(day.date) &&
       dates === 'sequence' &&
       day.date >= start &&
       day.date <= lastHolidayDate &&
@@ -158,6 +159,7 @@ export const PlanSplitDialog = ({
       setHolidayDays(holidays);
       setHolidayQuantities({});
       setHolidayDates({});
+      setRemovedHolidays([]);
       setConditionsDirty(false);
       setCount(String(number));
       setError('');
@@ -192,29 +194,16 @@ export const PlanSplitDialog = ({
           ),
         )
       : undefined;
-  const lastDate =
-    parts
-      .map((part) => part.planDate)
-      .sort()
-      .at(-1) ?? start;
   const displayRows = [
     ...parts.map((part, index) => ({ part, index, day: undefined as PlanningDay | undefined })),
-    ...holidayDays
-      .filter(
-        (day) =>
-          dates === 'sequence' &&
-          day.date >= start &&
-          day.date <= lastDate &&
-          !parts.some((part) => part.planDate === day.date),
-      )
-      .map((day) => ({
-        part: {
-          planDate: holidayDates[day.date] ?? day.date,
-          plannedQty: holidayQuantities[day.date] ?? '0',
-        },
-        index: -1,
-        day,
-      })),
+    ...visibleHolidays.map((day) => ({
+      part: {
+        planDate: holidayDates[day.date] ?? day.date,
+        plannedQty: holidayQuantities[day.date] ?? '0',
+      },
+      index: -1,
+      day,
+    })),
   ].sort((a, b) => a.part.planDate.localeCompare(b.part.planDate) || a.index - b.index);
   let sequence = 0;
   const numberedRows = displayRows.map((item) => ({
@@ -338,36 +327,36 @@ export const PlanSplitDialog = ({
                 ]}
               />
             </div>
-            <div className="field-cell">
-              <span className="field-label">편성 시작일</span>
-              <DatePicker
-                disabled={calendarBusy}
+            <div className="erp-wo-split-period-actions">
+              <div className="field-cell">
+                <span className="field-label">편성 시작일</span>
+                <DatePicker
+                  disabled={calendarBusy}
+                  size="md"
+                  aria-label="편성 시작일"
+                  value={start}
+                  onChange={(value) => {
+                    setStart(value);
+                    setConditionsDirty(true);
+                  }}
+                />
+              </div>
+              <Button
+                className="erp-wo-split-action"
                 size="md"
-                aria-label="편성 시작일"
-                value={start}
-                onChange={(value) => {
-                  setStart(value);
-                  setConditionsDirty(true);
-                }}
-              />
+                variant="tonal"
+                disabled={calendarBusy}
+                onClick={preview}
+              >
+                {calendarBusy ? '휴일 확인 중' : '분할 조건 적용'}
+              </Button>
             </div>
-          </div>
-          <div>
-            <Button
-              className="erp-wo-split-action"
-              size="md"
-              variant="tonal"
-              disabled={calendarBusy}
-              onClick={preview}
-            >
-              {calendarBusy ? '휴일 확인 중' : '분할 조건 적용'}
-            </Button>
           </div>
           {error && <p role="alert">{error}</p>}
         </section>
         <section className="erp-wo-split-section">
           <div className="erp-wo-split-heading">
-            <h3>분할 계획 {parts.length}건</h3>
+            <h3>분할 계획 {appliedParts.length}건</h3>
             <Button
               className="erp-wo-split-action"
               size="md"
@@ -394,116 +383,107 @@ export const PlanSplitDialog = ({
                 <col style={{ width: '70px' }} />
                 <col />
                 <col />
-                <col style={{ width: '65px' }} />
+                <col style={{ width: '110px' }} />
+                <col style={{ width: '60px' }} />
               </colgroup>
               <thead>
                 <tr>
                   <th>순번</th>
                   <th>생산량 ({unit})</th>
                   <th>계획일</th>
+                  <th>근무 구분</th>
                   <th>
                     <span className="visually-hidden">삭제</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {numberedRows.map(({ part, index: i, day, sequence }) =>
-                  day ? (
-                    <tr key={`holiday-${day.date}`} className="erp-wo-holiday-preview-row">
-                      <td>{sequence ?? '—'}</td>
-                      <td>
-                        <TextField
-                          size="md"
-                          aria-label={`${day.date} 휴일 생산량`}
-                          value={holidayQuantities[day.date] ?? '0'}
-                          disabled={calendarBusy}
-                          inputMode="decimal"
-                          onChange={(event) =>
-                            setHolidayQuantities((current) => ({
-                              ...current,
-                              [day.date]: event.target.value,
-                            }))
-                          }
-                        />
-                      </td>
-                      <td>
-                        <DatePicker
-                          size="md"
-                          disabled={calendarBusy}
-                          aria-label={`${day.date} 휴일 계획일`}
-                          value={part.planDate}
-                          onChange={(date) =>
-                            setHolidayDates((current) => ({ ...current, [day.date]: date }))
-                          }
-                        />
-                        {(dayOf(part.planDate) ?? (part.planDate === day.date ? day : undefined))
-                          ?.statusCode === 'HOLIDAY' && (
-                          <span className="erp-wo-holiday-day-label">
-                            {planningHolidayLabel(dayOf(part.planDate) ?? day)}
-                          </span>
-                        )}
-                      </td>
-                      <td />
-                    </tr>
-                  ) : (
-                    <tr key={i}>
+                {numberedRows.map(({ part, index: i, day, sequence }) => {
+                  const status =
+                    dayOf(part.planDate) ?? (day?.date === part.planDate ? day : undefined);
+                  const holiday = status?.statusCode === 'HOLIDAY';
+                  const label = holiday
+                    ? planningHolidayLabel(status)
+                    : status?.statusCode === 'WORKING'
+                      ? '근무일'
+                      : status?.statusCode === 'PARTIAL'
+                        ? '부분 가동'
+                        : '미설정';
+                  return (
+                    <tr key={day ? `holiday-${day.date}` : i}>
                       <td>{sequence ?? '—'}</td>
                       <td>
                         <TextField
                           containerClassName="erp-wo-split-input"
-                          disabled={calendarBusy}
                           size="md"
-                          aria-label={`계획 ${i + 1} 생산량`}
+                          disabled={calendarBusy}
                           inputMode="decimal"
+                          aria-label={day ? `${day.date} 휴일 생산량` : `계획 ${i + 1} 생산량`}
                           value={part.plannedQty}
                           onChange={(event) =>
-                            setParts((current) =>
-                              current.map((p, index) =>
-                                index === i ? { ...p, plannedQty: event.target.value } : p,
-                              ),
-                            )
+                            day
+                              ? setHolidayQuantities((current) => ({
+                                  ...current,
+                                  [day.date]: event.target.value,
+                                }))
+                              : setParts((current) =>
+                                  current.map((p, index) =>
+                                    index === i ? { ...p, plannedQty: event.target.value } : p,
+                                  ),
+                                )
                           }
                         />
                       </td>
                       <td>
                         <DatePicker
-                          disabled={calendarBusy}
                           size="md"
-                          aria-label={`계획 ${i + 1} 계획일`}
+                          disabled={calendarBusy}
+                          aria-label={day ? `${day.date} 휴일 계획일` : `계획 ${i + 1} 계획일`}
                           value={part.planDate}
                           onChange={(planDate) =>
-                            setParts((current) =>
-                              current.map((p, index) =>
-                                index === i
-                                  ? {
-                                      ...p,
-                                      planDate,
-                                      ...(plantId ? { planDateSourceCode: 'USER' as const } : {}),
-                                    }
-                                  : p,
-                              ),
-                            )
+                            day
+                              ? setHolidayDates((current) => ({ ...current, [day.date]: planDate }))
+                              : setParts((current) =>
+                                  current.map((p, index) =>
+                                    index === i
+                                      ? {
+                                          ...p,
+                                          planDate,
+                                          ...(plantId
+                                            ? { planDateSourceCode: 'USER' as const }
+                                            : {}),
+                                        }
+                                      : p,
+                                  ),
+                                )
                           }
                         />
-                        <PlanningDayNotice day={dayOf(part.planDate)} />
+                      </td>
+                      <td>
+                        <Chip variant="status" size="sm" status={holiday ? 'warning' : 'idle'}>
+                          {label}
+                        </Chip>
                       </td>
                       <td>
                         <Button
                           size="md"
                           variant="outlined"
-                          aria-label={`계획 ${i + 1} 삭제`}
-                          disabled={calendarBusy || parts.length <= 1}
+                          aria-label={day ? `${day.date} 휴일 삭제` : `계획 ${i + 1} 삭제`}
+                          disabled={calendarBusy || (!day && parts.length <= 1)}
                           onClick={() => {
-                            setCount(String(parts.length - 1));
-                            setParts((current) => current.filter((_, index) => index !== i));
+                            if (day) setRemovedHolidays((current) => [...current, day.date]);
+                            else {
+                              setCount(String(parts.length - 1));
+                              setParts((current) => current.filter((_, index) => index !== i));
+                            }
                           }}
                         >
                           −
                         </Button>
                       </td>
                     </tr>
-                  ),
-                )}
+                  );
+                })}
               </tbody>
             </table>
           </div>
