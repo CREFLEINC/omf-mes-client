@@ -75,3 +75,8 @@ it('처음에는 전체 생산량의 계획 1건만 표시하고 사용자가 �
   await user.click(screen.getByRole('button', { name: '계획 2 삭제' }));
   expect(screen.getByRole('textbox', { name: '분할 후 계획 건수' })).toHaveValue('1');
 });
+
+vi.mock('../../../patterns/plant-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../patterns/plant-time')>()),
+  plantToday: () => '2026-11-01',
+}));

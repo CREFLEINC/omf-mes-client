@@ -1,3 +1,4 @@
+import { plantToday } from '../../../patterns/plant-time';
 import { useNavigate } from 'react-router';
 import type { ReferenceRow, ReferenceSource } from '../../../patterns/reference-picker';
 import { ProposalReview } from './review';
@@ -31,8 +32,8 @@ const operation = (key: string, sequence: number, missing: boolean): ReviewOpera
   processCode: sequence === 10 ? 'PR-01' : 'PR-02',
   quantity: 100,
   predecessors: sequence === 10 ? [] : ['10 / 성형'],
-  start: '2026-11-06 08:00',
-  end: '2026-11-06 17:00',
+  start: `${plantToday()} 08:00`,
+  end: `${plantToday()} 17:00`,
   required: [
     'productionLineId',
     'defaultWipLocationId',
@@ -66,7 +67,7 @@ export const previewProposals: ReviewProposal[] = [0, 1, 2, 3].map((index) => ({
     reasonCode: null,
     locationRole: 'WAREHOUSE_WHOLE',
   },
-  erpPlanStartDate: '2026-11-06',
+  erpPlanStartDate: plantToday(),
   orderQty: 100,
   confirmedQty: index === 3 ? 100 : 0,
   draftQty: index === 1 ? 100 : 0,
@@ -78,7 +79,7 @@ export const previewProposals: ReviewProposal[] = [0, 1, 2, 3].map((index) => ({
       key: `new-${index + 1}`,
       ...(index === 1 || index === 3 ? { number: `PLAN-${index + 1}` } : {}),
       source: index === 3 ? '기존 확정 계획' : index === 1 ? '작성중 계획' : '신규 제안',
-      date: '2026-11-06',
+      date: plantToday(),
       quantity: '100',
       bom: 'BOM-A (Rev 1)',
       bomComponents: [

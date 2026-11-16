@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter, useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ApiClientProvider } from '../../../patterns/api-context';
 import { jsonResponse } from '../../../test/api-harness';
@@ -27,6 +27,7 @@ const page = (items: unknown[]) => ({ items, page: { page: 1, size: 200, total: 
 const path = (request: Request) => new URL(request.url).pathname;
 
 interface Plan {
+  planDate?: string;
   productionPlanId: number;
   planNo: string;
   plannedLineId?: number;
@@ -363,6 +364,60 @@ const DRAFT_PLAN: Plan = {
 const CONFIRMED_PLAN: Plan = { ...DRAFT_PLAN, confirmedAt: '2026-10-20T09:00:00+09:00' };
 
 describe('작업지시 목록 처리 화면(T-W-C)', () => {
+  it('배포 이력과 과거 작성중 계획이 함께 있어도 계획일 수정으로 돌아갈 수 있다', async () => {
+    const user = userEvent.setup();
+    renderAt(
+      `${WORKLIST}/${ORDER_NO}`,
+      world({
+        plans: [
+          { ...CONFIRMED_PLAN, plannedQty: 100 },
+          {
+            ...CONFIRMED_PLAN,
+            productionPlanId: 502,
+            planNo: 'PP-DRAFT',
+            confirmedAt: undefined,
+            planDate: '2000-01-01',
+            plannedQty: 200,
+          },
+        ],
+        workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+        released: [9001],
+        confirmedPlanQty: 100,
+      }),
+    );
+    await user.click(await screen.findByRole('button', { name: '계획일 확인' }));
+    await currentStep(tp.steps.plan);
+    await user.click(screen.getByRole('button', { name: '계획일 수정' }));
+    expect(
+      screen.getByRole('button', {
+        name: tp.plan.fieldLabel('PP-DRAFT', tp.plan.columns.planDate),
+      }),
+    ).toBeEnabled();
+  });
+  it.each([false, true])(
+    '계획일이 지난 작성중/확정 미배포 계획은 4M 진입과 확정을 막는다 (%s)',
+    async (confirmed) => {
+      renderAt(
+        `${WORKLIST}/${ORDER_NO}`,
+        world({
+          plans: [
+            {
+              ...CONFIRMED_PLAN,
+              planDate: '2000-01-01',
+              confirmedAt: confirmed ? CONFIRMED_PLAN.confirmedAt : undefined,
+              plannedQty: 300,
+            },
+          ],
+          workOrders: confirmed ? [{ workOrderId: 9001, productionLineId: 31, located: true }] : [],
+          confirmedPlanQty: confirmed ? 300 : 0,
+        }),
+      );
+      await currentStep(tp.steps.plan);
+      expect(screen.getByRole('tab', { name: /4M 배정/ })).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByRole('button', { name: tp.plan.confirm })).toBeDisabled();
+      expect(screen.getAllByText(/계획일이 지났습니다/).length).toBeGreaterThan(0);
+    },
+  );
   it.each([false, true])(
     'ERP BOM 변경 시 확정=%s 계획은 확정 여부에 따라 개정을 적용한다',
     async (confirmed) => {
@@ -841,3 +896,8 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     );
   });
 });
+
+vi.mock('../../../patterns/plant-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../patterns/plant-time')>()),
+  plantToday: () => '2026-10-01',
+}));

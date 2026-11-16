@@ -213,3 +213,8 @@ it('휴일·판정 불가 정보는 경고로만 표시한다', () => {
   expect(screen.getByText('근무일 판정 불가 (미설정)')).toBeVisible();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
+
+vi.mock('../../../patterns/plant-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../patterns/plant-time')>()),
+  plantToday: () => '2026-11-01',
+}));

@@ -1,3 +1,4 @@
+import { isPastPlanningDate, pastPlanningDateMessage } from './process/planning-date-policy';
 import {
   createIdempotencyKey,
   type ApiClient,
@@ -8,7 +9,12 @@ import { messages } from '@omf-mes/i18n';
 import type { QueryClient } from '@tanstack/react-query';
 
 import { fetchAllPages } from '../../patterns/fetch-all-pages';
-import { runRequest, runRequestWithResponse, toApiError } from '../../patterns/request';
+import {
+  ApiRequestError,
+  runRequest,
+  runRequestWithResponse,
+  toApiError,
+} from '../../patterns/request';
 import { toWorkOrderReleaseFact, type WorkOrderReleaseFact } from '../work-order-release/queries';
 import { productionOrderItemKeys } from './item-lookups';
 
@@ -111,6 +117,24 @@ const inspect = async (
     client.GET('/production/work-orders/{workOrderId}', { params: { path: { workOrderId } } }),
   );
   const fact = toWorkOrderReleaseFact(detail.data);
+  if (
+    !['CANCELLED', 'RELEASED', 'IN_PROGRESS', 'SUSPENDED', 'COMPLETED', 'CLOSED'].includes(
+      fact.statusCode,
+    )
+  ) {
+    const plan = await runRequest(() =>
+      client.GET('/planning/production-plans/{productionPlanId}', {
+        params: { path: { productionPlanId: detail.data.productionPlanId } },
+      }),
+    );
+    if (isPastPlanningDate(plan.planDate))
+      return {
+        fact,
+        etag: detail.response.headers.get('ETag'),
+        verdict: { ready: false, reason: pastPlanningDateMessage() },
+      };
+  }
+
   const item = await queryClient.fetchQuery({
     queryKey: productionOrderItemKeys.detail(fact.itemId),
     queryFn: () =>
@@ -197,6 +221,60 @@ export const unreleasedWorkOrdersOf = async (
       }),
     ),
   );
+  if (list.truncated)
+    throw new ApiRequestError({
+      kind: 'validation',
+      errors: [
+        {
+          scope: 'field',
+          field: 'planDate',
+          code: 'INVALID',
+          message: '작업지시 목록을 모두 확인하지 못했습니다. 다시 조회하세요.',
+        },
+      ],
+    });
+  const pendingPlanIds = new Set(
+    list.items
+      .filter((item) => RELEASE_PENDING_STATUSES.includes(item.statusCode))
+      .map((item) => item.productionPlanId),
+  );
+  if (pendingPlanIds.size) {
+    const plans = await fetchAllPages((page, size) =>
+      runRequest(() =>
+        client.GET('/planning/production-plans', {
+          params: { query: { productionOrderId, page, size } },
+        }),
+      ),
+    );
+    if (
+      plans.truncated ||
+      [...pendingPlanIds].some((id) => !plans.items.some((plan) => plan.productionPlanId === id))
+    )
+      throw new ApiRequestError({
+        kind: 'validation',
+        errors: [
+          {
+            scope: 'field',
+            field: 'planDate',
+            code: 'INVALID',
+            message: '계획 목록을 모두 확인하지 못했습니다. 다시 조회하세요.',
+          },
+        ],
+      });
+    if (
+      plans.items.some(
+        (plan) =>
+          (pendingPlanIds.has(plan.productionPlanId) || plan.confirmedAt == null) &&
+          isPastPlanningDate(plan.planDate),
+      )
+    )
+      throw new ApiRequestError({
+        kind: 'validation',
+        errors: [
+          { scope: 'field', field: 'planDate', code: 'RANGE', message: pastPlanningDateMessage() },
+        ],
+      });
+  }
   return list.items
     .filter((item) => RELEASE_PENDING_STATUSES.includes(item.statusCode))
     .map((item) => ({

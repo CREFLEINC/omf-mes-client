@@ -1,3 +1,4 @@
+import { isPastPlanningDate, pastPlanningDateMessage } from './planning-date-policy';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { WeeklyPlanCard } from './weekly-plan-card';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
@@ -45,6 +46,7 @@ export interface PlanOrderGroup {
   onAdd: () => void;
 }
 export interface PlanStepProps {
+  pastConfirmedPlanIds?: readonly number[];
   planningTools?: ReactNode;
   currentOrderIds?: readonly number[];
   contextUnitLabelOf?: (uomId: number) => string;
@@ -103,6 +105,7 @@ const errorText = (errors: ProductionPlanDraftErrors, field: ProductionPlanDraft
 /** T-W-C: 조회·편집 보기만 바꾸며 저장·확정은 기존 편집 세션과 하단 바를 그대로 쓴다. */
 export const PlanStep = ({
   rows,
+  pastConfirmedPlanIds = [],
   orderQty,
   confirmedQty,
   uomLabel,
@@ -387,6 +390,14 @@ export const PlanStep = ({
   const outsideWeek = rows.filter((row) => !week.includes(row.draft.planDate));
   const editDisabled = disabled || selected?.confirmed === true;
 
+  const pastDraft = disabled
+    ? undefined
+    : rows.find(
+        (row) =>
+          isPastPlanningDate(row.draft.planDate) &&
+          (!row.confirmed ||
+            (row.productionPlanId !== null && pastConfirmedPlanIds.includes(row.productionPlanId))),
+      );
   return (
     <section className="erp-wo-plan-workspace" aria-label={t.heading}>
       {!hideHeading && (
@@ -451,6 +462,21 @@ export const PlanStep = ({
               />
             ))}
         </PlanCreationTools>
+      )}
+      {pastDraft && (
+        <AlertBanner
+          variant="warning"
+          title={
+            pastDraft.confirmed
+              ? '확정된 미배포 계획의 계획일이 지났습니다. 계획 담당자에게 일정 변경을 요청하세요.'
+              : pastPlanningDateMessage()
+          }
+          action={
+            <Button variant="outlined" onClick={() => choose(pastDraft)}>
+              {pastDraft.confirmed ? '계획 확인' : '계획일 수정'}
+            </Button>
+          }
+        />
       )}
       {failures.length > 0 && (
         <AlertBanner variant="error" title={t.failedTitle}>
@@ -860,6 +886,7 @@ export const PlanStep = ({
                 <div className="field-cell">
                   <label className="field-label">{t.columns.planDate}</label>
                   <DatePicker
+                    min={plantToday()}
                     size="md"
                     aria-label={t.fieldLabel(nameOf(selected), t.columns.planDate)}
                     value={selected.draft.planDate || null}

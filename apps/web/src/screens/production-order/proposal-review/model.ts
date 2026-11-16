@@ -1,3 +1,4 @@
+import { isPastPlanningDate, pastPlanningDateMessage } from '../process/planning-date-policy';
 import type { ReferenceRow } from '../../../patterns/reference-picker';
 import { shiftPlanDate } from '../process/plan-view-model';
 
@@ -135,6 +136,7 @@ export const proposalErrors = (row: ReviewProposal): string[] => {
     )
       errors.push('생산량은 0보다 커야 합니다');
     if (!shiftPlanDate(plan.date, 0)) errors.push('계획일을 확인하세요');
+    else if (isPastPlanningDate(plan.date)) errors.push(pastPlanningDateMessage());
     if (!plan.operations.length) errors.push('Routing 공정을 확인하세요');
     plan.operations.forEach((op) =>
       op.required.forEach((field) => {

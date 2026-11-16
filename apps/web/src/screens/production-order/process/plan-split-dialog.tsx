@@ -1,3 +1,5 @@
+import { isPastPlanningDate } from './planning-date-policy';
+import { plantToday } from '../../../patterns/plant-time';
 import { useApiClient } from '../../../patterns/api-context';
 import {
   resolvePlanningDays,
@@ -100,7 +102,9 @@ export const PlanSplitDialog = ({
     0,
   );
   const difference = (Math.round(total * scale) - sumUnits) / scale;
-  const valid = validPlanSplit(total, appliedParts, decimalScale);
+  const valid =
+    validPlanSplit(total, appliedParts, decimalScale) &&
+    !appliedParts.some((part) => isPastPlanningDate(part.planDate));
   const preview = async () => {
     const fixed = Math.round(Number(per) * scale);
     const number =
@@ -110,6 +114,7 @@ export const PlanSplitDialog = ({
       number < 2 ||
       number > 12 ||
       shiftPlanDate(start, 0) === '' ||
+      isPastPlanningDate(start) ||
       (method === 'fixed' &&
         (!Number.isFinite(fixed) ||
           fixed <= 0 ||
@@ -339,6 +344,7 @@ export const PlanSplitDialog = ({
               <div className="field-cell">
                 <span className="field-label">편성 시작일</span>
                 <DatePicker
+                  min={plantToday()}
                   disabled={calendarBusy}
                   size="md"
                   aria-label="편성 시작일"
@@ -456,6 +462,7 @@ export const PlanSplitDialog = ({
                       </td>
                       <td>
                         <DatePicker
+                          min={plantToday()}
                           size="md"
                           disabled={calendarBusy}
                           aria-label={day ? `${day.date} 휴일 계획일` : `계획 ${i + 1} 계획일`}

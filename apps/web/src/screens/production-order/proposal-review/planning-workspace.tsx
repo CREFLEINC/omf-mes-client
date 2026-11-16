@@ -1,3 +1,4 @@
+import { plantToday } from '../../../patterns/plant-time';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
 import { useRef, useState } from 'react';
 import { AlertBanner, Button, Tabs } from '@crefle/web-ui';
@@ -81,7 +82,9 @@ export const ProposalPlanningWorkspace = ({
   const [activeOperation, setActiveOperation] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<string | null>(null);
   const plan = row.plans.find((p) => p.key === activePlan) ?? row.plans[0];
-  const operations = row.plans.flatMap((p) => p.operations.map((op) => ({ plan: p, op, key: `${p.key}:${op.key}` })));
+  const operations = row.plans.flatMap((p) =>
+    p.operations.map((op) => ({ plan: p, op, key: `${p.key}:${op.key}` })),
+  );
   const selected = operations.find((entry) => entry.key === activeOperation) ?? operations[0];
   const lineReference = useProductionLineReferenceQuery(row.plantId ?? null);
   const lines = [
@@ -533,6 +536,7 @@ export const ProposalPlanningWorkspace = ({
                     </section>
                     <div className="assign-plan-row">
                       <DateTimeField
+                        minDate={plantToday()}
                         timePicker
                         label="계획 시작"
                         value={selected.op.start.replace(' ', 'T')}
@@ -548,6 +552,7 @@ export const ProposalPlanningWorkspace = ({
                         }
                       />
                       <DateTimeField
+                        minDate={plantToday()}
                         timePicker
                         label="계획 종료"
                         value={selected.op.end.replace(' ', 'T')}

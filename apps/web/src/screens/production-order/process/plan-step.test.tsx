@@ -226,3 +226,8 @@ it('선택 계획의 단위 자릿수에 맞게 소수 분할을 허용한다', 
     { plannedQty: '0.25', planDate: '2026-11-04' },
   ]);
 });
+
+vi.mock('../../../patterns/plant-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../patterns/plant-time')>()),
+  plantToday: () => '2026-11-01',
+}));

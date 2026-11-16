@@ -302,6 +302,7 @@ export const erpWorkOrderFlow = {
     },
     /** 하단 바 문장(C-5). `select`, `enter`, `choose`, `resolve`, `canProceed`의 인자는 조사를 붙여 넘긴다. */
     remaining: {
+      pastPlanDate: '계획일이 지났습니다. 오늘 이후 날짜로 수정하세요.',
       bomMissing:
         '사용 가능한 ERP 기본 BOM이 하나로 정해지지 않아 진행할 수 없습니다. ERP 담당자에게 확인을 요청해 주세요',
       routingMissing:
