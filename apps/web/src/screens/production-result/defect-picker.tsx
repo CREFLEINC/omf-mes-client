@@ -58,7 +58,7 @@ export const DefectPicker = ({
               {t.back}
             </Button>
           )}
-          <Button variant="tonal" size="xl" onClick={close}>
+          <Button variant="outlined" size="xl" onClick={close}>
             {t.cancel}
           </Button>
         </div>
