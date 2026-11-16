@@ -2261,9 +2261,10 @@ describe('ProductionFlowScreen 불량', () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
     await openDefectStep();
-    /* ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 하단 바는 할 일(유형 고르기)을 말한다. */
+    /* ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 출력은 잠긴다. */
     expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
-    expect(screen.getByText(t.flow.next.defectType)).toBeInTheDocument();
+    /* 하단 바에 「불량 유형을 골라 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
+    expect(screen.queryByText(t.flow.next.defectType)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
 
     /* [불량 추가]에서 유형을 고르지 않고 닫으면 줄을 더하지 않는다(명세 ②-6: 고르면 줄이 생긴다). */

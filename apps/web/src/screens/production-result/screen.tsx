@@ -1365,14 +1365,14 @@ export const ProductionFlowScreen = () => {
 
   /**
    * 불량 줄의 첫 할 일. 덜 채운 줄이 없으면 `undefined`.
-   * 수량만 비었으면 `null` — 하단 바에 「불량 수량을 입력해 주세요」를 두지 않는다(사용자 지시 2026-11-16).
-   * 빈 칸은 칸 테두리와 목록 아래 한 줄이 말한다. 저장이 잠기는 기준은 그대로다.
+   * 유형·수량이 비었으면 `null` — 하단 바에 「불량 유형을 골라 주세요」·「불량 수량을 입력해 주세요」를 두지
+   * 않는다(사용자 지시 2026-11-16). 빈 칸은 칸 자체가 보여 준다. 저장이 잠기는 기준은 그대로다.
    */
   const defectTodo = ((): string | null | undefined => {
     for (const row of defectRows) {
       const check = defectChecks.get(row.key);
       if (check === undefined || check.complete) continue;
-      if (check.typeMissing) return t.flow.next.defectType;
+      if (check.typeMissing) return null;
       if (check.duplicate) return t.flow.next.defectDuplicate;
 
       return null;
