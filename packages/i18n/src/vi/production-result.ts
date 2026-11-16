@@ -6,6 +6,11 @@ export const productionResult: Translated<typeof ko.productionResult> = {
   title: 'Công việc sản xuất',
   flow: {
     work: {
+      /** 라벨을 낸 뒤 왼쪽에 보이는 이 LOT 실적(사용자 지시 2026-11-16). */
+      enteredResult: 'Kết quả đã nhập',
+      enteredGood: (qty: string, uom: string): string => `Đạt ${qty}${uom === '' ? '' : ` ${uom}`}`,
+      enteredDefect: (qty: string, uom: string): string =>
+        `Lỗi ${qty}${uom === '' ? '' : ` ${uom}`}`,
       lot: 'LOT hiện tại',
       lotProgress: 'Tiến độ LOT hiện tại',
       workOrderProgress: 'Tiến độ toàn W/O',
@@ -132,6 +137,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     output: {
       template: 'Nhãn LOT sản xuất',
       issue: 'In nhãn LOT',
+      /** 라벨 스캔을 기다리는 동안 하단 버튼(사용자 지시 2026-11-16). */
+      reprint: 'In lại nhãn LOT',
       retryIssue: 'Thử phát hành nhãn lại',
       retryPrint: 'In lại nhãn',
       retryReport: 'Gửi lại kết quả',

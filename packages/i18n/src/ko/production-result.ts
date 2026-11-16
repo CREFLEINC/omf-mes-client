@@ -13,6 +13,12 @@ export const productionResult = {
      * 막대 하나로 보인다. 음수를 보이지 않는다(초과는 칩).
      */
     work: {
+      /** 라벨을 낸 뒤 왼쪽에 보이는 이 LOT 실적(사용자 지시 2026-11-16). */
+      enteredResult: '입력한 실적',
+      enteredGood: (qty: string, uom: string): string =>
+        `양품 ${qty}${uom === '' ? '' : ` ${uom}`}`,
+      enteredDefect: (qty: string, uom: string): string =>
+        `불량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
       lot: '현재 LOT',
       lotProgress: '현재 LOT 진행',
       workOrderProgress: 'W/O 전체 진행',
@@ -157,6 +163,8 @@ export const productionResult = {
     output: {
       template: '생산 LOT 라벨',
       issue: 'LOT 라벨 출력',
+      /** 라벨 스캔을 기다리는 동안 하단 버튼(사용자 지시 2026-11-16). */
+      reprint: 'LOT 라벨 재출력',
       retryIssue: '라벨 발행 다시 시도',
       retryPrint: '라벨 다시 인쇄',
       retryReport: '결과 다시 전송',

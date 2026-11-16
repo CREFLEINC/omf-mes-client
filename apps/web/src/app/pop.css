@@ -9941,6 +9941,21 @@
   font-size: 1.125rem;
 }
 
+/* 라벨을 낸 뒤 왼쪽 「입력한 실적」 — 양품·불량 합계 한 줄, 그 아래 불량 유형별 줄(사용자 지시 2026-11-16). */
+.pop-ui.production-work-screen .production-work-entered {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.pop-ui.production-work-screen .production-work-entered-defects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */
 .pop-ui.production-work-screen .pop-context-right > :first-child {
   max-inline-size: 9.5rem;

@@ -19,7 +19,7 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages, named } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { ActionBar } from '../../patterns/action-bar';
@@ -301,6 +301,11 @@ export const ProductionFlowScreen = () => {
   const defectCodes = useProcessDefectCodes(workOrder.data?.processId ?? null);
   const defectMajors = useMemo(() => groupDefectCodes(defectCodes.data ?? []), [defectCodes.data]);
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
+  /**
+   * 이 LOT 에 보낸 불량 줄(유형 이름 · 수량). 라벨 스캔 단계에서 왼쪽 「입력한 실적」에 보인다(사용자 지시
+   * 2026-11-16). 보낸 줄은 입력 칸에서 비워지므로 보낼 때 따로 적어 둔다. 화면을 다시 열면 모른다(`null`).
+   */
+  const [sentDefects, setSentDefects] = useState<{ label: string; qty: string }[] | null>(null);
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
   /** 미달 LOT 의 라벨을 맞게 읽었다 — 사유를 고르면 마감한다 */
@@ -830,6 +835,7 @@ export const ProductionFlowScreen = () => {
     currentLotIdRef.current = nextLotId;
     setActualQty(lot === null || lot === undefined ? '' : String(lot.initialQty));
     setOutputPhase('idle');
+    setSentDefects(null);
     setScanValue('');
     setScanMismatch(false);
     setLotPrintTargets([]);
@@ -1058,6 +1064,12 @@ export const ProductionFlowScreen = () => {
     if (entry.workerNo === null) return;
 
     setOutputPhase('queued');
+    setSentDefects(
+      defectRows.map((row) => ({
+        label: defectLabelOf(defectMajors, row.defectCodeId) ?? '',
+        qty: row.qty,
+      })),
+    );
     const sentKey = outbox.enqueue(
       entry.workerNo,
       buildSaveBody({
@@ -1511,6 +1523,35 @@ export const ProductionFlowScreen = () => {
     </div>
   );
 
+  /**
+   * 하단 [LOT 라벨 출력]. 라벨을 출력해 스캔을 기다리는 동안은 [LOT 라벨 재출력]으로 바뀐다(사용자 지시
+   * 2026-11-16). 재출력은 이미 발행한 같은 라벨을 지금 고른 프린터로 다시 찍을 뿐이다 — 실적·발행 기록을
+   * 새로 만들지 않고, 인쇄 결과 보고도 같은 멱등 키로 다시 보내 서버 기록이 늘지 않는다([라벨 다시 인쇄]와 같은 길).
+   */
+  const outputButton = (variant: 'filled' | 'outlined'): ReactNode =>
+    outputPhase === 'scanReady' ? (
+      <Button
+        type="button"
+        variant={variant}
+        size={POP_TOUCH_SIZE}
+        disabled={complete.isSaving}
+        onClick={retryLotPrint}
+      >
+        {t.flow.output.reprint}
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant={variant}
+        size={POP_TOUCH_SIZE}
+        disabled={!canOutput}
+        aria-describedby={remainingId}
+        onClick={queueOutput}
+      >
+        {t.flow.output.issue}
+      </Button>
+    );
+
   /** 불량 구획. LOT이 있으면 수량 칸 아래, 없으면 안내 아래에 선다(불량만 등록). */
   const defectSection = (
     <section className="production-flow-defects" aria-label={t.flow.defects.title}>
@@ -1814,6 +1855,33 @@ export const ProductionFlowScreen = () => {
                     >
                       {t.flow.work.view}
                     </Button>
+                  )}
+                </span>
+              )}
+            </PopRowPair>
+            {/*
+             * 라벨을 낸 뒤(스캔 대기 등)에는 이 LOT 에 넣은 실적을 보인다(사용자 지시 2026-11-16). 입력 칸이
+             * 스캔 칸으로 바뀌어 무엇을 넣었는지 볼 곳이 없었다. 불량은 이 화면에서 보낸 것만 안다 — 다시 연
+             * 화면에서는 양품만 보인다(모르는 불량을 0 으로 말하지 않는다).
+             */}
+            <PopRowPair label={t.flow.work.enteredResult}>
+              {lot === null || outputPhase === 'idle' || parsedQty === null ? null : (
+                <span className="production-work-entered">
+                  <span>
+                    {t.flow.work.enteredGood(formatQty(parsedQty), uomLabel)}
+                    {sentDefects === null || sentDefects.length === 0
+                      ? null
+                      : ` · ${t.flow.work.enteredDefect(
+                          formatQty(sentDefects.reduce((sum, row) => sum + Number(row.qty), 0)),
+                          uomLabel,
+                        )}`}
+                  </span>
+                  {sentDefects !== null && sentDefects.length > 0 && (
+                    <ul className="production-work-entered-defects">
+                      {sentDefects.map((row, index) => (
+                        <li key={index}>{`${row.label} ${row.qty} ${uomLabel}`.trim()}</li>
+                      ))}
+                    </ul>
                   )}
                 </span>
               )}
@@ -2228,31 +2296,11 @@ export const ProductionFlowScreen = () => {
           </Button>
         ) : isCloseMode ? (
           <>
-            {lot !== null && (
-              <Button
-                type="button"
-                variant="outlined"
-                size={POP_TOUCH_SIZE}
-                disabled={!canOutput}
-                aria-describedby={remainingId}
-                onClick={queueOutput}
-              >
-                {t.flow.output.issue}
-              </Button>
-            )}
+            {lot !== null && outputButton('outlined')}
             {closeAction('filled')}
           </>
         ) : (
-          <Button
-            type="button"
-            variant="filled"
-            size={POP_TOUCH_SIZE}
-            disabled={!canOutput}
-            aria-describedby={remainingId}
-            onClick={queueOutput}
-          >
-            {t.flow.output.issue}
-          </Button>
+          outputButton('filled')
         )}
       </ActionBar>
 

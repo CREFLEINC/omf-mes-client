@@ -327,6 +327,43 @@ describe('ProductionFlowScreen', () => {
     });
   });
 
+  /* 라벨을 낸 뒤에는 [LOT 라벨 재출력]과 「입력한 실적」이 선다(사용자 지시 2026-11-16). */
+  it('스캔 대기 중에는 같은 라벨을 재출력하고, 입력한 실적을 왼쪽에 보인다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes);
+
+    expect(screen.queryByText(t.flow.work.enteredResult)).not.toBeInTheDocument();
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+
+    expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
+    expect(screen.getByText(t.flow.work.enteredResult)).toBeInTheDocument();
+    expect(screen.getByText(t.flow.work.enteredGood('12', 'EA'))).toBeInTheDocument();
+
+    const reportsBefore = writes.filter(
+      (request) => pathOf(request) === '/app/document-issues/44001:report-print',
+    );
+    await user.click(screen.getByRole('button', { name: t.flow.output.reprint }));
+    await waitFor(() => {
+      expect(
+        writes.filter((request) => pathOf(request) === '/app/document-issues/44001:report-print'),
+      ).toHaveLength(reportsBefore.length + 1);
+    });
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+
+    /* 재출력은 실적·발행 기록을 새로 만들지 않고, 인쇄 결과 보고도 같은 멱등 키로 보낸다. */
+    const paths = writes.map(pathOf);
+    expect(paths.filter((path) => path === '/production/production-results')).toHaveLength(1);
+    expect(paths.filter((path) => path === '/app/document-issues')).toHaveLength(1);
+    const keys = writes
+      .filter((request) => pathOf(request) === '/app/document-issues/44001:report-print')
+      .map((request) => request.headers.get('Idempotency-Key'));
+    expect(new Set(keys).size).toBe(1);
+  });
+
   /*
    * ⛔ **라벨 수량은 수량 칸이 아니라 «실제로 올라간 실적»에서 온다**(리뷰 지적 2026-09-16).
    *    수량 칸은 LOT 이 서면 계획 수량(`initialQty`)으로 미리 채워진다 — 큐에 들어 있던 실적이
