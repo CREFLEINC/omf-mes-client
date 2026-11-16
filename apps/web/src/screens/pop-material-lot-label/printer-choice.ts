@@ -11,9 +11,13 @@ import { toHeadPrinter, type PrinterView } from './types';
  */
 export const PRINTER_STORAGE_KEY = 'omf-mes.pop-material-lot-label.printer';
 
-export const storedPrinterName = (): string | null => {
+/*
+ * ⭐ 저장 열쇠는 화면마다 따로다 — 생산 작업(P-02-04)도 같은 방식으로 고르지만 자기 열쇠에 기억한다
+ *    (`production-result/screen` · 개선 명세 ⑤). 열쇠를 넘기지 않으면 이 화면의 열쇠다.
+ */
+export const storedPrinterName = (key: string = PRINTER_STORAGE_KEY): string | null => {
   try {
-    const raw = globalThis.localStorage.getItem(PRINTER_STORAGE_KEY);
+    const raw = globalThis.localStorage.getItem(key);
 
     return raw === null || raw.trim() === '' ? null : raw;
   } catch {
@@ -21,9 +25,9 @@ export const storedPrinterName = (): string | null => {
   }
 };
 
-export const rememberPrinterName = (name: string): void => {
+export const rememberPrinterName = (name: string, key: string = PRINTER_STORAGE_KEY): void => {
   try {
-    globalThis.localStorage.setItem(PRINTER_STORAGE_KEY, name);
+    globalThis.localStorage.setItem(key, name);
   } catch {
     /* 저장이 막혔다. 이번 실행 동안은 고른 것이 그대로 쓰인다. */
   }

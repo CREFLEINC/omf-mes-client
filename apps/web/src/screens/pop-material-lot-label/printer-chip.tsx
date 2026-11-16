@@ -33,6 +33,20 @@ export interface PrinterChipProps {
   isLocked: boolean;
   onRetry: () => void;
   onSelect: (printerName: string) => void;
+  /** 머리줄 칩 문구를 화면이 바꿀 때만 넘긴다(생산 작업 · 개선 명세 ② 11). 넘기지 않으면 종전 문구다. */
+  noneLabel?: string;
+  unknownLabel?: string;
+  retryLabel?: string;
+  /**
+   * 생산 작업 창(사용자 지시 2026-11-16)만 끈다 — 창 오른쪽 위 ✕ 를 두지 않고 [닫기] 하나로 닫는다.
+   * 넘기지 않으면 종전대로 ✕ 가 보인다.
+   */
+  showCloseButton?: boolean;
+  /**
+   * 「사용 가능」 프린터 줄의 안내 문장을 숨긴다(생산 작업, 사용자 지시 2026-11-16) — 단말 셸이 모든 줄에
+   * 같은 문장(「이 프린터로 나갑니다」)을 붙여 읽을 거리가 없다. 끊김·오류 등 다른 상태의 문장은 그대로 보인다.
+   */
+  hideReadyNote?: boolean;
 }
 
 /**
@@ -51,22 +65,27 @@ export const PrinterChip = ({
   isLocked,
   onRetry,
   onSelect,
+  noneLabel = t.none,
+  unknownLabel = t.unknown,
+  retryLabel = t.retry,
+  showCloseButton = true,
+  hideReadyNote = false,
 }: PrinterChipProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (isError) {
     return (
       <div className="pop-mlot-printer">
-        <Chip status="error">{t.unknown}</Chip>
+        <Chip status="error">{unknownLabel}</Chip>
         <Button className={popTouchClass('normal')} variant="outlined" size="xl" onClick={onRetry}>
-          {t.retry}
+          {retryLabel}
         </Button>
       </div>
     );
   }
 
   if (isLoading || printers === undefined) return null;
-  if (selected === null) return <Chip status="warning">{t.none}</Chip>;
+  if (selected === null) return <Chip status="warning">{noneLabel}</Chip>;
 
   const chip = (
     <Chip status={chipStatusOf(selected.status)}>{`${t.label} ${selected.displayName}`}</Chip>
@@ -98,6 +117,7 @@ export const PrinterChip = ({
           size="lg"
           /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005) — 장갑 낀 손이 창 밖을 스치면 사라졌다. */
           closeOnBackdropClick={false}
+          showCloseButton={showCloseButton}
           title={t.choose}
           footer={
             <Button
@@ -126,7 +146,8 @@ export const PrinterChip = ({
                 >
                   <span className="pop-mlot-printer-name">{printer.displayName}</span>
                   {/* 상태 설명은 서버가 준 문장만 보인다 — 코드값(READY 등)을 화면에 내지 않는다(규범 C-13). */}
-                  {printer.statusMessage === null ? null : (
+                  {printer.statusMessage === null ||
+                  (hideReadyNote && printer.status === 'READY') ? null : (
                     <Chip status={chipStatusOf(printer.status)}>{printer.statusMessage}</Chip>
                   )}
                 </button>

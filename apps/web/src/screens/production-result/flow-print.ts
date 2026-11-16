@@ -51,11 +51,16 @@ const commandBytes = (command: string): ArrayBuffer => {
 const reasonOf = (error: unknown): string =>
   error instanceof Error && error.message.trim() !== '' ? error.message : '인쇄 실패';
 
+/** 셸 인쇄의 다섯째 인자 — 고른 프린터가 있을 때만 싣는다(`pop-material-lot-label/mutations` 와 같은 꼴). */
+const printerArgs = (name: string | null): [] | [string] => (name === null ? [] : [name]);
+
 const IDLE: PrintState = { phase: 'idle', printed: 0, reason: null };
 
 export interface LabelPrintRunner {
   state: PrintState;
   run: (targets: readonly PrintTarget[]) => Promise<void>;
+  /** 성공·보고가 끝난 라벨을 보고 없이 다시 찍는다. */
+  reprint: (targets: readonly PrintTarget[]) => Promise<void>;
   retryReport: () => Promise<void>;
   reset: () => void;
   isShellAvailable: boolean;
@@ -67,9 +72,21 @@ interface PendingSuccessReport {
   printed: number;
 }
 
-/** 발행 기록마다 렌디션→물리 인쇄→결과 보고를 순서대로 실행한다. */
-export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner => {
+/**
+ * 발행 기록마다 렌디션→물리 인쇄→결과 보고를 순서대로 실행한다.
+ *
+ * `shellPrinterName` — 셸에게 «이 프린터로 보내라»고 실을 이름(머리줄에서 고른 프린터 · 개선 명세 ⑤).
+ * 셸이 고른 프린터를 받을 때만 채우고, `null` 이면 싣지 않는다(셸이 기동 시 지정값 → OS 기본으로 보낸다).
+ * ⭐ 보내는 «그 순간»의 값을 쓴다 — 라벨을 낸 뒤 프린터를 바꾸고 [라벨 다시 인쇄]를 누르면 바꾼 프린터로
+ *    나간다(명세 §6 확인 4 추천안).
+ */
+export const useLabelPrintRunner = (
+  workerNo: string | null,
+  shellPrinterName: string | null = null,
+): LabelPrintRunner => {
   const { client } = useApiClient();
+  const shellPrinterRef = useRef(shellPrinterName);
+  shellPrinterRef.current = shellPrinterName;
   const [state, setState] = useState<PrintState>(IDLE);
   const reportKeys = useRef(new Map<string, string>());
   const pendingSuccessReport = useRef<PendingSuccessReport | null>(null);
@@ -133,7 +150,11 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
   );
 
   const continueRun = useCallback(
-    async (targets: readonly PrintTarget[], alreadyPrinted: number): Promise<void> => {
+    async (
+      targets: readonly PrintTarget[],
+      alreadyPrinted: number,
+      shouldReport = true,
+    ): Promise<void> => {
       if (targets.length === 0) {
         pendingSuccessReport.current = null;
         setState({ phase: 'succeeded', printed: alreadyPrinted, reason: null });
@@ -201,6 +222,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
               target.label,
               new Date().toISOString(),
               target.command === undefined ? format : 'tspl',
+              ...printerArgs(shellPrinterRef.current),
             );
             printed += 1;
           } catch (error) {
@@ -210,7 +232,8 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
         }
 
         try {
-          await report(target, failureReason);
+          /* 재출력은 보고하지 않는다 — 서버는 성공한 발행에 두 번째 보고를 받지 않는다(아래 `reprint`). */
+          if (shouldReport) await report(target, failureReason);
         } catch (error) {
           if (failurePhase === null) {
             pendingSuccessReport.current = {
@@ -245,6 +268,23 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
     [continueRun, executeOnce],
   );
 
+  /**
+   * 이미 인쇄에 성공해 보고까지 끝난 라벨을 **다시 찍기만** 한다(사용자 지시 2026-11-16 [LOT 라벨 재출력]).
+   *
+   * ⛔ 인쇄 결과를 보고하지 않는다. 서버는 `SUCCEEDED` 로 잠긴 발행에 새 보고를 거절한다 — 보고하면 화면을
+   *    다시 연 뒤(멱등 키가 새로 뽑힌 뒤) 재출력할 때마다 「결과를 보내지 못했습니다」가 떴다(실측 2026-11-16).
+   *    재출력이 실패해도 서버 기록(이미 나온 라벨)은 그대로 맞다.
+   */
+  const reprint = useCallback(
+    async (targets: readonly PrintTarget[]): Promise<void> => {
+      await executeOnce(async () => {
+        pendingSuccessReport.current = null;
+        await continueRun(targets, 0, false);
+      });
+    },
+    [continueRun, executeOnce],
+  );
+
   const retryReport = useCallback(async (): Promise<void> => {
     await executeOnce(async () => {
       const pending = pendingSuccessReport.current;
@@ -267,6 +307,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
   return {
     state,
     run,
+    reprint,
     retryReport,
     reset: () => {
       pendingSuccessReport.current = null;
