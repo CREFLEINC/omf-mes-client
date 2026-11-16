@@ -9959,25 +9959,13 @@
 /*
  * 마감된 LOT 창(사용자 지시 2026-11-16) — 제목 줄 오른쪽에 「총 N건」, LOT 은 번호 붙은 칸 목록, 바닥 구분선 없음.
  */
-.pop-ui .production-flow-completed-dialog h2:has(> .production-flow-completed-title) {
-  flex: 1;
-}
-
-.pop-ui .production-flow-completed-title {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  inline-size: 100%;
-}
-
 .pop-ui .production-flow-completed-total {
   font-size: 0.9375rem;
   font-weight: 400;
   color: var(--on-surface-variant);
 }
 
-.pop-ui .production-flow-completed-dialog .production-flow-completed-lots {
+.pop-ui .production-work-completed .production-flow-completed-lots {
   display: grid;
   gap: var(--space-2);
   margin: 0;
@@ -9985,7 +9973,7 @@
   list-style: none;
 }
 
-.pop-ui .production-flow-completed-dialog .production-flow-completed-lots > li {
+.pop-ui .production-work-completed .production-flow-completed-lots > li {
   display: flex;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
@@ -9995,12 +9983,7 @@
   overflow-wrap: anywhere;
 }
 
-.pop-ui .production-flow-completed-dialog .production-flow-completed-no {
-  flex: none;
-  color: var(--on-surface-variant);
-}
-
-.pop-ui .production-flow-completed-dialog .production-flow-completed-pages {
+.pop-ui .production-work-completed .production-flow-completed-pages {
   justify-content: space-between;
   gap: var(--space-4);
 }
@@ -10012,10 +9995,6 @@
 
 .pop-ui .production-flow-completed-page-buttons > button {
   min-inline-size: 6rem;
-}
-
-.pop-ui .production-flow-completed-dialog footer {
-  border-block-start: none;
 }
 
 /*
@@ -10088,6 +10067,37 @@
 
 .pop-ui .production-flow-defect-confirm footer {
   border-block-start: none;
+}
+
+/* 왼쪽 구획의 마감된 LOT 목록(사용자 지시 2026-11-16) — 제목 줄에 「총 N건」, 줄마다 LOT 번호와 마감 일시. */
+.pop-ui .production-work-completed {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+
+.pop-ui .production-work-completed-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pop-ui .production-work-completed .production-flow-completed-lots > li {
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+}
+
+.pop-ui .production-flow-completed-lot-no {
+  min-inline-size: 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875rem;
+}
+
+.pop-ui .production-flow-completed-at {
+  flex: none;
+  font-size: 0.875rem;
+  color: var(--on-surface-variant);
 }
 
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */

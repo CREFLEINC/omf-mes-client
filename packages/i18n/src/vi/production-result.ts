@@ -11,11 +11,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       enteredGood: (qty: string, uom: string): string => `Đạt ${qty}${uom === '' ? '' : ` ${uom}`}`,
       enteredDefect: (qty: string, uom: string): string =>
         `Lỗi ${qty}${uom === '' ? '' : ` ${uom}`}`,
-      lot: 'LOT hiện tại',
-      lotProgress: 'Tiến độ LOT hiện tại',
       workOrderProgress: 'Tiến độ toàn W/O',
-      lotProgressText: (good: string, target: string, uom: string): string =>
-        `Đạt ${good} / Kế hoạch LOT ${target}${uom === '' ? '' : ` ${uom}`}`,
       workOrderProgressText: (good: string, target: string, uom: string): string =>
         `Đạt ${good} / Số lượng lệnh ${target}${uom === '' ? '' : ` ${uom}`}`,
       stepsLabel: 'Các bước làm LOT',
@@ -28,8 +24,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       printerUnknown: 'Không xác định máy in',
       closed: 'Đã đóng lệnh sản xuất. Có thể chuyển sang đóng gói sản xuất.',
       completedLots: 'LOT đã đóng',
-      completedCount: (count: number): string => `${String(count)} mục`,
-      view: 'Xem',
     },
     actions: {
       holdWork: 'Tạm dừng công việc',
@@ -57,7 +51,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     currentLot: {
       current: 'LOT hiện tại',
       completed: 'LOT đã đóng',
-      completedTitle: 'LOT đã đóng',
       completedTotal: (count: number): string => `Tổng ${String(count)}`,
       completedEmpty: 'Không có LOT đã đóng.',
       pageNav: 'Chuyển trang LOT đã đóng',

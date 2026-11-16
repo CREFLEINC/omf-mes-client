@@ -19,12 +19,7 @@ export const productionResult = {
         `양품 ${qty}${uom === '' ? '' : ` ${uom}`}`,
       enteredDefect: (qty: string, uom: string): string =>
         `불량 ${qty}${uom === '' ? '' : ` ${uom}`}`,
-      lot: '현재 LOT',
-      lotProgress: '현재 LOT 진행',
       workOrderProgress: 'W/O 전체 진행',
-      /** 앞뒤 숫자가 무엇인지 글자로 적는다(P-02-04 개선 명세 §2). 단위가 없으면 숫자만. */
-      lotProgressText: (good: string, target: string, uom: string): string =>
-        `양품 ${good} / LOT 계획량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       workOrderProgressText: (good: string, target: string, uom: string): string =>
         `양품 ${good} / 작업 지시량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       /** 단계 표시(C-5). LOT마다 처음부터 반복한다. */
@@ -40,10 +35,8 @@ export const productionResult = {
       printerNone: '프린터 없음',
       printerUnknown: '프린터 확인 불가',
       closed: '작업지시를 마감했습니다. 생산 포장으로 이동할 수 있습니다.',
-      /** 마감된 LOT 정보 줄. 0건이면 [보기]를 두지 않는다. */
+      /** 왼쪽 구획의 마감된 LOT 목록 제목(2026-11-16). */
       completedLots: '마감된 LOT',
-      completedCount: (count: number): string => `${String(count)}건`,
-      view: '보기',
     },
     /**
      * 보조 동작. 늘 쓸 수 있는 것은 머리줄([작업 중단]), 대상에 딸린 것은 그 정보 곁([부품 교체],
@@ -78,7 +71,6 @@ export const productionResult = {
     currentLot: {
       current: '현재 LOT',
       completed: '마감된 LOT',
-      completedTitle: '마감된 LOT',
       completedTotal: (count: number): string => `총 ${String(count)}건`,
       completedEmpty: '마감된 LOT이 없습니다.',
       pageNav: '마감된 LOT 페이지 이동',

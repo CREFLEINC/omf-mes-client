@@ -28,6 +28,7 @@ import type { SplitError } from '../../patterns/master';
 import { serverReasonOf } from '../../patterns/server-reason';
 import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopQtyProgress, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
@@ -311,7 +312,6 @@ export const ProductionFlowScreen = () => {
   const [scanMismatch, setScanMismatch] = useState(false);
   /** 미달 LOT 의 라벨을 맞게 읽었다 — 사유를 고르면 마감한다 */
   const [isUnderReasonOpen, setUnderReasonOpen] = useState(false);
-  const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   /** [불량 등록] 확인 창(사용자 지시 2026-11-16) — 누르자마자 저장되지 않고 무엇을 등록할지 한 번 보인다. */
   const [isDefectConfirmOpen, setIsDefectConfirmOpen] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
@@ -364,9 +364,8 @@ export const ProductionFlowScreen = () => {
   /** 처음 보낸 종료 본문. 재시도가 **같은 값·같은 멱등 키**로 나가게 붙들어 둔다. */
   const sessionEndBodyRef = useRef<ReturnType<typeof buildSessionEnd> | null>(null);
 
-  const completedLots = useCompletedLots(entry.workOrderId, isCompletedOpen, completedPage);
-  /* 마감된 LOT 정보 줄의 건수(C-21 정보 곁의 동작). 창의 첫 쪽과 같은 조회다. */
-  const completedLotCount = useCompletedLots(entry.workOrderId, true, 1);
+  /* 마감된 LOT 은 왼쪽 구획에 목록으로 늘 보인다(사용자 지시 2026-11-16, 종전 [보기] 창). */
+  const completedLots = useCompletedLots(entry.workOrderId, true, completedPage);
   const navigate = useNavigate();
   const isTagTarget = item.data === undefined ? null : requiresIdentificationTag(item.data);
   const serials = useSerials(currentLot.data?.lotId ?? null, isTagTarget === true);
@@ -516,7 +515,9 @@ export const ProductionFlowScreen = () => {
     workerNo: entry.workerNo ?? '',
     onSuccess: () => {
       setOutputPhase('completed');
-      void completedLotCount.refetch();
+      /* 방금 마감한 LOT 이 맨 위에 서게 첫 쪽으로 돌아가 다시 읽는다. */
+      setCompletedPage(1);
+      void completedLots.refetch();
       setScanValue('');
       setScanMismatch(false);
       /* 마감한 LOT 의 수량을 다음 LOT 이 서기 전까지 남기지 않는다 — 다음 LOT 이 서면 그 계획 수량이 들어온다. */
@@ -1487,10 +1488,6 @@ export const ProductionFlowScreen = () => {
   const itemCode = item.data?.itemCode ?? workOrder.data?.itemCode ?? null;
   const itemTitle =
     itemCode === null ? t.flow.currentLot.current : named(item.data?.itemName, itemCode);
-  /* LOT 실적: 서버가 센 양품 누계, 아직 반영 전이면 방금 적용된 수량. 없으면 0. */
-  const lotGoodQty =
-    serverAppliedQty ??
-    (lot !== null && appliedLabelQty?.lotId === lot.lotId ? appliedLabelQty.qty : 0);
   const workOrderGoodQty = workOrder.data?.progress?.goodQty ?? null;
   const isScanStep = step === 'scan';
   /*
@@ -1833,23 +1830,7 @@ export const ProductionFlowScreen = () => {
 
           {/* 정보 영역(C-21): 「라벨 값」 쌍. 수량은 「실적 / 기준」과 막대. 값이 없으면 줄을 두지 않는다(C-10). */}
           <PopRowInfo className="production-work-info">
-            <PopRowPair label={t.flow.work.lot}>
-              {lot === null ? null : <span className="production-work-lot-no">{lot.lotNo}</span>}
-            </PopRowPair>
-            <PopRowPair label={t.flow.work.lotProgress}>
-              {lot === null ? null : (
-                <PopQtyProgress
-                  current={lotGoodQty}
-                  target={lot.initialQty}
-                  text={t.flow.work.lotProgressText(
-                    formatQty(lotGoodQty),
-                    formatQty(lot.initialQty),
-                    uomLabel,
-                  )}
-                  label={t.flow.work.lotProgress}
-                />
-              )}
-            </PopRowPair>
+            {/* 현재 LOT · 현재 LOT 진행은 두지 않는다(사용자 지시 2026-11-16). */}
             <PopRowPair label={t.flow.work.workOrderProgress}>
               {workOrder.data === undefined || workOrderGoodQty === null ? null : (
                 <PopQtyProgress
@@ -1862,27 +1843,6 @@ export const ProductionFlowScreen = () => {
                   )}
                   label={t.flow.work.workOrderProgress}
                 />
-              )}
-            </PopRowPair>
-            {/* 마감된 LOT은 건수와 [보기]. 0건이면 버튼을 두지 않는다. */}
-            <PopRowPair label={t.flow.work.completedLots}>
-              {completedLotCount.data === undefined ? null : (
-                <span className="production-work-row-value">
-                  {t.flow.work.completedCount(completedLotCount.data.page.total)}
-                  {completedLotCount.data.page.total > 0 && (
-                    <Button
-                      type="button"
-                      variant="outlined"
-                      size="sm"
-                      onClick={() => {
-                        setCompletedPage(1);
-                        setIsCompletedOpen(true);
-                      }}
-                    >
-                      {t.flow.work.view}
-                    </Button>
-                  )}
-                </span>
               )}
             </PopRowPair>
             {/*
@@ -1913,6 +1873,67 @@ export const ProductionFlowScreen = () => {
               )}
             </PopRowPair>
           </PopRowInfo>
+
+          {/*
+           * 마감된 LOT — 최근 마감 순 목록과 마감 일시(사용자 지시 2026-11-16). 한 쪽 5건, 넘으면 쪽 넘김.
+           * ⚠ 서버는 LOT 생성 역순으로 준다. LOT 은 순번대로 마감되므로 대개 같지만, 쪽 안에서는 마감 시각으로
+           *   다시 줄 세운다.
+           */}
+          <section className="production-work-completed" aria-label={t.flow.work.completedLots}>
+            <div className="production-work-completed-head">
+              <h3 className="production-work-subtitle">{t.flow.work.completedLots}</h3>
+              {completedLots.data === undefined ? null : (
+                <span className="production-flow-completed-total">
+                  {t.flow.currentLot.completedTotal(completedLots.data.page.total)}
+                </span>
+              )}
+            </div>
+            {completedLots.data === undefined ? null : completedLots.data.items.length === 0 ? (
+              <p className="field-note">{t.flow.currentLot.completedEmpty}</p>
+            ) : (
+              <ol className="production-flow-completed-lots">
+                {[...completedLots.data.items]
+                  .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))
+                  .map((completedLot) => (
+                    <li key={completedLot.lotId}>
+                      <span className="production-flow-completed-lot-no">{completedLot.lotNo}</span>
+                      <span className="production-flow-completed-at">
+                        {formatPlantDateTime(completedLot.completedAt) ?? ''}
+                      </span>
+                    </li>
+                  ))}
+              </ol>
+            )}
+            {completedBoundary.totalPages > 1 && (
+              <nav
+                className="production-flow-completed-pages"
+                aria-label={t.flow.currentLot.pageNav}
+              >
+                <p className="field-note">
+                  {t.flow.currentLot.pagePosition(
+                    completedBoundary.page,
+                    completedBoundary.totalPages,
+                  )}
+                </p>
+                <span className="production-flow-completed-page-buttons">
+                  <Button
+                    variant="outlined"
+                    disabled={!completedBoundary.canPageUp}
+                    onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
+                  >
+                    {t.flow.currentLot.prev}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    disabled={!completedBoundary.canPageDown}
+                    onClick={() => setCompletedPage(completedBoundary.page + 1)}
+                  >
+                    {t.flow.currentLot.next}
+                  </Button>
+                </span>
+              </nav>
+            )}
+          </section>
 
           {isTagTarget === true && (
             <div className="production-work-group">
@@ -2401,88 +2422,6 @@ export const ProductionFlowScreen = () => {
           </p>
         </Dialog>
       )}
-
-      <Dialog
-        open={isCompletedOpen}
-        onClose={() => setIsCompletedOpen(false)}
-        className="production-flow-completed-dialog"
-        /* 제목 줄 오른쪽 끝에 전체 건수를 둔다(사용자 지시 2026-11-16). */
-        title={
-          <span className="production-flow-completed-title">
-            <span>{t.flow.currentLot.completedTitle}</span>
-            {completedLots.data === undefined ? null : (
-              <span className="production-flow-completed-total">
-                {t.flow.currentLot.completedTotal(completedLots.data.page.total)}
-              </span>
-            )}
-          </span>
-        }
-        /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
-        showCloseButton={false}
-        /*
-         * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
-         *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
-         *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 [닫기] 단추다.
-         */
-        closeOnBackdropClick={false}
-        footer={
-          <Button variant="outlined" onClick={() => setIsCompletedOpen(false)}>
-            {t.flow.close}
-          </Button>
-        }
-      >
-        {completedLots.data === undefined || completedLots.data.items.length === 0 ? (
-          <p>{t.flow.currentLot.completedEmpty}</p>
-        ) : (
-          <>
-            {/* 쪽을 넘겨도 번호가 이어진다(2쪽 첫 줄은 21.). */}
-            <ol
-              className="production-flow-completed-lots"
-              start={(completedBoundary.page - 1) * completedLots.data.page.size + 1}
-            >
-              {completedLots.data.items.map((completedLot, index) => (
-                <li key={completedLot.lotId}>
-                  <span className="production-flow-completed-no" aria-hidden="true">
-                    {`${String((completedBoundary.page - 1) * completedLots.data.page.size + index + 1)}.`}
-                  </span>
-                  {completedLot.lotNo}
-                </li>
-              ))}
-            </ol>
-            {/* 쪽 넘김은 한 쪽(5건)을 넘을 때만 선다. 쪽 위치는 왼쪽, [이전]·[다음]은 오른쪽(사용자 지시 2026-11-16). */}
-            {completedBoundary.totalPages > 1 && (
-              <nav
-                className="production-flow-completed-pages"
-                aria-label={t.flow.currentLot.pageNav}
-              >
-                <p className="field-note">
-                  {t.flow.currentLot.pagePosition(
-                    completedBoundary.page,
-                    completedBoundary.totalPages,
-                  )}
-                </p>
-                <span className="production-flow-completed-page-buttons">
-                  <Button
-                    variant="outlined"
-                    disabled={!completedBoundary.canPageUp}
-                    onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
-                  >
-                    {t.flow.currentLot.prev}
-                  </Button>
-
-                  <Button
-                    variant="outlined"
-                    disabled={!completedBoundary.canPageDown}
-                    onClick={() => setCompletedPage(completedBoundary.page + 1)}
-                  >
-                    {t.flow.currentLot.next}
-                  </Button>
-                </span>
-              </nav>
-            )}
-          </>
-        )}
-      </Dialog>
 
       <Dialog
         open={isTagReissueOpen}

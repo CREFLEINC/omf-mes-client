@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PopIdentityProvider } from '../../patterns/pop-identity';
 import {
   createStubFetch,
@@ -527,11 +528,10 @@ describe('ProductionFlowScreen', () => {
     await screen.findByLabelText(t.flow.quantity.actual);
     releaseDetail();
 
-    /* 서버 누계가 닿으면 LOT 실적이 그 값을 말하고, 실적 입력 칸은 닫힌다(라벨 스캔 단계). */
+    /* 서버 누계가 닿으면 실적 입력 칸은 닫힌다(라벨 스캔 단계). 현재 LOT 진행 줄은 두지 않는다(2026-11-16). */
     await waitFor(() => {
-      expect(screen.getByText(t.flow.work.lotProgressText('8', '12', 'EA'))).toBeInTheDocument();
+      expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     });
-    expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
   });
 
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
@@ -579,9 +579,7 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes, [appliedLot, appliedLotDetail]);
 
     /* 실적이 서버에 있으면 라벨 스캔 단계로 연다. 실적 입력 칸은 없다(다시 올릴 길이 없다). */
-    expect(
-      await screen.findByText(t.flow.work.lotProgressText('8', '12', 'EA')),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(t.flow.work.enteredGood('8', 'EA'))).toBeInTheDocument();
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
 
     const retryIssue = await screen.findByRole('button', { name: t.flow.output.retryIssue });
@@ -764,6 +762,7 @@ describe('ProductionFlowScreen', () => {
               sourceTypeCode: 'WORK_ORDER',
               sourceId: WORK_ORDER_ID,
               statusCode: 'NORMAL',
+              completedAt: '2026-11-16T05:29:13.000Z',
               workOrderSequenceNo: page,
               workOrderLotCount: 21,
             },
@@ -775,9 +774,12 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes, [completedRoute]);
 
-    /* 마감된 LOT 정보 줄 끝 [보기]가 창을 연다. */
-    await user.click(await screen.findByRole('button', { name: t.flow.work.view }));
+    /* 마감된 LOT 은 왼쪽 구획에 목록으로 늘 보인다(2026-11-16, 종전 [보기] 창). */
     expect(await screen.findByText('LOT-CLOSED-1')).toBeVisible();
+    /* 마감 일시를 함께 보인다(공장 시각). */
+    expect(
+      screen.getByText(formatPlantDateTime('2026-11-16T05:29:13.000Z') ?? ''),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeDisabled();
     const pageDown = screen.getByRole('button', { name: t.flow.currentLot.next });
     expect(pageDown).toBeEnabled();
@@ -786,7 +788,7 @@ describe('ProductionFlowScreen', () => {
     expect(await screen.findByText('LOT-CLOSED-2')).toBeVisible();
     expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.flow.currentLot.next })).toBeDisabled();
-    /* 첫 쪽은 정보 줄 건수와 창이 함께 읽는다(같은 조회). 넘긴 쪽은 서버에 묻는다. */
+    /* 넘긴 쪽은 서버에 묻는다. */
     expect([...new Set(requestedPages)]).toEqual([1, 2]);
   });
 
@@ -2990,7 +2992,8 @@ describe('ProductionFlowScreen 현재 LOT', () => {
     await waitFor(() => expect(scan).toBeEnabled());
     await user.type(scan, LOT_NO);
 
-    expect((await screen.findAllByText(NEXT_LOT_NO)).length).toBeGreaterThan(0);
+    /* 현재 LOT 번호 줄은 두지 않는다(2026-11-16) — 다음 LOT 의 실적 입력 칸이 다시 열리는 것으로 본다. */
+    expect(await screen.findByLabelText(t.flow.quantity.actual)).toBeInTheDocument();
     expect(screen.queryByText(NO_LOT_TEXT)).toBeNull();
     expect(currentOnly.every((value) => value === 'true')).toBe(true);
   });
@@ -3047,8 +3050,7 @@ describe('ProductionFlowScreen 현재 LOT', () => {
         },
       ],
     );
-    /* LOT 번호는 왼쪽 정보 영역에 한 번만 선다(C-21). */
-    expect(await screen.findByText(LOT_NO)).toBeInTheDocument();
+    expect(await screen.findByLabelText(t.flow.quantity.actual)).toBeInTheDocument();
 
     items = [lotRow(LOT_ID, LOT_NO), lotRow(NEXT_LOT_ID, NEXT_LOT_NO)];
     await queryClient.invalidateQueries({ queryKey: productionFlowKeys.currentLot(WORK_ORDER_ID) });
@@ -3168,11 +3170,14 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
     ).toBeInTheDocument();
   });
 
-  it('마감된 LOT이 0건이면 건수만 보이고 [보기]를 두지 않는다', async () => {
+  it('마감된 LOT이 0건이면 「총 0건」과 빈 목록 안내를 보인다', async () => {
     renderScreen([]);
 
-    expect(await screen.findByText(t.flow.work.completedCount(0))).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.flow.work.view })).not.toBeInTheDocument();
+    const completed = await screen.findByRole('region', { name: t.flow.work.completedLots });
+    expect(
+      await within(completed).findByText(t.flow.currentLot.completedTotal(0)),
+    ).toBeInTheDocument();
+    expect(within(completed).getByText(t.flow.currentLot.completedEmpty)).toBeInTheDocument();
   });
 
   it('남은 LOT이 없으면 하단 바 주 동작이 [작업지시 마감]이고 현재 LOT 구획에는 두지 않는다', async () => {
