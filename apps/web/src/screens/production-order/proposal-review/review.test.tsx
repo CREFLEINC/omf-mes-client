@@ -9,6 +9,7 @@ import { applyReceiptStorage, proposalErrors } from './model';
 const renderReview = (extra: Partial<React.ComponentProps<typeof ProposalReview>> = {}) =>
   renderWithProviders(
     <ProposalReview
+      manualLayout={false}
       initialProposals={previewProposals}
       resourceSource={previewResourceSource}
       onClose={() => {}}
@@ -20,6 +21,21 @@ const firstNo = previewProposals[0]!.number;
 const secondNo = previewProposals[1]!.number;
 
 describe('제안 검토 화면', () => {
+  it('기존 편성 구성에서 계획 확정 없이 4M과 최종 검토를 확인한다', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    renderReview({ manualLayout: true, onConfirm });
+    expect(screen.getByRole('tablist', { name: '자동 전개 검토 단계' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '주간 편성' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '계획 목록' }));
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    expect(screen.getByRole('region', { name: '작업지시 목록' })).toBeVisible();
+    expect(screen.getByRole('region', { name: '4M 배정 입력' })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: '확정 검토' }));
+    expect(screen.queryByRole('button', { name: '배정 저장' })).toBeNull();
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => localStorage.removeItem('omf-mes:proposal-review:layout'));
   it('생산품 입고 창고는 정보로 표시하고 내부 위치 선택은 숨긴다', async () => {
     const user = userEvent.setup();
@@ -84,6 +100,21 @@ describe('제안 검토 화면', () => {
       name: '기존 위치',
     };
     expect(applyReceiptStorage(existing).plans).toEqual(existing.plans);
+  });
+  it('같은 Routing을 쓰는 두 계획의 공정 선택을 구분한다', async () => {
+    const user = userEvent.setup();
+    const rows = structuredClone(previewProposals);
+    const first = rows[0]!.plans[0]!;
+    first.operations = [first.operations[0]!];
+    const second = structuredClone(first);
+    second.key = 'second-plan';
+    second.date = '2026-11-20';
+    rows[0]!.plans = [first, second];
+    renderReview({ initialProposals: rows, manualLayout: true });
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    const list = screen.getByRole('region', { name: '작업지시 목록' });
+    await user.click(within(list).getAllByRole('row').at(-1)!);
+    expect(screen.getByRole('region', { name: '4M 배정 입력' })).toHaveTextContent('2026-11-20');
   });
   it('상태 열은 ERP W/O 바로 다음이며 상세는 세 탭으로 확인한다', async () => {
     const user = userEvent.setup();
