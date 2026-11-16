@@ -50,7 +50,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       tagUnknown:
         'Không xác nhận được có cần thẻ nhận diện hay không. Vui lòng kiểm tra kết nối rồi mở lại màn hình',
       tag: 'Phải in đủ thẻ nhận diện mới in được nhãn LOT. Vui lòng báo quản trị viên',
-      qty: 'Vui lòng nhập số lượng đạt',
       defectType: 'Vui lòng chọn loại lỗi',
       defectQty: 'Vui lòng nhập số lượng lỗi',
       defectDuplicate: 'Cùng một loại lỗi nằm ở hai dòng. Vui lòng xóa một dòng',

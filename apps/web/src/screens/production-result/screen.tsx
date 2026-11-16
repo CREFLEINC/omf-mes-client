@@ -1411,7 +1411,8 @@ export const ProductionFlowScreen = () => {
     if (gate !== null) return gate;
     /* 불량만 등록할 때 [불량 등록]을 누르라는 문장은 두지 않는다 — 버튼이 불량 목록 아래에 바로 선다(사용자 지시 2026-11-16). */
     if (isDefectOnly) return defectTodo ?? null;
-    if (parsedQty === null || parsedQty <= 0) return next.qty;
+    /* 양품이 비거나 0 이면 [LOT 라벨 출력]만 잠근다 — 「양품을 입력해 주세요」는 두지 않는다(사용자 지시 2026-11-16). */
+    if (parsedQty === null || parsedQty <= 0) return null;
     if (defectTodo !== undefined) return defectTodo;
     if (lotPrinters.isPending) return null;
     /* 프린터가 없으면 머리줄 칩이 「프린터 없음」으로 말한다 — 하단에 같은 말을 또 두지 않는다(사용자 지시 2026-11-16). */
