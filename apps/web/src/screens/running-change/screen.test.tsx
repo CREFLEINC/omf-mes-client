@@ -329,6 +329,39 @@ describe('러닝체인지 화면 — 읽기', () => {
     expect(screen.getByText(t.current.noWorkOrder)).toBeInTheDocument();
   });
 
+  /* 같은 W/O 로 생산 작업에 돌아가는 길(P-02-04 개선 명세 ⑥). W/O 없이 들어왔으면 두지 않는다. */
+  it('[생산 작업으로]를 누르면 같은 W/O 의 생산 작업으로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(
+      <PopIdentityProvider value={IDENTIFIED}>
+        <RunningChangeScreen />
+      </PopIdentityProvider>,
+      { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE, dataRouter: true },
+    );
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: messages.productionResult.flow.actions.backToWork,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/production-result'));
+    expect(router?.state.location.search).toBe(`?workOrderId=${String(WORK_ORDER_ID)}`);
+  });
+
+  it('작업지시 없이 들어오면 [생산 작업으로]를 두지 않는다', async () => {
+    renderWithProviders(
+      <PopIdentityProvider value={IDENTIFIED}>
+        <RunningChangeScreen />
+      </PopIdentityProvider>,
+      { fetch: createStubFetch(routes({})), route: '/pop/running-change' },
+    );
+
+    expect(await screen.findByText(t.header.workOrderMissing)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
+    ).not.toBeInTheDocument();
+  });
+
   /* 세션은 「어느 구간에 매다는가」이지 「열 수 있는가」가 아니다(§6). */
   it('세션이 없어도 화면은 서고 그 사실을 말한다', async () => {
     renderScreen({ noSession: true });
