@@ -1,3 +1,4 @@
+import { ReleaseReview } from './release-review';
 import { ReleaseResult } from './release-result';
 import type { ReleaseAttempt } from '../release-runner';
 import { PlanAddDialog } from './plan-add-dialog';
@@ -325,6 +326,7 @@ export const ProcessWorkspace = ({
 
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(null);
+  const [completedView, setCompletedView] = useState<ProcessStepKey>('release');
   const stepChangeRef = useRef(onStepChange);
   stepChangeRef.current = onStepChange;
   useEffect(() => {
@@ -468,7 +470,7 @@ export const ProcessWorkspace = ({
           : key !== 'release' && judgments[key].complete && canEnter(key, judgments)
             ? 'complete'
             : 'pending',
-    canReturn: step !== 'done',
+    canReturn: true,
   }));
   const index = step === 'done' ? STEP_KEYS.length : STEP_KEYS.indexOf(step);
   const nextKey = step === 'done' ? undefined : STEP_KEYS[index + 1];
@@ -540,6 +542,10 @@ export const ProcessWorkspace = ({
         ? assignDirty
         : key === 'release' && lotDirty;
   const goTo = (key: string) => {
+    if (step === 'done') {
+      setCompletedView(key as ProcessStepKey);
+      return;
+    }
     if (key !== step && unsavedIn(step)) {
       setPendingStep(key as ProcessStepKey);
       return;
@@ -556,7 +562,31 @@ export const ProcessWorkspace = ({
   };
 
   const body = (() => {
-    switch (step) {
+    if (step === 'done' && (completedView === 'plan' || completedView === 'assign')) {
+      return (
+        <ReleaseReview
+          view={completedView}
+          plans={planFacts.map((entry) => ({
+            ...entry,
+            bomLabel: (() => {
+              const bom = bomItems.find((value) => value.bomId === entry.bomId);
+              return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${entry.bomId}`;
+            })(),
+            routingLabel: (() => {
+              const routing = routingItems.find((value) => value.routingId === entry.routingId);
+              return routing
+                ? `${routing.routingCode} (개정 ${routing.routingVersion})`
+                : `Routing ID ${entry.routingId}`;
+            })(),
+          }))}
+          lines={toReleaseLines(allWorkOrders.data ?? [], {}, defaultLots)}
+          plantId={order.plantId}
+          lineNameOf={(id) => (id === null ? '미지정' : (lineName(id) ?? `ID ${id}`))}
+          uomLabelOf={uomLabelOf}
+        />
+      );
+    }
+    switch (step === 'done' && completedView === 'master' ? 'master' : step) {
       case 'master':
         return (
           <MasterStep
@@ -818,7 +848,13 @@ export const ProcessWorkspace = ({
     <ProcessPage
       backLabel={tp.back}
       onBack={() => void navigate(worklistPath(lastSearch))}
-      title={step === 'done' ? '배포 결과' : tp.title}
+      title={
+        step === 'done'
+          ? completedView === 'release'
+            ? '배포 결과'
+            : stepName(completedView)
+          : tp.title
+      }
       badges={
         <>
           <ProcessStateChip state={derived.state} />
@@ -855,31 +891,29 @@ export const ProcessWorkspace = ({
         ) : undefined
       }
       stepNavigation={
-        step === 'done' ? undefined : (
-          <Tabs
-            className="erp-wo-stage-tabs"
-            aria-label={messages.screenPatterns.processPage.steps}
-            value={step}
-            onChange={(key) => goTo(key as ProcessStepKey)}
-            items={steps.map((entry, index) => ({
-              value: entry.key,
-              label: (
-                <>
-                  <span className="erp-wo-stage-index" aria-hidden="true">
-                    {index + 1}.
-                  </span>
-                  {entry.label}
-                </>
-              ),
-              content: null,
-              disabled: !canEnter(entry.key as ProcessStepKey, judgments),
-            }))}
-          />
-        )
+        <Tabs
+          className="erp-wo-stage-tabs"
+          aria-label={messages.screenPatterns.processPage.steps}
+          value={step === 'done' ? completedView : step}
+          onChange={(key) => goTo(key as ProcessStepKey)}
+          items={steps.map((entry, index) => ({
+            value: entry.key,
+            label: (
+              <>
+                <span className="erp-wo-stage-index" aria-hidden="true">
+                  {index + 1}.
+                </span>
+                {entry.label}
+              </>
+            ),
+            content: null,
+            disabled: step !== 'done' && !canEnter(entry.key as ProcessStepKey, judgments),
+          }))}
+        />
       }
       steps={steps}
       onSelectStep={goTo}
-      bodyScrollKey={step ?? undefined}
+      bodyScrollKey={step === 'done' ? completedView : (step ?? undefined)}
       actionBar={
         <ActionBar
           remaining={

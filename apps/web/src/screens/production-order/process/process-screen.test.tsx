@@ -763,6 +763,16 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(await screen.findByRole('heading', { name: '배포 완료 내역' })).toBeVisible();
     expect(screen.getByText('배포된 작업지시')).toBeVisible();
     expect(screen.queryByRole('button', { name: '미배포 작업지시 다시 배포' })).toBeNull();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /BOM·Routing/ }));
+    expect(await screen.findByRole('region', { name: tp.master.heading })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: /생산계획/ }));
+    expect(await screen.findByRole('heading', { name: '생산계획', level: 2 })).toBeVisible();
+    expect(screen.queryByRole('button', { name: tp.plan.confirm })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: /4M 배정/ }));
+    expect(await screen.findByRole('heading', { name: '4M 배정', level: 2 })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: /배포 확인/ }));
+    expect(await screen.findByRole('heading', { name: '배포 완료 내역', level: 2 })).toBeVisible();
     expect(server.writes).toEqual([]);
   });
 
