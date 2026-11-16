@@ -1452,12 +1452,14 @@ export const ProductionFlowScreen = () => {
         case 'issuing':
           return next.issuing;
         case 'printing':
-          return next.printing;
+          /* 인쇄 중 문장은 두지 않는다(사용자 지시 2026-11-16) — 인쇄는 잠깐이고 끝나면 결과 줄이 말한다. */
+          return null;
         case 'scanReady':
           /* 스캔 안내는 결과 줄(「LOT 라벨을 출력했습니다. 라벨을 붙인 뒤 스캔해 주세요.」)이 말한다. */
           return gateText(gates.complete, t.flow.gate.complete);
         case 'legacyMismatch':
-          return next.legacyMismatch;
+          /* 결과 줄이 「실적 없이 만든 이전 라벨 이력이 있습니다.」라고 말한다 — 하단에 또 두지 않는다(사용자 지시 2026-11-16). */
+          return null;
         case 'completing':
           return next.completing;
         case 'completed':

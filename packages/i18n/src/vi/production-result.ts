@@ -44,9 +44,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       queued: 'Đã lưu kết quả trên máy trạm. Khi có kết nối sẽ gửi và phát hành nhãn LOT',
       saving: 'Đang lưu kết quả',
       issuing: 'Đang phát hành nhãn LOT',
-      printing: 'Đang in nhãn LOT',
-      legacyMismatch:
-        'Có lịch sử nhãn cũ tạo không kèm kết quả nên không đóng được LOT. Vui lòng báo quản trị viên',
       completing: 'Đang đóng LOT',
       completed: 'Đang tải LOT kế tiếp',
       shell: 'Không xác nhận được đường in của chương trình POP. Vui lòng báo quản trị viên',

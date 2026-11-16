@@ -623,9 +623,9 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes, [legacyIssue]);
 
     expect(await screen.findByText(t.flow.output.legacyMismatch)).toBeVisible();
-    /* 주 동작은 잠기고 하단 바 「남은 일」이 사유를 말한다(C-4). */
+    /* 주 동작은 잠긴다. 사유는 결과 줄 하나가 말하고 하단에 되풀이하지 않는다(사용자 지시 2026-11-16). */
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
-    expect(screen.getByText(t.flow.next.legacyMismatch)).toBeVisible();
+    expect(screen.queryByText(/관리자에게 알려 주세요/u)).not.toBeInTheDocument();
     const scan = screen.getByLabelText(t.flow.scan.label);
     expect(scan).toBeDisabled();
     await user.type(scan, LOT_NO);

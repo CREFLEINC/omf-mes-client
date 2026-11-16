@@ -66,9 +66,6 @@ export const productionResult = {
       queued: '실적을 단말에 저장했습니다. 연결되면 보내고 LOT 라벨을 발행합니다',
       saving: '실적을 저장하고 있습니다',
       issuing: 'LOT 라벨을 발행하고 있습니다',
-      printing: 'LOT 라벨을 인쇄하고 있습니다',
-      legacyMismatch:
-        '실적 없이 만든 이전 라벨 이력이 있어 LOT을 마감할 수 없습니다. 관리자에게 알려 주세요',
       completing: 'LOT을 마감하고 있습니다',
       completed: '다음 LOT을 불러오고 있습니다',
       shell: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다. 관리자에게 알려 주세요',
