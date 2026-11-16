@@ -2402,34 +2402,29 @@ export const ProductionFlowScreen = () => {
                 </li>
               ))}
             </ol>
-            {/* 한 쪽에 다 들어가면 [이전]·[다음]을 두지 않는다(사용자 지시 2026-11-16). */}
-            {completedBoundary.totalPages > 1 && (
-              <nav
-                className="production-flow-completed-pages"
-                aria-label={t.flow.currentLot.pageNav}
+            {/* 쪽 넘김은 늘 선다 — 한 쪽이면 [이전]·[다음]이 잠긴다(사용자 지시 2026-11-16). */}
+            <nav className="production-flow-completed-pages" aria-label={t.flow.currentLot.pageNav}>
+              <Button
+                variant="outlined"
+                disabled={!completedBoundary.canPageUp}
+                onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
               >
-                <Button
-                  variant="outlined"
-                  disabled={!completedBoundary.canPageUp}
-                  onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
-                >
-                  {t.flow.currentLot.prev}
-                </Button>
-                <p className="field-note">
-                  {t.flow.currentLot.pagePosition(
-                    completedBoundary.page,
-                    completedBoundary.totalPages,
-                  )}
-                </p>
-                <Button
-                  variant="outlined"
-                  disabled={!completedBoundary.canPageDown}
-                  onClick={() => setCompletedPage(completedBoundary.page + 1)}
-                >
-                  {t.flow.currentLot.next}
-                </Button>
-              </nav>
-            )}
+                {t.flow.currentLot.prev}
+              </Button>
+              <p className="field-note">
+                {t.flow.currentLot.pagePosition(
+                  completedBoundary.page,
+                  completedBoundary.totalPages,
+                )}
+              </p>
+              <Button
+                variant="outlined"
+                disabled={!completedBoundary.canPageDown}
+                onClick={() => setCompletedPage(completedBoundary.page + 1)}
+              >
+                {t.flow.currentLot.next}
+              </Button>
+            </nav>
           </>
         )}
       </Dialog>

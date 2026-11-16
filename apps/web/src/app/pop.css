@@ -10000,6 +10000,15 @@
   color: var(--on-surface-variant);
 }
 
+.pop-ui .production-flow-completed-dialog .production-flow-completed-pages {
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.pop-ui .production-flow-completed-dialog .production-flow-completed-pages > button {
+  min-inline-size: 6rem;
+}
+
 .pop-ui .production-flow-completed-dialog footer {
   border-block-start: none;
 }
