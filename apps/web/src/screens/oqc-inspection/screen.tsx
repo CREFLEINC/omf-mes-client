@@ -184,6 +184,8 @@ export const OqcInspectionScreen = () => {
   const [isJustSaved, setIsJustSaved] = useState(false);
   /** 방금 끝난 저장이 임시 저장이었는가 — 알림 문구만 가른다(#284). */
   const [justSavedDraft, setJustSavedDraft] = useState(false);
+  /** 임시 저장 시도의 「검사한 시각」 — 성공하거나 의뢰가 바뀌면 비운다(#284). */
+  const draftAttemptAt = useRef<string | null>(null);
   /** 마지막으로 보낸 저장의 종류 — 성공 콜백이 읽는다. */
   const savingKind = useRef<'DRAFT' | 'CONFIRMED'>('CONFIRMED');
   /** 저장하지 않은 손댐(#284) — 작성중 회차 · 검사 항목은 값 비교로 알 수 없어 손댄 사실로 센다. */
@@ -270,6 +272,7 @@ export const OqcInspectionScreen = () => {
     if (writeTargetRef.current === null || writeTargetRef.current !== writeTarget) return;
 
     writeTargetRef.current = null;
+    draftAttemptAt.current = null;
     setJustSavedDraft(savingKind.current === DRAFT);
     setIsJustSaved(true);
     setEdited(false);
@@ -338,6 +341,7 @@ export const OqcInspectionScreen = () => {
    */
   useEffect(() => {
     writeTargetRef.current = null;
+    draftAttemptAt.current = null;
     setIsJustSaved(false);
     setEdited(false);
   }, [selectedId]);
@@ -519,6 +523,11 @@ export const OqcInspectionScreen = () => {
   /* 작성중 회차를 이어 쓰는 중(#284) — 열린 회차처럼 판정을 채우고 저장하면 그 회차를 고친다. */
   const editingDraft = !isReinspectingNow && round?.statusCode === DRAFT;
   const isEditable = isOpenRound || editingDraft;
+  /*
+   * 작성중 회차는 시리얼을 받지 않는다(서버가 확정 «생성» 때만 받는다 · P-101) — 시리얼 구획이 서지 않으므로, 스캔으로 열며
+   * 들어온 줄도 막음 · 저장 · 떠날 때 묻기에서 뺀다(보이지 않는 줄이 단추를 막거나 조용히 빠지지 않게).
+   */
+  const activeSerialRows = editingDraft ? [] : serialRows;
   const expectedJudgment = isEditable ? expectedJudgmentOf(draft, acceptanceNumber) : null;
   const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
   /*
@@ -626,7 +635,7 @@ export const OqcInspectionScreen = () => {
         judgment !== '' ||
         changeReason.trim() !== '' ||
         /* 불합격 사유는 불합격 판정과 함께만 실린다 — 판정이 있으면 위에서 이미 묻는다(판정을 지워 남은 글은 셈하지 않는다). */
-        serialRows.length > 0));
+        activeSerialRows.length > 0));
 
   /*
    * 품목·대상 LOT 은 번호마다 하나씩 이름으로 푼다(omf-all-around#40 · #136) — 목록에 선 줄과 고른 의뢰를 함께 넘긴다.
@@ -731,7 +740,7 @@ export const OqcInspectionScreen = () => {
         ? { remarks: rejectionReason.trim() }
         : {}),
       /* 시리얼 판정은 서버가 확정 때만 받는다(P-101) — 임시 저장은 시리얼이 있으면 화면이 막는다. */
-      ...(isConfirm ? { serials: toSerialInputs(serialRows) } : {}),
+      ...(isConfirm ? { serials: toSerialInputs(activeSerialRows) } : {}),
       statusCode,
       measurements: toMeasurementInputs(itemRows, itemDrafts, inspectedAt),
       /* 작성중 회차를 이어 쓰면 그 회차를 고친다(#284). 판 번호는 화면이 본 회차의 것이다. */
@@ -803,6 +812,7 @@ export const OqcInspectionScreen = () => {
             judgmentOptions={judgmentOptions}
             judgment={judgment}
             onJudgmentChange={(code) => {
+              setEdited(true);
               autoFilledJudgment.current = null;
               setJudgment(code);
             }}
@@ -827,20 +837,33 @@ export const OqcInspectionScreen = () => {
                 />
               ) : undefined
             }
-            serialBlockedReason={serialBlockedReason(serialRows, inspectedQty, draft.rejected)}
+            serialBlockedReason={serialBlockedReason(
+              activeSerialRows,
+              inspectedQty,
+              draft.rejected,
+            )}
             isInputLocked={isInputLocked}
             changeReason={changeReason}
-            onChangeReasonChange={setChangeReason}
+            onChangeReasonChange={(reason) => {
+              setEdited(true);
+              setChangeReason(reason);
+            }}
             rejectionReason={rejectionReason}
-            onRejectionReasonChange={setRejectionReason}
+            onRejectionReasonChange={(reason) => {
+              setEdited(true);
+              setRejectionReason(reason);
+            }}
             onSave={(inspectedAt) => {
               saveResult(selectedId, detail.data.uomId, inspectedAt, 'CONFIRMED');
             }}
             editsDraft
             onSaveDraft={() => {
-              saveResult(selectedId, detail.data.uomId, new Date().toISOString(), DRAFT);
+              /* 같은 시도의 재시도는 같은 시각 — 보낼 값이 같아야 같은 멱등 키가 나간다(확정의 `openedAt` 과 같다). */
+              const at = draftAttemptAt.current ?? new Date().toISOString();
+              draftAttemptAt.current = at;
+              saveResult(selectedId, detail.data.uomId, at, DRAFT);
             }}
-            draftBlockedReason={serialRows.length > 0 ? t.result.draftBlockedBySerials : null}
+            draftBlockedReason={activeSerialRows.length > 0 ? t.result.draftBlockedBySerials : null}
             itemsBlockedReason={
               planVersionId !== null && itemSpecs.isPending
                 ? t.result.loading

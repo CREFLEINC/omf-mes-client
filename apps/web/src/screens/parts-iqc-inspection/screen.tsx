@@ -9,7 +9,7 @@ import {
   useToast,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import {
@@ -187,6 +187,10 @@ export const PartsIqcInspectionScreen = ({ plants }: PartsIqcInspectionScreenPro
     lotId: number;
     key: number;
   } | null>(null);
+  /* 스캔한 의뢰가 아닌 곳에 서면(다른 의뢰 · 상세 닫기 · 떠날지 묻는 창에서 「계속 작성」) 스캔 열기를 거둔다 — 남겨 두면 나중에 그 의뢰를 다시 고를 때 결과 추가 창이 또 뜬다. */
+  useEffect(() => {
+    if (scanOpen !== null && scanOpen.requestId !== selectedId) setScanOpen(null);
+  }, [scanOpen, selectedId]);
   const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
     if (inspectionRequestId !== selectedId) select(inspectionRequestId);
     else if (!split.collapsed) split.toggleCollapsed();

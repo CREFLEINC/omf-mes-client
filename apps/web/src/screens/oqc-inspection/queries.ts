@@ -351,6 +351,11 @@ export const useSaveInspectionResult = (
    * 방금 내가 쓴 판으로 이어 간다(그러지 않으면 내 고침에 걸려 409 가 난다). 키는 «어느 판에서 고쳤나»다.
    */
   const lastPut = useRef<{ id: number; from: number; to: number } | null>(null);
+  /**
+   * 쓰기 하나의 `PUT` 멱등 키 — 같은 쓰기의 재시도(훅이 같은 키를 다시 준다)는 같은 `PUT` 키로 나가, 응답만 잃은 고침이
+   * 옛 판 번호로 다시 나가 409 가 나거나 이미 확정된 회차를 다시 고치려 들지 않는다(서버가 같은 키를 같은 응답으로 돌려준다).
+   */
+  const putKeys = useRef(new Map<string, string>());
 
   /** 작성중 회차를 고치고, 확정이면 이어서 확정한다(#284 · 부품 IQC 와 같은 2단). */
   const writeDraftRound = async (
@@ -365,10 +370,12 @@ export const useSaveInspectionResult = (
         ? known.to
         : draftRound.versionNo;
     const body = toResultCreateBody(variables);
+    const putKey = putKeys.current.get(headers['Idempotency-Key']) ?? createIdempotencyKey();
+    putKeys.current.set(headers['Idempotency-Key'], putKey);
     const put = await client.PUT('/quality/inspection-results/{inspectionResultId}', {
       params: {
         path: { inspectionResultId: id },
-        header: { 'Idempotency-Key': createIdempotencyKey(), 'If-Match': String(ifMatch) },
+        header: { 'Idempotency-Key': putKey, 'If-Match': String(ifMatch) },
       },
       body: {
         inspectedQty: body.inspectedQty,
