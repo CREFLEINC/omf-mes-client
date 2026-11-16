@@ -706,6 +706,19 @@ export const ProcessWorkspace = ({
       case 'release':
         return (
           <ReleaseStep
+            reviewPlans={planFacts.map((plan) => ({
+              ...plan,
+              bomLabel: (() => {
+                const bom = bomItems.find((value) => value.bomId === plan.bomId);
+                return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${plan.bomId}`;
+              })(),
+              routingLabel: (() => {
+                const routing = routingItems.find((value) => value.routingId === plan.routingId);
+                return routing
+                  ? `${routing.routingCode} (개정 ${routing.routingVersion})`
+                  : `Routing ID ${plan.routingId}`;
+              })(),
+            }))}
             plantId={order.plantId ?? undefined}
             lines={releaseLines}
             orderNo={order.productionOrderNo}

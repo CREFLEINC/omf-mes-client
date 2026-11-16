@@ -1,0 +1,95 @@
+.erp-wo-final-review {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+  font: var(--type-body-sm);
+}
+.erp-wo-final-plan {
+  padding: var(--space-4);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+.erp-wo-final-plan > section + section {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-final-plan h3 {
+  font: var(--type-title-sm);
+  margin: 0 0 var(--space-4);
+}
+.erp-wo-final-plan h4,
+.erp-wo-final-plan h5 {
+  font: var(--type-body-sm);
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+}
+.erp-wo-final-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+.erp-wo-final-facts > div {
+  min-width: 0;
+}
+.erp-wo-final-facts dt {
+  font: var(--type-label-sm);
+  color: var(--on-surface-variant);
+}
+.erp-wo-final-facts dd {
+  font: var(--type-body-sm);
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.erp-wo-final-operation + .erp-wo-final-operation {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+.erp-wo-final-table {
+  font: var(--type-body-sm);
+  border-collapse: collapse;
+}
+.erp-wo-final-table th,
+.erp-wo-final-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+  text-align: left;
+  vertical-align: middle;
+}
+.erp-wo-final-table thead th {
+  font: var(--type-label-sm);
+  background: var(--surface-container);
+  white-space: nowrap;
+}
+@media (max-width: 1000px) {
+  .erp-wo-final-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .erp-wo-final-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.release-final-preview-frame {
+  height: 100dvh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: var(--space-5);
+  font: var(--type-body-sm);
+  background: var(--surface);
+  color: var(--on-surface);
+}
+.release-final-preview-frame h1 {
+  font: var(--type-title-lg);
+}
+
+.erp-wo-final-revision {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

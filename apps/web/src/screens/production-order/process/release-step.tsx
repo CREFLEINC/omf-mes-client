@@ -1,3 +1,4 @@
+import { ReleaseReview, type ReleaseReviewPlan } from './release-review';
 import { AdjustableLayout } from './adjustable-layout';
 import { AdjustableNativeTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
@@ -223,6 +224,7 @@ export const toReleaseLines = (
 
 export interface ReleaseStepProps {
   plantId?: number;
+  reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
   orderNo?: string;
   itemLabel?: string;
@@ -241,6 +243,7 @@ export interface ReleaseStepProps {
  */
 export const ReleaseStep = ({
   plantId,
+  reviewPlans,
   lines,
   orderNo,
   itemLabel,
@@ -312,6 +315,15 @@ export const ReleaseStep = ({
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
       <p className="erp-wo-release-scope">{t.scopeHelp}</p>
+      {reviewPlans && (
+        <ReleaseReview
+          plans={reviewPlans}
+          lines={lines}
+          plantId={plantId ?? null}
+          lineNameOf={lineNameOf}
+          uomLabelOf={uomLabelOf}
+        />
+      )}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:release-layout"
         label="배포 확인"

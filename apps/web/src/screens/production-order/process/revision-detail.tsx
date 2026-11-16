@@ -1,8 +1,8 @@
 import { Link } from 'react-router';
 import { createPortal } from 'react-dom';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertBanner, Button, Dialog, SkeletonText } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, IconButton, SkeletonText } from '@crefle/web-ui';
 import { useApiClient } from '../../../patterns/api-context';
 import { runRequest } from '../../../patterns/request';
 import { useProductionOrderItemNames } from '../item-lookups';
@@ -508,27 +508,44 @@ export const RevisionDetailButton = ({
   value,
   label,
   itemId,
+  iconOnly = false,
+  content,
 }: {
   kind: 'BOM' | 'Routing';
   value: string;
   label?: string;
   itemId?: number;
+  iconOnly?: boolean;
+  content?: ReactNode;
 }) => {
   const [open, setOpen] = useState(false);
   const id = Number(value);
   return (
     <>
-      <Button
-        size="sm"
-        variant="text"
-        disabled={!Number.isSafeInteger(id) || id <= 0}
-        className="erp-wo-revision-detail-trigger"
-        aria-label={`${kind} 상세 보기`}
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-      >
-        {kind} 상세 보기
-      </Button>
+      {iconOnly ? (
+        <IconButton
+          icon="more_horiz"
+          title={`${kind} 상세 보기`}
+          size="sm"
+          variant="standard"
+          aria-label={`${kind} 상세 보기`}
+          aria-haspopup="dialog"
+          disabled={content === undefined && (!Number.isSafeInteger(id) || id <= 0)}
+          onClick={() => setOpen(true)}
+        />
+      ) : (
+        <Button
+          size="sm"
+          variant="text"
+          disabled={!Number.isSafeInteger(id) || id <= 0}
+          className="erp-wo-revision-detail-trigger"
+          aria-label={`${kind} 상세 보기`}
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+        >
+          {kind} 상세 보기
+        </Button>
+      )}
       {open &&
         createPortal(
           <Dialog
@@ -556,7 +573,12 @@ export const RevisionDetailButton = ({
             }
           >
             <div className="erp-wo-revision-detail">
-              {kind === 'BOM' ? <BomContents id={id} /> : <RoutingContents id={id} label={label} />}
+              {content ??
+                (kind === 'BOM' ? (
+                  <BomContents id={id} />
+                ) : (
+                  <RoutingContents id={id} label={label} />
+                ))}
             </div>
           </Dialog>,
           document.body,
