@@ -767,10 +767,15 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await user.click(screen.getByRole('tab', { name: /BOM·Routing/ }));
     expect(await screen.findByRole('region', { name: tp.master.heading })).toBeVisible();
     await user.click(screen.getByRole('tab', { name: /생산계획/ }));
-    expect(await screen.findByRole('heading', { name: '생산계획', level: 2 })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: tp.plan.heading, level: 2 })).toBeVisible();
     expect(screen.queryByRole('button', { name: tp.plan.confirm })).toBeNull();
+    expect(screen.getByRole('button', { name: '계획 추가' })).toBeDisabled();
     await user.click(screen.getByRole('tab', { name: /4M 배정/ }));
-    expect(await screen.findByRole('heading', { name: '4M 배정', level: 2 })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: tp.assign.editorHeading, level: 2 }),
+    ).toBeVisible();
+    expect(await screen.findByRole('button', { name: tp.assign.actions.save })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: /4M 배정/ })).toHaveAttribute('aria-selected', 'true');
     await user.click(screen.getByRole('tab', { name: /배포 확인/ }));
     expect(await screen.findByRole('heading', { name: '배포 완료 내역', level: 2 })).toBeVisible();
     expect(server.writes).toEqual([]);

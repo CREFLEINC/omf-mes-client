@@ -1,4 +1,3 @@
-import { ReleaseReview } from './release-review';
 import { ReleaseResult } from './release-result';
 import type { ReleaseAttempt } from '../release-runner';
 import { PlanAddDialog } from './plan-add-dialog';
@@ -561,32 +560,45 @@ export const ProcessWorkspace = ({
     else if (key === 'release') setLotSizeTexts({});
   };
 
+  const releaseInformation = (readOnly: boolean) => (
+    <ReleaseStep
+      readOnly={readOnly}
+      reviewPlans={planFacts.map((plan) => ({
+        ...plan,
+        bomLabel: (() => {
+          const bom = bomItems.find((value) => value.bomId === plan.bomId);
+          return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${plan.bomId}`;
+        })(),
+        routingLabel: (() => {
+          const routing = routingItems.find((value) => value.routingId === plan.routingId);
+          return routing
+            ? `${routing.routingCode} (개정 ${routing.routingVersion})`
+            : `Routing ID ${plan.routingId}`;
+        })(),
+      }))}
+      plantId={order.plantId ?? undefined}
+      lines={readOnly ? toReleaseLines(allWorkOrders.data ?? [], {}, defaultLots) : releaseLines}
+      orderNo={order.productionOrderNo}
+      itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+      planDateOf={(planId) =>
+        planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
+      }
+      lineNameOf={(lineId) => {
+        const line = planLines.find((entry) => entry.id === lineId);
+        return line === undefined ? tp.plan.workspace.unassigned : named(line.name, line.code);
+      }}
+      uomLabelOf={uomLabelOf}
+      failures={readOnly ? [] : failures}
+      issueDates={readOnly ? undefined : issueDates}
+      revealErrors={false}
+      onLotSizeChange={(workOrderId, value) =>
+        setLotSizeTexts((current) => ({ ...current, [workOrderId]: value }))
+      }
+    />
+  );
+
   const body = (() => {
-    if (step === 'done' && (completedView === 'plan' || completedView === 'assign')) {
-      return (
-        <ReleaseReview
-          view={completedView}
-          plans={planFacts.map((entry) => ({
-            ...entry,
-            bomLabel: (() => {
-              const bom = bomItems.find((value) => value.bomId === entry.bomId);
-              return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${entry.bomId}`;
-            })(),
-            routingLabel: (() => {
-              const routing = routingItems.find((value) => value.routingId === entry.routingId);
-              return routing
-                ? `${routing.routingCode} (개정 ${routing.routingVersion})`
-                : `Routing ID ${entry.routingId}`;
-            })(),
-          }))}
-          lines={toReleaseLines(allWorkOrders.data ?? [], {}, defaultLots)}
-          plantId={order.plantId}
-          lineNameOf={(id) => (id === null ? '미지정' : (lineName(id) ?? `ID ${id}`))}
-          uomLabelOf={uomLabelOf}
-        />
-      );
-    }
-    switch (step === 'done' && completedView === 'master' ? 'master' : step) {
+    switch (step === 'done' && completedView !== 'release' ? completedView : step) {
       case 'master':
         return (
           <MasterStep
@@ -606,7 +618,7 @@ export const ProcessWorkspace = ({
             }}
             bomId={bomId}
             routingId={routingId}
-            locked={fixedByPlan}
+            locked={step === 'done' || fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
             onRoutingChange={setRoutingChoice}
           />
@@ -637,7 +649,7 @@ export const ProcessWorkspace = ({
               plantId={order.plantId}
               lines={planLines}
               statusNameOf={codeNames.productionPlanStatus}
-              disabled={planBusy || !master.complete}
+              disabled={step === 'done' || planBusy || !master.complete}
               failures={planFailures}
               addDisabled={
                 planQuantities(order.orderQty, order.confirmedPlanQty, editor.rows).remaining <= 0
@@ -684,11 +696,13 @@ export const ProcessWorkspace = ({
       case 'assign':
         return (
           <AssignStep
-            erpStorage={order}
+            readOnly={step === 'done'}
+            statusNameOf={codeNames.workOrderStatus}
+            erpStorage={step === 'done' ? undefined : order}
             itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             actionTargetId={assignActionTargetId}
-            workOrders={unreleased.data}
-            blockedIds={blockedIds}
+            workOrders={step === 'done' ? allWorkOrders.data : unreleased.data}
+            blockedIds={step === 'done' ? new Set<number>() : blockedIds}
             plantId={order.plantId}
             planDateOf={(planId) =>
               planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
@@ -706,63 +720,30 @@ export const ProcessWorkspace = ({
           />
         );
       case 'release':
-        return (
-          <ReleaseStep
-            reviewPlans={planFacts.map((plan) => ({
-              ...plan,
-              bomLabel: (() => {
-                const bom = bomItems.find((value) => value.bomId === plan.bomId);
-                return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${plan.bomId}`;
-              })(),
-              routingLabel: (() => {
-                const routing = routingItems.find((value) => value.routingId === plan.routingId);
-                return routing
-                  ? `${routing.routingCode} (개정 ${routing.routingVersion})`
-                  : `Routing ID ${plan.routingId}`;
-              })(),
-            }))}
-            plantId={order.plantId ?? undefined}
-            lines={releaseLines}
-            orderNo={order.productionOrderNo}
-            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
-            planDateOf={(planId) =>
-              planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
-            }
-            lineNameOf={(lineId) => {
-              const line = planLines.find((entry) => entry.id === lineId);
-              return line === undefined
-                ? tp.plan.workspace.unassigned
-                : named(line.name, line.code);
-            }}
-            uomLabelOf={uomLabelOf}
-            failures={failures}
-            issueDates={issueDates}
-            revealErrors={false}
-            onLotSizeChange={(workOrderId, value) =>
-              setLotSizeTexts((current) => ({ ...current, [workOrderId]: value }))
-            }
-          />
-        );
+        return releaseInformation(false);
       case 'done':
         return (
-          <ReleaseResult
-            orderNo={order.productionOrderNo}
-            itemCode={item?.itemCode}
-            itemName={item?.itemName}
-            plans={planFacts}
-            workOrders={allWorkOrders.data ?? []}
-            pending={allWorkOrders.isPending}
-            failed={allWorkOrders.isError}
-            attempts={releaseAttempts}
-            shortages={unsourcedLines}
-            plantId={order.plantId}
-            uomLabelOf={uomLabelOf}
-            lineNameOf={(id) => (id === null ? '미지정' : (lineName(id) ?? `ID ${id}`))}
-            statusName={codeNames.workOrderStatus}
-            retrying={releasing}
-            onRetry={() => void release()}
-            onEdit={() => setStep('assign')}
-          />
+          <>
+            {releaseInformation(true)}
+            <ReleaseResult
+              orderNo={order.productionOrderNo}
+              itemCode={item?.itemCode}
+              itemName={item?.itemName}
+              plans={planFacts}
+              workOrders={allWorkOrders.data ?? []}
+              pending={allWorkOrders.isPending}
+              failed={allWorkOrders.isError}
+              attempts={releaseAttempts}
+              shortages={unsourcedLines}
+              plantId={order.plantId}
+              uomLabelOf={uomLabelOf}
+              lineNameOf={(id) => (id === null ? '미지정' : (lineName(id) ?? `ID ${id}`))}
+              statusName={codeNames.workOrderStatus}
+              retrying={releasing}
+              onRetry={() => void release()}
+              onEdit={() => setStep('assign')}
+            />
+          </>
         );
     }
   })();

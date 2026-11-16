@@ -162,6 +162,7 @@ const RecommendationLinks = ({
 };
 
 interface EditorSessionProps {
+  readOnly?: boolean;
   actionTargetId?: string;
   summary?: string;
   /** 편집 중인 W/O(번호와 공정). 편집 영역 제목이다. */
@@ -176,6 +177,7 @@ interface EditorSessionProps {
 }
 
 const EditorSession = ({
+  readOnly = false,
   actionTargetId,
   summary,
   title,
@@ -227,6 +229,7 @@ const EditorSession = ({
     erpStorage?.erpStorageLocationCode ? erpStorage.erpStorageWarehouse?.id : undefined,
   );
   useEffect(() => {
+    if (readOnly) return;
     const location = arrival.data?.location;
     if (!location || !erpStorage?.erpStorageLocationCode || baseline.defaultFgLocationId !== '')
       return;
@@ -236,12 +239,13 @@ const EditorSession = ({
         : current,
     );
   }, [
+    readOnly,
     arrival.data,
     erpStorage?.erpStorageLocationCode,
     baseline.defaultFgLocationId,
     draft.defaultFgLocationId,
   ]);
-  const dirty = !workOrderDraftEquals(baseline, draft);
+  const dirty = !readOnly && !workOrderDraftEquals(baseline, draft);
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   const queryClient = useQueryClient();
@@ -276,7 +280,7 @@ const EditorSession = ({
    */
   const linesLoaded = lines.data !== undefined || lines.isError;
   useEffect(() => {
-    if (prefillSettled || !linesLoaded) return;
+    if (readOnly || prefillSettled || !linesLoaded) return;
     setPrefillSettled(true);
     if (
       baseline.productionLineId === '' ||
@@ -299,8 +303,16 @@ const EditorSession = ({
     };
     if (Object.values(filled).every((value) => value === '')) return;
     setDraft((current) => ({ ...current, ...filled }));
-  }, [baseline, lines.data, linesLoaded, prefillSettled, erpStorage?.erpStorageLocationCode]);
+  }, [
+    readOnly,
+    baseline,
+    lines.data,
+    linesLoaded,
+    prefillSettled,
+    erpStorage?.erpStorageLocationCode,
+  ]);
   const patch = (next: Partial<WorkOrderAssignmentDraft>) => {
+    if (readOnly) return;
     update.reset();
     setDraft((current) => {
       const merged = { ...current, ...next };
@@ -423,7 +435,7 @@ const EditorSession = ({
         valueLabel={labelOf(field)}
         source={source}
         required={required(field)}
-        disabled={saving}
+        disabled={saving || readOnly}
         invalid={errorOf(field) !== undefined}
         aria-describedby={errorOf(field) === undefined ? undefined : `${errorIdPrefix}-${field}`}
         labelAddon={
@@ -434,7 +446,7 @@ const EditorSession = ({
                 label={label}
                 chips={options.chips}
                 value={draft[field]}
-                disabled={saving}
+                disabled={saving || readOnly}
                 onPick={(chip) => {
                   setLabels((current) => ({ ...current, [`${field}:${chip.value}`]: chip.label }));
                   patch(
@@ -560,12 +572,12 @@ const EditorSession = ({
       size="sm"
       variant={actionTargetId === undefined ? 'outlined' : undefined}
       loading={saving}
-      disabled={!dirty}
+      disabled={readOnly || !dirty}
       aria-describedby={!dirty ? `${headingId}-save-note` : undefined}
       onClick={() => {
         setRevealErrors(true);
         const body = toWorkOrderAssignmentUpdate(draft);
-        if (body !== null) update.write(body);
+        if (!readOnly && body !== null) update.write(body);
       }}
     >
       {t.actions.save}
@@ -582,7 +594,7 @@ const EditorSession = ({
           <Button
             size="sm"
             variant="outlined"
-            disabled={saving}
+            disabled={saving || readOnly}
             onClick={() => void validation.refetch()}
           >
             {t.actions.check}
@@ -590,7 +602,7 @@ const EditorSession = ({
           <Button
             size="sm"
             variant="outlined"
-            disabled={!dirty || saving}
+            disabled={readOnly || !dirty || saving}
             onClick={() => {
               setDraft(baseline);
               setRevealErrors(false);
@@ -685,7 +697,7 @@ const EditorSession = ({
           <FoldLine
             label={fromLine ? t.fold.lineLocations : t.fold.locations}
             pairs={locationPairs}
-            disabled={saving}
+            disabled={saving || readOnly}
             onExpand={() => setLocationOpen(true)}
           />
         )}
@@ -697,7 +709,7 @@ const EditorSession = ({
                 size="md"
                 label={t.fields.plannedStartAtLocal}
                 value={draft.plannedStartAtLocal}
-                disabled={saving}
+                disabled={saving || readOnly}
                 invalid={errorOf('plannedStartAtLocal') !== undefined}
                 onChange={(value) => patch({ plannedStartAtLocal: value })}
               />
@@ -705,7 +717,7 @@ const EditorSession = ({
                 size="md"
                 label={t.fields.plannedEndAtLocal}
                 value={draft.plannedEndAtLocal}
-                disabled={saving}
+                disabled={saving || readOnly}
                 invalid={errorOf('plannedEndAtLocal') !== undefined}
                 onChange={(value) => patch({ plannedEndAtLocal: value })}
               />
@@ -716,7 +728,7 @@ const EditorSession = ({
           <FoldLine
             label={fromShift ? t.fold.shiftPlan : t.fold.plan}
             pairs={planPairs}
-            disabled={saving}
+            disabled={saving || readOnly}
             onExpand={() => setPlanOpen(true)}
           />
         )}
@@ -726,6 +738,7 @@ const EditorSession = ({
 };
 
 export interface AssignEditorProps {
+  readOnly?: boolean;
   actionTargetId?: string;
   summary?: string;
   /** 편집 중인 W/O(번호와 공정) */
@@ -739,6 +752,7 @@ export interface AssignEditorProps {
 }
 
 export const AssignEditor = ({
+  readOnly = false,
   actionTargetId,
   summary,
   title,
@@ -766,6 +780,7 @@ export const AssignEditor = ({
   }
   return (
     <EditorSession
+      readOnly={readOnly}
       actionTargetId={actionTargetId}
       summary={summary}
       title={title}

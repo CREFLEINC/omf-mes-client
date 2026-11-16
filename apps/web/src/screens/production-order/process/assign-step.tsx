@@ -12,6 +12,8 @@ import type { OrderWorkOrder } from './queries';
 const t = messages.erpWorkOrderFlow.process.assign;
 
 export interface AssignStepProps {
+  readOnly?: boolean;
+  statusNameOf?: (code: string) => string;
   actionTargetId?: string;
   itemLabel?: string;
   workOrders: OrderWorkOrder[] | undefined;
@@ -36,6 +38,8 @@ export interface AssignStepProps {
  * (T-W-C 높이가 모자랄 때 ②, 이탈. 구성안 8장).
  */
 export const AssignStep = ({
+  readOnly = false,
+  statusNameOf,
   actionTargetId,
   workOrders,
   blockedIds,
@@ -51,7 +55,9 @@ export const AssignStep = ({
   const [dirty, setDirty] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
   if (workOrders === undefined || blockedIds === undefined) return <SkeletonText lines={4} />;
-  const selected = workOrders.find((item) => item.workOrderId === selectedId);
+  const selected =
+    workOrders.find((item) => item.workOrderId === selectedId) ??
+    (readOnly ? workOrders[0] : undefined);
   const columns: Column<OrderWorkOrder>[] = [
     {
       key: 'operation',
@@ -74,7 +80,9 @@ export const AssignStep = ({
       key: 'status',
       header: t.columns.status,
       render: (row) =>
-        blockedIds.has(row.workOrderId) ? (
+        readOnly ? (
+          <Chip size="sm">{statusNameOf?.(row.statusCode) ?? row.statusCode}</Chip>
+        ) : blockedIds.has(row.workOrderId) ? (
           <Chip variant="status" size="sm" status="warning">
             {t.pending}
           </Chip>
@@ -107,7 +115,7 @@ export const AssignStep = ({
             columns={columns}
             rows={workOrders}
             getRowId={(row) => String(row.workOrderId)}
-            activeId={selectedId === null ? null : String(selectedId)}
+            activeId={selected ? String(selected.workOrderId) : null}
             rowLabel={(row) => `${row.workOrderNo} ${row.operationName}`}
             onActivate={(row) => {
               if (row.workOrderId === selectedId) return;
@@ -127,6 +135,7 @@ export const AssignStep = ({
             <EmptyState size="sm" title={t.selectPrompt} />
           ) : (
             <AssignEditor
+              readOnly={readOnly}
               actionTargetId={actionTargetId}
               summary={`계획일 ${planDateOf(selected.productionPlanId) ?? '—'} / 작업지시 수량 ${formatQty(selected.orderQty)} ${uomLabelOf?.(selected.uomId) ?? ''}`}
               key={selected.workOrderId}

@@ -223,6 +223,7 @@ export const toReleaseLines = (
   });
 
 export interface ReleaseStepProps {
+  readOnly?: boolean;
   plantId?: number;
   reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
@@ -242,6 +243,7 @@ export interface ReleaseStepProps {
  * 배포 확인 단계(마지막 확인 단계). 결과를 바꾸는 값(W/O, 수량, LOT 크기)과 반영 사항을 1280×800 첫 화면 안에 보인다.
  */
 export const ReleaseStep = ({
+  readOnly = false,
   plantId,
   reviewPlans,
   lines,
@@ -340,7 +342,7 @@ export const ReleaseStep = ({
                 '작업지시 · 공정',
                 '계획일 · 생산 라인',
                 t.columns.orderQty,
-                t.columns.lotCount,
+                readOnly ? 'LOT' : t.columns.lotCount,
                 ...(issueDates === undefined ? [] : [pw.productionDate, pw.issueWorkDate]),
               ]}
             >
@@ -372,7 +374,11 @@ export const ReleaseStep = ({
                         {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
                       </td>
                       <td data-label={t.columns.lotCount}>
-                        {line.lotCount == null ? '—' : `${line.lotCount}개`}
+                        {readOnly
+                          ? '배포 결과에서 확인'
+                          : line.lotCount == null
+                            ? '—'
+                            : `${line.lotCount}개`}
                       </td>
                       {issueDates !== undefined && (
                         <>
@@ -435,46 +441,48 @@ export const ReleaseStep = ({
               <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
             </section>
           )}
-          <section className="erp-wo-release-effects">
-            <div className="pane">
-              <div
-                className="erp-wo-release-notice"
-                role="region"
-                aria-label={messages.screenPatterns.effectList.title(t.task)}
-              >
-                <h3 className="section-title">배포 시 반영 사항</h3>
-                <ul>
-                  <li>{t.effects.status(lines.length)}</li>
-                  <li>
-                    {lines.some((line) => line.lotCount === null)
-                      ? t.lotsPending
-                      : t.effects.lots(totalLots)}
-                  </li>
-                  {effectItems.map((effect) => (
-                    <li key={effect.key}>{effect.label}</li>
-                  ))}
-                  <li>{t.effects.pqc}</li>
-                </ul>
-                <p>{t.irreversible}</p>
-              </div>
-            </div>
-            {failures.length > 0 && (
-              <AlertBanner variant="error" title={hasBlocks ? pw.blockedTitle : undefined}>
-                <ul className="erp-wo-release-failures">
-                  {failures.map((failure) => (
-                    <li key={failure.key}>
-                      {failure.text}
-                      {failure.links.map((link) => (
-                        <Link key={link.to} to={link.to} target="_blank" rel="noreferrer">
-                          {link.label}
-                        </Link>
-                      ))}
+          {!readOnly && (
+            <section className="erp-wo-release-effects">
+              <div className="pane">
+                <div
+                  className="erp-wo-release-notice"
+                  role="region"
+                  aria-label={messages.screenPatterns.effectList.title(t.task)}
+                >
+                  <h3 className="section-title">배포 시 반영 사항</h3>
+                  <ul>
+                    <li>{t.effects.status(lines.length)}</li>
+                    <li>
+                      {lines.some((line) => line.lotCount === null)
+                        ? t.lotsPending
+                        : t.effects.lots(totalLots)}
                     </li>
-                  ))}
-                </ul>
-              </AlertBanner>
-            )}
-          </section>
+                    {effectItems.map((effect) => (
+                      <li key={effect.key}>{effect.label}</li>
+                    ))}
+                    <li>{t.effects.pqc}</li>
+                  </ul>
+                  <p>{t.irreversible}</p>
+                </div>
+              </div>
+              {failures.length > 0 && (
+                <AlertBanner variant="error" title={hasBlocks ? pw.blockedTitle : undefined}>
+                  <ul className="erp-wo-release-failures">
+                    {failures.map((failure) => (
+                      <li key={failure.key}>
+                        {failure.text}
+                        {failure.links.map((link) => (
+                          <Link key={link.to} to={link.to} target="_blank" rel="noreferrer">
+                            {link.label}
+                          </Link>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertBanner>
+              )}
+            </section>
+          )}
         </div>
       </AdjustableLayout>
     </div>
