@@ -1693,6 +1693,8 @@ export const ProductionFlowScreen = () => {
             noneLabel={t.flow.work.printerNone}
             unknownLabel={t.flow.work.printerUnknown}
             retryLabel={messages.common.retry}
+            showCloseButton={false}
+            hideReadyNote
             onSelect={(name) => {
               setPickedPrinter(name);
               rememberPrinterName(name, LOT_PRINTER_STORAGE_KEY);

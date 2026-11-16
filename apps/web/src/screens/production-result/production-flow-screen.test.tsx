@@ -1837,6 +1837,12 @@ describe('ProductionFlowScreen — 프린터 선택', () => {
         name: `${messages.popMaterialLotLabel.printer.choose}: 합성 라벨 프린터`,
       }),
     );
+    /* 창은 [닫기] 하나로 닫고(✕ 없음), 모든 줄에 같은 「이 프린터로 나갑니다」를 붙이지 않는다(사용자 지시 2026-11-16). */
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getAllByRole('button', { name: messages.popMaterialLotLabel.printer.close }),
+    ).toHaveLength(1);
+    expect(within(dialog).queryByText(/나갑니다/u)).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: /합성 라벨 프린터 2/u }));
     expect(globalThis.localStorage.getItem(LOT_PRINTER_KEY)).toBe('printer-syn-2');
 
