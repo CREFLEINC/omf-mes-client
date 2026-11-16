@@ -4,6 +4,8 @@ import {
   usePlanningDays,
   planningDayKey,
   PlanningDayNotice,
+  planningHolidayLabel,
+  type PlanningDay,
 } from './planning-working-days';
 import { useId, useState } from 'react';
 import { Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
@@ -64,6 +66,7 @@ export const PlanSplitDialog = ({
       ...(plantId ? { planDateSourceCode: row.draft.planDateSourceCode ?? 'USER' } : {}),
     })),
   );
+  const [holidayDays, setHolidayDays] = useState<PlanningDay[]>([]);
   const [error, setError] = useState('');
   const [conditionsDirty, setConditionsDirty] = useState(false);
   const sumUnits = parts.reduce(
@@ -93,6 +96,7 @@ export const PlanSplitDialog = ({
     setConditionsDirty(true);
     try {
       let planDates: string[] | undefined;
+      let holidays: PlanningDay[] = [];
       if (plantId && dates === 'sequence') {
         const calendar = await resolvePlanningDays(client, [
           {
@@ -102,6 +106,7 @@ export const PlanSplitDialog = ({
             to: shiftPlanDate(start, 365),
           },
         ]);
+        holidays = [...calendar.values()].filter((day) => day.statusCode === 'HOLIDAY');
         planDates = [];
         for (
           let date = start;
@@ -126,6 +131,7 @@ export const PlanSplitDialog = ({
           ? next.map((part, i) => ({ ...part, plannedQty: parts[i]?.plannedQty ?? '' }))
           : next,
       );
+      setHolidayDays(holidays);
       setConditionsDirty(false);
       setCount(String(number));
       setError('');
@@ -157,6 +163,23 @@ export const PlanSplitDialog = ({
           ),
         )
       : undefined;
+  const lastDate =
+    parts
+      .map((part) => part.planDate)
+      .sort()
+      .at(-1) ?? start;
+  const displayRows = [
+    ...parts.map((part, index) => ({ part, index, day: undefined as PlanningDay | undefined })),
+    ...holidayDays
+      .filter(
+        (day) =>
+          dates === 'sequence' &&
+          day.date >= start &&
+          day.date <= lastDate &&
+          !parts.some((part) => part.planDate === day.date),
+      )
+      .map((day) => ({ part: { planDate: day.date, plannedQty: '0' }, index: -1, day })),
+  ].sort((a, b) => a.part.planDate.localeCompare(b.part.planDate) || a.index - b.index);
   const facts = [
     ['분할 계획', planName],
     ['품목명', identity?.itemName ?? '—'],
@@ -341,64 +364,85 @@ export const PlanSplitDialog = ({
                 </tr>
               </thead>
               <tbody>
-                {parts.map((part, i) => (
-                  <tr key={i}>
-                    <td>{i + 1}</td>
-                    <td>
-                      <TextField
-                        containerClassName="erp-wo-split-input"
-                        disabled={calendarBusy}
-                        size="md"
-                        aria-label={`계획 ${i + 1} 생산량`}
-                        inputMode="decimal"
-                        value={part.plannedQty}
-                        onChange={(event) =>
-                          setParts((current) =>
-                            current.map((p, index) =>
-                              index === i ? { ...p, plannedQty: event.target.value } : p,
-                            ),
-                          )
-                        }
-                      />
-                    </td>
-                    <td>
-                      <DatePicker
-                        disabled={calendarBusy}
-                        size="md"
-                        aria-label={`계획 ${i + 1} 계획일`}
-                        value={part.planDate}
-                        onChange={(planDate) =>
-                          setParts((current) =>
-                            current.map((p, index) =>
-                              index === i
-                                ? {
-                                    ...p,
-                                    planDate,
-                                    ...(plantId ? { planDateSourceCode: 'USER' as const } : {}),
-                                  }
-                                : p,
-                            ),
-                          )
-                        }
-                      />
-                      <PlanningDayNotice day={dayOf(part.planDate)} />
-                    </td>
-                    <td>
-                      <Button
-                        size="md"
-                        variant="outlined"
-                        aria-label={`계획 ${i + 1} 삭제`}
-                        disabled={calendarBusy || parts.length <= 1}
-                        onClick={() => {
-                          setCount(String(parts.length - 1));
-                          setParts((current) => current.filter((_, index) => index !== i));
-                        }}
-                      >
-                        −
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {displayRows.map(({ part, index: i, day }) =>
+                  day ? (
+                    <tr key={`holiday-${day.date}`} className="erp-wo-holiday-preview-row">
+                      <td>—</td>
+                      <td>
+                        <TextField
+                          size="md"
+                          aria-label={`${day.date} 휴일 생산량`}
+                          value="0"
+                          disabled
+                        />
+                      </td>
+                      <td>
+                        {day.date}
+                        <span className="erp-wo-holiday-day-label">
+                          {planningHolidayLabel(day)}
+                        </span>
+                      </td>
+                      <td />
+                    </tr>
+                  ) : (
+                    <tr key={i}>
+                      <td>{i + 1}</td>
+                      <td>
+                        <TextField
+                          containerClassName="erp-wo-split-input"
+                          disabled={calendarBusy}
+                          size="md"
+                          aria-label={`계획 ${i + 1} 생산량`}
+                          inputMode="decimal"
+                          value={part.plannedQty}
+                          onChange={(event) =>
+                            setParts((current) =>
+                              current.map((p, index) =>
+                                index === i ? { ...p, plannedQty: event.target.value } : p,
+                              ),
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <DatePicker
+                          disabled={calendarBusy}
+                          size="md"
+                          aria-label={`계획 ${i + 1} 계획일`}
+                          value={part.planDate}
+                          onChange={(planDate) =>
+                            setParts((current) =>
+                              current.map((p, index) =>
+                                index === i
+                                  ? {
+                                      ...p,
+                                      planDate,
+                                      ...(plantId ? { planDateSourceCode: 'USER' as const } : {}),
+                                    }
+                                  : p,
+                              ),
+                            )
+                          }
+                        />
+                        <PlanningDayNotice day={dayOf(part.planDate)} />
+                      </td>
+                      <td>
+                        <Button
+                          size="md"
+                          variant="outlined"
+                          aria-label={`계획 ${i + 1} 삭제`}
+                          disabled={calendarBusy || parts.length <= 1}
+                          onClick={() => {
+                            setCount(String(parts.length - 1));
+                            setParts((current) => current.filter((_, index) => index !== i));
+                          }}
+                        >
+                          −
+                        </Button>
+                      </td>
+                    </tr>
+                  ),
+                )}
               </tbody>
             </table>
           </div>

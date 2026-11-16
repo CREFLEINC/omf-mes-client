@@ -3,6 +3,7 @@ import {
   resolvePlanningDays,
   planningDayKey,
   planningDayMessage,
+  planningHolidayLabel,
   type PlanningDay,
 } from './planning-working-days';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -56,6 +57,7 @@ export const DistributionControls = ({
   const { client } = useApiClient();
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarNotes, setCalendarNotes] = useState<string[]>([]);
+  const [holidayRows, setHolidayRows] = useState<(OwnedDraft & { holidayLabel: string })[]>([]);
   const latestSignature = useRef('');
   const sequence = useRef(0);
   const lock = useRef(false);
@@ -121,6 +123,29 @@ export const DistributionControls = ({
   const activeRow = rows.find((row) => row.id === activeId) ?? rows[0];
   const visibleConditionPage = Math.min(conditionPage, Math.max(1, Math.ceil(rows.length / 5)));
   const stale = preview !== null && preview.signature !== signature;
+  const previewRows = preview
+    ? [
+        ...preview.result.drafts,
+        ...new Map(
+          holidayRows
+            .filter(
+              (row) =>
+                !preview.result.drafts.some(
+                  (draft) =>
+                    draft.owner === row.owner &&
+                    draft.planDate === row.planDate &&
+                    draft.plannedLineId === row.plannedLineId,
+                ),
+            )
+            .map((row) => [`${row.owner}:${row.planDate}:${row.plannedLineId}`, row]),
+        ).values(),
+      ].sort(
+        (a, b) =>
+          a.owner.localeCompare(b.owner) ||
+          a.planDate.localeCompare(b.planDate) ||
+          a.plannedLineId.localeCompare(b.plannedLineId),
+      )
+    : [];
   const change = (key: string, patch: Partial<DistributionSegment>) => {
     setRows((current) =>
       current.map((row) => (row.id === key ? { ...row, ...patch, applied: false } : row)),
@@ -622,6 +647,7 @@ export const DistributionControls = ({
                           return;
                         const bySegment = new Map<string, PlanningDay[]>();
                         const notes: string[] = [];
+                        const holidayDisplay: (OwnedDraft & { holidayLabel: string })[] = [];
                         for (const row of active) {
                           const order = orders.find((order) => order.id === row.owner);
                           if (!order?.plantId) {
@@ -639,6 +665,16 @@ export const DistributionControls = ({
                           );
                           bySegment.set(row.id, days);
                           const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
+                          for (const day of holidays) {
+                            if (row.mode === 'equal' || !(Number(row.daily[day.date]) > 0))
+                              holidayDisplay.push({
+                                owner: row.owner,
+                                planDate: day.date,
+                                plannedLineId: row.lineId,
+                                plannedQty: '0',
+                                holidayLabel: planningHolidayLabel(day),
+                              });
+                          }
                           if (row.mode === 'equal' && holidays.length)
                             notes.push(
                               `${order.label}: 휴일 ${holidays.length}일 제외 (${holidays.map((day) => day.date).join(', ')})`,
@@ -659,6 +695,7 @@ export const DistributionControls = ({
                         }
                         const result = previewSegments(orders, rows, existing, bySegment);
                         setCalendarNotes(notes);
+                        setHolidayRows(holidayDisplay);
                         setPreview({ signature, result });
                         setAcknowledged(false);
                         setResultPage(1);
@@ -769,32 +806,35 @@ export const DistributionControls = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.result.drafts
-                        .slice((resultPage - 1) * 10, resultPage * 10)
-                        .map((row) => (
-                          <tr key={`${row.owner}-${row.planDate}-${row.plannedLineId}`}>
-                            <td>{orders.find((order) => order.id === row.owner)?.label}</td>
-                            <td>{row.planDate}</td>
-                            <td>
-                              {
-                                orders
-                                  .find((order) => order.id === row.owner)
-                                  ?.lines.find((line) => String(line.id) === row.plannedLineId)
-                                  ?.name
-                              }
-                            </td>
-                            <td>
-                              {row.plannedQty}{' '}
-                              {orders.find((order) => order.id === row.owner)?.unit}
-                            </td>
-                          </tr>
-                        ))}
+                      {previewRows.slice((resultPage - 1) * 10, resultPage * 10).map((row) => (
+                        <tr key={`${row.owner}-${row.planDate}-${row.plannedLineId}`}>
+                          <td>{orders.find((order) => order.id === row.owner)?.label}</td>
+                          <td>
+                            {row.planDate}
+                            {'holidayLabel' in row && (
+                              <span className="erp-wo-holiday-day-label">
+                                {String(row.holidayLabel)}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {
+                              orders
+                                .find((order) => order.id === row.owner)
+                                ?.lines.find((line) => String(line.id) === row.plannedLineId)?.name
+                            }
+                          </td>
+                          <td>
+                            {row.plannedQty} {orders.find((order) => order.id === row.owner)?.unit}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                {preview.result.drafts.length > 10 && (
+                {previewRows.length > 10 && (
                   <PageNav
-                    meta={{ page: resultPage, size: 10, total: preview.result.drafts.length }}
+                    meta={{ page: resultPage, size: 10, total: previewRows.length }}
                     onChangePage={setResultPage}
                   />
                 )}

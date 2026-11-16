@@ -113,3 +113,9 @@ export const PlanningDayNotice = ({ day }: { day?: PlanningDay }) => {
     </p>
   ) : null;
 };
+
+export const planningHolidayLabel = (day: PlanningDay): string => {
+  const weekday = new Date(`${day.date}T00:00:00Z`).getUTCDay();
+  const weekend = weekday === 0 || weekday === 6;
+  return day.sourceCode === 'WEEKLY_POLICY' ? '주말' : weekend ? '주말 · 휴일' : '휴일';
+};

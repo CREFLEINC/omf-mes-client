@@ -286,3 +286,35 @@ describe('분배 조건과 미리보기 적용', () => {
     ).not.toHaveTextContent('라인 1');
   });
 });
+
+it('휴일을 0 수량으로 표시하되 적용할 계획에는 포함하지 않는다', async () => {
+  const { planningDaysResponse } = await import('../../../test/planning-day-fixture');
+  const onApply = vi.fn();
+  renderWithProviders(
+    <DistributionControls
+      orders={[{ ...orders[0]!, plantId: 1 }]}
+      existing={[]}
+      disabled={false}
+      onApply={onApply}
+    />,
+    {
+      fetch: (request) =>
+        planningDaysResponse(request, (date) =>
+          [0, 6].includes(new Date(`${date}T12:00:00Z`).getUTCDay()) ? 'HOLIDAY' : 'WORKING',
+        ),
+    },
+  );
+  const user = await configure();
+  expect(await screen.findAllByText('주말 · 휴일')).not.toHaveLength(0);
+  await user.click(screen.getByRole('button', { name: '분배안 적용' }));
+  expect(onApply).toHaveBeenCalledOnce();
+  expect(
+    onApply.mock.calls[0]![0].every((row: { plannedQty: string }) => Number(row.plannedQty) > 0),
+  ).toBe(true);
+  expect(
+    onApply.mock.calls[0]![0].reduce(
+      (sum: number, row: { plannedQty: string }) => sum + Number(row.plannedQty),
+      0,
+    ),
+  ).toBe(3);
+});
