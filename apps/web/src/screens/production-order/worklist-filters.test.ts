@@ -8,8 +8,9 @@ import {
 } from './worklist-filters';
 
 describe('작업함 주소 조건', () => {
-  it('빈 주소는 기본 조건(조치 필요, 1쪽, 20건)이고 기본값은 주소에 쓰지 않는다', () => {
+  it('빈 주소는 기본 조건(전체, 1쪽, 20건)이고 기본값은 주소에 쓰지 않는다', () => {
     expect(readWorklistFilters(new URLSearchParams())).toEqual(DEFAULT_WORKLIST_FILTERS);
+    expect(readWorklistFilters(new URLSearchParams()).state).toBe('ALL');
     expect(toWorklistSearchParams(DEFAULT_WORKLIST_FILTERS).toString()).toBe('');
   });
 
@@ -31,9 +32,17 @@ describe('작업함 주소 조건', () => {
     expect(stateOf('autoPlan=DONE')).toBe('RELEASE_PENDING');
     expect(stateOf('autoPlan=NEEDS_REVIEW')).toBe('ACTION_REQUIRED');
     expect(stateOf('autoPlan=ALL')).toBe('ALL');
-    expect(stateOf('autoPlan=X')).toBe('ACTION_REQUIRED');
+    expect(stateOf('autoPlan=X')).toBe('ALL');
     expect(stateOf('state=ALL&autoPlan=DONE')).toBe('ALL');
   });
+
+  it.each(['BEFORE_PLAN', 'RELEASED', 'CANCELLED'] as const)(
+    '%s 상태를 주소에 보존한다',
+    (state) => {
+      const params = toWorklistSearchParams({ ...DEFAULT_WORKLIST_FILTERS, state });
+      expect(readWorklistFilters(params).state).toBe(state);
+    },
+  );
 
   it('처리 화면 주소는 업무 번호를 쓴다', () => {
     expect(processPath('UIR-PO-001')).toBe('/production/production-orders/UIR-PO-001');

@@ -1994,6 +1994,11 @@ describe('셸 — 기능 권한으로 사이드바 거르기', () => {
    * 볼 수 있는 탭이 **하나뿐이어도 탭 막대를 세운다** — 권한에 따라 같은 화면이 탭 막대로도, 경로·제목으로도
    * 보이면 모양이 갈린다(omf-all-around#228). 막대에는 볼 수 있는 그 한 탭만 선다.
    */
+  it('작업계획 단독 탭은 공통 탭 막대를 표시하지 않는다', async () => {
+    await renderWithPermissions(['W-02-01'], { route: '/production/production-orders' });
+    expect(screen.queryByRole('navigation', { name: '작업계획' })).toBeNull();
+  });
+
   it('볼 수 있는 탭이 하나뿐이어도 그 한 탭으로 탭 막대가 선다', async () => {
     await renderWithPermissions(['W-CO-08'], { route: '/master-data/warehouse-layout' });
 

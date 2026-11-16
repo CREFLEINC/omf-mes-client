@@ -264,24 +264,27 @@ describe('작업지시 목록 작업함', () => {
     expect(screen.queryByRole('dialog', { name: '생산계획 자동 전개 도움말' })).toBeNull();
   });
 
-  it('기본 조건은 「조치 필요」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
+  it('기본 조건은 「전체」이고 사유를 첫 칩과 「외 N」으로 목록에 보인다(C-17)', async () => {
     const { requests } = render({ orders: [REVIEW, DONE_BLOCKED, DONE_READY] });
 
     const row = await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
     expect(within(row).getByText(t.status.ACTION_REQUIRED)).toBeVisible();
     expect(within(row).getByText(t.reasons.BOM_MISSING)).toBeVisible();
     expect(within(row).getByText(t.reasons.more(1))).toBeVisible();
-    expect(screen.queryByText('SYN-PO-703')).toBeNull();
+    expect(await screen.findByRole('link', { name: t.list.openRow('SYN-PO-703') })).toBeVisible();
     const queries = requests
       .filter((request) => path(request) === '/planning/production-orders')
       .map((request) => new URL(request.url).searchParams);
     const list = queries.find((query) => query.get('size') === '20');
-    expect(list?.get('worklistState')).toBe('ACTION_REQUIRED');
+    expect(list?.get('worklistState')).toBeNull();
     expect(list?.has('autoPlanStatus')).toBe(false);
     /* 칩 건수는 같은 조건에 쪽 크기 1로 센다. 「전체」는 거르지 않는다. */
     const counts = queries.filter((query) => query.get('size') === '1');
     expect(counts.map((query) => query.get('worklistState')).sort()).toEqual([
       'ACTION_REQUIRED',
+      'BEFORE_PLAN',
+      'CANCELLED',
+      'RELEASED',
       'RELEASE_PENDING',
       null,
     ]);
@@ -297,15 +300,59 @@ describe('작업지시 목록 작업함', () => {
       expect(
         within(group)
           .getAllByRole('button')
+          .filter((button) => button.hasAttribute('aria-pressed'))
           .map((chip) => chip.textContent),
       ).toEqual([
         expect.stringMatching(/^전체 /),
+        expect.stringMatching(new RegExp(`^${t.status.BEFORE_PLAN} `)),
         expect.stringMatching(new RegExp(`^${t.status.ACTION_REQUIRED} `)),
         expect.stringMatching(new RegExp(`^${t.status.RELEASE_PENDING} `)),
+        expect.stringMatching(new RegExp(`^${t.status.RELEASED} `)),
+        expect.stringMatching(new RegExp(`^${t.status.CANCELLED} `)),
       ]),
     );
     expect(within(group).queryByText('생산계획 자동 전개', { exact: true })).toBeNull();
   });
+
+  it.each(['BEFORE_PLAN', 'RELEASED', 'CANCELLED'] as const)(
+    '새 상태 %s로 전환하고 검색 조건을 건수 조회에도 유지한다',
+    async (state) => {
+      const user = userEvent.setup();
+      const { requests } = render(
+        { orders: [REVIEW] },
+        '/production/production-orders?q=SYN&dueFrom=2026-10-01&dueTo=2026-10-31',
+      );
+      const group = await screen.findByRole('group', { name: t.counts.label });
+      await user.click(
+        within(group).getByRole('button', { name: new RegExp(`^${t.status[state]}(?: |$)`) }),
+      );
+      await waitFor(() =>
+        expect(
+          requests.some((request) => {
+            const query = new URL(request.url).searchParams;
+            return (
+              path(request) === '/planning/production-orders' &&
+              query.get('size') === '20' &&
+              query.get('worklistState') === state &&
+              query.get('q') === 'SYN'
+            );
+          }),
+        ).toBe(true),
+      );
+      const counts = requests.filter(
+        (request) =>
+          path(request) === '/planning/production-orders' &&
+          new URL(request.url).searchParams.get('size') === '1',
+      );
+      expect(counts.length).toBeGreaterThanOrEqual(6);
+      for (const request of counts) {
+        const query = new URL(request.url).searchParams;
+        expect(query.get('q')).toBe('SYN');
+        expect(query.get('dueDateFrom')).toBe('2026-10-01');
+        expect(query.get('dueDateTo')).toBe('2026-10-31');
+      }
+    },
+  );
 
   it('행 상태 칩은 서버 판정(worklistState) 그대로다', async () => {
     const BEFORE = order(711, 'SYN-PO-711', null, 0, 'BEFORE_PLAN');
@@ -473,8 +520,16 @@ describe('작업지시 목록 작업함', () => {
       expect(
         within(group)
           .getAllByRole('button')
+          .filter((button) => button.hasAttribute('aria-pressed'))
           .map((chip) => chip.textContent),
-      ).toEqual([t.counts.allName, t.status.ACTION_REQUIRED, t.status.RELEASE_PENDING]),
+      ).toEqual([
+        t.counts.allName,
+        t.status.BEFORE_PLAN,
+        t.status.ACTION_REQUIRED,
+        t.status.RELEASE_PENDING,
+        t.status.RELEASED,
+        t.status.CANCELLED,
+      ]),
     );
   });
 
@@ -502,7 +557,7 @@ describe('작업지시 목록 작업함', () => {
   });
 
   it('조건 없이 조치 필요가 0건이면 조치 필요 안내를 보인다', async () => {
-    render({ orders: [] });
+    render({ orders: [] }, '/production/production-orders?state=ACTION_REQUIRED');
 
     expect(await screen.findByText(t.list.emptyActionRequiredTitle)).toBeVisible();
     const listPane = screen.getByRole('region', { name: t.list.pane });

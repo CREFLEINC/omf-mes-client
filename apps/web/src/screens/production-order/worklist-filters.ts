@@ -1,8 +1,8 @@
 import { PAGE_SIZES } from '../../patterns/page-nav';
-import { DEFAULT_WORKLIST_FILTER, type WorklistFilter } from './worklist-model';
+import { DEFAULT_WORKLIST_FILTER, isWorklistFilter, type WorklistFilter } from './worklist-model';
 import type { WorklistFilters } from './worklist-queries';
 
-/** 작업함 조회 조건과 주소 쿼리. 기본 조건(조치 필요, 1쪽, 20건)은 주소에 쓰지 않는다. */
+/** 작업함 조회 조건과 주소 쿼리. 기본 조건(전체, 1쪽, 20건)은 주소에 쓰지 않는다. */
 export const DEFAULT_WORKLIST_FILTERS: WorklistFilters = {
   state: DEFAULT_WORKLIST_FILTER,
   q: '',
@@ -31,7 +31,7 @@ const LEGACY_AUTO_PLAN: Record<string, WorklistFilter> = {
 
 const stateOf = (params: URLSearchParams): WorklistFilter => {
   const value = params.get('state');
-  if (value === 'ALL' || value === 'ACTION_REQUIRED' || value === 'RELEASE_PENDING') return value;
+  if (isWorklistFilter(value)) return value;
   return LEGACY_AUTO_PLAN[params.get('autoPlan') ?? ''] ?? DEFAULT_WORKLIST_FILTER;
 };
 

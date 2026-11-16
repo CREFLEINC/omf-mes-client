@@ -20,6 +20,7 @@ import { useId, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { BulkResult, type BulkResultFilter } from '../../patterns/bulk-result';
+import { Select } from '../../patterns/select';
 import { PageNav } from '../../patterns/page-nav';
 import { SelectableTable } from '../../patterns/selectable-table';
 import { useSession } from '../../patterns/session';
@@ -38,7 +39,7 @@ import {
   toWorklistSearchParams,
 } from './worklist-filters';
 import { WorklistFilterBar } from './worklist-filter-bar';
-import { deriveWorklistState, type WorklistDerived } from './worklist-model';
+import { deriveWorklistState, isWorklistFilter, type WorklistDerived } from './worklist-model';
 import { useWorklist, useWorklistCount, type WorklistFilters } from './worklist-queries';
 import { ProcessStateChip, ReasonChips } from './worklist-chips';
 
@@ -56,12 +57,6 @@ const hasSearchConditions = (filters: WorklistFilters): boolean =>
   filters.item !== '' ||
   filters.plant !== '';
 
-/** 칩 건수. 건수를 받지 못했으면(권한 없음, 오류, 불러오는 중) 0으로 보이지 않고 이름만 보인다. */
-const countLabel = (
-  count: number | undefined,
-  withCount: (count: number) => string,
-  name: string,
-): string => (count === undefined ? name : withCount(count));
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
 
@@ -94,9 +89,28 @@ export const ProductionOrderScreen = ({
       : undefined;
   const plant = lockedPlant ?? filters.plant;
   const list = useWorklist({ ...filters, plant });
-  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', plant);
-  const releasePendingCount = useWorklistCount('RELEASE_PENDING', plant);
-  const allCount = useWorklistCount('ALL', plant);
+  const actionRequiredCount = useWorklistCount('ACTION_REQUIRED', plant, filters);
+  const releasePendingCount = useWorklistCount('RELEASE_PENDING', plant, filters);
+  const allCount = useWorklistCount('ALL', plant, filters);
+  const beforePlanCount = useWorklistCount('BEFORE_PLAN', plant, filters);
+  const releasedCount = useWorklistCount('RELEASED', plant, filters);
+  const cancelledCount = useWorklistCount('CANCELLED', plant, filters);
+  const stateFilters = [
+    { state: 'ALL' as const, name: t.counts.allName, count: allCount.data },
+    { state: 'BEFORE_PLAN' as const, name: t.status.BEFORE_PLAN, count: beforePlanCount.data },
+    {
+      state: 'ACTION_REQUIRED' as const,
+      name: t.status.ACTION_REQUIRED,
+      count: actionRequiredCount.data,
+    },
+    {
+      state: 'RELEASE_PENDING' as const,
+      name: t.status.RELEASE_PENDING,
+      count: releasePendingCount.data,
+    },
+    { state: 'RELEASED' as const, name: t.status.RELEASED, count: releasedCount.data },
+    { state: 'CANCELLED' as const, name: t.status.CANCELLED, count: cancelledCount.data },
+  ];
   const uoms = useUomReferenceLookup();
   const bulk = useWorklistBulk();
   const [checked, setChecked] = useState<string[]>([]);
@@ -290,55 +304,44 @@ export const ProductionOrderScreen = ({
           />
         }
       />
-      <section className="erp-wo-status-filters" role="group" aria-label={t.counts.label}>
-        {[
-          {
-            state: 'ALL' as const,
-            name: t.counts.allName,
-            count: allCount.data,
-            label: countLabel(allCount.data, t.counts.all, t.counts.allName),
-          },
-          {
-            state: 'ACTION_REQUIRED' as const,
-            name: t.status.ACTION_REQUIRED,
-            count: actionRequiredCount.data,
-            label: countLabel(
-              actionRequiredCount.data,
-              t.counts.actionRequired,
-              t.status.ACTION_REQUIRED,
-            ),
-          },
-          {
-            state: 'RELEASE_PENDING' as const,
-            name: t.status.RELEASE_PENDING,
-            count: releasePendingCount.data,
-            label: countLabel(
-              releasePendingCount.data,
-              t.counts.releasePending,
-              t.status.RELEASE_PENDING,
-            ),
-          },
-        ].map((entry) => (
-          <button
-            type="button"
-            key={entry.state}
-            className="erp-wo-status-filter"
-            aria-label={entry.label}
-            aria-pressed={!showingResultRows && filters.state === entry.state}
-            onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
-          >
-            <span className="erp-wo-status-name">{entry.name}</span>
-            {entry.count !== undefined && (
-              <>
-                {' '}
-                <span className="erp-wo-status-number">
-                  {quantity(entry.count)}
-                  <small>{t.counts.unit}</small>
-                </span>
-              </>
-            )}
-          </button>
-        ))}
+      <section className="erp-wo-status-controls" role="group" aria-label={t.counts.label}>
+        <div className="erp-wo-status-compact">
+          <label htmlFor="worklist-state">{t.counts.label}</label>
+          <Select
+            id="worklist-state"
+            value={showingResultRows ? '' : filters.state}
+            options={stateFilters.map((entry) => ({
+              value: entry.state,
+              label: `${entry.name}${entry.count === undefined ? '' : ` ${quantity(entry.count)}건`}`,
+            }))}
+            onChange={(state) => {
+              if (isWorklistFilter(state)) apply({ ...filters, state, page: 1 });
+            }}
+          />
+        </div>
+        <div className="erp-wo-status-filters">
+          {stateFilters.map((entry) => (
+            <button
+              type="button"
+              key={entry.state}
+              className="erp-wo-status-filter"
+              aria-label={entry.count === undefined ? entry.name : `${entry.name} ${entry.count}건`}
+              aria-pressed={!showingResultRows && filters.state === entry.state}
+              onClick={() => apply({ ...filters, state: entry.state, page: 1 })}
+            >
+              <span className="erp-wo-status-name">{entry.name}</span>
+              {entry.count !== undefined && (
+                <>
+                  {' '}
+                  <span className="erp-wo-status-number">
+                    {quantity(entry.count)}
+                    <small>{t.counts.unit}</small>
+                  </span>
+                </>
+              )}
+            </button>
+          ))}
+        </div>
       </section>
       <section className="pane erp-wo-filter-pane" aria-label={t.filters.pane}>
         <WorklistFilterBar
