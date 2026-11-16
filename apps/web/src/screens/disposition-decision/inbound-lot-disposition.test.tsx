@@ -284,7 +284,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(scrap).toBeDisabled();
     expect(scrap).toHaveAccessibleDescription(t.form.typeLock.concessionRejected);
     for (const hint of screen.getAllByText(t.form.typeLock.concessionRejected)) {
-      expect(hint.parentElement).toHaveClass('visually-hidden');
+      expect(hint).toHaveClass('visually-hidden');
     }
 
     /* [반려 확인]은 예전 [특채 닫기]와 같은 적용 경로를 부른다. */

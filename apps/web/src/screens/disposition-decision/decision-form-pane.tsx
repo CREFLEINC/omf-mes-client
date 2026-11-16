@@ -119,6 +119,39 @@ export const DecisionFormPane = ({
       ? undefined
       : sortBlockId;
 
+  const lockNotes = [
+    ...dispositionOptions.map((option) => ({
+      id: `${optionHintId}-${option.value}`,
+      label: option.label,
+      reason: option.lockReason,
+    })),
+    ...(concession === undefined
+      ? []
+      : [
+          {
+            id: `${optionHintId}-CONCESSION`,
+            label: t.values.dispositionType.CONCESSION,
+            reason: concession.lockReason,
+          },
+        ]),
+  ].flatMap((note) => (note.reason === undefined ? [] : [{ ...note, reason: note.reason }]));
+  const optionCount = dispositionOptions.length + (concession === undefined ? 0 : 1);
+  /*
+   * 고를 수 있는 유형이 하나도 없으면(종결 · 특채 결재 중 등) 저장 · 사유 입력도 잠근다 — 눌러도 「처분을 선택하세요」만
+   * 나오는 단추를 두지 않는다. 이유는 위 막힘 글이 말한다(omf-all-around#275).
+   */
+  const noSelectableType =
+    optionCount > 0 && lockNotes.length === optionCount && value.dispositionTypeCode === '';
+  const noTypeReasonId = lockNotes[0]?.id;
+  const visibleLockLines = [
+    ...new Set(
+      lockNotes.map((note) => note.reason).filter((reason) => reason !== sharedLockReason),
+    ),
+  ].map((reason) => {
+    const labels = lockNotes.filter((note) => note.reason === reason).map((note) => note.label);
+    return labels.length === optionCount ? reason : `${labels.join(', ')}: ${reason}`;
+  });
+
   return (
     <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
@@ -190,36 +223,21 @@ export const DecisionFormPane = ({
               </div>
             )}
           </RadioGroup>
-          {/* 막힌 이유 — 위 특채 상자가 이미 말한 이유는 눈에서 감추고 낭독기만 읽는다(omf-all-around#275). */}
-          {[
-            ...dispositionOptions.map((option) => ({
-              id: `${optionHintId}-${option.value}`,
-              label: option.label,
-              reason: option.lockReason,
-            })),
-            ...(concession === undefined
-              ? []
-              : [
-                  {
-                    id: `${optionHintId}-CONCESSION`,
-                    label: t.values.dispositionType.CONCESSION,
-                    reason: concession.lockReason,
-                  },
-                ]),
-          ].map(({ id, label, reason }) =>
-            reason === undefined ? null : (
-              <span
-                key={id}
-                className={
-                  reason === sharedLockReason ? 'visually-hidden' : 'disposition-type-hint'
-                }
-              >
-                {/* 유형 이름은 눈으로만 — 칸이 읽는 이유(`aria-describedby`)는 이유 글만이다. */}
-                <span aria-hidden="true">{`${label}: `}</span>
-                <span id={id}>{reason}</span>
-              </span>
-            ),
-          )}
+          {/*
+           * 막힌 이유 — 칸마다 읽는 이유(`aria-describedby`)는 눈에 감춘 글로 두고, 눈에는 같은 이유를 한 줄로 묶어 보인다.
+           * 모든 유형이 같은 이유면 이유만, 일부면 「선별: …」처럼 유형 이름을 앞에. 위 특채 상자가 이미 말한 이유는 눈에 보이지
+           * 않는다(omf-all-around#275).
+           */}
+          {lockNotes.map(({ id, reason }) => (
+            <span key={id} id={id} className="visually-hidden">
+              {reason}
+            </span>
+          ))}
+          {visibleLockLines.map((line) => (
+            <span key={line} className="disposition-type-hint" aria-hidden="true">
+              {line}
+            </span>
+          ))}
           {errors.dispositionTypeCode !== undefined && (
             <span className="field-error">{errors.dispositionTypeCode}</span>
           )}
@@ -284,8 +302,8 @@ export const DecisionFormPane = ({
           required
           fullWidth
           rows={2}
-          disabled={isLocked}
-          aria-describedby={isLocked ? lockReasonId : undefined}
+          disabled={isLocked || noSelectableType}
+          aria-describedby={isLocked ? lockReasonId : noSelectableType ? noTypeReasonId : undefined}
           error={errors.reason}
           onChange={(event) => onChange({ ...value, reason: event.target.value })}
         />
@@ -315,8 +333,8 @@ export const DecisionFormPane = ({
           {t.actions.cancel}
         </Button>
         <Button
-          disabled={isLocked || isSaving || sortBlock !== undefined}
-          aria-describedby={saveDescribedBy}
+          disabled={isLocked || isSaving || sortBlock !== undefined || noSelectableType}
+          aria-describedby={saveDescribedBy ?? (noSelectableType ? noTypeReasonId : undefined)}
           onClick={onSave}
         >
           {isSort ? t.sort.save : t.actions.save}

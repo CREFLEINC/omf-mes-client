@@ -83,6 +83,40 @@ describe('DecisionFormPane', () => {
   });
 
   /* 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음). 옛 「남은 수량 초과 예고」 두 시험은 칸과 함께 없어졌다. */
+  it('모든 유형이 같은 이유로 막히면 이유를 한 번만 보인다(#275)', () => {
+    const closed = t.form.typeLock.closed;
+    renderPane({
+      dispositionOptions: [
+        { value: 'NORMAL', label: '정상', lockReason: closed },
+        { value: 'SCRAP', label: '폐기', lockReason: closed },
+      ],
+      concession: { lockReason: closed, onRequest: () => undefined },
+    });
+    const visible = screen
+      .getAllByText(closed)
+      .filter((node) => !node.classList.contains('visually-hidden'));
+    expect(visible).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: '정상' })).toHaveAccessibleDescription(closed);
+    /* 고를 유형이 없으면 저장 · 사유 입력도 잠그고 그 이유를 잇는다. */
+    const save = screen.getByRole('button', { name: t.actions.save });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription(closed);
+    expect(screen.getByRole('textbox', { name: t.form.reasonLabel })).toBeDisabled();
+  });
+
+  it('일부 유형만 막히면 유형 이름과 이유를 함께 보인다(#275)', () => {
+    renderPane({
+      dispositionOptions: [
+        { value: 'NORMAL', label: '정상' },
+        { value: 'SORT', label: '선별', lockReason: t.form.typeLock.sortSingleLot },
+      ],
+    });
+    expect(screen.getByText(`선별: ${t.form.typeLock.sortSingleLot}`)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: '선별' })).toHaveAccessibleDescription(
+      t.form.typeLock.sortSingleLot,
+    );
+  });
+
   it('처분 수량은 남은 수량 전부를 읽기 전용으로 보인다 — 입력하지 않는다', () => {
     renderPane({ remainingQty: 320 });
 
