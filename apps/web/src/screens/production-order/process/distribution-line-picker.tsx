@@ -15,6 +15,7 @@ export const DistributionLinePicker = ({
   disabled,
   optional = false,
   combined = false,
+  emptyLabel = '생산 라인 선택',
   onChange,
 }: {
   label: string;
@@ -23,6 +24,7 @@ export const DistributionLinePicker = ({
   disabled: boolean;
   optional?: boolean;
   combined?: boolean;
+  emptyLabel?: string;
   onChange: (value: string) => void;
 }) => {
   const [open, setOpen] = useState(false);
@@ -60,7 +62,7 @@ export const DistributionLinePicker = ({
       )}
       <div className="erp-wo-distribution-line-buttons">
         <Button
-          size="sm"
+          size="md"
           variant="outlined"
           aria-label={`${label} 선택`}
           aria-haspopup="dialog"
@@ -71,14 +73,14 @@ export const DistributionLinePicker = ({
           {combined
             ? selected
               ? `${selected.name} (${selected.code})`
-              : '생산 라인 선택'
+              : emptyLabel
             : selected
               ? '라인 변경'
               : '라인 선택'}
         </Button>
         {optional && value && (
           <Button
-            size="sm"
+            size="md"
             variant="text"
             aria-label={`${label} 해제`}
             disabled={disabled}

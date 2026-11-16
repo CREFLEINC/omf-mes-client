@@ -1,3 +1,4 @@
+import { PlanningDayNotice } from '../process/planning-working-days';
 import { RevisionDetailButton } from '../process/revision-detail';
 import { AdjustableNativeTable } from '../process/adjustable-table';
 import type { ReviewPlan, ReviewProposal } from './model';
@@ -13,6 +14,12 @@ export const PlanSummary = ({
 }) => (
   <section className="proposal-plan-summary" aria-label="생산계획 정보">
     <h3>생산계획</h3>
+    <PlanningDayNotice day={plan.planDateCalendar} />
+    {plan.planDateAdjustment?.outcomeCode === 'ADJUSTED' && (
+      <p className="erp-wo-planning-day-notice">
+        휴일 제외: {plan.planDateAdjustment.originalDate} → {plan.date}
+      </p>
+    )}
     <dl className="proposal-plan-information">
       {[
         ['계획일', plan.date || '미지정'],

@@ -204,3 +204,34 @@ describe('remainingPlanQtyText — 새 계획 줄의 수량 기본값', () => {
     expect(remainingPlanQtyText(1000, ['abc'])).toBe('');
   });
 });
+
+it('자동 날짜 출처를 생성·날짜 수정 본문에 싣고 날짜 외 수정에는 출처를 덮어쓰지 않는다', () => {
+  const created = buildProductionPlanCreate(validDraft({ planDateSourceCode: 'SYSTEM' }), {
+    productionOrderId: 1,
+    uomId: 2,
+  });
+  expect(created).toMatchObject({ ok: true, body: { planDateSourceCode: 'SYSTEM' } });
+  const updated = buildProductionPlanUpdate(
+    validDraft({
+      planDate: '2026-08-23',
+      planDateSourceCode: 'USER',
+      plannedLineId: '9201',
+      remarks: '기존 비고',
+    }),
+    baseline,
+  );
+  expect(updated).toMatchObject({
+    ok: true,
+    body: { planDate: '2026-08-23', planDateSourceCode: 'USER' },
+  });
+  const quantity = buildProductionPlanUpdate(
+    validDraft({
+      plannedQty: '13',
+      planDateSourceCode: 'SYSTEM',
+      plannedLineId: '9201',
+      remarks: '기존 비고',
+    }),
+    baseline,
+  );
+  expect(quantity).toEqual({ ok: true, body: { plannedQty: 13 } });
+});

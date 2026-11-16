@@ -1,3 +1,4 @@
+import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { useId, useState } from 'react';
 import { AlertBanner, Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
 import { Select } from '../../../patterns/select';
@@ -10,6 +11,7 @@ import { DistributionLinePicker } from './distribution-line-picker';
 import { formatQty } from './process-model';
 import type { PlanLine } from './plan-step';
 export interface PlanAddTarget {
+  plantId?: number | null;
   id: string;
   label: string;
   remaining: number;
@@ -42,6 +44,7 @@ export const PlanAddDialog = ({
     plannedQty: '',
     remarks: '',
     ...target?.defaults,
+    ...(target?.plantId ? { planDateSourceCode: 'SYSTEM' as const } : {}),
     ...(target
       ? {
           plannedQty: String(
@@ -52,6 +55,27 @@ export const PlanAddDialog = ({
   });
   const [draft, setDraft] = useState(() => makeDraft(initial));
   const target = targets.find((target) => target.id === id);
+  const calendar = usePlanningDays(
+    target?.plantId
+      ? [
+          {
+            plantId: target.plantId,
+            productionLineId: draft.plannedLineId ? Number(draft.plannedLineId) : null,
+            from: draft.planDate,
+            to: draft.planDate,
+          },
+        ]
+      : [],
+  );
+  const day = target?.plantId
+    ? calendar.data?.get(
+        planningDayKey(
+          target.plantId,
+          draft.plannedLineId ? Number(draft.plannedLineId) : null,
+          draft.planDate,
+        ),
+      )
+    : undefined;
   const qty = Number(draft.plannedQty);
   const scale = 10 ** (target?.decimalScale ?? 6);
   const valid =
@@ -124,7 +148,13 @@ export const PlanAddDialog = ({
               aria-label="추가할 계획일"
               value={draft.planDate}
               disabled={!target}
-              onChange={(planDate) => setDraft((current) => ({ ...current, planDate }))}
+              onChange={(planDate) =>
+                setDraft((current) => ({
+                  ...current,
+                  planDate,
+                  ...(target?.plantId ? { planDateSourceCode: 'USER' as const } : {}),
+                }))
+              }
             />
           </div>
           <TextField
@@ -148,6 +178,13 @@ export const PlanAddDialog = ({
             />
           </div>
         </div>
+        {calendar.isError ? (
+          <p className="erp-wo-planning-day-notice" role="status">
+            근무일 정보를 조회하지 못했습니다.
+          </p>
+        ) : (
+          <PlanningDayNotice day={day} />
+        )}
       </div>
     </Dialog>
   );

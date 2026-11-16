@@ -91,7 +91,7 @@ export const PlantWorkingDaysScreen = () => {
    */
   const isChanged = (row: Row): boolean => {
     const edit = edits.get(row.plant.plantId);
-    return edit !== undefined && edit !== row.saved;
+    return edit !== undefined && (row.isDefault || edit !== row.saved);
   };
   const isDirty = rows.some(isChanged);
 
@@ -99,7 +99,7 @@ export const PlantWorkingDaysScreen = () => {
     save.reset();
     setEdits((prev) => {
       const next = new Map(prev);
-      if (days === row.saved) next.delete(row.plant.plantId);
+      if (!row.isDefault && days === row.saved) next.delete(row.plant.plantId);
       else next.set(row.plant.plantId, days);
       return next;
     });

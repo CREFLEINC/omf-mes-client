@@ -2,7 +2,7 @@ import { ReleaseReview, type ReleaseReviewPlan } from './release-review';
 import { AdjustableLayout } from './adjustable-layout';
 import { AdjustableNativeTable } from './adjustable-table';
 import { TerminalConnections } from './terminal-connections';
-import { AlertBanner, Button, SkeletonText, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -253,7 +253,6 @@ export const ReleaseStep = ({
   failures,
   issueDates,
   revealErrors,
-  onLotSizeChange,
 }: ReleaseStepProps) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   if (lines === undefined) return <SkeletonText lines={4} />;
@@ -314,7 +313,6 @@ export const ReleaseStep = ({
         <h2 className="section-title">{t.heading}</h2>
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
-      <p className="erp-wo-release-scope">{t.scopeHelp}</p>
       {reviewPlans && (
         <ReleaseReview
           plans={reviewPlans}
@@ -330,21 +328,18 @@ export const ReleaseStep = ({
         initial="stack"
         ratio={0.6}
       >
-        <section className="pane erp-wo-release-targets" aria-label="배포 대상 및 LOT 설정">
-          <h3 className="section-title">배포 대상 및 LOT 설정</h3>
+        <section className="pane erp-wo-release-targets" aria-label="배포 작업지시">
+          <h3 className="section-title">배포 작업지시</h3>
           <div className="erp-wo-release-target-table">
             <AdjustableNativeTable
               storageKey="omf-mes:work-planning:release-columns"
               widths={
-                issueDates === undefined
-                  ? [220, 220, 120, 160, 120]
-                  : [220, 220, 120, 160, 120, 120, 120]
+                issueDates === undefined ? [220, 220, 120, 120] : [220, 220, 120, 120, 120, 120]
               }
               labels={[
                 '작업지시 · 공정',
                 '계획일 · 생산 라인',
                 t.columns.orderQty,
-                t.columns.lotSize,
                 t.columns.lotCount,
                 ...(issueDates === undefined ? [] : [pw.productionDate, pw.issueWorkDate]),
               ]}
@@ -375,21 +370,6 @@ export const ReleaseStep = ({
                       </td>
                       <td data-label={t.columns.orderQty}>
                         {formatQty(target.orderQty)} {uomLabelOf(target.uomId)}
-                      </td>
-                      <td data-label={t.columns.lotSize}>
-                        <TextField
-                          size="sm"
-                          inputMode="decimal"
-                          aria-label={t.lotSizeLabel(target.workOrderNo)}
-                          value={line.lotSizeText}
-                          error={
-                            line.touched || revealErrors ? (line.error ?? undefined) : undefined
-                          }
-                          onChange={(event) =>
-                            onLotSizeChange(target.workOrderId, event.target.value)
-                          }
-                        />
-                        <span className="field-note">{uomLabelOf(target.uomId)}</span>
                       </td>
                       <td data-label={t.columns.lotCount}>
                         {line.lotCount == null ? '—' : `${line.lotCount}개`}
@@ -450,10 +430,10 @@ export const ReleaseStep = ({
             </details>
           )}
           {plantId != null && (
-            <details className="pane erp-wo-release-terminals">
-              <summary>연결 단말기 확인</summary>
+            <section className="pane erp-wo-release-terminals" aria-label="연결 단말기 확인">
+              <h3 className="section-title">연결 단말기 확인</h3>
               <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
-            </details>
+            </section>
           )}
           <section className="erp-wo-release-effects">
             <div className="pane">

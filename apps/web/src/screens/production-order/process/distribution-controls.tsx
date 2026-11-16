@@ -1,3 +1,13 @@
+import { formatQty } from './process-model';
+import { useApiClient } from '../../../patterns/api-context';
+import {
+  resolvePlanningDays,
+  usePlanningDays,
+  planningDayKey,
+  planningDayMessage,
+  planningHolidayLabel,
+  type PlanningDay,
+} from './planning-working-days';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
 import { DistributionPeriodPicker } from './distribution-period-picker';
@@ -46,14 +56,22 @@ export const DistributionControls = ({
   onDirtyChange,
 }: DistributionControlsProps) => {
   const id = useId();
+  const { client } = useApiClient();
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const [calendarNotes, setCalendarNotes] = useState<string[]>([]);
+  const [resultQuantities, setResultQuantities] = useState<Record<string, string>>({});
+  const resultKey = (row: OwnedDraft) => `${row.owner}:${row.planDate}:${row.plannedLineId}`;
+  const [holidayRows, setHolidayRows] = useState<(OwnedDraft & { holidayLabel: string })[]>([]);
+  const latestSignature = useRef('');
   const sequence = useRef(0);
   const lock = useRef(false);
   const [open, setOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const previewEpoch = useRef(0);
   const [activeId, setActiveId] = useState('');
-  const [conditionPage, setConditionPage] = useState(1);
+  const [activeOwner, setActiveOwner] = useState('');
   const [resultPage, setResultPage] = useState(1);
-  const [dailyPage, setDailyPage] = useState(1);
+  const [dailyPages, setDailyPages] = useState<Record<string, number>>({});
   const [orderPage, setOrderPage] = useState(1);
   const [totalsPage, setTotalsPage] = useState(1);
   const [rows, setRows] = useState<DistributionSegment[]>([]);
@@ -68,6 +86,9 @@ export const DistributionControls = ({
   const [commonStart, setCommonStart] = useState(plantToday());
   const [commonEnd, setCommonEnd] = useState(shiftPlanDate(plantToday(), 6));
   const [commonLine, setCommonLine] = useState('');
+  const [commonPeriodChanged, setCommonPeriodChanged] = useState(false);
+  const [commonHoliday, setCommonHoliday] = useState('');
+  const [commonStatus, setCommonStatus] = useState('');
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
@@ -89,6 +110,7 @@ export const DistributionControls = ({
           ? String(lines[0]!.id)
           : '',
       mode: 'equal',
+      includeHolidays: false,
       quantity,
       daily: {},
     };
@@ -101,12 +123,128 @@ export const DistributionControls = ({
       unit: order.unit,
       lines: order.lines.map((line) => line.id),
       decimalScale: order.decimalScale,
+      plantId: order.plantId,
     })),
     existing,
   });
+  latestSignature.current = signature;
   const activeRow = rows.find((row) => row.id === activeId) ?? rows[0];
-  const visibleConditionPage = Math.min(conditionPage, Math.max(1, Math.ceil(rows.length / 5)));
+  const focusedOrder =
+    orders.find((order) => order.id === activeOwner) ??
+    orders.find((order) => order.id === activeRow?.owner) ??
+    orders[0];
+  const allocatedOf = (owner: string) =>
+    rows
+      .filter((row) => row.owner === owner && !row.applied)
+      .reduce(
+        (sum, row) => sum + (row.mode === 'daily' ? dailyTotal(row) : Number(row.quantity) || 0),
+        0,
+      );
+  const workingDays = usePlanningDays(
+    rows.flatMap((row) => {
+      const order = orders.find((order) => order.id === row.owner);
+      return order?.plantId
+        ? [
+            {
+              plantId: order.plantId,
+              productionLineId: row.lineId ? Number(row.lineId) : null,
+              from: row.start,
+              to: row.end,
+            },
+          ]
+        : [];
+    }),
+  );
   const stale = preview !== null && preview.signature !== signature;
+  const previewRows = preview
+    ? [
+        ...preview.result.drafts,
+        ...new Map(
+          holidayRows
+            .filter(
+              (row) =>
+                !preview.result.drafts.some(
+                  (draft) =>
+                    draft.owner === row.owner &&
+                    draft.planDate === row.planDate &&
+                    draft.plannedLineId === row.plannedLineId,
+                ),
+            )
+            .map((row) => [`${row.owner}:${row.planDate}:${row.plannedLineId}`, row]),
+        ).values(),
+      ]
+        .map((row) => ({
+          ...row,
+          plannedQty: resultQuantities[resultKey(row)] ?? row.plannedQty,
+          ...(holidayRows.find((holiday) => resultKey(holiday) === resultKey(row))
+            ? {
+                holidayLabel: holidayRows.find((holiday) => resultKey(holiday) === resultKey(row))!
+                  .holidayLabel,
+              }
+            : {}),
+        }))
+        .sort(
+          (a, b) =>
+            a.owner.localeCompare(b.owner) ||
+            a.planDate.localeCompare(b.planDate) ||
+            a.plannedLineId.localeCompare(b.plannedLineId),
+        )
+    : [];
+  let reviewResult = preview?.result;
+  let resultError = '';
+  if (preview && Object.keys(resultQuantities).length) {
+    try {
+      const grouped = new Map<string, DistributionSegment>();
+      for (const row of previewRows) {
+        const key = `${row.owner}:${row.plannedLineId}`;
+        const group = grouped.get(key) ?? {
+          id: key,
+          owner: row.owner,
+          start: row.planDate,
+          end: row.planDate,
+          lineId: row.plannedLineId,
+          mode: 'daily',
+          quantity: '0',
+          daily: {},
+        };
+        group.start = group.start < row.planDate ? group.start : row.planDate;
+        group.end = group.end > row.planDate ? group.end : row.planDate;
+        group.daily[row.planDate] = row.plannedQty;
+        grouped.set(key, group);
+      }
+      reviewResult = previewSegments(
+        orders,
+        [...grouped.values()].filter((group) =>
+          Object.values(group.daily).some((qty) => Number(qty) !== 0),
+        ),
+        existing,
+      );
+      if (
+        reviewResult.orders.some(
+          (order) =>
+            Math.abs(
+              order.added -
+                (preview.result.orders.find((item) => item.id === order.id)?.added ?? 0),
+            ) > 0.0000005,
+        )
+      )
+        resultError = 'ERP W/O별 생산량 합계를 기존 분배 수량과 맞추세요.';
+      reviewResult = {
+        ...reviewResult,
+        warnings: [...new Set([...preview.result.warnings, ...reviewResult.warnings])],
+        drafts: reviewResult.drafts.map((row) => ({
+          ...row,
+          planDateSourceCode:
+            resultQuantities[resultKey(row)] !== undefined
+              ? ('USER' as const)
+              : (preview.result.drafts.find((original) => resultKey(original) === resultKey(row))
+                  ?.planDateSourceCode ?? 'USER'),
+        })),
+      };
+    } catch (error) {
+      resultError = error instanceof Error ? error.message : '수량을 확인하세요.';
+    }
+  }
   const change = (key: string, patch: Partial<DistributionSegment>) => {
     setRows((current) =>
       current.map((row) => (row.id === key ? { ...row, ...patch, applied: false } : row)),
@@ -151,7 +289,7 @@ export const DistributionControls = ({
           자동 분배
         </Button>
         <Button
-          size="sm"
+          size="md"
           variant="text"
           className="erp-wo-distribution-help-trigger"
           aria-label="자동 분배 도움말"
@@ -169,9 +307,19 @@ export const DistributionControls = ({
           title="자동 분배"
           className="erp-wo-distribution-dialog"
           closeOnBackdropClick={false}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            latestSignature.current = 'closed';
+            previewEpoch.current++;
+            setOpen(false);
+          }}
           footer={
-            <Button variant="outlined" onClick={() => setOpen(false)}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                previewEpoch.current++;
+                setOpen(false);
+              }}
+            >
               편성 화면으로
             </Button>
           }
@@ -185,61 +333,184 @@ export const DistributionControls = ({
               <>
                 <div className="erp-wo-distribution-heading">
                   <h2 className="section-title">
-                    ERP W/O별 분배 조건 <span className="field-note">{rows.length}건</span>
+                    ERP W/O별 분배 조건 <span className="field-note">{orders.length}건</span>
                   </h2>
-                  <Button
-                    variant="outlined"
-                    disabled={disabled || orders.length === 0}
-                    onClick={() => {
-                      const order = orders.find((order) => order.pending > 0) ?? orders[0];
-                      if (order) {
-                        const created = createRow(order.id);
-                        setRows((current) => [...current, created]);
-                        setActiveId(created.id);
-                        setConditionPage(Math.floor(rows.length / 5) + 1);
-                        setDailyPage(1);
-                        setDirty(true);
-                        setPreview(null);
+                  <label className="erp-wo-checkbox">
+                    <input
+                      type="checkbox"
+                      aria-label="분배 조건 전체 선택"
+                      checked={rows.length > 0 && rows.every((row) => selected.includes(row.id))}
+                      disabled={disabled || !rows.length}
+                      ref={(input) => {
+                        if (input)
+                          input.indeterminate =
+                            rows.some((row) => selected.includes(row.id)) &&
+                            !rows.every((row) => selected.includes(row.id));
+                      }}
+                      onChange={(event) =>
+                        setSelected(event.target.checked ? rows.map((row) => row.id) : [])
                       }
-                    }}
-                  >
-                    조건 추가
-                  </Button>
+                    />
+                    전체 선택
+                  </label>
                 </div>
-                <details className="erp-wo-common-conditions">
-                  <summary>선택 조건에 공통 기간과 라인 입력</summary>
-                  <p className="field-note">선택 {selected.length}건</p>
+                <div className="erp-wo-preview-scroll">
+                  <table className="erp-wo-distribution-owner-table">
+                    <caption className="visually-hidden">ERP W/O별 분배 수량</caption>
+                    <thead>
+                      <tr>
+                        <th>선택</th>
+                        <th>ERP W/O</th>
+                        <th>미계획 수량</th>
+                        <th>분배 수량 합계</th>
+                        <th>미배분 수량</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => {
+                        const owned = rows.filter((row) => row.owner === order.id),
+                          allocated = allocatedOf(order.id),
+                          left = order.pending - allocated;
+                        return (
+                          <tr
+                            key={order.id}
+                            data-active={order.id === focusedOrder?.id}
+                            aria-label={`${order.label} 분배 조건`}
+                            onClick={(event) => {
+                              if (!(event.target as HTMLElement).closest('input'))
+                                setActiveOwner(order.id);
+                            }}
+                          >
+                            <td>
+                              <input
+                                type="checkbox"
+                                aria-label={`${order.label} 전체 선택`}
+                                disabled={disabled || !owned.length}
+                                checked={
+                                  owned.length > 0 &&
+                                  owned.every((row) => selected.includes(row.id))
+                                }
+                                ref={(input) => {
+                                  if (input)
+                                    input.indeterminate =
+                                      owned.some((row) => selected.includes(row.id)) &&
+                                      !owned.every((row) => selected.includes(row.id));
+                                }}
+                                onChange={(event) =>
+                                  setSelected((current) =>
+                                    event.target.checked
+                                      ? [...new Set([...current, ...owned.map((row) => row.id)])]
+                                      : current.filter(
+                                          (key) => !owned.some((row) => row.id === key),
+                                        ),
+                                  )
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Button
+                                variant="text"
+                                size="sm"
+                                aria-pressed={order.id === focusedOrder?.id}
+                                onClick={() => setActiveOwner(order.id)}
+                              >
+                                {order.orderNo ?? order.label}
+                              </Button>
+                            </td>
+                            <td>
+                              {formatQty(order.availableQty ?? order.pending)} {order.unit}
+                              {order.availableQty !== undefined &&
+                                order.pending < order.availableQty && (
+                                  <span className="field-note">
+                                    이번 분배 한도 {formatQty(order.pending)} {order.unit}
+                                  </span>
+                                )}
+                            </td>
+                            <td>
+                              {formatQty(allocated)} {order.unit}
+                            </td>
+                            <td>
+                              {left < 0 ? '초과 ' : ''}
+                              {formatQty(Math.abs(left))} {order.unit}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <section className="erp-wo-common-conditions" aria-label="선택 조건 공통 입력">
+                  <h3 className="section-title">
+                    선택 항목 일괄 입력 <span className="field-note">선택 {selected.length}건</span>
+                  </h3>
                   <div className="erp-wo-distribution-fields">
                     <div className="field-cell erp-wo-distribution-period">
                       <span className="field-label">공통 분배 기간</span>
                       <DistributionPeriodPicker
                         label="공통 분배 기간"
-                        value={[commonStart, commonEnd]}
-                        disabled={disabled}
+                        value={commonPeriodChanged ? [commonStart, commonEnd] : ['', '']}
+                        placeholder="변경하지 않음"
+                        disabled={disabled || !selected.length}
                         onChange={([start, end]) => {
+                          setCommonPeriodChanged(true);
                           setCommonStart(start);
                           setCommonEnd(end);
                         }}
                       />
+                      {commonPeriodChanged && (
+                        <Button
+                          variant="text"
+                          size="sm"
+                          onClick={() => setCommonPeriodChanged(false)}
+                        >
+                          기간 변경 해제
+                        </Button>
+                      )}
                     </div>
                     <div className="field-cell">
-                      <span className="field-label">공통 생산 라인 (선택)</span>
+                      <span className="field-label">공통 생산 라인</span>
                       <DistributionLinePicker
                         label="공통 생산 라인"
                         lines={commonLines}
                         value={commonLine}
-                        disabled={disabled}
+                        emptyLabel="변경하지 않음"
+                        disabled={disabled || !selected.length}
                         optional
+                        combined
                         onChange={setCommonLine}
                       />
                     </div>
+                    <div className="field-cell">
+                      <span className="field-label">공통 휴일 편성</span>
+                      <Select
+                        aria-label="공통 휴일 편성"
+                        size="md"
+                        value={commonHoliday}
+                        disabled={disabled || !selected.length}
+                        options={[
+                          { value: '', label: '변경하지 않음' },
+                          { value: 'no', label: '미포함' },
+                          { value: 'yes', label: '포함' },
+                        ]}
+                        onChange={setCommonHoliday}
+                      />
+                    </div>
                   </div>
+                  {commonStatus && (
+                    <p className="field-note" role="status">
+                      {commonStatus}
+                    </p>
+                  )}
                   <Button
                     variant="outlined"
-                    disabled={disabled || !selected.length}
+                    disabled={
+                      disabled ||
+                      !selected.length ||
+                      (!commonPeriodChanged && !commonLine && !commonHoliday)
+                    }
                     onClick={() => {
                       try {
-                        segmentDates(commonStart, commonEnd);
+                        if (commonPeriodChanged) segmentDates(commonStart, commonEnd);
                         if (
                           commonLine &&
                           selectedOrders.some(
@@ -252,8 +523,12 @@ export const DistributionControls = ({
                             selected.includes(row.id)
                               ? {
                                   ...row,
-                                  start: commonStart,
-                                  end: commonEnd,
+                                  ...(commonPeriodChanged
+                                    ? { start: commonStart, end: commonEnd }
+                                    : {}),
+                                  ...(commonHoliday
+                                    ? { includeHolidays: commonHoliday === 'yes' }
+                                    : {}),
                                   ...(commonLine ? { lineId: commonLine } : {}),
                                   applied: false,
                                 }
@@ -263,6 +538,10 @@ export const DistributionControls = ({
                         setDirty(true);
                         setPreview(null);
                         setMessage('');
+                        setCommonStatus(`선택 ${selected.length}건에 적용했습니다.`);
+                        setCommonPeriodChanged(false);
+                        setCommonLine('');
+                        setCommonHoliday('');
                       } catch (error) {
                         setMessage(
                           error instanceof Error ? error.message : '공통 조건을 확인하세요.',
@@ -270,126 +549,89 @@ export const DistributionControls = ({
                       }
                     }}
                   >
-                    선택 조건에 입력
+                    선택 항목에 적용
                   </Button>
-                </details>
-                <div className="erp-wo-distribution-condition-list">
-                  <div className="erp-wo-preview-scroll">
-                    <table>
-                      <caption className="visually-hidden">분배 조건 목록</caption>
-                      <thead>
-                        <tr>
-                          <th scope="col">
-                            <input
-                              type="checkbox"
-                              aria-label="분배 조건 전체 선택"
-                              checked={
-                                rows.length > 0 && rows.every((row) => selected.includes(row.id))
-                              }
-                              ref={(input) => {
-                                if (input)
-                                  input.indeterminate =
-                                    rows.some((row) => selected.includes(row.id)) &&
-                                    !rows.every((row) => selected.includes(row.id));
-                              }}
-                              disabled={disabled || rows.length === 0}
-                              onChange={(event) =>
-                                setSelected(event.target.checked ? rows.map((row) => row.id) : [])
-                              }
-                            />
-                          </th>
-                          <th>분배 조건</th>
-                          <th>ERP W/O / 품목</th>
-                          <th>기간</th>
-                          <th>생산 라인</th>
-                          <th>분배 수량</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows
-                          .slice((visibleConditionPage - 1) * 5, visibleConditionPage * 5)
-                          .map((row, offset) => {
-                            const index = (visibleConditionPage - 1) * 5 + offset;
-                            const target = orders.find((order) => order.id === row.owner);
-                            const line = target?.lines.find(
-                              (line) => String(line.id) === row.lineId,
-                            );
-                            const total =
-                              row.mode === 'daily' ? dailyTotal(row) : Number(row.quantity) || 0;
-                            return (
-                              <tr
-                                key={row.id}
-                                aria-label={`분배 조건 ${index + 1}`}
-                                tabIndex={disabled ? -1 : 0}
-                                onClick={(event) => {
-                                  if (disabled || (event.target as HTMLElement).closest('input'))
-                                    return;
-                                  setActiveId(row.id);
-                                  setDailyPage(1);
-                                }}
-                                onKeyDown={(event) => {
-                                  if (disabled || event.target !== event.currentTarget) return;
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault();
-                                    setActiveId(row.id);
-                                    setDailyPage(1);
-                                  }
-                                }}
-                                data-active={row.id === activeRow?.id ? 'true' : undefined}
-                              >
-                                <td>
-                                  <input
-                                    type="checkbox"
-                                    aria-label={`분배 조건 ${index + 1} 선택`}
-                                    checked={selected.includes(row.id)}
-                                    disabled={disabled}
-                                    onChange={(event) =>
-                                      setSelected((current) =>
-                                        event.target.checked
-                                          ? [...current, row.id]
-                                          : current.filter((key) => key !== row.id),
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td>
-                                  조건 {index + 1}
-                                  {row.applied && <span className="field-note">편성안 반영됨</span>}
-                                </td>
-                                <td>{target?.label ?? 'ERP W/O 선택 필요'}</td>
-                                <td className="erp-wo-condition-period">
-                                  {row.start} ~ {row.end}
-                                </td>
-                                <td>{line?.name ?? '생산 라인 미지정'}</td>
-                                <td>
-                                  {total} {target?.unit}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                </section>
+                {focusedOrder && (
+                  <div className="erp-wo-distribution-focused-order">
+                    <div className="erp-wo-distribution-heading">
+                      <h3 className="section-title">
+                        {focusedOrder.orderNo ?? focusedOrder.label}
+                      </h3>
+                      <Button
+                        variant="outlined"
+                        disabled={disabled || focusedOrder.pending <= 0}
+                        onClick={() => {
+                          const created = createRow(
+                            focusedOrder.id,
+                            String(
+                              Math.max(0, focusedOrder.pending - allocatedOf(focusedOrder.id)),
+                            ),
+                          );
+                          setRows((current) => [...current, created]);
+                          setActiveId(created.id);
+                          setDirty(true);
+                          setPreview(null);
+                        }}
+                      >
+                        분배 조건 추가
+                      </Button>
+                    </div>
+                    {focusedOrder.itemCode && (
+                      <dl>
+                        <div>
+                          <dt>품목 코드</dt>
+                          <dd>{focusedOrder.itemCode}</dd>
+                        </div>
+                        <div>
+                          <dt>품목명</dt>
+                          <dd>{focusedOrder.itemName ?? '—'}</dd>
+                        </div>
+                      </dl>
+                    )}
+                    {allocatedOf(focusedOrder.id) > focusedOrder.pending && (
+                      <AlertBanner variant="error">
+                        분배 수량이 이번 분배 가능 수량을 초과했습니다.
+                      </AlertBanner>
+                    )}
                   </div>
-                  {rows.length > 5 && (
-                    <PageNav
-                      meta={{ page: visibleConditionPage, size: 5, total: rows.length }}
-                      onChangePage={(page) => {
-                        setConditionPage(page);
-                        setActiveId(rows[(page - 1) * 5]?.id ?? '');
-                        setDailyPage(1);
-                      }}
-                    />
-                  )}
-                </div>
+                )}
                 <div className="erp-wo-distribution-segments">
+                  {focusedOrder && !rows.some((row) => row.owner === focusedOrder.id) && (
+                    <p className="field-note">이 ERP W/O에 분배 조건이 없습니다.</p>
+                  )}
                   {rows.map((row, index) => {
-                    if (row.id !== activeRow?.id) return null;
+                    if (row.owner !== focusedOrder?.id) return null;
                     const target = orders.find((order) => order.id === row.owner);
                     const dates = dateRange(row);
                     const total =
                       row.mode === 'daily' ? dailyTotal(row) : Number(row.quantity) || 0;
+                    const resolvedDays = dates.map((date) =>
+                      target?.plantId
+                        ? workingDays.data?.get(
+                            planningDayKey(
+                              target.plantId,
+                              row.lineId ? Number(row.lineId) : null,
+                              date,
+                            ),
+                          )
+                        : undefined,
+                    );
+                    const resolved =
+                      dates.length > 0 && resolvedDays.every((day) => day !== undefined);
+                    const undeterminedCount = resolvedDays.filter(
+                      (day) => day?.statusCode === 'UNDETERMINED',
+                    ).length;
+                    const holidayCount = resolvedDays.filter(
+                      (day) => day?.statusCode === 'HOLIDAY',
+                    ).length;
+                    const dayCount = dates.length - (row.includeHolidays ? 0 : holidayCount);
+                    const scale = 10 ** (target?.decimalScale ?? 6),
+                      totalUnits = Math.round(total * scale);
+                    const dailyBase = dayCount > 0 ? Math.floor(totalUnits / dayCount) / scale : 0;
+                    const remainder = dayCount > 0 ? totalUnits % dayCount : 0;
                     const visibleDailyPage = Math.min(
-                      dailyPage,
+                      dailyPages[row.id] ?? 1,
                       Math.max(1, Math.ceil(dates.length / 7)),
                     );
                     return (
@@ -399,35 +641,28 @@ export const DistributionControls = ({
                         role="group"
                         aria-label={`분배 조건 ${index + 1}`}
                       >
-                        <h3 className="section-title">조건 {index + 1} 편집</h3>
                         <div>
                           <div className="erp-wo-distribution-row-head">
-                            <div className="field-cell">
-                              <span className="field-label">ERP W/O / 품목</span>
-                              <Select
-                                size="sm"
-                                aria-label={`조건 ${index + 1} ERP W/O`}
-                                value={row.owner}
+                            <label className="erp-wo-checkbox">
+                              <input
+                                type="checkbox"
+                                aria-label={`분배 조건 ${index + 1} 선택`}
+                                checked={selected.includes(row.id)}
                                 disabled={disabled}
-                                options={orders.map((order) => ({
-                                  value: order.id,
-                                  label: order.label,
-                                }))}
-                                onChange={(owner) =>
-                                  change(row.id, {
-                                    owner,
-                                    lineId: orders
-                                      .find((order) => order.id === owner)
-                                      ?.lines.some((line) => String(line.id) === row.lineId)
-                                      ? row.lineId
-                                      : '',
-                                  })
+                                onChange={(event) =>
+                                  setSelected((current) =>
+                                    event.target.checked
+                                      ? [...new Set([...current, row.id])]
+                                      : current.filter((key) => key !== row.id),
+                                  )
                                 }
                               />
-                            </div>
+                              {row.start} ~ {row.end}
+                              {row.applied && <span className="field-note">편성안 반영됨</span>}
+                            </label>
                             <Button
-                              variant="text"
-                              size="sm"
+                              variant="outlined"
+                              size="md"
                               disabled={disabled}
                               aria-label={`조건 ${index + 1} 삭제`}
                               onClick={() => {
@@ -441,7 +676,7 @@ export const DistributionControls = ({
                                 setPreview(null);
                               }}
                             >
-                              조건 삭제
+                              −
                             </Button>
                           </div>
                           <div className="erp-wo-segment-fields">
@@ -459,6 +694,7 @@ export const DistributionControls = ({
                               <DistributionLinePicker
                                 label={`조건 ${index + 1} 생산 라인`}
                                 lines={target?.lines ?? []}
+                                combined
                                 value={row.lineId}
                                 disabled={disabled}
                                 onChange={(lineId) => change(row.id, { lineId })}
@@ -467,7 +703,7 @@ export const DistributionControls = ({
                             <div className="field-cell erp-wo-segment-mode">
                               <span className="field-label">배분 방식</span>
                               <Select
-                                size="sm"
+                                size="md"
                                 aria-label={`조건 ${index + 1} 배분 방식`}
                                 value={row.mode}
                                 options={[
@@ -501,7 +737,7 @@ export const DistributionControls = ({
                             </div>
                             {row.mode === 'equal' ? (
                               <TextField
-                                size="sm"
+                                size="md"
                                 className="erp-wo-segment-quantity"
                                 label={`분배 수량 (${target?.unit ?? ''})`}
                                 aria-label={`조건 ${index + 1} 수량`}
@@ -518,6 +754,18 @@ export const DistributionControls = ({
                               </p>
                             )}
                           </div>
+                          <label className="erp-wo-distribution-holiday-option">
+                            <input
+                              type="checkbox"
+                              aria-label={`분배 조건 ${index + 1} 휴일 포함`}
+                              checked={row.includeHolidays ?? false}
+                              disabled={disabled || row.mode === 'daily'}
+                              onChange={(event) =>
+                                change(row.id, { includeHolidays: event.target.checked })
+                              }
+                            />
+                            휴일 포함
+                          </label>
                           {row.mode === 'daily' && (
                             <div className="erp-wo-daily-quantities">
                               {dates.length ? (
@@ -526,7 +774,7 @@ export const DistributionControls = ({
                                   .map((date) => (
                                     <TextField
                                       key={date}
-                                      size="sm"
+                                      size="md"
                                       label={date}
                                       aria-label={`조건 ${index + 1} ${date} 수량`}
                                       inputMode="decimal"
@@ -547,15 +795,37 @@ export const DistributionControls = ({
                           {row.mode === 'daily' && dates.length > 7 && (
                             <PageNav
                               meta={{ page: visibleDailyPage, size: 7, total: dates.length }}
-                              onChangePage={setDailyPage}
+                              onChangePage={(page) =>
+                                setDailyPages((current) => ({ ...current, [row.id]: page }))
+                              }
                             />
                           )}
-                          <p className="field-note">
-                            ERP W/O 편성 대기 {target?.pending ?? 0} {target?.unit}.{' '}
-                            {row.mode === 'equal'
-                              ? '균등 배분의 나머지는 앞 날짜부터 배정합니다.'
-                              : '현재 기간의 날짜별 수량만 합산합니다.'}
-                          </p>
+                          {resolved && (
+                            <p className="erp-wo-distribution-calendar-summary" role="status">
+                              분배일 {dayCount}일 · 휴일 {holidayCount}일{' '}
+                              {row.includeHolidays ? '포함' : '제외'}
+                              {undeterminedCount > 0 && (
+                                <> · 판정 불가 {undeterminedCount}일 포함</>
+                              )}
+                              {row.mode === 'equal' && (
+                                <>
+                                  {' '}
+                                  · 일별 {formatQty(dailyBase)} {target?.unit}
+                                  {remainder > 0 && (
+                                    <>
+                                      {' '}
+                                      · 앞 {remainder}일 +{formatQty(1 / scale)} {target?.unit}
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </p>
+                          )}
+                          {workingDays.isError && (
+                            <p className="field-note">
+                              근무일 정보를 조회하지 못했습니다. 미리보기에서 다시 확인하세요.
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
@@ -570,10 +840,83 @@ export const DistributionControls = ({
                 <div className="erp-wo-distribution-actions">
                   <Button
                     aria-describedby={`${id}-note`}
-                    disabled={disabled || !rows.some((row) => !row.applied)}
-                    onClick={() => {
+                    disabled={disabled || calendarBusy || !rows.some((row) => !row.applied)}
+                    onClick={async () => {
+                      const requestedSignature = signature;
+                      const epoch = ++previewEpoch.current;
+                      setCalendarBusy(true);
                       try {
-                        const result = previewSegments(orders, rows, existing);
+                        const active = rows.filter((row) => !row.applied);
+                        const targets = active.flatMap((row) => {
+                          const order = orders.find((order) => order.id === row.owner);
+                          return order?.plantId
+                            ? [
+                                {
+                                  plantId: order.plantId,
+                                  productionLineId: row.lineId ? Number(row.lineId) : null,
+                                  from: row.start,
+                                  to: row.end,
+                                },
+                              ]
+                            : [];
+                        });
+                        const calendar = await resolvePlanningDays(client, targets);
+                        if (
+                          latestSignature.current !== requestedSignature ||
+                          previewEpoch.current !== epoch
+                        )
+                          return;
+                        const bySegment = new Map<string, PlanningDay[]>();
+                        const notes: string[] = [];
+                        const holidayDisplay: (OwnedDraft & { holidayLabel: string })[] = [];
+                        for (const row of active) {
+                          const order = orders.find((order) => order.id === row.owner);
+                          if (!order?.plantId) {
+                            notes.push(`${order?.label ?? ''}: 근무일 판정 불가 (공장 미지정)`);
+                            continue;
+                          }
+                          const days = segmentDates(row.start, row.end).map((date) =>
+                            calendar.get(
+                              planningDayKey(
+                                order.plantId!,
+                                row.lineId ? Number(row.lineId) : null,
+                                date,
+                              ),
+                            )!,
+                          );
+                          bySegment.set(row.id, days);
+                          const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
+                          for (const day of holidays) {
+                            holidayDisplay.push({
+                              owner: row.owner,
+                              planDate: day.date,
+                              plannedLineId: row.lineId,
+                              plannedQty: '0',
+                              holidayLabel: planningHolidayLabel(day),
+                            });
+                          }
+                          if (row.mode === 'equal' && holidays.length)
+                            notes.push(
+                              `${order.label}: 휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '기본 수량 0'} (${holidays.map((day) => day.date).join(', ')})`,
+                            );
+                          if (row.mode === 'daily')
+                            holidays
+                              .filter((day) => Number(row.daily[day.date]) > 0)
+                              .forEach((day) =>
+                                notes.push(
+                                  `${order.label} / ${day.date}: ${planningDayMessage(day)}`,
+                                ),
+                              );
+                          const unknown = days.filter(
+                            (day) => day.statusCode === 'UNDETERMINED',
+                          ).length;
+                          if (unknown)
+                            notes.push(`${order.label}: 근무일 판정 불가 ${unknown}일 (미설정)`);
+                        }
+                        const result = previewSegments(orders, rows, existing, bySegment);
+                        setCalendarNotes(notes);
+                        setHolidayRows(holidayDisplay);
+                        setResultQuantities({});
                         setPreview({ signature, result });
                         setAcknowledged(false);
                         setResultPage(1);
@@ -582,11 +925,17 @@ export const DistributionControls = ({
                         setMessage('');
                       } catch (error) {
                         setPreview(null);
-                        setMessage(error instanceof Error ? error.message : '조건을 확인하세요.');
+                        setMessage(
+                          error instanceof Error
+                            ? error.message
+                            : '휴일을 조회하지 못했습니다. 다시 확인하세요.',
+                        );
+                      } finally {
+                        setCalendarBusy(false);
                       }
                     }}
                   >
-                    분배 미리보기
+                    {calendarBusy ? '휴일 확인 중' : '분배 미리보기'}
                   </Button>
                   <Button
                     variant="outlined"
@@ -621,6 +970,14 @@ export const DistributionControls = ({
                     조건 수정
                   </Button>
                 </div>
+                {calendarNotes.length > 0 && (
+                  <div className="erp-wo-planning-day-notice" role="status">
+                    {calendarNotes.map((note) => (
+                      <p key={note}>{note}</p>
+                    ))}
+                  </div>
+                )}
+                {resultError && <AlertBanner variant="error">{resultError}</AlertBanner>}
                 {stale && (
                   <AlertBanner variant="warning">
                     계획이나 대상 수량이 바뀌었습니다. 미리보기를 다시 만드세요.
@@ -637,7 +994,7 @@ export const DistributionControls = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.result.orders
+                      {reviewResult!.orders
                         .slice((orderPage - 1) * 10, orderPage * 10)
                         .map((order) => (
                           <tr key={order.id}>
@@ -653,9 +1010,9 @@ export const DistributionControls = ({
                     </tbody>
                   </table>
                 </div>
-                {preview.result.orders.length > 10 && (
+                {reviewResult!.orders.length > 10 && (
                   <PageNav
-                    meta={{ page: orderPage, size: 10, total: preview.result.orders.length }}
+                    meta={{ page: orderPage, size: 10, total: reviewResult!.orders.length }}
                     onChangePage={setOrderPage}
                   />
                 )}
@@ -671,37 +1028,53 @@ export const DistributionControls = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.result.drafts
-                        .slice((resultPage - 1) * 10, resultPage * 10)
-                        .map((row) => (
-                          <tr key={`${row.owner}-${row.planDate}-${row.plannedLineId}`}>
-                            <td>{orders.find((order) => order.id === row.owner)?.label}</td>
-                            <td>{row.planDate}</td>
-                            <td>
-                              {
-                                orders
-                                  .find((order) => order.id === row.owner)
-                                  ?.lines.find((line) => String(line.id) === row.plannedLineId)
-                                  ?.name
-                              }
-                            </td>
-                            <td>
-                              {row.plannedQty}{' '}
-                              {orders.find((order) => order.id === row.owner)?.unit}
-                            </td>
-                          </tr>
-                        ))}
+                      {previewRows.slice((resultPage - 1) * 10, resultPage * 10).map((row) => (
+                        <tr key={`${row.owner}-${row.planDate}-${row.plannedLineId}`}>
+                          <td>{orders.find((order) => order.id === row.owner)?.label}</td>
+                          <td>
+                            {row.planDate}
+                            {'holidayLabel' in row && (
+                              <span className="erp-wo-holiday-day-label">
+                                {String(row.holidayLabel)}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {
+                              orders
+                                .find((order) => order.id === row.owner)
+                                ?.lines.find((line) => String(line.id) === row.plannedLineId)?.name
+                            }
+                          </td>
+                          <td>
+                            <TextField
+                              size="md"
+                              inputMode="decimal"
+                              aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
+                              value={row.plannedQty}
+                              onChange={(event) => {
+                                setResultQuantities((current) => ({
+                                  ...current,
+                                  [resultKey(row)]: event.target.value,
+                                }));
+                                setAcknowledged(false);
+                              }}
+                            />{' '}
+                            {orders.find((order) => order.id === row.owner)?.unit}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                {preview.result.drafts.length > 10 && (
+                {previewRows.length > 10 && (
                   <PageNav
-                    meta={{ page: resultPage, size: 10, total: preview.result.drafts.length }}
+                    meta={{ page: resultPage, size: 10, total: previewRows.length }}
                     onChangePage={setResultPage}
                   />
                 )}
-                <details>
-                  <summary>선택 ERP W/O의 날짜별 라인 합계</summary>
+                <section aria-label="선택 ERP W/O의 날짜별 라인 합계">
+                  <h3 className="section-title">선택 ERP W/O의 날짜별 라인 합계</h3>
                   <div className="erp-wo-preview-scroll">
                     <table>
                       <thead>
@@ -714,7 +1087,7 @@ export const DistributionControls = ({
                         </tr>
                       </thead>
                       <tbody>
-                        {preview.result.totals
+                        {reviewResult!.totals
                           .slice((totalsPage - 1) * 10, totalsPage * 10)
                           .map((row) => (
                             <tr key={`${row.date}-${row.lineId}-${row.unit}`}>
@@ -734,21 +1107,21 @@ export const DistributionControls = ({
                       </tbody>
                     </table>
                   </div>
-                  {preview.result.totals.length > 10 && (
+                  {reviewResult!.totals.length > 10 && (
                     <PageNav
-                      meta={{ page: totalsPage, size: 10, total: preview.result.totals.length }}
+                      meta={{ page: totalsPage, size: 10, total: reviewResult!.totals.length }}
                       onChangePage={setTotalsPage}
                     />
                   )}
                   <p className="field-note">
                     선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.
                   </p>
-                </details>
-                {!!preview.result.warnings.length && (
+                </section>
+                {!!reviewResult!.warnings.length && (
                   <>
                     <AlertBanner variant="warning">
                       <ul>
-                        {preview.result.warnings.map((warning) => (
+                        {reviewResult!.warnings.map((warning) => (
                           <li key={warning}>{warning}</li>
                         ))}
                       </ul>
@@ -781,13 +1154,16 @@ export const DistributionControls = ({
                   <Button
                     aria-describedby={`${id}-note`}
                     disabled={
-                      disabled || stale || (!acknowledged && preview.result.warnings.length > 0)
+                      disabled ||
+                      stale ||
+                      !!resultError ||
+                      (!acknowledged && reviewResult!.warnings.length > 0)
                     }
                     onClick={() => {
-                      if (lock.current || stale) return;
+                      if (lock.current || stale || resultError) return;
                       lock.current = true;
                       try {
-                        onApply(preview.result.drafts);
+                        onApply(reviewResult!.drafts);
                         const applied = rows.map((row) => ({ ...row, applied: true }));
                         setRows(applied);
                         baseline.current = applied;

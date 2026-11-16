@@ -1,15 +1,9 @@
-import { arrivalLocationNeedsCorrection, useWarehouseArrival } from './arrival-location';
+import { useProductionPlanDetail } from '../../production-plan/queries';
+import { useRoutingOperations } from '../../routing/queries';
+import { useWarehouseArrival } from './arrival-location';
 import { lineLocationDefaults } from './line-location-defaults';
 import type { ProductionOrderFact } from '../types';
-import {
-  AlertBanner,
-  Button,
-  Chip,
-  SkeletonText,
-  TextField,
-  Tooltip,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, SkeletonText, Tooltip, useToast } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
@@ -19,7 +13,6 @@ import { DateTimeField } from '../../../patterns/date-time-field';
 import { locationOptionLabel } from '../../../patterns/location-label';
 import { ReferenceField, type ReferenceRow } from '../../../patterns/reference-picker';
 import { SaveErrorBanner } from '../../../patterns/master';
-import { Select } from '../../../patterns/select';
 import {
   LINE_LOCATION_WAREHOUSE_TYPES,
   useWorkOrderEquipment,
@@ -55,7 +48,6 @@ import {
   useLineSource,
   useLocationSource,
   useMoldSource,
-  useWorkerSource,
 } from './reference-sources';
 
 /**
@@ -222,7 +214,6 @@ const EditorSession = ({
   const lineSource = useLineSource(plantId);
   const equipmentSource = useEquipmentSource(plantId, idOrNull(draft.productionLineId));
   const moldSource = useMoldSource(plantId);
-  const workerSource = useWorkerSource(plantId);
   const wipSource = useLocationSource(plantId, LINE_LOCATION_WAREHOUSE_TYPES.defaultWipLocationId);
   const fgSource = useLocationSource(plantId, '', {
     erpCode: erpStorage?.erpStorageLocationCode,
@@ -391,9 +382,21 @@ const EditorSession = ({
       draft.plannedShiftId !== baseline.plannedShiftId ||
       draft.plannedStartAtLocal !== baseline.plannedStartAtLocal,
   });
+  const plan = useProductionPlanDetail(workOrder.productionPlanId);
+  const operations = useRoutingOperations(plan.data?.routingId ?? null);
+  const operation = operations.data?.items.find(
+    (item) => item.routingOperationId === workOrder.routingOperationId,
+  );
+  const resourceRequired = (field: string) =>
+    field === 'plannedEquipmentId'
+      ? operation?.equipmentRequired === true
+      : field === 'plannedMoldId'
+        ? operation?.moldRequired === true
+        : field !== 'responsibleWorkerId' && field !== 'plannedShiftId';
   const saving = update.isSaving;
   const required = (field: string) =>
-    (REQUIRED_ASSIGNMENT_FIELDS as readonly string[]).includes(field);
+    (REQUIRED_ASSIGNMENT_FIELDS as readonly string[]).includes(field) ||
+    ((field === 'plannedEquipmentId' || field === 'plannedMoldId') && resourceRequired(field));
   const errorLine = (field: keyof WorkOrderAssignmentDraft): ReactNode => {
     const error = errorOf(field);
     return error === undefined ? null : (
@@ -411,44 +414,45 @@ const EditorSession = ({
       onPick?: (row: ReferenceRow) => void;
       addon?: ReactNode;
     } = {},
-  ) => (
-    <ReferenceField
-      wrapValue
-      size="sm"
-      label={label}
-      valueLabel={labelOf(field)}
-      source={source}
-      required={required(field)}
-      disabled={saving}
-      invalid={errorOf(field) !== undefined}
-      aria-describedby={errorOf(field) === undefined ? undefined : `${errorIdPrefix}-${field}`}
-      labelAddon={
-        <>
-          {options.addon}
-          {options.chips !== undefined && (
-            <RecommendationLinks
-              label={label}
-              chips={options.chips}
-              value={draft[field]}
-              disabled={saving}
-              onPick={(chip) => {
-                setLabels((current) => ({ ...current, [`${field}:${chip.value}`]: chip.label }));
-                patch(
-                  chip.productionLineId === null
-                    ? { [field]: chip.value }
-                    : { productionLineId: chip.productionLineId, [field]: chip.value },
-                );
-              }}
-            />
-          )}
-        </>
-      }
-      onPick={options.onPick ?? ((row) => pick(field, row))}
-      onClear={() => patch({ [field]: '' })}
-    >
-      {errorLine(field)}
-    </ReferenceField>
-  );
+  ) =>
+    !resourceRequired(field) ? null : (
+      <ReferenceField
+        wrapValue
+        size="sm"
+        label={label}
+        valueLabel={labelOf(field)}
+        source={source}
+        required={required(field)}
+        disabled={saving}
+        invalid={errorOf(field) !== undefined}
+        aria-describedby={errorOf(field) === undefined ? undefined : `${errorIdPrefix}-${field}`}
+        labelAddon={
+          <>
+            {options.addon}
+            {options.chips !== undefined && (
+              <RecommendationLinks
+                label={label}
+                chips={options.chips}
+                value={draft[field]}
+                disabled={saving}
+                onPick={(chip) => {
+                  setLabels((current) => ({ ...current, [`${field}:${chip.value}`]: chip.label }));
+                  patch(
+                    chip.productionLineId === null
+                      ? { [field]: chip.value }
+                      : { productionLineId: chip.productionLineId, [field]: chip.value },
+                  );
+                }}
+              />
+            )}
+          </>
+        }
+        onPick={options.onPick ?? ((row) => pick(field, row))}
+        onClear={() => patch({ [field]: '' })}
+      >
+        {errorLine(field)}
+      </ReferenceField>
+    );
 
   const report = validation.data;
   const blocking = report?.findings.find((finding) => finding.severity === 'BLOCK');
@@ -469,7 +473,6 @@ const EditorSession = ({
         : warning !== undefined
           ? t.check.warning
           : t.check.passed;
-  const shiftId = useId();
 
   const finding = blocking ?? warning;
   const findingText =
@@ -615,6 +618,12 @@ const EditorSession = ({
       </p>
       <SaveErrorBanner error={update.error} />
       <h3 className="section-title erp-wo-assignment-input-title">배정 입력</h3>
+      {(plan.isError || operations.isError) && (
+        <AlertBanner variant="error">
+          공정 필수 배정 항목을 조회하지 못했습니다. 다시 조회하세요.
+        </AlertBanner>
+      )}
+
       <div className="assign-form">
         <h3 className="assign-group-title">{t.groups.equipmentAndMold}</h3>
         <div className="erp-wo-assign-line-control">
@@ -645,34 +654,6 @@ const EditorSession = ({
           chips: chips.plannedMoldId,
         })}
         <span className="assign-empty" aria-hidden="true" />
-        <h3 className="assign-group-title">{t.groups.workerAndShift}</h3>
-        {reference('responsibleWorkerId', t.fields.responsibleWorkerId, workerSource, {
-          chips: chips.responsibleWorkerId,
-        })}
-        <div className="field-cell reference-field">
-          <label className="field-label" htmlFor={shiftId}>
-            {t.fields.plannedShiftId}
-          </label>
-          <Select
-            id={shiftId}
-            size="sm"
-            value={draft.plannedShiftId}
-            disabled={saving}
-            placeholder={t.shiftPlaceholder}
-            options={[
-              { value: '', label: t.shiftNone },
-              ...(shifts.data?.items ?? []).map((shift) => ({
-                value: String(shift.shiftId),
-                label: t.shiftOption(
-                  named(shift.shiftName, shift.shiftCode),
-                  shift.startTime.slice(0, 5),
-                  shift.endTime.slice(0, 5),
-                ),
-              })),
-            ]}
-            onChange={(value) => patch({ plannedShiftId: value })}
-          />
-        </div>
         {locationOpen ? (
           <>
             <h3 className="assign-group-title">{t.groups.location}</h3>
@@ -695,25 +676,8 @@ const EditorSession = ({
               (arrival.isError || (arrival.isSuccess && !arrival.data.location)) ? (
                 <span role="alert">입고 위치 기준정보 확인 필요</span>
               ) : null}
-              {erpStorage?.erpStorageLocationCode &&
-              arrival.data &&
-              (arrival.data.divided ||
-                (draft.defaultFgLocationId !== '' &&
-                  draft.defaultFgLocationId !== String(arrival.data.location?.locationId))) ? (
-                <details>
-                  <summary>입고 위치</summary>
-                  <span>
-                    {labelOf('defaultFgLocationId') || draft.defaultFgLocationId || '미지정'}
-                  </span>
-                </details>
-              ) : null}
             </div>
-            {!erpStorage?.erpStorageLocationCode ||
-            (erpStorage.erpStorageWarehouse &&
-              arrival.isSuccess &&
-              arrivalLocationNeedsCorrection(arrival.data.items, draft.defaultFgLocationId))
-              ? reference('defaultFgLocationId', '입고 위치', fgSource)
-              : null}
+            {reference('defaultFgLocationId', '입고 위치', fgSource)}
             {reference('defaultScrapLocationId', t.fields.defaultScrapLocationId, scrapSource)}
             <span className="assign-empty" aria-hidden="true" />
           </>
@@ -730,7 +694,7 @@ const EditorSession = ({
             <h3 className="assign-group-title">{t.groups.plan}</h3>
             <div className="assign-plan-row">
               <DateTimeField
-                size="sm"
+                size="md"
                 label={t.fields.plannedStartAtLocal}
                 value={draft.plannedStartAtLocal}
                 disabled={saving}
@@ -738,22 +702,12 @@ const EditorSession = ({
                 onChange={(value) => patch({ plannedStartAtLocal: value })}
               />
               <DateTimeField
-                size="sm"
+                size="md"
                 label={t.fields.plannedEndAtLocal}
                 value={draft.plannedEndAtLocal}
                 disabled={saving}
                 invalid={errorOf('plannedEndAtLocal') !== undefined}
                 onChange={(value) => patch({ plannedEndAtLocal: value })}
-              />
-              <TextField
-                size="sm"
-                label={t.fields.priorityNo}
-                inputMode="numeric"
-                value={draft.priorityNo}
-                disabled={saving}
-                error={errorOf('priorityNo')}
-                fullWidth
-                onChange={(event) => patch({ priorityNo: event.target.value })}
               />
               {errorLine('plannedEndAtLocal')}
             </div>

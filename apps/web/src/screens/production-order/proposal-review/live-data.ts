@@ -10,6 +10,8 @@ export type LiveCatalog = Awaited<ReturnType<typeof loadCatalog>>;
 const label = (id: number | null, values: Map<number, ReferenceRow>): ReferenceRow | null =>
   id === null ? null : (values.get(id) ?? { id, code: String(id), name: '명칭 확인 필요' });
 const reasonNames: Record<string, string> = {
+  PLAN_DATE_HOLIDAY: '휴일 편성',
+  PLAN_DATE_UNDETERMINED: '근무일 판정 불가 (미설정)',
   BOM_DEFAULT_REQUIRED: 'ERP 기본 BOM 지정 필요',
   ROUTING_REQUIRED: 'Routing 등록 필요',
   ROUTING_DEFAULT_REQUIRED: '기본 Routing 지정 필요',
@@ -170,7 +172,11 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
     remainingQty: row.remainingQty,
     uom: catalog.uoms.get(row.uomId) ?? `단위 ID ${row.uomId}`,
     issues: fixed,
+    basis: row.basis,
     serverIssues: row.reasons.map((reason) => proposalReason(reason.code)),
+    serverWarnings: row.issues
+      .filter((issue) => issue.severity === 'WARN')
+      .map((issue) => proposalReason(issue.code)),
     erpStorage: {
       ...row.erpStorage,
       locationRole:
@@ -181,6 +187,9 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
       number: plan.planNo,
       source: plan.planSource === 'EXISTING_DRAFT' ? '작성중 계획' : '신규 제안',
       date: plan.planDate,
+      planDateSourceCode: plan.planDateSourceCode,
+      planDateCalendar: plan.planDateCalendar,
+      planDateAdjustment: plan.planDateAdjustment,
       quantity: String(plan.proposedQty),
       bom: `${plan.bomCode} (Rev ${plan.bomVersion})`,
       bomId: plan.bomId,

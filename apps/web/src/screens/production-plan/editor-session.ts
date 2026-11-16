@@ -140,6 +140,13 @@ export const useProductionPlanEditorSession = (productionOrderId: number | null)
           return rows;
         let next = changeProductionPlanRow(rows, key, 'plannedQty', parts[0]!.plannedQty);
         next = changeProductionPlanRow(next, key, 'planDate', parts[0]!.planDate);
+        if (parts[0]!.planDateSourceCode)
+          next = changeProductionPlanRow(
+            next,
+            key,
+            'planDateSourceCode',
+            parts[0]!.planDateSourceCode,
+          );
         parts.slice(1).forEach((part, index) => {
           const newKey = keys[index]!;
           next = appendProductionPlanRow(next, newKey, { ...row.draft, ...part });

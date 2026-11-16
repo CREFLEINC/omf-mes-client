@@ -24,6 +24,7 @@ export const splitPlanQuantity = (
 };
 
 export interface PlanSplitPart {
+  planDateSourceCode?: 'SYSTEM' | 'USER';
   plannedQty: string;
   planDate: string;
 }

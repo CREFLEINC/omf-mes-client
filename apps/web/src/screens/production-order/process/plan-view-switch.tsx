@@ -4,12 +4,13 @@ const t = messages.erpWorkOrderFlow.process.plan.workspace;
 export const PlanViewSwitch = ({
   value,
   onChange,
+  layoutToolsId,
 }: {
   value: string;
+  layoutToolsId?: string;
   onChange: (value: string) => void;
 }) => (
   <div className="erp-wo-plan-view-switch">
-    <span className="field-label">보기</span>
     <div className="erp-wo-plan-view-buttons" role="group" aria-label={t.views}>
       {[
         ['week', t.week, 'calendar_month'],
@@ -27,5 +28,6 @@ export const PlanViewSwitch = ({
         </Button>
       ))}
     </div>
+    {layoutToolsId && <div id={layoutToolsId} className="erp-wo-plan-layout-slot" />}
   </div>
 );

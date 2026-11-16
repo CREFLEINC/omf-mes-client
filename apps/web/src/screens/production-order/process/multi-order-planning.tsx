@@ -730,6 +730,13 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               </div>
             </div>
             <PlanCreationTools
+              viewControl={
+                <PlanViewSwitch
+                  value={planView}
+                  onChange={setPlanView}
+                  layoutToolsId={`${remainingId}-layout-tools`}
+                />
+              }
               disabled={busy || !allReady || !validTargets}
               addDisabled={entries.every((entry) => getRemaining(entry) <= 0)}
               onAdd={() => openPlanAdd()}
@@ -737,10 +744,15 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               <DistributionControls
                 orders={entries.map((entry) => ({
                   id: entry.order.productionOrderNo,
+                  plantId: entry.order.plantId,
                   label: `${entry.order.productionOrderNo} / ${entry.item}`,
                   unit: entry.unit,
                   decimalScale: entry.decimalScale,
                   pending: toSchedule(entry),
+                  availableQty: getRemaining(entry),
+                  orderNo: entry.order.productionOrderNo,
+                  itemCode: entry.itemCode,
+                  itemName: entry.itemName,
                   lines: entry.lines,
                   startDate: entry.defaults.planDate,
                   lineId: entry.defaults.plannedLineId,
@@ -855,7 +867,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
         {orderNumbers.map((number) => (
           <OrderSession key={number} number={number} publish={publish} />
         ))}
-        {stage === 'plan' && <PlanViewSwitch value={planView} onChange={setPlanView} />}
+
         {stage === 'plan' && target && (
           <div className="erp-wo-multi-plan-week">
             <PlanStep
@@ -905,6 +917,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
                 ),
               }))}
               viewMode={planView === 'week' ? 'week' : 'grid'}
+              layoutToolsTargetId={`${remainingId}-layout-tools`}
               orderQty={
                 units.size === 1 ? entries.reduce((sum, entry) => sum + entry.order.orderQty, 0) : 0
               }
@@ -969,6 +982,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               onChange={(key, field, value) =>
                 ownerOf(key)?.editor.change(originalKey(key), field, value)
               }
+              rowPlantIdOf={(row) => ownerOf(row.key)?.order.plantId ?? null}
               onSplit={(row, qty) =>
                 ownerOf(row.key)?.editor.splitMany(
                   originalKey(row.key),
@@ -1154,6 +1168,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
           initialOrder={addInitialOrder}
           targets={entries.map((entry) => ({
             id: entry.order.productionOrderNo,
+            plantId: entry.order.plantId,
             label: `${entry.order.productionOrderNo} / ${entry.item}`,
             remaining: getRemaining(entry),
             unit: entry.unit,

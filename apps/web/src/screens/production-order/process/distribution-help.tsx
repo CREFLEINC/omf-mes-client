@@ -43,8 +43,8 @@ export const DistributionHelp = ({ onClose }: { onClose: () => void }) => (
           <div>
             <h4>균등 배분</h4>
             <p>
-              분배 수량을 기간의 날짜 수로 나눕니다. 단위의 소수 자릿수에 맞추고, 나머지는 앞
-              날짜부터 배정합니다.
+              기존 휴일 설정에서 휴일인 날짜를 제외하고 분배 수량을 나눕니다. 단위의 소수 자릿수에
+              맞추고, 나머지는 앞 날짜부터 배정합니다.
             </p>
             <p className="field-note">예: 정수 단위 100 EA를 3일에 분배</p>
             <table>
@@ -96,8 +96,9 @@ export const DistributionHelp = ({ onClose }: { onClose: () => void }) => (
         <h3 id="distribution-help-rules">분배할 때 확인할 규칙</h3>
         <ul>
           <li>
-            <strong>기간은 시작일과 종료일을 모두 포함합니다.</strong> 주말과 공휴일도 포함합니다.
-            제외할 날짜는 날짜별 수량을 0으로 입력하세요.
+            <strong>기간은 시작일과 종료일을 모두 포함합니다.</strong> 균등 배분은 기존 휴일 설정을
+            적용해 휴일을 제외합니다. 날짜별 수량을 직접 입력하면 휴일도 편성할 수 있으며 경고만
+            표시합니다. 근무일 판정이 불가하거나 부분 가동인 날짜는 자동으로 제외하지 않습니다.
           </li>
           <li>
             <strong>ERP W/O마다 조건을 다르게 지정할 수 있습니다.</strong> 한 ERP W/O에도 기간이나

@@ -1,3 +1,4 @@
+import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { WeeklyPlanCard } from './weekly-plan-card';
 import { useProductionLineReferenceQuery } from '../../production-plan/reference-queries';
 import { useWeeklyPlanContext, type WeeklyContextPlan } from './weekly-plan-context';
@@ -47,6 +48,7 @@ export interface PlanStepProps {
   planningTools?: ReactNode;
   currentOrderIds?: readonly number[];
   contextUnitLabelOf?: (uomId: number) => string;
+  rowPlantIdOf?: (row: ProductionPlanEditorStateRow) => number | null;
   rowIdentityOf?: (row: ProductionPlanEditorStateRow) => {
     orderNo: string;
     itemCode: string;
@@ -65,6 +67,7 @@ export interface PlanStepProps {
   onAdd: () => void;
   addDisabled?: boolean;
   viewMode?: 'grid' | 'week';
+  layoutToolsTargetId?: string;
   hideTotals?: boolean;
   hideBoardTotal?: boolean;
   hideTools?: boolean;
@@ -77,6 +80,7 @@ export interface PlanStepProps {
   rowUomLabelOf?: (row: ProductionPlanEditorStateRow) => string;
   onAppend?: (drafts: ScheduledDraft[]) => void;
   distributionOrderLabel?: string;
+  distributionIdentity?: { orderNo: string; itemCode: string; itemName: string };
   distributionStartDate?: string;
   distributionLines?: readonly PlanLine[];
   distributionDecimalScale?: number;
@@ -113,8 +117,10 @@ export const PlanStep = ({
   currentOrderIds = [],
   contextUnitLabelOf,
   rowIdentityOf,
+  rowPlantIdOf,
   planGroups,
   distributionOrderLabel,
+  distributionIdentity,
   distributionStartDate,
   distributionLines,
   distributionDecimalScale,
@@ -127,6 +133,7 @@ export const PlanStep = ({
   addRequest = 0,
   onSelectedKeyChange,
   viewMode,
+  layoutToolsTargetId,
   orderNameOf,
   orderContextOf,
   rowUomLabelOf,
@@ -189,6 +196,7 @@ export const PlanStep = ({
   const previousAddRequest = useRef(addRequest);
   const [anchor, setAnchor] = useState<string | null>(null);
   const editorId = useId();
+  const layoutToolsId = layoutToolsTargetId ?? `${editorId}-layout-tools`;
   const lineSource = useLineSource(plantId);
   const displayLines = useProductionLineReferenceQuery(plantId);
   function revealEditor() {
@@ -272,6 +280,39 @@ export const PlanStep = ({
       ...contextRows.map((row) => (row.plannedLineId === null ? '' : String(row.plannedLineId))),
     ]),
   ];
+
+  const plantOf = (row: ProductionPlanEditorStateRow) => rowPlantIdOf?.(row) ?? plantId;
+  const plantOfGroup = (group: string) => {
+    const row = rows.find((row) => row.draft.plannedLineId === group);
+    return row ? plantOf(row) : plantId;
+  };
+  const calendarTargets = groups.flatMap((group) => {
+    const id = plantOfGroup(group);
+    return id && weekStart && week[6]
+      ? [
+          {
+            plantId: id,
+            productionLineId: group ? Number(group) : null,
+            from: weekStart,
+            to: week[6],
+          },
+        ]
+      : [];
+  });
+  if (selected && plantOf(selected) && selected.draft.planDate)
+    calendarTargets.push({
+      plantId: plantOf(selected)!,
+      productionLineId: selected.draft.plannedLineId ? Number(selected.draft.plannedLineId) : null,
+      from: selected.draft.planDate,
+      to: selected.draft.planDate,
+    });
+  const workingDays = usePlanningDays(calendarTargets);
+  const dayOfGroup = (group: string, date: string) => {
+    const id = plantOfGroup(group);
+    return id
+      ? workingDays.data?.get(planningDayKey(id, group ? Number(group) : null, date))
+      : undefined;
+  };
 
   const quantities = planQuantities(orderQty, confirmedQty, rows);
   const total = quantities.confirmed + quantities.draft;
@@ -371,6 +412,11 @@ export const PlanStep = ({
       )}
       {!hideTools && (
         <PlanCreationTools
+          viewControl={
+            !viewMode ? (
+              <PlanViewSwitch value={view} onChange={setView} layoutToolsId={layoutToolsId} />
+            ) : undefined
+          }
           disabled={disabled}
           addDisabled={addDisabled || (!hideTotals && remaining <= 0)}
           onAdd={() => {
@@ -385,6 +431,8 @@ export const PlanStep = ({
                 orders={[
                   {
                     id: 'single',
+                    ...distributionIdentity,
+                    ...(plantId !== null ? { plantId } : {}),
                     label: distributionOrderLabel ?? '현재 ERP W/O',
                     unit: uomLabel,
                     decimalScale: distributionDecimalScale,
@@ -402,9 +450,6 @@ export const PlanStep = ({
             ))}
         </PlanCreationTools>
       )}
-      {rows.some((row) => row.isDirty) && (
-        <p className="field-note erp-wo-plan-note">{ui.unsavedSummary}</p>
-      )}
       {failures.length > 0 && (
         <AlertBanner variant="error" title={t.failedTitle}>
           <ul className="erp-wo-plain-list">
@@ -414,10 +459,13 @@ export const PlanStep = ({
           </ul>
         </AlertBanner>
       )}
-      {!viewMode && <PlanViewSwitch value={view} onChange={setView} />}
+      {hideTools && !viewMode && (
+        <PlanViewSwitch value={view} onChange={setView} layoutToolsId={layoutToolsId} />
+      )}
       <AdjustableLayout
         storageKey="omf-mes:work-planning:plan-layout"
         label="생산계획"
+        toolsTargetId={layoutToolsId}
         ratio={0.65}
         className="erp-wo-plan-layout"
       >
@@ -631,7 +679,17 @@ export const PlanStep = ({
                           <span title={lineName(group)}>{lineName(group)}</span>
                         </th>
                         {visibleWeek.map((date) => (
-                          <td key={date}>
+                          <td
+                            key={date}
+                            className={
+                              dayOfGroup(group, date)?.statusCode === 'HOLIDAY'
+                                ? 'erp-wo-holiday-day'
+                                : undefined
+                            }
+                          >
+                            {dayOfGroup(group, date)?.statusCode === 'HOLIDAY' && (
+                              <span className="erp-wo-holiday-day-label">휴일</span>
+                            )}
                             {rows
                               .filter(
                                 (row) =>
@@ -839,6 +897,27 @@ export const PlanStep = ({
                   onChange={(event) => onChange(selected.key, 'plannedQty', event.target.value)}
                 />
               </div>
+              {workingDays.isError ? (
+                <p className="erp-wo-planning-day-notice" role="status">
+                  근무일 정보를 조회하지 못했습니다. 날짜 입력은 유지됩니다.
+                </p>
+              ) : (
+                <PlanningDayNotice
+                  day={
+                    plantOf(selected)
+                      ? workingDays.data?.get(
+                          planningDayKey(
+                            plantOf(selected)!,
+                            selected.draft.plannedLineId
+                              ? Number(selected.draft.plannedLineId)
+                              : null,
+                            selected.draft.planDate,
+                          ),
+                        )
+                      : undefined
+                  }
+                />
+              )}
               {!selected.confirmed && (
                 <div className="erp-wo-plan-editor-actions">
                   {onSplit && (
@@ -868,6 +947,7 @@ export const PlanStep = ({
                     <PlanSplitDialog
                       key={selected.key}
                       row={selected}
+                      plantId={plantOf(selected)}
                       planName={nameOf(selected)}
                       identity={rowIdentityOf?.(selected)}
                       lineName={lineName(selected.draft.plannedLineId)}
