@@ -19,6 +19,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       noLot: 'Không còn LOT để sản xuất. Chỉ có thể đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',
+      printerNone: 'Không có máy in',
+      printerUnknown: 'Không xác định máy in',
       closed: 'Đã đóng lệnh sản xuất. Có thể chuyển sang đóng gói sản xuất.',
       completedLots: 'LOT đã đóng',
       completedCount: (count: number): string => `${String(count)} mục`,
@@ -43,7 +45,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
         'Có lịch sử nhãn cũ tạo không kèm kết quả nên không đóng được LOT. Vui lòng báo quản trị viên',
       completing: 'Đang đóng LOT',
       completed: 'Đang tải LOT kế tiếp',
-      printer: 'Không có máy in nhãn LOT dùng được. Vui lòng nhờ quản trị viên kết nối máy in',
       shell: 'Không xác nhận được đường in của chương trình POP. Vui lòng báo quản trị viên',
       tagUnknown:
         'Không xác nhận được có cần thẻ nhận diện hay không. Vui lòng kiểm tra kết nối rồi mở lại màn hình',

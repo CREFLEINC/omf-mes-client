@@ -1373,7 +1373,8 @@ export const ProductionFlowScreen = () => {
     if (parsedQty === null || parsedQty <= 0) return next.qty;
     if (defectTodo !== null) return defectTodo;
     if (lotPrinters.isPending) return null;
-    if (lotPrinter === null) return next.printer;
+    /* 프린터가 없으면 머리줄 칩이 「프린터 없음」으로 말한다 — 하단에 같은 말을 또 두지 않는다(사용자 지시 2026-11-16). */
+    if (lotPrinter === null) return null;
     if (!lotPrint.isShellAvailable) return next.shell;
     if (isTagTarget === null) return item.isError ? next.tagUnknown : null;
     if (!hasTagCountMatch || !hasTagDocuments) return next.tag;
@@ -1614,7 +1615,7 @@ export const ProductionFlowScreen = () => {
   const stepper = (
     <Stepper
       className="production-work-steps"
-      size="sm"
+      size="md"
       aria-label={t.flow.work.stepsLabel}
       steps={[
         {
@@ -1670,6 +1671,9 @@ export const ProductionFlowScreen = () => {
             onRetry={() => {
               void lotPrinters.refetch();
             }}
+            noneLabel={t.flow.work.printerNone}
+            unknownLabel={t.flow.work.printerUnknown}
+            retryLabel={messages.common.retry}
             onSelect={(name) => {
               setPickedPrinter(name);
               rememberPrinterName(name, LOT_PRINTER_STORAGE_KEY);

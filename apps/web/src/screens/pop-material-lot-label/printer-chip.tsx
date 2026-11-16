@@ -33,6 +33,10 @@ export interface PrinterChipProps {
   isLocked: boolean;
   onRetry: () => void;
   onSelect: (printerName: string) => void;
+  /** 머리줄 칩 문구를 화면이 바꿀 때만 넘긴다(생산 작업 · 개선 명세 ② 11). 넘기지 않으면 종전 문구다. */
+  noneLabel?: string;
+  unknownLabel?: string;
+  retryLabel?: string;
 }
 
 /**
@@ -51,22 +55,25 @@ export const PrinterChip = ({
   isLocked,
   onRetry,
   onSelect,
+  noneLabel = t.none,
+  unknownLabel = t.unknown,
+  retryLabel = t.retry,
 }: PrinterChipProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (isError) {
     return (
       <div className="pop-mlot-printer">
-        <Chip status="error">{t.unknown}</Chip>
+        <Chip status="error">{unknownLabel}</Chip>
         <Button className={popTouchClass('normal')} variant="outlined" size="xl" onClick={onRetry}>
-          {t.retry}
+          {retryLabel}
         </Button>
       </div>
     );
   }
 
   if (isLoading || printers === undefined) return null;
-  if (selected === null) return <Chip status="warning">{t.none}</Chip>;
+  if (selected === null) return <Chip status="warning">{noneLabel}</Chip>;
 
   const chip = (
     <Chip status={chipStatusOf(selected.status)}>{`${t.label} ${selected.displayName}`}</Chip>

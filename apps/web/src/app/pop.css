@@ -9704,6 +9704,16 @@
   font-weight: 600;
 }
 
+/*
+ * 오른쪽 제목 자리의 단계 표시(개선 명세 ②) — 좁게 눌려 단계 이름이 붙지 않도록 제 폭을 지키고,
+ * W/O 잔량은 오른쪽 끝으로 민다.
+ */
+.pop-ui .production-work-head > .production-work-steps {
+  flex: 0 1 15rem;
+  min-width: 12rem;
+  margin-inline-end: auto;
+}
+
 /* 미달 사유 창의 첫 포커스 자리 — 스캔 Enter 가 단추를 누르지 않게 두는 자리라 테두리를 그리지 않는다. */
 .production-flow-reason-body:focus {
   outline: none;

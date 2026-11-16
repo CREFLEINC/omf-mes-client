@@ -1114,7 +1114,9 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     expect(output).toBeDisabled();
     /* 달성 사실은 오른쪽 위 파란 안내 줄이, 막힌 이유는 하단 바가 말한다(개선 명세 ④-1). */
     expect(await screen.findByText(t.flow.work.planReached)).toBeInTheDocument();
-    await waitFor(() => expect(output).toHaveAccessibleDescription(t.flow.next.printer));
+    /* 프린터가 없다는 사실은 머리줄 칩이 말한다 — 하단에 같은 말을 두지 않는다. */
+    expect(screen.getByText(t.flow.work.printerNone)).toBeInTheDocument();
+    expect(output).not.toHaveAccessibleDescription();
   });
 
   it('저장 뒤 판정이 초과면 「초과 달성 n」 칩으로 말하고 초과 안내는 내지 않는다', async () => {

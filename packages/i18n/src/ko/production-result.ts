@@ -30,6 +30,9 @@ export const productionResult = {
       noLot: '생산할 LOT이 없습니다. 불량만 등록할 수 있습니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
       planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
+      /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
+      printerNone: '프린터 없음',
+      printerUnknown: '프린터 확인 불가',
       closed: '작업지시를 마감했습니다. 생산 포장으로 이동할 수 있습니다.',
       /** 마감된 LOT 정보 줄. 0건이면 [보기]를 두지 않는다. */
       completedLots: '마감된 LOT',
@@ -64,7 +67,6 @@ export const productionResult = {
         '실적 없이 만든 이전 라벨 이력이 있어 LOT을 마감할 수 없습니다. 관리자에게 알려 주세요',
       completing: 'LOT을 마감하고 있습니다',
       completed: '다음 LOT을 불러오고 있습니다',
-      printer: '사용할 수 있는 LOT 라벨 프린터가 없습니다. 관리자에게 프린터 연결을 요청해 주세요',
       shell: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다. 관리자에게 알려 주세요',
       tagUnknown: '인식표 대상인지 확인할 수 없습니다. 연결을 확인한 뒤 화면을 다시 열어 주세요',
       tag: '인식표를 모두 출력해야 LOT 라벨을 출력할 수 있습니다. 관리자에게 알려 주세요',
