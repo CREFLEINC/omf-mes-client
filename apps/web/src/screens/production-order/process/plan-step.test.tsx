@@ -49,11 +49,11 @@ describe('생산계획 보기와 선택 편집', () => {
     const inputName = t.fieldLabel(t.newRow(1), t.columns.plannedQty);
     await user.clear(screen.getByRole('textbox', { name: inputName }));
     await user.type(screen.getByRole('textbox', { name: inputName }), '250');
-    await user.click(screen.getByRole('tab', { name: t.workspace.week }));
+    await user.click(screen.getByRole('button', { name: t.workspace.week }));
     expect(screen.getByRole('button', { name: t.workspace.selectPlan(t.newRow(1)) })).toBeVisible();
     await user.click(screen.getByRole('button', { name: t.workspace.nextWeek }));
     expect(screen.getByText(t.workspace.outsideWeek)).toBeVisible();
-    await user.click(screen.getByRole('tab', { name: t.workspace.grid }));
+    await user.click(screen.getByRole('button', { name: t.workspace.grid }));
     expect(screen.getByRole('textbox', { name: inputName })).toHaveValue('250');
     expect(fetch).not.toHaveBeenCalled();
   });

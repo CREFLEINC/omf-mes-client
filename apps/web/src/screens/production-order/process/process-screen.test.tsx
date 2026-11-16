@@ -462,6 +462,12 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     );
 
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
+        name: '추가',
+        exact: true,
+      }),
+    );
     const qty = await screen.findByRole('textbox', {
       name: (name) => name.startsWith('신규 계획') && name.includes(tp.plan.columns.plannedQty),
     });
@@ -488,16 +494,9 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await currentStep(tp.steps.plan);
 
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
-    const blocked = tp.remaining.planBomMissing(tp.plan.newRow(2));
-    expect(await screen.findByText(blocked)).toBeVisible();
-    expect(screen.getByRole('link', { name: tp.links.bom })).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: tp.plan.saveDraft }));
-    const alert = await screen.findByText(tp.plan.failedTitle);
-    expect(alert.closest('[role="alert"], .alert-banner') ?? document.body).toHaveTextContent(
-      blocked,
-    );
-    expect(document.body).not.toHaveTextContent(tp.remaining.canProceed('4M 배정으로'));
+    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    expect(within(dialog).getByText('ERP 기본 BOM 확인 필요')).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: '추가', exact: true })).toBeDisabled();
     expect(server.writes).toEqual([]);
     expect(state.plans).toHaveLength(1);
   });
@@ -517,24 +516,21 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     expect(within(summary).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
     expect(within(summary).getByText('SYN-ITEM', { exact: true })).toBeVisible();
   });
-  it('ERP W/O·품목·생산 정보를 구분하고 수량과 입고 창고를 각각 표시한다', async () => {
+  it('상단은 ERP W/O·품목 식별 정보만 표시하고 수량은 생산계획에 표시한다', async () => {
     renderAt(`${WORKLIST}/${ORDER_NO}`, world({ itemGroupCode: 'G100' }));
     await currentStep(tp.steps.plan);
     const identity = screen.getByRole('region', { name: 'ERP W/O 정보' });
     const item = screen.getByRole('region', { name: '품목 정보' });
-    const production = screen.getByRole('region', { name: '생산 정보' });
+    expect(screen.queryByRole('region', { name: '생산 정보' })).toBeNull();
     expect(within(identity).getByText(ORDER_NO, { exact: true })).toBeVisible();
     expect(within(identity).getByText('ERP-701', { exact: true })).toBeVisible();
     expect(within(item).getByText('SYN-ITEM', { exact: true })).toBeVisible();
     expect(within(item).getByText('합성 품목 【 SYN-001 】', { exact: true })).toBeVisible();
     expect(within(item).getByText('G100', { exact: true })).toBeVisible();
-    const quantity = within(production).getByText(tp.summary.orderQty, {
-      exact: true,
-    }).parentElement!;
-    expect(within(quantity).getByText('300 EA', { exact: true })).toBeVisible();
-    expect(within(quantity).queryByText('생산품 입고 창고', { exact: true })).toBeNull();
-    expect(within(production).getByText('생산품 입고 창고', { exact: true })).toBeVisible();
-    expect(within(production).getByText('2026-10-31', { exact: true })).toBeVisible();
+    const header = document.querySelector('.process-page-head')! as HTMLElement;
+    expect(within(header).queryByText('생산품 입고 창고', { exact: true })).toBeNull();
+    expect(screen.getByText('2026-10-31', { exact: true })).toBeVisible();
+    expect(document.querySelector('.erp-wo-plan-totals')).toHaveTextContent('300 EA');
   });
 
   it('ERP 원번호는 제목 번호와 다를 때만 머리에 보인다', async () => {
@@ -578,6 +574,20 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     ).toBeVisible();
   });
 
+  it('단건 계획 추가도 팝업에서 검토한 뒤 미저장 계획으로 추가한다', async () => {
+    const user = userEvent.setup();
+    const server = renderAt(`${WORKLIST}/${ORDER_NO}`, world());
+    await currentStep(tp.steps.plan);
+    await user.click(screen.getByRole('button', { name: '계획 추가' }));
+    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    expect(
+      within(dialog).getByRole('combobox', { name: '계획을 추가할 ERP W/O' }),
+    ).toHaveTextContent(ORDER_NO);
+    await user.click(within(dialog).getByRole('button', { name: '추가' }));
+    expect(screen.getByRole('region', { name: '선택 계획 편집' })).toHaveTextContent('신규 계획');
+    expect(screen.getByRole('button', { name: '계획 추가' })).toBeDisabled();
+    expect(server.writes).toHaveLength(0);
+  });
   it('전개 확정은 불러온 판으로 보내고, 확정하면 4M 배정 단계로 넘어간다', async () => {
     const user = userEvent.setup();
     const server = renderAt(`${WORKLIST}/${ORDER_NO}`, world({ plans: [{ ...DRAFT_PLAN }] }));

@@ -35369,7 +35369,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 .erp-wo-multi-week-tools > .erp-wo-distribution { display: contents; }
 .erp-wo-multi-week-tools > .erp-wo-distribution > button { grid-column: 2; grid-row: 1; align-self: start; margin-top: var(--space-5); }
 .erp-wo-multi-week-tools .erp-wo-distribution-settings { grid-column: 1 / -1; }
-.erp-wo-multi-page .erp-wo-plan-board-title { display: none; }
+.erp-wo-multi-page .erp-wo-plan-board-title { display: block; }
 .erp-wo-multi-page .erp-wo-plan-toolbar .section-title { margin: 0; }
 
 .erp-wo-multi-week-heading .field-note { margin: 0; max-width: none; }
@@ -36766,3 +36766,56 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,18rem) minmax(0,1fr); }
 .erp-wo-distribution-period .erp-wo-period-trigger { box-sizing:border-box; }
 @media(max-width:40rem) { .erp-wo-segment-fields, .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(10rem,.7fr) minmax(0,1.8fr); }
+@container erp-wo-overview (max-width:36rem) { .erp-wo-order-overview.is-identity-only { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-plan-view-switch { display:flex; align-items:center; gap:var(--space-3); margin-block:var(--space-2); }
+.erp-wo-plan-view-switch > .field-label { margin:0; }
+.erp-wo-plan-view-buttons { display:inline-flex; padding:var(--space-1); gap:var(--space-1); border:1px solid var(--outline-variant); border-radius:var(--radius-md); background:var(--surface-container-low); }
+.erp-wo-plan-view-buttons button[aria-pressed='true'] { color:var(--on-secondary-container); background:var(--secondary-container); }
+.erp-wo-plan-view-buttons button { white-space:nowrap; }
+
+.erp-wo-week-legend { display:flex; gap:var(--space-4); margin-block:var(--space-2); font:var(--type-label-sm); }
+.erp-wo-week-legend > span { border-left:3px solid var(--primary); padding-left:var(--space-2); }
+.erp-wo-week-legend > .is-other { border-color:var(--outline); }
+.erp-wo-week-plan.erp-wo-week-plan-other { background:var(--surface-container-high); color:var(--on-surface); border-left:3px solid var(--outline); opacity:1; }
+.erp-wo-context-plan-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(12rem,100%),1fr)); gap:var(--space-3); }
+.erp-wo-context-plan-facts dt { font:var(--type-label-sm); color:var(--on-surface-variant); }
+.erp-wo-context-plan-facts dd { margin:var(--space-1) 0 0; overflow-wrap:anywhere; }
+.erp-wo-plan-editor { container-type:inline-size; container-name:plan-editor; }
+.erp-wo-plan-edit-fields { display:grid; grid-template-columns:minmax(0,12rem) minmax(0,18rem) minmax(0,10rem); gap:var(--space-3); align-items:start; }
+.erp-wo-plan-edit-fields > * { min-width:0; }
+.erp-wo-plan-edit-fields .field-cell { display:grid; grid-template-columns:minmax(0,1fr); justify-content:stretch; }
+.erp-wo-plan-edit-fields button[aria-haspopup='dialog'] { max-width:100%; }
+@container plan-editor (max-width:42rem) { .erp-wo-plan-edit-fields { grid-template-columns:minmax(0,12rem) minmax(0,10rem); } .erp-wo-plan-edit-fields > :nth-child(2) { grid-column:1/-1; grid-row:2; max-width:24rem; } }
+@container plan-editor (max-width:23rem) { .erp-wo-plan-edit-fields { grid-template-columns:minmax(0,1fr); } .erp-wo-plan-edit-fields > * { max-width:18rem; } .erp-wo-plan-edit-fields > :nth-child(2) { grid-column:auto; grid-row:auto; } }
+
+.erp-wo-week-table { min-width:max(80rem,var(--col-floor,0px)); }
+
+.erp-wo-week-plan .erp-wo-week-card-field { display:grid; grid-template-columns:4.5rem minmax(0,1fr); align-items:start; gap:var(--space-2); font:var(--type-body-sm); }
+.erp-wo-week-card-field + .erp-wo-week-card-field { margin-top:var(--space-2); }
+.erp-wo-week-card-label { color:var(--on-surface-variant); white-space:nowrap; }
+.erp-wo-week-card-value { color:var(--on-surface); font:inherit; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.erp-wo-week-plan .erp-wo-week-card-status { font:var(--type-body-sm); }
+
+.erp-wo-week-plan:not(.erp-wo-week-plan-other) { background:var(--primary-container); border-left:3px solid var(--primary); }
+.erp-wo-week-table thead th:first-child, .erp-wo-week-table tbody th { position:sticky; left:0; z-index:1; background:var(--surface); }
+
+/* 선택 강조는 상태 색과 분리한 청록색을 사용한다. */
+.erp-wo-plan-workspace { --planning-accent:var(--semantic-info); --planning-current:var(--semantic-info-container); }
+.erp-wo-plan-workspace .erp-wo-week-plan:not(.erp-wo-week-plan-other) { background:var(--planning-current); border-left-color:var(--planning-accent); }
+.erp-wo-plan-workspace .erp-wo-week-plan[aria-pressed='true'] { background:var(--planning-current); border-color:var(--planning-accent); box-shadow:inset 0 0 0 1px var(--planning-accent); }
+.erp-wo-plan-workspace .erp-wo-week-plan-other[aria-pressed='true'] { background:var(--surface-container-high); }
+.erp-wo-plan-workspace .erp-wo-week-legend > span:not(.is-other) { border-color:var(--planning-accent); }
+.erp-wo-week-card-item { display:block; font:var(--type-body-sm); font-weight:500; color:var(--on-surface); overflow-wrap:anywhere; }
+.erp-wo-week-card-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-2); }
+.erp-wo-week-card-quantity { font:var(--type-body-sm); color:var(--on-surface); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.erp-wo-week-day-navigation { display:flex; align-items:center; justify-content:flex-end; gap:var(--space-2); margin-block:var(--space-2); }
+.erp-wo-week-scroll.is-compact .erp-wo-week-table { min-width:max(34rem,var(--col-floor,0px)); }
+
+.erp-wo-plan-workspace .erp-wo-week-actions button[aria-pressed='true'] { background:var(--planning-current); border-color:var(--planning-accent); color:var(--planning-accent); }
+
+/* 좌우 배치는 목록과 페이지 위치를 유지한 채 편집 영역만 화면을 따라온다. */
+.erp-wo-plan-layout.is-side > .erp-wo-adjustable-second { position:sticky; top:var(--plan-sticky-top,var(--space-3)); align-self:start; max-height:var(--plan-sticky-height,calc(100dvh - 20rem)); overflow:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.erp-wo-plan-layout.is-side > .erp-wo-adjustable-second > .erp-wo-plan-editor { min-height:0; }

@@ -10,6 +10,7 @@ interface WorkOrderOverviewProps {
   item?: { itemCode: string; itemName: string; erpItemGroupCode?: string | null };
   unitLabel: string;
   numberControl?: ReactNode;
+  identityOnly?: boolean;
 }
 
 export const receiptWarehouseLabel = (order: ProductionOrderFact): string =>
@@ -24,15 +25,24 @@ export const WorkOrderOverview = ({
   item,
   unitLabel,
   numberControl,
+  identityOnly = false,
 }: WorkOrderOverviewProps) => (
   <div className="erp-wo-overview-container">
-    <div className="erp-wo-summary erp-wo-order-overview">
+    <div
+      className={`erp-wo-summary erp-wo-order-overview${identityOnly ? ' is-identity-only' : ''}`}
+    >
       <section className="erp-wo-overview-order" aria-label="ERP W/O 정보">
         <dl>
           <div className="is-order">
             <dt>{tp.orderNumber}</dt>
             <dd>{numberControl ?? order.productionOrderNo}</dd>
           </div>
+          {identityOnly && order.dueDate && (
+            <div>
+              <dt>{tp.summary.dueDate}</dt>
+              <dd>{order.dueDate}</dd>
+            </div>
+          )}
           {order.erpOrderNo && order.erpOrderNo !== order.productionOrderNo && (
             <div>
               <dt>{tp.summary.erpNo}</dt>
@@ -59,24 +69,26 @@ export const WorkOrderOverview = ({
           )}
         </dl>
       </section>
-      <section className="erp-wo-overview-production" aria-label="생산 정보">
-        <dl>
-          <div className="is-order-quantity">
-            <dt>{tp.summary.orderQty}</dt>
-            <dd>{`${formatQty(order.orderQty)} ${unitLabel}`}</dd>
-          </div>
-          <div>
-            <dt>생산품 입고 창고</dt>
-            <dd>{receiptWarehouseLabel(order)}</dd>
-          </div>
-          {order.dueDate != null && (
-            <div>
-              <dt>{tp.summary.dueDate}</dt>
-              <dd>{order.dueDate}</dd>
+      {!identityOnly && (
+        <section className="erp-wo-overview-production" aria-label="생산 정보">
+          <dl>
+            <div className="is-order-quantity">
+              <dt>{tp.summary.orderQty}</dt>
+              <dd>{`${formatQty(order.orderQty)} ${unitLabel}`}</dd>
             </div>
-          )}
-        </dl>
-      </section>
+            <div>
+              <dt>생산품 입고 창고</dt>
+              <dd>{receiptWarehouseLabel(order)}</dd>
+            </div>
+            {order.dueDate != null && (
+              <div>
+                <dt>{tp.summary.dueDate}</dt>
+                <dd>{order.dueDate}</dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
     </div>
   </div>
 );
