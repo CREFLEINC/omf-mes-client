@@ -81,8 +81,8 @@ export const ProposalPlanningWorkspace = ({
   const [activeOperation, setActiveOperation] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<string | null>(null);
   const plan = row.plans.find((p) => p.key === activePlan) ?? row.plans[0];
-  const operations = row.plans.flatMap((p) => p.operations.map((op) => ({ plan: p, op })));
-  const selected = operations.find((entry) => entry.op.key === activeOperation) ?? operations[0];
+  const operations = row.plans.flatMap((p) => p.operations.map((op) => ({ plan: p, op, key: `${p.key}:${op.key}` })));
+  const selected = operations.find((entry) => entry.key === activeOperation) ?? operations[0];
   const lineReference = useProductionLineReferenceQuery(row.plantId ?? null);
   const lines = [
     ...new Map(
@@ -451,10 +451,10 @@ export const ProposalPlanningWorkspace = ({
                     },
                   ]}
                   rows={operations}
-                  getRowId={(entry) => entry.op.key}
-                  activeId={selected?.op.key ?? null}
+                  getRowId={(entry) => entry.key}
+                  activeId={selected?.key ?? null}
                   rowLabel={(entry) => `${entry.op.sequence} ${entry.op.name} 배정`}
-                  onActivate={(entry) => setActiveOperation(entry.op.key)}
+                  onActivate={(entry) => setActiveOperation(entry.key)}
                 />
               </section>
               <section className="pane erp-wo-assign-editor" aria-label="4M 배정 입력">

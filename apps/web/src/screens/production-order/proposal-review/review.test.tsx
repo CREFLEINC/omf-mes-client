@@ -101,6 +101,21 @@ describe('제안 검토 화면', () => {
     };
     expect(applyReceiptStorage(existing).plans).toEqual(existing.plans);
   });
+  it('같은 Routing을 쓰는 두 계획의 공정 선택을 구분한다', async () => {
+    const user = userEvent.setup();
+    const rows = structuredClone(previewProposals);
+    const first = rows[0]!.plans[0]!;
+    first.operations = [first.operations[0]!];
+    const second = structuredClone(first);
+    second.key = 'second-plan';
+    second.date = '2026-11-20';
+    rows[0]!.plans = [first, second];
+    renderReview({ initialProposals: rows, manualLayout: true });
+    await user.click(screen.getByRole('tab', { name: '4M 배정' }));
+    const list = screen.getByRole('region', { name: '작업지시 목록' });
+    await user.click(within(list).getAllByRole('row').at(-1)!);
+    expect(screen.getByRole('region', { name: '4M 배정 입력' })).toHaveTextContent('2026-11-20');
+  });
   it('상태 열은 ERP W/O 바로 다음이며 상세는 세 탭으로 확인한다', async () => {
     const user = userEvent.setup();
     renderReview();
