@@ -110,20 +110,8 @@ export const PlanAddDialog = ({
       }
     >
       <div className="erp-wo-plan-add-form">
-        {!draft.bomId ? (
-          <AlertBanner
-            variant="warning"
-            title="ERP 기본 BOM 확인 필요"
-            description="ERP 기본 BOM이 정해지지 않아 계획을 추가할 수 없습니다."
-          />
-        ) : null}
-        {!draft.routingId ? (
-          <AlertBanner
-            variant="warning"
-            title="Routing 확인 필요"
-            description="Routing을 지정한 뒤 계획을 추가하세요."
-          />
-        ) : null}
+        {!draft.bomId ? <AlertBanner variant="warning" title="ERP 기본 BOM 확인 필요" /> : null}
+        {!draft.routingId ? <AlertBanner variant="warning" title="Routing 확인 필요" /> : null}
         <p className="visually-hidden" id={validationId}>
           ERP W/O와 계획일을 지정하고 추가 편성 가능한 수량 이내에서 생산량과 단위 소수 자릿수를
           확인하세요.

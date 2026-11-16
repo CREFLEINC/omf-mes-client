@@ -467,7 +467,6 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await user.click(
       within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
         name: '추가',
-        exact: true,
       }),
     );
     const qty = await screen.findByRole('textbox', {
@@ -498,7 +497,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
     const dialog = screen.getByRole('dialog', { name: '계획 추가' });
     expect(within(dialog).getByText('ERP 기본 BOM 확인 필요')).toBeVisible();
-    expect(within(dialog).getByRole('button', { name: '추가', exact: true })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: '추가' })).toBeDisabled();
     expect(server.writes).toEqual([]);
     expect(state.plans).toHaveLength(1);
   });
