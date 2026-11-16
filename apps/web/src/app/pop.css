@@ -9667,14 +9667,14 @@
   font-weight: 700;
 }
 
-.production-flow-close-legend {
+.production-flow-wo-end-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
 
-.production-flow-close-lots {
+.production-flow-wo-end-lots {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--space-2) var(--space-4);
@@ -9682,22 +9682,22 @@
   margin: 0;
 }
 
-.production-flow-close-lots > div {
+.production-flow-wo-end-lots > div {
   display: contents;
 }
 
-.production-flow-close-lots dt {
+.production-flow-wo-end-lots dt {
   color: var(--on-surface-muted);
 }
 
-.production-flow-close-lots dd {
+.production-flow-wo-end-lots dd {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: 0;
 }
 
-.production-flow-close-lot {
+.production-flow-wo-end-lot {
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm);
@@ -10098,6 +10098,114 @@
   flex: none;
   font-size: 0.875rem;
   color: var(--on-surface-variant);
+}
+
+/*
+ * 왼쪽 W/O 전체 진행(사용자 지시 2026-11-16 시안) — 이름은 왼쪽, 「양품 / 작업 지시량」·잔량은 오른쪽 끝,
+ * 막대는 아래 한 줄 전체.
+ */
+.pop-ui .production-work-wo-progress {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-work-wo-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pop-ui .production-work-wo-progress-label {
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .production-work-wo-progress-value {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: var(--space-3);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.pop-ui .production-work-wo-progress .production-work-remaining {
+  font-size: 1.0625rem;
+}
+
+/*
+ * ⚠ 클래스 이름에 「close」를 넣지 않는다 — 공용 규칙 `.pop-ui dialog [class*="close"]`(닫기 X 버튼)가 폭을 40px로
+ *   줄여 마감 창의 안내 줄이 글자마다 꺾였다.
+ *
+ * 작업지시 마감 창 배치(개선 명세 ⑧ 그림, 사용자 지시 2026-11-16) — 숫자 넷은 바탕 깐 한 줄 4칸(이름 위·값 아래),
+ * 잔량 처리·마감 사유는 테두리 없는 묶음(제목 옆 파란 안내 한 줄), 고르는 버튼은 내용 폭으로 늘어놓는다.
+ */
+.pop-ui .production-flow-wo-end-dialog .pop-figures,
+.production-flow-wo-end-dialog .pop-figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.pop-ui .production-flow-wo-end-dialog .pop-figures > div,
+.production-flow-wo-end-dialog .pop-figures > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.production-flow-wo-end-dialog .pop-figures dd {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.production-flow-wo-end-dialog .production-flow-wo-end-group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* 묶음 사이를 띄운다 — 창 몸통은 블록이라 간격을 스스로 주지 않는다. */
+.production-flow-wo-end-dialog .production-flow-wo-end-group,
+.production-flow-wo-end-dialog .production-flow-wo-end-lots,
+.production-flow-wo-end-dialog .iqc-inspection-action-note[data-tone='warning'] {
+  margin-block-start: var(--space-5);
+}
+
+.production-flow-wo-end-dialog .production-flow-wo-end-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.production-flow-wo-end-dialog .production-flow-wo-end-legend .iqc-inspection-action-note {
+  font-weight: 400;
+}
+
+.production-flow-wo-end-dialog .production-flow-reason-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.production-flow-wo-end-dialog .production-flow-reason-tiles > button {
+  min-inline-size: 9rem;
+}
+
+.production-flow-wo-end-dialog .iqc-inspection-action-note {
+  justify-self: start;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}
+
+.production-flow-wo-end-dialog footer {
+  border-block-start: none;
 }
 
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */

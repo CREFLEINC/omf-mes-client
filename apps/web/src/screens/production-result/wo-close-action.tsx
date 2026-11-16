@@ -93,6 +93,8 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
   const navigate = useNavigate();
   const noteId = useId();
   const submitNoteId = useId();
+  const remainderTitleId = useId();
+  const reasonTitleId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [disposition, setDisposition] = useState<Disposition | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
@@ -273,6 +275,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
         <Dialog
           open
           size="lg"
+          className="production-flow-wo-end-dialog"
           title={t.title(workOrderNo)}
           showCloseButton={false}
           /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
@@ -390,11 +393,19 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               )}
 
               {needsDisposition && (
-                <fieldset className="field-cell">
-                  <legend className="field-label production-flow-close-legend">
-                    {t.fields.remainder}
+                /*
+                 * fieldset·legend 대신 이름 붙은 묶음(role=group)이다 — legend 는 브라우저가 내용 최소 폭으로
+                 * 줄여 제목 옆 안내 줄이 글자마다 꺾였다(사용자 지시 2026-11-16, 명세 ⑧ 그림).
+                 */
+                <div
+                  className="production-flow-wo-end-group"
+                  role="group"
+                  aria-labelledby={remainderTitleId}
+                >
+                  <div className="production-flow-wo-end-legend">
+                    <span id={remainderTitleId}>{t.fields.remainder}</span>
                     {infoNote(t.carryOverNote)}
-                  </legend>
+                  </div>
                   <div className="production-flow-reason-tiles">
                     {(['CARRY_OVER', 'WRITE_OFF'] as const).map((code) => (
                       <Button
@@ -408,15 +419,19 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                       </Button>
                     ))}
                   </div>
-                </fieldset>
+                </div>
               )}
 
               {needsReason && (
-                <fieldset className="field-cell">
-                  <legend className="field-label production-flow-close-legend">
-                    {t.fields.reason}
+                <div
+                  className="production-flow-wo-end-group"
+                  role="group"
+                  aria-labelledby={reasonTitleId}
+                >
+                  <div className="production-flow-wo-end-legend">
+                    <span id={reasonTitleId}>{t.fields.reason}</span>
                     {lotNotice !== null && infoNote(lotNotice)}
-                  </legend>
+                  </div>
                   {reasons.isLoading ? (
                     <p role="status">{t.reasonsLoading}</p>
                   ) : reasons.isError ? (
@@ -439,7 +454,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                     </div>
                   )}
                   {isPrefilled && <p className="field-note">{t.prefilled}</p>}
-                </fieldset>
+                </div>
               )}
 
               {needsDisposition && disposition === 'WRITE_OFF' && (
@@ -453,13 +468,13 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
               {/* 사유 칸이 없으면(정상) LOT 안내가 혼자 선다(⑧-2). */}
               {!needsReason && lotNotice !== null && infoNote(lotNotice)}
               {(voidLotNos.length > 0 || openLotNos.length > 0) && (
-                <dl className="production-flow-close-lots">
+                <dl className="production-flow-wo-end-lots">
                   {voidLotNos.length > 0 && (
                     <div>
                       <dt>{t.voidedList(voidLotNos.length)}</dt>
                       <dd>
                         {voidLotNos.map((lotNo) => (
-                          <span key={lotNo} className="production-flow-close-lot">
+                          <span key={lotNo} className="production-flow-wo-end-lot">
                             {lotNo}
                           </span>
                         ))}
@@ -471,7 +486,7 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                       <dt>{t.openList(openLotNos.length)}</dt>
                       <dd>
                         {openLotNos.map((lotNo) => (
-                          <span key={lotNo} className="production-flow-close-lot">
+                          <span key={lotNo} className="production-flow-wo-end-lot">
                             {lotNo}
                           </span>
                         ))}

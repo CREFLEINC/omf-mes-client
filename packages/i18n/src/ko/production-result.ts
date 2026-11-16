@@ -30,7 +30,7 @@ export const productionResult = {
       toDefectWithCount: (count: number): string => `불량 등록 (${String(count)})`,
       toGood: '이전',
       /** 잔량은 지금 넣을 칸 곁에만 둔다(C-21). */
-      remaining: (qty: string): string => `W/O 잔량 ${qty}`,
+      remaining: (qty: string): string => `잔량 ${qty}`,
       /* 아래 셋은 오른쪽 위 파란 안내 줄이다(개선 명세 §1 「안내 문구」). 하단 바에는 두지 않는다. */
       noLot: '생산할 LOT이 없습니다. 불량만 등록할 수 있습니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',

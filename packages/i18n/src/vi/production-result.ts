@@ -19,7 +19,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       toDefect: 'Đăng ký lỗi',
       toDefectWithCount: (count: number): string => `Đăng ký lỗi (${String(count)})`,
       toGood: 'Quay lại',
-      remaining: (qty: string): string => `W/O còn lại ${qty}`,
+      remaining: (qty: string): string => `Còn lại ${qty}`,
       noLot: 'Không còn LOT để sản xuất. Chỉ có thể đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',

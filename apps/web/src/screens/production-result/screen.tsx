@@ -13,6 +13,7 @@ import {
   Dialog,
   Icon,
   IconButton,
+  Progress,
   TextField,
 } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
@@ -31,7 +32,7 @@ import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
-import { PopQtyProgress, PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
+import { PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { usePopWorkerEntry } from '../../patterns/pop-worker-entry';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -1739,8 +1740,10 @@ export const ProductionFlowScreen = () => {
         </>
       )}
       {/* 양품이 없으면 라벨로 이어지지 않는다. 불량만 등록하는 버튼이 선다(테두리, C-3 채움은 하단 바 하나). */}
+      {/* 「불량을 등록했습니다」는 정보 아이콘 + 파란 바탕 한 줄(사용자 지시 2026-11-16). */}
       {defectNotice !== null && (
-        <p className="field-note" role="status">
+        <p className="iqc-inspection-action-note" data-tone="info" role="status">
+          <Icon name="info" size={14} aria-hidden />
           {defectNotice === 'saved' ? t.flow.defects.saved : t.flow.defects.queued}
         </p>
       )}
@@ -1893,23 +1896,52 @@ export const ProductionFlowScreen = () => {
             <LoadErrorBanner error={workOrder.error} onRetry={() => void workOrder.refetch()} />
           )}
 
-          {/* 정보 영역(C-21): 「라벨 값」 쌍. 수량은 「실적 / 기준」과 막대. 값이 없으면 줄을 두지 않는다(C-10). */}
-          <PopRowInfo className="production-work-info">
-            {/* 현재 LOT · 현재 LOT 진행은 두지 않는다(사용자 지시 2026-11-16). */}
-            <PopRowPair label={t.flow.work.workOrderProgress}>
-              {workOrder.data === undefined || workOrderGoodQty === null ? null : (
-                <PopQtyProgress
-                  current={workOrderGoodQty}
-                  target={workOrder.data.orderQty}
-                  text={t.flow.work.workOrderProgressText(
+          {/*
+           * W/O 전체 진행(사용자 지시 2026-11-16 시안): 이름은 왼쪽, 「양품 / 작업 지시량」과 잔량은 오른쪽,
+           * 막대는 그 아래 한 줄 전체. 잔량은 오른쪽 단계 표시 곁에서 옮겨 왔다(단계가 셋이라 한 줄에 안 든다).
+           */}
+          {workOrder.data !== undefined && workOrderGoodQty !== null && (
+            <div className="production-work-wo-progress">
+              <div className="production-work-wo-progress-head">
+                <span className="production-work-wo-progress-label">
+                  {t.flow.work.workOrderProgress}
+                </span>
+                <span className="production-work-wo-progress-value">
+                  {t.flow.work.workOrderProgressText(
                     formatQty(workOrderGoodQty),
                     formatQty(workOrder.data.orderQty),
                     uom.labelOf(workOrder.data.uomId) ?? '',
                   )}
-                  label={t.flow.work.workOrderProgress}
-                />
-              )}
-            </PopRowPair>
+                  {remaining !== null && remaining > 0 && (
+                    <span className="production-work-remaining">
+                      {t.flow.work.remaining(withUnit(remaining))}
+                    </span>
+                  )}
+                </span>
+              </div>
+              <Progress
+                size="sm"
+                value={
+                  workOrderGoodQty > workOrder.data.orderQty
+                    ? Math.max(workOrder.data.orderQty, 1)
+                    : workOrderGoodQty
+                }
+                max={workOrder.data.orderQty > 0 ? workOrder.data.orderQty : 1}
+                tone={
+                  workOrderGoodQty > workOrder.data.orderQty
+                    ? 'warning'
+                    : workOrder.data.orderQty > 0 && workOrderGoodQty >= workOrder.data.orderQty
+                      ? 'success'
+                      : 'primary'
+                }
+                label={t.flow.work.workOrderProgress}
+              />
+            </div>
+          )}
+
+          {/* 정보 영역(C-21): 「라벨 값」 쌍. 수량은 「실적 / 기준」과 막대. 값이 없으면 줄을 두지 않는다(C-10). */}
+          <PopRowInfo className="production-work-info">
+            {/* 현재 LOT · 현재 LOT 진행은 두지 않는다(사용자 지시 2026-11-16). */}
             {/*
              * 라벨을 낸 뒤(스캔 대기 등)에는 이 LOT 에 넣은 실적을 보인다(사용자 지시 2026-11-16). 입력 칸이
              * 스캔 칸으로 바뀌어 무엇을 넣었는지 볼 곳이 없었다. 불량은 이 화면에서 보낸 것만 안다 — 다시 연
@@ -2214,19 +2246,14 @@ export const ProductionFlowScreen = () => {
         ) : (
           <section className="pane production-work-step" aria-label={t.flow.work.steps.input}>
             {/*
-             * 제목 줄: 단계 표시(LOT이 있을 때) 또는 단계 이름, 오른쪽에 W/O 잔량(C-21 잔량은 지금 넣을 칸
-             * 곁에만). 넣을 LOT이 없거나 마감했으면 단계가 없어 이름만 둔다(개선 명세 ④-2·⑨).
+             * 제목 줄: 단계 표시(LOT이 있을 때) 또는 단계 이름. W/O 잔량은 왼쪽 W/O 전체 진행 줄로 옮겼다
+             * (사용자 지시 2026-11-16). 넣을 LOT이 없거나 마감했으면 단계가 없어 이름만 둔다(개선 명세 ④-2·⑨).
              */}
             <div className="production-work-head">
               {step !== null && !isWorkOrderClosed ? (
                 stepper
               ) : (
                 <h2 className="pane-title">{t.flow.work.steps.input}</h2>
-              )}
-              {remaining !== null && remaining > 0 && (
-                <span className="production-work-remaining">
-                  {t.flow.work.remaining(withUnit(remaining))}
-                </span>
               )}
             </div>
 
