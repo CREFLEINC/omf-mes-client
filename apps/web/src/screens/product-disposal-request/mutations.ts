@@ -86,7 +86,29 @@ export interface DisposalRequestOptions {
  * 그렇게 생긴 중복 결재는 지워지지 않는다. 첫 키에서 파생하면 **둘 다** 만족한다: 첫 호출과는
  * 다르고, 같은 쓰기의 재시도에서는 같다.
  */
-const approvalKeyOf = (issueKey: string): string => `${issueKey}:request-approval`;
+export const approvalKeyOf = (issueKey: string): string => {
+  /*
+   * ⛔ **파생한 키도 uuid 여야 한다** — 서버가 `Idempotency-Key` 를 uuid 꼴로만 받는다(omf-all-around#281).
+   * 예전처럼 `…:request-approval` 을 붙이면 「Idempotency-Key 는 uuid 여야 합니다.」로 상신이 막힌다.
+   *
+   * 그래서 첫 키의 16진 자리를 하나씩 «한 칸 돌린다»(0→1 … f→0). 판(13째)·변형(17째) 자리는 두어
+   * 꼴이 그대로 uuid 이고, 돌린 자리가 있으니 첫 키와 늘 다르며, 같은 첫 키에서는 늘 같은 값이 나온다.
+   */
+  const digits = issueKey.toLowerCase().replace(/-/g, '');
+  const rotated = [...digits]
+    .map((digit, index) =>
+      index === 12 || index === 16 ? digit : ((parseInt(digit, 16) + 1) % 16).toString(16),
+    )
+    .join('');
+
+  return [
+    rotated.slice(0, 8),
+    rotated.slice(8, 12),
+    rotated.slice(12, 16),
+    rotated.slice(16, 20),
+    rotated.slice(20),
+  ].join('-');
+};
 
 /**
  * 전표 생성 + 상신.
