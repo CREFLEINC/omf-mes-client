@@ -37,7 +37,7 @@ const name = (id: number | null, value: string | undefined, pending: boolean, fa
     ? '미지정'
     : value || `${failed ? '명칭 조회 실패' : pending ? '조회 중' : '명칭 확인 필요'} (ID ${id})`;
 
-const AssignmentFacts = ({
+export const AssignmentFacts = ({
   fact,
   equipmentRequired,
   moldRequired,

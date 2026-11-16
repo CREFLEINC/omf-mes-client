@@ -718,7 +718,8 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
 
     await user.click(screen.getByRole('button', { name: tp.release.release }));
 
-    expect(await screen.findByText(tp.done.success(ORDER_NO, 1))).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '배포 결과', level: 2 })).toBeVisible();
+    expect(screen.getByText('배포 성공')).toBeVisible();
     expect(server.writes).toContainEqual({
       method: 'POST',
       path: '/production/work-orders/9001:release',
@@ -726,7 +727,7 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     });
   });
 
-  it('배포가 일부 실패하면 그 W/O와 사유를 보이고 배포 확인 단계에 남는다', async () => {
+  it('배포가 일부 실패하면 결과에서 실패 원인을 확인하고 미배포 건만 재시도한다', async () => {
     const user = userEvent.setup();
     const state = world({
       autoPlan: { status: 'DONE', reasons: [] },
@@ -742,11 +743,44 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
 
     await user.click(screen.getByRole('button', { name: tp.release.release }));
 
-    expect(
-      await screen.findByText(tp.release.failed('SYN-WO-9002', '설비 점검이 막았습니다')),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { name: '배포 결과', level: 2 })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'SYN-WO-9002' }));
+    expect(await screen.findByText('설비 점검이 막았습니다')).toBeVisible();
     expect(state.released).toEqual([9001]);
-    await currentStep(tp.steps.release);
+    state.rejectRelease = [];
+    await user.click(screen.getByRole('button', { name: '미배포 작업지시 다시 배포' }));
+    await waitFor(() => expect(state.released).toEqual([9001, 9002]));
+  });
+
+  it('배포 완료 건을 다시 열면 현재 상태를 조회하고 배포 요청을 보내지 않는다', async () => {
+    const state = world({
+      autoPlan: { status: 'DONE', reasons: [] },
+      plans: [{ ...CONFIRMED_PLAN }],
+      workOrders: [{ workOrderId: 9001, productionLineId: 31, located: true }],
+      released: [9001],
+    });
+    const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+    expect(await screen.findByRole('heading', { name: '배포 완료 내역' })).toBeVisible();
+    expect(screen.getByText('배포된 작업지시')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '미배포 작업지시 다시 배포' })).toBeNull();
+    expect(server.writes).toEqual([]);
+  });
+
+  it('일부 배포된 건을 다시 열면 미배포 작업지시를 구분한다', async () => {
+    const state = world({
+      autoPlan: { status: 'DONE', reasons: [] },
+      plans: [{ ...CONFIRMED_PLAN }],
+      workOrders: [
+        { workOrderId: 9001, productionLineId: 31, located: true },
+        { workOrderId: 9002, productionLineId: 31, located: true },
+      ],
+      released: [9001],
+    });
+    const server = renderAt(`${WORKLIST}/${ORDER_NO}`, state);
+    expect(await screen.findByRole('heading', { name: '배포 완료 내역' })).toBeVisible();
+    expect(screen.getByText('일부 완료')).toBeVisible();
+    expect(screen.getByRole('button', { name: '미배포 작업지시 다시 배포' })).toBeEnabled();
+    expect(server.writes).toEqual([]);
   });
 
   it('저장하지 않은 계획 변경은 [이전]과 작업함 복귀에서 확인한다', async () => {

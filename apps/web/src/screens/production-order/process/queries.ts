@@ -27,6 +27,7 @@ export interface OrderWorkOrder {
   itemId: number;
   statusCode: string;
   priorityNo: number;
+  releasedAt?: string | null;
 }
 
 /** `work-orders` 접두를 써서 계획 확정, 4M 저장, 배포 뒤의 기존 무효화가 이 목록에도 닿는다. */
@@ -50,6 +51,7 @@ const toOrderWorkOrder = (item: WorkOrder): OrderWorkOrder => ({
   itemId: item.itemId,
   statusCode: item.statusCode,
   priorityNo: item.priorityNo,
+  releasedAt: item.releasedAt ?? null,
 });
 
 const useOrderWorkOrders = (
