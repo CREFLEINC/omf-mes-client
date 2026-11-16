@@ -372,9 +372,9 @@ export const ProductionOrderScreen = ({
         />
       )}
       <section className="erp-wo-selection-toolbar" aria-label={t.bulk.selectionActions}>
-        <div className="erp-wo-selection-info">
+        <div className="erp-wo-selection-info" id={bulkReasonId}>
           <strong>{t.bulk.selected(checkedRows.length)}</strong>
-          <p id={bulkReasonId}>{bulkReason ?? t.bulk.selectionHelp}</p>
+          {bulk.isRunning && <p>{bulkReason}</p>}
         </div>
         <div className="erp-wo-bulk-actions">
           <div className="erp-wo-action-choice">
@@ -393,7 +393,6 @@ export const ProductionOrderScreen = ({
             >
               {t.bulk.plan}
             </Button>
-            <small>{t.bulk.planHelp}</small>
           </div>
           <div className="erp-wo-action-choice">
             <div className="erp-wo-auto-plan-help-actions">
@@ -423,7 +422,6 @@ export const ProductionOrderScreen = ({
                 ?
               </Button>
             </div>
-            <small>{t.bulk.autoPlanShortHelp}</small>
           </div>
           <div className="erp-wo-action-choice">
             <Button
@@ -436,7 +434,6 @@ export const ProductionOrderScreen = ({
             >
               {t.bulk.release}
             </Button>
-            <small>{t.bulk.releaseShortHelp}</small>
           </div>
         </div>
       </section>

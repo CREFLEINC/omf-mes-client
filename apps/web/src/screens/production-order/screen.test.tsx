@@ -609,7 +609,7 @@ describe('작업지시 목록 작업함', () => {
     await screen.findByRole('link', { name: t.list.openRow('SYN-PO-701') });
     const release = screen.getByRole('button', { name: t.bulk.release });
     expect(release).toBeDisabled();
-    expect(release).toHaveAccessibleDescription(t.bulk.reasons.noneChecked);
+    expect(release).toHaveAccessibleDescription(t.bulk.selected(0));
   });
 
   it('자동 전개는 즉시 처리 없이 선택한 ERP W/O의 제안 검토로 이동한다', async () => {
