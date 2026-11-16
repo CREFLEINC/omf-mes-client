@@ -117,6 +117,8 @@ const t = messages.productionResult;
  * 열쇠는 따로다 — 두 화면이 다른 프린터를 쓸 수 있다.
  */
 const LOT_PRINTER_STORAGE_KEY = 'omf-mes.production-result.lot-printer';
+/** 유형 창이 새 불량 줄을 만들려고 열렸음을 뜻하는 자리값. 줄 key 와 겹치지 않는다. */
+const NEW_DEFECT_ROW = 'new-defect-row';
 
 /**
  * ⛔ **`IDENTIFICATION_TAG` 발행은 서버가 항상 422 `STATE_LOCKED` 로 거부한다**(대응표 P1
@@ -996,13 +998,22 @@ export const ProductionFlowScreen = () => {
     setDefectNotice(outbox.isOnline ? 'saved' : 'queued');
   };
 
+  /** [불량 추가]는 유형 창만 연다. 줄은 유형을 고른 뒤에 생긴다(취소하면 빈 줄이 남지 않는다). */
   const addDefectRow = (): void => {
-    const key = `defect-${String(nextDefectKey.current)}`;
-    nextDefectKey.current += 1;
-    setDefectNotice(null);
-    setDefectRows((rows) => [...rows, { key, defectCodeId: null, qty: '' }]);
-    setActiveQty(key);
-    setPickingRowKey(key);
+    setPickingRowKey(NEW_DEFECT_ROW);
+  };
+
+  const pickDefectCode = (defectCodeId: number): void => {
+    if (pickingRowKey === NEW_DEFECT_ROW) {
+      const key = `defect-${String(nextDefectKey.current)}`;
+      nextDefectKey.current += 1;
+      setDefectNotice(null);
+      setDefectRows((rows) => [...rows, { key, defectCodeId, qty: '' }]);
+      setActiveQty(key);
+    } else if (pickingRowKey !== null) {
+      updateDefectRow(pickingRowKey, { defectCodeId });
+    }
+    setPickingRowKey(null);
   };
 
   const updateDefectRow = (key: string, patch: Partial<DefectRowDraft>): void => {
@@ -2239,10 +2250,7 @@ export const ProductionFlowScreen = () => {
         majors={defectMajors}
         isLoading={defectCodes.isLoading}
         isError={defectCodes.isError}
-        onPick={(defectCodeId) => {
-          if (pickingRowKey !== null) updateDefectRow(pickingRowKey, { defectCodeId });
-          setPickingRowKey(null);
-        }}
+        onPick={pickDefectCode}
         onClose={() => setPickingRowKey(null)}
       />
       <UnderReasonDialog

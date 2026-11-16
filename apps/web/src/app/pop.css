@@ -9723,7 +9723,7 @@
   align-items: center;
   gap: var(--space-2);
   font: var(--type-title-sm);
-  font-size: 1.0625rem;
+  font-size: 1rem;
   color: var(--on-surface-variant);
 }
 
@@ -9738,8 +9738,8 @@
 .pop-ui .production-work-step-node {
   display: inline-grid;
   place-items: center;
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
+  inline-size: 1.625rem;
+  block-size: 1.625rem;
   border: 2px solid var(--outline);
   border-radius: 50%;
   font: var(--type-label-lg);
@@ -9886,8 +9886,8 @@
 }
 
 .pop-ui.production-work-screen .production-work-pad > button {
-  min-block-size: 3.75rem;
-  font-size: 1.375rem;
+  min-block-size: 3rem;
+  font-size: 1.25rem;
   white-space: nowrap;
 }
 
@@ -9901,10 +9901,36 @@
 }
 
 /* 하단 주 버튼 — 시안의 [LOT 라벨 출력]처럼 넓고 크게. */
-.pop-ui.production-work-screen .pop-action-bar button {
-  min-block-size: 3.5rem;
-  min-inline-size: 11rem;
-  font-size: 1.1875rem;
+.pop-ui.production-work-screen .action-bar-actions > button {
+  block-size: 3.25rem;
+  min-block-size: 3.25rem;
+  min-inline-size: 9.5rem;
+  font-size: 1.125rem;
+}
+
+/*
+ * 불량 줄 — 시안(② 7·8)처럼 유형 칸을 넓게, 불량 수량 칸은 좁게 두고 [✕]를 끝에 둔다. 유형 이름은 왼쪽 정렬,
+ * 높이는 양품 칸보다 낮게 한다.
+ */
+.pop-ui.production-work-screen .production-flow-defect-row,
+.pop-ui.production-work-screen .production-flow-defect-head {
+  grid-template-columns: minmax(0, 1fr) 8rem var(--control-height-md);
+}
+
+.pop-ui.production-work-screen .production-flow-defect-row > button:first-child {
+  justify-content: flex-start;
+  min-block-size: 2.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: start;
+}
+
+.pop-ui.production-work-screen .production-flow-defect-row .production-flow-qty :has(> input) {
+  min-block-size: 2.75rem;
+}
+
+.pop-ui.production-work-screen .production-flow-defect-row .production-flow-qty input {
+  font-size: 1.125rem;
 }
 
 /* 머리줄 프린터 칩 — 이름이 길어도 줄을 넘기지 않게 줄여 보인다(버튼끼리 겹치지 않게). */

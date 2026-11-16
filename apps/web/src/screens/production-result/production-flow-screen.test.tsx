@@ -2150,15 +2150,14 @@ describe('ProductionFlowScreen 불량', () => {
         name: t.flow.defects.cancel,
       }),
     );
+    /* 유형을 고르지 않고 닫으면 빈 줄을 남기지 않는다(명세 ②-6: 고르면 줄이 생긴다). */
+    expect(within(defectSection()).queryByRole('listitem')).toBeNull();
+    expect(screen.queryByText(t.flow.next.defectType)).not.toBeInTheDocument();
+
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
     const rowName = t.flow.defects.row(1);
-    expect(screen.getByText(t.flow.next.defectType)).toBeInTheDocument();
-    expect(
-      screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.typeMissing)),
-    ).not.toBeInTheDocument();
-
-    await user.click(within(row).getByRole('button', { name: new RegExp(t.flow.defects.type) }));
-    await pickDefect(user, '긁힘');
     expect(screen.getByText(t.flow.next.defectQty)).toBeInTheDocument();
     expect(
       screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
