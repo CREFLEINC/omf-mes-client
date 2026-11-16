@@ -132,11 +132,23 @@ it('분할 순차 날짜는 기존 휴일을 제외하고 SYSTEM 출처와 총�
     '2026-11-16',
   );
   expect(screen.getByRole('textbox', { name: '2026-11-14 휴일 생산량' })).toHaveValue('0');
-  expect(screen.getByRole('textbox', { name: '2026-11-14 휴일 생산량' })).toBeDisabled();
+  expect(screen.getByRole('textbox', { name: '2026-11-14 휴일 생산량' })).toBeEnabled();
   expect(screen.getByRole('textbox', { name: '2026-11-15 휴일 생산량' })).toHaveValue('0');
   await user.click(screen.getByRole('button', { name: '분할 적용' }));
   expect(onApply).toHaveBeenCalledWith([
     { plannedQty: '4', planDate: '2026-11-13', planDateSourceCode: 'SYSTEM' },
+    { plannedQty: '3', planDate: '2026-11-16', planDateSourceCode: 'SYSTEM' },
+    { plannedQty: '3', planDate: '2026-11-17', planDateSourceCode: 'SYSTEM' },
+  ]);
+  await user.clear(screen.getByRole('textbox', { name: '2026-11-14 휴일 생산량' }));
+  await user.type(screen.getByRole('textbox', { name: '2026-11-14 휴일 생산량' }), '1');
+  expect(screen.getByRole('button', { name: '분할 적용' })).toBeDisabled();
+  await user.clear(screen.getByRole('textbox', { name: '계획 1 생산량' }));
+  await user.type(screen.getByRole('textbox', { name: '계획 1 생산량' }), '3');
+  await user.click(screen.getByRole('button', { name: '분할 적용' }));
+  expect(onApply).toHaveBeenLastCalledWith([
+    { plannedQty: '3', planDate: '2026-11-13', planDateSourceCode: 'SYSTEM' },
+    { plannedQty: '1', planDate: '2026-11-14', planDateSourceCode: 'USER' },
     { plannedQty: '3', planDate: '2026-11-16', planDateSourceCode: 'SYSTEM' },
     { plannedQty: '3', planDate: '2026-11-17', planDateSourceCode: 'SYSTEM' },
   ]);

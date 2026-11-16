@@ -57,6 +57,8 @@ export const DistributionControls = ({
   const { client } = useApiClient();
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarNotes, setCalendarNotes] = useState<string[]>([]);
+  const [resultQuantities, setResultQuantities] = useState<Record<string, string>>({});
+  const resultKey = (row: OwnedDraft) => `${row.owner}:${row.planDate}:${row.plannedLineId}`;
   const [holidayRows, setHolidayRows] = useState<(OwnedDraft & { holidayLabel: string })[]>([]);
   const latestSignature = useRef('');
   const sequence = useRef(0);
@@ -139,13 +141,70 @@ export const DistributionControls = ({
             )
             .map((row) => [`${row.owner}:${row.planDate}:${row.plannedLineId}`, row]),
         ).values(),
-      ].sort(
-        (a, b) =>
-          a.owner.localeCompare(b.owner) ||
-          a.planDate.localeCompare(b.planDate) ||
-          a.plannedLineId.localeCompare(b.plannedLineId),
-      )
+      ]
+        .map((row) => ({ ...row, plannedQty: resultQuantities[resultKey(row)] ?? row.plannedQty }))
+        .sort(
+          (a, b) =>
+            a.owner.localeCompare(b.owner) ||
+            a.planDate.localeCompare(b.planDate) ||
+            a.plannedLineId.localeCompare(b.plannedLineId),
+        )
     : [];
+  let reviewResult = preview?.result;
+  let resultError = '';
+  if (preview && Object.keys(resultQuantities).length) {
+    try {
+      const grouped = new Map<string, DistributionSegment>();
+      for (const row of previewRows) {
+        const key = `${row.owner}:${row.plannedLineId}`;
+        const group = grouped.get(key) ?? {
+          id: key,
+          owner: row.owner,
+          start: row.planDate,
+          end: row.planDate,
+          lineId: row.plannedLineId,
+          mode: 'daily',
+          quantity: '0',
+          daily: {},
+        };
+        group.start = group.start < row.planDate ? group.start : row.planDate;
+        group.end = group.end > row.planDate ? group.end : row.planDate;
+        group.daily[row.planDate] = row.plannedQty;
+        grouped.set(key, group);
+      }
+      reviewResult = previewSegments(
+        orders,
+        [...grouped.values()].filter((group) =>
+          Object.values(group.daily).some((qty) => Number(qty) !== 0),
+        ),
+        existing,
+      );
+      if (
+        reviewResult.orders.some(
+          (order) =>
+            Math.abs(
+              order.added -
+                (preview.result.orders.find((item) => item.id === order.id)?.added ?? 0),
+            ) > 0.0000005,
+        )
+      )
+        resultError = 'ERP W/O별 생산량 합계를 기존 분배 수량과 맞추세요.';
+      reviewResult = {
+        ...reviewResult,
+        warnings: [...new Set([...preview.result.warnings, ...reviewResult.warnings])],
+        drafts: reviewResult.drafts.map((row) => ({
+          ...row,
+          planDateSourceCode:
+            resultQuantities[resultKey(row)] !== undefined
+              ? ('USER' as const)
+              : (preview.result.drafts.find((original) => resultKey(original) === resultKey(row))
+                  ?.planDateSourceCode ?? 'USER'),
+        })),
+      };
+    } catch (error) {
+      resultError = error instanceof Error ? error.message : '수량을 확인하세요.';
+    }
+  }
   const change = (key: string, patch: Partial<DistributionSegment>) => {
     setRows((current) =>
       current.map((row) => (row.id === key ? { ...row, ...patch, applied: false } : row)),
@@ -677,7 +736,7 @@ export const DistributionControls = ({
                           }
                           if (row.mode === 'equal' && holidays.length)
                             notes.push(
-                              `${order.label}: 휴일 ${holidays.length}일 제외 (${holidays.map((day) => day.date).join(', ')})`,
+                              `${order.label}: 휴일 ${holidays.length}일 기본 수량 0 (${holidays.map((day) => day.date).join(', ')})`,
                             );
                           if (row.mode === 'daily')
                             holidays
@@ -696,6 +755,7 @@ export const DistributionControls = ({
                         const result = previewSegments(orders, rows, existing, bySegment);
                         setCalendarNotes(notes);
                         setHolidayRows(holidayDisplay);
+                        setResultQuantities({});
                         setPreview({ signature, result });
                         setAcknowledged(false);
                         setResultPage(1);
@@ -756,6 +816,7 @@ export const DistributionControls = ({
                     ))}
                   </div>
                 )}
+                {resultError && <AlertBanner variant="error">{resultError}</AlertBanner>}
                 {stale && (
                   <AlertBanner variant="warning">
                     계획이나 대상 수량이 바뀌었습니다. 미리보기를 다시 만드세요.
@@ -772,7 +833,7 @@ export const DistributionControls = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.result.orders
+                      {reviewResult!.orders
                         .slice((orderPage - 1) * 10, orderPage * 10)
                         .map((order) => (
                           <tr key={order.id}>
@@ -788,9 +849,9 @@ export const DistributionControls = ({
                     </tbody>
                   </table>
                 </div>
-                {preview.result.orders.length > 10 && (
+                {reviewResult!.orders.length > 10 && (
                   <PageNav
-                    meta={{ page: orderPage, size: 10, total: preview.result.orders.length }}
+                    meta={{ page: orderPage, size: 10, total: reviewResult!.orders.length }}
                     onChangePage={setOrderPage}
                   />
                 )}
@@ -825,7 +886,20 @@ export const DistributionControls = ({
                             }
                           </td>
                           <td>
-                            {row.plannedQty} {orders.find((order) => order.id === row.owner)?.unit}
+                            <TextField
+                              size="md"
+                              inputMode="decimal"
+                              aria-label={`${row.owner} ${row.planDate} ${row.plannedLineId} 생산량`}
+                              value={row.plannedQty}
+                              onChange={(event) => {
+                                setResultQuantities((current) => ({
+                                  ...current,
+                                  [resultKey(row)]: event.target.value,
+                                }));
+                                setAcknowledged(false);
+                              }}
+                            />{' '}
+                            {orders.find((order) => order.id === row.owner)?.unit}
                           </td>
                         </tr>
                       ))}
@@ -852,7 +926,7 @@ export const DistributionControls = ({
                         </tr>
                       </thead>
                       <tbody>
-                        {preview.result.totals
+                        {reviewResult!.totals
                           .slice((totalsPage - 1) * 10, totalsPage * 10)
                           .map((row) => (
                             <tr key={`${row.date}-${row.lineId}-${row.unit}`}>
@@ -872,9 +946,9 @@ export const DistributionControls = ({
                       </tbody>
                     </table>
                   </div>
-                  {preview.result.totals.length > 10 && (
+                  {reviewResult!.totals.length > 10 && (
                     <PageNav
-                      meta={{ page: totalsPage, size: 10, total: preview.result.totals.length }}
+                      meta={{ page: totalsPage, size: 10, total: reviewResult!.totals.length }}
                       onChangePage={setTotalsPage}
                     />
                   )}
@@ -882,11 +956,11 @@ export const DistributionControls = ({
                     선택한 ERP W/O의 계획만 집계합니다. 생산능력 검증 결과는 아닙니다.
                   </p>
                 </details>
-                {!!preview.result.warnings.length && (
+                {!!reviewResult!.warnings.length && (
                   <>
                     <AlertBanner variant="warning">
                       <ul>
-                        {preview.result.warnings.map((warning) => (
+                        {reviewResult!.warnings.map((warning) => (
                           <li key={warning}>{warning}</li>
                         ))}
                       </ul>
@@ -919,13 +993,16 @@ export const DistributionControls = ({
                   <Button
                     aria-describedby={`${id}-note`}
                     disabled={
-                      disabled || stale || (!acknowledged && preview.result.warnings.length > 0)
+                      disabled ||
+                      stale ||
+                      !!resultError ||
+                      (!acknowledged && reviewResult!.warnings.length > 0)
                     }
                     onClick={() => {
-                      if (lock.current || stale) return;
+                      if (lock.current || stale || resultError) return;
                       lock.current = true;
                       try {
-                        onApply(preview.result.drafts);
+                        onApply(reviewResult!.drafts);
                         const applied = rows.map((row) => ({ ...row, applied: true }));
                         setRows(applied);
                         baseline.current = applied;

@@ -287,7 +287,7 @@ describe('분배 조건과 미리보기 적용', () => {
   });
 });
 
-it('휴일을 0 수량으로 표시하되 적용할 계획에는 포함하지 않는다', async () => {
+it('휴일 0 수량을 직접 수정하면 사용자 지정 계획으로 적용하고 합계를 보존한다', async () => {
   const { planningDaysResponse } = await import('../../../test/planning-day-fixture');
   const onApply = vi.fn();
   renderWithProviders(
@@ -306,8 +306,29 @@ it('휴일을 0 수량으로 표시하되 적용할 계획에는 포함하지 �
   );
   const user = await configure();
   expect(await screen.findAllByText('주말 · 휴일')).not.toHaveLength(0);
+  const resultTable = screen.getByRole('table', { name: '날짜와 라인별 결과' });
+  const holidayRow = within(resultTable).getAllByText('주말 · 휴일')[0]!.closest('tr')!;
+  const holidayInput = within(holidayRow).getByRole('textbox');
+  const weekdayInput = within(resultTable)
+    .getAllByRole('textbox')
+    .find((input) => Number((input as HTMLInputElement).value) > 0)!;
+  await user.clear(holidayInput);
+  await user.type(holidayInput, '1');
+  expect(screen.getByRole('button', { name: '분배안 적용' })).toBeDisabled();
+  await user.clear(weekdayInput);
+  await user.type(weekdayInput, '0');
+
   await user.click(screen.getByRole('button', { name: '분배안 적용' }));
   expect(onApply).toHaveBeenCalledOnce();
+  expect(onApply.mock.calls[0]![0]).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        planDate: holidayInput.getAttribute('aria-label')!.split(' ')[1],
+        plannedQty: '1',
+        planDateSourceCode: 'USER',
+      }),
+    ]),
+  );
   expect(
     onApply.mock.calls[0]![0].every((row: { plannedQty: string }) => Number(row.plannedQty) > 0),
   ).toBe(true);

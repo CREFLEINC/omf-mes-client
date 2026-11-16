@@ -67,14 +67,37 @@ export const PlanSplitDialog = ({
     })),
   );
   const [holidayDays, setHolidayDays] = useState<PlanningDay[]>([]);
+  const [holidayQuantities, setHolidayQuantities] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [conditionsDirty, setConditionsDirty] = useState(false);
-  const sumUnits = parts.reduce(
+  const lastHolidayDate =
+    parts
+      .map((part) => part.planDate)
+      .sort()
+      .at(-1) ?? start;
+  const visibleHolidays = holidayDays.filter(
+    (day) =>
+      dates === 'sequence' &&
+      day.date >= start &&
+      day.date <= lastHolidayDate &&
+      !parts.some((part) => part.planDate === day.date),
+  );
+  const appliedParts: PlanSplitPart[] = [
+    ...parts,
+    ...visibleHolidays
+      .filter((day) => Number(holidayQuantities[day.date] || '0') !== 0)
+      .map((day) => ({
+        planDate: day.date,
+        plannedQty: holidayQuantities[day.date]!,
+        planDateSourceCode: 'USER' as const,
+      })),
+  ].sort((a, b) => a.planDate.localeCompare(b.planDate));
+  const sumUnits = appliedParts.reduce(
     (sum, part) => sum + Math.round((Number(part.plannedQty) || 0) * scale),
     0,
   );
   const difference = (Math.round(total * scale) - sumUnits) / scale;
-  const valid = validPlanSplit(total, parts, decimalScale);
+  const valid = validPlanSplit(total, appliedParts, decimalScale);
   const preview = async () => {
     const fixed = Math.round(Number(per) * scale);
     const number =
@@ -132,6 +155,7 @@ export const PlanSplitDialog = ({
           : next,
       );
       setHolidayDays(holidays);
+      setHolidayQuantities({});
       setConditionsDirty(false);
       setCount(String(number));
       setError('');
@@ -197,7 +221,9 @@ export const PlanSplitDialog = ({
       onClose={onClose}
       footer={
         <>
-          <span className="erp-wo-split-footer-count">분할 후 계획 건수 {parts.length}건</span>
+          <span className="erp-wo-split-footer-count">
+            분할 후 계획 건수 {appliedParts.length}건
+          </span>
           <Button variant="outlined" onClick={onClose}>
             취소
           </Button>
@@ -205,7 +231,7 @@ export const PlanSplitDialog = ({
             aria-describedby={!valid || conditionsDirty ? validationId : undefined}
             disabled={!valid || conditionsDirty || calendarBusy}
             onClick={() => {
-              if (valid && !conditionsDirty) onApply(parts);
+              if (valid && !conditionsDirty) onApply(appliedParts);
             }}
           >
             분할 적용
@@ -372,8 +398,15 @@ export const PlanSplitDialog = ({
                         <TextField
                           size="md"
                           aria-label={`${day.date} 휴일 생산량`}
-                          value="0"
-                          disabled
+                          value={holidayQuantities[day.date] ?? '0'}
+                          disabled={calendarBusy}
+                          inputMode="decimal"
+                          onChange={(event) =>
+                            setHolidayQuantities((current) => ({
+                              ...current,
+                              [day.date]: event.target.value,
+                            }))
+                          }
                         />
                       </td>
                       <td>
