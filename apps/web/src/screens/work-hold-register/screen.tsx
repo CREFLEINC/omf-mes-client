@@ -214,6 +214,24 @@ export const WorkHoldRegisterScreen = () => {
             </Chip>
           )}
         </p>
+        {/*
+         * 같은 작업지시로 생산 작업에 돌아간다(P-02-04 개선 명세 ⑦). 작업지시 없이 들어왔으면 두지 않는다.
+         * 등록한 중단은 단말 큐에 있어 화면을 떠나도 사라지지 않는다.
+         */}
+        {workOrderId !== null && (
+          <span className="pop-header-tools">
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() => {
+                void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
+              }}
+            >
+              {messages.productionResult.flow.actions.backToWork}
+            </Button>
+          </span>
+        )}
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

@@ -19139,20 +19139,6 @@ dialog.layout-editor-dialog {
   font-weight: 600;
 }
 
-/* PQC 분할(omf-all-around#107)에서는 반 폭이라 두 구획을 위아래로 두고 그 영역 안에서 스크롤한다. */
-.production-flow-zone > .pop-panes.production-work-panes {
-  grid-template-columns: minmax(0, 1fr);
-  grid-auto-rows: max-content;
-  align-content: start;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* 영역 전체가 한 번에 스크롤하므로 구획은 제 높이로 선다(구획마다 스크롤이 생기지 않게). */
-.pop-ui .production-flow-zone > .production-work-panes > .pane {
-  overflow: visible;
-}
-
 /* ------------------------------------------------------------------------ *
  * P-02-01 작업 지시 목록(작업지시를 골라 작업 시작)
  *

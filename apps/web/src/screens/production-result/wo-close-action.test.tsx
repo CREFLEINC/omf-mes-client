@@ -180,8 +180,16 @@ describe('WorkOrderCloseAction — 보내는 순서', () => {
       'aria-pressed',
       'true',
     );
-    expect(await within(dialog).findByText(t.openLots(1, 'LOT-SYN-ACTIVE'))).toBeVisible();
-    expect(within(dialog).getByText(t.voidedSlots(2))).toBeVisible();
+    /* 폐번·그대로 남는 LOT 은 한 줄 안내와 번호 목록으로 보인다(개선 명세 ⑧-1). */
+    expect(await within(dialog).findByText(t.lotNotice(2, 1))).toBeVisible();
+    expect(within(dialog).getByText(t.voidedList(1)).nextElementSibling).toHaveTextContent(
+      'LOT-SYN-WAITING',
+    );
+    expect(within(dialog).getByText(t.openList(1)).nextElementSibling).toHaveTextContent(
+      'LOT-SYN-ACTIVE',
+    );
+    /* 미달은 판정·미달량을 빨간 글자로 보인다. */
+    expect(within(dialog).getByText(t.judgments.UNDER)).toHaveAttribute('data-tone', 'error');
     expect(within(dialog).getByText(t.needRemainder)).toBeVisible();
     expect(confirmOf(dialog)).toBeDisabled();
 

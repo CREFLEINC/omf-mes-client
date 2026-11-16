@@ -3,6 +3,7 @@ import {
   Button,
   type Column,
   Dialog,
+  Icon,
   Table,
   TextField,
   useToast,
@@ -221,7 +222,21 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
           ? t.endFailed
           : null;
   const variance = progress?.varianceQty;
+  const judgmentTone = judgment === null ? undefined : judgment === 'NORMAL' ? 'success' : 'error';
   const voided = workOrder?.preIssuedLots?.withoutResultCount ?? 0;
+  /* 그대로 남는 LOT 은 조회를 못 했으면 모른다 — 세지 않는다(「확인하지 못했다」 안내가 따로 선다). */
+  const openLotNos = openLots.isError ? [] : (openLots.data?.lotNos ?? []);
+  const voidLotNos = openLots.isError ? [] : (openLots.data?.voidLotNos ?? []);
+  /* 폐번 건수는 서버가 센 값(`withoutResultCount`)이 정본이다. 번호 목록은 받은 쪽에서 보인다. */
+  const lotNotice =
+    voided > 0 || openLotNos.length > 0 ? t.lotNotice(voided, openLotNos.length) : null;
+  /** 파란 안내 줄(정보 아이콘 + 한 줄). */
+  const infoNote = (text: string) => (
+    <p className="iqc-inspection-action-note" data-tone="info">
+      <Icon name="info" size={14} aria-hidden />
+      {text}
+    </p>
+  );
 
   return (
     <div className="production-flow-wo-close">
@@ -347,12 +362,17 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 </div>
                 <div>
                   <dt>{t.fields.judgment}</dt>
-                  <dd>{judgment === null ? '—' : t.judgments[judgment]}</dd>
+                  {/* 미달·초과는 빨강, 정상은 초록(개선 명세 ⑧). 값은 서버 판정 그대로다. */}
+                  <dd data-tone={judgmentTone}>
+                    {judgment === null ? '—' : t.judgments[judgment]}
+                  </dd>
                 </div>
                 {variance !== undefined && variance !== 0 && (
                   <div>
                     <dt>{variance > 0 ? t.fields.shortfallQty : t.fields.overageQty}</dt>
-                    <dd>{`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}</dd>
+                    <dd data-tone="error">
+                      {`${formatQty(Math.abs(variance))} ${uomLabel}`.trim()}
+                    </dd>
                   </div>
                 )}
               </dl>
@@ -371,7 +391,10 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
 
               {needsDisposition && (
                 <fieldset className="field-cell">
-                  <legend className="field-label">{t.fields.remainder}</legend>
+                  <legend className="field-label production-flow-close-legend">
+                    {t.fields.remainder}
+                    {infoNote(t.carryOverNote)}
+                  </legend>
                   <div className="production-flow-reason-tiles">
                     {(['CARRY_OVER', 'WRITE_OFF'] as const).map((code) => (
                       <Button
@@ -385,13 +408,15 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                       </Button>
                     ))}
                   </div>
-                  <p className="field-note">{t.carryOverNote(messages.productionOrder.menuPath)}</p>
                 </fieldset>
               )}
 
               {needsReason && (
                 <fieldset className="field-cell">
-                  <legend className="field-label">{t.fields.reason}</legend>
+                  <legend className="field-label production-flow-close-legend">
+                    {t.fields.reason}
+                    {lotNotice !== null && infoNote(lotNotice)}
+                  </legend>
                   {reasons.isLoading ? (
                     <p role="status">{t.reasonsLoading}</p>
                   ) : reasons.isError ? (
@@ -425,25 +450,43 @@ export const WorkOrderCloseAction = (props: WorkOrderCloseActionProps) => {
                 />
               )}
 
-              {voided > 0 && <p>{t.voidedSlots(voided)}</p>}
-              {openLots.isError ? (
-                <p>{t.openLotsUnknown}</p>
-              ) : (
-                <>
-                  {(openLots.data?.lotNos.length ?? 0) > 0 && (
-                    <p>
-                      {t.openLots(
-                        openLots.data?.lotNos.length ?? 0,
-                        openLots.data?.lotNos.join(', ') ?? '',
-                      )}
-                    </p>
+              {/* 사유 칸이 없으면(정상) LOT 안내가 혼자 선다(⑧-2). */}
+              {!needsReason && lotNotice !== null && infoNote(lotNotice)}
+              {(voidLotNos.length > 0 || openLotNos.length > 0) && (
+                <dl className="production-flow-close-lots">
+                  {voidLotNos.length > 0 && (
+                    <div>
+                      <dt>{t.voidedList(voidLotNos.length)}</dt>
+                      <dd>
+                        {voidLotNos.map((lotNo) => (
+                          <span key={lotNo} className="production-flow-close-lot">
+                            {lotNo}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
                   )}
-                  {(openLots.data?.uncheckedCount ?? 0) > 0 && (
-                    <p>{t.uncheckedLots(openLots.data?.uncheckedCount ?? 0)}</p>
+                  {openLotNos.length > 0 && (
+                    <div>
+                      <dt>{t.openList(openLotNos.length)}</dt>
+                      <dd>
+                        {openLotNos.map((lotNo) => (
+                          <span key={lotNo} className="production-flow-close-lot">
+                            {lotNo}
+                          </span>
+                        ))}
+                      </dd>
+                    </div>
                   )}
-                </>
+                </dl>
               )}
-              <p>{t.irreversible}</p>
+              {openLots.isError && infoNote(t.openLotsUnknown)}
+              {(openLots.data?.uncheckedCount ?? 0) > 0 &&
+                infoNote(t.uncheckedLots(openLots.data?.uncheckedCount ?? 0))}
+              <p className="iqc-inspection-action-note" data-tone="warning">
+                <Icon name="warning" size={14} aria-hidden />
+                <strong>{t.irreversible.lead}</strong> {t.irreversible.rest}
+              </p>
             </>
           )}
           {/* 창 위에 이미 띠로 선 까닭은 단추에만 이어 둔다 — 같은 말을 두 번 보이지 않게. */}

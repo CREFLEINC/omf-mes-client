@@ -496,7 +496,7 @@ describe('ProductionFlowScreen', () => {
 
     /* 서버 누계가 닿으면 LOT 실적이 그 값을 말하고, 실적 입력 칸은 닫힌다(라벨 스캔 단계). */
     await waitFor(() => {
-      expect(screen.getByText(t.flow.work.progressText('8', '12', 'EA'))).toBeInTheDocument();
+      expect(screen.getByText(t.flow.work.lotProgressText('8', '12', 'EA'))).toBeInTheDocument();
     });
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
   });
@@ -546,7 +546,9 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes, [appliedLot, appliedLotDetail]);
 
     /* 실적이 서버에 있으면 라벨 스캔 단계로 연다. 실적 입력 칸은 없다(다시 올릴 길이 없다). */
-    expect(await screen.findByText(t.flow.work.progressText('8', '12', 'EA'))).toBeInTheDocument();
+    expect(
+      await screen.findByText(t.flow.work.lotProgressText('8', '12', 'EA')),
+    ).toBeInTheDocument();
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
 
     const retryIssue = await screen.findByRole('button', { name: t.flow.output.retryIssue });
@@ -1110,11 +1112,9 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     await waitFor(() => expect(close).toBeEnabled());
     const output = screen.getByRole('button', { name: t.flow.output.issue });
     expect(output).toBeDisabled();
-    await waitFor(() =>
-      expect(output).toHaveAccessibleDescription(
-        `${t.flow.next.planReached}. ${t.flow.next.printer}`,
-      ),
-    );
+    /* 달성 사실은 오른쪽 위 파란 안내 줄이, 막힌 이유는 하단 바가 말한다(개선 명세 ④-1). */
+    expect(await screen.findByText(t.flow.work.planReached)).toBeInTheDocument();
+    await waitFor(() => expect(output).toHaveAccessibleDescription(t.flow.next.printer));
   });
 
   it('저장 뒤 판정이 초과면 「초과 달성 n」 칩으로 말하고 초과 안내는 내지 않는다', async () => {
@@ -1218,7 +1218,9 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     await waitFor(() => expect(output).toBeEnabled());
 
     /* W/O 실적은 「실적 / 지시」로 보이고 잔량은 0 이하라 두지 않는다(C-21). */
-    expect(screen.getByText(t.flow.work.progressText('16', '12', 'EA'))).toBeInTheDocument();
+    expect(
+      screen.getByText(t.flow.work.workOrderProgressText('16', '12', 'EA')),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/잔량 /u)).not.toBeInTheDocument();
     expect(await screen.findByText(t.overrun.noticeNoRemaining)).toBeInTheDocument();
     expect(screen.queryByText(/-4/u)).not.toBeInTheDocument();
@@ -1756,7 +1758,8 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
       expect(screen.queryByRole('button', { name: key })).not.toBeInTheDocument();
     }
     expect(screen.getByText(t.flow.work.noLot)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    /* 생산할 LOT 이 없으면 하단 주 버튼은 [작업지시 마감] 하나다 — [LOT 라벨 출력]은 두지 않는다(개선 명세 ④-2). */
+    expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
   });
 
   it('LOT 이 처음부터 없는 작업지시를 열기만 하면 세션을 닫지 않는다', async () => {
@@ -1775,288 +1778,131 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 });
 
 /*
- * 생산 실적 ↔ PQC 분할(omf-all-around#107). 남은 PQC 가 있으면 오른쪽에 PQC 를 띄운다. 업무 순서는
- * «실적 입력 → PQC» 다(사용자 결정 2026-10-19) — 실적을 막지 않고, 실적이 없으면 PQC 쪽이 잠긴다.
+ * PQC 는 이 화면에 띄우지 않는다(P-02-04 개선 명세 §1 · 앞선 분할(omf-all-around#107)을 거둔다). 의뢰가 있든
+ * 없든 실적이 전체 폭을 쓰고, 정보 영역에 PQC 줄·[검사]도 없다. 검사는 「PQC 제품 검사」(P-02-13)에서 한다.
  */
-describe('ProductionFlowScreen — PQC 분할', () => {
-  const pqc = messages.pqcInspection;
-  const PQC_REQUEST = {
-    inspectionRequestId: 7001,
-    inspectionRequestNo: 'IR-PQC-7001',
-    inspectionTypeCode: 'PQC',
-    /* 기준이 없는 의뢰 — 항목 없이 판정만으로 확정한다(P-02-13 §5-2). */
-    inspectionPlanVersionId: null,
-    targetTypeCode: 'WORK_ORDER',
-    targetId: WORK_ORDER_ID,
-    itemId: 101,
-    lotId: null,
-    workOrderId: WORK_ORDER_ID,
-    targetQty: 5,
-    uomId: 1,
-    statusCode: 'REQUESTED',
-    requestedAt: '2026-10-16T09:00:00+09:00',
-    versionNo: 1,
-  };
-  const JUDGMENTS = [
-    { codeValueId: 1, code: 'ACCEPTED', codeName: '합격', displayOrder: 1, isActive: true },
-    { codeValueId: 2, code: 'REJECTED', codeName: '불합격', displayOrder: 2, isActive: true },
-  ];
-
-  /** 그 W/O 의 진척 — 실적이 있으면 양품 누계가 0 보다 크다. */
-  const producedWorkOrder = (goodQty: number): StubRoute => ({
-    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
-    respond: () =>
-      jsonResponse({
-        workOrderId: WORK_ORDER_ID,
-        workOrderNo: 'WO-SYN-001',
-        productionPlanId: 1,
-        routingOperationId: 1,
-        itemId: 101,
-        itemCode: 'ITEM-SYN-01',
-        orderQty: 12,
-        uomId: 1,
-        workOrderTypeCode: 'NORMAL',
-        statusCode: 'IN_PROGRESS',
-        priorityNo: 1,
-        progress: { goodQty, varianceQty: 12 - goodQty },
-      }),
-  });
-
-  const pqcRoutes = (
-    state: { confirmed: boolean },
-    writes: Request[],
-    rounds: object[] = [],
-  ): StubRoute[] => [
-    {
-      match: (request) =>
-        request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
-      respond: () =>
-        jsonResponse({ items: rounds, page: { page: 1, size: 100, total: rounds.length } }),
-    },
-    {
-      match: (request) => pathOf(request) === '/quality/inspection-requests',
-      respond: () =>
-        jsonResponse({
-          items: [{ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }],
-          page: { page: 1, size: 20, total: 1 },
-        }),
-    },
-    {
-      match: (request) => pathOf(request) === '/quality/inspection-requests/7001',
-      respond: () =>
-        jsonResponse({ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }),
-    },
-    {
-      match: (request) => pathOf(request) === '/mdm/code-values',
-      respond: () => jsonResponse({ items: JUDGMENTS, page: { page: 1, size: 200, total: 2 } }),
-    },
-    {
-      match: (request) =>
-        request.method === 'POST' && pathOf(request) === '/quality/inspection-results',
-      respond: (request) => {
-        writes.push(request.clone());
-        state.confirmed = true;
-        return jsonResponse({ inspectionResultId: 9001 }, { status: 201 });
+/*
+ * 프린터는 머리줄 칩에서 고른다(개선 명세 ⑤). 고른 프린터는 이 화면 열쇠로 단말에 기억하고, 셸이 고른 프린터를
+ * 받을 때만 셸 인쇄에 이름을 싣는다 — 받지 못하는 옛 설치본에는 싣지 않는다(자재 LOT 라벨과 같은 규칙).
+ */
+describe('ProductionFlowScreen — 프린터 선택', () => {
+  const LOT_PRINTER_KEY = 'omf-mes.production-result.lot-printer';
+  const installShell = (selectable: boolean) => {
+    const save = vi.fn(async (..._args: unknown[]) => '/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: {
+        rendition: { save },
+        printers: {
+          /* 셸이 있으면 프린터 목록은 셸이 말한다(`terminalPrinters`). */
+          list: async () => ({
+            printers: [
+              { name: 'printer-syn', displayName: '합성 라벨 프린터' },
+              { name: 'printer-syn-2', displayName: '합성 라벨 프린터 2' },
+            ],
+            target: 'printer-syn',
+          }),
+          capabilities: async () => (selectable ? { raw: true, selectable } : { raw: true }),
+        },
       },
-    },
-  ];
+    });
+    return save;
+  };
+  const issueOnce = async (user: ReturnType<typeof userEvent.setup>) => {
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+  };
 
   beforeEach(() => {
     globalThis.localStorage.clear();
   });
 
-  it('실적이 있으면 오른쪽 PQC 에서 확정한다 — 닫는 단추가 없다', async () => {
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  it('머리줄 칩에서 고른 프린터로 발행·인쇄하고 단말에 기억한다', async () => {
     const writes: Request[] = [];
-    const state = { confirmed: false };
     const user = userEvent.setup();
-    renderScreen(writes, [producedWorkOrder(5), ...pqcRoutes(state, writes)]);
+    const save = installShell(true);
+    renderScreen(writes);
 
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    expect(panel.queryByRole('button', { name: /닫기/ })).not.toBeInTheDocument();
-    expect(screen.getByText(t.zone.title)).toBeInTheDocument();
-    expect(screen.getByText(t.zone.note)).toBeInTheDocument();
-    expect(screen.getByText(t.pqc.splitNote)).toBeInTheDocument();
-    expect(screen.queryByText(t.flow.work.pqcNotInspected)).not.toBeInTheDocument();
-
-    await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
-    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
-    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.held }), '0');
-    await user.click(panel.getByRole('combobox', { name: pqc.result.judgment }));
-    await user.click(await screen.findByRole('option', { name: '합격' }));
-    await waitFor(() =>
-      expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeEnabled(),
+    const header = screen.getAllByRole('banner')[0] as HTMLElement;
+    await user.click(
+      await within(header).findByRole('button', {
+        name: `${messages.popMaterialLotLabel.printer.choose}: 합성 라벨 프린터`,
+      }),
     );
-    await user.click(panel.getByRole('button', { name: pqc.result.confirm }));
+    await user.click(await screen.findByRole('button', { name: /합성 라벨 프린터 2/u }));
+    expect(globalThis.localStorage.getItem(LOT_PRINTER_KEY)).toBe('printer-syn-2');
 
-    await waitFor(() => expect(writes.map(pathOf)).toContain('/quality/inspection-results'));
-    const [sent] = writes.filter((request) => pathOf(request) === '/quality/inspection-results');
-    expect(sent?.headers.get('X-Worker-No')).toBe('100029');
-    expect(((await sent?.json()) as { statusCode: string }).statusCode).toBe('CONFIRMED');
+    await issueOnce(user);
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls.at(-1)?.[4]).toBe('printer-syn-2');
+    const issue = writes.find(
+      (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
+    );
+    expect(await issue?.clone().json()).toMatchObject({ printerName: 'printer-syn-2' });
   });
 
-  it('⛔ 실적이 아직 없으면 PQC 저장·확정이 잠기고 이유를 PQC 맨 위에 한 번 말한다', async () => {
+  it('⛔ 고른 프린터를 받지 못하는 셸에는 이름을 싣지 않고, 기억한 프린터도 쓰지 않는다', async () => {
+    globalThis.localStorage.setItem(LOT_PRINTER_KEY, 'printer-syn-2');
     const writes: Request[] = [];
-    renderScreen(writes, [producedWorkOrder(0), ...pqcRoutes({ confirmed: false }, writes)]);
+    const user = userEvent.setup();
+    const save = installShell(false);
+    renderScreen(writes);
 
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    expect(await panel.findAllByText(pqc.result.noProductionResult)).toHaveLength(1);
-    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
-    /* 입력 칸까지 잠그는 것은 관리웹(#135)만이다 — POP 은 종전대로 칸을 열어 둔다. */
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toBeEnabled();
-  });
-
-  it.each([
-    ['그대로', false],
-    ['StrictMode — 초기화가 두 번 돌아도', true],
-  ])('⭐ 작성중 회차가 있으면 수량·판정을 되살린다(%s)', async (_label, strict) => {
-    renderScreen(
-      [],
-      [
-        producedWorkOrder(5),
-        ...pqcRoutes(
-          { confirmed: false },
-          [],
-          [
-            {
-              inspectionResultId: 9001,
-              inspectionResultNo: 'IRS-9001',
-              inspectionRequestId: 7001,
-              inspectionRound: 1,
-              inspectedQty: 5,
-              acceptedQty: 3,
-              rejectedQty: 0,
-              heldQty: 2,
-              uomId: 1,
-              overallJudgmentCode: 'ACCEPTED',
-              inspectorId: 1,
-              inspectedAt: '2026-10-16T09:00:00+09:00',
-              statusCode: 'DRAFT',
-              versionNo: 1,
-            },
-          ],
-        ),
-      ],
-      { strict },
-    );
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    await waitFor(() =>
-      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('3'),
-    );
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.held })).toHaveValue('2');
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.rejected })).toHaveValue('0');
-    // 고른 값은 단추 옆 표시 칸에 선다(`pop-select__value`).
-    await waitFor(() =>
-      expect(
-        panel.getByRole('combobox', { name: pqc.result.judgment }).closest('.pop-select'),
-      ).toHaveTextContent('합격'),
-    );
-  });
-
-  it('⭐ 확정된 뒤에도 나뉜 채로 확정 결과를 읽기 전용으로 보인다', async () => {
-    const round = {
-      inspectionResultId: 9001,
-      inspectionResultNo: 'IRS-9001',
-      inspectionRequestId: 7001,
-      inspectionRound: 1,
-      inspectedQty: 5,
-      acceptedQty: 5,
-      rejectedQty: 0,
-      heldQty: 0,
-      uomId: 1,
-      overallJudgmentCode: 'ACCEPTED',
-      inspectorId: 1,
-      inspectedAt: '2026-10-16T09:00:00+09:00',
-      statusCode: 'CONFIRMED',
-      versionNo: 2,
-    };
-    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: true }, [], [round])]);
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    await waitFor(() =>
-      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('5'),
-    );
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toBeDisabled();
-    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
-  });
-
-  it('분할 패널에는 시작·종료 시각 칸이 없다 — 서버가 저장하지 않는 값이다', async () => {
-    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: false }, [])]);
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    await panel.findByRole('textbox', { name: pqc.result.fields.accepted });
-    expect(panel.queryByText(pqc.coverage.note)).not.toBeInTheDocument();
+    const header = screen.getAllByRole('banner')[0] as HTMLElement;
     expect(
-      panel.queryByLabelText(`${pqc.coverage.from} ${pqc.coverage.date}`),
-    ).not.toBeInTheDocument();
+      await within(header).findByText(
+        `${messages.popMaterialLotLabel.printer.label} 합성 라벨 프린터`,
+      ),
+    ).toBeInTheDocument();
+    await issueOnce(user);
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls.at(-1)).toHaveLength(4);
   });
+});
 
-  it('⛔ 저장된 회차를 못 읽으면 PQC 저장·확정을 잠근다(리뷰 M1)', async () => {
-    renderScreen(
-      [],
-      [
-        producedWorkOrder(5),
-        {
-          match: (request) =>
-            request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
-          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
-        },
-        ...pqcRoutes({ confirmed: false }, []),
-      ],
-    );
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    expect(await panel.findByText(messages.httpError.description)).toBeInTheDocument();
-    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
-  });
-
-  it('PQC 의뢰 조회가 실패하면 조용히 실적만 보이지 않고 오류를 알린다(리뷰 m6)', async () => {
+describe('ProductionFlowScreen — PQC 를 띄우지 않는다', () => {
+  it('PQC 의뢰가 있어도 나누지 않고, PQC 의뢰를 조회하지도 않는다', async () => {
+    const asked: string[] = [];
     renderScreen(
       [],
       [
         {
-          match: (request) => pathOf(request) === '/quality/inspection-requests',
-          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
-        },
-      ],
-    );
-
-    expect(await screen.findByText(t.pqc.loadFailed)).toBeInTheDocument();
-    expect(screen.queryByText(t.flow.work.pqcNotInspected)).not.toBeInTheDocument();
-  });
-
-  /* omf-all-around#119 — 검사기준이 「PQC 생략 허용」이라 배포가 생략(SKIPPED)으로 만든 PQC 는 검사가 아니다. */
-  it('PQC 가 생략(SKIPPED)이면 나누지 않고 정보 영역에 「PQC 생략」을 보인다', async () => {
-    renderScreen(
-      [],
-      [
-        {
-          match: (request) => pathOf(request) === '/quality/inspection-requests',
+          match: (request) => {
+            if (pathOf(request).startsWith('/quality/inspection-requests')) {
+              asked.push(pathOf(request));
+            }
+            return pathOf(request) === '/quality/inspection-requests';
+          },
           respond: () =>
             jsonResponse({
-              items: [{ ...PQC_REQUEST, statusCode: 'SKIPPED' }],
+              items: [
+                {
+                  inspectionRequestId: 7001,
+                  inspectionRequestNo: 'IR-PQC-7001',
+                  inspectionTypeCode: 'PQC',
+                  workOrderId: WORK_ORDER_ID,
+                  statusCode: 'REQUESTED',
+                },
+              ],
               page: { page: 1, size: 20, total: 1 },
             }),
         },
       ],
     );
 
-    expect(await screen.findByText(t.flow.work.pqcSkipped)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.flow.work.pqcNotInspected)).not.toBeInTheDocument();
-  });
-
-  it('검사 off(그 W/O 에 PQC 의뢰가 없음)면 나누지 않고 실적만 보인다', async () => {
-    renderScreen([], []);
-
     expect(await screen.findByLabelText(t.flow.quantity.actual)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
-    /* 나누지 않으면 구획 머리를 두지 않는다. 화면 이름과 같은 말이다. */
-    expect(screen.queryByText(t.zone.title)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.pqc.splitNote)).not.toBeInTheDocument();
-    expect(await screen.findByText(t.flow.work.pqcNotInspected)).toBeInTheDocument();
+    expect(screen.queryByText('PQC')).not.toBeInTheDocument();
+    expect(screen.queryByText(/PQC 제품 검사/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^검사/u })).not.toBeInTheDocument();
+    expect(asked).toEqual([]);
   });
 });
 
@@ -3192,7 +3038,10 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual([t.flow.output.issue]);
-    expect(await screen.findByText(t.flow.next.ready)).toBeInTheDocument();
+    /* 입력이 다 되면 하단 바는 비운다 — 「~출력할 수 있습니다」 같은 문장을 두지 않는다(개선 명세 §1). */
+    const output = within(bar()).getByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    expect(output).not.toHaveAccessibleDescription();
   });
 
   it('작업이 시작되고 실적이 있으면 현재 LOT 구획 아래에 이른 [작업지시 마감]이 선다', async () => {

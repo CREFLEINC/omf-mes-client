@@ -13,33 +13,28 @@ export const productionResult = {
      * 막대 하나로 보인다. 음수를 보이지 않는다(초과는 칩).
      */
     work: {
-      lot: 'LOT',
-      lotProgress: 'LOT 실적',
-      workOrderProgress: 'W/O 실적',
-      /** 「실적 / 기준」(C-21). 단위가 없으면 숫자만. */
-      progressText: (good: string, target: string, uom: string): string =>
-        uom === '' ? `${good} / ${target}` : `${good} / ${target} ${uom}`,
-      pqc: 'PQC',
-      /** 검사 off: 의뢰 없음(사용자 지시 2026-10-19), 생략 허용 기준으로 생략(omf-all-around#119). */
-      pqcNotInspected: '미검사',
-      pqcSkipped: '생략',
-      printerNone: '없음',
+      lot: '현재 LOT',
+      lotProgress: '현재 LOT 진행',
+      workOrderProgress: 'W/O 전체 진행',
+      /** 앞뒤 숫자가 무엇인지 글자로 적는다(P-02-04 개선 명세 §2). 단위가 없으면 숫자만. */
+      lotProgressText: (good: string, target: string, uom: string): string =>
+        `양품 ${good} / LOT 계획량 ${target}${uom === '' ? '' : ` ${uom}`}`,
+      workOrderProgressText: (good: string, target: string, uom: string): string =>
+        `양품 ${good} / 작업 지시량 ${target}${uom === '' ? '' : ` ${uom}`}`,
       /** 단계 표시(C-5). LOT마다 처음부터 반복한다. */
       stepsLabel: 'LOT 작업 단계',
       steps: { input: '실적 입력', scan: '라벨 스캔' },
       /** 잔량은 지금 넣을 칸 곁에만 둔다(C-21). */
-      remaining: (qty: string): string => `잔량 ${qty}`,
-      noLot: '생산할 LOT이 없습니다.',
+      remaining: (qty: string): string => `W/O 잔량 ${qty}`,
+      /* 아래 셋은 오른쪽 위 파란 안내 줄이다(개선 명세 §1 「안내 문구」). 하단 바에는 두지 않는다. */
+      noLot: '생산할 LOT이 없습니다. 불량만 등록할 수 있습니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
-      closed: '마감한 작업지시입니다.',
+      planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
+      closed: '작업지시를 마감했습니다. 생산 포장으로 이동할 수 있습니다.',
       /** 마감된 LOT 정보 줄. 0건이면 [보기]를 두지 않는다. */
       completedLots: '마감된 LOT',
       completedCount: (count: number): string => `${String(count)}건`,
       view: '보기',
-      /** PQC 줄: 이 화면에 띄우지 않은 대기 의뢰가 있을 때만 [검사]. 여럿이면 의뢰 번호를 붙인다. */
-      pqcPending: (count: number): string => `검사 대기 ${String(count)}건`,
-      inspect: '검사',
-      inspectOf: (inspectionRequestNo: string): string => `검사 ${inspectionRequestNo}`,
     },
     /**
      * 보조 동작. 늘 쓸 수 있는 것은 머리줄([작업 중단]), 대상에 딸린 것은 그 정보 곁([부품 교체],
@@ -50,6 +45,8 @@ export const productionResult = {
       runningChange: '부품 교체',
       /** 갈 화면의 이름을 그대로 쓴다(P-02-08 「생산 포장」, C-13). */
       packingWork: '생산 포장으로',
+      /** 부품 교체·작업 중단 화면 머리줄에서 같은 W/O 로 돌아오는 버튼(개선 명세 ⑥·⑦). */
+      backToWork: '생산 작업으로',
     },
     /**
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.
@@ -57,13 +54,10 @@ export const productionResult = {
     next: {
       noWorkOrder: '작업지시가 지정되지 않았습니다. 작업 지시 목록에서 작업지시를 골라 주세요',
       noWorker: '사번을 입력해 주세요',
-      noLot:
-        '이 W/O에 생산할 LOT이 없습니다. 생산을 마쳤으면 작업지시를 마감할 수 있습니다. 더 만들어야 하면 관리자에게 알려 주세요',
       queued: '실적을 단말에 저장했습니다. 연결되면 보내고 LOT 라벨을 발행합니다',
       saving: '실적을 저장하고 있습니다',
       issuing: 'LOT 라벨을 발행하고 있습니다',
       printing: 'LOT 라벨을 인쇄하고 있습니다',
-      scan: '부착한 LOT 라벨을 스캔해 주세요',
       /** 〈다시 시도 버튼 이름〉+을/를. 조사는 화면이 붙인다(`patterns/josa`). */
       retry: (buttonWithObject: string): string => `${buttonWithObject} 눌러 주세요`,
       legacyMismatch:
@@ -73,18 +67,12 @@ export const productionResult = {
       printer: '사용할 수 있는 LOT 라벨 프린터가 없습니다. 관리자에게 프린터 연결을 요청해 주세요',
       shell: 'POP 프로그램의 인쇄 통로를 확인할 수 없습니다. 관리자에게 알려 주세요',
       tagUnknown: '인식표 대상인지 확인할 수 없습니다. 연결을 확인한 뒤 화면을 다시 열어 주세요',
-      tag: '인식표를 모두 출력해야 생산 라벨을 출력할 수 있습니다. 관리자에게 알려 주세요',
-      qty: '양품 수량을 입력해 주세요',
+      tag: '인식표를 모두 출력해야 LOT 라벨을 출력할 수 있습니다. 관리자에게 알려 주세요',
+      qty: '양품을 입력해 주세요',
       defectOnly: '불량만 등록하려면 불량 등록을 눌러 주세요',
       defectType: '불량 유형을 골라 주세요',
       defectQty: '불량 수량을 입력해 주세요',
       defectDuplicate: '같은 불량 유형이 두 줄에 있습니다. 한 줄을 삭제해 주세요',
-      /** 지금 할 일을 말한다(다음 단계 이름이 아니라). */
-      ready: '양품 수량을 확인한 뒤 생산 라벨을 출력할 수 있습니다',
-      /** 계획 수량 달성. 주 동작이 [작업지시 마감]으로 바뀐다. */
-      planReached: '계획 수량을 달성했습니다. 작업지시를 마감할 수 있습니다',
-      /** 마감한 작업지시. 주 동작이 [포장 작업으로]다. */
-      closed: '작업지시를 마감했습니다. 생산 포장으로 이동할 수 있습니다',
     },
     currentLot: {
       current: '현재 LOT',
@@ -103,7 +91,7 @@ export const productionResult = {
       loadFailed: '현재 LOT을 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
     },
     quantity: {
-      actual: '양품 수량',
+      actual: '양품',
       invalid: '0보다 큰 수량을 입력해 주세요.',
     },
     defects: {
@@ -112,7 +100,7 @@ export const productionResult = {
       row: (index: number): string => `불량 ${String(index)}`,
       type: '불량 유형',
       choose: '유형 선택',
-      qty: '불량 수량',
+      qty: '불량',
       remove: (label: string): string => `${label} 삭제`,
       duplicate: '이미 있는 불량 유형입니다.',
       typeMissing: '유형을 골라 주세요',
@@ -142,7 +130,7 @@ export const productionResult = {
       issueMissing: (count: number) => `부족한 인식표 ${String(count)}장 출력`,
       matched: '실제 생산수량과 인식표 개체 수가 일치합니다.',
       tooMany: '이미 만든 인식표 개체 수보다 실제 생산수량을 작게 낮출 수 없습니다.',
-      summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
+      summaryFailed: '인식표 발행 이력을 확인할 수 없어 LOT 라벨 출력을 열지 않습니다.',
       restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
       printIncomplete: (count: number) =>
         `인쇄 대기 또는 실패 인식표 ${String(count)}장을 확인해 재출력해 주세요.`,
@@ -160,19 +148,18 @@ export const productionResult = {
       printFailed: '인식표 발행 기록은 남았지만 물리 인쇄에 실패했습니다.',
       reportFailed:
         '인식표는 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내 주세요.',
-      loadFailed: '인식표 개체를 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
+      loadFailed: '인식표 개체를 확인할 수 없어 LOT 라벨 출력을 열지 않습니다.',
       targetUnknown: '인식표 대상 여부를 확인할 수 없어 출력을 열지 않습니다.',
       printerUnavailable: '인식표를 지원하는 프린터가 없습니다.',
     },
     output: {
       template: '생산 LOT 라벨',
-      printer: '프린터',
-      issue: '생산 라벨 출력',
+      issue: 'LOT 라벨 출력',
       retryIssue: '라벨 발행 다시 시도',
       retryPrint: '라벨 다시 인쇄',
       retryReport: '결과 다시 전송',
-      /** 라벨 스캔 단계의 결과 한 줄(C-21). 할 일은 하단 바가 말한다. */
-      printed: 'LOT 라벨을 인쇄했습니다.',
+      /** 라벨 스캔 단계의 결과 한 줄(C-21). 할 일까지 이 한 줄이 말한다(하단 바는 비운다). */
+      printed: 'LOT 라벨을 출력했습니다. 라벨을 붙인 뒤 스캔해 주세요.',
       issueFailed: '실적은 저장했지만 LOT 라벨을 발행하지 못했습니다.',
       renditionFailed: 'LOT 라벨을 발행했지만 인쇄 데이터를 받지 못했습니다.',
       printFailed: 'LOT 라벨을 발행했지만 인쇄하지 못했습니다.',
@@ -183,8 +170,7 @@ export const productionResult = {
     },
     scan: {
       title: '라벨 스캔',
-      label: '스캔',
-      placeholder: '부착한 LOT 라벨',
+      label: 'LOT 라벨 스캔',
       /*
        * ⚠ **한 줄로 합친 문구다**(사용자 지시 2026-09-10). 스캔이 어긋났을 때 「지금 무엇이
        * 잘못됐나」와 「그래서 무엇을 하나」가 두 줄로 갈려 있었다.
@@ -206,28 +192,36 @@ export const productionResult = {
       loading: '마감할 작업지시를 확인하는 중입니다.',
       loadFailed: '작업지시를 불러오지 못했습니다. 연결을 확인하고 「다시 시도」를 눌러 주세요.',
       fields: {
-        orderQty: '지시 수량',
+        orderQty: '작업 지시량',
         goodQty: '양품 누계',
         judgment: '판정',
-        shortfallQty: '미달 수량',
-        overageQty: '초과 수량',
+        shortfallQty: '미달량',
+        overageQty: '초과량',
         remainder: '잔량 처리',
-        reason: '사유',
+        reason: '마감 사유',
         remarks: '소멸 사유(비고, 선택)',
       },
       judgments: { UNDER: '미달', NORMAL: '정상', OVER: '초과' },
       remainder: { CARRY_OVER: '이월', WRITE_OFF: '소멸' },
-      carryOverNote: (menuPath: string): string =>
-        `이월 W/O는 자동으로 만들어지지 않습니다. 관리웹 ${menuPath}에서 새로 편성합니다.`,
+      carryOverNote: '이월 W/O는 자동 생성되지 않습니다. 관리웹의 작업 계획에서 새로 편성하세요',
       prefilled: 'LOT 마감 때 고른 사유입니다. 바꿀 수 있습니다.',
       reasonsLoading: '사유를 불러오는 중입니다.',
       reasonsFailed: '사유를 불러오지 못했습니다. 연결을 확인하고 창을 다시 열어 주세요.',
       reasonsEmpty: '고를 수 있는 사유가 없습니다. 관리자에게 사유 등록을 요청해 주세요.',
-      voidedSlots: (count: number): string =>
-        `실적이 없는 LOT ${String(count)}건은 마감과 함께 폐번됩니다.`,
-      openLots: (count: number, lotNos: string): string =>
-        `마감되지 않은 LOT ${String(count)}건(${lotNos})은 그 상태로 남습니다.`,
-      irreversible: '마감하면 되돌릴 수 없습니다. ERP 실적 송신은 마감과 함께 대기열에 올라갑니다.',
+      /** 폐번·그대로 남는 LOT 안내 한 줄. 둘 다 있으면 한 문장으로 잇는다(개선 명세 §2). */
+      lotNotice: (voided: number, open: number): string =>
+        voided > 0 && open > 0
+          ? `실적이 없는 LOT ${String(voided)}건은 마감과 함께 폐번되며 마감되지 않은 LOT ${String(open)}건은 그 상태로 남습니다.`
+          : voided > 0
+            ? `실적이 없는 LOT ${String(voided)}건은 마감과 함께 폐번됩니다.`
+            : `마감되지 않은 LOT ${String(open)}건은 그 상태로 남습니다.`,
+      voidedList: (count: number): string => `폐번될 LOT (${String(count)})`,
+      openList: (count: number): string => `그대로 남는 LOT (${String(count)})`,
+      /** 주황 안내 줄. 앞 구절은 굵게 보인다(사용자 정정 문구 그대로). */
+      irreversible: {
+        lead: '마감시 되돌릴 수 없으며',
+        rest: 'ERP 실적 송신은 마감과 함께 대기열에 등록됩니다',
+      },
       needRemainder: '미달이라 잔량 처리(이월 또는 소멸)를 골라야 마감할 수 있습니다.',
       needReason: '미달이나 초과라 사유를 골라야 마감할 수 있습니다.',
       judgmentMissing:
@@ -358,24 +352,6 @@ export const productionResult = {
     pending: (count: number) => `미전송 ${String(count)}건`,
   },
 
-  /**
-   * PQC(omf-all-around#107). 검사 on 이면 실적과 PQC 를 늘 반씩 띄운다 — 업무 순서는 «실적 입력 → PQC» 다
-   * (사용자 결정 2026-10-19 · 앞선 「PQC 를 먼저 마쳐야 실적 등록」(R54)을 뒤집었다).
-   */
-  pqc: {
-    goInspect: '검사 화면으로',
-    splitTitle: 'PQC 제품 검사',
-    splitNote: '검사 수량, 판정, 결과 확정',
-    /** 검사 on/off 를 묻는 조회가 실패했다(리뷰 m6) — 조용히 실적만 보이지 않게 알린다. */
-    loadFailed: 'PQC 정보를 불러오지 못했습니다. 다시 시도해 주세요.',
-  },
-
-  /** 「생산 작업」 화면의 왼쪽(검사 off 면 전체) 구획 머리. */
-  zone: {
-    title: '생산 실적',
-    note: '실적 입력, 라벨 스캔',
-  },
-
   lot: {
     sectionLabel: '대상 LOT',
     lotLabel: '대상 LOT',
@@ -419,7 +395,7 @@ export const productionResult = {
     /** 잔량이 0인 지시. 「잔량 0보다 …」는 뺄셈처럼 읽힌다. 숫자를 빼고 사실만 적는다. */
     noticeNoRemaining: '이 작업지시에 잔량이 없습니다. 초과 생산도 등록할 수 있습니다.',
     /** 양품 누계가 지시 수량에 이르렀다. 서버의 완료 판정(정상, 초과)이 근거다. 칩 이름이다(C-21). */
-    achieved: '계획 수량 달성',
+    achieved: '작업 지시량 달성',
     /** 음수 대신 넘은 양을 칩으로 보인다(C-21). */
     achievedOver: (over: string): string => `초과 달성 ${over}`,
   },

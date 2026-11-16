@@ -51,6 +51,9 @@ const commandBytes = (command: string): ArrayBuffer => {
 const reasonOf = (error: unknown): string =>
   error instanceof Error && error.message.trim() !== '' ? error.message : '인쇄 실패';
 
+/** 셸 인쇄의 다섯째 인자 — 고른 프린터가 있을 때만 싣는다(`pop-material-lot-label/mutations` 와 같은 꼴). */
+const printerArgs = (name: string | null): [] | [string] => (name === null ? [] : [name]);
+
 const IDLE: PrintState = { phase: 'idle', printed: 0, reason: null };
 
 export interface LabelPrintRunner {
@@ -67,9 +70,21 @@ interface PendingSuccessReport {
   printed: number;
 }
 
-/** 발행 기록마다 렌디션→물리 인쇄→결과 보고를 순서대로 실행한다. */
-export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner => {
+/**
+ * 발행 기록마다 렌디션→물리 인쇄→결과 보고를 순서대로 실행한다.
+ *
+ * `shellPrinterName` — 셸에게 «이 프린터로 보내라»고 실을 이름(머리줄에서 고른 프린터 · 개선 명세 ⑤).
+ * 셸이 고른 프린터를 받을 때만 채우고, `null` 이면 싣지 않는다(셸이 기동 시 지정값 → OS 기본으로 보낸다).
+ * ⭐ 보내는 «그 순간»의 값을 쓴다 — 라벨을 낸 뒤 프린터를 바꾸고 [라벨 다시 인쇄]를 누르면 바꾼 프린터로
+ *    나간다(명세 §6 확인 4 추천안).
+ */
+export const useLabelPrintRunner = (
+  workerNo: string | null,
+  shellPrinterName: string | null = null,
+): LabelPrintRunner => {
   const { client } = useApiClient();
+  const shellPrinterRef = useRef(shellPrinterName);
+  shellPrinterRef.current = shellPrinterName;
   const [state, setState] = useState<PrintState>(IDLE);
   const reportKeys = useRef(new Map<string, string>());
   const pendingSuccessReport = useRef<PendingSuccessReport | null>(null);
@@ -201,6 +216,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
               target.label,
               new Date().toISOString(),
               target.command === undefined ? format : 'tspl',
+              ...printerArgs(shellPrinterRef.current),
             );
             printed += 1;
           } catch (error) {

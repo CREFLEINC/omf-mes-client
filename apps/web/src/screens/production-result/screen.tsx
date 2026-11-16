@@ -35,7 +35,14 @@ import { PopQtyProgress, PopRowInfo, PopRowPair } from '../../patterns/pop-list-
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { usePopWorkerEntry } from '../../patterns/pop-worker-entry';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { usePendingPqcRequests } from '../work-start/queries';
+import { PrinterChip } from '../pop-material-lot-label/printer-chip';
+import {
+  choosePrinter,
+  rememberPrinterName,
+  storedPrinterName,
+} from '../pop-material-lot-label/printer-choice';
+import { useShellSelectsPrinter } from '../pop-material-lot-label/queries';
+import { toPrinterView } from '../pop-material-lot-label/types';
 import { POP_TOUCH_SIZE } from '../work-start/touch-spec';
 import {
   areDefectRowsReady,
@@ -99,15 +106,17 @@ import {
   parseGoodQty,
   remainingQty,
 } from './quantity-draft';
-import { useProcessDefectCodes, useWorkOrder, useWorkOrderPqc } from './queries';
-import { PqcSplit } from './pqc-split';
+import { useProcessDefectCodes, useWorkOrder } from './queries';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
 import { isEmergency } from './work-order-type';
 
 const t = messages.productionResult;
-/** 생략 허용 기준으로 배포가 만든 PQC 의뢰 상태(#119 · 서버 장부 P-82). */
-const PQC_SKIPPED = 'SKIPPED';
+/**
+ * 이 화면에서 고른 LOT 라벨 프린터를 기억하는 열쇠(개선 명세 ⑤). 자재 LOT 라벨 화면과 같은 방식이지만
+ * 열쇠는 따로다 — 두 화면이 다른 프린터를 쓸 수 있다.
+ */
+const LOT_PRINTER_STORAGE_KEY = 'omf-mes.production-result.lot-printer';
 
 /**
  * ⛔ **`IDENTIFICATION_TAG` 발행은 서버가 항상 422 `STATE_LOCKED` 로 거부한다**(대응표 P1
@@ -253,21 +262,9 @@ export const ProductionFlowScreen = () => {
   const workOrder = useWorkOrder(entry.workOrderId);
   const currentLot = useCurrentLot(entry.workOrderId);
   /*
-   * ⭐ 검사 on(그 W/O 에 PQC 의뢰가 있음)이면 늘 실적과 PQC 를 반씩, off 면 실적만 전체 폭이다
-   * (omf-all-around#107 · 사용자 결정 2026-10-19). 닫는 단추가 없다.
+   * ⛔ PQC 는 이 화면에 띄우지 않는다(P-02-04 개선 명세 §1). 의뢰가 있든 없든 실적이 전체 폭을 쓰고,
+   *    검사는 「PQC 제품 검사」(P-02-13)에서 한다.
    */
-  const workOrderPqc = useWorkOrderPqc(entry.workOrderId);
-  /* 생략(SKIPPED · #119)된 PQC 는 검사가 아니다 — 나누지 않고 「PQC 생략」 칩만 단다. */
-  const isPqcSkipped = workOrderPqc.data?.statusCode === PQC_SKIPPED;
-  const pqcTargetId = isPqcSkipped ? null : (workOrderPqc.data?.inspectionRequestId ?? null);
-  /*
-   * 끝나지 않은 PQC 의뢰 중 이 화면 오른쪽에 띄우지 않은 것. 있을 때만 PQC 정보 줄 끝에 [검사]가 선다
-   * (작업 지시 목록에서 옮긴 길, omf-all-around#42). 여럿이면 의뢰마다 번호를 붙여 세운다.
-   */
-  const pendingPqc = usePendingPqcRequests(entry.workOrderId, entry.workOrderId !== null);
-  const otherPendingPqc = (pendingPqc.data ?? []).filter(
-    (request) => request.inspectionRequestId !== pqcTargetId,
-  );
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
@@ -376,7 +373,31 @@ export const ProductionFlowScreen = () => {
    */
   const lotDetail = useLotDetail(currentLot.data?.lotId ?? null);
   const currentIssue = latestIssue(lotIssues.data);
-  const lotPrinter = defaultPrinter(lotPrinters.data);
+  /*
+   * LOT 라벨 프린터 — 머리줄 칩에서 고른다(개선 명세 ⑤). 고른 것(이번 실행) → 이 단말에 기억한 것 →
+   * 기본(셸이 알려 준 기동 지정값 → OS 기본) 순. 셸이 고른 프린터를 받지 못하면(브라우저·옛 설치본)
+   * 고를 수 없고 기억한 값도 쓰지 않는다 — 고른 것처럼 보이는데 기본으로 나가지 않게.
+   */
+  const printerSelectable = useShellSelectsPrinter();
+  const isPrinterSelectable = printerSelectable.data === true;
+  const [pickedPrinter, setPickedPrinter] = useState<string | null>(null);
+  const [rememberedPrinter] = useState(() => storedPrinterName(LOT_PRINTER_STORAGE_KEY));
+  const lotPrinterViews = useMemo(
+    () => (lotPrinters.data === undefined ? undefined : lotPrinters.data.map(toPrinterView)),
+    [lotPrinters.data],
+  );
+  const printerChoice = choosePrinter(
+    lotPrinterViews ?? [],
+    pickedPrinter,
+    isPrinterSelectable ? rememberedPrinter : null,
+  );
+  const lotPrinter =
+    printerChoice.printer === null
+      ? null
+      : (lotPrinters.data?.find(
+          (printer) => printer.printerName === printerChoice.printer?.printerName,
+        ) ?? null);
+  const shellPrinterName = isPrinterSelectable ? (lotPrinter?.printerName ?? null) : null;
   const tagPrinter = defaultPrinter(tagPrinters.data);
   const serialCount = serials.data?.page.total ?? null;
   const parsedQty = parseGoodQty(actualQty);
@@ -438,7 +459,7 @@ export const ProductionFlowScreen = () => {
           uomCode: uom.labelOf(lot.uomId ?? workOrder.data?.uomId),
         };
 
-  const lotPrint = useLabelPrintRunner(entry.workerNo);
+  const lotPrint = useLabelPrintRunner(entry.workerNo, shellPrinterName);
   const tagPrint = useLabelPrintRunner(entry.workerNo);
 
   const lotIssue = useDocumentIssue({
@@ -1357,25 +1378,30 @@ export const ProductionFlowScreen = () => {
     if (isTagTarget === null) return item.isError ? next.tagUnknown : null;
     if (!hasTagCountMatch || !hasTagDocuments) return next.tag;
 
-    return canOutput ? next.ready : null;
+    /* 입력이 다 됐을 때의 문장은 두지 않는다(개선 명세 §1 「안내 문구」) — 막힌 이유만 하단 바가 말한다. */
+    return null;
   };
 
   const nextText = ((): string | null => {
     const next = t.flow.next;
     if (entry.workOrderId === null) return next.noWorkOrder;
     if (entry.workerNo === null) return next.noWorker;
-    if (isWorkOrderClosed) return next.closed;
+    /* 마감 완료는 오른쪽 위 안내 줄이 말한다(개선 명세 ⑨). */
+    if (isWorkOrderClosed) return null;
     if (currentLot.error instanceof CurrentLotUnreliableError) {
       return t.flow.currentLot.unreliable(currentLot.error.lotNos.join(', '));
     }
     if (currentLot.isError) return t.flow.currentLot.loadFailed;
     if (currentLot.data === undefined) return null;
     if (isCloseMode) {
-      const close = closeBlock ?? (isPlanAchieved ? next.planReached : next.noLot);
-      /* 계획을 달성해도 남은 LOT에 더 만들 수 있다. 테두리 [생산 라벨 출력]이 잠긴 사유를 뒤에 잇는다(C-4). */
+      /*
+       * 작업 지시량 달성·LOT 없음은 오른쪽 위 안내 줄이 말한다(개선 명세 ④). 하단 바에는 막힌 이유만 —
+       * [작업지시 마감]이 잠긴 이유, 그리고 테두리 [LOT 라벨 출력]이 잠긴 이유를 뒤에 잇는다(C-4).
+       */
       const outputReason = lot !== null && !canOutput ? inputStepText() : null;
+      const reasons = [closeBlock, outputReason].filter((text): text is string => text !== null);
 
-      return outputReason === null ? close : `${close}. ${outputReason}`;
+      return reasons.length === 0 ? null : reasons.join('. ');
     }
 
     if (step === 'scan') {
@@ -1387,7 +1413,8 @@ export const ProductionFlowScreen = () => {
         case 'printing':
           return next.printing;
         case 'scanReady':
-          return gateText(gates.complete, t.flow.gate.complete) ?? next.scan;
+          /* 스캔 안내는 결과 줄(「LOT 라벨을 출력했습니다. 라벨을 붙인 뒤 스캔해 주세요.」)이 말한다. */
+          return gateText(gates.complete, t.flow.gate.complete);
         case 'legacyMismatch':
           return next.legacyMismatch;
         case 'completing':
@@ -1414,13 +1441,6 @@ export const ProductionFlowScreen = () => {
     serverAppliedQty ??
     (lot !== null && appliedLabelQty?.lotId === lot.lotId ? appliedLabelQty.qty : 0);
   const workOrderGoodQty = workOrder.data?.progress?.goodQty ?? null;
-  const inspectionOff = !workOrderPqc.isSuccess
-    ? null
-    : workOrderPqc.data === null
-      ? t.flow.work.pqcNotInspected
-      : isPqcSkipped
-        ? t.flow.work.pqcSkipped
-        : null;
   const isScanStep = step === 'scan';
   /*
    * 이른 작업지시 마감은 마감할 수 있는 상태일 때만 선다(C-3 보조 동작의 자리): 작업이 시작된 W/O이고
@@ -1587,6 +1607,42 @@ export const ProductionFlowScreen = () => {
     </section>
   );
 
+  /**
+   * 단계 표시(C-5). 오른쪽 구획 제목 자리에 한 번만 둔다(개선 명세 §1 「단계 표시」) — 왼쪽 정보 아래에
+   * 두면 오른쪽 제목과 같은 말을 두 번 한다.
+   */
+  const stepper = (
+    <Stepper
+      className="production-work-steps"
+      size="sm"
+      aria-label={t.flow.work.stepsLabel}
+      steps={[
+        {
+          label: t.flow.work.steps.input,
+          status: isScanStep ? 'complete' : 'current',
+        },
+        {
+          label: t.flow.work.steps.scan,
+          status: outputPhase === 'completed' ? 'complete' : isScanStep ? 'current' : 'pending',
+        },
+      ]}
+    />
+  );
+  /** 오른쪽 위 파란 안내 줄(개선 명세 §1). 작업자가 할 수 있는 일을 알린다 — 막힌 이유는 하단 바가 말한다. */
+  const infoLine = (text: string) => (
+    <div className="banner-slot">
+      <AlertBanner variant="info" assertive={false} title={text} />
+    </div>
+  );
+  /** 현재 LOT 을 아직 받지 못했다(조회 중). 실패와 다르다 — 실패는 하단 바가 말하고 [다시 시도]가 선다. */
+  const isLotLoading = currentLot.data === undefined && !currentLot.isError;
+  /* 라벨 출력 중에는 프린터를 바꾸지 못한다 — 나가는 도중에 대상이 바뀌면 어느 프린터로 갔는지 알 수 없다. */
+  const isPrinterLocked =
+    outputPhase === 'queued' ||
+    outputPhase === 'issuing' ||
+    outputPhase === 'printing' ||
+    lotPrint.state.phase === 'sending';
+
   return (
     <main className="pop-shell pop-ui production-work-screen" aria-labelledby={titleId}>
       <PopHeader
@@ -1602,6 +1658,24 @@ export const ProductionFlowScreen = () => {
         isEmergency={workOrder.data !== undefined && isEmergency(workOrder.data)}
         isConnected={outbox.isOnline}
         unsentCount={outbox.pendingCount}
+        /* LOT 라벨 프린터 — 누르면 고른다(개선 명세 ⑤, 자재 LOT 라벨 화면과 같은 칩). */
+        printer={
+          <PrinterChip
+            printers={lotPrinterViews}
+            selected={printerChoice.printer}
+            isLoading={lotPrinters.isPending}
+            isError={lotPrinters.isError}
+            isSelectable={isPrinterSelectable}
+            isLocked={isPrinterLocked}
+            onRetry={() => {
+              void lotPrinters.refetch();
+            }}
+            onSelect={(name) => {
+              setPickedPrinter(name);
+              rememberPrinterName(name, LOT_PRINTER_STORAGE_KEY);
+            }}
+          />
+        }
         /* 작업 중 언제든 쓸 수 있는 동작이라 머리줄에 둔다(P-02-10). */
         actions={
           entry.workOrderId === null || isWorkOrderClosed ? undefined : (
@@ -1621,396 +1695,364 @@ export const ProductionFlowScreen = () => {
 
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
-      <PqcSplit
-        inspectionRequestId={pqcTargetId}
-        workOrderId={entry.workOrderId}
-        workerNo={entry.workerNo}
-      >
-        {/* 본문 좌우 2단. 왼쪽 현재 LOT(무엇을), 오른쪽 현재 단계 본문(무엇을 하는가). 아래에 쌓지 않는다(C-2). */}
-        <div className="pop-panes production-work-panes">
-          <section className="pane production-work-lot" aria-label={t.flow.currentLot.current}>
-            {/* 제목 줄(C-21): 품목 이름과 오른쪽 끝의 예외 칩. */}
-            <div className="production-work-head">
-              <h2 className="pane-title">{itemTitle}</h2>
-              {isPlanAchieved && (
-                <span className="pop-row-chips">
-                  <Chip
-                    variant="status"
-                    size="md"
-                    status={overAchievedQty === null ? 'success' : 'warning'}
-                  >
-                    {overAchievedQty === null
-                      ? t.overrun.achieved
-                      : t.overrun.achievedOver(withUnit(overAchievedQty))}
-                  </Chip>
+      {/* 기억해 둔 프린터가 목록에서 사라졌다 — 기본으로 돌아간 것을 말한다(개선 명세 ⑤ 2). */}
+      {printerChoice.missingStoredName !== null && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="warning"
+            title={messages.popMaterialLotLabel.printer.storedMissing(
+              printerChoice.missingStoredName,
+            )}
+          />
+        </div>
+      )}
+
+      {/* 본문 좌우 2단. 왼쪽 현재 LOT(무엇을), 오른쪽 현재 단계 본문(무엇을 하는가). 아래에 쌓지 않는다(C-2). */}
+      <div className="pop-panes production-work-panes">
+        <section className="pane production-work-lot" aria-label={t.flow.currentLot.current}>
+          {/* 제목 줄(C-21): 품목 이름과 오른쪽 끝의 예외 칩. */}
+          <div className="production-work-head">
+            <h2 className="pane-title">{itemTitle}</h2>
+            {isPlanAchieved && (
+              <span className="pop-row-chips">
+                <Chip
+                  variant="status"
+                  size="md"
+                  status={overAchievedQty === null ? 'success' : 'warning'}
+                >
+                  {overAchievedQty === null
+                    ? t.overrun.achieved
+                    : t.overrun.achievedOver(withUnit(overAchievedQty))}
+                </Chip>
+              </span>
+            )}
+          </div>
+
+          {workOrder.isError && !isWorkOrderClosed && (
+            <LoadErrorBanner error={workOrder.error} onRetry={() => void workOrder.refetch()} />
+          )}
+
+          {/* 정보 영역(C-21): 「라벨 값」 쌍. 수량은 「실적 / 기준」과 막대. 값이 없으면 줄을 두지 않는다(C-10). */}
+          <PopRowInfo className="production-work-info">
+            <PopRowPair label={t.flow.work.lot}>
+              {lot === null ? null : <span className="production-work-lot-no">{lot.lotNo}</span>}
+            </PopRowPair>
+            <PopRowPair label={t.flow.work.lotProgress}>
+              {lot === null ? null : (
+                <PopQtyProgress
+                  current={lotGoodQty}
+                  target={lot.initialQty}
+                  text={t.flow.work.lotProgressText(
+                    formatQty(lotGoodQty),
+                    formatQty(lot.initialQty),
+                    uomLabel,
+                  )}
+                  label={t.flow.work.lotProgress}
+                />
+              )}
+            </PopRowPair>
+            <PopRowPair label={t.flow.work.workOrderProgress}>
+              {workOrder.data === undefined || workOrderGoodQty === null ? null : (
+                <PopQtyProgress
+                  current={workOrderGoodQty}
+                  target={workOrder.data.orderQty}
+                  text={t.flow.work.workOrderProgressText(
+                    formatQty(workOrderGoodQty),
+                    formatQty(workOrder.data.orderQty),
+                    uom.labelOf(workOrder.data.uomId) ?? '',
+                  )}
+                  label={t.flow.work.workOrderProgress}
+                />
+              )}
+            </PopRowPair>
+            {/* 마감된 LOT은 건수와 [보기]. 0건이면 버튼을 두지 않는다. */}
+            <PopRowPair label={t.flow.work.completedLots}>
+              {completedLotCount.data === undefined ? null : (
+                <span className="production-work-row-value">
+                  {t.flow.work.completedCount(completedLotCount.data.page.total)}
+                  {completedLotCount.data.page.total > 0 && (
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      size="sm"
+                      onClick={() => {
+                        setCompletedPage(1);
+                        setIsCompletedOpen(true);
+                      }}
+                    >
+                      {t.flow.work.view}
+                    </Button>
+                  )}
                 </span>
               )}
-            </div>
+            </PopRowPair>
+          </PopRowInfo>
 
-            {workOrder.isError && !isWorkOrderClosed && (
-              <LoadErrorBanner error={workOrder.error} onRetry={() => void workOrder.refetch()} />
-            )}
-            {workOrderPqc.isError && (
-              <div className="banner-slot">
-                <AlertBanner variant="error" title={t.pqc.loadFailed} />
-              </div>
-            )}
+          {isTagTarget === true && (
+            <div className="production-work-group">
+              <h3 className="production-work-subtitle">{t.flow.tag.title}</h3>
+              {serials.isError ? (
+                <p className="field-error">{t.flow.tag.loadFailed}</p>
+              ) : (
+                <>
+                  <p className="field-note">
+                    {t.flow.tag.issued} {t.flow.tag.count(serialCount ?? 0)}
+                  </p>
+                  {tagIssueSummary.isError && (
+                    <p className="field-error">{t.flow.tag.summaryFailed}</p>
+                  )}
+                  {parsedQty !== null && serialCount !== null && serialCount > parsedQty && (
+                    <p className="field-error">{t.flow.tag.tooMany}</p>
+                  )}
+                  {tagMissing === 0 && <p className="field-note">{t.flow.tag.matched}</p>}
+                  {retryableSerials.length > 0 && (
+                    <p className="field-error">
+                      {t.flow.tag.printIncomplete(retryableSerials.length)}
+                    </p>
+                  )}
+                  {/*
+                   * 발행, 복구, 재출력은 서버가 늘 거부해 잠긴 동작이다(`IDENTIFICATION_TAG_ISSUE_LOCKED`).
+                   * 늘 쓸 수 없는 기능은 화면에 두지 않는다(C-4). 상수를 되돌리면 다시 선다.
+                   */}
+                  {!IDENTIFICATION_TAG_ISSUE_LOCKED && (
+                    <>
+                      <div className="production-flow-serials" aria-label={t.flow.tag.issued}>
+                        {issuedSerials.map((serial) => {
+                          const summary = summaryBySerialId.get(serial.serialNumberId);
+                          const outcome = summary?.lastPrintOutcome ?? 'PENDING';
 
-            {/* 정보 영역(C-21): 「라벨 값」 쌍. 수량은 「실적 / 기준」과 막대. 값이 없으면 줄을 두지 않는다(C-10). */}
-            <PopRowInfo className="production-work-info">
-              <PopRowPair label={t.flow.work.lot}>
-                {lot === null ? null : <span className="production-work-lot-no">{lot.lotNo}</span>}
-              </PopRowPair>
-              <PopRowPair label={t.flow.work.lotProgress}>
-                {lot === null ? null : (
-                  <PopQtyProgress
-                    current={lotGoodQty}
-                    target={lot.initialQty}
-                    text={t.flow.work.progressText(
-                      formatQty(lotGoodQty),
-                      formatQty(lot.initialQty),
-                      uomLabel,
-                    )}
-                    label={t.flow.work.lotProgress}
-                  />
-                )}
-              </PopRowPair>
-              <PopRowPair label={t.flow.work.workOrderProgress}>
-                {workOrder.data === undefined || workOrderGoodQty === null ? null : (
-                  <PopQtyProgress
-                    current={workOrderGoodQty}
-                    target={workOrder.data.orderQty}
-                    text={t.flow.work.progressText(
-                      formatQty(workOrderGoodQty),
-                      formatQty(workOrder.data.orderQty),
-                      uom.labelOf(workOrder.data.uomId) ?? '',
-                    )}
-                    label={t.flow.work.workOrderProgress}
-                  />
-                )}
-              </PopRowPair>
-              <PopRowPair label={t.flow.output.printer}>
-                {lotPrinters.isPending ? null : lotPrinter === null ? (
-                  <Chip variant="status" size="md" status="warning">
-                    {t.flow.work.printerNone}
-                  </Chip>
-                ) : (
-                  lotPrinter.displayName
-                )}
-              </PopRowPair>
-              <PopRowPair label={t.flow.work.pqc}>
-                {inspectionOff ??
-                  (otherPendingPqc.length === 0 ? null : (
-                    <span className="production-work-row-value">
-                      {t.flow.work.pqcPending(otherPendingPqc.length)}
-                      {otherPendingPqc.map((request) => (
+                          return (
+                            <Checkbox
+                              key={serial.serialNumberId}
+                              checked={selectedTagIds.includes(serial.serialNumberId)}
+                              onChange={(event) =>
+                                setSelectedTagIds((current) =>
+                                  event.target.checked
+                                    ? [...new Set([...current, serial.serialNumberId])]
+                                    : current.filter((id) => id !== serial.serialNumberId),
+                                )
+                              }
+                            >
+                              {`${serial.serialNo} ${t.flow.tag.printOutcome[outcome]}`}
+                            </Checkbox>
+                          );
+                        })}
+                      </div>
+                      {unissuedSerials.length > 0 && (
                         <Button
-                          key={request.inspectionRequestId}
-                          type="button"
                           variant="outlined"
-                          size="sm"
-                          onClick={() => {
-                            void navigate(
-                              `/pop/pqc-inspection?ir=${String(request.inspectionRequestId)}`,
-                            );
-                          }}
+                          disabled={tagDocumentIssue.isSaving || tagPrinter === null}
+                          onClick={restoreTagDocuments}
                         >
-                          {otherPendingPqc.length === 1
-                            ? t.flow.work.inspect
-                            : t.flow.work.inspectOf(request.inspectionRequestNo)}
+                          {t.flow.tag.restoreDocuments(unissuedSerials.length)}
                         </Button>
-                      ))}
-                    </span>
-                  ))}
-              </PopRowPair>
-              {/* 마감된 LOT은 건수와 [보기]. 0건이면 버튼을 두지 않는다. */}
-              <PopRowPair label={t.flow.work.completedLots}>
-                {completedLotCount.data === undefined ? null : (
-                  <span className="production-work-row-value">
-                    {t.flow.work.completedCount(completedLotCount.data.page.total)}
-                    {completedLotCount.data.page.total > 0 && (
+                      )}
+                      <Button
+                        variant="outlined"
+                        disabled={
+                          tagMissing === null ||
+                          tagMissing <= 0 ||
+                          !Number.isInteger(tagMissing) ||
+                          gates.print !== 'allowed' ||
+                          entry.workerNo === null ||
+                          serialIssue.isSaving ||
+                          tagDocumentIssue.isSaving ||
+                          tagPrint.state.phase === 'sending' ||
+                          tagPrinter === null
+                        }
+                        onClick={issueTags}
+                      >
+                        {tagMissing === null
+                          ? t.flow.tag.title
+                          : t.flow.tag.issueMissing(tagMissing)}
+                      </Button>
+                      {(tagPrint.state.phase === 'renditionFailed' ||
+                        tagPrint.state.phase === 'printFailed') &&
+                        tagPrintTargets.length > 0 && (
+                          <Button
+                            variant="outlined"
+                            onClick={() => void tagPrint.run(tagPrintTargets)}
+                          >
+                            {t.flow.output.retryPrint}
+                          </Button>
+                        )}
+                      {tagPrint.state.phase === 'reportFailed' && (
+                        <>
+                          <p className="field-error">{t.flow.tag.reportFailed}</p>
+                          <Button variant="outlined" onClick={() => void tagPrint.retryReport()}>
+                            {t.flow.output.retryReport}
+                          </Button>
+                        </>
+                      )}
+                      {issuedSerials.length > 0 && (
+                        <Button
+                          variant="outlined"
+                          disabled={selectedTagIds.length === 0 || tagPrinter === null}
+                          onClick={() => setIsTagReissueOpen(true)}
+                        >
+                          {t.flow.tag.reissue}
+                        </Button>
+                      )}
+                      {tagPrinter === null && !tagPrinters.isPending && (
+                        <p className="field-error">{t.flow.tag.printerUnavailable}</p>
+                      )}
+                      {tagDocumentIssue.error !== null && pendingTagIssue !== null && (
+                        <Button variant="outlined" onClick={retryTagDocumentIssue}>
+                          {t.flow.retry}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/*
+           * 현재 LOT 작업에 딸린 보조 동작(테두리). 부품 교체(P-02-11)와 이른 작업지시 마감. 마감이 다음
+           * 단계가 되면 [작업지시 마감]은 하단 바 주 동작으로 옮겨 가고 여기에는 두지 않는다.
+           */}
+          {entry.workOrderId !== null && workOrder.data !== undefined && !isWorkOrderClosed && (
+            <div className="production-work-wo">
+              <Button
+                type="button"
+                variant="outlined"
+                size={POP_TOUCH_SIZE}
+                onClick={() => {
+                  void navigate(`/pop/running-change?workOrderId=${String(entry.workOrderId)}`);
+                }}
+              >
+                {t.flow.actions.runningChange}
+              </Button>
+              {canCloseEarly && closeAction('outlined')}
+            </div>
+          )}
+        </section>
+
+        {workerEntry.isMissing ? (
+          /* 사번이 없으면 단계 본문 대신 작업 시작의 「작업자」 묶음과 같은 빈 상태와 [사번 입력](PI-17). */
+          <section className="pane production-work-step" aria-label={t.flow.work.steps.input}>
+            <h2 className="pane-title">{t.flow.work.steps.input}</h2>
+            <div className="production-work-group">
+              <h3 className="production-work-subtitle">
+                {messages.popChrome.workerNoDialog.groupTitle}
+              </h3>
+              <p className="field-note">{messages.popChrome.workerNoDialog.empty}</p>
+              <Button
+                type="button"
+                variant="outlined"
+                size={POP_TOUCH_SIZE}
+                onClick={workerEntry.open}
+              >
+                {messages.popChrome.workerNoDialog.open}
+              </Button>
+            </div>
+          </section>
+        ) : step === 'scan' && !isWorkOrderClosed ? (
+          <section className="pane production-work-step" aria-label={t.flow.scan.title}>
+            <div className="production-work-head">{stepper}</div>
+            {/* 결과 한 줄(C-21). 실패면 그 자리에 다시 시도 버튼을 둔다. */}
+            {outputResult !== null && (
+              <div className="banner-slot">
+                <AlertBanner
+                  variant={outputResult.tone}
+                  assertive={outputResult.tone === 'error'}
+                  title={outputResult.text}
+                  action={
+                    retryAction === null ? undefined : (
                       <Button
                         type="button"
                         variant="outlined"
                         size="sm"
-                        onClick={() => {
-                          setCompletedPage(1);
-                          setIsCompletedOpen(true);
-                        }}
+                        disabled={retryAction.disabled === true}
+                        onClick={retryAction.run}
                       >
-                        {t.flow.work.view}
+                        {retryAction.label}
                       </Button>
-                    )}
-                  </span>
-                )}
-              </PopRowPair>
-            </PopRowInfo>
-
-            {step !== null && !isWorkOrderClosed && (
-              <Stepper
-                className="production-work-steps"
-                size="sm"
-                aria-label={t.flow.work.stepsLabel}
-                steps={[
-                  {
-                    label: t.flow.work.steps.input,
-                    status: isScanStep ? 'complete' : 'current',
-                  },
-                  {
-                    label: t.flow.work.steps.scan,
-                    status:
-                      outputPhase === 'completed' ? 'complete' : isScanStep ? 'current' : 'pending',
-                  },
-                ]}
-              />
-            )}
-
-            {isTagTarget === true && (
-              <div className="production-work-group">
-                <h3 className="production-work-subtitle">{t.flow.tag.title}</h3>
-                {serials.isError ? (
-                  <p className="field-error">{t.flow.tag.loadFailed}</p>
-                ) : (
-                  <>
-                    <p className="field-note">
-                      {t.flow.tag.issued} {t.flow.tag.count(serialCount ?? 0)}
-                    </p>
-                    {tagIssueSummary.isError && (
-                      <p className="field-error">{t.flow.tag.summaryFailed}</p>
-                    )}
-                    {parsedQty !== null && serialCount !== null && serialCount > parsedQty && (
-                      <p className="field-error">{t.flow.tag.tooMany}</p>
-                    )}
-                    {tagMissing === 0 && <p className="field-note">{t.flow.tag.matched}</p>}
-                    {retryableSerials.length > 0 && (
-                      <p className="field-error">
-                        {t.flow.tag.printIncomplete(retryableSerials.length)}
-                      </p>
-                    )}
-                    {/*
-                     * 발행, 복구, 재출력은 서버가 늘 거부해 잠긴 동작이다(`IDENTIFICATION_TAG_ISSUE_LOCKED`).
-                     * 늘 쓸 수 없는 기능은 화면에 두지 않는다(C-4). 상수를 되돌리면 다시 선다.
-                     */}
-                    {!IDENTIFICATION_TAG_ISSUE_LOCKED && (
-                      <>
-                        <div className="production-flow-serials" aria-label={t.flow.tag.issued}>
-                          {issuedSerials.map((serial) => {
-                            const summary = summaryBySerialId.get(serial.serialNumberId);
-                            const outcome = summary?.lastPrintOutcome ?? 'PENDING';
-
-                            return (
-                              <Checkbox
-                                key={serial.serialNumberId}
-                                checked={selectedTagIds.includes(serial.serialNumberId)}
-                                onChange={(event) =>
-                                  setSelectedTagIds((current) =>
-                                    event.target.checked
-                                      ? [...new Set([...current, serial.serialNumberId])]
-                                      : current.filter((id) => id !== serial.serialNumberId),
-                                  )
-                                }
-                              >
-                                {`${serial.serialNo} ${t.flow.tag.printOutcome[outcome]}`}
-                              </Checkbox>
-                            );
-                          })}
-                        </div>
-                        {unissuedSerials.length > 0 && (
-                          <Button
-                            variant="outlined"
-                            disabled={tagDocumentIssue.isSaving || tagPrinter === null}
-                            onClick={restoreTagDocuments}
-                          >
-                            {t.flow.tag.restoreDocuments(unissuedSerials.length)}
-                          </Button>
-                        )}
-                        <Button
-                          variant="outlined"
-                          disabled={
-                            tagMissing === null ||
-                            tagMissing <= 0 ||
-                            !Number.isInteger(tagMissing) ||
-                            gates.print !== 'allowed' ||
-                            entry.workerNo === null ||
-                            serialIssue.isSaving ||
-                            tagDocumentIssue.isSaving ||
-                            tagPrint.state.phase === 'sending' ||
-                            tagPrinter === null
-                          }
-                          onClick={issueTags}
-                        >
-                          {tagMissing === null
-                            ? t.flow.tag.title
-                            : t.flow.tag.issueMissing(tagMissing)}
-                        </Button>
-                        {(tagPrint.state.phase === 'renditionFailed' ||
-                          tagPrint.state.phase === 'printFailed') &&
-                          tagPrintTargets.length > 0 && (
-                            <Button
-                              variant="outlined"
-                              onClick={() => void tagPrint.run(tagPrintTargets)}
-                            >
-                              {t.flow.output.retryPrint}
-                            </Button>
-                          )}
-                        {tagPrint.state.phase === 'reportFailed' && (
-                          <>
-                            <p className="field-error">{t.flow.tag.reportFailed}</p>
-                            <Button variant="outlined" onClick={() => void tagPrint.retryReport()}>
-                              {t.flow.output.retryReport}
-                            </Button>
-                          </>
-                        )}
-                        {issuedSerials.length > 0 && (
-                          <Button
-                            variant="outlined"
-                            disabled={selectedTagIds.length === 0 || tagPrinter === null}
-                            onClick={() => setIsTagReissueOpen(true)}
-                          >
-                            {t.flow.tag.reissue}
-                          </Button>
-                        )}
-                        {tagPrinter === null && !tagPrinters.isPending && (
-                          <p className="field-error">{t.flow.tag.printerUnavailable}</p>
-                        )}
-                        {tagDocumentIssue.error !== null && pendingTagIssue !== null && (
-                          <Button variant="outlined" onClick={retryTagDocumentIssue}>
-                            {t.flow.retry}
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </>
-                )}
+                    )
+                  }
+                />
               </div>
             )}
-
+            <TextField
+              id={scanId}
+              ref={scanInputRef}
+              size="xl"
+              label={t.flow.scan.label}
+              /*
+               * ⭐ **칸이 구획 폭을 다 쓴다**(사용자 지시 2026-09-10). LOT 번호는 서른 자리를
+               * 넘길 수 있어, 기본 폭에서는 읽은 값이 칸 밖으로 밀려 눈으로 대조할 수 없다.
+               */
+              fullWidth
+              autoComplete="off"
+              value={scanValue}
+              disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
+              error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
+              onChange={(event) => changeScan(event.target.value)}
+            />
             {/*
-             * 현재 LOT 작업에 딸린 보조 동작(테두리). 부품 교체(P-02-11)와 이른 작업지시 마감. 마감이 다음
-             * 단계가 되면 [작업지시 마감]은 하단 바 주 동작으로 옮겨 가고 여기에는 두지 않는다.
+             * ⚠ **한 번에 한 줄만 낸다**(사용자 지시 2026-09-10). 어긋남은 칸이 이미 말하고
+             * 있으므로 마감 실패는 그때만 선다.
              */}
-            {entry.workOrderId !== null && workOrder.data !== undefined && !isWorkOrderClosed && (
-              <div className="production-work-wo">
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size={POP_TOUCH_SIZE}
-                  onClick={() => {
-                    void navigate(`/pop/running-change?workOrderId=${String(entry.workOrderId)}`);
-                  }}
-                >
-                  {t.flow.actions.runningChange}
-                </Button>
-                {canCloseEarly && closeAction('outlined')}
+            {completeFailure !== null && !scanMismatch && (
+              <p className="field-error">{completeFailure}</p>
+            )}
+            {sessionNote}
+          </section>
+        ) : (
+          <section className="pane production-work-step" aria-label={t.flow.work.steps.input}>
+            {/*
+             * 제목 줄: 단계 표시(LOT이 있을 때) 또는 단계 이름, 오른쪽에 W/O 잔량(C-21 잔량은 지금 넣을 칸
+             * 곁에만). 넣을 LOT이 없거나 마감했으면 단계가 없어 이름만 둔다(개선 명세 ④-2·⑨).
+             */}
+            <div className="production-work-head">
+              {step !== null && !isWorkOrderClosed ? (
+                stepper
+              ) : (
+                <h2 className="pane-title">{t.flow.work.steps.input}</h2>
+              )}
+              {remaining !== null && remaining > 0 && (
+                <span className="production-work-remaining">
+                  {t.flow.work.remaining(withUnit(remaining))}
+                </span>
+              )}
+            </div>
+
+            {/* 실적 저장 거부(서버). 실적은 되돌아와 다시 입력한다. */}
+            {outbox.rejection !== null && (
+              <div className="banner-slot">
+                <AlertBanner variant="error" title={t.save.failTitle}>
+                  {rejectionText(outbox.rejection)}
+                </AlertBanner>
               </div>
             )}
-          </section>
-
-          {workerEntry.isMissing ? (
-            /* 사번이 없으면 단계 본문 대신 작업 시작의 「작업자」 묶음과 같은 빈 상태와 [사번 입력](PI-17). */
-            <section className="pane production-work-step" aria-label={t.flow.work.steps.input}>
-              <h2 className="pane-title">{t.flow.work.steps.input}</h2>
-              <div className="production-work-group">
-                <h3 className="production-work-subtitle">
-                  {messages.popChrome.workerNoDialog.groupTitle}
-                </h3>
-                <p className="field-note">{messages.popChrome.workerNoDialog.empty}</p>
-                <Button
-                  type="button"
-                  variant="outlined"
-                  size={POP_TOUCH_SIZE}
-                  onClick={workerEntry.open}
-                >
-                  {messages.popChrome.workerNoDialog.open}
-                </Button>
-              </div>
-            </section>
-          ) : step === 'scan' && !isWorkOrderClosed ? (
-            <section className="pane production-work-step" aria-label={t.flow.scan.title}>
-              <h2 className="pane-title">{t.flow.scan.title}</h2>
-              {/* 결과 한 줄(C-21). 실패면 그 자리에 다시 시도 버튼을 둔다. */}
-              {outputResult !== null && (
-                <div className="banner-slot">
-                  <AlertBanner
-                    variant={outputResult.tone}
-                    assertive={outputResult.tone === 'error'}
-                    title={outputResult.text}
-                    action={
-                      retryAction === null ? undefined : (
-                        <Button
-                          type="button"
-                          variant="outlined"
-                          size="sm"
-                          disabled={retryAction.disabled === true}
-                          onClick={retryAction.run}
-                        >
-                          {retryAction.label}
-                        </Button>
-                      )
-                    }
-                  />
-                </div>
-              )}
-              <TextField
-                id={scanId}
-                ref={scanInputRef}
-                size="xl"
-                label={t.flow.scan.label}
-                placeholder={t.flow.scan.placeholder}
-                /*
-                 * ⭐ **칸이 구획 폭을 다 쓴다**(사용자 지시 2026-09-10). LOT 번호는 서른 자리를
-                 * 넘길 수 있어, 기본 폭에서는 읽은 값이 칸 밖으로 밀려 눈으로 대조할 수 없다.
-                 */
-                fullWidth
-                autoComplete="off"
-                value={scanValue}
-                disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
-                error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
-                onChange={(event) => changeScan(event.target.value)}
-              />
-              {/*
-               * ⚠ **한 번에 한 줄만 낸다**(사용자 지시 2026-09-10). 어긋남은 칸이 이미 말하고
-               * 있으므로 마감 실패는 그때만 선다.
-               */}
-              {completeFailure !== null && !scanMismatch && (
-                <p className="field-error">{completeFailure}</p>
-              )}
-              {sessionNote}
-            </section>
-          ) : (
-            <section className="pane production-work-step" aria-label={t.flow.work.steps.input}>
-              {/* 제목 줄: 단계 이름, 오른쪽에 잔량(C-21 잔량은 지금 넣을 칸 곁에만). */}
-              <div className="production-work-head">
-                <h2 className="pane-title">{t.flow.work.steps.input}</h2>
-                {remaining !== null && remaining > 0 && (
-                  <span className="production-work-remaining">
-                    {t.flow.work.remaining(withUnit(remaining))}
-                  </span>
-                )}
-              </div>
-
-              {/* 실적 저장 거부(서버). 실적은 되돌아와 다시 입력한다. */}
-              {outbox.rejection !== null && (
-                <div className="banner-slot">
-                  <AlertBanner variant="error" title={t.save.failTitle}>
-                    {rejectionText(outbox.rejection)}
-                  </AlertBanner>
-                </div>
-              )}
-              {lot === null || isWorkOrderClosed ? (
-                <>
-                  <p className="field-note">
-                    {entry.workOrderId === null
-                      ? t.flow.work.noWorkOrder
-                      : isWorkOrderClosed
-                        ? t.flow.work.closed
-                        : t.flow.work.noLot}
-                  </p>
-                  {sessionNote}
-                  {/* 넣을 LOT이 없어도 불량만 등록할 수는 있다(LOT 없이 저장하는 불량, 마감 전). */}
-                  {entry.workOrderId !== null && !isWorkOrderClosed && defectSection}
-                  {/* 고른 불량 줄의 수량도 화면 숫자판으로 넣는다(키보드 없는 단말). */}
-                  {entry.workOrderId !== null && !isWorkOrderClosed && activeDefectRow !== null && (
+            {lot === null || isWorkOrderClosed ? (
+              <>
+                {entry.workOrderId === null ? (
+                  <p className="field-note">{t.flow.work.noWorkOrder}</p>
+                ) : isWorkOrderClosed ? (
+                  infoLine(t.flow.work.closed)
+                ) : currentLot.data === null && !currentLot.isError ? (
+                  /*
+                   * 「LOT 없음」은 서버가 비었다고 답했을 때만 말한다. 불러오는 중이거나 못 불러왔으면(하단 바가
+                   * 그 사실을 말한다) 「없다」고 단정하지 않는다 — 파란 안내 줄이라 잘못 뜨면 눈에 띈다.
+                   */
+                  <>
+                    {isPlanAchieved && infoLine(t.flow.work.planReached)}
+                    {infoLine(t.flow.work.noLot)}
+                  </>
+                ) : null}
+                {sessionNote}
+                {/*
+                 * 넣을 LOT이 없어도 불량만 등록할 수는 있다(LOT 없이 저장하는 불량, 마감 전). LOT을 불러오는
+                 * 동안에는 두지 않는다 — LOT이 오면 실적 칸 아래로 옮겨 그려져 치던 줄이 사라진다.
+                 */}
+                {entry.workOrderId !== null && !isWorkOrderClosed && !isLotLoading && defectSection}
+                {/* 고른 불량 줄의 수량도 화면 숫자판으로 넣는다(키보드 없는 단말). */}
+                {entry.workOrderId !== null &&
+                  !isWorkOrderClosed &&
+                  !isLotLoading &&
+                  activeDefectRow !== null && (
                     <NumericKeypad
                       value={activeDefectRow.qty}
                       dropLeadingZero
@@ -2027,82 +2069,83 @@ export const ProductionFlowScreen = () => {
                       onChange={(value) => updateDefectRow(activeDefectRow.key, { qty: value })}
                     />
                   )}
-                </>
-              ) : (
-                <>
-                  {/*
-                   * 초과를 **친 자리에서 바로 말한다**(#1040). ⛔ 막지 않는다 — 초과 생산은 허용이다
-                   * (✓확정 QA #27). 막힌 상태가 아니므로 정보 색이다(C-7).
-                   */}
-                  {isOverrun && !isQuantityLocked && parsedQty !== null && remaining !== null && (
-                    <div className="banner-slot">
-                      <AlertBanner
-                        variant="info"
-                        assertive={false}
-                        title={
-                          remaining > 0
-                            ? t.overrun.notice(withUnit(parsedQty - remaining), withUnit(remaining))
-                            : t.overrun.noticeNoRemaining
-                        }
-                      />
-                    </div>
-                  )}
-                  <TextField
-                    id={actualQtyId}
-                    size="xl"
-                    label={t.flow.quantity.actual}
-                    value={actualQty}
-                    disabled={isQuantityLocked}
-                    inputMode="decimal"
-                    autoComplete="off"
-                    fullWidth
-                    trailingIcon={uomLabel}
-                    containerClassName={
-                      activeQty === 'good' ? 'production-flow-qty is-active' : 'production-flow-qty'
-                    }
-                    onFocus={() => setActiveQty('good')}
-                    error={
-                      !isDefectOnly && parsedQty !== null && parsedQty <= 0
-                        ? t.flow.quantity.invalid
-                        : undefined
-                    }
-                    onChange={(event) => setActualQty(quantityInput(event.target.value))}
-                  />
-                  {defectSection}
-                  <NumericKeypad
-                    value={activeDefectRow?.qty ?? actualQty}
-                    /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
-                    dropLeadingZero
-                    disabled={activeDefectRow === null ? isQuantityLocked : areDefectsLocked}
-                    /* 키패드가 어느 칸에 들어가는지 이름으로도 말한다 — 테두리만으로는 보조기술에 닿지 않는다. */
-                    label={
-                      activeDefectRow === null
-                        ? t.flow.defects.keypadGood
-                        : t.flow.defects.keypadFor(
-                            defectLabelOf(defectMajors, activeDefectRow.defectCodeId) ??
-                              t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
-                          )
-                    }
-                    backspaceLabel={t.quantity.backspace}
-                    clearLabel={t.quantity.clearGlyph}
-                    maxLength={GOOD_QTY_MAX_LENGTH}
-                    /*
-                     * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
-                     *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다.
-                     */
-                    allowDecimal={uom.decimalScaleOf(lot.uomId ?? workOrder.data?.uomId) > 0}
-                    decimalLabel={t.quantity.decimalKey}
-                    onChange={(value) => {
-                      if (activeDefectRow === null) setActualQty(value);
-                      else updateDefectRow(activeDefectRow.key, { qty: value });
-                    }}
-                  />
-                </>
-              )}
-            </section>
-          )}
-        </div>
-      </PqcSplit>
+              </>
+            ) : (
+              <>
+                {/* 작업 지시량을 채워도 남은 LOT에 더 만들 수 있다 — 마감할 수 있다는 것을 먼저 알린다(④-1). */}
+                {isPlanAchieved && infoLine(t.flow.work.planReached)}
+                {/*
+                 * 초과를 **친 자리에서 바로 말한다**(#1040). ⛔ 막지 않는다 — 초과 생산은 허용이다
+                 * (✓확정 QA #27). 막힌 상태가 아니므로 정보 색이다(C-7).
+                 */}
+                {isOverrun && !isQuantityLocked && parsedQty !== null && remaining !== null && (
+                  <div className="banner-slot">
+                    <AlertBanner
+                      variant="info"
+                      assertive={false}
+                      title={
+                        remaining > 0
+                          ? t.overrun.notice(withUnit(parsedQty - remaining), withUnit(remaining))
+                          : t.overrun.noticeNoRemaining
+                      }
+                    />
+                  </div>
+                )}
+                <TextField
+                  id={actualQtyId}
+                  size="xl"
+                  label={t.flow.quantity.actual}
+                  value={actualQty}
+                  disabled={isQuantityLocked}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  fullWidth
+                  trailingIcon={uomLabel}
+                  containerClassName={
+                    activeQty === 'good' ? 'production-flow-qty is-active' : 'production-flow-qty'
+                  }
+                  onFocus={() => setActiveQty('good')}
+                  error={
+                    !isDefectOnly && parsedQty !== null && parsedQty <= 0
+                      ? t.flow.quantity.invalid
+                      : undefined
+                  }
+                  onChange={(event) => setActualQty(quantityInput(event.target.value))}
+                />
+                {defectSection}
+                <NumericKeypad
+                  value={activeDefectRow?.qty ?? actualQty}
+                  /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
+                  dropLeadingZero
+                  disabled={activeDefectRow === null ? isQuantityLocked : areDefectsLocked}
+                  /* 키패드가 어느 칸에 들어가는지 이름으로도 말한다 — 테두리만으로는 보조기술에 닿지 않는다. */
+                  label={
+                    activeDefectRow === null
+                      ? t.flow.defects.keypadGood
+                      : t.flow.defects.keypadFor(
+                          defectLabelOf(defectMajors, activeDefectRow.defectCodeId) ??
+                            t.flow.defects.row(defectRows.indexOf(activeDefectRow) + 1),
+                        )
+                  }
+                  backspaceLabel={t.quantity.backspace}
+                  clearLabel={t.quantity.clearGlyph}
+                  maxLength={GOOD_QTY_MAX_LENGTH}
+                  /*
+                   * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
+                   *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다.
+                   */
+                  allowDecimal={uom.decimalScaleOf(lot.uomId ?? workOrder.data?.uomId) > 0}
+                  decimalLabel={t.quantity.decimalKey}
+                  onChange={(value) => {
+                    if (activeDefectRow === null) setActualQty(value);
+                    else updateDefectRow(activeDefectRow.key, { qty: value });
+                  }}
+                />
+              </>
+            )}
+          </section>
+        )}
+      </div>
 
       <ActionBar
         remaining={nextText}
