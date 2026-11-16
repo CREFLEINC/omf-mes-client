@@ -37008,3 +37008,35 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 .erp-wo-distribution-holiday-option { display:inline-flex; align-items:center; gap:var(--space-2); min-height:var(--control-height-md); font:var(--type-body-sm); }
 .erp-wo-distribution-holiday-option input { width:1rem; height:1rem; margin:0; }
+
+/* ERP W/O별 요약 → 선택 항목 일괄 입력 → 해당 ERP W/O의 조건 직접 편집. */
+.erp-wo-distribution-owner-table { width:100%; min-width:39rem; border-collapse:collapse; }
+.erp-wo-distribution-owner-table th,.erp-wo-distribution-owner-table td { padding:var(--space-2); text-align:left; border-bottom:1px solid var(--outline-variant); vertical-align:middle; }
+.erp-wo-distribution-owner-table tr[data-active='true'] { background:var(--surface-container-high); box-shadow:inset 3px 0 var(--outline); }
+.erp-wo-distribution-owner-table td .field-note { display:block; }
+.erp-wo-distribution-focused-order { display:grid; gap:var(--space-2); padding-top:var(--space-3); border-top:1px solid var(--outline-variant); }
+.erp-wo-distribution-focused-order dl { display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-5); margin:0; }
+.erp-wo-distribution-focused-order dl > div { display:flex; gap:var(--space-2); min-width:0; }
+.erp-wo-distribution-focused-order dt { color:var(--on-surface-variant); flex:none; }
+.erp-wo-distribution-focused-order dd { margin:0; overflow-wrap:anywhere; }
+.erp-wo-distribution-dialog .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.erp-wo-distribution-dialog .erp-wo-distribution-segment { padding:var(--space-3) 0; border:0; border-bottom:1px solid var(--outline-variant); border-radius:0; background:transparent; }
+.erp-wo-distribution-dialog .erp-wo-distribution-row-head { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); }
+.erp-wo-distribution-dialog .erp-wo-distribution-row-head > button { min-width:40px; width:40px; padding-inline:0; }
+.erp-wo-distribution-dialog .erp-wo-segment-fields { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.erp-wo-distribution-calendar-summary { margin:var(--space-2) 0 0; color:var(--on-surface-variant); font:var(--type-body-sm); }
+@media(max-width:1000px) { .erp-wo-distribution-dialog .erp-wo-segment-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:640px) { .erp-wo-distribution-dialog .erp-wo-segment-fields,.erp-wo-distribution-dialog .erp-wo-common-conditions .erp-wo-distribution-fields { grid-template-columns:minmax(0,1fr); } }
+
+.erp-wo-distribution-dialog .erp-wo-common-conditions { grid-template-columns:minmax(0,1fr) auto; align-items:center; }
+.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 { grid-column:1; grid-row:1; }
+.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 .field-note { margin-left:var(--space-2); }
+.erp-wo-distribution-dialog .erp-wo-common-conditions > button { grid-column:2; grid-row:1; }
+.erp-wo-distribution-dialog .erp-wo-common-conditions > .erp-wo-distribution-fields { grid-column:1/-1; grid-row:2; }
+.erp-wo-distribution-dialog .erp-wo-common-conditions > p { grid-column:1/-1; }
+.erp-wo-distribution-focused-order .section-title { font:var(--type-body-sm); font-weight:500; }
+.erp-wo-distribution-owner-table td button { color:var(--on-surface); font-weight:500; }
+@media(max-width:640px) { .erp-wo-distribution-dialog .erp-wo-common-conditions { grid-template-columns:minmax(0,1fr); } .erp-wo-distribution-dialog .erp-wo-common-conditions > button { grid-column:1; grid-row:3; } }
+
+.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); }
+.erp-wo-distribution-dialog .erp-wo-common-conditions > h3 .field-note { display:inline; margin:0; }

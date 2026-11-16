@@ -12,6 +12,10 @@ export interface DistributionTarget {
   plantId?: number | null;
   id: string;
   label: string;
+  orderNo?: string;
+  itemCode?: string;
+  itemName?: string;
+  availableQty?: number;
   unit: string;
   pending: number;
   startDate?: string;

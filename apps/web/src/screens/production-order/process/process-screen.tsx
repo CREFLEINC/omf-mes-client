@@ -600,6 +600,11 @@ export const ProcessWorkspace = ({
                   lines.data?.items.find((item) => item.productionLineId === line.id)?.isActive,
               )}
               distributionDecimalScale={uoms.decimalScaleOf?.(order.uomId)}
+              distributionIdentity={{
+                orderNo: order.productionOrderNo,
+                itemCode: item?.itemCode ?? '—',
+                itemName: item?.itemName ?? '—',
+              }}
               distributionOrderLabel={`${order.productionOrderNo} / ${item === undefined ? '' : named(item.itemName, item.itemCode)}`}
               onDistributionDirtyChange={setDistributionDirty}
               onAppend={(drafts) =>

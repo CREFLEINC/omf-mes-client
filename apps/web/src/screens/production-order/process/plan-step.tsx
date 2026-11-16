@@ -80,6 +80,7 @@ export interface PlanStepProps {
   rowUomLabelOf?: (row: ProductionPlanEditorStateRow) => string;
   onAppend?: (drafts: ScheduledDraft[]) => void;
   distributionOrderLabel?: string;
+  distributionIdentity?: { orderNo: string; itemCode: string; itemName: string };
   distributionStartDate?: string;
   distributionLines?: readonly PlanLine[];
   distributionDecimalScale?: number;
@@ -119,6 +120,7 @@ export const PlanStep = ({
   rowPlantIdOf,
   planGroups,
   distributionOrderLabel,
+  distributionIdentity,
   distributionStartDate,
   distributionLines,
   distributionDecimalScale,
@@ -429,6 +431,7 @@ export const PlanStep = ({
                 orders={[
                   {
                     id: 'single',
+                    ...distributionIdentity,
                     ...(plantId !== null ? { plantId } : {}),
                     label: distributionOrderLabel ?? '현재 ERP W/O',
                     unit: uomLabel,
@@ -446,9 +449,6 @@ export const PlanStep = ({
               />
             ))}
         </PlanCreationTools>
-      )}
-      {rows.some((row) => row.isDirty) && (
-        <p className="field-note erp-wo-plan-note">{ui.unsavedSummary}</p>
       )}
       {failures.length > 0 && (
         <AlertBanner variant="error" title={t.failedTitle}>

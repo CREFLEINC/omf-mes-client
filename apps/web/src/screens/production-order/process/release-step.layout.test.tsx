@@ -44,7 +44,7 @@ describe('배포 대상 상세', () => {
     };
     renderWithProviders(<Harness />);
     expect(screen.getByText(t.scope(2))).toBeVisible();
-    expect(screen.getByText(t.scopeHelp)).toBeVisible();
+    expect(screen.queryByText(t.scopeHelp)).toBeNull();
     expect(screen.getByRole('region', { name: '배포 작업지시' })).toBeVisible();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();

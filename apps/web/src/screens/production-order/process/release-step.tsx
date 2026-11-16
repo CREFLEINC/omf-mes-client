@@ -313,7 +313,6 @@ export const ReleaseStep = ({
         <h2 className="section-title">{t.heading}</h2>
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
-      <p className="erp-wo-release-scope">{t.scopeHelp}</p>
       {reviewPlans && (
         <ReleaseReview
           plans={reviewPlans}

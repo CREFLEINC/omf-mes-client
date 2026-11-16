@@ -23,8 +23,10 @@ export const DistributionPeriodPicker = ({
   value,
   disabled,
   onChange,
+  placeholder = '기간 선택',
 }: {
   label: string;
+  placeholder?: string;
   value: [string, string];
   disabled: boolean;
   onChange: (value: [string, string]) => void;
@@ -51,7 +53,7 @@ export const DistributionPeriodPicker = ({
           setOpen(true);
         }}
       >
-        <span>{value[0] && value[1] ? `${value[0]} ~ ${value[1]}` : '기간 선택'}</span>
+        <span>{value[0] && value[1] ? `${value[0]} ~ ${value[1]}` : placeholder}</span>
         <Icon name="calendar_today" size={20} />
       </button>
       {open && (
