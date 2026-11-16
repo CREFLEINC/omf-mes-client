@@ -1,9 +1,10 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PopIdentityProvider } from '../../patterns/pop-identity';
 import {
   createStubFetch,
@@ -11,7 +12,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { productionFlowKeys } from './flow-queries';
+import { COMPLETED_LOT_PAGE_SIZE, productionFlowKeys } from './flow-queries';
 import { ProductionFlowScreen } from './screen';
 import { STORAGE_KEY } from './outbox';
 
@@ -327,6 +328,140 @@ describe('ProductionFlowScreen', () => {
     });
   });
 
+  /* 라벨을 낸 뒤에는 [LOT 라벨 재출력]과 「입력한 실적」이 선다(사용자 지시 2026-11-16). */
+  it('스캔 대기 중에는 같은 라벨을 재출력하고, 입력한 실적을 왼쪽에 보인다', async () => {
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes);
+
+    expect(screen.queryByText(t.flow.work.enteredResult)).not.toBeInTheDocument();
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+
+    expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
+    expect(screen.getByText(t.flow.work.enteredResult)).toBeInTheDocument();
+    expect(screen.getByText(t.flow.work.enteredGood('12', 'EA'))).toBeInTheDocument();
+    expect(save).toHaveBeenCalledTimes(1);
+    const writesBefore = writes.length;
+
+    await user.click(screen.getByRole('button', { name: t.flow.output.reprint }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+
+    /*
+     * 재출력은 찍기만 한다 — 실적·발행을 새로 만들지 않고 인쇄 결과도 다시 보고하지 않는다. 서버는 성공으로
+     * 잠긴 발행에 두 번째 보고를 거절해, 보고하면 「결과를 보내지 못했습니다」가 떴다(실측 2026-11-16).
+     */
+    expect(writes).toHaveLength(writesBefore);
+    expect(screen.queryByText(t.flow.output.reportFailed)).not.toBeInTheDocument();
+    expect(screen.getByText(t.flow.output.printed)).toBeInTheDocument();
+  });
+
+  it('재출력이 실패해도 이미 나온 라벨로 스캔해 LOT 을 마감할 수 있다', async () => {
+    const save = vi
+      .fn()
+      .mockResolvedValueOnce('/tmp/lot.prn')
+      .mockRejectedValueOnce(new Error('프린터 없음'));
+    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
+    const writes: Request[] = [];
+    let attempts = 0;
+    const completeRoute: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+      respond: () => {
+        attempts += 1;
+
+        return jsonResponse({
+          lotId: LOT_ID,
+          lotNo: LOT_NO,
+          completedAt: new Date().toISOString(),
+        });
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [completeRoute]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+
+    await user.click(screen.getByRole('button', { name: t.flow.output.reprint }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(t.flow.output.printFailed)).toBeVisible();
+
+    /* 리뷰 지적 2026-11-16 — 프린터가 고장 나도 손에 든 라벨로 빠져나올 수 있어야 한다. */
+    await waitFor(() => expect(screen.getByLabelText(t.flow.scan.label)).toBeEnabled());
+    await user.type(screen.getByLabelText(t.flow.scan.label), LOT_NO);
+    await waitFor(() => expect(attempts).toBe(1));
+  });
+
+  it('스캔으로 마감한 LOT 은 「마감 완료」로 강조하고, 다른 버튼을 누르면 강조를 거둔다', async () => {
+    let isCompleted = false;
+    const completeRoute: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+      respond: () => {
+        isCompleted = true;
+
+        return jsonResponse({
+          lotId: LOT_ID,
+          lotNo: LOT_NO,
+          completedAt: '2026-11-16T05:29:13.000Z',
+        });
+      },
+    };
+    const completedRoute: StubRoute = {
+      match: (request) =>
+        pathOf(request) === '/trace/lots' &&
+        new URL(request.url).searchParams.get('completed') === 'true',
+      respond: (request) => {
+        /* 한 쪽 5건씩 묻는다(사용자 지시 2026-11-16). */
+        expect(new URL(request.url).searchParams.get('size')).toBe(String(COMPLETED_LOT_PAGE_SIZE));
+
+        return jsonResponse({
+          items: isCompleted
+            ? [
+                {
+                  lotId: LOT_ID,
+                  lotNo: LOT_NO,
+                  itemId: 101,
+                  lotTypeCode: 'PRODUCTION',
+                  plantId: 1,
+                  initialQty: 12,
+                  uomId: 1,
+                  sourceTypeCode: 'WORK_ORDER',
+                  sourceId: WORK_ORDER_ID,
+                  statusCode: 'NORMAL',
+                  completedAt: '2026-11-16T05:29:13.000Z',
+                },
+              ]
+            : [],
+          page: { page: 1, size: COMPLETED_LOT_PAGE_SIZE, total: isCompleted ? 1 : 0 },
+        });
+      },
+    };
+    const user = userEvent.setup();
+    renderScreen([], [completeRoute, completedRoute]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    await user.type(scan, LOT_NO);
+
+    const tag = await screen.findByText(t.flow.currentLot.justCompleted);
+    expect(tag.closest('li')).toHaveClass('is-new');
+
+    /* 아무 버튼이나 누르면(누르는 순간) 거둔다. */
+    fireEvent.pointerDown(screen.getAllByRole('button')[0]!);
+    expect(screen.queryByText(t.flow.currentLot.justCompleted)).not.toBeInTheDocument();
+  });
+
   /*
    * ⛔ **라벨 수량은 수량 칸이 아니라 «실제로 올라간 실적»에서 온다**(리뷰 지적 2026-09-16).
    *    수량 칸은 LOT 이 서면 계획 수량(`initialQty`)으로 미리 채워진다 — 큐에 들어 있던 실적이
@@ -494,11 +629,10 @@ describe('ProductionFlowScreen', () => {
     await screen.findByLabelText(t.flow.quantity.actual);
     releaseDetail();
 
-    /* 서버 누계가 닿으면 LOT 실적이 그 값을 말하고, 실적 입력 칸은 닫힌다(라벨 스캔 단계). */
+    /* 서버 누계가 닿으면 실적 입력 칸은 닫힌다(라벨 스캔 단계). 현재 LOT 진행 줄은 두지 않는다(2026-11-16). */
     await waitFor(() => {
-      expect(screen.getByText(t.flow.work.progressText('8', '12', 'EA'))).toBeInTheDocument();
+      expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     });
-    expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
   });
 
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
@@ -546,7 +680,7 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes, [appliedLot, appliedLotDetail]);
 
     /* 실적이 서버에 있으면 라벨 스캔 단계로 연다. 실적 입력 칸은 없다(다시 올릴 길이 없다). */
-    expect(await screen.findByText(t.flow.work.progressText('8', '12', 'EA'))).toBeInTheDocument();
+    expect(await screen.findByText(t.flow.work.enteredGood('8', 'EA'))).toBeInTheDocument();
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
 
     const retryIssue = await screen.findByRole('button', { name: t.flow.output.retryIssue });
@@ -588,9 +722,9 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes, [legacyIssue]);
 
     expect(await screen.findByText(t.flow.output.legacyMismatch)).toBeVisible();
-    /* 주 동작은 잠기고 하단 바 「남은 일」이 사유를 말한다(C-4). */
+    /* 주 동작은 잠긴다. 사유는 결과 줄 하나가 말하고 하단에 되풀이하지 않는다(사용자 지시 2026-11-16). */
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
-    expect(screen.getByText(t.flow.next.legacyMismatch)).toBeVisible();
+    expect(screen.queryByText(/관리자에게 알려 주세요/u)).not.toBeInTheDocument();
     const scan = screen.getByLabelText(t.flow.scan.label);
     expect(scan).toBeDisabled();
     await user.type(scan, LOT_NO);
@@ -729,6 +863,7 @@ describe('ProductionFlowScreen', () => {
               sourceTypeCode: 'WORK_ORDER',
               sourceId: WORK_ORDER_ID,
               statusCode: 'NORMAL',
+              completedAt: '2026-11-16T05:29:13.000Z',
               workOrderSequenceNo: page,
               workOrderLotCount: 21,
             },
@@ -740,9 +875,12 @@ describe('ProductionFlowScreen', () => {
     const user = userEvent.setup();
     renderScreen(writes, [completedRoute]);
 
-    /* 마감된 LOT 정보 줄 끝 [보기]가 창을 연다. */
-    await user.click(await screen.findByRole('button', { name: t.flow.work.view }));
+    /* 마감된 LOT 은 왼쪽 구획에 목록으로 늘 보인다(2026-11-16, 종전 [보기] 창). */
     expect(await screen.findByText('LOT-CLOSED-1')).toBeVisible();
+    /* 마감 일시를 함께 보인다(공장 시각). */
+    expect(
+      screen.getByText(formatPlantDateTime('2026-11-16T05:29:13.000Z') ?? ''),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeDisabled();
     const pageDown = screen.getByRole('button', { name: t.flow.currentLot.next });
     expect(pageDown).toBeEnabled();
@@ -751,7 +889,7 @@ describe('ProductionFlowScreen', () => {
     expect(await screen.findByText('LOT-CLOSED-2')).toBeVisible();
     expect(screen.getByRole('button', { name: t.flow.currentLot.prev })).toBeEnabled();
     expect(screen.getByRole('button', { name: t.flow.currentLot.next })).toBeDisabled();
-    /* 첫 쪽은 정보 줄 건수와 창이 함께 읽는다(같은 조회). 넘긴 쪽은 서버에 묻는다. */
+    /* 넘긴 쪽은 서버에 묻는다. */
     expect([...new Set(requestedPages)]).toEqual([1, 2]);
   });
 
@@ -1110,11 +1248,11 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     await waitFor(() => expect(close).toBeEnabled());
     const output = screen.getByRole('button', { name: t.flow.output.issue });
     expect(output).toBeDisabled();
-    await waitFor(() =>
-      expect(output).toHaveAccessibleDescription(
-        `${t.flow.next.planReached}. ${t.flow.next.printer}`,
-      ),
-    );
+    /* 달성 사실은 오른쪽 위 파란 안내 줄이, 막힌 이유는 하단 바가 말한다(개선 명세 ④-1). */
+    expect(await screen.findByText(t.flow.work.planReached)).toBeInTheDocument();
+    /* 프린터가 없다는 사실은 머리줄 칩이 말한다 — 하단에 같은 말을 두지 않는다. */
+    expect(screen.getByText(t.flow.work.printerNone)).toBeInTheDocument();
+    expect(output).not.toHaveAccessibleDescription();
   });
 
   it('저장 뒤 판정이 초과면 「초과 달성 n」 칩으로 말하고 초과 안내는 내지 않는다', async () => {
@@ -1218,7 +1356,9 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     await waitFor(() => expect(output).toBeEnabled());
 
     /* W/O 실적은 「실적 / 지시」로 보이고 잔량은 0 이하라 두지 않는다(C-21). */
-    expect(screen.getByText(t.flow.work.progressText('16', '12', 'EA'))).toBeInTheDocument();
+    expect(
+      screen.getByText(t.flow.work.workOrderProgressText('16', '12', 'EA')),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/잔량 /u)).not.toBeInTheDocument();
     expect(await screen.findByText(t.overrun.noticeNoRemaining)).toBeInTheDocument();
     expect(screen.queryByText(/-4/u)).not.toBeInTheDocument();
@@ -1749,14 +1889,24 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 
     await screen.findByText(NO_LOT_TEXT);
 
-    /* 받을 그릇이 없으면 칸과 숫자판을 두지 않는다. 늘 잠긴 칸을 두지 않는다(C-4). */
+    /* 받을 그릇이 없으면 양품 칸을 두지 않는다. 늘 잠긴 칸을 두지 않는다(C-4). */
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     expect(screen.queryByText(t.flow.quantity.invalid)).not.toBeInTheDocument();
-    for (const key of ['1', '0']) {
-      expect(screen.queryByRole('button', { name: key })).not.toBeInTheDocument();
-    }
     expect(screen.getByText(t.flow.work.noLot)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    /*
+     * 불량만 등록하는 화면이다 — 「실적 입력」 제목 없이 불량 줄 1개가 미리 서고, 숫자판은 그 줄 수량을 받는다
+     * (사용자 지시 2026-11-16, ② 불량 등록 단계와 같게).
+     */
+    expect(
+      screen.queryByRole('heading', { name: t.flow.work.steps.input }),
+    ).not.toBeInTheDocument();
+    const defects = screen.getByRole('region', { name: t.flow.defects.title });
+    expect(await within(defects).findAllByRole('listitem')).toHaveLength(1);
+    expect(
+      screen.queryByRole('group', { name: t.flow.defects.keypadGood }),
+    ).not.toBeInTheDocument();
+    /* 생산할 LOT 이 없으면 하단 주 버튼은 [작업지시 마감] 하나다 — [LOT 라벨 출력]은 두지 않는다(개선 명세 ④-2). */
+    expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
   });
 
   it('LOT 이 처음부터 없는 작업지시를 열기만 하면 세션을 닫지 않는다', async () => {
@@ -1775,288 +1925,137 @@ describe('ProductionFlowScreen · 자동 종료는 한 번만 나간다', () => 
 });
 
 /*
- * 생산 실적 ↔ PQC 분할(omf-all-around#107). 남은 PQC 가 있으면 오른쪽에 PQC 를 띄운다. 업무 순서는
- * «실적 입력 → PQC» 다(사용자 결정 2026-10-19) — 실적을 막지 않고, 실적이 없으면 PQC 쪽이 잠긴다.
+ * PQC 는 이 화면에 띄우지 않는다(P-02-04 개선 명세 §1 · 앞선 분할(omf-all-around#107)을 거둔다). 의뢰가 있든
+ * 없든 실적이 전체 폭을 쓰고, 정보 영역에 PQC 줄·[검사]도 없다. 검사는 「PQC 제품 검사」(P-02-13)에서 한다.
  */
-describe('ProductionFlowScreen — PQC 분할', () => {
-  const pqc = messages.pqcInspection;
-  const PQC_REQUEST = {
-    inspectionRequestId: 7001,
-    inspectionRequestNo: 'IR-PQC-7001',
-    inspectionTypeCode: 'PQC',
-    /* 기준이 없는 의뢰 — 항목 없이 판정만으로 확정한다(P-02-13 §5-2). */
-    inspectionPlanVersionId: null,
-    targetTypeCode: 'WORK_ORDER',
-    targetId: WORK_ORDER_ID,
-    itemId: 101,
-    lotId: null,
-    workOrderId: WORK_ORDER_ID,
-    targetQty: 5,
-    uomId: 1,
-    statusCode: 'REQUESTED',
-    requestedAt: '2026-10-16T09:00:00+09:00',
-    versionNo: 1,
-  };
-  const JUDGMENTS = [
-    { codeValueId: 1, code: 'ACCEPTED', codeName: '합격', displayOrder: 1, isActive: true },
-    { codeValueId: 2, code: 'REJECTED', codeName: '불합격', displayOrder: 2, isActive: true },
-  ];
-
-  /** 그 W/O 의 진척 — 실적이 있으면 양품 누계가 0 보다 크다. */
-  const producedWorkOrder = (goodQty: number): StubRoute => ({
-    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
-    respond: () =>
-      jsonResponse({
-        workOrderId: WORK_ORDER_ID,
-        workOrderNo: 'WO-SYN-001',
-        productionPlanId: 1,
-        routingOperationId: 1,
-        itemId: 101,
-        itemCode: 'ITEM-SYN-01',
-        orderQty: 12,
-        uomId: 1,
-        workOrderTypeCode: 'NORMAL',
-        statusCode: 'IN_PROGRESS',
-        priorityNo: 1,
-        progress: { goodQty, varianceQty: 12 - goodQty },
-      }),
-  });
-
-  const pqcRoutes = (
-    state: { confirmed: boolean },
-    writes: Request[],
-    rounds: object[] = [],
-  ): StubRoute[] => [
-    {
-      match: (request) =>
-        request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
-      respond: () =>
-        jsonResponse({ items: rounds, page: { page: 1, size: 100, total: rounds.length } }),
-    },
-    {
-      match: (request) => pathOf(request) === '/quality/inspection-requests',
-      respond: () =>
-        jsonResponse({
-          items: [{ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }],
-          page: { page: 1, size: 20, total: 1 },
-        }),
-    },
-    {
-      match: (request) => pathOf(request) === '/quality/inspection-requests/7001',
-      respond: () =>
-        jsonResponse({ ...PQC_REQUEST, statusCode: state.confirmed ? 'COMPLETED' : 'REQUESTED' }),
-    },
-    {
-      match: (request) => pathOf(request) === '/mdm/code-values',
-      respond: () => jsonResponse({ items: JUDGMENTS, page: { page: 1, size: 200, total: 2 } }),
-    },
-    {
-      match: (request) =>
-        request.method === 'POST' && pathOf(request) === '/quality/inspection-results',
-      respond: (request) => {
-        writes.push(request.clone());
-        state.confirmed = true;
-        return jsonResponse({ inspectionResultId: 9001 }, { status: 201 });
+/*
+ * 프린터는 머리줄 칩에서 고른다(개선 명세 ⑤). 고른 프린터는 이 화면 열쇠로 단말에 기억하고, 셸이 고른 프린터를
+ * 받을 때만 셸 인쇄에 이름을 싣는다 — 받지 못하는 옛 설치본에는 싣지 않는다(자재 LOT 라벨과 같은 규칙).
+ */
+describe('ProductionFlowScreen — 프린터 선택', () => {
+  const LOT_PRINTER_KEY = 'omf-mes.production-result.lot-printer';
+  const installShell = (selectable: boolean) => {
+    const save = vi.fn(async (..._args: unknown[]) => '/tmp/lot.prn');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: {
+        rendition: { save },
+        printers: {
+          /* 셸이 있으면 프린터 목록은 셸이 말한다(`terminalPrinters`). */
+          list: async () => ({
+            printers: [
+              { name: 'printer-syn', displayName: '합성 라벨 프린터' },
+              { name: 'printer-syn-2', displayName: '합성 라벨 프린터 2' },
+            ],
+            target: 'printer-syn',
+          }),
+          capabilities: async () => (selectable ? { raw: true, selectable } : { raw: true }),
+        },
       },
-    },
-  ];
+    });
+    return save;
+  };
+  const issueOnce = async (user: ReturnType<typeof userEvent.setup>) => {
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+  };
 
   beforeEach(() => {
     globalThis.localStorage.clear();
   });
 
-  it('실적이 있으면 오른쪽 PQC 에서 확정한다 — 닫는 단추가 없다', async () => {
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  it('머리줄 칩에서 고른 프린터로 발행·인쇄하고 단말에 기억한다', async () => {
     const writes: Request[] = [];
-    const state = { confirmed: false };
     const user = userEvent.setup();
-    renderScreen(writes, [producedWorkOrder(5), ...pqcRoutes(state, writes)]);
+    const save = installShell(true);
+    renderScreen(writes);
 
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    expect(panel.queryByRole('button', { name: /닫기/ })).not.toBeInTheDocument();
-    expect(screen.getByText(t.zone.title)).toBeInTheDocument();
-    expect(screen.getByText(t.zone.note)).toBeInTheDocument();
-    expect(screen.getByText(t.pqc.splitNote)).toBeInTheDocument();
-    expect(screen.queryByText(t.flow.work.pqcNotInspected)).not.toBeInTheDocument();
-
-    await user.type(await panel.findByRole('textbox', { name: pqc.result.fields.accepted }), '5');
-    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.rejected }), '0');
-    await user.type(panel.getByRole('textbox', { name: pqc.result.fields.held }), '0');
-    await user.click(panel.getByRole('combobox', { name: pqc.result.judgment }));
-    await user.click(await screen.findByRole('option', { name: '합격' }));
-    await waitFor(() =>
-      expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeEnabled(),
+    const header = screen.getAllByRole('banner')[0] as HTMLElement;
+    await user.click(
+      await within(header).findByRole('button', {
+        name: `${messages.popMaterialLotLabel.printer.choose}: 합성 라벨 프린터`,
+      }),
     );
-    await user.click(panel.getByRole('button', { name: pqc.result.confirm }));
-
-    await waitFor(() => expect(writes.map(pathOf)).toContain('/quality/inspection-results'));
-    const [sent] = writes.filter((request) => pathOf(request) === '/quality/inspection-results');
-    expect(sent?.headers.get('X-Worker-No')).toBe('100029');
-    expect(((await sent?.json()) as { statusCode: string }).statusCode).toBe('CONFIRMED');
-  });
-
-  it('⛔ 실적이 아직 없으면 PQC 저장·확정이 잠기고 이유를 PQC 맨 위에 한 번 말한다', async () => {
-    const writes: Request[] = [];
-    renderScreen(writes, [producedWorkOrder(0), ...pqcRoutes({ confirmed: false }, writes)]);
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    expect(await panel.findAllByText(pqc.result.noProductionResult)).toHaveLength(1);
-    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
-    /* 입력 칸까지 잠그는 것은 관리웹(#135)만이다 — POP 은 종전대로 칸을 열어 둔다. */
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toBeEnabled();
-  });
-
-  it.each([
-    ['그대로', false],
-    ['StrictMode — 초기화가 두 번 돌아도', true],
-  ])('⭐ 작성중 회차가 있으면 수량·판정을 되살린다(%s)', async (_label, strict) => {
-    renderScreen(
-      [],
-      [
-        producedWorkOrder(5),
-        ...pqcRoutes(
-          { confirmed: false },
-          [],
-          [
-            {
-              inspectionResultId: 9001,
-              inspectionResultNo: 'IRS-9001',
-              inspectionRequestId: 7001,
-              inspectionRound: 1,
-              inspectedQty: 5,
-              acceptedQty: 3,
-              rejectedQty: 0,
-              heldQty: 2,
-              uomId: 1,
-              overallJudgmentCode: 'ACCEPTED',
-              inspectorId: 1,
-              inspectedAt: '2026-10-16T09:00:00+09:00',
-              statusCode: 'DRAFT',
-              versionNo: 1,
-            },
-          ],
-        ),
-      ],
-      { strict },
-    );
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    await waitFor(() =>
-      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('3'),
-    );
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.held })).toHaveValue('2');
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.rejected })).toHaveValue('0');
-    // 고른 값은 단추 옆 표시 칸에 선다(`pop-select__value`).
-    await waitFor(() =>
-      expect(
-        panel.getByRole('combobox', { name: pqc.result.judgment }).closest('.pop-select'),
-      ).toHaveTextContent('합격'),
-    );
-  });
-
-  it('⭐ 확정된 뒤에도 나뉜 채로 확정 결과를 읽기 전용으로 보인다', async () => {
-    const round = {
-      inspectionResultId: 9001,
-      inspectionResultNo: 'IRS-9001',
-      inspectionRequestId: 7001,
-      inspectionRound: 1,
-      inspectedQty: 5,
-      acceptedQty: 5,
-      rejectedQty: 0,
-      heldQty: 0,
-      uomId: 1,
-      overallJudgmentCode: 'ACCEPTED',
-      inspectorId: 1,
-      inspectedAt: '2026-10-16T09:00:00+09:00',
-      statusCode: 'CONFIRMED',
-      versionNo: 2,
-    };
-    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: true }, [], [round])]);
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    await waitFor(() =>
-      expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toHaveValue('5'),
-    );
-    expect(panel.getByRole('textbox', { name: pqc.result.fields.accepted })).toBeDisabled();
-    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
-  });
-
-  it('분할 패널에는 시작·종료 시각 칸이 없다 — 서버가 저장하지 않는 값이다', async () => {
-    renderScreen([], [producedWorkOrder(5), ...pqcRoutes({ confirmed: false }, [])]);
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    await panel.findByRole('textbox', { name: pqc.result.fields.accepted });
-    expect(panel.queryByText(pqc.coverage.note)).not.toBeInTheDocument();
+    /* 창은 [닫기] 하나로 닫고(✕ 없음), 모든 줄에 같은 「이 프린터로 나갑니다」를 붙이지 않는다(사용자 지시 2026-11-16). */
+    const dialog = await screen.findByRole('dialog');
     expect(
-      panel.queryByLabelText(`${pqc.coverage.from} ${pqc.coverage.date}`),
-    ).not.toBeInTheDocument();
-  });
+      within(dialog).getAllByRole('button', { name: messages.popMaterialLotLabel.printer.close }),
+    ).toHaveLength(1);
+    expect(within(dialog).queryByText(/나갑니다/u)).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /합성 라벨 프린터 2/u }));
+    expect(globalThis.localStorage.getItem(LOT_PRINTER_KEY)).toBe('printer-syn-2');
 
-  it('⛔ 저장된 회차를 못 읽으면 PQC 저장·확정을 잠근다(리뷰 M1)', async () => {
-    renderScreen(
-      [],
-      [
-        producedWorkOrder(5),
-        {
-          match: (request) =>
-            request.method === 'GET' && pathOf(request) === '/quality/inspection-results',
-          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
-        },
-        ...pqcRoutes({ confirmed: false }, []),
-      ],
+    await issueOnce(user);
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls.at(-1)?.[4]).toBe('printer-syn-2');
+    const issue = writes.find(
+      (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
     );
-
-    const panel = within(await screen.findByRole('region', { name: t.pqc.splitTitle }));
-    expect(await panel.findByText(messages.httpError.description)).toBeInTheDocument();
-    expect(panel.getByRole('button', { name: pqc.result.save })).toBeDisabled();
-    expect(panel.getByRole('button', { name: pqc.result.confirm })).toBeDisabled();
+    expect(await issue?.clone().json()).toMatchObject({ printerName: 'printer-syn-2' });
   });
 
-  it('PQC 의뢰 조회가 실패하면 조용히 실적만 보이지 않고 오류를 알린다(리뷰 m6)', async () => {
+  it('⛔ 고른 프린터를 받지 못하는 셸에는 이름을 싣지 않고, 기억한 프린터도 쓰지 않는다', async () => {
+    globalThis.localStorage.setItem(LOT_PRINTER_KEY, 'printer-syn-2');
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    const save = installShell(false);
+    renderScreen(writes);
+
+    const header = screen.getAllByRole('banner')[0] as HTMLElement;
+    expect(
+      await within(header).findByText(
+        `${messages.popMaterialLotLabel.printer.label} 합성 라벨 프린터`,
+      ),
+    ).toBeInTheDocument();
+    await issueOnce(user);
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls.at(-1)).toHaveLength(4);
+  });
+});
+
+describe('ProductionFlowScreen — PQC 를 띄우지 않는다', () => {
+  it('PQC 의뢰가 있어도 나누지 않고, PQC 의뢰를 조회하지도 않는다', async () => {
+    const asked: string[] = [];
     renderScreen(
       [],
       [
         {
-          match: (request) => pathOf(request) === '/quality/inspection-requests',
-          respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
-        },
-      ],
-    );
-
-    expect(await screen.findByText(t.pqc.loadFailed)).toBeInTheDocument();
-    expect(screen.queryByText(t.flow.work.pqcNotInspected)).not.toBeInTheDocument();
-  });
-
-  /* omf-all-around#119 — 검사기준이 「PQC 생략 허용」이라 배포가 생략(SKIPPED)으로 만든 PQC 는 검사가 아니다. */
-  it('PQC 가 생략(SKIPPED)이면 나누지 않고 정보 영역에 「PQC 생략」을 보인다', async () => {
-    renderScreen(
-      [],
-      [
-        {
-          match: (request) => pathOf(request) === '/quality/inspection-requests',
+          match: (request) => {
+            if (pathOf(request).startsWith('/quality/inspection-requests')) {
+              asked.push(pathOf(request));
+            }
+            return pathOf(request) === '/quality/inspection-requests';
+          },
           respond: () =>
             jsonResponse({
-              items: [{ ...PQC_REQUEST, statusCode: 'SKIPPED' }],
+              items: [
+                {
+                  inspectionRequestId: 7001,
+                  inspectionRequestNo: 'IR-PQC-7001',
+                  inspectionTypeCode: 'PQC',
+                  workOrderId: WORK_ORDER_ID,
+                  statusCode: 'REQUESTED',
+                },
+              ],
               page: { page: 1, size: 20, total: 1 },
             }),
         },
       ],
     );
 
-    expect(await screen.findByText(t.flow.work.pqcSkipped)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
-    expect(screen.queryByText(t.flow.work.pqcNotInspected)).not.toBeInTheDocument();
-  });
-
-  it('검사 off(그 W/O 에 PQC 의뢰가 없음)면 나누지 않고 실적만 보인다', async () => {
-    renderScreen([], []);
-
     expect(await screen.findByLabelText(t.flow.quantity.actual)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: t.pqc.splitTitle })).not.toBeInTheDocument();
-    /* 나누지 않으면 구획 머리를 두지 않는다. 화면 이름과 같은 말이다. */
-    expect(screen.queryByText(t.zone.title)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.pqc.splitNote)).not.toBeInTheDocument();
-    expect(await screen.findByText(t.flow.work.pqcNotInspected)).toBeInTheDocument();
+    expect(screen.queryByText('PQC')).not.toBeInTheDocument();
+    expect(screen.queryByText(/PQC 제품 검사/u)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^검사/u })).not.toBeInTheDocument();
+    expect(asked).toEqual([]);
   });
 });
 
@@ -2127,7 +2126,26 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(await within(dialog).findByRole('button', { name: '외관' }));
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: minor }));
   };
-  const defectSection = () => screen.getByRole('region', { name: t.flow.defects.title });
+  /* ② 로 넘어오면 빈 줄 1개가 미리 있다(2026-11-16) — 그 줄이 비어 있으면 그 줄의 유형을, 아니면 [불량 추가]를 누른다. */
+  const addDefectButton = () =>
+    within(defectSection()).queryByRole('button', {
+      name: `${t.flow.defects.type}: ${t.flow.defects.choose}`,
+    }) ?? within(defectSection()).getByRole('button', { name: t.flow.defects.add });
+  /* 넣어 둔 불량이 있으면 「불량 등록 (N)」이다. */
+  const toDefectName = new RegExp(`^${t.flow.work.toDefect}`);
+  const openDefectStep = async () => {
+    const go = await screen.findByRole('button', { name: toDefectName });
+    await waitFor(() => expect(go).toBeEnabled());
+    fireEvent.click(go);
+    await screen.findByRole('region', { name: t.flow.defects.title });
+  };
+  /* 불량은 ② 불량 등록 단계에 있다(2026-11-16) — ① 이면 [불량 등록]으로 넘어간 뒤 구획을 준다. */
+  const defectSection = () => {
+    const region = screen.queryByRole('region', { name: t.flow.defects.title });
+    if (region !== null) return region;
+    fireEvent.click(screen.getByRole('button', { name: toDefectName }));
+    return screen.getByRole('region', { name: t.flow.defects.title });
+  };
   const savedBody = async (writes: Request[]) => {
     const request = writes.find((write) => pathOf(write) === '/production/production-results');
     return (await request?.clone().json()) as Record<string, unknown>;
@@ -2137,9 +2155,9 @@ describe('ProductionFlowScreen 불량', () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes, defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
     expect(
@@ -2176,14 +2194,23 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '찍힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
 
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    /* 양품 없이 불량만이면 하단 [LOT 라벨 출력] 자리에 [불량 등록]이 선다(사용자 지시 2026-11-16). */
+    expect(screen.queryByRole('button', { name: t.flow.output.issue })).not.toBeInTheDocument();
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    expect(
+      within(defectSection()).queryByRole('button', { name: t.flow.defects.saveOnly }),
+    ).toBeNull();
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.flow.defects.saved)).toBeInTheDocument();
     const body = await savedBody(writes);
@@ -2193,6 +2220,97 @@ describe('ProductionFlowScreen 불량', () => {
     expect(body).not.toHaveProperty('lotAllocations');
     expect(writes.some((write) => pathOf(write) === '/app/document-issues')).toBe(false);
     expect(within(defectSection()).queryByRole('listitem')).toBeNull();
+  });
+
+  /* [불량 등록]은 확인 창을 거친다 — 취소하면 저장하지 않고 줄도 그대로다(사용자 지시 2026-11-16). */
+  it('불량만 등록은 확인 창에서 [등록]을 눌러야 저장한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(addDefectButton());
+    await pickDefect(user, '찍힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(t.flow.defects.confirmLead)).toBeInTheDocument();
+    expect(within(dialog).getByText('2 EA')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: t.flow.defects.cancel }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(false);
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('불량을 등록하면 「이미 등록된 불량 유형」 안내도 거둔다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, defectRoutes);
+    const good = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(good).toBeEnabled());
+    await user.clear(good);
+    await user.type(good, '0');
+    await user.click(addDefectButton());
+    await pickDefect(user, '찍힘');
+    await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '찍힘');
+    expect(within(defectSection()).getByRole('status')).toHaveTextContent(t.flow.defects.duplicate);
+
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
+    await waitFor(() => expect(saveOnly).toBeEnabled());
+    await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
+
+    /* 리뷰 지적 2026-11-16 — 줄이 비면 안내도 근거가 없다. */
+    await waitFor(() =>
+      expect(screen.queryByText(t.flow.defects.duplicate)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('작업 지시량을 달성했고 LOT 이 없으면 두 안내를 한 줄로 말한다', async () => {
+    const emptyLots: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+    };
+    const achieved: StubRoute = {
+      match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+      respond: () =>
+        jsonResponse({
+          workOrderId: WORK_ORDER_ID,
+          workOrderNo: 'WO-SYN-001',
+          productionPlanId: 1,
+          routingOperationId: 1,
+          itemId: 101,
+          itemCode: 'ITEM-SYN-01',
+          orderQty: 12,
+          uomId: 1,
+          workOrderTypeCode: 'NORMAL',
+          statusCode: 'IN_PROGRESS',
+          priorityNo: 1,
+          progress: {
+            goodQty: 12,
+            varianceQty: 0,
+            achievementRate: 1,
+            completionJudgmentCode: 'NORMAL',
+          },
+        }),
+    };
+    renderScreen([], [emptyLots, achieved]);
+
+    expect(await screen.findByText(t.flow.work.planReachedNoLot)).toBeInTheDocument();
+    expect(screen.queryByText(t.flow.work.noLot)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.flow.work.planReached)).not.toBeInTheDocument();
   });
 
   /* 넣을 LOT이 없어도(마지막 LOT을 마감한 뒤 등) 불량만은 등록할 수 있다. */
@@ -2207,14 +2325,19 @@ describe('ProductionFlowScreen 불량', () => {
     await screen.findByText(NO_LOT_TEXT);
 
     expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '찍힘');
     /* 키보드 없는 단말도 화면 숫자판으로 불량 수량을 넣는다. */
     await user.click(screen.getByRole('button', { name: '2' }));
 
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     expect(await screen.findByText(t.flow.defects.saved)).toBeInTheDocument();
     const body = await savedBody(writes);
@@ -2224,23 +2347,25 @@ describe('ProductionFlowScreen 불량', () => {
     expect(body).not.toHaveProperty('lotAllocations');
   });
 
-  it('같은 불량 유형을 두 줄에 두면 그 줄을 짚고 저장을 막는다', async () => {
+  it('이미 있는 불량 유형을 고르면 줄을 만들지 않고 안내 라벨만 띄운다', async () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
 
-    for (const _ of [1, 2]) {
-      await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
-      await pickDefect(user, '긁힘');
-      await user.click(screen.getByRole('button', { name: '1' }));
-    }
+    await user.click(addDefectButton());
+    await pickDefect(user, '긁힘');
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await pickDefect(user, '긁힘');
 
-    /* 줄의 문제는 목록 아래 한 줄이 줄 이름과 함께 말하고, 그 줄의 수량 칸이 그 문장을 가리킨다. */
-    const issue = t.flow.defects.rowIssue(t.flow.defects.row(2), t.flow.defects.duplicate);
-    expect(within(defectSection()).getByText(issue)).toBeInTheDocument();
-    const second = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(2) });
-    expect(within(second).getByLabelText(t.flow.defects.qty)).toHaveAccessibleDescription(issue);
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
+    /* 사용자 지시 2026-11-16 — 같은 유형의 두 번째 줄은 생기지 않고 안내만 선다. 넣은 줄은 그대로다. */
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
+    /* 그 유형이 있는 줄을 강조한다. */
+    expect(
+      within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) }),
+    ).toHaveClass('is-duplicate');
+    expect(within(defectSection()).getByRole('status')).toHaveTextContent(t.flow.defects.duplicate);
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled();
   });
 
   it('연결이 끊겨도 불량만 저장은 큐에 넣는 즉시 끝나고 다음 입력을 받는다', async () => {
@@ -2253,11 +2378,14 @@ describe('ProductionFlowScreen 불량', () => {
 
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
     await user.click(
-      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
     );
 
     expect(await screen.findByText(t.flow.defects.queued)).toBeInTheDocument();
@@ -2275,7 +2403,7 @@ describe('ProductionFlowScreen 불량', () => {
     const good = await screen.findByLabelText(t.flow.quantity.actual);
     await waitFor(() => expect(good).toBeEnabled());
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     expect(
       screen.getByRole('group', { name: t.flow.defects.keypadFor('외관 › 긁힘') }),
@@ -2283,44 +2411,58 @@ describe('ProductionFlowScreen 불량', () => {
     await user.click(screen.getByRole('button', { name: '5' }));
     expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
 
-    await user.click(good);
+    /* [이전]으로 ① 양품에 돌아가면 숫자판은 양품 칸에 친다. 불량 줄은 남는다. */
+    await user.click(screen.getByRole('button', { name: t.flow.work.toGood }));
+    const goodAgain = screen.getByLabelText(t.flow.quantity.actual);
     expect(screen.getByRole('group', { name: t.flow.defects.keypadGood })).toBeInTheDocument();
+    /* 「.」 키 자리는 늘 있고, 정수 단위(EA)에서는 눌리지 않는다(사용자 지시 2026-11-16). */
+    expect(screen.getByRole('button', { name: t.quantity.decimalKey })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: '1' }));
-    expect(good).toHaveValue('121');
-    expect(within(defectSection()).getByLabelText(t.flow.defects.qty)).toHaveValue('5');
+    expect(goodAgain).toHaveValue('121');
+    expect(
+      screen.getByRole('button', { name: t.flow.work.toDefectWithCount(1) }),
+    ).toBeInTheDocument();
   });
 
   /* 손대지 않은 칸은 나무라지 않는다(C-7). 할 일은 하단 바가 말하고, 칸을 떠나면 목록 아래 한 줄로 말한다. */
   it('덜 채운 불량 줄은 칸을 떠난 뒤에만 무엇이 빠졌는지 말한다', async () => {
     const user = userEvent.setup();
     renderScreen([], defectRoutes);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
+    /* ② 로 넘어오면 빈 줄 1개가 미리 있다(사용자 지시 2026-11-16). 출력은 잠긴다. */
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
+    /* 하단 바에 「불량 유형을 골라 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
+    expect(screen.queryByText('불량 유형을 골라 주세요')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
 
+    /* [불량 추가]에서 유형을 고르지 않고 닫으면 줄을 더하지 않는다(명세 ②-6: 고르면 줄이 생긴다). */
     await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
         name: t.flow.defects.cancel,
       }),
     );
-    const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
-    const rowName = t.flow.defects.row(1);
-    expect(screen.getByText(t.flow.next.defectType)).toBeInTheDocument();
-    expect(
-      screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.typeMissing)),
-    ).not.toBeInTheDocument();
+    expect(within(defectSection()).getAllByRole('listitem')).toHaveLength(1);
 
-    await user.click(within(row).getByRole('button', { name: new RegExp(t.flow.defects.type) }));
+    /* 빈 줄은 [이전]으로 ① 에 돌아가면 두고 가지 않는다 — ① 의 [LOT 라벨 출력]을 막지 않는다. */
+    await user.click(screen.getByRole('button', { name: t.flow.work.toGood }));
+    expect(screen.getByRole('button', { name: t.flow.work.toDefect })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled(),
+    );
+
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
-    expect(screen.getByText(t.flow.next.defectQty)).toBeInTheDocument();
-    expect(
-      screen.queryByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
-    ).not.toBeInTheDocument();
+    const row = within(defectSection()).getByRole('listitem', { name: t.flow.defects.row(1) });
+    /* 하단 바에 「불량 수량을 입력해 주세요」를 두지 않는다(사용자 지시 2026-11-16). */
+    expect(screen.queryByText('불량 수량을 입력해 주세요')).not.toBeInTheDocument();
+    expect(screen.queryByText(t.flow.defects.qtyMissing)).not.toBeInTheDocument();
 
     await user.click(within(row).getByLabelText(t.flow.defects.qty));
     await user.tab();
-    expect(
-      screen.getByText(t.flow.defects.rowIssue(rowName, t.flow.defects.qtyMissing)),
-    ).toBeInTheDocument();
+    /* 칸을 떠나면 목록 아래에 「불량 1:」 없이 「수량을 입력해 주세요」만 선다. */
+    expect(screen.getByText(t.flow.defects.qtyMissing)).toBeInTheDocument();
+    expect(screen.queryByText(/불량 1:/u)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeDisabled();
   });
 
@@ -2344,7 +2486,7 @@ describe('ProductionFlowScreen 불량', () => {
       ],
     );
 
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
     expect(await within(defectSection()).findByText(t.flow.defects.noProcess)).toBeInTheDocument();
     expect(
       within(defectSection()).getByRole('button', { name: t.flow.defects.add }),
@@ -2387,9 +2529,9 @@ describe('ProductionFlowScreen 불량', () => {
       },
       ...defectRoutes,
     ]);
-    await screen.findByRole('region', { name: t.flow.defects.title });
+    await openDefectStep();
 
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     release();
 
@@ -2431,11 +2573,14 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
     await user.click(
-      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
     );
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
@@ -2476,11 +2621,14 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
+    await user.click(screen.getByRole('button', { name: t.flow.defects.saveOnly }));
     await user.click(
-      within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
     );
 
     expect(await screen.findByText(t.save.failTitle)).toBeInTheDocument();
@@ -2511,7 +2659,7 @@ describe('ProductionFlowScreen 불량', () => {
     await waitFor(() => expect(good).toBeEnabled());
     await user.clear(good);
     await user.type(good, '0');
-    await user.click(within(defectSection()).getByRole('button', { name: t.flow.defects.add }));
+    await user.click(addDefectButton());
     await pickDefect(user, '긁힘');
     await user.type(within(defectSection()).getByLabelText(t.flow.defects.qty), '2');
   };
@@ -2522,9 +2670,14 @@ describe('ProductionFlowScreen 불량', () => {
     renderScreen(writes, [sessionWithResources, ...defectRoutes]);
 
     await enterDefectOnly(user);
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     await waitFor(() => expect(saveOnly).toBeEnabled());
     await user.click(saveOnly);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: t.flow.defects.confirmSave,
+      }),
+    );
 
     await waitFor(() =>
       expect(writes.some((write) => pathOf(write) === '/production/production-results')).toBe(true),
@@ -2541,9 +2694,7 @@ describe('ProductionFlowScreen 불량', () => {
     await enterDefectOnly(user);
 
     await waitFor(() =>
-      expect(
-        within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('button', { name: t.flow.defects.saveOnly })).toBeEnabled(),
     );
   });
 
@@ -2565,7 +2716,7 @@ describe('ProductionFlowScreen 불량', () => {
 
     await enterDefectOnly(user);
 
-    const saveOnly = within(defectSection()).getByRole('button', { name: t.flow.defects.saveOnly });
+    const saveOnly = screen.getByRole('button', { name: t.flow.defects.saveOnly });
     expect(saveOnly).toBeDisabled();
     await waitFor(() => expect(saveOnly).toHaveAccessibleDescription(t.gate.denied));
   });
@@ -2851,9 +3002,10 @@ describe('ProductionFlowScreen 미달 LOT 마감', () => {
     expect(
       within(dialog).getByText('계획 수량에 미달한 완료는 사유가 필요합니다.'),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(t.flow.underReason.summary('12 EA', '0 EA')),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(t.flow.underReason.lotQty)).toBeInTheDocument();
+    expect(within(dialog).getByText('12 EA')).toBeInTheDocument();
+    expect(within(dialog).getByText(t.flow.underReason.actualQty)).toBeInTheDocument();
+    expect(within(dialog).getByText('0 EA')).toBeInTheDocument();
   });
 
   it('실적이 배분되지 않은 LOT 의 거부는 화면 문구로 다음 할 일을 말하고 스캔 칸을 잠그지 않는다', async () => {
@@ -3052,7 +3204,8 @@ describe('ProductionFlowScreen 현재 LOT', () => {
     await waitFor(() => expect(scan).toBeEnabled());
     await user.type(scan, LOT_NO);
 
-    expect((await screen.findAllByText(NEXT_LOT_NO)).length).toBeGreaterThan(0);
+    /* 현재 LOT 번호 줄은 두지 않는다(2026-11-16) — 다음 LOT 의 실적 입력 칸이 다시 열리는 것으로 본다. */
+    expect(await screen.findByLabelText(t.flow.quantity.actual)).toBeInTheDocument();
     expect(screen.queryByText(NO_LOT_TEXT)).toBeNull();
     expect(currentOnly.every((value) => value === 'true')).toBe(true);
   });
@@ -3109,8 +3262,7 @@ describe('ProductionFlowScreen 현재 LOT', () => {
         },
       ],
     );
-    /* LOT 번호는 왼쪽 정보 영역에 한 번만 선다(C-21). */
-    expect(await screen.findByText(LOT_NO)).toBeInTheDocument();
+    expect(await screen.findByLabelText(t.flow.quantity.actual)).toBeInTheDocument();
 
     items = [lotRow(LOT_ID, LOT_NO), lotRow(NEXT_LOT_ID, NEXT_LOT_NO)];
     await queryClient.invalidateQueries({ queryKey: productionFlowKeys.currentLot(WORK_ORDER_ID) });
@@ -3191,8 +3343,11 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
       within(bar())
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual([t.flow.output.issue]);
-    expect(await screen.findByText(t.flow.next.ready)).toBeInTheDocument();
+    ).toEqual([t.flow.work.toDefect, t.flow.output.issue]);
+    /* 입력이 다 되면 하단 바는 비운다 — 「~출력할 수 있습니다」 같은 문장을 두지 않는다(개선 명세 §1). */
+    const output = within(bar()).getByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    expect(output).not.toHaveAccessibleDescription();
   });
 
   it('작업이 시작되고 실적이 있으면 현재 LOT 구획 아래에 이른 [작업지시 마감]이 선다', async () => {
@@ -3227,11 +3382,14 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
     ).toBeInTheDocument();
   });
 
-  it('마감된 LOT이 0건이면 건수만 보이고 [보기]를 두지 않는다', async () => {
+  it('마감된 LOT이 0건이면 「총 0건」과 빈 목록 안내를 보인다', async () => {
     renderScreen([]);
 
-    expect(await screen.findByText(t.flow.work.completedCount(0))).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.flow.work.view })).not.toBeInTheDocument();
+    const completed = await screen.findByRole('region', { name: t.flow.work.completedLots });
+    expect(
+      await within(completed).findByText(t.flow.currentLot.completedTotal(0)),
+    ).toBeInTheDocument();
+    expect(within(completed).getByText(t.flow.currentLot.completedEmpty)).toBeInTheDocument();
   });
 
   it('남은 LOT이 없으면 하단 바 주 동작이 [작업지시 마감]이고 현재 LOT 구획에는 두지 않는다', async () => {

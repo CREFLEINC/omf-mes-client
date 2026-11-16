@@ -140,6 +140,10 @@ describe('P-02-10 작업 중단 등록', () => {
     renderScreen([], '/pop/work-hold');
 
     expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
+    /* 돌아갈 작업지시가 없으니 [생산 작업으로]도 두지 않는다. */
+    expect(
+      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
+    ).not.toBeInTheDocument();
   });
 
   it('이벤트 이력을 시각·구분·사유로 세운다', async () => {
@@ -304,6 +308,29 @@ describe('P-02-10 작업 중단 등록', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('radio')[0]).toBeEnabled();
     });
+  });
+
+  /* 같은 작업지시로 생산 작업에 돌아가는 길(P-02-04 개선 명세 ⑦). */
+  it('[생산 작업으로]를 누르면 같은 작업지시의 생산 작업으로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(
+      <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+        <WorkHoldRegisterScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([sessionsRoute([workSession()]), eventsRoute([]), reasonsRoute]),
+        route: ROUTE,
+        dataRouter: true,
+      },
+    );
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: messages.productionResult.flow.actions.backToWork,
+      }),
+    );
+    await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/production-result'));
+    expect(router?.state.location.search).toBe(`?workOrderId=${String(WORK_ORDER_ID)}`);
   });
 
   it('사번을 모르면 헤더가 그 사실을 말한다 — 없는 값을 지어내지 않는다', async () => {

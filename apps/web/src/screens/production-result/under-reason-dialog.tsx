@@ -16,8 +16,8 @@ export interface UnderReasonDialogProps {
   isError: boolean;
   /** 앞 마감이 사유 때문에 거부됐을 때 서버가 준 문구 */
   error: string | null;
-  /** 「목표 n · 실적 m」 — 왜 사유를 묻는지 숫자로 보인다 */
-  summary: string | null;
+  /** LOT 수량 · 생산 실적(단위 붙은 글자) — 왜 사유를 묻는지 숫자로 보인다 */
+  summary: { target: string; actual: string } | null;
   onPick: (code: string) => void;
   onCancel: () => void;
 }
@@ -64,6 +64,8 @@ export const UnderReasonDialog = ({
       open={open}
       onClose={onCancel}
       title={t.title}
+      size="lg"
+      className="production-flow-reason-dialog"
       showCloseButton={false}
       /* 터치 단말의 오조작 — 바깥을 눌러 닫히지 않는다. */
       closeOnBackdropClick={false}
@@ -75,7 +77,19 @@ export const UnderReasonDialog = ({
       }
     >
       <div ref={headRef} tabIndex={-1} className="production-flow-reason-body">
-        {summary !== null && <p className="pop-figures-line">{summary}</p>}
+        {/* 「LOT 수량 10 EA | 생산 실적 1 EA」 한 줄과 그 아래 구분선(사용자 지시 2026-11-16 시안). */}
+        {summary !== null && (
+          <dl className="production-flow-reason-summary">
+            <div>
+              <dt>{t.lotQty}</dt>
+              <dd>{summary.target}</dd>
+            </div>
+            <div>
+              <dt>{t.actualQty}</dt>
+              <dd>{summary.actual}</dd>
+            </div>
+          </dl>
+        )}
         {error !== null && (
           <div className="banner-slot">
             <AlertBanner variant="error" title={error} />
