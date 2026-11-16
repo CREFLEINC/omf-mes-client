@@ -193,12 +193,6 @@ export const DetailPane = ({
         <h3 className="disposition-subtitle">
           {t.panes.lots}
           <span className="disposition-count-badge">{t.decisions.count(view.lots.length)}</span>
-          {/* 처분 단위 — 파란 안내 상자를 제목 아래 한 줄로 줄였다(omf-all-around#275). */}
-          {isInbound && (
-            <span className="field-note disposition-subtitle-note">
-              {t.inboundLot.unitNote(view.lots.length)}
-            </span>
-          )}
         </h3>
         <div
           ref={fit.ref}

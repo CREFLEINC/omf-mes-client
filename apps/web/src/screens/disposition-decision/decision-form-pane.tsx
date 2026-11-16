@@ -18,7 +18,6 @@ import { formatQty, type NonconformanceLotRow } from './types';
 
 /** 특채 칸 — 고르면 특채 요청 팝업을 연다(요청 → W-03-09 결재 → 적용). */
 export interface ConcessionOption {
-  hint: string;
   lockReason?: string | undefined;
   onRequest: () => void;
 }
@@ -147,7 +146,7 @@ export const DecisionFormPane = ({
         >
           {dispositionOptions.map((option) => {
             const hintId = `${optionHintId}-${option.value}`;
-            const note = option.lockReason ?? option.hint;
+            const note = option.lockReason;
             const isSharedLock =
               option.lockReason !== undefined && option.lockReason === sharedLockReason;
             return (
@@ -185,22 +184,26 @@ export const DecisionFormPane = ({
                 size="sm"
                 className="disposition-type-concession"
                 aria-label={t.concession.request}
-                aria-describedby={`${optionHintId}-CONCESSION`}
+                aria-describedby={
+                  concession.lockReason === undefined ? undefined : `${optionHintId}-CONCESSION`
+                }
                 disabled={isLocked || concession.lockReason !== undefined}
                 onClick={concession.onRequest}
               >
                 {t.values.dispositionType.CONCESSION}
               </Button>
-              <span
-                id={`${optionHintId}-CONCESSION`}
-                className={
-                  concession.lockReason !== undefined && concession.lockReason === sharedLockReason
-                    ? 'visually-hidden'
-                    : 'disposition-type-hint'
-                }
-              >
-                {concession.lockReason ?? concession.hint}
-              </span>
+              {concession.lockReason !== undefined && (
+                <span
+                  id={`${optionHintId}-CONCESSION`}
+                  className={
+                    concession.lockReason === sharedLockReason
+                      ? 'visually-hidden'
+                      : 'disposition-type-hint'
+                  }
+                >
+                  {concession.lockReason}
+                </span>
+              )}
             </div>
           )}
         </RadioGroup>
@@ -231,15 +234,18 @@ export const DecisionFormPane = ({
           <output
             id={qtyId}
             className="disposition-qty-value"
-            aria-describedby={[isLocked ? lockReasonId : '', qtyNoteId]
+            aria-describedby={[isLocked ? lockReasonId : '', effect === undefined ? '' : qtyNoteId]
               .filter((id) => id !== '')
               .join(' ')}
           >
             {remainingText}
           </output>
-          <span id={qtyNoteId} className="field-note disposition-qty-note">
-            {effect === undefined ? t.form.qtyLocked : t.form.wholeEffect(lots.length, effect)}
-          </span>
+          {/* 상시 안내는 걷고, 유형을 고르면 무엇이 바뀌는지만 한 줄로(omf-all-around#275). */}
+          {effect !== undefined && (
+            <span id={qtyNoteId} className="field-note disposition-qty-note">
+              {t.form.wholeEffect(lots.length, effect)}
+            </span>
+          )}
           {errors.decisionQty !== undefined && (
             <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
           )}

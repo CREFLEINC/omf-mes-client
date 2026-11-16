@@ -8,9 +8,8 @@ export interface CodeOption {
   label: string;
 }
 
-/** 처분 유형 칸 하나 — 한 줄 설명과, 막혔으면 그 이유(단추는 잠그고 이유를 단다 · G-2). */
+/** 처분 유형 칸 하나 — 막혔으면 그 이유(단추는 잠그고 이유를 단다 · G-2). */
 export interface DispositionOption extends CodeOption {
-  hint?: string;
   lockReason?: string;
 }
 

@@ -537,10 +537,10 @@ export const PendingConcessionBox = ({ concession, lotCount }: PendingConcession
     >
       <span>
         {status === 'APPROVED'
-          ? t.approvedBanner(concession.concessionNo, lotCount)
+          ? t.approvedBanner(concession.concessionNo)
           : status === 'REJECTED'
             ? t.rejectedBanner(concession.concessionNo)
-            : t.pendingBanner(concession.concessionNo, lotCount)}
+            : t.pendingBanner(concession.concessionNo)}
       </span>
       {decided ? (
         <Button

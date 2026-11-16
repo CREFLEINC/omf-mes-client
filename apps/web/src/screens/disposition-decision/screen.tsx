@@ -490,11 +490,10 @@ export const DispositionDecisionScreen = ({
     isSortedOff: detailView?.sortedFrom !== null && detailView?.sortedFrom !== undefined,
   };
   const dispositionOptions = dispositionTypeOptions(dispositionTypeCodes).map((option) => {
-    const hint = t.form.typeHint[option.value];
+    /* 유형마다 붙던 한 줄 설명은 걷었다 — 이름으로 알 수 있다(omf-all-around#275). 막힌 까닭만 남긴다. */
     const lockReason = dispositionOptionLock(option.value, optionContext);
     return {
       ...option,
-      ...(hint === undefined ? {} : { hint }),
       ...(lockReason === undefined ? {} : { lockReason }),
     };
   });
@@ -853,7 +852,6 @@ export const DispositionDecisionScreen = ({
                   /* 특채가 걸려 있으면 막힘 이유는 위 특채 상자가 한 번만 말한다 — 유형마다 되풀이하지 않는다(omf-all-around#275). */
                   sharedLockReason={pendingConcession === undefined ? undefined : concessionLock}
                   concession={{
-                    hint: t.form.typeHint.CONCESSION ?? '',
                     lockReason: concessionLock,
                     onRequest: () => {
                       /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */

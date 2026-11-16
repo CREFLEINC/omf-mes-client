@@ -93,8 +93,8 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(screen.getAllByText('SAMPLE-IL-0501').length).toBeGreaterThan(0);
     expect(screen.getByText('SAMPLE-IR-0701')).toBeInTheDocument();
     const lots = screen.getByRole('region', { name: t.panes.lots });
-    /* 처분 단위는 표 제목 옆 한 줄로(#275 — 파란 안내 상자를 줄임). */
-    expect(within(lots).getByText(t.inboundLot.unitNote(3))).toBeInTheDocument();
+    /* 처분 단위 상시 안내는 두지 않는다(#275) — 유형을 고르면 「자재 관리 LOT n개 …」로 알린다. */
+    expect(within(lots).queryByText(/처분 결과는/)).toBeNull();
     expect(
       within(lots).getByText(t.inboundLot.resultChip(2, '불합격', '합성 외관 결함')),
     ).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     });
 
     expect(
-      await screen.findByText(t.concession.pendingBanner('SAMPLE-CN-0061', 3)),
+      await screen.findByText(t.concession.pendingBanner('SAMPLE-CN-0061')),
     ).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '폐기' })).toBeDisabled();
     expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
@@ -246,11 +246,11 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     };
     const { user } = renderInbound({ concessions: [pending], approvalStatusCode: 'APPROVED' });
 
-    const banner = await screen.findByText(t.concession.approvedBanner('SAMPLE-CN-0061', 3));
+    const banner = await screen.findByText(t.concession.approvedBanner('SAMPLE-CN-0061'));
     const box = banner.closest('.disposition-pending-concession') as HTMLElement;
     /* 처분 판정 상자 안 — 「특채 요청 이력」 탭에만 있지 않다. */
     expect(box.closest('.disposition-decision-card')).not.toBeNull();
-    expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061', 3))).toBeNull();
+    expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061'))).toBeNull();
 
     /* 처분 유형 막힘 문구도 같은 상태로(G2 L-d). */
     expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
