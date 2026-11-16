@@ -38,3 +38,6 @@ export const useWarehouseArrival = (warehouseId: number | undefined) => {
     },
   });
 };
+
+export const arrivalLocationNeedsCorrection = (items: readonly ArrivalLocation[], value: string) =>
+  !items.some((item) => item.isActive && String(item.locationId) === value);

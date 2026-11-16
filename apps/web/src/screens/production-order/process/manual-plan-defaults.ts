@@ -17,12 +17,11 @@ export const manualPlanDefaults = (
   revisions: Pick<NewProductionPlanDefaults, 'bomId' | 'routingId'>,
   today: string,
 ): NewProductionPlanDefaults => {
-  const confirmed = Math.max(
-    order.confirmedPlanQty ?? 0,
+  const confirmed =
+    order.confirmedPlanQty ??
     rows
       .filter((row) => row.confirmed)
-      .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0),
-  );
+      .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);
   const draft = rows
     .filter((row) => !row.confirmed)
     .reduce((sum, row) => sum + (Number(row.draft.plannedQty) || 0), 0);

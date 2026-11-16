@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { renderHookWithProviders, jsonResponse } from '../../../test/api-harness';
-import { warehouseArrival, useWarehouseArrival, type ArrivalLocation } from './arrival-location';
+import {
+  arrivalLocationNeedsCorrection,
+  warehouseArrival,
+  useWarehouseArrival,
+  type ArrivalLocation,
+} from './arrival-location';
 const place = (
   id: number,
   role: ArrivalLocation['systemRoleCode'],
@@ -48,4 +53,11 @@ describe('생산품 입고 창고 내부 위치 자동 처리', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toMatchObject({ divided: true, location: { locationId: 2 } });
   });
+});
+
+it('기존 입고 위치가 ERP 창고 밖이거나 비활성이면 보완 선택이 필요하다', () => {
+  const items = [place(1, 'WAREHOUSE_WHOLE'), place(2, 'PUTAWAY_STAGING', false)];
+  expect(arrivalLocationNeedsCorrection(items, '9')).toBe(true);
+  expect(arrivalLocationNeedsCorrection(items, '2')).toBe(true);
+  expect(arrivalLocationNeedsCorrection(items, '1')).toBe(false);
 });

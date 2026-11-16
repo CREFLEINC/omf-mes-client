@@ -1,4 +1,4 @@
-import { useWarehouseArrival } from './arrival-location';
+import { arrivalLocationNeedsCorrection, useWarehouseArrival } from './arrival-location';
 import { lineLocationDefaults } from './line-location-defaults';
 import type { ProductionOrderFact } from '../types';
 import {
@@ -708,7 +708,10 @@ const EditorSession = ({
                 </details>
               ) : null}
             </div>
-            {!erpStorage?.erpStorageLocationCode
+            {!erpStorage?.erpStorageLocationCode ||
+            (erpStorage.erpStorageWarehouse &&
+              arrival.isSuccess &&
+              arrivalLocationNeedsCorrection(arrival.data.items, draft.defaultFgLocationId))
               ? reference('defaultFgLocationId', '입고 위치', fgSource)
               : null}
             {reference('defaultScrapLocationId', t.fields.defaultScrapLocationId, scrapSource)}

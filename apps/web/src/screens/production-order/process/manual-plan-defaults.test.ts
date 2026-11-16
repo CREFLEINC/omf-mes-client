@@ -47,4 +47,20 @@ describe('직접 편성 추천값', () => {
       ),
     ).toMatchObject({ plannedQty: '0', plannedLineId: '3' });
   });
+  it('서버가 제외한 취소 계획을 추천 수량에서 다시 빼지 않는다', () => {
+    const rows = appendProductionPlanRow([], 'cancelled', {
+      plannedQty: '100',
+      planDate: '2026-11-10',
+      ...revisions,
+    }).map((row) => ({ ...row, confirmed: true }));
+    expect(
+      manualPlanDefaults(
+        { orderQty: 100, confirmedPlanQty: 0 },
+        rows,
+        lines,
+        revisions,
+        '2026-11-06',
+      ).plannedQty,
+    ).toBe('100');
+  });
 });
