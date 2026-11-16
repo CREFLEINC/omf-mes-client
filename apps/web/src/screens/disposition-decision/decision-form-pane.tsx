@@ -166,7 +166,7 @@ export const DecisionFormPane = ({
             </span>
           </span>
           {/*
-           * 유형은 글 폭만 한 칸들을 한 줄에 — 고른 칸만 강조하고, 동그라미(라디오 표시)는 눈에서 감춘다(omf-all-around#275).
+           * 유형은 같은 폭 칸으로 한 줄에, 좁으면 줄을 바꾼다 — 고른 칸만 강조한다(omf-all-around#275).
            * 막힌 유형은 잠그고 그 이유를 칸 줄 아래에 단다(G-2 · 감추지 않는다).
            * 특채는 라디오가 아니라 요청 팝업을 여는 단추다(결재가 붙는 별도 길).
            */}
@@ -182,7 +182,6 @@ export const DecisionFormPane = ({
           >
             {dispositionOptions.map((option) => {
               const hintId = `${optionHintId}-${option.value}`;
-              const note = option.lockReason;
               return (
                 <div
                   key={option.value}
@@ -193,7 +192,7 @@ export const DecisionFormPane = ({
                   <Radio
                     value={option.value}
                     disabled={option.lockReason !== undefined}
-                    aria-describedby={note === undefined ? undefined : hintId}
+                    aria-describedby={option.lockReason === undefined ? undefined : hintId}
                   >
                     {option.label}
                   </Radio>

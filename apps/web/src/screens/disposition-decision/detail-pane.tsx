@@ -12,6 +12,9 @@ import type { DispositionLookup } from './lookups';
 import { SeverityBadge } from './severity-badge';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
 
+/** 품목 표시명 「코드 · 이름」의 구분자(lookups.ts). */
+const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
+
 export interface DetailPaneProps {
   view: NonconformanceDetailView;
   items: DispositionLookup;
@@ -139,7 +142,6 @@ export const DetailPane = ({
    */
   /* 품목 표시명 「코드 · 이름」을 PQC 처럼 이름 위 · 코드 아래로 나눠 보인다(글 내용은 그대로). */
   const itemLabel = lookupDisplayLabel(items, view.itemId);
-  const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
   const [itemCode, ...itemNameParts] = itemLabel.split(ITEM_LABEL_SEPARATOR);
   const itemValue: ReactNode =
     itemNameParts.length === 0 ? (
