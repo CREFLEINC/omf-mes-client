@@ -15,6 +15,7 @@ import {
 import { COMPLETED_LOT_PAGE_SIZE, productionFlowKeys } from './flow-queries';
 import { ProductionFlowScreen } from './screen';
 import { STORAGE_KEY } from './outbox';
+import { rememberSentDefects } from './sent-defects';
 
 const t = messages.productionResult;
 const LOT_ID = 90101;
@@ -633,6 +634,60 @@ describe('ProductionFlowScreen', () => {
     await waitFor(() => {
       expect(screen.queryByLabelText(t.flow.quantity.actual)).not.toBeInTheDocument();
     });
+  });
+
+  it('다시 연 화면에도 이 단말에서 라벨과 함께 보낸 불량을 「입력한 실적」에 보인다', async () => {
+    const writes: Request[] = [];
+    const appliedLot: StubRoute = {
+      match: (request) => pathOf(request) === '/trace/lots',
+      respond: (request) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('completed') === 'true') {
+          return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+        }
+
+        return jsonResponse({
+          items: [
+            {
+              lotId: LOT_ID,
+              lotNo: LOT_NO,
+              itemId: 101,
+              lotTypeCode: 'PRODUCTION',
+              plantId: 1,
+              initialQty: 12,
+              uomId: 1,
+              sourceTypeCode: 'WORK_ORDER',
+              sourceId: WORK_ORDER_ID,
+              statusCode: 'NORMAL',
+            },
+          ],
+          page: { page: 1, size: 20, total: 1 },
+        });
+      },
+    };
+    /* 양품 누계는 상세에만 실린다(#1095) — 목록에 얹으면 화면이 읽지 못한다. */
+    const appliedLotDetail: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+      respond: () =>
+        jsonResponse(
+          {
+            lot: { lotId: LOT_ID, lotNo: LOT_NO, progress: { goodQty: 8, varianceQty: -4 } },
+            externalReferences: [],
+          },
+          { headers: { ETag: LOT_ETAG } },
+        ),
+    };
+    /* 사용자 결정 2026-11-16 — 단말은 서버에서 불량 기록을 읽지 못하므로 보낸 줄을 단말에 기억한다. */
+    rememberSentDefects(LOT_ID, [{ label: '외관 › 찍힘', qty: '2' }]);
+    renderScreen(writes, [appliedLot, appliedLotDetail]);
+
+    expect(
+      await screen.findByText(t.flow.work.enteredGood('8', 'EA'), { exact: false }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('외관 › 찍힘 2 EA')).toBeInTheDocument();
+    expect(
+      screen.getByText(t.flow.work.enteredDefect('2', 'EA'), { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
