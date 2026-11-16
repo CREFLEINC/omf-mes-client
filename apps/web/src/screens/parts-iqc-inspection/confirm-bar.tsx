@@ -175,13 +175,13 @@ export const ConfirmActions = ({
   return (
     <>
       {confirmed ? (
-        <Button variant="outlined" size="sm" onClick={() => setAsking('cancel')}>
+        <Button variant="outlined" size="md" onClick={() => setAsking('cancel')}>
           {tc.open}
         </Button>
       ) : (
         <>
           <Button
-            size="sm"
+            size="md"
             disabled={lock !== null}
             aria-describedby={lock === null ? undefined : lockId}
             title={lock ?? undefined}

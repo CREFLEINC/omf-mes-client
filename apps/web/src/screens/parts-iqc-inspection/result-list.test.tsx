@@ -164,12 +164,16 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(rows[0]).toHaveTextContent('0002');
     expect(rows[1]).toHaveTextContent('3 · 합성 불량');
 
+    /* LOT 표 — 적용 검사는 그 LOT 을 매칭한 최신 회차, 없으면 「없음」 · 판정(예상)은 「미판정」(사용자 시안 2026-11-16 · #274). */
     const lots = screen.getByRole('table', { name: t.detail.lotsHeading(3) });
     const lot2 = within(lots).getAllByRole('row')[2] as HTMLElement;
-    expect(lot2).toHaveTextContent(t.detail.matchedChip(1));
-    expect(lot2).toHaveTextContent(t.detail.matchedChip(2));
-    expect(within(lots).getAllByRole('row')[3]).toHaveTextContent(t.detail.none);
-    expect(screen.getByText(/TST-PO-1\/10 · 2,500 · P\/O 없음 500/u)).toBeInTheDocument();
+    expect(lot2).toHaveTextContent(t.detail.appliedSeq(2));
+    expect(lot2).not.toHaveTextContent(t.detail.appliedSeq(1));
+    const lot3 = within(lots).getAllByRole('row')[3] as HTMLElement;
+    expect(lot3).toHaveTextContent(t.detail.appliedNone);
+    expect(lot3).toHaveTextContent(t.detail.noJudgment);
+    /* 발주 정보 — P/O 수량에 단위를 붙인다(사용자 시안 2026-11-16 · #274). */
+    expect(screen.getByText(/TST-PO-1\/10 · 2,500 \S+ · P\/O 없음 500/u)).toBeInTheDocument();
   });
 
   it('US3-3 같은 자재 관리 LOT 를 두 결과에 매칭할 수 있다 — 드로어가 「결과 n에도 매칭됨」을 보인다', async () => {
@@ -194,17 +198,21 @@ describe('W-01-01 새 흐름 결과 목록', () => {
   it('US3-5 종합 판정 미리 보기는 불합격 > 보류 > 합격이고, 자재 관리 LOT 상태는 검사 대기 그대로다', async () => {
     mount(inspection());
 
-    expect(await screen.findByText(t.detail.banner.preview('불합격', 2))).toBeInTheDocument();
-    expect(screen.getByText(t.detail.preview('불합격'))).toBeInTheDocument();
+    /* 확정 전 — 예상 종합 판정 안내 줄은 없고, 요약 종합 판정은 「-」(사용자 지시 2026-11-16 · #274). */
+    const judgmentFact = (await screen.findByText(t.detail.facts.judgment)).closest('div');
+    expect(judgmentFact).toHaveTextContent(`${t.detail.facts.judgment}-`);
+    expect(screen.queryByText(/예상 종합 판정/u)).toBeNull();
     const lots = screen.getByRole('table', { name: t.detail.lotsHeading(3) });
     expect(within(lots).getAllByText(t.detail.lotStatus.INSPECTION_PENDING)).toHaveLength(3);
   });
 
-  it('결과가 없으면 「아직 결과가 없습니다」 안내와 「기록된 결과가 없습니다.」', async () => {
+  it('결과가 없으면 안내 띠 없이 「등록된 검사 결과가 없습니다.」만(omf-all-around#274)', async () => {
     mount(inspection({ results: [], previewJudgmentCode: null }));
 
-    expect(await screen.findByText(t.detail.banner.empty)).toBeInTheDocument();
-    expect(screen.getByText(t.results.empty)).toBeInTheDocument();
+    expect(await screen.findByText(t.results.empty)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    /* 입하 마감 구성 고정 안내도 상시 보이지 않는다. */
+    expect(screen.queryByText(/입하 마감으로 구성이 고정/)).toBeNull();
   });
 
   it('US3-6 확정 전 삭제 — 확인 창 뒤 DELETE(판 번호와 함께), 알림', async () => {
@@ -234,12 +242,13 @@ describe('W-01-01 새 흐름 결과 목록', () => {
       },
     ]);
 
-    await user.click(await screen.findByRole('button', { name: t.history.open }));
-    const history = await screen.findByRole('dialog', {
+    /* 「작업 이력」 탭(#274) — 종전에는 오른쪽 창이었다. */
+    await user.click(await screen.findByRole('tab', { name: t.history.open }));
+    const history = await screen.findByRole('table', {
       name: t.history.title('IL-20991111-0003'),
     });
 
-    expect(await within(history).findByText('결과 2 수정 — 합격 → 불합격')).toBeInTheDocument();
+    expect(await within(history).findByText('2회차 수정 · 합격 → 불합격')).toBeInTheDocument();
     expect(within(history).getByText(t.history.events.RESULT_UPDATED ?? '')).toBeInTheDocument();
     expect(within(history).getByText('2099-11-11 09:00')).toBeInTheDocument();
   });
@@ -282,7 +291,11 @@ describe('W-01-01 새 흐름 결과 목록', () => {
     expect(screen.getByRole('button', { name: t.split.open })).toHaveAccessibleDescription(
       t.split.lockedConfirmed,
     );
-    expect(screen.getByText(t.detail.lockedConfirmed)).toBeInTheDocument();
+    /* 잠긴 까닭은 상시 띠가 아니라 단추에 마우스를 올렸을 때(#274). */
+    expect(screen.getByRole('button', { name: t.split.open }).parentElement).toHaveAttribute(
+      'title',
+      t.split.lockedConfirmed,
+    );
   });
 
   it('자재 관리 LOT 가 하나면 분리 단추가 잠긴다', async () => {
@@ -332,21 +345,20 @@ describe('W-01-01 새 흐름 결과 목록', () => {
       }),
     );
 
-    const panel = await screen.findByRole('region', { name: t.results.lotJudgments.heading });
-    const rows = within(panel).getAllByRole('listitem');
-    /* LOT 표 순서(0001 · 0002)를 따른다. */
-    expect(rows[0]).toHaveTextContent('합격');
-    expect(rows[0]).toHaveTextContent(t.results.lotJudgments.byResult(2));
-    expect(rows[0]).toHaveTextContent(
+    /* LOT 표의 판정(예상) · 적용 검사 칸 — LOT 표 순서(0001 · 0002 · 0003). */
+    const lots = await screen.findByRole('table', { name: t.detail.lotsHeading(3) });
+    const rows = within(lots).getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent(`합격${t.detail.appliedSeq(2)}`);
+    expect(rows[1]).toHaveTextContent(`불합격${t.detail.appliedSeq(1)}`);
+    /* 매칭한 결과가 없는 LOT 0003 은 「미판정」 · 「없음」(#274). */
+    expect(rows[2]).toHaveTextContent(`${t.detail.noJudgment}${t.detail.appliedNone}`);
+    /* 판정이 바뀐 LOT 만 표 아래 한 줄 — 0001 하나. */
+    const notes = screen.getByRole('list', { name: t.results.lotJudgments.heading });
+    const items = within(notes).getAllByRole('listitem');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent(
       t.results.lotJudgments.superseded('0001', 1, '불합격', 2, '합격', '합성 재측정'),
     );
-    expect(rows[1]).toHaveTextContent('불합격');
-    expect(rows[1]).toHaveTextContent(t.results.lotJudgments.byResult(1));
-    expect(rows[1]).not.toHaveTextContent('→');
-    /* 매칭한 결과가 없는 LOT 0003 은 판정에서 빠진다. */
-    expect(within(panel).getByText(t.results.lotJudgments.unmatched(1))).toBeInTheDocument();
-    /* 종합 판정 미리 보기는 LOT 별 판정 중 가장 나쁜 것 — 서버 값. */
-    expect(screen.getByText(t.detail.banner.preview('불합격', 2))).toBeInTheDocument();
 
     const table = screen.getByRole('table', { name: t.results.heading(2) });
     expect(within(table).getAllByRole('row')[2]).toHaveTextContent(t.results.reason('합성 재측정'));
@@ -382,10 +394,13 @@ describe('W-01-01 새 흐름 결과 목록', () => {
       }),
     );
 
-    const panel = await screen.findByRole('region', { name: t.results.lotJudgments.heading });
-    expect(within(panel).getAllByRole('listitem')).toHaveLength(1);
-    expect(panel).not.toHaveTextContent('null');
-    expect(within(panel).getByText(t.results.lotJudgments.unmatched(2))).toBeInTheDocument();
+    const lots = await screen.findByRole('table', { name: t.detail.lotsHeading(3) });
+    const rows = within(lots).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(3);
+    expect(lots).not.toHaveTextContent('null');
+    expect(rows[1]).toHaveTextContent(`${t.detail.noJudgment}${t.detail.appliedNone}`);
+    expect(rows[2]).toHaveTextContent(`${t.detail.noJudgment}${t.detail.appliedNone}`);
+    expect(screen.queryByRole('list', { name: t.results.lotJudgments.heading })).toBeNull();
   });
 
   it('US3-8 서버가 lotJudgments 를 아직 주지 않으면 결과 목록으로 같은 규칙을 계산해 보인다', async () => {
@@ -402,7 +417,7 @@ describe('W-01-01 새 흐름 결과 목록', () => {
       }),
     );
 
-    const panel = await screen.findByRole('region', { name: t.results.lotJudgments.heading });
+    const panel = await screen.findByRole('list', { name: t.results.lotJudgments.heading });
     expect(
       within(panel).getByText(
         t.results.lotJudgments.superseded('0001', 1, '불합격', 2, '합격', '합성 재측정'),

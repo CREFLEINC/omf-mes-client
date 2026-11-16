@@ -76,15 +76,15 @@ export const WebSummary = ({ detail, planVersion, uomCode }: WebSummaryProps) =>
     {
       key: 'item',
       label: t.item,
-      value:
-        itemName === undefined ? (
-          (itemCode ?? empty)
-        ) : (
-          <span className="pqc-web-fact-item">
-            <span className="pqc-web-fact-item-name">{itemName}</span>
-            {itemCode !== undefined && <span className="pqc-web-fact-item-code">{itemCode}</span>}
-          </span>
-        ),
+      /* IQC 상세와 같게 — 코드 옆에 이름을 한 줄로(사용자 지시 2026-11-16 · #274). */
+      value: (
+        <>
+          {itemCode ?? itemName ?? empty}
+          {itemCode !== undefined && itemName !== undefined && (
+            <span className="parts-iqc-fact-sub">{itemName}</span>
+          )}
+        </>
+      ),
       emphasized: true,
     },
     { key: 'qty', label: t.targetQty, value: targetQty, emphasized: true },
@@ -121,11 +121,12 @@ export const WebSummary = ({ detail, planVersion, uomCode }: WebSummaryProps) =>
   return (
     <section className="pqc-web-section pqc-web-summary" aria-label={t.heading}>
       {/* 제목 글은 두지 않는다 — 쪽 머리 경로가 「검사 기본 정보」를 이미 말한다(#133 과 같다). */}
-      <dl className="pqc-web-facts">
+      {/* 상자 모양은 IQC 상세 요약과 같은 칸(사용자 지시 2026-11-16 · #274) — 칸은 글 길이만큼, 넘치면 다음 줄로. */}
+      <dl className="parts-iqc-facts iqc-inbound-facts">
         {facts.map((fact) => (
-          <div className="pqc-web-fact" key={fact.key}>
+          <div className="parts-iqc-fact" key={fact.key}>
             <dt className="field-label">{fact.label}</dt>
-            <dd className={fact.emphasized === true ? 'pqc-web-fact-key' : undefined}>
+            <dd className={fact.emphasized === true ? 'parts-iqc-fact-key' : undefined}>
               {fact.value}
             </dd>
           </div>

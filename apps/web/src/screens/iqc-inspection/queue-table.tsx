@@ -1,15 +1,14 @@
-import { Chip, Icon, Table, type Column } from '@crefle/web-ui';
+import { Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { formatQty } from '../../patterns/package-qty';
-import { toPlantDateTimeParts } from '../../patterns/plant-time';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 /* 대기·진행 밖의 상태(완료·생략·취소)도 실린다(#185) — 다섯 값을 다 아는 OQC 표식을 쓴다(PQC 와 같다). */
 import { toStatusBadge } from '../oqc-inspection/status-badge';
-import { QueueSkipCell, QueueStatusCell } from './queue-skip-cell';
+import { InboundQueueSkipCell, QueueSkipCell, QueueStatusCell } from './queue-skip-cell';
 import { formatDateTime, type InspectionQueueInbound, type InspectionQueueRow } from './types';
 import { useUomLookup, withUom } from './uom-lookup';
 import type { ItemNameLookup, NameLookup } from './reference-lookup';
@@ -61,10 +60,12 @@ const inboundStatusOf = (
   return null;
 };
 
-const INBOUND_STATUS_TONE: Record<InboundStatus, 'idle' | 'warning' | 'info'> = {
+const INBOUND_STATUS_TONE: Record<InboundStatus, 'idle' | 'info' | 'success'> = {
   REQUESTED: 'idle',
-  IN_PROGRESS: 'warning',
-  CONFIRMED: 'info',
+  /* 「진행」은 파란(정보) 라벨(사용자 지시 2026-11-16 · #274) — 상세와 같게. */
+  IN_PROGRESS: 'info',
+  /* 「완료」(판정 확정)는 초록 라벨(사용자 지시 2026-11-16 · #274). */
+  CONFIRMED: 'success',
 };
 
 /** 끝 마디(일련번호)를 굵게 — 구분자가 `|` 면 마지막 마디, `-` 면 마지막 마디. */
@@ -84,17 +85,16 @@ const LotNoText = ({ value }: { value: string }) => {
   );
 };
 
-/** 첫 칸 아래 줄 — 분리로 생겼으면 「분리 ← 끝 4자리」, 아니면 입하 시각(공장 시각 `MM-DD HH:mm`). */
-const inboundSubline = (inbound: InspectionQueueInbound): string | null => {
-  if (inbound.splitFromInboundLotNo !== null) {
-    return ti.splitFrom(inbound.splitFromInboundLotNo.slice(-4));
-  }
-  if (inbound.receivedAt === null) return null;
-  const parts = toPlantDateTimeParts(inbound.receivedAt);
-  return parts === null ? inbound.receivedAt : `${parts.date.slice(5)} ${parts.time}`;
-};
+/**
+ * 첫 칸 아래 줄 — 분리로 생겼으면 「분리 ← 끝 4자리」. 입하 시각은 싣지 않는다 — 옆 「의뢰 일시」 칸과
+ * 겹쳐 보인다(사용자 지시 2026-11-16 · omf-all-around#274).
+ */
+const inboundSubline = (inbound: InspectionQueueInbound): string | null =>
+  inbound.splitFromInboundLotNo === null
+    ? null
+    : ti.splitFrom(inbound.splitFromInboundLotNo.slice(-4));
 
-/** 자재 관리 LOT 칸 — 「3개」 아래 「3,000 EA」. 단위 조회는 입하 LOT 줄이 있을 때만 부른다. */
+/** 자재 관리 LOT 칸 — 「3개 · 3,000 EA」 한 줄(사용자 지시 2026-11-16 · #274). 단위 조회는 입하 LOT 줄이 있을 때만 부른다. */
 const InboundLotCountCell = ({
   row,
   lotCount,
@@ -104,9 +104,10 @@ const InboundLotCountCell = ({
 }) => {
   const uoms = useUomLookup();
   return (
-    <span className="iqc-inbound-queue-two">
-      <span>{lotCount === null ? '—' : ti.lotCount(lotCount)}</span>
+    <span className="iqc-inbound-queue-one">
+      {lotCount === null ? '—' : ti.lotCount(lotCount)}
       <span className="iqc-inbound-queue-sub">
+        {' · ' /* ui-check-ignore: C-13 사용자 지시 표기(LOT 수 · 수량 · #274) */}
         {withUom(formatQty(row.targetQty), uoms.codeOf(row.uomId))}
       </span>
     </span>
@@ -128,40 +129,8 @@ const InboundJudgmentCell = ({
       </Chip>
     );
   }
-  if (!isConfirmed(row, inbound) && inbound.previewJudgmentCode !== null) {
-    const code = inbound.previewJudgmentCode;
-    return (
-      <Chip
-        variant="status"
-        size="sm"
-        status={JUDGMENT_TONE[code] ?? 'idle'}
-        className="iqc-inbound-queue-preview"
-        title={ti.previewTitle}
-      >
-        {ti.preview(judgmentLabel(code))}
-      </Chip>
-    );
-  }
+  /* 확정 전 예상 판정(「합격 · 확정 전」)은 보이지 않는다(사용자 지시 2026-11-16 · #274). */
   return <span className="iqc-inbound-queue-none">—</span>;
-};
-
-/** 표 아래 건수 — 지금 쪽의 줄로 센다(입하 LOT 줄이 하나라도 있을 때만). */
-const countsOf = (rows: readonly InspectionQueueRow[]) => {
-  let requested = 0;
-  let inProgress = 0;
-  let confirmed = 0;
-  for (const row of rows) {
-    const status =
-      row.inbound === null
-        ? row.statusCode === 'COMPLETED'
-          ? 'CONFIRMED'
-          : row.statusCode
-        : inboundStatusOf(row, row.inbound);
-    if (status === 'REQUESTED') requested += 1;
-    else if (status === 'IN_PROGRESS') inProgress += 1;
-    else if (status === 'CONFIRMED') confirmed += 1;
-  }
-  return ti.counts(rows.length, requested, inProgress, confirmed);
 };
 
 const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
@@ -210,7 +179,7 @@ const columnsOf = (
   {
     /* 첫 칸은 자재 LOT — 검사자가 손에 든 LOT 으로 줄을 찾는다(#133 · 담당자 지시). */
     key: 'lotId',
-    align: 'start',
+    align: 'center',
     /* 입하 LOT 줄이 있으면 머리를 「입하 LOT」로 — 이전 데이터 줄만 있으면 지금 그대로(005). */
     header: hasInbound ? ti.columns.inboundLotNo : t.columns.lotId,
     width: '260px',
@@ -262,7 +231,7 @@ const columnsOf = (
   },
   {
     key: 'item',
-    align: 'start',
+    align: 'center',
     header: t.columns.item,
     /* 「이름 코드」 한 줄 — 넘치면 말줄임, 전체 값은 마우스를 올리면 보인다(#185 · 입하 예정 조회와 같은 한 줄 행). 다른 열처럼 폭을 끌어 바꾼다. */
     width: '320px',
@@ -343,6 +312,22 @@ const columnsOf = (
     render: (row) => {
       const inboundStatus = row.inbound === null ? null : inboundStatusOf(row, row.inbound);
       if (inboundStatus !== null) {
+        /* 확정 전 입하 LOT 줄도 생략 결재 단계를 상태로 보인다(#225 · #274). */
+        if (
+          skipWorkerNo !== undefined &&
+          inboundStatus !== 'CONFIRMED' &&
+          row.inbound?.inboundLotId != null
+        ) {
+          return (
+            <QueueStatusCell
+              targetId={row.inbound.inboundLotId}
+              fallback={{
+                label: ti.status[inboundStatus],
+                tone: INBOUND_STATUS_TONE[inboundStatus],
+              }}
+            />
+          );
+        }
         return (
           <Chip variant="status" size="sm" status={INBOUND_STATUS_TONE[inboundStatus]}>
             {ti.status[inboundStatus]}
@@ -362,7 +347,7 @@ const columnsOf = (
         row.lotId !== null &&
         SKIPPABLE.includes(row.statusCode)
       ) {
-        return <QueueStatusCell lotId={row.lotId} fallback={badge} />;
+        return <QueueStatusCell targetId={row.lotId} fallback={badge} />;
       }
 
       return (
@@ -419,15 +404,26 @@ const columnsOf = (
           header: t.columns.skip,
           width: '120px',
           /* 대기·진행 중이고 LOT 이 있는 의뢰에만 둔다 — 끝난 의뢰는 생략할 것이 없다(생략됨은 상태 칸이 말한다). */
-          /* 입하 LOT 줄(005)에는 두지 않는다. */
-          render: (row) =>
-            row.inbound === null && row.lotId !== null && SKIPPABLE.includes(row.statusCode) ? (
+          /* 입하 LOT 줄(005)도 확정 전이면 둔다 — 생략은 입하 LOT 전체에 걸린다(사용자 지시 2026-11-16 · #274). */
+          render: (row) => {
+            if (!SKIPPABLE.includes(row.statusCode)) return null;
+            if (row.inbound !== null) {
+              return row.inbound.inboundLotId !== null && !isConfirmed(row, row.inbound) ? (
+                <InboundQueueSkipCell
+                  inboundLotId={row.inbound.inboundLotId}
+                  workerNo={skipWorkerNo}
+                  alsoInvalidate={skipAlsoInvalidate}
+                />
+              ) : null;
+            }
+            return row.lotId !== null ? (
               <QueueSkipCell
                 lotId={row.lotId}
                 workerNo={skipWorkerNo}
                 alsoInvalidate={skipAlsoInvalidate}
               />
-            ) : null,
+            ) : null;
+          },
         } satisfies Column<InspectionQueueRow>,
       ]),
 ];
@@ -469,11 +465,6 @@ export const QueueTable = ({
 
   return (
     <>
-      {/* 새 흐름 안내(005) — 입하 마감 전 입하 LOT 는 의뢰가 없어 대기열에 없다. */}
-      <p className="iqc-inbound-queue-hint">
-        <Icon name="info" size={16} aria-hidden="true" />
-        <span>{ti.closingHint}</span>
-      </p>
       {/*
        * 줄 아무 곳이나 눌러도 고른다(omf-all-around#133) — DS 표에 줄 클릭이 없어 눌린 줄의 품목 단추로 넘긴다.
        * 키보드·화면 낭독기는 종전처럼 그 단추 하나로 고른다(줄마다 탭 멈춤을 늘리지 않는다).
@@ -501,7 +492,6 @@ export const QueueTable = ({
           empty={empty}
         />
       </div>
-      {hasInbound && <p className="iqc-inbound-queue-counts">{countsOf(rows)}</p>}
     </>
   );
 };

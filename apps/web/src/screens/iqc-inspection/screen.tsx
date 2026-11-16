@@ -173,6 +173,25 @@ const IqcInspectionScreenBody = () => {
     if (next !== null && !split.collapsed) split.toggleCollapsed();
   };
 
+  /*
+   * 스캔으로 연다 — 같은 의뢰를 다시 스캔해도 닫지 않는다. 자재 관리 LOT 으로 찾았으면 그 LOT 을 고른 채로 결과 추가 창을 연다
+   * (사용자 지시 2026-11-16 · omf-all-around#274).
+   */
+  const [scanOpen, setScanOpen] = useState<{
+    requestId: number;
+    lotId: number;
+    key: number;
+  } | null>(null);
+  const openByScan = (inspectionRequestId: number, scannedLotId: number | null): void => {
+    if (inspectionRequestId !== selectedId) select(inspectionRequestId);
+    else if (!split.collapsed) split.toggleCollapsed();
+    setScanOpen(
+      scannedLotId === null
+        ? null
+        : { requestId: inspectionRequestId, lotId: scannedLotId, key: Date.now() },
+    );
+  };
+
   const { splitRef, aboveRef } = useFitToViewport();
   const split = usePaneSplit('omf-mes:iqc-inspection:split', 0.45);
   const layout = useSplitOrientation('omf-mes:inspection-hub:split-orientation');
@@ -241,7 +260,7 @@ const IqcInspectionScreenBody = () => {
           {/* LOT 바코드로 대기 의뢰를 바로 연다(#58) — 목록 조건은 그대로 두고 선택만 한다. */}
           <LotScan
             inspectionTypeCode="IQC"
-            onFound={select}
+            onFound={openByScan}
             focusSignal={scanFocus}
             inboundLotPlantIds={oaPlantIds}
           />
@@ -367,6 +386,11 @@ const IqcInspectionScreenBody = () => {
               oa
               inspectionRequestId={selectedId}
               onDirtyChange={onDirtyChange}
+              scanOpen={
+                scanOpen !== null && scanOpen.requestId === selectedId
+                  ? { lotId: scanOpen.lotId, key: scanOpen.key }
+                  : null
+              }
               onSubmitted={() => {
                 setDirty(false);
                 openRequest(null);

@@ -166,6 +166,10 @@ export interface InspectionResultRound {
   statusCode: string;
   confirmedAt: string | null;
   previousResultId: number | null;
+  /** 작성중 회차를 고칠 때 `If-Match` 로 보내는 판 번호(omf-all-around#284). */
+  versionNo: number;
+  /** 비고 — 작성중 회차의 불합격 사유를 칸에 되살린다(#284). */
+  remarks: string;
 }
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
@@ -179,6 +183,8 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
   statusCode: item.statusCode,
   confirmedAt: item.confirmedAt ?? null,
   previousResultId: item.previousResultId ?? null,
+  versionNo: item.versionNo ?? 0,
+  remarks: item.remarks ?? '',
 });
 
 /**

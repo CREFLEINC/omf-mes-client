@@ -3,7 +3,6 @@ import type { Translated } from './translated';
 
 export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   queue: {
-    closingHint: 'LOT nhập hàng chưa chốt nhập hàng (đang nhập hàng) không hiện trong hàng chờ',
     columns: {
       inboundLotNo: 'LOT nhập hàng',
       lotCount: 'LOT quản lý vật tư',
@@ -12,26 +11,26 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     splitFrom: (tail: string) => `Tách ← ${tail}`,
     lotCount: (count: number) => `${count} LOT`,
     status: {
-      REQUESTED: 'Chờ kiểm tra',
-      IN_PROGRESS: 'Đang kiểm tra',
-      CONFIRMED: 'Đã xác nhận đánh giá',
+      REQUESTED: 'Chờ',
+      IN_PROGRESS: 'Đang làm',
+      CONFIRMED: 'Hoàn tất',
     },
-    preview: (judgment: string) => `${judgment} (xem trước)`,
-    previewTitle: 'Xem trước khi xác nhận',
-    counts: (total: number, requested: number, inProgress: number, confirmed: number) =>
-      `Tổng ${total} mục · chờ ${requested} · đang làm ${inProgress} · đã xác nhận ${confirmed}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
   },
   detail: {
     title: 'Chi tiết',
     lotsHeading: (count: number) => `${count} LOT quản lý vật tư`,
-    lotsNote: 'Trạng thái chỉ thay đổi khi xác nhận đánh giá',
+    lotsTitle: 'LOT quản lý vật tư',
+    lotsCount: (count: number) => `(${count})`,
+    lotsTotal: (qty: string) => `Tổng ${qty}`,
     facts: {
+      inboundLot: 'LOT nhập hàng',
+      status: 'Trạng thái',
+      judgment: 'Đánh giá tổng hợp',
       item: 'Mặt hàng',
       supplier: 'Nhà cung cấp',
       request: 'Yêu cầu kiểm tra',
+      requestedAt: 'Thời điểm yêu cầu',
       inspectedQty: 'Số lượng kiểm tra',
-      inspectedQtyValue: (qty: string, count: number) =>
-        `${qty} (tổng ${count} LOT quản lý vật tư)`,
       received: 'Nhập hàng',
       receivedValue: (when: string, channel: string | null) =>
         channel === null ? when : `${when} (${channel})`,
@@ -39,51 +38,47 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
       splitFrom: 'Tách từ',
     },
     status: {
-      REQUESTED: 'Chờ kiểm tra',
-      IN_PROGRESS: 'Đang kiểm tra',
-      CONFIRMED: 'Đã xác nhận đánh giá',
+      REQUESTED: 'Chờ',
+      IN_PROGRESS: 'Đang làm',
+      CONFIRMED: 'Hoàn tất',
     },
-    preview: (judgment: string) => `${judgment} (xem trước)`,
     noPermission: 'Người có quyền xác nhận (W-01-15) mới xác nhận đánh giá · hủy xác nhận',
     columns: {
-      lotNo: 'Số LOT quản lý vật tư',
-      qty: 'Số lượng · đóng gói',
+      lotNo: 'Số LOT',
+      qty: 'Số lượng',
       status: 'Trạng thái chất lượng',
-      matched: 'Kết quả liên kết',
+      judgment: 'Đánh giá',
+      judgmentPreview: 'Đánh giá (dự kiến)',
+      applied: 'Lần kiểm tra áp dụng',
     },
+    noJudgment: 'Chưa đánh giá',
+    appliedNone: 'Không có',
     noPackage: 'Không đóng gói',
     lotStatus: {
-      INSPECTION_PENDING: 'Chờ kiểm tra',
+      INSPECTION_PENDING: 'Chờ',
       NORMAL: 'Bình thường',
       DEFECTIVE: 'Lỗi',
       SUSPECT_HOLD: 'Nghi ngờ · tạm giữ',
     },
     goodsReceived: 'Đã nhập kho',
-    matchedChip: (seqNo: number) => `Kết quả ${seqNo}`,
-    none: 'Không có',
-    lockedComposition:
-      'Cấu thành đã cố định do chốt nhập hàng. Để thay đổi, xóa hết kết quả IQC rồi hủy chốt trên PDA, hoặc tách LOT quản lý vật tư',
-    lockedConfirmed:
-      'LOT nhập hàng đã xác nhận đánh giá. Không thể gỡ · thêm · tách LOT quản lý vật tư. Nếu cần tách, hãy hủy xác nhận rồi tách, hoặc nếu không đạt thì dùng phân loại ở bước xử lý (W-03-10).',
-    poHeading: 'Liên kết P/O của LOT nhập hàng (tham khảo)',
+    appliedSeq: (seqNo: number) => `Lần ${seqNo}`,
+    poHeading: 'Thông tin đặt hàng',
     poLine: (no: string, lineNo: number, qty: string) => `${no}/${lineNo} · ${qty}`,
     poNone: (qty: string) => `Không có P/O ${qty}`,
     poJoin: (parts: readonly string[]) => parts.join(' · '),
     poEmpty: 'Chưa chốt nhập hàng nên chưa có liên kết P/O',
     banner: {
-      preview: (judgment: string, count: number) =>
-        `Xem trước đánh giá tổng hợp: ${judgment} — theo ${count} kết quả (không đạt > tạm giữ > đạt). Chưa xác nhận nên trạng thái LOT quản lý vật tư vẫn là chờ kiểm tra.`,
-      empty:
-        'Chưa có kết quả. Hãy ghi kết quả bằng [Thêm kết quả]. Cần ít nhất 1 kết quả để xác nhận đánh giá.',
+      acceptedTitle: 'Xác nhận kiểm tra đạt',
       accepted: (count: number) =>
-        `Đã xác nhận · Đạt — tất cả ${count} LOT quản lý vật tư bình thường (gỡ tạm giữ chờ kiểm tra). Có thể nhập kho.`,
-      rejected: (count: number) =>
-        `Đã xác nhận · Không đạt — tất cả ${count} LOT quản lý vật tư lỗi.`,
-      ncLabel: 'Phiếu không phù hợp',
-      rejectedNcTail:
-        '(chờ đánh giá) đã chứa toàn bộ LOT quản lý vật tư và đã gửi thông báo không đạt. Để dùng làm hàng tốt, hãy phân loại · chấp nhận đặc biệt ở quản lý xử lý không phù hợp (W-03-10).',
-      held: 'Đã xác nhận · Tạm giữ — LOT quản lý vật tư vẫn chờ kiểm tra. Để kiểm tra lại, hãy hủy xác nhận rồi thêm kết quả.',
-      by: (who: string, when: string) => `${who} · ${when}`,
+        `Tất cả ${count} LOT quản lý vật tư đã được xử lý là bình thường. Có thể nhập kho.`,
+      rejectedTitle: 'Xác nhận kiểm tra không đạt',
+      rejected: (count: number, ncNo: string | null) =>
+        ncNo === null
+          ? `Tất cả ${count} LOT quản lý vật tư đã được xử lý là lỗi.`
+          : `Tất cả ${count} LOT quản lý vật tư đã được xử lý là lỗi. Hãy tiếp tục xử lý tại phiếu không phù hợp ${ncNo}.`,
+      ncOpen: 'Đến quản lý xử lý không phù hợp',
+      heldTitle: 'Xác nhận kiểm tra tạm giữ',
+      held: 'LOT quản lý vật tư vẫn chờ kiểm tra. Để kiểm tra lại, hãy hủy xác nhận rồi thêm kết quả kiểm tra.',
     },
     pick: 'Hãy chọn yêu cầu kiểm tra.',
     loadFailed: 'Không tải được yêu cầu kiểm tra.',
@@ -92,13 +87,15 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   },
   results: {
     heading: (count: number) => `${count} kết quả kiểm tra`,
+    title: 'Kết quả kiểm tra',
+    count: (count: number) => `(${count})`,
     add: 'Thêm kết quả',
     columns: {
-      seq: 'STT',
+      seq: 'Lần kiểm tra',
       judgment: 'Đánh giá',
       inspectedQty: 'Số lượng kiểm tra',
-      defects: 'Lỗi · loại',
-      matched: 'LOT quản lý vật tư liên kết',
+      defects: 'Lỗi',
+      matched: 'LOT áp dụng',
       inspector: 'Người kiểm tra',
       actions: 'Thao tác',
     },
@@ -108,11 +105,11 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     remove: 'Xóa',
     lockedRow: 'Đã xác nhận',
     lockedHead: 'Đã xác nhận đánh giá — không thể sửa kết quả',
-    empty: 'Chưa có kết quả nào.',
+    empty: 'Chưa có kết quả kiểm tra nào được đăng ký.',
     noJudgment: 'Chưa đánh giá',
-    deleteTitle: (seqNo: number) => `Xóa kết quả ${seqNo}?`,
-    deleteBody:
-      'Giá trị đo · lỗi · liên kết sẽ bị xóa cùng. STT đã xóa không dùng lại, và ai xóa lúc nào được lưu trong lịch sử thay đổi.',
+    deleteTitle: (seqNo: number) => `Xóa kết quả kiểm tra ${seqNo}?`,
+    deleteBody: 'Giá trị đo, chi tiết lỗi và thông tin liên kết LOT sẽ bị xóa cùng.',
+    noDefects: 'Không có',
     deleteCancel: 'Hủy',
     deleteConfirm: 'Xóa',
     deleted: (seqNo: number) => `Đã xóa kết quả ${seqNo}.`,
@@ -121,9 +118,7 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     reload: 'Tải lại',
     lockedWrite: 'Đã xác nhận đánh giá — không thể sửa kết quả',
     lotJudgments: {
-      heading: 'Đánh giá theo LOT quản lý vật tư',
-      help: 'Mỗi LOT quản lý vật tư được đánh giá theo kết quả cuối cùng (số thứ tự lớn nhất) đã liên kết với LOT đó; đánh giá tổng hợp là đánh giá xấu nhất trong số đó (Không đạt > Giữ lại > Đạt).',
-      byResult: (seqNo: number) => `Kết quả ${seqNo}`,
+      heading: 'Thay đổi đánh giá theo LOT',
       superseded: (
         lotTail: string,
         beforeSeq: number,
@@ -133,8 +128,6 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         reason: string | null,
       ) =>
         `LOT ${lotTail}: kết quả ${beforeSeq} ${before} → kết quả ${afterSeq} ${after}${reason === null ? '' : ` (${reason})`}`,
-      unmatched: (count: number) =>
-        `${count} LOT quản lý vật tư chưa liên kết kết quả nào không được tính vào đánh giá`,
     },
     reason: (name: string) => `Lý do kiểm tra lại: ${name}`,
   },
@@ -142,11 +135,8 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     addTitle: (seqNo: number) => `Thêm kết quả ${seqNo}`,
     editTitle: (seqNo: number) => `Sửa kết quả ${seqNo}`,
     matchHeading: 'Liên kết LOT quản lý vật tư',
-    matchHelp:
-      'Hãy chọn ít nhất 1 LOT quản lý vật tư mà kết quả này đã xem khi ghi. Chỉ hiện LOT quản lý vật tư của LOT nhập hàng này.',
-    matchNote:
-      'Nếu đã kiểm tra mẫu trộn lẫn, hãy nhấn [Chọn tất cả]. Có thể liên kết cùng một LOT quản lý vật tư với nhiều kết quả. Mỗi LOT quản lý vật tư được đánh giá theo kết quả cuối cùng (số thứ tự lớn nhất) đã liên kết với LOT đó.',
     selectAll: 'Chọn tất cả',
+    selectNone: 'Bỏ chọn tất cả',
     matchRequired: 'Hãy chọn ít nhất 1 LOT quản lý vật tư',
     reasonHeading: 'Lý do kiểm tra lại',
     reasonPlaceholder: 'Chọn lý do kiểm tra lại',
@@ -162,11 +152,9 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
         'Kết quả này thay đổi đánh giá Không đạt hoặc Giữ lại. Hãy chọn lý do kiểm tra lại',
     },
     alsoMatched: (seqNos: string) => `Cũng liên kết với kết quả ${seqNos}`,
-    inputNote: 'Giữ nguyên biểu mẫu IQC hiện tại · không có lượt',
-    saveNote: 'Khi lưu, danh sách kết quả và xem trước đánh giá tổng hợp sẽ thay đổi',
     judgmentRequired: 'Hãy chọn đánh giá.',
     cancel: 'Hủy',
-    save: 'Lưu',
+    save: 'Gửi',
     discardBody: 'Nội dung đã nhập sẽ mất. Đóng?',
     discardStay: 'Tiếp tục nhập',
     discardLeave: 'Đóng',
@@ -176,10 +164,15 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     loading: 'Đang tải kết quả',
   },
   history: {
-    open: 'Lịch sử thay đổi',
-    title: (inboundLotNo: string) => `Lịch sử thay đổi · ${inboundLotNo}`,
-    help: 'Lưu ai · lúc nào · làm gì khi ghi · sửa · xóa kết quả, xác nhận · hủy đánh giá, tách LOT quản lý vật tư.',
-    columns: { when: 'Thời điểm', who: 'Ai', what: 'Việc gì', detail: 'Nội dung' },
+    open: 'Lịch sử công việc',
+    detailTab: 'Chi tiết',
+    title: (inboundLotNo: string) => `Lịch sử công việc · ${inboundLotNo}`,
+    columns: {
+      when: 'Thời điểm',
+      who: 'Người thực hiện',
+      what: 'Loại công việc',
+      detail: 'Nội dung chi tiết',
+    },
     events: {
       REQUESTED: 'Tạo yêu cầu kiểm tra',
       RESULT_ADDED: 'Ghi kết quả',
@@ -212,10 +205,9 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
   split: {
     open: 'Tách LOT quản lý vật tư',
     title: 'Tách LOT quản lý vật tư',
-    intro:
-      'Chuyển các LOT quản lý vật tư đã chọn sang một LOT nhập hàng mới cùng vật tư và nhà cung cấp. Hai LOT nhập hàng được xác nhận phán định riêng.',
-    introFollow: 'Số và nhãn của LOT quản lý vật tư được giữ nguyên.',
-    lotList: 'LOT quản lý vật tư cần tách',
+    intro: 'Tách các LOT đã chọn sang LOT nhập hàng riêng để phán định.',
+    lotList: 'LOT cần tách',
+    pickedCount: (picked: number, total: number) => `Đã chọn ${String(picked)}/${String(total)}`,
     resultChip: (seqNo: number) => `Kết quả ${String(seqNo)}`,
     allSelected:
       'LOT nhập hàng gốc phải còn lại ít nhất một LOT quản lý vật tư. Nếu tất cả đều lỗi, đừng tách mà hãy xác nhận và xử lý nguyên LOT nhập hàng này.',
@@ -241,8 +233,8 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     poLine: (purchaseOrderNo: string, lineNo: number) => `${purchaseOrderNo}/${String(lineNo)}`,
     toNewLot: '→ LOT nhập hàng mới',
     none: 'Không có',
-    reason: 'Lý do (tùy chọn)',
-    reasonPlaceholder: 'VD: 0003 móp ngoại quan, phán định riêng',
+    reason: 'Lý do tách (tùy chọn)',
+    reasonPlaceholder: 'Nhập lý do tách',
     cancel: 'Hủy',
     submit: 'Tách',
     done: (newInboundLotNo: string, count: number) =>

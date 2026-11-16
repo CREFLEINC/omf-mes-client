@@ -1,4 +1,13 @@
-import { Breadcrumb, Button, Checkbox, Dialog, EmptyState, Icon, PageHeader } from '@crefle/web-ui';
+import {
+  Breadcrumb,
+  Button,
+  Checkbox,
+  Dialog,
+  EmptyState,
+  Icon,
+  PageHeader,
+  Tabs,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useId, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -30,10 +39,16 @@ import { QueueLoadErrorBanner } from '../oqc-inspection/load-error-banner';
 import { useInspectionQueue } from '../oqc-inspection/queries';
 import { useDirectSubmitter } from '../pqc-panel/direct-submitter';
 import { PqcPanel } from '../pqc-panel/panel';
+import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-history/panel';
+import { labelOfCode } from '../oqc-inspection/code-options';
+import { CODE_GROUPS, toCodeOptions } from '../pqc-inspection/code-options';
+import { useCodeValues } from '../pqc-inspection/queries';
 import { EMPTY_PQC_FILTERS, PqcFilterBar, type PqcFilters } from './filter-bar';
 import { PqcQueueTable } from './queue-table';
 
 const t = messages.pqcInspectionRegister;
+/* 검사 이력 제목 · 건수는 OQC 와 같은 말을 쓴다. */
+const tOqc = messages.oqcInspection;
 const todayText = messages.partsIqcInspection;
 const hubText = messages.common.inspectionHub;
 
@@ -90,6 +105,10 @@ export const PqcInspectionRegisterScreen = () => {
     void navigate(href);
   };
   const submitter = useDirectSubmitter();
+  /* 검사 이력 — OQC 와 같은 탭 상자(사용자 지시 2026-11-16 · #274). 저장할 때마다 다시 부른다. */
+  const judgmentOptions = toCodeOptions(useCodeValues(CODE_GROUPS.overallJudgment).data ?? []);
+  const historyRevision = String(submitter.sentCount);
+  const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
 
   const queue = useInspectionQueue({
     inspectionTypeCode: PQC,
@@ -328,6 +347,38 @@ export const PqcInspectionRegisterScreen = () => {
                   onDirtyChange={onDirtyChange}
                 />
               </LeaveGuardProvider>
+              <div className="oqc-inspection-aux">
+                <section className="pane oqc-inspection-fold oqc-inspection-history-card">
+                  <Tabs
+                    key={selectedId}
+                    aria-label={messages.inspectionHistory.heading}
+                    items={[
+                      {
+                        value: 'history',
+                        label: messages.inspectionHistory.heading,
+                        content: (
+                          <div className="oqc-inspection-tab-body">
+                            <div className="oqc-inspection-tab-head">
+                              <h3>{tOqc.detail.historyTitle}</h3>
+                              {historyCount !== undefined && (
+                                <span className="oqc-inspection-fold-chip">
+                                  {tOqc.detail.historyCount(historyCount)}
+                                </span>
+                              )}
+                            </div>
+                            <InspectionHistoryPanel
+                              hideSourceLot
+                              inspectionRequestId={selectedId}
+                              judgmentLabelOf={(code) => labelOfCode(judgmentOptions, code)}
+                              revision={historyRevision}
+                            />
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                </section>
+              </div>
             </>
           )}
         </section>

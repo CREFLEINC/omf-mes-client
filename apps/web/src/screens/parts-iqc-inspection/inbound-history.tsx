@@ -1,9 +1,12 @@
-import { AlertBanner, Dialog, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Table, type Column } from '@crefle/web-ui';
 import type { InspectionRequestEventForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 
 import { formatQty } from '../../patterns/package-qty';
+import { PageNav } from '../../patterns/page-nav';
 import { formatPlantDateTime } from '../../patterns/plant-time';
+import { LIST_PAGE_SIZES } from '../iqc-inspection/filters';
 import { useInboundLotRefs, useInspectionEvents, type InboundLotRef } from './inbound-queries';
 import { useReinspectionReasons } from './reinspection-reason-field';
 
@@ -111,10 +114,20 @@ export const eventDetailOf = (
         ? splitText(row, context)
         : null;
   if (built !== null) return built;
-  if (row.detail != null && row.detail.trim() !== '') return row.detail;
+  if (row.detail != null && row.detail.trim() !== '') return tidyDetail(row.detail);
   if (row.reason != null && row.reason.trim() !== '') return row.reason;
   return '—';
 };
+
+/**
+ * 서버가 만든 한 줄을 표에 맞게 다듬는다(사용자 시안 2026-11-16 · #274) — 「—」 잇기를 「·」로, 단위 앞 수량에 천 단위 쉼표.
+ * 글자만 바꾼다(값은 그대로). 0 으로 시작하는 번호(LOT 끝 마디 등)는 건드리지 않는다.
+ */
+const tidyDetail = (detail: string): string =>
+  detail
+    .replaceAll(' — ', ' · ') // ui-check-ignore: C-13 서버 이력 한 줄의 잇기 표기 정리
+    .replace(/결과 (\d+)(?!건)/g, '$1회차') // 「결과 n」 → 「n회차」(사용자 지시 2026-11-16)
+    .replace(/\b([1-9]\d{3,})(?= [A-Z]{1,4}\b)/g, (qty) => formatQty(Number(qty)));
 
 /** 분리 줄이 가리키는 상대 입하 LOT id. */
 const splitPartnerIdsOf = (rows: readonly InspectionRequestEventForward[]): number[] =>
@@ -132,14 +145,18 @@ const splitPartnerIdsOf = (rows: readonly InspectionRequestEventForward[]): numb
 export const InboundHistory = ({
   inspectionRequestId,
   inboundLotNo,
-  onClose,
 }: {
   inspectionRequestId: number;
   inboundLotNo: string;
-  onClose: () => void;
 }) => {
   const events = useInspectionEvents(inspectionRequestId);
   const rows = events.data ?? [];
+  /* 쪽 넘김 — 목록 화면과 같은 아래 줄(사용자 지시 2026-11-16 · #274). 이력은 한 번에 다 받으므로 화면에서 자른다. */
+  const [paging, setPaging] = useState<{ page: number; size: (typeof LIST_PAGE_SIZES)[number] }>({
+    page: 1,
+    size: 20,
+  });
+  const pageRows = rows.slice((paging.page - 1) * paging.size, paging.page * paging.size);
   const reasons = useReinspectionReasons(rows.some((row) => row.eventCode === 'RESULT_UPDATED'));
   const inboundLots = useInboundLotRefs(splitPartnerIdsOf(rows));
   const context: EventDetailContext = {
@@ -147,44 +164,54 @@ export const InboundHistory = ({
     inboundLotOf: (id) => inboundLots.get(id),
   };
 
+  /* 작업 유형 · 상세 내용 · 작업자 · 일시 순(사용자 지시 2026-11-16 · #274). */
   const columns: Column<InspectionRequestEventForward>[] = [
     {
-      key: 'when',
-      header: t.columns.when,
-      render: (row) => formatPlantDateTime(row.occurredAt) ?? row.occurredAt,
-    },
-    { key: 'who', header: t.columns.who, render: (row) => row.actorName ?? '—' },
-    {
       key: 'what',
+      align: 'start',
       header: t.columns.what,
       render: (row) => t.events[row.eventCode] ?? row.eventCode,
     },
-    { key: 'detail', header: t.columns.detail, render: (row) => eventDetailOf(row, context) },
+    {
+      key: 'detail',
+      align: 'start',
+      header: t.columns.detail,
+      render: (row) => eventDetailOf(row, context),
+    },
+    { key: 'who', align: 'start', header: t.columns.who, render: (row) => row.actorName ?? '—' },
+    {
+      key: 'when',
+      align: 'start',
+      header: t.columns.when,
+      render: (row) => formatPlantDateTime(row.occurredAt) ?? row.occurredAt,
+    },
   ];
 
   return (
-    <Dialog
-      open
-      placement="right"
-      size="md"
-      className="iqc-inbound-history"
-      title={t.title(inboundLotNo)}
-      onClose={onClose}
-    >
-      <p className="field-note">{t.help}</p>
+    /* 「변경 이력」 탭 본문(사용자 지시 2026-11-16 · omf-all-around#274) — 종전에는 오른쪽 창으로 떴다. */
+    <div className="iqc-inbound-history">
       {events.isError ? (
         <AlertBanner variant="error">{t.loadFailed}</AlertBanner>
       ) : events.data === undefined ? null : events.data.length === 0 ? (
         <p className="field-note">{t.empty}</p>
       ) : (
-        <Table
-          density="compact"
-          columns={columns}
-          rows={events.data}
-          getRowId={(row, index) => `${row.occurredAt}-${String(index)}`}
-          aria-label={t.title(inboundLotNo)}
-        />
+        <>
+          <Table
+            density="compact"
+            columns={columns}
+            rows={pageRows}
+            getRowId={(row, index) => `${row.occurredAt}-${String(index)}`}
+            aria-label={t.title(inboundLotNo)}
+          />
+          <PageNav
+            meta={{ page: paging.page, size: paging.size, total: rows.length }}
+            sizes={LIST_PAGE_SIZES}
+            buttonSize="md"
+            onChangePage={(page) => setPaging((now) => ({ ...now, page }))}
+            onChangeSize={(size) => setPaging({ page: 1, size })}
+          />
+        </>
       )}
-    </Dialog>
+    </div>
   );
 };

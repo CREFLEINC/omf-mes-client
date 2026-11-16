@@ -2,10 +2,7 @@ import { Button, Chip, Table, TextField, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { useClientPage } from '../../patterns/client-page';
-import { PageNav } from '../../patterns/page-nav';
-import { PlanViewLauncher } from '../iqc-inspection/plan-view-launcher';
-import { lacksLimits } from '../pqc-inspection/auto-judgment';
+import { lacksLimits, standsAutomatically } from '../pqc-inspection/auto-judgment';
 import { isKnownCode, type CodeOption } from '../pqc-inspection/code-options';
 import {
   DATA_TYPES,
@@ -33,8 +30,6 @@ export interface WebItemTableProps {
   uomCodeOf: (uomId: number | null) => string | null;
   isLoading: boolean;
   isLocked: boolean;
-  /** 적용 검사 기준 버전 — 제목 줄 오른쪽 [검사 항목 조회]가 그 기준 창을 연다(IQC 와 같다 · #197). */
-  inspectionPlanVersionId: number;
   /** 단계 안에 선다(#197) — 단계 머리가 제목을 대신해 제목 줄을 그리지 않고, 표 아래 오른쪽에 `footer`([확정])를 둔다. */
   inStep?: boolean;
   footer?: ReactNode;
@@ -92,17 +87,23 @@ export const WebItemTable = ({
   uomCodeOf,
   isLoading,
   isLocked,
-  inspectionPlanVersionId,
   inStep = false,
   footer = null,
 }: WebItemTableProps) => {
-  /* 목록 표 아래와 같은 쪽 이동 줄 — 10 · 20 · 50건(사용자 지시 2026-10-28 · #197). 적은 값은 쪽을 옮겨도 남는다(`drafts`). */
-  const paging = useClientPage(rows);
+  /* 쪽 이동 줄 없이 항목을 모두 보인다(사용자 지시 2026-11-16 · #274). */
+  /* 시안(사용자 지시 2026-11-16 · #274) — No. · 검사 내용 · 규격 · n1 · 판정. 측정 회차 칸은 없애고, 여러 번 재는 항목은 값 칸에 n2 · n3 …. */
+  const multiSample = rows.some((row) => row.sampleCount > 1);
   const columns: Column<MeasurementRow>[] = [
+    {
+      key: 'no',
+      header: t.columns.no,
+      width: '6%',
+      render: (row) => String(row.displayNo),
+    },
     {
       key: 'item',
       header: t.columns.item,
-      width: '28%',
+      width: '30%',
       render: (row) => (
         <span className="pqc-web-item-cell">
           {row.required && (
@@ -117,25 +118,37 @@ export const WebItemTable = ({
     {
       key: 'spec',
       header: t.columns.spec,
-      width: '18%',
-      render: (row) => describeSpec(row.spec, uomCodeOf(row.spec.uomId)),
-    },
-    {
-      key: 'sample',
-      header: t.columns.sample,
-      width: '10%',
-      render: (row) => t.sampleOf(row.sampleNo),
+      width: '16%',
+      render: (row) => {
+        const text = describeSpec(row.spec, uomCodeOf(row.spec.uomId));
+        const { target, lower, upper } = row.spec;
+        /* 대칭 공차(「12 ± 0.5」)면 아래 줄에 범위(「11.5 ~ 12.5」)도 보인다(시안). */
+        const symmetric =
+          target !== null &&
+          lower !== null &&
+          upper !== null &&
+          tidy(target - lower) === tidy(upper - target);
+        return symmetric ? (
+          <span className="pqc-web-spec-cell">
+            <span>{text}</span>
+            <span>{tMeasure.range(lower, upper)}</span>
+          </span>
+        ) : (
+          text
+        );
+      },
     },
     {
       key: 'value',
-      header: t.columns.value,
-      width: '22%',
+      header: multiSample ? t.columns.value : t.columns.valueSingle,
+      width: '30%',
       render: (row) => {
         const draft = drafts[row.key] ?? EMPTY_MEASUREMENT_DRAFT;
         /* 육안(예/아니오) 항목은 값 칸 없이 판정만으로 성립한다 — POP 과 같다. */
-        if (row.dataTypeCode === DATA_TYPES.boolean) return empty;
+        if (row.dataTypeCode === DATA_TYPES.boolean) return null;
         return (
           <span className="pqc-web-value-cell">
+            {multiSample && <span className="parts-iqc-muted">{t.sampleTag(row.sampleNo)}</span>}
             <TextField
               size="sm"
               aria-label={t.valueLabel(row.itemName, row.sampleNo)}
@@ -158,9 +171,20 @@ export const WebItemTable = ({
     {
       key: 'judgment',
       header: t.columns.judgment,
-      width: '22%',
+      width: '18%',
       render: (row) => {
         const draft = drafts[row.key] ?? EMPTY_MEASUREMENT_DRAFT;
+        /*
+         * 상 · 하한으로 판정이 저절로 서는 항목은 값을 넣기 전까지 「자동 판정」 라벨(시안). 값을 넣어 판정이 채워지면 단추가
+         * 서서 사람이 바꿀 수 있다(자동 판정은 채우되 잠그지 않는다 · 스펙 §5-11).
+         */
+        if (standsAutomatically(row) && draft.judgment === '') {
+          return (
+            <Chip variant="status" size="sm" status="idle">
+              {t.autoJudgment}
+            </Chip>
+          );
+        }
         return (
           <span className="pqc-web-judgment-cell">
             <span
@@ -181,7 +205,7 @@ export const WebItemTable = ({
                     onJudgmentChange(row.key, draft.judgment === option.value ? '' : option.value)
                   }
                 >
-                  {option.label}
+                  {t.judgmentShort[option.value] ?? option.label}
                 </Button>
               ))}
             </span>
@@ -203,31 +227,24 @@ export const WebItemTable = ({
   return (
     <section className={inStep ? 'pqc-web-step-items' : 'pqc-web-section'} aria-label={t.heading}>
       <div className="pqc-web-section-head">
-        {!inStep && <h3>{t.heading}</h3>}
+        <h3>{t.heading}</h3>
         {/* 무엇이 남았는지가 이 구획의 정보다 — 제목 줄 오른쪽 끝에. */}
         {rows.length > 0 && (
           <span className="pqc-web-section-meta">
             {t.progress(judgedCount(rows, drafts), rows.length)}
           </span>
         )}
-        {/* IQC 「검사 항목별 결과」와 같은 단추 — 적용 검사 기준 창을 연다(사용자 지시 2026-10-28 · #197). */}
-        <PlanViewLauncher
-          inspectionPlanVersionId={inspectionPlanVersionId}
-          label={messages.iqcInspection.measurements.viewPlan}
-          size="sm"
-        />
       </div>
       <div className="pqc-web-table-box">
         <Table
           caption={<span className="visually-hidden">{t.heading}</span>}
           density="compact"
           columns={columns}
-          rows={paging.rows}
+          rows={rows}
           getRowId={(row) => row.key}
           empty={<p className="field-note">{isLoading ? tMeasure.loading : tMeasure.noItems}</p>}
         />
       </div>
-      <PageNav {...paging.nav} />
       {footer !== null && <div className="inspection-step-footer">{footer}</div>}
     </section>
   );

@@ -162,8 +162,8 @@ export const partsIqcInspection: Translated<typeof ko.partsIqcInspection> = {
     basis: { DEFAULT: 'mặc định', APPROVAL: 'đã duyệt' } as Record<string, string>,
   },
   requestStatus: {
-    REQUESTED: 'Chờ kiểm tra',
-    IN_PROGRESS: 'Đang kiểm tra',
+    REQUESTED: 'Chờ',
+    IN_PROGRESS: 'Đang làm',
     SKIPPED: 'Bỏ qua kiểm tra',
   },
   ok: 'OK',

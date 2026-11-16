@@ -41,7 +41,7 @@ describe('LotScan', () => {
     });
     await userEvent.type(screen.getByRole('textbox', { name: t.scan.label }), 'MLOT-8801{Enter}');
 
-    await waitFor(() => expect(onFound).toHaveBeenCalledWith(1001));
+    await waitFor(() => expect(onFound).toHaveBeenCalledWith(1001, 8801));
   });
 
   it('대기 의뢰가 없으면 그렇다고 말한다', async () => {
@@ -108,11 +108,12 @@ describe('LotScan — 입하 LOT 번호(005 T138)', () => {
     );
     const box = screen.getByRole('textbox', { name: t.scan.inbound.label });
     expect(box).toHaveAttribute('placeholder', t.scan.inbound.placeholder);
-    expect(screen.getByText(t.scan.inbound.hint)).toBeInTheDocument();
+    /* 칸 아래 안내 글은 없다(omf-all-around#274). */
+    expect(box).not.toHaveAccessibleDescription();
 
     await userEvent.type(box, 'IL-20991231-0003{Enter}');
 
-    await waitFor(() => expect(onFound).toHaveBeenCalledWith(2001));
+    await waitFor(() => expect(onFound).toHaveBeenCalledWith(2001, null));
     expect(seen).not.toContain('/trace/lots');
   });
 

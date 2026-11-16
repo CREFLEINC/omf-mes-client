@@ -199,7 +199,7 @@ const hub = messages.common.inspectionHub;
 const confirmQuantities = async (_user: unknown, _pane: unknown): Promise<void> => undefined;
 /* 단계가 하나라 늘 펼쳐져 있다 — 그 자리가 선 것만 기다린다. */
 const expandQuantities = async (_user: unknown, pane: ReturnType<typeof within>): Promise<void> => {
-  await pane.findByRole('region', { name: web.mergedHeading });
+  await pane.findByRole('region', { name: web.quantityBox });
 };
 
 /* 목록 줄의 의뢰번호 단추로 상세를 연다(#135 — 목록과 상세가 나뉜 화면). */
@@ -397,7 +397,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     renderScreen();
     const pane = await openRequest(user);
 
-    const quantity = await pane.findByRole('region', { name: web.mergedHeading });
+    const quantity = await pane.findByRole('region', { name: web.quantityBox });
     /* 총 검사 수량은 수량 줄 오른쪽 「전체 5 EA 중」으로 선다(#197). */
     await waitFor(() =>
       expect(quantity).toHaveTextContent(new RegExp(hub.qtyTotalOf('5(?: \\S+)?'))),
@@ -410,7 +410,7 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     const pane = await openRequest(user);
     await expandQuantities(user, pane);
 
-    const quantity = await pane.findByRole('region', { name: web.mergedHeading });
+    const quantity = await pane.findByRole('region', { name: web.quantityBox });
     await waitFor(() => expect(quantity).toHaveTextContent(web.quantity.round(1)));
   });
 

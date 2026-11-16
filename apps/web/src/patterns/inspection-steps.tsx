@@ -59,9 +59,7 @@ export const InspectionSteps = ({ steps, showAll = false }: InspectionStepsProps
         const state = step.done ? 'done' : 'current';
         const head = (
           <>
-            <span className="iqc-inspection-step-no" aria-hidden>
-              {index + 1}
-            </span>
+            {/* 단계 번호는 두지 않는다(사용자 지시 2026-11-16 · #274). */}
             <span className="iqc-inspection-stepper-text">
               <span className="iqc-inspection-stepper-title">{step.title}</span>
               {!isOpen && step.summary !== undefined && step.summary !== '' && (

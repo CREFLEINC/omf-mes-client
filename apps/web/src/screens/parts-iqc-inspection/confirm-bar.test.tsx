@@ -399,13 +399,12 @@ describe('W-01-01 상세 머리', () => {
 
     expect(group).not.toBeNull();
     expect(group?.parentElement).toHaveClass('parts-iqc-detail-head');
-    expect(
-      within(group as HTMLElement).getByRole('button', { name: t.history.open }),
-    ).toBeInTheDocument();
+    /* 작업 이력은 단추가 아니라 탭이다(#274). */
+    expect(screen.getByRole('tab', { name: t.history.open })).toBeInTheDocument();
     expect(
       within(group as HTMLElement).getByRole('button', { name: t.split.open }),
     ).toBeInTheDocument();
-    /* 제목은 묶음 밖 — 단추가 내려가도 제목 줄은 그대로다. */
+    /* 입하 LOT 번호는 단추 묶음이 아니라 요약 줄에(#274). */
     expect(within(group as HTMLElement).queryByText('IL-20991111-0003')).toBeNull();
   });
 });
