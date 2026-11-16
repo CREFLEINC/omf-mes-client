@@ -214,7 +214,7 @@ const readyToRecord = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByText('이 품목의 보관 위치입니다');
   await scanLot(LOT_NO);
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: '이 지시 적치' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: '적치 완료' })).not.toBeDisabled();
   });
 };
 
@@ -471,7 +471,7 @@ describe('적치·입고 완료 화면', () => {
 
     expect(await screen.findByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
     expect(screen.queryByText('지시 LOT 과 일치합니다')).toBeNull();
-    expect(screen.getByRole('button', { name: '이 지시 적치' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '적치 완료' })).toBeDisabled();
   });
 
   /* 다른 자재를 얹으면 그 뒤로 재고가 있다는 자리에 없다. */
@@ -489,7 +489,7 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.getByText('RM-LOT-9999')).toBeTruthy();
     /* 맞지 않으면 곧바로 다시 읽어야 하므로 칸을 남긴다. */
     expect(screen.getByLabelText(/LOT 라벨 스캔/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: '이 지시 적치' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '적치 완료' })).toBeDisabled();
   });
 
   /* 다른 곳에 두면 다음 사람이 찾지 못한다. 서버도 막는다. */
@@ -730,7 +730,7 @@ describe('적치·입고 완료 화면', () => {
       },
     ]);
     await readyToRecord(user);
-    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     await waitFor(() => {
       expect(seen).toHaveLength(1);
@@ -746,7 +746,8 @@ describe('적치·입고 완료 화면', () => {
     expect(body.actualLocationId).toBe(5);
     expect(body).not.toHaveProperty('confirmedNoRule');
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(await screen.findByText(`${LOT_NO} → A-01-03 120 EA`)).toBeTruthy();
+    /* 목록 위 배너와 「적치됨」 줄 두 곳에 선다(omf-all-around#272). */
+    expect(await screen.findAllByText(`${LOT_NO} → A-01-03 120 EA`)).toHaveLength(2);
   });
 
   /*
@@ -759,11 +760,12 @@ describe('적치·입고 완료 화면', () => {
     mount([completeRoute(seen)]);
     await readyToRecord(user);
 
-    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     expect(await screen.findByText('적치됨 1건')).toBeTruthy();
     expect(await screen.findByRole('button', { name: /RM-1001/ })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '적치 완료' })).not.toBeDisabled();
+    /* 목록에는 화면만 닫던 단추가 없다(omf-all-around#272). 닫기는 위 ← · 홈 아이콘이다. */
+    expect(screen.queryByRole('button', { name: '적치 완료' })).toBeNull();
   });
 
   /*
@@ -785,18 +787,21 @@ describe('적치·입고 완료 화면', () => {
     ]);
     await readyToRecord(user);
 
-    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     expect(await screen.findByText('받은 적치 지시가 없습니다')).toBeTruthy();
   });
 
-  /* 마치는 단추가 처음부터 열려 있으면 아무것도 안 하고 나간 것이 마친 것으로 보인다. */
-  it('적치한 건이 없으면 마칠 수 없다', async () => {
+  /*
+   * 화면만 닫던 [적치 완료]는 기록 단추로 오해됐다(omf-all-around#272). 목록에는 단추가 없고, 기록은
+   * 지시를 연 뒤의 [적치 완료]가 한다.
+   */
+  it('목록에는 마치는 단추가 없다', async () => {
     mount();
 
     await screen.findByRole('button', { name: /RM-1001/ });
 
-    expect(screen.getByRole('button', { name: '적치 완료' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '적치 완료' })).toBeNull();
   });
   const completeRoute = (seen: Request[]): StubRoute => ({
     match: (req) =>
@@ -817,7 +822,7 @@ describe('적치·입고 완료 화면', () => {
     mount([completeRoute(seen)]);
     await readyToRecord(user);
 
-    const button = screen.getByRole('button', { name: '이 지시 적치' });
+    const button = screen.getByRole('button', { name: '적치 완료' });
 
     button.click();
     button.click();
@@ -835,7 +840,7 @@ describe('적치·입고 완료 화면', () => {
     await readyToRecord(user);
 
     held.failWrite = 'outbox';
-    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     expect(await screen.findByText('적치를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('적치됨 1건')).toBeNull();
@@ -880,7 +885,7 @@ describe('적치 화면 — 창고 보충 지시(004)', () => {
     const user = userEvent.setup();
     mount([replenishmentList, completeWith(20)]);
     await readyToRecord(user);
-    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     expect(
       await screen.findByText('적치 대기에 남은 20 EA 만 옮겼습니다(나머지는 먼저 출고됨)'),
@@ -891,7 +896,7 @@ describe('적치 화면 — 창고 보충 지시(004)', () => {
     const user = userEvent.setup();
     mount([replenishmentList, completeWith(0)]);
     await readyToRecord(user);
-    await user.click(screen.getByRole('button', { name: '이 지시 적치' }));
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
     expect(await screen.findByText('옮길 재고가 없어 지시를 닫았습니다')).toBeTruthy();
   });
@@ -929,5 +934,177 @@ describe('적치 화면 — 원천 요청번호(004, 서버 S7e)', () => {
     const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
     expect(pick.textContent).not.toContain('원천');
     expect(pick.textContent).not.toContain('GR-2026-000123');
+  });
+});
+
+/*
+ * omf-all-around#272 — 목록에서 자재 LOT 라벨을 스캔하면 그 지시가 열리고, 맞는 위치를 스캔하면 단추
+ * 없이 기록된다.
+ */
+describe('목록 LOT 스캔으로 연 적치 지시', () => {
+  const lotRoute = (asked: URL[] = []): StubRoute => ({
+    match: (req) => new URL(req.url).pathname === '/trace/lots',
+    respond: (req) => {
+      const url = new URL(req.url);
+      asked.push(url);
+      return jsonResponse({
+        items:
+          url.searchParams.get('lotNo') === LOT_NO
+            ? [{ lotId: 4, lotNo: LOT_NO, itemId: 31, lotTypeCode: 'MATERIAL' }]
+            : [],
+        page,
+      });
+    },
+  });
+
+  /* LOT 으로 묻는 지시 조회만 따로 답한다. 목록 조회는 기본 경로가 받는다. */
+  const lotTasksRoute = (items: unknown[], asked: URL[] = []): StubRoute => ({
+    match: (req) => {
+      const url = new URL(req.url);
+      return url.pathname === '/logistics/putaway-tasks' && url.searchParams.has('lotId');
+    },
+    respond: (req) => {
+      asked.push(new URL(req.url));
+      return jsonResponse({ items, page });
+    },
+  });
+
+  const completeRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      /^\/logistics\/putaway-tasks\/\d+:complete$/.test(new URL(req.url).pathname) &&
+      req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse(task({ actualLocationId: 5 }));
+    },
+  });
+
+  const scanListLot = async (code: string) => {
+    into((await screen.findByLabelText(/자재 LOT 스캔/)) as HTMLInputElement, code);
+  };
+
+  it('LOT 을 스캔하면 지시가 열리고 맞는 위치를 스캔하면 단추 없이 기록한다', async () => {
+    const seen: Request[] = [];
+    const asked: URL[] = [];
+    mount([lotRoute(), lotTasksRoute([task()], asked), completeRoute(seen)]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+
+    await scanListLot(LOT_NO);
+
+    /* LOT 은 확인된 채로 열린다 - LOT 스캔 칸이 없다. */
+    expect(await screen.findByText('목록에서 스캔한 LOT 입니다')).toBeTruthy();
+    expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+    expect(screen.queryByRole('button', { name: '적치 완료' })).toBeNull();
+    expect(screen.getByText('맞는 위치를 스캔하면 바로 기록합니다')).toBeTruthy();
+    expect(asked[0]?.searchParams.get('lotId')).toBe('4');
+    expect(asked[0]?.searchParams.get('statusCode')).toBe('PENDING');
+
+    scan('A-01-03');
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    const body = (await seen[0]!.json()) as { actualLocationId: number };
+    expect(body.actualLocationId).toBe(5);
+    /* 목록 위 배너가 무엇을 어디에 두었는지 말한다(「적치됨」 줄과 같은 글). */
+    expect(await screen.findAllByText(`${LOT_NO} → A-01-03 120 EA`)).toHaveLength(2);
+    expect(screen.getAllByText('적치를 기록했습니다').length).toBeGreaterThan(1);
+    expect(await screen.findByLabelText(/자재 LOT 스캔/)).toBeTruthy();
+  });
+
+  it('보관 위치가 아닌 곳을 스캔하면 기록하지 않는다', async () => {
+    const seen: Request[] = [];
+    mount([lotRoute(), lotTasksRoute([task()]), completeRoute(seen)]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+    await scanListLot(LOT_NO);
+    await screen.findByText('목록에서 스캔한 LOT 입니다');
+
+    scan('B-02-01');
+
+    expect(await screen.findByText('기록하지 않았습니다')).toBeTruthy();
+    expect(seen).toHaveLength(0);
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 알고 정한 위험(2026-11-14) — 보관 위치를 정하지 않은 품목은 어느 위치든 받는다. 그 사실을 알린다. */
+  it('보관 위치를 정하지 않은 품목은 스캔한 위치에 바로 기록하고 그 사실을 미리 알린다', async () => {
+    const seen: Request[] = [];
+    const anywhere = task({ allowedLocations: [] });
+    mount([lotRoute(), lotTasksRoute([anywhere]), completeRoute(seen)], { tasks: [anywhere] });
+    await screen.findByRole('button', { name: /RM-1001/ });
+    await scanListLot(LOT_NO);
+
+    expect(
+      await screen.findByText('스캔한 위치에 바로 기록합니다. 둘 곳을 확인하고 스캔하세요'),
+    ).toBeTruthy();
+
+    scan('B-02-01');
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+  });
+
+  it('LOT 의 지시가 여럿이면 그 지시만 남기고, 고르면 LOT 이 확인된 채로 연다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const first = task();
+    const second = task({ putawayTaskId: 91, putawayTaskNo: 'PT-2026-0008', taskQty: 30 });
+    const other = task({ putawayTaskId: 92, putawayTaskNo: 'PT-2026-0099', lotId: 8 });
+    mount([lotRoute(), lotTasksRoute([first, second]), completeRoute(seen)], {
+      tasks: [first, second, other],
+    });
+    await screen.findByText('PT-2026-0099');
+
+    await scanListLot(LOT_NO);
+
+    expect(await screen.findByText('이 LOT 의 적치 지시 2건 — 하나를 고르세요')).toBeTruthy();
+    expect(screen.queryByText('PT-2026-0099')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /PT-2026-0008/ }));
+    expect(await screen.findByText('목록에서 스캔한 LOT 입니다')).toBeTruthy();
+
+    scan('A-01-03');
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    expect(new URL(seen[0]!.url).pathname).toBe('/logistics/putaway-tasks/91:complete');
+  });
+
+  it('[전체 지시 보기]로 추린 목록을 푼다', async () => {
+    const user = userEvent.setup();
+    const first = task();
+    const second = task({ putawayTaskId: 91, putawayTaskNo: 'PT-2026-0008' });
+    const other = task({ putawayTaskId: 92, putawayTaskNo: 'PT-2026-0099', lotId: 8 });
+    mount([lotRoute(), lotTasksRoute([first, second])], { tasks: [first, second, other] });
+    await screen.findByText('PT-2026-0099');
+    await scanListLot(LOT_NO);
+    await screen.findByText('이 LOT 의 적치 지시 2건 — 하나를 고르세요');
+
+    await user.click(screen.getByRole('button', { name: '전체 지시 보기' }));
+
+    expect(await screen.findByText('PT-2026-0099')).toBeTruthy();
+  });
+
+  it('LOT 의 대기 지시가 없으면 안내하고 목록은 그대로 둔다', async () => {
+    mount([lotRoute(), lotTasksRoute([])]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+
+    await scanListLot(LOT_NO);
+
+    expect(await screen.findByText('이 LOT 의 적치 지시가 없습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /RM-1001/ })).toBeTruthy();
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  it('LOT 이 아닌 라벨이면 지시를 묻지 않고 안내한다', async () => {
+    const asked: URL[] = [];
+    mount([lotRoute(), lotTasksRoute([task()], asked)]);
+    await screen.findByRole('button', { name: /RM-1001/ });
+
+    await scanListLot('A-01-03');
+
+    expect(await screen.findByText('LOT 라벨이 아니거나 등록되지 않은 LOT 입니다')).toBeTruthy();
+    expect(asked).toHaveLength(0);
   });
 });

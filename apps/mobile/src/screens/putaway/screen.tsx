@@ -22,7 +22,7 @@ import { useWorkerId } from '../../patterns/workers';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
 import { FailureBanner } from '../../patterns/failure-banner';
 import { useLoadFailure } from '../../patterns/load-failure';
-import { putawayKeys, usePutawayTasks, useTaskLotNo } from './queries';
+import { putawayKeys, useFindTasksByLot, usePutawayTasks, useTaskLotNo } from './queries';
 import {
   ANYWHERE,
   MATCHED,
@@ -43,8 +43,6 @@ const t = messages.putaway;
 /* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
 const required = messages.common.required;
 
-const WORK_LIST_PATH = '/screens';
-
 type Outcome = 'queued' | 'sent' | 'rejected';
 
 interface Registered {
@@ -56,6 +54,14 @@ interface Registered {
   /** 창고 보충 지시가 덜 옮겼거나 옮길 것이 없었다(004, 완료 응답). */
   note: string | null;
 }
+
+/**
+ * 목록에서 스캔한 LOT 으로 지시를 찾은 결과(omf-all-around#272). 하나면 곧바로 열어 여기 남지 않는다.
+ * 여럿이면 그 지시만 남겨 고르게 한다.
+ */
+type LotLookup =
+  | { code: string; kind: 'finding' | 'failed' | 'notLot' | 'none' }
+  | { code: string; kind: 'many'; lotNo: string; tasks: PutawayTask[] };
 
 export const PutawayScreen = () => {
   useScreenTitle(t.title);
@@ -73,6 +79,20 @@ export const PutawayScreen = () => {
   /* 같은 코드를 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
   const [scanSeq, setScanSeq] = useState(0);
   const [registered, setRegistered] = useState<Registered[]>([]);
+  /*
+   * 목록에서 LOT 을 스캔해 연 지시인가(omf-all-around#272). LOT 은 확인된 채라 맞는 위치를 스캔하는
+   * 것이 곧 기록이다 - 단추를 누르지 않는다.
+   */
+  const [byLot, setByLot] = useState(false);
+  const [lookup, setLookup] = useState<LotLookup | null>(null);
+  /*
+   * 방금 기록한 건 - 목록 위 배너로 무엇을 어디에 두었는지 말한다. 다음 스캔까지 둔다. 단추 없이
+   * 기록되므로 화면이 바뀐 것만으로는 기록됐는지 알 수 없다.
+   */
+  const [lastRecorded, setLastRecorded] = useState<Registered | null>(null);
+  /* 앞선 LOT 조회가 늦게 돌아와 뒤 스캔의 결과를 덮지 않게 한다. */
+  const lookupSeq = useRef(0);
+  const findTasksByLot = useFindTasksByLot();
   const [saveFailed, setSaveFailed] = useState(false);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
@@ -88,10 +108,13 @@ export const PutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
   const uomOf = (uomId: number | null | undefined) => uomLabelOf(uoms.data, uomId);
-  const itemLabels = useItemLabels((tasks.data ?? []).map((each) => each.itemId));
-  const itemCode = useItemCodes(
-    (tasks.data ?? []).map((each) => each.itemId),
-    (item) => messages.common.reference.named(item.itemName, item.itemCode),
+  const shownTasks = lookup?.kind === 'many' ? lookup.tasks : (tasks.data ?? []);
+  const itemIds = [...(tasks.data ?? []), ...(lookup?.kind === 'many' ? lookup.tasks : [])].map(
+    (each) => each.itemId,
+  );
+  const itemLabels = useItemLabels(itemIds);
+  const itemCode = useItemCodes(itemIds, (item) =>
+    messages.common.reference.named(item.itemName, item.itemCode),
   );
   const lotNo = useTaskLotNo(task?.lotId ?? null);
 
@@ -179,6 +202,77 @@ export const PutawayScreen = () => {
     setScannedLot(null);
   };
 
+  /*
+   * 지시를 연다. 목록에서 LOT 을 스캔해 열면 그 LOT 을 읽은 것으로 두고 LOT 스캔 단계를 건너뛴다
+   * (omf-all-around#272) - 같은 라벨을 두 번 읽게 하지 않는다.
+   */
+  const openTask = (each: PutawayTask, lotNoFromList: string | null) => {
+    setTask(each);
+    clearScans();
+    setSaveFailed(false);
+    setLastRecorded(null);
+    setByLot(lotNoFromList !== null);
+    if (lotNoFromList !== null) {
+      queryClient.setQueryData(putawayKeys.lotNo(each.lotId), lotNoFromList);
+      setScannedLot(lotNoFromList);
+    }
+  };
+
+  const closeTask = () => {
+    setTask(null);
+    setByLot(false);
+    clearScans();
+  };
+
+  const lookUpLot = async (code: string) => {
+    if (code === '') {
+      return;
+    }
+
+    lookupSeq.current += 1;
+    const seq = lookupSeq.current;
+    setLastRecorded(null);
+    setLookup({ code, kind: 'finding' });
+
+    const settle = (next: LotLookup) => {
+      setLookup(next);
+      playErrorTone();
+    };
+
+    let found: Awaited<ReturnType<typeof findTasksByLot>>;
+    try {
+      found = await findTasksByLot(code);
+    } catch {
+      if (seq === lookupSeq.current) {
+        settle({ code, kind: 'failed' });
+      }
+      return;
+    }
+
+    if (seq !== lookupSeq.current) {
+      return;
+    }
+
+    const [only, ...rest] = found.tasks;
+    if (found.lotNo === null) {
+      settle({ code, kind: 'notLot' });
+    } else if (only === undefined) {
+      settle({ code, kind: 'none' });
+    } else if (rest.length === 0) {
+      setLookup(null);
+      openTask(only, found.lotNo);
+    } else {
+      setLookup({ code, kind: 'many', lotNo: found.lotNo, tasks: found.tasks });
+    }
+  };
+
+  /* 목록의 LOT 스캔 칸(omf-all-around#272). 지시를 열면 칸이 사라지고 위치 칸이 받는다. */
+  const listLotField = useScanField({
+    onScan: (value) => {
+      void lookUpLot(value.trim());
+    },
+  });
+
   const locationField = useScanField({
     onScan: (value) => {
       setScanned(value.trim());
@@ -208,9 +302,10 @@ export const PutawayScreen = () => {
    * 지시를 고르고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
    */
   useBackStep(task !== null && locationSettled, clearScans);
-  useBackStep(task !== null && !locationSettled, () => {
-    setTask(null);
-    clearScans();
+  useBackStep(task !== null && !locationSettled, closeTask);
+  /* 여럿을 추린 목록에서 뒤로가면 전체 목록으로 돌아온다. */
+  useBackStep(task === null && lookup?.kind === 'many', () => {
+    setLookup(null);
   });
 
   const complete = async () => {
@@ -259,18 +354,30 @@ export const PutawayScreen = () => {
           ? movedNoteOf(task, result?.responses.get(entry.idempotencyKey), uomOf(task.uomId))
           : null;
       setRegistered((prev) => [...prev, { ...row, outcome, note }]);
+      setLastRecorded({ ...row, outcome, note });
+      setLookup(null);
 
       /*
        * 목록을 다시 읽는다 - 그러지 않으면 방금 끝낸 지시가 그대로 서 있어 같은 자리를 두 번
        * 적치할 수 있다.
        */
       await queryClient.invalidateQueries({ queryKey: putawayKeys.tasks(workerId.data ?? null) });
-      setTask(null);
-      clearScans();
+      closeTask();
     } finally {
       inFlight.current = false;
     }
   };
+
+  /*
+   * LOT 으로 연 지시는 위치가 통과하면 곧바로 기록한다(omf-all-around#272). 둘 곳 밖이면 `ready` 가
+   * 서지 않아 기록하지 않는다. 같은 위치를 다시 스캔해도(저장 실패 뒤) 다시 시도한다.
+   */
+  useEffect(() => {
+    if (byLot && ready) {
+      void complete();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 판정이 서거나 다시 스캔했을 때만 돈다
+  }, [byLot, ready, scanSeq, pickedId]);
 
   /*
    * 네 값에 이름을 붙인다. 값만 늘어놓으면 어느 것이 품목이고 어느 것이 지시 번호인지 형식을 아는
@@ -326,15 +433,6 @@ export const PutawayScreen = () => {
           ? t.locked.lot
           : undefined;
 
-  /* 건별로 이미 저장됐다. 마치는 것은 이 화면을 닫는 일이라 서버를 부르지 않는다. */
-  const finish = {
-    label: t.done.submit,
-    disabled: registered.length === 0,
-    onClick: () => {
-      void navigate(WORK_LIST_PATH);
-    },
-  };
-
   /* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */
   const manualButton = (field: typeof locationField, open: string, submitLabel: string) => (
     <IconButton
@@ -377,20 +475,88 @@ export const PutawayScreen = () => {
           {tasks.isSuccess && tasks.data.length === 0 ? (
             <p className="putaway__note">{t.tasks.none}</p>
           ) : null}
-          {tasks.data !== undefined && tasks.data.length > 0 ? (
+          {/*
+           * 방금 기록한 것(omf-all-around#272). LOT 으로 연 지시는 단추 없이 기록되고 목록으로 돌아오므로,
+           * 무엇을 어디에 두었는지 여기서 말한다. 다음 스캔까지 둔다.
+           */}
+          {lastRecorded === null ? null : (
+            <AlertBanner
+              variant={
+                lastRecorded.outcome === 'rejected'
+                  ? 'error'
+                  : lastRecorded.outcome === 'queued'
+                    ? 'info'
+                    : 'success'
+              }
+              title={
+                lastRecorded.outcome === 'rejected'
+                  ? t.rejected.title
+                  : lastRecorded.outcome === 'queued'
+                    ? t.queued.title
+                    : t.sent.title
+              }
+            >
+              {t.done.row(lastRecorded.lotNo, lastRecorded.locationCode, lastRecorded.qty)}
+            </AlertBanner>
+          )}
+
+          {/* 지시를 고르는 첫 길 - 손에 든 자재의 LOT 라벨을 읽으면 그 지시가 열린다. */}
+          {workerId.data === null || workerId.data === undefined ? null : (
+            <ScanZone
+              field={listLotField}
+              label={t.lotScan.label}
+              prompt={t.lotScan.prompt}
+              tools={manualButton(listLotField, t.lotScan.manual, t.lotScan.manualSubmit)}
+            />
+          )}
+          {lookup?.kind === 'finding' ? <p role="status">{t.lotScan.finding}</p> : null}
+          {lookup?.kind === 'failed' ? (
+            <AlertBanner variant="error" title={lookup.code}>
+              {t.lotScan.findFailed}
+            </AlertBanner>
+          ) : null}
+          {lookup?.kind === 'notLot' ? (
+            <AlertBanner variant="error" title={lookup.code}>
+              {t.lotScan.notLot}
+            </AlertBanner>
+          ) : null}
+          {lookup?.kind === 'none' ? (
+            <AlertBanner className="putaway__verdict" variant="error" title={lookup.code}>
+              <span className="putaway__verdict-line">{t.lotScan.none}</span>
+              <span className="putaway__verdict-line">{t.lotScan.noneHint}</span>
+            </AlertBanner>
+          ) : null}
+          {lookup?.kind === 'many' ? (
+            <AlertBanner
+              className="putaway__verdict putaway__verdict--action"
+              variant="info"
+              title={t.lotScan.many(String(lookup.tasks.length))}
+              action={
+                <Button variant="outlined" size="lg" onClick={() => setLookup(null)}>
+                  {t.lotScan.showAll}
+                </Button>
+              }
+            >
+              <span className="putaway__scanned">{lookup.lotNo}</span>
+            </AlertBanner>
+          ) : null}
+
+          {lookup?.kind !== 'many' && tasks.data !== undefined && tasks.data.length > 0 ? (
             <p className="putaway__note">{t.tasks.count(String(tasks.data.length))}</p>
           ) : null}
 
           {/* 카드 전체가 누르는 곳이다. 오른쪽 끝 › 가 고르는 카드임을 말한다. */}
           <ul className="putaway__tasks">
-            {(tasks.data ?? []).map((each) => (
+            {shownTasks.map((each) => (
               <li key={each.putawayTaskId}>
                 <button
                   type="button"
                   className="putaway__task"
                   onClick={() => {
-                    setTask(each);
-                    clearScans();
+                    /* 추린 목록에서 고르면 LOT 은 이미 읽었다 - LOT 으로 연 지시와 같다. */
+                    const lotNoFromList = lookup?.kind === 'many' ? lookup.lotNo : null;
+                    setLookup(null);
+                    openTask(each, lotNoFromList);
                   }}
                 >
                   {taskFields(each, allowedField(each))}
@@ -433,14 +599,11 @@ export const PutawayScreen = () => {
                 ? []
                 : [{ label: t.lot.legend, value: t.lot.expected(lotNo.data), code: true }]),
             ]}
-            step={{ index: locationSettled ? 2 : 1, total: 2 }}
+            step={{ index: byLot || locationSettled ? 2 : 1, total: 2 }}
             action={{
               icon: 'list',
               label: t.tasks.change,
-              onClick: () => {
-                setTask(null);
-                clearScans();
-              },
+              onClick: closeTask,
             }}
             details={
               <>
@@ -472,6 +635,24 @@ export const PutawayScreen = () => {
             />
           </TaskHeader>
 
+          {/*
+           * LOT 으로 연 지시(omf-all-around#272) - 끝난 LOT 단계를 위에, 할 일인 위치를 아래에 둔다.
+           * 다시 읽을 것이 아니라 [LOT 재스캔]은 두지 않는다. 다른 LOT 이면 목록으로 돌아가 다시 읽는다.
+           */}
+          {!byLot || scannedLot === null ? null : (
+            <section className="putaway__section">
+              <h2 className="putaway__step-title">
+                <span className="putaway__step-badge" aria-hidden="true">
+                  1
+                </span>
+                {t.lotScan.legend}
+              </h2>
+              <AlertBanner className={verdictClass(false)} variant="success" title={scannedLot}>
+                {t.lotScan.fromList}
+              </AlertBanner>
+            </section>
+          )}
+
           <section className="putaway__section" ref={locationSection}>
             {/*
              * 단계 번호는 작은 뱃지로, 제목과 한 덩어리로 읽히게(사용자 지정 2026-09-22). 번호는 눈으로
@@ -479,7 +660,7 @@ export const PutawayScreen = () => {
              */}
             <h2 className="putaway__step-title">
               <span className="putaway__step-badge" aria-hidden="true">
-                1
+                {byLot ? 2 : 1}
               </span>
               {t.location.legend}
             </h2>
@@ -585,6 +766,9 @@ export const PutawayScreen = () => {
                       {t.verdict.notAllowed(allowedSummaryOf(task) ?? '')}
                     </span>
                     <span className="putaway__verdict-line">{t.verdict.temporary}</span>
+                    {byLot ? (
+                      <span className="putaway__verdict-line">{t.verdict.notRecorded}</span>
+                    ) : null}
                   </AlertBanner>
                 ) : null}
 
@@ -603,7 +787,7 @@ export const PutawayScreen = () => {
             )}
           </section>
 
-          {!locationSettled ? null : (
+          {byLot || !locationSettled ? null : (
             <section className="putaway__section" ref={lotSection}>
               <h2 className="putaway__step-title">
                 <span className="putaway__step-badge" aria-hidden="true">
@@ -705,15 +889,29 @@ export const PutawayScreen = () => {
       )}
 
       {/*
-       * 지시를 처리하는 동안은 「이 지시 적치」가 주 단추이고 「적치 완료」는 그 아래 낮은 길이다.
-       * 목록에서는 마치는 것이 할 일이라 그것이 주 단추다.
+       * 목록에는 단추가 없다 - 건마다 기록되고, 화면을 닫는 것은 위 ← · 홈 아이콘이다. 화면만 닫던
+       * [적치 완료]가 기록 단추로 오해됐다(omf-all-around#272). 카드로 고른 지시는 [적치 완료]가 기록한다.
+       * LOT 으로 연 지시는 위치 스캔이 곧 기록이라 단추 자리에 그 사실을 적는다.
        */}
-      {task === null ? (
+      {task === null ? null : byLot ? (
         <BottomActionBar
-          primary={{
-            ...finish,
-            lockReason: registered.length === 0 ? t.done.locked : undefined,
-          }}
+          prompt={
+            <p
+              className={
+                task.allowedLocations.length > 0
+                  ? 'putaway__auto-note'
+                  : 'putaway__auto-note putaway__auto-note--risk'
+              }
+            >
+              <Icon
+                name={task.allowedLocations.length > 0 ? 'barcode_scanner' : 'warning'}
+                size={20}
+              />
+              <span>
+                {task.allowedLocations.length > 0 ? t.lotScan.auto : t.lotScan.autoAnywhere}
+              </span>
+            </p>
+          }
         />
       ) : (
         <BottomActionBar
@@ -723,8 +921,6 @@ export const PutawayScreen = () => {
             lockReason: recordLock,
             onClick: () => void complete(),
           }}
-          /* 마칠 것이 생겨야 마치는 길을 세운다. 그 전에는 잠긴 단추 하나만큼 화면이 짧다. */
-          secondary={registered.length === 0 ? undefined : finish}
         />
       )}
     </div>

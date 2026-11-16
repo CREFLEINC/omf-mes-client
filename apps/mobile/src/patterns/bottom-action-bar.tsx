@@ -21,7 +21,11 @@ export interface PrimaryBottomAction extends BottomAction {
 }
 
 export interface BottomActionBarProps {
-  primary: PrimaryBottomAction;
+  /**
+   * 주 단추. 없으면 바는 `prompt` 만 싣는다 - 스캔이 곧 기록이라 누를 것이 없는 자리(적치 LOT 경로,
+   * omf-all-around#272)도 같은 바에 두어, 바 높이를 재는 다른 칸(스캔 칸의 손 입력 단추)이 비켜 선다.
+   */
+  primary?: PrimaryBottomAction;
   /** 같은 무게의 두 번째 길. 부족 납품의 「분할 / 보류」처럼 둘 중 하나를 고르는 자리다. */
   secondary?: BottomAction;
   /**
@@ -61,7 +65,7 @@ export const BottomActionBar = ({
   compact = false,
 }: BottomActionBarProps) => {
   const reasonId = useId();
-  const locked = primary.disabled === true && primary.lockReason !== undefined;
+  const locked = primary?.disabled === true && primary.lockReason !== undefined;
   const barRef = useRef<HTMLDivElement | null>(null);
 
   /*
@@ -102,20 +106,22 @@ export const BottomActionBar = ({
       {locked ? (
         <p id={reasonId} className="bottom-action-bar__reason">
           <Icon name="lock" size={16} />
-          <span>{primary.lockReason}</span>
+          <span>{primary?.lockReason}</span>
         </p>
       ) : null}
-      <Button
-        variant="filled"
-        size="2xl"
-        className="bottom-action-bar__button"
-        disabled={primary.disabled}
-        loading={primary.busy}
-        aria-describedby={locked ? reasonId : undefined}
-        onClick={primary.onClick}
-      >
-        {primary.label}
-      </Button>
+      {primary === undefined ? null : (
+        <Button
+          variant="filled"
+          size="2xl"
+          className="bottom-action-bar__button"
+          disabled={primary.disabled}
+          loading={primary.busy}
+          aria-describedby={locked ? reasonId : undefined}
+          onClick={primary.onClick}
+        >
+          {primary.label}
+        </Button>
+      )}
       {/*
        * 두 번째 길은 한 단계 낮춘다(60px). 둘 다 72px 이면 바가 화면 아래 4분의 1을 덮어, 고르기
        * 전에 읽어야 할 물음이 그 밑에 깔린다.

@@ -1,6 +1,8 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { findLot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
 import type { PutawayTask } from './putaway';
 
@@ -88,4 +90,37 @@ export const useTaskLotNo = (lotId: number | null): UseQueryResult<string> => {
       return data.lot.lotNo;
     },
   });
+};
+
+/**
+ * 목록에서 스캔한 LOT 의 대기 지시(omf-all-around#272).
+ *
+ * `lotNo` 가 없으면 LOT 이 아니거나 등록되지 않은 라벨이다. 있으면 그 LOT 의 대기 지시를 서버에 따로
+ * 묻는다 - 목록은 앞 100건만 받아 와, 목록에서 거르면 밀린 지시를 「없음」으로 잘못 말한다.
+ */
+export interface LotTasks {
+  lotNo: string | null;
+  tasks: PutawayTask[];
+}
+
+export const useFindTasksByLot = (): ((code: string) => Promise<LotTasks>) => {
+  const { client } = useApiClient();
+
+  return useCallback(
+    async (code: string) => {
+      const lot = await findLot(client, code);
+      if (lot === null) {
+        return { lotNo: null, tasks: [] };
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/logistics/putaway-tasks', {
+          params: { query: { statusCode: PENDING, lotId: lot.lotId, size: 100 } },
+        }),
+      );
+
+      return { lotNo: lot.lotNo, tasks: data.items };
+    },
+    [client],
+  );
 };

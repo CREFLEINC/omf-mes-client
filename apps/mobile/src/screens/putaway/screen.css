@@ -228,3 +228,27 @@
   margin: 0;
   font-weight: 500;
 }
+
+/*
+ * LOT 으로 연 지시의 단추 자리(omf-all-around#272). 단추가 없고, 위치 스캔이 곧 기록이라는 것을 적는다.
+ * 보관 위치를 정하지 않은 품목은 어느 위치든 받아 잘못 스캔해도 기록된다 - 노란 칸으로 알린다.
+ */
+.putaway__auto-note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  font-weight: 600;
+}
+
+.putaway__auto-note--risk {
+  background: var(--semantic-warning-container);
+  color: var(--on-semantic-warning-container);
+}
