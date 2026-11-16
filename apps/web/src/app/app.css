@@ -36954,3 +36954,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-split-table { min-width:560px; }
 .erp-wo-split-table td:nth-child(4) { white-space:nowrap; }
 .erp-wo-split-table td:last-child button { min-width:40px; width:40px; padding-inline:0; }
+
+.erp-wo-split-holiday-option { display:inline-flex; align-items:center; gap:var(--space-2); min-height:var(--control-height-md); font:var(--type-body-sm); white-space:nowrap; }
+.erp-wo-split-conditions .erp-wo-split-holiday-option input { width:1rem; height:1rem; margin:0; }

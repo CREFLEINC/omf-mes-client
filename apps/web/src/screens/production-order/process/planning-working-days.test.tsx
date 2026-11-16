@@ -170,6 +170,18 @@ it('분할 순차 날짜는 기존 휴일을 제외하고 SYSTEM 출처와 총�
   expect(
     screen.getByRole('button', { name: '계획 2 계획일' }).closest('tr')?.querySelector('td'),
   ).toHaveTextContent('2');
+  expect(screen.getByRole('checkbox', { name: '휴일 포함' })).not.toBeChecked();
+  await user.click(screen.getByRole('checkbox', { name: '휴일 포함' }));
+  await user.click(screen.getByRole('button', { name: '분할 조건 적용' }));
+  expect(await screen.findByRole('button', { name: '계획 2 계획일' })).toHaveTextContent(
+    '2026-11-14',
+  );
+  await user.click(screen.getByRole('button', { name: '분할 적용' }));
+  expect(onApply).toHaveBeenLastCalledWith([
+    { plannedQty: '4', planDate: '2026-11-13', planDateSourceCode: 'SYSTEM' },
+    { plannedQty: '3', planDate: '2026-11-14', planDateSourceCode: 'USER' },
+    { plannedQty: '3', planDate: '2026-11-15', planDateSourceCode: 'USER' },
+  ]);
 });
 it('휴일·판정 불가 정보는 경고로만 표시한다', () => {
   renderWithProviders(

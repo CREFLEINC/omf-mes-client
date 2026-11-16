@@ -44,6 +44,7 @@ export const PlanSplitDialog = ({
   const [method, setMethod] = useState('equal');
   const [per, setPer] = useState('');
   const [dates, setDates] = useState('sequence');
+  const [includeHolidays, setIncludeHolidays] = useState(false);
   const [start, setStart] = useState(row.draft.planDate);
   const generate = (number: number, fixed?: number, planDates?: string[]): PlanSplitPart[] => {
     const whole = Math.round(total * scale);
@@ -145,12 +146,17 @@ export const PlanSplitDialog = ({
               date,
             ),
           );
-          if (day?.statusCode !== 'HOLIDAY') planDates.push(date);
+          if (includeHolidays || day?.statusCode !== 'HOLIDAY') planDates.push(date);
         }
         if (planDates.length < number)
           throw new Error('편성 가능한 날짜가 부족합니다. 편성 시작일을 변경하세요.');
       }
-      const next = generate(number, method === 'fixed' ? fixed : undefined, planDates);
+      const next = generate(number, method === 'fixed' ? fixed : undefined, planDates).map(
+        (part) =>
+          includeHolidays && holidays.some((day) => day.date === part.planDate)
+            ? { ...part, planDateSourceCode: 'USER' as const }
+            : part,
+      );
       setParts(
         method === 'manual'
           ? next.map((part, i) => ({ ...part, plannedQty: parts[i]?.plannedQty ?? '' }))
@@ -341,6 +347,18 @@ export const PlanSplitDialog = ({
                   }}
                 />
               </div>
+              <label className="erp-wo-split-holiday-option">
+                <input
+                  type="checkbox"
+                  checked={includeHolidays}
+                  disabled={calendarBusy || dates !== 'sequence'}
+                  onChange={(event) => {
+                    setIncludeHolidays(event.target.checked);
+                    setConditionsDirty(true);
+                  }}
+                />
+                휴일 포함
+              </label>
               <Button
                 className="erp-wo-split-action"
                 size="md"
