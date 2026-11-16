@@ -63,8 +63,15 @@ export const LotMatchField = ({
       >
         {t.selectAll}
       </Button>
+      <Button
+        variant="outlined"
+        size="sm"
+        disabled={disabled || value.length === 0}
+        onClick={() => onChange([])}
+      >
+        {t.selectNone}
+      </Button>
     </div>
-    <p className="field-note">{t.matchHelp}</p>
     <ul className="iqc-inbound-match-list">
       {lots.map((lot) => {
         const also = otherResults
@@ -105,6 +112,5 @@ export const LotMatchField = ({
         {error}
       </p>
     )}
-    <p className="field-note">{t.matchNote}</p>
   </section>
 );

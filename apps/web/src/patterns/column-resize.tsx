@@ -188,14 +188,27 @@ const ColumnResizer = ({
        * 그 밖의 화면은 종전 그대로다.
        */
       const split = cell.closest('.po-board-split');
+      /*
+       * 좌우 배치 — 배치 고르기(`usePaneLayout`)는 `is-side` 를 달고, 검사 화면들의 배치 고르기(`useSplitOrientation`)는
+       * 상하일 때만 `is-stacked` 를 단다. 뒤쪽을 상하로 읽으면 이미 칸보다 넓은 표의 열을 하나도 넓히지 못했다
+       * (사용자 지시 2026-11-16 · omf-all-around#274 「너비 조정이 안 된다」).
+       */
+      const isSide =
+        split !== null &&
+        (split.classList.contains('is-side') ||
+          (split.classList.contains('inspection-split') &&
+            !split.classList.contains('is-stacked')));
       const widest =
         split === null
           ? Infinity
-          : split.classList.contains('is-side')
+          : isSide
             ? Math.max(SIDE_COLUMN_MAX, drawn)
             : Math.max(widestOf(cell), drawn);
-      /* 두 끝(그린 폭 단위) 가운데 좁은 쪽을 저장 단위로 바꾼다. */
-      const max = Math.min(limit ?? Infinity, widest) * ratio;
+      /*
+       * 두 끝(그린 폭 단위) 가운데 좁은 쪽을 저장 단위로 바꾼다. 다만 지금 폭보다 좁게는 잡지 않는다 — 기본 폭이 내용보다
+       * 넓은 열을 넓히려고 끌면 내용 폭으로 줄어들던 문제(사용자 지시 2026-11-16 · omf-all-around#274 「조정이 안 된다」).
+       */
+      const max = Math.max(drawn, Math.min(limit ?? Infinity, widest)) * ratio;
       const move = (moveEvent: PointerEvent): void => {
         onResize(Math.min(max, startWidth + (moveEvent.clientX - startX) * ratio));
         /* 새 폭이 그려진 뒤에 잰다. */

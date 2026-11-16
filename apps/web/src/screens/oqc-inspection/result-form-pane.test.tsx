@@ -76,11 +76,38 @@ describe('ResultFormPane — 판정 폼', () => {
     expect(screen.getByLabelText(t.fields.accepted)).toHaveValue('');
   });
 
-  it('검사성적서 발행 자리를 감추지 않고 비활성 + 사유로 세운다', () => {
+  it('검사성적서 발행 단추를 두지 않는다 — 성적서 출력물이 아직 없다(omf-all-around#284)', () => {
     renderPane();
 
-    expect(screen.getByRole('button', { name: t.coaIssue })).toBeDisabled();
-    expect(screen.getByText(t.coaPending)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '검사성적서 발행' })).not.toBeInTheDocument();
+  });
+
+  it('임시 저장을 넘기면 단추가 서고, 누르면 확인 창 없이 바로 저장한다(#284)', async () => {
+    const onSaveDraft = vi.fn();
+    renderPane({ onSaveDraft, draft: { accepted: '500', rejected: '', held: '' } });
+
+    await userEvent.click(screen.getByRole('button', { name: t.draftSave }));
+
+    expect(onSaveDraft).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('임시 저장이 막혔으면(시리얼 결과 등) 단추를 잠그고 이유를 단다(#284)', () => {
+    renderPane({ onSaveDraft: vi.fn(), draftBlockedReason: t.draftBlockedBySerials });
+
+    const button = screen.getByRole('button', { name: t.draftSave });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('title', t.draftBlockedBySerials);
+  });
+
+  it('작성중 회차는 이어 쓸 수 있으면 잠그지 않는다(#284)', () => {
+    renderPane({
+      round: toInspectionResultRound(draftRound),
+      editsDraft: true,
+      draft: MATCHING,
+    });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
   });
 });
 

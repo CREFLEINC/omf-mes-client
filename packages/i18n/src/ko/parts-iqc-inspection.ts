@@ -169,8 +169,9 @@ export const partsIqcInspection = {
     basis: { DEFAULT: '기본 설정', APPROVAL: '결재 승인' } as Record<string, string>,
   },
   requestStatus: {
-    REQUESTED: '검사 대기',
-    IN_PROGRESS: '검사 진행 중',
+    /* 상단 건수 칩(대기 · 진행)과 같은 말(사용자 지시 2026-11-16 · #274). */
+    REQUESTED: '대기',
+    IN_PROGRESS: '진행',
     SKIPPED: '검사 생략',
   } as Record<string, string>,
   ok: 'OK',

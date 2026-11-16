@@ -1,6 +1,14 @@
 import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type RefObject,
+} from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -10,8 +18,11 @@ const t = messages.inspectionDocuments.scan;
 export interface LotScanProps {
   /** 어느 검사의 대기 의뢰를 찾는가 — IQC 판정 화면은 `IQC`. */
   inspectionTypeCode: string;
-  /** 찾은 의뢰를 고른다 — 화면의 기존 선택 함수를 그대로 넘긴다. */
-  onFound: (inspectionRequestId: number) => void;
+  /**
+   * 찾은 의뢰를 고른다. 자재 관리 LOT 번호로 찾았으면 그 LOT id 를 함께 준다 — IQC 는 그 LOT 을 고른 채로 결과 추가 창을 연다
+   * (사용자 지시 2026-11-16 · omf-all-around#274). 입하 LOT 번호 · 작업지시로 찾았으면 `null`.
+   */
+  onFound: (inspectionRequestId: number, scannedLotId: number | null) => void;
   /**
    * 의뢰를 무엇으로 잇는가. 기본은 LOT 그 자체(IQC). PQC 의뢰는 작업지시 단위라 LOT 칸이 비어 있다 —
    * `workOrder` 면 생산 LOT 의 원천 작업지시로 의뢰를 찾는다(omf-all-around#135).
@@ -30,6 +41,39 @@ export interface LotScanProps {
    */
   inboundLotPlantIds?: readonly number[];
 }
+
+/**
+ * 칸이 흐린 안내 글을 다 보이는 폭(px) — 칸의 글꼴로 안내 글을 재고, 칸 테두리·안쪽 여백만큼 더한다.
+ * 입력한 값이 길어져도 폭은 그대로다. 잴 수 없으면(시험 환경) `null` — 검색 줄 CSS 의 기본 폭을 쓴다.
+ */
+const usePlaceholderWidth = (
+  inputRef: RefObject<HTMLInputElement | null>,
+  placeholder: string,
+): number | null => {
+  const [width, setWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const measure = (): void => {
+      const input = inputRef.current;
+      const cell = input?.closest('form')?.firstElementChild;
+      const context = document.createElement('canvas').getContext('2d');
+      if (!input || !cell || context === null) return;
+      const style = getComputedStyle(input);
+      context.font = style.font;
+      const text = context.measureText(placeholder).width;
+      const content =
+        input.clientWidth -
+        Number.parseFloat(style.paddingLeft) -
+        Number.parseFloat(style.paddingRight);
+      const frame = cell.getBoundingClientRect().width - content;
+      if (!Number.isFinite(text) || text <= 0 || !Number.isFinite(frame)) return;
+      setWidth(Math.ceil(text + frame + 4));
+    };
+    measure();
+    /* 웹 글꼴이 늦게 오면 폭이 달라진다 — 다 받은 뒤 한 번 더 잰다. */
+    void document.fonts?.ready.then(measure);
+  }, [inputRef, placeholder]);
+  return width;
+};
 
 /** 입하 LOT 번호 머리 — `IL-YYYYMMDD-NNNN`(이전 데이터 `IL-MIG-…` 포함). 자재 관리 LOT 번호는 품목 코드로 시작한다. */
 const INBOUND_LOT_PREFIX = 'IL-';
@@ -61,6 +105,8 @@ export const LotScan = ({
   const [message, setMessage] = useState<string | null>(null);
   const [isFinding, setIsFinding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const placeholder = inboundMode ? t.inbound.placeholder : t.placeholder;
+  const fieldWidth = usePlaceholderWidth(inputRef, placeholder);
   useEffect(() => {
     if (focusSignal === 0) return;
     setValue('');
@@ -109,7 +155,7 @@ export const LotScan = ({
       return;
     }
     setValue('');
-    onFound(found.inspectionRequestId);
+    onFound(found.inspectionRequestId, null);
   };
 
   const find = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -149,7 +195,7 @@ export const LotScan = ({
         return;
       }
       setValue('');
-      onFound(found.inspectionRequestId);
+      onFound(found.inspectionRequestId, matchBy === 'lot' ? lot.lotId : null);
     } catch {
       fail(t.failed);
     } finally {
@@ -158,12 +204,21 @@ export const LotScan = ({
   };
 
   return (
-    <form className="form-actions" aria-label={label} onSubmit={(event) => void find(event)}>
+    <form
+      className="form-actions"
+      aria-label={label}
+      /* 칸 폭 = 흐린 안내 글 폭(사용자 지시 2026-11-16 · omf-all-around#274) — 검색 줄 CSS 가 이 값을 쓴다. */
+      style={
+        fieldWidth === null
+          ? undefined
+          : ({ '--lot-scan-width': `${String(fieldWidth)}px` } as CSSProperties)
+      }
+      onSubmit={(event) => void find(event)}
+    >
       <TextField
         ref={inputRef}
         label={label}
-        placeholder={inboundMode ? t.inbound.placeholder : t.placeholder}
-        {...(inboundMode ? { helperText: t.inbound.hint } : {})}
+        placeholder={placeholder}
         value={value}
         readOnly={isFinding}
         onChange={(event) => setValue(event.target.value)}

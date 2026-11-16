@@ -1,6 +1,12 @@
-import type { ApiClient, components, InspectionResultCreateForward } from '@omf-mes/api-client';
+import {
+  createIdempotencyKey,
+  type ApiClient,
+  type components,
+  type InspectionResultCreateForward,
+} from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useRef } from 'react';
 
 import { CONFIRMED_STATUS } from './inspection-status';
 import { INSPECTION_HUB_COUNTS_KEY } from '../../patterns/inspection-hub-counts';
@@ -19,6 +25,7 @@ import {
 } from './types';
 
 type InspectionSerialJudgmentInput = components['schemas']['InspectionSerialJudgmentInput'];
+type InspectionMeasurementInput = components['schemas']['InspectionMeasurementInput'];
 type OqcSerialRecord = components['schemas']['OqcSerialRecord'];
 type OqcSerialScan = components['schemas']['OqcSerialScan'];
 type OqcLotScan = components['schemas']['OqcLotScan'];
@@ -31,11 +38,10 @@ type OqcLotScan = components['schemas']['OqcLotScan'];
  * | 들어오거나 조건·쪽이 바뀌면 | 검사 대상 목록 |
  * | 의뢰를 고르면 | 그 의뢰의 상세 · 그 의뢰의 회차 목록 |
  * | 들어오면 | 종합 판정 코드값 |
- * | 「판정 저장」 | 검사 결과 확정 저장 |
+ * | 「임시 저장」 · 「판정 확정」 | 검사 결과 저장(작성중 · 확정) |
  *
- * ⭐ **쓰기가 하나다.** 원형(W-01-01)은 임시 저장 → 확정의 2단이지만 이 화면은 1단이다 —
- * 액션표에 임시 저장이 없고(「판정 수정」은 두지 않는다로 명시), 계약이 한 경로로 둘 다 받으며,
- * 관리웹에는 오프라인 갈래가 없다. 그래서 `PUT`·`:confirm`·잠금 토큰 취득 조회가 전부 없다.
+ * ⭐ **임시 저장 → 확정의 2단이다**(omf-all-around#284). 새 회차는 `POST`(DRAFT · CONFIRMED), 작성중 회차는
+ * `PUT`(If-Match = 회차의 판 번호)으로 고치고 확정이면 이어서 `:confirm` 한다(부품 IQC 와 같은 짜임).
  *
  * **참조 조회를 두지 않는다.** 품목·LOT·단위는 번호로만 그린다 — 이름 목록을 얹으면 그 조회의
  * 좁힘·잘림·실패 규칙이 이 화면에 함께 따라오고, 목록·상세가 그것 때문에 비어 보일 수 있다.
@@ -249,6 +255,15 @@ export interface SaveResultVariables {
    * 불합격이고 무언가 썼을 때만 싣는다.
    */
   remarks?: string;
+  /** `DRAFT`(임시 저장) · `CONFIRMED`(판정 확정) — omf-all-around#284. 생략하면 확정이다(종전). */
+  statusCode?: 'DRAFT' | 'CONFIRMED';
+  /** 항목별 측정치(#284) — 판정한 줄만. */
+  measurements?: InspectionMeasurementInput[];
+  /**
+   * 이어 쓰는 작성중 회차(#284). 있으면 `PUT`(If-Match) 으로 고치고, 확정이면 이어서 `:confirm` 한다.
+   * 없으면 종전처럼 `POST` 로 새 회차를 만든다.
+   */
+  draftRound?: { inspectionResultId: number; versionNo: number } | null;
 }
 
 /**
@@ -278,12 +293,15 @@ export const toResultCreateBody = (v: SaveResultVariables): InspectionResultCrea
   heldQty: v.heldQty,
   uomId: v.uomId,
   inspectedAt: v.inspectedAt,
-  statusCode: CONFIRMED_STATUS,
+  statusCode: v.statusCode ?? CONFIRMED_STATUS,
   ...judgmentOf(v.overallJudgmentCode),
   ...previousOf(v.previousResultId),
   ...(v.judgmentChangeReason === undefined ? {} : { judgmentChangeReason: v.judgmentChangeReason }),
   ...(v.serials === undefined || v.serials.length === 0 ? {} : { serials: v.serials }),
   ...(v.remarks === undefined || v.remarks === '' ? {} : { remarks: v.remarks }),
+  ...(v.measurements === undefined || v.measurements.length === 0
+    ? {}
+    : { measurements: v.measurements }),
 });
 
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
@@ -328,17 +346,87 @@ export const useSaveInspectionResult = (
   workerNo?: string,
 ): MasterWriteResult<SaveResultVariables> => {
   const { client } = useApiClient();
+  /**
+   * 작성중 회차를 고친 뒤의 판 번호(#284) — 고침은 됐는데 확정이 실패해 다시 누르면, 화면이 아는 옛 판이 아니라
+   * 방금 내가 쓴 판으로 이어 간다(그러지 않으면 내 고침에 걸려 409 가 난다). 키는 «어느 판에서 고쳤나»다.
+   */
+  const lastPut = useRef<{ id: number; from: number; to: number } | null>(null);
+  /**
+   * 쓰기 하나의 `PUT` 멱등 키 — 같은 쓰기의 재시도(훅이 같은 키를 다시 준다)는 같은 `PUT` 키로 나가, 응답만 잃은 고침이
+   * 옛 판 번호로 다시 나가 409 가 나거나 이미 확정된 회차를 다시 고치려 들지 않는다(서버가 같은 키를 같은 응답으로 돌려준다).
+   */
+  const putKeys = useRef(new Map<string, string>());
+
+  /** 작성중 회차를 고치고, 확정이면 이어서 확정한다(#284 · 부품 IQC 와 같은 2단). */
+  const writeDraftRound = async (
+    variables: SaveResultVariables,
+    draftRound: { inspectionResultId: number; versionNo: number },
+    headers: WriteHeaders,
+  ): Promise<ApiCallResult<InspectionResultResponse>> => {
+    const id = draftRound.inspectionResultId;
+    const known = lastPut.current;
+    const ifMatch =
+      known !== null && known.id === id && known.from === draftRound.versionNo
+        ? known.to
+        : draftRound.versionNo;
+    const body = toResultCreateBody(variables);
+    const putKey = putKeys.current.get(headers['Idempotency-Key']) ?? createIdempotencyKey();
+    putKeys.current.set(headers['Idempotency-Key'], putKey);
+    const put = await client.PUT('/quality/inspection-results/{inspectionResultId}', {
+      params: {
+        path: { inspectionResultId: id },
+        header: { 'Idempotency-Key': putKey, 'If-Match': String(ifMatch) },
+      },
+      body: {
+        inspectedQty: body.inspectedQty,
+        acceptedQty: body.acceptedQty,
+        rejectedQty: body.rejectedQty,
+        heldQty: body.heldQty,
+        inspectedAt: body.inspectedAt,
+        ...(body.overallJudgmentCode === undefined
+          ? {}
+          : { overallJudgmentCode: body.overallJudgmentCode }),
+        /* 치환이다 — 빈 배열이면 저장된 측정치를 지운다(사람이 판정을 지운 줄). */
+        measurements: variables.measurements ?? [],
+        remarks: variables.remarks ?? '',
+      },
+    });
+    if (put.error !== undefined) return put;
+    const versionNo = put.data.versionNo ?? ifMatch + 1;
+    lastPut.current = { id, from: draftRound.versionNo, to: versionNo };
+    if (variables.statusCode === 'DRAFT') return put;
+
+    return client.POST('/quality/inspection-results/{inspectionResultId}:confirm', {
+      params: {
+        path: { inspectionResultId: id },
+        header: { 'Idempotency-Key': headers['Idempotency-Key'], 'If-Match': String(versionNo) },
+      },
+      ...(workerNo === undefined ? {} : { headers: { 'X-Worker-No': workerNo } }),
+      body: {
+        overallJudgmentCode: variables.overallJudgmentCode,
+        ...(variables.remarks === undefined || variables.remarks === ''
+          ? {}
+          : { remarks: variables.remarks }),
+        ...(variables.judgmentChangeReason === undefined
+          ? {}
+          : { judgmentChangeReason: variables.judgmentChangeReason }),
+      },
+    });
+  };
 
   return useMasterWrite<SaveResultVariables, InspectionResultResponse>({
     request: async (
       variables,
       headers: WriteHeaders,
     ): Promise<ApiCallResult<InspectionResultResponse>> => {
-      const result = await client.POST('/quality/inspection-results', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        ...(workerNo === undefined ? {} : { headers: { 'X-Worker-No': workerNo } }),
-        body: toResultCreateBody(variables),
-      });
+      const result =
+        variables.draftRound !== undefined && variables.draftRound !== null
+          ? await writeDraftRound(variables, variables.draftRound, headers)
+          : await client.POST('/quality/inspection-results', {
+              params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
+              ...(workerNo === undefined ? {} : { headers: { 'X-Worker-No': workerNo } }),
+              body: toResultCreateBody(variables),
+            });
 
       /*
        * ⭐ **raw `error` 를 가로채 구조화 필드로 문구를 되말한다.** 공유 정규화기
@@ -384,6 +472,8 @@ export const useSaveInspectionResult = (
       oqcInspectionKeys.serialRecords(inspectionRequestId ?? 0),
       /* 저장 · 확정이 의뢰 상태를 바꾼다 — 위쪽 건수 칩도 다시 센다(#197). */
       INSPECTION_HUB_COUNTS_KEY,
+      /* 회차의 측정치(#284) — 검사 항목 표가 PQC 와 같은 조회를 쓴다. */
+      ['pqc-panel', 'measurements'],
     ],
     knownFields: SAVE_FIELDS,
     keyLifetime: 'until-applied',

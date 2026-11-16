@@ -21237,22 +21237,6 @@ dialog.layout-editor-dialog {
 }
 
 /* W-01-01 대기열 입하 LOT 행(005) */
-.iqc-inbound-queue-hint {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  font: var(--type-body-sm);
-  color: var(--on-surface-muted);
-  background: var(--surface-container-low);
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.iqc-inbound-queue-hint > span {
-  min-width: 0;
-}
-
 .iqc-inspection-panes .iqc-inbound-queue-two {
   display: flex;
   flex-direction: column;
@@ -21272,23 +21256,15 @@ dialog.layout-editor-dialog {
   font-variant-numeric: tabular-nums;
 }
 
+.iqc-inspection-panes .iqc-inbound-queue-one {
+  white-space: nowrap;
+}
+
 .iqc-inbound-queue-none {
   color: var(--on-surface-muted);
 }
 
 /* 확정 전 미리 보기 칩 — 확정 칩과 점선 테두리로 가른다. */
-.iqc-inbound-queue-preview {
-  border: 1px dashed currentColor;
-}
-
-.iqc-inbound-queue-counts {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  font: var(--type-body-sm);
-  color: var(--on-surface-muted);
-  border-top: 1px solid var(--outline-variant);
-}
-
 /*
  * 검색 묶음 — LOT 스캔(첫 줄 전체)과 조회 조건(품목 · 공급사 · 의뢰번호 · 조회/초기화)을
  * 같은 격자·같은 높이로 세운다. 좁아지면 조건 칸이 줄을 바꾸고 단추 묶음은 그 줄 오른쪽 끝에 남는다.
@@ -22957,50 +22933,6 @@ dialog.layout-editor-dialog {
   gap: var(--space-3);
 }
 
-/* 기본 정보 — 항목명(위)·값(아래)의 4열 격자, 좁으면 두 열. 첫 줄 넷은 굵게. */
-.oqc-inspection-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-5);
-}
-
-@container (min-width: 40rem) {
-  .oqc-inspection-facts {
-    grid-template-columns:
-      minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1.5fr)
-      minmax(0, 0.8fr);
-  }
-}
-
-.oqc-inspection-fact {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.oqc-inspection-fact > dd {
-  min-width: 0;
-}
-
-.oqc-inspection-fact-key {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.oqc-inspection-fact-item {
-  display: grid;
-  min-width: 0;
-}
-
-.oqc-inspection-fact-ellipsis {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* 시리얼 번호 스캔 — 검색 묶음의 머리라 라벨을 제목 크기로, 안내는 그 옆 같은 줄(#136). */
 .oqc-inspection-serial-scan > .field-label {
   display: flex;
@@ -23566,53 +23498,6 @@ main:has(> .oqc-inspection-panes) {
 .oqc-inspection-detail
   .oqc-inspection-action-note[data-tone="info"]:nth-child(n) {
   border: 1px solid color-mix(in srgb, var(--semantic-info) 35%, transparent);
-}
-
-/* 기본 정보 — 테두리 상자 안에 칸이 나란히, 칸 사이 세로 구분선(IQC 기본 정보와 같다). */
-.oqc-inspection-detail .oqc-inspection-facts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: var(--space-3) 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  background: var(--surface-container);
-}
-
-.oqc-inspection-detail .oqc-inspection-fact {
-  flex: 1 1 auto;
-  align-content: center;
-  padding: 0 var(--space-4);
-  border-left: 1px solid var(--outline-variant);
-}
-
-.oqc-inspection-detail .oqc-inspection-fact:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
-
-@container (min-width: 60rem) {
-  .oqc-inspection-detail .oqc-inspection-facts {
-    flex-wrap: nowrap;
-  }
-
-  .oqc-inspection-detail .oqc-inspection-fact {
-    flex-shrink: 0;
-    overflow-wrap: normal;
-  }
-
-  .oqc-inspection-detail
-    .oqc-inspection-fact:has(.oqc-inspection-fact-ellipsis) {
-    flex-shrink: 1;
-    min-width: 0;
-  }
-
-  .oqc-inspection-detail .oqc-inspection-fact > dd {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 /* 구획(검사 수량 입력 · 판정) — 구분선 대신 IQC 단계 카드처럼 테두리 상자 하나씩. */
@@ -28962,44 +28847,6 @@ body:has(.page-nav-size [aria-expanded="true"])
   color: var(--on-surface-muted);
 }
 
-/* 기본 정보 — 좁으면 두 칸, 넓으면 네 칸. 첫 줄(대상)은 굵게. */
-.pqc-web-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-5);
-}
-
-@container (min-width: 40rem) {
-  .pqc-web-facts {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) minmax(
-        0,
-        0.8fr
-      );
-  }
-}
-
-.pqc-web-fact {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.pqc-web-fact-key {
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.pqc-web-fact-item {
-  display: grid;
-}
-
-.pqc-web-fact-item-code {
-  color: var(--on-surface-muted);
-  font: var(--type-body-sm);
-}
-
 /* 검사 항목별 결과 — 테두리 상자 표, 항목명은 칸 가운데 · 필수는 이름 바로 왼쪽(IQC 와 같다). */
 .pqc-web-table-box {
   overflow: hidden;
@@ -29278,44 +29125,6 @@ body:has(.page-nav-size [aria-expanded="true"])
  * PQC 관리웹 상세를 IQC 판정 화면 모양으로(사용자 지시 2026-10-28 · #197) — 동작 · 입력 순서는 그대로, 모양만 맞춘다.
  * POP 패널도 같은 결과 칸 부품을 쓰므로 모두 관리웹 감싸개(`.pqc-web`) 안에서만 잡는다.
  */
-
-/* 기본 정보 — 테두리 상자 안에 칸이 나란히, 칸 사이 세로 구분선(IQC 기본 정보와 같다). */
-.pqc-web .pqc-web-summary .pqc-web-facts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: var(--space-3) 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-lg);
-  background: var(--surface-container);
-}
-
-.pqc-web .pqc-web-summary .pqc-web-fact {
-  flex: 1 1 auto;
-  align-content: center;
-  padding: 0 var(--space-4);
-  border-left: 1px solid var(--outline-variant);
-}
-
-.pqc-web .pqc-web-summary .pqc-web-fact:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
-
-/* 칸이 다 안 들어가면 줄을 바꾼다 — 한 줄로 고정하면 품목 칸이 옆 칸에 가려 잘린다(사용자 지시 2026-11-09). */
-@container (min-width: 60rem) {
-  .pqc-web .pqc-web-summary .pqc-web-fact {
-    max-width: 100%;
-    overflow-wrap: normal;
-  }
-
-  .pqc-web .pqc-web-summary .pqc-web-fact > dd {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
 
 /* 구획(검사 항목별 결과 · 검사 수량 입력 · 판정) — 구분선 대신 IQC 단계 카드처럼 테두리 상자 하나씩. */
 .pqc-web > .pqc-web-section:not(.pqc-web-summary) {
@@ -33199,6 +33008,12 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   text-align: center;
 }
 
+/* LOT 번호(앞 마디 말줄임 · 끝 마디)와 4M 표시도 가운데로(사용자 지시 2026-11-16 · omf-all-around#274). */
+.inspection-queue-table .iqc-inspection-lot-cell,
+.inspection-queue-table .iqc-inspection-lot:has(> .iqc-inspection-lot-tail) {
+  justify-content: center;
+}
+
 /* 한 줄로 묶은 칸(품목 「이름 코드」 등)도 가운데로. */
 .inspection-queue-table .iqc-inspection-queue-item,
 .inspection-queue-table .oqc-inspection-queue-item,
@@ -33823,9 +33638,85 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   min-width: 0;
 }
 
-.pqc-web-step-items > .pqc-web-section-head {
-  justify-content: flex-end;
+/* PQC 입력 — 상자 셋(검사 수량 · 검사 항목 · 종합 판정), IQC 결과 입력 창과 같은 모양(사용자 시안 2026-11-16 · #274). */
+.pqc-web-boxes {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.pqc-web-box {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.pqc-web-box > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+/* 종합 판정 — 왼쪽 자동 판정 결과 상자 · 세로선 · 오른쪽 종합 판정 고르기. */
+.pqc-web-judgment-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.pqc-web-auto-result {
+  display: flex;
+  flex: 1 1 18rem;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pqc-web-judgment-pick {
+  flex: 1 1 18rem;
+  min-width: 0;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+}
+
+/* 검사 항목 — 테두리 상자 안에 제목(왼쪽) · 진행(오른쪽) · 표(사용자 시안 2026-11-16 · #274). */
+.pqc-web-step-items {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.pqc-web-step-items > .pqc-web-section-head {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pqc-web-step-items > .pqc-web-section-head > h3 {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+.pqc-web-spec-cell {
+  display: inline-grid;
+  justify-items: center;
+}
+
+/* n1 칸은 입력이 칸 폭을 채운다(시안). */
+.pqc-web-step-items .pqc-web-value-cell {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.pqc-web-step-items .pqc-web-value-cell > :last-child:not(.parts-iqc-muted),
+.pqc-web-step-items .pqc-web-value-cell > div {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .inspection-step-footer {
@@ -33835,6 +33726,12 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 .inspection-step-footer > button {
   min-width: 5.5rem;
+}
+
+/* PQC · OQC 단계 상자는 빨간 강조 테두리 없이 늘 같은 테두리(사용자 지시 2026-11-16 · #274). */
+.iqc-inspection-stepper.inspection-steps > li[data-step-state],
+.iqc-inspection-stepper.inspection-steps > li[data-open] {
+  border-color: var(--outline-variant);
 }
 
 /* 단계들은 상세 기본 정보 아래 한 줄기 — 기본 정보와 단계 사이를 IQC 처럼 띄운다(사용자 지시 2026-10-29). */
@@ -34807,8 +34704,35 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   grid-template-columns: minmax(0, 1fr);
 }
 
+/*
+ * 요약 줄 — 칸은 글 길이만큼, 남는 폭은 나눠 갖고 넘치면 다음 줄로(사용자 지시 2026-11-16 · #274).
+ * 칸 안 글은 꺾지 않는다(한 칸이 두세 줄로 길어지지 않게) — 화면보다 길면 말줄임. 칸마다 왼쪽 세로선, 줄 첫 칸의 선은 상자 밖으로 숨긴다.
+ */
 .iqc-inbound-facts {
+  display: flex;
   flex-wrap: wrap;
+  gap: var(--space-3) 0;
+  padding-left: 0;
+  overflow: hidden;
+}
+
+.iqc-inbound-facts > .parts-iqc-fact,
+.iqc-inbound-facts > .parts-iqc-fact:first-child {
+  flex: 1 0 auto;
+  align-content: start;
+  max-width: 100%;
+  margin-left: -1px;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--outline-variant);
+  overflow-wrap: normal;
+}
+
+.iqc-inbound-facts > .parts-iqc-fact > dd,
+.iqc-inbound-facts .parts-iqc-fact-key,
+.iqc-inbound-facts .parts-iqc-fact-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .iqc-inbound-chips,
@@ -34835,7 +34759,8 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 
 /* 결과 드로어 — 오른쪽 936(사용자 결정 2026-11-11). 지금 양식의 아래 줄을 드로어 바닥에 붙인다. */
 .iqc-inbound-drawer {
-  width: min(936px, 100vw);
+  /* 측정 n 수가 늘어도 표가 좁아지지 않게 넓게(사용자 지시 2026-11-16 · omf-all-around#274) — 종전 936px. */
+  width: min(1440px, calc(100vw - var(--space-8)));
   max-width: none;
 }
 
@@ -34847,6 +34772,61 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   position: sticky;
   bottom: 0;
   flex-wrap: wrap;
+}
+
+/* 결과 창 닫힘 — 들어온 방향(오른쪽)으로 밀려 나간다(사용자 지시 2026-11-16 · #274). 길이는 result-drawer.tsx CLOSE_MS 와 같다. */
+@keyframes iqc-inbound-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes iqc-inbound-scrim-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* 디자인 시스템의 열림 움직임(`[open]` + 클래스 셋)보다 앞서도록 선택자를 겹친다. */
+.iqc-inbound-drawer.iqc-inbound-drawer.is-closing.is-closing[open] {
+  animation: iqc-inbound-drawer-out 240ms var(--ease-emphasized, ease-in) forwards;
+  pointer-events: none;
+}
+
+.iqc-inbound-drawer.is-closing::backdrop {
+  animation: iqc-inbound-scrim-out 240ms ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iqc-inbound-drawer.iqc-inbound-drawer.is-closing.is-closing[open],
+  .iqc-inbound-drawer.is-closing::backdrop {
+    animation: none;
+  }
+}
+
+/* 제목 줄을 뺀 창 — 맨 위 요약 줄 위에 여백(사용자 지시 2026-11-16 · #274). */
+.iqc-inbound-drawer .parts-iqc-form {
+  padding-top: var(--space-5);
+}
+
+/* LOT 정보 — 넓은 창에서는 네 칸 한 줄(사용자 지시 2026-11-16 · #274). 좁으면 종전 두 칸. */
+@media (min-width: 1024px) {
+  .iqc-inbound-drawer .parts-iqc-kv {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* 기준서 도면과 아래 단추 줄 사이 여백(사용자 지시 2026-11-16 · #274). */
+.iqc-inbound-drawer .parts-iqc-drawer-footer {
+  margin-top: var(--space-6);
 }
 
 .iqc-inbound-match-list {
@@ -34870,15 +34850,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   font: var(--type-body-sm);
 }
 
-/* 판정 규칙 변경(C7 · 2026-11-12) — 자재 관리 LOT 별 판정 · 대체, 재검 사유 칸. */
-.iqc-inbound-lot-judgments {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-block-end: var(--space-3);
-}
-
-.iqc-inbound-lot-judgment-list,
+/* 판정 규칙 변경(C7 · 2026-11-12) — 판정이 바뀐 LOT 줄, 재검 사유 칸. */
 .iqc-inbound-reason-lines {
   display: flex;
   flex-direction: column;
@@ -34886,13 +34858,6 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.iqc-inbound-lot-judgment-list > li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .iqc-inbound-superseded {
@@ -34924,9 +34889,123 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 /* 변경 이력 — 오른쪽 덮개 520. */
-.iqc-inbound-history {
-  width: min(520px, 100vw);
-  max-width: none;
+.iqc-inbound-history table {
+  /* 작업 이력 탭 — 표가 칸 폭을 다 쓰고, 칸은 왼쪽 정렬 한 줄(사용자 시안 2026-11-16 · omf-all-around#274). */
+  width: 100%;
+}
+
+.iqc-inbound-history table th,
+.iqc-inbound-history table td {
+  white-space: nowrap;
+}
+
+.iqc-inbound-history td:last-child {
+  white-space: normal;
+}
+
+/* 품목 — 코드와 이름을 한 줄로(사용자 지시 2026-11-16 · #274). */
+.iqc-inbound-facts .parts-iqc-fact-key {
+  display: block;
+}
+
+.iqc-inbound-facts .parts-iqc-fact-key > .parts-iqc-fact-sub {
+  margin-inline-start: var(--space-2);
+}
+
+/* 입하 LOT 번호 옆 상태 라벨(사용자 시안 2026-11-16 · #274). */
+.iqc-inbound-lot-key {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 판정이 바뀐 LOT 줄 — 표 아래. */
+ul.iqc-inbound-superseded {
+  margin-top: var(--space-2);
+}
+
+/* 불합격 확정 안내 — 글 · 오른쪽 이동 단추(사용자 시안 2026-11-16 · #274). */
+.iqc-inbound-banner-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* 아이콘과 글 줄을 가운데로 맞춘다 — 오른쪽 단추 때문에 줄이 높아져 아이콘만 위로 떠 보였다(사용자 지시 2026-11-16 · #274). */
+.iqc-inbound-nc-banner {
+  align-items: center;
+}
+
+.iqc-inbound-nc-banner > [class*='_icon_'] {
+  margin-top: 0;
+}
+
+.iqc-inbound-nc-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+  color: inherit;
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+}
+
+.iqc-inbound-nc-link:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.iqc-inbound-nc-link:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* 발주 정보 줄은 위에 구분선(#274). */
+.iqc-inbound-po {
+  border-top: 1px solid var(--outline-variant);
+  padding-top: var(--space-3);
+}
+
+.iqc-inbound-po-label {
+  margin-inline-end: var(--space-3);
+}
+
+/* 분리 창 제목 옆 안내 라벨(#274). */
+.iqc-split-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.iqc-split-title > .iqc-split-intro {
+  margin: 0;
+  font: var(--type-body-sm);
+}
+
+/* 분리 창 — 목록 제목 왼쪽 · 고른 수 오른쪽(사용자 시안 2026-11-16 · #274). */
+.iqc-split-lots-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* 필수 입력 표시는 빨간 *(사용자 지시 2026-11-16 · #274) — 결과 추가 창 · 상세 안. */
+:is(.iqc-inbound-drawer, .parts-iqc-detail-body) .required-mark {
+  color: var(--semantic-error-text);
+}
+
+/* 분리 · 판정 확정 단추 줄 — 상세 내용 맨 아래 오른쪽(#274). */
+.iqc-inbound-foot {
+  justify-content: flex-end;
+  padding-top: var(--space-2);
 }
 
 /* W-01-01 자재 관리 LOT 분리 창(005) */
@@ -36190,7 +36269,8 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 
 /* LOT 스캔 칸 폭 — 세 화면 같은 17.5rem(부품 IQC 스캔 줄과 같은 값). */
 :is(.pqc-web-search, .oqc-inspection-search, .iqc-inspection-search) form.form-actions {
-  grid-template-columns: minmax(0, 17.5rem) auto;
+  /* LOT 스캔이 잰 흐린 안내 글 폭이 있으면 그 폭(사용자 지시 2026-11-16 · omf-all-around#274). */
+  grid-template-columns: var(--lot-scan-width, minmax(0, 17.5rem)) auto;
 }
 
 /* LOT 스캔 [검색] 단추 폭 — 세 화면 같게. */

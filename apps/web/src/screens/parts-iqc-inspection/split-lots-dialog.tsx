@@ -254,13 +254,22 @@ export const SplitLotsDialog = ({
     <Dialog
       open
       size="lg"
-      title={t.title}
+      title={
+        /* 안내는 제목 옆 정보 라벨로(사용자 지시 2026-11-16 · omf-all-around#274). */
+        <span className="iqc-split-title">
+          {t.title}
+          <span className="iqc-inspection-action-note iqc-split-intro" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.intro}
+          </span>
+        </span>
+      }
       showCloseButton={false}
       closeOnBackdropClick={false}
       onClose={onClose}
       footer={
         <>
-          <Button variant="text" onClick={onClose} disabled={pending}>
+          <Button variant="outlined" onClick={onClose} disabled={pending}>
             {t.cancel}
           </Button>
           <Button
@@ -275,10 +284,10 @@ export const SplitLotsDialog = ({
       }
     >
       <div className="iqc-split">
-        <p className="iqc-split-intro">
-          {t.intro} {t.introFollow}
-        </p>
-
+        <div className="iqc-split-lots-head">
+          <strong>{t.lotList}</strong>
+          <span className="iqc-split-muted">{t.pickedCount(selected.length, lots.length)}</span>
+        </div>
         <ul className="iqc-split-lots" aria-label={t.lotList}>
           {lots.map((lot) => {
             const matched = results.filter((result) => result.matchedLotIds.includes(lot.lotId));
@@ -321,7 +330,8 @@ export const SplitLotsDialog = ({
             {t.allSelected}
           </AlertBanner>
         ) : lockReason !== null ? (
-          <p id={reasonId} className="iqc-split-hint">
+          /* 아무것도 안 고른 때의 안내는 화면에서 뺀다(위 「0/n개 선택」이 대신) — [분리] 잠긴 까닭으로는 남긴다(#274). */
+          <p id={reasonId} className={selected.length === 0 ? 'visually-hidden' : 'iqc-split-hint'}>
             {lockReason}
           </p>
         ) : null}

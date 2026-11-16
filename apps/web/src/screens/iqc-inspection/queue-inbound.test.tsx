@@ -1,6 +1,6 @@
 import type { InspectionRequestForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -82,14 +82,19 @@ describe('W-01-01 대기열 입하 LOT 행', () => {
     /* 끝 마디 강조 — 번호가 두 조각으로 나뉜다. */
     expect(within(table).getByTitle('IL-20991231-0003')).toHaveTextContent('IL-20991231-0003');
     expect(within(table).getByText('0003')).toHaveClass('iqc-inspection-lot-tail');
-    /* 공장 시각(UTC+7) `MM-DD HH:mm`. */
-    expect(within(table).getByText('12-31 08:40')).toBeInTheDocument();
+    /* 입하 시각은 첫 칸에 싣지 않는다 — 「의뢰 일시」 칸과 겹친다(omf-all-around#274). */
+    expect(within(table).queryByText('12-31 08:40')).not.toBeInTheDocument();
 
-    expect(within(table).getByText(ti.lotCount(3))).toBeInTheDocument();
-    expect(await within(table).findByText('3,000 EA')).toBeInTheDocument();
+    /* 「3개 · 3,000 EA」 한 줄(omf-all-around#274). */
+    const lotCountCell = table.querySelector('.iqc-inbound-queue-one');
+    await waitFor(() => {
+      expect(lotCountCell).toHaveTextContent(`${ti.lotCount(3)} · 3,000 EA`);
+    });
 
     expect(within(table).getByText(ti.status.REQUESTED)).toBeInTheDocument();
-    expect(screen.getByText(ti.closingHint)).toBeInTheDocument();
+    /* 표 위 안내 · 표 아래 건수 줄은 없다(omf-all-around#274). */
+    expect(document.querySelector('.iqc-inbound-queue-hint')).toBeNull();
+    expect(document.querySelector('.iqc-inbound-queue-counts')).toBeNull();
   });
 
   it('US3-1 분리로 생긴 입하 LOT 은 아래 줄에 「분리 ← 끝 4자리」를 보인다', () => {
@@ -130,15 +135,14 @@ describe('W-01-01 대기열 입하 LOT 행', () => {
     expect(confirmed.getByText(ti.status.CONFIRMED)).toBeInTheDocument();
 
     const previewed = within(rowOf('IR-T-2'));
-    expect(previewed.getByText(ti.preview(judgment.REJECTED ?? ''))).toBeInTheDocument();
+    /* 확정 전 예상 판정은 보이지 않는다(사용자 지시 2026-11-16 · #274). */
+    expect(previewed.getByText('—')).toBeInTheDocument();
+    expect(previewed.queryByText(judgment.REJECTED ?? '')).toBeNull();
     expect(previewed.getByText(ti.status.IN_PROGRESS)).toBeInTheDocument();
 
     const empty = within(rowOf('IR-T-3'));
     expect(empty.getByText('—')).toBeInTheDocument();
     expect(empty.getByText(ti.status.REQUESTED)).toBeInTheDocument();
-
-    /* 표 아래 건수 — 지금 쪽의 줄로 센다. */
-    expect(screen.getByText(ti.counts(3, 1, 1, 1))).toBeInTheDocument();
   });
 
   it('US3-1 이전 데이터(대상 LOT) 줄은 섞여 있어도 LOT 번호로 그리고 새 칸은 「—」다', () => {
@@ -150,7 +154,7 @@ describe('W-01-01 대기열 입하 LOT 행', () => {
     expect(legacy.getByText(messages.oqcInspection.status.requested)).toBeInTheDocument();
   });
 
-  it('이전 데이터 줄만 있으면 지금 대기열 그대로다 — 새 칸 · 건수가 서지 않는다', () => {
+  it('이전 데이터 줄만 있으면 지금 대기열 그대로다 — 새 칸이 서지 않는다', () => {
     renderRows([waitingRequest]);
 
     const table = screen.getByRole('table');
@@ -158,6 +162,5 @@ describe('W-01-01 대기열 입하 LOT 행', () => {
     expect(within(table).queryByText(ti.columns.lotCount)).not.toBeInTheDocument();
     expect(within(table).queryByText(ti.columns.overallJudgment)).not.toBeInTheDocument();
     expect(within(table).getByTitle('SAMPLE-LOT|Q|0042')).toBeInTheDocument();
-    expect(screen.queryByText(ti.counts(1, 1, 0, 0))).not.toBeInTheDocument();
   });
 });

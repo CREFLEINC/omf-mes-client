@@ -60,8 +60,7 @@ export const inspectionDocuments = {
     failed: 'Không tìm được LOT. Hãy kiểm tra kết nối rồi thử lại.',
     inbound: {
       label: 'Quét LOT quản lý vật tư hoặc LOT nhập hàng',
-      placeholder: 'Quét mã vạch LOT quản lý vật tư hoặc nhập số LOT nhập hàng',
-      hint: 'Mở kiểm tra của LOT nhập hàng chứa LOT quản lý vật tư đã quét',
+      placeholder: 'Nhập mã vạch hoặc số LOT quản lý vật tư hoặc LOT nhập hàng',
       notFound: 'Không có LOT nhập hàng với số này.',
       noRequest: 'LOT nhập hàng này không có kiểm tra nhập đang chờ hoặc đang thực hiện.',
     },

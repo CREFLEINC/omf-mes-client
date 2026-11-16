@@ -107,8 +107,17 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     sectionTitle: 'Nhập số lượng kiểm tra',
     entryTabs: { lot: 'Kiểm tra theo LOT', serial: 'Kiểm tra theo serial' },
     mergedSectionTitle: 'Số lượng kiểm tra · Đánh giá',
+    quantityBox: 'Số lượng kiểm tra',
+    judgmentBox: 'Đánh giá tổng hợp',
+    autoResult: 'Kết quả tự động đánh giá',
+    autoResultHint: 'Nhập số lượng · hạng mục kiểm tra rồi xem kết quả đánh giá.',
+    draftSave: 'Lưu tạm',
+    draftSaved: 'Đã lưu tạm.',
+    draftBlockedBySerials:
+      'Không thể lưu tạm kết quả kiểm tra theo serial. Hãy lưu bằng xác nhận đánh giá.',
+    confirmBlockedByItems: 'Phải đánh giá tất cả hạng mục kiểm tra mới xác nhận được.',
     judgmentSectionTitle: 'Đánh giá',
-    saveNote: 'Sau khi lưu đánh giá sẽ không thể sửa.',
+    saveNote: 'Sau khi xác nhận đánh giá sẽ không thể sửa.',
     over: (over: string): string => `Nhiều hơn số lượng kiểm tra ${over}.`,
     quantityInvalid: 'Số lượng phải từ 0 trở lên và tối đa sáu chữ số thập phân.',
 
@@ -121,9 +130,9 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
     judgmentUnknown: (code: string): string =>
       `Đánh giá đã lưu (${code}) không có trong danh sách.`,
 
-    save: 'Lưu đánh giá',
+    save: 'Xác nhận đánh giá',
     saving: 'Đang lưu',
-    saved: 'Đã lưu đánh giá.',
+    saved: 'Đã xác nhận đánh giá.',
     saveBlockedByInvalid: 'Sửa xong các ô số lượng thì mới lưu được.',
     blockedByConfirmed: 'Lưu đánh giá — đây là lượt đã chốt. Hãy thêm lượt mới bằng kiểm tra lại.',
     blockedByDraftElsewhere:
@@ -149,10 +158,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       'Nhập số lượng và đánh giá rồi lưu thì một lượt mới được tạo. Lượt trước vẫn được giữ nguyên.',
     reinspectReasonPending:
       'Lý do kiểm tra lại vẫn chưa chọn được. Khi danh sách lý do được quyết định thì sẽ thêm vào chỗ này.',
-
-    coaIssue: 'Phát hành giấy chứng nhận kiểm tra',
-    coaPending:
-      'Việc phát hành giấy chứng nhận kiểm tra vẫn chưa mở — sẽ mở khi hợp đồng phát hành bản in sẵn sàng.',
   },
 
   transition: {
@@ -182,11 +187,11 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   },
 
   confirm: {
-    title: (inspectionRequestNo: string): string => `Lưu đánh giá ${inspectionRequestNo}`,
+    title: (inspectionRequestNo: string): string => `Xác nhận đánh giá ${inspectionRequestNo}`,
     judgment: (label: string): string => `Đánh giá cuối cùng: ${label}`,
-    irreversible: 'Lưu rồi thì không hoàn tác được.',
+    irreversible: 'Xác nhận rồi thì không hoàn tác được.',
     cancel: 'Hủy',
-    confirm: 'Lưu đánh giá',
+    confirm: 'Xác nhận đánh giá',
   },
 
   history: {

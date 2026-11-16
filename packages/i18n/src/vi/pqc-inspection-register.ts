@@ -54,6 +54,10 @@ export const pqcInspectionRegister = {
 
   web: {
     mergedHeading: 'Số lượng kiểm tra · Đánh giá',
+    quantityBox: 'Số lượng kiểm tra',
+    judgmentBox: 'Đánh giá tổng hợp',
+    autoResult: 'Kết quả tự động đánh giá',
+    autoResultHint: 'Nhập số lượng · hạng mục kiểm tra rồi xem kết quả đánh giá.',
     noProductionResult: 'Không thể đánh giá vì chưa có kết quả sản xuất.',
     noStandardNote: 'Yêu cầu này chưa có tiêu chuẩn kiểm tra. Nhập nội dung kiểm tra nếu cần.',
     remarksPlaceholder: 'Nhập nội dung kiểm tra.',
@@ -72,17 +76,20 @@ export const pqcInspectionRegister = {
       requestedAt: 'Thời gian yêu cầu',
     },
     items: {
-      heading: 'Kết quả theo hạng mục',
+      heading: 'Hạng mục kiểm tra',
       progress: (judged: number, total: number): string =>
-        `Đã đánh giá ${String(judged)} / ${String(total)}`,
+        `${String(judged)}/${String(total)} hạng mục`,
       columns: {
-        item: 'Hạng mục kiểm tra',
+        no: 'No.',
+        item: 'Nội dung kiểm tra',
         spec: 'Quy cách',
-        sample: 'Lần đo',
+        valueSingle: 'n1',
         value: 'Kết quả đo',
         judgment: 'Đánh giá',
       },
-      sampleOf: (sampleNo: number): string => `Lần ${String(sampleNo)}`,
+      sampleTag: (sampleNo: number): string => `n${String(sampleNo)}`,
+      autoJudgment: 'Tự động đánh giá',
+      judgmentShort: { ACCEPTED: 'OK', REJECTED: 'NG' } as Record<string, string>,
       valueLabel: (item: string, sampleNo: number): string =>
         `${item} lần ${String(sampleNo)} kết quả đo`,
       judgmentLabel: (item: string, sampleNo: number): string =>

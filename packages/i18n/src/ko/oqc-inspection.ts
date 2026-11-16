@@ -193,9 +193,20 @@ export const oqcInspection = {
     entryTabs: { lot: 'LOT별 검사', serial: '시리얼별 검사' },
     /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
     mergedSectionTitle: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
+    /* 입력을 상자 둘로 — IQC 결과 입력 창과 같다(사용자 시안 2026-11-16 · omf-all-around#274). */
+    quantityBox: '검사 수량',
+    judgmentBox: '종합 판정',
+    autoResult: '자동 판정 결과',
+    autoResultHint: '검사 수량과 항목을 입력한 뒤 판정 결과를 확인하세요.',
+    /* 임시 저장 · 검사 항목(omf-all-around#284 · PQC 와 같다). */
+    draftSave: '임시 저장',
+    draftSaved: '임시 저장했습니다.',
+    draftBlockedBySerials:
+      '시리얼별 검사 결과는 임시 저장할 수 없습니다. 판정 확정으로 저장하세요.',
+    confirmBlockedByItems: '검사 항목을 모두 판정해야 확정할 수 있습니다.',
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
-    saveNote: '판정 저장 후 수정이 불가합니다.',
+    saveNote: '판정 확정 후 수정이 불가합니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
@@ -220,9 +231,9 @@ export const oqcInspection = {
     /**
      * ⭐ **임시 저장이 없다.** 이 버튼 하나가 곧 확정이며, 누르면 확인 창을 거친다.
      */
-    save: '판정 저장',
+    save: '판정 확정',
     saving: '저장 중',
-    saved: '판정을 저장했습니다.',
+    saved: '판정을 확정했습니다.',
     /** 수량이 아닌 값이 남아 있어 확인 창을 열 수 없다. */
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
     /**
@@ -258,15 +269,6 @@ export const oqcInspection = {
      */
     reinspectReasonPending:
       '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
-
-    /*
-     * 검사성적서 발행 — ⚠ **자리를 두되 비활성으로 시작한다.**
-     *
-     * ⛔ 감추지 않는다. 감추면 이 화면에 그 갈래가 «없는 것»이 되고, 계약이 오면 사용자는
-     * 「없던 것이 생겼다」로 만난다 — 자리가 보이면 「아직 못 쓴다」로 만난다. 둘은 다른 경험이다.
-     */
-    coaIssue: '검사성적서 발행',
-    coaPending: '검사성적서 발행은 아직 열리지 않았습니다 — 출력물 발행 계약이 준비되면 열립니다.',
   },
 
   /**
@@ -324,12 +326,12 @@ export const oqcInspection = {
 
   /** 확인 창 — **쓰기는 이 창의 버튼에서만 나간다.** */
   confirm: {
-    title: (inspectionRequestNo: string): string => `${inspectionRequestNo} 판정 저장`,
+    title: (inspectionRequestNo: string): string => `${inspectionRequestNo} 판정 확정`,
     judgment: (label: string): string => `최종 판정: ${label}`,
     /* ⛔ 수량 셋을 여기서 따로 내지 않는다 — 전이 경고 본문의 첫 규칙이 이미 그 세 값이다. */
-    irreversible: '저장하면 되돌릴 수 없습니다.',
+    irreversible: '확정하면 되돌릴 수 없습니다.',
     cancel: '취소',
-    confirm: '판정 저장',
+    confirm: '판정 확정',
   },
 
   /**
