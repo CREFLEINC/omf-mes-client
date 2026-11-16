@@ -1,7 +1,7 @@
-import { AlertBanner, Chip } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -73,6 +73,7 @@ const describeOutcome = (outcome: ScanOutcome): string => {
  */
 export const RunningChangeScreen = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const workOrderId = readWorkOrderId(searchParams);
   const lotId = readLotId(searchParams);
   /*
@@ -283,6 +284,24 @@ export const RunningChangeScreen = () => {
             </Chip>
           )}
         </p>
+        {/*
+         * 같은 W/O 로 생산 작업에 돌아간다(P-02-04 개선 명세 ⑥). W/O 없이 들어왔으면 돌아갈 곳이 없어 두지
+         * 않는다. 담은 교체는 단말 큐에 있어 화면을 떠나도 사라지지 않는다.
+         */}
+        {workOrderId !== null && (
+          <span className="pop-header-tools">
+            <Button
+              type="button"
+              variant="outlined"
+              size="md"
+              onClick={() => {
+                void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
+              }}
+            >
+              {messages.productionResult.flow.actions.backToWork}
+            </Button>
+          </span>
+        )}
       </header>
 
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}

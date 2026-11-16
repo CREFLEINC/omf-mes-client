@@ -464,6 +464,11 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     );
 
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '계획 추가' })).getByRole('button', {
+        name: '추가',
+      }),
+    );
     const qty = await screen.findByRole('textbox', {
       name: (name) => name.startsWith('신규 계획') && name.includes(tp.plan.columns.plannedQty),
     });
@@ -490,16 +495,9 @@ describe('작업지시 목록 처리 화면(T-W-C)', () => {
     await currentStep(tp.steps.plan);
 
     await user.click(screen.getByRole('button', { name: tp.plan.add }));
-    const blocked = tp.remaining.planBomMissing(tp.plan.newRow(2));
-    expect(await screen.findByText(blocked)).toBeVisible();
-    expect(screen.getByRole('link', { name: tp.links.bom })).toBeVisible();
-
-    await user.click(screen.getByRole('button', { name: tp.plan.saveDraft }));
-    const alert = await screen.findByText(tp.plan.failedTitle);
-    expect(alert.closest('[role="alert"], .alert-banner') ?? document.body).toHaveTextContent(
-      blocked,
-    );
-    expect(document.body).not.toHaveTextContent(tp.remaining.canProceed('4M 배정으로'));
+    const dialog = screen.getByRole('dialog', { name: '계획 추가' });
+    expect(within(dialog).getByText('ERP 기본 BOM 확인 필요')).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: '추가' })).toBeDisabled();
     expect(server.writes).toEqual([]);
     expect(state.plans).toHaveLength(1);
   });
