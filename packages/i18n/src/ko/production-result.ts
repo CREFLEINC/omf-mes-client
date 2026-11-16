@@ -33,6 +33,9 @@ export const productionResult = {
       remaining: (qty: string): string => `잔량 ${qty}`,
       /* 아래 셋은 오른쪽 위 파란 안내 줄이다(개선 명세 §1 「안내 문구」). 하단 바에는 두지 않는다. */
       noLot: '생산 가능한 LOT이 없어 불량 등록만 가능합니다.',
+      /** 작업 지시량 달성 + LOT 없음 — 두 안내를 한 줄로(사용자 지시 2026-11-16). */
+      planReachedNoLot:
+        '작업 지시량을 달성했고 생산 가능한 LOT이 없습니다. 작업지시 마감 또는 불량 등록만 가능합니다.',
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
       planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
       /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
@@ -76,7 +79,7 @@ export const productionResult = {
       current: '현재 LOT',
       completed: '마감된 LOT',
       /** 이 화면에서 방금 마감한 LOT 표시(사용자 지시 2026-11-16). */
-      justCompleted: '방금 마감',
+      justCompleted: '마감 완료',
       completedTotal: (count: number): string => `총 ${String(count)}건`,
       completedEmpty: '마감된 LOT이 없습니다.',
       pageNav: '마감된 LOT 페이지 이동',

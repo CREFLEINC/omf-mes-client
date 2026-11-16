@@ -2332,10 +2332,8 @@ export const ProductionFlowScreen = () => {
                    * 「LOT 없음」은 서버가 비었다고 답했을 때만 말한다. 불러오는 중이거나 못 불러왔으면(하단 바가
                    * 그 사실을 말한다) 「없다」고 단정하지 않는다 — 파란 안내 줄이라 잘못 뜨면 눈에 띈다.
                    */
-                  <>
-                    {isPlanAchieved && infoLine(t.flow.work.planReached)}
-                    {infoLine(t.flow.work.noLot)}
-                  </>
+                  /* 두 안내가 겹치면 한 줄로 합친다(사용자 지시 2026-11-16). */
+                  infoLine(isPlanAchieved ? t.flow.work.planReachedNoLot : t.flow.work.noLot)
                 ) : null}
                 {sessionNote}
                 {/*

@@ -21,6 +21,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       toGood: 'Quay lại',
       remaining: (qty: string): string => `Còn lại ${qty}`,
       noLot: 'Không có LOT có thể sản xuất nên chỉ có thể đăng ký lỗi.',
+      planReachedNoLot:
+        'Đã đạt số lượng lệnh và không còn LOT có thể sản xuất. Chỉ có thể đóng lệnh sản xuất hoặc đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',
       printerNone: 'Không có máy in',
@@ -55,7 +57,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       current: 'LOT hiện tại',
       completed: 'LOT đã đóng',
       /** 이 화면에서 방금 마감한 LOT 표시(사용자 지시 2026-11-16). */
-      justCompleted: 'Vừa đóng',
+      justCompleted: 'Đã đóng',
       completedTotal: (count: number): string => `Tổng ${String(count)}`,
       completedEmpty: 'Không có LOT đã đóng.',
       pageNav: 'Chuyển trang LOT đã đóng',
