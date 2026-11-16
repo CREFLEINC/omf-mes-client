@@ -176,7 +176,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     dispositionLabel: 'Loại xử lý',
     qtyLabel: 'Số lượng',
     reasonLabel: 'Lý do',
-    qtyLocked: 'Toàn bộ số lượng còn lại — không đổi được',
+    qtyLocked: 'Áp dụng cho toàn bộ số lượng.',
     wholeEffect: (count: number, effect: string): string =>
       `${String(count)} LOT quản lý vật tư: ${effect}`,
     effect: {
@@ -239,14 +239,13 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     sourceColumn: 'Nguồn',
     source: { IQC: 'IQC · nhập hàng vật tư', RETURN: 'Trả hàng', PRODUCT: 'OQC · thành phẩm' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     sortedFromTail: (tail: string): string => ` · phân loại ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    unitNote: 'Kết quả xử lý áp dụng cho tất cả LOT quản lý vật tư trong LOT nhập hàng.',
-    lotSummary: (count: number, qty: string): string => `${String(count)} LOT · ${qty}`,
-    matching: 'Kết quả kiểm tra IQC',
-    noMatch: 'Không khớp',
+    unitNote: (count: number): string => `Kết quả xử lý áp dụng như nhau cho ${String(count)} LOT.`,
+    matching: 'Kết quả kiểm tra',
+    noMatch: 'Không có kết quả kiểm tra liên kết',
     resultChip: (seqNo: number, judgment: string, defect: string | null): string =>
-      `Kết quả ${String(seqNo)} ${judgment}${defect === null ? '' : ` · ${defect}`}`,
+      `${judgment}${defect === null ? '' : `: ${defect}`} (kết quả kiểm tra ${String(seqNo)})`,
     rejectedCount: (count: number): string => `${String(count)} kết quả không đạt`,
-    unmatched: (results: string): string => `Kết quả không khớp: ${results}`,
+    unmatched: (results: string): string => `Kết quả kiểm tra chưa liên kết với LOT: ${results}`,
     judgment: { ACCEPTED: 'Đạt', REJECTED: 'Không đạt', HELD: 'Giữ lại' } as Record<
       string,
       string | undefined
@@ -258,7 +257,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     heading: 'Phân loại — chọn LOT quản lý vật tư lỗi',
     help: 'LOT quản lý vật tư được chọn sẽ chuyển sang LOT nhập hàng mới, giữ nguyên lỗi và xử lý ở mục không phù hợp mới. LOT quản lý vật tư không chọn sẽ về bình thường. Không chia LOT theo số lượng.',
     lotsLabel: 'LOT quản lý vật tư lỗi',
-    noMatch: 'Không có kết quả khớp',
+    noMatch: 'Không có kết quả kiểm tra liên kết',
     allSelected:
       'LOT nhập hàng ban đầu phải còn ít nhất một LOT quản lý vật tư. Nếu tất cả đều lỗi, đừng phân loại mà hãy xử lý bằng hủy · làm lại · đặc cách.',
     noneSelected: 'Hãy chọn ít nhất một LOT quản lý vật tư lỗi',

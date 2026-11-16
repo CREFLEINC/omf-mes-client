@@ -8896,6 +8896,25 @@ main:has(.iqc-skip-approval-detail) {
   margin: 0;
 }
 
+/* 처분 수량 — 이름 · 값 · 한 줄 안내를 한 줄로(바꿀 수 없는 값 · omf-all-around#275). */
+.disposition-qty-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-3);
+}
+
+.disposition-qty-value {
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  font-weight: 600;
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.disposition-qty-error {
+  flex-basis: 100%;
+}
+
 .disposition-sort {
   display: grid;
   gap: var(--space-2);

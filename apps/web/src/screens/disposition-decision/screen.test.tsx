@@ -89,7 +89,7 @@ describe('DispositionDecisionScreen 조회', () => {
 
     /* 005 FR-038 — 「입력 / 미입력」은 수량 입력과 함께 없어졌다. 처분 수량 칸이 남은 수량 전부를 잠가 보인다. */
     await waitFor(() =>
-      expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveValue('120 EA'),
+      expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveTextContent('120 EA'),
     );
   });
 

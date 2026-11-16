@@ -1,4 +1,4 @@
-import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
+import { Button, Radio, RadioGroup, TextArea } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
@@ -96,6 +96,7 @@ export const DecisionFormPane = ({
   const groupLabelId = useId();
   const lockReasonId = useId();
   const qtyNoteId = useId();
+  const qtyId = useId();
   const optionHintId = useId();
   const sortBlockId = useId();
   const isLocked = lockReason !== undefined;
@@ -222,21 +223,26 @@ export const DecisionFormPane = ({
         />
       ) : (
         /* 처분 수량 = 남은 수량 전부 — 입력하지 않는다(FR-038 · 일부 판정 없음). */
+        /* 바꿀 수 없는 값이라 입력칸이 아니라 글로 보인다(omf-all-around#275). */
         <div className="disposition-decision-subcard disposition-qty-card">
-          <TextField
-            label={uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
-            value={remainingText}
-            readOnly
-            fullWidth
-            disabled={isLocked}
+          <label className="field-label" htmlFor={qtyId}>
+            {uomLabel === '' ? t.form.qtyLabel : `${t.form.qtyLabel} (${uomLabel})`}
+          </label>
+          <output
+            id={qtyId}
+            className="disposition-qty-value"
             aria-describedby={[isLocked ? lockReasonId : '', qtyNoteId]
               .filter((id) => id !== '')
               .join(' ')}
-            error={errors.decisionQty}
-          />
-          <p id={qtyNoteId} className="field-note disposition-qty-note">
+          >
+            {remainingText}
+          </output>
+          <span id={qtyNoteId} className="field-note disposition-qty-note">
             {effect === undefined ? t.form.qtyLocked : t.form.wholeEffect(lots.length, effect)}
-          </p>
+          </span>
+          {errors.decisionQty !== undefined && (
+            <span className="field-error disposition-qty-error">{errors.decisionQty}</span>
+          )}
         </div>
       )}
 

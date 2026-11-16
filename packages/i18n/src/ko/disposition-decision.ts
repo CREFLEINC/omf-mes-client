@@ -192,7 +192,8 @@ export const dispositionDecision = {
     /**
      * 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음 · 일부 판정 없음). 판정 하나가 자재 관리 LOT 전부를 옮긴다.
      */
-    qtyLocked: '미처분 수량 전부 — 바꿀 수 없음',
+    /** 처분 수량은 바꿀 수 없다 — 읽기 전용 글 옆 한 줄(omf-all-around#275). */
+    qtyLocked: '전체 수량에 적용됩니다.',
     wholeEffect: (count: number, effect: string): string =>
       `자재 관리 LOT ${String(count)}개 ${effect}`,
     effect: {
@@ -275,16 +276,17 @@ export const dispositionDecision = {
     source: { IQC: 'IQC · 자재 입하', RETURN: '반품', PRODUCT: 'OQC · 제품' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     /** 선별 건 — 「· 선별 ← 0004」(원래 부적합 번호 끝 4자리). */
     sortedFromTail: (tail: string): string => ` · 선별 ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    /** LOT 표 제목 옆 한 줄 — 처분 단위(omf-all-around#275 — 파란 안내 상자를 줄임). */
-    unitNote: '처분 결과는 입하 LOT에 포함된 모든 자재 관리 LOT에 적용됩니다.',
-    /** 자재 관리 LOT 수 · 수량 합 — 「3개 (240 EA)」. */
-    lotSummary: (count: number, qty: string): string => `${String(count)}개 (${qty})`,
-    matching: 'IQC 검사 결과',
-    noMatch: '매칭 없음',
+    /** LOT 표 제목 아래 한 줄 — 처분 단위(omf-all-around#275 — 파란 안내 상자를 줄임). */
+    unitNote: (count: number): string =>
+      `처분 결과는 ${String(count)}개 LOT에 동일하게 적용됩니다.`,
+    /** 이 LOT 에 연결된 IQC 검사 결과(omf-all-around#275 — 「IQC 결과 매칭」에서 바꿈). */
+    matching: '검사 결과',
+    noMatch: '연결된 검사 결과 없음',
+    /** 「불합격 (검사 결과 1)」 — 판정을 앞에, 몇 번째 검사 결과인지 뒤에(omf-all-around#275). */
     resultChip: (seqNo: number, judgment: string, defect: string | null): string =>
-      `결과 ${String(seqNo)} ${judgment}${defect === null ? '' : ` · ${defect}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+      `${judgment}${defect === null ? '' : `: ${defect}`} (검사 결과 ${String(seqNo)})`,
     rejectedCount: (count: number): string => `불합격 결과 ${String(count)}건`,
-    unmatched: (results: string): string => `매칭 없는 결과: ${results}`,
+    unmatched: (results: string): string => `LOT에 연결되지 않은 검사 결과: ${results}`,
     judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<
       string,
       string | undefined
@@ -297,7 +299,7 @@ export const dispositionDecision = {
     heading: '선별 — 불량 자재 관리 LOT 고르기',
     help: '고른 자재 관리 LOT 는 새 입하 LOT 로 옮겨져 불량 그대로 새 부적합에서 처분합니다. 고르지 않은 자재 관리 LOT 는 정상이 됩니다. 수량으로 LOT 를 쪼개지 않습니다.',
     lotsLabel: '불량 자재 관리 LOT',
-    noMatch: '매칭 결과 없음',
+    noMatch: '연결된 검사 결과 없음',
     allSelected:
       '원래 입하 LOT 에 자재 관리 LOT 가 하나 이상 남아야 합니다. 모두 불량이면 선별하지 말고 폐기·재작업·특채로 처분하세요.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     noneSelected: '불량 자재 관리 LOT 를 하나 이상 고르세요',

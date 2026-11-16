@@ -60,8 +60,8 @@ export const NonconformanceList = ({
     {
       key: 'nonconformanceNo',
       align: 'center',
-      /* 번호가 잘리지 않는 폭 — 끌어 바꿀 수 있다. */
-      width: '170px',
+      /* 번호 · 입하 LOT 줄이 잘리지 않는 폭 — 끌어 바꿀 수 있다(omf-all-around#275). */
+      width: '200px',
       header: t.fields.nonconformanceNo,
       /* 번호는 글자다 — 고르기는 줄 누르기가 맡는다(사용자 지시 · #223). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
@@ -96,7 +96,8 @@ export const NonconformanceList = ({
     {
       key: 'item',
       align: 'center',
-      width: '220px',
+      /* 품목 이름이 덜 잘리게(omf-all-around#275). */
+      width: '260px',
       header: t.fields.item,
       render: (row) => lookupDisplayLabel(items, row.itemId),
     },

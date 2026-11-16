@@ -94,7 +94,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(screen.getByText('SAMPLE-IR-0701')).toBeInTheDocument();
     const lots = screen.getByRole('region', { name: t.panes.lots });
     /* 처분 단위는 표 제목 옆 한 줄로(#275 — 파란 안내 상자를 줄임). */
-    expect(within(lots).getByText(t.inboundLot.unitNote)).toBeInTheDocument();
+    expect(within(lots).getByText(t.inboundLot.unitNote(3))).toBeInTheDocument();
     expect(
       within(lots).getByText(t.inboundLot.resultChip(2, '불합격', '합성 외관 결함')),
     ).toBeInTheDocument();
@@ -108,8 +108,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     await screen.findByText('SAMPLE-ML|0003');
 
     const qty = screen.getByLabelText(`${t.form.qtyLabel} (EA)`);
-    await waitFor(() => expect(qty).toHaveValue('3,000 EA'));
-    expect(qty).toHaveAttribute('readonly');
+    await waitFor(() => expect(qty).toHaveTextContent('3,000 EA'));
 
     await user.click(screen.getByRole('radio', { name: '재작업' }));
     expect(
@@ -184,7 +183,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(sort).toBeDisabled();
     expect(sort).toHaveAccessibleDescription(t.form.typeLock.sortNoInboundLot);
     expect(screen.getByRole('radio', { name: '재작업' })).toBeEnabled();
-    expect(screen.queryByText(t.inboundLot.unitNote)).toBeNull();
+    expect(screen.queryByText(/처분 결과는/)).toBeNull();
   });
 
   it('US4-4 결재 대기 특채가 있으면 그 번호로 알리고, 다른 처분을 잠근다', async () => {

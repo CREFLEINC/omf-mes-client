@@ -86,8 +86,9 @@ describe('DecisionFormPane', () => {
   it('처분 수량은 남은 수량 전부를 읽기 전용으로 보인다 — 입력하지 않는다', () => {
     renderPane({ remainingQty: 320 });
 
-    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveValue('320 EA');
-    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveAttribute('readonly');
+    /* 입력칸이 아니라 글이다(#275). */
+    expect(screen.getByLabelText(`${t.form.qtyLabel} (EA)`)).toHaveTextContent('320 EA');
+    expect(screen.queryByRole('textbox', { name: `${t.form.qtyLabel} (EA)` })).toBeNull();
   });
 
   it('저장 중에는 저장·취소를 함께 잠근다 — 두 번 보내지 않게 한다', () => {
