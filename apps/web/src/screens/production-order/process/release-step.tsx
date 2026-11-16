@@ -431,10 +431,10 @@ export const ReleaseStep = ({
             </details>
           )}
           {plantId != null && (
-            <details className="pane erp-wo-release-terminals">
-              <summary>연결 단말기 확인</summary>
+            <section className="pane erp-wo-release-terminals" aria-label="연결 단말기 확인">
+              <h3 className="section-title">연결 단말기 확인</h3>
               <TerminalConnections key={wo.workOrderId} plantId={plantId} workOrder={wo} />
-            </details>
+            </section>
           )}
           <section className="erp-wo-release-effects">
             <div className="pane">

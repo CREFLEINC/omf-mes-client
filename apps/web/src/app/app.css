@@ -36941,3 +36941,9 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .assign-editor button[aria-haspopup="dialog"] { border-radius:var(--radius-sm); }
 
 .assign-editor .assign-plan-row div:has(> input) { border-radius:var(--radius-sm); }
+
+/* 날짜·시간은 내용에 맞는 폭으로 유지하고 공간이 충분하면 시작·종료를 나란히 둔다. */
+.erp-wo-assign-editor .assign-plan-row { grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),20rem)); max-width:calc(40rem + var(--space-3)); align-items:start; }
+.erp-wo-assign-editor .assign-plan-row > * { min-width:0; max-width:100%; }
+.erp-wo-assign-editor .date-time-field-controls { grid-template-columns:minmax(0,1fr) 6rem; gap:var(--space-2); }
+.erp-wo-release-terminals > .section-title { margin-bottom:var(--space-3); }
