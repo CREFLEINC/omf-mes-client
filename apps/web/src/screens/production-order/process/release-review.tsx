@@ -21,6 +21,7 @@ export interface ReleaseReviewPlan extends ProductionPlanFact {
   routingLabel: string;
 }
 interface Props {
+  view?: 'plan' | 'assign';
   plans: ReleaseReviewPlan[];
   lines: ReleaseLine[];
   plantId: number | null;
@@ -37,7 +38,7 @@ const name = (id: number | null, value: string | undefined, pending: boolean, fa
     ? '미지정'
     : value || `${failed ? '명칭 조회 실패' : pending ? '조회 중' : '명칭 확인 필요'} (ID ${id})`;
 
-const AssignmentFacts = ({
+export const AssignmentFacts = ({
   fact,
   equipmentRequired,
   moldRequired,
@@ -139,6 +140,7 @@ const ReviewPlan = ({
   plantId,
   lineNameOf,
   uomLabelOf,
+  view,
 }: Props & { plan: ReleaseReviewPlan }) => {
   const { client } = useApiClient();
   const operations = useRoutingOperations(plan.routingId);
@@ -159,50 +161,52 @@ const ReviewPlan = ({
   return (
     <section className="erp-wo-final-plan" aria-label={`${plan.planNo} 최종 확인`}>
       <h3>{plan.planNo}</h3>
-      <section aria-label="생산계획 정보">
-        <h4>생산계획</h4>
-        <dl className="erp-wo-final-facts">
-          {[
-            ['계획일', plan.planDate],
-            ['생산량', `${formatQty(plan.plannedQty)} ${uomLabelOf(plan.uomId)}`],
-            [
-              '생산 라인',
-              lineNameOf?.(plan.plannedLineId) ??
-                (plan.plannedLineId === null ? '미지정' : `ID ${plan.plannedLineId}`),
-            ],
-            ['BOM', plan.bomLabel],
-            ['Routing', plan.routingLabel],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd
-                className={
-                  label === 'BOM' || label === 'Routing' ? 'erp-wo-final-revision' : undefined
-                }
-              >
-                {value}
-                {label === 'BOM' && (
-                  <RevisionDetailButton
-                    iconOnly
-                    kind="BOM"
-                    value={String(plan.bomId)}
-                    content={plan.revisionContent?.bom}
-                  />
-                )}{' '}
-                {label === 'Routing' && (
-                  <RevisionDetailButton
-                    iconOnly
-                    kind="Routing"
-                    content={plan.revisionContent?.routing}
-                    value={String(plan.routingId)}
-                    label={plan.routingLabel}
-                  />
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      {view !== 'assign' && (
+        <section aria-label="생산계획 정보">
+          <h4>생산계획</h4>
+          <dl className="erp-wo-final-facts">
+            {[
+              ['계획일', plan.planDate],
+              ['생산량', `${formatQty(plan.plannedQty)} ${uomLabelOf(plan.uomId)}`],
+              [
+                '생산 라인',
+                lineNameOf?.(plan.plannedLineId) ??
+                  (plan.plannedLineId === null ? '미지정' : `ID ${plan.plannedLineId}`),
+              ],
+              ['BOM', plan.bomLabel],
+              ['Routing', plan.routingLabel],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd
+                  className={
+                    label === 'BOM' || label === 'Routing' ? 'erp-wo-final-revision' : undefined
+                  }
+                >
+                  {value}
+                  {label === 'BOM' && (
+                    <RevisionDetailButton
+                      iconOnly
+                      kind="BOM"
+                      value={String(plan.bomId)}
+                      content={plan.revisionContent?.bom}
+                    />
+                  )}{' '}
+                  {label === 'Routing' && (
+                    <RevisionDetailButton
+                      iconOnly
+                      kind="Routing"
+                      content={plan.revisionContent?.routing}
+                      value={String(plan.routingId)}
+                      label={plan.routingLabel}
+                    />
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
       <section aria-label="공정별 작업지시">
         <h4>공정별 작업지시 {lines.length}건</h4>
         <AdjustableNativeTable
@@ -261,50 +265,58 @@ const ReviewPlan = ({
           </tbody>
         </AdjustableNativeTable>
       </section>
-      <section aria-label="4M 배정 확인">
-        <h4>4M 배정</h4>
-        {operations.isError && (
-          <AlertBanner variant="warning" title="공정별 필수 설정을 조회하지 못했습니다" />
-        )}
-        {lines.map((line, index) => {
-          const result = details[index];
-          const fact = result?.data;
-          const operation = operations.data?.items.find(
-            (row) => row.routingOperationId === fact?.routingOperationId,
-          );
-          return (
-            <section className="erp-wo-final-operation" key={line.workOrder.workOrderId}>
-              <h5>
-                {line.workOrder.workOrderNo} / {line.workOrder.operationName}
-              </h5>
-              {!fact ? (
-                result?.isError ? (
-                  <AlertBanner variant="error" title="작업지시 배정 정보를 조회하지 못했습니다" />
+      {view !== 'plan' && (
+        <section aria-label="4M 배정 확인">
+          <h4>4M 배정</h4>
+          {operations.isError && (
+            <AlertBanner variant="warning" title="공정별 필수 설정을 조회하지 못했습니다" />
+          )}
+          {lines.map((line, index) => {
+            const result = details[index];
+            const fact = result?.data;
+            const operation = operations.data?.items.find(
+              (row) => row.routingOperationId === fact?.routingOperationId,
+            );
+            return (
+              <section className="erp-wo-final-operation" key={line.workOrder.workOrderId}>
+                <h5>
+                  {line.workOrder.workOrderNo} / {line.workOrder.operationName}
+                </h5>
+                {!fact ? (
+                  result?.isError ? (
+                    <AlertBanner variant="error" title="작업지시 배정 정보를 조회하지 못했습니다" />
+                  ) : (
+                    <SkeletonText lines={2} />
+                  )
                 ) : (
-                  <SkeletonText lines={2} />
-                )
-              ) : (
-                <>
-                  <AssignmentFacts
-                    fact={fact}
-                    equipmentRequired={operation?.equipmentRequired === true}
-                    moldRequired={operation?.moldRequired === true}
-                    plantId={plantId}
-                    lineNameOf={lineNameOf}
-                  />
-                  {operations.isPending && <p className="field-note">공정별 필수 설정 조회 중</p>}
-                </>
-              )}
-            </section>
-          );
-        })}
-      </section>
+                  <>
+                    <AssignmentFacts
+                      fact={fact}
+                      equipmentRequired={operation?.equipmentRequired === true}
+                      moldRequired={operation?.moldRequired === true}
+                      plantId={plantId}
+                      lineNameOf={lineNameOf}
+                    />
+                    {operations.isPending && <p className="field-note">공정별 필수 설정 조회 중</p>}
+                  </>
+                )}
+              </section>
+            );
+          })}
+        </section>
+      )}
     </section>
   );
 };
 export const ReleaseReview = (props: Props) => (
   <section className="erp-wo-final-review" aria-label="생산계획 및 4M 최종 확인">
-    <h2 className="section-title">생산계획 및 4M 최종 확인</h2>
+    <h2 className="section-title">
+      {props.view === 'plan'
+        ? '생산계획'
+        : props.view === 'assign'
+          ? '4M 배정'
+          : '생산계획 및 4M 최종 확인'}
+    </h2>
     {props.plans
       .filter((plan) =>
         props.lines.some((line) => line.workOrder.productionPlanId === plan.productionPlanId),

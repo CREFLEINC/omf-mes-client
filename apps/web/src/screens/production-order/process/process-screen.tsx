@@ -1,3 +1,5 @@
+import { ReleaseResult } from './release-result';
+import type { ReleaseAttempt } from '../release-runner';
 import { PlanAddDialog } from './plan-add-dialog';
 import { planQuantities } from './plan-quantities';
 import { WorkOrderOverview } from './work-order-overview';
@@ -323,17 +325,19 @@ export const ProcessWorkspace = ({
 
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(null);
+  const [completedView, setCompletedView] = useState<ProcessStepKey>('release');
   const stepChangeRef = useRef(onStepChange);
   stepChangeRef.current = onStepChange;
   useEffect(() => {
     if (step !== null && step !== 'done') stepChangeRef.current?.(step);
   }, [step]);
-  const [releasedCount, setReleasedCount] = useState<number | null>(null);
+  const [releaseAttempts, setReleaseAttempts] = useState<ReleaseAttempt[]>([]);
   const loading =
     boms.isPending ||
     routings.isPending ||
     !editor.isHydrated ||
     unreleased.isPending ||
+    allWorkOrders.isPending ||
     readiness === undefined;
   const alreadyReleased =
     !loading &&
@@ -344,13 +348,16 @@ export const ProcessWorkspace = ({
     if (step !== null || loading) return;
     /* 처음 한 번만 정한다(T-W-C 처음 여는 단계). 이후 이동은 사용자가 한다. */
     setStep(
-      alreadyReleased
+      alreadyReleased ||
+        (allWorkOrders.data ?? []).some((entry) =>
+          ['RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CLOSED'].includes(entry.statusCode),
+        )
         ? 'done'
         : initialStep && canEnter(initialStep, judgments)
           ? initialStep
           : firstOpenStep(judgments),
     );
-  }, [alreadyReleased, initialStep, judgments, loading, step]);
+  }, [alreadyReleased, allWorkOrders.data, initialStep, judgments, loading, step]);
   useEffect(() => {
     if (step === 'assign' && assignSelected === null) {
       const first = firstBlocked ?? unreleased.data?.[0];
@@ -451,22 +458,28 @@ export const ProcessWorkspace = ({
     label: stepName(key),
     status:
       step === 'done'
-        ? 'complete'
+        ? key === 'release' &&
+          (allWorkOrders.data ?? []).some((entry) =>
+            ['PLANNED', 'CONFIRMED'].includes(entry.statusCode),
+          )
+          ? 'current'
+          : 'complete'
         : key === step
           ? 'current'
           : key !== 'release' && judgments[key].complete && canEnter(key, judgments)
             ? 'complete'
             : 'pending',
-    canReturn: step !== 'done',
+    canReturn: true,
   }));
   const index = step === 'done' ? STEP_KEYS.length : STEP_KEYS.indexOf(step);
   const nextKey = step === 'done' ? undefined : STEP_KEYS[index + 1];
 
   const release = async () => {
-    if (releaseLines === undefined || missingLot !== null) return;
+    if (releasing || releaseLines === undefined || releaseLines.length === 0 || missingLot !== null)
+      return;
     setReleasing(true);
     setFailures([]);
-    const attempts = [];
+    const attempts: ReleaseAttempt[] = [];
     for (const line of releaseLines) {
       const signature = `${String(line.workOrder.workOrderId)}:${String(line.lotSize)}`;
       const key = releaseKeys.current.get(signature) ?? createIdempotencyKey();
@@ -483,14 +496,21 @@ export const ProcessWorkspace = ({
     }
     await invalidateFlow(queryClient);
     setReleasing(false);
-    setUnsourcedLines(unsourcedNotices(attempts));
+    const combined = [
+      ...releaseAttempts.filter(
+        (old) => !attempts.some((entry) => entry.workOrderId === old.workOrderId),
+      ),
+      ...attempts,
+    ];
+    setUnsourcedLines(unsourcedNotices(combined));
+    setReleaseAttempts(combined);
     const problems = attempts.filter((attempt) => attempt.status !== 'released');
     if (problems.length === 0) {
       setLotSizeTexts({});
-      setReleasedCount(attempts.length);
       setStep('done');
     } else {
       setFailures(toReleaseFailures(problems, tp.release.failed));
+      setStep('done');
     }
   };
 
@@ -521,6 +541,10 @@ export const ProcessWorkspace = ({
         ? assignDirty
         : key === 'release' && lotDirty;
   const goTo = (key: string) => {
+    if (step === 'done') {
+      setCompletedView(key as ProcessStepKey);
+      return;
+    }
     if (key !== step && unsavedIn(step)) {
       setPendingStep(key as ProcessStepKey);
       return;
@@ -536,8 +560,45 @@ export const ProcessWorkspace = ({
     else if (key === 'release') setLotSizeTexts({});
   };
 
+  const releaseInformation = (readOnly: boolean) => (
+    <ReleaseStep
+      readOnly={readOnly}
+      reviewPlans={planFacts.map((plan) => ({
+        ...plan,
+        bomLabel: (() => {
+          const bom = bomItems.find((value) => value.bomId === plan.bomId);
+          return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${plan.bomId}`;
+        })(),
+        routingLabel: (() => {
+          const routing = routingItems.find((value) => value.routingId === plan.routingId);
+          return routing
+            ? `${routing.routingCode} (개정 ${routing.routingVersion})`
+            : `Routing ID ${plan.routingId}`;
+        })(),
+      }))}
+      plantId={order.plantId ?? undefined}
+      lines={readOnly ? toReleaseLines(allWorkOrders.data ?? [], {}, defaultLots) : releaseLines}
+      orderNo={order.productionOrderNo}
+      itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
+      planDateOf={(planId) =>
+        planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
+      }
+      lineNameOf={(lineId) => {
+        const line = planLines.find((entry) => entry.id === lineId);
+        return line === undefined ? tp.plan.workspace.unassigned : named(line.name, line.code);
+      }}
+      uomLabelOf={uomLabelOf}
+      failures={readOnly ? [] : failures}
+      issueDates={readOnly ? undefined : issueDates}
+      revealErrors={false}
+      onLotSizeChange={(workOrderId, value) =>
+        setLotSizeTexts((current) => ({ ...current, [workOrderId]: value }))
+      }
+    />
+  );
+
   const body = (() => {
-    switch (step) {
+    switch (step === 'done' && completedView !== 'release' ? completedView : step) {
       case 'master':
         return (
           <MasterStep
@@ -557,7 +618,7 @@ export const ProcessWorkspace = ({
             }}
             bomId={bomId}
             routingId={routingId}
-            locked={fixedByPlan}
+            locked={step === 'done' || fixedByPlan}
             statusNameOf={codeNames.masterVersionStatus}
             onRoutingChange={setRoutingChoice}
           />
@@ -588,7 +649,7 @@ export const ProcessWorkspace = ({
               plantId={order.plantId}
               lines={planLines}
               statusNameOf={codeNames.productionPlanStatus}
-              disabled={planBusy || !master.complete}
+              disabled={step === 'done' || planBusy || !master.complete}
               failures={planFailures}
               addDisabled={
                 planQuantities(order.orderQty, order.confirmedPlanQty, editor.rows).remaining <= 0
@@ -635,11 +696,13 @@ export const ProcessWorkspace = ({
       case 'assign':
         return (
           <AssignStep
-            erpStorage={order}
+            readOnly={step === 'done'}
+            statusNameOf={codeNames.workOrderStatus}
+            erpStorage={step === 'done' ? undefined : order}
             itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
             actionTargetId={assignActionTargetId}
-            workOrders={unreleased.data}
-            blockedIds={blockedIds}
+            workOrders={step === 'done' ? allWorkOrders.data : unreleased.data}
+            blockedIds={step === 'done' ? new Set<number>() : blockedIds}
             plantId={order.plantId}
             planDateOf={(planId) =>
               planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
@@ -657,81 +720,30 @@ export const ProcessWorkspace = ({
           />
         );
       case 'release':
-        return (
-          <ReleaseStep
-            reviewPlans={planFacts.map((plan) => ({
-              ...plan,
-              bomLabel: (() => {
-                const bom = bomItems.find((value) => value.bomId === plan.bomId);
-                return bom ? `${bom.bomCode} (개정 ${bom.bomVersion})` : `BOM ID ${plan.bomId}`;
-              })(),
-              routingLabel: (() => {
-                const routing = routingItems.find((value) => value.routingId === plan.routingId);
-                return routing
-                  ? `${routing.routingCode} (개정 ${routing.routingVersion})`
-                  : `Routing ID ${plan.routingId}`;
-              })(),
-            }))}
-            plantId={order.plantId ?? undefined}
-            lines={releaseLines}
-            orderNo={order.productionOrderNo}
-            itemLabel={item === undefined ? undefined : named(item.itemName, item.itemCode)}
-            planDateOf={(planId) =>
-              planFacts.find((entry) => entry.productionPlanId === planId)?.planDate ?? null
-            }
-            lineNameOf={(lineId) => {
-              const line = planLines.find((entry) => entry.id === lineId);
-              return line === undefined
-                ? tp.plan.workspace.unassigned
-                : named(line.name, line.code);
-            }}
-            uomLabelOf={uomLabelOf}
-            failures={failures}
-            issueDates={issueDates}
-            revealErrors={false}
-            onLotSizeChange={(workOrderId, value) =>
-              setLotSizeTexts((current) => ({ ...current, [workOrderId]: value }))
-            }
-          />
-        );
+        return releaseInformation(false);
       case 'done':
         return (
-          <section className="pane erp-wo-step-pane" aria-label={tp.done.heading}>
-            <h2 className="section-title">{tp.done.heading}</h2>
-            <p className="done-lead">
-              {releasedCount === null
-                ? tp.done.alreadyReleased
-                : tp.done.success(order.productionOrderNo, releasedCount)}
-            </p>
-            {unsourcedLines.length > 0 && (
-              /* 막힘이 아니다 — 배포는 됐다(FR-007a). 노랑 안내 + 부족 보기 바로가기. */
-              <AlertBanner
-                variant="warning"
-                action={
-                  <Link to={MATERIAL_ISSUE_SHORTAGE_PATH}>
-                    {tp.release.productionWarehouse.openShortage}
-                  </Link>
-                }
-              >
-                <ul className="erp-wo-plain-list">
-                  {unsourcedLines.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </AlertBanner>
-            )}
-            <ul className="erp-wo-plain-list">
-              {(allWorkOrders.data ?? []).map((workOrder) => (
-                <li key={workOrder.workOrderId}>
-                  {tp.done.statusLine(
-                    workOrder.workOrderNo,
-                    workOrder.operationName,
-                    codeNames.workOrderStatus(workOrder.statusCode),
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <>
+            {releaseInformation(true)}
+            <ReleaseResult
+              orderNo={order.productionOrderNo}
+              itemCode={item?.itemCode}
+              itemName={item?.itemName}
+              plans={planFacts}
+              workOrders={allWorkOrders.data ?? []}
+              pending={allWorkOrders.isPending}
+              failed={allWorkOrders.isError}
+              attempts={releaseAttempts}
+              shortages={unsourcedLines}
+              plantId={order.plantId}
+              uomLabelOf={uomLabelOf}
+              lineNameOf={(id) => (id === null ? '미지정' : (lineName(id) ?? `ID ${id}`))}
+              statusName={codeNames.workOrderStatus}
+              retrying={releasing}
+              onRetry={() => void release()}
+              onEdit={() => setStep('assign')}
+            />
+          </>
         );
     }
   })();
@@ -817,7 +829,13 @@ export const ProcessWorkspace = ({
     <ProcessPage
       backLabel={tp.back}
       onBack={() => void navigate(worklistPath(lastSearch))}
-      title={tp.title}
+      title={
+        step === 'done'
+          ? completedView === 'release'
+            ? '배포 결과'
+            : stepName(completedView)
+          : tp.title
+      }
       badges={
         <>
           <ProcessStateChip state={derived.state} />
@@ -854,31 +872,29 @@ export const ProcessWorkspace = ({
         ) : undefined
       }
       stepNavigation={
-        step === 'done' ? undefined : (
-          <Tabs
-            className="erp-wo-stage-tabs"
-            aria-label={messages.screenPatterns.processPage.steps}
-            value={step}
-            onChange={(key) => goTo(key as ProcessStepKey)}
-            items={steps.map((entry, index) => ({
-              value: entry.key,
-              label: (
-                <>
-                  <span className="erp-wo-stage-index" aria-hidden="true">
-                    {index + 1}.
-                  </span>
-                  {entry.label}
-                </>
-              ),
-              content: null,
-              disabled: !canEnter(entry.key as ProcessStepKey, judgments),
-            }))}
-          />
-        )
+        <Tabs
+          className="erp-wo-stage-tabs"
+          aria-label={messages.screenPatterns.processPage.steps}
+          value={step === 'done' ? completedView : step}
+          onChange={(key) => goTo(key as ProcessStepKey)}
+          items={steps.map((entry, index) => ({
+            value: entry.key,
+            label: (
+              <>
+                <span className="erp-wo-stage-index" aria-hidden="true">
+                  {index + 1}.
+                </span>
+                {entry.label}
+              </>
+            ),
+            content: null,
+            disabled: step !== 'done' && !canEnter(entry.key as ProcessStepKey, judgments),
+          }))}
+        />
       }
       steps={steps}
       onSelectStep={goTo}
-      bodyScrollKey={step ?? undefined}
+      bodyScrollKey={step === 'done' ? completedView : (step ?? undefined)}
       actionBar={
         <ActionBar
           remaining={

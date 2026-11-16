@@ -46,6 +46,7 @@ export interface ReleaseAttempt extends ReleaseTarget {
   blocks?: string[];
   /** 배포는 됐지만 재고 있는 생산 창고가 없어 요청에 넣지 못한 자재(FR-007a). */
   unsourced?: ReleaseUnsourcedShortage[];
+  materialIssueRequests?: WorkOrderReleaseResult['materialIssueRequests'];
 }
 
 /** 400 오류에서 출고 요청 기준정보 사유만 고른다(중복 없이, 계약 차례로). */
@@ -143,7 +144,15 @@ export const releaseWorkOrder = async (
     reason,
   });
   try {
-    const { etag, verdict } = await inspect(client, queryClient, target.workOrderId, lotSize);
+    const { etag, verdict, fact } = await inspect(client, queryClient, target.workOrderId, lotSize);
+    // 응답 유실 후 재시도하더라도 이미 배포된 작업지시는 다시 전개하지 않는다.
+    if (fact.statusCode === 'CANCELLED')
+      return outcome('skipped', '취소된 작업지시는 배포할 수 없습니다.');
+    if (
+      fact.releasedAt ||
+      ['RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CLOSED', 'SUSPENDED'].includes(fact.statusCode)
+    )
+      return outcome('released', null);
     if (!verdict.ready) return outcome('skipped', verdict.reason);
     if (etag === null) return outcome('failed', messages.save.staleToken);
     const released = await runRequest(() =>
@@ -156,9 +165,11 @@ export const releaseWorkOrder = async (
       }),
     );
     const unsourced = released.unsourcedShortages ?? [];
-    return unsourced.length === 0
-      ? outcome('released', null)
-      : { ...outcome('released', null), unsourced };
+    return {
+      ...outcome('released', null),
+      unsourced,
+      materialIssueRequests: released.materialIssueRequests,
+    };
   } catch (cause) {
     const error = toApiError(cause);
     const blocks = releaseBlocksOf(error);
