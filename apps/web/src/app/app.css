@@ -37005,3 +37005,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 .erp-wo-distribution-dialog .erp-wo-segment-fields .field-label, .erp-wo-distribution-dialog .erp-wo-segment-fields label { margin:0; }
 .erp-wo-distribution-dialog .erp-wo-distribution-settings .erp-wo-segment-mode [role="combobox"] { height:var(--control-height-md); min-height:var(--control-height-md); }
 .erp-wo-distribution-dialog .erp-wo-distribution-settings .erp-wo-distribution-row-head [role="combobox"] { min-height:var(--control-height-md); border-radius:var(--radius-sm); }
+
+.erp-wo-distribution-holiday-option { display:inline-flex; align-items:center; gap:var(--space-2); min-height:var(--control-height-md); font:var(--type-body-sm); }
+.erp-wo-distribution-holiday-option input { width:1rem; height:1rem; margin:0; }

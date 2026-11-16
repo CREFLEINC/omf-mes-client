@@ -29,6 +29,7 @@ export interface DistributionSegment {
   quantity: string;
   daily: Record<string, string>;
   applied?: boolean;
+  includeHolidays?: boolean;
 }
 export interface OwnedDraft extends ScheduledDraft {
   owner: string;
@@ -149,10 +150,12 @@ export const previewSegments = (
         segment,
         target.decimalScale,
         new Set(
-          calendarBySegment
-            ?.get(segment.id)
-            ?.filter((day) => day.statusCode === 'HOLIDAY')
-            .map((day) => day.date) ?? [],
+          segment.includeHolidays
+            ? []
+            : (calendarBySegment
+                ?.get(segment.id)
+                ?.filter((day) => day.statusCode === 'HOLIDAY')
+                .map((day) => day.date) ?? []),
         ),
       );
     } catch (error) {
@@ -192,7 +195,12 @@ export const previewSegments = (
         ...(calendarBySegment
           ? {
               source:
-                segment.mode === 'daily' || row?.source === 'USER'
+                segment.mode === 'daily' ||
+                row?.source === 'USER' ||
+                (segment.includeHolidays &&
+                  calendarBySegment
+                    ?.get(segment.id)
+                    ?.some((day) => day.date === piece.date && day.statusCode === 'HOLIDAY'))
                   ? ('USER' as const)
                   : ('SYSTEM' as const),
             }

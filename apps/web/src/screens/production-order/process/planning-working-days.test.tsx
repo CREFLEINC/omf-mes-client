@@ -74,6 +74,25 @@ it('균등 분배는 휴일만 제외하고 수량을 보존하며 직접 일일
     ['2026-11-09', '5', 'SYSTEM'],
     ['2026-11-11', '5', 'SYSTEM'],
   ]);
+  expect(
+    previewSegments([target], [{ ...segment, includeHolidays: true }], [], days).drafts,
+  ).toEqual([
+    expect.objectContaining({
+      planDate: '2026-11-09',
+      plannedQty: '4',
+      planDateSourceCode: 'SYSTEM',
+    }),
+    expect.objectContaining({
+      planDate: '2026-11-10',
+      plannedQty: '3',
+      planDateSourceCode: 'USER',
+    }),
+    expect.objectContaining({
+      planDate: '2026-11-11',
+      plannedQty: '3',
+      planDateSourceCode: 'SYSTEM',
+    }),
+  ]);
   expect(previewSegments([target], [{ ...segment, mode: 'daily' }], [], days).drafts).toEqual([
     expect.objectContaining({
       planDate: '2026-11-10',

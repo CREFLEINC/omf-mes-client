@@ -105,6 +105,7 @@ export const DistributionControls = ({
           ? String(lines[0]!.id)
           : '',
       mode: 'equal',
+      includeHolidays: false,
       quantity,
       daily: {},
     };
@@ -142,7 +143,16 @@ export const DistributionControls = ({
             .map((row) => [`${row.owner}:${row.planDate}:${row.plannedLineId}`, row]),
         ).values(),
       ]
-        .map((row) => ({ ...row, plannedQty: resultQuantities[resultKey(row)] ?? row.plannedQty }))
+        .map((row) => ({
+          ...row,
+          plannedQty: resultQuantities[resultKey(row)] ?? row.plannedQty,
+          ...(holidayRows.find((holiday) => resultKey(holiday) === resultKey(row))
+            ? {
+                holidayLabel: holidayRows.find((holiday) => resultKey(holiday) === resultKey(row))!
+                  .holidayLabel,
+              }
+            : {}),
+        }))
         .sort(
           (a, b) =>
             a.owner.localeCompare(b.owner) ||
@@ -626,6 +636,18 @@ export const DistributionControls = ({
                               </p>
                             )}
                           </div>
+                          <label className="erp-wo-distribution-holiday-option">
+                            <input
+                              type="checkbox"
+                              aria-label={`분배 조건 ${index + 1} 휴일 포함`}
+                              checked={row.includeHolidays ?? false}
+                              disabled={disabled || row.mode === 'daily'}
+                              onChange={(event) =>
+                                change(row.id, { includeHolidays: event.target.checked })
+                              }
+                            />
+                            휴일 포함
+                          </label>
                           {row.mode === 'daily' && (
                             <div className="erp-wo-daily-quantities">
                               {dates.length ? (
@@ -725,18 +747,17 @@ export const DistributionControls = ({
                           bySegment.set(row.id, days);
                           const holidays = days.filter((day) => day.statusCode === 'HOLIDAY');
                           for (const day of holidays) {
-                            if (row.mode === 'equal' || !(Number(row.daily[day.date]) > 0))
-                              holidayDisplay.push({
-                                owner: row.owner,
-                                planDate: day.date,
-                                plannedLineId: row.lineId,
-                                plannedQty: '0',
-                                holidayLabel: planningHolidayLabel(day),
-                              });
+                            holidayDisplay.push({
+                              owner: row.owner,
+                              planDate: day.date,
+                              plannedLineId: row.lineId,
+                              plannedQty: '0',
+                              holidayLabel: planningHolidayLabel(day),
+                            });
                           }
                           if (row.mode === 'equal' && holidays.length)
                             notes.push(
-                              `${order.label}: 휴일 ${holidays.length}일 기본 수량 0 (${holidays.map((day) => day.date).join(', ')})`,
+                              `${order.label}: 휴일 ${holidays.length}일 ${row.includeHolidays ? '포함' : '기본 수량 0'} (${holidays.map((day) => day.date).join(', ')})`,
                             );
                           if (row.mode === 'daily')
                             holidays
