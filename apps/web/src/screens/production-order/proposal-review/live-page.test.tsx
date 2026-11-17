@@ -23,7 +23,12 @@ const proposal: PlanProposal = {
   erpStorage: {
     erpStorageLocationCode: 'WH-A',
     warehouse: { id: 5, code: 'WH-A', name: '입고 창고 A' },
-    location: { id: 50, code: 'SYS-WHOLE', name: '창고 전체' },
+    location: {
+      id: 50,
+      code: 'K7PM-SYS-WHOLE',
+      name: '창고 전체',
+      systemRoleCode: 'WAREHOUSE_WHOLE',
+    },
     reasonCode: null,
   },
   issues: [],

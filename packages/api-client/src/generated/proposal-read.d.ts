@@ -226,10 +226,16 @@ export interface components {
          * @example 1001
          */
         id: number;
-        /** @example WH-ALL */
+        /** @example K7QX-SYS-WHOLE */
         code: string;
         /** @example 창고 전체 */
         name: string;
+        /**
+         * @description 그 위치의 역할 — 적치 대기(PUTAWAY_STAGING) · 창고 전체(WAREHOUSE_WHOLE). 위치 코드가 창고 위치 코드로 시작하므로(omf-all-around#292) 적치 대기는 code 글자가 아니라 이 값으로 가린다
+         * @example WAREHOUSE_WHOLE
+         * @enum {string|null}
+         */
+        systemRoleCode: 'PUTAWAY_STAGING' | 'WAREHOUSE_WHOLE' | null;
       } | null;
       /**
        * @description SL_CD 가 있는데 창고를 정하지 못한 까닭 — FG_WAREHOUSE_UNMAPPED 코드가 같은 MES 창고가 없다 · FG_WAREHOUSE_INACTIVE 그 창고가 꺼져 있다 · FG_WAREHOUSE_OTHER_PLANT 그 창고가 다른 공장에 있다 · FG_WAREHOUSE_NOT_ALLOWED 자재창고·불량창고·외부창고다. 정해졌거나 SL_CD 가 없으면 null. 같은 코드가 공정 W/O 의 defaultFgLocationId 칸 문제(issues)로도 나온다

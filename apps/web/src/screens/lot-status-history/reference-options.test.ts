@@ -25,6 +25,7 @@ const warehouse: components['schemas']['Warehouse'] = {
   businessUnitId: 301,
   warehouseCode: 'SAMPLE-WH-01',
   warehouseName: '합성 창고',
+  locationPrefix: 'K7PM',
   warehouseTypeCode: 'SAMPLE_TYPE',
   isExternal: false,
   isDefect: false,

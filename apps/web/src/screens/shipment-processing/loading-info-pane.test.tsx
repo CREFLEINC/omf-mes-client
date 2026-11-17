@@ -18,6 +18,7 @@ const warehouse = (overrides: Partial<Parameters<typeof toWarehouseOptions>[0][n
   businessUnitId: 1,
   warehouseCode: 'WH-01',
   warehouseName: 'Synthetic Warehouse',
+  locationPrefix: 'K7PM',
   warehouseTypeCode: 'PRODUCT',
   isExternal: false,
   isDefect: false,

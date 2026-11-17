@@ -92,7 +92,7 @@ export interface paths {
             'application/json': components['schemas']['Warehouse'];
           };
         };
-        /** @description 검증 실패 */
+        /** @description 검증 실패. locationPrefix — 형식이 틀리면 INVALID, 다른 창고가 쓰면 UNIQUE_VIOLATION(uniqueScope [locationPrefix] · omf-all-around#292) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -208,7 +208,7 @@ export interface paths {
             'application/json': components['schemas']['Warehouse'];
           };
         };
-        /** @description 검증 실패 */
+        /** @description 검증 실패. locationPrefix 를 지금 값과 다르게 보내면 STATE_LOCKED — 창고 위치 코드는 등록한 뒤 바꿀 수 없다(omf-all-around#292) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -416,9 +416,9 @@ export interface paths {
      */
     get: {
       parameters: {
-        query: {
-          /** @description 필수. Location 은 창고를 고른 뒤에 본다 — W-06-07 §3 ⚠ 위치 «코드» 스캔은 locationCode 와 함께 보낸다 — 창고는 적치 지시·화면 문맥이 준다. */
-          warehouseId: number;
+        query?: {
+          /** @description locationCode 가 없으면 필수(없으면 400 REQUIRED). Location 은 창고를 고른 뒤에 본다 — W-06-07 §3. 위치 코드는 창고 위치 코드(Warehouse.locationPrefix)로 시작하고 모든 창고를 통틀어 유일하다(omf-all-around#292) — 위치 «코드» 스캔은 locationCode 만 보내도 한 건이 집힌다. 함께 보내면 그 창고 안에서만 찾는다. */
+          warehouseId?: number;
           /** @description 코드·명칭 검색 */
           q?: string;
           /** @description 위치 코드 정확 일치. 스캔한 코드로 한 건을 집을 때 쓰며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ q 로 받은 페이지를 화면이 걸러 쓰는 것으로는 성립하지 않는다 — 부분 일치가 여러 건을 낸다 */
@@ -45371,6 +45371,11 @@ export interface components {
        * @example true
        */
       isActive: boolean;
+      /**
+       * @description 창고 위치 코드 — 이 창고의 위치 코드 앞에 붙는다({locationPrefix}-Z01 · {locationPrefix}-SYS-STAGING). 모든 창고를 통틀어 유일하고, 등록한 뒤에는 바꾸지 않는다. 창고 코드와 따로다. 근거: 사용자 결정 2026-11-17 · omf-all-around#292
+       * @example K7QX
+       */
+      locationPrefix: string;
     };
     /** @description 창고 등록 요청. isActive 는 받지 않는다(신규는 항상 사용 중). 근거: W-06-07 §4-A · §5-1 「창고 추가」 */
     WarehouseCreate: {
@@ -45408,6 +45413,11 @@ export interface components {
        * @example false
        */
       isDefect?: boolean;
+      /**
+       * @description 창고 위치 코드 — 선택. 빼면 서버가 쓰지 않은 무작위 4자(영문 대문자·숫자, 헷갈리는 0/O·1/I/L 제외)를 채운다. 사람이 고칠 때는 대문자·숫자 2~6자. 형식이 틀리면 400 INVALID, 다른 창고가 쓰면 400 UNIQUE_VIOLATION(uniqueScope [locationPrefix]). 등록한 뒤에는 바꿀 수 없다. 근거: omf-all-around#292
+       * @example K7QX
+       */
+      locationPrefix?: string;
     };
     /** @description 창고 수정 요청. plantId 는 신규만(편집 불가) — 근거: W-06-07 §4-A 편집 열. isActive 는 별도 사용 중지 액션(:deactivate)으로만 바꾼다 — 근거: W-06-07 §5-1. 낙관적 잠금은 공유계약 B-1. */
     WarehouseUpdate: {
@@ -45435,6 +45445,11 @@ export interface components {
        * @example false
        */
       isDefect: boolean;
+      /**
+       * @description 창고 위치 코드 — 등록한 뒤 바꿀 수 없다. 빼거나 지금 값과 같으면 통과하고, 다르면 400 STATE_LOCKED(바꾸면 그 창고의 위치 코드와 붙인 라벨이 어긋난다). 근거: omf-all-around#292
+       * @example K7QX
+       */
+      locationPrefix?: string;
     };
     WarehouseDetailResponse: {
       warehouse: components['schemas']['Warehouse'];
@@ -45458,8 +45473,8 @@ export interface components {
        */
       parentLocationId?: number | null;
       /**
-       * @description 서버가 발행한다 — 구역 Z01 · 랙 {구역}-R001 · 층 {랙}-L01 · 셀 {층}-C01, 같은 상위 안 가장 큰 번호 + 1(자리 수를 넘으면 늘어난다). 바꿀 수 없다. 서버가 만든 자리는 SYS-STAGING · SYS-WHOLE
-       * @example Z01-R001-L01-C01
+       * @description 서버가 발행한다 — 구역 {창고 위치 코드}-Z01 · 랙 {구역}-R001 · 층 {랙}-L01 · 셀 {층}-C01, 같은 상위 안 가장 큰 번호 + 1(자리 수를 넘으면 늘어난다). 창고 위치 코드는 Warehouse.locationPrefix 다(창고 코드가 아니다). 바꿀 수 없다. 모든 창고를 통틀어 유일하다(uq_location_code · omf-all-around#292) — 위치 QR 하나로 창고까지 풀린다. 서버가 만든 자리는 {창고 위치 코드}-SYS-STAGING · {창고 위치 코드}-SYS-WHOLE. 2026-11-17 이전 코드(사람이 짓던 S230-01 등 포함)는 예외 없이 {창고 위치 코드}-{옛 코드}로 바꾸었다
+       * @example K7QX-Z01-R001-L01-C01
        */
       locationCode: string;
       /** @example A구역 01열 03단 */
@@ -60201,10 +60216,16 @@ export interface components {
          * @example 1001
          */
         id: number;
-        /** @example WH-ALL */
+        /** @example K7QX-SYS-WHOLE */
         code: string;
         /** @example 창고 전체 */
         name: string;
+        /**
+         * @description 그 위치의 역할 — 적치 대기(PUTAWAY_STAGING) · 창고 전체(WAREHOUSE_WHOLE). 위치 코드가 창고 위치 코드로 시작하므로(omf-all-around#292) 적치 대기는 code 글자가 아니라 이 값으로 가린다
+         * @example WAREHOUSE_WHOLE
+         * @enum {string|null}
+         */
+        systemRoleCode: 'PUTAWAY_STAGING' | 'WAREHOUSE_WHOLE' | null;
       } | null;
       /**
        * @description SL_CD 가 있는데 창고를 정하지 못한 까닭 — FG_WAREHOUSE_UNMAPPED 코드가 같은 MES 창고가 없다 · FG_WAREHOUSE_INACTIVE 그 창고가 꺼져 있다 · FG_WAREHOUSE_OTHER_PLANT 그 창고가 다른 공장에 있다 · FG_WAREHOUSE_NOT_ALLOWED 자재창고·불량창고·외부창고다. 정해졌거나 SL_CD 가 없으면 null. 같은 코드가 공정 W/O 의 defaultFgLocationId 칸 문제(issues)로도 나온다

@@ -26,6 +26,7 @@ const warehouse = (overrides: Partial<Warehouse> = {}): Warehouse => ({
   businessUnitId: 1001,
   warehouseCode: 'FG',
   warehouseName: '완제품창고',
+  locationPrefix: 'K7PM',
   warehouseTypeCode: 'PRODUCT',
   isExternal: false,
   isDefect: false,
