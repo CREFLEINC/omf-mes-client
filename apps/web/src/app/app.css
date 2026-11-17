@@ -31854,8 +31854,11 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
 }
 
 .lot-trace-split-link {
+  flex: none;
   max-width: 100%;
   min-width: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  white-space: nowrap;
   padding: 0;
   border: 0;
   background: none;

@@ -140,7 +140,18 @@ const Ellipsis = ({ text, title }: { text: string; title?: string }) => (
   </span>
 );
 
-/** 분할 관계로 이어진 LOT — 끝 마디만 보이는 글 단추. 누르면 그 LOT 을 가운데 둔다(008). */
+/**
+ * LOT 번호의 끝 칸 — `…|0001-S1`. 표 칸 안의 둘째 줄(분할 조상 · 경유 LOT)은 좁아 번호 전체가 들어가지 않는다 —
+ * 앞을 자르면 원래 LOT 과 분할 LOT 을 가르는 끝 칸이 사라지므로 끝 칸만 남긴다(`LotNo` 와 같은 규칙, 시안 W0209-After).
+ * 구분자가 없는 번호는 끝 8자.
+ */
+export const lotNoTail = (lotNo: string): string => {
+  const cut = lotNo.includes('|') ? lotNo.lastIndexOf('|') : Math.max(0, lotNo.length - 8);
+
+  return cut <= 0 ? lotNo : `…${lotNo.slice(cut)}`;
+};
+
+/** 분할 관계로 이어진 LOT — 끝 칸만 보이는 글 단추(번호 전체는 title). 누르면 그 LOT 을 가운데 둔다(008). */
 const SplitLink = ({ lot, onView }: { lot: LotRef; onView: (lot: LotRef) => void }) => (
   <button
     type="button"
@@ -149,7 +160,7 @@ const SplitLink = ({ lot, onView }: { lot: LotRef; onView: (lot: LotRef) => void
     aria-label={c.viewFor(lot.lotNo)}
     onClick={() => onView(lot)}
   >
-    <LotNo lotNo={lot.lotNo} />
+    {lotNoTail(lot.lotNo)}
   </button>
 );
 
