@@ -3,7 +3,7 @@ import { NumericKeypad } from '@omf-mes/ui';
 import { messages } from '@omf-mes/i18n';
 
 import { POP_TOUCH_SIZE } from './touch-spec';
-import { canSubmit, looksUnusual } from './worker-no';
+import { canSubmit } from './worker-no';
 
 /**
  * 좌측 《사번 입력》 구획 — 화면 스펙 §3 의 왼쪽 512 다.
@@ -35,6 +35,8 @@ export interface KeypadPanelProps {
    * (omf-all-around#288 「사번 확인 후」 시안). 바꾸려면 오른쪽 [작업자 변경]을 누른다.
    */
   confirmedWorkerNo: string | null;
+  /** [사번 확인]을 눌렀는데 6자리 숫자가 아니었다. 다시 칠 때까지 사번 칸 아래에 안내한다. */
+  isUnusualShown: boolean;
 }
 
 export const KeypadPanel = ({
@@ -45,6 +47,7 @@ export const KeypadPanel = ({
   error,
   offlineNote,
   confirmedWorkerNo,
+  isUnusualShown,
 }: KeypadPanelProps) => (
   <section className="pane pop-pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
@@ -85,7 +88,7 @@ export const KeypadPanel = ({
          */}
         <div className="worker-no-notice">
           {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
-          {looksUnusual(workerNo) && (
+          {isUnusualShown && (
             <div className="banner-slot">
               <AlertBanner variant="warning">{t.unusual}</AlertBanner>
             </div>

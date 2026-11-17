@@ -93,14 +93,17 @@ describe('WorkerAssignmentScreen — 인증이 아니라 귀속', () => {
     expect(screen.getByRole('button', { name: t.input.submit })).toBeDisabled();
   });
 
-  /* ⚠ 자릿수를 강제하지 않는다 — 경고만 하고 확인은 눌린다(§5-2). */
-  it('자릿수가 달라도 경고만 하고 확인은 눌린다', async () => {
+  /* 사용자 지시(2026-11-17 · omf-all-around#288) — 6자리 숫자가 아니면 [사번 확인]을 눌렀을 때 안내하고 조회하지 않는다. */
+  it('6자리 숫자가 아니면 확인을 눌렀을 때 다시 입력하라고 안내한다', async () => {
     renderScreen();
 
     await typeWorkerNo('90028');
+    expect(screen.queryByText(t.input.unusual)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
     expect(await screen.findByText(t.input.unusual)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.input.submit })).toBeEnabled();
+    expect(screen.queryByText('김작업')).not.toBeInTheDocument();
   });
 });
 

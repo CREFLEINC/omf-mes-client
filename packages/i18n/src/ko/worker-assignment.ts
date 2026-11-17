@@ -141,7 +141,7 @@ export const workerAssignment = {
      * ⚠ **경고일 뿐 막지 않는다**(§5-2). 확인된 표본이 매우 적어 자릿수를 강제하면 다른
      * 형태의 사번을 가진 사람이 단말을 못 쓴다.
      */
-    unusual: '사번이 6자리 숫자와 다릅니다. 그대로 확인할 수 있습니다.',
+    unusual: '사번이 6자리 숫자와 다릅니다. 다시 입력하세요.',
   },
 
   offline: {
@@ -153,7 +153,7 @@ export const workerAssignment = {
     heading: '현재 작업자',
     /** 아직 아무도 지정되지 않았다. 무엇을 해야 하는지 말한다. */
     none: '현재 작업자가 없습니다.',
-    noneHelp: '왼쪽에서 사번을 입력해 주세요.',
+    noneHelp: '사번을 입력해 주세요.',
     /** 사번 확인을 마친 작업자 표시(omf-all-around#288). */
     confirmed: '확인 완료',
     workerNo: '사번',

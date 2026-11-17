@@ -70,7 +70,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     placeholder: 'Nhập mã nhân viên',
     submit: 'Xác nhận mã',
     checking: 'Đang kiểm tra',
-    unusual: 'Mã nhân viên không phải 6 chữ số. Vẫn có thể xác nhận như vậy.',
+    unusual: 'Mã nhân viên không phải 6 chữ số. Hãy nhập lại.',
   },
   offline: {
     /** ⭐ 오프라인에서도 **미리 받아 둔 목록으로 확인한다**(§5-6) — 막지 않는다. */
@@ -79,7 +79,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
   current: {
     heading: 'Công nhân hiện tại',
     none: 'Chưa có công nhân hiện tại.',
-    noneHelp: 'Hãy nhập mã nhân viên ở bên trái.',
+    noneHelp: 'Hãy nhập mã nhân viên.',
     confirmed: 'Đã xác nhận',
     workerNo: 'Mã nhân viên',
     assignedAt: 'Thời điểm chỉ định',
