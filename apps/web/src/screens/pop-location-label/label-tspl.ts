@@ -5,7 +5,7 @@ import {
   rasterizeHangul,
   type LotLabelRasterizer,
   type LotLabelRow,
-} from '../pop-material-lot-label/label-tspl';
+} from '../../patterns/label/lot-label-tspl';
 
 /**
  * 창고 적재 위치 라벨 — **POP 이 80 × 30 mm 규격으로 직접 짠다**(사용자 지시 2026-09-18 · #1344).

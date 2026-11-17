@@ -5,6 +5,7 @@ import type {
   FlowPackage,
   FlowProductSide,
   FlowShipment,
+  FlowSplitLink,
   ForwardChain,
   ForwardStage,
 } from './trace-types';
@@ -134,7 +135,11 @@ export type ChainNodeKind =
   | 'INPUT_MATERIAL'
   | 'PRODUCTION_RECEIPT'
   | 'PACKAGE'
-  | 'SHIPMENT';
+  | 'SHIPMENT'
+  /** 008 — 이 LOT 이 떼어져 나온 원래 LOT(부모 · 역방향은 조상). */
+  | 'SPLIT_FROM'
+  /** 008 — 이 LOT 에서 떼어 낸 분할 LOT(자손). */
+  | 'SPLIT';
 
 export interface ChainLine {
   depth: number;
@@ -146,7 +151,49 @@ export interface ChainLine {
   at: string | null;
   partner: FlowNamed | null;
   basis: FlowBasis | 'INPUT_ONLY' | null;
+  /** 분할 줄의 근거 글(「분할 (출고번호 · 라인)」 등) — 있으면 근거 칸에 이것을 쓴다. */
+  note?: string;
+  /** W/O 가 이 LOT 이 아니라 분할 자손으로 투입됐으면 그 LOT 번호(경유 LOT). */
+  via?: string;
 }
+
+/** 분할 고리의 출고 — 「GI-… · 라인 n」. 출고가 아닌 옛 분할이면 빈 글. */
+export const splitIssueText = (
+  link: FlowSplitLink,
+  format: (goodsIssueNo: string, lineNo: number) => string,
+): string =>
+  link.goodsIssue === null ? '' : format(link.goodsIssue.goodsIssueNo, link.goodsIssue.lineNo);
+
+const SPLIT_MARK = /-S\d+/gu;
+
+/**
+ * 분할 자손의 깊이(1 = 이 LOT 에서 바로 떼어 낸 것) — 번호 끝 마디(`-S{n}`) 수의 차이로 센다. 응답이 깊이 순이지만
+ * 깊이를 싣지 않아서다. 64자를 넘어 원조 기준으로 매긴 번호면 틀릴 수 있다 — 들여쓰기에만 쓴다.
+ */
+export const splitDepth = (centerLotNo: string, childLotNo: string): number =>
+  Math.max(
+    1,
+    (childLotNo.match(SPLIT_MARK)?.length ?? 0) - (centerLotNo.match(SPLIT_MARK)?.length ?? 0),
+  );
+
+const splitLine = (
+  link: FlowSplitLink,
+  kind: 'SPLIT_FROM' | 'SPLIT',
+  depth: number,
+  item: FlowNamed,
+  note: (link: FlowSplitLink) => string,
+): ChainLine => ({
+  depth,
+  kind,
+  number: link.lot.lotNo,
+  item,
+  qty: link.qty,
+  uomCode: link.uomCode,
+  at: link.splitAt,
+  partner: null,
+  basis: null,
+  note: note(link),
+});
 
 const productLines = (side: FlowProductSide, depth: number, uomCode: string): ChainLine[] => [
   ...side.productionReceipts.map((receipt): ChainLine => ({
@@ -188,20 +235,30 @@ const productLines = (side: FlowProductSide, depth: number, uomCode: string): Ch
 ];
 
 /** 정방향 사슬을 줄로 편다(추적 내보내기). */
-export const flattenForward = (chain: ForwardChain): ChainLine[] => {
+/** 분할 줄의 근거·입하 근거 글 — 부르는 쪽(화면 문구)이 짓는다. */
+export interface SplitNotes {
+  split: (link: FlowSplitLink) => string;
+  rootInbound: string;
+}
+
+export const flattenForward = (chain: ForwardChain, notes?: SplitNotes): ChainLine[] => {
   const { lot } = chain;
   const lines: ChainLine[] = [];
+  const splitFrom = chain.splitFrom;
   lines.push({
     depth: 0,
     kind: 'LOT',
     number: lot.lotNo,
     item: lot.item,
-    qty: chain.receivedQty,
+    qty: splitFrom === null ? chain.receivedQty : splitFrom.qty,
     uomCode: lot.uomCode,
     at: null,
     partner: chain.inbound?.supplier ?? null,
     basis: null,
   });
+  if (splitFrom !== null && notes !== undefined) {
+    lines.push(splitLine(splitFrom, 'SPLIT_FROM', 1, lot.item, notes.split));
+  }
   if (chain.inbound !== null) {
     lines.push({
       depth: 1,
@@ -213,6 +270,7 @@ export const flattenForward = (chain: ForwardChain): ChainLine[] => {
       at: chain.inbound.receiptDatetime,
       partner: chain.inbound.supplier,
       basis: null,
+      ...(splitFrom !== null && notes !== undefined ? { note: notes.rootInbound } : {}),
     });
   }
   for (const receipt of chain.receipts) {
@@ -228,6 +286,13 @@ export const flattenForward = (chain: ForwardChain): ChainLine[] => {
       basis: null,
     });
   }
+  if (notes !== undefined) {
+    for (const child of chain.splits) {
+      lines.push(
+        splitLine(child, 'SPLIT', splitDepth(lot.lotNo, child.lot.lotNo), lot.item, notes.split),
+      );
+    }
+  }
   for (const wo of chain.workOrders) {
     lines.push({
       depth: 1,
@@ -239,6 +304,7 @@ export const flattenForward = (chain: ForwardChain): ChainLine[] => {
       at: wo.firstConsumedAt,
       partner: null,
       basis: wo.linkBasis ?? 'INPUT_ONLY',
+      ...(wo.viaLot === null ? {} : { via: wo.viaLot.lotNo }),
     });
     for (const child of wo.productionLots) {
       lines.push({
@@ -259,7 +325,7 @@ export const flattenForward = (chain: ForwardChain): ChainLine[] => {
 };
 
 /** 역방향 사슬을 줄로 편다(추적 내보내기). */
-export const flattenBackward = (chain: BackwardChain): ChainLine[] => {
+export const flattenBackward = (chain: BackwardChain, notes?: SplitNotes): ChainLine[] => {
   const { lot } = chain;
   const lines: ChainLine[] = [];
   lines.push({
@@ -299,6 +365,12 @@ export const flattenBackward = (chain: BackwardChain): ChainLine[] => {
       partner: input.inbound?.supplier ?? null,
       basis: input.linkBasis,
     });
+    /* 분할 LOT 이 투입됐으면 그 조상 — 가까운 부모부터 뿌리까지 한 단씩 깊어진다(008). */
+    if (notes !== undefined) {
+      input.splitAncestry.forEach((link, index) => {
+        lines.push(splitLine(link, 'SPLIT_FROM', 3 + index, input.item, notes.split));
+      });
+    }
   }
   return lines;
 };

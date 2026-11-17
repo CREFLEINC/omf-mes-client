@@ -19,9 +19,9 @@
  *   ⚠ 생산 LOT·출하 라벨은 그대로다 — 결정 17(못 그리는 글자는 `?`)을 따른다.
  */
 
-import type { LabelBitmap } from '../../patterns/label/bitmap';
-import { canDrawGlyph, rasterizeTextWithFont } from '../../patterns/label/text';
-import { tsplBitmapCommand } from '../../patterns/label/tspl-bitmap';
+import type { LabelBitmap } from './bitmap';
+import { canDrawGlyph, rasterizeTextWithFont } from './text';
+import { tsplBitmapCommand } from './tspl-bitmap';
 
 /** 203 dpi 를 그대로 나눈 점 수. */
 const dots = (millimetres: number): number => Math.round((millimetres / 25.4) * 203);
@@ -516,6 +516,60 @@ const fitLine = (
   return { point: MIN_POINT, content: clipped, width: measure(clipped, MIN_POINT) };
 };
 
+/** LOT 번호의 칸 구분자 — `품목|수량|날짜|공급사|번호` 5칸(서버 `lot-number.ts`). */
+const LOT_NO_SEPARATOR = '|';
+
+/**
+ * LOT 번호 줄 — 넘치면 **가운데를 줄여** 끝의 번호 칸을 남긴다(008 · omf-all-around#289 · plan D-16).
+ *
+ * ⭐ 분할 LOT 은 번호 칸이 `0001-S1-S1` 처럼 길어진다. 끝을 자르면 원래 LOT·형제 분할 LOT 과 가를
+ *    마디(`-S1`)가 사라져 사람이 라벨 면으로 대조할 수 없다. 그래서 앞(품목·수량…)을 줄이고 끝 칸을
+ *    통째로 남긴다 — `SYN-ITEM-0~|0001-S1-S1`. QR 에는 늘 번호 전체가 실린다.
+ *
+ * ⭐ 7pt 까지 줄여 들어가면 `fitLine` 과 같다(자르지 않는다). 끝 칸만으로도 칸을 넘치면 끝 칸의
+ *    뒤쪽 글자를 남긴다(`~S1-S1`) — 그래도 끝이 보이는 쪽을 고른다.
+ */
+const fitLotNoLine = (
+  content: string,
+  point: number,
+  available: number,
+  measure: MaterialLotLabelMeasure,
+): FittedLine => {
+  const whole = fitLine(content, point, available, measure);
+
+  if (whole.content === content) return whole;
+
+  const glyphs = Array.from(content);
+  const at = content.lastIndexOf(LOT_NO_SEPARATOR);
+  const tailLength = at < 0 ? 0 : Array.from(content.slice(at)).length;
+  const fits = (candidate: string): boolean => measure(candidate, MIN_POINT) <= available;
+  /* 앞 `head` 글자 + `~` + 끝 칸 — 앞을 늘릴수록 폭이 늘기만 하므로 반씩 좁혀 찾는다. */
+  const keepTail = (head: number): string =>
+    `${glyphs.slice(0, head).join('')}~${glyphs.slice(glyphs.length - tailLength).join('')}`;
+  /* 끝 칸조차 안 들어가면 끝 글자 `tail` 개만 — 이것도 늘릴수록 폭이 는다. */
+  const keepEnd = (tail: number): string => `~${glyphs.slice(glyphs.length - tail).join('')}`;
+  const longest = (make: (length: number) => string, high: number): string => {
+    let low = 1;
+    let top = high;
+
+    while (low < top) {
+      const middle = Math.ceil((low + top) / 2);
+
+      if (fits(make(middle))) low = middle;
+      else top = middle - 1;
+    }
+
+    return make(low);
+  };
+
+  const cut =
+    tailLength > 0 && fits(keepTail(1))
+      ? longest(keepTail, glyphs.length - tailLength - 1)
+      : longest(keepEnd, glyphs.length - 1);
+
+  return { point: MIN_POINT, content: cut, width: measure(cut, MIN_POINT) };
+};
+
 /**
  * 자재 LOT 라벨 80 × 30 mm 한 장의 **자리** — TSPL 명령(`buildMaterialLotLabel`·`…Bytes`)과 화면
  * 미리보기가 같은 자리를 쓴다.
@@ -639,7 +693,12 @@ export const layoutMaterialLotLabel = (
       until = receipt.x - ASIDE_GAP;
     }
 
-    const fitted = fitLine(each.content, each.point, until - left, measure);
+    const fitted = (each.field === 'lotNo' ? fitLotNoLine : fitLine)(
+      each.content,
+      each.point,
+      until - left,
+      measure,
+    );
 
     texts.push(
       {

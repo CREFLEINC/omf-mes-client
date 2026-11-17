@@ -1,776 +1,886 @@
-import { isForbidden, type ApiError } from '@omf-mes/api-client';
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useId, useMemo, useState, type FormEvent } from 'react';
 
-import { useApiClient } from '../../patterns/api-context';
-import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { formatPlantClock, formatPlantDateTime, plantToday } from '../../patterns/plant-time';
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { SaveErrorBanner } from '../../patterns/master';
-import { canIssue, issueGuard } from './issue-target';
-import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
-import { LineListPane } from './line-list-pane';
-import { IssueLookupField } from './issue-lookup-field';
-import { toLabelFields, toLabelFieldsForLine } from './label-fields';
-import { PendingPane } from './pending-pane';
-import { usePendingIssueLines } from './pending-list';
-import { renderGoodsIssueQrLabel } from './label-image';
-import {
-  useDestinationCode,
-  useItemCodes,
-  useItemNames,
-  useLotNames,
-  useReissueReasonOptions,
-  useUomNames,
-} from './lookups';
-import { useDocumentIssueWrite, usePrintFlow } from './mutations';
-import { hasPrintBridge } from '../../patterns/pop-print';
 import { PopTopPrinter } from '../../patterns/pop-top-status';
-import { printResult, type PrintResult } from './print-result';
+import { popTouchClass } from '../../patterns/pop-touch';
+import { formatBaseQty } from '../../patterns/package-qty';
+import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import {
-  goodsIssueQrKeys,
-  useDocumentIssueSummary,
-  useGoodsIssue,
-  useGoodsIssueLines,
-  useHandlingUnitContents,
-  isPalletListUnsupported,
-  useLineHandlingUnits,
+  choosePrinter,
+  rememberPrinterName,
+  storedPrinterName,
+} from '../pop-material-lot-label/printer-choice';
+import {
   usePrinters,
-} from './queries';
-import { TargetPane, type PalletQuantity } from './target-pane';
-import { useGoodsIssueQrEntry } from './entry-context';
+  useReissueReasons,
+  useShellSelectsPrinter,
+} from '../pop-material-lot-label/queries';
+import { ReasonPicker } from '../pop-material-lot-label/reason-picker';
+import { LabelPreview } from './label-preview';
 import {
-  DOCUMENT_TYPE_CODE,
-  ISSUE_UNIT,
-  LINE_TARGET_TYPE_CODE,
-  PALLET_TARGET_TYPE_CODE,
-  type DocumentIssue,
-  type HandlingUnitContent,
-  type IssueUnit,
-  type Printer,
-} from './types';
+  PRINTED_PERIODS,
+  PRINT_FAILED,
+  isUnprinted,
+  matchesSplitLot,
+  needsReissueReason,
+  nextIssueSeq,
+  toLabelLot,
+  useSplitMaterialLots,
+  type LabelState,
+  type PrintedPeriod,
+  type SplitMaterialLot,
+} from './split-lots';
+import { useSplitLabelPrint, type SplitPrintResult } from './split-print';
 
 const t = messages.goodsIssueQr;
 
+/** 분할 시각(공장 시각) `MM-DD HH:mm`. */
+const shortAt = (value: string): string => (formatPlantDateTime(value) ?? value).slice(5);
+
+/** 분할 뒤 며칠 지났나 — 공장 날짜로 센다. */
+const daysSince = (value: string, today: string): number => {
+  const date = (formatPlantDateTime(value) ?? value).slice(0, 10);
+
+  return Math.max(0, Math.round((Date.parse(today) - Date.parse(date)) / 86_400_000));
+};
+
+const ageText = (value: string, today: string): string => {
+  const days = daysSince(value, today);
+
+  return days === 0 ? t.table.today : t.table.daysAgo(days);
+};
+
+const destinationOf = (lot: SplitMaterialLot): string =>
+  lot.destination === null
+    ? ''
+    : `${lot.destination.warehouseCode} / ${lot.destination.locationCode}`;
+
+interface ResultView {
+  tone: 'success' | 'warning' | 'error';
+  text: string;
+}
+
+/** 찍은 뒤 한 줄 — 몇 장 나왔고 무엇이 남았는가. */
+const toResultView = (results: readonly SplitPrintResult[], isReprint: boolean): ResultView => {
+  const count = (outcome: SplitPrintResult['outcome']) =>
+    results.filter((each) => each.outcome === outcome).length;
+  const printed = count('printed');
+  const failed = count('printFailed');
+  const notSent = count('notSent');
+  const issueFailed = results.filter((each) => each.outcome === 'issueFailed');
+
+  if (count('issueForbidden') > 0) return { tone: 'error', text: t.result.forbidden };
+
+  const tail = [
+    issueFailed.length > 0
+      ? t.result.issueFailed(issueFailed.length, issueFailed[0]?.message ?? '')
+      : '',
+    notSent > 0 ? t.result.notSent(notSent) : '',
+  ].join('');
+
+  if (failed > 0) {
+    return { tone: 'warning', text: t.result.partial(results.length, printed, failed) + tail };
+  }
+
+  if (printed === 0) return { tone: 'error', text: tail.trim() };
+
+  return {
+    tone: tail === '' ? 'success' : 'warning',
+    text: (isReprint ? t.result.reprinted(printed) : t.result.printed(printed)) + tail,
+  };
+};
+
 /**
- * P-01-02 — POP(1024×768 터치)에서 출고 단위 QR 을 발행·재발행한다.
+ * `P-01-02` 분할 LOT 라벨 (POP) — 008 부분 출고 LOT 분할 · omf-all-around#289 · 확정 시안 P0102-After.
  *
- * **이 화면의 본론은 「발행과 인쇄는 다른 걸음」이다**(스펙 §5-5 · K-4).
+ * ```
+ * ┌ 머리줄: 화면 이름 · 사번 · 프린터 · 단말 ──────────────────────────────────────────────┐
+ * │ ▣ 라벨 안 찍은 분할 LOT N건(기간 무관) · 인쇄 실패 · 가장 오래된 것                       │
+ * │ [라벨 안 찍음 N | 찍음]  🔍 분할·원래 LOT 번호 스캔 …  (찍음: 출고일 기간)  [새로 고침]     │
+ * │ 표: 선택 · 분할 LOT 번호/원래 LOT · 품목 · 수량 · 출고번호/라인 · 도착 · 분할 시각 · 라벨   │
+ * │ 재발행 사유(인쇄 실패를 골랐거나 찍음 보기일 때)                                          │
+ * ├ 동작 바: 지금 상태 · [전체 선택] [선택 해제] [라벨 N장 찍기] ─────────────────────────────┤
+ * ```
  *
- * - 서버가 하는 것: 발행 기록을 만들고 **회차를 매기고**, 출력물을 그린다
- * - 셸이 하는 것: 그린 것을 프린터로 보낸다
- * - 화면이 하는 것: 대상을 고르고, 두 걸음의 결과를 **각각** 말한다
- *
- * ⛔ **인쇄 실패로 발행을 되돌리지 않는다.** 되돌리면 같은 대상에 회차를 다시 매겨야 하고,
- * 그사이 다른 단말이 그 회차를 가져간다.
- *
- * ⛔ **셸(`AppShell`)을 쓰지 않는다.** POP 은 사이드바로 옮겨 다니는 화면이 아니라 전표 하나에
- * 매인 태스크 화면이고, 세로 예산이 액션바까지 정해져 있다(스펙 §3).
- *
- * ⚠ **단말 권한으로 선차단하지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용 범위
- * 밖이고 게이트는 서버의 403 이다 — 막혔다는 사실은 눌러 본 뒤에 알려 준다.
+ * ⭐ 출고 QR(라인·파렛트) 발행은 없다(FR-010 · D-6). 분할 LOT 은 자재 관리 LOT 라벨과 같은 양식으로 찍는다(FR-007).
+ * ⭐ 미발행은 기간과 상관없이 모두 보이고 오래된 것이 위다(FR-008 · SC-004). 인쇄 실패는 미발행으로 남는다.
  */
 export const GoodsIssueQrScreen = () => {
-  const titleId = useId();
-  const { baseUrl } = useApiClient();
+  const { workerNo, plantId = null } = usePopIdentity();
+  /* 동작 바의 지금 상태 — 막힌 [라벨 찍기]가 그 까닭으로 잇는다(C-4). */
+  const stateId = useId();
+  const printing = useSplitLabelPrint(workerNo);
 
-  const entry = useGoodsIssueQrEntry();
-  const [, setSearchParams] = useSearchParams();
-  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<LabelState>('UNPRINTED');
+  const [period, setPeriod] = useState<PrintedPeriod>('week');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
+  const [reasonCode, setReasonCode] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ index: number } | null>(null);
+  const [result, setResult] = useState<{ view: ResultView; isReprint: boolean } | null>(null);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  /**
-   * 라인 단위인가 파렛트 단위인가(스펙 §5-2). **화면 안에서만 쓰는 구분이다** — 서버로 나가는
-   * 것은 이 값이 아니라 대상 유형 코드다.
-   */
-  const [unit, setUnit] = useState<IssueUnit>(ISSUE_UNIT.line);
-  const [palletId, setPalletId] = useState<number | null>(null);
-  const [reasonCode, setReasonCode] = useState('');
-  const [issued, setIssued] = useState<DocumentIssue[] | null>(null);
-  /**
-   * 서버가 이 발행을 재발행으로 보고 사유를 물었다.
-   *
-   * ⛔ **거부 문구가 사라진다고 칸까지 접지 않는다.** 값을 고치면 옛 거부는 지워지는데, 칸이
-   * 그 오류에만 매여 있으면 **사용자가 방금 고른 사유와 함께 칸이 사라지고** 다시 사유 없는
-   * 요청이 나간다 — 같은 거부를 무한히 반복한다. 발행이 실제로 성공할 때까지 열어 둔다.
-   */
-  const [reasonAsked, setReasonAsked] = useState(false);
-
-  const goodsIssue = useGoodsIssue(entry.goodsIssueId);
-  const lines = useGoodsIssueLines(entry.goodsIssueId);
-  const lineItems = lines.data ?? [];
-
-  const summary = useDocumentIssueSummary(
-    LINE_TARGET_TYPE_CODE,
-    lineItems.map((line) => line.goodsIssueLineId),
+  const unprinted = useSplitMaterialLots(plantId, 'UNPRINTED', period);
+  const printed = useSplitMaterialLots(
+    tab === 'PRINTED' || query.trim() !== '' ? plantId : null,
+    'PRINTED',
+    period,
   );
-  const rows = toLineRows(lineItems, summary.data ?? []);
-  /*
-   * ⭐ **대기 목록에서 고른 줄만 세운다**(사용자 지시 2026-09-21 · omf-all-around#35). 담당이
-   *    누른 것은 「이 줄을 찍는다」인데 같은 전표의 다른 줄까지 함께 서면 무엇을 고른 상태인지
-   *    다시 읽어야 했다. 같은 전표의 다른 줄도 찍어야 하면 [모두 보기]로 편다.
-   *
-   * ⛔ 출고번호로 들어온 길은 그대로 전부 선다 — 그 길은 「이 전표를 본다」이지 줄을 고른 것이 아니다.
-   */
-  const [showAllLines, setShowAllLines] = useState(false);
-  const focusedLineId = entry.goodsIssueLineId;
-  const isFocused = focusedLineId !== null && !showAllLines;
-  /*
-   * ⛔ **고른 줄을 숨기지 않는다**(리뷰 지적 2026-09-21). 주소의 그 줄로만 좁히면, 펼친 사이
-   *    다른 줄을 고르고 다시 접었을 때 **그 줄이 목록에서 사라진 채 함께 발행된다** — 발행은
-   *    되돌릴 수 없다. 접힌 보기는 「주소의 줄 + 지금 고른 줄」이다.
-   */
-  const visibleRows = isFocused
-    ? rows.filter(
-        (row) =>
-          row.line.goodsIssueLineId === focusedLineId || selectedIds.includes(rowId(row.line)),
-      )
-    : rows;
-
-  /*
-   * 파렛트 대상은 **고른 라인의 LOT** 으로 좁힌다(스펙 §5-2). 라인이 하나로 정해지지 않으면
-   * 어느 LOT 으로 좁힐지 화면이 대신 정하게 되므로 조회 자체를 내보내지 않는다.
-   */
-  const palletSelectable = unit === ISSUE_UNIT.pallet && selectedIds.length === 1;
-  const selectedLine = rows.find((row) => rowId(row.line) === selectedIds[0])?.line ?? null;
-  const pallets = useLineHandlingUnits(palletSelectable ? (selectedLine?.lotId ?? null) : null);
-  const palletItems = pallets.data?.items ?? [];
-  /*
-   * 서버가 말한 총계가 받은 수보다 크면 **목록이 한 쪽에서 잘렸다.** 고르려던 파렛트가
-   * 목록에 없는데 화면이 아무 말도 하지 않으면 사용자는 남은 것 중에서 잘못 고른다.
-   */
-  const palletsTruncated = pallets.data !== undefined && pallets.data.total > palletItems.length;
-  const palletContents = useHandlingUnitContents(unit === ISSUE_UNIT.pallet ? palletId : null);
-
-  /*
-   * 파렛트도 회차가 오른다 — 같은 취급 단위를 두 번 찍으면 재발행이고 사유가 필요하다.
-   * **대상 유형이 달라 라인 요약으로는 알 수 없다**(같은 표를 유형으로 가른다 · 스펙 §5-1).
-   */
-  const palletSummary = useDocumentIssueSummary(
-    PALLET_TARGET_TYPE_CODE,
-    palletId === null ? [] : [palletId],
-  );
-
-  /* 화면에 선 라인의 품목만 묻는다 — 목록 한 쪽에 기대면 없는 품목이 「알 수 없음」이 된다(D2). */
-  /*
-   * QR 발행 대기 목록 — 전표를 고르기 «전»에만 세운다(ISSUE-QR-01 D5). 전표에 들어간 뒤에도
-   * 띄우면 같은 화면에 목록이 둘이 되어 어느 것을 고르는 중인지 흐려진다.
-   */
-  const pending = usePendingIssueLines();
-
-  /*
-   * 이름 풀이는 **대기 목록과 전표 라인을 함께** 먹인다 — 목록이 번호를 찍지 않게 한다.
-   * 같은 번호는 한 번만 묻는다(`useItemNames` 가 중복을 걷는다).
-   */
-  const itemNames = useItemNames([
-    ...lineItems.map((line) => line.itemId),
-    ...pending.lines.map((each) => each.line.itemId),
-    ...pending.issuedLines.map((each) => each.line.itemId),
-  ]);
-  /* 라벨에는 품목 **코드만** 싣는다 — 화면 표시값에는 한글 품명이 붙는다(`useItemCodes`). */
-  const itemCodes = useItemCodes([
-    ...lineItems.map((line) => line.itemId),
-    ...pending.lines.map((each) => each.line.itemId),
-    ...pending.issuedLines.map((each) => each.line.itemId),
-  ]);
-  const uomNames = useUomNames();
-  const lotNames = useLotNames([
-    ...lineItems.map((line) => line.lotId),
-    ...pending.lines.map((each) => each.line.lotId),
-    ...pending.issuedLines.map((each) => each.line.lotId),
-  ]);
-  const reasonOptions = useReissueReasonOptions();
+  const current = tab === 'UNPRINTED' ? unprinted : printed;
+  const other = tab === 'UNPRINTED' ? printed : unprinted;
 
   const printers = usePrinters();
-  const destination = useDestinationCode(
-    goodsIssue.data?.destinationTypeCode,
-    goodsIssue.data?.destinationId,
+  const printerSelectable = useShellSelectsPrinter();
+  const isPrinterSelectable = printerSelectable.data === true;
+  const [pickedPrinter, setPickedPrinter] = useState<string | null>(null);
+  const [rememberedPrinter] = useState(storedPrinterName);
+  const printerChoice = choosePrinter(
+    printers.data ?? [],
+    pickedPrinter,
+    isPrinterSelectable ? rememberedPrinter : null,
   );
+  const headPrinter = printerChoice.printer;
 
-  /*
-   * ⭐ **라벨 값은 발행 직후 그 자리에서 조립한다.** POP 이 그림을 스스로 그리므로(설계 결정
-   *    8·9 의 2단계) 이름 풀이가 그리기 직전에 갖춰져 있어야 한다 — 서버가 그려 줄 때는
-   *    필요 없던 값이다.
-   */
-  const labelFieldsOf = (record: DocumentIssue) =>
-    toLabelFields(record, {
-      issue: goodsIssue.data ?? null,
-      lines: lineItems,
-      itemCodes,
-      lotNames,
-      destination,
-    });
+  const today = plantToday();
+  const unprintedLots = (unprinted.data?.items ?? []).filter(isUnprinted);
+  const unprintedCount = unprinted.data?.unprintedCount ?? null;
+  const failedCount = unprintedLots.filter((lot) => lot.labelIssue !== null).length;
+  const oldest = unprintedLots[0];
 
-  const printFlow = usePrintFlow(entry.workerNo, labelFieldsOf);
+  const rows = useMemo(
+    () => (current.data?.items ?? []).filter((lot) => matchesSplitLot(lot, query)),
+    [current.data, query],
+  );
+  const lotById = useMemo(
+    () => new Map((current.data?.items ?? []).map((lot) => [lot.lotId, lot] as const)),
+    [current.data],
+  );
+  const chosen = [...selected].flatMap((lotId) => {
+    const lot = lotById.get(lotId);
 
-  /*
-   * ⛔ **자리로 읽지 않는다.** 대상을 `targetId` 로 짝지어 찾는다 — 라인 쪽(`toLineRows`)과
-   * 같은 축이다. 자리로 읽으면 응답이 여러 건이 되거나 차례가 바뀌는 순간 다른 대상의 회차를
-   * 이 파렛트의 것으로 말하게 되고, 재발행 사유를 물을지가 그 값에 걸려 있다.
-   */
-  const palletIssueCount =
-    palletSummary.data?.find((entry) => entry.targetId === palletId)?.issueCount ?? null;
-  const needsReason =
-    unit === ISSUE_UNIT.pallet
-      ? palletIssueCount !== null && palletIssueCount > 0
-      : hasIssuedTarget(rows, selectedIds);
-
-  const write = useDocumentIssueWrite({
-    workerNo: entry.workerNo ?? '',
-    onSuccess: (records) => {
-      setIssued(records);
-      setReasonAsked(false);
-      /* 발행이 끝나면 곧바로 그린 것을 받아 셸로 보낸다 — 사용자가 한 번 더 누르지 않는다. */
-      printFlow.mutate(records);
-    },
+    return lot === undefined ? [] : [lot];
   });
+  const chosenNeedingReason = chosen.filter(needsReissueReason);
+  const needsReason = chosenNeedingReason.length > 0;
+  const reasons = useReissueReasons(needsReason);
+  const reasonName =
+    reasonCode === null
+      ? null
+      : (reasons.data?.find((reason) => reason.code === reasonCode)?.name ?? reasonCode);
+  const isBusy = printing.isRunning;
+  const canPrint =
+    chosen.length > 0 && (!needsReason || reasonCode !== null) && workerNo !== null && !isBusy;
+  const allOn = rows.length > 0 && rows.every((lot) => selected.has(lot.lotId));
 
-  /*
-   * 사유 칸을 세우는 세 경우. **필수인 것은 첫째뿐이다.**
-   *
-   * ⛔ 서버가 이 칸을 짚어 거부했는데 칸이 서 있지 않으면, 사용자는 **고칠 자리를 찾지 못한 채**
-   * 같은 거부만 반복해서 본다 — 발행은 되돌릴 수 없는 쓰기이고 정정 경로가 없다.
-   */
-  const reasonServerError = write.fieldErrors.reissueReasonCode ?? null;
-  const hasUnknownStatus =
-    unit === ISSUE_UNIT.pallet
-      ? palletId !== null && palletIssueCount === null
-      : hasUnknownTarget(rows, selectedIds);
-  const showReason = needsReason || hasUnknownStatus || reasonAsked;
+  const chooseTab = (next: LabelState, keepQuery = false): void => {
+    setTab(next);
+    setSelected(new Set());
+    setReasonCode(null);
+    setResult(null);
+    if (!keepQuery) setQuery('');
+  };
 
-  useEffect(() => {
-    if (reasonServerError !== null) setReasonAsked(true);
-  }, [reasonServerError]);
+  const toggle = (lotId: number): void => {
+    setSelected((previous) => {
+      const next = new Set(previous);
 
-  const guard = issueGuard({
-    workerNo: entry.workerNo,
-    unit,
-    selectedIds,
-    palletId,
-    palletListUnsupported: isPalletListUnsupported(),
-    palletContentCount: palletContents.data?.length ?? null,
-    /*
-     * 내용물을 아직 «묻는 중»이면 열지 않는다 — 빈 파렛트 차단(스펙 §6)이 조회가 닿기 전
-     * 잠깐 비어 있어, 그 틈에 누르면 찍을 것이 없는 파렛트로 발행 기록이 남는다.
-     *
-     * ⭐ **끊겨도 잠기지 않는다.** 이 앱은 `networkMode: 'always'` 라(`app/providers`) 조회가
-     * 「멈춘 상태」로 머물지 않는다 — 연결이 없으면 요청이 나갔다가 실패하고, 그때
-     * `isPending` 이 내려가 버튼이 다시 열린다. 잠기는 것은 «답을 기다리는 동안»뿐이다.
-     */
-    palletContentsPending: palletContents.isPending,
-    needsReason,
-    reasonCode,
-  });
+      if (next.has(lotId)) next.delete(lotId);
+      else next.add(lotId);
 
-  const issue = (): void => {
-    if (!canIssue(guard)) return;
-    /*
-     * ⛔ **파렛트 단위인데 대상이 비었으면 라인 대상으로 흘려보내지 않는다.** 가드가 이미
-     * 막는 자리지만, 여기서 조용히 다른 대상을 싣는 길이 남아 있으면 되돌릴 수 없는 쓰기가
-     * 사용자가 고르지 않은 것으로 나간다.
-     */
-    if (unit === ISSUE_UNIT.pallet && palletId === null) return;
-
-    setIssued(null);
-    printFlow.reset();
-
-    write.write({
-      documentTypeCode: DOCUMENT_TYPE_CODE,
-      /*
-       * ⛔ **파렛트 발행은 `lotId` 를 싣지 않는다**(스펙 §5-2). 취급 단위 하나가 여러 LOT 을
-       * 담아 한 칸에 못 담는다 — 아무 LOT 이나 골라 채우면 이력이 그 LOT 의 것으로 굳는다.
-       */
-      targets:
-        unit === ISSUE_UNIT.pallet && palletId !== null
-          ? [{ targetTypeCode: PALLET_TARGET_TYPE_CODE, targetId: palletId }]
-          : rows
-              .filter((row) => selectedIds.includes(rowId(row.line)))
-              .map((row) => ({
-                targetTypeCode: LINE_TARGET_TYPE_CODE,
-                targetId: row.line.goodsIssueLineId,
-                lotId: row.line.lotId,
-              })),
-      /*
-       * 재발행이 아닐 때는 보내지 않는다 — 신규 기록에 사유가 붙으면 이력이 거짓이 된다.
-       * ⚠ 현황을 모르는 라인이 섞였을 때는 **고른 경우에만** 싣는다: 사용자가 고르지 않았으면
-       * 화면이 대신 정하지 않고, 재발행인지의 판정을 서버에 맡긴다.
-       */
-      ...(showReason && reasonCode !== '' ? { reissueReasonCode: reasonCode } : {}),
+      return next;
     });
   };
 
-  const firstIssued = issued?.[0] ?? null;
-  /*
-   * 고른 라인마다 발행 대상 한 줄 — 회차는 방금 발행했으면 그 회차, 아니면 발행 현황의 최근 회차.
-   */
-  const selectedLines = rows
-    .filter((row) => selectedIds.includes(rowId(row.line)))
-    .map((row) => {
-      const record = issued?.find((one) => one.target.targetId === row.line.goodsIssueLineId);
+  const selectAll = (on: boolean): void => {
+    setSelected(on ? new Set(rows.map((lot) => lot.lotId)) : new Set());
+    if (!on) setReasonCode(null);
+  };
 
-      return {
-        key: rowId(row.line),
-        lineNo: row.line.lineNo,
-        lotLabel: lookupDisplayLabel(lotNames, row.line.lotId),
-        seq:
-          record?.issueSeq ??
-          summary.data?.find((one) => one.targetId === row.line.goodsIssueLineId)?.lastIssueSeq ??
-          null,
-      };
-    });
-  /**
-   * 미리보기 — **방금 찍은 그 그림 그대로다.**
-   *
-   * ⛔ **서버 주소를 물리지 않는다.** 전에는 `/rendition?format=png` 를 `<img>` 에 직접 물렸는데,
-   *    서버는 이 유형을 그리지 않으므로(422 · 단말 허용 목록에도 없어 401) 그 자리는 언제나
-   *    깨진 그림이었다. 게다가 그 길로 보이는 것은 **인쇄된 것과 다른 그림**일 수 있다 —
-   *    지금은 인쇄에 넘긴 바이트를 그대로 보여 준다.
-   *
-   * ⚠ 만든 주소는 쓰고 나면 거둔다(아래 `useEffect`) — 두면 회차마다 쌓인다.
-   */
-  /*
-   * ⭐ **고르면 곧바로 보인다**(사용자 지시 2026-09-16 · ISSUE-QR-01 D3). 페이로드가 담는 것은
-   *    발행과 무관하게 이미 정해져 있어, 발행을 눌러야 그림이 뜨던 것은 **확인을 발행 뒤로
-   *    미루는 일**이었다 — 되돌릴 수 없는 쓰기 앞에서 무엇이 찍힐지 볼 수 없었다.
-   *
-   * 발행 뒤에는 **발행본**으로 바꾼다(그 자리가 가리키는 대상이 정해지므로). 라벨 면에 회차를
-   * 싣지 않아 두 그림은 같지만, 「무엇을 보고 있는가」는 다르다.
-   */
-  const previewLine =
-    firstIssued !== null
-      ? (lineItems.find((line) => line.goodsIssueLineId === firstIssued.target.targetId) ?? null)
-      : (rows.find((row) => rowId(row.line) === selectedIds[0])?.line ?? null);
+  /* 스캐너가 번호를 치고 Enter — 그 번호의 분할 LOT 하나면 고르고 칸을 비운다(다음 봉지를 바로 읽게). */
+  const submitSearch = (event: FormEvent): void => {
+    event.preventDefault();
 
-  /**
-   * 미리보기 그림과 **못 그린 까닭**.
-   *
-   * ⛔ **까닭을 버리지 않는다.** 처음엔 못 그리면 `null` 만 돌려줬는데, 그러면 화면이 「발행하면
-   *    보인다」는 빈 상태 문구만 세워 **고르고도 안 보이는 사람에게 아무 말도 하지 못한다**
-   *    (사용자 실기 지적 2026-09-16). 사유는 「어떻게 풀 것인가」를 담아야 한다(공유계약 G-3).
-   */
-  const preview = useMemo((): { src: string | null; problem: string | null } => {
-    if (previewLine === null) return { src: null, problem: null };
+    const exact = rows.filter((lot) => lot.lotNo === query.trim());
 
-    const fields = toLabelFieldsForLine(previewLine, {
-      issue: goodsIssue.data ?? null,
-      itemCodes,
-      lotNames,
-      destination,
+    if (exact.length !== 1 || exact[0] === undefined) return;
+
+    toggle(exact[0].lotId);
+    setQuery('');
+  };
+
+  /* 찍는 차례는 오래된 순 — 봉지를 쌓아 둔 차례와 같다. */
+  const printList = [...chosen].sort((left, right) => left.splitAt.localeCompare(right.splitAt));
+
+  const startPrint = async (): Promise<void> => {
+    const lots = printList;
+    const isReprint = tab === 'PRINTED';
+
+    setPreview(null);
+    const results = await printing.run(lots, {
+      printerName: headPrinter?.printerName ?? null,
+      shellPrinterName: isPrinterSelectable ? (headPrinter?.printerName ?? null) : null,
+      reissueReasonCode: reasonCode,
     });
 
-    if ('unavailableReason' in fields) return { src: null, problem: fields.unavailableReason };
+    setSelected(new Set());
+    setReasonCode(null);
+    setResult({ view: toResultView(results, isReprint), isReprint });
+  };
 
-    /* `Blob` 은 `ArrayBuffer` 를 받는다 — 바이트 배열의 버퍼를 잘라 넘긴다. */
-    const bytes = renderGoodsIssueQrLabel(fields);
-
-    return {
-      src: URL.createObjectURL(
-        new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], {
-          type: 'image/png',
-        }),
-      ),
-      problem: null,
-    };
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 고른 줄과 이름이 갖춰지면 다시 그린다. */
-  }, [
-    previewLine,
-    goodsIssue.data,
-    itemCodes.entries.length,
-    lotNames.entries.length,
-    destination,
-  ]);
-
-  const previewSrc = preview.src;
-
-  useEffect(() => {
-    if (previewSrc === null) return;
-
-    return () => {
-      URL.revokeObjectURL(previewSrc);
-    };
-  }, [previewSrc]);
+  const isPrintedTab = tab === 'PRINTED';
+  const searchElsewhere =
+    query.trim() === ''
+      ? undefined
+      : (other.data?.items ?? []).find((lot) => matchesSplitLot(lot, query));
 
   return (
-    <main className="pop-shell pop-ui pop-giqr-shell" aria-labelledby={titleId}>
+    <main className="pop-lot-screen pop-ui pop-split" aria-label={t.title}>
       <header className="pop-header">
-        <h1 id={titleId} className="pop-title">
-          {t.title}
-        </h1>
-        {/* 맥락은 화면명 옆이다 — 오른쪽 끝은 사번·단말·프린터 같은 상태 자리다(스펙 §3 머리줄). */}
-        {goodsIssue.data === undefined ? null : (
-          <p className="pop-context">{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</p>
-        )}
-        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 선다(사용자 지시 2026-11-17 · #291). */}
+        <h1 className="pop-title">{t.title}</h1>
+        {/*
+         * 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다. 사번·단말도 맨 위 줄이 보인다
+         * (사용자 지시 2026-11-17 · #291).
+         */}
         <PopTopPrinter>
           <PrinterChip
+            printers={printers.data}
+            selected={headPrinter}
             isLoading={printers.isPending}
             isError={printers.isError}
-            displayName={defaultPrinter(printers.data)?.displayName ?? null}
-            hasPrinter={(printers.data?.length ?? 0) > 0}
+            isSelectable={isPrinterSelectable}
+            isLocked={isBusy}
+            onRetry={() => {
+              void printers.refetch();
+            }}
+            onSelect={(name) => {
+              setPickedPrinter(name);
+              rememberPrinterName(name);
+            }}
           />
         </PopTopPrinter>
       </header>
 
-      {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
-      <PopWorkerMissingBanner workerNo={entry.workerNo} />
+      <PopWorkerMissingBanner workerNo={workerNo} />
 
-      {entry.goodsIssueId === null && (
-        <div className="banner-slot pop-giqr-lookup">
-          {/* 안내 배너(「출고번호를 입력해 전표를 불러오세요」)는 두지 않는다 — 입력 칸이 곧 안내다(사용자 지시 2026-11-17 · #291). */}
-          <IssueLookupField
-            onFound={(goodsIssueId) => {
-              /*
-               * ⛔ **주소가 전표를 소유한다.** 화면 상태에 담아 두면 새로 고침·되돌아오기에서
-               *    전표가 사라지고, 같은 단말을 넘겨받은 다음 작업자가 남의 전표를 이어 본다.
-               */
-              setSearchParams(
-                (previous) => {
-                  const next = new URLSearchParams(previous);
-                  next.set('goodsIssueId', String(goodsIssueId));
+      <SplitBand
+        isError={unprinted.isError}
+        count={unprintedCount}
+        failed={failedCount}
+        oldest={oldest === undefined ? null : oldest.splitAt}
+        today={today}
+        showUnprinted={isPrintedTab}
+        onShowUnprinted={() => {
+          chooseTab('UNPRINTED');
+        }}
+      />
 
-                  return next;
-                },
-                { replace: true },
-              );
+      <div className="pop-split-tool">
+        <div className="pop-mlot-tabs" role="group" aria-label={t.tabs.label}>
+          {(['UNPRINTED', 'PRINTED'] as const).map((each) => (
+            <button
+              key={each}
+              type="button"
+              className="pop-mlot-tab"
+              aria-pressed={tab === each}
+              disabled={isBusy}
+              onClick={() => {
+                if (each !== tab) chooseTab(each);
+              }}
+            >
+              {each === 'UNPRINTED' ? t.tabs.unprinted : t.tabs.printed}
+              {each === 'UNPRINTED' ? (
+                <span className="pop-mlot-tab-count">
+                  {unprintedCount === null ? '?' : unprintedCount}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+        <form className="pop-mlot-search" role="search" onSubmit={submitSearch}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 6v12M7 6v12M10.5 6v12M14 6v12M16.5 6v12M20 6v12" />
+          </svg>
+          <input
+            className="pop-mlot-search-input"
+            type="search"
+            aria-label={t.search.label}
+            placeholder={t.search.placeholder}
+            value={query}
+            disabled={isBusy}
+            autoComplete="off"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSelected(new Set());
             }}
           />
+          {query === '' ? null : (
+            <button
+              type="button"
+              className="pop-mlot-search-clear"
+              aria-label={t.search.clear}
+              onClick={() => {
+                setQuery('');
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 7l10 10M17 7L7 17" />
+              </svg>
+            </button>
+          )}
+        </form>
+        {isPrintedTab ? (
+          <div className="pop-split-periods" role="group" aria-label={t.periods.label}>
+            {PRINTED_PERIODS.map((each) => (
+              <button
+                key={each}
+                type="button"
+                className="pop-mlot-reason"
+                aria-pressed={period === each}
+                disabled={isBusy}
+                onClick={() => {
+                  setPeriod(each);
+                  setSelected(new Set());
+                }}
+              >
+                {t.periods[each]}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="pop-mlot-refresh">
+          <button
+            type="button"
+            className="pop-mlot-refresh-button"
+            aria-busy={current.isFetching}
+            disabled={isBusy || plantId === null}
+            onClick={() => {
+              void unprinted.refetch();
+              if (isPrintedTab) void printed.refetch();
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4.2h-4.2" />
+            </svg>
+            {t.refresh}
+          </button>
+          <span className="pop-mlot-refresh-at">
+            {current.dataUpdatedAt === 0
+              ? ''
+              : t.refreshedAt(formatPlantClock(new Date(current.dataUpdatedAt)))}
+          </span>
         </div>
-      )}
+      </div>
 
-      {/*
-       * ⭐ **전표를 고르기 전에는 대기 목록이 선다**(사용자 요구 2026-09-16 · D5). 자재창고
-       *    담당은 관리자 웹을 쓸 수 없어 「무엇을 찍어야 하는가」를 볼 자리가 없었다 —
-       *    출고번호를 «이미 아는» 사람만 이 화면을 쓸 수 있었다.
-       */}
-      {entry.goodsIssueId === null && (
-        <PendingPane
-          list={pending}
-          itemNames={itemNames}
-          lotNames={lotNames}
-          uomNames={uomNames}
-          onRefresh={() => {
-            void queryClient.invalidateQueries({ queryKey: goodsIssueQrKeys.all });
-          }}
-          onPick={(goodsIssueId, goodsIssueLineId) => {
-            /* 고른 라인을 함께 세운다 — 들어가자마자 미리보기가 보이도록(D3). */
-            setSelectedIds([String(goodsIssueLineId)]);
-            setSearchParams(
-              (previous) => {
-                const next = new URLSearchParams(previous);
-                next.set('goodsIssueId', String(goodsIssueId));
-                /* 고른 줄도 주소가 갖는다 — 새로 고쳐도 그 줄만 선다. */
-                next.set('goodsIssueLineId', String(goodsIssueLineId));
-
-                return next;
-              },
-              { replace: true },
-            );
-          }}
-        />
-      )}
-
-      {/*
-       * ⭐ **전표에서 대기 목록으로 되돌아가는 길**(사용자 결정 2026-09-16 · D5 배치). 두 목록을
-       *    한 화면에 겹치지 않기로 했으므로, 돌아가는 길이 없으면 전표에 들어간 담당은 셸
-       *    [화면 이동]으로 이 화면을 다시 열어야 한다.
-       *
-       * 돌아가며 **목록을 다시 받는다** — 방금 찍은 라인이 대기에서 빠져 있어야 한다.
-       */}
-      {/* ⭐ [← 대기 목록으로]는 「자재 출고 라인」 표제 줄 왼쪽에 선다(사용자 지시 2026-09-17). */}
-
-      {/*
-       * 403 만 화면의 말로 바꿔 낸다(스펙 §6 · F-7) — 공용 배너의 일반 문구는 「권한이 없습니다」
-       * 까지이고, 여기서 필요한 것은 **어느 단말에서 다시 하면 되는가**다. 대상 선택은 그대로
-       * 둔다 — 재시도는 다른 단말에서 하는 것이지 다시 고르는 것이 아니다.
-       */}
-      {isIssueForbidden(write.error) ? (
-        <div className="banner-slot">
-          <AlertBanner variant="error">{t.errors.forbidden}</AlertBanner>
-        </div>
-      ) : (
-        <SaveErrorBanner error={write.error} />
-      )}
-
-      {/*
-       * ⚠ **인쇄 통로가 없는 것은 배너로 먼저 말한다.** 액션바 «아래»에 작은 글로 달아 두었는데,
-       *    설계 §3 의 세로 예산은 액션바에서 끝나(768 슬랙 0) 그 줄이 화면 밖으로 밀렸다 —
-       *    단말에서는 없는 문구가 된다.
-       *
-       * ⛔ 프린터가 0건인 것과 뭉치지 않는다 — 전자는 이 셸에서 찍을 수 없다는 뜻이고 후자는
-       *    이 단말에 등록된 프린터가 없다는 뜻이라, 사용자가 손댈 곳이 다르다.
-       */}
-      {!hasPrintBridge() && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.printer.noShell}</AlertBanner>
-        </div>
-      )}
-
-      {issued !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="success">{t.result.issued(issued.length)}</AlertBanner>
-        </div>
-      )}
-      {/*
-       * ⭐ **전표를 고르기 전에는 전표 구획을 세우지 않는다**(사용자 지시 2026-09-16 · D9).
-       *    라인 목록·발행 대상·미리보기·발행 단추는 **전표 하나에 매인 것**이라, 전표가 없으면
-       *    빈 표와 잠긴 단추만 남아 그 자리를 차지한다 — 그 자리는 대기 목록이 쓴다.
-       *
-       * ⚠ 머리줄(사번·프린터·단말)과 자재 출고번호 입력 칸은 두 단계 모두 선다.
-       */}
-      {entry.goodsIssueId !== null && (
-        <>
-          <PrintResultBanner
-            isPending={printFlow.isPending}
-            result={printResult(printFlow.data?.reports ?? [])}
-          />
-
-          <div className="pop-panes">
-            <LineListPane
-              headerStart={
+      <section className="pop-split-work" aria-label={t.table.label}>
+        {isPrintedTab ? null : <p className="pop-split-info">{t.info}</p>}
+        {result === null ? null : (
+          <div className="banner-slot">
+            <AlertBanner variant={result.view.tone} title={result.view.text}>
+              {result.view.tone === 'success' && !result.isReprint ? (
                 <Button
                   variant="outlined"
                   size="md"
-                  className="pop-touch-target pop-giqr-back"
                   onClick={() => {
-                    setSelectedIds([]);
-                    setIssued(null);
-                    setSearchParams(
-                      (previous) => {
-                        const next = new URLSearchParams(previous);
-                        next.delete('goodsIssueId');
-                        next.delete('goodsIssueLineId');
-
-                        return next;
-                      },
-                      { replace: true },
-                    );
-                    void queryClient.invalidateQueries({ queryKey: goodsIssueQrKeys.all });
+                    chooseTab('PRINTED');
                   }}
                 >
-                  <span aria-hidden="true">← </span>
-                  {t.pending.back}
+                  {t.result.showPrinted}
                 </Button>
-              }
-              headerEnd={
-                focusedLineId === null ? undefined : (
-                  <Button
-                    variant="outlined"
-                    size="md"
-                    className="pop-touch-target pop-giqr-line-scope"
-                    type="button"
-                    onClick={() => {
-                      setShowAllLines((previous) => !previous);
-                    }}
-                  >
-                    {showAllLines ? t.lines.showPickedOnly : t.lines.showAll}
-                  </Button>
-                )
-              }
-              rows={visibleRows}
-              selectedIds={selectedIds}
-              onSelectionChange={(ids) => {
-                setSelectedIds(ids);
-                /* 좁히는 LOT 이 바뀌면 앞서 고른 파렛트는 이 라인의 것이 아니다. */
-                setPalletId(null);
-                /* 대상이 바뀌면 앞 거부는 이 발행의 것이 아니다 — 물음도 함께 내린다. */
-                setReasonAsked(false);
-                write.clearFieldError('reissueReasonCode');
-              }}
-              itemNames={itemNames}
-              lotNames={lotNames}
-              uomNames={uomNames}
-              /*
-               * ⛔ **부르지도 않은 조회를 「불러오는 중」으로 그리지 않는다**(#1093 ②).
-               *    react-query 는 꺼 둔 조회(`enabled: false`)를 계속 `pending` 으로 둔다 —
-               *    그대로 쓰면 전표 없이 들어왔을 때 뼈대가 **영영 걷히지 않는다.** 위 배너는
-               *    「전표를 고른 뒤 들어오세요」라고 옳게 말하는데 옆은 로딩이라, 작업자는
-               *    화면이 곧 뜰 줄 알고 기다린다. 아래 파렛트 줄이 같은 일을 이미 하고 있다.
-               */
-              isLoading={lines.isPending && entry.goodsIssueId !== null}
-              isError={lines.isError}
-            />
-            <TargetPane
-              selectedCount={selectedIds.length}
-              selectedLines={selectedLines}
-              unit={unit}
-              onUnitChange={(next) => {
-                setUnit(next);
-                /* 유형이 바뀌면 앞 유형의 대상은 이 발행의 것이 아니다. */
-                setPalletId(null);
-                setReasonAsked(false);
-                write.clearFieldError('reissueReasonCode');
-              }}
-              pallets={palletItems}
-              palletsPending={pallets.isPending && palletSelectable}
-              palletsFailed={pallets.isError}
-              palletsUnavailable={isPalletListUnsupported()}
-              palletsTruncated={palletsTruncated}
-              palletTotal={pallets.data?.total ?? 0}
-              palletSelectable={palletSelectable}
-              palletId={palletId}
-              onPalletChange={(handlingUnitId) => {
-                setPalletId(handlingUnitId);
-                setReasonAsked(false);
-                write.clearFieldError('reissueReasonCode');
-              }}
-              palletContents={
-                palletContents.data === undefined
-                  ? null
-                  : {
-                      lineCount: palletContents.data.length,
-                      quantities: toPalletQuantities(palletContents.data),
-                    }
-              }
-              uomNames={uomNames}
-              issuedSeq={firstIssued?.issueSeq ?? null}
-              showReason={showReason}
-              needsReason={needsReason}
-              hasUnknownStatus={hasUnknownStatus}
-              reasonServerError={reasonServerError}
-              reasonCode={reasonCode}
-              onReasonChange={(code) => {
-                setReasonCode(code);
-                /* 고친 값 옆에 옛 거부를 남기지 않는다 — 저장소의 다른 화면들과 같은 처리다. */
-                write.clearFieldError('reissueReasonCode');
-              }}
-              reasonOptions={reasonOptions}
-              previewSrc={previewSrc}
-              previewProblem={preview.problem}
-              destinationMissing={destination.kind === 'failed'}
-            />
+              ) : null}
+            </AlertBanner>
           </div>
+        )}
 
-          {/*
-           * 액션바 — **화면 바닥의 띠**(설계 §3 · 88). 다른 POP 화면과 같은 이름(`pop-action-bar`)
-           * 을 쓴다: `.pop-actions` 는 단추만 오른쪽으로 미는 줄이라 띠의 높이·경계선을 갖지 않아,
-           * 이 화면만 바닥이 없는 것처럼 떠 있었다.
-           */}
-          <div className="pop-action-bar pop-giqr-actions">
-            {/*
-             * ⛔ **바닥 띠에 막힌 사유를 적지 않는다**(사용자 지시 2026-09-19 · omf-all-around#35 —
-             *    「재발행 사유를 고르세요」 등). 비활성 단추와 발행 대상 칸의 사유 안내가 이미 말한다.
-             */}
+        {current.isError ? (
+          <div className="pop-split-empty" role="alert">
+            <b>{t.empty.loadFailedTitle}</b>
+            <span>{t.empty.loadFailedBody}</span>
             <Button
-              variant="filled"
-              size="2xl"
-              type="button"
-              disabled={!canIssue(guard)}
-              loading={write.isSaving || printFlow.isPending}
-              onClick={issue}
+              className={popTouchClass('primary')}
+              size="xl"
+              onClick={() => {
+                void current.refetch();
+              }}
             >
-              {t.action.issue}
+              {t.empty.retry}
             </Button>
           </div>
-        </>
+        ) : current.isPending && plantId !== null ? null : rows.length > 0 ? (
+          <div className="pop-split-table" role="list">
+            <div className="pop-split-row pop-split-head" aria-hidden="true">
+              <span>{t.table.select}</span>
+              <span>{t.table.lotNo}</span>
+              <span>{t.table.item}</span>
+              <span className="pop-split-num">{t.table.qty}</span>
+              <span>{t.table.issue}</span>
+              <span>{t.table.destination}</span>
+              <span>{isPrintedTab ? t.table.splitAt : t.table.splitAtOldestFirst}</span>
+              <span>{t.table.labelColumn}</span>
+            </div>
+            {rows.map((lot) => (
+              <SplitRow
+                key={lot.lotId}
+                lot={lot}
+                today={today}
+                isChecked={selected.has(lot.lotId)}
+                showAge={!isPrintedTab}
+                isLocked={isBusy}
+                onToggle={toggle}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyList
+            tab={tab}
+            period={period}
+            query={query}
+            elsewhere={searchElsewhere ?? null}
+            onShowElsewhere={() => {
+              chooseTab(isPrintedTab ? 'UNPRINTED' : 'PRINTED', true);
+            }}
+          />
+        )}
+
+        {needsReason || (isPrintedTab && chosen.length > 0) ? (
+          <div className="pop-split-reasons">
+            <ReasonPicker
+              reasons={reasons.data ?? []}
+              isLoading={reasons.isPending}
+              isError={reasons.isError}
+              selected={reasonCode}
+              isLocked={isBusy}
+              onSelect={setReasonCode}
+            />
+            {reasonCode === null ? (
+              <span className="pop-split-hint-bad">
+                {isPrintedTab ? t.reasons.need : t.reasons.needFailed(chosenNeedingReason.length)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      <footer className="pop-split-bar">
+        <span id={stateId} className="pop-split-state" role="status">
+          {printing.progress !== null
+            ? t.bar.running(printing.progress.done + 1, printing.progress.total)
+            : current.isError
+              ? t.bar.listFirst
+              : isPrintedTab
+                ? chosen.length === 0
+                  ? t.bar.reprintHint
+                  : t.bar.reprintSelected(chosen.length) +
+                    (reasonName === null ? '' : t.bar.withReason(reasonName))
+                : chosen.length === 0
+                  ? t.bar.pickHint
+                  : t.bar.selected(chosen.length) +
+                    (chosenNeedingReason.length > 0
+                      ? t.bar.withFailed(chosenNeedingReason.length)
+                      : '')}
+          {chosen.length > 0 && needsReason && reasonCode === null ? (
+            <small>{isPrintedTab ? t.bar.reprintNeedsReason : t.bar.failedNeedsReason}</small>
+          ) : null}
+        </span>
+        {isPrintedTab ? null : (
+          <Button
+            className={popTouchClass('normal')}
+            variant="outlined"
+            size="xl"
+            disabled={rows.length === 0 || isBusy}
+            onClick={() => {
+              selectAll(!allOn);
+            }}
+          >
+            {allOn ? t.bar.clearAll : t.bar.selectAll(rows.length)}
+          </Button>
+        )}
+        <Button
+          className={popTouchClass('normal')}
+          variant="outlined"
+          size="xl"
+          disabled={chosen.length === 0 || isBusy}
+          onClick={() => {
+            selectAll(false);
+          }}
+        >
+          {t.bar.clearSelection}
+        </Button>
+        <Button
+          className={popTouchClass('primary')}
+          size="xl"
+          disabled={!canPrint}
+          aria-describedby={stateId}
+          onClick={() => {
+            setPreview({ index: 0 });
+          }}
+        >
+          {isPrintedTab
+            ? chosen.length === 0
+              ? t.bar.reprintNone
+              : t.bar.reprint(chosen.length)
+            : chosen.length === 0
+              ? t.bar.printNone
+              : t.bar.print(chosen.length)}
+        </Button>
+      </footer>
+
+      {preview === null ? null : (
+        <PreviewDialog
+          lots={printList}
+          index={preview.index}
+          isReprint={isPrintedTab}
+          reasonName={needsReason ? reasonName : null}
+          printerName={headPrinter?.displayName ?? null}
+          onMove={(index) => {
+            setPreview({ index });
+          }}
+          onCancel={() => {
+            setPreview(null);
+          }}
+          onPrint={() => {
+            void startPrint();
+          }}
+        />
       )}
     </main>
   );
 };
 
-/**
- * 머리에 세울 프린터 한 대. **계약이 표시한 기본 프린터를 고른다** — 목록의 첫 줄을 집으면
- * 서버가 순서를 바꾸는 순간 다른 프린터의 상태를 보이게 된다. 기본 표시가 없으면 첫 줄이다.
- */
-const defaultPrinter = (printers: Printer[] | undefined): Printer | null => {
-  if (printers === undefined || printers.length === 0) return null;
-
-  return printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
-};
-
-/**
- * 담긴 내용을 **단위별로 합친다.**
- *
- * ⛔ **단위를 무시하고 하나로 더하지 않는다.** 한 취급 단위가 서로 다른 단위의 LOT 을 담을 수
- * 있어(계약 `HandlingUnitContent.uomId`), 더해 버리면 화면이 실재하지 않는 수를 말한다.
- *
- * 차례는 **처음 나온 단위 순**이다 — 응답 차례를 그대로 따라 화면이 다시 줄 세우지 않는다.
- */
-const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQuantity[] => {
-  const byUom = new Map<number, number>();
-
-  for (const content of contents) {
-    byUom.set(content.uomId, (byUom.get(content.uomId) ?? 0) + content.qty);
-  }
-
-  return [...byUom].map(([uomId, qty]) => ({ uomId, qty }));
-};
-
-/**
- * 서버가 이 단말의 발행을 막았는가. 게이트는 서버가 갖는다(통지 #535). 403 은 봉투에 담겨
- * `validation` 으로 오므로 상태 코드로 본다(#242).
- */
-const isIssueForbidden = (error: ApiError | null): boolean => error !== null && isForbidden(error);
-
-interface PrinterChipProps {
-  isLoading: boolean;
+const SplitBand = ({
+  isError,
+  count,
+  failed,
+  oldest,
+  today,
+  showUnprinted,
+  onShowUnprinted,
+}: {
   isError: boolean;
-  hasPrinter: boolean;
-  displayName: string | null;
-}
-
-/**
- * 프린터 상태는 **머리에 상시 보인다**(스펙 §5-5 · K-4) — 인쇄가 안 될 때 사용자가 가장 먼저
- * 보는 자리다.
- *
- * ⭐ **이름만 보인다**(사용자 지시 2026-09-15). 뒤에 붙던 설명(「이 프린터로 나갑니다」 등)은
- *    머리줄을 길게 만들 뿐이라 뺐다 — 자재 LOT 라벨 머리줄과 같은 표기다.
- */
-const PrinterChip = ({ isLoading, isError, hasPrinter, displayName }: PrinterChipProps) => {
-  if (isLoading) return <Chip status="idle">{t.printer.loading}</Chip>;
-  if (isError) return <Chip status="error">{t.printer.failed}</Chip>;
-  /* 프린터가 없다는 말은 공통 메뉴 맨 위 줄이 한다(사용자 지시 2026-11-17 · #291). */
-  if (!hasPrinter) return null;
-
-  return <Chip status="success">{`${t.printer.label} ${displayName ?? ''}`.trim()}</Chip>;
-};
-
-interface PrintResultBannerProps {
-  isPending: boolean;
-  result: PrintResult;
-}
-
-/**
- * 인쇄 걸음의 결과. **다섯 갈래를 다섯 문장으로 말한다** — 접으면 사용자가 다음에 무엇을
- * 해야 하는지가 달라지는데 화면은 같은 말을 하게 된다.
- */
-const PrintResultBanner = ({ isPending, result }: PrintResultBannerProps) => {
-  if (isPending) {
+  count: number | null;
+  failed: number;
+  oldest: string | null;
+  today: string;
+  showUnprinted: boolean;
+  onShowUnprinted: () => void;
+}) => {
+  if (isError || count === null) {
     return (
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.result.printing}</AlertBanner>
+      <div className="pop-split-band pop-split-band--unknown" role="status">
+        <span className="pop-split-count">?</span>
+        <span className="pop-split-band-text">
+          <b>{t.band.unknownTitle}</b>
+          <span>{t.band.unknownBody}</span>
+        </span>
       </div>
     );
   }
 
-  switch (result.kind) {
-    case 'none':
-      return null;
-    /*
-     * ⛔ **인쇄 성공은 따로 말하지 않는다**(사용자 지시 2026-09-09). 바로 위에 「N건을
-     *    발행했습니다」가 이미 서 있어 초록 띠가 둘로 겹쳤다 — 잘된 것을 두 번 말하면
-     *    정작 봐야 할 «실패» 띠가 묻힌다. 아래 실패·미보고 갈래는 그대로 남긴다.
-     */
-    case 'printed':
-      return null;
-    case 'printedUnreported':
-      return (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.result.printedUnreported}</AlertBanner>
-        </div>
-      );
-    case 'failed':
-      return (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.result.printFailed}</AlertBanner>
-        </div>
-      );
-    case 'failedUnreported':
-      return (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.result.reportFailed}</AlertBanner>
-        </div>
-      );
+  if (count === 0) {
+    return (
+      <div className="pop-split-band pop-split-band--ok" role="status">
+        <span className="pop-split-count">0</span>
+        <span className="pop-split-band-text">
+          <b>{t.band.noneTitle}</b>
+          <span>{t.band.noneBody}</span>
+        </span>
+      </div>
+    );
   }
+
+  return (
+    <div className="pop-split-band pop-split-band--alert" role="status" aria-live="polite">
+      <span className="pop-split-count">{count}</span>
+      <span className="pop-split-band-text">
+        <b>{t.band.title(count)}</b>
+        <span>{t.band.body}</span>
+      </span>
+      <span className="pop-split-band-aside">
+        {failed > 0 ? <Chip status="error">{t.band.failed(failed)}</Chip> : null}
+        {oldest === null ? null : (
+          <Chip status={daysSince(oldest, today) > 0 ? 'error' : 'warning'}>
+            {t.band.oldest(shortAt(oldest), ageText(oldest, today))}
+          </Chip>
+        )}
+        {showUnprinted ? (
+          <Button size="md" onClick={onShowUnprinted}>
+            {t.band.showUnprinted}
+          </Button>
+        ) : null}
+      </span>
+    </div>
+  );
+};
+
+/**
+ * LOT 번호 — **`|` 칸 경계에서만 줄을 바꾼다.** 칸(`0001-S1` 등)은 한 덩어리로 둔다 — 칸 가운데서 끊기면 끝 마디
+ * (`-S1`)를 원래 LOT 과 대조할 수 없다. `-` 도 줄바꿈 자리라 칸마다 `nowrap` 으로 묶고 `|` 뒤에만 기회를 준다.
+ */
+const LotNoText = ({ lotNo, className }: { lotNo: string; className?: string }) => {
+  const parts = lotNo.split('|');
+
+  return (
+    <span className={className} title={lotNo}>
+      {parts.map((part, index) => (
+        <span key={`${String(index)}-${part}`}>
+          <span className="pop-split-seg">{index < parts.length - 1 ? `${part}|` : part}</span>
+          {index < parts.length - 1 ? <wbr /> : null}
+        </span>
+      ))}
+    </span>
+  );
+};
+
+const LabelStatus = ({ lot }: { lot: SplitMaterialLot }) => {
+  const issue = lot.labelIssue;
+
+  if (issue === null) return <Chip status="error">{t.status.unissued}</Chip>;
+
+  if (issue.lastPrintOutcomeCode === PRINT_FAILED) {
+    return (
+      <span className="pop-split-two">
+        <Chip status="error">{t.status.failed(issue.issueCount)}</Chip>
+        <small className="pop-split-old">{t.status.failedHint}</small>
+      </span>
+    );
+  }
+
+  return (
+    <span className="pop-split-two">
+      <Chip status={issue.lastPrintOutcomeCode === 'PENDING' ? 'info' : 'success'}>
+        {issue.lastPrintOutcomeCode === 'PENDING'
+          ? t.status.pending(issue.lastIssueSeq)
+          : t.status.printed(issue.lastIssueSeq)}
+      </Chip>
+      <small>{shortAt(issue.lastIssuedAt)}</small>
+    </span>
+  );
+};
+
+const SplitRow = ({
+  lot,
+  today,
+  isChecked,
+  showAge,
+  isLocked,
+  onToggle,
+}: {
+  lot: SplitMaterialLot;
+  today: string;
+  isChecked: boolean;
+  showAge: boolean;
+  isLocked: boolean;
+  onToggle: (lotId: number) => void;
+}) => (
+  <div className="pop-split-row" role="listitem">
+    <span>
+      <input
+        type="checkbox"
+        className="pop-split-check"
+        aria-label={t.table.choose(lot.lotNo)}
+        checked={isChecked}
+        disabled={isLocked}
+        onChange={() => {
+          onToggle(lot.lotId);
+        }}
+      />
+    </span>
+    <span className="pop-split-two">
+      <LotNoText className="pop-split-lotno" lotNo={lot.lotNo} />
+      <span className="pop-split-parent">
+        {t.table.parentLabel} <LotNoText lotNo={lot.parentLot.lotNo} />
+      </span>
+    </span>
+    <span className="pop-split-two">
+      <b>{lot.item.itemCode}</b>
+      <small>{lot.item.itemName}</small>
+    </span>
+    <span className="pop-split-num">{formatBaseQty(lot.qty, lot.uomCode)}</span>
+    <span className="pop-split-two">
+      <span>{lot.goodsIssue.goodsIssueNo}</span>
+      <small>{t.table.line(lot.goodsIssue.lineNo)}</small>
+    </span>
+    <span className="pop-split-two">
+      <span>{lot.destination?.warehouseCode ?? ''}</span>
+      <small>{lot.destination?.locationCode ?? ''}</small>
+    </span>
+    <span className="pop-split-two">
+      <span>{shortAt(lot.splitAt)}</span>
+      {showAge ? (
+        <small className={daysSince(lot.splitAt, today) > 0 ? 'pop-split-old' : undefined}>
+          {ageText(lot.splitAt, today)}
+        </small>
+      ) : null}
+    </span>
+    <span>
+      <LabelStatus lot={lot} />
+    </span>
+  </div>
+);
+
+const EmptyList = ({
+  tab,
+  period,
+  query,
+  elsewhere,
+  onShowElsewhere,
+}: {
+  tab: LabelState;
+  period: PrintedPeriod;
+  query: string;
+  elsewhere: SplitMaterialLot | null;
+  onShowElsewhere: () => void;
+}) => {
+  if (query.trim() !== '') {
+    return (
+      <div className="pop-split-empty">
+        <b>{t.empty.searchTitle}</b>
+        {elsewhere === null ? (
+          <span>{t.empty.searchNone}</span>
+        ) : (
+          <>
+            <span>
+              {tab === 'UNPRINTED'
+                ? t.empty.searchInPrinted(elsewhere.lotNo)
+                : t.empty.searchInUnprinted(elsewhere.lotNo)}
+            </span>
+            <Button variant="outlined" size="xl" onClick={onShowElsewhere}>
+              {tab === 'UNPRINTED' ? t.empty.showInPrinted : t.empty.showInUnprinted}
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return tab === 'UNPRINTED' ? (
+    <div className="pop-split-empty">
+      <b>{t.empty.unprintedTitle}</b>
+      <span>{t.empty.unprintedBody}</span>
+    </div>
+  ) : (
+    <div className="pop-split-empty">
+      <b>{t.empty.printedTitle(t.periods[period])}</b>
+      <span>{t.empty.printedBody}</span>
+    </div>
+  );
+};
+
+const PreviewDialog = ({
+  lots,
+  index,
+  isReprint,
+  reasonName,
+  printerName,
+  onMove,
+  onCancel,
+  onPrint,
+}: {
+  lots: readonly SplitMaterialLot[];
+  index: number;
+  isReprint: boolean;
+  reasonName: string | null;
+  printerName: string | null;
+  onMove: (index: number) => void;
+  onCancel: () => void;
+  onPrint: () => void;
+}) => {
+  const lot = lots[Math.min(index, lots.length - 1)];
+
+  if (lot === undefined) return null;
+
+  const label = toLabelLot(lot);
+
+  return (
+    <Dialog
+      open
+      /* POP 팝업은 바깥을 눌러 닫히지 않는다(#1005). */
+      closeOnBackdropClick={false}
+      onClose={onCancel}
+      title={isReprint ? t.preview.reprintTitle : t.preview.title}
+      size="lg"
+      className="pop-split-preview"
+      footer={
+        <>
+          <span className="pop-mlot-hint">
+            {printerName === null ? t.preview.printerDefault : t.preview.printer(printerName)}
+          </span>
+          <Button
+            className={popTouchClass('normal')}
+            variant="outlined"
+            size="xl"
+            onClick={onCancel}
+          >
+            {t.preview.cancel}
+          </Button>
+          <Button className={popTouchClass('primary')} size="xl" onClick={onPrint}>
+            {isReprint ? t.preview.reprint(lots.length) : t.preview.print(lots.length)}
+          </Button>
+        </>
+      }
+    >
+      <p className="pop-mlot-hint">
+        {t.preview.note}
+        {reasonName === null ? '' : t.preview.reissueNote(reasonName)}
+      </p>
+      <LabelPreview
+        fields={{
+          itemCode: label.itemCode,
+          itemName: label.itemName,
+          lotNo: label.lotNo,
+          qty: label.lotQty,
+          uomCode: label.uomCode,
+          issueSeq: nextIssueSeq(lot),
+          supplier:
+            label.supplierName === null || label.supplierCode === null
+              ? null
+              : `${label.supplierName} (${label.supplierCode})`,
+          receipt: null,
+          kind: 'material',
+        }}
+      />
+      <dl className="pop-split-meta">
+        <dt>{t.preview.bag}</dt>
+        <dd>
+          {t.preview.bagValue(
+            formatBaseQty(lot.qty, lot.uomCode),
+            lot.goodsIssue.goodsIssueNo,
+            lot.goodsIssue.lineNo,
+            destinationOf(lot),
+          )}
+        </dd>
+        <dt>{t.preview.parent}</dt>
+        <dd className="pop-split-parent">
+          <LotNoText lotNo={lot.parentLot.lotNo} />
+        </dd>
+      </dl>
+      <nav className="pop-mlot-preview-pager" aria-label={t.preview.page(index + 1, lots.length)}>
+        <Button
+          className={popTouchClass('normal')}
+          variant="outlined"
+          size="xl"
+          disabled={index <= 0}
+          onClick={() => {
+            onMove(index - 1);
+          }}
+        >
+          {t.preview.prev}
+        </Button>
+        <span className="pop-mlot-preview-page">{t.preview.page(index + 1, lots.length)}</span>
+        <Button
+          className={popTouchClass('normal')}
+          variant="outlined"
+          size="xl"
+          disabled={index >= lots.length - 1}
+          onClick={() => {
+            onMove(index + 1);
+          }}
+        >
+          {t.preview.next}
+        </Button>
+      </nav>
+    </Dialog>
+  );
 };

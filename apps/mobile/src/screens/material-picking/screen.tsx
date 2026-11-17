@@ -40,6 +40,7 @@ import {
   readIssued,
   type IssuedRecord,
   goodsIssueNoOf,
+  splitLinesOf,
 } from './issued-record';
 import { PickingOrderList } from './order-list';
 import {
@@ -145,13 +146,19 @@ export const MaterialPickingScreen = () => {
   /**
    * 서버가 매긴 출고번호.
    *
-   * ⭐ **작업자가 이 번호를 POP 으로 들고 간다**(ISSUE-QR-01 — P-01-02 에서 이 번호로 전표를
-   *    불러 출고 QR 을 발행한다). 확정 문구가 「출고를 확정했습니다」뿐이면 **방금 만든 전표를
-   *    가리킬 방법이 없어** 작업자가 관리자 웹을 뒤지거나 사람을 불러야 한다.
+   * ⭐ 확정 문구가 「출고를 확정했습니다」뿐이면 **방금 만든 전표를 가리킬 방법이 없어** 작업자가
+   *    관리자 웹을 뒤지거나 사람을 불러야 한다. 008 부터 출고 QR 은 발행하지 않는다(아래 `splitLines`).
    *
    * ⚠ 큐에 담긴 건은 서버가 아직 번호를 매기지 않았다 — 그때는 없는 것이 맞다(지어내지 않는다).
    */
   const [issueNo, setIssueNo] = useState<string | null>(null);
+  /**
+   * 부분 출고로 서버가 만든 분할 LOT(008 · omf-all-around#289) — 떼어 낸 봉지에 붙일 라벨은 POP(P-01-02)에서 찍는다.
+   * 응답 라인의 `splitFromLotNo` 가 있는 줄만이다. 큐에 담긴 건은 번호가 아직 없다.
+   */
+  const [splitLines, setSplitLines] = useState<
+    { lotNo: string; splitFromLotNo: string; itemCode: string; qty: string }[]
+  >([]);
   /* 피킹 한 건의 결과. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
   const [pickOutcome, setPickOutcome] = useState<Outcome | null>(null);
   const [issueTypeCode, setIssueTypeCode] = useState<string | null>(null);
@@ -406,6 +413,7 @@ export const MaterialPickingScreen = () => {
     setQty('');
     setOutcome(null);
     setIssueNo(null);
+    setSplitLines([]);
     setPickOutcome(null);
     setIssueTypeCode(null);
     setEntryUnit(BASE_UNIT);
@@ -591,7 +599,17 @@ export const MaterialPickingScreen = () => {
        * 큐를 타는 쓰기는 응답이 여기서 끊기면 그 값을 다시 얻을 길이 없어, outbox 가 회차의
        * 응답을 멱등키로 들고 있다(`patterns/outbox/send.ts` 의 `responses`).
        */
-      setIssueNo(goodsIssueNoOf(result?.responses.get(draft.idempotencyKey)));
+      const response = result?.responses.get(draft.idempotencyKey);
+
+      setIssueNo(goodsIssueNoOf(response));
+      setSplitLines(
+        splitLinesOf(response).map((each) => ({
+          lotNo: each.lotNo,
+          splitFromLotNo: each.splitFromLotNo,
+          itemCode: lines.find((one) => one.pickingLineId === each.pickingLineId)?.itemCode ?? '',
+          qty: t.pack.qty(formatPackQty(each.issueQty), uomLabelOf(uoms.data, each.uomId)),
+        })),
+      );
 
       /*
        * 나간 뒤에는 목록과 상세를 다시 받는다. 서버가 전기된 지시를 아직 출고할 수 있는 것
@@ -623,11 +641,28 @@ export const MaterialPickingScreen = () => {
         {outcome === 'sent' ? (
           <AlertBanner variant="success" title={t.sent.title}>
             {issueNo === null ? null : t.sent.issueNo(issueNo)}
+            {splitLines.length === 0 ? null : (
+              <div className="picking-out__split" role="group" aria-label={t.sent.splitLegend}>
+                <strong>{t.sent.splitHead(splitLines.length)}</strong>
+                <span className="picking-out__line-note">{t.sent.splitLegend}</span>
+                {splitLines.map((each) => (
+                  <div key={each.lotNo} className="picking-out__split-line">
+                    <p className="picking-out__issued-row">
+                      <strong>{each.itemCode}</strong>
+                      <strong>{each.qty}</strong>
+                    </p>
+                    <span className="picking-out__split-from">{each.splitFromLotNo}</span>
+                    <span className="picking-out__split-to">{each.lotNo}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </AlertBanner>
         ) : null}
         {outcome === 'queued' ? (
           <AlertBanner variant="warning" title={t.queued.title}>
             {t.queued.description}
+            <span className="picking-out__split-queued">{t.queued.split}</span>
           </AlertBanner>
         ) : null}
         {outcome === 'rejected' ? (

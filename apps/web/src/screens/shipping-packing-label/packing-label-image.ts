@@ -16,7 +16,7 @@
  *
  * ⛔ **라벨 면에 한글을 싣지 않는다.** 점 글꼴이 영문·숫자만 갖는다(`patterns/label/bitmap`) —
  *    없는 글자는 「빠졌다」가 보이는 채운 상자로 나간다. 그래서 품목은 **이름이 아니라 코드**를
- *    찍는다. 자재 LOT 라벨도 같은 이유로 코드만 찍는다(`pop-material-lot-label/label-tspl`).
+ *    찍는다. 자재 LOT 라벨도 같은 이유로 코드만 찍는다(`patterns/label/lot-label-tspl`).
  */
 
 import {
@@ -34,7 +34,7 @@ import {
   layoutLotLabel,
   type LotLabelLayout,
   type LotLabelRow,
-} from '../pop-material-lot-label/label-tspl';
+} from '../../patterns/label/lot-label-tspl';
 
 /** 상자에 담긴 한 줄. **품목은 코드다** — 이름은 프린터 내장 글꼴이 찍지 못한다. */
 export interface PackingLabelContent {
@@ -143,7 +143,7 @@ const blitClipped = (
 
 /**
  * 80 × 30 배치(`layoutLotLabel`) 한 장을 점판으로 — **종이(TSPL)와 같은 자리에 그린다.**
- * 출고 QR 라벨(`goods-issue-qr/label-image`)도 이것을 쓴다.
+ * 옛 출고 QR 라벨(P-01-02)도 이것을 썼다 — 008 에서 걷었다.
  */
 export const drawLotLabelLayout = (layout: LotLabelLayout): LabelBitmap => {
   const bitmap = createBitmap(layout.width, layout.height);

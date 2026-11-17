@@ -10,18 +10,22 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  createMaterialLotLabelIssue as createIssue,
+  drawMaterialLotLabel as buildLabel,
+  IQC_DOCUMENT_TYPE_CODE,
+  printMaterialLotLabel,
+  reportMaterialLotLabelPrint as reportPrint,
+  type IssueView,
+} from '../../patterns/material-lot-label-print';
 import { renditionShell } from '../../patterns/pop-print';
 import { runRequest, toApiError } from '../../patterns/request';
 
-import { formatPackage } from '../../patterns/package-qty';
-import { DOCUMENT_TYPE_CODE, IQC_DOCUMENT_TYPE_CODE } from './codes';
 import { toIssueFailure } from './failure';
-import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
 import type { IssueUnit } from './issue-unit';
-import { buildMaterialLotLabelBytes } from './label-tspl';
 import { fetchWaitingGroups, waitingKeys } from './queries';
 
-import { toIssueView, type IssueView, type LabelLot } from './types';
+import type { LabelLot } from './types';
 
 type Client = ApiClient['client'];
 
@@ -98,86 +102,8 @@ export interface IssueCommand {
   shellPrinterName?: string | null;
 }
 
-/** 셸 인쇄의 다섯째 인자 — 고른 프린터가 있을 때만 싣는다(옛 호출 모양을 그대로 둔다). */
-const printerArgs = (shellPrinterName: string | null | undefined): [] | [string] =>
-  shellPrinterName === null || shellPrinterName === undefined ? [] : [shellPrinterName];
-
 /** IQC 라벨을 붙일 수 있는 LOT 상태 — 서버 IQC_LABEL 자격(수입검사 대기)과 같다. */
 const IQC_PENDING_LOT_STATUS = 'INSPECTION_PENDING';
-
-/** 인쇄를 못 한 사유 — 서버 보고에 그대로 실린다. `FAILED` 인데 사유가 없으면 422 다. */
-const NO_SHELL_REASON = '셸 인쇄 통로가 없는 단말에서 실행됐습니다.';
-
-const createIssue = async (
-  client: Client,
-  input: { lotId: number; printerName: string | null; reissueReasonCode: string | null },
-  workerNo: string,
-  idempotencyKey: string,
-  documentTypeCode: typeof DOCUMENT_TYPE_CODE = DOCUMENT_TYPE_CODE,
-): Promise<IssueView> => {
-  const data = await runRequest(() =>
-    client.POST('/app/document-issues', {
-      params: {
-        header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
-      },
-      body: toDocumentIssueBody(input, documentTypeCode),
-    }),
-  );
-
-  const created = data.items[0];
-
-  /*
-   * ⛔ **비어 온 것을 성공으로 삼지 않는다.** 기록 없이 다음 걸음으로 가면 인쇄할 식별자가
-   * 없는데 화면은 진행 중으로 보인다 — 그 자리에서 멈추는 편이 낫다.
-   */
-  if (created === undefined) throw new Error('발행 기록이 비어 왔습니다.');
-
-  return toIssueView(created);
-};
-
-/**
- * 인쇄할 라벨을 **POP 이 직접 짠다**(사용자 지시 2026-09-14 · `label-tspl` 머리말).
- *
- * ⭐ 라벨 양식은 2026-10-24 개편안 승인본이다(omf-all-around#184) — QR 왼쪽, 품목코드·수량을 크게, 품명·공급사.
- * ⭐ 005 — 수량 줄 오른쪽 끝에 패키징(있으면 「봉지 10 × 100」)을 싣는다(FR-007). 입하 전에 찍으므로 옛 「입하일」은
- *    없다. 품목·공급사·수량·패키징은 목록 응답이 이미 싣고, LOT 번호는 발행 기록(없으면 줄)의 값이다.
- */
-const buildLabel = (
-  input: { lot: LabelLot; issue: IssueView },
-  kind: 'material' | 'iqc' = 'material',
-): Uint8Array => {
-  const { lot, issue } = input;
-
-  return buildMaterialLotLabelBytes({
-    itemCode: lot.itemCode,
-    itemName: lot.itemName,
-    lotNo: issue.lotNo ?? lot.lotNo,
-    qty: lot.lotQty,
-    uomCode: lot.uomCode,
-    issueSeq: issue.issueSeq,
-    supplier: `${lot.supplierName} (${lot.supplierCode})`,
-    /* 라벨 인쇄는 코드 그대로 — 프린터 글꼴 · 칸 폭이 정해져 있다(화면 표기만 이름, G1 잔여). */
-    receipt: formatPackage(lot.package === null ? null : { ...lot.package, uomName: null }),
-    kind,
-  });
-};
-
-const reportPrint = async (
-  client: Client,
-  documentIssueLogId: number,
-  failureReason: string | null,
-  workerNo: string,
-): Promise<void> => {
-  await runRequest(() =>
-    client.POST('/app/document-issues/{documentIssueLogId}:report-print', {
-      params: {
-        path: { documentIssueLogId },
-        header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
-      },
-      body: toPrintReportBody(failureReason),
-    }),
-  );
-};
 
 /**
  * IQC 라벨 한 장 — 발행 기록 → 라벨 짜기 → 셸 인쇄 → 결과 보고(자재 라벨과 같은 네 걸음).
@@ -238,18 +164,12 @@ const printIqcLabel = async (
   try {
     const issue = await createIqcIssue(client, input, workerNo);
     const bytes = buildLabel({ lot: input.lot, issue }, 'iqc');
-    const failureReason = await shell
-      .save(
-        bytes,
-        `iqc-${String(issue.documentIssueLogId)}`,
-        new Date().toISOString(),
-        'tspl',
-        ...printerArgs(input.shellPrinterName),
-      )
-      .then(() => null)
-      .catch((cause: unknown) =>
-        cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
-      );
+    const failureReason = await printMaterialLotLabel(
+      shell,
+      bytes,
+      `iqc-${String(issue.documentIssueLogId)}`,
+      input.shellPrinterName,
+    );
     try {
       await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
     } catch {
@@ -340,25 +260,13 @@ const issueOne = async (deps: IssueDeps, command: IssueCommand): Promise<IssueRu
     enter('print');
     const shell = renditionShell();
 
-    /*
-     * ⛔ **통로가 없는 것을 인쇄 성공으로 보고하지 않는다.** 기록은 이미 남았으므로 실패로 보고해야
-     * 「나오지 않은 라벨」이 나온 것으로 남지 않는다.
-     */
-    const failureReason =
-      shell === null
-        ? NO_SHELL_REASON
-        : await shell
-            .save(
-              bytes,
-              `lot-${String(issue.documentIssueLogId)}`,
-              new Date().toISOString(),
-              'tspl',
-              ...printerArgs(shellPrinterName),
-            )
-            .then(() => null)
-            .catch((cause: unknown) =>
-              cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
-            );
+    /* ⛔ 통로가 없으면 실패 사유(`NO_SHELL_REASON`)로 보고한다 — 나오지 않은 라벨이 나온 것으로 남지 않게. */
+    const failureReason = await printMaterialLotLabel(
+      shell,
+      bytes,
+      `lot-${String(issue.documentIssueLogId)}`,
+      shellPrinterName,
+    );
 
     hasPrintedLabel = failureReason === null;
 

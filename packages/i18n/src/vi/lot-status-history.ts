@@ -218,6 +218,20 @@ export const lotStatusHistory: Translated<typeof ko.lotStatusHistory> = {
     /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
     historyTabs: 'Lịch sử LOT',
     attributes: 'Thuộc tính LOT',
+    split: {
+      label: 'Tách',
+      chip: 'LOT tách',
+      note: 'LOT được tách ra từ LOT gốc khi xuất kho một phần.',
+      parent: 'LOT gốc',
+      parentView: 'Xem chi tiết LOT gốc',
+      parentAlsoSplit: 'Cũng là LOT tách',
+      qty: 'Số lượng tách',
+      at: 'Thời điểm tách',
+      issue: 'Phiếu xuất kho tạo tách',
+      issueText: (goodsIssueNo: string, lineNo: number): string =>
+        `${goodsIssueNo} · dòng ${String(lineNo)}`,
+      childrenUsage: 'Hiển thị cả các LOT sản xuất đã dùng LOT được tách ra từ LOT này.',
+    },
     fields: {
       lotNo: 'Số LOT',
       item: 'Mặt hàng',

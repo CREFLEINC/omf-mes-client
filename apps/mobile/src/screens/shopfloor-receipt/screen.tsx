@@ -7,13 +7,15 @@ import { Link } from 'react-router';
 import { useBackStep } from '../../patterns/back-step';
 import { Button } from '../../patterns/button';
 import { Card } from '../../patterns/card';
+import { ChoiceCard } from '../../patterns/choice-card';
 import { DockedNumberPad } from '../../patterns/docked-number-pad';
 import { useCodeValues } from '../../patterns/code-values';
 import { useLotNos } from '../../patterns/handling-units';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useEquipments } from '../../patterns/equipments';
 import { PUTAWAY_STAGING, WAREHOUSE_WHOLE, useLocation } from '../../patterns/locations';
-import { useItemCodes } from '../../patterns/masters';
+import { uomLabelOf, useItemCodes, useUomCodes } from '../../patterns/masters';
+import { plantShortDateTime } from '../../patterns/plant-time';
 import { referenceLabel } from '../../patterns/reference';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
@@ -28,6 +30,7 @@ import {
   useAlreadyReceived,
   useHopperStock,
   useScannedGoodsIssue,
+  type IssueCandidate,
   type ScannedIssue,
 } from './queries';
 import {
@@ -106,8 +109,14 @@ export const ShopfloorReceiptScreen = () => {
    */
   const inFlight = useRef(false);
 
-  const found = useScannedGoodsIssue(scanned);
-  const issue = found.data ?? null;
+  /* 같은 LOT 의 입고 안 된 출고가 여럿일 때 사람이 고른 전표(008). 새로 스캔하면 비운다. */
+  const [chosenIssueId, setChosenIssueId] = useState<number | null>(null);
+  const found = useScannedGoodsIssue(scanned, chosenIssueId);
+  const lookup = found.data ?? null;
+  const issue = lookup?.kind === 'issue' ? lookup.found : null;
+  /* 자재 LOT 라벨로 연 전표면 그 LOT — 그 줄을 표시한다. 출고 QR · 출고번호로 열었으면 null. */
+  const scannedLotId = lookup?.kind === 'issue' ? lookup.scannedLotId : null;
+  const uoms = useUomCodes(found.data?.kind === 'pick');
   const received = useAlreadyReceived(issue?.issue.goodsIssueId ?? null);
 
   const lotNo = useLotNos((issue?.lines ?? []).map((line) => line.lotId));
@@ -266,6 +275,7 @@ export const ShopfloorReceiptScreen = () => {
     applied: scanned,
     onScan: (value) => {
       setScanned(value.trim());
+      setChosenIssueId(null);
       /* 같은 라벨을 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
       setScanSeq((seq) => seq + 1);
 
@@ -285,7 +295,10 @@ export const ShopfloorReceiptScreen = () => {
    * 스캔한 전표를 찾지 못했다는 것을 소리로도 알린다(공유계약 D-2). 기기를 허리에 매단 채
    * 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
    */
-  const scanMissed = scanned !== null && found.isSuccess && found.data === null;
+  const scanMissed =
+    scanned !== null &&
+    found.isSuccess &&
+    (found.data.kind === 'notFound' || found.data.kind === 'noneForLot');
 
   useEffect(() => {
     if (scanMissed) {
@@ -297,8 +310,9 @@ export const ShopfloorReceiptScreen = () => {
    * 뒤로가기는 고른 전표를 먼저 놓는다. 두지 않으면 수량을 적던 사람이 한 번에 작업 목록까지
    * 나가 전표를 다시 스캔해야 한다.
    */
-  useBackStep(issue !== null, () => {
+  useBackStep(issue !== null || lookup?.kind === 'pick', () => {
     setScanned(null);
+    setChosenIssueId(null);
     setLines([]);
     setKeypadFor(null);
     setHopperKeypadFor(null);
@@ -324,6 +338,7 @@ export const ShopfloorReceiptScreen = () => {
 
   const restart = () => {
     setScanned(null);
+    setChosenIssueId(null);
     setLines([]);
     /* 라인 번호로 기억하므로, 두고 가면 다른 전표의 같은 번호 줄에 붙은 채로 열린다. */
     setKeypadFor(null);
@@ -452,8 +467,25 @@ export const ShopfloorReceiptScreen = () => {
         {found.isError ? (
           <FailureBanner variant="error" title={failureText(found.error, t.issue.loadFailed)} />
         ) : null}
-        {scanned !== null && found.data === null ? (
+        {scanned !== null && lookup?.kind === 'notFound' ? (
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
+        ) : null}
+        {lookup?.kind === 'noneForLot' ? (
+          <AlertBanner variant="error" title={t.issue.noneTitle}>
+            {t.issue.noneDescription}
+          </AlertBanner>
+        ) : null}
+        {lookup?.kind === 'pick' ? (
+          <IssuePicker
+            lotNo={lookup.lotNo}
+            candidates={lookup.candidates}
+            uomOf={(uomId) => uomLabelOf(uoms.data, uomId)}
+            onChoose={setChosenIssueId}
+            onCancel={() => {
+              setScanned(null);
+              scanField.focus();
+            }}
+          />
         ) : null}
         {/* 무엇이 없어서 받을 수 없는지 그 자리에서 말한다. 단말 설정과는 무관한 일이다. */}
         {issue !== null && issue.kind === null ? (
@@ -501,6 +533,9 @@ export const ShopfloorReceiptScreen = () => {
                 <p>{t.issue.requestNo(issue.issueRequestNo)}</p>
               )}
               {issue.lines.length === 0 ? <p>{t.issue.empty}</p> : null}
+              {scannedLotId === null ? null : (
+                <p className="shopfloor-receipt__found">{t.issue.foundByLot}</p>
+              )}
             </Card.Body>
           </Card>
         )}
@@ -537,9 +572,25 @@ export const ShopfloorReceiptScreen = () => {
               const problem = qtyProblemOf(line);
               const short = varianceOf(line);
               const unit = String(line.issuedQty);
+              const hit = scannedLotId !== null && line.lotId === scannedLotId;
+              const splitFrom =
+                issue.lines.find((each) => each.goodsIssueLineId === line.goodsIssueLineId)
+                  ?.splitFromLotNo ?? null;
 
               return (
-                <div key={line.goodsIssueLineId} className="shopfloor-receipt__line">
+                <div
+                  key={line.goodsIssueLineId}
+                  className={
+                    hit
+                      ? 'shopfloor-receipt__line shopfloor-receipt__line--hit'
+                      : 'shopfloor-receipt__line'
+                  }
+                >
+                  {hit ? (
+                    <Chip size="sm" status="error">
+                      {t.issue.scannedLot}
+                    </Chip>
+                  ) : null}
                   {/* 무엇을 받는 줄인지 먼저 세운다. 호퍼 잔량 줄과 같은 차례로 읽힌다. */}
                   <div className="shopfloor-receipt__stock-head">
                     <p className="shopfloor-receipt__stock-item">
@@ -550,6 +601,11 @@ export const ShopfloorReceiptScreen = () => {
                       <span className="shopfloor-receipt__stock-name">{t.lotLabel}</span>{' '}
                       {lotNoOf(line)}
                     </p>
+                    {splitFrom === null ? null : (
+                      <p className="shopfloor-receipt__split-from">
+                        {t.issue.splitFrom(splitFrom)}
+                      </p>
+                    )}
                   </div>
                   {/* 견줄 값을 적는 칸보다 먼저 세운다. 모자란 것은 그 옆에 붙어 함께 읽힌다. */}
                   <div className="shopfloor-receipt__stock-figures">
@@ -872,5 +928,79 @@ export const ShopfloorReceiptScreen = () => {
         />
       )}
     </div>
+  );
+};
+
+/**
+ * 같은 LOT 의 입고 안 된 출고가 여럿 — **화면이 고르지 않는다**(008 · research R-7). 오래된 순으로 세우고, 출고번호 ·
+ * 출고 시각 · 그 LOT 수량 · 도착을 보여 사람이 고른다. 옛 부분 출고나 돌아온 분할 LOT 을 다시 전량 출고한 경우다.
+ */
+const IssuePicker = ({
+  lotNo,
+  candidates,
+  uomOf,
+  onChoose,
+  onCancel,
+}: {
+  lotNo: string;
+  candidates: IssueCandidate[];
+  uomOf: (uomId: number | null) => string;
+  onChoose: (goodsIssueId: number) => void;
+  onCancel: () => void;
+}) => (
+  <section className="shopfloor-receipt__pick" aria-label={t.issue.pick.title(candidates.length)}>
+    <strong className="shopfloor-receipt__pick-title">
+      {t.issue.pick.title(candidates.length)}
+    </strong>
+    <p className="shopfloor-receipt__pick-lot">{lotNo}</p>
+    <p className="shopfloor-receipt__note">{t.issue.pick.description}</p>
+    {candidates.map((each, index) => (
+      <CandidateCard
+        key={each.issue.goodsIssueId}
+        candidate={each}
+        oldest={index === 0}
+        uom={uomOf(each.uomId)}
+        onChoose={onChoose}
+      />
+    ))}
+    <Button variant="text" size="xl" onClick={onCancel}>
+      {t.issue.pick.cancel}
+    </Button>
+  </section>
+);
+
+const CandidateCard = ({
+  candidate,
+  oldest,
+  uom,
+  onChoose,
+}: {
+  candidate: IssueCandidate;
+  oldest: boolean;
+  uom: string;
+  onChoose: (goodsIssueId: number) => void;
+}) => {
+  const { issue } = candidate;
+  const destination = useLocation(
+    issue.destinationTypeCode === 'LOCATION' ? (issue.destinationId ?? null) : null,
+  );
+
+  return (
+    <ChoiceCard
+      icon="local_shipping"
+      title={issue.goodsIssueNo}
+      onClick={() => {
+        onChoose(issue.goodsIssueId);
+      }}
+    >
+      {oldest ? <span className="shopfloor-receipt__oldest">{t.issue.pick.oldest}</span> : null}
+      <span>{t.issue.pick.issuedAt(plantShortDateTime(issue.issuedAt))}</span>
+      <strong>{t.issue.pick.lotQty(`${String(candidate.lotQty)} ${uom}`.trim())}</strong>
+      <span>
+        {destination.data === undefined
+          ? t.issue.pick.lines(candidate.lineCount)
+          : `${t.issue.destination(destination.data.locationCode)} · ${t.issue.pick.lines(candidate.lineCount)}`}
+      </span>
+    </ChoiceCard>
   );
 };
