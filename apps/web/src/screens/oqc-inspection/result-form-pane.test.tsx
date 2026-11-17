@@ -267,8 +267,10 @@ describe('ResultFormPane — 전이 경고', () => {
 
     await user.click(screen.getByRole('button', { name: t.save }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText(transition.pickedDirectionHold)).toBeInTheDocument();
-    expect(within(dialog).queryByText(transition.directionHold)).not.toBeInTheDocument();
+    /* 대상 LOT 이 없으면 집은 LOT 기준의 상태 글(불합격 → 불량). */
+    expect(
+      within(dialog).getByText(messages.judgmentConfirm.pickedLotState.hold),
+    ).toBeInTheDocument();
   });
 
   it('모르는 판정 코드에는 방향을 지어내지 않는다', () => {
@@ -306,11 +308,15 @@ describe('ResultFormPane — 확인 창', () => {
 
     const dialog = screen.getByRole('dialog');
 
+    const jc = messages.judgmentConfirm;
+    expect(within(dialog).getByText(jc.title)).toBeInTheDocument();
     expect(
-      within(dialog).getByText(confirm.title(waitingRequest.inspectionRequestNo)),
+      within(dialog).getByText(jc.target(waitingRequest.inspectionRequestNo)),
     ).toBeInTheDocument();
-    expect(within(dialog).getByText(confirm.judgment('합격'))).toBeInTheDocument();
-    expect(within(dialog).getByText(confirm.irreversible)).toBeInTheDocument();
+    expect(within(dialog).getByText('합격', { selector: 'strong' })).toBeInTheDocument();
+    expect(within(dialog).getByText(jc.lotState.release)).toBeInTheDocument();
+    expect(within(dialog).getByText(confirm.applyPicking)).toBeInTheDocument();
+    expect(within(dialog).getByText(jc.irreversible)).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
 
     await userEvent.click(within(dialog).getByRole('button', { name: confirm.confirm }));
@@ -325,7 +331,9 @@ describe('ResultFormPane — 확인 창', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.save }));
     await userEvent.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: confirm.cancel }),
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: messages.judgmentConfirm.back,
+      }),
     );
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

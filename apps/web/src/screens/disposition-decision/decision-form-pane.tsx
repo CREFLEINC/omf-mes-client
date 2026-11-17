@@ -261,9 +261,6 @@ export const DecisionFormPane = ({
               >
                 {remainingText}
               </output>
-              {lots.length > 0 && (
-                <span className="disposition-qty-scope">{t.form.qtyAllLots(lots.length)}</span>
-              )}
             </div>
             {/* 고른 유형으로 저장하면 생기는 일 한 줄(omf-all-around#275). */}
             {effect !== undefined && (

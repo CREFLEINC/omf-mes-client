@@ -127,6 +127,7 @@ import { outboxRejections } from './outbox-rejections';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { equipmentInspection } from './equipment-inspection';
 import { oqcInspection } from './oqc-inspection';
+import { judgmentConfirm } from './judgment-confirm';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
 import { poChangeReview } from './po-change-review';
@@ -290,6 +291,7 @@ export const ko = {
   iqcSkipRequest,
   equipmentInspection,
   oqcInspection,
+  judgmentConfirm,
   expeditedShipment,
   shipmentConfirm,
   toolUsage,

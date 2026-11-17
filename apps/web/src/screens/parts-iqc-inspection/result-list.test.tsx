@@ -284,9 +284,10 @@ describe('W-01-01 새 흐름 결과 목록', () => {
       }),
     );
 
-    expect(await screen.findByText(t.results.lockedHead)).toBeInTheDocument();
+    expect(await screen.findByText(t.results.lockedRow)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
-    expect(screen.getByText(t.results.lockedRow)).toBeInTheDocument();
+    /* 확정 뒤 제목 줄의 「판정 확정됨 — 결과를 고칠 수 없습니다」는 없다(omf-all-around#286). */
+    expect(screen.queryByText('판정 확정됨 — 결과를 고칠 수 없습니다')).toBeNull();
     expect(screen.getByRole('button', { name: t.split.open })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.split.open })).toHaveAccessibleDescription(
       t.split.lockedConfirmed,

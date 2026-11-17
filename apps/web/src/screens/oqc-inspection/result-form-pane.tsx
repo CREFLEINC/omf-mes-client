@@ -564,6 +564,7 @@ export const ResultFormPane = ({
       {openedAt !== null && (
         <ConfirmDialog
           inspectionRequestNo={inspectionRequestNo}
+          judgmentCode={judgment}
           judgmentLabel={labelOfCode(judgmentOptions, judgment)}
           preview={preview}
           hasLot={hasLot}

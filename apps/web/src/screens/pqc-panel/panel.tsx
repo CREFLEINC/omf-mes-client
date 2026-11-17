@@ -498,8 +498,19 @@ export const PqcPanel = ({
 
         <WebActions
           isConfirmed={isConfirmed}
-          isJustConfirmed={isJustConfirmed}
           isSaved={isSaved}
+          confirmInfo={{
+            inspectionRequestNo: target.inspectionRequestNo,
+            judgmentCode: judgment,
+            judgmentLabel:
+              overallOptions.find((option) => option.value === judgment)?.label ?? judgment,
+            /* 보낼 값 그대로 보인다(`toSendableNumber` — 비운 칸은 0). */
+            quantities: {
+              accepted: String(toSendableNumber(draft.accepted)),
+              rejected: String(toSendableNumber(draft.rejected)),
+              held: String(toSendableNumber(draft.held)),
+            },
+          }}
           lockedReason={lockedReason}
           showLockedNote={!roundLoadFailed}
           confirmBlockedReason={confirmBlockedReason}

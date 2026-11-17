@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Dialog, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { FieldLabel } from '../iqc-inspection/field-label';
 import type { InboundInspection } from './inbound-queries';
 
 const t = messages.iqcInboundLot.cancel;
@@ -52,7 +53,7 @@ export const CancelConfirmDialog = ({
       size="md"
       showCloseButton={false}
       closeOnBackdropClick={false}
-      title={t.title(inboundLotNo)}
+      title={t.title}
       onClose={onBack}
       footer={
         <>
@@ -65,21 +66,44 @@ export const CancelConfirmDialog = ({
         </>
       }
     >
-      <ul className="iqc-inbound-confirm-lines">
-        <li>{t.lots((inspection.lots ?? []).length)}</li>
-        {inspection.nonconformanceNo == null ? null : (
-          <li>{t.nonconformance(inspection.nonconformanceNo)}</li>
-        )}
-        <li>{t.results}</li>
-        <li>{t.alerts}</li>
-      </ul>
-      <TextField
-        id={reasonId}
-        label={t.reason}
-        fullWidth
-        value={reason}
-        onChange={(event) => setReason(event.target.value)}
-      />
+      {/* 사용자 시안(2026-11-17 · omf-all-around#286) — 대상 · 변경 사항 상자 · 안내 한 줄 · 사유. 보내는 값은 그대로다. */}
+      <div className="iqc-cancel-confirm">
+        <p className="iqc-cancel-confirm-target">{t.target(inboundLotNo)}</p>
+        <h3 className="iqc-cancel-confirm-heading">{t.changesHeading}</h3>
+        <dl className="iqc-cancel-confirm-changes">
+          <div className="iqc-cancel-confirm-change">
+            <dt>{t.lots((inspection.lots ?? []).length)}</dt>
+            <dd>
+              <span className="iqc-cancel-confirm-from">{t.lotsFrom}</span>
+              <Icon name="arrow_forward" size={14} aria-hidden />
+              <strong>{t.lotsTo}</strong>
+            </dd>
+          </div>
+          {inspection.nonconformanceNo == null ? null : (
+            <div className="iqc-cancel-confirm-change">
+              <dt>{t.nonconformance(inspection.nonconformanceNo)}</dt>
+              <dd>
+                <strong>{t.nonconformanceTo}</strong>
+              </dd>
+            </div>
+          )}
+        </dl>
+        <p className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.note}
+        </p>
+        <div className="iqc-cancel-confirm-reason">
+          <FieldLabel htmlFor={reasonId} label={t.reason} />
+          <TextArea
+            id={reasonId}
+            fullWidth
+            rows={2}
+            placeholder={t.reasonPlaceholder}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </div>
+      </div>
       {error === null ? null : <AlertBanner variant="error">{error}</AlertBanner>}
     </Dialog>
   );

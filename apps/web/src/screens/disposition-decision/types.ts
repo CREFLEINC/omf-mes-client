@@ -77,9 +77,9 @@ export interface NonconformanceRow {
   statusCode: string;
   openedAtText: string;
   affectedQtyText: string;
+  /** 부적합 수량의 단위 — 목록 수량 칸에 함께 보인다(omf-all-around#286). */
+  uomId: number;
   dispositionProgressCode: Nonconformance['dispositionProgressCode'];
-  /** 005 — 자재 입하 IQC 부적합이면 입하 LOT 번호(목록 번호 아래 줄). 반품 · OQC 는 null. */
-  inboundLotNo?: string;
 }
 
 /** 목록 「원천」 칸 글(screens/W-03-10.md 목록 행). 입하 LOT 이 있으면 자재 입하 IQC 부적합이다. */
@@ -101,14 +101,12 @@ export const toNonconformanceRow = (nonconformance: Nonconformance): Nonconforma
   itemId: nonconformance.itemId,
   severityCode: nonconformance.severityCode,
   statusCode: nonconformance.statusCode,
-  openedAtText: formatDate(nonconformance.openedAt),
+  /* 「접수일시」 — 상세와 같은 공장 시각 날짜 · 시각(omf-all-around#286). */
+  openedAtText: formatDateTime(nonconformance.openedAt),
   /* ⭐ lots를 세지 않는다 — 서버가 롤업해 낸 합을 그대로 옮긴다(공유계약 L-2). 근거: omf-mes#253 */
   affectedQtyText: formatQty(nonconformance.affectedQtyTotal),
+  uomId: nonconformance.uomId,
   dispositionProgressCode: nonconformance.dispositionProgressCode,
-  /* 반품 · OQC 부적합(입하 LOT 없음)은 칸을 두지 않는다. */
-  ...(nonconformance.inboundLotNo === undefined || nonconformance.inboundLotNo === null
-    ? {}
-    : { inboundLotNo: nonconformance.inboundLotNo }),
 });
 
 /**

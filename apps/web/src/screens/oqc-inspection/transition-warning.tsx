@@ -51,25 +51,6 @@ export interface TransitionWarningProps {
   hasLot?: boolean;
 }
 
-/**
- * 경고의 **본문만**. 확인 창이 같은 문장을 다시 써야 하는데, 배너째로 겹치면 같은 알림이 두 번
- * 읽힌다(둘 다 `role="alert"` 이다) — 그래서 본문을 따로 갖는다.
- */
-export const TransitionWarningBody = ({ preview, hasLot = true }: TransitionWarningProps) => {
-  if (preview === null) return null;
-
-  return (
-    <>
-      <p>{t.quantities(preview.accepted, preview.rejected, preview.held)}</p>
-      <p>{(hasLot ? DIRECTION_TEXT : PICKED_DIRECTION_TEXT)[preview.direction]}</p>
-      <p>{t.pickingImpact}</p>
-      <p>{t.pickedNotReturned}</p>
-      <p>{t.noAmendment}</p>
-      <p>{t.dispositionPath}</p>
-    </>
-  );
-};
-
 export type JudgmentGuideProps = TransitionWarningProps;
 
 /**

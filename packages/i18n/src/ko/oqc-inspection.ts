@@ -278,9 +278,6 @@ export const oqcInspection = {
    */
   transition: {
     title: '확정하면 LOT 상태가 바뀝니다',
-    /** ① 대상 규모를 숫자로 — 지금 친 값을 그대로 되읽는다. */
-    quantities: (accepted: string, rejected: string, held: string): string =>
-      `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`,
     /**
      * 아는 판정일 때만 방향을 말한다. ⛔ 모르는 코드에 방향을 지어내지 않는다.
      * ⭐ 상태 이름은 서버 전이표(`core/document-state/transitions.ts` C4·C5·C6)와 같다 — 합격 → 정상
@@ -304,18 +301,6 @@ export const oqcInspection = {
     directionUnknown: '확정하면 LOT 상태가 바뀝니다.',
     /** ② 다른 화면에 미치는 영향. ⚠ 건수를 쓰지 않는다 — 셀 자리가 이 화면에 없다. */
     pickingImpact: '이 LOT 을 쓰는 진행 중 피킹이 함께 막힙니다.',
-    /** ③ 되돌림 비용. */
-    pickedNotReturned: '이미 피킹된 분은 이 전이로 회수되지 않습니다.',
-    noAmendment: '판정은 수정할 수 없습니다 — 번복은 재검사입니다.',
-    /**
-     * ④ 푸는 경로.
-     *
-     * ⚠ **링크를 걸지 않고, 사이드바에 없는 이름을 부르지도 않는다.** 처분을 «의뢰»하는 화면이
-     * 아직 없어서, 이름을 대면 사용자가 찾을 수 없는 것을 찾는다. 대신 **이 화면이 처분을 정하지
-     * 않는다는 사실**과 그 자리가 아직 열리지 않았다는 것을 말한다.
-     */
-    dispositionPath:
-      '불합격분의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다 — 처분 의뢰 화면이 열리면 그곳에서 합니다.',
     /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
     guide: {
       title: '판정 확정 안내',
@@ -325,13 +310,12 @@ export const oqcInspection = {
   },
 
   /** 확인 창 — **쓰기는 이 창의 버튼에서만 나간다.** */
+  /** 판정 확정 확인 창 — 창 모양 · 공통 문구는 `judgmentConfirm`(PQC 와 같다 · omf-all-around#286). */
   confirm: {
-    title: (inspectionRequestNo: string): string => `${inspectionRequestNo} 판정 확정`,
-    judgment: (label: string): string => `최종 판정: ${label}`,
-    /* ⛔ 수량 셋을 여기서 따로 내지 않는다 — 전이 경고 본문의 첫 규칙이 이미 그 세 값이다. */
-    irreversible: '확정하면 되돌릴 수 없습니다.',
-    cancel: '취소',
     confirm: '판정 확정',
+    /** 「확정 시 적용 사항」(사용자 시안 2026-11-17). */
+    applyPicking: '해당 LOT의 진행 중인 피킹이 종료됩니다.',
+    applyPickedNotReturned: '이미 피킹된 수량은 회수되지 않습니다.',
   },
 
   /**
