@@ -10443,23 +10443,18 @@
 /*
  * ⭐ P-CO-01 사번 입력 화면 시안(omf-all-around#288).
  *
- * ⭐ **화면 크기를 따라 커지고 작아진다.** `pop-fit` 은 줄이기만 하므로 큰 단말에서는 칸·키가
- *    작게 서고 아래가 빈다. 본문(`.pop-assign`)을 크기 기준 상자로 두고 글자·키 높이를 그
- *    높이·폭에 비례한 값(상·하한 있음)으로 준다 — 한 값만 키우지 않고 같은 비율로 움직인다.
+ * ⭐ **화면을 꽉 채운다**(사용자 결정 2026-11-17). 두 구획은 화면 아래까지 서고, 왼쪽은
+ *    키패드(4줄)와 [사번 확인](1줄)이 남는 높이를 나눠 가진다 — 화면이 길면 키가 길어진다.
+ *    글자는 본문(`.pop-assign`) 폭·높이 중 작은 쪽에 비례한다(상·하한 있음).
  */
 .pop-ui.pop-screen > .pop-assign {
   container-type: size;
-  /*
-   * ⛔ 세로 길이만 보고 키우지 않는다 — 세로로 긴 창에서 키·칸이 시안 비율(키 높이 ≈ 키 폭의
-   *    1/3)을 크게 넘었다(사용자 지적). 폭과 높이 중 작은 쪽을 따르고 상한을 낮게 둔다.
-   */
-  --wa-text: clamp(15px, min(1.9cqh, 1.25cqw), 22px);
-  --wa-title: clamp(18px, min(2.6cqh, 1.7cqw), 28px);
+  --wa-text: clamp(15px, min(2.1cqh, 1.6cqw), 26px);
+  --wa-title: clamp(18px, min(2.8cqh, 2.1cqw), 32px);
+  /* 칸·단추의 «최소» 높이. 키패드는 남는 높이만큼 이보다 길어진다. */
   --wa-key-h: clamp(56px, min(6.5cqh, 4.6cqw), 84px);
-  --wa-key-font: clamp(18px, min(2.8cqh, 1.9cqw), 30px);
+  --wa-key-font: clamp(18px, min(3.4cqh, 2.6cqw), 40px);
   --wa-gap: clamp(10px, min(1.4cqh, 1cqw), 16px);
-  /* 시안처럼 두 구획은 내용 높이에 맞춰 위에 선다(둘은 같은 줄이라 높이는 서로 맞는다). */
-  align-content: start;
 }
 
 .pop-ui .pop-assign > .pop-pane {
@@ -10502,10 +10497,22 @@
   text-align: start;
 }
 
-/* 키패드는 사번 칸 바로 아래. 알림은 확인 단추 아래로 내려 키 자리가 밀리지 않게 한다. */
+/*
+ * 키패드는 사번 칸 바로 아래에서 남는 높이를 채운다(4줄 = 4몫), [사번 확인]은 1몫 — 그래서
+ * 확인 단추가 키 한 줄과 거의 같은 높이로 선다. 알림은 확인 단추 아래로 내려 키 자리가 밀리지
+ * 않게 한다.
+ */
 .pop-ui .pop-assign > .pop-pane > .omf-numeric-keypad {
+  /* 기본 크기에 줄 사이 틈 3개를 넣어 두어야 키 한 줄과 [사번 확인]이 같은 높이로 나뉜다. */
+  flex: 4 1 calc(var(--wa-gap) * 3);
+  min-height: 0;
+  grid-auto-rows: 1fr;
   margin-block-start: 0;
   gap: var(--wa-gap);
+}
+
+.pop-ui .pop-assign > .pop-pane > .worker-no-submit {
+  flex: 1 1 0;
 }
 
 .pop-ui .pop-assign > .pop-pane > .worker-no-notice {
@@ -10517,11 +10524,18 @@
 .pop-ui .pop-assign > .pop-pane > .worker-no-submit,
 .pop-ui .pop-assign .pop-ui-actions button {
   min-height: var(--wa-key-h);
-  border-radius: var(--radius-full);
+  /* 키가 길어져도 원이 되지 않게 — 기본 높이에서는 알약, 길어지면 둥근 사각형이다. */
+  border-radius: calc(var(--wa-key-h) / 2);
 }
 
 .pop-ui .pop-assign .worker-no-keypad > button {
+  /* 줄 높이만큼 키가 늘어난다 — 크기 단계(`2xl`)가 준 고정 높이를 풀어 준다. */
+  height: 100%;
   font-size: var(--wa-key-font);
+}
+
+.pop-ui .pop-assign > .pop-pane > .worker-no-submit {
+  height: auto;
 }
 
 .pop-ui .pop-assign .worker-no-keypad > .omf-numeric-keypad__clear {
