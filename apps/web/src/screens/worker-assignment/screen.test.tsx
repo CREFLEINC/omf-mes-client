@@ -137,7 +137,7 @@ describe('WorkerAssignmentScreen — 확인', () => {
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
-    expect(await screen.findByText(t.error.unknown('900028'))).toBeInTheDocument();
+    expect(await screen.findByText(t.error.unknown)).toBeInTheDocument();
   });
 
   /* 미등록과 비재직은 사용자가 할 일이 다르다 — 문구를 뭉치지 않는다. */
@@ -225,7 +225,9 @@ describe('헤더', () => {
      * ⛔ **`단말` 만으로 찾지 않는다.** 머리줄에는 [단말 재등록] 도 서 있어 「단말」 을
      *    품은 글이 둘이다 — 값까지 함께 재야 «단말 줄» 을 집는다.
      */
-    expect(within(header).getByText(t.header.emptyValue)).toBeInTheDocument();
+    expect(
+      within(header).getByText(`${t.header.label} ${t.header.emptyValue}`),
+    ).toBeInTheDocument();
   });
 });
 
@@ -350,7 +352,7 @@ describe('오프라인', () => {
     window.dispatchEvent(new Event('online'));
 
     expect(await screen.findByText('김작업')).toBeInTheDocument();
-    expect(screen.queryByText(t.error.unknown('900028'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.error.unknown)).not.toBeInTheDocument();
   });
 
   /** ⭐ 오프라인이어도 **막지 않는다** — 미리 받아 둔 목록으로 확인한다. */

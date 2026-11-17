@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useIsOnline } from './connection';
+import { HeaderPrinter } from './header-printer';
 import { KeypadPanel } from './keypad-panel';
 import { readOutboxSize, readWorkerDirectory, writeWorkerDirectory } from './pop-bridge';
 import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
@@ -146,7 +147,7 @@ export const WorkerAssignmentScreen = () => {
       setSubmitted(null);
 
       if (result.kind === 'unknown') {
-        setError(t.error.unknown(typed.trim()));
+        setError(t.error.unknown);
         return;
       }
 
@@ -243,9 +244,11 @@ export const WorkerAssignmentScreen = () => {
          * 값을 얻을 경로가 이 저장소에 없어 조회가 서지 않는다. ⛔ 지어내지 않고 없음
          * 표시를 낸다 — 모르는 값과 없는 값을 같은 모양으로 그리지 않는다(G-9).
          */}
+        {/* 프린터 연결 정보 — 생산 작업 머리줄과 같은 표시(omf-all-around#288). */}
+        <HeaderPrinter />
         {/* 단말 이름은 [온라인]과 같은 라벨 모양으로 보인다(omf-all-around#288). */}
         <p className="field-note">
-          <Chip size="md">{terminal.data?.terminalCode ?? t.header.emptyValue}</Chip>
+          <Chip size="md">{`${t.header.label} ${terminal.data?.terminalCode ?? t.header.emptyValue}`}</Chip>
         </p>
         {/* ⭐ 오프라인이어도 «막지 않는다»(§6) — 지금 어느 상태인지만 밝힌다. */}
         <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>

@@ -90,7 +90,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     otherPlant: 'Thuộc nhà máy khác.',
   },
   error: {
-    unknown: (workerNo: string): string => `Mã nhân viên chưa đăng ký (${workerNo})`,
+    unknown: 'Mã nhân viên chưa đăng ký.',
     inactive: 'Mã nhân viên này hiện không còn làm việc. Hãy liên hệ quản trị viên',
     lookupFailed: 'Không kiểm tra được mã nhân viên. Hãy thử lại sau.',
     noDirectory: 'Chưa nhận được danh sách công nhân. Phải chạy một lần khi đang kết nối',

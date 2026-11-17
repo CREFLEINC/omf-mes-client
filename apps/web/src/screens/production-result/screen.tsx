@@ -79,6 +79,7 @@ import {
   useItem,
   useLotIssues,
   usePrinters,
+  LOT_PRINTER_STORAGE_KEY,
   useReissueReasons,
   useVarianceReasons,
   useSerials,
@@ -118,7 +119,6 @@ const t = messages.productionResult;
  * 이 화면에서 고른 LOT 라벨 프린터를 기억하는 열쇠(개선 명세 ⑤). 자재 LOT 라벨 화면과 같은 방식이지만
  * 열쇠는 따로다 — 두 화면이 다른 프린터를 쓸 수 있다.
  */
-const LOT_PRINTER_STORAGE_KEY = 'omf-mes.production-result.lot-printer';
 /** 유형 창이 새 불량 줄을 만들려고 열렸음을 뜻하는 자리값. 줄 key 와 겹치지 않는다. */
 const NEW_DEFECT_ROW = 'new-defect-row';
 
