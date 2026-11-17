@@ -30,6 +30,8 @@ export interface JudgmentConfirmDialogProps {
   lotStates?: Record<JudgmentConfirmDirection, string>;
   /** 「확정 시 적용 사항」 줄. 비면 구획을 그리지 않는다. */
   applyLines?: readonly string[];
+  /** 경고 라벨 글. 기본은 「되돌릴 수 없음」 — IQC 처럼 [확정 취소]가 있는 화면은 따로 준다. */
+  note?: string;
   /** 저장 실패 배너 — 창 안에 낸다. */
   banner?: ReactNode;
   isSaving: boolean;
@@ -38,7 +40,7 @@ export interface JudgmentConfirmDialogProps {
 }
 
 /**
- * 판정 확정 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — OQC · PQC 관리웹이 같이 쓴다.
+ * 판정 확정 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — IQC · OQC · PQC 관리웹이 같이 쓴다.
  * 질문 제목 · 의뢰 번호 · 최종 판정 · 검사 결과 / LOT 상태 상자 · 적용 사항 · 되돌릴 수 없음 안내.
  * 쓰기는 이 창의 [판정 확정]에서만 나가고, 보내는 동안에는 닫히지 않는다.
  */
@@ -50,6 +52,7 @@ export const JudgmentConfirmDialog = ({
   picked = false,
   lotStates,
   applyLines = [],
+  note = t.irreversible,
   banner,
   isSaving,
   onClose,
@@ -122,7 +125,7 @@ export const JudgmentConfirmDialog = ({
       {/* 경고 라벨 — 화면의 「판정 확정 후 수정이 불가합니다」 줄과 같은 모양(표식 · 글 한 줄 가운데 맞춤 · #286). */}
       <p className="iqc-inspection-action-note" data-tone="warning">
         <Icon name="warning" size={18} aria-hidden />
-        {t.irreversible}
+        {note}
       </p>
     </div>
   </Dialog>

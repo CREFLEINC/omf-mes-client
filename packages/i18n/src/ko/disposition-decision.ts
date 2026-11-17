@@ -120,15 +120,13 @@ export const dispositionDecision = {
     count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    requestNote: '불합격 입하 LOT 의 조건부 사용 승인을 요청합니다 — 한도 승인도 이 길로',
+    requestNote: '불합격 LOT의 조건부 사용 승인을 요청합니다.',
     /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
-    target: '대상',
-    /** 「자재 관리 LOT n개 전부」를 앞에 — 읽기 전용 칸이 좁아 뒤가 잘려 보이지 않았다(G2 L13). */
-    targetAll: (inboundLotNo: string | null, count: number): string =>
-      `자재 관리 LOT ${String(count)}개 전부${inboundLotNo === null ? '' : ` · 입하 LOT ${inboundLotNo}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    qtyLocked: '미처분 수량 전부 — 바꿀 수 없음',
-    wholeHint:
-      '특채는 남은 수량 전부만 요청합니다(일부 특채 없음). 일부만 쓰려면 먼저 [선별]로 불량 자재 관리 LOT 를 떼어 낸 뒤, 그 입하 LOT 를 전량 특채하세요.',
+    target: '대상 LOT',
+    /** 요청 창 대상 칸 — 자재 관리 LOT 개수(사용자 시안 2026-11-17 · 창 디자인 통일). */
+    targetAll: (count: number): string => `자재 관리 LOT ${String(count)}개`,
+    wholeNote:
+      '미처분 수량 전체에 대해 특채를 요청합니다. 일부 수량만 요청하려면 먼저 LOT을 분할해야 합니다.',
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
     pendingBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재 대기 중입니다.`,
     /** 결재가 승인됐고 적용 전(G2 M3). */
@@ -150,9 +148,9 @@ export const dispositionDecision = {
     /** 결재 대기 중에는 적용할 수 없다(G2 5차). */
     applyWaiting: '결재가 끝나야 적용할 수 있습니다(W-03-09)',
     applying: '적용하는 중…',
-    qty: '사용 가능 수량',
-    validFrom: '시작일',
-    validTo: '종료일 (선택)',
+    qty: '특채 요청 수량',
+    validFrom: '적용 시작일',
+    validTo: '적용 종료일 (선택)',
     reason: '특채 사유',
     requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
     /** 다LOT 전량 특채 — 서버가 자재 관리 LOT 마다 특채 행을 만든 수(`concessionIds`). */

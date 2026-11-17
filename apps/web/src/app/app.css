@@ -8782,8 +8782,27 @@ main:has(.iqc-skip-approval-detail) {
   min-width: 0;
 }
 
-.disposition-concession-dialog > .field-note {
+.disposition-concession-dialog > .field-note,
+.disposition-concession-dialog > .iqc-inspection-action-note {
   margin: 0;
+}
+
+/* 창 제목 줄 — 「특채 요청」 오른쪽에 설명 라벨(사용자 지시 2026-11-17). */
+.disposition-concession-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.disposition-concession-title > .iqc-inspection-action-note {
+  font-weight: normal;
+}
+
+/* 안내 줄은 글 폭만큼만 바탕을 깐다. */
+.disposition-concession-dialog > .iqc-inspection-action-note {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .disposition-concession-fields {
@@ -9191,10 +9210,6 @@ main:has(.iqc-skip-approval-detail) {
 
 .disposition-result {
   border: 1px solid var(--semantic-success);
-}
-
-.disposition-concession-whole {
-  margin: 0;
 }
 
 .filter-bar.disposition-history-filter {
@@ -34885,14 +34900,7 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   gap: var(--space-1);
 }
 
-/* 판정 확정 · 확정 취소 창(C4). */
-.iqc-inbound-confirm {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
+/* 확정 취소 창(C4). */
 .iqc-inbound-confirm-lines {
   display: flex;
   flex-direction: column;

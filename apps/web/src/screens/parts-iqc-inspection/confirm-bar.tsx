@@ -1,9 +1,13 @@
-import { AlertBanner, Button, Chip, Dialog, Icon, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Icon, useToast } from '@crefle/web-ui';
 import type { InspectionConfirmBlockerCode } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  JudgmentConfirmDialog,
+  type JudgmentConfirmDirection,
+} from '../../patterns/judgment-confirm-dialog';
 import { useSession } from '../../patterns/session';
 import { toApiError } from '../../patterns/request';
 import {
@@ -17,10 +21,17 @@ import {
   useInboundRefresh,
   type InboundInspection,
 } from './inbound-queries';
-import { judgmentStatus, judgmentText } from './result-list';
+import { judgmentText } from './result-list';
 
 const t = messages.iqcInboundLot.confirm;
 const tc = messages.iqcInboundLot.cancel;
+
+/** 판정 → 확인 창의 색 · LOT 상태 글(PQC · OQC 와 같은 갈래). 모르는 코드는 방향을 말하지 않는다. */
+const DIRECTION_OF: Record<string, JudgmentConfirmDirection> = {
+  ACCEPTED: 'release',
+  REJECTED: 'hold',
+  HELD: 'pending',
+};
 
 /** 확정 · 확정 취소 권한 — 화면이 아닌 동작 권한(D-11 · D-20, W-03-14 선례). */
 export const CONFIRM_PERMISSION = 'W-01-15';
@@ -91,7 +102,6 @@ export const ConfirmActions = ({
 
   if (!canConfirm) return null;
 
-  const inboundLotNo = inspection.inboundLotNo ?? inspection.inspectionRequestNo;
   const versionNo = inspection.versionNo ?? 0;
   const results = inspection.results ?? [];
   const lotCount = (inspection.lots ?? []).length;
@@ -219,42 +229,28 @@ export const ConfirmActions = ({
       )}
 
       {asking === 'confirm' && (
-        <Dialog
-          open
-          size="md"
-          showCloseButton={false}
-          closeOnBackdropClick={false}
-          title={t.title(inboundLotNo)}
-          onClose={() => setAsking(null)}
-          footer={
-            <>
-              <Button variant="outlined" disabled={busy} onClick={() => setAsking(null)}>
-                {t.back}
-              </Button>
-              <Button loading={busy} onClick={() => void confirm()}>
-                {t.proceed(judgmentText(preview))}
-              </Button>
-            </>
+        /* 확인 창 모양은 PQC · OQC 와 같다 — 안내 글만 IQC 것([확정 취소]로 되돌릴 수 있음). */
+        <JudgmentConfirmDialog
+          inspectionRequestNo={inspection.inspectionRequestNo}
+          judgmentLabel={judgmentText(preview)}
+          direction={(preview === null ? undefined : DIRECTION_OF[preview]) ?? 'unknown'}
+          quantities={{
+            accepted: String(count('ACCEPTED')),
+            rejected: String(count('REJECTED')),
+            held: String(count('HELD')),
+          }}
+          applyLines={
+            preview === 'REJECTED'
+              ? t.apply.REJECTED(lotCount)
+              : preview === 'HELD'
+                ? t.apply.HELD(lotCount)
+                : t.apply.ACCEPTED(lotCount)
           }
-        >
-          <div className="iqc-inbound-confirm">
-            <Chip size="sm" status={judgmentStatus(preview)}>
-              {judgmentText(preview)}
-            </Chip>
-            <p className="dialog-text">
-              {t.counts(results.length, count('ACCEPTED'), count('REJECTED'), count('HELD'))}
-            </p>
-            <p className="dialog-text">
-              <strong>{t.applyHeading}</strong>{' '}
-              {preview === 'REJECTED'
-                ? t.apply.REJECTED(lotCount)
-                : preview === 'HELD'
-                  ? t.apply.HELD(lotCount)
-                  : t.apply.ACCEPTED(lotCount)}
-            </p>
-            <p className="field-note">{t.note}</p>
-          </div>
-        </Dialog>
+          note={t.note}
+          isSaving={busy}
+          onClose={() => setAsking(null)}
+          onConfirm={() => void confirm()}
+        />
       )}
 
       {asking === 'cancel' && (

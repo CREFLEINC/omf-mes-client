@@ -4,7 +4,9 @@ import {
   DatePicker,
   Dialog,
   EmptyState,
+  Icon,
   Table,
+  TextArea,
   TextField,
   type Column,
 } from '@crefle/web-ui';
@@ -73,8 +75,6 @@ export interface ConcessionRequestDialogProps {
   lots: readonly NonconformanceLotRow[];
   /** 남은 수량 — 특채는 이 값 전부만 요청한다(FR-038 · 일부 특채 없음). 모르면 요청할 수 없다. */
   remainingQty: number | undefined;
-  /** 입하 LOT(자재 입하 IQC 부적합) — 대상 줄에 보인다. */
-  inboundLotNo?: string | null | undefined;
   /** 단위 이름을 붙인다. 없으면 수만. */
   uoms?: DispositionLookup | undefined;
   /** 지금 날짜 — 시험이 고정할 수 있게 받는다. */
@@ -147,7 +147,6 @@ export const ConcessionRequestDialog = ({
   nonconformanceId,
   lots,
   remainingQty,
-  inboundLotNo = null,
   uoms,
   today,
   onClose,
@@ -155,6 +154,7 @@ export const ConcessionRequestDialog = ({
   const fromFieldId = useId();
   const toFieldId = useId();
   const noteId = useId();
+  const titleId = useId();
   const blockedId = useId();
   const { client } = useApiClient();
   const todayText = toBusinessDate(today ?? new Date());
@@ -201,8 +201,19 @@ export const ConcessionRequestDialog = ({
     <Dialog
       open
       onClose={() => onClose(false)}
-      size="md"
-      title={t.requestHeading}
+      size="lg"
+      /* 제목 오른쪽에 설명 라벨 — 창 이름은 제목만 읽힌다(사용자 지시 2026-11-17). */
+      title={
+        <span className="disposition-concession-title">
+          <span id={titleId}>{t.requestHeading}</span>
+          <span className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.requestNote}
+          </span>
+        </span>
+      }
+      aria-labelledby={titleId}
+      showCloseButton={false}
       closeOnBackdropClick={false}
       footer={
         <>
@@ -225,15 +236,9 @@ export const ConcessionRequestDialog = ({
       }
     >
       <div className="disposition-concession-dialog">
-        <p className="field-note">{t.requestNote}</p>
         <SaveErrorBanner error={requestWrite.error} />
         <div className="disposition-concession-fields">
-          <TextField
-            label={t.target}
-            value={t.targetAll(inboundLotNo, lots.length)}
-            readOnly
-            fullWidth
-          />
+          <TextField label={t.target} value={t.targetAll(lots.length)} readOnly fullWidth />
           <TextField
             label={t.qty}
             value={`${formatQty(remainingQty)}${uomLabel === '' ? '' : ` ${uomLabel}`}`}
@@ -272,11 +277,14 @@ export const ConcessionRequestDialog = ({
             )}
           </div>
         </div>
-        <p id={noteId} className="field-note disposition-concession-whole">
-          {t.qtyLocked} — {t.wholeHint}
+        {/* 안내 한 줄 — 다른 창의 안내와 같은 정보 줄 모양(사용자 시안 2026-11-17). */}
+        <p id={noteId} className="iqc-inspection-action-note" data-tone="info">
+          <Icon name="info" size={14} aria-hidden />
+          {t.wholeNote}
         </p>
-        <TextField
+        <TextArea
           label={t.reason}
+          rows={2}
           placeholder={t.reasonPlaceholder}
           required
           fullWidth

@@ -163,7 +163,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(within(dialog).getByLabelText(t.concession.qty)).toHaveValue('3,000 EA');
     expect(within(dialog).getByLabelText(t.concession.qty)).toHaveAttribute('readonly');
     expect(within(dialog).getByLabelText(t.concession.target)).toHaveValue(
-      t.concession.targetAll('SAMPLE-IL-0501', 3),
+      t.concession.targetAll(3),
     );
     await user.type(within(dialog).getByLabelText(t.concession.reason), '합성 특채 사유');
     await user.click(within(dialog).getByRole('button', { name: t.concession.request }));
@@ -219,10 +219,13 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(
       await screen.findByText(t.concession.pendingBanner('SAMPLE-CN-0061')),
     ).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: '폐기' })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
-      t.form.typeLock.concessionPending,
-    );
+    /* 특채가 걸려 있으면 처분 판정 입력 칸(처분 유형 · 판정 사유 · 저장)을 두지 않는다(사용자 지시 2026-11-17). */
+    expect(
+      document.querySelector(
+        '.disposition-decision-card [role="radiogroup"], .disposition-decision-card input[type="radio"]',
+      ),
+    ).toBeNull();
+    expect(document.querySelector('.disposition-decision-card textarea')).toBeNull();
     /* 다LOT 묶음(행 둘 · 결재 하나)은 이력 탭에서 1건으로 센다(G2 L-d). */
     expect(
       screen.getByRole('tab', {
@@ -252,16 +255,18 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(box.closest('.disposition-decision-card')).not.toBeNull();
     expect(screen.queryByText(t.concession.pendingBanner('SAMPLE-CN-0061'))).toBeNull();
 
-    /* 처분 유형 막힘 문구도 같은 상태로(G2 L-d). */
-    expect(screen.getByRole('radio', { name: '폐기' })).toHaveAccessibleDescription(
-      t.form.typeLock.concessionApproved,
-    );
+    /* 적용 전에는 처분 판정 입력 칸을 두지 않는다. */
+    expect(
+      document.querySelector(
+        '.disposition-decision-card [role="radiogroup"], .disposition-decision-card input[type="radio"]',
+      ),
+    ).toBeNull();
 
     await user.click(within(box).getByRole('button', { name: t.concession.apply }));
     await waitFor(() => expect(posted('/quality/concessions/61:apply')).toBeDefined());
   });
 
-  it('#275 결재가 반려된 특채는 [반려 확인]이 있고, 처분 유형마다 막힘 이유를 되풀이해 보이지 않는다', async () => {
+  it('#275 결재가 반려된 특채는 [반려 확인]이 있고, 처분 판정 입력 칸은 두지 않는다', async () => {
     const pending = {
       concessionId: 61,
       concessionNo: 'SAMPLE-CN-0061',
@@ -279,13 +284,11 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     const banner = await screen.findByText(t.concession.rejectedBanner('SAMPLE-CN-0061'));
     const box = banner.closest('.disposition-pending-concession') as HTMLElement;
 
-    /* 막힘 이유는 반려 상태로 읽히되(스크린리더), 칸마다 눈에 보이는 글로 되풀이하지 않는다. */
-    const scrap = screen.getByRole('radio', { name: '폐기' });
-    expect(scrap).toBeDisabled();
-    expect(scrap).toHaveAccessibleDescription(t.form.typeLock.concessionRejected);
-    for (const hint of screen.getAllByText(t.form.typeLock.concessionRejected)) {
-      expect(hint).toHaveClass('visually-hidden');
-    }
+    expect(
+      document.querySelector(
+        '.disposition-decision-card [role="radiogroup"], .disposition-decision-card input[type="radio"]',
+      ),
+    ).toBeNull();
 
     /* [반려 확인]은 예전 [특채 닫기]와 같은 적용 경로를 부른다. */
     await user.click(within(box).getByRole('button', { name: t.concession.close }));

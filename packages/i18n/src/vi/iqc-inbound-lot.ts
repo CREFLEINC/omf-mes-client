@@ -249,20 +249,18 @@ export const iqcInboundLot: Translated<typeof ko.iqcInboundLot> = {
     lockedNoResults: 'Cần ít nhất 1 kết quả',
     lockedNoNewResult: 'Kiểm tra đã được mở lại. Hãy ghi ít nhất 1 kết quả mới',
     lockedNoJudgment: 'Có kết quả chưa đánh giá',
-    title: (inboundLotNo: string) => `Xác nhận đánh giá ${inboundLotNo}`,
-    counts: (total: number, accepted: number, rejected: number, held: number) =>
-      `${total} kết quả — đạt ${accepted} · không đạt ${rejected} · tạm giữ ${held}`,
-    applyHeading: 'Áp dụng',
     apply: {
-      ACCEPTED: (count: number) =>
+      ACCEPTED: (count: number) => [
         `Toàn bộ ${count} LOT quản lý vật tư → bình thường (gỡ tạm giữ chờ kiểm tra, có thể nhập kho)`,
-      REJECTED: (count: number) =>
-        `Toàn bộ ${count} LOT quản lý vật tư → lỗi, đưa toàn bộ vào 1 phiếu không phù hợp (chờ đánh giá) và gửi thông báo không đạt.`,
-      HELD: (count: number) => `${count} LOT quản lý vật tư → giữ chờ kiểm tra (tạm giữ)`,
+      ],
+      REJECTED: (count: number) => [
+        `Toàn bộ ${count} LOT quản lý vật tư → lỗi`,
+        'Đưa toàn bộ LOT quản lý vật tư vào 1 phiếu không phù hợp (chờ đánh giá)',
+        'Gửi thông báo không đạt',
+      ],
+      HELD: (count: number) => [`${count} LOT quản lý vật tư → giữ chờ kiểm tra (tạm giữ)`],
     },
     note: 'Sau khi xác nhận không thể sửa, thêm hay xóa kết quả. Nếu xác nhận nhầm, dùng [Hủy xác nhận] (trước khi nhập kho · xử lý).',
-    back: 'Quay lại',
-    proceed: (judgment: string) => `Xác nhận đánh giá: ${judgment}`,
     doneRejected: (ncNo: string | null) =>
       ncNo === null
         ? 'Đã xác nhận không đạt. Đã tạo phiếu không phù hợp.'
