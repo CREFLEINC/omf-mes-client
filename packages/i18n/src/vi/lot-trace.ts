@@ -248,6 +248,7 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       at: 'Thời điểm',
       partner: 'Nhà cung cấp hoặc khách hàng',
       basis: 'Căn cứ',
+      via: 'LOT trung gian',
     },
     exportKinds: {
       LOT: 'Số LOT',
@@ -259,6 +260,35 @@ export const lotTrace: Translated<typeof ko.lotTrace> = {
       PRODUCTION_RECEIPT: 'Nhập kho thành phẩm',
       PACKAGE: 'Đóng gói',
       SHIPMENT: 'Xuất hàng',
+      SPLIT_FROM: 'LOT gốc đã tách',
+      SPLIT: 'LOT tách',
+    },
+    split: {
+      chip: 'LOT tách',
+      qty: 'Số lượng tách',
+      fromSection: 'LOT gốc đã tách',
+      parentLotNo: 'Số LOT gốc',
+      at: 'Thời điểm tách',
+      issueNo: 'Số phiếu xuất kho',
+      issueText: (goodsIssueNo: string, lineNo: number): string =>
+        `${goodsIssueNo} · dòng ${String(lineNo)}`,
+      parentAlsoSplit: 'LOT gốc cũng là LOT tách — bấm [Xem] để đi lên sẽ thấy LOT gốc phía trên.',
+      rootInbound: 'Nhập hàng của LOT gốc',
+      noReceipt: 'LOT tách không có ghi chép nhập kho vật tư. Nhập kho vật tư nằm ở LOT gốc',
+      splitsSection: 'LOT tách',
+      splitsHint:
+        'Đây là các LOT tách ra từ LOT này khi xuất kho một phần. LOT tách lại từ LOT tách được thụt vào.',
+      splitLine: (at: string, issue: string): string =>
+        `Thời điểm tách ${at} · số phiếu xuất kho ${issue}`,
+      splitFrom: (lotNo: string): string => `Tách từ ${lotNo}`,
+      usageHint: 'Hiển thị cả W/O đã đưa vào qua LOT tách.',
+      via: 'Qua LOT tách: ',
+      inputsHint:
+        'Nếu LOT tách đã được đưa vào, LOT gốc hiện dưới dòng, gần nhất trước. Nhà cung cấp theo nhập hàng của LOT gốc.',
+      ancestry: 'Tách: ',
+      levels: (count: number): string => `(${String(count)} cấp)`,
+      note: (issue: string): string => `Tách (${issue})`,
+      columns: { lot: 'LOT tách', qty: 'Số lượng', workOrders: 'W/O đưa vào', action: 'Truy xuất' },
     },
     exportFileName: (lotNo: string): string =>
       `TraCuuLichSuSanXuatLOT_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
