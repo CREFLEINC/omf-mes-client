@@ -37377,3 +37377,133 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
 @container erp-wo-assign (max-width:24rem) { .erp-wo-assign-editor .date-time-field-controls:has(.date-time-field-picker) { grid-template-columns:minmax(0,1fr); } }
 
 .date-time-field-picker .time-picker-popup { left: auto; right: 0; }
+
+/*
+ * 판정 확정 확인 창 — OQC · PQC 공통(사용자 시안 2026-11-17 · omf-all-around#286).
+ * 의뢰 번호 · 구분선 · 최종 판정(오른쪽 색 글) · 검사 결과 / LOT 상태 상자 · 적용 사항 · 되돌릴 수 없음 안내.
+ */
+.judgment-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.judgment-confirm-target {
+  margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.judgment-confirm-judgment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.judgment-confirm-judgment h3,
+.judgment-confirm-apply h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.judgment-confirm-judgment strong {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.judgment-confirm [data-tone='success'] {
+  color: var(--semantic-success-text);
+}
+
+.judgment-confirm [data-tone='error'] {
+  color: var(--semantic-error-text);
+}
+
+.judgment-confirm [data-tone='warning'] {
+  color: var(--semantic-warning);
+}
+
+.judgment-confirm-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.judgment-confirm-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.judgment-confirm-row + .judgment-confirm-row {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.judgment-confirm-row dt,
+.judgment-confirm-row dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.judgment-confirm-row dt {
+  color: var(--on-surface-variant);
+}
+
+.judgment-confirm-row dd {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.judgment-confirm-row dd b {
+  font-weight: 600;
+}
+
+.judgment-confirm-apply {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.judgment-confirm-apply ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.judgment-confirm-apply li,
+.judgment-confirm-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-md);
+}
+
+.judgment-confirm-apply li > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--on-surface-variant);
+}
+
+.judgment-confirm-note > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--semantic-error-text);
+}

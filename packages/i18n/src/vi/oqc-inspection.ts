@@ -162,8 +162,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
 
   transition: {
     title: 'Chốt xong thì trạng thái LOT sẽ đổi',
-    quantities: (accepted: string, rejected: string, held: string): string =>
-      `Đạt ${accepted} · Không đạt ${rejected} · Tạm giữ ${held}`,
     directionRelease:
       "Chốt xong thì LOT này chuyển sang trạng thái 'Bình thường' (khi không còn tạm giữ khác).",
     directionHold: "Chốt xong thì LOT này chuyển sang trạng thái 'Lỗi'.",
@@ -175,10 +173,6 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
       'Tạm giữ không thay đổi trạng thái LOT. Lệnh xuất hàng này không xuất được cho đến khi đánh giá xong.',
     directionUnknown: 'Chốt xong thì trạng thái LOT sẽ đổi.',
     pickingImpact: 'Các lượt lấy hàng đang làm dở dùng LOT này cũng bị chặn theo.',
-    pickedNotReturned: 'Phần đã lấy hàng rồi thì không được thu hồi lại bằng lần chuyển này.',
-    noAmendment: 'Đánh giá không sửa được — muốn lật lại thì phải kiểm tra lại.',
-    dispositionPath:
-      'Quyết định xử lý phần không đạt (làm lại, hủy) không được định ở màn hình này — khi màn hình yêu cầu quyết định xử lý mở thì sẽ làm ở đó.',
     guide: {
       title: 'Hướng dẫn chốt đánh giá',
       irreversible: 'Sau khi chốt thì không sửa được đánh giá.',
@@ -187,11 +181,9 @@ export const oqcInspection: Translated<typeof ko.oqcInspection> = {
   },
 
   confirm: {
-    title: (inspectionRequestNo: string): string => `Xác nhận đánh giá ${inspectionRequestNo}`,
-    judgment: (label: string): string => `Đánh giá cuối cùng: ${label}`,
-    irreversible: 'Xác nhận rồi thì không hoàn tác được.',
-    cancel: 'Hủy',
     confirm: 'Xác nhận đánh giá',
+    applyPicking: 'Việc soạn hàng đang thực hiện của LOT này sẽ kết thúc.',
+    applyPickedNotReturned: 'Số lượng đã soạn sẽ không được thu hồi.',
   },
 
   history: {

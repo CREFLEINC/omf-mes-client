@@ -452,6 +452,12 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(pane.getByRole('combobox', { name: web.judgment.label }));
     await user.click(await screen.findByRole('option', { name: '합격' }));
     await user.click(pane.getByRole('button', { name: web.actions.confirm }));
+    /* 확인 창에서 한 번 더 누른다(omf-all-around#286). */
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: messages.judgmentConfirm.confirm,
+      }),
+    );
 
     await waitFor(() => expect(saves).toHaveLength(1));
     const [saved] = saves;
@@ -493,6 +499,12 @@ describe('PqcInspectionRegisterScreen (W-03-11)', () => {
     await user.click(await screen.findByRole('option', { name: '합격' }));
     const before = queueQueries.length;
     await user.click(pane.getByRole('button', { name: web.actions.confirm }));
+    /* 확인 창에서 한 번 더 누른다(omf-all-around#286). */
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: messages.judgmentConfirm.confirm,
+      }),
+    );
 
     await waitFor(() => expect(saves).toHaveLength(1));
     await waitFor(() => expect(queueQueries.length).toBeGreaterThan(before));

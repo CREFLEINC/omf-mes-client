@@ -1,14 +1,32 @@
 import { Button, Icon, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
+import {
+  JudgmentConfirmDialog,
+  type JudgmentConfirmDirection,
+} from '../../patterns/judgment-confirm-dialog';
 
 const t = messages.pqcInspectionRegister.web.actions;
 const tResult = messages.pqcInspection.result;
 
+/** 판정 → 확정 뒤 LOT 상태 방향(서버 전이표 C4 · C5 · C6 — OQC 와 같다). 모르는 코드는 방향을 말하지 않는다. */
+const DIRECTION_OF: Record<string, JudgmentConfirmDirection> = {
+  ACCEPTED: 'release',
+  REJECTED: 'hold',
+  HELD: 'pending',
+};
+
 export interface WebActionsProps {
   isConfirmed: boolean;
-  isJustConfirmed: boolean;
   isSaved: boolean;
+  /** 확인 창에 보일 값 — 의뢰 번호 · 최종 판정 · 수량 셋(omf-all-around#286). */
+  confirmInfo: {
+    inspectionRequestNo: string;
+    judgmentCode: string;
+    judgmentLabel: string;
+    quantities: { accepted: string; rejected: string; held: string };
+  };
   lockedReason: string | null;
   /** 잠근 이유를 이 줄에 적을 것인가 — 회차를 못 읽은 갈래는 위 오류 띠가 이유와 [다시 시도]를 이미 낸다. */
   showLockedNote: boolean;
@@ -27,8 +45,8 @@ export interface WebActionsProps {
  */
 export const WebActions = ({
   isConfirmed,
-  isJustConfirmed,
   isSaved,
+  confirmInfo,
   lockedReason,
   showLockedNote,
   confirmBlockedReason,
@@ -44,6 +62,9 @@ export const WebActions = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 저장이 막 끝났을 때 한 번만 알린다.
   }, [isSaved]);
 
+  /* [판정 확정]은 한 번 묻고 보낸다 — IQC · OQC 와 같다(omf-all-around#286). 보내는 값 · 막는 조건은 그대로다. */
+  const [asking, setAsking] = useState(false);
+
   const blocked =
     lockedReason !== null
       ? showLockedNote
@@ -54,7 +75,6 @@ export const WebActions = ({
   return (
     <div className="pqc-web-actions">
       <div className="pqc-web-action-notes">
-        {isJustConfirmed && <p className="field-note">{tResult.confirmSucceeded}</p>}
         {isConfirmed ? (
           <p className="pqc-web-action-note" data-tone="info">
             <Icon name="info" size={18} aria-hidden />
@@ -92,11 +112,26 @@ export const WebActions = ({
           variant="filled"
           size="md"
           disabled={lockedReason !== null || confirmBlockedReason !== null || isSending}
-          onClick={onConfirm}
+          onClick={() => setAsking(true)}
         >
           {t.confirm}
         </Button>
       </div>
+
+      {asking && (
+        <JudgmentConfirmDialog
+          inspectionRequestNo={confirmInfo.inspectionRequestNo}
+          judgmentLabel={confirmInfo.judgmentLabel}
+          direction={DIRECTION_OF[confirmInfo.judgmentCode] ?? 'unknown'}
+          quantities={confirmInfo.quantities}
+          isSaving={isSending}
+          onClose={() => setAsking(false)}
+          onConfirm={() => {
+            setAsking(false);
+            onConfirm();
+          }}
+        />
+      )}
     </div>
   );
 };
