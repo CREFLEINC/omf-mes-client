@@ -222,6 +222,7 @@ const warehouseResponse = (overrides: Partial<WarehouseResponse> = {}): Warehous
   businessUnitId: 9251,
   warehouseCode: 'SAMPLE-WH-01',
   warehouseName: '합성 창고 가',
+  locationPrefix: 'K7PM',
   warehouseTypeCode: 'SAMPLE_WH_TYPE_A',
   isExternal: false,
   isDefect: false,

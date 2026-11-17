@@ -151,6 +151,14 @@ export async function loadCatalog(client: Client, proposals: PlanProposal[]) {
     warehouses,
   };
 }
+/**
+ * 완제품 입고 위치가 서버가 둔 「적치 대기」 자리인가 — 위치의 역할(`systemRoleCode`)로 가린다. 위치 코드는 창고 위치
+ * 코드로 시작해(`{창고 위치 코드}-SYS-STAGING`, omf-all-around#292) 코드 글자로는 가리지 않는다.
+ */
+export const isPutawayStaging = (
+  erpStorage: Pick<PlanProposal['erpStorage'], 'location'>,
+): boolean => erpStorage.location?.systemRoleCode === 'PUTAWAY_STAGING';
+
 export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewProposal {
   const fixed = row.reasons
     .filter((reason) => reason.category === 'BLOCKED')
@@ -179,8 +187,7 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
       .map((issue) => proposalReason(issue.code)),
     erpStorage: {
       ...row.erpStorage,
-      locationRole:
-        row.erpStorage.location?.code === 'SYS-STAGING' ? 'PUTAWAY_STAGING' : 'WAREHOUSE_WHOLE',
+      locationRole: isPutawayStaging(row.erpStorage) ? 'PUTAWAY_STAGING' : 'WAREHOUSE_WHOLE',
     },
     plans: row.plans.map((plan) => ({
       key: `${row.productionOrderId}:${plan.proposalPlanKey}`,

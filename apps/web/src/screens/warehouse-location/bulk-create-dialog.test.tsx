@@ -36,11 +36,11 @@ const STAGING = loc(1, 'SYS-STAGING', null, { systemRoleCode: 'PUTAWAY_STAGING' 
 /** Z01(랙 3, A동) · Z02(구역 자체에 재고) */
 const ZONED: Location[] = [
   STAGING,
-  loc(10, 'Z01', null, { aliasName: 'A동 자재 구역' }),
-  loc(11, 'Z01-R001', 10),
-  loc(12, 'Z01-R002', 10),
-  loc(13, 'Z01-R003', 10),
-  loc(20, 'Z02', null),
+  loc(10, 'K7PM-Z01', null, { aliasName: 'A동 자재 구역' }),
+  loc(11, 'K7PM-Z01-R001', 10),
+  loc(12, 'K7PM-Z01-R002', 10),
+  loc(13, 'K7PM-Z01-R003', 10),
+  loc(20, 'K7PM-Z02', null),
 ];
 
 interface Options {
@@ -99,6 +99,7 @@ const setup = (options: Options = {}) => {
     <BulkCreateDialog
       open
       warehouseId={WAREHOUSE_ID}
+      locationPrefix="K7PM"
       warehouseLabel="PTW-E · 시험 창고"
       items={options.items ?? [STAGING]}
       onClose={onClose}
@@ -136,8 +137,8 @@ describe('BulkCreateDialog', () => {
 
     expect(within(summary()).getByText(b.count(452))).toBeInTheDocument();
     expect(within(summary()).getByText(b.parts(2, 10, 40, 400))).toBeInTheDocument();
-    expect(within(summary()).getByText('Z01')).toBeInTheDocument();
-    expect(within(summary()).getByText('Z02-R005-L04-C10')).toBeInTheDocument();
+    expect(within(summary()).getByText('K7PM-Z01')).toBeInTheDocument();
+    expect(within(summary()).getByText('K7PM-Z02-R005-L04-C10')).toBeInTheDocument();
   });
 
   it('US1-2 ⭐ [만들기] → 만드는 중 n/m → 끝남, 다 만들면 [닫기]', async () => {
@@ -162,7 +163,7 @@ describe('BulkCreateDialog', () => {
 
     expect(within(dialog()).getByLabelText(b.cellsPerLevel)).toBeDisabled();
     expect(within(summary()).getByText(b.count(4))).toBeInTheDocument();
-    expect(within(summary()).getByText('Z01-R003')).toBeInTheDocument();
+    expect(within(summary()).getByText('K7PM-Z01-R003')).toBeInTheDocument();
   });
 
   it('US1-5 기존 구역 Z01(랙 3)을 골라 랙 2×4×10 — Z01-R004 부터, 구역 수 칸이 없다', async () => {
@@ -172,13 +173,13 @@ describe('BulkCreateDialog', () => {
     expect(within(dialog()).queryByLabelText(b.zoneCount)).toBeNull();
     expect(within(dialog()).getByText(b.zoneInfo(3, 0))).toBeInTheDocument();
     await user.click(
-      within(dialog()).getByRole('checkbox', { name: b.zoneName('Z01', 'A동 자재 구역') }),
+      within(dialog()).getByRole('checkbox', { name: b.zoneName('K7PM-Z01', 'A동 자재 구역') }),
     );
     await fillAll(user, { racks: '2', levels: '4', cells: '10' });
 
     expect(within(summary()).getByText(b.count(90))).toBeInTheDocument();
     expect(within(summary()).getByText(b.parts(null, 2, 8, 80))).toBeInTheDocument();
-    expect(within(summary()).getByText('Z01-R004')).toBeInTheDocument();
+    expect(within(summary()).getByText('K7PM-Z01-R004')).toBeInTheDocument();
 
     await user.click(within(dialog()).getByRole('button', { name: b.make }));
     await within(dialog()).findByText(b.done(90));
@@ -203,12 +204,12 @@ describe('BulkCreateDialog', () => {
 
     await user.click(within(dialog()).getByRole('radio', { name: b.modeExisting }));
 
-    const z02 = within(dialog()).getByRole('checkbox', { name: 'Z02' });
+    const z02 = within(dialog()).getByRole('checkbox', { name: 'K7PM-Z02' });
     await waitFor(() => expect(z02).toBeDisabled());
     expect(within(dialog()).getByText(b.stockBlocked)).toBeInTheDocument();
     /* 랙에만 재고가 있는 Z01 은 고를 수 있다. */
     expect(
-      within(dialog()).getByRole('checkbox', { name: b.zoneName('Z01', 'A동 자재 구역') }),
+      within(dialog()).getByRole('checkbox', { name: b.zoneName('K7PM-Z01', 'A동 자재 구역') }),
     ).toBeEnabled();
   });
 
@@ -236,16 +237,18 @@ describe('BulkCreateDialog', () => {
     });
 
     await user.click(within(dialog()).getByRole('radio', { name: b.modeExisting }));
-    const z02 = within(dialog()).getByRole('checkbox', { name: 'Z02' });
+    const z02 = within(dialog()).getByRole('checkbox', { name: 'K7PM-Z02' });
     expect(z02).toBeEnabled();
     await user.click(z02);
     await user.click(
-      within(dialog()).getByRole('checkbox', { name: b.zoneName('Z01', 'A동 자재 구역') }),
+      within(dialog()).getByRole('checkbox', { name: b.zoneName('K7PM-Z01', 'A동 자재 구역') }),
     );
     await fillAll(user, { racks: '1', levels: '1', cells: '1' });
     await user.click(within(dialog()).getByRole('button', { name: b.make }));
 
-    expect(await within(dialog()).findByText(b.failure('Z02-R001', reason))).toBeInTheDocument();
+    expect(
+      await within(dialog()).findByText(b.failure('K7PM-Z02-R001', reason)),
+    ).toBeInTheDocument();
     expect(posts).toHaveLength(2);
   });
 
@@ -275,7 +278,7 @@ describe('BulkCreateDialog', () => {
   });
 
   it('US1-7 만들기는 됐고 이름 맞추기만 실패하면 그 안내와 [남은 것 다시 만들기]', async () => {
-    const { user } = setup({ renameTo: { Z01: 'Z02' }, failPut: true });
+    const { user } = setup({ renameTo: { 'K7PM-Z01': 'K7PM-Z02' }, failPut: true });
 
     await fillAll(user, { zones: '1', racks: '1', levels: '1', cells: '1' });
     await user.click(within(dialog()).getByRole('button', { name: b.make }));

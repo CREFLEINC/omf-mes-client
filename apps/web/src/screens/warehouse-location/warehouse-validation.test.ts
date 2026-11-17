@@ -10,6 +10,7 @@ const filled: WarehouseFormValues = {
   businessUnitId: '21',
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
+  locationPrefix: 'K7PM',
   warehouseTypeCode: 'MATERIAL',
 };
 
@@ -58,6 +59,25 @@ describe('validateWarehouse', () => {
     expect(validateWarehouse({ ...filled, businessUnitId: '' }, 'create').businessUnitId).toBe(
       '필수 입력 항목입니다.',
     );
+  });
+});
+
+describe('#292 창고 위치 코드', () => {
+  const invalid = '대문자와 숫자 2~6자로 입력하세요.';
+
+  it('등록 때 대문자 · 숫자 2~6자만 통과한다', () => {
+    for (const ok of ['K7', 'K7PM', 'ABC123', 'IO10']) {
+      expect(validateWarehouse({ ...filled, locationPrefix: ok }, 'create')).toEqual({});
+    }
+    for (const bad of ['', 'K', 'K7PM123', 'k7pm', 'K7-P', 'K7 P']) {
+      expect(validateWarehouse({ ...filled, locationPrefix: bad }, 'create').locationPrefix).toBe(
+        invalid,
+      );
+    }
+  });
+
+  it('고칠 때는 보지 않는다 — 저장한 뒤에는 바꿀 수 없다', () => {
+    expect(validateWarehouse({ ...filled, locationPrefix: '' }, 'edit')).toEqual({});
   });
 });
 
