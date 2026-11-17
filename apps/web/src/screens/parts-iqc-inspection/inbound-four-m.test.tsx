@@ -136,8 +136,24 @@ const lot = (lotId: number) => ({
   goodsReceived: false,
 });
 
-const mount = (oa: boolean, stored: { remarks: string } | null) => {
+const result = {
+  inspectionResultId: 701,
+  inspectionResultNo: 'TST-IR-1',
+  seqNo: 1,
+  overallJudgmentCode: 'ACCEPTED',
+  inspectedQty: 5,
+  rejectedQty: 0,
+  defectNames: [],
+  matchedLotIds: [1, 2],
+  inspectorName: '합성 검사자',
+  inspectedAt: '2099-11-11T01:00:00Z',
+  statusCode: 'DRAFT',
+  versionNo: 1,
+};
+
+const mount = (oa: boolean, stored: { remarks: string } | null, withResult = false) => {
   const lotQueries: URL[] = [];
+  const posts: { path: string; body: unknown }[] = [];
   detailOf.value = request;
   renderWithProviders(
     <SessionProvider>
@@ -161,10 +177,10 @@ const mount = (oa: boolean, stored: { remarks: string } | null) => {
               inboundLotNo: 'IL-20991111-0003',
               versionNo: 5,
               confirmedAt: null,
-              previewJudgmentCode: null,
+              previewJudgmentCode: withResult ? 'ACCEPTED' : null,
               lots: [lot(1), lot(2)],
-              results: [],
-              nextResultSeqNo: 1,
+              results: withResult ? [result] : [],
+              nextResultSeqNo: withResult ? 2 : 1,
             }),
         },
         {
@@ -186,13 +202,20 @@ const mount = (oa: boolean, stored: { remarks: string } | null) => {
           },
         },
         {
+          match: (r) => r.method === 'POST',
+          respond: async (r) => {
+            posts.push({ path: new URL(r.url).pathname, body: await r.clone().json() });
+            return jsonResponse({});
+          },
+        },
+        {
           match: () => true,
           respond: () => jsonResponse({ items: [], page: 1, size: 20, totalCount: 0 }),
         },
       ]),
     },
   );
-  return { lotQueries };
+  return { lotQueries, posts };
 };
 
 const openAdd = async () => {
@@ -219,6 +242,33 @@ describe('#290 새 흐름 [결과 추가] 창의 4M 변경 정보', () => {
     const drawer = await openAdd();
 
     expect(await within(drawer).findByRole('checkbox', { name: four.label })).not.toBeChecked();
+  });
+
+  it('OA — 골라 둔 검사 수준은 [판정 확정]이 끝난 뒤 저장한다', async () => {
+    window.localStorage.setItem(
+      'omf-mes:iqc-inspection:pending-level:501',
+      JSON.stringify({ itemId: 31, level: 'TIGHTENED', reason: '' }),
+    );
+    try {
+      const { posts } = mount(true, null, true);
+
+      await userEvent.click(await screen.findByRole('button', { name: t.confirm.open }));
+      const dialog = await screen.findByRole('dialog', { name: messages.judgmentConfirm.title });
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: messages.judgmentConfirm.confirm }),
+      );
+
+      await vi.waitFor(() =>
+        expect(posts.map((post) => post.path)).toEqual([
+          '/quality/inspection-requests/501:confirm',
+          '/quality/item-inspection-levels',
+        ]),
+      );
+      expect(posts[1]?.body).toEqual({ itemId: 31, inspectionLevelCode: 'TIGHTENED' });
+      expect(window.localStorage.getItem('omf-mes:iqc-inspection:pending-level:501')).toBeNull();
+    } finally {
+      window.localStorage.removeItem('omf-mes:iqc-inspection:pending-level:501');
+    }
   });
 
   it('부품 화면 — 4M 칸이 없고 4M 을 읽지도 않는다', async () => {

@@ -30,6 +30,8 @@ export const iqcInboundKeys = {
   all: ROOT,
   detail: (inspectionRequestId: number) => [...ROOT, 'detail', inspectionRequestId] as const,
   events: (inspectionRequestId: number) => [...ROOT, 'events', inspectionRequestId] as const,
+  fourM: (lotNo: string | null, itemId: number | null) =>
+    [...ROOT, 'four-m', lotNo, itemId] as const,
   splitPreview: (inboundLotId: number, lotIds: readonly number[]) =>
     [...ROOT, 'split-preview', inboundLotId, [...lotIds].sort((a, b) => a - b)] as const,
 };
@@ -81,7 +83,7 @@ export const useInboundFourM = (
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: [...ROOT, 'four-m', lotNo, itemId] as const,
+    queryKey: iqcInboundKeys.fourM(lotNo, itemId),
     queryFn: async () => {
       const page = await runRequest(() =>
         client.GET('/trace/lots', {
