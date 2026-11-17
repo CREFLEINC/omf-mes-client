@@ -1,6 +1,7 @@
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { findLot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
 import { parseScannedCode } from './qr-payload';
 import type { HopperStock } from './hopper';
@@ -83,8 +84,112 @@ const findByIssueNo = async (client: Client, goodsIssueNo: string) => {
   return found.items.find((each) => each.goodsIssueNo === goodsIssueNo);
 };
 
-const findIssue = async (client: Client, code: string): Promise<ScannedIssue | null> => {
+const linesOf = async (client: Client, goodsIssueId: number) =>
+  (
+    await runRequest(() =>
+      client.GET('/logistics/goods-issues/{goodsIssueId}/lines', {
+        params: { path: { goodsIssueId } },
+      }),
+    )
+  ).items;
+
+/** 같은 LOT 의 입고 안 된 출고가 여럿일 때 고를 한 건 — 출고번호·시각·그 LOT 수량(research R-7). */
+export interface IssueCandidate {
+  issue: GoodsIssue;
+  lineCount: number;
+  /** 이 전표에서 스캔한 LOT 을 낸 수량의 합. */
+  lotQty: number;
+  uomId: number | null;
+}
+
+/**
+ * 스캔 하나의 결과(008 · omf-all-around#289).
+ *
+ * - `issue` — 열 전표. LOT 라벨로 찾았으면 `scannedLotId` 가 그 LOT 이다(그 줄을 표시한다).
+ * - `noneForLot` — LOT 은 있으나 받을 출고가 없다(이미 받았거나 출고 전). 원래 상자 라벨을 댄 경우가 흔하다.
+ * - `pick` — 같은 LOT 의 입고 안 된 출고가 둘 이상. **화면이 고르지 않는다** — 오래된 순으로 보이고 사람이 고른다.
+ * - `notFound` — LOT 도 출고번호도 아니다.
+ */
+export type IssueLookup =
+  | { kind: 'issue'; found: ScannedIssue; scannedLotId: number | null }
+  | { kind: 'noneForLot'; lotNo: string }
+  | { kind: 'pick'; lotNo: string; candidates: IssueCandidate[] }
+  | { kind: 'notFound' };
+
+/**
+ * 자재 LOT 라벨(분할 LOT · 전량 출고한 원래 LOT)로 받을 출고를 찾는다 — 계약 `GET /logistics/goods-issues` 의
+ * `lotId`·`awaitingShopfloorReceiptOnly` 축. 원천 피킹 지시·전기 완료·생산창고 입고 없음만 오므로 같은 LOT 의
+ * 폐기 출고 등은 걸리지 않는다. 오래된 순으로 세운다.
+ */
+const findByLot = async (
+  client: Client,
+  lotId: number,
+): Promise<{ issue: GoodsIssue; lines: GoodsIssueLine[] }[]> => {
+  const found = await runRequest(() =>
+    client.GET('/logistics/goods-issues', {
+      params: { query: { lotId, awaitingShopfloorReceiptOnly: true, size: SEARCH_SIZE } },
+    }),
+  );
+  const sorted = [...found.items].sort((a, b) => a.issuedAt.localeCompare(b.issuedAt));
+
+  return Promise.all(
+    sorted.map(async (issue) => ({ issue, lines: await linesOf(client, issue.goodsIssueId) })),
+  );
+};
+
+/**
+ * 스캔값을 푼다 — **옛 출고 QR → 자재 LOT 번호 정확 일치 → 출고번호** 순(research R-7).
+ *
+ * ⛔ 형식으로 LOT 과 출고번호를 가르지 않는다 — 출고번호 형식은 채번 규칙에 따라 바뀐다. LOT 정확 일치를 먼저
+ *    묻고, 없을 때만 출고번호로 찾는다.
+ *
+ * `chosenIssueId` — 고르기에서 사람이 고른 전표. 주면 그 전표를 연다.
+ */
+const lookupIssue = async (
+  client: Client,
+  code: string,
+  chosenIssueId: number | null,
+): Promise<IssueLookup> => {
   const scanned = parseScannedCode(code);
+
+  if (scanned.kind === 'issueNo' && scanned.goodsIssueNo !== '') {
+    const lot = await findLot(client, scanned.goodsIssueNo);
+
+    if (lot !== null) {
+      const candidates = await findByLot(client, lot.lotId);
+      const chosen =
+        chosenIssueId === null
+          ? candidates.length === 1
+            ? candidates[0]
+            : undefined
+          : candidates.find((each) => each.issue.goodsIssueId === chosenIssueId);
+
+      if (chosen !== undefined) {
+        return {
+          kind: 'issue',
+          found: await openIssue(client, chosen.issue, chosen.lines),
+          scannedLotId: lot.lotId,
+        };
+      }
+
+      if (candidates.length === 0) return { kind: 'noneForLot', lotNo: lot.lotNo };
+
+      return {
+        kind: 'pick',
+        lotNo: lot.lotNo,
+        candidates: candidates.map(({ issue, lines }) => {
+          const mine = lines.filter((line) => line.lotId === lot.lotId);
+
+          return {
+            issue,
+            lineCount: lines.length,
+            lotQty: mine.reduce((sum, line) => sum + line.issueQty, 0),
+            uomId: mine[0]?.uomId ?? null,
+          };
+        }),
+      };
+    }
+  }
 
   const issue =
     scanned.kind === 'issueLine'
@@ -97,15 +202,22 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
         : await findByIssueNo(client, scanned.goodsIssueNo);
 
   if (issue === undefined) {
-    return null;
+    return { kind: 'notFound' };
   }
 
-  const lines = await runRequest(() =>
-    client.GET('/logistics/goods-issues/{goodsIssueId}/lines', {
-      params: { path: { goodsIssueId: issue.goodsIssueId } },
-    }),
-  );
+  return {
+    kind: 'issue',
+    found: await openIssue(client, issue, await linesOf(client, issue.goodsIssueId)),
+    scannedLotId: null,
+  };
+};
 
+/** 찾은 전표를 연다 — 피킹 지시 → 자재 출고요청을 따라가 작업지시·도착 위치를 얻는다. */
+const openIssue = async (
+  client: Client,
+  issue: GoodsIssue,
+  lineItems: GoodsIssueLine[],
+): Promise<ScannedIssue> => {
   /*
    * 원천이 피킹지시일 때만 따라간다.
    *
@@ -114,7 +226,7 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
    * 화면은 조회 권한 문구를 달아 사람을 단말 설정으로 보냈다.
    */
   if (issue.sourceDocumentTypeCode !== 'PICKING_ORDER') {
-    return { issue, lines: lines.items, ...NOT_TARGET };
+    return { issue, lines: lineItems, ...NOT_TARGET };
   }
 
   const picking = await runRequest(() =>
@@ -128,7 +240,7 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
    * 가른다. 출하 피킹에서 나온 출고를 여기 대면 출하 지시 번호로 자재 출고요청을 묻게 된다.
    */
   if (picking.pickingOrder.sourceDocumentTypeCode !== 'MATERIAL_ISSUE_REQUEST') {
-    return { issue, lines: lines.items, ...NOT_TARGET };
+    return { issue, lines: lineItems, ...NOT_TARGET };
   }
 
   const request = await runRequest(() =>
@@ -143,7 +255,7 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
   if (found.requestTypeCode === 'REPLENISHMENT') {
     return {
       issue,
-      lines: lines.items,
+      lines: lineItems,
       workOrderId: null,
       destinationLocationId: found.destinationLocationId,
       kind: 'REPLENISHMENT',
@@ -153,7 +265,7 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
 
   return {
     issue,
-    lines: lines.items,
+    lines: lineItems,
     workOrderId: found.workOrderId,
     destinationLocationId: found.destinationLocationId,
     kind: 'WORK_ORDER',
@@ -161,18 +273,22 @@ const findIssue = async (client: Client, code: string): Promise<ScannedIssue | n
   };
 };
 
-export const useScannedGoodsIssue = (code: string | null): UseQueryResult<ScannedIssue | null> => {
+export const useScannedGoodsIssue = (
+  code: string | null,
+  /** 고르기에서 사람이 고른 전표 — 같은 LOT 의 입고 안 된 출고가 여럿일 때. */
+  chosenIssueId: number | null = null,
+): UseQueryResult<IssueLookup> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: ['shopfloor-receipt-issue', code] as const,
+    queryKey: ['shopfloor-receipt-issue', code, chosenIssueId] as const,
     enabled: code !== null,
     queryFn: () => {
       if (code === null) {
         throw new Error('스캔하기 전에는 출고 전표를 조회하지 않습니다.');
       }
 
-      return findIssue(client, code);
+      return lookupIssue(client, code, chosenIssueId);
     },
   });
 };

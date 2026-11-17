@@ -73,6 +73,12 @@ interface Options {
   issueQueries?: string[];
   /** 이 시험에서만 필요한 길. 기본 길보다 먼저 본다. */
   extra?: StubRoute[];
+  /** 정확 일치로 찾을 자재 LOT(008) — 비우면 어떤 번호도 LOT 이 아니다. */
+  lots?: { lotId: number; lotNo: string }[];
+  /** `lotId` 축으로 물었을 때 돌려줄 전표(008) — 받을 출고. */
+  byLot?: { goodsIssueId: number; goodsIssueNo: string; issuedAt: string }[];
+  /** 전표별 라인을 갈아 끼운다(008) — 없으면 기본 한 줄. */
+  linesById?: Record<number, unknown[]>;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -80,6 +86,22 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/logistics/goods-issues',
     respond: (req) => {
       options.issueQueries?.push(new URL(req.url).search);
+
+      if (new URL(req.url).searchParams.has('lotId')) {
+        return jsonResponse({
+          items: (options.byLot ?? []).map((each) => ({
+            issueTypeCode: 'PRODUCTION',
+            sourceDocumentTypeCode: 'PICKING_ORDER',
+            sourceDocumentId: 300,
+            sourceWarehouseId: 5,
+            destinationTypeCode: 'LOCATION',
+            destinationId: 42,
+            statusCode: 'POSTED',
+            ...each,
+          })),
+          page,
+        });
+      }
 
       return jsonResponse({
         items: [
@@ -110,9 +132,9 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => /\/logistics\/goods-issues\/\d+\/lines$/.test(new URL(req.url).pathname),
-    respond: () =>
+    respond: (req) =>
       jsonResponse({
-        items: [
+        items: options.linesById?.[Number(new URL(req.url).pathname.split('/')[3])] ?? [
           {
             goodsIssueLineId: 1,
             goodsIssueId: 500,
@@ -303,6 +325,17 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   {
+    match: (req) => new URL(req.url).pathname === '/trace/lots',
+    respond: (req) => {
+      const lotNo = new URL(req.url).searchParams.get('lotNo');
+
+      return jsonResponse({
+        items: (options.lots ?? []).filter((each) => each.lotNo === lotNo),
+        page,
+      });
+    },
+  },
+  {
     match: (req) => /^\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
     respond: (req) => {
       const id = Number(new URL(req.url).pathname.split('/').pop());
@@ -382,7 +415,7 @@ const mount = (options: Options = {}) =>
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText(/출고 QR 스캔/) as HTMLInputElement;
+  const field = screen.getByLabelText(/자재 LOT 라벨 또는 출고번호/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -415,7 +448,7 @@ describe('생산창고 입고 화면', () => {
         },
       ],
     });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     expect(
@@ -437,7 +470,7 @@ describe('생산창고 입고 화면', () => {
         },
       ],
     });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     expect(
@@ -453,7 +486,7 @@ describe('생산창고 입고 화면', () => {
   it('피킹지시 원천이 아니면 피킹지시를 부르지 않는다', async () => {
     const asked: string[] = [];
     mount({ sourceTypeCode: 'GOODS_RECEIPT', asked });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -475,7 +508,7 @@ describe('생산창고 입고 화면', () => {
   it('출고 QR 을 대면 라인 축으로 전표를 찾는다', async () => {
     const issueQueries: string[] = [];
     mount({ issueQueries });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(`OMF-GIL|17|${ISSUE_NO}|1`);
 
@@ -494,7 +527,7 @@ describe('생산창고 입고 화면', () => {
   it('출고번호를 직접 치면 예전처럼 번호 축으로 찾는다', async () => {
     const issueQueries: string[] = [];
     mount({ issueQueries });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -506,7 +539,7 @@ describe('생산창고 입고 화면', () => {
   it('출하 피킹에서 나온 출고면 자재 출고요청을 부르지 않는다', async () => {
     const asked: string[] = [];
     mount({ pickingSourceTypeCode: 'SHIPMENT_REQUEST', asked });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -518,7 +551,7 @@ describe('생산창고 입고 화면', () => {
   /* 두 값이 없으면 수령 전표를 만들 수 없다. 지어내면 다른 작업지시에 재고가 붙는다. */
   it('피킹지시 원천이 아니면 수령 기록을 열지 않는다', async () => {
     mount({ sourceTypeCode: 'GOODS_RECEIPT' });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await screen.findByText('생산창고 입고 대상이 아닌 출고 전표입니다');
@@ -528,7 +561,7 @@ describe('생산창고 입고 화면', () => {
 
   it('스캔한 출고 전표의 라인을 보인다', async () => {
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -543,7 +576,7 @@ describe('생산창고 입고 화면', () => {
   it('전표를 되돌리면 숫자판도 함께 접는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.click(await receivedField());
@@ -567,7 +600,7 @@ describe('생산창고 입고 화면', () => {
   it('숫자판이 서면 아래를 비울 표시를 붙인다', async () => {
     const user = userEvent.setup();
     const { container } = mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     await user.click(await receivedField());
@@ -583,7 +616,7 @@ describe('생산창고 입고 화면', () => {
   it('이전·다음은 투입 라인과 호퍼 사이를 넘어가지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     /* 호퍼 줄이 선 뒤에 잰다 - 줄이 없으면 넘어갈 곳도 없어 넘어가는지가 드러나지 않는다. */
@@ -613,7 +646,7 @@ describe('생산창고 입고 화면', () => {
   it('다음 호퍼로 옮기면 포커스도 그 칸으로 간다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '설비' }));
@@ -637,7 +670,7 @@ describe('생산창고 입고 화면', () => {
   it('설비를 고르면 그 호퍼의 전산 잔량을 보인다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -655,7 +688,7 @@ describe('생산창고 입고 화면', () => {
   it('숫자판으로 출고 수량을 넘겨 적으면 까닭과 다음 걸음을 말한다', async () => {
     const user = userEvent.setup();
     mount({ issueQty: 12 });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     const field = await receivedField();
@@ -680,7 +713,7 @@ describe('생산창고 입고 화면', () => {
   it('호퍼가 지정되지 않은 설비는 고를 것에 서지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -710,7 +743,7 @@ describe('생산창고 입고 화면', () => {
         },
       ],
     });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
 
     /* 품목을 막았으므로 줄 이름으로 기다릴 수 없다 - 설비 고르는 자리가 설 때까지 기다린다. */
@@ -726,7 +759,7 @@ describe('생산창고 입고 화면', () => {
   it('호퍼 줄마다 LOT 번호를 함께 보인다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -790,7 +823,7 @@ describe('생산창고 입고 화면', () => {
         },
       ],
     });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -816,7 +849,7 @@ describe('생산창고 입고 화면', () => {
   it('한 LOT 에 적은 값이 같은 품목의 다른 LOT 으로 번지지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -849,7 +882,7 @@ describe('생산창고 입고 화면', () => {
         },
       ],
     });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -884,7 +917,7 @@ describe('생산창고 입고 화면', () => {
   /* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
   it('어디로 들어온 것인지 보인다', async () => {
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -904,7 +937,7 @@ describe('생산창고 입고 화면', () => {
 
   it('연결돼 있으면 그 말을 하지 않는다', async () => {
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     expect(screen.queryByText('오프라인입니다')).toBeNull();
   });
@@ -916,7 +949,7 @@ describe('생산창고 입고 화면', () => {
   it('수령 수량을 숫자판으로 넣는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -933,7 +966,7 @@ describe('생산창고 입고 화면', () => {
   it('출고 수량보다 많이 받지 못한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
@@ -946,7 +979,7 @@ describe('생산창고 입고 화면', () => {
   it('모자라면 사유를 고르기 전에는 확정할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -969,7 +1002,7 @@ describe('생산창고 입고 화면', () => {
   it('고를 사유가 없으면 모자라도 확정할 수 있다', async () => {
     const user = userEvent.setup();
     mount({ noReasonOptions: true });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -990,7 +1023,7 @@ describe('생산창고 입고 화면', () => {
   it('사유 목록을 기다리는 동안에는 모자란 수령을 확정하지 않는다', async () => {
     const user = userEvent.setup();
     mount({ reasonsPending: true });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -1003,7 +1036,7 @@ describe('생산창고 입고 화면', () => {
   it('출고보다 많이 받으면 모자라다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
@@ -1016,7 +1049,7 @@ describe('생산창고 입고 화면', () => {
   it('전량 받으면 사유 없이 확정한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1033,7 +1066,7 @@ describe('생산창고 입고 화면', () => {
    */
   it('이미 받은 출고 전표로 들어오면 그 사실을 말하고 막는다', async () => {
     mount({ alreadyReceived: true });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -1048,7 +1081,7 @@ describe('생산창고 입고 화면', () => {
   it('이미 받았는지 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
     const user = userEvent.setup();
     mount({ receivedCheckUnreachable: true });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -1064,7 +1097,7 @@ describe('생산창고 입고 화면', () => {
   it('확인이 끝나면 확인하지 못했다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1079,7 +1112,7 @@ describe('생산창고 입고 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1112,7 +1145,7 @@ describe('생산창고 입고 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1133,7 +1166,7 @@ describe('생산창고 입고 화면', () => {
   it('단말 보관소가 거절하면 기록되지 않았다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1147,7 +1180,7 @@ describe('생산창고 입고 화면', () => {
   it('서버가 되돌리면 되돌아왔다고 말한다', async () => {
     const user = userEvent.setup();
     mount({ rejectReceipt: true });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1161,7 +1194,7 @@ describe('생산창고 입고 화면', () => {
    */
   it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await screen.findByText(`${ISSUE_NO} · 1라인`);
 
@@ -1175,14 +1208,16 @@ describe('생산창고 입고 화면', () => {
   it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await screen.findByText(`${ISSUE_NO} · 1라인`);
     scan(OTHER_ISSUE_NO);
 
     await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
 
-    expect(await screen.findByText(`${OTHER_ISSUE_NO} 출고 전표를 찾지 못했습니다`)).toBeTruthy();
+    expect(
+      await screen.findByText(`${OTHER_ISSUE_NO} 에 맞는 자재 LOT 도 출고 전표도 찾지 못했습니다`),
+    ).toBeTruthy();
   });
 
   /*
@@ -1192,7 +1227,7 @@ describe('생산창고 입고 화면', () => {
   it('새 전표를 받으면 고른 설비와 잰 값이 비워진다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -1222,7 +1257,7 @@ describe('생산창고 입고 화면', () => {
         },
       ],
     });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
     scan(ISSUE_NO);
     await receivedField();
 
@@ -1290,7 +1325,7 @@ const replenishmentRequest = (seen?: Request[], putawayTaskIds: number[] = []): 
 describe('생산창고 입고 화면 — 창고 보충 출고(004)', () => {
   it('US2-6 창고 보충 출고를 대면 W/O 없이 열리고 「창고 보충」 칩과 요청번호를 보인다', async () => {
     mount({ extra: replenishmentRequest() });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -1302,7 +1337,7 @@ describe('생산창고 입고 화면 — 창고 보충 출고(004)', () => {
 
   it('US2-6 W/O 출고는 지금처럼 「생산 현장」 칩이고 요청번호를 보이지 않는다', async () => {
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -1314,7 +1349,7 @@ describe('생산창고 입고 화면 — 창고 보충 출고(004)', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ extra: replenishmentRequest(seen, [61, 62]) });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -1333,7 +1368,7 @@ describe('생산창고 입고 화면 — 창고 보충 출고(004)', () => {
 
   it('W/O 출고도 창고 보충도 아니면 지금처럼 막는다', async () => {
     mount({ pickingSourceTypeCode: 'SHIPMENT_ORDER' });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -1363,7 +1398,7 @@ describe('생산창고 입고 화면 — 창고 보충 도착 위치 이름(004)
         }),
     };
     mount({ extra: [staging, ...replenishmentRequest()] });
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
@@ -1373,10 +1408,150 @@ describe('생산창고 입고 화면 — 창고 보충 도착 위치 이름(004)
 
   it('W/O 출고의 도착 위치는 지금처럼 코드로 보인다', async () => {
     mount();
-    await screen.findByLabelText(/출고 QR 스캔/);
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
 
     scan(ISSUE_NO);
 
     expect(await screen.findByText('도착 L1-STG')).toBeTruthy();
+  });
+});
+
+/*
+ * 008 부분 출고 LOT 분할(omf-all-around#289) — 출고 QR 대신 자재 LOT 라벨(분할 LOT · 전량 출고한 원래 LOT)을 읽어
+ * 그 LOT 의 입고 안 된 출고를 연다. 해석 순서는 옛 출고 QR → LOT 번호 정확 일치 → 출고번호(research R-7).
+ */
+describe('생산창고 입고 — 자재 LOT 라벨로 출고 찾기 (008)', () => {
+  /** 합성값 — 원래 LOT 1,000 EA 에서 300 을 부분 출고한 분할 LOT. */
+  const SPLIT_LOT_NO = 'RM-1001|300|261117|100330|0001-S1';
+  const ORIGINAL_LOT_NO = 'RM-1001|1000|261117|100330|0001';
+  const splitLine = {
+    goodsIssueLineId: 1,
+    goodsIssueId: 500,
+    lineNo: 1,
+    itemId: 100,
+    lotId: 1000,
+    lotNo: SPLIT_LOT_NO,
+    splitFromLotId: 999,
+    splitFromLotNo: ORIGINAL_LOT_NO,
+    issueQty: 300,
+    uomId: 9,
+  };
+  const ISSUE_AT = '2026-11-17T08:42:00+09:00';
+
+  it('Q12 · US3-1 분할 LOT 라벨을 읽으면 그 LOT 의 입고 안 된 출고를 열고 그 줄을 표시한다', async () => {
+    const issueQueries: string[] = [];
+    mount({
+      issueQueries,
+      lots: [{ lotId: 1000, lotNo: SPLIT_LOT_NO }],
+      byLot: [{ goodsIssueId: 500, goodsIssueNo: ISSUE_NO, issuedAt: ISSUE_AT }],
+      linesById: { 500: [splitLine] },
+    });
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
+    scan(SPLIT_LOT_NO);
+
+    expect(await screen.findByText(`${ISSUE_NO} · 1라인`)).toBeTruthy();
+    expect(
+      screen.getByText('스캔한 자재 LOT 이 든 출고 전표입니다. 그 라인을 표시했습니다.'),
+    ).toBeTruthy();
+    expect(screen.getByText('스캔한 LOT')).toBeTruthy();
+    expect(screen.getByText(`분할 · 원래 LOT ${ORIGINAL_LOT_NO}`)).toBeTruthy();
+    /* LOT 축으로 «받을 출고만» 묻고, 출고번호(q) 축은 부르지 않는다. */
+    const asked = issueQueries.map((query) => new URLSearchParams(query));
+    expect(
+      asked.some(
+        (query) =>
+          query.get('lotId') === '1000' && query.get('awaitingShopfloorReceiptOnly') === 'true',
+      ),
+    ).toBe(true);
+    expect(asked.some((query) => query.has('q'))).toBe(false);
+    /* 입고 본문의 라인 LOT 은 출고 라인 그대로 — 분할 LOT 이 실린다. */
+    expect(await receivedField()).toBeTruthy();
+  });
+
+  it('Q13 · US3-2 전량 출고한 원래 LOT 라벨도 같은 길로 열린다 — 분할 표시는 없다', async () => {
+    mount({
+      lots: [{ lotId: 1000, lotNo: ORIGINAL_LOT_NO }],
+      byLot: [{ goodsIssueId: 500, goodsIssueNo: ISSUE_NO, issuedAt: ISSUE_AT }],
+      linesById: {
+        500: [{ ...splitLine, lotNo: ORIGINAL_LOT_NO, splitFromLotId: null, splitFromLotNo: null }],
+      },
+    });
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
+    scan(ORIGINAL_LOT_NO);
+
+    expect(await screen.findByText(`${ISSUE_NO} · 1라인`)).toBeTruthy();
+    expect(screen.getByText('스캔한 LOT')).toBeTruthy();
+    expect(screen.queryByText(/분할 · 원래 LOT/u)).toBeNull();
+  });
+
+  it('LOT 은 있으나 받을 출고가 없으면 0건이라고 말하고 출고번호로 넘어가지 않는다', async () => {
+    const issueQueries: string[] = [];
+    mount({ issueQueries, lots: [{ lotId: 999, lotNo: ORIGINAL_LOT_NO }], byLot: [] });
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
+    scan(ORIGINAL_LOT_NO);
+
+    expect(await screen.findByText('이 LOT 으로 받을 출고가 없습니다')).toBeTruthy();
+    expect(issueQueries.some((query) => new URLSearchParams(query).has('q'))).toBe(false);
+  });
+
+  it('Q15 받을 출고가 여럿이면 오래된 순으로 보이고 고른 전표를 연다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lots: [{ lotId: 1000, lotNo: ORIGINAL_LOT_NO }],
+      /* 일부러 새것을 앞에 둔다 — 화면이 오래된 순으로 세워야 한다. */
+      byLot: [
+        { goodsIssueId: 501, goodsIssueNo: SECOND_ISSUE_NO, issuedAt: '2026-11-17T07:55:00+09:00' },
+        { goodsIssueId: 500, goodsIssueNo: ISSUE_NO, issuedAt: '2026-11-16T15:40:00+09:00' },
+      ],
+      linesById: {
+        500: [{ ...splitLine, lotNo: ORIGINAL_LOT_NO, splitFromLotNo: null, issueQty: 800 }],
+        501: [
+          {
+            ...splitLine,
+            goodsIssueId: 501,
+            lotNo: ORIGINAL_LOT_NO,
+            splitFromLotNo: null,
+            issueQty: 600,
+          },
+          {
+            ...splitLine,
+            goodsIssueLineId: 2,
+            goodsIssueId: 501,
+            lotId: 2000,
+            lotNo: 'X',
+            issueQty: 100,
+          },
+        ],
+      },
+    });
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
+    scan(ORIGINAL_LOT_NO);
+
+    expect(await screen.findByText('이 LOT 으로 받을 출고가 2건입니다')).toBeTruthy();
+    const cards = screen.getAllByRole('button', { name: /GI-2026-0004/u });
+    expect(cards.map((card) => card.textContent)).toEqual([
+      expect.stringContaining(ISSUE_NO),
+      expect.stringContaining(SECOND_ISSUE_NO),
+    ]);
+    expect(cards[0]?.textContent).toContain('가장 오래됨');
+    expect(cards[0]?.textContent).toContain('이 LOT 800');
+    expect(cards[1]?.textContent).toContain('이 LOT 600');
+    expect(cards[1]?.textContent).toContain('2라인');
+
+    await user.click(cards[1] as HTMLElement);
+
+    expect(await screen.findByText(`${SECOND_ISSUE_NO} · 2라인`)).toBeTruthy();
+    expect(screen.queryByText('이 LOT 으로 받을 출고가 2건입니다')).toBeNull();
+  });
+
+  it('Q14 옛 출고 QR 은 LOT 을 묻지 않고 지금처럼 라인으로 연다', async () => {
+    const issueQueries: string[] = [];
+    mount({ issueQueries, lots: [{ lotId: 1000, lotNo: SPLIT_LOT_NO }] });
+    await screen.findByLabelText(/자재 LOT 라벨 또는 출고번호/);
+    scan(`OMF-GIL|17|${ISSUE_NO}|1`);
+
+    expect(await screen.findByText(`${ISSUE_NO} · 1라인`)).toBeTruthy();
+    expect(issueQueries.some((query) => query.includes('goodsIssueLineId=17'))).toBe(true);
+    expect(screen.queryByText('스캔한 LOT')).toBeNull();
   });
 });
