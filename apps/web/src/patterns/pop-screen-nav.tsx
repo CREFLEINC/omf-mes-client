@@ -213,7 +213,6 @@ export const PopScreenNav = ({
   const navigate = useNavigate();
   const { pathname, access, workCounts, pending, total, go } = usePopNavigation();
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;
-  const [picked, setPicked] = useState<PopScreenGroupKey | null>(null);
   const [open, setOpen] = useState(false);
   const currentTab = useRef<HTMLButtonElement | null>(null);
 
@@ -222,9 +221,8 @@ export const PopScreenNav = ({
     currentTab.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [pathname, access.state]);
 
-  /* 화면을 옮기면 고른 묶음과 펼친 창을 처음으로 돌린다 — 지금 화면의 묶음이 다시 보인다. */
+  /* 화면을 옮기면 펼친 창을 닫는다. */
   useEffect(() => {
-    setPicked(null);
     setOpen(false);
   }, [pathname]);
 
@@ -243,7 +241,7 @@ export const PopScreenNav = ({
   if (pathname === POP_ENTRY_SCREEN_PATH) return null;
 
   const isHome = pathname === POP_HOME_PATH;
-  const shownGroup = picked ?? current?.group ?? null;
+  const shownGroup = current?.group ?? null;
   const groups = POP_SCREEN_GROUPS.map((group) => {
     const screens = access.screens.filter((screen) => screen.group === group.key);
     const count = screens.reduce((sum, screen) => sum + countOf(screen, workCounts.counts), 0);
@@ -261,10 +259,9 @@ export const PopScreenNav = ({
           <button
             type="button"
             className="pop-nav-group pop-nav-group--home"
-            aria-current={isHome && picked === null ? 'page' : undefined}
-            data-on={isHome && picked === null ? 'true' : undefined}
+            aria-current={isHome ? 'page' : undefined}
+            data-on={isHome ? 'true' : undefined}
             onClick={() => {
-              setPicked(null);
               if (!isHome) void navigate(POP_HOME_PATH);
             }}
           >
@@ -280,7 +277,12 @@ export const PopScreenNav = ({
               data-on={shownGroup === group.key ? 'true' : undefined}
               aria-label={group.count > 0 ? nav.groupCount(group.name, group.count) : undefined}
               onClick={() => {
-                setPicked(group.key);
+                /*
+                 * 묶음을 누르면 그 묶음의 첫 화면(첫 탭)으로 간다(사용자 지시 2026-11-17) — 탭만
+                 * 바꾸면 화면은 홈에 남아 무엇이 열렸는지 헷갈린다. 이미 그 묶음 화면이면 그대로 둔다.
+                 */
+                const first = group.screens[0];
+                if (shownGroup !== group.key && first !== undefined) go(first);
               }}
             >
               {GROUP_ICONS[group.key]}

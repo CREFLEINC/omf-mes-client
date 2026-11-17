@@ -131,15 +131,20 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(groupButton('생산')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('묶음을 누르면 탭만 바뀌고, 탭을 눌러야 화면이 옮겨진다', async () => {
+  it('묶음을 누르면 그 묶음의 첫 탭 화면으로 가고, 지금 묶음을 다시 누르면 그대로다', async () => {
     const user = userEvent.setup();
     setup();
     await screen.findByRole('navigation', { name: nav.screensLabel('생산') });
 
+    await user.click(groupButton('생산'));
+    expect(screen.getByText('지금: /pop/material-input')).toBeInTheDocument();
+
     await user.click(groupButton('출하'));
 
     const tabs = screen.getByRole('navigation', { name: nav.screensLabel('출하') });
-    expect(screen.getByText('지금: /pop/material-input')).toBeInTheDocument();
+    const firstTab = within(tabs).getAllByRole('button')[0];
+    expect(firstTab).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByText('지금: /pop/material-input')).not.toBeInTheDocument();
 
     await user.click(within(tabs).getByRole('button', { name: /^재작업 실적 등록/u }));
     expect(screen.getByText('지금: /pop/rework-results')).toBeInTheDocument();

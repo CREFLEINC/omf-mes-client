@@ -101,8 +101,9 @@ const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
  *    전에는 경로를 돌려줘 성공으로 접혔고, 라벨이 안 나왔는데 「인쇄했습니다」가 떴다(2단계 검증 2026-10-16).
  */
 if (import.meta.env.DEV && window.pop === undefined) {
-  window.pop =
-    import.meta.env.VITE_POP_VIRTUAL_PRINTERS === '1'
+  /* 셸 전역 타입(`PopShellApi`)은 인쇄 통로만 적는다 — 토큰 통로는 `pop-terminal-token` 이 따로 읽는다. */
+  const devShell = {
+    ...(import.meta.env.VITE_POP_VIRTUAL_PRINTERS === '1'
       ? virtualPrinterShell()
       : {
           rendition: {
@@ -110,7 +111,35 @@ if (import.meta.env.DEV && window.pop === undefined) {
               throw new Error('브라우저 실행 — 프린터로 보내지 않았습니다.');
             },
           },
-        };
+        }),
+    deviceToken: devDeviceToken(),
+  };
+  window.pop = devShell;
+}
+
+/**
+ * 개발용 단말 토큰 보관 — 브라우저 POP 에서 새로 고침해도 단말 등록이 풀리지 않게 한다(사용자 지시 2026-11-17).
+ *
+ * ⭐ 설치본은 셸이 PC 안에 토큰을 보관한다(`window.pop.deviceToken`). 브라우저 실행에는 그 셸이 없어
+ *    메모리에만 두었고, 새로 고칠 때마다 등록이 풀렸다. 셸과 같은 모양(`get`·`set`)으로 브라우저
+ *    저장소에 둔다 — 빈 문자열은 지운다(셸과 같은 약속).
+ * ⛔ 설치본에는 없다(`window.pop` 을 셸이 심으면 이 자리를 지나지 않는다).
+ */
+function devDeviceToken() {
+  const KEY = 'omf.pop.dev.deviceToken';
+  return {
+    get: async (): Promise<string | undefined> => {
+      try {
+        return window.localStorage.getItem(KEY) ?? undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    set: async (value: string): Promise<void> => {
+      if (value === '') window.localStorage.removeItem(KEY);
+      else window.localStorage.setItem(KEY, value);
+    },
+  };
 }
 
 /**
