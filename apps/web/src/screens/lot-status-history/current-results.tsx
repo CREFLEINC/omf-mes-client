@@ -32,6 +32,7 @@ import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { formatPlantDateTime } from '../../patterns/plant-time';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
+import { LotNo } from '../lot-trace/trace-table';
 
 const t = messages.lotStatusHistory;
 const EMPTY = '—';
@@ -129,12 +130,13 @@ export const CurrentResults = ({
                 t.values.unlisted(row.lotTypeCode)}
             </Chip>
           )}
+          {/* 008 — 자재 LOT 번호(칸 구분 `|`)는 끝 칸(`0001-S1`)이 원래 LOT 과 가르는 자리라 앞을 줄이고 끝 칸을 남긴다(W-02-09 와 같다). */}
           <span
             className="lot-status-one-line"
             title={row.lotNo}
             aria-current={row.lotId === selectedLotId ? 'true' : undefined}
           >
-            {row.lotNo}
+            {row.lotNo.includes('|') ? <LotNo lotNo={row.lotNo} /> : row.lotNo}
           </span>
         </span>
       ),

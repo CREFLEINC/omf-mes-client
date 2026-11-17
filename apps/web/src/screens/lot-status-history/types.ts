@@ -70,7 +70,40 @@ export interface LotDetailView {
   sourceId: number;
   /** IQC 에서 적은 4M 변경품(서버 선행 P-86). 아니면 `null`. */
   fourMChange: FourMChangeForward | null;
+  /** 부분 출고로 떼어 낸 분할 LOT 이면 그 부모·분할 시각·출고(008 · contracts §7). 아니면 `null`. */
+  split: LotSplitView | null;
+  /** 이 LOT 에서 나온 분할 LOT 수(자손 전체). */
+  splitChildCount: number;
 }
+
+export interface LotSplitView {
+  parentLotId: number;
+  parentLotNo: string;
+  splitAt: string;
+  goodsIssue: { goodsIssueNo: string; lineNo: number } | null;
+}
+
+/** 분할 LOT 인가 — 부모와 분할 시각이 함께 있을 때만(옛 처분 선별 분할은 출고가 없을 수 있다). */
+const toSplitView = (lot: Lot): LotSplitView | null =>
+  lot.parentLotId === null ||
+  lot.parentLotId === undefined ||
+  lot.parentLotNo === null ||
+  lot.parentLotNo === undefined ||
+  lot.splitAt === null ||
+  lot.splitAt === undefined
+    ? null
+    : {
+        parentLotId: lot.parentLotId,
+        parentLotNo: lot.parentLotNo,
+        splitAt: lot.splitAt,
+        goodsIssue:
+          lot.splitGoodsIssue === null || lot.splitGoodsIssue === undefined
+            ? null
+            : {
+                goodsIssueNo: lot.splitGoodsIssue.goodsIssueNo,
+                lineNo: lot.splitGoodsIssue.lineNo,
+              },
+      };
 
 export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   lotNo: lot.lotNo,
@@ -84,6 +117,8 @@ export const toLotDetailView = ({ lot }: LotDetailResponse): LotDetailView => ({
   sourceTypeCode: lot.sourceTypeCode,
   sourceId: lot.sourceId,
   fourMChange: (lot as Lot).fourMChange ?? null,
+  split: toSplitView(lot),
+  splitChildCount: lot.splitChildCount ?? 0,
 });
 
 export interface LotStatusCountView {
