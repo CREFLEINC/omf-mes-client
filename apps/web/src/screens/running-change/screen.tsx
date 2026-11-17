@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -73,7 +73,6 @@ const describeOutcome = (outcome: ScanOutcome): string => {
  */
 export const RunningChangeScreen = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const workOrderId = readWorkOrderId(searchParams);
   const lotId = readLotId(searchParams);
   /*
@@ -266,11 +265,6 @@ export const RunningChangeScreen = () => {
               ? t.header.sessionNone
               : t.header.session(session.workSessionId)}
           </span>
-          {/* ⭐ 「단말#」 표기는 라벨(칩)로 보인다 — 다른 POP 머리줄과 같은 모양(사용자 지시 2026-09-15). */}
-          <Chip status={terminalId === null ? 'warning' : 'info'}>
-            {terminalId === null ? t.header.terminalUnknown : t.header.terminal(terminalId)}
-          </Chip>
-
           {/*
            * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
            * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
@@ -284,24 +278,6 @@ export const RunningChangeScreen = () => {
             </Chip>
           )}
         </p>
-        {/*
-         * 같은 W/O 로 생산 작업에 돌아간다(P-02-04 개선 명세 ⑥). W/O 없이 들어왔으면 돌아갈 곳이 없어 두지
-         * 않는다. 담은 교체는 단말 큐에 있어 화면을 떠나도 사라지지 않는다.
-         */}
-        {workOrderId !== null && (
-          <span className="pop-header-tools">
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              onClick={() => {
-                void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
-              }}
-            >
-              {messages.productionResult.flow.actions.backToWork}
-            </Button>
-          </span>
-        )}
       </header>
 
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}

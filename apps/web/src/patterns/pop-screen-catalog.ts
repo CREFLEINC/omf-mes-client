@@ -47,7 +47,23 @@ export interface PopScreen {
    * 화면 이동 창이 이 화면 항목 뒤에 수를 붙인다.
    */
   countKey?: TerminalWorkCountKey;
+  /** 묶음 줄(자재·생산·품질·출하·설비·창고)에서 이 화면이 속한 묶음(#291). */
+  group: PopScreenGroupKey;
 }
+
+export type PopScreenGroupKey = 'material' | 'production' | 'quality' | 'shipping' | 'facility';
+
+/**
+ * 묶음 줄의 순서와 이름(#291). 화면 코드 앞자리로 나누되, 품질 검사 화면(P-02-13·P-02-15·P-04-06)은
+ * 생산·출하가 아니라 품질에 둔다.
+ */
+export const POP_SCREEN_GROUPS: readonly { key: PopScreenGroupKey; name: string }[] = [
+  { key: 'material', name: '자재' },
+  { key: 'production', name: '생산' },
+  { key: 'quality', name: '품질' },
+  { key: 'shipping', name: '출하' },
+  { key: 'facility', name: '설비·창고' },
+];
 
 /**
  * 갈 수 있는 POP 화면.
@@ -59,60 +75,121 @@ export interface PopScreen {
  * 진입 화면으로 되돌아가, 작업자에게는 「눌리지 않는 버튼」으로 보인다.
  */
 export const POP_SCREENS: readonly PopScreen[] = [
-  { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재 관리 LOT 라벨' },
-  { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '자재 출고 QR 발행' },
-  { path: '/pop/work-start', code: 'P-02-01', name: '작업 지시 목록', countKey: 'workStart' },
-  { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입', acceptsWorkOrderId: true },
+  {
+    path: '/pop/material-lot-label',
+    code: 'P-01-01',
+    group: 'material',
+    name: '자재 관리 LOT 라벨',
+  },
+  { path: '/pop/goods-issue-qr', code: 'P-01-02', group: 'material', name: '자재 출고 QR 발행' },
+  {
+    path: '/pop/work-start',
+    code: 'P-02-01',
+    group: 'production',
+    name: '작업 지시 목록',
+    countKey: 'workStart',
+  },
+  {
+    path: '/pop/material-input',
+    code: 'P-02-03',
+    group: 'production',
+    name: '자재 투입',
+    acceptsWorkOrderId: true,
+  },
   {
     path: '/pop/production-result',
     code: 'P-02-04',
+    group: 'production',
     name: '생산 작업',
     acceptsWorkOrderId: true,
   },
-  { path: '/pop/packing-work', code: 'P-02-08', name: '생산 포장', acceptsWorkOrderId: true },
-  { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨 재출력' },
-  { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단', acceptsWorkOrderId: true },
+  {
+    path: '/pop/packing-work',
+    code: 'P-02-08',
+    group: 'production',
+    name: '생산 포장',
+    acceptsWorkOrderId: true,
+  },
+  {
+    path: '/pop/packing-label-reprint',
+    code: 'P-02-09',
+    group: 'production',
+    name: '포장 라벨 재출력',
+  },
+  {
+    path: '/pop/work-hold',
+    code: 'P-02-10',
+    group: 'production',
+    name: '작업 중단',
+    acceptsWorkOrderId: true,
+  },
   {
     path: '/pop/running-change',
     code: 'P-02-11',
+    group: 'production',
     name: '러닝체인지 부품 교체',
     acceptsWorkOrderId: true,
   },
   {
     path: '/pop/emergency-work-orders',
     code: 'P-02-12',
+    group: 'production',
     name: '긴급 W/O',
     countKey: 'emergencyWorkOrder',
   },
-  { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
+  { path: '/pop/pqc-inspection', code: 'P-02-13', group: 'quality', name: 'PQC 제품 검사' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
-  { path: '/pop/material-defect', code: 'P-02-14', name: '자재 불량 등록' },
+  { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
-  { path: '/pop/inspection-sheet', code: 'P-02-15', name: '제품 검사표 입력' },
-  { path: '/pop/packing', code: 'P-04-01', name: '출하 포장', countKey: 'shipmentPacking' },
+  { path: '/pop/inspection-sheet', code: 'P-02-15', group: 'quality', name: '제품 검사표 입력' },
+  {
+    path: '/pop/packing',
+    code: 'P-04-01',
+    group: 'shipping',
+    name: '출하 포장',
+    countKey: 'shipmentPacking',
+  },
   {
     path: '/pop/rework-results',
     code: 'P-04-03',
+    group: 'shipping',
     name: '재작업 실적 등록',
     countKey: 'reworkResult',
   },
-  { path: '/pop/repack-label-issue', code: 'P-04-04', name: '재구성 신규 라벨 발행' },
-  { path: '/pop/shipping-units', code: 'P-04-05', name: '출하 단위 구성' },
+  {
+    path: '/pop/repack-label-issue',
+    code: 'P-04-04',
+    group: 'shipping',
+    name: '재구성 신규 라벨 발행',
+  },
+  { path: '/pop/shipping-units', code: 'P-04-05', group: 'shipping', name: '출하 단위 구성' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#109) — 화면 코드는 사용자 결정으로 부여했다. */
   {
     path: '/pop/oqc-inspection',
     code: 'P-04-06',
+    group: 'quality',
     name: 'OQC 출하검사 판정',
     countKey: 'oqcInspection',
   },
-  { path: '/pop/tool-usage', code: 'P-05-01', name: '툴 사용실적 입력' },
-  { path: '/pop/downtime', code: 'P-05-02', name: '비가동 실적 입력' },
+  { path: '/pop/tool-usage', code: 'P-05-01', group: 'facility', name: '툴 사용실적 입력' },
+  { path: '/pop/downtime', code: 'P-05-02', group: 'facility', name: '비가동 실적 입력' },
   /*
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
    *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.
    */
-  { path: '/pop/location-label', code: 'P-06-01', name: '창고 적재 위치 라벨 발행' },
+  {
+    path: '/pop/location-label',
+    code: 'P-06-01',
+    group: 'facility',
+    name: '창고 적재 위치 라벨 발행',
+  },
 ];
 
 /** 진입 화면. 목록에서 빠지는 것이 정상이라는 사실을 감지기가 이 값으로 확인한다. */
 export const POP_ENTRY_SCREEN_PATH = '/pop/worker-assignment';
+
+/**
+ * 홈(#291) — 사번 확인 뒤 처음 서는 화면. 권한 코드가 없는 안내 화면이라 `POP_SCREENS`(권한으로
+ * 거르는 이동 후보)에 담지 않고, 공통 메뉴의 [홈] 단추로만 간다.
+ */
+export const POP_HOME_PATH = '/pop/home';

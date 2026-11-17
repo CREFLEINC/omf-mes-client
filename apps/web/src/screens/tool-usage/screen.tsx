@@ -359,7 +359,6 @@ export const ToolUsageScreen = () => {
          */}
         {headerContext === '' ? null : <p className="pop-context">{headerContext}</p>}
         <div className="pop-context-right">
-          {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(모바일 셸 전례). */}
           <Chip status={isOnline ? 'success' : 'warning'}>
             {isOnline ? messages.common.connection.online : messages.common.connection.offline}

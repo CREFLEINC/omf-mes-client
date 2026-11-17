@@ -42,8 +42,7 @@ import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-rou
 
 import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
-import { PopLogoutButton } from '../patterns/pop-logout';
-import { PopScreenNavButton } from '../patterns/pop-screen-nav';
+import { PopScreenNav } from '../patterns/pop-screen-nav';
 import {
   PopRegistrationProvider,
   usePopRegistration,
@@ -165,7 +164,8 @@ function virtualPrinterShell() {
 const POP_ENTRY_PATH = '/pop/worker-assignment';
 
 /**
- * 화면 위에 늘 서 있는 것 — **화면 이동**과 **사용자 전환** 두 자리다(공유계약 G-34).
+ * 화면 위에 늘 서 있는 것 — **공통 이동 메뉴**(맨 위 줄·업무 묶음·화면 탭, #291)다. [사용자 전환]도
+ * 그 맨 위 줄에 있다.
  *
  * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있고, 그래야
  * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
@@ -174,13 +174,19 @@ const POP_ENTRY_PATH = '/pop/worker-assignment';
 const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
+  const { terminal } = usePopRegistration();
 
+  /*
+   * ⭐ 공통 이동 메뉴(#291)를 화면 «위»에 세우고, 화면은 남은 높이를 가져간다(`.pop-frame__body`).
+   *    화면들은 `height: 100%` 로 그 칸을 채우므로 화면 코드는 그대로다.
+   */
   return (
-    <>
-      <Outlet />
-      <PopScreenNavButton />
-      <PopLogoutButton />
-    </>
+    <div className="pop-frame">
+      <PopScreenNav terminalCode={terminal?.terminalCode ?? null} />
+      <div className="pop-frame__body">
+        <Outlet />
+      </div>
+    </div>
   );
 };
 

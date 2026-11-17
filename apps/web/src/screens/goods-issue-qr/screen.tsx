@@ -7,8 +7,6 @@ import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
-import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard } from './issue-target';
@@ -80,7 +78,6 @@ export const GoodsIssueQrScreen = () => {
   const entry = useGoodsIssueQrEntry();
   const [, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const identity = usePopIdentity();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   /**
@@ -405,22 +402,12 @@ export const GoodsIssueQrScreen = () => {
           <p className="pop-context">{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</p>
         )}
         <div className="pop-context-right">
-          <PopWorkerTag workerNo={entry.workerNo} />
           <PrinterChip
             isLoading={printers.isPending}
             isError={printers.isError}
             displayName={defaultPrinter(printers.data)?.displayName ?? null}
             hasPrinter={(printers.data?.length ?? 0) > 0}
           />
-          {/*
-           * 단말도 상시 보인다(스펙 §3 머리줄 `POP-W1 ●`). 인쇄가 안 될 때 「이 단말이 무엇인가」가
-           * 프린터 상태와 함께 있어야 현장이 어느 자리를 봐야 하는지 안다.
-           */}
-          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
-            {`${t.device.terminalLabel} ${
-              identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)
-            }`}
-          </Chip>
         </div>
       </header>
 

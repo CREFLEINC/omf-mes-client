@@ -8,7 +8,7 @@ import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-
 /**
  * POP 공통 조작 문구가 **고른 언어를 따르는지**를 베트남어로 잰다.
  *
- * 한국어 회차로는 문구를 코드에 박아 두어도 초록이다 — 실제로 `화면 이동`·`사용자 전환`·
+ * 한국어 회차로는 문구를 코드에 박아 두어도 초록이다 — 실제로 `화면 이동`(#291 부터 공통 이동 메뉴)·`사용자 전환`·
  * `선택`·`○시간 ○분` 이 베트남어 단말에서 한국어로 나왔다(2026-09-14). 그래서 베트남어로
  * 세우고, 한국어로는 찾히지 않는지 뒤집어 확인한다.
  */
@@ -18,15 +18,13 @@ const viMessages = LOCALES.vi;
 
 /* ⭐ 부품 모듈은 언어를 고른 «뒤에» 싣는다 — 모듈 최상위에서 문구를 붙잡는 자리가 있다. */
 let PopSelect: typeof import('../patterns/pop-select').PopSelect;
-let PopScreenNavButton: typeof import('../patterns/pop-screen-nav').PopScreenNavButton;
-let PopLogoutButton: typeof import('../patterns/pop-logout').PopLogoutButton;
+let PopScreenNav: typeof import('../patterns/pop-screen-nav').PopScreenNav;
 let toDurationLabel: typeof import('../screens/downtime-register/formatting').toDurationLabel;
 
 beforeAll(async () => {
   setLocale('vi');
   ({ PopSelect } = await import('../patterns/pop-select'));
-  ({ PopScreenNavButton } = await import('../patterns/pop-screen-nav'));
-  ({ PopLogoutButton } = await import('../patterns/pop-logout'));
+  ({ PopScreenNav } = await import('../patterns/pop-screen-nav'));
   ({ toDurationLabel } = await import('../screens/downtime-register/formatting'));
 });
 
@@ -41,30 +39,28 @@ const OPTIONS = Array.from({ length: 7 }, (_, index) => ({
 }));
 
 describe('POP 공통 조작 문구 — 베트남어', () => {
-  it('머리줄의 화면 이동·사용자 전환 단추가 베트남어로 선다', async () => {
-    renderWithProviders(
-      <>
-        <PopScreenNavButton />
-        <PopLogoutButton />
-      </>,
-      {
-        route: '/pop/work-start',
-        fetch: createStubFetch([
-          {
-            match: (request: Request) => request.url.endsWith('/app/sessions/current'),
-            respond: () => jsonResponse({ userId: 1, permissions: ['P-02-01', 'P-05-02'] }),
-          },
-        ]),
-      },
-    );
+  it('공통 이동 메뉴(#291)의 홈·남은 작업·사용자 전환이 베트남어로 선다', async () => {
+    renderWithProviders(<PopScreenNav terminalCode="POP-01" />, {
+      route: '/pop/work-start',
+      fetch: createStubFetch([
+        {
+          match: (request: Request) => request.url.endsWith('/app/sessions/current'),
+          respond: () => jsonResponse({ userId: 1, permissions: ['P-02-01', 'P-05-02'] }),
+        },
+      ]),
+    });
 
     expect(
-      await screen.findByRole('combobox', { name: viMessages.popChrome.screenNav }),
-    ).toHaveTextContent(viMessages.popChrome.screenNav);
+      await screen.findByRole('button', { name: viMessages.popChrome.nav.home }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: viMessages.popChrome.remaining.buttonLabel(0) }),
+    ).toHaveTextContent(viMessages.popChrome.remaining.button);
     expect(
       screen.getByRole('button', { name: viMessages.popChrome.userSwitch }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('화면 이동')).not.toBeInTheDocument();
+    expect(screen.queryByText('홈')).not.toBeInTheDocument();
+    expect(screen.queryByText('남은 작업')).not.toBeInTheDocument();
     expect(screen.queryByText('사용자 전환')).not.toBeInTheDocument();
   });
 

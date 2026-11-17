@@ -64,6 +64,7 @@ export interface PopDevScreen {
  * 파일은 여러 작업이 동시에 건드리는 자리다.
  */
 export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
+  { path: '/pop/home', label: '홈' },
   { path: '/pop/work-start', label: 'P-02-01 작업 지시 목록' },
   { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
   {

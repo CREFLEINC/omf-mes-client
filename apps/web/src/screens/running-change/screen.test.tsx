@@ -330,22 +330,19 @@ describe('러닝체인지 화면 — 읽기', () => {
   });
 
   /* 같은 W/O 로 생산 작업에 돌아가는 길(P-02-04 개선 명세 ⑥). W/O 없이 들어왔으면 두지 않는다. */
-  it('[생산 작업으로]를 누르면 같은 W/O 의 생산 작업으로 돌아간다', async () => {
-    const user = userEvent.setup();
-    const { router } = renderWithProviders(
+  /* #291 — 화면 사이 이동은 공통 메뉴의 탭이 맡는다(작업지시도 탭이 실어 준다). 머리줄 단추는 없앴다. */
+  it('머리줄에 [작업으로 돌아가기]를 두지 않는다', async () => {
+    renderWithProviders(
       <PopIdentityProvider value={IDENTIFIED}>
         <RunningChangeScreen />
       </PopIdentityProvider>,
-      { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE, dataRouter: true },
+      { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE },
     );
 
-    await user.click(
-      await screen.findByRole('button', {
-        name: messages.productionResult.flow.actions.backToWork,
-      }),
-    );
-    await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/production-result'));
-    expect(router?.state.location.search).toBe(`?workOrderId=${String(WORK_ORDER_ID)}`);
+    expect(await screen.findByText(t.header.workOrder(WORK_ORDER_ID))).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
+    ).not.toBeInTheDocument();
   });
 
   it('작업지시 없이 들어오면 [생산 작업으로]를 두지 않는다', async () => {
@@ -449,7 +446,6 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
     renderScreen({}, { terminalId: null, processes: null, equipment: null, workerNo: WORKER_NO });
 
     expect(await screen.findByText(UNIDENTIFIED_TEXT)).toBeInTheDocument();
-    expect(screen.getByText(t.header.terminalUnknown)).toBeInTheDocument();
   });
 
   it('사번을 모르면 맨 위 공용 띠로 말하고 막는다', async () => {

@@ -5,12 +5,34 @@ import { common } from './common';
 
 /** POP 화면 위에 늘 서 있는 공통 조작 문구 — 모든 POP 화면이 함께 쓴다. */
 export const popChrome: Translated<typeof ko.popChrome> = {
-  screenNav: 'Chuyển màn hình',
-  screenNavWork: {
-    trigger: 'Có việc còn lại',
-    title: 'Việc còn lại',
+  nav: {
+    brand: 'OMF-MES POP',
+    home: 'Trang chủ',
+    groupsLabel: 'Nhóm công việc',
+    screensLabel: (group: string): string => `Màn hình ${group}`,
+    groupCount: (group: string, count: number): string => `${group}, còn ${String(count)} việc`,
+    unknown: 'Chưa xác nhận được màn hình có thể chuyển đến',
+    empty: 'Không có màn hình nào để chuyển đến',
+  },
+  remaining: {
+    button: 'Việc còn lại',
+    buttonLabel: (count: number): string => `Việc còn lại ${String(count)}`,
+    title: (count: number): string => `Việc còn lại ${String(count)}`,
+    hint: 'Nhấn để chuyển ngay đến màn hình đó',
+    none: 'Không còn việc nào',
+    move: 'Chuyển',
+    close: 'Đóng',
     count: (name: string, count: number): string => `${name}, còn ${String(count)} việc`,
-    suffix: (count: number): string => `, còn ${String(count)} việc`,
+  },
+  home: {
+    title: 'Trang chủ',
+    greeting: (name: string): string => `Xin chào ${name}!`,
+    sub: 'Hôm nay hãy làm việc an toàn và chính xác nhé.',
+    remainingTitle: 'Việc còn lại',
+    remainingCount: (count: number): string => `${String(count)} việc`,
+    remainingNone: 'Hiện không còn việc nào.',
+    shortcutsTitle: 'Lối tắt',
+    shortcutsHint: 'Chuyển nhanh đến các màn hình hay dùng.',
   },
   userSwitch: 'Đổi người dùng',
   header: {

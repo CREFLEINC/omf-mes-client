@@ -35,7 +35,6 @@ import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { usePopWorkerEntry } from '../../patterns/pop-worker-entry';
-import { useWorkerSession } from '../../patterns/worker-session';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import {
   choosePrinter,
@@ -256,11 +255,6 @@ export const ProductionFlowScreen = () => {
    *    확인되면 같은 W/O에서 이어 간다. 맨 위 경고 띠 대신 하단 바 「남은 일」과 창이 말한다.
    */
   const workerEntry = usePopWorkerEntry(entry.workerNo);
-  const workerSession = useWorkerSession();
-  const workerName =
-    workerSession !== null && workerSession.worker.workerNo === entry.workerNo
-      ? (workerSession.worker.workerName ?? null)
-      : null;
   const queryClient = useQueryClient();
   const identity = usePopIdentity();
   const workOrder = useWorkOrder(entry.workOrderId);
@@ -1901,8 +1895,6 @@ export const ProductionFlowScreen = () => {
         title={t.title}
         equipmentCode={identity.equipment?.equipmentCode ?? null}
         equipmentName={identity.equipment?.equipmentName ?? null}
-        workerNo={entry.workerNo}
-        workerName={workerName}
         workOrderNo={workOrder.data?.workOrderNo ?? null}
         processName={workOrder.data?.processName ?? null}
         /* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */
@@ -1931,21 +1923,6 @@ export const ProductionFlowScreen = () => {
               rememberPrinterName(name, LOT_PRINTER_STORAGE_KEY);
             }}
           />
-        }
-        /* 작업 중 언제든 쓸 수 있는 동작이라 머리줄에 둔다(P-02-10). */
-        actions={
-          entry.workOrderId === null || isWorkOrderClosed ? undefined : (
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              onClick={() => {
-                void navigate(`/pop/work-hold?workOrderId=${String(entry.workOrderId)}`);
-              }}
-            >
-              {t.flow.actions.holdWork}
-            </Button>
-          )
         }
       />
 

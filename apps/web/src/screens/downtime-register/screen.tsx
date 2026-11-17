@@ -322,9 +322,6 @@ export const DowntimeRegisterScreen = () => {
         )}
 
         <p className="pop-context pop-context-right">
-          {/* 귀속 사번은 상시 보인다 — 단말을 넘겨받은 다음 작업자가 남의 이름으로 찍지 않게. */}
-          <span>{workerNo === null ? t.header.workerUnknown : t.header.worker(workerNo)}</span>
-
           {/*
            * ⭐ **미전송 건수는 필수 요건이다.** 「담긴 순간 성공」이라는 표시를 택한 근거가
            * 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.

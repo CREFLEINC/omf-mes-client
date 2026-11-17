@@ -181,10 +181,6 @@ export const MaterialInputScanScreen = () => {
   });
   const isWorkerMissing = workerEntry.isMissing;
   const openWorkerDialog = workerEntry.open;
-  const workerName =
-    workerSession !== null && workerSession.worker.workerNo === workerNo
-      ? (workerSession.worker.workerName ?? null)
-      : null;
 
   const titleId = useId();
   const remainingId = useId();
@@ -914,8 +910,6 @@ export const MaterialInputScanScreen = () => {
         title={t.title}
         equipmentCode={equipment?.equipmentCode ?? null}
         equipmentName={equipment?.equipmentName ?? null}
-        workerNo={workerNo}
-        workerName={workerName}
         workOrderNo={workOrder?.workOrderNo ?? null}
         processName={workOrder?.processName ?? workOrderProcess.processName}
         isEmergency={isEmergency}

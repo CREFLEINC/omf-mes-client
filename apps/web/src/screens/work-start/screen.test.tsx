@@ -273,17 +273,17 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
   });
 
   /** ⭐ 사용자 지시 2026-09-14 — 설비는 타이틀 옆, 단말은 오른쪽. */
-  it('머리줄은 타이틀 옆에 설비, 오른쪽에 단말 코드를 보인다', async () => {
+  /* #291 — 단말 코드는 공통 메뉴 맨 위 줄이 보인다. 머리줄에는 설비만 남는다. */
+  it('머리줄은 타이틀 옆에 설비를 보이고 단말 코드는 두지 않는다', async () => {
     renderScreen();
     const equipment = await screen.findByText(
       messages.popChrome.header.equipmentLabel(TERMINAL.equipmentCode, TERMINAL.equipmentName),
     );
-    const terminalLabel = screen.getByText(
-      messages.popChrome.header.terminalLabel(TERMINAL.terminalCode),
-    );
 
     expect(equipment.closest('.pop-context-right')).toBeNull();
-    expect(terminalLabel.closest('.pop-context-right')).not.toBeNull();
+    expect(
+      screen.queryByText(messages.popChrome.header.terminalLabel(TERMINAL.terminalCode)),
+    ).not.toBeInTheDocument();
   });
 
   it('설비가 매핑되지 않으면 타이틀 옆 설비 자리를 비운다', async () => {

@@ -14,6 +14,7 @@ import { WorkerCard } from './worker-card';
 import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { usePopRegistration } from '../../patterns/pop-registration';
+import { POP_HOME_PATH } from '../../patterns/pop-screen-catalog';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -323,11 +324,12 @@ export const WorkerAssignmentScreen = () => {
             setWorkerNo('');
           }}
           /*
-           * 제품 동작은 작업 시작 화면(P-02-01)으로 이어진다(§5-8). 현재 작업자 귀속은
+           * 제품 동작은 홈(#291)으로 이어진다(구 §5-8 은 작업 시작 화면). 현재 작업자 귀속은
            * 화면 밖 `worker-session`에 있으므로 이동 뒤에도 그대로 유지된다.
            */
           onGoToWork={() => {
-            void navigate('/pop/work-start');
+            /* 사번 확인 뒤 첫 화면은 홈이다(#291 · 사용자 결정 2026-11-17) — 남은 작업과 바로가기를 먼저 본다. */
+            void navigate(POP_HOME_PATH);
           }}
           /*
            * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 버튼이 아직

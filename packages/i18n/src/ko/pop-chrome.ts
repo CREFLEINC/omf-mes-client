@@ -7,19 +7,42 @@ import { named } from '../named';
 import { common } from './common';
 
 export const popChrome = {
-  /** 머리줄의 화면 이동 선택 단추. */
-  screenNav: '화면 이동',
   /**
-   * 화면 이동의 남은 작업 표시(피처 002). 수는 그 화면 목록의 건수다. 접근 이름에는 줄이지 않은 실제 수를 싣는다.
+   * 화면 위 공통 이동 메뉴(#291) — 맨 위 줄 · 업무 묶음 줄 · 화면 탭 줄. 묶음 이름은
+   * `patterns/pop-screen-catalog` 의 `POP_SCREEN_GROUPS` 가 정한다.
    */
-  screenNavWork: {
-    /** 남은 작업이 하나라도 있을 때 단추의 설명 — 단추의 점은 눈에만 보인다. */
-    trigger: '남은 작업 있음',
-    /** 팝업 맨 위 묶음의 제목. 수가 있는 화면만 모은다. */
-    title: '남은 작업',
+  nav: {
+    brand: 'OMF-MES POP',
+    home: '홈',
+    groupsLabel: '업무 묶음',
+    screensLabel: (group: string): string => `${group} 화면`,
+    /** 묶음 이름 뒤 숫자의 숨은 글 — 보이는 것은 배지다. */
+    groupCount: (group: string, count: number): string => `${group}, 남은 작업 ${String(count)}건`,
+    /** 이동할 화면을 판정하지 못했을 때 묶음 자리에 서는 사유(G-2 — 감추지 않고 사유를 보인다). */
+    unknown: '이동할 수 있는 화면을 확인하지 못했습니다',
+    empty: '이동할 수 있는 화면이 없습니다',
+  },
+  /** 묶음 줄 오른쪽 끝 [남은 작업] 과 그 펼침 창(피처 002 의 남은 작업 수). */
+  remaining: {
+    button: '남은 작업',
+    buttonLabel: (count: number): string => `남은 작업 ${String(count)}건`,
+    title: (count: number): string => `남은 작업 ${String(count)}건`,
+    hint: '누르면 그 화면으로 바로 이동합니다',
+    none: '남은 작업이 없습니다',
+    move: '이동',
+    close: '닫기',
     count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
-    /** 목록 항목 뒤에 붙는 숨은 글 — 보이는 것은 배지다. */
-    suffix: (count: number): string => `, 남은 작업 ${String(count)}건`,
+  },
+  /** 홈 화면(#291) — 사번 확인 뒤 처음 서는 화면. */
+  home: {
+    title: '홈',
+    greeting: (name: string): string => `${name} 님, 안녕하세요!`,
+    sub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
+    remainingTitle: '남은 작업',
+    remainingCount: (count: number): string => `${String(count)}건`,
+    remainingNone: '지금 남은 작업이 없습니다.',
+    shortcutsTitle: '바로가기',
+    shortcutsHint: '자주 쓰는 화면으로 바로 이동합니다.',
   },
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',

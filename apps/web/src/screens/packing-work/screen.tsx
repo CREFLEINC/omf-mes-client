@@ -1,9 +1,8 @@
-import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
+import { AlertBanner, Button, Card } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { addLine, findScannedLot, judgeQuantity, toPackingLine } from './contents';
 import { usePackingEntry } from './entry-context';
@@ -52,7 +51,6 @@ const t = messages.packingWork;
 export const PackingWorkScreen = () => {
   const titleId = useId();
   const entry = usePackingEntry();
-  const identity = usePopIdentity();
 
   const queryClient = useQueryClient();
   const outbox = usePackingWorkOutbox();
@@ -467,13 +465,6 @@ export const PackingWorkScreen = () => {
             entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
           }`}
         </p>
-        <div className="pop-context-right">
-          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
-            {`${t.device.terminalLabel} ${
-              identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)
-            }`}
-          </Chip>
-        </div>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

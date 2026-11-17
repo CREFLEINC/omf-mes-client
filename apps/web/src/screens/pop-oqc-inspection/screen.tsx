@@ -6,7 +6,6 @@ import { InspectionGuideNotice } from '../../patterns/inspection-guide';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { toApiError } from '../../patterns/request';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { CODE_GROUPS, toCodeOptions } from '../oqc-inspection/code-options';
@@ -270,9 +269,6 @@ export const PopOqcInspectionScreen = () => {
         {detail.data !== undefined && selectedId !== null && (
           <p className="pop-context">{detail.data.inspectionRequestNo}</p>
         )}
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={workerNo} />
-        </div>
       </header>
 
       <PopWorkerMissingBanner workerNo={workerNo} />

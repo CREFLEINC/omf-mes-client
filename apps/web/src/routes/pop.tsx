@@ -18,6 +18,7 @@ import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { PackingResultScreen } from '../screens/packing-result/screen';
+import { PopHomeScreen } from '../screens/pop-home/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -61,6 +62,11 @@ export const popRoutes: RouteObject[] = [
    * 여전히 셸의 `patterns/pop-identity` 몫이라, 사번 지정만으로 그 두 값까지 채워지지는 않는다.
    */
   { path: '/pop/worker-assignment', element: <WorkerAssignmentScreen /> },
+  /*
+   * 홈(#291) — 사번 확인 뒤 처음 서는 화면. 남은 작업과 바로가기만 보인다. 권한 코드가 없는
+   * 안내 화면이라 이동 후보(`patterns/pop-screen-catalog` 의 `POP_SCREENS`)에는 담지 않는다.
+   */
+  { path: '/pop/home', element: <PopHomeScreen /> },
   /*
    * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 관리웹 셸 배열의 형제로
    * 서서 `AppLayout`을 지나지 않는다.

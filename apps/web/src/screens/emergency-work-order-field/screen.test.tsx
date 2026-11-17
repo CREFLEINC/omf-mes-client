@@ -141,17 +141,12 @@ describe('목록이 잘렸는지', () => {
 });
 
 describe('POP 상단 띠', () => {
-  it('단말을 모르면 빈칸이 아니라 모른다고 적는다', async () => {
-    renderScreen();
-
-    expect(await screen.findByText(t.header.terminalUnknown)).toBeInTheDocument();
-  });
-
-  it('셸이 아는 단말 번호를 머리줄에 세운다', async () => {
-    /* 다른 POP 화면은 「단말 1001」로 뜨는데 이 화면만 비어 있었다(#1147). */
+  /* #291 — 단말은 공통 이동 메뉴 맨 위 줄이 보인다. 화면 머리줄에 다시 세우지 않는다. */
+  it('단말은 머리줄에 두지 않는다(공통 메뉴 맨 위 줄이 보인다)', async () => {
     renderScreen({ terminalId: 1001 });
 
-    expect(await screen.findByText(t.header.terminalLabel('1001'))).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
+    expect(screen.queryByText(t.header.terminalLabel('1001'))).not.toBeInTheDocument();
     expect(screen.queryByText(t.header.terminalUnknown)).not.toBeInTheDocument();
   });
 });

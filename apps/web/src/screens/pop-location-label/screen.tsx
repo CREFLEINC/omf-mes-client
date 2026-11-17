@@ -6,7 +6,6 @@ import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
 import { hasPrintBridge } from '../../patterns/pop-print';
@@ -193,9 +192,6 @@ export const PopLocationLabelScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={entry.workerNo} />
-        </div>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, useToast } from '@crefle/web-ui';
 import type { MaterialLotSummary, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,7 +8,6 @@ import { useApiClient } from '../../patterns/api-context';
 import { formatPlantClock } from '../../patterns/plant-time';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
@@ -101,7 +100,7 @@ export const PopMaterialLotLabelScreen = () => {
   const { client } = useApiClient();
   const toast = useToast();
   const createNoteId = useId();
-  const { workerNo, terminalId, plantId = null } = usePopIdentity();
+  const { workerNo, plantId = null } = usePopIdentity();
   const batch = useBatchIssue({ workerNo });
   const isIssuing = batch.isRunning;
 
@@ -419,7 +418,6 @@ export const PopMaterialLotLabelScreen = () => {
       <header className="pop-header">
         <h1 className="pop-title">{t.title}</h1>
         <div className="pop-context-right">
-          <PopWorkerTag workerNo={workerNo} />
           <PrinterChip
             printers={printers.data}
             selected={headPrinter}
@@ -435,12 +433,6 @@ export const PopMaterialLotLabelScreen = () => {
               rememberPrinterName(name);
             }}
           />
-          {/* 단말도 상시 보인다(스펙 §3 머리줄) — 다른 POP 화면과 같은 자리·순서다. */}
-          <Chip status={terminalId === null ? 'warning' : 'info'}>
-            {`${t.device.terminalLabel} ${
-              terminalId === null ? t.device.terminalUnknown : String(terminalId)
-            }`}
-          </Chip>
         </div>
       </header>
 

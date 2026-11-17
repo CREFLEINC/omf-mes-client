@@ -3447,19 +3447,18 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
 
   const bar = () => screen.getByRole('region', { name: messages.screenPatterns.actionBar.region });
 
-  it('[작업 중단]은 머리줄, [부품 교체]는 현재 LOT 구획 아래에 서고, 실적 전에는 이른 마감을 두지 않는다', async () => {
+  /* #291 — [작업 중단]은 머리줄에서 뺐다. 작업 중단 화면은 공통 메뉴의 탭으로 간다. */
+  it('[작업 중단]은 머리줄에 없고, [부품 교체]는 현재 LOT 구획 아래에 서고, 실적 전에는 이른 마감을 두지 않는다', async () => {
     renderScreen([]);
 
     const header = screen.getAllByRole('banner')[0] as HTMLElement;
-    expect(
-      await within(header).findByRole('button', { name: t.flow.actions.holdWork }),
-    ).toBeInTheDocument();
     const lotPane = await screen.findByRole('region', { name: t.flow.currentLot.current });
     expect(
       await within(lotPane).findByRole('button', { name: t.flow.actions.runningChange }),
     ).toBeInTheDocument();
     /* 마감할 수 없는 상태에서 늘 잠긴 버튼을 두지 않는다(C-3 보조 동작의 자리). */
     expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
+    expect(within(header).queryByRole('button', { name: t.flow.actions.holdWork })).toBeNull();
     expect(
       within(bar())
         .getAllByRole('button')

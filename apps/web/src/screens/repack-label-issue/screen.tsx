@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useIsOnline } from './connection';
 import { useRepackLabelEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
@@ -279,7 +278,6 @@ export const RepackLabelIssueScreen = () => {
           {t.title}
         </h1>
         <div className="pop-context-right">
-          <PopWorkerTag workerNo={entry.workerNo} />
           <Chip status={isOnline ? 'success' : 'error'}>
             {isOnline ? t.device.online : t.device.offline}
           </Chip>

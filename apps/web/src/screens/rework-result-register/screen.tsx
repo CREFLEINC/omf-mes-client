@@ -239,9 +239,6 @@ export const ReworkResultRegisterScreen = () => {
             : t.headerContext(selected.workOrderNo, selected.itemCode ?? `#${selected.itemId}`)}
         </p>
         <p className="pop-context pop-context-right">
-          <span>
-            {identity.workerNo === null ? t.workerUnknown : t.workerLabel(identity.workerNo)}
-          </span>
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
             {isOnline ? messages.common.connection.online : messages.common.connection.offline}
           </Chip>

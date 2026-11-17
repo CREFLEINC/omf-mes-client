@@ -838,15 +838,6 @@
 }
 
 /*
- * POP 머리줄의 사번 — **화면마다 같은 모양으로 선다**(`patterns/pop-worker-tag` · 사용자 지시
- * 2026-09-07). 칩이 아니라 글자다 — 칩은 상태의 어휘이고 사번은 맥락 값이다.
- */
-.pop-ui .pop-worker-tag {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/*
  * P-04-01 Packing 실적 등록 — **네 구획을 각각 상자로 세운다**(설계 §3 도면 ①②③④).
  *
  * 테두리 없이 늘어놓으니 스캔 둘·구성·진행이 한 덩어리로 보여, 어디서 한 묶음이 끝나는지가
@@ -3449,56 +3440,6 @@
 }
 
 /*
- * 로그아웃 자리 — **머리줄 오른쪽을 비우고 그 자리에 앉힌다**(`patterns/pop-logout`).
- *
- * ⛔ **겹쳐 놓지 않는다.** 떠 있는 버튼으로 두었더니 화면마다 다른 조작 버튼을 가렸다
- *    (실측 2026-09-08). 비운 만큼만 차지하므로 어느 화면의 무엇도 가리지 않는다.
- *
- * ⚠ 이 저장소의 POP 화면은 머리줄을 `.pop-header`(21화면)·`.pop-terminal-header`(1화면)
- *   둘 중 하나로 그린다 — 둘 다 비운다.
- */
-/*
- * ⛔ **버튼이 서는 화면에서만 비운다.** 진입 화면에는 로그아웃이 없는데도 자리를 비워 두어
- *    머리줄 오른쪽에 빈 칸이 남았다(실측 2026-09-08). 표식은 `patterns/pop-logout` 이 건다.
- */
-[data-pop-logout='on'] .pop-ui > .pop-header,
-[data-pop-logout='on'] .pop-ui > .pop-terminal-header {
-  /*
-   * ⛔ **이 값은 버튼이 차지하는 폭보다 «커야» 한다.** `.pop-logout` 은 `fixed` 라 자리를
-   *   만들지 않는다 — 머리줄이 비워 준 만큼만 안전지대다. 버튼을 줄이면서 이 값을 84 로
-   *   함께 줄였더니 머리줄 오른쪽 끝(연결 상태 배지)과 버튼이 붙었다(실측 2026-09-09 —
-   *   버튼 자리 95 · 비운 자리 84).
-   *
-   * ⚠ 현재 버튼 자리는 95(버튼 83 + 오른쪽 여백 12)이고, 여기에 옆 항목과의 사이 간격 12 를
-   *   더해 107 을 둔다 — 머리줄의 간격은 어디서나 12 다(사용자 지시 2026-09-10 ·
-   *   `.pop-context-right` 의 `--space-3`). 이 값은 [화면 이동]이 앉는 자리(`right`)이기도
-   *   하므로 두 버튼 사이 간격도 같은 12 가 된다.
-   *   **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
-   */
-  padding-right: var(--pop-logout-w, 107px);
-}
-
-.pop-logout {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  /*
-   * ⛔ **되돌림 값에 기대지 않는다.** `--pop-header-h` 는 `.pop-ui` 에 선언돼 있고 이 버튼은
-   *   그 «밖»에 서므로 변수가 닿지 않는다. 되돌림 값 64 로 버티고 있었는데 머리줄의 실제
-   *   높이는 56 이라(`control-height-md` + `space-4`) **버튼이 4픽셀 아래로 내려앉아 있었다**
-   *   (실측 2026-09-09 — 머리줄 가운데 28 · 버튼 가운데 32).
-   *
-   * ⭐ 그래서 같은 식을 `:root` 에도 선언해 이 버튼이 «같은 값»을 읽게 했다(위 §머리줄).
-   *   되돌림 값은 그 선언이 사라졌을 때를 위한 그물로만 남긴다.
-   */
-  height: var(--pop-header-h, 56px);
-  padding-right: 12px;
-}
-
-/*
  * ⛔ **색을 겉에서 입히지 않는다.** 보조 동작이라 DS 테두리 버튼(`variant="outlined"`) 모양
  *   그대로 둔다(화면 구성 규범 C-3, C-19: 채움과 빨강은 화면의 주 동작 하나에만 쓴다). 전에는
  *   여기서 바탕을 빨강으로 칠해 부품의 `variant` 를 바꿔도 화면이 그대로였다
@@ -3726,92 +3667,6 @@
 
 .pop-rc-lot-progress {
   margin-inline-start: auto;
-}
-
-/*
- * 화면 이동 자리 — **머리줄 오른쪽, 사용자 전환 «왼쪽»에 앉힌다**(`patterns/pop-screen-nav`).
- *
- * ⛔ **비운 폭 안에 들어가야 한다.** 이 자리는 «떠서» 서고 그 아래에는 설비·사번·연결 상태
- *    (`.pop-context-right`)가 머리줄 오른쪽 끝에 붙어 있다. 폭을 재지 않고 문장을 넣었더니
- *    비운 폭을 넘어 그것을 덮었다(독립 검증 2026-09-09). **자리 폭을 변수로 «선언»하고**
- *    내용은 그 안에서만 산다 — 되돌림 값만 두면 실제 폭과 어긋나도 아무도 모른다.
- *
- * ⛔ **사유를 문구로 늘어놓지 않는다**(사용자 지시 2026-09-09). 버튼 하나만 서므로 비우는
- *    폭도 늘 같다.
- */
-/*
- * ⚠ **버튼 자리 99(버튼 87 + 오른쪽 여백 12) + 상태 칩과의 사이 간격 12 = 111.**
- *   `--pop-logout-w` 와 같은 셈법이다 — 자리 폭에 «간격까지» 넣어 두고, 머리줄은 그만큼만
- *   비운다. 간격 12 는 `.pop-context-right` 가 칩 사이에 두는 값(`--space-3`)과 같다 —
- *   132 로 두었을 때는 이 자리만 33 이라 상태 칩이 오른쪽 끝에서 혼자 떨어져 보였다
- *   (사용자 지적 2026-09-10). **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
- */
-/*
- * ⭐ **[사용자 전환] 상자의 «맨» 폭이다 — 간격을 넣지 않는다.** [화면 이동]은 이 값만큼만
- *   왼쪽으로 물러나 앉고, 둘 사이의 12 는 [화면 이동] 자신의 오른쪽 여백이 만든다.
- *   `--pop-logout-w`(= 이 값 + 간격 12)를 자리로 쓰면 여백이 두 번 더해져 두 버튼 사이만
- *   24 가 됐다(사용자 지적 2026-09-10).
- */
-:root {
-  --pop-logout-box-w: 95px;
-  /*
-   * ⚠ **여기서 «파생»시킨다.** 되돌림 값으로만 쓰면 누가 이 변수를 따로 정의했을 때 머리줄이
-   *   비우는 폭만 바뀌고 [화면 이동]이 앉는 자리는 따라오지 않아 둘이 어긋난다.
-   */
-  --pop-logout-w: calc(var(--pop-logout-box-w) + var(--space-3));
-  --pop-screen-nav-w: 111px;
-}
-
-[data-pop-screen-nav] .pop-ui > .pop-header,
-[data-pop-screen-nav] .pop-ui > .pop-terminal-header,
-/*
- * ⭐ **덮개 안쪽 머리줄도 자리를 비운다**(#1094 · 88단계 2회차 실기).
- *
- * 위 두 선택자는 `.pop-ui` 의 «바로 아래» 머리줄만 잡는데, 작업 전 점검 게이트는
- * `.pop-ui > .pop-overlay > .pop-header` 로 한 겹 더 들어가 있어 **걸리지 않았다** —
- * 자리를 비우지 않은 채 전체 화면을 덮으니 머리줄의 「화면 이동」 버튼이 제목 글자 위에
- * 겹쳐 섰다. 그 버튼은 `.pop-ui` 밖에 고정으로 서 있어 덮개가 밀어내지 못한다.
- */
-[data-pop-screen-nav] .pop-ui > .pop-overlay > .pop-header {
-  padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
-}
-
-/*
- * ⛔ **게이트 머리줄도 오른쪽 자리를 비운다**(사용자 지시 2026-09-12).
- *
- * 위 규칙은 `.pop-ui` 의 자식만 고르는데, 작업 전 점검 게이트는 화면 «위»에 덮이는 겹판이라
- * (`pop-shell pop-overlay precheck-gate`) 그 클래스를 갖지 않는다. 그래서 고정으로 앉는
- * [화면 이동]·[사용자 전환] 이 머리줄 글자 위에 그대로 겹쳤다 — W/O 번호와 설비 이름이
- * 버튼 밑으로 들어가 읽히지 않았다(실측).
- */
-[data-pop-screen-nav] .precheck-gate > .pop-header {
-  padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
-}
-
-.pop-screen-nav {
-  position: fixed;
-  top: 0;
-  right: var(--pop-logout-box-w, 95px);
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  /* 되돌림 값을 둔다 — 이 버튼은 `.pop-ui` 밖에 서서 변수가 닿지 않는다(`pop-logout` 과 같다). */
-  height: var(--pop-header-h, 64px);
-  padding-right: 12px;
-}
-
-/*
- * ⛔ **닫힌 상태의 「현재 값」 칸을 그리지 않는다.** 선택 목록은 고른 값이 남는 입력이지만
- *    이 자리는 «가는» 조작이라 남을 값이 없다 — 칸을 두면 늘 빈 상자가 머리줄에 붙는다.
- *    팝업 규격(내부 스크롤, 이전과 다음, 건수, 검색어 지우기)은 그대로 쓴다.
- */
-.pop-screen-nav .pop-select {
-  display: block;
-}
-
-.pop-screen-nav .pop-select__value {
-  display: none;
 }
 
 /*
@@ -10389,48 +10244,6 @@
     inset 8px 0 0 var(--primary);
 }
 
-/*
- * 피처 002 — 화면 이동의 남은 작업(D-10). 색은 중립(차콜)이다 — 빨강은 쓰지 않는다.
- * 단추의 점, 목록 항목 뒤 배지, 창 맨 위 「남은 작업」 묶음.
- */
-.pop-select__trigger .pop-work-dot {
-  margin-inline-start: var(--space-2);
-}
-
-.pop-select-dialog__option .pop-work-badge {
-  margin-inline-start: auto;
-}
-
-.pop-work-lead {
-  display: grid;
-  gap: var(--space-1);
-  margin-block-end: var(--space-3);
-  padding-block-end: var(--space-3);
-  border-block-end: 1px solid var(--outline-variant);
-}
-
-.pop-work-lead > h3 {
-  margin: 0;
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.pop-work-lead__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-block-size: var(--control-height-lg);
-  padding-inline: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  cursor: pointer;
-}
-
 .pop-visually-hidden {
   position: absolute;
   inline-size: 1px;
@@ -10634,4 +10447,459 @@
 
 .pop-ui > .pop-terminal-header > .field-note {
   margin-inline-start: 0;
+}
+
+/*
+ * POP 공통 이동 메뉴(#291 · `patterns/pop-screen-nav`) — 맨 위 줄 · 업무 묶음 줄 · 화면 탭 줄.
+ *
+ * ⭐ 화면은 메뉴 «아래» 남은 높이를 가져간다(`.pop-frame__body`). 화면 루트(`.pop-ui`)가
+ *    `height: 100%` 라 화면 코드는 그대로 두고 그릇만 줄인다.
+ * ⚠ 단말 설계 폭은 1024 다(`pop-fit`). 세 줄을 합쳐 136 을 넘지 않게 둔다 — 화면마다 세로 예산이 있다.
+ */
+.pop-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.pop-frame__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pop-nav {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 20;
+}
+
+.pop-nav-icon {
+  inline-size: 18px;
+  block-size: 18px;
+  flex: 0 0 auto;
+}
+
+/* 맨 위 줄 — 어두운 띠. 화면 위에 늘 같은 자리에 서는 단말·작업자 표시다. */
+.pop-nav-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 40px;
+  padding: 0 var(--space-3) 0 var(--space-5);
+  background: var(--on-surface);
+  color: var(--surface);
+  white-space: nowrap;
+}
+
+.pop-nav-top__brand {
+  margin-inline-end: auto;
+  font: 700 16px / 1 var(--font-sans);
+  letter-spacing: 0.2px;
+}
+
+.pop-nav-top__chip {
+  overflow: hidden;
+  max-inline-size: 280px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--surface) 14%, transparent);
+  font: 500 13px / 18px var(--font-sans);
+  text-overflow: ellipsis;
+}
+
+/*
+ * [사용자 전환] — 작은 보조 조작(사용자 지시 2026-09-08 「너무 크다」). 어두운 띠 위라 테두리와
+ * 글자를 밝게 둔다. ⛔ 채움·빨강은 화면의 주 동작 하나에만 쓴다(C-3 · C-19).
+ */
+.pop-nav-top .pop-logout {
+  min-height: 30px;
+  padding-inline: 12px;
+  border-color: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: var(--surface);
+  font-size: 13px;
+}
+
+/* 업무 묶음 줄 */
+.pop-nav-groups {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  block-size: 52px;
+  padding: 0 var(--space-3) 0 var(--space-3);
+  background: var(--surface-container-low);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+.pop-nav-groups__list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  block-size: 100%;
+}
+
+.pop-nav-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 40px;
+  padding-inline: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: 700 16px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-nav-group:hover {
+  background: var(--surface-container);
+}
+
+.pop-nav-group[data-on='true'] {
+  color: var(--primary);
+}
+
+.pop-nav-group[data-on='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: -6px;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+.pop-nav-group--home[data-on='true'] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-nav-group--home[data-on='true']::after {
+  display: none;
+}
+
+.pop-nav-groups__reason {
+  margin-inline-start: var(--space-3);
+  color: var(--on-surface-variant);
+  font: 400 14px / 20px var(--font-sans);
+}
+
+/* 남은 작업 */
+.pop-remaining {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.pop-remaining__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 38px;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--primary);
+  font: 700 15px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-remaining__button[aria-expanded='true'] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-remaining__button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pop-remaining__total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 24px;
+  block-size: 24px;
+  padding-inline: 7px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 13px;
+}
+
+.pop-remaining__button[aria-expanded='true'] .pop-remaining__total {
+  background: var(--on-primary);
+  color: var(--primary);
+}
+
+.pop-remaining__button[aria-expanded='true'] .pop-nav-icon {
+  transform: rotate(180deg);
+}
+
+.pop-remaining__scrim {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--on-surface) 35%, transparent);
+}
+
+.pop-remaining__panel {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + 8px);
+  z-index: 1;
+  box-sizing: border-box;
+  inline-size: 420px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--on-surface) 28%, transparent);
+}
+
+.pop-remaining__head {
+  display: flex;
+  align-items: center;
+  font: 700 18px / 24px var(--font-sans);
+}
+
+.pop-remaining__close {
+  margin-inline-start: auto;
+  inline-size: 36px;
+  block-size: 36px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.pop-remaining__hint,
+.pop-remaining__none {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--on-surface-variant);
+  font: 400 14px / 20px var(--font-sans);
+}
+
+.pop-remaining__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: 60px;
+  margin-block-end: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-remaining__name {
+  display: grid;
+  gap: 2px;
+  margin-inline-end: auto;
+}
+
+.pop-remaining__name strong {
+  font: 700 16px / 22px var(--font-sans);
+}
+
+.pop-remaining__name small {
+  color: var(--on-surface-variant);
+  font: 400 13px / 18px var(--font-sans);
+}
+
+.pop-remaining__move {
+  color: var(--primary);
+  font: 700 15px / 1 var(--font-sans);
+}
+
+/* 화면 탭 줄 — 위쪽만 둥근 폴더 탭. 지금 화면 탭은 채운 색으로 조금 높게 선다. */
+.pop-nav-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  block-size: 44px;
+  padding: 0 var(--space-5);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  background: var(--surface);
+  border-block-end: 1px solid var(--outline);
+}
+
+.pop-nav-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 36px;
+  margin-block-end: -1px;
+  padding-inline: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-block-end: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font: 500 15px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-nav-tab:hover {
+  background: var(--surface-container-low);
+}
+
+.pop-nav-tab[data-on='true'] {
+  block-size: 40px;
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+
+.pop-nav-tab[data-on='true'] .pop-work-badge {
+  background: color-mix(in srgb, var(--on-primary) 28%, transparent);
+  color: var(--on-primary);
+}
+
+/*
+ * 화면 머리줄(#291) — 화면 이름은 탭이 보여 주므로 «보이지 않게» 둔다(접근 이름으로는 남는다).
+ * 화면 정보(W/O·설비·금형·긴급, 연결·미전송·프린터)만 남은 얇은 한 줄이 된다.
+ * ⛔ 작업 전 점검 덮개(`.pop-overlay`)의 머리줄은 별도 단계라 이름을 그대로 둔다.
+ */
+.pop-frame .pop-ui > .pop-header {
+  height: 44px;
+  min-height: 44px;
+}
+
+.pop-frame .pop-ui > .pop-header > .pop-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 남길 것이 화면 이름뿐인 머리줄은 줄째로 접는다(이름은 접근 이름으로 남는다). 화면 정보 묶음이
+ * 비어 있는 경우(예: W/O 를 고르기 전의 작업 지시 목록)도 같다 — 빈 띠가 세로 자리만 먹는다.
+ */
+.pop-frame .pop-ui > .pop-header:not(:has(> :not(.pop-title):not(:empty))) {
+  display: contents;
+}
+
+/* 접힌 머리줄 대신 본문 위에 틈을 둔다 — 첫 상자가 탭 줄 선에 붙지 않게. */
+/* ⚠ `:has()` 는 겹쳐 쓸 수 없다(규칙째 버려진다) — 그래서 바깥에서 한 겹으로 고른다. */
+.pop-frame .pop-ui:has(> .pop-header):not(:has(> .pop-header > :not(.pop-title):not(:empty))) {
+  box-sizing: border-box;
+  padding-block-start: var(--space-4);
+}
+
+/* 홈 */
+.pop-ui.pop-home {
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--pop-pad);
+  overflow-y: auto;
+}
+
+.pop-home__hello h2 {
+  margin: 0;
+  font: 700 24px / 32px var(--font-sans);
+}
+
+.pop-home__hello p {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-variant);
+}
+
+.pop-home__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 700 18px / 24px var(--font-sans);
+}
+
+.pop-home__total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 26px;
+  block-size: 26px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 14px;
+}
+
+.pop-home__remaining-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+.pop-home__remaining-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 48px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 500 16px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__shortcuts-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+.pop-home__shortcuts-head .field-note {
+  margin: 0;
+}
+
+.pop-home__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pop-home__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: 96px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 700 17px / 1.3 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__tile .pop-nav-icon {
+  inline-size: 28px;
+  block-size: 28px;
+  color: var(--primary);
 }

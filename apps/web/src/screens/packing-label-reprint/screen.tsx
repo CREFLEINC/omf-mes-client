@@ -181,9 +181,6 @@ export const PackingLabelReprintScreen = () => {
           <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
             {printerChipText(printer, printers.isError)}
           </Chip>
-          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
-            {`${t.device.terminalLabel} ${identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)}`}
-          </Chip>
         </div>
       </header>
 
