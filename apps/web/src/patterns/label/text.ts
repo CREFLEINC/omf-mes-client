@@ -51,12 +51,7 @@ interface TextMetricsLike {
 interface TextContext {
   measureText: (text: string) => TextMetricsLike;
   fillText: (text: string, x: number, y: number) => void;
-  getImageData: (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-  ) => { data: Uint8ClampedArray };
+  getImageData: (x: number, y: number, width: number, height: number) => { data: Uint8ClampedArray };
   clearRect: (x: number, y: number, width: number, height: number) => void;
   font: string;
   textBaseline: string;

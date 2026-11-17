@@ -55,12 +55,7 @@ const adler32 = (bytes: Uint8Array): number => {
 };
 
 const uint32 = (value: number): Uint8Array =>
-  new Uint8Array([
-    (value >>> 24) & 0xff,
-    (value >>> 16) & 0xff,
-    (value >>> 8) & 0xff,
-    value & 0xff,
-  ]);
+  new Uint8Array([(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]);
 
 const concat = (parts: readonly Uint8Array[]): Uint8Array<ArrayBuffer> => {
   const total = parts.reduce((sum, part) => sum + part.length, 0);
