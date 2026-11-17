@@ -143,11 +143,9 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/inspection-sheet', element: <PopInspectionSheetScreen /> },
   /*
-   * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
-   *
-   * ⚠ **출고 전표는 질의 문자열로 받는다**(`?goodsIssueId=`) — 전표를 고르는 자리가 아직 없다.
-   * 사번은 셸의 `patterns/pop-identity`를 우선하고, 없으면 P-CO-01이 둔
-   * `patterns/worker-session`, 마지막으로 기존 `?workerNo=` 호환값을 읽는다.
+   * P-01-02 분할 LOT 라벨(008 · omf-all-around#289) — 창고 스테이션 모드의 화면이다. 부분 출고가 만든 분할 LOT 에
+   * 자재 LOT 라벨을 찍는다(출고 QR 발행은 없앴다). 진입 컨텍스트 없이 단말 공장의 목록을 연다. 주소는 그대로 둔다
+   * (단말 메뉴·즐겨찾기가 이 주소를 들고 있다).
    *
    * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
    * 범위 밖이고 집행은 서버의 403 이다.

@@ -54,9 +54,7 @@ export type LabelTargetTypeCode =
 
 /** 라벨 종류가 대상 유형을 정한다 — 화면이 둘을 따로 고르게 하지 않는다(스펙 §5-2 ①안). */
 export const targetTypeCodeOf = (kind: LabelKind): LabelTargetTypeCode =>
-  kind === DELIVERY_LABEL
-    ? DELIVERY_TARGET_TYPE_CODE
-    : PACKING_TARGET_TYPE_CODE;
+  kind === DELIVERY_LABEL ? DELIVERY_TARGET_TYPE_CODE : PACKING_TARGET_TYPE_CODE;
 
 /**
  * 재발행 사유 값 목록을 받는 코드 그룹.

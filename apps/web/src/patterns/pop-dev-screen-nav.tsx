@@ -112,15 +112,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-02-11 러닝체인지 부품 교체',
     query: '?workOrderId=11002',
   },
-  /*
-   * 씨앗의 전기된 출고 전표(`GI-2026-000401`)다. ⚠ **번호를 바꾸면 화면이 빈 채로 뜬다** —
-   * 씨앗에 없는 번호는 계약 예시가 받아 답하므로 머리와 줄이 서로 다른 전표를 말한다(실측).
-   */
-  {
-    path: '/pop/goods-issue-qr',
-    label: 'P-01-02 출고 QR 발행',
-    query: '?goodsIssueId=16401',
-  },
+  /* 008 — 출고 전표가 아니라 단말 공장의 분할 LOT 목록이라 진입 컨텍스트가 없다. */
+  { path: '/pop/goods-issue-qr', label: 'P-01-02 분할 LOT 라벨' },
   /* ⚠ 서버 경로가 아직 없어 목록이 비어 뜬다 — 배치만 볼 수 있다(SHIP-UNIT-01 P4b). */
   { path: '/pop/shipping-units', label: 'P-04-05 출하 단위 구성' },
   /*

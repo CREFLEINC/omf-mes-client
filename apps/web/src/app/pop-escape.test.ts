@@ -92,10 +92,6 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
   const fixedLayout = (selector: string): RegExp =>
     new RegExp(`\\.pop-ui\\s+\\.${selector}\\s*\\{[^}]*table-layout:\\s*fixed`, 'u');
 
-  it('출고 QR 의 출고 라인 표가 폭을 못박는다', () => {
-    expect(popCss).toMatch(fixedLayout('pop-giqr-lines'));
-  });
-
   it('포장 라벨 재출력의 내용물 표가 폭을 못박는다', () => {
     expect(popCss).toMatch(fixedLayout('pop-reprint-contents'));
   });
@@ -111,18 +107,13 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
    * 달았다). 접으면 아무것도 감추지 않는다.
    */
   it('긴 번호를 감추지 않고 접는다', () => {
-    expect(popCss).toMatch(/\.pop-ui\s+\.pop-giqr-lines\s+td\s*\{[^}]*overflow-wrap:\s*anywhere/u);
+    /* 008 — 출고 QR 라인 표는 걷었다. P-01-02 분할 LOT 번호는 끝 마디(`-S1`)가 가르는 자리라 줄을 바꿔 접는다. */
+    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-lotno[^{]*\{[^}]*word-break:\s*break-all/u);
     expect(popCss).toMatch(
       /\.pop-ui\s+\.pop-reprint-contents\s+td\s*\{[^}]*overflow-wrap:\s*anywhere/u,
     );
   });
 
-  /* 발행 칩도 좁은 칸 안에서 접힌다 — 한 줄로 두면 칸 밖으로 잘린다(#1150). */
-  it('출고 QR 발행 칩이 칸 안에서 접힌다', () => {
-    expect(popCss).toMatch(
-      /\.pop-ui\s+\.pop-giqr-lines\s+td:last-child\s*>\s*\*\s*\{[^}]*white-space:\s*normal/u,
-    );
-  });
 });
 
 /*

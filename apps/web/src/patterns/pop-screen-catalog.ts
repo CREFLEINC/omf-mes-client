@@ -60,7 +60,7 @@ export interface PopScreen {
  */
 export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/material-lot-label', code: 'P-01-01', name: '자재 관리 LOT 라벨' },
-  { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '자재 출고 QR 발행' },
+  { path: '/pop/goods-issue-qr', code: 'P-01-02', name: '분할 LOT 라벨' },
   { path: '/pop/work-start', code: 'P-02-01', name: '작업 지시 목록', countKey: 'workStart' },
   { path: '/pop/material-input', code: 'P-02-03', name: '자재 투입', acceptsWorkOrderId: true },
   {
