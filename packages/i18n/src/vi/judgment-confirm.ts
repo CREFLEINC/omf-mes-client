@@ -25,6 +25,6 @@ export const judgmentConfirm: Translated<typeof ko.judgmentConfirm> = {
   applyHeading: 'Áp dụng khi xác nhận',
   irreversible:
     'Sau khi xác nhận không thể sửa hoặc hủy đánh giá. Nếu cần thay đổi, hãy kiểm tra lại.',
-  back: 'Quay lại',
+  back: 'Hủy',
   confirm: 'Xác nhận đánh giá',
 };

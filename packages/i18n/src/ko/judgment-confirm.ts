@@ -27,6 +27,6 @@ export const judgmentConfirm = {
   applyHeading: '확정 시 적용 사항',
   irreversible:
     '확정 후 판정은 수정하거나 취소할 수 없습니다. 변경이 필요한 경우 재검사를 진행해야 합니다.',
-  back: '돌아가기',
+  back: '취소',
   confirm: '판정 확정',
 } as const;

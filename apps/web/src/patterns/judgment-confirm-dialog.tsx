@@ -116,8 +116,9 @@ export const JudgmentConfirmDialog = ({
           </ul>
         </section>
       )}
-      <p className="judgment-confirm-note">
-        <Icon name="error" size={16} aria-hidden />
+      {/* 경고 라벨 — 화면의 「판정 확정 후 수정이 불가합니다」 줄과 같은 모양(표식 · 글 한 줄 가운데 맞춤 · #286). */}
+      <p className="iqc-inspection-action-note" data-tone="warning">
+        <Icon name="warning" size={18} aria-hidden />
         {t.irreversible}
       </p>
     </div>

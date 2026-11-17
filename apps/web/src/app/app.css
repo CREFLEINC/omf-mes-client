@@ -37486,14 +37486,14 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   list-style: none;
 }
 
-.judgment-confirm-apply li,
-.judgment-confirm-note {
+.judgment-confirm-apply li {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
   margin: 0;
   color: var(--on-surface);
-  font: var(--type-body-md);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
 }
 
 .judgment-confirm-apply li > svg {
@@ -37502,8 +37502,6 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   color: var(--on-surface-variant);
 }
 
-.judgment-confirm-note > svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--semantic-error-text);
+.judgment-confirm > .iqc-inspection-action-note {
+  align-self: flex-start;
 }
