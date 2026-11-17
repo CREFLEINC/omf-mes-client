@@ -337,6 +337,7 @@ const issueLineResponse = (overrides: Partial<IssueLineResponse> = {}): IssueLin
   pickingLineId: null,
   itemId: 9301,
   lotId: 9601,
+  lotNo: 'SYN-LOT-9601',
   issueQty: 40,
   uomId: 9801,
   sourceLocationId: 9901,

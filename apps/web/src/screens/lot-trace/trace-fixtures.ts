@@ -118,6 +118,9 @@ export const forwardChain = (
   workOrders,
   truncated: false,
   totalProductionLotCount: workOrders.reduce((n, wo) => n + wo.productionLots.length, 0),
+  /* 008 — 분할 관계가 없는 LOT(기본). */
+  splitFrom: null,
+  splits: [],
 });
 
 export const workOrder = (
@@ -134,6 +137,7 @@ export const workOrder = (
   lastConsumedAt: '2026-10-23T03:00:00Z',
   linkBasis,
   productionLots,
+  viaLot: null,
 });
 
 export const backwardChain = (
@@ -182,6 +186,7 @@ export const inputMaterial = (
   linkBasis: 'LOT_GENEALOGY_ESTIMATE',
   producedBy: null,
   cyclic: false,
+  splitAncestry: [],
   ...overrides,
 });
 
