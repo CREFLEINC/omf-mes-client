@@ -1,5 +1,5 @@
 import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import { type components, createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -32,7 +32,7 @@ import {
   LocationItemsSection,
 } from './location-items-section';
 import { itemTypesForWarehouse } from './item-scope';
-import { RackCreateDialog } from './rack-create-dialog';
+import { RackCreateDialog, type RackLeafItems } from './rack-create-dialog';
 import { LocationLabelDialog, type LocationLabelPreview } from './location-label-dialog';
 import { LocationLabelIssueDialog } from './location-label-issue-dialog';
 import { LocationLabelSection } from './location-label-section';
@@ -745,6 +745,7 @@ export const WarehouseLocationScreen = () => {
       zone !== undefined &&
       locationDepthById.get(location.locationId) === ZONE_DEPTH + 1
     ) {
+      resetItemsDraft();
       setRackDialog({ zone, rack: location });
       return;
     }
@@ -842,7 +843,8 @@ export const WarehouseLocationScreen = () => {
       ? (locationDetail.data?.location ??
         hierarchyItems.find((item) => item.locationId === dialogState.locationId) ??
         null)
-      : null;
+      : /* 층 없는 랙은 랙 창이 맨 아래 위치의 수정 창이다(#1673). */
+        (rackDialog?.rack ?? null);
   /* 창고 유형이 보관 품목의 유형을 정한다 — 예비품창고는 보관 품목을 두지 않는다(`item-scope.ts`). */
   const itemTypeScope = itemTypesForWarehouse(selectedWarehouse?.warehouseTypeCode);
   const itemsTargetId =
@@ -925,6 +927,46 @@ export const WarehouseLocationScreen = () => {
       return next;
     });
   };
+
+  /**
+   * 층 없는 랙의 보관 품목(#1673) — 칸은 수정 창과 같고, 저장은 랙 창이 별칭 다음에 이어 부른다. 실패는 랙 창이 멈춘
+   * 자리와 서버 문구로 알린다.
+   */
+  const rackItemsInvalid =
+    itemsChanged && itemsDraft?.restricted === true && itemsDraft.items.length === 0;
+  const rackItemsId =
+    itemsTargetId !== null && rackDialog?.rack?.locationId === itemsTargetId ? itemsTargetId : null;
+  const rackLeafItems: RackLeafItems | null =
+    rackItemsId !== null
+      ? {
+          slot: (disabled) => (
+            <LocationItemsSection
+              isLoading={itemsQuery.isPending || (itemsDraft === null && itemsQuery.isFetching)}
+              isError={itemsQuery.isError}
+              onRetry={() => void itemsQuery.refetch()}
+              draft={itemsDraft}
+              onChange={changeItemsDraft}
+              error={rackItemsInvalid ? t.itemsSection.required : undefined}
+              disabled={disabled}
+              itemTypeCodes={itemTypeScope ?? undefined}
+            />
+          ),
+          changed: itemsChanged,
+          invalid: rackItemsInvalid,
+          save: async () => {
+            if (itemsDraft === null) return;
+            await runRequest(() =>
+              client.PUT('/mdm/locations/{locationId}/items', {
+                params: {
+                  path: { locationId: rackItemsId },
+                  header: { 'Idempotency-Key': createIdempotencyKey() },
+                },
+                body: { itemIds: draftItemIds(itemsDraft) },
+              }),
+            );
+          },
+        }
+      : null;
 
   /** 지울 위치 — 확인 창이 열린다. */
   const [deleteTarget, setDeleteTarget] = useState<Location | null>(null);
@@ -1368,7 +1410,11 @@ export const WarehouseLocationScreen = () => {
             />
           ) : null
         }
-        onClose={() => setRackDialog(null)}
+        leafItems={rackLeafItems}
+        onClose={() => {
+          setRackDialog(null);
+          resetItemsDraft();
+        }}
         onDelete={() => setDeleteTarget(rackDialog?.rack ?? null)}
         isActive={rackDetail.data?.location.isActive ?? rackDialog?.rack?.isActive ?? true}
         onToggleActive={() => {
