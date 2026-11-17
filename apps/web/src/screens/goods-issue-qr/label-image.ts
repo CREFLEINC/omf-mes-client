@@ -19,7 +19,7 @@ import {
   buildLotLabel,
   layoutLotLabel,
   type LotLabelRow,
-} from '../pop-material-lot-label/label-tspl';
+} from '../../patterns/label/lot-label-tspl';
 import { drawLotLabelLayout } from '../shipping-packing-label/packing-label-image';
 import type { LabelBitmap } from '../../patterns/label/bitmap';
 

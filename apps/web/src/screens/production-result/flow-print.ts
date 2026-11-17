@@ -40,7 +40,7 @@ export interface PrintState {
  * 화면이 짠 라벨 명령을 셸에 넘길 바이트로 바꾼다.
  *
  * ⚠ **TSPL 은 ASCII 다** — 자리에 못 들어갈 글자는 명령을 짜는 쪽에서 이미 걸러 둔다
- *   (`pop-material-lot-label/label-tspl` 의 `escapeTspl`).
+ *   (`patterns/label/lot-label-tspl` 의 `escapeTspl`).
  */
 const commandBytes = (command: string): ArrayBuffer => {
   const bytes = new TextEncoder().encode(command);

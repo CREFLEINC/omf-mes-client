@@ -14,7 +14,7 @@ const FIELDS = {
 
 const WIDTH = 639;
 const HEIGHT = 240;
-/* 실기에서 맞춘 안전 여백 — 가로는 좌우 같다(`pop-material-lot-label/label-tspl`). */
+/* 실기에서 맞춘 안전 여백 — 가로는 좌우 같다(`patterns/label/lot-label-tspl`). */
 const TOP = 16;
 const BOTTOM = 48;
 const LEFT = 32;

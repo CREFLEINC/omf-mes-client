@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { readDot, textDots } from '../../patterns/label/bitmap';
 import { toPng } from '../../patterns/label/png';
 
-import { layoutLotLabel } from '../pop-material-lot-label/label-tspl';
+import { layoutLotLabel } from '../../patterns/label/lot-label-tspl';
 
 import {
   buildGoodsIssueQrLabel,

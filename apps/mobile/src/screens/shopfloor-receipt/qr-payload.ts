@@ -2,7 +2,7 @@
  * 스캔한 값이 **출고 QR 인가**를 가린다 — ISSUE-QR-01.
  *
  * ⭐ **가르는 것은 접두어 하나다.** 출고 QR 만 `OMF-GIL|` 을 갖는다. 자재 LOT QR 은 접두어 없이
- *    LOT 번호 원문만 담으므로(POP `pop-material-lot-label/label-tspl.ts` 의 `QRCODE`), 접두어가
+ *    LOT 번호 원문만 담으므로(POP `patterns/label/lot-label-tspl.ts` 의 `QRCODE`), 접두어가
  *    없는 값은 **예전처럼 출고번호로 다룬다** — 사람이 전표 번호를 손으로 치는 길이 그것이다.
  *
  * ⭐ **왜 라인 번호를 봐야 하는가.** 계약이 그렇게 정해 두었다: `GET /logistics/goods-issues` 의
