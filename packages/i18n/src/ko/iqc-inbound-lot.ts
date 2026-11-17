@@ -81,7 +81,7 @@ export const iqcInboundLot = {
       DEFECTIVE: '불량',
       SUSPECT_HOLD: '의심 보류',
     },
-    goodsReceived: '입고됨',
+    goodsReceived: '입고 완료',
     /* 「결과 n」 → 「n회차」(사용자 지시 2026-11-16 · omf-all-around#274) — 이 파일의 결과 한 건 표기 모두. */
     appliedSeq: (seqNo: number) => `${seqNo}회차`,
     poHeading: '발주 정보',
@@ -129,7 +129,6 @@ export const iqcInboundLot = {
     edit: '수정',
     remove: '삭제',
     lockedRow: '확정됨',
-    lockedHead: '판정 확정됨 — 결과를 고칠 수 없습니다',
     empty: '등록된 검사 결과가 없습니다.',
     noJudgment: '판정 없음',
     /** 지우기 확인(사용자 시안 2026-11-16 · #274) — 숫자 끝소리에 맞춰 「을/를」. */
@@ -317,13 +316,19 @@ export const iqcInboundLot = {
   },
   cancel: {
     open: '확정 취소',
-    title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정 취소`,
-    lots: (count: number) => `자재 관리 LOT ${count}개 → 검사 대기 · 보류 로 돌아갑니다`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    nonconformance: (ncNo: string) => `부적합 ${ncNo} 은 취소 상태가 됩니다`,
-    results: '결과를 다시 고치고 더할 수 있습니다. 이전 확정 내용은 변경 이력에 남습니다',
-    alerts: '이미 보낸 알림은 되돌리지 않습니다',
-    reason: '사유 (선택)',
-    back: '돌아가기',
+    /* 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — 질문 제목 · 대상 · 「취소 시 변경 사항」 상자 · 안내 한 줄. */
+    title: '판정 확정을 취소하시겠습니까?',
+    target: (inboundLotNo: string) => `대상: ${inboundLotNo}`,
+    changesHeading: '취소 시 변경 사항',
+    lots: (count: number) => `자재 관리 LOT ${count}개`,
+    lotsFrom: '확정',
+    lotsTo: '검사 대기 · 보류', // ui-check-ignore: C-13 사용자 시안 표기(omf-all-around#286)
+    nonconformance: (ncNo: string) => `부적합 ${ncNo}`,
+    nonconformanceTo: '취소 상태로 변경',
+    note: '취소 후 결과를 수정하고 다시 확정할 수 있습니다. 기존 확정 내역은 변경 이력에 남으며, 발송된 알림은 취소되지 않습니다.',
+    reason: '취소 사유 (선택)',
+    reasonPlaceholder: '취소 사유를 입력해 주세요.',
+    back: '유지하기',
     proceed: '확정 취소',
     done: '판정 확정을 취소했습니다. 결과를 다시 고칠 수 있습니다.',
     blockedTitle: '확정을 취소할 수 없습니다',

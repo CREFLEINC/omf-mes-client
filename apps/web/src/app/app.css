@@ -8628,7 +8628,7 @@ main:has(.iqc-skip-approval-detail) {
  * 기본 정보 — PQC 검사 기본 정보(.pqc-web-summary)와 같은 모양(omf-all-around#275): 칸을 내용 폭으로 흘려 놓고 칸 사이 세로선,
  * 이름은 위 · 값은 아래, 핵심 값은 굵게, 품목은 이름 아래 코드. 다 안 들어가면 다음 줄로 넘긴다.
  * - 줄 첫 칸의 세로선은 상자 밖으로 밀려 잘린다 — 줄마다 왼쪽이 가지런하다.
- * - 마지막 줄의 남는 폭은 보이지 않는 채움 칸이 가져간다 — 남은 칸 몇 개가 한 줄을 다 차지해 늘어나지 않는다.
+ * - 줄마다 남는 폭은 그 줄 칸들이 나눠 가진다 — 화면 폭이 바뀌어도 줄이 꽉 차고, 이름 줄은 위로 맞춘다(반응형 · omf-all-around#286).
  */
 .disposition-detail-facts {
   display: flex;
@@ -8639,15 +8639,10 @@ main:has(.iqc-skip-approval-detail) {
   overflow: hidden;
 }
 
-.disposition-detail-facts::after {
-  content: '';
-  flex: 999 1 0;
-}
-
 .disposition-detail-fact {
   display: grid;
   flex: 1 1 auto;
-  align-content: center;
+  align-content: start;
   gap: var(--space-1);
   min-width: 0;
   max-width: 100%;
@@ -8840,6 +8835,36 @@ main:has(.iqc-skip-approval-detail) {
   font: var(--type-body-md);
   font-weight: 400;
   letter-spacing: var(--type-body-md-tracking);
+}
+
+/*
+ * 가운데 칸의 머리 이름이 값과 같은 가운데에 오게 — 끌기 손잡이 · 정렬 표식은 흐름에서 띄운다(LOT 상태 표와 같다 · omf-all-around#286).
+ */
+.disposition-table thead th[data-align='center'] .col-head {
+  position: relative;
+}
+
+.disposition-table thead th[data-align='center'] .col-grip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-1));
+  transform: translateY(-50%);
+}
+
+.disposition-table thead th[data-align='center'] > button {
+  padding-inline: 6px;
+}
+
+.disposition-table thead th[data-align='center'] > button > svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+}
+
+/* 탭 이름 옆 건수는 이름 뒤 빈칸이 이미 띄운다. */
+.disposition-side-tabs .disposition-count-badge {
+  margin-left: 0;
 }
 
 /* LOT 표 · 이력 표는 둥근 테두리 상자 안에. */
@@ -9072,12 +9097,6 @@ main:has(.iqc-skip-approval-detail) {
   font: var(--type-title-lg);
   font-weight: 700;
   letter-spacing: var(--type-title-lg-tracking);
-}
-
-.disposition-qty-scope {
-  color: var(--on-surface-variant);
-  font: var(--type-body-md);
-  letter-spacing: var(--type-body-md-tracking);
 }
 
 .disposition-qty-card > .disposition-qty-note,
@@ -34886,6 +34905,85 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   gap: var(--space-1);
   margin: 0 0 var(--space-3);
   padding-inline-start: var(--space-4);
+}
+
+/* 확정 취소 확인 창 — 대상 · 변경 사항 상자 · 안내 · 사유(사용자 시안 2026-11-17 · omf-all-around#286). */
+.iqc-cancel-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.iqc-cancel-confirm-target {
+  margin: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.iqc-cancel-confirm-heading {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.iqc-cancel-confirm-changes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high);
+}
+
+.iqc-cancel-confirm-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.iqc-cancel-confirm-change + .iqc-cancel-confirm-change {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.iqc-cancel-confirm-change dt {
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.iqc-cancel-confirm-change dd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.iqc-cancel-confirm-change dd strong {
+  font-weight: 600;
+}
+
+.iqc-cancel-confirm-reason {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.iqc-cancel-confirm-reason > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.iqc-cancel-confirm-from {
+  color: var(--on-surface-variant);
 }
 
 /* 변경 이력 — 오른쪽 덮개 520. */

@@ -456,9 +456,8 @@ export const InboundDetail = ({
                         <span className="parts-iqc-muted">{tr.count(results.length)}</span>
                       </h3>
                       <span className="parts-iqc-footer-gap" />
-                      {confirmed ? (
-                        <span className="parts-iqc-muted">{tr.lockedHead}</span>
-                      ) : (
+                      {/* 확정 뒤에는 단추만 감춘다 — 확정은 위 배너가 알린다(omf-all-around#286). */}
+                      {confirmed ? null : (
                         <Button
                           size="md"
                           leadingIcon={<Icon name="add" size={18} aria-hidden />}

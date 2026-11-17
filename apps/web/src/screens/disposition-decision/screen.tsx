@@ -845,11 +845,6 @@ export const DispositionDecisionScreen = ({
               >
                 <div className="disposition-side-head">
                   <h3 className="pane-subtitle">{t.form.heading}</h3>
-                  {lotRows.length > 0 && (
-                    <span className="disposition-count-badge">
-                      {t.form.targetLots(lotRows.length)}
-                    </span>
-                  )}
                 </div>
                 {/* 적용 전 특채 — 결재 상태와 [특채 적용]을 이 상자에(시안 W0310-After · G2 M3). */}
                 {pendingConcession !== undefined && (
@@ -923,8 +918,17 @@ export const DispositionDecisionScreen = ({
               items={[
                 {
                   value: 'decisions',
-                  label:
-                    `${t.panes.decisions} ${decisions.isPending ? '' : t.decisions.count(decisionRows.length)}`.trim(),
+                  /* 건수는 구획 제목 옆 건수와 같은 흐린 글(omf-all-around#286). */
+                  label: (
+                    <>
+                      {t.panes.decisions}{' '}
+                      {decisions.isPending ? null : (
+                        <span className="disposition-count-badge">
+                          {t.decisions.count(decisionRows.length)}
+                        </span>
+                      )}
+                    </>
+                  ),
                   content: (
                     <DecisionHistory
                       rows={decisionRows}
@@ -936,9 +940,17 @@ export const DispositionDecisionScreen = ({
                 },
                 {
                   value: 'concessions',
-                  label:
-                    /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
-                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(groupConcessions(concessions.data).length)}`.trim(),
+                  /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
+                  label: (
+                    <>
+                      {t.concession.foldTitle}{' '}
+                      {concessions.data === undefined ? null : (
+                        <span className="disposition-count-badge">
+                          {t.concession.count(groupConcessions(concessions.data).length)}
+                        </span>
+                      )}
+                    </>
+                  ),
                   content: (
                     <ConcessionHistory nonconformanceId={selectedId} readOnly={tab === 'history'} />
                   ),

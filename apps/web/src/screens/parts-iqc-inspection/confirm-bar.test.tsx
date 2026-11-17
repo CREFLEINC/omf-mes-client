@@ -217,9 +217,8 @@ describe('W-01-01 판정 확정', () => {
       path: '/quality/inspection-requests/501:confirm',
       body: { versionNo: 5 },
     });
-    expect(await screen.findByText(t.results.lockedHead)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.cancel.open })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
-    expect(screen.getByRole('button', { name: t.cancel.open })).toBeInTheDocument();
   });
 
   it('불합격으로 확정하면 부적합 번호를 알린다 — 확인 단추는 「불합격으로 판정 확정」', async () => {
@@ -275,7 +274,7 @@ describe('W-01-01 판정 확정', () => {
   it('SC-005 확정된 의뢰도 W-01-15 가 없으면 [확정 취소]가 없다', async () => {
     mount(confirmedOf(), { permissions: ['W-01-01'] });
 
-    expect(await screen.findByText(t.results.lockedHead)).toBeInTheDocument();
+    expect((await screen.findAllByText(t.results.lockedRow)).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: t.cancel.open })).toBeNull();
   });
 });
@@ -286,11 +285,11 @@ describe('W-01-01 확정 취소', () => {
     const { sent } = mount(confirmedOf());
 
     await user.click(await screen.findByRole('button', { name: t.cancel.open }));
-    const dialog = await screen.findByRole('dialog', {
-      name: t.cancel.title('IL-20991111-0003'),
-    });
+    const dialog = await screen.findByRole('dialog', { name: t.cancel.title });
+    expect(dialog).toHaveTextContent(t.cancel.target('IL-20991111-0003'));
     expect(dialog).toHaveTextContent(t.cancel.lots(2));
-    expect(dialog).toHaveTextContent(t.cancel.alerts);
+    expect(dialog).toHaveTextContent(t.cancel.lotsTo);
+    expect(dialog).toHaveTextContent(t.cancel.note);
     await user.type(within(dialog).getByLabelText(t.cancel.reason), '합성 사유');
     await user.click(within(dialog).getByRole('button', { name: t.cancel.proceed }));
 

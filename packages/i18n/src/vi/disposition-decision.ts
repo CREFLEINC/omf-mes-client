@@ -174,8 +174,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     heading: 'Quyết định xử lý',
     reasonPlaceholder: 'Nhập lý do quyết định',
     dispositionLabel: 'Loại xử lý',
-    targetLots: (count: number): string => `${String(count)} LOT mục tiêu`,
-    qtyAllLots: (count: number): string => `Áp dụng cho toàn bộ ${String(count)} LOT`,
     qtyLabel: 'Số lượng',
     reasonLabel: 'Lý do',
     wholeEffect: (count: number, effect: string): string =>

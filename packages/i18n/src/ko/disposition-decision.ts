@@ -188,8 +188,6 @@ export const dispositionDecision = {
     reasonPlaceholder: '판정 사유를 입력하세요',
     dispositionLabel: '처분 유형',
     /** 처분 판정 머리 오른쪽(사용자 시안 · omf-all-around#275). */
-    targetLots: (count: number): string => `대상 ${String(count)}개 LOT`,
-    qtyAllLots: (count: number): string => `${String(count)}개 LOT 전체 적용`,
     qtyLabel: '처분 수량',
     reasonLabel: '판정 사유',
     /**
