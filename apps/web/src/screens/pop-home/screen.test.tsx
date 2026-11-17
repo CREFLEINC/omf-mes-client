@@ -19,8 +19,13 @@ const SESSION = {
 };
 
 const Here = () => {
-  const { pathname } = useLocation();
-  return <p>지금: {pathname}</p>;
+  const { pathname, state } = useLocation();
+  return (
+    <>
+      <p>지금: {pathname}</p>
+      {state !== null && <p>넘긴 것: {JSON.stringify(state)}</p>}
+    </>
+  );
 };
 
 const EQUIPMENT = { equipmentId: 31, equipmentCode: 'EQ-31', equipmentName: '조립 1호기' };
@@ -169,8 +174,14 @@ describe('PopHomeScreen — 홈(#291)', () => {
       expect(url.searchParams.get('includeUnplannedEquipment')).toBe('true');
     }
 
+    /* 다음 작업을 누르면 그 W/O 를 고른 채로 작업 지시 목록을 연다 — 홈에서 보던 설비 범위(지정 설비)와 함께. */
     await user.click(card.getByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `넘긴 것: ${JSON.stringify({ workOrderId: NEXT.workOrderId, allEquipment: false })}`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('설비가 지정된 단말은 [전체 설비]로 바꿔 전체를 셀 수 있다', async () => {

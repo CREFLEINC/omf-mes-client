@@ -3464,6 +3464,13 @@
   gap: var(--space-2);
 }
 
+/* 사번 단추 끝의 「전환」 — 세로선으로 이름과 가른다(시안 2026-11-17). */
+.pop-nav-top__switch {
+  margin-inline-start: 4px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
 .pop-logout button,
 .pop-ui .pop-header-tools button,
 .pop-ui .pop-terminal-header__reregister {
@@ -9212,17 +9219,6 @@
 .pop-ui .pop-oqc-confirm ul {
   margin: var(--space-1) 0 0;
   padding-inline-start: var(--space-5);
-}
-
-/* 검사성적서 — 잠긴 보조 조작. 바닥 띠의 저장 단추 왼쪽에 「준비 중」과 함께 선다. */
-.pop-ui .pop-oqc-coa__note {
-  margin-inline-start: var(--space-2);
-  font-size: var(--pop-label);
-  font-weight: 400;
-}
-
-.pop-ui .pop-oqc-coa__note::before {
-  content: '· ';
 }
 
 /* ── 바닥 저장 띠 ── */

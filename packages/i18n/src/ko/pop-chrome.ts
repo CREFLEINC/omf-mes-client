@@ -83,6 +83,7 @@ export const popChrome = {
   },
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',
+  switchShort: '전환',
   /** 맨 위 줄 [새로고침] — 지금 화면 자료를 서버에서 다시 받는다(#291). */
   refresh: '새로고침',
   /**

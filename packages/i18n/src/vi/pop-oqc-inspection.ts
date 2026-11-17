@@ -119,8 +119,6 @@ export const popOqcInspection = {
     },
     reinspect: 'Thêm lần kiểm tra lại',
     reinspectCancel: 'Hủy kiểm tra lại',
-    coaIssue: 'Phát hành phiếu kết quả kiểm tra',
-    coaPending: 'Đang chuẩn bị',
   },
 
   confirm: {

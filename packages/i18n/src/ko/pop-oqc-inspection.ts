@@ -130,8 +130,6 @@ export const popOqcInspection = {
     },
     reinspect: '재검사 회차 추가',
     reinspectCancel: '재검사 취소',
-    coaIssue: '검사성적서 발행',
-    coaPending: '준비 중',
   },
 
   /** 저장 확인 창 — 쓰기는 이 창의 [판정 저장]에서만 나간다. */

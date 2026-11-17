@@ -171,7 +171,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
   });
 
-  it('단계 줄은 고른 W/O 를 보이고 다음 단계로 갈 때 실어 주며, 작업지시를 받지 않는 탭에는 싣지 않는다', async () => {
+  it('단계 줄은 고른 W/O 를 다음 단계로 실어 주며(번호는 박스에 보이는 자재 투입·생산 작업에선 숨긴다), 작업지시를 받지 않는 탭에는 싣지 않는다', async () => {
     const user = userEvent.setup();
     setup({
       session: { ...SESSION, permissions: ['P-02-01', 'P-02-03', 'P-02-04', 'P-02-12'] },
@@ -179,7 +179,7 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     });
 
     const steps = await screen.findByRole('list', { name: messages.popChrome.workSteps.label });
-    expect(await screen.findByText('WO-SYN-7801')).toBeInTheDocument();
+    expect(screen.queryByText('WO-SYN-7801')).toBeNull();
     await user.click(within(steps).getByRole('button', { name: /생산 작업/u }));
     expect(screen.getByText('지금: /pop/production-result?workOrderId=7801')).toBeInTheDocument();
 

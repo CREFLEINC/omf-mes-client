@@ -141,10 +141,12 @@ export const GROUP_ICONS: Record<PopScreenGroupKey, ReactNode> = {
 
 const CHEVRON = navIcon(<path d="m6 9 6 6 6-6" />);
 
+/* 사용자 전환 — 두 사람(시안 2026-11-17). */
 const USER_ICON = navIcon(
   <>
-    <circle cx="12" cy="8" r="4" />
-    <path d="M4 21a8 8 0 0 1 16 0" />
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+    <path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" />
   </>,
 );
 
@@ -213,6 +215,10 @@ const TopBar = ({
       >
         {USER_ICON}
         {workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)}
+        {/* 시안(사용자 지시 2026-11-17): 「이름 (사번) | 전환」 — 세로선 뒤 「전환」이 누르면 할 일을 알린다. */}
+        <span className="pop-nav-top__switch" aria-hidden>
+          {messages.popChrome.switchShort}
+        </span>
       </Button>
       {/*
        * [새로고침] — 모든 화면 같은 자리(사용자 지시 2026-11-17 · #291). 지금 화면이 보이는 자료만 서버에서

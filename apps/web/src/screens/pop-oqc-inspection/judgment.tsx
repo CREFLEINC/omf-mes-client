@@ -445,11 +445,6 @@ export const PopJudgmentBar = ({
       <div className="pop-action-note" aria-live="polite">
         {note}
       </div>
-      {/* 검사성적서 발행 — 자리를 두되 잠근 채 사유를 함께 둔다(W-04-03 과 같다). 늘 보이는 바닥 띠에 둔다. */}
-      <Button type="button" size="2xl" variant="text" className="pop-oqc-coa" disabled>
-        <span>{t.bar.coaIssue}</span>
-        <span className="pop-oqc-coa__note">{t.bar.coaPending}</span>
-      </Button>
       {isLocked ? (
         <Button type="button" size="2xl" variant="outlined" onClick={onStartReinspection}>
           {t.bar.reinspect}

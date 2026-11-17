@@ -14,6 +14,9 @@ export const workOrderIdOf = (search: string): number | null => {
   return Number.isInteger(id) && id > 0 ? id : null;
 };
 
+/** 박스 제목에 W/O 를 이미 보이는 화면 — 단계 줄에는 번호를 겹쳐 적지 않는다(사용자 지시 2026-11-17). */
+const WO_IN_PANE: ReadonlySet<string> = new Set(['/pop/material-input', '/pop/production-result']);
+
 /** 단계 줄 오른쪽에 보일 W/O 번호. 못 받으면 `null` — 그때는 번호(#id)로 적는다. */
 const useWorkOrderNo = (workOrderId: number | null): string | null => {
   const { client } = useApiClient();
@@ -56,7 +59,8 @@ export const PopWorkSteps = ({
   go: (screen: PopScreen) => void;
 }) => {
   const workOrderId = workOrderIdOf(search);
-  const workOrderNo = useWorkOrderNo(workOrderId);
+  const showWorkOrder = workOrderId !== null && !WO_IN_PANE.has(pathname);
+  const workOrderNo = useWorkOrderNo(showWorkOrder ? workOrderId : null);
   const all = entry === null ? steps : [entry, ...steps];
   const hasWorkOrder = workOrderId !== null;
 
@@ -94,7 +98,7 @@ export const PopWorkSteps = ({
         })}
       </ol>
       <div className="pop-work-steps__side">
-        {hasWorkOrder && (
+        {showWorkOrder && (
           <span className="pop-work-steps__wo">{workOrderNo ?? `#${String(workOrderId)}`}</span>
         )}
         {during.map((screen) => (

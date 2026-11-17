@@ -65,6 +65,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     shortcutsHint: 'Chuyển nhanh đến các màn hình hay dùng.',
   },
   userSwitch: 'Đổi người dùng',
+  switchShort: 'Đổi',
   refresh: 'Làm mới',
   header: {
     terminalUnknown: 'Chưa xác nhận máy trạm',

@@ -1,7 +1,7 @@
 import { Badge } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { Navigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen-catalog';
@@ -14,6 +14,7 @@ import {
   readShortcutPaths,
   writeShortcutPaths,
 } from './shortcuts';
+import type { WorkStartEntryState } from '../work-start/entry-state';
 
 const t = messages.popChrome.home;
 
@@ -110,14 +111,17 @@ const PEN_ICON = navIcon(<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />);
 const iconOf = (screen: PopScreen): ReactNode =>
   SHORTCUT_ICONS.find((entry) => entry.path === screen.path)?.icon ?? GROUP_ICONS[screen.group];
 
-/** 오늘 작업 현황 카드 — 진행 중 · 대기 · 다음 작업(완료는 단말이 읽을 수 없어 두지 않는다). */
+/** 오늘 작업 현황 카드 — 진행 중 · 대기 · 완료 · 다음 작업. */
 const StatusCard = ({
   titleId,
   onNext,
 }: {
   titleId: string;
-  /** 다음 작업을 누르면 작업 지시 목록으로 간다. 이 단말이 그 화면에 못 가면 `null`. */
-  onNext: (() => void) | null;
+  /**
+   * 다음 작업을 누르면 그 W/O 를 고른 채로 작업 지시 목록을 연다(사용자 지시 2026-11-17 · #291) —
+   * 바로 [작업 시작]을 누를 수 있게. `allEquipment` 는 홈에서 보던 설비 범위다. 그 화면에 못 가면 `null`.
+   */
+  onNext: ((workOrderId: number, allEquipment: boolean) => void) | null;
 }) => {
   const { equipment, terminalId } = usePopIdentity();
   /*
@@ -189,7 +193,7 @@ const StatusCard = ({
             className="pop-home__next"
             disabled={onNext === null || next === null}
             onClick={() => {
-              onNext?.();
+              if (next !== null) onNext?.(next.workOrderId, equipment === null || allEquipment);
             }}
           >
             <span className="pop-home__next-text">
@@ -227,6 +231,7 @@ export const PopHomeScreen = () => {
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
   const { access, workCounts, pending, total, go } = usePopNavigation();
+  const navigate = useNavigate();
   const clock = useClock();
   const [pickedPaths, setPickedPaths] = useState<string[] | null>(readShortcutPaths);
   const [isEditing, setIsEditing] = useState(false);
@@ -273,8 +278,9 @@ export const PopHomeScreen = () => {
           onNext={
             workStart === null
               ? null
-              : () => {
-                  go(workStart);
+              : (workOrderId, allEquipment) => {
+                  const state: WorkStartEntryState = { workOrderId, allEquipment };
+                  void navigate(workStart.path, { state });
                 }
           }
         />
