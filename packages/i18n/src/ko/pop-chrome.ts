@@ -37,6 +37,10 @@ export const popChrome = {
   home: {
     title: '홈',
     greeting: (name: string): string => `${name} 님, 안녕하세요!`,
+    /** 사번을 아직 모를 때 — 이름 자리를 비워 「님,」만 남기지 않는다. */
+    greetingAnonymous: '안녕하세요!',
+    /** 인사 줄 오른쪽 시계의 요일(일요일부터). */
+    weekdays: ['일', '월', '화', '수', '목', '금', '토'],
     sub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
     remainingTitle: '남은 작업',
     remainingCount: (count: number): string => `${String(count)}건`,

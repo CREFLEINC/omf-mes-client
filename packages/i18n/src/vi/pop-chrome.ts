@@ -27,6 +27,8 @@ export const popChrome: Translated<typeof ko.popChrome> = {
   home: {
     title: 'Trang chủ',
     greeting: (name: string): string => `Xin chào ${name}!`,
+    greetingAnonymous: 'Xin chào!',
+    weekdays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
     sub: 'Hôm nay hãy làm việc an toàn và chính xác nhé.',
     remainingTitle: 'Việc còn lại',
     remainingCount: (count: number): string => `${String(count)} việc`,

@@ -57,17 +57,17 @@ describe('PopHomeScreen — 홈(#291)', () => {
     setup({ shipmentPacking: 4, workStart: 3 });
 
     expect(screen.getByRole('heading', { name: t.greeting('2048') })).toBeInTheDocument();
-    const remaining = await screen.findByRole('button', {
-      name: messages.popChrome.remaining.count('출하 포장', 4),
-    });
+    const remaining = await within(
+      screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
+    ).findByRole('button', { name: messages.popChrome.remaining.count('출하 포장', 4) });
     expect(remaining).toHaveTextContent(t.remainingCount(4));
 
     const shortcuts = within(screen.getByRole('region', { name: t.shortcutsTitle }));
-    expect(shortcuts.getAllByRole('button').map((tile) => tile.textContent)).toEqual([
-      '생산 작업',
-      '작업 지시 목록',
-      '출하 포장',
-    ]);
+    expect(
+      shortcuts
+        .getAllByRole('button')
+        .map((tile) => tile.querySelector('span:last-child')?.textContent),
+    ).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
   });
 
   it('남은 작업·바로가기를 누르면 그 화면으로 간다', async () => {
@@ -75,11 +75,23 @@ describe('PopHomeScreen — 홈(#291)', () => {
     setup({ workStart: 3 });
 
     await user.click(
-      await screen.findByRole('button', {
-        name: messages.popChrome.remaining.count('작업 지시 목록', 3),
-      }),
+      await within(
+        screen.getByRole('region', { name: new RegExp(`^${t.remainingTitle}`, 'u') }),
+      ).findByRole('button', { name: messages.popChrome.remaining.count('작업 지시 목록', 3) }),
     );
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+  });
+
+  it('사번을 모르면 사번 입력 화면으로 보낸다', async () => {
+    renderWithProviders(
+      <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
+        <PopHomeScreen />
+        <Here />
+      </PopIdentityProvider>,
+      { fetch: createStubFetch([]), route: '/pop/home' },
+    );
+
+    expect(await screen.findByText('지금: /pop/worker-assignment')).toBeInTheDocument();
   });
 
   it('남은 작업이 없으면 그렇게 말한다', async () => {

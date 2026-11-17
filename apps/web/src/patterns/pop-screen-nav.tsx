@@ -79,7 +79,8 @@ export const usePopNavigation = () => {
   };
 };
 
-const icon = (path: ReactNode) => (
+/** 메뉴·홈이 함께 쓰는 선 아이콘(24 격자). */
+export const navIcon = (path: ReactNode) => (
   <svg
     className="pop-nav-icon"
     viewBox="0 0 24 24"
@@ -94,35 +95,37 @@ const icon = (path: ReactNode) => (
   </svg>
 );
 
-const HOME_ICON = icon(<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />);
+const HOME_ICON = navIcon(
+  <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
+);
 
 export const GROUP_ICONS: Record<PopScreenGroupKey, ReactNode> = {
-  material: icon(
+  material: navIcon(
     <>
       <path d="M21 8 12 3 3 8v8l9 5 9-5z" />
       <path d="m3 8 9 5 9-5M12 13v8" />
     </>,
   ),
-  production: icon(
+  production: navIcon(
     <>
       <path d="M3 21V10l5 3v-3l5 3V6l5-3v18z" />
       <path d="M3 21h18" />
     </>,
   ),
-  quality: icon(
+  quality: navIcon(
     <>
       <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" />
       <path d="m9 12 2 2 4-4" />
     </>,
   ),
-  shipping: icon(
+  shipping: navIcon(
     <>
       <path d="M3 6h11v10H3zM14 10h4l3 3v3h-7" />
       <circle cx="7" cy="18" r="2" />
       <circle cx="17" cy="18" r="2" />
     </>,
   ),
-  facility: icon(
+  facility: navIcon(
     <>
       <path d="M3 21V9l9-5 9 5v12" />
       <path d="M7 21v-8h10v8M7 17h10" />
@@ -130,7 +133,14 @@ export const GROUP_ICONS: Record<PopScreenGroupKey, ReactNode> = {
   ),
 };
 
-const CHEVRON = icon(<path d="m6 9 6 6 6-6" />);
+const CHEVRON = navIcon(<path d="m6 9 6 6 6-6" />);
+
+const USER_ICON = navIcon(
+  <>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </>,
+);
 
 /** 맨 위 줄 — 제품 이름 · 단말 · 작업자 · [사용자 전환]. */
 const TopBar = ({ terminalCode }: { terminalCode: string | null }) => {
@@ -168,6 +178,7 @@ const TopBar = ({ terminalCode }: { terminalCode: string | null }) => {
           void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
         }}
       >
+        {USER_ICON}
         {messages.popChrome.userSwitch}
       </Button>
     </div>

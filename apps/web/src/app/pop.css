@@ -10454,7 +10454,7 @@
  *
  * ⭐ 화면은 메뉴 «아래» 남은 높이를 가져간다(`.pop-frame__body`). 화면 루트(`.pop-ui`)가
  *    `height: 100%` 라 화면 코드는 그대로 두고 그릇만 줄인다.
- * ⚠ 단말 설계 폭은 1024 다(`pop-fit`). 세 줄을 합쳐 136 을 넘지 않게 둔다 — 화면마다 세로 예산이 있다.
+ * ⚠ 단말 설계 폭은 1024 다(`pop-fit`). 세 줄을 합쳐 150 을 넘지 않게 둔다 — 화면마다 세로 예산이 있다.
  */
 .pop-frame {
   display: flex;
@@ -10469,10 +10469,20 @@
   min-height: 0;
 }
 
+/*
+ * 맨 위 두 줄은 시안(#291 확정)대로 **어두운 남색 띠** 위에 선다 — 밝은·어두운 테마 어느 쪽이든
+ * 같은 색이다(테마를 따르면 어두운 테마에서 띠가 밝아져 줄 구분이 뒤집힌다). 색은 여기서만 정한다.
+ */
 .pop-nav {
+  --pop-nav-band: #1f2433;
+  --pop-nav-band-2: #2c3244;
+  --pop-nav-band-text: #ffffff;
+  --pop-nav-band-muted: #e8e8ee;
+
   flex: 0 0 auto;
   position: relative;
   z-index: 20;
+  background: var(--pop-nav-band);
 }
 
 .pop-nav-icon {
@@ -10481,55 +10491,66 @@
   flex: 0 0 auto;
 }
 
-/* 맨 위 줄 — 어두운 띠. 화면 위에 늘 같은 자리에 서는 단말·작업자 표시다. */
+/* 맨 위 줄 — 제품 이름 · 단말 · 작업자 · [사용자 전환]. */
 .pop-nav-top {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  block-size: 40px;
+  block-size: 44px;
   padding: 0 var(--space-3) 0 var(--space-5);
-  background: var(--on-surface);
-  color: var(--surface);
+  color: var(--pop-nav-band-text);
   white-space: nowrap;
 }
 
 .pop-nav-top__brand {
   margin-inline-end: auto;
-  font: 700 16px / 1 var(--font-sans);
+  font: 700 17px / 1 var(--font-sans);
   letter-spacing: 0.2px;
 }
 
 .pop-nav-top__chip {
   overflow: hidden;
   max-inline-size: 280px;
-  padding: 4px 12px;
+  padding: 6px 12px;
   border-radius: var(--radius-full);
-  background: color-mix(in srgb, var(--surface) 14%, transparent);
-  font: 500 13px / 18px var(--font-sans);
+  background: var(--pop-nav-band-2);
+  color: var(--pop-nav-band-muted);
+  font: 500 13px / 16px var(--font-sans);
   text-overflow: ellipsis;
 }
 
 /*
- * [사용자 전환] — 작은 보조 조작(사용자 지시 2026-09-08 「너무 크다」). 어두운 띠 위라 테두리와
- * 글자를 밝게 둔다. ⛔ 채움·빨강은 화면의 주 동작 하나에만 쓴다(C-3 · C-19).
+ * [사용자 전환] — 시안의 어두운 칩 단추(사람 아이콘 + 글자). ⛔ 빨강 채움은 쓰지 않는다 — 채움과
+ * 빨강은 화면의 주 동작 하나에만 쓴다(C-3 · C-19).
  */
 .pop-nav-top .pop-logout {
+  gap: 6px;
   min-height: 30px;
-  padding-inline: 12px;
-  border-color: color-mix(in srgb, var(--surface) 55%, transparent);
-  color: var(--surface);
-  font-size: 13px;
+  padding-inline: 14px;
+  border-color: var(--pop-nav-band-2);
+  background: var(--pop-nav-band-2);
+  color: var(--pop-nav-band-text);
+  font-size: 14px;
+  font-weight: 700;
 }
 
-/* 업무 묶음 줄 */
+.pop-nav-top .pop-logout .pop-nav-icon {
+  inline-size: 16px;
+  block-size: 16px;
+  margin-inline-end: 6px;
+  vertical-align: -3px;
+}
+
+/* 업무 묶음 줄 — 어두운 띠 안에 위쪽이 둥근 밝은 판으로 선다(시안). */
 .pop-nav-groups {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  block-size: 52px;
-  padding: 0 var(--space-3) 0 var(--space-3);
+  block-size: 56px;
+  margin-inline: var(--space-3);
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border-radius: 14px 14px 0 0;
   background: var(--surface-container-low);
-  border-block-end: 1px solid var(--outline-variant);
 }
 
 .pop-nav-groups__list {
@@ -10546,13 +10567,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  block-size: 40px;
-  padding-inline: var(--space-4);
+  block-size: 44px;
+  padding-inline: 18px;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   background: transparent;
-  color: var(--on-surface-variant);
-  font: 700 16px / 1 var(--font-sans);
+  color: var(--on-surface);
+  font: 700 17px / 1 var(--font-sans);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -10568,7 +10589,7 @@
 .pop-nav-group[data-on='true']::after {
   content: '';
   position: absolute;
-  inset-inline: var(--space-3);
+  inset-inline: 12px;
   inset-block-end: -6px;
   block-size: 3px;
   border-radius: 2px;
@@ -10576,6 +10597,7 @@
 }
 
 .pop-nav-group--home[data-on='true'] {
+  padding-inline: 26px;
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -10724,17 +10746,17 @@
   font: 700 15px / 1 var(--font-sans);
 }
 
-/* 화면 탭 줄 — 위쪽만 둥근 폴더 탭. 지금 화면 탭은 채운 색으로 조금 높게 선다. */
+/* 화면 탭 줄 — 위쪽만 둥근 폴더 탭(시안). 지금 화면 탭은 빨강으로 채우고 조금 높게 선다. */
 .pop-nav-tabs {
   display: flex;
   align-items: flex-end;
   gap: var(--space-1);
-  block-size: 44px;
+  block-size: 50px;
   padding: 0 var(--space-5);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  background: var(--surface);
+  background: var(--surface-container-low);
   border-block-end: 1px solid var(--outline);
 }
 
@@ -10743,25 +10765,25 @@
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
-  block-size: 36px;
+  block-size: 42px;
   margin-block-end: -1px;
-  padding-inline: var(--space-4);
-  border: 1px solid var(--outline-variant);
+  padding-inline: 20px;
+  border: 1px solid var(--outline);
   border-block-end: 0;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  background: var(--surface-container);
-  color: var(--on-surface-variant);
-  font: 500 15px / 1 var(--font-sans);
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(var(--surface-container-low), var(--surface-container));
+  color: var(--on-surface);
+  font: 500 16px / 1 var(--font-sans);
   white-space: nowrap;
   cursor: pointer;
 }
 
 .pop-nav-tab:hover {
-  background: var(--surface-container-low);
+  background: var(--surface-container-high);
 }
 
 .pop-nav-tab[data-on='true'] {
-  block-size: 40px;
+  block-size: 46px;
   border-color: var(--primary);
   background: var(--primary);
   color: var(--on-primary);
@@ -10807,29 +10829,59 @@
   padding-block-start: var(--space-4);
 }
 
-/* 홈 */
+/* 홈(#291 확정 시안) — 인사 줄, 남은 작업, 바로가기. 내용 높이만큼만 차지하고 남는 자리는 아래로 둔다. */
 .pop-ui.pop-home {
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-5) var(--pop-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--space-5);
   overflow-y: auto;
+}
+
+.pop-home__hello {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
 }
 
 .pop-home__hello h2 {
   margin: 0;
-  font: 700 24px / 32px var(--font-sans);
+  font: 700 26px / 34px var(--font-sans);
 }
 
 .pop-home__hello p {
   margin: var(--space-1) 0 0;
   color: var(--on-surface-variant);
+  font: 400 16px / 22px var(--font-sans);
+}
+
+.pop-home__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+  color: var(--on-surface-variant);
+  font: 400 16px / 22px var(--font-sans);
+  white-space: nowrap;
+}
+
+.pop-home__panel {
+  padding: 16px 20px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface);
 }
 
 .pop-home__heading {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0;
-  font: 700 18px / 24px var(--font-sans);
+  margin: 0 0 12px;
+  font: 700 19px / 26px var(--font-sans);
+}
+
+.pop-home__heading .pop-nav-icon {
+  color: var(--semantic-warning);
 }
 
 .pop-home__total {
@@ -10845,61 +10897,96 @@
   font-size: 14px;
 }
 
+.pop-home__none {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
 .pop-home__remaining-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
-  margin-block-start: var(--space-3);
 }
 
 .pop-home__remaining-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-block-size: 48px;
-  padding: 0 var(--space-4);
+  gap: var(--space-2);
+  block-size: 46px;
+  padding: 0 14px;
   border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   background: var(--surface);
   color: var(--on-surface);
-  font: 500 16px / 1 var(--font-sans);
+  font: 400 16px / 1 var(--font-sans);
   cursor: pointer;
+}
+
+.pop-home__remaining-item:hover {
+  background: var(--surface-container-low);
+}
+
+.pop-home__remaining-item strong {
+  margin-inline-start: auto;
+}
+
+.pop-home__remaining-item .pop-nav-icon {
+  color: var(--on-surface-variant);
 }
 
 .pop-home__shortcuts-head {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin-block-end: var(--space-3);
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: 12px;
 }
 
-.pop-home__shortcuts-head .field-note {
+.pop-home__shortcuts-head .pop-home__heading {
   margin: 0;
+}
+
+.pop-home__shortcuts-head p {
+  margin: 0 0 0 var(--space-1);
+  color: var(--on-surface-variant);
+  font: 400 14px / 20px var(--font-sans);
 }
 
 .pop-home__tiles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .pop-home__tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  min-block-size: 96px;
+  gap: 10px;
+  block-size: 110px;
+  padding: 0 var(--space-2);
   border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   background: var(--surface);
   color: var(--on-surface);
   font: 700 17px / 1.3 var(--font-sans);
+  text-align: center;
   cursor: pointer;
+}
+
+.pop-home__tile:hover {
+  background: var(--surface-container-low);
 }
 
 .pop-home__tile .pop-nav-icon {
   inline-size: 28px;
   block-size: 28px;
-  color: var(--primary);
+  color: var(--semantic-info);
+}
+
+.pop-home__tile .pop-work-badge {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 10px;
 }
