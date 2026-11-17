@@ -137,6 +137,13 @@ export interface RegistrationState {
   terminal: VerifiedTerminal | null;
   /** 자기 공정 목록. `ready` 에서만 값이 있다 — **빈 배열은 정상이다**(창고 단말). */
   processes: readonly TerminalProcessRow[] | null;
+  /**
+   * 확인 단계에서 보이는 이 단말의 공정 이름(omf-all-around#288). `verified` 에서만 값이 있다.
+   *
+   * ⛔ 보여 주기만 한다 — 업무 정책은 위 `processes`(준비 단계에서 다시 받은 값)만 쓴다.
+   *    받지 못하면 `null` 이고, 확인은 그대로 진행된다.
+   */
+  verifiedProcessNames: readonly string[] | null;
 }
 
 export interface PopRegistration extends RegistrationState {
@@ -168,6 +175,7 @@ const INITIAL: RegistrationState = {
   pendingCount: 0,
   terminal: null,
   processes: null,
+  verifiedProcessNames: null,
 };
 
 /**
@@ -368,6 +376,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
           pendingCount: 0,
           terminal,
           processes,
+          verifiedProcessNames: null,
         });
       } catch {
         /* ⛔ 준비 실패를 등록 실패로 되돌리지 않는다 — 토큰은 이미 확인됐다. */
@@ -436,8 +445,13 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
           return;
         }
 
+        /* 공정 이름은 보여 주기용이다 — 받지 못해도 확인을 실패로 돌리지 않는다. */
+        const verifiedProcessNames = await fetchProcesses(client, terminalId)
+          .then((rows) => rows.map((row) => row.processName ?? String(row.processId)))
+          .catch(() => null);
+
         setApproved(trimmed);
-        setState({ ...INITIAL, phase: 'verified', terminal });
+        setState({ ...INITIAL, phase: 'verified', terminal, verifiedProcessNames });
       } catch (error) {
         const failure = failureOf(error);
 

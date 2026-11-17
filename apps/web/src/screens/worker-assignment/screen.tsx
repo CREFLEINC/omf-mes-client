@@ -240,9 +240,7 @@ export const WorkerAssignmentScreen = () => {
          * 값을 얻을 경로가 이 저장소에 없어 조회가 서지 않는다. ⛔ 지어내지 않고 없음
          * 표시를 낸다 — 모르는 값과 없는 값을 같은 모양으로 그리지 않는다(G-9).
          */}
-        <p className="field-note">
-          {t.header.label} {terminal.data?.terminalCode ?? t.header.emptyValue}
-        </p>
+        <p className="field-note">{terminal.data?.terminalCode ?? t.header.emptyValue}</p>
         {/* ⭐ 오프라인이어도 «막지 않는다»(§6) — 지금 어느 상태인지만 밝힌다. */}
         <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
           {isOnline ? t.header.online : t.header.offline}
@@ -288,6 +286,7 @@ export const WorkerAssignmentScreen = () => {
           isChecking={submitted !== null && (submitted.offline || lookup.isFetching)}
           error={error}
           offlineNote={isOnline ? null : t.offline.note}
+          confirmedWorkerNo={session?.worker.workerNo ?? null}
         />
 
         <WorkerCard

@@ -107,7 +107,8 @@ export const RegistrationPanel = () => {
   /* 이탈 시 후보 입력을 지운다 — 값이 화면에 남지 않게 한다(F-4). */
   useEffect(() => () => setToken(''), []);
 
-  const { phase, failure, failureSource, pendingCount, terminal } = registration;
+  const { phase, failure, failureSource, pendingCount, terminal, verifiedProcessNames } =
+    registration;
   const busy = phase === 'verifying' || phase === 'preparing';
   const scale = usePanelScale();
   const tokenRef = useRef<HTMLInputElement>(null);
@@ -127,7 +128,9 @@ export const RegistrationPanel = () => {
   return (
     <div className="pop-registration" style={{ '--pop-reg-scale': scale } as CSSProperties}>
       <Card className="pop-registration__card">
-        <h1 className="pop-registration__title">{t.title}</h1>
+        <h1 className="pop-registration__title">
+          {phase === 'verified' && terminal !== null ? t.confirmHeading : t.title}
+        </h1>
 
         {failure !== null ? (
           <AlertBanner variant="error">
@@ -149,6 +152,14 @@ export const RegistrationPanel = () => {
                 {terminal.equipmentName ??
                   terminal.equipmentCode ??
                   (terminal.equipmentId === null ? t.unassigned : String(terminal.equipmentId))}
+              </dd>
+              <dt>{t.process}</dt>
+              <dd>
+                {verifiedProcessNames === null
+                  ? t.processUnknown
+                  : verifiedProcessNames.length === 0
+                    ? t.unassigned
+                    : verifiedProcessNames.join(', ')}
               </dd>
             </dl>
             <div className="pop-registration__actions">

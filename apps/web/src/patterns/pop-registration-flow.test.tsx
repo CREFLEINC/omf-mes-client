@@ -138,6 +138,8 @@ describe('POP 단말 등록 — 상태 전이', () => {
     /* 검증만으로 업무를 열지 않는다 — 설치 담당자가 단말 코드를 확인해야 한다(F-4). */
     expect(registration.current.phase).toBe('verified');
     expect(registration.current.terminal?.terminalCode).toBe('POP-1001');
+    /* 확인 단계에서 이 단말의 공정 이름을 함께 보인다(omf-all-around#288). */
+    expect(registration.current.verifiedProcessNames).toHaveLength(1);
 
     await act(async () => {
       await registration.current.apply();
@@ -195,14 +197,16 @@ describe('POP 단말 등록 — 상태 전이', () => {
     const registration = openRegistration([{ terminalId: 1001, plantId: 10 }], observed);
 
     await act(async () => { await registration.current.verify(TOKEN_A); });
+    /* 확인 단계는 공정 이름을 «보여 주려고» 한 번 읽는다(omf-all-around#288) — 업무 정책은 준비 단계 몫이다. */
+    expect(processReads).toBe(1);
     await act(async () => { await registration.current.apply(); });
     expect(registration.current.phase).toBe('prepare-failed');
-    expect(processReads).toBe(0);
+    expect(processReads).toBe(1);
 
     await act(async () => { await registration.current.retryPrepare(); });
     expect(registration.current.phase).toBe('ready');
     expect(confirmations).toBe(2);
-    expect(processReads).toBe(1);
+    expect(processReads).toBe(2);
   });
 
   it('기존 보관 토큰은 켤 때 재발급·재입력 없이 등록 확인과 준비를 마친다', async () => {
