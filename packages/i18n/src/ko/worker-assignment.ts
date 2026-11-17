@@ -40,7 +40,6 @@ export const workerAssignment = {
      */
     reRegister: '단말 재등록',
     terminalCode: '단말 코드',
-    terminalType: '단말 유형',
     equipment: '설비',
     /** 이 단말에 연결된 공정(omf-all-around#288). 받지 못하면 없음 표시를 낸다. */
     process: '공정',

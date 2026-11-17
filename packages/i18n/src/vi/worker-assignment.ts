@@ -19,7 +19,6 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     restart: 'Nhập lại',
     reRegister: 'Đăng ký lại máy trạm',
     terminalCode: 'Mã máy trạm',
-    terminalType: 'Loại máy trạm',
     equipment: 'Thiết bị',
     process: 'Công đoạn',
     processUnknown: 'Không kiểm tra được',

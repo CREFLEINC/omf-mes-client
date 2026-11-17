@@ -144,8 +144,6 @@ export const RegistrationPanel = () => {
             <dl className="pop-registration__facts">
               <dt>{t.terminalCode}</dt>
               <dd>{terminal.terminalCode}</dd>
-              <dt>{t.terminalType}</dt>
-              <dd>{terminal.terminalTypeCode}</dd>
               <dt>{t.equipment}</dt>
               {/* ⛔ 이름이 없으면 코드·번호를 보이고, 어느 것도 없으면 미지정이다 — 지어내지 않는다. */}
               <dd>
