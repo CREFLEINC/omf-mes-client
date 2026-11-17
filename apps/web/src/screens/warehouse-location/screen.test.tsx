@@ -2851,6 +2851,122 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     expect(marks).toHaveLength(1);
     expect(marks[0]!.closest('.tree-toggle')).toHaveTextContent('B-01');
   });
+
+  /** #1673 — 층 없이 랙까지만 만든 구역(B-01 → B-01-01). 랙이 맨 아래 위치다. */
+  const leafRack: Location = {
+    ...locationFixtures[3]!,
+    locationId: 2005,
+    parentLocationId: 2004,
+    locationCode: 'B-01-01',
+    locationName: 'B구역 01열',
+    locationLevelCode: 'RACK',
+    isLeaf: true,
+  };
+  const leafRackLocations: Location[] = [
+    ...locationFixtures.slice(0, 3),
+    { ...locationFixtures[3]!, isLeaf: false },
+    leafRack,
+  ];
+  const leafRackRoutes = (...extra: StubRoute[]): StubRoute[] => [
+    warehouseListRoute(),
+    warehouseDetailRoute(),
+    locationListRoute(leafRackLocations),
+    ...lookupRoutes(),
+    locationDetailRoute(leafRack),
+    ...extra,
+    noLabelRoute,
+    noItemsRoute,
+  ];
+  const isRackItemsPut = (request: { method: string; url: URL }): boolean =>
+    request.method === 'PUT' && request.url.pathname === '/mdm/locations/2005/items';
+
+  const openLeafRack = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'B-01-01' }));
+    return screen.getByRole('dialog', { name: '랙 수정' });
+  };
+
+  it('#1673 층 없는 랙은 랙 창에서 보관 품목을 지정해 저장한다 — 층은 0 그대로, 새 층을 만들지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      leafRackRoutes(itemPickerRoute, {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2005/items',
+        respond: () => jsonResponse({ items: [] }),
+      }),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    // 지금 모양 그대로 — 층 없는 랙은 0 에서 시작한다.
+    expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('0');
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
+    // 품목 없이 지정 품목만이면 보낼 수 없다.
+    expect(within(section).getByText('품목을 하나 이상 선택하세요.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const put = requests.find(isRackItemsPut);
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({ itemIds: [303] });
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 층 · 셀은 만들지 않고, 위치 자체도 고치지 않는다.
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+  });
+
+  it('#1673 층 없는 랙을 열기만 하고 아무것도 안 바꾸면 저장할 것이 없다', async () => {
+    const { user } = renderScreen(leafRackRoutes(), '?wh=1001');
+
+    const dialog = await openLeafRack(user);
+    await within(itemsSection(dialog)).findByRole('button', { name: '지정 품목만' });
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('#1673 층을 더하면 맨 아래가 아니게 되어 보관 품목 칸을 거두고 품목은 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      leafRackRoutes(itemPickerRoute, {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
+        respond: () =>
+          jsonResponse(
+            { ...leafRack, locationId: 2010, parentLocationId: 2005, locationCode: 'B-01-01-01' },
+            { status: 201 },
+          ),
+      }),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
+    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+
+    await user.clear(within(dialog).getByLabelText('행 (층 수)'));
+    await user.type(within(dialog).getByLabelText('행 (층 수)'), '1');
+    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(requests.some(isRackItemsPut)).toBe(false);
+  });
+
+  it('#1673 층이 있는 랙의 랙 창에는 보관 품목 칸이 없다', async () => {
+    const { requests, user } = renderScreen(locationWriteRoutes(locationDetailRoute()), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+    const dialog = screen.getByRole('dialog', { name: '랙 수정' });
+    expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('1');
+    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+    expect(requests.some((request) => request.url.pathname.endsWith('/items'))).toBe(false);
+  });
 });
 
 /** 창고 정보 탭 안 A(사용자 결정 2026-10-30) — 머리 · 정보 판의 연필 · 불량 창고 확인 · Location 묶음 · 등록 미리 채움. */

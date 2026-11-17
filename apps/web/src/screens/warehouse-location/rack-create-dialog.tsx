@@ -36,11 +36,27 @@ export interface RackCreateDialogProps {
   onCreated: (zoneId: number, rackId: number) => void;
   /** 고칠 때 배치 표 아래에 두는 라벨(사용자 지시 2026-10-29). */
   labelSlot?: ReactNode;
+  /**
+   * 층 없는 랙(맨 아래 위치)의 보관 품목(#1673) — 층을 0 으로 두는 동안만 보이고, 저장은 별칭 다음에 잇는다.
+   * 층을 더하면 맨 아래가 아니게 되므로 칸을 거두고 품목은 보내지 않는다.
+   */
+  leafItems?: RackLeafItems | null;
   /** 고칠 때 랙 삭제(밑의 층 · 셀까지). */
   onDelete?: (() => void) | undefined;
   /** 고칠 때 사용 중지 · 다시 사용 — 랙 단위로 끈다(사용자 지시 2026-10-29). 확인은 화면이 띄운다. */
   onToggleActive?: (() => void) | undefined;
   isActive?: boolean;
+}
+
+export interface RackLeafItems {
+  /** 보관 품목 칸 — 저장하는 동안은 잠근다. */
+  slot: (disabled: boolean) => ReactNode;
+  /** 받은 목록과 다르게 고쳤나. */
+  changed: boolean;
+  /** 지정 품목만인데 품목이 없나 — 빈 목록은 제한 해제라 보내지 않는다. */
+  invalid: boolean;
+  /** 고친 목록을 보낸다. 실패하면 던진다. */
+  save: () => Promise<void>;
 }
 
 type LocationCreate = components['schemas']['LocationCreate'];
@@ -91,6 +107,7 @@ export const RackCreateDialog = ({
   onClose,
   onCreated,
   labelSlot,
+  leafItems = null,
   onDelete,
   onToggleActive,
   isActive = true,
@@ -120,19 +137,23 @@ export const RackCreateDialog = ({
   if (openKey !== null && openedFor !== openKey) {
     setOpenedFor(openKey);
     setAliasText(editRack?.aliasName ?? '');
-    /* 고칠 때는 지금 모양 그대로(셀 없는 랙은 0) — 새 랙은 1 × 1 에서 시작한다. */
-    setLevelText(String(current === null ? 1 : Math.max(current.levelCount, 1)));
+    /* 고칠 때는 지금 모양 그대로(층 · 셀 없는 랙은 0, #1673) — 새 랙은 1 × 1 에서 시작한다. */
+    setLevelText(String(current === null ? 1 : current.levelCount));
     setCellText(String(current === null ? 1 : current.cellCount));
     setCreatedRack(editRack);
     setFailure(null);
     setProgress(null);
   }
 
-  /* 층은 1 이상, 셀은 0 이상(0 이면 층이 맨 아래 위치) — 서버 한도(위치 ③b)와 같다. */
-  const levelCount = parseCount(levelText, 1, RACK_LAYOUT_MAX_LEVELS);
+  /*
+   * 층은 1 이상, 셀은 0 이상(0 이면 층이 맨 아래 위치) — 서버 한도(위치 ③b)와 같다. 지금 층이 없는 랙은 0 도 받는다 —
+   * 랙이 맨 아래 위치로 남는다(#1673, 열면서 층이 생기지 않게).
+   */
+  const minLevels = current !== null && current.levelCount === 0 ? 0 : 1;
+  const levelCount = parseCount(levelText, minLevels, RACK_LAYOUT_MAX_LEVELS);
   const cellCount = parseCount(cellText, 0, RACK_LAYOUT_MAX_CELLS);
   const levelError =
-    levelCount === null ? t.rackLayout.countInvalid(1, RACK_LAYOUT_MAX_LEVELS) : undefined;
+    levelCount === null ? t.rackLayout.countInvalid(minLevels, RACK_LAYOUT_MAX_LEVELS) : undefined;
   const cellError =
     cellCount === null ? t.rackLayout.countInvalid(0, RACK_LAYOUT_MAX_CELLS) : undefined;
   const alias = aliasText.trim();
@@ -174,14 +195,21 @@ export const RackCreateDialog = ({
   const levelOnly = cellCount === 0;
   /* 이미 있는 랙(고칠 때 · 만든 뒤 별칭에서 멈췄을 때)의 별칭이 바뀌었나. */
   const aliasChanged = createdRack !== null && alias !== (createdRack.aliasName?.trim() ?? '');
-  /* 새 랙은 서버가 한 번에 만든다(+ 별칭). 고칠 때는 별칭 · 지우기 · 만들기를 하나씩. */
+  /* 층 없이 남는 랙만 보관 품목을 둔다(#1673). */
+  const shownItems = editRack !== null && levelCount === 0 ? leafItems : null;
+  const itemsChanged = shownItems?.changed === true;
+  /* 새 랙은 서버가 한 번에 만든다(+ 별칭). 고칠 때는 별칭 · 품목 · 지우기 · 만들기를 하나씩. */
   const total =
     createdRack === null
       ? 1 + (alias === '' ? 0 : 1)
-      : (aliasChanged ? 1 : 0) + removals.length + plan.length;
+      : (aliasChanged ? 1 : 0) + (itemsChanged ? 1 : 0) + removals.length + plan.length;
   const detailPending = editRack !== null && detail.data === undefined;
   const saving = progress !== null;
-  const invalid = levelError !== undefined || cellError !== undefined || aliasError !== undefined;
+  const invalid =
+    levelError !== undefined ||
+    cellError !== undefined ||
+    aliasError !== undefined ||
+    (itemsChanged && shownItems?.invalid === true);
 
   const close = () => {
     if (saving) return;
@@ -275,6 +303,10 @@ export const RackCreateDialog = ({
       } else {
         if (aliasChanged) {
           await putAlias(target);
+          step();
+        }
+        if (itemsChanged && shownItems !== null) {
+          await shownItems.save();
           step();
         }
         /* 줄이기 — 쓰인 위치가 섞였으면 서버가 거절하고(400 STATE_LOCKED) 여기서 멈춘다. */
@@ -467,6 +499,7 @@ export const RackCreateDialog = ({
               </div>
             )}
           </DialogSection>
+          {shownItems?.slot(saving)}
           {editRack !== null && labelSlot}
         </div>
       )}
