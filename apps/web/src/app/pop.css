@@ -10984,7 +10984,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 16px 12px;
 }
 
 .pop-home__stat {
@@ -10992,9 +10992,19 @@
   min-inline-size: 0;
 }
 
+/* 칸 사이는 위아래를 띄운 짧은 세로선(시안) — 칸 넷은 같은 폭이다. */
 .pop-home__stat + .pop-home__stat,
 .pop-home__next {
+  position: relative;
+}
+
+.pop-home__stat + .pop-home__stat::before,
+.pop-home__next::before {
+  position: absolute;
+  inset-block: 14px;
+  inset-inline-start: 0;
   border-inline-start: 1px solid var(--outline-variant);
+  content: '';
 }
 
 .pop-home__stat-icon {
@@ -11002,16 +11012,25 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  inline-size: 40px;
-  block-size: 40px;
+  inline-size: 42px;
+  block-size: 42px;
   border-radius: var(--radius-full);
-  background: var(--surface-container);
+  background: var(--surface-container-high);
   color: var(--on-surface-variant);
 }
 
 .pop-home__stat[data-tone='run'] .pop-home__stat-icon {
   background: color-mix(in srgb, var(--semantic-info) 14%, transparent);
   color: var(--semantic-info);
+}
+
+.pop-home__stat[data-tone='run'] .pop-home__stat-icon svg {
+  fill: currentColor;
+}
+
+.pop-home__stat[data-tone='done'] .pop-home__stat-icon {
+  background: color-mix(in srgb, var(--semantic-success) 16%, transparent);
+  color: var(--semantic-success);
 }
 
 .pop-home__stat-text,
@@ -11033,15 +11052,14 @@
 }
 
 .pop-home__stat-text strong {
-  font: 700 24px / 30px var(--font-sans);
+  font: 700 26px / 32px var(--font-sans);
   white-space: nowrap;
 }
 
-.pop-home__next {
-  flex: 1.4 1 0;
+.pop-ui .pop-home__next {
+  flex: 2 1 0;
   min-inline-size: 0;
-  border-block: 0;
-  border-inline-end: 0;
+  border: 0;
   border-radius: 0 12px 12px 0;
   background: transparent;
   color: var(--on-surface);
@@ -11060,7 +11078,7 @@
 
 .pop-home__next-text b {
   overflow: hidden;
-  font: 700 16px / 22px var(--font-mono, var(--font-sans));
+  font: 700 15px / 22px var(--font-mono, var(--font-sans));
   text-overflow: ellipsis;
   white-space: nowrap;
 }

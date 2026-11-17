@@ -40,6 +40,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     statusTitle: 'Tình hình công việc hôm nay',
     inProgress: 'Đang làm',
     waiting: 'Chờ',
+    done: 'Xong',
     statusCount: (count: number): string => `${String(count)} lệnh`,
     nextTitle: 'Việc tiếp theo',
     nextNone: 'Không có việc đang chờ',

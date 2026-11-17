@@ -133,6 +133,7 @@ const StatusCard = ({
   const stats = [
     { key: 'run', label: t.inProgress, value: data?.inProgress, icon: PLAY_ICON, tone: 'run' },
     { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'wait' },
+    { key: 'done', label: t.done, value: data?.done, icon: CHECK_ICON, tone: 'done' },
   ] as const;
   const next = data?.next ?? null;
 

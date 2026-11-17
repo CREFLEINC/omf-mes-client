@@ -62,6 +62,7 @@ export const popChrome = {
     statusTitle: '오늘 작업 현황',
     inProgress: '진행 중',
     waiting: '대기',
+    done: '완료',
     statusCount: (count: number): string => `${String(count)}건`,
     nextTitle: '다음 작업',
     nextNone: '대기 중인 작업이 없습니다',
