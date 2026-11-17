@@ -10,7 +10,7 @@ import {
 const t = messages.pqcInspectionRegister.web.actions;
 const tResult = messages.pqcInspection.result;
 
-/** 판정 → 확정 뒤 LOT 상태 방향(서버 전이표 C4 · C5 · C6 — OQC 와 같다). 모르는 코드는 방향을 말하지 않는다. */
+/** 판정 → 색 · LOT 상태 글을 고르는 방향. 모르는 코드는 방향을 말하지 않는다. */
 const DIRECTION_OF: Record<string, JudgmentConfirmDirection> = {
   ACCEPTED: 'release',
   REJECTED: 'hold',
@@ -124,7 +124,10 @@ export const WebActions = ({
           judgmentLabel={confirmInfo.judgmentLabel}
           direction={DIRECTION_OF[confirmInfo.judgmentCode] ?? 'unknown'}
           quantities={confirmInfo.quantities}
-          isSaving={isSending}
+          /* PQC 는 작업지시 단위라 LOT 전이가 OQC 와 다르다(서버 inspection-confirm.service — 합격만 정상, 불합격은 기준 초과 때만 검사 대기, 보류는 그대로). */
+          lotStates={messages.judgmentConfirm.pqcLotState}
+          /* 누르는 즉시 창을 닫고 아래 [판정 확정] 단추가 보내는 동안 잠긴다 — 창에는 보내는 중 상태가 없다. */
+          isSaving={false}
           onClose={() => setAsking(false)}
           onConfirm={() => {
             setAsking(false);

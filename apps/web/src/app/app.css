@@ -37417,15 +37417,18 @@ body:has(:is(.erp-wo-filter-bar,.erp-wo-multi-page,.process-page:has(.erp-wo-sum
   letter-spacing: var(--type-title-sm-tracking);
 }
 
-.judgment-confirm [data-tone='success'] {
+.judgment-confirm-judgment [data-tone='success'],
+.judgment-confirm-row [data-tone='success'] {
   color: var(--semantic-success-text);
 }
 
-.judgment-confirm [data-tone='error'] {
+.judgment-confirm-judgment [data-tone='error'],
+.judgment-confirm-row [data-tone='error'] {
   color: var(--semantic-error-text);
 }
 
-.judgment-confirm [data-tone='warning'] {
+.judgment-confirm-judgment [data-tone='warning'],
+.judgment-confirm-row [data-tone='warning'] {
   color: var(--semantic-warning);
 }
 

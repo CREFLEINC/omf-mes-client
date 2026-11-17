@@ -22,6 +22,12 @@ export const judgmentConfirm: Translated<typeof ko.judgmentConfirm> = {
     pending: 'Không đổi',
     unknown: 'Thay đổi',
   },
+  pqcLotState: {
+    release: 'Bình thường',
+    hold: 'Chờ kiểm tra nếu số lượng không đạt vượt mức cho phép',
+    pending: 'Không thay đổi',
+    unknown: 'Thay đổi',
+  },
   applyHeading: 'Áp dụng khi xác nhận',
   irreversible:
     'Sau khi xác nhận không thể sửa hoặc hủy đánh giá. Nếu cần thay đổi, hãy kiểm tra lại.',

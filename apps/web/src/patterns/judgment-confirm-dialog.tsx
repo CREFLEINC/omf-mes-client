@@ -26,6 +26,8 @@ export interface JudgmentConfirmDialogProps {
   quantities: { accepted: string; rejected: string; held: string } | null;
   /** 대상 LOT 이 없는 출하작업지시 OQC 면 참 — LOT 상태 글이 「집은 LOT」 기준이 된다. */
   picked?: boolean;
+  /** LOT 상태 글을 화면이 따로 줄 때(PQC — 작업지시 단위라 전이가 OQC 와 다르다). 주면 `picked` 보다 앞선다. */
+  lotStates?: Record<JudgmentConfirmDirection, string>;
   /** 「확정 시 적용 사항」 줄. 비면 구획을 그리지 않는다. */
   applyLines?: readonly string[];
   /** 저장 실패 배너 — 창 안에 낸다. */
@@ -46,6 +48,7 @@ export const JudgmentConfirmDialog = ({
   direction,
   quantities,
   picked = false,
+  lotStates,
   applyLines = [],
   banner,
   isSaving,
@@ -100,7 +103,7 @@ export const JudgmentConfirmDialog = ({
         )}
         <div className="judgment-confirm-row">
           <dt>{t.lotRow}</dt>
-          <dd>{(picked ? t.pickedLotState : t.lotState)[direction]}</dd>
+          <dd>{(lotStates ?? (picked ? t.pickedLotState : t.lotState))[direction]}</dd>
         </div>
       </dl>
       {applyLines.length === 0 ? null : (

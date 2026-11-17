@@ -24,6 +24,13 @@ export const judgmentConfirm = {
     pending: '변경 없음',
     unknown: '변경',
   },
+  /** PQC — 작업지시 단위 전이(서버 inspection-confirm.service: 합격 → 검사 대기 생산 LOT 정상, 불합격은 합격판정개수를 넘을 때만 검사 대기, 보류는 그대로). */
+  pqcLotState: {
+    release: '정상',
+    hold: '불합격 수량이 허용 기준을 넘으면 검사 대기',
+    pending: '변경 없음',
+    unknown: '변경',
+  },
   applyHeading: '확정 시 적용 사항',
   irreversible:
     '확정 후 판정은 수정하거나 취소할 수 없습니다. 변경이 필요한 경우 재검사를 진행해야 합니다.',

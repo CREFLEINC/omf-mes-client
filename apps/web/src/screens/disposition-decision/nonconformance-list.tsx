@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { lookupDisplayLabel, toLookupDisplayState } from '../../patterns/lookup-display';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { codeValueLabel } from './disposition-codes';
 import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
@@ -110,11 +110,13 @@ export const NonconformanceList = ({
       width: '110px',
       header: t.detail.affectedQty,
       align: 'center',
-      /* 수량을 모르는 행(「—」)에는 단위를 붙이지 않는다. */
-      render: (row) =>
-        row.affectedQtyText === t.values.unknownQty
+      /* 수량을 모르는 행(「—」)과 단위 이름을 아직 못 읽은 때(불러오는 중 · 알 수 없음)는 단위를 붙이지 않는다. */
+      render: (row) => {
+        const uom = toLookupDisplayState(uoms, row.uomId);
+        return row.affectedQtyText === t.values.unknownQty || uom.kind !== 'named'
           ? row.affectedQtyText
-          : `${row.affectedQtyText} ${lookupDisplayLabel(uoms, row.uomId)}`,
+          : `${row.affectedQtyText} ${uom.label}`;
+      },
     },
     {
       key: 'severity',
