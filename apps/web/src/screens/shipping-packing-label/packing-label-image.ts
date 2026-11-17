@@ -143,7 +143,7 @@ const blitClipped = (
 
 /**
  * 80 × 30 배치(`layoutLotLabel`) 한 장을 점판으로 — **종이(TSPL)와 같은 자리에 그린다.**
- * 출고 QR 라벨(`goods-issue-qr/label-image`)도 이것을 쓴다.
+ * 옛 출고 QR 라벨(P-01-02)도 이것을 썼다 — 008 에서 걷었다.
  */
 export const drawLotLabelLayout = (layout: LotLabelLayout): LabelBitmap => {
   const bitmap = createBitmap(layout.width, layout.height);

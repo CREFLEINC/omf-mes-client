@@ -1,231 +1,145 @@
 /**
- * P-01-02 출고 QR 발행.
+ * P-01-02 분할 LOT 라벨(008 · omf-all-around#289).
  *
- * 이 화면의 말은 「출고 QR」이다 — 보관 단위에 붙는 LOT 라벨(P-01-01)과 이름·용도가 다르다.
- * 두 말을 섞으면 현장에서 어느 종이를 붙일지 갈리므로 「라벨」이라 부르지 않는다.
+ * 부분 출고로 떼어 낸 수량은 분할 LOT(새 자재 관리 LOT)이 되고, 이 화면은 그 봉지에 붙일 **자재 관리 LOT 라벨**을
+ * 찍는다. 출고 QR(라인·파렛트)은 더 발행하지 않는다 — 이미 붙은 출고 QR 은 PDA 생산창고 입고가 계속 읽는다.
  */
 export const goodsIssueQr = {
-  /* ⚠ **「자재 출고」다** — 제품 출하와 구분한다(사용자 지시 2026-09-16 · ISSUE-QR-01 D4). */
-  title: '자재 출고 QR 발행',
+  title: '분할 LOT 라벨',
+  terminalLabel: '단말#',
+  terminalUnknown: '확인되지 않음',
 
-  entry: {
-    issueLabel: '자재 출고 전표',
-    workerLabel: '사번',
-    /**
-     * 전표 없이 들어온 경우.
-     *
-     * ⚠ **이제 여기서 전표를 고를 수 있다**(ISSUE-QR-01 U3). 전에는 「고른 뒤 들어오세요」로
-     *   끝냈는데, POP 머리줄 [화면 이동]은 전표를 싣지 않아 **그 길로 들어온 작업자에게는 갈
-     *   데가 없었다.** 문구가 할 일을 아래 입력 칸이 맡는다.
-     */
-    missingIssue: '자재 출고번호를 입력해 전표를 불러오세요.',
-    /** 출고번호로 전표를 찾는 칸. 스캐너로 읽어도 되고 손으로 쳐도 된다. */
-    lookup: {
-      label: '자재 출고번호',
-      placeholder: '자재 출고번호를 읽거나 입력하세요',
-      action: '전표 불러오기',
-      searching: '전표를 찾는 중',
-      /** 번호가 똑같은 건이 없다. **비슷한 번호를 화면이 대신 고르지 않는다.** */
-      notFound: '그 자재 출고번호의 전표를 찾지 못했습니다. 번호를 확인하세요.',
-      failed: '전표를 조회하지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
-    },
+  /** 라벨 안 찍은 분할 LOT — 기간과 상관없이 모두 센다(FR-008). */
+  band: {
+    unknownTitle: '라벨 안 찍은 분할 LOT 건수를 받지 못했습니다',
+    unknownBody: '목록을 다시 불러오세요. 받기 전까지는 「없음」이 아닙니다.',
+    noneTitle: '라벨 안 찍은 분할 LOT 없음',
+    noneBody: '부분 출고로 생긴 분할 LOT 은 모두 라벨을 찍었습니다.',
+    title: (count: number) => `라벨 안 찍은 분할 LOT ${String(count)}건`,
+    body: '봉지에 라벨이 없으면 생산창고 입고(PDA)·자재 투입(POP)에서 스캔할 수 없습니다. 기간과 상관없이 모두 보입니다.',
+    failed: (count: number) => `인쇄 실패 ${String(count)}건`,
+    oldest: (at: string, age: string) => `가장 오래된 것 ${at} · ${age}`,
+    showUnprinted: '라벨 안 찍음 보기',
   },
 
-  /**
-   * QR 발행 대기 목록 — 자재창고 담당이 관리자 웹 없이 쓰는 자리(ISSUE-QR-01 D5).
-   *
-   * ⛔ **「없다」를 완전한 사실로 말하지 않는다.** 서버에 미발행 축이 없어 화면이 최근 창만
-   *    훑는다 — 창을 함께 적지 않으면 담당이 찍어야 할 것을 못 찍고도 다 찍은 줄 안다.
-   */
-  pending: {
-    sectionLabel: 'QR 발행 대기',
-    /** 전표에서 목록으로 돌아가는 길. 돌아가면 목록을 다시 받는다. */
-    back: '대기 목록으로',
-    refresh: '새로 고침',
-    /**
-     * ⭐ 발행 여부로 목록을 가른다(사용자 지시 2026-09-21) — 자재 LOT 라벨 발행(P-01-01)과 같다.
-     *    찍은 라인이 목록에서 빠지면 라벨이 찢어졌을 때 다시 찍을 길이 없다.
-     */
-    filter: {
-      label: '발행 여부',
-      unissued: '미발행',
-      issued: '발행 완료',
-    },
-    /** 발행 완료 쪽의 상태 표식. 「몇 회 찍었는가」가 재발행 판단의 근거다. */
-    statusIssued: (count: number) => `${String(count)}회 발행`,
-    issuedEmpty: '창 안에 발행한 라인이 없습니다.',
-    pick: '선택',
-    columnIssueNo: '자재 출고번호',
-    columnLine: '라인',
-    columnItem: '품목',
-    columnLot: 'LOT',
-    columnQty: '수량',
-    columnStatus: '상태',
-    /** 한 번도 찍지 않았다. */
-    statusNotIssued: '미발행',
-    /**
-     * 발행 기록은 있는데 **마지막 인쇄가 실패**했다 — 현장에 라벨이 없다(사용자 결정 2026-09-16).
-     *
-     * ⚠ 회차가 이미 올라가 있어 다시 찍으려면 **재발행 사유**가 필요하다. 그 사실을 전표 화면이
-     *   따로 안내하지만, 목록에서도 「미발행」과 갈라 보여야 담당이 왜 사유를 묻는지 안다.
-     */
-    statusPrintFailed: (issueCount: number): string => `인쇄 실패 · 회차 ${String(issueCount)}`,
-    columnAction: '',
-    window: (days: number, limit: number): string =>
-      `최근 ${String(days)}일 · 최대 ${String(limit)}건의 QR을 조회합니다`,
-    loading: '발행 대기를 찾는 중',
-    failed: '발행 대기를 불러오지 못했습니다. 연결을 확인한 뒤 새로 고치세요.',
-    empty: '발행 대기 중인 자재 출고가 없습니다.',
-    allIssued: (count: number): string =>
-      `자재 출고 라인 ${String(count)}건이 이미 발행되었습니다.`,
-    truncated: '이 기간에 더 많은 자재 출고가 있습니다. 못 찾은 건은 출고번호로 불러오세요.',
+  tabs: {
+    label: '보기',
+    unprinted: '라벨 안 찍음',
+    printed: '찍음',
   },
-
-  /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
-  device: {
-    /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
-    terminalLabel: '단말#',
-    terminalUnknown: '확인되지 않음',
+  search: {
+    label: '분할 LOT 찾기',
+    /* 좁은 칸에서도 잘리지 않게 짧게 — 분할·원래 LOT 번호 스캔, 출고번호·품목코드 입력(시안 P0102-After 의 뜻). */
+    placeholder: 'LOT 번호 스캔 · 출고번호 · 품목코드',
+    clear: '지우기',
   },
-
-  printer: {
-    label: '프린터',
-    /** 계약이 상태 문구를 함께 내려 준다 — 화면이 상태값으로 문장을 조립하지 않는다. */
-    empty: '등록된 프린터가 없습니다. 발행 기록은 남고 인쇄만 되지 않습니다.',
-    loading: '프린터 상태를 확인하는 중입니다.',
-    failed: '프린터 상태를 불러오지 못했습니다.',
-    /** 셸(현장 단말) 밖에서 열었을 때. 프린터가 없는 것과 다른 사정이라 따로 말한다. */
-    noShell: '이 화면을 띄운 곳에는 인쇄 통로가 없습니다. 발행 기록만 남고 인쇄는 하지 않습니다.',
+  /** 찍음 보기의 기간 — 서버가 출고일로 거른다(contracts §4). */
+  periods: {
+    label: '출고일',
+    today: '오늘',
+    week: '최근 7일',
+    month: '최근 30일',
   },
+  refresh: '새로 고침',
+  refreshedAt: (at: string) => `${at} 받음`,
+  info: '부분 출고로 떼어 낸 수량은 분할 LOT(새 자재 관리 LOT)이 됩니다. 라벨은 자재 관리 LOT 라벨과 같은 양식이고 QR 에는 분할 LOT 번호가 실립니다. 출고 QR 은 더 발행하지 않습니다 — 이미 붙은 출고 QR 은 PDA 생산창고 입고에서 계속 읽힙니다.',
 
-  lines: {
-    sectionLabel: '자재 출고 라인',
-    columnItem: '품목',
-    columnLot: 'LOT',
-    columnQty: '수량',
-    columnStatus: '발행',
-    selectAll: '전체 선택',
-    /** 행 오른쪽 고르기 단추(사용자 지시 2026-09-17 — 체크 칸 대신). */
-    pick: '선택',
-    /** 고른 뒤의 같은 단추 — 무엇이 골라졌는지 글자로도 말한다(사용자 지시 2026-09-21). */
-    picked: '선택됨',
-    /**
-     * 대기 목록에서 한 줄을 골라 들어오면 **그 줄만 선다**(사용자 지시 2026-09-21). 같은 전표의
-     * 다른 줄도 찍어야 하면 이 단추로 펼친다 — 감춘 줄이 있다는 사실을 단추가 말한다.
-     */
-    showAll: '이 전표 라인 모두 보기',
-    showPickedOnly: '고른 라인만 보기',
+  table: {
+    label: '분할 LOT',
+    select: '선택',
+    lotNo: '분할 LOT 번호 · 원래 LOT',
+    item: '품목',
+    qty: '수량',
+    issue: '출고번호 · 라인',
+    destination: '도착 창고 · 위치',
+    splitAt: '분할 시각',
+    splitAtOldestFirst: '분할 시각 ↑',
+    labelColumn: '라벨',
+    parentLabel: '원래',
+    line: (lineNo: number) => `라인 ${String(lineNo)}`,
+    today: '오늘',
+    daysAgo: (days: number) => `${String(days)}일 지남`,
+    choose: (lotNo: string) => `${lotNo} 고르기`,
+  },
+  status: {
+    unissued: '미발행',
+    failed: (count: number) => `인쇄 실패 · ${String(count)}회`,
+    failedHint: '사유 골라 다시 찍기',
+    pending: (seq: number) => `찍음 ${String(seq)}회 · 결과 미확인`,
+    printed: (seq: number) => `찍음 ${String(seq)}회`,
+  },
+  empty: {
+    unprintedTitle: '라벨을 찍을 분할 LOT 이 없습니다',
+    unprintedBody:
+      '부분 출고하면 떼어 낸 수량이 분할 LOT 이 되어 여기에 나옵니다. 전량 출고는 이미 붙은 자재 관리 LOT 라벨을 그대로 씁니다.',
+    printedTitle: (period: string) => `${period} 안에 찍은 분할 LOT 라벨이 없습니다.`,
+    printedBody: '기간을 넓혀 보세요.',
+    searchTitle: '찾는 분할 LOT 이 이 목록에 없습니다.',
+    searchNone:
+      '번호를 확인하세요. 전량 출고한 LOT 은 분할 LOT 이 생기지 않아 여기 나오지 않습니다.',
+    searchInPrinted: (lotNo: string) => `이미 라벨을 찍은 분할 LOT 입니다(${lotNo}).`,
+    searchInUnprinted: (lotNo: string) => `아직 라벨을 안 찍은 분할 LOT 입니다(${lotNo}).`,
+    showInPrinted: '「찍음」에서 보기',
+    showInUnprinted: '「라벨 안 찍음」에서 보기',
+    loadFailedTitle: '분할 LOT 목록을 불러오지 못했습니다.',
+    loadFailedBody: '연결을 확인한 뒤 다시 불러오세요. 이 상태에서는 라벨을 찍을 수 없습니다.',
+    retry: '다시 불러오기',
+  },
+  reasons: {
+    needFailed: (count: number) =>
+      `인쇄 실패한 ${String(count)}장은 회차가 이미 올라 있어 사유를 골라야 찍습니다`,
+    need: '사유를 고르세요',
+  },
+  bar: {
+    pickHint: '라벨을 찍을 분할 LOT 을 고르세요 — 오래된 것이 위에 있습니다',
+    selected: (count: number) => `${String(count)}개 선택`,
+    withFailed: (count: number) => ` · 인쇄 실패 ${String(count)}개 포함`,
+    failedNeedsReason: '인쇄 실패한 것은 재발행 사유를 골라야 찍습니다',
+    selectAll: (count: number) => `전체 선택 (${String(count)})`,
+    clearAll: '전체 해제',
     clearSelection: '선택 해제',
-    empty: '이 전표에 출고 라인이 없습니다.',
-    loading: '출고 라인을 불러오는 중입니다.',
-    failed: '출고 라인을 불러오지 못했습니다.',
-    /** 행마다 붙는 발행 현황. 「모른다」와 「없다」를 다르게 말한다. */
-    statusNotIssued: '미발행',
-    statusIssued: (count: number) => `${String(count)}회 발행`,
-    statusUnknown: '발행 현황 확인 불가',
+    print: (count: number) => `라벨 ${String(count)}장 찍기`,
+    printNone: '라벨 찍기',
+    reprintHint: '다시 찍을 라벨을 고르거나 스캔하세요',
+    reprintSelected: (count: number) => `${String(count)}장 선택`,
+    withReason: (reason: string) => ` · 사유 ${reason}`,
+    reprintNeedsReason: '사유를 골라야 다시 찍을 수 있습니다',
+    reprint: (count: number) => `${String(count)}장 다시 찍기`,
+    reprintNone: '다시 찍기',
+    listFirst: '목록을 받은 뒤 라벨을 찍을 수 있습니다',
+    running: (done: number, total: number) => `라벨 찍는 중 ${String(done)} / ${String(total)}`,
   },
-
-  target: {
-    sectionLabel: '발행 대상',
-    unitLabel: '유형',
-    unitLine: '라인 단위',
-    unitPallet: '파렛트 단위',
-    /**
-     * 파렛트 대상 — 고른 라인의 LOT 이 실린 취급 단위만 목록에 선다(스펙 §5-2).
-     *
-     * ⛔ 조작 이름(「유형:」)을 앞에 붙이지 않는다 — 바로 위가 그 칸이라 자리가 이미 말한다.
-     */
-    palletLabel: '대상',
-    palletPlaceholder: '파렛트를 고르세요',
-    palletNeedsOneLine: '파렛트는 라인을 하나만 고른 뒤에 고를 수 있습니다.',
-    palletLoading: '파렛트를 불러오는 중입니다.',
-    palletFailed: '파렛트를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.',
-    /* 다시 시도해도 풀리지 않는다 — 서버가 이 축을 아직 제공하지 않는다(#1095). */
-    palletUnavailable: '파렛트 단위 발행은 아직 서버가 지원하지 않습니다. 라인 단위로 발행하세요.',
-    /** 이 라인의 LOT 이 실린 파렛트가 없다 — 파렛트를 만드는 것은 창고 화면이다. */
-    palletEmpty: '이 라인의 LOT 이 실린 파렛트가 없습니다. 라인 단위로 발행하세요.',
-    /**
-     * 담긴 내용 — 설계 §3 도면이 「3라인 · 820 EA」로 그렸다. 수량 뒤의 단위까지가 한 벌이다.
-     *
-     * ⚠ **수량 문면은 화면이 만든다** — 한 파렛트에 단위가 섞이면 하나로 더할 수 없어
-     * 단위별로 갈라 적는다(예: `800 EA · 20 KG`).
-     */
-    palletContents: (lineCount: number, quantityText: string) =>
-      `${String(lineCount)}라인 · ${quantityText}`,
-    palletContentsUnknown: '담긴 내용을 확인하는 중입니다.',
-    /**
-     * 목록이 한 쪽에서 잘렸다 — 고르려던 파렛트가 목록에 없을 수 있다.
-     *
-     * ⛔ **조용히 자르지 않는다.** 남은 것 중에서 고르게 두면 잘못 고른 것이 그대로 발행
-     * 이력에 남는다(되돌릴 수 없는 쓰기).
-     */
-    palletTruncated: (shown: number, total: number) =>
-      `파렛트 ${String(total)}건 중 ${String(shown)}건만 보입니다. 찾는 파렛트가 없으면 라인 단위로 발행하세요.`,
-    selectedCount: (count: number) => `${String(count)}개 라인`,
-    /**
-     * 아직 고르지 않았다. ⛔ **「고르세요」로 쓰지 않는다** — 같은 말이 액션바의 막힌 사유로
-     * 이미 서 있어 한 화면에 두 번 나온다(사용자 지적 2026-09-07).
-     */
-    none: '—',
-    seqLabel: '회차',
-    /** 고른 라인 한 줄 — 발행되는 QR 한 장이다(사용자 지시 2026-09-17). */
-    lineLabel: (lineNo: number): string => `라인 ${String(lineNo)}`,
-    /**
-     * 발행 전에는 회차를 모른다 — 서버가 매긴다.
-     *
-     * ⛔ **문장으로 설명하지 않는다.** 설계 §3 도면은 이 자리에 「1 (최초)」처럼 값만 그렸다.
-     * 통합 `P-02-04`에서도 같은 종류의 설명을 걷었다(사용자 지시).
-     */
-    seqUnknown: '—',
-    previewLabel: '미리보기',
-    previewEmpty: '라인을 선택하세요',
-    previewFailed: '미리보기를 불러오지 못했습니다. 인쇄는 그대로 진행할 수 있습니다.',
-    previewAlt: '자재 출고 QR 미리보기',
-    /**
-     * 도착 위치를 못 읽어 라벨의 `TO:` 를 비운 채 내보낸다는 사실.
-     *
-     * ⛔ **조용히 비우지 않는다.** 라벨에 도착지를 싣기로 한 것이 사용자 결정이었으므로, 그것이
-     *    빠진 라벨을 현장에 붙이는 사람은 그 사실을 알고 붙여야 한다.
-     */
-    destinationMissing:
-      '도착 위치를 읽지 못해 라벨의 도착지를 비웠습니다. 발행은 그대로 할 수 있습니다.',
+  preview: {
+    title: '분할 LOT 라벨 미리 보기',
+    reprintTitle: '다시 찍기 미리 보기',
+    note: '자재 관리 LOT 라벨과 같은 양식입니다. QR 에는 분할 LOT 번호만 실리고, 라벨에는 품목·수량(분할 수량)·공급사가 보입니다. 패키징 줄은 없습니다.',
+    reissueNote: (reason: string) => ` 사유 「${reason}」, 출력 차수가 하나 오릅니다.`,
+    guide: '80 × 30 mm · QR = 분할 LOT 번호',
+    bag: '붙일 봉지',
+    bagValue: (qty: string, issueNo: string, lineNo: number, destination: string) =>
+      `${qty} · 출고 ${issueNo} 라인 ${String(lineNo)}${destination === '' ? '' : ` · 도착 ${destination}`}`,
+    parent: '원래 LOT',
+    prev: '◀ 이전',
+    next: '다음 ▶',
+    page: (index: number, total: number) => `${String(index)} / ${String(total)}장`,
+    cancel: '취소',
+    print: (count: number) => `${String(count)}장 인쇄`,
+    reprint: (count: number) => `${String(count)}장 다시 찍기`,
+    printer: (name: string) => `프린터 ${name}`,
+    printerDefault: '프린터 서버 기본값',
   },
-
-  reissue: {
-    label: '재발행 사유',
-    placeholder: '사유를 고르세요',
-    /** 고른 라인 중 이미 발행된 것이 있을 때만 뜬다. */
-    required: '이미 발행된 라인이 있어 재발행 사유가 필요합니다.',
-    /** ⚠ 발행 현황을 못 읽은 라인이 섞였다. 재발행인지 화면이 단정하지 않고 자리만 연다. */
-    unknownStatus:
-      '발행 현황을 확인하지 못한 라인이 있습니다. 이미 발행된 라인이면 사유를 골라야 발행됩니다.',
-    /** ⛔ 서버가 사유를 물어 칸이 섰다. 현황은 읽혔으므로 「확인하지 못했다」고 말하지 않는다. */
-    serverAsked: '서버가 이 발행을 재발행으로 봅니다. 사유를 고르고 다시 발행하세요.',
-    loading: '사유 목록을 불러오는 중입니다.',
-    failed: '사유 목록을 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.',
-    empty: '고를 수 있는 재발행 사유가 없습니다.',
-  },
-
-  action: {
-    issue: '발행·인쇄',
-  },
-
   result: {
-    /** 발행과 인쇄는 다른 걸음이다 — 한 문장으로 뭉치지 않는다. */
-    issued: (count: number) => `${String(count)}건을 발행했습니다.`,
-    printing: '프린터로 보내는 중입니다.',
-    printFailed: '인쇄에 실패했습니다. 발행 기록은 남아 있으니 재발행으로 다시 찍으세요.',
-    reportFailed:
-      '인쇄에 실패했고 그 결과를 서버에 남기지도 못했습니다. 발행 기록은 남아 있습니다.',
-    /** 종이는 나왔는데 서버가 그 사실을 모른다 — 다음 회차가 「아직 안 찍었나」로 읽는다. */
-    printedUnreported:
-      '인쇄는 마쳤지만 그 결과를 서버에 남기지 못했습니다. 이미 찍힌 라벨을 확인하고 필요할 때만 다시 찍으세요.',
+    printed: (count: number) =>
+      `${String(count)}장 인쇄했습니다 — 봉지에 붙여 두세요. 찍은 분할 LOT 은 「찍음」으로 옮겼습니다.`,
+    reprinted: (count: number) =>
+      `${String(count)}장 다시 찍었습니다 — 출력 차수가 올랐습니다. 헌 라벨은 떼어 버리세요.`,
+    partial: (total: number, printed: number, failed: number) =>
+      `${String(total)}장 중 ${String(printed)}장 인쇄 · ${String(failed)}장 인쇄 실패 — 프린터 연결과 용지를 확인하세요. 실패한 것은 「라벨 안 찍음」에 남아 있으니 사유를 골라 다시 찍으세요.`,
+    notSent: (count: number) => ` 보내지 않은 ${String(count)}장은 그대로 남아 있습니다.`,
+    forbidden: '이 단말에는 라벨 발행 권한이 없습니다. 관리자에게 알리세요.',
+    issueFailed: (count: number, reason: string) =>
+      `${String(count)}장은 발행하지 못했습니다${reason === '' ? '' : ` — ${reason}`}.`,
+    showPrinted: '찍음 보기',
+    close: '닫기',
   },
-
-  errors: {
-    forbidden: '이 단말에서는 발행할 수 없습니다. 다른 단말에서 다시 시도하세요.',
-  },
-
-  /** 「전량 출고에도 예외 없이 항상 발행한다」는 확정 사항을 사용자가 물었을 때의 근거. */
-  alwaysIssueNote: '전량 출고에도 자재 출고 QR 을 발행합니다.',
 } as const;

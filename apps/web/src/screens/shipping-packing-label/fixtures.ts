@@ -78,7 +78,14 @@ export const shippingUnit = (
   createdAt: '2026-09-17T09:00:00+09:00',
   boxes: [],
   itemTotals: [
-    { itemId: 9601, itemCode: 'F534F50200', itemName: 'SYN COVER', qty: 240, uomId: 9301, uomCode: 'EA' },
+    {
+      itemId: 9601,
+      itemCode: 'F534F50200',
+      itemName: 'SYN COVER',
+      qty: 240,
+      uomId: 9301,
+      uomCode: 'EA',
+    },
   ],
 });
 

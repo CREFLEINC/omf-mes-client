@@ -39,15 +39,15 @@ describe('toDeliveryRow', () => {
    *    가서야 막힌다.
    */
   it('마감 여부가 그대로 발행 가능 여부다', () => {
-    expect(toDeliveryRow(unit(7001, 'SU-20260917-0001', 'CLOSED'), CLOSED, COMPOSING)).toMatchObject(
-      {
-        targetId: 7001,
-        issueTargetId: 7001,
-        displayName: 'SU-20260917-0001',
-        isIssuable: true,
-        statusLabel: CLOSED,
-      },
-    );
+    expect(
+      toDeliveryRow(unit(7001, 'SU-20260917-0001', 'CLOSED'), CLOSED, COMPOSING),
+    ).toMatchObject({
+      targetId: 7001,
+      issueTargetId: 7001,
+      displayName: 'SU-20260917-0001',
+      isIssuable: true,
+      statusLabel: CLOSED,
+    });
 
     expect(toDeliveryRow(unit(7002, 'SU-20260917-0002', 'OPEN'), CLOSED, COMPOSING)).toMatchObject({
       isIssuable: false,
@@ -60,7 +60,9 @@ describe('toDeliveryRow', () => {
    *    서버도 이 대상 유형에 `lotId` 를 `null` 로 둔다(전달본 v4 ④).
    */
   it('LOT 을 비운다', () => {
-    expect(toDeliveryRow(unit(7003, 'SU-20260917-0003', 'CLOSED'), CLOSED, COMPOSING).lotId).toBeNull();
+    expect(
+      toDeliveryRow(unit(7003, 'SU-20260917-0003', 'CLOSED'), CLOSED, COMPOSING).lotId,
+    ).toBeNull();
   });
 });
 
