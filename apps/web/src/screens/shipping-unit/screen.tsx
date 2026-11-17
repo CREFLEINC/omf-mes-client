@@ -30,6 +30,7 @@ import { renderDeliveryLabel } from './delivery-label-image';
 import { useShippingUnitWrites } from './mutations';
 import { useComposableShipments, useShippingUnitDetail, useShippingUnitTypes } from './queries';
 import type { AddBoxRejection, ShippingUnitBox } from './types';
+import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.shippingUnit;
 
@@ -321,11 +322,11 @@ export const ShippingUnitScreen = () => {
          *    사번과 온라인/오프라인. [화면 이동]·[사용자 전환]은 셸이 모든 POP 화면 머리줄에
          *    세운다. 전용 화면 스펙이 설계 고정 커밋에 없어 형제 화면 P-04-01 머리줄과 같게 둔다.
          */}
-        <div className="pop-context-right">
+        <PopTopStatus>
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
             {isOnline ? t.header.online : t.header.offline}
           </Chip>
-        </div>
+        </PopTopStatus>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

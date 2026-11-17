@@ -360,11 +360,12 @@ describe('러닝체인지 화면 — 읽기', () => {
   });
 
   /* 세션은 「어느 구간에 매다는가」이지 「열 수 있는가」가 아니다(§6). */
-  it('세션이 없어도 화면은 서고 그 사실을 말한다', async () => {
+  /* 「세션 없음」 줄은 두지 않는다(사용자 지시 2026-11-17 · #291) — 본문이 그 사정을 말한다. */
+  it('세션이 없어도 화면은 서고 그 사실을 본문이 말한다', async () => {
     renderScreen({ noSession: true });
 
-    expect(await screen.findByText(t.header.sessionNone)).toBeInTheDocument();
-    expect(screen.getByText(t.current.moldNoSession)).toBeInTheDocument();
+    expect(await screen.findByText(t.current.moldNoSession)).toBeInTheDocument();
+    expect(screen.queryByText(t.header.sessionNone)).not.toBeInTheDocument();
   });
 
   /*

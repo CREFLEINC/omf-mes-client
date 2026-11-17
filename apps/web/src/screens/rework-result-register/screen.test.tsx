@@ -399,7 +399,8 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     const header = container.querySelector('.pop-header');
 
     expect(header).not.toHaveTextContent(t.workerLabel('100027'));
-    expect(header).toHaveTextContent(t.workOrderUnknown);
+    /* W/O 를 고르기 전에는 W/O 줄을 세우지 않는다(사용자 지시 2026-11-17 · #291). */
+    expect(header).not.toHaveTextContent(t.workOrderUnknown);
     expect(header).not.toHaveTextContent(t.selectWorkOrder);
 
     await pickWorkOrder(user);

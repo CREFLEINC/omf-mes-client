@@ -41,6 +41,7 @@ import {
   type QuantityKey,
 } from './result';
 import { useUomLookup } from './uom-lookup';
+import { PopTopStatus } from '../../patterns/pop-top-status';
 
 type WorkOrder = components['schemas']['WorkOrder'];
 
@@ -233,18 +234,23 @@ export const ReworkResultRegisterScreen = () => {
          * 머리줄 왼쪽은 **맥락 값**이다 — 스펙 §3 의 `W/O-2026-R012 · FG-1001`.
          * ⛔ 「고르세요」 같은 안내문을 여기 두지 않는다 — 본문 목록이 이미 말한다.
          */}
-        <p className="pop-context">
-          {selected === null
-            ? t.workOrderUnknown
-            : t.headerContext(selected.workOrderNo, selected.itemCode ?? `#${selected.itemId}`)}
-        </p>
-        <p className="pop-context pop-context-right">
+        {/* W/O 를 고르기 전에는 줄을 세우지 않는다(사용자 지시 2026-11-17 · #291). */}
+        {selected !== null && (
+          <p className="pop-context">
+            {t.headerContext(selected.workOrderNo, selected.itemCode ?? `#${selected.itemId}`)}
+          </p>
+        )}
+        <PopTopStatus>
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
             {isOnline ? messages.common.connection.online : messages.common.connection.offline}
           </Chip>
           {/* ⭐ 미전송이 없으면 표시하지 않는다(사용자 지시 2026-09-15) — 「미전송 0건」은 머리줄만 붐빈다. */}
-          {pendingCount > 0 && <span>{t.pending(pendingCount)}</span>}
-        </p>
+          {pendingCount > 0 && (
+            <Chip variant="status" size="md" status="warning">
+              {t.pending(pendingCount)}
+            </Chip>
+          )}
+        </PopTopStatus>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

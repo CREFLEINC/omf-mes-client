@@ -10503,9 +10503,12 @@
 }
 
 .pop-nav-top__brand {
-  margin-inline-end: auto;
   font: 700 17px / 1 var(--font-sans);
   letter-spacing: 0.2px;
+}
+
+.pop-nav-top__terminal {
+  margin-inline-end: auto;
 }
 
 .pop-nav-top__chip {
@@ -10800,9 +10803,17 @@
  * 화면 정보(W/O·설비·금형·긴급, 연결·미전송·프린터)만 남은 얇은 한 줄이 된다.
  * ⛔ 작업 전 점검 덮개(`.pop-overlay`)의 머리줄은 별도 단계라 이름을 그대로 둔다.
  */
+/*
+ * 공통 메뉴 아래에서는 머리줄을 «행»(띠 바탕·밑줄)으로 세우지 않는다(사용자 지시 2026-11-17 · #291).
+ * 연결·전송 표시는 맨 위 줄로 갔고(`PopTopStatus`), 남는 작업 정보(W/O·출하 번호 등)는 본문 맨 위
+ * 한 줄 글로 선다 — 스캔·입력 위에서 읽힌다.
+ */
 .pop-frame .pop-ui > .pop-header {
-  height: 44px;
-  min-height: 44px;
+  height: auto;
+  min-height: 0;
+  padding: var(--space-4) var(--pop-pad) 0;
+  background: transparent;
+  border-block-end: 0;
 }
 
 .pop-frame .pop-ui > .pop-header > .pop-title {
@@ -11187,4 +11198,27 @@
 .pop-nav-top__printer {
   display: inline-flex;
   align-items: center;
+}
+
+/* 맨 위 줄의 화면 상태(연결·전송) — 화면이 보낸 칩을 한 줄로 늘어놓는다. 비면 자리를 차지하지 않는다. */
+.pop-nav-top__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-nav-top__status:empty {
+  display: none;
+}
+
+/*
+ * 하단 바의 안내 문장(「~를 선택하세요」·잠긴 이유 등)은 공통 메뉴 아래에서 보이지 않게 한다
+ * (사용자 지시 2026-11-17 · #291). ⛔ 저장 중·저장됨·실패 같은 «결과» 표시(배너)는 그대로 둔다 —
+ * 그것이 묻히면 같은 기록을 두 번 저장한다. 판정·잠금 로직은 화면이 그대로 한다.
+ */
+.pop-frame .action-bar-remaining,
+.pop-frame .pop-action-note > .field-note,
+.pop-frame .pop-oqc-bar-note--blocked,
+.pop-frame .pop-oqc-bar-note--ready {
+  display: none;
 }

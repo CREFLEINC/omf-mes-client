@@ -2,6 +2,8 @@ import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import { PopTopStatus } from './pop-top-status';
+
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
   titleId: string;
@@ -114,17 +116,20 @@ export const PopHeader = ({
       {/* 프린터 칩은 창(선택)과 [다시 시도]를 품어 문단(p) 안에 둘 수 없다 — 그때만 div 로 세운다. */}
       <RightGroup className="pop-context pop-context-right">
         {printer}
-        {isConnected !== undefined && (
-          <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
-            {isConnected ? t.connected : t.disconnected}
-          </Chip>
-        )}
+        {/* 연결·미전송 표시는 공통 메뉴 맨 위 줄에 선다(#291) — 머리줄에 이것만 남아 행이 서지 않게. */}
+        <PopTopStatus>
+          {isConnected !== undefined && (
+            <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
+              {isConnected ? t.connected : t.disconnected}
+            </Chip>
+          )}
 
-        {unsentCount > 0 && (
-          <Chip variant="status" size="md" status="warning">
-            {t.unsent(unsentCount)}
-          </Chip>
-        )}
+          {unsentCount > 0 && (
+            <Chip variant="status" size="md" status="warning">
+              {t.unsent(unsentCount)}
+            </Chip>
+          )}
+        </PopTopStatus>
       </RightGroup>
 
       {actions !== undefined && actions !== null && (

@@ -56,7 +56,7 @@ describe('POP 진입점 배선', () => {
    * 단추 대신 공통 이동 메뉴(묶음·탭)다.
    */
   it('배포 셸에 업무용 화면 이동을 싣는다', () => {
-    expect(source).toContain('<PopScreenNav ');
+    expect(source).toMatch(/<PopScreenNav\s/u);
   });
 
   it('진입 문서가 이 파일을 가리킨다', () => {

@@ -460,11 +460,10 @@ export const PackingWorkScreen = () => {
          * 자리이고, 작업지시는 색이 붙을 상태가 아니라 **무엇을 보고 있는가**다. 스펙 §3 머리줄이
          * 그것을 화면명 옆 평문으로 그린다 — 오른쪽 끝은 단말·연결 같은 상태만 선다.
          */}
-        <p className="pop-context">
-          {`${t.device.workOrderLabel} ${
-            entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
-          }`}
-        </p>
+        {/* W/O 를 모르면 줄을 세우지 않는다 — 본문 경고가 그 사정을 말한다(사용자 지시 2026-11-17 · #291). */}
+        {entry.workOrderId !== null && (
+          <p className="pop-context">{`${t.device.workOrderLabel} ${String(entry.workOrderId)}`}</p>
+        )}
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

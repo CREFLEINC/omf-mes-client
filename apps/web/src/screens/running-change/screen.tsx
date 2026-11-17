@@ -29,6 +29,7 @@ import { readLotId, readWorkOrderId } from './screen-params';
 import { useOpenWorkSession } from './session';
 import { useReferenceLabels } from './reference-labels';
 import { toApiError } from '../../patterns/request';
+import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.runningChange;
 
@@ -256,15 +257,13 @@ export const RunningChangeScreen = () => {
         {workOrderId !== null && <p className="pop-context">{t.header.workOrder(workOrderId)}</p>}
 
         {/*
-         * ⚠ **없을 때도 말한다.** 「세션 없음」은 정상 상태이고(§6), 「단말 미확인」은 게이팅이
-         * 닫혀 있는 이유다 — 비워 두면 작업자가 등록이 왜 잠겼는지 알 수 없다.
+         * 세션은 있을 때만 W/O 옆에 적는다 — 「세션 없음」 줄은 두지 않는다(사용자 지시 2026-11-17 · #291).
+         * 등록이 잠긴 이유는 본문이 말한다.
          */}
-        <p className="pop-context pop-context-right">
-          <span>
-            {session.workSessionId === null
-              ? t.header.sessionNone
-              : t.header.session(session.workSessionId)}
-          </span>
+        {session.workSessionId !== null && (
+          <p className="pop-context">{t.header.session(session.workSessionId)}</p>
+        )}
+        <PopTopStatus>
           {/*
            * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
            * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
@@ -277,7 +276,7 @@ export const RunningChangeScreen = () => {
               {t.header.offline}
             </Chip>
           )}
-        </p>
+        </PopTopStatus>
       </header>
 
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}

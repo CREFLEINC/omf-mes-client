@@ -61,6 +61,7 @@ import {
   validateQuantities,
   type QuantityDraft,
 } from './quantity-draft';
+import { PopTopStatus } from '../../patterns/pop-top-status';
 
 /**
  * P-02-13 PQC 제품 검사·검사 결과 입력 — **화면 스펙 §3 의 배치를 그대로 따른다.**
@@ -717,7 +718,7 @@ const PqcFrame = ({
          * 맥락에 붙어, 「무엇을 보고 있는가」와 「지금 어떤 상태인가」가 한 덩어리로 읽힌다.
          * 다른 POP 화면 전부가 상태를 이 묶음에 넣는다.
          */}
-        <div className="pop-context-right">
+        <PopTopStatus>
           <Chip variant="status" size="md" status={pendingCount > 0 ? 'warning' : 'success'}>
             {pendingCount > 0 ? messages.common.connection.unsent(pendingCount) : t.header.synced}
           </Chip>
@@ -726,7 +727,7 @@ const PqcFrame = ({
               {messages.common.connection.offline}
             </Chip>
           )}
-        </div>
+        </PopTopStatus>
       </header>
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {isStalled && <OutboxStallBanner onRetry={onRetry} />}

@@ -46,6 +46,7 @@ import {
 } from './today-rows';
 import { useTerminalGate } from './terminal-gating';
 import { useNow } from './use-now';
+import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.downtimeRegister;
 
@@ -321,7 +322,7 @@ export const DowntimeRegisterScreen = () => {
           </p>
         )}
 
-        <p className="pop-context pop-context-right">
+        <PopTopStatus>
           {/*
            * ⭐ **미전송 건수는 필수 요건이다.** 「담긴 순간 성공」이라는 표시를 택한 근거가
            * 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
@@ -339,7 +340,7 @@ export const DowntimeRegisterScreen = () => {
               {t.header.offline}
             </Chip>
           )}
-        </p>
+        </PopTopStatus>
       </header>
 
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}

@@ -36,7 +36,7 @@ import './pop.css';
 /* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
 import './pop-locale';
 
-import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
+import { StrictMode, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
 
@@ -44,6 +44,7 @@ import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { usePopIdentity } from '../patterns/pop-identity';
 import { PopScreenNav } from '../patterns/pop-screen-nav';
+import { PopTopStatusTarget } from '../patterns/pop-top-status';
 import {
   PopRegistrationProvider,
   usePopRegistration,
@@ -208,11 +209,13 @@ const PopChrome = () => {
   const { terminal } = usePopRegistration();
   const { workerNo } = usePopIdentity();
   const { pathname } = useLocation();
+  /* 맨 위 줄의 화면 상태 자리(연결·전송 표시). 화면이 `PopTopStatus` 로 그 자리에 그린다. */
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
 
   /*
    * ⭐ **사번이 없으면 어느 화면이든 사번 입력 화면으로 보낸다**(사용자 지시 2026-11-17 · #291).
    *    공통 메뉴로 사번 없이 다른 화면에 들어가면 「사번이 확인되지 않았습니다」 띠만 서고 할 일이
-   *    없었다. 사번은 메모리에만 있어 처음부터 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
+   *    없었다. 사번은 처음부터 동기로 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
    */
   if (workerNo === null && pathname !== POP_ENTRY_PATH) {
     return <Navigate to={POP_ENTRY_PATH} replace />;
@@ -224,9 +227,15 @@ const PopChrome = () => {
    */
   return (
     <div className="pop-frame">
-      <PopScreenNav terminalCode={terminal?.terminalCode ?? null} printer={<HeaderPrinter />} />
+      <PopScreenNav
+        terminalCode={terminal?.terminalCode ?? null}
+        printer={<HeaderPrinter />}
+        statusRef={setStatusSlot}
+      />
       <div className="pop-frame__body">
-        <Outlet />
+        <PopTopStatusTarget.Provider value={statusSlot}>
+          <Outlet />
+        </PopTopStatusTarget.Provider>
       </div>
     </div>
   );

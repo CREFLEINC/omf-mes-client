@@ -142,8 +142,16 @@ const USER_ICON = navIcon(
   </>,
 );
 
-/** 맨 위 줄 — 제품 이름 · 프린터 · 단말 · 작업자 · [사용자 전환]. */
-const TopBar = ({ terminalCode, printer }: { terminalCode: string | null; printer: ReactNode }) => {
+/** 맨 위 줄 — 제품 이름 · 단말 | 화면 상태 · 프린터 · 작업자 · [사용자 전환]. */
+const TopBar = ({
+  terminalCode,
+  printer,
+  statusRef,
+}: {
+  terminalCode: string | null;
+  printer: ReactNode;
+  statusRef?: (element: HTMLElement | null) => void;
+}) => {
   const navigate = useNavigate();
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
@@ -154,12 +162,15 @@ const TopBar = ({ terminalCode, printer }: { terminalCode: string | null; printe
   return (
     <div className="pop-nav-top">
       <span className="pop-nav-top__brand">{nav.brand}</span>
-      {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
-      <span className="pop-nav-top__chip">
+      {/* 단말은 제품 이름 바로 오른쪽(사용자 지시 2026-11-17). 나머지 상태·작업자는 오른쪽 끝에 모은다. */}
+      <span className="pop-nav-top__chip pop-nav-top__terminal">
         {terminalCode === null
           ? headerText.terminalUnknown
           : headerText.terminalLabel(terminalCode)}
       </span>
+      {/* 화면이 보내는 연결·전송 표시(`PopTopStatus`) 자리. */}
+      <span className="pop-nav-top__status" ref={statusRef} />
+      {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
       <span
         className="pop-nav-top__chip"
         title={workerNo === null ? undefined : headerText.workerTitle(workerNo, workerName)}
@@ -206,9 +217,12 @@ const TopBar = ({ terminalCode, printer }: { terminalCode: string | null; printe
 export const PopScreenNav = ({
   terminalCode,
   printer = null,
+  statusRef,
 }: {
   terminalCode: string | null;
   printer?: ReactNode;
+  /** 맨 위 줄 화면 상태 자리를 셸에 알린다(`PopTopStatusTarget`). */
+  statusRef?: (element: HTMLElement | null) => void;
 }) => {
   const navigate = useNavigate();
   const { pathname, access, workCounts, pending, total, go } = usePopNavigation();
@@ -253,7 +267,7 @@ export const PopScreenNav = ({
 
   return (
     <div className="pop-nav">
-      <TopBar terminalCode={terminalCode} printer={printer} />
+      <TopBar terminalCode={terminalCode} printer={printer} statusRef={statusRef} />
       <div className="pop-nav-groups">
         <nav className="pop-nav-groups__list" aria-label={nav.groupsLabel}>
           <button
