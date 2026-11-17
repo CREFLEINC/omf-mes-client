@@ -23,6 +23,8 @@ import { AliasInlineEdit } from './alias-inline-edit';
 import type { Location } from './types';
 
 export interface LocationPaneProps {
+  /** 고른 창고의 창고 위치 코드(#292) — 탭 맨 위에 잠긴 줄로 보인다. 창고를 아직 못 읽었으면 null. */
+  locationPrefix?: string | null;
   /** buildLocationRows의 결과 */
   rows: LocationTreeRow[];
   isLoading: boolean;
@@ -65,7 +67,22 @@ const t = messages.warehouseLocation;
 /** 선택(약 48) + 코드 320 + 별칭 적어도 240 + 구분 88 + 사용 상태 90. */
 export const LOCATION_TABLE_MIN_WIDTH = '790px';
 
+/** 창고 위치 코드 줄 — 이 창고의 모든 위치 코드 앞에 붙고 바꿀 수 없다(omf-all-around#292). */
+const LocationPrefixRow = ({ prefix }: { prefix: string }) => (
+  <dl className="warehouse-location-prefix-row">
+    <dt>{t.locationPrefix.label}</dt>
+    <dd>
+      <span className="location-items-code">{prefix}</span>
+      <Icon name="lock" size={16} aria-hidden="true" />
+      <span className="field-note">
+        {t.locationPrefix.locked} · {t.locationPrefix.lockedNote}
+      </span>
+    </dd>
+  </dl>
+);
+
 export const LocationPane = ({
+  locationPrefix = null,
   rows,
   isLoading,
   expandedIds,
@@ -239,6 +256,7 @@ export const LocationPane = ({
 
   return (
     <section aria-label={t.tabs.location}>
+      {locationPrefix !== null && <LocationPrefixRow prefix={locationPrefix} />}
       {actionBanner}
       {/*
        * 역할별로 묶는다(omf-all-around#17) — 검색(왼쪽) · 등록 · 출력(오른쪽 끝). 검색은 칸 제목 없이 접근명만

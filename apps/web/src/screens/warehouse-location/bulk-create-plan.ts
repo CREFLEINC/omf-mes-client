@@ -87,8 +87,8 @@ export const planBulkCreate = (
   input: BulkCreateInput,
   items: readonly Location[],
   blockedZoneIds: ReadonlySet<number>,
-  /** 고른 창고의 코드 — 새 구역 코드 앞에 붙는다(`{창고코드}-Z01`, omf-all-around#292). */
-  warehouseCode: string,
+  /** 고른 창고의 창고 위치 코드 — 새 구역 코드 앞에 붙는다(`{창고 위치 코드}-Z01`, omf-all-around#292). */
+  locationPrefix: string,
 ): BulkPlan => {
   const levels = input.levelsPerRack;
   /* 층 0 이면 셀 입력은 막히고 0 으로 본다. */
@@ -110,7 +110,7 @@ export const planBulkCreate = (
     const firstNo =
       maxLocationSequence(
         'ZONE',
-        warehouseCode,
+        locationPrefix,
         items
           .filter(
             (item) =>
@@ -122,7 +122,7 @@ export const planBulkCreate = (
     for (let index = 0; index < input.zoneCount; index += 1) {
       zones.push({
         ref: { kind: 'new', index },
-        code: locationCodeAt('ZONE', warehouseCode, firstNo + index),
+        code: locationCodeAt('ZONE', locationPrefix, firstNo + index),
         firstRackNo: 1,
       });
     }

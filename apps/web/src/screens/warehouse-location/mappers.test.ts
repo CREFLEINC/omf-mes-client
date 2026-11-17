@@ -122,6 +122,11 @@ describe('toWarehouseCreate', () => {
   it('isActive를 보내지 않는다 — 신규는 항상 사용 중이다', () => {
     expect(toWarehouseCreate(values)).not.toHaveProperty('isActive');
   });
+
+  it('#292 창고 위치 코드를 싣는다 — 수정 본문에는 싣지 않는다(바꿀 수 없다)', () => {
+    expect(toWarehouseCreate({ ...values, locationPrefix: 'M3QX' }).locationPrefix).toBe('M3QX');
+    expect(toWarehouseUpdate(values)).not.toHaveProperty('locationPrefix');
+  });
 });
 
 describe('locationToFormValues', () => {

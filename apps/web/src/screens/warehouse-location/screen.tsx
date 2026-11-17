@@ -22,6 +22,7 @@ import { BulkCreateDialog } from './bulk-create-dialog';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { issueLocationCode } from './location-code';
+import { generateLocationPrefix } from './location-prefix';
 import { LocationDeleteDialog } from './location-delete-dialog';
 import { countSubtree } from './location-identity';
 import { LocationFormDialog } from './location-form-dialog';
@@ -171,9 +172,10 @@ export const WarehouseLocationScreen = () => {
     : (detail.data ?? null);
 
   if (formSource !== null && formState?.source !== formSource) {
+    /* 등록 폼은 창고 위치 코드를 무작위로 지어 채운다(#292) — 기준값에도 넣어 손대지 않은 폼이 「고친 것」이 아니다. */
     const seeded =
       formSource === CREATE_FORM_SOURCE
-        ? emptyWarehouseFormValues()
+        ? { ...emptyWarehouseFormValues(), locationPrefix: generateLocationPrefix() }
         : warehouseToFormValues(formSource.warehouse);
     setFormState({ source: formSource, baseline: seeded, values: seeded });
   }
@@ -229,6 +231,13 @@ export const WarehouseLocationScreen = () => {
     etagPath: selectedWarehouseId === null ? null : warehouseDetailPath(selectedWarehouseId),
     invalidateKeys: [warehouseKeys.all],
     knownFields: WAREHOUSE_FORM_FIELDS,
+    /* 창고 위치 코드(#292) — 다른 창고가 쓰면 고칠 방법(다른 코드 · [다시 만들기])까지 말한다. */
+    restateFieldError: (item) => {
+      if (item.field !== 'locationPrefix') return undefined;
+      if (item.code === 'UNIQUE_VIOLATION') return t.locationPrefix.taken;
+      if (item.code === 'INVALID') return t.locationPrefix.invalid;
+      return undefined;
+    },
     onSuccess: (saved) => {
       setLocalFieldErrors({});
 
@@ -718,7 +727,7 @@ export const WarehouseLocationScreen = () => {
       parentLocationId === null
         ? null
         : (hierarchyItems.find((item) => item.locationId === parentLocationId) ?? null);
-    /* 구역 코드는 창고코드를 앞에 붙인다(#292) — 창고를 아직 못 읽었으면 열지 않는다(구역 추가 단추도 꺼져 있다). */
+    /* 구역 코드는 창고 위치 코드를 앞에 붙인다(#292) — 창고를 아직 못 읽었으면 열지 않는다(구역 추가 단추도 꺼져 있다). */
     if (selectedWarehouse === null) return;
     const parentDepth = parent === null ? -1 : (locationDepthById.get(parent.locationId) ?? -1);
     const level = LOCATION_LEVEL_CODES[parentDepth + 1] ?? 'ZONE';
@@ -734,7 +743,7 @@ export const WarehouseLocationScreen = () => {
         level,
         parent,
         hierarchyItems,
-        selectedWarehouse.warehouseCode,
+        selectedWarehouse.locationPrefix,
       ),
     });
     setDialogState({
@@ -1172,6 +1181,7 @@ export const WarehouseLocationScreen = () => {
               label: t.tabs.location,
               content: (
                 <LocationPane
+                  locationPrefix={selectedWarehouse.locationPrefix}
                   rows={locationRows}
                   isLoading={locations.isPending}
                   loadError={
@@ -1353,7 +1363,7 @@ export const WarehouseLocationScreen = () => {
         <BulkCreateDialog
           open
           warehouseId={selectedWarehouseId}
-          warehouseCode={selectedWarehouse.warehouseCode}
+          locationPrefix={selectedWarehouse.locationPrefix}
           warehouseLabel={warehouseLabel}
           items={hierarchyItems}
           onClose={() => setBulkCreateOpen(false)}

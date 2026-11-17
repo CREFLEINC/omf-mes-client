@@ -99,24 +99,78 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByRole('textbox', { name: '창고명' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '불량 창고' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: '외부 창고' })).not.toBeChecked();
-    // 선택칸 셋은 직접 그린 별표, 입력칸 둘은 디자인 시스템이 required 로 그린다.
-    expect(document.querySelectorAll('.required-mark')).toHaveLength(3);
+    // 선택칸 셋 · 창고 위치 코드는 직접 그린 별표, 입력칸 둘은 디자인 시스템이 required 로 그린다.
+    expect(document.querySelectorAll('.required-mark')).toHaveLength(4);
     expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeRequired();
   });
 
-  it('#292 창고 코드는 등록할 때만 입력하고, 등록 뒤에는 바꿀 수 없다고 칸 아래에 알린다', () => {
-    renderPane({ mode: 'create' });
+  describe('#292 창고 위치 코드', () => {
+    const prefixBox = () => screen.getByRole('textbox', { name: '창고 위치 코드' });
 
-    expect(screen.getByRole('textbox', { name: '창고 코드' })).toHaveAccessibleDescription(
-      '위치 코드 앞에 붙어 등록한 뒤에는 바꿀 수 없습니다.',
-    );
-  });
+    it('등록 폼은 받은 값을 칸에 채우고 도움말 · 위치 코드 예를 보인다', () => {
+      renderPane({ mode: 'create' });
 
-  it('#292 고칠 때 창고 코드는 머리에 글로만 보이고 입력칸이 없다', () => {
-    renderPane({ mode: 'edit' });
+      expect(prefixBox()).toHaveValue('K7PM');
+      expect(prefixBox()).toBeRequired();
+      expect(prefixBox()).toHaveAttribute('maxlength', '6');
+      expect(prefixBox()).toHaveAccessibleDescription(
+        '무작위로 만들었습니다. 대문자·숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
+      );
+      expect(screen.getByText('위치 코드 예: K7PM-Z01-R001-L01-C01')).toBeInTheDocument();
+    });
 
-    expect(screen.queryByRole('textbox', { name: '창고 코드' })).not.toBeInTheDocument();
-    expect(screen.getAllByText(warehouseFormInitialValues.warehouseCode).length).toBeGreaterThan(0);
+    it('위치 코드 예는 친 값을 따라 바뀐다', () => {
+      renderPane({
+        mode: 'create',
+        values: { ...warehouseFormInitialValues, locationPrefix: 'AB' },
+      });
+
+      expect(screen.getByText('위치 코드 예: AB-Z01-R001-L01-C01')).toBeInTheDocument();
+    });
+
+    it('친 글자는 대문자로 바꿔 올린다', async () => {
+      const user = userEvent.setup();
+      const { onChange } = renderPane({
+        mode: 'create',
+        values: { ...warehouseFormInitialValues, locationPrefix: '' },
+      });
+
+      await user.type(prefixBox(), 'q');
+
+      expect(onChange).toHaveBeenLastCalledWith({ locationPrefix: 'Q' });
+    });
+
+    it('[다시 만들기]는 헷갈리는 글자 없이 무작위 4자를 새로 짓는다', async () => {
+      const user = userEvent.setup();
+      /* 바이트 0 · 30 · 31(글자 수와 같아 첫 글자로 돈다) · 8 → A · 9 · A · J. */
+      const spy = vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
+        const bytes = array as Uint8Array;
+        bytes.set([0, 30, 31, 8, 0, 0, 0, 0]);
+        return array;
+      });
+      const { onChange } = renderPane({ mode: 'create' });
+
+      await user.click(screen.getByRole('button', { name: '다시 만들기' }));
+
+      expect(onChange).toHaveBeenLastCalledWith({ locationPrefix: 'A9AJ' });
+      spy.mockRestore();
+    });
+
+    it('칸 오류(형식 · 서버가 준 「다른 창고가 쓰는 코드」)는 도움말 자리에 선다', () => {
+      const taken =
+        '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.';
+      renderPane({ mode: 'create', fieldErrors: { locationPrefix: taken } });
+
+      expect(prefixBox()).toBeInvalid();
+      expect(prefixBox()).toHaveAccessibleDescription(taken);
+    });
+
+    it('고칠 때는 입력칸이 없다 — 저장한 뒤에는 바꿀 수 없다', () => {
+      renderPane({ mode: 'edit' });
+
+      expect(screen.queryByRole('textbox', { name: '창고 위치 코드' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '다시 만들기' })).not.toBeInTheDocument();
+    });
   });
 
   it('저장된 값과 다른 칸만 이름 옆에 점을 찍는다', () => {

@@ -1,8 +1,10 @@
 import { messages } from '@omf-mes/i18n';
 
+import { isValidLocationPrefix } from './location-prefix';
 import type { WarehouseFormValues } from './types';
 
 const t = messages.warehouseLocation.validation;
+const prefixText = messages.warehouseLocation.locationPrefix;
 
 /**
  * 창고 폼이 소유한 입력칸 이름. 서버가 준 필드 오류를 인라인으로 낼지
@@ -13,6 +15,7 @@ export const WAREHOUSE_FORM_FIELDS: readonly string[] = [
   'businessUnitId',
   'warehouseCode',
   'warehouseName',
+  'locationPrefix',
   'warehouseTypeCode',
   'isExternal',
   'isDefect',
@@ -42,6 +45,14 @@ export const validateWarehouse = (
 
   if (values.warehouseTypeCode === '') {
     errors.warehouseTypeCode = t.required;
+  }
+
+  /*
+   * 창고 위치 코드(#292)는 형식만 본다 — 계약이 형식(대문자 · 숫자 2~6자)을 못 박아 두어 서버와 답이 갈리지 않는다.
+   * 다른 창고가 쓰는지는 서버가 가린다. 등록 뒤에는 바꿀 수 없어 고칠 때는 보지 않는다.
+   */
+  if (mode === 'create' && !isValidLocationPrefix(values.locationPrefix)) {
+    errors.locationPrefix = prefixText.invalid;
   }
 
   // 공장은 등록 후 바꿀 수 없어 수정 요청에 실리지 않는다. 사업부는 두 요청 모두에 실린다.

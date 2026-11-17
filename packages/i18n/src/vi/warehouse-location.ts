@@ -30,7 +30,17 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   warehouseInfo: {
     systemLocations: 'Vị trí do máy chủ tạo',
-    codeFixed: 'Được gắn vào đầu mã vị trí nên không thể đổi sau khi đăng ký.',
+  },
+  locationPrefix: {
+    label: 'Mã vị trí kho',
+    regenerate: 'Tạo lại',
+    example: (code: string): string => `Ví dụ mã vị trí: ${code}-Z01-R001-L01-C01`,
+    helper:
+      'Đã tạo ngẫu nhiên. Có thể sửa thành 2–6 chữ in hoa hoặc số; sau khi lưu thì không thể thay đổi.',
+    invalid: 'Hãy nhập 2–6 chữ in hoa hoặc số.',
+    taken: 'Mã này đã được kho khác sử dụng — hãy nhập mã khác hoặc bấm [Tạo lại].',
+    locked: 'Không thể thay đổi',
+    lockedNote: 'Được gắn vào đầu mọi mã vị trí của kho này',
   },
   externalConfirm: {
     on: 'Chuyển thành kho bên ngoài?',

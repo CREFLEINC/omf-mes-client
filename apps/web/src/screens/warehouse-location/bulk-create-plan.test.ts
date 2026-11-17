@@ -177,7 +177,7 @@ describe('planBulkCreate', () => {
     expect(planBulkCreate(existingZones([10], 2, 0, 0), full, new Set(), 'WH').error).toBe('range');
   });
 
-  it('#292 새 구역은 창고코드를 앞에 붙이고, 창고코드가 안 붙은 옛 구역(Z05)은 번호에 세지 않는다', () => {
+  it('#292 새 구역은 창고 위치 코드를 앞에 붙이고, 그것이 안 붙은 코드(Z05)는 번호에 세지 않는다', () => {
     const items = [STAGING, loc(30, 'Z05', null, 'ZONE'), loc(31, 'WH-Z02', null, 'ZONE')];
     const plan = planBulkCreate(newZones(2, 1, 0, 0), items, new Set(), 'WH');
 
@@ -188,10 +188,10 @@ describe('planBulkCreate', () => {
     expect(plan.lastCode).toBe('WH-Z04-R001');
   });
 
-  it('#292 창고코드에 하이픈이 있어도(PTW-B) 그대로 앞에 붙는다', () => {
-    const plan = planBulkCreate(newZones(1, 1, 1, 1), [], new Set(), 'PTW-B');
+  it('#292 창고 위치 코드(K7PM)가 구역부터 셀까지 앞에 붙는다', () => {
+    const plan = planBulkCreate(newZones(1, 1, 1, 1), [], new Set(), 'K7PM');
 
-    expect(plan.firstCode).toBe('PTW-B-Z01');
-    expect(plan.lastCode).toBe('PTW-B-Z01-R001-L01-C01');
+    expect(plan.firstCode).toBe('K7PM-Z01');
+    expect(plan.lastCode).toBe('K7PM-Z01-R001-L01-C01');
   });
 });

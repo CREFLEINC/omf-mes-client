@@ -176,6 +176,7 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
   businessUnitId: '21',
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
+  locationPrefix: 'K7PM',
   warehouseTypeCode: 'MATERIAL',
   isExternal: false,
   isDefect: false,
