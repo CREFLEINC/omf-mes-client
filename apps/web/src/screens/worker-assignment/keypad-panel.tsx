@@ -3,7 +3,7 @@ import { NumericKeypad } from '@omf-mes/ui';
 import { messages } from '@omf-mes/i18n';
 
 import { POP_TOUCH_SIZE } from './touch-spec';
-import { canSubmit, looksUnusual } from './worker-no';
+import { canSubmit } from './worker-no';
 
 /**
  * 좌측 《사번 입력》 구획 — 화면 스펙 §3 의 왼쪽 512 다.
@@ -14,7 +14,8 @@ import { canSubmit, looksUnusual } from './worker-no';
  * ⚠ **사번 칸은 읽기 전용이다.** 값은 키패드로만 들어온다 — 현장 단말은 전체 화면 키오스크라
  * 운영체제 키보드가 뜨면 화면을 덮는다.
  *
- * ⚠ **자릿수를 강제하지 않는다**(§5-2). 다르면 경고만 하고 **확인은 눌린다.**
+ * ⚠ **6자리 숫자가 아니면 [사번 확인] 때 다시 입력하게 한다**(사용자 지시 2026-11-17 ·
+ * omf-all-around#288). 판정은 화면(`screen.tsx`)이 하고, 이 구획은 안내만 보인다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -30,6 +31,13 @@ export interface KeypadPanelProps {
   error: string | null;
   /** ⚠ 오프라인 안내. 연결돼 있으면 `null` — **막는 문구가 아니다**(§6) */
   offlineNote: string | null;
+  /**
+   * 확인을 마친 현재 작업자의 사번. 있으면 칸에 그 사번만 보이고 키패드·확인은 접는다
+   * (omf-all-around#288 「사번 확인 후」 시안). 바꾸려면 오른쪽 [작업자 변경]을 누른다.
+   */
+  confirmedWorkerNo: string | null;
+  /** [사번 확인]을 눌렀는데 6자리 숫자가 아니었다. 다시 칠 때까지 사번 칸 아래에 안내한다. */
+  isUnusualShown: boolean;
 }
 
 export const KeypadPanel = ({
@@ -39,6 +47,8 @@ export const KeypadPanel = ({
   isChecking,
   error,
   offlineNote,
+  confirmedWorkerNo,
+  isUnusualShown,
 }: KeypadPanelProps) => (
   <section className="pane pop-pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
@@ -56,78 +66,84 @@ export const KeypadPanel = ({
      */}
     <TextField
       label={t.workerNo}
-      value={workerNo}
+      value={confirmedWorkerNo ?? workerNo}
+      placeholder={t.placeholder}
       size="xl"
       inputMode="numeric"
       autoComplete="off"
       className="worker-no-field"
+      readOnly={confirmedWorkerNo !== null}
       onChange={(event) => {
         onChange(event.target.value.replace(/\D/gu, ''));
       }}
     />
 
-    {/*
-     * 알림 자리 — **비어 있을 때도 높이를 지킨다.**
-     *
-     * 배너가 뜨고 지는 대로 키패드가 위아래로 움직이면, 다음 숫자를 누르려던 손가락이 한 줄
-     * 옆의 키를 누른다(실측으로 잡았다: 「6자리와 다릅니다」 경고가 뜬 순간 키패드가 밀렸다).
-     * `.scan-outcome` 이 스캔 결과 줄에서 같은 문제를 같은 방법으로 막고 있다.
-     */}
-    <div className="worker-no-notice">
-      {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
-      {looksUnusual(workerNo) && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.unusual}</AlertBanner>
+    {confirmedWorkerNo === null ? (
+      <>
+        {/*
+         * 알림 자리 — **비어 있을 때도 높이를 지킨다.**
+         *
+         * 배너가 뜨고 지는 대로 키패드가 위아래로 움직이면, 다음 숫자를 누르려던 손가락이 한 줄
+         * 옆의 키를 누른다(실측으로 잡았다: 「6자리와 다릅니다」 경고가 뜬 순간 키패드가 밀렸다).
+         * `.scan-outcome` 이 스캔 결과 줄에서 같은 문제를 같은 방법으로 막고 있다.
+         */}
+        <div className="worker-no-notice">
+          {/* 6자리 숫자가 아닌 채로 [사번 확인]을 눌렀다 — 다시 입력하게 한다. */}
+          {isUnusualShown && (
+            <div className="banner-slot">
+              <AlertBanner variant="warning">{t.unusual}</AlertBanner>
+            </div>
+          )}
+
+          {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
+          {offlineNote !== null && (
+            <div className="banner-slot">
+              <AlertBanner variant="info">{offlineNote}</AlertBanner>
+            </div>
+          )}
+
+          {error !== null && (
+            <div className="banner-slot">
+              <AlertBanner variant="error">{error}</AlertBanner>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
-      {offlineNote !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="info">{offlineNote}</AlertBanner>
-        </div>
-      )}
+        {/*
+         * ⭐ **키 높이를 아래 [ 확인 ]과 같게 세운다**(사용자 지시 2026-09-11). POP 이 컨트롤
+         * 높이를 관리웹 기본(40)으로 수렴시킨 뒤로 키패드만 40 으로 섰는데, 장갑 낀 손이 찍기에
+         * 작았다. 높이는 `pop.css` 가 이 이름으로 준다 — 이 화면 전용 이름이라 다른 화면의
+         * 키패드는 따라 바뀌지 않는다.
+         */}
+        <NumericKeypad
+          value={workerNo}
+          onChange={onChange}
+          className="worker-no-keypad"
+          label={t.keypad}
+          backspaceLabel={t.backspace}
+          clearLabel={t.clear}
+          disabled={isChecking}
+          keySize={POP_TOUCH_SIZE}
+        />
 
-      {error !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error">{error}</AlertBanner>
-        </div>
-      )}
-    </div>
-
-    {/*
-     * ⭐ **키 높이를 아래 [ 확인 ]과 같게 세운다**(사용자 지시 2026-09-11). POP 이 컨트롤
-     * 높이를 관리웹 기본(40)으로 수렴시킨 뒤로 키패드만 40 으로 섰는데, 장갑 낀 손이 찍기에
-     * 작았다. 높이는 `pop.css` 가 이 이름으로 준다 — 이 화면 전용 이름이라 다른 화면의
-     * 키패드는 따라 바뀌지 않는다.
-     */}
-    <NumericKeypad
-      value={workerNo}
-      onChange={onChange}
-      className="worker-no-keypad"
-      label={t.keypad}
-      backspaceLabel={t.backspace}
-      clearLabel={t.clear}
-      disabled={isChecking}
-      keySize={POP_TOUCH_SIZE}
-    />
-
-    {/*
-     * 터치 규격 — 핵심 조작이라 72px(`2xl`)이다(E-3).
-     *
-     * ⭐ **구획 폭 전체를 쓰고 오른쪽 구획의 [교대]·[이동]과 같은 크기로 선다**(설계 §3
-     * 도면). 두 구획의 폭이 같으므로, 저쪽 둘이 한 줄에 하나씩 서면 셋이 같은 크기가 된다.
-     * 높이 맞춤은 `pop.css` 가 이 이름으로 한다.
-     */}
-    <Button
-      type="button"
-      variant="filled"
-      size={POP_TOUCH_SIZE}
-      className="worker-no-submit"
-      disabled={!canSubmit(workerNo) || isChecking}
-      onClick={onSubmit}
-    >
-      {isChecking ? t.checking : t.submit}
-    </Button>
+        {/*
+         * 터치 규격 — 핵심 조작이라 72px(`2xl`)이다(E-3).
+         *
+         * ⭐ **구획 폭 전체를 쓰고 오른쪽 구획의 [교대]·[이동]과 같은 크기로 선다**(설계 §3
+         * 도면). 두 구획의 폭이 같으므로, 저쪽 둘이 한 줄에 하나씩 서면 셋이 같은 크기가 된다.
+         * 높이 맞춤은 `pop.css` 가 이 이름으로 한다.
+         */}
+        <Button
+          type="button"
+          variant="filled"
+          size={POP_TOUCH_SIZE}
+          className="worker-no-submit"
+          disabled={!canSubmit(workerNo) || isChecking}
+          onClick={onSubmit}
+        >
+          {isChecking ? t.checking : t.submit}
+        </Button>
+      </>
+    ) : null}
   </section>
 );

@@ -19,15 +19,17 @@ export const workerAssignment = {
    */
   registration: {
     title: '단말 등록',
-    guide: '관리웹에서 발급한 단말 토큰을 붙여넣고 [등록 확인]을 누르세요.',
+    guide: '관리 웹에서 발급받은 단말 토큰을 입력해 주세요.',
     tokenLabel: '단말 토큰',
-    tokenPlaceholder: '여기에 단말 토큰 붙여넣기',
+    tokenPlaceholder: '단말 토큰 입력',
     paste: '붙여넣기',
-    clear: '입력 지우기',
-    verify: '등록 확인',
+    clear: '다시 입력',
+    verify: '단말 등록',
     verifying: '확인하는 중…',
+    /** 검증 200 뒤 확인 단계의 제목(omf-all-around#288). */
+    confirmHeading: '단말 등록 확인',
     /** 검증 200 뒤 — 설치 담당자가 **단말 코드를 눈으로 확인**하고 누른다. */
-    confirmTitle: '등록할 단말이 맞는지 확인하세요.',
+    confirmTitle: '아래 단말 정보를 확인해 주세요.',
     apply: '등록 적용',
     restart: '다시 입력',
     /**
@@ -38,8 +40,10 @@ export const workerAssignment = {
      */
     reRegister: '단말 재등록',
     terminalCode: '단말 코드',
-    terminalType: '단말 유형',
     equipment: '설비',
+    /** 이 단말에 연결된 공정(omf-all-around#288). 받지 못하면 없음 표시를 낸다. */
+    process: '공정',
+    processUnknown: '확인하지 못함',
     unassigned: '미지정',
     /** 보관 뒤 — 서버 등록 완료 확인과 공정 목록을 받는 동안. */
     preparing: '단말 등록 확인 및 업무 준비 중…',
@@ -78,7 +82,7 @@ export const workerAssignment = {
        */
       unreachable: '서버에 연결하지 못해 확인하지 못했습니다. 연결을 확인하고 다시 시도하세요.',
       foreign: '다른 단말의 토큰입니다. 이 단말에 맞는 토큰을 관리자에게 요청하세요.',
-      wrongType: 'POP 단말용 토큰이 아닙니다. 관리자에게 맞는 등록 정보를 요청하세요.',
+      wrongType: 'POP 단말용 토큰이 아닙니다. 관리자에게 토큰 정보를 재요청하세요.',
       offline: '단말 등록은 연결된 상태에서만 할 수 있습니다. 연결을 확인하고 다시 시도하세요.',
       noStore: '이 단말에는 토큰을 보관할 수 없습니다. 설치 담당자에게 알려 주세요.',
       /** ⛔ 큐를 비우는 길을 문구로도 안내하지 않는다(F-4). */
@@ -128,14 +132,13 @@ export const workerAssignment = {
     workerNo: '사번',
     keypad: '사번 숫자 키패드',
     backspace: '한 자 지움',
-    clear: '전체 지움',
+    clear: '전체 삭제',
+    /** 사번 칸 안내(omf-all-around#288). */
+    placeholder: '사번 입력',
     submit: '사번 확인',
     checking: '확인 중',
-    /**
-     * ⚠ **경고일 뿐 막지 않는다**(§5-2). 확인된 표본이 매우 적어 자릿수를 강제하면 다른
-     * 형태의 사번을 가진 사람이 단말을 못 쓴다.
-     */
-    unusual: '사번이 6자리 숫자와 다릅니다. 그대로 확인할 수 있습니다.',
+    /** [사번 확인]을 눌렀는데 6자리 숫자가 아닐 때 — 조회하지 않고 다시 입력하게 한다(omf-all-around#288). */
+    unusual: '사번이 6자리 숫자와 다릅니다. 다시 입력하세요.',
   },
 
   offline: {
@@ -146,14 +149,13 @@ export const workerAssignment = {
   current: {
     heading: '현재 작업자',
     /** 아직 아무도 지정되지 않았다. 무엇을 해야 하는지 말한다. */
-    none: '지정된 작업자가 없습니다. 왼쪽에서 사번을 입력하세요.',
+    none: '현재 작업자가 없습니다.',
+    noneHelp: '사번을 입력해 주세요.',
+    /** 사번 확인을 마친 작업자 표시(omf-all-around#288). */
+    confirmed: '확인 완료',
+    workerNo: '사번',
     assignedAt: '지정 시각',
-    /**
-     * ⭐ **도용 위험을 수용한 설계에서 화면이 할 수 있는 유일한 방어**다(§5-4) — 지금 누구로
-     * 기록되는지가 늘 보여야 한다.
-     */
-    note: '이 단말에서 하는 기록은 현재 작업자의 사번으로 남습니다.',
-    shift: '작업자 교대',
+    shift: '작업자 변경',
     /**
      * ⚠ **큐의 사번을 바꾸지 않는다**(§6 · B-3 이력 불변). 이미 쌓인 기록은 그때 그 사람의
      * 것이므로 그대로 두고, 교대하는 사람에게 **사실만** 알린다.
@@ -166,8 +168,8 @@ export const workerAssignment = {
   },
 
   error: {
-    /** ⛔ 입력값을 문구에 담는다 — 오타를 눈으로 확인할 수 있어야 한다. */
-    unknown: (workerNo: string): string => `등록되지 않은 사번입니다 (${workerNo})`,
+    /** 입력값은 사번 칸에 그대로 남아 있어 문구에 다시 담지 않는다(사용자 지시 2026-11-17). */
+    unknown: '등록되지 않은 사번입니다.',
     inactive: '현재 재직 중이 아닌 사번입니다. 관리자에게 문의하세요',
     /** 조회 자체가 실패했다. 사번이 틀렸다고 말하지 않는다 — 다른 문제다. */
     lookupFailed: '사번을 확인하지 못했습니다. 잠시 후 다시 시도하세요.',

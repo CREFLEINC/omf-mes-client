@@ -36,7 +36,7 @@ const rejectingFetch = createStubFetch([
   },
 ]);
 
-const openPanel = (): { current: PopRegistration } => {
+const openPanel = (fetch = rejectingFetch): { current: PopRegistration } => {
   const box = { current: null as PopRegistration | null };
 
   const Probe = () => {
@@ -50,7 +50,7 @@ const openPanel = (): { current: PopRegistration } => {
       <Probe />
       <RegistrationPanel />
     </PopRegistrationProvider>,
-    { fetch: rejectingFetch, session: null },
+    { fetch, session: null },
   );
 
   return box as { current: PopRegistration };
@@ -94,6 +94,31 @@ describe('RegistrationPanel — 판정이 누구 이야기인가', () => {
       expect(screen.getByText(t.storedFailure.rejected)).toBeInTheDocument();
     });
     expect(screen.queryByText(t.failure.rejected)).toBeNull();
+  });
+
+  it('POP 단말용이 아닌 토큰을 넣으면 재요청을 안내하고 칸을 비운다', async () => {
+    const mobileFetch = createStubFetch([
+      {
+        match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+        respond: () =>
+          jsonResponse({
+            terminalId: 3003,
+            terminalCode: 'PDA-3003',
+            plantId: 10,
+            terminalTypeCode: 'MOBILE',
+          }),
+      },
+    ]);
+    openPanel(mobileFetch);
+
+    const field = screen.getByLabelText(t.tokenLabel);
+    fireEvent.change(field, { target: { value: tokenFor(3003) } });
+    fireEvent.click(screen.getByRole('button', { name: t.verify }));
+
+    await waitFor(() => {
+      expect(screen.getByText(t.failure.wrongType)).toBeInTheDocument();
+    });
+    expect(field).toHaveValue('');
   });
 
   it('사람이 붙여넣은 값이 거절당하면 그 값의 말을 한다', async () => {

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -55,7 +55,22 @@ export const WorkerCard = ({
     <h2 className="field-label">{t.heading}</h2>
 
     {worker === null ? (
-      <p className="worker-card__none">{t.none}</p>
+      <div className="worker-card__none">
+        <svg
+          className="worker-card__none-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        >
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+        </svg>
+        <p className="worker-card__none-title">{t.none}</p>
+        <p className="worker-card__none-help">{t.noneHelp}</p>
+      </div>
     ) : (
       <>
         {/*
@@ -64,10 +79,24 @@ export const WorkerCard = ({
          * 설치 위치와 **같은 종류의 공백**이다. ⛔ 숫자를 소속인 척 그리지 않는다(G-9
          * 「모르는 값과 없는 값을 같은 모양으로 그리지 않는다」).
          */}
-        <Card>
-          <p className="worker-card__name">{`${worker.workerName} · ${worker.workerNo}`}</p>
-          {assignedAt !== null && <p className="field-note">{`${t.assignedAt} ${assignedAt}`}</p>}
-        </Card>
+        <div className="worker-card__info">
+          <div className="worker-card__head">
+            <p className="worker-card__name">{worker.workerName}</p>
+            <Chip variant="status" size="md" status="success">
+              {t.confirmed}
+            </Chip>
+          </div>
+          <dl className="worker-card__facts">
+            <dt>{t.workerNo}</dt>
+            <dd>{worker.workerNo}</dd>
+            {assignedAt !== null && (
+              <>
+                <dt>{t.assignedAt}</dt>
+                <dd>{assignedAt}</dd>
+              </>
+            )}
+          </dl>
+        </div>
 
         {/* ⚠ 막지 않는다 — 사번이 전역 유일이라 조회되고 사람이 옮겨 다닌다. */}
         {isOtherPlant && (
@@ -91,36 +120,21 @@ export const WorkerCard = ({
       </div>
     )}
 
-    {/* 지금 누구로 기록되는지를 늘 말한다 — 작업자가 없을 때도 자리를 지킨다. */}
-    <p className="field-note">{t.note}</p>
-
     {/*
-     * 교대·이동은 **현재 작업자가 있을 때만** 눌린다(§5-8). 터치 규격 72px(`2xl`).
-     *
-     * ⭐ 구획 «바닥»에 나란히 세운다(`.pop-ui-actions`) — 구획 전체가 지는 조작이라 값
-     * 바로 아래에 붙여 두면 카드의 일부로 읽히고, 값이 길어질 때마다 자리가 흔들린다.
+     * 변경·이동은 **현재 작업자가 있을 때만** 보인다(§5-8 · omf-all-around#288 시안 — 작업자가
+     * 없을 때는 단추 없이 안내만 선다). 작업자 정보 바로 아래에 둔다.
      */}
-    <div className="pop-ui-actions">
-      <Button
-        type="button"
-        variant="outlined"
-        size={POP_TOUCH_SIZE}
-        disabled={worker === null}
-        onClick={onShift}
-      >
-        {t.shift}
-      </Button>
-      {devScreenNav ?? (
-        <Button
-          type="button"
-          variant="filled"
-          size={POP_TOUCH_SIZE}
-          disabled={worker === null}
-          onClick={onGoToWork}
-        >
-          {t.toWork}
+    {worker !== null && (
+      <div className="pop-ui-actions">
+        <Button type="button" variant="outlined" size={POP_TOUCH_SIZE} onClick={onShift}>
+          {t.shift}
         </Button>
-      )}
-    </div>
+        {devScreenNav ?? (
+          <Button type="button" variant="filled" size={POP_TOUCH_SIZE} onClick={onGoToWork}>
+            {t.toWork}
+          </Button>
+        )}
+      </div>
+    )}
   </section>
 );

@@ -311,6 +311,9 @@ export const useLotIssues = (lotId: number | null): UseQueryResult<DocumentIssue
   });
 };
 
+/** LOT 라벨 프린터를 이 단말에 기억하는 열쇠 — 사번 화면 머리줄도 같은 값을 읽는다(omf-all-around#288). */
+export const LOT_PRINTER_STORAGE_KEY = 'omf-mes.production-result.lot-printer';
+
 /** 문서 유형을 지원하는 현재 단말 프린터. 검증할 수 없는 셸 목록은 LOT 라벨에만 유지한다. */
 export const usePrinters = (documentTypeCode: DocumentTypeCode): UseQueryResult<Printer[]> => {
   const { client } = useApiClient();

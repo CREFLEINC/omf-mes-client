@@ -93,14 +93,17 @@ describe('WorkerAssignmentScreen — 인증이 아니라 귀속', () => {
     expect(screen.getByRole('button', { name: t.input.submit })).toBeDisabled();
   });
 
-  /* ⚠ 자릿수를 강제하지 않는다 — 경고만 하고 확인은 눌린다(§5-2). */
-  it('자릿수가 달라도 경고만 하고 확인은 눌린다', async () => {
+  /* 사용자 지시(2026-11-17 · omf-all-around#288) — 6자리 숫자가 아니면 [사번 확인]을 눌렀을 때 안내하고 조회하지 않는다. */
+  it('6자리 숫자가 아니면 확인을 눌렀을 때 다시 입력하라고 안내한다', async () => {
     renderScreen();
 
     await typeWorkerNo('90028');
+    expect(screen.queryByText(t.input.unusual)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
     expect(await screen.findByText(t.input.unusual)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.input.submit })).toBeEnabled();
+    expect(screen.queryByText('김작업')).not.toBeInTheDocument();
   });
 });
 
@@ -124,7 +127,7 @@ describe('WorkerAssignmentScreen — 확인', () => {
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
-    expect(await screen.findByText('김작업 · 900028')).toBeInTheDocument();
+    expect(await screen.findByText('김작업')).toBeInTheDocument();
   });
 
   /* ⛔ 입력값을 문구에 담는다 — 오타를 눈으로 확인할 수 있어야 한다. */
@@ -134,7 +137,7 @@ describe('WorkerAssignmentScreen — 확인', () => {
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
-    expect(await screen.findByText(t.error.unknown('900028'))).toBeInTheDocument();
+    expect(await screen.findByText(t.error.unknown)).toBeInTheDocument();
   });
 
   /* 미등록과 비재직은 사용자가 할 일이 다르다 — 문구를 뭉치지 않는다. */
@@ -145,26 +148,37 @@ describe('WorkerAssignmentScreen — 확인', () => {
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
     expect(await screen.findByText(t.error.inactive)).toBeInTheDocument();
-    expect(screen.queryByText('김작업 · 900028')).not.toBeInTheDocument();
+    expect(screen.queryByText('김작업')).not.toBeInTheDocument();
   });
 });
 
 describe('WorkerAssignmentScreen — 현재 작업자', () => {
-  /*
-   * ⭐ 도용 위험을 수용한 설계에서 화면이 할 수 있는 유일한 방어다 — 지금 누구로 기록되는지가
-   * 늘 보여야 한다(§5-4).
-   */
-  it('지금 누구로 기록되는지 늘 말한다', () => {
+  /* 시안(omf-all-around#288) — 작업자가 없을 때는 단추 없이 안내만 선다. */
+  it('작업자가 없으면 변경·이동 단추를 세우지 않는다', () => {
     renderScreen();
 
-    expect(screen.getByText(t.current.note)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.current.shift })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.current.toWork })).not.toBeInTheDocument();
+    expect(screen.getByText(t.current.noneHelp)).toBeInTheDocument();
   });
 
-  it('작업자가 없으면 교대·이동을 누를 수 없다', () => {
+  /* 시안(omf-all-around#288) — 확인 후에는 칸에 확인된 사번만 남고 키패드·확인 단추를 접는다. */
+  it('확인 후에는 사번 칸만 남고 키패드를 접는다', async () => {
     renderScreen();
 
-    expect(screen.getByRole('button', { name: t.current.shift })).toBeDisabled();
-    expect(screen.getByRole('button', { name: t.current.toWork })).toBeDisabled();
+    await typeWorkerNo('900028');
+    await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
+    await screen.findByText('김작업');
+
+    expect(screen.getByLabelText(t.input.workerNo)).toHaveValue('900028');
+    expect(screen.getByLabelText(t.input.workerNo)).toHaveAttribute('readonly');
+    expect(screen.queryByRole('button', { name: t.input.submit })).not.toBeInTheDocument();
+    expect(screen.getByText(t.current.confirmed)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: t.current.shift }));
+
+    expect(screen.getByLabelText(t.input.workerNo)).toHaveValue('');
+    expect(screen.getByRole('button', { name: t.input.submit })).toBeInTheDocument();
   });
 
   it('제품 모드에서 현재 작업자가 있으면 작업 시작 화면으로 이동한다', async () => {
@@ -172,7 +186,7 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
     await userEvent.click(screen.getByRole('button', { name: t.current.toWork }));
 
@@ -184,11 +198,11 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
     await userEvent.click(screen.getByRole('button', { name: t.current.shift }));
 
-    expect(screen.queryByText('김작업 · 900028')).not.toBeInTheDocument();
+    expect(screen.queryByText('김작업')).not.toBeInTheDocument();
     expect(screen.getByText(t.current.none)).toBeInTheDocument();
   });
 });
@@ -235,9 +249,9 @@ describe('지정 시각', () => {
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
-    const shown = screen.getByText(new RegExp(`^${t.current.assignedAt}`)).textContent ?? '';
+    const shown = screen.getByText(t.current.assignedAt).nextElementSibling?.textContent ?? '';
     const local = new Date('2026-09-01T00:00:00Z').toLocaleString('ko-KR', {
       year: 'numeric',
       month: '2-digit',
@@ -337,8 +351,8 @@ describe('오프라인', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
     window.dispatchEvent(new Event('online'));
 
-    expect(await screen.findByText('김작업 · 900028')).toBeInTheDocument();
-    expect(screen.queryByText(t.error.unknown('900028'))).not.toBeInTheDocument();
+    expect(await screen.findByText('김작업')).toBeInTheDocument();
+    expect(screen.queryByText(t.error.unknown)).not.toBeInTheDocument();
   });
 
   /** ⭐ 오프라인이어도 **막지 않는다** — 미리 받아 둔 목록으로 확인한다. */
@@ -357,7 +371,7 @@ describe('오프라인', () => {
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
 
-    expect(await screen.findByText('김작업 · 900028')).toBeInTheDocument();
+    expect(await screen.findByText('김작업')).toBeInTheDocument();
   });
 });
 
@@ -379,7 +393,7 @@ describe('귀속 보관', () => {
 
     renderScreen();
 
-    expect(await screen.findByText('김작업 · 900028')).toBeInTheDocument();
+    expect(await screen.findByText('김작업')).toBeInTheDocument();
   });
 });
 
@@ -405,7 +419,7 @@ describe('셸 통로 실패', () => {
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
     await userEvent.click(screen.getByRole('button', { name: t.current.shift }));
 
@@ -431,7 +445,7 @@ describe('교대', () => {
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
     await userEvent.click(screen.getByRole('button', { name: t.current.shift }));
 
@@ -449,14 +463,14 @@ describe('교대', () => {
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
     await userEvent.click(screen.getByRole('button', { name: t.current.shift }));
     await screen.findByText(t.current.pendingQueue(3));
 
     await typeWorkerNo('900028');
     await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
-    await screen.findByText('김작업 · 900028');
+    await screen.findByText('김작업');
 
     expect(screen.queryByText(t.current.pendingQueue(3))).not.toBeInTheDocument();
   });
