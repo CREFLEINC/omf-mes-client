@@ -290,20 +290,19 @@ export const iqcInboundLot = {
     /** 재작업으로 다시 연 뒤 새 결과가 없다(G2 L2). */
     lockedNoNewResult: '다시 열린 검사입니다. 새 결과를 1건 이상 기록하세요',
     lockedNoJudgment: '판정이 없는 결과가 있습니다',
-    title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정`,
-    counts: (total: number, accepted: number, rejected: number, held: number) =>
-      `결과 ${total}건 — 합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    applyHeading: '적용',
+    /** 확인 창은 PQC · OQC 와 같은 `JudgmentConfirmDialog` — 「확정 시 적용 사항」 줄과 안내 글만 IQC 것을 준다. */
     apply: {
-      ACCEPTED: (count: number) =>
+      ACCEPTED: (count: number) => [
         `자재 관리 LOT ${count}개 전부 → 정상 (검사 대기 보류 해제, 입고 가능)`,
-      REJECTED: (count: number) =>
-        `자재 관리 LOT ${count}개 전부 → 불량 부적합 1건(판정 대기)에 자재 관리 LOT 전부를 담고, 불합격 알림을 보냅니다.`,
-      HELD: (count: number) => `자재 관리 LOT ${count}개 → 검사 대기 유지(보류)`,
+      ],
+      REJECTED: (count: number) => [
+        `자재 관리 LOT ${count}개 전부 → 불량`,
+        '부적합 1건(판정 대기)에 자재 관리 LOT 전부를 담습니다',
+        '불합격 알림을 보냅니다',
+      ],
+      HELD: (count: number) => [`자재 관리 LOT ${count}개 → 검사 대기 유지(보류)`],
     },
     note: '확정하면 결과를 고치거나 더하거나 지울 수 없습니다. 잘못 확정했으면 [확정 취소]로 되돌립니다(입고·처분 전까지).', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    back: '돌아가기',
-    proceed: (judgment: string) => `${judgment}${ro(judgment)} 판정 확정`,
     doneRejected: (ncNo: string | null) =>
       ncNo === null
         ? '불합격으로 확정했습니다. 부적합이 생겼습니다.'

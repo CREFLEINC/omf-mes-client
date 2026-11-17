@@ -110,14 +110,11 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     foldTitle: 'Lịch sử yêu cầu đặc cách',
     count: (count: number): string => `${String(count)}`,
     requestHeading: 'Yêu cầu đặc cách',
-    requestNote:
-      'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT nhập hàng không đạt — phê duyệt hạn mức cũng theo đường này',
-    target: 'Đối tượng',
-    targetAll: (inboundLotNo: string | null, count: number): string =>
-      `Toàn bộ ${String(count)} LOT quản lý vật tư${inboundLotNo === null ? '' : ` · LOT nhập hàng ${inboundLotNo}`}`,
-    qtyLocked: 'Toàn bộ số lượng còn lại — không đổi được',
-    wholeHint:
-      'Đặc cách chỉ yêu cầu cho toàn bộ số lượng còn lại (không có đặc cách một phần). Nếu chỉ muốn dùng một phần, hãy dùng [Phân loại] để tách LOT quản lý vật tư lỗi trước, rồi đặc cách toàn bộ LOT nhập hàng đó.',
+    requestNote: 'Yêu cầu phê duyệt sử dụng có điều kiện cho LOT không đạt.',
+    target: 'LOT đối tượng',
+    targetAll: (count: number): string => `${String(count)} LOT quản lý vật tư`,
+    wholeNote:
+      'Yêu cầu đặc cách cho toàn bộ số lượng chưa xử lý. Nếu chỉ muốn yêu cầu một phần, hãy tách LOT trước.',
     pendingBanner: (concessionNo: string): string => `Đặc cách ${concessionNo} đang chờ phê duyệt.`,
     approvedBanner: (concessionNo: string): string => `Đặc cách ${concessionNo} đã được duyệt.`,
     rejectedBanner: (concessionNo: string): string =>
@@ -135,9 +132,9 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     apply: 'Áp dụng đặc cách',
     applyWaiting: 'Phải phê duyệt xong (W-03-09) mới áp dụng được',
     applying: 'Đang áp dụng…',
-    qty: 'Số lượng được dùng',
-    validFrom: 'Ngày bắt đầu',
-    validTo: 'Ngày kết thúc (tùy chọn)',
+    qty: 'Số lượng yêu cầu đặc cách',
+    validFrom: 'Ngày bắt đầu áp dụng',
+    validTo: 'Ngày kết thúc áp dụng (tùy chọn)',
     reason: 'Lý do đặc cách',
     requested: 'Đã yêu cầu đặc cách. Hãy áp dụng sau khi phê duyệt xong.',
     requestedLots: (count: number): string =>

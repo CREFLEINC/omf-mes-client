@@ -969,7 +969,6 @@ export const DispositionDecisionScreen = ({
             nonconformanceId={selectedId}
             lots={lotRows}
             remainingQty={remaining.value}
-            inboundLotNo={detailView?.inboundLotNo ?? null}
             uoms={uoms}
             today={today}
             onClose={(requested, lotCount) => {

@@ -163,7 +163,7 @@ describe('W-03-10 입하 LOT 단위 처분', () => {
     expect(within(dialog).getByLabelText(t.concession.qty)).toHaveValue('3,000 EA');
     expect(within(dialog).getByLabelText(t.concession.qty)).toHaveAttribute('readonly');
     expect(within(dialog).getByLabelText(t.concession.target)).toHaveValue(
-      t.concession.targetAll('SAMPLE-IL-0501', 3),
+      t.concession.targetAll(3),
     );
     await user.type(within(dialog).getByLabelText(t.concession.reason), '합성 특채 사유');
     await user.click(within(dialog).getByRole('button', { name: t.concession.request }));
