@@ -47,10 +47,11 @@ describe('창고 적재 위치 라벨 80 × 30 mm', () => {
     expect(box.y + box.side).toBeLessThanOrEqual(HEIGHT);
   });
 
-  it('창고코드가 붙은 긴 위치 코드(#292)는 자르지 않고 글줄 칸에 맞춰 줄여 찍는다', () => {
+  it('창고 위치 코드가 붙은 긴 위치 코드(#292)는 자르지 않고 글줄 칸에 맞춰 줄여 찍는다', () => {
+    /* 창고 위치 코드는 6자까지, 옛 코드는 예외 없이 그 뒤에 붙었다 — 셀까지 간 코드 · 긴 옛 코드. */
     for (const [locationCode, point] of [
-      ['S240-Z01-R001-L01-C01', 15],
-      ['OH100073-Z01-R001-L01-C01', 13],
+      ['K7PM-Z01-R001-L01-C01', 15],
+      ['ABC123-OH100073-A-01-02', 14],
     ] as const) {
       const command = buildLocationLabel({ ...fields, warehouseCode: 'OH100073', locationCode });
       const line = new RegExp(`^TEXT (\\d+),\\d+,"0",0,(\\d+),\\d+,"([^"]*)"\\r$`, 'gmu');
