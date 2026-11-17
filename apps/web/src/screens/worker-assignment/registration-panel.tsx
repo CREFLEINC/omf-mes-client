@@ -111,6 +111,11 @@ export const RegistrationPanel = () => {
     registration;
   const busy = phase === 'verifying' || phase === 'preparing';
   const scale = usePanelScale();
+
+  /* POP 단말용이 아닌 토큰을 넣었으면 칸을 비운다 — 같은 값을 다시 누르지 않게 한다(omf-all-around#288). */
+  useEffect(() => {
+    if (failure === 'wrong-type' && failureSource === 'entered') setToken('');
+  }, [failure, failureSource]);
   const tokenRef = useRef<HTMLInputElement>(null);
 
   const scanner = useScannerSubmit(

@@ -47,7 +47,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
         'Không kết nối được máy chủ nên chưa kiểm tra được. Hãy kiểm tra kết nối rồi thử lại.',
       foreign: 'Đây là token của máy trạm khác. Hãy xin quản trị viên token đúng của máy trạm này.',
       wrongType:
-        'Không phải token dành cho máy trạm POP. Hãy xin quản trị viên thông tin đăng ký phù hợp.',
+        'Không phải token dành cho máy trạm POP. Hãy xin lại thông tin token từ quản trị viên.',
       offline: 'Chỉ đăng ký máy trạm được khi đang kết nối. Hãy kiểm tra kết nối rồi thử lại.',
       noStore: 'Máy trạm này không lưu được token. Hãy báo người phụ trách lắp đặt.',
       queueBlocked:
