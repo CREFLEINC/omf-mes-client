@@ -141,17 +141,12 @@ describe('목록이 잘렸는지', () => {
 });
 
 describe('POP 상단 띠', () => {
-  it('단말을 모르면 빈칸이 아니라 모른다고 적는다', async () => {
-    renderScreen();
-
-    expect(await screen.findByText(t.header.terminalUnknown)).toBeInTheDocument();
-  });
-
-  it('셸이 아는 단말 번호를 머리줄에 세운다', async () => {
-    /* 다른 POP 화면은 「단말 1001」로 뜨는데 이 화면만 비어 있었다(#1147). */
+  /* #291 — 단말은 공통 이동 메뉴 맨 위 줄이 보인다. 화면 머리줄에 다시 세우지 않는다. */
+  it('단말은 머리줄에 두지 않는다(공통 메뉴 맨 위 줄이 보인다)', async () => {
     renderScreen({ terminalId: 1001 });
 
-    expect(await screen.findByText(t.header.terminalLabel('1001'))).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
+    expect(screen.queryByText(t.header.terminalLabel('1001'))).not.toBeInTheDocument();
     expect(screen.queryByText(t.header.terminalUnknown)).not.toBeInTheDocument();
   });
 });
@@ -199,28 +194,18 @@ describe('상세 구획의 제목', () => {
 });
 
 describe('연결 표시', () => {
-  it('서버에 닿으면 연결됨을 보인다', async () => {
-    renderScreen();
+  /* 연결 표시는 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 이 화면은 그리지 않는다. */
+  it.each([
+    ['정상', {}],
+    ['401', { listStatus: 401 }],
+    ['닿지 못함', { listUnreachable: true }],
+  ] as const)('%s 이어도 화면에는 연결 표시를 두지 않는다', async (_label, options) => {
+    renderScreen(options);
 
-    expect(await screen.findByText(t.header.connected)).toBeInTheDocument();
-  });
-
-  /*
-   * ⛔ **실패했다는 사실만으로 「오프라인」이라 말하지 않는다**(#883). 상태 코드가 있다는 것은
-   *    서버가 «답했다»는 뜻이다 — 그것을 연결 끊김으로 부르면 권한·서버 오류를 만난 작업자가
-   *    네트워크를 확인하러 간다. 실서버에서 401 로 실제로 그렇게 떴다.
-   */
-  it.each([401, 500])('서버가 %d 로 답하면 연결됨을 유지한다', async (status) => {
-    renderScreen({ listStatus: status });
-
-    expect(await screen.findByText(t.header.connected)).toBeInTheDocument();
+    await screen.findByRole('heading', { name: t.list.title });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText(t.header.connected)).not.toBeInTheDocument();
     expect(screen.queryByText(t.header.disconnected)).not.toBeInTheDocument();
-  });
-
-  it('서버에 닿지 못하면 연결 끊김을 보인다', async () => {
-    renderScreen({ listUnreachable: true });
-
-    expect(await screen.findByText(t.header.disconnected)).toBeInTheDocument();
   });
 
   it('답을 받기 전에는 연결 여부를 말하지 않는다', async () => {

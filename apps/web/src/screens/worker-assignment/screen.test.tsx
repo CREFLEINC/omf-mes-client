@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { WorkerAssignmentScreen } from './screen';
 import type { WorkerResponse } from './verify';
+import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
 import { PopRegistrationProvider } from '../../patterns/pop-registration';
 import { setWorkerSession } from '../../patterns/worker-session';
 
@@ -181,7 +182,62 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
     expect(screen.getByRole('button', { name: t.input.submit })).toBeInTheDocument();
   });
 
-  it('제품 모드에서 현재 작업자가 있으면 작업 시작 화면으로 이동한다', async () => {
+  it('사번을 확인하면 바로 홈으로 간다(#291)', async () => {
+    renderScreen();
+
+    await typeWorkerNo('900028');
+    await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
+    });
+  });
+
+  it('다른 공장 소속이면 홈으로 넘기지 않고 경고를 보인다', async () => {
+    const fetch = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/workers',
+        respond: () =>
+          jsonResponse({
+            items: [workerOf({ plantId: 20 })],
+            page: { page: 1, size: 2, total: 1 },
+          }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/terminals/7',
+        respond: () =>
+          jsonResponse({
+            terminalId: 7,
+            terminalCode: 'POP-07',
+            plantId: 10,
+            terminalTypeCode: 'POP',
+            equipmentId: null,
+            equipmentCode: null,
+            equipmentName: null,
+            isActive: true,
+          }),
+      },
+    ]);
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, terminalId: 7 }}>
+          <WorkerAssignmentScreen />
+          <LocationProbe />
+        </PopIdentityProvider>
+      </PopRegistrationProvider>,
+      { fetch, route: '/pop/worker-assignment' },
+    );
+
+    await typeWorkerNo('900028');
+    await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
+
+    expect(await screen.findByText(t.current.otherPlant)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent(
+      '/pop/worker-assignment',
+    );
+  });
+
+  it('제품 모드에서 현재 작업자가 있으면 홈으로 이동한다(#291)', async () => {
     renderScreen();
 
     await typeWorkerNo('900028');
@@ -190,7 +246,7 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
 
     await userEvent.click(screen.getByRole('button', { name: t.current.toWork }));
 
-    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/work-start');
+    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/home');
   });
 
   it('교대하면 현재 작업자가 비워진다', async () => {

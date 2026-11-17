@@ -4,8 +4,6 @@ import type { Translated } from './translated';
 /** P-01-02 분할 LOT 라벨(008). */
 export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   title: 'Nhãn LOT tách',
-  terminalLabel: 'Máy trạm#',
-  terminalUnknown: 'Chưa xác nhận',
 
   band: {
     unknownTitle: 'Chưa nhận được số LOT tách chưa in nhãn',

@@ -6,8 +6,6 @@
  */
 export const goodsIssueQr = {
   title: '분할 LOT 라벨',
-  terminalLabel: '단말#',
-  terminalUnknown: '확인되지 않음',
 
   /** 라벨 안 찍은 분할 LOT — 기간과 상관없이 모두 센다(FR-008). */
   band: {

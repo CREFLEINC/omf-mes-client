@@ -90,8 +90,7 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
       `Đã có ${String(count)} yêu cầu được phát hành cho W/O này. Yêu cầu trùng không bị chặn — hãy xem danh sách bên dưới rồi tiến hành.`,
     existingRequestRow: (issueRequestNo: string, statusCode: string, requiredAt: string) =>
       `${issueRequestNo} · ${statusCode} · ${requiredAt}`,
-    existingRequestsTruncated:
-      'Chỉ thấy một phần đầu. Toàn bộ xem ở Tình trạng yêu cầu xuất kho.',
+    existingRequestsTruncated: 'Chỉ thấy một phần đầu. Toàn bộ xem ở Tình trạng yêu cầu xuất kho.',
   },
   values: {
     empty: '—',
@@ -149,15 +148,18 @@ export const materialIssueRequest: Translated<typeof ko.materialIssueRequest> = 
   },
   reasonHelp:
     'Ứng phó khẩn cấp và bổ sung thiếu: nếu số còn lại không đủ, có thể lấy phần dự kiến của yêu cầu khác sau khi xác nhận cảnh báo. Lý do khác chỉ yêu cầu được đến số còn lại.',
-  prefilled: 'Yêu cầu mở từ mục Thiếu của Tình trạng yêu cầu xuất kho. Đã điền W/O, mặt hàng, số lượng, lý do.',
+  prefilled:
+    'Yêu cầu mở từ mục Thiếu của Tình trạng yêu cầu xuất kho. Đã điền W/O, mặt hàng, số lượng, lý do.',
   override: {
     title: 'Lấy phần dự kiến xuất của W/O khác',
     body: 'Đã yêu cầu nhiều hơn số còn lại. Nếu vẫn yêu cầu, sẽ lấy phần dự kiến của các yêu cầu bên dưới và các yêu cầu đó hiển thị thiếu.',
     shortTitle: 'Nhiều hơn số còn lại',
     shortBody: 'Nếu yêu cầu, chỉ xuất đến số còn lại, phần còn lại ghi là thiếu.',
     blockedTitle: 'Không còn số lượng nên không yêu cầu được',
-    blockedBody: 'Với lý do này chỉ yêu cầu được đến số còn lại. Chỉ ứng phó khẩn cấp hoặc bổ sung thiếu mới lấy được phần dự kiến của yêu cầu khác.',
-    noStockedBody: 'Có vật tư không có kho sản xuất còn tồn nên không yêu cầu được. Hãy bổ sung kho sản xuất rồi yêu cầu.',
+    blockedBody:
+      'Với lý do này chỉ yêu cầu được đến số còn lại. Chỉ ứng phó khẩn cấp hoặc bổ sung thiếu mới lấy được phần dự kiến của yêu cầu khác.',
+    noStockedBody:
+      'Có vật tư không có kho sản xuất còn tồn nên không yêu cầu được. Hãy bổ sung kho sản xuất rồi yêu cầu.',
     tableLabel: 'Mặt hàng vượt',
     columns: {
       item: 'Mặt hàng',

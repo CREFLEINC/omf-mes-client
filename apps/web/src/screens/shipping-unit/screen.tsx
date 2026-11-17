@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 /*
  * ⛔ **DS 드롭다운을 직접 쓰지 않는다**(공유계약 G-34 · `routes/pop-common-rules.test.ts` 가
  *    지킨다). 장갑 낀 손에는 좁은 목록보다 큰 버튼이 선 팝업이 낫다.
@@ -322,12 +321,6 @@ export const ShippingUnitScreen = () => {
          *    사번과 온라인/오프라인. [화면 이동]·[사용자 전환]은 셸이 모든 POP 화면 머리줄에
          *    세운다. 전용 화면 스펙이 설계 고정 커밋에 없어 형제 화면 P-04-01 머리줄과 같게 둔다.
          */}
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={identity.workerNo} />
-          <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
-            {isOnline ? t.header.online : t.header.offline}
-          </Chip>
-        </div>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

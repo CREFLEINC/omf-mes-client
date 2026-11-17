@@ -1161,15 +1161,14 @@ describe('MaterialInputScanScreen — 머리줄', () => {
       }),
   });
 
-  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+  /* W/O·공정·긴급은 머리줄이 아니라 투입 자재 상자 제목에 선다(사용자 지시 2026-11-17 · #291). */
+  const header = (): HTMLElement => screen.getByRole('region', { name: t.panes.input });
 
   /* C-11 — 현재 W/O와 공정. 작업지시 번호는 사용자가 보는 번호다. */
   it('현재 W/O 번호와 공정을 보인다', async () => {
     renderScreen([lotsRoute([lot()]), gateRoute(true), workOrderRoute()], GATED);
 
-    expect(
-      await within(header()).findByText(messages.popChrome.header.workOrderLabel('SAMPLE-WO-0001')),
-    ).toBeTruthy();
+    expect(await within(header()).findByText('SAMPLE-WO-0001')).toBeTruthy();
     expect(within(header()).getByText('합성 공정')).toBeTruthy();
   });
 

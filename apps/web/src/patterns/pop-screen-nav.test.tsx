@@ -1,153 +1,395 @@
-import { screen, waitFor } from '@testing-library/react';
+import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
-import { PopScreenNavButton } from './pop-screen-nav';
+import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from './pop-identity';
+import { POP_SCREENS } from './pop-screen-catalog';
+import { PopScreenNav, destinationOf } from './pop-screen-nav';
+import { POP_WORK_COUNT_INTERVAL_MS } from './pop-work-counts';
+
+type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
+
+const nav = messages.popChrome.nav;
+const remaining = messages.popChrome.remaining;
+const header = messages.popChrome.header;
 
 const SESSION = {
   userId: 1001,
   loginId: 'pop.terminal',
-  userName: '조립 1라인 단말',
+  userName: '합성 단말',
   scopes: [{ businessUnitId: 1001 }],
+  /* 자재 1 · 생산 3 · 출하 2 · 품질 1 — 설비·창고 화면은 없다. */
+  permissions: ['P-01-01', 'P-02-01', 'P-02-03', 'P-02-12', 'P-04-01', 'P-04-03', 'P-04-06'],
 };
 
-const stub = (body: unknown, init: ResponseInit = {}) =>
-  createStubFetch([
-    {
-      match: (request: Request) => request.url.endsWith('/app/sessions/current'),
-      respond: () => jsonResponse(body, init),
-    },
-  ]);
+const COUNTS: TerminalWorkCounts = {
+  shipmentPacking: 4,
+  workStart: 3,
+  emergencyWorkOrder: 1,
+  reworkResult: 0,
+  oqcInspection: 12,
+};
 
-/**
- * 지금 어느 주소인지 눈으로 확인할 자리 — 이동이 실제로 일어났는지 잰다.
- *
- * **인자까지 함께 낸다** — 작업지시를 실어 보내는지가 이 부품의 판정 하나이기 때문이다(D10).
- */
+/** 지금 주소(인자 포함) — 이동이 실제로 일어났는지 잰다. */
 const Here = () => {
   const { pathname, search } = useLocation();
-
   return <p>지금: {`${pathname}${search}`}</p>;
 };
 
-const renderNav = (body: unknown, route = '/pop/work-start') =>
+const setup = (
+  options: {
+    session?: unknown;
+    sessionStatus?: number;
+    counts?: TerminalWorkCounts | 'fail';
+    workerNo?: string | null;
+    route?: string;
+  } = {},
+) => {
+  const counted: Request[] = [];
   renderWithProviders(
-    <>
-      <PopScreenNavButton />
+    <PopIdentityProvider
+      value={{
+        ...UNKNOWN_POP_IDENTITY,
+        workerNo: options.workerNo === undefined ? '2048' : options.workerNo,
+      }}
+    >
+      <PopScreenNav terminalCode="POP-OA-01" />
       <Here />
-    </>,
-    { fetch: stub(body), route },
+    </PopIdentityProvider>,
+    {
+      fetch: createStubFetch([
+        {
+          match: (request) => request.url.endsWith('/app/sessions/current'),
+          respond: () =>
+            jsonResponse(options.session ?? SESSION, { status: options.sessionStatus ?? 200 }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/production/work-orders/7801',
+          respond: () => jsonResponse({ workOrderId: 7801, workOrderNo: 'WO-SYN-7801' }),
+        },
+        {
+          /* 단말에 열린 W/O 가 아니면(마감 등) 서버는 상세를 401 로 거절한다 — 단말 읽기 규칙. */
+          match: (request) => new URL(request.url).pathname === '/production/work-orders/7803',
+          respond: () => jsonResponse({ message: '단말 인증 범위 밖입니다.' }, { status: 401 }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/production/work-orders/7802',
+          respond: () =>
+            jsonResponse({ workOrderId: 7802, workOrderNo: 'WO-SYN-7802', statusCode: 'CLOSED' }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/app/terminal-work-counts',
+          respond: (request) => {
+            counted.push(request);
+            return options.counts === 'fail'
+              ? jsonResponse({ message: '' }, { status: 503 })
+              : jsonResponse(options.counts ?? COUNTS);
+          },
+        },
+      ]),
+      route: options.route ?? '/pop/material-input',
+    },
   );
+  return { counted };
+};
 
-describe('PopScreenNavButton — G-34 화면 이동', () => {
-  it('권한 있는 화면만 후보로 보이고 고르면 즉시 이동한다', async () => {
+const groupsNav = () => screen.getByRole('navigation', { name: nav.groupsLabel });
+
+/** 묶음 이름으로 단추를 찾는다 — 남은 작업이 있으면 접근 이름에 수가 붙는다. */
+const groupButton = (name: string) =>
+  within(groupsNav()).getByRole('button', { name: new RegExp(`^${name}`, 'u') });
+
+const remainingButton = async () => {
+  const button = await screen.findByRole('button', { name: /^남은 작업 \d+건$/u });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
+};
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
+  /* 사번 칩이 곧 [사용자 전환] 버튼이다(사용자 지시 2026-11-17 · #291). */
+  it('맨 위 줄에 단말·사번 버튼이 서고, 사번을 누르면 사용자 전환으로 간다', async () => {
     const user = userEvent.setup();
+    setup();
 
-    renderNav({ ...SESSION, permissions: ['P-02-01', 'P-05-02'] });
+    expect(screen.getByText(header.terminalLabel('POP-OA-01'))).toBeInTheDocument();
+    expect(screen.getByText(header.workerLabel('2048', null))).toBeInTheDocument();
 
-    const trigger = await screen.findByRole('combobox', { name: '화면 이동' });
-    await waitFor(() => {
-      expect(trigger).toBeEnabled();
-    });
-    await user.click(trigger);
-
-    expect(screen.getByRole('option', { name: '비가동 실적 입력' })).toBeInTheDocument();
-    /* ⭐ 화면 코드는 목록에 보이지 않는다(사용자 지시 2026-09-15). */
-    expect(screen.queryByText(/P-\d{2}-\d{2}/u)).not.toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: '출하 포장' })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('option', { name: '비가동 실적 입력' }));
-
-    expect(screen.getByText('지금: /pop/downtime')).toBeInTheDocument();
-    expect(document.documentElement.dataset.popScreenNav).toBe('on');
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
+    );
+    expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
   });
 
-  /* 지금 서 있는 화면으로 가는 항목은 아무 일도 하지 않는다 — 후보에서 뺀다. */
-  it('현재 화면은 후보에 담지 않는다', async () => {
+  /* 작업 단계 화면(자재 투입 등)은 탭에 두지 않고 작업 지시 목록 탭 아래 단계 줄이 연다(#291 · 사용자 승인 2026-11-17). */
+  it('갈 수 있는 화면이 있는 묶음만 서고, 단계 화면에서는 작업 지시 목록 탭과 단계 줄이 지금 자리를 표시한다', async () => {
+    setup();
+
+    const tabs = await screen.findByRole('navigation', { name: nav.screensLabel('생산') });
+    expect(
+      within(groupsNav())
+        .getAllByRole('button')
+        .map((button) => button.textContent?.replace(/\d+\+?$/u, '')),
+    ).toEqual(['홈', '자재', '생산', '품질', '출하']);
+    expect(
+      within(tabs)
+        .getAllByRole('button')
+        .map((tab) => tab.textContent?.replace(/\d+\+?$/u, '')),
+    ).toEqual(['작업 지시 목록', '긴급 W/O']);
+    expect(within(tabs).getByRole('button', { name: /^작업 지시 목록/u })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const steps = screen.getByRole('list', { name: messages.popChrome.workSteps.label });
+    expect(within(steps).getByRole('button', { name: /자재 투입/u })).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+    expect(groupButton('생산')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('묶음을 누르면 그 묶음의 첫 탭 화면으로 가고, 지금 묶음을 다시 누르면 그대로다', async () => {
     const user = userEvent.setup();
+    setup();
+    await screen.findByRole('navigation', { name: nav.screensLabel('생산') });
 
-    renderNav({ ...SESSION, permissions: ['P-02-01', 'P-05-02'] });
+    await user.click(groupButton('생산'));
+    expect(screen.getByText('지금: /pop/material-input')).toBeInTheDocument();
 
-    const trigger = await screen.findByRole('combobox', { name: '화면 이동' });
-    await waitFor(() => {
-      expect(trigger).toBeEnabled();
-    });
-    await user.click(trigger);
+    await user.click(groupButton('출하'));
 
-    expect(screen.queryByRole('option', { name: '작업 지시 목록' })).not.toBeInTheDocument();
+    const tabs = screen.getByRole('navigation', { name: nav.screensLabel('출하') });
+    const firstTab = within(tabs).getAllByRole('button')[0];
+    expect(firstTab).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByText('지금: /pop/material-input')).not.toBeInTheDocument();
+
+    await user.click(within(tabs).getByRole('button', { name: /^재작업 실적 등록/u }));
+    expect(screen.getByText('지금: /pop/rework-results')).toBeInTheDocument();
   });
 
-  it('권한 목록을 못 받으면 비활성으로 두고 사유를 보인다', async () => {
-    renderNav(SESSION);
-
-    /* 사유는 머리줄에 늘어놓지 않고 버튼에 붙인다 — 머리줄에서 가장 긴 글이 되면 안 된다. */
-    const trigger = await screen.findByTitle('이동할 수 있는 화면을 확인하지 못했습니다');
-
-    expect(trigger).toBeDisabled();
-    expect(document.body).not.toHaveTextContent('이동 가능 화면');
-  });
-
-  it('갈 수 있는 화면이 없으면 사유를 갈라 보인다', async () => {
-    renderNav({ ...SESSION, permissions: [] });
-
-    expect(await screen.findByTitle('이동할 수 있는 화면이 없습니다')).toBeDisabled();
-    expect(document.body).not.toHaveTextContent('이동 가능 화면');
-  });
-
-  /*
-   * ⭐ **작업지시 문맥은 주소 하나로만 흐른다**(사용자 승인 2026-09-15). 자재 투입에서 생산
-   *    실적으로 가는 길이 여기뿐인데 인자를 싣지 않아, 그 길로 들어가면 「작업지시를 받지
-   *    못했다」로 막히고 작업 시작 화면까지 되돌아가야 했다(WIP-CHAIN-01 D10).
-   */
-  it('작업지시를 받는 화면으로 갈 때는 지금 주소의 작업지시를 실어 준다', async () => {
+  it('[새로고침]은 화면을 다시 읽지 않고 자료만 다시 받는다', async () => {
     const user = userEvent.setup();
+    const { counted } = setup({ route: '/pop/material-input?workOrderId=7801' });
+    await waitFor(() => expect(counted).toHaveLength(1));
 
-    renderNav(
-      { ...SESSION, permissions: ['P-02-03', 'P-02-04'] },
-      '/pop/material-input?workOrderId=7801',
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(messages.popChrome.refresh, 'u') }),
     );
 
-    const trigger = await screen.findByRole('combobox', { name: '화면 이동' });
-    await waitFor(() => {
-      expect(trigger).toBeEnabled();
-    });
-    await user.click(trigger);
-    await user.click(screen.getByRole('option', { name: '생산 작업' }));
+    await waitFor(() => expect(counted).toHaveLength(2));
+    expect(screen.getByText('지금: /pop/material-input?workOrderId=7801')).toBeInTheDocument();
+  });
 
+  it('[홈]을 누르면 홈으로 간다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(await screen.findByRole('button', { name: nav.home }));
+    expect(screen.getByText('지금: /pop/home')).toBeInTheDocument();
+  });
+
+  it('단계 줄은 고른 W/O 를 다음 단계로 실어 주며(번호는 박스에 보이는 자재 투입·생산 작업에선 숨긴다), 작업지시를 받지 않는 탭에는 싣지 않는다', async () => {
+    const user = userEvent.setup();
+    setup({
+      session: { ...SESSION, permissions: ['P-02-01', 'P-02-03', 'P-02-04', 'P-02-12'] },
+      route: '/pop/material-input?workOrderId=7801',
+    });
+
+    const steps = await screen.findByRole('list', { name: messages.popChrome.workSteps.label });
+    expect(screen.queryByText('WO-SYN-7801')).toBeNull();
+    await user.click(within(steps).getByRole('button', { name: /생산 작업/u }));
     expect(screen.getByText('지금: /pop/production-result?workOrderId=7801')).toBeInTheDocument();
-  });
 
-  /*
-   * ⛔ **받는다고 표기된 화면에만 싣는다.** 모르는 화면에 실으면 그 화면이 쓰지 않는 값이 주소에
-   *    남고, 뒤에 같은 이름을 쓰게 되면 «남이 남긴 값»으로 조회가 선다.
-   */
-  it('작업지시를 받지 않는 화면에는 싣지 않는다', async () => {
-    const user = userEvent.setup();
-
-    renderNav(
-      { ...SESSION, permissions: ['P-02-03', 'P-05-02'] },
-      '/pop/material-input?workOrderId=7801',
+    await user.click(
+      within(screen.getByRole('navigation', { name: nav.screensLabel('생산') })).getByRole(
+        'button',
+        { name: /^긴급 W\/O/u },
+      ),
     );
-
-    const trigger = await screen.findByRole('combobox', { name: '화면 이동' });
-    await waitFor(() => {
-      expect(trigger).toBeEnabled();
-    });
-    await user.click(trigger);
-    await user.click(screen.getByRole('option', { name: '비가동 실적 입력' }));
-
-    expect(screen.getByText('지금: /pop/downtime')).toBeInTheDocument();
+    expect(screen.getByText('지금: /pop/emergency-work-orders')).toBeInTheDocument();
   });
 
-  /* 진입 화면은 사번을 넣기 «전»이라 갈 곳을 물을 자리가 아니다. */
-  it('진입 화면에서는 서지 않는다', async () => {
-    renderNav({ ...SESSION, permissions: ['P-02-01'] }, '/pop/worker-assignment');
+  it('작업지시를 고르기 전(작업 지시 목록)에는 다음 단계와 작업 중 화면 버튼이 잠긴다', async () => {
+    setup({
+      session: { ...SESSION, permissions: ['P-02-01', 'P-02-03', 'P-02-04', 'P-02-10'] },
+      route: '/pop/work-start',
+    });
+
+    const steps = await screen.findByRole('list', { name: messages.popChrome.workSteps.label });
+    expect(
+      within(steps).getByRole('button', {
+        name: new RegExp(messages.popChrome.workSteps.pickWorkOrder, 'u'),
+      }),
+    ).toHaveAttribute('aria-current', 'step');
+    expect(within(steps).getByRole('button', { name: /자재 투입/u })).toBeDisabled();
+    expect(within(steps).getByRole('button', { name: /생산 작업/u })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled();
+  });
+
+  it('마감된 W/O 에서는 작업 중 화면 버튼이 잠긴다', async () => {
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7802' });
+    await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
+    expect(await screen.findByText('WO-SYN-7802')).toBeInTheDocument();
+  });
+
+  it('서버가 열린 W/O 로 보이지 않는(401) W/O 에서도 작업 중 화면 버튼이 잠긴다', async () => {
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7803' });
+    await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
+  });
+
+  it('열린 W/O 에서는 작업 중 화면 버튼이 열린다', async () => {
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7801' });
+    expect(await screen.findByText('WO-SYN-7801')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '작업 중단' })).toBeEnabled();
+  });
+
+  it('묶음·탭에 남은 수가 붙고 숨은 글이 실제 수를 읽는다', async () => {
+    const user = userEvent.setup();
+    const { counted } = setup();
+    await waitFor(() => expect(counted).toHaveLength(1));
+
+    expect(
+      await within(groupsNav()).findByRole('button', { name: nav.groupCount('생산', 4) }),
+    ).toBeInTheDocument();
+    expect(groupButton('품질')).toHaveAccessibleName(nav.groupCount('품질', 12));
+
+    await user.click(groupButton('품질'));
+    const tab = within(
+      screen.getByRole('navigation', { name: nav.screensLabel('품질') }),
+    ).getByRole('button', { name: remaining.count('OQC 출하검사 판정', 12) });
+    expect(within(tab).getByText('9+')).toBeInTheDocument();
+  });
+
+  it('[남은 작업] 창은 수가 있는 화면만 많은 순으로 보이고, 누르면 그 화면으로 간다', async () => {
+    const user = userEvent.setup();
+    const { counted } = setup();
+    await waitFor(() => expect(counted).toHaveLength(1));
+
+    const button = await screen.findByRole('button', { name: remaining.buttonLabel(20) });
+    await user.click(button);
+
+    const dialog = within(screen.getByRole('dialog', { name: remaining.title(20) }));
+    expect(
+      dialog
+        .getAllByRole('button')
+        .filter((item) => item.classList.contains('pop-remaining__item'))
+        .map((item) => item.getAttribute('aria-label')),
+    ).toEqual([
+      remaining.count('OQC 출하검사 판정', 12),
+      remaining.count('출하 포장', 4),
+      remaining.count('작업 지시 목록', 3),
+      remaining.count('긴급 W/O', 1),
+    ]);
+
+    await user.click(dialog.getByRole('button', { name: remaining.count('출하 포장', 4) }));
+    expect(screen.getByText('지금: /pop/packing')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('[남은 작업] 창은 닫기·Esc 로 닫힌다', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(await remainingButton());
+    await user.click(screen.getByRole('button', { name: remaining.close }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(await remainingButton());
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('수를 못 받으면 배지 없이 「남은 작업이 없습니다」로 선다', async () => {
+    const user = userEvent.setup();
+    const { counted } = setup({ counts: 'fail' });
+    await waitFor(() => expect(counted.length).toBeGreaterThan(0));
+
+    await user.click(await screen.findByRole('button', { name: remaining.buttonLabel(0) }));
+    expect(screen.getByText(remaining.none)).toBeInTheDocument();
+    expect(document.querySelector('.pop-work-badge')).toBeNull();
+  });
+
+  it('60초마다, 그리고 [남은 작업] 창을 열 때 다시 센다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+    const { counted } = setup();
+
+    await waitFor(() => expect(counted).toHaveLength(1));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POP_WORK_COUNT_INTERVAL_MS);
+    });
+    await waitFor(() => expect(counted).toHaveLength(2));
+    await user.click(await remainingButton());
+    await waitFor(() => expect(counted).toHaveLength(3));
+  });
+
+  it('사번이 확인되기 전에는 수를 묻지 않는다', async () => {
+    const { counted } = setup({ workerNo: null });
+
+    await remainingButton();
+    expect(counted).toHaveLength(0);
+    expect(screen.getByText(header.workerUnset)).toBeInTheDocument();
+  });
+
+  it('권한 목록을 못 받으면 사유를 보이고 [남은 작업]을 막는다', async () => {
+    setup({ session: { ...SESSION, permissions: undefined } });
+
+    expect(await screen.findByText(nav.unknown)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
+  });
+
+  it('갈 수 있는 화면이 없으면 그 사유를 보인다', async () => {
+    setup({ session: { ...SESSION, permissions: [] } });
+
+    expect(await screen.findByText(nav.empty)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: remaining.buttonLabel(0) })).toBeDisabled();
+  });
+
+  it('진입 화면(사번 입력)에서는 서지 않는다', async () => {
+    setup({ route: '/pop/worker-assignment' });
 
     await waitFor(() => {
       expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
     });
-    expect(screen.queryByRole('combobox', { name: '화면 이동' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: nav.groupsLabel })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: messages.popChrome.userSwitch }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('destinationOf — 화면으로 가는 주소', () => {
+  const screenAt = (path: string) => {
+    const found = POP_SCREENS.find((candidate) => candidate.path === path);
+    if (found === undefined) throw new Error(`목록에 없는 화면: ${path}`);
+    return found;
+  };
+
+  it('작업 단계·작업 중 화면은 W/O 없이 가면 작업 지시 목록으로 보낸다(홈 바로가기·남은 작업)', () => {
+    expect(destinationOf(screenAt('/pop/material-input'), '')).toBe('/pop/work-start');
+    expect(destinationOf(screenAt('/pop/work-hold'), '?workOrderId=')).toBe('/pop/work-start');
+  });
+
+  it('W/O 를 들고 있으면 그 W/O 를 실어 간다', () => {
+    expect(destinationOf(screenAt('/pop/material-input'), '?workOrderId=7801')).toBe(
+      '/pop/material-input?workOrderId=7801',
+    );
+  });
+
+  it('작업 흐름 밖의 화면은 W/O 와 상관없이 그 화면으로 간다', () => {
+    expect(destinationOf(screenAt('/pop/work-start'), '')).toBe('/pop/work-start');
+    expect(destinationOf(screenAt('/pop/emergency-work-orders'), '?workOrderId=7801')).toBe(
+      '/pop/emergency-work-orders',
+    );
   });
 });

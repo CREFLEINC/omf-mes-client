@@ -392,13 +392,15 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
    *    ⛔ 「고르세요」 같은 안내문을 두지 않는다(본문 목록이 이미 말한다) · 사번에는 라벨을
    *    붙인다(숫자만 두면 무슨 번호인지 알 수 없다 · `P-02-01`·`P-02-02` §3).
    */
-  it('머리줄이 W/O·품목을 값으로 보이고 사번에 라벨을 붙인다', async () => {
+  /* #291 — 사번은 공통 메뉴 맨 위 줄이 보인다. 머리줄에는 W/O·품목만 남는다. */
+  it('머리줄이 W/O·품목을 값으로 보이고 사번은 두지 않는다', async () => {
     const { container, user } = renderScreen();
 
     const header = container.querySelector('.pop-header');
 
-    expect(header).toHaveTextContent(t.workerLabel('100027'));
-    expect(header).toHaveTextContent(t.workOrderUnknown);
+    expect(header).not.toHaveTextContent(t.workerLabel('100027'));
+    /* W/O 를 고르기 전에는 W/O 줄을 세우지 않는다(사용자 지시 2026-11-17 · #291). */
+    expect(header).not.toHaveTextContent(t.workOrderUnknown);
     expect(header).not.toHaveTextContent(t.selectWorkOrder);
 
     await pickWorkOrder(user);

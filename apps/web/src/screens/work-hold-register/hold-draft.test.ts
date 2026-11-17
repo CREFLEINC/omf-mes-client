@@ -29,7 +29,9 @@ describe('중단 등록 입력 검증', () => {
   });
 
   it('목록에 없는 사유는 막는다 — 서버가 모르는 코드가 기록에 남지 않게', () => {
-    expect(validateHoldDraft({ reasonCode: 'NOT_A_REASON', remarks: '' }, REASONS)).toBe('reasonUnknown');
+    expect(validateHoldDraft({ reasonCode: 'NOT_A_REASON', remarks: '' }, REASONS)).toBe(
+      'reasonUnknown',
+    );
   });
 
   it('목록의 사유를 고르면 통과한다', () => {

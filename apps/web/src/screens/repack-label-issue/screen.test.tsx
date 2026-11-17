@@ -870,22 +870,25 @@ describe('RepackLabelIssueScreen — 연결', () => {
     await waitFor(() => {
       expect(submitButton()).toBeDisabled();
     });
-    expect(screen.getByText(t.device.offline)).toBeInTheDocument();
   });
 
-  it('연결돼 있으면 헤더가 그렇게 말한다', async () => {
+  /* 연결 표시는 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 화면 머리에는 두지 않는다. */
+  it('연결돼 있어도 화면 머리에는 연결 표시를 두지 않는다', async () => {
     await renderSelectedScreen();
 
-    expect(await screen.findByText(t.device.online)).toBeInTheDocument();
+    await screen.findByText(HANDLING_UNIT_NO);
+    expect(screen.queryByText(t.device.online)).not.toBeInTheDocument();
   });
 });
 
 describe('RepackLabelIssueScreen — 프린터', () => {
   /* ⚠ 단말 마스터에 프린터 축이 아직 없어 비어 올 수 있다(착수 이슈 §6). */
-  it('프린터가 없으면 감추지 않고 사유를 말한다', async () => {
+  /* 「등록된 프린터가 없다」 문장은 두지 않는다 — 프린터 연결은 공통 메뉴 맨 위 줄이 보인다(#291). */
+  it('프린터가 없으면 맨 위 줄 프린터 칩이 미연결이라 말하고 안내 문장은 없다', async () => {
     await renderSelectedScreen({ printers: [] });
 
-    expect(await screen.findByText(t.issue.printersEmpty)).toBeInTheDocument();
+    await screen.findByText(messages.productionResult.flow.work.printerNone);
+    expect(screen.queryByText(/등록된 프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 
   it('기본 프린터가 골라진 채로 선다', async () => {

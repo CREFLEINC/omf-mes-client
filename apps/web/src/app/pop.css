@@ -838,15 +838,6 @@
 }
 
 /*
- * POP 머리줄의 사번 — **화면마다 같은 모양으로 선다**(`patterns/pop-worker-tag` · 사용자 지시
- * 2026-09-07). 칩이 아니라 글자다 — 칩은 상태의 어휘이고 사번은 맥락 값이다.
- */
-.pop-ui .pop-worker-tag {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/*
  * P-04-01 Packing 실적 등록 — **네 구획을 각각 상자로 세운다**(설계 §3 도면 ①②③④).
  *
  * 테두리 없이 늘어놓으니 스캔 둘·구성·진행이 한 덩어리로 보여, 어디서 한 묶음이 끝나는지가
@@ -1447,9 +1438,6 @@
  * 손톱만 해졌다(사용자 지적 2026-09-07). 고른 이름의 길이에 따라 칸이 늘었다 줄었다 하는
  * 것도 같은 문제다 — 무엇이 들었든 자리는 같아야 한다.
  */
-.pop-ui .pop-slabel-printer [role='combobox'] {
-  min-width: 14rem;
-}
 
 .pop-ui .pop-slabel-targets {
   flex: 1 1 auto;
@@ -3055,6 +3043,50 @@
 }
 
 /*
+ * ⭐ **세로가 모자라면 화면 본문이 통째로 굴러간다**(클릭 점검 2026-11-17 · #291).
+ *    위 「제 안에서 줄인다」만으로는 POP 탭 줄이 생긴 뒤 구간의 종료 시각·사유의 비고 칸이 각 구획
+ *    스크롤 뒤로 숨었다(실측 — 구획 ①②가 80·96px 씩 감춰졌다). 입력 구획은 줄이지 않고 제 키를
+ *    지키게 두고, 본문이 굴러가며, 저장 단추 줄은 바닥에 붙어 늘 보인다.
+ */
+.pop-frame .pop-ui.downtime-screen {
+  overflow-y: auto;
+}
+
+.pop-frame .pop-ui.downtime-screen > .pop-fixed.downtime-pane {
+  flex-shrink: 0;
+}
+
+.pop-frame .pop-ui.downtime-screen > .pop-fixed.downtime-today {
+  flex-shrink: 0;
+  min-height: 180px;
+}
+
+/*
+ * 작업 중단·툴 사용실적도 같은 방식이다(클릭 점검 2026-11-17 · #291) — 단계 줄이 선 뒤 세로가 모자라
+ * 이벤트 이력이 제목만 남고(43px) 비고 칸·키패드가 구획 스크롤 뒤로 숨었다. 본문 묶음에 `pop-fixed` 를
+ * 달아 구획이 제 키를 지키고, 본문이 굴러가며, 단추 줄은 바닥에 붙는다.
+ */
+.pop-frame .pop-ui:has(> .pop-panes > .pop-hold-column),
+.pop-frame .pop-ui.tool-usage-screen {
+  overflow-y: auto;
+}
+
+.pop-frame .pop-ui:has(> .pop-panes > .pop-hold-column) > .pop-actions,
+.pop-frame .pop-ui.tool-usage-screen > .pop-actions {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--space-4));
+  z-index: 1;
+  background: var(--surface);
+}
+
+.pop-frame .pop-ui.downtime-screen > .downtime-actions {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--space-4));
+  z-index: 1;
+  background: var(--surface);
+}
+
+/*
  * ⭐ **모자란 높이는 ④ 가 «먼저» 낸다.**
  *
  * 이 화면에서 손이 가는 곳은 ①②③ 이고 ④ 는 방금 적은 것을 견주어 보는 자리다. 셋이 고르게
@@ -3270,56 +3302,6 @@
 }
 
 /*
- * 로그아웃 자리 — **머리줄 오른쪽을 비우고 그 자리에 앉힌다**(`patterns/pop-logout`).
- *
- * ⛔ **겹쳐 놓지 않는다.** 떠 있는 버튼으로 두었더니 화면마다 다른 조작 버튼을 가렸다
- *    (실측 2026-09-08). 비운 만큼만 차지하므로 어느 화면의 무엇도 가리지 않는다.
- *
- * ⚠ 이 저장소의 POP 화면은 머리줄을 `.pop-header`(21화면)·`.pop-terminal-header`(1화면)
- *   둘 중 하나로 그린다 — 둘 다 비운다.
- */
-/*
- * ⛔ **버튼이 서는 화면에서만 비운다.** 진입 화면에는 로그아웃이 없는데도 자리를 비워 두어
- *    머리줄 오른쪽에 빈 칸이 남았다(실측 2026-09-08). 표식은 `patterns/pop-logout` 이 건다.
- */
-[data-pop-logout='on'] .pop-ui > .pop-header,
-[data-pop-logout='on'] .pop-ui > .pop-terminal-header {
-  /*
-   * ⛔ **이 값은 버튼이 차지하는 폭보다 «커야» 한다.** `.pop-logout` 은 `fixed` 라 자리를
-   *   만들지 않는다 — 머리줄이 비워 준 만큼만 안전지대다. 버튼을 줄이면서 이 값을 84 로
-   *   함께 줄였더니 머리줄 오른쪽 끝(연결 상태 배지)과 버튼이 붙었다(실측 2026-09-09 —
-   *   버튼 자리 95 · 비운 자리 84).
-   *
-   * ⚠ 현재 버튼 자리는 95(버튼 83 + 오른쪽 여백 12)이고, 여기에 옆 항목과의 사이 간격 12 를
-   *   더해 107 을 둔다 — 머리줄의 간격은 어디서나 12 다(사용자 지시 2026-09-10 ·
-   *   `.pop-context-right` 의 `--space-3`). 이 값은 [화면 이동]이 앉는 자리(`right`)이기도
-   *   하므로 두 버튼 사이 간격도 같은 12 가 된다.
-   *   **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
-   */
-  padding-right: var(--pop-logout-w, 107px);
-}
-
-.pop-logout {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  /*
-   * ⛔ **되돌림 값에 기대지 않는다.** `--pop-header-h` 는 `.pop-ui` 에 선언돼 있고 이 버튼은
-   *   그 «밖»에 서므로 변수가 닿지 않는다. 되돌림 값 64 로 버티고 있었는데 머리줄의 실제
-   *   높이는 56 이라(`control-height-md` + `space-4`) **버튼이 4픽셀 아래로 내려앉아 있었다**
-   *   (실측 2026-09-09 — 머리줄 가운데 28 · 버튼 가운데 32).
-   *
-   * ⭐ 그래서 같은 식을 `:root` 에도 선언해 이 버튼이 «같은 값»을 읽게 했다(위 §머리줄).
-   *   되돌림 값은 그 선언이 사라졌을 때를 위한 그물로만 남긴다.
-   */
-  height: var(--pop-header-h, 56px);
-  padding-right: 12px;
-}
-
-/*
  * ⛔ **색을 겉에서 입히지 않는다.** 보조 동작이라 DS 테두리 버튼(`variant="outlined"`) 모양
  *   그대로 둔다(화면 구성 규범 C-3, C-19: 채움과 빨강은 화면의 주 동작 하나에만 쓴다). 전에는
  *   여기서 바탕을 빨강으로 칠해 부품의 `variant` 를 바꿔도 화면이 그대로였다
@@ -3345,6 +3327,13 @@
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* 사번 단추 끝의 「전환」 — 세로선으로 이름과 가른다(시안 2026-11-17). */
+.pop-nav-top__switch {
+  margin-inline-start: 4px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--outline-variant);
 }
 
 .pop-logout button,
@@ -3547,92 +3536,6 @@
 
 .pop-rc-lot-progress {
   margin-inline-start: auto;
-}
-
-/*
- * 화면 이동 자리 — **머리줄 오른쪽, 사용자 전환 «왼쪽»에 앉힌다**(`patterns/pop-screen-nav`).
- *
- * ⛔ **비운 폭 안에 들어가야 한다.** 이 자리는 «떠서» 서고 그 아래에는 설비·사번·연결 상태
- *    (`.pop-context-right`)가 머리줄 오른쪽 끝에 붙어 있다. 폭을 재지 않고 문장을 넣었더니
- *    비운 폭을 넘어 그것을 덮었다(독립 검증 2026-09-09). **자리 폭을 변수로 «선언»하고**
- *    내용은 그 안에서만 산다 — 되돌림 값만 두면 실제 폭과 어긋나도 아무도 모른다.
- *
- * ⛔ **사유를 문구로 늘어놓지 않는다**(사용자 지시 2026-09-09). 버튼 하나만 서므로 비우는
- *    폭도 늘 같다.
- */
-/*
- * ⚠ **버튼 자리 99(버튼 87 + 오른쪽 여백 12) + 상태 칩과의 사이 간격 12 = 111.**
- *   `--pop-logout-w` 와 같은 셈법이다 — 자리 폭에 «간격까지» 넣어 두고, 머리줄은 그만큼만
- *   비운다. 간격 12 는 `.pop-context-right` 가 칩 사이에 두는 값(`--space-3`)과 같다 —
- *   132 로 두었을 때는 이 자리만 33 이라 상태 칩이 오른쪽 끝에서 혼자 떨어져 보였다
- *   (사용자 지적 2026-09-10). **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
- */
-/*
- * ⭐ **[사용자 전환] 상자의 «맨» 폭이다 — 간격을 넣지 않는다.** [화면 이동]은 이 값만큼만
- *   왼쪽으로 물러나 앉고, 둘 사이의 12 는 [화면 이동] 자신의 오른쪽 여백이 만든다.
- *   `--pop-logout-w`(= 이 값 + 간격 12)를 자리로 쓰면 여백이 두 번 더해져 두 버튼 사이만
- *   24 가 됐다(사용자 지적 2026-09-10).
- */
-:root {
-  --pop-logout-box-w: 95px;
-  /*
-   * ⚠ **여기서 «파생»시킨다.** 되돌림 값으로만 쓰면 누가 이 변수를 따로 정의했을 때 머리줄이
-   *   비우는 폭만 바뀌고 [화면 이동]이 앉는 자리는 따라오지 않아 둘이 어긋난다.
-   */
-  --pop-logout-w: calc(var(--pop-logout-box-w) + var(--space-3));
-  --pop-screen-nav-w: 111px;
-}
-
-[data-pop-screen-nav] .pop-ui > .pop-header,
-[data-pop-screen-nav] .pop-ui > .pop-terminal-header,
-/*
- * ⭐ **덮개 안쪽 머리줄도 자리를 비운다**(#1094 · 88단계 2회차 실기).
- *
- * 위 두 선택자는 `.pop-ui` 의 «바로 아래» 머리줄만 잡는데, 작업 전 점검 게이트는
- * `.pop-ui > .pop-overlay > .pop-header` 로 한 겹 더 들어가 있어 **걸리지 않았다** —
- * 자리를 비우지 않은 채 전체 화면을 덮으니 머리줄의 「화면 이동」 버튼이 제목 글자 위에
- * 겹쳐 섰다. 그 버튼은 `.pop-ui` 밖에 고정으로 서 있어 덮개가 밀어내지 못한다.
- */
-[data-pop-screen-nav] .pop-ui > .pop-overlay > .pop-header {
-  padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
-}
-
-/*
- * ⛔ **게이트 머리줄도 오른쪽 자리를 비운다**(사용자 지시 2026-09-12).
- *
- * 위 규칙은 `.pop-ui` 의 자식만 고르는데, 작업 전 점검 게이트는 화면 «위»에 덮이는 겹판이라
- * (`pop-shell pop-overlay precheck-gate`) 그 클래스를 갖지 않는다. 그래서 고정으로 앉는
- * [화면 이동]·[사용자 전환] 이 머리줄 글자 위에 그대로 겹쳤다 — W/O 번호와 설비 이름이
- * 버튼 밑으로 들어가 읽히지 않았다(실측).
- */
-[data-pop-screen-nav] .precheck-gate > .pop-header {
-  padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
-}
-
-.pop-screen-nav {
-  position: fixed;
-  top: 0;
-  right: var(--pop-logout-box-w, 95px);
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  /* 되돌림 값을 둔다 — 이 버튼은 `.pop-ui` 밖에 서서 변수가 닿지 않는다(`pop-logout` 과 같다). */
-  height: var(--pop-header-h, 64px);
-  padding-right: 12px;
-}
-
-/*
- * ⛔ **닫힌 상태의 「현재 값」 칸을 그리지 않는다.** 선택 목록은 고른 값이 남는 입력이지만
- *    이 자리는 «가는» 조작이라 남을 값이 없다 — 칸을 두면 늘 빈 상자가 머리줄에 붙는다.
- *    팝업 규격(내부 스크롤, 이전과 다음, 건수, 검색어 지우기)은 그대로 쓴다.
- */
-.pop-screen-nav .pop-select {
-  display: block;
-}
-
-.pop-screen-nav .pop-select__value {
-  display: none;
 }
 
 /*
@@ -6203,35 +6106,14 @@
  *
  * 폭은 **값 칸**이 가져야 한다. 단추는 제 글자만큼이면 된다.
  */
-.pop-ui .pop-slabel-printer .pop-select {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.pop-ui .pop-slabel-printer .pop-select__value {
-  min-width: 14rem;
-}
-
-.pop-ui .pop-slabel-printer [role='combobox'] {
-  min-width: 0;
-}
 
 /* 프린터 줄은 [이름][값 칸 + 선택][상태] 한 줄이다 — 값 칸이 남는 폭을 가져간다. */
-.pop-ui .pop-slabel-printer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
 
 /*
  * ⚠ **이 묶음은 갈래가 넷이다** — 정상 · 잠김 · 오류(`Chip` + [다시 확인]) · 없음(경고 띠).
  *   위 `display: flex` 는 넷 모두에 걸리는데, 경고 띠는 flex 아이템이 되면서 **가로로 꽉
  *   차던 것이 글자 폭까지 줄어든다**(독립 검증 지적 2026-09-11). 띠는 줄 전체를 쓴다.
  */
-.pop-ui .pop-slabel-printer > [role='status'],
-.pop-ui .pop-slabel-printer > [role='alert'] {
-  flex: 1 1 100%;
-}
 
 /*
  * 사번 입력 키패드 — **키 높이를 같은 구획의 [ 확인 ]과 맞춘다**(사용자 지시 2026-09-11).
@@ -6685,18 +6567,16 @@
 /*
  * 창고 고르는 칸과 프린터 칸은 **폭이 고정이다.** DS `Select` 는 안에 든 글자만큼만 서므로,
  * 고른 이름의 길이에 따라 칸이 늘었다 줄었다 하면 옆 칸까지 함께 움직인다(P-04-01 에서 같은
- * 문제를 겪었다 — `pop-slabel-printer` 의 머리말).
+ * 문제를 겪었다 — 출하 포장 라벨 화면의 옛 프린터 칸 머리말).
  */
-.pop-ui .pop-loclabel-warehouse,
-.pop-ui .pop-loclabel-printer {
+.pop-ui .pop-loclabel-warehouse {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-width: 18rem;
 }
 
-.pop-ui .pop-loclabel-warehouse .pop-select,
-.pop-ui .pop-loclabel-printer .pop-select {
+.pop-ui .pop-loclabel-warehouse .pop-select {
   width: 100%;
 }
 
@@ -7263,13 +7143,6 @@
 }
 
 /* 프린터는 출력 장치 설정이다 — 테두리 상자로 창고·목록과 갈라 선다. */
-.pop-ui .pop-loclabel-top > .pop-loclabel-printer {
-  box-sizing: border-box;
-  min-width: 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
 
 /* 프린터 장치 상태(`patterns/pop-printer-status`) — 점 + 글자. 점 색은 기존 상태 토큰이다. 모든 POP 프린터 칸이 같이 쓴다. */
 .pop-ui .pop-printer-status {
@@ -7326,9 +7199,6 @@
 }
 
 /* 프린터 상자는 좁다 — [선택]을 6rem 으로 줄여 이름 칸을 지킨다(1024×768 에서 이름이 잘렸다 · 실측). */
-.pop-ui .pop-loclabel-top > .pop-loclabel-printer .pop-select {
-  grid-template-columns: minmax(0, 1fr) 6rem;
-}
 
 /* 창고도 프린터처럼 테두리 상자로 선다(사용자 지시 2026-09-17). 두 상자는 같은 높이다. */
 .pop-ui .pop-loclabel-top > .pop-loclabel-warehouse {
@@ -7374,7 +7244,6 @@
  * 같은 바탕·모서리로 선다(사용자 지시 2026-09-17). 높이·여백은 그대로다.
  */
 .pop-ui .pop-loclabel-top > .pop-loclabel-warehouse,
-.pop-ui .pop-loclabel-top > .pop-loclabel-printer,
 .pop-ui > .pop-loclabel-list {
   background: var(--surface-container-low);
   border-radius: var(--radius-lg);
@@ -7783,15 +7652,6 @@
   gap: var(--space-3);
 }
 
-.pop-ui .pop-slabel-screen--embedded .pop-slabel-printer-row > .pop-slabel-printer {
-  flex: 0 1 28rem;
-  min-width: 0;
-}
-
-.pop-ui .pop-slabel-screen--embedded .pop-slabel-printer-row > .pop-slabel-printer + * {
-  margin-inline-start: auto;
-}
-
 /*
  * P-04-01 라벨 상태·재출력(감싼 모드) — **「누락 라벨 이어서 출력」과 「라벨 종류」를 한 줄에**
  * (사용자 지시 2026-09-17). 반씩 나눠 갖고, 누락 라벨 구획의 [현황][단추] 짝은 두 줄로 접는다.
@@ -7865,10 +7725,6 @@
 .pop-ui .pop-slabel-screen--embedded .pop-slabel-printer-row > button,
 .pop-ui .pop-slabel-screen--embedded .pop-slabel-selection button {
   min-height: 56px;
-}
-
-.pop-ui .pop-slabel-screen--embedded .pop-slabel-printer .pop-select__trigger {
-  min-inline-size: 7rem;
 }
 
 /* ⭐ [세션 종료]는 자재LOT 라벨 발행 [등록·인쇄]와 같은 높이 72 로 선다(사용자 지시 2026-09-17). */
@@ -8348,26 +8204,6 @@
  * ⚠ 목록 하한 430 — 1024 에서 네 칸(의뢰번호가 17자)이 가로 스크롤 없이 서는 폭이다(실측: 400 이면
  *   표가 459 로 넘쳐 「상태」 칸이 잘렸다). 1024 에서 목록 430 · 판정 ≈ 520.
  */
-.pop-ui.pop-oqc > .pop-oqc-panes {
-  grid-template-columns: minmax(430px, 5fr) 7fr;
-}
-
-.pop-ui .pop-oqc-pane-head {
-  display: flex;
-  flex: none;
-  align-items: baseline;
-  gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-
-.pop-ui .pop-oqc-pane-head > .pane-title {
-  margin: 0;
-}
-
-.pop-ui.pop-oqc .pop-oqc-count {
-  font: 400 var(--pop-text) / 24px var(--font-sans);
-  color: var(--on-surface-variant);
-}
 
 .pop-ui.pop-oqc .pop-oqc-num {
   font-variant-numeric: tabular-nums;
@@ -8797,17 +8633,6 @@
 .pop-ui .pop-oqc-confirm ul {
   margin: var(--space-1) 0 0;
   padding-inline-start: var(--space-5);
-}
-
-/* 검사성적서 — 잠긴 보조 조작. 바닥 띠의 저장 단추 왼쪽에 「준비 중」과 함께 선다. */
-.pop-ui .pop-oqc-coa__note {
-  margin-inline-start: var(--space-2);
-  font-size: var(--pop-label);
-  font-weight: 400;
-}
-
-.pop-ui .pop-oqc-coa__note::before {
-  content: '· ';
 }
 
 /* ── 바닥 저장 띠 ── */
@@ -9759,48 +9584,6 @@
     inset 8px 0 0 var(--primary);
 }
 
-/*
- * 피처 002 — 화면 이동의 남은 작업(D-10). 색은 중립(차콜)이다 — 빨강은 쓰지 않는다.
- * 단추의 점, 목록 항목 뒤 배지, 창 맨 위 「남은 작업」 묶음.
- */
-.pop-select__trigger .pop-work-dot {
-  margin-inline-start: var(--space-2);
-}
-
-.pop-select-dialog__option .pop-work-badge {
-  margin-inline-start: auto;
-}
-
-.pop-work-lead {
-  display: grid;
-  gap: var(--space-1);
-  margin-block-end: var(--space-3);
-  padding-block-end: var(--space-3);
-  border-block-end: 1px solid var(--outline-variant);
-}
-
-.pop-work-lead > h3 {
-  margin: 0;
-  font: var(--type-title-sm);
-  letter-spacing: var(--type-title-sm-tracking);
-}
-
-.pop-work-lead__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-block-size: var(--control-height-lg);
-  padding-inline: var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--on-surface);
-  font: var(--type-label-lg);
-  letter-spacing: var(--type-label-lg-tracking);
-  cursor: pointer;
-}
-
 .pop-visually-hidden {
   position: absolute;
   inline-size: 1px;
@@ -10007,6 +9790,1014 @@
 }
 
 /*
+ * POP 공통 이동 메뉴(#291 · `patterns/pop-screen-nav`) — 맨 위 줄 · 업무 묶음 줄 · 화면 탭 줄.
+ *
+ * ⭐ 화면은 메뉴 «아래» 남은 높이를 가져간다(`.pop-frame__body`). 화면 루트(`.pop-ui`)가
+ *    `height: 100%` 라 화면 코드는 그대로 두고 그릇만 줄인다.
+ * ⚠ 단말 설계 폭은 1024 다(`pop-fit`). 세 줄을 합쳐 150 을 넘지 않게 둔다 — 화면마다 세로 예산이 있다.
+ */
+.pop-frame {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.pop-frame__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/*
+ * 맨 위 두 줄은 시안(#291 확정)대로 **어두운 남색 띠** 위에 선다 — 밝은·어두운 테마 어느 쪽이든
+ * 같은 색이다(테마를 따르면 어두운 테마에서 띠가 밝아져 줄 구분이 뒤집힌다). 색은 여기서만 정한다.
+ */
+.pop-nav {
+  --pop-nav-band: #1f2433;
+  --pop-nav-band-2: #2c3244;
+  --pop-nav-band-text: #ffffff;
+  --pop-nav-band-muted: #e8e8ee;
+
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 20;
+  background: var(--pop-nav-band);
+}
+
+.pop-nav-icon {
+  inline-size: 18px;
+  block-size: 18px;
+  flex: 0 0 auto;
+}
+
+/* 맨 위 줄 — 제품 이름 · 단말 · 작업자 · [사용자 전환]. */
+.pop-nav-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* 단추가 띠 위 끝에 붙지 않게 위아래를 띄운다(사용자 지시 2026-11-17). */
+  block-size: 56px;
+  padding: 0 var(--space-3) 0 var(--space-5);
+  color: var(--pop-nav-band-text);
+  white-space: nowrap;
+}
+
+.pop-nav-top__brand {
+  font: 700 17px / 1 var(--font-sans);
+  letter-spacing: 0.2px;
+}
+
+.pop-nav-top__terminal {
+  margin-inline-end: auto;
+}
+
+.pop-nav-top__chip {
+  overflow: hidden;
+  max-inline-size: 280px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--pop-nav-band-2);
+  color: var(--pop-nav-band-muted);
+  font: 500 13px / 16px var(--font-sans);
+  text-overflow: ellipsis;
+}
+
+/*
+ * [사용자 전환] — 시안의 어두운 칩 단추(사람 아이콘 + 글자). ⛔ 빨강 채움은 쓰지 않는다 — 채움과
+ * 빨강은 화면의 주 동작 하나에만 쓴다(C-3 · C-19).
+ */
+.pop-nav-top .pop-logout {
+  gap: 6px;
+  min-height: 30px;
+  padding-inline: 14px;
+  border-color: var(--pop-nav-band-2);
+  background: var(--pop-nav-band-2);
+  color: var(--pop-nav-band-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pop-nav-top .pop-logout .pop-nav-icon {
+  inline-size: 16px;
+  block-size: 16px;
+  margin-inline-end: 6px;
+  vertical-align: -3px;
+}
+
+/* 업무 묶음 줄 — 어두운 띠 안에 위쪽이 둥근 밝은 판으로 선다(시안). */
+.pop-nav-groups {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  block-size: 56px;
+  margin-inline: var(--space-3);
+  padding: 0 var(--space-3) 0 var(--space-2);
+  border-radius: 14px 14px 0 0;
+  background: var(--surface-container-low);
+}
+
+.pop-nav-groups__list {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  block-size: 100%;
+}
+
+.pop-nav-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 44px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--on-surface);
+  font: 700 17px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-nav-group:hover {
+  background: var(--surface-container);
+}
+
+.pop-nav-group[data-on='true'] {
+  color: var(--primary);
+}
+
+.pop-nav-group[data-on='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 12px;
+  inset-block-end: -6px;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+.pop-nav-group--home[data-on='true'] {
+  /* 너비는 바꾸지 않는다 — 바꾸면 홈을 오갈 때 묶음 줄 전체가 옆으로 밀린다(사용자 지적 2026-11-17). */
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-nav-group--home[data-on='true']::after {
+  display: none;
+}
+
+.pop-nav-groups__reason {
+  margin-inline-start: var(--space-3);
+  color: var(--on-surface-variant);
+  font: 400 14px / 20px var(--font-sans);
+}
+
+/* 남은 작업 */
+.pop-remaining {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.pop-remaining__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 38px;
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--primary);
+  font: 700 15px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-remaining__button[aria-expanded='true'] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-remaining__button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pop-remaining__total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 24px;
+  block-size: 24px;
+  padding-inline: 7px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 13px;
+}
+
+.pop-remaining__button[aria-expanded='true'] .pop-remaining__total {
+  background: var(--on-primary);
+  color: var(--primary);
+}
+
+.pop-remaining__button[aria-expanded='true'] .pop-nav-icon {
+  transform: rotate(180deg);
+}
+
+.pop-remaining__scrim {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--on-surface) 35%, transparent);
+}
+
+.pop-remaining__panel {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + 8px);
+  z-index: 1;
+  box-sizing: border-box;
+  inline-size: 420px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--on-surface) 28%, transparent);
+}
+
+.pop-remaining__head {
+  display: flex;
+  align-items: center;
+  font: 700 18px / 24px var(--font-sans);
+}
+
+.pop-remaining__close {
+  margin-inline-start: auto;
+  inline-size: 36px;
+  block-size: 36px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.pop-remaining__hint,
+.pop-remaining__none {
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--on-surface-variant);
+  font: 400 14px / 20px var(--font-sans);
+}
+
+.pop-remaining__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-block-size: 60px;
+  margin-block-end: var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-remaining__name {
+  display: grid;
+  gap: 2px;
+  margin-inline-end: auto;
+}
+
+.pop-remaining__name strong {
+  font: 700 16px / 22px var(--font-sans);
+}
+
+.pop-remaining__name small {
+  color: var(--on-surface-variant);
+  font: 400 13px / 18px var(--font-sans);
+}
+
+.pop-remaining__move {
+  color: var(--primary);
+  font: 700 15px / 1 var(--font-sans);
+}
+
+/* 화면 탭 줄 — 위쪽만 둥근 폴더 탭(시안). 지금 화면 탭은 빨강으로 채우고 조금 높게 선다. */
+.pop-nav-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  block-size: 50px;
+  padding: 0 var(--space-5);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  background: var(--surface-container-low);
+  border-block-end: 1px solid var(--outline);
+}
+
+.pop-nav-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 42px;
+  margin-block-end: -1px;
+  padding-inline: 20px;
+  border: 1px solid var(--outline);
+  border-block-end: 0;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(var(--surface-container-low), var(--surface-container));
+  color: var(--on-surface);
+  font: 500 16px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-nav-tab:hover {
+  background: var(--surface-container-high);
+}
+
+.pop-nav-tab[data-on='true'] {
+  block-size: 46px;
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 700;
+}
+
+.pop-nav-tab[data-on='true'] .pop-work-badge {
+  background: color-mix(in srgb, var(--on-primary) 28%, transparent);
+  color: var(--on-primary);
+}
+
+/*
+ * 화면 머리줄(#291) — 화면 이름은 탭이 보여 주므로 «보이지 않게» 둔다(접근 이름으로는 남는다).
+ * 화면 정보(W/O·설비·금형·긴급, 연결·미전송·프린터)만 남은 얇은 한 줄이 된다.
+ * ⛔ 작업 전 점검 덮개(`.pop-overlay`)의 머리줄은 별도 단계라 이름을 그대로 둔다.
+ */
+/*
+ * 공통 메뉴 아래에서는 머리줄을 «행»(띠 바탕·밑줄)으로 세우지 않는다(사용자 지시 2026-11-17 · #291).
+ * 연결·전송 표시는 맨 위 줄로 갔고(`PopTopStatus`), 남는 작업 정보(W/O·출하 번호 등)는 본문 맨 위
+ * 한 줄 글로 선다 — 스캔·입력 위에서 읽힌다.
+ */
+.pop-frame .pop-ui > .pop-header {
+  height: auto;
+  min-height: 0;
+  padding: var(--space-4) var(--pop-pad) 0;
+  background: transparent;
+  border-block-end: 0;
+}
+
+.pop-frame .pop-ui > .pop-header > .pop-title {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * 남길 것이 화면 이름뿐인 머리줄은 줄째로 접는다(이름은 접근 이름으로 남는다). 화면 정보 묶음이
+ * 비어 있는 경우(예: W/O 를 고르기 전의 작업 지시 목록)도 같다 — 빈 띠가 세로 자리만 먹는다.
+ */
+.pop-frame .pop-ui > .pop-header:not(:has(> :not(.pop-title):not(:empty))) {
+  display: contents;
+}
+
+/* 접힌 머리줄 대신 본문 위에 틈을 둔다 — 첫 상자가 탭 줄 선에 붙지 않게. */
+/* ⚠ `:has()` 는 겹쳐 쓸 수 없다(규칙째 버려진다) — 그래서 바깥에서 한 겹으로 고른다. */
+.pop-frame .pop-ui:has(> .pop-header):not(:has(> .pop-header > :not(.pop-title):not(:empty))) {
+  box-sizing: border-box;
+  padding-block-start: var(--space-4);
+}
+
+/*
+ * 본문 위아래 빈 곳을 같게(사용자 지시 2026-11-17 · #291) — 첫 상자 위 16, 마지막 상자 아래 16.
+ * - 머리줄 안 빈 자리(`.pop-context-right` 등)가 접힌 머리줄 속에서 이음매 한 칸(16)을 더 먹어 위가 32 로 섰다.
+ * - 바닥은 그릇 여백(20)이 남던 것을 16 으로 맞추고, 바닥 버튼 줄은 그만큼만 되돌려 바닥에 붙인다.
+ */
+.pop-frame .pop-ui > .pop-header > :empty {
+  display: none;
+}
+
+.pop-frame .pop-ui {
+  padding-block-end: var(--space-4);
+}
+
+.pop-frame .pop-ui > [class*='action'] {
+  margin-block-end: calc(-1 * var(--space-4));
+}
+
+/* 머리줄 아래 띄우던 자기 위 여백 — 머리줄이 접혀 그릇 위 여백(16)과 겹쳐 32 가 됐다. */
+/* 프린터 칸이 맨 위 줄로 옮겨 가(#291) 창고 칸 하나만 남는다 — 전체 폭을 쓴다. */
+/* 화면 맨 위 안내 문장은 줄어들지 않는다 — 세로가 모자랄 때 글자 위아래가 잘렸다(PQC 클릭 점검 2026-11-17). */
+.pop-frame .pop-ui > .field-note {
+  flex-shrink: 0;
+}
+
+/* 분할 LOT 라벨(P-01-02) 맨 위 띠도 다른 화면처럼 첫 상자 위 16 에 선다 — 띠 자체 위 여백(12)을 겹쳐 주지 않는다. */
+.pop-frame .pop-ui.pop-split > .pop-split-band:first-of-type {
+  margin-block-start: 0;
+}
+
+.pop-frame .pop-ui > .pop-loclabel-top {
+  grid-template-columns: minmax(0, 1fr);
+  margin-block-start: 0;
+}
+
+/* 홈(#291 확정 시안) — 인사 줄, 남은 작업, 바로가기. 내용 높이만큼만 차지하고 남는 자리는 아래로 둔다. */
+.pop-ui.pop-home {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.pop-home__hello {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.pop-home__hello h2 {
+  margin: 0;
+  font: 700 26px / 34px var(--font-sans);
+}
+
+.pop-home__hello p {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-variant);
+  font: 400 16px / 22px var(--font-sans);
+}
+
+.pop-home__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+  color: var(--on-surface-variant);
+  font: 400 16px / 22px var(--font-sans);
+  white-space: nowrap;
+}
+
+.pop-home__panel {
+  padding: 16px 20px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.pop-home__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 12px;
+  font: 700 19px / 26px var(--font-sans);
+}
+
+.pop-home__heading .pop-nav-icon {
+  color: var(--semantic-warning);
+}
+
+.pop-home__total {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 26px;
+  block-size: 26px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 14px;
+}
+
+.pop-home__none {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.pop-home__remaining-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pop-home__remaining-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 400 16px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__remaining-item:hover {
+  background: var(--surface-container-low);
+}
+
+.pop-home__remaining-item strong {
+  margin-inline-start: auto;
+}
+
+.pop-home__remaining-item .pop-nav-icon {
+  color: var(--on-surface-variant);
+}
+
+.pop-home__shortcuts-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: 12px;
+}
+
+.pop-home__shortcuts-head .pop-home__heading {
+  margin: 0;
+}
+
+.pop-home__shortcuts-head p {
+  margin: 0 0 0 var(--space-1);
+  color: var(--on-surface-variant);
+  font: 400 14px / 20px var(--font-sans);
+}
+
+.pop-home__tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pop-home__tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  block-size: 110px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 700 17px / 1.3 var(--font-sans);
+  text-align: center;
+  cursor: pointer;
+}
+
+.pop-home__tile:hover {
+  background: var(--surface-container-low);
+}
+
+.pop-home__tile .pop-nav-icon {
+  inline-size: 28px;
+  block-size: 28px;
+  color: var(--semantic-info);
+}
+
+.pop-home__tile .pop-work-badge {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 10px;
+}
+
+/* 작업 현황(왼쪽, 넓게) · 남은 작업(오른쪽) 한 줄 — 시안의 2.1 : 1. */
+.pop-home__row {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.pop-home__status {
+  flex: 2.1 1 0;
+  min-inline-size: 0;
+}
+
+.pop-home__remaining {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.pop-home__stats {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+}
+
+.pop-home__stat,
+.pop-home__next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 12px;
+}
+
+.pop-home__stat {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+/* 칸 사이는 위아래를 띄운 짧은 세로선(시안) — 칸 넷은 같은 폭이다. */
+.pop-home__stat + .pop-home__stat,
+.pop-home__next {
+  position: relative;
+}
+
+.pop-home__stat + .pop-home__stat::before,
+.pop-home__next::before {
+  position: absolute;
+  inset-block: 14px;
+  inset-inline-start: 0;
+  border-inline-start: 1px solid var(--outline-variant);
+  content: '';
+}
+
+.pop-home__stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 42px;
+  block-size: 42px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+}
+
+.pop-home__stat[data-tone='run'] .pop-home__stat-icon {
+  background: color-mix(in srgb, var(--semantic-info) 14%, transparent);
+  color: var(--semantic-info);
+}
+
+.pop-home__stat[data-tone='run'] .pop-home__stat-icon svg {
+  fill: currentColor;
+}
+
+.pop-home__stat[data-tone='done'] .pop-home__stat-icon {
+  background: color-mix(in srgb, var(--semantic-success) 16%, transparent);
+  color: var(--semantic-success);
+}
+
+.pop-home__stat-text,
+.pop-home__next-text {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.pop-home__stat-text small,
+.pop-home__next-text small {
+  color: var(--on-surface-variant);
+  font: 500 13px / 18px var(--font-sans);
+}
+
+.pop-home__stat[data-tone='run'] small {
+  color: var(--semantic-info);
+  font-weight: 700;
+}
+
+.pop-home__stat-text strong {
+  font: 700 26px / 32px var(--font-sans);
+  white-space: nowrap;
+}
+
+.pop-ui .pop-home__next {
+  flex: 2 1 0;
+  min-inline-size: 0;
+  border: 0;
+  border-radius: 0 12px 12px 0;
+  background: transparent;
+  color: var(--on-surface);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-home__next:disabled {
+  cursor: default;
+}
+
+.pop-home__next-text small {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pop-home__next-text b {
+  overflow: hidden;
+  font: 700 15px / 22px var(--font-mono, var(--font-sans));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-home__next-text span {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font: 400 13px / 18px var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-home__next .pop-nav-icon {
+  margin-inline-start: auto;
+  color: var(--on-surface-variant);
+}
+
+/* 바로가기 [편집] — 머리 오른쪽 끝의 작은 테두리 단추(시안). */
+.pop-home__edit-tools {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.pop-home__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  block-size: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 700 14px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__edit .pop-nav-icon {
+  inline-size: 15px;
+  block-size: 15px;
+}
+
+.pop-home__edit[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* 편집 중에는 갈 수 있는 화면을 모두 늘어놓는다 — 고른 칸은 빨간 테두리와 체크. */
+.pop-home__tiles--edit {
+  max-block-size: 300px;
+  overflow-y: auto;
+}
+
+.pop-home__tiles--edit .pop-home__tile {
+  block-size: 92px;
+  font-size: 15px;
+}
+
+.pop-home__tile[aria-pressed='true'] {
+  border: 2px solid var(--primary);
+}
+
+.pop-home__tile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pop-home__tile-check {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 8px;
+  color: var(--primary);
+}
+
+.pop-home__tile-check .pop-nav-icon {
+  inline-size: 18px;
+  block-size: 18px;
+  color: var(--primary);
+}
+
+.pop-home__scope {
+  color: var(--on-surface-variant);
+  font: 500 13px / 18px var(--font-sans);
+}
+
+/* 현황 범위 고르기(지정 설비 / 전체 설비) — 카드 제목 오른쪽 위. */
+.pop-home__status {
+  position: relative;
+}
+
+.pop-home__scope-toggle {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+}
+
+.pop-home__scope-toggle button {
+  min-block-size: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: 600 14px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__scope-toggle button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--on-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 15%);
+}
+
+/* 맨 위 줄 프린터 연결 표시 — 사번 입력 화면 머리줄과 같은 칩을 띠 높이에 맞춘다. */
+.pop-nav-top__printer {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 맨 위 줄의 화면 상태(연결·전송) — 화면이 보낸 칩을 한 줄로 늘어놓는다. 비면 자리를 차지하지 않는다. */
+.pop-nav-top__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-nav-top__status:empty {
+  display: none;
+}
+
+/*
+ * 하단 바의 안내 문장(「~를 선택하세요」·잠긴 이유 등)은 공통 메뉴 아래에서 보이지 않게 한다
+ * (사용자 지시 2026-11-17 · #291). ⛔ 저장 중·저장됨·실패 같은 «결과» 표시(배너)는 그대로 둔다 —
+ * 그것이 묻히면 같은 기록을 두 번 저장한다. 판정·잠금 로직은 화면이 그대로 한다.
+ */
+.pop-frame .action-bar-remaining,
+.pop-frame .pop-action-note > .field-note,
+.pop-frame .pop-oqc-bar-note--blocked,
+.pop-frame .pop-oqc-bar-note--ready {
+  display: none;
+}
+
+/*
+ * 작업 단계 줄(#291 · 사용자 승인 2026-11-17) — 작업 지시 목록 탭 아래 ①②③④ 와 고른 W/O, 작업 중 화면 버튼.
+ * 지금 단계는 빨간 동그라미·글자, 잠긴 단계는 흐리게.
+ */
+.pop-work-steps {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: 52px;
+  padding: 6px var(--space-4);
+  border-block-end: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+}
+
+.pop-work-steps__list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-work-steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pop-work-steps__sep {
+  color: var(--on-surface-variant);
+  font-size: 20px;
+}
+
+.pop-work-step {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface);
+  font: 600 16px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-work-step__no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: 700 14px / 1 var(--font-sans);
+}
+
+.pop-work-step[data-on='true'] {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.pop-work-step[data-on='true'] .pop-work-step__no {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-work-step:disabled,
+.pop-work-steps__during:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pop-work-steps__side {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.pop-work-steps__wo {
+  font: 700 15px / 1 var(--font-sans);
+  white-space: nowrap;
+}
+
+.pop-work-steps__during {
+  min-block-size: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 600 14px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-work-steps__during[data-on='true'] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 상자 제목 옆 공정·긴급(#291) — W/O 맥락을 머리줄 대신 상자 제목에 붙인다. */
+.pop-pane-context {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: var(--space-3);
+  vertical-align: middle;
+}
+
+/* 생산 작업은 품목 이름이 길다 — W/O·공정을 이름 아래 줄로 내려 잘리지 않게 한다(클릭 점검 2026-11-17). */
+.pop-ui .production-work-head .pop-pane-context {
+  display: flex;
+  flex-wrap: wrap;
+  margin-block-start: var(--space-1);
+  margin-inline-start: 0;
+}
+
+.pop-pane-context__process {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: 600 14px / 20px var(--font-sans);
+}
+
+/* OQC 판정 — 자재 관리 LOT 라벨과 같은 배치(#291). 오른쪽 판정 칸은 흰 판 안에서 스크롤한다. */
+.pop-ui .pop-oqc-detail-pane.pop-mlot-work {
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.pop-ui .pop-oqc-queue .pop-mlot-supplier {
+  min-height: 72px;
+}
+
+/* 화면이 보낸 프린터 칩(#291) — 서면 셸 기본 프린터 표시를 감춘다. 칩을 누르면 프린터를 고른다. */
+.pop-nav-top__screen-printer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
  * P-01-02 분할 LOT 라벨(008 · omf-all-around#289 · 시안 P0102-After) — 이 화면만 쓰는 이름(`pop-split-*`).
  *
  * 머리줄 · 미발행 띠 · 보기/찾기 줄 · 표 · 바닥 동작 바. 보기 칸·찾기·사유·새로 고침은 P-01-01(`pop-mlot-*`)과
@@ -10061,6 +10852,20 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+.pop-nav-top__screen-printer:empty {
+  display: none;
+}
+
+.pop-nav-top__screen-printer:not(:empty) + .pop-nav-top__printer {
+  display: none;
+}
+
+.pop-pane-context__wo {
+  color: var(--on-surface);
+  font: 700 15px / 20px var(--font-sans);
+  white-space: nowrap;
 }
 
 .pop-ui.pop-split > .pop-split-tool {

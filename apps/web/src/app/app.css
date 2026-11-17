@@ -19662,14 +19662,6 @@ dialog.layout-editor-dialog {
   font-weight: 600;
 }
 
-/* ④ 프린터 — 이름·상태를 한 줄에 둔다. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
-.pop-slabel-printer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
 /*
  * 액션바 — 오른쪽에 모은다. 막힌 사유는 왼쪽 끝에 두어 단추와 같은 줄에서 읽히게 한다.
  */

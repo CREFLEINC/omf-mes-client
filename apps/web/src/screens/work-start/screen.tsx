@@ -1,7 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages, named } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
 
@@ -42,6 +42,7 @@ import { WorkOrderList, type ListScope } from './work-order-list';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
 import { verifyWorker } from './worker-verify';
+import { entryStateOf } from './entry-state';
 
 /**
  * `P-02-01` 작업 시작(작업지시 선택).
@@ -167,10 +168,12 @@ export const WorkStartScreen = () => {
   }, [verified, submittedNo, appliedNo]);
 
   /* 목록의 설비 범위. 화면을 열면 단말 설비(기본)다(PG-37). */
-  const [scope, setScope] = useState<ListScope>('default');
+  /* 홈 「다음 작업」에서 왔으면 그 W/O 를 고른 채로, 홈에서 보던 설비 범위로 연다(#291). */
+  const entry = entryStateOf(useLocation().state);
+  const [scope, setScope] = useState<ListScope>(entry?.allEquipment === true ? 'all' : 'default');
   /* 설비 팝업을 한 번이라도 열었는가. 다른 설비 목록은 그때 처음 묻는다. */
   const [isPickerOpened, setPickerOpened] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(entry?.workOrderId ?? null);
   const [outcome, setOutcome] = useState<string | null>(null);
 
   const listEquipmentId = scope === 'default' ? equipmentId : scope === 'all' ? null : scope;
@@ -360,8 +363,11 @@ export const WorkStartScreen = () => {
    * 설비 범위를 바꾼 뒤(설비 칸, [기본 설비로]) 새 목록이 오면, 고른 W/O 가 그 목록에 있을 때만
    * 고른 채로 둔다. 없으면 놓는다. 화면에 없는 카드가 오른쪽에 남아 있지 않게 하고, 하단 바가
    * 「작업지시를 고르세요」로 돌아간다(사용자 결정 2026-10-26, PG-30).
+   *
+   * 홈 「다음 작업」에서 W/O 를 받아 열었을 때도 첫 목록에서 한 번 같은 확인을 한다(#291) — 받은 W/O 가
+   * 첫 쪽에 없으면 «보이지 않는 선택»이 남지 않게 놓는다.
    */
-  const scopeCheckRef = useRef(false);
+  const scopeCheckRef = useRef(entry !== null);
   useEffect(() => {
     if (!scopeCheckRef.current || rows === undefined) return;
 
@@ -730,11 +736,8 @@ export const WorkStartScreen = () => {
       <PopHeader
         titleId={titleId}
         title={t.title}
-        terminalCode={terminal.data?.terminalCode ?? null}
         equipmentCode={equipmentCode}
         equipmentName={equipmentName}
-        workerNo={confirmedNo}
-        workerName={mainWorkerName}
         /*
          * 연결 여부는 마지막 조회가 서버에 닿았는가로 말한다. 브라우저의 온라인 표시는 산업용
          * 패널 PC 에서 사실과 다르다. 아직 답을 못 받았으면 모르는 것으로 둔다.

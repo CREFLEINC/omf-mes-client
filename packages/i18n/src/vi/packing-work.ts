@@ -7,7 +7,6 @@ export const packingWork: Translated<typeof ko.packingWork> = {
 
   device: {
     /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
-    workOrderLabel: 'W/O',
     workOrderUnknown: 'Không có W/O',
     terminalLabel: 'Máy trạm',
     terminalUnknown: 'Chưa xác nhận',

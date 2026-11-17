@@ -178,7 +178,6 @@ export const repackLabelIssue = {
     printerPlaceholder: '프린터를 고르세요',
     printersFailed: '프린터 목록을 불러오지 못했습니다.',
     /** 프린터 축이 단말 마스터에 아직 없어 비어 올 수 있다(착수 이슈 §6). */
-    printersEmpty: '이 단말에 등록된 프린터가 없습니다. 담당자에게 문의하세요.',
 
     /* 설계 §3 액션바가 「발번·인쇄」다 — 이 화면이 하는 일은 번호를 매기고 뽑는 것이다. */
     submit: '발번·인쇄',

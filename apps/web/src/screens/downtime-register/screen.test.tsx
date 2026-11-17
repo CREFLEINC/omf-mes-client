@@ -705,7 +705,6 @@ describe('DowntimeRegisterScreen — 오프라인', () => {
     expect(requests.some((request) => request.url.pathname === SUMMARY_PATH)).toBe(false);
     expect(screen.getByText(t.today.localOnly)).toBeTruthy();
     expect(screen.getByText(t.today.localOnlyDescription)).toBeTruthy();
-    expect(screen.getByText(t.header.offline)).toBeTruthy();
   });
 
   it('끊긴 동안 저장한 것은 큐에 담기고 미전송 건수가 상시 보인다', async () => {

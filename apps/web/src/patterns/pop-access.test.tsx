@@ -2,7 +2,12 @@ import { act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderHookWithProviders, renderWithProviders } from '../test/api-harness';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderHookWithProviders,
+  renderWithProviders,
+} from '../test/api-harness';
 import { popAccessKeys, useAccessiblePopScreens } from './pop-access';
 import { PopIdentityProvider } from './pop-identity';
 
@@ -38,18 +43,54 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       </PopIdentityProvider>
     );
     renderWithProviders(
-      <Identity><Probe /></Identity>,
+      <Identity>
+        <Probe />
+      </Identity>,
       {
-        fetch: createStubFetch([{
-          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
-          respond: () => jsonResponse({ screenCodes: ['P-01-01', 'W-06-01'] }),
-        }]),
+        fetch: createStubFetch([
+          {
+            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+            respond: () => jsonResponse({ screenCodes: ['P-01-01', 'W-06-01'] }),
+          },
+        ]),
         session: null,
       },
     );
 
     await waitFor(() => expect(box.current?.state).toBe('ready'));
     expect(box.current?.screens.map((screen) => screen.code)).toEqual(['P-01-01']);
+  });
+
+  it('비가동 실적 입력은 설비가 지정된 단말에서만 후보에 든다(#291)', async () => {
+    const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
+    const Probe = () => {
+      box.current = useAccessiblePopScreens();
+      return null;
+    };
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: 5,
+          processes: [],
+          equipment: { equipmentId: 31, equipmentCode: 'EQ-31', equipmentName: '조립 1호기' },
+          workerNo: '900028',
+        }}
+      >
+        <Probe />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+            respond: () => jsonResponse({ screenCodes: ['P-02-01', 'P-05-02'] }),
+          },
+        ]),
+        session: null,
+      },
+    );
+
+    await waitFor(() => expect(box.current?.state).toBe('ready'));
+    expect(box.current?.screens.map((screen) => screen.code)).toEqual(['P-02-01', 'P-05-02']);
   });
 
   it('단말 화면 정책 조회가 실패하면 세션 권한이나 전체 메뉴로 물러서지 않는다', async () => {
@@ -59,14 +100,22 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       return null;
     };
     renderWithProviders(
-      <PopIdentityProvider value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}>
+      <PopIdentityProvider
+        value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}
+      >
         <Probe />
       </PopIdentityProvider>,
       {
-        fetch: createStubFetch([{
-          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
-          respond: () => jsonResponse({ errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한 없음' }] }, { status: 401 }),
-        }]),
+        fetch: createStubFetch([
+          {
+            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한 없음' }] },
+                { status: 401 },
+              ),
+          },
+        ]),
         session: null,
       },
     );
@@ -83,16 +132,24 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
       return null;
     };
     const { queryClient } = renderWithProviders(
-      <PopIdentityProvider value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}>
+      <PopIdentityProvider
+        value={{ terminalId: 5, processes: [], equipment: null, workerNo: null }}
+      >
         <Probe />
       </PopIdentityProvider>,
       {
-        fetch: createStubFetch([{
-          match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
-          respond: () => fail
-            ? jsonResponse({ errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] }, { status: 503 })
-            : jsonResponse({ screenCodes: ['P-01-01'] }),
-        }]),
+        fetch: createStubFetch([
+          {
+            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+            respond: () =>
+              fail
+                ? jsonResponse(
+                    { errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] },
+                    { status: 503 },
+                  )
+                : jsonResponse({ screenCodes: ['P-01-01'] }),
+          },
+        ]),
         session: null,
       },
     );
@@ -114,7 +171,8 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
     await waitFor(() => {
       expect(result.current.state).toBe('ready');
     });
-    expect(result.current.screens.map((screen) => screen.code)).toEqual(['P-02-01', 'P-05-02']);
+    /* 비가동 실적 입력(P-05-02)은 설비가 지정된 단말에만 선다(#291) — 여기는 설비를 모른다. */
+    expect(result.current.screens.map((screen) => screen.code)).toEqual(['P-02-01']);
   });
 
   /*

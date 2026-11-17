@@ -497,7 +497,8 @@ describe('MaterialInputScanScreen — 긴급 표식', () => {
       }),
   });
 
-  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+  /* W/O·공정·긴급은 머리줄이 아니라 투입 자재 상자 제목에 선다(사용자 지시 2026-11-17 · #291). */
+  const header = (): HTMLElement => screen.getByRole('region', { name: t.panes.input });
 
   it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
     renderScreen([listRoute([]), workOrderRoute('EMERGENCY')]);

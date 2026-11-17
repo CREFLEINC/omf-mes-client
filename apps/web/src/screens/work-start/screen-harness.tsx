@@ -520,15 +520,17 @@ const LocationProbe = () => {
   return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
 };
 
-export const renderScreen = (options: StubOptions & { identity?: PopIdentity } = {}) => {
-  const { identity = IDENTITY, ...stubOptions } = options;
+export const renderScreen = (
+  options: StubOptions & { identity?: PopIdentity; routeState?: unknown } = {},
+) => {
+  const { identity = IDENTITY, routeState, ...stubOptions } = options;
   const stubbed = stub(stubOptions);
   const rendered = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <WorkStartScreen />
       <LocationProbe />
     </PopIdentityProvider>,
-    { fetch: stubbed.fetch, route: '/pop/work-start' },
+    { fetch: stubbed.fetch, route: '/pop/work-start', routeState },
   );
 
   return { ...rendered, recorded: stubbed.recorded, user: userEvent.setup() };

@@ -54,7 +54,7 @@ const SESSION_STALE_MS = 5 * 60 * 1000;
 
 export const useAccessiblePopScreens = (): PopAccess => {
   const { client } = useApiClient();
-  const { terminalId } = usePopIdentity();
+  const { terminalId, equipment } = usePopIdentity();
 
   const query = useQuery({
     queryKey: terminalId === null ? popAccessKeys.session : popAccessKeys.terminal(terminalId),
@@ -83,7 +83,9 @@ export const useAccessiblePopScreens = (): PopAccess => {
   if (permissions === undefined) return { state: 'unknown', screens: [] };
 
   const granted = new Set(permissions);
-  const screens = POP_SCREENS.filter((screen) => granted.has(screen.code));
+  const screens = POP_SCREENS.filter(
+    (screen) => granted.has(screen.code) && (screen.needsEquipment !== true || equipment !== null),
+  );
 
   return { state: screens.length === 0 ? 'empty' : 'ready', screens };
 };

@@ -39,7 +39,7 @@ export const productionResult = {
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
       planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
       /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
-      printerNone: '프린터 없음',
+      printerNone: '프린터 미연결',
       printerUnknown: '프린터 확인 불가',
       closed: '작업지시 마감이 완료되었습니다.',
       /** 왼쪽 구획의 마감된 LOT 목록 제목(2026-11-16). */
@@ -50,12 +50,9 @@ export const productionResult = {
      * [작업지시 마감]), 다음 단계는 「남은 일」과 주 동작([포장 작업으로])이 낸다.
      */
     actions: {
-      holdWork: '작업 중단',
       runningChange: '부품 교체',
       /** 갈 화면의 이름을 그대로 쓴다(P-02-08 「생산 포장」, C-13). */
       packingWork: '생산 포장으로',
-      /** 부품 교체·작업 중단 화면 머리줄에서 같은 W/O 로 돌아오는 버튼(개선 명세 ⑥·⑦). */
-      backToWork: '생산 작업으로',
     },
     /**
      * 하단 바 「남은 일」(C-5). 머리말 없이 문장만, 끝 마침표 없이 쓴다. 앞의 것이 먼저다.

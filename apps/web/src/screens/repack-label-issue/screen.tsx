@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useIsOnline } from './connection';
 import { useRepackLabelEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
@@ -278,12 +277,6 @@ export const RepackLabelIssueScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={entry.workerNo} />
-          <Chip status={isOnline ? 'success' : 'error'}>
-            {isOnline ? t.device.online : t.device.offline}
-          </Chip>
-        </div>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

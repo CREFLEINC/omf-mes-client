@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, TextField, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useRef, useState, type FormEvent } from 'react';
 
@@ -74,13 +74,6 @@ export const PopInspectionSheetScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-context-right">
-          {workerNo !== null && (
-            <Chip variant="status" size="md" status="success">
-              {workerNo}
-            </Chip>
-          )}
-        </div>
       </header>
 
       <PopWorkerMissingBanner workerNo={workerNo} />

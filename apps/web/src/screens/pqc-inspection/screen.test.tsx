@@ -306,7 +306,8 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
    * ⚠ 대상을 못 불러온 갈래에서도 선다 — 그 화면이야말로 「연결이 끊겨서인가」를 물을
    * 자리다. 그래서 진입 인자가 없는 갈래로 확인한다.
    */
-  it('연결이 끊기면 머리에서 그 사실을 말한다', async () => {
+  /* 연결 표시는 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 화면 머리에는 두지 않는다. */
+  it('연결이 끊겨도 화면 머리에는 연결 표시를 두지 않는다', async () => {
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
 
     try {
@@ -314,7 +315,9 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
 
       const header = await screen.findByRole('banner');
 
-      expect(within(header).getByText(messages.common.connection.offline)).toBeInTheDocument();
+      expect(
+        within(header).queryByText(messages.common.connection.offline),
+      ).not.toBeInTheDocument();
     } finally {
       online.mockRestore();
     }
@@ -737,7 +740,6 @@ describe('PqcInspectionScreen — 끊겨도 저장된다 (공유계약 C-1)', ()
       expect(await screen.findByText(t.result.saved)).toBeInTheDocument();
       /* ⭐ 그 대신 **닿지 않았다는 사실**을 머리가 말한다(C-1 #4). 이것이 위 표시의 전제다. */
       expect(within(header).getByText(messages.common.connection.unsent(1))).toBeInTheDocument();
-      expect(within(header).getByText(messages.common.connection.offline)).toBeInTheDocument();
       /* ⛔ 요청은 나가지 않았다 — 나갔다면 「끊겨 있다」가 거짓이다. */
       expect(writes).toHaveLength(0);
     } finally {
@@ -812,10 +814,10 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
 
     /* ⛔ 그리고 성공 표시가 남아 있으면 안 된다 — 남으면 유실을 성공으로 읽는다. */
     expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument();
-    /* 큐에서 내려갔으므로 머리는 「동기됨」이다 — 그래서 배너가 유일한 흔적이다. */
+    /* 큐에서 내려갔으므로 미전송 표시는 사라진다 — 그래서 배너가 유일한 흔적이다(「동기됨」은 두지 않는다 · #291). */
     expect(
-      within(await screen.findByRole('banner')).getByText(t.header.synced),
-    ).toBeInTheDocument();
+      within(await screen.findByRole('banner')).queryByText(messages.common.connection.unsent(1)),
+    ).not.toBeInTheDocument();
 
     /*
      * ⛔ **거부는 다시 읽을 계기가 아니다**(#601 1-7). 재조회는 서버가 저장을 «받았을 때»의

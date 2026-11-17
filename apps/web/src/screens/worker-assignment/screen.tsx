@@ -14,6 +14,7 @@ import { WorkerCard } from './worker-card';
 import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { usePopRegistration } from '../../patterns/pop-registration';
+import { POP_HOME_PATH } from '../../patterns/pop-screen-catalog';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -170,8 +171,15 @@ export const WorkerAssignmentScreen = () => {
         isOtherPlant: result.isOtherPlant,
       });
       setWorkerNo('');
+      /*
+       * 사번을 확인하면 바로 홈으로 간다(#291 · 사용자 지시 2026-11-17) — 단말 등록 → 사번 입력 → 홈.
+       *
+       * ⛔ **다른 공장 소속이면 머문다.** 그 경고(「다른 공장 소속입니다」)는 이 화면의 작업자 카드에만
+       *    서므로, 바로 넘기면 작업자가 보지 못한다. 확인한 뒤 [작업 화면으로]로 홈에 간다.
+       */
+      if (!result.isOtherPlant) void navigate(POP_HOME_PATH);
     },
-    [homePlantId],
+    [homePlantId, navigate],
   );
 
   useEffect(() => {
@@ -323,11 +331,12 @@ export const WorkerAssignmentScreen = () => {
             setWorkerNo('');
           }}
           /*
-           * 제품 동작은 작업 시작 화면(P-02-01)으로 이어진다(§5-8). 현재 작업자 귀속은
+           * 제품 동작은 홈(#291)으로 이어진다(구 §5-8 은 작업 시작 화면). 현재 작업자 귀속은
            * 화면 밖 `worker-session`에 있으므로 이동 뒤에도 그대로 유지된다.
            */
           onGoToWork={() => {
-            void navigate('/pop/work-start');
+            /* 사번 확인 뒤 첫 화면은 홈이다(#291 · 사용자 결정 2026-11-17) — 남은 작업과 바로가기를 먼저 본다. */
+            void navigate(POP_HOME_PATH);
           }}
           /*
            * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 버튼이 아직

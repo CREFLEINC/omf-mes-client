@@ -46,7 +46,14 @@ describe('주소가 실은 생산LOT', () => {
 describe('현재 생산LOT 진척', () => {
   it('진척을 함께 달라고 요청하고 양품·목표를 그대로 든다', async () => {
     seen.length = 0;
-    const lot = makeLot({ progress: { goodQty: 320, achievementRate: 0.64, varianceQty: -180, completionJudgmentCode: 'UNDER' } });
+    const lot = makeLot({
+      progress: {
+        goodQty: 320,
+        achievementRate: 0.64,
+        varianceQty: -180,
+        completionJudgmentCode: 'UNDER',
+      },
+    });
 
     const { result } = renderHookWithProviders(() => useCurrentLot(NEW_LOT_ID), {
       fetch: createStubFetch(routes(lot)),

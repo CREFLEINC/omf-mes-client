@@ -10,7 +10,9 @@ import { HistoryDialog } from './history-dialog';
 import { IssueOutcome } from './issue-outcome';
 import { LabelKindRadio } from './label-kind-radio';
 import { PreviewDialog } from './preview-dialog';
-import { PrinterSelect } from './printer-select';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
+import { PrinterChip } from '../pop-material-lot-label/printer-chip';
+import { toPrinterView } from '../pop-material-lot-label/types';
 import {
   useAllocations,
   useHandlingUnits,
@@ -605,25 +607,27 @@ export const ShippingPackingLabelScreen = ({
              *    좁힌다(사용자 지시 2026-09-17).
              */}
             <div className="pop-slabel-printer-row">
-              <PrinterSelect
-                printers={printerItems}
-                value={effectivePrinterName}
-                onChange={setPrinterName}
-                /*
-                 * ⛔ 종류를 고르기 전에는 「찍을 수 있는 프린터가 없다」고 «단정하지» 않는다 —
-                 * 그때는 조회 자체를 하지 않아 모르는 상태다. 모르는 것을 없음으로 그리면
-                 * 사용자가 설치 문제로 오해한다(공유계약 G-9 · 실측 2026-09-03).
-                 */
-                awaitingKind={kind === null}
-                /* ⭐ 「대기 중」 같은 프린터 상태 표식은 이 화면에 그리지 않는다(사용자 지시 2026-09-17). */
-                showStatus={false}
-                isLoading={printers.isPending}
-                isError={printers.isError}
-                onRetry={() => {
-                  void printers.refetch();
-                }}
-                disabled={isBusy}
-              />
+              {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+              <PopTopPrinter>
+                <PrinterChip
+                  printers={kind === null ? undefined : printerItems.map(toPrinterView)}
+                  selected={
+                    printerItems
+                      .map(toPrinterView)
+                      .find((each) => each.printerName === effectivePrinterName) ?? null
+                  }
+                  isLoading={kind !== null && printers.isPending}
+                  isError={printers.isError}
+                  isSelectable
+                  isLocked={isBusy}
+                  onRetry={() => {
+                    void printers.refetch();
+                  }}
+                  onSelect={setPrinterName}
+                  showNone={kind !== null}
+                  noneLabel={messages.productionResult.flow.work.printerNone}
+                />
+              </PopTopPrinter>
               {embedded ? actionButtons : null}
             </div>
           </section>

@@ -113,7 +113,9 @@ describe('normalizeEntry — 저장소에서 읽은 값을 믿지 않는다', ()
     };
 
     expect(normalizeEntry(hold)).toBeNull();
-    expect(normalizeEntry({ ...hold, body: { occurredAt: OCCURRED_AT, reasonCode: '' } })).toBeNull();
+    expect(
+      normalizeEntry({ ...hold, body: { occurredAt: OCCURRED_AT, reasonCode: '' } }),
+    ).toBeNull();
     expect(
       normalizeEntry({ ...hold, body: { occurredAt: OCCURRED_AT, reasonCode: 'MOLD_CHANGE' } }),
     ).not.toBeNull();
@@ -177,9 +179,7 @@ describe('normalizeEntry — 저장소에서 읽은 값을 믿지 않는다', ()
      */
     it('계약이 필수로 둔 칸이 빠진 지난 판 항목은 보내지 않는다', () => {
       expect(normalizeEntry({ ...legacy, body: {} })).toBeNull();
-      expect(
-        normalizeEntry({ ...legacy, body: { eventTypeCode: 'STOP' } }),
-      ).toBeNull();
+      expect(normalizeEntry({ ...legacy, body: { eventTypeCode: 'STOP' } })).toBeNull();
       expect(normalizeEntry({ ...legacy, body: { occurredAt: OCCURRED_AT } })).toBeNull();
     });
 
@@ -325,7 +325,12 @@ describe('useWorkHoldOutbox', () => {
 
     act(() => {
       result.current.enqueueGroup([
-        { kind: 'work-order-resume', direction: 'RESUME', ...target, body: { occurredAt: OCCURRED_AT } },
+        {
+          kind: 'work-order-resume',
+          direction: 'RESUME',
+          ...target,
+          body: { occurredAt: OCCURRED_AT },
+        },
         {
           kind: 'session-event',
           direction: 'RESUME',

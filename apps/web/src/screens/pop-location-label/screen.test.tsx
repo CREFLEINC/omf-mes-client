@@ -441,23 +441,20 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(stateOf('S230-03')).toBe('미사용');
   });
 
-  /* 찍을 프린터가 없다는 경고는 맨 위 띠 자리에 선다(사용자 지시 2026-09-18 · omf-all-around#11). */
-  it('프린터가 없으면 경고를 맨 위 띠 자리에 한 번만 세우고, 프린터 칸은 그대로 둔다', async () => {
+  /*
+   * 「등록된 프린터가 없다」 띠는 두지 않고, 본문에 프린터 칸도 두지 않는다 — 프린터는 공통 메뉴 맨 위 줄
+   * 프린터 칩이 «프린터 미연결»로 말한다(#291 · 사용자 지시 2026-11-17).
+   */
+  it('프린터가 없으면 맨 위 줄 프린터 칩이 미연결이라 말하고, 본문에 프린터 칸은 없다', async () => {
     renderScreen({ printers: [] });
 
-    const warning = await screen.findByText(
-      '이 단말에 등록된 프린터가 없습니다. 발행 기록은 남지만 라벨 출력은 불가합니다.',
-    );
-
-    expect(screen.getAllByText(messages.popLocationLabel.printer.none)).toHaveLength(1);
-    expect(warning.closest('.pop-loclabel-top')).toBeNull();
-
-    /* 칸은 원래대로 — 라벨과 고를 것이 없는 선택칸만, 안에 경고는 없다. */
-    const card = document.querySelector('.pop-loclabel-printer');
-
-    expect(card).not.toBeNull();
-    expect(card?.textContent).toContain(messages.popLocationLabel.printer.label);
-    expect(card?.textContent).not.toContain(messages.popLocationLabel.printer.none);
+    expect(
+      await screen.findByText(messages.productionResult.flow.work.printerNone),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: messages.popLocationLabel.printer.label }),
+    ).toBeNull();
+    expect(screen.queryByText(/등록된 프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 
   it('사번이 없으면 발행을 열지 않는다', async () => {

@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -29,6 +29,7 @@ import { readLotId, readWorkOrderId } from './screen-params';
 import { useOpenWorkSession } from './session';
 import { useReferenceLabels } from './reference-labels';
 import { toApiError } from '../../patterns/request';
+import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.runningChange;
 
@@ -73,7 +74,6 @@ const describeOutcome = (outcome: ScanOutcome): string => {
  */
 export const RunningChangeScreen = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const workOrderId = readWorkOrderId(searchParams);
   const lotId = readLotId(searchParams);
   /*
@@ -254,54 +254,23 @@ export const RunningChangeScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {workOrderId !== null && <p className="pop-context">{t.header.workOrder(workOrderId)}</p>}
+        {/* W/O 번호는 단계 줄 오른쪽에 보인다(#291) — 여기 있던 「W/O <내부 id>」는 번호가 아니라 지웠다. */}
 
         {/*
-         * ⚠ **없을 때도 말한다.** 「세션 없음」은 정상 상태이고(§6), 「단말 미확인」은 게이팅이
-         * 닫혀 있는 이유다 — 비워 두면 작업자가 등록이 왜 잠겼는지 알 수 없다.
+         * 세션은 있을 때만 W/O 옆에 적는다 — 「세션 없음」 줄은 두지 않는다(사용자 지시 2026-11-17 · #291).
+         * 등록이 잠긴 이유는 본문이 말한다.
          */}
-        <p className="pop-context pop-context-right">
-          <span>
-            {session.workSessionId === null
-              ? t.header.sessionNone
-              : t.header.session(session.workSessionId)}
-          </span>
-          {/* ⭐ 「단말#」 표기는 라벨(칩)로 보인다 — 다른 POP 머리줄과 같은 모양(사용자 지시 2026-09-15). */}
-          <Chip status={terminalId === null ? 'warning' : 'info'}>
-            {terminalId === null ? t.header.terminalUnknown : t.header.terminal(terminalId)}
-          </Chip>
-
-          {/*
-           * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
-           * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
-           */}
-          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
-            {outbox.pendingCount > 0 ? t.header.unsynced(outbox.pendingCount) : t.header.synced}
-          </Chip>
-          {!outbox.isOnline && (
-            <Chip variant="status" size="md" status="error">
-              {t.header.offline}
+        {session.workSessionId !== null && (
+          <p className="pop-context">{t.header.session(session.workSessionId)}</p>
+        )}
+        <PopTopStatus>
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+          {outbox.pendingCount > 0 && (
+            <Chip variant="status" size="md" status="warning">
+              {t.header.unsynced(outbox.pendingCount)}
             </Chip>
           )}
-        </p>
-        {/*
-         * 같은 W/O 로 생산 작업에 돌아간다(P-02-04 개선 명세 ⑥). W/O 없이 들어왔으면 돌아갈 곳이 없어 두지
-         * 않는다. 담은 교체는 단말 큐에 있어 화면을 떠나도 사라지지 않는다.
-         */}
-        {workOrderId !== null && (
-          <span className="pop-header-tools">
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              onClick={() => {
-                void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
-              }}
-            >
-              {messages.productionResult.flow.actions.backToWork}
-            </Button>
-          </span>
-        )}
+        </PopTopStatus>
       </header>
 
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}

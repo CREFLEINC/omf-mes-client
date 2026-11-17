@@ -5,7 +5,7 @@ import { useId, useMemo, useState, type FormEvent } from 'react';
 import { formatPlantClock, formatPlantDateTime, plantToday } from '../../patterns/plant-time';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { formatBaseQty } from '../../patterns/package-qty';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
@@ -110,7 +110,7 @@ const toResultView = (results: readonly SplitPrintResult[], isReprint: boolean):
  * ⭐ 미발행은 기간과 상관없이 모두 보이고 오래된 것이 위다(FR-008 · SC-004). 인쇄 실패는 미발행으로 남는다.
  */
 export const GoodsIssueQrScreen = () => {
-  const { workerNo, terminalId, plantId = null } = usePopIdentity();
+  const { workerNo, plantId = null } = usePopIdentity();
   /* 동작 바의 지금 상태 — 막힌 [라벨 찍기]가 그 까닭으로 잇는다(C-4). */
   const stateId = useId();
   const printing = useSplitLabelPrint(workerNo);
@@ -240,8 +240,11 @@ export const GoodsIssueQrScreen = () => {
     <main className="pop-lot-screen pop-ui pop-split" aria-label={t.title}>
       <header className="pop-header">
         <h1 className="pop-title">{t.title}</h1>
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={workerNo} />
+        {/*
+         * 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다. 사번·단말도 맨 위 줄이 보인다
+         * (사용자 지시 2026-11-17 · #291).
+         */}
+        <PopTopPrinter>
           <PrinterChip
             printers={printers.data}
             selected={headPrinter}
@@ -257,10 +260,7 @@ export const GoodsIssueQrScreen = () => {
               rememberPrinterName(name);
             }}
           />
-          <Chip status={terminalId === null ? 'warning' : 'info'}>
-            {`${t.terminalLabel} ${terminalId === null ? t.terminalUnknown : String(terminalId)}`}
-          </Chip>
-        </div>
+        </PopTopPrinter>
       </header>
 
       <PopWorkerMissingBanner workerNo={workerNo} />

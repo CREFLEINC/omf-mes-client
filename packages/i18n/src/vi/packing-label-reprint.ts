@@ -21,7 +21,6 @@ export const packingLabelReprint: Translated<typeof ko.packingLabelReprint> = {
   device: {
     printerLabel: 'Máy in',
     printerUnknown: 'Không xác nhận được máy in',
-    printerNone: 'Không có máy in dùng được',
     terminalLabel: 'Máy trạm',
     terminalUnknown: 'Chưa xác nhận',
   },
