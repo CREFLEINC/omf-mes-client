@@ -718,6 +718,8 @@ export const WarehouseLocationScreen = () => {
       parentLocationId === null
         ? null
         : (hierarchyItems.find((item) => item.locationId === parentLocationId) ?? null);
+    /* 구역 코드는 창고코드를 앞에 붙인다(#292) — 창고를 아직 못 읽었으면 열지 않는다(구역 추가 단추도 꺼져 있다). */
+    if (selectedWarehouse === null) return;
     const parentDepth = parent === null ? -1 : (locationDepthById.get(parent.locationId) ?? -1);
     const level = LOCATION_LEVEL_CODES[parentDepth + 1] ?? 'ZONE';
     locationWrite.reset();
@@ -728,7 +730,12 @@ export const WarehouseLocationScreen = () => {
     setLocationValues({
       ...emptyLocationFormValues(),
       parentLocationId: parentLocationId === null ? '' : String(parentLocationId),
-      locationCode: issueLocationCode(level, parent, hierarchyItems),
+      locationCode: issueLocationCode(
+        level,
+        parent,
+        hierarchyItems,
+        selectedWarehouse.warehouseCode,
+      ),
     });
     setDialogState({
       open: true,
@@ -1342,10 +1349,11 @@ export const WarehouseLocationScreen = () => {
         }}
       />
 
-      {bulkCreateOpen && selectedWarehouseId !== null && (
+      {bulkCreateOpen && selectedWarehouseId !== null && selectedWarehouse !== null && (
         <BulkCreateDialog
           open
           warehouseId={selectedWarehouseId}
+          warehouseCode={selectedWarehouse.warehouseCode}
           warehouseLabel={warehouseLabel}
           items={hierarchyItems}
           onClose={() => setBulkCreateOpen(false)}

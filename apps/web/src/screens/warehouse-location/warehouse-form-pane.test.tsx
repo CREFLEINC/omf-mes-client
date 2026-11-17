@@ -104,6 +104,21 @@ describe('WarehouseFormPane', () => {
     expect(screen.getByRole('textbox', { name: '창고 코드' })).toBeRequired();
   });
 
+  it('#292 창고 코드는 등록할 때만 입력하고, 등록 뒤에는 바꿀 수 없다고 칸 아래에 알린다', () => {
+    renderPane({ mode: 'create' });
+
+    expect(screen.getByRole('textbox', { name: '창고 코드' })).toHaveAccessibleDescription(
+      '위치 코드 앞에 붙어 등록한 뒤에는 바꿀 수 없습니다.',
+    );
+  });
+
+  it('#292 고칠 때 창고 코드는 머리에 글로만 보이고 입력칸이 없다', () => {
+    renderPane({ mode: 'edit' });
+
+    expect(screen.queryByRole('textbox', { name: '창고 코드' })).not.toBeInTheDocument();
+    expect(screen.getAllByText(warehouseFormInitialValues.warehouseCode).length).toBeGreaterThan(0);
+  });
+
   it('저장된 값과 다른 칸만 이름 옆에 점을 찍는다', () => {
     renderPane({
       baseline: warehouseFormInitialValues,

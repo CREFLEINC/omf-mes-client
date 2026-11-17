@@ -813,7 +813,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     // 머리에 만들 단계가 보인다.
     expect(within(dialog).getByText('구역')).toBeInTheDocument();
     // 있는 구역(A-01 · B-01)은 모양이 달라 세지 않는다 — 서버처럼 Z 번호 가운데 가장 큰 것 + 1.
-    expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('Z01');
+    expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('WH-01-Z01');
     expect(within(dialog).queryByRole('textbox', { name: '위치 코드' })).not.toBeInTheDocument();
     // 안내문 없이 값만(사용자 지시 2026-10-29).
     expect(within(dialog).queryByText('MES가 자동으로 발행합니다.')).toBeNull();
@@ -1801,10 +1801,10 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
       (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
     );
     const body = JSON.parse(post?.body ?? '{}') as Record<string, unknown>;
-    // 코드는 서버가 발행한다 — 미리 지어 보인 코드(Z01)는 별칭이 없을 때의 위치명으로만 쓴다.
+    // 코드는 서버가 발행한다 — 미리 지어 보인 코드(창고코드-Z01, #292)는 별칭이 없을 때의 위치명으로만 쓴다.
     expect(body).toMatchObject({
       parentLocationId: null,
-      locationName: 'Z01',
+      locationName: 'WH-01-Z01',
       aliasName: null,
     });
     // 위치는 코드 · 위치유형 · 혼적 · 수용량 · 보관조건을 싣지 않는다.

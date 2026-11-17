@@ -179,6 +179,7 @@ const WarehouseCreateFields = ({
         onChange={(event) => onChange({ warehouseCode: event.target.value })}
         disabled={codeLockReason !== null}
         disabledReason={codeLockReason}
+        helperText={t.warehouseInfo.codeFixed}
         error={fieldErrors.warehouseCode}
       />
       <TextField
@@ -425,7 +426,7 @@ export const WarehouseFormPane = ({
     },
   ];
 
-  /* 코드 · 창고명은 고칠 수 없어 머리로 올린다. 서버가 그 칸에 붙여 보낸 오류는 머리 밑에 둔다. */
+  /* 코드 · 창고명은 고칠 수 없어 머리로 올린다(창고 코드는 위치 코드 앞에 붙는다, omf-all-around#292). 서버가 그 칸에 붙여 보낸 오류는 머리 밑에 둔다. */
   const identityErrors = [fieldErrors.warehouseCode, fieldErrors.warehouseName].filter(
     (error): error is string => error !== undefined,
   );

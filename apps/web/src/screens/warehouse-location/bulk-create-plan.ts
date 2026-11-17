@@ -1,5 +1,5 @@
 import { isSystemLocation } from '../../patterns/system-location';
-import { issueLocationCode, locationCodeAt, maxLocationSequence } from './location-code';
+import { locationCodeAt, maxLocationSequence } from './location-code';
 import type { Location } from './types';
 
 /**
@@ -87,6 +87,8 @@ export const planBulkCreate = (
   input: BulkCreateInput,
   items: readonly Location[],
   blockedZoneIds: ReadonlySet<number>,
+  /** 고른 창고의 코드 — 새 구역 코드 앞에 붙는다(`{창고코드}-Z01`, omf-all-around#292). */
+  warehouseCode: string,
 ): BulkPlan => {
   const levels = input.levelsPerRack;
   /* 층 0 이면 셀 입력은 막히고 0 으로 본다. */
@@ -105,12 +107,22 @@ export const planBulkCreate = (
     if (!countsValid || !inRange(input.zoneCount, BULK_LIMITS.zones)) {
       return { totals: EMPTY_TOTALS, firstCode: null, lastCode: null, steps, error: 'range' };
     }
-    const first = issueLocationCode('ZONE', null, items);
-    const firstNo = Number(first.slice(1));
+    const firstNo =
+      maxLocationSequence(
+        'ZONE',
+        warehouseCode,
+        items
+          .filter(
+            (item) =>
+              (item.parentLocationId === null || item.parentLocationId === undefined) &&
+              !isSystemLocation(item),
+          )
+          .map((item) => item.locationCode),
+      ) + 1;
     for (let index = 0; index < input.zoneCount; index += 1) {
       zones.push({
         ref: { kind: 'new', index },
-        code: locationCodeAt('ZONE', null, firstNo + index),
+        code: locationCodeAt('ZONE', warehouseCode, firstNo + index),
         firstRackNo: 1,
       });
     }

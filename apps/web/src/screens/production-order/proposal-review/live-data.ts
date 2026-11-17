@@ -151,6 +151,21 @@ export async function loadCatalog(client: Client, proposals: PlanProposal[]) {
     warehouses,
   };
 }
+/**
+ * 완제품 입고 위치가 서버가 둔 「적치 대기」 자리인가 — 응답(`erpStorage.location`)에 역할 칸이 없어 코드로 가린다.
+ * 서버는 창고코드를 앞에 붙여 발행한다(`{창고코드}-SYS-STAGING`, omf-all-around#292). 붙이기 전 옛 코드(`SYS-STAGING`)도
+ * 같이 본다 — 다른 창고 코드가 붙은 것은 아니다.
+ */
+export const isPutawayStagingCode = (
+  erpStorage: Pick<PlanProposal['erpStorage'], 'warehouse' | 'location'>,
+): boolean => {
+  const code = erpStorage.location?.code;
+  if (code === undefined) return false;
+  if (code === 'SYS-STAGING') return true;
+  const warehouseCode = erpStorage.warehouse?.code;
+  return warehouseCode !== undefined && code === `${warehouseCode}-SYS-STAGING`;
+};
+
 export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewProposal {
   const fixed = row.reasons
     .filter((reason) => reason.category === 'BLOCKED')
@@ -179,8 +194,7 @@ export function toLiveProposal(row: PlanProposal, catalog: LiveCatalog): ReviewP
       .map((issue) => proposalReason(issue.code)),
     erpStorage: {
       ...row.erpStorage,
-      locationRole:
-        row.erpStorage.location?.code === 'SYS-STAGING' ? 'PUTAWAY_STAGING' : 'WAREHOUSE_WHOLE',
+      locationRole: isPutawayStagingCode(row.erpStorage) ? 'PUTAWAY_STAGING' : 'WAREHOUSE_WHOLE',
     },
     plans: row.plans.map((plan) => ({
       key: `${row.productionOrderId}:${plan.proposalPlanKey}`,

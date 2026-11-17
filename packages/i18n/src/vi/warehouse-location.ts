@@ -30,6 +30,7 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
   },
   warehouseInfo: {
     systemLocations: 'Vị trí do máy chủ tạo',
+    codeFixed: 'Được gắn vào đầu mã vị trí nên không thể đổi sau khi đăng ký.',
   },
   externalConfirm: {
     on: 'Chuyển thành kho bên ngoài?',

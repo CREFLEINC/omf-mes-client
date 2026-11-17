@@ -27,6 +27,8 @@ export const warehouseLocation = {
   warehouseInfo: {
     /** Location 묶음의 서버가 만든 위치 목록 — 접근성 이름. */
     systemLocations: '서버가 만든 위치',
+    /** 창고 추가의 창고 코드 칸 도움말 — 위치 코드 앞에 붙어 등록 뒤에는 바꿀 수 없다(omf-all-around#292). */
+    codeFixed: '위치 코드 앞에 붙어 등록한 뒤에는 바꿀 수 없습니다.',
   },
   /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
   externalConfirm: {

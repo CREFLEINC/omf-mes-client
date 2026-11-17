@@ -28,6 +28,8 @@ const b = t.bulkCreate;
 export interface BulkCreateDialogProps {
   open: boolean;
   warehouseId: number;
+  /** 고른 창고의 코드 — 새 구역 코드 미리 보기 앞에 붙는다(omf-all-around#292). */
+  warehouseCode: string;
   /** 「창고코드 · 창고명」 — 창 제목에 붙는다. */
   warehouseLabel: string;
   /** 고른 창고의 위치 전체(검색과 무관한 계층). */
@@ -69,6 +71,7 @@ const zoneContents = (zone: Location, items: readonly Location[]) => {
 export const BulkCreateDialog = ({
   open,
   warehouseId,
+  warehouseCode,
   warehouseLabel,
   items,
   onClose,
@@ -114,7 +117,7 @@ export const BulkCreateDialog = ({
           levelsPerRack: levels,
           cellsPerLevel: levels === 0 ? 0 : toCount(cellText),
         };
-  const live = planBulkCreate(input, items, blocked);
+  const live = planBulkCreate(input, items, blocked, warehouseCode);
   const plan = frozen ?? live;
   const { state, run } = useBulkCreate(warehouseId);
   const running = state.status === 'running';
