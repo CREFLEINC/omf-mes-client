@@ -61,6 +61,38 @@ describe('useAccessiblePopScreens — [화면 이동] 후보', () => {
     expect(box.current?.screens.map((screen) => screen.code)).toEqual(['P-01-01']);
   });
 
+  it('비가동 실적 입력은 설비가 지정된 단말에서만 후보에 든다(#291)', async () => {
+    const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
+    const Probe = () => {
+      box.current = useAccessiblePopScreens();
+      return null;
+    };
+    renderWithProviders(
+      <PopIdentityProvider
+        value={{
+          terminalId: 5,
+          processes: [],
+          equipment: { equipmentId: 31, equipmentCode: 'EQ-31', equipmentName: '조립 1호기' },
+          workerNo: '900028',
+        }}
+      >
+        <Probe />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => request.url.endsWith('/mdm/terminals/5/accessible-screens'),
+            respond: () => jsonResponse({ screenCodes: ['P-02-01', 'P-05-02'] }),
+          },
+        ]),
+        session: null,
+      },
+    );
+
+    await waitFor(() => expect(box.current?.state).toBe('ready'));
+    expect(box.current?.screens.map((screen) => screen.code)).toEqual(['P-02-01', 'P-05-02']);
+  });
+
   it('단말 화면 정책 조회가 실패하면 세션 권한이나 전체 메뉴로 물러서지 않는다', async () => {
     const box = { current: null as ReturnType<typeof useAccessiblePopScreens> | null };
     const Probe = () => {

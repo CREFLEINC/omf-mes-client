@@ -31,10 +31,8 @@ export const productionResult: Translated<typeof ko.productionResult> = {
       completedLots: 'LOT đã đóng',
     },
     actions: {
-      holdWork: 'Tạm dừng công việc',
       runningChange: 'Thay linh kiện',
       packingWork: 'Sang đóng gói sản xuất',
-      backToWork: 'Về công việc sản xuất',
     },
     next: {
       noWorkOrder:

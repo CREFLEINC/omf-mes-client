@@ -11,7 +11,6 @@ export const toolUsage = {
     /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
     equipmentLabel: (code: string, name: string): string =>
       `설비 ${name.trim() === '' ? code : name}`,
-    workerLabel: '사번',
   },
 
   scan: {

@@ -46,10 +46,14 @@ const WorkBadge = ({ count }: { count: number }) =>
  *    남고, 뒤에 같은 이름을 쓰게 되면 남이 남긴 값으로 조회가 선다. 표기는 `pop-screen-catalog`.
  */
 export const destinationOf = (screen: PopScreen, search: string): string => {
-  if (screen.acceptsWorkOrderId !== true) return screen.path;
-
   const workOrderId = new URLSearchParams(search).get('workOrderId');
-  if (workOrderId === null || workOrderId === '') return screen.path;
+  const hasWorkOrder = workOrderId !== null && workOrderId !== '';
+  /*
+   * 작업 단계·작업 중 화면(자재 투입·작업 중단 등)은 W/O 를 고른 뒤에만 연다 — 단계 줄이 잠그는 것과
+   * 같다(#291). 홈 바로가기·남은 작업에서 W/O 없이 누르면 ① 작업지시 선택으로 보낸다.
+   */
+  if (screen.workFlow !== undefined && !hasWorkOrder) return POP_WORK_ENTRY_PATH;
+  if (screen.acceptsWorkOrderId !== true || !hasWorkOrder) return screen.path;
 
   return `${screen.path}?workOrderId=${encodeURIComponent(workOrderId)}`;
 };
@@ -58,7 +62,18 @@ export const destinationOf = (screen: PopScreen, search: string): string => {
  * 이동 메뉴가 쓰는 값 한 묶음 — 이동 가능한 화면, 남은 작업 수, 화면으로 가는 길.
  * 공통 메뉴와 홈 화면이 같은 값을 쓴다(둘이 따로 세면 숫자가 어긋난다).
  */
-export const usePopNavigation = () => {
+export interface PopNavigation {
+  pathname: string;
+  search: string;
+  access: ReturnType<typeof useAccessiblePopScreens>;
+  workCounts: PopWorkCounts;
+  /** 남은 작업이 있는 화면 — 많은 순. */
+  pending: { screen: PopScreen; count: number }[];
+  total: number;
+  go: (screen: PopScreen) => void;
+}
+
+export const usePopNavigation = (): PopNavigation => {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const access = useAccessiblePopScreens();
@@ -86,7 +101,7 @@ export const usePopNavigation = () => {
 };
 
 /** 메뉴·홈이 함께 쓰는 선 아이콘(24 격자). */
-export const navIcon = (path: ReactNode) => (
+export const navIcon = (path: ReactNode): ReactNode => (
   <svg
     className="pop-nav-icon"
     viewBox="0 0 24 24"
@@ -245,8 +260,8 @@ const TopBar = ({
  * ⭐ 단말에는 주소창도 뒤로가기도 없다. 화면을 옮기는 길이 화면마다 따로 있으면 작업자가
  *    「여기서는 어디로 갈 수 있나」를 화면마다 새로 배워야 하므로 셸(`app/pop-main`)에서 한 번만 그린다.
  *
- * ⭐ 묶음을 누르면 **화면 탭 줄만 바뀐다** — 화면은 탭을 눌러야 옮겨 간다. 묶음만으로 옮기면
- *    「묶음의 첫 화면」이 원치 않게 열린다.
+ * ⭐ 묶음을 누르면 그 묶음의 첫 화면(지금 화면이 그 묶음이면 그대로)으로 옮기고 화면 탭 줄이 바뀐다
+ *    (사용자 지시 2026-11-17 · #291).
  *
  * ⚠ 못 갈 때는 감추지 않고 사유를 보인다(G-2). 묶음이 통째로 사라지면 「원래 이동이 안 되는
  *    단말인가」와 「지금 확인이 안 되는가」를 구별할 수 없다.
@@ -267,7 +282,7 @@ export const PopScreenNav = ({
   /** 맨 위 줄 화면 상태 자리를 셸에 알린다(`PopTopStatusTarget`). */
   statusRef?: (element: HTMLElement | null) => void;
   printerRef?: (element: HTMLElement | null) => void;
-}) => {
+}): ReactNode => {
   const navigate = useNavigate();
   const { pathname, search, access, workCounts, pending, total, go } = usePopNavigation();
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;

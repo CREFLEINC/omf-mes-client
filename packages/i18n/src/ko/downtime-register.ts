@@ -15,13 +15,8 @@ export const downtimeRegister = {
     /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
     equipment: (equipmentCode: string, equipmentName: string): string =>
       `설비 ${equipmentName.trim() === '' ? equipmentCode : equipmentName}`,
-    /** 주소에 설비가 없으면 이 화면이 무엇을 기록하는지 정해지지 않는다. */
-    worker: (workerNo: string): string => `사번 ${workerNo}`,
-    /** 사번이 없으면 쓰기가 서버에서 거부된다 — 누르기 전에 그 사실을 말한다. */
-    workerUnknown: '사번 미확인',
     /** 미전송 건수는 즉시 성공 표시의 전제라 상시 보인다(공유계약 C-1 #4). */
     unsent: (count: number): string => `미전송 ${String(count)}건`,
-    sent: '전송 완료',
     /*
      * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
      * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려

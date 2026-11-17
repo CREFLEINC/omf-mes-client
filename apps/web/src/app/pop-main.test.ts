@@ -55,6 +55,13 @@ describe('POP 진입점 배선', () => {
    * 못박았다. 그래서 지금은 **실려 있는 것**을 지킨다(#949 · 공유계약 G-34). #291 부터는 [화면 이동]
    * 단추 대신 공통 이동 메뉴(묶음·탭)다.
    */
+  /* 사번 없이 공통 메뉴로 다른 화면에 들어가면 할 일 없는 띠만 선다 — 셸이 사번 입력 화면으로 보낸다(#291). */
+  it('사번이 없으면 진입 화면 밖 어느 화면이든 진입 화면으로 보낸다', () => {
+    expect(source).toMatch(
+      /if \(workerNo === null && pathname !== POP_ENTRY_PATH\) \{\s*return <Navigate to=\{POP_ENTRY_PATH\} replace \/>;/u,
+    );
+  });
+
   it('배포 셸에 업무용 화면 이동을 싣는다', () => {
     expect(source).toMatch(/<PopScreenNav\s/u);
   });

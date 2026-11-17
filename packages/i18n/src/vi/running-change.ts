@@ -8,11 +8,9 @@ export const runningChange: Translated<typeof ko.runningChange> = {
   header: {
     workOrderMissing: 'Không nhận được lệnh sản xuất nên không tải được vật tư đang đưa vào.',
     session: (workSessionId: number) => `Phiên ${workSessionId}`,
-    sessionNone: 'Không có phiên',
     terminal: (terminalId: number) => `Máy trạm ${terminalId}`,
     terminalUnknown: 'Chưa xác nhận máy trạm',
     unsynced: (count: number) => `Chờ gửi ${count} mục`,
-    synced: 'Đã gửi xong',
     offline: 'Ngoại tuyến',
   },
 

@@ -1,9 +1,10 @@
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 
 import { useApiClient } from './api-context';
 import type { PopScreen } from './pop-screen-catalog';
-import { runRequest } from './request';
+import { ApiRequestError, runRequest } from './request';
 
 const t = messages.popChrome.workSteps;
 
@@ -17,8 +18,23 @@ export const workOrderIdOf = (search: string): number | null => {
 /** 박스 제목에 W/O 를 이미 보이는 화면 — 단계 줄에는 번호를 겹쳐 적지 않는다(사용자 지시 2026-11-17). */
 const WO_IN_PANE: ReadonlySet<string> = new Set(['/pop/material-input', '/pop/production-result']);
 
-/** 단계 줄 오른쪽에 보일 W/O 번호. 못 받으면 `null` — 그때는 번호(#id)로 적는다. */
-const useWorkOrderNo = (workOrderId: number | null): string | null => {
+/** 작업 중 화면을 열 수 없는 W/O 상태 — 생산 작업 화면이 마감 W/O 에 [작업 중단]을 두지 않던 것과 같다. */
+const ENDED_STATUSES: ReadonlySet<string> = new Set(['CLOSED', 'CANCELLED']);
+
+/**
+ * W/O 상세를 «거절·없음»으로 답한 상태 코드. 서버는 POP 단말에 열린(배포됨·미완료·미마감·미취소) W/O 상세만
+ * 보인다(단말 읽기 규칙) — 마감된 W/O 는 상태값 대신 이 답이 온다. 작업 중 화면도 그 W/O 를 다룰 수 없다.
+ */
+const NOT_OPEN_HTTP: ReadonlySet<number> = new Set([401, 403, 404]);
+
+interface StepWorkOrder {
+  /** 단계 줄 오른쪽에 보일 W/O 번호. 못 받으면 `null` — 그때는 번호(#id)로 적는다. */
+  workOrderNo: string | null;
+  /** 마감·취소됐거나 서버가 열린 W/O 로 보이지 않는가. 연결이 안 돼 모르면(오프라인 등) `false` — 모른다고 막지 않는다. */
+  isEnded: boolean;
+}
+
+const useStepWorkOrder = (workOrderId: number | null): StepWorkOrder => {
   const { client } = useApiClient();
   const query = useQuery({
     queryKey: ['pop-work-steps', 'work-order', workOrderId],
@@ -31,7 +47,12 @@ const useWorkOrderNo = (workOrderId: number | null): string | null => {
         }),
       ),
   });
-  return query.data?.workOrderNo ?? null;
+  return {
+    workOrderNo: query.data?.workOrderNo ?? null,
+    isEnded:
+      ENDED_STATUSES.has(query.data?.statusCode ?? '') ||
+      (query.error instanceof ApiRequestError && NOT_OPEN_HTTP.has(query.error.httpStatus ?? 0)),
+  };
 };
 
 /**
@@ -57,10 +78,10 @@ export const PopWorkSteps = ({
   pathname: string;
   search: string;
   go: (screen: PopScreen) => void;
-}) => {
+}): ReactNode => {
   const workOrderId = workOrderIdOf(search);
   const showWorkOrder = workOrderId !== null && !WO_IN_PANE.has(pathname);
-  const workOrderNo = useWorkOrderNo(showWorkOrder ? workOrderId : null);
+  const { workOrderNo, isEnded } = useStepWorkOrder(workOrderId);
   const all = entry === null ? steps : [entry, ...steps];
   const hasWorkOrder = workOrderId !== null;
 
@@ -108,7 +129,7 @@ export const PopWorkSteps = ({
             className="pop-work-steps__during"
             aria-current={screen.path === pathname ? 'page' : undefined}
             data-on={screen.path === pathname ? 'true' : undefined}
-            disabled={!hasWorkOrder}
+            disabled={!hasWorkOrder || isEnded}
             onClick={() => {
               go(screen);
             }}

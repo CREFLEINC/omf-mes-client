@@ -142,9 +142,7 @@ describe('P-02-10 작업 중단 등록', () => {
 
     expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
     /* 돌아갈 작업지시가 없으니 [생산 작업으로]도 두지 않는다. */
-    expect(
-      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업으로' })).not.toBeInTheDocument();
   });
 
   it('이벤트 이력을 시각·구분·사유로 세운다', async () => {
@@ -325,9 +323,7 @@ describe('P-02-10 작업 중단 등록', () => {
     );
 
     expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업으로' })).not.toBeInTheDocument();
   });
 
   /* #291 — 사번은 공통 메뉴 맨 위 줄이 보인다. 머리줄에 다시 세우지 않는다. */

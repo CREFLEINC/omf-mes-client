@@ -226,7 +226,7 @@ const StatusCard = ({
  *
  * ⭐ 바로가기는 [편집]으로 이 단말에 맞게 고른다(최대 6개 · 단말에 저장).
  */
-export const PopHomeScreen = () => {
+export const PopHomeScreen = (): ReactNode => {
   const titleId = useId();
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();

@@ -3460,7 +3460,7 @@ describe('ProductionFlowScreen — 보조 동작 자리', () => {
     ).toBeInTheDocument();
     /* 마감할 수 없는 상태에서 늘 잠긴 버튼을 두지 않는다(C-3 보조 동작의 자리). */
     expect(within(lotPane).queryByRole('button', { name: t.flow.woClose.button })).toBeNull();
-    expect(within(header).queryByRole('button', { name: t.flow.actions.holdWork })).toBeNull();
+    expect(within(header).queryByRole('button', { name: '작업 중단' })).toBeNull();
     expect(
       within(bar())
         .getAllByRole('button')

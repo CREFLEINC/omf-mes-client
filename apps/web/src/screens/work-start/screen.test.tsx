@@ -1744,7 +1744,7 @@ describe('P-02-01 작업 시작 — 진행 중인 작업지시(omf-all-around#42
       await screen.findByRole('button', { name: t.actions.continueToSession }),
     ).toBeInTheDocument();
     const other = messages.productionResult.flow.actions;
-    for (const label of [other.holdWork, other.runningChange, '포장 작업', 'PQC 검사']) {
+    for (const label of ['작업 중단', other.runningChange, '포장 작업', 'PQC 검사']) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
   });
@@ -1783,5 +1783,67 @@ describe('P-02-01 작업 시작 — 사번 입력 창의 키보드와 스캐너 
     await user.type(field, '33a9-1');
 
     expect(field).toHaveValue('3391');
+  });
+});
+
+/** 홈 「다음 작업」에서 넘겨받아 연다(#291) — 그 W/O 를 고른 채로, 홈에서 보던 설비 범위로. */
+describe('P-02-01 작업 시작 — 홈 「다음 작업」에서 열 때', () => {
+  const OTHER = {
+    ...WORK_ORDER,
+    workOrderId: 8199,
+    workOrderNo: 'SYN-WO-0199',
+    plannedEquipmentId: EQUIPMENT_ID + 1,
+    plannedEquipmentCode: 'SYN-PRS-02',
+  };
+
+  it('넘겨받은 W/O 를 고른 채로 단말 설비 목록을 연다', async () => {
+    const { recorded } = renderScreen({
+      routeState: { workOrderId: WORK_ORDER.workOrderId, allEquipment: false },
+    });
+
+    expect(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: t.selection.title })).toHaveTextContent(
+      WORK_ORDER.workOrderNo,
+    );
+    expect(listUrls(recorded.urls)[0]).toContain(`plannedEquipmentId=${String(EQUIPMENT_ID)}`);
+  });
+
+  it('홈이 전체 설비로 보던 W/O 면 전체 설비 목록으로 연다', async () => {
+    const { recorded } = renderScreen({
+      allWorkOrders: [WORK_ORDER, OTHER],
+      routeState: { workOrderId: OTHER.workOrderId, allEquipment: true },
+    });
+
+    expect(
+      await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(listUrls(recorded.urls)[0]).not.toContain('plannedEquipmentId');
+  });
+
+  it('넘겨받은 W/O 가 첫 목록에 없으면 고르지 않은 채로 둔다 — 뒤에 나타나도 저절로 고르지 않는다', async () => {
+    const { user } = renderScreen({
+      allWorkOrders: [WORK_ORDER, OTHER],
+      routeState: { workOrderId: OTHER.workOrderId, allEquipment: false },
+    });
+
+    expect(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('group', { name: t.selection.title })).toBeNull();
+
+    await chooseEquipment(user, t.list.allOption);
+    expect(
+      await screen.findByRole('button', { name: selectName(OTHER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('모양이 다른 이동 상태는 무시한다', async () => {
+    renderScreen({ routeState: { workOrderId: 'x' } });
+
+    expect(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    ).toHaveAttribute('aria-pressed', 'false');
   });
 });

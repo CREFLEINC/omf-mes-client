@@ -363,8 +363,11 @@ export const WorkStartScreen = () => {
    * 설비 범위를 바꾼 뒤(설비 칸, [기본 설비로]) 새 목록이 오면, 고른 W/O 가 그 목록에 있을 때만
    * 고른 채로 둔다. 없으면 놓는다. 화면에 없는 카드가 오른쪽에 남아 있지 않게 하고, 하단 바가
    * 「작업지시를 고르세요」로 돌아간다(사용자 결정 2026-10-26, PG-30).
+   *
+   * 홈 「다음 작업」에서 W/O 를 받아 열었을 때도 첫 목록에서 한 번 같은 확인을 한다(#291) — 받은 W/O 가
+   * 첫 쪽에 없으면 «보이지 않는 선택»이 남지 않게 놓는다.
    */
-  const scopeCheckRef = useRef(false);
+  const scopeCheckRef = useRef(entry !== null);
   useEffect(() => {
     if (!scopeCheckRef.current || rows === undefined) return;
 

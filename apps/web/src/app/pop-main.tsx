@@ -137,8 +137,12 @@ function devDeviceToken() {
       }
     },
     set: async (value: string): Promise<void> => {
-      if (value === '') window.localStorage.removeItem(KEY);
-      else window.localStorage.setItem(KEY, value);
+      try {
+        if (value === '') window.localStorage.removeItem(KEY);
+        else window.localStorage.setItem(KEY, value);
+      } catch {
+        /* 저장소가 막힌 브라우저 — 이번 실행에서만 쓰고, 새로 고치면 다시 등록한다. */
+      }
     },
   };
 }

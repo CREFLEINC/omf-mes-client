@@ -1,8 +1,8 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 
-import { PopTopPrinter, PopTopStatus } from './pop-top-status';
+import { PopTopPrinter, PopTopStatus, PopTopStatusTarget } from './pop-top-status';
 
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
@@ -29,7 +29,7 @@ export interface PopHeaderProps {
    * 반대로 브라우저가 온라인이라도 서버가 죽어 있을 수 있다.
    */
   isConnected?: boolean;
-  /* ⚠ 지금은 그리지 않는다 — 연결 표시는 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291). 공통 메뉴 밖(단독 실행)용으로 받기만 한다. */
+  /* ⚠ 공통 메뉴 안에서는 그리지 않는다 — 연결 표시는 맨 위 줄이 모든 화면에 같게 보인다(#291). 공통 메뉴 밖(단독 실행)에서만 선다. */
   /** 아직 서버에 닿지 않은 기록 수. 0이거나 넘기지 않으면 칩을 두지 않는다. */
   unsentCount?: number;
   /** 오른쪽 덩어리 맨 앞(작업자 앞)에 둘 프린터 칩. 넘기지 않으면 자리를 두지 않는다(생산 작업 · 개선 명세 ⑤). */
@@ -97,9 +97,12 @@ export const PopHeader = ({
   moldText = null,
   isMoldMissing = false,
   unsentCount = 0,
+  isConnected,
   printer,
   actions,
 }: PopHeaderProps) => {
+  /* 공통 메뉴(셸) 안이면 맨 위 줄 자리가 정해져 있다(`undefined` 는 셸 밖 — 단독 실행·시험). */
+  const isInShell = useContext(PopTopStatusTarget) !== undefined;
   const t = messages.popChrome.header;
   const RightGroup = printer === undefined ? 'p' : 'div';
 
@@ -148,7 +151,12 @@ export const PopHeader = ({
         {printer !== undefined && <PopTopPrinter>{printer}</PopTopPrinter>}
         {/* 연결·미전송 표시는 공통 메뉴 맨 위 줄에 선다(#291) — 머리줄에 이것만 남아 행이 서지 않게. */}
         <PopTopStatus>
-          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 셸 밖에서만 여기서 말한다. */}
+          {!isInShell && isConnected !== undefined && (
+            <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
+              {isConnected ? t.connected : t.disconnected}
+            </Chip>
+          )}
           {unsentCount > 0 && (
             <Chip variant="status" size="md" status="warning">
               {t.unsent(unsentCount)}

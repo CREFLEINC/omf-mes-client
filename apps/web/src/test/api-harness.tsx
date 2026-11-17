@@ -8,7 +8,7 @@ import {
   type RenderResult,
 } from '@testing-library/react';
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
+import { MemoryRouter, RouterProvider, createMemoryRouter, parsePath } from 'react-router';
 
 import { ApiClientProvider } from '../patterns/api-context';
 import { sessionKeys, type Session } from '../patterns/session';
@@ -62,6 +62,8 @@ export interface ProviderOptions {
   fetch?: StubFetch;
   /** 초기 URL. 조회 조건을 URL로 두는 화면의 시작 상태를 정한다. */
   route?: string;
+  /** 초기 URL 에 실어 온 이동 상태(`navigate(path, { state })`) — 다른 화면에서 넘겨받아 여는 화면을 잰다. */
+  routeState?: unknown;
   /**
    * 로그인 상태를 **이미 아는 채로** 시작한다. `null`이면 로그인하지 않은 상태다.
    *
@@ -153,7 +155,15 @@ const createEnvironment = (options: ProviderOptions): TestEnvironment => {
               {children}
             </DataRouterProvider>
           ) : (
-            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+            <MemoryRouter
+              initialEntries={[
+                options.routeState === undefined
+                  ? route
+                  : { ...parsePath(route), state: options.routeState },
+              ]}
+            >
+              {children}
+            </MemoryRouter>
           )}
         </ToastProvider>
       </ApiClientProvider>

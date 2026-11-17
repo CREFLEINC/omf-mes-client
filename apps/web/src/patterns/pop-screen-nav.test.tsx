@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from './pop-identity';
-import { PopScreenNav } from './pop-screen-nav';
+import { POP_SCREENS } from './pop-screen-catalog';
+import { PopScreenNav, destinationOf } from './pop-screen-nav';
 import { POP_WORK_COUNT_INTERVAL_MS } from './pop-work-counts';
 
 type TerminalWorkCounts = components['schemas']['TerminalWorkCounts'];
@@ -69,6 +70,16 @@ const setup = (
         {
           match: (request) => new URL(request.url).pathname === '/production/work-orders/7801',
           respond: () => jsonResponse({ workOrderId: 7801, workOrderNo: 'WO-SYN-7801' }),
+        },
+        {
+          /* 단말에 열린 W/O 가 아니면(마감 등) 서버는 상세를 401 로 거절한다 — 단말 읽기 규칙. */
+          match: (request) => new URL(request.url).pathname === '/production/work-orders/7803',
+          respond: () => jsonResponse({ message: '단말 인증 범위 밖입니다.' }, { status: 401 }),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/production/work-orders/7802',
+          respond: () =>
+            jsonResponse({ workOrderId: 7802, workOrderNo: 'WO-SYN-7802', statusCode: 'CLOSED' }),
         },
         {
           match: (request) => new URL(request.url).pathname === '/app/terminal-work-counts',
@@ -163,6 +174,19 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(screen.getByText('지금: /pop/rework-results')).toBeInTheDocument();
   });
 
+  it('[새로고침]은 화면을 다시 읽지 않고 자료만 다시 받는다', async () => {
+    const user = userEvent.setup();
+    const { counted } = setup({ route: '/pop/material-input?workOrderId=7801' });
+    await waitFor(() => expect(counted).toHaveLength(1));
+
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(messages.popChrome.refresh, 'u') }),
+    );
+
+    await waitFor(() => expect(counted).toHaveLength(2));
+    expect(screen.getByText('지금: /pop/material-input?workOrderId=7801')).toBeInTheDocument();
+  });
+
   it('[홈]을 누르면 홈으로 간다', async () => {
     const user = userEvent.setup();
     setup();
@@ -207,6 +231,26 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(within(steps).getByRole('button', { name: /자재 투입/u })).toBeDisabled();
     expect(within(steps).getByRole('button', { name: /생산 작업/u })).toBeDisabled();
     expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled();
+  });
+
+  it('마감된 W/O 에서는 작업 중 화면 버튼이 잠긴다', async () => {
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7802' });
+    await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
+    expect(await screen.findByText('WO-SYN-7802')).toBeInTheDocument();
+  });
+
+  it('서버가 열린 W/O 로 보이지 않는(401) W/O 에서도 작업 중 화면 버튼이 잠긴다', async () => {
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7803' });
+    await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
+  });
+
+  it('열린 W/O 에서는 작업 중 화면 버튼이 열린다', async () => {
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7801' });
+    expect(await screen.findByText('WO-SYN-7801')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '작업 중단' })).toBeEnabled();
   });
 
   it('묶음·탭에 남은 수가 붙고 숨은 글이 실제 수를 읽는다', async () => {
@@ -321,5 +365,31 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
     expect(
       screen.queryByRole('button', { name: messages.popChrome.userSwitch }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('destinationOf — 화면으로 가는 주소', () => {
+  const screenAt = (path: string) => {
+    const found = POP_SCREENS.find((candidate) => candidate.path === path);
+    if (found === undefined) throw new Error(`목록에 없는 화면: ${path}`);
+    return found;
+  };
+
+  it('작업 단계·작업 중 화면은 W/O 없이 가면 작업 지시 목록으로 보낸다(홈 바로가기·남은 작업)', () => {
+    expect(destinationOf(screenAt('/pop/material-input'), '')).toBe('/pop/work-start');
+    expect(destinationOf(screenAt('/pop/work-hold'), '?workOrderId=')).toBe('/pop/work-start');
+  });
+
+  it('W/O 를 들고 있으면 그 W/O 를 실어 간다', () => {
+    expect(destinationOf(screenAt('/pop/material-input'), '?workOrderId=7801')).toBe(
+      '/pop/material-input?workOrderId=7801',
+    );
+  });
+
+  it('작업 흐름 밖의 화면은 W/O 와 상관없이 그 화면으로 간다', () => {
+    expect(destinationOf(screenAt('/pop/work-start'), '')).toBe('/pop/work-start');
+    expect(destinationOf(screenAt('/pop/emergency-work-orders'), '?workOrderId=7801')).toBe(
+      '/pop/emergency-work-orders',
+    );
   });
 });

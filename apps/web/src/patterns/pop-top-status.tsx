@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
  */
 export const PopTopStatusTarget = createContext<HTMLElement | null | undefined>(undefined);
 
-export const PopTopStatus = ({ children }: { children: ReactNode }) => {
+export const PopTopStatus = ({ children }: { children: ReactNode }): ReactNode => {
   const target = useContext(PopTopStatusTarget);
 
   if (target === undefined) return <>{children}</>;
@@ -28,7 +28,7 @@ export const PopTopStatus = ({ children }: { children: ReactNode }) => {
  */
 export const PopTopPrinterTarget = createContext<HTMLElement | null | undefined>(undefined);
 
-export const PopTopPrinter = ({ children }: { children: ReactNode }) => {
+export const PopTopPrinter = ({ children }: { children: ReactNode }): ReactNode => {
   const target = useContext(PopTopPrinterTarget);
 
   if (target === undefined) return <>{children}</>;

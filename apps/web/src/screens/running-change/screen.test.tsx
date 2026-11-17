@@ -341,9 +341,7 @@ describe('러닝체인지 화면 — 읽기', () => {
 
     await screen.findByRole('heading', { name: t.title });
     expect(screen.queryByText(`W/O ${String(WORK_ORDER_ID)}`)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업으로' })).not.toBeInTheDocument();
   });
 
   it('작업지시 없이 들어오면 [생산 작업으로]를 두지 않는다', async () => {
@@ -355,9 +353,7 @@ describe('러닝체인지 화면 — 읽기', () => {
     );
 
     expect(await screen.findByText(t.header.workOrderMissing)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업으로' })).not.toBeInTheDocument();
   });
 
   /* 세션은 「어느 구간에 매다는가」이지 「열 수 있는가」가 아니다(§6). */
@@ -366,7 +362,7 @@ describe('러닝체인지 화면 — 읽기', () => {
     renderScreen({ noSession: true });
 
     expect(await screen.findByText(t.current.moldNoSession)).toBeInTheDocument();
-    expect(screen.queryByText(t.header.sessionNone)).not.toBeInTheDocument();
+    expect(screen.queryByText('세션 없음')).not.toBeInTheDocument();
   });
 
   /*
