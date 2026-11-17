@@ -23,7 +23,7 @@ export const workerAssignment = {
     tokenLabel: '단말 토큰',
     tokenPlaceholder: '단말 토큰 입력',
     paste: '붙여넣기',
-    clear: '지우기',
+    clear: '다시 입력',
     verify: '단말 등록',
     verifying: '확인하는 중…',
     /** 검증 200 뒤 확인 단계의 제목(omf-all-around#288). */

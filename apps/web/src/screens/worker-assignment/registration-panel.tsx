@@ -213,7 +213,7 @@ export const RegistrationPanel = () => {
             <div className="pop-registration__actions">
               <Button
                 size="xl"
-                variant="text"
+                variant="outlined"
                 onClick={() => setToken('')}
                 disabled={busy || token === ''}
               >

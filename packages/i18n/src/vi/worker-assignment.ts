@@ -10,7 +10,7 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     tokenLabel: 'Token máy trạm',
     tokenPlaceholder: 'Nhập token máy trạm',
     paste: 'Dán',
-    clear: 'Xóa',
+    clear: 'Nhập lại',
     verify: 'Đăng ký máy trạm',
     verifying: 'Đang kiểm tra…',
     confirmHeading: 'Xác nhận đăng ký máy trạm',
