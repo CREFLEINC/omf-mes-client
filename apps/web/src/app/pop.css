@@ -3222,6 +3222,50 @@
 }
 
 /*
+ * ⭐ **세로가 모자라면 화면 본문이 통째로 굴러간다**(클릭 점검 2026-11-17 · #291).
+ *    위 「제 안에서 줄인다」만으로는 POP 탭 줄이 생긴 뒤 구간의 종료 시각·사유의 비고 칸이 각 구획
+ *    스크롤 뒤로 숨었다(실측 — 구획 ①②가 80·96px 씩 감춰졌다). 입력 구획은 줄이지 않고 제 키를
+ *    지키게 두고, 본문이 굴러가며, 저장 단추 줄은 바닥에 붙어 늘 보인다.
+ */
+.pop-frame .pop-ui.downtime-screen {
+  overflow-y: auto;
+}
+
+.pop-frame .pop-ui.downtime-screen > .pop-fixed.downtime-pane {
+  flex-shrink: 0;
+}
+
+.pop-frame .pop-ui.downtime-screen > .pop-fixed.downtime-today {
+  flex-shrink: 0;
+  min-height: 180px;
+}
+
+/*
+ * 작업 중단·툴 사용실적도 같은 방식이다(클릭 점검 2026-11-17 · #291) — 단계 줄이 선 뒤 세로가 모자라
+ * 이벤트 이력이 제목만 남고(43px) 비고 칸·키패드가 구획 스크롤 뒤로 숨었다. 본문 묶음에 `pop-fixed` 를
+ * 달아 구획이 제 키를 지키고, 본문이 굴러가며, 단추 줄은 바닥에 붙는다.
+ */
+.pop-frame .pop-ui:has(> .pop-panes > .pop-hold-column),
+.pop-frame .pop-ui.tool-usage-screen {
+  overflow-y: auto;
+}
+
+.pop-frame .pop-ui:has(> .pop-panes > .pop-hold-column) > .pop-actions,
+.pop-frame .pop-ui.tool-usage-screen > .pop-actions {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--space-4));
+  z-index: 1;
+  background: var(--surface);
+}
+
+.pop-frame .pop-ui.downtime-screen > .downtime-actions {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--space-4));
+  z-index: 1;
+  background: var(--surface);
+}
+
+/*
  * ⭐ **모자란 높이는 ④ 가 «먼저» 낸다.**
  *
  * 이 화면에서 손이 가는 곳은 ①②③ 이고 ④ 는 방금 적은 것을 견주어 보는 자리다. 셋이 고르게
@@ -10422,7 +10466,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  block-size: 44px;
+  /* 단추가 띠 위 끝에 붙지 않게 위아래를 띄운다(사용자 지시 2026-11-17). */
+  block-size: 56px;
   padding: 0 var(--space-3) 0 var(--space-5);
   color: var(--pop-nav-band-text);
   white-space: nowrap;
@@ -10785,6 +10830,11 @@
 
 /* 머리줄 아래 띄우던 자기 위 여백 — 머리줄이 접혀 그릇 위 여백(16)과 겹쳐 32 가 됐다. */
 /* 프린터 칸이 맨 위 줄로 옮겨 가(#291) 창고 칸 하나만 남는다 — 전체 폭을 쓴다. */
+/* 화면 맨 위 안내 문장은 줄어들지 않는다 — 세로가 모자랄 때 글자 위아래가 잘렸다(PQC 클릭 점검 2026-11-17). */
+.pop-frame .pop-ui > .field-note {
+  flex-shrink: 0;
+}
+
 .pop-frame .pop-ui > .pop-loclabel-top {
   grid-template-columns: minmax(0, 1fr);
   margin-block-start: 0;
@@ -11337,6 +11387,14 @@
   gap: var(--space-2);
   margin-inline-start: var(--space-3);
   vertical-align: middle;
+}
+
+/* 생산 작업은 품목 이름이 길다 — W/O·공정을 이름 아래 줄로 내려 잘리지 않게 한다(클릭 점검 2026-11-17). */
+.pop-ui .production-work-head .pop-pane-context {
+  display: flex;
+  flex-wrap: wrap;
+  margin-block-start: var(--space-1);
+  margin-inline-start: 0;
 }
 
 .pop-pane-context__process {

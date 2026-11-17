@@ -33,7 +33,7 @@ export const popOqcInspection = {
   detail: {
     paneLabel: '판정',
     nothingSelectedTitle: '의뢰를 선택하세요',
-    nothingSelected: '왼쪽 판정 대기 목록에서 의뢰를 누르면 여기에서 판정합니다.',
+    nothingSelected: '왼쪽 목록에서 의뢰를 누르면 여기에 내용이 보입니다.',
     loading: '의뢰 정보를 불러오는 중입니다.',
     fields: {
       inspectionType: '검사 유형',

@@ -31,7 +31,7 @@ const Here = () => {
 const EQUIPMENT = { equipmentId: 31, equipmentCode: 'EQ-31', equipmentName: '조립 1호기' };
 
 /** 상태별 W/O 수 — `/production/work-orders` 가 `page.total` 로 답한다. */
-const TOTALS: Record<string, number> = { IN_PROGRESS: 1, RELEASED: 5, COMPLETED: 3 };
+const TOTALS: Record<string, number> = { IN_PROGRESS: 1, RELEASED: 5, 'COMPLETED,CLOSED': 3 };
 
 const NEXT = {
   workOrderId: 77,
@@ -162,12 +162,12 @@ describe('PopHomeScreen — 홈(#291)', () => {
      * 묻는다 — POP 단말은 그 두 길로만 목록을 읽는다(서버 단말 읽기 규칙 · #291).
      */
     expect(queries.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
-      'COMPLETED',
+      'COMPLETED,CLOSED',
       'IN_PROGRESS',
       'RELEASED',
     ]);
     for (const url of queries) {
-      const done = url.searchParams.get('statusCode') === 'COMPLETED';
+      const done = url.searchParams.get('statusCode') === 'COMPLETED,CLOSED';
       expect(url.searchParams.get('open')).toBe(done ? null : 'true');
       if (done) expect(url.searchParams.get('updatedSince')).not.toBeNull();
       expect(url.searchParams.get('plannedEquipmentId')).toBe('31');

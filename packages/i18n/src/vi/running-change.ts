@@ -6,7 +6,6 @@ export const runningChange: Translated<typeof ko.runningChange> = {
   title: 'Running change - Thay linh kiện',
 
   header: {
-    workOrder: (workOrderId: number) => `W/O ${workOrderId}`,
     workOrderMissing: 'Không nhận được lệnh sản xuất nên không tải được vật tư đang đưa vào.',
     session: (workSessionId: number) => `Phiên ${workSessionId}`,
     sessionNone: 'Không có phiên',

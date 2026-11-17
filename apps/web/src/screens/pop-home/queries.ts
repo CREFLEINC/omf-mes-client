@@ -16,11 +16,14 @@ export const HOME_STATUS_INTERVAL_MS = 60_000;
 export interface HomeWorkStatus {
   inProgress: number;
   waiting: number;
-  /** 오늘(단말 시계의 0시 이후) 완료로 갱신된 작업지시 수. */
+  /** 오늘(단말 시계의 0시 이후) 끝난(완료·마감) 작업지시 수. */
   done: number;
   /** 계획 시작이 가장 이른 대기(배포됨) 작업지시. 없으면 `null`. */
   next: WorkOrder | null;
 }
+
+/** 끝난 W/O — 완료와 마감(쉼표 나열은 목록 조회가 받는 형식이다). */
+const FINISHED = 'COMPLETED,CLOSED';
 
 /** 단말 시계로 오늘 0시(ISO). 단말은 공장 시간대로 맞춰 둔다. */
 const startOfToday = (): string => {
@@ -31,7 +34,7 @@ const startOfToday = (): string => {
 const countOf = (
   client: Client,
   equipmentId: number | null,
-  statusCode: 'IN_PROGRESS' | 'RELEASED' | 'COMPLETED',
+  statusCode: 'IN_PROGRESS' | 'RELEASED' | typeof FINISHED,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
     client.GET('/production/work-orders', {
@@ -41,7 +44,7 @@ const countOf = (
            * POP 단말은 열린 W/O(`open=true`)만 읽는다. 완료만은 «최근 갱신분»(`updatedSince` 48시간 안)으로
            * 읽는다(서버 단말 읽기 규칙 · #291) — 오늘 0시 이후 완료로 바뀐 것을 센다.
            */
-          ...(statusCode === 'COMPLETED' ? { updatedSince: startOfToday() } : { open: true }),
+          ...(statusCode === FINISHED ? { updatedSince: startOfToday() } : { open: true }),
           statusCode,
           /* 작업 지시 목록(P-02-01)의 기본 목록과 같은 설비 축 — 설비 미정 W/O 도 이 설비에서 시작할 수 있다. */
           ...(equipmentId === null
@@ -60,7 +63,8 @@ const countOf = (
  * 홈 「오늘 작업 현황」(#291 확정 시안) — 진행 중 · 대기 수와 다음 작업.
  *
  * ⭐ 서버가 세어 준 수(`page.total`)만 쓴다 — 화면이 목록을 받아 세면 쪽 단위라 실제보다 적다.
- * ⭐ 완료는 「오늘 0시 이후 완료로 갱신된 W/O」 수다 — 서버가 단말에 최근 48시간 완료분만 열어 준다(#291).
+ * ⭐ 완료는 「오늘 0시 이후 끝난(완료·마감) W/O」 수다 — 현장의 [작업지시 마감]은 W/O 를 바로 마감(CLOSED)으로
+ *    보내므로 둘을 함께 센다. 서버가 단말에 최근 48시간 끝난 것만 열어 준다(#291).
  * ⭐ 설비가 없는 단말은 「전체 설비」로 센다(작업 지시 목록의 「전체 설비」와 같은 축) — 화면이 그렇다고 적는다.
  * ⚠ 등록 정보를 받기 전(`enabled=false`)에는 묻지 않는다 — 설비를 몰라 전체로 세는 일을 막는다.
  */
@@ -78,7 +82,7 @@ export const useHomeWorkStatus = (
       const [inProgress, waiting, done] = await Promise.all([
         countOf(client, equipmentId, 'IN_PROGRESS'),
         countOf(client, equipmentId, 'RELEASED'),
-        countOf(client, equipmentId, 'COMPLETED'),
+        countOf(client, equipmentId, FINISHED),
       ]);
       return {
         inProgress: inProgress.page.total,

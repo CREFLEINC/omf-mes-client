@@ -6,7 +6,6 @@ export const toolUsage: Translated<typeof ko.toolUsage> = {
   title: 'Nhập kết quả sử dụng công cụ',
 
   entry: {
-    workOrderLabel: 'W/O',
     /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
     equipmentLabel: (code: string, name: string): string =>
       `Thiết bị ${name.trim() === '' ? code : name}`,

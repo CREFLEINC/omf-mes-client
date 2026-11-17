@@ -159,8 +159,10 @@ export const materialIssueRequest = {
     shortTitle: '남은 수량보다 많습니다',
     shortBody: '요청하면 남은 수량까지만 출고되고 나머지는 부족으로 남습니다.',
     blockedTitle: '남은 수량이 없어 요청할 수 없습니다',
-    blockedBody: '이 사유로는 남은 수량까지만 요청할 수 있습니다. 긴급 대응이나 부족 보충만 다른 요청의 예정분을 가져갈 수 있습니다.',
-    noStockedBody: '재고 있는 생산 창고가 없는 자재가 있어 요청할 수 없습니다. 생산 창고를 채운 뒤 요청하세요.',
+    blockedBody:
+      '이 사유로는 남은 수량까지만 요청할 수 있습니다. 긴급 대응이나 부족 보충만 다른 요청의 예정분을 가져갈 수 있습니다.',
+    noStockedBody:
+      '재고 있는 생산 창고가 없는 자재가 있어 요청할 수 없습니다. 생산 창고를 채운 뒤 요청하세요.',
     tableLabel: '넘는 품목',
     columns: {
       item: '품목',

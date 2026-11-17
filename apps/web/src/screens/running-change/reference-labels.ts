@@ -149,6 +149,7 @@ export const useReferenceLabels = (
     describeItem: (itemId) => itemCodes.get(itemId) ?? String(itemId),
     describeLot: (lotId) => lotNos.get(lotId) ?? String(lotId),
     describeUom: (uomId) => uoms.data?.get(uomId)?.code ?? '',
-    allowsDecimal: (uomId) => (uomId === null ? false : (uoms.data?.get(uomId)?.decimalScale ?? 0) > 0),
+    allowsDecimal: (uomId) =>
+      uomId === null ? false : (uoms.data?.get(uomId)?.decimalScale ?? 0) > 0,
   };
 };

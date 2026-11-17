@@ -309,7 +309,7 @@ export const WorkHoldRegisterScreen = () => {
           </div>
         )}
 
-      <div className="pop-panes">
+      <div className="pop-panes pop-fixed">
         <div className="pop-hold-column">
           {/*
            * ⛔ **실패했을 때 「세션이 없습니다」를 함께 말하지 않는다.** 조회가 실패하면 세션은

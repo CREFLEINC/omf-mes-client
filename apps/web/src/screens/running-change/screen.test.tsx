@@ -339,7 +339,8 @@ describe('러닝체인지 화면 — 읽기', () => {
       { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE },
     );
 
-    expect(await screen.findByText(t.header.workOrder(WORK_ORDER_ID))).toBeInTheDocument();
+    await screen.findByRole('heading', { name: t.title });
+    expect(screen.queryByText(`W/O ${String(WORK_ORDER_ID)}`)).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
     ).not.toBeInTheDocument();

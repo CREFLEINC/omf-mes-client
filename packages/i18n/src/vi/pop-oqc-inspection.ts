@@ -25,7 +25,7 @@ export const popOqcInspection = {
   detail: {
     paneLabel: 'Phán định',
     nothingSelectedTitle: 'Hãy chọn yêu cầu',
-    nothingSelected: 'Chạm vào một yêu cầu trong danh sách bên trái để phán định tại đây.',
+    nothingSelected: 'Chạm vào một yêu cầu trong danh sách bên trái để xem tại đây.',
     loading: 'Đang tải thông tin yêu cầu.',
     fields: {
       inspectionType: 'Loại kiểm tra',

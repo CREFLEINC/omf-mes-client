@@ -18,7 +18,11 @@ export const lotGenealogy = {
     lotsCaption: 'LOT sản xuất đã dùng',
     serialsCaption: 'Số sê-ri đã dùng',
     lotColumns: { lotNo: 'LOT sản xuất', workOrderNo: 'Lệnh sản xuất' },
-    serialColumns: { serialNo: 'Số sê-ri', lotNo: 'LOT sản xuất', producedAt: 'Thời điểm sản xuất' },
+    serialColumns: {
+      serialNo: 'Số sê-ri',
+      lotNo: 'LOT sản xuất',
+      producedAt: 'Thời điểm sản xuất',
+    },
     serialRange: (from: number, to: number, total: number): string =>
       `${from}–${to} / ${total} số sê-ri`,
     prev: 'Số sê-ri trước',

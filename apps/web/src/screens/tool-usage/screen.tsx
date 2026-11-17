@@ -98,10 +98,12 @@ export const ToolUsageScreen = () => {
   const entry = usePopEntry();
   /* ⭐ 작업지시가 없으면 입력란·키패드를 잠근다(사용자 지시 2026-09-17) — 넣어도 저장할 곳이 없다. */
   const inputLocked = entry.workOrderId === null;
-  /* ⭐ 도면 머리줄 「W/O · 설비」의 설비는 단말이 준다(`PopIdentity.equipment` · 사용자 지시 2026-09-14). */
+  /*
+   * ⭐ 머리줄에는 설비만 둔다. 설비는 단말이 준다(`PopIdentity.equipment` · 사용자 지시 2026-09-14).
+   *    W/O 번호는 단계 줄 오른쪽에 보인다(#291) — 여기 있던 「W/O <내부 id>」는 번호가 아니라 지웠다.
+   */
   const { equipment } = usePopIdentity();
   const headerContext = [
-    entry.workOrderId === null ? null : `${t.entry.workOrderLabel} ${String(entry.workOrderId)}`,
     equipment === null || equipment.equipmentCode === null || equipment.equipmentCode.trim() === ''
       ? null
       : t.entry.equipmentLabel(equipment.equipmentCode, equipment.equipmentName ?? ''),
@@ -470,7 +472,7 @@ export const ToolUsageScreen = () => {
          * 도면의 위아래가 왼쪽·오른쪽이 될 뿐 순서와 내용은 그대로다. 설계 회신이 오면 그때
          * 정한 대로 되돌린다(요청서 2026-09-07-설계개선-P0501세로예산).
          */}
-        <div className="pop-panes tool-usage-body">
+        <div className="pop-panes pop-fixed tool-usage-body">
           {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
           <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
             <Card.Body>

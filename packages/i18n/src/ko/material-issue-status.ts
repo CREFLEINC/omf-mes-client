@@ -191,7 +191,8 @@ export const materialIssueStatus = {
     saved: '요청을 저장했습니다. 출고 예정을 맞췄습니다',
     releasedNow: (date: string): string => `출고 작업일을 ${date}로 바꾸고 바로 배포했습니다`,
     dateChanged: (date: string): string => `출고 작업일을 ${date}로 바꿨습니다`,
-    cancelled: (requestNo: string): string => `${requestNo} 를 취소했습니다. 출고 예정을 풀었습니다`,
+    cancelled: (requestNo: string): string =>
+      `${requestNo} 를 취소했습니다. 출고 예정을 풀었습니다`,
   },
   errors: {
     /** 400 `sourceWarehouseId` INVALID(서버 S9) — 라인 담당 부서의 생산 창고가 아니다. */

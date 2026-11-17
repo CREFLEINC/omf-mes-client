@@ -254,7 +254,7 @@ export const RunningChangeScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {workOrderId !== null && <p className="pop-context">{t.header.workOrder(workOrderId)}</p>}
+        {/* W/O 번호는 단계 줄 오른쪽에 보인다(#291) — 여기 있던 「W/O <내부 id>」는 번호가 아니라 지웠다. */}
 
         {/*
          * 세션은 있을 때만 W/O 옆에 적는다 — 「세션 없음」 줄은 두지 않는다(사용자 지시 2026-11-17 · #291).
