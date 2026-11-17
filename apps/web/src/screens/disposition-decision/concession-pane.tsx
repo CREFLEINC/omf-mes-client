@@ -154,6 +154,7 @@ export const ConcessionRequestDialog = ({
   const fromFieldId = useId();
   const toFieldId = useId();
   const noteId = useId();
+  const titleId = useId();
   const blockedId = useId();
   const { client } = useApiClient();
   const todayText = toBusinessDate(today ?? new Date());
@@ -201,7 +202,18 @@ export const ConcessionRequestDialog = ({
       open
       onClose={() => onClose(false)}
       size="lg"
-      title={t.requestHeading}
+      /* 제목 오른쪽에 설명 라벨 — 창 이름은 제목만 읽힌다(사용자 지시 2026-11-17). */
+      title={
+        <span className="disposition-concession-title">
+          <span id={titleId}>{t.requestHeading}</span>
+          <span className="iqc-inspection-action-note" data-tone="info">
+            <Icon name="info" size={14} aria-hidden />
+            {t.requestNote}
+          </span>
+        </span>
+      }
+      aria-labelledby={titleId}
+      showCloseButton={false}
       closeOnBackdropClick={false}
       footer={
         <>
@@ -224,7 +236,6 @@ export const ConcessionRequestDialog = ({
       }
     >
       <div className="disposition-concession-dialog">
-        <p className="field-note">{t.requestNote}</p>
         <SaveErrorBanner error={requestWrite.error} />
         <div className="disposition-concession-fields">
           <TextField label={t.target} value={t.targetAll(lots.length)} readOnly fullWidth />

@@ -851,51 +851,52 @@ export const DispositionDecisionScreen = ({
                 {pendingConcession !== undefined && (
                   <PendingConcessionBox concession={pendingConcession} lotCount={lotRows.length} />
                 )}
-                <DecisionFormPane
-                  value={form}
-                  errors={showErrors ? errors : write.fieldErrors}
-                  remainingQty={remaining.value}
-                  lockReason={lock.reason}
-                  isUncertain={lock.isUncertain}
-                  onCheckOutcome={checkOutcome}
-                  dispositionOptions={dispositionOptions}
-                  /* 특채가 걸려 있으면 막힘 이유는 위 특채 상자가 한 번만 말한다 — 유형마다 되풀이하지 않는다(omf-all-around#275). */
-                  sharedLockReason={pendingConcession === undefined ? undefined : concessionLock}
-                  concession={{
-                    lockReason: concessionLock,
-                    onRequest: () => {
-                      /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
-                      keepDocumentScroll();
-                      setIsConcessionOpen(true);
-                    },
-                  }}
-                  lots={lotRows}
-                  inboundLotNo={detailView?.inboundLotNo}
-                  inspectionRequestNo={detailView?.inspectionRequestNo}
-                  uomId={uomId}
-                  uoms={uoms}
-                  writeError={write.error}
-                  isSaving={write.isSaving}
-                  canCancel={hasDecisionInput(form)}
-                  onChange={(next) => {
-                    /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                    if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                      write.clearFieldError('dispositionTypeCode');
-                    if (next.reason !== form.reason) write.clearFieldError('reason');
-                    if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
-                    if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
-                    if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
-                    setForm(next);
-                  }}
-                  onSave={save}
-                  onCancel={() => {
-                    setForm(EMPTY_DECISION_FORM);
-                    setShowErrors(false);
-                    /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                    write.reset();
-                  }}
-                  onReload={checkOutcome}
-                />
+                {/* 특채가 걸려 있으면(결재 대기 · 승인 · 반려, 적용 전) 처분 판정을 할 수 없다 — 입력 칸을 두지 않고 위 상자만 보인다(사용자 지시 2026-11-17). */}
+                {pendingConcession === undefined && (
+                  <DecisionFormPane
+                    value={form}
+                    errors={showErrors ? errors : write.fieldErrors}
+                    remainingQty={remaining.value}
+                    lockReason={lock.reason}
+                    isUncertain={lock.isUncertain}
+                    onCheckOutcome={checkOutcome}
+                    dispositionOptions={dispositionOptions}
+                    concession={{
+                      lockReason: concessionLock,
+                      onRequest: () => {
+                        /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
+                        keepDocumentScroll();
+                        setIsConcessionOpen(true);
+                      },
+                    }}
+                    lots={lotRows}
+                    inboundLotNo={detailView?.inboundLotNo}
+                    inspectionRequestNo={detailView?.inspectionRequestNo}
+                    uomId={uomId}
+                    uoms={uoms}
+                    writeError={write.error}
+                    isSaving={write.isSaving}
+                    canCancel={hasDecisionInput(form)}
+                    onChange={(next) => {
+                      /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                      if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                        write.clearFieldError('dispositionTypeCode');
+                      if (next.reason !== form.reason) write.clearFieldError('reason');
+                      if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
+                      if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
+                      if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
+                      setForm(next);
+                    }}
+                    onSave={save}
+                    onCancel={() => {
+                      setForm(EMPTY_DECISION_FORM);
+                      setShowErrors(false);
+                      /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                      write.reset();
+                    }}
+                    onReload={checkOutcome}
+                  />
+                )}
                 {result !== null && result.nonconformanceId === selectedId && (
                   <DecisionResultCard
                     result={result.result}
