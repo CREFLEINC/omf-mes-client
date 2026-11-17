@@ -12,7 +12,7 @@
  *    라인이 여럿일 때 어느 줄의 QR 인지 사람이 가린다.
  *
  * ⛔ **접두어를 뗄 수 없다.** 이것이 「출고 QR 인가」를 가리는 유일한 표식이다. 자재 LOT QR 은
- *    접두어 없이 LOT 번호 원문만 담으므로(`pop-material-lot-label/label-tspl.ts` 의 `QRCODE`),
+ *    접두어 없이 LOT 번호 원문만 담으므로(`patterns/label/lot-label-tspl.ts` 의 `QRCODE`),
  *    접두어가 없으면 둘을 가릴 수 없고 모바일이 LOT 번호를 출고번호로 읽는다.
  *
  * ⚠ **같은 양식을 모바일도 안다**(`apps/mobile/src/screens/shopfloor-receipt/qr-payload.ts`).

@@ -35,7 +35,7 @@ import { toTsplBitmap } from '../../patterns/label/tspl-bitmap';
 import { drawLabelText, fitLabelText } from '../../patterns/label/text';
 
 /*
- * 안전 여백 — `pop-material-lot-label/label-tspl` 의 LEFT·RIGHT·TOP·BOTTOM 과 같은 값이다.
+ * 안전 여백 — `patterns/label/lot-label-tspl` 의 LEFT·RIGHT·TOP·BOTTOM 과 같은 값이다.
  * ⛔ HT800 이 오른쪽·아래로 치우쳐 찍어 맞춘 값이라 늘리거나 줄이지 않는다.
  */
 const LEFT = mm(1.5);

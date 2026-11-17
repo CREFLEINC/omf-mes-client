@@ -7,34 +7,9 @@
  * ⭐ 005 — 옛 「LOT 등록」(입하 원천 `POST /trace/lots`)의 원천 · 번호 · LOT 유형 코드는 걷었다. LOT 은 발행 묶음이
  *    만든다(계약 §1).
  *
- * | 값 | 상태 | 근거 |
- * | --- | :-: | --- |
- * | `DOCUMENT_TYPE_CODE` | ⚠ **자리표시** | 착수 이슈 #139 §4 · `omf-mes#145` |
- * | `DOCUMENT_TARGET_TYPE_CODE` | ⚠ **자리표시** | 계약 `DocumentTarget.targetTypeCode` · `omf-mes#145` |
+ * ⭐ 008 — 발행 기록의 문서 유형·대상 코드(`DOCUMENT_TYPE_CODE` 등, ⚠ 자리표시)는 분할 LOT 라벨(P-01-02)과 함께
+ *    쓰므로 `patterns/material-lot-label-print` 로 옮겼다(omf-all-around#289).
  */
-
-/**
- * ⚠ **자리표시다.** 「자재LOT 라벨」을 뜻하는 문서 유형 코드 문자열이 아직 정해지지 않았다
- * (`omf-mes#145` — 업무 코드 51종의 값 목록 확정 대기).
- *
- * 착수 이슈 #139 §4 가 이 항목의 처리 방법을 **「자리표시 상수 + 안내」**로 지정했다. 값이
- * 확정되면 이 줄 하나만 바꾼다 — 화면·요청 조립 코드는 건드릴 것이 없다.
- */
-export const DOCUMENT_TYPE_CODE = 'MATERIAL_LOT_LABEL';
-
-/**
- * IQC 라벨(omf-all-around#110 · 서버 선행 P-40). IQC 대상 자재면 자재 라벨 뒤에 한 장 더 찍는다.
- * ⚠ 설계 사본(전달본)의 enum 에 아직 없는 값이라 단언한다 — 사본이 받아 오면 단언을 걷는다.
- */
-export const IQC_DOCUMENT_TYPE_CODE = 'IQC_LABEL' as unknown as typeof DOCUMENT_TYPE_CODE;
-
-/**
- * ⚠ **자리표시다.** 발행 대상이 LOT 임을 뜻하는 코드 문자열이 아직 정해지지 않았다 — 계약
- * `DocumentTarget.targetTypeCode` 가 「값 문자열은 아직 확정되지 않았다」로 명시한다.
- *
- * 위와 같은 이유로 이 줄 하나만 바꾸면 된다.
- */
-export const DOCUMENT_TARGET_TYPE_CODE = 'LOT';
 
 /**
  * 재발행 사유 값 목록을 받는 코드 그룹.

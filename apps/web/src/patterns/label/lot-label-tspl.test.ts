@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBitmap, type LabelBitmap } from '../../patterns/label/bitmap';
+import { createBitmap, type LabelBitmap } from './bitmap';
 import {
   buildLotLabel,
   buildLotLabelBytes,
@@ -13,7 +13,7 @@ import {
   type LotLabelRasterizer,
   type MaterialLotLabelFields,
   type MaterialLotLabelLayout,
-} from './label-tspl';
+} from './lot-label-tspl';
 
 /** 합성값이다 — 실 운영 값을 쓰지 않는다(공개 저장소 경계). */
 const FIELDS: MaterialLotLabelFields = {
@@ -386,6 +386,64 @@ describe('buildMaterialLotLabel — TEXT 판', () => {
     expect((itemCode?.x ?? 0) + (itemCode?.width ?? 0)).toBeLessThanOrEqual(
       (seq?.x ?? 0) - GAP_2MM,
     );
+  });
+});
+
+/*
+ * 008 부분 출고 LOT 분할(omf-all-around#289 · plan D-16) — 분할 LOT 번호는 끝 칸이 `0001-S1-S1` 처럼
+ * 길어진다. 라벨 면에서 원래 LOT·형제 분할 LOT 과 가르는 것은 끝 마디라, 넘치면 가운데를 줄인다.
+ */
+describe('layoutMaterialLotLabel — LOT 줄은 가운데를 줄여 끝 번호 칸을 남긴다 (D-16)', () => {
+  /** 합성값 — 42자, 7pt 에서도 칸(414 점)을 넘는다. */
+  const SPLIT_LOT_NO = 'SYN-ITEM-0001|300|261117|100330|0001-S1-S1';
+  const lotLine = (fields: MaterialLotLabelFields) =>
+    layoutMaterialLotLabel(fields).texts.find((line) => line.field === 'lotNo');
+
+  it('US2-2 · D-16 넘치는 분할 LOT 번호는 앞을 줄이고 끝 칸 `|0001-S1-S1` 을 통째로 남긴다', () => {
+    const fields = { ...FIELDS, lotNo: SPLIT_LOT_NO };
+    const line = lotLine(fields);
+
+    expect(line?.point).toBe(7);
+    expect(line?.content).toMatch(/^SYN-ITEM-[^~]*~\|0001-S1-S1$/u);
+    expect((line?.x ?? 0) + (line?.width ?? 0)).toBeLessThanOrEqual(RIGHT_EDGE);
+    expectInside(layoutMaterialLotLabel(fields));
+  });
+
+  it('US2-2 · D-16 앞은 칸이 허락하는 만큼 남긴다 — 한 글자 더 남기면 칸을 넘는다', () => {
+    const layout = layoutMaterialLotLabel({ ...FIELDS, lotNo: SPLIT_LOT_NO });
+    const line = layout.texts.find((each) => each.field === 'lotNo');
+    const head = (line?.content ?? '').split('~')[0] ?? '';
+    const longer = `${SPLIT_LOT_NO.slice(0, head.length + 1)}~|0001-S1-S1`;
+
+    /* 내장 글꼴 폭 어림(글자 수 × pt × 0.5 × 203/72) — 7pt. */
+    expect(Math.ceil(longer.length * 7 * 0.5 * (203 / 72))).toBeGreaterThan(
+      layout.column.right - (line?.x ?? 0),
+    );
+  });
+
+  it('US2-2 · D-16 QR 에는 줄이지 않은 번호 전체가 실린다', () => {
+    const lines = buildMaterialLotLabel({ ...FIELDS, lotNo: SPLIT_LOT_NO }).split('\r\n');
+
+    expect(lines.filter((each) => each.startsWith('QRCODE'))).toEqual([
+      `QRCODE 32,31,M,5,A,0,M2,"${SPLIT_LOT_NO}"`,
+    ]);
+    expect(lines.some((each) => each.endsWith('~|0001-S1-S1"'))).toBe(true);
+  });
+
+  it('US2-2 · D-16 들어가는 번호는 줄이지 않는다 — 원래 LOT 번호 라벨은 그대로다', () => {
+    expect(lotLine(FIELDS)?.content).toBe(FIELDS.lotNo);
+    expect(lotLine({ ...FIELDS, lotNo: 'SYN-ITEM-01|300|261117|100330|0001-S1' })?.content).toBe(
+      'SYN-ITEM-01|300|261117|100330|0001-S1',
+    );
+  });
+
+  it('US2-2 · D-16 끝 칸만으로도 넘치면 끝 글자를 남기고 앞에 ~ 를 둔다', () => {
+    const lotNo = `SYN|${'S1-'.repeat(20)}S9`;
+    const line = lotLine({ ...FIELDS, lotNo });
+
+    expect(line?.content).toMatch(/^~.*-S9$/u);
+    expect(lotNo.endsWith((line?.content ?? '').slice(1))).toBe(true);
+    expectInside(layoutMaterialLotLabel({ ...FIELDS, lotNo }));
   });
 });
 

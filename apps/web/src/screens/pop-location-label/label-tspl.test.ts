@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBitmap, type LabelBitmap } from '../../patterns/label/bitmap';
-import { layoutLotLabel, type LotLabelRasterizer } from '../pop-material-lot-label/label-tspl';
+import { layoutLotLabel, type LotLabelRasterizer } from '../../patterns/label/lot-label-tspl';
 import { buildLocationLabel, buildLocationLabelBytes } from './label-tspl';
 
 const fields = {

@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createBitmap } from '../../patterns/label/bitmap';
 
-import { buildMaterialLotLabel, buildMaterialLotLabelBytes } from './label-tspl';
+import {
+  buildMaterialLotLabel,
+  buildMaterialLotLabelBytes,
+} from '../../patterns/label/lot-label-tspl';
 import { SAMPLE_LOT_LABEL, printSampleLotLabel } from './sample-print';
 
 afterEach(() => {

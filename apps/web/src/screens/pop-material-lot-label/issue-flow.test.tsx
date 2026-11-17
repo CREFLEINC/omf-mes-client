@@ -21,7 +21,7 @@ import {
  * omf-all-around#184). 005 부터 옛 첫 걸음 「LOT 등록」은 없다 — LOT 은 「자재 관리 LOT 만들기」가 이미 만들었다.
  *
  * 여기서 무는 것은 「무엇을 어떤 차례로 보내는가」와 「어디서 멈췄을 때 무엇을 말하고 무엇을 다시 보내는가」다.
- * 본문 조립은 `issue-request.test.ts`, 라벨 배치는 `label-tspl.test.ts` 가 따로 문다.
+ * 본문 조립은 `patterns/material-lot-label-print.test.ts`, 라벨 배치는 `patterns/label/lot-label-tspl.test.ts` 가 따로 문다.
  */
 
 const t = messages.popMaterialLotLabel;

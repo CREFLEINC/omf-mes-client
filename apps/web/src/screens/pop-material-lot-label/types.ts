@@ -103,29 +103,3 @@ export const isWaiting = (lot: LabelLot): boolean => lot.lifecycleStatusCode ===
 
 /** 폐기된 LOT 은 라벨을 찍지 않는다(발행 조건 「생애 `VOIDED` 거절」 · 계약 §1). */
 export const isVoided = (lot: LabelLot): boolean => lot.lifecycleStatusCode === 'VOIDED';
-
-type DocumentIssueResponse = components['schemas']['DocumentIssue'];
-
-/** 인쇄 결과. 계약의 enum 을 그대로 쓴다 — 보고 전에는 `PENDING` 이다. */
-export type PrintOutcome = DocumentIssueResponse['printOutcome'];
-
-/**
- * 화면이 다루는 발행 기록 한 건.
- *
- * **회차(`issueSeq`)는 서버가 매긴다.** ⛔ 화면이 세지 않는다 — 같은 대상을 다른 단말에서도
- * 찍으므로 화면이 센 값은 곧 틀린다(착수 이슈 #139 §6).
- */
-export interface IssueView {
-  documentIssueLogId: number;
-  issueSeq: number;
-  lotNo: string | null;
-  printOutcome: PrintOutcome;
-}
-
-/** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
-export const toIssueView = (data: DocumentIssueResponse): IssueView => ({
-  documentIssueLogId: data.documentIssueLogId,
-  issueSeq: data.issueSeq,
-  lotNo: data.lotNo ?? null,
-  printOutcome: data.printOutcome,
-});
