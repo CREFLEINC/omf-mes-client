@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -126,6 +126,8 @@ interface Options {
   holdReasonsFail?: boolean;
   /** 지시를 이만큼 답한다 - 한 쪽에 담기지 않는 수를 만들어 쪽을 잇는지 재는 자리다. */
   orderCount?: number;
+  /** 출고 확정 응답의 라인 — 부분 출고 분할(008)을 재는 자리다. 비우면 `[]`. */
+  issueLines?: unknown[];
 }
 
 const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
@@ -369,7 +371,7 @@ const mount = (options: Options = {}): Mounted => {
               issuedAt: '2026-09-16T09:00:00+09:00',
               statusCode: 'POSTED',
             },
-            lines: [],
+            lines: options.issueLines ?? [],
           },
           issues,
           req,
@@ -1177,9 +1179,8 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
-   * ⭐ **확정 화면이 출고번호를 보인다**(ISSUE-QR-01 C5). 작업자가 이 번호를 들고 POP(P-01-02)
-   *    으로 가 전표를 불러 출고 QR 을 발행한다 — 번호를 안 보이면 방금 만든 전표를 가리킬
-   *    방법이 없어 관리자 웹을 뒤지거나 사람을 불러야 했다.
+   * ⭐ **확정 화면이 출고번호를 보인다**(ISSUE-QR-01 C5) — 번호를 안 보이면 방금 만든 전표를 가리킬
+   *    방법이 없어 관리자 웹을 뒤지거나 사람을 불러야 했다. (008 부터 출고 QR 은 발행하지 않는다.)
    */
   it('출고를 확정하면 서버가 매긴 출고번호를 보인다', async () => {
     const user = userEvent.setup();
@@ -1205,6 +1206,74 @@ describe('자재 출고·피킹 화면', () => {
 
     await screen.findByText('출고를 전송 대기에 넣었습니다');
     expect(screen.queryByText(new RegExp('출고번호'))).toBeNull();
+  });
+
+  /*
+   * 008 부분 출고 LOT 분할(omf-all-around#289) — 부분 출고한 줄은 서버가 분할 LOT 으로 바꿔 낸다. 떼어 낸 봉지에
+   * 붙일 라벨은 POP(P-01-02)에서 찍으므로, 확정 화면이 그 번호를 안내한다(출고 QR 안내는 없다).
+   */
+  const SPLIT_LOT_NO = 'SYN-MAT-A|120|261117|100330|0001-S1';
+  const ORIGINAL_LOT_NO = 'SYN-MAT-A|1000|261117|100330|0001';
+  const issueLine = (overrides: Record<string, unknown> = {}) => ({
+    goodsIssueLineId: 1,
+    goodsIssueId: 900,
+    lineNo: 1,
+    pickingLineId: 41,
+    itemId: 31,
+    lotId: 12,
+    lotNo: SPLIT_LOT_NO,
+    splitFromLotId: 4,
+    splitFromLotNo: ORIGINAL_LOT_NO,
+    issueQty: 120,
+    uomId: 9,
+    ...overrides,
+  });
+
+  it('Q1 · US1-1 부분 출고로 분할 LOT 이 생기면 확정 배너에 개수와 원래 LOT → 분할 LOT 번호를 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ lines: [line({ pickedQty: 120 })], issueLines: [issueLine()] });
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    expect(await screen.findByText('분할 LOT 1개 — POP 에서 라벨을 찍으세요')).toBeTruthy();
+    const block = screen.getByRole('group', { name: '원래 LOT → 분할 LOT' });
+    expect(within(block).getByText(SPLIT_LOT_NO)).toBeTruthy();
+    expect(within(block).getByText(ORIGINAL_LOT_NO)).toBeTruthy();
+    expect(within(block).getByText('ABC-123')).toBeTruthy();
+    expect(screen.queryByText(/출고 QR/u)).toBeNull();
+  });
+
+  it('Q4 · US1-6 전량 출고뿐이면(분할 없음) 라벨 안내를 붙이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lines: [line({ pickedQty: 120 })],
+      issueLines: [
+        issueLine({ lotNo: LOT_NO, lotId: 4, splitFromLotId: null, splitFromLotNo: null }),
+      ],
+    });
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    await screen.findByText(`출고번호 ${ISSUE_NO}`);
+    expect(screen.queryByText(/분할 LOT/u)).toBeNull();
+  });
+
+  it('Q1 전송 대기로 담긴 출고는 번호 없이 「전송된 뒤 POP 에서 분할 LOT 라벨」만 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ lines: [line({ pickedQty: 120 })], issue: 'offline' });
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
+    expect(
+      screen.getByText(
+        '부분 출고한 라인은 전송된 뒤 분할 LOT 이 생깁니다. 전송된 뒤 POP 에서 분할 LOT 라벨을 찍으세요.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(SPLIT_LOT_NO)).toBeNull();
   });
 
   /*

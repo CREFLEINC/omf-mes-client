@@ -76,6 +76,8 @@ export const LotDetailPane = ({
   const showUsage = !inDialog || detail.data?.lotTypeCode === 'MATERIAL';
   const historyTab: HistoryTab = !showUsage && chosenTab === 'usage' ? 'timeline' : chosenTab;
   /* 투입 이력에서 고른 생산 LOT — 그 LOT 의 상세 이력을 팝업으로 연다(사용자 2026-11-02). */
+  /* 008 — 분할 LOT 의 원래 LOT 을 같은 팝업으로 연다(「원래 LOT 상세 보기」). */
+  const [parentOpen, setParentOpen] = useState(false);
   const [openedLot, setOpenedLot] = useState<{
     lotId: number;
     lotNo: string;
@@ -174,6 +176,11 @@ export const LotDetailPane = ({
                     {labelOf(lotTypeOptions, detail.data.lotTypeCode)}
                   </Chip>
                   {detail.data.lotNo}
+                  {detail.data.split !== null && (
+                    <Chip variant="status" status="idle" size="sm">
+                      {t.detail.split.chip}
+                    </Chip>
+                  )}
                 </span>,
               ],
               [
@@ -221,6 +228,55 @@ export const LotDetailPane = ({
         </dl>
       )}
 
+      {/* 008 — 부분 출고로 떼어 낸 분할 LOT 이면 그 원래 LOT · 분할 수량 · 시각 · 출고. */}
+      {detail.data?.split != null && (
+        <section className="lot-detail-split" aria-label={t.detail.split.label}>
+          <p className="field-note">{t.detail.split.note}</p>
+          <dl className="lot-detail-fields">
+            <div className="lot-detail-field" data-size="wide">
+              <dt className="field-label">{t.detail.split.parent}</dt>
+              <dd>
+                <Button
+                  variant="text"
+                  size="sm"
+                  title={t.detail.split.parentView}
+                  onClick={() => setParentOpen(true)}
+                >
+                  {detail.data.split.parentLotNo}
+                </Button>
+                {/-S\d+$/u.test(detail.data.split.parentLotNo) && (
+                  <Chip variant="status" status="idle" size="sm">
+                    {t.detail.split.parentAlsoSplit}
+                  </Chip>
+                )}
+              </dd>
+            </div>
+            <div className="lot-detail-field" data-size="short">
+              <dt className="field-label">{t.detail.split.qty}</dt>
+              <dd>{withUom(String(detail.data.initialQty), uomCodeOf(detail.data.uomId))}</dd>
+            </div>
+            <div className="lot-detail-field" data-size="short">
+              <dt className="field-label">{t.detail.split.at}</dt>
+              <dd>{formatDateTime(detail.data.split.splitAt)}</dd>
+            </div>
+            {detail.data.split.goodsIssue !== null && (
+              <div className="lot-detail-field" data-size="short">
+                <dt className="field-label">{t.detail.split.issue}</dt>
+                <dd>
+                  {t.detail.split.issueText(
+                    detail.data.split.goodsIssue.goodsIssueNo,
+                    detail.data.split.goodsIssue.lineNo,
+                  )}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
+      {detail.data !== undefined &&
+        detail.data.splitChildCount > 0 &&
+        showUsage &&
+        historyTab === 'usage' && <p className="field-note">{t.detail.split.childrenUsage}</p>}
       {/* 투입 자재 계보(omf-all-around#166) — 생산 LOT 은 들어간 자재, 모든 LOT 은 그 LOT 이 들어간 제품. */}
       {detail.data?.sourceTypeCode === 'WORK_ORDER' && (
         <ProductionLotInputs lotId={lotId} compact={inDialog} />
@@ -262,6 +318,14 @@ export const LotDetailPane = ({
           },
         ]}
       />
+      {parentOpen && detail.data?.split != null && (
+        <LotHistoryDialog
+          lot={{ lotId: detail.data.split.parentLotId, lotNo: detail.data.split.parentLotNo }}
+          lotTypeOptions={lotTypeOptions}
+          statusOptions={statusOptions}
+          onClose={() => setParentOpen(false)}
+        />
+      )}
       {openedLot !== null && (
         <LotHistoryDialog
           lot={openedLot}

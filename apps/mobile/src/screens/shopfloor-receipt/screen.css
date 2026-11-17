@@ -96,3 +96,40 @@
 .shopfloor-receipt__wide {
   width: 100%;
 }
+
+/* 008 — 자재 LOT 라벨로 연 전표: 스캔한 LOT 의 줄을 표시하고, 분할 LOT 줄에는 원래 LOT 을 붙인다. */
+.shopfloor-receipt__found {
+  margin: 0;
+  font-weight: 500;
+}
+
+.shopfloor-receipt__line--hit {
+  border: 2px solid var(--on-surface);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.shopfloor-receipt__split-from,
+.shopfloor-receipt__pick-lot {
+  margin: 0;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--on-surface-muted);
+}
+
+/* 같은 LOT 의 입고 안 된 출고가 여럿 — 고르기. */
+.shopfloor-receipt__pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.shopfloor-receipt__oldest {
+  font-weight: 700;
+}
+
+.shopfloor-receipt__pick-title {
+  font-size: 18px;
+  line-height: 26px;
+}

@@ -9,6 +9,7 @@ const line = (goodsIssueLineId: number): GoodsIssueLine => ({
   lineNo: goodsIssueLineId,
   itemId: 10,
   lotId: 20,
+  lotNo: 'SYN-LOT-20',
   issueQty: 100,
   uomId: 30,
   sourceLocationId: 40,

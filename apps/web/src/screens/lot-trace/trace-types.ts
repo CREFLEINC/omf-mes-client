@@ -34,3 +34,5 @@ export type FlowShipment = Schemas['LotFlowShipment'];
 export type FlowProductSide = Schemas['LotFlowProductSide'];
 export type FlowProductionLot = Schemas['LotFlowProductionLot'];
 export type FlowInputMaterial = Schemas['LotFlowInputMaterial'];
+/** 분할 관계 한 줄(008) — 상대 LOT · 분할 수량 · 시각 · 일으킨 출고 라인. */
+export type FlowSplitLink = Schemas['LotFlowSplitLink'];

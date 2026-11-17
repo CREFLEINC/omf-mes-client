@@ -17,7 +17,7 @@ import {
   productionLot,
   workOrder,
 } from './trace-fixtures';
-import type { FlowShipment } from './trace-types';
+import type { FlowShipment, FlowSplitLink } from './trace-types';
 
 const shipment = (shipmentId: number, hu: string | null, qty: number): FlowShipment => ({
   shipmentId,
@@ -100,5 +100,75 @@ describe('사슬 계산', () => {
       basis: 'LOT_GENEALOGY_ESTIMATE',
       partner: { code: 'SUP-A' },
     });
+  });
+});
+
+/* 008 부분 출고 LOT 분할(omf-all-around#289) — 추적 내보내기에 분할 줄을 싣는다. */
+describe('분할 줄 (008)', () => {
+  const ROOT = 'ITEM-A|1000|261023|SUP-A|0001';
+  const SPLIT = 'ITEM-A|300|261023|SUP-A|0001-S1';
+  const NESTED = 'ITEM-A|120|261023|SUP-A|0001-S1-S1';
+  const link = (lotId: number, lotNo: string, qty: number): FlowSplitLink => ({
+    relationTypeCode: 'SPLIT',
+    lot: { ...forwardChain(lotId, lotNo, []).lot },
+    qty,
+    uomCode: 'KG',
+    splitAt: '2026-11-17T01:40:00Z',
+    goodsIssue: { goodsIssueId: 7, goodsIssueNo: 'GI-SYN-0003', goodsIssueLineId: 9, lineNo: 1 },
+  });
+  const notes = { split: () => '분할 (GI-SYN-0003 · 라인 1)', rootInbound: '원래 LOT 의 입하' };
+
+  it('US4-2 원래 LOT 은 분할 LOT 줄을 자손 깊이대로, W/O 는 경유 LOT 을 싣는다', () => {
+    const chain = {
+      ...forwardChain(101, ROOT, [{ ...workOrder(70, []), viaLot: { lotId: 102, lotNo: SPLIT } }]),
+      splits: [link(102, SPLIT, 300), link(103, NESTED, 120)],
+    };
+    const lines = flattenForward(chain, notes);
+
+    expect(
+      lines
+        .filter((line) => line.kind === 'SPLIT')
+        .map((line) => [line.depth, line.number, line.qty]),
+    ).toEqual([
+      [1, SPLIT, 300],
+      [2, NESTED, 120],
+    ]);
+    expect(lines.find((line) => line.kind === 'WORK_ORDER')?.via).toBe(SPLIT);
+  });
+
+  it('US4-3 분할 LOT 은 원래 LOT 줄과 수량 = 분할 수량, 입하 줄에 원래 LOT 의 입하라고 적는다', () => {
+    const lines = flattenForward(
+      { ...forwardChain(102, SPLIT, []), splitFrom: link(101, ROOT, 300) },
+      notes,
+    );
+
+    expect(lines[0]).toMatchObject({ kind: 'LOT', qty: 300 });
+    expect(lines[1]).toMatchObject({
+      kind: 'SPLIT_FROM',
+      number: ROOT,
+      note: '분할 (GI-SYN-0003 · 라인 1)',
+    });
+    expect(lines.find((line) => line.kind === 'INBOUND')?.note).toBe('원래 LOT 의 입하');
+  });
+
+  it('US4-1 투입 자재가 분할 LOT 이면 조상을 한 단씩 깊게 싣는다', () => {
+    const chain = backwardChain(201, 'P-SYN-0001', [
+      inputMaterial(103, NESTED, { splitAncestry: [link(102, SPLIT, 120), link(101, ROOT, 300)] }),
+    ]);
+
+    expect(
+      flattenBackward(chain, notes)
+        .filter((line) => line.kind === 'SPLIT_FROM')
+        .map((line) => [line.depth, line.number]),
+    ).toEqual([
+      [3, SPLIT],
+      [4, ROOT],
+    ]);
+  });
+
+  it('분할이 없으면 줄이 지금과 같다(회귀)', () => {
+    const chain = forwardChain(101, ROOT, []);
+
+    expect(flattenForward(chain, notes)).toEqual(flattenForward(chain));
   });
 });
