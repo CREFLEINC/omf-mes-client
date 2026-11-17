@@ -150,3 +150,49 @@
   border-top: 1px solid var(--outline-variant);
   padding-top: var(--space-2, 8px);
 }
+
+/*
+ * 부분 출고로 생긴 분할 LOT(008 · omf-all-around#289) — 확정 배너 안에 원래 LOT → 분할 LOT 을 줄마다 보인다.
+ * 분할 LOT 번호가 라벨에 찍힐 번호라 굵게, 원래 LOT 은 흐리게. 번호가 길어(40자 안팎) 어디서든 끊는다.
+ */
+.picking-out__split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
+}
+
+.picking-out__split-line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-2, 8px);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.picking-out__split-from,
+.picking-out__split-to {
+  font-family: ui-monospace, Menlo, monospace;
+  word-break: break-all;
+}
+
+.picking-out__split-from {
+  font-size: 11px;
+  color: var(--on-surface-muted);
+}
+
+.picking-out__split-to {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.picking-out__split-to::before {
+  content: '↳ ';
+  font-weight: 400;
+}
+
+.picking-out__split-queued {
+  display: block;
+  margin-top: var(--space-2, 8px);
+  font-weight: 500;
+}
