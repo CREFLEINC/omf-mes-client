@@ -63,7 +63,7 @@ describe('validateWarehouse', () => {
 });
 
 describe('#292 창고 위치 코드', () => {
-  const invalid = '대문자·숫자 2~6자로 입력하세요.';
+  const invalid = '대문자와 숫자 2~6자로 입력하세요.';
 
   it('등록 때 대문자 · 숫자 2~6자만 통과한다', () => {
     for (const ok of ['K7', 'K7PM', 'ABC123', 'IO10']) {

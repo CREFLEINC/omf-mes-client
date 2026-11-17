@@ -809,7 +809,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(row).not.toBeNull();
     expect(within(row!).getByText('K7PM')).toBeInTheDocument();
     expect(
-      within(row!).getByText('바꿀 수 없음 · 이 창고의 모든 위치 코드 앞에 붙습니다'),
+      within(row!).getByText('바꿀 수 없습니다. 이 창고의 모든 위치 코드 앞에 붙습니다.'),
     ).toBeInTheDocument();
     expect(within(panel).queryByRole('textbox', { name: '창고 위치 코드' })).toBeNull();
   });
@@ -1246,7 +1246,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
     await user.type(prefix, 'K');
     await user.click(screen.getByRole('button', { name: '저장' }));
 
-    expect(prefix).toHaveAccessibleDescription('대문자·숫자 2~6자로 입력하세요.');
+    expect(prefix).toHaveAccessibleDescription('대문자와 숫자 2~6자로 입력하세요.');
     expect(writeRequests(requests, 'POST')).toHaveLength(0);
   });
 
@@ -1286,7 +1286,7 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
     // [다시 만들기]로 새 코드를 지으면 그 칸의 서버 오류가 걷힌다.
     await user.click(screen.getByRole('button', { name: '다시 만들기' }));
     expect(prefix).toHaveAccessibleDescription(
-      '무작위로 만들었습니다. 대문자·숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
+      '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
     );
   });
 

@@ -39,8 +39,8 @@ export const warehouseLocation: Translated<typeof ko.warehouseLocation> = {
       'Đã tạo ngẫu nhiên. Có thể sửa thành 2–6 chữ in hoa hoặc số; sau khi lưu thì không thể thay đổi.',
     invalid: 'Hãy nhập 2–6 chữ in hoa hoặc số.',
     taken: 'Mã này đã được kho khác sử dụng — hãy nhập mã khác hoặc bấm [Tạo lại].',
-    locked: 'Không thể thay đổi',
-    lockedNote: 'Được gắn vào đầu mọi mã vị trí của kho này',
+    locked: 'Không thể thay đổi.',
+    lockedNote: 'Được gắn vào đầu mọi mã vị trí của kho này.',
   },
   externalConfirm: {
     on: 'Chuyển thành kho bên ngoài?',

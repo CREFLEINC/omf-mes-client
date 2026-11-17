@@ -114,7 +114,7 @@ describe('WarehouseFormPane', () => {
       expect(prefixBox()).toBeRequired();
       expect(prefixBox()).toHaveAttribute('maxlength', '6');
       expect(prefixBox()).toHaveAccessibleDescription(
-        '무작위로 만들었습니다. 대문자·숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
+        '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
       );
       expect(screen.getByText('위치 코드 예: K7PM-Z01-R001-L01-C01')).toBeInTheDocument();
     });

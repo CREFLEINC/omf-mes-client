@@ -75,7 +75,7 @@ const LocationPrefixRow = ({ prefix }: { prefix: string }) => (
       <span className="location-items-code">{prefix}</span>
       <Icon name="lock" size={16} aria-hidden="true" />
       <span className="field-note">
-        {t.locationPrefix.locked} · {t.locationPrefix.lockedNote}
+        {t.locationPrefix.locked} {t.locationPrefix.lockedNote}
       </span>
     </dd>
   </dl>

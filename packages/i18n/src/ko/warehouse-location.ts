@@ -37,12 +37,12 @@ export const warehouseLocation = {
     regenerate: '다시 만들기',
     example: (code: string): string => `위치 코드 예: ${code}-Z01-R001-L01-C01`,
     helper:
-      '무작위로 만들었습니다. 대문자·숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
-    invalid: '대문자·숫자 2~6자로 입력하세요.',
+      '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
+    invalid: '대문자와 숫자 2~6자로 입력하세요.',
     /** 서버 400 `UNIQUE_VIOLATION`(field `locationPrefix`). */
     taken: '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.',
-    locked: '바꿀 수 없음',
-    lockedNote: '이 창고의 모든 위치 코드 앞에 붙습니다',
+    locked: '바꿀 수 없습니다.',
+    lockedNote: '이 창고의 모든 위치 코드 앞에 붙습니다.',
   },
   /** 정보 판의 불량 창고 스위치 — 바꾸기 전에 한 번 묻는다(사용자 지시 2026-10-30). 설명문 없이 제목만. */
   externalConfirm: {
