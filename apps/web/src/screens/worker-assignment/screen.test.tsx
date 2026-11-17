@@ -150,16 +150,6 @@ describe('WorkerAssignmentScreen — 확인', () => {
 });
 
 describe('WorkerAssignmentScreen — 현재 작업자', () => {
-  /*
-   * ⭐ 도용 위험을 수용한 설계에서 화면이 할 수 있는 유일한 방어다 — 지금 누구로 기록되는지가
-   * 늘 보여야 한다(§5-4).
-   */
-  it('지금 누구로 기록되는지 늘 말한다', () => {
-    renderScreen();
-
-    expect(screen.getByText(t.current.note)).toBeInTheDocument();
-  });
-
   /* 시안(omf-all-around#288) — 작업자가 없을 때는 단추 없이 안내만 선다. */
   it('작업자가 없으면 변경·이동 단추를 세우지 않는다', () => {
     renderScreen();

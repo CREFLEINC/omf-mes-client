@@ -83,7 +83,6 @@ export const workerAssignment: Translated<typeof ko.workerAssignment> = {
     confirmed: 'Đã xác nhận',
     workerNo: 'Mã nhân viên',
     assignedAt: 'Thời điểm chỉ định',
-    note: 'Mọi ghi nhận trên máy trạm này sẽ mang mã nhân viên của công nhân hiện tại.',
     shift: 'Đổi công nhân',
     pendingQueue: (count: number): string =>
       `Còn ${count} bản ghi chưa gửi vẫn mang mã nhân viên trước`,

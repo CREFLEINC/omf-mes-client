@@ -10449,18 +10449,22 @@
  */
 .pop-ui.pop-screen > .pop-assign {
   container-type: size;
-  --wa-text: clamp(15px, min(2.3cqh, 1.7cqw), 26px);
-  --wa-title: clamp(19px, min(3.1cqh, 2.3cqw), 34px);
-  --wa-key-h: clamp(52px, min(9cqh, 9cqw), 132px);
-  --wa-key-font: clamp(20px, min(3.4cqh, 2.5cqw), 38px);
-  --wa-gap: clamp(10px, 1.6cqh, 20px);
+  /*
+   * ⛔ 세로 길이만 보고 키우지 않는다 — 세로로 긴 창에서 키·칸이 시안 비율(키 높이 ≈ 키 폭의
+   *    1/3)을 크게 넘었다(사용자 지적). 폭과 높이 중 작은 쪽을 따르고 상한을 낮게 둔다.
+   */
+  --wa-text: clamp(15px, min(1.9cqh, 1.25cqw), 22px);
+  --wa-title: clamp(18px, min(2.6cqh, 1.7cqw), 28px);
+  --wa-key-h: clamp(56px, min(6.5cqh, 4.6cqw), 84px);
+  --wa-key-font: clamp(18px, min(2.8cqh, 1.9cqw), 30px);
+  --wa-gap: clamp(10px, min(1.4cqh, 1cqw), 16px);
   /* 시안처럼 두 구획은 내용 높이에 맞춰 위에 선다(둘은 같은 줄이라 높이는 서로 맞는다). */
   align-content: start;
 }
 
 .pop-ui .pop-assign > .pop-pane {
   gap: var(--wa-gap);
-  padding: clamp(16px, 3cqh, 36px);
+  padding: clamp(16px, min(2.4cqh, 1.6cqw), 28px);
 }
 
 .pop-ui .pop-assign > .pop-pane > .field-label {
@@ -10493,7 +10497,7 @@
 }
 
 .pop-ui .pop-assign input.worker-no-field {
-  font-size: var(--wa-key-font);
+  font-size: calc(var(--wa-text) * 1.25);
   letter-spacing: 0.04em;
   text-align: start;
 }
@@ -10540,7 +10544,7 @@
   border: 0;
   border-radius: var(--radius-lg);
   background: var(--surface-container-high);
-  padding: clamp(16px, 3cqh, 36px);
+  padding: clamp(16px, min(2.4cqh, 1.6cqw), 28px);
 }
 
 .pop-ui .pop-assign .worker-card__none {
@@ -10605,10 +10609,4 @@
   margin-block-start: 0;
   padding-block-start: 0;
   gap: var(--wa-gap);
-}
-
-/* 기록 귀속 안내는 구획 바닥에 작게 둔다. */
-.pop-ui .pop-assign .worker-card__note {
-  margin-block-start: auto;
-  font-size: calc(var(--wa-text) * 0.8);
 }

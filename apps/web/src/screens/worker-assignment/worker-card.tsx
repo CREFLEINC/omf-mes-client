@@ -136,8 +136,5 @@ export const WorkerCard = ({
         )}
       </div>
     )}
-
-    {/* 지금 누구로 기록되는지를 늘 말한다 — 작업자가 없을 때도 자리를 지킨다. */}
-    <p className="field-note worker-card__note">{t.note}</p>
   </section>
 );
