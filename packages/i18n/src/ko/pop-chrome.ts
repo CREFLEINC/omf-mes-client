@@ -47,6 +47,23 @@ export const popChrome = {
     remainingNone: '지금 남은 작업이 없습니다.',
     shortcutsTitle: '바로가기',
     shortcutsHint: '자주 쓰는 화면으로 바로 이동합니다.',
+    /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업 지시 목록과 같은 조회). */
+    statusTitle: '오늘 작업 현황',
+    inProgress: '진행 중',
+    waiting: '대기',
+    statusCount: (count: number): string => `${String(count)}건`,
+    nextTitle: '다음 작업',
+    nextNone: '대기 중인 작업이 없습니다',
+    nextPlan: (item: string, qty: string): string => `${item} · 계획 ${qty}개`,
+    /** 설비가 없는 단말은 전체 설비로 센다(작업 지시 목록의 「전체 설비」). */
+    statusAllEquipment: '전체 설비 기준',
+    statusFailed: '작업 현황을 불러오지 못했습니다.',
+    edit: '편집',
+    editDone: '완료',
+    editReset: '기본으로',
+    editHint: (max: number): string =>
+      `화면을 눌러 바로가기에 넣거나 뺍니다(최대 ${String(max)}개).`,
+    editPicked: (name: string): string => `${name}, 바로가기에 있음`,
   },
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',

@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -23,9 +23,29 @@ const Here = () => {
   return <p>지금: {pathname}</p>;
 };
 
-const setup = (counts: Record<string, number>) =>
+const EQUIPMENT = { equipmentId: 31, equipmentCode: 'EQ-31', equipmentName: '조립 1호기' };
+
+/** 상태별 W/O 수 — `/production/work-orders` 가 `page.total` 로 답한다. */
+const TOTALS: Record<string, number> = { IN_PROGRESS: 1, RELEASED: 5 };
+
+const NEXT = {
+  workOrderId: 77,
+  workOrderNo: 'WO-20261117-0003',
+  itemId: 9,
+  itemCode: 'FG-COVER',
+  orderQty: 200,
+};
+
+const setup = (
+  counts: Record<string, number>,
+  equipment: typeof EQUIPMENT | null = null,
+  workOrderQueries: URL[] = [],
+  terminalId: number | null = null,
+) =>
   renderWithProviders(
-    <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: '2048' }}>
+    <PopIdentityProvider
+      value={{ ...UNKNOWN_POP_IDENTITY, terminalId, workerNo: '2048', equipment }}
+    >
       <PopHomeScreen />
       <Here />
     </PopIdentityProvider>,
@@ -34,6 +54,18 @@ const setup = (counts: Record<string, number>) =>
         {
           match: (request) => request.url.endsWith('/app/sessions/current'),
           respond: () => jsonResponse(SESSION),
+        },
+        {
+          match: (request) => new URL(request.url).pathname === '/production/work-orders',
+          respond: (request) => {
+            const url = new URL(request.url);
+            workOrderQueries.push(url);
+            const status = url.searchParams.get('statusCode') ?? '';
+            return jsonResponse({
+              items: status === 'RELEASED' ? [NEXT] : [],
+              page: { page: 1, size: 1, total: TOTALS[status] ?? 0 },
+            });
+          },
         },
         {
           match: (request) => new URL(request.url).pathname === '/app/terminal-work-counts',
@@ -52,6 +84,10 @@ const setup = (counts: Record<string, number>) =>
     },
   );
 
+afterEach(() => {
+  window.localStorage.clear();
+});
+
 describe('PopHomeScreen — 홈(#291)', () => {
   it('인사, 남은 작업, 이 단말이 갈 수 있는 바로가기만 보인다', async () => {
     setup({ shipmentPacking: 4, workStart: 3 });
@@ -66,6 +102,7 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(
       shortcuts
         .getAllByRole('button')
+        .filter((button) => button.classList.contains('pop-home__tile'))
         .map((tile) => tile.querySelector('span:last-child')?.textContent),
     ).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
   });
@@ -101,5 +138,80 @@ describe('PopHomeScreen — 홈(#291)', () => {
       expect(screen.getByRole('region', { name: t.shortcutsTitle })).toBeInTheDocument();
     });
     expect(screen.getByText(t.remainingNone)).toBeInTheDocument();
+  });
+
+  it('오늘 작업 현황 — 이 단말 설비의 진행 중·대기 수와 다음 작업을 보인다', async () => {
+    const user = userEvent.setup();
+    const queries: URL[] = [];
+    setup({}, EQUIPMENT, queries);
+
+    const card = within(await screen.findByRole('region', { name: t.statusTitle }));
+    expect(await card.findByText(t.statusCount(5))).toBeInTheDocument();
+    expect(card.getByText(t.statusCount(1))).toBeInTheDocument();
+    expect(card.getByText(NEXT.workOrderNo)).toBeInTheDocument();
+    expect(card.getByText(t.nextPlan('FG-COVER', '200'))).toBeInTheDocument();
+
+    /* 작업 지시 목록과 같은 조건(open)·설비 축으로 묻는다 — POP 단말은 open 없이 목록을 못 읽는다. */
+    expect(queries.map((url) => url.searchParams.get('statusCode')).sort()).toEqual([
+      'IN_PROGRESS',
+      'RELEASED',
+    ]);
+    for (const url of queries) {
+      expect(url.searchParams.get('open')).toBe('true');
+      expect(url.searchParams.get('plannedEquipmentId')).toBe('31');
+      expect(url.searchParams.get('includeUnplannedEquipment')).toBe('true');
+    }
+
+    await user.click(card.getByRole('button', { name: new RegExp(NEXT.workOrderNo, 'u') }));
+    expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
+  });
+
+  it('단말에 설비가 없으면 전체 설비로 세고 그렇다고 적는다', async () => {
+    const queries: URL[] = [];
+    setup({}, null, queries, 7);
+
+    const card = within(
+      await screen.findByRole('region', { name: new RegExp(t.statusTitle, 'u') }),
+    );
+    expect(card.getByText(t.statusAllEquipment)).toBeInTheDocument();
+    expect(await card.findByText(t.statusCount(5))).toBeInTheDocument();
+    for (const url of queries) {
+      expect(url.searchParams.get('plannedEquipmentId')).toBeNull();
+    }
+  });
+
+  it('[편집]으로 바로가기를 빼고 넣으면 단말에 남고, [기본으로] 되돌린다', async () => {
+    const user = userEvent.setup();
+    setup({});
+
+    const shortcuts = () =>
+      within(screen.getByRole('region', { name: new RegExp(t.shortcutsTitle, 'u') }));
+    const tileNames = () =>
+      shortcuts()
+        .getAllByRole('button')
+        .filter((button) => button.classList.contains('pop-home__tile'))
+        .map((tile) => tile.querySelector('span:last-child')?.textContent);
+
+    await waitFor(() => {
+      expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+    });
+
+    await user.click(shortcuts().getByRole('button', { name: t.edit }));
+    await user.click(shortcuts().getByRole('button', { name: t.editPicked('생산 작업') }));
+    await user.click(shortcuts().getByRole('button', { name: '비가동 실적 입력' }));
+    await user.click(shortcuts().getByRole('button', { name: t.editDone }));
+
+    expect(tileNames()).toEqual(['작업 지시 목록', '출하 포장', '비가동 실적 입력']);
+    expect(JSON.parse(window.localStorage.getItem('omf.pop.home.shortcuts') ?? 'null')).toEqual([
+      '/pop/work-start',
+      '/pop/packing',
+      '/pop/downtime',
+    ]);
+
+    await user.click(shortcuts().getByRole('button', { name: t.edit }));
+    await user.click(shortcuts().getByRole('button', { name: t.editReset }));
+    await user.click(shortcuts().getByRole('button', { name: t.editDone }));
+    expect(tileNames()).toEqual(['생산 작업', '작업 지시 목록', '출하 포장']);
+    expect(window.localStorage.getItem('omf.pop.home.shortcuts')).toBeNull();
   });
 });

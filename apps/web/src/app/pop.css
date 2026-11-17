@@ -10904,7 +10904,6 @@
 
 .pop-home__remaining-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -10989,4 +10988,197 @@
   position: absolute;
   inset-block-start: 8px;
   inset-inline-start: 10px;
+}
+
+/* 작업 현황(왼쪽, 넓게) · 남은 작업(오른쪽) 한 줄 — 시안의 2.1 : 1. */
+.pop-home__row {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.pop-home__status {
+  flex: 2.1 1 0;
+  min-inline-size: 0;
+}
+
+.pop-home__remaining {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.pop-home__stats {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+}
+
+.pop-home__stat,
+.pop-home__next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.pop-home__stat {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.pop-home__stat + .pop-home__stat,
+.pop-home__next {
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.pop-home__stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+}
+
+.pop-home__stat[data-tone='run'] .pop-home__stat-icon {
+  background: color-mix(in srgb, var(--semantic-info) 14%, transparent);
+  color: var(--semantic-info);
+}
+
+.pop-home__stat-text,
+.pop-home__next-text {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.pop-home__stat-text small,
+.pop-home__next-text small {
+  color: var(--on-surface-variant);
+  font: 500 13px / 18px var(--font-sans);
+}
+
+.pop-home__stat[data-tone='run'] small {
+  color: var(--semantic-info);
+  font-weight: 700;
+}
+
+.pop-home__stat-text strong {
+  font: 700 24px / 30px var(--font-sans);
+  white-space: nowrap;
+}
+
+.pop-home__next {
+  flex: 1.4 1 0;
+  min-inline-size: 0;
+  border-block: 0;
+  border-inline-end: 0;
+  border-radius: 0 12px 12px 0;
+  background: transparent;
+  color: var(--on-surface);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-home__next:disabled {
+  cursor: default;
+}
+
+.pop-home__next-text small {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pop-home__next-text b {
+  overflow: hidden;
+  font: 700 16px / 22px var(--font-mono, var(--font-sans));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-home__next-text span {
+  overflow: hidden;
+  color: var(--on-surface-variant);
+  font: 400 13px / 18px var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-home__next .pop-nav-icon {
+  margin-inline-start: auto;
+  color: var(--on-surface-variant);
+}
+
+/* 바로가기 [편집] — 머리 오른쪽 끝의 작은 테두리 단추(시안). */
+.pop-home__edit-tools {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.pop-home__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  block-size: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 700 14px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__edit .pop-nav-icon {
+  inline-size: 15px;
+  block-size: 15px;
+}
+
+.pop-home__edit[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* 편집 중에는 갈 수 있는 화면을 모두 늘어놓는다 — 고른 칸은 빨간 테두리와 체크. */
+.pop-home__tiles--edit {
+  max-block-size: 300px;
+  overflow-y: auto;
+}
+
+.pop-home__tiles--edit .pop-home__tile {
+  block-size: 92px;
+  font-size: 15px;
+}
+
+.pop-home__tile[aria-pressed='true'] {
+  border: 2px solid var(--primary);
+}
+
+.pop-home__tile:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pop-home__tile-check {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-end: 8px;
+  color: var(--primary);
+}
+
+.pop-home__tile-check .pop-nav-icon {
+  inline-size: 18px;
+  block-size: 18px;
+  color: var(--primary);
+}
+
+.pop-home__scope {
+  color: var(--on-surface-variant);
+  font: 500 13px / 18px var(--font-sans);
 }

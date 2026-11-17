@@ -4,18 +4,21 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Navigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
-import { POP_ENTRY_SCREEN_PATH } from '../../patterns/pop-screen-catalog';
-import { countOf, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
+import { POP_ENTRY_SCREEN_PATH, type PopScreen } from '../../patterns/pop-screen-catalog';
+import { countOf, GROUP_ICONS, navIcon, usePopNavigation } from '../../patterns/pop-screen-nav';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useHomeWorkStatus } from './queries';
+import {
+  DEFAULT_SHORTCUT_PATHS,
+  MAX_SHORTCUTS,
+  readShortcutPaths,
+  writeShortcutPaths,
+} from './shortcuts';
 
 const t = messages.popChrome.home;
 
-/**
- * 바로가기 타일(#291 확정 시안)과 그 아이콘. 이 단말이 갈 수 없는 화면은 빼고 보인다.
- *
- * ⛔ 편집(작업자가 고르기)·즐겨찾기 별은 두지 않는다 — 고른 것을 둘 자리(서버·단말 저장)가 아직 없다.
- */
-const SHORTCUTS: readonly { path: string; icon: ReactNode }[] = [
+/** 바로가기 타일 아이콘(#291 확정 시안). 여기 없는 화면은 업무 묶음 아이콘을 쓴다. */
+const SHORTCUT_ICONS: readonly { path: string; icon: ReactNode }[] = [
   {
     path: '/pop/production-result',
     icon: navIcon(
@@ -94,12 +97,98 @@ const useClock = () => {
   }) ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
 
+const PLAY_ICON = navIcon(<path d="M7 4v16l13-8z" />);
+const CLOCK_ICON = navIcon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </>,
+);
+const CHECK_ICON = navIcon(<path d="m5 12 5 5L20 7" />);
+const PEN_ICON = navIcon(<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />);
+
+const iconOf = (screen: PopScreen): ReactNode =>
+  SHORTCUT_ICONS.find((entry) => entry.path === screen.path)?.icon ?? GROUP_ICONS[screen.group];
+
+/** 오늘 작업 현황 카드 — 진행 중 · 대기 · 다음 작업(완료는 단말이 읽을 수 없어 두지 않는다). */
+const StatusCard = ({
+  titleId,
+  onNext,
+}: {
+  titleId: string;
+  /** 다음 작업을 누르면 작업 지시 목록으로 간다. 이 단말이 그 화면에 못 가면 `null`. */
+  onNext: (() => void) | null;
+}) => {
+  const { equipment, terminalId } = usePopIdentity();
+  const status = useHomeWorkStatus(
+    equipment?.equipmentId ?? null,
+    equipment !== null || terminalId !== null,
+  );
+  const data = status.data;
+  const stats = [
+    { key: 'run', label: t.inProgress, value: data?.inProgress, icon: PLAY_ICON, tone: 'run' },
+    { key: 'wait', label: t.waiting, value: data?.waiting, icon: CLOCK_ICON, tone: 'wait' },
+  ] as const;
+  const next = data?.next ?? null;
+
+  return (
+    <section className="pop-home__panel pop-home__status" aria-labelledby={titleId}>
+      <h2 id={titleId} className="pop-home__heading">
+        {t.statusTitle}
+        {terminalId !== null && equipment === null && (
+          <span className="pop-home__scope">{t.statusAllEquipment}</span>
+        )}
+      </h2>
+      {status.isError ? (
+        <p className="pop-home__none">{t.statusFailed}</p>
+      ) : (
+        <div className="pop-home__stats">
+          {stats.map((stat) => (
+            <div key={stat.key} className="pop-home__stat" data-tone={stat.tone}>
+              <span className="pop-home__stat-icon">{stat.icon}</span>
+              <span className="pop-home__stat-text">
+                <small>{stat.label}</small>
+                <strong>{stat.value === undefined ? '–' : t.statusCount(stat.value)}</strong>
+              </span>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="pop-home__next"
+            disabled={onNext === null || next === null}
+            onClick={() => {
+              onNext?.();
+            }}
+          >
+            <span className="pop-home__next-text">
+              <small>{t.nextTitle}</small>
+              {next === null ? (
+                <span>{data === undefined ? '–' : t.nextNone}</span>
+              ) : (
+                <>
+                  <b>{next.workOrderNo}</b>
+                  <span>
+                    {t.nextPlan(
+                      next.itemCode ?? `#${String(next.itemId)}`,
+                      next.orderQty.toLocaleString(),
+                    )}
+                  </span>
+                </>
+              )}
+            </span>
+            {next !== null && onNext !== null && RIGHT_ICON}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+};
+
 /**
- * **홈**(#291) — 사번 확인 뒤 처음 서는 화면. 남은 작업과 바로가기를 보여 주고, 누르면 그 화면으로
- * 간다. 이동 길은 공통 메뉴와 같은 것을 쓴다(`usePopNavigation`) — 남은 작업 수도 같은 값이다.
+ * **홈**(#291) — 사번 확인 뒤 처음 서는 화면. 오늘 작업 현황, 남은 작업, 바로가기를 보여 주고, 누르면
+ * 그 화면으로 간다. 이동 길은 공통 메뉴와 같은 것을 쓴다(`usePopNavigation`) — 남은 작업 수도 같은 값이다.
  *
- * ⛔ 「오늘 작업 현황」(진행·대기·완료 수)은 두지 않는다 — 서버가 그 수를 주지 않는다(화면 작업에서
- *    서버를 고치지 않는다).
+ * ⭐ 바로가기는 [편집]으로 이 단말에 맞게 고른다(최대 6개 · 단말에 저장).
  */
 export const PopHomeScreen = () => {
   const titleId = useId();
@@ -107,13 +196,22 @@ export const PopHomeScreen = () => {
   const session = useWorkerSession();
   const { access, workCounts, pending, total, go } = usePopNavigation();
   const clock = useClock();
+  const [pickedPaths, setPickedPaths] = useState<string[] | null>(readShortcutPaths);
+  const [isEditing, setIsEditing] = useState(false);
   const workerName =
     session !== null && session.worker.workerNo === workerNo ? session.worker.workerName : null;
   const name = workerName ?? workerNo ?? '';
-  const shortcuts = SHORTCUTS.flatMap(({ path, icon }) => {
+  const paths = pickedPaths ?? DEFAULT_SHORTCUT_PATHS;
+  const shortcuts = paths.flatMap((path) => {
     const screen = access.screens.find((candidate) => candidate.path === path);
-    return screen === undefined ? [] : [{ screen, icon }];
+    return screen === undefined ? [] : [screen];
   });
+  const workStart = access.screens.find((screen) => screen.path === '/pop/work-start') ?? null;
+
+  const savePaths = (next: string[] | null) => {
+    setPickedPaths(next);
+    writeShortcutPaths(next);
+  };
 
   /*
    * 사번이 없으면 홈 대신 사번 입력 «화면»으로 보낸다(사용자 지시 2026-11-17 — 팝업이 아니라 화면).
@@ -137,75 +235,144 @@ export const PopHomeScreen = () => {
         </span>
       </section>
 
-      <section className="pop-home__panel pop-fixed" aria-labelledby={`${titleId}-rem`}>
-        <h2 id={`${titleId}-rem`} className="pop-home__heading">
-          {t.remainingTitle}
-          {total > 0 && <span className="pop-home__total">{total}</span>}
-        </h2>
-        {pending.length === 0 ? (
-          <p className="pop-home__none">{t.remainingNone}</p>
-        ) : (
-          <div className="pop-home__remaining-list">
-            {pending.map(({ screen, count }) => (
+      <div className="pop-home__row pop-fixed">
+        <StatusCard
+          titleId={`${titleId}-status`}
+          onNext={
+            workStart === null
+              ? null
+              : () => {
+                  go(workStart);
+                }
+          }
+        />
+
+        <section className="pop-home__panel pop-home__remaining" aria-labelledby={`${titleId}-rem`}>
+          <h2 id={`${titleId}-rem`} className="pop-home__heading">
+            {t.remainingTitle}
+            {total > 0 && <span className="pop-home__total">{total}</span>}
+          </h2>
+          {pending.length === 0 ? (
+            <p className="pop-home__none">{t.remainingNone}</p>
+          ) : (
+            <div className="pop-home__remaining-list">
+              {pending.map(({ screen, count }) => (
+                <button
+                  key={screen.path}
+                  type="button"
+                  className="pop-home__remaining-item"
+                  aria-label={messages.popChrome.remaining.count(screen.name, count)}
+                  onClick={() => {
+                    go(screen);
+                  }}
+                >
+                  <span>{screen.name}</span>
+                  <strong>{t.remainingCount(count)}</strong>
+                  {RIGHT_ICON}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section className="pop-home__panel pop-fixed" aria-labelledby={`${titleId}-sc`}>
+        <div className="pop-home__shortcuts-head">
+          <h2 id={`${titleId}-sc`} className="pop-home__heading">
+            {BOLT_ICON}
+            {t.shortcutsTitle}
+          </h2>
+          <p>{isEditing ? t.editHint(MAX_SHORTCUTS) : t.shortcutsHint}</p>
+          <span className="pop-home__edit-tools">
+            {isEditing && (
               <button
-                key={screen.path}
                 type="button"
-                className="pop-home__remaining-item"
-                aria-label={messages.popChrome.remaining.count(screen.name, count)}
+                className="pop-home__edit"
                 onClick={() => {
-                  go(screen);
+                  savePaths(null);
                 }}
               >
-                <span>{screen.name}</span>
-                <strong>{t.remainingCount(count)}</strong>
-                {RIGHT_ICON}
+                {t.editReset}
               </button>
-            ))}
-          </div>
-        )}
-      </section>
+            )}
+            <button
+              type="button"
+              className="pop-home__edit"
+              aria-pressed={isEditing}
+              onClick={() => {
+                setIsEditing(!isEditing);
+              }}
+            >
+              {!isEditing && PEN_ICON}
+              {isEditing ? t.editDone : t.edit}
+            </button>
+          </span>
+        </div>
 
-      {shortcuts.length > 0 && (
-        <section className="pop-home__panel pop-fixed" aria-labelledby={`${titleId}-sc`}>
-          <div className="pop-home__shortcuts-head">
-            <h2 id={`${titleId}-sc`} className="pop-home__heading">
-              {BOLT_ICON}
-              {t.shortcutsTitle}
-            </h2>
-            <p>{t.shortcutsHint}</p>
-          </div>
-          <div className="pop-home__tiles">
-            {shortcuts.map(({ screen, icon }) => {
-              const count = countOf(screen, workCounts.counts);
+        {isEditing ? (
+          <div className="pop-home__tiles pop-home__tiles--edit">
+            {access.screens.map((screen) => {
+              const picked = paths.includes(screen.path);
+              const isFull = !picked && shortcuts.length >= MAX_SHORTCUTS;
               return (
                 <button
                   key={screen.path}
                   type="button"
                   className="pop-home__tile"
-                  aria-label={
-                    count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
-                  }
+                  aria-pressed={picked}
+                  aria-label={picked ? t.editPicked(screen.name) : screen.name}
+                  disabled={isFull}
                   onClick={() => {
-                    go(screen);
+                    const visible = shortcuts.map((entry) => entry.path);
+                    savePaths(
+                      picked
+                        ? visible.filter((path) => path !== screen.path)
+                        : [...visible, screen.path],
+                    );
                   }}
                 >
-                  {count > 0 && (
-                    <Badge
-                      count={count}
-                      max={9}
-                      tone="neutral"
-                      className="pop-work-badge"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {icon}
+                  {picked && <span className="pop-home__tile-check">{CHECK_ICON}</span>}
+                  {iconOf(screen)}
                   <span>{screen.name}</span>
                 </button>
               );
             })}
           </div>
-        </section>
-      )}
+        ) : (
+          shortcuts.length > 0 && (
+            <div className="pop-home__tiles">
+              {shortcuts.map((screen) => {
+                const count = countOf(screen, workCounts.counts);
+                return (
+                  <button
+                    key={screen.path}
+                    type="button"
+                    className="pop-home__tile"
+                    aria-label={
+                      count > 0 ? messages.popChrome.remaining.count(screen.name, count) : undefined
+                    }
+                    onClick={() => {
+                      go(screen);
+                    }}
+                  >
+                    {count > 0 && (
+                      <Badge
+                        count={count}
+                        max={9}
+                        tone="neutral"
+                        className="pop-work-badge"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {iconOf(screen)}
+                    <span>{screen.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )
+        )}
+      </section>
     </main>
   );
 };
