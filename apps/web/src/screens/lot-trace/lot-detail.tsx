@@ -25,8 +25,11 @@ import {
   forwardStages,
   groupShipments,
   PACKED,
+  splitDepth,
+  splitIssueText,
   uniqueProductionLots,
   type ChainLine,
+  type SplitNotes,
   type ShipmentGroup,
   type StageCell,
 } from './chain-model';
@@ -44,12 +47,23 @@ import type {
   FlowProductionLot,
   FlowProductSide,
   FlowReceipt,
+  FlowSplitLink,
   ForwardChain,
   ForwardWorkOrder,
 } from './trace-types';
 
 const t = messages.lotTrace;
 const c = t.chain;
+const sp = c.split;
+
+/** 분할 고리의 출고 글 — 「GI-… · 라인 n」(008). */
+const issueOf = (link: FlowSplitLink): string => splitIssueText(link, sp.issueText);
+
+/** 추적 내보내기의 분할 줄 근거(008). */
+const SPLIT_NOTES: SplitNotes = {
+  split: (link) => sp.note(issueOf(link)),
+  rootInbound: sp.rootInbound,
+};
 
 /** W-03-01 LOT 상태 — 그 화면이 `q`(LOT 번호)와 `lot`(고른 LOT)을 주소로 받는다. */
 export const LOT_STATUS_PATH = '/quality/lot-status';
@@ -125,6 +139,36 @@ const Ellipsis = ({ text, title }: { text: string; title?: string }) => (
     {text}
   </span>
 );
+
+/**
+ * LOT 번호의 끝 칸 — `…|0001-S1`. 표 칸 안의 둘째 줄(분할 조상 · 경유 LOT)은 좁아 번호 전체가 들어가지 않는다 —
+ * 앞을 자르면 원래 LOT 과 분할 LOT 을 가르는 끝 칸이 사라지므로 끝 칸만 남긴다(`LotNo` 와 같은 규칙, 시안 W0209-After).
+ * 구분자가 없는 번호는 끝 8자.
+ */
+export const lotNoTail = (lotNo: string): string => {
+  const cut = lotNo.includes('|') ? lotNo.lastIndexOf('|') : Math.max(0, lotNo.length - 8);
+
+  return cut <= 0 ? lotNo : `…${lotNo.slice(cut)}`;
+};
+
+/** 분할 관계로 이어진 LOT — 끝 칸만 보이는 글 단추(번호 전체는 title). 누르면 그 LOT 을 가운데 둔다(008). */
+const SplitLink = ({ lot, onView }: { lot: LotRef; onView: (lot: LotRef) => void }) => (
+  <button
+    type="button"
+    className="lot-trace-split-link"
+    title={lot.lotNo}
+    aria-label={c.viewFor(lot.lotNo)}
+    onClick={() => onView(lot)}
+  >
+    {lotNoTail(lot.lotNo)}
+  </button>
+);
+
+const materialRef = (head: FlowLotHead): LotRef => ({
+  lotId: head.lotId,
+  lotNo: head.lotNo,
+  lotType: 'MATERIAL',
+});
 
 const ViewButton = ({ lot, onView }: { lot: LotRef; onView: (lot: LotRef) => void }) => (
   <Button
@@ -374,12 +418,30 @@ const ProductSideTables = ({
  * 상세 창의 표는 창 폭(1440px에서 약 520px) 안에 들어온다 — 번호, 수량, 날짜 열은 정한 폭, 이름 열이 남는 폭을 쓰고
  * 넘치면 말줄임이다. 빠진 값(첫 투입 일시, 입하일, 공급사 LOT)은 [보기]로 그 LOT을 열거나 추적 내보내기에 있다.
  */
-const usageColumns = (uomCode: string): Column<ForwardWorkOrder>[] => [
+const usageColumns = (
+  uomCode: string,
+  onView: (lot: LotRef) => void,
+): Column<ForwardWorkOrder>[] => [
   {
     key: 'no',
     header: k.workOrderNo,
     width: '160px',
-    render: (row) => <Mono>{row.workOrderNo}</Mono>,
+    render: (row) =>
+      row.viaLot === null ? (
+        <Mono>{row.workOrderNo}</Mono>
+      ) : (
+        <span className="lot-trace-cell-stack">
+          <Mono>{row.workOrderNo}</Mono>
+          {/* 008 — 이 LOT 이 아니라 분할 자손으로 투입된 W/O. 그 LOT 으로 옮겨 갈 수 있다. */}
+          <span className="lot-trace-sub">
+            {sp.via}
+            <SplitLink
+              lot={{ lotId: row.viaLot.lotId, lotNo: row.viaLot.lotNo, lotType: 'MATERIAL' }}
+              onView={onView}
+            />
+          </span>
+        </span>
+      ),
   },
   {
     key: 'item',
@@ -486,10 +548,13 @@ const UsageSections = ({
   return (
     <>
       <Section title={c.sections.usage} stage="CONSUMED">
+        {chain.workOrders.some((wo) => wo.viaLot !== null) && (
+          <p className="field-note">{sp.usageHint}</p>
+        )}
         <SmallTable
           title={c.sections.usage}
           heading={false}
-          columns={usageColumns(chain.lot.uomCode)}
+          columns={usageColumns(chain.lot.uomCode, onView)}
           rows={chain.workOrders}
           getRowId={(row) => String(row.workOrderId)}
           empty={c.noInput}
@@ -526,7 +591,25 @@ const inputColumns = (onView: (lot: LotRef) => void): Column<FlowInputMaterial>[
   {
     key: 'lot',
     header: k.materialLot,
-    render: (row) => <LotNo lotNo={row.lotNo} />,
+    render: (row) =>
+      row.splitAncestry.length === 0 ? (
+        <LotNo lotNo={row.lotNo} />
+      ) : (
+        <span className="lot-trace-cell-stack">
+          <LotNo lotNo={row.lotNo} />
+          {/* 008 — 투입된 분할 LOT 의 조상, 가까운 부모부터 뿌리까지. */}
+          <span className="lot-trace-sub">
+            {sp.ancestry}
+            {row.splitAncestry.map((link, index) => (
+              <span key={link.lot.lotId}>
+                {index > 0 && ' ← '}
+                <SplitLink lot={materialRef(link.lot)} onView={onView} />
+              </span>
+            ))}
+            {row.splitAncestry.length > 1 && ` ${sp.levels(row.splitAncestry.length)}`}
+          </span>
+        </span>
+      ),
   },
   {
     key: 'item',
@@ -600,6 +683,9 @@ const ProductionSections = ({
         )}
       </Section>
       <Section title={c.sections.inputs}>
+        {chain.inputMaterials.some((input) => input.splitAncestry.length > 0) && (
+          <p className="field-note">{sp.inputsHint}</p>
+        )}
         <SmallTable
           title={c.sections.inputs}
           heading={false}
@@ -673,12 +759,15 @@ const exportColumns = (): CsvColumn<ChainLine>[] => {
     {
       header: x.basis,
       value: (line) =>
-        line.basis === null
+        line.note ??
+        (line.basis === null
           ? ''
           : line.basis === 'INPUT_ONLY'
             ? c.estimate.inputOnly
-            : c.estimate[line.basis],
+            : c.estimate[line.basis]),
     },
+    /* 008 — W/O 가 분할 자손으로 투입됐으면 그 LOT(경유 LOT). */
+    { header: x.via, value: (line) => line.via ?? '' },
   ];
 };
 
@@ -739,6 +828,8 @@ const PathBar = ({
 
 interface ViewProps {
   head: FlowLotHead;
+  /** 머리의 LOT 종류 옆에 붙는 표 — 분할 LOT(008). */
+  badge?: ReactNode;
   path: readonly PathStep[];
   canOpenLotStatus: boolean;
   onCenter: LotDetailProps['onCenter'];
@@ -751,6 +842,7 @@ interface ViewProps {
 /** 상세의 틀: 경로 줄, 머리(LOT 종류, LOT 번호, LOT 상태, 동작), 요약 항목, 단계 줄, 추정 안내, 구획들. */
 const DetailFrame = ({
   head,
+  badge,
   path,
   canOpenLotStatus,
   onCenter,
@@ -776,6 +868,7 @@ const DetailFrame = ({
           <Chip variant="status" size="sm" status="idle">
             {c.lotType[type]}
           </Chip>
+          {badge}
           <h2 className="subsection-title mono-cell">{head.lotNo}</h2>
           {head.statusCode !== NORMAL_LOT_STATUS && (
             <Chip variant="status" size="sm" status="warning">
@@ -820,28 +913,136 @@ const DetailFrame = ({
 
 type FrameProps = Pick<ViewProps, 'path' | 'canOpenLotStatus' | 'onCenter'>;
 
+/** 이 LOT 에서 떼어 낸 분할 LOT 표의 열(008) — 자손은 깊이만큼 들여 쓴다. */
+const splitColumns = (
+  centerLotNo: string,
+  workOrdersOf: (lotId: number) => number,
+  onView: (lot: LotRef) => void,
+): Column<FlowSplitLink>[] => [
+  {
+    key: 'lot',
+    header: sp.columns.lot,
+    render: (row) => {
+      const depth = splitDepth(centerLotNo, row.lot.lotNo);
+      const issue = issueOf(row);
+
+      return (
+        <span
+          className="lot-trace-cell-stack"
+          style={{ paddingInlineStart: `${String((depth - 1) * 16)}px` }}
+        >
+          <span>
+            {depth > 1 && <span aria-hidden="true">↳ </span>}
+            <LotNo lotNo={row.lot.lotNo} />
+          </span>
+          <span className="lot-trace-sub">{sp.splitLine(plantDateTime(row.splitAt), issue)}</span>
+        </span>
+      );
+    },
+  },
+  {
+    key: 'qty',
+    header: sp.columns.qty,
+    width: '96px',
+    align: 'end',
+    render: (row) => qty(row.qty, row.uomCode),
+  },
+  {
+    key: 'workOrders',
+    header: sp.columns.workOrders,
+    width: '80px',
+    align: 'end',
+    render: (row) => c.count(workOrdersOf(row.lot.lotId)),
+  },
+  {
+    key: 'action',
+    header: sp.columns.action,
+    width: '76px',
+    align: 'center',
+    render: (row) => <ViewButton lot={materialRef(row.lot)} onView={onView} />,
+  },
+];
+
+/** 분할된 원래 LOT(008) — 이 LOT 이 부분 출고로 떼어져 나왔으면 그 부모 · 분할 수량 · 시각 · 출고. */
+const SplitFromSection = ({
+  link,
+  onView,
+}: {
+  link: FlowSplitLink;
+  onView: (lot: LotRef) => void;
+}) => (
+  <Section title={sp.fromSection}>
+    <Facts
+      items={[
+        {
+          key: 'parent',
+          label: sp.parentLotNo,
+          wide: true,
+          value: (
+            <span className="lot-trace-cell-stack">
+              <Mono>{link.lot.lotNo}</Mono>
+              <ViewButton lot={materialRef(link.lot)} onView={onView} />
+            </span>
+          ),
+        },
+        { key: 'qty', label: sp.qty, value: qty(link.qty, link.uomCode) },
+        { key: 'at', label: sp.at, value: plantDateTime(link.splitAt) },
+        link.goodsIssue === null
+          ? null
+          : { key: 'issue', label: sp.issueNo, wide: true, value: <Mono>{issueOf(link)}</Mono> },
+      ]}
+    />
+    {/* 부모도 분할 LOT 이면 번호 끝 마디가 남는다 — 그 위로 더 올라갈 수 있다. */}
+    {/-S\d+$/u.test(link.lot.lotNo) && <p className="field-note">{sp.parentAlsoSplit}</p>}
+  </Section>
+);
+
 const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain }) => {
   const impact = forwardImpact(chain);
   const view = (lot: LotRef) => frame.onCenter(lot, pathTo(frame.path, refOf(chain.lot), lot));
   const inbound = chain.inbound;
+  const splitFrom = chain.splitFrom;
+  /* 분할 자손마다 그 LOT 을 거쳐 투입된 W/O 수(viaLot). */
+  const workOrdersVia = (lotId: number): number =>
+    chain.workOrders.filter((wo) => wo.viaLot?.lotId === lotId).length;
   return (
     <DetailFrame
       {...frame}
       head={chain.lot}
+      badge={
+        splitFrom === null ? undefined : (
+          <Chip variant="status" size="sm" status="info">
+            {sp.chip}
+          </Chip>
+        )
+      }
       impact={[
-        {
-          key: 'received',
-          label: c.facts.receivedQty,
-          value: qty(chain.receivedQty, chain.lot.uomCode),
-        },
+        splitFrom === null
+          ? {
+              key: 'received',
+              label: c.facts.receivedQty,
+              value: qty(chain.receivedQty, chain.lot.uomCode),
+            }
+          : { key: 'split', label: sp.qty, value: qty(splitFrom.qty, splitFrom.uomCode) },
         { key: 'lots', label: c.facts.productionLotCount, value: c.count(impact.lots) },
         { key: 'shipments', label: c.facts.shipmentCount, value: c.count(impact.shipments) },
         { key: 'customers', label: c.facts.customerCount, value: c.count(impact.customers) },
       ]}
       cells={forwardStages(chain)}
-      lines={() => flattenForward(chain)}
+      lines={() => flattenForward(chain, SPLIT_NOTES)}
     >
-      <Section title={c.sections.inbound} stage="RECEIVED">
+      {splitFrom !== null && <SplitFromSection link={splitFrom} onView={view} />}
+      <Section
+        title={c.sections.inbound}
+        stage="RECEIVED"
+        aside={
+          splitFrom === null ? undefined : (
+            <Chip variant="status" size="sm" status="info">
+              {sp.rootInbound}
+            </Chip>
+          )
+        }
+      >
         {inbound === null ? (
           <p className="field-note">{c.noInbound}</p>
         ) : (
@@ -874,9 +1075,25 @@ const MaterialView = ({ chain, ...frame }: FrameProps & { chain: ForwardChain })
           columns={receiptColumns(chain.lot.uomCode)}
           rows={chain.receipts}
           getRowId={(row) => String(row.goodsReceiptId)}
-          empty={c.noReceipt}
+          empty={splitFrom === null ? c.noReceipt : sp.noReceipt}
         />
       </Section>
+      {chain.splits.length > 0 && (
+        <Section
+          title={sp.splitsSection}
+          aside={<span className="lot-trace-section-count">{c.count(chain.splits.length)}</span>}
+        >
+          <p className="field-note">{sp.splitsHint}</p>
+          <SmallTable
+            title={sp.splitsSection}
+            heading={false}
+            columns={splitColumns(chain.lot.lotNo, workOrdersVia, view)}
+            rows={chain.splits}
+            getRowId={(row) => String(row.lot.lotId)}
+            empty=""
+          />
+        </Section>
+      )}
       <UsageSections chain={chain} onView={view} />
     </DetailFrame>
   );
@@ -909,8 +1126,10 @@ const ProductionView = ({
       ]}
       cells={backwardStages(chain)}
       lines={() => [
-        ...flattenBackward(chain),
-        ...(usage === undefined ? [] : flattenForward(usage).filter((line) => line.depth > 0)),
+        ...flattenBackward(chain, SPLIT_NOTES),
+        ...(usage === undefined
+          ? []
+          : flattenForward(usage, SPLIT_NOTES).filter((line) => line.depth > 0)),
       ]}
     >
       <ProductionSections chain={chain} onView={view} />

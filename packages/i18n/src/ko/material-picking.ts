@@ -172,8 +172,13 @@ export const materialPicking = {
   noWorker: '사번을 먼저 확인하세요',
   sent: {
     title: '출고를 확정했습니다',
-    /** 작업자가 이 번호를 POP(P-01-02)으로 들고 가 출고 QR 을 발행한다. */
     issueNo: (goodsIssueNo: string): string => `출고번호 ${goodsIssueNo}`,
+    /**
+     * 부분 출고한 줄은 서버가 분할 LOT 으로 바꿔 냈다(008 · omf-all-around#289). 떼어 낸 봉지에 붙일 라벨은
+     * POP(P-01-02)에서 찍는다 — 출고 QR 은 더 발행하지 않는다.
+     */
+    splitHead: (count: number): string => `분할 LOT ${String(count)}개 — POP 에서 라벨을 찍으세요`,
+    splitLegend: '원래 LOT → 분할 LOT',
   },
   queued: {
     title: '출고를 전송 대기에 넣었습니다',
@@ -182,6 +187,9 @@ export const materialPicking = {
      * 물건은 이미 라인에 가 있고, 되돌리는 것은 화면이 아니라 사람이다.
      */
     description: '연결되면 보냅니다. 아직 확정이 아니라 보낸 뒤에 되돌아올 수 있습니다.',
+    /** 분할 LOT 번호는 서버가 출고를 받을 때 정한다 — 대기 중에는 번호도 라벨도 없다(008). */
+    split:
+      '부분 출고한 라인은 전송된 뒤 분할 LOT 이 생깁니다. 전송된 뒤 POP 에서 분할 LOT 라벨을 찍으세요.',
   },
   rejected: {
     title: '출고를 전송하지 못했습니다',

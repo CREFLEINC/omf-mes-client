@@ -240,6 +240,21 @@ export const lotStatusHistory = {
     /** LOT 상세 아래 이력 탭 묶음 이름(화면 읽기용). */
     historyTabs: 'LOT 이력',
     attributes: 'LOT 속성',
+    /** 부분 출고 분할(008 · omf-all-around#289). */
+    split: {
+      label: '분할',
+      chip: '분할 LOT',
+      note: '부분 출고로 원래 LOT 에서 떼어 낸 LOT 입니다.',
+      parent: '원래 LOT',
+      parentView: '원래 LOT 상세 보기',
+      parentAlsoSplit: '이것도 분할 LOT',
+      qty: '분할 수량',
+      at: '분할 시각',
+      issue: '분할 출고',
+      issueText: (goodsIssueNo: string, lineNo: number): string =>
+        `${goodsIssueNo} · 라인 ${String(lineNo)}`,
+      childrenUsage: '이 LOT 에서 분할된 LOT 에 투입된 생산 LOT 도 함께 보입니다.',
+    },
     fields: {
       lotNo: 'LOT 번호',
       item: '품목',

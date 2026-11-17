@@ -100,7 +100,8 @@ export const issuedQtyByLine = (
 /**
  * 출고 확정 응답에서 **서버가 매긴 출고번호**만 꺼낸다.
  *
- * ⭐ 작업자가 이 번호를 POP(P-01-02)으로 들고 가 출고 QR 을 발행한다(ISSUE-QR-01 C5).
+ * ⭐ 작업자가 방금 만든 전표를 가리키는 번호다. 008 부터 출고 QR 은 발행하지 않고, 부분 출고분은
+ *    분할 LOT 라벨을 POP(P-01-02)에서 찍는다(`splitLinesOf`).
  *
  * ⛔ **모양을 믿지 않는다.** 큐를 타는 쓰기라 응답이 없을 수도, 끊긴 자리에서 다른 것이 담길
  *    수도 있다 — 문자열일 때만 받는다. 없으면 `null` 이고, 화면은 그 줄을 세우지 않는다.
@@ -111,4 +112,53 @@ export const goodsIssueNoOf = (response: unknown): string | null => {
   const value = (response as { goodsIssue?: { goodsIssueNo?: unknown } }).goodsIssue?.goodsIssueNo;
 
   return typeof value === 'string' && value.trim() !== '' ? value : null;
+};
+
+/** 부분 출고로 분할 LOT 이 생긴 출고 라인 한 줄(008 · omf-all-around#289). */
+export interface SplitIssuedLine {
+  pickingLineId: number | null;
+  /** 분할 LOT 번호 — 라벨에 찍힐 번호. */
+  lotNo: string;
+  /** 분할된 원래 LOT 번호. */
+  splitFromLotNo: string;
+  issueQty: number;
+  uomId: number | null;
+}
+
+const isText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim() !== '';
+
+/**
+ * 출고 확정 응답에서 **분할 LOT 이 생긴 줄**만 꺼낸다 — `splitFromLotNo` 가 있는 라인이다(계약 `GoodsIssueLine`).
+ *
+ * ⭐ 분할 LOT 번호는 서버가 출고를 받을 때 정한다. 전량 출고한 줄은 붙어 있는 라벨을 그대로 쓰므로 넣지 않는다.
+ * ⛔ **모양을 믿지 않는다**(`goodsIssueNoOf` 와 같은 까닭) — 모양이 다른 줄은 건너뛴다. 없으면 빈 목록이고,
+ *    화면은 안내를 세우지 않는다.
+ */
+export const splitLinesOf = (response: unknown): SplitIssuedLine[] => {
+  if (typeof response !== 'object' || response === null) return [];
+
+  const lines = (response as { lines?: unknown }).lines;
+
+  if (!Array.isArray(lines)) return [];
+
+  return lines.flatMap((each: unknown) => {
+    if (typeof each !== 'object' || each === null) return [];
+
+    const line = each as Record<string, unknown>;
+
+    if (!isText(line.splitFromLotNo) || !isText(line.lotNo) || typeof line.issueQty !== 'number') {
+      return [];
+    }
+
+    return [
+      {
+        pickingLineId: typeof line.pickingLineId === 'number' ? line.pickingLineId : null,
+        lotNo: line.lotNo,
+        splitFromLotNo: line.splitFromLotNo,
+        issueQty: line.issueQty,
+        uomId: typeof line.uomId === 'number' ? line.uomId : null,
+      },
+    ];
+  });
 };

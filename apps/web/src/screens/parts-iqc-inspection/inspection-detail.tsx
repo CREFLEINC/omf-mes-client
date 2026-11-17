@@ -79,7 +79,7 @@ import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
-import { useInboundInspection } from './inbound-queries';
+import { useInboundFourM, useInboundInspection } from './inbound-queries';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
@@ -190,6 +190,15 @@ export const InspectionDetail = ({
   /* 005 새 흐름(대상 = 입하 LOT) — 결과 목록 · 드로어 상세로 연다. 이전 데이터(대상 LOT)는 아래 지금 경로 그대로(R18-1). */
   const inboundFlow = detail.data !== undefined && isInboundLotInspection(detail.data);
   const inboundInspection = useInboundInspection(inboundFlow ? inspectionRequestId : null);
+  /*
+   * OA 새 흐름 — 의뢰에 대상 LOT(`lotId`)이 없어도 입하 LOT 의 자재 관리 LOT 에 4M 을 적는다(omf-all-around#290).
+   * 적어 둔 값은 맨 앞 자재 관리 LOT 에서 읽는다(서버가 전부에 같은 값을 적는다).
+   */
+  const firstInboundLotNo = inboundFlow ? (inboundInspection.data?.lots?.[0]?.lotNo ?? null) : null;
+  const inboundFourM = useInboundFourM(
+    oa ? firstInboundLotNo : null,
+    oa && firstInboundLotNo !== null ? (detail.data?.itemId ?? null) : null,
+  );
 
   const round = latestRound(rounds.data ?? []);
   const draftRound = round !== null && round.statusCode === 'DRAFT' ? round : null;
@@ -212,12 +221,15 @@ export const InspectionDetail = ({
     setPendingLevel(oa ? readPendingLevel(inspectionRequestId) : null);
   }, [oa, inspectionRequestId]);
   const levelWrite = useLevelWrite(() => undefined);
-  const submitted = () => {
+  const savePendingLevel = () => {
     if (pendingLevel !== null) {
       levelWrite.write({ row: null, values: pendingLevel });
       storePendingLevel(inspectionRequestId, null);
       setPendingLevel(null);
     }
+  };
+  const submitted = () => {
+    savePendingLevel();
     onSubmitted();
   };
 
@@ -344,8 +356,8 @@ export const InspectionDetail = ({
   const oaOf = (request: NonNullable<typeof detail.data>): FormProps['oa'] =>
     oa
       ? {
-          hasLot: request.lotId !== null,
-          fourMStored: request.fourMChange,
+          hasLot: request.lotId !== null || firstInboundLotNo !== null,
+          fourMStored: inboundFlow ? (inboundFourM.data ?? null) : request.fourMChange,
           itemId: request.itemId,
           levelItem: (() => {
             const parts = items.partsOf(request.itemId);
@@ -369,6 +381,12 @@ export const InspectionDetail = ({
     if (detail.data === undefined) return null;
     if (versionId === null || version.data === undefined || specs.data === undefined) {
       return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+    }
+    /* OA — 적어 둔 4M 을 읽은 뒤에 양식을 연다(양식은 처음 값으로 4M 을 잡는다 · #290). */
+    if (inboundFourM.isError)
+      return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
+    if (inboundFourM.fetchStatus === 'fetching' && inboundFourM.data === undefined) {
+      return <p className="field-note">{t.dialog.loading}</p>;
     }
     return (
       <InspectionForm
@@ -427,6 +445,7 @@ export const InspectionDetail = ({
         headActions={inboundHead?.headActions}
         headNote={inboundHead?.headNote}
         scanOpen={scanOpen}
+        onConfirmed={savePendingLevel}
       />
     );
   }
