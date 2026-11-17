@@ -74,6 +74,8 @@ export interface InboundDetailProps {
    * `key` 는 스캔마다 바뀐다(같은 LOT 을 다시 스캔해도 다시 연다). 판정 확정된 의뢰면 열지 않는다.
    */
   scanOpen?: { lotId: number; key: number } | null;
+  /** 판정 확정이 끝난 뒤 — OA 가 결과 창에서 골라 둔 검사 수준을 이때 저장한다(확정해야 저장 · omf-all-around#290). */
+  onConfirmed?: () => void;
 }
 
 /**
@@ -91,6 +93,7 @@ export const InboundDetail = ({
   headActions,
   headNote,
   scanOpen = null,
+  onConfirmed,
 }: InboundDetailProps) => {
   const { client } = useApiClient();
   const toast = useToast();
@@ -502,7 +505,11 @@ export const InboundDetail = ({
                         </Button>
                       </span>
                       {/* 판정 확정 · 확정 취소 — W-01-15 가 있을 때만(US4-7, C4). */}
-                      <ConfirmActions inspection={inspection} confirmed={confirmed} />
+                      <ConfirmActions
+                        inspection={inspection}
+                        confirmed={confirmed}
+                        onConfirmed={onConfirmed}
+                      />
                       {headActions?.(inspection)}
                     </div>
                   </div>
