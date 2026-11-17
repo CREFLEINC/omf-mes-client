@@ -1,6 +1,5 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { PopTopStatus } from '../../patterns/pop-top-status';
 
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
@@ -39,13 +38,6 @@ export const PopHeader = ({ titleId, isConnected }: PopHeaderProps) => {
         {t.title}
       </h1>
 
-      <PopTopStatus>
-        {isConnected !== undefined && (
-          <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
-            {isConnected ? t.header.connected : t.header.disconnected}
-          </Chip>
-        )}
-      </PopTopStatus>
     </header>
   );
 };

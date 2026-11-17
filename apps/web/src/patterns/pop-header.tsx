@@ -29,6 +29,7 @@ export interface PopHeaderProps {
    * 반대로 브라우저가 온라인이라도 서버가 죽어 있을 수 있다.
    */
   isConnected?: boolean;
+  /* ⚠ 지금은 그리지 않는다 — 연결 표시는 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291). 공통 메뉴 밖(단독 실행)용으로 받기만 한다. */
   /** 아직 서버에 닿지 않은 기록 수. 0이거나 넘기지 않으면 칩을 두지 않는다. */
   unsentCount?: number;
   /** 오른쪽 덩어리 맨 앞(작업자 앞)에 둘 프린터 칩. 넘기지 않으면 자리를 두지 않는다(생산 작업 · 개선 명세 ⑤). */
@@ -66,7 +67,6 @@ export const PopHeader = ({
   isEmergency = false,
   moldText = null,
   isMoldMissing = false,
-  isConnected,
   unsentCount = 0,
   printer,
   actions,
@@ -118,12 +118,7 @@ export const PopHeader = ({
         {printer}
         {/* 연결·미전송 표시는 공통 메뉴 맨 위 줄에 선다(#291) — 머리줄에 이것만 남아 행이 서지 않게. */}
         <PopTopStatus>
-          {isConnected !== undefined && (
-            <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
-              {isConnected ? t.connected : t.disconnected}
-            </Chip>
-          )}
-
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
           {unsentCount > 0 && (
             <Chip variant="status" size="md" status="warning">
               {t.unsent(unsentCount)}

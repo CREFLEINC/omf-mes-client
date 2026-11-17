@@ -241,10 +241,7 @@ export const ReworkResultRegisterScreen = () => {
           </p>
         )}
         <PopTopStatus>
-          <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
-            {isOnline ? messages.common.connection.online : messages.common.connection.offline}
-          </Chip>
-          {/* ⭐ 미전송이 없으면 표시하지 않는다(사용자 지시 2026-09-15) — 「미전송 0건」은 머리줄만 붐빈다. */}
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
           {pendingCount > 0 && (
             <Chip variant="status" size="md" status="warning">
               {t.pending(pendingCount)}

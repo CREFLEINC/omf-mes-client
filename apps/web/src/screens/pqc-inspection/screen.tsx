@@ -719,12 +719,10 @@ const PqcFrame = ({
          * 다른 POP 화면 전부가 상태를 이 묶음에 넣는다.
          */}
         <PopTopStatus>
-          <Chip variant="status" size="md" status={pendingCount > 0 ? 'warning' : 'success'}>
-            {pendingCount > 0 ? messages.common.connection.unsent(pendingCount) : t.header.synced}
-          </Chip>
-          {!isOnline && (
-            <Chip variant="status" size="md" status="error">
-              {messages.common.connection.offline}
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+          {pendingCount > 0 && (
+            <Chip variant="status" size="md" status="warning">
+              {messages.common.connection.unsent(pendingCount)}
             </Chip>
           )}
         </PopTopStatus>

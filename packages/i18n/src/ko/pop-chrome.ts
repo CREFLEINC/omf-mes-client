@@ -34,6 +34,17 @@ export const popChrome = {
     count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
   },
   /** 홈 화면(#291) — 사번 확인 뒤 처음 서는 화면. */
+  /** 작업 단계 줄(#291) — 작업 지시 목록 탭 아래 ①②③④. */
+  workSteps: {
+    label: '작업 단계',
+    pickWorkOrder: '작업지시 선택',
+    /** 단계 줄 오른쪽 작업 중 화면 버튼의 짧은 이름(승인 시안). 없는 화면은 화면 이름 그대로. */
+    during: {
+      '/pop/work-hold': '작업 중단',
+      '/pop/running-change': '러닝체인지',
+      '/pop/tool-usage': '툴 사용실적',
+    } as Readonly<Record<string, string>>,
+  },
   home: {
     title: '홈',
     greeting: (name: string): string => `${name} 님, 안녕하세요!`,

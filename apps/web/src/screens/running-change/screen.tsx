@@ -264,16 +264,10 @@ export const RunningChangeScreen = () => {
           <p className="pop-context">{t.header.session(session.workSessionId)}</p>
         )}
         <PopTopStatus>
-          {/*
-           * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
-           * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
-           */}
-          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
-            {outbox.pendingCount > 0 ? t.header.unsynced(outbox.pendingCount) : t.header.synced}
-          </Chip>
-          {!outbox.isOnline && (
-            <Chip variant="status" size="md" status="error">
-              {t.header.offline}
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+          {outbox.pendingCount > 0 && (
+            <Chip variant="status" size="md" status="warning">
+              {t.header.unsynced(outbox.pendingCount)}
             </Chip>
           )}
         </PopTopStatus>

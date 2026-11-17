@@ -39,7 +39,6 @@ import {
   type ToolUsage,
   type UsageDraft,
 } from './types';
-import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.toolUsage;
 
@@ -359,12 +358,6 @@ export const ToolUsageScreen = () => {
          * 화면명 쪽과 오른쪽 끝으로 갈라 그린다. 섞으면 화면마다 눈이 다른 곳을 본다.
          */}
         {headerContext === '' ? null : <p className="pop-context">{headerContext}</p>}
-        <PopTopStatus>
-          {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(모바일 셸 전례). */}
-          <Chip status={isOnline ? 'success' : 'warning'}>
-            {isOnline ? messages.common.connection.online : messages.common.connection.offline}
-          </Chip>
-        </PopTopStatus>
       </header>
 
       <>

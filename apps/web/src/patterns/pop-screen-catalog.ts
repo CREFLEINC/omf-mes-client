@@ -49,7 +49,17 @@ export interface PopScreen {
   countKey?: TerminalWorkCountKey;
   /** 묶음 줄(자재·생산·품질·출하·설비·창고)에서 이 화면이 속한 묶음(#291). */
   group: PopScreenGroupKey;
+  /**
+   * 작업지시를 고른 뒤 거치는 화면인가(#291 · 사용자 승인 2026-11-17). 이런 화면은 탭에 두지 않고
+   * 「작업 지시 목록」 탭 아래 작업 단계 줄에서 연다.
+   * - `step`: 차례대로 거치는 단계(이 목록 순서가 단계 순서다 — ② 자재 투입 · ③ 생산 작업 · ④ 생산 포장).
+   * - `during`: 작업 중 언제든 여는 화면(작업 중단 · 러닝체인지 · 툴 사용실적) — 단계 줄 오른쪽 버튼.
+   */
+  workFlow?: 'step' | 'during';
 }
+
+/** 작업 단계 ①(작업지시 고르기) 화면. */
+export const POP_WORK_ENTRY_PATH = '/pop/work-start';
 
 export type PopScreenGroupKey = 'material' | 'production' | 'quality' | 'shipping' | 'facility';
 
@@ -95,6 +105,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     group: 'production',
     name: '자재 투입',
     acceptsWorkOrderId: true,
+    workFlow: 'step',
   },
   {
     path: '/pop/production-result',
@@ -102,6 +113,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     group: 'production',
     name: '생산 작업',
     acceptsWorkOrderId: true,
+    workFlow: 'step',
   },
   {
     path: '/pop/packing-work',
@@ -109,6 +121,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     group: 'production',
     name: '생산 포장',
     acceptsWorkOrderId: true,
+    workFlow: 'step',
   },
   {
     path: '/pop/packing-label-reprint',
@@ -122,6 +135,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     group: 'production',
     name: '작업 중단',
     acceptsWorkOrderId: true,
+    workFlow: 'during',
   },
   {
     path: '/pop/running-change',
@@ -129,6 +143,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
     group: 'production',
     name: '러닝체인지 부품 교체',
     acceptsWorkOrderId: true,
+    workFlow: 'during',
   },
   {
     path: '/pop/emergency-work-orders',
@@ -171,7 +186,15 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: 'OQC 출하검사 판정',
     countKey: 'oqcInspection',
   },
-  { path: '/pop/tool-usage', code: 'P-05-01', group: 'facility', name: '툴 사용실적 입력' },
+  /* 작업지시를 주소로 받는다(`tool-usage/entry-context`) — 작업 단계 줄에서 고른 W/O 를 싣는다(#291). */
+  {
+    path: '/pop/tool-usage',
+    code: 'P-05-01',
+    group: 'facility',
+    name: '툴 사용실적 입력',
+    acceptsWorkOrderId: true,
+    workFlow: 'during',
+  },
   { path: '/pop/downtime', code: 'P-05-02', group: 'facility', name: '비가동 실적 입력' },
   /*
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가

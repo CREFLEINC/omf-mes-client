@@ -10600,7 +10600,7 @@
 }
 
 .pop-nav-group--home[data-on='true'] {
-  padding-inline: 26px;
+  /* 너비는 바꾸지 않는다 — 바꾸면 홈을 오갈 때 묶음 줄 전체가 옆으로 밀린다(사용자 지적 2026-11-17). */
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -10838,6 +10838,28 @@
 .pop-frame .pop-ui:has(> .pop-header):not(:has(> .pop-header > :not(.pop-title):not(:empty))) {
   box-sizing: border-box;
   padding-block-start: var(--space-4);
+}
+
+/*
+ * 본문 위아래 빈 곳을 같게(사용자 지시 2026-11-17 · #291) — 첫 상자 위 16, 마지막 상자 아래 16.
+ * - 머리줄 안 빈 자리(`.pop-context-right` 등)가 접힌 머리줄 속에서 이음매 한 칸(16)을 더 먹어 위가 32 로 섰다.
+ * - 바닥은 그릇 여백(20)이 남던 것을 16 으로 맞추고, 바닥 버튼 줄은 그만큼만 되돌려 바닥에 붙인다.
+ */
+.pop-frame .pop-ui > .pop-header > :empty {
+  display: none;
+}
+
+.pop-frame .pop-ui {
+  padding-block-end: var(--space-4);
+}
+
+.pop-frame .pop-ui > [class*='action'] {
+  margin-block-end: calc(-1 * var(--space-4));
+}
+
+/* 머리줄 아래 띄우던 자기 위 여백 — 머리줄이 접혀 그릇 위 여백(16)과 겹쳐 32 가 됐다. */
+.pop-frame .pop-ui > .pop-loclabel-top {
+  margin-block-start: 0;
 }
 
 /* 홈(#291 확정 시안) — 인사 줄, 남은 작업, 바로가기. 내용 높이만큼만 차지하고 남는 자리는 아래로 둔다. */
@@ -11221,4 +11243,111 @@
 .pop-frame .pop-oqc-bar-note--blocked,
 .pop-frame .pop-oqc-bar-note--ready {
   display: none;
+}
+
+/*
+ * 작업 단계 줄(#291 · 사용자 승인 2026-11-17) — 작업 지시 목록 탭 아래 ①②③④ 와 고른 W/O, 작업 중 화면 버튼.
+ * 지금 단계는 빨간 동그라미·글자, 잠긴 단계는 흐리게.
+ */
+.pop-work-steps {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: 52px;
+  padding: 6px var(--space-4);
+  border-block-end: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+}
+
+.pop-work-steps__list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-work-steps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pop-work-steps__sep {
+  color: var(--on-surface-variant);
+  font-size: 20px;
+}
+
+.pop-work-step {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface);
+  font: 600 16px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-work-step__no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: 700 14px / 1 var(--font-sans);
+}
+
+.pop-work-step[data-on='true'] {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.pop-work-step[data-on='true'] .pop-work-step__no {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.pop-work-step:disabled,
+.pop-work-steps__during:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pop-work-steps__side {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.pop-work-steps__wo {
+  font: 700 15px / 1 var(--font-sans);
+  white-space: nowrap;
+}
+
+.pop-work-steps__during {
+  min-block-size: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 600 14px / 1 var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pop-work-steps__during[data-on='true'] {
+  border-color: var(--primary);
+  color: var(--primary);
 }

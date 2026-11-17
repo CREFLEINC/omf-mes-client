@@ -24,6 +24,15 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     close: 'Đóng',
     count: (name: string, count: number): string => `${name}, còn ${String(count)} việc`,
   },
+  workSteps: {
+    label: 'Các bước công việc',
+    pickWorkOrder: 'Chọn lệnh sản xuất',
+    during: {
+      '/pop/work-hold': 'Tạm dừng',
+      '/pop/running-change': 'Running change',
+      '/pop/tool-usage': 'Dụng cụ',
+    },
+  },
   home: {
     title: 'Trang chủ',
     greeting: (name: string): string => `Xin chào ${name}!`,

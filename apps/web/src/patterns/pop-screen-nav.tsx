@@ -1,23 +1,27 @@
-import { Badge, Button } from '@crefle/web-ui';
+import { Badge, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { useAccessiblePopScreens } from './pop-access';
 import { usePopIdentity } from './pop-identity';
+import { usePopOnline } from './pop-online';
 import {
   POP_ENTRY_SCREEN_PATH,
   POP_HOME_PATH,
   POP_SCREEN_GROUPS,
+  POP_WORK_ENTRY_PATH,
   type PopScreen,
   type PopScreenGroupKey,
 } from './pop-screen-catalog';
 import { usePopWorkCounts, type PopWorkCounts } from './pop-work-counts';
+import { PopWorkSteps } from './pop-work-steps';
 import { setWorkerSession, useWorkerSession } from './worker-session';
 
 const nav = messages.popChrome.nav;
 const remainingText = messages.popChrome.remaining;
 const headerText = messages.popChrome.header;
+const common = messages.common.connection;
 
 /** 한 화면의 남은 수. 셀 수 없는 화면이거나 수를 모르면 0 — 0 은 어디에도 그리지 않는다. */
 export const countOf = (screen: PopScreen, counts: PopWorkCounts['counts']): number =>
@@ -67,6 +71,7 @@ export const usePopNavigation = () => {
 
   return {
     pathname,
+    search,
     access,
     workCounts,
     pending,
@@ -155,6 +160,7 @@ const TopBar = ({
   const navigate = useNavigate();
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
+  const isOnline = usePopOnline();
   /* 이름은 지금 사번과 같은 사람의 세션일 때만 붙인다 — 다른 사번의 이름을 빌려 오지 않는다. */
   const workerName =
     session !== null && session.worker.workerNo === workerNo ? session.worker.workerName : null;
@@ -168,8 +174,12 @@ const TopBar = ({
           ? headerText.terminalUnknown
           : headerText.terminalLabel(terminalCode)}
       </span>
-      {/* 화면이 보내는 연결·전송 표시(`PopTopStatus`) 자리. */}
+      {/* 화면이 보내는 미전송 표시(`PopTopStatus`) 자리 — 미전송이 있을 때만 선다. */}
       <span className="pop-nav-top__status" ref={statusRef} />
+      {/* 연결 표시는 모든 화면에 같게 선다(사용자 지시 2026-11-17 · #291). */}
+      <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
+        {isOnline ? common.online : common.offline}
+      </Chip>
       {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
       <span
         className="pop-nav-top__chip"
@@ -225,7 +235,7 @@ export const PopScreenNav = ({
   statusRef?: (element: HTMLElement | null) => void;
 }) => {
   const navigate = useNavigate();
-  const { pathname, access, workCounts, pending, total, go } = usePopNavigation();
+  const { pathname, search, access, workCounts, pending, total, go } = usePopNavigation();
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;
   const [open, setOpen] = useState(false);
   const currentTab = useRef<HTMLButtonElement | null>(null);
@@ -255,10 +265,21 @@ export const PopScreenNav = ({
   if (pathname === POP_ENTRY_SCREEN_PATH) return null;
 
   const isHome = pathname === POP_HOME_PATH;
-  const shownGroup = current?.group ?? null;
+  /*
+   * ⭐ 작업지시를 고른 뒤 거치는 화면(`workFlow`)은 탭에 두지 않는다(#291 · 사용자 승인 2026-11-17) —
+   *    「작업 지시 목록」 탭 아래 작업 단계 줄이 연다. 그 화면에 있을 때는 생산 묶음·작업 지시 목록 탭이 켜진다.
+   */
+  const entryScreen = access.screens.find((screen) => screen.path === POP_WORK_ENTRY_PATH) ?? null;
+  const inWorkFlow =
+    current !== null && (current.workFlow !== undefined || current === entryScreen);
+  const shownGroup =
+    inWorkFlow && entryScreen !== null ? entryScreen.group : (current?.group ?? null);
+  const tabPath =
+    current?.workFlow !== undefined && entryScreen !== null ? entryScreen.path : pathname;
   const groups = POP_SCREEN_GROUPS.map((group) => {
-    const screens = access.screens.filter((screen) => screen.group === group.key);
-    const count = screens.reduce((sum, screen) => sum + countOf(screen, workCounts.counts), 0);
+    const all = access.screens.filter((screen) => screen.group === group.key);
+    const screens = all.filter((screen) => screen.workFlow === undefined);
+    const count = all.reduce((sum, screen) => sum + countOf(screen, workCounts.counts), 0);
     return { ...group, screens, count };
   }).filter((group) => group.screens.length > 0);
   const tabs = groups.find((group) => group.key === shownGroup) ?? null;
@@ -391,7 +412,7 @@ export const PopScreenNav = ({
         <nav className="pop-nav-tabs" aria-label={nav.screensLabel(tabs.name)}>
           {tabs.screens.map((screen) => {
             const count = countOf(screen, workCounts.counts);
-            const on = screen.path === pathname;
+            const on = screen.path === tabPath;
             return (
               <button
                 key={screen.path}
@@ -411,6 +432,16 @@ export const PopScreenNav = ({
             );
           })}
         </nav>
+      )}
+      {inWorkFlow && (
+        <PopWorkSteps
+          entry={entryScreen}
+          steps={access.screens.filter((screen) => screen.workFlow === 'step')}
+          during={access.screens.filter((screen) => screen.workFlow === 'during')}
+          pathname={pathname}
+          search={search}
+          go={go}
+        />
       )}
     </div>
   );

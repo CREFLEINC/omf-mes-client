@@ -37,7 +37,6 @@ import {
   type Printer,
 } from './types';
 import { useIssuePrintRunner, type IssuePrintTarget } from './use-issue-print';
-import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.repackLabelIssue;
 
@@ -278,11 +277,6 @@ export const RepackLabelIssueScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <PopTopStatus>
-          <Chip status={isOnline ? 'success' : 'error'}>
-            {isOnline ? t.device.online : t.device.offline}
-          </Chip>
-        </PopTopStatus>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

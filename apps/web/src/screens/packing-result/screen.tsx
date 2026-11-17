@@ -43,7 +43,6 @@ import { ScanField } from './scan-field';
 import { useTerminalGate } from './terminal-gating';
 import type { MatchedLot, PackedLine, ShipmentEntry, ShipmentLotAllocation } from './types';
 import { useOnline } from './use-online';
-import { PopTopStatus } from '../../patterns/pop-top-status';
 
 const t = messages.packingResult;
 
@@ -380,11 +379,6 @@ export const PackingResultScreen = () => {
          *   「작업자 · 연결상태 · 화면 이동 · 사용자 전환」이고, 라벨 상태·재출력은 «액션 줄»의
          *   일이다. 머리줄에 두면 화면을 바꾸는 조작이 상태 표시들 사이에 섞인다.
          */}
-        <PopTopStatus>
-          <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
-            {isOnline ? t.header.online : t.header.offline}
-          </Chip>
-        </PopTopStatus>
       </header>
 
       {isLabelMode ? (

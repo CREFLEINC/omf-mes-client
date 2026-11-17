@@ -870,13 +870,14 @@ describe('RepackLabelIssueScreen — 연결', () => {
     await waitFor(() => {
       expect(submitButton()).toBeDisabled();
     });
-    expect(screen.getByText(t.device.offline)).toBeInTheDocument();
   });
 
-  it('연결돼 있으면 헤더가 그렇게 말한다', async () => {
+  /* 연결 표시는 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 화면 머리에는 두지 않는다. */
+  it('연결돼 있어도 화면 머리에는 연결 표시를 두지 않는다', async () => {
     await renderSelectedScreen();
 
-    expect(await screen.findByText(t.device.online)).toBeInTheDocument();
+    await screen.findByText(HANDLING_UNIT_NO);
+    expect(screen.queryByText(t.device.online)).not.toBeInTheDocument();
   });
 });
 

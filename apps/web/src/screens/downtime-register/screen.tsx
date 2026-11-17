@@ -323,21 +323,10 @@ export const DowntimeRegisterScreen = () => {
         )}
 
         <PopTopStatus>
-          {/*
-           * ⭐ **미전송 건수는 필수 요건이다.** 「담긴 순간 성공」이라는 표시를 택한 근거가
-           * 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
-           */}
-          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
-            {outbox.pendingCount > 0 ? t.header.unsent(outbox.pendingCount) : t.header.sent}
-          </Chip>
-          {/*
-            ⚠ **오프라인은 오류가 아니다.** 이 화면은 끊긴 채로 쓰도록 만들어졌고, 통신이 끊긴
-            것 자체가 비가동 사유가 될 수 있다. 붉게 칠하면 「잘못됐다」로 읽혀 작업자가 멈춰
-            선다 — 같은 도메인의 P-05-01 도 연결 상태를 `warning` 으로 낸다.
-          */}
-          {!outbox.isOnline && (
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}
+          {outbox.pendingCount > 0 && (
             <Chip variant="status" size="md" status="warning">
-              {t.header.offline}
+              {t.header.unsent(outbox.pendingCount)}
             </Chip>
           )}
         </PopTopStatus>
