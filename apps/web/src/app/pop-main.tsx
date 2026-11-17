@@ -38,10 +38,11 @@ import './pop-locale';
 
 import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router';
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
+import { usePopIdentity } from '../patterns/pop-identity';
 import { PopScreenNav } from '../patterns/pop-screen-nav';
 import {
   PopRegistrationProvider,
@@ -176,6 +177,17 @@ const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
   const { terminal } = usePopRegistration();
+  const { workerNo } = usePopIdentity();
+  const { pathname } = useLocation();
+
+  /*
+   * ⭐ **사번이 없으면 어느 화면이든 사번 입력 화면으로 보낸다**(사용자 지시 2026-11-17 · #291).
+   *    공통 메뉴로 사번 없이 다른 화면에 들어가면 「사번이 확인되지 않았습니다」 띠만 서고 할 일이
+   *    없었다. 사번은 메모리에만 있어 처음부터 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
+   */
+  if (workerNo === null && pathname !== POP_ENTRY_PATH) {
+    return <Navigate to={POP_ENTRY_PATH} replace />;
+  }
 
   /*
    * ⭐ 공통 이동 메뉴(#291)를 화면 «위»에 세우고, 화면은 남은 높이를 가져간다(`.pop-frame__body`).
