@@ -234,21 +234,21 @@ describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
   });
 
   it('마감된 W/O 에서는 작업 중 화면 버튼이 잠긴다', async () => {
-    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
-    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7802' });
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-10', 'P-02-11'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/running-change?workOrderId=7802' });
     await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
     expect(await screen.findByText('WO-SYN-7802')).toBeInTheDocument();
   });
 
   it('서버가 열린 W/O 로 보이지 않는(401) W/O 에서도 작업 중 화면 버튼이 잠긴다', async () => {
-    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
-    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7803' });
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-10', 'P-02-11'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/running-change?workOrderId=7803' });
     await waitFor(() => expect(screen.getByRole('button', { name: '작업 중단' })).toBeDisabled());
   });
 
   it('열린 W/O 에서는 작업 중 화면 버튼이 열린다', async () => {
-    const permissions = ['P-02-01', 'P-02-03', 'P-02-08', 'P-02-10'];
-    setup({ session: { ...SESSION, permissions }, route: '/pop/packing-work?workOrderId=7801' });
+    const permissions = ['P-02-01', 'P-02-03', 'P-02-10', 'P-02-11'];
+    setup({ session: { ...SESSION, permissions }, route: '/pop/running-change?workOrderId=7801' });
     expect(await screen.findByText('WO-SYN-7801')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '작업 중단' })).toBeEnabled();
   });

@@ -20,15 +20,25 @@ export const productReceipt = {
     /** 인식표가 든 창고는 지금 있는 자리다. 들어갈 창고는 사람이 정한다. */
     hint: '물건이 들어갈 창고입니다. 인식표가 지금 있는 위치와 다를 수 있습니다.',
   },
+  /** 생산 포장을 없애 제품은 생산 LOT 라벨로 들어온다. 이미 만든 인식표(상자)도 받는다(omf-all-around#293). */
   unit: {
-    legend: '인식표 스캔',
-    scanLabel: '인식표 스캔',
-    scanPlaceholder: '인식표 QR을 스캔하세요',
-    manualLabel: '인식표 직접 입력',
-    manualSubmit: '인식표 넣기',
-    loading: '인식표를 찾는 중입니다',
+    legend: 'LOT 라벨 스캔',
+    scanLabel: '생산 LOT 라벨 또는 인식표 스캔',
+    scanPlaceholder: '생산 LOT 라벨이나 인식표 QR을 스캔하세요',
+    manualLabel: 'LOT·인식표 직접 입력',
+    manualSubmit: 'LOT·인식표 넣기',
+    loading: 'LOT·인식표를 찾는 중입니다',
     loadFailed: '인식표를 불러오지 못했습니다. 연결을 확인하세요.',
-    notFound: (no: string) => `${no} 인식표를 찾지 못했습니다`,
+    lotLoadFailed: 'LOT을 불러오지 못했습니다. 연결을 확인하세요.',
+    notFound: (no: string) => `${no} 에 맞는 LOT·인식표를 찾지 못했습니다`,
+    /** 받지 않는 생산 LOT 라벨 — 까닭을 사람의 말로. */
+    lotRefused: {
+      notProduct: (lotNo: string) => `${lotNo} 은(는) 제품 LOT이 아닙니다`,
+      voided: (lotNo: string) => `${lotNo} 은(는) 폐번된 LOT입니다`,
+      notCompleted: (lotNo: string) =>
+        `${lotNo} 은(는) 아직 생산 완료되지 않았습니다. 생산 작업에서 LOT을 완료한 뒤 입고하세요.`,
+      noGood: (lotNo: string) => `${lotNo} 은(는) 양품 실적이 없습니다`,
+    },
     picked: (no: string) => `인식표 ${no}`,
     empty: '이 인식표에는 담긴 물건이 없습니다',
   },
@@ -42,10 +52,12 @@ export const productReceipt = {
     previousLine: '앞 라인',
     nextLine: '다음 라인',
     expected: (qty: string) => `인식표 수량 ${qty}`,
+    expectedGood: (qty: string) => `양품 실적 ${qty}`,
     manufactured: (at: string) => `제조 ${at}`,
     expiry: (date: string) => `유효기간 ${date}`,
     /* 실물대로 받는다. 사유를 담을 자리가 계약에 없어 지어내지 않는다. */
     differs: '인식표 수량과 다릅니다. 실물대로 받습니다.',
+    differsGood: '양품 실적과 다릅니다. 실물대로 받습니다.',
     problem: {
       notNumber: '수량을 숫자로 적으세요',
       negative: '수량은 0보다 작을 수 없습니다',

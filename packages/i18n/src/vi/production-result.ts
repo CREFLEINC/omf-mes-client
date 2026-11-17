@@ -32,7 +32,6 @@ export const productionResult: Translated<typeof ko.productionResult> = {
     },
     actions: {
       runningChange: 'Thay linh kiện',
-      packingWork: 'Sang đóng gói sản xuất',
     },
     next: {
       noWorkOrder:

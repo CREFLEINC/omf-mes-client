@@ -73,12 +73,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 현재 생산 LOT이 있는 씨앗 작업지시다. */
     query: '?workOrderId=11002',
   },
-  {
-    path: '/pop/packing-label-reprint',
-    label: 'P-02-09 포장 라벨·인식표 재출력',
-    query: '?handlingUnitId=13001',
-  },
-  { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재 관리 LOT 라벨' },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
@@ -93,12 +87,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    *    — 이름표도 코드 대신 번호로 서서 실제 화면과 달라 보였다(실측).
    */
   { path: '/pop/downtime', label: 'P-05-02 비가동 등록' },
-  {
-    path: '/pop/packing-work',
-    label: 'P-02-08 생산 포장',
-    /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
-    query: '?workOrderId=11001',
-  },
   {
     path: '/pop/repack-label-issue',
     label: 'P-04-04 재구성 라벨 발행',

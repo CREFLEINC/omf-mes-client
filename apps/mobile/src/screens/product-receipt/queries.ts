@@ -1,6 +1,7 @@
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { findLot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
 import type { HandlingUnit, HandlingUnitContent, Lot, StockedCheck, Warehouse } from './receipt';
 
@@ -54,6 +55,46 @@ export const useHandlingUnitByNo = (
       );
 
       return data.items.find((unit) => unit.handlingUnitNo === handlingUnitNo) ?? null;
+    },
+  });
+};
+
+/**
+ * 스캔값에 맞는 생산 LOT(omf-all-around#293). 인식표로 찾지 못했을 때만 묻는다 — 상자를 만들던 생산 포장을
+ * 없애 제품은 생산 LOT 라벨로 들어온다.
+ *
+ * LOT 번호 정확 일치로 찾고, 양품 실적은 단건 조회(`withProgress=true`)에만 실려 한 번 더 묻는다. 판정에
+ * 쓰는 값이라 캐시하지 않는다(공유계약 C-6).
+ */
+export const useProductLotByNo = (
+  lotNo: string | null,
+  enabled: boolean,
+): UseQueryResult<Lot | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['product-receipt-lot-scan', lotNo] as const,
+    enabled: enabled && lotNo !== null && lotNo !== '',
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () => {
+      if (lotNo === null || lotNo === '') {
+        throw new Error('LOT 라벨을 스캔하기 전에는 조회하지 않습니다.');
+      }
+
+      const found = await findLot(client, lotNo);
+
+      if (found === null) {
+        return null;
+      }
+
+      const detail = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', {
+          params: { path: { lotId: found.lotId }, query: { withProgress: true } },
+        }),
+      );
+
+      return detail.lot;
     },
   });
 };

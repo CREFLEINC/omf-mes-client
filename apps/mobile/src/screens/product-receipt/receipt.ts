@@ -39,14 +39,81 @@ export const AVAILABLE = 'AVAILABLE';
  * 계약에 없어 사유를 지어내지 않는다.
  */
 export interface DraftLine {
-  handlingUnitContentId: number;
+  /** 줄 이름. 인식표 구성 줄은 `unit-<구성 id>`, 생산 LOT 라벨로 넣은 줄은 `lot-<LOT id>` 다. */
+  key: string;
+  /** 어디서 온 줄인가 — 인식표(상자) 구성인가, 생산 LOT 라벨 스캔인가(omf-all-around#293). */
+  from: 'unit' | 'lot';
   itemId: number;
   lotId: number;
   uomId: number;
-  /** 인식표가 말하는 수량. 실물과 다를 수 있다. */
+  /** 인식표가 말하는 수량 또는 LOT 의 양품 실적. 실물과 다를 수 있다. */
   expectedQty: number;
   qty: string;
 }
+
+export const unitLineKey = (handlingUnitContentId: number): string =>
+  `unit-${String(handlingUnitContentId)}`;
+
+/**
+ * 생산 LOT 라벨로 받는 LOT 유형. 생산이 만드는 LOT 은 `PRODUCTION` 이고, `PRODUCT` 는 앞선 데이터에
+ * 남은 값이다. 자재 LOT(`MATERIAL`)은 제품 입고 대상이 아니다.
+ */
+const PRODUCT_LOT_TYPES: readonly string[] = ['PRODUCTION', 'PRODUCT'];
+
+/** 생산 LOT 라벨을 받지 않는 까닭. */
+export type LotRefusal = 'notProduct' | 'voided' | 'notCompleted' | 'noGood';
+
+/** LOT 의 양품 실적. `withProgress=true` 로 받은 단건에만 실린다 — 없으면 0 으로 본다. */
+export const goodQtyOf = (lot: Pick<Lot, 'progress'>): number => lot.progress?.goodQty ?? 0;
+
+/**
+ * 생산 LOT 라벨로 입고할 수 있는가(omf-all-around#293 — 생산 포장을 없애 상자가 생기지 않는다).
+ *
+ * 생산 완료된 LOT 만 받는다. 생산 중인 LOT 은 실적이 더 붙어 수량이 계속 바뀐다. 이미 재고로 선
+ * LOT 은 여기서 가리지 않는다 — 인식표 줄과 같은 재고 확인(`stockedLines`)이 막는다.
+ */
+export const lotRefusalOf = (
+  lot: Pick<Lot, 'lotTypeCode' | 'lifecycleStatusCode' | 'completedAt' | 'progress'>,
+): LotRefusal | null => {
+  if (!PRODUCT_LOT_TYPES.includes(lot.lotTypeCode)) {
+    return 'notProduct';
+  }
+
+  if (lot.lifecycleStatusCode === 'VOIDED') {
+    return 'voided';
+  }
+
+  if (lot.completedAt == null) {
+    return 'notCompleted';
+  }
+
+  return goodQtyOf(lot) > 0 ? null : 'noGood';
+};
+
+/** 생산 LOT 한 건을 입고 줄로. 수량은 양품 실적으로 채우고 실물대로 고칠 수 있게 둔다. */
+export const lotLineOf = (lot: Pick<Lot, 'lotId' | 'itemId' | 'uomId' | 'progress'>): DraftLine => {
+  const goodQty = goodQtyOf(lot);
+
+  return {
+    key: `lot-${String(lot.lotId)}`,
+    from: 'lot',
+    itemId: lot.itemId,
+    lotId: lot.lotId,
+    uomId: lot.uomId,
+    expectedQty: goodQty,
+    qty: String(goodQty),
+  };
+};
+
+/**
+ * 생산 LOT 줄을 더한다. LOT 라벨은 하나씩 이어 스캔해 줄을 늘리고, 같은 LOT 을 다시 읽으면 그대로 둔다.
+ * 앞서 인식표로 펼친 줄이 있으면 걷어 낸다 — 인식표 스캔이 줄을 통째로 바꾸는 것과 같은 규칙이다.
+ */
+export const withLotLine = (lines: DraftLine[], line: DraftLine): DraftLine[] => {
+  const lotLines = lines.filter((each) => each.from === 'lot');
+
+  return lotLines.some((each) => each.key === line.key) ? lotLines : [...lotLines, line];
+};
 
 export type QtyProblem = 'notNumber' | 'negative' | 'zero';
 
@@ -76,7 +143,7 @@ export const qtyProblemOf = (line: DraftLine): QtyProblem | null => {
   return value === 0 ? 'zero' : null;
 };
 
-/** 인식표가 말한 것과 실물이 다른가. 막지 않고 보이기만 한다. */
+/** 인식표(또는 양품 실적)가 말한 것과 실물이 다른가. 막지 않고 보이기만 한다. */
 export const differsFromExpected = (line: DraftLine): boolean => {
   const trimmed = line.qty.trim();
 

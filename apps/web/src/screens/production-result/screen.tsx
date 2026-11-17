@@ -1444,7 +1444,7 @@ export const ProductionFlowScreen = () => {
    */
   /*
    * 작업지시 마감의 자리. 계획 수량을 달성했거나 남은 LOT이 없으면 하단 바 주 동작이 [작업지시 마감]이다.
-   * 그 전에는 현재 LOT 구획 아래의 테두리 버튼(이른 마감)이다. 마감했으면 다음 단계(생산 포장)로 이끈다.
+   * 그 전에는 현재 LOT 구획 아래의 테두리 버튼(이른 마감)이다. 마감한 뒤에 이끄는 다음 단계는 없다(#293).
    * 라벨 스캔 중이면 그 LOT을 먼저 끝낸다.
    */
   /*
@@ -2524,22 +2524,12 @@ export const ProductionFlowScreen = () => {
       >
         {/*
          * 주 동작 하나(C-3). 생산 중에는 [생산 라벨 출력], 계획 수량을 달성했거나 남은 LOT이 없으면
-         * [작업지시 마감], 마감했으면 [생산 포장으로]. 잠기면 왼쪽 「남은 일」이 사유다(C-4).
+         * [작업지시 마감]. 마감했으면 주 동작이 없다 — 생산 포장 화면을 없앴다(omf-all-around#293).
+         * 잠기면 왼쪽 「남은 일」이 사유다(C-4).
          * ⛔ **초과라고 끄지도, 되묻지도 않는다** — 초과 생산은 허용이다(✓확정 QA #27). 계획을 달성해도
          *    남은 LOT에 더 만들 수 있게 [생산 라벨 출력]을 테두리로 남긴다.
          */}
-        {isWorkOrderClosed ? (
-          <Button
-            type="button"
-            variant="filled"
-            size={POP_TOUCH_SIZE}
-            onClick={() => {
-              void navigate(`/pop/packing-work?workOrderId=${String(entry.workOrderId)}`);
-            }}
-          >
-            {t.flow.actions.packingWork}
-          </Button>
-        ) : isCloseMode ? (
+        {isWorkOrderClosed ? null : isCloseMode ? (
           <>
             {toGoodButton}
             {toDefectButton}

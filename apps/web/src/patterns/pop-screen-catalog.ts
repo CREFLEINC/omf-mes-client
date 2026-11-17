@@ -121,20 +121,6 @@ export const POP_SCREENS: readonly PopScreen[] = [
     workFlow: 'step',
   },
   {
-    path: '/pop/packing-work',
-    code: 'P-02-08',
-    group: 'production',
-    name: '생산 포장',
-    acceptsWorkOrderId: true,
-    workFlow: 'step',
-  },
-  {
-    path: '/pop/packing-label-reprint',
-    code: 'P-02-09',
-    group: 'production',
-    name: '포장 라벨 재출력',
-  },
-  {
     path: '/pop/work-hold',
     code: 'P-02-10',
     group: 'production',
@@ -157,7 +143,6 @@ export const POP_SCREENS: readonly PopScreen[] = [
     name: '긴급 W/O',
     countKey: 'emergencyWorkOrder',
   },
-  { path: '/pop/pqc-inspection', code: 'P-02-13', group: 'quality', name: 'PQC 제품 검사' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#108) — 화면 코드는 사용자 결정으로 부여했다. */
   { path: '/pop/material-defect', code: 'P-02-14', group: 'production', name: '자재 불량 등록' },
   /* ⭐ 설계보다 앞선 화면이다(omf-all-around#89 · 서버 장부 P-102). */
