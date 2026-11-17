@@ -152,8 +152,9 @@ export interface MaterialLotLabelLot {
   lotQty: number;
   /** 품목 기본 단위. */
   uomCode: string;
-  supplierCode: string;
-  supplierName: string;
+  /** 공급사 — 모르면(분할 LOT 의 원조 입하가 없음) 둘 다 `null` 이고 공급사 줄을 뺀다. */
+  supplierCode: string | null;
+  supplierName: string | null;
   /** 패키징 — 없으면 수량 줄 오른쪽이 빈다(분할 LOT 은 늘 없다 · 008 FR-007). */
   package: MaterialPackage | null;
 }
@@ -178,7 +179,10 @@ export const drawMaterialLotLabel = (
     qty: lot.lotQty,
     uomCode: lot.uomCode,
     issueSeq: issue.issueSeq,
-    supplier: `${lot.supplierName} (${lot.supplierCode})`,
+    supplier:
+      lot.supplierName === null || lot.supplierCode === null
+        ? null
+        : `${lot.supplierName} (${lot.supplierCode})`,
     /* 라벨 인쇄는 코드 그대로 — 프린터 글꼴 · 칸 폭이 정해져 있다(화면 표기만 이름, G1 잔여). */
     receipt: formatPackage(lot.package === null ? null : { ...lot.package, uomName: null }),
     kind,
