@@ -30,7 +30,7 @@ import { serverReasonOf } from '../../patterns/server-reason';
 import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { PopHeader } from '../../patterns/pop-header';
+import { PaneWorkContext, PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 import { PopSelect as Select } from '../../patterns/pop-select';
@@ -1895,10 +1895,10 @@ export const ProductionFlowScreen = () => {
         title={t.title}
         equipmentCode={identity.equipment?.equipmentCode ?? null}
         equipmentName={identity.equipment?.equipmentName ?? null}
-        workOrderNo={workOrder.data?.workOrderNo ?? null}
-        processName={workOrder.data?.processName ?? null}
-        /* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */
-        isEmergency={workOrder.data !== undefined && isEmergency(workOrder.data)}
+        /*
+         * W/O 번호는 작업 단계 줄 오른쪽이 보인다 — 머리줄에 또 두지 않는다. 공정과 긴급(`P-02-12` §5-1 · #1147)은
+         * 왼쪽 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291).
+         */
         isConnected={outbox.isOnline}
         unsentCount={outbox.pendingCount}
         /* LOT 라벨 프린터 — 누르면 고른다(개선 명세 ⑤, 자재 LOT 라벨 화면과 같은 칩). */
@@ -1914,6 +1914,7 @@ export const ProductionFlowScreen = () => {
               void lotPrinters.refetch();
             }}
             noneLabel={t.flow.work.printerNone}
+            showNone
             unknownLabel={t.flow.work.printerUnknown}
             retryLabel={messages.common.retry}
             showCloseButton={false}
@@ -1945,7 +1946,14 @@ export const ProductionFlowScreen = () => {
         <section className="pane production-work-lot" aria-label={t.flow.currentLot.current}>
           {/* 제목 줄(C-21): 품목 이름과 오른쪽 끝의 예외 칩. */}
           <div className="production-work-head">
-            <h2 className="pane-title">{itemTitle}</h2>
+            <h2 className="pane-title">
+              {itemTitle}
+              <PaneWorkContext
+                workOrderNo={workOrder.data?.workOrderNo ?? null}
+                processName={workOrder.data?.processName ?? null}
+                isEmergency={workOrder.data !== undefined && isEmergency(workOrder.data)}
+              />
+            </h2>
             {isPlanAchieved && (
               <span className="pop-row-chips">
                 <Chip

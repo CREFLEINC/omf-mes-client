@@ -27,6 +27,7 @@ import {
 } from './lookups';
 import { useDocumentIssueWrite, usePrintFlow } from './mutations';
 import { hasPrintBridge } from '../../patterns/pop-print';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { printResult, type PrintResult } from './print-result';
 import {
   goodsIssueQrKeys,
@@ -401,14 +402,15 @@ export const GoodsIssueQrScreen = () => {
         {goodsIssue.data === undefined ? null : (
           <p className="pop-context">{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</p>
         )}
-        <div className="pop-context-right">
+        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 선다(사용자 지시 2026-11-17 · #291). */}
+        <PopTopPrinter>
           <PrinterChip
             isLoading={printers.isPending}
             isError={printers.isError}
             displayName={defaultPrinter(printers.data)?.displayName ?? null}
             hasPrinter={(printers.data?.length ?? 0) > 0}
           />
-        </div>
+        </PopTopPrinter>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

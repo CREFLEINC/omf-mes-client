@@ -56,6 +56,11 @@ export interface PopScreen {
    * - `during`: 작업 중 언제든 여는 화면(작업 중단 · 러닝체인지 · 툴 사용실적) — 단계 줄 오른쪽 버튼.
    */
   workFlow?: 'step' | 'during';
+  /**
+   * 설비가 지정된 단말에서만 보이는가(사용자 지시 2026-11-17 · #291). 서버가 단말 «자기 설비»로만 기록을
+   * 받으므로(비가동) 설비가 없는 단말에서는 메뉴·바로가기·남은 작업 어디에도 세우지 않는다.
+   */
+  needsEquipment?: true;
 }
 
 /** 작업 단계 ①(작업지시 고르기) 화면. */
@@ -195,7 +200,13 @@ export const POP_SCREENS: readonly PopScreen[] = [
     acceptsWorkOrderId: true,
     workFlow: 'during',
   },
-  { path: '/pop/downtime', code: 'P-05-02', group: 'facility', name: '비가동 실적 입력' },
+  {
+    path: '/pop/downtime',
+    code: 'P-05-02',
+    group: 'facility',
+    name: '비가동 실적 입력',
+    needsEquipment: true,
+  },
   /*
    * ⭐ **설계보다 앞선 화면이다**(`docs/decisions.md` 결정 16) — 화면 코드도 클라이언트가
    *    부여했다. 도메인 06(기준정보연계)에 POP 화면이 없어 번호 체계를 그대로 이었다.

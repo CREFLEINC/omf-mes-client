@@ -8,7 +8,7 @@ import { ActionBar } from '../../patterns/action-bar';
 import { josa } from '../../patterns/josa';
 import { LoadErrorBanner } from '../../patterns/load-error-banner';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
-import { PopHeader } from '../../patterns/pop-header';
+import { PaneWorkContext, PopHeader } from '../../patterns/pop-header';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import {
   popGateProcessId,
@@ -910,9 +910,10 @@ export const MaterialInputScanScreen = () => {
         title={t.title}
         equipmentCode={equipment?.equipmentCode ?? null}
         equipmentName={equipment?.equipmentName ?? null}
-        workOrderNo={workOrder?.workOrderNo ?? null}
-        processName={workOrder?.processName ?? workOrderProcess.processName}
-        isEmergency={isEmergency}
+        /*
+         * W/O 번호는 작업 단계 줄 오른쪽이 보인다 — 머리줄에 또 두지 않는다. 공정·긴급은 투입 자재 상자 제목에 선다
+         * (사용자 지시 2026-11-17 · #291).
+         */
         /* 금형은 W/O 맥락이라 머리줄에 둔다. 지정했거나 W/O가 금형을 계획했을 때만(C-21). */
         moldText={draft.mold === null ? null : named(draft.mold.moldName, draft.mold.moldCode)}
         isMoldMissing={draft.mold === null && workOrder?.plannedMoldId != null}
@@ -930,7 +931,14 @@ export const MaterialInputScanScreen = () => {
       {/* 본문 좌우 2단. 왼쪽 자재 목록, 오른쪽 고른 LOT의 편집 영역. 고른 결과를 목록 아래에 쌓지 않는다(C-2). */}
       <div className="pop-panes material-input-panes">
         <section className="pane material-input-list" aria-label={t.panes.input}>
-          <h2 className="pane-title">{t.panes.input}</h2>
+          <h2 className="pane-title">
+            {t.panes.input}
+            <PaneWorkContext
+              workOrderNo={workOrder?.workOrderNo ?? null}
+              processName={workOrder?.processName ?? workOrderProcess.processName}
+              isEmergency={isEmergency}
+            />
+          </h2>
 
           {/*
            * 결과와 오류는 구획 맨 위 전체 폭에 둔다(C-19 안내 상자, PG-07). 서버가 거부한 건은

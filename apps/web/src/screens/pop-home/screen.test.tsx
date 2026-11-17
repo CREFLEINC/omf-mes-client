@@ -202,7 +202,8 @@ describe('PopHomeScreen — 홈(#291)', () => {
 
   it('[편집]으로 바로가기를 빼고 넣으면 단말에 남고, [기본으로] 되돌린다', async () => {
     const user = userEvent.setup();
-    setup({});
+    /* 비가동 실적 입력은 설비가 지정된 단말에만 선다(#291) — 그래서 설비를 준다. */
+    setup({}, EQUIPMENT);
 
     const shortcuts = () =>
       within(screen.getByRole('region', { name: new RegExp(t.shortcutsTitle, 'u') }));

@@ -5,6 +5,7 @@ import { useId, useMemo, useState } from 'react';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { useReprintEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
 import { HandlingUnitPane } from './handling-unit-pane';
@@ -177,14 +178,14 @@ export const PackingLabelReprintScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-context-right">
-          {/* 프린터가 없다는 말은 공통 메뉴 맨 위 줄이 한다(사용자 지시 2026-11-17 · #291). */}
+        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 선다. 없다는 말도 그 줄이 한다(사용자 지시 2026-11-17 · #291). */}
+        <PopTopPrinter>
           {(printer !== null || printers.isError) && (
             <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
               {printerChipText(printer, printers.isError)}
             </Chip>
           )}
-        </div>
+        </PopTopPrinter>
       </header>
 
       {/* ⭐ 포장 단위를 못 받았다는 말은 본문 맨 위 띠(아이콘+문구)로 선다(사용자 지시 2026-09-17). */}

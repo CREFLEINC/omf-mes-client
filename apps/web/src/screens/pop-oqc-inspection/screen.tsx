@@ -57,12 +57,25 @@ export const PopOqcInspectionScreen = () => {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const queue = useInspectionQueue({
+  /*
+   * 판정 대기 / 판정 완료를 탭으로 골라 본다(사용자 지시 2026-11-17 · #291). 두 탭의 건수가 늘 보이도록
+   * 두 목록을 함께 읽고, 고른 탭의 줄만 보인다.
+   */
+  const [view, setView] = useState<'pending' | 'done'>('pending');
+  const pendingQueue = useInspectionQueue({
     inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
     pendingOnly: true,
-    page,
+    page: view === 'pending' ? page : 1,
     size: PAGE_SIZE,
   });
+  const doneQueue = useInspectionQueue({
+    inspectionTypeCode: FIXED_AXES.inspectionTypeCode,
+    pendingOnly: false,
+    statusCode: 'COMPLETED',
+    page: view === 'done' ? page : 1,
+    size: PAGE_SIZE,
+  });
+  const queue = view === 'pending' ? pendingQueue : doneQueue;
   const detail = useInspectionRequestDetail(selectedId);
   const rounds = useInspectionRounds(selectedId);
   const round = latestRound(rounds.data ?? []);
@@ -136,7 +149,7 @@ export const PopOqcInspectionScreen = () => {
   ) : queue.isPending ? (
     <p className="field-note">{t.queue.loading}</p>
   ) : (
-    <EmptyState size="sm" title={t.queue.empty} />
+    <EmptyState size="sm" title={view === 'pending' ? t.queue.empty : t.queue.doneEmpty} />
   );
 
   /* 재검사는 의뢰를 다시 검사한다 — 합계의 오른쪽 변은 의뢰의 대상 수량이다. */
@@ -266,20 +279,39 @@ export const PopOqcInspectionScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {detail.data !== undefined && selectedId !== null && (
-          <p className="pop-context">{detail.data.inspectionRequestNo}</p>
-        )}
+        {/* 고른 의뢰 번호는 목록에서 선택된 줄과 오른쪽 요약이 보인다 — 머리에 또 두지 않는다(#291). */}
       </header>
 
       <PopWorkerMissingBanner workerNo={workerNo} />
 
-      <div className="pop-panes pop-oqc-panes">
-        <section className="pane" aria-label={t.queue.heading}>
-          <div className="pop-oqc-pane-head">
-            <h2 className="pane-title">{t.queue.heading}</h2>
-            {queue.data !== undefined && (
-              <span className="pop-oqc-count">{t.queue.count(queue.data.page.total)}</span>
-            )}
+      {/* 자재 관리 LOT 라벨 화면과 같은 배치 — 왼쪽 보기 탭·카드 목록, 오른쪽 판정(사용자 지시 2026-11-17 · #291). */}
+      <div className="pop-mlot-body">
+        <aside className="pop-mlot-side" aria-label={t.queue.heading}>
+          <div className="pop-mlot-tabs" role="group" aria-label={t.queue.viewLabel}>
+            {(
+              [
+                ['pending', t.queue.heading, pendingQueue],
+                ['done', t.queue.doneHeading, doneQueue],
+              ] as const
+            ).map(([key, label, source]) => (
+              <button
+                key={key}
+                type="button"
+                className="pop-mlot-tab"
+                aria-pressed={view === key}
+                disabled={save.isSaving}
+                onClick={() => {
+                  if (view === key) return;
+                  /* 탭을 바꾸면 고른 것을 놓는다 — 다른 목록의 의뢰가 오른쪽에 남으면 어긋난다. */
+                  setSelectedId(null);
+                  setPage(1);
+                  setView(key);
+                }}
+              >
+                {label}
+                <span className="pop-mlot-tab-count">{source.data?.page.total ?? 0}</span>
+              </button>
+            ))}
           </div>
           {queue.isError && (
             <QueueLoadErrorBanner
@@ -303,9 +335,9 @@ export const PopOqcInspectionScreen = () => {
               setPage(next);
             }}
           />
-        </section>
+        </aside>
 
-        <section className="pane pop-oqc-detail-pane" aria-label={t.detail.paneLabel}>
+        <section className="pop-mlot-work pop-oqc-detail-pane" aria-label={t.detail.paneLabel}>
           {detailContent}
         </section>
       </div>

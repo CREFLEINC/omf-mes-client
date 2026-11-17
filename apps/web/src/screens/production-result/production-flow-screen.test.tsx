@@ -1305,8 +1305,8 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     expect(output).toBeDisabled();
     /* 달성 사실은 오른쪽 위 파란 안내 줄이, 막힌 이유는 하단 바가 말한다(개선 명세 ④-1). */
     expect(await screen.findByText(t.flow.work.planReached)).toBeInTheDocument();
-    /* 프린터가 없다는 사실은 공통 메뉴 맨 위 줄이 말한다(#291) — 화면 머리줄·하단에 같은 말을 두지 않는다. */
-    expect(screen.queryByText(t.flow.work.printerNone)).not.toBeInTheDocument();
+    /* 프린터가 없다는 사실은 공통 메뉴 맨 위 줄 프린터 칩 한 곳만 말한다(#291) — 하단에 같은 말을 두지 않는다. */
+    expect(screen.getAllByText(t.flow.work.printerNone)).toHaveLength(1);
     expect(output).not.toHaveAccessibleDescription();
   });
 
@@ -1479,23 +1479,25 @@ describe('ProductionFlowScreen — 긴급 표식', () => {
       }),
   };
 
-  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+  /* W/O·공정·긴급은 머리줄이 아니라 왼쪽 상자 제목에 선다(사용자 지시 2026-11-17 · #291). */
+  const header = async (): Promise<HTMLElement> =>
+    (await screen.findByText(/WO-SYN-001/)).closest('h2') as HTMLElement;
 
-  it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
+  it('긴급 작업지시면 상자 제목에 긴급을 세운다', async () => {
     renderScreen([], [emergencyWorkOrder]);
 
     expect(
-      await within(header()).findByText(messages.popChrome.header.emergency),
+      await within(await header()).findByText(messages.popChrome.header.emergency),
     ).toBeInTheDocument();
   });
 
   it('긴급이 아니면 세우지 않는다', async () => {
     renderScreen([]);
 
-    await within(header()).findByText(/WO-SYN-001/);
+    await header();
 
     expect(
-      within(header()).queryByText(messages.popChrome.header.emergency),
+      within(await header()).queryByText(messages.popChrome.header.emergency),
     ).not.toBeInTheDocument();
   });
 });

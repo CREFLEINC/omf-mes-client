@@ -9,7 +9,9 @@ import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
 import { hasPrintBridge } from '../../patterns/pop-print';
-import { PrinterSelect } from './printer-select';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
+import { PrinterChip } from '../pop-material-lot-label/printer-chip';
+import { toPrinterView } from '../pop-material-lot-label/types';
 import {
   useIssueSummary,
   useLocations,
@@ -71,6 +73,7 @@ export const PopLocationLabelScreen = () => {
    *    보내면 서버가 고르고 **다른 자리에서 라벨이 나올 수 있다** — 창고 작업자는 손에 라벨이
    *    없는 채로 선반 앞에 선다. 어느 프린터로 나가는지 칸에도 그대로 보인다.
    */
+  const printerViews = useMemo(() => printers.data?.map(toPrinterView), [printers.data]);
   const printerName =
     chosenPrinter ?? printers.data?.find((each) => each.isDefault)?.printerName ?? null;
 
@@ -256,17 +259,23 @@ export const PopLocationLabelScreen = () => {
             />
           )}
         </div>
+      </div>
 
-        <PrinterSelect
-          printers={printers.data ?? []}
-          value={printerName}
-          onChange={setChosenPrinter}
+      {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+      <PopTopPrinter>
+        <PrinterChip
+          printers={printerViews}
+          selected={printerViews?.find((each) => each.printerName === printerName) ?? null}
           isLoading={printers.isPending}
           isError={printers.isError}
+          isSelectable
+          isLocked={write.isSaving || printFlow.isPending}
           onRetry={() => void printers.refetch()}
-          disabled={write.isSaving || printFlow.isPending}
+          onSelect={setChosenPrinter}
+          showNone
+          noneLabel={messages.productionResult.flow.work.printerNone}
         />
-      </div>
+      </PopTopPrinter>
 
       <section className="pop-loclabel-list" aria-label={t.location.heading}>
         <div className="pop-loclabel-list-head">

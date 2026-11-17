@@ -53,7 +53,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     editDone: 'Xong',
     editReset: 'Mặc định',
     editHint: (max: number): string =>
-      `Chạm màn hình để thêm hoặc bỏ lối tắt (tối đa ${String(max)}).`,
+      `Chọn hoặc bỏ chọn mục để thiết lập lối tắt. (Tối đa ${String(max)})`,
     editPicked: (name: string): string => `${name}, đã có trong lối tắt`,
     weekdays: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
     sub: 'Hôm nay hãy làm việc an toàn và chính xác nhé.',

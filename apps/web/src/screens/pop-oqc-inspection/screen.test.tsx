@@ -87,13 +87,19 @@ const fillJudgment = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('PopOqcInspectionScreen (P-04-06)', () => {
-  it('OQC 판정 대기만 묻는다', async () => {
+  /* 판정 대기·판정 완료 두 목록의 건수를 함께 보인다(사용자 지시 2026-11-17 · #291). */
+  it('OQC 판정 대기와 판정 완료를 함께 묻는다', async () => {
     const { queueQueries } = renderScreen('900028');
 
-    expect(await screen.findByRole('heading', { name: pop.queue.heading })).toBeInTheDocument();
-    await waitFor(() => expect(queueQueries).not.toHaveLength(0));
-    expect(queueQueries[0]?.get('inspectionTypeCode')).toBe('OQC');
-    expect(queueQueries[0]?.get('pendingOnly')).toBe('true');
+    expect(
+      await screen.findByRole('button', { name: new RegExp(pop.queue.heading, 'u') }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(queueQueries).toHaveLength(2));
+    for (const query of queueQueries) expect(query.get('inspectionTypeCode')).toBe('OQC');
+    expect(queueQueries.map((query) => query.get('pendingOnly')).sort()).toEqual(['false', 'true']);
+    expect(
+      queueQueries.find((query) => query.get('pendingOnly') === 'false')?.get('statusCode'),
+    ).toBe('COMPLETED');
   });
 
   it('판정을 단추로 고르고, 저장에 사번 헤더를 싣는다', async () => {

@@ -884,10 +884,10 @@ describe('RepackLabelIssueScreen — 연결', () => {
 describe('RepackLabelIssueScreen — 프린터', () => {
   /* ⚠ 단말 마스터에 프린터 축이 아직 없어 비어 올 수 있다(착수 이슈 §6). */
   /* 「등록된 프린터가 없다」 문장은 두지 않는다 — 프린터 연결은 공통 메뉴 맨 위 줄이 보인다(#291). */
-  it('프린터가 없으면 고르기 칸만 닫히고 안내 문장은 없다', async () => {
+  it('프린터가 없으면 맨 위 줄 프린터 칩이 미연결이라 말하고 안내 문장은 없다', async () => {
     await renderSelectedScreen({ printers: [] });
 
-    await screen.findByText(t.issue.printerPlaceholder);
+    await screen.findByText(messages.productionResult.flow.work.printerNone);
     expect(screen.queryByText(/등록된 프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 

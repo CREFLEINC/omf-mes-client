@@ -11,6 +11,7 @@ import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { BatchDialog } from './batch-dialog';
 import { retryCommands, summarize } from './batch-view';
 import { PRINT_FAILURE_REASON_CODE } from './codes';
@@ -417,7 +418,8 @@ export const PopMaterialLotLabelScreen = () => {
     <main className="pop-lot-screen pop-ui" aria-label={t.title}>
       <header className="pop-header">
         <h1 className="pop-title">{t.title}</h1>
-        <div className="pop-context-right">
+        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+        <PopTopPrinter>
           <PrinterChip
             printers={printers.data}
             selected={headPrinter}
@@ -432,8 +434,10 @@ export const PopMaterialLotLabelScreen = () => {
               setPickedPrinter(name);
               rememberPrinterName(name);
             }}
+            showNone
+            noneLabel={messages.productionResult.flow.work.printerNone}
           />
-        </div>
+        </PopTopPrinter>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

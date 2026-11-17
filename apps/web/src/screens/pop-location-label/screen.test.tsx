@@ -441,17 +441,19 @@ describe('P-06-01 창고 적재 위치 라벨 발행', () => {
     expect(stateOf('S230-03')).toBe('미사용');
   });
 
-  /* 「등록된 프린터가 없다」 띠는 두지 않는다 — 프린터 연결은 공통 메뉴 맨 위 줄이 보인다(#291). */
-  it('프린터가 없어도 안내 띠를 세우지 않고, 프린터 칸은 그대로 둔다', async () => {
+  /*
+   * 「등록된 프린터가 없다」 띠는 두지 않고, 본문에 프린터 칸도 두지 않는다 — 프린터는 공통 메뉴 맨 위 줄
+   * 프린터 칩이 «프린터 미연결»로 말한다(#291 · 사용자 지시 2026-11-17).
+   */
+  it('프린터가 없으면 맨 위 줄 프린터 칩이 미연결이라 말하고, 본문에 프린터 칸은 없다', async () => {
     renderScreen({ printers: [] });
 
-    const card = await waitFor(() => {
-      const found = document.querySelector('.pop-loclabel-printer');
-      expect(found).not.toBeNull();
-      return found;
-    });
-
-    expect(card?.textContent).toContain(messages.popLocationLabel.printer.label);
+    expect(
+      await screen.findByText(messages.productionResult.flow.work.printerNone),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: messages.popLocationLabel.printer.label }),
+    ).toBeNull();
     expect(screen.queryByText(/등록된 프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 

@@ -155,15 +155,17 @@ const REFRESH_ICON = navIcon(
   </>,
 );
 
-/** 맨 위 줄 — 제품 이름 · 단말 | 화면 상태 · 프린터 · 작업자 · [새로고침] · [사용자 전환]. */
+/** 맨 위 줄 — 제품 이름 · 단말 | 온라인 · 프린터 · [사번(누르면 사용자 전환)] · [새로고침]. */
 const TopBar = ({
   terminalCode,
   printer,
   statusRef,
+  printerRef,
 }: {
   terminalCode: string | null;
   printer: ReactNode;
   statusRef?: (element: HTMLElement | null) => void;
+  printerRef?: (element: HTMLElement | null) => void;
 }) => {
   const navigate = useNavigate();
   const { workerNo } = usePopIdentity();
@@ -189,13 +191,29 @@ const TopBar = ({
       <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
         {isOnline ? common.online : common.offline}
       </Chip>
+      {/* 화면이 보내는 프린터 칩(`PopTopPrinter`) 자리 — 서면 아래 기본 프린터 표시는 감춘다. */}
+      <span className="pop-nav-top__screen-printer" ref={printerRef} />
       {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
-      <span
-        className="pop-nav-top__chip"
+      {/*
+       * 사번 — 누르면 사용자 전환(사용자 지시 2026-11-17 · #291). 현재 활성 사번만 지우고 사번 입력 화면으로
+       * 간다. 저장 기록과 오프라인 큐의 사번은 바꾸지 않는다(G-34 · D-5).
+       */}
+      <Button
+        className="pop-logout"
+        variant="outlined"
+        size="md"
         title={workerNo === null ? undefined : headerText.workerTitle(workerNo, workerName)}
+        aria-label={`${messages.popChrome.userSwitch}: ${
+          workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)
+        }`}
+        onClick={() => {
+          setWorkerSession(null);
+          void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
+        }}
       >
+        {USER_ICON}
         {workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)}
-      </span>
+      </Button>
       {/*
        * [새로고침] — 모든 화면 같은 자리(사용자 지시 2026-11-17 · #291). 지금 화면이 보이는 자료만 서버에서
        * 다시 받는다. ⛔ 페이지를 다시 읽지 않는다 — 그러면 입력 중이던 수량·스캔이 사라진다.
@@ -210,22 +228,6 @@ const TopBar = ({
       >
         {REFRESH_ICON}
         {messages.popChrome.refresh}
-      </Button>
-      {/*
-       * [사용자 전환] — 현재 활성 사번만 지우고 사번 입력 화면으로 간다. 저장 기록과 오프라인 큐의
-       * 사번은 바꾸지 않는다(G-34 · D-5).
-       */}
-      <Button
-        className="pop-logout"
-        variant="outlined"
-        size="md"
-        onClick={() => {
-          setWorkerSession(null);
-          void navigate(POP_ENTRY_SCREEN_PATH, { replace: true });
-        }}
-      >
-        {USER_ICON}
-        {messages.popChrome.userSwitch}
       </Button>
     </div>
   );
@@ -252,11 +254,13 @@ export const PopScreenNav = ({
   terminalCode,
   printer = null,
   statusRef,
+  printerRef,
 }: {
   terminalCode: string | null;
   printer?: ReactNode;
   /** 맨 위 줄 화면 상태 자리를 셸에 알린다(`PopTopStatusTarget`). */
   statusRef?: (element: HTMLElement | null) => void;
+  printerRef?: (element: HTMLElement | null) => void;
 }) => {
   const navigate = useNavigate();
   const { pathname, search, access, workCounts, pending, total, go } = usePopNavigation();
@@ -312,7 +316,12 @@ export const PopScreenNav = ({
 
   return (
     <div className="pop-nav">
-      <TopBar terminalCode={terminalCode} printer={printer} statusRef={statusRef} />
+      <TopBar
+        terminalCode={terminalCode}
+        printer={printer}
+        statusRef={statusRef}
+        printerRef={printerRef}
+      />
       <div className="pop-nav-groups">
         <nav className="pop-nav-groups__list" aria-label={nav.groupsLabel}>
           <button

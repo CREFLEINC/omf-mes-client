@@ -1617,9 +1617,6 @@
  * 손톱만 해졌다(사용자 지적 2026-09-07). 고른 이름의 길이에 따라 칸이 늘었다 줄었다 하는
  * 것도 같은 문제다 — 무엇이 들었든 자리는 같아야 한다.
  */
-.pop-ui .pop-slabel-printer [role='combobox'] {
-  min-width: 14rem;
-}
 
 .pop-ui .pop-slabel-targets {
   flex: 1 1 auto;
@@ -6237,35 +6234,14 @@
  *
  * 폭은 **값 칸**이 가져야 한다. 단추는 제 글자만큼이면 된다.
  */
-.pop-ui .pop-slabel-printer .pop-select {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.pop-ui .pop-slabel-printer .pop-select__value {
-  min-width: 14rem;
-}
-
-.pop-ui .pop-slabel-printer [role='combobox'] {
-  min-width: 0;
-}
 
 /* 프린터 줄은 [이름][값 칸 + 선택][상태] 한 줄이다 — 값 칸이 남는 폭을 가져간다. */
-.pop-ui .pop-slabel-printer {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
 
 /*
  * ⚠ **이 묶음은 갈래가 넷이다** — 정상 · 잠김 · 오류(`Chip` + [다시 확인]) · 없음(경고 띠).
  *   위 `display: flex` 는 넷 모두에 걸리는데, 경고 띠는 flex 아이템이 되면서 **가로로 꽉
  *   차던 것이 글자 폭까지 줄어든다**(독립 검증 지적 2026-09-11). 띠는 줄 전체를 쓴다.
  */
-.pop-ui .pop-slabel-printer > [role='status'],
-.pop-ui .pop-slabel-printer > [role='alert'] {
-  flex: 1 1 100%;
-}
 
 /*
  * 사번 입력 키패드 — **키 높이를 같은 구획의 [ 확인 ]과 맞춘다**(사용자 지시 2026-09-11).
@@ -6769,18 +6745,16 @@
 /*
  * 창고 고르는 칸과 프린터 칸은 **폭이 고정이다.** DS `Select` 는 안에 든 글자만큼만 서므로,
  * 고른 이름의 길이에 따라 칸이 늘었다 줄었다 하면 옆 칸까지 함께 움직인다(P-04-01 에서 같은
- * 문제를 겪었다 — `pop-slabel-printer` 의 머리말).
+ * 문제를 겪었다 — 출하 포장 라벨 화면의 옛 프린터 칸 머리말).
  */
-.pop-ui .pop-loclabel-warehouse,
-.pop-ui .pop-loclabel-printer {
+.pop-ui .pop-loclabel-warehouse {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   min-width: 18rem;
 }
 
-.pop-ui .pop-loclabel-warehouse .pop-select,
-.pop-ui .pop-loclabel-printer .pop-select {
+.pop-ui .pop-loclabel-warehouse .pop-select {
   width: 100%;
 }
 
@@ -7347,13 +7321,6 @@
 }
 
 /* 프린터는 출력 장치 설정이다 — 테두리 상자로 창고·목록과 갈라 선다. */
-.pop-ui .pop-loclabel-top > .pop-loclabel-printer {
-  box-sizing: border-box;
-  min-width: 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-}
 
 /* 프린터 장치 상태(`patterns/pop-printer-status`) — 점 + 글자. 점 색은 기존 상태 토큰이다. 모든 POP 프린터 칸이 같이 쓴다. */
 .pop-ui .pop-printer-status {
@@ -7410,9 +7377,6 @@
 }
 
 /* 프린터 상자는 좁다 — [선택]을 6rem 으로 줄여 이름 칸을 지킨다(1024×768 에서 이름이 잘렸다 · 실측). */
-.pop-ui .pop-loclabel-top > .pop-loclabel-printer .pop-select {
-  grid-template-columns: minmax(0, 1fr) 6rem;
-}
 
 /* 창고도 프린터처럼 테두리 상자로 선다(사용자 지시 2026-09-17). 두 상자는 같은 높이다. */
 .pop-ui .pop-loclabel-top > .pop-loclabel-warehouse {
@@ -7458,7 +7422,6 @@
  * 같은 바탕·모서리로 선다(사용자 지시 2026-09-17). 높이·여백은 그대로다.
  */
 .pop-ui .pop-loclabel-top > .pop-loclabel-warehouse,
-.pop-ui .pop-loclabel-top > .pop-loclabel-printer,
 .pop-ui > .pop-loclabel-list {
   background: var(--surface-container-low);
   border-radius: var(--radius-lg);
@@ -7867,15 +7830,6 @@
   gap: var(--space-3);
 }
 
-.pop-ui .pop-slabel-screen--embedded .pop-slabel-printer-row > .pop-slabel-printer {
-  flex: 0 1 28rem;
-  min-width: 0;
-}
-
-.pop-ui .pop-slabel-screen--embedded .pop-slabel-printer-row > .pop-slabel-printer + * {
-  margin-inline-start: auto;
-}
-
 /*
  * P-04-01 라벨 상태·재출력(감싼 모드) — **「누락 라벨 이어서 출력」과 「라벨 종류」를 한 줄에**
  * (사용자 지시 2026-09-17). 반씩 나눠 갖고, 누락 라벨 구획의 [현황][단추] 짝은 두 줄로 접는다.
@@ -7949,10 +7903,6 @@
 .pop-ui .pop-slabel-screen--embedded .pop-slabel-printer-row > button,
 .pop-ui .pop-slabel-screen--embedded .pop-slabel-selection button {
   min-height: 56px;
-}
-
-.pop-ui .pop-slabel-screen--embedded .pop-slabel-printer .pop-select__trigger {
-  min-inline-size: 7rem;
 }
 
 /*
@@ -8833,26 +8783,6 @@
  * ⚠ 목록 하한 430 — 1024 에서 네 칸(의뢰번호가 17자)이 가로 스크롤 없이 서는 폭이다(실측: 400 이면
  *   표가 459 로 넘쳐 「상태」 칸이 잘렸다). 1024 에서 목록 430 · 판정 ≈ 520.
  */
-.pop-ui.pop-oqc > .pop-oqc-panes {
-  grid-template-columns: minmax(430px, 5fr) 7fr;
-}
-
-.pop-ui .pop-oqc-pane-head {
-  display: flex;
-  flex: none;
-  align-items: baseline;
-  gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-
-.pop-ui .pop-oqc-pane-head > .pane-title {
-  margin: 0;
-}
-
-.pop-ui.pop-oqc .pop-oqc-count {
-  font: 400 var(--pop-text) / 24px var(--font-sans);
-  color: var(--on-surface-variant);
-}
 
 .pop-ui.pop-oqc .pop-oqc-num {
   font-variant-numeric: tabular-nums;
@@ -10858,7 +10788,9 @@
 }
 
 /* 머리줄 아래 띄우던 자기 위 여백 — 머리줄이 접혀 그릇 위 여백(16)과 겹쳐 32 가 됐다. */
+/* 프린터 칸이 맨 위 줄로 옮겨 가(#291) 창고 칸 하나만 남는다 — 전체 폭을 쓴다. */
 .pop-frame .pop-ui > .pop-loclabel-top {
+  grid-template-columns: minmax(0, 1fr);
   margin-block-start: 0;
 }
 
@@ -11382,4 +11314,52 @@
 .pop-work-steps__during[data-on='true'] {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+/* 상자 제목 옆 공정·긴급(#291) — W/O 맥락을 머리줄 대신 상자 제목에 붙인다. */
+.pop-pane-context {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: var(--space-3);
+  vertical-align: middle;
+}
+
+.pop-pane-context__process {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font: 600 14px / 20px var(--font-sans);
+}
+
+/* OQC 판정 — 자재 관리 LOT 라벨과 같은 배치(#291). 오른쪽 판정 칸은 흰 판 안에서 스크롤한다. */
+.pop-ui .pop-oqc-detail-pane.pop-mlot-work {
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+.pop-ui .pop-oqc-queue .pop-mlot-supplier {
+  min-height: 72px;
+}
+
+/* 화면이 보낸 프린터 칩(#291) — 서면 셸 기본 프린터 표시를 감춘다. 칩을 누르면 프린터를 고른다. */
+.pop-nav-top__screen-printer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-nav-top__screen-printer:empty {
+  display: none;
+}
+
+.pop-nav-top__screen-printer:not(:empty) + .pop-nav-top__printer {
+  display: none;
+}
+
+.pop-pane-context__wo {
+  color: var(--on-surface);
+  font: 700 15px / 20px var(--font-sans);
+  white-space: nowrap;
 }

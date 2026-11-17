@@ -11,6 +11,9 @@ export const popOqcInspection = {
 
   queue: {
     heading: '판정 대기',
+    /** 판정을 마친 의뢰 탭(#291). */
+    doneHeading: '판정 완료',
+    viewLabel: '판정 목록 고르기',
     caption: '판정 대기 의뢰 목록',
     count: (total: number): string => `${String(total)}건`,
     columns: {
@@ -22,6 +25,7 @@ export const popOqcInspection = {
     selectRow: (requestNo: string): string => `의뢰 ${requestNo} 선택`,
     loading: '판정 대기 목록을 불러오는 중입니다.',
     empty: '판정할 출하검사 의뢰가 없습니다.',
+    doneEmpty: '판정을 마친 출하검사 의뢰가 없습니다.',
     unavailable: '판정 대기 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     pageNav: '판정 대기 목록 쪽 이동',
   },

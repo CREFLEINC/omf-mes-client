@@ -77,7 +77,7 @@ export const popChrome = {
     editDone: '완료',
     editReset: '기본으로',
     editHint: (max: number): string =>
-      `화면을 눌러 바로가기에 넣거나 뺍니다(최대 ${String(max)}개).`,
+      `항목을 선택하거나 해제하여 바로가기를 설정하세요. (최대 ${String(max)}개)`,
     editPicked: (name: string): string => `${name}, 바로가기에 있음`,
   },
   /** 머리줄의 사번 놓기 단추. */

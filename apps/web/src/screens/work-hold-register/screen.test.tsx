@@ -87,7 +87,8 @@ describe('P-02-10 작업 중단 등록', () => {
       eventsRoute([]),
     ]);
 
-    expect(await screen.findByText(`${t.entry.workOrderLabel} WO-SYN-29`)).toBeInTheDocument();
+    /* W/O 번호는 「중단 등록」 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291). */
+    expect(await screen.findByText('WO-SYN-29')).toBeInTheDocument();
     expect(screen.queryByText(/W\/O #/)).toBeNull();
   });
 

@@ -197,11 +197,7 @@ export const WorkHoldRegisterScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {workOrderId !== null && (
-          <p className="pop-context">
-            {`${t.entry.workOrderLabel} ${workOrderNo ?? t.session.unknownValue}`}
-          </p>
-        )}
+        {/* W/O 번호는 「중단 등록」 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291). */}
 
         <p className="pop-context pop-context-right">
           {session.session !== null && (
@@ -355,6 +351,7 @@ export const WorkHoldRegisterScreen = () => {
         </div>
 
         <HoldForm
+          workOrderNo={workOrderId === null ? null : workOrderNo}
           draft={draft}
           disabled={inputDisabled}
           reasons={reasons}

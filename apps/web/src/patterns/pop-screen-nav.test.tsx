@@ -103,14 +103,17 @@ afterEach(() => {
 });
 
 describe('PopScreenNav — 공통 이동 메뉴(#291)', () => {
-  it('맨 위 줄에 단말·작업자·[사용자 전환]이 선다', async () => {
+  /* 사번 칩이 곧 [사용자 전환] 버튼이다(사용자 지시 2026-11-17 · #291). */
+  it('맨 위 줄에 단말·사번 버튼이 서고, 사번을 누르면 사용자 전환으로 간다', async () => {
     const user = userEvent.setup();
     setup();
 
     expect(screen.getByText(header.terminalLabel('POP-OA-01'))).toBeInTheDocument();
     expect(screen.getByText(header.workerLabel('2048', null))).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: messages.popChrome.userSwitch }));
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`^${messages.popChrome.userSwitch}`, 'u') }),
+    );
     expect(screen.getByText('지금: /pop/worker-assignment')).toBeInTheDocument();
   });
 

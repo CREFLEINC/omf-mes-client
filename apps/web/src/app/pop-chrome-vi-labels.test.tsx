@@ -57,7 +57,7 @@ describe('POP 공통 조작 문구 — 베트남어', () => {
       screen.getByRole('button', { name: viMessages.popChrome.remaining.buttonLabel(0) }),
     ).toHaveTextContent(viMessages.popChrome.remaining.button);
     expect(
-      screen.getByRole('button', { name: viMessages.popChrome.userSwitch }),
+      screen.getByRole('button', { name: new RegExp(`^${viMessages.popChrome.userSwitch}`, 'u') }),
     ).toBeInTheDocument();
     expect(screen.queryByText('홈')).not.toBeInTheDocument();
     expect(screen.queryByText('남은 작업')).not.toBeInTheDocument();

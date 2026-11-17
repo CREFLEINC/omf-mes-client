@@ -2,7 +2,7 @@ import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import { PopTopStatus } from './pop-top-status';
+import { PopTopPrinter, PopTopStatus } from './pop-top-status';
 
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
@@ -43,6 +43,35 @@ export interface PopHeaderProps {
 
 const hasText = (value: string | null | undefined): value is string =>
   value !== null && value !== undefined && value.trim() !== '';
+
+/**
+ * 상자 제목 옆 작업 맥락 — W/O 번호, 공정 이름, 긴급 표시(#291 · 사용자 지시 2026-11-17: W/O 같은 정보는 상자 안에).
+ * 모두 없으면 아무것도 그리지 않는다.
+ */
+export const PaneWorkContext = ({
+  workOrderNo = null,
+  processName = null,
+  isEmergency = false,
+}: {
+  workOrderNo?: string | null;
+  processName?: string | null;
+  isEmergency?: boolean;
+}) => {
+  const t = messages.popChrome.header;
+  if (!hasText(workOrderNo) && !hasText(processName) && !isEmergency) return null;
+
+  return (
+    <span className="pop-pane-context">
+      {hasText(workOrderNo) && <span className="pop-pane-context__wo">{workOrderNo}</span>}
+      {isEmergency && (
+        <Chip variant="status" size="md" status="error">
+          {t.emergency}
+        </Chip>
+      )}
+      {hasText(processName) && <span className="pop-pane-context__process">{processName}</span>}
+    </span>
+  );
+};
 
 /**
  * POP 머리줄(C-11). 화면 이름, 설비(스테이션), 현재 W/O와 공정, 통신 상태.
@@ -115,7 +144,8 @@ export const PopHeader = ({
 
       {/* 프린터 칩은 창(선택)과 [다시 시도]를 품어 문단(p) 안에 둘 수 없다 — 그때만 div 로 세운다. */}
       <RightGroup className="pop-context pop-context-right">
-        {printer}
+        {/* 프린터 칩은 공통 메뉴 맨 위 줄 프린터 자리로 간다(사용자 지시 2026-11-17 · #291). */}
+        {printer !== undefined && <PopTopPrinter>{printer}</PopTopPrinter>}
         {/* 연결·미전송 표시는 공통 메뉴 맨 위 줄에 선다(#291) — 머리줄에 이것만 남아 행이 서지 않게. */}
         <PopTopStatus>
           {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 여기서는 미전송이 있을 때만 알린다. */}

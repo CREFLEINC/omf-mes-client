@@ -44,7 +44,7 @@ import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { usePopIdentity } from '../patterns/pop-identity';
 import { PopScreenNav } from '../patterns/pop-screen-nav';
-import { PopTopStatusTarget } from '../patterns/pop-top-status';
+import { PopTopPrinterTarget, PopTopStatusTarget } from '../patterns/pop-top-status';
 import {
   PopRegistrationProvider,
   usePopRegistration,
@@ -211,6 +211,7 @@ const PopChrome = () => {
   const { pathname } = useLocation();
   /* 맨 위 줄의 화면 상태 자리(연결·전송 표시). 화면이 `PopTopStatus` 로 그 자리에 그린다. */
   const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  const [printerSlot, setPrinterSlot] = useState<HTMLElement | null>(null);
 
   /*
    * ⭐ **사번이 없으면 어느 화면이든 사번 입력 화면으로 보낸다**(사용자 지시 2026-11-17 · #291).
@@ -231,10 +232,13 @@ const PopChrome = () => {
         terminalCode={terminal?.terminalCode ?? null}
         printer={<HeaderPrinter />}
         statusRef={setStatusSlot}
+        printerRef={setPrinterSlot}
       />
       <div className="pop-frame__body">
         <PopTopStatusTarget.Provider value={statusSlot}>
-          <Outlet />
+          <PopTopPrinterTarget.Provider value={printerSlot}>
+            <Outlet />
+          </PopTopPrinterTarget.Provider>
         </PopTopStatusTarget.Provider>
       </div>
     </div>

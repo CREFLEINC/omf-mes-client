@@ -1,9 +1,9 @@
 import { AlertBanner, Button, Checkbox, Chip, Icon } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
-import { PopPrinterStatus } from '../../patterns/pop-printer-status';
-import { PopSelect as Select } from '../../patterns/pop-select';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
+import { PrinterChip } from '../pop-material-lot-label/printer-chip';
+import { toPrinterView } from '../pop-material-lot-label/types';
 import type { IssueStanding, Printer, RemainderCandidate } from './types';
 
 const t = messages.repackLabelIssue.issue;
@@ -59,13 +59,7 @@ export const IssuePane = ({
   printerName,
   onPrinterChange,
 }: IssuePaneProps) => {
-  const printerId = useId();
-
   const selectedPrinter = printers.find((printer) => printer.printerName === printerName) ?? null;
-  const printerOptions = printers.map((printer) => ({
-    value: printer.printerName,
-    label: printer.displayName,
-  }));
 
   return (
     <>
@@ -125,25 +119,21 @@ export const IssuePane = ({
           ))}
           {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
         </fieldset>
-        <div className="pop-repack-field">
-          <label htmlFor={printerId}>{t.printerLabel}</label>
-          <Select
-            id={printerId}
-            options={printerOptions}
-            value={printerName === '' ? null : printerName}
-            onChange={onPrinterChange}
-            placeholder={t.printerPlaceholder}
-            className="pop-repack-select"
-            disabled={printers.length === 0}
+        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+        <PopTopPrinter>
+          <PrinterChip
+            printers={printers.map(toPrinterView)}
+            selected={selectedPrinter === null ? null : toPrinterView(selectedPrinter)}
+            isLoading={false}
+            isError={printersFailed}
+            isSelectable
+            isLocked={false}
+            onRetry={() => undefined}
+            onSelect={onPrinterChange}
+            showNone
+            noneLabel={messages.productionResult.flow.work.printerNone}
           />
-          {selectedPrinter !== null && (
-            <PopPrinterStatus
-              status={selectedPrinter.status}
-              text={selectedPrinter.statusMessage ?? selectedPrinter.status}
-            />
-          )}
-          {printersFailed && <p className="pop-repack-note">{t.printersFailed}</p>}
-        </div>
+        </PopTopPrinter>
       </div>
 
       {/*
