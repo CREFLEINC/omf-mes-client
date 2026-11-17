@@ -641,6 +641,82 @@ describe('MaterialInputScanScreen — 스캔', () => {
  * 사번이 없으면 투입을 받지 않는다(사용자 화면 확인 결정 2026-10-23, PI-17). 들어오자마자 사번 입력
  * 창을 열고, 잠긴 동안 스캔 칸이나 목록을 누르면 다시 연다. 확인되면 같은 W/O에서 이어 간다.
  */
+/*
+ * 008 부분 출고 LOT 분할(omf-all-around#289 · tasks T027) — 부분 출고분은 분할 LOT(새 자재 LOT)이 되고 그 라벨은
+ * 자재 LOT 라벨과 같은 양식이다(QR = LOT 번호). 이 화면은 바뀌지 않는다 — 분할 번호도 정확 일치로 담겨야 한다.
+ *
+ * ⭐ 분할 번호는 원래 번호와 앞 네 칸이 거의 같고(수량 칸만 다르다) 끝에 `-S1` 이 붙는다. 정확 일치가 아니면
+ *    원래 LOT 과 섞인다 — 다른 수량의 LOT 이 계보에 들어간다.
+ */
+describe('MaterialInputScanScreen — 분할 LOT 번호 (008)', () => {
+  /** 합성값 — 원래 LOT 1,000 EA 에서 300 을 부분 출고해 생긴 분할 LOT. */
+  const ORIGINAL_LOT_NO = 'SYN-MAT-A|1000|261117|100330|0001';
+  const SPLIT_LOT_NO = 'SYN-MAT-A|300|261117|100330|0001-S1';
+  const original = lot({ lotId: 7311, lotNo: ORIGINAL_LOT_NO, initialQty: 1000 });
+  const split = lot({ lotId: 7312, lotNo: SPLIT_LOT_NO, initialQty: 300 });
+
+  /** 정확 일치 축은 번호가 같은 LOT 만 낸다. 부분 검색 축은 걸리는 것을 다 낸다(둘이 섞일 수 있는 축). */
+  const exactLotsRoute = (lots: { lotNo: string }[]): StubRoute => ({
+    match: (request) => isGet(request, LOTS_PATH),
+    respond: (request) => {
+      const params = new URL(request.url).searchParams;
+      const lotNo = params.get('lotNo');
+      const q = params.get('q') ?? '';
+
+      return jsonResponse(
+        listBody(
+          lotNo === null
+            ? lots.filter((one) => one.lotNo.includes(q))
+            : lots.filter((one) => one.lotNo === lotNo),
+        ),
+      );
+    },
+  });
+
+  const lotQueries = (requests: RecordedRequest[]): (string | null)[] =>
+    requests
+      .filter((request) => request.method === 'GET' && request.url.pathname === LOTS_PATH)
+      .map(
+        (request) =>
+          request.url.searchParams.get('lotNo') ?? `q=${request.url.searchParams.get('q') ?? ''}`,
+      );
+
+  it('US3-3 분할 LOT 번호(`|`·`-S1`)를 정확 일치로 찾아 분할 LOT 을 담는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = renderScreen([exactLotsRoute([original, split]), moldsRoute([])]);
+
+    await scanCode(user, SPLIT_LOT_NO);
+
+    await waitFor(() => {
+      expect(scannedHas(SPLIT_LOT_NO)).toBe(true);
+    });
+    expect(scannedHas(ORIGINAL_LOT_NO)).toBe(false);
+    /* 읽은 번호를 그대로 정확 일치로 묻고, 찾았으니 부분 검색·금형으로 넘어가지 않는다. */
+    expect(lotQueries(requests)).toEqual([SPLIT_LOT_NO]);
+  });
+
+  it('US3-4 원래 LOT 라벨을 읽으면 원래 LOT 이 담긴다 — 분할 LOT 과 섞이지 않는다', async () => {
+    const user = userEvent.setup();
+    const { requests } = renderScreen([exactLotsRoute([original, split]), moldsRoute([])]);
+
+    await scanCode(user, ORIGINAL_LOT_NO);
+
+    await waitFor(() => {
+      expect(scannedHas(ORIGINAL_LOT_NO)).toBe(true);
+    });
+    expect(scannedHas(SPLIT_LOT_NO)).toBe(false);
+
+    /* 이어서 분할 LOT 을 읽으면 «다른 LOT» 이다 — 중복으로 막지 않고 따로 담는다. */
+    await scanCode(user, SPLIT_LOT_NO);
+
+    await waitFor(() => {
+      expect(scannedHas(SPLIT_LOT_NO)).toBe(true);
+    });
+    expect(scannedHas(ORIGINAL_LOT_NO)).toBe(true);
+    expect(lotQueries(requests)).toEqual([ORIGINAL_LOT_NO, SPLIT_LOT_NO]);
+  });
+});
+
 describe('MaterialInputScanScreen — 사번 없이 들어왔을 때', () => {
   const dialogText = messages.popChrome.workerNoDialog;
   const NO_WORKER: PopIdentity = { ...GATED, workerNo: null };
