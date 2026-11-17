@@ -1305,8 +1305,8 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     expect(output).toBeDisabled();
     /* 달성 사실은 오른쪽 위 파란 안내 줄이, 막힌 이유는 하단 바가 말한다(개선 명세 ④-1). */
     expect(await screen.findByText(t.flow.work.planReached)).toBeInTheDocument();
-    /* 프린터가 없다는 사실은 머리줄 칩이 말한다 — 하단에 같은 말을 두지 않는다. */
-    expect(screen.getByText(t.flow.work.printerNone)).toBeInTheDocument();
+    /* 프린터가 없다는 사실은 공통 메뉴 맨 위 줄이 말한다(#291) — 화면 머리줄·하단에 같은 말을 두지 않는다. */
+    expect(screen.queryByText(t.flow.work.printerNone)).not.toBeInTheDocument();
     expect(output).not.toHaveAccessibleDescription();
   });
 

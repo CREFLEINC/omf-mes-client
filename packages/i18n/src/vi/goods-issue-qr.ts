@@ -56,7 +56,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
 
   printer: {
     label: 'Máy in',
-    empty: 'Chưa có máy in nào được đăng ký. Bản ghi phát hành vẫn lưu, chỉ không in.',
     loading: 'Đang kiểm tra trạng thái máy in.',
     failed: 'Không tải được trạng thái máy in.',
     noShell: 'Nơi mở màn hình này không có đường in. Chỉ lưu bản ghi phát hành, không in.',

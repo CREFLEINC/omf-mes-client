@@ -63,7 +63,7 @@ const headlinePrinter = (printers: readonly Printer[] | undefined): Printer | nu
 const printerChipText = (printer: Printer | null, failed: boolean): string => {
   if (printer !== null) return `${t.device.printerLabel} ${printer.displayName}`;
 
-  return failed ? t.device.printerUnknown : t.device.printerNone;
+  return failed ? t.device.printerUnknown : '';
 };
 
 /**
@@ -178,9 +178,12 @@ export const PackingLabelReprintScreen = () => {
           {t.title}
         </h1>
         <div className="pop-context-right">
-          <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
-            {printerChipText(printer, printers.isError)}
-          </Chip>
+          {/* 프린터가 없다는 말은 공통 메뉴 맨 위 줄이 한다(사용자 지시 2026-11-17 · #291). */}
+          {(printer !== null || printers.isError) && (
+            <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
+              {printerChipText(printer, printers.isError)}
+            </Chip>
+          )}
         </div>
       </header>
 

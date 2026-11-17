@@ -718,7 +718,8 @@ interface PrinterChipProps {
 const PrinterChip = ({ isLoading, isError, hasPrinter, displayName }: PrinterChipProps) => {
   if (isLoading) return <Chip status="idle">{t.printer.loading}</Chip>;
   if (isError) return <Chip status="error">{t.printer.failed}</Chip>;
-  if (!hasPrinter) return <Chip status="warning">{t.printer.empty}</Chip>;
+  /* 프린터가 없다는 말은 공통 메뉴 맨 위 줄이 한다(사용자 지시 2026-11-17 · #291). */
+  if (!hasPrinter) return null;
 
   return <Chip status="success">{`${t.printer.label} ${displayName ?? ''}`.trim()}</Chip>;
 };

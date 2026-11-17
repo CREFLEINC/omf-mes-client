@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { PopPrinterStatus } from '../../patterns/pop-printer-status';
@@ -77,13 +77,8 @@ export const PrinterSelect = ({
   // 조회 중에는 아무것도 단정하지 않는다 — 「없음」으로 잠깐 보이면 그 사이 오해가 생긴다.
   if (isLoading) return null;
 
-  if (printers.length === 0) {
-    return (
-      <div className="pop-slabel-printer">
-        <AlertBanner variant="warning">{t.none}</AlertBanner>
-      </div>
-    );
-  }
+  /* 프린터가 없다는 말은 공통 메뉴 맨 위 줄이 한다(사용자 지시 2026-11-17 · #291). */
+  if (printers.length === 0) return null;
 
   const selected = printers.find((printer) => printer.printerName === value) ?? null;
 

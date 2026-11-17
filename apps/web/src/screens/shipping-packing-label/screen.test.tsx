@@ -301,7 +301,7 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     renderScreen();
 
     expect(await screen.findByText(t.targets.beforeKind)).toBeInTheDocument();
-    expect(screen.queryByText(t.printer.none)).not.toBeInTheDocument();
+    expect(screen.queryByText(/프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 
   it('종류를 고르기 전에도 프린터 자리는 서 있고 잠겨 있다', async () => {

@@ -25,7 +25,7 @@ export const productionResult: Translated<typeof ko.productionResult> = {
         'Đã đạt số lượng lệnh và không còn LOT có thể sản xuất. Chỉ có thể đóng lệnh sản xuất hoặc đăng ký lỗi.',
       noWorkOrder: 'Chưa chỉ định lệnh sản xuất.',
       planReached: 'Đã đạt số lượng lệnh. Có thể đóng lệnh sản xuất.',
-      printerNone: 'Không có máy in',
+      printerNone: 'Chưa kết nối máy in',
       printerUnknown: 'Không xác định máy in',
       closed: 'Đã hoàn tất đóng lệnh sản xuất.',
       completedLots: 'LOT đã đóng',

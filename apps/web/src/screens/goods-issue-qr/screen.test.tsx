@@ -518,10 +518,12 @@ describe('GoodsIssueQrScreen', () => {
     expect(container.querySelector('.pop-giqr-actions .field-note')).toBeNull();
   });
 
-  it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {
+  /* 프린터가 없다는 말은 공통 메뉴 맨 위 줄이 한다(사용자 지시 2026-11-17 · #291). */
+  it('프린터가 0건이면 머리에 프린터 칩을 세우지 않는다', async () => {
     renderScreen({ issueCounts: { 1001: 0 } });
 
-    expect(await screen.findAllByText(t.printer.empty)).not.toHaveLength(0);
+    await screen.findByText('LOT-SAMPLE-20');
+    expect(screen.queryByText(/프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 
   it('이미 발행된 라인을 고르면 재발행 사유를 요구하고, 고르면 발행이 열린다', async () => {

@@ -39,7 +39,7 @@ export const productionResult = {
       noWorkOrder: '작업지시가 지정되지 않았습니다.',
       planReached: '작업 지시량을 달성했습니다. 작업지시를 마감할 수 있습니다.',
       /** 머리줄 프린터 칩 — 짧게(개선 명세 ② 11). */
-      printerNone: '프린터 없음',
+      printerNone: '프린터 미연결',
       printerUnknown: '프린터 확인 불가',
       closed: '작업지시 마감이 완료되었습니다.',
       /** 왼쪽 구획의 마감된 LOT 목록 제목(2026-11-16). */

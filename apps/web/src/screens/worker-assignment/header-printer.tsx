@@ -39,6 +39,7 @@ export const HeaderPrinter = () => {
       }}
       onSelect={() => undefined}
       noneLabel={t.printerNone}
+      showNone
       unknownLabel={t.printerUnknown}
       retryLabel={messages.common.retry}
     />
