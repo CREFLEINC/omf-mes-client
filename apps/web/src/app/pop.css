@@ -10506,10 +10506,13 @@
   text-align: start;
 }
 
-/* 키패드는 사번 칸 바로 아래. 안내(6자리 아님·오류·오프라인)는 사번 칸 바로 아래에 선다. */
+/*
+ * 사번 칸은 위, 키패드·[사번 확인]은 구획 «아래»에 붙는다(사용자 지시) — 둘 사이 안내 자리가
+ * 남는 높이를 받아 벌어진다. 화면이 낮아도 최소 한 틈은 띄운다(사용자 지시). 안내(6자리 아님·
+ * 오류·오프라인)는 그 자리 맨 위, 곧 사번 칸 바로 아래에 선다.
+ */
 .pop-ui .pop-assign > .pop-pane > .omf-numeric-keypad {
-  /* 사번 칸(과 그 아래 안내)과 키패드 사이를 한 틈 더 띄운다(사용자 지시). */
-  margin-block-start: var(--wa-gap);
+  margin-block-start: 0;
   gap: var(--wa-gap);
   grid-auto-rows: minmax(var(--wa-key-h), var(--wa-key-max));
 }
@@ -10521,11 +10524,8 @@
 }
 
 .pop-ui .pop-assign > .pop-pane > .worker-no-notice {
-  min-height: 0;
-}
-
-.pop-ui .pop-assign > .pop-pane > .worker-no-notice:empty {
-  display: none;
+  flex: 1 0 var(--wa-gap);
+  min-height: var(--wa-gap);
 }
 
 .pop-ui .pop-assign .worker-no-keypad > button,
