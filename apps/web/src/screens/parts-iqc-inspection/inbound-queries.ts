@@ -1,5 +1,6 @@
 import {
   createIdempotencyKey,
+  type FourMChangeForward,
   type InboundLotSplitPreview,
   type InboundLotSplitResult,
   type InspectionRequestEventForward,
@@ -64,6 +65,32 @@ export const useInboundInspection = (
     queryKey: iqcInboundKeys.detail(inspectionRequestId ?? 0),
     queryFn: () => fetchInboundInspection(client, inspectionRequestId as number),
     enabled: inspectionRequestId !== null,
+    staleTime: 0,
+  });
+};
+
+/**
+ * OA — 입하 LOT 에 적어 둔 4M 변경품(omf-all-around#290). 의뢰 응답의 `fourMChange` 는 대상 LOT(`lotId`)만 보므로 새 흐름에선 비어
+ * 온다. 서버는 입하 LOT 의 자재 관리 LOT 전부에 같은 값을 적으니(`requestLotIds`) 맨 앞 LOT 하나를 LOT 조회로 읽는다.
+ * 변경품이 아니면 null. 열쇠가 `ROOT` 아래라 결과 저장 뒤 다시 읽힌다.
+ */
+export const useInboundFourM = (
+  lotNo: string | null,
+  itemId: number | null,
+): UseQueryResult<FourMChangeForward | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: [...ROOT, 'four-m', lotNo, itemId] as const,
+    queryFn: async () => {
+      const page = await runRequest(() =>
+        client.GET('/trace/lots', {
+          params: { query: { lotNo: lotNo as string, itemId: itemId as number, page: 1, size: 1 } },
+        }),
+      );
+      return page.items[0]?.fourMChange ?? null;
+    },
+    enabled: lotNo !== null && itemId !== null,
     staleTime: 0,
   });
 };

@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -93,6 +93,7 @@ interface Options {
   permissions?: string[];
   confirm?: { status: number; body: unknown };
   cancel?: { status: number; body: unknown };
+  onConfirmed?: () => void;
 }
 
 const mount = (initial: InboundInspection, options: Options = {}) => {
@@ -140,6 +141,7 @@ const mount = (initial: InboundInspection, options: Options = {}) => {
         planText="AQL 1.0"
         uomCode="EA"
         renderForm={() => null}
+        onConfirmed={options.onConfirmed}
       />
     </SessionProvider>,
     { fetch, session: session(options.permissions ?? ['W-01-01', 'W-01-15']) },
@@ -224,6 +226,44 @@ describe('W-01-01 판정 확정', () => {
     });
     expect(await screen.findByRole('button', { name: t.cancel.open })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
+  });
+
+  it('#290 확정이 끝나면 `onConfirmed` 를 한 번 부른다 — OA 가 골라 둔 검사 수준을 이때 저장한다', async () => {
+    const user = userEvent.setup();
+    const onConfirmed = vi.fn();
+    mount(base(), { onConfirmed });
+
+    await user.click(await screen.findByRole('button', { name: t.confirm.open }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: tj.title })).getByRole('button', {
+        name: tj.confirm,
+      }),
+    );
+
+    expect(await screen.findByText(t.confirm.done('합격'))).toBeInTheDocument();
+    expect(onConfirmed).toHaveBeenCalledTimes(1);
+  });
+
+  it('#290 확정이 실패하면 `onConfirmed` 를 부르지 않는다', async () => {
+    const user = userEvent.setup();
+    const onConfirmed = vi.fn();
+    mount(base(), {
+      onConfirmed,
+      confirm: {
+        status: 409,
+        body: { errors: [{ scope: 'screen', code: 'VERSION_CONFLICT', message: '판이 다릅니다' }] },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.confirm.open }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: tj.title })).getByRole('button', {
+        name: tj.confirm,
+      }),
+    );
+
+    expect(await screen.findByRole('dialog', { name: t.confirm.conflict })).toBeInTheDocument();
+    expect(onConfirmed).not.toHaveBeenCalled();
   });
 
   it('불합격으로 확정하면 부적합 번호를 알린다 — LOT 상태 「불량」 · 적용 줄 셋', async () => {

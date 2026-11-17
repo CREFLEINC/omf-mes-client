@@ -86,9 +86,12 @@ export const ConfirmPermissionNote = () =>
 export const ConfirmActions = ({
   inspection,
   confirmed,
+  onConfirmed,
 }: {
   inspection: InboundInspection;
   confirmed: boolean;
+  /** 판정 확정이 성공한 뒤(확정 취소 뒤에는 부르지 않는다). */
+  onConfirmed?: () => void;
 }) => {
   const canConfirm = useCanConfirm();
   const { client } = useApiClient();
@@ -137,6 +140,7 @@ export const ConfirmActions = ({
       const done = await confirmInspection(client, inspection.inspectionRequestId, versionNo);
 
       setAsking(null);
+      onConfirmed?.();
       toast.show({
         variant: 'success',
         description:
