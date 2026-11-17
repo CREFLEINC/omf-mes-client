@@ -142,8 +142,8 @@ const USER_ICON = navIcon(
   </>,
 );
 
-/** 맨 위 줄 — 제품 이름 · 단말 · 작업자 · [사용자 전환]. */
-const TopBar = ({ terminalCode }: { terminalCode: string | null }) => {
+/** 맨 위 줄 — 제품 이름 · 프린터 · 단말 · 작업자 · [사용자 전환]. */
+const TopBar = ({ terminalCode, printer }: { terminalCode: string | null; printer: ReactNode }) => {
   const navigate = useNavigate();
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
@@ -154,6 +154,7 @@ const TopBar = ({ terminalCode }: { terminalCode: string | null }) => {
   return (
     <div className="pop-nav-top">
       <span className="pop-nav-top__brand">{nav.brand}</span>
+      {printer !== null && <span className="pop-nav-top__printer">{printer}</span>}
       <span className="pop-nav-top__chip">
         {terminalCode === null
           ? headerText.terminalUnknown
@@ -199,9 +200,16 @@ const TopBar = ({ terminalCode }: { terminalCode: string | null }) => {
  *
  * ⛔ 진입 화면(사번 입력)에서는 그리지 않는다 — 사번 없이 다른 화면으로 가는 길이 생긴다.
  *
- * `terminalCode` 는 셸이 단말 등록에서 읽어 넘긴다(모르면 `null`).
+ * `terminalCode` 는 셸이 단말 등록에서 읽어 넘긴다(모르면 `null`). `printer` 는 셸이 넘기는 프린터
+ * 연결 표시다 — 사번 입력 화면 머리줄과 같은 것(`HeaderPrinter`)이고, 없으면 그리지 않는다.
  */
-export const PopScreenNav = ({ terminalCode }: { terminalCode: string | null }) => {
+export const PopScreenNav = ({
+  terminalCode,
+  printer = null,
+}: {
+  terminalCode: string | null;
+  printer?: ReactNode;
+}) => {
   const navigate = useNavigate();
   const { pathname, access, workCounts, pending, total, go } = usePopNavigation();
   const current = access.screens.find((screen) => screen.path === pathname) ?? null;
@@ -247,7 +255,7 @@ export const PopScreenNav = ({ terminalCode }: { terminalCode: string | null }) 
 
   return (
     <div className="pop-nav">
-      <TopBar terminalCode={terminalCode} />
+      <TopBar terminalCode={terminalCode} printer={printer} />
       <div className="pop-nav-groups">
         <nav className="pop-nav-groups__list" aria-label={nav.groupsLabel}>
           <button

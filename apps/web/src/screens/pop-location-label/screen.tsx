@@ -204,16 +204,9 @@ export const PopLocationLabelScreen = () => {
       {!hasPrintBridge() && <AlertBanner variant="info">{t.print.noBridge}</AlertBanner>}
 
       {/*
-       * ⭐ **찍을 프린터가 없다는 경고도 맨 위 띠 자리에 선다**(사용자 지시 2026-09-18 ·
-       *    omf-all-around#11). 프린터 칸 안에 두면 창고 옆 작은 상자라 눈에 띄지 않았다.
-       *    프린터가 있을 때의 고르기는 그대로 오른쪽 칸이 한다(`PrinterSelect`).
+       * ⛔ 「등록된 프린터가 없다」 띠는 두지 않는다(사용자 지시 2026-11-17 · #291) — 프린터 연결은
+       *    공통 메뉴 맨 위 줄이 상시 보인다. 발행은 그대로 막지 않는다.
        */}
-      {!printers.isPending && !printers.isError && (printers.data ?? []).length === 0 && (
-        /* 사번 미확인 띠(`PopWorkerMissingBanner`)와 같은 자리·같은 감싸기 — 띠가 제 높이만 쓴다. */
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.printer.none}</AlertBanner>
-        </div>
-      )}
 
       {/* 인쇄 결과는 화면 맨 위 띠 자리에 선다(사용자 지시 2026-09-17). */}
       <PrintResult

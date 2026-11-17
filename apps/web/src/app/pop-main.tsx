@@ -48,6 +48,7 @@ import {
   usePopRegistration,
   useRefreshPopTerminalOnScreenEntry,
 } from '../patterns/pop-registration';
+import { HeaderPrinter } from '../screens/worker-assignment/header-printer';
 import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
 import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
@@ -182,7 +183,7 @@ const PopChrome = () => {
    */
   return (
     <div className="pop-frame">
-      <PopScreenNav terminalCode={terminal?.terminalCode ?? null} />
+      <PopScreenNav terminalCode={terminal?.terminalCode ?? null} printer={<HeaderPrinter />} />
       <div className="pop-frame__body">
         <Outlet />
       </div>

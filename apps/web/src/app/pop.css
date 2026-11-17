@@ -11182,3 +11182,9 @@
   color: var(--on-surface-variant);
   font: 500 13px / 18px var(--font-sans);
 }
+
+/* 맨 위 줄 프린터 연결 표시 — 사번 입력 화면 머리줄과 같은 칩을 띠 높이에 맞춘다. */
+.pop-nav-top__printer {
+  display: inline-flex;
+  align-items: center;
+}

@@ -143,9 +143,6 @@ export const IssuePane = ({
             />
           )}
           {printersFailed && <p className="pop-repack-note">{t.printersFailed}</p>}
-          {!printersFailed && printers.length === 0 && (
-            <p className="pop-repack-note">{t.printersEmpty}</p>
-          )}
         </div>
       </div>
 

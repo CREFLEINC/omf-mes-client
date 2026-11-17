@@ -116,7 +116,6 @@ export const repackLabelIssue: Translated<typeof ko.repackLabelIssue> = {
     printerLabel: 'Máy in',
     printerPlaceholder: 'Chọn máy in',
     printersFailed: 'Không tải được danh sách máy in.',
-    printersEmpty: 'Máy trạm này chưa đăng ký máy in. Hãy hỏi người phụ trách.',
 
     submit: 'Cấp số · In',
     preview: 'Xem trước',
