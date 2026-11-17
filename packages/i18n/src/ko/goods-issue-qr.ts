@@ -29,7 +29,8 @@ export const goodsIssueQr = {
   },
   search: {
     label: '분할 LOT 찾기',
-    placeholder: '분할 LOT·원래 LOT 번호 스캔, 출고번호 또는 품목코드',
+    /* 좁은 칸에서도 잘리지 않게 짧게 — 분할·원래 LOT 번호 스캔, 출고번호·품목코드 입력(시안 P0102-After 의 뜻). */
+    placeholder: 'LOT 번호 스캔 · 출고번호 · 품목코드',
     clear: '지우기',
   },
   /** 찍음 보기의 기간 — 서버가 출고일로 거른다(contracts §4). */
@@ -54,7 +55,7 @@ export const goodsIssueQr = {
     splitAt: '분할 시각',
     splitAtOldestFirst: '분할 시각 ↑',
     labelColumn: '라벨',
-    parent: (lotNo: string) => `원래 ${lotNo}`,
+    parentLabel: '원래',
     line: (lineNo: number) => `라인 ${String(lineNo)}`,
     today: '오늘',
     daysAgo: (days: number) => `${String(days)}일 지남`,

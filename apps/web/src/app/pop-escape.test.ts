@@ -107,13 +107,26 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
    * 달았다). 접으면 아무것도 감추지 않는다.
    */
   it('긴 번호를 감추지 않고 접는다', () => {
-    /* 008 — 출고 QR 라인 표는 걷었다. P-01-02 분할 LOT 번호는 끝 마디(`-S1`)가 가르는 자리라 줄을 바꿔 접는다. */
-    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-lotno[^{]*\{[^}]*word-break:\s*break-all/u);
+    /* 008 — 출고 QR 라인 표는 걷었다. P-01-02 분할 LOT 번호는 `|` 칸 경계에서만 접고 칸 하나는 끊지 않는다. */
+    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-seg\s*\{[^}]*white-space:\s*nowrap/u);
     expect(popCss).toMatch(
       /\.pop-ui\s+\.pop-reprint-contents\s+td\s*\{[^}]*overflow-wrap:\s*anywhere/u,
     );
   });
 
+  /*
+   * 008 P-01-02 분할 LOT 표 — 1024 × 768 에서 가로로 넘쳐 끝 열(라벨 상태)이 잘렸다(실제 앱 검증 2026-11-17).
+   * 열은 모두 줄어들 수 있어야 하고(정한 최소 폭이 없다) 표는 가로 스크롤을 두지 않는다.
+   */
+  it('분할 LOT 표가 가로로 넘치지 않는다 — 열은 minmax(0, …) 로 줄고 글은 칸 안에서 접는다', () => {
+    const columns =
+      /\.pop-ui\s+\.pop-split-row\s*\{[^}]*grid-template-columns:([^;]*);/u.exec(popCss)?.[1] ?? '';
+
+    expect(columns).not.toBe('');
+    expect(columns).not.toMatch(/minmax\(\s*[1-9]/u);
+    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-table\s*\{[^}]*overflow:\s*hidden auto/u);
+    expect(popCss).toMatch(/\.pop-ui\s+\.pop-split-row\s*>\s*\*\s*\{[^}]*min-width:\s*0/u);
+  });
 });
 
 /*

@@ -10073,11 +10073,21 @@
 }
 
 .pop-ui .pop-split-tool > .pop-mlot-tabs {
-  min-width: 300px;
+  flex: 0 1 280px;
+  min-width: 220px;
+}
+
+/* 안내글이 칸보다 길면 한 줄 말줄임(1280 · 베트남어) — 잘린 글자가 칸 끝에 걸리지 않게. */
+.pop-ui .pop-split-tool .pop-mlot-search-input,
+.pop-ui .pop-split-tool .pop-mlot-search-input::placeholder {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pop-ui .pop-split-tool > .pop-mlot-search {
-  flex: 1 1 320px;
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .pop-ui .pop-split-periods {
@@ -10107,7 +10117,8 @@
 .pop-ui .pop-split-table {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  /* 가로로 넘치지 않는다 — 열은 모두 줄어들 수 있고(minmax(0, …)) 글은 칸 안에서 두 줄로 접힌다(1024 × 768). */
+  overflow: hidden auto;
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
 }
@@ -10115,8 +10126,8 @@
 .pop-ui .pop-split-row {
   display: grid;
   grid-template-columns:
-    48px minmax(220px, 2.6fr) minmax(120px, 1.2fr) 96px minmax(120px, 1.1fr)
-    minmax(100px, 1fr) 96px minmax(120px, 1.1fr);
+    36px minmax(0, 2.5fr) minmax(0, 1.15fr) minmax(0, 0.75fr) minmax(0, 1.15fr)
+    minmax(0, 1fr) minmax(0, 0.85fr) minmax(0, 1.1fr);
   gap: var(--space-2);
   align-items: center;
   min-height: 56px;
@@ -10150,17 +10161,37 @@
   min-width: 0;
 }
 
+/* 번호가 아닌 칸(품목 · 출고 · 도착 · 상태 칩)은 좁으면 칸 안에서 접는다 — 옆 칸이나 표 밖으로 나가지 않게. */
+.pop-ui .pop-split-row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pop-ui .pop-split-row [class*='chip'] {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+
 .pop-ui .pop-split-two > small,
 .pop-ui .pop-split-parent {
   color: var(--on-surface-muted);
   font: var(--type-body-sm);
 }
 
-/* 분할 LOT 번호는 끝 마디(`-S1`)가 원래 LOT 과 가르는 자리라 줄여 자르지 않고 줄을 바꾼다. */
+/*
+ * 분할 LOT 번호는 끝 마디(`-S1`)가 원래 LOT 과 가르는 자리라 줄여 자르지 않고 줄을 바꾼다 — **`|` 칸 경계에서만**
+ * (`<wbr>`). 칸 하나(`0001-S1`)는 `nowrap` 으로 묶어 가운데서 끊지 않는다.
+ */
 .pop-ui .pop-split-lotno,
 .pop-ui .pop-split-parent {
   font-family: ui-monospace, Menlo, monospace;
-  word-break: break-all;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.pop-ui .pop-split-seg {
+  white-space: nowrap;
 }
 
 .pop-ui .pop-split-lotno {

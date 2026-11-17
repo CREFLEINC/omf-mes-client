@@ -26,7 +26,7 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   },
   search: {
     label: 'Tìm LOT tách',
-    placeholder: 'Quét số LOT tách · LOT gốc, nhập số phiếu xuất kho hoặc mã mặt hàng',
+    placeholder: 'Quét số LOT · số phiếu xuất · mã hàng',
     clear: 'Xóa',
   },
   periods: {
@@ -50,7 +50,7 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
     splitAt: 'Thời điểm tách',
     splitAtOldestFirst: 'Thời điểm tách ↑',
     labelColumn: 'Nhãn',
-    parent: (lotNo: string) => `Gốc ${lotNo}`,
+    parentLabel: 'Gốc',
     line: (lineNo: number) => `Dòng ${String(lineNo)}`,
     today: 'Hôm nay',
     daysAgo: (days: number) => `${String(days)} ngày trước`,

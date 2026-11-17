@@ -614,6 +614,25 @@ const SplitBand = ({
   );
 };
 
+/**
+ * LOT 번호 — **`|` 칸 경계에서만 줄을 바꾼다.** 칸(`0001-S1` 등)은 한 덩어리로 둔다 — 칸 가운데서 끊기면 끝 마디
+ * (`-S1`)를 원래 LOT 과 대조할 수 없다. `-` 도 줄바꿈 자리라 칸마다 `nowrap` 으로 묶고 `|` 뒤에만 기회를 준다.
+ */
+const LotNoText = ({ lotNo, className }: { lotNo: string; className?: string }) => {
+  const parts = lotNo.split('|');
+
+  return (
+    <span className={className} title={lotNo}>
+      {parts.map((part, index) => (
+        <span key={`${String(index)}-${part}`}>
+          <span className="pop-split-seg">{index < parts.length - 1 ? `${part}|` : part}</span>
+          {index < parts.length - 1 ? <wbr /> : null}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 const LabelStatus = ({ lot }: { lot: SplitMaterialLot }) => {
   const issue = lot.labelIssue;
 
@@ -669,8 +688,10 @@ const SplitRow = ({
       />
     </span>
     <span className="pop-split-two">
-      <span className="pop-split-lotno">{lot.lotNo}</span>
-      <span className="pop-split-parent">{t.table.parent(lot.parentLot.lotNo)}</span>
+      <LotNoText className="pop-split-lotno" lotNo={lot.lotNo} />
+      <span className="pop-split-parent">
+        {t.table.parentLabel} <LotNoText lotNo={lot.parentLot.lotNo} />
+      </span>
     </span>
     <span className="pop-split-two">
       <b>{lot.item.itemCode}</b>
@@ -831,7 +852,9 @@ const PreviewDialog = ({
           )}
         </dd>
         <dt>{t.preview.parent}</dt>
-        <dd className="pop-split-parent">{lot.parentLot.lotNo}</dd>
+        <dd className="pop-split-parent">
+          <LotNoText lotNo={lot.parentLot.lotNo} />
+        </dd>
       </dl>
       <nav className="pop-mlot-preview-pager" aria-label={t.preview.page(index + 1, lots.length)}>
         <Button

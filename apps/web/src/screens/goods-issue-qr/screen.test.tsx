@@ -185,7 +185,7 @@ describe('P-01-02 분할 LOT 라벨', () => {
       t.table.choose(FAILED.lotNo),
       t.table.choose(NEW.lotNo),
     ]);
-    expect(screen.getAllByText(t.table.parent(NEW.parentLot.lotNo)).length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle(NEW.parentLot.lotNo).length).toBeGreaterThan(0);
     const list = sent.find((each) => each.search.get('labelState') === 'UNPRINTED');
     expect(list?.search.get('plantId')).toBe(String(PLANT_ID));
     expect(list?.search.has('issuedFrom')).toBe(false);
@@ -208,7 +208,7 @@ describe('P-01-02 분할 LOT 라벨', () => {
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByLabelText(NEW.lotNo)).toBeTruthy();
-    expect(within(dialog).getByText(NEW.parentLot.lotNo)).toBeTruthy();
+    expect(within(dialog).getByTitle(NEW.parentLot.lotNo)).toBeTruthy();
 
     await user.click(within(dialog).getByRole('button', { name: t.preview.print(1) }));
 
@@ -307,6 +307,25 @@ describe('P-01-02 분할 LOT 라벨', () => {
     await screen.findByText(t.band.title(3));
     expect(screen.queryByText(/출고 QR 발행|파렛트/u)).toBeNull();
     expect(screen.getByRole('heading', { name: t.title })).toBeTruthy();
+  });
+});
+
+describe('P-01-02 LOT 번호 줄바꿈', () => {
+  /* 실제 앱 검증(2026-11-17, 1024 × 768): 번호가 칸 가운데(`…|SUP` / `1|0001-S1`)에서 끊겼다. `|` 뒤에서만 끊는다. */
+  it('분할 LOT·원래 LOT 번호는 `|` 칸 경계에서만 줄바꿈 기회를 두고 칸은 한 덩어리다', async () => {
+    render();
+
+    await screen.findByText(t.band.title(3));
+    const lotNo = screen
+      .getAllByTitle(NEW.lotNo)
+      .find((each) => each.classList.contains('pop-split-lotno'));
+
+    expect(lotNo?.querySelectorAll('wbr')).toHaveLength(4);
+    expect(
+      [...(lotNo?.querySelectorAll('.pop-split-seg') ?? [])].map((each) => each.textContent),
+    ).toEqual(['SYN-ITEM-A|', '300|', '261117|', '100330|', '0001-S1']);
+    const parent = screen.getAllByTitle(NEW.parentLot.lotNo)[0];
+    expect(parent?.querySelectorAll('wbr')).toHaveLength(4);
   });
 });
 
