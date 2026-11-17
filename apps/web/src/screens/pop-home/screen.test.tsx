@@ -166,6 +166,26 @@ describe('PopHomeScreen — 홈(#291)', () => {
     expect(screen.getByText('지금: /pop/work-start')).toBeInTheDocument();
   });
 
+  it('설비가 지정된 단말은 [전체 설비]로 바꿔 전체를 셀 수 있다', async () => {
+    const user = userEvent.setup();
+    const queries: URL[] = [];
+    setup({}, EQUIPMENT, queries, 7);
+
+    const toggle = within(await screen.findByRole('group', { name: t.statusScopeLabel }));
+    expect(toggle.getByRole('button', { name: t.statusMyEquipment('조립 1호기') })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await waitFor(() => expect(queries).toHaveLength(2));
+
+    await user.click(toggle.getByRole('button', { name: t.statusEveryEquipment }));
+    await waitFor(() => expect(queries).toHaveLength(4));
+    for (const url of queries.slice(2)) {
+      expect(url.searchParams.get('plannedEquipmentId')).toBeNull();
+      expect(url.searchParams.get('open')).toBe('true');
+    }
+  });
+
   it('단말에 설비가 없으면 전체 설비로 세고 그렇다고 적는다', async () => {
     const queries: URL[] = [];
     setup({}, null, queries, 7);

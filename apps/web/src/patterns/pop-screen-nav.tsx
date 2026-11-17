@@ -1,5 +1,6 @@
 import { Badge, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -147,7 +148,14 @@ const USER_ICON = navIcon(
   </>,
 );
 
-/** 맨 위 줄 — 제품 이름 · 단말 | 화면 상태 · 프린터 · 작업자 · [사용자 전환]. */
+const REFRESH_ICON = navIcon(
+  <>
+    <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+    <path d="M20 4v5h-5" />
+  </>,
+);
+
+/** 맨 위 줄 — 제품 이름 · 단말 | 화면 상태 · 프린터 · 작업자 · [새로고침] · [사용자 전환]. */
 const TopBar = ({
   terminalCode,
   printer,
@@ -161,6 +169,7 @@ const TopBar = ({
   const { workerNo } = usePopIdentity();
   const session = useWorkerSession();
   const isOnline = usePopOnline();
+  const queryClient = useQueryClient();
   /* 이름은 지금 사번과 같은 사람의 세션일 때만 붙인다 — 다른 사번의 이름을 빌려 오지 않는다. */
   const workerName =
     session !== null && session.worker.workerNo === workerNo ? session.worker.workerName : null;
@@ -187,6 +196,21 @@ const TopBar = ({
       >
         {workerNo === null ? headerText.workerUnset : headerText.workerLabel(workerNo, workerName)}
       </span>
+      {/*
+       * [새로고침] — 모든 화면 같은 자리(사용자 지시 2026-11-17 · #291). 지금 화면이 보이는 자료만 서버에서
+       * 다시 받는다. ⛔ 페이지를 다시 읽지 않는다 — 그러면 입력 중이던 수량·스캔이 사라진다.
+       */}
+      <Button
+        className="pop-logout"
+        variant="outlined"
+        size="md"
+        onClick={() => {
+          void queryClient.invalidateQueries();
+        }}
+      >
+        {REFRESH_ICON}
+        {messages.popChrome.refresh}
+      </Button>
       {/*
        * [사용자 전환] — 현재 활성 사번만 지우고 사번 입력 화면으로 간다. 저장 기록과 오프라인 큐의
        * 사번은 바꾸지 않는다(G-34 · D-5).

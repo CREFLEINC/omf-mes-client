@@ -8,7 +8,6 @@ export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
   entry: {
     issueLabel: 'Phiếu xuất kho vật tư',
     workerLabel: 'Mã nhân viên',
-    missingIssue: 'Hãy nhập số phiếu xuất kho để tải phiếu.',
     lookup: {
       label: 'Số phiếu xuất kho vật tư',
       placeholder: 'Quét hoặc nhập số phiếu xuất kho',

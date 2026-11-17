@@ -416,7 +416,7 @@ export const GoodsIssueQrScreen = () => {
 
       {entry.goodsIssueId === null && (
         <div className="banner-slot pop-giqr-lookup">
-          <AlertBanner variant="warning">{t.entry.missingIssue}</AlertBanner>
+          {/* 안내 배너(「출고번호를 입력해 전표를 불러오세요」)는 두지 않는다 — 입력 칸이 곧 안내다(사용자 지시 2026-11-17 · #291). */}
           <IssueLookupField
             onFound={(goodsIssueId) => {
               /*

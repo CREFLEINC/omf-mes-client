@@ -11216,6 +11216,38 @@
   font: 500 13px / 18px var(--font-sans);
 }
 
+/* 현황 범위 고르기(지정 설비 / 전체 설비) — 카드 제목 오른쪽 위. */
+.pop-home__status {
+  position: relative;
+}
+
+.pop-home__scope-toggle {
+  position: absolute;
+  inset-block-start: var(--space-4);
+  inset-inline-end: var(--space-4);
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: var(--surface-container-high);
+}
+
+.pop-home__scope-toggle button {
+  min-block-size: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: 600 14px / 1 var(--font-sans);
+  cursor: pointer;
+}
+
+.pop-home__scope-toggle button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--on-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 15%);
+}
+
 /* 맨 위 줄 프린터 연결 표시 — 사번 입력 화면 머리줄과 같은 칩을 띠 높이에 맞춘다. */
 .pop-nav-top__printer {
   display: inline-flex;

@@ -45,6 +45,9 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     nextNone: 'Không có việc đang chờ',
     nextPlan: (item: string, qty: string): string => `${item} · Kế hoạch ${qty}`,
     statusAllEquipment: 'Theo tất cả thiết bị',
+    statusScopeLabel: 'Phạm vi',
+    statusMyEquipment: (name: string): string => `Thiết bị ${name}`,
+    statusEveryEquipment: 'Tất cả thiết bị',
     statusFailed: 'Không tải được tình hình công việc.',
     edit: 'Sửa',
     editDone: 'Xong',
@@ -61,6 +64,7 @@ export const popChrome: Translated<typeof ko.popChrome> = {
     shortcutsHint: 'Chuyển nhanh đến các màn hình hay dùng.',
   },
   userSwitch: 'Đổi người dùng',
+  refresh: 'Làm mới',
   header: {
     terminalUnknown: 'Chưa xác nhận máy trạm',
     terminalLabel: (code: string): string => `Máy trạm ${code}`,

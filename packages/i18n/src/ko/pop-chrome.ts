@@ -68,6 +68,10 @@ export const popChrome = {
     nextPlan: (item: string, qty: string): string => `${item} · 계획 ${qty}개`,
     /** 설비가 없는 단말은 전체 설비로 센다(작업 지시 목록의 「전체 설비」). */
     statusAllEquipment: '전체 설비 기준',
+    /** 설비가 지정된 단말의 현황 범위 고르기 — 지정 설비 / 전체 설비. */
+    statusScopeLabel: '현황 범위',
+    statusMyEquipment: (name: string): string => `설비 ${name}`,
+    statusEveryEquipment: '전체 설비',
     statusFailed: '작업 현황을 불러오지 못했습니다.',
     edit: '편집',
     editDone: '완료',
@@ -78,6 +82,8 @@ export const popChrome = {
   },
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',
+  /** 맨 위 줄 [새로고침] — 지금 화면 자료를 서버에서 다시 받는다(#291). */
+  refresh: '새로고침',
   /**
    * 공용 머리줄(`patterns/pop-header`, C-11). 설비와 작업자는 「이름 (코드)」, 단말은 단말 코드.
    * 연결 상태 문구는 공용 어휘를 쓴다(`common.connection`).

@@ -120,8 +120,13 @@ const StatusCard = ({
   onNext: (() => void) | null;
 }) => {
   const { equipment, terminalId } = usePopIdentity();
+  /*
+   * 설비가 지정된 단말은 「지정 설비」와 「전체 설비」를 골라 본다(사용자 지시 2026-11-17 · #291).
+   * 처음에는 지정 설비 — 이 단말에서 할 일이 먼저다. 설비가 없는 단말은 전체 설비뿐이다.
+   */
+  const [allEquipment, setAllEquipment] = useState(false);
   const status = useHomeWorkStatus(
-    equipment?.equipmentId ?? null,
+    equipment === null || allEquipment ? null : equipment.equipmentId,
     equipment !== null || terminalId !== null,
   );
   const data = status.data;
@@ -139,6 +144,32 @@ const StatusCard = ({
           <span className="pop-home__scope">{t.statusAllEquipment}</span>
         )}
       </h2>
+      {equipment !== null && (
+        <div className="pop-home__scope-toggle" role="group" aria-label={t.statusScopeLabel}>
+          {[
+            {
+              all: false,
+              label: t.statusMyEquipment(
+                equipment.equipmentName ??
+                  equipment.equipmentCode ??
+                  `#${String(equipment.equipmentId)}`,
+              ),
+            },
+            { all: true, label: t.statusEveryEquipment },
+          ].map((option) => (
+            <button
+              key={String(option.all)}
+              type="button"
+              aria-pressed={allEquipment === option.all}
+              onClick={() => {
+                setAllEquipment(option.all);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
       {status.isError ? (
         <p className="pop-home__none">{t.statusFailed}</p>
       ) : (

@@ -381,7 +381,7 @@ describe('GoodsIssueQrScreen — 전표 없이 진입', () => {
       route: '/pop/goods-issue-qr?workerNo=3391',
     });
 
-    expect(await screen.findByText(t.entry.missingIssue)).toBeInTheDocument();
+    expect(await screen.findByLabelText(t.entry.lookup.label)).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.queryByRole('status', { name: t.lines.loading })).toBeNull();
     });
@@ -1040,7 +1040,7 @@ describe('GoodsIssueQrScreen', () => {
       route: '/pop/goods-issue-qr',
     });
 
-    expect(await screen.findByText(t.entry.missingIssue)).toBeInTheDocument();
+    expect(await screen.findByLabelText(t.entry.lookup.label)).toBeInTheDocument();
   });
 
   it('사번이 없으면 발행을 열지 않는다', async () => {
