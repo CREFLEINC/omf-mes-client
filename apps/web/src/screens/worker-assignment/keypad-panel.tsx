@@ -14,7 +14,8 @@ import { canSubmit } from './worker-no';
  * ⚠ **사번 칸은 읽기 전용이다.** 값은 키패드로만 들어온다 — 현장 단말은 전체 화면 키오스크라
  * 운영체제 키보드가 뜨면 화면을 덮는다.
  *
- * ⚠ **자릿수를 강제하지 않는다**(§5-2). 다르면 경고만 하고 **확인은 눌린다.**
+ * ⚠ **6자리 숫자가 아니면 [사번 확인] 때 다시 입력하게 한다**(사용자 지시 2026-11-17 ·
+ * omf-all-around#288). 판정은 화면(`screen.tsx`)이 하고, 이 구획은 안내만 보인다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -87,7 +88,7 @@ export const KeypadPanel = ({
          * `.scan-outcome` 이 스캔 결과 줄에서 같은 문제를 같은 방법으로 막고 있다.
          */}
         <div className="worker-no-notice">
-          {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
+          {/* 6자리 숫자가 아닌 채로 [사번 확인]을 눌렀다 — 다시 입력하게 한다. */}
           {isUnusualShown && (
             <div className="banner-slot">
               <AlertBanner variant="warning">{t.unusual}</AlertBanner>

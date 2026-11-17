@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import { choosePrinter, storedPrinterName } from '../pop-material-lot-label/printer-choice';
@@ -18,15 +18,13 @@ const t = messages.productionResult.flow.work;
 export const HeaderPrinter = () => {
   const printers = usePrinters('PRODUCTION_LOT_LABEL');
   const isSelectable = useShellSelectsPrinter().data === true;
+  /* 생산 작업과 같이 화면을 열 때 한 번만 읽는다. */
+  const [rememberedPrinter] = useState(() => storedPrinterName(LOT_PRINTER_STORAGE_KEY));
   const views = useMemo(
     () => (printers.data === undefined ? undefined : printers.data.map(toPrinterView)),
     [printers.data],
   );
-  const choice = choosePrinter(
-    views ?? [],
-    null,
-    isSelectable ? storedPrinterName(LOT_PRINTER_STORAGE_KEY) : null,
-  );
+  const choice = choosePrinter(views ?? [], null, isSelectable ? rememberedPrinter : null);
 
   return (
     <PrinterChip
