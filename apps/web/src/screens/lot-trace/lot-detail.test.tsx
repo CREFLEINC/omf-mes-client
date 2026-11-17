@@ -545,3 +545,122 @@ describe('W-02-09 LOT 생산 이력 조회: 큰 사슬과 단계 줄', () => {
     expect(within(stages).getByRole('button', { name: /제품입고\s*0건/ })).toBeDisabled();
   });
 });
+
+/*
+ * 008 부분 출고 LOT 분할(omf-all-around#289 · 시안 W0209-After) — 분할 LOT 과 원래 LOT 을 상세가 잇는다.
+ */
+describe('W-02-09 LOT 생산 이력 조회: 분할 LOT (008)', () => {
+  const ROOT = 'ITEM-A|1000|261023|SUP-A|0001';
+  const SPLIT = 'ITEM-A|300|261023|SUP-A|0001-S1';
+  const NESTED = 'ITEM-A|120|261023|SUP-A|0001-S1-S1';
+  const link = (lotId: number, lotNo: string, qty: number) => ({
+    relationTypeCode: 'SPLIT' as const,
+    lot: {
+      lotId,
+      lotNo,
+      plantId: 1,
+      item: { id: 1, code: 'ITEM-A', name: '자재 A' },
+      lotTypeCode: 'MATERIAL',
+      statusCode: 'NORMAL',
+      uomId: 1,
+      uomCode: 'KG',
+      completedAt: null,
+    },
+    qty,
+    uomCode: 'KG',
+    splitAt: '2026-11-17T01:40:00Z',
+    goodsIssue: {
+      goodsIssueId: 7,
+      goodsIssueNo: 'GI-SYN-0003',
+      goodsIssueLineId: 9,
+      lineNo: 1,
+    },
+  });
+
+  it('Q20 · US4-3 분할 LOT 이면 분할된 원래 LOT · 분할 수량 · 출고번호를 보이고 [보기]로 원래 LOT 에 간다', async () => {
+    const user = userEvent.setup();
+    setup('/production/lot-trace?from=2026-11-01&to=2026-11-17&selected=102', {
+      forwardRows: [forwardRow(102, SPLIT)],
+      forwardChains: {
+        102: { ...forwardChain(102, SPLIT, []), receipts: [], splitFrom: link(101, ROOT, 300) },
+        101: forwardChain(101, ROOT, []),
+      },
+    });
+
+    await detailHead(SPLIT);
+    const pane = detailPane();
+    expect(within(pane).getByText('분할 LOT')).toBeInTheDocument();
+    expect(fact(pane, '분할 수량')).toHaveTextContent('300 KG');
+    const from = within(pane).getByRole('region', { name: '분할된 원래 LOT' });
+    expect(fact(from, '원래 LOT 번호')).toHaveTextContent(ROOT);
+    expect(fact(from, '출고번호')).toHaveTextContent('GI-SYN-0003 · 라인 1');
+    expect(within(pane).getByText('원래 LOT 의 입하')).toBeInTheDocument();
+    expect(
+      within(pane).getByText(
+        '분할 LOT 은 자재 입고 기록이 없습니다. 자재 입고는 원래 LOT 에 있습니다',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(from).getByRole('button', { name: `${ROOT} 추적 보기` }));
+
+    expect(await detailHead(ROOT)).toBeInTheDocument();
+  });
+
+  it('Q19 · US4-2 원래 LOT 은 분할 LOT 표(자손은 들여 씀)와 분할 LOT 으로 투입된 W/O 의 경유 LOT 을 보인다', async () => {
+    const wo = { ...workOrder(70, []), viaLot: { lotId: 102, lotNo: SPLIT } };
+    setup('/production/lot-trace?from=2026-11-01&to=2026-11-17&selected=101', {
+      forwardRows: [forwardRow(101, ROOT)],
+      forwardChains: {
+        101: {
+          ...forwardChain(101, ROOT, [wo]),
+          splits: [link(102, SPLIT, 300), link(103, NESTED, 120)],
+        },
+      },
+    });
+
+    await detailHead(ROOT);
+    const pane = detailPane();
+    const splits = within(pane).getByRole('table', { name: '분할 LOT' });
+    expect(within(splits).getByText(listLot(SPLIT))).toBeInTheDocument();
+    expect(within(splits).getByText(listLot(NESTED))).toBeInTheDocument();
+    expect(
+      within(splits).getAllByText(/분할 시각 .* · 출고번호 GI-SYN-0003 · 라인 1/u),
+    ).toHaveLength(2);
+    expect(
+      within(pane).getByText('분할 LOT 으로 투입된 W/O 도 함께 보입니다.'),
+    ).toBeInTheDocument();
+    const usage = within(pane).getByRole('table', { name: '사용처' });
+    expect(within(usage).getByText(/분할 LOT 경유/u)).toBeInTheDocument();
+    expect(within(usage).getByRole('button', { name: `${SPLIT} 추적 보기` })).toBeInTheDocument();
+  });
+
+  it('Q18 · US4-1 투입 자재가 분할 LOT 이면 줄 아래에 원래 LOT 을 가까운 것부터 보인다', async () => {
+    setup('/production/lot-trace?from=2026-11-01&to=2026-11-17&selected=201', {
+      backwardRows: [backwardRow(201, PROD)],
+      backwardChains: {
+        201: backwardChain(201, PROD, [
+          inputMaterial(103, NESTED, {
+            splitAncestry: [link(102, SPLIT, 120), link(101, ROOT, 300)],
+          }),
+        ]),
+      },
+    });
+
+    await detailHead(PROD);
+    const inputs = within(detailPane()).getByRole('table', { name: '투입 자재' });
+    expect(within(inputs).getByText(/분할:/u)).toBeInTheDocument();
+    expect(within(inputs).getByRole('button', { name: `${SPLIT} 추적 보기` })).toBeInTheDocument();
+    expect(within(inputs).getByRole('button', { name: `${ROOT} 추적 보기` })).toBeInTheDocument();
+    expect(within(inputs).getByText('(2단)', { exact: false })).toBeInTheDocument();
+  });
+
+  it('분할이 없는 LOT 은 분할 구획·안내가 없다(회귀)', async () => {
+    setup('/production/lot-trace?from=2026-10-20&to=2026-10-26&selected=101', {
+      forwardRows: [forwardRow(101, MAT)],
+      forwardChains: { 101: forwardChain(101, MAT, []) },
+    });
+
+    await detailHead(MAT);
+    expect(within(detailPane()).queryByText(/분할/u)).toBeNull();
+  });
+});

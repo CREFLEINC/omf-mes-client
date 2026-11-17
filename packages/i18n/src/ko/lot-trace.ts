@@ -248,6 +248,7 @@ export const lotTrace = {
       at: '일시',
       partner: '공급사 또는 고객',
       basis: '근거',
+      via: '경유 LOT',
     },
     exportKinds: {
       LOT: 'LOT 번호',
@@ -259,6 +260,36 @@ export const lotTrace = {
       PRODUCTION_RECEIPT: '제품입고',
       PACKAGE: '포장',
       SHIPMENT: '출하',
+      SPLIT_FROM: '분할된 원래 LOT',
+      SPLIT: '분할 LOT',
+    },
+    /** 부분 출고 분할(008 · omf-all-around#289) — 분할 LOT 과 원래 LOT 을 잇는다. */
+    split: {
+      chip: '분할 LOT',
+      qty: '분할 수량',
+      fromSection: '분할된 원래 LOT',
+      parentLotNo: '원래 LOT 번호',
+      at: '분할 시각',
+      issueNo: '출고번호',
+      issueText: (goodsIssueNo: string, lineNo: number): string =>
+        `${goodsIssueNo} · 라인 ${String(lineNo)}`,
+      parentAlsoSplit:
+        '원래 LOT 도 분할 LOT 입니다 — [보기]로 올라가면 그 위 원래 LOT 이 보입니다.',
+      rootInbound: '원래 LOT 의 입하',
+      noReceipt: '분할 LOT 은 자재 입고 기록이 없습니다. 자재 입고는 원래 LOT 에 있습니다',
+      splitsSection: '분할 LOT',
+      splitsHint:
+        '이 LOT 에서 부분 출고로 떼어 낸 LOT 입니다. 분할 LOT 에서 다시 나온 LOT 은 들여 씁니다.',
+      splitLine: (at: string, issue: string): string => `분할 시각 ${at} · 출고번호 ${issue}`,
+      splitFrom: (lotNo: string): string => `${lotNo} 에서 분할`,
+      usageHint: '분할 LOT 으로 투입된 W/O 도 함께 보입니다.',
+      via: '분할 LOT 경유: ',
+      inputsHint:
+        '분할 LOT 이 투입되었으면 줄 아래에 원래 LOT 을 가까운 것부터 보입니다. 공급사는 원래 LOT 의 입하 기준입니다.',
+      ancestry: '분할: ',
+      levels: (count: number): string => `(${String(count)}단)`,
+      note: (issue: string): string => `분할 (${issue})`,
+      columns: { lot: '분할 LOT', qty: '수량', workOrders: '투입 W/O', action: '추적' },
     },
     exportFileName: (lotNo: string): string =>
       `LOT생산이력조회_${lotNo.replace(/[\\/:*?"<>|]/g, '_')}.csv`,
