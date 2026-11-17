@@ -49,8 +49,8 @@ export const dispositionDecision = {
     severityCode: '심각도',
     statusCode: '처리 상태',
     sourceCode: '원천',
-    nonconformanceNo: '부적합번호',
-    openedAt: '접수일',
+    nonconformanceNo: '부적합 번호',
+    openedAt: '접수일시',
     qty: '수량',
     description: '설명',
     lotNo: 'LOT 번호',
@@ -263,7 +263,6 @@ export const dispositionDecision = {
     inboundLotNo: '입하 LOT',
     inspectionRequestNo: 'IQC 검사',
     supplier: '공급사',
-    listLine: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
     /** 목록 「원천」 칸(screens/W-03-10.md 목록 행 · G2 L8). */
     sourceColumn: '원천',
     source: { IQC: 'IQC · 자재 입하', RETURN: '반품', PRODUCT: 'OQC · 제품' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)

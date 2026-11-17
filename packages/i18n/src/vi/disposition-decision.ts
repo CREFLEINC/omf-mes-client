@@ -55,7 +55,7 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     statusCode: 'Trạng thái xử lý',
     sourceCode: 'Nguồn',
     nonconformanceNo: 'Số không phù hợp',
-    openedAt: 'Ngày tiếp nhận',
+    openedAt: 'Thời gian tiếp nhận',
     qty: 'Số lượng',
     description: 'Mô tả',
     lotNo: 'Số LOT',
@@ -227,7 +227,6 @@ export const dispositionDecision: Translated<typeof ko.dispositionDecision> = {
     inboundLotNo: 'LOT nhập hàng',
     inspectionRequestNo: 'Kiểm tra IQC',
     supplier: 'Nhà cung cấp',
-    listLine: (inboundLotNo: string): string => `LOT nhập hàng ${inboundLotNo}`,
     sourceColumn: 'Nguồn',
     source: { IQC: 'IQC · nhập hàng vật tư', RETURN: 'Trả hàng', PRODUCT: 'OQC · thành phẩm' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     sortedFromTail: (tail: string): string => ` · phân loại ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)

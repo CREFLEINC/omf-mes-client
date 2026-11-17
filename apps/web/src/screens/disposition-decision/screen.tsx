@@ -730,6 +730,7 @@ export const DispositionDecisionScreen = ({
               rows={rows}
               sourceTexts={sourceTexts}
               items={items}
+              uoms={uoms}
               severity={severity}
               status={status}
               isLoading={list.isPending}

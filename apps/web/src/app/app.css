@@ -8925,12 +8925,6 @@ main:has(.iqc-skip-approval-detail) {
 }
 
 /* W-03-10 입하 LOT 단위 처분 · 선별 · 「지금」 띠 (005) */
-.disposition-nc-inbound {
-  display: block;
-  color: var(--on-surface-variant);
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-}
 
 
 

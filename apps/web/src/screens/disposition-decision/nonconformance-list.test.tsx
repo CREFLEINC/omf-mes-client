@@ -25,6 +25,7 @@ const rows: NonconformanceRow[] = [
     statusCode: 'CODE-C',
     openedAtText: '2026-08-12',
     affectedQtyText: '320',
+    uomId: 10,
     dispositionProgressCode: 'PARTIAL',
   },
   {
@@ -35,6 +36,7 @@ const rows: NonconformanceRow[] = [
     statusCode: 'CODE-C',
     openedAtText: '2026-08-11',
     affectedQtyText: t.values.unknownQty,
+    uomId: 10,
     dispositionProgressCode: 'NOT_STARTED',
   },
 ];
@@ -49,6 +51,7 @@ const codes = (pairs: [string, string][]): DispositionLookup => ({
 const baseProps = (): NonconformanceListProps => ({
   rows,
   items: items(),
+  uoms: codes([['10', 'EA']]),
   severity: codes([['CODE-B', '합성 심각도 B']]),
   status: codes([['CODE-C', '합성 상태 C']]),
   isLoading: false,
@@ -97,10 +100,17 @@ describe('NonconformanceList', () => {
     expect(screen.queryByText(/원천으로 거르는/)).toBeNull();
   });
 
-  it('품목을 이름으로 보인다', () => {
+  it('품목은 이름만 보인다 — 코드는 상세에서(omf-all-around#286)', () => {
     renderList();
 
-    expect(screen.getByText('SYNTH-ITEM-1 · 합성 품목')).toBeInTheDocument();
+    expect(screen.getByText('합성 품목')).toBeInTheDocument();
+    expect(screen.queryByText('SYNTH-ITEM-1 · 합성 품목')).toBeNull();
+  });
+
+  it('수량에 단위를 붙인다(omf-all-around#286)', () => {
+    renderList();
+
+    expect(screen.getByText('320 EA')).toBeInTheDocument();
   });
 
   it('이름을 못 찾은 품목은 「알 수 없음」으로 둔다 — 코드만 남기지 않는다', () => {
