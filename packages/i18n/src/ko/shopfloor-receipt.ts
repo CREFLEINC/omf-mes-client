@@ -28,13 +28,37 @@ export const shopfloorReceipt = {
     hopper: '호퍼 잔량 실측',
   },
   issue: {
-    legend: '출고 전표 스캔',
-    scanLabel: '출고 QR 스캔',
-    scanPlaceholder: '출고 전표 QR을 스캔하세요',
+    /*
+     * 008(omf-all-around#289) — 출고 QR 은 더 발행하지 않는다. 부분 출고분은 분할 LOT 라벨, 전량 출고분은 원래
+     * 자재 LOT 라벨을 읽어 그 LOT 의 입고 안 된 출고를 연다. 이미 붙은 출고 QR · 손으로 친 출고번호도 받는다.
+     */
+    legend: '라벨·출고번호 스캔',
+    scanLabel: '자재 LOT 라벨 또는 출고번호',
+    scanPlaceholder: '자재 LOT 라벨을 스캔하세요',
+    scanHint: '이미 붙어 있는 출고 QR 도 읽습니다. 출고번호는 [직접 입력]으로 넣습니다.',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: '출고 전표를 불러오는 중입니다',
-    notFound: (code: string) => `${code} 출고 전표를 찾지 못했습니다`,
+    notFound: (code: string) => `${code} 에 맞는 자재 LOT 도 출고 전표도 찾지 못했습니다`,
+    /** LOT 라벨로 연 전표 — 스캔한 LOT 이 든 줄을 표시한다. */
+    foundByLot: '스캔한 자재 LOT 이 든 출고 전표입니다. 그 라인을 표시했습니다.',
+    scannedLot: '스캔한 LOT',
+    /** 부분 출고로 생긴 분할 LOT 줄 — 어디서 떼어 냈는지. */
+    splitFrom: (lotNo: string) => `분할 · 원래 LOT ${lotNo}`,
+    /** LOT 은 있으나 받을 출고가 없다(이미 받았거나 출고 전). 원래 상자 라벨을 댄 경우가 흔하다. */
+    noneTitle: '이 LOT 으로 받을 출고가 없습니다',
+    noneDescription:
+      '이미 받았거나 아직 출고 전입니다. 부분 출고한 봉지라면 그 봉지에 붙은 분할 LOT 라벨(번호 끝 -S1 등)을 스캔하세요.',
+    /** 같은 LOT 의 입고 안 된 출고가 여럿 — 화면이 고르지 않고 사람이 고른다(오래된 순). */
+    pick: {
+      title: (count: number) => `이 LOT 으로 받을 출고가 ${String(count)}건입니다`,
+      description: '받을 출고 전표를 고르세요. 오래된 순입니다.',
+      issuedAt: (at: string) => `출고 ${at}`,
+      lotQty: (qty: string) => `이 LOT ${qty}`,
+      lines: (count: number) => `${String(count)}라인`,
+      oldest: '가장 오래됨',
+      cancel: '다시 스캔',
+    },
     /** 세 번을 물어 도착 위치와 작업지시를 얻는다. 하나라도 끊기면 전표를 열 수 없다. */
     loadFailed: '출고 전표를 열지 못했습니다. 연결을 확인하세요.',
     summary: (no: string, count: number) => `${no} · ${String(count)}라인`,

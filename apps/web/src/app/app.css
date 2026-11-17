@@ -31832,6 +31832,42 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   flex: none;
 }
 
+/*
+ * 008 부분 출고 분할 — 표 칸 안의 둘째 줄(경유 LOT · 분할 조상 · 분할 시각)과 LOT 으로 옮겨 가는 글 단추.
+ * 번호는 끝 마디(`-S1`)가 보이게 앞을 줄인다(`.lot-trace-lot`).
+ */
+.lot-trace-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lot-trace-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-1);
+  min-width: 0;
+  color: var(--on-surface-muted);
+  font: var(--type-body-sm);
+}
+
+.lot-trace-split-link {
+  flex: none;
+  max-width: 100%;
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* 품목 「이름 코드」 한 줄 — 이름이 먼저 줄고, 코드는 흐리게 뒤에 붙는다. */
 .lot-trace-item-name {
   flex: 0 1 auto;
