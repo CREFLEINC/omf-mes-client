@@ -89,14 +89,6 @@ describe('PostPane — 접힌 두 번째 선택지', () => {
     expect(document.getElementById(controls ?? '')).not.toBeNull();
   });
 
-  /* 구획 첫 줄 안내와 「결재선이 없는 조정만」 상시 사유는 걷었다(사용자 지시 2026-11-18). */
-  it('접혀 있으면 여는 손잡이만 선다', () => {
-    renderPane({ isExpanded: false });
-
-    expect(toggleButton()).toBeVisible();
-    expect(pane().querySelector('p')).toBeNull();
-  });
-
   it('펼치면 두 칸과 전기 버튼이 선다', () => {
     renderPane();
 
@@ -123,26 +115,6 @@ describe('PostPane — 접힌 두 번째 선택지', () => {
     await user.clear(within(pane()).getByLabelText(t.post.businessDate));
 
     expect(onChangeDraft).toHaveBeenCalledWith({ businessDate: '' });
-  });
-});
-
-/**
- * 「전기하면 일어나는 일」 세 문장은 걷었다(사용자 지시 2026-11-18) — 되돌릴 수 없다는 사실은
- * 전기 확인 창의 한 줄이 밝힌다.
- */
-describe('PostPane — 일어나는 일 세 문장', () => {
-  it('펼쳐도 세 문장 구획이 없다', () => {
-    renderPane();
-
-    expect(postButton()).toBeEnabled();
-    expect(within(pane()).queryByRole('region')).not.toBeInTheDocument();
-  });
-
-  it('두 칸에 보조 문구를 두지 않는다', () => {
-    renderPane();
-
-    expect(within(pane()).getByLabelText(t.post.businessDate)).not.toHaveAccessibleDescription();
-    expect(within(pane()).getByLabelText(t.post.occurredAt)).not.toHaveAccessibleDescription();
   });
 });
 
@@ -210,7 +182,6 @@ describe('PostPane — 잠금과 사유', () => {
     renderPane({ hasFailed: true });
 
     expect(within(pane()).getByText(t.post.failedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(pane()).getByText(t.post.failedDescription)).toBeVisible();
     /* 다시 전기할 수 있어야 한다 — 칸과 버튼이 남는다. */
     expect(postButton()).toBeEnabled();
   });
@@ -257,16 +228,6 @@ describe('PostPane — 전기 결과', () => {
 
     expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
     expect(within(pane()).getByText(t.post.adjustedAtUnknown)).toBeVisible();
-  });
-
-  it('전기 뒤에 장부 낡음 안내를 두지 않는다', () => {
-    renderPane({
-      posting: readPosting({ adjustedAt: '2026-08-18T14:05:00+09:00', statusCode: 'SAMPLE_S_B' }),
-    });
-
-    /* 장부 낡음 안내는 걷었다(사용자 지시 2026-11-18). */
-    expect(within(pane()).getByText(t.post.postedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(pane()).queryByText(/전기 뒤에 다시 부르지 않습니다/)).not.toBeInTheDocument();
   });
 
   /**

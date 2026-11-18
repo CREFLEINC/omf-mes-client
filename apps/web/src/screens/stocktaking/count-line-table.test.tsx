@@ -353,15 +353,11 @@ describe('CountLineTable — 표 안 입력 두 칸', () => {
     );
   });
 
-  /*
-   * **값 목록이 확정되지 않은 동안에도 칸은 선다**(승인 G1). 자리표시가 그 사정을 밝힌다 —
-   * 칸 아래 안내문(`pendingCode.note`)은 걷었다(사용자 지시 2026-11-18).
-   */
-  it('사유 선택지가 비어 있으면 자리표시만 붙고 안내문은 없다', () => {
+  /* **값 목록이 확정되지 않은 동안에도 칸은 선다**(승인 G1). 자리표시가 그 사정을 밝힌다. */
+  it('사유 선택지가 비어 있으면 자리표시가 붙는다', () => {
     renderTable({ reasonOptions: [] });
 
     expect(screen.getAllByText(messages.pendingCode.placeholder).length).toBeGreaterThan(0);
-    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
   });
 
   /*

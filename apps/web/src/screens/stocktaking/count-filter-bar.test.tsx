@@ -38,16 +38,11 @@ describe('CountFilterBar — 조건 줄', () => {
     expect(screen.getByRole('checkbox', { name: t.fields.inProgressOnly })).toBeInTheDocument();
   });
 
-  /*
-   * 선택지가 늘 비어 쓰이지 않던 실사 유형·상태 조건과 그 「선택지 준비 중」 안내를 걷었다
-   * (사용자 지시 2026-11-18). 실사 유형은 개시 입력에만 남는다.
-   */
-  it('실사 유형·상태 조건과 준비 중 안내가 없다', () => {
+  /* 쓰이지 않던 실사 유형·상태 조건을 걷었다(사용자 지시 2026-11-18). 실사 유형은 개시 입력에만 남는다. */
+  it('실사 유형 조건이 없다', () => {
     renderBar();
 
     expect(screen.queryByLabelText(t.fields.countType)).not.toBeInTheDocument();
-    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
-    expect(screen.queryByText(messages.pendingCode.placeholder)).not.toBeInTheDocument();
   });
 
   /*

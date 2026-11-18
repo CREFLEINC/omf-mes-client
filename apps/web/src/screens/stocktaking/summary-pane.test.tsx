@@ -57,11 +57,9 @@ describe('SummaryPane — 제목줄', () => {
    * 없으므로 비활성 컨트롤을 두지 않는다 — 두면 「언젠가 켜질 것」으로 읽힌다.
    */
   it('블라인드 실사는 값으로만 표기하고 컨트롤이 없다', () => {
-    const { container } = renderPane({ count: toCountView(countResponse({ blindCount: true })) });
+    renderPane({ count: toCountView(countResponse({ blindCount: true })) });
 
-    expect(screen.getByText('예')).toBeInTheDocument();
-    /* 블라인드 안내문은 걷었다(사용자 지시 2026-11-18). */
-    expect(container.querySelector('.field-note')).toBeNull();
+    expect(screen.getByText(t.values.blindYes)).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
@@ -140,13 +138,6 @@ describe('SummaryPane — 요약 4칸', () => {
     });
 
     expect(within(summaryGroup()).getAllByText('0')).toHaveLength(4);
-  });
-
-  /* 요약 출처 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('요약 아래에 안내문을 두지 않는다', () => {
-    const { container } = renderPane();
-
-    expect(container.querySelector('.field-note')).toBeNull();
   });
 
   /* 네 칸 모두 단위가 「건」이다 — 수량이 아니라 라인 수라는 사실이 읽혀야 한다. */

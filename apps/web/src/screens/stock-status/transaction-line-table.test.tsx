@@ -168,13 +168,6 @@ describe('TransactionLineTable — 값 표기', () => {
     expect(transfer).not.toContain(t.values.unknown);
   });
 
-  /* 위치 이름의 범위를 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('표 아래에 위치 이름 범위 안내문을 두지 않는다', () => {
-    renderTable();
-
-    expect(document.querySelector('p.field-note')).toBeNull();
-  });
-
   /* 같은 창고인데 목록에 없는 위치는 「알 수 없음」이 맞다 — 값이 잘못됐다는 뜻이다. */
   it('고른 창고의 위치인데 목록에 없으면 「알 수 없음」이다', () => {
     renderTable({

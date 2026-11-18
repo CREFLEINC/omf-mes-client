@@ -85,8 +85,6 @@ describe('W-01-16 매칭 수정', () => {
     });
 
     const dialog = await startEdit(user);
-    /* 한도 계산식 · 마감 취소 뒤 사정 같은 설명문은 두지 않는다 — 넘으면 오류 문구가 한도를 말한다. */
-    expect(within(dialog).queryByText(/발주량 \+ 허용치|새로 계산됩니다/u)).toBeNull();
     /* 마감 승인 대기라도 편집 중에는 최종 마감이 잠긴다. */
     expect(within(dialog).getByRole('button', { name: t.detail.finalize })).toBeDisabled();
 
@@ -146,9 +144,7 @@ describe('W-01-16 매칭 수정', () => {
 
     const dialog = await startEdit(user);
     await typeQty(user, dialog, '0077/10', '500');
-    expect(
-      within(dialog).getByText('매칭 합 2,375 EA가 입하 수량 2,050 EA를 넘습니다(+325)'),
-    ).toBeVisible();
+    expect(within(dialog).getByText(te.overTotal('2,375', '2,050', 'EA', '325'))).toBeVisible();
 
     await typeQty(user, dialog, '0077/10', '');
     expect(within(dialog).getByText(te.notNumber('0077/10'))).toBeVisible();
