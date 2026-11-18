@@ -6,6 +6,8 @@ import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
 import { OqcQueueSkipCell } from './queue-skip-cell';
+import { lotOverviewOf } from './shipment-oqc';
+import { OverviewChip } from './shipment-oqc-parts';
 import type { ItemNameLookup } from './reference-lookup';
 import { toStatusBadge } from './status-badge';
 import { formatDateTime, type InspectionQueueRow } from './types';
@@ -32,6 +34,7 @@ import { formatDateTime, type InspectionQueueRow } from './types';
  */
 
 const t = messages.oqcInspection.queue;
+const shipmentT = messages.oqcInspection.shipment.queue;
 const SKIPPABLE: readonly string[] = ['REQUESTED', 'IN_PROGRESS'];
 
 const columnsOf = (
@@ -94,7 +97,9 @@ const columnsOf = (
           {row.inspectionRequestNo}
         </button>
         <span className="oqc-inspection-queue-sub">
-          {t.target(t.targetTypes[row.targetTypeCode] ?? row.targetTypeCode, row.targetId)}
+          {/* 출하 OQC 새 흐름은 지시서 번호를 그대로(피처 010 · 시안 W0403 목록). */}
+          {row.shipmentRequestNo ??
+            t.target(t.targetTypes[row.targetTypeCode] ?? row.targetTypeCode, row.targetId)}
         </span>
       </span>
     ),
@@ -102,9 +107,17 @@ const columnsOf = (
   {
     key: 'targetQty',
     align: 'center',
-    header: t.targetQtyColumn,
+    /* 출하 OQC 새 흐름은 검사 수량 대신 피킹 LOT 수(피처 010) — 수량은 서버가 매칭 LOT 합으로 채운다. */
+    header: shipmentT.pickedLotsColumn,
     width: '100px',
     render: (row) => {
+      if (row.pickedLotCount !== undefined) {
+        return (
+          <span className="oqc-inspection-num">
+            {row.pickedLotCount === 0 ? shipmentT.noLots : shipmentT.pickedLots(row.pickedLotCount)}
+          </span>
+        );
+      }
       const code = uomCodeOf(row);
 
       return (
@@ -112,6 +125,17 @@ const columnsOf = (
           {code === null ? String(row.targetQty) : `${String(row.targetQty)} ${code}`}
         </span>
       );
+    },
+  },
+  {
+    key: 'lotJudgment',
+    align: 'center',
+    header: shipmentT.judgmentColumn,
+    width: '120px',
+    /* LOT 판정 요약(시안 W0403 C) — 출하 완료 관문과 같은 말. 옛 흐름 줄은 빈 값. */
+    render: (row) => {
+      const overview = lotOverviewOf(row);
+      return overview === null ? t.emptyValue : <OverviewChip overview={overview} />;
     },
   },
   {

@@ -9,7 +9,7 @@ import {
   Tabs,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { InspectionGuideNotice } from '../../patterns/inspection-guide';
@@ -89,6 +89,8 @@ import { InspectionHistoryPanel, useInspectionHistory } from '../inspection-hist
 import { latestRound } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
+import { isShipmentOqc } from './shipment-oqc';
+import { ShipmentOqcDetail } from './shipment-oqc-detail';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
 import {
   CODE_GROUPS as PQC_CODE_GROUPS,
@@ -766,6 +768,27 @@ export const OqcInspectionScreen = () => {
       />
     ) : detail.data === undefined ? (
       <p className="field-note">{t.detail.loading}</p>
+    ) : isShipmentOqc(detail.data) ? (
+      /*
+       * 출하 OQC 새 흐름(피처 010 · decisions #47) — 피킹 LOT 매칭 · 판정만 · 확정 없음(IQC W-01-01 과 같은 짜임).
+       * 수량 · 회차 · 확정 · 전이 경고는 옛 흐름(대상 LOT 이 있는 의뢰)에만 남는다.
+       */
+      <ShipmentOqcDetail
+        key={selectedId}
+        inspectionRequestId={selectedId}
+        itemLabel={((): ReactNode => {
+          const parts = itemNames.partsOf(detail.data.itemId);
+          return parts === null ? (
+            itemNames.labelOf(detail.data.itemId)
+          ) : (
+            <>
+              {parts.code}
+              <span className="parts-iqc-fact-sub">{parts.name}</span>
+            </>
+          );
+        })()}
+        uomCode={uomCode}
+      />
     ) : (
       <>
         {/* 기준 조회 창의 [수정]은 저장 안 한 입력이 있으면 먼저 묻고 옮긴다(#197). */}
@@ -953,7 +976,10 @@ export const OqcInspectionScreen = () => {
   const historyRevision = `${String(rounds.data?.length ?? 0)}:${JSON.stringify(round ?? null)}`;
   const historyCount = useInspectionHistory(selectedId, historyRevision).data?.events.length;
   const roundCount = rounds.data?.length ?? 0;
-  const showsRoundHistory = roundCount > 1 || (isReinspectingNow && roundCount > 0);
+  /* 출하 OQC 새 흐름은 회차 이력이 없다 — 결과 표가 대신한다(시안 W0403 「없어짐」). */
+  const showsRoundHistory =
+    (detail.data === undefined || !isShipmentOqc(detail.data)) &&
+    (roundCount > 1 || (isReinspectingNow && roundCount > 0));
 
   const auxContent =
     selectedId === null || detail.isError || detail.data === undefined ? null : (

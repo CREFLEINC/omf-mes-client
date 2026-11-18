@@ -34088,6 +34088,42 @@ body:has(.iqc-inspection-step-measure [aria-expanded="true"])
   font: var(--type-body-sm);
 }
 
+/* 출하 OQC 새 흐름(피처 010 · W-04-03 · 시안 W0403-After) — 판정 단추 셋, 안내 줄, 교체된 LOT 회색 줄 · 칩. */
+.oqc-shipment-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.oqc-shipment-target {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.oqc-shipment-replaced-no,
+.iqc-inbound-chip-inactive {
+  color: var(--on-surface-muted);
+  text-decoration: line-through;
+}
+
+.oqc-shipment-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.oqc-shipment-drawer-title {
+  margin: 0;
+}
+
+.oqc-shipment-judgment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* 판정 규칙 변경(C7 · 2026-11-12) — 판정이 바뀐 LOT 줄, 재검 사유 칸. */
 .iqc-inbound-reason-lines {
   display: flex;
