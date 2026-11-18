@@ -157,7 +157,7 @@ export const ReleaseMaterials = ({
                   '환산 기준',
                   '확인',
                 ]}
-                widths={[160, 220, 140, 150, 320, 110]}
+                widths={[150, 210, 110, 135, 260, 110]}
               >
                 <tbody>
                   {rows.map(({ row, choice, rate, set }) => (
@@ -192,22 +192,23 @@ export const ReleaseMaterials = ({
                             <div className="release-material-ratio">
                               <span>1 {row.stockUomCode} =</span>
                               {editableRate(row) ? (
-                                <TextField
-                                  size="sm"
-                                  style={{ width: 112 }}
-                                  inputMode="decimal"
-                                  aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
-                                  value={choice.rate ?? String(row.conversionRate ?? '')}
-                                  disabled={disabled}
-                                  error={
-                                    choice.rate !== null && rate === null
-                                      ? '0보다 큰 비율을 입력하세요. 소수 8자리까지 반올림합니다.'
-                                      : undefined
-                                  }
-                                  onChange={(event) =>
-                                    set({ rate: event.target.value, checked: false })
-                                  }
-                                />
+                                <div className="release-material-rate">
+                                  <TextField
+                                    size="sm"
+                                    inputMode="decimal"
+                                    aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율`}
+                                    value={choice.rate ?? String(row.conversionRate ?? '')}
+                                    disabled={disabled}
+                                    error={
+                                      choice.rate !== null && rate === null
+                                        ? '0보다 큰 비율을 입력하세요. 소수 8자리까지 반올림합니다.'
+                                        : undefined
+                                    }
+                                    onChange={(event) =>
+                                      set({ rate: event.target.value, checked: false })
+                                    }
+                                  />
+                                </div>
                               ) : (
                                 <span>
                                   {row.conversionRate == null

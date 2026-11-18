@@ -8,3 +8,9 @@
 .release-material-ratio > span {
   white-space: nowrap;
 }
+
+.release-material-rate {
+  flex: 0 0 112px;
+  width: 112px;
+  min-width: 0;
+}
