@@ -108,7 +108,7 @@ const toLine = (
   if (itemId === null || uomId === null) return null;
 
   /* 화면의 경고와 **같은 함수**를 지난다 — 갈라 두면 경고 없이 FK 만 비어 나간다. */
-  const bomComponentId = line.bomComponentId ?? resolveBomComponentId(itemId, shortage);
+  const bomComponentId = line.bomComponentId ?? resolveBomComponentId(itemId, shortage, uomId);
 
   return {
     ...(bomComponentId === null ? {} : { bomComponentId }),
@@ -163,6 +163,16 @@ export const toMaterialIssueRequestBody = (
   const lines: MaterialIssueRequestCreateLine[] = [];
 
   for (const line of input.lines) {
+    if (
+      line.conversionUnavailable ||
+      input.shortage.some(
+        (item) =>
+          item.itemId === Number(line.itemId) &&
+          item.uomId === Number(line.uomId) &&
+          item.conversionSource === 'NONE',
+      )
+    )
+      continue;
     const created = toLine(line, input.shortage);
 
     if (created !== null) lines.push(created);
@@ -222,7 +232,8 @@ const fingerprintOf = (input: MaterialIssueRequestInput): string =>
     unsourcedShortageId: input.unsourcedShortageId ?? '',
     lines: input.lines.map((line) => ({
       bomComponentId:
-        line.bomComponentId ?? resolveBomComponentId(Number(line.itemId), input.shortage),
+        line.bomComponentId ??
+        resolveBomComponentId(Number(line.itemId), input.shortage, Number(line.uomId)),
       itemId: line.itemId,
       uomId: line.uomId,
       requestedQty: line.requestedQty,

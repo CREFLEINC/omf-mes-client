@@ -20,7 +20,10 @@ import type { MaterialIssueLineDraft, ShortageLineView } from './types';
 export const resolveBomComponentId = (
   itemId: number,
   shortage: readonly ShortageLineView[],
-): number | null => shortage.find((line) => line.itemId === itemId)?.bomComponentId ?? null;
+  uomId?: number,
+): number | null =>
+  shortage.find((line) => line.itemId === itemId && (uomId === undefined || line.uomId === uomId))
+    ?.bomComponentId ?? null;
 
 /**
  * 초안 줄들의 BOM 유래를 소요 목록으로 채운다. **채우기만 하고 지우지 않는다.**
@@ -40,7 +43,11 @@ export const resolveLineOrigins = (
 
     if (!Number.isInteger(itemId) || itemId <= 0) return line;
 
-    const bomComponentId = resolveBomComponentId(itemId, shortage);
+    const bomComponentId = resolveBomComponentId(
+      itemId,
+      shortage,
+      Number(line.uomId) > 0 ? Number(line.uomId) : undefined,
+    );
 
     return bomComponentId === null ? line : { ...line, bomComponentId };
   });

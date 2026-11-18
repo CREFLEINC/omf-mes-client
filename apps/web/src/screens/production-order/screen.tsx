@@ -551,13 +551,13 @@ export const ProductionOrderScreen = ({
           targets={dialog.targets}
           forecast={bulk.forecast}
           onCancel={() => setDialog(null)}
-          onConfirm={() => {
+          onConfirm={(materials) => {
             const { kind, targets: chosen } = dialog;
             setDialog(null);
             setRunRows(checkedRows);
             setResultFilter(null);
             rememberWorklistSearch(searchParams);
-            void bulk.start(kind, chosen).then(() => {
+            void bulk.start(kind, chosen, materials).then(() => {
               setChecked([]);
               if (kind === 'autoPlan') void navigate(AUTO_PLAN_RESULT_PATH);
             });

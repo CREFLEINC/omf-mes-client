@@ -139,3 +139,29 @@ describe('addLineDraft · removeLineDraft · patchLineDraft', () => {
     expect(after[0]?.key).toBe(rows[0]?.key);
   });
 });
+
+it('환산 불가 소요는 수량 0으로 불러오고 품목·단위가 다른 행을 합치지 않는다', () => {
+  const rows = lineDraftsFromShortage([
+    {
+      itemId: 1,
+      bomComponentId: 1,
+      uomId: 1,
+      requiredQty: 10,
+      issuedQty: 0,
+      shortageQty: 10,
+      conversionSource: 'NONE',
+    },
+    {
+      itemId: 1,
+      bomComponentId: 2,
+      uomId: 2,
+      requiredQty: 3,
+      issuedQty: 0,
+      shortageQty: 3,
+      conversionSource: 'ITEM',
+    },
+  ]);
+  expect(rows).toHaveLength(2);
+  expect(rows[0]).toMatchObject({ requestedQty: '0', conversionUnavailable: true });
+  expect(rows[1]).toMatchObject({ requestedQty: '3', uomId: '2' });
+});

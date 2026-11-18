@@ -1,3 +1,8 @@
+import {
+  ReleaseMaterials,
+  useReleaseMaterials,
+  type MaterialConfirmations,
+} from './process/release-materials';
 import { AlertBanner, Button, Dialog, SkeletonText } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
@@ -13,7 +18,7 @@ export interface WorklistBulkDialogProps {
   /** 일괄 배포 예고(실행과 같은 판정). 일괄 재실행은 쓰지 않는다. */
   forecast: (targets: readonly BulkTarget[]) => Promise<ForecastEntry[]>;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (materials?: MaterialConfirmations) => void;
 }
 
 /**
@@ -41,6 +46,10 @@ export const WorklistBulkDialog = ({
     };
   }, [forecast, kind, targets]);
 
+  const materials = useReleaseMaterials(
+    (entries ?? []).flatMap((entry) => entry.forecast?.targets ?? []),
+    kind === 'release',
+  );
   const counts = { processed: 0, partial: 0, skipped: 0, failed: 0 };
   let workOrders = 0;
   for (const entry of entries ?? []) {
@@ -68,9 +77,9 @@ export const WorklistBulkDialog = ({
             {messages.common.cancel}
           </Button>
           <Button
-            disabled={blockedReason !== null}
+            disabled={blockedReason !== null || (kind === 'release' && !materials.ready)}
             aria-describedby={blockedReason === null ? undefined : reasonId}
-            onClick={onConfirm}
+            onClick={() => onConfirm(materials.confirmations)}
           >
             {copy.confirm}
           </Button>
@@ -78,6 +87,7 @@ export const WorklistBulkDialog = ({
       }
     >
       <div className="bulk-dialog-body">
+        {kind === 'release' && entries !== null && <ReleaseMaterials review={materials} />}
         <p className="bulk-dialog-target">{copy.target(targets.length)}</p>
         <EffectList task={copy.task} items={copy.effects.map((label) => ({ key: label, label }))} />
         <section aria-label={copy.skipTitle}>

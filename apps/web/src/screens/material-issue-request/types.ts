@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { MaterialComponents, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 /**
@@ -13,7 +13,7 @@ import { messages } from '@omf-mes/i18n';
  */
 
 type WorkOrderResponse = components['schemas']['WorkOrder'];
-type ShortageLineResponse = components['schemas']['MaterialIssueShortageLine'];
+type ShortageLineResponse = MaterialComponents['schemas']['MaterialIssueShortageLine'];
 
 /** 등록 본문 — 피처 003 칸(출발 창고 · 예정분 가져가기 · 미배정 부족 행)을 더한 계약 §1 모양. */
 export type MaterialIssueRequestCreate = components['schemas']['MaterialIssueRequestCreate'];
@@ -76,6 +76,7 @@ export interface ShortageLineView {
   requiredQty: number;
   issuedQty: number;
   shortageQty: number;
+  conversionSource?: 'ITEM' | 'COMMON' | 'NONE' | null;
 }
 
 export const toShortageLineView = (data: ShortageLineResponse): ShortageLineView => ({
@@ -85,6 +86,7 @@ export const toShortageLineView = (data: ShortageLineResponse): ShortageLineView
   requiredQty: data.requiredQty,
   issuedQty: data.issuedQty,
   shortageQty: data.shortageQty,
+  ...(data.conversionSource == null ? {} : { conversionSource: data.conversionSource }),
 });
 
 /**
@@ -192,6 +194,7 @@ export interface MaterialIssueLineDraft {
   issuedQty: number | null;
   shortageQty: number | null;
   requestedQty: string;
+  conversionUnavailable?: boolean;
 }
 
 export interface SelectOption {

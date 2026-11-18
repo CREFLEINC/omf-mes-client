@@ -1,4 +1,5 @@
 import type { components, paths } from './generated/api';
+import type { paths as MaterialPaths } from './generated/release-materials';
 import type { paths as PlanningPaths } from './generated/planning-calendar';
 
 /** P-7/P-10 선행 계약: 공식 설계 사본이 갱신될 때 동등성을 대조하고 제거한다. */
@@ -1319,6 +1320,7 @@ export interface ForwardPaths {
 }
 
 /** 같은 경로를 forward 가 다시 적으면 그쪽이 이긴다. */
-export type ApiPaths = Omit<paths, keyof ForwardPaths | keyof PlanningPaths> &
-  ForwardPaths &
-  PlanningPaths;
+export type ApiPaths = Omit<paths, keyof ForwardPaths | keyof PlanningPaths | keyof MaterialPaths> &
+  Omit<ForwardPaths, keyof MaterialPaths> &
+  Omit<PlanningPaths, keyof MaterialPaths> &
+  MaterialPaths;

@@ -154,3 +154,11 @@ describe('ⓓ 화면의 경고와 본문의 FK 가 같은 판정을 지난다', 
     expect('bomComponentId' in (body?.lines[0] ?? {})).toBe(false);
   });
 });
+
+it('같은 품목이라도 단위가 다른 구성 행을 구분한다', () => {
+  const rows: ShortageLineView[] = [
+    { itemId: 1, uomId: 1, bomComponentId: 10, requiredQty: 1, issuedQty: 0, shortageQty: 1 },
+    { itemId: 1, uomId: 2, bomComponentId: 20, requiredQty: 1, issuedQty: 0, shortageQty: 1 },
+  ];
+  expect(resolveBomComponentId(1, rows, 2)).toBe(20);
+});

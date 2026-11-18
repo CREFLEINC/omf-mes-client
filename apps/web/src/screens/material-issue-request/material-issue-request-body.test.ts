@@ -254,3 +254,11 @@ describe('stampSubmission — 제출 순간을 초안에 매어 둔다 (D-5)', (
     expect(next.at).toBe(later);
   });
 });
+
+it('환산 불가 줄의 수량이 변경되어도 요청 본문에 포함하지 않는다', () => {
+  const body = toMaterialIssueRequestBody(
+    input({ lines: [line({ requestedQty: '80', conversionUnavailable: true })] }),
+    submittedAt,
+  );
+  expect(body).toBeNull();
+});

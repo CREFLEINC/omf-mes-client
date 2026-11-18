@@ -1,0 +1,22 @@
+.release-material-ratio {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.release-material-ratio > span {
+  white-space: nowrap;
+}
+
+.release-material-rate {
+  flex: 0 0 112px;
+  width: 112px;
+  min-width: 0;
+}
+
+.release-material-error {
+  display: block;
+  margin-top: var(--space-1);
+  white-space: normal;
+}
