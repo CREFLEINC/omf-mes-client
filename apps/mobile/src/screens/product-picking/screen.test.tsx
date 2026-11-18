@@ -939,6 +939,64 @@ describe('M-04-01 제품 피킹 — 지시서 코드 보기', () => {
     expect(await screen.findByLabelText('제품 LOT 스캔')).toBeTruthy();
   });
 
+  describe('US4-4·Q9 고객·납품처 — 단말은 거래처 마스터를 못 읽으므로 지시서 응답의 이름을 쓴다', () => {
+    const partnersDenied: StubRoute = {
+      match: (req) => new URL(req.url).pathname.startsWith('/mdm/partners'),
+      respond: () => new Response(JSON.stringify({ message: 'denied' }), { status: 401 }),
+    };
+    const named = () =>
+      request({
+        customerId: 1,
+        shipToPartnerId: 2,
+        customer: { partnerId: 1, partnerCode: 'C1', partnerName: '가나전자' },
+        shipTo: { partnerId: 2, partnerCode: 'S2', partnerName: '가나전자 2공장' },
+      });
+
+    it('US4-4 목록 카드에 「고객, 납품처」를 보인다', async () => {
+      mount([partnersDenied], { requests: [named()] });
+
+      const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+      expect(within(card).getByText('가나전자, 가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-4 상세 머리에 고객·납품처를 보인다', async () => {
+      const user = userEvent.setup();
+      mount([partnersDenied], { requests: [named()] });
+      await openRequest(user);
+
+      expect(screen.getByText('고객')).toBeTruthy();
+      expect(screen.getByText('가나전자')).toBeTruthy();
+      expect(screen.getByText('납품처')).toBeTruthy();
+      expect(screen.getByText('가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-1·Q9 「지시서 코드 보기」에 고객·납품처를 보인다', async () => {
+      const user = userEvent.setup();
+      mount([partnersDenied], { requests: [named()] });
+      await openRequest(user);
+      await user.click(screen.getByRole('button', { name: '지시서 코드 보기' }));
+
+      await screen.findByRole('img', { name: '출하 지시서 SR-261118-001 QR' });
+      expect(screen.getByText('가나전자, 가나전자 2공장')).toBeTruthy();
+    });
+
+    it('US4-4 고객과 납품처가 같으면 한 번만 쓴다', async () => {
+      mount([partnersDenied], {
+        requests: [
+          request({
+            customer: { partnerId: 1, partnerCode: 'C1', partnerName: '다라상사' },
+            shipTo: { partnerId: 1, partnerCode: 'C1', partnerName: '다라상사' },
+          }),
+        ],
+      });
+
+      const card = await screen.findByRole('button', { name: /SR-261118-001/ });
+
+      expect(within(card).getByText('다라상사')).toBeTruthy();
+    });
+  });
+
   it('US4-1 막는 이유가 없으면 「아직 완료할 수 없습니다」를 보이지 않는다', async () => {
     const user = userEvent.setup();
     mount([], { requests: [request({ completionBlockers: [] })] });

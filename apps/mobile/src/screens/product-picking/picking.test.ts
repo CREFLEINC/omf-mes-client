@@ -7,6 +7,7 @@ import {
   chooseLine,
   codeProblem,
   lineTiles,
+  partiesText,
   oqcTone,
   pickRejectionOf,
   replacedLots,
@@ -226,5 +227,13 @@ describe('피킹 거절', () => {
 
   it('연결이 끊기면 다시 스캔하라고 한다', () => {
     expect(pickRejectionOf({ kind: 'network' })).toEqual({ kind: 'failed' });
+  });
+});
+
+describe('partiesText', () => {
+  it('US4-4 고객과 납품처를 쉼표로 잇고, 같거나 없으면 고객만 쓴다', () => {
+    expect(partiesText('가나전자', '가나전자 2공장')).toBe('가나전자, 가나전자 2공장');
+    expect(partiesText('가나전자', '가나전자')).toBe('가나전자');
+    expect(partiesText('가나전자', null)).toBe('가나전자');
   });
 });

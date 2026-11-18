@@ -23,6 +23,7 @@ import {
   codeProblem,
   isNotRejected,
   lineTiles,
+  partiesText,
   pickRejectionOf,
   replaceEffect,
   replacedLots,
@@ -389,6 +390,11 @@ export const ProductPickingScreen = () => {
   }
 
   const customerOf = (partnerId: number) => customers.data?.get(partnerId) ?? null;
+  /* 단말은 거래처 마스터를 못 읽는다 — 지시서 응답의 이름을 먼저 쓰고, 없을 때만 조회값을 쓴다. */
+  const namesOf = (request: ShipmentRequest) => ({
+    customer: request.customer?.partnerName ?? customerOf(request.customerId),
+    shipTo: request.shipTo?.partnerName ?? customerOf(request.shipToPartnerId),
+  });
 
   if (target === null) {
     return (
@@ -411,8 +417,7 @@ export const ProductPickingScreen = () => {
                 (sum, line) => sum + activeLots(line).length,
                 0,
               );
-              const customer = customerOf(request.customerId);
-              const shipTo = customerOf(request.shipToPartnerId);
+              const { customer, shipTo } = namesOf(request);
 
               return (
                 <li key={request.shipmentRequestId}>
@@ -427,13 +432,7 @@ export const ProductPickingScreen = () => {
                   >
                     <Card.Body className="card-body picking__target">
                       <strong>{request.shipmentRequestNo}</strong>
-                      {customer === null ? null : (
-                        <p>
-                          {shipTo === null || shipTo === customer
-                            ? customer
-                            : `${customer}, ${shipTo}`}
-                        </p>
-                      )}
+                      {customer === null ? null : <p>{partiesText(customer, shipTo)}</p>}
                       <p className="picking__note">
                         {`${
                           request.salesOrderNo === null
@@ -465,13 +464,13 @@ export const ProductPickingScreen = () => {
     );
   }
 
-  const customerName = customerOf(target.customerId);
+  const { customer: customerName, shipTo: shipToName } = namesOf(target);
 
   if (qrOpen) {
     return (
       <CodeSheet
         request={target}
-        customerName={customerName}
+        customerName={customerName === null ? null : partiesText(customerName, shipToName)}
         onClose={() => {
           setQrOpen(false);
         }}
@@ -482,7 +481,6 @@ export const ProductPickingScreen = () => {
   const rejectedLot = lines
     .flatMap((line) => activeLots(line).map((lot) => ({ line, lot })))
     .find(({ lot }) => canReplace(lot));
-  const shipToName = customerOf(target.shipToPartnerId);
 
   const codeStateOf = (lot: ShipmentRequestLot): CodeFieldState => ({
     mode: codeTarget?.lotId === lot.shipmentRequestLotId ? codeTarget.mode : null,
