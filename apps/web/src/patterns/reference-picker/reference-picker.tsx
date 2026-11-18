@@ -212,6 +212,7 @@ export const PickerDialog = ({ source, onClose, onPick, wrapValue = false }: Pic
 };
 
 export interface ReferenceFieldProps {
+  renderPicker?: (props: PickerDialogProps) => ReactNode;
   label: string;
   /** 표 칸 안에서처럼 라벨을 화면에 보이지 않고 접근 이름으로만 둔다. */
   hideLabel?: boolean;
@@ -238,6 +239,7 @@ export interface ReferenceFieldProps {
 }
 
 export const ReferenceField = ({
+  renderPicker,
   placeholder,
   label,
   hideLabel = false,
@@ -326,17 +328,17 @@ export const ReferenceField = ({
         />
       )}
       {children}
-      {open && source !== null && (
-        <PickerDialog
-          wrapValue={wrapValue}
-          source={source}
-          onClose={() => setOpen(false)}
-          onPick={(row) => {
+      {open &&
+        source !== null &&
+        (renderPicker ?? ((props: PickerDialogProps) => <PickerDialog {...props} />))({
+          wrapValue,
+          source,
+          onClose: () => setOpen(false),
+          onPick: (row) => {
             onPick(row);
             setOpen(false);
-          }}
-        />
-      )}
+          },
+        })}
     </div>
   );
 };
