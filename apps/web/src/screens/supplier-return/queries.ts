@@ -191,9 +191,9 @@ const EMPTY_ITEM_BALANCES: BalanceSource['items'] = [];
  * **반품 수량의 상한을 만드는 데만 쓴다** — 목록으로 그리지 않는다. 상한을 만드는 규칙 자체는
  * `on-hand.ts` 한 곳에 있고 이 훅은 자료만 나른다.
  *
- * **`groupBy=LOT`으로 받는다.** 반품 라인은 자재 LOT 단위이고, 계약이 축을 하나만 채워 내리므로
- * (`groupBy`가 LOT이면 위치가 빈다) 위치까지 좁힌 상한은 얻을 수 없다 — 그 한계는
- * `on-hand.ts`가 적어 두었다.
+ * **`groupBy=LOCATION`으로 받는다**(omf-all-around#282). 품목 · LOT · 위치마다 한 줄이라, 상한은 LOT 의
+ * 줄을 더해 만들고(`on-hand.ts`) 반품의 출발 위치는 LOT 이 **지금 놓인 위치**에서 고른다
+ * (`toSourceLocations`). 적치가 끝나 재고가 입고 위치를 떠났어도 반품할 수 있다.
  *
  * **`includeZero=true`가 중요하다**(감지기 M26). 끄면 보유가 0인 LOT이 아예 오지 않아
  * 「0이라 없다」와 「잘려서 없다」를 가를 수 없고, 화면은 0인 줄을 **확인하지 못한 줄**로 읽어
@@ -233,7 +233,7 @@ export const useOnHandBalances = (
               query: {
                 warehouseId,
                 itemId,
-                groupBy: 'LOT',
+                groupBy: 'LOCATION',
                 includeZero: true,
                 size: BALANCE_PAGE_SIZE,
               },

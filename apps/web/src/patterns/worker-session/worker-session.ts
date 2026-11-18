@@ -15,9 +15,10 @@ type WorkerResponse = components['schemas']['Worker'];
  * 컴포넌트 안에 두면 **다른 화면으로 넘어가는 순간 사라진다** — 「작업 화면으로 →」를 누른
  * 바로 그 순간 귀속이 날아간다. 그래서 화면 밖 단일 자리에 둔다.
  *
- * ⛔ **저장하지 않는다.** `localStorage` 도 파일도 쓰지 않는다 — 메모리에만 있어야
- * 단말을 다시 켰을 때 자연히 사라진다(§5-4). 유휴 시간으로도 지우지 않는다: 작업 중
- * 화면을 떠나는 일이 흔하고, 지우는 규약이 아직 없다.
+ * ⭐ **창 세션에만 둔다**(`sessionStorage` · 사용자 지시 2026-11-17 · #291). 새로 고침으로는
+ * 풀리지 않고, 창(단말 앱)을 닫았다 켜면 자연히 사라진다(§5-4 「단말 재시작으로만 사라진다」).
+ * ⛔ `localStorage`·파일에는 쓰지 않는다 — 다시 켠 단말에 앞사람 사번이 남으면 안 된다.
+ * 유휴 시간으로도 지우지 않는다: 작업 중 화면을 떠나는 일이 흔하고, 지우는 규약이 아직 없다.
  *
  * ⛔ **요청 계층에 자동으로 붙이지 않는다.** 관리웹과 POP 이 **클라이언트 한 벌**을 함께
  * 쓰므로, 요청 계층에 걸면 관리웹의 저장에도 사번이 실린다 — 공유계약 D-5 가 「관리웹은
@@ -49,7 +50,25 @@ export interface WorkerSession {
   isOtherPlant: boolean;
 }
 
-let session: WorkerSession | null = null;
+const STORAGE_KEY = 'omf.pop.workerSession';
+
+/** 새로 고침 전에 둔 사번을 되찾는다. 못 읽거나 모양이 다르면 `null` — 사번 입력 화면이 다시 묻는다. */
+const restore = (): WorkerSession | null => {
+  try {
+    const raw: unknown = JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) ?? 'null');
+    if (typeof raw !== 'object' || raw === null) return null;
+    const candidate = raw as Partial<WorkerSession>;
+    return typeof candidate.worker?.workerNo === 'string' &&
+      typeof candidate.assignedAt === 'string' &&
+      typeof candidate.isOtherPlant === 'boolean'
+      ? (candidate as WorkerSession)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+let session: WorkerSession | null = restore();
 
 const listeners = new Set<() => void>();
 
@@ -67,6 +86,12 @@ const subscribe = (listener: () => void): (() => void) => {
 
 export const setWorkerSession = (next: WorkerSession | null): void => {
   session = next;
+  try {
+    if (next === null) window.sessionStorage.removeItem(STORAGE_KEY);
+    else window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    /* 저장하지 못해도 이번 화면에서는 쓴다 — 새로 고치면 사번을 다시 묻는다. */
+  }
   emit();
 };
 

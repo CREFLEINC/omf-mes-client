@@ -30,12 +30,11 @@ import { serverReasonOf } from '../../patterns/server-reason';
 import { masterName } from '../../patterns/master-name';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { formatPlantDateTime } from '../../patterns/plant-time';
-import { PopHeader } from '../../patterns/pop-header';
+import { PaneWorkContext, PopHeader } from '../../patterns/pop-header';
 import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopRowInfo, PopRowPair } from '../../patterns/pop-list-row';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { usePopWorkerEntry } from '../../patterns/pop-worker-entry';
-import { useWorkerSession } from '../../patterns/worker-session';
 import { PrinterChip } from '../pop-material-lot-label/printer-chip';
 import {
   choosePrinter,
@@ -79,6 +78,7 @@ import {
   useItem,
   useLotIssues,
   usePrinters,
+  LOT_PRINTER_STORAGE_KEY,
   useReissueReasons,
   useVarianceReasons,
   useSerials,
@@ -118,7 +118,6 @@ const t = messages.productionResult;
  * 이 화면에서 고른 LOT 라벨 프린터를 기억하는 열쇠(개선 명세 ⑤). 자재 LOT 라벨 화면과 같은 방식이지만
  * 열쇠는 따로다 — 두 화면이 다른 프린터를 쓸 수 있다.
  */
-const LOT_PRINTER_STORAGE_KEY = 'omf-mes.production-result.lot-printer';
 /** 유형 창이 새 불량 줄을 만들려고 열렸음을 뜻하는 자리값. 줄 key 와 겹치지 않는다. */
 const NEW_DEFECT_ROW = 'new-defect-row';
 
@@ -256,11 +255,6 @@ export const ProductionFlowScreen = () => {
    *    확인되면 같은 W/O에서 이어 간다. 맨 위 경고 띠 대신 하단 바 「남은 일」과 창이 말한다.
    */
   const workerEntry = usePopWorkerEntry(entry.workerNo);
-  const workerSession = useWorkerSession();
-  const workerName =
-    workerSession !== null && workerSession.worker.workerNo === entry.workerNo
-      ? (workerSession.worker.workerName ?? null)
-      : null;
   const queryClient = useQueryClient();
   const identity = usePopIdentity();
   const workOrder = useWorkOrder(entry.workOrderId);
@@ -1450,7 +1444,7 @@ export const ProductionFlowScreen = () => {
    */
   /*
    * 작업지시 마감의 자리. 계획 수량을 달성했거나 남은 LOT이 없으면 하단 바 주 동작이 [작업지시 마감]이다.
-   * 그 전에는 현재 LOT 구획 아래의 테두리 버튼(이른 마감)이다. 마감했으면 다음 단계(생산 포장)로 이끈다.
+   * 그 전에는 현재 LOT 구획 아래의 테두리 버튼(이른 마감)이다. 마감한 뒤에 이끄는 다음 단계는 없다(#293).
    * 라벨 스캔 중이면 그 LOT을 먼저 끝낸다.
    */
   /*
@@ -1901,12 +1895,10 @@ export const ProductionFlowScreen = () => {
         title={t.title}
         equipmentCode={identity.equipment?.equipmentCode ?? null}
         equipmentName={identity.equipment?.equipmentName ?? null}
-        workerNo={entry.workerNo}
-        workerName={workerName}
-        workOrderNo={workOrder.data?.workOrderNo ?? null}
-        processName={workOrder.data?.processName ?? null}
-        /* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */
-        isEmergency={workOrder.data !== undefined && isEmergency(workOrder.data)}
+        /*
+         * W/O 번호는 작업 단계 줄 오른쪽이 보인다 — 머리줄에 또 두지 않는다. 공정과 긴급(`P-02-12` §5-1 · #1147)은
+         * 왼쪽 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291).
+         */
         isConnected={outbox.isOnline}
         unsentCount={outbox.pendingCount}
         /* LOT 라벨 프린터 — 누르면 고른다(개선 명세 ⑤, 자재 LOT 라벨 화면과 같은 칩). */
@@ -1922,6 +1914,7 @@ export const ProductionFlowScreen = () => {
               void lotPrinters.refetch();
             }}
             noneLabel={t.flow.work.printerNone}
+            showNone
             unknownLabel={t.flow.work.printerUnknown}
             retryLabel={messages.common.retry}
             showCloseButton={false}
@@ -1931,21 +1924,6 @@ export const ProductionFlowScreen = () => {
               rememberPrinterName(name, LOT_PRINTER_STORAGE_KEY);
             }}
           />
-        }
-        /* 작업 중 언제든 쓸 수 있는 동작이라 머리줄에 둔다(P-02-10). */
-        actions={
-          entry.workOrderId === null || isWorkOrderClosed ? undefined : (
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              onClick={() => {
-                void navigate(`/pop/work-hold?workOrderId=${String(entry.workOrderId)}`);
-              }}
-            >
-              {t.flow.actions.holdWork}
-            </Button>
-          )
         }
       />
 
@@ -1968,7 +1946,14 @@ export const ProductionFlowScreen = () => {
         <section className="pane production-work-lot" aria-label={t.flow.currentLot.current}>
           {/* 제목 줄(C-21): 품목 이름과 오른쪽 끝의 예외 칩. */}
           <div className="production-work-head">
-            <h2 className="pane-title">{itemTitle}</h2>
+            <h2 className="pane-title">
+              {itemTitle}
+              <PaneWorkContext
+                workOrderNo={workOrder.data?.workOrderNo ?? null}
+                processName={workOrder.data?.processName ?? null}
+                isEmergency={workOrder.data !== undefined && isEmergency(workOrder.data)}
+              />
+            </h2>
             {isPlanAchieved && (
               <span className="pop-row-chips">
                 <Chip
@@ -2539,22 +2524,12 @@ export const ProductionFlowScreen = () => {
       >
         {/*
          * 주 동작 하나(C-3). 생산 중에는 [생산 라벨 출력], 계획 수량을 달성했거나 남은 LOT이 없으면
-         * [작업지시 마감], 마감했으면 [생산 포장으로]. 잠기면 왼쪽 「남은 일」이 사유다(C-4).
+         * [작업지시 마감]. 마감했으면 주 동작이 없다 — 생산 포장 화면을 없앴다(omf-all-around#293).
+         * 잠기면 왼쪽 「남은 일」이 사유다(C-4).
          * ⛔ **초과라고 끄지도, 되묻지도 않는다** — 초과 생산은 허용이다(✓확정 QA #27). 계획을 달성해도
          *    남은 LOT에 더 만들 수 있게 [생산 라벨 출력]을 테두리로 남긴다.
          */}
-        {isWorkOrderClosed ? (
-          <Button
-            type="button"
-            variant="filled"
-            size={POP_TOUCH_SIZE}
-            onClick={() => {
-              void navigate(`/pop/packing-work?workOrderId=${String(entry.workOrderId)}`);
-            }}
-          >
-            {t.flow.actions.packingWork}
-          </Button>
-        ) : isCloseMode ? (
+        {isWorkOrderClosed ? null : isCloseMode ? (
           <>
             {toGoodButton}
             {toDefectButton}

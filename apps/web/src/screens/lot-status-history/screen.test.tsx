@@ -1354,3 +1354,59 @@ describe('LOT 상세의 [생산 이력 조회]', () => {
     expect(within(detail).queryByRole('button', { name: '생산 이력 조회' })).toBeNull();
   });
 });
+
+/*
+ * 008 부분 출고 LOT 분할(omf-all-around#289 · 시안 W0301-After) — 분할 LOT 상세는 원래 LOT 과 분할을 보인다.
+ */
+describe('Lot Status 화면 — 분할 LOT (008)', () => {
+  it('Q20 · US1-2 분할 LOT 이면 원래 LOT · 분할 수량 · 시각 · 분할 출고를 보인다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, {
+        parentLotId: 400,
+        parentLotNo: 'SAMPLE-ITEM-01|1000|260820|100330|0001',
+        splitAt: '2026-11-17T01:40:00Z',
+        splitGoodsIssue: {
+          goodsIssueId: 9,
+          goodsIssueNo: 'GI-SYN-0003',
+          goodsIssueLineId: 11,
+          lineNo: 1,
+        },
+        splitChildCount: 0,
+      }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    const split = await within(detail).findByRole('region', { name: '분할' });
+    expect(within(detail).getAllByText('분할 LOT').length).toBeGreaterThan(0);
+    expect(
+      within(split).getByRole('button', { name: 'SAMPLE-ITEM-01|1000|260820|100330|0001' }),
+    ).toBeVisible();
+    expect(within(split).getByText('분할 수량')).toBeVisible();
+    expect(within(split).getByText('2026-11-17 08:40')).toBeVisible();
+    expect(within(split).getByText('GI-SYN-0003 · 라인 1')).toBeVisible();
+  });
+
+  it('분할 LOT 이 나온 원래 LOT 은 투입 이력에 자손 투입도 함께 보인다고 알린다', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [
+      ...qualityRoutes(),
+      ...detailRoutes(200, { splitChildCount: 2 }),
+    ]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    expect(
+      await within(detail).findByText(
+        '이 LOT 에서 분할된 LOT 에 투입된 생산 LOT 도 함께 보입니다.',
+      ),
+    ).toBeVisible();
+    expect(within(detail).queryByRole('region', { name: '분할' })).toBeNull();
+  });
+
+  it('분할이 없는 LOT 은 분할 구획·안내가 없다(회귀)', async () => {
+    renderScreen('/quality/lot-status?lot=401', 'ready', [...qualityRoutes(), ...detailRoutes()]);
+
+    const detail = await screen.findByRole('region', { name: 'LOT 상세' });
+    await within(detail).findByText('SAMPLE-LOT-001');
+    expect(within(detail).queryByText(/분할/u)).toBeNull();
+  });
+});

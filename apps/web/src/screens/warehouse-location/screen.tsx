@@ -1,5 +1,5 @@
 import { AlertBanner, EmptyState, SkeletonText, Tabs, useToast } from '@crefle/web-ui';
-import type { components } from '@omf-mes/api-client';
+import { type components, createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -22,6 +22,7 @@ import { BulkCreateDialog } from './bulk-create-dialog';
 import { selectableOptions } from './code-options';
 import { DeactivateConfirmDialog } from './deactivate-confirm-dialog';
 import { issueLocationCode } from './location-code';
+import { generateLocationPrefix } from './location-prefix';
 import { LocationDeleteDialog } from './location-delete-dialog';
 import { countSubtree } from './location-identity';
 import { LocationFormDialog } from './location-form-dialog';
@@ -32,7 +33,7 @@ import {
   LocationItemsSection,
 } from './location-items-section';
 import { itemTypesForWarehouse } from './item-scope';
-import { RackCreateDialog } from './rack-create-dialog';
+import { RackCreateDialog, type RackLeafItems } from './rack-create-dialog';
 import { LocationLabelDialog, type LocationLabelPreview } from './location-label-dialog';
 import { LocationLabelIssueDialog } from './location-label-issue-dialog';
 import { LocationLabelSection } from './location-label-section';
@@ -171,9 +172,10 @@ export const WarehouseLocationScreen = () => {
     : (detail.data ?? null);
 
   if (formSource !== null && formState?.source !== formSource) {
+    /* 등록 폼은 창고 위치 코드를 무작위로 지어 채운다(#292) — 기준값에도 넣어 손대지 않은 폼이 「고친 것」이 아니다. */
     const seeded =
       formSource === CREATE_FORM_SOURCE
-        ? emptyWarehouseFormValues()
+        ? { ...emptyWarehouseFormValues(), locationPrefix: generateLocationPrefix() }
         : warehouseToFormValues(formSource.warehouse);
     setFormState({ source: formSource, baseline: seeded, values: seeded });
   }
@@ -229,6 +231,13 @@ export const WarehouseLocationScreen = () => {
     etagPath: selectedWarehouseId === null ? null : warehouseDetailPath(selectedWarehouseId),
     invalidateKeys: [warehouseKeys.all],
     knownFields: WAREHOUSE_FORM_FIELDS,
+    /* 창고 위치 코드(#292) — 다른 창고가 쓰면 고칠 방법(다른 코드 · [다시 만들기])까지 말한다. */
+    restateFieldError: (item) => {
+      if (item.field !== 'locationPrefix') return undefined;
+      if (item.code === 'UNIQUE_VIOLATION') return t.locationPrefix.taken;
+      if (item.code === 'INVALID') return t.locationPrefix.invalid;
+      return undefined;
+    },
     onSuccess: (saved) => {
       setLocalFieldErrors({});
 
@@ -718,6 +727,8 @@ export const WarehouseLocationScreen = () => {
       parentLocationId === null
         ? null
         : (hierarchyItems.find((item) => item.locationId === parentLocationId) ?? null);
+    /* 구역 코드는 창고 위치 코드를 앞에 붙인다(#292) — 창고를 아직 못 읽었으면 열지 않는다(구역 추가 단추도 꺼져 있다). */
+    if (selectedWarehouse === null) return;
     const parentDepth = parent === null ? -1 : (locationDepthById.get(parent.locationId) ?? -1);
     const level = LOCATION_LEVEL_CODES[parentDepth + 1] ?? 'ZONE';
     locationWrite.reset();
@@ -728,7 +739,12 @@ export const WarehouseLocationScreen = () => {
     setLocationValues({
       ...emptyLocationFormValues(),
       parentLocationId: parentLocationId === null ? '' : String(parentLocationId),
-      locationCode: issueLocationCode(level, parent, hierarchyItems),
+      locationCode: issueLocationCode(
+        level,
+        parent,
+        hierarchyItems,
+        selectedWarehouse.locationPrefix,
+      ),
     });
     setDialogState({
       open: true,
@@ -745,6 +761,7 @@ export const WarehouseLocationScreen = () => {
       zone !== undefined &&
       locationDepthById.get(location.locationId) === ZONE_DEPTH + 1
     ) {
+      resetItemsDraft();
       setRackDialog({ zone, rack: location });
       return;
     }
@@ -842,7 +859,8 @@ export const WarehouseLocationScreen = () => {
       ? (locationDetail.data?.location ??
         hierarchyItems.find((item) => item.locationId === dialogState.locationId) ??
         null)
-      : null;
+      : /* 층 없는 랙은 랙 창이 맨 아래 위치의 수정 창이다(#1673). */
+        (rackDialog?.rack ?? null);
   /* 창고 유형이 보관 품목의 유형을 정한다 — 예비품창고는 보관 품목을 두지 않는다(`item-scope.ts`). */
   const itemTypeScope = itemTypesForWarehouse(selectedWarehouse?.warehouseTypeCode);
   const itemsTargetId =
@@ -925,6 +943,46 @@ export const WarehouseLocationScreen = () => {
       return next;
     });
   };
+
+  /**
+   * 층 없는 랙의 보관 품목(#1673) — 칸은 수정 창과 같고, 저장은 랙 창이 별칭 다음에 이어 부른다. 실패는 랙 창이 멈춘
+   * 자리와 서버 문구로 알린다.
+   */
+  const rackItemsInvalid =
+    itemsChanged && itemsDraft?.restricted === true && itemsDraft.items.length === 0;
+  const rackItemsId =
+    itemsTargetId !== null && rackDialog?.rack?.locationId === itemsTargetId ? itemsTargetId : null;
+  const rackLeafItems: RackLeafItems | null =
+    rackItemsId !== null
+      ? {
+          slot: (disabled) => (
+            <LocationItemsSection
+              isLoading={itemsQuery.isPending || (itemsDraft === null && itemsQuery.isFetching)}
+              isError={itemsQuery.isError}
+              onRetry={() => void itemsQuery.refetch()}
+              draft={itemsDraft}
+              onChange={changeItemsDraft}
+              error={rackItemsInvalid ? t.itemsSection.required : undefined}
+              disabled={disabled}
+              itemTypeCodes={itemTypeScope ?? undefined}
+            />
+          ),
+          changed: itemsChanged,
+          invalid: rackItemsInvalid,
+          save: async () => {
+            if (itemsDraft === null) return;
+            await runRequest(() =>
+              client.PUT('/mdm/locations/{locationId}/items', {
+                params: {
+                  path: { locationId: rackItemsId },
+                  header: { 'Idempotency-Key': createIdempotencyKey() },
+                },
+                body: { itemIds: draftItemIds(itemsDraft) },
+              }),
+            );
+          },
+        }
+      : null;
 
   /** 지울 위치 — 확인 창이 열린다. */
   const [deleteTarget, setDeleteTarget] = useState<Location | null>(null);
@@ -1165,6 +1223,7 @@ export const WarehouseLocationScreen = () => {
               label: t.tabs.location,
               content: (
                 <LocationPane
+                  locationPrefix={selectedWarehouse.locationPrefix}
                   rows={locationRows}
                   isLoading={locations.isPending}
                   loadError={
@@ -1342,10 +1401,11 @@ export const WarehouseLocationScreen = () => {
         }}
       />
 
-      {bulkCreateOpen && selectedWarehouseId !== null && (
+      {bulkCreateOpen && selectedWarehouseId !== null && selectedWarehouse !== null && (
         <BulkCreateDialog
           open
           warehouseId={selectedWarehouseId}
+          locationPrefix={selectedWarehouse.locationPrefix}
           warehouseLabel={warehouseLabel}
           items={hierarchyItems}
           onClose={() => setBulkCreateOpen(false)}
@@ -1368,7 +1428,11 @@ export const WarehouseLocationScreen = () => {
             />
           ) : null
         }
-        onClose={() => setRackDialog(null)}
+        leafItems={rackLeafItems}
+        onClose={() => {
+          setRackDialog(null);
+          resetItemsDraft();
+        }}
         onDelete={() => setDeleteTarget(rackDialog?.rack ?? null)}
         isActive={rackDetail.data?.location.isActive ?? rackDialog?.rack?.isActive ?? true}
         onToggleActive={() => {

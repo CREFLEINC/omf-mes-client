@@ -2,7 +2,7 @@ import { Button, Dialog } from '@crefle/web-ui';
 import type { InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -11,6 +11,9 @@ import type { InboundInspection } from './inbound-queries';
 import type { InspectionFormDrawer, InspectionFormDraft } from './inspection-detail';
 import { LotMatchField } from './lot-match-field';
 import { overriddenLotsOf } from './lot-judgment';
+
+/** 닫힘 움직임 길이 — CSS `.iqc-inbound-drawer.is-closing` 과 같은 값. */
+const CLOSE_MS = 240;
 import { ReinspectionReasonField } from './reinspection-reason-field';
 
 const t = messages.iqcInboundLot.drawer;
@@ -22,6 +25,8 @@ export interface ResultDrawerProps {
   editing: InspectionResultSummaryForward | null;
   /** 제목의 순번 — 고칠 때는 그 결과의 순번, 더할 때는 다음 순번. */
   seqNo: number;
+  /** 새로 더할 때 미리 골라 둘 자재 관리 LOT — 그 LOT 을 스캔해 열었을 때(#274). */
+  preselectedLotIds?: readonly number[];
   /** 지금 IQC 양식(`InspectionForm`)을 드로어 모드로 그린다 — 상세가 기준 · 도면 · 검사자를 이미 읽어 두었다. */
   renderForm: (args: {
     drawer: InspectionFormDrawer;
@@ -43,6 +48,7 @@ export const ResultDrawer = ({
   uomCode,
   editing,
   seqNo,
+  preselectedLotIds = [],
   renderForm,
   onClose,
   onSaved,
@@ -62,7 +68,7 @@ export const ResultDrawer = ({
   });
   const measurements = useMeasurements(resultId);
 
-  const initialMatch = editing?.matchedLotIds ?? [];
+  const initialMatch = editing?.matchedLotIds ?? preselectedLotIds;
   const initialReason = editing?.reinspectionReasonCode ?? null;
   const [matched, setMatched] = useState<number[]>([...initialMatch]);
   const [judgment, setJudgment] = useState<string | null>(null);
@@ -74,9 +80,32 @@ export const ResultDrawer = ({
     matched.length !== initialMatch.length || matched.some((id) => !initialMatch.includes(id));
   const dirty = formDirty || matchDirty || reason !== initialReason;
 
+  /*
+   * 취소 · Esc 로 닫을 때 들어올 때와 반대로 오른쪽으로 밀려 나가며 닫는다(사용자 지시 2026-11-16 · omf-all-around#274).
+   * 움직임을 줄인 환경(prefers-reduced-motion)은 CSS 가 움직임을 빼므로 곧바로 닫힌다.
+   */
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+  const closeAnimated = () => {
+    if (closing) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    if (reduced) {
+      onClose();
+      return;
+    }
+    setClosing(true);
+    closeTimer.current = window.setTimeout(onClose, CLOSE_MS);
+  };
+
   const requestClose = () => {
     if (dirty) setAsking(true);
-    else onClose();
+    else closeAnimated();
   };
 
   const lots = inspection.lots ?? [];
@@ -122,16 +151,17 @@ export const ResultDrawer = ({
         open
         placement="right"
         size="lg"
-        className="iqc-inbound-drawer"
+        className={closing ? 'iqc-inbound-drawer is-closing' : 'iqc-inbound-drawer'}
         closeOnBackdropClick={false}
-        title={editing === null ? t.addTitle(seqNo) : t.editTitle(seqNo)}
+        /* 제목 줄 · X 없이(사용자 지시 2026-11-16 · #274) — 닫기는 아래 [취소] · Esc. 이름은 화면 읽기용으로만. */
+        showCloseButton={false}
+        aria-label={editing === null ? t.addTitle(seqNo) : t.editTitle(seqNo)}
         onClose={requestClose}
       >
         {loading ? (
           <p className="field-note">{t.loading}</p>
         ) : (
           <>
-            <p className="field-note iqc-inbound-drawer-note">{t.inputNote}</p>
             {renderForm({
               formKey: `${String(inspection.inspectionRequestId)}-${String(resultId ?? 'new')}`,
               draft,
@@ -187,7 +217,7 @@ export const ResultDrawer = ({
               <Button
                 onClick={() => {
                   setAsking(false);
-                  onClose();
+                  closeAnimated();
                 }}
               >
                 {t.discardLeave}

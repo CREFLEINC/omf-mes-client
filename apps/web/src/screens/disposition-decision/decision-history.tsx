@@ -1,7 +1,8 @@
-import { type Column, SkeletonText, Table } from '@crefle/web-ui';
+import { type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 import { dispositionTypeLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 import type { DecisionRow } from './types';
@@ -45,7 +46,7 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
   ];
 
   /*
-   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없어도 표 안 행 자리에 문구.
+   * 상세 아래 「판정 이력」 탭의 내용(사용자 지시 · #223) — 이력이 없으면 표 안에 문구 한 줄(omf-all-around#275).
    * 남은 수량은 판정 구역 머리로 옮겼다(조회 시점 참고값인 것은 그대로 — 최종 판정은 저장 때 서버가 낸다).
    */
   return (
@@ -64,8 +65,15 @@ export const DecisionHistory = ({ rows, uoms, isLoading, isError }: DecisionHist
             columns={columns}
             rows={rows}
             getRowId={(row) => String(row.dispositionDecisionId)}
-            /* 이력이 없어도 표 머리는 두고 행 자리 가운데 한 줄(사용자 지시 · #223). */
-            empty={<p className="field-note disposition-table-empty">{t.decisions.empty}</p>}
+            /* 이력이 없어도 표 머리는 두고 표 안에 한 줄(사용자 지시 · #223 · omf-all-around#275). */
+            empty={
+              /* 다른 빈 목록과 같이 아이콘 + 문구(omf-all-around#275). */
+              <EmptyState
+                size="sm"
+                icon={<PaneEmptyIcon name="assignment" />}
+                title={t.decisions.empty}
+              />
+            }
           />
         </div>
       )}

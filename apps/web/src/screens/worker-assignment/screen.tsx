@@ -4,14 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { useIsOnline } from './connection';
+import { HeaderPrinter } from './header-printer';
 import { KeypadPanel } from './keypad-panel';
 import { readOutboxSize, readWorkerDirectory, writeWorkerDirectory } from './pop-bridge';
 import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
+import { looksUnusual } from './worker-no';
 import { WorkerCard } from './worker-card';
 import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { usePopRegistration } from '../../patterns/pop-registration';
+import { POP_HOME_PATH } from '../../patterns/pop-screen-catalog';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -78,6 +81,8 @@ export const WorkerAssignmentScreen = () => {
    */
   const session = useWorkerSession();
   const [error, setError] = useState<string | null>(null);
+  /** [사번 확인]을 눌렀는데 6자리 숫자가 아니었다 — 다시 칠 때까지 안내를 둔다(omf-all-around#288). */
+  const [isUnusualShown, setUnusualShown] = useState(false);
   /** 교대할 때 알릴 미전송 건수. 0이면 알릴 것이 없다. */
   const [pendingQueue, setPendingQueue] = useState(0);
 
@@ -143,7 +148,7 @@ export const WorkerAssignmentScreen = () => {
       setSubmitted(null);
 
       if (result.kind === 'unknown') {
-        setError(t.error.unknown(typed.trim()));
+        setError(t.error.unknown);
         return;
       }
 
@@ -166,8 +171,15 @@ export const WorkerAssignmentScreen = () => {
         isOtherPlant: result.isOtherPlant,
       });
       setWorkerNo('');
+      /*
+       * 사번을 확인하면 바로 홈으로 간다(#291 · 사용자 지시 2026-11-17) — 단말 등록 → 사번 입력 → 홈.
+       *
+       * ⛔ **다른 공장 소속이면 머문다.** 그 경고(「다른 공장 소속입니다」)는 이 화면의 작업자 카드에만
+       *    서므로, 바로 넘기면 작업자가 보지 못한다. 확인한 뒤 [작업 화면으로]로 홈에 간다.
+       */
+      if (!result.isOtherPlant) void navigate(POP_HOME_PATH);
     },
-    [homePlantId],
+    [homePlantId, navigate],
   );
 
   useEffect(() => {
@@ -240,8 +252,11 @@ export const WorkerAssignmentScreen = () => {
          * 값을 얻을 경로가 이 저장소에 없어 조회가 서지 않는다. ⛔ 지어내지 않고 없음
          * 표시를 낸다 — 모르는 값과 없는 값을 같은 모양으로 그리지 않는다(G-9).
          */}
+        {/* 프린터 연결 정보 — 생산 작업 머리줄과 같은 표시(omf-all-around#288). */}
+        <HeaderPrinter />
+        {/* 단말 이름은 [온라인]과 같은 라벨 모양으로 보인다(omf-all-around#288). */}
         <p className="field-note">
-          {t.header.label} {terminal.data?.terminalCode ?? t.header.emptyValue}
+          <Chip size="md">{`${t.header.label} ${terminal.data?.terminalCode ?? t.header.emptyValue}`}</Chip>
         </p>
         {/* ⭐ 오프라인이어도 «막지 않는다»(§6) — 지금 어느 상태인지만 밝힌다. */}
         <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
@@ -279,15 +294,25 @@ export const WorkerAssignmentScreen = () => {
       <div className="pop-assign">
         <KeypadPanel
           workerNo={workerNo}
-          onChange={setWorkerNo}
+          onChange={(value) => {
+            setUnusualShown(false);
+            setWorkerNo(value);
+          }}
           onSubmit={() => {
             setError(null);
+            /* ⛔ 6자리 숫자가 아니면 조회하지 않고 다시 입력하게 한다(사용자 지시 2026-11-17). */
+            if (looksUnusual(workerNo)) {
+              setUnusualShown(true);
+              return;
+            }
             /* 누르는 «순간»의 연결 상태를 함께 담는다 — 그 경로로 끝까지 간다. */
             setSubmitted({ workerNo, offline: !isOnline });
           }}
           isChecking={submitted !== null && (submitted.offline || lookup.isFetching)}
           error={error}
           offlineNote={isOnline ? null : t.offline.note}
+          isUnusualShown={isUnusualShown}
+          confirmedWorkerNo={session?.worker.workerNo ?? null}
         />
 
         <WorkerCard
@@ -306,11 +331,12 @@ export const WorkerAssignmentScreen = () => {
             setWorkerNo('');
           }}
           /*
-           * 제품 동작은 작업 시작 화면(P-02-01)으로 이어진다(§5-8). 현재 작업자 귀속은
+           * 제품 동작은 홈(#291)으로 이어진다(구 §5-8 은 작업 시작 화면). 현재 작업자 귀속은
            * 화면 밖 `worker-session`에 있으므로 이동 뒤에도 그대로 유지된다.
            */
           onGoToWork={() => {
-            void navigate('/pop/work-start');
+            /* 사번 확인 뒤 첫 화면은 홈이다(#291 · 사용자 결정 2026-11-17) — 남은 작업과 바로가기를 먼저 본다. */
+            void navigate(POP_HOME_PATH);
           }}
           /*
            * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 버튼이 아직

@@ -1,146 +1,138 @@
 import type { ko } from '../ko';
 import type { Translated } from './translated';
 
-/** P-01-02 출고 QR 발행. */
+/** P-01-02 분할 LOT 라벨(008). */
 export const goodsIssueQr: Translated<typeof ko.goodsIssueQr> = {
-  title: 'Phát hành QR xuất kho vật tư',
+  title: 'Nhãn LOT tách',
 
-  entry: {
-    issueLabel: 'Phiếu xuất kho vật tư',
-    workerLabel: 'Mã nhân viên',
-    missingIssue: 'Hãy nhập số phiếu xuất kho để tải phiếu.',
-    lookup: {
-      label: 'Số phiếu xuất kho vật tư',
-      placeholder: 'Quét hoặc nhập số phiếu xuất kho',
-      action: 'Tải phiếu',
-      searching: 'Đang tìm phiếu',
-      notFound: 'Không tìm thấy phiếu có số đó. Hãy kiểm tra lại số.',
-      failed: 'Không tra được phiếu. Hãy kiểm tra kết nối rồi thử lại.',
-    },
+  band: {
+    unknownTitle: 'Chưa nhận được số LOT tách chưa in nhãn',
+    unknownBody: 'Hãy tải lại danh sách. Khi chưa tải được thì không có nghĩa là 「không có」.',
+    noneTitle: 'Không có LOT tách nào chưa in nhãn',
+    noneBody: 'Tất cả LOT tách sinh ra do xuất kho một phần đều đã được in nhãn.',
+    title: (count: number) => `${String(count)} LOT tách chưa in nhãn`,
+    body: 'Nếu túi chưa dán nhãn thì không quét được khi nhập kho sản xuất (PDA) · đưa vật tư vào (POP). Hiển thị tất cả, không giới hạn thời gian.',
+    failed: (count: number) => `In lỗi ${String(count)} mục`,
+    oldest: (at: string, age: string) => `Cũ nhất ${at} · ${age}`,
+    showUnprinted: 'Xem LOT chưa in nhãn',
   },
 
-  pending: {
-    sectionLabel: 'Chờ phát hành QR',
-    back: 'Về danh sách chờ',
-    refresh: 'Làm mới',
-    filter: {
-      label: 'Tình trạng phát hành',
-      unissued: 'Chưa phát hành',
-      issued: 'Đã phát hành',
-    },
-    statusIssued: (count: number) => `Đã phát hành ${String(count)} lần`,
-    issuedEmpty: 'Không có dòng nào đã phát hành trong khoảng này.',
-    pick: 'Chọn',
-    columnIssueNo: 'Số phiếu xuất kho vật tư',
-    columnLine: 'Dòng',
-    columnItem: 'Hàng hóa',
-    columnLot: 'LOT',
-    columnQty: 'Số lượng',
-    columnStatus: 'Trạng thái',
-    statusNotIssued: 'Chưa phát hành',
-    statusPrintFailed: (issueCount: number): string => `In lỗi · lần ${String(issueCount)}`,
-    columnAction: '',
-    window: (days: number, limit: number): string =>
-      `Tra cứu QR trong ${String(days)} ngày gần đây · tối đa ${String(limit)} phiếu`,
-    loading: 'Đang tìm các dòng chờ phát hành',
-    failed: 'Không tải được danh sách chờ. Hãy kiểm tra kết nối rồi làm mới.',
-    empty: 'Không có phiếu xuất kho vật tư nào đang chờ phát hành.',
-    allIssued: (count: number): string => `${String(count)} dòng trong kỳ này đã được phát hành.`,
-    truncated: 'Kỳ này còn nhiều phiếu hơn. Hãy tải phiếu chưa thấy bằng số phiếu.',
+  tabs: {
+    label: 'Chế độ xem',
+    unprinted: 'Chưa in nhãn',
+    printed: 'Đã in nhãn',
   },
-
-  device: {
-    terminalLabel: 'Máy trạm',
-    terminalUnknown: 'Chưa xác nhận',
+  search: {
+    label: 'Tìm LOT tách',
+    placeholder: 'Quét số LOT · số phiếu xuất · mã hàng',
+    clear: 'Xóa',
   },
-
-  printer: {
-    label: 'Máy in',
-    empty: 'Chưa có máy in nào được đăng ký. Bản ghi phát hành vẫn lưu, chỉ không in.',
-    loading: 'Đang kiểm tra trạng thái máy in.',
-    failed: 'Không tải được trạng thái máy in.',
-    noShell: 'Nơi mở màn hình này không có đường in. Chỉ lưu bản ghi phát hành, không in.',
+  periods: {
+    label: 'Ngày xuất kho',
+    today: 'Hôm nay',
+    week: '7 ngày gần đây',
+    month: '30 ngày gần đây',
   },
+  refresh: 'Làm mới',
+  refreshedAt: (at: string) => `Nhận lúc ${at}`,
+  info: 'Số lượng tách ra khi xuất kho một phần sẽ thành LOT tách (LOT quản lý vật tư mới). Nhãn cùng mẫu với nhãn LOT quản lý vật tư, mã QR chứa số LOT tách. Không phát hành QR xuất kho nữa — QR xuất kho đã dán vẫn quét được khi nhập kho sản xuất trên PDA.',
 
-  lines: {
-    sectionLabel: 'Dòng xuất kho',
-    columnItem: 'Mặt hàng',
-    columnLot: 'LOT',
-    columnQty: 'Số lượng',
-    columnStatus: 'Phát hành',
-    selectAll: 'Chọn tất cả',
-    pick: 'Chọn',
-    picked: 'Đã chọn',
-    showAll: 'Xem tất cả dòng của phiếu',
-    showPickedOnly: 'Chỉ xem dòng đã chọn',
+  table: {
+    label: 'LOT tách',
+    select: 'Chọn',
+    lotNo: 'Số LOT tách · LOT gốc',
+    item: 'Mặt hàng',
+    qty: 'Số lượng',
+    issue: 'Số phiếu xuất kho · dòng',
+    destination: 'Kho · vị trí đến',
+    splitAt: 'Thời điểm tách',
+    splitAtOldestFirst: 'Thời điểm tách ↑',
+    labelColumn: 'Nhãn',
+    parentLabel: 'Gốc',
+    line: (lineNo: number) => `Dòng ${String(lineNo)}`,
+    today: 'Hôm nay',
+    daysAgo: (days: number) => `${String(days)} ngày trước`,
+    choose: (lotNo: string) => `Chọn ${lotNo}`,
+  },
+  status: {
+    unissued: 'Chưa phát hành',
+    failed: (count: number) => `In lỗi · lần ${String(count)}`,
+    failedHint: 'Chọn lý do rồi in lại',
+    pending: (seq: number) => `Đã in lần ${String(seq)} · chưa rõ kết quả`,
+    printed: (seq: number) => `Đã in lần ${String(seq)}`,
+  },
+  empty: {
+    unprintedTitle: 'Không có LOT tách nào cần in nhãn',
+    unprintedBody:
+      'Khi xuất kho một phần, số lượng tách ra thành LOT tách và hiện ở đây. Xuất kho toàn bộ thì dùng luôn nhãn LOT quản lý vật tư đã dán.',
+    printedTitle: (period: string) => `Không có nhãn LOT tách nào trong ${period}.`,
+    printedBody: 'Hãy mở rộng khoảng thời gian.',
+    searchTitle: 'Không có LOT tách cần tìm trong danh sách này.',
+    searchNone:
+      'Hãy kiểm tra lại số. LOT xuất kho toàn bộ không sinh LOT tách nên không hiện ở đây.',
+    searchInPrinted: (lotNo: string) => `LOT tách này đã in nhãn (${lotNo}).`,
+    searchInUnprinted: (lotNo: string) => `LOT tách này chưa in nhãn (${lotNo}).`,
+    showInPrinted: 'Xem ở 「Đã in nhãn」',
+    showInUnprinted: 'Xem ở 「Chưa in nhãn」',
+    loadFailedTitle: 'Không tải được danh sách LOT tách.',
+    loadFailedBody: 'Hãy kiểm tra kết nối rồi tải lại. Ở trạng thái này không in nhãn được.',
+    retry: 'Tải lại',
+  },
+  reasons: {
+    needFailed: (count: number) =>
+      `${String(count)} nhãn in lỗi đã tăng lượt nên phải chọn lý do mới in được`,
+    need: 'Hãy chọn lý do',
+  },
+  bar: {
+    pickHint: 'Hãy chọn LOT tách cần in nhãn — LOT cũ nhất ở trên cùng',
+    selected: (count: number) => `Đã chọn ${String(count)} LOT`,
+    withFailed: (count: number) => ` · gồm ${String(count)} in lỗi`,
+    failedNeedsReason: 'LOT in lỗi phải chọn lý do phát hành lại mới in được',
+    selectAll: (count: number) => `Chọn tất cả (${String(count)})`,
+    clearAll: 'Bỏ chọn tất cả',
     clearSelection: 'Bỏ chọn',
-    empty: 'Phiếu này không có dòng xuất kho.',
-    loading: 'Đang tải dòng xuất kho.',
-    failed: 'Không tải được dòng xuất kho.',
-    statusNotIssued: 'Chưa phát hành',
-    statusIssued: (count: number) => `Đã phát hành ${String(count)} lần`,
-    statusUnknown: 'Không kiểm tra được tình trạng phát hành',
+    print: (count: number) => `In ${String(count)} nhãn`,
+    printNone: 'In nhãn',
+    reprintHint: 'Hãy chọn hoặc quét nhãn cần in lại',
+    reprintSelected: (count: number) => `Đã chọn ${String(count)} nhãn`,
+    withReason: (reason: string) => ` · Lý do ${reason}`,
+    reprintNeedsReason: 'Phải chọn lý do thì mới in lại được',
+    reprint: (count: number) => `In lại ${String(count)} nhãn`,
+    reprintNone: 'In lại',
+    listFirst: 'Có danh sách rồi mới in nhãn được',
+    running: (done: number, total: number) => `Đang in nhãn ${String(done)} / ${String(total)}`,
   },
-
-  target: {
-    sectionLabel: 'Đối tượng phát hành',
-    unitLabel: 'Loại',
-    unitLine: 'Theo dòng',
-    unitPallet: 'Theo pallet',
-    palletLabel: 'Đối tượng',
-    palletPlaceholder: 'Hãy chọn pallet',
-    palletNeedsOneLine: 'Chỉ chọn được pallet sau khi chọn đúng một dòng.',
-    palletLoading: 'Đang tải pallet.',
-    palletFailed: 'Không tải được pallet. Lát nữa hãy thử lại.',
-    palletUnavailable: 'Máy chủ chưa hỗ trợ phát hành theo pallet. Hãy phát hành theo dòng.',
-    palletEmpty: 'Không có pallet nào chứa LOT của dòng này. Hãy phát hành theo dòng.',
-    palletContents: (lineCount: number, quantityText: string) =>
-      `${String(lineCount)} dòng · ${quantityText}`,
-    palletContentsUnknown: 'Đang kiểm tra hàng trên pallet.',
-    palletTruncated: (shown: number, total: number) =>
-      `Chỉ hiện ${String(shown)} trên ${String(total)} pallet. Nếu không thấy pallet cần tìm, hãy phát hành theo dòng.`,
-    selectedCount: (count: number) => `${String(count)} dòng`,
-    none: '—',
-    seqLabel: 'Lượt',
-    lineLabel: (lineNo: number): string => `Dòng ${String(lineNo)}`,
-    seqUnknown: '—',
-    previewLabel: 'Xem trước',
-    previewEmpty: 'Hãy chọn dòng',
-    previewFailed: 'Không tải được bản xem trước. Vẫn in được bình thường.',
-    previewAlt: 'Xem trước QR xuất kho',
-    destinationMissing:
-      'Không đọc được vị trí đến nên đã để trống nơi đến trên nhãn. Vẫn có thể phát hành.',
+  preview: {
+    title: 'Xem trước nhãn LOT tách',
+    reprintTitle: 'Xem trước in lại',
+    note: 'Cùng mẫu với nhãn LOT quản lý vật tư. Mã QR chỉ chứa số LOT tách; trên nhãn hiển thị mặt hàng · số lượng (số lượng tách) · nhà cung cấp. Không có dòng đóng gói.',
+    reissueNote: (reason: string) => ` Lý do 「${reason}」, số lượt in tăng thêm 1.`,
+    guide: '80 × 30 mm · QR = số LOT tách',
+    bag: 'Túi cần dán',
+    bagValue: (qty: string, issueNo: string, lineNo: number, destination: string) =>
+      `${qty} · phiếu xuất ${issueNo} dòng ${String(lineNo)}${destination === '' ? '' : ` · nơi đến ${destination}`}`,
+    parent: 'LOT gốc',
+    prev: '◀ Trước',
+    next: 'Sau ▶',
+    page: (index: number, total: number) => `${String(index)} / ${String(total)} nhãn`,
+    cancel: 'Hủy',
+    print: (count: number) => `In ${String(count)} nhãn`,
+    reprint: (count: number) => `In lại ${String(count)} nhãn`,
+    printer: (name: string) => `Máy in ${name}`,
+    printerDefault: 'Máy in mặc định của máy chủ',
   },
-
-  reissue: {
-    label: 'Lý do phát hành lại',
-    placeholder: 'Hãy chọn lý do',
-    required: 'Có dòng đã phát hành nên cần lý do phát hành lại.',
-    unknownStatus:
-      'Có dòng chưa kiểm tra được tình trạng phát hành. Nếu dòng đó đã phát hành thì phải chọn lý do mới phát hành được.',
-    serverAsked: 'Máy chủ coi lần này là phát hành lại. Hãy chọn lý do rồi phát hành lại.',
-    loading: 'Đang tải danh sách lý do.',
-    failed: 'Không tải được danh sách lý do. Lát nữa hãy thử lại.',
-    empty: 'Không có lý do phát hành lại nào để chọn.',
-  },
-
-  action: {
-    issue: 'Phát hành · In',
-  },
-
   result: {
-    issued: (count: number) => `Đã phát hành ${String(count)} mục.`,
-    printing: 'Đang gửi đến máy in.',
-    printFailed: 'In thất bại. Bản ghi phát hành vẫn còn, hãy in lại bằng phát hành lại.',
-    reportFailed:
-      'In thất bại và cũng không lưu được kết quả lên máy chủ. Bản ghi phát hành vẫn còn.',
-    printedUnreported:
-      'Đã in xong nhưng không lưu được kết quả lên máy chủ. Hãy kiểm tra nhãn đã in, chỉ in lại khi cần.',
+    printed: (count: number) =>
+      `Đã in ${String(count)} nhãn — hãy dán lên túi. LOT tách đã in được chuyển sang 「Đã in nhãn」.`,
+    reprinted: (count: number) =>
+      `Đã in lại ${String(count)} nhãn — số lượt in đã tăng. Hãy bóc nhãn cũ bỏ đi.`,
+    partial: (total: number, printed: number, failed: number) =>
+      `Đã in ${String(printed)}/${String(total)} nhãn · ${String(failed)} nhãn in lỗi — hãy kiểm tra kết nối máy in và giấy. LOT in lỗi vẫn ở 「Chưa in nhãn」, hãy chọn lý do rồi in lại.`,
+    notSent: (count: number) => ` ${String(count)} nhãn chưa gửi vẫn còn nguyên.`,
+    forbidden: 'Máy trạm này không có quyền phát hành nhãn. Hãy báo cho quản trị viên.',
+    issueFailed: (count: number, reason: string) =>
+      `Không phát hành được ${String(count)} nhãn${reason === '' ? '' : ` — ${reason}`}.`,
+    showPrinted: 'Xem đã in',
+    close: 'Đóng',
   },
-
-  errors: {
-    forbidden: 'Máy trạm này không phát hành được. Hãy thử lại ở máy trạm khác.',
-  },
-
-  alwaysIssueNote: 'Xuất kho toàn bộ cũng vẫn phát hành QR xuất kho.',
 };

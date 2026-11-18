@@ -29,10 +29,7 @@ export const DIRECTION_STOP = EVENT_TYPE_STOP;
 export const DIRECTION_RESUME = EVENT_TYPE_RESUME;
 export const DIRECTION_END = 'END';
 
-export type HoldDirection =
-  | typeof DIRECTION_STOP
-  | typeof DIRECTION_RESUME
-  | typeof DIRECTION_END;
+export type HoldDirection = typeof DIRECTION_STOP | typeof DIRECTION_RESUME | typeof DIRECTION_END;
 
 /** 중단 사유 코드 그룹 — 값 목록은 서버가 갖는다(공유계약 G-32). */
 export const HOLD_REASON_GROUP_CODE = 'WORK_SESSION_EVENT_REASON';

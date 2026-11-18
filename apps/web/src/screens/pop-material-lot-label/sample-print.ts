@@ -1,6 +1,9 @@
 import { renditionShell } from '../../patterns/pop-print';
 
-import { buildMaterialLotLabel, type MaterialLotLabelFields } from './label-tspl';
+import {
+  buildMaterialLotLabel,
+  type MaterialLotLabelFields,
+} from '../../patterns/label/lot-label-tspl';
 
 declare global {
   interface Window {

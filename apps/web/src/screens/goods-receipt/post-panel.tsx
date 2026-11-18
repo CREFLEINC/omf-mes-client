@@ -131,12 +131,17 @@ export const GoodsReceiptPostPanel = ({
   const receiptTargets = line === null ? [] : receiptTargetsOf(line);
   const receiptTarget = chooseReceiptTarget(receiptTargets, target.lotId);
   const receiptLotId = receiptTarget?.lotId ?? target.lotId;
-  /** 005 T141 — 고른 LOT 이 이 줄의 입고 대상에 없다. 다른 LOT 으로 바꾸지 않고 막는다. */
-  const targetMissing = line !== null && receiptTarget === null;
 
   const [baseline, setBaseline] = useState<ReceiptDraft>(freshDraft);
   const [draft, setDraft] = useState<ReceiptDraft>(baseline);
   const [result, setResult] = useState<GoodsReceiptResultView | null>(null);
+  /**
+   * 005 T141 — 고른 LOT 이 이 줄의 입고 대상에 없다. 다른 LOT 으로 바꾸지 않고 막는다.
+   * 입고가 끝난 뒤(결과가 선 동안)에는 따지지 않는다 — 다시 읽은 상세에서 선별 LOT 은 입고 가능 수량이 0 이라 빠진다(#280).
+   */
+  const targetMissing = line !== null && receiptTarget === null && result === null;
+  /* 보낸 수량 — omf-all-around#280. 입고 뒤 상세를 다시 읽으면 입고 가능 수량이 0 이 되므로, 결과가 선 동안은 보낸 값을 보인다. */
+  const [sentQty, setSentQty] = useState<number | null>(null);
   const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>(NO_FIELD_ERRORS);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [isDiscardOpen, setDiscardOpen] = useState(false);
@@ -309,17 +314,15 @@ export const GoodsReceiptPostPanel = ({
     /* 실패하면 결과 구획이 비어 있어야 한다 — 앞 성공의 번호가 남으면 오해한다. */
     setResult(null);
 
-    const body = toGoodsReceiptRequest({
-      inboundReceipt,
-      lines: toReceiptLines([
-        { ...line, lotId: receiptLotId, receivableQty: receiptTarget?.qty ?? null },
-      ]),
-      draft,
-      now: new Date(),
-    });
+    const lines = toReceiptLines([
+      { ...line, lotId: receiptLotId, receivableQty: receiptTarget?.qty ?? null },
+    ]);
+    const body = toGoodsReceiptRequest({ inboundReceipt, lines, draft, now: new Date() });
 
     /* 조립이 마지막으로 거른다 — 계약 enum 밖의 값이면 요청을 내보내지 않는다. */
     if (body === null) return;
+
+    setSentQty(lines[0]?.receiptQty ?? null);
 
     post.write(body);
   };
@@ -355,7 +358,10 @@ export const GoodsReceiptPostPanel = ({
     return found?.nameKo ?? found?.codeName ?? code;
   };
 
-  const qty = receiptTarget?.qty ?? line?.receivedQty ?? null;
+  const qty =
+    result !== null && sentQty !== null
+      ? sentQty
+      : (receiptTarget?.qty ?? line?.receivedQty ?? null);
   const qtyText = qty === null ? t.values.empty : t.lineTable.receivedQtyPair(qty, context.uomCode);
   const destination =
     warehouseLabel === ''

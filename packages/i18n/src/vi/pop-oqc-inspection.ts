@@ -4,6 +4,8 @@ export const popOqcInspection = {
 
   queue: {
     heading: 'Chờ phán định',
+    doneHeading: 'Đã phán định',
+    viewLabel: 'Chọn danh sách phán định',
     caption: 'Danh sách yêu cầu chờ phán định',
     count: (total: number): string => `${String(total)} mục`,
     columns: {
@@ -14,6 +16,7 @@ export const popOqcInspection = {
     },
     selectRow: (requestNo: string): string => `Chọn yêu cầu ${requestNo}`,
     loading: 'Đang tải danh sách chờ phán định.',
+    doneEmpty: 'Không có yêu cầu kiểm tra xuất hàng đã phán định.',
     empty: 'Không có yêu cầu kiểm tra xuất hàng cần phán định.',
     unavailable: 'Không tải được danh sách chờ phán định. Hãy kiểm tra kết nối rồi thử lại.',
     pageNav: 'Chuyển trang danh sách chờ phán định',
@@ -22,7 +25,7 @@ export const popOqcInspection = {
   detail: {
     paneLabel: 'Phán định',
     nothingSelectedTitle: 'Hãy chọn yêu cầu',
-    nothingSelected: 'Chạm vào một yêu cầu trong danh sách bên trái để phán định tại đây.',
+    nothingSelected: 'Chạm vào một yêu cầu trong danh sách bên trái để xem tại đây.',
     loading: 'Đang tải thông tin yêu cầu.',
     fields: {
       inspectionType: 'Loại kiểm tra',
@@ -116,8 +119,6 @@ export const popOqcInspection = {
     },
     reinspect: 'Thêm lần kiểm tra lại',
     reinspectCancel: 'Hủy kiểm tra lại',
-    coaIssue: 'Phát hành phiếu kết quả kiểm tra',
-    coaPending: 'Đang chuẩn bị',
   },
 
   confirm: {

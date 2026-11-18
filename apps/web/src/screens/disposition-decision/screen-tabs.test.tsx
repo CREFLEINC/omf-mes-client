@@ -92,7 +92,8 @@ describe('DispositionDecisionScreen 탭', () => {
     await user.click(await screen.findByText('NC-TEST-0041'));
 
     expect(await screen.findByText('도장 표면 박리')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: t.panes.historyDetail })).toBeInTheDocument();
+    /* 「부적합 상세」 제목은 두지 않는다(#275). */
+    expect(screen.queryByRole('heading', { name: t.panes.historyDetail })).toBeNull();
     expect(screen.queryByRole('heading', { name: t.form.heading })).toBeNull();
     const list = screen.getByRole('region', { name: t.panes.history });
     expect(within(list).getByText('NC-TEST-0041')).toHaveAttribute('data-selected', 'true');

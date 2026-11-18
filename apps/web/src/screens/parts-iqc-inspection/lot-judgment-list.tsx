@@ -1,19 +1,15 @@
-import { Chip } from '@crefle/web-ui';
 import type {
-  InspectionLotForward,
   InspectionLotJudgmentForward,
   InspectionResultSummaryForward,
 } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { LotNo } from './lot-match-field';
-import { judgmentStatus, judgmentText, lotTail } from './result-list';
+import { judgmentText, lotTail } from './result-list';
 
 const t = messages.iqcInboundLot.results.lotJudgments;
 
-export interface LotJudgmentListProps {
+export interface SupersededNotesProps {
   judgments: readonly InspectionLotJudgmentForward[];
-  lots: readonly InspectionLotForward[];
   results: readonly InspectionResultSummaryForward[];
 }
 
@@ -37,50 +33,34 @@ const reasonOf = (
 };
 
 /**
- * 자재 관리 LOT 별 판정(FR-023 · US3-8 · 2026-11-12) — LOT 마다 그 LOT 를 매칭한 마지막 결과의 판정과, 앞 결과를 대체했으면
- * 「LOT 0001: 결과 1 불합격 → 결과 2 합격(사유)」. 매칭한 결과가 없는 LOT 은 판정에서 빠진다고 알린다.
+ * 재검으로 판정이 바뀐 LOT(FR-023 · US3-8 · 2026-11-12) — 「LOT 0001: 1회차 불합격 → 2회차 합격(사유)」를 한 줄씩.
+ * LOT 별 판정 · 적용 회차는 자재 관리 LOT 표의 칸으로 옮겼다(사용자 시안 2026-11-16 · #274). 바뀐 LOT 이 없으면 그리지 않는다.
  */
-type Judged = InspectionLotJudgmentForward & { resultSeqNo: number };
+export const SupersededNotes = ({ judgments, results }: SupersededNotesProps) => {
+  const lines = judgments.flatMap((judgment) => {
+    const before = judgment.superseded.at(-1);
+    if (judgment.resultSeqNo === null || before === undefined) return [];
 
-export const LotJudgmentList = ({ judgments, lots, results }: LotJudgmentListProps) => {
-  /* 매칭한 결과가 없는 줄(서버가 null 로 싣는다 · G2 M1)은 「매칭 없음」으로 센다. */
-  const judged = judgments.filter((each): each is Judged => each.resultSeqNo !== null);
-  const unmatched = lots.filter((lot) => !judged.some((each) => each.lotId === lot.lotId));
+    return [
+      {
+        lotId: judgment.lotId,
+        text: t.superseded(
+          lotTail(judgment.lotNo),
+          before.resultSeqNo,
+          judgmentText(before.judgmentCode),
+          judgment.resultSeqNo,
+          judgmentText(judgment.judgmentCode),
+          reasonOf(judgment, results),
+        ),
+      },
+    ];
+  });
 
-  return (
-    <section className="iqc-inbound-lot-judgments" aria-label={t.heading}>
-      <h4 className="parts-iqc-sub-title">{t.heading}</h4>
-      <p className="field-note">{t.help}</p>
-      <ul className="iqc-inbound-lot-judgment-list">
-        {judged.map((judgment) => {
-          const before = judgment.superseded.at(-1);
-
-          return (
-            <li key={judgment.lotId}>
-              <LotNo lotNo={judgment.lotNo} />
-              <Chip size="sm" status={judgmentStatus(judgment.judgmentCode)}>
-                {judgmentText(judgment.judgmentCode)}
-              </Chip>
-              <span className="parts-iqc-muted">{t.byResult(judgment.resultSeqNo)}</span>
-              {before === undefined ? null : (
-                <span className="iqc-inbound-superseded">
-                  {t.superseded(
-                    lotTail(judgment.lotNo),
-                    before.resultSeqNo,
-                    judgmentText(before.judgmentCode),
-                    judgment.resultSeqNo,
-                    judgmentText(judgment.judgmentCode),
-                    reasonOf(judgment, results),
-                  )}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {unmatched.length === 0 ? null : (
-        <p className="field-note">{t.unmatched(unmatched.length)}</p>
-      )}
-    </section>
+  return lines.length === 0 ? null : (
+    <ul className="iqc-inbound-reason-lines iqc-inbound-superseded" aria-label={t.heading}>
+      {lines.map((line) => (
+        <li key={line.lotId}>{line.text}</li>
+      ))}
+    </ul>
   );
 };

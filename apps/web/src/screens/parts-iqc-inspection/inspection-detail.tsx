@@ -79,7 +79,7 @@ import { WorkerConnectDialog } from '../iqc-inspection/worker-connect-dialog';
 import { InspectionHistory } from './history';
 import { InboundDetail, type InboundDetailProps } from './inbound-detail';
 import { splitRuleErrors } from './lot-judgment';
-import { useInboundInspection } from './inbound-queries';
+import { useInboundFourM, useInboundInspection } from './inbound-queries';
 import { PlanDialog } from './plan-dialog';
 import { useUomLookup, withUom } from '../iqc-inspection/uom-lookup';
 import {
@@ -157,6 +157,8 @@ export interface InspectionDetailProps {
    * OA 공장 화면(#247 · 사용자 지시 2026-11-10 — 부품 화면과 같은 상세) — 기본 정보에 「검사 수준」, 비고 아래 「4M 변경 정보」를 더한다.
    */
   oa?: boolean;
+  /** 자재 관리 LOT 을 스캔해 연 경우 — 그 LOT 을 고른 채로 결과 추가 창을 연다(#274). */
+  scanOpen?: InboundDetailProps['scanOpen'];
 }
 
 /**
@@ -169,6 +171,7 @@ export const InspectionDetail = ({
   onDirtyChange,
   oa = false,
   inboundHead,
+  scanOpen = null,
 }: InspectionDetailProps) => {
   const { session } = useSession();
   const navigate = useNavigate();
@@ -187,6 +190,15 @@ export const InspectionDetail = ({
   /* 005 새 흐름(대상 = 입하 LOT) — 결과 목록 · 드로어 상세로 연다. 이전 데이터(대상 LOT)는 아래 지금 경로 그대로(R18-1). */
   const inboundFlow = detail.data !== undefined && isInboundLotInspection(detail.data);
   const inboundInspection = useInboundInspection(inboundFlow ? inspectionRequestId : null);
+  /*
+   * OA 새 흐름 — 의뢰에 대상 LOT(`lotId`)이 없어도 입하 LOT 의 자재 관리 LOT 에 4M 을 적는다(omf-all-around#290).
+   * 적어 둔 값은 맨 앞 자재 관리 LOT 에서 읽는다(서버가 전부에 같은 값을 적는다).
+   */
+  const firstInboundLotNo = inboundFlow ? (inboundInspection.data?.lots?.[0]?.lotNo ?? null) : null;
+  const inboundFourM = useInboundFourM(
+    oa ? firstInboundLotNo : null,
+    oa && firstInboundLotNo !== null ? (detail.data?.itemId ?? null) : null,
+  );
 
   const round = latestRound(rounds.data ?? []);
   const draftRound = round !== null && round.statusCode === 'DRAFT' ? round : null;
@@ -209,12 +221,15 @@ export const InspectionDetail = ({
     setPendingLevel(oa ? readPendingLevel(inspectionRequestId) : null);
   }, [oa, inspectionRequestId]);
   const levelWrite = useLevelWrite(() => undefined);
-  const submitted = () => {
+  const savePendingLevel = () => {
     if (pendingLevel !== null) {
       levelWrite.write({ row: null, values: pendingLevel });
       storePendingLevel(inspectionRequestId, null);
       setPendingLevel(null);
     }
+  };
+  const submitted = () => {
+    savePendingLevel();
     onSubmitted();
   };
 
@@ -341,8 +356,8 @@ export const InspectionDetail = ({
   const oaOf = (request: NonNullable<typeof detail.data>): FormProps['oa'] =>
     oa
       ? {
-          hasLot: request.lotId !== null,
-          fourMStored: request.fourMChange,
+          hasLot: request.lotId !== null || firstInboundLotNo !== null,
+          fourMStored: inboundFlow ? (inboundFourM.data ?? null) : request.fourMChange,
           itemId: request.itemId,
           levelItem: (() => {
             const parts = items.partsOf(request.itemId);
@@ -366,6 +381,12 @@ export const InspectionDetail = ({
     if (detail.data === undefined) return null;
     if (versionId === null || version.data === undefined || specs.data === undefined) {
       return <AlertBanner variant="warning">{t.dialog.noPlan}</AlertBanner>;
+    }
+    /* OA — 적어 둔 4M 을 읽은 뒤에 양식을 연다(양식은 처음 값으로 4M 을 잡는다 · #290). */
+    if (inboundFourM.isError)
+      return <AlertBanner variant="error">{t.dialog.loadFailed}</AlertBanner>;
+    if (inboundFourM.fetchStatus === 'fetching' && inboundFourM.data === undefined) {
+      return <p className="field-note">{t.dialog.loading}</p>;
     }
     return (
       <InspectionForm
@@ -423,6 +444,8 @@ export const InspectionDetail = ({
         renderForm={renderInboundForm}
         headActions={inboundHead?.headActions}
         headNote={inboundHead?.headNote}
+        scanOpen={scanOpen}
+        onConfirmed={savePendingLevel}
       />
     );
   }
@@ -1088,6 +1111,16 @@ const InspectionForm = (props: FormProps) => {
   const { onDirtyChange } = props;
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
+  /* 비우기 — 적은 값 · 판정 · 사유 · 4M 을 처음으로. 검사일시 · 기본 검사 수량은 남긴다. */
+  const clearForm = (): void => {
+    const cleared = emptyForm(form.inspectedAt);
+    cleared.visualInspectedQty = defaultQty;
+    change(cleared);
+    setChosen(null);
+    setReason('');
+    setFourM(storedFourM);
+  };
+
   return (
     <div className="parts-iqc-form">
       {props.inspector === null && (
@@ -1199,6 +1232,8 @@ const InspectionForm = (props: FormProps) => {
             <dd>{props.inspector?.workerName ?? '-'}</dd>
           </div>
         </dl>
+        {/* 결과 추가 창 — 자재 관리 LOT 매칭은 LOT 정보 위(사용자 지시 2026-11-16 · omf-all-around#274). */}
+        {props.drawer?.matchField}
         <div className="parts-iqc-lot-box" role="group" aria-labelledby="parts-iqc-lot">
           <h4 id="parts-iqc-lot">{t.lot.heading}</h4>
           {/* 받은 값(LOT · 공급업체 · 수량 · 입고) 두 줄, 구분선 아래에 적는 값(검사일시) — 사용자 시안 2026-10-29 */}
@@ -1265,8 +1300,6 @@ const InspectionForm = (props: FormProps) => {
           </div>
         </div>
       </section>
-
-      {props.drawer?.matchField}
 
       <MeasurementTable
         items={dimensions}
@@ -1472,13 +1505,33 @@ const InspectionForm = (props: FormProps) => {
               {messages.iqcInboundLot.drawer.ruleErrors[code]}
             </p>
           ))}
-          <span className="field-note">{messages.iqcInboundLot.drawer.saveNote}</span>
+          {/* 아래 줄 — 왼쪽 되돌리기 · 다시 실행, 오른쪽 비우기 · 저장(사용자 시안 2026-11-16 · omf-all-around#274). 매칭한 LOT 은 비우지 않는다. */}
+          <Button
+            variant="text"
+            leadingIcon={<Icon name="undo" />}
+            disabled={history.past.length === 0 || submit.isSaving}
+            onClick={() => dispatch({ type: 'undo' })}
+          >
+            {t.footer.undo}
+          </Button>
+          <IconButton
+            className="parts-iqc-redo"
+            aria-label={t.footer.redo}
+            icon="redo"
+            disabled={history.future.length === 0 || submit.isSaving}
+            onClick={() => dispatch({ type: 'redo' })}
+          />
           <span className="parts-iqc-footer-gap" />
+          <Button variant="text" disabled={submit.isSaving} onClick={clearForm}>
+            {t.footer.clear}
+          </Button>
+          {/* 창에 X 가 없어 닫는 단추는 여기 하나(#274). */}
           <Button variant="outlined" disabled={submit.isSaving} onClick={props.drawer.onCancel}>
             {messages.iqcInboundLot.drawer.cancel}
           </Button>
           <Button
             variant="filled"
+            className="parts-iqc-submit"
             loading={submit.isSaving}
             disabled={drawerBlocked}
             onClick={onSaveResult}
@@ -1520,18 +1573,7 @@ const InspectionForm = (props: FormProps) => {
           >
             {tResult.save}
           </Button>
-          <Button
-            variant="text"
-            disabled={submit.isSaving}
-            onClick={() => {
-              const cleared = emptyForm(form.inspectedAt);
-              cleared.visualInspectedQty = defaultQty;
-              change(cleared);
-              setChosen(null);
-              setReason('');
-              setFourM(storedFourM);
-            }}
-          >
+          <Button variant="text" disabled={submit.isSaving} onClick={clearForm}>
             {t.footer.clear}
           </Button>
           <Button

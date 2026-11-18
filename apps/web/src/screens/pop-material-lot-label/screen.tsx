@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, useToast } from '@crefle/web-ui';
+import { AlertBanner, Button, useToast } from '@crefle/web-ui';
 import type { MaterialLotSummary, WaitingMaterialLotGroup } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,10 +8,10 @@ import { useApiClient } from '../../patterns/api-context';
 import { formatPlantClock } from '../../patterns/plant-time';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { toApiError } from '../../patterns/request';
 import { serverReasonOf } from '../../patterns/server-reason';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
 import { BatchDialog } from './batch-dialog';
 import { retryCommands, summarize } from './batch-view';
 import { PRINT_FAILURE_REASON_CODE } from './codes';
@@ -101,7 +101,7 @@ export const PopMaterialLotLabelScreen = () => {
   const { client } = useApiClient();
   const toast = useToast();
   const createNoteId = useId();
-  const { workerNo, terminalId, plantId = null } = usePopIdentity();
+  const { workerNo, plantId = null } = usePopIdentity();
   const batch = useBatchIssue({ workerNo });
   const isIssuing = batch.isRunning;
 
@@ -418,8 +418,8 @@ export const PopMaterialLotLabelScreen = () => {
     <main className="pop-lot-screen pop-ui" aria-label={t.title}>
       <header className="pop-header">
         <h1 className="pop-title">{t.title}</h1>
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={workerNo} />
+        {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+        <PopTopPrinter>
           <PrinterChip
             printers={printers.data}
             selected={headPrinter}
@@ -434,14 +434,10 @@ export const PopMaterialLotLabelScreen = () => {
               setPickedPrinter(name);
               rememberPrinterName(name);
             }}
+            showNone
+            noneLabel={messages.productionResult.flow.work.printerNone}
           />
-          {/* 단말도 상시 보인다(스펙 §3 머리줄) — 다른 POP 화면과 같은 자리·순서다. */}
-          <Chip status={terminalId === null ? 'warning' : 'info'}>
-            {`${t.device.terminalLabel} ${
-              terminalId === null ? t.device.terminalUnknown : String(terminalId)
-            }`}
-          </Chip>
-        </div>
+        </PopTopPrinter>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}

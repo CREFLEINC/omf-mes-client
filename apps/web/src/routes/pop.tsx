@@ -5,19 +5,17 @@ import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-f
 import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
 import { ShippingUnitScreen } from '../screens/shipping-unit/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
-import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
-import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopLocationLabelScreen } from '../screens/pop-location-label/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PopInspectionSheetScreen } from '../screens/pop-inspection-sheet/screen';
 import { PopMaterialDefectScreen } from '../screens/pop-material-defect/screen';
 import { PopOqcInspectionScreen } from '../screens/pop-oqc-inspection/screen';
-import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { PackingResultScreen } from '../screens/packing-result/screen';
+import { PopHomeScreen } from '../screens/pop-home/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -61,6 +59,11 @@ export const popRoutes: RouteObject[] = [
    * 여전히 셸의 `patterns/pop-identity` 몫이라, 사번 지정만으로 그 두 값까지 채워지지는 않는다.
    */
   { path: '/pop/worker-assignment', element: <WorkerAssignmentScreen /> },
+  /*
+   * 홈(#291) — 사번 확인 뒤 처음 서는 화면. 남은 작업과 바로가기만 보인다. 권한 코드가 없는
+   * 안내 화면이라 이동 후보(`patterns/pop-screen-catalog` 의 `POP_SCREENS`)에는 담지 않는다.
+   */
+  { path: '/pop/home', element: <PopHomeScreen /> },
   /*
    * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 관리웹 셸 배열의 형제로
    * 서서 `AppLayout`을 지나지 않는다.
@@ -122,15 +125,6 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/material-lot-label', element: <PopMaterialLotLabelScreen /> },
   /*
-   * P-02-13 — 공정 중 제품을 검사하고 판정한다. **검사 «수행» 지점이 생산 공정이라** 품질
-   * 관리자가 결과를 횡단해 보는 화면(W-03-xx)과 다른 자리에 선다.
-   *
-   * ⚠ **진입 대상을 질의 문자열로 받는다**(`?ir=<검사의뢰 id>`) — 이 화면이 부르는 경로는
-   * 진입·항목 목록·결과 저장 셋뿐이라 «고를 목록»을 스스로 조회하지 않는다. 대상 없이 들어오면
-   * 작업 화면에서 진입하라고 안내한다.
-   */
-  { path: '/pop/pqc-inspection', element: <PqcInspectionScreen /> },
-  /*
    * P-02-14 — 자재 불량 등록(omf-all-around#108 · 설계보다 앞선 화면, 서버 장부 P-52). 투입된 자재 LOT 의
    * 불량을 기록하고 고르면 보류한다. ⛔ 생산 화면(P-02-03)에 붙이지 않은 품질 화면이다(사용자 결정).
    *
@@ -143,11 +137,9 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/inspection-sheet', element: <PopInspectionSheetScreen /> },
   /*
-   * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
-   *
-   * ⚠ **출고 전표는 질의 문자열로 받는다**(`?goodsIssueId=`) — 전표를 고르는 자리가 아직 없다.
-   * 사번은 셸의 `patterns/pop-identity`를 우선하고, 없으면 P-CO-01이 둔
-   * `patterns/worker-session`, 마지막으로 기존 `?workerNo=` 호환값을 읽는다.
+   * P-01-02 분할 LOT 라벨(008 · omf-all-around#289) — 창고 스테이션 모드의 화면이다. 부분 출고가 만든 분할 LOT 에
+   * 자재 LOT 라벨을 찍는다(출고 QR 발행은 없앴다). 진입 컨텍스트 없이 단말 공장의 목록을 연다. 주소는 그대로 둔다
+   * (단말 메뉴·즐겨찾기가 이 주소를 들고 있다).
    *
    * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
    * 범위 밖이고 집행은 서버의 403 이다.
@@ -174,15 +166,6 @@ export const popRoutes: RouteObject[] = [
   { path: '/pop/work-start', element: <WorkStartScreen /> },
   { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
   /*
-   * P-02-09 — **재출력이 정상 경로인 유일한 화면**이다(스펙 §5-1). 재출력 사유가 예외가 아니라
-   * 기본 입력이라 우단에 상시 선다.
-   *
-   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 포장을 만드는
-   * 포장 작업(`P-02-08`)이 섰지만 그 화면은 여기로 넘기지 않는다(스펙이 분기를 두지 않았다).
-   * 넘기는 자리가 정해지면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-04`).
-   */
-  { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
-  /*
    * P-02-04 — 생산 실적·인식표·생산 LOT 출력·스캔 마감을 한 흐름으로 처리한다.
    *
    * ⭐ **이 화면의 세로 예산에는 슬랙이 0 이다**(헤더 64 + 본문 616 + 액션바 88 = 768 — 스펙
@@ -196,17 +179,6 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/production-result', element: <ProductionFlowScreen /> },
-  /*
-   * P-02-08 — 포장 작업(LOT 스캔·제품 포장). 셸 밖에 서는 POP 태스크 화면이다.
-   *
-   * ⚠ **작업지시는 질의 문자열로 받는다**(`?workOrderId=`). P-02-01은 현재 자재 투입으로
-   * 이어지므로 포장 작업 진입은 이 호환 경로를 유지한다. 사번은 셸 값 → P-CO-01 작업자 →
-   * 기존 `?workerNo=` 순서로 읽는다.
-   *
-   * ⚠ **재출력 화면(`P-02-09`)으로 넘기지 않는다.** 스펙이 이 화면에 분기를 두지 않았다 —
-   * 확정한 포장의 라벨을 다시 뽑는 것은 그 화면의 소관이고, 넘기는 자리는 설계가 정한다.
-   */
-  { path: '/pop/packing-work', element: <PackingWorkScreen /> },
   /*
    * P-04-04 — 재구성 신규 라벨 발행.
    *

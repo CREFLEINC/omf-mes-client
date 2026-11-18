@@ -168,7 +168,7 @@ export const locationFixtures = [
 ];
 
 /**
- * 재고 잔액. **`groupBy=LOT`으로 받은 모양**이라 위치 축이 접혀 있다(`locationId`가 없다).
+ * 재고 잔액. **`groupBy=LOCATION`으로 받은 모양**이라 LOT · 위치마다 한 줄이다(omf-all-around#282). 여기서는 모두 입고 위치(9801)에 있다.
  *
  * 이 화면은 이 응답을 **반품 수량의 상한을 만드는 데만** 쓴다. 픽스처가 담는 까다로운 입력:
  *
@@ -182,10 +182,11 @@ export const locationFixtures = [
  */
 export const balanceFixtures = [
   {
-    groupBy: 'LOT' as const,
+    groupBy: 'LOCATION' as const,
     warehouseId: 9701,
     itemId: 9301,
     lotId: 9601,
+    locationId: 9801,
     ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
     onHandQty: 80,
     reservedQty: 60,
@@ -195,10 +196,11 @@ export const balanceFixtures = [
     uomId: 9501,
   },
   {
-    groupBy: 'LOT' as const,
+    groupBy: 'LOCATION' as const,
     warehouseId: 9701,
     itemId: 9301,
     lotId: 9601,
+    locationId: 9801,
     ownershipTypeCode: 'SAMPLE_OWNERSHIP_B',
     onHandQty: 40,
     reservedQty: 35,
@@ -208,10 +210,11 @@ export const balanceFixtures = [
     uomId: 9501,
   },
   {
-    groupBy: 'LOT' as const,
+    groupBy: 'LOCATION' as const,
     warehouseId: 9701,
     itemId: 9301,
     lotId: 9603,
+    locationId: 9801,
     ownershipTypeCode: 'SAMPLE_OWNERSHIP_A',
     onHandQty: 0,
     reservedQty: 0,
@@ -286,6 +289,7 @@ export const goodsIssueLineFixtures: IssueLineResponse[] = [
     lineNo: 1,
     itemId: 9301,
     lotId: 9601,
+    lotNo: 'SYN-LOT-9601',
     issueQty: 30,
     uomId: 9501,
     sourceLocationId: 9801,
@@ -296,6 +300,7 @@ export const goodsIssueLineFixtures: IssueLineResponse[] = [
     lineNo: 2,
     itemId: 9302,
     lotId: 9602,
+    lotNo: 'SYN-LOT-9602',
     issueQty: 5,
     uomId: 9501,
     sourceLocationId: 9802,

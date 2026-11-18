@@ -9,10 +9,7 @@ export const downtimeRegister: Translated<typeof ko.downtimeRegister> = {
     /* ⭐ 「설비 <이름>」으로 읽힌다 — 이름이 비면 코드(사용자 지시 2026-09-14). */
     equipment: (equipmentCode: string, equipmentName: string): string =>
       `Thiết bị ${equipmentName.trim() === '' ? equipmentCode : equipmentName}`,
-    worker: (workerNo: string): string => `Mã nhân viên ${workerNo}`,
-    workerUnknown: 'Chưa xác nhận mã nhân viên',
     unsent: (count: number): string => `Chờ gửi ${String(count)} mục`,
-    sent: 'Đã gửi xong',
     offline: common.connection.offline,
   },
   ongoing: {

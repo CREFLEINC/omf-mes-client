@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Checkbox, Chip, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox, TextField } from '@crefle/web-ui';
 import { createIdempotencyKey, type ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
@@ -261,13 +261,6 @@ export const PopMaterialDefectScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-context-right">
-          {workerNo !== null && (
-            <Chip variant="status" size="md" status="success">
-              {workerNo}
-            </Chip>
-          )}
-        </div>
       </header>
 
       <PopWorkerMissingBanner workerNo={workerNo} />

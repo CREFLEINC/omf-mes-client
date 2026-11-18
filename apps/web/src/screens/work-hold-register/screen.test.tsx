@@ -87,7 +87,8 @@ describe('P-02-10 작업 중단 등록', () => {
       eventsRoute([]),
     ]);
 
-    expect(await screen.findByText(`${t.entry.workOrderLabel} WO-SYN-29`)).toBeInTheDocument();
+    /* W/O 번호는 「중단 등록」 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291). */
+    expect(await screen.findByText('WO-SYN-29')).toBeInTheDocument();
     expect(screen.queryByText(/W\/O #/)).toBeNull();
   });
 
@@ -141,9 +142,7 @@ describe('P-02-10 작업 중단 등록', () => {
 
     expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
     /* 돌아갈 작업지시가 없으니 [생산 작업으로]도 두지 않는다. */
-    expect(
-      screen.queryByRole('button', { name: messages.productionResult.flow.actions.backToWork }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업으로' })).not.toBeInTheDocument();
   });
 
   it('이벤트 이력을 시각·구분·사유로 세운다', async () => {
@@ -311,35 +310,31 @@ describe('P-02-10 작업 중단 등록', () => {
   });
 
   /* 같은 작업지시로 생산 작업에 돌아가는 길(P-02-04 개선 명세 ⑦). */
-  it('[생산 작업으로]를 누르면 같은 작업지시의 생산 작업으로 돌아간다', async () => {
-    const user = userEvent.setup();
-    const { router } = renderWithProviders(
+  /* #291 — 화면 사이 이동은 공통 메뉴의 탭이 맡는다(작업지시도 탭이 실어 준다). 머리줄 단추는 없앴다. */
+  it('머리줄에 [작업으로 돌아가기]를 두지 않는다', async () => {
+    renderWithProviders(
       <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>
         <WorkHoldRegisterScreen />
       </PopIdentityProvider>,
       {
         fetch: createStubFetch([sessionsRoute([workSession()]), eventsRoute([]), reasonsRoute]),
         route: ROUTE,
-        dataRouter: true,
       },
     );
 
-    await user.click(
-      await screen.findByRole('button', {
-        name: messages.productionResult.flow.actions.backToWork,
-      }),
-    );
-    await waitFor(() => expect(router?.state.location.pathname).toBe('/pop/production-result'));
-    expect(router?.state.location.search).toBe(`?workOrderId=${String(WORK_ORDER_ID)}`);
+    expect(await screen.findByRole('heading', { name: t.title })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '생산 작업으로' })).not.toBeInTheDocument();
   });
 
-  it('사번을 모르면 헤더가 그 사실을 말한다 — 없는 값을 지어내지 않는다', async () => {
+  /* #291 — 사번은 공통 메뉴 맨 위 줄이 보인다. 머리줄에 다시 세우지 않는다. */
+  it('사번은 머리줄에 두지 않는다(공통 메뉴 맨 위 줄이 보인다)', async () => {
     renderScreen(
       [sessionsRoute([workSession()]), eventsRoute([])],
       `/pop/work-hold?workOrderId=${String(WORK_ORDER_ID)}`,
     );
 
-    expect(await screen.findByText(t.entry.workerUnknown)).toBeInTheDocument();
+    const header = (await screen.findByRole('heading', { name: t.title })).closest('header');
+    expect(header).not.toHaveTextContent(t.entry.workerUnknown);
   });
 
   /**

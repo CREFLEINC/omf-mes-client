@@ -170,7 +170,8 @@ describe('W-01-01 결과 드로어 저장', () => {
 
     expect(screen.getAllByRole('checkbox')).toHaveLength(2);
     expect(screen.queryByRole('checkbox', { name: lot(9).lotNo })).toBeNull();
-    expect(screen.getByText(t.matchNote)).toBeInTheDocument();
+    /* 매칭 규칙 긴 안내는 상시 보이지 않는다(omf-all-around#274). */
+    expect(document.querySelector('.field-note')).toBeNull();
     await user.click(screen.getByRole('checkbox', { name: lot(1).lotNo }));
     expect(onChange).toHaveBeenCalledWith([1, 2]);
   });

@@ -21,6 +21,8 @@ export interface WarehouseFormValues {
   businessUnitId: string;
   warehouseCode: string;
   warehouseName: string;
+  /** 창고 위치 코드(#292) — 등록 때만 고친다. 등록 폼은 무작위로 지어 채운다(`location-prefix.ts`). */
+  locationPrefix: string;
   warehouseTypeCode: string;
   isExternal: boolean;
   isDefect: boolean;

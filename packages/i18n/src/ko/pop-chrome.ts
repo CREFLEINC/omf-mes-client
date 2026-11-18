@@ -7,22 +7,85 @@ import { named } from '../named';
 import { common } from './common';
 
 export const popChrome = {
-  /** 머리줄의 화면 이동 선택 단추. */
-  screenNav: '화면 이동',
   /**
-   * 화면 이동의 남은 작업 표시(피처 002). 수는 그 화면 목록의 건수다. 접근 이름에는 줄이지 않은 실제 수를 싣는다.
+   * 화면 위 공통 이동 메뉴(#291) — 맨 위 줄 · 업무 묶음 줄 · 화면 탭 줄. 묶음 이름은
+   * `patterns/pop-screen-catalog` 의 `POP_SCREEN_GROUPS` 가 정한다.
    */
-  screenNavWork: {
-    /** 남은 작업이 하나라도 있을 때 단추의 설명 — 단추의 점은 눈에만 보인다. */
-    trigger: '남은 작업 있음',
-    /** 팝업 맨 위 묶음의 제목. 수가 있는 화면만 모은다. */
-    title: '남은 작업',
+  nav: {
+    brand: 'OMF-MES POP',
+    home: '홈',
+    groupsLabel: '업무 묶음',
+    screensLabel: (group: string): string => `${group} 화면`,
+    /** 묶음 이름 뒤 숫자의 숨은 글 — 보이는 것은 배지다. */
+    groupCount: (group: string, count: number): string => `${group}, 남은 작업 ${String(count)}건`,
+    /** 이동할 화면을 판정하지 못했을 때 묶음 자리에 서는 사유(G-2 — 감추지 않고 사유를 보인다). */
+    unknown: '이동할 수 있는 화면을 확인하지 못했습니다',
+    empty: '이동할 수 있는 화면이 없습니다',
+  },
+  /** 묶음 줄 오른쪽 끝 [남은 작업] 과 그 펼침 창(피처 002 의 남은 작업 수). */
+  remaining: {
+    button: '남은 작업',
+    buttonLabel: (count: number): string => `남은 작업 ${String(count)}건`,
+    title: (count: number): string => `남은 작업 ${String(count)}건`,
+    hint: '누르면 그 화면으로 바로 이동합니다',
+    none: '남은 작업이 없습니다',
+    move: '이동',
+    close: '닫기',
     count: (name: string, count: number): string => `${name}, 남은 작업 ${String(count)}건`,
-    /** 목록 항목 뒤에 붙는 숨은 글 — 보이는 것은 배지다. */
-    suffix: (count: number): string => `, 남은 작업 ${String(count)}건`,
+  },
+  /** 홈 화면(#291) — 사번 확인 뒤 처음 서는 화면. */
+  /** 작업 단계 줄(#291) — 작업 지시 목록 탭 아래 ①②③. */
+  workSteps: {
+    label: '작업 단계',
+    pickWorkOrder: '작업지시 선택',
+    /** 단계 줄 오른쪽 작업 중 화면 버튼의 짧은 이름(승인 시안). 없는 화면은 화면 이름 그대로. */
+    during: {
+      '/pop/work-hold': '작업 중단',
+      '/pop/running-change': '러닝체인지',
+      '/pop/tool-usage': '툴 사용실적',
+    } as Readonly<Record<string, string>>,
+  },
+  home: {
+    title: '홈',
+    greeting: (name: string): string => `${name} 님, 안녕하세요!`,
+    /** 사번을 아직 모를 때 — 이름 자리를 비워 「님,」만 남기지 않는다. */
+    greetingAnonymous: '안녕하세요!',
+    /** 인사 줄 오른쪽 시계의 요일(일요일부터). */
+    weekdays: ['일', '월', '화', '수', '목', '금', '토'],
+    sub: '오늘도 안전하고 정확한 작업을 진행해 주세요.',
+    remainingTitle: '남은 작업',
+    remainingCount: (count: number): string => `${String(count)}건`,
+    remainingNone: '지금 남은 작업이 없습니다.',
+    shortcutsTitle: '바로가기',
+    shortcutsHint: '자주 쓰는 화면으로 바로 이동합니다.',
+    /** 오늘 작업 현황 — 이 단말 설비의 작업지시 수(작업 지시 목록과 같은 조회). */
+    statusTitle: '오늘 작업 현황',
+    inProgress: '진행 중',
+    waiting: '대기',
+    done: '완료',
+    statusCount: (count: number): string => `${String(count)}건`,
+    nextTitle: '다음 작업',
+    nextNone: '대기 중인 작업이 없습니다',
+    nextPlan: (item: string, qty: string): string => `${item} · 계획 ${qty}개`,
+    /** 설비가 없는 단말은 전체 설비로 센다(작업 지시 목록의 「전체 설비」). */
+    statusAllEquipment: '전체 설비 기준',
+    /** 설비가 지정된 단말의 현황 범위 고르기 — 지정 설비 / 전체 설비. */
+    statusScopeLabel: '현황 범위',
+    statusMyEquipment: (name: string): string => `설비 ${name}`,
+    statusEveryEquipment: '전체 설비',
+    statusFailed: '작업 현황을 불러오지 못했습니다.',
+    edit: '편집',
+    editDone: '완료',
+    editReset: '기본으로',
+    editHint: (max: number): string =>
+      `항목을 선택하거나 해제하여 바로가기를 설정하세요. (최대 ${String(max)}개)`,
+    editPicked: (name: string): string => `${name}, 바로가기에 있음`,
   },
   /** 머리줄의 사번 놓기 단추. */
   userSwitch: '사용자 전환',
+  switchShort: '전환',
+  /** 맨 위 줄 [새로고침] — 지금 화면 자료를 서버에서 다시 받는다(#291). */
+  refresh: '새로고침',
   /**
    * 공용 머리줄(`patterns/pop-header`, C-11). 설비와 작업자는 「이름 (코드)」, 단말은 단말 코드.
    * 연결 상태 문구는 공용 어휘를 쓴다(`common.connection`).

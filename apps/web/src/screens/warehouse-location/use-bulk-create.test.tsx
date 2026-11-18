@@ -124,6 +124,7 @@ const plan = (zones: number, racks: number, levels: number, cells: number) =>
     },
     [],
     new Set(),
+    'WH',
   ).steps;
 
 const posts = (calls: Call[]) => calls.filter((call) => call.method === 'POST');
@@ -146,7 +147,7 @@ describe('useBulkCreate', () => {
     expect(posts(server.calls)[0]?.body).toEqual({
       warehouseId: WAREHOUSE_ID,
       parentLocationId: null,
-      locationName: 'Z01',
+      locationName: 'WH-Z01',
       aliasName: null,
     });
     expect(posts(server.calls)[1]?.body).toEqual({
@@ -165,17 +166,22 @@ describe('useBulkCreate', () => {
     await act(() => result.current.run(steps));
 
     expect(posts(server.calls).map((call) => call.body)).toEqual([
-      { warehouseId: WAREHOUSE_ID, parentLocationId: null, locationName: 'Z01', aliasName: null },
       {
         warehouseId: WAREHOUSE_ID,
-        parentLocationId: 100,
-        locationName: 'Z01-R001',
+        parentLocationId: null,
+        locationName: 'WH-Z01',
         aliasName: null,
       },
       {
         warehouseId: WAREHOUSE_ID,
         parentLocationId: 100,
-        locationName: 'Z01-R002',
+        locationName: 'WH-Z01-R001',
+        aliasName: null,
+      },
+      {
+        warehouseId: WAREHOUSE_ID,
+        parentLocationId: 100,
+        locationName: 'WH-Z01-R002',
         aliasName: null,
       },
     ]);
@@ -183,7 +189,7 @@ describe('useBulkCreate', () => {
   });
 
   it('US1-2 서버가 다른 코드를 붙이면(동시 생성) 이름을 그 코드로 PUT 한다(If-Match)', async () => {
-    const server = fakeServer({ renameZone: { Z01: 'Z02' } });
+    const server = fakeServer({ renameZone: { 'WH-Z01': 'WH-Z02' } });
     const { result, steps } = renderRun(plan(1, 1, 1, 1), server.fetch);
 
     await act(() => result.current.run(steps));
@@ -191,7 +197,7 @@ describe('useBulkCreate', () => {
     const put = server.calls.find((call) => call.method === 'PUT');
     expect(put?.path).toBe('/mdm/locations/100');
     expect(put?.ifMatch).toBe('"5"');
-    expect(put?.body).toEqual({ locationName: 'Z02', aliasName: null });
+    expect(put?.body).toEqual({ locationName: 'WH-Z02', aliasName: null });
   });
 
   it('US1-7 ⭐ 랙이 실패해도 다음 단계를 계속하고, 다시 부르면 남은 것만 만든다', async () => {
@@ -205,7 +211,7 @@ describe('useBulkCreate', () => {
       status: 'partial',
       failures: [
         {
-          code: 'Z01-R002',
+          code: 'WH-Z01-R002',
           reason: '재고가 있는 위치 밑에는 위치를 둘 수 없습니다 — 재고를 먼저 옮깁니다.',
         },
       ],
@@ -225,7 +231,7 @@ describe('useBulkCreate', () => {
   });
 
   it('US1-7 ⭐ 만들기는 성공하고 이름 고치기만 실패하면 — 다시 불러도 POST 하지 않고 이름만 다시 고친다', async () => {
-    const server = fakeServer({ renameZone: { Z01: 'Z02' }, failPuts: 1 });
+    const server = fakeServer({ renameZone: { 'WH-Z01': 'WH-Z02' }, failPuts: 1 });
     const { result, steps } = renderRun(plan(1, 1, 1, 1), server.fetch);
 
     await act(() => result.current.run(steps));
@@ -236,7 +242,7 @@ describe('useBulkCreate', () => {
     ]);
     expect(result.current.state).toMatchObject({
       status: 'partial',
-      failures: [{ code: 'Z02' }],
+      failures: [{ code: 'WH-Z02' }],
       failedRacks: 0,
       created: 4,
     });
@@ -263,7 +269,7 @@ describe('useBulkCreate', () => {
     ]);
     await waitFor(() => expect(result.current.state.status).toBe('partial'));
     expect(result.current.state).toMatchObject({
-      failures: [{ code: 'Z01' }],
+      failures: [{ code: 'WH-Z01' }],
       failedRacks: 2,
       created: 7,
     });

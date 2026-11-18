@@ -47,6 +47,11 @@ export interface PrinterChipProps {
    * 같은 문장(「이 프린터로 나갑니다」)을 붙여 읽을 거리가 없다. 끊김·오류 등 다른 상태의 문장은 그대로 보인다.
    */
   hideReadyNote?: boolean;
+  /**
+   * 「프린터 없음」 칩을 보일까. 공통 메뉴 맨 위 줄(`HeaderPrinter`)만 켠다 — 화면마다 다시 세우지 않는다
+   * (사용자 지시 2026-11-17 · #291). 넘기지 않으면 없을 때 아무것도 그리지 않는다.
+   */
+  showNone?: boolean;
 }
 
 /**
@@ -70,6 +75,7 @@ export const PrinterChip = ({
   retryLabel = t.retry,
   showCloseButton = true,
   hideReadyNote = false,
+  showNone = false,
 }: PrinterChipProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -85,7 +91,7 @@ export const PrinterChip = ({
   }
 
   if (isLoading || printers === undefined) return null;
-  if (selected === null) return <Chip status="warning">{noneLabel}</Chip>;
+  if (selected === null) return showNone ? <Chip status="warning">{noneLabel}</Chip> : null;
 
   const chip = (
     <Chip status={chipStatusOf(selected.status)}>{`${t.label} ${selected.displayName}`}</Chip>

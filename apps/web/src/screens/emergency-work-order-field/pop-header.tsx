@@ -4,8 +4,6 @@ import { messages } from '@omf-mes/i18n';
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
   titleId: string;
-  /** 이 단말의 번호. **셸이 아는 값**이라 화면은 받기만 한다 — 모르면 「모른다」다. */
-  terminalNo?: string;
   /**
    * 서버에 닿았는가. **아직 모르면 `undefined`** — 그때는 아무 말도 하지 않는다.
    *
@@ -23,13 +21,15 @@ export interface PopHeaderProps {
  * 셸 안에 이미 들어와 있는 사람에게 매 화면 시스템 이름을 되풀이하면, 정작 64픽셀짜리
  * 띠에서 「지금 무슨 화면인가」가 밀린다.
  *
+ * ⭐ #291 부터 단말은 공통 메뉴 맨 위 줄이 보인다. 이 띠에는 연결 상태만 남는다.
+ *
  * ⭐ **단말과 연결을 상시 보인다.** 현장에는 같은 화면을 띄운 단말이 여럿이고, 어느 단말에서
  * 한 일인지가 기록의 귀속을 가른다. 연결이 끊긴 것을 모르면 목록이 비었을 때 「긴급 지시가
  * 없다」로 읽는다.
  *
  * ⛔ **모르는 것을 빈칸으로 두지 않는다.** 비워 두면 단말이 하나뿐인 것처럼 읽힌다.
  */
-export const PopHeader = ({ titleId, terminalNo, isConnected }: PopHeaderProps) => {
+export const PopHeader = ({ titleId, isConnected }: PopHeaderProps) => {
   const t = messages.emergencyWorkOrderField;
 
   return (
@@ -38,20 +38,6 @@ export const PopHeader = ({ titleId, terminalNo, isConnected }: PopHeaderProps) 
         {t.title}
       </h1>
 
-      <p className="pop-context pop-context-right">
-        {/* ⭐ 「단말#」 표기는 라벨(칩)로 보인다 — 다른 POP 머리줄과 같은 모양(사용자 지시 2026-09-15). */}
-        <Chip status={terminalNo === undefined || terminalNo.trim() === '' ? 'warning' : 'info'}>
-          {terminalNo === undefined || terminalNo.trim() === ''
-            ? t.header.terminalUnknown
-            : t.header.terminalLabel(terminalNo)}
-        </Chip>
-
-        {isConnected !== undefined && (
-          <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
-            {isConnected ? t.header.connected : t.header.disconnected}
-          </Chip>
-        )}
-      </p>
     </header>
   );
 };

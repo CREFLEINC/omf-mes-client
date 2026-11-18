@@ -6,11 +6,12 @@ import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopLocationLabelEntry } from './entry-context';
 import { useLocationLabelWrite, usePrintFlow, type PrintReport } from './mutations';
 import { hasPrintBridge } from '../../patterns/pop-print';
-import { PrinterSelect } from './printer-select';
+import { PopTopPrinter } from '../../patterns/pop-top-status';
+import { PrinterChip } from '../pop-material-lot-label/printer-chip';
+import { toPrinterView } from '../pop-material-lot-label/types';
 import {
   useIssueSummary,
   useLocations,
@@ -72,6 +73,7 @@ export const PopLocationLabelScreen = () => {
    *    보내면 서버가 고르고 **다른 자리에서 라벨이 나올 수 있다** — 창고 작업자는 손에 라벨이
    *    없는 채로 선반 앞에 선다. 어느 프린터로 나가는지 칸에도 그대로 보인다.
    */
+  const printerViews = useMemo(() => printers.data?.map(toPrinterView), [printers.data]);
   const printerName =
     chosenPrinter ?? printers.data?.find((each) => each.isDefault)?.printerName ?? null;
 
@@ -193,9 +195,6 @@ export const PopLocationLabelScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={entry.workerNo} />
-        </div>
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
@@ -208,16 +207,9 @@ export const PopLocationLabelScreen = () => {
       {!hasPrintBridge() && <AlertBanner variant="info">{t.print.noBridge}</AlertBanner>}
 
       {/*
-       * ⭐ **찍을 프린터가 없다는 경고도 맨 위 띠 자리에 선다**(사용자 지시 2026-09-18 ·
-       *    omf-all-around#11). 프린터 칸 안에 두면 창고 옆 작은 상자라 눈에 띄지 않았다.
-       *    프린터가 있을 때의 고르기는 그대로 오른쪽 칸이 한다(`PrinterSelect`).
+       * ⛔ 「등록된 프린터가 없다」 띠는 두지 않는다(사용자 지시 2026-11-17 · #291) — 프린터 연결은
+       *    공통 메뉴 맨 위 줄이 상시 보인다. 발행은 그대로 막지 않는다.
        */}
-      {!printers.isPending && !printers.isError && (printers.data ?? []).length === 0 && (
-        /* 사번 미확인 띠(`PopWorkerMissingBanner`)와 같은 자리·같은 감싸기 — 띠가 제 높이만 쓴다. */
-        <div className="banner-slot">
-          <AlertBanner variant="warning">{t.printer.none}</AlertBanner>
-        </div>
-      )}
 
       {/* 인쇄 결과는 화면 맨 위 띠 자리에 선다(사용자 지시 2026-09-17). */}
       <PrintResult
@@ -267,17 +259,23 @@ export const PopLocationLabelScreen = () => {
             />
           )}
         </div>
+      </div>
 
-        <PrinterSelect
-          printers={printers.data ?? []}
-          value={printerName}
-          onChange={setChosenPrinter}
+      {/* 프린터는 공통 메뉴 맨 위 줄 프린터 자리에 서고, 누르면 고른다(사용자 지시 2026-11-17 · #291). */}
+      <PopTopPrinter>
+        <PrinterChip
+          printers={printerViews}
+          selected={printerViews?.find((each) => each.printerName === printerName) ?? null}
           isLoading={printers.isPending}
           isError={printers.isError}
+          isSelectable
+          isLocked={write.isSaving || printFlow.isPending}
           onRetry={() => void printers.refetch()}
-          disabled={write.isSaving || printFlow.isPending}
+          onSelect={setChosenPrinter}
+          showNone
+          noneLabel={messages.productionResult.flow.work.printerNone}
         />
-      </div>
+      </PopTopPrinter>
 
       <section className="pop-loclabel-list" aria-label={t.location.heading}>
         <div className="pop-loclabel-list-head">

@@ -120,10 +120,14 @@ export const materialPicking: Translated<typeof ko.materialPicking> = {
   sent: {
     title: 'Đã xác nhận xuất kho',
     issueNo: (goodsIssueNo: string): string => `Số phiếu xuất kho ${goodsIssueNo}`,
+    splitHead: (count: number): string => `${String(count)} LOT tách — hãy in nhãn tại POP`,
+    splitLegend: 'LOT gốc → LOT tách',
   },
   queued: {
     title: 'Đã đưa việc xuất kho vào hàng chờ gửi',
     description: 'Sẽ gửi khi có kết nối. Chưa phải là đã xác nhận, gửi xong vẫn có thể bị trả lại.',
+    split:
+      'Dòng xuất kho một phần sẽ sinh LOT tách sau khi gửi xong. Sau khi gửi xong, hãy in nhãn LOT tách tại POP.',
   },
   rejected: {
     title: 'Không gửi được việc xuất kho',

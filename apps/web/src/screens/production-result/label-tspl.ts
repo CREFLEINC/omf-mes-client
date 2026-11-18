@@ -1,4 +1,4 @@
-import { buildLotLabel, lotLabelQty, type LotLabelRow } from '../pop-material-lot-label/label-tspl';
+import { buildLotLabel, lotLabelQty, type LotLabelRow } from '../../patterns/label/lot-label-tspl';
 
 /**
  * 생산 LOT 라벨 — **POP 이 80 × 30 mm 규격으로 직접 짠다**(사용자 지시 2026-09-16).

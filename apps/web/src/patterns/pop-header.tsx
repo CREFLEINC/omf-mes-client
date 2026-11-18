@@ -1,24 +1,17 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
+
+import { PopTopPrinter, PopTopStatus, PopTopStatusTarget } from './pop-top-status';
 
 export interface PopHeaderProps {
   /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
   titleId: string;
   /** 화면 이름 */
   title: string;
-  /**
-   * 이 단말의 코드. 못 받았으면 `null`. 넘기지 않으면(`undefined`) 단말 자리를 두지 않는다.
-   * C-11 고정 항목에 단말이 없어, W/O와 공정을 보이는 작업 화면은 폭을 그쪽에 쓴다(PI-02).
-   */
-  terminalCode?: string | null;
   /** 이 단말에 매핑된 설비. 모르거나 없으면 `null` — 타이틀 옆 자리를 비운다. */
   equipmentCode: string | null;
   equipmentName: string | null;
-  /** 확인이 끝난 사번. 아직이면 `null`. */
-  workerNo: string | null;
-  /** 작업자 이름. 모르면 `null`이고 사번만 보인다. */
-  workerName?: string | null;
   /** 현재 W/O 번호. W/O를 정하기 전 화면(작업 시작)은 넘기지 않는다. */
   workOrderNo?: string | null;
   /** 현재 W/O의 공정 이름. 모르면 `null`이고 자리를 비운다. */
@@ -36,6 +29,7 @@ export interface PopHeaderProps {
    * 반대로 브라우저가 온라인이라도 서버가 죽어 있을 수 있다.
    */
   isConnected?: boolean;
+  /* ⚠ 공통 메뉴 안에서는 그리지 않는다 — 연결 표시는 맨 위 줄이 모든 화면에 같게 보인다(#291). 공통 메뉴 밖(단독 실행)에서만 선다. */
   /** 아직 서버에 닿지 않은 기록 수. 0이거나 넘기지 않으면 칩을 두지 않는다. */
   unsentCount?: number;
   /** 오른쪽 덩어리 맨 앞(작업자 앞)에 둘 프린터 칩. 넘기지 않으면 자리를 두지 않는다(생산 작업 · 개선 명세 ⑤). */
@@ -51,7 +45,39 @@ const hasText = (value: string | null | undefined): value is string =>
   value !== null && value !== undefined && value.trim() !== '';
 
 /**
- * POP 머리줄(C-11). 화면 이름, 설비(스테이션), 현재 W/O와 공정, 작업자, 통신 상태.
+ * 상자 제목 옆 작업 맥락 — W/O 번호, 공정 이름, 긴급 표시(#291 · 사용자 지시 2026-11-17: W/O 같은 정보는 상자 안에).
+ * 모두 없으면 아무것도 그리지 않는다.
+ */
+export const PaneWorkContext = ({
+  workOrderNo = null,
+  processName = null,
+  isEmergency = false,
+}: {
+  workOrderNo?: string | null;
+  processName?: string | null;
+  isEmergency?: boolean;
+}) => {
+  const t = messages.popChrome.header;
+  if (!hasText(workOrderNo) && !hasText(processName) && !isEmergency) return null;
+
+  return (
+    <span className="pop-pane-context">
+      {hasText(workOrderNo) && <span className="pop-pane-context__wo">{workOrderNo}</span>}
+      {isEmergency && (
+        <Chip variant="status" size="md" status="error">
+          {t.emergency}
+        </Chip>
+      )}
+      {hasText(processName) && <span className="pop-pane-context__process">{processName}</span>}
+    </span>
+  );
+};
+
+/**
+ * POP 머리줄(C-11). 화면 이름, 설비(스테이션), 현재 W/O와 공정, 통신 상태.
+ *
+ * ⭐ #291 부터 단말과 작업자는 공통 메뉴 맨 위 줄(`patterns/pop-screen-nav`)이 보이고, 화면 이름은
+ *    화면 탭이 보여 주므로 이 줄에서는 숨긴다(접근 이름으로만 남는다). 이 줄은 화면 정보만 남는다.
  * 설비는 이름(툴팁에 「이름 (코드)」), 작업자는 「이름 (사번)」으로 보인다(C-10, PI-02). 단말은 넘겼을 때만 내부 번호가 아니라 단말 코드로
  * 보인다(작업 시작). 폭이 모자라면 화면 이름, W/O, 오른쪽 덩어리는 그대로 두고 설비가 줄어든다.
  *
@@ -63,21 +89,20 @@ const hasText = (value: string | null | undefined): value is string =>
 export const PopHeader = ({
   titleId,
   title,
-  terminalCode,
   equipmentCode,
   equipmentName,
-  workerNo,
-  workerName = null,
   workOrderNo = null,
   processName = null,
   isEmergency = false,
   moldText = null,
   isMoldMissing = false,
-  isConnected,
   unsentCount = 0,
+  isConnected,
   printer,
   actions,
 }: PopHeaderProps) => {
+  /* 공통 메뉴(셸) 안이면 맨 위 줄 자리가 정해져 있다(`undefined` 는 셸 밖 — 단독 실행·시험). */
+  const isInShell = useContext(PopTopStatusTarget) !== undefined;
   const t = messages.popChrome.header;
   const RightGroup = printer === undefined ? 'p' : 'div';
 
@@ -122,30 +147,22 @@ export const PopHeader = ({
 
       {/* 프린터 칩은 창(선택)과 [다시 시도]를 품어 문단(p) 안에 둘 수 없다 — 그때만 div 로 세운다. */}
       <RightGroup className="pop-context pop-context-right">
-        {printer}
-        {terminalCode !== undefined && (
-          <span>{hasText(terminalCode) ? t.terminalLabel(terminalCode) : t.terminalUnknown}</span>
-        )}
-
-        {hasText(workerNo) ? (
-          <span title={t.workerTitle(workerNo, workerName)}>
-            {t.workerLabel(workerNo, workerName)}
-          </span>
-        ) : (
-          <span>{t.workerUnset}</span>
-        )}
-
-        {isConnected !== undefined && (
-          <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
-            {isConnected ? t.connected : t.disconnected}
-          </Chip>
-        )}
-
-        {unsentCount > 0 && (
-          <Chip variant="status" size="md" status="warning">
-            {t.unsent(unsentCount)}
-          </Chip>
-        )}
+        {/* 프린터 칩은 공통 메뉴 맨 위 줄 프린터 자리로 간다(사용자 지시 2026-11-17 · #291). */}
+        {printer !== undefined && <PopTopPrinter>{printer}</PopTopPrinter>}
+        {/* 연결·미전송 표시는 공통 메뉴 맨 위 줄에 선다(#291) — 머리줄에 이것만 남아 행이 서지 않게. */}
+        <PopTopStatus>
+          {/* 연결(온라인·오프라인)은 공통 메뉴 맨 위 줄이 모든 화면에 같게 보인다(#291) — 셸 밖에서만 여기서 말한다. */}
+          {!isInShell && isConnected !== undefined && (
+            <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
+              {isConnected ? t.connected : t.disconnected}
+            </Chip>
+          )}
+          {unsentCount > 0 && (
+            <Chip variant="status" size="md" status="warning">
+              {t.unsent(unsentCount)}
+            </Chip>
+          )}
+        </PopTopStatus>
       </RightGroup>
 
       {actions !== undefined && actions !== null && (

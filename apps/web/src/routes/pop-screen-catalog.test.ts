@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { popRoutes } from './pop';
-import { POP_ENTRY_SCREEN_PATH, POP_SCREENS } from '../patterns/pop-screen-catalog';
+import { POP_ENTRY_SCREEN_PATH, POP_HOME_PATH, POP_SCREENS } from '../patterns/pop-screen-catalog';
 
 /**
  * 업무용 [화면 이동](G-34)의 후보 목록이 라우트 표와 어긋나지 않는지 잰다.
@@ -16,10 +16,11 @@ import { POP_ENTRY_SCREEN_PATH, POP_SCREENS } from '../patterns/pop-screen-catal
  * 거스른다(`.dependency-cruiser.cjs`). 부르는 것이 허용되는 쪽에서 대조한다.
  */
 describe('POP 화면 이름표', () => {
-  it('진입 화면을 뺀 POP 라우트를 하나도 빠뜨리지 않는다', () => {
+  /* 홈(#291)은 메뉴의 [홈] 단추로 가는 자리라 탭 목록에 넣지 않는다. */
+  it('진입 화면·홈을 뺀 POP 라우트를 하나도 빠뜨리지 않는다', () => {
     const routed = popRoutes
       .map((route) => route.path)
-      .filter((path) => path !== POP_ENTRY_SCREEN_PATH)
+      .filter((path) => path !== POP_ENTRY_SCREEN_PATH && path !== POP_HOME_PATH)
       .sort();
     const listed = POP_SCREENS.map((screen) => screen.path).sort();
 

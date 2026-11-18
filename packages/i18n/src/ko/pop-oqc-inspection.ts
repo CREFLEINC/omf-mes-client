@@ -11,6 +11,9 @@ export const popOqcInspection = {
 
   queue: {
     heading: '판정 대기',
+    /** 판정을 마친 의뢰 탭(#291). */
+    doneHeading: '판정 완료',
+    viewLabel: '판정 목록 고르기',
     caption: '판정 대기 의뢰 목록',
     count: (total: number): string => `${String(total)}건`,
     columns: {
@@ -22,6 +25,7 @@ export const popOqcInspection = {
     selectRow: (requestNo: string): string => `의뢰 ${requestNo} 선택`,
     loading: '판정 대기 목록을 불러오는 중입니다.',
     empty: '판정할 출하검사 의뢰가 없습니다.',
+    doneEmpty: '판정을 마친 출하검사 의뢰가 없습니다.',
     unavailable: '판정 대기 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     pageNav: '판정 대기 목록 쪽 이동',
   },
@@ -29,7 +33,7 @@ export const popOqcInspection = {
   detail: {
     paneLabel: '판정',
     nothingSelectedTitle: '의뢰를 선택하세요',
-    nothingSelected: '왼쪽 판정 대기 목록에서 의뢰를 누르면 여기에서 판정합니다.',
+    nothingSelected: '왼쪽 목록에서 의뢰를 누르면 여기에 내용이 보입니다.',
     loading: '의뢰 정보를 불러오는 중입니다.',
     fields: {
       inspectionType: '검사 유형',
@@ -126,8 +130,6 @@ export const popOqcInspection = {
     },
     reinspect: '재검사 회차 추가',
     reinspectCancel: '재검사 취소',
-    coaIssue: '검사성적서 발행',
-    coaPending: '준비 중',
   },
 
   /** 저장 확인 창 — 쓰기는 이 창의 [판정 저장]에서만 나간다. */

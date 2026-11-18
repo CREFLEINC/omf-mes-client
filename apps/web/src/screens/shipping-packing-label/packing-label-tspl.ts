@@ -1,4 +1,4 @@
-import { buildLotLabel } from '../pop-material-lot-label/label-tspl';
+import { buildLotLabel } from '../../patterns/label/lot-label-tspl';
 
 import { packingLabelRows, type PackingLabelFields } from './packing-label-image';
 

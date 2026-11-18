@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBitmap, type LabelBitmap } from '../../patterns/label/bitmap';
-import { layoutLotLabel, type LotLabelRasterizer } from '../pop-material-lot-label/label-tspl';
+import { layoutLotLabel, type LotLabelRasterizer } from '../../patterns/label/lot-label-tspl';
 import { buildLocationLabel, buildLocationLabelBytes } from './label-tspl';
 
 const fields = {
@@ -45,6 +45,28 @@ describe('창고 적재 위치 라벨 80 × 30 mm', () => {
     expect(box.x).toBe(Number(qr?.[1]));
     expect(box.x + box.side).toBeLessThanOrEqual(WIDTH);
     expect(box.y + box.side).toBeLessThanOrEqual(HEIGHT);
+  });
+
+  it('창고 위치 코드가 붙은 긴 위치 코드(#292)는 자르지 않고 글줄 칸에 맞춰 줄여 찍는다', () => {
+    /* 창고 위치 코드는 6자까지, 옛 코드는 예외 없이 그 뒤에 붙었다 — 셀까지 간 코드 · 긴 옛 코드. */
+    for (const [locationCode, point] of [
+      ['K7PM-Z01-R001-L01-C01', 15],
+      ['ABC123-OH100073-A-01-02', 14],
+    ] as const) {
+      const command = buildLocationLabel({ ...fields, warehouseCode: 'OH100073', locationCode });
+      const line = new RegExp(`^TEXT (\\d+),\\d+,"0",0,(\\d+),\\d+,"([^"]*)"\\r$`, 'gmu');
+      const code = [...command.matchAll(line)].find((match) =>
+        match[3]?.startsWith(locationCode.slice(0, 4)),
+      );
+      const { qr } = layoutLotLabel([], locationCode);
+
+      /* 글자가 잘리지 않는다(`~` 없음) — 16pt 칸(약 20자)을 넘는 만큼만 작아진다. */
+      expect(code?.[3]).toBe(locationCode);
+      expect(Number(code?.[2])).toBe(point);
+      /* 내장 글꼴 자폭 어림(point × 0.5 × 203/72)으로 QR 왼쪽 2 mm 앞에서 끝난다. */
+      const width = locationCode.length * point * 0.5 * (203 / 72);
+      expect(Number(code?.[1]) + width).toBeLessThanOrEqual(qr.x - 16);
+    }
   });
 
   it('QR 에는 위치 코드만 싣는다', () => {

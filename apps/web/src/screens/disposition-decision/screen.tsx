@@ -81,7 +81,6 @@ import {
   useUomLookup,
 } from './lookups';
 import { NonconformanceList } from './nonconformance-list';
-import { NowBand } from './now-band';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
 import {
@@ -221,6 +220,13 @@ export const DispositionDecisionScreen = ({
   const selectedId = readSelectedNonconformanceId(searchParams);
   /* 처분 이력 탭에서 고른 판정 한 건 — 고른 줄 표시용(#223). */
   const selectedDecisionId = readSelectedDecisionId(searchParams);
+  /*
+   * 항목을 고르면 목록을 접어 상세가 자리를 다 쓴다 — 다시 펼치기는 목록과 상세 사이의 단추(부품 IQC #252 와 같은 동작 ·
+   * omf-all-around#275). 지금 탭에서 고른 것이 없으면 접힘은 뜻이 없어 늘 펼친다 — 목록이 숨은 채 빈 화면이 되지 않게.
+   */
+  const [isListFolded, setIsListFolded] = useState(false);
+  const activeSelectedId = tab === 'pending' ? selectedId : selectedDecisionId;
+  const isListCollapsed = isListFolded && activeSelectedId !== null;
   /*
    * 기간이 막히면 `null`이고 조회가 열리지 않는다.
    *
@@ -484,17 +490,17 @@ export const DispositionDecisionScreen = ({
       isClosedNonconformance(detail.data.statusCode, remaining.isSettled),
     hasPendingConcession: pendingConcession !== undefined,
     isConcessionApproved: pendingApproval.data === 'APPROVED',
+    isConcessionRejected: pendingApproval.data === 'REJECTED',
     inboundLotNo: detailView?.inboundLotNo,
     lotCount: lotRows.length,
     decisionCount: decisions.data?.items.length ?? 0,
     isSortedOff: detailView?.sortedFrom !== null && detailView?.sortedFrom !== undefined,
   };
   const dispositionOptions = dispositionTypeOptions(dispositionTypeCodes).map((option) => {
-    const hint = t.form.typeHint[option.value];
+    /* 유형마다 붙던 한 줄 설명은 걷었다 — 이름으로 알 수 있다(omf-all-around#275). 막힌 까닭만 남긴다. */
     const lockReason = dispositionOptionLock(option.value, optionContext);
     return {
       ...option,
-      ...(hint === undefined ? {} : { hint }),
       ...(lockReason === undefined ? {} : { lockReason }),
     };
   });
@@ -670,11 +676,17 @@ export const DispositionDecisionScreen = ({
     </div>
   );
 
+  /* 고른 부적합의 상태 — 「부적합 상세」 제목은 걷고 부적합번호 옆에 둔다(omf-all-around#275). */
+  const statusChip =
+    detail.data === undefined ? undefined : (
+      <Chip size="sm" status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}>
+        {codeValueLabel(status, detail.data.statusCode)}
+      </Chip>
+    );
+
   return (
     <>
       {topBar}
-      {/* 005 — 바뀌기 전 처분 방식을 알리는 띠(접힘으로 시작 · 처분 대기에서만). */}
-      {tab === 'pending' && <NowBand />}
       {/* 두 탭이 같은 짜임(사용자 지시 · #223) — 위 조회 조건, 아래 목록 | 오른쪽 상세. 처분 이력은 판정 입력 없이 보기만. */}
       <section ref={aboveRef} className="pane po-board-filter" aria-label={t.panes.filter}>
         {tab === 'pending' ? (
@@ -706,6 +718,7 @@ export const DispositionDecisionScreen = ({
         ref={splitRef}
         className={`${paneLayout.className} disposition-split`}
         style={split.style}
+        data-left-collapsed={isListCollapsed ? 'true' : undefined}
       >
         <section
           className="pane po-board-pane po-board-scroll disposition-pane disposition-list-pane"
@@ -717,6 +730,7 @@ export const DispositionDecisionScreen = ({
               rows={rows}
               sourceTexts={sourceTexts}
               items={items}
+              uoms={uoms}
               severity={severity}
               status={status}
               isLoading={list.isPending}
@@ -735,11 +749,11 @@ export const DispositionDecisionScreen = ({
                     }
               }
               selectedId={selectedId}
-              onSelect={(id) =>
-                setSearchParams((current) =>
-                  withSelectedNonconformance(current, selectedId === id ? null : id),
-                )
-              }
+              onSelect={(id) => {
+                const next = selectedId === id ? null : id;
+                setSearchParams((current) => withSelectedNonconformance(current, next));
+                setIsListFolded(next !== null);
+              }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => apply(filters, nextPage)}
             />
@@ -759,14 +773,11 @@ export const DispositionDecisionScreen = ({
                 ) : null
               }
               selectedId={selectedDecisionId}
-              onSelect={(row) =>
-                setSearchParams((current) =>
-                  withSelectedDecision(
-                    current,
-                    row.dispositionDecisionId === selectedDecisionId ? null : row,
-                  ),
-                )
-              }
+              onSelect={(row) => {
+                const isSame = row.dispositionDecisionId === selectedDecisionId;
+                setSearchParams((current) => withSelectedDecision(current, isSame ? null : row));
+                setIsListFolded(!isSame);
+              }}
               onChangeSize={(next) => setSearchParams((current) => withPageSize(current, next))}
               onChangePage={(nextPage) => applyHistory(historyFilters, nextPage)}
             />
@@ -777,6 +788,16 @@ export const DispositionDecisionScreen = ({
           ratio={split.ratio}
           onChange={split.commit}
           orientation={paneLayout.layout === 'stack' ? 'horizontal' : 'vertical'}
+          {...(activeSelectedId === null
+            ? {}
+            : {
+                collapse: {
+                  collapsed: isListCollapsed,
+                  onToggle: () => setIsListFolded(!isListCollapsed),
+                  collapseLabel: t.listCollapse,
+                  expandLabel: t.listExpand,
+                },
+              })}
         />
         {/*
          * 오른쪽은 한 구획 — 부적합 상세 · 처분 판정 · 처분 이력/특채 요청 이력 탭을 위에서 아래로(사용자 시안 · omf-all-around#223).
@@ -789,21 +810,6 @@ export const DispositionDecisionScreen = ({
            * 머리 — 제목 왼쪽, 고른 부적합의 상태 오른쪽(사용자 시안 · #223). 고르기 전에는 제목 없이 안내만 —
            * 목록에서 고르면 제목과 상세가 선다(omf-all-around#228).
            */}
-          {selectedId !== null && (
-            <div className="disposition-side-head">
-              <h2 className="pane-title">
-                {tab === 'pending' ? t.panes.detailDecision : t.panes.historyDetail}
-              </h2>
-              {detail.data !== undefined && (
-                <Chip
-                  size="sm"
-                  status={detail.data.statusCode === 'DECIDED' ? 'success' : 'warning'}
-                >
-                  {codeValueLabel(status, detail.data.statusCode)}
-                </Chip>
-              )}
-            </div>
-          )}
           <div className="disposition-side-part" aria-label={t.panes.detail} role="group">
             <DetailSlot
               selectedId={selectedId}
@@ -826,6 +832,7 @@ export const DispositionDecisionScreen = ({
               onOpenNonconformance={(id) =>
                 setSearchParams((current) => withSelectedNonconformance(current, id))
               }
+              status={statusChip}
             />
           </div>
           {/* 판정 입력은 처분 대기에서만 — 처분 이력은 보기만 한다(#223). */}
@@ -844,50 +851,52 @@ export const DispositionDecisionScreen = ({
                 {pendingConcession !== undefined && (
                   <PendingConcessionBox concession={pendingConcession} lotCount={lotRows.length} />
                 )}
-                <DecisionFormPane
-                  value={form}
-                  errors={showErrors ? errors : write.fieldErrors}
-                  remainingQty={remaining.value}
-                  lockReason={lock.reason}
-                  isUncertain={lock.isUncertain}
-                  onCheckOutcome={checkOutcome}
-                  dispositionOptions={dispositionOptions}
-                  concession={{
-                    hint: t.form.typeHint.CONCESSION ?? '',
-                    lockReason: concessionLock,
-                    onRequest: () => {
-                      /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
-                      keepDocumentScroll();
-                      setIsConcessionOpen(true);
-                    },
-                  }}
-                  lots={lotRows}
-                  inboundLotNo={detailView?.inboundLotNo}
-                  inspectionRequestNo={detailView?.inspectionRequestNo}
-                  uomId={uomId}
-                  uoms={uoms}
-                  writeError={write.error}
-                  isSaving={write.isSaving}
-                  canCancel={hasDecisionInput(form)}
-                  onChange={(next) => {
-                    /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                    if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                      write.clearFieldError('dispositionTypeCode');
-                    if (next.reason !== form.reason) write.clearFieldError('reason');
-                    if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
-                    if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
-                    if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
-                    setForm(next);
-                  }}
-                  onSave={save}
-                  onCancel={() => {
-                    setForm(EMPTY_DECISION_FORM);
-                    setShowErrors(false);
-                    /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                    write.reset();
-                  }}
-                  onReload={checkOutcome}
-                />
+                {/* 특채가 걸려 있으면(결재 대기 · 승인 · 반려, 적용 전) 처분 판정을 할 수 없다 — 입력 칸을 두지 않고 위 상자만 보인다(사용자 지시 2026-11-17). */}
+                {pendingConcession === undefined && (
+                  <DecisionFormPane
+                    value={form}
+                    errors={showErrors ? errors : write.fieldErrors}
+                    remainingQty={remaining.value}
+                    lockReason={lock.reason}
+                    isUncertain={lock.isUncertain}
+                    onCheckOutcome={checkOutcome}
+                    dispositionOptions={dispositionOptions}
+                    concession={{
+                      lockReason: concessionLock,
+                      onRequest: () => {
+                        /* 창이 열리며 문서가 밀리지 않게 누른 순간의 자리를 붙든다(G2 L14-1). */
+                        keepDocumentScroll();
+                        setIsConcessionOpen(true);
+                      },
+                    }}
+                    lots={lotRows}
+                    inboundLotNo={detailView?.inboundLotNo}
+                    inspectionRequestNo={detailView?.inspectionRequestNo}
+                    uomId={uomId}
+                    uoms={uoms}
+                    writeError={write.error}
+                    isSaving={write.isSaving}
+                    canCancel={hasDecisionInput(form)}
+                    onChange={(next) => {
+                      /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                      if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                        write.clearFieldError('dispositionTypeCode');
+                      if (next.reason !== form.reason) write.clearFieldError('reason');
+                      if (next.sortLotIds !== form.sortLotIds) write.clearFieldError('lotIds');
+                      if (next.goodQty !== form.goodQty) write.clearFieldError('goodQty');
+                      if (next.defectQty !== form.defectQty) write.clearFieldError('defectQty');
+                      setForm(next);
+                    }}
+                    onSave={save}
+                    onCancel={() => {
+                      setForm(EMPTY_DECISION_FORM);
+                      setShowErrors(false);
+                      /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                      write.reset();
+                    }}
+                    onReload={checkOutcome}
+                  />
+                )}
                 {result !== null && result.nonconformanceId === selectedId && (
                   <DecisionResultCard
                     result={result.result}
@@ -911,8 +920,17 @@ export const DispositionDecisionScreen = ({
               items={[
                 {
                   value: 'decisions',
-                  label:
-                    `${t.panes.decisions} ${decisions.isPending ? '' : t.decisions.count(decisionRows.length)}`.trim(),
+                  /* 건수는 구획 제목 옆 건수와 같은 흐린 글(omf-all-around#286). */
+                  label: (
+                    <>
+                      {t.panes.decisions}{' '}
+                      {decisions.isPending ? null : (
+                        <span className="disposition-count-badge">
+                          {t.decisions.count(decisionRows.length)}
+                        </span>
+                      )}
+                    </>
+                  ),
                   content: (
                     <DecisionHistory
                       rows={decisionRows}
@@ -924,9 +942,17 @@ export const DispositionDecisionScreen = ({
                 },
                 {
                   value: 'concessions',
-                  label:
-                    /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
-                    `${t.concession.foldTitle} ${concessions.data === undefined ? '' : t.concession.count(groupConcessions(concessions.data).length)}`.trim(),
+                  /* 다LOT 묶음은 결재 하나가 한 줄이다 — 행 수가 아니라 묶음 수로 센다(G2 L-d). */
+                  label: (
+                    <>
+                      {t.concession.foldTitle}{' '}
+                      {concessions.data === undefined ? null : (
+                        <span className="disposition-count-badge">
+                          {t.concession.count(groupConcessions(concessions.data).length)}
+                        </span>
+                      )}
+                    </>
+                  ),
                   content: (
                     <ConcessionHistory nonconformanceId={selectedId} readOnly={tab === 'history'} />
                   ),
@@ -944,7 +970,6 @@ export const DispositionDecisionScreen = ({
             nonconformanceId={selectedId}
             lots={lotRows}
             remainingQty={remaining.value}
-            inboundLotNo={detailView?.inboundLotNo ?? null}
             uoms={uoms}
             today={today}
             onClose={(requested, lotCount) => {

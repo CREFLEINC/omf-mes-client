@@ -193,9 +193,20 @@ export const oqcInspection = {
     entryTabs: { lot: 'LOT별 검사', serial: '시리얼별 검사' },
     /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
     mergedSectionTitle: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
+    /* 입력을 상자 둘로 — IQC 결과 입력 창과 같다(사용자 시안 2026-11-16 · omf-all-around#274). */
+    quantityBox: '검사 수량',
+    judgmentBox: '종합 판정',
+    autoResult: '자동 판정 결과',
+    autoResultHint: '검사 수량과 항목을 입력한 뒤 판정 결과를 확인하세요.',
+    /* 임시 저장 · 검사 항목(omf-all-around#284 · PQC 와 같다). */
+    draftSave: '임시 저장',
+    draftSaved: '임시 저장했습니다.',
+    draftBlockedBySerials:
+      '시리얼별 검사 결과는 임시 저장할 수 없습니다. 판정 확정으로 저장하세요.',
+    confirmBlockedByItems: '검사 항목을 모두 판정해야 확정할 수 있습니다.',
     judgmentSectionTitle: '판정',
     /** 저장 단추 왼쪽 경고 — 저장이 곧 확정이라 되돌릴 수 없다(#136). */
-    saveNote: '판정 저장 후 수정이 불가합니다.',
+    saveNote: '판정 확정 후 수정이 불가합니다.',
     /** 넘겼다. 0으로 깎아 감추지 않는다. */
     over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
@@ -220,9 +231,9 @@ export const oqcInspection = {
     /**
      * ⭐ **임시 저장이 없다.** 이 버튼 하나가 곧 확정이며, 누르면 확인 창을 거친다.
      */
-    save: '판정 저장',
+    save: '판정 확정',
     saving: '저장 중',
-    saved: '판정을 저장했습니다.',
+    saved: '판정을 확정했습니다.',
     /** 수량이 아닌 값이 남아 있어 확인 창을 열 수 없다. */
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
     /**
@@ -258,15 +269,6 @@ export const oqcInspection = {
      */
     reinspectReasonPending:
       '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
-
-    /*
-     * 검사성적서 발행 — ⚠ **자리를 두되 비활성으로 시작한다.**
-     *
-     * ⛔ 감추지 않는다. 감추면 이 화면에 그 갈래가 «없는 것»이 되고, 계약이 오면 사용자는
-     * 「없던 것이 생겼다」로 만난다 — 자리가 보이면 「아직 못 쓴다」로 만난다. 둘은 다른 경험이다.
-     */
-    coaIssue: '검사성적서 발행',
-    coaPending: '검사성적서 발행은 아직 열리지 않았습니다 — 출력물 발행 계약이 준비되면 열립니다.',
   },
 
   /**
@@ -276,9 +278,6 @@ export const oqcInspection = {
    */
   transition: {
     title: '확정하면 LOT 상태가 바뀝니다',
-    /** ① 대상 규모를 숫자로 — 지금 친 값을 그대로 되읽는다. */
-    quantities: (accepted: string, rejected: string, held: string): string =>
-      `합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`,
     /**
      * 아는 판정일 때만 방향을 말한다. ⛔ 모르는 코드에 방향을 지어내지 않는다.
      * ⭐ 상태 이름은 서버 전이표(`core/document-state/transitions.ts` C4·C5·C6)와 같다 — 합격 → 정상
@@ -302,18 +301,6 @@ export const oqcInspection = {
     directionUnknown: '확정하면 LOT 상태가 바뀝니다.',
     /** ② 다른 화면에 미치는 영향. ⚠ 건수를 쓰지 않는다 — 셀 자리가 이 화면에 없다. */
     pickingImpact: '이 LOT 을 쓰는 진행 중 피킹이 함께 막힙니다.',
-    /** ③ 되돌림 비용. */
-    pickedNotReturned: '이미 피킹된 분은 이 전이로 회수되지 않습니다.',
-    noAmendment: '판정은 수정할 수 없습니다 — 번복은 재검사입니다.',
-    /**
-     * ④ 푸는 경로.
-     *
-     * ⚠ **링크를 걸지 않고, 사이드바에 없는 이름을 부르지도 않는다.** 처분을 «의뢰»하는 화면이
-     * 아직 없어서, 이름을 대면 사용자가 찾을 수 없는 것을 찾는다. 대신 **이 화면이 처분을 정하지
-     * 않는다는 사실**과 그 자리가 아직 열리지 않았다는 것을 말한다.
-     */
-    dispositionPath:
-      '불합격분의 처분(재작업·폐기)은 이 화면에서 정하지 않습니다 — 처분 의뢰 화면이 열리면 그곳에서 합니다.',
     /** 판정 구획의 「판정 확정 안내」 상자(#136) — 수량 · 고른 판정 · 되돌릴 수 없음 · LOT 영향. */
     guide: {
       title: '판정 확정 안내',
@@ -323,13 +310,12 @@ export const oqcInspection = {
   },
 
   /** 확인 창 — **쓰기는 이 창의 버튼에서만 나간다.** */
+  /** 판정 확정 확인 창 — 창 모양 · 공통 문구는 `judgmentConfirm`(PQC 와 같다 · omf-all-around#286). */
   confirm: {
-    title: (inspectionRequestNo: string): string => `${inspectionRequestNo} 판정 저장`,
-    judgment: (label: string): string => `최종 판정: ${label}`,
-    /* ⛔ 수량 셋을 여기서 따로 내지 않는다 — 전이 경고 본문의 첫 규칙이 이미 그 세 값이다. */
-    irreversible: '저장하면 되돌릴 수 없습니다.',
-    cancel: '취소',
-    confirm: '판정 저장',
+    confirm: '판정 확정',
+    /** 「확정 시 적용 사항」(사용자 시안 2026-11-17). */
+    applyPicking: '해당 LOT의 진행 중인 피킹이 종료됩니다.',
+    applyPickedNotReturned: '이미 피킹된 수량은 회수되지 않습니다.',
   },
 
   /**

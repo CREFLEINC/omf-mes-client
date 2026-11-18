@@ -107,6 +107,11 @@ export interface BalanceView {
    * 만들어지고, 그것이 어느 줄의 상한으로 읽힐 수 있다.
    */
   lotId: number | null;
+  /**
+   * 어느 위치의 잔액인가 — `groupBy=LOCATION` 으로 받아 LOT 이 지금 놓인 자리를 안다(omf-all-around#282).
+   * 접힌 줄이면 오지 않으므로 없음을 없음으로 옮긴다.
+   */
+  locationId: number | null;
   onHandQty: number;
   /**
    * 그 수량의 단위. **비교하기 전에 라인의 단위와 같은지 본다** — 다르면 100과 5를 견주는
@@ -118,6 +123,7 @@ export interface BalanceView {
 /** 잔액 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
 export const toBalanceView = (data: BalanceResponse): BalanceView => ({
   lotId: data.lotId ?? null,
+  locationId: data.locationId ?? null,
   onHandQty: data.onHandQty,
   uomId: data.uomId,
 });

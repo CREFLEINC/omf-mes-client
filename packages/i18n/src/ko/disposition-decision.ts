@@ -1,11 +1,14 @@
 export const dispositionDecision = {
   title: '부적합 처분 관리',
+  /** 목록과 상세 사이 막대의 단추 — 항목을 고르면 목록이 접힌다(omf-all-around#275). */
+  listCollapse: '목록 접기',
+  listExpand: '목록 펼치기',
   breadcrumbRoot: '품질 관리',
   /** 탭 줄 오른쪽 상태 칩 — 「판정 대기 3」. 건수를 아직 모르면 이름만(#223). */
   statusChip: (label: string, count: number | undefined): string =>
     count === undefined ? label : `${label} ${String(count)}`,
-  /** 조회 조건의 상세 펼치기 — 심각도 · 원천(사용자 지시 · #223). */
-  filterDetail: { open: '상세 펼치기', close: '상세 접기' },
+  /** 조회 조건의 상세 펼치기 — 심각도 · 원천. 다른 화면과 같은 말(#223 · omf-all-around#275). */
+  filterDetail: { open: '상세 조건 펼치기', close: '상세 조건 접기' },
   tabs: {
     label: '처분 판정 보기',
     pending: '처분 대기',
@@ -20,7 +23,7 @@ export const dispositionDecision = {
     filter: '조회 조건',
     list: '처분 대기 목록',
     detail: '선택한 부적합',
-    detailDecision: '부적합 상세 및 판정',
+    detailDecision: '부적합 상세',
     /** 처분 이력 탭의 오른쪽 구획 — 판정 입력 없이 보기만(#223). */
     historyDetail: '부적합 상세',
     decision: '판정',
@@ -46,8 +49,8 @@ export const dispositionDecision = {
     severityCode: '심각도',
     statusCode: '처리 상태',
     sourceCode: '원천',
-    nonconformanceNo: '부적합번호',
-    openedAt: '접수일',
+    nonconformanceNo: '부적합 번호',
+    openedAt: '접수일시',
     qty: '수량',
     description: '설명',
     lotNo: 'LOT 번호',
@@ -58,8 +61,10 @@ export const dispositionDecision = {
     reason: '사유',
     decidedAt: '판정 일시',
     decidedBy: '판정자',
-    remainingQty: '남은 수량',
-    dispositionProgressCode: '판정 현황',
+    /** 아직 처분하지 않은 수량(omf-all-around#275 — 「남은 수량」에서 바꿈). */
+    remainingQty: '미처분 수량',
+    /** 부적합 사유 — 상세 기본 정보의 한 칸(omf-all-around#275). */
+    reasonText: '부적합 사유',
   },
   all: '전체',
   codePending: '선택할 기준값이 아직 준비되지 않았습니다',
@@ -98,8 +103,8 @@ export const dispositionDecision = {
     notFoundDescription: '목록을 새로 조회한 뒤 다른 부적합을 선택하세요.',
     emptyDescription: '등록된 설명이 없습니다',
     noLots: '대상 자재 관리 LOT 이 없습니다',
-    /** 기본 정보의 대상 수량 칸(사용자 시안 · #223). */
-    affectedQty: '대상 수량',
+    /** 목록 · 기본 정보의 부적합 수량 칸(omf-all-around#275 — 「대상 수량」에서 바꿈). */
+    affectedQty: '부적합 수량',
   },
   decisions: {
     /** 접는 머리의 건수 — 「판정 이력 0건」(사용자 시안 · #223). */
@@ -115,24 +120,20 @@ export const dispositionDecision = {
     count: (count: number): string => `${String(count)}건`,
     /** 요청 구역 머리 — 제목 왼쪽, 한 줄 설명 오른쪽(사용자 시안 · #223). */
     requestHeading: '특채 요청',
-    requestNote: '불합격 입하 LOT 의 조건부 사용 승인을 요청합니다 — 한도 승인도 이 길로',
+    requestNote: '불합격 LOT의 조건부 사용 승인을 요청합니다.',
     /** 005 FR-038 — 전량 특채(남은 수량 고정 · 일부 특채 없음). 자재 관리 LOT 이 여럿이면 `lotId` 없이 요청한다(D-14). */
-    target: '대상',
-    /** 「자재 관리 LOT n개 전부」를 앞에 — 읽기 전용 칸이 좁아 뒤가 잘려 보이지 않았다(G2 L13). */
-    targetAll: (inboundLotNo: string | null, count: number): string =>
-      `자재 관리 LOT ${String(count)}개 전부${inboundLotNo === null ? '' : ` · 입하 LOT ${inboundLotNo}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    qtyLocked: '남은 수량 전부 — 바꿀 수 없음',
-    wholeHint:
-      '특채는 남은 수량 전부만 요청합니다(일부 특채 없음). 일부만 쓰려면 먼저 [선별]로 불량 자재 관리 LOT 를 떼어 낸 뒤, 그 입하 LOT 를 전량 특채하세요.',
+    target: '대상 LOT',
+    /** 요청 창 대상 칸 — 자재 관리 LOT 개수(사용자 시안 2026-11-17 · 창 디자인 통일). */
+    targetAll: (count: number): string => `자재 관리 LOT ${String(count)}개`,
+    wholeNote:
+      '미처분 수량 전체에 대해 특채를 요청합니다. 일부 수량만 요청하려면 먼저 LOT을 분할해야 합니다.',
     /** 결재 대기 특채가 있으면 처분 판정 자리에 — 적용은 아래 「특채 요청 이력」의 [특채 적용]. */
-    pendingBanner: (concessionNo: string, count: number): string =>
-      `특채 ${concessionNo} 결재 대기 중(W-03-09). 승인되면 [특채 적용]으로 자재 관리 LOT ${String(count)}개 전부를 정상으로 풉니다.`,
+    pendingBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재 대기 중입니다.`,
     /** 결재가 승인됐고 적용 전(G2 M3). */
-    approvedBanner: (concessionNo: string, count: number): string =>
-      `특채 ${concessionNo} 승인됨 — 적용 대기. [특채 적용]으로 자재 관리 LOT ${String(count)}개 전부를 정상으로 풉니다.`,
-    rejectedBanner: (concessionNo: string): string =>
-      `특채 ${concessionNo} 결재가 반려됐습니다. [특채 닫기]로 이 특채를 닫으세요.`,
-    close: '특채 닫기',
+    approvedBanner: (concessionNo: string): string => `특채 ${concessionNo} 승인됐습니다.`,
+    rejectedBanner: (concessionNo: string): string => `특채 ${concessionNo} 결재가 반려됐습니다.`,
+    /** 반려된 특채를 마무리하는 단추 — 적용 경로가 반려 묶음을 닫는다(omf-all-around#275 — 「특채 닫기」에서 바꿈). */
+    close: '반려 확인',
     /** 이력 표의 묶음 한 줄 — 같은 결재의 행(자재 관리 LOT 마다 한 행)을 한 줄로. */
     targetGroup: (count: number): string => `자재 관리 LOT ${String(count)}개 전부`,
     historyHeading: '특채 요청 이력',
@@ -147,9 +148,9 @@ export const dispositionDecision = {
     /** 결재 대기 중에는 적용할 수 없다(G2 5차). */
     applyWaiting: '결재가 끝나야 적용할 수 있습니다(W-03-09)',
     applying: '적용하는 중…',
-    qty: '사용 가능 수량',
-    validFrom: '시작일',
-    validTo: '종료일 (선택)',
+    qty: '특채 요청 수량',
+    validFrom: '적용 시작일',
+    validTo: '적용 종료일 (선택)',
     reason: '특채 사유',
     requested: '특채를 요청했습니다. 결재가 끝나면 적용하세요.',
     /** 다LOT 전량 특채 — 서버가 자재 관리 LOT 마다 특채 행을 만든 수(`concessionIds`). */
@@ -184,36 +185,31 @@ export const dispositionDecision = {
     heading: '처분 판정',
     reasonPlaceholder: '판정 사유를 입력하세요',
     dispositionLabel: '처분 유형',
+    /** 처분 판정 머리 오른쪽(사용자 시안 · omf-all-around#275). */
     qtyLabel: '처분 수량',
     reasonLabel: '판정 사유',
     /**
      * 005 FR-038 — 처분 수량은 남은 수량 전부로 고정한다(입력 없음 · 일부 판정 없음). 판정 하나가 자재 관리 LOT 전부를 옮긴다.
      */
-    qtyLocked: '남은 수량 전부 — 바꿀 수 없음',
+    /* 저장하면 생기는 일 — 유형마다 다르다(정상 · 폐기는 상태만, 재작업은 IQC 가 다시 열린다 · omf-all-around#275). */
     wholeEffect: (count: number, effect: string): string =>
-      `= 남은 수량 전부. 판정 하나가 자재 관리 LOT ${String(count)}개 ${effect}`,
+      `저장하면 자재 관리 LOT ${String(count)}개가 ${effect}`,
     effect: {
-      NORMAL: '전부 정상',
-      SCRAP: '전부 폐기',
-      REWORK: '전부 검사 대기 + 재검사',
+      NORMAL: '모두 정상으로 바뀝니다.',
+      SCRAP: '모두 폐기로 바뀝니다.',
+      REWORK: '모두 검사 대기로 바뀌고, 다시 검사해야 합니다.',
     },
     reworkInboundEffect: (inboundLotNo: string): string =>
-      `전부 검사 대기 + 입하 LOT ${inboundLotNo} 의 IQC 를 다시 엶(결과 더한 뒤 다시 확정)`,
+      `모두 검사 대기로 바뀌고, 입하 LOT ${inboundLotNo} 의 IQC 가 다시 열려 재검사해야 합니다.`,
     remainingUnknown: '남은 수량을 확인하는 중입니다. 잠시 뒤 다시 저장하세요',
-    /** 처분 유형 칸의 한 줄 설명(시안 W0310-After). */
-    typeHint: {
-      NORMAL: '자재 관리 LOT 전부를 정상으로',
-      SCRAP: '자재 관리 LOT 전부를 폐기',
-      REWORK: '전부 검사 대기 + 같은 입하 LOT IQC 다시 열림',
-      SORT: '불량 자재 관리 LOT 만 새 입하 LOT 로 분리',
-      CONCESSION: '전량 조건부 사용 — 결재(W-03-09)',
-    } as Record<string, string | undefined>,
     /** 막힌 처분 유형의 이유 — 단추는 잠그고 이유를 단다. */
     typeLock: {
       closed: '종결된 부적합입니다',
       concessionPending: '특채 결재 대기 중',
       /** 결재 승인 뒤 적용 전 — 위 상자의 「승인됨 — 적용 대기」와 같은 말(G2 L-d). */
       concessionApproved: '특채 승인됨 — 적용 대기',
+      /** 결재 반려 뒤 [반려 확인] 전(omf-all-around#275). */
+      concessionRejected: '특채 반려 — 반려 확인 대기',
       sortNoInboundLot: '반품·OQC 부적합에는 선별이 없습니다(입하 LOT 없음)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
       sortSingleLot: '자재 관리 LOT 가 1개라 선별할 수 없습니다',
       sortNotFirst: '선별은 첫 판정일 때만 할 수 있습니다',
@@ -238,7 +234,8 @@ export const dispositionDecision = {
     qtyExceededByServer: (remaining: string): string =>
       `처분 결정 수량 합이 남은 수량(${remaining})을 넘어 저장되지 않았습니다. 부적합을 다시 불러온 뒤 저장하세요`,
     alreadyClosed: '이미 종결된 부적합입니다. 판정을 저장할 수 없습니다',
-    reasonRequired: '사유를 입력하세요',
+    /* 입력칸 안내(「판정 사유를 입력하세요」)와 같은 말을 되풀이하지 않는다(omf-all-around#275). */
+    reasonRequired: '판정 사유는 꼭 입력해야 합니다.',
     dispositionRequired: '처분을 선택하세요',
     savingReason: '판정을 저장하는 중입니다',
     uncertainReason: '앞서 보낸 판정의 처리 결과를 먼저 확인해야 합니다',
@@ -264,22 +261,19 @@ export const dispositionDecision = {
     inboundLotNo: '입하 LOT',
     inspectionRequestNo: 'IQC 검사',
     supplier: '공급사',
-    listLine: (inboundLotNo: string): string => `입하 LOT ${inboundLotNo}`,
     /** 목록 「원천」 칸(screens/W-03-10.md 목록 행 · G2 L8). */
     sourceColumn: '원천',
     source: { IQC: 'IQC · 자재 입하', RETURN: '반품', PRODUCT: 'OQC · 제품' }, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     /** 선별 건 — 「· 선별 ← 0004」(원래 부적합 번호 끝 4자리). */
     sortedFromTail: (tail: string): string => ` · 선별 ← ${tail}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    bannerTitle: '처분은 입하 LOT 단위입니다.',
-    bannerBody: (count: number): string =>
-      `판정 하나가 자재 관리 LOT ${String(count)}개 전부에 함께 적용됩니다. 자재 관리 LOT 별로 따로 처분하지 않습니다.`,
-    matching: 'IQC 결과 매칭',
-    matchingNote: 'IQC 결과 매칭 — 참고용',
-    noMatch: '매칭 없음',
+    /** 이 LOT 에 연결된 IQC 검사 결과(omf-all-around#275 — 「IQC 결과 매칭」에서 바꿈). */
+    matching: '검사 결과',
+    noMatch: '연결된 검사 결과 없음',
+    /** 「불합격 (검사 결과 1)」 — 판정을 앞에, 몇 번째 검사 결과인지 뒤에(omf-all-around#275). */
     resultChip: (seqNo: number, judgment: string, defect: string | null): string =>
-      `결과 ${String(seqNo)} ${judgment}${defect === null ? '' : ` · ${defect}`}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
+      `${judgment}${defect === null ? '' : `: ${defect}`} (검사 결과 ${String(seqNo)})`,
     rejectedCount: (count: number): string => `불합격 결과 ${String(count)}건`,
-    unmatched: (results: string): string => `매칭 없는 결과: ${results}`,
+    unmatched: (results: string): string => `LOT에 연결되지 않은 검사 결과: ${results}`,
     judgment: { ACCEPTED: '합격', REJECTED: '불합격', HELD: '보류' } as Record<
       string,
       string | undefined
@@ -292,7 +286,7 @@ export const dispositionDecision = {
     heading: '선별 — 불량 자재 관리 LOT 고르기',
     help: '고른 자재 관리 LOT 는 새 입하 LOT 로 옮겨져 불량 그대로 새 부적합에서 처분합니다. 고르지 않은 자재 관리 LOT 는 정상이 됩니다. 수량으로 LOT 를 쪼개지 않습니다.',
     lotsLabel: '불량 자재 관리 LOT',
-    noMatch: '매칭 결과 없음',
+    noMatch: '연결된 검사 결과 없음',
     allSelected:
       '원래 입하 LOT 에 자재 관리 LOT 가 하나 이상 남아야 합니다. 모두 불량이면 선별하지 말고 폐기·재작업·특채로 처분하세요.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
     noneSelected: '불량 자재 관리 LOT 를 하나 이상 고르세요',
@@ -377,33 +371,7 @@ export const dispositionDecision = {
       PARTIAL: '일부 판정',
       COMPLETED: '완료',
     },
-  },
-  /**
-   * 「지금(바뀌기 전)」 띠(005 · screens/W-03-10.md · mockups/W0310-After.html) — 처분 방식이 바뀐 점을 알린다.
-   * C5 에서는 한국어 상수였고 C7 에서 언어별 문구로 옮겼다(총괄 지시 2026-11-12).
-   */
-  nowBand: {
-    title: '지금(바뀌기 전)',
-    summary:
-      '처분 수량을 나눠 여러 번 판정 · 선별 = 양품/불량 수량으로 LOT 를 쪼갬(자식 LOT) · 특채 = LOT 1개 고르고 일부 수량도 가능', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-    expand: '펼치기',
-    collapse: '접기',
-    items: [
-      {
-        label: '처분 수량',
-        tag: '없어짐',
-        note: '처분 수량을 나눠 일부만 판정할 수 있었습니다(입력 / 미입력).',
-      },
-      {
-        label: '양품 · 불량 수량 (선별)', // ui-check-ignore: C-13 설계 확정 문구(screens/W-03-10.md)
-        tag: '바뀜',
-        note: '불량 수량은 새 LOT 으로 나뉘어(자식 LOT) 새 부적합이 됐습니다.',
-      },
-      {
-        label: '특채 요청',
-        tag: '일부 특채 없어짐',
-        note: 'LOT 하나를 고르고 일부 수량만 승인할 수 있었고, 나머지는 새 LOT 과 부적합으로 나뉘었습니다.',
-      },
-    ],
+    /** 처리 상태 칸 — 일부 판정 건만 상태 뒤에 덧붙인다(「판정 현황」 열을 합침 · omf-all-around#275). */
+    statusWithProgress: (status: string, progress: string): string => `${status} (${progress})`,
   },
 } as const;

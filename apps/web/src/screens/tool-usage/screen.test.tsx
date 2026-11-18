@@ -154,15 +154,14 @@ describe('ToolUsageScreen — 머리줄', () => {
       { fetch: createStubFetch(routes({})), route: ENTRY_ROUTE },
     );
 
-    expect(
-      await screen.findByText(`${t.entry.workOrderLabel} 1001 · 설비 프레스 1호기`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('설비 프레스 1호기')).toBeInTheDocument();
   });
 
-  it('단말 설비가 없으면 W/O 만 보인다', async () => {
+  it('머리줄에 W/O 내부 id 를 적지 않는다 — W/O 번호는 단계 줄이 보인다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(`${t.entry.workOrderLabel} 1001`)).toBeInTheDocument();
+    await screen.findByRole('button', { name: t.actions.confirm });
+    expect(screen.queryByText('W/O 1001')).toBeNull();
   });
 });
 

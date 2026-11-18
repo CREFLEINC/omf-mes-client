@@ -80,12 +80,11 @@ import { materialPicking } from './material-picking';
 import { notice } from './notice';
 import { notificationCenter } from './notification-center';
 import { oqcInspection } from './oqc-inspection';
+import { judgmentConfirm } from './judgment-confirm';
 import { outboxPending } from './outbox-pending';
 import { outboxRejections } from './outbox-rejections';
-import { packingLabelReprint } from './packing-label-reprint';
 import { packingRepack } from './packing-repack';
 import { packingResult } from './packing-result';
-import { packingWork } from './packing-work';
 import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
@@ -252,12 +251,11 @@ export const vi: Translated<Messages> = {
   notice,
   notificationCenter,
   oqcInspection,
+  judgmentConfirm,
   outboxPending,
   outboxRejections,
-  packingLabelReprint,
   packingRepack,
   packingResult,
-  packingWork,
   passwordChange,
   pendingCode,
   physicalCount,

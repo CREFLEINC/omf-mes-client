@@ -301,16 +301,15 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     renderScreen();
 
     expect(await screen.findByText(t.targets.beforeKind)).toBeInTheDocument();
-    expect(screen.queryByText(t.printer.none)).not.toBeInTheDocument();
+    expect(screen.queryByText(/프린터가 없습니다/u)).not.toBeInTheDocument();
   });
 
-  it('종류를 고르기 전에도 프린터 자리는 서 있고 잠겨 있다', async () => {
+  /* 프린터는 본문 칸이 아니라 공통 메뉴 맨 위 줄 프린터 칩에서 고른다(#291 · 사용자 지시 2026-11-17). */
+  it('본문에는 프린터 고르기 칸이 없다', async () => {
     renderScreen();
 
-    const select = await screen.findByRole('combobox', { name: t.printer.label });
-
-    // 자리를 감췄다 세우면 그 순간 아래가 밀린다 — 자리는 두고 잠근다(사용자 지시).
-    expect(select).toBeDisabled();
+    await screen.findByText(t.targets.beforeKind);
+    expect(screen.queryByRole('combobox', { name: t.printer.label })).toBeNull();
   });
 
   it('납품라벨은 구성 중인 단위도 목록에 남기되 고를 수 없게 한다', async () => {

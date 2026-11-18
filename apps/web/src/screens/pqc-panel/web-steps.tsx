@@ -2,7 +2,6 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { InspectionQtyLine, type InspectionQtyStatus } from '../../patterns/inspection-qty-line';
-import { InspectionSteps, type InspectionStepItem } from '../../patterns/inspection-steps';
 import { isKnownCode, type CodeOption } from '../pqc-inspection/code-options';
 import type { DispositionState } from '../pqc-inspection/disposition';
 import {
@@ -12,7 +11,6 @@ import {
 } from '../pqc-inspection/measurement-draft';
 import type { MeasurementRow } from '../pqc-inspection/measurement-rows';
 import {
-  canConfirm,
   formatMicro,
   hasQuantityError,
   toMicro,
@@ -25,7 +23,6 @@ import { PqcJudgmentFields } from './result-form';
 import { WebItemTable } from './web-item-table';
 
 const t = messages.pqcInspectionRegister.web;
-const tHub = messages.common.inspectionHub;
 const tResult = messages.pqcInspection.result;
 
 const ACCEPTED = 'ACCEPTED';
@@ -179,114 +176,116 @@ export const PqcWebSteps = ({
           ),
           isZero: totals.remaining === 0n,
         };
-  const qtyText = (raw: string): string => withUnit(raw.trim() === '' ? '0' : raw);
-  /* 검사 수량 · 항목별 결과 · 최종 판정을 한 단계로(IQC 와 같다 · 사용자 지시 2026-11-09). */
-  const judgmentText =
-    judgmentOptions.find((option) => option.value === judgment)?.label ?? judgment;
-  const steps: InspectionStepItem[] = [
-    {
-      title: t.mergedHeading,
-      done: canConfirm(totals) && judgment !== '',
-      attention: Object.keys(FIELD_OF).some((name) => fieldErrors[name] !== undefined),
-      summary: [
-        tHub.qtySummary(qtyText(draft.accepted), qtyText(draft.rejected), qtyText(draft.held)),
-        judgmentText,
-      ]
-        .filter((part) => part !== '')
-        .join(' · '), // ui-check-ignore: C-13 사용자 지시 표기(#247)
-      render: () => (
-        <>
-          <div className="iqc-inspection-qty-body" data-with-judgment="">
-            <InspectionQtyLine
-              uomCode={uomCode}
-              disabled={isLocked}
-              status={status}
-              /* 최종 판정은 수량 줄 오른쪽(IQC 와 같다 · 사용자 지시 2026-11-09). */
-              trailing={
-                <PqcJudgmentFields
-                  part="judgment"
-                  judgmentOptions={judgmentOptions}
-                  judgment={judgment}
-                  onJudgmentChange={(code) => {
-                    autoFilled.current = null;
-                    onJudgmentChange(code);
-                  }}
-                  disposition={disposition}
-                  onDispositionChange={onDispositionChange}
-                  rejected={draft.rejected}
-                  isLocked={isLocked}
-                />
-              }
-              /*
-               * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
-               * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
-               */
-              fields={[
-                ...(
-                  [
-                    ['accepted', t.quantity.accepted],
-                    ['rejected', t.quantity.rejected],
-                    ['held', t.quantity.held],
-                  ] as const
-                ).map(([key, label]) => ({
-                  key,
-                  kind: key,
-                  label,
-                  value: draft[key],
-                  onChange: (raw: string) => {
-                    const typed = { ...draft, [key]: raw };
-                    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
-                    const remaining =
-                      key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
-                    const next = remaining === null ? typed : { ...typed, accepted: remaining };
-                    onChange(next);
-                    applyAuto(next);
-                  },
-                  error:
-                    serverErrorOf(key) ??
-                    (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
-                })),
-              ]}
-            >
-              {inspectionRound !== null && (
-                <p className="field-note">{t.quantity.round(inspectionRound)}</p>
-              )}
-              {errorBanner}
-            </InspectionQtyLine>
-          </div>
-          {inspectionPlanVersionId !== null && (
-            <WebItemTable
-              inStep
-              rows={rows}
-              drafts={drafts}
-              onValueChange={onValueChange}
-              onJudgmentChange={onItemJudgmentChange}
-              judgmentOptions={itemJudgmentOptions}
-              uomCodeOf={uomCodeOf}
-              isLoading={itemsLoading}
-              isLocked={isLocked}
-              inspectionPlanVersionId={inspectionPlanVersionId}
-              footer={null}
-            />
-          )}
-          <PqcJudgmentFields
-            part="disposition"
-            judgmentOptions={judgmentOptions}
-            judgment={judgment}
-            onJudgmentChange={(code) => {
-              autoFilled.current = null;
-              onJudgmentChange(code);
-            }}
-            disposition={disposition}
-            onDispositionChange={onDispositionChange}
-            rejected={draft.rejected}
-            isLocked={isLocked}
-          />
-          {judgmentBelow}
-        </>
-      ),
-    },
-  ];
+  /*
+   * 입력을 상자 셋으로 — 검사 수량 · 검사 항목 · 종합 판정(사용자 시안 2026-11-16 · #274 · IQC 결과 입력 창과 같다).
+   * 단계(접고 펴기)는 두지 않는다. 값 · 판정 규칙은 그대로다.
+   */
+  const expected = expectedOf(draft);
+  const expectedText =
+    expected === null
+      ? null
+      : (judgmentOptions.find((option) => option.value === expected)?.label ?? expected);
 
-  return <InspectionSteps steps={steps} showAll={isLocked} />;
+  return (
+    <div className="pqc-web-boxes">
+      <section className="pqc-web-box" aria-label={t.quantityBox}>
+        <h3>{t.quantityBox}</h3>
+        <div className="iqc-inspection-qty-body">
+          <InspectionQtyLine
+            uomCode={uomCode}
+            disabled={isLocked}
+            status={status}
+            /*
+             * 검사 수량은 입력받지 않는다(사용자 지시 2026-10-29 · #197) — 서버가 의뢰를 만들 때 검사기준의 전수 · 샘플링 설정으로
+             * 정한 의뢰 수량(작성중 회차면 그 회차의 값)이고, 오른쪽 「전체 N EA 중」에 보인다. IQC 와 같다.
+             */
+            fields={[
+              ...(
+                [
+                  ['accepted', t.quantity.accepted],
+                  ['rejected', t.quantity.rejected],
+                  ['held', t.quantity.held],
+                ] as const
+              ).map(([key, label]) => ({
+                key,
+                kind: key,
+                label,
+                value: draft[key],
+                onChange: (raw: string) => {
+                  const typed = { ...draft, [key]: raw };
+                  /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
+                  const remaining =
+                    key === 'accepted' ? null : remainingAcceptedOf(typed, inspectedQty);
+                  const next = remaining === null ? typed : { ...typed, accepted: remaining };
+                  onChange(next);
+                  applyAuto(next);
+                },
+                error:
+                  serverErrorOf(key) ??
+                  (showErrors && errors[key] ? tResult.quantityInvalid : undefined),
+              })),
+            ]}
+          >
+            {inspectionRound !== null && (
+              <p className="field-note">{t.quantity.round(inspectionRound)}</p>
+            )}
+            {errorBanner}
+          </InspectionQtyLine>
+        </div>
+      </section>
+      {inspectionPlanVersionId !== null && (
+        <WebItemTable
+          inStep
+          rows={rows}
+          drafts={drafts}
+          onValueChange={onValueChange}
+          onJudgmentChange={onItemJudgmentChange}
+          judgmentOptions={itemJudgmentOptions}
+          uomCodeOf={uomCodeOf}
+          isLoading={itemsLoading}
+          isLocked={isLocked}
+          footer={null}
+        />
+      )}
+      <section className="pqc-web-box" aria-label={t.judgmentBox}>
+        <h3>{t.judgmentBox}</h3>
+        <div className="pqc-web-judgment-row">
+          <p className="pqc-web-auto-result">
+            <span className="parts-iqc-muted">{t.autoResult}</span>
+            {/* 확정된 회차는 다시 판정하지 않는다 — 안내 대신 「-」(OQC 와 같다). */}
+            <span>{isLocked ? '-' : (expectedText ?? t.autoResultHint)}</span>
+          </p>
+          <div className="pqc-web-judgment-pick">
+            <PqcJudgmentFields
+              part="judgment"
+              judgmentOptions={judgmentOptions}
+              judgment={judgment}
+              onJudgmentChange={(code) => {
+                autoFilled.current = null;
+                onJudgmentChange(code);
+              }}
+              disposition={disposition}
+              onDispositionChange={onDispositionChange}
+              rejected={draft.rejected}
+              isLocked={isLocked}
+            />
+          </div>
+        </div>
+        <PqcJudgmentFields
+          part="disposition"
+          judgmentOptions={judgmentOptions}
+          judgment={judgment}
+          onJudgmentChange={(code) => {
+            autoFilled.current = null;
+            onJudgmentChange(code);
+          }}
+          disposition={disposition}
+          onDispositionChange={onDispositionChange}
+          rejected={draft.rejected}
+          isLocked={isLocked}
+        />
+        {judgmentBelow}
+      </section>
+    </div>
+  );
 };

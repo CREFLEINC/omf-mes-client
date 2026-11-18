@@ -66,18 +66,14 @@ export const RequestDetailPane = ({
       key: 'item',
       label: t.fields.itemId,
       value:
+        /* IQC 상세와 같게 — 코드 옆에 이름을 한 줄로(사용자 지시 2026-11-16 · #274). */
         itemParts === null ? (
           itemNames.labelOf(detail.itemId)
         ) : (
-          <span
-            className="oqc-inspection-fact-item"
-            title={`${itemParts.name} · ${itemParts.code}`}
-          >
-            <span className="oqc-inspection-fact-ellipsis">{itemParts.name}</span>
-            <span className="oqc-inspection-fact-ellipsis oqc-inspection-queue-sub">
-              {itemParts.code}
-            </span>
-          </span>
+          <>
+            {itemParts.code}
+            <span className="parts-iqc-fact-sub">{itemParts.name}</span>
+          </>
         ),
       emphasized: true,
     },
@@ -85,11 +81,7 @@ export const RequestDetailPane = ({
       key: 'lot',
       label: unitFact?.kind === 'serial' ? t.serialNo : t.fields.lotId,
       /* 구분자가 많은 번호라 칸 안에서 끊기면 읽기 어렵다 — 한 줄 말줄임, 전체는 title. */
-      value: (
-        <span className="oqc-inspection-fact-ellipsis" title={lotNo}>
-          {lotNo}
-        </span>
-      ),
+      value: <span title={lotNo}>{lotNo}</span>,
       emphasized: true,
     },
     {
@@ -142,11 +134,12 @@ export const RequestDetailPane = ({
   return (
     <section className="oqc-inspection-section" aria-label={t.heading}>
       {/* 제목 글은 두지 않는다 — 쪽 머리 경로가 「검사 기본 정보」를 이미 말한다(IQC #133 과 같다). */}
-      <dl className="oqc-inspection-facts">
+      {/* 상자 모양은 IQC 상세 요약과 같은 칸(사용자 지시 2026-11-16 · #274) — 칸은 글 길이만큼, 넘치면 다음 줄로. */}
+      <dl className="parts-iqc-facts iqc-inbound-facts">
         {items.map((item) => (
-          <div className="oqc-inspection-fact" key={item.key}>
+          <div className="parts-iqc-fact" key={item.key}>
             <dt className="field-label">{item.label}</dt>
-            <dd className={item.emphasized === true ? 'oqc-inspection-fact-key' : undefined}>
+            <dd className={item.emphasized === true ? 'parts-iqc-fact-key' : undefined}>
               {item.value}
             </dd>
           </div>

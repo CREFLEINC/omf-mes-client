@@ -1,4 +1,4 @@
-import { Button, Chip, Icon, Table, type Column } from '@crefle/web-ui';
+import { Chip, Icon, IconButton, Table, type Column } from '@crefle/web-ui';
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
@@ -80,7 +80,7 @@ export const ResultList = ({
       header: t.columns.defects,
       render: (row) =>
         row.rejectedQty === 0 && row.defectNames.length === 0
-          ? '—'
+          ? t.noDefects
           : [formatQty(row.rejectedQty), ...row.defectNames].join(' · '), // ui-check-ignore: C-13 설계 확정 표기 「불량 · 유형」(screens/W-01-01.md)
     },
     {
@@ -111,24 +111,23 @@ export const ResultList = ({
           </span>
         ) : (
           <span className="iqc-inbound-actions">
-            <Button
-              variant="outlined"
+            {/* 수정 · 삭제는 아이콘 단추(사용자 지시 2026-11-16 · #274) — 이름은 마우스를 올리면 보인다. */}
+            <IconButton
+              icon="edit"
               size="sm"
               disabled={busy}
+              title={t.edit}
               aria-label={`${t.seq(row.seqNo)} ${t.edit}`}
               onClick={() => onEdit(row)}
-            >
-              {t.edit}
-            </Button>
-            <Button
-              variant="text"
+            />
+            <IconButton
+              icon="delete"
               size="sm"
               disabled={busy}
+              title={t.remove}
               aria-label={`${t.seq(row.seqNo)} ${t.remove}`}
               onClick={() => onDelete(row)}
-            >
-              {t.remove}
-            </Button>
+            />
           </span>
         ),
     },

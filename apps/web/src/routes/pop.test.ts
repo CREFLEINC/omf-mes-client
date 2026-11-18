@@ -76,8 +76,12 @@ describe('POP 라우트 분리', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/shipping-units');
   });
 
-  it('P-02-08 포장 작업 주소가 서 있다', () => {
-    expect(popRoutes.map(({ path }) => path)).toContain('/pop/packing-work');
+  it('없앤 생산 포장 · 포장 라벨 재출력 · PQC 제품 검사 주소는 없다(omf-all-around#293)', () => {
+    const paths = popRoutes.map(({ path }) => path);
+
+    expect(paths).not.toContain('/pop/packing-work');
+    expect(paths).not.toContain('/pop/packing-label-reprint');
+    expect(paths).not.toContain('/pop/pqc-inspection');
   });
 
   it('P-02-04 통합 주소만 남고 폐지된 P-02-05·06·07 독립 주소는 없다', () => {

@@ -4,7 +4,6 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 
 import { InspectionQtyLine, type InspectionQtyStatus } from '../../patterns/inspection-qty-line';
-import { InspectionSteps } from '../../patterns/inspection-steps';
 import { Select } from '../../patterns/select';
 import { CONFIRMED_STATUS } from './inspection-status';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -33,9 +32,8 @@ import { withUom } from './uom-lookup';
  * 합격 + 불합격 + 보류 = 검사수량
  * ```
  *
- * ⭐ **저장이 한 번이고 그것이 곧 확정이다.** 임시 저장을 두지 않는다 — 액션표에 없고(「판정
- * 수정」은 ⛔ 두지 않는다로 명시) 관리웹에는 오프라인 갈래가 없다. 그래서 「판정 저장」은
- * 확인 창을 열고, 쓰기는 그 창의 버튼에서만 나간다.
+ * ⭐ **임시 저장 → 판정 확정의 2단이다**(omf-all-around#284 · PQC 와 같다). 임시 저장은 작성중 회차를 만들거나
+ * 고치고 바로 나간다. 「판정 확정」은 되돌릴 수 없어 확인 창을 열고, 쓰기는 그 창의 버튼에서만 나간다.
  *
  * ⭐ **합격판정개수가 있는 기준이면 종합 판정을 수량으로 채운다**(omf-all-around#126 · IQC #125 와 같은 규칙).
  * 채운 판정은 바꿀 수 있지만, 바꾸면 「판정 변경 사유」를 넣어야 저장된다 — 서버도 같은 규칙으로 막는다(P-70).
@@ -52,7 +50,6 @@ import { withUom } from './uom-lookup';
  */
 
 const t = messages.oqcInspection.result;
-const tHub = messages.common.inspectionHub;
 
 export interface ResultFormPaneProps {
   /** 지금 다루는 회차. 아직 아무도 판정하지 않았거나 재검사 중이면 `null` */
@@ -118,6 +115,22 @@ export interface ResultFormPaneProps {
    * 입력으로 풀 수 없는 막힘(판정 코드 미등록) — 저장이 막힌 채 칸만 열려 있지 않게 입력 칸도 잠근다(#135).
    */
   isInputLocked?: boolean;
+  /** 작성중 회차를 이어 쓸 수 있는가(omf-all-around#284) — 참이면 작성중 회차가 잠기지 않는다. */
+  editsDraft?: boolean;
+  /** 검사 항목 상자(#284) — 검사 수량과 종합 판정 사이에 선다. */
+  itemSection?: ReactNode;
+  /** 「임시 저장」(#284) — 넘기면 단추가 선다. 확인 창 없이 바로 저장한다. */
+  onSaveDraft?: () => void;
+  /** 임시 저장이 막힌 이유(시리얼 결과 등). 풀렸으면 `null`. */
+  draftBlockedReason?: string | null;
+  /** 확정이 막힌 검사 항목 이유(모두 판정 전 · #284). 풀렸으면 `null`. */
+  itemsBlockedReason?: string | null;
+  /** 저장 값 오류(항목 측정값 형식 등) — 참이면 두 단추 모두 막는다(#284). */
+  hasInputError?: boolean;
+  /** 자동 판정 결과의 표시명 — 항목 판정까지 본 값(#284). 넘기지 않으면 `expectedJudgmentLabel`. */
+  autoResultLabel?: string | null;
+  /** 방금 끝난 저장이 임시 저장이었는가 — 알림 문구만 가른다(#284). */
+  justSavedDraft?: boolean;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -157,22 +170,25 @@ export const ResultFormPane = ({
   serialSection,
   serialBlockedReason = null,
   isInputLocked = false,
+  editsDraft = false,
+  itemSection,
+  onSaveDraft,
+  draftBlockedReason = null,
+  itemsBlockedReason = null,
+  hasInputError = false,
+  autoResultLabel,
+  justSavedDraft = false,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
-  const serialJudgmentId = useId();
   const lockNoteId = useId();
-  const coaNoteId = useId();
   const blockedNoteId = useId();
   /**
-   * ⭐ **이 화면은 어떤 회차도 고치지 않는다.**
-   *
-   * 확정본이 아니라 **회차가 있다는 사실**이 잠그는 근거다. 「작성중」만 열어 두면 막다른 길이
-   * 생긴다 — 이 화면에는 임시 저장도 확정 경로도 없어서, 칸이 열려 있어도 저장은 서버에서
-   * `UNIQUE(의뢰, 회차)` 에 걸려 409 로 되돌아오고, 「확정본이 아니다」라는 이유로 재검사 단추도
-   * 서지 않는다. 그러면 그 회차를 끝낼 길이 화면 어디에도 없다.
+   * 확정된 회차는 잠근다 — 판정은 정정하지 않고 재검사로 새 회차를 쌓는다(§5-3). 작성중 회차는 `editsDraft` 면
+   * 이어 쓰고(#284), 아니면 종전처럼 잠근다.
    */
-  const isLocked = round !== null;
   const isConfirmed = round?.statusCode === CONFIRMED_STATUS;
+  /* 작성중 회차는 이어 쓴다(#284) — 확정된 회차만 잠근다. */
+  const isLocked = round !== null && !(editsDraft && !isConfirmed);
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
   const preview = toTransitionPreview(draft, judgment, inspectedQty);
@@ -203,7 +219,7 @@ export const ResultFormPane = ({
   useEffect(() => {
     if (!isJustSaved) return;
     setOpenedAt(null);
-    toast.show({ variant: 'success', description: t.saved });
+    toast.show({ variant: 'success', description: justSavedDraft ? t.draftSaved : t.saved });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 저장이 막 끝났을 때 한 번만 알린다.
   }, [isJustSaved]);
 
@@ -223,20 +239,29 @@ export const ResultFormPane = ({
       ? t.blockedByTotals
       : judgmentOptions.length === 0
         ? t.blockedByJudgmentOptions
-        : judgment === ''
-          ? t.blockedByJudgment
-          : needsChangeReason && changeReason.trim() === ''
-            ? t.judgmentChange.required
-            : serialBlockedReason;
+        : itemsBlockedReason !== null
+          ? itemsBlockedReason
+          : judgment === ''
+            ? t.blockedByJudgment
+            : needsChangeReason && changeReason.trim() === ''
+              ? t.judgmentChange.required
+              : serialBlockedReason;
 
   /** 저장을 누른다 — **여는 것뿐이다.** 쓰기는 확인 창의 버튼에서 나간다. */
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     setShowErrors(true);
 
-    if (hasQuantityError(errors) || saveBlockedReason !== null) return;
+    if (hasQuantityError(errors) || hasInputError || saveBlockedReason !== null) return;
 
     setOpenedAt(new Date().toISOString());
+  };
+
+  /** 임시 저장(#284) — 확인 창 없이 바로 나간다. 값 형식이 틀리면 막고 그 칸을 보인다. */
+  const saveDraft = (): void => {
+    setShowErrors(true);
+    if (onSaveDraft === undefined || hasQuantityError(errors) || hasInputError) return;
+    onSaveDraft();
   };
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
@@ -260,7 +285,6 @@ export const ResultFormPane = ({
           ),
           isZero: totals.remaining === 0n,
         };
-  const qtyText = (raw: string): string => withUom(raw.trim() === '' ? '0' : raw, uomCode);
   /*
    * ⛔ **실패해도 창을 닫지 않는다.** 배너를 창 안에 내고 같은 창에서 다시 누르게 한다 —
    * 그래야 같은 멱등 키가 나가 서버가 두 번째 쓰기로 보지 않는다.
@@ -314,14 +338,12 @@ export const ResultFormPane = ({
 
   /* ── ① 검사 수량 — 검사수량을 합격 · 불합격 · 보류로 나눈 결과(잠긴 회차는 [확정] 없이 보이기만) ── */
   const quantityLine = (
-    <div className="iqc-inspection-qty-body" data-with-judgment="">
+    <div className="iqc-inspection-qty-body">
       <InspectionQtyLine
         uomCode={uomCode}
         disabled={isLocked || isSaving || isInputLocked}
         status={qtyStatus}
         describedBy={isLocked ? lockNoteId : undefined}
-        /* 최종 판정은 수량 줄 오른쪽(IQC 와 같다 · 사용자 지시 2026-11-09). */
-        trailing={judgmentFieldOf(judgmentId)}
         fields={(
           [
             ['accepted', t.fields.accepted],
@@ -411,63 +433,49 @@ export const ResultFormPane = ({
          * 의뢰(출하작업지시 · 열린 회차)는 ① 안에서 [LOT | 시리얼] 탭으로 전환한다(#136) — 어느 탭이든 판정과 함께 저장된다.
          * 잠긴 회차는 단계를 모두 펼쳐 보이기만 한다. 의뢰 · 회차가 바뀌면 단계를 새로 시작한다.
          */}
-        <InspectionSteps
+        {/*
+         * 상자 둘 — 검사 수량(시리얼 판정 의뢰는 [LOT | 시리얼] 탭) · 종합 판정(사용자 시안 2026-11-16 · #274 · IQC 결과 입력 창과
+         * 같다). 접고 펴는 단계는 두지 않는다. 판정 칸은 하나로 두 탭이 같은 값을 쓴다 — 값 · 저장 규칙은 그대로다.
+         */}
+        <div
+          className="pqc-web-boxes"
           key={`${inspectionRequestNo}:${String(round?.inspectionResultId ?? 'new')}:${String(isReinspecting)}`}
-          /* 잠긴 회차 · 입력으로 풀 수 없는 막힘 — 고칠 것이 없어 단계를 모두 펼쳐 보이기만 한다. */
-          showAll={isLocked || isInputLocked}
-          steps={[
-            {
-              /* 검사 수량과 판정을 한 단계로(IQC 와 같다 · 사용자 지시 2026-11-09). */
-              title: t.mergedSectionTitle,
-              done: canConfirm(totals) && judgment !== '',
-              attention: Object.values(FIELD_OF).some((name) => fieldErrors[name] !== undefined),
-              summary: [
-                tHub.qtySummary(
-                  qtyText(draft.accepted),
-                  qtyText(draft.rejected),
-                  qtyText(draft.held),
-                ),
-                judgment === '' ? '' : labelOfCode(judgmentOptions, judgment),
-              ]
-                .filter((part) => part !== '')
-                .join(' · '), // ui-check-ignore: C-13 사용자 지시 표기(#247)
-              render: () => (
-                <>
-                  {!isLocked && serialSection !== undefined ? (
-                    <div className="oqc-inspection-entry-tabs">
-                      <Tabs
-                        aria-label={t.mergedSectionTitle}
-                        items={[
-                          {
-                            value: 'quantity',
-                            label: t.entryTabs.lot,
-                            content: quantityLine,
-                          },
-                          {
-                            value: 'serials',
-                            label: t.entryTabs.serial,
-                            content: (
-                              <>
-                                {serialSection}
-                                {/* 시리얼 탭에는 수량 줄이 없다 — 최종 판정만 따로 둔다. */}
-                                <div className="inspection-step-footer">
-                                  {judgmentFieldOf(serialJudgmentId, false)}
-                                </div>
-                              </>
-                            ),
-                          },
-                        ]}
-                      />
-                    </div>
-                  ) : (
-                    quantityLine
-                  )}
-                  {judgmentFields}
-                </>
-              ),
-            },
-          ]}
-        />
+        >
+          <section className="pqc-web-box" aria-label={t.quantityBox}>
+            <h3>{t.quantityBox}</h3>
+            {!isLocked && serialSection !== undefined ? (
+              <div className="oqc-inspection-entry-tabs">
+                <Tabs
+                  aria-label={t.quantityBox}
+                  items={[
+                    { value: 'quantity', label: t.entryTabs.lot, content: quantityLine },
+                    { value: 'serials', label: t.entryTabs.serial, content: serialSection },
+                  ]}
+                />
+              </div>
+            ) : (
+              quantityLine
+            )}
+          </section>
+          {itemSection}
+          <section className="pqc-web-box" aria-label={t.judgmentBox}>
+            <h3>{t.judgmentBox}</h3>
+            <div className="pqc-web-judgment-row">
+              <p className="pqc-web-auto-result">
+                <span className="parts-iqc-muted">{t.autoResult}</span>
+                <span>
+                  {/* 확정된 회차는 다시 판정하지 않는다 — 안내 대신 「-」. */}
+                  {isLocked
+                    ? '-'
+                    : ((autoResultLabel === undefined ? expectedJudgmentLabel : autoResultLabel) ??
+                      t.autoResultHint)}
+                </span>
+              </p>
+              <div className="pqc-web-judgment-pick">{judgmentFieldOf(judgmentId)}</div>
+            </div>
+            {judgmentFields}
+          </section>
+        </div>
       </div>
 
       {/* 창이 열려 있는 동안에는 배너를 창 안에서 낸다 — 밖에 내면 창에 가려 보이지 않는다. */}
@@ -475,29 +483,12 @@ export const ResultFormPane = ({
 
       {/*
        * 저장 줄 — 지금 상황의 안내(저장 결과 · 막힌 까닭 · 되돌릴 수 없다는 경고), 오른쪽 끝 단추 묶음
-       * (검사성적서 발행 → 판정 저장 · #136).
+       * (임시 저장 → 판정 확정 · #136 · omf-all-around#284).
        */}
       <div className="oqc-inspection-action-area">
         <div className="oqc-inspection-action-row">
-          {/*
-           * 검사성적서 발행 — 저장 줄 왼쪽 끝(사용자 지시 2026-10-29 · #197). ⚠ **자리를 두되 비활성으로 시작한다.** 감추면 이 화면에 그 갈래가 «없는 것»이 된다
-           * (공유계약 G-10·G-23). 「아직 열리지 않았다」는 늘 같은 말이라 단추의 설명(마우스를 올리면 보이는 글 · 화면 읽기)으로 둔다.
-           */}
-          <Button
-            type="button"
-            variant="outlined"
-            size="md"
-            disabled
-            title={t.coaPending}
-            aria-describedby={coaNoteId}
-          >
-            {t.coaIssue}
-          </Button>
-          <span id={coaNoteId} className="oqc-inspection-visually-hidden">
-            {t.coaPending}
-          </span>
           <div className="oqc-inspection-action-notes">
-            {!isLocked && showErrors && hasQuantityError(errors) && (
+            {!isLocked && showErrors && (hasQuantityError(errors) || hasInputError) && (
               <p className="field-note">{t.saveBlockedByInvalid}</p>
             )}
             {/*
@@ -542,6 +533,18 @@ export const ResultFormPane = ({
                     {t.reinspectCancel}
                   </Button>
                 )}
+                {onSaveDraft !== undefined && (
+                  <Button
+                    type="button"
+                    variant="outlined"
+                    size="md"
+                    disabled={draftBlockedReason !== null || isSaving || isInputLocked}
+                    title={draftBlockedReason ?? undefined}
+                    onClick={saveDraft}
+                  >
+                    {t.draftSave}
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   variant="filled"
@@ -561,6 +564,7 @@ export const ResultFormPane = ({
       {openedAt !== null && (
         <ConfirmDialog
           inspectionRequestNo={inspectionRequestNo}
+          judgmentCode={judgment}
           judgmentLabel={labelOfCode(judgmentOptions, judgment)}
           preview={preview}
           hasLot={hasLot}

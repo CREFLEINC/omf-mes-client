@@ -1,11 +1,11 @@
-import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { useColumnOrder } from '../../patterns/column-grip-order';
 import { useFitColumns } from '../../patterns/column-fit';
 import { useColumnWidths } from '../../patterns/column-resize';
-import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { lookupDisplayLabel, toLookupDisplayState } from '../../patterns/lookup-display';
 import { PageNav as ListPageNav, type PageNavMeta } from '../../patterns/page-nav';
 import { codeValueLabel } from './disposition-codes';
 import { PAGE_SIZE_OPTIONS, type PageSizeOption } from './filters';
@@ -15,11 +15,21 @@ import { SeverityBadge } from './severity-badge';
 import { dispositionProgressLabel, type NonconformanceRow } from './types';
 import { PaneEmptyIcon } from '../../patterns/pane-empty-icon';
 
+const ITEM_LABEL_SEPARATOR = ' · '; // ui-check-ignore: C-13 표시명 구분자(lookups.ts 「코드 · 이름」)
+
+/** 품목 표시명 「코드 · 이름」에서 이름만. 이름이 없는 표시명(코드만 · 모르는 품목)은 그대로. */
+const itemNameOf = (label: string): string => {
+  const [, ...nameParts] = label.split(ITEM_LABEL_SEPARATOR);
+  return nameParts.length === 0 ? label : nameParts.join(ITEM_LABEL_SEPARATOR);
+};
+
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
   /** 005 「원천」 칸 글(부적합 id → 글 · G2 L8). 없으면 칸을 두지 않는다. */
   sourceTexts?: ReadonlyMap<number, string>;
   items: DispositionLookup;
+  /** 수량 칸 단위 표시명. */
+  uoms: DispositionLookup;
   /** 심각도·상태 열의 표시명(G-32). 모르는 코드는 코드 그대로 보인다(G-9). */
   severity: DispositionLookup;
   status: DispositionLookup;
@@ -36,14 +46,15 @@ export interface NonconformanceListProps {
 }
 
 /**
- * ⭐ 「판정 진행」 열은 서버가 대상 수량 합과 결정 수량 합을 롤업해 낸 `dispositionProgressCode`를
- * 그대로 보인다 — `statusCode`의 「판정 대기」 한 값은 미판정·일부 판정을 가르지 못한다.
- * 근거: W-03-10 §4-A · omf-mes#253(회신 반영).
+ * ⭐ 「처리 상태」 칸은 `statusCode` 에 서버가 롤업한 `dispositionProgressCode` 의 «일부 판정»을 덧붙인다 —
+ * `statusCode`의 「판정 대기」 한 값은 미판정·일부 판정을 가르지 못한다.
+ * 근거: W-03-10 §4-A · omf-mes#253(회신 반영) · omf-all-around#275(두 열을 합침).
  */
 export const NonconformanceList = ({
   rows,
   sourceTexts,
   items,
+  uoms,
   severity,
   status,
   isLoading,
@@ -60,26 +71,18 @@ export const NonconformanceList = ({
     {
       key: 'nonconformanceNo',
       align: 'center',
-      /* 번호가 잘리지 않는 폭 — 끌어 바꿀 수 있다. */
-      width: '170px',
+      /* 번호가 잘리지 않는 폭 — 끌어 바꿀 수 있다(omf-all-around#275). 입하 LOT 은 상세에서 본다(#286). */
+      width: '180px',
       header: t.fields.nonconformanceNo,
       /* 번호는 글자다 — 고르기는 줄 누르기가 맡는다(사용자 지시 · #223). 고른 줄 표시는 이 칸의 `data-selected` 로 건다. */
       render: (row) => (
-        <>
-          <span
-            className="disposition-nc-no"
-            data-nc-id={row.nonconformanceId}
-            data-selected={row.nonconformanceId === selectedId ? 'true' : undefined}
-          >
-            {row.nonconformanceNo}
-          </span>
-          {/* 005 — 자재 입하 IQC 부적합은 번호 아래 줄에 입하 LOT(screens/W-03-10.md 목록 행). */}
-          {row.inboundLotNo !== undefined && (
-            <span className="disposition-nc-inbound">
-              {t.inboundLot.listLine(row.inboundLotNo)}
-            </span>
-          )}
-        </>
+        <span
+          className="disposition-nc-no"
+          data-nc-id={row.nonconformanceId}
+          data-selected={row.nonconformanceId === selectedId ? 'true' : undefined}
+        >
+          {row.nonconformanceNo}
+        </span>
       ),
     },
     ...(sourceTexts === undefined
@@ -96,23 +99,24 @@ export const NonconformanceList = ({
     {
       key: 'item',
       align: 'center',
-      width: '220px',
+      /* 품목 이름이 덜 잘리게(omf-all-around#275). */
+      width: '260px',
       header: t.fields.item,
-      render: (row) => lookupDisplayLabel(items, row.itemId),
+      /* 품목은 이름만 — 표시명 「코드 · 이름」의 이름 쪽(omf-all-around#286). 이름이 없으면 표시명 그대로. */
+      render: (row) => itemNameOf(lookupDisplayLabel(items, row.itemId)),
     },
     {
       key: 'qty',
       width: '110px',
       header: t.detail.affectedQty,
       align: 'center',
-      render: (row) => row.affectedQtyText,
-    },
-    {
-      key: 'dispositionProgress',
-      align: 'center',
-      width: '110px',
-      header: t.fields.dispositionProgressCode,
-      render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
+      /* 수량을 모르는 행(「—」)과 단위 이름을 아직 못 읽은 때(불러오는 중 · 알 수 없음)는 단위를 붙이지 않는다. */
+      render: (row) => {
+        const uom = toLookupDisplayState(uoms, row.uomId);
+        return row.affectedQtyText === t.values.unknownQty || uom.kind !== 'named'
+          ? row.affectedQtyText
+          : `${row.affectedQtyText} ${uom.label}`;
+      },
     },
     {
       key: 'severity',
@@ -124,7 +128,7 @@ export const NonconformanceList = ({
     {
       key: 'openedAt',
       align: 'center',
-      width: '110px',
+      width: '160px',
       header: t.fields.openedAt,
       render: (row) => row.openedAtText,
     },
@@ -133,7 +137,21 @@ export const NonconformanceList = ({
       align: 'center',
       width: '120px',
       header: t.fields.statusCode,
-      render: (row) => codeValueLabel(status, row.statusCode),
+      /*
+       * 「판정 현황」 열을 합쳤다(omf-all-around#275) — 일부 처분이 없어져(FR-038) 미판정 · 완료는 상태와 같은 말이다.
+       * 상태 한 값이 가르지 못하는 «일부 판정»(예전 데이터)만 뒤에 덧붙인다.
+       */
+      /* 라벨로 — 상세 머리의 상태 라벨과 같은 색(판정 완료 초록 · 그 밖 노랑 · omf-all-around#286). */
+      render: (row) => (
+        <Chip size="sm" status={row.statusCode === 'DECIDED' ? 'success' : 'warning'}>
+          {row.dispositionProgressCode === 'PARTIAL'
+            ? t.values.statusWithProgress(
+                codeValueLabel(status, row.statusCode),
+                dispositionProgressLabel(row.dispositionProgressCode),
+              )
+            : codeValueLabel(status, row.statusCode)}
+        </Chip>
+      ),
     },
   ];
 

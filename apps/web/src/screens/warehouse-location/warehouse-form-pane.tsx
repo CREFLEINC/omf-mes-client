@@ -12,6 +12,7 @@ import {
   type LocationFact,
   LocationFacts,
 } from './location-identity';
+import { LOCATION_PREFIX_MAX_LENGTH, generateLocationPrefix } from './location-prefix';
 import { summarizeLocations } from './location-summary';
 import type { Location, LookupOptions, WarehouseFormValues } from './types';
 
@@ -145,7 +146,59 @@ export const SelectField = ({
 const labelOf = (options: { value: string; label: string }[], value: string): string =>
   options.find((option) => option.value === value)?.label ?? value;
 
-/** 창고 추가 — 머리 · 필수 칸 · 바닥. 값 순서는 보기와 같다(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 · 외부). */
+/**
+ * 창고 위치 코드(omf-all-around#292) — 등록 폼을 여는 쪽이 무작위로 지어 채운다. 사람은 고치거나 [다시 만들기]로 새로
+ * 짓는다. 친 글자는 대문자로 바꾼다. 칸 아래 도움말 자리에 형식 · 서버 오류(다른 창고가 쓰는 코드)가 대신 선다.
+ * 그 아래 위치 코드 예가 친 값을 따라 바뀐다.
+ */
+const LocationPrefixField = ({
+  value,
+  error,
+  onChange,
+}: {
+  value: string;
+  error: string | undefined;
+  onChange: (value: string) => void;
+}) => {
+  const id = useId();
+
+  return (
+    <div className="field-cell warehouse-info-prefix">
+      {/* 칸과 단추를 한 줄에 두려고 이름을 칸 밖에 둔다 — 짜임은 `SelectField` 와 같다. */}
+      <span className="field-label warehouse-location-field-label">
+        <span>
+          <label htmlFor={id}>{t.locationPrefix.label}</label>
+          <span className="required-mark" aria-hidden="true">
+            {' *'}
+          </span>
+        </span>
+      </span>
+      <div className="warehouse-location-field-row">
+        <TextField
+          id={id}
+          required
+          value={value}
+          maxLength={LOCATION_PREFIX_MAX_LENGTH}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => onChange(event.target.value.toUpperCase())}
+          helperText={t.locationPrefix.helper}
+          error={error}
+        />
+        <Button
+          variant="outlined"
+          leadingIcon={<Icon name="refresh" size={18} />}
+          onClick={() => onChange(generateLocationPrefix())}
+        >
+          {t.locationPrefix.regenerate}
+        </Button>
+      </div>
+      <span className="field-note">{t.locationPrefix.example(value)}</span>
+    </div>
+  );
+};
+
+/** 창고 추가 — 머리 · 필수 칸 · 바닥. 값 순서는 보기와 같다(공장 · 코드 · 창고명 / 사업부 · 유형 · 불량 · 외부 / 창고 위치 코드). */
 const WarehouseCreateFields = ({
   values,
   onChange,
@@ -221,6 +274,11 @@ const WarehouseCreateFields = ({
         />
       </div>
     </div>
+    <LocationPrefixField
+      value={values.locationPrefix}
+      error={fieldErrors.locationPrefix}
+      onChange={(value) => onChange({ locationPrefix: value })}
+    />
   </>
 );
 

@@ -71,7 +71,6 @@ export const shippingPackingLabel: Translated<typeof ko.shippingPackingLabel> = 
   },
   printer: {
     label: 'Máy in',
-    none: 'Không có máy in in được nhãn này.',
     unknown: 'Không tải được danh sách máy in.',
     retry: 'Kiểm tra lại',
     unselected: 'Không chọn máy in thì in bằng máy in mặc định.',

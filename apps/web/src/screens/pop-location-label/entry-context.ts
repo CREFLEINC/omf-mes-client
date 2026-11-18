@@ -14,7 +14,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
  *
  * 순서가 뜻이다 — 셸이 단말 토큰에서 푸는 값이 정본이고(`pop-identity`), 없으면 사번 경량
  * 인증이 둔 작업자(`worker-session`)를, 그것도 없을 때만 주소를 본다. 전례는
- * `screens/goods-issue-qr/entry-context.ts` 와 `screens/tool-usage/entry-context.ts` 다.
+ * `screens/tool-usage/entry-context.ts` 다(옛 P-01-02 출고 QR 화면에도 있었다 — 008 에서 걷었다).
  */
 export interface PopLocationLabelEntry {
   /** 귀속용 사번. 없으면 `null` */

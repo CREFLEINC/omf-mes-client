@@ -66,6 +66,11 @@ export const pqcInspectionRegister = {
   web: {
     /** 수량과 판정을 합친 단계(사용자 지시 2026-11-09). */
     mergedHeading: '검사 수량 · 판정', // ui-check-ignore: C-13 사용자 지시 표기(#247)
+    /* 입력을 상자 셋으로 — IQC 결과 입력 창과 같다(사용자 시안 2026-11-16 · omf-all-around#274). */
+    quantityBox: '검사 수량',
+    judgmentBox: '종합 판정',
+    autoResult: '자동 판정 결과',
+    autoResultHint: '검사 수량과 항목을 입력한 뒤 판정 결과를 확인하세요.',
     /** 생산 실적이 없어 판정을 막을 때(#135) — 관리웹 말. POP 의 말(`pqcInspection.result.noProductionResult`)은 그대로 둔다. */
     noProductionResult: '생산 실적이 없으므로 판정할 수 없습니다.',
     /** 검사기준이 없을 때 「검사 내용」 이름 옆 안내와 입력 칸 안내(#135) — 관리웹 말. POP 의 말(`pqcInspection.noStandard`)은 그대로 둔다. */
@@ -87,17 +92,24 @@ export const pqcInspectionRegister = {
       requestedAt: '의뢰 일시',
     },
     items: {
-      heading: '검사 항목별 결과',
+      /* 상자 제목 · 진행 · 머리(사용자 시안 2026-11-16 · omf-all-around#274). */
+      heading: '검사 항목',
       progress: (judged: number, total: number): string =>
-        `판정 ${String(judged)} / ${String(total)}`,
+        `${String(judged)}/${String(total)} 항목`,
       columns: {
-        item: '검사 항목',
+        no: 'No.',
+        item: '검사 내용',
         spec: '규격',
-        sample: '측정 회차',
+        /** 항목마다 한 번 재면 「n1」, 여러 번 재는 항목이 있으면 「측정 결과」(칸 안에 n2 · n3 …). */
+        valueSingle: 'n1',
         value: '측정 결과',
         judgment: '판정',
       },
-      sampleOf: (sampleNo: number): string => `${String(sampleNo)}회차`,
+      sampleTag: (sampleNo: number): string => `n${String(sampleNo)}`,
+      /** 상 · 하한으로 판정이 저절로 서는 항목 — 값을 넣기 전 판정 칸. */
+      autoJudgment: '자동 판정',
+      /** 항목 판정 단추 이름 — 모르는 코드는 코드 이름 그대로. */
+      judgmentShort: { ACCEPTED: 'OK', REJECTED: 'NG' } as Record<string, string>,
       valueLabel: (item: string, sampleNo: number): string =>
         `${item} ${String(sampleNo)}회차 측정 결과`,
       judgmentLabel: (item: string, sampleNo: number): string =>

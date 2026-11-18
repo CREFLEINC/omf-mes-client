@@ -12,15 +12,12 @@ export const runningChange = {
 
   header: {
     /* ⚠ 머리줄의 작업지시 표기는 화면마다 「W/O」로 통일한다(사용자 지시 2026-09-10). */
-    workOrder: (workOrderId: number) => `W/O ${workOrderId}`,
     workOrderMissing: '작업지시를 받지 못해 현재 투입을 불러올 수 없습니다.',
     session: (workSessionId: number) => `세션 ${workSessionId}`,
-    sessionNone: '세션 없음',
     /** ⭐ 번호가 뒤에 붙는다 — 「단말# 5」(사용자 지시 2026-09-15). */
     terminal: (terminalId: number) => `단말# ${terminalId}`,
     terminalUnknown: '단말 확인되지 않음',
     unsynced: (count: number) => `미전송 ${count}건`,
-    synced: '전송 완료',
     offline: '오프라인',
   },
 

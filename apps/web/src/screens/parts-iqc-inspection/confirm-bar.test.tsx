@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SessionProvider, type Session } from '../../patterns/session';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -13,6 +13,8 @@ import type { InboundInspection } from './inbound-queries';
  */
 
 const t = messages.iqcInboundLot;
+const tj = messages.judgmentConfirm;
+const INSPECTION_REQUEST_NO = 'TST-REQ-0501';
 
 const session = (permissions: string[]): Session => ({
   userId: 8101,
@@ -91,6 +93,7 @@ interface Options {
   permissions?: string[];
   confirm?: { status: number; body: unknown };
   cancel?: { status: number; body: unknown };
+  onConfirmed?: () => void;
 }
 
 const mount = (initial: InboundInspection, options: Options = {}) => {
@@ -138,6 +141,7 @@ const mount = (initial: InboundInspection, options: Options = {}) => {
         planText="AQL 1.0"
         uomCode="EA"
         renderForm={() => null}
+        onConfirmed={options.onConfirmed}
       />
     </SessionProvider>,
     { fetch, session: session(options.permissions ?? ['W-01-01', 'W-01-15']) },
@@ -190,7 +194,7 @@ describe('W-01-01 판정 확정', () => {
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
-        name: t.confirm.proceed('합격'),
+        name: tj.confirm,
       }),
     );
 
@@ -199,49 +203,93 @@ describe('W-01-01 판정 확정', () => {
     ).toBeInTheDocument();
   });
 
-  it('US4-5 확정 창(종합 판정 · 건수 · 적용) → `:confirm` 에 판 번호, 확정 뒤 결과는 「확정됨」으로 잠긴다', async () => {
+  it('US4-5 확정 창(PQC · OQC 와 같은 모양 — 의뢰 번호 · 최종 판정 · 결과 건수 · 적용 · 안내) → `:confirm` 에 판 번호, 확정 뒤 결과는 「확정됨」으로 잠긴다', async () => {
     const user = userEvent.setup();
     const { sent } = mount(base());
 
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
-    const dialog = await screen.findByRole('dialog', {
-      name: t.confirm.title('IL-20991111-0003'),
-    });
-    expect(dialog).toHaveTextContent(t.confirm.counts(2, 2, 0, 0));
-    expect(dialog).toHaveTextContent(t.confirm.apply.ACCEPTED(2));
+    const dialog = await screen.findByRole('dialog', { name: tj.title });
+    expect(dialog).toHaveTextContent(tj.target(INSPECTION_REQUEST_NO));
+    expect(dialog).toHaveTextContent('합격');
+    expect(dialog).toHaveTextContent(`${tj.accepted} 2`);
+    expect(dialog).toHaveTextContent(`${tj.lotRow}${tj.lotState.release}`);
+    for (const line of t.confirm.apply.ACCEPTED(2)) expect(dialog).toHaveTextContent(line);
+    /* IQC 는 [확정 취소]가 있어 「되돌릴 수 없음」 대신 IQC 안내를 낸다. */
     expect(dialog).toHaveTextContent(t.confirm.note);
-    await user.click(within(dialog).getByRole('button', { name: t.confirm.proceed('합격') }));
+    expect(dialog).not.toHaveTextContent(tj.irreversible);
+    await user.click(within(dialog).getByRole('button', { name: tj.confirm }));
 
     expect(await screen.findByText(t.confirm.done('합격'))).toBeInTheDocument();
     expect(sent[0]).toEqual({
       path: '/quality/inspection-requests/501:confirm',
       body: { versionNo: 5 },
     });
-    expect(await screen.findByText(t.results.lockedHead)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: t.cancel.open })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.results.add })).toBeNull();
-    expect(screen.getByRole('button', { name: t.cancel.open })).toBeInTheDocument();
   });
 
-  it('불합격으로 확정하면 부적합 번호를 알린다 — 확인 단추는 「불합격으로 판정 확정」', async () => {
+  it('#290 확정이 끝나면 `onConfirmed` 를 한 번 부른다 — OA 가 골라 둔 검사 수준을 이때 저장한다', async () => {
+    const user = userEvent.setup();
+    const onConfirmed = vi.fn();
+    mount(base(), { onConfirmed });
+
+    await user.click(await screen.findByRole('button', { name: t.confirm.open }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: tj.title })).getByRole('button', {
+        name: tj.confirm,
+      }),
+    );
+
+    expect(await screen.findByText(t.confirm.done('합격'))).toBeInTheDocument();
+    expect(onConfirmed).toHaveBeenCalledTimes(1);
+  });
+
+  it('#290 확정이 실패하면 `onConfirmed` 를 부르지 않는다', async () => {
+    const user = userEvent.setup();
+    const onConfirmed = vi.fn();
+    mount(base(), {
+      onConfirmed,
+      confirm: {
+        status: 409,
+        body: { errors: [{ scope: 'screen', code: 'VERSION_CONFLICT', message: '판이 다릅니다' }] },
+      },
+    });
+
+    await user.click(await screen.findByRole('button', { name: t.confirm.open }));
+    await user.click(
+      within(await screen.findByRole('dialog', { name: tj.title })).getByRole('button', {
+        name: tj.confirm,
+      }),
+    );
+
+    expect(await screen.findByRole('dialog', { name: t.confirm.conflict })).toBeInTheDocument();
+    expect(onConfirmed).not.toHaveBeenCalled();
+  });
+
+  it('불합격으로 확정하면 부적합 번호를 알린다 — LOT 상태 「불량」 · 적용 줄 셋', async () => {
     const user = userEvent.setup();
     mount(base({ previewJudgmentCode: 'REJECTED', results: [result(1, 'REJECTED')] }));
 
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
-    const dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveTextContent(t.confirm.apply.REJECTED(2));
-    await user.click(within(dialog).getByRole('button', { name: '불합격으로 판정 확정' }));
+    const dialog = await screen.findByRole('dialog', { name: tj.title });
+    expect(dialog).toHaveTextContent(`${tj.lotRow}${tj.lotState.hold}`);
+    for (const line of t.confirm.apply.REJECTED(2)) expect(dialog).toHaveTextContent(line);
+    await user.click(within(dialog).getByRole('button', { name: tj.confirm }));
 
     expect(await screen.findByText(t.confirm.doneRejected('TST-NC-0009'))).toBeInTheDocument();
   });
 
-  it('보류는 「보류로 판정 확정」(조사)', async () => {
+  it('보류는 LOT 상태 「검사 대기」 · 「취소」로 닫으면 요청이 나가지 않는다', async () => {
     const user = userEvent.setup();
-    mount(base({ previewJudgmentCode: 'HELD', results: [result(1, 'HELD')] }));
+    const { sent } = mount(base({ previewJudgmentCode: 'HELD', results: [result(1, 'HELD')] }));
 
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
-    expect(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: '보류로 판정 확정' }),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: tj.title });
+    expect(dialog).toHaveTextContent(`${tj.lotRow}${tj.lotState.pending}`);
+    await user.click(within(dialog).getByRole('button', { name: tj.back }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent).toEqual([]);
   });
 
   it('동시 확정 409 VERSION_CONFLICT — 「이미 바뀌었습니다」와 [다시 불러오기]', async () => {
@@ -256,7 +304,7 @@ describe('W-01-01 판정 확정', () => {
     await user.click(await screen.findByRole('button', { name: t.confirm.open }));
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
-        name: t.confirm.proceed('합격'),
+        name: tj.confirm,
       }),
     );
 
@@ -275,7 +323,7 @@ describe('W-01-01 판정 확정', () => {
   it('SC-005 확정된 의뢰도 W-01-15 가 없으면 [확정 취소]가 없다', async () => {
     mount(confirmedOf(), { permissions: ['W-01-01'] });
 
-    expect(await screen.findByText(t.results.lockedHead)).toBeInTheDocument();
+    expect((await screen.findAllByText(t.results.lockedRow)).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: t.cancel.open })).toBeNull();
   });
 });
@@ -286,11 +334,11 @@ describe('W-01-01 확정 취소', () => {
     const { sent } = mount(confirmedOf());
 
     await user.click(await screen.findByRole('button', { name: t.cancel.open }));
-    const dialog = await screen.findByRole('dialog', {
-      name: t.cancel.title('IL-20991111-0003'),
-    });
+    const dialog = await screen.findByRole('dialog', { name: t.cancel.title });
+    expect(dialog).toHaveTextContent(t.cancel.target('IL-20991111-0003'));
     expect(dialog).toHaveTextContent(t.cancel.lots(2));
-    expect(dialog).toHaveTextContent(t.cancel.alerts);
+    expect(dialog).toHaveTextContent(t.cancel.lotsTo);
+    expect(dialog).toHaveTextContent(t.cancel.note);
     await user.type(within(dialog).getByLabelText(t.cancel.reason), '합성 사유');
     await user.click(within(dialog).getByRole('button', { name: t.cancel.proceed }));
 
@@ -399,13 +447,12 @@ describe('W-01-01 상세 머리', () => {
 
     expect(group).not.toBeNull();
     expect(group?.parentElement).toHaveClass('parts-iqc-detail-head');
-    expect(
-      within(group as HTMLElement).getByRole('button', { name: t.history.open }),
-    ).toBeInTheDocument();
+    /* 작업 이력은 단추가 아니라 탭이다(#274). */
+    expect(screen.getByRole('tab', { name: t.history.open })).toBeInTheDocument();
     expect(
       within(group as HTMLElement).getByRole('button', { name: t.split.open }),
     ).toBeInTheDocument();
-    /* 제목은 묶음 밖 — 단추가 내려가도 제목 줄은 그대로다. */
+    /* 입하 LOT 번호는 단추 묶음이 아니라 요약 줄에(#274). */
     expect(within(group as HTMLElement).queryByText('IL-20991111-0003')).toBeNull();
   });
 });

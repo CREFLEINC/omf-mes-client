@@ -15,8 +15,6 @@ const ro = (word: string): string => {
 
 export const iqcInboundLot = {
   queue: {
-    /** 대기열 위 안내(screens/W-01-01.md 「화면 구조」). */
-    closingHint: '입하 마감 전(입하 중)인 입하 LOT는 대기열에 나오지 않습니다',
     columns: {
       /** 입하 LOT 행이 있으면 첫 칸 머리가 이것이 된다. */
       inboundLotNo: '입하 LOT',
@@ -29,27 +27,29 @@ export const iqcInboundLot = {
     lotCount: (count: number) => `${count}개`,
     /** 입하 LOT 행의 상태(시안 W0101-After). */
     status: {
-      REQUESTED: '검사 대기',
-      IN_PROGRESS: '검사 진행 중',
-      CONFIRMED: '판정 확정',
+      REQUESTED: '대기',
+      IN_PROGRESS: '진행',
+      /* 판정 확정된 의뢰의 상태는 「완료」(사용자 지시 2026-11-16 · #274). */
+      CONFIRMED: '완료',
     },
-    /** 확정 전 종합 판정 미리 보기. */
-    preview: (judgment: string) => `${judgment} (미리 보기)`,
-    previewTitle: '확정 전 미리 보기',
-    /** 표 아래 건수 — 지금 쪽의 줄로 센다. */
-    counts: (total: number, requested: number, inProgress: number, confirmed: number) =>
-      `전체 ${total}건 · 대기 ${requested} · 진행 ${inProgress} · 확정 ${confirmed}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
   },
   detail: {
     title: '상세',
     lotsHeading: (count: number) => `자재 관리 LOT ${count}개`,
-    lotsNote: '상태는 판정 확정 때만 바뀝니다',
+    /** 상자 제목 「자재 관리 LOT (2건)」(사용자 시안 2026-11-16 · #274). */
+    lotsTitle: '자재 관리 LOT',
+    lotsCount: (count: number) => `(${count}건)`,
+    /** 상자 제목 오른쪽 「총 2,000 EA」(사용자 시안 2026-11-16 · #274). */
+    lotsTotal: (qty: string) => `총 ${qty}`,
     facts: {
+      inboundLot: '입하 LOT',
+      status: '상태',
+      judgment: '종합 판정',
       item: '품목',
       supplier: '공급사',
       request: '검사 의뢰',
+      requestedAt: '의뢰 일시',
       inspectedQty: '검사 수량',
-      inspectedQtyValue: (qty: string, count: number) => `${qty} (자재 관리 LOT ${count}개 합)`,
       received: '입하',
       receivedValue: (when: string, channel: string | null) =>
         channel === null ? when : `${when} (${channel})`,
@@ -57,50 +57,51 @@ export const iqcInboundLot = {
       splitFrom: '분리 원천',
     },
     status: {
-      REQUESTED: '검사 대기',
-      IN_PROGRESS: '검사 진행 중',
-      CONFIRMED: '판정 확정',
+      REQUESTED: '대기',
+      IN_PROGRESS: '진행',
+      /* 판정 확정된 의뢰의 상태는 「완료」(사용자 지시 2026-11-16 · #274). */
+      CONFIRMED: '완료',
     },
-    preview: (judgment: string) => `${judgment} (미리 보기)`,
     noPermission: '판정 확정·확정 취소는 확정 권한(W-01-15)이 있는 사람이 합니다', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     columns: {
-      lotNo: '자재 관리 LOT 번호',
-      qty: '수량 · 패키징', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+      lotNo: 'LOT 번호',
+      qty: '수량',
       status: '품질 상태',
-      matched: '매칭 결과',
+      /* LOT 마다 적용된(최신) 검사 회차와 그 판정(사용자 시안 2026-11-16 · #274). */
+      judgment: '판정',
+      judgmentPreview: '판정(예상)',
+      applied: '적용 검사',
     },
+    noJudgment: '미판정',
+    appliedNone: '없음',
     noPackage: '패키징 없음',
     lotStatus: {
-      INSPECTION_PENDING: '검사 대기',
+      INSPECTION_PENDING: '대기',
       NORMAL: '정상',
       DEFECTIVE: '불량',
       SUSPECT_HOLD: '의심 보류',
     },
-    goodsReceived: '입고됨',
-    matchedChip: (seqNo: number) => `결과 ${seqNo}`,
-    none: '없음',
-    lockedComposition:
-      '입하 마감으로 구성이 고정되었습니다. 바꾸려면 IQC 결과를 모두 지운 뒤 PDA에서 마감 취소, 또는 자재 관리 LOT 분리',
-    lockedConfirmed:
-      '판정 확정된 입하 LOT 입니다. 자재 관리 LOT 해제·추가·분리를 할 수 없습니다. 분리가 필요하면 확정 취소 뒤 분리하거나, 불합격이면 처분 단계 선별(W-03-10)을 쓰세요.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    poHeading: '입하 LOT P/O 매칭(참고)',
+    goodsReceived: '입고 완료',
+    /* 「결과 n」 → 「n회차」(사용자 지시 2026-11-16 · omf-all-around#274) — 이 파일의 결과 한 건 표기 모두. */
+    appliedSeq: (seqNo: number) => `${seqNo}회차`,
+    poHeading: '발주 정보',
     poLine: (no: string, lineNo: number, qty: string) => `${no}/${lineNo} · ${qty}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     poNone: (qty: string) => `P/O 없음 ${qty}`,
     poJoin: (parts: readonly string[]) => parts.join(' · '), // ui-check-ignore: C-13 설계 확정 표기(screens/W-01-01.md)
     poEmpty: '입하 마감 전이라 P/O 매칭이 없습니다',
     banner: {
-      preview: (judgment: string, count: number) =>
-        `종합 판정 미리 보기: ${judgment} — 결과 ${count}건 기준(불합격 > 보류 > 합격). 확정 전이라 자재 관리 LOT 상태는 검사 대기 그대로입니다.`,
-      empty:
-        '아직 결과가 없습니다. [결과 추가]로 검사 결과를 기록하세요. 결과가 1건 이상이어야 판정 확정할 수 있습니다.',
+      acceptedTitle: '검사 합격 확정',
       accepted: (count: number) =>
-        `판정 확정됨 · 합격 — 자재 관리 LOT ${count}개 모두 정상(검사 대기 보류 해제). 입고할 수 있습니다.`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-      rejected: (count: number) => `판정 확정됨 · 불합격 — 자재 관리 LOT ${count}개 모두 불량.`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-      ncLabel: '부적합',
-      rejectedNcTail:
-        '(판정 대기)에 자재 관리 LOT 전부를 담았고 불합격 알림을 보냈습니다. 양품으로 쓰려면 부적합 처분 관리(W-03-10)에서 선별·특채합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-      held: '판정 확정됨 · 보류 — 자재 관리 LOT 는 검사 대기로 남습니다. 다시 검사하려면 확정 취소 뒤 결과를 더하세요.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-      by: (who: string, when: string) => `${who} · ${when}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+        `자재 관리 LOT ${count}개가 모두 정상 처리되었습니다. 입고할 수 있습니다.`,
+      /* 불합격 확정 안내(사용자 시안 2026-11-16 · #274). */
+      rejectedTitle: '검사 불합격 확정',
+      rejected: (count: number, ncNo: string | null) =>
+        ncNo === null
+          ? `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다.`
+          : `자재 관리 LOT ${count}개가 모두 불량 처리되었습니다. 부적합 ${ncNo}에서 후속 처분을 진행하세요.`,
+      ncOpen: '부적합 처분 관리로 이동',
+      heldTitle: '검사 보류 확정',
+      held: '자재 관리 LOT는 검사 대기로 남습니다. 다시 검사하려면 확정 취소 후 검사 결과를 추가하세요.',
     },
     pick: '검사 의뢰를 선택하세요.',
     loadFailed: '검사 의뢰를 불러오지 못했습니다.',
@@ -109,39 +110,42 @@ export const iqcInboundLot = {
   },
   results: {
     heading: (count: number) => `검사 결과 ${count}건`,
-    add: '결과 추가',
+    /** 상자 제목 「검사 결과 (0건)」(사용자 시안 2026-11-16 · #274) — 자재 관리 LOT 상자와 같은 모양. */
+    title: '검사 결과',
+    count: (count: number) => `(${count}건)`,
+    add: '검사 결과 추가',
     columns: {
-      seq: '순번',
+      /* 머리 · 빈 값 표기(사용자 시안 2026-11-16 · #274). */
+      seq: '검사 회차',
       judgment: '판정',
       inspectedQty: '검사 수량',
-      defects: '불량 · 유형', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-      matched: '매칭 자재 관리 LOT',
+      defects: '불량',
+      matched: '적용 LOT',
       inspector: '검사자',
       actions: '작업',
     },
-    seq: (seqNo: number) => `결과 ${seqNo}`,
+    seq: (seqNo: number) => `${seqNo}회차`,
     noMatch: '매칭 없음',
     edit: '수정',
     remove: '삭제',
     lockedRow: '확정됨',
-    lockedHead: '판정 확정됨 — 결과를 고칠 수 없습니다',
-    empty: '기록된 결과가 없습니다.',
+    empty: '등록된 검사 결과가 없습니다.',
     noJudgment: '판정 없음',
-    deleteTitle: (seqNo: number) => `결과 ${seqNo}를 지울까요?`,
-    deleteBody:
-      '측정값·불량·매칭이 함께 지워집니다. 지운 순번은 다시 쓰지 않고, 누가 언제 지웠는지 변경 이력에 남습니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+    /** 지우기 확인(사용자 시안 2026-11-16 · #274) — 숫자 끝소리에 맞춰 「을/를」. */
+    deleteTitle: (seqNo: number) => `${seqNo}회차 검사 결과를 삭제하시겠습니까?`,
+    deleteBody: '측정값, 불량 내역 및 LOT 매칭 정보가 함께 삭제됩니다.',
+    noDefects: '없음',
     deleteCancel: '취소',
-    deleteConfirm: '지우기',
-    deleted: (seqNo: number) => `결과 ${seqNo}를 지웠습니다.`,
+    deleteConfirm: '삭제',
+    deleted: (seqNo: number) => `${seqNo}회차 검사 결과를 삭제했습니다.`,
     deleteFailed: '결과를 지우지 못했습니다.',
     conflict: '이미 바뀌었습니다',
     reload: '다시 불러오기',
     lockedWrite: '판정 확정됨 — 결과를 고칠 수 없습니다',
     /** 자재 관리 LOT 별 판정(FR-023 · 2026-11-12). */
     lotJudgments: {
-      heading: '자재 관리 LOT 별 판정',
-      help: '자재 관리 LOT 마다 그 LOT 를 매칭한 마지막 결과(순번이 가장 큰 결과)로 판정하고, 종합 판정은 그중 가장 나쁜 것입니다(불합격 > 보류 > 합격).',
-      byResult: (seqNo: number) => `결과 ${seqNo}`,
+      /* 상자 · 안내 문구(사용자 시안 2026-11-16 · omf-all-around#274). 「최신」은 순번이 가장 큰(마지막으로 등록한) 결과다. */
+      heading: 'LOT별 판정 변경',
       /** 「LOT 0001: 결과 1 불합격 → 결과 2 합격(사유)」 */
       superseded: (
         lotTail: string,
@@ -151,29 +155,25 @@ export const iqcInboundLot = {
         after: string,
         reason: string | null,
       ) =>
-        `LOT ${lotTail}: 결과 ${beforeSeq} ${before} → 결과 ${afterSeq} ${after}${reason === null ? '' : `(${reason})`}`,
-      unmatched: (count: number) =>
-        `매칭한 결과가 없는 자재 관리 LOT ${count}개는 판정에서 빠집니다`,
+        `LOT ${lotTail}: ${beforeSeq}회차 ${before} → ${afterSeq}회차 ${after}${reason === null ? '' : `(${reason})`}`,
     },
     /** 결과 행의 재검 사유. */
     reason: (name: string) => `재검 사유: ${name}`,
   },
   drawer: {
-    addTitle: (seqNo: number) => `결과 ${seqNo} 추가`,
-    editTitle: (seqNo: number) => `결과 ${seqNo} 수정`,
+    addTitle: (seqNo: number) => `${seqNo}회차 검사 결과 추가`,
+    editTitle: (seqNo: number) => `${seqNo}회차 검사 결과 수정`,
     matchHeading: '자재 관리 LOT 매칭',
-    matchHelp:
-      '이 결과가 어느 자재 관리 LOT 를 보고 기록됐는지 1개 이상 고르세요. 이 입하 LOT 의 자재 관리 LOT 만 보입니다.',
-    matchNote:
-      '표본을 섞어 검사했으면 [전부 선택]을 누르세요. 같은 자재 관리 LOT 를 여러 결과에 매칭할 수 있습니다. 자재 관리 LOT 마다 그 LOT 를 매칭한 마지막 결과(순번이 가장 큰 결과)로 판정합니다.',
     selectAll: '전부 선택',
+    /** 고른 LOT 을 모두 푼다(사용자 지시 2026-11-16 · #274). */
+    selectNone: '전부 해제',
     matchRequired: '자재 관리 LOT를 1개 이상 고르세요',
     reasonHeading: '재검 사유',
     reasonPlaceholder: '재검 사유 선택',
     /** 사유가 필요한 까닭 — 「LOT 0001: 결과 1 불합격 → 합격」을 줄마다. */
     reasonHelp: '이 결과가 아래 자재 관리 LOT 의 판정을 바꿉니다. 재검 사유를 고르세요.',
     reasonLine: (lotTail: string, seqNo: number, before: string, after: string) =>
-      `LOT ${lotTail}: 결과 ${seqNo} ${before} → 이 결과 ${after}`,
+      `LOT ${lotTail}: ${seqNo}회차 ${before} → 이 회차 ${after}`,
     reasonRequired: '재검 사유를 고르세요',
     reasonLoadFailed: '재검 사유 목록을 불러오지 못했습니다.',
     /** 서버 400 — 판정 규칙(2026-11-12). */
@@ -182,25 +182,26 @@ export const iqcInboundLot = {
       REINSPECTION_REASON_REQUIRED:
         '이 결과가 불합격이나 보류 판정을 바꿉니다. 재검 사유를 고르세요',
     },
-    alsoMatched: (seqNos: string) => `결과 ${seqNos}에도 매칭됨`,
-    inputNote: '지금 IQC 양식 그대로 · 회차 없음', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    saveNote: '저장하면 결과 목록과 종합 판정 미리 보기가 바뀝니다',
+    alsoMatched: (seqNos: string) => `${seqNos}회차에도 매칭됨`,
     judgmentRequired: '판정을 고르세요.',
     cancel: '취소',
-    save: '저장',
+    /** 사용자 지시 2026-11-16 · #274 — 「저장」에서 정정. */
+    save: '제출',
     discardBody: '입력한 내용이 사라집니다. 닫을까요?',
     discardStay: '계속 입력',
     discardLeave: '닫기',
     added: (seqNo: number, judgment: string) =>
-      `결과 ${seqNo}를 기록했습니다. 종합 판정 미리 보기: ${judgment}`,
-    updated: (seqNo: number) => `결과 ${seqNo}를 고쳤습니다.`,
+      `${seqNo}회차 검사 결과를 기록했습니다. 종합 판정 미리 보기: ${judgment}`,
+    updated: (seqNo: number) => `${seqNo}회차 검사 결과를 고쳤습니다.`,
     loading: '결과를 불러오는 중입니다',
   },
   history: {
-    open: '변경 이력',
-    title: (inboundLotNo: string) => `변경 이력 · ${inboundLotNo}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    help: '결과 기록·수정·삭제, 판정 확정·취소, 자재 관리 LOT 분리를 누가·언제·무엇을 했는지 남깁니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    columns: { when: '시각', who: '누구', what: '무엇', detail: '내용' },
+    /** 탭 이름 — 「변경 이력」에서 정정(사용자 지시 2026-11-16 · omf-all-around#274). */
+    open: '작업 이력',
+    /** 상세 탭 이름 — 결과 · 판정 확정 · 분리 등은 이 탭 안에(#274). */
+    detailTab: '상세 정보',
+    title: (inboundLotNo: string) => `작업 이력 · ${inboundLotNo}`, // ui-check-ignore: C-13 표 이름(화면에 보이지 않음)
+    columns: { when: '일시', who: '작업자', what: '작업 유형', detail: '상세 내용' },
     events: {
       /** 의뢰가 생김(입하 마감) — 서버가 이력 첫 줄로 싣는다(G2 L1). */
       REQUESTED: '검사 의뢰 생성',
@@ -227,7 +228,7 @@ export const iqcInboundLot = {
     matched: (lotTails: readonly string[]) => `매칭 ${lotTails.join(', ')}`,
     /** 결과 수정 — 「결과 2 수정 — {전} → {후}」(screens/W-01-01 「변경 이력」). */
     resultUpdated: (round: number | null, before: string, after: string) =>
-      `${round === null ? '결과' : `결과 ${String(round)}`} 수정 — ${before} → ${after}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
+      `${round === null ? '결과' : `${String(round)}회차`} 수정 · ${before} → ${after}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     /** 분리(떠난 쪽) — 「0003, 0004 → IL-…」. 번호를 못 읽으면 개수로. */
     splitOut: (lotTails: readonly string[] | null, count: number, toInboundLotNo: string | null) =>
       `${lotTails === null ? `자재 관리 LOT ${String(count)}개` : lotTails.join(', ')} → ${toInboundLotNo ?? '새 입하 LOT'}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
@@ -242,11 +243,11 @@ export const iqcInboundLot = {
     open: '자재 관리 LOT 분리',
     title: '자재 관리 LOT 분리',
     /* 「P/O 배분」은 안내에서 뺀다 — 옮겨질 배정은 미리 보기 「옮겨지는 P/O 매칭」이 보인다(screens/W-01-01.md 시안과 다른 점). */
-    intro:
-      '고른 자재 관리 LOT 를 같은 품목·공급사의 새 입하 LOT 로 옮깁니다. 두 입하 LOT 는 각각 판정 확정합니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    introFollow: '자재 관리 LOT 번호·라벨은 그대로 따라갑니다.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    lotList: '분리할 자재 관리 LOT',
-    resultChip: (seqNo: number) => `결과 ${String(seqNo)}`,
+    /** 안내 한 줄 · 목록 제목 · 고른 수(사용자 시안 2026-11-16 · omf-all-around#274). */
+    intro: '선택한 LOT를 별도의 입하 LOT로 분리하여 판정합니다.',
+    lotList: '분리할 LOT',
+    pickedCount: (picked: number, total: number) => `${String(picked)}/${String(total)}개 선택`,
+    resultChip: (seqNo: number) => `${String(seqNo)}회차`,
     allSelected:
       '원래 입하 LOT 에 자재 관리 LOT 가 하나 이상 남아야 합니다. 모두 불량이면 분리하지 말고 이 입하 LOT 를 그대로 확정·처분하세요.', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
     noneSelected: '분리할 자재 관리 LOT 를 고르세요.',
@@ -271,8 +272,8 @@ export const iqcInboundLot = {
     poLine: (purchaseOrderNo: string, lineNo: number) => `${purchaseOrderNo}/${String(lineNo)}`,
     toNewLot: '→ 새 입하 LOT',
     none: '없음',
-    reason: '사유 (선택)',
-    reasonPlaceholder: '예: 0003 외관 찍힘 — 따로 판정',
+    reason: '분리 사유 (선택)',
+    reasonPlaceholder: '분리 사유를 입력하세요',
     cancel: '취소',
     submit: '분리',
     done: (newInboundLotNo: string, count: number) =>
@@ -289,20 +290,19 @@ export const iqcInboundLot = {
     /** 재작업으로 다시 연 뒤 새 결과가 없다(G2 L2). */
     lockedNoNewResult: '다시 열린 검사입니다. 새 결과를 1건 이상 기록하세요',
     lockedNoJudgment: '판정이 없는 결과가 있습니다',
-    title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정`,
-    counts: (total: number, accepted: number, rejected: number, held: number) =>
-      `결과 ${total}건 — 합격 ${accepted} · 불합격 ${rejected} · 보류 ${held}`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    applyHeading: '적용',
+    /** 확인 창은 PQC · OQC 와 같은 `JudgmentConfirmDialog` — 「확정 시 적용 사항」 줄과 안내 글만 IQC 것을 준다. */
     apply: {
-      ACCEPTED: (count: number) =>
+      ACCEPTED: (count: number) => [
         `자재 관리 LOT ${count}개 전부 → 정상 (검사 대기 보류 해제, 입고 가능)`,
-      REJECTED: (count: number) =>
-        `자재 관리 LOT ${count}개 전부 → 불량 부적합 1건(판정 대기)에 자재 관리 LOT 전부를 담고, 불합격 알림을 보냅니다.`,
-      HELD: (count: number) => `자재 관리 LOT ${count}개 → 검사 대기 유지(보류)`,
+      ],
+      REJECTED: (count: number) => [
+        `자재 관리 LOT ${count}개 전부 → 불량`,
+        '부적합 1건(판정 대기)에 자재 관리 LOT 전부를 담습니다',
+        '불합격 알림을 보냅니다',
+      ],
+      HELD: (count: number) => [`자재 관리 LOT ${count}개 → 검사 대기 유지(보류)`],
     },
     note: '확정하면 결과를 고치거나 더하거나 지울 수 없습니다. 잘못 확정했으면 [확정 취소]로 되돌립니다(입고·처분 전까지).', // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    back: '돌아가기',
-    proceed: (judgment: string) => `${judgment}${ro(judgment)} 판정 확정`,
     doneRejected: (ncNo: string | null) =>
       ncNo === null
         ? '불합격으로 확정했습니다. 부적합이 생겼습니다.'
@@ -315,13 +315,19 @@ export const iqcInboundLot = {
   },
   cancel: {
     open: '확정 취소',
-    title: (inboundLotNo: string) => `${inboundLotNo} 판정 확정 취소`,
-    lots: (count: number) => `자재 관리 LOT ${count}개 → 검사 대기 · 보류 로 돌아갑니다`, // ui-check-ignore: C-13 설계 확정 문구(screens/W-01-01.md)
-    nonconformance: (ncNo: string) => `부적합 ${ncNo} 은 취소 상태가 됩니다`,
-    results: '결과를 다시 고치고 더할 수 있습니다. 이전 확정 내용은 변경 이력에 남습니다',
-    alerts: '이미 보낸 알림은 되돌리지 않습니다',
-    reason: '사유 (선택)',
-    back: '돌아가기',
+    /* 확인 창(사용자 시안 2026-11-17 · omf-all-around#286) — 질문 제목 · 대상 · 「취소 시 변경 사항」 상자 · 안내 한 줄. */
+    title: '판정 확정을 취소하시겠습니까?',
+    target: (inboundLotNo: string) => `대상: ${inboundLotNo}`,
+    changesHeading: '취소 시 변경 사항',
+    lots: (count: number) => `자재 관리 LOT ${count}개`,
+    lotsFrom: '확정',
+    lotsTo: '검사 대기 · 보류', // ui-check-ignore: C-13 사용자 시안 표기(omf-all-around#286)
+    nonconformance: (ncNo: string) => `부적합 ${ncNo}`,
+    nonconformanceTo: '취소 상태로 변경',
+    note: '취소 후 결과를 수정하고 다시 확정할 수 있습니다. 기존 확정 내역은 변경 이력에 남으며, 발송된 알림은 취소되지 않습니다.',
+    reason: '취소 사유 (선택)',
+    reasonPlaceholder: '취소 사유를 입력해 주세요.',
+    back: '유지하기',
     proceed: '확정 취소',
     done: '판정 확정을 취소했습니다. 결과를 다시 고칠 수 있습니다.',
     blockedTitle: '확정을 취소할 수 없습니다',

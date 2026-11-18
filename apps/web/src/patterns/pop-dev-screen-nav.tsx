@@ -64,6 +64,7 @@ export interface PopDevScreen {
  * 파일은 여러 작업이 동시에 건드리는 자리다.
  */
 export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
+  { path: '/pop/home', label: '홈' },
   { path: '/pop/work-start', label: 'P-02-01 작업 지시 목록' },
   { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
   {
@@ -72,12 +73,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 현재 생산 LOT이 있는 씨앗 작업지시다. */
     query: '?workOrderId=11002',
   },
-  {
-    path: '/pop/packing-label-reprint',
-    label: 'P-02-09 포장 라벨·인식표 재출력',
-    query: '?handlingUnitId=13001',
-  },
-  { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재 관리 LOT 라벨' },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
@@ -93,12 +88,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    */
   { path: '/pop/downtime', label: 'P-05-02 비가동 등록' },
   {
-    path: '/pop/packing-work',
-    label: 'P-02-08 생산 포장',
-    /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
-    query: '?workOrderId=11001',
-  },
-  {
     path: '/pop/repack-label-issue',
     label: 'P-04-04 재구성 라벨 발행',
   },
@@ -112,15 +101,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-02-11 러닝체인지 부품 교체',
     query: '?workOrderId=11002',
   },
-  /*
-   * 씨앗의 전기된 출고 전표(`GI-2026-000401`)다. ⚠ **번호를 바꾸면 화면이 빈 채로 뜬다** —
-   * 씨앗에 없는 번호는 계약 예시가 받아 답하므로 머리와 줄이 서로 다른 전표를 말한다(실측).
-   */
-  {
-    path: '/pop/goods-issue-qr',
-    label: 'P-01-02 출고 QR 발행',
-    query: '?goodsIssueId=16401',
-  },
+  /* 008 — 출고 전표가 아니라 단말 공장의 분할 LOT 목록이라 진입 컨텍스트가 없다. */
+  { path: '/pop/goods-issue-qr', label: 'P-01-02 분할 LOT 라벨' },
   /* ⚠ 서버 경로가 아직 없어 목록이 비어 뜬다 — 배치만 볼 수 있다(SHIP-UNIT-01 P4b). */
   { path: '/pop/shipping-units', label: 'P-04-05 출하 단위 구성' },
   /*

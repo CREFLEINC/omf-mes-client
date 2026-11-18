@@ -92,7 +92,7 @@ export interface paths {
             'application/json': components['schemas']['Warehouse'];
           };
         };
-        /** @description 검증 실패 */
+        /** @description 검증 실패. locationPrefix — 형식이 틀리면 INVALID, 다른 창고가 쓰면 UNIQUE_VIOLATION(uniqueScope [locationPrefix] · omf-all-around#292) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -208,7 +208,7 @@ export interface paths {
             'application/json': components['schemas']['Warehouse'];
           };
         };
-        /** @description 검증 실패 */
+        /** @description 검증 실패. locationPrefix 를 지금 값과 다르게 보내면 STATE_LOCKED — 창고 위치 코드는 등록한 뒤 바꿀 수 없다(omf-all-around#292) */
         400: {
           headers: {
             [name: string]: unknown;
@@ -416,9 +416,9 @@ export interface paths {
      */
     get: {
       parameters: {
-        query: {
-          /** @description 필수. Location 은 창고를 고른 뒤에 본다 — W-06-07 §3 ⚠ 위치 «코드» 스캔은 locationCode 와 함께 보낸다 — 창고는 적치 지시·화면 문맥이 준다. */
-          warehouseId: number;
+        query?: {
+          /** @description locationCode 가 없으면 필수(없으면 400 REQUIRED). Location 은 창고를 고른 뒤에 본다 — W-06-07 §3. 위치 코드는 창고 위치 코드(Warehouse.locationPrefix)로 시작하고 모든 창고를 통틀어 유일하다(omf-all-around#292) — 위치 «코드» 스캔은 locationCode 만 보내도 한 건이 집힌다. 함께 보내면 그 창고 안에서만 찾는다. */
+          warehouseId?: number;
           /** @description 코드·명칭 검색 */
           q?: string;
           /** @description 위치 코드 정확 일치. 스캔한 코드로 한 건을 집을 때 쓰며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ q 로 받은 페이지를 화면이 걸러 쓰는 것으로는 성립하지 않는다 — 부분 일치가 여러 건을 낸다 */
@@ -16116,9 +16116,9 @@ export interface paths {
           itemId?: number;
           lotId?: number;
           locationId?: number;
-          /** @description 입하 LOT 으로 거른다 — 그 입하 LOT 의 자재 관리 LOT 잔액만. 범위 조건으로 인정한다(이것 하나로 조회할 수 있다). 근거: 피처 005 FR-035 · D-29 */
+          /** @description 입하 LOT 으로 거른다 — 그 입하 LOT 의 자재 관리 LOT 잔액만. 범위 조건으로 인정한다(이것 하나로 조회할 수 있다). 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotId?: number;
-          /** @description 입하 LOT 번호 정확 일치 — inboundLotId 와 같은 범위 조건. 근거: 피처 005 FR-035 · D-29 */
+          /** @description 입하 LOT 번호 정확 일치 — inboundLotId 와 같은 범위 조건. 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotNo?: string;
           /** @description 품질 상태로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED · 공유계약 G-32). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
           qualityStatusCode?: string;
@@ -17672,6 +17672,10 @@ export interface paths {
           supplierId?: number;
           /** @description 라인 단위 출고 QR 을 스캔했을 때. 그 라인이 속한 출고 전표를 낸다. 근거: P-01-02 §5-2 · M-01-09 §5-6 */
           goodsIssueLineId?: number;
+          /** @description 그 LOT 을 출고한 라인이 있는 전표. 자재 LOT 라벨(분할 LOT·전량 출고한 원래 LOT)을 스캔해 받을 출고를 찾을 때 쓴다(awaitingShopfloorReceiptOnly 와 함께). 근거: M-01-09 · 피처 008(omf-all-around#289) */
+          lotId?: number;
+          /** @description 참이면 생산창고 입고 대상(원천 PICKING_ORDER)이고 전기 완료(POSTED)이며 생산창고 입고가 아직 없는 전표만. 폐기·반품 등 다른 원천 출고는 빠진다. 근거: M-01-09 · 피처 008(omf-all-around#289) */
+          awaitingShopfloorReceiptOnly?: boolean;
           /** @description 출고번호 검색. ⛔ 발행된 출고 QR 은 라인을 가리키므로 이 축으로는 풀리지 않는다 — goodsIssueLineId 를 쓴다(P-01-02 §5-2) */
           q?: string;
           page?: number;
@@ -17709,7 +17713,7 @@ export interface paths {
     put?: never;
     /**
      * 출고 등록
-     * @description postImmediately 가 참이면 등록과 전기가 같은 트랜잭션이다 — 화면이 한 버튼인 경우다. 승인을 먼저 받는 기타 출고는 거짓으로 보낸다. 전기 때 생산 투입 출고(sourceDocumentTypeCode=PICKING_ORDER)는 LOT 상태가 정상(NORMAL)이 아니면 400 STATE_LOCKED(lines[i].lotId)다 — 공급사 반품·폐기 출고는 LOT 상태를 보지 않는다(omf-all-around#240). 근거: M-01-08 · W-01-05 · W-01-06
+     * @description postImmediately 가 참이면 등록과 전기가 같은 트랜잭션이다 — 화면이 한 버튼인 경우다. 승인을 먼저 받는 기타 출고는 거짓으로 보낸다. 전기 때 생산 투입 출고(sourceDocumentTypeCode=PICKING_ORDER)는 LOT 상태가 정상(NORMAL)이 아니면 400 STATE_LOCKED(lines[i].lotId)다 — 공급사 반품·폐기 출고는 LOT 상태를 보지 않는다(omf-all-around#240). 근거: M-01-08 · W-01-05 · W-01-06 부분 출고 분할(피처 008 · omf-all-around#289): 원천이 PICKING_ORDER 인 출고가 전기될 때, 라인 수량을 내도 그 LOT 재고가 어디든 남으면(부분 출고) 줄마다 분할 LOT(번호 = 수량 칸을 분할 수량으로 바꾸고 번호 칸에 -S{n})을 만들어 그것을 낸다 — 그래서 응답 lines[].lotId 는 요청의 lotId(원래 LOT)와 다르고 splitFromLotId 가 원래 LOT 이다. 분할은 원천 GOODS_ISSUE_SPLIT 의 분할 원장(LOT_SPLIT)으로 출발 위치에서 원래 LOT → 분할 LOT 으로 옮긴 뒤 출고 원장이 분할 LOT 을 낸다. 전량 출고면 분할하지 않는다. 피킹 라인의 LOT 은 원래 LOT 그대로다.
      */
     post: {
       parameters: {
@@ -22714,7 +22718,7 @@ export interface paths {
     };
     /**
      * LOT 하나의 하위 사슬(정방향)
-     * @description 입하·자재입고 → 투입 W/O → 생산 LOT → 생산입고·포장(출하 단위)·출하. 반제품은 한 번에 한 단만 푼다 — consumedFurther 가 0 보다 큰 생산 LOT 으로 다시 부른다. 실적 배분이 없는 생산 LOT 은 잇지 않는다. 근거: 서버 선행 · 장부 P-119
+     * @description 입하·자재입고 → 투입 W/O → 생산 LOT → 생산입고·포장(출하 단위)·출하. 반제품은 한 번에 한 단만 푼다 — consumedFurther 가 0 보다 큰 생산 LOT 으로 다시 부른다. 실적 배분이 없는 생산 LOT 은 잇지 않는다. 근거: 서버 선행 · 장부 P-119 부분 출고 분할(피처 008): 투입·생산 LOT 이음은 이 LOT 과 그 분할 자손(SPLIT 계보)의 투입을 함께 센다.
      */
     get: {
       parameters: {
@@ -22752,10 +22756,20 @@ export interface paths {
                 /** @description W/O 에 실적이 아예 없으면 null(투입만). 실적은 있는데 이 LOT 의 투입 구간과 겹치는 실적이 없으면 LOT_GENEALOGY_ESTIMATE 에 productionLots 가 빈 목록이다 */
                 linkBasis: components['schemas']['LotFlowBasis'] | null;
                 productionLots: components['schemas']['LotFlowProductionLot'][];
+                /** @description 이 LOT 이 아니라 분할 자손으로만 투입된 W/O 면 그 자손 LOT(첫 투입). 이 LOT 자신이 투입됐으면 null */
+                viaLot: {
+                  /** Format: int64 */
+                  lotId: number;
+                  lotNo: string;
+                } | null;
               }[];
               /** @description 생산 LOT 이 500개를 넘어 앞 500개만 실었다 */
               truncated: boolean;
               totalProductionLotCount: number;
+              /** @description 이 LOT 이 분할 LOT 이면 그 부모(분할된 원래 LOT) */
+              splitFrom: components['schemas']['LotFlowSplitLink'] | null;
+              /** @description 이 LOT 에서 나온 분할 LOT — 자손 전체, 깊이 순(같은 깊이는 분할 시각 순). workOrders·생산 LOT 이음은 이 자손들의 투입을 함께 센다 */
+              splits: components['schemas']['LotFlowSplitLink'][];
             };
           };
         };
@@ -22918,9 +22932,9 @@ export interface paths {
           workOrderNo?: string;
           /** @description 투입한 LOT 이 들어온 입하 번호 정확 일치 */
           inboundReceiptNo?: string;
-          /** @description 투입한 LOT 의 입하 LOT — 집는 조건이라 기간은 선택이다. 근거: 피처 005 FR-035 · D-29 */
+          /** @description 투입한 LOT 의 입하 LOT — 집는 조건이라 기간은 선택이다. 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotId?: number;
-          /** @description 투입한 LOT 의 입하 LOT 번호 정확 일치 — 집는 조건이라 기간은 선택이다. 근거: 피처 005 FR-035 · D-29 */
+          /** @description 투입한 LOT 의 입하 LOT 번호 정확 일치 — 집는 조건이라 기간은 선택이다. 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotNo?: string;
           /** @description 투입한 LOT 이 들어온 입하의 공급사 */
           supplierId?: number;
@@ -26844,6 +26858,88 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/logistics/split-material-lots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * 분할 LOT 라벨 목록
+     * @description 부분 출고가 만든 분할 LOT(원천 GOODS_ISSUE_SPLIT)과 그 자재 LOT 라벨(MATERIAL_LOT_LABEL) 발행 요약. 미발행 = 발행 기록이 없거나 마지막 인쇄 결과가 FAILED(인쇄 대기 PENDING 은 찍은 것으로 본다). labelState=UNPRINTED(기본)는 기간 제한 없이 분할 시각 오래된 순, PRINTED 는 출고일(issuedFrom·issuedTo, UTC 하루 경계, 기본 오늘까지 최근 7일) 안에서 최근 순. unprintedCount 는 기간과 상관없는 그 공장 전체 미발행 수다. 라벨 발행은 POST /app/document-issues(MATERIAL_LOT_LABEL · 대상 LOT)를 그대로 쓴다. 단말(POP)은 질의 plantId 가 단말 공장이어야 한다. 근거: P-01-02 · 피처 008(omf-all-around#289)
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description 공장 */
+          plantId: number;
+          /** @description UNPRINTED = 라벨 안 찍음(기간 무관) · PRINTED = 찍음 */
+          labelState?: 'UNPRINTED' | 'PRINTED';
+          /** @description PRINTED 일 때 출고일 시작(기본 오늘−6일) */
+          issuedFrom?: string;
+          /** @description PRINTED 일 때 출고일 끝(기본 오늘) */
+          issuedTo?: string;
+          page?: number;
+          size?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 목록 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['SplitMaterialLot'][];
+              page: components['schemas']['PageMeta'];
+              /** @description 이 공장의 라벨 안 찍은 분할 LOT 수(기간 무관) */
+              unprintedCount: number;
+            };
+          };
+        };
+        /** @description 검증 실패 */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다. 단말은 공장 범위 밖이거나 작업자가 없다 */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        /** @description 권한 없음 — P-01-02 가 필요하다 */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -38174,9 +38270,9 @@ export interface paths {
           /** @description ⭐ 01 계약의 /trace/lots 에는 없는 축이다 */
           warehouseId?: number;
           locationId?: number;
-          /** @description 자재 관리 LOT 의 입하 LOT 으로 거른다. 근거: 피처 005 FR-035 · D-29 */
+          /** @description 자재 관리 LOT 의 입하 LOT 으로 거른다. 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotId?: number;
-          /** @description 입하 LOT 번호 정확 일치. 근거: 피처 005 FR-035 · D-29 */
+          /** @description 입하 LOT 번호 정확 일치. 근거: 피처 005 FR-035 · D-29 부분 출고 분할 LOT(피처 008)은 입하 LOT 칸이 비어 있어 원래 LOT(조상)의 입하 LOT 으로 내고, 입하 LOT 으로 거르면 원래 LOT 에서 나온 분할 LOT 도 함께 나온다. */
           inboundLotNo?: string;
           /** @description 미해제 보류가 있는 것만 */
           heldOnly?: boolean;
@@ -45275,6 +45371,11 @@ export interface components {
        * @example true
        */
       isActive: boolean;
+      /**
+       * @description 창고 위치 코드 — 이 창고의 위치 코드 앞에 붙는다({locationPrefix}-Z01 · {locationPrefix}-SYS-STAGING). 모든 창고를 통틀어 유일하고, 등록한 뒤에는 바꾸지 않는다. 창고 코드와 따로다. 근거: 사용자 결정 2026-11-17 · omf-all-around#292
+       * @example K7QX
+       */
+      locationPrefix: string;
     };
     /** @description 창고 등록 요청. isActive 는 받지 않는다(신규는 항상 사용 중). 근거: W-06-07 §4-A · §5-1 「창고 추가」 */
     WarehouseCreate: {
@@ -45312,6 +45413,11 @@ export interface components {
        * @example false
        */
       isDefect?: boolean;
+      /**
+       * @description 창고 위치 코드 — 선택. 빼면 서버가 쓰지 않은 무작위 4자(영문 대문자·숫자, 헷갈리는 0/O·1/I/L 제외)를 채운다. 사람이 고칠 때는 대문자·숫자 2~6자. 형식이 틀리면 400 INVALID, 다른 창고가 쓰면 400 UNIQUE_VIOLATION(uniqueScope [locationPrefix]). 등록한 뒤에는 바꿀 수 없다. 근거: omf-all-around#292
+       * @example K7QX
+       */
+      locationPrefix?: string;
     };
     /** @description 창고 수정 요청. plantId 는 신규만(편집 불가) — 근거: W-06-07 §4-A 편집 열. isActive 는 별도 사용 중지 액션(:deactivate)으로만 바꾼다 — 근거: W-06-07 §5-1. 낙관적 잠금은 공유계약 B-1. */
     WarehouseUpdate: {
@@ -45339,6 +45445,11 @@ export interface components {
        * @example false
        */
       isDefect: boolean;
+      /**
+       * @description 창고 위치 코드 — 등록한 뒤 바꿀 수 없다. 빼거나 지금 값과 같으면 통과하고, 다르면 400 STATE_LOCKED(바꾸면 그 창고의 위치 코드와 붙인 라벨이 어긋난다). 근거: omf-all-around#292
+       * @example K7QX
+       */
+      locationPrefix?: string;
     };
     WarehouseDetailResponse: {
       warehouse: components['schemas']['Warehouse'];
@@ -45362,8 +45473,8 @@ export interface components {
        */
       parentLocationId?: number | null;
       /**
-       * @description 서버가 발행한다 — 구역 Z01 · 랙 {구역}-R001 · 층 {랙}-L01 · 셀 {층}-C01, 같은 상위 안 가장 큰 번호 + 1(자리 수를 넘으면 늘어난다). 바꿀 수 없다. 서버가 만든 자리는 SYS-STAGING · SYS-WHOLE
-       * @example Z01-R001-L01-C01
+       * @description 서버가 발행한다 — 구역 {창고 위치 코드}-Z01 · 랙 {구역}-R001 · 층 {랙}-L01 · 셀 {층}-C01, 같은 상위 안 가장 큰 번호 + 1(자리 수를 넘으면 늘어난다). 창고 위치 코드는 Warehouse.locationPrefix 다(창고 코드가 아니다). 바꿀 수 없다. 모든 창고를 통틀어 유일하다(uq_location_code · omf-all-around#292) — 위치 QR 하나로 창고까지 풀린다. 서버가 만든 자리는 {창고 위치 코드}-SYS-STAGING · {창고 위치 코드}-SYS-WHOLE. 2026-11-17 이전 코드(사람이 짓던 S230-01 등 포함)는 예외 없이 {창고 위치 코드}-{옛 코드}로 바꾸었다
+       * @example K7QX-Z01-R001-L01-C01
        */
       locationCode: string;
       /** @example A구역 01열 03단 */
@@ -50892,7 +51003,7 @@ export interface components {
     };
     /** @description 자재 쪽 문서 */
     LotFlowMaterialSide: {
-      /** @description 재생재·분할 LOT 처럼 입하에서 오지 않았으면 null */
+      /** @description 재생재·분할 LOT 처럼 입하에서 오지 않았으면 null 분할 LOT 은 입하 LOT 칸이 비어 있어 뿌리 조상(원래 자재 LOT)의 입하를 보인다(피처 008). */
       inbound: components['schemas']['LotFlowInbound'] | null;
       /** @description 자재입고 · 입고 일시순 */
       receipts: components['schemas']['LotFlowReceipt'][];
@@ -50963,6 +51074,8 @@ export interface components {
         } | null;
         /** @description 조회한 LOT 자신으로 되돌아왔다(경로 대조는 화면이 한다) */
         cyclic: boolean;
+        /** @description 투입된 LOT 이 분할 LOT 이면 그 조상 — 가까운 부모부터 뿌리(원래 자재 LOT)까지. 분할 LOT 이 아니면 빈 목록 */
+        splitAncestry: components['schemas']['LotFlowSplitLink'][];
       };
     /** @description 출고 전표. 일반 출고·공급사 반품·기타 출고가 경로를 나누지 않고 issueTypeCode 로 갈린다 — 경로를 나누면 같은 전표가 세 벌로 갈라지고 조회가 세 곳을 봐야 한다. 근거: M-01-08 · W-01-05 · W-01-06 */
     GoodsIssue: {
@@ -51150,9 +51263,26 @@ export interface components {
       itemId: number;
       /**
        * Format: int64
+       * @description 출고한 LOT. 부분 출고 분할이면 분할 LOT 이다(피처 008).
        * @example 1001
        */
       lotId: number;
+      /**
+       * @description lotId 의 LOT 번호(분할이면 분할 LOT 번호).
+       * @example 040101-00022S|300|260731|100019|0001-S1
+       */
+      lotNo: string;
+      /**
+       * Format: int64
+       * @description 이 라인이 부분 출고로 분할 LOT 을 만들었으면 원래 LOT. 아니면 null(전량 출고, 돌아온 분할 LOT 을 다시 전량 출고한 라인 포함).
+       * @example 1001
+       */
+      splitFromLotId?: number | null;
+      /**
+       * @description splitFromLotId 의 LOT 번호.
+       * @example 040101-00022S|1000|260731|100019|0001
+       */
+      splitFromLotNo?: string | null;
       /** @example 100 */
       issueQty: number;
       /**
@@ -53387,13 +53517,31 @@ export interface components {
       };
       /**
        * Format: int64
-       * @description 속한 입하 LOT(피처 005) — 입하 전·자재가 아닌 LOT 은 null
+       * @description 속한 입하 LOT(피처 005) — 입하 전·자재가 아닌 LOT 은 null 단건 조회에서 분할 LOT 은 조상의 입하 LOT 을 낸다(피처 008).
        */
       inboundLotId?: number | null;
       /** @description 속한 입하 LOT 번호 — 없으면 null */
       inboundLotNo?: string | null;
       /** @description 패키징(피처 005 R-4) — 없으면 null. 분할로 생긴 자식 LOT 은 패키징이 없다 */
       package?: components['schemas']['MaterialPackage'] | null;
+      /** @description 부모 LOT 번호 — 단건 조회(GET /trace/lots/{lotId})만 싣는다(피처 008) */
+      parentLotNo?: string | null;
+      /** @description 원천이 GOODS_ISSUE_SPLIT(부분 출고 분할)이면 그 분할을 일으킨 출고 라인 — 단건 조회만 */
+      splitGoodsIssue?: {
+        /** Format: int64 */
+        goodsIssueId: number;
+        goodsIssueNo: string;
+        /** Format: int64 */
+        goodsIssueLineId: number;
+        lineNo: number;
+      } | null;
+      /**
+       * Format: date-time
+       * @description 분할 시각(SPLIT 계보) — 분할 LOT 이 아니면 null. 단건 조회만
+       */
+      splitAt?: string | null;
+      /** @description 이 LOT 에서 나온 분할 LOT 수(자손 전체) — 단건 조회만 */
+      splitChildCount?: number;
     };
     /** @description 생산 LOT 완료. 계획 수량에 미달하면 사유 코드가 필요하고, 서버가 작업지시에 그 사유를 함께 기록한다 — 한 트랜잭션이다(공유계약 B-8). 근거: P-02-06 §5-5 */
     LotComplete: {
@@ -56746,6 +56894,85 @@ export interface components {
        */
       lotCount: number;
     };
+    /** @description 분할 관계 한 줄(피처 008 · omf-all-around#289). lot 은 이 관계로 이어진 상대 LOT — splitFrom·splitAncestry 에서는 부모(분할된 원래 LOT), splits 에서는 자식(분할 LOT)이다. */
+    LotFlowSplitLink: {
+      /** @enum {string} */
+      relationTypeCode: 'SPLIT';
+      lot: components['schemas']['LotFlowLotHead'];
+      /** @description 분할 수량 */
+      qty: number;
+      uomCode: string;
+      /** Format: date-time */
+      splitAt: string;
+      /** @description 분할을 일으킨 출고 라인 — 출고가 아닌 옛 분할(처분 선별)은 null */
+      goodsIssue: {
+        /** Format: int64 */
+        goodsIssueId: number;
+        goodsIssueNo: string;
+        /** Format: int64 */
+        goodsIssueLineId: number;
+        lineNo: number;
+      } | null;
+    };
+    /** @description 부분 출고 분할 LOT 한 줄(P-01-02 라벨 대상). 라벨 면 값은 자재 LOT 라벨과 같다 — 수량은 분할 수량(initial_qty), 패키징 줄은 없다. */
+    SplitMaterialLot: {
+      /** Format: int64 */
+      lotId: number;
+      /** @example 040101-00022S|300|260731|100019|0001-S1 */
+      lotNo: string;
+      statusCode: string;
+      lifecycleStatusCode: string | null;
+      item: {
+        /** Format: int64 */
+        itemId: number;
+        itemCode: string;
+        itemName: string;
+      };
+      /** Format: int64 */
+      uomId: number;
+      uomCode: string;
+      /** @description 분할 수량(라벨 수량) */
+      qty: number;
+      /** @description 원조 LOT 의 입하 공급사 — 분할 LOT 은 입하 LOT 칸이 비어 있어 원조를 따라 올라간다 */
+      supplier: {
+        /** Format: int64 */
+        supplierId: number;
+        supplierCode: string;
+        supplierName: string;
+      } | null;
+      parentLot: {
+        /** Format: int64 */
+        lotId: number;
+        lotNo: string;
+      };
+      /**
+       * Format: date-time
+       * @description 분할 시각(출고 occurredAt)
+       */
+      splitAt: string;
+      goodsIssue: {
+        /** Format: int64 */
+        goodsIssueId: number;
+        goodsIssueNo: string;
+        /** Format: int64 */
+        goodsIssueLineId: number;
+        lineNo: number;
+      };
+      /** @description 출고 도착(위치 도착일 때만) */
+      destination: {
+        warehouseCode: string;
+        locationCode: string;
+      } | null;
+      /** @description 자재 LOT 라벨 발행 요약 — 없으면 한 번도 안 찍음 */
+      labelIssue: {
+        issueCount: number;
+        lastIssueSeq: number;
+        /** @description PENDING·SUCCEEDED·FAILED */
+        lastPrintOutcomeCode: string | null;
+        /** Format: date-time */
+        lastIssuedAt: string;
+      } | null;
+    };
     /**
      * @description 결재선 정의. 승인 유형과 사업부로 고른다.
      *
@@ -59989,10 +60216,16 @@ export interface components {
          * @example 1001
          */
         id: number;
-        /** @example WH-ALL */
+        /** @example K7QX-SYS-WHOLE */
         code: string;
         /** @example 창고 전체 */
         name: string;
+        /**
+         * @description 그 위치의 역할 — 적치 대기(PUTAWAY_STAGING) · 창고 전체(WAREHOUSE_WHOLE). 위치 코드가 창고 위치 코드로 시작하므로(omf-all-around#292) 적치 대기는 code 글자가 아니라 이 값으로 가린다
+         * @example WAREHOUSE_WHOLE
+         * @enum {string|null}
+         */
+        systemRoleCode: 'PUTAWAY_STAGING' | 'WAREHOUSE_WHOLE' | null;
       } | null;
       /**
        * @description SL_CD 가 있는데 창고를 정하지 못한 까닭 — FG_WAREHOUSE_UNMAPPED 코드가 같은 MES 창고가 없다 · FG_WAREHOUSE_INACTIVE 그 창고가 꺼져 있다 · FG_WAREHOUSE_OTHER_PLANT 그 창고가 다른 공장에 있다 · FG_WAREHOUSE_NOT_ALLOWED 자재창고·불량창고·외부창고다. 정해졌거나 SL_CD 가 없으면 null. 같은 코드가 공정 W/O 의 defaultFgLocationId 칸 문제(issues)로도 나온다

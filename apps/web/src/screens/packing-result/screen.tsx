@@ -6,7 +6,6 @@ import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { toApiError } from '../../patterns/request';
 import { ShippingPackingLabelScreen } from '../shipping-packing-label/screen';
@@ -380,12 +379,6 @@ export const PackingResultScreen = () => {
          *   「작업자 · 연결상태 · 화면 이동 · 사용자 전환」이고, 라벨 상태·재출력은 «액션 줄»의
          *   일이다. 머리줄에 두면 화면을 바꾸는 조작이 상태 표시들 사이에 섞인다.
          */}
-        <div className="pop-context-right">
-          <PopWorkerTag workerNo={identity.workerNo} />
-          <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
-            {isOnline ? t.header.online : t.header.offline}
-          </Chip>
-        </div>
       </header>
 
       {isLabelMode ? (

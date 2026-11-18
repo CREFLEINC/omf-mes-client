@@ -2,6 +2,7 @@ import { Button, Card, Radio, RadioGroup, Skeleton, TextField } from '@crefle/we
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { PaneWorkContext } from '../../patterns/pop-header';
 import type { HoldDraft } from './hold-draft';
 import type { HoldReasonsResult } from './reason-options';
 
@@ -15,6 +16,8 @@ export interface HoldFormProps {
   error: string | null;
   onReasonChange: (code: string) => void;
   onRemarksChange: (remarks: string) => void;
+  /** 이 중단이 걸리는 W/O 번호 — 상자 제목 옆에 선다(#291). 모르면 `null`. */
+  workOrderNo?: string | null;
 }
 
 /**
@@ -38,13 +41,17 @@ export const HoldForm = ({
   error,
   onReasonChange,
   onRemarksChange,
+  workOrderNo = null,
 }: HoldFormProps) => {
   const legendId = useId();
   const remarksId = useId();
 
   return (
     <Card bordered className="pop-section pop-hold-form-card" aria-label={t.form.sectionLabel}>
-      <h2 className="pane-title">{t.form.sectionLabel}</h2>
+      <h2 className="pane-title">
+        {t.form.sectionLabel}
+        <PaneWorkContext workOrderNo={workOrderNo} />
+      </h2>
 
       <p className="pop-hold-field-label" id={legendId}>
         {t.form.reasonLabel}

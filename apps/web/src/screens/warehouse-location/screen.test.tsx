@@ -797,6 +797,23 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(within(panel).queryByText('등록된 Location이 없습니다')).not.toBeInTheDocument();
   });
 
+  it('#292 탭 맨 위에 창고 위치 코드를 바꿀 수 없는 줄로 보인다', async () => {
+    const { user } = renderScreen(
+      [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
+      '?wh=1001',
+    );
+
+    const panel = await openLocationTab(user);
+    const row = within(panel).getByText('창고 위치 코드').closest('dl');
+
+    expect(row).not.toBeNull();
+    expect(within(row!).getByText('K7PM')).toBeInTheDocument();
+    expect(
+      within(row!).getByText('바꿀 수 없습니다. 이 창고의 모든 위치 코드 앞에 붙습니다.'),
+    ).toBeInTheDocument();
+    expect(within(panel).queryByRole('textbox', { name: '창고 위치 코드' })).toBeNull();
+  });
+
   it('구역 추가는 상위를 창고로 보이고 위치 코드를 발행해 글자로 보인다', async () => {
     const { user } = renderScreen(
       [warehouseListRoute(), warehouseDetailRoute(), locationListRoute(), ...lookupRoutes()],
@@ -813,7 +830,7 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     // 머리에 만들 단계가 보인다.
     expect(within(dialog).getByText('구역')).toBeInTheDocument();
     // 있는 구역(A-01 · B-01)은 모양이 달라 세지 않는다 — 서버처럼 Z 번호 가운데 가장 큰 것 + 1.
-    expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('Z01');
+    expect(within(dialog).getByLabelText('위치 코드')).toHaveTextContent('K7PM-Z01');
     expect(within(dialog).queryByRole('textbox', { name: '위치 코드' })).not.toBeInTheDocument();
     // 안내문 없이 값만(사용자 지시 2026-10-29).
     expect(within(dialog).queryByText('MES가 자동으로 발행합니다.')).toBeNull();
@@ -1177,6 +1194,100 @@ describe('WarehouseLocationScreen — 창고 신규 등록', () => {
       businessUnitId: 21,
       warehouseCode: 'WH-09',
     });
+  });
+
+  it('#292 창고 위치 코드를 무작위 4자로 채워 두고 POST 본문에 싣는다', async () => {
+    const { requests, user } = renderScreen(
+      createRoutes(postRoute(() => jsonResponse(NEW_WAREHOUSE, { status: 201 }))),
+      '?mode=create',
+    );
+
+    const prefix = await screen.findByRole('textbox', { name: '창고 위치 코드' });
+    expect((prefix as HTMLInputElement).value).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{4}$/u);
+    const generated = (prefix as HTMLInputElement).value;
+
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+
+    expect(JSON.parse(writeRequests(requests, 'POST')[0]?.body ?? '{}')).toMatchObject({
+      locationPrefix: generated,
+    });
+  });
+
+  it('#292 고친 창고 위치 코드는 대문자로 실린다', async () => {
+    const { requests, user } = renderScreen(
+      createRoutes(postRoute(() => jsonResponse(NEW_WAREHOUSE, { status: 201 }))),
+      '?mode=create',
+    );
+
+    const prefix = await screen.findByRole('textbox', { name: '창고 위치 코드' });
+    await fillCreateForm(user);
+    await user.clear(prefix);
+    await user.type(prefix, 'ab12');
+    expect(prefix).toHaveValue('AB12');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('등록했습니다')).toBeInTheDocument();
+
+    expect(JSON.parse(writeRequests(requests, 'POST')[0]?.body ?? '{}')).toMatchObject({
+      locationPrefix: 'AB12',
+    });
+  });
+
+  it('#292 창고 위치 코드 형식이 틀리면 보내지 않고 칸에 오류를 낸다', async () => {
+    const { requests, user } = renderScreen(
+      createRoutes(postRoute(() => jsonResponse(NEW_WAREHOUSE, { status: 201 }))),
+      '?mode=create',
+    );
+
+    const prefix = await screen.findByRole('textbox', { name: '창고 위치 코드' });
+    await fillCreateForm(user);
+    await user.clear(prefix);
+    await user.type(prefix, 'K');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(prefix).toHaveAccessibleDescription('대문자와 숫자 2~6자로 입력하세요.');
+    expect(writeRequests(requests, 'POST')).toHaveLength(0);
+  });
+
+  it('#292 다른 창고가 쓰는 창고 위치 코드면(400 UNIQUE_VIOLATION) 그 칸에 고칠 방법을 낸다', async () => {
+    const { user } = renderScreen(
+      createRoutes(
+        postRoute(() =>
+          jsonResponse(
+            {
+              errors: [
+                {
+                  scope: 'field',
+                  field: 'locationPrefix',
+                  code: 'UNIQUE_VIOLATION',
+                  message: 'locationPrefix 중복',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      ),
+      '?mode=create',
+    );
+
+    const prefix = await screen.findByRole('textbox', { name: '창고 위치 코드' });
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(prefix).toHaveAccessibleDescription(
+        '이미 다른 창고가 쓰는 코드입니다 — 다른 코드를 넣거나 [다시 만들기]를 누르세요.',
+      );
+    });
+    expect(screen.queryByText('locationPrefix 중복')).not.toBeInTheDocument();
+
+    // [다시 만들기]로 새 코드를 지으면 그 칸의 서버 오류가 걷힌다.
+    await user.click(screen.getByRole('button', { name: '다시 만들기' }));
+    expect(prefix).toHaveAccessibleDescription(
+      '무작위로 만들었습니다. 대문자와 숫자 2~6자로 고칠 수 있고, 저장한 뒤에는 바꿀 수 없습니다.',
+    );
   });
 
   it('등록되면 그 창고의 상세로 옮겨 다시 조회한다 — 여기서 잠금 토큰을 확보한다', async () => {
@@ -1801,10 +1912,10 @@ describe('WarehouseLocationScreen — Location 등록·수정', () => {
       (request) => request.method === 'POST' && request.url.pathname === '/mdm/locations',
     );
     const body = JSON.parse(post?.body ?? '{}') as Record<string, unknown>;
-    // 코드는 서버가 발행한다 — 미리 지어 보인 코드(Z01)는 별칭이 없을 때의 위치명으로만 쓴다.
+    // 코드는 서버가 발행한다 — 미리 지어 보인 코드(창고 위치 코드-Z01, #292)는 별칭이 없을 때의 위치명으로만 쓴다.
     expect(body).toMatchObject({
       parentLocationId: null,
-      locationName: 'Z01',
+      locationName: 'K7PM-Z01',
       aliasName: null,
     });
     // 위치는 코드 · 위치유형 · 혼적 · 수용량 · 보관조건을 싣지 않는다.
@@ -2850,6 +2961,122 @@ describe('WarehouseLocationScreen — 보관 품목', () => {
     const marks = within(panel).getAllByRole('img', { name: '지정 품목만' });
     expect(marks).toHaveLength(1);
     expect(marks[0]!.closest('.tree-toggle')).toHaveTextContent('B-01');
+  });
+
+  /** #1673 — 층 없이 랙까지만 만든 구역(B-01 → B-01-01). 랙이 맨 아래 위치다. */
+  const leafRack: Location = {
+    ...locationFixtures[3]!,
+    locationId: 2005,
+    parentLocationId: 2004,
+    locationCode: 'B-01-01',
+    locationName: 'B구역 01열',
+    locationLevelCode: 'RACK',
+    isLeaf: true,
+  };
+  const leafRackLocations: Location[] = [
+    ...locationFixtures.slice(0, 3),
+    { ...locationFixtures[3]!, isLeaf: false },
+    leafRack,
+  ];
+  const leafRackRoutes = (...extra: StubRoute[]): StubRoute[] => [
+    warehouseListRoute(),
+    warehouseDetailRoute(),
+    locationListRoute(leafRackLocations),
+    ...lookupRoutes(),
+    locationDetailRoute(leafRack),
+    ...extra,
+    noLabelRoute,
+    noItemsRoute,
+  ];
+  const isRackItemsPut = (request: { method: string; url: URL }): boolean =>
+    request.method === 'PUT' && request.url.pathname === '/mdm/locations/2005/items';
+
+  const openLeafRack = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'B-01-01' }));
+    return screen.getByRole('dialog', { name: '랙 수정' });
+  };
+
+  it('#1673 층 없는 랙은 랙 창에서 보관 품목을 지정해 저장한다 — 층은 0 그대로, 새 층을 만들지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      leafRackRoutes(itemPickerRoute, {
+        match: (request) =>
+          request.method === 'PUT' && new URL(request.url).pathname === '/mdm/locations/2005/items',
+        respond: () => jsonResponse({ items: [] }),
+      }),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    // 지금 모양 그대로 — 층 없는 랙은 0 에서 시작한다.
+    expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('0');
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
+    // 품목 없이 지정 품목만이면 보낼 수 없다.
+    expect(within(section).getByText('품목을 하나 이상 선택하세요.')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+
+    const put = requests.find(isRackItemsPut);
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({ itemIds: [303] });
+    expect(put?.headers.get('Idempotency-Key')).toMatch(UUID_PATTERN);
+    // 층 · 셀은 만들지 않고, 위치 자체도 고치지 않는다.
+    expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(1);
+  });
+
+  it('#1673 층 없는 랙을 열기만 하고 아무것도 안 바꾸면 저장할 것이 없다', async () => {
+    const { user } = renderScreen(leafRackRoutes(), '?wh=1001');
+
+    const dialog = await openLeafRack(user);
+    await within(itemsSection(dialog)).findByRole('button', { name: '지정 품목만' });
+    expect(within(dialog).getByRole('button', { name: '저장' })).toBeDisabled();
+  });
+
+  it('#1673 층을 더하면 맨 아래가 아니게 되어 보관 품목 칸을 거두고 품목은 보내지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      leafRackRoutes(itemPickerRoute, {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === '/mdm/locations',
+        respond: () =>
+          jsonResponse(
+            { ...leafRack, locationId: 2010, parentLocationId: 2005, locationCode: 'B-01-01-01' },
+            { status: 201 },
+          ),
+      }),
+      '?wh=1001',
+    );
+
+    const dialog = await openLeafRack(user);
+    const section = itemsSection(dialog);
+    await user.click(await within(section).findByRole('button', { name: '지정 품목만' }));
+    await user.click(within(section).getByRole('combobox', { name: '품목 추가' }));
+    await user.click(await screen.findByRole('option', { name: /ITEM-303/ }));
+
+    await user.clear(within(dialog).getByLabelText('행 (층 수)'));
+    await user.type(within(dialog).getByLabelText('행 (층 수)'), '1');
+    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    await user.click(within(dialog).getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
+    expect(requests.some(isRackItemsPut)).toBe(false);
+  });
+
+  it('#1673 층이 있는 랙의 랙 창에는 보관 품목 칸이 없다', async () => {
+    const { requests, user } = renderScreen(locationWriteRoutes(locationDetailRoute()), '?wh=1001');
+
+    const panel = await openLocationTab(user);
+    await user.click(within(panel).getByRole('button', { name: 'A-01-01' }));
+    const dialog = screen.getByRole('dialog', { name: '랙 수정' });
+    expect(within(dialog).getByLabelText('행 (층 수)')).toHaveValue('1');
+    expect(within(dialog).queryByRole('region', { name: '보관 품목' })).toBeNull();
+    expect(requests.some((request) => request.url.pathname.endsWith('/items'))).toBe(false);
   });
 });
 

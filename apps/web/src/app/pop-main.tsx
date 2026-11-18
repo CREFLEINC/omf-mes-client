@@ -36,19 +36,22 @@ import './pop.css';
 /* ⛔ 화면을 싣는 import 보다 위에 둔다 — 아래 import 들이 문구를 붙잡기 전에 언어를 정한다. */
 import './pop-locale';
 
-import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
+import { StrictMode, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router';
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useLocation } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
-import { PopLogoutButton } from '../patterns/pop-logout';
-import { PopScreenNavButton } from '../patterns/pop-screen-nav';
+import { usePopIdentity } from '../patterns/pop-identity';
+import { useLegacyOutboxDrain } from '../patterns/pop-legacy-outbox';
+import { PopScreenNav } from '../patterns/pop-screen-nav';
+import { PopTopPrinterTarget, PopTopStatusTarget } from '../patterns/pop-top-status';
 import {
   PopRegistrationProvider,
   usePopRegistration,
   useRefreshPopTerminalOnScreenEntry,
 } from '../patterns/pop-registration';
+import { HeaderPrinter } from '../screens/worker-assignment/header-printer';
 import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
 import { printSampleLotLabel } from '../screens/pop-material-lot-label/sample-print';
 import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
@@ -100,8 +103,9 @@ const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
  *    전에는 경로를 돌려줘 성공으로 접혔고, 라벨이 안 나왔는데 「인쇄했습니다」가 떴다(2단계 검증 2026-10-16).
  */
 if (import.meta.env.DEV && window.pop === undefined) {
-  window.pop =
-    import.meta.env.VITE_POP_VIRTUAL_PRINTERS === '1'
+  /* 셸 전역 타입(`PopShellApi`)은 인쇄 통로만 적는다 — 토큰 통로는 `pop-terminal-token` 이 따로 읽는다. */
+  const devShell = {
+    ...(import.meta.env.VITE_POP_VIRTUAL_PRINTERS === '1'
       ? virtualPrinterShell()
       : {
           rendition: {
@@ -109,7 +113,39 @@ if (import.meta.env.DEV && window.pop === undefined) {
               throw new Error('브라우저 실행 — 프린터로 보내지 않았습니다.');
             },
           },
-        };
+        }),
+    deviceToken: devDeviceToken(),
+  };
+  window.pop = devShell;
+}
+
+/**
+ * 개발용 단말 토큰 보관 — 브라우저 POP 에서 새로 고침해도 단말 등록이 풀리지 않게 한다(사용자 지시 2026-11-17).
+ *
+ * ⭐ 설치본은 셸이 PC 안에 토큰을 보관한다(`window.pop.deviceToken`). 브라우저 실행에는 그 셸이 없어
+ *    메모리에만 두었고, 새로 고칠 때마다 등록이 풀렸다. 셸과 같은 모양(`get`·`set`)으로 브라우저
+ *    저장소에 둔다 — 빈 문자열은 지운다(셸과 같은 약속).
+ * ⛔ 설치본에는 없다(`window.pop` 을 셸이 심으면 이 자리를 지나지 않는다).
+ */
+function devDeviceToken() {
+  const KEY = 'omf.pop.dev.deviceToken';
+  return {
+    get: async (): Promise<string | undefined> => {
+      try {
+        return window.localStorage.getItem(KEY) ?? undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    set: async (value: string): Promise<void> => {
+      try {
+        if (value === '') window.localStorage.removeItem(KEY);
+        else window.localStorage.setItem(KEY, value);
+      } catch {
+        /* 저장소가 막힌 브라우저 — 이번 실행에서만 쓰고, 새로 고치면 다시 등록한다. */
+      }
+    },
+  };
 }
 
 /**
@@ -165,7 +201,8 @@ function virtualPrinterShell() {
 const POP_ENTRY_PATH = '/pop/worker-assignment';
 
 /**
- * 화면 위에 늘 서 있는 것 — **화면 이동**과 **사용자 전환** 두 자리다(공유계약 G-34).
+ * 화면 위에 늘 서 있는 것 — **공통 이동 메뉴**(맨 위 줄·업무 묶음·화면 탭, #291)다. [사용자 전환]도
+ * 그 맨 위 줄에 있다.
  *
  * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있고, 그래야
  * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
@@ -174,13 +211,44 @@ const POP_ENTRY_PATH = '/pop/worker-assignment';
 const PopChrome = () => {
   /* ⭐ 관리웹에서 바꾼 단말 공정·설비가 단말을 다시 켜지 않아도 보이게 한다(#1202). */
   useRefreshPopTerminalOnScreenEntry();
+  const { terminal } = usePopRegistration();
+  const { workerNo } = usePopIdentity();
+  /* 없앤 생산 포장·PQC 제품 검사 화면이 단말에 남긴 확정을 마저 보낸다(#293). */
+  useLegacyOutboxDrain(terminal !== null);
+  const { pathname } = useLocation();
+  /* 맨 위 줄의 화면 상태 자리(연결·전송 표시). 화면이 `PopTopStatus` 로 그 자리에 그린다. */
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  const [printerSlot, setPrinterSlot] = useState<HTMLElement | null>(null);
 
+  /*
+   * ⭐ **사번이 없으면 어느 화면이든 사번 입력 화면으로 보낸다**(사용자 지시 2026-11-17 · #291).
+   *    공통 메뉴로 사번 없이 다른 화면에 들어가면 「사번이 확인되지 않았습니다」 띠만 서고 할 일이
+   *    없었다. 사번은 처음부터 동기로 읽히므로(`worker-session`) 확인 중에 튕기지 않는다.
+   */
+  if (workerNo === null && pathname !== POP_ENTRY_PATH) {
+    return <Navigate to={POP_ENTRY_PATH} replace />;
+  }
+
+  /*
+   * ⭐ 공통 이동 메뉴(#291)를 화면 «위»에 세우고, 화면은 남은 높이를 가져간다(`.pop-frame__body`).
+   *    화면들은 `height: 100%` 로 그 칸을 채우므로 화면 코드는 그대로다.
+   */
   return (
-    <>
-      <Outlet />
-      <PopScreenNavButton />
-      <PopLogoutButton />
-    </>
+    <div className="pop-frame">
+      <PopScreenNav
+        terminalCode={terminal?.terminalCode ?? null}
+        printer={<HeaderPrinter />}
+        statusRef={setStatusSlot}
+        printerRef={setPrinterSlot}
+      />
+      <div className="pop-frame__body">
+        <PopTopStatusTarget.Provider value={statusSlot}>
+          <PopTopPrinterTarget.Provider value={printerSlot}>
+            <Outlet />
+          </PopTopPrinterTarget.Provider>
+        </PopTopStatusTarget.Provider>
+      </div>
+    </div>
   );
 };
 

@@ -53,7 +53,9 @@ describe('DetailPane', () => {
 
     expect(screen.getByText('NC-TEST-0042')).toBeInTheDocument();
     expect(screen.getByText('도장 표면 박리')).toBeInTheDocument();
-    expect(screen.getByText('SYNTH-ITEM-1 · 합성 품목')).toBeInTheDocument();
+    /* 품목은 PQC 처럼 이름 위 · 코드 아래(#275). */
+    expect(screen.getByText('합성 품목')).toBeInTheDocument();
+    expect(screen.getByText('SYNTH-ITEM-1')).toBeInTheDocument();
   });
 
   it('대상 LOT을 단위 이름과 함께 보인다', () => {

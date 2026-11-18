@@ -133,8 +133,9 @@ describe('toNonconformanceRow', () => {
       itemId: 5001,
       severityCode: 'CODE-B',
       statusCode: 'CODE-C',
-      openedAtText: '2026-08-12',
+      openedAtText: formatDateTime(nonconformance().openedAt),
       affectedQtyText: '320',
+      uomId: nonconformance().uomId,
       dispositionProgressCode: 'PARTIAL',
     });
   });

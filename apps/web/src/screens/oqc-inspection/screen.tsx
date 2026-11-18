@@ -90,6 +90,24 @@ import { latestRound } from './types';
 import { useItemNames, useLotNumbers } from './reference-lookup';
 import { useUomLookup } from './uom-lookup';
 import { targetSignatureOf, type WriteTargetSignature } from './write-target';
+import {
+  CODE_GROUPS as PQC_CODE_GROUPS,
+  toCodeOptions as toItemCodeOptions,
+} from '../pqc-inspection/code-options';
+import {
+  EMPTY_MEASUREMENT_DRAFT,
+  hasValueError,
+  isAllJudged,
+  toMeasurementDrafts,
+  toMeasurementInputs,
+  withJudgment,
+  withMeasuredValue,
+  type MeasurementDrafts,
+} from '../pqc-inspection/measurement-draft';
+import { toMeasurementRows } from '../pqc-inspection/measurement-rows';
+import { useInspectionItemSpecs } from '../pqc-inspection/queries';
+import { useRoundMeasurements } from '../pqc-panel/queries';
+import { WebItemTable } from '../pqc-panel/web-item-table';
 
 /**
  * W-04-03 OQC 출하검사 판정.
@@ -115,6 +133,8 @@ const todayText = messages.partsIqcInspection;
 const TODAY_KEY = 'td';
 /** 불합격 판정 코드 — 불합격 사유(선택) 칸을 세우고 비고로 싣는 기준(#136 · `judgment-direction.ts` 와 같은 값). */
 const REJECTED = 'REJECTED';
+/** 작성중 회차의 상태 코드 — 이 회차는 이어 쓴다(omf-all-around#284). */
+const DRAFT = 'DRAFT';
 const referenceT = messages.common.reference;
 
 export const OqcInspectionScreen = () => {
@@ -162,6 +182,16 @@ export const OqcInspectionScreen = () => {
 
   /** 방금 저장했는가. **상태가 아니라 결과다** — 고른 의뢰가 바뀌면 지워진다. */
   const [isJustSaved, setIsJustSaved] = useState(false);
+  /** 방금 끝난 저장이 임시 저장이었는가 — 알림 문구만 가른다(#284). */
+  const [justSavedDraft, setJustSavedDraft] = useState(false);
+  /** 임시 저장 시도의 「검사한 시각」 — 성공하거나 의뢰가 바뀌면 비운다(#284). */
+  const draftAttemptAt = useRef<string | null>(null);
+  /** 마지막으로 보낸 저장의 종류 — 성공 콜백이 읽는다. */
+  const savingKind = useRef<'DRAFT' | 'CONFIRMED'>('CONFIRMED');
+  /** 저장하지 않은 손댐(#284) — 작성중 회차 · 검사 항목은 값 비교로 알 수 없어 손댄 사실로 센다. */
+  const [edited, setEdited] = useState(false);
+  /** 검사 항목 칸(#284 · PQC 와 같은 초안). */
+  const [itemDrafts, setItemDrafts] = useState<MeasurementDrafts>({});
 
   /**
    * 수량 초안. **고른 의뢰가 바뀌면 그 회차의 값으로 되돌아간다.**
@@ -242,7 +272,10 @@ export const OqcInspectionScreen = () => {
     if (writeTargetRef.current === null || writeTargetRef.current !== writeTarget) return;
 
     writeTargetRef.current = null;
+    draftAttemptAt.current = null;
+    setJustSavedDraft(savingKind.current === DRAFT);
     setIsJustSaved(true);
+    setEdited(false);
     setSerialDraft({ inspectionRequestId: null, rows: [] });
   });
 
@@ -254,6 +287,9 @@ export const OqcInspectionScreen = () => {
   };
 
   const storedJudgment = round?.overallJudgmentCode ?? '';
+  /* 작성중 회차의 비고 — 불합격 사유 칸으로 되살린다(#284). */
+  const storedDraftRemarks = round?.statusCode === DRAFT ? round.remarks : '';
+  const lastSelectedId = useRef<number | null>(null);
 
   /**
    * 회차가 화면에 보일 값. 회차가 없으면 빈 초안이다.
@@ -288,11 +324,14 @@ export const OqcInspectionScreen = () => {
      */
     setIsReinspecting(false);
     setJudgment(storedJudgment);
-    setChangeReason('');
-    setRejectionReason('');
+    /* 같은 의뢰의 작성중 회차를 임시 저장한 뒤면 쓰던 변경 사유를 남긴다(#284) — 사유는 확정 때만 실린다. */
+    const keepsReason = lastSelectedId.current === selectedId && round?.statusCode === DRAFT;
+    if (!keepsReason) setChangeReason('');
+    lastSelectedId.current = selectedId;
+    setRejectionReason(storedJudgment === REJECTED ? storedDraftRemarks : '');
     setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment]);
+  }, [selectedId, roundId, acceptedQty, rejectedQty, heldQty, storedJudgment, storedDraftRemarks]);
 
   /*
    * 겨눈 대상이 바뀌었다 — **앞 대상의 쓰기는 이제 남의 것이다.**
@@ -302,7 +341,9 @@ export const OqcInspectionScreen = () => {
    */
   useEffect(() => {
     writeTargetRef.current = null;
+    draftAttemptAt.current = null;
     setIsJustSaved(false);
+    setEdited(false);
   }, [selectedId]);
 
   const rows = queue.data?.rows ?? [];
@@ -479,7 +520,15 @@ export const OqcInspectionScreen = () => {
    * 이 화면은 회차가 있으면 잠그므로 「열린 회차」는 재검사 중이거나 회차가 아직 없을 때다.
    */
   const isOpenRound = isReinspectingNow || round === null;
-  const expectedJudgment = isOpenRound ? expectedJudgmentOf(draft, acceptanceNumber) : null;
+  /* 작성중 회차를 이어 쓰는 중(#284) — 열린 회차처럼 판정을 채우고 저장하면 그 회차를 고친다. */
+  const editingDraft = !isReinspectingNow && round?.statusCode === DRAFT;
+  const isEditable = isOpenRound || editingDraft;
+  /*
+   * 작성중 회차는 시리얼을 받지 않는다(서버가 확정 «생성» 때만 받는다 · P-101) — 시리얼 구획이 서지 않으므로, 스캔으로 열며
+   * 들어온 줄도 막음 · 저장 · 떠날 때 묻기에서 뺀다(보이지 않는 줄이 단추를 막거나 조용히 빠지지 않게).
+   */
+  const activeSerialRows = editingDraft ? [] : serialRows;
+  const expectedJudgment = isEditable ? expectedJudgmentOf(draft, acceptanceNumber) : null;
   const needsChangeReason = needsJudgmentChangeReason(judgment, expectedJudgment);
   /*
    * 새 회차는 합격 수량에 총 검사 수량을 넣어 둔다(IQC 와 같다 · 사용자 지시 2026-11-09). 최종 판정은 채우지 않는다.
@@ -503,17 +552,48 @@ export const OqcInspectionScreen = () => {
   }, [selectedId, isOpenRound, isTargetLoaded, inspectedQty]);
   /* 화면이 채운 판정 — 근거가 사라지면 비운다. 사람이 고른 판정은 건드리지 않는다(IQC 와 같다). */
   const autoFilledJudgment = useRef<string | null>(null);
-  const changeDraftAndJudge = (typed: QuantityDraft): void => {
-    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
-    const lossChanged = typed.rejected !== draft.rejected || typed.held !== draft.held;
-    const recalculated =
-      typed.accepted === draft.accepted && lossChanged
-        ? remainingAcceptedOf(typed, inspectedQty)
-        : null;
-    const next = recalculated === null ? typed : { ...typed, accepted: recalculated };
-    setDraft(next);
-    if (!isOpenRound) return;
-    const expected = autoFillJudgmentOf(next, acceptanceNumber, inspectedQty);
+
+  /*
+   * 검사 항목(omf-all-around#284 · PQC 와 같다) — 의뢰의 검사기준 항목을 표로 받고, 판정한 줄만 저장에 싣는다.
+   * 회차가 있으면(재검사 중이 아니면) 그 회차의 측정치를 칸에 되살린다. 확정 회차는 보이기만 한다.
+   */
+  const planVersionId = detail.data?.inspectionPlanVersionId ?? null;
+  const itemSpecs = useInspectionItemSpecs(planVersionId);
+  const measurementRoundId = isReinspectingNow ? null : roundId;
+  const savedMeasurements = useRoundMeasurements(measurementRoundId);
+  const itemRows = toMeasurementRows(
+    itemSpecs.data ?? [],
+    measurementRoundId === null ? [] : (savedMeasurements.data ?? []),
+  );
+  const itemJudgmentOptions = toItemCodeOptions(
+    useCodeValues(PQC_CODE_GROUPS.measurementJudgment).data ?? [],
+  );
+  /* 같은 의뢰 · 회차 · 항목이면 한 번만 되살린다 — 저장 뒤 재조회가 그 사이 친 값을 덮지 않게(PQC 와 같다). */
+  const itemsReady = measurementRoundId === null || savedMeasurements.isSuccess;
+  const itemsKey = itemsReady
+    ? `${String(selectedId)}#${itemRows.map((row) => row.key).join('|')}#${String(measurementRoundId)}`
+    : null;
+  const restoredItemsKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (itemsKey === null || restoredItemsKey.current === itemsKey) return;
+    restoredItemsKey.current = itemsKey;
+    setItemDrafts(toMeasurementDrafts(itemRows));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey]);
+  const itemRejectedIn = (drafts: MeasurementDrafts): boolean =>
+    itemRows.some((row) => drafts[row.key]?.judgment === REJECTED);
+
+  /*
+   * 화면이 채우는 판정 — 항목에 불합격이 있으면 불합격, 아니면 수량 기준(#126)이다(#284 · PQC 와 같다).
+   * 사람이 고른 판정은 건드리지 않는다. ⛔ 판정 변경 사유는 서버 규칙(수량 기준)대로 따로 잰다.
+   */
+  const autoJudgmentOf = (nextDraft: QuantityDraft, nextItems: MeasurementDrafts): string | null =>
+    itemRejectedIn(nextItems)
+      ? REJECTED
+      : autoFillJudgmentOf(nextDraft, acceptanceNumber, inspectedQty);
+  const applyAuto = (nextDraft: QuantityDraft, nextItems: MeasurementDrafts): void => {
+    if (!isEditable) return;
+    const expected = autoJudgmentOf(nextDraft, nextItems);
     if (expected !== null) {
       autoFilledJudgment.current = expected;
       setJudgment(expected);
@@ -522,6 +602,24 @@ export const OqcInspectionScreen = () => {
       setJudgment('');
     }
   };
+  const changeItems = (next: MeasurementDrafts): void => {
+    setEdited(true);
+    setItemDrafts(next);
+    applyAuto(draft, next);
+  };
+
+  const changeDraftAndJudge = (typed: QuantityDraft): void => {
+    /* 불량 · 보류를 바꾸면 합격 수량을 다시 계산한다(IQC 와 같다). */
+    const lossChanged = typed.rejected !== draft.rejected || typed.held !== draft.held;
+    const recalculated =
+      typed.accepted === draft.accepted && lossChanged
+        ? remainingAcceptedOf(typed, inspectedQty)
+        : null;
+    const next = recalculated === null ? typed : { ...typed, accepted: recalculated };
+    setEdited(true);
+    setDraft(next);
+    applyAuto(next, itemDrafts);
+  };
 
   /*
    * 떠날 때 물을 입력(#136 · IQC #133 과 같은 규칙) — 열린 회차(회차가 아직 없거나 재검사 중)에 수량 · 판정 · 변경 사유 ·
@@ -529,14 +627,15 @@ export const OqcInspectionScreen = () => {
    * ⛔ 잠긴 회차는 고칠 칸이 없으니 묻지 않는다. 저장 요청 본문 · 저장 조건과는 무관하다 — 묻는 데만 쓴다.
    */
   const hasUnsavedInput =
-    isOpenRound &&
-    (draft.accepted !== prefilledAccepted ||
-      draft.rejected !== '' ||
-      draft.held !== '' ||
-      judgment !== '' ||
-      changeReason.trim() !== '' ||
-      /* 불합격 사유는 불합격 판정과 함께만 실린다 — 판정이 있으면 위에서 이미 묻는다(판정을 지워 남은 글은 셈하지 않는다). */
-      serialRows.length > 0);
+    (isEditable && edited) ||
+    (isOpenRound &&
+      (draft.accepted !== prefilledAccepted ||
+        draft.rejected !== '' ||
+        draft.held !== '' ||
+        judgment !== '' ||
+        changeReason.trim() !== '' ||
+        /* 불합격 사유는 불합격 판정과 함께만 실린다 — 판정이 있으면 위에서 이미 묻는다(판정을 지워 남은 글은 셈하지 않는다). */
+        activeSerialRows.length > 0));
 
   /*
    * 품목·대상 LOT 은 번호마다 하나씩 이름으로 푼다(omf-all-around#40 · #136) — 목록에 선 줄과 고른 의뢰를 함께 넘긴다.
@@ -601,10 +700,17 @@ export const OqcInspectionScreen = () => {
    * 고른 의뢰·단위를 **인자로 받는다** — 이 자리에 도달했으면 `null` 이 아니라는 사실이 타입이
    * 아니라 렌더 조건에 있어서, 단언으로 메우면 그 조건이 바뀔 때 조용히 어긋난다.
    */
-  const saveResult = (inspectionRequestId: number, uomId: number, inspectedAt: string): void => {
+  const saveResult = (
+    inspectionRequestId: number,
+    uomId: number,
+    inspectedAt: string,
+    statusCode: 'DRAFT' | 'CONFIRMED',
+  ): void => {
     if (writeTarget === null) return;
 
     setIsJustSaved(false);
+    savingKind.current = statusCode;
+    const isConfirm = statusCode === 'CONFIRMED';
     /* ⭐ R3 — 누를 때 겨눈 대상을 적어 둔다. 돌아와 이 값과 대조한다. */
     writeTargetRef.current = writeTarget;
 
@@ -628,12 +734,20 @@ export const OqcInspectionScreen = () => {
        * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
        */
       previousResultId,
-      /* 자동 판정과 다르게 저장할 때만 싣는다(#126 · 서버 P-70). */
-      ...(needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
+      /* 자동 판정과 다르게 확정할 때만 싣는다(#126 · 서버 P-70). */
+      ...(isConfirm && needsChangeReason ? { judgmentChangeReason: changeReason.trim() } : {}),
       ...(judgment === REJECTED && rejectionReason.trim() !== ''
         ? { remarks: rejectionReason.trim() }
         : {}),
-      serials: toSerialInputs(serialRows),
+      /* 시리얼 판정은 서버가 확정 때만 받는다(P-101) — 임시 저장은 시리얼이 있으면 화면이 막는다. */
+      ...(isConfirm ? { serials: toSerialInputs(activeSerialRows) } : {}),
+      statusCode,
+      measurements: toMeasurementInputs(itemRows, itemDrafts, inspectedAt),
+      /* 작성중 회차를 이어 쓰면 그 회차를 고친다(#284). 판 번호는 화면이 본 회차의 것이다. */
+      draftRound:
+        editingDraft && round !== null
+          ? { inspectionResultId: round.inspectionResultId, versionNo: round.versionNo }
+          : null,
     });
   };
 
@@ -698,6 +812,7 @@ export const OqcInspectionScreen = () => {
             judgmentOptions={judgmentOptions}
             judgment={judgment}
             onJudgmentChange={(code) => {
+              setEdited(true);
               autoFilledJudgment.current = null;
               setJudgment(code);
             }}
@@ -710,7 +825,8 @@ export const OqcInspectionScreen = () => {
             }
             needsChangeReason={needsChangeReason}
             serialSection={
-              detail.data.targetTypeCode === 'SHIPMENT_REQUEST' ? (
+              /* 작성중 회차는 시리얼을 받지 않는다(서버가 확정 «생성» 때만 받는다 · P-101) — LOT별로만 이어 쓴다. */
+              detail.data.targetTypeCode === 'SHIPMENT_REQUEST' && !editingDraft ? (
                 <SerialJudgments
                   inspectionRequestId={selectedId}
                   itemId={detail.data.itemId}
@@ -721,15 +837,81 @@ export const OqcInspectionScreen = () => {
                 />
               ) : undefined
             }
-            serialBlockedReason={serialBlockedReason(serialRows, inspectedQty, draft.rejected)}
+            serialBlockedReason={serialBlockedReason(
+              activeSerialRows,
+              inspectedQty,
+              draft.rejected,
+            )}
             isInputLocked={isInputLocked}
             changeReason={changeReason}
-            onChangeReasonChange={setChangeReason}
-            rejectionReason={rejectionReason}
-            onRejectionReasonChange={setRejectionReason}
-            onSave={(inspectedAt) => {
-              saveResult(selectedId, detail.data.uomId, inspectedAt);
+            onChangeReasonChange={(reason) => {
+              setEdited(true);
+              setChangeReason(reason);
             }}
+            rejectionReason={rejectionReason}
+            onRejectionReasonChange={(reason) => {
+              setEdited(true);
+              setRejectionReason(reason);
+            }}
+            onSave={(inspectedAt) => {
+              saveResult(selectedId, detail.data.uomId, inspectedAt, 'CONFIRMED');
+            }}
+            editsDraft
+            onSaveDraft={() => {
+              /* 같은 시도의 재시도는 같은 시각 — 보낼 값이 같아야 같은 멱등 키가 나간다(확정의 `openedAt` 과 같다). */
+              const at = draftAttemptAt.current ?? new Date().toISOString();
+              draftAttemptAt.current = at;
+              saveResult(selectedId, detail.data.uomId, at, DRAFT);
+            }}
+            draftBlockedReason={activeSerialRows.length > 0 ? t.result.draftBlockedBySerials : null}
+            itemsBlockedReason={
+              planVersionId !== null && itemSpecs.isPending
+                ? t.result.loading
+                : isAllJudged(itemRows, itemDrafts)
+                  ? null
+                  : t.result.confirmBlockedByItems
+            }
+            hasInputError={hasValueError(itemRows, itemDrafts)}
+            /* 칸에 채우는 판정과 같은 규칙으로 보인다 — 다시 열어도 같은 결과가 선다. */
+            autoResultLabel={((): string | null => {
+              const auto = isEditable ? autoJudgmentOf(draft, itemDrafts) : null;
+              return auto === null ? null : labelOfCode(judgmentOptions, auto);
+            })()}
+            justSavedDraft={justSavedDraft}
+            itemSection={
+              planVersionId === null ? undefined : (
+                <WebItemTable
+                  inStep
+                  rows={itemRows}
+                  drafts={itemDrafts}
+                  onValueChange={(key, value) =>
+                    changeItems({
+                      ...itemDrafts,
+                      [key]: withMeasuredValue(
+                        itemRows.find((row) => row.key === key),
+                        itemDrafts[key] ?? EMPTY_MEASUREMENT_DRAFT,
+                        value,
+                      ),
+                    })
+                  }
+                  onJudgmentChange={(key, next) =>
+                    changeItems({
+                      ...itemDrafts,
+                      [key]: withJudgment(
+                        itemRows.find((row) => row.key === key),
+                        itemDrafts[key] ?? EMPTY_MEASUREMENT_DRAFT,
+                        next,
+                      ),
+                    })
+                  }
+                  judgmentOptions={itemJudgmentOptions}
+                  uomCodeOf={(uomId) => uoms.codeOf(uomId ?? undefined)}
+                  isLoading={itemSpecs.isLoading}
+                  isLocked={!isEditable || save.isSaving || isInputLocked}
+                  footer={null}
+                />
+              )
+            }
             isSaving={save.isSaving}
             isJustSaved={isJustSaved}
             fieldErrors={save.fieldErrors}

@@ -6,7 +6,6 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import { PopWorkerMissingBanner } from '../../patterns/pop-worker-missing-banner';
 import { ApiRequestError } from '../../patterns/request';
-import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 
 import { resolveActions } from './actions';
 import { useNow } from './use-now';
@@ -198,40 +197,15 @@ export const WorkHoldRegisterScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {workOrderId !== null && (
-          <p className="pop-context">
-            {`${t.entry.workOrderLabel} ${workOrderNo ?? t.session.unknownValue}`}
-          </p>
-        )}
+        {/* W/O 번호는 「중단 등록」 상자 제목 옆에 선다(사용자 지시 2026-11-17 · #291). */}
 
         <p className="pop-context pop-context-right">
-          {/* 귀속 사번은 상시 보인다 — 단말을 넘겨받은 다음 작업자가 남의 이름으로 찍지 않게. */}
-          <PopWorkerTag workerNo={workerNo} />
-
           {session.session !== null && (
             <Chip variant="status" size="md" status="success">
               {t.session.sessionNo(session.session.sessionNo)}
             </Chip>
           )}
         </p>
-        {/*
-         * 같은 작업지시로 생산 작업에 돌아간다(P-02-04 개선 명세 ⑦). 작업지시 없이 들어왔으면 두지 않는다.
-         * 등록한 중단은 단말 큐에 있어 화면을 떠나도 사라지지 않는다.
-         */}
-        {workOrderId !== null && (
-          <span className="pop-header-tools">
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              onClick={() => {
-                void navigate(`/pop/production-result?workOrderId=${String(workOrderId)}`);
-              }}
-            >
-              {messages.productionResult.flow.actions.backToWork}
-            </Button>
-          </span>
-        )}
       </header>
 
       {/* ⭐ 사번 미확인은 모든 POP 화면이 같은 맨 위 띠로 말한다(사용자 지시 2026-09-17). */}
@@ -335,7 +309,7 @@ export const WorkHoldRegisterScreen = () => {
           </div>
         )}
 
-      <div className="pop-panes">
+      <div className="pop-panes pop-fixed">
         <div className="pop-hold-column">
           {/*
            * ⛔ **실패했을 때 「세션이 없습니다」를 함께 말하지 않는다.** 조회가 실패하면 세션은
@@ -377,6 +351,7 @@ export const WorkHoldRegisterScreen = () => {
         </div>
 
         <HoldForm
+          workOrderNo={workOrderId === null ? null : workOrderNo}
           draft={draft}
           disabled={inputDisabled}
           reasons={reasons}
