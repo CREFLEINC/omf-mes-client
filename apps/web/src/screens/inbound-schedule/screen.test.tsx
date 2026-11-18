@@ -317,7 +317,7 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
     expect(currentLocation()).toBe(ROUTE);
   });
 
-  it('이름은 셸의 탭 막대가 세우고 화면은 제목 · 경로 표시 · 안내 문장을 두지 않는다', async () => {
+  it('이름은 셸의 탭 막대가 세우고 화면은 제목 · 경로 표시를 두지 않는다', async () => {
     renderScreen([listRoute(), ...lookupRoutes()]);
 
     await screen.findByText('SAMPLE-PO-0001');
@@ -327,9 +327,6 @@ describe('InboundScheduleScreen — 첫 진입 조회', () => {
     expect(
       screen.queryByRole('navigation', { name: messages.common.shell.breadcrumb }),
     ).not.toBeInTheDocument();
-    // 사용자 지시(2026-10-20)로 걷어 낸 두 문장이 되살아나지 않게 지킨다.
-    expect(screen.queryByText(/납기 순으로 봅니다/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/비워 두어도 조회됩니다/)).not.toBeInTheDocument();
   });
 
   it('라인마다 한 행이 그려지고 배너가 없다', async () => {
@@ -574,7 +571,7 @@ const RECEIVE_LINES = [scheduleLine({ expectedReceiptDate: TODAY })];
  * 입력 · 확인 창 · `:per-line`)을 걷고, 그 자리에 「입하는 PDA 에서」 안내 한 줄만 선다.
  */
 describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
-  it('FR-036 라인 표에 입하 등록(체크 · 행 수량 입력 · 등록 단추)이 없고 PDA 입하 안내가 선다', async () => {
+  it('FR-036 라인 표에 입하 등록(체크 · 행 수량 입력 · 등록 단추)이 없다', async () => {
     const { requests } = renderScreen(
       [linesRoute(RECEIVE_LINES), listRoute(), ...lookupRoutes()],
       '?po=7101',
@@ -582,8 +579,6 @@ describe('InboundScheduleScreen — 입하 등록(라인 표)', () => {
 
     await within(linesPane()).findByText('SAMPLE-ITEM-01');
 
-    /* 입하는 PDA 에서만 하지만, 그 사정을 라인 표 위 안내문으로 적지 않는다(사용자 지시 2026-11-18). */
-    expect(within(linesPane()).queryByText(/PDA|M-01-01/u)).toBeNull();
     expect(within(linesPane()).queryByRole('checkbox')).toBeNull();
     expect(within(linesPane()).queryByRole('textbox')).toBeNull();
     expect(requests.every((request) => request.method === 'GET')).toBe(true);

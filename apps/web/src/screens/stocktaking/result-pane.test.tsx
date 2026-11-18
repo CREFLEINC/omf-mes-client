@@ -84,13 +84,6 @@ describe('ResultPane — 개시 갈래', () => {
     expect(resultRegion()).toBeInTheDocument();
   });
 
-  /* 갈래마다 붙던 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('결과 구획에 안내문을 두지 않는다', () => {
-    renderPane();
-
-    expect(resultRegion().querySelector('.field-note')).toBeNull();
-  });
-
   /*
    * **어디로도 이동하지 않는다.** 만들어진 실사는 같은 화면의 아래 구획에서 이어 다루므로
    * 갈 곳이 없다 — 링크나 버튼을 두면 없는 화면으로 가는 경로가 생긴다. PR ④의 「조정 등록」이

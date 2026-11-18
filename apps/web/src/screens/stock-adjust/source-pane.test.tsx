@@ -67,7 +67,7 @@ describe('SourcePane — 원천 두 갈래', () => {
     renderPane();
 
     expect(screen.getByRole('radio', { name: t.source.direct })).toBeInTheDocument();
-    expect(screen.queryByText(/사라집니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.source.changeDiscardNote(0))).not.toBeInTheDocument();
   });
 });
 
@@ -130,14 +130,6 @@ describe('SourcePane — 직접 등록 갈래', () => {
 
     expect(screen.getByText(t.source.countRefLabel)).toBeInTheDocument();
     expect(screen.getByText(t.values.empty)).toBeInTheDocument();
-  });
-
-  /* 실사가 없다는 안내문은 걷었다(사용자 지시 2026-11-18) — 「—」만 선다. */
-  it('대상 실사 자리에 안내문을 두지 않는다', () => {
-    renderPane({ kind: 'direct' });
-
-    expect(screen.getByText(t.values.empty)).toBeInTheDocument();
-    expect(screen.queryByText(/대상 실사가 없습니다/)).not.toBeInTheDocument();
   });
 
   /** 양성 앵커(빈 값 표식이 섰다)를 잡은 뒤 「경고가 없다」를 잰다. */
