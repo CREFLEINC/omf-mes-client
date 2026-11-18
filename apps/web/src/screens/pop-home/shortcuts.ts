@@ -9,11 +9,13 @@ const STORAGE_KEY = 'omf.pop.home.shortcuts';
 
 export const MAX_SHORTCUTS = 6;
 
-/** 기본 바로가기(확정 시안의 여섯 칸 — PQC 제품 검사를 없애 다섯 칸, omf-all-around#293). */
+/**
+ * 기본 바로가기(확정 시안의 여섯 칸 — PQC 제품 검사를 없애 다섯 칸, omf-all-around#293).
+ * 피처 010 — 출하 포장(P-04-01)은 화면 이동 후보에서 감춰 기본에서도 뺐다(넷).
+ */
 export const DEFAULT_SHORTCUT_PATHS: readonly string[] = [
   '/pop/production-result',
   '/pop/work-start',
-  '/pop/packing',
   '/pop/work-hold',
   '/pop/material-input',
 ];
