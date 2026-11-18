@@ -41207,7 +41207,7 @@ export interface paths {
     };
     /**
      * 출하작업지시 한 건
-     * @description 라인을 함께 내린다
+     * @description 라인을 함께 내린다 · POP 단말도 읽는다(P-04-06 머리·피킹 LOT 몫 — 단말 공장 지시서만, 피처 010)
      */
     get: {
       parameters: {
@@ -41679,6 +41679,17 @@ export interface paths {
             'application/json': {
               items: components['schemas']['Shipment'][];
               page: components['schemas']['PageMeta'];
+              /**
+               * @description ERP 송신 상태별 건수(W-04-12 거르기 칩 · 피처 010) — erpSendStatus 를 뺀 나머지 조건으로 센다. 키는 erpSendStatus 값(NOT_QUEUED·PENDING·SENT·SEND_ERROR·CANCELLED·NOT_SENT_NO_SALES_ORDER) — 0건인 상태는 빠진다
+               * @example {
+               *       "PENDING": 2,
+               *       "SENT": 5,
+               *       "NOT_SENT_NO_SALES_ORDER": 1
+               *     }
+               */
+              erpSendStatusCounts?: {
+                [key: string]: number;
+              };
             };
           };
         };
@@ -64596,6 +64607,26 @@ export interface components {
         /** @example 3 */
         held: number;
       };
+      /**
+       * @description 출하 OQC 새 흐름 — 품목 코드(P-04-06 목록·머리 · 피처 010)
+       * @example FG-A100
+       */
+      itemCode?: string;
+      /**
+       * @description 출하 OQC 새 흐름 — 품목 이름
+       * @example 센서 모듈 A
+       */
+      itemName?: string;
+      /**
+       * @description 출하 OQC 새 흐름 — 살아 있는 피킹 LOT 수량 합(목록)
+       * @example 110
+       */
+      pickedQty?: number;
+      /**
+       * @description 출하 OQC 새 흐름 — 단위 코드
+       * @example EA
+       */
+      uomCode?: string;
     };
     /** @description 검사 결과 — 3계층의 2층. ⭐ 라인이 아니라 문서다 — 자체 번호·상태·잠금·자식·멱등키를 갖는다. */
     InspectionResult: {
@@ -67054,6 +67085,28 @@ export interface components {
        * @example SO-0001
        */
       salesOrderNo: string | null;
+      customer: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      } | null;
+      shipTo: {
+        /**
+         * Format: int64
+         * @example 1001
+         */
+        partnerId: number;
+        /** @example C001 */
+        partnerCode: string;
+        /** @example 고객사 */
+        partnerName: string;
+      } | null;
     };
     /** @description W-04-02 요약 구획 — 필터 전체 기준(목록 페이지와 다른 모집단). 근거: W-04-02 §4-B · omf-mes#232 */
     ShipmentRequestSummary: {

@@ -31,6 +31,8 @@ const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate
   salesOrderNo: null,
   customerId: 601,
   shipToPartnerId: 602,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-31',
   statusCode: 'SYN-STATUS',
   shipmentProgressCode: 'PICKED' as const,

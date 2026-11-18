@@ -82,6 +82,8 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
   salesOrderNo: null,
   customerId: 8201,
   shipToPartnerId: 8211,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-20',
   statusCode: 'SAMPLE_SR_S_A',
   shipmentProgressCode: 'NOT_ALLOCATED',

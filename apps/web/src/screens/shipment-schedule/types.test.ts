@@ -29,6 +29,8 @@ const RESPONSE = {
   salesOrderNo: null,
   customerId: 9101,
   shipToPartnerId: 9201,
+  customer: null,
+  shipTo: null,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
   shipmentProgressCode: 'PARTIALLY_SHIPPED' as const,
