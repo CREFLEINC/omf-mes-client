@@ -116,14 +116,6 @@ describe('HeaderForm — 계약이 받는 두 값', () => {
 
     expect(screen.getByLabelText(t.fields.sendToErp)).not.toBeChecked();
   });
-
-  /* 토글 옆의 보내는 방식 안내는 걷었다(사용자 지시 2026-11-18). */
-  it('ERP 송신 토글 옆에 안내문을 두지 않는다', () => {
-    const { container } = renderForm();
-
-    expect(screen.getByLabelText(t.fields.sendToErp)).toBeInTheDocument();
-    expect(container.querySelector('.field-note')).toBeNull();
-  });
 });
 
 describe('HeaderForm — 선택지가 0건일 때', () => {

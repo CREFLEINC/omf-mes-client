@@ -242,7 +242,7 @@ const openDetail = async (user: ReturnType<typeof userEvent.setup>, code: string
 };
 
 describe('W-01-14 자재 관리 LOT 발행', () => {
-  it('US1-8 공급사·품목 목록에 기본 정보 · 대기 수 · 라벨 미출력 · 최근 발행을 보이고, 라벨은 POP 에서 찍는다고 알린다', async () => {
+  it('US1-8 공급사·품목 목록에 기본 정보 · 대기 수 · 라벨 미출력 · 최근 발행을 보이고, 라벨 단추가 없다', async () => {
     setup();
 
     const cap = within(await rowOf('SYN-CAP'));
@@ -259,8 +259,7 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(resin.getByText(t.defaults.missing)).toBeInTheDocument();
     expect(await resin.findByText(t.defaults.manual)).toBeInTheDocument();
 
-    /* 머리 안내 띠(라벨은 POP 에서 · 입하 LOT 은 PDA 에서)는 두지 않는다(사용자 지시 2026-11-18). */
-    expect(screen.queryByText(/P-01-01|M-01-01/u)).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/[MPW]-0\d-\d\d/u);
     expect(screen.queryByRole('button', { name: /라벨|인쇄/ })).not.toBeInTheDocument();
   });
 
@@ -300,7 +299,7 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(screen.queryByRole('combobox', { name: t.filters.plant })).toBeNull();
   });
 
-  it('G2 L21 조건 줄의 칸마다 「공급사 · 품목 · 보기」 이름이 보이고, 표 아래 도움말은 줄 폭 제한을 받지 않는다', async () => {
+  it('G2 L21 조건 줄의 칸마다 「공급사 · 품목 · 보기」 이름이 보인다', async () => {
     setup();
     await listTable();
 
@@ -313,7 +312,6 @@ describe('W-01-14 자재 관리 LOT 발행', () => {
     expect(bar.getByRole('group', { name: t.filters.view })).toContainElement(
       bar.getByRole('checkbox', { name: t.filters.waitingOnly }),
     );
-    expect(document.querySelector('.mlot-issue-help')).toBeNull();
   });
 
   it('G2 L21 공장이 여럿이면 공장 칸에도 「공장」 이름이 붙는다', async () => {

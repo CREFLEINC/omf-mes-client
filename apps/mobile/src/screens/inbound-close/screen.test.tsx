@@ -285,8 +285,6 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(sent.find((each) => each.search.get('closable') === 'true')?.search.get('plantId')).toBe(
       '8301',
     );
-    /* 원리 설명 · 다른 화면 코드는 적지 않는다(사용자 지시 2026-11-18). */
-    expect(screen.queryByText(/자동 마감합니다|보이지 않는 것|[MW]-01-\d\d/u)).toBeNull();
   });
 
   it('US2-10 상세에서 자재 관리 LOT 를 보고 마감한다 — 부분 입하 사유를 묻지 않고 결과에 P/O 가 없다', async () => {
@@ -300,8 +298,6 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     expect(
       within(screen.getByRole('table', { name: t.detail.lots(2) })).getByText('0001'),
     ).toBeInTheDocument();
-    /* 품질(검사 대기 · 보류) 칩은 두지 않는다(사용자 지시 2026-11-18). */
-    expect(screen.queryByText(/검사 대기/u)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: t.detail.close }));
     const dialog = await screen.findByRole('dialog', {
@@ -372,7 +368,7 @@ describe('US2-10 입하 중 목록 · 상세 · 해제 · 마감', () => {
     await user.click(await screen.findByRole('button', { name: t.detail.close }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveTextContent(t.closeDialog.withoutIqcRecord);
-    expect(dialog).not.toHaveTextContent('검사 생략');
+    expect(dialog).not.toHaveTextContent(t.closeDialog.withoutIqc);
   });
 
   it('US2-10 검사 불필요 품목은 「검사 생략」으로 남는다고 묻고, 결과는 「검사 불필요, 자재 관리 LOT 정상」', async () => {

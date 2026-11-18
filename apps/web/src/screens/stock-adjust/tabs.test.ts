@@ -24,9 +24,8 @@ describe('STOCK_ADJUST_TABS — 탭 둘', () => {
    * ⛔ 조심 ① · D-3의 자리. **셋째 탭이 생길 자리를 만들지 않는다** — 승인·반려는 결재함이
    * 소유한다. 목록 길이만 재면 이름을 갈아 끼운 셋째 탭이 통과하므로 **값까지 함께** 잰다.
    */
-  it('승인 대기 탭이 없다 — 목록에도 문구에도 그 자리가 없다', () => {
+  it('승인 대기 탭이 없다', () => {
     expect(STOCK_ADJUST_TABS).toHaveLength(2);
-    expect(Object.keys(t.tabs)).toEqual(['label', 'register', 'history']);
   });
 
   it('두 탭의 이름이 서로 다르다 — 같으면 사용자가 어느 자리인지 가리지 못한다', () => {

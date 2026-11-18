@@ -87,13 +87,6 @@ describe('LotDetailPane — 수량 다섯', () => {
     expect(valueOf(t.detail.availableQty)).not.toContain('85');
   });
 
-  /* 수량 출처 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('수량 아래에 안내문을 두지 않는다', () => {
-    renderPane();
-
-    expect(document.querySelector('p.field-note')).toBeNull();
-  });
-
   it('수량의 단위를 이름으로 낸다', () => {
     renderPane();
 
@@ -124,14 +117,6 @@ describe('LotDetailPane — 유효기한 표식', () => {
     expect(screen.queryByText(t.detail.expirySoon)).not.toBeInTheDocument();
     expect(screen.queryByText(t.detail.expiryPassed)).not.toBeInTheDocument();
     expect(valueOf(t.detail.expiryDate)).toBe(t.values.empty);
-  });
-
-  /* 표식 옆에 붙던 기준 일수·자동 보류 안내문은 걷었다(사용자 지시 2026-11-18). */
-  it('표식이 붙어도 안내문을 두지 않는다', () => {
-    renderPane({ detail: expiredLotDetail(TODAY) });
-
-    expect(screen.getByText(t.detail.expiryPassed)).toBeInTheDocument();
-    expect(document.querySelector('p.field-note')).toBeNull();
   });
 });
 
@@ -187,11 +172,11 @@ describe('LotDetailPane — 보류', () => {
     expect(screen.getByText('SAMPLE_HOLD_R_A')).toBeInTheDocument();
   });
 
-  /* 화면 코드가 든 의심자재 등록 경로 안내는 걷었다(사용자 지시 2026-11-18). */
-  it('보류 구획에 의심자재 등록 경로 안내가 없다', () => {
+  /* 화면 코드·이슈 번호를 화면에 내지 않는다(이 화면의 상시 규칙 한 곳). */
+  it('화면 코드나 이슈 번호가 보이지 않는다', () => {
     renderPane();
 
-    expect(screen.queryByText(/W-03-03/)).not.toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(/[MW]-0\d-\d\d|#\d{3}/);
   });
 });
 

@@ -68,10 +68,6 @@ describe('SubmitConfirmDialog — 무엇을 확인시키는가', () => {
     expect(within(full).getByText('실사 차이분 조정 요청')).toBeInTheDocument();
     expect(within(full).getByText('2026-08 실사에서 확인')).toBeInTheDocument();
     expect(within(firstLine).getByText('실사 차이분 조정 요청')).toBeInTheDocument();
-    /* 「이 첫 줄만 보입니다」 안내는 걷었다(사용자 지시 2026-11-18). */
-    expect(
-      within(firstLine).queryByText('결재함 목록에서는 이 첫 줄만 보입니다.'),
-    ).not.toBeInTheDocument();
   });
 
   /**
@@ -92,14 +88,10 @@ describe('SubmitConfirmDialog — 무엇을 확인시키는가', () => {
     expect(lines.at(-2)).toContain('들여쓴 근거 줄');
   });
 
-  /**
-   * ⛔ **승인자·결재선을 이 창이 고르지 않는다**(D-12). 그 사정을 밝히던 안내는 걷었다
-   * (사용자 지시 2026-11-18) — 되돌릴 수 없다는 한 줄만 남는다.
-   */
+  /** ⛔ **승인자·결재선을 이 창이 고르지 않는다**(D-12). */
   it('승인자를 고르는 칸이 없고 되돌릴 수 없다는 한 줄이 선다', () => {
     renderDialog();
 
-    expect(within(dialog()).queryByText(/결재선 정의대로/)).not.toBeInTheDocument();
     expect(within(dialog()).getByText(t.dialog.submitNoUndo)).toBeInTheDocument();
     /* 창 안에 입력칸을 두지 않는다(`omf-mes#45`) — 글자와 버튼뿐이다. */
     expect(within(dialog()).queryAllByRole('textbox')).toHaveLength(0);

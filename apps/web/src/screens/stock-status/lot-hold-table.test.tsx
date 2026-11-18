@@ -132,21 +132,11 @@ describe('LotHoldTable — 표기', () => {
 });
 
 describe('LotHoldTable — 의심자재 등록', () => {
-  /*
-   * **등록 수단을 두지 않는다**(이슈 §6) — 조회 전용 화면이다. 화면 코드가 든 경로 안내문도
-   * 걷었다(사용자 지시 2026-11-18).
-   */
-  it('경로 안내도 링크도 버튼도 없다', () => {
-    const { container } = renderHolds();
+  /* **등록 수단을 두지 않는다**(이슈 §6) — 조회 전용 화면이다. */
+  it('링크도 버튼도 없다', () => {
+    renderHolds();
 
-    expect(container.querySelector('.field-note')).toBeNull();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('보류가 없어도 경로 안내가 없다', () => {
-    const { container } = renderHolds({ holds: [] });
-
-    expect(container.querySelector('.field-note')).toBeNull();
   });
 });

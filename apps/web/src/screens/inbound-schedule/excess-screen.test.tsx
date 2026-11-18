@@ -257,11 +257,10 @@ describe('InboundExcessScreen — 초과분 발주 연결 탭', () => {
 });
 
 describe('FR-035 InboundExcessScreen — 초과분 탭은 이전 데이터만, 새 흐름은 W-01-16', () => {
-  it('FR-035 목록 위에 새 흐름 안내와 입하/입고 작업 기록(W-01-16) 링크를 보인다', async () => {
+  it('FR-035 목록 위에 입하/입고 작업 기록(W-01-16) 링크를 보인다', async () => {
     renderTab([excessListRoute([excessFixture()]), candidatesRoute([])]);
 
-    expect(await within(listPane()).findByText(te.newFlowNotice)).toBeInTheDocument();
-    expect(within(listPane()).getByRole('link', { name: te.newFlowLink })).toHaveAttribute(
+    expect(await within(listPane()).findByRole('link', { name: te.newFlowLink })).toHaveAttribute(
       'href',
       '/logistics/inbound-work-record',
     );

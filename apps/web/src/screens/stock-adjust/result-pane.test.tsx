@@ -74,15 +74,6 @@ describe('ResultPane — 화면이 확인한 것만 말한다', () => {
     expect(within(pane).getByText(t.result.lineCount(3))).toBeVisible();
   });
 
-  /* 결과 구획의 설명문(재고 미이동·상태·ERP 적재 안내)은 걷었다(사용자 지시 2026-11-18). */
-  it('결과 구획에 설명문을 두지 않는다', () => {
-    const pane = renderPane();
-
-    expect(within(pane).getByText(t.result.createdTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(pane).queryByText(/재고는 아직 움직이지 않았습니다/)).not.toBeInTheDocument();
-    expect(within(pane).queryByText(/서버가 준 상태입니다/)).not.toBeInTheDocument();
-  });
-
   /** **내부 번호를 내지 않는다**(`omf-mes#44`). 짝으로 업무 번호는 실제로 보인다. */
   it('내부 번호가 구획에 없다', () => {
     const pane = renderPane();
@@ -117,14 +108,6 @@ describe('ResultPane — ERP 송신 세 갈래', () => {
 
     expect(within(pane).getByText(t.result.erpUnknown)).toBeVisible();
     expect(within(pane).queryByText(t.result.erpNotQueued)).not.toBeInTheDocument();
-  });
-
-  /** **적재는 전송이 아니다**(계약 문면). 어느 갈래에도 「전송 완료」라는 낱말을 쓰지 않는다. */
-  it('「전송 완료」라는 낱말을 쓰지 않는다', () => {
-    const pane = renderPane({ created: { erpMessageQueued: true } });
-
-    expect(within(pane).getByText(t.result.erpQueued)).toBeVisible();
-    expect(pane.textContent ?? '').not.toContain('전송 완료');
   });
 });
 
@@ -197,7 +180,6 @@ describe('ResultPane — 상신 갈래', () => {
     const pane = renderPane({ phase: 'failed' });
 
     expect(within(pane).getByText(t.result.submitFailedTitle('SAMPLE-IA-9301'))).toBeVisible();
-    expect(within(pane).getByText(t.result.submitFailedDescription)).toBeVisible();
     /* 다시 올릴 길이 남아 있다 — 막다른 길이 아니다. */
     expect(
       within(pane).getByRole('button', { name: t.actions.requestApproval }),

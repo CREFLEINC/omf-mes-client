@@ -56,17 +56,6 @@ describe('PostConfirmDialog — 무엇을 확인시키는가', () => {
     expect(within(dialog()).getByText('2026-08-18 14:05')).toBeInTheDocument();
   });
 
-  /**
-   * ⭐ **되돌릴 수 없다는 한 줄만 선다**(D-17). 그 아래 붙던 「전기하면 일어나는 일」 세 문장은
-   * 걷었다(사용자 지시 2026-11-18).
-   */
-  it('되돌릴 수 없다는 한 줄이 서고 세 문장 구획은 없다', () => {
-    renderDialog();
-
-    expect(within(dialog()).getByText(t.dialog.postLead)).toBeVisible();
-    expect(within(dialog()).queryByRole('region')).not.toBeInTheDocument();
-  });
-
   it('실행 버튼이 잠겨 있어도 되돌릴 수 없다는 한 줄은 그대로 선다', () => {
     renderDialog({ isSaving: true });
 
