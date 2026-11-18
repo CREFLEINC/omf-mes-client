@@ -164,6 +164,7 @@ const serve = (state: World) => {
   const fetch = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     if (url.pathname === '/planning/working-days:resolve') return planningDaysResponse(request);
+    if (url.pathname.endsWith('/material-requirements')) return jsonResponse({ items: [] });
     const at = path(request);
     const method = request.method;
     if (method !== 'GET') {

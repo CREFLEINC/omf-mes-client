@@ -224,6 +224,7 @@ export const toReleaseLines = (
 
 export interface ReleaseStepProps {
   readOnly?: boolean;
+  materialReview?: import('react').ReactNode;
   plantId?: number;
   reviewPlans?: ReleaseReviewPlan[];
   lines: ReleaseLine[] | undefined;
@@ -244,6 +245,7 @@ export interface ReleaseStepProps {
  */
 export const ReleaseStep = ({
   readOnly = false,
+  materialReview,
   plantId,
   reviewPlans,
   lines,
@@ -315,6 +317,7 @@ export const ReleaseStep = ({
         <h2 className="section-title">{t.heading}</h2>
         <span className="field-note">{t.scope(lines.length)}</span>
       </div>
+      {materialReview}
       {reviewPlans && (
         <ReleaseReview
           plans={reviewPlans}

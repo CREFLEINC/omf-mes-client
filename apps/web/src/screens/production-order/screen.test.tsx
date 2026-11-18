@@ -106,6 +106,7 @@ const stub = ({
   const fetch: StubFetch = async (request) => {
     requests.push(request.clone());
     const url = new URL(request.url);
+    if (url.pathname.endsWith('/material-requirements')) return jsonResponse({ items: [] });
     if (path(request) === '/planning/production-orders' && forbidden) {
       return jsonResponse(
         { errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '권한이 없습니다.' }] },
@@ -670,6 +671,11 @@ describe('작업지시 목록 작업함', () => {
     expect(
       await within(dialog).findByText(t.bulk.releaseDialog.forecast(1, 1, 0, 2)),
     ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: t.bulk.releaseDialog.confirm }),
+      ).toBeEnabled(),
+    );
     await user.click(within(dialog).getByRole('button', { name: t.bulk.releaseDialog.confirm }));
 
     const result = await screen.findByRole('region', { name: t.bulk.resultTitle.release });
@@ -784,6 +790,11 @@ describe('작업지시 목록 작업함', () => {
     await user.click(screen.getByRole('button', { name: t.bulk.release }));
     const dialog = screen.getByRole('dialog', { name: t.bulk.releaseDialog.title });
     await within(dialog).findByText(t.bulk.releaseDialog.forecast(1, 0, 0, 1));
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: t.bulk.releaseDialog.confirm }),
+      ).toBeEnabled(),
+    );
     await user.click(within(dialog).getByRole('button', { name: t.bulk.releaseDialog.confirm }));
     await user.click(screen.getByRole('button', { name: '화면 전환' }));
     await waitFor(() => expect(harness.requests.some((r) => /:release$/.test(r.url))).toBe(true));

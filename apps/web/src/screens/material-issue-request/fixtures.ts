@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { MaterialComponents, components } from '@omf-mes/api-client';
 
 import type { MaterialIssueRequestCreated } from './types';
 
@@ -24,7 +24,7 @@ import type { MaterialIssueRequestCreated } from './types';
  */
 
 type WorkOrderResponse = components['schemas']['WorkOrder'];
-type ShortageLineResponse = components['schemas']['MaterialIssueShortageLine'];
+type ShortageLineResponse = MaterialComponents['schemas']['MaterialIssueShortageLine'];
 type MaterialIssueRequestResponse = components['schemas']['MaterialIssueRequest'];
 
 /**
@@ -93,6 +93,7 @@ export const shortageFixtures: ShortageLineResponse[] = [
     uomId: 7501,
     requiredQty: 200,
     issuedQty: 120,
+    conversionSource: null,
     shortageQty: 80,
   },
   {
@@ -101,6 +102,7 @@ export const shortageFixtures: ShortageLineResponse[] = [
     uomId: 7501,
     requiredQty: 50,
     issuedQty: 50,
+    conversionSource: null,
     shortageQty: 0,
   },
   {
@@ -108,6 +110,7 @@ export const shortageFixtures: ShortageLineResponse[] = [
     uomId: 7502,
     requiredQty: 10,
     issuedQty: 0,
+    conversionSource: null,
     shortageQty: 10,
   },
 ];

@@ -1,3 +1,4 @@
+import { ReleaseMaterials, useReleaseMaterials } from './release-materials';
 import {
   isPastPlanningDate,
   pastPlanningDateMessage,
@@ -331,6 +332,11 @@ export const ProcessWorkspace = ({
 
   /* 단계 */
   const [step, setStep] = useState<ScreenStep | null>(null);
+  const materials = useReleaseMaterials(
+    (releaseLines ?? []).map((line) => line.workOrder),
+    step === 'release' || step === 'done',
+  );
+
   const [completedView, setCompletedView] = useState<ProcessStepKey>('release');
   const stepChangeRef = useRef(onStepChange);
   stepChangeRef.current = onStepChange;
@@ -495,13 +501,23 @@ export const ProcessWorkspace = ({
       setStep('plan');
       return;
     }
-    if (releasing || releaseLines === undefined || releaseLines.length === 0 || missingLot !== null)
+    if (
+      !materials.ready ||
+      releasing ||
+      releaseLines === undefined ||
+      releaseLines.length === 0 ||
+      missingLot !== null
+    )
       return;
     setReleasing(true);
     setFailures([]);
     const attempts: ReleaseAttempt[] = [];
     for (const line of releaseLines) {
-      const signature = `${String(line.workOrder.workOrderId)}:${String(line.lotSize)}`;
+      const signature = JSON.stringify([
+        line.workOrder.workOrderId,
+        line.lotSize,
+        materials.confirmations[line.workOrder.workOrderId],
+      ]);
       const key = releaseKeys.current.get(signature) ?? createIdempotencyKey();
       releaseKeys.current.set(signature, key);
       const attempt = await releaseWorkOrder(
@@ -510,6 +526,7 @@ export const ProcessWorkspace = ({
         { workOrderId: line.workOrder.workOrderId, workOrderNo: line.workOrder.workOrderNo },
         line.lotSize,
         key,
+        materials.confirmations[line.workOrder.workOrderId],
       );
       if (attempt.status === 'released') releaseKeys.current.delete(signature);
       attempts.push(attempt);
@@ -530,7 +547,7 @@ export const ProcessWorkspace = ({
       setStep('done');
     } else {
       setFailures(toReleaseFailures(problems, tp.release.failed));
-      setStep('done');
+      setStep(problems.some((attempt) => attempt.materialErrors?.length) ? 'release' : 'done');
     }
   };
 
@@ -582,6 +599,20 @@ export const ProcessWorkspace = ({
 
   const releaseInformation = (readOnly: boolean) => (
     <ReleaseStep
+      materialReview={
+        !readOnly && (
+          <ReleaseMaterials
+            review={materials}
+            disabled={releasing}
+            errors={releaseAttempts.flatMap((attempt) =>
+              (attempt.materialErrors ?? []).map((error) => ({
+                ...error,
+                workOrderId: attempt.workOrderId,
+              })),
+            )}
+          />
+        )
+      }
       readOnly={readOnly}
       reviewPlans={planFacts.map((plan) => ({
         ...plan,
@@ -817,7 +848,9 @@ export const ProcessWorkspace = ({
           {prev}
           <Button
             loading={releasing}
-            disabled={releasing || missingLot !== null || expiredPlans.length > 0}
+            disabled={
+              !materials.ready || releasing || missingLot !== null || expiredPlans.length > 0
+            }
             aria-describedby={remainingId}
             onClick={() => void release()}
           >

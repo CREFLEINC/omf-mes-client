@@ -170,8 +170,12 @@ export const LineTable = ({
           inputMode="decimal"
           aria-label={t.lineTable.requestedQtyLabel(rowIndex + 1)}
           value={row.requestedQty}
-          disabled={isLocked}
-          error={errorOf(row, 'requestedQty')}
+          disabled={isLocked || row.conversionUnavailable}
+          error={
+            row.conversionUnavailable
+              ? '환산 불가 — 배포 확인에서 환산 비율을 등록한 후 다시 불러오세요.'
+              : errorOf(row, 'requestedQty')
+          }
           onChange={(event) => {
             onPatch(row.key, { requestedQty: event.target.value });
           }}

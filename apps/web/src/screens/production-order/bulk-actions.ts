@@ -1,3 +1,4 @@
+import type { MaterialConfirmations } from './process/release-materials';
 import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -109,7 +110,7 @@ export const useWorklistBulk = () => {
   );
 
   const releaseOrder = useCallback(
-    async (target: BulkTarget): Promise<BulkOutcome> => {
+    async (target: BulkTarget, materials?: MaterialConfirmations): Promise<BulkOutcome> => {
       try {
         const workOrders = await unreleasedWorkOrdersOf(client, target.productionOrderId);
         if (workOrders.length === 0)
@@ -119,7 +120,16 @@ export const useWorklistBulk = () => {
           });
         const attempts = [];
         for (const workOrder of workOrders)
-          attempts.push(await releaseWorkOrder(client, queryClient, workOrder, null));
+          attempts.push(
+            await releaseWorkOrder(
+              client,
+              queryClient,
+              workOrder,
+              null,
+              undefined,
+              materials?.[workOrder.workOrderId],
+            ),
+          );
         const released = attempts.filter((item) => item.status === 'released').length;
         const items = { done: released, total: attempts.length };
         const firstIssue = attempts.find((item) => item.status !== 'released');
@@ -170,12 +180,12 @@ export const useWorklistBulk = () => {
   );
 
   const start = useCallback(
-    async (kind: BulkKind, targets: readonly BulkTarget[]) => {
+    async (kind: BulkKind, targets: readonly BulkTarget[], materials?: MaterialConfirmations) => {
       setState({ run: null, isRunning: true });
       const outcomes: BulkOutcome[] = [];
       for (const target of targets) {
         outcomes.push(
-          kind === 'release' ? await releaseOrder(target) : await autoPlanOrder(target),
+          kind === 'release' ? await releaseOrder(target, materials) : await autoPlanOrder(target),
         );
       }
       await invalidateFlow(queryClient);

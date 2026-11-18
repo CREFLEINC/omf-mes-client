@@ -1,3 +1,4 @@
+import type { MaterialConfirmation } from './process/release-materials';
 import { isPastPlanningDate, pastPlanningDateMessage } from './process/planning-date-policy';
 import {
   createIdempotencyKey,
@@ -50,6 +51,7 @@ export interface ReleaseAttempt extends ReleaseTarget {
    * 그 밖의 실패는 비어 있고 `reason` 만 쓴다.
    */
   blocks?: string[];
+  materialErrors?: { field?: string; message: string }[];
   /** 배포는 됐지만 재고 있는 생산 창고가 없어 요청에 넣지 못한 자재(FR-007a). */
   unsourced?: ReleaseUnsourcedShortage[];
   materialIssueRequests?: WorkOrderReleaseResult['materialIssueRequests'];
@@ -160,6 +162,7 @@ export const releaseWorkOrder = async (
   target: ReleaseTarget,
   lotSize: number | null,
   idempotencyKey: string = createIdempotencyKey(),
+  materialUomConfirmations?: MaterialConfirmation[],
 ): Promise<ReleaseAttempt> => {
   const outcome = (status: ReleaseAttemptStatus, reason: string | null): ReleaseAttempt => ({
     ...target,
@@ -184,7 +187,10 @@ export const releaseWorkOrder = async (
           path: { workOrderId: target.workOrderId },
           header: { 'Idempotency-Key': idempotencyKey, 'If-Match': etag },
         },
-        body: { lotSize: verdict.lotSize },
+        body: {
+          lotSize: verdict.lotSize,
+          ...(materialUomConfirmations ? { materialUomConfirmations } : {}),
+        },
       }),
     );
     const unsourced = released.unsourcedShortages ?? [];
@@ -196,6 +202,14 @@ export const releaseWorkOrder = async (
   } catch (cause) {
     const error = toApiError(cause);
     const blocks = releaseBlocksOf(error);
+    if (
+      error.kind === 'validation' &&
+      error.errors.some((item) => item.field?.startsWith('materialUomConfirmations'))
+    )
+      return {
+        ...outcome('failed', apiErrorText(error)),
+        materialErrors: error.errors.map((item) => ({ field: item.field, message: item.message })),
+      };
     return blocks.length === 0
       ? outcome('failed', apiErrorText(error))
       : { ...outcome('failed', apiErrorText(error)), blocks };
@@ -283,6 +297,7 @@ export const unreleasedWorkOrdersOf = async (
 };
 
 export interface ReleaseForecast {
+  targets?: ReleaseTarget[];
   total: number;
   ready: number;
   /** 첫 막힌 W/O와 사유 */
@@ -296,11 +311,18 @@ export const forecastRelease = async (
   productionOrderId: number,
 ): Promise<ReleaseForecast> => {
   const targets = await unreleasedWorkOrdersOf(client, productionOrderId);
-  const forecast: ReleaseForecast = { total: targets.length, ready: 0, firstBlocked: null };
+  const forecast: ReleaseForecast = {
+    targets: [],
+    total: targets.length,
+    ready: 0,
+    firstBlocked: null,
+  };
   for (const target of targets) {
     const { verdict } = await inspect(client, queryClient, target.workOrderId, null);
-    if (verdict.ready) forecast.ready += 1;
-    else if (forecast.firstBlocked === null) {
+    if (verdict.ready) {
+      forecast.ready += 1;
+      forecast.targets!.push(target);
+    } else if (forecast.firstBlocked === null) {
       forecast.firstBlocked = { workOrderNo: target.workOrderNo, reason: verdict.reason };
     }
   }

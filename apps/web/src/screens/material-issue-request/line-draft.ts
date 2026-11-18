@@ -37,7 +37,8 @@ export const lineDraftsFromShortage = (
     requiredQty: line.requiredQty,
     issuedQty: line.issuedQty,
     shortageQty: line.shortageQty,
-    requestedQty: String(line.shortageQty),
+    requestedQty: line.conversionSource === 'NONE' ? '0' : String(line.shortageQty),
+    ...(line.conversionSource === 'NONE' ? { conversionUnavailable: true } : {}),
   }));
 
 /** 손으로 더하는 빈 줄. **값을 지어내지 않는다** — 고르지 않은 품목이 전표에 실리면 안 된다. */
@@ -79,7 +80,9 @@ export const patchLineDraft = (
   lines.map((line) => {
     if (line.key !== key) return line;
 
-    const changesItem = patch.itemId !== undefined && patch.itemId !== line.itemId;
+    const changesItem =
+      (patch.itemId !== undefined && patch.itemId !== line.itemId) ||
+      (patch.uomId !== undefined && patch.uomId !== line.uomId);
 
     return changesItem ? { ...line, ...patch, bomComponentId: null } : { ...line, ...patch };
   });
