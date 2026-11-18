@@ -23,10 +23,6 @@ export interface CountFilters {
   /** 계획일 범위. `<input type="date">`가 주는 `YYYY-MM-DD` 그대로다. */
   from: string;
   to: string;
-  /** 실사 유형 코드. 선택지가 자리표시라 지금은 주소를 손으로 고칠 때만 들어온다(계획 결정 10). */
-  countType: string;
-  /** 상태 코드. 같은 위. */
-  status: string;
   /** 진행 중인 실사만. **참일 때만** 주소와 요청에 실린다. */
   inProgressOnly: boolean;
 }
@@ -44,8 +40,6 @@ export const DEFAULT_FILTERS: CountFilters = {
   warehouse: '',
   from: '',
   to: '',
-  countType: '',
-  status: '',
   inProgressOnly: false,
 };
 
@@ -54,8 +48,6 @@ const URL_KEYS = {
   warehouse: 'wh',
   from: 'from',
   to: 'to',
-  countType: 'ty',
-  status: 'st',
   inProgressOnly: 'prog',
   page: 'page',
 } as const;
@@ -109,21 +101,10 @@ export const isCalendarDate = (raw: string): boolean => {
 /** 조건으로 받을 수 있는 날짜만 남긴다. 달력에 없는 날은 **조건이 아니다**. */
 const readDateFilter = (raw: string): string => (isCalendarDate(raw) ? raw : '');
 
-/**
- * 공백만 친 값은 조건이 아니다 — 주소에 남기면 조건이 걸린 것처럼 보인다.
- *
- * **실사 유형과 상태 코드가 같은 규칙을 쓴다.** 자유 문자열 조건이 둘인데 한쪽만 다듬으면
- * `?st=%20`이 `statusCode: ' '`로 요청에 실리고 칩도 「상태:  」로 뜬다 —
- * 사용자가 만들 수 없는 값이지만(선택지가 비어 있다) 주소는 손으로 고쳐지는 자리다.
- */
-const normalizeText = (raw: string): string => raw.trim();
-
 export const readFilters = (params: URLSearchParams): CountFilters => ({
   warehouse: readNumberFilter(params.get(URL_KEYS.warehouse) ?? ''),
   from: readDateFilter(params.get(URL_KEYS.from) ?? ''),
   to: readDateFilter(params.get(URL_KEYS.to) ?? ''),
-  countType: normalizeText(params.get(URL_KEYS.countType) ?? ''),
-  status: normalizeText(params.get(URL_KEYS.status) ?? ''),
   inProgressOnly: params.get(URL_KEYS.inProgressOnly) === ON,
 });
 
@@ -176,8 +157,6 @@ export const toSearchParams = (filters: CountFilters, page: number): URLSearchPa
     [URL_KEYS.warehouse, readNumberFilter(filters.warehouse)],
     [URL_KEYS.from, readDateFilter(filters.from)],
     [URL_KEYS.to, readDateFilter(filters.to)],
-    [URL_KEYS.countType, normalizeText(filters.countType)],
-    [URL_KEYS.status, normalizeText(filters.status)],
   ];
 
   for (const [key, value] of entries) {
@@ -201,8 +180,6 @@ export interface CountFilterQuery {
   warehouseId?: number;
   plannedDateFrom?: string;
   plannedDateTo?: string;
-  countTypeCode?: string;
-  statusCode?: string;
   /** **참일 때만 실린다.** 거짓을 실으면 「조건을 걸지 않았다」와 「끄기로 골랐다」가 뭉개진다. */
   inProgressOnly?: true;
 }
@@ -211,15 +188,11 @@ export const toFilterQuery = (filters: CountFilters): CountFilterQuery => {
   const warehouse = readNumberFilter(filters.warehouse);
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
-  const countType = normalizeText(filters.countType);
-  const status = normalizeText(filters.status);
 
   return {
     ...(warehouse === '' ? {} : { warehouseId: Number(warehouse) }),
     ...(from === '' ? {} : { plannedDateFrom: from }),
     ...(to === '' ? {} : { plannedDateTo: to }),
-    ...(countType === '' ? {} : { countTypeCode: countType }),
-    ...(status === '' ? {} : { statusCode: status }),
     ...(filters.inProgressOnly ? { inProgressOnly: true as const } : {}),
   };
 };
@@ -228,7 +201,7 @@ export const toFilterQuery = (filters: CountFilters): CountFilterQuery => {
  * 칩이 되는 조건. **기간은 칩 하나다** — 시작과 종료가 한 조건이라 따로 떼면
  * 한쪽만 지웠을 때 남은 쪽이 무엇을 뜻하는지 읽기 어렵다.
  */
-export type ChipFilterKey = 'warehouse' | 'period' | 'countType' | 'status' | 'inProgress';
+export type ChipFilterKey = 'warehouse' | 'period' | 'inProgress';
 
 export interface FilterChip {
   key: ChipFilterKey;
@@ -258,14 +231,12 @@ const periodLabel = (from: string, to: string): string => {
  * 적용된 조건마다 칩 하나. 순서는 조건 줄의 컨트롤 순서와 같다.
  *
  * **칩의 판정 기준을 요청의 판정 기준과 같게 둔다.** 둘이 갈리면 손으로 고친 주소
- * (`?st=%20%20`·`?from=2026-13-01`)에서 **조건은 걸리지 않는데 칩만 뜬다** —
+ * (`?from=2026-13-01`)에서 **조건은 걸리지 않는데 칩만 뜬다** —
  * 사용자는 칩을 보고 조건이 걸린 줄 알고, 결과가 그대로인 이유를 화면 어디에서도 읽을 수 없다.
  */
 export const toFilterChips = (filters: CountFilters, names: FilterChipNames): FilterChip[] => {
   const from = readDateFilter(filters.from);
   const to = readDateFilter(filters.to);
-  const countType = normalizeText(filters.countType);
-  const status = normalizeText(filters.status);
 
   const candidates: [FilterChip, boolean][] = [
     [
@@ -283,22 +254,6 @@ export const toFilterChips = (filters: CountFilters, names: FilterChipNames): Fi
         removeLabel: t.filters.chipRemovePeriod,
       },
       from !== '' || to !== '',
-    ],
-    [
-      {
-        key: 'countType',
-        label: t.filters.chipCountType(countType),
-        removeLabel: t.filters.chipRemoveCountType,
-      },
-      countType !== '',
-    ],
-    [
-      {
-        key: 'status',
-        label: t.filters.chipStatus(status),
-        removeLabel: t.filters.chipRemoveStatus,
-      },
-      status !== '',
     ],
     [
       {

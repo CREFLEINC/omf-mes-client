@@ -250,7 +250,7 @@ export interface SelectOption {
 }
 
 /** 값 목록이 확정되지 않은 코드 셋. 선택지와 자리표시는 `code-options.ts`가 소유한다. */
-export type StocktakingCodeKey = 'countType' | 'status' | 'varianceReason';
+export type StocktakingCodeKey = 'countType' | 'varianceReason';
 
 /**
  * 블라인드 여부의 표기. **읽히는 말로 낸다** — `true`·`false`를 그대로 내면 값이 읽히지 않는다.

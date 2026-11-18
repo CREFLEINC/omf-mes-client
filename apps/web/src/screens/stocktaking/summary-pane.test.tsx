@@ -20,8 +20,7 @@ const renderPane = (overrides: Partial<SummaryPaneProps> = {}) =>
     />,
   );
 
-const summaryGroup = (): HTMLElement =>
-  screen.getByRole('group', { name: t.detail.summaryLabel });
+const summaryGroup = (): HTMLElement => screen.getByRole('group', { name: t.detail.summaryLabel });
 
 describe('SummaryPane — 제목줄', () => {
   it('실사번호·유형·창고·계획일·블라인드·상태를 보인다', () => {
@@ -57,20 +56,14 @@ describe('SummaryPane — 제목줄', () => {
    * **블라인드는 읽기 전용 표기다**(계획 결정 4). 실사 헤더를 고치는 오퍼레이션이 계약에
    * 없으므로 비활성 컨트롤을 두지 않는다 — 두면 「언젠가 켜질 것」으로 읽힌다.
    */
-  it('블라인드 실사에는 바꿀 수 없다는 안내가 붙고 컨트롤이 없다', () => {
-    renderPane({ count: toCountView(countResponse({ blindCount: true })) });
+  it('블라인드 실사는 값으로만 표기하고 컨트롤이 없다', () => {
+    const { container } = renderPane({ count: toCountView(countResponse({ blindCount: true })) });
 
     expect(screen.getByText('예')).toBeInTheDocument();
-    expect(screen.getByText(t.detail.blindNote)).toBeInTheDocument();
+    /* 블라인드 안내문은 걷었다(사용자 지시 2026-11-18). */
+    expect(container.querySelector('.field-note')).toBeNull();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  /* 짝 방향 — 블라인드가 아니면 그 안내를 내지 않는다. 남으면 화면이 거짓말을 한다. */
-  it('블라인드가 아니면 그 안내를 내지 않는다', () => {
-    renderPane();
-
-    expect(screen.queryByText(t.detail.blindNote)).not.toBeInTheDocument();
   });
 });
 
@@ -98,7 +91,12 @@ describe('SummaryPane — 요약 4칸', () => {
   it('합이 맞지 않는 요약도 서버가 준 대로 보인다', () => {
     renderPane({
       summary: toCountSummaryView(
-        summaryResponse({ plannedCount: 40, countedCount: 25, uncountedCount: 9, varianceCount: 6 }),
+        summaryResponse({
+          plannedCount: 40,
+          countedCount: 25,
+          uncountedCount: 9,
+          varianceCount: 6,
+        }),
       ),
     });
 
@@ -117,7 +115,12 @@ describe('SummaryPane — 요약 4칸', () => {
   it('네 자리가 넘는 건수에 자릿수 구분을 붙이지 않는다', () => {
     renderPane({
       summary: toCountSummaryView(
-        summaryResponse({ plannedCount: 1240, countedCount: 1180, uncountedCount: 60, varianceCount: 12 }),
+        summaryResponse({
+          plannedCount: 1240,
+          countedCount: 1180,
+          uncountedCount: 60,
+          varianceCount: 12,
+        }),
       ),
     });
 
@@ -139,10 +142,11 @@ describe('SummaryPane — 요약 4칸', () => {
     expect(within(summaryGroup()).getAllByText('0')).toHaveLength(4);
   });
 
-  it('이 숫자가 서버에서 왔다는 사실을 밝힌다', () => {
-    renderPane();
+  /* 요약 출처 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('요약 아래에 안내문을 두지 않는다', () => {
+    const { container } = renderPane();
 
-    expect(screen.getByText(t.detail.summaryNote)).toBeInTheDocument();
+    expect(container.querySelector('.field-note')).toBeNull();
   });
 
   /* 네 칸 모두 단위가 「건」이다 — 수량이 아니라 라인 수라는 사실이 읽혀야 한다. */

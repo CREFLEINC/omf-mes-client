@@ -1460,12 +1460,6 @@ describe('StockStatusScreen — 부모가 빠진 종속 조건', () => {
     expect(await screen.findByText('LOT: SAMPLE-LOT-0001')).toBeInTheDocument();
     expect(requestsTo(requests, LOTS_PATH)).toHaveLength(1);
     expect(screen.queryByText(`LOT: ${t.values.unknown}`)).not.toBeInTheDocument();
-    /*
-     * **선택칸 안내가 훅과 같은 값을 본다.** 다르면 선택지는 채워졌는데 그 아래 안내는
-     * 「고르면 채워집니다」라고 말하는 어긋남이 생긴다 — 여기가 정확히 그 상태다
-     * (품목별 보기인데 LOT 조건이 걸려 참조를 부른다).
-     */
-    expect(screen.queryByText(t.filters.lotNeedsItem)).not.toBeInTheDocument();
   });
 });
 
@@ -1686,7 +1680,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
       `${LOT_VIEW}&sel=9401`,
     );
 
-    await screen.findByText(t.detail.quantitiesNote);
+    await screen.findByRole('group', { name: t.detail.quantities });
 
     const listBefore = requestsTo(requests, BALANCES_PATH).length;
     const detailBefore = lotDetailRequests(requests).length;
@@ -1701,7 +1695,7 @@ describe('StockStatusScreen — 기준 시각과 새로고침', () => {
     expect(requestsTo(requests, BALANCES_PATH).length).toBeGreaterThan(listBefore);
     /* 새로고침은 조건·선택을 하나도 바꾸지 않는다(수명 표 8행). */
     expect(currentLocation()).toBe(before);
-    expect(screen.getByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.detail.quantities })).toBeInTheDocument();
   });
 
   /*
@@ -1880,7 +1874,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
 
     await selectFirstLot(user);
 
-    await screen.findByText(t.detail.quantitiesNote);
+    await screen.findByRole('group', { name: t.detail.quantities });
 
     await user.click(
       screen.getByRole('button', { name: t.actions.deselectRow('SAMPLE-LOT-0001') }),
@@ -1900,7 +1894,7 @@ describe('StockStatusScreen — LOT 고르기', () => {
 
     await selectFirstLot(user);
 
-    await screen.findByText(t.detail.quantitiesNote);
+    await screen.findByRole('group', { name: t.detail.quantities });
 
     await user.click(screen.getByRole('tab', { name: t.views.item }));
 
@@ -1955,7 +1949,7 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
       `${LOT_VIEW}&sel=9401`,
     );
 
-    expect(await screen.findByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: t.detail.quantities })).toBeInTheDocument();
     expect(currentLocation()).toContain('sel=9401');
   });
 
@@ -1977,7 +1971,7 @@ describe('StockStatusScreen — 고른 LOT의 수명', () => {
 
     release();
 
-    expect(await screen.findByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: t.detail.quantities })).toBeInTheDocument();
     expect(currentLocation()).toContain('sel=9401');
   });
 
@@ -2039,7 +2033,7 @@ describe('StockStatusScreen — LOT 상세의 내용', () => {
       `${LOT_VIEW}&sel=9401`,
     );
 
-    await screen.findByText(t.detail.quantitiesNote);
+    await screen.findByRole('group', { name: t.detail.quantities });
 
     const pane = within(detailPane());
 
@@ -2078,7 +2072,7 @@ describe('StockStatusScreen — LOT 상세의 내용', () => {
       `${LOT_VIEW}&sel=9401`,
     );
 
-    await screen.findByText(t.detail.quantitiesNote);
+    await screen.findByRole('group', { name: t.detail.quantities });
 
     expect(screen.queryByText(t.detail.expiryPassed)).not.toBeInTheDocument();
     expect(screen.queryByText(t.detail.expirySoon)).not.toBeInTheDocument();
@@ -2091,7 +2085,7 @@ describe('StockStatusScreen — LOT 상세의 내용', () => {
       `${LOT_VIEW}&sel=9401`,
     );
 
-    await screen.findByText(t.detail.quantitiesNote);
+    await screen.findByRole('group', { name: t.detail.quantities });
 
     expect(within(detailPane()).getByText(t.detail.reservedQty)).toBeInTheDocument();
     expect(within(listPane()).getByRole('table').textContent?.includes(t.detail.reservedQty)).toBe(
@@ -2410,7 +2404,7 @@ describe('StockStatusScreen — 이력 쪽과 고른 거래', () => {
 
     await openFirstTransaction(user);
 
-    await screen.findByText(t.history.lines.scopeNote);
+    await screen.findByRole('table', { name: t.history.lines.title });
 
     await user.click(
       screen.getByRole('button', { name: t.history.hideLinesRow('SAMPLE-IT-0001') }),
@@ -2439,7 +2433,7 @@ describe('StockStatusScreen — 이력 쪽과 고른 거래', () => {
 
     await openFirstTransaction(user);
 
-    await screen.findByText(t.history.lines.scopeNote);
+    await screen.findByRole('table', { name: t.history.lines.title });
 
     await user.click(within(historyPane()).getByRole('button', { name: t.actions.nextPage }));
 
@@ -2462,7 +2456,7 @@ describe('StockStatusScreen — 이력 쪽과 고른 거래', () => {
 
     await openFirstTransaction(user);
 
-    await screen.findByText(t.history.lines.scopeNote);
+    await screen.findByRole('table', { name: t.history.lines.title });
 
     await user.clear(screen.getByLabelText(t.history.periodTo));
     await user.type(screen.getByLabelText(t.history.periodTo), '2026-08-20');
@@ -2609,7 +2603,7 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
 
     expect(historyPane()).toContainElement(retry);
     /* 위 두 구획이 여전히 그려져 있다. */
-    expect(screen.getByText(t.detail.quantitiesNote)).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: t.detail.quantities })).toBeInTheDocument();
     expect(
       within(within(listPane()).getByRole('table')).getAllByText('SAMPLE-LOT-0001').length,
     ).toBeGreaterThan(0);
@@ -2802,7 +2796,7 @@ describe('StockStatusScreen — 이력과 다른 구획의 관계', () => {
 
     await openFirstTransaction(user);
 
-    await screen.findByText(t.history.lines.scopeNote);
+    await screen.findByRole('table', { name: t.history.lines.title });
 
     const historyBefore = historyRequests(requests).length;
     const lineBefore = transactionDetailRequests(requests).length;
@@ -2851,7 +2845,7 @@ describe('StockStatusScreen — 이력과 다른 구획의 관계', () => {
 
     await openFirstTransaction(user);
 
-    await screen.findByText(t.history.lines.scopeNote);
+    await screen.findByRole('table', { name: t.history.lines.title });
 
     await user.click(screen.getByRole('tab', { name: t.views.item }));
 
@@ -2917,7 +2911,7 @@ describe('StockStatusScreen — 이력과 다른 구획의 관계', () => {
 
     await openFirstTransaction(user);
 
-    await screen.findByText(t.history.lines.scopeNote);
+    await screen.findByRole('table', { name: t.history.lines.title });
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true);
   });

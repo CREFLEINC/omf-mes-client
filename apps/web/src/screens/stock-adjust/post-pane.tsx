@@ -51,15 +51,9 @@ export interface PostPaneProps {
  * 계약에 없어(승인 유형 코드 미확정 · 상세가 내려주지 않음) **화면이 앞서 판정하지 않는다** —
  * 두 길을 함께 두되 기본을 상신으로 두고, 틀린 길은 **서버가 400으로 안전하게 막는다.**
  *
- * **상시 사유는 접혀 있을 때도 선다.** 이 길이 누구의 길인지 밝히지 않으면 결재선이 있는
- * 조정도 여기로 오고, 그때 사용자가 만나는 것은 이유를 알 수 없는 400이다.
- *
- * ### 「일어나는 일」 세 문장이 **잠겨 있을 때도** 서는 이유 (C38)
- *
- * 잠금과 함께 감추면 정작 눌릴 수 있는 상태에서만 경고가 뜨는데, 그때는 이미 누르러 온
- * 순간이라 읽지 않는다. **사라지는 알림(토스트)으로 옮기지 않는 이유도 같다** — 사라지는
- * 글자는 되돌릴 수 없는 조작 앞에서 아무것도 막지 못한다. 확인 창이 **같은 문구를 나눠 쓴다**
- * (`t.post.effect*`)라 두 자리가 갈릴 길이 없다.
+ * 구획 첫 줄 안내, 「결재선이 없는 조정만」 상시 사유, 「전기하면 일어나는 일」 세 문장,
+ * 두 칸의 보조 문구, 전기 뒤 장부 낡음 안내는 걷었다(사용자 지시 2026-11-18). 되돌릴 수
+ * 없다는 사실은 전기 확인 창의 한 줄이 밝힌다.
  *
  * ### 잠그는 것과 잠그지 않는 것
  *
@@ -107,14 +101,6 @@ export const PostPane = ({
 
   return (
     <section className="pane" aria-label={t.post.label}>
-      <p>{t.post.lead}</p>
-
-      {/*
-       * **상시 사유** — 접혀 있을 때도 선다(D-12). 이 길이 누구의 길인지 여기서 밝히지 않으면
-       * 결재선이 있는 조정도 이 길로 오고, 그때 만나는 것은 이유를 알 수 없는 400이다.
-       */}
-      <p className="field-note">{t.post.onlyWithoutRoute}</p>
-
       <div className="form-actions">
         <div className="field-cell">
           <Button
@@ -136,17 +122,6 @@ export const PostPane = ({
 
       {isExpanded && (
         <div id={bodyId}>
-          {/*
-           * **상시 문구는 버튼보다 앞에 둔다.** 뒤에 두면 누르고 난 뒤에야 눈에 들어온다.
-           * 구획으로 감싸 이름을 붙이는 것은 스크린리더가 세 문장을 한 덩어리로 읽게 하려는 것이다.
-           */}
-          <section className="banner-slot" aria-label={t.post.effectsLabel}>
-            <p className="field-label">{t.post.effectsLabel}</p>
-            <p>{t.post.effectMovesStock}</p>
-            <p>{t.post.effectApprovalIsNotPosting}</p>
-            <p>{t.post.effectNoUndoHere}</p>
-          </section>
-
           {posting.kind === 'posted' && (
             <>
               <AlertBanner variant="success" title={t.post.postedTitle(inventoryAdjustmentNo)}>
@@ -174,9 +149,6 @@ export const PostPane = ({
                   </dd>
                 </div>
               </dl>
-
-              {/* 표의 장부·실물은 등록 시점의 값이다 — 다시 부르지 않는 사정을 밝힌다. */}
-              <p className="field-note">{t.post.bookQtyStale}</p>
             </>
           )}
 
@@ -197,14 +169,13 @@ export const PostPane = ({
               <div className="form-grid">
                 {/*
                  * 두 값은 **사용자가 확인하는 값**이다(공유계약 C-8·C-1). 기본값이 제출 순간이라
-                 * 대부분 그대로 지나가고, 자정을 넘겨 일한 사람만 고친다 — 보조 문구가 그 사정을
-                 * 밝힌다. 설치본에 `DatePicker`가 없어 네이티브 타입으로 대체한다.
+                 * 대부분 그대로 지나가고, 자정을 넘겨 일한 사람만 고친다. 설치본에 `DatePicker`가
+                 * 없어 네이티브 타입으로 대체한다.
                  */}
                 <TextField
                   type="date"
                   label={t.post.businessDate}
                   value={draft.businessDate}
-                  helperText={t.post.businessDateHelper}
                   disabled={isPosting}
                   error={errors.businessDate ?? fieldErrors.businessDate}
                   onChange={(event) => {
@@ -216,7 +187,6 @@ export const PostPane = ({
                   type="datetime-local"
                   label={t.post.occurredAt}
                   value={draft.occurredAtLocal}
-                  helperText={t.post.occurredAtHelper}
                   disabled={isPosting}
                   error={errors.occurredAt ?? fieldErrors.occurredAt}
                   onChange={(event) => {

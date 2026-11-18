@@ -48,7 +48,6 @@ const t = messages.stocktaking;
 const { codeValues } = vi.hoisted(() => ({
   codeValues: {
     countType: [] as string[],
-    status: [] as string[],
     varianceReason: [] as string[],
   },
 }));
@@ -64,7 +63,6 @@ const SAMPLE_COUNT_TYPE = 'SAMPLE_COUNT_TYPE_D';
 
 const clearCodeLists = (): void => {
   codeValues.countType = [];
-  codeValues.status = [];
   codeValues.varianceReason = [];
 };
 
@@ -897,16 +895,16 @@ describe('StocktakingScreen — 첫 진입 조회', () => {
   });
 
   /*
-   * **C14** — 값 목록이 확정되지 않아 조건의 실사 유형·상태 선택지가 비어 있다.
-   * 화면 수준에서도 그 안내가 실제로 붙는지 본다.
+   * 선택지가 늘 비어 쓰이지 않던 조건의 실사 유형·상태와 「선택지 준비 중」 안내를 걷었다
+   * (사용자 지시 2026-11-18). 실사 유형은 개시 구획에만 남는다.
    */
-  it('실사 유형·상태 선택지가 비어 있고 안내가 붙는다', async () => {
+  it('조건 줄에 실사 유형·상태 조건과 준비 중 안내가 없다', async () => {
     renderScreen(allRoutes());
 
     await waitForList();
 
-    /* **조건 줄 안에서만 센다** — 개시 구획의 실사 유형에도 같은 안내가 붙는다(별개의 자리다). */
-    expect(within(listPane()).getAllByText(messages.pendingCode.note)).toHaveLength(2);
+    expect(within(listPane()).queryByLabelText(t.fields.countType)).not.toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
   });
 });
 
@@ -943,8 +941,9 @@ describe('StocktakingScreen — 조건과 주소', () => {
     expect(query?.get('warehouseId')).toBe('9101');
     expect(query?.get('plannedDateFrom')).toBe('2026-08-01');
     expect(query?.get('plannedDateTo')).toBe('2026-08-31');
-    expect(query?.get('countTypeCode')).toBe('SAMPLE_COUNT_TYPE_A');
-    expect(query?.get('statusCode')).toBe('SAMPLE_COUNT_STATUS_A');
+    /* 걷은 실사 유형·상태 키는 옛 주소에 남아 있어도 요청에 싣지 않는다(사용자 지시 2026-11-18). */
+    expect(query?.has('countTypeCode')).toBe(false);
+    expect(query?.has('statusCode')).toBe(false);
     expect(query?.get('inProgressOnly')).toBe('true');
   });
 
@@ -1259,7 +1258,6 @@ describe('StocktakingScreen — 실사 고르기와 요약', () => {
 
     expect(within(heading).getByText('예')).toBeInTheDocument();
     expect(within(heading).getByText('SAMPLE_COUNT_STATUS_A')).toBeInTheDocument();
-    expect(screen.getByText(t.detail.blindNote)).toBeInTheDocument();
   });
 });
 
@@ -2519,10 +2517,10 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
   });
 
   /*
-   * **완료 조건 C49 · 감지기 M49** — 이력 구획은 비활성이고 **어떤 요청도 보내지 않는다.**
-   * 조회를 붙여 두면 아무도 읽지 않는 응답이 오가고, 그 경로가 나중에 「이미 되는 것」으로 읽힌다.
+   * **완료 조건 C49 · 감지기 M49** — 늘 잠겨 있던 「이력 보기」 자리표시는 걷었고(사용자 지시
+   * 2026-11-18) 이력 조회도 **보내지 않는다.**
    */
-  it('이력 구획이 비활성이고 요청을 늘리지 않는다', async () => {
+  it('이력 자리표시가 없고 요청을 늘리지 않는다', async () => {
     /*
      * **위치를 고르기 전에 잰다.** 라인 표가 열린 뒤에는 참조 셋이 이미 나가 있어, 이력에
      * 조회를 붙여도 **이미 부르는 경로**를 하나 더 부르는 것이 되어 집합이 그대로다 —
@@ -2535,12 +2533,7 @@ describe('StocktakingScreen — 위치와 라인 조회', () => {
       expect(requestsTo(requests, LOCATIONS_PATH)).toHaveLength(1);
     });
 
-    const historyButton = within(screen.getByRole('group', { name: t.history.label })).getByRole(
-      'button',
-      { name: t.history.action },
-    );
-
-    expect(historyButton).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '이력 보기' })).not.toBeInTheDocument();
 
     /* 나간 경로의 **집합 그대로** — 이력이 쓸 만한 경로가 하나도 늘지 않았다. */
     expect([...new Set(requests.map((request) => request.url.pathname))].sort()).toEqual(
@@ -4317,7 +4310,7 @@ describe('StocktakingScreen — 조정 등록', () => {
     const result = await screen.findByRole('status', { name: t.result.closedLabel });
 
     /* 짝 양성 — 마감 결과 자체는 실제로 섰다. */
-    expect(within(result).getByText(t.result.closedNote)).toBeInTheDocument();
+    expect(within(result).getByText(t.result.closedNo)).toBeInTheDocument();
     expect(within(result).queryAllByRole('link')).toHaveLength(0);
     expect(within(result).queryAllByRole('button')).toHaveLength(0);
   });

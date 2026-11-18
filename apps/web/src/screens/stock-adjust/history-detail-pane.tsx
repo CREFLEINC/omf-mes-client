@@ -221,12 +221,7 @@ export const HistoryDetailPane = ({
         />
       </div>
 
-      {/*
-       * **두 열이 비는 이유와 없는 열의 이유를 함께 적는다.** 값을 지어내지 않는 대신 왜
-       * 없는지를 말해야, 사용자가 화면이 빠뜨린 것으로 읽지 않는다.
-       */}
-      <p className="field-note">{t.historyLineTable.qtyNote}</p>
-      <p className="field-note">{t.historyLineTable.locationNote}</p>
+      {/* 장부·실물이 비고 위치 열이 없는 까닭을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */}
 
       {/*
        * **말하는 셋과 되살리는 셋이 같다.** 등록 탭의 문구는 넷을 말하는데 이 구획에는 위치

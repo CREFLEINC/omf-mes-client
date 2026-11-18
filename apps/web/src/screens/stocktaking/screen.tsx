@@ -4,7 +4,9 @@ import type { ReactNode } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { HubActions, useHubActionsTarget } from '../../patterns/hub-actions';
 import { SaveErrorBanner } from '../../patterns/master';
+import { usePageHub } from '../../patterns/page-hub';
 import { CloseConfirmDialog } from './close-confirm-dialog';
 import { closeBlockReason } from './close-guard';
 import { toCountClose } from './close-request';
@@ -31,7 +33,6 @@ import {
   type ChipFilterKey,
   type CountFilters,
 } from './filters';
-import { HistoryPane } from './history-pane';
 import {
   EMPTY_LINE_DRAFTS,
   hasAnyLineDraftValue,
@@ -183,6 +184,8 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
  */
 export const StocktakingScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const hub = usePageHub();
+  const hubActionsTarget = useHubActionsTarget();
 
   /** 세 액션의 비활성 사유를 각 버튼에 잇는 id(배치 규범 4). 한 뿌리에서 갈라 쓴다. */
   const reasonIdRoot = useId();
@@ -1226,13 +1229,7 @@ export const StocktakingScreen = () => {
    */
   const linesPane = (): ReactNode => {
     if (activeLocationId === null) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noLocationTitle}
-          description={t.empty.noLocationDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.noLocationTitle} />;
     }
 
     /* 조회 실패를 「라인이 없습니다」로 내면 자료가 없는 줄 안다 — 배너와 복구 경로를 낸다. */
@@ -1327,13 +1324,7 @@ export const StocktakingScreen = () => {
     }
 
     if (selectedCountId === null) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.noSelectionTitle}
-          description={t.empty.noSelectionDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.noSelectionTitle} />;
     }
 
     /* 404가 아닌 실패는 다시 시도로 풀릴 수 있다 — 배너와 복구 경로를 함께 낸다. */
@@ -1379,12 +1370,7 @@ export const StocktakingScreen = () => {
          * 밝힌다 — 밝히지 않으면 화면이 고장으로 읽힌다.
          */}
         {hasClosedInSession ? (
-          <EmptyState
-            size="sm"
-            live
-            title={t.empty.closedTitle}
-            description={t.empty.closedDescription}
-          />
+          <EmptyState size="sm" live title={t.empty.closedTitle} />
         ) : (
           <>
             <LocationField
@@ -1405,28 +1391,40 @@ export const StocktakingScreen = () => {
         {/* 마감은 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
         {closeActionPane(detail.data.summary)}
 
-        {/* 이력도 **실사 하나에 대한 것**이라 위치와 무관하게 늘 자리에 있다. */}
-        <HistoryPane />
+        {/* 늘 잠겨 있던 「이력 보기」 자리표시는 걷었다(사용자 지시 2026-11-18). */}
       </>
     );
   };
 
+  const refreshButton = (
+    <Button variant="outlined" size="sm" onClick={refreshAll}>
+      {t.actions.refresh}
+    </Button>
+  );
+
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={
-          <Breadcrumb
-            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
-            aria-label={messages.common.shell.breadcrumb}
-          />
-        }
-        actions={
-          <Button variant="outlined" size="sm" onClick={refreshAll}>
-            {t.actions.refresh}
-          </Button>
-        }
-      />
+      {/*
+       * 탭 묶음(재고 관리) 안이면 탭 막대가 화면 이름을 말한다 — 경로·제목을 세우지 않고(사용자 지시
+       * 2026-11-18 · `patterns/page-hub.tsx`), 「다시 조회」는 탭 막대 오른쪽 자리로 옮긴다.
+       * 그 자리가 없으면 화면 맨 위에 그대로 둔다.
+       */}
+      {hub === null ? (
+        <PageHeader
+          title={t.title}
+          breadcrumb={
+            <Breadcrumb
+              items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+              aria-label={messages.common.shell.breadcrumb}
+            />
+          }
+          actions={refreshButton}
+        />
+      ) : hubActionsTarget === null ? (
+        <div className="filter-actions">{refreshButton}</div>
+      ) : (
+        <HubActions target={hubActionsTarget}>{refreshButton}</HubActions>
+      )}
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}
       {list.isError && (
@@ -1443,8 +1441,6 @@ export const StocktakingScreen = () => {
         <CountFilterBar
           appliedFilters={filters}
           warehouseOptions={warehouseOptions}
-          countTypeOptions={codeOptions.countType}
-          statusOptions={codeOptions.status}
           chipNames={{ warehouse: describeReference(warehouseReference) }}
           warehouseNote={lookupNote(warehouses)}
           isLocked={isLocked}

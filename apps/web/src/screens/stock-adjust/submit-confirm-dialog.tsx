@@ -114,11 +114,12 @@ export const SubmitConfirmDialog = ({
     <section aria-label={t.dialog.reasonFirstLine}>
       <p className="field-label">{t.dialog.reasonFirstLine}</p>
       <p>{summary.reasonFirstLine}</p>
-      <p className="field-note">{t.dialog.reasonSummaryNote}</p>
     </section>
 
-    {/* 무엇이 일어나는지가 실행 버튼 바로 위에 선다. */}
-    <p>{t.dialog.submitApprover}</p>
+    {/*
+     * 되돌릴 수 없다는 한 줄만 실행 버튼 바로 위에 선다. 요약 안내·승인자 안내는 걷었다
+     * (사용자 지시 2026-11-18).
+     */}
     <p>{t.dialog.submitNoUndo}</p>
   </Dialog>
 );

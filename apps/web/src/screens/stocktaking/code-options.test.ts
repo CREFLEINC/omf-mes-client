@@ -2,7 +2,6 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
-  codeNote,
   codePlaceholder,
   isCountTypeListPending,
   isVarianceReasonListPending,
@@ -23,14 +22,12 @@ describe('PLACEHOLDER_STOCKTAKING_CODES', () => {
    */
   it('코드 셋의 값 목록이 전부 비어 있다', () => {
     expect(PLACEHOLDER_STOCKTAKING_CODES.countType).toEqual([]);
-    expect(PLACEHOLDER_STOCKTAKING_CODES.status).toEqual([]);
     expect(PLACEHOLDER_STOCKTAKING_CODES.varianceReason).toEqual([]);
   });
 
   it('계약의 예시 값을 심지 않는다', () => {
     const all = [
       ...PLACEHOLDER_STOCKTAKING_CODES.countType,
-      ...PLACEHOLDER_STOCKTAKING_CODES.status,
       ...PLACEHOLDER_STOCKTAKING_CODES.varianceReason,
     ];
 
@@ -42,14 +39,12 @@ describe('toCodeOptionSets', () => {
   it('값 목록을 선택지로 옮긴다', () => {
     const sets = toCodeOptionSets({
       countType: ['SAMPLE_COUNT_TYPE_A'],
-      status: [],
       varianceReason: ['SAMPLE_VARIANCE_REASON_A', 'SAMPLE_VARIANCE_REASON_B'],
     });
 
     expect(sets.countType).toEqual([
       { value: 'SAMPLE_COUNT_TYPE_A', label: 'SAMPLE_COUNT_TYPE_A' },
     ]);
-    expect(sets.status).toEqual([]);
     expect(sets.varianceReason).toHaveLength(2);
   });
 
@@ -60,7 +55,6 @@ describe('toCodeOptionSets', () => {
   it('코드값을 그대로 라벨로 쓴다', () => {
     const [option] = toCodeOptionSets({
       countType: ['SAMPLE_COUNT_TYPE_A'],
-      status: [],
       varianceReason: [],
     }).countType;
 
@@ -71,13 +65,12 @@ describe('toCodeOptionSets', () => {
   it('값의 차례를 바꾸지 않는다', () => {
     const sets = toCodeOptionSets({
       countType: [],
-      status: ['SAMPLE_COUNT_STATUS_B', 'SAMPLE_COUNT_STATUS_A'],
-      varianceReason: [],
+      varianceReason: ['SAMPLE_VARIANCE_REASON_B', 'SAMPLE_VARIANCE_REASON_A'],
     });
 
-    expect(sets.status.map((option) => option.value)).toEqual([
-      'SAMPLE_COUNT_STATUS_B',
-      'SAMPLE_COUNT_STATUS_A',
+    expect(sets.varianceReason.map((option) => option.value)).toEqual([
+      'SAMPLE_VARIANCE_REASON_B',
+      'SAMPLE_VARIANCE_REASON_A',
     ]);
   });
 
@@ -85,7 +78,6 @@ describe('toCodeOptionSets', () => {
     const sets = toCodeOptionSets(PLACEHOLDER_STOCKTAKING_CODES);
 
     expect(sets.countType).toEqual([]);
-    expect(sets.status).toEqual([]);
     expect(sets.varianceReason).toEqual([]);
   });
 });
@@ -100,22 +92,21 @@ describe('isCountTypeListPending — 개시가 통째로 막히는가', () => {
   it('실사 유형이 차면 막힘이 풀린다', () => {
     expect(
       isCountTypeListPending(
-        toCodeOptionSets({ countType: ['SAMPLE_COUNT_TYPE_A'], status: [], varianceReason: [] }),
+        toCodeOptionSets({ countType: ['SAMPLE_COUNT_TYPE_A'], varianceReason: [] }),
       ),
     ).toBe(false);
   });
 
   /*
    * **필수도로 갈라 적용한다**(승인 G1). 차이 사유는 **조건부 필수**라 잠기는 범위가 다르고
-   * (차이가 있는 위치만 · PR ③), 상태 코드는 조회 조건이라 아무것도 막지 않는다 —
-   * 셋을 한 판정에 묶으면 차이가 없는 위치의 저장까지 개시와 함께 막힌다.
+   * (차이가 있는 위치만 · PR ③) — 둘을 한 판정에 묶으면 차이가 없는 위치의 저장까지 개시와
+   * 함께 막힌다.
    */
-  it('다른 둘만 차 있으면 개시는 여전히 막힌다', () => {
+  it('차이 사유만 차 있으면 개시는 여전히 막힌다', () => {
     expect(
       isCountTypeListPending(
         toCodeOptionSets({
           countType: [],
-          status: ['SAMPLE_COUNT_STATUS_A'],
           varianceReason: ['SAMPLE_VARIANCE_REASON_A'],
         }),
       ),
@@ -132,7 +123,7 @@ describe('isVarianceReasonListPending — 차이 사유를 고를 수 있는가'
   it('차이 사유가 차면 고를 수 있다', () => {
     expect(
       isVarianceReasonListPending(
-        toCodeOptionSets({ countType: [], status: [], varianceReason: ['SAMPLE_VARIANCE_REASON_A'] }),
+        toCodeOptionSets({ countType: [], varianceReason: ['SAMPLE_VARIANCE_REASON_A'] }),
       ),
     ).toBe(false);
   });
@@ -145,7 +136,6 @@ describe('isVarianceReasonListPending — 차이 사유를 고를 수 있는가'
   it('실사 유형만 차 있으면 차이 사유는 여전히 비어 있다', () => {
     const sets = toCodeOptionSets({
       countType: ['SAMPLE_COUNT_TYPE_A'],
-      status: [],
       varianceReason: [],
     });
 
@@ -154,14 +144,9 @@ describe('isVarianceReasonListPending — 차이 사유를 고를 수 있는가'
   });
 });
 
-describe('codeNote · codePlaceholder', () => {
-  it('선택지가 비면 왜 비었는지 밝힌다', () => {
-    expect(codeNote([])).toBe(messages.pendingCode.note);
+describe('codePlaceholder', () => {
+  /* 선택지가 왜 비었는지 밝히던 안내(`pendingCode.note`)는 걷었다(사용자 지시 2026-11-18). */
+  it('선택칸 트리거에 「선택지 준비 중」을 낸다', () => {
     expect(codePlaceholder()).toBe(messages.pendingCode.placeholder);
-  });
-
-  /** **차면 거둔다** — 남으면 고를 수 있는데도 준비 중이라고 말하는 거짓말이 된다. */
-  it('선택지가 차면 안내를 거둔다', () => {
-    expect(codeNote([{ value: 'SAMPLE_COUNT_TYPE_A', label: 'SAMPLE_COUNT_TYPE_A' }])).toBeUndefined();
   });
 });

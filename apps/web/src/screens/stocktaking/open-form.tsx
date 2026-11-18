@@ -1,8 +1,7 @@
 import { Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
 
-import { codeNote, codePlaceholder } from './code-options';
+import { codePlaceholder } from './code-options';
 import type { OpenDraft } from './open-request';
 import { SelectField } from './select-field';
 import type { SelectOption } from './types';
@@ -41,7 +40,10 @@ export interface OpenFormProps {
  * **블라인드 토글이 여기에만 있다**(계획 결정 4 · 어긋남 9). 착수 이슈는 「개시 후에는 컨트롤을
  * 비활성으로」라 했으나 실사 헤더를 고치는 오퍼레이션이 계약에 아예 없다(실측) — 개시한 뒤에
  * 비활성 컨트롤을 두면 「언젠가 켜질 수 있는 것」으로 읽히므로 상세 구획에서는 읽기 전용
- * 표기로 낸다. 대신 **고르는 자리에서** 되돌릴 수 없다는 사실을 미리 밝힌다.
+ * 표기로 낸다.
+ *
+ * 폼 위 안내문, 블라인드 칸 아래 안내, 실사 유형의 「선택지 준비 중」 안내는 걷었다(사용자 지시
+ * 2026-11-18). 되돌릴 수 없다는 사실은 개시 확인 창이 한 줄로 밝힌다.
  *
  * **실사 유형을 `TextField`로 두지 않는다.** 자유 입력은 사용자가 지어낸 코드가 되돌릴 수 없는
  * 전표에 실리는 경로를 화면이 여는 것이다 — 값 목록이 채워지면 이 부품은 고칠 것 없이 살아난다.
@@ -63,13 +65,8 @@ export const OpenForm = ({
   onChangePlannedDate,
   onChangeBlindCount,
 }: OpenFormProps) => {
-  const blindNoteId = `${useId()}-blind`;
-
   return (
     <>
-      {/* 여기서 만드는 것이 **새 실사**이지 위에서 고른 실사를 고치는 것이 아님을 밝힌다. */}
-      <p className="field-note">{t.notes.openLead}</p>
-
       <div className="form-grid">
         {/*
          * 칸 차례가 버튼 사유의 차례와 같다(`openBlockReason`) — 무엇을 세는가 → 어디를
@@ -80,7 +77,6 @@ export const OpenForm = ({
           label={t.fields.countType}
           options={countTypeOptions}
           value={draft.countType}
-          note={codeNote(countTypeOptions)}
           error={fieldErrors[OPEN_FIELD_NAMES.countType]}
           placeholder={codePlaceholder()}
           disabled={isLocked}
@@ -120,7 +116,6 @@ export const OpenForm = ({
             <Checkbox
               checked={draft.blindCount}
               disabled={isLocked}
-              aria-describedby={blindNoteId}
               onChange={(event) => {
                 onChangeBlindCount(event.target.checked);
               }}
@@ -128,13 +123,6 @@ export const OpenForm = ({
               {t.fields.blindCount}
             </Checkbox>
           </div>
-          {/*
-           * 되돌릴 수 없다는 사실을 **고르는 자리에서** 밝힌다. 확인 창에도 값이 다시 나오지만,
-           * 그때는 이미 정한 뒤라 여기서 읽지 못하면 무엇을 정하는 것인지 모르고 고른다.
-           */}
-          <span id={blindNoteId} className="field-note">
-            {t.notes.blindOnlyAtOpen}
-          </span>
         </div>
       </div>
     </>

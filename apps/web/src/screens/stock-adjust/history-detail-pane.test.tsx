@@ -231,11 +231,11 @@ describe('HistoryDetailPane — 라인 표', () => {
     expect(cellsOf(0)[5]).toContain('-20');
   });
 
-  it('두 열이 왜 비는지와 위치 열이 왜 없는지를 함께 적는다', () => {
+  /* 두 열이 비는 까닭과 위치 열이 없는 까닭을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */
+  it('라인 표 아래에 안내문을 두지 않는다', () => {
     renderPane();
 
-    expect(screen.getByText(t.historyLineTable.qtyNote)).toBeInTheDocument();
-    expect(screen.getByText(t.historyLineTable.locationNote)).toBeInTheDocument();
+    expect(document.querySelector('p.field-note')).toBeNull();
   });
 
   /**

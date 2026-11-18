@@ -236,16 +236,10 @@ const ReadyProgress = ({ view, isJudgePending }: ReadyProgressProps) => {
       )}
 
       {/*
-       * **승인 뒤에 무엇이 남았는지 밝히는 자리.**
-       *
-       * 두 문장이 서는 조건이 서로 다르다 —
-       * ① 「승인은 재고를 움직이지 않는다」는 **계약이 못 박은 사실**이라 늘 선다.
-       * ② 「판정하지 못한다」와 「승인되었습니다」는 **자리표시가 가른다**(D-13) — 비어 있으면
-       *    앞쪽, 채워졌고 그 요청이 승인일 때만 뒤쪽이다. 짐작해 채우면 승인되지 않은 조정이
-       *    승인된 것으로 보인다.
+       * **「승인되었습니다」는 자리표시가 가른다**(D-13) — 채워졌고 그 요청이 승인일 때만 선다.
+       * 짐작해 채우면 승인되지 않은 조정이 승인된 것으로 보인다. 「승인은 재고를 움직이지
+       * 않는다」·「판정하지 못한다」 안내문은 걷었다(사용자 지시 2026-11-18).
        */}
-      <p className="field-note">{t.progress.postSeparateNote}</p>
-      {isJudgePending && <p className="field-note">{t.progress.unjudgeableNote}</p>}
       {!isJudgePending && view.isApproved && (
         <p className="field-note">{t.progress.approvedNote}</p>
       )}

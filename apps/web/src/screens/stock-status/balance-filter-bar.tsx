@@ -233,7 +233,6 @@ export const BalanceFilterBar = ({
           label={t.fields.qualityStatus}
           options={codeOptions(qualityStatusOptions)}
           value={filters.qualityStatus}
-          note={t.filters.codeNote}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, qualityStatus: value }));
           }}
@@ -243,7 +242,6 @@ export const BalanceFilterBar = ({
           label={t.fields.inventoryStatus}
           options={codeOptions(inventoryStatusOptions)}
           value={filters.inventoryStatus}
-          note={t.filters.codeNote}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, inventoryStatus: value }));
           }}
@@ -253,7 +251,6 @@ export const BalanceFilterBar = ({
           label={t.fields.ownership}
           options={codeOptions(ownershipOptions)}
           value={filters.ownership}
-          note={t.filters.codeNote}
           onChange={(value) => {
             setFilters((prev) => ({ ...prev, ownership: value }));
           }}

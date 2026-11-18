@@ -57,37 +57,22 @@ describe('PostConfirmDialog — 무엇을 확인시키는가', () => {
   });
 
   /**
-   * ⭐ **「일어나는 일」 세 문장이 상시 자리에 선다**(C38 · D-17).
-   *
-   * 되돌릴 수 없는 조작의 마지막 층이라 무엇이 일어나는지가 실행 버튼 바로 위에 있어야 한다.
+   * ⭐ **되돌릴 수 없다는 한 줄만 선다**(D-17). 그 아래 붙던 「전기하면 일어나는 일」 세 문장은
+   * 걷었다(사용자 지시 2026-11-18).
    */
-  it('일어나는 일 세 문장이 선다', () => {
+  it('되돌릴 수 없다는 한 줄이 서고 세 문장 구획은 없다', () => {
     renderDialog();
 
-    const effects = within(dialog()).getByRole('region', { name: t.post.effectsLabel });
-
-    expect(within(effects).getByText(t.post.effectMovesStock)).toBeVisible();
-    expect(within(effects).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(within(effects).getByText(t.post.effectNoUndoHere)).toBeVisible();
+    expect(within(dialog()).getByText(t.dialog.postLead)).toBeVisible();
+    expect(within(dialog()).queryByRole('region')).not.toBeInTheDocument();
   });
 
-  /**
-   * ⭐ **버튼이 잠겨 있을 때도 선다**(C38).
-   *
-   * 잠금과 함께 감추면 정작 눌릴 수 있는 상태에서만 경고가 뜨는데, 그때는 이미 사용자가
-   * 누르러 온 순간이라 읽지 않는다.
-   */
-  it('실행 버튼이 잠겨 있어도 세 문장이 그대로 선다', () => {
+  it('실행 버튼이 잠겨 있어도 되돌릴 수 없다는 한 줄은 그대로 선다', () => {
     renderDialog({ isSaving: true });
 
     /* 짝 양성 — 버튼이 실제로 잠긴 상태다. */
     expect(confirmButton()).toBeDisabled();
-
-    const effects = within(dialog()).getByRole('region', { name: t.post.effectsLabel });
-
-    expect(within(effects).getByText(t.post.effectMovesStock)).toBeVisible();
-    expect(within(effects).getByText(t.post.effectApprovalIsNotPosting)).toBeVisible();
-    expect(within(effects).getByText(t.post.effectNoUndoHere)).toBeVisible();
+    expect(within(dialog()).getByText(t.dialog.postLead)).toBeVisible();
   });
 
   /**

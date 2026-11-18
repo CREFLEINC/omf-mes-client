@@ -258,13 +258,7 @@ export const TransactionPane = ({
    */
   const emptySlot = (): ReactNode => {
     if (!hasQuery) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.history.empty.notQueriedTitle}
-          description={t.history.empty.notQueriedDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.history.empty.notQueriedTitle} />;
     }
 
     if (pageView.isBeyondLast) {
@@ -273,7 +267,6 @@ export const TransactionPane = ({
           size="sm"
           live
           title={t.history.empty.beyondLastTitle}
-          description={t.history.empty.beyondLastDescription}
           action={
             <Button
               variant="outlined"
@@ -288,14 +281,7 @@ export const TransactionPane = ({
       );
     }
 
-    return (
-      <EmptyState
-        size="sm"
-        live
-        title={t.history.empty.noResultTitle}
-        description={t.history.empty.noResultDescription}
-      />
-    );
+    return <EmptyState size="sm" live title={t.history.empty.noResultTitle} />;
   };
 
   return (
@@ -344,8 +330,7 @@ export const TransactionPane = ({
         </div>
       </div>
 
-      {/* 기간이 왜 필요한지와 기본값을 밝힌다 — 성능이 아니라 가능·불가능의 문제다. */}
-      <p className="field-note">{t.history.periodNote}</p>
+      {/* 기간이 왜 필요한지와 기본값을 밝히던 안내문은 걷었다(사용자 지시 2026-11-18). */}
 
       {/*
        * 표 자리에 오는 넷. 순서가 뜻을 정한다 — **실패가 맨 앞이다.**

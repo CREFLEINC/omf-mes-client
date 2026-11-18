@@ -82,8 +82,7 @@ export const HeaderForm = ({
           onChange({ sendToErp: event.target.checked });
         }}
       />
-      {/* 화면이 정하는 것은 보낼지 여부 하나라는 사실 — 방식은 서버 소관이다. */}
-      <span className="field-note">{t.notes.sendToErpNote}</span>
+      {/* 보내는 방식 안내는 걷었다(사용자 지시 2026-11-18). */}
     </div>
   </div>
 );

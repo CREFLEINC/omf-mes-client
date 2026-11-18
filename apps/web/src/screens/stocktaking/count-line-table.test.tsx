@@ -354,13 +354,14 @@ describe('CountLineTable — 표 안 입력 두 칸', () => {
   });
 
   /*
-   * **값 목록이 확정되지 않은 동안에도 칸은 선다**(승인 G1). 칸을 감추면 무엇을 못 하는지
-   * 화면이 말하지 못한다 — 자리표시와 안내가 그 사정을 밝힌다.
+   * **값 목록이 확정되지 않은 동안에도 칸은 선다**(승인 G1). 자리표시가 그 사정을 밝힌다 —
+   * 칸 아래 안내문(`pendingCode.note`)은 걷었다(사용자 지시 2026-11-18).
    */
-  it('사유 선택지가 비어 있으면 자리표시와 안내가 붙는다', () => {
+  it('사유 선택지가 비어 있으면 자리표시만 붙고 안내문은 없다', () => {
     renderTable({ reasonOptions: [] });
 
-    expect(screen.getAllByText(messages.pendingCode.note).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(messages.pendingCode.placeholder).length).toBeGreaterThan(0);
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
   });
 
   /*
@@ -437,17 +438,6 @@ describe('CountLineTable — 차이 칸', () => {
 });
 
 describe('CountLineTable — 안내와 복구', () => {
-  /*
-   * **계획 결정 15** — 저장 확인 창을 두지 않는 대신 **치환의 뜻을 표 위에서 늘 밝힌다.**
-   * 파괴 경로는 전 줄 필수와 잘림 차단이 구조로 막으므로 창이 지킬 것이 없다.
-   */
-  it('치환 의미론과 빈 칸 시작 안내가 늘 보인다', () => {
-    renderTable();
-
-    expect(screen.getByText(t.notes.replaceSemantics)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.countedQtyEmptyStart)).toBeInTheDocument();
-  });
-
   /*
    * **감지기 M31 · 완료 조건 C34** — 잘리면 표식이 보인다. 표식과 저장 차단 사유가
    * 같은 사실을 두 자리에서 말하고, 잘리지 않았을 때는 어느 쪽도 나오지 않는다.

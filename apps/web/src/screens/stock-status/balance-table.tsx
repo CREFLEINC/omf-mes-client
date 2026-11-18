@@ -448,13 +448,7 @@ export const BalanceTable = ({
    */
   const emptySlot = (): ReactNode => {
     if (!hasQuery) {
-      return (
-        <EmptyState
-          size="sm"
-          title={t.empty.notQueriedTitle}
-          description={t.empty.notQueriedDescription}
-        />
-      );
+      return <EmptyState size="sm" title={t.empty.notQueriedTitle} />;
     }
 
     if (isBeyondLast) {
@@ -463,7 +457,6 @@ export const BalanceTable = ({
           size="sm"
           live
           title={t.empty.beyondLastTitle}
-          description={t.empty.beyondLastDescription}
           action={
             <Button variant="outlined" onClick={onFirstPage}>
               {t.actions.goFirstPage}
@@ -473,14 +466,7 @@ export const BalanceTable = ({
       );
     }
 
-    return (
-      <EmptyState
-        size="sm"
-        live
-        title={t.empty.noResultTitle}
-        description={t.empty.noResultDescription}
-      />
-    );
+    return <EmptyState size="sm" live title={t.empty.noResultTitle} />;
   };
 
   /**
@@ -555,17 +541,7 @@ export const BalanceTable = ({
         />
       </div>
 
-      {/*
-       * **밝히지 않으면 사용자가 쪽 안 정렬로 읽는다.** 서버가 전체를 정렬해 쪽을 나눠 주며,
-       * 계약이 방향을 받지 않아 한 방향뿐이라는 사실도 함께 적는다.
-       */}
-      <p className="field-note">{t.notes.sortScope}</p>
-
-      {/*
-       * 묶는 보기에서만 낸다 — 묶지 않는 보기에서는 가리킬 그룹이 없어 안내가 뜻을 잃는다.
-       * 밝히지 않으면 사용자가 「이 품목의 LOT은 이게 전부」로 읽는다.
-       */}
-      {groupAxis !== null && <p className="field-note">{t.notes.groupScope}</p>}
+      {/* 정렬·그룹 범위 안내문은 걷었다(사용자 지시 2026-11-18). */}
 
       {listReferencesFailed && (
         <div className="field-cell">
