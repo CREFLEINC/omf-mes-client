@@ -1,3 +1,10 @@
+import {
+  EquipmentAssignmentPicker,
+  EquipmentOccupancy,
+  EquipmentStatus,
+} from './equipment-occupancy';
+import { useEquipmentOccupancy } from './equipment-occupancy-query';
+import { allocationStatus } from './equipment-occupancy-model';
 import { plantToday } from '../../../patterns/plant-time';
 import { useProductionPlanDetail } from '../../production-plan/queries';
 import { useRoutingOperations } from '../../routing/queries';
@@ -197,6 +204,12 @@ const EditorSession = ({
   const [baseline, setBaseline] = useState(seeded);
   const [draft, setDraft] = useState(seeded);
   /* 팝업과 추천에서 방금 고른 값의 이름. 「칸:번호」로 둔다(값이 바뀌면 자연히 쓰이지 않는다). */
+  const occupancy = useEquipmentOccupancy(
+    idOrNull(draft.plannedEquipmentId),
+    workOrder.workOrderId,
+  );
+  const [checkingOccupancy, setCheckingOccupancy] = useState(false);
+  const [occupancyError, setOccupancyError] = useState('');
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [revealErrors, setRevealErrors] = useState(false);
   const [locationOpen, setLocationOpen] = useState(true);
@@ -411,7 +424,7 @@ const EditorSession = ({
       : field === 'plannedMoldId'
         ? operation?.moldRequired === true
         : field !== 'responsibleWorkerId' && field !== 'plannedShiftId';
-  const saving = update.isSaving;
+  const saving = update.isSaving || checkingOccupancy;
   const required = (field: string) =>
     (REQUIRED_ASSIGNMENT_FIELDS as readonly string[]).includes(field) ||
     ((field === 'plannedEquipmentId' || field === 'plannedMoldId') && resourceRequired(field));
@@ -436,6 +449,18 @@ const EditorSession = ({
     !resourceRequired(field) ? null : (
       <ReferenceField
         wrapValue
+        renderPicker={
+          field === 'plannedEquipmentId'
+            ? (props) => (
+                <EquipmentAssignmentPicker
+                  {...props}
+                  selfId={workOrder.workOrderId}
+                  start={draft.plannedStartAtLocal}
+                  end={draft.plannedEndAtLocal}
+                />
+              )
+            : undefined
+        }
         size="sm"
         label={label}
         valueLabel={labelOf(field)}
@@ -578,12 +603,43 @@ const EditorSession = ({
       size="sm"
       variant={actionTargetId === undefined ? 'outlined' : undefined}
       loading={saving}
-      disabled={readOnly || !dirty}
+      disabled={
+        readOnly ||
+        !dirty ||
+        (draft.plannedEquipmentId !== '' &&
+          (occupancy.isPending ||
+            occupancy.isError ||
+            allocationStatus(
+              occupancy.data ?? [],
+              draft.plannedStartAtLocal,
+              draft.plannedEndAtLocal,
+            ) !== '중복 없음'))
+      }
       aria-describedby={!dirty ? `${headingId}-save-note` : undefined}
-      onClick={() => {
+      onClick={async () => {
         setRevealErrors(true);
+        setOccupancyError('');
         const body = toWorkOrderAssignmentUpdate(draft);
-        if (!readOnly && body !== null) update.write(body);
+        if (readOnly || body === null) return;
+        if (draft.plannedEquipmentId !== '') {
+          setCheckingOccupancy(true);
+          const latest = await occupancy.refetch();
+          setCheckingOccupancy(false);
+          if (latest.isError || !latest.data) {
+            setOccupancyError('설비 배정 내역을 조회하지 못했습니다. 다시 확인하세요.');
+            return;
+          }
+          const status = allocationStatus(
+            latest.data,
+            draft.plannedStartAtLocal,
+            draft.plannedEndAtLocal,
+          );
+          if (status !== '중복 없음') {
+            setOccupancyError(status);
+            return;
+          }
+        }
+        update.write(body);
       }}
     >
       {t.actions.save}
@@ -635,6 +691,7 @@ const EditorSession = ({
         {findingText !== null && <span className="assign-check-text">{findingText}</span>}
       </p>
       <SaveErrorBanner error={update.error} />
+      {occupancyError && <AlertBanner variant="error" title={occupancyError} />}
       <h3 className="section-title erp-wo-assignment-input-title">배정 입력</h3>
       {(plan.isError || operations.isError) && (
         <AlertBanner variant="error">
@@ -657,6 +714,15 @@ const EditorSession = ({
         </div>
         {reference('plannedEquipmentId', t.fields.plannedEquipmentId, equipmentSource, {
           chips: chips.plannedEquipmentId,
+          addon:
+            idOrNull(draft.plannedEquipmentId) !== null ? (
+              <EquipmentStatus
+                id={Number(draft.plannedEquipmentId)}
+                selfId={workOrder.workOrderId}
+                start={draft.plannedStartAtLocal}
+                end={draft.plannedEndAtLocal}
+              />
+            ) : undefined,
           onPick: (row) =>
             pick(
               'plannedEquipmentId',
@@ -750,6 +816,15 @@ const EditorSession = ({
           />
         )}
       </div>
+      {resourceRequired('plannedEquipmentId') && (
+        <EquipmentOccupancy
+          equipmentId={idOrNull(draft.plannedEquipmentId)}
+          selfId={workOrder.workOrderId}
+          start={draft.plannedStartAtLocal}
+          end={draft.plannedEndAtLocal}
+          label={labelOf('plannedEquipmentId')}
+        />
+      )}
     </section>
   );
 };
