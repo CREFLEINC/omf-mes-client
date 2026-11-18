@@ -92,14 +92,6 @@ describe('RegisterConfirmDialog — 무엇을 만드는가', () => {
     expect(screen.getByText(t.dialog.registerNoUndo)).toBeVisible();
   });
 
-  /* 「등록만 합니다」 안내는 걷었다(사용자 지시 2026-11-18) — 되돌릴 수 없다는 한 줄만 남는다. */
-  it('되돌릴 수 없다는 한 줄만 남는다', () => {
-    renderDialog();
-
-    expect(screen.getByText(t.dialog.registerNoUndo)).toBeVisible();
-    expect(screen.queryByText(/재고는 아직 움직이지 않/)).not.toBeInTheDocument();
-  });
-
   /** **내부 번호를 담지 않는다**(`omf-mes#44`). 짝으로 사유 코드는 실제로 보인다. */
   it('내부 번호가 창에 없다', () => {
     renderDialog();

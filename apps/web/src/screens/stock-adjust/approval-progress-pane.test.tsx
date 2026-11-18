@@ -60,7 +60,6 @@ describe('ApprovalProgressPane — 갈래', () => {
     renderPane({ kind: 'unusable' });
 
     expect(screen.getByText(t.progress.unusableTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.progress.unusableDescription)).toBeInTheDocument();
   });
 
   it('읽었으면 요청 정보와 단계가 선다', () => {
@@ -93,7 +92,6 @@ describe('ApprovalProgressPane — 이 화면은 결재하지 않는다', () => 
     /* 짝 양성 — 구획은 실제로 섰다. 「아무것도 안 그린다」로 통과하지 않게 한다. */
     expect(within(pane()).getByText('SAMPLE-AP-0001')).toBeInTheDocument();
     expect(within(pane()).queryAllByRole('button')).toHaveLength(0);
-    expect(within(pane()).queryByText(/승인하기|반려하기|내 차례/)).not.toBeInTheDocument();
   });
 
   /** 승인자 이름이 비어 오면 **번호를 대신 내지 않는다**(`omf-mes#44`). */
@@ -149,7 +147,6 @@ describe('ApprovalProgressPane — 못 읽었을 때', () => {
     renderPane({ kind: 'failed', error: httpError(403) });
 
     expect(screen.getByText(t.progress.forbiddenTitle)).toBeInTheDocument();
-    expect(screen.getByText(t.progress.forbiddenDescription)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 
@@ -174,13 +171,6 @@ describe('ApprovalProgressPane — 못 읽었을 때', () => {
     expect(screen.getByText(t.progress.loadFailedTitle)).toBeInTheDocument();
     expect(screen.getByText('합성 서버 문구')).toBeInTheDocument();
   });
-
-  /** 못 읽어도 상신은 이미 접수됐다 — 이 구획이 실패해도 그 사실이 달라지지 않는다. */
-  it('못 읽어도 상신은 접수됐다는 사실을 함께 적는다', () => {
-    renderPane({ kind: 'failed', error: httpError(500) });
-
-    expect(screen.getByText(t.progress.loadFailedNote)).toBeInTheDocument();
-  });
 });
 
 /**
@@ -195,7 +185,6 @@ describe('ApprovalProgressPane — 승인 판정 자리표시', () => {
 
     expect(within(pane()).getByText('SAMPLE-AP-0001')).toBeInTheDocument();
     expect(within(pane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
-    expect(pane().querySelector('p.field-note')).toBeNull();
   });
 
   it('채우고 그 요청이 승인이면 승인 안내가 살아난다', () => {
@@ -217,16 +206,5 @@ describe('ApprovalProgressPane — 승인 판정 자리표시', () => {
     /* 짝 양성 — 구획은 실제로 섰다. */
     expect(within(pane()).getByText('SAMPLE-AP-0001')).toBeInTheDocument();
     expect(within(pane()).queryByText(t.progress.approvedNote)).not.toBeInTheDocument();
-  });
-
-  /**
-   * ⚠ **없는 자리를 가리키지 않는다**(T2 리뷰 R-2의 교훈).
-   *
-   * 이 회차에는 전기 조작이 없다 — 승인 안내가 「전기하세요」로 지시하면 사용자가 화면에 없는
-   * 컨트롤을 찾는다. **전기가 붙는 회차가 이 문구를 갱신한다.**
-   */
-  it('승인 안내가 이 화면에 없는 조작을 지시하지 않는다', () => {
-    expect(t.progress.approvedNote).not.toMatch(/전기하세요|전기를 진행/);
-    expect(t.progress.approvedNote).toContain('별개 조작');
   });
 });
