@@ -1,133 +1,171 @@
-import {
-  AlertBanner,
-  Checkbox,
-  Chip,
-  type Column,
-  EmptyState,
-  SkeletonText,
-  Table,
-} from '@crefle/web-ui';
+import { Button, Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
-import type { LookupSource } from '../../patterns/lookup-display';
 import { formatPlantDateTime } from '../../patterns/plant-time';
-
-import type { ConfirmOutcome } from './confirm-run';
-import { failureReason } from './confirm-run';
 import { elapsedOf, formatElapsed } from './elapsed';
-import { shipmentStatusText } from './lookups';
-import { isBatchExcluded } from './selection';
-import type { ShipmentRow } from './types';
+import { flowOf, warehouseDisplay, type ShipmentFlow } from './rules';
+import type { ErpSendStatus, ShipmentRow } from './types';
 
 const t = messages.shipmentConfirm;
+
+type ChipStatus = 'success' | 'error' | 'warning' | 'info' | 'idle';
+
+/** ERP 송신 칩의 색 — 시안 W0412-After 의 표(대기 info · 보냄 ok · 오류 err · 송신 안 함 warn). */
+const ERP_TONE: Record<ErpSendStatus, ChipStatus> = {
+  PENDING: 'info',
+  SENT: 'success',
+  SEND_ERROR: 'error',
+  NOT_SENT_NO_SALES_ORDER: 'warning',
+  CANCELLED: 'idle',
+  NOT_QUEUED: 'idle',
+};
+
+export const ErpChip = ({ status }: { status: ErpSendStatus | null }) =>
+  status === null ? (
+    <span>{t.list.elapsedUnknown}</span>
+  ) : (
+    <Chip status={ERP_TONE[status]} size="sm">
+      {t.erp[status]}
+    </Chip>
+  );
+
+const FLOW_TONE: Record<ShipmentFlow, ChipStatus> = {
+  completed: 'success',
+  legacyUnconfirmed: 'idle',
+  expeditedUnconfirmed: 'idle',
+  confirmed: 'success',
+  cancelled: 'idle',
+};
+
+export const FlowChip = ({ row }: { row: ShipmentRow }) => {
+  const flow = flowOf(row);
+  if (row.cancelRequestPending && flow !== 'cancelled') {
+    return (
+      <Chip status="warning" size="sm">
+        {t.flow.cancelPending}
+      </Chip>
+    );
+  }
+  return (
+    <Chip status={FLOW_TONE[flow]} size="sm">
+      {t.flow[flow]}
+    </Chip>
+  );
+};
+
+/** 미확정 출하만 경과를 단다 — 적체가 위험하다(§5-7). 셀 수 없으면 0 으로 접지 않는다. */
+const ElapsedChip = ({ row, now }: { row: ShipmentRow; now: Date }) => {
+  if (row.statusCode !== 'UNCONFIRMED') return null;
+  const elapsed = elapsedOf(row, now);
+  if (elapsed.level === 'unknown') return null;
+  const status =
+    elapsed.level === 'critical' ? 'error' : elapsed.level === 'overdue' ? 'warning' : 'idle';
+  return (
+    <Chip status={status} size="sm">
+      {formatElapsed(elapsed)}
+    </Chip>
+  );
+};
+
+const WarehouseCell = ({ row }: { row: ShipmentRow }) => {
+  const display = warehouseDisplay(row);
+  if (display.kind === 'none') return <span>{t.list.elapsedUnknown}</span>;
+  if (display.kind === 'one') return <span>{display.name}</span>;
+  return (
+    <span title={display.names}>
+      <Chip status="idle" size="sm">
+        {t.list.warehouseCount(display.count)}
+      </Chip>
+    </span>
+  );
+};
 
 export interface ShipmentListProps {
   rows: ShipmentRow[];
   now: Date;
-  selected: readonly number[];
+  selectedId: number | null;
   isLoading: boolean;
   error: ReactNode;
-  /** 직전 확정에서 실패한 건들. 행에 사유를 붙인다. */
-  failures: readonly ConfirmOutcome[];
-  /** 출하 상태 표시명(`SHIPMENT_STATUS`). 없으면 코드를 그대로 보인다. */
-  statusLookup: LookupSource;
-  onToggle: (shipmentId: number) => void;
-  onToggleAll: () => void;
+  onOpen: (shipmentId: number) => void;
 }
 
-const ElapsedCell = ({ row, now }: { row: ShipmentRow; now: Date }) => {
-  const elapsed = elapsedOf(row, now);
-
-  if (elapsed.level === 'unknown') {
-    /* ⚠ 셀 수 없는 것을 0으로 접지 않는다 — 접으면 가장 오래 적체된 건이 「방금」으로 보인다. */
-    return <span title={t.list.shippedAtUnknown}>{t.list.elapsedUnknown}</span>;
-  }
-
-  const text = formatElapsed(elapsed);
-  if (elapsed.level === 'critical') return <Chip status="error">{text}</Chip>;
-  if (elapsed.level === 'overdue') return <Chip status="warning">{text}</Chip>;
-
-  return <span>{text}</span>;
-};
-
 /**
- * 미확정 출하 목록.
+ * 출하 목록(피처 010).
  *
- * ⚠ **3일 경과 건은 「모두 선택」에 담기지 않는다**(§6) — 위험한 것을 한 번에 쓸어 담지 않게
- * 하는 것이 목적이다. 개별로는 고를 수 있다. 못 하게 막는 것이 아니다.
+ * ⛔ **체크 칸·「모두 선택」·일괄 확정이 없다**(결정 2026-11-18) — 옛 흐름·긴급 직행은 상세에서
+ * 한 건씩 확정한다. 출하번호를 누르면 상세가 열린다.
  */
 export const ShipmentList = ({
   rows,
   now,
-  selected,
+  selectedId,
   isLoading,
   error,
-  failures,
-  statusLookup,
-  onToggle,
-  onToggleAll,
+  onOpen,
 }: ShipmentListProps) => {
-  const chosen = new Set(selected);
-  const failureOf = (shipmentId: number): ConfirmOutcome | undefined =>
-    failures.find((outcome) => outcome.shipmentId === shipmentId);
-
   const columns: Column<ShipmentRow>[] = [
     {
-      key: 'select',
-      header: (
-        <Checkbox
-          aria-label={t.list.selectAll}
-          checked={rows.length > 0 && rows.every((row) => chosen.has(row.shipmentId))}
-          onChange={onToggleAll}
-        />
-      ),
+      key: 'shipmentNo',
+      header: t.list.fields.shipmentNo,
       render: (row) => (
-        <Checkbox
-          aria-label={t.list.selectRow(row.shipmentNo)}
-          checked={chosen.has(row.shipmentId)}
-          onChange={() => onToggle(row.shipmentId)}
-        />
+        <div className="ship-history-cell">
+          <Button
+            variant="text"
+            size="sm"
+            aria-label={t.list.open(row.shipmentNo)}
+            aria-pressed={row.shipmentId === selectedId}
+            onClick={() => onOpen(row.shipmentId)}
+          >
+            {row.shipmentNo}
+          </Button>
+          <span className="ship-history-chips">
+            <FlowChip row={row} />
+            <ElapsedChip row={row} now={now} />
+          </span>
+        </div>
       ),
     },
-    { key: 'shipmentNo', header: t.list.fields.shipmentNo, render: (row) => row.shipmentNo },
     {
       key: 'shippedAt',
       header: t.list.fields.shippedAt,
-      /* `yyyy-MM-dd HH:mm`(공장 시각 · ⭐ 관리웹 날짜 표기 통일 · 사용자 지시 2026-10-19). 못 읽으면 원문. */
+      /* `yyyy-MM-dd HH:mm`(공장 시각). 못 읽으면 원문, 없으면 「—」. */
       render: (row) =>
-        row.shippedAt === null
-          ? t.list.elapsedUnknown
-          : (formatPlantDateTime(row.shippedAt) ?? row.shippedAt),
+        row.shippedAt === null ? (
+          <span title={t.list.shippedAtUnknown}>{t.list.elapsedUnknown}</span>
+        ) : (
+          (formatPlantDateTime(row.shippedAt) ?? row.shippedAt)
+        ),
     },
     {
-      key: 'elapsed',
-      header: t.list.fields.elapsed,
-      render: (row) => <ElapsedCell row={row} now={now} />,
+      key: 'warehouse',
+      header: t.list.fields.warehouse,
+      render: (row) => <WarehouseCell row={row} />,
     },
     {
-      key: 'status',
-      header: t.list.fields.status,
-      render: (row) => shipmentStatusText(statusLookup, row.statusCode),
+      key: 'completedBy',
+      header: t.list.fields.completedBy,
+      render: (row) =>
+        row.completedTerminalCode === null ? (
+          <span>{t.list.webCreated}</span>
+        ) : (
+          <div className="ship-history-cell">
+            <span>{row.completedTerminalCode}</span>
+            {row.completedWorker !== null && (
+              <span className="field-note">{row.completedWorker.workerName}</span>
+            )}
+          </div>
+        ),
     },
     {
-      key: 'erpDeliveryNo',
-      header: t.list.fields.erpDeliveryNo,
-      /* G-9 — 확정 직후에는 아직 번호가 없다. 빈칸으로 두면 「실패」로 읽힌다. */
-      render: (row) => row.erpDeliveryNo ?? t.list.erpPending,
-    },
-    {
-      key: 'note',
-      header: '',
-      render: (row) => {
-        const failure = failureOf(row.shipmentId);
-        if (failure?.failure != null) {
-          return (
-            <Chip status="error">{failureReason(failure.failure, failure.conflictCause)}</Chip>
-          );
-        }
-        return isBatchExcluded(row, now) ? <span>{t.hold.excludedFromBatch}</span> : null;
-      },
+      key: 'erp',
+      header: t.list.fields.erp,
+      render: (row) => (
+        <div className="ship-history-cell">
+          <ErpChip status={row.erpSendStatus} />
+          {row.cancelRequestPending && <span className="field-note">{t.hold}</span>}
+        </div>
+      ),
     },
   ];
 
@@ -142,17 +180,7 @@ export const ShipmentList = ({
   }
 
   return (
-    <>
-      {/*
-       * A-11 — **목록이 못 보이는 것 둘을 목록 머리에 적는다.** 조용히 빼면 「없는 기능」이
-       * 아니라 「없는 데이터」로 읽힌다. 배너를 둘로 나누지 않는 이유는 둘 다 「이 표가 무엇을
-       * 못 보이는가」에 대한 말이라서다 — 나누면 머리가 배너로 덮인다.
-       */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">
-          {t.withdrawn.cancelPendingUnknown} {t.withdrawn.confirmedBy}
-        </AlertBanner>
-      </div>
+    <div className="wide-table">
       <Table
         density="compact"
         columns={columns}
@@ -162,6 +190,6 @@ export const ShipmentList = ({
           <EmptyState size="sm" live title={t.list.empty} description={t.list.emptyDescription} />
         }
       />
-    </>
+    </div>
   );
 };

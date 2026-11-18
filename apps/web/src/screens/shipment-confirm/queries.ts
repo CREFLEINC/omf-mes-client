@@ -4,7 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { ConfirmListQuery } from './filters';
-import { toShipmentRow, type ShipmentRow } from './types';
+import { toShipmentDetail, toShipmentRow, type ShipmentDetail, type ShipmentRow } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 
@@ -26,14 +26,14 @@ export interface ShipmentListResult {
 }
 
 /**
- * 미확정 출하 목록.
+ * 출하 목록(피처 010 — 미확정만이 아니라 모든 출하).
  *
- * ⭐ `unconfirmedOnly` 를 서버에 실는다 — 계약이 「미확정만 — W-04-12 기본」으로 그 축을 두었다.
- * 화면이 받아서 거르면 쪽 단위 목록의 앞쪽만 훑게 된다(공유계약 L-11).
+ * ⭐ ERP 송신 거르기는 서버에 싣는다(`erpSendStatus`) — 화면이 받아서 거르면 쪽 단위 목록의
+ * 앞쪽만 훑게 된다(공유계약 L-11).
  *
  * ⚠ **기간이 없으면 부르지 않는다**(L-3) — 계약이 출하일 시작을 필수로 표시한다.
  */
-export const useUnconfirmedShipments = (
+export const useShipmentList = (
   query: ConfirmListQuery | null,
 ): UseQueryResult<ShipmentListResult> => {
   const { client } = useApiClient();
@@ -42,7 +42,7 @@ export const useUnconfirmedShipments = (
     queryKey: shipmentConfirmKeys.list(query),
     enabled: query !== null,
     queryFn: async () => {
-      if (query === null) throw new Error('기간 없이는 미확정 출하를 조회하지 않습니다.');
+      if (query === null) throw new Error('기간 없이는 출하를 조회하지 않습니다.');
 
       const data = await runRequest(() =>
         client.GET('/logistics/shipments', { params: { query } }),
@@ -67,12 +67,12 @@ export const shipmentDetailPath = (shipmentId: number): string =>
   `/logistics/shipments/${String(shipmentId)}`;
 
 /**
- * 고른 한 건의 상세.
+ * 고른 한 건의 상세 — 라인·LOT·출하 관리 코드와, 그 지시서의 목표·OQC 판정·위치 몫·교체 이력.
  *
- * ⭐ **값을 쓰려고 부르는 것이 아니라 토큰을 받으려고 부른다** — 취소 요청도 `If-Match` 가
- * 필수인데, 그 토큰은 이 조회의 ETag 응답 헤더로만 온다. 부르지 않으면 요청이 나가지 못한다.
+ * ⭐ 이 조회가 **취소 요청·확정의 잠금 토큰**(ETag)도 받는다 — 그 토큰은 이 조회의 응답 헤더로만
+ * 온다(공유계약 B-1). 지시서를 못 받아도 출하 상세는 그린다(목표·판정만 빈다).
  */
-export const useShipmentDetail = (shipmentId: number | null): UseQueryResult<ShipmentRow> => {
+export const useShipmentDetail = (shipmentId: number | null): UseQueryResult<ShipmentDetail> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -81,10 +81,18 @@ export const useShipmentDetail = (shipmentId: number | null): UseQueryResult<Shi
     queryFn: async () => {
       if (shipmentId === null) throw new Error('출하를 고르기 전에는 상세를 조회하지 않습니다.');
 
-      return toShipmentRow(
-        await runRequest(() =>
-          client.GET('/logistics/shipments/{shipmentId}', { params: { path: { shipmentId } } }),
-        ),
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments/{shipmentId}', { params: { path: { shipmentId } } }),
+      );
+      const request = await client.GET('/logistics/shipment-requests/{shipmentRequestId}', {
+        params: { path: { shipmentRequestId: data.shipmentRequestId } },
+      });
+
+      return toShipmentDetail(
+        data,
+        request.data === undefined
+          ? null
+          : { shipmentRequestNo: request.data.shipmentRequestNo, lines: request.data.lines },
       );
     },
   });

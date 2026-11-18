@@ -1,35 +1,57 @@
 import type { components } from '@omf-mes/api-client';
 
 /**
- * W-04-12 화면 슬라이스의 계약.
+ * W-04-12 출하 내역 화면 슬라이스의 계약(피처 010 · omf-all-around#305).
  *
  * `api-client`는 `import type`으로만 참조한다 — 런타임 코드를 끌어오지 않아야 화면의 순수성이
- * 유지된다.
- *
- * 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스(`shipment-processing`·`expedited-shipment`)의
- * 같은 이름 파일을 참조하지 않는다. 타입 모양이 겹쳐도 각자 새로 쓴다.
+ * 유지된다. 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
 type ShipmentResponse = components['schemas']['Shipment'];
+type ShipmentRequestResponse = components['schemas']['ShipmentRequest'];
+
+export type ErpSendStatus = NonNullable<ShipmentResponse['erpSendStatus']>;
+
+/** 계약 6값의 차례 — 거르기 칩과 표시가 이 차례를 따른다(시안 W0412-After). */
+export const ERP_SEND_STATUSES: readonly ErpSendStatus[] = [
+  'PENDING',
+  'SENT',
+  'SEND_ERROR',
+  'NOT_SENT_NO_SALES_ORDER',
+  'CANCELLED',
+  'NOT_QUEUED',
+];
+
+export interface WarehouseRef {
+  warehouseId: number;
+  warehouseName: string;
+}
 
 /**
- * 미확정 출하 한 건.
+ * 출하 한 건(목록 행).
  *
- * ⚠ **`shippedAt`이 선택 필드다.** 경과와 자동 확정 예정 시각이 **전부 이 값에서 나오므로**
- * 없으면 「0시간 경과」가 아니라 **셀 수 없는 것**이다. `null`로 들고 있다가 표시 지점에서
- * 사실을 적는다 — 0으로 접으면 방금 나간 건처럼 보여 **가장 오래 적체된 건이 눈에서 사라진다.**
+ * ⚠ **`shippedAt`이 선택 필드다.** 경과가 이 값에서 나오므로 없으면 「0시간 경과」가 아니라
+ * 셀 수 없는 것이다 — `null`로 들고 있다가 표시 지점에서 사실을 적는다.
  */
 export interface ShipmentRow {
   shipmentId: number;
   shipmentNo: string;
+  shipmentRequestId: number;
   shippedAt: string | null;
   statusCode: string;
+  expedited: boolean;
   erpDeliveryNo: string | null;
+  /** 서버 판정 그대로. 옛 서버가 안 내리면 `null` — 화면이 지어내지 않는다. */
+  erpSendStatus: ErpSendStatus | null;
+  cancelRequestPending: boolean;
+  completedTerminalCode: string | null;
+  completedWorker: { workerNo: string; workerName: string } | null;
+  /** 재고가 빠진 창고들. 새 흐름 출하는 `warehouse` 가 null 이고 이것만 있다(D-15). */
+  warehouses: WarehouseRef[];
   /** 출하 수량 합. 라인이 안 오면 셀 수 없다 — 0과 구분한다. */
   totalQty: number | null;
 }
 
-/** 라인이 없으면 `null`. 빈 배열(라인이 실제로 0건)과 「못 받았다」를 가른다. */
 const sumShippedQty = (lines: ShipmentResponse['lines']): number | null => {
   if (lines === undefined) return null;
   return lines.reduce((sum, line) => sum + line.shippedQty, 0);
@@ -38,19 +60,148 @@ const sumShippedQty = (lines: ShipmentResponse['lines']): number | null => {
 export const toShipmentRow = (data: ShipmentResponse): ShipmentRow => ({
   shipmentId: data.shipmentId,
   shipmentNo: data.shipmentNo,
+  shipmentRequestId: data.shipmentRequestId,
   shippedAt: data.shippedAt ?? null,
   statusCode: data.statusCode,
+  expedited: data.expedited,
   erpDeliveryNo: data.erpDeliveryNo ?? null,
+  erpSendStatus: data.erpSendStatus ?? null,
+  cancelRequestPending: data.cancelRequestPending ?? false,
+  completedTerminalCode: data.completedTerminal?.terminalCode ?? null,
+  completedWorker:
+    data.completedWorker == null
+      ? null
+      : { workerNo: data.completedWorker.workerNo, workerName: data.completedWorker.workerName },
+  warehouses: (data.warehouses ?? []).map((warehouse) => ({
+    warehouseId: warehouse.warehouseId,
+    warehouseName: warehouse.warehouseName,
+  })),
   totalQty: sumShippedQty(data.lines),
 });
 
+/** 라인의 LOT 한 줄 — 잔액 행마다 나뉜 배분을 LOT 하나로 모은다. */
+export interface ShippedLot {
+  lotId: number;
+  lotNo: string;
+  qty: number;
+  managementCode: string | null;
+  /** 재고가 빠진 곳 — 창고별 몫(배분 기준). 지시서에 위치 몫이 있으면 그것을 쓴다. */
+  places: { label: string; qty: number }[];
+  oqcLotStatus: OqcLotStatus | null;
+}
+
+export type OqcLotStatus = NonNullable<components['schemas']['ShipmentRequestLot']['oqcLotStatus']>;
+
+export interface ReplacedLot {
+  lotNo: string;
+  replacedAt: string;
+  nonconformanceNo: string | null;
+}
+
+export interface ShipmentDetailLine {
+  lineNo: number;
+  itemCode: string;
+  shippedQty: number;
+  /** 목표(지시서 라인 배정 수량). 지시서를 못 받았으면 `null`. */
+  targetQty: number | null;
+  overQty: number;
+  lots: ShippedLot[];
+  replaced: ReplacedLot[];
+}
+
+export interface ShipmentDetail {
+  row: ShipmentRow;
+  /** 지시서 번호. 지시서를 못 받았으면 `null`. */
+  shipmentRequestNo: string | null;
+  lines: ShipmentDetailLine[];
+}
+
+export interface ShipmentRequestSummary {
+  shipmentRequestNo: string;
+  lines: ShipmentRequestResponse['lines'];
+}
+
 /**
- * 고른 건들의 수량 합.
+ * 출하 상세와 그 지시서를 합쳐 라인·LOT 표를 만든다.
  *
- * ⚠ **하나라도 셀 수 없으면 합도 셀 수 없다** — 못 받은 것을 0으로 치고 더하면 **실제보다 작은
- * 수**가 확인 창에 뜬다. 되돌릴 수 없는 확정 앞에서 그 수를 보고 판단한다.
+ * ⭐ 출하 배분은 **잔액 행마다** 생긴다(D-15) — 한 LOT 이 두 창고에서 나가면 배분이 둘이다.
+ * 화면은 LOT 하나로 모으고 창고별 몫을 함께 적는다. 위치(로케이션)는 출하 응답에 없어, 지시서의
+ * 피킹 LOT 몫(`portions`)이 있으면 그것으로 적는다.
  */
-export const totalQtyOf = (rows: readonly ShipmentRow[]): number | null => {
-  if (rows.some((row) => row.totalQty === null)) return null;
-  return rows.reduce((sum, row) => sum + (row.totalQty ?? 0), 0);
+export const toShipmentDetail = (
+  data: ShipmentResponse,
+  request: ShipmentRequestSummary | null,
+): ShipmentDetail => {
+  const row = toShipmentRow(data);
+  const warehouseName = new Map(row.warehouses.map((w) => [w.warehouseId, w.warehouseName]));
+
+  const lines = (data.lines ?? []).map((line): ShipmentDetailLine => {
+    const requestLine = request?.lines?.find(
+      (candidate) => candidate.shipmentRequestLineId === line.shipmentRequestLineId,
+    );
+    const requestLots = requestLine?.lots ?? [];
+    const lots = new Map<number, ShippedLot>();
+    let itemCode = '';
+
+    for (const allocation of line.allocations ?? []) {
+      itemCode = allocation.itemCode;
+      const place = {
+        label: warehouseName.get(allocation.warehouseId) ?? String(allocation.warehouseId),
+        qty: allocation.allocatedQty,
+      };
+      const existing = lots.get(allocation.lotId);
+      if (existing === undefined) {
+        lots.set(allocation.lotId, {
+          lotId: allocation.lotId,
+          lotNo: allocation.lotNo ?? String(allocation.lotId),
+          qty: allocation.allocatedQty,
+          managementCode: allocation.managementCode ?? null,
+          places: [place],
+          oqcLotStatus: null,
+        });
+      } else {
+        existing.qty += allocation.allocatedQty;
+        existing.managementCode ??= allocation.managementCode ?? null;
+        const same = existing.places.find((one) => one.label === place.label);
+        if (same === undefined) existing.places.push(place);
+        else same.qty += place.qty;
+      }
+    }
+
+    for (const lot of lots.values()) {
+      const picked = requestLots.find(
+        (candidate) => candidate.lotId === lot.lotId && candidate.statusCode !== 'REPLACED',
+      );
+      if (picked === undefined) continue;
+      lot.oqcLotStatus = picked.oqcLotStatus;
+      const located = picked.portions.filter((portion) => portion.locationCode !== null);
+      if (located.length > 0) {
+        lot.places = picked.portions.map((portion) => ({
+          label:
+            portion.locationCode === null
+              ? portion.warehouseName
+              : `${portion.warehouseName} ${portion.locationCode}`,
+          qty: portion.qty,
+        }));
+      }
+    }
+
+    return {
+      lineNo: line.lineNo,
+      itemCode,
+      shippedQty: line.shippedQty,
+      targetQty: requestLine?.allocatedQty ?? null,
+      overQty: requestLine?.overQty ?? 0,
+      lots: [...lots.values()],
+      replaced: requestLots
+        .filter((lot) => lot.statusCode === 'REPLACED' && lot.replacement !== null)
+        .map((lot) => ({
+          lotNo: lot.lotNo,
+          replacedAt: lot.replacement?.replacedAt ?? '',
+          nonconformanceNo: lot.replacement?.nonconformanceNo ?? null,
+        })),
+    };
+  });
+
+  return { row, shipmentRequestNo: request?.shipmentRequestNo ?? null, lines };
 };
