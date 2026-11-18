@@ -1,7 +1,7 @@
 import './release-review.css';
 import './release-materials.css';
 import type { MaterialComponents } from '@omf-mes/api-client';
-import { AlertBanner, Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField, Tooltip } from '@crefle/web-ui';
 import { useQueries } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useApiClient } from '../../../patterns/api-context';
@@ -121,9 +121,9 @@ export const ReleaseMaterials = ({
   disabled?: boolean;
   errors?: { workOrderId: number; field?: string; message: string }[];
 }) => (
-  <section aria-label="자재 소요 및 단위 환산" className="pane">
+  <section aria-label="자재 소요량 확인" className="pane">
     <div className="section-heading-row">
-      <h3 className="section-title">자재 소요 및 단위 환산</h3>
+      <h3 className="section-title">자재 소요량 확인</h3>
     </div>
     {review.groups.map(({ target, query, rows }) => (
       <section key={target.workOrderId} aria-label={`${target.workOrderNo} 자재 소요`}>
@@ -153,8 +153,8 @@ export const ReleaseMaterials = ({
                   '자재 코드',
                   '자재명',
                   'BOM 소요량',
-                  '재고 단위 소요량',
-                  '환산 기준',
+                  '출고 기준 소요량',
+                  '환산 비율',
                   '확인',
                 ]}
                 widths={[135, 195, 110, 135, 260, 140]}
@@ -173,22 +173,18 @@ export const ReleaseMaterials = ({
                             ? stockQuantity(row.bomQty, rate, row.stockUomScale)
                             : '—'
                           : row.stockQty == null
-                            ? '환산 불가'
+                            ? '—'
                             : quantityText(row.stockQty)}{' '}
                         {row.stockUomCode}
                       </td>
                       <td>
                         {row.conversionSource === null ? (
-                          '동일 단위'
+                          '—'
                         ) : (
                           <>
-                            <span>
-                              {row.conversionSource === 'ITEM'
-                                ? '품목 환산'
-                                : row.conversionSource === 'COMMON'
-                                  ? '공통 환산'
-                                  : '환산 불가 — 직접 입력'}
-                            </span>
+                            {row.conversionSource === 'NONE' && rate === null && (
+                              <span>환산 비율 미등록</span>
+                            )}
                             <div className="release-material-ratio">
                               <span>1 {row.stockUomCode} =</span>
                               {editableRate(row) ? (
@@ -218,6 +214,25 @@ export const ReleaseMaterials = ({
                                 </span>
                               )}
                               <span>{row.bomUomCode}</span>
+                              <Tooltip
+                                content={
+                                  choice.rate !== null && rate !== null
+                                    ? '입력한 비율로 소요량을 계산합니다. 이 비율은 배포 시 품목별 단위 환산으로 저장됩니다.'
+                                    : row.conversionSource === 'ITEM'
+                                      ? '품목별 단위 환산에 등록된 비율입니다. 비율 변경은 품목 기준정보에서 처리합니다.'
+                                      : row.conversionSource === 'COMMON'
+                                        ? '단위 사이에 정해진 기본 환산 비율입니다. 품목별 등록값이 있으면 우선 적용합니다.'
+                                        : `1 ${row.stockUomCode}에 해당하는 ${row.bomUomCode} 수량을 입력하세요. 배포 시 품목별 단위 환산으로 저장됩니다.`
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  className="info-mark"
+                                  aria-label={`${target.workOrderNo} ${row.itemCode} 환산 비율 도움말`}
+                                >
+                                  ?
+                                </button>
+                              </Tooltip>
                             </div>
                             {choice.rate !== null && rate === null && (
                               <span
@@ -226,11 +241,6 @@ export const ReleaseMaterials = ({
                                 role="alert"
                               >
                                 0보다 큰 비율을 입력하세요.
-                              </span>
-                            )}
-                            {choice.rate !== null && rate !== null && (
-                              <span className="field-note">
-                                입력값은 배포 시 품목 환산으로 저장됩니다.
                               </span>
                             )}
                           </>
@@ -253,12 +263,12 @@ export const ReleaseMaterials = ({
                             size="sm"
                             variant="outlined"
                             className="release-material-confirm"
-                            aria-label={`${target.workOrderNo} ${row.itemCode} 환산 확인`}
+                            aria-label={`${target.workOrderNo} ${row.itemCode} 수량 확인`}
                             aria-pressed={choice.checked}
                             disabled={disabled || rate === null}
                             onClick={() => set({ checked: !choice.checked })}
                           >
-                            {choice.checked ? '확인 완료' : '환산 확인'}
+                            {choice.checked ? '✓ 확인 완료' : '수량 확인'}
                           </Button>
                         ) : (
                           '—'

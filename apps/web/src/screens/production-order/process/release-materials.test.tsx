@@ -50,7 +50,7 @@ describe('자재 환산 확인', () => {
   it('공통 질량 환산은 편집 없이 확인해야 배포할 수 있다', async () => {
     const user = userEvent.setup();
     renderWithProviders(<Harness />, { fetch: async () => jsonResponse({ items: [row] }) });
-    const checkbox = await screen.findByRole('button', { name: 'SYN-WO SYN-RESIN 환산 확인' });
+    const checkbox = await screen.findByRole('button', { name: 'SYN-WO SYN-RESIN 수량 확인' });
     expect(screen.getByRole('button', { name: '배포' })).toBeDisabled();
     expect(screen.queryByRole('textbox', { name: /환산 비율/ })).not.toBeInTheDocument();
     await user.click(checkbox);
@@ -66,7 +66,7 @@ describe('자재 환산 확인', () => {
         }),
     });
     const input = await screen.findByRole('textbox', { name: 'SYN-WO SYN-RESIN 환산 비율' });
-    const checkbox = screen.getByRole('button', { name: /환산 확인/ });
+    const checkbox = screen.getByRole('button', { name: /수량 확인/ });
     expect(checkbox).toBeDisabled();
     await user.type(input, '1000');
     expect(screen.getByText('0.367 KG')).toBeVisible();
@@ -91,7 +91,7 @@ describe('자재 환산 확인', () => {
     expect(error).toHaveTextContent('0보다 큰 비율을 입력하세요.');
     expect(input).toHaveAttribute('aria-describedby', error.id);
     expect(error.closest('.release-material-rate')).toBeNull();
-    expect(screen.getByRole('button', { name: /환산 확인/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /수량 확인/ })).toBeDisabled();
   });
   it('소수 자릿수가 많은 소요량과 환산 비율도 생략하지 않는다', async () => {
     renderWithProviders(<Harness />, {
@@ -112,6 +112,30 @@ describe('자재 환산 확인', () => {
     expect(await screen.findByText('0.00000001 GR')).toBeVisible();
     expect(screen.getByText('1.234567 KG')).toBeVisible();
     expect(screen.getByText('0.00012345')).toBeVisible();
+  });
+  it('환산 출처는 도움말에만 표시한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Harness />, { fetch: async () => jsonResponse({ items: [row] }) });
+    expect(await screen.findByRole('heading', { name: '자재 소요량 확인' })).toBeVisible();
+    const help = await screen.findByRole('button', { name: 'SYN-WO SYN-RESIN 환산 비율 도움말' });
+    expect(screen.queryByText('공통 환산')).not.toBeInTheDocument();
+    await user.hover(help);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      '단위 사이에 정해진 기본 환산 비율',
+    );
+  });
+  it('환산 미등록 표시는 입력 전까지만 보이고 입력 후에는 비율만 표시한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Harness />, {
+      fetch: async () =>
+        jsonResponse({
+          items: [{ ...row, conversionSource: 'NONE', conversionRate: null, stockQty: null }],
+        }),
+    });
+    expect(await screen.findByText('환산 비율 미등록')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: /환산 비율/ }), '2');
+    expect(screen.queryByText('환산 비율 미등록')).not.toBeInTheDocument();
+    expect(screen.queryByText('직접 입력한 비율')).not.toBeInTheDocument();
   });
   it('조회 실패 시 배포를 허용하지 않는다', async () => {
     renderWithProviders(<Harness />, { fetch: async () => jsonResponse({}, { status: 500 }) });
