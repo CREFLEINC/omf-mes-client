@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { PaneSplitter, useFitToViewport, usePaneSplit } from '../../patterns/po-board';
+import {
+  PaneHeightSplitter,
+  SplitOrientationToggle,
+  useSplitOrientation,
+} from '../../patterns/split-orientation';
 import { plantToday } from '../../patterns/plant-time';
 import { CancelRequestDialog, cancelReasonError } from './cancel-request-dialog';
 import { ConfirmDialog } from './confirm-dialog';
@@ -24,6 +30,7 @@ import type { ShipmentRow } from './types';
 import { ShipmentList } from './shipment-list';
 
 const t = messages.shipmentConfirm;
+const hubText = messages.common.inspectionHub;
 
 export interface ShipmentConfirmScreenProps {
   /** 기준 시각. 경과 계산이 실행하는 순간에 좌우되지 않게 밖에서 받는다. */
@@ -52,6 +59,14 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
   const [cancelReason, setCancelReason] = useState('');
   const [showCancelError, setShowCancelError] = useState(false);
   const [isExecuteOpen, setIsExecuteOpen] = useState(false);
+
+  /*
+   * 목록 · 상세 배치(T-W-A) — 검사 조회·판정과 같은 좌우 분할(막대로 폭을 나눔), 1440 보다 좁거나 상하를 고르면 위아래.
+   * 각 창은 창 바닥에서 멈추고 안에서 구른다. 검증 2회차: 직접 짠 2열 격자에서 상세 표가 창 밖으로 넘쳤다.
+   */
+  const { splitRef, aboveRef } = useFitToViewport();
+  const split = usePaneSplit('omf-mes:shipment-confirm:split', 0.5);
+  const layout = useSplitOrientation('omf-mes:shipment-confirm:split-orientation');
 
   /* 결재함 대상 링크(`?approvalRequestId=` · 화면 ID W-04-12)로 열리면 그 결재의 출하를 고른다(Q13). */
   const [searchParams] = useSearchParams();
@@ -128,12 +143,17 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           />
         }
       />
-      <div className="banner-slot">
+      <header ref={aboveRef} className="banner-slot ship-history-lead">
         <AlertBanner variant="info">{t.lead}</AlertBanner>
-      </div>
+        <SplitOrientationToggle orientation={layout.orientation} onChange={layout.change} inline />
+      </header>
 
-      <div className="ship-history">
-        <section className="pane" aria-label={t.panes.list}>
+      <div
+        ref={splitRef}
+        className={`po-board-split ship-history-split${layout.orientation === 'column' ? ' is-stacked' : ''}`}
+        style={{ ...split.style, ...layout.style }}
+      >
+        <section className="pane po-board-pane po-board-scroll" aria-label={t.panes.list}>
           <h2>{t.panes.list}</h2>
           <FilterBar
             applied={filters}
@@ -188,7 +208,19 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           )}
         </section>
 
-        <section className="pane" aria-label={t.panes.detail}>
+        <PaneSplitter label={hubText.splitter} ratio={split.ratio} onChange={split.commit} />
+        {layout.orientation === 'column' && (
+          <PaneHeightSplitter
+            label={hubText.heightSplitter}
+            height={layout.listHeight}
+            onChange={layout.changeListHeight}
+          />
+        )}
+
+        <section
+          className="pane po-board-pane po-board-scroll ship-history-detail-pane"
+          aria-label={t.panes.detail}
+        >
           <h2>{t.panes.detail}</h2>
           <DetailPane
             detail={selectedId === null ? undefined : detail.data}
