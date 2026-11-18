@@ -59,6 +59,7 @@ export const judgeMaster = (facts: MasterFacts, next: string): StepJudgment => {
 };
 
 export interface PlanFacts {
+  pastDate?: boolean;
   loading: boolean;
   rowCount: number;
   /** 확정 전 줄 수(새 줄 포함) */
@@ -82,6 +83,7 @@ export interface PlanJudgment extends StepJudgment {
 export const judgePlan = (facts: PlanFacts, next: string): PlanJudgment => {
   if (facts.loading) return { complete: false, canConfirm: false, guidance: null };
   if (facts.rowCount === 0) return { complete: false, canConfirm: false, guidance: say(t.addPlan) };
+  if (facts.pastDate) return { complete: false, canConfirm: false, guidance: say(t.pastPlanDate) };
   if (facts.invalid !== null) {
     const { plan, field, master } = facts.invalid;
     return {

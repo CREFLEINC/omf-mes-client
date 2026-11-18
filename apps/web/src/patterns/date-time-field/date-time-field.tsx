@@ -14,6 +14,7 @@ export interface DateTimeFieldProps {
   /** 칸 높이(C-19). */
   size?: 'sm' | 'md';
   timePicker?: boolean;
+  minDate?: string;
   disabled?: boolean;
   invalid?: boolean;
   'aria-describedby'?: string;
@@ -30,6 +31,7 @@ export const DateTimeField = ({
   value,
   size = 'md',
   timePicker = false,
+  minDate,
   disabled = false,
   invalid = false,
   'aria-describedby': describedBy,
@@ -47,6 +49,7 @@ export const DateTimeField = ({
       </label>
       <div className="date-time-field-controls">
         <DatePicker
+          min={minDate}
           id={id}
           size={size}
           value={date === '' ? null : date}

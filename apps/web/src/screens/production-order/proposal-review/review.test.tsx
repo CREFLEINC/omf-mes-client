@@ -328,3 +328,8 @@ describe('제안 검토 화면', () => {
     expect(proposalErrors(row)).toContain('생산량은 0보다 커야 합니다');
   });
 });
+
+vi.mock('../../../patterns/plant-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../patterns/plant-time')>()),
+  plantToday: () => '2026-11-01',
+}));

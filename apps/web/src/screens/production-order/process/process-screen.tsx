@@ -1,3 +1,9 @@
+import {
+  isPastPlanningDate,
+  pastPlanningDateMessage,
+  pastUnreleasedPlans,
+  validatePlanningDraft,
+} from './planning-date-policy';
 import { ReleaseResult } from './release-result';
 import type { ReleaseAttempt } from '../release-runner';
 import { PlanAddDialog } from './plan-add-dialog';
@@ -26,10 +32,7 @@ import { SaveErrorBanner } from '../../../patterns/master';
 import { josa } from '../../../patterns/josa';
 import { plantToday } from '../../../patterns/plant-time';
 import { ProcessPage, type ProcessStep } from '../../../patterns/process-page';
-import {
-  validateProductionPlanDraft,
-  type ProductionPlanDraftField,
-} from '../../production-plan/editor-model';
+import { type ProductionPlanDraftField } from '../../production-plan/editor-model';
 import { useProductionPlanEditorSession } from '../../production-plan/editor-session';
 import {
   useBomReferenceQuery,
@@ -135,6 +138,7 @@ export const ProcessWorkspace = ({
   const boms = useBomReferenceQuery(order.itemId);
   const lines = useProductionLineReferenceQuery(order.plantId);
   const editor = useProductionPlanEditorSession(order.productionOrderId);
+  const allWorkOrders = useAllOrderWorkOrders(order.productionOrderId);
   const [distributionDirty, setDistributionDirty] = useState(false);
   const planFacts = editor.plans.data?.items ?? [];
   const confirmedPlans = planFacts.filter((plan) => plan.confirmedAt !== null);
@@ -196,9 +200,10 @@ export const ProcessWorkspace = ({
     row.planNo ??
     `${row.draft.planDate} / ${formatQty(Number(row.draft.plannedQty) || 0)} ${uomLabelOf(order.uomId)}`;
   const unconfirmedRows = editor.rows.filter((row) => !row.confirmed);
+  const expiredPlans = pastUnreleasedPlans(editor.rows, allWorkOrders.data ?? []);
   const invalidRow = unconfirmedRows
     .map((row) => {
-      const errors = validateProductionPlanDraft(row.draft);
+      const errors = validatePlanningDraft(row.draft);
       const field = (Object.keys(PLAN_FIELD_NAMES) as ProductionPlanDraftField[]).find(
         (name) => errors[name] !== undefined,
       );
@@ -217,6 +222,7 @@ export const ProcessWorkspace = ({
   const plan = judgePlan(
     {
       loading: !editor.isHydrated,
+      pastDate: expiredPlans.length > 0,
       rowCount: editor.rows.length,
       unconfirmed: unconfirmedRows.length,
       invalid: invalidRow ?? null,
@@ -250,7 +256,6 @@ export const ProcessWorkspace = ({
 
   /* 4M 배정 */
   const unreleased = useUnreleasedWorkOrders(order.productionOrderId);
-  const allWorkOrders = useAllOrderWorkOrders(order.productionOrderId);
   const readiness = useWorkOrderReadiness(unreleased.data);
   const blockedIds = useMemo(
     () =>
@@ -378,12 +383,14 @@ export const ProcessWorkspace = ({
   const derivedBase = deriveWorklistState(order);
   /* 서버 사유에 없어도 데이터로 보이는 막힘(작성 중 계획의 생산 라인 없음)을 앞에 둔다(T-W-C 처음 여는 단계와 같은 판단). */
   const derived =
-    derivedBase.state === 'ACTION_REQUIRED' &&
-    order.autoPlan?.status === 'NEEDS_REVIEW' &&
-    unconfirmedRows.some((row) => row.draft.plannedLineId === '') &&
-    !derivedBase.reasons.some((reason) => reason.code === 'LINE_UNKNOWN')
-      ? { ...derivedBase, reasons: [{ code: 'LINE_UNKNOWN' }, ...derivedBase.reasons] }
-      : derivedBase;
+    expiredPlans.length > 0
+      ? { ...derivedBase, state: 'ACTION_REQUIRED' as const }
+      : derivedBase.state === 'ACTION_REQUIRED' &&
+          order.autoPlan?.status === 'NEEDS_REVIEW' &&
+          unconfirmedRows.some((row) => row.draft.plannedLineId === '') &&
+          !derivedBase.reasons.some((reason) => reason.code === 'LINE_UNKNOWN')
+        ? { ...derivedBase, reasons: [{ code: 'LINE_UNKNOWN' }, ...derivedBase.reasons] }
+        : derivedBase;
   const lastSearch = useMemo(() => rememberedWorklistSearch(), []);
   const lastFilters = useMemo(() => readWorklistFilters(lastSearch), [lastSearch]);
   const nextList = useWorklist(lastFilters);
@@ -398,6 +405,13 @@ export const ProcessWorkspace = ({
 
   const savePlans = useCallback(
     async (confirm: boolean) => {
+      if (
+        (confirm && pastUnreleasedPlans(editor.rows, allWorkOrders.data ?? []).length > 0) ||
+        editor.rows.some((row) => !row.confirmed && isPastPlanningDate(row.draft.planDate))
+      ) {
+        setPlanFailures([pastPlanningDateMessage()]);
+        return;
+      }
       setPlanBusy(true);
       setPlanFailures([]);
       setPlanConflict(null);
@@ -443,7 +457,7 @@ export const ProcessWorkspace = ({
         toast.show({ variant: 'success', description: messages.common.saved });
       }
     },
-    [client, editor, order.productionOrderId, order.uomId, queryClient, toast],
+    [client, editor, allWorkOrders.data, order.productionOrderId, order.uomId, queryClient, toast],
   );
 
   if (step === null) {
@@ -476,6 +490,11 @@ export const ProcessWorkspace = ({
   const nextKey = step === 'done' ? undefined : STEP_KEYS[index + 1];
 
   const release = async () => {
+    if (expiredPlans.length) {
+      setPlanFailures([pastPlanningDateMessage()]);
+      setStep('plan');
+      return;
+    }
     if (releasing || releaseLines === undefined || releaseLines.length === 0 || missingLot !== null)
       return;
     setReleasing(true);
@@ -644,6 +663,9 @@ export const ProcessWorkspace = ({
                 itemName: item?.itemName ?? '—',
               })}
               rows={editor.rows}
+              pastConfirmedPlanIds={expiredPlans.flatMap((row) =>
+                row.confirmed && row.productionPlanId !== null ? [row.productionPlanId] : [],
+              )}
               orderQty={order.orderQty}
               confirmedQty={order.confirmedPlanQty}
               uomLabel={uomLabelOf(order.uomId)}
@@ -675,7 +697,13 @@ export const ProcessWorkspace = ({
               onSplit={(row, qty) =>
                 editor.splitMany(row.key, qty, uoms.decimalScaleOf?.(order.uomId))
               }
-              onChange={editor.change}
+              onChange={(key, field, value) => {
+                editor.change(key, field, value);
+                if (field === 'planDate')
+                  setPlanFailures((items) =>
+                    items.filter((item) => item !== pastPlanningDateMessage()),
+                  );
+              }}
               onRemove={(row) => {
                 if (row.productionPlanId === null) {
                   editor.remove(row.key);
@@ -725,6 +753,17 @@ export const ProcessWorkspace = ({
       case 'done':
         return (
           <>
+            {expiredPlans.length > 0 && (
+              <AlertBanner
+                variant="warning"
+                title={pastPlanningDateMessage()}
+                action={
+                  <Button variant="outlined" onClick={() => setStep('plan')}>
+                    계획일 확인
+                  </Button>
+                }
+              />
+            )}
             {releaseInformation(true)}
             <ReleaseResult
               orderNo={order.productionOrderNo}
@@ -742,7 +781,7 @@ export const ProcessWorkspace = ({
               statusName={codeNames.workOrderStatus}
               retrying={releasing}
               onRetry={() => void release()}
-              onEdit={() => setStep('assign')}
+              onEdit={() => setStep(expiredPlans.length ? 'plan' : 'assign')}
             />
           </>
         );
@@ -778,7 +817,7 @@ export const ProcessWorkspace = ({
           {prev}
           <Button
             loading={releasing}
-            disabled={releasing || missingLot !== null}
+            disabled={releasing || missingLot !== null || expiredPlans.length > 0}
             aria-describedby={remainingId}
             onClick={() => void release()}
           >
@@ -808,7 +847,7 @@ export const ProcessWorkspace = ({
         {prev}
         <Button
           variant={step === 'assign' ? 'outlined' : undefined}
-          disabled={!complete || (step === 'plan' && distributionDirty)}
+          disabled={!complete || expiredPlans.length > 0 || (step === 'plan' && distributionDirty)}
           aria-describedby={
             complete && !(step === 'plan' && distributionDirty) ? undefined : remainingId
           }

@@ -218,6 +218,8 @@ export const DistributionControls = ({
           Object.values(group.daily).some((qty) => Number(qty) !== 0),
         ),
         existing,
+        undefined,
+        plantToday(),
       );
       if (
         reviewResult.orders.some(
@@ -913,7 +915,13 @@ export const DistributionControls = ({
                           if (unknown)
                             notes.push(`${order.label}: 근무일 판정 불가 ${unknown}일 (미설정)`);
                         }
-                        const result = previewSegments(orders, rows, existing, bySegment);
+                        const result = previewSegments(
+                          orders,
+                          rows,
+                          existing,
+                          bySegment,
+                          plantToday(),
+                        );
                         setCalendarNotes(notes);
                         setHolidayRows(holidayDisplay);
                         setResultQuantities({});
@@ -1163,6 +1171,8 @@ export const DistributionControls = ({
                       if (lock.current || stale || resultError) return;
                       lock.current = true;
                       try {
+                        if (reviewResult!.drafts.some((row) => row.planDate < plantToday()))
+                          throw new Error('계획일이 지났습니다. 분배 기간을 다시 확인하세요.');
                         onApply(reviewResult!.drafts);
                         const applied = rows.map((row) => ({ ...row, applied: true }));
                         setRows(applied);

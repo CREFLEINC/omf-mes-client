@@ -74,7 +74,7 @@ const fixtures = vi.hoisted(() => {
   const items = new Map([
     [1, { itemCode: 'ITEM1', itemName: '시험 품목', erpItemGroupCode: 'SYN-GROUP' }],
   ]);
-  return { orders, boms, routings, lines, units, items, readinessReady: true };
+  return { orders, boms, routings, lines, units, items, readinessReady: true, allWorkOrders: [] };
 });
 vi.mock('../worklist-queries', () => ({
   useProductionOrderByNumber: (no: string) => ({
@@ -94,6 +94,7 @@ vi.mock('../item-lookups', () => ({
   useProductionOrderItemNames: () => ({ items: [] }),
 }));
 vi.mock('./queries', () => ({
+  useAllOrderWorkOrders: () => ({ data: fixtures.allWorkOrders, isPending: false, isError: false }),
   useUnreleasedWorkOrders: () => ({ data: [{ workOrderId: 1 }], isPending: false }),
   useWorkOrderReadiness: () => [{ workOrderId: 1, ready: fixtures.readinessReady }],
 }));
@@ -558,3 +559,8 @@ describe('복수 ERP W/O 편성 저장 연결', () => {
     expect(screen.getByRole('dialog')).toBeVisible();
   });
 });
+
+vi.mock('../../../patterns/plant-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../patterns/plant-time')>()),
+  plantToday: () => '2026-10-01',
+}));

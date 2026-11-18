@@ -1,3 +1,4 @@
+import { plantToday } from '../../../patterns/plant-time';
 import { useProductionPlanDetail } from '../../production-plan/queries';
 import { useRoutingOperations } from '../../routing/queries';
 import { useWarehouseArrival } from './arrival-location';
@@ -706,6 +707,7 @@ const EditorSession = ({
             <h3 className="assign-group-title">{t.groups.plan}</h3>
             <div className="assign-plan-row">
               <DateTimeField
+                minDate={plantToday()}
                 timePicker
                 size="md"
                 label={t.fields.plannedStartAtLocal}
@@ -715,6 +717,7 @@ const EditorSession = ({
                 onChange={(value) => patch({ plannedStartAtLocal: value })}
               />
               <DateTimeField
+                minDate={plantToday()}
                 timePicker
                 size="md"
                 label={t.fields.plannedEndAtLocal}

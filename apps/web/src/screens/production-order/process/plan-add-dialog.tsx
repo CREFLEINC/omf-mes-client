@@ -1,3 +1,5 @@
+import { isPastPlanningDate } from './planning-date-policy';
+import { plantToday } from '../../../patterns/plant-time';
 import { usePlanningDays, planningDayKey, PlanningDayNotice } from './planning-working-days';
 import { useId, useState } from 'react';
 import { AlertBanner, Button, DatePicker, Dialog, TextField } from '@crefle/web-ui';
@@ -81,6 +83,7 @@ export const PlanAddDialog = ({
   const valid =
     !!target &&
     target.remaining > 0 &&
+    !isPastPlanningDate(draft.planDate) &&
     Number.isFinite(qty) &&
     qty > 0 &&
     qty <= target.remaining &&
@@ -144,6 +147,7 @@ export const PlanAddDialog = ({
           <div className="field-cell">
             <span className="field-label">계획일</span>
             <DatePicker
+              min={plantToday()}
               placeholder="계획일 선택"
               aria-label="추가할 계획일"
               value={draft.planDate}

@@ -131,6 +131,21 @@ const stub = ({
         ),
       );
     }
+    if (path(request) === '/planning/production-plans')
+      return jsonResponse(
+        page(
+          pending.map((item) => ({
+            productionPlanId: item.productionPlanId,
+            productionOrderId: item.productionOrderId,
+            planDate: '2099-01-01',
+          })),
+        ),
+      );
+    if (/^\/planning\/production-plans\/\d+$/.test(path(request)))
+      return jsonResponse({
+        productionPlanId: Number(path(request).split('/').at(-1)),
+        planDate: '2099-01-01',
+      });
     const detail = /^\/production\/work-orders\/(\d+)$/.exec(path(request));
     if (detail !== null && request.method === 'GET') {
       const id = Number(detail[1]);

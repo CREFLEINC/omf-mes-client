@@ -128,6 +128,7 @@ export const previewSegments = (
   segments: readonly DistributionSegment[],
   existing: readonly OwnedDraft[],
   calendarBySegment?: ReadonlyMap<string, readonly { date: string; statusCode: string }[]>,
+  minDate?: string,
 ): SegmentPreview => {
   const result: SegmentPreview = { drafts: [], orders: [], totals: [], warnings: [] };
   const lookup = new Map(targets.map((target) => [target.id, target]));
@@ -139,6 +140,8 @@ export const previewSegments = (
   >();
   const allocated = new Map<string, number>();
   for (const [index, segment] of active.entries()) {
+    if (minDate && (segment.start < minDate || segment.end < minDate))
+      throw new Error('분배 기간은 오늘 이후 날짜로 지정하세요.');
     const target = lookup.get(segment.owner);
     if (!target) throw new Error(`조건 ${index + 1}: ERP W/O를 선택하세요.`);
     if (!target.lines.some((line) => String(line.id) === segment.lineId))

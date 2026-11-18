@@ -120,6 +120,7 @@ export const DistributionPeriodPicker = ({
                 >
                   <button
                     type="button"
+                    disabled={date < plantToday()}
                     aria-label={date}
                     aria-pressed={first || last || between}
                     onClick={() => {

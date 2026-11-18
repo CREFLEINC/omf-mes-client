@@ -6,6 +6,27 @@ import { plantToday } from '../../../patterns/plant-time';
 import { DistributionPeriodPicker } from './distribution-period-picker';
 
 describe('분배 기간 선택', () => {
+  it('지난 날짜 셀은 비활성이고 오늘은 선택할 수 있다', async () => {
+    const today = plantToday();
+    const previous = new Date(`${today}T00:00:00Z`);
+    previous.setUTCDate(previous.getUTCDate() - 1);
+    const yesterday = previous.toISOString().slice(0, 10);
+    const user = userEvent.setup();
+    renderWithProviders(
+      <DistributionPeriodPicker
+        label="분배 기간"
+        value={[yesterday, today]}
+        disabled={false}
+        onChange={() => {}}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '분배 기간' }));
+    const dialog = screen.getByRole('dialog', { name: '분배 기간' });
+    expect(within(dialog).getByRole('button', { name: yesterday })).toBeDisabled();
+    if (today.slice(0, 7) !== yesterday.slice(0, 7))
+      await user.click(within(dialog).getByRole('button', { name: '다음 달' }));
+    expect(within(dialog).getByRole('button', { name: today })).toBeEnabled();
+  });
   it('오늘은 표시 월만 변경하고 기간을 적용하지 않는다', async () => {
     const change = vi.fn();
     const user = userEvent.setup();

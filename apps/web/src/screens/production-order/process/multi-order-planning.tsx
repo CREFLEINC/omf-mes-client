@@ -1,6 +1,12 @@
+import {
+  isPastPlanningDate,
+  pastPlanningDateMessage,
+  pastUnreleasedPlans,
+  validatePlanningDraft,
+} from './planning-date-policy';
 import { PlanViewSwitch } from './plan-view-switch';
 import { useProductionOrderCodeNames } from '../code-names';
-import { useUnreleasedWorkOrders, useWorkOrderReadiness } from './queries';
+import { useAllOrderWorkOrders, useUnreleasedWorkOrders, useWorkOrderReadiness } from './queries';
 import { judgeAssign } from './process-model';
 import { useRoutingOperations } from '../../routing/queries';
 import { PlanConfirmDialog } from './plan-confirm-dialog';
@@ -27,7 +33,6 @@ import type {
   NewProductionPlanDefaults,
   ProductionPlanEditorStateRow,
 } from '../../production-plan/editor-state';
-import { validateProductionPlanDraft } from '../../production-plan/editor-model';
 import {
   useBomReferenceQuery,
   useRoutingReferenceQuery,
@@ -62,6 +67,8 @@ interface Controller {
   lines: PlanLine[];
   ready: boolean;
   releaseReady: boolean;
+  pastConfirmedPlanIds: number[];
+  hasPastPlans: boolean;
   operations: string[];
   bomId: string;
   routingId: string;
@@ -237,6 +244,7 @@ const ReadyOrderSession = ({
   publish: (id: string, value: Controller) => void;
 }) => {
   const editor = useProductionPlanEditorSession(order.productionOrderId);
+  const allWorkOrders = useAllOrderWorkOrders(order.productionOrderId);
   const boms = useBomReferenceQuery(order.itemId);
   const routings = useRoutingReferenceQuery(
     order.itemId,
@@ -297,7 +305,9 @@ const ReadyOrderSession = ({
     (locked ||
       (boms.data?.items.some((item) => String(item.bomId) === bomId) === true &&
         routings.data?.items.some((item) => String(item.routingId) === routingId) === true)) &&
-    !!lines.data;
+    !!lines.data &&
+    !allWorkOrders.isPending &&
+    !allWorkOrders.isError;
   const defaults = manualPlanDefaults(
     order,
     rows,
@@ -323,6 +333,10 @@ const ReadyOrderSession = ({
         .map((line) => ({ id: line.productionLineId, code: line.lineCode, name: line.lineName })),
       ready,
       releaseReady,
+      hasPastPlans: pastUnreleasedPlans(rows, allWorkOrders.data ?? []).length > 0,
+      pastConfirmedPlanIds: pastUnreleasedPlans(rows, allWorkOrders.data ?? []).flatMap((row) =>
+        row.confirmed && row.productionPlanId !== null ? [row.productionPlanId] : [],
+      ),
       operations: operationNames,
       bomId,
       routingId,
@@ -371,6 +385,7 @@ const ReadyOrderSession = ({
     ready,
     releaseReady,
     revisionLabels,
+    allWorkOrders.data,
     operations.data,
     lines.data,
     boms.data,
@@ -439,6 +454,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
   const getRemaining = (entry: Controller) => quantitiesOf(entry).remaining;
   const enough =
     allReady &&
+    !entries.some((entry) => entry.hasPastPlans) &&
     entries.every(
       (entry) =>
         entry.editor.rows.length > 0 &&
@@ -473,11 +489,20 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
     .filter((row) => !row.confirmed)
     .every(
       (row) =>
+        !isPastPlanningDate(row.draft.planDate) &&
         row.draft.plannedLineId.trim() !== '' &&
-        Object.keys(validateProductionPlanDraft(row.draft)).length === 0,
+        Object.keys(validatePlanningDraft(row.draft)).length === 0,
     );
   const save = async (doConfirm: boolean) => {
     if (running.current || !allReady) return;
+    if (combined.some((row) => !row.confirmed && isPastPlanningDate(row.draft.planDate))) {
+      setResults([pastPlanningDateMessage()]);
+      return;
+    }
+    if (doConfirm && entries.some((entry) => entry.hasPastPlans)) {
+      setResults([pastPlanningDateMessage()]);
+      return;
+    }
     if (doConfirm && distributionDirty) {
       setResults(['분배 미리보기를 적용하거나 조건 변경을 취소하세요.']);
       return;
@@ -494,7 +519,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
       entry.editor.rows
         .filter((row) => !row.confirmed)
         .flatMap((row) => {
-          const errors = validateProductionPlanDraft(row.draft);
+          const errors = validatePlanningDraft(row.draft);
           entry.editor.setErrors(row.key, errors);
           return Object.keys(errors).length
             ? [
@@ -888,6 +913,7 @@ export const MultiOrderPlanning = ({ orderNumbers }: { orderNumbers: string[] })
               addRequest={addRequest}
               onSelectedKeyChange={inspectSelectedPlan}
               rows={combined}
+              pastConfirmedPlanIds={entries.flatMap((entry) => entry.pastConfirmedPlanIds)}
               planGroups={entries.map((entry) => ({
                 id: entry.order.productionOrderNo,
                 orderNo: entry.order.productionOrderNo,
