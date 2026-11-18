@@ -1,7 +1,7 @@
 import { Button, Chip, EmptyState, Icon } from '@crefle/web-ui';
 import type { InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { formatQty } from '../../patterns/package-qty';
@@ -302,6 +302,7 @@ export const PopShipmentDetail = ({
   uomCode: string | null;
 }) => {
   const { request, views } = form;
+  const judgmentHintId = useId();
   if (request === undefined || views === null) {
     return <p className="field-note">{pop.detail.loading}</p>;
   }
@@ -428,7 +429,9 @@ export const PopShipmentDetail = ({
                 *
               </span>
             </p>
-            <p className="pop-oqc-step__hint">{ps.form.judgmentHint}</p>
+            <p id={judgmentHintId} className="pop-oqc-step__hint">
+              {ps.form.judgmentHint}
+            </p>
             <div
               className="pop-oqc-shipment-judgments"
               role="group"
@@ -442,6 +445,7 @@ export const PopShipmentDetail = ({
                   variant={form.judgment === code ? 'filled' : 'outlined'}
                   aria-pressed={form.judgment === code}
                   disabled={form.save.isSaving}
+                  aria-describedby={judgmentHintId}
                   onClick={() => form.setJudgment(code)}
                 >
                   {s.judgments[code]}
@@ -484,6 +488,7 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
   const { blockedReason, save, savedSeq } = form;
   const ruleCode = ruleCodeOf(save.error);
   const canSave = blockedReason === null && !save.isSaving;
+  const noteId = useId();
 
   const note = save.isSaving ? (
     <p className="pop-oqc-bar-note">{ps.bar.saving}</p>
@@ -518,10 +523,18 @@ export const PopShipmentBar = ({ form }: { form: PopShipmentForm }) => {
 
   return (
     <div className="pop-action-bar">
-      <div className="pop-action-note" aria-live="polite">
+      <div id={noteId} className="pop-action-note" aria-live="polite">
         {note}
       </div>
-      <Button type="button" size="2xl" variant="filled" disabled={!canSave} onClick={form.submit}>
+      {/* 잠긴 까닭은 바로 옆 띠 글이다(C-4). */}
+      <Button
+        type="button"
+        size="2xl"
+        variant="filled"
+        disabled={!canSave}
+        aria-describedby={canSave ? undefined : noteId}
+        onClick={form.submit}
+      >
         {save.isSaving ? ps.bar.saving : ps.bar.save}
       </Button>
     </div>

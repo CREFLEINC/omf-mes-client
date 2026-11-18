@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { LotMatchField } from '../parts-iqc-inspection/lot-match-field';
@@ -70,6 +70,8 @@ export const ShipmentResultDrawer = ({
   const [serialRows, setSerialRows] = useState<SerialRow[]>([]);
   const [checked, setChecked] = useState(false);
   const [asking, setAsking] = useState(false);
+  const savingId = useId();
+  const judgmentNoteId = useId();
 
   const save = useSaveShipmentResult(inspectionRequestId, () => onSaved(seqNo, editing !== null));
 
@@ -152,13 +154,21 @@ export const ShipmentResultDrawer = ({
             <Button variant="outlined" disabled={save.isSaving} onClick={requestClose}>
               {d.cancel}
             </Button>
-            <Button disabled={save.isSaving} onClick={submit}>
+            <Button
+              disabled={save.isSaving}
+              aria-describedby={save.isSaving ? savingId : undefined}
+              onClick={submit}
+            >
               {save.isSaving ? d.saving : d.save}
             </Button>
           </>
         }
       >
         <div className="oqc-shipment-drawer-body">
+          {/* 저장이 도는 동안 단추가 잠기는 까닭(C-4) — 화면 낭독기에 이어 준다. */}
+          <span id={savingId} className="visually-hidden" aria-live="polite">
+            {save.isSaving ? d.saving : ''}
+          </span>
           <h2 className="parts-iqc-sub-title oqc-shipment-drawer-title">{title}</h2>
           {bannerError === null ? null : ruleCode === 'CONFIRMED_BY_SHIPMENT_COMPLETION' ? (
             <AlertBanner variant="error">{d.confirmedByShipment}</AlertBanner>
@@ -202,13 +212,16 @@ export const ShipmentResultDrawer = ({
                   variant={judgment === code ? 'filled' : 'outlined'}
                   aria-pressed={judgment === code}
                   disabled={save.isSaving}
+                  aria-describedby={judgmentNoteId}
                   onClick={() => setJudgment(code)}
                 >
                   {s.judgments[code]}
                 </Button>
               ))}
             </div>
-            <p className="field-note">{d.judgmentNote}</p>
+            <p id={judgmentNoteId} className="field-note">
+              {d.judgmentNote}
+            </p>
             {judgmentError === null ? null : (
               <p className="field-error" role="alert">
                 {judgmentError}

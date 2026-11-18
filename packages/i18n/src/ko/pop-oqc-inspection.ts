@@ -151,8 +151,8 @@ export const popOqcInspection = {
    */
   shipment: {
     /** 목록 카드 둘째 줄 — 「FG-A100 · 피킹 LOT 3개」. */
-    card: (item: string, count: number): string => `${item} · 피킹 LOT ${String(count)}개`,
-    cardEmpty: (item: string): string => `${item} · 피킹 LOT 없음`,
+    card: (item: string, count: number): string => `${item} · 피킹 LOT ${String(count)}개`, // ui-check-ignore: C-13 시안 P0406 목록 카드
+    cardEmpty: (item: string): string => `${item} · 피킹 LOT 없음`, // ui-check-ignore: C-13 시안 P0406 목록 카드
     target: '목표',
     picked: '피킹',
     refs: {

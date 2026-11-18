@@ -532,7 +532,7 @@ export const oqcInspection = {
       columns: {
         lotNo: 'LOT 번호',
         qty: '피킹 수량',
-        portions: '창고 · 위치',
+        portions: '창고 · 위치', // ui-check-ignore: C-13 시안 W0403 칸 이름 「창고 · 위치」
         judgment: '판정',
         applied: '적용 검사',
       },
@@ -547,7 +547,7 @@ export const oqcInspection = {
         worker: string,
         nonconformanceNo: string | null,
       ): string =>
-        `${judgment} · PDA 교체 ${at} ${worker}${nonconformanceNo === null ? '' : ` · 부적합 ${nonconformanceNo}`}`,
+        `${judgment} · PDA 교체 ${at} ${worker}${nonconformanceNo === null ? '' : ` · 부적합 ${nonconformanceNo}`}`, // ui-check-ignore: C-13 시안 W0403 · P0406 교체 근거 줄
       replacedFallback: 'PDA 에서 교체되어 판정 대상에서 빠졌습니다.',
       portion: (warehouse: string, location: string | null, qty: string): string =>
         location === null ? `${warehouse} ${qty}` : `${warehouse} ${location} ${qty}`,

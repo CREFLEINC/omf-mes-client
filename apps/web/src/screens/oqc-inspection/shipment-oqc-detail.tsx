@@ -1,7 +1,7 @@
 import { Button, Chip, EmptyState, Icon, Table, useToast, type Column } from '@crefle/web-ui';
 import type { InspectionLotForward, InspectionResultSummaryForward } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { formatQty } from '../../patterns/package-qty';
 import { toApiError } from '../../patterns/request';
@@ -62,6 +62,7 @@ export const ShipmentOqcDetail = ({
   const [drawer, setDrawer] = useState<{ editing: InspectionResultSummaryForward | null } | null>(
     null,
   );
+  const addBlockedId = useId();
 
   if (query.isError) {
     return (
@@ -272,6 +273,7 @@ export const ShipmentOqcDetail = ({
               size="md"
               leadingIcon={<Icon name="add" size={18} aria-hidden />}
               disabled={active.length === 0}
+              aria-describedby={active.length === 0 ? addBlockedId : undefined}
               onClick={() => setDrawer({ editing: null })}
             >
               {s.results.add}
@@ -279,7 +281,9 @@ export const ShipmentOqcDetail = ({
           ) : null}
         </div>
         {isOpen && active.length === 0 ? (
-          <p className="field-note">{s.results.addBlocked}</p>
+          <p id={addBlockedId} className="field-note">
+            {s.results.addBlocked}
+          </p>
         ) : null}
         <ResultList
           results={results}
